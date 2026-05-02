@@ -1,0 +1,119 @@
+import type { AnalysisResponse } from "../../types";
+import { EditableGrid, InfoPill, LineList, MetricGrid, MiniKline, PanelTitle, StockIdentity } from "./WorkspaceComponents";
+import { actionText, formatAmount, formatNumber, formatPct, formatPrice, plainTradingText, riskText, toneFromChange } from "./workspaceFormatters";
+import type { AnalysisDraft } from "./workspaceTypes";
+
+export function AnalysisPage({
+  draft,
+  setDraft,
+  result,
+  loading,
+  onRun,
+}: {
+  draft: AnalysisDraft;
+  setDraft: (draft: AnalysisDraft) => void;
+  result: AnalysisResponse | null;
+  loading: string;
+  onRun: () => void;
+}) {
+  const suggestion = result?.suggestion;
+  const quote = result?.quote;
+  const actionHeadline = suggestion?.plain_action_text || (suggestion ? actionText(suggestion.action) : "等待分析");
+  const actionReason = suggestion?.plain_action_reason || plainTradingText(suggestion?.trade_scene_text) || "--";
+  const executionText =
+    suggestion?.plain_execution_text ||
+    `入场 ${formatPrice(suggestion?.entry_price)} · 卖出 ${formatPrice(suggestion?.exit_price)} · 止损 ${formatPrice(suggestion?.stop_loss)} · 止盈 ${formatPrice(suggestion?.take_profit)}。`;
+  const invalidText =
+    suggestion?.plain_invalid_condition ||
+    (suggestion?.blocking_rules.length ? suggestion.blocking_rules.map(plainTradingText).join("；") : "没有硬性阻止条件");
+  return (
+    <section className="page-grid analysis-grid">
+      <div className="panel analysis-hero">
+        <PanelTitle title="个股量化分析" />
+        <p className="hint">先判断现在能不能动手，再给出买卖价、止损、仓位和不能操作的原因。AI 只负责解释，不改变规则。</p>
+        <div className="context-row">
+          <InfoPill label="操作建议" value={actionHeadline} />
+          <InfoPill label="持仓限制" value={`底仓 ${draft.base_position} / 可卖 ${draft.available_position}`} />
+          <InfoPill label="风险等级" value={suggestion ? riskText(suggestion.risk_level) : "--"} />
+        </div>
+      </div>
+      <div className="panel analysis-identity">
+        <StockIdentity name={result?.instrument.name ?? draft.symbol} symbol={draft.symbol} />
+        <MetricGrid
+          items={[
+            { label: "当前价", value: formatPrice(quote?.last_price), tone: "neutral" },
+            { label: "涨跌", value: formatPct(quote?.change_pct), tone: toneFromChange(quote?.change_pct) },
+            { label: "可交易", value: formatNumber(suggestion?.tradability_score), tone: "neutral" },
+            { label: "信号分", value: formatNumber(suggestion?.signal_score), tone: "warn" },
+            { label: "风险", value: suggestion ? riskText(suggestion.risk_level) : "--", tone: suggestion?.risk_level === "high" ? "down" : "up" },
+            { label: "预期", value: formatPct(suggestion?.expected_profit_pct), tone: toneFromChange(suggestion?.expected_profit_pct) },
+          ]}
+        />
+      </div>
+      <aside className="panel analysis-control">
+        <PanelTitle title="输入控制" />
+        <EditableGrid
+          fields={[
+            ["证券代码", draft.symbol, (value) => setDraft({ ...draft, symbol: value })],
+            ["底仓", draft.base_position, (value) => setDraft({ ...draft, base_position: value })],
+            ["可卖", draft.available_position, (value) => setDraft({ ...draft, available_position: value })],
+            ["成本价", draft.cost_basis, (value) => setDraft({ ...draft, cost_basis: value })],
+          ]}
+        />
+        <label className="select-field">
+          <span>偏好策略</span>
+          <select value={draft.prefer_strategy} onChange={(event) => setDraft({ ...draft, prefer_strategy: event.target.value as AnalysisDraft["prefer_strategy"] })}>
+            <option value="auto">自动</option>
+            <option value="positive_t">正T</option>
+            <option value="negative_t">反T</option>
+          </select>
+        </label>
+        <button className="primary full" onClick={onRun} disabled={loading === "analysis"}>开始分析</button>
+      </aside>
+      <div className="panel decision analysis-decision">
+        <PanelTitle title={`当前建议 / ${actionHeadline}`} />
+        <p>{actionReason || "输入证券代码并点击开始分析，系统会先检查能不能做T，再给出明确的执行边界。"}</p>
+        <InfoPill label="现在怎么做" value={executionText} />
+        <InfoPill label="错了怎么办" value={invalidText} />
+        <InfoPill label="建议仓位" value={`仓位 ${formatPct(suggestion?.position_pct, 0)} / 预期 ${formatPct(suggestion?.expected_profit_pct)}`} />
+        <InfoPill label="卖出后怎么接回" value={plainTradingText(suggestion?.buyback_trigger) || "没有反T卖出信号时，不需要考虑回补。"} />
+        {suggestion?.reasons.length ? <LineList title="主要依据" items={suggestion.reasons.slice(0, 4).map(plainTradingText)} /> : null}
+      </div>
+      <div className="panel chart-panel analysis-chart">
+        <PanelTitle title="K线与指标" />
+        <div className="chart-meta">
+          <span>开 {formatPrice(quote?.open_price)}</span>
+          <span>高 {formatPrice(quote?.high_price)}</span>
+          <span>低 {formatPrice(quote?.low_price)}</span>
+          <span>额 {formatAmount(quote?.amount)}</span>
+          <span>振幅 {formatPct(result?.metrics.amplitude_pct as number | undefined)}</span>
+        </div>
+        <MiniKline bars={result?.bars?.slice(-60) ?? []} />
+        <div className="context-row">
+          <InfoPill label="盘口增强" value={result?.microstructure.notes ?? "--"} />
+          <InfoPill label="量能结构" value={String(result?.metrics.volume_ratio ?? "--")} />
+          <InfoPill label="成交额" value={formatAmount(quote?.amount)} />
+        </div>
+      </div>
+      <div className="panel split analysis-plan">
+        <div>
+          <PanelTitle title="执行计划" />
+          <p>{executionText}</p>
+          <p className="hint">{invalidText}</p>
+          <p className="hint">{plainTradingText(suggestion?.strategy_notes) || "正T只等回落后重新走强，反T只在冲高乏力且有回补空间时执行；AI 只解释，不放宽底线规则。"}</p>
+        </div>
+        <div>
+          <PanelTitle title="AI 补充说明" />
+          <p>{plainTradingText(result?.ai.summary) || "默认不自动调用 AI，避免延迟和额度消耗；需要时可在榜单或复盘入口触发解读。"}</p>
+          {result?.compliance_notes.length ? <LineList title="合规与假设" items={[...result.compliance_notes, ...result.assumptions].slice(0, 4)} /> : null}
+        </div>
+      </div>
+      <div className="panel log-strip analysis-log">
+        <InfoPill label="分析日志" value={result?.analysis_log_id ? `日志 #${result.analysis_log_id}` : "等待分析"} />
+        <InfoPill label="阻塞规则" value={suggestion?.blocking_rules.length ? `${suggestion.blocking_rules.length} 条` : "暂无硬阻塞"} />
+        <InfoPill label="事件/微观" value={result ? `${result.events.length} 条事件 / ${result.microstructure.notes || "盘口已检查"}` : "--"} />
+        <InfoPill label="复盘记录" value={result ? "分析结果已写入研究复盘" : "--"} />
+      </div>
+    </section>
+  );
+}

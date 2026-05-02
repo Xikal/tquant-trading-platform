@@ -1,0 +1,30 @@
+name: tquant-sqlite
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: tquant-web:sqlite
+    container_name: tquant-app-sqlite
+    restart: unless-stopped
+    ports:
+      - "${APP_PORT:-18080}:8000"
+    environment:
+      APP_NAME: ${APP_NAME:-维斯量化交易平台}
+      API_PREFIX: ${API_PREFIX:-/api}
+      DATABASE_URL: ${DATABASE_URL:-sqlite:///./data/t_quant.db}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:8000,http://127.0.0.1:8000,http://localhost:18080,http://127.0.0.1:18080,http://localhost:18090,http://127.0.0.1:18090}
+      DEFAULT_DATA_SOURCE: ${DEFAULT_DATA_SOURCE:-akshare_eastmoney}
+      HTTP_TIMEOUT: ${HTTP_TIMEOUT:-12}
+    volumes:
+      - sqlite_data:/app/backend/data
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/readyz', timeout=5)"]
+      interval: 20s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+volumes:
+  sqlite_data:

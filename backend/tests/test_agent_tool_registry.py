@@ -1,0 +1,46 @@
+from __future__ import annotations
+
+import unittest
+
+from app.agent_tools.audit import sanitize_arguments
+from app.agent_tools.registry import get_tool_definition, list_tool_definitions
+
+
+class AgentToolRegistryTests(unittest.TestCase):
+    def test_registry_lists_expected_tools(self) -> None:
+        names = {tool.name for tool in list_tool_definitions()}
+        self.assertIn("get_agent_health", names)
+        self.assertIn("get_watchlist_context", names)
+        self.assertIn("get_priority_board", names)
+        self.assertIn("analyze_stock", names)
+        self.assertIn("get_daily_report", names)
+        self.assertIn("send_test_notification", names)
+
+    def test_priority_board_definition_exists(self) -> None:
+        tool = get_tool_definition("get_priority_board")
+        self.assertIsNotNone(tool)
+        self.assertEqual(tool.method, "GET")
+        self.assertEqual(tool.path, "/api/agent/context/priority-board")
+        self.assertEqual(tool.permission, "read")
+
+    def test_notification_tool_requires_notify_permission(self) -> None:
+        tool = get_tool_definition("send_test_notification")
+        self.assertIsNotNone(tool)
+        self.assertEqual(tool.permission, "notify")
+
+    def test_sensitive_arguments_are_masked(self) -> None:
+        masked = sanitize_arguments(
+            {
+                "token": "abc",
+                "nested": {"api_key": "secret", "symbol": "510300"},
+                "items": [{"password": "x"}],
+            }
+        )
+        self.assertEqual(masked["token"], "***")
+        self.assertEqual(masked["nested"]["api_key"], "***")
+        self.assertEqual(masked["nested"]["symbol"], "510300")
+        self.assertEqual(masked["items"][0]["password"], "***")
+
+
+if __name__ == "__main__":
+    unittest.main()

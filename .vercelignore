@@ -1,0 +1,10 @@
+.git
+node_modules
+frontend/node_modules
+backend/.venv
+.mysql-dist
+.mysql-local
+.runtime
+frontend/dist
+__pycache__
+*.pyc

@@ -1,0 +1,56 @@
+name: tquant-mysql
+
+services:
+  mysql:
+    image: docker.m.daocloud.io/library/mysql:8.4
+    container_name: tquant-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-change_me_root}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-t_quant}
+      MYSQL_USER: ${MYSQL_USER:-tquant_app}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-change_me_app}
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -p$$MYSQL_ROOT_PASSWORD --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: tquant-web:mysql
+    container_name: tquant-app-mysql
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+    ports:
+      - "${APP_PORT:-18090}:8000"
+    environment:
+      APP_NAME: ${APP_NAME:-维斯量化交易平台}
+      API_PREFIX: ${API_PREFIX:-/api}
+      DATABASE_URL: mysql+pymysql://${MYSQL_USER:-tquant_app}:${MYSQL_PASSWORD:-change_me_app}@mysql:3306/${MYSQL_DATABASE:-t_quant}?charset=utf8mb4
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:8000,http://127.0.0.1:8000,http://localhost:18080,http://127.0.0.1:18080,http://localhost:18090,http://127.0.0.1:18090}
+      DEFAULT_DATA_SOURCE: ${DEFAULT_DATA_SOURCE:-akshare_eastmoney}
+      HTTP_TIMEOUT: ${HTTP_TIMEOUT:-12}
+      ADMIN_API_TOKEN: ${ADMIN_API_TOKEN:-}
+    volumes:
+      - app_runtime_data:/app/backend/data
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/readyz', timeout=5)"]
+      interval: 20s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+volumes:
+  mysql_data:
+  app_runtime_data:

@@ -1,0 +1,22 @@
+FROM docker.m.daocloud.io/library/python:3.11-slim AS runtime
+
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+ENV PIP_NO_CACHE_DIR=1
+ENV PIP_INDEX_URL=https://pypi.tuna.tsinghua.edu.cn/simple
+ENV PIP_DEFAULT_TIMEOUT=120
+
+WORKDIR /app/backend
+
+COPY backend/requirements.txt /tmp/backend-requirements.txt
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends curl ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+RUN pip install --retries 8 -r /tmp/backend-requirements.txt
+
+COPY backend /app/backend
+COPY frontend-dist /app/frontend/dist
+
+EXPOSE 8000
+
+CMD ["python", "-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

@@ -1,0 +1,86 @@
+from __future__ import annotations
+
+from pathlib import Path
+from shutil import copy2
+
+from sqlalchemy import create_engine, text
+from sqlalchemy.orm import Session, sessionmaker
+
+from app.core.config import get_settings
+from app.core.schema_compat import ensure_schema_compatibility
+from app.models.base import Base
+
+
+def _sqlite_connect_args(database_url: str) -> dict:
+    return {"check_same_thread": False} if database_url.startswith("sqlite") else {}
+
+
+def _sqlite_database_path(database_url: str) -> Path | None:
+    if not database_url.startswith("sqlite:///"):
+        return None
+    raw_path = database_url.replace("sqlite:///", "", 1)
+    return Path(raw_path)
+
+
+def _ensure_sqlite_storage(database_url: str) -> None:
+    database_path = _sqlite_database_path(database_url)
+    if database_path is None:
+        return
+
+    database_path.parent.mkdir(parents=True, exist_ok=True)
+
+    if database_path.exists():
+        return
+
+    seed_path = Path(__file__).resolve().parents[2] / "data" / "t_quant.db"
+    if not seed_path.exists():
+        return
+
+    try:
+        if database_path.resolve() == seed_path.resolve():
+            return
+    except FileNotFoundError:
+        pass
+
+    copy2(seed_path, database_path)
+
+
+settings = get_settings()
+_ensure_sqlite_storage(settings.database_url)
+
+_engine_kwargs = dict(
+    future=True,
+    pool_pre_ping=True,
+    connect_args=_sqlite_connect_args(settings.database_url),
+)
+if settings.database_url.startswith("mysql"):
+    _engine_kwargs.update(
+        pool_size=12,
+        max_overflow=24,
+        pool_timeout=30,
+        pool_recycle=1800,
+    )
+
+engine = create_engine(
+    settings.database_url,
+    **_engine_kwargs,
+)
+SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False, future=True)
+
+
+def get_db() -> Session:
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+
+def init_db() -> None:
+    Base.metadata.create_all(bind=engine)
+    ensure_schema_compatibility(engine)
+
+
+def ping_database() -> None:
+    with engine.connect() as connection:
+        connection.execute(text("SELECT 1"))

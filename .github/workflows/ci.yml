@@ -1,0 +1,81 @@
+name: ci
+
+on:
+  push:
+    branches: ["main", "develop"]
+  pull_request:
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install backend dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r backend/requirements-dev.txt
+      - name: Compile backend
+        run: python -m compileall backend/app
+      - name: Run backend tests
+        env:
+          PYTHONPATH: ${{ github.workspace }}/backend
+        run: python -m unittest discover backend/tests
+
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+      - name: Build frontend
+        working-directory: frontend
+        run: npm run build
+      - name: Run frontend tests
+        working-directory: frontend
+        run: npm test -- --run
+
+  deploy:
+    needs: [backend, frontend]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Deploy through project script
+        env:
+          CLOUD_HOST: ${{ secrets.CLOUD_HOST }}
+          CLOUD_USER: ${{ secrets.CLOUD_USER }}
+          CLOUD_SSH_KEY_PATH: ${{ secrets.CLOUD_SSH_KEY_PATH }}
+          CLOUD_SSH_KEY_CONTENT: ${{ secrets.CLOUD_SSH_KEY }}
+          CLOUD_PASSWORD: ${{ secrets.CLOUD_PASSWORD }}
+          CLOUD_DOMAIN: ${{ secrets.CLOUD_DOMAIN }}
+          CLOUD_CERT_EMAIL: ${{ secrets.CLOUD_CERT_EMAIL }}
+          BACKUP_TIME: ${{ secrets.BACKUP_TIME }}
+          AUTO_INSTALL_BACKUP_CRON: "1"
+          AUTO_CONFIGURE_HTTPS: "1"
+          HTTPS_REQUIRED: "0"
+          RUN_FULL_TESTS: "0"
+        run: |
+          if [ -z "${CLOUD_HOST}" ] || [ -z "${CLOUD_USER}" ]; then
+            echo "CLOUD_HOST/CLOUD_USER secrets 未配置，跳过部署。"
+            exit 0
+          fi
+          export CLOUD_DOMAIN="${CLOUD_DOMAIN:-weisilianghua.cloud}"
+          export CLOUD_CERT_EMAIL="${CLOUD_CERT_EMAIL:-admin@${CLOUD_DOMAIN}}"
+          export BACKUP_TIME="${BACKUP_TIME:-02:20}"
+          if [ -n "${CLOUD_SSH_KEY_CONTENT}" ]; then
+            printf '%s\n' "${CLOUD_SSH_KEY_CONTENT}" > /tmp/cloud_ssh_key
+            chmod 600 /tmp/cloud_ssh_key
+            export CLOUD_SSH_KEY=/tmp/cloud_ssh_key
+          elif [ -n "${CLOUD_SSH_KEY_PATH}" ]; then
+            export CLOUD_SSH_KEY="${CLOUD_SSH_KEY_PATH}"
+          fi
+          ./scripts/deploy_cloud_server.sh

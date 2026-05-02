@@ -1,0 +1,57 @@
+from __future__ import annotations
+
+import unittest
+
+from app.core.timing import record_request_timing, request_timing_snapshot
+from app.services.market.shared import QuoteSnapshot
+from app.services.market.service import MarketDataService
+
+
+class PerformanceRegressionTest(unittest.TestCase):
+    def test_intraday_batch_preserves_symbols_without_network(self) -> None:
+        service = MarketDataService()
+
+        def fake_bars(symbol: str, period: str = "1m", limit: int = 30):  # noqa: ARG001
+            return [symbol]
+
+        service.get_intraday_bars = fake_bars  # type: ignore[method-assign]
+        result = service.get_intraday_bars_batch(["000001", "000002", "000001"], max_workers=4)
+
+        self.assertEqual(result["000001"], ["000001"])
+        self.assertEqual(result["000002"], ["000002"])
+        self.assertEqual(set(result), {"000001", "000002"})
+
+    def test_quote_cache_returns_cached_payload_without_deep_copy(self) -> None:
+        service = MarketDataService()
+        quote = QuoteSnapshot(
+            symbol="000001",
+            name="平安银行",
+            market="SZ",
+            instrument_type="stock",
+            last_price=10.0,
+            change_pct=1.0,
+            change_amount=0.1,
+            open_price=9.9,
+            high_price=10.2,
+            low_price=9.8,
+            prev_close=9.9,
+            volume=1000,
+            amount=100000,
+            turnover_rate=None,
+            volume_ratio=None,
+            timestamp="2026-05-02 10:00:00",
+        )
+        service._set_quote_cache("000001", quote)
+
+        self.assertIs(service._get_quote_cache("000001"), quote)
+
+    def test_request_timing_snapshot_records_recent_samples(self) -> None:
+        record_request_timing(method="GET", path="/api/test", status_code=200, duration_ms=120)
+        snapshot = request_timing_snapshot()
+
+        self.assertGreaterEqual(snapshot["sample_count"], 1)
+        self.assertTrue(any(item["route"] == "GET /api/test" for item in snapshot["by_path"]))
+
+
+if __name__ == "__main__":
+    unittest.main()

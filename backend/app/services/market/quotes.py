@@ -1,0 +1,276 @@
+from __future__ import annotations
+
+from app.services.market.shared import (
+    DataSourceError,
+    KlineBar,
+    QuoteSnapshot,
+    _safe_float,
+    _safe_str,
+    datetime,
+    guess_instrument_type,
+    guess_market,
+    requests,
+    subprocess,
+    sys,
+    time,
+    to_secid,
+)
+
+
+class MarketQuoteMixin:
+    def get_quote(self, symbol: str) -> QuoteSnapshot:
+        cached = self._get_quote_cache(symbol)
+        if cached is not None:
+            return cached
+        snapshot = self.quote_router.fetch(symbol)
+        self._set_quote_cache(symbol, snapshot)
+        return snapshot
+
+    def get_quotes_batch(
+        self,
+        symbols: list[str],
+        force_refresh: bool = False,
+        allow_slow_fallback: bool = True,
+    ) -> dict[str, QuoteSnapshot]:
+        ordered_symbols = [symbol.strip() for symbol in symbols if symbol and symbol.strip()]
+        if not ordered_symbols:
+            return {}
+        deduped_symbols = list(dict.fromkeys(ordered_symbols))
+        result: dict[str, QuoteSnapshot] = {}
+        remaining: list[str] = []
+        for symbol in deduped_symbols:
+            cached = None if force_refresh else self._get_quote_cache(symbol)
+            if cached is not None:
+                result[symbol] = cached
+            else:
+                remaining.append(symbol)
+        if remaining:
+            batch_quotes = self.quote_router.fetch_batch(
+                remaining,
+                allow_slow_fallback=allow_slow_fallback,
+            )
+            for symbol, snapshot in batch_quotes.items():
+                self._set_quote_cache(symbol, snapshot)
+                result[symbol] = snapshot
+        return result
+
+    def _fetch_quote_from_spot_snapshot(self, symbol: str) -> QuoteSnapshot:
+        instrument_type = "etf" if __import__("app.services.market.shared", fromlist=["MarketRuleService"]).MarketRuleService.looks_like_etf(symbol) else "stock"
+        snapshot_map = self._load_spot_snapshot_map(instrument_type)
+        snapshot = snapshot_map.get(symbol)
+        if snapshot is None:
+            raise DataSourceError(f"{instrument_type} 实时现货快照中不存在 {symbol}。")
+        return snapshot
+
+    def _load_spot_snapshot_map(self, instrument_type: str) -> dict[str, QuoteSnapshot]:
+        cached = self._get_spot_snapshot_cache(instrument_type)
+        if cached is not None:
+            return cached
+        ak = __import__("app.services.market.shared", fromlist=["ak"]).ak
+        if ak is None:
+            raise DataSourceError("未安装 akshare，无法使用现货快照回退。")
+        frame = self._call_akshare(
+            ak.fund_etf_spot_em if instrument_type == "etf" else ak.stock_zh_a_spot,
+            purpose="spot_snapshot",
+        )
+        if frame.empty:
+            raise DataSourceError(f"{instrument_type} 实时现货快照返回空结果。")
+        result: dict[str, QuoteSnapshot] = {}
+        for row in frame.to_dict("records"):
+            symbol = _safe_str(row.get("代码") or row.get("symbol")).strip()
+            if not symbol:
+                continue
+            if symbol.startswith(("sh", "sz", "bj")):
+                symbol = symbol[-6:]
+            name = _safe_str(row.get("名称") or row.get("name")) or symbol
+            market = guess_market(symbol)
+            latest_price = _safe_float(row.get("最新价") or row.get("最新"))
+            prev_close = _safe_float(row.get("昨收") or row.get("昨收价") or row.get("昨收盘"))
+            open_price = _safe_float(row.get("今开") or row.get("开盘价") or row.get("开盘"))
+            high_price = _safe_float(row.get("最高") or row.get("最高价"))
+            low_price = _safe_float(row.get("最低") or row.get("最低价"))
+            change_amount = _safe_float(row.get("涨跌额"))
+            change_pct = _safe_float(row.get("涨跌幅"))
+            if not change_amount and latest_price and prev_close:
+                change_amount = round(latest_price - prev_close, 4)
+            if not change_pct and change_amount and prev_close:
+                change_pct = round((change_amount / prev_close) * 100, 4)
+            result[symbol] = QuoteSnapshot(symbol=symbol, name=name, market=market, instrument_type=instrument_type, last_price=latest_price, change_pct=change_pct, change_amount=change_amount, open_price=open_price, high_price=high_price, low_price=low_price, prev_close=prev_close, volume=_safe_float(row.get("成交量") or row.get("成交量(手)")), amount=_safe_float(row.get("成交额")), turnover_rate=None, volume_ratio=None, timestamp=self._normalize_quote_timestamp(_safe_str(row.get("时间戳") or row.get("更新时间") or row.get("数据日期"))))
+        self._set_spot_snapshot_cache(instrument_type, result)
+        return result
+
+    def _fetch_quote_from_trends(self, symbol: str) -> QuoteSnapshot:
+        payload = self._fetch_json("https://push2his.eastmoney.com/api/qt/stock/trends2/get", params={"fields1": "f1,f2,f3,f4,f5,f6,f7,f8,f9,f10,f11,f12,f13", "fields2": "f51,f52,f53,f54,f55,f56,f57,f58", "ut": "7eea3edcaed734bea9cbfc24409ed989", "ndays": "5", "iscr": "0", "secid": to_secid(symbol)})
+        data = payload.get("data") or {}
+        raw_bars = data.get("trends") or []
+        if not raw_bars:
+            raise DataSourceError(f"东财分时未返回 {symbol} 的 trends 数据。")
+        bars = self._fetch_trend_bars(symbol)
+        latest_bar = bars[-1]
+        latest_date = latest_bar.timestamp.split(" ", 1)[0]
+        day_bars = [bar for bar in bars if bar.timestamp.startswith(latest_date)]
+        previous_day_close = None
+        for bar in reversed(bars[:-1]):
+            if bar.timestamp.split(" ", 1)[0] != latest_date:
+                previous_day_close = bar.close
+                break
+        prev_close = _safe_float(data.get("preClose")) or _safe_float(previous_day_close) or latest_bar.close
+        last_price = latest_bar.close
+        change_amount = round(last_price - prev_close, 4)
+        change_pct = round((change_amount / prev_close) * 100, 4) if prev_close else 0.0
+        name = _safe_str(data.get("name")) or symbol
+        market = guess_market(symbol)
+        return QuoteSnapshot(symbol=symbol, name=name, market=market, instrument_type=guess_instrument_type(symbol, name), last_price=last_price, change_pct=change_pct, change_amount=change_amount, open_price=day_bars[0].open, high_price=max(bar.high for bar in day_bars), low_price=min(bar.low for bar in day_bars), prev_close=prev_close, volume=round(sum(bar.volume for bar in day_bars), 4), amount=round(sum(bar.amount for bar in day_bars), 4), turnover_rate=None, volume_ratio=None, timestamp=latest_bar.timestamp)
+
+    def _fetch_eastmoney_quote(self, symbol: str) -> QuoteSnapshot:
+        return self._fetch_quote_from_trends(symbol)
+
+    def _fetch_quote_from_minute_bars(self, symbol: str) -> QuoteSnapshot:
+        try:
+            bars = self._fetch_tencent_minute_bars(symbol)
+        except Exception:
+            try:
+                bars = self._fetch_sina_minute_bars(symbol, "1m")
+            except Exception:
+                bars = self._fetch_sina_minute_bars_subprocess(symbol)
+        if not bars:
+            raise DataSourceError(f"分钟线数据未返回 {symbol} 的盘中数据。")
+        latest_bar = bars[-1]
+        latest_date = latest_bar.timestamp.split(" ", 1)[0]
+        day_bars = [bar for bar in bars if bar.timestamp.startswith(latest_date)]
+        prev_close = None
+        for bar in reversed(bars[:-1]):
+            if not bar.timestamp.startswith(latest_date):
+                prev_close = bar.close
+                break
+        prev_close = prev_close or day_bars[0].open or latest_bar.close
+        last_price = latest_bar.close
+        change_amount = round(last_price - prev_close, 4)
+        change_pct = round((change_amount / prev_close) * 100, 4) if prev_close else 0.0
+        market = guess_market(symbol)
+        return QuoteSnapshot(symbol=symbol, name=symbol, market=market, instrument_type=guess_instrument_type(symbol), last_price=last_price, change_pct=change_pct, change_amount=change_amount, open_price=day_bars[0].open, high_price=max(bar.high for bar in day_bars), low_price=min(bar.low for bar in day_bars), prev_close=prev_close, volume=round(sum(bar.volume for bar in day_bars), 4), amount=round(sum(bar.amount for bar in day_bars), 4), turnover_rate=None, volume_ratio=None, timestamp=latest_bar.timestamp)
+
+    def _fetch_tencent_quote(self, symbol: str) -> QuoteSnapshot:
+        url = f"https://qt.gtimg.cn/q={self._to_sina_symbol(symbol)}"
+        try:
+            response = self.session.get(url, timeout=self.settings.http_timeout)
+            response.raise_for_status()
+        except requests.RequestException as exc:
+            raise DataSourceError(f"腾讯实时行情请求失败: {exc}") from exc
+        response.encoding = "gbk"
+        text = response.text.strip()
+        if '="' not in text:
+            raise DataSourceError(f"腾讯实时行情返回异常: {text[:80]}")
+        payload = text.split('="', 1)[1].rsplit('"', 1)[0]
+        return self._build_tencent_quote_snapshot(symbol, payload.split("~"))
+
+    def _fetch_tencent_quotes_batch(self, symbols: list[str]) -> dict[str, QuoteSnapshot]:
+        if not symbols:
+            return {}
+        sina_symbols = [self._to_sina_symbol(symbol) for symbol in symbols]
+        sina_map = dict(zip(sina_symbols, symbols))
+        url = f"https://qt.gtimg.cn/q={','.join(sina_symbols)}"
+        try:
+            response = self.session.get(url, timeout=self.settings.http_timeout)
+            response.raise_for_status()
+        except requests.RequestException as exc:
+            raise DataSourceError(f"腾讯批量实时行情请求失败: {exc}") from exc
+        response.encoding = "gbk"
+        result: dict[str, QuoteSnapshot] = {}
+        for line in [chunk.strip() for chunk in response.text.strip().split(";") if chunk.strip()]:
+            if '="' not in line:
+                continue
+            header, payload = line.split('="', 1)
+            symbol = sina_map.get(header.rsplit("_", 1)[-1].strip()) or header.rsplit("_", 1)[-1].strip()[-6:]
+            try:
+                result[symbol] = self._build_tencent_quote_snapshot(symbol, payload.rsplit('"', 1)[0].split("~"))
+            except DataSourceError:
+                continue
+        return result
+
+    def _build_tencent_quote_snapshot(self, symbol: str, fields: list[str]) -> QuoteSnapshot:
+        if len(fields) < 38:
+            raise DataSourceError(f"腾讯实时行情字段不足: {fields[:6]}")
+        name = _safe_str(fields[1]) or symbol
+        timestamp_raw = _safe_str(fields[30])
+        timestamp = timestamp_raw
+        if len(timestamp_raw) == 14 and timestamp_raw.isdigit():
+            timestamp = datetime.strptime(timestamp_raw, "%Y%m%d%H%M%S").strftime("%Y-%m-%d %H:%M:%S")
+        return QuoteSnapshot(symbol=symbol, name=name, market=guess_market(symbol), instrument_type=guess_instrument_type(symbol, name), last_price=_safe_float(fields[3]), change_pct=_safe_float(fields[32]), change_amount=_safe_float(fields[31]), open_price=_safe_float(fields[5]), high_price=_safe_float(fields[33]), low_price=_safe_float(fields[34]), prev_close=_safe_float(fields[4]), volume=_safe_float(fields[36] or fields[6]), amount=_safe_float(fields[37], scale=0.0001), turnover_rate=None, volume_ratio=None, timestamp=timestamp or datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+
+    def _fetch_sina_quote(self, symbol: str) -> QuoteSnapshot:
+        fields = self._fetch_sina_quote_fields(symbol)
+        if len(fields) < 32:
+            raise DataSourceError(f"未获取到 {symbol} 的新浪实时行情。")
+        name = _safe_str(fields[0]) or symbol
+        prev_close = _safe_float(fields[2])
+        last_price = _safe_float(fields[3])
+        change_amount = round(last_price - prev_close, 4)
+        change_pct = round((change_amount / prev_close * 100), 4) if prev_close else 0.0
+        timestamp = f"{_safe_str(fields[30])} {_safe_str(fields[31])}".strip()
+        return QuoteSnapshot(symbol=symbol, name=name, market=guess_market(symbol), instrument_type=guess_instrument_type(symbol, name), last_price=last_price, change_pct=change_pct, change_amount=change_amount, open_price=_safe_float(fields[1]), high_price=_safe_float(fields[4]), low_price=_safe_float(fields[5]), prev_close=prev_close, volume=_safe_float(fields[8]), amount=_safe_float(fields[9]), turnover_rate=None, volume_ratio=None, timestamp=timestamp or datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+
+    @classmethod
+    def _get_quote_cache(cls, symbol: str):
+        now = time.monotonic()
+        with cls._cache_lock:
+            cached = cls._quote_cache.get(symbol)
+            if cached is None:
+                return None
+            expires_at, payload = cached
+            if expires_at <= now:
+                cls._quote_cache.pop(symbol, None)
+                return None
+            return payload
+
+    @classmethod
+    def _set_quote_cache(cls, symbol: str, payload: QuoteSnapshot) -> None:
+        with cls._cache_lock:
+            cls._quote_cache[symbol] = (time.monotonic() + cls._quote_cache_ttl, payload)
+            if len(cls._quote_cache) > 5000:
+                cls._trim_expired_cache(cls._quote_cache, max_items=4000)
+
+    @classmethod
+    def _get_spot_snapshot_cache(cls, instrument_type: str):
+        now = time.monotonic()
+        with cls._cache_lock:
+            cached = cls._spot_snapshot_cache.get(instrument_type)
+            if cached is None:
+                return None
+            expires_at, payload = cached
+            if expires_at <= now:
+                cls._spot_snapshot_cache.pop(instrument_type, None)
+                return None
+            return dict(payload)
+
+    @classmethod
+    def _set_spot_snapshot_cache(cls, instrument_type: str, payload: dict[str, QuoteSnapshot]) -> None:
+        with cls._cache_lock:
+            cls._spot_snapshot_cache[instrument_type] = (
+                time.monotonic() + cls._spot_snapshot_cache_ttl,
+                dict(payload),
+            )
+
+    @staticmethod
+    def _trim_expired_cache(cache: dict, max_items: int) -> None:
+        now = time.monotonic()
+        expired_keys = [key for key, value in cache.items() if value[0] <= now]
+        for key in expired_keys:
+            cache.pop(key, None)
+        if len(cache) <= max_items:
+            return
+        overflow = len(cache) - max_items
+        for key, _ in sorted(cache.items(), key=lambda item: item[1][0])[:overflow]:
+            cache.pop(key, None)
+
+    @staticmethod
+    def _normalize_quote_timestamp(value: str) -> str:
+        if not value:
+            return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        raw = value.strip()
+        return f"{datetime.now().strftime('%Y-%m-%d')} {raw}" if len(raw) <= 8 and ":" in raw else raw
+
+    @staticmethod
+    def _to_sina_symbol(symbol: str) -> str:
+        prefix_map = {"SH": "sh", "SZ": "sz", "BJ": "bj"}
+        return f"{prefix_map.get(guess_market(symbol), 'sh')}{symbol}"

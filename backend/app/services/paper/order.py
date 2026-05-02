@@ -1,0 +1,194 @@
+from __future__ import annotations
+
+import json
+from datetime import datetime
+from decimal import Decimal
+
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+
+from app.models.entities import PaperOrder, PaperTrade
+from app.services.paper.account import PaperAccountService
+from app.services.paper.matching import MatchResult, OrderSide, OrderType, PaperMatchingEngine
+from app.services.paper.position import PaperPositionService
+from app.services.paper.risk_control import PaperRiskControlService
+
+
+class PaperOrderService:
+    def __init__(self, db: Session, matching_engine: PaperMatchingEngine | None = None) -> None:
+        self.db = db
+        self.matching = matching_engine or PaperMatchingEngine()
+        self.accounts = PaperAccountService(db)
+        self.positions = PaperPositionService(db)
+        self.risk = PaperRiskControlService(db)
+
+    def create_order(
+        self,
+        *,
+        account_id: int,
+        symbol: str,
+        name: str,
+        side: str,
+        order_type: str,
+        quantity: int,
+        price: Decimal | None,
+        source: str,
+        strategy_key: str,
+        reason: str,
+        signal_snapshot: dict,
+        current_price: Decimal,
+        quote_time: datetime,
+        is_suspended: bool,
+        up_limit: Decimal | None = None,
+        down_limit: Decimal | None = None,
+        intraday_confirmed: bool = True,
+    ) -> PaperOrder:
+        order = PaperOrder(
+            account_id=account_id,
+            symbol=symbol,
+            name=name or symbol,
+            side=side,
+            order_type=order_type,
+            price=float(price) if price is not None else None,
+            quantity=quantity,
+            source=source or "manual",
+            strategy_key=strategy_key or "",
+            reason=reason or "",
+            signal_snapshot=json.dumps(signal_snapshot or {}, ensure_ascii=False),
+        )
+        self.db.add(order)
+        self.db.flush()
+        try:
+            self._precheck(account_id, symbol, side, quantity, current_price)
+            if side == "buy" and not intraday_confirmed:
+                raise ValueError("盘中承接未确认，模拟买入被拒绝。")
+            self._risk_check(account_id, symbol, side, quantity, current_price)
+            match = self.matching.match(
+                symbol=symbol,
+                side=OrderSide(side),
+                order_type=OrderType(order_type),
+                quantity=quantity,
+                limit_price=price,
+                current_price=current_price,
+                quote_time=quote_time,
+                is_suspended=is_suspended,
+                up_limit=up_limit,
+                down_limit=down_limit,
+            )
+        except Exception as exc:
+            order.status = "rejected"
+            order.reject_reason = str(exc)
+            self.db.commit()
+            self.db.refresh(order)
+            return order
+
+        if match.result != MatchResult.FILLED or match.avg_fill_price is None or match.fee_detail is None:
+            order.status = "rejected"
+            order.reject_reason = match.reject_reason or "模拟委托未成交。"
+            self.db.commit()
+            self.db.refresh(order)
+            return order
+
+        order.status = "filled"
+        order.filled_quantity = match.filled_quantity
+        order.avg_fill_price = float(match.avg_fill_price)
+        self._apply_trade(order, match.avg_fill_price, match.fee_detail.net_amount, match.fee_detail)
+        self.db.commit()
+        self.db.refresh(order)
+        return order
+
+    def get_orders(
+        self,
+        *,
+        account_id: int,
+        symbol: str | None = None,
+        status: str | None = None,
+        limit: int = 50,
+    ) -> list[PaperOrder]:
+        statement = select(PaperOrder).where(PaperOrder.account_id == account_id)
+        if symbol:
+            statement = statement.where(PaperOrder.symbol == symbol)
+        if status:
+            statement = statement.where(PaperOrder.status == status)
+        return self.db.execute(statement.order_by(PaperOrder.id.desc()).limit(limit)).scalars().all()
+
+    def get_order(self, order_id: int) -> PaperOrder:
+        order = self.db.get(PaperOrder, order_id)
+        if order is None:
+            raise LookupError("模拟委托不存在")
+        return order
+
+    def cancel_order(self, order_id: int) -> PaperOrder:
+        order = self.get_order(order_id)
+        if order.status not in {"pending", "partial"}:
+            raise ValueError("只有未完全成交的委托可以撤销。")
+        order.status = "cancelled"
+        self.db.commit()
+        self.db.refresh(order)
+        return order
+
+    def _precheck(self, account_id: int, symbol: str, side: str, quantity: int, current_price: Decimal) -> None:
+        if quantity <= 0 or quantity % 100 != 0:
+            raise ValueError("委托数量必须是 100 股整数倍。")
+        if side == "buy":
+            estimated = current_price * Decimal(quantity) + Decimal("20")
+            if not self.accounts.check_balance(account_id, estimated):
+                raise ValueError("可用资金不足，模拟买入被拒绝。")
+            return
+        position = self.positions.get_position(account_id, symbol)
+        if position is None or position.available_quantity < quantity:
+            raise ValueError("可卖数量不足或当日买入未解锁，模拟卖出被拒绝。")
+
+    def _risk_check(self, account_id: int, symbol: str, side: str, quantity: int, current_price: Decimal) -> None:
+        decision = self.risk.check_order(
+            account_id=account_id,
+            symbol=symbol,
+            side=side,
+            quantity=quantity,
+            estimated_price=current_price,
+            current_order_counted=True,
+        )
+        if not decision.allowed:
+            raise ValueError("；".join(decision.reasons))
+
+    def _apply_trade(self, order: PaperOrder, fill_price: Decimal, net_amount: Decimal, fee_detail) -> None:
+        account = self.accounts.get_account(order.account_id)
+        if order.side == "buy":
+            account.cash_available = float(Decimal(str(account.cash_available or 0)) - net_amount)
+            per_share_cost = net_amount / Decimal(order.filled_quantity)
+            self.positions.add_position(
+                account_id=order.account_id,
+                symbol=order.symbol,
+                name=order.name,
+                quantity=order.filled_quantity,
+                cost_price=per_share_cost,
+                strategy_key=order.strategy_key,
+                source_order_id=order.id,
+            )
+        else:
+            position = self.positions.get_position(order.account_id, order.symbol)
+            cost_basis = Decimal(str(position.cost_basis if position is not None else 0))
+            self.positions.reduce_position(account_id=order.account_id, symbol=order.symbol, quantity=order.filled_quantity)
+            account.cash_available = float(Decimal(str(account.cash_available or 0)) + net_amount)
+            account.realized_pnl = float(
+                Decimal(str(account.realized_pnl or 0))
+                + ((fill_price - cost_basis) * Decimal(order.filled_quantity))
+                - fee_detail.total_fee
+            )
+        self.db.add(
+            PaperTrade(
+                order_id=order.id,
+                account_id=order.account_id,
+                symbol=order.symbol,
+                side=order.side,
+                price=float(fill_price),
+                quantity=order.filled_quantity,
+                gross_amount=float(fee_detail.gross_amount),
+                commission=float(fee_detail.commission),
+                stamp_tax=float(fee_detail.stamp_tax),
+                transfer_fee=float(fee_detail.transfer_fee),
+                net_amount=float(net_amount),
+                strategy_key=order.strategy_key,
+            )
+        )
+        self.accounts.update_market_value(order.account_id)
