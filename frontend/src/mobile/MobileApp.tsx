@@ -316,8 +316,7 @@ export default function MobileApp() {
             symbol: row.record.symbol,
             action: row.signal?.action ?? "hold",
             lastPrice: row.quote?.last_price,
-            entryPrice: row.signal?.entry_price,
-            exitPrice: row.signal?.exit_price
+            entryPrice: row.signal?.entry_price
           })
         )
         .map((row) => row.record.symbol)
@@ -331,8 +330,7 @@ export default function MobileApp() {
           symbol: row.record.symbol,
           action: row.signal?.action ?? "hold",
           lastPrice: row.quote?.last_price,
-          entryPrice: row.signal?.entry_price,
-          exitPrice: row.signal?.exit_price
+          entryPrice: row.signal?.entry_price
         }))
       ),
     [holdingRows]
