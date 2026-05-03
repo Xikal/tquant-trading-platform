@@ -5,7 +5,6 @@ export interface HoldingSignalInput {
   action: ActionType
   lastPrice: number | null | undefined
   entryPrice: number | null | undefined
-  exitPrice: number | null | undefined
 }
 
 const ACTIVE_PRICE_BAND_RATIO = 0.006
