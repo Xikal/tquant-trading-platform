@@ -1,6 +1,6 @@
 import asyncio
 import concurrent.futures
-from datetime import datetime
+from datetime import date, datetime
 import logging
 from typing import Optional
 
@@ -14,6 +14,7 @@ from app.core.timing import log_slow_call, monotonic_start
 from app.models.entities import Instrument, User, UserWatchlist, Watchlist
 from app.models.schemas import WatchlistCreate, WatchlistItemOut
 from app.services.market_data import MarketDataService, guess_instrument_type, guess_market
+from app.services.watchlist_t1 import mark_watchlist_t1_availability, refresh_watchlist_t1_availability
 from app.services.watchlist_signal_service import WatchlistSignalService
 
 router = APIRouter(prefix="/watchlist")
@@ -63,6 +64,7 @@ def list_watchlist(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    _refresh_user_watchlist_t1(db, current_user.id)
     rows = _list_user_watchlist_rows(db, current_user.id)
     return [
         WatchlistItemOut(
@@ -99,6 +101,7 @@ def upsert_watchlist(
         row.available_position = payload.available_position
         row.cost_basis = payload.cost_basis
         row.memo = payload.memo
+    mark_watchlist_t1_availability(row, today=date.today())
     db.commit()
     watchlist_signal_service.ensure_background_refresh(force=True)
     return {"message": "自选股已保存", "symbol": symbol}
@@ -154,6 +157,7 @@ async def watchlist_quotes(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    _refresh_user_watchlist_t1(db, current_user.id)
     rows = _list_user_watchlist_rows(db, current_user.id)
     if not rows:
         return []
@@ -172,6 +176,7 @@ def watchlist_signals(
 ):
     started_at = monotonic_start()
     try:
+        _refresh_user_watchlist_t1(db, current_user.id)
         rows = _list_user_watchlist_rows(db, current_user.id)
         return watchlist_signal_service.build_live_signals(db, rows)
     finally:
@@ -188,6 +193,17 @@ def _list_user_watchlist_rows(db: Session, user_id: int) -> list[UserWatchlist]:
         .scalars()
         .all()
     )
+
+
+def _refresh_user_watchlist_t1(db: Session, user_id: int) -> None:
+    changed = refresh_watchlist_t1_availability(
+        db,
+        model=UserWatchlist,
+        user_id=user_id,
+        today=date.today(),
+    )
+    if changed:
+        watchlist_signal_service.ensure_background_refresh(force=True)
 
 
 def _get_user_watchlist_row(db: Session, user_id: int, symbol: str) -> Optional[UserWatchlist]:

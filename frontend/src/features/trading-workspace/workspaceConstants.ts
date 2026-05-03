@@ -40,6 +40,7 @@ export const PAGE_PATHS: Record<Page, string> = {
   playbook: "/low-buy",
   research: "/research",
   paper: "/paper",
+  performance: "/performance",
   settings: "/settings",
 };
 
@@ -49,10 +50,10 @@ export const PATH_PAGE_MAP: Record<string, Page> = {
   "/low-buy": "playbook",
   "/research": "research",
   "/paper": "paper",
+  "/performance": "performance",
   "/settings": "settings",
 };
 
 export const MONITOR_REFRESH_INTERVAL_MS = 10_000;
-export const MONITOR_BOARD_WAIT_MS = 6_000;
 export const PLAYBOOK_QUOTE_REFRESH_INTERVAL_MS = 15_000;
 export const PLAYBOOK_QUOTE_REFRESH_LIMIT = 60;

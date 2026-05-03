@@ -2,69 +2,99 @@ from __future__ import annotations
 
 from collections import defaultdict
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, datetime
 from decimal import Decimal
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models.entities import PaperAccount, PaperPerformanceSnapshot, PaperTrade
+from app.models.entities import PaperAccount, PaperPerformanceSnapshot, PaperTrade, PaperTradeTag
 
 
 class PaperPerformanceService:
     def __init__(self, db: Session) -> None:
         self.db = db
 
-    def compute_overall(self, account_id: int) -> dict:
+    def compute_overall(self, account_id: int, target_date: date | None = None) -> dict:
         account = self.db.get(PaperAccount, account_id)
-        trades = self._trades(account_id)
-        returns = [item.return_pct for item in self._paired_sell_return_records(account_id)]
+        trades = self._filtered_trades(account_id, target_date)
+        returns = [item.return_pct for item in self._filtered_return_records(account_id, target_date)]
         wins = [value for value in returns if value > 0]
         losses = [value for value in returns if value < 0]
         total = len(returns)
         gross_gains = sum(wins)
         gross_losses = abs(sum(losses))
         total_return_pct = 0.0
+        max_drawdown_pct = 0.0
         if account is not None and float(account.initial_cash or 0) > 0:
             total_return_pct = (float(account.total_assets or 0) - float(account.initial_cash)) / float(account.initial_cash) * 100
+            max_drawdown_pct = self._compute_equity_curve_drawdown(account_id, account, target_date)
         return {
             "total_return_pct": round(total_return_pct, 3),
-            "max_drawdown_pct": float(getattr(account, "max_drawdown_pct", 0.0) or 0.0),
+            "max_drawdown_pct": max_drawdown_pct,
             "win_rate_pct": _rate(len(wins), total),
             "net_win_rate_pct": _rate(len(wins) - len(losses), total),
             "avg_trade_return_pct": round(sum(returns) / total, 3) if total else 0.0,
             "avg_win_pct": round(sum(wins) / len(wins), 3) if wins else 0.0,
             "avg_loss_pct": round(sum(losses) / len(losses), 3) if losses else 0.0,
             "profit_factor": round(gross_gains / gross_losses, 3) if gross_losses > 0 else None,
+            "sharpe_ratio": round(_sharpe_ratio(returns), 4),
             "stop_loss_rate_pct": 0.0,
             "total_trades": len(trades),
             "avg_hold_days": 0.0,
             "win_loss_ratio": round((sum(wins) / len(wins)) / abs(sum(losses) / len(losses)), 3) if wins and losses else None,
         }
 
-    def compute_by_strategy(self, account_id: int) -> list[dict]:
-        return self._grouped(account_id, "strategy_key")
+    def compute_by_strategy(self, account_id: int, target_date: date | None = None) -> list[dict]:
+        return self._grouped(account_id, "strategy_key", target_date=target_date)
 
-    def compute_by_market_state(self, account_id: int) -> list[dict]:
-        return self._grouped(account_id, "market_state")
+    def compute_by_market_state(self, account_id: int, target_date: date | None = None) -> list[dict]:
+        return self._grouped(account_id, "market_state", target_date=target_date)
+
+    def compute_by_tag(self, account_id: int, target_date: date | None = None) -> list[dict]:
+        tag_map = self._trade_tag_map(account_id)
+        buckets: dict[str, list[float]] = defaultdict(list)
+        for item in self._filtered_return_records(account_id, target_date):
+            for tag in tag_map.get(item.trade_id, []):
+                buckets[tag].append(item.return_pct)
+        result = []
+        for tag, values in sorted(buckets.items()):
+            wins = [value for value in values if value > 0]
+            losses = [value for value in values if value < 0]
+            result.append(
+                {
+                    "tag": tag,
+                    "trades": len(values),
+                    "win_rate_pct": _rate(len(wins), len(values)),
+                    "net_win_rate_pct": _rate(len(wins) - len(losses), len(values)),
+                    "avg_return_pct": round(sum(values) / max(len(values), 1), 3),
+                    "total_return_pct": round(sum(values), 3),
+                }
+            )
+        return result
 
     def sell_return_records(self, account_id: int) -> list[SellReturnRecord]:
         return self._paired_sell_return_records(account_id)
 
-    def create_daily_snapshot(self, account_id: int) -> PaperPerformanceSnapshot:
+    def create_daily_snapshot(
+        self,
+        account_id: int,
+        *,
+        target_date: date | None = None,
+    ) -> PaperPerformanceSnapshot:
         account = self.db.get(PaperAccount, account_id)
         if account is None:
             raise LookupError("模拟账户不存在")
-        overall = self.compute_overall(account_id)
-        today = date.today()
+        overall = self.compute_overall(account_id, target_date=target_date)
+        snapshot_date = target_date or date.today()
         row = self.db.execute(
             select(PaperPerformanceSnapshot).where(
                 PaperPerformanceSnapshot.account_id == account_id,
-                PaperPerformanceSnapshot.snapshot_date == today,
+                PaperPerformanceSnapshot.snapshot_date == snapshot_date,
             )
         ).scalar_one_or_none()
         if row is None:
-            row = PaperPerformanceSnapshot(account_id=account_id, snapshot_date=today)
+            row = PaperPerformanceSnapshot(account_id=account_id, snapshot_date=snapshot_date)
             self.db.add(row)
         row.total_assets = account.total_assets
         row.cumulative_return_pct = overall["total_return_pct"]
@@ -78,9 +108,37 @@ class PaperPerformanceService:
         self.db.refresh(row)
         return row
 
-    def _grouped(self, account_id: int, field: str) -> list[dict]:
+    def _compute_equity_curve_drawdown(
+        self,
+        account_id: int,
+        account: PaperAccount,
+        target_date: date | None = None,
+    ) -> float:
+        statement = select(PaperPerformanceSnapshot).where(PaperPerformanceSnapshot.account_id == account_id)
+        if target_date is not None:
+            statement = statement.where(PaperPerformanceSnapshot.snapshot_date <= target_date)
+        snapshots = self.db.execute(statement.order_by(PaperPerformanceSnapshot.snapshot_date.asc())).scalars().all()
+        values = [float(item.total_assets or 0) for item in snapshots if float(item.total_assets or 0) > 0]
+        if target_date is None or target_date >= date.today():
+            current = float(account.total_assets or 0)
+            if current > 0:
+                values.append(current)
+        if not values:
+            return float(getattr(account, "max_drawdown_pct", 0.0) or 0.0)
+        peak = values[0]
+        max_drawdown = 0.0
+        for value in values:
+            peak = max(peak, value)
+            if peak > 0:
+                max_drawdown = min(max_drawdown, (value - peak) / peak * 100)
+        if target_date is None or target_date >= date.today():
+            account.max_drawdown_pct = Decimal(str(round(max_drawdown, 4)))
+            self.db.flush()
+        return round(max_drawdown, 3)
+
+    def _grouped(self, account_id: int, field: str, target_date: date | None = None) -> list[dict]:
         buckets: dict[str, list[float]] = defaultdict(list)
-        for item in self._paired_sell_return_records(account_id):
+        for item in self._filtered_return_records(account_id, target_date):
             buckets[item.group_key(field)].append(item.return_pct)
         result = []
         for key, values in buckets.items():
@@ -119,9 +177,11 @@ class PaperPerformanceService:
             if cost > 0:
                 returns.append(
                     SellReturnRecord(
+                        trade_id=trade.id,
                         return_pct=float((price - cost) / cost * 100),
                         strategy_key=trade.strategy_key or "未分类",
                         market_state=trade.market_state or "未分类",
+                        trade_time=trade.trade_time,
                     )
                 )
             qty_by_symbol[trade.symbol] = max(0, qty_by_symbol.get(trade.symbol, 0) - qty)
@@ -134,16 +194,58 @@ class PaperPerformanceService:
             .all()
         )
 
+    def _filtered_return_records(
+        self,
+        account_id: int,
+        target_date: date | None,
+    ) -> list[SellReturnRecord]:
+        records = self._paired_sell_return_records(account_id)
+        if target_date is None:
+            return records
+        return [item for item in records if item.trade_time and item.trade_time.date() == target_date]
+
+    def _filtered_trades(self, account_id: int, target_date: date | None) -> list[PaperTrade]:
+        trades = self._trades(account_id)
+        if target_date is None:
+            return trades
+        return [item for item in trades if item.trade_time and item.trade_time.date() == target_date]
+
+    def _trade_tag_map(self, account_id: int) -> dict[int, list[str]]:
+        rows = (
+            self.db.execute(
+                select(PaperTradeTag).where(PaperTradeTag.account_id == account_id)
+            )
+            .scalars()
+            .all()
+        )
+        mapping: dict[int, list[str]] = defaultdict(list)
+        for row in rows:
+            mapping[int(row.trade_id)].append(row.tag)
+        return mapping
+
 
 def _rate(part: int, total: int) -> float:
     return round(part / total * 100, 3) if total > 0 else 0.0
 
 
+def _sharpe_ratio(returns: list[float]) -> float:
+    if len(returns) < 2:
+        return 0.0
+    mean = sum(returns) / len(returns)
+    variance = sum((value - mean) ** 2 for value in returns) / (len(returns) - 1)
+    std = variance**0.5
+    if std <= 0:
+        return 0.0
+    return (mean / std) * (252**0.5)
+
+
 @dataclass(frozen=True)
 class SellReturnRecord:
+    trade_id: int
     return_pct: float
     strategy_key: str
     market_state: str
+    trade_time: datetime
 
     def group_key(self, field: str) -> str:
         if field == "strategy_key":

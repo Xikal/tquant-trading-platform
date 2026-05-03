@@ -1,4 +1,4 @@
-import type { BacktestResult, LowBuyExecutionBacktestResult, LowBuyPriorityBoardResult, LowBuyTradeLifecycle, ReplayItem, StrategyValidationReport } from "../../types";
+import type { BacktestResult, BacktestRun, LowBuyExecutionBacktestResult, LowBuyPriorityBoardResult, LowBuyTradeLifecycle, ReplayItem, StrategyValidationReport } from "../../types";
 import { EditableGrid, EmptyState, MetricGrid, PanelTitle } from "./WorkspaceComponents";
 import { ALL_PLAYBOOK_TABS } from "./workspaceConstants";
 import { actionText, average, executionStatusText, formatNumber, formatPct, formatPrice, lifecycleStatusText, shortTime, strategyLabel, summarizeLifecycle, toneFromChange } from "./workspaceFormatters";
@@ -11,6 +11,7 @@ export function ResearchPage({
   draft,
   setDraft,
   result,
+  runs,
   executionBacktest,
   strategyValidation,
   loading,
@@ -24,6 +25,7 @@ export function ResearchPage({
   draft: BacktestDraft;
   setDraft: (draft: BacktestDraft) => void;
   result: BacktestResult | null;
+  runs: BacktestRun[];
   executionBacktest: LowBuyExecutionBacktestResult | null;
   strategyValidation: StrategyValidationReport | null;
   loading: string;
@@ -92,6 +94,11 @@ export function ResearchPage({
             {item.symbol} · {lifecycleStatusText(item.status)} · {strategyLabel(item.strategy_key)} · {formatPrice(item.entry_plan_low)}-{formatPrice(item.entry_plan_high)}
           </div>
         ))}
+        {runs.slice(0, 5).map((item) => (
+          <div className="sample" key={`run-${item.id}`}>
+            回测 #{item.id} · {String(item.params?.symbol ?? item.name ?? "--")} · {shortTime(item.created_at)}
+          </div>
+        ))}
         {!replays.length ? <EmptyState text="暂无复盘样本。" /> : null}
       </aside>
       <div className="panel report research-report">
@@ -119,7 +126,12 @@ export function ResearchPage({
           ) : null}
           {(strategyValidation?.items ?? []).slice(0, 5).map((item) => (
             <div className="trade-card" key={`validation-${item.strategy_key}`}>
-              {strategyLabel(item.strategy_key)} · 成交 {item.filled_signals}/{item.evaluated_signals} · 净胜 {formatPct(item.net_win_rate_pct)} · 均收 {formatPct(item.avg_return_pct)} · PBO {item.pbo_risk}
+              {strategyLabel(item.strategy_key)} · 成交 {item.filled_signals}/{item.evaluated_signals} · 净胜 {formatPct(item.net_win_rate_pct)} · 样本外 {formatPct(item.out_sample_return_pct)} · PBO {item.pbo_risk}
+            </div>
+          ))}
+          {runs.slice(0, 6).map((item) => (
+            <div className="trade-card" key={`backtest-run-${item.id}`}>
+              历史回测 #{item.id} · {String(item.params?.symbol ?? item.name ?? "--")} · 胜率 {formatPct(numberFromResult(item.result, "win_rate"))} · 均收 {formatPct(numberFromResult(item.result, "avg_pnl_pct"))} · {shortTime(item.created_at)}
             </div>
           ))}
           {(executionBacktest?.items ?? []).slice(0, 5).map((item) => (
@@ -137,4 +149,9 @@ export function ResearchPage({
       </div>
     </section>
   );
+}
+
+function numberFromResult(result: Record<string, unknown>, key: string): number | undefined {
+  const value = result[key];
+  return typeof value === "number" && Number.isFinite(value) ? value : undefined;
 }

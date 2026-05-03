@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.core.auth import get_current_user
 from app.core.database import get_db
 from app.models.entities import BacktestRun
 from app.models.schemas import (
@@ -18,7 +19,7 @@ from app.services.analysis_service import AnalysisService
 from app.services.market_data import MarketDataService
 from app.services.paper.validation import StrategyValidationPipeline
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(get_current_user)])
 analysis_service = AnalysisService()
 market_data = MarketDataService()
 

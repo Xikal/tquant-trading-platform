@@ -4,6 +4,7 @@ import logging
 import threading
 import time
 from dataclasses import dataclass
+from datetime import datetime, timedelta
 from typing import Callable
 
 logger = logging.getLogger(__name__)
@@ -17,6 +18,13 @@ class ManagedTask:
     interval_seconds: float
     initial_delay_seconds: float = 0.0
     last_error: str | None = None
+    last_started_at: datetime | None = None
+    last_finished_at: datetime | None = None
+    last_success_at: datetime | None = None
+    duration_ms: int = 0
+    rows_processed: int = 0
+    run_count: int = 0
+    enabled: bool = True
 
 
 class TaskManager:
@@ -62,6 +70,11 @@ class TaskManager:
         for task in tasks:
             task.thread.join(timeout=timeout)
 
+    def snapshot(self) -> list[dict]:
+        with self._lock:
+            tasks = list(self._tasks.values())
+        return [_task_snapshot(task) for task in tasks]
+
     def _run_loop(
         self,
         name: str,
@@ -74,8 +87,19 @@ class TaskManager:
             return
         while not stop_event.is_set():
             started = time.perf_counter()
+            started_at = datetime.now()
+            with self._lock:
+                task = self._tasks.get(name)
+                if task is not None:
+                    task.last_started_at = started_at
+                    task.run_count += 1
             try:
                 target()
+                with self._lock:
+                    task = self._tasks.get(name)
+                    if task is not None:
+                        task.last_error = None
+                        task.last_success_at = datetime.now()
             except Exception as exc:
                 logger.exception("managed background task failed: %s", name)
                 with self._lock:
@@ -83,9 +107,39 @@ class TaskManager:
                     if task is not None:
                         task.last_error = str(exc)
             elapsed = time.perf_counter() - started
+            finished_at = datetime.now()
+            with self._lock:
+                task = self._tasks.get(name)
+                if task is not None:
+                    task.last_finished_at = finished_at
+                    task.duration_ms = int(elapsed * 1000)
             wait_seconds = max(interval_seconds - elapsed, 0.0)
             if stop_event.wait(wait_seconds):
                 return
 
 
 task_manager = TaskManager()
+
+
+def _task_snapshot(task: ManagedTask) -> dict:
+    next_run_at = None
+    if task.last_finished_at is not None:
+        next_run_at = task.last_finished_at + timedelta(seconds=task.interval_seconds)
+    return {
+        "task_name": task.name,
+        "last_started_at": _dt(task.last_started_at),
+        "last_finished_at": _dt(task.last_finished_at),
+        "last_success_at": _dt(task.last_success_at),
+        "last_error": task.last_error,
+        "duration_ms": task.duration_ms,
+        "rows_processed": task.rows_processed,
+        "next_run_at": _dt(next_run_at),
+        "enabled": task.enabled and not task.stop_event.is_set(),
+        "interval_seconds": task.interval_seconds,
+        "run_count": task.run_count,
+        "thread_alive": task.thread.is_alive(),
+    }
+
+
+def _dt(value: datetime | None) -> str | None:
+    return value.strftime("%Y-%m-%d %H:%M:%S") if value else None

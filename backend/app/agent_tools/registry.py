@@ -88,6 +88,35 @@ def _tool_registry() -> dict[str, ToolDefinition]:
             timeout_seconds=timeout,
         ),
         ToolDefinition(
+            name="get_paper_portfolio",
+            description="获取模拟盘账户、持仓和绩效摘要",
+            method="GET",
+            path="/api/agent/context/paper-portfolio",
+            input_schema={
+                "type": "object",
+                "properties": {
+                    "account_id": {"type": ["integer", "null"]},
+                },
+            },
+            permission="read",
+            timeout_seconds=timeout,
+        ),
+        ToolDefinition(
+            name="recommend_orders",
+            description="基于优先级榜生成模拟委托建议，不执行下单",
+            method="POST",
+            path="/api/agent/context/recommend-orders",
+            input_schema={
+                "type": "object",
+                "properties": {
+                    "limit": {"type": "integer", "default": 12, "minimum": 1, "maximum": 50},
+                    "account_id": {"type": ["integer", "null"]},
+                },
+            },
+            permission="write",
+            timeout_seconds=timeout,
+        ),
+        ToolDefinition(
             name="send_test_notification",
             description="测试通知通道是否可用",
             method="POST",
@@ -97,6 +126,45 @@ def _tool_registry() -> dict[str, ToolDefinition]:
                 "properties": {
                     "channel": {"type": "string", "default": "feishu"},
                     "message": {"type": "string", "default": "测试消息"},
+                },
+            },
+            permission="notify",
+            timeout_seconds=timeout,
+        ),
+        ToolDefinition(
+            name="send_signal_notification",
+            description="按股票、策略和信号状态发送去重后的通知；信号升级会立即通知",
+            method="POST",
+            path="/api/agent/notify/signal",
+            input_schema={
+                "type": "object",
+                "required": ["symbol", "signal_state"],
+                "properties": {
+                    "channel": {"type": "string", "default": "feishu"},
+                    "symbol": {"type": "string"},
+                    "name": {"type": "string", "default": ""},
+                    "strategy_key": {"type": "string", "default": ""},
+                    "strategy_title": {"type": "string", "default": ""},
+                    "signal_state": {"type": "string"},
+                    "signal_text": {"type": "string", "default": ""},
+                    "message": {"type": "string", "default": ""},
+                    "event_type": {"type": "string", "default": "signal"},
+                    "payload": {"type": "object", "default": {}},
+                },
+            },
+            permission="notify",
+            timeout_seconds=timeout,
+        ),
+        ToolDefinition(
+            name="scan_priority_board_notifications",
+            description="扫描优先级榜并按通知账本发送新增或升级信号",
+            method="POST",
+            path="/api/agent/notify/scan-priority-board",
+            input_schema={
+                "type": "object",
+                "properties": {
+                    "limit": {"type": "integer", "default": 12, "minimum": 1, "maximum": 50},
+                    "channel": {"type": "string", "default": "feishu"},
                 },
             },
             permission="notify",

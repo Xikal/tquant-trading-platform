@@ -45,6 +45,34 @@ class PerformanceRegressionTest(unittest.TestCase):
 
         self.assertIs(service._get_quote_cache("000001"), quote)
 
+    def test_eastmoney_realtime_quote_parser_marks_source(self) -> None:
+        service = MarketDataService()
+        quote = service._build_eastmoney_realtime_quote_snapshot(
+            "000001",
+            {
+                "f2": 11.49,
+                "f3": -0.26,
+                "f4": -0.03,
+                "f5": 1139242,
+                "f6": 1312827775.76,
+                "f8": 0.59,
+                "f10": 0.74,
+                "f12": "000001",
+                "f13": 0,
+                "f14": "平安银行",
+                "f15": 11.6,
+                "f16": 11.46,
+                "f17": 11.5,
+                "f18": 11.52,
+                "f124": 1777534458,
+            },
+        )
+
+        self.assertEqual(quote.data_source, "eastmoney_realtime")
+        self.assertEqual(quote.source_quality, "free_realtime")
+        self.assertEqual(quote.name, "平安银行")
+        self.assertEqual(quote.last_price, 11.49)
+
     def test_request_timing_snapshot_records_recent_samples(self) -> None:
         record_request_timing(method="GET", path="/api/test", status_code=200, duration_ms=120)
         snapshot = request_timing_snapshot()

@@ -12,6 +12,11 @@ from app.models.schema_defs.agent import (
     AgentAnalysisRequest,
     AgentAnalysisResponse,
     AgentHealthResponse,
+    AgentOrderRecommendationRequest,
+    AgentOrderRecommendationResponse,
+    AgentOrderRecommendationItem,
+    AgentPaperPortfolioResponse,
+    AgentPaperPositionItem,
     AgentPriorityBoardItem,
     AgentPriorityBoardResponse,
     AgentWatchlistContextItem,
@@ -20,6 +25,8 @@ from app.models.schema_defs.agent import (
 from app.models.schemas import AnalysisRequest
 from app.services.analysis_service import AnalysisService
 from app.services.low_buy_screener import LowBuyScreenerService
+from app.services.paper import PaperAccountService, PaperPerformanceService, PaperPositionService
+from app.services.paper.scheduler import PaperAutoTrader, build_auto_trader_config
 from app.services.watchlist_signal_service import WatchlistSignalService
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
@@ -78,6 +85,11 @@ class AgentContextService:
                 name=item.name,
                 latest_price=item.latest_price,
                 change_pct=item.change_pct,
+                data_quality=item.data_quality,
+                data_quality_text=item.data_quality_text,
+                data_quality_tags=item.data_quality_tags,
+                market_state_category=item.market_state_category,
+                market_state_category_text=item.market_state_category_text,
                 priority_score=round(item.priority_score, 2),
                 buy_signal_text=item.buy_signal_text,
                 strategy_titles=item.strategy_titles[:4] if item.strategy_titles else [item.strategy_title],
@@ -91,6 +103,11 @@ class AgentContextService:
         return AgentPriorityBoardResponse(
             updated_at=board.updated_at or _now_string(),
             market_state_text=board.market_state_text,
+            market_state_category=board.market_state_category,
+            market_state_category_text=board.market_state_category_text,
+            data_quality=board.data_quality,
+            data_quality_text=board.data_quality_text,
+            data_quality_tags=board.data_quality_tags,
             directional_bias=board.directional_bias,
             directional_bias_text=board.directional_bias_text,
             total_candidates=board.total_candidates,
@@ -135,6 +152,79 @@ class AgentContextService:
             reasons=_trim_lines(suggestion.reasons, 4),
             blocking_rules=_trim_lines(suggestion.blocking_rules, 4),
             summary=_first_text(suggestion.plain_execution_text, suggestion.plain_action_reason, suggestion.strategy_notes),
+        )
+
+    def paper_portfolio(
+        self,
+        db: Session,
+        account_id: int | None = None,
+        *,
+        user_id: int | None = None,
+    ) -> AgentPaperPortfolioResponse:
+        account = _resolve_paper_account(db, account_id, user_id=user_id)
+        if account is None:
+            return AgentPaperPortfolioResponse(updated_at=_now_string())
+        PaperAccountService(db).update_market_value(account.id)
+        positions = PaperPositionService(db).get_positions(account.id)
+        performance = PaperPerformanceService(db).compute_overall(account.id)
+        return AgentPaperPortfolioResponse(
+            updated_at=_now_string(),
+            account_id=account.id,
+            total_assets=_float(account.total_assets),
+            cash_available=_float(account.cash_available),
+            market_value=_float(account.market_value),
+            total_return_pct=_float(performance.get("total_return_pct")),
+            win_rate_pct=_float(performance.get("win_rate_pct")),
+            net_win_rate_pct=_float(performance.get("net_win_rate_pct")),
+            profit_factor=_optional_float(performance.get("profit_factor")),
+            positions=[
+                AgentPaperPositionItem(
+                    symbol=row.symbol,
+                    name=row.name,
+                    quantity=int(row.quantity or 0),
+                    available_quantity=int(row.available_quantity or 0),
+                    cost_basis=_float(row.cost_basis),
+                    latest_price=_optional_float(row.latest_price),
+                    market_value=_float(row.market_value),
+                    unrealized_pnl=_float(row.unrealized_pnl),
+                    unrealized_pnl_pct=_float(row.unrealized_pnl_pct),
+                )
+                for row in positions
+            ],
+        )
+
+    def recommend_orders(
+        self,
+        db: Session,
+        payload: AgentOrderRecommendationRequest,
+        *,
+        user_id: int | None = None,
+    ) -> AgentOrderRecommendationResponse:
+        from app.core.config import get_settings
+
+        account = _resolve_paper_account(db, payload.account_id, user_id=user_id)
+        if account is None:
+            return AgentOrderRecommendationResponse(updated_at=_now_string(), summary="无可用模拟账户")
+        trader = PaperAutoTrader(build_auto_trader_config(get_settings(), dry_run=True))
+        preview = trader.run_once_for_preview(db=db, limit=payload.limit, account_id=account.id)
+        return AgentOrderRecommendationResponse(
+            updated_at=_now_string(),
+            account_id=account.id,
+            will_buy=[
+                AgentOrderRecommendationItem(
+                    symbol=str(item.get("symbol") or ""),
+                    name=str(item.get("name") or item.get("symbol") or ""),
+                    side=str(item.get("side") or "buy"),
+                    quantity=int(item.get("quantity") or 0),
+                    price=_float(item.get("price") or item.get("current_price")),
+                    strategy_key=str(item.get("strategy_key") or ""),
+                    reason=str(item.get("reason") or ""),
+                )
+                for item in preview.get("will_buy", [])
+                if isinstance(item, dict)
+            ],
+            filtered=[item for item in preview.get("filtered", []) if isinstance(item, dict)][:20],
+            summary=str(preview.get("summary") or ""),
         )
 
     @staticmethod
@@ -204,3 +294,12 @@ def _optional_float(value: Any) -> float | None:
         return float(value) if value is not None else None
     except (TypeError, ValueError):
         return None
+
+
+def _resolve_paper_account(db: Session, account_id: int | None, *, user_id: int | None = None):
+    if account_id is not None:
+        account = PaperAccountService(db).get_account(account_id)
+        if user_id is not None and account.user_id != user_id:
+            return None
+        return account
+    return PaperAccountService(db).get_or_create_default(user_id)

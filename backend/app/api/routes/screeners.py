@@ -5,16 +5,23 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from app.core.admin_auth import require_admin_auth
+from app.core.auth import get_current_user
 from app.core.database import get_db
 from app.core.timing import log_slow_call, monotonic_start
 from app.models.schemas import LowBuyTradeLifecycleUpdate
+from app.services.low_buy.strategy_governance import build_low_buy_strategy_governance
 from app.services.low_buy.shared import DEFAULT_PRODUCTION_LOW_BUY_STRATEGY
 from app.services.low_buy_screener import LowBuyScreenerService
 from app.services.market_data import DataSourceError
 
-router = APIRouter(prefix="/screeners")
+router = APIRouter(prefix="/screeners", dependencies=[Depends(get_current_user)])
 logger = logging.getLogger(__name__)
 low_buy_screener = LowBuyScreenerService()
+
+
+@router.get("/low-buy/strategies")
+def low_buy_strategy_governance_view(db: Session = Depends(get_db)):
+    return build_low_buy_strategy_governance(db).model_dump()
 
 
 @router.get("/low-buy")

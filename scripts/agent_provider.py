@@ -121,7 +121,7 @@ def _http_json(url: str, params: dict[str, str] | None = None) -> dict:
     full_url = url
     if params:
         full_url = f"{url}?{urlencode(params)}"
-    token = os.getenv("AGENT_API_TOKEN", "")
+    token = _setting(_read_runtime_env(), "AGENT_API_TOKEN", "")
     headers = {"Authorization": f"Bearer {token}"} if token else {}
     request = Request(full_url, headers=headers)
     try:

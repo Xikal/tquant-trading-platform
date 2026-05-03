@@ -105,11 +105,38 @@ class PaperTradeOut(BaseModel):
     transfer_fee: float
     net_amount: float
     strategy_key: str = ""
+    entry_reason: str = ""
+    entry_reason_code: str = ""
+    exit_reason: str = ""
+    exit_reason_code: str = ""
+    commission_warning: str = ""
     trade_time: datetime
 
 
 class PaperTradesResponse(BaseModel):
     trades: list[PaperTradeOut] = Field(default_factory=list)
+
+
+class PaperTradeTagCreate(BaseModel):
+    tag: str = Field(min_length=1, max_length=40)
+    note: str = Field(default="", max_length=240)
+
+
+class PaperTradeTagOut(BaseModel):
+    id: int
+    trade_id: int
+    tag: str
+    note: str = ""
+    created_at: datetime
+
+
+class PaperTagPerformanceOut(BaseModel):
+    tag: str
+    trades: int = 0
+    win_rate_pct: float = 0.0
+    net_win_rate_pct: float = 0.0
+    avg_return_pct: float = 0.0
+    total_return_pct: float = 0.0
 
 
 class PaperPerformanceOut(BaseModel):
@@ -121,6 +148,7 @@ class PaperPerformanceOut(BaseModel):
     avg_win_pct: float = 0.0
     avg_loss_pct: float = 0.0
     profit_factor: Optional[float] = None
+    sharpe_ratio: float = 0.0
     stop_loss_rate_pct: float = 0.0
     total_trades: int = 0
     avg_hold_days: float = 0.0
@@ -145,3 +173,15 @@ class PaperRiskStatusOut(BaseModel):
     max_daily_order_count: int = 20
     daily_order_count: int = 0
     daily_buy_used_pct: float = 0.0
+
+
+class PaperAgentRunOut(BaseModel):
+    id: int
+    account_id: int
+    provider: str = ""
+    run_type: str = ""
+    status: str = ""
+    request: dict[str, Any] = Field(default_factory=dict)
+    response: dict[str, Any] = Field(default_factory=dict)
+    error_message: str = ""
+    created_at: datetime

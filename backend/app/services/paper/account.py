@@ -24,9 +24,9 @@ class PaperAccountService:
         account = PaperAccount(
             user_id=user_id,
             name=name or "默认模拟账户",
-            initial_cash=float(initial_cash),
-            cash_available=float(initial_cash),
-            total_assets=float(initial_cash),
+            initial_cash=initial_cash,
+            cash_available=initial_cash,
+            total_assets=initial_cash,
             status="active",
         )
         self.db.add(account)
@@ -34,8 +34,19 @@ class PaperAccountService:
         self.db.refresh(account)
         return account
 
-    def get_account(self, account_id: int) -> PaperAccount:
-        account = self.db.get(PaperAccount, account_id)
+    def get_account(self, account_id: int, *, for_update: bool = False) -> PaperAccount:
+        if for_update:
+            account = (
+                self.db.execute(
+                    select(PaperAccount)
+                    .where(PaperAccount.id == account_id)
+                    .with_for_update()
+                )
+                .scalars()
+                .one_or_none()
+            )
+        else:
+            account = self.db.get(PaperAccount, account_id)
         if account is None:
             raise LookupError("模拟账户不存在")
         return account
@@ -60,9 +71,9 @@ class PaperAccountService:
         )
         market_value = sum(Decimal(str(position.market_value or 0)) for position in positions)
         unrealized = sum(Decimal(str(position.unrealized_pnl or 0)) for position in positions)
-        account.market_value = float(market_value)
-        account.unrealized_pnl = float(unrealized)
-        account.total_assets = float(Decimal(str(account.cash_available or 0)) + market_value)
+        account.market_value = market_value
+        account.unrealized_pnl = unrealized
+        account.total_assets = Decimal(str(account.cash_available or 0)) + market_value
         self.db.flush()
         return account
 
@@ -71,12 +82,12 @@ class PaperAccountService:
         for model in (PaperTrade, PaperPositionLot, PaperOrder, PaperPosition, PaperPerformanceSnapshot, PaperAgentRun):
             self.db.execute(delete(model).where(model.account_id == account_id))
         account.cash_available = account.initial_cash
-        account.frozen_cash = 0
-        account.market_value = 0
+        account.frozen_cash = Decimal("0")
+        account.market_value = Decimal("0")
         account.total_assets = account.initial_cash
-        account.realized_pnl = 0
-        account.unrealized_pnl = 0
-        account.max_drawdown_pct = 0
+        account.realized_pnl = Decimal("0")
+        account.unrealized_pnl = Decimal("0")
+        account.max_drawdown_pct = Decimal("0")
         account.status = "active"
         self.db.commit()
         self.db.refresh(account)
@@ -98,4 +109,8 @@ class PaperAccountService:
 
     def check_balance(self, account_id: int, required: Decimal) -> bool:
         account = self.get_account(account_id)
+        return Decimal(str(account.cash_available or 0)) >= required
+
+    def check_balance_locked(self, account_id: int, required: Decimal) -> bool:
+        account = self.get_account(account_id, for_update=True)
         return Decimal(str(account.cash_available or 0)) >= required

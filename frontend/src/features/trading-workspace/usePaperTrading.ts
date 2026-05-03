@@ -3,11 +3,15 @@ import { appApi } from "../../api/appClient";
 import { api } from "../../api/client";
 import type {
   PaperAccount,
+  PaperAgentRun,
+  PaperAutoTradingStatus,
   PaperGroupedPerformance,
   PaperOrder,
   PaperPerformance,
   PaperPosition,
+  PaperTagPerformance,
   PaperTrade,
+  PaperTradeTag,
   RiskEventItem,
 } from "../../types";
 import { errorMessage, nullableNumber, parseNumber } from "./workspaceFormatters";
@@ -28,7 +32,11 @@ export function usePaperTrading({ setError, setLoading, setNotice, onAuthRequire
   const [performance, setPerformance] = useState<PaperPerformance | null>(null);
   const [strategyPerformance, setStrategyPerformance] = useState<PaperGroupedPerformance[]>([]);
   const [marketPerformance, setMarketPerformance] = useState<PaperGroupedPerformance[]>([]);
+  const [tagPerformance, setTagPerformance] = useState<PaperTagPerformance[]>([]);
+  const [tradeTags, setTradeTags] = useState<Record<number, PaperTradeTag[]>>({});
   const [riskEvents, setRiskEvents] = useState<RiskEventItem[]>([]);
+  const [autoTradingStatus, setAutoTradingStatus] = useState<PaperAutoTradingStatus | null>(null);
+  const [autoTradingRuns, setAutoTradingRuns] = useState<PaperAgentRun[]>([]);
   const [draft, setDraft] = useState<PaperOrderDraft>({
     symbol: "",
     name: "",
@@ -42,9 +50,9 @@ export function usePaperTrading({ setError, setLoading, setNotice, onAuthRequire
     require_intraday_confirmation: false,
   });
 
-  async function load(allowRefresh = true) {
+  async function load(allowRefresh = true, manageLoading = true) {
     try {
-      setLoading("paper");
+      if (manageLoading) setLoading("paper");
       setError("");
       const [
         accountResult,
@@ -54,7 +62,10 @@ export function usePaperTrading({ setError, setLoading, setNotice, onAuthRequire
         performanceResult,
         strategyPerformanceResult,
         marketPerformanceResult,
+        tagPerformanceResult,
         riskEventsResult,
+        autoTradingStatusResult,
+        autoTradingRunsResult,
       ] = await Promise.allSettled([
         api.getPaperAccount(),
         api.getPaperPositions(),
@@ -63,7 +74,10 @@ export function usePaperTrading({ setError, setLoading, setNotice, onAuthRequire
         api.getPaperPerformance(),
         api.getPaperPerformanceByStrategy(),
         api.getPaperPerformanceByMarketState(),
+        api.getPaperPerformanceByTag(),
         api.evaluatePaperRiskEvents(),
+        api.getPaperAutoTradingStatus(),
+        api.getPaperAutoTradingRuns(20),
       ]);
       const rejected = [
         accountResult,
@@ -73,11 +87,14 @@ export function usePaperTrading({ setError, setLoading, setNotice, onAuthRequire
         performanceResult,
         strategyPerformanceResult,
         marketPerformanceResult,
+        tagPerformanceResult,
         riskEventsResult,
+        autoTradingStatusResult,
+        autoTradingRunsResult,
       ].find((item): item is PromiseRejectedResult => item.status === "rejected");
       if (rejected && isAuthError(rejected.reason)) {
         if (allowRefresh && (await refreshSession())) {
-          await load(false);
+          await load(false, manageLoading);
           return;
         }
         requireLogin();
@@ -86,28 +103,40 @@ export function usePaperTrading({ setError, setLoading, setNotice, onAuthRequire
       if (accountResult.status === "fulfilled") setAccount(accountResult.value);
       if (positionsResult.status === "fulfilled") setPositions(positionsResult.value.positions);
       if (ordersResult.status === "fulfilled") setOrders(ordersResult.value);
-      if (tradesResult.status === "fulfilled") setTrades(tradesResult.value.trades);
+      if (tradesResult.status === "fulfilled") {
+        setTrades(tradesResult.value.trades);
+        await loadTradeTags(tradesResult.value.trades);
+      }
       if (performanceResult.status === "fulfilled") setPerformance(performanceResult.value);
       if (strategyPerformanceResult.status === "fulfilled") setStrategyPerformance(strategyPerformanceResult.value);
       if (marketPerformanceResult.status === "fulfilled") setMarketPerformance(marketPerformanceResult.value);
+      if (tagPerformanceResult.status === "fulfilled") setTagPerformance(tagPerformanceResult.value);
       if (riskEventsResult.status === "fulfilled") setRiskEvents(riskEventsResult.value);
+      if (autoTradingStatusResult.status === "fulfilled") setAutoTradingStatus(autoTradingStatusResult.value);
+      if (autoTradingRunsResult.status === "fulfilled") setAutoTradingRuns(autoTradingRunsResult.value);
       if (rejected) setError(errorMessage(rejected.reason));
     } finally {
-      setLoading("");
+      if (manageLoading) setLoading("");
     }
   }
 
-  async function refreshPositions() {
-    await withPaperLoading("paper-quotes", async () => {
-      const result = await runAuthenticated(() => api.refreshPaperPositions());
-      setPositions(result.positions);
-      const [accountResult, performanceResult] = await Promise.allSettled([
-        runAuthenticated(() => api.getPaperAccount(), false),
-        runAuthenticated(() => api.getPaperPerformance(), false),
-      ]);
-      if (accountResult.status === "fulfilled") setAccount(accountResult.value);
-      if (performanceResult.status === "fulfilled") setPerformance(performanceResult.value);
+  async function refreshAll() {
+    await withPaperLoading("paper-refresh", async () => {
+      await runAuthenticated(() => api.refreshPaperPositions());
+      await load(false, false);
+      setNotice("模拟盘与持仓价格已刷新");
     });
+  }
+
+  async function refreshAutoTradingStatus() {
+    try {
+      const status = await runAuthenticated(() => api.getPaperAutoTradingStatus(), false);
+      setAutoTradingStatus(status);
+    } catch (err) {
+      if (isAuthError(err)) {
+        requireLogin();
+      }
+    }
   }
 
   async function togglePause() {
@@ -146,6 +175,58 @@ export function usePaperTrading({ setError, setLoading, setNotice, onAuthRequire
       setNotice(result.status === "filled" ? "模拟委托已成交" : result.reject_reason || "模拟委托已提交");
       await load();
     });
+  }
+
+  async function addTradeTag(tradeId: number, tag: string, note = "") {
+    await withPaperLoading("paper-tags", async () => {
+      const saved = await runAuthenticated(() => api.addPaperTradeTag(tradeId, { tag, note }));
+      setTradeTags((current) => ({
+        ...current,
+        [tradeId]: upsertTag(current[tradeId] ?? [], saved),
+      }));
+      await refreshTagPerformance();
+      setNotice(`已标记：${tag}`);
+    });
+  }
+
+  async function deleteTradeTag(tradeId: number, tagId: number) {
+    await withPaperLoading("paper-tags", async () => {
+      await runAuthenticated(() => api.deletePaperTradeTag(tradeId, tagId));
+      setTradeTags((current) => ({
+        ...current,
+        [tradeId]: (current[tradeId] ?? []).filter((item) => item.id !== tagId),
+      }));
+      await refreshTagPerformance();
+      setNotice("标签已删除");
+    });
+  }
+
+  async function loadTradeTags(tradeItems: PaperTrade[]) {
+    const visibleTrades = tradeItems.slice(0, 20);
+    if (!visibleTrades.length) {
+      setTradeTags({});
+      return;
+    }
+    const results = await Promise.allSettled(
+      visibleTrades.map(async (trade) => [trade.id, await api.getPaperTradeTags(trade.id)] as const)
+    );
+    const next: Record<number, PaperTradeTag[]> = {};
+    for (const result of results) {
+      if (result.status === "fulfilled") {
+        const [tradeId, tags] = result.value;
+        next[tradeId] = tags;
+      }
+    }
+    setTradeTags(next);
+  }
+
+  async function refreshTagPerformance() {
+    try {
+      const items = await runAuthenticated(() => api.getPaperPerformanceByTag(), false);
+      setTagPerformance(items);
+    } catch {
+      setTagPerformance([]);
+    }
   }
 
   async function withPaperLoading<T>(key: string, action: () => Promise<T>): Promise<T | undefined> {
@@ -195,7 +276,11 @@ export function usePaperTrading({ setError, setLoading, setNotice, onAuthRequire
     setPerformance(null);
     setStrategyPerformance([]);
     setMarketPerformance([]);
+    setTagPerformance([]);
+    setTradeTags({});
     setRiskEvents([]);
+    setAutoTradingStatus(null);
+    setAutoTradingRuns([]);
   }
 
   return {
@@ -206,14 +291,26 @@ export function usePaperTrading({ setError, setLoading, setNotice, onAuthRequire
     performance,
     strategyPerformance,
     marketPerformance,
+    tagPerformance,
+    tradeTags,
     riskEvents,
+    autoTradingStatus,
+    autoTradingRuns,
     draft,
     setDraft,
     load,
-    refreshPositions,
+    refreshAll,
+    refreshAutoTradingStatus,
     submitOrder,
+    addTradeTag,
+    deleteTradeTag,
     togglePause,
   };
+}
+
+function upsertTag(tags: PaperTradeTag[], next: PaperTradeTag): PaperTradeTag[] {
+  const withoutCurrent = tags.filter((item) => item.id !== next.id && item.tag !== next.tag);
+  return [next, ...withoutCurrent];
 }
 
 function isAuthError(reason: unknown): boolean {

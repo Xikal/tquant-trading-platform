@@ -14,7 +14,11 @@ class AgentToolRegistryTests(unittest.TestCase):
         self.assertIn("get_priority_board", names)
         self.assertIn("analyze_stock", names)
         self.assertIn("get_daily_report", names)
+        self.assertIn("get_paper_portfolio", names)
+        self.assertIn("recommend_orders", names)
         self.assertIn("send_test_notification", names)
+        self.assertIn("send_signal_notification", names)
+        self.assertIn("scan_priority_board_notifications", names)
 
     def test_priority_board_definition_exists(self) -> None:
         tool = get_tool_definition("get_priority_board")
@@ -27,6 +31,17 @@ class AgentToolRegistryTests(unittest.TestCase):
         tool = get_tool_definition("send_test_notification")
         self.assertIsNotNone(tool)
         self.assertEqual(tool.permission, "notify")
+        signal_tool = get_tool_definition("send_signal_notification")
+        self.assertIsNotNone(signal_tool)
+        self.assertEqual(signal_tool.permission, "notify")
+        scan_tool = get_tool_definition("scan_priority_board_notifications")
+        self.assertIsNotNone(scan_tool)
+        self.assertEqual(scan_tool.permission, "notify")
+
+    def test_order_recommendation_tool_requires_write_permission(self) -> None:
+        tool = get_tool_definition("recommend_orders")
+        self.assertIsNotNone(tool)
+        self.assertEqual(tool.permission, "write")
 
     def test_sensitive_arguments_are_masked(self) -> None:
         masked = sanitize_arguments(

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import date, datetime
+from decimal import Decimal
 from typing import Optional
 
 from sqlalchemy import Boolean, Date, DateTime, Float, ForeignKey, Integer, Numeric, String, Text, UniqueConstraint, func
@@ -47,6 +48,7 @@ class Watchlist(Base):
     name: Mapped[str] = mapped_column(String(64), default="")
     base_position: Mapped[int] = mapped_column(Integer, default=1000)
     available_position: Mapped[int] = mapped_column(Integer, default=1000)
+    available_position_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True, index=True)
     cost_basis: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     memo: Mapped[str] = mapped_column(String(200), default="")
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
@@ -80,6 +82,25 @@ class UserSession(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
 
+class UserFeishuBinding(Base):
+    __tablename__ = "user_feishu_bindings"
+    __table_args__ = (
+        UniqueConstraint("open_id", name="uq_feishu_binding_open_id"),
+        UniqueConstraint("user_id", "tenant_key", name="uq_feishu_binding_user_tenant"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    open_id: Mapped[str] = mapped_column(String(80), index=True)
+    union_id: Mapped[str] = mapped_column(String(80), default="")
+    tenant_key: Mapped[str] = mapped_column(String(80), default="", index=True)
+    status: Mapped[str] = mapped_column(String(20), default="active", index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, server_default=func.now(), onupdate=func.now()
+    )
+
+
 class UserWatchlist(Base):
     __tablename__ = "user_watchlists"
     __table_args__ = (
@@ -92,6 +113,7 @@ class UserWatchlist(Base):
     name: Mapped[str] = mapped_column(String(64), default="")
     base_position: Mapped[int] = mapped_column(Integer, default=1000)
     available_position: Mapped[int] = mapped_column(Integer, default=1000)
+    available_position_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True, index=True)
     cost_basis: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     memo: Mapped[str] = mapped_column(String(200), default="")
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
@@ -491,14 +513,14 @@ class PaperAccount(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     user_id: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id"), nullable=True, index=True)
     name: Mapped[str] = mapped_column(String(100), default="默认模拟账户")
-    initial_cash: Mapped[float] = mapped_column(Numeric(18, 2), default=100000.0)
-    cash_available: Mapped[float] = mapped_column(Numeric(18, 2), default=100000.0)
-    frozen_cash: Mapped[float] = mapped_column(Numeric(18, 2), default=0.0)
-    market_value: Mapped[float] = mapped_column(Numeric(18, 2), default=0.0)
-    total_assets: Mapped[float] = mapped_column(Numeric(18, 2), default=100000.0)
-    realized_pnl: Mapped[float] = mapped_column(Numeric(18, 2), default=0.0)
-    unrealized_pnl: Mapped[float] = mapped_column(Numeric(18, 2), default=0.0)
-    max_drawdown_pct: Mapped[float] = mapped_column(Numeric(8, 4), default=0.0)
+    initial_cash: Mapped[Decimal] = mapped_column(Numeric(18, 2), default=Decimal("100000.00"))
+    cash_available: Mapped[Decimal] = mapped_column(Numeric(18, 2), default=Decimal("100000.00"))
+    frozen_cash: Mapped[Decimal] = mapped_column(Numeric(18, 2), default=Decimal("0.00"))
+    market_value: Mapped[Decimal] = mapped_column(Numeric(18, 2), default=Decimal("0.00"))
+    total_assets: Mapped[Decimal] = mapped_column(Numeric(18, 2), default=Decimal("100000.00"))
+    realized_pnl: Mapped[Decimal] = mapped_column(Numeric(18, 2), default=Decimal("0.00"))
+    unrealized_pnl: Mapped[Decimal] = mapped_column(Numeric(18, 2), default=Decimal("0.00"))
+    max_drawdown_pct: Mapped[Decimal] = mapped_column(Numeric(8, 4), default=Decimal("0.0000"))
     status: Mapped[str] = mapped_column(String(20), default="active", index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
@@ -519,11 +541,11 @@ class PaperPosition(Base):
     quantity: Mapped[int] = mapped_column(Integer, default=0)
     available_quantity: Mapped[int] = mapped_column(Integer, default=0)
     frozen_quantity: Mapped[int] = mapped_column(Integer, default=0)
-    cost_basis: Mapped[float] = mapped_column(Numeric(18, 4), default=0.0)
-    latest_price: Mapped[Optional[float]] = mapped_column(Numeric(18, 4), nullable=True)
-    market_value: Mapped[float] = mapped_column(Numeric(18, 2), default=0.0)
-    unrealized_pnl: Mapped[float] = mapped_column(Numeric(18, 2), default=0.0)
-    unrealized_pnl_pct: Mapped[float] = mapped_column(Numeric(8, 4), default=0.0)
+    cost_basis: Mapped[Decimal] = mapped_column(Numeric(18, 4), default=Decimal("0.0000"))
+    latest_price: Mapped[Optional[Decimal]] = mapped_column(Numeric(18, 4), nullable=True)
+    market_value: Mapped[Decimal] = mapped_column(Numeric(18, 2), default=Decimal("0.00"))
+    unrealized_pnl: Mapped[Decimal] = mapped_column(Numeric(18, 2), default=Decimal("0.00"))
+    unrealized_pnl_pct: Mapped[Decimal] = mapped_column(Numeric(8, 4), default=Decimal("0.0000"))
     strategy_sources: Mapped[str] = mapped_column(Text, default="[]")
     opened_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
@@ -541,7 +563,7 @@ class PaperPositionLot(Base):
     quantity: Mapped[int] = mapped_column(Integer)
     remaining: Mapped[int] = mapped_column(Integer)
     available_date: Mapped[date] = mapped_column(Date, index=True)
-    cost_price: Mapped[float] = mapped_column(Numeric(18, 4), default=0.0)
+    cost_price: Mapped[Decimal] = mapped_column(Numeric(18, 4), default=Decimal("0.0000"))
     source_order_id: Mapped[Optional[int]] = mapped_column(ForeignKey("paper_orders.id"), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
@@ -555,10 +577,10 @@ class PaperOrder(Base):
     name: Mapped[str] = mapped_column(String(64), default="")
     side: Mapped[str] = mapped_column(String(10), index=True)
     order_type: Mapped[str] = mapped_column(String(10), default="market")
-    price: Mapped[Optional[float]] = mapped_column(Numeric(18, 4), nullable=True)
+    price: Mapped[Optional[Decimal]] = mapped_column(Numeric(18, 4), nullable=True)
     quantity: Mapped[int] = mapped_column(Integer)
     filled_quantity: Mapped[int] = mapped_column(Integer, default=0)
-    avg_fill_price: Mapped[Optional[float]] = mapped_column(Numeric(18, 4), nullable=True)
+    avg_fill_price: Mapped[Optional[Decimal]] = mapped_column(Numeric(18, 4), nullable=True)
     status: Mapped[str] = mapped_column(String(20), default="pending", index=True)
     reject_reason: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
     source: Mapped[str] = mapped_column(String(20), default="manual", index=True)
@@ -579,16 +601,33 @@ class PaperTrade(Base):
     account_id: Mapped[int] = mapped_column(ForeignKey("paper_accounts.id"), index=True)
     symbol: Mapped[str] = mapped_column(String(16), index=True)
     side: Mapped[str] = mapped_column(String(10), index=True)
-    price: Mapped[float] = mapped_column(Numeric(18, 4))
+    price: Mapped[Decimal] = mapped_column(Numeric(18, 4))
     quantity: Mapped[int] = mapped_column(Integer)
-    gross_amount: Mapped[float] = mapped_column(Numeric(18, 2))
-    commission: Mapped[float] = mapped_column(Numeric(18, 4), default=0.0)
-    stamp_tax: Mapped[float] = mapped_column(Numeric(18, 4), default=0.0)
-    transfer_fee: Mapped[float] = mapped_column(Numeric(18, 4), default=0.0)
-    net_amount: Mapped[float] = mapped_column(Numeric(18, 2))
+    gross_amount: Mapped[Decimal] = mapped_column(Numeric(18, 2))
+    commission: Mapped[Decimal] = mapped_column(Numeric(18, 4), default=Decimal("0.0000"))
+    stamp_tax: Mapped[Decimal] = mapped_column(Numeric(18, 4), default=Decimal("0.0000"))
+    transfer_fee: Mapped[Decimal] = mapped_column(Numeric(18, 4), default=Decimal("0.0000"))
+    net_amount: Mapped[Decimal] = mapped_column(Numeric(18, 2))
     strategy_key: Mapped[str] = mapped_column(String(80), default="")
     market_state: Mapped[str] = mapped_column(String(32), default="")
+    entry_reason: Mapped[str] = mapped_column(String(240), default="")
+    exit_reason: Mapped[str] = mapped_column(String(80), default="")
     trade_time: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), index=True)
+
+
+class PaperTradeTag(Base):
+    __tablename__ = "paper_trade_tags"
+    __table_args__ = (
+        UniqueConstraint("trade_id", "tag", name="uq_paper_trade_tag"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    trade_id: Mapped[int] = mapped_column(ForeignKey("paper_trades.id"), index=True)
+    account_id: Mapped[int] = mapped_column(ForeignKey("paper_accounts.id"), index=True)
+    user_id: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id"), nullable=True, index=True)
+    tag: Mapped[str] = mapped_column(String(40), index=True)
+    note: Mapped[str] = mapped_column(String(240), default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), index=True)
 
 
 class PaperPerformanceSnapshot(Base):
@@ -600,16 +639,90 @@ class PaperPerformanceSnapshot(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     account_id: Mapped[int] = mapped_column(ForeignKey("paper_accounts.id"), index=True)
     snapshot_date: Mapped[date] = mapped_column(Date, index=True)
-    total_assets: Mapped[float] = mapped_column(Numeric(18, 2), default=0.0)
-    daily_return_pct: Mapped[float] = mapped_column(Numeric(8, 4), default=0.0)
-    cumulative_return_pct: Mapped[float] = mapped_column(Numeric(8, 4), default=0.0)
-    max_drawdown_pct: Mapped[float] = mapped_column(Numeric(8, 4), default=0.0)
-    win_rate_pct: Mapped[float] = mapped_column(Numeric(8, 4), default=0.0)
-    net_win_rate_pct: Mapped[float] = mapped_column(Numeric(8, 4), default=0.0)
-    profit_factor: Mapped[Optional[float]] = mapped_column(Numeric(8, 4), nullable=True)
-    stop_loss_rate_pct: Mapped[float] = mapped_column(Numeric(8, 4), default=0.0)
+    total_assets: Mapped[Decimal] = mapped_column(Numeric(18, 2), default=Decimal("0.00"))
+    daily_return_pct: Mapped[Decimal] = mapped_column(Numeric(8, 4), default=Decimal("0.0000"))
+    cumulative_return_pct: Mapped[Decimal] = mapped_column(Numeric(8, 4), default=Decimal("0.0000"))
+    max_drawdown_pct: Mapped[Decimal] = mapped_column(Numeric(8, 4), default=Decimal("0.0000"))
+    win_rate_pct: Mapped[Decimal] = mapped_column(Numeric(8, 4), default=Decimal("0.0000"))
+    net_win_rate_pct: Mapped[Decimal] = mapped_column(Numeric(8, 4), default=Decimal("0.0000"))
+    profit_factor: Mapped[Optional[Decimal]] = mapped_column(Numeric(8, 4), nullable=True)
+    stop_loss_rate_pct: Mapped[Decimal] = mapped_column(Numeric(8, 4), default=Decimal("0.0000"))
     trade_count: Mapped[int] = mapped_column(Integer, default=0)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+
+
+class PaperStrategyPerfDaily(Base):
+    """策略级每日绩效快照，用于模拟盘趋势分析。"""
+
+    __tablename__ = "paper_strategy_perf_daily"
+    __table_args__ = (
+        UniqueConstraint(
+            "account_id",
+            "snapshot_date",
+            "strategy_key",
+            name="uq_pspd_account_date_strategy",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    account_id: Mapped[int] = mapped_column(ForeignKey("paper_accounts.id"), index=True)
+    snapshot_date: Mapped[date] = mapped_column(Date, index=True)
+    strategy_key: Mapped[str] = mapped_column(String(80), index=True)
+    trade_count: Mapped[int] = mapped_column(Integer, default=0)
+    win_count: Mapped[int] = mapped_column(Integer, default=0)
+    loss_count: Mapped[int] = mapped_column(Integer, default=0)
+    win_rate_pct: Mapped[float] = mapped_column(Numeric(8, 4), default=0.0)
+    net_win_rate_pct: Mapped[float] = mapped_column(Numeric(8, 4), default=0.0)
+    avg_return_pct: Mapped[float] = mapped_column(Numeric(8, 4), default=0.0)
+    total_pnl: Mapped[float] = mapped_column(Numeric(18, 2), default=0.0)
+    profit_factor: Mapped[Optional[float]] = mapped_column(Numeric(8, 4), nullable=True)
+    avg_hold_hours: Mapped[float] = mapped_column(Numeric(8, 2), default=0.0)
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+
+
+class PaperMarketPerfDaily(Base):
+    """市场状态级每日绩效快照，用于评估不同环境下的模拟盘表现。"""
+
+    __tablename__ = "paper_market_perf_daily"
+    __table_args__ = (
+        UniqueConstraint(
+            "account_id",
+            "snapshot_date",
+            "market_state",
+            name="uq_pmpd_account_date_market",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    account_id: Mapped[int] = mapped_column(ForeignKey("paper_accounts.id"), index=True)
+    snapshot_date: Mapped[date] = mapped_column(Date, index=True)
+    market_state: Mapped[str] = mapped_column(String(32), index=True)
+    trade_count: Mapped[int] = mapped_column(Integer, default=0)
+    win_rate_pct: Mapped[float] = mapped_column(Numeric(8, 4), default=0.0)
+    net_win_rate_pct: Mapped[float] = mapped_column(Numeric(8, 4), default=0.0)
+    avg_return_pct: Mapped[float] = mapped_column(Numeric(8, 4), default=0.0)
+    profit_factor: Mapped[Optional[float]] = mapped_column(Numeric(8, 4), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+
+
+class PaperDailyReport(Base):
+    """模拟盘每日战绩点评，存储规则或大模型生成的复盘摘要。"""
+
+    __tablename__ = "paper_daily_reports"
+    __table_args__ = (
+        UniqueConstraint("account_id", "report_date", name="uq_pdr_account_date"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    account_id: Mapped[int] = mapped_column(ForeignKey("paper_accounts.id"), index=True)
+    report_date: Mapped[date] = mapped_column(Date, index=True)
+    overall_summary: Mapped[str] = mapped_column(Text, default="")
+    strategy_highlights: Mapped[str] = mapped_column(Text, default="[]")
+    risk_alerts: Mapped[str] = mapped_column(Text, default="[]")
+    suggestion: Mapped[str] = mapped_column(Text, default="")
+    raw_metrics_snapshot: Mapped[str] = mapped_column(Text, default="{}")
+    generated_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    llm_model: Mapped[str] = mapped_column(String(80), default="")
 
 
 class PaperAgentRun(Base):
@@ -624,6 +737,68 @@ class PaperAgentRun(Base):
     response_json: Mapped[str] = mapped_column(Text, default="{}")
     error_message: Mapped[str] = mapped_column(String(240), default="")
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), index=True)
+
+
+class AgentAuditLog(Base):
+    """Durable audit trail for Agent tool invocations."""
+
+    __tablename__ = "agent_audit_log"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    trace_id: Mapped[str] = mapped_column(String(80), index=True)
+    user_id: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id"), nullable=True, index=True)
+    provider_name: Mapped[str] = mapped_column(String(40), default="none", index=True)
+    tool_name: Mapped[str] = mapped_column(String(80), index=True)
+    permission: Mapped[str] = mapped_column(String(20), default="read", index=True)
+    input_arguments: Mapped[str] = mapped_column(Text, default="{}")
+    result_summary: Mapped[str] = mapped_column(Text, default="{}")
+    ok: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
+    duration_ms: Mapped[int] = mapped_column(Integer, default=0)
+    error_code: Mapped[str] = mapped_column(String(60), default="", index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), index=True)
+
+
+class NotificationEvent(Base):
+    """Notification de-duplication and signal-upgrade ledger.
+
+    One row tracks one logical notification target, e.g. user + channel +
+    stock + strategy.  The row is updated when the same signal is seen again,
+    or when it upgrades to a stronger state.
+    """
+
+    __tablename__ = "notification_events"
+    __table_args__ = (
+        UniqueConstraint(
+            "scope_key",
+            "channel",
+            "event_type",
+            "symbol",
+            "strategy_key",
+            name="uq_notification_event_target",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    scope_key: Mapped[str] = mapped_column(String(80), default="global", index=True)
+    user_id: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id"), nullable=True, index=True)
+    channel: Mapped[str] = mapped_column(String(32), default="feishu", index=True)
+    event_type: Mapped[str] = mapped_column(String(40), default="signal", index=True)
+    symbol: Mapped[str] = mapped_column(String(16), index=True)
+    name: Mapped[str] = mapped_column(String(64), default="")
+    strategy_key: Mapped[str] = mapped_column(String(80), default="", index=True)
+    strategy_title: Mapped[str] = mapped_column(String(80), default="")
+    signal_state: Mapped[str] = mapped_column(String(32), default="", index=True)
+    signal_rank: Mapped[int] = mapped_column(Integer, default=0)
+    previous_signal_state: Mapped[str] = mapped_column(String(32), default="")
+    upgraded: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
+    notification_count: Mapped[int] = mapped_column(Integer, default=0)
+    payload_json: Mapped[str] = mapped_column(Text, default="{}")
+    last_notified_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True, index=True)
+    last_seen_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, server_default=func.now(), onupdate=func.now()
+    )
 
 
 class IntradayConfirmationSnapshot(Base):

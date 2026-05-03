@@ -11,6 +11,7 @@ from app.models.entities import PaperOrder, PaperTrade
 from app.services.paper.account import PaperAccountService
 from app.services.paper.matching import MatchResult, OrderSide, OrderType, PaperMatchingEngine
 from app.services.paper.position import PaperPositionService
+from app.services.paper.reasons import normalize_entry_reason, normalize_exit_reason
 from app.services.paper.risk_control import PaperRiskControlService
 
 
@@ -42,14 +43,35 @@ class PaperOrderService:
         up_limit: Decimal | None = None,
         down_limit: Decimal | None = None,
         intraday_confirmed: bool = True,
+        commit: bool = True,
     ) -> PaperOrder:
+        self.accounts.get_account(account_id, for_update=True)
+        self._precheck(account_id, symbol, side, quantity, current_price)
+        if side == "buy" and not intraday_confirmed:
+            raise ValueError("盘中承接未确认，模拟买入被拒绝。")
+        self._risk_check(account_id, symbol, side, quantity, current_price)
+        match = self.matching.match(
+            symbol=symbol,
+            side=OrderSide(side),
+            order_type=OrderType(order_type),
+            quantity=quantity,
+            limit_price=price,
+            current_price=current_price,
+            quote_time=quote_time,
+            is_suspended=is_suspended,
+            up_limit=up_limit,
+            down_limit=down_limit,
+        )
+        if match.result != MatchResult.FILLED or match.avg_fill_price is None or match.fee_detail is None:
+            raise ValueError(match.reject_reason or "模拟委托未成交。")
+
         order = PaperOrder(
             account_id=account_id,
             symbol=symbol,
             name=name or symbol,
             side=side,
             order_type=order_type,
-            price=float(price) if price is not None else None,
+            price=price,
             quantity=quantity,
             source=source or "manual",
             strategy_key=strategy_key or "",
@@ -58,43 +80,15 @@ class PaperOrderService:
         )
         self.db.add(order)
         self.db.flush()
-        try:
-            self._precheck(account_id, symbol, side, quantity, current_price)
-            if side == "buy" and not intraday_confirmed:
-                raise ValueError("盘中承接未确认，模拟买入被拒绝。")
-            self._risk_check(account_id, symbol, side, quantity, current_price)
-            match = self.matching.match(
-                symbol=symbol,
-                side=OrderSide(side),
-                order_type=OrderType(order_type),
-                quantity=quantity,
-                limit_price=price,
-                current_price=current_price,
-                quote_time=quote_time,
-                is_suspended=is_suspended,
-                up_limit=up_limit,
-                down_limit=down_limit,
-            )
-        except Exception as exc:
-            order.status = "rejected"
-            order.reject_reason = str(exc)
-            self.db.commit()
-            self.db.refresh(order)
-            return order
-
-        if match.result != MatchResult.FILLED or match.avg_fill_price is None or match.fee_detail is None:
-            order.status = "rejected"
-            order.reject_reason = match.reject_reason or "模拟委托未成交。"
-            self.db.commit()
-            self.db.refresh(order)
-            return order
-
         order.status = "filled"
         order.filled_quantity = match.filled_quantity
-        order.avg_fill_price = float(match.avg_fill_price)
+        order.avg_fill_price = match.avg_fill_price
         self._apply_trade(order, match.avg_fill_price, match.fee_detail.net_amount, match.fee_detail)
-        self.db.commit()
-        self.db.refresh(order)
+        if commit:
+            self.db.commit()
+            self.db.refresh(order)
+        else:
+            self.db.flush()
         return order
 
     def get_orders(
@@ -132,7 +126,7 @@ class PaperOrderService:
             raise ValueError("委托数量必须是 100 股整数倍。")
         if side == "buy":
             estimated = current_price * Decimal(quantity) + Decimal("20")
-            if not self.accounts.check_balance(account_id, estimated):
+            if not self.accounts.check_balance_locked(account_id, estimated):
                 raise ValueError("可用资金不足，模拟买入被拒绝。")
             return
         position = self.positions.get_position(account_id, symbol)
@@ -146,15 +140,17 @@ class PaperOrderService:
             side=side,
             quantity=quantity,
             estimated_price=current_price,
-            current_order_counted=True,
+            current_order_counted=False,
         )
         if not decision.allowed:
             raise ValueError("；".join(decision.reasons))
 
     def _apply_trade(self, order: PaperOrder, fill_price: Decimal, net_amount: Decimal, fee_detail) -> None:
         account = self.accounts.get_account(order.account_id)
+        entry_reason = normalize_entry_reason(order.reason, source=order.source).text if order.side == "buy" else ""
+        exit_reason = normalize_exit_reason(_exit_reason_from_order(order), source=order.source).text
         if order.side == "buy":
-            account.cash_available = float(Decimal(str(account.cash_available or 0)) - net_amount)
+            account.cash_available = Decimal(str(account.cash_available or 0)) - net_amount
             per_share_cost = net_amount / Decimal(order.filled_quantity)
             self.positions.add_position(
                 account_id=order.account_id,
@@ -169,8 +165,8 @@ class PaperOrderService:
             position = self.positions.get_position(order.account_id, order.symbol)
             cost_basis = Decimal(str(position.cost_basis if position is not None else 0))
             self.positions.reduce_position(account_id=order.account_id, symbol=order.symbol, quantity=order.filled_quantity)
-            account.cash_available = float(Decimal(str(account.cash_available or 0)) + net_amount)
-            account.realized_pnl = float(
+            account.cash_available = Decimal(str(account.cash_available or 0)) + net_amount
+            account.realized_pnl = (
                 Decimal(str(account.realized_pnl or 0))
                 + ((fill_price - cost_basis) * Decimal(order.filled_quantity))
                 - fee_detail.total_fee
@@ -181,14 +177,31 @@ class PaperOrderService:
                 account_id=order.account_id,
                 symbol=order.symbol,
                 side=order.side,
-                price=float(fill_price),
+                price=fill_price,
                 quantity=order.filled_quantity,
-                gross_amount=float(fee_detail.gross_amount),
-                commission=float(fee_detail.commission),
-                stamp_tax=float(fee_detail.stamp_tax),
-                transfer_fee=float(fee_detail.transfer_fee),
-                net_amount=float(net_amount),
+                gross_amount=fee_detail.gross_amount,
+                commission=fee_detail.commission,
+                stamp_tax=fee_detail.stamp_tax,
+                transfer_fee=fee_detail.transfer_fee,
+                net_amount=net_amount,
                 strategy_key=order.strategy_key,
+                entry_reason=entry_reason[:240],
+                exit_reason=exit_reason[:80],
             )
         )
         self.accounts.update_market_value(order.account_id)
+
+
+def _exit_reason_from_order(order: PaperOrder) -> str:
+    if order.side != "sell":
+        return ""
+    try:
+        raw = json.loads(order.signal_snapshot or "{}")
+    except Exception:
+        raw = {}
+    if isinstance(raw, dict):
+        explicit = str(raw.get("exit_reason") or raw.get("reason") or "").strip()
+        if explicit:
+            return explicit
+    reason = (order.reason or "").strip()
+    return reason or "manual"

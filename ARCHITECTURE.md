@@ -1,120 +1,94 @@
-# A股短线做T量化系统架构图
+# 维斯量化交易平台架构说明
 
-## 整体架构
+## 当前定位
+
+本项目是 A 股短线做 T、低吸选股、模拟盘验证与 Agent 辅助分析平台。系统不执行真实下单，所有交易建议、模拟委托和 Agent 输出均为辅助决策信息。
+
+## 总体分层
 
 ```mermaid
 flowchart LR
-    U["用户 / 交易研究员"]
+    Web["React Web 前端"]
+    App["App 前端"]
+    API["FastAPI 业务 API"]
+    SafeAPI["Agent Safe API"]
+    Core["策略与模拟盘服务"]
+    Jobs["后台任务"]
+    DB["SQLite / MySQL"]
+    Market["行情与板块数据源"]
+    Agent["Hermes / MCP / HTTP Agent"]
 
-    subgraph FE["前端 Web 应用 (React + TypeScript + ECharts)"]
-        FE1["实时监控页<br/>Watchlist Dashboard"]
-        FE2["量化分析页<br/>Analysis Workbench"]
-        FE3["研究复盘页<br/>Research & Backtest"]
-        FE4["系统配置页<br/>Settings"]
-    end
-
-    subgraph API["后端 API 层 (FastAPI)"]
-        API1["市场接口<br/>/api/instruments /quote /kline"]
-        API2["分析接口<br/>/api/analyze /analyze/batch"]
-        API3["研究接口<br/>/api/replays /backtests"]
-        API4["配置接口<br/>/api/settings"]
-        API5["自选池接口<br/>/api/watchlist"]
-    end
-
-    subgraph CORE["核心服务层"]
-        S1["MarketDataService<br/>行情/标的/板块/事件"]
-        S2["MarketRuleService<br/>交易制度识别<br/>T+0 / T+1 / 底仓做T"]
-        S3["QuantEngine<br/>可交易性过滤<br/>多周期共振<br/>VWAP量价结构<br/>正T/反T建议"]
-        S4["AiService<br/>OpenAI兼容大模型接入"]
-        S5["ResearchService<br/>信号日志 / 复盘 / 回测"]
-        S6["SettingsService<br/>运行配置读写"]
-    end
-
-    subgraph DATA["数据源层"]
-        D1["免费实时行情<br/>Eastmoney Quote / Kline"]
-        D2["股票列表源<br/>交易所官方清单 / AkShare"]
-        D3["ETF列表源<br/>Sina ETF / AkShare"]
-        D4["行业/事件源<br/>东财个股资料 / 新闻 / 公告"]
-        D5["自定义数据源接口<br/>可扩展"]
-        D6["大模型服务<br/>OpenAI兼容 API"]
-    end
-
-    subgraph DB["持久化层"]
-        DB1["SQLite 默认库<br/>backend/data/t_quant.db"]
-        DB2["可切换外部数据库<br/>MySQL / PostgreSQL"]
-        DB3["核心表<br/>instruments<br/>instrument_rules<br/>watchlist<br/>system_settings<br/>analysis_logs<br/>signal_replays<br/>backtest_runs<br/>market_events"]
-    end
-
-    U --> FE
-    FE --> API
-
-    API1 --> S1
-    API1 --> S2
-    API2 --> S1
-    API2 --> S2
-    API2 --> S3
-    API2 --> S4
-    API2 --> S5
-    API3 --> S5
-    API4 --> S6
-    API5 --> S1
-    API5 --> S5
-
-    S1 --> D1
-    S1 --> D2
-    S1 --> D3
-    S1 --> D4
-    S1 --> D5
-    S4 --> D6
-
-    S1 --> DB
-    S2 --> DB
-    S5 --> DB
-    S6 --> DB
+    Web --> API
+    App --> API
+    Agent --> SafeAPI
+    SafeAPI --> API
+    API --> Core
+    Jobs --> Core
+    Core --> DB
+    Core --> Market
 ```
 
-## 核心分析链路
+## 后端模块
 
-```mermaid
-flowchart TD
-    A["用户选择标的并发起分析"] --> B["/api/analyze"]
-    B --> C["读取系统配置"]
-    C --> D["获取标的基础信息"]
-    D --> E["获取实时行情 + 分钟K线"]
-    E --> F["识别交易制度<br/>股票T+1 / ETF T+0或T+1"]
-    F --> G["计算量化特征<br/>MA / RSI / MACD / ATR / VWAP / 量比"]
-    G --> H["可交易性过滤<br/>流动性 / 振幅 / 风险事件"]
-    H --> I["做T策略判断<br/>正T / 反T / 观望"]
-    I --> J["动态仓位 / 止损 / 止盈 / 风险评级"]
-    J --> K["可选AI增强解释"]
-    K --> L["结果写入分析日志与复盘表"]
-    L --> M["返回前端展示"]
-```
+- `auth`：统一登录、刷新令牌、模拟盘白名单和接口认证。
+- `watchlist`：自选和持仓监控，输出做 T 信号。
+- `low_buy`：低吸策略体系，采用“生产 / 辅助 / 研究 / 因子”分层。
+- `paper`：模拟账户、委托、成交、自动交易、绩效归档和风控熔断。
+- `market`：行情、K 线、板块、市场环境和盘中确认数据。
+- `agent_tools` / `agent_providers`：Agent 工具注册、权限、审计和 provider 适配。
+- `research`：回测、策略验证和样本外评估。
+
+## 低吸策略体系
+
+生产策略只保留当前验证可用的短线逻辑：
+
+- `first_board`：首板回调。
+- `volume_shrink`：量能低吸。
+- `late_session_strong_support`：收盘强势承接。
+- `core_midcap_vwap_ma5_retrace`：中军 VWAP / 均线回踩。
+- `sector_mainline_first_divergence_low_buy`：主线首分歧低吸。
+
+旧策略处理：
+
+- `classic_retrace`、`breakout_support`、`limit_up_breakout_retrace`、`divergence_consensus`：保留研究兼容，不进入生产强买入口。
+- `ma_support`、`deep_pullback`、`trend_rebound`：作为因子或研究特征，不单独作为生产策略。
+
+## 性能原则
+
+- API 默认读取物化快照，不在请求线程里做全量扫描。
+- 行情价格走轻量刷新，分钟 K/VWAP 仅对临近买点候选限量刷新。
+- 低吸样本池按 `base_pool -> family_pool -> strategy_pool` 分层，策略可声明独立或共享样本池。
+- 回测和月度验证写入 `backtest_runs`，交互接口只读取结果。
+- 前端对关键 GET 接口提供内存缓存和离线回退，降低 502 对页面的影响。
+
+## Agent 架构
+
+Agent 只能通过 `/api/agent/*` 读取脱敏结构化数据：
+
+- 自选/持仓摘要。
+- 全策略优先级榜。
+- 个股分析摘要。
+- 每日报告。
+- 模拟盘组合摘要。
+- 模拟盘候选委托建议。
+
+默认禁用 write/notify/dangerous 工具。Hermes、MCP、Custom HTTP 通过同一 Tool Registry 接入。
 
 ## 部署结构
 
-```mermaid
-flowchart LR
-    B["浏览器"]
-    V["前端静态站点<br/>Vercel / CDN"]
-    F["FastAPI 后端服务<br/>云主机 / 容器 / Serverless"]
-    C["Docker 持久部署<br/>单容器 / 双容器"]
-    S["SQLite 或 外部数据库"]
-    M["外部行情源 / 大模型源"]
+生产部署使用云服务器容器：
 
-    B --> V
-    V --> F
-    B --> C
-    C --> S
-    C --> M
-    F --> S
-    F --> M
-```
+- Nginx / HTTPS 入口。
+- FastAPI 后端。
+- React 静态文件。
+- MySQL 或 SQLite 数据库。
+- 定时备份脚本。
+- 后台任务：低吸物化、watchlist 刷新、模拟盘归档、月度策略验证。
 
-## 架构说明
+## 安全边界
 
-- 前端负责展示、交互、图表和配置输入，不直接处理策略判断。
-- 后端负责统一接入行情、制度识别、量化引擎、AI增强、研究回测。
-- 数据源层采用“默认免费接口 + 可配置扩展”的设计，保证开箱即用。
-- 数据库默认使用 SQLite，便于本地运行；生产环境可切换为外部数据库。
-- 分析结果和回测结果都持久化，便于复盘和后续策略优化。
+- 所有核心业务路由需要登录。
+- 管理与设置接口需要管理员令牌。
+- `AUTH_SECRET_KEY` 必须显式配置，不允许回退到数据库连接串。
+- SSE 使用短期订阅令牌，不通过长期 token query 传参。
+- Agent 不直接访问数据库、不执行 shell、不改策略参数、不下单。

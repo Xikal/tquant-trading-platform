@@ -42,8 +42,14 @@ def _b64decode(value: str) -> bytes:
 
 def _auth_secret() -> bytes:
     settings = get_settings()
-    configured = settings.auth_secret_key or settings.admin_api_token or settings.database_url
+    configured = settings.auth_secret_key.strip()
+    if not configured:
+        raise AuthError("AUTH_SECRET_KEY 未配置，认证服务拒绝签发或校验令牌")
     return hashlib.sha256(configured.encode("utf-8")).digest()
+
+
+def ensure_auth_secret_configured() -> None:
+    _auth_secret()
 
 
 def _normalize_username(username: str) -> str:

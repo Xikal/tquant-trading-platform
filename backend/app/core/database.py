@@ -1,14 +1,17 @@
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 from shutil import copy2
 
-from sqlalchemy import create_engine, text
+from sqlalchemy import create_engine, event, text
 from sqlalchemy.orm import Session, sessionmaker
 
 from app.core.config import get_settings
 from app.core.schema_compat import ensure_schema_compatibility
 from app.models.base import Base
+
+logger = logging.getLogger(__name__)
 
 
 def _sqlite_connect_args(database_url: str) -> dict:
@@ -65,6 +68,31 @@ engine = create_engine(
     settings.database_url,
     **_engine_kwargs,
 )
+
+
+def _configure_sqlite_connection(dbapi_connection, _connection_record) -> None:
+    """Enable pragmatic SQLite settings for web/API concurrent reads.
+
+    SQLite remains a single-writer database, but WAL and a busy timeout reduce
+    avoidable `database is locked` failures when background jobs and API reads
+    overlap.
+    """
+
+    cursor = dbapi_connection.cursor()
+    try:
+        cursor.execute("PRAGMA foreign_keys=ON")
+        cursor.execute("PRAGMA busy_timeout=30000")
+        cursor.execute("PRAGMA journal_mode=WAL")
+        cursor.execute("PRAGMA synchronous=NORMAL")
+    except Exception:
+        logger.exception("failed to apply SQLite connection pragmas")
+    finally:
+        cursor.close()
+
+
+if settings.database_url.startswith("sqlite"):
+    event.listen(engine, "connect", _configure_sqlite_connection)
+
 SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False, future=True)
 
 

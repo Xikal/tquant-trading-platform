@@ -99,6 +99,68 @@ class MarketQuoteMixin:
         self._set_spot_snapshot_cache(instrument_type, result)
         return result
 
+    def _fetch_eastmoney_realtime_quote(self, symbol: str) -> QuoteSnapshot:
+        snapshots = self._fetch_eastmoney_realtime_quotes_batch([symbol])
+        snapshot = snapshots.get(symbol)
+        if snapshot is None:
+            raise DataSourceError(f"东方财富实时行情未返回 {symbol}。")
+        return snapshot
+
+    def _fetch_eastmoney_realtime_quotes_batch(self, symbols: list[str]) -> dict[str, QuoteSnapshot]:
+        """Fetch free Eastmoney real-time quotes for arbitrary A-share symbols.
+
+        Eastmoney `ulist.np/get` is a free public web endpoint used as the
+        second real-time source after Tencent.  It is not treated as an
+        exchange-guaranteed feed, so every snapshot carries freshness metadata.
+        """
+
+        cleaned_symbols = list(dict.fromkeys(symbol.strip() for symbol in symbols if symbol and symbol.strip()))
+        if not cleaned_symbols:
+            return {}
+        payload = self._fetch_json(
+            "https://push2.eastmoney.com/api/qt/ulist.np/get",
+            params={
+                "fltt": "2",
+                "fields": "f12,f13,f14,f2,f3,f4,f5,f6,f15,f16,f17,f18,f8,f10,f124",
+                "secids": ",".join(to_secid(symbol) for symbol in cleaned_symbols),
+            },
+        )
+        rows = ((payload.get("data") or {}).get("diff") or [])
+        result: dict[str, QuoteSnapshot] = {}
+        for row in rows:
+            symbol = _safe_str(row.get("f12")).strip()
+            if not symbol:
+                continue
+            snapshot = self._build_eastmoney_realtime_quote_snapshot(symbol, row)
+            if snapshot.last_price > 0:
+                result[symbol] = snapshot
+        return result
+
+    def _build_eastmoney_realtime_quote_snapshot(self, symbol: str, row: dict) -> QuoteSnapshot:
+        timestamp = self._normalize_eastmoney_timestamp(row.get("f124"))
+        name = _safe_str(row.get("f14")) or symbol
+        return QuoteSnapshot(
+            symbol=symbol,
+            name=name,
+            market="SH" if str(row.get("f13")) == "1" else "SZ",
+            instrument_type=guess_instrument_type(symbol, name),
+            last_price=_safe_float(row.get("f2")),
+            change_pct=_safe_float(row.get("f3")),
+            change_amount=_safe_float(row.get("f4")),
+            open_price=_safe_float(row.get("f17")),
+            high_price=_safe_float(row.get("f15")),
+            low_price=_safe_float(row.get("f16")),
+            prev_close=_safe_float(row.get("f18")),
+            volume=_safe_float(row.get("f5")),
+            amount=_safe_float(row.get("f6")),
+            turnover_rate=_safe_float(row.get("f8")) or None,
+            volume_ratio=_safe_float(row.get("f10")) or None,
+            timestamp=timestamp,
+            data_source="eastmoney_realtime",
+            source_quality="free_realtime",
+            is_stale=self._is_quote_timestamp_stale(timestamp),
+        )
+
     def _fetch_quote_from_trends(self, symbol: str) -> QuoteSnapshot:
         payload = self._fetch_json("https://push2his.eastmoney.com/api/qt/stock/trends2/get", params={"fields1": "f1,f2,f3,f4,f5,f6,f7,f8,f9,f10,f11,f12,f13", "fields2": "f51,f52,f53,f54,f55,f56,f57,f58", "ut": "7eea3edcaed734bea9cbfc24409ed989", "ndays": "5", "iscr": "0", "secid": to_secid(symbol)})
         data = payload.get("data") or {}
@@ -196,7 +258,8 @@ class MarketQuoteMixin:
         timestamp = timestamp_raw
         if len(timestamp_raw) == 14 and timestamp_raw.isdigit():
             timestamp = datetime.strptime(timestamp_raw, "%Y%m%d%H%M%S").strftime("%Y-%m-%d %H:%M:%S")
-        return QuoteSnapshot(symbol=symbol, name=name, market=guess_market(symbol), instrument_type=guess_instrument_type(symbol, name), last_price=_safe_float(fields[3]), change_pct=_safe_float(fields[32]), change_amount=_safe_float(fields[31]), open_price=_safe_float(fields[5]), high_price=_safe_float(fields[33]), low_price=_safe_float(fields[34]), prev_close=_safe_float(fields[4]), volume=_safe_float(fields[36] or fields[6]), amount=_safe_float(fields[37], scale=0.0001), turnover_rate=None, volume_ratio=None, timestamp=timestamp or datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+        normalized_timestamp = timestamp or datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        return QuoteSnapshot(symbol=symbol, name=name, market=guess_market(symbol), instrument_type=guess_instrument_type(symbol, name), last_price=_safe_float(fields[3]), change_pct=_safe_float(fields[32]), change_amount=_safe_float(fields[31]), open_price=_safe_float(fields[5]), high_price=_safe_float(fields[33]), low_price=_safe_float(fields[34]), prev_close=_safe_float(fields[4]), volume=_safe_float(fields[36] or fields[6]), amount=_safe_float(fields[37], scale=0.0001), turnover_rate=None, volume_ratio=None, timestamp=normalized_timestamp, data_source="tencent_realtime", source_quality="free_realtime", is_stale=self._is_quote_timestamp_stale(normalized_timestamp))
 
     def _fetch_sina_quote(self, symbol: str) -> QuoteSnapshot:
         fields = self._fetch_sina_quote_fields(symbol)
@@ -208,7 +271,8 @@ class MarketQuoteMixin:
         change_amount = round(last_price - prev_close, 4)
         change_pct = round((change_amount / prev_close * 100), 4) if prev_close else 0.0
         timestamp = f"{_safe_str(fields[30])} {_safe_str(fields[31])}".strip()
-        return QuoteSnapshot(symbol=symbol, name=name, market=guess_market(symbol), instrument_type=guess_instrument_type(symbol, name), last_price=last_price, change_pct=change_pct, change_amount=change_amount, open_price=_safe_float(fields[1]), high_price=_safe_float(fields[4]), low_price=_safe_float(fields[5]), prev_close=prev_close, volume=_safe_float(fields[8]), amount=_safe_float(fields[9]), turnover_rate=None, volume_ratio=None, timestamp=timestamp or datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+        normalized_timestamp = timestamp or datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        return QuoteSnapshot(symbol=symbol, name=name, market=guess_market(symbol), instrument_type=guess_instrument_type(symbol, name), last_price=last_price, change_pct=change_pct, change_amount=change_amount, open_price=_safe_float(fields[1]), high_price=_safe_float(fields[4]), low_price=_safe_float(fields[5]), prev_close=prev_close, volume=_safe_float(fields[8]), amount=_safe_float(fields[9]), turnover_rate=None, volume_ratio=None, timestamp=normalized_timestamp, data_source="sina_realtime", source_quality="free_fallback", is_stale=self._is_quote_timestamp_stale(normalized_timestamp))
 
     @classmethod
     def _get_quote_cache(cls, symbol: str):
@@ -269,6 +333,30 @@ class MarketQuoteMixin:
             return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         raw = value.strip()
         return f"{datetime.now().strftime('%Y-%m-%d')} {raw}" if len(raw) <= 8 and ":" in raw else raw
+
+    @staticmethod
+    def _normalize_eastmoney_timestamp(value) -> str:
+        try:
+            epoch = int(value)
+        except (TypeError, ValueError):
+            return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        if epoch <= 0:
+            return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        return datetime.fromtimestamp(epoch).strftime("%Y-%m-%d %H:%M:%S")
+
+    @staticmethod
+    def _is_quote_timestamp_stale(timestamp: str) -> bool:
+        try:
+            quote_time = datetime.strptime(str(timestamp)[:19], "%Y-%m-%d %H:%M:%S")
+        except (TypeError, ValueError):
+            return False
+        now = datetime.now()
+        if now.weekday() >= 5:
+            return False
+        current_minute = now.hour * 60 + now.minute
+        if not ((9 * 60 + 25) <= current_minute <= (15 * 60 + 10)):
+            return False
+        return (now - quote_time).total_seconds() > 300
 
     @staticmethod
     def _to_sina_symbol(symbol: str) -> str:

@@ -119,13 +119,14 @@ def paper_access(current_user: User = Depends(get_current_user)):
 
 
 def _set_refresh_cookie(response: Response, refresh_token: str) -> None:
-    max_age = get_settings().auth_refresh_token_days * 24 * 60 * 60
+    settings = get_settings()
+    max_age = settings.auth_refresh_token_days * 24 * 60 * 60
     response.set_cookie(
         key=REFRESH_COOKIE_NAME,
         value=refresh_token,
         max_age=max_age,
         httponly=True,
-        secure=False,
+        secure=settings.auth_cookie_secure,
         samesite="lax",
         path="/api/auth",
     )
@@ -135,7 +136,7 @@ def _clear_refresh_cookie(response: Response) -> None:
     response.delete_cookie(
         key=REFRESH_COOKIE_NAME,
         httponly=True,
-        secure=False,
+        secure=get_settings().auth_cookie_secure,
         samesite="lax",
         path="/api/auth",
     )

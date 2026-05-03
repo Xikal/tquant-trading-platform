@@ -48,8 +48,8 @@ class PaperRiskCircuitBreaker:
                 self._ensure_event(
                     account_id=account_id,
                     event_type="loss_streak",
-                    severity="medium",
-                    message=f"最近连续 {streak} 次卖出亏损，建议降低频率。",
+                    severity="high",
+                    message=f"最近连续 {streak} 次卖出亏损，模拟账户已暂停新增委托，请先复盘。",
                     payload={"loss_streak": streak},
                 )
             )

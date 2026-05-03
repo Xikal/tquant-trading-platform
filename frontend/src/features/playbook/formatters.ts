@@ -28,6 +28,9 @@ export function applyQuoteRefresh(candidate: LowBuyCandidate, quote?: LowBuyQuot
     latest_price: quote.latest_price,
     change_pct: quote.change_pct,
     quote_timestamp: quote.quote_timestamp,
+    data_source: quote.data_source ?? candidate.data_source,
+    source_quality: quote.source_quality ?? candidate.source_quality,
+    is_stale: quote.is_stale ?? candidate.is_stale,
     entry_distance_pct: quote.distance_to_entry_pct,
     suggested_position_pct: quote.suggested_position_pct,
     suggested_position_text: quote.suggested_position_text,
@@ -73,6 +76,9 @@ export function applyQuoteRefreshToHistory(
               latest_price: quoteMap[candidate.symbol].latest_price,
               change_pct: quoteMap[candidate.symbol].change_pct,
               quote_timestamp: quoteMap[candidate.symbol].quote_timestamp,
+              data_source: quoteMap[candidate.symbol].data_source ?? candidate.data_source,
+              source_quality: quoteMap[candidate.symbol].source_quality ?? candidate.source_quality,
+              is_stale: quoteMap[candidate.symbol].is_stale ?? candidate.is_stale,
             }
           : candidate
       ),

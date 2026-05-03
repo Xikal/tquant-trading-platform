@@ -17,6 +17,7 @@ from app.models.schema_defs.research import (
 )
 from app.repositories.low_buy import DailyHistoryRepository
 from app.repositories.low_buy.results import LowBuyResultRepository
+from app.services.low_buy.risk_metrics import compute_pbo
 from app.services.paper.matching import MatchResult, OrderSide, OrderType, PaperMatchingEngine
 
 
@@ -27,7 +28,13 @@ class StrategyValidationPipeline:
         self.db = db
         self.matching = matching_engine or PaperMatchingEngine()
 
-    def validate(self, payload: StrategyValidationRequest) -> StrategyValidationReport:
+    def validate(
+        self,
+        payload: StrategyValidationRequest,
+        *,
+        run_name: str = "strategy-validation",
+        extra_params: dict | None = None,
+    ) -> StrategyValidationReport:
         trade_dates = DailyHistoryRepository(self.db).fetch_recent_trade_dates(payload.lookback_days)
         items = [
             self._validate_strategy(strategy_key=strategy, trade_dates=trade_dates, payload=payload)
@@ -40,8 +47,12 @@ class StrategyValidationPipeline:
             total_filled_signals=sum(item.filled_signals for item in items),
             items=items,
             summary=_summary_text(items),
+            policy_recommendations=_policy_recommendations(items),
         )
-        run = self._persist_report("strategy-validation", payload.model_dump(), report.model_dump(mode="json"))
+        params = payload.model_dump()
+        if extra_params:
+            params.update(extra_params)
+        run = self._persist_report(run_name, params, report.model_dump(mode="json"))
         return report.model_copy(update={"run_id": run.id})
 
     def compare_strategies(self, payload: StrategyComparisonRequest) -> StrategyValidationReport:
@@ -146,6 +157,10 @@ def _item_from_records(strategy_key: str, evaluated_signals: int, records: list[
     losses = [value for value in returns if value < 0]
     gross_gain = sum(wins)
     gross_loss = abs(sum(losses))
+    in_sample, out_sample = _train_test_split(records)
+    sharpe = _sharpe_ratio(returns)
+    walk_forward = _walk_forward(records)
+    pbo_detail = _pbo_detail(real_sharpe=sharpe, returns=returns)
     return StrategyValidationItem(
         strategy_key=strategy_key,
         evaluated_signals=evaluated_signals,
@@ -153,11 +168,26 @@ def _item_from_records(strategy_key: str, evaluated_signals: int, records: list[
         win_rate_pct=_rate(len(wins), len(records)),
         net_win_rate_pct=_rate(len(wins) - len(losses), len(records)),
         avg_return_pct=round(sum(returns) / len(returns), 3) if returns else 0.0,
+        in_sample_return_pct=round(_avg_return(in_sample), 3),
+        out_sample_return_pct=round(_avg_return(out_sample), 3),
+        out_sample_win_rate_pct=_rate(sum(1 for item in out_sample if item.return_pct > 0), len(out_sample)),
         profit_factor=round(gross_gain / gross_loss, 3) if gross_loss > 0 else None,
+        sharpe_ratio=round(sharpe, 4),
         max_drawdown_pct=round(min((item.max_drawdown_pct for item in records), default=0.0), 3),
+        walk_forward_windows=walk_forward["windows"],
+        walk_forward_pass_rate_pct=walk_forward["pass_rate_pct"],
         pbo_risk=_pbo_risk(records),
+        pbo_probability=_pbo_probability(in_sample, out_sample, pbo_detail),
+        pbo_detail=pbo_detail,
         by_market_state=_market_state_buckets(records),
     )
+
+
+def _train_test_split(records: list[ReplayRecord]) -> tuple[list[ReplayRecord], list[ReplayRecord]]:
+    if len(records) < 2:
+        return records, []
+    split_index = max(1, int(len(records) * 0.7))
+    return records[:split_index], records[split_index:]
 
 
 def _market_state_buckets(records: list[ReplayRecord]) -> dict[str, dict[str, float]]:
@@ -177,18 +207,89 @@ def _market_state_buckets(records: list[ReplayRecord]) -> dict[str, dict[str, fl
 def _pbo_risk(records: list[ReplayRecord]) -> str:
     if len(records) < 30:
         return "insufficient_sample"
-    midpoint = len(records) // 2
-    first = _avg_return(records[:midpoint])
-    second = _avg_return(records[midpoint:])
-    if first > 0 and second > 0:
+    first, second = _train_test_split(records)
+    first_return = _avg_return(first)
+    second_return = _avg_return(second)
+    if first_return > 0 and second_return > 0:
         return "low"
-    if first * second < 0:
+    if first_return * second_return < 0:
         return "high"
     return "medium"
 
 
 def _avg_return(records: list[ReplayRecord]) -> float:
     return sum(item.return_pct for item in records) / max(len(records), 1)
+
+
+def _pbo_probability(
+    in_sample: list[ReplayRecord],
+    out_sample: list[ReplayRecord],
+    pbo_detail: dict,
+) -> float | None:
+    pbo = pbo_detail.get("pbo")
+    if isinstance(pbo, (int, float)) and pbo_detail.get("verdict") != "insufficient_sample":
+        return round(1.0 - float(pbo), 4)
+    if len(in_sample) < 20 or len(out_sample) < 10:
+        return None
+    in_return = _avg_return(in_sample)
+    out_return = _avg_return(out_sample)
+    if in_return > 0 and out_return > 0:
+        return 0.15
+    if in_return > 0 >= out_return:
+        return 0.75
+    if in_return * out_return < 0:
+        return 0.65
+    return 0.45
+
+
+def _pbo_detail(*, real_sharpe: float, returns: list[float]) -> dict:
+    if len(returns) < 30:
+        return {"verdict": "insufficient_sample", "pbo": None}
+    # Treat each filled signal as an active event and compare against randomized
+    # event placement on the same return distribution.  Cap permutations to keep
+    # route latency predictable for interactive validation.
+    return compute_pbo(
+        real_sharpe=real_sharpe,
+        signal_series=_validation_signal_mask(len(returns)),
+        returns_series=returns,
+        n_permutations=300,
+    )
+
+
+def _validation_signal_mask(size: int) -> list[bool]:
+    if size <= 0:
+        return []
+    # Leave room for permutation; using every row as active makes PBO degenerate.
+    active_count = max(1, min(size - 1, int(size * 0.7)))
+    return [index < active_count for index in range(size)]
+
+
+def _sharpe_ratio(returns: list[float]) -> float:
+    if len(returns) < 2:
+        return 0.0
+    mean = sum(returns) / len(returns)
+    variance = sum((value - mean) ** 2 for value in returns) / (len(returns) - 1)
+    std = variance**0.5
+    if std <= 0:
+        return 0.0
+    # Daily short-horizon validation uses percent returns; annualize by sqrt(252).
+    return (mean / std) * (252**0.5)
+
+
+def _walk_forward(records: list[ReplayRecord], windows: int = 5) -> dict[str, float | int]:
+    if not records:
+        return {"windows": 0, "pass_rate_pct": 0.0}
+    actual_windows = max(1, min(windows, len(records)))
+    window_size = max(1, len(records) // actual_windows)
+    chunks = [
+        records[index : index + window_size]
+        for index in range(0, len(records), window_size)
+    ][:actual_windows]
+    passed = sum(1 for chunk in chunks if _avg_return(chunk) > 0)
+    return {
+        "windows": len(chunks),
+        "pass_rate_pct": _rate(passed, len(chunks)),
+    }
 
 
 def _entry_price(row: LowBuyResultSnapshot, fallback_close: float) -> float:
@@ -258,6 +359,22 @@ def _summary_text(items: list[StrategyValidationItem]) -> str:
         return "暂无可验证策略。"
     best = max(items, key=lambda item: (item.avg_return_pct, item.net_win_rate_pct, item.filled_signals))
     return f"已完成 {len(items)} 个策略验证，当前样本内表现较好的是 {best.strategy_key}。"
+
+
+def _policy_recommendations(items: list[StrategyValidationItem]) -> dict[str, str]:
+    return {item.strategy_key: _policy_recommendation(item) for item in items}
+
+
+def _policy_recommendation(item: StrategyValidationItem) -> str:
+    if item.filled_signals < 20:
+        return "observe_insufficient_sample"
+    if item.avg_return_pct <= 0 or item.net_win_rate_pct < 0:
+        return "downgrade_review_required"
+    if item.profit_factor is not None and item.profit_factor < 1.1:
+        return "downgrade_profit_factor_weak"
+    if item.walk_forward_pass_rate_pct < 50:
+        return "observe_walk_forward_unstable"
+    return "keep_production"
 
 
 def _comparison_summary(items: list[StrategyValidationItem]) -> str:

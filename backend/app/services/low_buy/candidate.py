@@ -13,48 +13,32 @@ from app.services.low_buy.dynamic_adjustments import (
     apply_performance_adjustment_to_candidate,
     low_buy_dynamic_adjustment,
 )
-from app.services.low_buy.candidate_rules import (
-    build_strategy_setup,
-    passes_strategy_prefilter,
-    score_candidate,
-)
+from app.services.low_buy.base_strategy import get_low_buy_strategy
 from app.services.low_buy.candidate_types import CandidateContextAdjustment, CandidateMetrics, StrategySetup
-from app.services.low_buy.factor_external import (
-    evaluate_big_order_flow_factor,
-    evaluate_event_risk_factor,
-)
+from app.services.low_buy.data_quality import build_candidate_data_quality, data_quality_payload
+from app.services.low_buy.factor_scoring import build_factor_scores, weighted_factor_bonus
 from app.services.low_buy.factor_types import FactorContext
-from app.services.low_buy.positioning import build_position_breakdown_text, total_position_multiplier
-from app.services.low_buy.position_sizing import compute_kelly_position
+from app.services.low_buy.positioning import build_position_breakdown_text
+from app.services.low_buy.candidate_position_advice import position_advice_for_signal
 from app.services.low_buy.research_layers import evaluate_research_layer, is_research_layer_strategy
 from app.services.low_buy.risk_tiers import resolve_low_buy_risk_tier
-from app.services.low_buy.strategy_policy import is_core_production, mainline_industry_allowed
+from app.services.low_buy.strategy_policy import mainline_industry_allowed
 from app.services.low_buy.signal_family import (
     SignalFamilyProfile,
     build_signal_family_profile,
-    evaluate_absorption_quality_factor,
-    evaluate_deep_pullback_factor,
-    evaluate_gap_risk_factor,
-    evaluate_price_structure_factor,
-    evaluate_sector_density_factor,
-    evaluate_sector_flow_factor,
-    evaluate_shrink_quality_factor,
-    evaluate_signal_freshness_factor,
-    evaluate_time_efficiency_factor,
-    evaluate_trend_rebound_factor,
-    evaluate_volatility_regime_factor,
     profile_with_setup,
 )
 from app.services.market.regime import MarketRegimeSnapshot
+from app.services.market.state_categories import standard_market_state_payload
 from app.services.low_buy.shared import (
     BoardCandidate,
     DEFAULT_PRODUCTION_LOW_BUY_STRATEGY,
     LOW_BUY_RESULT_VERSION,
-    LOW_BUY_THRESHOLDS,
     LowBuyCandidateOut,
     guess_market,
     pd,
 )
+from app.services.low_buy.price_math import distance_to_entry_zone_pct
 
 
 class LowBuyCandidateMixin:
@@ -63,11 +47,7 @@ class LowBuyCandidateMixin:
 
     @staticmethod
     def _distance_to_entry_zone_pct(candidate: LowBuyCandidateOut, latest_price: float) -> float:
-        if candidate.entry_zone_low <= latest_price <= candidate.entry_zone_high:
-            return 0.0
-        if latest_price > candidate.entry_zone_high:
-            return round(((latest_price - candidate.entry_zone_high) / max(candidate.entry_zone_high, 0.01)) * 100, 3)
-        return round(((candidate.entry_zone_low - latest_price) / max(candidate.entry_zone_low, 0.01)) * 100, 3)
+        return distance_to_entry_zone_pct(candidate, latest_price)
 
     def _signal_rank(self, state: str) -> int:
         ranks = {"buy_now": 5, "soft_buy_now": 4, "near_entry": 3, "watch": 2, "avoid": 1}
@@ -93,107 +73,7 @@ class LowBuyCandidateMixin:
 
     @staticmethod
     def _position_advice_for_signal(candidate: LowBuyCandidateOut, state: str, performance=None) -> tuple[float, str]:
-        strategy = candidate.strategy_key
-        if state == "buy_now":
-            mapping = {
-                "classic_retrace": (30.0, "先试仓 30%，承接继续增强再加到 50%。"),
-                "ma_support": (30.0, "均线承接明确，先试仓 30%，确认后再加。"),
-                "first_board": (25.0, "首板回踩波动更快，先试仓 25%。"),
-                "volume_shrink": (25.0, "缩量承接型机会，先试仓 25%。"),
-                "late_session_strong_support": (12.0, "收盘承接只做次日兑现，先试仓 12%。"),
-                "core_midcap_vwap_ma5_retrace": (15.0, "主线中军回踩支撑，先试仓 15%，不做重仓追涨。"),
-                "sector_mainline_first_divergence_low_buy": (12.0, "主线首分歧只做核心前排，先试仓 12%。"),
-                "breakout_support": (20.0, "突破回踩更看确认，先试仓 20%。"),
-                "limit_up_breakout_retrace": (18.0, "突破回踩型机会更强调确认，先试仓 18%。"),
-                "divergence_consensus": (16.0, "分歧转一致属于右侧确认，先试仓 16%，跌回突破位不留恋。"),
-                "deep_pullback": (15.0, "深水低吸风险高，只建议 15% 试仓。"),
-                "trend_rebound": (25.0, "趋势龙回头，先试仓 25%，不要一次打满。"),
-            }
-            position, text = mapping.get(strategy, (20.0, "先小仓试错，确认后再加。"))
-            position, text = LowBuyCandidateMixin._kelly_adjusted_base_position(position, text, performance)
-            return LowBuyCandidateMixin._market_adjusted_position(candidate, position, text)
-        if state == "soft_buy_now":
-            mapping = {
-                "classic_retrace": (20.0, "软确认已成立，先试仓 20%，强确认再补。"),
-                "ma_support": (20.0, "均线承接基本成立，先试仓 20%。"),
-                "first_board": (18.0, "首板回踩先轻仓，确认后再加。"),
-                "volume_shrink": (18.0, "量能回落但还没到最强确认，先试仓 18%。"),
-                "late_session_strong_support": (8.0, "收盘承接软确认，只允许轻仓观察次日冲高。"),
-                "core_midcap_vwap_ma5_retrace": (10.0, "中军回踩软确认，先小仓看修复。"),
-                "sector_mainline_first_divergence_low_buy": (8.0, "主线首分歧软确认，只能轻仓等待回流。"),
-                "breakout_support": (15.0, "突破回踩先轻仓，等进一步承接。"),
-                "limit_up_breakout_retrace": (12.0, "涨停突破回踩先小仓试错，确认二次转强再加。"),
-                "divergence_consensus": (10.0, "突破确认还不够硬，只允许 10% 轻仓观察。"),
-                "deep_pullback": (10.0, "深水回撤只允许更轻的软确认试仓。"),
-                "trend_rebound": (18.0, "龙回头软确认，先轻仓参与。"),
-            }
-            position, text = mapping.get(strategy, (15.0, "软确认买点只建议轻仓试错。"))
-            position, text = LowBuyCandidateMixin._kelly_adjusted_base_position(position, text, performance)
-            return LowBuyCandidateMixin._market_adjusted_position(candidate, position, text)
-        if state == "near_entry":
-            return LowBuyCandidateMixin._market_adjusted_position(
-                candidate,
-                15.0,
-                "已经接近买点，先列计划，最多预留 15% 试仓。",
-            )
-        if state == "watch":
-            return 0.0, "还没到可执行区，暂时不下单。"
-        return 0.0, "今天不做这只票。"
-
-    @staticmethod
-    def _kelly_adjusted_base_position(base_position_pct: float, text: str, performance=None) -> tuple[float, str]:
-        filled_signals = int(getattr(performance, "filled_signals", 0) or 0)
-        if performance is None or filled_signals < LOW_BUY_THRESHOLDS.MIN_SAMPLE_SIZE_DISPLAY:
-            return base_position_pct, text
-        avg_win_pct = float(getattr(performance, "avg_win_pct", 0.0) or 0.0)
-        avg_loss_pct = float(getattr(performance, "avg_loss_pct", 0.0) or 0.0)
-        if avg_win_pct <= 0 or avg_loss_pct >= 0:
-            return base_position_pct, text
-        kelly = compute_kelly_position(
-            win_rate=float(getattr(performance, "hit_rate", 0.0) or 0.0) / 100.0,
-            avg_win_pct=avg_win_pct,
-            avg_loss_pct=avg_loss_pct,
-        )
-        if kelly.half_kelly <= 0:
-            return 0.0, f"{text} 策略历史盈亏比暂不支持放大仓位，先观察。"
-        kelly_position_pct = round(kelly.half_kelly * 100, 2)
-        adjusted = min(base_position_pct, kelly_position_pct)
-        return adjusted, f"{text} 已按半凯利仓位上限 {kelly_position_pct:.1f}% 收敛。"
-
-    @staticmethod
-    def _market_adjusted_position(
-        candidate: LowBuyCandidateOut,
-        base_position_pct: float,
-        text: str,
-    ) -> tuple[float, str]:
-        market_multiplier = max(candidate.market_position_multiplier, 0.0)
-        risk_multiplier = max(candidate.risk_position_multiplier, 0.0)
-        industry_multiplier = max(candidate.industry_position_multiplier, 0.0)
-        dynamic_multiplier = max(candidate.dynamic_position_multiplier, 0.0)
-        multiplier = total_position_multiplier(candidate)
-        adjusted = round(base_position_pct * multiplier, 2)
-        notes: list[str] = []
-        deep_pullback_factor = float(candidate.factor_scores.get("deep_pullback_factor", 0.0) or 0.0)
-        if deep_pullback_factor > 0 and not is_core_production(candidate.strategy_key):
-            adjusted = min(adjusted, LOW_BUY_THRESHOLDS.DEEP_PULLBACK_NON_CORE_POSITION_CAP)
-            notes.append("深回撤因子只作为辅助判断，非核心策略仓位封顶 10%。")
-        if market_multiplier < 0.99:
-            notes.append(f"当前{candidate.market_state_text or '市场偏弱'}，仓位已自动下调。")
-        if risk_multiplier <= 0.01:
-            notes.append("当前风险层级已阻断，不建议开仓。")
-        elif risk_multiplier < 0.95:
-            notes.append("当前风险层级偏谨慎，仓位已自动收缩。")
-        if industry_multiplier > 1.03:
-            notes.append(f"{candidate.industry_tier_text}，仓位小幅上调。")
-        elif industry_multiplier < 0.95:
-            notes.append(f"{candidate.industry_tier_text}，仓位继续收紧。")
-        if dynamic_multiplier <= 0.9:
-            notes.append("动态权重偏弱，仓位已进一步收紧。")
-        elif dynamic_multiplier >= 1.05:
-            notes.append("动态权重偏强，可按计划执行。")
-        if not notes:
-            return adjusted, text
-        return adjusted, f"{text} {' '.join(notes)}"
+        return position_advice_for_signal(candidate, state, performance)
 
     @staticmethod
     def _execution_quality(candidate: LowBuyCandidateOut) -> tuple[float, str]:
@@ -283,6 +163,7 @@ class LowBuyCandidateMixin:
         factor_context: FactorContext | None = None,
     ) -> LowBuyCandidateOut | None:
         hot_industries = hot_industries or []
+        strategy_adapter = get_low_buy_strategy(strategy)
         if not self._passes_candidate_filters(item):
             return None
         if not mainline_industry_allowed(strategy, item.industry, hot_industries):
@@ -292,11 +173,10 @@ class LowBuyCandidateMixin:
         if metrics is None or not self._passes_common_prefilter(item=item, metrics=metrics, strategy=strategy):
             return None
 
-        if not passes_strategy_prefilter(strategy=strategy, item=item, metrics=metrics):
+        if not strategy_adapter.passes_prefilter(item=item, metrics=metrics):
             return None
 
-        base_score = score_candidate(
-            strategy=strategy,
+        base_score = strategy_adapter.score_candidate(
             item=item,
             metrics=metrics,
             hot_industries=hot_industries,
@@ -326,7 +206,7 @@ class LowBuyCandidateMixin:
         if adjusted_score < score_floor + context_adjustment.score_floor_shift:
             return None
 
-        setup = build_strategy_setup(strategy=strategy, item=item, metrics=metrics, score=adjusted_score)
+        setup = strategy_adapter.build_setup(item=item, metrics=metrics, score=adjusted_score)
         signal_profile = profile_with_setup(signal_profile, setup, strategy=strategy)
         return self._build_candidate_output(
             strategy=strategy,
@@ -348,40 +228,11 @@ class LowBuyCandidateMixin:
 
     @staticmethod
     def _factor_scores(metrics: CandidateMetrics, context: FactorContext | None = None) -> dict[str, float]:
-        scores = {
-            "deep_pullback_factor": evaluate_deep_pullback_factor(metrics),
-            "trend_rebound_factor": evaluate_trend_rebound_factor(metrics),
-            "shrink_quality_factor": evaluate_shrink_quality_factor(metrics),
-            "gap_risk_factor": evaluate_gap_risk_factor(metrics),
-            "volatility_regime_factor": evaluate_volatility_regime_factor(metrics),
-            "time_efficiency_factor": evaluate_time_efficiency_factor(metrics),
-            "price_structure_factor": evaluate_price_structure_factor(metrics),
-            "sector_density_factor": evaluate_sector_density_factor(context),
-            "sector_flow_factor": evaluate_sector_flow_factor(context),
-            "signal_freshness_factor": evaluate_signal_freshness_factor(context),
-            "absorption_quality_factor": evaluate_absorption_quality_factor(),
-        }
-        if context is not None and context.current_symbol:
-            scores["big_order_flow_factor"] = evaluate_big_order_flow_factor(
-                symbol=context.current_symbol,
-                retracement_days=context.retracement_days,
-            )
-            scores["event_risk_factor"] = evaluate_event_risk_factor(
-                symbol=context.current_symbol,
-            )
-        filtered = {key: value for key, value in scores.items() if value > 0}
-        if context is not None and context.current_symbol:
-            filtered.setdefault("big_order_flow_factor", scores.get("big_order_flow_factor", 0.0))
-            filtered.setdefault("event_risk_factor", scores.get("event_risk_factor", 0.0))
-        return filtered
+        return build_factor_scores(metrics, context)
 
     @staticmethod
     def _weighted_factor_bonus(factor_scores: dict[str, float]) -> float:
-        weighted = sum(
-            max(float(value), 0.0) * LOW_BUY_THRESHOLDS.FACTOR_WEIGHTS.get(key, 1.0)
-            for key, value in factor_scores.items()
-        )
-        return min(LOW_BUY_THRESHOLDS.MAX_FACTOR_BONUS, weighted)
+        return weighted_factor_bonus(factor_scores)
 
     def _build_context_adjustment(
         self,
@@ -545,6 +396,13 @@ class LowBuyCandidateMixin:
             mainline_industries=hot_industries,
             leader_rank=signal_profile.leader_rank,
         )
+        market_state_fields = standard_market_state_payload(context_adjustment.market_state)
+        quality_fields = data_quality_payload(
+            build_candidate_data_quality(
+                latest_price=metrics.latest_close,
+                quote_timestamp=metrics.latest_trade_date,
+            )
+        )
         candidate = LowBuyCandidateOut(
             strategy_key=strategy,
             strategy_title=self._get_playbook(strategy)["title"],
@@ -557,6 +415,7 @@ class LowBuyCandidateMixin:
             latest_price=round(metrics.latest_close, 3),
             change_pct=round(metrics.latest_change_pct, 3),
             quote_timestamp=metrics.latest_trade_date,
+            **quality_fields,
             board_date=item.board_date,
             board_count=item.board_count,
             retracement_days=metrics.retracement_days,
@@ -603,6 +462,8 @@ class LowBuyCandidateMixin:
             suggested_position_text="",
             market_state=context_adjustment.market_state,
             market_state_text=context_adjustment.market_state_text,
+            market_state_category=market_state_fields["market_state_category"],
+            market_state_category_text=market_state_fields["market_state_category_text"],
             market_state_strength=context_adjustment.market_state_strength,
             market_position_multiplier=context_adjustment.market_position_multiplier,
             confirmed_trade_date=metrics.latest_trade_date if execution_ready else None,

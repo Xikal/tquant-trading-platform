@@ -5,8 +5,10 @@ import logging
 import time
 
 from app.models.schemas import LowBuyCandidateOut, LowBuyQuoteRefreshOut, LowBuyScreenerResponse
+from app.services.low_buy.price_math import distance_to_entry_zone_pct
 from app.repositories.low_buy.results import LowBuyResultRepository
 from app.services.low_buy.shared import LOW_BUY_THRESHOLDS, Session
+from app.services.low_buy.data_quality import build_candidate_data_quality, data_quality_payload
 
 logger = logging.getLogger(__name__)
 
@@ -162,10 +164,22 @@ class LowBuyQuoteRefreshMixin:
 
     @staticmethod
     def _quote_refresh_without_context(quote) -> LowBuyQuoteRefreshOut:
+        quote_meta = LowBuyQuoteRefreshMixin._quote_metadata(quote)
+        quality_fields = data_quality_payload(
+            build_candidate_data_quality(
+                latest_price=float(quote.last_price),
+                quote_timestamp=str(quote.timestamp),
+                source_quality=str(quote_meta.get("source_quality") or ""),
+                is_stale=bool(quote_meta.get("is_stale", False)),
+                change_pct=float(quote.change_pct),
+            )
+        )
         return LowBuyQuoteRefreshOut(
             latest_price=round(float(quote.last_price), 3),
             change_pct=round(float(quote.change_pct), 3),
             quote_timestamp=str(quote.timestamp),
+            **quote_meta,
+            **quality_fields,
             in_entry_zone=False,
             distance_to_entry_pct=0.0,
             stop_confirmed=False,
@@ -202,12 +216,24 @@ class LowBuyQuoteRefreshMixin:
             intraday_bars=intraday_bars,
             require_intraday_structure=True,
         )
+        quote_meta = self._quote_metadata(quote)
+        quality_fields = data_quality_payload(
+            build_candidate_data_quality(
+                latest_price=float(quote.last_price),
+                quote_timestamp=str(quote.timestamp),
+                source_quality=str(quote_meta.get("source_quality") or ""),
+                is_stale=bool(quote_meta.get("is_stale", False)),
+                change_pct=float(quote.change_pct),
+            )
+        )
         return LowBuyQuoteRefreshOut(
             latest_price=round(float(quote.last_price), 3),
             change_pct=round(float(quote.change_pct), 3),
             quote_timestamp=str(quote.timestamp),
+            **quote_meta,
+            **quality_fields,
             in_entry_zone=self._is_in_entry_zone(signal),
-            distance_to_entry_pct=self._distance_to_entry_zone_pct(signal, quote.last_price),
+            distance_to_entry_pct=distance_to_entry_zone_pct(signal, quote.last_price),
             stop_confirmed=self._is_intraday_stop_confirmed(
                 signal,
                 quote,
@@ -227,6 +253,14 @@ class LowBuyQuoteRefreshMixin:
             risk_tier=signal.risk_tier,
             next_watch_price=signal.next_watch_price,
         )
+
+    @staticmethod
+    def _quote_metadata(quote) -> dict[str, object]:
+        return {
+            "data_source": getattr(quote, "data_source", None),
+            "source_quality": getattr(quote, "source_quality", None),
+            "is_stale": bool(getattr(quote, "is_stale", False)),
+        }
 
     def _load_quote_refresh_intraday_bars_batch(
         self,
@@ -289,7 +323,7 @@ class LowBuyQuoteRefreshMixin:
             "below_zone": 1,
             "near_above_zone": 2,
         }.get(self._entry_position(candidate, latest_price), 3)
-        entry_distance = self._distance_to_entry_zone_pct(candidate, latest_price)
+        entry_distance = distance_to_entry_zone_pct(candidate, latest_price)
         return (state_rank, position_rank, entry_distance, -float(candidate.score or 0.0))
 
     def _load_quote_refresh_intraday_bars(self, symbol: str):

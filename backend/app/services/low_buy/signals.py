@@ -60,6 +60,14 @@ class LowBuySignalMixin:
             require_intraday_structure=require_intraday_structure,
         )
         entry_distance = self._distance_to_entry_zone_pct(refreshed_candidate, latest_price)
+        if quote is not None and bool(getattr(quote, "is_stale", False)):
+            return self._signal_update(
+                candidate=refreshed_candidate,
+                state="watch",
+                text="继续观察",
+                hint="实时行情时间已过期，只更新价格参考，不触发买入信号。",
+                entry_distance=entry_distance,
+            )
         return self._resolve_signal_state(
             candidate=refreshed_candidate,
             entry_position=entry_position,
@@ -320,37 +328,27 @@ class LowBuySignalMixin:
     @staticmethod
     def _strategy_hard_buy_quality_gate(candidate: LowBuyCandidateOut) -> bool:
         if candidate.strategy_key == "first_board":
-            return (
-                candidate.distribution_risk_score < 5.2
-                and not candidate.false_breakout_flag
-                and not candidate.intraday_reversal_flag
-            )
+            return LowBuySignalMixin._base_quality_clear(candidate, 5.2)
         if candidate.strategy_key == "volume_shrink":
             return (
                 candidate.latest_price >= candidate.ma20 * 0.998
                 and candidate.support_distance_pct <= 2.5
                 and candidate.volume_shrink_ratio <= 1.08
-                and candidate.distribution_risk_score < 5.0
-                and not candidate.false_breakout_flag
-                and not candidate.intraday_reversal_flag
+                and LowBuySignalMixin._base_quality_clear(candidate, 5.0)
             )
         if candidate.strategy_key == "late_session_strong_support":
             return (
                 candidate.support_distance_pct <= 2.4
                 and candidate.volume_shrink_ratio <= 1.08
-                and candidate.distribution_risk_score < 4.8
                 and _is_hot_frontline_candidate(candidate)
-                and not candidate.false_breakout_flag
-                and not candidate.intraday_reversal_flag
+                and LowBuySignalMixin._base_quality_clear(candidate, 4.8)
             )
         if candidate.strategy_key == "core_midcap_vwap_ma5_retrace":
             return (
                 _is_hot_frontline_candidate(candidate)
                 and candidate.support_distance_pct <= 1.8
                 and candidate.volume_shrink_ratio <= 1.12
-                and candidate.distribution_risk_score < 4.8
-                and not candidate.false_breakout_flag
-                and not candidate.intraday_reversal_flag
+                and LowBuySignalMixin._base_quality_clear(candidate, 4.8)
             )
         if candidate.strategy_key == "sector_mainline_first_divergence_low_buy":
             return (
@@ -358,9 +356,7 @@ class LowBuySignalMixin:
                 and _is_hot_frontline_candidate(candidate)
                 and candidate.support_distance_pct <= 2.0
                 and candidate.volume_shrink_ratio <= 1.10
-                and candidate.distribution_risk_score < 4.8
-                and not candidate.false_breakout_flag
-                and not candidate.intraday_reversal_flag
+                and LowBuySignalMixin._base_quality_clear(candidate, 4.8)
             )
         return True
 
@@ -473,37 +469,27 @@ class LowBuySignalMixin:
     @staticmethod
     def _strategy_soft_buy_quality_gate(candidate: LowBuyCandidateOut) -> bool:
         if candidate.strategy_key == "first_board":
-            return (
-                candidate.distribution_risk_score < 5.8
-                and not candidate.false_breakout_flag
-                and not candidate.intraday_reversal_flag
-            )
+            return LowBuySignalMixin._base_quality_clear(candidate, 5.8)
         if candidate.strategy_key == "volume_shrink":
             return (
                 candidate.latest_price >= candidate.ma20 * 0.992
                 and candidate.support_distance_pct <= 2.8
                 and candidate.volume_shrink_ratio <= 1.15
-                and candidate.distribution_risk_score < 5.6
-                and not candidate.false_breakout_flag
-                and not candidate.intraday_reversal_flag
+                and LowBuySignalMixin._base_quality_clear(candidate, 5.6)
             )
         if candidate.strategy_key == "late_session_strong_support":
             return (
                 candidate.support_distance_pct <= 2.8
                 and candidate.volume_shrink_ratio <= 1.15
-                and candidate.distribution_risk_score < 5.4
                 and _is_hot_frontline_candidate(candidate)
-                and not candidate.false_breakout_flag
-                and not candidate.intraday_reversal_flag
+                and LowBuySignalMixin._base_quality_clear(candidate, 5.4)
             )
         if candidate.strategy_key == "core_midcap_vwap_ma5_retrace":
             return (
                 _is_hot_frontline_candidate(candidate)
                 and candidate.support_distance_pct <= 2.2
                 and candidate.volume_shrink_ratio <= 1.18
-                and candidate.distribution_risk_score < 5.2
-                and not candidate.false_breakout_flag
-                and not candidate.intraday_reversal_flag
+                and LowBuySignalMixin._base_quality_clear(candidate, 5.2)
             )
         if candidate.strategy_key == "sector_mainline_first_divergence_low_buy":
             return (
@@ -511,11 +497,17 @@ class LowBuySignalMixin:
                 and _is_hot_frontline_candidate(candidate)
                 and candidate.support_distance_pct <= 2.4
                 and candidate.volume_shrink_ratio <= 1.18
-                and candidate.distribution_risk_score < 5.2
-                and not candidate.false_breakout_flag
-                and not candidate.intraday_reversal_flag
+                and LowBuySignalMixin._base_quality_clear(candidate, 5.2)
             )
         return True
+
+    @staticmethod
+    def _base_quality_clear(candidate: LowBuyCandidateOut, distribution_limit: float) -> bool:
+        return (
+            candidate.distribution_risk_score < distribution_limit
+            and not candidate.false_breakout_flag
+            and not candidate.intraday_reversal_flag
+        )
 
     @staticmethod
     def _is_strict_in_zone_strategy(strategy_key: str) -> bool:
@@ -735,14 +727,6 @@ class LowBuySignalMixin:
         if tolerance_pct > 0 and latest_price <= candidate.entry_zone_high * (1 + tolerance_pct / 100):
             return "near_above_zone"
         return "above_zone"
-
-    @staticmethod
-    def _distance_to_entry_zone_pct(candidate: LowBuyCandidateOut, latest_price: float) -> float:
-        if candidate.entry_zone_low <= latest_price <= candidate.entry_zone_high:
-            return 0.0
-        if latest_price > candidate.entry_zone_high:
-            return round(((latest_price - candidate.entry_zone_high) / max(candidate.entry_zone_high, 0.01)) * 100, 3)
-        return round(((candidate.entry_zone_low - latest_price) / max(candidate.entry_zone_low, 0.01)) * 100, 3)
 
     def _apply_live_quotes(self, candidates: list[LowBuyCandidateOut], quote_map: dict[str, Any] | None = None) -> list[LowBuyCandidateOut]:
         if not candidates:

@@ -18,8 +18,11 @@ from app.services.low_buy.shared import (
 from app.services.low_buy.screening_quotes import LowBuyQuoteRefreshMixin
 from app.services.low_buy.factor_types import FactorContext
 from app.services.low_buy.factor_external import resolve_sector_flow_ranks
+from app.services.low_buy.data_quality import build_market_data_quality, data_quality_payload
+from app.repositories.low_buy import SystemSettingRepository
 from app.services.low_buy.recommendation_duration import attach_response_recommendation_durations
 from app.services.low_buy.strategy_policy import requires_mainline_industry
+from app.services.market.state_categories import standard_market_state_payload
 
 
 class LowBuyScreeningMixin(LowBuyQuoteRefreshMixin):
@@ -31,7 +34,19 @@ class LowBuyScreeningMixin(LowBuyQuoteRefreshMixin):
         limit: int,
         include_history: bool,
     ) -> LowBuyScreenerResponse | None:
-        return None
+        setting_key = self._full_cache_setting_key(strategy, latest_trade_date, limit, include_history)
+        row = SystemSettingRepository(db).fetch(setting_key)
+        if row is None or not row.value or not self._response_payload_is_current(row.value):
+            return None
+        try:
+            payload = LowBuyScreenerResponse.model_validate_json(row.value)
+        except Exception:
+            return None
+        if payload.latest_trade_date != latest_trade_date or payload.strategy_key != strategy:
+            return None
+        self._persist_materialized_full_result(db=db, payload=payload)
+        db.commit()
+        return attach_response_recommendation_durations(db=db, payload=payload)
 
     def refresh_full_scan_cache(
         self,
@@ -267,8 +282,21 @@ class LowBuyScreeningMixin(LowBuyQuoteRefreshMixin):
             full_scan_ready=False,
             full_scan_in_progress=full_scan_in_progress,
             full_scan_updated_at=None,
+            market_state_category="low_volume_wait",
+            market_state_category_text="缩量观望",
+            data_quality="limited",
+            data_quality_text="后台全量深筛仍在补齐",
+            data_quality_tags=["全量快照待生成"],
             retracement_distribution={},
-            filters={"scan_mode": "全量物化", "_result_version": LOW_BUY_RESULT_VERSION},
+            filters={
+                "scan_mode": "全量物化",
+                "market_state_category": "low_volume_wait",
+                "market_state_category_text": "缩量观望",
+                "data_quality": "limited",
+                "data_quality_text": "后台全量深筛仍在补齐",
+                "data_quality_tags_json": json.dumps(["全量快照待生成"], ensure_ascii=False),
+                "_result_version": LOW_BUY_RESULT_VERSION,
+            },
             strategy_notes=list(playbook["notes"]),
             performance=performance,
             confirmed_candidates=[],
@@ -427,6 +455,13 @@ class LowBuyScreeningMixin(LowBuyQuoteRefreshMixin):
             else []
         )
         as_of_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        market_state_fields = standard_market_state_payload(market_regime.state)
+        market_quality = build_market_data_quality(
+            breadth_ready=market_regime.breadth_ready,
+            emotion_ready=market_regime.emotion_ready,
+            hot_industry_source=hot_industry_source,
+        )
+        quality_fields = data_quality_payload(market_quality)
         response = LowBuyScreenerResponse(
             strategy_key=strategy,
             strategy_title=playbook["title"],
@@ -446,6 +481,9 @@ class LowBuyScreeningMixin(LowBuyQuoteRefreshMixin):
             full_scan_updated_at=as_of_date if scan_mode == "full" else None,
             market_state=market_regime.state,
             market_state_text=market_regime.label,
+            market_state_category=market_state_fields["market_state_category"],
+            market_state_category_text=market_state_fields["market_state_category_text"],
+            **quality_fields,
             market_bonus=market_regime.ranking_bonus,
             market_state_strength=market_regime.state_strength,
             regime_confidence=market_regime.regime_confidence,
@@ -485,7 +523,12 @@ class LowBuyScreeningMixin(LowBuyQuoteRefreshMixin):
                 "volume_rule": "底部涨停放量 + 横盘缩量 + 倍量突破" if strategy == "divergence_consensus" else "启动放量 + 回调缩量",
                 "market_regime": market_regime.label,
                 "market_state": market_regime.state,
+                "market_state_category": market_state_fields["market_state_category"],
+                "market_state_category_text": market_state_fields["market_state_category_text"],
                 "market_regime_text": market_regime.description,
+                "data_quality": quality_fields["data_quality"],
+                "data_quality_text": quality_fields["data_quality_text"],
+                "data_quality_tags_json": json.dumps(quality_fields["data_quality_tags"], ensure_ascii=False),
                 "market_state_strength": market_regime.state_strength,
                 "regime_confidence": market_regime.regime_confidence,
                 "state_persistence_days": market_regime.state_persistence_days,

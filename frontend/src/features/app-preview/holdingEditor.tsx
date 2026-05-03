@@ -112,15 +112,15 @@ export function HoldingEditorSheet({
   const title = mode === "buy" ? "加入持仓" : mode === "create" ? "新增持仓" : "编辑持仓"
 
   return (
-    <div className="mobile-app-sheet-backdrop" role="presentation" onClick={onClose}>
+    <div className="mobile-app-sheet-backdrop mobile-holding-editor-backdrop" role="presentation" onClick={onClose}>
       <section className="mobile-app-sheet mobile-holding-editor" onClick={(event) => event.stopPropagation()}>
         <div className="mobile-app-sheet-head">
           <div className="mobile-app-sheet-title">
             <h2>{title}</h2>
-            <small>股数按 100 股</small>
+            <small>100 股递增</small>
           </div>
           <button type="button" className="mobile-app-icon-button" onClick={onClose} aria-label="关闭">
-            关闭
+            ×
           </button>
         </div>
 

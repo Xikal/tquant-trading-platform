@@ -3,8 +3,11 @@ from __future__ import annotations
 import unittest
 from unittest.mock import patch
 
+from app.agent_providers.base import ProviderUnavailable
 from app.agent_providers.custom_http_provider import CustomHttpProvider
+from app.agent_providers.hermes_provider import HermesProvider
 from app.agent_providers.none_provider import NoneProvider
+from app.agent_providers.remote_gateway import RemoteAgentGatewayClient
 from app.agent_tools.registry import get_tool_definition
 
 
@@ -16,6 +19,28 @@ class _FakeLocalInvoker:
         return {"tool": tool.name, "arguments": arguments}
 
 
+class _RemoteErrorResponse:
+    def raise_for_status(self) -> None:
+        return None
+
+    def json(self) -> dict:
+        return {"ok": False, "error": {"message": "gateway rejected"}}
+
+
+class _RemoteErrorClient:
+    def __init__(self, *args, **kwargs) -> None:  # noqa: ANN002, ANN003
+        pass
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args) -> None:  # noqa: ANN002
+        return None
+
+    def post(self, *args, **kwargs) -> _RemoteErrorResponse:  # noqa: ANN002, ANN003
+        return _RemoteErrorResponse()
+
+
 class AgentProviderTests(unittest.TestCase):
     def test_none_provider_reports_available(self) -> None:
         provider = NoneProvider()
@@ -25,6 +50,23 @@ class AgentProviderTests(unittest.TestCase):
 
     def test_notify_tool_is_denied_by_default(self) -> None:
         result = NoneProvider().invoke_tool("send_test_notification", {"channel": "feishu"})
+        self.assertFalse(result.ok)
+        self.assertIsNotNone(result.error)
+        self.assertEqual(result.error.code, "TOOL_PERMISSION_DENIED")
+        signal_result = NoneProvider().invoke_tool(
+            "send_signal_notification",
+            {"symbol": "510300", "signal_state": "near_entry"},
+        )
+        self.assertFalse(signal_result.ok)
+        self.assertIsNotNone(signal_result.error)
+        self.assertEqual(signal_result.error.code, "TOOL_PERMISSION_DENIED")
+        scan_result = NoneProvider().invoke_tool("scan_priority_board_notifications", {"limit": 3})
+        self.assertFalse(scan_result.ok)
+        self.assertIsNotNone(scan_result.error)
+        self.assertEqual(scan_result.error.code, "TOOL_PERMISSION_DENIED")
+
+    def test_write_tool_is_denied_by_default(self) -> None:
+        result = NoneProvider().invoke_tool("recommend_orders", {"limit": 3})
         self.assertFalse(result.ok)
         self.assertIsNotNone(result.error)
         self.assertEqual(result.error.code, "TOOL_PERMISSION_DENIED")
@@ -51,8 +93,24 @@ class AgentProviderTests(unittest.TestCase):
         self.assertIsNotNone(result.error)
         self.assertEqual(result.error.code, "PROVIDER_NOT_CONFIGURED")
 
+    def test_hermes_provider_missing_config_returns_not_configured(self) -> None:
+        provider = HermesProvider()
+        provider.settings.hermes_api_url = ""
+        self.assertFalse(provider.health().available)
+        result = provider.invoke_tool("get_priority_board", {"limit": 12})
+        self.assertFalse(result.ok)
+        self.assertIsNotNone(result.error)
+        self.assertEqual(result.error.code, "PROVIDER_NOT_CONFIGURED")
+
     def test_registry_tool_definition_used_by_provider(self) -> None:
         self.assertIsNotNone(get_tool_definition("get_priority_board"))
+
+    def test_remote_gateway_ok_false_raises_unavailable(self) -> None:
+        tool = get_tool_definition("get_priority_board")
+        self.assertIsNotNone(tool)
+        with patch("app.agent_providers.remote_gateway.httpx.Client", _RemoteErrorClient):
+            with self.assertRaises(ProviderUnavailable):
+                RemoteAgentGatewayClient(base_url="http://agent.local").invoke(tool, {"limit": 12})
 
 
 if __name__ == "__main__":

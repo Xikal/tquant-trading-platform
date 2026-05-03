@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import threading
 import time
+from datetime import date
 from typing import Optional
 
 from sqlalchemy import select
@@ -24,6 +25,7 @@ from app.services.app_mobile.common import (
     headline_reason,
     now_string,
 )
+from app.services.watchlist_t1 import mark_watchlist_t1_availability, refresh_watchlist_t1_availability
 
 
 class AppMobileWatchlistMixin:
@@ -32,6 +34,7 @@ class AppMobileWatchlistMixin:
     _user_watchlist_card_cache_ttl_seconds = 12.0
 
     def list_watchlist(self, db: Session, user_id: int | None = None) -> AppWatchlistResponse:
+        self._refresh_t1_availability(db, user_id=user_id)
         rows = self._list_watchlist_rows(db, user_id=user_id)
         items = [self._to_watchlist_item(row) for row in rows]
         return AppWatchlistResponse(
@@ -58,6 +61,7 @@ class AppMobileWatchlistMixin:
             row.available_position = payload.available_position
             row.cost_basis = payload.cost_basis
             row.memo = payload.memo
+        mark_watchlist_t1_availability(row, today=date.today())
         db.commit()
         if user_id is None:
             self.watchlist_signal_service.ensure_background_refresh(force=True)
@@ -115,6 +119,7 @@ class AppMobileWatchlistMixin:
         raise LookupError("自选股不存在")
 
     def _build_watchlist_cards(self, db: Session, user_id: int | None = None) -> list[AppWatchlistCard]:
+        self._refresh_t1_availability(db, user_id=user_id)
         if user_id is not None:
             return self._build_user_watchlist_cards(db, user_id)
         payloads = self.watchlist_signal_service.list_signals(db)
@@ -251,6 +256,25 @@ class AppMobileWatchlistMixin:
     def _invalidate_user_watchlist_cache(self, user_id: int) -> None:
         with self._user_watchlist_card_cache_lock:
             self._user_watchlist_card_cache.pop(user_id, None)
+
+    def _refresh_t1_availability(self, db: Session, user_id: int | None = None) -> None:
+        model = UserWatchlist if user_id is not None else Watchlist
+        changed = refresh_watchlist_t1_availability(
+            db,
+            model=model,
+            user_id=user_id,
+            today=date.today(),
+        )
+        if not changed:
+            return
+        if user_id is None:
+            refresh_snapshots = getattr(self.watchlist_signal_service, "refresh_snapshots", None)
+            if callable(refresh_snapshots):
+                refresh_snapshots(force=True)
+            else:
+                self.watchlist_signal_service.ensure_background_refresh(force=True)
+        else:
+            self._invalidate_user_watchlist_cache(user_id)
 
 
 def _plain_action_text(signal_payload: dict) -> str:

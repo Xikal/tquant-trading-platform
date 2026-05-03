@@ -1,0 +1,242 @@
+import { useEffect, useMemo, useState } from "react";
+import { api } from "../../api/client";
+import type { PaperPerformanceDashboard, PaperStrategyTrend } from "../../types";
+import { formatAmount, formatPct, shortTime, strategyLabel, toneFromChange } from "./workspaceFormatters";
+
+const RANGE_OPTIONS = [7, 30, 90, 180] as const;
+
+export function PerformanceDashboard() {
+  const [days, setDays] = useState<number>(30);
+  const [dashboard, setDashboard] = useState<PaperPerformanceDashboard | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    void loadDashboard(days);
+  }, [days]);
+
+  async function loadDashboard(nextDays = days) {
+    try {
+      setLoading(true);
+      setError("");
+      setDashboard(await api.getPaperPerformanceDashboard(nextDays));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "绩效看板加载失败");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  const latestEquity = lastOf(dashboard?.equity_curve ?? []);
+  const strategyRows = useMemo(
+    () => [...(dashboard?.strategy_trend ?? [])].sort(compareStrategyTrend).slice(0, 8),
+    [dashboard]
+  );
+
+  return (
+    <section className="page-grid performance-dashboard-grid">
+      <section className="panel performance-hero">
+        <div>
+          <p className="eyebrow">PAPER PERFORMANCE</p>
+          <h2>模拟盘绩效看板</h2>
+          <span>收盘后归档战绩，按策略与市场状态追踪趋势。只用于复盘，不代表真实交易指令。</span>
+        </div>
+        <div className="performance-actions">
+          <select value={days} onChange={(event) => setDays(Number(event.target.value))}>
+            {RANGE_OPTIONS.map((value) => (
+              <option value={value} key={value}>{value}日</option>
+            ))}
+          </select>
+          <button type="button" className="ghost-button" onClick={() => void loadDashboard()} disabled={loading}>
+            {loading ? "刷新中..." : "刷新"}
+          </button>
+        </div>
+      </section>
+
+      <MetricStrip
+        items={[
+          { label: "总资产", value: formatAmount(dashboard?.account.total_assets), tone: "neutral" },
+          { label: "累计收益", value: formatPct(dashboard?.account.total_return_pct), tone: toneFromChange(dashboard?.account.total_return_pct) },
+          { label: "最新净值点", value: latestEquity?.date ?? "--", tone: "neutral" },
+          { label: "更新时间", value: shortTime(dashboard?.updated_at) || "--", tone: "neutral" },
+        ]}
+      />
+
+      {error ? <section className="panel performance-alert">{error}</section> : null}
+
+      <section className="panel performance-chart-panel performance-equity-chart">
+        <div className="panel-title">
+          <h2>资产曲线</h2>
+          <span className="hint">总资产与累计收益趋势</span>
+        </div>
+        <LineChart
+          points={(dashboard?.equity_curve ?? []).map((item) => ({
+            x: item.date.slice(5),
+            y: item.total_assets,
+            label: `${item.date} · ${formatAmount(item.total_assets)}`,
+          }))}
+          tone="gold"
+        />
+      </section>
+
+      <section className="panel performance-chart-panel performance-winrate-chart">
+        <div className="panel-title">
+          <h2>胜率趋势</h2>
+          <span className="hint">胜率与净胜率分开观察</span>
+        </div>
+        <LineChart
+          points={(dashboard?.win_rate_trend ?? []).map((item) => ({
+            x: item.date.slice(5),
+            y: item.net_win_rate_pct,
+            label: `${item.date} · 净胜率 ${formatPct(item.net_win_rate_pct)}`,
+          }))}
+          tone="red"
+        />
+      </section>
+
+      <section className="panel performance-report">
+        <div className="panel-title">
+          <h2>战绩总结</h2>
+          <span className="hint">{dashboard?.today_report?.report_date ?? "暂无日报"}</span>
+        </div>
+        {dashboard?.today_report ? (
+          <div className="performance-report-body">
+            <p>{dashboard.today_report.overall_summary}</p>
+            <div className="performance-report-block">
+              <strong>策略亮点</strong>
+              {(dashboard.today_report.strategy_highlights.length ? dashboard.today_report.strategy_highlights : [{ strategy: "暂无", comment: "暂无策略级日报。", trend: "stable" }]).map((item, index) => (
+                <span key={`${item.strategy}-${index}`}>{strategyLabel(item.strategy)}：{item.comment}</span>
+              ))}
+            </div>
+            <div className="performance-report-block">
+              <strong>风险提醒</strong>
+              {(dashboard.today_report.risk_alerts.length ? dashboard.today_report.risk_alerts : [{ level: "info", content: "暂无额外风险提醒。" }]).map((item, index) => (
+                <span key={`${item.level}-${index}`}>{item.content}</span>
+              ))}
+            </div>
+            <div className="performance-suggestion">{dashboard.today_report.suggestion}</div>
+          </div>
+        ) : (
+          <EmptyPerformance text="暂无每日复盘，收盘归档或手动归档后显示。" />
+        )}
+      </section>
+
+      <section className="panel performance-strategy">
+        <div className="panel-title">
+          <h2>策略趋势</h2>
+          <span className="hint">按平均收益排序</span>
+        </div>
+        <div className="performance-table">
+          <div className="performance-table-head">
+            <span>策略</span>
+            <span>成交</span>
+            <span>胜率</span>
+            <span>净胜率</span>
+            <span>均收</span>
+          </div>
+          {strategyRows.length ? strategyRows.map((item) => <StrategyTrendRow item={item} key={item.strategy_key} />) : <EmptyPerformance text="暂无策略绩效归档" />}
+        </div>
+      </section>
+
+      <section className="panel performance-market">
+        <div className="panel-title">
+          <h2>市场状态热力</h2>
+          <span className="hint">查看哪些环境更适合模拟执行</span>
+        </div>
+        <div className="market-heatmap">
+          {(dashboard?.market_perf_heatmap ?? []).length ? dashboard!.market_perf_heatmap.map((item) => (
+            <div className={`market-heatmap-card ${toneFromChange(item.avg_return_pct)}`} key={item.market_state}>
+              <strong>{item.market_state || "未分类"}</strong>
+              <span>成交 {item.trade_count}</span>
+              <span>胜率 {formatPct(item.avg_win_rate_pct)}</span>
+              <span>均收 {formatPct(item.avg_return_pct)}</span>
+            </div>
+          )) : <EmptyPerformance text="暂无市场状态归档" />}
+        </div>
+      </section>
+    </section>
+  );
+}
+
+function MetricStrip({ items }: { items: Array<{ label: string; value: string; tone: string }> }) {
+  return (
+    <section className="metric-grid performance-metrics">
+      {items.map((item) => (
+        <div className={`metric ${item.tone}`} key={item.label}>
+          <span>{item.label}</span>
+          <strong>{item.value}</strong>
+        </div>
+      ))}
+    </section>
+  );
+}
+
+function StrategyTrendRow({ item }: { item: PaperStrategyTrend }) {
+  const latest = lastOf(item.points);
+  const avgTone = toneFromChange(latest?.avg_return_pct);
+  return (
+    <div className="performance-table-row">
+      <strong>{strategyLabel(item.strategy_key)}</strong>
+      <span>{latest?.trade_count ?? "--"}</span>
+      <span>{formatPct(latest?.win_rate_pct)}</span>
+      <span>{formatPct(latest?.net_win_rate_pct)}</span>
+      <span className={avgTone}>{formatPct(latest?.avg_return_pct)}</span>
+    </div>
+  );
+}
+
+function LineChart({
+  points,
+  tone,
+}: {
+  points: Array<{ x: string; y: number; label: string }>;
+  tone: "gold" | "red";
+}) {
+  if (points.length < 2) {
+    return <EmptyPerformance text="归档点不足，至少需要 2 个交易日。" />;
+  }
+  const width = 560;
+  const height = 170;
+  const padding = 20;
+  const yValues = points.map((item) => item.y);
+  const minY = Math.min(...yValues);
+  const maxY = Math.max(...yValues);
+  const span = maxY - minY || 1;
+  const path = points
+    .map((item, index) => {
+      const x = padding + (index / Math.max(points.length - 1, 1)) * (width - padding * 2);
+      const y = height - padding - ((item.y - minY) / span) * (height - padding * 2);
+      return `${index === 0 ? "M" : "L"}${x.toFixed(1)},${y.toFixed(1)}`;
+    })
+    .join(" ");
+  return (
+    <div className="performance-line-chart">
+      <svg viewBox={`0 0 ${width} ${height}`} role="img" aria-label="绩效趋势图">
+        <path d={path} className={`line-${tone}`} fill="none" />
+        {points.map((item, index) => {
+          const x = padding + (index / Math.max(points.length - 1, 1)) * (width - padding * 2);
+          const y = height - padding - ((item.y - minY) / span) * (height - padding * 2);
+          return <circle key={`${item.x}-${index}`} cx={x} cy={y} r="3.5"><title>{item.label}</title></circle>;
+        })}
+      </svg>
+      <div className="performance-chart-axis">
+        <span>{points[0]?.x}</span>
+        <span>{lastOf(points)?.x}</span>
+      </div>
+    </div>
+  );
+}
+
+function EmptyPerformance({ text }: { text: string }) {
+  return <div className="empty-state performance-empty">{text}</div>;
+}
+
+function compareStrategyTrend(left: PaperStrategyTrend, right: PaperStrategyTrend): number {
+  const leftReturn = lastOf(left.points)?.avg_return_pct ?? 0;
+  const rightReturn = lastOf(right.points)?.avg_return_pct ?? 0;
+  return rightReturn - leftReturn;
+}
+
+function lastOf<T>(items: T[]): T | undefined {
+  return items.length ? items[items.length - 1] : undefined;
+}

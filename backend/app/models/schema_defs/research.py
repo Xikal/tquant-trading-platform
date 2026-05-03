@@ -74,9 +74,17 @@ class StrategyValidationItem(BaseModel):
     win_rate_pct: float = 0.0
     net_win_rate_pct: float = 0.0
     avg_return_pct: float = 0.0
+    in_sample_return_pct: float = 0.0
+    out_sample_return_pct: float = 0.0
+    out_sample_win_rate_pct: float = 0.0
     profit_factor: Optional[float] = None
+    sharpe_ratio: float = 0.0
     max_drawdown_pct: float = 0.0
+    walk_forward_windows: int = 0
+    walk_forward_pass_rate_pct: float = 0.0
     pbo_risk: str = "insufficient_sample"
+    pbo_probability: Optional[float] = None
+    pbo_detail: dict[str, Any] = Field(default_factory=dict)
     by_market_state: dict[str, Any] = Field(default_factory=dict)
 
 
@@ -88,6 +96,7 @@ class StrategyValidationReport(BaseModel):
     total_filled_signals: int
     items: list[StrategyValidationItem]
     summary: str
+    policy_recommendations: dict[str, str] = Field(default_factory=dict)
 
 
 class StrategyComparisonRequest(BaseModel):

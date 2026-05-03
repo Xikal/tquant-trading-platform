@@ -32,6 +32,18 @@ export interface BacktestResult {
   trades: BacktestTrade[];
 }
 
+export interface BacktestRun {
+  id: number;
+  name: string;
+  params: Record<string, unknown>;
+  result: Record<string, unknown>;
+  created_at: string;
+}
+
+export interface BacktestRunListResponse {
+  runs: BacktestRun[];
+}
+
 export interface StrategyValidationItem {
   strategy_key: string;
   evaluated_signals: number;
@@ -39,9 +51,13 @@ export interface StrategyValidationItem {
   win_rate_pct: number;
   net_win_rate_pct: number;
   avg_return_pct: number;
+  in_sample_return_pct?: number;
+  out_sample_return_pct?: number;
+  out_sample_win_rate_pct?: number;
   profit_factor?: number | null;
   max_drawdown_pct: number;
   pbo_risk: string;
+  pbo_probability?: number | null;
   by_market_state: Record<string, unknown>;
 }
 

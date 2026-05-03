@@ -1,5 +1,7 @@
+from __future__ import annotations
+
 from contextlib import asynccontextmanager
-from datetime import datetime
+from datetime import date, datetime, time as dt_time
 import logging
 from pathlib import Path
 import threading
@@ -20,6 +22,11 @@ from app.models.schemas import HealthResponse, ReadinessResponse
 from app.repositories.low_buy.results import LowBuyResultRepository
 from app.services.low_buy.shared import DEFAULT_PRODUCTION_LOW_BUY_STRATEGY
 from app.services.low_buy_screener import PLAYBOOKS, LowBuyScreenerService
+from app.services.paper.archive import PaperArchiveService
+from app.services.paper.scheduler import build_auto_trader_config, start_auto_trader, stop_auto_trader
+from app.services.paper.validation_scheduler import MonthlyStrategyValidationJob
+from app.services.auth_service import ensure_auth_secret_configured
+from app.services.agent_signal_scan_service import AgentSignalScanService
 from app.services.watchlist_signal_service import WatchlistSignalService
 
 settings = get_settings()
@@ -34,6 +41,7 @@ FULL_SCAN_BACKGROUND_LIMIT = 40
 SQLITE_BACKGROUND_SCAN_LIMIT = 120
 DEFAULT_BACKGROUND_SCAN_LIMIT = 480
 logger = logging.getLogger(__name__)
+_paper_archive_last_run_date: date | None = None
 
 
 def _background_jobs_enabled() -> bool:
@@ -162,8 +170,58 @@ def _refresh_watchlist_signal_once() -> None:
     watchlist_signal_service.refresh_snapshots(force=True)
 
 
+def _archive_paper_performance_once() -> None:
+    global _paper_archive_last_run_date
+    if not _paper_archive_due():
+        return
+    today = date.today()
+    if _paper_archive_last_run_date == today:
+        return
+    with SessionLocal() as db:
+        service = PaperArchiveService(db)
+        results = service.archive_all_active(include_report=settings.paper_perf_ai_report_enabled)
+        _paper_archive_last_run_date = today
+        logger.info("模拟盘绩效归档完成: %s", results)
+
+
+def _run_monthly_strategy_validation_once() -> None:
+    if settings.database_url.startswith("sqlite"):
+        return
+    with SessionLocal() as db:
+        report = MonthlyStrategyValidationJob(db).run_if_due()
+        if report is not None:
+            logger.info("月度策略样本外验证完成: run_id=%s", report.run_id)
+
+
+def _scan_priority_notifications_once() -> None:
+    if not settings.notification_signal_scan_enabled:
+        return
+    if not settings.notification_feishu_webhook_url.strip():
+        return
+    with SessionLocal() as db:
+        result = AgentSignalScanService().scan_priority_board(db, limit=12, channel="feishu")
+        logger.info(
+            "优先级榜通知扫描完成: scanned=%s sent=%s suppressed=%s upgraded=%s",
+            result.scanned,
+            result.sent,
+            result.suppressed,
+            result.upgraded,
+        )
+
+
+def _paper_archive_due() -> bool:
+    try:
+        hour, minute = [int(part) for part in settings.paper_perf_archive_time.split(":", 1)]
+        archive_time = dt_time(hour=hour, minute=minute)
+    except (TypeError, ValueError):
+        logger.warning("PAPER_PERF_ARCHIVE_TIME 配置无效: %s", settings.paper_perf_archive_time)
+        archive_time = dt_time(hour=15, minute=5)
+    return datetime.now().time() >= archive_time
+
+
 @asynccontextmanager
 async def lifespan(_: FastAPI):
+    ensure_auth_secret_configured()
     init_db()
     if _background_jobs_enabled():
         threading.Thread(target=_warm_runtime_caches, daemon=True).start()
@@ -179,9 +237,34 @@ async def lifespan(_: FastAPI):
             interval_seconds=WATCHLIST_REFRESH_SECONDS,
             initial_delay_seconds=20,
         )
+        if settings.paper_perf_archive_enabled:
+            task_manager.register_loop(
+                name="paper_perf_archive",
+                target=_archive_paper_performance_once,
+                interval_seconds=300,
+                initial_delay_seconds=90,
+            )
+        if settings.strategy_validation_monthly_enabled:
+            task_manager.register_loop(
+                name="strategy_validation_monthly",
+                target=_run_monthly_strategy_validation_once,
+                interval_seconds=24 * 60 * 60,
+                initial_delay_seconds=180,
+            )
+        if settings.notification_signal_scan_enabled:
+            task_manager.register_loop(
+                name="agent_priority_notifications",
+                target=_scan_priority_notifications_once,
+                interval_seconds=max(settings.notification_signal_scan_interval_seconds, 30),
+                initial_delay_seconds=120,
+            )
+        if settings.paper_auto_trading_enabled:
+            logger.info("启动模拟盘自动交易")
+            start_auto_trader(build_auto_trader_config(settings))
     try:
         yield
     finally:
+        stop_auto_trader()
         task_manager.shutdown(timeout=30)
 
 

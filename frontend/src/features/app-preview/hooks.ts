@@ -178,6 +178,20 @@ export function useAppPreviewData(strategy = "first_board", enabled = true) {
     return items.length === payload.items.length ? payload : { ...payload, items }
   }
 
+  function upsertLocalWatchlistItem(item: WatchlistItem) {
+    setWatchlist((current) => {
+      if (!current) {
+        return current
+      }
+      const nextItems = current.items.filter((existing) => !symbolsMatch(existing.symbol, item.symbol))
+      return {
+        ...current,
+        items: [item, ...nextItems],
+        updated_at: formatPulseTime()
+      }
+    })
+  }
+
   function findKnownWatchSymbol(rawSymbol: string) {
     const knownItems = [
       ...(watchlist?.items ?? []).map((item) => item.symbol),
@@ -296,11 +310,11 @@ export function useAppPreviewData(strategy = "first_board", enabled = true) {
     }
   }
 
-  async function openCandidate(symbol: string) {
+  async function openCandidate(symbol: string, detailStrategy = strategy) {
     try {
       setError("")
       setDetailLoading(true)
-      const payload = await appApi.getLowBuyDetail(symbol, strategy, 160)
+      const payload = await appApi.getLowBuyDetail(symbol, detailStrategy, 160)
       setDetail(payload)
     } catch (err) {
       setError(err instanceof Error ? err.message : "候选详情加载失败")
@@ -343,6 +357,7 @@ export function useAppPreviewData(strategy = "first_board", enabled = true) {
       }
       const result = await appApi.upsertWatchlist(normalizedPayload)
       unmarkLocallyRemoved(normalizedPayload.symbol)
+      upsertLocalWatchlistItem(normalizedPayload)
       setMessage(successMessage || result.message)
       setDetail((current) =>
         current && current.candidate.symbol === normalizedPayload.symbol
@@ -355,7 +370,9 @@ export function useAppPreviewData(strategy = "first_board", enabled = true) {
             }
           : current
       )
-      await refreshAfterHoldingMutation()
+      void refreshAfterHoldingMutation().catch((err) => {
+        setError(err instanceof Error ? err.message : "持仓刷新失败")
+      })
       return true
     } catch (err) {
       setError(err instanceof Error ? err.message : "持仓保存失败")
@@ -372,6 +389,8 @@ export function useAppPreviewData(strategy = "first_board", enabled = true) {
       const { deletedSymbol, result } = await deleteWatchlistWithFallback(symbol)
       markLocallyRemoved(deletedSymbol)
       markLocallyRemoved(symbol)
+      setHome((current) => (current ? filterHomePayload(current) : current))
+      setWatchlist((current) => (current ? filterWatchlistPayload(current) : current))
       setMessage(result.message || `${deletedSymbol} 已移除`)
       setDetail((current) =>
         current && symbolsMatch(current.candidate.symbol, deletedSymbol)
@@ -384,9 +403,9 @@ export function useAppPreviewData(strategy = "first_board", enabled = true) {
             }
           : current
       )
-      await refreshAfterHoldingMutation()
-      setHome((current) => (current ? filterHomePayload(current) : current))
-      setWatchlist((current) => (current ? filterWatchlistPayload(current) : current))
+      void refreshAfterHoldingMutation().catch((err) => {
+        setError(err instanceof Error ? err.message : "持仓刷新失败")
+      })
       return true
     } catch (err) {
       setError(err instanceof Error ? err.message : "移除失败")

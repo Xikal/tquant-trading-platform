@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import unittest
+from unittest.mock import patch
+from os import environ
 
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
@@ -10,13 +12,19 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from app.api.routes import auth, paper
+from app.core.config import get_settings
 from app.core.database import get_db
+from app.core.rate_limit import clear_rate_limit_events
 from app.models.base import Base
 from app.models.entities import User
 
 
 class PaperRouteTests(unittest.TestCase):
     def setUp(self) -> None:
+        self._auth_secret_original = environ.get("AUTH_SECRET_KEY")
+        environ["AUTH_SECRET_KEY"] = "test-auth-secret"
+        get_settings.cache_clear()
+        clear_rate_limit_events()
         engine = create_engine(
             "sqlite+pysqlite:///:memory:",
             connect_args={"check_same_thread": False},
@@ -39,6 +47,13 @@ class PaperRouteTests(unittest.TestCase):
 
         app.dependency_overrides[get_db] = override_db
         self.client = TestClient(app)
+
+    def tearDown(self) -> None:
+        if self._auth_secret_original is None:
+            environ.pop("AUTH_SECRET_KEY", None)
+        else:
+            environ["AUTH_SECRET_KEY"] = self._auth_secret_original
+        get_settings.cache_clear()
 
     def test_paper_routes_require_login(self) -> None:
         response = self.client.get("/api/paper/account")
@@ -84,9 +99,8 @@ class PaperRouteTests(unittest.TestCase):
     def test_order_rejects_non_lot_quantity(self) -> None:
         headers = self._register("paper_lot")
         response = self._paper_order(headers, quantity=150)
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json()["status"], "rejected")
-        self.assertIn("100 股整数倍", response.json()["reject_reason"])
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("100 股整数倍", response.json()["detail"])
 
     def test_paused_account_rejects_order(self) -> None:
         headers = self._register("paper_paused")
@@ -94,27 +108,60 @@ class PaperRouteTests(unittest.TestCase):
         self.assertEqual(pause.status_code, 200)
 
         response = self._paper_order(headers, quantity=100)
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json()["status"], "rejected")
-        self.assertIn("账户已暂停", response.json()["reject_reason"])
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("账户已暂停", response.json()["detail"])
 
     def test_large_single_order_is_blocked_by_risk_control(self) -> None:
         headers = self._register("paper_risk")
         response = self._paper_order(headers, quantity=8000)
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json()["status"], "rejected")
-        self.assertIn("单笔买入金额超过账户资产 30%", response.json()["reject_reason"])
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("单笔买入金额超过账户资产 30%", response.json()["detail"])
 
     def test_same_day_sell_rejected_by_t1_rule(self) -> None:
         headers = self._register("paper_t1")
-        buy = self._paper_order(headers, quantity=100)
+        buy = self._paper_order(headers, symbol="300059", name="东方财富", quantity=100)
         self.assertEqual(buy.status_code, 200)
         self.assertEqual(buy.json()["status"], "filled")
 
-        sell = self._paper_order(headers, side="sell", quantity=100)
+        sell = self._paper_order(headers, symbol="300059", name="东方财富", side="sell", quantity=100)
+        self.assertEqual(sell.status_code, 400)
+        self.assertIn("当日买入未解锁", sell.json()["detail"])
+
+    def test_etf_same_day_sell_allowed_by_t0_rule(self) -> None:
+        headers = self._register("paper_etf_t0")
+        buy = self._paper_order(headers, symbol="510300", name="沪深300ETF", quantity=100)
+        self.assertEqual(buy.status_code, 200)
+        self.assertEqual(buy.json()["status"], "filled")
+
+        sell = self._paper_order(headers, symbol="510300", name="沪深300ETF", side="sell", quantity=100)
         self.assertEqual(sell.status_code, 200)
-        self.assertEqual(sell.json()["status"], "rejected")
-        self.assertIn("当日买入未解锁", sell.json()["reject_reason"])
+        self.assertEqual(sell.json()["status"], "filled")
+
+    def test_trade_tags_can_be_added_and_removed(self) -> None:
+        headers = self._register("paper_tags")
+        buy = self._paper_order(headers, quantity=100, reason="回踩承接测试")
+        self.assertEqual(buy.status_code, 200)
+
+        trades = self.client.get("/api/paper/trades", headers=headers)
+        self.assertEqual(trades.status_code, 200)
+        trade_id = trades.json()["trades"][0]["id"]
+        self.assertEqual(trades.json()["trades"][0]["entry_reason"], "回踩承接测试")
+
+        created = self.client.post(
+            f"/api/paper/trades/{trade_id}/tags",
+            headers=headers,
+            json={"tag": "回踩承接", "note": "测试标签"},
+        )
+        self.assertEqual(created.status_code, 200)
+        self.assertEqual(created.json()["tag"], "回踩承接")
+
+        listed = self.client.get(f"/api/paper/trades/{trade_id}/tags", headers=headers)
+        self.assertEqual(listed.status_code, 200)
+        self.assertEqual(len(listed.json()), 1)
+
+        tag_id = created.json()["id"]
+        deleted = self.client.delete(f"/api/paper/trades/{trade_id}/tags/{tag_id}", headers=headers)
+        self.assertEqual(deleted.status_code, 200)
 
     def test_risk_status_requires_login_and_returns_limits(self) -> None:
         self.assertEqual(self.client.get("/api/paper/risk").status_code, 401)
@@ -124,6 +171,22 @@ class PaperRouteTests(unittest.TestCase):
         self.assertEqual(response.json()["max_single_order_pct"], 30.0)
         self.assertEqual(response.json()["max_daily_order_count"], 20)
 
+    def test_auto_trading_status_requires_login(self) -> None:
+        self.assertEqual(self.client.get("/api/paper/auto-trading/status").status_code, 401)
+        headers = self._register("paper_auto_status")
+        response = self.client.get("/api/paper/auto-trading/status", headers=headers)
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(response.json()["running"])
+
+    def test_auto_trading_dry_run_uses_user_account(self) -> None:
+        headers = self._register("paper_auto_dry_run")
+        with patch("app.services.paper.scheduler.PaperAutoTrader.run_once_for_preview") as preview:
+            preview.return_value = {"summary": "通过 0 条，过滤 0 条", "will_buy": [], "filtered": []}
+            response = self.client.post("/api/paper/auto-trading/dry-run?limit=20", headers=headers)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["summary"], "通过 0 条，过滤 0 条")
+        self.assertIsNotNone(preview.call_args.kwargs["account_id"])
+
     def _register(self, username: str) -> dict[str, str]:
         response = self.client.post(
             "/api/auth/register",
@@ -132,17 +195,28 @@ class PaperRouteTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         return {"Authorization": f"Bearer {response.json()['access_token']}"}
 
-    def _paper_order(self, headers: dict[str, str], *, side: str = "buy", quantity: int = 100):
+    def _paper_order(
+        self,
+        headers: dict[str, str],
+        *,
+        symbol: str = "510300",
+        name: str = "沪深300ETF",
+        side: str = "buy",
+        quantity: int = 100,
+        current_price: float = 4.0,
+        reason: str = "测试委托",
+    ):
         return self.client.post(
             "/api/paper/orders",
             headers=headers,
             json={
-                "symbol": "510300",
-                "name": "沪深300ETF",
+                "symbol": symbol,
+                "name": name,
                 "side": side,
                 "order_type": "market",
                 "quantity": quantity,
-                "current_price": 4.0,
+                "current_price": current_price,
+                "reason": reason,
             },
         )
 

@@ -63,3 +63,68 @@ export interface RuntimeStatus {
   cors_origins: string[];
   ready_checks: Record<string, boolean>;
 }
+
+export interface FactorSpec {
+  name: string;
+  weight: number;
+  data_dependencies: string[];
+  applicable_strategies: string[];
+  activation_condition: string;
+  status: "active" | "stub" | "experimental" | "deprecated" | "disabled" | string;
+  status_text: string;
+}
+
+export interface FactorWeightsResponse {
+  weights: Record<string, number>;
+  defaults: Record<string, number>;
+  factors: FactorSpec[];
+}
+
+export interface AdminTaskStatus {
+  name: string;
+  interval_seconds: number;
+  running: boolean;
+  enabled: boolean;
+  last_started_at?: string | null;
+  last_finished_at?: string | null;
+  last_success_at?: string | null;
+  last_error?: string | null;
+  duration_ms?: number | null;
+  rows_processed?: number | null;
+  run_count: number;
+}
+
+export interface AdminTasksResponse {
+  items: AdminTaskStatus[];
+}
+
+export interface LowBuyStrategyGovernanceItem {
+  strategy_key: string;
+  strategy_title: string;
+  subtitle: string;
+  tier: "core" | "auxiliary" | "research" | "factor" | string;
+  layer: "production" | "research" | "factor" | string;
+  status: "active" | "watch" | "paused" | "research" | "deprecated" | string;
+  status_text: string;
+  enabled: boolean;
+  participates_priority_board: boolean;
+  strong_buy_paused: boolean;
+  requires_mainline_industry: boolean;
+  pool_key: string;
+  pool_title: string;
+  pool_source: string;
+  pool_max_size: number;
+  uses_daily_scan_pool: boolean;
+  max_holding_days: number;
+  holding_brief: string;
+  strategy_health_score: number;
+  strategy_health_text: string;
+  performance_sample_count: number;
+  notes: string[];
+}
+
+export interface LowBuyStrategyGovernanceResponse {
+  default_strategy: string;
+  production_strategies: string[];
+  items: LowBuyStrategyGovernanceItem[];
+}

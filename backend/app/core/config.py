@@ -44,8 +44,9 @@ class AppSettings(BaseSettings):
     structured_logs: bool = False
     admin_api_token: str = ""
     auth_secret_key: str = ""
-    auth_access_token_minutes: int = 15
-    auth_refresh_token_days: int = 30
+    auth_cookie_secure: bool = False
+    auth_access_token_minutes: int = 720
+    auth_refresh_token_days: int = 90
     auth_allowed_usernames: Annotated[List[str], NoDecode] = Field(default_factory=list)
     agent_provider: str = "none"
     agent_api_base: str = "http://127.0.0.1:18090/api"
@@ -56,6 +57,15 @@ class AppSettings(BaseSettings):
     agent_enable_write_tools: bool = False
     agent_enable_notify_tools: bool = False
     agent_audit_enabled: bool = True
+    notification_feishu_webhook_url: str = ""
+    notification_feishu_secret: str = ""
+    notification_signal_cooldown_minutes: int = 240
+    notification_signal_scan_enabled: bool = True
+    notification_signal_scan_interval_seconds: int = 120
+    feishu_app_id: str = ""
+    feishu_app_secret: str = ""
+    feishu_verification_token: str = ""
+    feishu_encrypt_key: str = ""
     langgraph_api_url: str = ""
     langgraph_api_key: str = ""
     openai_agents_api_url: str = ""
@@ -68,6 +78,17 @@ class AppSettings(BaseSettings):
     crewai_api_key: str = ""
     pydantic_ai_api_url: str = ""
     pydantic_ai_api_key: str = ""
+    paper_auto_trading_enabled: bool = True
+    paper_auto_trading_interval: int = 120
+    paper_auto_trading_max_orders: int = 5
+    paper_auto_trading_dry_run: bool = False
+    paper_auto_trading_min_score: int = 75
+    paper_perf_archive_enabled: bool = True
+    paper_perf_archive_time: str = "15:05"
+    paper_perf_ai_report_enabled: bool = True
+    strategy_validation_monthly_enabled: bool = True
+    strategy_validation_monthly_lookback_days: int = 252
+    strategy_validation_monthly_max_signals_per_day: int = 8
 
     model_config = SettingsConfigDict(
         env_prefix="",

@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import logging
-import threading
 import time
 
 from app.models.entities import LowBuyResultSnapshot, LowBuyScanSnapshot
@@ -16,9 +14,6 @@ from app.services.low_buy.shared import (
 )
 from app.services.low_buy.recommendation_duration import attach_response_recommendation_durations
 from app.services.low_buy.strategy_policy import strong_buy_paused
-
-logger = logging.getLogger(__name__)
-
 
 class LowBuyResultStoreMixin:
     _confirmed_signal_states = ("buy_now", "soft_buy_now")
@@ -276,6 +271,11 @@ class LowBuyResultStoreMixin:
             full_scan_updated_at=summary.as_of_date,
             market_state=str(summary_filters.get("market_state") or "low_volume_wait"),
             market_state_text=str(summary_filters.get("market_regime") or ""),
+            market_state_category=str(summary_filters.get("market_state_category") or "low_volume_wait"),
+            market_state_category_text=str(summary_filters.get("market_state_category_text") or "缩量观望"),
+            data_quality=str(summary_filters.get("data_quality") or "ok"),
+            data_quality_text=str(summary_filters.get("data_quality_text") or "数据完整"),
+            data_quality_tags=self._safe_json_list(summary_filters.get("data_quality_tags_json", "[]")),
             market_bonus=float(summary_filters.get("market_bonus") or 0.0),
             market_state_strength=float(summary_filters.get("market_state_strength") or 0.0),
             regime_confidence=float(summary_filters.get("regime_confidence") or 0.0),
@@ -561,53 +561,6 @@ class LowBuyResultStoreMixin:
                 self._full_scan_jobs.pop(job_key, None)
                 return False
             return True
-
-    def _ensure_background_full_scan(
-        self,
-        strategy: str,
-        latest_trade_date: str,
-        limit: int,
-        scan_limit: int,
-        include_history: bool,
-        compute_performance: bool = True,
-        build_close_review: bool = True,
-    ) -> bool:
-        job_key = self._make_full_job_key(strategy, latest_trade_date, limit, include_history)
-        now = time.monotonic()
-        with self._cache_lock:
-            for active_key, expires_at in list(self._full_scan_jobs.items()):
-                if expires_at <= now:
-                    self._full_scan_jobs.pop(active_key, None)
-            expires_at = self._full_scan_jobs.get(job_key)
-            if expires_at is not None and expires_at > now:
-                return True
-            if self._full_scan_jobs:
-                return True
-            self._full_scan_jobs[job_key] = now + 600.0
-
-        def runner() -> None:
-            try:
-                self.refresh_full_scan_cache(
-                    strategy=strategy,
-                    limit=limit,
-                    scan_limit=scan_limit,
-                    include_history=include_history,
-                    compute_performance=compute_performance,
-                    build_close_review=build_close_review,
-                )
-            except Exception:
-                logger.exception("low-buy background full scan failed")
-            finally:
-                with self._cache_lock:
-                    self._full_scan_jobs.pop(job_key, None)
-
-        # Defer the heavy scan very slightly so the HTTP request can return the
-        # cached/pending response instead of competing with the worker thread.
-        thread = threading.Timer(0.2, runner)
-        thread.name = f"low-buy-full-{strategy}"
-        thread.daemon = True
-        thread.start()
-        return True
 
 
 def _default_signal_rank(state: str) -> int:

@@ -27,9 +27,9 @@ export function MetricGrid({ items, className = "" }: { items: MetricItem[]; cla
   );
 }
 
-export function InfoPill({ label, value }: { label: string; value: string }) {
+export function InfoPill({ label, value, tone = "neutral" }: { label: string; value: string; tone?: "up" | "down" | "neutral" | "warn" }) {
   return (
-    <div className="info-pill">
+    <div className={`info-pill ${tone}`}>
       <span>{label}</span>
       <strong>{value}</strong>
     </div>

@@ -58,6 +58,9 @@ class QuoteSnapshot(BaseModel):
     turnover_rate: Optional[float] = None
     volume_ratio: Optional[float] = None
     timestamp: str
+    data_source: Optional[str] = None
+    source_quality: Optional[str] = None
+    is_stale: bool = False
 
 
 class KlineBar(BaseModel):

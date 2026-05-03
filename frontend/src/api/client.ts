@@ -3,6 +3,7 @@ import type {
   AiDecisionSupportRequest,
   AiDecisionSupportResponse,
   BacktestResult,
+  BacktestRunListResponse,
   DatabaseCheckResult,
   DatabaseMigrationResult,
   LowBuyScreenerResult,
@@ -11,17 +12,28 @@ import type {
   LowBuyPriorityBoardResult,
   LowBuyExecutionBacktestResult,
   LowBuyTradeLifecycle,
+  MarketBreadth,
+  MonitorSnapshot,
   PaperAccount,
   PaperGroupedPerformance,
   PaperOrder,
   PaperOrderCreate,
   PaperAccessResponse,
+  PaperAutoTradingStatus,
+  PaperAgentRun,
   PaperPerformance,
+  PaperPerformanceDashboard,
   PaperPositionsResponse,
+  PaperTagPerformance,
+  PaperTradeTag,
+  PaperTradeTagCreate,
   PaperTradesResponse,
   RuntimeStatus,
+  FactorWeightsResponse,
+  AdminTasksResponse,
   Instrument,
   IntradayConfirmationItem,
+  LowBuyStrategyGovernanceResponse,
   ReplayItem,
   RiskEventItem,
   SettingsPayload,
@@ -52,6 +64,9 @@ export const api = {
       return result;
     }),
   getWatchlistSignals: () => requestCached<WatchlistSignal[]>("/watchlist/signals", 9000),
+  getMarketBreadth: () => requestCached<MarketBreadth>("/market/breadth", 15000),
+  getMonitorSnapshot: (priorityLimit = 24) =>
+    requestCached<MonitorSnapshot>(`/monitor/snapshot?priority_limit=${priorityLimit}`, 3000),
   getPaperAccess: () => request<PaperAccessResponse>("/auth/paper-access"),
   analyze: (payload: {
     symbol: string;
@@ -89,6 +104,15 @@ export const api = {
       body: JSON.stringify(payload)
     }),
   getSettings: () => request<SettingsPayload>("/settings"),
+  getFactorWeights: () => request<FactorWeightsResponse>("/settings/factor-weights"),
+  updateFactorWeights: (weights: Record<string, number>) =>
+    request<FactorWeightsResponse>("/settings/factor-weights", {
+      method: "PUT",
+      body: JSON.stringify({ weights })
+    }).then((result) => {
+      invalidateCache(["/screeners/low-buy", "/monitor/snapshot"]);
+      return result;
+    }),
   updateSettings: (payload: Partial<SettingsPayload>) =>
     request<{ message: string; settings: SettingsPayload; restart_required: boolean }>("/settings", {
       method: "PUT",
@@ -103,6 +127,9 @@ export const api = {
       body: JSON.stringify({ database_url })
     }),
   getRuntimeStatus: () => requestCached<RuntimeStatus>("/settings/runtime", 10000),
+  getAdminTasks: () => request<AdminTasksResponse>("/admin/tasks"),
+  getLowBuyStrategies: () =>
+    requestCached<LowBuyStrategyGovernanceResponse>("/screeners/low-buy/strategies", 30000),
   migrateDatabase: (payload: {
     target_database_url: string;
     source_database_url?: string;
@@ -125,6 +152,7 @@ export const api = {
       method: "POST",
       body: JSON.stringify(payload)
     }),
+  listBacktestRuns: (limit = 20) => request<BacktestRunListResponse>(`/backtests/runs?limit=${limit}`),
   runStrategyValidation: (payload: {
     strategies: string[];
     lookback_days: number;
@@ -178,11 +206,29 @@ export const api = {
     request<PaperPositionsResponse>("/paper/positions/refresh", { method: "POST" }),
   getPaperOrders: (limit = 50) => request<PaperOrder[]>(`/paper/orders?limit=${limit}`),
   getPaperTrades: (limit = 50) => request<PaperTradesResponse>(`/paper/trades?limit=${limit}`),
+  getPaperTradeTags: (tradeId: number) => request<PaperTradeTag[]>(`/paper/trades/${tradeId}/tags`),
+  addPaperTradeTag: (tradeId: number, payload: PaperTradeTagCreate) =>
+    request<PaperTradeTag>(`/paper/trades/${tradeId}/tags`, {
+      method: "POST",
+      body: JSON.stringify(payload)
+    }),
+  deletePaperTradeTag: (tradeId: number, tagId: number) =>
+    request<{ message: string; tag_id: number }>(`/paper/trades/${tradeId}/tags/${tagId}`, { method: "DELETE" }),
   getPaperPerformance: () => request<PaperPerformance>("/paper/performance"),
   getPaperPerformanceByStrategy: () => request<PaperGroupedPerformance[]>("/paper/performance/by-strategy"),
   getPaperPerformanceByMarketState: () => request<PaperGroupedPerformance[]>("/paper/performance/by-market-state"),
+  getPaperPerformanceByTag: () => request<PaperTagPerformance[]>("/paper/performance/by-tag"),
+  getPaperPerformanceDashboard: (days = 30) =>
+    request<PaperPerformanceDashboard>(`/paper/performance/dashboard?days=${days}`),
+  archivePaperPerformance: () =>
+    request<{ account_id: number; date: string; strategies_saved: number; market_states_saved: number; report_saved: boolean }>(
+      "/paper/performance/archive",
+      { method: "POST" }
+    ),
   evaluatePaperRiskEvents: () => request<RiskEventItem[]>("/paper/risk/evaluate", { method: "POST" }),
   getPaperRiskEvents: () => request<RiskEventItem[]>("/paper/risk/events"),
+  getPaperAutoTradingStatus: () => request<PaperAutoTradingStatus>("/paper/auto-trading/status"),
+  getPaperAutoTradingRuns: (limit = 20) => request<PaperAgentRun[]>(`/paper/auto-trading/runs?limit=${limit}`),
   createPaperOrder: (payload: PaperOrderCreate) =>
     request<PaperOrder>("/paper/orders", {
       method: "POST",

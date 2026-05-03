@@ -1,13 +1,15 @@
 from __future__ import annotations
 
 import json
-from datetime import date, timedelta
+from datetime import date
 from decimal import Decimal
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models.entities import PaperPosition, PaperPositionLot
+from app.services.market.trading_calendar import last_a_share_trading_day, next_a_share_trading_day
+from app.services.paper.symbols import is_etf
 
 
 class PaperPositionService:
@@ -52,13 +54,13 @@ class PaperPositionService:
                 name=name or symbol,
                 quantity=0,
                 available_quantity=0,
-                cost_basis=float(cost_price),
+                cost_basis=cost_price,
             )
             self.db.add(row)
             self.db.flush()
         old_qty = int(row.quantity or 0)
         new_qty = old_qty + quantity
-        row.cost_basis = float(_weighted_cost(Decimal(str(row.cost_basis or 0)), old_qty, cost_price, quantity))
+        row.cost_basis = _weighted_cost(Decimal(str(row.cost_basis or 0)), old_qty, cost_price, quantity)
         row.quantity = new_qty
         row.name = name or row.name or symbol
         row.strategy_sources = _merge_strategy_source(row.strategy_sources, strategy_key)
@@ -69,8 +71,8 @@ class PaperPositionService:
                 symbol=symbol,
                 quantity=quantity,
                 remaining=quantity,
-                available_date=_next_business_day(trade_date or date.today()),
-                cost_price=float(cost_price),
+                available_date=_available_date_for_buy(symbol, trade_date or date.today()),
+                cost_price=cost_price,
                 source_order_id=source_order_id,
             )
         )
@@ -82,6 +84,7 @@ class PaperPositionService:
         if row is None or row.available_quantity < quantity:
             raise ValueError("可卖数量不足，模拟卖出被拒绝。")
         remaining_to_sell = quantity
+        available_as_of = _available_as_of_for_sell(symbol)
         lots = (
             self.db.execute(
                 select(PaperPositionLot)
@@ -89,7 +92,7 @@ class PaperPositionService:
                     PaperPositionLot.account_id == account_id,
                     PaperPositionLot.symbol == symbol,
                     PaperPositionLot.remaining > 0,
-                    PaperPositionLot.available_date <= date.today(),
+                    PaperPositionLot.available_date <= available_as_of,
                 )
                 .order_by(PaperPositionLot.available_date.asc(), PaperPositionLot.id.asc())
             )
@@ -119,27 +122,47 @@ class PaperPositionService:
             .scalars()
             .all()
         )
+        if not positions:
+            return
+        symbols = [position.symbol for position in positions]
+        lot_statement = (
+            select(PaperPositionLot.symbol, PaperPositionLot.remaining, PaperPositionLot.available_date)
+            .where(
+                PaperPositionLot.account_id == account_id,
+                PaperPositionLot.remaining > 0,
+                PaperPositionLot.symbol.in_(symbols),
+            )
+        )
+        available_by_symbol: dict[str, int] = {}
+        for symbol_value, remaining, available_date in self.db.execute(lot_statement).all():
+            if available_date <= _available_as_of_for_sell(str(symbol_value)):
+                available_by_symbol[str(symbol_value)] = available_by_symbol.get(str(symbol_value), 0) + int(remaining or 0)
         for position in positions:
-            available = self.db.execute(
-                select(PaperPositionLot).where(
-                    PaperPositionLot.account_id == account_id,
-                    PaperPositionLot.symbol == position.symbol,
-                    PaperPositionLot.remaining > 0,
-                    PaperPositionLot.available_date <= date.today(),
-                )
-            ).scalars().all()
-            position.available_quantity = sum(lot.remaining for lot in available)
+            position.available_quantity = available_by_symbol.get(position.symbol, 0)
 
     def refresh_quotes(self, account_id: int, prices: dict[str, Decimal]) -> None:
-        for symbol, price in prices.items():
-            row = self.get_position(account_id, symbol)
-            if row is None:
+        if not prices:
+            return
+        positions = (
+            self.db.execute(
+                select(PaperPosition).where(
+                    PaperPosition.account_id == account_id,
+                    PaperPosition.symbol.in_(list(prices.keys())),
+                )
+            )
+            .scalars()
+            .all()
+        )
+        self.refresh_available_quantities(account_id)
+        for row in positions:
+            price = prices.get(row.symbol)
+            if price is None:
                 continue
-            row.latest_price = float(price)
-            row.market_value = float(price * Decimal(row.quantity))
-            row.unrealized_pnl = float((price - Decimal(str(row.cost_basis or 0))) * Decimal(row.quantity))
+            row.latest_price = price
+            row.market_value = price * Decimal(row.quantity)
+            row.unrealized_pnl = (price - Decimal(str(row.cost_basis or 0))) * Decimal(row.quantity)
             cost_amount = Decimal(str(row.cost_basis or 0)) * Decimal(max(row.quantity, 1))
-            row.unrealized_pnl_pct = float(Decimal(str(row.unrealized_pnl or 0)) / max(cost_amount, Decimal("0.01")) * 100)
+            row.unrealized_pnl_pct = Decimal(str(row.unrealized_pnl or 0)) / max(cost_amount, Decimal("0.01")) * 100
 
 
 def _weighted_cost(current_cost: Decimal, current_qty: int, new_cost: Decimal, new_qty: int) -> Decimal:
@@ -149,10 +172,16 @@ def _weighted_cost(current_cost: Decimal, current_qty: int, new_cost: Decimal, n
 
 
 def _next_business_day(value: date) -> date:
-    next_day = value + timedelta(days=1)
-    while next_day.weekday() >= 5:
-        next_day += timedelta(days=1)
-    return next_day
+    return next_a_share_trading_day(value)
+
+
+def _available_date_for_buy(symbol: str, trade_date: date) -> date:
+    # A 股普通股票 T+1；ETF 在模拟盘按 T+0 可回转处理。
+    return trade_date if is_etf(symbol) else _next_business_day(trade_date)
+
+
+def _available_as_of_for_sell(symbol: str) -> date:
+    return date.today() if is_etf(symbol) else last_a_share_trading_day()
 
 
 def _merge_strategy_source(raw: str, strategy_key: str) -> str:
@@ -163,4 +192,3 @@ def _merge_strategy_source(raw: str, strategy_key: str) -> str:
     if strategy_key and strategy_key not in values:
         values.append(strategy_key)
     return json.dumps(values, ensure_ascii=False)
-

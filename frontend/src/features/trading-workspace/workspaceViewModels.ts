@@ -75,6 +75,7 @@ export function candidateToCard(item: LowBuyCandidate): StockCardView {
       exitPlanSummary(item.exit_plan),
       `${formatPrice(item.entry_zone_low)}-${formatPrice(item.entry_zone_high)}`,
       `止损 ${formatPrice(item.stop_loss)}`,
+      quoteQualityText(item),
       recommendationSummary(item.recommendation_days, item.recommendation_start_date),
       item.summary_reason,
     ].filter(Boolean).join(" / "),
@@ -84,9 +85,23 @@ export function candidateToCard(item: LowBuyCandidate): StockCardView {
       item.strategy_title,
       item.mainline_tier_text || "",
       item.execution_quality_text || "",
+      item.is_stale ? "行情过期" : "",
     ].filter(Boolean),
     highlight: item.strategy_key === "limit_up_breakout_retrace",
   };
+}
+
+function quoteQualityText(item: Pick<LowBuyCandidate, "data_source" | "source_quality" | "is_stale">): string {
+  if (item.is_stale) {
+    return "行情已过期";
+  }
+  if (item.source_quality === "realtime") {
+    return item.data_source ? `行情 ${item.data_source}` : "实时行情";
+  }
+  if (item.source_quality) {
+    return `行情质量 ${item.source_quality}`;
+  }
+  return "";
 }
 
 function nextDayPlanText(plan?: { state?: string; state_text?: string; max_holding_days?: number; position_pct?: number }) {

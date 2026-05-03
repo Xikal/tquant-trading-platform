@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Optional
+
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
@@ -7,8 +9,10 @@ from app.agent_providers.factory import create_agent_provider
 from app.agent_tools.policy import AgentPolicy
 from app.agent_tools.registry import list_tool_definitions
 from app.core.admin_auth import require_admin_auth
+from app.core.auth import require_current_user_or_agent_token
 from app.core.config import get_settings
 from app.core.database import get_db
+from app.models.entities import User
 from app.models.schema_defs.agent import (
     AgentAnalysisRequest,
     AgentAnalysisResponse,
@@ -16,6 +20,13 @@ from app.models.schema_defs.agent import (
     AgentHealthResponse,
     AgentNotificationTestRequest,
     AgentNotificationTestResponse,
+    AgentSignalNotificationRequest,
+    AgentSignalNotificationResponse,
+    AgentSignalNotificationScanRequest,
+    AgentSignalNotificationScanResponse,
+    AgentOrderRecommendationRequest,
+    AgentOrderRecommendationResponse,
+    AgentPaperPortfolioResponse,
     AgentPriorityBoardResponse,
     AgentProviderStatusResponse,
     AgentToolInvokeRequest,
@@ -23,9 +34,11 @@ from app.models.schema_defs.agent import (
     AgentWatchlistContextResponse,
 )
 from app.services.agent_context_service import AgentContextService
+from app.services.agent_notification_service import AgentNotificationService
 from app.services.agent_report_service import AgentReportService
+from app.services.agent_signal_scan_service import AgentSignalScanService
 
-router = APIRouter(prefix="/agent")
+router = APIRouter(prefix="/agent", dependencies=[Depends(require_current_user_or_agent_token)])
 
 context_service = AgentContextService()
 report_service = AgentReportService()
@@ -54,6 +67,24 @@ def agent_analysis(payload: AgentAnalysisRequest, db: Session = Depends(get_db))
     return context_service.analysis(db, payload)
 
 
+@router.get("/context/paper-portfolio", response_model=AgentPaperPortfolioResponse)
+def agent_paper_portfolio(
+    account_id: Optional[int] = Query(default=None),
+    current_user: Optional[User] = Depends(require_current_user_or_agent_token),
+    db: Session = Depends(get_db),
+) -> AgentPaperPortfolioResponse:
+    return context_service.paper_portfolio(db, account_id=account_id, user_id=getattr(current_user, "id", None))
+
+
+@router.post("/context/recommend-orders", response_model=AgentOrderRecommendationResponse)
+def agent_recommend_orders(
+    payload: AgentOrderRecommendationRequest,
+    current_user: Optional[User] = Depends(require_current_user_or_agent_token),
+    db: Session = Depends(get_db),
+) -> AgentOrderRecommendationResponse:
+    return context_service.recommend_orders(db, payload, user_id=getattr(current_user, "id", None))
+
+
 @router.get("/reports/daily", response_model=AgentDailyReportResponse)
 def agent_daily_report(db: Session = Depends(get_db)) -> AgentDailyReportResponse:
     return report_service.daily_report(db)
@@ -61,10 +92,33 @@ def agent_daily_report(db: Session = Depends(get_db)) -> AgentDailyReportRespons
 
 @router.post("/notify/test", response_model=AgentNotificationTestResponse)
 def agent_notify_test(payload: AgentNotificationTestRequest) -> AgentNotificationTestResponse:
-    return AgentNotificationTestResponse(
-        ok=True,
+    return AgentNotificationService().send_test(payload)
+
+
+@router.post("/notify/signal", response_model=AgentSignalNotificationResponse)
+def agent_notify_signal(
+    payload: AgentSignalNotificationRequest,
+    current_user: Optional[User] = Depends(require_current_user_or_agent_token),
+    db: Session = Depends(get_db),
+) -> AgentSignalNotificationResponse:
+    return AgentNotificationService().send_signal(
+        db,
+        payload,
+        user_id=getattr(current_user, "id", None),
+    )
+
+
+@router.post("/notify/scan-priority-board", response_model=AgentSignalNotificationScanResponse)
+def agent_notify_scan_priority_board(
+    payload: AgentSignalNotificationScanRequest,
+    current_user: Optional[User] = Depends(require_current_user_or_agent_token),
+    db: Session = Depends(get_db),
+) -> AgentSignalNotificationScanResponse:
+    return AgentSignalScanService().scan_priority_board(
+        db,
+        limit=payload.limit,
         channel=payload.channel,
-        message="notification adapter not configured",
+        user_id=getattr(current_user, "id", None),
     )
 
 

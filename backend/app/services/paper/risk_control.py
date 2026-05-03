@@ -8,12 +8,15 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.models.entities import PaperAccount, PaperOrder, PaperPosition, PaperTrade, RiskEvent
+from app.services.paper.fees import calculate_fee
 
 
 MAX_SINGLE_ORDER_PCT = Decimal("0.30")
 MAX_SINGLE_SYMBOL_POSITION_PCT = Decimal("0.40")
 MAX_DAILY_BUY_PCT = Decimal("0.60")
 MAX_DAILY_ORDER_COUNT = 20
+FEE_WARNING_PCT = 1.00
+FEE_BLOCK_PCT = 3.00
 
 
 @dataclass(frozen=True)
@@ -90,6 +93,12 @@ class PaperRiskControlService:
                 reasons.append("今日累计买入金额会超过账户资产 60%，已拒绝。")
         elif side != "sell":
             reasons.append("委托方向只能是 buy 或 sell。")
+
+        fee_pct = _round_trip_fee_pct(symbol=symbol, side=side, price=estimated_price, quantity=quantity)
+        if fee_pct > FEE_BLOCK_PCT:
+            reasons.append(f"交易摩擦约 {fee_pct:.2f}%，超过 3.00%，小额委托已拒绝。")
+        elif fee_pct > FEE_WARNING_PCT:
+            warnings.append(f"交易摩擦约 {fee_pct:.2f}%，小额委托会明显吞噬收益。")
 
         if not reasons and side == "buy" and projected_pct >= 30:
             warnings.append("买入后单只股票仓位较高，建议控制节奏。")
@@ -215,3 +224,19 @@ def _today_window() -> tuple[datetime, datetime]:
 
 def _pct(value: Decimal) -> float:
     return float(value * Decimal("100"))
+
+
+def _round_trip_fee_pct(*, symbol: str, side: str, price: Decimal, quantity: int) -> float:
+    if price <= 0 or quantity <= 0:
+        return 0.0
+    gross = price * Decimal(quantity)
+    if gross <= 0:
+        return 0.0
+    try:
+        entry_side = "buy" if side == "buy" else "sell"
+        exit_side = "sell" if entry_side == "buy" else "buy"
+        current_fee = calculate_fee(symbol=symbol, side=entry_side, price=price, quantity=quantity).total_fee
+        exit_fee = calculate_fee(symbol=symbol, side=exit_side, price=price, quantity=quantity).total_fee
+    except Exception:
+        return 0.0
+    return float((current_fee + exit_fee) / gross * Decimal("100"))

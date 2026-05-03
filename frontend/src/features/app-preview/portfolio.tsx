@@ -56,9 +56,10 @@ export function HoldingCard({
           <button
             type="button"
             className="mobile-inline-action mobile-inline-danger"
+            aria-label={`删除 ${row.record.name}`}
             onClick={() => void onRemove(row.record)}
           >
-            移除
+            删除
           </button>
         </div>
       </div>

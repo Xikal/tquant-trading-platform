@@ -19,6 +19,7 @@ from app.repositories.watchlist_signals import WatchlistSignalSnapshotRepository
 from app.services.analysis_service import AnalysisService
 from app.services.market_data import MarketDataService, guess_instrument_type, guess_market
 from app.services.settings_service import SettingsService
+from app.services.watchlist_t1 import refresh_watchlist_t1_availability
 
 logger = logging.getLogger(__name__)
 
@@ -34,6 +35,8 @@ class WatchlistSignalService:
         self._allow_parallel_analysis = not get_settings().database_url.startswith("sqlite")
 
     def list_signals(self, db: Session) -> list[dict]:
+        if refresh_watchlist_t1_availability(db, model=Watchlist, today=datetime.now().date()):
+            self.refresh_snapshots(force=True)
         rows = self._list_watchlist_rows(db)
         if not rows:
             return []
@@ -102,6 +105,7 @@ class WatchlistSignalService:
 
     def _refresh_session_once(self) -> None:
         with SessionLocal() as db:
+            refresh_watchlist_t1_availability(db, model=Watchlist, today=datetime.now().date())
             rows = self._list_watchlist_rows(db)
             repository = WatchlistSignalSnapshotRepository(db)
             if not rows:

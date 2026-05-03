@@ -1,16 +1,21 @@
 import type {
   PaperAccount,
+  PaperAgentRun,
+  PaperAutoTradingStatus,
   PaperGroupedPerformance,
   PaperOrder,
   PaperOrderStatus,
   PaperPerformance,
   PaperPosition,
+  PaperTagPerformance,
   PaperTrade,
+  PaperTradeTag,
   IntradayConfirmationItem,
   RiskEventItem,
 } from "../../types";
-import { memo } from "react";
+import { memo, useMemo, useState } from "react";
 import type { ReactNode } from "react";
+import { PixelTraderWorker } from "./PixelTraderWorker";
 import { formatAmount, formatNumber, formatPct, formatPrice } from "./workspaceFormatters";
 import type { PaperOrderDraft } from "./workspaceTypes";
 
@@ -22,15 +27,18 @@ interface PaperTradingPageProps {
   performance: PaperPerformance | null;
   strategyPerformance: PaperGroupedPerformance[];
   marketPerformance: PaperGroupedPerformance[];
+  tagPerformance: PaperTagPerformance[];
+  tradeTags: Record<number, PaperTradeTag[]>;
   riskEvents: RiskEventItem[];
+  autoTradingStatus: PaperAutoTradingStatus | null;
+  autoTradingRuns: PaperAgentRun[];
   intradayConfirmations: IntradayConfirmationItem[];
   draft: PaperOrderDraft;
   setDraft: (draft: PaperOrderDraft) => void;
   loading: string;
-  onRefresh: () => void;
-  onRefreshQuotes: () => void;
-  onSubmitOrder: () => void;
-  onTogglePause: () => void;
+  onSubmitOrder: () => void | Promise<void>;
+  onAddTradeTag: (tradeId: number, tag: string) => void;
+  onDeleteTradeTag: (tradeId: number, tagId: number) => void;
 }
 
 type Tone = "up" | "down" | "neutral";
@@ -60,54 +68,67 @@ export const PaperTradingPage = memo(function PaperTradingPage({
   performance,
   strategyPerformance,
   marketPerformance,
+  tagPerformance,
+  tradeTags,
   riskEvents,
+  autoTradingStatus,
+  autoTradingRuns,
   intradayConfirmations,
   draft,
   setDraft,
   loading,
-  onRefresh,
-  onRefreshQuotes,
   onSubmitOrder,
-  onTogglePause,
+  onAddTradeTag,
+  onDeleteTradeTag,
 }: PaperTradingPageProps) {
   const paused = account?.status === "paused";
   const paperLoading = loading === "paper";
   const orderLoading = loading === "paper-order";
-  const quoteLoading = loading === "paper-quotes";
-  const statusLoading = loading === "paper-status";
-  const anyLoading = Boolean(loading);
+  const autoTradingRunning = Boolean(autoTradingStatus?.running);
+  const [orderModalOpen, setOrderModalOpen] = useState(false);
+  const [lastOrderAction, setLastOrderAction] = useState<{ type: "buy" | "sell"; symbol: string; timestamp: number } | null>(null);
+  const recentTrades = useMemo(() => trades.slice(0, 3).map((item) => ({
+    type: item.side,
+    symbol: item.symbol,
+    name: item.strategy_key,
+    time: formatDateTime(item.trade_time).slice(11, 16),
+  })), [trades]);
+  const marketState = resolvePaperMarketState();
+
+  async function submitOrderFromModal() {
+    const action = { type: draft.side, symbol: draft.symbol.trim(), timestamp: Date.now() };
+    await Promise.resolve(onSubmitOrder());
+    if (action.symbol) {
+      setLastOrderAction(action);
+    }
+    setOrderModalOpen(false);
+  }
 
   return (
     <section className="page-grid paper-grid">
-      <section className="panel paper-hero">
-        <div className="paper-hero-bar">
-          <div className="paper-hero-copy">
-            <h2>模拟交易</h2>
-            <span>记录策略执行效果，不代表真实交易指令。</span>
-          </div>
-          <div className="actions">
-            <button type="button" className="ghost-button" onClick={onRefresh} disabled={anyLoading}>
-              {paperLoading ? "刷新中..." : "刷新"}
-            </button>
-            <button type="button" className="ghost-button" onClick={onTogglePause} disabled={anyLoading}>
-              {statusLoading ? "处理中..." : paused ? "恢复模拟" : "暂停模拟"}
-            </button>
-            <button type="button" className="ghost-button gold" onClick={onRefreshQuotes} disabled={anyLoading}>
-              {quoteLoading ? "刷新中..." : "刷新持仓价格"}
-            </button>
-          </div>
-        </div>
-      </section>
-
       <MetricGrid account={account} performance={performance} loading={paperLoading} />
 
-          <OrderEntryPanel
-            draft={draft}
-            setDraft={setDraft}
+          <PixelTraderWorker
+            marketState={marketState}
             paused={paused}
+            autoTradingRunning={autoTradingRunning}
+            lastOrderAction={lastOrderAction}
             loading={orderLoading}
-            onSubmitOrder={onSubmitOrder}
+            onOpenOrderEntry={() => setOrderModalOpen(true)}
+            recentTrades={recentTrades}
           />
+
+          {orderModalOpen ? (
+            <OrderEntryModal
+              draft={draft}
+              setDraft={setDraft}
+              paused={paused}
+              autoTradingRunning={autoTradingRunning}
+              loading={orderLoading}
+              onClose={() => setOrderModalOpen(false)}
+              onSubmitOrder={submitOrderFromModal}
+            />
+          ) : null}
 
           <section className="panel paper-positions">
             <div className="panel-title">
@@ -150,16 +171,26 @@ export const PaperTradingPage = memo(function PaperTradingPage({
               </div>
               <DataBody loading={paperLoading} columns={4}>
                 <PerformancePills performance={performance} />
+                <TagPerformanceStrip items={tagPerformance} />
                 <RiskEventList items={riskEvents} />
-                <div className="paper-table-head paper-trade-head">
+                <div className="paper-table-head paper-trade-head with-tags">
                   <span>标的</span>
                   <span>方向</span>
                   <span>数量</span>
                   <span>价格</span>
                   <span>时间</span>
+                  <span>标签</span>
                 </div>
                 <div className="line-list">
-                  {trades.length ? trades.map((item) => <TradeRow key={item.id} item={item} />) : <Empty text="暂无成交" />}
+                  {trades.length ? trades.map((item) => (
+                    <TradeRow
+                      key={item.id}
+                      item={item}
+                      tags={tradeTags[item.id] ?? []}
+                      onAddTag={onAddTradeTag}
+                      onDeleteTag={onDeleteTradeTag}
+                    />
+                  )) : <Empty text="暂无成交" />}
                 </div>
               </DataBody>
             </section>
@@ -179,6 +210,16 @@ export const PaperTradingPage = memo(function PaperTradingPage({
               </div>
               <DataBody loading={paperLoading} columns={6}>
                 <GroupedPerformanceTable items={marketPerformance} emptyText="暂无市场状态绩效" />
+              </DataBody>
+            </section>
+
+            <section className="panel paper-agent-runs">
+              <div className="panel-title">
+                <h2>自动交易日志</h2>
+                <span className="hint">最近 20 次</span>
+              </div>
+              <DataBody loading={paperLoading} columns={4}>
+                <AgentRunList items={autoTradingRuns} />
               </DataBody>
             </section>
           </div>
@@ -202,7 +243,7 @@ function MetricGrid({
     { label: "持仓市值", value: formatMoneyPlain(account?.market_value), tone: "neutral" as const },
     { label: "浮动盈亏", value: formatNumber(account?.unrealized_pnl), tone: accountTone(account?.unrealized_pnl) },
     { label: "总收益率", value: formatPct(performance?.total_return_pct), tone: accountTone(performance?.total_return_pct) },
-    { label: "净胜率", value: formatPct(performance?.net_win_rate_pct), tone: "neutral" as const },
+    { label: "净胜率", value: formatPct(performance?.net_win_rate_pct), tone: accountTone(performance?.net_win_rate_pct) },
     { label: "状态", value: account ? (paused ? "已暂停" : "运行中") : "--", tone: paused ? ("warn" as const) : ("down" as const) },
   ];
 
@@ -265,103 +306,144 @@ function Metric({
   );
 }
 
-function OrderEntryPanel({
+function OrderEntryModal({
   draft,
   setDraft,
   paused,
+  autoTradingRunning,
   loading,
+  onClose,
   onSubmitOrder,
 }: {
   draft: PaperOrderDraft;
   setDraft: (draft: PaperOrderDraft) => void;
   paused: boolean;
+  autoTradingRunning: boolean;
   loading: boolean;
-  onSubmitOrder: () => void;
+  onClose: () => void;
+  onSubmitOrder: () => void | Promise<void>;
+}) {
+  const locked = autoTradingRunning || paused;
+  const feeWarning = estimateCommissionWarning(draft);
+  return (
+    <div className="order-modal-backdrop" role="presentation" onMouseDown={onClose}>
+      <section
+        className={`order-modal${paused ? " paused" : ""}${autoTradingRunning ? " auto-running" : ""}`}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="paper-order-modal-title"
+        onMouseDown={(event) => event.stopPropagation()}
+      >
+        <div className="order-modal-title">
+          <div>
+            <span>MECHA ORDER</span>
+            <h2 id="paper-order-modal-title">录入模拟委托</h2>
+          </div>
+          <button type="button" className="order-modal-close" onClick={onClose} aria-label="关闭委托弹窗">×</button>
+        </div>
+        {autoTradingRunning ? <p className="muted">自动交易正在运行，手动委托已临时锁定。停止自动交易后可继续录入。</p> : null}
+        {paused ? <p className="muted">模拟账户已暂停，恢复后可继续提交。</p> : null}
+        <div className="form-grid order-modal-grid">
+          <OrderInput label="代码" value={draft.symbol} disabled={locked} onChange={(value) => setDraft({ ...draft, symbol: value })} />
+          <OrderInput label="名称" value={draft.name} disabled={locked} onChange={(value) => setDraft({ ...draft, name: value })} />
+          <label>
+            <span>方向</span>
+            <select value={draft.side} disabled={locked} onChange={(event) => setDraft({ ...draft, side: event.target.value as "buy" | "sell" })}>
+              <option value="buy">买入</option>
+              <option value="sell">卖出</option>
+            </select>
+          </label>
+          <label>
+            <span>委托类型</span>
+            <select value={draft.order_type} disabled={locked} onChange={(event) => setDraft({ ...draft, order_type: event.target.value as "market" | "limit" })}>
+              <option value="market">市价</option>
+              <option value="limit">限价</option>
+            </select>
+          </label>
+          <OrderInput label="数量" value={draft.quantity} placeholder="100 股整数倍" inputMode="numeric" disabled={locked} onChange={(value) => setDraft({ ...draft, quantity: value })} />
+          <OrderInput label="限价" value={draft.price} placeholder="限价单必填" inputMode="decimal" disabled={locked} onChange={(value) => setDraft({ ...draft, price: value })} />
+          <OrderInput label="撮合现价" value={draft.current_price} inputMode="decimal" disabled={locked} onChange={(value) => setDraft({ ...draft, current_price: value })} />
+          <OrderInput label="策略来源" value={draft.strategy_key} placeholder="如 first_board" disabled={locked} onChange={(value) => setDraft({ ...draft, strategy_key: value })} />
+        </div>
+        <label className="select-field paper-reason">
+          <span>执行理由</span>
+          <input value={draft.reason} disabled={locked} onChange={(event) => setDraft({ ...draft, reason: event.target.value })} />
+        </label>
+        <label className="select-field paper-reason">
+          <span>盘中确认</span>
+          <select
+            value={draft.require_intraday_confirmation ? "yes" : "no"}
+            disabled={locked}
+            onChange={(event) => setDraft({ ...draft, require_intraday_confirmation: event.target.value === "yes" })}
+          >
+            <option value="no">不强制确认</option>
+            <option value="yes">买入前必须承接确认</option>
+          </select>
+        </label>
+        {feeWarning ? <p className="warn paper-fee-warning">{feeWarning}</p> : null}
+        <div className="order-modal-actions">
+          <button type="button" className="ghost-button" onClick={onClose}>取消</button>
+          <button type="button" className="primary-button primary" onClick={onSubmitOrder} disabled={loading || locked}>
+            {autoTradingRunning ? "自动交易中" : loading ? "提交中..." : "提交模拟委托"}
+          </button>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function OrderInput({
+  label,
+  value,
+  placeholder,
+  inputMode,
+  disabled,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  placeholder?: string;
+  inputMode?: "numeric" | "decimal";
+  disabled: boolean;
+  onChange: (value: string) => void;
 }) {
   return (
-    <section className={`panel paper-order${paused ? " paused" : ""}`}>
-      <div className="panel-title">
-        <h2>录入模拟委托</h2>
-        {paused ? <span className="status-chip warn">已暂停</span> : null}
-      </div>
-      {paused ? <p className="muted">模拟账户已暂停，录入区置灰显示。恢复后可继续提交。</p> : null}
-      <div className="form-grid">
-        <label>
-          <span>代码</span>
-          <input value={draft.symbol} onChange={(event) => setDraft({ ...draft, symbol: event.target.value })} />
-        </label>
-        <label>
-          <span>名称</span>
-          <input value={draft.name} onChange={(event) => setDraft({ ...draft, name: event.target.value })} />
-        </label>
-        <label>
-          <span>方向</span>
-          <select value={draft.side} onChange={(event) => setDraft({ ...draft, side: event.target.value as "buy" | "sell" })}>
-            <option value="buy">买入</option>
-            <option value="sell">卖出</option>
-          </select>
-        </label>
-        <label>
-          <span>委托类型</span>
-          <select value={draft.order_type} onChange={(event) => setDraft({ ...draft, order_type: event.target.value as "market" | "limit" })}>
-            <option value="market">市价</option>
-            <option value="limit">限价</option>
-          </select>
-        </label>
-        <label>
-          <span>数量</span>
-          <input
-            value={draft.quantity}
-            placeholder="100 股整数倍"
-            inputMode="numeric"
-            onChange={(event) => setDraft({ ...draft, quantity: event.target.value })}
-          />
-        </label>
-        <label>
-          <span>限价</span>
-          <input
-            value={draft.price}
-            placeholder="限价单必填"
-            inputMode="decimal"
-            onChange={(event) => setDraft({ ...draft, price: event.target.value })}
-          />
-        </label>
-        <label>
-          <span>撮合现价</span>
-          <input
-            value={draft.current_price}
-            inputMode="decimal"
-            onChange={(event) => setDraft({ ...draft, current_price: event.target.value })}
-          />
-        </label>
-        <label>
-          <span>策略来源</span>
-          <input
-            value={draft.strategy_key}
-            placeholder="如 first_board"
-            onChange={(event) => setDraft({ ...draft, strategy_key: event.target.value })}
-          />
-        </label>
-      </div>
-      <label className="select-field paper-reason">
-        <span>执行理由</span>
-        <input value={draft.reason} onChange={(event) => setDraft({ ...draft, reason: event.target.value })} />
-      </label>
-      <label className="select-field paper-reason">
-        <span>盘中确认</span>
-        <select
-          value={draft.require_intraday_confirmation ? "yes" : "no"}
-          onChange={(event) => setDraft({ ...draft, require_intraday_confirmation: event.target.value === "yes" })}
-        >
-          <option value="no">不强制确认</option>
-          <option value="yes">买入前必须承接确认</option>
-        </select>
-      </label>
-      <button type="button" className="primary-button primary full" onClick={onSubmitOrder} disabled={loading}>
-        {loading ? "提交中..." : "提交模拟委托"}
-      </button>
-    </section>
+    <label>
+      <span>{label}</span>
+      <input
+        value={value}
+        placeholder={placeholder}
+        inputMode={inputMode}
+        disabled={disabled}
+        onChange={(event) => onChange(event.target.value)}
+      />
+    </label>
   );
+}
+
+function estimateCommissionWarning(draft: PaperOrderDraft): string {
+  const quantity = Number(draft.quantity || 0);
+  const price = Number(draft.price || draft.current_price || 0);
+  const amount = quantity * price;
+  if (!Number.isFinite(amount) || amount <= 0) return "";
+  const commission = Math.max(amount * 0.00025, 5);
+  const stampTax = draft.side === "sell" ? amount * 0.0005 : 0;
+  const transferFee = amount * 0.00001;
+  const rate = (commission + stampTax + transferFee) / amount;
+  if (rate >= 0.01) return "手续费占比超过 1%，单笔金额偏小，容易吞噬收益。";
+  if (rate >= 0.005) return "手续费占比超过 0.5%，建议合并小额委托。";
+  return "";
+}
+
+function resolvePaperMarketState(): "open" | "closed" | "lunch_break" {
+  const now = new Date();
+  const day = now.getDay();
+  if (day === 0 || day === 6) return "closed";
+  const minutes = now.getHours() * 60 + now.getMinutes();
+  if (minutes >= 9 * 60 + 30 && minutes < 11 * 60 + 30) return "open";
+  if (minutes >= 13 * 60 && minutes < 15 * 60) return "open";
+  if (minutes >= 11 * 60 + 30 && minutes < 13 * 60) return "lunch_break";
+  return "closed";
 }
 
 function PerformancePills({ performance }: { performance: PaperPerformance | null }) {
@@ -371,6 +453,21 @@ function PerformancePills({ performance }: { performance: PaperPerformance | nul
       <Info label="胜率" value={formatPct(performance?.win_rate_pct)} />
       <Info label="平均单笔" value={formatPct(performance?.avg_trade_return_pct)} tone={accountTone(performance?.avg_trade_return_pct)} />
       <Info label="最大回撤" value={formatPct(performance?.max_drawdown_pct)} tone={accountTone(performance?.max_drawdown_pct)} />
+    </div>
+  );
+}
+
+function TagPerformanceStrip({ items }: { items: PaperTagPerformance[] }) {
+  if (!items.length) {
+    return null;
+  }
+  return (
+    <div className="paper-tag-performance">
+      {items.slice(0, 4).map((item) => (
+        <span key={item.tag}>
+          {item.tag} {item.trades} 笔 · 均收 <b className={accountTone(item.avg_return_pct)}>{formatPct(item.avg_return_pct)}</b>
+        </span>
+      ))}
     </div>
   );
 }
@@ -416,17 +513,49 @@ function OrderRow({ item }: { item: PaperOrder }) {
   );
 }
 
-function TradeRow({ item }: { item: PaperTrade }) {
+function TradeRow({
+  item,
+  tags,
+  onAddTag,
+  onDeleteTag,
+}: {
+  item: PaperTrade;
+  tags: PaperTradeTag[];
+  onAddTag: (tradeId: number, tag: string) => void;
+  onDeleteTag: (tradeId: number, tagId: number) => void;
+}) {
+  const quickTags = ["止盈", "止损", "做T", "计划外"].filter((tag) => !tags.some((item) => item.tag === tag));
+  const reasonText = item.side === "buy" ? item.entry_reason : item.exit_reason;
   return (
-    <article className="paper-row paper-trade-row">
+    <article className="paper-row paper-trade-row with-tags">
       <div className="paper-stock-name">
         <strong>{item.symbol}</strong>
         <span>{item.strategy_key || "未标注"}</span>
+        <span className="paper-trade-reason">{reasonText || (item.side === "buy" ? "买入原因未记录" : "退出原因未记录")}</span>
+        {item.commission_warning ? <span className="paper-trade-reason warn">{item.commission_warning}</span> : null}
       </div>
       <span className={`status-chip ${item.side === "buy" ? "up" : "down"}`}>{item.side === "buy" ? "买入" : "卖出"}</span>
       <span className="cell-number">{formatShare(item.quantity)} 股</span>
       <span className="cell-number">{formatPrice(item.price)}</span>
       <span>{formatDateTime(item.trade_time)}</span>
+      <div className="paper-trade-tags">
+        {tags.map((tag) => (
+          <button
+            type="button"
+            className="paper-tag-chip"
+            key={tag.id}
+            onClick={() => onDeleteTag(item.id, tag.id)}
+            title="点击删除标签"
+          >
+            {tag.tag} ×
+          </button>
+        ))}
+        {quickTags.slice(0, tags.length ? 1 : 2).map((tag) => (
+          <button type="button" className="paper-tag-add" key={tag} onClick={() => onAddTag(item.id, tag)}>
+            +{tag}
+          </button>
+        ))}
+      </div>
     </article>
   );
 }
@@ -461,6 +590,40 @@ function GroupedPerformanceTable({ items, emptyText }: { items: PaperGroupedPerf
       })}
     </div>
   );
+}
+
+function AgentRunList({ items }: { items: PaperAgentRun[] }) {
+  if (!items.length) {
+    return <Empty text="暂无自动交易日志" />;
+  }
+  return (
+    <div className="line-list">
+      {items.slice(0, 5).map((item) => {
+        const response = item.response || {};
+        const executed = Number(response.executed_count ?? (Array.isArray(response.executed) ? response.executed.length : 0));
+        const skipped = Number(response.skipped_count ?? (Array.isArray(response.skipped) ? response.skipped.length : 0));
+        const summary = String(response.summary || item.error_message || "--");
+        return (
+          <article className="paper-row paper-agent-run-row" key={item.id}>
+            <div className="paper-stock-name">
+              <strong>{runStatusText(item.status)}</strong>
+              <span>{formatDateTime(item.created_at)}</span>
+            </div>
+            <span>执行 {executed} / 跳过 {skipped}</span>
+            <span>{summary}</span>
+          </article>
+        );
+      })}
+    </div>
+  );
+}
+
+function runStatusText(status: string): string {
+  if (status === "succeeded") return "已完成";
+  if (status === "failed") return "失败";
+  if (status === "skipped") return "跳过";
+  if (status === "running") return "运行中";
+  return status || "--";
 }
 
 function DataBody({ loading, columns, children }: { loading: boolean; columns: number; children: ReactNode }) {

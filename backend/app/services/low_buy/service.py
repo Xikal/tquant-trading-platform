@@ -23,6 +23,9 @@ from app.services.low_buy.shared import (
 )
 
 
+# MRO is intentional: public orchestration methods live in the leftmost mixins,
+# while shared read/write helpers stay near the right. Keep new mixins narrow and
+# avoid duplicate method names unless explicitly overriding behavior.
 class _LowBuyRuntime(
     LowBuyExecutionBacktestMixin,
     LowBuyLifecycleMixin,

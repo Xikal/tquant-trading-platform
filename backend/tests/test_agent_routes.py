@@ -7,10 +7,16 @@ from fastapi.testclient import TestClient
 
 from app.api.routes import agent
 from app.core.admin_auth import require_admin_auth
+from app.core.auth import require_current_user_or_agent_token
+from app.core.config import get_settings
 from app.core.database import get_db
 from app.models.schema_defs.agent import (
+    AgentOrderRecommendationResponse,
     AgentDailyReportResponse,
     AgentHealthResponse,
+    AgentSignalNotificationResponse,
+    AgentSignalNotificationScanResponse,
+    AgentPaperPortfolioResponse,
     AgentPriorityBoardResponse,
     AgentProviderHealth,
     AgentToolResult,
@@ -43,6 +49,12 @@ class _ContextServiceStub:
 
         return AgentAnalysisResponse(symbol=payload.symbol, name=payload.symbol, summary="测试")
 
+    def paper_portfolio(self, db, account_id=None, *, user_id=None):  # noqa: ANN001, ARG002
+        return AgentPaperPortfolioResponse(updated_at="2026-04-29 10:30:00", account_id=account_id)
+
+    def recommend_orders(self, db, payload, *, user_id=None):  # noqa: ANN001, ARG002
+        return AgentOrderRecommendationResponse(updated_at="2026-04-29 10:30:00", account_id=payload.account_id)
+
 
 class _ReportServiceStub:
     def daily_report(self, db):  # noqa: ANN001, ARG002
@@ -69,8 +81,43 @@ class _ProviderStub:
         )
 
 
+class _NotificationServiceStub:
+    def send_signal(self, db, payload, *, user_id=None):  # noqa: ANN001, ARG002
+        return AgentSignalNotificationResponse(
+            ok=True,
+            channel=payload.channel,
+            symbol=payload.symbol,
+            strategy_key=payload.strategy_key,
+            signal_state=payload.signal_state,
+            should_notify=True,
+            upgraded=False,
+            notification_count=1,
+            message="notification sent",
+        )
+
+
+class _SignalScanServiceStub:
+    def scan_priority_board(self, db, *, limit=12, channel="feishu", user_id=None):  # noqa: ANN001, ARG002
+        return AgentSignalNotificationScanResponse(
+            channel=channel,
+            scanned=limit,
+            sent=1,
+            suppressed=limit - 1,
+            message="scan ok",
+        )
+
+
 def _override_db():
     yield object()
+
+
+def _override_user():
+    class UserStub:
+        id = 1
+        username = "tester"
+        is_active = True
+
+    return UserStub()
 
 
 class AgentRouteTests(unittest.TestCase):
@@ -78,21 +125,44 @@ class AgentRouteTests(unittest.TestCase):
         self.original_context = agent.context_service
         self.original_report = agent.report_service
         self.original_factory = agent.create_agent_provider
+        self.original_notification_service = agent.AgentNotificationService
+        self.original_signal_scan_service = agent.AgentSignalScanService
         agent.context_service = _ContextServiceStub()
         agent.report_service = _ReportServiceStub()
         agent.create_agent_provider = lambda db=None: _ProviderStub()  # noqa: ARG005
+        agent.AgentNotificationService = lambda: _NotificationServiceStub()
+        agent.AgentSignalScanService = lambda: _SignalScanServiceStub()
         self.app = FastAPI()
         self.app.include_router(agent.router, prefix="/api")
         self.app.dependency_overrides[get_db] = _override_db
+        self.app.dependency_overrides[require_current_user_or_agent_token] = _override_user
         self.client = TestClient(self.app)
 
     def tearDown(self) -> None:
         agent.context_service = self.original_context
         agent.report_service = self.original_report
         agent.create_agent_provider = self.original_factory
+        agent.AgentNotificationService = self.original_notification_service
+        agent.AgentSignalScanService = self.original_signal_scan_service
 
     def test_agent_health_route(self) -> None:
         response = self.client.get("/api/agent/health")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["status"], "ok")
+
+    def test_agent_api_token_can_access_safe_routes(self) -> None:
+        settings = get_settings()
+        original_token = settings.agent_api_token
+        self.app.dependency_overrides.pop(require_current_user_or_agent_token, None)
+        settings.agent_api_token = "agent-test-token"
+        try:
+            response = self.client.get(
+                "/api/agent/health",
+                headers={"Authorization": "Bearer agent-test-token"},
+            )
+        finally:
+            settings.agent_api_token = original_token
+            self.app.dependency_overrides[require_current_user_or_agent_token] = _override_user
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["status"], "ok")
 
@@ -111,10 +181,41 @@ class AgentRouteTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn("headline", response.json())
 
+    def test_paper_portfolio_route(self) -> None:
+        response = self.client.get("/api/agent/context/paper-portfolio?account_id=1")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["account_id"], 1)
+
+    def test_recommend_orders_route(self) -> None:
+        response = self.client.post("/api/agent/context/recommend-orders", json={"limit": 3, "account_id": 1})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["account_id"], 1)
+
     def test_provider_status_route(self) -> None:
         response = self.client.get("/api/agent/provider/status")
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["provider"], "none")
+
+    def test_signal_notification_route(self) -> None:
+        response = self.client.post(
+            "/api/agent/notify/signal",
+            json={"symbol": "510300", "strategy_key": "first_board", "signal_state": "watch"},
+        )
+        self.assertEqual(response.status_code, 200)
+        body = response.json()
+        self.assertTrue(body["ok"])
+        self.assertTrue(body["should_notify"])
+        self.assertEqual(body["symbol"], "510300")
+
+    def test_signal_notification_scan_route(self) -> None:
+        response = self.client.post(
+            "/api/agent/notify/scan-priority-board",
+            json={"limit": 3, "channel": "feishu"},
+        )
+        self.assertEqual(response.status_code, 200)
+        body = response.json()
+        self.assertTrue(body["ok"])
+        self.assertEqual(body["scanned"], 3)
 
     def test_provider_invoke_route(self) -> None:
         self.app.dependency_overrides[require_admin_auth] = lambda: None

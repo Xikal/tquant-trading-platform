@@ -13,12 +13,22 @@ class QuoteSourceRouter:
         self.service = service
 
     def fetch(self, symbol: str) -> QuoteSnapshot:
+        stale_candidate: QuoteSnapshot | None = None
         try:
             snapshot = self.service._fetch_tencent_quote(symbol)
-            if snapshot is not None:
+            if snapshot is not None and not getattr(snapshot, "is_stale", False):
                 return snapshot
+            stale_candidate = snapshot
         except Exception as exc:
             logger.debug("primary quote source failed for %s: %s", symbol, exc)
+
+        try:
+            snapshot = self.service._fetch_eastmoney_realtime_quote(symbol)
+            if snapshot is not None and not getattr(snapshot, "is_stale", False):
+                return snapshot
+            stale_candidate = stale_candidate or snapshot
+        except Exception as exc:
+            logger.debug("eastmoney quote source failed for %s: %s", symbol, exc)
 
         alternatives = (
             self.service._fetch_quote_from_trends,
@@ -44,18 +54,36 @@ class QuoteSourceRouter:
         try:
             return self.service._fetch_sina_quote(symbol)
         except Exception as exc:
+            if stale_candidate is not None:
+                return stale_candidate
             raise DataSourceError(f"未获取到 {symbol} 的实时行情。") from exc
 
     def fetch_batch(self, symbols: list[str], allow_slow_fallback: bool = True) -> dict[str, QuoteSnapshot]:
         result: dict[str, QuoteSnapshot] = {}
         remaining = list(symbols)
+        stale_candidates: dict[str, QuoteSnapshot] = {}
         try:
             batch_quotes = self.service._fetch_tencent_quotes_batch(remaining)
         except Exception:
             batch_quotes = {}
-        result.update(batch_quotes)
+        for symbol, snapshot in batch_quotes.items():
+            if getattr(snapshot, "is_stale", False):
+                stale_candidates[symbol] = snapshot
+            else:
+                result[symbol] = snapshot
         if not allow_slow_fallback:
-            return result
+            return result or stale_candidates
+        remaining = [symbol for symbol in remaining if symbol not in result]
+        if remaining:
+            try:
+                eastmoney_quotes = self.service._fetch_eastmoney_realtime_quotes_batch(remaining)
+            except Exception:
+                eastmoney_quotes = {}
+            for symbol, snapshot in eastmoney_quotes.items():
+                if getattr(snapshot, "is_stale", False):
+                    stale_candidates.setdefault(symbol, snapshot)
+                else:
+                    result[symbol] = snapshot
         remaining = [symbol for symbol in remaining if symbol not in result]
         if remaining:
             grouped = self._group_remaining_by_instrument_type(remaining)
@@ -74,6 +102,8 @@ class QuoteSourceRouter:
                 result[symbol] = self.fetch(symbol)
             except Exception:
                 continue
+        for symbol, snapshot in stale_candidates.items():
+            result.setdefault(symbol, snapshot)
         return result
 
     def _group_remaining_by_instrument_type(self, symbols: list[str]) -> dict[str, list[str]]:

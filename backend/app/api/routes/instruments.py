@@ -1,11 +1,15 @@
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
+from app.core.auth import get_current_user
 from app.core.database import get_db
 from app.services.market_data import DataSourceError, MarketDataService
 from app.services.market_rules import MarketRuleService
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(get_current_user)])
+logger = logging.getLogger(__name__)
 market_data = MarketDataService()
 rule_service = MarketRuleService()
 
@@ -22,7 +26,7 @@ def list_instruments(
         try:
             market_data.sync_instruments(db, "all")
         except Exception:
-            pass
+            logger.warning("instrument bootstrap sync failed", exc_info=True)
     items = market_data.search_instruments(db, keyword=keyword, kind=kind, page=page, page_size=page_size)
     total = market_data.get_total_instruments(db, kind=kind)
     return {"items": [item.model_dump() for item in items], "page": page, "page_size": page_size, "total": total}

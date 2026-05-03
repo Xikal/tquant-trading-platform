@@ -7,6 +7,37 @@ BuySignalState = Literal["buy_now", "soft_buy_now", "near_entry", "watch", "avoi
 from pydantic import BaseModel, Field
 
 
+class LowBuyStrategyGovernanceItemOut(BaseModel):
+    strategy_key: str
+    strategy_title: str
+    subtitle: str = ""
+    tier: Literal["core", "auxiliary", "research", "factor"] = "research"
+    layer: Literal["production", "research", "factor"] = "research"
+    status: Literal["active", "watch", "paused", "research", "deprecated"] = "research"
+    status_text: str = ""
+    enabled: bool = True
+    participates_priority_board: bool = False
+    strong_buy_paused: bool = True
+    requires_mainline_industry: bool = False
+    pool_key: str = ""
+    pool_title: str = ""
+    pool_source: str = ""
+    pool_max_size: int = 0
+    uses_daily_scan_pool: bool = False
+    max_holding_days: int = 0
+    holding_brief: str = ""
+    strategy_health_score: float = 0.0
+    strategy_health_text: str = "暂无绩效样本"
+    performance_sample_count: int = 0
+    notes: list[str] = Field(default_factory=list)
+
+
+class LowBuyStrategyGovernanceResponse(BaseModel):
+    default_strategy: str
+    production_strategies: list[str] = Field(default_factory=list)
+    items: list[LowBuyStrategyGovernanceItemOut] = Field(default_factory=list)
+
+
 class LowBuyExitPlanOut(BaseModel):
     stop_loss: float = 0.0
     first_take_profit: float = 0.0
@@ -73,6 +104,9 @@ class LowBuyExecutionBacktestItemOut(BaseModel):
     max_gain_pct: float = 0.0
     max_drawdown_pct: float = 0.0
     exit_reason: str = ""
+    data_quality: str = "ok"
+    data_quality_text: str = "数据完整"
+    data_quality_tags: list[str] = Field(default_factory=list)
 
 
 class LowBuyExecutionBacktestResponse(BaseModel):
@@ -98,6 +132,9 @@ class LowBuyExecutionBacktestResponse(BaseModel):
     avg_loss_pct: float = 0.0
     win_loss_ratio: float = 0.0
     profit_factor: float = 0.0
+    data_quality: str = "ok"
+    data_quality_text: str = "数据完整"
+    data_quality_tags: list[str] = Field(default_factory=list)
     pbo: Optional[dict[str, Any]] = None
     crisis_scenario: Optional[dict[str, Any]] = None
     notes: list[str] = Field(default_factory=list)
@@ -155,6 +192,9 @@ class LowBuyCandidateOut(BaseModel):
     latest_price: float
     change_pct: float
     quote_timestamp: str
+    data_quality: str = "ok"
+    data_quality_text: str = "数据完整"
+    data_quality_tags: list[str] = Field(default_factory=list)
     board_date: str
     board_count: int
     retracement_days: int
@@ -204,6 +244,8 @@ class LowBuyCandidateOut(BaseModel):
     suggested_position_text: str = ""
     market_state: str = "low_volume_wait"
     market_state_text: str = ""
+    market_state_category: str = "low_volume_wait"
+    market_state_category_text: str = "缩量观望"
     market_state_strength: float = 0.0
     market_position_multiplier: float = 1.0
     confirmed_trade_date: Optional[str] = None
@@ -229,6 +271,12 @@ class LowBuyQuoteRefreshOut(BaseModel):
     latest_price: float
     change_pct: float
     quote_timestamp: str
+    data_source: Optional[str] = None
+    source_quality: Optional[str] = None
+    is_stale: bool = False
+    data_quality: str = "ok"
+    data_quality_text: str = "数据完整"
+    data_quality_tags: list[str] = Field(default_factory=list)
     in_entry_zone: bool = False
     distance_to_entry_pct: float = 0.0
     stop_confirmed: bool = False
@@ -328,6 +376,11 @@ class LowBuyPriorityBoardItemOut(BaseModel):
     latest_price: float
     change_pct: float
     quote_timestamp: str
+    data_quality: str = "ok"
+    data_quality_text: str = "数据完整"
+    data_quality_tags: list[str] = Field(default_factory=list)
+    market_state_category: str = "low_volume_wait"
+    market_state_category_text: str = "缩量观望"
     buy_signal_state: BuySignalState = "watch"
     buy_signal_text: str = "继续观察"
     priority_score: float = 0.0
@@ -424,6 +477,11 @@ class LowBuyPriorityBoardResponse(BaseModel):
     track_count: int = 0
     market_state: str = "neutral"
     market_state_text: str = ""
+    market_state_category: str = "low_volume_wait"
+    market_state_category_text: str = "缩量观望"
+    data_quality: str = "ok"
+    data_quality_text: str = "数据完整"
+    data_quality_tags: list[str] = Field(default_factory=list)
     directional_bias: str = "neutral"
     directional_bias_text: str = "观望"
     market_bonus: float = 0.0
@@ -494,6 +552,11 @@ class LowBuyScreenerResponse(BaseModel):
     full_scan_updated_at: Optional[str] = None
     market_state: str = "low_volume_wait"
     market_state_text: str = ""
+    market_state_category: str = "low_volume_wait"
+    market_state_category_text: str = "缩量观望"
+    data_quality: str = "ok"
+    data_quality_text: str = "数据完整"
+    data_quality_tags: list[str] = Field(default_factory=list)
     market_bonus: float = 0.0
     market_state_strength: float = 0.0
     regime_confidence: float = 0.0

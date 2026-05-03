@@ -27,7 +27,7 @@ from app.services.quant_engine_scenes import resolve_trade_scene
 from app.services.low_buy.signals import LowBuySignalMixin
 
 
-class _QuoteRefreshService(LowBuyQuoteRefreshMixin, LowBuySignalMixin):
+class _QuoteRefreshService(LowBuyQuoteRefreshMixin, LowBuySignalMixin, LowBuyCandidateMixin):
     pass
 
 
@@ -367,6 +367,28 @@ class StrategySafetyLayerTests(unittest.TestCase):
         payload = service._build_quote_refresh_payloads(["000001"], {})
 
         self.assertEqual(payload, {})
+
+    def test_stale_quote_never_upgrades_low_buy_signal(self) -> None:
+        service = _QuoteRefreshService()
+        candidate = _candidate().model_copy(
+            update={
+                "strategy_key": "first_board",
+                "score": 96.0,
+                "execution_ready": True,
+            }
+        )
+        stale_quote = _quote().model_copy(
+            update={
+                "last_price": 9.95,
+                "is_stale": True,
+                "timestamp": "2026-04-24 09:45:00",
+            }
+        )
+
+        refreshed = service._refresh_buy_signal(candidate, quote=stale_quote)
+
+        self.assertEqual(refreshed.buy_signal_state, "watch")
+        self.assertIn("行情时间已过期", refreshed.buy_signal_hint)
 
 
 def _quote() -> QuoteSnapshot:

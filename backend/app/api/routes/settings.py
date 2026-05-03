@@ -6,18 +6,28 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.core.admin_auth import is_admin_token_configured, require_admin_auth
+from app.core.auth import get_current_user
 from app.core.config import RUNTIME_ENV_PATH, get_settings
 from app.core.database import get_db
 from app.models.schemas import (
     DatabaseCheckRequest,
     DatabaseMigrationRequest,
+    FactorSpecOut,
+    FactorWeightsResponse,
+    FactorWeightsUpdate,
     RuntimeStatusResponse,
     SettingsUpdate,
+)
+from app.services.low_buy.factor_functions import (
+    default_factor_weights,
+    get_effective_factor_weights,
+    list_factor_specs,
+    save_factor_weight_overrides,
 )
 from app.services.db_admin_service import DatabaseAdminService
 from app.services.settings_service import SettingsService
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(get_current_user)])
 db_admin_service = DatabaseAdminService()
 settings = get_settings()
 PROJECT_ROOT = Path(__file__).resolve().parents[4]
@@ -25,7 +35,10 @@ FRONTEND_DIST_INDEX = PROJECT_ROOT / "frontend" / "dist" / "index.html"
 
 
 @router.get("/settings")
-def get_settings(db: Session = Depends(get_db)):
+def get_settings(
+    _: None = Depends(require_admin_auth),
+    db: Session = Depends(get_db),
+):
     return SettingsService(db).get_public_payload(
         admin_auth_required=is_admin_token_configured()
     ).model_dump()
@@ -79,7 +92,10 @@ def migrate_database(
 
 
 @router.get("/settings/runtime", response_model=RuntimeStatusResponse)
-def get_runtime_status(db: Session = Depends(get_db)):
+def get_runtime_status(
+    _: None = Depends(require_admin_auth),
+    db: Session = Depends(get_db),
+):
     payload = SettingsService(db).get_payload()
     database_url = settings.database_url
     llm_configured = bool(
@@ -126,6 +142,38 @@ def get_runtime_status(db: Session = Depends(get_db)):
         cors_origins=settings.cors_origins,
         ready_checks=ready_checks,
     )
+
+
+@router.get("/settings/factor-weights", response_model=FactorWeightsResponse)
+def get_factor_weights(
+    _: None = Depends(require_admin_auth),
+) -> FactorWeightsResponse:
+    specs = list_factor_specs()
+    return FactorWeightsResponse(
+        weights=get_effective_factor_weights(),
+        defaults=default_factor_weights(),
+        factors=[
+            FactorSpecOut(
+                name=spec.name,
+                weight=spec.weight,
+                data_dependencies=list(spec.data_dependencies),
+                applicable_strategies=list(spec.applicable_strategies),
+                activation_condition=spec.activation_condition,
+                status=spec.status,
+                status_text=spec.status_text,
+            )
+            for spec in specs
+        ],
+    )
+
+
+@router.put("/settings/factor-weights", response_model=FactorWeightsResponse)
+def update_factor_weights(
+    payload: FactorWeightsUpdate,
+    _: None = Depends(require_admin_auth),
+) -> FactorWeightsResponse:
+    save_factor_weight_overrides(payload.weights)
+    return get_factor_weights()
 
 
 def _requires_database_restart(database_url: Optional[str]) -> bool:

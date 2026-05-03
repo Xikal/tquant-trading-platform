@@ -18,6 +18,7 @@ from app.repositories.low_buy.results import LowBuyResultRepository
 from app.repositories.low_buy.lifecycle import LowBuyTradeLifecycleRepository
 from app.services.low_buy.priority_scoring import LowBuyPriorityScoringMixin
 from app.services.low_buy.market_state_rules import compute_directional_bias, directional_bias_text
+from app.services.low_buy.data_quality import build_market_data_quality, data_quality_payload
 from app.services.low_buy.portfolio_risk import build_lifecycle_holdings, build_portfolio_risk
 from app.services.low_buy.priority_types import (
     PriorityBaseSnapshot,
@@ -37,6 +38,7 @@ from app.services.low_buy.strategy_policy import participates_in_priority_board
 from app.services.low_buy.strategy_families import resolve_strategy_family, resolve_strategy_family_label
 from app.services.low_buy.recommendation_duration import attach_recommendation_durations
 from app.services.low_buy.simple_decision import build_daily_decision, build_simple_buckets, enrich_priority_items
+from app.services.market.state_categories import standard_market_state_payload
 
 
 class LowBuyPriorityBoardMixin(LowBuyPriorityScoringMixin):
@@ -77,12 +79,22 @@ class LowBuyPriorityBoardMixin(LowBuyPriorityScoringMixin):
             },
             mainline_strength={"strength": base_snapshot.market_context.market_state_strength},
         )
+        snapshot_warning = self._priority_snapshot_warning(base_snapshot)
+        market_state_fields = standard_market_state_payload(base_snapshot.market_context.market_state)
+        quality_fields = data_quality_payload(
+            build_market_data_quality(
+                breadth_ready=base_snapshot.market_context.breadth_ready,
+                emotion_ready=base_snapshot.market_context.emotion_ready,
+                hot_industry_source=base_snapshot.market_context.hot_industry_source,
+                snapshot_warning=snapshot_warning,
+            )
+        )
 
         response = LowBuyPriorityBoardResponse(
             as_of_date=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             latest_trade_date=base_snapshot.latest_trade_date,
             latest_available_trade_date=base_snapshot.latest_available_trade_date,
-            snapshot_warning=self._priority_snapshot_warning(base_snapshot),
+            snapshot_warning=snapshot_warning,
             updated_at=base_snapshot.updated_at or datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             total_candidates=len(items),
             immediate_count=sum(item.buy_signal_state in {"buy_now", "soft_buy_now"} for item in items),
@@ -90,6 +102,9 @@ class LowBuyPriorityBoardMixin(LowBuyPriorityScoringMixin):
             track_count=sum(item.buy_signal_state == "watch" for item in items),
             market_state=base_snapshot.market_context.market_state,
             market_state_text=self._market_state_text(base_snapshot.market_context),
+            market_state_category=market_state_fields["market_state_category"],
+            market_state_category_text=market_state_fields["market_state_category_text"],
+            **quality_fields,
             directional_bias=directional_bias,
             directional_bias_text=directional_bias_text(directional_bias),
             market_bonus=base_snapshot.market_context.market_bonus,
@@ -497,6 +512,11 @@ class LowBuyPriorityBoardMixin(LowBuyPriorityScoringMixin):
                     latest_price=candidate.latest_price,
                     change_pct=candidate.change_pct,
                     quote_timestamp=candidate.quote_timestamp,
+                    data_quality=candidate.data_quality,
+                    data_quality_text=candidate.data_quality_text,
+                    data_quality_tags=candidate.data_quality_tags,
+                    market_state_category=candidate.market_state_category,
+                    market_state_category_text=candidate.market_state_category_text,
                     buy_signal_state=candidate.buy_signal_state,
                     buy_signal_text=candidate.buy_signal_text,
                     priority_score=self._final_rank_score(

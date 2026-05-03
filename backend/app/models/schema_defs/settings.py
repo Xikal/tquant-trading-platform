@@ -109,3 +109,23 @@ class RuntimeStatusResponse(BaseModel):
     data_source_base_url: str
     cors_origins: List[str]
     ready_checks: Dict[str, bool]
+
+
+class FactorSpecOut(BaseModel):
+    name: str
+    weight: float
+    data_dependencies: List[str] = Field(default_factory=list)
+    applicable_strategies: List[str] = Field(default_factory=list)
+    activation_condition: str = "always"
+    status: str = "active"
+    status_text: str = "已启用"
+
+
+class FactorWeightsResponse(BaseModel):
+    weights: Dict[str, float]
+    defaults: Dict[str, float]
+    factors: List[FactorSpecOut]
+
+
+class FactorWeightsUpdate(BaseModel):
+    weights: Dict[str, float] = Field(default_factory=dict)

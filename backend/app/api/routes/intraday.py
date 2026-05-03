@@ -11,17 +11,21 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.database import SessionLocal, get_db
+from app.core.auth import get_current_user
 from app.models.entities import SseSubscription
+from app.models.entities import User
 from app.models.schemas import IntradayConfirmationOut, IntradayConfirmationRequest
 from app.services.intraday_confirmation_service import IntradayConfirmationService
-from app.services.auth_service import AuthError, AuthService
+from app.services.sse_token_service import SseStreamTokenService
 
 router = APIRouter(prefix="/intraday")
+stream_tokens = SseStreamTokenService()
 
 
 @router.post("/confirmations", response_model=list[IntradayConfirmationOut])
 def build_intraday_confirmations(
     payload: IntradayConfirmationRequest,
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> list[IntradayConfirmationOut]:
     return IntradayConfirmationService(db).confirm_symbols(
@@ -34,19 +38,31 @@ def build_intraday_confirmations(
 @router.get("/confirmations", response_model=list[IntradayConfirmationOut])
 def list_intraday_confirmations(
     limit: int = Query(default=50, ge=1, le=200),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> list[IntradayConfirmationOut]:
     return IntradayConfirmationService(db).list_recent(limit=limit)
+
+
+@router.post("/subscribe")
+def create_intraday_stream_subscription(
+    current_user: User = Depends(get_current_user),
+) -> dict:
+    grant = stream_tokens.issue(int(current_user.id))
+    return {
+        "stream_token": grant.token,
+        "expires_in": stream_tokens.ttl_seconds,
+    }
 
 
 @router.get("/stream")
 def stream_intraday_confirmations(
     symbols: str = Query(default=""),
     client_id: str = Query(default="web"),
-    token: str = Query(default=""),
+    stream_token: str = Query(default=""),
     interval_seconds: int = Query(default=15, ge=5, le=120),
 ):
-    user_id = _user_id_from_token(token)
+    user_id = _user_id_from_stream_token(stream_token)
     symbol_list = [item.strip() for item in symbols.split(",") if item.strip()]
     return StreamingResponse(
         _confirmation_event_stream(symbol_list, client_id, user_id, interval_seconds),
@@ -92,12 +108,10 @@ def _touch_subscription(client_id: str, channel: str, user_id: int) -> None:
         db.commit()
 
 
-def _user_id_from_token(token: str) -> int:
-    if not token:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="SSE 订阅需要登录令牌")
-    with SessionLocal() as db:
-        try:
-            user = AuthService().user_from_access_token(db, token)
-        except AuthError as exc:
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(exc)) from exc
-        return int(user.id)
+def _user_id_from_stream_token(stream_token: str) -> int:
+    if not stream_token:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="SSE 订阅需要一次性连接令牌")
+    user_id = stream_tokens.consume(stream_token)
+    if user_id is None:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="SSE 连接令牌无效或已过期")
+    return int(user_id)

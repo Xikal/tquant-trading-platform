@@ -10,23 +10,6 @@ export function formatTimeLabel(value?: string | null) {
   return match?.[1] ?? value
 }
 
-export function formatRatioPercent(value?: number | null) {
-  if (typeof value !== "number" || !Number.isFinite(value)) {
-    return "--"
-  }
-  return `${(value * 100).toFixed(0)}%`
-}
-
-export function formatAmount(value?: number | null) {
-  if (typeof value !== "number" || !Number.isFinite(value)) {
-    return "--"
-  }
-  return new Intl.NumberFormat("zh-CN", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2
-  }).format(value)
-}
-
 export function listOrEmpty<T>(items: T[] | null | undefined): T[] {
   return Array.isArray(items) ? items : []
 }
@@ -82,89 +65,6 @@ export function Icon({
       <path d="M18 6 6 18" />
       <path d="m6 6 12 12" />
     </svg>
-  )
-}
-
-export function StatStrip({
-  items
-}: {
-  items: Array<{ label: string; value: string; change: string; tone?: "positive" | "negative" | "neutral" }>
-}) {
-  return (
-    <section className="mobile-app-market-strip">
-      {items.map((item) => (
-        <article key={item.label} className="mobile-app-market-cell">
-          <small>{item.label}</small>
-          <div className="mobile-app-market-main">
-            <strong className={`tone-${item.tone ?? "neutral"}`}>{item.value}</strong>
-            <span className={`tone-${item.tone ?? "neutral"}`}>{item.change}</span>
-          </div>
-          <div className="mobile-app-market-line" />
-        </article>
-      ))}
-    </section>
-  )
-}
-
-export function SegmentTabs({
-  items,
-  onChange
-}: {
-  items: Array<{ key: string; label: string; active?: boolean }>
-  onChange: (key: string) => void
-}) {
-  return (
-    <div className="mobile-app-segment-tabs" role="tablist" aria-label="分段导航">
-      {items.map((item) => (
-        <button key={item.key} type="button" className={item.active ? "active" : ""} onClick={() => onChange(item.key)}>
-          {item.label}
-        </button>
-      ))}
-    </div>
-  )
-}
-
-interface MarketPulseBoard {
-  market_state_text?: string
-  hot_industries?: string[] | null
-  stock_up_ratio?: number
-  stock_median_change?: number
-  limit_up_count?: number
-  board_height?: number
-  broken_board_ratio?: number
-  immediate_count?: number
-  focus_count?: number
-  track_count?: number
-}
-
-export function MarketPulse({
-  board
-}: {
-  board?: MarketPulseBoard | null
-}) {
-  if (!board) {
-    return null
-  }
-
-  const hotIndustries = listOrEmpty(board.hot_industries).slice(0, 3)
-
-  return (
-    <section className="mobile-app-market-pulse">
-      <div className="mobile-app-pulse-head">
-        <strong>{board.market_state_text || "市场状态"}</strong>
-        <small>
-          可执行 {board.immediate_count ?? 0} / 观察 {board.focus_count ?? 0} / 跟踪 {board.track_count ?? 0}
-        </small>
-      </div>
-      <div className="mobile-app-pulse-grid">
-        <span>涨家 {formatRatioPercent(board.stock_up_ratio)}</span>
-        <span>中位 {formatPercent(board.stock_median_change)}</span>
-        <span>涨停 {board.limit_up_count}</span>
-        <span>高度 {board.board_height || "--"}板</span>
-        <span>炸板 {formatRatioPercent(board.broken_board_ratio)}</span>
-        <span>{hotIndustries.length ? hotIndustries.join(" / ") : "热点未确认"}</span>
-      </div>
-    </section>
   )
 }
 

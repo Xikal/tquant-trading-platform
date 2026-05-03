@@ -10,6 +10,7 @@ from app.services.low_buy.execution_simulation import (
     simulate_candidate_execution,
     simulate_liquidity_crisis,
 )
+from app.services.low_buy.data_quality import DataQualitySnapshot, data_quality_payload
 from app.services.low_buy.risk_metrics import _compute_sharpe_from_returns, compute_pbo
 from app.services.low_buy.shared import DEFAULT_PRODUCTION_LOW_BUY_STRATEGY, Session
 
@@ -124,6 +125,11 @@ def _build_backtest_response(
         {"symbol": item.symbol, "net_return_pct": item.net_return_pct}
         for item in filled
     ]
+    quality_fields = data_quality_payload(
+        DataQualitySnapshot()
+        if items
+        else DataQualitySnapshot("limited", "未找到可回测样本", ("物化样本缺失",))
+    )
     return LowBuyExecutionBacktestResponse(
         strategy_key=strategy,
         lookback_days=lookback_days,
@@ -147,6 +153,7 @@ def _build_backtest_response(
         avg_loss_pct=-avg_loss_abs,
         win_loss_ratio=round(avg_win / max(avg_loss_abs, 0.01), 3) if winners and losers else 0.0,
         profit_factor=round(gains / max(losses, 0.01), 3) if filled else 0.0,
+        **quality_fields,
         pbo=compute_pbo(
             real_sharpe=real_sharpe,
             signal_series=signal_series,

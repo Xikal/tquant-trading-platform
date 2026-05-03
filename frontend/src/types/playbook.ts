@@ -57,6 +57,9 @@ export interface LowBuyExecutionBacktestItem {
   max_gain_pct: number;
   max_drawdown_pct: number;
   exit_reason: string;
+  data_quality?: string;
+  data_quality_text?: string;
+  data_quality_tags?: string[];
 }
 
 export interface LowBuyExecutionBacktestResult {
@@ -82,6 +85,9 @@ export interface LowBuyExecutionBacktestResult {
   avg_loss_pct?: number;
   win_loss_ratio?: number;
   profit_factor: number;
+  data_quality?: string;
+  data_quality_text?: string;
+  data_quality_tags?: string[];
   pbo?: {
     pbo?: number;
     real_sharpe?: number;
@@ -138,6 +144,12 @@ export interface LowBuyCandidate {
   latest_price: number;
   change_pct: number;
   quote_timestamp: string;
+  data_quality?: string;
+  data_quality_text?: string;
+  data_quality_tags?: string[];
+  data_source?: string | null;
+  source_quality?: string | null;
+  is_stale?: boolean;
   board_date: string;
   board_count: number;
   retracement_days: number;
@@ -186,6 +198,8 @@ export interface LowBuyCandidate {
   suggested_position_text: string;
   market_state: string;
   market_state_text: string;
+  market_state_category?: string;
+  market_state_category_text?: string;
   market_state_strength: number;
   market_position_multiplier: number;
   confirmed_trade_date?: string | null;
@@ -296,6 +310,11 @@ export interface LowBuyScreenerResult {
   full_scan_updated_at?: string | null;
   market_state: string;
   market_state_text: string;
+  market_state_category?: string;
+  market_state_category_text?: string;
+  data_quality?: string;
+  data_quality_text?: string;
+  data_quality_tags?: string[];
   market_bonus: number;
   market_state_strength: number;
   regime_confidence: number;
@@ -341,6 +360,12 @@ export interface LowBuyQuoteRefreshItem {
   latest_price: number;
   change_pct: number;
   quote_timestamp: string;
+  data_source?: string | null;
+  source_quality?: string | null;
+  is_stale?: boolean;
+  data_quality?: string;
+  data_quality_text?: string;
+  data_quality_tags?: string[];
   in_entry_zone: boolean;
   distance_to_entry_pct: number;
   stop_confirmed: boolean;
@@ -372,6 +397,11 @@ export interface LowBuyPriorityBoardItem {
   latest_price: number;
   change_pct: number;
   quote_timestamp: string;
+  data_quality?: string;
+  data_quality_text?: string;
+  data_quality_tags?: string[];
+  market_state_category?: string;
+  market_state_category_text?: string;
   buy_signal_state: "buy_now" | "soft_buy_now" | "near_entry" | "watch" | "avoid";
   buy_signal_text: string;
   priority_score: number;
@@ -468,6 +498,11 @@ export interface LowBuyPriorityBoardResult {
   track_count: number;
   market_state: string;
   market_state_text: string;
+  market_state_category?: string;
+  market_state_category_text?: string;
+  data_quality?: string;
+  data_quality_text?: string;
+  data_quality_tags?: string[];
   directional_bias?: "positive_t" | "negative_t" | "neutral";
   directional_bias_text?: string;
   market_bonus: number;

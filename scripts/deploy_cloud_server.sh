@@ -100,6 +100,17 @@ if test -d '$CLOUD_PROJECT_DIR/.runtime'; then cp -a '$CLOUD_PROJECT_DIR/.runtim
 if test -d '$CLOUD_PROJECT_DIR'; then mv '$CLOUD_PROJECT_DIR' '/home/${CLOUD_USER}/gupiao-deploy-backup-'\$TS; fi
 mv gupiao-upload-new '$CLOUD_PROJECT_DIR'
 cd '$CLOUD_PROJECT_DIR'
+touch .env
+if ! grep -Eq '^AUTH_SECRET_KEY=.{16,}' .env; then
+  sed -i '/^AUTH_SECRET_KEY=/d' .env
+  SECRET=\$(openssl rand -hex 32 2>/dev/null || python3 - <<'PY'
+import secrets
+print(secrets.token_hex(32))
+PY
+)
+  printf 'AUTH_SECRET_KEY=%s\n' \"\$SECRET\" >> .env
+fi
+if ! grep -q '^AUTH_COOKIE_SECURE=' .env; then printf 'AUTH_COOKIE_SECURE=true\n' >> .env; fi
 sudo docker compose -f '$CLOUD_COMPOSE_FILE' up -d --build app
 ls -dt /home/${CLOUD_USER}/gupiao-deploy-backup-* 2>/dev/null | tail -n +$((CLOUD_KEEP_BACKUPS + 1)) | xargs -r rm -rf
 rm -f '$remote_package'
@@ -146,13 +157,9 @@ assert payload.get('checks', {}).get('database') is True, payload
 assert payload.get('checks', {}).get('frontend_dist') is True, payload
 print('readyz:ok')
 PY
-curl -sS -f --max-time 30 'http://127.0.0.1:${CLOUD_APP_PORT}/api/screeners/low-buy?limit=4&scan_limit=24' >/tmp/gupiao_low_buy.json
-python3 - <<'PY'
-import json
-payload = json.load(open('/tmp/gupiao_low_buy.json', encoding='utf-8'))
-assert payload.get('strategy_key') == 'first_board', payload.get('strategy_key')
-print({'strategy_key': payload.get('strategy_key'), 'candidates': len(payload.get('candidates', [])), 'confirmed': len(payload.get('confirmed_candidates', []))})
-PY
+AUTH_STATUS=\$(curl -sS -o /tmp/gupiao_auth_guard.json -w '%{http_code}' --max-time 10 'http://127.0.0.1:${CLOUD_APP_PORT}/api/screeners/low-buy?limit=4&scan_limit=24')
+test \"\$AUTH_STATUS\" = 401
+echo protected_api:ok
 curl -sS -f -o /tmp/gupiao_home.html --max-time 10 http://127.0.0.1:${CLOUD_APP_PORT}/
 grep -q '<div id=\"root\"></div>' /tmp/gupiao_home.html
 echo frontend:ok"

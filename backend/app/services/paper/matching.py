@@ -6,6 +6,7 @@ from decimal import Decimal
 from enum import Enum
 
 from app.services.paper.fees import FeeDetail, calculate_fee
+from app.services.paper.symbols import is_etf
 
 
 class OrderSide(str, Enum):
@@ -61,6 +62,9 @@ class PaperMatchingEngine:
         down_limit: Decimal | None = None,
     ) -> MatchResponse:
         now = datetime.now()
+        price_error = self._price_reject_reason(current_price=current_price, limit_price=limit_price)
+        if price_error:
+            return self._rejected(price_error, now)
         reject_reason = self._reject_reason(
             side=side,
             quantity=quantity,
@@ -127,7 +131,7 @@ class PaperMatchingEngine:
             if side == OrderSide.SELL and current_price < limit_price:
                 return None
             return limit_price
-        bps = self.etf_slippage_bps if _is_etf(symbol) else self.slippage_bps
+        bps = self.etf_slippage_bps if is_etf(symbol) else self.slippage_bps
         ratio = Decimal(bps) / Decimal(10000)
         multiplier = Decimal("1.0") + ratio if side == OrderSide.BUY else Decimal("1.0") - ratio
         return (current_price * multiplier).quantize(Decimal("0.0001"))
@@ -143,7 +147,10 @@ class PaperMatchingEngine:
             executed_at=now,
         )
 
-
-def _is_etf(symbol: str) -> bool:
-    return symbol.startswith(("15", "16", "51", "58"))
-
+    @staticmethod
+    def _price_reject_reason(*, current_price: Decimal, limit_price: Decimal | None) -> str:
+        if current_price.is_nan() or current_price <= 0:
+            return "行情价格无效，模拟委托被拒绝。"
+        if limit_price is not None and (limit_price.is_nan() or limit_price <= 0):
+            return "委托价格无效，模拟委托被拒绝。"
+        return ""

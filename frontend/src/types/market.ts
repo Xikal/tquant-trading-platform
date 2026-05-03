@@ -26,6 +26,9 @@ export interface QuoteSnapshot {
   turnover_rate?: number | null;
   volume_ratio?: number | null;
   timestamp: string;
+  data_source?: string | null;
+  source_quality?: string | null;
+  is_stale?: boolean;
 }
 
 export interface KlineBar {
@@ -73,4 +76,27 @@ export interface MicrostructureSnapshot {
   sell_pressure: number;
   large_order_flow: number;
   notes: string;
+}
+
+export interface MarketBreadth {
+  updated_at: string;
+  state: string;
+  state_text: string;
+  breadth_ready: boolean;
+  emotion_ready: boolean;
+  stock_up_ratio: number;
+  stock_median_change: number;
+  largecap_change: number;
+  smallcap_change: number;
+  style_divergence: number;
+  limit_up_count: number;
+  limit_down_count?: number | null;
+  broken_board_ratio: number;
+  promotion_ratio: number;
+  board_height: number;
+  hot_industries: string[];
+  hot_turnover: number;
+  hot_overlap_ratio: number;
+  data_quality?: string;
+  data_quality_text: string;
 }

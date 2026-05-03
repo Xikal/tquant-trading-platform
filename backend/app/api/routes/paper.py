@@ -10,9 +10,15 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.admin_auth import require_admin_auth
+from app.core.config import get_settings
 from app.core.database import get_db
 from app.core.paper_auth import require_paper_trading
-from app.models.entities import PaperTrade, User
+from app.models.entities import (
+    PaperAgentRun,
+    PaperTradeTag,
+    PaperTrade,
+    User,
+)
 from app.models.schemas import (
     PaperAccountCreate,
     PaperAccountOut,
@@ -20,18 +26,34 @@ from app.models.schemas import (
     PaperOrderCreate,
     PaperOrderOut,
     PaperPerformanceOut,
+    PaperAgentRunOut,
     PaperPositionOut,
     PaperPositionsResponse,
     PaperRiskStatusOut,
+    PaperTagPerformanceOut,
+    PaperTradeTagCreate,
+    PaperTradeTagOut,
     RiskEventOut,
     PaperTradeOut,
     PaperTradesResponse,
 )
 from app.services.intraday_confirmation_service import IntradayConfirmationService
 from app.services.market_data import DataSourceError, MarketDataService
-from app.services.paper import PaperAccountService, PaperOrderService, PaperPerformanceService, PaperPositionService
+from app.services.paper import PaperAccountService, PaperArchiveService, PaperOrderService, PaperPerformanceService, PaperPositionService
+from app.services.paper.dashboard import PaperPerformanceDashboardService
+from app.services.paper.fees import commission_warning_text
+from app.services.paper.reasons import normalize_entry_reason, normalize_exit_reason
 from app.services.paper.risk_circuit import PaperRiskCircuitBreaker
 from app.services.paper.risk_control import PaperRiskControlService
+from app.services.paper.scheduler import (
+    PaperAutoTrader,
+    build_auto_trader_config,
+    ensure_auto_trader,
+    get_auto_trader,
+    is_trading_time,
+    start_auto_trader,
+    stop_auto_trader,
+)
 
 router = APIRouter(prefix="/paper")
 market_data = MarketDataService()
@@ -266,6 +288,80 @@ def list_paper_trades(
     return PaperTradesResponse(trades=[_trade_out(row) for row in rows])
 
 
+@router.get("/trades/{trade_id}/tags", response_model=list[PaperTradeTagOut])
+def list_paper_trade_tags(
+    trade_id: int,
+    current_user: User = Depends(require_paper_trading),
+    db: Session = Depends(get_db),
+) -> list[PaperTradeTagOut]:
+    account = PaperAccountService(db).get_or_create_default(current_user.id)
+    _ensure_trade_belongs_to_account(db, trade_id, account.id)
+    rows = (
+        db.execute(
+            select(PaperTradeTag)
+            .where(PaperTradeTag.trade_id == trade_id, PaperTradeTag.account_id == account.id)
+            .order_by(PaperTradeTag.created_at.desc())
+        )
+        .scalars()
+        .all()
+    )
+    return [_trade_tag_out(row) for row in rows]
+
+
+@router.post("/trades/{trade_id}/tags", response_model=PaperTradeTagOut)
+def add_paper_trade_tag(
+    trade_id: int,
+    payload: PaperTradeTagCreate,
+    current_user: User = Depends(require_paper_trading),
+    db: Session = Depends(get_db),
+) -> PaperTradeTagOut:
+    account = PaperAccountService(db).get_or_create_default(current_user.id)
+    _ensure_trade_belongs_to_account(db, trade_id, account.id)
+    tag = payload.tag.strip()
+    row = (
+        db.execute(
+            select(PaperTradeTag).where(
+                PaperTradeTag.trade_id == trade_id,
+                PaperTradeTag.account_id == account.id,
+                PaperTradeTag.tag == tag,
+            )
+        )
+        .scalars()
+        .first()
+    )
+    if row is None:
+        row = PaperTradeTag(
+            trade_id=trade_id,
+            account_id=account.id,
+            user_id=current_user.id,
+            tag=tag,
+            note=payload.note.strip(),
+        )
+        db.add(row)
+    else:
+        row.note = payload.note.strip()
+    db.commit()
+    db.refresh(row)
+    return _trade_tag_out(row)
+
+
+@router.delete("/trades/{trade_id}/tags/{tag_id}")
+def delete_paper_trade_tag(
+    trade_id: int,
+    tag_id: int,
+    current_user: User = Depends(require_paper_trading),
+    db: Session = Depends(get_db),
+) -> dict:
+    account = PaperAccountService(db).get_or_create_default(current_user.id)
+    _ensure_trade_belongs_to_account(db, trade_id, account.id)
+    row = db.get(PaperTradeTag, tag_id)
+    if row is None or row.trade_id != trade_id or row.account_id != account.id:
+        raise HTTPException(status_code=404, detail="交易标签不存在")
+    db.delete(row)
+    db.commit()
+    return {"message": "标签已删除", "tag_id": tag_id}
+
+
 @router.get("/performance", response_model=PaperPerformanceOut)
 def paper_performance(
     current_user: User = Depends(require_paper_trading),
@@ -293,14 +389,133 @@ def paper_performance_by_market_state(
     return [PaperGroupedPerformanceOut(**item) for item in PaperPerformanceService(db).compute_by_market_state(account.id)]
 
 
+@router.get("/performance/by-tag", response_model=list[PaperTagPerformanceOut])
+def paper_performance_by_tag(
+    current_user: User = Depends(require_paper_trading),
+    db: Session = Depends(get_db),
+) -> list[PaperTagPerformanceOut]:
+    account = PaperAccountService(db).get_or_create_default(current_user.id)
+    return [PaperTagPerformanceOut(**item) for item in PaperPerformanceService(db).compute_by_tag(account.id)]
+
+
+@router.get("/performance/dashboard")
+def paper_performance_dashboard(
+    days: int = Query(default=30, ge=7, le=365),
+    current_user: User = Depends(require_paper_trading),
+    db: Session = Depends(get_db),
+) -> dict:
+    account = PaperAccountService(db).get_or_create_default(current_user.id)
+    return PaperPerformanceDashboardService(db).build(account, days)
+
+
+@router.post("/performance/archive")
+def archive_paper_performance(
+    current_user: User = Depends(require_paper_trading),
+    _: None = Depends(require_admin_auth),
+    db: Session = Depends(get_db),
+) -> dict:
+    account = PaperAccountService(db).get_or_create_default(current_user.id)
+    return PaperArchiveService(db).archive_all(account.id)
+
+
+@router.get("/auto-trading/status")
+def get_auto_trading_status(
+    current_user: User = Depends(require_paper_trading),
+) -> dict:
+    settings = get_settings()
+    trading_time = is_trading_time()
+    trader = ensure_auto_trader(build_auto_trader_config(settings), now=datetime.now()) if settings.paper_auto_trading_enabled else get_auto_trader()
+    if trader is None:
+        return {
+            "running": False,
+            "engine_running": False,
+            "trading_time": trading_time,
+            "reason": "非交易时段，交易时间自动开启" if settings.paper_auto_trading_enabled else "未启动",
+        }
+    payload = trader.state.to_dict()
+    engine_running = bool(payload.get("running"))
+    payload["engine_running"] = engine_running
+    payload["trading_time"] = trading_time
+    payload["running"] = engine_running and trading_time
+    if not trading_time:
+        payload["reason"] = "非交易时段，交易时间自动开启"
+    elif not engine_running:
+        payload["reason"] = "未启动"
+    return payload
+
+
+@router.get("/auto-trading/runs", response_model=list[PaperAgentRunOut])
+def list_auto_trading_runs(
+    limit: int = Query(default=20, ge=1, le=100),
+    current_user: User = Depends(require_paper_trading),
+    db: Session = Depends(get_db),
+) -> list[PaperAgentRunOut]:
+    account = PaperAccountService(db).get_or_create_default(current_user.id)
+    rows = db.execute(
+        select(PaperAgentRun)
+        .where(PaperAgentRun.account_id == account.id)
+        .order_by(PaperAgentRun.id.desc())
+        .limit(limit)
+    ).scalars().all()
+    return [_agent_run_out(row) for row in rows]
+
+
+@router.post("/auto-trading/start")
+def start_auto_trading(
+    dry_run: Optional[bool] = Query(None, description="是否以空跑模式启动；不传则使用系统默认配置"),
+    current_user: User = Depends(require_paper_trading),
+    _: None = Depends(require_admin_auth),
+) -> dict:
+    existing = get_auto_trader()
+    if existing and existing.state.running:
+        return {"started": False, "reason": "已在运行中"}
+    settings = get_settings()
+    trader = start_auto_trader(
+        build_auto_trader_config(settings, dry_run=dry_run)
+    )
+    return {"started": True, "dry_run": trader.state.dry_run}
+
+
+@router.post("/auto-trading/stop")
+def stop_auto_trading(
+    current_user: User = Depends(require_paper_trading),
+    _: None = Depends(require_admin_auth),
+) -> dict:
+    trader = get_auto_trader()
+    if trader is None or not trader.state.running:
+        return {"stopped": False, "reason": "未在运行"}
+    stop_auto_trader()
+    return {"stopped": True}
+
+
+@router.post("/auto-trading/dry-run")
+def dry_run_auto_trading(
+    limit: int = Query(20, ge=1, le=50, description="最多检查多少个优先级信号"),
+    current_user: User = Depends(require_paper_trading),
+    db: Session = Depends(get_db),
+) -> dict:
+    settings = get_settings()
+    trader = PaperAutoTrader(
+        build_auto_trader_config(settings, dry_run=True)
+    )
+    account = PaperAccountService(db).get_or_create_default(current_user.id)
+    return trader.run_once_for_preview(db=db, limit=limit, account_id=account.id)
 def _resolve_quote(payload: PaperOrderCreate) -> tuple[Decimal, datetime, str]:
     if payload.current_price:
-        return Decimal(str(payload.current_price)), payload.quote_time or datetime.now(), payload.name
+        current_price = Decimal(str(payload.current_price))
+        if current_price <= 0:
+            raise HTTPException(status_code=400, detail="模拟撮合价格无效。")
+        return current_price, payload.quote_time or datetime.now(), payload.name
     try:
         quote = market_data.get_quote(payload.symbol)
     except DataSourceError as exc:
         raise HTTPException(status_code=400, detail=f"无法获取模拟撮合行情: {exc}") from exc
-    return Decimal(str(quote.last_price)), _parse_quote_time(quote.timestamp), quote.name
+    if bool(getattr(quote, "is_stale", False)):
+        raise HTTPException(status_code=400, detail="实时行情时间已过期，模拟委托暂不撮合。")
+    quote_price = Decimal(str(quote.last_price))
+    if quote_price <= 0:
+        raise HTTPException(status_code=400, detail="实时行情价格无效，模拟委托暂不撮合。")
+    return quote_price, _parse_quote_time(quote.timestamp), quote.name
 
 
 def _parse_quote_time(value: str) -> datetime:
@@ -310,6 +525,28 @@ def _parse_quote_time(value: str) -> datetime:
         except ValueError:
             continue
     return datetime.now()
+
+
+def _agent_run_out(row: PaperAgentRun) -> PaperAgentRunOut:
+    return PaperAgentRunOut(
+        id=row.id,
+        account_id=row.account_id,
+        provider=row.provider,
+        run_type=row.run_type,
+        status=row.status,
+        request=_json_dict(row.request_json),
+        response=_json_dict(row.response_json),
+        error_message=row.error_message,
+        created_at=row.created_at,
+    )
+
+
+def _json_dict(raw: str) -> dict:
+    try:
+        value = json.loads(raw or "{}")
+    except Exception:
+        return {}
+    return value if isinstance(value, dict) else {}
 
 
 def _account_out(row) -> PaperAccountOut:
@@ -381,6 +618,8 @@ def _order_out(row) -> PaperOrderOut:
 
 
 def _trade_out(row) -> PaperTradeOut:
+    entry_reason = normalize_entry_reason(row.entry_reason, source="")
+    exit_reason = normalize_exit_reason(row.exit_reason, source="")
     return PaperTradeOut(
         id=row.id,
         order_id=row.order_id,
@@ -395,8 +634,33 @@ def _trade_out(row) -> PaperTradeOut:
         transfer_fee=float(row.transfer_fee or 0),
         net_amount=float(row.net_amount or 0),
         strategy_key=row.strategy_key,
+        entry_reason=entry_reason.text if row.side == "buy" else row.entry_reason or "",
+        entry_reason_code=entry_reason.code if row.side == "buy" else "",
+        exit_reason=exit_reason.text if row.side == "sell" else row.exit_reason or "",
+        exit_reason_code=exit_reason.code if row.side == "sell" else "",
+        commission_warning=commission_warning_text(
+            gross_amount=row.gross_amount or 0,
+            total_fee=(row.commission or 0) + (row.stamp_tax or 0) + (row.transfer_fee or 0),
+        ),
         trade_time=row.trade_time,
     )
+
+
+def _trade_tag_out(row) -> PaperTradeTagOut:
+    return PaperTradeTagOut(
+        id=row.id,
+        trade_id=row.trade_id,
+        tag=row.tag,
+        note=row.note,
+        created_at=row.created_at,
+    )
+
+
+def _ensure_trade_belongs_to_account(db: Session, trade_id: int, account_id: int) -> PaperTrade:
+    trade = db.get(PaperTrade, trade_id)
+    if trade is None or trade.account_id != account_id:
+        raise HTTPException(status_code=404, detail="模拟成交不存在")
+    return trade
 
 
 def _json_list(raw: str) -> list[str]:

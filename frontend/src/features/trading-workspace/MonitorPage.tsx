@@ -1,11 +1,12 @@
 import { memo, useMemo } from "react";
-import type { LowBuyPriorityBoardResult, RuntimeStatus } from "../../types";
+import type { LowBuyPriorityBoardResult, MarketBreadth, RuntimeStatus } from "../../types";
 import { EditableGrid, EmptyState, FamilyStrip, InfoPill, MetricGrid, PanelTitle, StockCard } from "./WorkspaceComponents";
 import { average, formatPct, riskLevelText, shortTime } from "./workspaceFormatters";
 import type { MetricItem, StockCardView, WatchDraft } from "./workspaceTypes";
 
 export const MonitorPage = memo(function MonitorPage({
   priorityBoard,
+  marketBreadth,
   priorityCards,
   watchCards,
   runtime,
@@ -23,6 +24,7 @@ export const MonitorPage = memo(function MonitorPage({
   onAddWatchlist,
 }: {
   priorityBoard: LowBuyPriorityBoardResult | null;
+  marketBreadth: MarketBreadth | null;
   priorityCards: StockCardView[];
   watchCards: StockCardView[];
   runtime: RuntimeStatus | null;
@@ -63,6 +65,7 @@ export const MonitorPage = memo(function MonitorPage({
           }
         />
         <MetricGrid items={metrics} />
+        <MarketBreadthStrip marketBreadth={marketBreadth} />
       </div>
 
       <aside className="panel monitor-input">
@@ -140,3 +143,32 @@ export const MonitorPage = memo(function MonitorPage({
     </section>
   );
 });
+
+function MarketBreadthStrip({ marketBreadth }: { marketBreadth: MarketBreadth | null }) {
+  if (!marketBreadth) {
+    return null;
+  }
+  return (
+    <div className="market-breadth-strip">
+      <InfoPill label="市场宽度" value={formatRatioPct(marketBreadth.stock_up_ratio)} />
+      <InfoPill label="中位涨跌" value={formatPct(marketBreadth.stock_median_change)} />
+      <InfoPill label="涨停/跌停" value={`${marketBreadth.limit_up_count} / ${marketBreadth.limit_down_count ?? "--"}`} />
+      <InfoPill label="炸板率" value={formatRatioPct(marketBreadth.broken_board_ratio)} />
+      <InfoPill label="连板高度" value={String(marketBreadth.board_height || "--")} />
+      <InfoPill label="数据质量" value={marketBreadth.data_quality_text || "--"} tone={dataQualityTone(marketBreadth.data_quality)} />
+    </div>
+  );
+}
+
+function dataQualityTone(value?: string | null): "up" | "warn" | "down" | "neutral" {
+  if (value === "ok") return "up";
+  if (value === "partial" || value === "stale" || value === "degraded") return "warn";
+  if (value === "limited" || value === "unavailable") return "down";
+  return "neutral";
+}
+
+function formatRatioPct(value?: number | null): string {
+  if (typeof value !== "number" || !Number.isFinite(value)) return "--";
+  const normalized = Math.abs(value) <= 1 ? value * 100 : value;
+  return `${normalized.toFixed(0)}%`;
+}

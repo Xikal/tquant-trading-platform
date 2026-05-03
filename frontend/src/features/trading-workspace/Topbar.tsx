@@ -1,5 +1,6 @@
+import { useEffect, useState } from "react";
+import type { FocusEvent } from "react";
 import type { AuthUser, LowBuyPriorityBoardResult } from "../../types";
-import { shortTime } from "./workspaceFormatters";
 import type { Page, StockCardView } from "./workspaceTypes";
 
 export function Topbar({
@@ -9,6 +10,8 @@ export function Topbar({
   watchCards,
   currentUser,
   onLogout,
+  onPaperRefresh,
+  paperRefreshLoading = false,
 }: {
   page: Page;
   setPage: (page: Page) => void;
@@ -16,17 +19,44 @@ export function Topbar({
   watchCards: StockCardView[];
   currentUser: AuthUser;
   onLogout: () => void;
+  onPaperRefresh?: () => void;
+  paperRefreshLoading?: boolean;
 }) {
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [pulse, setPulse] = useState(() => realTimePulse());
   const nav: Array<[Page, string]> = [
     ["monitor", "实时监控"],
     ["analysis", "量化分析"],
     ["playbook", "选股宝典"],
     ["research", "研究复盘"],
     ["paper", "模拟盘"],
-    ["settings", "系统配置"],
+    ["performance", "绩效"],
   ];
   const riskCount = watchCards.filter((item) => item.riskText.includes("高")).length;
-  const pulse = shortTime(priorityBoard?.updated_at) || new Date().toLocaleTimeString("zh-CN", { hour12: false, timeZone: "Asia/Shanghai" });
+  const userName = currentUser.display_name || currentUser.username;
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setPulse(realTimePulse()), 1000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  function closeUserMenuOnBlur(event: FocusEvent<HTMLDivElement>) {
+    const nextTarget = event.relatedTarget;
+    if (!nextTarget || !event.currentTarget.contains(nextTarget as Node)) {
+      setUserMenuOpen(false);
+    }
+  }
+
+  function openSettings() {
+    setUserMenuOpen(false);
+    setPage("settings");
+  }
+
+  function logout() {
+    setUserMenuOpen(false);
+    onLogout();
+  }
+
   return (
     <header className={`topbar ${page === "monitor" ? "monitor-topbar" : "section-topbar"}`}>
       <div className="brand">
@@ -34,7 +64,7 @@ export function Topbar({
       </div>
       <nav aria-label="主导航">
         {nav.map(([key, label]) => {
-          const paperBlocked = key === "paper" && !currentUser.can_paper_trade;
+          const paperBlocked = (key === "paper" || key === "performance") && !currentUser.can_paper_trade;
           return (
             <button
               className={page === key ? "active" : ""}
@@ -49,12 +79,43 @@ export function Topbar({
         })}
       </nav>
       <div className="desk-chips">
-        <span>{currentUser.display_name || currentUser.username}</span>
-        <span>机会 {priorityBoard?.total_candidates ?? "--"}</span>
-        <span>风险 {riskCount}</span>
-        <span>脉冲 {pulse}</span>
-        <button type="button" className="topbar-logout" onClick={onLogout}>退出</button>
+        {page === "paper" && onPaperRefresh ? (
+          <button type="button" className="topbar-refresh-card" onClick={onPaperRefresh} disabled={paperRefreshLoading}>
+            {paperRefreshLoading ? "刷新中" : "刷新"}
+          </button>
+        ) : null}
+        <span className="desk-chip opportunity"><small>机会</small><strong>{priorityBoard?.total_candidates ?? "--"}</strong></span>
+        <span className="desk-chip risk"><small>风险</small><strong>{riskCount}</strong></span>
+        <span className="desk-chip pulse"><small>脉冲</small><strong>{pulse}</strong></span>
+        <div className="topbar-user-menu" onBlur={closeUserMenuOnBlur}>
+          <button
+            type="button"
+            className={`topbar-user-button${page === "settings" ? " active" : ""}`}
+            aria-haspopup="menu"
+            aria-expanded={userMenuOpen}
+            onClick={() => setUserMenuOpen((open) => !open)}
+          >
+            {userName}
+          </button>
+          {userMenuOpen ? (
+            <div className="topbar-user-dropdown" role="menu">
+              <button type="button" role="menuitem" onClick={openSettings}>
+                系统配置
+              </button>
+              <button type="button" role="menuitem" onClick={logout}>
+                退出登录
+              </button>
+            </div>
+          ) : null}
+        </div>
       </div>
     </header>
   );
+}
+
+function realTimePulse(): string {
+  return new Date().toLocaleTimeString("zh-CN", {
+    hour12: false,
+    timeZone: "Asia/Shanghai",
+  });
 }

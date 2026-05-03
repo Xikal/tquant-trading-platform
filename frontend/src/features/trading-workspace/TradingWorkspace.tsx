@@ -1,54 +1,68 @@
 import { Suspense, lazy, useEffect, useMemo, useRef, useState } from "react";
 import { appApi } from "../../api/appClient";
 import { api } from "../../api/client";
-import { API_BASE, getAdminApiToken, getAuthAccessToken, setAdminApiToken } from "../../api/base";
+import { API_BASE, getAdminApiToken, getAuthAccessToken, request } from "../../api/base";
 import { applyQuoteRefreshToResponse } from "../playbook/formatters";
 import type {
   AiDecisionSupportResponse,
   AnalysisResponse,
   AuthUser,
   BacktestResult,
+  BacktestRun,
   LowBuyExecutionBacktestResult,
   IntradayConfirmationItem,
   LowBuyPriorityBoardResult,
   LowBuyScreenerResult,
   LowBuyTradeLifecycle,
+  MarketBreadth,
   ReplayItem,
   RuntimeStatus,
-  SettingsPayload,
   StrategyValidationReport,
   WatchlistSignal,
 } from "../../types";
 import { LoginPage } from "./LoginPage";
 import { Topbar } from "./Topbar";
 import { AiInsightDialog, ErrorDialog, StatusStrip, StockDetailDialog } from "./WorkspaceComponents";
-import { DEFAULT_PLAYBOOK_STRATEGY, MONITOR_BOARD_WAIT_MS, MONITOR_REFRESH_INTERVAL_MS, PAGE_PATHS, PLAYBOOK_QUOTE_REFRESH_INTERVAL_MS, PLAYBOOK_QUOTE_REFRESH_LIMIT } from "./workspaceConstants";
+import { DEFAULT_PLAYBOOK_STRATEGY, MONITOR_REFRESH_INTERVAL_MS, PAGE_PATHS, PLAYBOOK_QUOTE_REFRESH_INTERVAL_MS, PLAYBOOK_QUOTE_REFRESH_LIMIT } from "./workspaceConstants";
 import { errorMessage, nullableNumber, parseNumber } from "./workspaceFormatters";
 import { pageFromLocation } from "./workspaceRoutes";
+import { activeLoadingKey, clearLoadingKeys, isLoading, setLoadingFlag, type LoadingState } from "./loadingState";
+import { PageErrorBoundary } from "./PageErrorBoundary";
 import type {
   AnalysisDraft,
   AuthDraft,
   BacktestDraft,
   Page,
-  SettingsDraft,
   StockCardView,
   WatchDraft,
 } from "./workspaceTypes";
-import { priorityToCard, settingsPayload, settingsToDraft, trackedPlaybookSymbols, watchSignalToCard } from "./workspaceViewModels";
+import { priorityToCard, trackedPlaybookSymbols, watchSignalToCard } from "./workspaceViewModels";
 import { usePaperTrading } from "./usePaperTrading";
+import { useSettingsData } from "./useSettingsData";
 
 const AnalysisPage = lazy(async () => ({ default: (await import("./AnalysisPage")).AnalysisPage }));
 const MonitorPage = lazy(async () => ({ default: (await import("./MonitorPage")).MonitorPage }));
 const PaperTradingPage = lazy(async () => ({ default: (await import("./PaperTradingPage")).PaperTradingPage }));
+const PerformanceDashboard = lazy(async () => ({ default: (await import("./PerformanceDashboard")).PerformanceDashboard }));
 const PlaybookPage = lazy(async () => ({ default: (await import("./PlaybookPage")).PlaybookPage }));
 const ResearchPage = lazy(async () => ({ default: (await import("./ResearchPage")).ResearchPage }));
 const SettingsPage = lazy(async () => ({ default: (await import("./SettingsPage")).SettingsPage }));
+
+const PAPER_LOADING_KEYS = [
+  "paper",
+  "paper-refresh",
+  "paper-quotes",
+  "paper-status",
+  "paper-order",
+  "paper-tags",
+];
 
 export function TradingWorkspace() {
   const [authReady, setAuthReady] = useState(false);
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
   const [page, setPage] = useState<Page>(() => pageFromLocation());
   const [priorityBoard, setPriorityBoard] = useState<LowBuyPriorityBoardResult | null>(null);
+  const [marketBreadth, setMarketBreadth] = useState<MarketBreadth | null>(null);
   const [watchlistSignals, setWatchlistSignals] = useState<WatchlistSignal[]>([]);
   const [runtime, setRuntime] = useState<RuntimeStatus | null>(null);
   const [playbookStrategy, setPlaybookStrategy] = useState(DEFAULT_PLAYBOOK_STRATEGY);
@@ -59,13 +73,14 @@ export function TradingWorkspace() {
   const [aiDialogOpen, setAiDialogOpen] = useState(false);
   const [replays, setReplays] = useState<ReplayItem[]>([]);
   const [backtestResult, setBacktestResult] = useState<BacktestResult | null>(null);
+  const [backtestRuns, setBacktestRuns] = useState<BacktestRun[]>([]);
   const [executionBacktest, setExecutionBacktest] = useState<LowBuyExecutionBacktestResult | null>(null);
   const [strategyValidation, setStrategyValidation] = useState<StrategyValidationReport | null>(null);
   const [intradayConfirmations, setIntradayConfirmations] = useState<IntradayConfirmationItem[]>([]);
   const [tradeLifecycles, setTradeLifecycles] = useState<LowBuyTradeLifecycle[]>([]);
   const [researchBoard, setResearchBoard] = useState<LowBuyPriorityBoardResult | null>(null);
-  const [settings, setSettings] = useState<SettingsPayload | null>(null);
-  const [loading, setLoading] = useState("");
+  const [loadingState, setLoadingState] = useState<LoadingState>({});
+  const loading = activeLoadingKey(loadingState);
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
   const [selectedStock, setSelectedStock] = useState<StockCardView | null>(null);
@@ -78,9 +93,15 @@ export function TradingWorkspace() {
   });
   const paper = usePaperTrading({
     setError,
-    setLoading,
+    setLoading: setPaperLoading,
     setNotice,
     onAuthRequired: handleAuthRequired,
+  });
+  const settingsData = useSettingsData({
+    withLoading,
+    setError,
+    setNotice,
+    setRuntime,
   });
 
   const [watchDraft, setWatchDraft] = useState<WatchDraft>({
@@ -108,20 +129,6 @@ export function TradingWorkspace() {
     low_buy_lookback_days: "60",
     low_buy_limit: "160",
   });
-  const [settingsDraft, setSettingsDraft] = useState<SettingsDraft>({
-    adminToken: getAdminApiToken(),
-    llm_provider: "",
-    llm_api_key: "",
-    llm_base_url: "",
-    llm_model: "",
-    data_source: "",
-    data_source_base_url: "",
-    risk_max_single_loss_pct: "",
-    risk_max_daily_loss_pct: "",
-    risk_pause_after_losses: "",
-    strategy_min_profit_pct: "",
-  });
-
   useEffect(() => {
     void restoreSession();
   }, []);
@@ -159,7 +166,7 @@ export function TradingWorkspace() {
       void loadResearch();
     }
     if (page === "settings") {
-      void loadSettings();
+      void settingsData.loadSettings();
     }
     if (page === "paper") {
       void paper.load();
@@ -238,36 +245,55 @@ export function TradingWorkspace() {
   );
 
   useEffect(() => {
+    let source: EventSource | undefined;
+    let cancelled = false;
     if (!currentUser || page !== "paper" || !paperPositionSymbols) {
       setIntradayConfirmations([]);
       return undefined;
     }
-    const token = getAuthAccessToken();
-    if (!token) {
+    if (!getAuthAccessToken()) {
       setIntradayConfirmations([]);
       return undefined;
     }
-    const normalizedBase = API_BASE.replace(/\/$/, "");
-    const agentBase = normalizedBase.endsWith("/api") ? normalizedBase : `${normalizedBase}/api`;
-    const url = `${agentBase}/intraday/stream?symbols=${encodeURIComponent(paperPositionSymbols)}&client_id=web-paper&token=${encodeURIComponent(token)}&interval_seconds=20`;
-    const source = new EventSource(url);
-    source.addEventListener("intraday_confirmations", (event) => {
-      try {
-        const payload = JSON.parse((event as MessageEvent).data) as { items?: IntradayConfirmationItem[] };
-        setIntradayConfirmations(payload.items ?? []);
-      } catch {
-        setIntradayConfirmations([]);
+    void request<{ stream_token: string; expires_in: number }>("/intraday/subscribe", { method: "POST" }).then((payload) => {
+      if (cancelled || !payload.stream_token) {
+        return;
       }
-    });
-    source.onerror = () => {
-      source.close();
+      const normalizedBase = API_BASE.replace(/\/$/, "");
+      const agentBase = normalizedBase.endsWith("/api") ? normalizedBase : `${normalizedBase}/api`;
+      const url = `${agentBase}/intraday/stream?symbols=${encodeURIComponent(paperPositionSymbols)}&client_id=web-paper&stream_token=${encodeURIComponent(payload.stream_token)}&interval_seconds=20`;
+      source = new EventSource(url);
+      source.addEventListener("intraday_confirmations", (event) => {
+        try {
+          const payload = JSON.parse((event as MessageEvent).data) as { items?: IntradayConfirmationItem[] };
+          setIntradayConfirmations(payload.items ?? []);
+        } catch {
+          setIntradayConfirmations([]);
+        }
+      });
+      source.onerror = () => {
+        source?.close();
+      };
+    }).catch(() => setIntradayConfirmations([]));
+    return () => {
+      cancelled = true;
+      source?.close();
     };
-    return () => source.close();
   }, [currentUser, page, paperPositionSymbols]);
+
+  useEffect(() => {
+    if (!currentUser || page !== "paper" || !currentUser.can_paper_trade) {
+      return undefined;
+    }
+    const timer = window.setInterval(() => {
+      void paper.refreshAutoTradingStatus();
+    }, 15000);
+    return () => window.clearInterval(timer);
+  }, [currentUser, page, currentUser?.can_paper_trade]);
 
   async function withLoading<T>(key: string, action: () => Promise<T>): Promise<T | undefined> {
     try {
-      setLoading(key);
+      setLoadingKey(key, true);
       setError("");
       return await action();
     } catch (err) {
@@ -278,21 +304,34 @@ export function TradingWorkspace() {
       }
       return undefined;
     } finally {
-      setLoading("");
+      setLoadingKey(key, false);
     }
   }
 
   async function restoreSession() {
     try {
-      setLoading("auth-restore");
+      setLoadingKey("auth-restore", true);
       const result = await appApi.refreshAuth();
       setCurrentUser(result.user);
     } catch {
       setCurrentUser(null);
     } finally {
-      setLoading("");
+      setLoadingKey("auth-restore", false);
       setAuthReady(true);
     }
+  }
+
+  function setLoadingKey(key: string, active: boolean) {
+    setLoadingState((current) => setLoadingFlag(current, key, active));
+  }
+
+  function setPaperLoading(key: string) {
+    setLoadingState((current) => {
+      if (!key) {
+        return clearLoadingKeys(current, PAPER_LOADING_KEYS);
+      }
+      return setLoadingFlag(current, key, true);
+    });
   }
 
   async function submitAuth(register: boolean) {
@@ -315,6 +354,7 @@ export function TradingWorkspace() {
   function handleAuthRequired() {
     setCurrentUser(null);
     setPriorityBoard(null);
+    setMarketBreadth(null);
     setWatchlistSignals([]);
     setPlaybook(null);
     setPlaybookCache({});
@@ -332,32 +372,28 @@ export function TradingWorkspace() {
     }
     monitorRefreshRef.current = true;
     try {
-      const boardRequest = api.getLowBuyPriorityBoard(24)
-        .then((value) => {
-          setPriorityBoard(value);
-        })
-        .catch((err) => {
-          setError(errorMessage(err));
-        });
+      const shouldLoadRuntime = includeRuntime && Boolean(getAdminApiToken());
       const requests = [
-        api.getWatchlistSignals(),
-        includeRuntime ? api.getRuntimeStatus() : Promise.resolve(null),
+        api.getMonitorSnapshot(24),
+        api.getMarketBreadth(),
+        shouldLoadRuntime ? api.getRuntimeStatus() : Promise.resolve(null),
       ] as const;
-      const [signalResult, runtimeResult] = await Promise.allSettled(requests);
-      if (signalResult.status === "fulfilled") {
-        setWatchlistSignals(signalResult.value);
+      const [monitorResult, breadthResult, runtimeResult] = await Promise.allSettled(requests);
+      if (monitorResult.status === "fulfilled") {
+        setPriorityBoard(monitorResult.value.priority_board);
+        setWatchlistSignals(monitorResult.value.watchlist_signals);
+      }
+      if (breadthResult.status === "fulfilled") {
+        setMarketBreadth(breadthResult.value);
       }
       if (runtimeResult.status === "fulfilled" && runtimeResult.value) {
         setRuntime(runtimeResult.value);
       }
-      const rejected = [signalResult, runtimeResult].find(
+      const rejected = [monitorResult, runtimeResult].find(
         (item): item is PromiseRejectedResult => item.status === "rejected"
       );
       if (rejected) {
         setError(errorMessage(rejected.reason));
-      }
-      if (includeRuntime) {
-        await waitForMonitorBoard(boardRequest);
       }
     } finally {
       monitorRefreshRef.current = false;
@@ -385,10 +421,11 @@ export function TradingWorkspace() {
 
   async function loadResearch() {
     await withLoading("research", async () => {
-      const [replayResult, boardResult, lifecycleResult] = await Promise.allSettled([
+      const [replayResult, boardResult, lifecycleResult, runResult] = await Promise.allSettled([
         api.listReplays(),
         api.getLowBuyPriorityBoard(18),
         api.getLowBuyLifecycle(undefined, false, 40),
+        api.listBacktestRuns(20),
       ]);
       if (replayResult.status === "fulfilled") {
         setReplays(replayResult.value);
@@ -399,29 +436,10 @@ export function TradingWorkspace() {
       if (lifecycleResult.status === "fulfilled") {
         setTradeLifecycles(lifecycleResult.value.items);
       }
-      const rejected = [replayResult, boardResult, lifecycleResult].find(
-        (item): item is PromiseRejectedResult => item.status === "rejected"
-      );
-      if (rejected) {
-        setError(errorMessage(rejected.reason));
+      if (runResult.status === "fulfilled") {
+        setBacktestRuns(runResult.value.runs);
       }
-    });
-  }
-
-  async function loadSettings() {
-    await withLoading("settings", async () => {
-      const [settingsResult, runtimeResult] = await Promise.allSettled([
-        api.getSettings(),
-        api.getRuntimeStatus(),
-      ]);
-      if (settingsResult.status === "fulfilled") {
-        setSettings(settingsResult.value);
-        setSettingsDraft((draft) => settingsToDraft(settingsResult.value, draft.adminToken));
-      }
-      if (runtimeResult.status === "fulfilled") {
-        setRuntime(runtimeResult.value);
-      }
-      const rejected = [settingsResult, runtimeResult].find(
+      const rejected = [replayResult, boardResult, lifecycleResult, runResult].find(
         (item): item is PromiseRejectedResult => item.status === "rejected"
       );
       if (rejected) {
@@ -577,17 +595,6 @@ export function TradingWorkspace() {
     });
   }
 
-  async function saveSettings(section: "llm" | "risk" | "data") {
-    await withLoading(`settings-${section}`, async () => {
-      setAdminApiToken(settingsDraft.adminToken);
-      const payload = settingsPayload(settingsDraft, section);
-      const result = await api.updateSettings(payload);
-      setSettings(result.settings);
-      setSettingsDraft((draft) => settingsToDraft(result.settings, draft.adminToken));
-      setNotice(result.restart_required ? "保存成功，部分配置重启后生效" : "保存成功");
-    });
-  }
-
   function goAnalyzeFromCard(card: StockCardView) {
     void runAnalysis(card.symbol);
   }
@@ -616,7 +623,7 @@ export function TradingWorkspace() {
       <LoginPage
         draft={authDraft}
         error={error}
-        loading={loading === "auth"}
+        loading={isLoading(loadingState, "auth")}
         setDraft={setAuthDraft}
         onLogin={() => void submitAuth(false)}
         onRegister={() => void submitAuth(true)}
@@ -633,6 +640,8 @@ export function TradingWorkspace() {
         watchCards={watchCards}
         currentUser={currentUser}
         onLogout={() => void logout()}
+        onPaperRefresh={page === "paper" ? () => void paper.refreshAll() : undefined}
+        paperRefreshLoading={isLoading(loadingState, "paper") || isLoading(loadingState, "paper-refresh") || isLoading(loadingState, "paper-quotes")}
       />
       <main className="workspace">
         <StatusStrip loading={loading} notice={notice} />
@@ -645,14 +654,16 @@ export function TradingWorkspace() {
         {aiDialogOpen ? (
           <AiInsightDialog
             response={aiResult}
-            loading={loading === "ai"}
+            loading={isLoading(loadingState, "ai")}
             onClose={() => setAiDialogOpen(false)}
           />
         ) : null}
+        <PageErrorBoundary resetKey={page}>
         <Suspense fallback={<div className="panel">页面模块加载中...</div>}>
           {page === "monitor" && (
             <MonitorPage
               priorityBoard={priorityBoard}
+              marketBreadth={marketBreadth}
               priorityCards={priorityCards}
               watchCards={watchCards}
               runtime={runtime}
@@ -701,6 +712,7 @@ export function TradingWorkspace() {
               draft={backtestDraft}
               setDraft={setBacktestDraft}
               result={backtestResult}
+              runs={backtestRuns}
               executionBacktest={executionBacktest}
               strategyValidation={strategyValidation}
               loading={loading}
@@ -719,15 +731,18 @@ export function TradingWorkspace() {
                 performance={paper.performance}
                 strategyPerformance={paper.strategyPerformance}
                 marketPerformance={paper.marketPerformance}
+                tagPerformance={paper.tagPerformance}
+                tradeTags={paper.tradeTags}
                 riskEvents={paper.riskEvents}
+                autoTradingStatus={paper.autoTradingStatus}
+                autoTradingRuns={paper.autoTradingRuns}
                 intradayConfirmations={intradayConfirmations}
                 draft={paper.draft}
                 setDraft={paper.setDraft}
                 loading={loading}
-                onRefresh={() => void paper.load()}
-                onRefreshQuotes={() => void paper.refreshPositions()}
-                onSubmitOrder={() => void paper.submitOrder()}
-                onTogglePause={() => void paper.togglePause()}
+                onSubmitOrder={paper.submitOrder}
+                onAddTradeTag={(tradeId, tag) => void paper.addTradeTag(tradeId, tag)}
+                onDeleteTradeTag={(tradeId, tagId) => void paper.deleteTradeTag(tradeId, tagId)}
               />
             ) : (
               <section className="panel auth-guard-panel">
@@ -736,28 +751,38 @@ export function TradingWorkspace() {
               </section>
             )
           )}
+          {page === "performance" && (
+            currentUser.can_paper_trade ? (
+              <PerformanceDashboard />
+            ) : (
+              <section className="panel auth-guard-panel">
+                <h2>绩效看板需模拟盘权限</h2>
+                <p>当前账号暂未开通模拟盘白名单，无法查看模拟交易绩效。</p>
+              </section>
+            )
+          )}
           {page === "settings" && (
-            <SettingsPage
-              settings={settings}
+              <SettingsPage
+              settings={settingsData.settings}
               runtime={runtime}
-              draft={settingsDraft}
-              setDraft={setSettingsDraft}
+              factorWeights={settingsData.factorWeights}
+              adminTasks={settingsData.adminTasks}
+              strategyGovernance={settingsData.strategyGovernance}
+              factorDraft={settingsData.factorDraft}
+              draft={settingsData.settingsDraft}
+              setDraft={settingsData.setSettingsDraft}
+              setFactorDraft={settingsData.setFactorDraft}
               loading={loading}
-              onSave={saveSettings}
-              onRefresh={() => void loadSettings()}
+              onSave={settingsData.saveSettings}
+              onSaveFactors={() => void settingsData.saveFactorWeights()}
+              onRefresh={() => void settingsData.loadSettings()}
             />
           )}
         </Suspense>
+        </PageErrorBoundary>
       </main>
     </div>
   );
-}
-
-async function waitForMonitorBoard(request: Promise<void>) {
-  await Promise.race([
-    request,
-    new Promise<void>((resolve) => window.setTimeout(resolve, MONITOR_BOARD_WAIT_MS)),
-  ]);
 }
 
 function isAuthErrorMessage(message: string): boolean {

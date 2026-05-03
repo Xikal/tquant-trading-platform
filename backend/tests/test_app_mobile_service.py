@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import unittest
+from datetime import date
 from typing import Optional
+from unittest.mock import patch
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -239,6 +241,32 @@ class AppMobileServiceTests(unittest.TestCase):
         self.assertEqual(global_rows, 2)
         self.assertEqual([item.symbol for item in user_one.items], ["510300"])
         self.assertEqual([item.symbol for item in user_two.items], ["159915"])
+
+    def test_new_a_share_holding_unlocks_available_position_on_next_trading_day(self) -> None:
+        with self.Session() as db:
+            with patch("app.services.app_mobile.watchlist.date") as date_mock:
+                date_mock.today.return_value = date(2026, 4, 23)
+                self.service.upsert_watchlist(
+                    AppWatchlistUpsertRequest(
+                        symbol="300750",
+                        name="宁德时代",
+                        base_position=100,
+                        available_position=0,
+                    ),
+                    db,
+                    user_id=1,
+                )
+                same_day = self.service.list_watchlist(db, user_id=1)
+
+            with patch("app.services.app_mobile.watchlist.date") as date_mock:
+                date_mock.today.return_value = date(2026, 4, 24)
+                next_day = self.service.list_watchlist(db, user_id=1)
+
+            stored = db.query(UserWatchlist).filter(UserWatchlist.symbol == "300750").one()
+
+        self.assertEqual(same_day.items[0].available_position, 0)
+        self.assertEqual(next_day.items[0].available_position, 100)
+        self.assertEqual(stored.available_position, 100)
 
     def test_watchlist_list_and_detail(self) -> None:
         with self.Session() as db:

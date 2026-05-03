@@ -1,4 +1,4 @@
-export type Page = "monitor" | "analysis" | "playbook" | "research" | "paper" | "settings";
+export type Page = "monitor" | "analysis" | "playbook" | "research" | "paper" | "performance" | "settings";
 export type Tone = "up" | "down" | "neutral" | "warn";
 
 export interface MetricItem {

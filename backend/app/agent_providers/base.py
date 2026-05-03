@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 
 from app.agent_tools.audit import audit_raw_tool_call, audit_tool_call
 from app.agent_tools.policy import AgentPolicy
+from app.agent_tools.rate_limit import agent_tool_rate_limiter
 from app.agent_tools.registry import get_tool_definition, list_tool_definitions
 from app.agent_tools.schemas import ToolDefinition
 from app.models.schema_defs.agent import AgentErrorOut, AgentProviderHealth, AgentToolResult
@@ -61,12 +62,28 @@ class AgentProvider(ABC):
                 ok=False,
                 duration_ms=result.duration_ms,
                 error_code="TOOL_NOT_FOUND",
+                db=self.db,
             )
             return result
 
         policy_error = self.policy.check_tool_allowed(tool)
         if policy_error is not None:
             return self._finalize_error(trace_id, tool_name, started, tool, arguments, policy_error)
+
+        allowed, retry_after = agent_tool_rate_limiter.allow(self.name, tool)
+        if not allowed:
+            return self._finalize_error(
+                trace_id,
+                tool_name,
+                started,
+                tool,
+                arguments,
+                AgentErrorOut(
+                    code="TOOL_RATE_LIMITED",
+                    message=f"Tool {tool_name} is rate limited. Retry after {retry_after}s.",
+                    retryable=True,
+                ),
+            )
 
         try:
             data = self._invoke_allowed_tool(tool, arguments)
@@ -125,6 +142,7 @@ class AgentProvider(ABC):
             ok=result.ok,
             duration_ms=result.duration_ms,
             error_code=result.error.code if result.error else None,
+            db=self.db,
         )
 
     @staticmethod

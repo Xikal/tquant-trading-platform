@@ -13,6 +13,7 @@ from sqlalchemy.pool import StaticPool
 from app.api.routes import auth
 from app.core.config import get_settings
 from app.core.database import get_db
+from app.core.rate_limit import clear_rate_limit_events
 from app.models.base import Base
 
 
@@ -33,6 +34,10 @@ def settings_env(key: str, value: str):
 
 class AuthRouteTests(unittest.TestCase):
     def setUp(self) -> None:
+        self._auth_secret_original = environ.get("AUTH_SECRET_KEY")
+        environ["AUTH_SECRET_KEY"] = "test-auth-secret"
+        get_settings.cache_clear()
+        clear_rate_limit_events()
         engine = create_engine(
             "sqlite+pysqlite:///:memory:",
             connect_args={"check_same_thread": False},
@@ -54,6 +59,13 @@ class AuthRouteTests(unittest.TestCase):
 
         app.dependency_overrides[get_db] = override_db
         self.client = TestClient(app)
+
+    def tearDown(self) -> None:
+        if self._auth_secret_original is None:
+            environ.pop("AUTH_SECRET_KEY", None)
+        else:
+            environ["AUTH_SECRET_KEY"] = self._auth_secret_original
+        get_settings.cache_clear()
 
     def test_register_login_me_refresh_logout(self) -> None:
         register = self.client.post(

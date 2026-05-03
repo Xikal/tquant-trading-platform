@@ -55,6 +55,11 @@ class AgentPriorityBoardItem(BaseModel):
     name: str
     latest_price: float = 0.0
     change_pct: float = 0.0
+    data_quality: str = "ok"
+    data_quality_text: str = "数据完整"
+    data_quality_tags: list[str] = Field(default_factory=list)
+    market_state_category: str = "low_volume_wait"
+    market_state_category_text: str = "缩量观望"
     priority_score: float = 0.0
     buy_signal_text: str = ""
     strategy_titles: list[str] = Field(default_factory=list)
@@ -67,6 +72,11 @@ class AgentPriorityBoardItem(BaseModel):
 class AgentPriorityBoardResponse(BaseModel):
     updated_at: str
     market_state_text: str = ""
+    market_state_category: str = "low_volume_wait"
+    market_state_category_text: str = "缩量观望"
+    data_quality: str = "ok"
+    data_quality_text: str = "数据完整"
+    data_quality_tags: list[str] = Field(default_factory=list)
     directional_bias: str = "neutral"
     directional_bias_text: str = "观望"
     total_candidates: int = 0
@@ -106,6 +116,55 @@ class AgentAnalysisResponse(BaseModel):
     summary: str = ""
 
 
+class AgentPaperPositionItem(BaseModel):
+    symbol: str
+    name: str = ""
+    quantity: int = 0
+    available_quantity: int = 0
+    cost_basis: float = 0.0
+    latest_price: Optional[float] = None
+    market_value: float = 0.0
+    unrealized_pnl: float = 0.0
+    unrealized_pnl_pct: float = 0.0
+
+
+class AgentPaperPortfolioResponse(BaseModel):
+    updated_at: str
+    account_id: Optional[int] = None
+    total_assets: float = 0.0
+    cash_available: float = 0.0
+    market_value: float = 0.0
+    total_return_pct: float = 0.0
+    win_rate_pct: float = 0.0
+    net_win_rate_pct: float = 0.0
+    profit_factor: Optional[float] = None
+    positions: list[AgentPaperPositionItem] = Field(default_factory=list)
+
+
+class AgentOrderRecommendationRequest(BaseModel):
+    limit: int = Field(default=12, ge=1, le=50)
+    account_id: Optional[int] = None
+
+
+class AgentOrderRecommendationItem(BaseModel):
+    symbol: str
+    name: str = ""
+    side: str = "buy"
+    quantity: int = 0
+    price: float = 0.0
+    strategy_key: str = ""
+    reason: str = ""
+
+
+class AgentOrderRecommendationResponse(BaseModel):
+    updated_at: str
+    account_id: Optional[int] = None
+    will_buy: list[AgentOrderRecommendationItem] = Field(default_factory=list)
+    filtered: list[dict[str, Any]] = Field(default_factory=list)
+    summary: str = ""
+    note: str = "仅生成模拟委托建议，不执行下单。"
+
+
 class AgentDailyReportResponse(BaseModel):
     trade_date: str
     generated_at: str
@@ -126,6 +185,47 @@ class AgentNotificationTestResponse(BaseModel):
     ok: bool
     channel: str
     message: str
+
+
+class AgentSignalNotificationRequest(BaseModel):
+    channel: str = "feishu"
+    symbol: str
+    name: str = ""
+    strategy_key: str = ""
+    strategy_title: str = ""
+    signal_state: str = ""
+    signal_text: str = ""
+    message: str = ""
+    event_type: str = "signal"
+    payload: dict[str, Any] = Field(default_factory=dict)
+
+
+class AgentSignalNotificationScanRequest(BaseModel):
+    limit: int = Field(default=12, ge=1, le=50)
+    channel: str = "feishu"
+
+
+class AgentSignalNotificationResponse(BaseModel):
+    ok: bool
+    channel: str
+    symbol: str
+    strategy_key: str = ""
+    signal_state: str = ""
+    should_notify: bool = False
+    upgraded: bool = False
+    notification_count: int = 0
+    message: str = ""
+
+
+class AgentSignalNotificationScanResponse(BaseModel):
+    ok: bool = True
+    channel: str = "feishu"
+    scanned: int = 0
+    sent: int = 0
+    suppressed: int = 0
+    upgraded: int = 0
+    errors: list[str] = Field(default_factory=list)
+    message: str = ""
 
 
 class AgentProviderHealth(BaseModel):
