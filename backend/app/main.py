@@ -6,6 +6,7 @@ import fcntl
 import json
 import logging
 from pathlib import Path
+import tempfile
 import threading
 import time
 
@@ -325,7 +326,7 @@ def _acquire_background_leader_lock() -> bool:
     """Ensure only one Gunicorn worker runs in-process background jobs."""
 
     global _background_leader_lock_handle
-    lock_path = PROJECT_ROOT / "backend" / "data" / "runtime_background_jobs.lock"
+    lock_path = Path(tempfile.gettempdir()) / "tquant_runtime_background_jobs.lock"
     lock_path.parent.mkdir(parents=True, exist_ok=True)
     handle = lock_path.open("a+")
     try:
