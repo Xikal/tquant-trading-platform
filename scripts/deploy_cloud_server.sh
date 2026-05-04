@@ -99,6 +99,7 @@ rm -rf gupiao-upload-new
 mkdir gupiao-upload-new
 tar -xzf '$remote_package' -C gupiao-upload-new
 if test -d '$CLOUD_PROJECT_DIR/.runtime'; then cp -a '$CLOUD_PROJECT_DIR/.runtime' gupiao-upload-new/.runtime || true; fi
+if test -f '$CLOUD_PROJECT_DIR/.env'; then cp -a '$CLOUD_PROJECT_DIR/.env' gupiao-upload-new/.env || true; fi
 if test -d '$CLOUD_PROJECT_DIR'; then mv '$CLOUD_PROJECT_DIR' '/home/${CLOUD_USER}/gupiao-deploy-backup-'\$TS; fi
 mv gupiao-upload-new '$CLOUD_PROJECT_DIR'
 cd '$CLOUD_PROJECT_DIR'
