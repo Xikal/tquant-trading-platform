@@ -68,6 +68,7 @@ make_package() {
     --exclude='backups' \
     --exclude='data' \
     --exclude='backend/.venv' \
+    --exclude='backend/.env' \
     --exclude='backend/__pycache__' \
     --exclude='backend/.pytest_cache' \
     --exclude='backend/data/runtime.env' \
@@ -75,6 +76,7 @@ make_package() {
     --exclude='backend/data/*.sqlite' \
     --exclude='frontend/node_modules' \
     --exclude='frontend/dist' \
+    --exclude='frontend/*.tsbuildinfo' \
     --exclude='*.pyc' \
     --exclude='*.pyo' \
     --exclude='*.log' \
