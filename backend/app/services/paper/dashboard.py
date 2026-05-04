@@ -28,7 +28,8 @@ class PaperPerformanceDashboardService:
         strategies = self._strategies(account.id, start_date)
         markets = self._markets(account.id, start_date)
         report = self._latest_report(account.id)
-        performance = PaperPerformanceService(self.db).compute_overall(account.id)
+        performance_service = PaperPerformanceService(self.db)
+        performance = performance_service.compute_overall(account.id)
         return {
             "account": {
                 "id": account.id,
@@ -40,6 +41,10 @@ class PaperPerformanceDashboardService:
             "win_rate_trend": [_win_rate_point(row) for row in snapshots],
             "strategy_trend": _strategy_trend(strategies),
             "market_perf_heatmap": _market_heatmap(markets),
+            "strategy_market_matrix": performance_service.compute_by_strategy_market_state(
+                account.id,
+                start_date=start_date,
+            ),
             "today_report": _daily_report(report) if report else None,
             "updated_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         }

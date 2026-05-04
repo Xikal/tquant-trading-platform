@@ -265,6 +265,7 @@ export interface LowBuyStrategyPerformance {
   avg_max_drawdown_5d: number;
   target_profit_pct: number;
   updated_at: string;
+  data_insufficient?: boolean;
   attribution_notes: string[];
   sector_attribution: LowBuyPerformanceBucket[];
   retracement_attribution: LowBuyPerformanceBucket[];

@@ -29,6 +29,12 @@ RUN pip install --retries 8 -r /tmp/backend-requirements.txt
 COPY backend /app/backend
 COPY --from=frontend-builder /app/frontend/dist /app/frontend/dist
 
+RUN adduser --disabled-password --gecos "" --home /home/tquant tquant \
+    && mkdir -p /app/backend/data \
+    && chown -R tquant:tquant /app/backend /app/frontend
+
+USER tquant
+
 EXPOSE 8000
 
-CMD ["python", "-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["gunicorn", "-k", "uvicorn.workers.UvicornWorker", "-w", "4", "--bind", "0.0.0.0:8000", "app.main:app"]

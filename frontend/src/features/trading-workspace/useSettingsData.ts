@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { api } from "../../api/client";
 import { getAdminApiToken, setAdminApiToken } from "../../api/base";
 import type {
@@ -39,7 +39,7 @@ export function useSettingsData({ withLoading, setError, setNotice, setRuntime }
     strategy_min_profit_pct: "",
   });
 
-  async function loadSettings() {
+  const loadSettings = useCallback(async () => {
     await withLoading("settings", async () => {
       if (settingsDraft.adminToken) {
         setAdminApiToken(settingsDraft.adminToken);
@@ -80,9 +80,9 @@ export function useSettingsData({ withLoading, setError, setNotice, setRuntime }
         setError(errorMessage(rejected.reason));
       }
     });
-  }
+  }, [setError, setRuntime, settingsDraft.adminToken, withLoading]);
 
-  async function saveSettings(section: "llm" | "risk" | "data") {
+  const saveSettings = useCallback(async (section: "llm" | "risk" | "data") => {
     await withLoading(`settings-${section}`, async () => {
       setAdminApiToken(settingsDraft.adminToken);
       const payload = settingsPayload(settingsDraft, section);
@@ -91,9 +91,9 @@ export function useSettingsData({ withLoading, setError, setNotice, setRuntime }
       setSettingsDraft((draft) => settingsToDraft(result.settings, draft.adminToken));
       setNotice(result.restart_required ? "保存成功，部分配置重启后生效" : "保存成功");
     });
-  }
+  }, [settingsDraft, setNotice, withLoading]);
 
-  async function saveFactorWeights() {
+  const saveFactorWeights = useCallback(async () => {
     await withLoading("settings-factor", async () => {
       setAdminApiToken(settingsDraft.adminToken);
       if (!getAdminApiToken()) {
@@ -105,7 +105,7 @@ export function useSettingsData({ withLoading, setError, setNotice, setRuntime }
       setFactorDraft(factorWeightsToDraft(result));
       setNotice("因子权重已保存");
     });
-  }
+  }, [factorDraft, settingsDraft.adminToken, setNotice, withLoading]);
 
   return {
     settings,

@@ -23,6 +23,7 @@ import type {
   PaperAgentRun,
   PaperPerformance,
   PaperPerformanceDashboard,
+  PaperStrategyMarketPerformance,
   PaperPositionsResponse,
   PaperTagPerformance,
   PaperTradeTag,
@@ -217,6 +218,8 @@ export const api = {
   getPaperPerformance: () => request<PaperPerformance>("/paper/performance"),
   getPaperPerformanceByStrategy: () => request<PaperGroupedPerformance[]>("/paper/performance/by-strategy"),
   getPaperPerformanceByMarketState: () => request<PaperGroupedPerformance[]>("/paper/performance/by-market-state"),
+  getPaperPerformanceByStrategyMarketState: () =>
+    request<PaperStrategyMarketPerformance[]>("/paper/performance/by-strategy-market-state"),
   getPaperPerformanceByTag: () => request<PaperTagPerformance[]>("/paper/performance/by-tag"),
   getPaperPerformanceDashboard: (days = 30) =>
     request<PaperPerformanceDashboard>(`/paper/performance/dashboard?days=${days}`),

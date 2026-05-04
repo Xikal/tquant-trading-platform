@@ -39,6 +39,7 @@ _STRATEGY_BOARD_WINDOW_DAYS = {
 }
 
 _STRATEGY_RETRACEMENT_DAYS_MAX = {
+    "classic_retrace": 7,
     "divergence_consensus": 12,
     "late_session_strong_support": 8,
     "core_midcap_vwap_ma5_retrace": 8,
@@ -242,8 +243,32 @@ class LowBuyPoolMixin:
 
         probe = self._load_daily_history("000001", trade_dates[-1], history_window_days=20)
         if probe is not None and not probe.empty:
-            return str(probe["date"].iloc[-1])
+            probe_trade_date = str(probe["date"].iloc[-1])
+            if self._has_complete_local_daily_bars(probe_trade_date):
+                return probe_trade_date
+
+        # Stage 6: walk backward through trade_dates to find a date with sufficient data.
+        # The raw fallback (trade_dates[-2]) may have incomplete daily bar data (e.g.
+        # only 420 stocks instead of 4500+).  Blindly returning it produces zero-filled
+        # performance snapshots for daily-history strategies, which misleads the frontend
+        # into showing 0% 达标率 when the real issue is incomplete data, not strategy failure.
+        try:
+            with SessionLocal() as db:
+                repo = DailyHistoryRepository(db)
+                for candidate_date in reversed(trade_dates[:-1]):
+                    if repo.stock_count_by_trade_date(candidate_date) >= 4500:
+                        return candidate_date
+        except Exception:
+            pass
         return latest_completed_fallback
+
+    @staticmethod
+    def _has_complete_local_daily_bars(trade_date: str, min_stock_count: int = 4500) -> bool:
+        try:
+            with SessionLocal() as db:
+                return DailyHistoryRepository(db).stock_count_by_trade_date(trade_date) >= min_stock_count
+        except Exception:
+            return False
 
     def _load_latest_low_buy_artifact_trade_date(self, trade_dates: list[str]) -> str | None:
         if not trade_dates:

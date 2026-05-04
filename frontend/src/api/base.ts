@@ -9,7 +9,13 @@ export const API_BASE = configuredApiBase ?? (isNativeTarget ? "__NATIVE_API_BAS
 const responseCache = new Map<string, { expiresAt: number; payload: unknown }>()
 const inFlightRequests = new Map<string, Promise<unknown>>()
 let adminApiToken = configuredAdminToken ? normalizeAdminApiToken(configuredAdminToken) : ""
-let authAccessToken = ""
+type AuthPersistenceMode = "local" | "session" | "memory"
+
+const AUTH_ACCESS_TOKEN_KEY = "tquant:auth:access_token"
+const AUTH_PERSISTENCE_MODE_KEY = "tquant:auth:persistence_mode"
+const hydratedAuth = hydrateAuthAccessToken()
+let authAccessToken = hydratedAuth.accessToken
+let authPersistenceMode: AuthPersistenceMode = hydratedAuth.mode
 const MAX_IDEMPOTENT_RETRIES = 2
 const OFFLINE_CACHE_PREFIX = "weis_quant:api:"
 const OFFLINE_CACHE_TTL_MS = 6 * 60 * 60 * 1000
@@ -220,12 +226,16 @@ export function getAuthAccessToken(): string {
   return authAccessToken
 }
 
-export function setAuthTokens(accessToken: string) {
+export function setAuthTokens(accessToken: string, mode: AuthPersistenceMode = authPersistenceMode) {
   authAccessToken = accessToken
+  authPersistenceMode = mode
+  persistAuthAccessToken(accessToken, mode)
 }
 
 export function clearAuthTokens() {
   authAccessToken = ""
+  authPersistenceMode = "memory"
+  clearPersistedAuthAccessToken()
   clearOfflineCache()
 }
 
@@ -335,6 +345,108 @@ function clearOfflineCache() {
       window.localStorage.removeItem(key)
     }
   }
+}
+
+function hydrateAuthAccessToken(): { accessToken: string; mode: AuthPersistenceMode } {
+  if (typeof window === "undefined") {
+    return { accessToken: "", mode: "memory" }
+  }
+  clearLegacyLocalAuthAccessToken()
+  const sessionToken = readStoredAuthAccessToken(window.sessionStorage)
+  if (sessionToken) {
+    return { accessToken: sessionToken, mode: "session" }
+  }
+  return { accessToken: "", mode: hydrateAuthPersistenceMode() }
+}
+
+function hydrateAuthPersistenceMode(): AuthPersistenceMode {
+  if (typeof window === "undefined") {
+    return "memory"
+  }
+  try {
+    const mode = window.localStorage.getItem(AUTH_PERSISTENCE_MODE_KEY)
+    return mode === "local" || mode === "session" ? mode : "memory"
+  } catch {
+    return "memory"
+  }
+}
+
+function readStoredAuthAccessToken(storage: Storage): string {
+  try {
+    const token = storage.getItem(AUTH_ACCESS_TOKEN_KEY) ?? ""
+    if (!token) {
+      return ""
+    }
+    if (authTokenExpired(token)) {
+      storage.removeItem(AUTH_ACCESS_TOKEN_KEY)
+      return ""
+    }
+    return token
+  } catch {
+    return ""
+  }
+}
+
+function persistAuthAccessToken(accessToken: string, mode: AuthPersistenceMode) {
+  if (typeof window === "undefined") {
+    return
+  }
+  try {
+    // Do not persist access tokens in localStorage. Long-lived sessions are
+    // restored through the httpOnly refresh cookie on first authenticated call.
+    window.localStorage.removeItem(AUTH_ACCESS_TOKEN_KEY)
+    window.sessionStorage.removeItem(AUTH_ACCESS_TOKEN_KEY)
+    if (mode === "local" || mode === "session") {
+      window.localStorage.setItem(AUTH_PERSISTENCE_MODE_KEY, mode)
+    } else {
+      window.localStorage.removeItem(AUTH_PERSISTENCE_MODE_KEY)
+    }
+    if (mode === "session") {
+      window.sessionStorage.setItem(AUTH_ACCESS_TOKEN_KEY, accessToken)
+    }
+  } catch {
+    // Browser storage can be disabled; the in-memory token still works for this tab.
+  }
+}
+
+function clearPersistedAuthAccessToken() {
+  if (typeof window === "undefined") {
+    return
+  }
+  try {
+    window.localStorage.removeItem(AUTH_ACCESS_TOKEN_KEY)
+    window.localStorage.removeItem(AUTH_PERSISTENCE_MODE_KEY)
+    window.sessionStorage.removeItem(AUTH_ACCESS_TOKEN_KEY)
+  } catch {
+    // Ignore storage cleanup failures.
+  }
+}
+
+function clearLegacyLocalAuthAccessToken() {
+  try {
+    window.localStorage.removeItem(AUTH_ACCESS_TOKEN_KEY)
+  } catch {
+    // Ignore storage cleanup failures.
+  }
+}
+
+function authTokenExpired(token: string): boolean {
+  try {
+    const [payloadText] = token.split(".", 1)
+    if (!payloadText) {
+      return true
+    }
+    const payload = JSON.parse(base64UrlDecode(payloadText)) as { exp?: number }
+    return typeof payload.exp === "number" && payload.exp <= Math.floor(Date.now() / 1000)
+  } catch {
+    return true
+  }
+}
+
+function base64UrlDecode(value: string): string {
+  const normalized = value.replace(/-/g, "+").replace(/_/g, "/")
+  const padding = "=".repeat((4 - (normalized.length % 4)) % 4)
+  return window.atob(`${normalized}${padding}`)
 }
 
 if (typeof window !== "undefined") {

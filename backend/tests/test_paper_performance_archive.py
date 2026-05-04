@@ -95,6 +95,7 @@ class PaperPerformanceArchiveTest(unittest.TestCase):
             self.assertIn("win_rate_trend", payload)
             self.assertIn("strategy_trend", payload)
             self.assertIn("market_perf_heatmap", payload)
+            self.assertIn("strategy_market_matrix", payload)
 
     def test_daily_report_and_snapshot_use_target_date_scope(self) -> None:
         with self.Session() as db:
@@ -148,6 +149,55 @@ class PaperPerformanceArchiveTest(unittest.TestCase):
             self.assertEqual([item["key"] for item in metrics["strategies"]], ["first_board"])
             self.assertEqual([item["key"] for item in metrics["markets"]], ["repair"])
             self.assertEqual(metrics["strategies"][0]["win_rate_pct"], 100.0)
+
+    def test_strategy_market_state_matrix_is_grouped_by_both_dimensions(self) -> None:
+        with self.Session() as db:
+            account = PaperAccount(
+                name="测试账户",
+                initial_cash=Decimal("100000"),
+                cash_available=Decimal("100000"),
+                total_assets=Decimal("100000"),
+                status="active",
+            )
+            db.add(account)
+            db.commit()
+            db.refresh(account)
+
+            _add_round_trip(
+                db,
+                account.id,
+                symbol="510300",
+                strategy_key="first_board",
+                market_state="repair",
+                buy_price=Decimal("10"),
+                sell_price=Decimal("11"),
+                traded_at=datetime(2026, 5, 1, 10, 0),
+            )
+            _add_round_trip(
+                db,
+                account.id,
+                symbol="159915",
+                strategy_key="first_board",
+                market_state="risk_release",
+                buy_price=Decimal("20"),
+                sell_price=Decimal("18"),
+                traded_at=datetime(2026, 5, 2, 11, 0),
+            )
+
+            matrix = PaperArchiveService(db).performance.compute_by_strategy_market_state(account.id)
+            recent_matrix = PaperArchiveService(db).performance.compute_by_strategy_market_state(
+                account.id,
+                start_date=date(2026, 5, 2),
+            )
+
+            self.assertEqual({(item["strategy_key"], item["market_state"]) for item in matrix}, {
+                ("first_board", "repair"),
+                ("first_board", "risk_release"),
+            })
+            self.assertEqual(
+                {(item["strategy_key"], item["market_state"]) for item in recent_matrix},
+                {("first_board", "risk_release")},
+            )
 
     def test_three_consecutive_losses_pause_account(self) -> None:
         with self.Session() as db:

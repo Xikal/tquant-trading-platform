@@ -118,6 +118,13 @@ class AuthRouteTests(unittest.TestCase):
         self.assertEqual(refreshed["refresh_token"], "")
         self.assertIn("tquant_refresh_token", refresh.headers.get("set-cookie", ""))
 
+        repeated_refresh = self.client.post(
+            "/api/auth/refresh",
+            json={},
+        )
+        self.assertEqual(repeated_refresh.status_code, 200)
+        self.assertTrue(repeated_refresh.json()["access_token"])
+
         logout = self.client.post(
             "/api/auth/logout",
             json={},

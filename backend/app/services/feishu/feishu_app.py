@@ -14,5 +14,5 @@ class FeishuAppConfig:
     def verify_token(self, token: str) -> bool:
         expected = self.settings.feishu_verification_token.strip()
         if not expected:
-            return True
+            return False
         return token == expected

@@ -246,6 +246,8 @@ class StrategyPoolBuilder:
         latest_bar, latest_name, latest_industry = rows[-1]
         if latest_bar.trade_date != latest_trade_date:
             return None
+        if not daily_bar_is_tradable_for_low_buy(latest_bar):
+            return None
         if not latest_daily_bar_matches_strategy_pool(strategy, latest_bar):
             return None
         latest_index = date_index.get(latest_trade_date)
@@ -282,6 +284,19 @@ def latest_daily_bar_matches_strategy_pool(strategy: str, latest_bar: DailyPoolB
         return latest_bar.amount >= 180_000_000 and -5.0 <= latest_bar.pct_chg <= 3.2
     if strategy == "sector_mainline_first_divergence_low_buy":
         return latest_bar.amount >= 120_000_000 and -7.0 <= latest_bar.pct_chg <= 3.5
+    return True
+
+
+def daily_bar_is_tradable_for_low_buy(bar: DailyPoolBar) -> bool:
+    if min(bar.open_price, bar.close_price, bar.high_price, bar.low_price) <= 0:
+        return False
+    if bar.amount <= 0 or bar.volume <= 0:
+        return False
+    close_position = _daily_close_position(bar)
+    if bar.pct_chg >= 9.7 and close_position >= 0.92:
+        return False
+    if bar.pct_chg <= -9.7 and close_position <= 0.12:
+        return False
     return True
 
 

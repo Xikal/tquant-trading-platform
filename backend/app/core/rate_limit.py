@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from collections import defaultdict, deque
 import ipaddress
+from pathlib import Path
+import sqlite3
 import time
 from threading import Lock
 
@@ -39,10 +41,88 @@ class InMemorySlidingWindowRateLimiter:
             self._events.clear()
 
 
+class SQLiteSlidingWindowRateLimiter:
+    """Cross-worker sliding window limiter backed by a local SQLite file."""
+
+    def __init__(self, *, namespace: str, max_calls: int, window_seconds: int) -> None:
+        self.namespace = namespace
+        self.max_calls = max_calls
+        self.window_seconds = window_seconds
+        self._lock = Lock()
+        self._fallback = InMemorySlidingWindowRateLimiter(
+            namespace=namespace,
+            max_calls=max_calls,
+            window_seconds=window_seconds,
+        )
+        self._db_path = _rate_limit_db_path()
+        self._ensure_schema()
+
+    def allow(self, key: str) -> bool:
+        now = time.time()
+        cutoff = now - self.window_seconds
+        try:
+            with self._lock, sqlite3.connect(self._db_path, timeout=0.2) as conn:
+                conn.execute("PRAGMA journal_mode=WAL")
+                conn.execute(
+                    "DELETE FROM rate_limit_events WHERE namespace = ? AND client_key = ? AND created_at < ?",
+                    (self.namespace, key, cutoff),
+                )
+                count = conn.execute(
+                    "SELECT COUNT(*) FROM rate_limit_events WHERE namespace = ? AND client_key = ? AND created_at >= ?",
+                    (self.namespace, key, cutoff),
+                ).fetchone()[0]
+                if count >= self.max_calls:
+                    return False
+                conn.execute(
+                    "INSERT INTO rate_limit_events(namespace, client_key, created_at) VALUES (?, ?, ?)",
+                    (self.namespace, key, now),
+                )
+                return True
+        except sqlite3.Error:
+            return self._fallback.allow(key)
+
+    def clear(self) -> None:
+        self._fallback.clear()
+        try:
+            with self._lock, sqlite3.connect(self._db_path, timeout=0.5) as conn:
+                conn.execute("DELETE FROM rate_limit_events WHERE namespace = ?", (self.namespace,))
+        except sqlite3.Error:
+            return
+
+    def _ensure_schema(self) -> None:
+        self._db_path.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            with self._lock, sqlite3.connect(self._db_path, timeout=1.0) as conn:
+                conn.execute("PRAGMA journal_mode=WAL")
+                conn.execute(
+                    """
+                    CREATE TABLE IF NOT EXISTS rate_limit_events (
+                        namespace TEXT NOT NULL,
+                        client_key TEXT NOT NULL,
+                        created_at REAL NOT NULL
+                    )
+                    """
+                )
+                conn.execute(
+                    """
+                    CREATE INDEX IF NOT EXISTS idx_rate_limit_namespace_key_time
+                    ON rate_limit_events(namespace, client_key, created_at)
+                    """
+                )
+        except sqlite3.Error:
+            return
+
+
+def _rate_limit_db_path() -> Path:
+    return Path(__file__).resolve().parents[2] / "data" / "rate_limit.sqlite3"
+
+
+# Keep the global limiter in-process. It is a coarse abuse guard on a very hot
+# path; durable/global request throttling should live at Nginx or the gateway.
 _global_limiter = InMemorySlidingWindowRateLimiter(namespace="global", max_calls=30, window_seconds=1)
-_ai_decision_limiter = InMemorySlidingWindowRateLimiter(namespace="ai_decision", max_calls=30, window_seconds=60)
-_auth_login_limiter = InMemorySlidingWindowRateLimiter(namespace="auth_login", max_calls=30, window_seconds=60)
-_auth_register_limiter = InMemorySlidingWindowRateLimiter(namespace="auth_register", max_calls=30, window_seconds=3600)
+_ai_decision_limiter = SQLiteSlidingWindowRateLimiter(namespace="ai_decision", max_calls=30, window_seconds=60)
+_auth_login_limiter = SQLiteSlidingWindowRateLimiter(namespace="auth_login", max_calls=30, window_seconds=60)
+_auth_register_limiter = SQLiteSlidingWindowRateLimiter(namespace="auth_register", max_calls=30, window_seconds=3600)
 
 
 def is_global_rate_allowed(request: Request) -> bool:

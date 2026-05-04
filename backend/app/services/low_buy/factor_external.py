@@ -35,11 +35,19 @@ def resolve_sector_flow_ranks() -> dict[str, float]:
         return {}
     if frame is None or frame.empty:
         return {}
-    sorted_frame = frame.sort_values("主力净流入-净额", ascending=False)
+    flow_column = _find_column(frame, ("主力净流入-净额", "主力净流入", "净流入-净额", "净额"))
+    name_column = _find_column(frame, ("名称", "板块名称", "行业名称"))
+    if not flow_column or not name_column:
+        logger.warning("sector fund flow columns changed: %s", list(frame.columns))
+        return {}
+    sorted_frame = (
+        frame.assign(_sector_flow_value=frame[flow_column].map(_to_float))
+        .sort_values("_sector_flow_value", ascending=False)
+    )
     total = len(sorted_frame)
     ranks: dict[str, float] = {}
     for index, (_, row) in enumerate(sorted_frame.iterrows()):
-        name = str(row.get("名称", ""))
+        name = str(row.get(name_column, ""))
         if not name:
             continue
         percentile = index / max(total, 1)
@@ -285,19 +293,41 @@ def resolve_stock_notice_risk(symbol: str) -> bool:
 def _mean_column(frame, column: str) -> float:
     if column not in frame.columns:
         return 0.0
-
+    try:
+        values = frame[column].map(_to_float)
+        return round(float(values.mean()), 2)
+    except Exception:
+        return 0.0
 
 def _to_float(value) -> float:
     try:
         if value in (None, "", "-", "--"):
             return 0.0
-        return float(str(value).replace(",", ""))
+        text = str(value).strip().replace(",", "").replace("%", "").replace("元", "")
+        multiplier = 1.0
+        if "亿" in text:
+            multiplier = 100_000_000.0
+            text = text.replace("亿", "")
+        elif "万" in text:
+            multiplier = 10_000.0
+            text = text.replace("万", "")
+        return float(text) * multiplier
     except (TypeError, ValueError):
         return 0.0
-    try:
-        return round(float(frame[column].astype(float).mean()), 2)
-    except Exception:
-        return 0.0
+
+
+def _find_column(frame, candidates: tuple[str, ...]) -> str | None:
+    columns = [str(column) for column in frame.columns]
+    for candidate in candidates:
+        if candidate in columns:
+            return candidate
+    normalized = {column.replace(" ", "").replace("_", "").lower(): column for column in columns}
+    for candidate in candidates:
+        key = candidate.replace(" ", "").replace("_", "").lower()
+        for normalized_column, original_column in normalized.items():
+            if key in normalized_column or normalized_column in key:
+                return original_column
+    return None
 
 
 def _read_cache(cache: dict, key: str):

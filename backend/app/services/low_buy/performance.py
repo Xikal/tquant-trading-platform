@@ -476,6 +476,7 @@ class LowBuyPerformanceMixin:
             lookback_days=lookback_days,
             target_profit_pct=round(target_profit_pct, 2),
             updated_at=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            data_insufficient=True,
             attribution_notes=notes,
         )
 

@@ -164,6 +164,16 @@ class PaperGroupedPerformanceOut(BaseModel):
     profit_factor: Optional[float] = None
 
 
+class PaperStrategyMarketPerformanceOut(BaseModel):
+    strategy_key: str
+    market_state: str
+    trades: int = 0
+    win_rate_pct: float = 0.0
+    net_win_rate_pct: float = 0.0
+    avg_return_pct: float = 0.0
+    profit_factor: Optional[float] = None
+
+
 class PaperRiskStatusOut(BaseModel):
     account_status: str = "active"
     total_assets: float = 0.0

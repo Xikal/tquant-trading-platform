@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { appApi } from "../../api/appClient";
 import { api } from "../../api/client";
 import type {
@@ -138,6 +138,12 @@ export function usePaperTrading({ setError, setLoading, setNotice, onAuthRequire
       }
     }
   }
+  const refreshAutoTradingStatusRef = useRef(refreshAutoTradingStatus);
+  refreshAutoTradingStatusRef.current = refreshAutoTradingStatus;
+  const stableRefreshAutoTradingStatus = useCallback(
+    () => refreshAutoTradingStatusRef.current(),
+    [],
+  );
 
   async function togglePause() {
     await withPaperLoading("paper-status", async () => {
@@ -300,7 +306,7 @@ export function usePaperTrading({ setError, setLoading, setNotice, onAuthRequire
     setDraft,
     load,
     refreshAll,
-    refreshAutoTradingStatus,
+    refreshAutoTradingStatus: stableRefreshAutoTradingStatus,
     submitOrder,
     addTradeTag,
     deleteTradeTag,

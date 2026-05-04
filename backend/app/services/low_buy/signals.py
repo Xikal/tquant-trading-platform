@@ -14,6 +14,7 @@ from app.services.low_buy.intraday_confirmation import (
 )
 from app.services.low_buy.market_state_rules import hard_buy_allowed, resolve_strategy_market_profile, soft_buy_allowed
 from app.services.low_buy.shared import Any, LowBuyCandidateOut, LowBuyQuoteRefreshOut, pd
+from app.services.low_buy.strategy_governance import cached_auto_governance_override
 from app.services.low_buy.strategy_policy import strategy_layer, strong_buy_paused
 
 
@@ -299,6 +300,8 @@ class LowBuySignalMixin:
     ) -> bool:
         if strong_buy_paused(candidate.strategy_key):
             return False
+        if self._auto_governance_blocks_buy(candidate):
+            return False
         if not candidate.execution_ready:
             return False
         if candidate.risk_tier == "block":
@@ -362,6 +365,14 @@ class LowBuySignalMixin:
 
     @staticmethod
     def _signal_block_hint(candidate: LowBuyCandidateOut) -> str:
+        auto_override = cached_auto_governance_override(candidate.strategy_key)
+        if auto_override:
+            status = str(auto_override.get("status") or "")
+            reason = str(auto_override.get("reason") or "")
+            if status == "paused":
+                return reason or "策略绩效自动治理已暂停该策略强信号。"
+            if status == "watch" and candidate.buy_signal_state in {"buy_now", "soft_buy_now"}:
+                return reason or "策略绩效自动治理已将该策略降级为观察。"
         if candidate.risk_tier == "block":
             return "风险分层已触发阻断，即使价格到位也不执行。"
         profile = resolve_strategy_market_profile(
@@ -437,6 +448,8 @@ class LowBuySignalMixin:
     ) -> bool:
         if strong_buy_paused(candidate.strategy_key):
             return False
+        if self._auto_governance_blocks_buy(candidate):
+            return False
         if not candidate.execution_ready or not soft_confirmed:
             return False
         if candidate.risk_tier == "block":
@@ -502,6 +515,13 @@ class LowBuySignalMixin:
         return True
 
     @staticmethod
+    def _auto_governance_blocks_buy(candidate: LowBuyCandidateOut) -> bool:
+        auto_override = cached_auto_governance_override(candidate.strategy_key)
+        if not auto_override:
+            return False
+        return str(auto_override.get("status") or "") in {"paused", "watch"}
+
+    @staticmethod
     def _base_quality_clear(candidate: LowBuyCandidateOut, distribution_limit: float) -> bool:
         return (
             candidate.distribution_risk_score < distribution_limit
@@ -511,7 +531,7 @@ class LowBuySignalMixin:
 
     @staticmethod
     def _is_strict_in_zone_strategy(strategy_key: str) -> bool:
-        return strategy_key in {"limit_up_breakout_retrace", "divergence_consensus"}
+        return strategy_key in {"limit_up_breakout_retrace"}
 
     @staticmethod
     def _can_show_research_near_entry(candidate: LowBuyCandidateOut, entry_position: str) -> bool:
@@ -629,7 +649,7 @@ class LowBuySignalMixin:
             "volume_shrink": {"in_zone": 85.0, "near_above_zone": 89.0},
             "late_session_strong_support": {"in_zone": 86.0, "near_above_zone": 90.0},
             "core_midcap_vwap_ma5_retrace": {"in_zone": 84.0, "near_above_zone": 88.0},
-            "sector_mainline_first_divergence_low_buy": {"in_zone": 87.0, "near_above_zone": 91.0},
+            "sector_mainline_first_divergence_low_buy": {"in_zone": 84.0, "near_above_zone": 88.0},
             "breakout_support": {"in_zone": 84.0, "near_above_zone": 88.0},
             "limit_up_breakout_retrace": {"in_zone": 90.0, "near_above_zone": 94.0},
             "divergence_consensus": {"in_zone": 92.0},

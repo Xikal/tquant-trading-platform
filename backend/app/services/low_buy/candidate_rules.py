@@ -99,9 +99,21 @@ def passes_strategy_prefilter(
         return False
     if strategy_tier == StrategyTier.AUXILIARY and item.amount < LOW_BUY_THRESHOLDS.MIN_DAILY_AMOUNT_AUXILIARY:
         return False
+    if strategy == "classic_retrace":
+        return (
+            item.board_count <= 2
+            and 1 <= metrics.retracement_days <= 6
+            and metrics.board_low_held
+            and metrics.volume_burst_ratio >= 1.05
+            and metrics.support_distance_pct <= 3.0
+            and metrics.latest_close >= metrics.ma10 * 0.98
+            and metrics.distribution_risk_score < 6.0
+            and not metrics.false_breakout_flag
+            and (metrics.shrink_basic_ok or metrics.momentum_exhaustion or metrics.post_volume_ratio <= 1.22)
+        )
     if strategy == "ma_support":
         return (
-            item.board_count <= 3
+            item.board_count <= 2
             and 1 <= metrics.retracement_days <= 8
             and (metrics.trend_ok or metrics.latest_close >= metrics.ma20 * 0.988)
             and metrics.latest_close >= metrics.ma20 * 0.988
@@ -121,7 +133,8 @@ def passes_strategy_prefilter(
         )
     if strategy == "volume_shrink":
         return (
-            1 <= metrics.retracement_days <= 8
+            item.board_count <= 2
+            and 1 <= metrics.retracement_days <= 8
             and metrics.volume_burst_ratio >= 1.65
             and (metrics.shrink_staircase or metrics.shrink_basic_ok)
             and metrics.latest_volume_ratio <= 1.12
@@ -166,14 +179,7 @@ def passes_strategy_prefilter(
             and metrics.latest_close >= metrics.ma10 * 0.982
             and metrics.drawdown_from_board_pct >= -10.5
         )
-    return (
-        item.board_count <= 2
-        and 1 <= metrics.retracement_days <= 6
-        and metrics.volume_burst_ratio >= 1.05
-        and metrics.support_distance_pct <= 3.0
-        and metrics.latest_close >= metrics.ma10 * 0.98
-        and (metrics.shrink_basic_ok or metrics.momentum_exhaustion or metrics.post_volume_ratio <= 1.22)
-    )
+    return False
 
 
 def compute_score(
@@ -480,7 +486,7 @@ def _sector_mainline_first_divergence_low_buy_setup(item: BoardCandidate, metric
         entry_zone_low=round(anchor * 0.994, 3),
         entry_zone_high=round(max(metrics.ma5, metrics.board_open) * 1.004, 3),
         execution_ready=(
-            score >= 88.0
+            score >= 84.0
             and metrics.retracement_days <= 3
             and metrics.board_low_held
             and metrics.support_distance_pct <= 2.0
@@ -558,7 +564,7 @@ def _limit_up_breakout_retrace_setup(item: BoardCandidate, metrics: CandidateMet
 
 
 def _divergence_consensus_setup(item: BoardCandidate, metrics: CandidateMetrics, score: float) -> StrategySetup:
-    entry_low = metrics.divergence_high * 1.002
+    entry_low = metrics.divergence_high * 0.995
     entry_high = metrics.divergence_high * 1.035
     return StrategySetup(
         entry_zone_low=round(entry_low, 3),

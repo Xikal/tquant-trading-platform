@@ -54,6 +54,28 @@ class LowBuyResultRepository:
             .first()
         )
 
+    def fetch_latest_scan_summary_on_or_before(
+        self,
+        strategy_key: str,
+        latest_trade_date: str,
+    ) -> LowBuyScanSnapshot | None:
+        return (
+            self.db.execute(
+                select(LowBuyScanSnapshot)
+                .where(
+                    LowBuyScanSnapshot.strategy_key == strategy_key,
+                    LowBuyScanSnapshot.latest_trade_date <= latest_trade_date,
+                )
+                .order_by(
+                    desc(LowBuyScanSnapshot.latest_trade_date),
+                    desc(LowBuyScanSnapshot.updated_at),
+                    desc(LowBuyScanSnapshot.id),
+                )
+            )
+            .scalars()
+            .first()
+        )
+
     def fetch_recent_scan_summaries(
         self,
         strategy_key: str,

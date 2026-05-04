@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 import json
+import time
 from typing import Any
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from app.core.database import SessionLocal
 from app.models.entities import (
     LowBuyStrategyPerformanceSnapshot,
     LowBuyStrategyPerformanceWindowSnapshot,
@@ -239,6 +241,8 @@ def _health_text(score: float, filled_signals: int) -> str:
 
 
 AUTO_GOVERNANCE_SETTING_KEY = "low_buy.strategy_auto_governance"
+_AUTO_GOVERNANCE_CACHE_TTL_SECONDS = 60
+_AUTO_GOVERNANCE_CACHE: tuple[float, dict[str, dict[str, Any]]] = (0.0, {})
 
 
 def _load_auto_governance_overrides(db: Session) -> dict[str, dict[str, Any]]:
@@ -251,3 +255,20 @@ def _load_auto_governance_overrides(db: Session) -> dict[str, dict[str, Any]]:
         return {}
     items = payload.get("items") if isinstance(payload, dict) else {}
     return items if isinstance(items, dict) else {}
+
+
+def cached_auto_governance_override(strategy_key: str) -> dict[str, Any] | None:
+    """Return cached auto-governance status for hot signal paths."""
+
+    global _AUTO_GOVERNANCE_CACHE
+    now = time.time()
+    expires_at, payload = _AUTO_GOVERNANCE_CACHE
+    if now < expires_at:
+        return payload.get(strategy_key)
+    try:
+        with SessionLocal() as db:
+            payload = _load_auto_governance_overrides(db)
+    except Exception:
+        payload = {}
+    _AUTO_GOVERNANCE_CACHE = (now + _AUTO_GOVERNANCE_CACHE_TTL_SECONDS, payload)
+    return payload.get(strategy_key)

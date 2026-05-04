@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import re
+
 from app.services.market.shared import (
     DataSourceError,
     KlineBar,
@@ -17,6 +19,8 @@ from app.services.market.shared import (
     sys,
     time,
 )
+
+_SAFE_AKSHARE_SYMBOL_RE = re.compile(r"^[A-Za-z0-9]+$")
 
 
 class MarketIntradayMixin:
@@ -69,10 +73,13 @@ class MarketIntradayMixin:
         return bars
 
     def _fetch_sina_minute_bars_subprocess(self, symbol: str) -> list[KlineBar]:
+        sina_symbol = self._to_sina_symbol(symbol)
+        if not _SAFE_AKSHARE_SYMBOL_RE.fullmatch(sina_symbol):
+            raise DataSourceError(f"非法证券代码，已拒绝分钟线子进程回退: {symbol}")
         script = (
             "import json\n"
             "import akshare as ak\n"
-            f"df = ak.stock_zh_a_minute(symbol='{self._to_sina_symbol(symbol)}', period='1', adjust='')\n"
+            f"df = ak.stock_zh_a_minute(symbol='{sina_symbol}', period='1', adjust='')\n"
             "print(json.dumps(df.tail(240).to_dict('records'), ensure_ascii=False, default=str))\n"
         )
         try:

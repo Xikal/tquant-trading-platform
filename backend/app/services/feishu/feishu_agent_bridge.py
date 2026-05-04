@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from app.models.entities import PaperAccount, PaperTrade, UserFeishuBinding
 from app.services.agent_context_service import AgentContextService
 from app.services.agent_report_service import AgentReportService
-from app.services.feishu.feishu_card_builder import help_card, interactive_card, text_card
+from app.services.feishu.feishu_card_builder import daily_report_card, help_card, interactive_card, signal_card, text_card
 
 
 class FeishuAgentBridge:
@@ -46,12 +46,20 @@ class FeishuAgentBridge:
             )
         if command == "策略":
             board = self.context.priority_board(db, limit=5)
-            fields = [
-                ("市场状态", board.market_state_text),
-                ("候选数", str(board.total_candidates)),
-            ]
-            fields.extend((f"{item.rank}. {item.symbol}", f"{item.name} · {item.buy_signal_text}") for item in board.items[:5])
-            return interactive_card("全策略优先榜", fields)
+            top_signal = board.items[0] if board.items else None
+            if top_signal:
+                return signal_card(
+                    title="全策略优先榜",
+                    signal_title=f"{top_signal.rank}. {top_signal.name} {top_signal.symbol}",
+                    summary=top_signal.summary or top_signal.buy_signal_text,
+                    fields=[
+                        ("市场状态", board.market_state_text),
+                        ("信号", top_signal.buy_signal_text),
+                        ("策略", "、".join(top_signal.strategy_titles[:3])),
+                        ("候选数", str(board.total_candidates)),
+                    ],
+                )
+            return interactive_card("全策略优先榜", [("市场状态", board.market_state_text), ("候选数", "0")])
         if command == "自选":
             watchlist = self.context.watchlist_context(db)
             return text_card(
@@ -74,7 +82,15 @@ class FeishuAgentBridge:
             )
         if command == "日报":
             report = self.reports.daily_report(db)
-            return text_card(report.headline, report.next_actions[:5] or report.risk_notes[:5])
+            return daily_report_card(
+                headline=report.headline,
+                summaries=[
+                    f"自选：{report.watchlist_summary.get('total', 0)} 只，可执行 {report.watchlist_summary.get('actionable_count', 0)} 只",
+                    f"优先榜：{report.priority_board_summary.get('total_candidates', 0)} 只，确定 {report.priority_board_summary.get('immediate_count', 0)} 只",
+                ],
+                risk_notes=report.risk_notes,
+                next_actions=report.next_actions,
+            )
         return text_card("无法识别指令", ["发送“帮助”查看可用指令。"])
 
 

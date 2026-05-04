@@ -5,7 +5,7 @@
     "metrics metrics metrics metrics"
     "equity equity winrate winrate"
     "report report strategy strategy"
-    "market market market market";
+    "market market matrix matrix";
   gap: 12px;
 }
 
@@ -105,6 +105,10 @@
 
 .performance-market {
   grid-area: market;
+}
+
+.performance-strategy-market {
+  grid-area: matrix;
 }
 
 .performance-line-chart {
@@ -295,7 +299,7 @@
       "metrics metrics"
       "equity winrate"
       "report strategy"
-      "market market";
+      "market matrix";
   }
 
   .paper-positions .stock-list {
@@ -342,6 +346,7 @@
   .performance-report,
   .performance-strategy,
   .performance-market,
+  .performance-strategy-market,
   .paper-order,
   .paper-positions,
   .paper-bottom-grid {

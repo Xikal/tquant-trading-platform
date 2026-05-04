@@ -30,6 +30,7 @@ from app.models.schemas import (
     PaperPositionOut,
     PaperPositionsResponse,
     PaperRiskStatusOut,
+    PaperStrategyMarketPerformanceOut,
     PaperTagPerformanceOut,
     PaperTradeTagCreate,
     PaperTradeTagOut,
@@ -387,6 +388,18 @@ def paper_performance_by_market_state(
 ) -> list[PaperGroupedPerformanceOut]:
     account = PaperAccountService(db).get_or_create_default(current_user.id)
     return [PaperGroupedPerformanceOut(**item) for item in PaperPerformanceService(db).compute_by_market_state(account.id)]
+
+
+@router.get("/performance/by-strategy-market-state", response_model=list[PaperStrategyMarketPerformanceOut])
+def paper_performance_by_strategy_market_state(
+    current_user: User = Depends(require_paper_trading),
+    db: Session = Depends(get_db),
+) -> list[PaperStrategyMarketPerformanceOut]:
+    account = PaperAccountService(db).get_or_create_default(current_user.id)
+    return [
+        PaperStrategyMarketPerformanceOut(**item)
+        for item in PaperPerformanceService(db).compute_by_strategy_market_state(account.id)
+    ]
 
 
 @router.get("/performance/by-tag", response_model=list[PaperTagPerformanceOut])

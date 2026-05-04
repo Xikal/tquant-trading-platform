@@ -1,5 +1,6 @@
 import { Suspense, lazy, useEffect, useState } from "react";
 import { appApi } from "../../api/appClient";
+import { clearAuthTokens, getAuthAccessToken } from "../../api/base";
 import { api } from "../../api/client";
 import type { AiDecisionSupportResponse, AuthUser } from "../../types";
 import { LoginPage } from "./LoginPage";
@@ -170,6 +171,15 @@ export function TradingWorkspace() {
   async function restoreSession() {
     try {
       setLoadingKey("auth-restore", true);
+      if (getAuthAccessToken()) {
+        try {
+          const result = await appApi.getMe();
+          setCurrentUser(result.user);
+          return;
+        } catch {
+          clearAuthTokens();
+        }
+      }
       const result = await appApi.refreshAuth();
       setCurrentUser(result.user);
     } catch {
@@ -201,8 +211,8 @@ export function TradingWorkspace() {
         throw new Error("请填写账号和密码");
       }
       const result = register
-        ? await appApi.register({ username, password, display_name: username, device_name: "web-workspace" })
-        : await appApi.login({ username, password, device_name: "web-workspace" });
+        ? await appApi.register({ username, password, display_name: username, device_name: "web-workspace", remember: authDraft.remember })
+        : await appApi.login({ username, password, device_name: "web-workspace", remember: authDraft.remember });
       setCurrentUser(result.user);
       setAuthDraft((draft) => ({ ...draft, password: "" }));
       setNotice(register ? "账号已开通，已进入工作台" : "登录成功");
@@ -211,6 +221,7 @@ export function TradingWorkspace() {
   }
 
   function handleAuthRequired() {
+    clearAuthTokens();
     setCurrentUser(null);
     monitor.resetMonitorData();
     playbookData.resetPlaybook();

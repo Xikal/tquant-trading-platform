@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { getAdminApiToken } from "../../api/base";
 import { api } from "../../api/client";
 import type { LowBuyPriorityBoardResult, MarketBreadth, RuntimeStatus, WatchlistSignal } from "../../types";
@@ -30,7 +30,7 @@ export function useMonitorData({ withLoading, setError, setNotice }: UseMonitorD
     [watchlistSignals]
   );
 
-  async function fetchMonitorData(includeRuntime: boolean) {
+  const fetchMonitorData = useCallback(async (includeRuntime: boolean) => {
     if (monitorRefreshRef.current) {
       return;
     }
@@ -62,25 +62,25 @@ export function useMonitorData({ withLoading, setError, setNotice }: UseMonitorD
     } finally {
       monitorRefreshRef.current = false;
     }
-  }
+  }, [setError]);
 
-  async function refreshMonitor() {
+  const refreshMonitor = useCallback(async () => {
     await withLoading("monitor", () => fetchMonitorData(true));
-  }
+  }, [fetchMonitorData, withLoading]);
 
-  async function syncInstruments() {
+  const syncInstruments = useCallback(async () => {
     await withLoading("sync", async () => {
       const result = await api.syncInstruments();
       setNotice(result.message || "标的同步完成");
       await refreshMonitor();
     });
-  }
+  }, [refreshMonitor, setNotice, withLoading]);
 
-  function resetMonitorData() {
+  const resetMonitorData = useCallback(() => {
     setPriorityBoard(null);
     setMarketBreadth(null);
     setWatchlistSignals([]);
-  }
+  }, []);
 
   return {
     priorityBoard,

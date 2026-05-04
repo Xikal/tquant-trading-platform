@@ -52,6 +52,34 @@ class PaperPerformanceService:
     def compute_by_market_state(self, account_id: int, target_date: date | None = None) -> list[dict]:
         return self._grouped(account_id, "market_state", target_date=target_date)
 
+    def compute_by_strategy_market_state(
+        self,
+        account_id: int,
+        target_date: date | None = None,
+        start_date: date | None = None,
+    ) -> list[dict]:
+        buckets: dict[tuple[str, str], list[float]] = defaultdict(list)
+        for item in self._filtered_return_records(account_id, target_date, start_date=start_date):
+            buckets[(item.strategy_key or "未分类", item.market_state or "未分类")].append(item.return_pct)
+        result = []
+        for (strategy_key, market_state), values in buckets.items():
+            wins = [value for value in values if value > 0]
+            losses = [value for value in values if value < 0]
+            gross_gains = sum(wins)
+            gross_losses = abs(sum(losses))
+            result.append(
+                {
+                    "strategy_key": strategy_key,
+                    "market_state": market_state,
+                    "trades": len(values),
+                    "win_rate_pct": _rate(len(wins), len(values)),
+                    "net_win_rate_pct": _rate(len(wins) - len(losses), len(values)),
+                    "avg_return_pct": round(sum(values) / max(len(values), 1), 3),
+                    "profit_factor": round(gross_gains / gross_losses, 3) if gross_losses > 0 else None,
+                }
+            )
+        return sorted(result, key=lambda item: (item["strategy_key"], -item["trades"], item["market_state"]))
+
     def compute_by_tag(self, account_id: int, target_date: date | None = None) -> list[dict]:
         tag_map = self._trade_tag_map(account_id)
         buckets: dict[str, list[float]] = defaultdict(list)
@@ -229,10 +257,14 @@ class PaperPerformanceService:
         self,
         account_id: int,
         target_date: date | None,
+        *,
+        start_date: date | None = None,
     ) -> list[SellReturnRecord]:
         records = self._paired_sell_return_records(account_id)
         if target_date is None:
-            return records
+            if start_date is None:
+                return records
+            return [item for item in records if item.trade_time and item.trade_time.date() >= start_date]
         return [item for item in records if item.trade_time and item.trade_time.date() == target_date]
 
     def _filtered_trades(self, account_id: int, target_date: date | None) -> list[PaperTrade]:

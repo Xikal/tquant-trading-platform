@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from contextlib import asynccontextmanager
 from datetime import date, datetime, time as dt_time
+import fcntl
+import json
 import logging
 from pathlib import Path
 import threading
@@ -10,6 +12,7 @@ import time
 from fastapi import FastAPI, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
+from sqlalchemy import delete, select
 
 from app.api.router import api_router
 from app.core.config import get_settings
@@ -18,10 +21,12 @@ from app.core.logging_config import configure_logging
 from app.core.rate_limit import is_global_rate_allowed
 from app.core.task_manager import task_manager
 from app.core.timing import record_request_timing
+from app.models.entities import LowBuyResultSnapshot, LowBuyScanSnapshot
 from app.models.schemas import HealthResponse, ReadinessResponse
 from app.repositories.low_buy.results import LowBuyResultRepository
-from app.services.low_buy.shared import DEFAULT_PRODUCTION_LOW_BUY_STRATEGY
+from app.services.low_buy.shared import DEFAULT_PRODUCTION_LOW_BUY_STRATEGY, LOW_BUY_RESULT_VERSION
 from app.services.low_buy.strategy_auto_governance import refresh_low_buy_strategy_auto_governance
+from app.services.low_buy.strategy_policy import PRODUCTION_PRIORITY_STRATEGIES
 from app.services.low_buy_screener import PLAYBOOKS, LowBuyScreenerService
 from app.services.paper.archive import PaperArchiveService
 from app.services.paper.scheduler import build_auto_trader_config, start_auto_trader, stop_auto_trader
@@ -43,6 +48,7 @@ SQLITE_BACKGROUND_SCAN_LIMIT = 120
 DEFAULT_BACKGROUND_SCAN_LIMIT = 480
 logger = logging.getLogger(__name__)
 _paper_archive_last_run_date: date | None = None
+_background_leader_lock_handle = None
 
 
 def _background_jobs_enabled() -> bool:
@@ -55,7 +61,7 @@ def _background_jobs_enabled() -> bool:
 
 def _background_low_buy_strategies() -> list[str]:
     if settings.database_url.startswith("sqlite"):
-        return [DEFAULT_PRODUCTION_LOW_BUY_STRATEGY]
+        return [strategy for strategy in PLAYBOOKS if strategy in PRODUCTION_PRIORITY_STRATEGIES]
     return list(PLAYBOOKS.keys())
 
 
@@ -72,7 +78,7 @@ def _background_low_buy_scan_limit() -> int:
 
 
 def _startup_low_buy_prewarm_enabled() -> bool:
-    return not settings.database_url.startswith("sqlite")
+    return True
 
 
 def _startup_low_buy_history_prewarm_enabled() -> bool:
@@ -145,7 +151,7 @@ def _warm_runtime_caches() -> None:
                 strategies=_background_low_buy_strategies(),
                 limit=_background_low_buy_limit(),
                 scan_limit=_background_low_buy_scan_limit(),
-                compute_performance=not settings.database_url.startswith("sqlite"),
+                compute_performance=True,
             )
         if _startup_low_buy_history_prewarm_enabled():
             screener = LowBuyScreenerService()
@@ -157,12 +163,20 @@ def _warm_runtime_caches() -> None:
         db.close()
 
 
+def _startup_maintenance_and_warm_runtime_caches() -> None:
+    try:
+        _cleanup_stale_low_buy_snapshots()
+    except Exception:
+        logger.exception("stale low-buy snapshot cleanup failed")
+    _warm_runtime_caches()
+
+
 def _refresh_full_scan_once() -> None:
     _refresh_materialized_low_buy_snapshots(
         strategies=_background_low_buy_strategies(),
         limit=_background_low_buy_limit(),
         scan_limit=_background_low_buy_scan_limit(),
-        compute_performance=not settings.database_url.startswith("sqlite"),
+        compute_performance=True,
     )
 
 
@@ -228,12 +242,111 @@ def _paper_archive_due() -> bool:
     return datetime.now().time() >= archive_time
 
 
+def _cleanup_stale_low_buy_snapshots() -> None:
+    """Remove materialized low-buy rows produced by older strategy versions."""
+    with SessionLocal() as db:
+        result_ids = _stale_low_buy_result_ids(db)
+        scan_ids = _stale_low_buy_scan_ids(db)
+        if result_ids:
+            _delete_low_buy_rows(db, LowBuyResultSnapshot, result_ids)
+        if scan_ids:
+            _delete_low_buy_rows(db, LowBuyScanSnapshot, scan_ids)
+        db.commit()
+    if result_ids or scan_ids:
+        logger.info(
+            "cleaned stale low-buy snapshots: %d results + %d scans removed",
+            len(result_ids),
+            len(scan_ids),
+        )
+
+
+def _stale_low_buy_result_ids(db) -> list[int]:
+    return _stale_snapshot_ids(
+        db=db,
+        model=LowBuyResultSnapshot,
+        json_column=LowBuyResultSnapshot.payload_json,
+        version_key="payload_version",
+    )
+
+
+def _stale_low_buy_scan_ids(db) -> list[int]:
+    return _stale_snapshot_ids(
+        db=db,
+        model=LowBuyScanSnapshot,
+        json_column=LowBuyScanSnapshot.filters_json,
+        version_key="_result_version",
+    )
+
+
+def _stale_snapshot_ids(db, model, json_column, version_key: str, batch_size: int = 1000) -> list[int]:
+    stale_ids: list[int] = []
+    last_id = 0
+    while True:
+        rows = db.execute(
+            select(model.id, json_column)
+            .where(model.id > last_id)
+            .order_by(model.id.asc())
+            .limit(batch_size)
+        ).all()
+        if not rows:
+            break
+        last_id = int(rows[-1][0])
+        stale_ids.extend(
+            int(row_id)
+            for row_id, raw_json in rows
+            if _json_version(raw_json, version_key) != LOW_BUY_RESULT_VERSION
+        )
+    return stale_ids
+
+
+def _delete_low_buy_rows(db, model, row_ids: list[int]) -> None:
+    for index in range(0, len(row_ids), 500):
+        chunk = row_ids[index : index + 500]
+        db.execute(delete(model).where(model.id.in_(chunk)))
+
+
+def _json_version(raw: str | None, key: str) -> int | None:
+    try:
+        payload = json.loads(raw or "{}")
+    except Exception:
+        return None
+    if not isinstance(payload, dict):
+        return None
+    value = payload.get(key)
+    if isinstance(value, int):
+        return value
+    if isinstance(value, str) and value.isdigit():
+        return int(value)
+    return None
+
+
+def _acquire_background_leader_lock() -> bool:
+    """Ensure only one Gunicorn worker runs in-process background jobs."""
+
+    global _background_leader_lock_handle
+    lock_path = PROJECT_ROOT / "backend" / "data" / "runtime_background_jobs.lock"
+    lock_path.parent.mkdir(parents=True, exist_ok=True)
+    handle = lock_path.open("a+")
+    try:
+        fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except BlockingIOError:
+        handle.close()
+        return False
+    except OSError:
+        handle.close()
+        logger.exception("failed to acquire runtime background leader lock")
+        return False
+    _background_leader_lock_handle = handle
+    return True
+
+
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     ensure_auth_secret_configured()
     init_db()
-    if _background_jobs_enabled():
-        threading.Thread(target=_warm_runtime_caches, daemon=True).start()
+    background_leader = _background_jobs_enabled() and _acquire_background_leader_lock()
+    if background_leader:
+        threading.Thread(target=_startup_maintenance_and_warm_runtime_caches, daemon=True).start()
         task_manager.register_loop(
             name="low_buy_full_scan",
             target=_refresh_full_scan_once,
@@ -276,6 +389,8 @@ async def lifespan(_: FastAPI):
         if settings.paper_auto_trading_enabled:
             logger.info("启动模拟盘自动交易")
             start_auto_trader(build_auto_trader_config(settings))
+    elif _background_jobs_enabled():
+        logger.info("runtime background jobs skipped in this worker; another worker holds the leader lock")
     try:
         yield
     finally:
@@ -382,8 +497,14 @@ def root():
 @app.get("/{full_path:path}", include_in_schema=False)
 def frontend_app(full_path: str):
     requested = FRONTEND_DIST_DIR / full_path
-    if requested.is_file():
-        return FileResponse(requested)
+    try:
+        resolved = requested.resolve()
+        dist_root = FRONTEND_DIST_DIR.resolve()
+    except OSError:
+        resolved = None
+        dist_root = FRONTEND_DIST_DIR.resolve()
+    if resolved is not None and resolved.is_file() and dist_root in resolved.parents:
+        return FileResponse(resolved)
     if FRONTEND_INDEX_FILE.exists():
         return FileResponse(FRONTEND_INDEX_FILE)
     return HealthResponse(status="ok", app=settings.app_name)

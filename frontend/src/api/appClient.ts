@@ -84,24 +84,28 @@ function clearOfflineCaches(prefixes: string[]) {
 }
 
 export const appApi = {
-  login: (payload: { username: string; password: string; device_name?: string }) =>
-    request<AuthTokenResponse>("/auth/login", {
+  login: (payload: { username: string; password: string; device_name?: string; remember?: boolean }) => {
+    const { remember = true, ...loginPayload } = payload
+    return request<AuthTokenResponse>("/auth/login", {
       method: "POST",
-      body: JSON.stringify(payload)
+      body: JSON.stringify(loginPayload)
     }).then((result) => {
-      setAuthTokens(result.access_token)
+      setAuthTokens(result.access_token, remember ? "local" : "session")
       invalidateAppCaches()
       return result
-    }),
-  register: (payload: { username: string; password: string; display_name?: string; device_name?: string }) =>
-    request<AuthTokenResponse>("/auth/register", {
+    })
+  },
+  register: (payload: { username: string; password: string; display_name?: string; device_name?: string; remember?: boolean }) => {
+    const { remember = true, ...registerPayload } = payload
+    return request<AuthTokenResponse>("/auth/register", {
       method: "POST",
-      body: JSON.stringify(payload)
+      body: JSON.stringify(registerPayload)
     }).then((result) => {
-      setAuthTokens(result.access_token)
+      setAuthTokens(result.access_token, remember ? "local" : "session")
       invalidateAppCaches()
       return result
-    }),
+    })
+  },
   refreshAuth: () => {
     return request<AuthTokenResponse>("/auth/refresh", {
       method: "POST",

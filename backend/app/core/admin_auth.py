@@ -21,7 +21,7 @@ def require_admin_auth(
     if not expected_token:
         logger.error("ADMIN_API_TOKEN is not configured; admin endpoint rejected.")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="管理接口未配置 ADMIN_API_TOKEN，已拒绝访问。",
         )
 

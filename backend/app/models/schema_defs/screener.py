@@ -339,6 +339,7 @@ class LowBuyStrategyPerformanceOut(BaseModel):
     avg_max_drawdown_5d: float = 0.0
     target_profit_pct: float = 0.0
     updated_at: str = ""
+    data_insufficient: bool = False
     attribution_notes: list[str] = Field(default_factory=list)
     sector_attribution: list["LowBuyPerformanceBucketOut"] = Field(default_factory=list)
     retracement_attribution: list["LowBuyPerformanceBucketOut"] = Field(default_factory=list)

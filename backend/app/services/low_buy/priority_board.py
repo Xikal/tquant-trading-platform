@@ -163,7 +163,9 @@ class LowBuyPriorityBoardMixin(LowBuyPriorityScoringMixin):
         return deepcopy(snapshot)
 
     def _build_priority_base_snapshot(self, db: Session, limit: int) -> PriorityBaseSnapshot:
-        latest_available_trade_date = LowBuyResultRepository(db).fetch_latest_trade_date() or ""
+        repository = LowBuyResultRepository(db)
+        latest_available_trade_date = repository.fetch_latest_trade_date() or ""
+        target_trade_date = self._resolve_priority_target_trade_date()
         tracked_symbols = self._load_watchlist_symbols(db)
         merged_candidates: dict[str, PriorityCandidate] = {}
         performance_cache: dict[tuple[str, str, int], LowBuyStrategyPerformanceOut | None] = {}
@@ -175,12 +177,23 @@ class LowBuyPriorityBoardMixin(LowBuyPriorityScoringMixin):
         for strategy_key in PLAYBOOKS:
             if not participates_in_priority_board(strategy_key):
                 continue
-            payload = self._load_latest_materialized_full_result(
+            summary = (
+                repository.fetch_latest_scan_summary_on_or_before(
+                    strategy_key=strategy_key,
+                    latest_trade_date=target_trade_date,
+                )
+                if target_trade_date
+                else repository.fetch_latest_scan_summary(strategy_key=strategy_key)
+            )
+            if summary is None:
+                missing_strategies.append(strategy_key)
+                continue
+            payload = self._load_materialized_full_result(
                 db=db,
                 strategy=strategy_key,
+                latest_trade_date=str(summary.latest_trade_date),
                 limit=max(limit * 2, 24),
                 include_history=False,
-                allow_repair=False,
             )
             if payload is None:
                 missing_strategies.append(strategy_key)
@@ -207,6 +220,16 @@ class LowBuyPriorityBoardMixin(LowBuyPriorityScoringMixin):
             market_context=market_context,
             missing_strategies=missing_strategies,
             stale_strategies=stale_strategies,
+        )
+
+    def _resolve_priority_target_trade_date(self) -> str:
+        trade_dates = self._get_recent_trade_dates(14)
+        if len(trade_dates) < 3:
+            return ""
+        latest_completed_trade_date = self._resolve_latest_completed_trade_date(trade_dates)
+        return self._resolve_active_structure_trade_date(
+            trade_dates=trade_dates,
+            latest_completed_trade_date=latest_completed_trade_date,
         )
 
     @staticmethod

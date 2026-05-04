@@ -500,29 +500,26 @@ export default function MobileApp() {
   const isDetailInWatchlist = detail ? watchlistMap.has(detail.candidate.symbol) : false
 
   useEffect(() => {
-    if (!getAuthAccessToken()) {
-      setAuthLoading(false)
-      return
-    }
-    const loadMe = () => appApi.getMe()
-    loadMe()
-      .then((payload) => {
-        setAuthUser(payload.user)
-        setAuthError("")
-      })
-      .catch(async () => {
-        try {
-          const refreshed = await appApi.refreshAuth()
-          setAuthUser(refreshed.user)
+    const restoreAuth = async () => {
+      try {
+        if (getAuthAccessToken()) {
+          const payload = await appApi.getMe()
+          setAuthUser(payload.user)
           setAuthError("")
-        } catch (err) {
-          clearAuthTokens()
-          setAuthError(err instanceof Error ? err.message : "登录已失效")
+          return
         }
-      })
-      .finally(() => {
+        const refreshed = await appApi.refreshAuth()
+        setAuthUser(refreshed.user)
+        setAuthError("")
+      } catch (err) {
+        clearAuthTokens()
+        setAuthUser(null)
+        setAuthError(getAuthAccessToken() ? (err instanceof Error ? err.message : "登录已失效") : "")
+      } finally {
         setAuthLoading(false)
-      })
+      }
+    }
+    void restoreAuth()
   }, [])
 
   async function handleAuthSubmit(payload: { username: string; password: string; register: boolean }) {

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Iterable
+
 from app.services.market.shared import (
     Instrument,
     InstrumentOut,
@@ -154,21 +156,32 @@ class MarketInstrumentMixin:
         sector_by_symbol: dict[str, str] | None = None,
     ) -> int:
         sector_by_symbol = sector_by_symbol or {}
+        normalized_rows = self._normalize_instrument_rows(
+            rows=rows,
+            symbol_keys=symbol_keys,
+            name_keys=name_keys,
+            instrument_type=instrument_type,
+        )
+        if not normalized_rows:
+            return 0
+        existing_by_symbol = self._load_existing_instruments(db, list(normalized_rows))
         total = 0
-        for row in rows:
-            symbol = next((_safe_str(row.get(key)) for key in symbol_keys if row.get(key)), "")
-            name = next((_safe_str(row.get(key)) for key in name_keys if row.get(key)), "")
-            if not symbol:
-                continue
-            if instrument_type == "stock" and _is_st_or_delist_name(name):
-                continue
+        for symbol, name in normalized_rows.items():
             market = guess_market(symbol)
-            existing = db.execute(select(Instrument).where(Instrument.symbol == symbol)).scalar_one_or_none()
+            existing = existing_by_symbol.get(symbol)
             inferred_sector = sector_by_symbol.get(symbol)
             if not inferred_sector and instrument_type != "stock":
                 inferred_sector = self._infer_sector_name(symbol, name, instrument_type)
             if existing is None:
-                db.add(Instrument(symbol=symbol, name=name or symbol, market=market, instrument_type=instrument_type, sector_name=inferred_sector))
+                existing = Instrument(
+                    symbol=symbol,
+                    name=name or symbol,
+                    market=market,
+                    instrument_type=instrument_type,
+                    sector_name=inferred_sector,
+                )
+                db.add(existing)
+                existing_by_symbol[symbol] = existing
             else:
                 existing.name = name or existing.name
                 existing.market = market
@@ -177,6 +190,32 @@ class MarketInstrumentMixin:
                     existing.sector_name = inferred_sector
             total += 1
         return total
+
+    def _load_existing_instruments(self, db: Session, symbols: list[str]) -> dict[str, Instrument]:
+        existing: dict[str, Instrument] = {}
+        for chunk in _chunks(symbols, size=800):
+            rows = db.execute(select(Instrument).where(Instrument.symbol.in_(chunk))).scalars().all()
+            existing.update({row.symbol: row for row in rows})
+        return existing
+
+    def _normalize_instrument_rows(
+        self,
+        *,
+        rows: Iterable[dict[str, object]],
+        symbol_keys: tuple[str, ...],
+        name_keys: tuple[str, ...],
+        instrument_type: str,
+    ) -> dict[str, str]:
+        normalized: dict[str, str] = {}
+        for row in rows:
+            symbol = next((_safe_str(row.get(key)) for key in symbol_keys if row.get(key)), "")
+            name = next((_safe_str(row.get(key)) for key in name_keys if row.get(key)), "")
+            if not symbol:
+                continue
+            if instrument_type == "stock" and _is_st_or_delist_name(name):
+                continue
+            normalized[symbol] = name
+        return normalized
 
     def _normalize_sina_etf_rows(self, rows: list[dict[str, object]]) -> list[dict[str, object]]:
         normalized: list[dict[str, object]] = []
@@ -330,6 +369,12 @@ def _resolve_sw_industry_name(industry_code: str, category_map: dict[str, str]) 
         if name:
             return name
     return ""
+
+
+def _chunks(items: list[str], *, size: int) -> list[list[str]]:
+    if size <= 0:
+        return [items]
+    return [items[index : index + size] for index in range(0, len(items), size)]
 
 
 def _is_st_or_delist_name(name: str) -> bool:

@@ -3,7 +3,7 @@ import { EmptyState, InfoPill, MetricGrid, PanelTitle, StockCard } from "./Works
 import { PRODUCTION_PLAYBOOK_TABS } from "./workspaceConstants";
 import { candidateToCard } from "./workspaceViewModels";
 import { formatNumber, formatPct, strategyLabel, toneFromChange } from "./workspaceFormatters";
-import type { StockCardView } from "./workspaceTypes";
+import type { MetricItem, StockCardView } from "./workspaceTypes";
 
 export function PlaybookPage({
   strategy,
@@ -35,6 +35,9 @@ export function PlaybookPage({
   const strategyName = strategyLabel(strategy);
   const loadedStrategyName = playbook?.strategy_title || strategyLabel(playbook?.strategy_key || strategy);
   const switchingText = playbook && playbook.strategy_key !== strategy ? "，正在切换数据" : "";
+  const hasInsufficientData = playbook?.performance?.data_insufficient || (playbook?.performance?.filled_signals ?? 0) <= 0;
+  const hitRateDisplay = hasInsufficientData ? "样本不足" : formatPct(playbook?.performance?.hit_rate);
+  const hitRateTone: MetricItem["tone"] = hasInsufficientData ? "neutral" : "up";
   const marketAttributionText = summarizeMarketAttribution(playbook?.performance?.market_state_attribution ?? []);
   return (
     <section className="page-grid playbook-grid">
@@ -60,13 +63,13 @@ export function PlaybookPage({
           { label: "仅跟踪", value: String(watch.length), tone: "neutral" },
           { label: "今日放弃", value: String(avoid.length), tone: avoid.length ? "down" : "neutral" },
           { label: "全量深筛", value: String(playbook?.scanned_count ?? "--"), tone: "neutral" },
-          { label: "5日达标率", value: formatPct(playbook?.performance?.hit_rate), tone: "up" },
+          { label: "5日达标率", value: hitRateDisplay, tone: hitRateTone },
         ]}
       />
       <div className="panel playbook-performance">
         <PanelTitle title="最近表现" />
         <p>当前策略：{strategyName}；已加载：{loadedStrategyName}{switchingText}</p>
-        <p>近5日 达标率 {formatPct(playbook?.performance?.hit_rate, 0)}　平均收益 {formatPct(playbook?.performance?.avg_return_5d)}　回撤 {formatPct(playbook?.performance?.avg_max_drawdown_5d)}　盈亏比 {formatNumber(playbook?.performance?.profit_factor)}</p>
+        <p>近5日 达标率 {hitRateDisplay}　平均收益 {formatPct(playbook?.performance?.avg_return_5d)}　回撤 {formatPct(playbook?.performance?.avg_max_drawdown_5d)}　盈亏比 {formatNumber(playbook?.performance?.profit_factor)}</p>
         <p>尾部风险 CVaR {formatPct(playbook?.performance?.cvar_5pct)}　半凯利参考 {formatPct(playbook?.performance?.kelly_half_position_pct, 1)}　平均盈利/亏损 {formatPct(playbook?.performance?.avg_win_pct)} / {formatPct(playbook?.performance?.avg_loss_pct)}</p>
         <p>板块归因：{playbook?.hot_industries?.slice(0, 3).join("、") || "--"}</p>
         <p>市场状态：{playbook?.market_state_category_text || playbook?.market_state_text || "--"}</p>

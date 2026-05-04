@@ -144,6 +144,16 @@ export interface PaperGroupedPerformance {
   profit_factor: number | null
 }
 
+export interface PaperStrategyMarketPerformance {
+  strategy_key: string
+  market_state: string
+  trades: number
+  win_rate_pct: number
+  net_win_rate_pct: number
+  avg_return_pct: number
+  profit_factor: number | null
+}
+
 export interface PaperAutoTradingStatus {
   running: boolean
   engine_running?: boolean
@@ -238,6 +248,7 @@ export interface PaperPerformanceDashboard {
   }>
   strategy_trend: PaperStrategyTrend[]
   market_perf_heatmap: PaperMarketPerfHeatmapItem[]
+  strategy_market_matrix: PaperStrategyMarketPerformance[]
   today_report: PaperDailyReport | null
   updated_at: string
 }

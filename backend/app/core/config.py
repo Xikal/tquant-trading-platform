@@ -39,7 +39,7 @@ class AppSettings(BaseSettings):
     http_timeout: int = 12
     app_mobile_quick_history_timeout: float = 10.0
     runtime_background_jobs_enabled: bool = True
-    runtime_background_jobs_on_sqlite: bool = False
+    runtime_background_jobs_on_sqlite: bool = True
     max_request_body_bytes: int = 1_048_576
     structured_logs: bool = False
     admin_api_token: str = ""

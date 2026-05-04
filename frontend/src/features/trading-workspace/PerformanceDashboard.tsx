@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { api } from "../../api/client";
-import type { PaperPerformanceDashboard, PaperStrategyTrend } from "../../types";
+import type { PaperPerformanceDashboard, PaperStrategyMarketPerformance, PaperStrategyTrend } from "../../types";
 import { formatAmount, formatPct, shortTime, strategyLabel, toneFromChange } from "./workspaceFormatters";
 
 const RANGE_OPTIONS = [7, 30, 90, 180] as const;
@@ -11,11 +11,7 @@ export function PerformanceDashboard() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  useEffect(() => {
-    void loadDashboard(days);
-  }, [days]);
-
-  async function loadDashboard(nextDays = days) {
+  const loadDashboard = useCallback(async (nextDays = days) => {
     try {
       setLoading(true);
       setError("");
@@ -25,11 +21,19 @@ export function PerformanceDashboard() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [days]);
+
+  useEffect(() => {
+    void loadDashboard(days);
+  }, [days, loadDashboard]);
 
   const latestEquity = lastOf(dashboard?.equity_curve ?? []);
   const strategyRows = useMemo(
     () => [...(dashboard?.strategy_trend ?? [])].sort(compareStrategyTrend).slice(0, 8),
+    [dashboard]
+  );
+  const matrixRows = useMemo(
+    () => [...(dashboard?.strategy_market_matrix ?? [])].sort(compareStrategyMarket).slice(0, 10),
     [dashboard]
   );
 
@@ -154,6 +158,23 @@ export function PerformanceDashboard() {
           )) : <EmptyPerformance text="暂无市场状态归档" />}
         </div>
       </section>
+
+      <section className="panel performance-strategy-market">
+        <div className="panel-title">
+          <h2>策略 × 市场状态</h2>
+          <span className="hint">同一策略在不同市场环境下分开看</span>
+        </div>
+        <div className="performance-table performance-matrix-table">
+          <div className="performance-table-head">
+            <span>策略 / 环境</span>
+            <span>成交</span>
+            <span>胜率</span>
+            <span>净胜率</span>
+            <span>均收</span>
+          </div>
+          {matrixRows.length ? matrixRows.map((item) => <StrategyMarketRow item={item} key={`${item.strategy_key}-${item.market_state}`} />) : <EmptyPerformance text="暂无策略环境交叉归档" />}
+        </div>
+      </section>
     </section>
   );
 }
@@ -181,6 +202,19 @@ function StrategyTrendRow({ item }: { item: PaperStrategyTrend }) {
       <span>{formatPct(latest?.win_rate_pct)}</span>
       <span>{formatPct(latest?.net_win_rate_pct)}</span>
       <span className={avgTone}>{formatPct(latest?.avg_return_pct)}</span>
+    </div>
+  );
+}
+
+function StrategyMarketRow({ item }: { item: PaperStrategyMarketPerformance }) {
+  const avgTone = toneFromChange(item.avg_return_pct);
+  return (
+    <div className="performance-table-row">
+      <strong>{strategyLabel(item.strategy_key)} / {item.market_state || "未分类"}</strong>
+      <span>{item.trades}</span>
+      <span>{formatPct(item.win_rate_pct)}</span>
+      <span>{formatPct(item.net_win_rate_pct)}</span>
+      <span className={avgTone}>{formatPct(item.avg_return_pct)}</span>
     </div>
   );
 }
@@ -235,6 +269,13 @@ function compareStrategyTrend(left: PaperStrategyTrend, right: PaperStrategyTren
   const leftReturn = lastOf(left.points)?.avg_return_pct ?? 0;
   const rightReturn = lastOf(right.points)?.avg_return_pct ?? 0;
   return rightReturn - leftReturn;
+}
+
+function compareStrategyMarket(left: PaperStrategyMarketPerformance, right: PaperStrategyMarketPerformance): number {
+  if (right.trades !== left.trades) {
+    return right.trades - left.trades;
+  }
+  return right.avg_return_pct - left.avg_return_pct;
 }
 
 function lastOf<T>(items: T[]): T | undefined {
