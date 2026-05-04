@@ -14,16 +14,26 @@ export function PanelTitle({ title, actions }: { title: string; actions?: ReactN
   );
 }
 
-export function MetricGrid({ items, className = "" }: { items: MetricItem[]; className?: string }) {
+export function MetricGrid({
+  items,
+  className = "",
+  loading = false,
+  as: Component = "div",
+}: {
+  items: MetricItem[];
+  className?: string;
+  loading?: boolean;
+  as?: "div" | "section";
+}) {
   return (
-    <div className={`metric-grid ${className}`}>
+    <Component className={`metric-grid ${className}`}>
       {items.map((item) => (
         <div className={`metric ${item.tone}`} key={item.label}>
           <span>{item.label}</span>
-          <strong>{item.value}</strong>
+          {loading ? <span className="skeleton-line strong" /> : <strong>{item.value}</strong>}
         </div>
       ))}
-    </div>
+    </Component>
   );
 }
 
@@ -146,8 +156,8 @@ export function SettingCard({
   );
 }
 
-export function EmptyState({ text }: { text: string }) {
-  return <div className="empty-state">{text}</div>;
+export function EmptyState({ text, className = "" }: { text: string; className?: string }) {
+  return <div className={`empty-state ${className}`}>{text}</div>;
 }
 
 export function StatusStrip({ loading: _loading, notice }: { loading: string; notice: string }) {

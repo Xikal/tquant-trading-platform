@@ -25,6 +25,11 @@ export function usePlaybookData({
   const [playbook, setPlaybook] = useState<LowBuyScreenerResult | null>(null);
   const cacheRef = useRef<Record<string, LowBuyScreenerResult>>({});
   const requestRef = useRef(0);
+  const withLoadingRef = useRef(withLoading);
+
+  useEffect(() => {
+    withLoadingRef.current = withLoading;
+  }, [withLoading]);
 
   const loadPlaybook = useCallback(
     async (nextStrategy: string, force = false) => {
@@ -33,7 +38,7 @@ export function usePlaybookData({
         setPlaybook(cached);
         return cached;
       }
-      return await withLoading("playbook", async () => {
+      return await withLoadingRef.current("playbook", async () => {
         const requestId = ++requestRef.current;
         const result = await api.getLowBuyCandidates(nextStrategy, 18, 480, false, "full");
         if (requestId === requestRef.current) {
@@ -43,7 +48,7 @@ export function usePlaybookData({
         return result;
       });
     },
-    [withLoading],
+    [],
   );
 
   const setStrategy = useCallback(

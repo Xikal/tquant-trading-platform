@@ -8,37 +8,41 @@ from sqlalchemy import select
 from app.models.entities import Watchlist
 from app.models.schemas import (
     LowBuyCandidateOut,
-    LowBuyPriorityFamilyPerformanceOut,
-    LowBuyPriorityFamilySectionOut,
     LowBuyPriorityBoardItemOut,
     LowBuyPriorityBoardResponse,
     LowBuyStrategyPerformanceOut,
 )
 from app.repositories.low_buy.results import LowBuyResultRepository
-from app.repositories.low_buy.lifecycle import LowBuyTradeLifecycleRepository
 from app.services.low_buy.priority_scoring import LowBuyPriorityScoringMixin
-from app.services.low_buy.market_state_rules import compute_directional_bias, directional_bias_text
-from app.services.low_buy.data_quality import build_market_data_quality, data_quality_payload
-from app.services.low_buy.portfolio_risk import build_lifecycle_holdings, build_portfolio_risk
 from app.services.low_buy.priority_types import (
     PriorityBaseSnapshot,
     PriorityCandidate,
     PriorityMarketContext,
     StrategyHit,
 )
+from app.services.low_buy.priority_family import (
+    build_family_performance,
+    build_priority_family_sections,
+    priority_recommendation_duration_text,
+    recommendation_days_by_title,
+    strategy_performance_text,
+)
+from app.services.low_buy.priority_holdings import (
+    build_priority_portfolio_risk,
+    select_primary_candidates_for_portfolio,
+)
+from app.services.low_buy.priority_items import build_priority_items
+from app.services.low_buy.priority_response import build_priority_board_response
 from app.services.low_buy.shared import (
     LOW_BUY_THRESHOLDS,
     PERFORMANCE_LOOKBACK_DAYS,
     PLAYBOOKS,
     RECENT_PERFORMANCE_LOOKBACK_DAYS,
     Session,
-    datetime,
 )
 from app.services.low_buy.strategy_policy import participates_in_priority_board
-from app.services.low_buy.strategy_families import resolve_strategy_family, resolve_strategy_family_label
+from app.services.low_buy.strategy_families import resolve_strategy_family
 from app.services.low_buy.recommendation_duration import attach_recommendation_durations
-from app.services.low_buy.simple_decision import build_daily_decision, build_simple_buckets, enrich_priority_items
-from app.services.market.state_categories import standard_market_state_payload
 
 
 class LowBuyPriorityBoardMixin(LowBuyPriorityScoringMixin):
@@ -60,96 +64,27 @@ class LowBuyPriorityBoardMixin(LowBuyPriorityScoringMixin):
             market_context=base_snapshot.market_context,
         )
         items.sort(key=lambda item: item.priority_score, reverse=True)
-        family_performance = self._build_family_performance(refreshed_candidates)
-        family_sections = self._build_priority_family_sections(
+        family_performance = build_family_performance(refreshed_candidates)
+        family_sections = build_priority_family_sections(
             items=items,
             family_performance=family_performance,
         )
-        portfolio_candidates = self._primary_candidates_for_portfolio(
-            refreshed_candidates,
-            market_context=base_snapshot.market_context,
-        )
-        directional_bias = compute_directional_bias(
-            base_snapshot.market_context.market_state,
-            regime_scores={"style_divergence": base_snapshot.market_context.style_divergence},
-            emotion_data={
-                "broken_board_ratio": base_snapshot.market_context.broken_board_ratio,
-                "limit_down_count": base_snapshot.market_context.limit_down_count or 0,
-                "limit_up_count": base_snapshot.market_context.limit_up_count,
-            },
-            mainline_strength={"strength": base_snapshot.market_context.market_state_strength},
-        )
         snapshot_warning = self._priority_snapshot_warning(base_snapshot)
-        market_state_fields = standard_market_state_payload(base_snapshot.market_context.market_state)
-        quality_fields = data_quality_payload(
-            build_market_data_quality(
-                breadth_ready=base_snapshot.market_context.breadth_ready,
-                emotion_ready=base_snapshot.market_context.emotion_ready,
-                hot_industry_source=base_snapshot.market_context.hot_industry_source,
-                snapshot_warning=snapshot_warning,
-            )
+        portfolio_risk = build_priority_portfolio_risk(
+            db=db,
+            rows=refreshed_candidates,
+            market_context=base_snapshot.market_context,
+            selector=self,
         )
-
-        response = LowBuyPriorityBoardResponse(
-            as_of_date=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            latest_trade_date=base_snapshot.latest_trade_date,
-            latest_available_trade_date=base_snapshot.latest_available_trade_date,
-            snapshot_warning=snapshot_warning,
-            updated_at=base_snapshot.updated_at or datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            total_candidates=len(items),
-            immediate_count=sum(item.buy_signal_state in {"buy_now", "soft_buy_now"} for item in items),
-            focus_count=sum(item.buy_signal_state == "near_entry" for item in items),
-            track_count=sum(item.buy_signal_state == "watch" for item in items),
-            market_state=base_snapshot.market_context.market_state,
-            market_state_text=self._market_state_text(base_snapshot.market_context),
-            market_state_category=market_state_fields["market_state_category"],
-            market_state_category_text=market_state_fields["market_state_category_text"],
-            **quality_fields,
-            directional_bias=directional_bias,
-            directional_bias_text=directional_bias_text(directional_bias),
-            market_bonus=base_snapshot.market_context.market_bonus,
-            market_state_strength=base_snapshot.market_context.market_state_strength,
-            regime_confidence=base_snapshot.market_context.regime_confidence,
-            state_persistence_days=base_snapshot.market_context.state_persistence_days,
-            transition_risk=base_snapshot.market_context.transition_risk,
-            breadth_ready=base_snapshot.market_context.breadth_ready,
-            emotion_ready=base_snapshot.market_context.emotion_ready,
-            stock_up_ratio=base_snapshot.market_context.stock_up_ratio,
-            stock_median_change=base_snapshot.market_context.stock_median_change,
-            style_divergence=base_snapshot.market_context.style_divergence,
-            hot_turnover=base_snapshot.market_context.hot_turnover,
-            hot_overlap_ratio=base_snapshot.market_context.hot_overlap_ratio,
-            limit_down_count=base_snapshot.market_context.limit_down_count,
-            limit_up_count=base_snapshot.market_context.limit_up_count,
-            board_height=base_snapshot.market_context.board_height,
-            previous_board_height=base_snapshot.market_context.previous_board_height,
-            promotion_ratio=base_snapshot.market_context.promotion_ratio,
-            broken_board_ratio=base_snapshot.market_context.broken_board_ratio,
-            promotion_break_gap=base_snapshot.market_context.promotion_break_gap,
-            promotion_break_pressure=base_snapshot.market_context.promotion_break_pressure,
-            high_flyer_retreat_ratio=base_snapshot.market_context.high_flyer_retreat_ratio,
-            high_flyer_gap_speed=base_snapshot.market_context.high_flyer_gap_speed,
-            distribution_pressure=base_snapshot.market_context.distribution_pressure,
-            hot_industries=base_snapshot.market_context.hot_industries,
-            hot_industry_source=base_snapshot.market_context.hot_industry_source,
-            hot_industry_source_text=base_snapshot.market_context.hot_industry_source_text,
-            mainline_lifecycle_state=base_snapshot.market_context.mainline_lifecycle_state,
-            mainline_lifecycle_text=base_snapshot.market_context.mainline_lifecycle_text,
-            portfolio_risk=build_portfolio_risk(
-                portfolio_candidates,
-                market_state=base_snapshot.market_context.market_state,
-                active_holdings=build_lifecycle_holdings(
-                    LowBuyTradeLifecycleRepository(db).fetch_active(limit=300)
-                ),
-            ),
-            missing_strategies=base_snapshot.missing_strategies,
-            stale_strategies=base_snapshot.stale_strategies,
+        response = build_priority_board_response(
+            base_snapshot=base_snapshot,
+            items=items,
+            item_limit=limit,
             family_sections=family_sections,
-            items=items[:limit],
+            portfolio_risk=portfolio_risk,
+            snapshot_warning=snapshot_warning,
+            market_state_text=self._market_state_text(base_snapshot.market_context),
         )
-        response.items = enrich_priority_items(response.items)
-        response.daily_decision = build_daily_decision(response)
-        response.simple_buckets = build_simple_buckets(response.items)
         self._set_priority_response_cache(cache_key, response)
         return response
 
@@ -498,93 +433,11 @@ class LowBuyPriorityBoardMixin(LowBuyPriorityScoringMixin):
         rows: list[PriorityCandidate],
         market_context: PriorityMarketContext,
     ) -> list[LowBuyPriorityBoardItemOut]:
-        items: list[LowBuyPriorityBoardItemOut] = []
-        for row in rows:
-            if not row.hits:
-                continue
-            aggregate_weight = self._aggregate_strategy_weight(row.hits)
-            strategy_count = self._effective_strategy_count(row.hits)
-            family_count = self._effective_family_count(row.hits)
-            primary_hit = max(
-                row.hits,
-                key=lambda hit: self._final_rank_score(
-                    candidate=hit.candidate,
-                    aggregate_weight=aggregate_weight,
-                    family_count=family_count,
-                    strategy_weight=hit.strategy_weight_score + hit.context_bonus,
-                    market_context=market_context,
-                ),
-            )
-            candidate = primary_hit.candidate
-            strategy_titles = self._display_strategy_titles(row.hits)
-            recommendation_days_by_title = self._recommendation_days_by_title(row.hits)
-            recommendation_days = max(recommendation_days_by_title.values(), default=candidate.recommendation_days)
-            industry_rotation_bonus = self._sector_rotation_bonus(candidate, market_context)
-            items.append(
-                LowBuyPriorityBoardItemOut(
-                    symbol=candidate.symbol,
-                    name=candidate.name,
-                    sector_name=candidate.sector_name,
-                    strategy_key=primary_hit.strategy_key,
-                    strategy_title=primary_hit.strategy_title,
-                    strategy_titles=strategy_titles,
-                    strategy_count=strategy_count,
-                    family_count=family_count,
-                    strategy_family=primary_hit.family_key,
-                    strategy_family_text=resolve_strategy_family_label(primary_hit.strategy_key),
-                    latest_price=candidate.latest_price,
-                    change_pct=candidate.change_pct,
-                    quote_timestamp=candidate.quote_timestamp,
-                    data_quality=candidate.data_quality,
-                    data_quality_text=candidate.data_quality_text,
-                    data_quality_tags=candidate.data_quality_tags,
-                    market_state_category=candidate.market_state_category,
-                    market_state_category_text=candidate.market_state_category_text,
-                    buy_signal_state=candidate.buy_signal_state,
-                    buy_signal_text=candidate.buy_signal_text,
-                    priority_score=self._final_rank_score(
-                        candidate=candidate,
-                        aggregate_weight=aggregate_weight,
-                        family_count=family_count,
-                        strategy_weight=primary_hit.strategy_weight_score + primary_hit.context_bonus,
-                        market_context=market_context,
-                    ),
-                    strategy_weight_score=round(aggregate_weight, 2),
-                    industry_rotation_bonus=industry_rotation_bonus,
-                    industry_rotation_text=self._industry_rotation_text(candidate, market_context, industry_rotation_bonus),
-                    industry_tier=candidate.industry_tier,
-                    industry_tier_text=candidate.industry_tier_text,
-                    industry_position_multiplier=candidate.industry_position_multiplier,
-                    position_breakdown_text=candidate.position_breakdown_text,
-                    action_summary=self._priority_action_summary(candidate),
-                    blocked_reason=self._priority_blocked_reason(candidate),
-                    trigger_condition=candidate.trigger_condition,
-                    invalid_condition=candidate.invalid_condition,
-                    risk_tier=candidate.risk_tier,
-                    next_watch_price=candidate.next_watch_price,
-                    leader_rank=candidate.leader_rank,
-                    mainline_rank=candidate.mainline_rank,
-                    mainline_tier=candidate.mainline_tier,
-                    mainline_tier_text=candidate.mainline_tier_text,
-                    execution_quality_score=candidate.execution_quality_score,
-                    execution_quality_text=candidate.execution_quality_text,
-                    strategy_performance_text=self._strategy_performance_text(primary_hit.performance),
-                    next_day_event_plan=candidate.next_day_event_plan,
-                    entry_zone_low=candidate.entry_zone_low,
-                    entry_zone_high=candidate.entry_zone_high,
-                    stop_loss=candidate.stop_loss,
-                    suggested_position_pct=candidate.suggested_position_pct,
-                    suggested_position_text=candidate.suggested_position_text,
-                    recommendation_start_date=candidate.recommendation_start_date,
-                    recommendation_days=recommendation_days,
-                    strategy_recommendation_days=recommendation_days_by_title,
-                    recommendation_duration_text=self._priority_recommendation_duration_text(
-                        candidate=candidate,
-                        recommendation_days_by_title=recommendation_days_by_title,
-                    ),
-                )
-            )
-        return items
+        return build_priority_items(
+            rows=rows,
+            market_context=market_context,
+            builder=self,
+        )
 
     def _attach_priority_recommendation_durations(
         self,
@@ -621,47 +474,6 @@ class LowBuyPriorityBoardMixin(LowBuyPriorityScoringMixin):
             )
         return result
 
-    @staticmethod
-    def _recommendation_days_by_title(hits: list[StrategyHit]) -> dict[str, int]:
-        result: dict[str, int] = {}
-        for hit in hits:
-            days = int(hit.candidate.recommendation_days or 0)
-            if days <= 0:
-                continue
-            title = hit.strategy_title or hit.strategy_key
-            result[title] = max(result.get(title, 0), days)
-        return result
-
-    @staticmethod
-    def _priority_recommendation_duration_text(
-        *,
-        candidate: LowBuyCandidateOut,
-        recommendation_days_by_title: dict[str, int],
-    ) -> str:
-        if not recommendation_days_by_title:
-            return candidate.recommendation_duration_text
-        title, max_recommendation_days = max(
-            recommendation_days_by_title.items(),
-            key=lambda pair: pair[1],
-        )
-        max_holding_days = max(int(candidate.exit_plan.max_holding_days or 0), 1)
-        if max_recommendation_days >= max_holding_days:
-            return f"{title}第 {max_recommendation_days} 天，已达到建议验证窗口 {max_holding_days} 天；未转强应降级或退出。"
-        return f"{title}第 {max_recommendation_days} 天，建议验证窗口 {max_holding_days} 天；剩余 {max_holding_days - max_recommendation_days} 天。"
-
-    @staticmethod
-    def _strategy_performance_text(performance: LowBuyStrategyPerformanceOut | None) -> str:
-        if performance is None:
-            return "策略表现：暂无可用绩效样本，先按结构和风控判断。"
-        filled = int(performance.filled_signals or 0)
-        if filled < 5:
-            return f"策略表现：近 {performance.lookback_days} 日真实成交样本 {filled} 个，样本不足。"
-        return (
-            f"策略表现：近 {performance.lookback_days} 日盈利率 {performance.hit_rate:.1f}%、"
-            f"净胜优势 {performance.net_win_rate:+.1f}%、"
-            f"均收 {performance.avg_net_return_pct:+.2f}%、未成交 {performance.not_filled_rate:.1f}%"
-        )
-
     def _display_strategy_titles(self, hits: list[StrategyHit]) -> list[str]:
         titles_by_family: dict[str, str] = {}
         for hit in self._ordered_hits_for_aggregation(hits):
@@ -671,128 +483,24 @@ class LowBuyPriorityBoardMixin(LowBuyPriorityScoringMixin):
             titles_by_family[family_key] = hit.strategy_title
         return list(titles_by_family.values())
 
-    def _build_priority_family_sections(
-        self,
+    @staticmethod
+    def _recommendation_days_by_title(hits: list[StrategyHit]) -> dict[str, int]:
+        return recommendation_days_by_title(hits)
+
+    @staticmethod
+    def _priority_recommendation_duration_text(
         *,
-        items: list[LowBuyPriorityBoardItemOut],
-        family_performance: dict[str, LowBuyPriorityFamilyPerformanceOut],
-        limit_per_family: int = 6,
-    ) -> list[LowBuyPriorityFamilySectionOut]:
-        grouped: dict[str, list[LowBuyPriorityBoardItemOut]] = {}
-        for item in items:
-            grouped.setdefault(item.strategy_family or "uncategorized", []).append(item)
-        sections: list[LowBuyPriorityFamilySectionOut] = []
-        for family_key, family_items in grouped.items():
-            ordered = sorted(family_items, key=lambda item: item.priority_score, reverse=True)
-            family_text = ordered[0].strategy_family_text if ordered else resolve_strategy_family_label(family_key)
-            sections.append(
-                LowBuyPriorityFamilySectionOut(
-                    family_key=family_key,
-                    family_text=family_text,
-                    total_candidates=len(ordered),
-                    immediate_count=sum(item.buy_signal_state in {"buy_now", "soft_buy_now"} for item in ordered),
-                    focus_count=sum(item.buy_signal_state == "near_entry" for item in ordered),
-                    track_count=sum(item.buy_signal_state == "watch" for item in ordered),
-                    avg_priority_score=round(sum(item.priority_score for item in ordered) / max(len(ordered), 1), 2),
-                    top_strategy_titles=self._unique_strategy_titles_from_items(ordered),
-                    performance=family_performance.get(family_key),
-                    items=ordered[:limit_per_family],
-                )
-            )
-        sections.sort(
-            key=lambda section: (
-                section.immediate_count,
-                section.focus_count,
-                section.avg_priority_score,
-                section.total_candidates,
-            ),
-            reverse=True,
+        candidate: LowBuyCandidateOut,
+        recommendation_days_by_title: dict[str, int],
+    ) -> str:
+        return priority_recommendation_duration_text(
+            candidate=candidate,
+            recommendation_days_by_title=recommendation_days_by_title,
         )
-        return sections
 
     @staticmethod
-    def _unique_strategy_titles_from_items(items: list[LowBuyPriorityBoardItemOut]) -> list[str]:
-        titles: list[str] = []
-        for item in items:
-            for title in item.strategy_titles or [item.strategy_title]:
-                if title not in titles:
-                    titles.append(title)
-        return titles[:4]
-
-    def _build_family_performance(
-        self,
-        rows: list[PriorityCandidate],
-    ) -> dict[str, LowBuyPriorityFamilyPerformanceOut]:
-        accumulators: dict[str, dict[str, float | int | str | set[str]]] = {}
-        seen: set[tuple[str, str]] = set()
-        for row in rows:
-            for hit in row.hits:
-                if hit.performance is None:
-                    continue
-                family_key = hit.family_key or resolve_strategy_family(hit.strategy_key)
-                strategy_key = hit.strategy_key
-                if (family_key, strategy_key) in seen:
-                    continue
-                seen.add((family_key, strategy_key))
-                bucket = accumulators.setdefault(
-                    family_key,
-                    {
-                        "family_text": resolve_strategy_family_label(strategy_key),
-                        "strategies": set(),
-                        "evaluated_signals": 0,
-                        "filled_signals": 0,
-                        "not_filled_signals": 0,
-                        "hit_count": 0,
-                        "net_win_rate_sum": 0.0,
-                        "net_return_sum": 0.0,
-                        "not_filled_count": 0.0,
-                        "stop_loss_count": 0.0,
-                    },
-                )
-                performance = hit.performance
-                evaluated = int(performance.evaluated_signals or 0)
-                filled = int(performance.filled_signals or 0)
-                not_filled = int(performance.not_filled_signals or 0)
-                hit_count = int(performance.hit_count or 0)
-                bucket["strategies"].add(strategy_key)  # type: ignore[union-attr]
-                bucket["evaluated_signals"] = int(bucket["evaluated_signals"]) + evaluated
-                bucket["filled_signals"] = int(bucket["filled_signals"]) + filled
-                bucket["not_filled_signals"] = int(bucket["not_filled_signals"]) + not_filled
-                bucket["hit_count"] = int(bucket["hit_count"]) + hit_count
-                bucket["net_win_rate_sum"] = float(bucket["net_win_rate_sum"]) + performance.net_win_rate * filled
-                bucket["net_return_sum"] = float(bucket["net_return_sum"]) + performance.avg_net_return_pct * filled
-                bucket["not_filled_count"] = float(bucket["not_filled_count"]) + not_filled
-                bucket["stop_loss_count"] = float(bucket["stop_loss_count"]) + performance.stop_loss_rate / 100 * filled
-        return {
-            family_key: self._family_performance_from_bucket(family_key, bucket)
-            for family_key, bucket in accumulators.items()
-        }
-
-    @staticmethod
-    def _family_performance_from_bucket(
-        family_key: str,
-        bucket: dict[str, float | int | str | set[str]],
-    ) -> LowBuyPriorityFamilyPerformanceOut:
-        evaluated = int(bucket["evaluated_signals"])
-        filled = int(bucket["filled_signals"])
-        hit_count = int(bucket["hit_count"])
-        not_filled = int(bucket["not_filled_signals"])
-        strategies = bucket["strategies"]
-        strategy_count = len(strategies) if isinstance(strategies, set) else 0
-        return LowBuyPriorityFamilyPerformanceOut(
-            family_key=family_key,
-            family_text=str(bucket["family_text"]),
-            strategy_count=strategy_count,
-            evaluated_signals=evaluated,
-            filled_signals=filled,
-            not_filled_signals=not_filled,
-            hit_count=hit_count,
-            net_win_rate=round(float(bucket["net_win_rate_sum"]) / max(filled, 1), 2),
-            avg_net_return_pct=round(float(bucket["net_return_sum"]) / max(filled, 1), 2),
-            not_filled_rate=round(not_filled / max(evaluated, 1) * 100, 2),
-            stop_loss_rate=round(float(bucket["stop_loss_count"]) / max(filled, 1) * 100, 2),
-            hit_rate=round(hit_count / max(filled, 1) * 100, 2),
-        )
+    def _strategy_performance_text(performance: LowBuyStrategyPerformanceOut | None) -> str:
+        return strategy_performance_text(performance)
 
     def _build_market_context(self, db: Session, latest_trade_date: str) -> PriorityMarketContext:
         persisted_pool = self._load_persisted_pool(db=db, latest_trade_date=latest_trade_date) or {}
@@ -886,21 +594,8 @@ class LowBuyPriorityBoardMixin(LowBuyPriorityScoringMixin):
         rows: list[PriorityCandidate],
         market_context: PriorityMarketContext,
     ) -> list[LowBuyCandidateOut]:
-        candidates: list[LowBuyCandidateOut] = []
-        for row in rows:
-            if not row.hits:
-                continue
-            aggregate_weight = self._aggregate_strategy_weight(row.hits)
-            family_count = self._effective_family_count(row.hits)
-            primary_hit = max(
-                row.hits,
-                key=lambda hit: self._final_rank_score(
-                    candidate=hit.candidate,
-                    aggregate_weight=aggregate_weight,
-                    family_count=family_count,
-                    strategy_weight=hit.strategy_weight_score + hit.context_bonus,
-                    market_context=market_context,
-                ),
-            )
-            candidates.append(primary_hit.candidate)
-        return candidates
+        return select_primary_candidates_for_portfolio(
+            rows=rows,
+            market_context=market_context,
+            selector=self,
+        )

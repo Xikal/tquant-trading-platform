@@ -128,6 +128,19 @@ export function formatAmount(value?: number | null): string {
   return value.toFixed(0);
 }
 
+export function formatInteger(value?: number | null): string {
+  if (typeof value !== "number" || !Number.isFinite(value)) return "--";
+  return value.toLocaleString("zh-CN", { maximumFractionDigits: 0 });
+}
+
+export function formatMoneyPlain(value?: number | null): string {
+  if (typeof value !== "number" || !Number.isFinite(value)) return "--";
+  return value.toLocaleString("zh-CN", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+}
+
 export function parseNumber(value: string): number {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : 0;

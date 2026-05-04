@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { api } from "../../api/client";
 import type { PaperPerformanceDashboard, PaperStrategyMarketPerformance, PaperStrategyTrend } from "../../types";
+import { EmptyState, MetricGrid } from "./WorkspaceComponents";
 import { formatAmount, formatPct, shortTime, strategyLabel, toneFromChange } from "./workspaceFormatters";
+import type { MetricItem } from "./workspaceTypes";
 
 const RANGE_OPTIONS = [7, 30, 90, 180] as const;
 
@@ -179,17 +181,8 @@ export function PerformanceDashboard() {
   );
 }
 
-function MetricStrip({ items }: { items: Array<{ label: string; value: string; tone: string }> }) {
-  return (
-    <section className="metric-grid performance-metrics">
-      {items.map((item) => (
-        <div className={`metric ${item.tone}`} key={item.label}>
-          <span>{item.label}</span>
-          <strong>{item.value}</strong>
-        </div>
-      ))}
-    </section>
-  );
+function MetricStrip({ items }: { items: MetricItem[] }) {
+  return <MetricGrid items={items} className="performance-metrics" as="section" />;
 }
 
 function StrategyTrendRow({ item }: { item: PaperStrategyTrend }) {
@@ -262,7 +255,7 @@ function LineChart({
 }
 
 function EmptyPerformance({ text }: { text: string }) {
-  return <div className="empty-state performance-empty">{text}</div>;
+  return <EmptyState text={text} className="performance-empty" />;
 }
 
 function compareStrategyTrend(left: PaperStrategyTrend, right: PaperStrategyTrend): number {

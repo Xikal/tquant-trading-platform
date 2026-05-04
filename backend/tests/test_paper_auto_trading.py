@@ -233,6 +233,47 @@ class PaperAutoTradingTest(unittest.TestCase):
         for field_name in ("symbol", "name", "side", "order_type", "quantity", "price", "source", "strategy_key"):
             self.assertIn(field_name, plan)
 
+    def test_executor_dry_run_respects_max_orders_without_creating_orders(self):
+        from app.services.paper.executor import PaperTradingExecutor
+
+        class DummyDb:
+            def __init__(self):
+                self.commits = 0
+                self.rollbacks = 0
+
+            def commit(self):
+                self.commits += 1
+
+            def rollback(self):
+                self.rollbacks += 1
+
+        class FailingOrderService:
+            def __init__(self):
+                self.db = DummyDb()
+
+            def create_order(self, **_kwargs):
+                raise AssertionError("dry_run must not create paper orders")
+
+        order_service = FailingOrderService()
+        planned_orders = [
+            {"symbol": "510300", "quantity": 100},
+            {"symbol": "159915", "quantity": 100},
+            {"symbol": "588000", "quantity": 100},
+        ]
+
+        result = PaperTradingExecutor(order_service).execute_plan(
+            account_id=1,
+            planned_orders=planned_orders,
+            max_orders=2,
+            dry_run=True,
+        )
+
+        self.assertEqual(result["executed"], [])
+        self.assertEqual([item["symbol"] for item in result["skipped"]], ["510300", "159915"])
+        self.assertEqual(result["summary"], "执行 0 条，跳过 2 条。")
+        self.assertEqual(order_service.db.commits, 1)
+        self.assertEqual(order_service.db.rollbacks, 0)
+
 
 if __name__ == "__main__":
     unittest.main()

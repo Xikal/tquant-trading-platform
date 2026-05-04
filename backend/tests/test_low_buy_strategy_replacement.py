@@ -222,7 +222,7 @@ class LowBuyStrategyReplacementTests(unittest.TestCase):
         )
 
         self.assertTrue(passes_strategy_prefilter("sector_mainline_first_divergence_low_buy", item, metrics))
-        setup = build_strategy_setup("sector_mainline_first_divergence_low_buy", item, metrics, 89.0)
+        setup = build_strategy_setup("sector_mainline_first_divergence_low_buy", item, metrics, 84.0)
 
         self.assertTrue(setup.execution_ready)
         self.assertIn("首分歧", setup.summary_reason)

@@ -56,6 +56,7 @@ class AppSettings(BaseSettings):
     agent_timeout_seconds: int = 10
     agent_enable_write_tools: bool = False
     agent_enable_notify_tools: bool = False
+    agent_allowed_capabilities: Annotated[List[str], NoDecode] = Field(default_factory=list)
     agent_audit_enabled: bool = True
     notification_feishu_webhook_url: str = ""
     notification_feishu_secret: str = ""
@@ -112,6 +113,15 @@ class AppSettings(BaseSettings):
             return [str(item).strip().lower() for item in value if str(item).strip()]
         if isinstance(value, str):
             return [item.strip().lower() for item in value.split(",") if item.strip()]
+        return []
+
+    @field_validator("agent_allowed_capabilities", mode="before")
+    @classmethod
+    def parse_agent_allowed_capabilities(cls, value: Union[str, List[str]]) -> List[str]:
+        if isinstance(value, list):
+            return [str(item).strip() for item in value if str(item).strip()]
+        if isinstance(value, str):
+            return [item.strip() for item in value.split(",") if item.strip()]
         return []
 
 

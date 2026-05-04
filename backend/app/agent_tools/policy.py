@@ -15,6 +15,15 @@ class AgentPolicy:
                 code="TOOL_PERMISSION_DENIED",
                 message=f"Tool {tool.name} is disabled.",
             )
+        if tool.permission == "dangerous":
+            return AgentErrorOut(
+                code="TOOL_PERMISSION_DENIED",
+                message=f"Tool {tool.name} requires dangerous permission, which is never enabled.",
+                retryable=False,
+            )
+        capability_error = self._capability_error(tool)
+        if capability_error is not None:
+            return capability_error
         if tool.permission == "read":
             return None
         if tool.permission == "write" and self.settings.agent_enable_write_tools:
@@ -32,3 +41,16 @@ class AgentPolicy:
 
     def tool_enabled_for_provider(self, tool: ToolDefinition) -> bool:
         return self.check_tool_allowed(tool) is None
+
+    def _capability_error(self, tool: ToolDefinition) -> AgentErrorOut | None:
+        allowed = {item.strip() for item in self.settings.agent_allowed_capabilities if item.strip()}
+        if not allowed:
+            return None
+        missing = [item for item in tool.capabilities if item not in allowed]
+        if not missing:
+            return None
+        return AgentErrorOut(
+            code="TOOL_PERMISSION_DENIED",
+            message=f"Tool {tool.name} requires capability {missing[0]}, but it is not allowed.",
+            retryable=False,
+        )

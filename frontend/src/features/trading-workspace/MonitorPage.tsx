@@ -4,6 +4,26 @@ import { EditableGrid, EmptyState, FamilyStrip, InfoPill, MetricGrid, PanelTitle
 import { average, formatPct, riskLevelText, shortTime } from "./workspaceFormatters";
 import type { MetricItem, StockCardView, WatchDraft } from "./workspaceTypes";
 
+export interface MonitorPageProps {
+  priorityBoard: LowBuyPriorityBoardResult | null;
+  marketBreadth: MarketBreadth | null;
+  priorityCards: StockCardView[];
+  watchCards: StockCardView[];
+  runtime: RuntimeStatus | null;
+  watchDraft: WatchDraft;
+  setWatchDraft: (draft: WatchDraft) => void;
+  loading: string;
+  onRefresh: () => void;
+  onSync: () => void;
+  onAi: () => void;
+  onGoPlaybook: () => void;
+  onSelect: (stock: StockCardView) => void;
+  onAnalyze: (stock: StockCardView) => void;
+  onEdit: (stock: StockCardView) => void;
+  onRemove: (symbol: string) => void;
+  onAddWatchlist: () => void;
+}
+
 export const MonitorPage = memo(function MonitorPage({
   priorityBoard,
   marketBreadth,
@@ -22,25 +42,7 @@ export const MonitorPage = memo(function MonitorPage({
   onEdit,
   onRemove,
   onAddWatchlist,
-}: {
-  priorityBoard: LowBuyPriorityBoardResult | null;
-  marketBreadth: MarketBreadth | null;
-  priorityCards: StockCardView[];
-  watchCards: StockCardView[];
-  runtime: RuntimeStatus | null;
-  watchDraft: WatchDraft;
-  setWatchDraft: (draft: WatchDraft) => void;
-  loading: string;
-  onRefresh: () => void;
-  onSync: () => void;
-  onAi: () => void;
-  onGoPlaybook: () => void;
-  onSelect: (stock: StockCardView) => void;
-  onAnalyze: (stock: StockCardView) => void;
-  onEdit: (stock: StockCardView) => void;
-  onRemove: (symbol: string) => void;
-  onAddWatchlist: () => void;
-}) {
+}: MonitorPageProps) {
   const metrics: MetricItem[] = useMemo(() => {
     const executableCount = watchCards.filter((card) => card.actionText !== "暂不操作").length;
     const avgScore = average(priorityCards.map((card) => Number(card.scoreText))).toFixed(1);

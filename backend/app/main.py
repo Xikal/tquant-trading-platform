@@ -9,18 +9,19 @@ from pathlib import Path
 import threading
 import time
 
-from fastapi import FastAPI, Response
+from fastapi import Depends, FastAPI, Response
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse
 from sqlalchemy import delete, select
 
 from app.api.router import api_router
+from app.core.admin_auth import require_admin_auth
 from app.core.config import get_settings
 from app.core.database import SessionLocal, init_db, ping_database
 from app.core.logging_config import configure_logging
 from app.core.rate_limit import is_global_rate_allowed
 from app.core.task_manager import task_manager
-from app.core.timing import record_request_timing
+from app.core.timing import record_request_timing, request_timing_snapshot
 from app.models.entities import LowBuyResultSnapshot, LowBuyScanSnapshot
 from app.models.schemas import HealthResponse, ReadinessResponse
 from app.repositories.low_buy.results import LowBuyResultRepository
@@ -485,6 +486,23 @@ def readyz(response: Response):
         )
 
     return ReadinessResponse(status="ok", app=settings.app_name, checks=checks, errors=errors)
+
+
+@app.get("/metrics", include_in_schema=False)
+def prometheus_metrics(_: None = Depends(require_admin_auth)) -> PlainTextResponse:
+    snapshot = request_timing_snapshot()
+    lines = [
+        "# HELP tquant_http_timing_samples Number of retained HTTP timing samples.",
+        "# TYPE tquant_http_timing_samples gauge",
+        f"tquant_http_timing_samples {snapshot.get('sample_count', 0)}",
+        "# HELP tquant_http_p95_ms Retained HTTP timing p95 in milliseconds.",
+        "# TYPE tquant_http_p95_ms gauge",
+        f"tquant_http_p95_ms {snapshot.get('p95_ms', 0)}",
+        "# HELP tquant_http_slow_requests Retained slow HTTP request count.",
+        "# TYPE tquant_http_slow_requests gauge",
+        f"tquant_http_slow_requests {snapshot.get('slow_count', 0)}",
+    ]
+    return PlainTextResponse("\n".join(lines) + "\n", media_type="text/plain; version=0.0.4")
 
 
 @app.get("/", include_in_schema=False)

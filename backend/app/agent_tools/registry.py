@@ -29,6 +29,7 @@ def _tool_registry() -> dict[str, ToolDefinition]:
             path="/api/agent/health",
             input_schema={"type": "object", "properties": {}},
             permission="read",
+            capabilities=("health_read",),
             timeout_seconds=timeout,
         ),
         ToolDefinition(
@@ -38,6 +39,7 @@ def _tool_registry() -> dict[str, ToolDefinition]:
             path="/api/agent/context/watchlist",
             input_schema={"type": "object", "properties": {}},
             permission="read",
+            capabilities=("watchlist_read",),
             timeout_seconds=timeout,
         ),
         ToolDefinition(
@@ -57,6 +59,7 @@ def _tool_registry() -> dict[str, ToolDefinition]:
                 },
             },
             permission="read",
+            capabilities=("priority_board_read", "strategy_signal_read"),
             timeout_seconds=timeout,
         ),
         ToolDefinition(
@@ -76,6 +79,7 @@ def _tool_registry() -> dict[str, ToolDefinition]:
                 },
             },
             permission="read",
+            capabilities=("analysis_read",),
             timeout_seconds=timeout,
         ),
         ToolDefinition(
@@ -85,6 +89,7 @@ def _tool_registry() -> dict[str, ToolDefinition]:
             path="/api/agent/reports/daily",
             input_schema={"type": "object", "properties": {}},
             permission="read",
+            capabilities=("daily_report_read",),
             timeout_seconds=timeout,
         ),
         ToolDefinition(
@@ -99,6 +104,7 @@ def _tool_registry() -> dict[str, ToolDefinition]:
                 },
             },
             permission="read",
+            capabilities=("paper_portfolio_read",),
             timeout_seconds=timeout,
         ),
         ToolDefinition(
@@ -114,6 +120,7 @@ def _tool_registry() -> dict[str, ToolDefinition]:
                 },
             },
             permission="write",
+            capabilities=("paper_order_recommend",),
             timeout_seconds=timeout,
         ),
         ToolDefinition(
@@ -129,6 +136,7 @@ def _tool_registry() -> dict[str, ToolDefinition]:
                 },
             },
             permission="notify",
+            capabilities=("notification_test",),
             timeout_seconds=timeout,
         ),
         ToolDefinition(
@@ -153,6 +161,7 @@ def _tool_registry() -> dict[str, ToolDefinition]:
                 },
             },
             permission="notify",
+            capabilities=("signal_notification_send",),
             timeout_seconds=timeout,
         ),
         ToolDefinition(
@@ -168,6 +177,7 @@ def _tool_registry() -> dict[str, ToolDefinition]:
                 },
             },
             permission="notify",
+            capabilities=("signal_notification_scan",),
             timeout_seconds=timeout,
         ),
     ]

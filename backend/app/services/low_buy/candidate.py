@@ -13,6 +13,7 @@ from app.services.low_buy.dynamic_adjustments import (
     apply_performance_adjustment_to_candidate,
     low_buy_dynamic_adjustment,
 )
+from app.services.low_buy.penalty_budget import cap_candidate_score_penalty
 from app.services.low_buy.base_strategy import get_low_buy_strategy
 from app.services.low_buy.candidate_types import CandidateContextAdjustment, CandidateMetrics, StrategySetup
 from app.services.low_buy.data_quality import (
@@ -321,6 +322,14 @@ class LowBuyCandidateMixin:
                 industry_adjustment.label,
             ]
         )
+
+        score_penalty, penalty_capped = cap_candidate_score_penalty(
+            score_penalty=score_penalty,
+            market_state=market_state,
+            execution_blocked=execution_blocked,
+        )
+        if penalty_capped:
+            extra_tags.append("风险扣分封顶")
 
         risk_tier = self._merge_risk_tier(risk_decision.risk_tier, hard_risk.level)
         return CandidateContextAdjustment(

@@ -15,5 +15,6 @@ class ToolDefinition(BaseModel):
     input_schema: dict[str, Any] = Field(default_factory=dict)
     output_schema: dict[str, Any] = Field(default_factory=dict)
     permission: AgentToolPermission = "read"
+    capabilities: tuple[str, ...] = ()
     enabled: bool = True
     timeout_seconds: int = 10

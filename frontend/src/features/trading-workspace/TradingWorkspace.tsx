@@ -19,6 +19,7 @@ import { usePaperTrading } from "./usePaperTrading";
 import { usePlaybookData } from "./usePlaybookData";
 import { useResearchData } from "./useResearchData";
 import { useSettingsData } from "./useSettingsData";
+import { useWorkspacePageProps } from "./useWorkspacePageProps";
 
 const AnalysisPage = lazy(async () => ({ default: (await import("./AnalysisPage")).AnalysisPage }));
 const MonitorPage = lazy(async () => ({ default: (await import("./MonitorPage")).MonitorPage }));
@@ -99,6 +100,22 @@ export function TradingWorkspace() {
     available_position: "0",
     cost_basis: "",
     memo: "",
+  });
+  const { monitorPageProps, paperPageProps } = useWorkspacePageProps({
+    analysis,
+    intradayConfirmations,
+    loading,
+    monitor,
+    paper,
+    watchDraft,
+    setWatchDraft,
+    onAddWatchlist: () => void addWatchlist(),
+    onEditWatchlist: editWatchlistFromCard,
+    onNavigatePage: navigatePage,
+    onRefreshMonitor: () => void refreshMonitor(),
+    onRemoveWatchlist: removeWatchlist,
+    onRunPriorityAi: () => void runPriorityAi(),
+    onSelectStock: setSelectedStock,
   });
   useEffect(() => {
     void restoreSession();
@@ -372,25 +389,7 @@ export function TradingWorkspace() {
         <PageErrorBoundary resetKey={page}>
         <Suspense fallback={<div className="panel">页面模块加载中...</div>}>
           {page === "monitor" && (
-            <MonitorPage
-              priorityBoard={monitor.priorityBoard}
-              marketBreadth={monitor.marketBreadth}
-              priorityCards={monitor.priorityCards}
-              watchCards={monitor.watchCards}
-              runtime={monitor.runtime}
-              watchDraft={watchDraft}
-              setWatchDraft={setWatchDraft}
-              loading={loading}
-              onRefresh={() => void refreshMonitor()}
-              onSync={() => void monitor.syncInstruments()}
-              onAi={() => void runPriorityAi()}
-              onGoPlaybook={() => navigatePage("playbook")}
-              onSelect={setSelectedStock}
-              onAnalyze={analysis.analyzeFromCard}
-              onEdit={editWatchlistFromCard}
-              onRemove={removeWatchlist}
-              onAddWatchlist={() => void addWatchlist()}
-            />
+            <MonitorPage {...monitorPageProps} />
           )}
           {page === "analysis" && (
             <AnalysisPage
@@ -432,25 +431,7 @@ export function TradingWorkspace() {
           {page === "paper" && (
             currentUser.can_paper_trade ? (
               <PaperTradingPage
-                account={paper.account}
-                positions={paper.positions}
-                orders={paper.orders}
-                trades={paper.trades}
-                performance={paper.performance}
-                strategyPerformance={paper.strategyPerformance}
-                marketPerformance={paper.marketPerformance}
-                tagPerformance={paper.tagPerformance}
-                tradeTags={paper.tradeTags}
-                riskEvents={paper.riskEvents}
-                autoTradingStatus={paper.autoTradingStatus}
-                autoTradingRuns={paper.autoTradingRuns}
-                intradayConfirmations={intradayConfirmations}
-                draft={paper.draft}
-                setDraft={paper.setDraft}
-                loading={loading}
-                onSubmitOrder={paper.submitOrder}
-                onAddTradeTag={(tradeId, tag) => void paper.addTradeTag(tradeId, tag)}
-                onDeleteTradeTag={(tradeId, tagId) => void paper.deleteTradeTag(tradeId, tagId)}
+                {...paperPageProps}
               />
             ) : (
               <section className="panel auth-guard-panel">

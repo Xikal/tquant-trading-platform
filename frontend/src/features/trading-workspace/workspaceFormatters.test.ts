@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { formatAmount, formatPct, formatPrice, plainTradingText, shortTime, toneFromChange } from "./workspaceFormatters";
+import { formatAmount, formatInteger, formatMoneyPlain, formatPct, formatPrice, plainTradingText, shortTime, toneFromChange } from "./workspaceFormatters";
 
 describe("workspaceFormatters", () => {
   it("formats finance values with stable precision", () => {
@@ -9,6 +9,8 @@ describe("workspaceFormatters", () => {
     expect(formatPct(1.234)).toBe("+1.23%");
     expect(formatPct(-0.42)).toBe("-0.42%");
     expect(formatAmount(123_456_789)).toBe("1.2亿");
+    expect(formatInteger(12345.67)).toBe("12,346");
+    expect(formatMoneyPlain(12345.6)).toBe("12,345.60");
   });
 
   it("maps trading jargon to plain language", () => {

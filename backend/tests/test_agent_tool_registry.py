@@ -2,8 +2,10 @@ from __future__ import annotations
 
 import unittest
 
+from app.agent_tools.policy import AgentPolicy
 from app.agent_tools.audit import sanitize_arguments
 from app.agent_tools.registry import get_tool_definition, list_tool_definitions
+from app.core.config import AppSettings
 
 
 class AgentToolRegistryTests(unittest.TestCase):
@@ -42,6 +44,14 @@ class AgentToolRegistryTests(unittest.TestCase):
         tool = get_tool_definition("recommend_orders")
         self.assertIsNotNone(tool)
         self.assertEqual(tool.permission, "write")
+
+    def test_capability_restriction_denies_unlisted_capability(self) -> None:
+        tool = get_tool_definition("get_priority_board")
+        self.assertIsNotNone(tool)
+        policy = AgentPolicy(AppSettings(agent_allowed_capabilities=["health_read"]))
+        error = policy.check_tool_allowed(tool)
+        self.assertIsNotNone(error)
+        self.assertEqual(error.code, "TOOL_PERMISSION_DENIED")
 
     def test_sensitive_arguments_are_masked(self) -> None:
         masked = sanitize_arguments(

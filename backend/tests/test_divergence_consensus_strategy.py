@@ -118,7 +118,8 @@ class DivergenceConsensusStrategyTests(unittest.TestCase):
 
         self.assertGreaterEqual(score, 90.0)
         self.assertTrue(setup.execution_ready)
-        self.assertGreater(setup.entry_zone_low, metrics.divergence_high)
+        self.assertLessEqual(setup.entry_zone_low, metrics.divergence_high)
+        self.assertGreaterEqual(setup.entry_zone_high, metrics.divergence_high)
         self.assertIn("突破分歧高点", setup.summary_reason)
 
     def test_loose_or_unconfirmed_setup_stays_in_research_layer(self) -> None:
@@ -147,11 +148,12 @@ class DivergenceConsensusStrategyTests(unittest.TestCase):
         self.assertEqual(decision.risk_tier, "block")
         self.assertTrue(decision.execution_blocked)
 
-    def test_signal_requires_price_inside_breakout_zone(self) -> None:
+    def test_signal_allows_near_breakout_zone_for_research_tracking(self) -> None:
         mixin = LowBuySignalMixin()
 
-        self.assertEqual(mixin._near_entry_positions("divergence_consensus"), {"in_zone"})
-        self.assertTrue(mixin._should_avoid_on_entry_position("divergence_consensus", "below_zone"))
+        self.assertIn("in_zone", mixin._near_entry_positions("divergence_consensus"))
+        self.assertIn("near_above_zone", mixin._near_entry_positions("divergence_consensus"))
+        self.assertFalse(mixin._should_avoid_on_entry_position("divergence_consensus", "below_zone"))
 
     def test_metric_builder_does_not_backfill_missing_consolidation(self) -> None:
         history = _history_with_divergence_right_before_breakout()

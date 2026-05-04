@@ -3,6 +3,7 @@ from __future__ import annotations
 import unittest
 from unittest.mock import patch
 from os import environ
+from datetime import date
 
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
@@ -16,7 +17,7 @@ from app.core.config import get_settings
 from app.core.database import get_db
 from app.core.rate_limit import clear_rate_limit_events
 from app.models.base import Base
-from app.models.entities import User
+from app.models.entities import PaperOrder, PaperPosition, PaperPositionLot, PaperTrade, User
 
 
 class PaperRouteTests(unittest.TestCase):
@@ -136,6 +137,81 @@ class PaperRouteTests(unittest.TestCase):
         sell = self._paper_order(headers, symbol="510300", name="沪深300ETF", side="sell", quantity=100)
         self.assertEqual(sell.status_code, 200)
         self.assertEqual(sell.json()["status"], "filled")
+
+    def test_buy_order_creates_trade_lot_and_sellable_etf_position(self) -> None:
+        headers = self._register("paper_buy_lifecycle")
+        response = self._paper_order(headers, symbol="510300", name="沪深300ETF", quantity=200, reason="自动回归买入")
+        self.assertEqual(response.status_code, 200)
+        body = response.json()
+        self.assertEqual(body["status"], "filled")
+        self.assertEqual(body["filled_quantity"], 200)
+
+        positions = self.client.get("/api/paper/positions", headers=headers)
+        self.assertEqual(positions.status_code, 200)
+        self.assertEqual(len(positions.json()["positions"]), 1)
+        self.assertEqual(positions.json()["positions"][0]["quantity"], 200)
+        self.assertEqual(positions.json()["positions"][0]["available_quantity"], 200)
+
+        trades = self.client.get("/api/paper/trades", headers=headers)
+        self.assertEqual(trades.status_code, 200)
+        self.assertEqual(len(trades.json()["trades"]), 1)
+        self.assertEqual(trades.json()["trades"][0]["entry_reason"], "自动回归买入")
+
+        with self.Session() as db:
+            order_count = db.execute(select(PaperOrder)).scalars().all()
+            trade_count = db.execute(select(PaperTrade)).scalars().all()
+            lot = db.execute(select(PaperPositionLot)).scalar_one()
+            self.assertEqual(len(order_count), 1)
+            self.assertEqual(len(trade_count), 1)
+            self.assertEqual(lot.quantity, 200)
+            self.assertEqual(lot.remaining, 200)
+
+    def test_etf_round_trip_closes_position_and_records_sell_trade(self) -> None:
+        headers = self._register("paper_round_trip")
+        buy = self._paper_order(headers, symbol="510300", name="沪深300ETF", quantity=100, current_price=4.0)
+        self.assertEqual(buy.status_code, 200)
+
+        sell = self._paper_order(
+            headers,
+            symbol="510300",
+            name="沪深300ETF",
+            side="sell",
+            quantity=100,
+            current_price=4.2,
+            reason="止盈回归",
+        )
+        self.assertEqual(sell.status_code, 200)
+        self.assertEqual(sell.json()["side"], "sell")
+
+        positions = self.client.get("/api/paper/positions", headers=headers)
+        self.assertEqual(positions.status_code, 200)
+        self.assertEqual(positions.json()["positions"], [])
+
+        with self.Session() as db:
+            orders = db.execute(select(PaperOrder).order_by(PaperOrder.id.asc())).scalars().all()
+            trades = db.execute(select(PaperTrade).order_by(PaperTrade.id.asc())).scalars().all()
+            position = db.execute(select(PaperPosition)).scalar_one()
+            lot = db.execute(select(PaperPositionLot)).scalar_one()
+            self.assertEqual([order.side for order in orders], ["buy", "sell"])
+            self.assertEqual([trade.side for trade in trades], ["buy", "sell"])
+            self.assertEqual(trades[-1].exit_reason, "止盈退出")
+            self.assertEqual(position.quantity, 0)
+            self.assertEqual(position.available_quantity, 0)
+            self.assertEqual(lot.remaining, 0)
+
+    def test_stock_buy_keeps_position_unsellable_until_t1_unlock(self) -> None:
+        headers = self._register("paper_stock_t1_available")
+        buy = self._paper_order(headers, symbol="300059", name="东方财富", quantity=100)
+        self.assertEqual(buy.status_code, 200)
+
+        positions = self.client.get("/api/paper/positions", headers=headers)
+        self.assertEqual(positions.status_code, 200)
+        self.assertEqual(positions.json()["positions"][0]["quantity"], 100)
+        self.assertEqual(positions.json()["positions"][0]["available_quantity"], 0)
+
+        with self.Session() as db:
+            lot = db.execute(select(PaperPositionLot)).scalar_one()
+            self.assertGreater(lot.available_date, date.today())
 
     def test_trade_tags_can_be_added_and_removed(self) -> None:
         headers = self._register("paper_tags")
