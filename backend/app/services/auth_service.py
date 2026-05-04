@@ -8,6 +8,7 @@ import secrets
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 
+import jwt
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -18,6 +19,8 @@ from app.models.schemas import AuthTokenResponse, AuthUserOut
 
 PASSWORD_ALGORITHM = "pbkdf2_sha256"
 PASSWORD_ITERATIONS = 210_000
+ACCESS_TOKEN_ALGORITHM = "HS256"
+ACCESS_TOKEN_ISSUER = "tquant"
 
 
 class AuthError(ValueError):
@@ -176,6 +179,36 @@ class AuthService:
 
     def parse_access_token(self, token: str) -> TokenClaims:
         try:
+            return self._parse_jwt_access_token(token)
+        except AuthError:
+            if token.count(".") != 1:
+                raise
+            return self._parse_legacy_access_token(token)
+
+    @staticmethod
+    def _parse_jwt_access_token(token: str) -> TokenClaims:
+        try:
+            payload = jwt.decode(
+                token,
+                _auth_secret(),
+                algorithms=[ACCESS_TOKEN_ALGORITHM],
+                issuer=ACCESS_TOKEN_ISSUER,
+            )
+            return TokenClaims(
+                user_id=int(payload["sub"]),
+                username=str(payload["username"]),
+                expires_at=int(payload["exp"]),
+            )
+        except jwt.ExpiredSignatureError as exc:
+            raise AuthError("登录已过期") from exc
+        except jwt.InvalidTokenError as exc:
+            raise AuthError("无效登录凭证") from exc
+        except Exception as exc:
+            raise AuthError("无效登录凭证") from exc
+
+    @staticmethod
+    def _parse_legacy_access_token(token: str) -> TokenClaims:
+        try:
             payload_text, signature = token.split(".", 1)
             expected = _sign_payload(payload_text)
             if not hmac.compare_digest(signature, expected):
@@ -228,12 +261,13 @@ class AuthService:
     @staticmethod
     def _build_access_token(user: User, expires_at: datetime) -> str:
         payload = {
-            "sub": user.id,
+            "sub": str(user.id),
             "username": user.username,
             "exp": int(expires_at.timestamp()),
+            "iat": int(datetime.now().timestamp()),
+            "iss": ACCESS_TOKEN_ISSUER,
         }
-        payload_text = _b64encode(json.dumps(payload, separators=(",", ":")).encode("utf-8"))
-        return f"{payload_text}.{_sign_payload(payload_text)}"
+        return jwt.encode(payload, _auth_secret(), algorithm=ACCESS_TOKEN_ALGORITHM)
 
     @staticmethod
     def _get_user_by_username(db: Session, username: str) -> User | None:

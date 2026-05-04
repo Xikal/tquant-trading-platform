@@ -180,5 +180,182 @@ def _tool_registry() -> dict[str, ToolDefinition]:
             capabilities=("signal_notification_scan",),
             timeout_seconds=timeout,
         ),
+        ToolDefinition(
+            name="backtest_strategy",
+            description="对指定策略执行指定周期的回测，返回绩效摘要",
+            method="POST",
+            path="/api/agent/context/backtest",
+            input_schema={
+                "type": "object",
+                "required": ["strategy_key"],
+                "properties": {
+                    "strategy_key": {"type": "string"},
+                    "lookback_days": {"type": "integer", "default": 60, "minimum": 20, "maximum": 250},
+                },
+            },
+            permission="read",
+            capabilities=("strategy_backtest_read",),
+            timeout_seconds=60,
+        ),
+        ToolDefinition(
+            name="compare_strategies",
+            description="对比多个策略在相同周期内的绩效差异",
+            method="POST",
+            path="/api/agent/context/compare-strategies",
+            input_schema={
+                "type": "object",
+                "required": ["strategy_keys"],
+                "properties": {
+                    "strategy_keys": {"type": "array", "items": {"type": "string"}},
+                    "lookback_days": {"type": "integer", "default": 60, "minimum": 20, "maximum": 250},
+                },
+            },
+            permission="read",
+            capabilities=("strategy_compare_read",),
+            timeout_seconds=90,
+        ),
+        ToolDefinition(
+            name="create_paper_order",
+            description="创建模拟盘订单（不执行实盘交易）",
+            method="POST",
+            path="/api/agent/paper/order",
+            input_schema={
+                "type": "object",
+                "required": ["symbol", "side", "quantity", "price"],
+                "properties": {
+                    "symbol": {"type": "string"},
+                    "side": {"type": "string", "enum": ["buy", "sell"]},
+                    "quantity": {"type": "integer", "minimum": 100, "maximum": 1000000},
+                    "price": {"type": "number", "minimum": 0.01},
+                    "account_id": {"type": ["integer", "null"]},
+                },
+            },
+            permission="write",
+            capabilities=("paper_order_create",),
+            timeout_seconds=30,
+        ),
+        ToolDefinition(
+            name="get_market_sentiment",
+            description="获取市场情绪摘要：涨停/跌停数、炸板率、连板高度、资金流向",
+            method="GET",
+            path="/api/agent/context/market-sentiment",
+            input_schema={"type": "object", "properties": {}},
+            permission="read",
+            capabilities=("market_sentiment_read",),
+            timeout_seconds=15,
+        ),
+        ToolDefinition(
+            name="get_sector_heatmap",
+            description="获取板块涨跌幅排行、资金流向、涨停数分布",
+            method="GET",
+            path="/api/agent/context/sector-heatmap",
+            input_schema={
+                "type": "object",
+                "properties": {
+                    "limit": {"type": "integer", "default": 20, "minimum": 5, "maximum": 50},
+                },
+            },
+            permission="read",
+            capabilities=("sector_heatmap_read",),
+            timeout_seconds=15,
+        ),
+        ToolDefinition(
+            name="get_position_t_signal",
+            description="获取指定持仓的正T/反T信号和建议操作",
+            method="POST",
+            path="/api/agent/context/position-t-signal",
+            input_schema={
+                "type": "object",
+                "required": ["symbol"],
+                "properties": {
+                    "symbol": {"type": "string"},
+                    "shares": {"type": "integer"},
+                    "cost_basis": {"type": "number"},
+                },
+            },
+            permission="read",
+            capabilities=("position_t_signal_read",),
+            timeout_seconds=15,
+        ),
+        ToolDefinition(
+            name="get_market_state_analysis",
+            description="获取市场状态、情绪、广度和仓位边界的只读研究上下文",
+            method="GET",
+            path="/api/agent/context/market-state-analysis",
+            input_schema={"type": "object", "properties": {}},
+            permission="read",
+            capabilities=("market_state_research_read",),
+            timeout_seconds=15,
+        ),
+        ToolDefinition(
+            name="get_sector_mainline_analysis",
+            description="获取板块主线、轮动风险和核心候选的只读研究上下文",
+            method="GET",
+            path="/api/agent/context/sector-mainline-analysis",
+            input_schema={"type": "object", "properties": {}},
+            permission="read",
+            capabilities=("sector_mainline_research_read",),
+            timeout_seconds=15,
+        ),
+        ToolDefinition(
+            name="cross_validate_strategy_context",
+            description="交叉验证指定股票在优先级榜、个股分析和市场主线中的一致性",
+            method="POST",
+            path="/api/agent/context/strategy-cross-validation",
+            input_schema={
+                "type": "object",
+                "properties": {
+                    "symbols": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "default": [],
+                        "maxItems": 30,
+                    }
+                },
+            },
+            permission="read",
+            capabilities=("strategy_context_validate_read",),
+            timeout_seconds=30,
+        ),
+        ToolDefinition(
+            name="check_agent_risk",
+            description="对候选计划做只读仓位、行业集中度和总仓位风险检查",
+            method="POST",
+            path="/api/agent/context/risk-check",
+            input_schema={
+                "type": "object",
+                "properties": {
+                    "proposals": {
+                        "type": "array",
+                        "items": {"type": "object"},
+                        "default": [],
+                        "maxItems": 50,
+                    }
+                },
+            },
+            permission="read",
+            capabilities=("agent_risk_check_read",),
+            timeout_seconds=15,
+        ),
+        ToolDefinition(
+            name="get_comprehensive_analysis",
+            description="整合市场、板块、个股交叉验证和风控检查，输出只读综合研判",
+            method="POST",
+            path="/api/agent/context/comprehensive-analysis",
+            input_schema={
+                "type": "object",
+                "properties": {
+                    "symbols": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "default": [],
+                        "maxItems": 30,
+                    }
+                },
+            },
+            permission="read",
+            capabilities=("comprehensive_research_read",),
+            timeout_seconds=45,
+        ),
     ]
     return {tool.name: tool for tool in tools}

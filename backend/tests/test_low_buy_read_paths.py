@@ -7,6 +7,7 @@ import unittest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
+from app.services.low_buy import pool as pool_module
 from app.models.base import Base
 from app.models.entities import LowBuyResultSnapshot, LowBuyScanSnapshot
 from app.models.schemas import (
@@ -20,6 +21,7 @@ from app.services.low_buy.history import LowBuyHistoryMixin
 from app.services.low_buy.mobile import LowBuyMobileReadMixin
 from app.services.low_buy.performance import LowBuyPerformanceMixin
 from app.services.low_buy.pool import LowBuyPoolMixin
+from app.services.low_buy.priority_snapshot import build_priority_base_snapshot
 from app.services.low_buy.results import LowBuyResultStoreMixin
 from app.services.low_buy.shared import (
     LOW_BUY_PERFORMANCE_SNAPSHOT_VERSION,
@@ -224,6 +226,28 @@ class _TradeDateService(LowBuyPoolMixin):
         return None
 
     def _load_daily_history(self, symbol: str, latest_trade_date: str, history_window_days: int = 180):  # noqa: ARG002
+        return None
+
+
+class _PrioritySnapshotTargetService:
+    @staticmethod
+    def _resolve_priority_target_trade_date() -> str:
+        return "2026-04-30"
+
+    @staticmethod
+    def _load_watchlist_symbols(db) -> set[str]:  # noqa: ARG002
+        return set()
+
+    @staticmethod
+    def _load_materialized_full_result(db, strategy: str, latest_trade_date: str, limit: int, include_history: bool):  # noqa: ARG002
+        return None
+
+    @staticmethod
+    def _collect_priority_candidates(db, merged_candidates, tracked_symbols, latest_trade_date, candidates, performance_cache):  # noqa: ARG002
+        return None
+
+    @staticmethod
+    def _build_market_context(db, latest_trade_date: str):  # noqa: ARG002
         return None
 
 
@@ -494,6 +518,92 @@ class LowBuyReadPathTests(unittest.TestCase):
             service._resolve_latest_completed_trade_date(["2026-04-22", "2026-04-23", "2026-04-24"]),
             "2026-04-24",
         )
+
+    def test_latest_completed_calendar_fallback_uses_latest_completed_holiday_date(self) -> None:
+        service = _TradeDateService(latest_artifact_trade_date=None)
+        original_date = pool_module.date
+
+        class _FakeDate:
+            @classmethod
+            def today(cls):
+                return original_date(2026, 5, 4)
+
+        try:
+            pool_module.date = _FakeDate
+            self.assertEqual(
+                service._latest_completed_calendar_fallback(["2026-04-28", "2026-04-29", "2026-04-30"]),
+                "2026-04-30",
+            )
+            self.assertEqual(
+                service._latest_completed_calendar_fallback(["2026-04-30", "2026-05-04"]),
+                "2026-04-30",
+            )
+        finally:
+            pool_module.date = original_date
+
+    def test_recent_trade_dates_do_not_call_remote_calendar_when_local_store_lags(self) -> None:
+        service = _TradeDateService(latest_artifact_trade_date=None)
+        service._trade_dates_cache = {}
+        original_date = pool_module.date
+        remote_called = False
+
+        class _FakeDate:
+            @classmethod
+            def today(cls):
+                return original_date(2026, 5, 4)
+
+        try:
+            pool_module.date = _FakeDate
+            service._load_recent_trade_dates_from_local_store = lambda count: ["2026-04-28", "2026-04-29"]  # type: ignore[method-assign]
+
+            def _remote_calendar(*, count, today):  # noqa: ANN001
+                nonlocal remote_called
+                remote_called = True
+                return ["2026-04-30"]
+
+            service._load_recent_trade_dates_from_remote = _remote_calendar  # type: ignore[method-assign]
+
+            self.assertEqual(
+                service._get_recent_trade_dates(14),
+                ["2026-04-28", "2026-04-29"],
+            )
+            self.assertFalse(remote_called)
+        finally:
+            pool_module.date = original_date
+
+    def test_recent_trade_dates_append_today_from_local_calendar_for_intraday_mode(self) -> None:
+        service = _TradeDateService(latest_artifact_trade_date=None)
+        service._trade_dates_cache = {}
+        original_date = pool_module.date
+
+        class _FakeDate:
+            @classmethod
+            def today(cls):
+                return original_date(2026, 4, 30)
+
+        try:
+            pool_module.date = _FakeDate
+            service._load_recent_trade_dates_from_local_store = lambda count: ["2026-04-28", "2026-04-29"]  # type: ignore[method-assign]
+            service._load_recent_trade_dates_from_remote = lambda *, count, today: (_ for _ in ()).throw(  # type: ignore[method-assign]
+                AssertionError("remote calendar must not be called from read path")
+            )
+
+            self.assertEqual(
+                service._get_recent_trade_dates(14),
+                ["2026-04-28", "2026-04-29", "2026-04-30"],
+            )
+        finally:
+            pool_module.date = original_date
+
+    def test_priority_snapshot_latest_available_includes_target_trade_date(self) -> None:
+        with self.Session() as db:
+            snapshot = build_priority_base_snapshot(
+                builder=_PrioritySnapshotTargetService(),
+                db=db,
+                limit=12,
+            )
+
+        self.assertEqual(snapshot.latest_available_trade_date, "2026-04-30")
 
     def test_load_latest_materialized_full_result_skips_invalid_latest_snapshot_before_fallback(self) -> None:
         repaired_payload = _payload(_candidate()).model_copy(update={"latest_trade_date": "2026-04-25"})

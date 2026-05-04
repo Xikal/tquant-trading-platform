@@ -432,7 +432,7 @@ function clearLegacyLocalAuthAccessToken() {
 
 function authTokenExpired(token: string): boolean {
   try {
-    const [payloadText] = token.split(".", 1)
+    const [, payloadText] = token.split(".")
     if (!payloadText) {
       return true
     }

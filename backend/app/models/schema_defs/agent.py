@@ -53,6 +53,7 @@ class AgentPriorityBoardItem(BaseModel):
     rank: int
     symbol: str
     name: str
+    sector_name: str = ""
     latest_price: float = 0.0
     change_pct: float = 0.0
     data_quality: str = "ok"
@@ -165,6 +166,153 @@ class AgentOrderRecommendationResponse(BaseModel):
     note: str = "仅生成模拟委托建议，不执行下单。"
 
 
+class AgentBacktestRequest(BaseModel):
+    strategy_key: str
+    lookback_days: int = Field(default=60, ge=20, le=250)
+
+
+class AgentBacktestResponse(BaseModel):
+    strategy_key: str
+    lookback_days: int
+    evaluated_signals: int = 0
+    filled_signals: int = 0
+    win_rate: float = 0.0
+    net_win_rate: float = 0.0
+    avg_net_return_pct: float = 0.0
+    profit_factor: float = 0.0
+    max_adverse_pct: float = 0.0
+    data_quality: str = "ok"
+    data_quality_text: str = "数据完整"
+    notes: list[str] = Field(default_factory=list)
+    summary: str = ""
+
+
+class AgentCompareStrategiesRequest(BaseModel):
+    strategy_keys: list[str] = Field(min_length=1)
+    lookback_days: int = Field(default=60, ge=20, le=250)
+
+
+class AgentCompareStrategiesResponse(BaseModel):
+    strategy_keys: list[str] = Field(default_factory=list)
+    lookback_days: int
+    strategy_count: int = 0
+    items: list[dict[str, Any]] = Field(default_factory=list)
+    best_strategy_key: str = ""
+    summary: str = ""
+
+
+class AgentPaperOrderRequest(BaseModel):
+    symbol: str = Field(min_length=1, max_length=16)
+    side: Literal["buy", "sell"]
+    quantity: int = Field(ge=100, le=1_000_000)
+    price: float = Field(gt=0)
+    account_id: Optional[int] = None
+    name: str = ""
+    strategy_key: str = ""
+    reason: str = "agent paper order"
+
+
+class AgentPaperOrderResponse(BaseModel):
+    ok: bool
+    account_id: Optional[int] = None
+    order_id: Optional[int] = None
+    symbol: str
+    side: str
+    quantity: int
+    price: float
+    status: str = ""
+    summary: str = ""
+
+
+class AgentMarketSentimentResponse(BaseModel):
+    updated_at: str
+    state: str = ""
+    state_text: str = ""
+    breadth_ready: bool = False
+    emotion_ready: bool = False
+    stock_up_ratio: float = 0.0
+    stock_median_change: float = 0.0
+    limit_up_count: int = 0
+    limit_down_count: Optional[int] = None
+    broken_board_ratio: float = 0.0
+    promotion_ratio: float = 0.0
+    board_height: int = 0
+    hot_industries: list[str] = Field(default_factory=list)
+    hot_turnover: float = 0.0
+    data_quality_text: str = ""
+
+
+class AgentSectorHeatmapResponse(BaseModel):
+    updated_at: str
+    limit: int = 20
+    sectors: list[dict[str, Any]] = Field(default_factory=list)
+    data_quality_text: str = ""
+
+
+class AgentPositionTSignalRequest(BaseModel):
+    symbol: str
+    shares: int = 0
+    cost_basis: float = 0.0
+
+
+class AgentPositionTSignalResponse(BaseModel):
+    symbol: str
+    name: str = ""
+    action: str = "hold"
+    action_text: str = "观望"
+    signal_score: float = 0.0
+    tradability_score: float = 0.0
+    risk_level: str = "medium"
+    entry_price: Optional[float] = None
+    exit_price: Optional[float] = None
+    stop_loss: Optional[float] = None
+    position_pct: float = 0.0
+    summary: str = ""
+    reasons: list[str] = Field(default_factory=list)
+    blocking_rules: list[str] = Field(default_factory=list)
+
+
+class AgentCrossValidationRequest(BaseModel):
+    symbols: list[str] = Field(default_factory=list, max_length=30)
+
+
+class AgentRiskCheckRequest(BaseModel):
+    proposals: list[dict[str, Any]] = Field(default_factory=list, max_length=50)
+
+
+class AgentComprehensiveAnalysisRequest(BaseModel):
+    symbols: list[str] = Field(default_factory=list, max_length=30)
+
+
+class AgentAuditLogOut(BaseModel):
+    trace_id: str
+    agent_id: str = ""
+    provider: str = ""
+    tool_name: str
+    outcome: str
+    latency_ms: int = 0
+    ip_address: str = ""
+    params_snapshot: dict[str, Any] = Field(default_factory=dict)
+    result_summary: str = ""
+    created_at: Any = None
+
+
+class AgentAuditToolStat(BaseModel):
+    tool_name: str
+    call_count: int = 0
+    success_count: int = 0
+    failure_count: int = 0
+
+
+class AgentAuditSummaryResponse(BaseModel):
+    db_available: bool = True
+    recent_limit: int = 100
+    recent_call_count: int = 0
+    success_count: int = 0
+    failure_count: int = 0
+    tool_top: list[AgentAuditToolStat] = Field(default_factory=list)
+
+
 class AgentDailyReportResponse(BaseModel):
     trade_date: str
     generated_at: str
@@ -174,6 +322,46 @@ class AgentDailyReportResponse(BaseModel):
     top_opportunities: list[str] = Field(default_factory=list)
     risk_notes: list[str] = Field(default_factory=list)
     next_actions: list[str] = Field(default_factory=list)
+    market_overview: dict[str, Any] = Field(default_factory=dict)
+    sector_mainline: dict[str, Any] = Field(default_factory=dict)
+    holding_t_signals: list[dict[str, Any]] = Field(default_factory=list)
+    stock_top: list[dict[str, Any]] = Field(default_factory=list)
+    risk_check: dict[str, Any] = Field(default_factory=dict)
+    operation_checklist: list[str] = Field(default_factory=list)
+    markdown: str = ""
+
+
+class AgentDailyReportPushRequest(BaseModel):
+    channel: str = "feishu"
+
+
+class AgentDailyReportPushResponse(BaseModel):
+    ok: bool
+    channel: str = "feishu"
+    trade_date: str
+    generated_at: str = ""
+    sent: bool = False
+    should_notify: bool = False
+    duplicate: bool = False
+    notification_count: int = 0
+    message: str = ""
+    markdown: str = ""
+
+
+class AgentResearchWorkflowRunRequest(BaseModel):
+    channel: str = "feishu"
+    open_id: str = ""
+    symbols: list[str] = Field(default_factory=list, max_length=10)
+
+
+class AgentResearchWorkflowStatusResponse(BaseModel):
+    job_id: str = ""
+    workflow_name: str = "tquant_daily_research"
+    status: str = "not_found"
+    message: str = ""
+    symbols: list[str] = Field(default_factory=list)
+    markdown: str = ""
+    notification_sent: bool = False
 
 
 class AgentNotificationTestRequest(BaseModel):

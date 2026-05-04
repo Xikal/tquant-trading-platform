@@ -4,8 +4,11 @@ import base64
 import hashlib
 import hmac
 import json
+import os
+import subprocess
 import time
 from datetime import timedelta
+from pathlib import Path
 import urllib.error
 import urllib.request
 
@@ -43,6 +46,16 @@ class AgentNotificationService:
     def __init__(self) -> None:
         self.settings = get_settings()
 
+    def supports_channel(self, channel: str = "feishu") -> bool:
+        """Return whether a notification path is configured for the channel."""
+
+        channel = channel.strip().lower() or "feishu"
+        if channel != "feishu":
+            return False
+        if self.settings.notification_feishu_webhook_url.strip():
+            return True
+        return _hermes_cli_path(self.settings.hermes_api_url) is not None
+
     def send_test(self, payload: AgentNotificationTestRequest) -> AgentNotificationTestResponse:
         channel = payload.channel.strip().lower() or "feishu"
         if channel != "feishu":
@@ -52,13 +65,17 @@ class AgentNotificationService:
                 message=f"notification channel {payload.channel} is not supported",
             )
         webhook = self.settings.notification_feishu_webhook_url.strip()
+        if webhook:
+            return self._send_feishu_text(webhook=webhook, message=payload.message, channel=payload.channel)
+        hermes_path = _hermes_cli_path(self.settings.hermes_api_url)
+        if hermes_path is not None:
+            return self._send_hermes_feishu_text(hermes_path=hermes_path, message=payload.message, channel=payload.channel)
         if not webhook:
             return AgentNotificationTestResponse(
                 ok=True,
                 channel=payload.channel,
                 message="notification adapter not configured",
             )
-        return self._send_feishu_text(webhook=webhook, message=payload.message, channel=payload.channel)
 
     def send_signal(
         self,
@@ -124,6 +141,27 @@ class AgentNotificationService:
             channel=channel,
             message="notification sent" if 200 <= status < 300 else "notification request failed",
         )
+
+    def _send_hermes_feishu_text(self, *, hermes_path: Path, message: str, channel: str) -> AgentNotificationTestResponse:
+        prompt = _hermes_feishu_prompt(message)
+        timeout = max(int(self.settings.agent_timeout_seconds or 10) * 6, 60)
+        env = os.environ.copy()
+        env["HERMES_ACCEPT_HOOKS"] = "1"
+        try:
+            result = subprocess.run(
+                [str(hermes_path), "-z", prompt],
+                cwd=str(Path(__file__).resolve().parents[3]),
+                env=env,
+                text=True,
+                capture_output=True,
+                timeout=timeout,
+                check=False,
+            )
+        except (OSError, subprocess.TimeoutExpired):
+            return AgentNotificationTestResponse(ok=False, channel=channel, message="hermes notification request failed")
+        if result.returncode != 0:
+            return AgentNotificationTestResponse(ok=False, channel=channel, message="hermes notification request failed")
+        return AgentNotificationTestResponse(ok=True, channel=channel, message="notification sent via hermes")
 
     def _upsert_signal_event(
         self,
@@ -212,6 +250,24 @@ def _default_signal_message(payload: AgentSignalNotificationRequest, *, upgraded
     strategy = payload.strategy_title or payload.strategy_key or "未指定策略"
     signal = payload.signal_text or payload.signal_state or "未指定状态"
     return f"{prefix}: {name} {payload.symbol} | {strategy} | {signal}"
+
+
+def _hermes_cli_path(hermes_api_url: str) -> Path | None:
+    value = (hermes_api_url or "").strip()
+    if not value.startswith("hermes-cli://"):
+        return None
+    raw_path = value.replace("hermes-cli://", "", 1).strip() or "/Users/j/.local/bin/hermes"
+    path = Path(raw_path).expanduser()
+    return path if path.exists() else None
+
+
+def _hermes_feishu_prompt(message: str) -> str:
+    content = (message or "").strip()[:3500]
+    return (
+        "你是 TQuant 通知转发器。请把下面这条 TQuant 通知发送到已经接入的飞书机器人或飞书会话。"
+        "不要改写为投资建议，不要添加收益承诺；发送完成后只回复一句：已发送。\n\n"
+        f"通知内容：\n{content}"
+    )
 
 
 def _elapsed_since(moment) -> timedelta:

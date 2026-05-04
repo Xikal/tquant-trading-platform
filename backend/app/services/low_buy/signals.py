@@ -1,9 +1,10 @@
 from __future__ import annotations
 
-from app.services.low_buy.signal_resolution import (
-    build_signal_update,
-    end_of_day_soft_confirmation,
-    intraday_soft_confirmation,
+from app.services.low_buy.signal_resolution import build_signal_update
+from app.services.low_buy.signal_confirmation import (
+    intraday_daily_signal_veto,
+    is_end_of_day_stop_confirmed,
+    is_intraday_stop_confirmed,
 )
 from app.services.low_buy.signal_entry import (
     below_zone_hard_buy_allowed,
@@ -13,24 +14,17 @@ from app.services.low_buy.signal_entry import (
     near_entry_positions,
     should_avoid_on_entry_position,
 )
-from app.services.low_buy.intraday_confirmation import (
-    build_intraday_confirmation,
-    calculate_intraday_vwap,
-    intraday_confirmation_hint,
-    intraday_confirmation_passes,
-    strategy_requires_intraday_confirmation,
+from app.services.low_buy.signal_refresh import refresh_buy_signal, refresh_historical_buy_signal
+from app.services.low_buy.signal_rules import (
+    can_hard_buy_now,
+    can_show_research_near_entry,
+    can_soft_buy_now,
+    market_block_can_keep_research,
+    research_near_entry_hint,
+    signal_block_hint,
+    weak_market_thematic_block_reason,
 )
-from app.services.low_buy.market_state_rules import hard_buy_allowed, resolve_strategy_market_profile, soft_buy_allowed
-from app.services.low_buy.signal_helpers import (
-    below_stop_hint,
-    buy_now_hint,
-    mature_watch_hint,
-    near_entry_hint,
-    recent_intraday_distribution,
-    restricted_market_avoid_hint,
-    strict_strategy_avoid_hint,
-    structure_pending_hint,
-)
+from app.services.low_buy.signal_live import apply_live_quotes, load_live_quote_intraday_bars
 from app.services.low_buy.signal_market import market_buy_restricted, restricted_market_track_allowed
 from app.services.low_buy.signal_quality import (
     base_quality_clear,
@@ -39,10 +33,10 @@ from app.services.low_buy.signal_quality import (
     strategy_hard_buy_quality_gate,
     strategy_soft_buy_quality_gate,
 )
+from app.services.low_buy.signal_state import resolve_signal_state
 from app.services.low_buy.signal_thresholds import hard_buy_min_score, soft_buy_min_score
 from app.services.low_buy.shared import Any, LowBuyCandidateOut, LowBuyQuoteRefreshOut, pd
 from app.services.low_buy.strategy_governance import cached_auto_governance_override
-from app.services.low_buy.strategy_policy import strategy_layer, strong_buy_paused
 
 
 class LowBuySignalMixin:
@@ -53,85 +47,16 @@ class LowBuySignalMixin:
         intraday_bars: list[Any] | None = None,
         require_intraday_structure: bool = False,
     ) -> LowBuyCandidateOut:
-        refreshed_candidate = candidate
-        latest_price = candidate.latest_price
-        if quote is not None:
-            latest_price = float(getattr(quote, "last_price", candidate.latest_price) or candidate.latest_price)
-            refreshed_candidate = candidate.model_copy(
-                update={
-                    "latest_price": latest_price,
-                    "change_pct": float(getattr(quote, "change_pct", candidate.change_pct) or candidate.change_pct),
-                    "quote_timestamp": str(getattr(quote, "timestamp", candidate.quote_timestamp) or candidate.quote_timestamp),
-                }
-            )
-        entry_position = self._entry_position(refreshed_candidate, latest_price)
-        vwap_value = calculate_intraday_vwap(intraday_bars)
-        intraday_confirmation = build_intraday_confirmation(intraday_bars)
-        intraday_veto_hint = self._intraday_daily_signal_veto(
-            candidate=refreshed_candidate,
+        return refresh_buy_signal(
+            builder=self,
+            candidate=candidate,
             quote=quote,
             intraday_bars=intraday_bars,
-            vwap_value=vwap_value,
-        )
-        stop_confirmed = self._is_intraday_stop_confirmed(
-            refreshed_candidate,
-            quote,
-            intraday_bars=intraday_bars,
-            vwap_value=vwap_value,
             require_intraday_structure=require_intraday_structure,
-        )
-        soft_confirmed = intraday_soft_confirmation(
-            refreshed_candidate,
-            quote,
-            intraday_bars=intraday_bars,
-            vwap_value=vwap_value,
-            require_intraday_structure=require_intraday_structure,
-        )
-        entry_distance = self._distance_to_entry_zone_pct(refreshed_candidate, latest_price)
-        if quote is not None and bool(getattr(quote, "is_stale", False)):
-            return self._signal_update(
-                candidate=refreshed_candidate,
-                state="watch",
-                text="继续观察",
-                hint="实时行情时间已过期，只更新价格参考，不触发买入信号。",
-                entry_distance=entry_distance,
-            )
-        return self._resolve_signal_state(
-            candidate=refreshed_candidate,
-            entry_position=entry_position,
-            entry_distance=entry_distance,
-            hard_confirmed=stop_confirmed,
-            soft_confirmed=soft_confirmed,
-            intraday_confirmed=intraday_confirmation_passes(refreshed_candidate.strategy_key, intraday_confirmation),
-            intraday_hint=intraday_confirmation_hint(refreshed_candidate.strategy_key, intraday_confirmation),
-            historical=False,
-            intraday_veto_hint=intraday_veto_hint,
         )
 
     def _refresh_historical_buy_signal(self, candidate: LowBuyCandidateOut, latest_bar: pd.Series) -> LowBuyCandidateOut:
-        close_price = float(latest_bar["close"])
-        refreshed_candidate = candidate.model_copy(
-            update={
-                "latest_price": close_price,
-                "change_pct": float(latest_bar["pct_chg"]),
-                "quote_timestamp": str(latest_bar["date"]),
-            }
-        )
-        entry_position = self._entry_position(refreshed_candidate, close_price)
-        stop_confirmed = self._is_end_of_day_stop_confirmed(refreshed_candidate, latest_bar)
-        soft_confirmed = end_of_day_soft_confirmation(refreshed_candidate, latest_bar)
-        entry_distance = self._distance_to_entry_zone_pct(refreshed_candidate, close_price)
-        return self._resolve_signal_state(
-            candidate=refreshed_candidate,
-            entry_position=entry_position,
-            entry_distance=entry_distance,
-            hard_confirmed=stop_confirmed,
-            soft_confirmed=soft_confirmed,
-            intraday_confirmed=True,
-            intraday_hint="",
-            historical=True,
-            confirmed_trade_date=str(latest_bar["date"]),
-        )
+        return refresh_historical_buy_signal(builder=self, candidate=candidate, latest_bar=latest_bar)
 
     def _resolve_signal_state(
         self,
@@ -146,149 +71,18 @@ class LowBuySignalMixin:
         intraday_veto_hint: str = "",
         confirmed_trade_date: str | None = None,
     ) -> LowBuyCandidateOut:
-        block_hint = self._signal_block_hint(candidate)
-        if block_hint:
-            return self._signal_update(
-                candidate=candidate,
-                state="avoid",
-                text="今日放弃" if not historical else "暂不跟踪",
-                hint=block_hint,
-                entry_distance=entry_distance,
-            )
-        if intraday_veto_hint:
-            return self._signal_update(
-                candidate=candidate,
-                state="avoid" if not historical else "watch",
-                text="今日放弃" if not historical else "继续观察",
-                hint=intraday_veto_hint,
-                entry_distance=entry_distance,
-            )
-        buy_restricted = self._market_buy_restricted(candidate)
-        if self._can_hard_buy_now(candidate, entry_position, hard_confirmed and intraday_confirmed):
-            return self._signal_update(
-                candidate=candidate,
-                state="buy_now",
-                text="确定买入",
-                hint=buy_now_hint(entry_position, historical, soft=False),
-                entry_distance=entry_distance,
-                confirmed_trade_date=confirmed_trade_date if historical else None,
-            )
-        if self._can_soft_buy_now(candidate, entry_position, soft_confirmed and intraday_confirmed):
-            return self._signal_update(
-                candidate=candidate,
-                state="soft_buy_now",
-                text="确定买入",
-                hint=buy_now_hint(entry_position, historical, soft=True),
-                entry_distance=entry_distance,
-                confirmed_trade_date=confirmed_trade_date if historical else None,
-            )
-        if candidate.execution_ready and entry_position in self._near_entry_positions(candidate.strategy_key):
-            if buy_restricted and not self._restricted_market_track_allowed(candidate, entry_position, entry_distance):
-                return self._signal_update(
-                    candidate=candidate,
-                    state="avoid",
-                    text="今日放弃" if not historical else "暂不跟踪",
-                    hint=restricted_market_avoid_hint(historical),
-                    entry_distance=entry_distance,
-                )
-            return self._signal_update(
-                candidate=candidate,
-                state="near_entry",
-                text="接近买点",
-                hint=intraday_hint or near_entry_hint(entry_position, entry_distance, historical),
-                entry_distance=entry_distance,
-            )
-        if self._can_show_research_near_entry(candidate, entry_position):
-            return self._signal_update(
-                candidate=candidate,
-                state="near_entry",
-                text="接近买点",
-                hint=self._research_near_entry_hint(candidate, entry_position, historical),
-                entry_distance=entry_distance,
-            )
-        if candidate.execution_ready and self._should_avoid_on_entry_position(candidate.strategy_key, entry_position):
-            return self._signal_update(
-                candidate=candidate,
-                state="avoid",
-                text="今日放弃" if not historical else "暂不跟踪",
-                hint=strict_strategy_avoid_hint(entry_position, historical),
-                entry_distance=entry_distance,
-            )
-        if candidate.execution_ready and entry_position == "below_stop":
-            return self._signal_update(
-                candidate=candidate,
-                state="avoid",
-                text="今日放弃" if not historical else "暂不跟踪",
-                hint=below_stop_hint(historical),
-                entry_distance=entry_distance,
-            )
-        if candidate.execution_ready:
-            if (
-                not historical
-                and strategy_requires_intraday_confirmation(candidate.strategy_key)
-                and intraday_hint
-            ):
-                return self._signal_update(
-                    candidate=candidate,
-                    state="watch",
-                    text="继续观察",
-                    hint=intraday_hint,
-                    entry_distance=entry_distance,
-                )
-            if buy_restricted and not self._restricted_market_track_allowed(candidate, entry_position, entry_distance):
-                return self._signal_update(
-                    candidate=candidate,
-                    state="avoid",
-                    text="今日放弃" if not historical else "暂不跟踪",
-                    hint=restricted_market_avoid_hint(historical),
-                    entry_distance=entry_distance,
-                )
-            return self._signal_update(
-                candidate=candidate,
-                state="watch",
-                text="继续观察",
-                hint=mature_watch_hint(entry_distance, historical),
-                entry_distance=entry_distance,
-            )
-        if self._should_avoid_on_entry_position(candidate.strategy_key, entry_position):
-            return self._signal_update(
-                candidate=candidate,
-                state="avoid",
-                text="今日放弃" if not historical else "暂不跟踪",
-                hint=strict_strategy_avoid_hint(entry_position, historical),
-                entry_distance=entry_distance,
-            )
-        if entry_position in {"in_zone", "below_zone"}:
-            if buy_restricted and not self._restricted_market_track_allowed(candidate, entry_position, entry_distance):
-                return self._signal_update(
-                    candidate=candidate,
-                    state="avoid",
-                    text="今日放弃" if not historical else "暂不跟踪",
-                    hint=restricted_market_avoid_hint(historical),
-                    entry_distance=entry_distance,
-                )
-            state = "watch" if candidate.score >= 82 else "avoid"
-            return self._signal_update(
-                candidate=candidate,
-                state=state,
-                text="继续观察" if state == "watch" else ("今日放弃" if not historical else "暂不跟踪"),
-                hint=structure_pending_hint(entry_position, historical),
-                entry_distance=entry_distance,
-            )
-        if candidate.score < 82:
-            return self._signal_update(
-                candidate=candidate,
-                state="avoid",
-                text="暂不跟踪",
-                hint="结构和位置都不够优，今天不做。",
-                entry_distance=entry_distance,
-            )
-        return self._signal_update(
+        return resolve_signal_state(
+            resolver=self,
             candidate=candidate,
-            state="watch",
-            text="继续观察",
-            hint="趋势还在，但缩量、位置或承接还差一步。",
+            entry_position=entry_position,
             entry_distance=entry_distance,
+            hard_confirmed=hard_confirmed,
+            soft_confirmed=soft_confirmed,
+            historical=historical,
+            intraday_confirmed=intraday_confirmed,
+            intraday_hint=intraday_hint,
+            intraday_veto_hint=intraday_veto_hint,
+            confirmed_trade_date=confirmed_trade_date,
         )
 
     def _signal_update(
@@ -325,35 +119,18 @@ class LowBuySignalMixin:
         entry_position: str,
         hard_confirmed: bool,
     ) -> bool:
-        if strong_buy_paused(candidate.strategy_key):
-            return False
-        if self._auto_governance_blocks_buy(candidate):
-            return False
-        if not candidate.execution_ready:
-            return False
-        if candidate.risk_tier == "block":
-            return False
-        if self._weak_market_thematic_block_reason(candidate):
-            return False
-        if not hard_buy_allowed(
-            candidate.strategy_key,
-            candidate.market_state,
-            candidate.market_state_strength,
-        ):
-            return False
-        if self._has_distribution_hard_block(candidate):
-            return False
-        if not self._strategy_hard_buy_quality_gate(candidate):
-            return False
-        if candidate.score < self._hard_buy_min_score(candidate):
-            return False
-        if self._is_strict_in_zone_strategy(candidate.strategy_key):
-            return entry_position == "in_zone" and hard_confirmed
-        if entry_position == "in_zone":
-            return hard_confirmed
-        if entry_position == "below_zone":
-            return hard_confirmed and self._below_zone_hard_buy_allowed(candidate)
-        return False
+        return can_hard_buy_now(
+            candidate=candidate,
+            entry_position=entry_position,
+            hard_confirmed=hard_confirmed,
+            auto_governance_blocks_buy=self._auto_governance_blocks_buy,
+            weak_market_thematic_block_reason=self._weak_market_thematic_block_reason,
+            has_distribution_hard_block=self._has_distribution_hard_block,
+            strategy_hard_buy_quality_gate=self._strategy_hard_buy_quality_gate,
+            hard_buy_min_score=self._hard_buy_min_score,
+            is_strict_in_zone_strategy=self._is_strict_in_zone_strategy,
+            below_zone_hard_buy_allowed=self._below_zone_hard_buy_allowed,
+        )
 
     @staticmethod
     def _strategy_hard_buy_quality_gate(candidate: LowBuyCandidateOut) -> bool:
@@ -361,41 +138,15 @@ class LowBuySignalMixin:
 
     @staticmethod
     def _signal_block_hint(candidate: LowBuyCandidateOut) -> str:
-        auto_override = cached_auto_governance_override(candidate.strategy_key)
-        if auto_override:
-            status = str(auto_override.get("status") or "")
-            reason = str(auto_override.get("reason") or "")
-            if status == "paused":
-                return reason or "策略绩效自动治理已暂停该策略强信号。"
-            if status == "watch" and candidate.buy_signal_state in {"buy_now", "soft_buy_now"}:
-                return reason or "策略绩效自动治理已将该策略降级为观察。"
-        if candidate.risk_tier == "block":
-            return "风险分层已触发阻断，即使价格到位也不执行。"
-        profile = resolve_strategy_market_profile(
-            candidate.strategy_key,
-            candidate.market_state,
-            candidate.market_state_strength,
+        return signal_block_hint(
+            candidate=candidate,
+            auto_override=cached_auto_governance_override(candidate.strategy_key),
+            weak_market_thematic_block_reason=LowBuySignalMixin._weak_market_thematic_block_reason,
         )
-        if profile.execution_blocked:
-            if LowBuySignalMixin._market_block_can_keep_research(candidate):
-                return ""
-            return f"当前{candidate.market_state_text or '市场环境'}明确阻断这类策略执行，先放弃本轮。"
-        weak_market_reason = LowBuySignalMixin._weak_market_thematic_block_reason(candidate)
-        if weak_market_reason:
-            if LowBuySignalMixin._market_block_can_keep_research(candidate):
-                return ""
-            return weak_market_reason
-        return ""
 
     @staticmethod
     def _market_block_can_keep_research(candidate: LowBuyCandidateOut) -> bool:
-        return (
-            strategy_layer(candidate.strategy_key) == "research"
-            and candidate.risk_tier != "block"
-            and not candidate.false_breakout_flag
-            and not candidate.intraday_reversal_flag
-            and candidate.distribution_risk_score < 6.5
-        )
+        return market_block_can_keep_research(candidate)
 
     @staticmethod
     def _market_buy_restricted(candidate: LowBuyCandidateOut) -> bool:
@@ -415,38 +166,18 @@ class LowBuySignalMixin:
         entry_position: str,
         soft_confirmed: bool,
     ) -> bool:
-        if strong_buy_paused(candidate.strategy_key):
-            return False
-        if self._auto_governance_blocks_buy(candidate):
-            return False
-        if not candidate.execution_ready or not soft_confirmed:
-            return False
-        if candidate.risk_tier == "block":
-            return False
-        if self._weak_market_thematic_block_reason(candidate):
-            return False
-        if not soft_buy_allowed(
-            candidate.strategy_key,
-            candidate.market_state,
-            candidate.market_state_strength,
-        ):
-            return False
-        if self._has_distribution_soft_block(candidate):
-            return False
-        if not self._strategy_soft_buy_quality_gate(candidate):
-            return False
-        min_score = self._soft_buy_min_score(
-            candidate.strategy_key,
-            entry_position,
-            candidate.dynamic_threshold_adjustment,
+        return can_soft_buy_now(
+            candidate=candidate,
+            entry_position=entry_position,
+            soft_confirmed=soft_confirmed,
+            auto_governance_blocks_buy=self._auto_governance_blocks_buy,
+            weak_market_thematic_block_reason=self._weak_market_thematic_block_reason,
+            has_distribution_soft_block=self._has_distribution_soft_block,
+            strategy_soft_buy_quality_gate=self._strategy_soft_buy_quality_gate,
+            soft_buy_min_score=self._soft_buy_min_score,
+            is_strict_in_zone_strategy=self._is_strict_in_zone_strategy,
+            near_above_soft_buy_allowed=self._near_above_soft_buy_allowed,
         )
-        if self._is_strict_in_zone_strategy(candidate.strategy_key):
-            return entry_position == "in_zone" and candidate.score >= min_score
-        if entry_position == "in_zone":
-            return candidate.score >= min_score
-        if entry_position == "near_above_zone":
-            return self._near_above_soft_buy_allowed(candidate) and candidate.score >= min_score
-        return False
 
     @staticmethod
     def _strategy_soft_buy_quality_gate(candidate: LowBuyCandidateOut) -> bool:
@@ -469,27 +200,11 @@ class LowBuySignalMixin:
 
     @staticmethod
     def _can_show_research_near_entry(candidate: LowBuyCandidateOut, entry_position: str) -> bool:
-        if strategy_layer(candidate.strategy_key) != "research":
-            return False
-        if candidate.research_stage not in {"near_entry", "buy_ready"}:
-            return False
-        if candidate.risk_tier == "block" or candidate.false_breakout_flag:
-            return False
-        if candidate.distribution_risk_score >= 6.5:
-            return False
-        if candidate.strategy_key == "divergence_consensus":
-            return entry_position in {"in_zone", "near_above_zone"}
-        return entry_position in {"in_zone", "near_above_zone", "below_zone"}
+        return can_show_research_near_entry(candidate, entry_position)
 
     @staticmethod
     def _research_near_entry_hint(candidate: LowBuyCandidateOut, entry_position: str, historical: bool) -> str:
-        if candidate.research_stage == "buy_ready":
-            return "研究策略确认条件基本满足，但当前仍暂停强买，只做接近买点提醒。"
-        if candidate.strategy_key == "divergence_consensus":
-            return "接近分歧高点确认位，等放量站稳且不冲高回落。"
-        if entry_position == "below_zone":
-            return "已回踩关键区下沿，必须快速收回支撑位才继续观察。"
-        return "接近平台回踩关键位，等缩量承接和重新转强。"
+        return research_near_entry_hint(candidate, entry_position)
 
     @staticmethod
     def _below_zone_hard_buy_allowed(candidate: LowBuyCandidateOut) -> bool:
@@ -501,26 +216,7 @@ class LowBuySignalMixin:
 
     @staticmethod
     def _weak_market_thematic_block_reason(candidate: LowBuyCandidateOut) -> str:
-        weak_states = {"fast_rotation", "high_flyer_retreat", "risk_release"}
-        if candidate.market_state not in weak_states or candidate.instrument_type != "stock":
-            return ""
-        if candidate.market_state == "risk_release":
-            return "风险释放期不新增题材股低吸，先等市场止跌和情绪修复。"
-        is_mainline = candidate.leader_rank in {"leader", "strong_follow"} and candidate.industry_tier in {
-            "core_hot",
-            "secondary_hot",
-        }
-        if not is_mainline:
-            return "轮动过快/高位退潮时，只保留主线龙头或强跟随的热点行业票。"
-        if candidate.distribution_risk_score >= 5.2 or candidate.false_breakout_flag or candidate.intraday_reversal_flag:
-            return "弱市场里只做分歧释放后的确认，当前派发或冲高回落风险未解除。"
-        if candidate.market_state == "high_flyer_retreat" and candidate.strategy_key not in {
-            "classic_retrace",
-            "ma_support",
-            "breakout_support",
-        }:
-            return "高位退潮期不做右侧突破、深回撤或后排结构，只保留主线支撑型低吸。"
-        return ""
+        return weak_market_thematic_block_reason(candidate)
 
     def _near_entry_positions(self, strategy_key: str) -> set[str]:
         return near_entry_positions(strategy_key)
@@ -553,50 +249,16 @@ class LowBuySignalMixin:
         vwap_value: float = 0.0,
         require_intraday_structure: bool = False,
     ) -> bool:
-        if quote is None:
-            return False
-        if require_intraday_structure and not intraday_bars:
-            return False
-        last_price = float(getattr(quote, "last_price", 0.0) or 0.0)
-        open_price = float(getattr(quote, "open_price", 0.0) or 0.0)
-        prev_close = float(getattr(quote, "prev_close", 0.0) or 0.0)
-        low_price = float(getattr(quote, "low_price", 0.0) or 0.0)
-        high_price = float(getattr(quote, "high_price", 0.0) or 0.0)
-        change_pct = float(getattr(quote, "change_pct", 0.0) or 0.0)
-        if last_price <= 0 or low_price <= 0 or last_price <= candidate.stop_loss * 1.006 or change_pct <= -6.5:
-            return False
-        intraday_range = max(high_price - low_price, 0.01)
-        rebound_ratio = (last_price - low_price) / intraday_range
-        held_reference = True
-        if open_price > 0:
-            held_reference = held_reference and last_price >= open_price * 0.995
-        if prev_close > 0:
-            held_reference = held_reference and last_price >= prev_close * 0.982
-        if rebound_ratio < 0.35 or not held_reference:
-            return False
-        if intraday_bars:
-            if vwap_value <= 0:
-                vwap_value = calculate_intraday_vwap(intraday_bars)
-            return intraday_soft_confirmation(
-                candidate,
-                quote,
-                intraday_bars=intraday_bars,
-                vwap_value=vwap_value,
-                require_intraday_structure=require_intraday_structure,
-            )
-        return True
+        return is_intraday_stop_confirmed(
+            candidate=candidate,
+            quote=quote,
+            intraday_bars=intraday_bars,
+            vwap_value=vwap_value,
+            require_intraday_structure=require_intraday_structure,
+        )
 
     def _is_end_of_day_stop_confirmed(self, candidate: LowBuyCandidateOut, latest_bar: pd.Series) -> bool:
-        close_price = float(latest_bar["close"])
-        open_price = float(latest_bar["open"])
-        low_price = float(latest_bar["low"])
-        high_price = float(latest_bar["high"])
-        pct_chg = float(latest_bar["pct_chg"])
-        if close_price <= candidate.stop_loss * 1.006 or pct_chg <= -6.5:
-            return False
-        intraday_range = max(high_price - low_price, 0.01)
-        rebound_ratio = (close_price - low_price) / intraday_range
-        return rebound_ratio >= 0.35 and close_price >= open_price * 0.995
+        return is_end_of_day_stop_confirmed(candidate, latest_bar)
 
     @staticmethod
     def _intraday_daily_signal_veto(
@@ -606,42 +268,19 @@ class LowBuySignalMixin:
         intraday_bars: list[Any] | None,
         vwap_value: float,
     ) -> str:
-        if quote is None:
-            return ""
-        last_price = float(getattr(quote, "last_price", 0.0) or 0.0)
-        open_price = float(getattr(quote, "open_price", 0.0) or 0.0)
-        volume_ratio = float(getattr(quote, "volume_ratio", 0.0) or 0.0)
-        if last_price <= 0:
-            return ""
-        if volume_ratio >= 2.2 and open_price > 0 and last_price < open_price * 0.995:
-            return "盘中放量但价格跌回开盘价下方，日线缩量承接口径已走坏，今日不执行。"
-        if intraday_bars and recent_intraday_distribution(intraday_bars, vwap_value):
-            return "盘中最近几根分时放量走弱，没有守住分时均价，否决日线候选信号。"
-        return ""
+        return intraday_daily_signal_veto(
+            candidate=candidate,
+            quote=quote,
+            intraday_bars=intraday_bars,
+            vwap_value=vwap_value,
+        )
 
     def _entry_position(self, candidate: LowBuyCandidateOut, latest_price: float) -> str:
         tolerance_pct = self._get_entry_tolerance_pct(candidate.strategy_key)
         return entry_position(candidate, latest_price, tolerance_pct)
 
     def _apply_live_quotes(self, candidates: list[LowBuyCandidateOut], quote_map: dict[str, Any] | None = None) -> list[LowBuyCandidateOut]:
-        if not candidates:
-            return []
-        enriched_by_symbol: dict[str, LowBuyCandidateOut] = {}
-        batch_quotes = quote_map or self.market_data.get_quotes_batch([candidate.symbol for candidate in candidates])
-        intraday_bars_by_symbol = self._load_live_quote_intraday_bars(candidates, batch_quotes)
-        for candidate in candidates:
-            quote = batch_quotes.get(candidate.symbol)
-            if quote is None:
-                enriched_by_symbol[candidate.symbol] = candidate
-                continue
-            refreshed = candidate.model_copy(update={"latest_price": round(float(quote.last_price), 3), "change_pct": round(float(quote.change_pct), 3), "quote_timestamp": str(quote.timestamp)})
-            enriched_by_symbol[candidate.symbol] = self._refresh_buy_signal(
-                refreshed,
-                quote=quote,
-                intraday_bars=intraday_bars_by_symbol.get(candidate.symbol),
-                require_intraday_structure=True,
-            )
-        return [enriched_by_symbol.get(candidate.symbol, candidate) for candidate in candidates]
+        return apply_live_quotes(builder=self, candidates=candidates, quote_map=quote_map)
 
     def _load_live_quote_intraday_bars(
         self,
@@ -650,23 +289,9 @@ class LowBuySignalMixin:
         *,
         max_symbols: int = 24,
     ) -> dict[str, list[Any]]:
-        symbols: list[str] = []
-        for candidate in candidates:
-            quote = quote_map.get(candidate.symbol)
-            if quote is None:
-                continue
-            latest_price = float(getattr(quote, "last_price", 0.0) or 0.0)
-            if latest_price <= 0:
-                continue
-            entry_position = self._entry_position(candidate, latest_price)
-            if entry_position not in {"in_zone", "below_zone", "near_above_zone"}:
-                continue
-            symbols.append(candidate.symbol)
-            if len(symbols) >= max_symbols:
-                break
-        return self.market_data.get_intraday_bars_batch(
-            symbols=symbols,
-            period="1m",
-            limit=30,
-            max_workers=8,
+        return load_live_quote_intraday_bars(
+            builder=self,
+            candidates=candidates,
+            quote_map=quote_map,
+            max_symbols=max_symbols,
         )

@@ -19,10 +19,27 @@ jobs:
           pip install -r backend/requirements-dev.txt
       - name: Compile backend
         run: python -m compileall backend/app
-      - name: Run backend tests
+      - name: Run Agent OS scoped coverage gate
         env:
           PYTHONPATH: ${{ github.workspace }}/backend
-        run: python -m unittest discover backend/tests
+        run: |
+          echo "Agent OS scoped coverage gate only: provider/tools/agent routes/auth/report/research services. This is not whole-project coverage."
+          pytest backend/tests/test_agent*.py \
+            --cov=app.agent_providers \
+            --cov=app.agent_tools \
+            --cov=app.api.routes.agent \
+            --cov=app.api.routes.agent_helpers \
+            --cov=app.core.agent_auth \
+            --cov=app.services.agent_context_service \
+            --cov=app.services.agent_report_service \
+            --cov=app.services.agent_research_service \
+            --cov=app.services.agent_daily_workflow_service \
+            --cov-report=term-missing \
+            --cov-fail-under=70
+      - name: Run backend pytest suite
+        env:
+          PYTHONPATH: ${{ github.workspace }}/backend
+        run: pytest backend/tests
 
   frontend:
     runs-on: ubuntu-latest

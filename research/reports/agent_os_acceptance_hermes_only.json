@@ -1,0 +1,285 @@
+{
+  "generated_at": "2026-05-05T01:23:01",
+  "project": "TQuant 维斯量化平台",
+  "symbols": [
+    "300590",
+    "000070",
+    "601016",
+    "000811",
+    "600499",
+    "603637",
+    "603637",
+    "002448",
+    "300890",
+    "603967"
+  ],
+  "steps": [
+    {
+      "name": "hermes_orchestration_contract",
+      "status": "ok",
+      "ok": true,
+      "message": "Hermes 编排配置合同校验通过。",
+      "duration_ms": 0,
+      "data": {
+        "workflow_name": "tquant_daily_research",
+        "phase_count": 3,
+        "agent_count": 5,
+        "agents": [
+          "market_state_analyst",
+          "sector_heat_analyst",
+          "technical_analyst",
+          "strategy_validator",
+          "portfolio_manager"
+        ],
+        "required_sections": [
+          "市场概览",
+          "板块主线",
+          "持仓做T信号",
+          "选股宝典 TOP 10",
+          "风控检查",
+          "操作检查清单"
+        ],
+        "errors": []
+      }
+    },
+    {
+      "name": "hermes_workflow",
+      "status": "ok",
+      "ok": true,
+      "message": "Hermes CLI workflow 已完成并通过逐 phase 验收。",
+      "duration_ms": 155158,
+      "data": {
+        "executable": "/Users/j/.local/bin/hermes",
+        "symbols": [
+          "300590",
+          "000070",
+          "601016",
+          "000811",
+          "600499",
+          "603637",
+          "603637",
+          "002448",
+          "300890",
+          "603967"
+        ],
+        "stdout": "lse,\n              \"symbol\": \"601016\"\n            },\n            {\n              \"tool_name\": \"analyze_stock\",\n              \"ok\": true,\n              \"error_code\": null,\n              \"permission_denied\": false,\n              \"symbol\": \"000811\"\n            },\n            {\n              \"tool_name\": \"analyze_stock\",\n              \"ok\": true,\n              \"error_code\": null,\n              \"permission_denied\": false,\n              \"symbol\": \"600499\"\n            },\n            {\n              \"tool_name\": \"analyze_stock\",\n              \"ok\": true,\n              \"error_code\": null,\n              \"permission_denied\": false,\n              \"symbol\": \"603637\"\n            },\n            {\n              \"tool_name\": \"analyze_stock\",\n              \"ok\": true,\n              \"error_code\": null,\n              \"permission_denied\": false,\n              \"symbol\": \"002448\"\n            },\n            {\n              \"tool_name\": \"analyze_stock\",\n              \"ok\": true,\n              \"error_code\": null,\n              \"permission_denied\": false,\n              \"symbol\": \"300890\"\n            },\n            {\n              \"tool_name\": \"analyze_stock\",\n              \"ok\": true,\n              \"error_code\": null,\n              \"permission_denied\": false,\n              \"symbol\": \"603967\"\n            },\n            {\n              \"tool_name\": \"get_watchlist_context\",\n              \"ok\": true,\n              \"error_code\": null,\n              \"permission_denied\": false\n            },\n            {\n              \"tool_name\": \"get_priority_board\",\n              \"ok\": true,\n              \"error_code\": null,\n              \"permission_denied\": false\n            }\n          ],\n          \"output_summary\": \"9只标的全部评估完成, 均为hold(今天别动)。信号分最高: 中创物流100分, 科达制造80.64分, 冰轮环境70.64分。风险等级: 特发信息/节能风电/冰轮环境/镇海股份为high, 其余medium。自选持仓2只(东方电气/三变科技)均hold。共同阻断规则: 流动性/振幅不足不适合高频做T。\"\n        }\n      ]\n    },\n    {\n      \"phase\": \"cross_validation\",\n      \"agents\": [\n        {\n          \"name\": \"strategy_validator\",\n          \"executed\": true,\n          \"tool_calls\": [\n            {\n              \"tool_name\": \"cross_validate_strategy_context\",\n              \"ok\": true,\n              \"error_code\": null,\n              \"permission_denied\": false\n            },\n            {\n              \"tool_name\": \"check_agent_risk\",\n              \"ok\": true,\n              \"error_code\": null,\n              \"permission_denied\": false\n            }\n          ],\n          \"output_summary\": \"交叉验证: 9只标的全部为conflict(未上优先级榜+不在主线板块)。高信心数0, 冲突数9。风控检查: risk_level=clear, 无违规/警告, 总仓位0%, 单票最大0%, 行业集中度0%。\"\n        }\n      ]\n    },\n    {\n      \"phase\": \"decision\",\n      \"agents\": [\n        {\n          \"name\": \"portfolio_manager\",\n          \"executed\": true,\n          \"tool_calls\": [\n            {\n              \"tool_name\": \"get_comprehensive_analysis\",\n              \"ok\": true,\n              \"error_code\": null,\n              \"permission_denied\": false\n            },\n            {\n              \"tool_name\": \"recommend_orders\",\n              \"ok\": false,\n              \"error_code\": \"TOOL_PERMISSION_DENIED\",\n              \"permission_denied\": true\n            },\n            {\n              \"tool_name\": \"get_paper_portfolio\",\n              \"ok\": true,\n              \"error_code\": null,\n              \"permission_denied\": false\n            }\n          ],\n          \"output_summary\": \"综合研判: 未满足生产开仓条件, 保持研究模式。recommend_orders返回TOOL_PERMISSION_DENIED(write权限禁用), 符合验收预期。模拟盘: 账户总资产100000, 现金100000, 持仓0, 总收益率0%。\"\n        }\n      ]\n    }\n  ],\n  \"final_markdown\": \"# TQuant 每日研究报告\\n\\n**日期**: 2026-05-05\\n**工作流**: tquant_daily_research\\n**验收状态**: PASS (19/19 tool calls executed, 1 permission_denied as expected)\\n\\n---\\n\\n## 市场概览\\n\\n| 指标 | 值 |\\n|------|------|\\n| 市场状态 | 轮动过快 (fast_rotation) |\\n| 方向偏置 | 中性/观望 |\\n| 风险等级 | medium |\\n| 建议仓位 | 15%-40% |\\n| 涨停数 | 79 |\\n| 跌停数 | 11 |\\n| 炸板率 | 15% |\\n| 连板高度 | 4板 (前日3板) |\\n| 热点行业 | 半导体、通用设备、通信设备 |\\n\\n> 热点切换过快，追逐情绪容易失真，优先保留承接更清楚的票。缩量或快速轮动环境下，只处理强确认标的。\\n\\n---\\n\\n## 板块主线\\n\\n| 排名 | 板块 | 连续性 | 核心标的 | 信号 |\\n|------|------|--------|----------|------|\\n| 1 | 半导体 | 91 | 大为股份(181.84)、有研新材(169.14)、豪威集团(166.33) | 接近买点/继续观察 |\\n| 2 | 通用设备 | 84 | 应流股份(198.04)、杭齿前进(161.32)、泰嘉股份(148.52) | 接近买点/继续观察/今日放弃 |\\n| 3 | 通信设备 | 68 | 暂无候选 | 需等待数据补齐 |\\n\\n---\\n\\n## 持仓做T信号\\n\\n| 标的 | 现价 | 涨跌幅 | 信号分 | 可交易分 | 风险 | 操作 | 核心理由 |\\n|------|------|--------|--------|----------|------|------|----------|\\n| 东方电气 600875 | 39.01 | -2.38% | 56.33 | 69.41 | low | hold | 正T/反T条件未同时满足 |\\n| 三变科技 002112 | 20.14 | -1.18% | 87.64 | 45.73 | low | hold | 题材股退潮/快速轮动, 等板块盘口同时转强 |\\n\\n---\\n\\n## 选股宝典 TOP 10\\n\\n| 排名 | 代码 | 名称 | 现价 | 涨跌幅 | 信号分 | 可交易分 | 风险 | 操作 | 阻断规则 |\\n|------|------|------|------|--------|--------|----------|------|------|----------|\\n| 1 | 603967 | 中创物流 | 13.93 | +0.58% | 100.00 | 30.88 | medium | hold | 流动性/振幅不足 |\\n| 2 | 600499 | 科达制造 | 19.25 | -3.99% | 80.64 | 33.72 | medium | hold | 流动性/振幅不足 |\\n| 3 | 000811 | 冰轮环境 | 24.95 | +1.30% | 70.64 | 4.26 | high | hold | 流动性不足+振幅过大 |\\n| 4 | 300590 | 移为通信 | 14.67 | -2.59% | 69.00 | 29.66 | medium | hold | 流动性/振幅不足 |\\n| 5 | 601016 | 节能风电 | 4.26 | -6.58% | 67.64 | 31.07 | high | hold | 流动性/振幅不足 |\\n| 6 | 603637 | 镇海股份 | 16.88 | +5.04% | 63.28 | 19.88 | high | hold | 流动性/振幅不足 |\\n| 7 | 300890 | 翔丰华 | 40.60 | -4.36% | 57.64 | 33.54 | medium | hold | 流动性/振幅不足 |\\n| 8 | 002448 | 中原内配 | 15.11 | -0.98% | 54.64 | 21.58 | medium | hold | 流动性/振幅不足 |\\n| 9 | 000070 | 特发信息 | 18.08 | -6.47% | 52.29 | 18.92 | high | hold | 流动性/振幅不足 |\\n\\n> 9只标的全部判定hold, 无一进入买点区。共同阻断: 当前流动性/振幅不足不适合高频做T。\\n\\n---\\n\\n## 风控检查\\n\\n| 项目 | 状态 |\\n|------|------|\\n| 风险等级 | clear |\\n| 待审提案数 | 0 |\\n| 总仓位占比 | 0% |\\n| 单票最大仓位 | 0% |\\n| 行业集中度 | 0% |\\n| 违规项 | 无 |\\n| 警告项 | 无 |\\n\\n> 仓位、行业集中度和单票暴露均未触发系统阈值。\\n\\n---\\n\\n## 操作检查清单\\n\\n- [x] 市场状态是否允许开仓？ -> 否 (轮动过快, 建议观望)\\n- [ ] 目标标的是否在主线板块？ -> 9只候选均不在主线\\n- [ ] 三方分析师结论是否一致？ -> 9只全部conflict\\n- [ ] 价格是否已进入买点区？ -> 无标的进入\\n- [ ] 单票仓位是否 <= 20%？ -> 当前无持仓\\n- [ ] 止损位是否已设定？ -> 无需设定\\n- [ ] 是否为 T+1 买入日？ -> 当前无买入计划\\n\\n**结论**: 今日无操作, 保持观望。市场轮动过快, 所有候选标的均未满足开仓条件。\",\n  \"errors\": []\n}\n```\n",
+        "stderr": "",
+        "returncode": 0,
+        "parsed": {
+          "ok": true,
+          "workflow_name": "tquant_daily_research",
+          "phase_results": [
+            {
+              "phase": "parallel_analysis",
+              "agents": [
+                {
+                  "name": "market_state_analyst",
+                  "executed": true,
+                  "tool_calls": [
+                    {
+                      "tool_name": "get_market_state_analysis",
+                      "ok": true,
+                      "error_code": null,
+                      "permission_denied": false
+                    },
+                    {
+                      "tool_name": "get_priority_board",
+                      "ok": true,
+                      "error_code": null,
+                      "permission_denied": false
+                    },
+                    {
+                      "tool_name": "get_agent_health",
+                      "ok": true,
+                      "error_code": null,
+                      "permission_denied": false
+                    }
+                  ],
+                  "output_summary": "市场状态: 轮动过快(fast_rotation), 方向偏中性(观望), 风险等级medium, 建议仓位15%-40%。情绪数据: 涨停79/跌停11, 炸板率15%, 连板高度4。Agent层健康: database/frontend_dist/watchlist_signals/priority_board均OK。"
+                },
+                {
+                  "name": "sector_heat_analyst",
+                  "executed": true,
+                  "tool_calls": [
+                    {
+                      "tool_name": "get_sector_mainline_analysis",
+                      "ok": true,
+                      "error_code": null,
+                      "permission_denied": false
+                    },
+                    {
+                      "tool_name": "get_priority_board",
+                      "ok": true,
+                      "error_code": null,
+                      "permission_denied": false
+                    }
+                  ],
+                  "output_summary": "三大主线: 半导体(连续性91, 核心:大为股份/有研新材/豪威集团), 通用设备(连续性84, 核心:应流股份/杭齿前进/泰嘉股份), 通信设备(连续性68, 暂无候选)。优先级榜6只标的, 最高分应流股份198.04。数据质量: limited(市场广度/情绪数据缺失)。"
+                },
+                {
+                  "name": "technical_analyst",
+                  "executed": true,
+                  "tool_calls": [
+                    {
+                      "tool_name": "analyze_stock",
+                      "ok": true,
+                      "error_code": null,
+                      "permission_denied": false,
+                      "symbol": "300590"
+                    },
+                    {
+                      "tool_name": "analyze_stock",
+                      "ok": true,
+                      "error_code": null,
+                      "permission_denied": false,
+                      "symbol": "000070"
+                    },
+                    {
+                      "tool_name": "analyze_stock",
+                      "ok": true,
+                      "error_code": null,
+                      "permission_denied": false,
+                      "symbol": "601016"
+                    },
+                    {
+                      "tool_name": "analyze_stock",
+                      "ok": true,
+                      "error_code": null,
+                      "permission_denied": false,
+                      "symbol": "000811"
+                    },
+                    {
+                      "tool_name": "analyze_stock",
+                      "ok": true,
+                      "error_code": null,
+                      "permission_denied": false,
+                      "symbol": "600499"
+                    },
+                    {
+                      "tool_name": "analyze_stock",
+                      "ok": true,
+                      "error_code": null,
+                      "permission_denied": false,
+                      "symbol": "603637"
+                    },
+                    {
+                      "tool_name": "analyze_stock",
+                      "ok": true,
+                      "error_code": null,
+                      "permission_denied": false,
+                      "symbol": "002448"
+                    },
+                    {
+                      "tool_name": "analyze_stock",
+                      "ok": true,
+                      "error_code": null,
+                      "permission_denied": false,
+                      "symbol": "300890"
+                    },
+                    {
+                      "tool_name": "analyze_stock",
+                      "ok": true,
+                      "error_code": null,
+                      "permission_denied": false,
+                      "symbol": "603967"
+                    },
+                    {
+                      "tool_name": "get_watchlist_context",
+                      "ok": true,
+                      "error_code": null,
+                      "permission_denied": false
+                    },
+                    {
+                      "tool_name": "get_priority_board",
+                      "ok": true,
+                      "error_code": null,
+                      "permission_denied": false
+                    }
+                  ],
+                  "output_summary": "9只标的全部评估完成, 均为hold(今天别动)。信号分最高: 中创物流100分, 科达制造80.64分, 冰轮环境70.64分。风险等级: 特发信息/节能风电/冰轮环境/镇海股份为high, 其余medium。自选持仓2只(东方电气/三变科技)均hold。共同阻断规则: 流动性/振幅不足不适合高频做T。"
+                }
+              ]
+            },
+            {
+              "phase": "cross_validation",
+              "agents": [
+                {
+                  "name": "strategy_validator",
+                  "executed": true,
+                  "tool_calls": [
+                    {
+                      "tool_name": "cross_validate_strategy_context",
+                      "ok": true,
+                      "error_code": null,
+                      "permission_denied": false
+                    },
+                    {
+                      "tool_name": "check_agent_risk",
+                      "ok": true,
+                      "error_code": null,
+                      "permission_denied": false
+                    }
+                  ],
+                  "output_summary": "交叉验证: 9只标的全部为conflict(未上优先级榜+不在主线板块)。高信心数0, 冲突数9。风控检查: risk_level=clear, 无违规/警告, 总仓位0%, 单票最大0%, 行业集中度0%。"
+                }
+              ]
+            },
+            {
+              "phase": "decision",
+              "agents": [
+                {
+                  "name": "portfolio_manager",
+                  "executed": true,
+                  "tool_calls": [
+                    {
+                      "tool_name": "get_comprehensive_analysis",
+                      "ok": true,
+                      "error_code": null,
+                      "permission_denied": false
+                    },
+                    {
+                      "tool_name": "recommend_orders",
+                      "ok": false,
+                      "error_code": "TOOL_PERMISSION_DENIED",
+                      "permission_denied": true
+                    },
+                    {
+                      "tool_name": "get_paper_portfolio",
+                      "ok": true,
+                      "error_code": null,
+                      "permission_denied": false
+                    }
+                  ],
+                  "output_summary": "综合研判: 未满足生产开仓条件, 保持研究模式。recommend_orders返回TOOL_PERMISSION_DENIED(write权限禁用), 符合验收预期。模拟盘: 账户总资产100000, 现金100000, 持仓0, 总收益率0%。"
+                }
+              ]
+            }
+          ],
+          "final_markdown": "# TQuant 每日研究报告\n\n**日期**: 2026-05-05\n**工作流**: tquant_daily_research\n**验收状态**: PASS (19/19 tool calls executed, 1 permission_denied as expected)\n\n---\n\n## 市场概览\n\n| 指标 | 值 |\n|------|------|\n| 市场状态 | 轮动过快 (fast_rotation) |\n| 方向偏置 | 中性/观望 |\n| 风险等级 | medium |\n| 建议仓位 | 15%-40% |\n| 涨停数 | 79 |\n| 跌停数 | 11 |\n| 炸板率 | 15% |\n| 连板高度 | 4板 (前日3板) |\n| 热点行业 | 半导体、通用设备、通信设备 |\n\n> 热点切换过快，追逐情绪容易失真，优先保留承接更清楚的票。缩量或快速轮动环境下，只处理强确认标的。\n\n---\n\n## 板块主线\n\n| 排名 | 板块 | 连续性 | 核心标的 | 信号 |\n|------|------|--------|----------|------|\n| 1 | 半导体 | 91 | 大为股份(181.84)、有研新材(169.14)、豪威集团(166.33) | 接近买点/继续观察 |\n| 2 | 通用设备 | 84 | 应流股份(198.04)、杭齿前进(161.32)、泰嘉股份(148.52) | 接近买点/继续观察/今日放弃 |\n| 3 | 通信设备 | 68 | 暂无候选 | 需等待数据补齐 |\n\n---\n\n## 持仓做T信号\n\n| 标的 | 现价 | 涨跌幅 | 信号分 | 可交易分 | 风险 | 操作 | 核心理由 |\n|------|------|--------|--------|----------|------|------|----------|\n| 东方电气 600875 | 39.01 | -2.38% | 56.33 | 69.41 | low | hold | 正T/反T条件未同时满足 |\n| 三变科技 002112 | 20.14 | -1.18% | 87.64 | 45.73 | low | hold | 题材股退潮/快速轮动, 等板块盘口同时转强 |\n\n---\n\n## 选股宝典 TOP 10\n\n| 排名 | 代码 | 名称 | 现价 | 涨跌幅 | 信号分 | 可交易分 | 风险 | 操作 | 阻断规则 |\n|------|------|------|------|--------|--------|----------|------|------|----------|\n| 1 | 603967 | 中创物流 | 13.93 | +0.58% | 100.00 | 30.88 | medium | hold | 流动性/振幅不足 |\n| 2 | 600499 | 科达制造 | 19.25 | -3.99% | 80.64 | 33.72 | medium | hold | 流动性/振幅不足 |\n| 3 | 000811 | 冰轮环境 | 24.95 | +1.30% | 70.64 | 4.26 | high | hold | 流动性不足+振幅过大 |\n| 4 | 300590 | 移为通信 | 14.67 | -2.59% | 69.00 | 29.66 | medium | hold | 流动性/振幅不足 |\n| 5 | 601016 | 节能风电 | 4.26 | -6.58% | 67.64 | 31.07 | high | hold | 流动性/振幅不足 |\n| 6 | 603637 | 镇海股份 | 16.88 | +5.04% | 63.28 | 19.88 | high | hold | 流动性/振幅不足 |\n| 7 | 300890 | 翔丰华 | 40.60 | -4.36% | 57.64 | 33.54 | medium | hold | 流动性/振幅不足 |\n| 8 | 002448 | 中原内配 | 15.11 | -0.98% | 54.64 | 21.58 | medium | hold | 流动性/振幅不足 |\n| 9 | 000070 | 特发信息 | 18.08 | -6.47% | 52.29 | 18.92 | high | hold | 流动性/振幅不足 |\n\n> 9只标的全部判定hold, 无一进入买点区。共同阻断: 当前流动性/振幅不足不适合高频做T。\n\n---\n\n## 风控检查\n\n| 项目 | 状态 |\n|------|------|\n| 风险等级 | clear |\n| 待审提案数 | 0 |\n| 总仓位占比 | 0% |\n| 单票最大仓位 | 0% |\n| 行业集中度 | 0% |\n| 违规项 | 无 |\n| 警告项 | 无 |\n\n> 仓位、行业集中度和单票暴露均未触发系统阈值。\n\n---\n\n## 操作检查清单\n\n- [x] 市场状态是否允许开仓？ -> 否 (轮动过快, 建议观望)\n- [ ] 目标标的是否在主线板块？ -> 9只候选均不在主线\n- [ ] 三方分析师结论是否一致？ -> 9只全部conflict\n- [ ] 价格是否已进入买点区？ -> 无标的进入\n- [ ] 单票仓位是否 <= 20%？ -> 当前无持仓\n- [ ] 止损位是否已设定？ -> 无需设定\n- [ ] 是否为 T+1 买入日？ -> 当前无买入计划\n\n**结论**: 今日无操作, 保持观望。市场轮动过快, 所有候选标的均未满足开仓条件。",
+          "errors": []
+        },
+        "validation": {
+          "ok": true,
+          "errors": [],
+          "warnings": [],
+          "workflow_name": "tquant_daily_research",
+          "phase_count": 3,
+          "agent_count": 5,
+          "required_sections": [
+            "市场概览",
+            "板块主线",
+            "持仓做T信号",
+            "选股宝典 TOP 10",
+            "风控检查",
+            "操作检查清单"
+          ]
+        }
+      }
+    }
+  ],
+  "overall_status": "ok",
+  "notes": [
+    "Hermes/飞书/OpenBB 依赖外部配置；缺配置会返回 not_configured，不影响核心 A 股链路。",
+    "qlib 报告使用本地实盘物化信号和 daily_bar_snapshots 计算，不调用外部行情源。"
+  ]
+}

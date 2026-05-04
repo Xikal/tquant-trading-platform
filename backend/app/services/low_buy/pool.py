@@ -29,6 +29,7 @@ from app.services.low_buy.strategy_pool_config import (
     strategy_pool_title,
     strategy_uses_daily_scan_pool,
 )
+from app.services.market.trading_calendar import is_a_share_trading_day
 
 
 _STRATEGY_BOARD_WINDOW_DAYS = {
@@ -211,7 +212,7 @@ class LowBuyPoolMixin:
         return [item for item in scan_targets if item.industry and item.industry in hot_set]
 
     def _resolve_latest_completed_trade_date(self, trade_dates: list[str]) -> str:
-        latest_completed_fallback = trade_dates[-2]
+        latest_completed_fallback = self._latest_completed_calendar_fallback(trade_dates)
         try:
             with SessionLocal() as db:
                 repository = DailyHistoryRepository(db)
@@ -263,6 +264,16 @@ class LowBuyPoolMixin:
         return latest_completed_fallback
 
     @staticmethod
+    def _latest_completed_calendar_fallback(trade_dates: list[str]) -> str:
+        if not trade_dates:
+            return ""
+        today = date.today().isoformat()
+        latest_calendar_date = trade_dates[-1]
+        if latest_calendar_date < today or len(trade_dates) == 1:
+            return latest_calendar_date
+        return trade_dates[-2]
+
+    @staticmethod
     def _has_complete_local_daily_bars(trade_date: str, min_stock_count: int = 4500) -> bool:
         try:
             with SessionLocal() as db:
@@ -291,13 +302,34 @@ class LowBuyPoolMixin:
             return list(cached[1])
 
         local_values = self._load_recent_trade_dates_from_local_store(count)
-        if len(local_values) >= min(count, 3):
-            return self._cache_recent_trade_dates(cache_key, local_values)
+        trade_dates = self._with_intraday_trade_date(local_values, count=count)
+        return self._cache_recent_trade_dates(cache_key, trade_dates)
 
-        trade_df = self.market_data._call_akshare(ak.tool_trade_date_hist_sina, purpose="trade_dates")
-        values = [item.isoformat() if hasattr(item, "isoformat") else str(item) for item in trade_df["trade_date"].tolist()]
-        today = date.today().isoformat()
-        return self._cache_recent_trade_dates(cache_key, [item for item in values if item <= today][-count:])
+    @staticmethod
+    def _with_intraday_trade_date(local_values: list[str], *, count: int) -> list[str]:
+        """Avoid remote calendar calls on read paths while preserving intraday structure mode.
+
+        Daily-history rows are the durable source for completed trade dates.  During
+        an active A-share session, today's date is appended from the local holiday
+        calendar only so request threads never wait on AkShare calendar retries.
+        """
+        today_value = date.today()
+        today = today_value.isoformat()
+        values = [item for item in local_values if item <= today]
+        if is_a_share_trading_day(today_value) and today not in values:
+            values.append(today)
+        return sorted(set(values))[-count:]
+
+    def _load_recent_trade_dates_from_remote(self, *, count: int, today: str) -> list[str]:
+        try:
+            trade_df = self.market_data._call_akshare(ak.tool_trade_date_hist_sina, purpose="trade_dates")
+            values = [
+                item.isoformat() if hasattr(item, "isoformat") else str(item)
+                for item in trade_df["trade_date"].tolist()
+            ]
+        except Exception:
+            return []
+        return [item for item in values if item <= today][-count:]
 
     def _load_recent_trade_dates_from_local_store(self, count: int) -> list[str]:
         try:

@@ -14,9 +14,12 @@ import type {
 } from "../../types";
 import type { ReactNode } from "react";
 import { OrderEntryModal } from "./PaperOrderEntryModal";
-import { EmptyState, InfoPill, MetricGrid } from "./WorkspaceComponents";
+import { EmptyState, MetricGrid } from "./WorkspaceComponents";
 import { formatInteger, formatMoneyPlain, formatNumber, formatPct, formatPrice, toneFromChange } from "./workspaceFormatters";
 import type { MetricItem } from "./workspaceTypes";
+import { AgentRunList, GroupedPerformanceTable, PerformancePills, RiskEventList, TagPerformanceStrip } from "./PaperTradingPerformance";
+export { formatPaperDateTime } from "./paperTradingFormatters";
+import { formatPaperDateTime } from "./paperTradingFormatters";
 
 type Tone = "up" | "down" | "neutral";
 type StatusTone = Tone | "warn";
@@ -198,21 +201,6 @@ export function PaperBottomPanels({
   );
 }
 
-export function formatPaperDateTime(value?: string | null): string {
-  if (!value) return "--";
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) return value.slice(0, 19).replace("T", " ");
-  return parsed.toLocaleString("zh-CN", {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-    hour12: false,
-  }).replace(/\//g, "-");
-}
-
 export function resolvePaperMarketState(): "open" | "closed" | "lunch_break" {
   const now = new Date();
   const day = now.getDay();
@@ -222,17 +210,6 @@ export function resolvePaperMarketState(): "open" | "closed" | "lunch_break" {
   if (minutes >= 13 * 60 && minutes < 15 * 60) return "open";
   if (minutes >= 11 * 60 + 30 && minutes < 13 * 60) return "lunch_break";
   return "closed";
-}
-
-function RiskEventList({ items }: { items: RiskEventItem[] }) {
-  if (!items.length) return null;
-  return (
-    <div className="context-row paper-context-row">
-      {items.slice(0, 2).map((item) => (
-        <span key={item.id}>{item.severity === "high" ? "高风险" : "提醒"}：{item.message}</span>
-      ))}
-    </div>
-  );
 }
 
 function IntradayConfirmationStrip({ items }: { items: IntradayConfirmationItem[] }) {
@@ -247,30 +224,6 @@ function IntradayConfirmationStrip({ items }: { items: IntradayConfirmationItem[
           </span>
         );
       })}
-    </div>
-  );
-}
-
-function PerformancePills({ performance }: { performance: PaperPerformance | null }) {
-  return (
-    <div className="context-row paper-context-row">
-      <InfoPill label="成交笔数" value={String(performance?.total_trades ?? 0)} />
-      <InfoPill label="胜率" value={formatPct(performance?.win_rate_pct)} />
-      <InfoPill label="平均单笔" value={formatPct(performance?.avg_trade_return_pct)} tone={toneFromChange(performance?.avg_trade_return_pct)} />
-      <InfoPill label="最大回撤" value={formatPct(performance?.max_drawdown_pct)} tone={toneFromChange(performance?.max_drawdown_pct)} />
-    </div>
-  );
-}
-
-function TagPerformanceStrip({ items }: { items: PaperTagPerformance[] }) {
-  if (!items.length) return null;
-  return (
-    <div className="paper-tag-performance">
-      {items.slice(0, 4).map((item) => (
-        <span key={item.tag}>
-          {item.tag} {item.trades} 笔 · 均收 <b className={toneFromChange(item.avg_return_pct)}>{formatPct(item.avg_return_pct)}</b>
-        </span>
-      ))}
     </div>
   );
 }
@@ -352,68 +305,6 @@ function TradeRow({
       </div>
     </article>
   );
-}
-
-function GroupedPerformanceTable({ items, emptyText }: { items: PaperGroupedPerformance[]; emptyText: string }) {
-  if (!items.length) return <EmptyState text={emptyText} />;
-  return (
-    <div className="paper-performance-table">
-      <div className="paper-performance-head">
-        <span>分组</span>
-        <span>成交</span>
-        <span>胜率</span>
-        <span>净胜率</span>
-        <span>均收</span>
-        <span>PF</span>
-      </div>
-      {items.map((item) => {
-        const avgTone = toneFromChange(item.avg_return_pct);
-        const pfTone = typeof item.profit_factor === "number" && item.profit_factor > 1 ? "up" : "neutral";
-        return (
-          <div className="paper-performance-row" key={item.key || "unlabeled"}>
-            <strong>{item.key || "未标注"}</strong>
-            <span>{formatInteger(item.trades)}</span>
-            <span>{formatPct(item.win_rate_pct)}</span>
-            <span>{formatPct(item.net_win_rate_pct)}</span>
-            <span className={avgTone}>{formatPct(item.avg_return_pct)}</span>
-            <span className={pfTone}>{formatNumber(item.profit_factor)}</span>
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
-function AgentRunList({ items }: { items: PaperAgentRun[] }) {
-  if (!items.length) return <EmptyState text="暂无自动交易日志" />;
-  return (
-    <div className="line-list">
-      {items.slice(0, 5).map((item) => {
-        const response = item.response || {};
-        const executed = Number(response.executed_count ?? (Array.isArray(response.executed) ? response.executed.length : 0));
-        const skipped = Number(response.skipped_count ?? (Array.isArray(response.skipped) ? response.skipped.length : 0));
-        const summary = String(response.summary || item.error_message || "--");
-        return (
-          <article className="paper-row paper-agent-run-row" key={item.id}>
-            <div className="paper-stock-name">
-              <strong>{runStatusText(item.status)}</strong>
-              <span>{formatPaperDateTime(item.created_at)}</span>
-            </div>
-            <span>执行 {executed} / 跳过 {skipped}</span>
-            <span>{summary}</span>
-          </article>
-        );
-      })}
-    </div>
-  );
-}
-
-function runStatusText(status: string): string {
-  if (status === "succeeded") return "已完成";
-  if (status === "failed") return "失败";
-  if (status === "skipped") return "跳过";
-  if (status === "running") return "运行中";
-  return status || "--";
 }
 
 function DataBody({ loading, columns, children }: { loading: boolean; columns: number; children: ReactNode }) {

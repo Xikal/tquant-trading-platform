@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import unittest
+from unittest.mock import patch
 
 from app.core.timing import record_request_timing, request_timing_snapshot
 from app.services.market.shared import QuoteSnapshot
@@ -79,6 +80,20 @@ class PerformanceRegressionTest(unittest.TestCase):
 
         self.assertGreaterEqual(snapshot["sample_count"], 1)
         self.assertTrue(any(item["route"] == "GET /api/test" for item in snapshot["by_path"]))
+
+    def test_prometheus_metrics_include_agent_tool_counters(self) -> None:
+        from app.main import prometheus_metrics
+
+        with patch(
+            "app.main._agent_audit_metrics_snapshot",
+            return_value={"calls_total": 2, "success_total": 1, "failure_total": 1},
+        ):
+            response = prometheus_metrics(None)
+
+        body = response.body.decode("utf-8")
+        self.assertIn("tquant_agent_tool_calls_total 2", body)
+        self.assertIn("tquant_agent_tool_success_total 1", body)
+        self.assertIn("tquant_agent_tool_failure_total 1", body)
 
 
 if __name__ == "__main__":

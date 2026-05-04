@@ -44,7 +44,7 @@ MARKET_STATE_CATEGORIES: dict[str, MarketStateCategory] = {
     ),
     "risk_retreat": MarketStateCategory(
         key="risk_retreat",
-        label="下跌退潮",
+        label="下跌退潮/极端风险",
         description="高位退潮、风险释放或极端弱势，新增买点需要严格收缩或暂停。",
         raw_states=("high_flyer_retreat", "risk_release"),
     ),

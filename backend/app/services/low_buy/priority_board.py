@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from copy import deepcopy
-import time
 
 from sqlalchemy import select
 
@@ -12,8 +11,13 @@ from app.models.schemas import (
     LowBuyPriorityBoardResponse,
     LowBuyStrategyPerformanceOut,
 )
-from app.repositories.low_buy.results import LowBuyResultRepository
 from app.services.low_buy.priority_scoring import LowBuyPriorityScoringMixin
+from app.services.low_buy.priority_cache import (
+    get_priority_base_cache,
+    get_priority_response_cache,
+    set_priority_base_cache,
+    set_priority_response_cache,
+)
 from app.services.low_buy.priority_types import (
     PriorityBaseSnapshot,
     PriorityCandidate,
@@ -32,17 +36,29 @@ from app.services.low_buy.priority_holdings import (
     select_primary_candidates_for_portfolio,
 )
 from app.services.low_buy.priority_items import build_priority_items
+from app.services.low_buy.priority_market import build_market_context
+from app.services.low_buy.priority_merging import (
+    attach_priority_recommendation_durations,
+    collect_priority_candidates,
+    display_strategy_titles,
+    recommendation_days_by_hit_title,
+    upsert_strategy_hit,
+)
+from app.services.low_buy.priority_performance import build_strategy_hit
+from app.services.low_buy.priority_refresh import (
+    load_priority_intraday_bars,
+    priority_intraday_rank,
+    priority_needs_intraday_confirmation,
+    refresh_priority_candidates,
+)
 from app.services.low_buy.priority_response import build_priority_board_response
+from app.services.low_buy.priority_snapshot import build_priority_base_snapshot
 from app.services.low_buy.shared import (
     LOW_BUY_THRESHOLDS,
     PERFORMANCE_LOOKBACK_DAYS,
-    PLAYBOOKS,
     RECENT_PERFORMANCE_LOOKBACK_DAYS,
     Session,
 )
-from app.services.low_buy.strategy_policy import participates_in_priority_board
-from app.services.low_buy.strategy_families import resolve_strategy_family
-from app.services.low_buy.recommendation_duration import attach_recommendation_durations
 
 
 class LowBuyPriorityBoardMixin(LowBuyPriorityScoringMixin):
@@ -98,64 +114,7 @@ class LowBuyPriorityBoardMixin(LowBuyPriorityScoringMixin):
         return deepcopy(snapshot)
 
     def _build_priority_base_snapshot(self, db: Session, limit: int) -> PriorityBaseSnapshot:
-        repository = LowBuyResultRepository(db)
-        latest_available_trade_date = repository.fetch_latest_trade_date() or ""
-        target_trade_date = self._resolve_priority_target_trade_date()
-        tracked_symbols = self._load_watchlist_symbols(db)
-        merged_candidates: dict[str, PriorityCandidate] = {}
-        performance_cache: dict[tuple[str, str, int], LowBuyStrategyPerformanceOut | None] = {}
-        latest_trade_date = ""
-        updated_at = ""
-        missing_strategies: list[str] = []
-        stale_strategies: list[str] = []
-
-        for strategy_key in PLAYBOOKS:
-            if not participates_in_priority_board(strategy_key):
-                continue
-            summary = (
-                repository.fetch_latest_scan_summary_on_or_before(
-                    strategy_key=strategy_key,
-                    latest_trade_date=target_trade_date,
-                )
-                if target_trade_date
-                else repository.fetch_latest_scan_summary(strategy_key=strategy_key)
-            )
-            if summary is None:
-                missing_strategies.append(strategy_key)
-                continue
-            payload = self._load_materialized_full_result(
-                db=db,
-                strategy=strategy_key,
-                latest_trade_date=str(summary.latest_trade_date),
-                limit=max(limit * 2, 24),
-                include_history=False,
-            )
-            if payload is None:
-                missing_strategies.append(strategy_key)
-                continue
-            if latest_available_trade_date and payload.latest_trade_date < latest_available_trade_date:
-                stale_strategies.append(strategy_key)
-            latest_trade_date = max(latest_trade_date, payload.latest_trade_date)
-            updated_at = max(updated_at, payload.full_scan_updated_at or payload.as_of_date)
-            self._collect_priority_candidates(
-                db=db,
-                merged_candidates=merged_candidates,
-                tracked_symbols=tracked_symbols,
-                latest_trade_date=payload.latest_trade_date,
-                candidates=payload.confirmed_candidates + payload.candidates,
-                performance_cache=performance_cache,
-            )
-
-        market_context = self._build_market_context(db=db, latest_trade_date=latest_trade_date)
-        return PriorityBaseSnapshot(
-            latest_trade_date=latest_trade_date,
-            latest_available_trade_date=latest_available_trade_date,
-            updated_at=updated_at,
-            candidates=list(merged_candidates.values()),
-            market_context=market_context,
-            missing_strategies=missing_strategies,
-            stale_strategies=stale_strategies,
-        )
+        return build_priority_base_snapshot(builder=self, db=db, limit=limit)
 
     def _resolve_priority_target_trade_date(self) -> str:
         trade_dates = self._get_recent_trade_dates(14)
@@ -176,52 +135,24 @@ class LowBuyPriorityBoardMixin(LowBuyPriorityScoringMixin):
             return f"最新 {snapshot.latest_available_trade_date} 的全量结果仍在重建，当前暂无可用榜单。"
         if snapshot.latest_trade_date < snapshot.latest_available_trade_date:
             warnings.append(
-                f"当前使用 {snapshot.latest_trade_date} 的回退快照，"
-                f"最新 {snapshot.latest_available_trade_date} 的结果仍在重建或暂未纳入。"
+                f"当前使用 {snapshot.latest_trade_date} 的最近可用快照，"
+                f"最新交易日 {snapshot.latest_available_trade_date} 的全量结果仍在重建或暂未完成。"
             )
-        if snapshot.missing_strategies:
-            warnings.append(f"缺失策略：{', '.join(snapshot.missing_strategies)}。")
-        if snapshot.stale_strategies:
-            warnings.append(f"过期策略：{', '.join(snapshot.stale_strategies)}。")
+        if snapshot.missing_strategies or snapshot.stale_strategies:
+            warnings.append("部分策略结果仍在重建，榜单已自动合并最近可用快照。")
         return " ".join(warnings)
 
     def _get_priority_base_cache(self, cache_key: str) -> PriorityBaseSnapshot | None:
-        now = time.monotonic()
-        with self._cache_lock:
-            cached = self._priority_base_cache.get(cache_key)
-            if cached is None:
-                return None
-            expires_at, payload = cached
-            if expires_at <= now:
-                self._priority_base_cache.pop(cache_key, None)
-                return None
-            return deepcopy(payload)
+        return get_priority_base_cache(self, cache_key)
 
     def _set_priority_base_cache(self, cache_key: str, payload: PriorityBaseSnapshot) -> None:
-        with self._cache_lock:
-            self._priority_base_cache[cache_key] = (
-                time.monotonic() + self._priority_base_cache_ttl,
-                deepcopy(payload),
-            )
+        set_priority_base_cache(self, cache_key, payload)
 
     def _get_priority_response_cache(self, cache_key: str) -> LowBuyPriorityBoardResponse | None:
-        now = time.monotonic()
-        with self._cache_lock:
-            cached = self._priority_response_cache.get(cache_key)
-            if cached is None:
-                return None
-            expires_at, payload = cached
-            if expires_at <= now:
-                self._priority_response_cache.pop(cache_key, None)
-                return None
-            return deepcopy(payload)
+        return get_priority_response_cache(self, cache_key)
 
     def _set_priority_response_cache(self, cache_key: str, payload: LowBuyPriorityBoardResponse) -> None:
-        with self._cache_lock:
-            self._priority_response_cache[cache_key] = (
-                time.monotonic() + self._priority_response_cache_ttl,
-                deepcopy(payload),
-            )
+        set_priority_response_cache(self, cache_key, payload)
 
     def _load_watchlist_symbols(self, db: Session) -> set[str]:
         return set(db.execute(select(Watchlist.symbol)).scalars())
@@ -235,18 +166,15 @@ class LowBuyPriorityBoardMixin(LowBuyPriorityScoringMixin):
         candidates: list[LowBuyCandidateOut],
         performance_cache: dict[tuple[str, str, int], LowBuyStrategyPerformanceOut | None],
     ) -> None:
-        for candidate in candidates:
-            if candidate.symbol in tracked_symbols or candidate.buy_signal_state == "avoid":
-                continue
-            strategy_key = candidate.strategy_key
-            row = merged_candidates.setdefault(candidate.symbol, PriorityCandidate(symbol=candidate.symbol))
-            hit = self._build_strategy_hit(
-                db=db,
-                candidate=candidate,
-                latest_trade_date=latest_trade_date,
-                performance_cache=performance_cache,
-            )
-            self._upsert_strategy_hit(row=row, hit=hit, strategy_key=strategy_key)
+        collect_priority_candidates(
+            builder=self,
+            db=db,
+            merged_candidates=merged_candidates,
+            tracked_symbols=tracked_symbols,
+            latest_trade_date=latest_trade_date,
+            candidates=candidates,
+            performance_cache=performance_cache,
+        )
 
     def _upsert_strategy_hit(
         self,
@@ -254,16 +182,7 @@ class LowBuyPriorityBoardMixin(LowBuyPriorityScoringMixin):
         hit: StrategyHit,
         strategy_key: str,
     ) -> None:
-        for index, existing in enumerate(row.hits):
-            if existing.strategy_key != strategy_key:
-                continue
-            if self._single_strategy_rank(hit.candidate, hit.strategy_weight_score + hit.context_bonus) > self._single_strategy_rank(
-                existing.candidate,
-                existing.strategy_weight_score + existing.context_bonus,
-            ):
-                row.hits[index] = hit
-            return
-        row.hits.append(hit)
+        upsert_strategy_hit(builder=self, row=row, hit=hit, strategy_key=strategy_key)
 
     def _build_strategy_hit(
         self,
@@ -272,36 +191,12 @@ class LowBuyPriorityBoardMixin(LowBuyPriorityScoringMixin):
         latest_trade_date: str,
         performance_cache: dict[tuple[str, str, int], LowBuyStrategyPerformanceOut | None],
     ) -> StrategyHit:
-        base_performance = self._load_cached_strategy_performance(
+        return build_strategy_hit(
+            builder=self,
             db=db,
-            strategy_key=candidate.strategy_key,
+            candidate=candidate,
             latest_trade_date=latest_trade_date,
-            cache=performance_cache,
-            lookback_days=PERFORMANCE_LOOKBACK_DAYS,
-            build_if_missing=False,
-        )
-        recent_performance = self._load_cached_strategy_performance(
-            db=db,
-            strategy_key=candidate.strategy_key,
-            latest_trade_date=latest_trade_date,
-            cache=performance_cache,
-            lookback_days=RECENT_PERFORMANCE_LOOKBACK_DAYS,
-            build_if_missing=False,
-        )
-        strategy_weight_score = self._strategy_weight_score(base_performance, recent_performance)
-        context_bonus = self._strategy_context_bonus(candidate, base_performance, recent_performance)
-        adjusted_candidate = self._apply_priority_position_adjustment(
-            candidate,
-            base_performance,
-        )
-        return StrategyHit(
-            strategy_key=candidate.strategy_key,
-            strategy_title=candidate.strategy_title,
-            family_key=resolve_strategy_family(candidate.strategy_key),
-            candidate=adjusted_candidate,
-            strategy_weight_score=strategy_weight_score,
-            context_bonus=context_bonus,
-            performance=base_performance,
+            performance_cache=performance_cache,
         )
 
     def _apply_priority_position_adjustment(
@@ -347,38 +242,7 @@ class LowBuyPriorityBoardMixin(LowBuyPriorityScoringMixin):
         return cache[cache_key]
 
     def _refresh_priority_candidates(self, rows: list[PriorityCandidate]) -> list[PriorityCandidate]:
-        symbols = [row.symbol for row in rows]
-        quote_map = self.market_data.get_quotes_batch(
-            symbols,
-            force_refresh=False,
-            allow_slow_fallback=False,
-        )
-        intraday_bars_by_symbol = self._load_priority_intraday_bars(rows, quote_map)
-        refreshed_rows: list[PriorityCandidate] = []
-        for row in rows:
-            quote = quote_map.get(row.symbol)
-            if not quote:
-                refreshed_rows.append(row)
-                continue
-            refreshed_hits = [
-                StrategyHit(
-                    strategy_key=hit.strategy_key,
-                    strategy_title=hit.strategy_title,
-                    family_key=hit.family_key,
-                    candidate=self._refresh_buy_signal(
-                        hit.candidate,
-                        quote=quote,
-                        intraday_bars=intraday_bars_by_symbol.get(row.symbol),
-                        require_intraday_structure=True,
-                    ),
-                    strategy_weight_score=hit.strategy_weight_score,
-                    context_bonus=hit.context_bonus,
-                    performance=hit.performance,
-                )
-                for hit in row.hits
-            ]
-            refreshed_rows.append(PriorityCandidate(symbol=row.symbol, hits=refreshed_hits))
-        return refreshed_rows
+        return refresh_priority_candidates(builder=self, rows=rows)
 
     def _load_priority_intraday_bars(
         self,
@@ -387,46 +251,18 @@ class LowBuyPriorityBoardMixin(LowBuyPriorityScoringMixin):
         *,
         max_symbols: int = LOW_BUY_THRESHOLDS.MAX_SYMBOLS_QUOTE_REFRESH,
     ) -> dict[str, list]:
-        ranked_symbols: list[tuple[tuple[int, float, float], str]] = []
-        for row in rows:
-            quote = quote_map.get(row.symbol)
-            if quote is None or not self._priority_needs_intraday_confirmation(row, quote):
-                continue
-            ranked_symbols.append((self._priority_intraday_rank(row, quote), row.symbol))
-        ranked_symbols.sort()
-        eligible_symbols = [symbol for _, symbol in ranked_symbols[:max_symbols]]
-        return self.market_data.get_intraday_bars_batch(
-            symbols=eligible_symbols,
-            period="1m",
-            limit=30,
-            max_workers=8,
+        return load_priority_intraday_bars(
+            builder=self,
+            rows=rows,
+            quote_map=quote_map,
+            max_symbols=max_symbols,
         )
 
     def _priority_needs_intraday_confirmation(self, row: PriorityCandidate, quote: object) -> bool:
-        latest_price = float(getattr(quote, "last_price", 0.0) or 0.0)
-        if latest_price <= 0:
-            return False
-        for hit in row.hits:
-            candidate = hit.candidate
-            if latest_price <= candidate.stop_loss * 1.003:
-                continue
-            if latest_price <= candidate.entry_zone_high * 1.012:
-                return True
-        return False
+        return priority_needs_intraday_confirmation(row, quote)
 
     def _priority_intraday_rank(self, row: PriorityCandidate, quote: object) -> tuple[int, float, float]:
-        latest_price = float(getattr(quote, "last_price", 0.0) or 0.0)
-        best_state_rank = 9
-        best_distance = 99.0
-        best_score = 0.0
-        state_rank = {"buy_now": 0, "soft_buy_now": 1, "near_entry": 2, "watch": 3}
-        for hit in row.hits:
-            candidate = hit.candidate
-            best_state_rank = min(best_state_rank, state_rank.get(candidate.buy_signal_state, 4))
-            distance = self._distance_to_entry_zone_pct(candidate, latest_price)
-            best_distance = min(best_distance, distance)
-            best_score = max(best_score, float(candidate.score or 0.0))
-        return (best_state_rank, best_distance, -best_score)
+        return priority_intraday_rank(builder=self, row=row, quote=quote)
 
     def _build_priority_items(
         self,
@@ -446,46 +282,18 @@ class LowBuyPriorityBoardMixin(LowBuyPriorityScoringMixin):
         rows: list[PriorityCandidate],
         latest_trade_date: str,
     ) -> list[PriorityCandidate]:
-        candidates = [hit.candidate for row in rows for hit in row.hits]
-        enriched = attach_recommendation_durations(
+        return attach_priority_recommendation_durations(
             db=db,
-            candidates=candidates,
+            rows=rows,
             latest_trade_date=latest_trade_date,
         )
-        enriched_by_key = {(candidate.strategy_key, candidate.symbol): candidate for candidate in enriched}
-        result: list[PriorityCandidate] = []
-        for row in rows:
-            result.append(
-                PriorityCandidate(
-                    symbol=row.symbol,
-                    hits=[
-                        StrategyHit(
-                            strategy_key=hit.strategy_key,
-                            strategy_title=hit.strategy_title,
-                            family_key=hit.family_key,
-                            candidate=enriched_by_key.get((hit.strategy_key, hit.candidate.symbol), hit.candidate),
-                            strategy_weight_score=hit.strategy_weight_score,
-                            context_bonus=hit.context_bonus,
-                            performance=hit.performance,
-                        )
-                        for hit in row.hits
-                    ],
-                )
-            )
-        return result
 
     def _display_strategy_titles(self, hits: list[StrategyHit]) -> list[str]:
-        titles_by_family: dict[str, str] = {}
-        for hit in self._ordered_hits_for_aggregation(hits):
-            family_key = hit.family_key or hit.strategy_key
-            if family_key in titles_by_family:
-                continue
-            titles_by_family[family_key] = hit.strategy_title
-        return list(titles_by_family.values())
+        return display_strategy_titles(builder=self, hits=hits)
 
     @staticmethod
     def _recommendation_days_by_title(hits: list[StrategyHit]) -> dict[str, int]:
-        return recommendation_days_by_title(hits)
+        return recommendation_days_by_hit_title(hits)
 
     @staticmethod
     def _priority_recommendation_duration_text(
@@ -503,91 +311,7 @@ class LowBuyPriorityBoardMixin(LowBuyPriorityScoringMixin):
         return strategy_performance_text(performance)
 
     def _build_market_context(self, db: Session, latest_trade_date: str) -> PriorityMarketContext:
-        persisted_pool = self._load_persisted_pool(db=db, latest_trade_date=latest_trade_date) or {}
-        if not latest_trade_date and not persisted_pool:
-            return PriorityMarketContext(
-                market_state="low_volume_wait",
-                market_bonus=0.0,
-                market_state_label="缩量无主线",
-                market_state_description="当前还没有可用样本，先按中性偏防守环境处理。",
-                regime_confidence=0.0,
-                state_persistence_days=1,
-                transition_risk=0.0,
-                breadth_ready=False,
-                emotion_ready=False,
-                stock_up_ratio=0.0,
-                stock_median_change=0.0,
-                style_divergence=0.0,
-                hot_turnover=0.0,
-                hot_overlap_ratio=0.0,
-                limit_down_count=None,
-                limit_up_count=0,
-                board_height=0,
-                previous_board_height=0,
-                promotion_ratio=0.0,
-                broken_board_ratio=0.0,
-                promotion_break_gap=0.0,
-                promotion_break_pressure=0.0,
-                high_flyer_retreat_ratio=0.0,
-                high_flyer_gap_speed=0.0,
-                distribution_pressure=0.0,
-                hot_industries=[],
-                hot_industry_source="unavailable",
-                hot_industry_source_text="热点来源：暂无有效归因",
-                mainline_lifecycle_state="unknown",
-                mainline_lifecycle_text="主线阶段：热点归因不足",
-                industry_ranks={},
-                market_state_strength=0.0,
-            )
-        hot_industries, hot_industry_source, hot_industry_source_text = self._resolve_hot_industries_cached(
-            db=db,
-            latest_trade_date=latest_trade_date,
-            pooled_candidates=persisted_pool,
-        )
-        regime = self.market_data.get_market_regime_fast(
-            latest_trade_date=latest_trade_date,
-            hot_industries=hot_industries,
-            hot_industry_source=hot_industry_source,
-            hot_industry_source_text=hot_industry_source_text,
-            recent_hot_sequences=self._load_recent_hot_industry_sequences(
-                db=db,
-                latest_trade_date=latest_trade_date,
-            ),
-        )
-        return PriorityMarketContext(
-            market_state=regime.state,
-            market_bonus=regime.ranking_bonus,
-            market_state_strength=regime.state_strength,
-            regime_confidence=regime.regime_confidence,
-            state_persistence_days=regime.state_persistence_days,
-            transition_risk=regime.transition_risk,
-            market_state_label=regime.label,
-            market_state_description=regime.description,
-            breadth_ready=regime.breadth_ready,
-            emotion_ready=regime.emotion_ready,
-            stock_up_ratio=regime.stock_up_ratio,
-            stock_median_change=regime.stock_median_change,
-            style_divergence=regime.style_divergence,
-            hot_turnover=regime.hot_turnover,
-            hot_overlap_ratio=regime.hot_overlap_ratio,
-            limit_down_count=regime.limit_down_count,
-            limit_up_count=regime.limit_up_count,
-            board_height=regime.board_height,
-            previous_board_height=regime.previous_board_height,
-            promotion_ratio=regime.promotion_ratio,
-            broken_board_ratio=regime.broken_board_ratio,
-            promotion_break_gap=regime.promotion_break_gap,
-            promotion_break_pressure=regime.promotion_break_pressure,
-            high_flyer_retreat_ratio=regime.high_flyer_retreat_ratio,
-            high_flyer_gap_speed=regime.high_flyer_gap_speed,
-            distribution_pressure=regime.distribution_pressure,
-            hot_industries=regime.hot_industries,
-            hot_industry_source=regime.hot_industry_source,
-            hot_industry_source_text=regime.hot_industry_source_text,
-            mainline_lifecycle_state=regime.mainline_lifecycle_state,
-            mainline_lifecycle_text=regime.mainline_lifecycle_text,
-            industry_ranks=self._rank_hot_industries(regime.hot_industries),
-        )
+        return build_market_context(builder=self, db=db, latest_trade_date=latest_trade_date)
 
     def _primary_candidates_for_portfolio(
         self,

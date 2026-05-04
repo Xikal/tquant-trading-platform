@@ -1,0 +1,186 @@
+{
+  "generated_at": "2026-05-05T00:07:21",
+  "project": "TQuant 维斯量化平台",
+  "symbols": [
+    "300590",
+    "000070",
+    "601016",
+    "000811",
+    "600499",
+    "603637",
+    "603637",
+    "002448",
+    "300890",
+    "603967"
+  ],
+  "steps": [
+    {
+      "name": "hermes_workflow",
+      "status": "ok",
+      "ok": true,
+      "message": "Hermes CLI workflow 已完成。",
+      "duration_ms": 30912,
+      "data": {
+        "executable": "/Users/j/.local/bin/hermes",
+        "symbols": [
+          "300590",
+          "000070",
+          "601016",
+          "000811",
+          "600499",
+          "603637",
+          "603637",
+          "002448",
+          "300890",
+          "603967"
+        ],
+        "stdout": "{\n  \"ok\": true,\n  \"health_status\": {\n    \"status\": \"ok\",\n    \"app\": \"维斯量化交易平台\",\n    \"agent_layer\": \"enabled\",\n    \"checks\": {\n      \"database\": true,\n      \"frontend_dist\": true,\n      \"watchlist_signals\": true,\n      \"priority_board\": true\n    },\n    \"errors\": []\n  },\n  \"total_candidates\": 3,\n  \"symbols\": [\n    {\n      \"rank\": 1,\n      \"symbol\": \"300590\",\n      \"name\": \"移为通信\",\n      \"latest_price\": 14.67,\n      \"change_pct\": -2.59,\n      \"priority_score\": 171.24,\n      \"buy_signal_text\": \"继续观察\",\n      \"strategy_titles\": [\"首板回调\"],\n      \"entry_zone\": \"14.149-14.277\",\n      \"stop_loss\": 12.786,\n      \"data_quality\": \"partial\",\n      \"summary\": \"只记录，不追高，不提前买。\"\n    },\n    {\n      \"rank\": 2,\n      \"symbol\": \"603308\",\n      \"name\": \"应流股份\",\n      \"latest_price\": 75.58,\n      \"change_pct\": -1.09,\n      \"priority_score\": 167.84,\n      \"buy_signal_text\": \"继续观察\",\n      \"strategy_titles\": [\"量能低吸\"],\n      \"entry_zone\": \"73.883-74.926\",\n      \"stop_loss\": 73.585,\n      \"data_quality\": \"ok\",\n      \"summary\": \"只记录，不追高，不提前买。\"\n    },\n    {\n      \"rank\": 3,\n      \"symbol\": \"301603\",\n      \"name\": \"乔锋智能\",\n      \"latest_price\": 108.85,\n      \"change_pct\": -3.46,\n      \"priority_score\": 151.21,\n      \"buy_signal_text\": \"继续观察\",\n      \"strategy_titles\": [\"量能低吸\"],\n      \"entry_zone\": \"98.633-100.025\",\n      \"stop_loss\": 98.235,\n      \"data_quality\": \"ok\",\n      \"summary\": \"只记录，不追高，不提前买。\"\n    }\n  ],\n  \"market_state_text\": \"轮动过快。当前环境对低吸偏谨慎。热点：半导体/通信设备/通用设备。方向偏好：观望。\",\n  \"risk_notes\": [\n    \"市场处于 fast_rotation 状态，短线轮动过快，追高风险大\",\n    \"优先榜仅 3 只候选，且全部处于\\\"继续观察\\\"阶段，无立即可执行信号\",\n    \"300590 数据质量 partial（量能统计异常），需复核日线\",\n    \"市场广度与情绪数据缺失，信号置信度受限\",\n    \"参考标的 000070/601016/000811/600499/603637/002448/300890/603967 均未进入优先榜，说明当前无策略覆盖或未触发信号\"\n  ],\n  \"next_actions\": [\n    \"继续观察优先榜 3 只标的，等待进入 entry_zone 后再决策\",\n    \"补齐市场广度和情绪数据以提升信号质量\",\n    \"复核 300590 量能统计异常问题\",\n    \"参考标的列表中 8 只未上榜股票可纳入自选跟踪，等待后续信号触发\"\n  ]\n}\n",
+        "stderr": "",
+        "returncode": 0
+      }
+    },
+    {
+      "name": "feishu_daily_push",
+      "status": "ok",
+      "ok": true,
+      "message": "飞书日报已推送。",
+      "duration_ms": 32013,
+      "data": {
+        "ok": true,
+        "channel": "feishu",
+        "trade_date": "2026-05-05",
+        "generated_at": "2026-05-05 00:06:42",
+        "sent": true,
+        "should_notify": true,
+        "duplicate": false,
+        "notification_count": 1,
+        "message": "notification sent via hermes",
+        "markdown": "# TQuant 每日决策报告\n## 2026-05-05\n\n### 市场概览（市场状态分析师）\n- 市场状态：轮动过快（置信度 100%）\n- 涨停 0 家 | 跌停 0 家 | 炸板率 0%\n- 建议仓位：15% - 40%\n- 风险等级：medium\n\n### 板块主线（板块热点分析师）\n- 1. 能源金属 | 持续性 82 | 核心标的 待确认\n- 2. 半导体设备 | 持续性 75 | 核心标的 待确认\n- 3. 通信设备 | 持续性 71 | 核心标的 300590\n\n### 持仓做T信号\n- 暂无持仓做T信号。\n\n### 选股宝典 TOP 10\n- 1. 300590 首板回调 | 157.02 | 继续观察 | 三方一致 False\n\n### 风控检查（策略验证员）\n- 风险等级：clear，总计划仓位 0.0%。\n\n### 操作检查清单（组合经理）\n- [ ] 市场状态是否允许开仓？\n- [ ] 目标标的是否在主线板块？\n- [ ] 三方分析师结论是否一致？\n- [ ] 价格是否已进入买点区？\n- [ ] 单票仓位是否 <= 20%？\n- [ ] 止损位是否已设定？\n- [ ] 是否为 T+1 买入日（卖出需检查可用股数）？"
+      }
+    },
+    {
+      "name": "qlib_research_report",
+      "status": "ok",
+      "ok": true,
+      "message": "qlib 标准指标报告已生成。",
+      "duration_ms": 90,
+      "data": {
+        "qlib": {
+          "available": true,
+          "message": "qlib 可用，可按需初始化离线研究环境。"
+        },
+        "dataset_path": "/Users/j/Documents/gupiao/research/reports/datasets/agent_strategy_samples.csv",
+        "strategy_report_path": "/Users/j/Documents/gupiao/research/reports/agent_strategy_validation.json",
+        "benchmark_report_path": "/Users/j/Documents/gupiao/research/reports/agent_benchmark.json",
+        "sample_count": 2,
+        "strategies": [
+          "core_midcap_vwap_ma5_retrace"
+        ],
+        "columns": [
+          "strategy_key",
+          "symbol",
+          "name",
+          "trade_date",
+          "buy_signal_state",
+          "factor_score",
+          "return",
+          "return_1d",
+          "return_2d",
+          "return_3d",
+          "return_4d",
+          "return_5d",
+          "forward_return_1d",
+          "effective_return_horizon",
+          "close_price",
+          "priority_score",
+          "market_state",
+          "industry"
+        ]
+      }
+    },
+    {
+      "name": "openbb_degrade_check",
+      "status": "ok",
+      "ok": true,
+      "message": "OpenBB 可选数据源已完成真实探测与降级验收。",
+      "duration_ms": 7894,
+      "data": {
+        "adapter_status": {
+          "optional": true,
+          "configured": false,
+          "source": "openbb_adapter",
+          "timeout_seconds": 3.0,
+          "capabilities": [
+            "quote",
+            "macro_status"
+          ],
+          "core_a_share_impact": "none",
+          "message": "OpenBB/海外宏观数据为可选增强源，失败不影响 A 股核心链路。"
+        },
+        "quotes": [
+          {
+            "symbol": "AAPL",
+            "last_price": 276.245,
+            "change_pct": -1.4291,
+            "source": "openbb_adapter",
+            "available": true,
+            "message": "ok"
+          },
+          {
+            "symbol": "MSFT",
+            "last_price": 414.61,
+            "change_pct": 0.1002,
+            "source": "openbb_adapter",
+            "available": true,
+            "message": "ok"
+          },
+          {
+            "symbol": "SPY",
+            "last_price": 716.95,
+            "change_pct": -0.5134,
+            "source": "openbb_adapter",
+            "available": true,
+            "message": "ok"
+          }
+        ],
+        "macro": {
+          "status": "ok",
+          "optional": true,
+          "configured": false,
+          "source": "fred_csv",
+          "timeout_seconds": 3.0,
+          "indicators": [
+            {
+              "code": "CPIAUCSL",
+              "available": true,
+              "latest_date": "2026-03-01",
+              "latest_value": 330.293,
+              "message": "ok"
+            },
+            {
+              "code": "DGS10",
+              "available": true,
+              "latest_date": "2026-04-30",
+              "latest_value": 4.4,
+              "message": "ok"
+            },
+            {
+              "code": "GDP",
+              "available": true,
+              "latest_date": "2026-01-01",
+              "latest_value": 31856.257,
+              "message": "ok"
+            }
+          ],
+          "message": "宏观数据为可选增强源；失败时返回空指标，不影响 A 股核心链路。"
+        },
+        "degrade_rule": "OpenBB 失败只标记 degraded，不阻断 A 股核心策略链路。"
+      }
+    }
+  ],
+  "overall_status": "ok",
+  "notes": [
+    "Hermes/飞书/OpenBB 依赖外部配置；缺配置会返回 not_configured，不影响核心 A 股链路。",
+    "qlib 报告使用本地实盘物化信号和 daily_bar_snapshots 计算，不调用外部行情源。"
+  ]
+}

@@ -83,6 +83,7 @@ class AgentContextService:
                 rank=index + 1,
                 symbol=item.symbol,
                 name=item.name,
+                sector_name=item.sector_name or "",
                 latest_price=item.latest_price,
                 change_pct=item.change_pct,
                 data_quality=item.data_quality,

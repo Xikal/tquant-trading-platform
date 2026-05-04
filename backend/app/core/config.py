@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 import os
+import json
 from functools import lru_cache
 from pathlib import Path
-from typing import Annotated, List, Union
+from typing import Annotated, Any, List, Union
 
 from dotenv import dotenv_values
 from pydantic import Field, field_validator
@@ -51,6 +52,7 @@ class AppSettings(BaseSettings):
     agent_provider: str = "none"
     agent_api_base: str = "http://127.0.0.1:18090/api"
     agent_api_token: str = ""
+    agent_tokens: dict[str, str] = Field(default_factory=dict)
     agent_mcp_server_url: str = ""
     agent_http_gateway_url: str = ""
     agent_timeout_seconds: int = 10
@@ -79,6 +81,8 @@ class AppSettings(BaseSettings):
     crewai_api_key: str = ""
     pydantic_ai_api_url: str = ""
     pydantic_ai_api_key: str = ""
+    openbb_api_url: str = ""
+    openbb_api_key: str = ""
     paper_auto_trading_enabled: bool = True
     paper_auto_trading_interval: int = 120
     paper_auto_trading_max_orders: int = 5
@@ -123,6 +127,27 @@ class AppSettings(BaseSettings):
         if isinstance(value, str):
             return [item.strip() for item in value.split(",") if item.strip()]
         return []
+
+    @field_validator("agent_tokens", mode="before")
+    @classmethod
+    def parse_agent_tokens(cls, value: Any) -> dict[str, str]:
+        if isinstance(value, dict):
+            return {str(key).strip(): str(item).strip() for key, item in value.items() if str(key).strip()}
+        if isinstance(value, str):
+            cleaned = value.strip()
+            if not cleaned:
+                return {}
+            try:
+                parsed = json.loads(cleaned)
+            except json.JSONDecodeError:
+                return {}
+            if isinstance(parsed, dict):
+                return {
+                    str(key).strip(): str(item).strip()
+                    for key, item in parsed.items()
+                    if str(key).strip()
+                }
+        return {}
 
 
 @lru_cache(maxsize=1)

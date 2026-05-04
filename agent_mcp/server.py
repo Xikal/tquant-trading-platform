@@ -76,7 +76,6 @@ def _handle_legacy_request(request: dict[str, Any]) -> dict[str, Any]:
 
 
 def _mcp_tools() -> list[dict[str, Any]]:
-    policy = AgentPolicy()
     return [
         {
             "name": tool.name,
@@ -84,7 +83,7 @@ def _mcp_tools() -> list[dict[str, Any]]:
             "inputSchema": tool.input_schema or {"type": "object", "properties": {}},
         }
         for tool in list_tool_definitions()
-        if tool.enabled and policy.check_tool_allowed(tool) is None
+        if tool.enabled and tool.permission != "dangerous"
     ]
 
 

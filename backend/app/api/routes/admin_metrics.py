@@ -2,7 +2,9 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends
 
+from app.agent_tools.audit import agent_audit_metrics
 from app.core.admin_auth import require_admin_auth
+from app.core.database import get_db
 from app.core.task_manager import task_manager
 from app.core.timing import request_timing_snapshot
 
@@ -10,8 +12,10 @@ router = APIRouter(prefix="/admin")
 
 
 @router.get("/metrics")
-def get_admin_metrics(_: None = Depends(require_admin_auth)) -> dict:
-    return request_timing_snapshot()
+def get_admin_metrics(_: None = Depends(require_admin_auth), db=Depends(get_db)) -> dict:
+    snapshot = request_timing_snapshot()
+    snapshot["agent_tools"] = agent_audit_metrics(db)
+    return snapshot
 
 
 @router.get("/tasks")

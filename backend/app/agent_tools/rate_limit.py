@@ -18,6 +18,17 @@ _DEFAULT_LIMITS_PER_MINUTE: dict[str, int] = {
     "send_test_notification": 3,
     "send_signal_notification": 10,
     "scan_priority_board_notifications": 4,
+    "backtest_strategy": 4,
+    "compare_strategies": 4,
+    "create_paper_order": 6,
+    "get_market_sentiment": 20,
+    "get_sector_heatmap": 20,
+    "get_position_t_signal": 12,
+    "get_market_state_analysis": 20,
+    "get_sector_mainline_analysis": 20,
+    "cross_validate_strategy_context": 10,
+    "check_agent_risk": 20,
+    "get_comprehensive_analysis": 8,
 }
 
 

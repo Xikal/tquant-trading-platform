@@ -1,0 +1,32 @@
+{
+  "status": "ok",
+  "generated_at": "2026-05-04T16:07:13.713740+00:00",
+  "source_path": "/Users/j/Documents/gupiao/research/reports/datasets/agent_strategy_samples.csv",
+  "qlib": {
+    "available": true,
+    "message": "qlib 可用，可按需初始化离线研究环境。"
+  },
+  "reports": [
+    {
+      "strategy_key": "core_midcap_vwap_ma5_retrace",
+      "status": "ok",
+      "sample_count": 2,
+      "win_rate": 0.0,
+      "win_rate_3d": 0.0,
+      "avg_return_3d": -0.027644,
+      "sharpe": -1.624111,
+      "max_drawdown": 0.044665,
+      "max_drawdown_5d": 0.044665,
+      "ic": -1.0,
+      "ir": -1.0
+    }
+  ],
+  "standard_fields": [
+    "ic",
+    "ir",
+    "sharpe",
+    "max_drawdown",
+    "win_rate",
+    "sample_count"
+  ]
+}

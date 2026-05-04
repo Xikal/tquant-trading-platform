@@ -1,0 +1,109 @@
+research_workflow:
+  name: "tquant_daily_research"
+  description: "Hermes multi-agent research flow backed by TQuant Agent Safe API tools."
+  schedule: "0 15 * * 1-5"
+  timezone: "Asia/Shanghai"
+  auth:
+    type: "bearer"
+    header: "Authorization"
+    token_env: "TQUANT_AGENT_API_TOKEN"
+  safety:
+    read_only_contexts: true
+    model_usage_for_push: false
+    llm_may_not_modify_strategy_params: true
+    paper_orders_require_explicit_user_confirmation: true
+    allowed_base_path: "/api/agent"
+    notification_push_owner: "TQuant AgentDailyWorkflowService"
+  inputs:
+    symbols:
+      type: "list[string]"
+      max_items: 30
+      default_source: "priority_board_top_10"
+  phases:
+    - phase: "parallel_analysis"
+      parallel: true
+      agents:
+        - name: "market_state_analyst"
+          prompt_template: "docs/agent-role-prompts.md#market-state-analyst"
+          tools:
+            - tool_name: "get_market_state_analysis"
+              endpoint: "GET /api/agent/context/market-state-analysis"
+            - tool_name: "get_priority_board"
+              endpoint: "GET /api/agent/context/priority-board"
+            - tool_name: "get_agent_health"
+              endpoint: "GET /api/agent/health"
+        - name: "sector_heat_analyst"
+          prompt_template: "docs/agent-role-prompts.md#sector-heat-analyst"
+          tools:
+            - tool_name: "get_sector_mainline_analysis"
+              endpoint: "GET /api/agent/context/sector-mainline-analysis"
+            - tool_name: "get_priority_board"
+              endpoint: "GET /api/agent/context/priority-board"
+        - name: "technical_analyst"
+          prompt_template: "docs/agent-role-prompts.md#technical-analyst"
+          tools:
+            - tool_name: "analyze_stock"
+              endpoint: "POST /api/agent/context/analysis"
+            - tool_name: "get_watchlist_context"
+              endpoint: "GET /api/agent/context/watchlist"
+            - tool_name: "get_priority_board"
+              endpoint: "GET /api/agent/context/priority-board"
+    - phase: "cross_validation"
+      agent:
+        name: "strategy_validator"
+        prompt_template: "docs/agent-role-prompts.md#strategy-validator"
+        tools:
+          - tool_name: "cross_validate_strategy_context"
+            endpoint: "POST /api/agent/context/strategy-cross-validation"
+          - tool_name: "check_agent_risk"
+            endpoint: "POST /api/agent/context/risk-check"
+      depends_on:
+        - "parallel_analysis"
+    - phase: "decision"
+      agent:
+        name: "portfolio_manager"
+        prompt_template: "docs/agent-role-prompts.md#portfolio-manager"
+        tools:
+          - tool_name: "get_comprehensive_analysis"
+            endpoint: "POST /api/agent/context/comprehensive-analysis"
+          - tool_name: "recommend_orders"
+            endpoint: "POST /api/agent/context/recommend-orders"
+          - tool_name: "get_paper_portfolio"
+            endpoint: "GET /api/agent/context/paper-portfolio"
+      depends_on:
+        - "cross_validation"
+  output:
+    format: "markdown"
+    canonical_report_tool: "get_daily_report"
+    canonical_report_endpoint: "GET /api/agent/reports/daily"
+    push_channels:
+      - "feishu"
+    required_sections:
+      - "市场概览"
+      - "板块主线"
+      - "持仓做T信号"
+      - "选股宝典 TOP 10"
+      - "风控检查"
+      - "操作检查清单"
+  push_closure:
+    service: "app.services.agent_daily_workflow_service.AgentDailyWorkflowService.push_daily_report"
+    background_task: "agent_daily_report_push"
+    manual_admin_endpoint: "POST /api/agent/reports/daily/push"
+    report_source:
+      tool_name: "get_daily_report"
+      service_call: "AgentReportService.daily_report(db)"
+    notification_adapter:
+      service_call: "AgentNotificationService.send_test(AgentNotificationTestRequest(channel='feishu', message=markdown))"
+      channel: "feishu"
+    idempotency:
+      table: "notification_events"
+      event_type: "daily_report"
+      scope_key: "global"
+      unique_key: ["scope_key", "channel", "event_type", "symbol", "strategy_key"]
+      symbol_value: "daily_report"
+      strategy_key_value: "{trade_date}"
+      rule: "同一交易日同一渠道最多发送一次。"
+    safe_defaults:
+      no_webhook_url: "不发送且不写入已发送账本，便于配置 webhook 后重新触发。"
+      unsupported_channel: "返回失败，不降级到其他通道。"
+      llm_invocation: "forbidden"

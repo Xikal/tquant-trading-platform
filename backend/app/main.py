@@ -9,12 +9,14 @@ from pathlib import Path
 import tempfile
 import threading
 import time
+from uuid import uuid4
 
 from fastapi import Depends, FastAPI, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse
 from sqlalchemy import delete, select
 
+from app.agent_tools.audit import agent_audit_metrics
 from app.api.router import api_router
 from app.core.admin_auth import require_admin_auth
 from app.core.config import get_settings
@@ -34,6 +36,8 @@ from app.services.paper.archive import PaperArchiveService
 from app.services.paper.scheduler import build_auto_trader_config, start_auto_trader, stop_auto_trader
 from app.services.paper.validation_scheduler import MonthlyStrategyValidationJob
 from app.services.auth_service import ensure_auth_secret_configured
+from app.services.agent_daily_workflow_service import AgentDailyWorkflowService
+from app.services.agent_notification_service import AgentNotificationService
 from app.services.agent_signal_scan_service import AgentSignalScanService
 from app.services.watchlist_signal_service import WatchlistSignalService
 
@@ -221,16 +225,34 @@ def _refresh_low_buy_strategy_governance_once() -> None:
 def _scan_priority_notifications_once() -> None:
     if not settings.notification_signal_scan_enabled:
         return
-    if not settings.notification_feishu_webhook_url.strip():
+    notifier = AgentNotificationService()
+    if not notifier.supports_channel("feishu"):
         return
     with SessionLocal() as db:
-        result = AgentSignalScanService().scan_priority_board(db, limit=12, channel="feishu")
+        result = AgentSignalScanService(notifier).scan_priority_board(db, limit=12, channel="feishu")
         logger.info(
             "优先级榜通知扫描完成: scanned=%s sent=%s suppressed=%s upgraded=%s",
             result.scanned,
             result.sent,
             result.suppressed,
             result.upgraded,
+        )
+
+
+def _push_agent_daily_report_once() -> None:
+    if not _agent_daily_report_push_due():
+        return
+    notifier = AgentNotificationService()
+    if not notifier.supports_channel("feishu"):
+        return
+    with SessionLocal() as db:
+        result = AgentDailyWorkflowService(notification_service=notifier).push_daily_report(db, channel="feishu")
+        logger.info(
+            "Agent 日报推送检查完成: trade_date=%s sent=%s duplicate=%s message=%s",
+            result.trade_date,
+            result.sent,
+            result.duplicate,
+            result.message,
         )
 
 
@@ -242,6 +264,13 @@ def _paper_archive_due() -> bool:
         logger.warning("PAPER_PERF_ARCHIVE_TIME 配置无效: %s", settings.paper_perf_archive_time)
         archive_time = dt_time(hour=15, minute=5)
     return datetime.now().time() >= archive_time
+
+
+def _agent_daily_report_push_due() -> bool:
+    now = datetime.now()
+    if now.weekday() >= 5:
+        return False
+    return now.time() >= dt_time(hour=15, minute=10)
 
 
 def _cleanup_stale_low_buy_snapshots() -> None:
@@ -388,6 +417,12 @@ async def lifespan(_: FastAPI):
                 interval_seconds=max(settings.notification_signal_scan_interval_seconds, 30),
                 initial_delay_seconds=120,
             )
+        task_manager.register_loop(
+            name="agent_daily_report_push",
+            target=_push_agent_daily_report_once,
+            interval_seconds=300,
+            initial_delay_seconds=150,
+        )
         if settings.paper_auto_trading_enabled:
             logger.info("启动模拟盘自动交易")
             start_auto_trader(build_auto_trader_config(settings))
@@ -424,11 +459,14 @@ async def enforce_request_body_limit(request, call_next):
 
 @app.middleware("http")
 async def record_http_timing(request, call_next):
+    trace_id = request.headers.get("x-request-id") or f"req_{uuid4().hex}"
+    request.state.trace_id = trace_id
     started = time.perf_counter()
     status_code = 500
     try:
         response = await call_next(request)
         status_code = response.status_code
+        response.headers["X-Request-ID"] = trace_id
         return response
     finally:
         duration_ms = int((time.perf_counter() - started) * 1000)
@@ -440,7 +478,8 @@ async def record_http_timing(request, call_next):
         )
         if duration_ms >= 3000:
             logger.warning(
-                "slow_http_request method=%s path=%s status=%s duration_ms=%s",
+                "slow_http_request trace_id=%s method=%s path=%s status=%s duration_ms=%s",
+                trace_id,
                 request.method,
                 request.url.path,
                 status_code,
@@ -453,6 +492,15 @@ def _content_length_exceeds_limit(raw_value: str) -> bool:
         return int(raw_value) > settings.max_request_body_bytes
     except (TypeError, ValueError):
         return False
+
+
+def _agent_audit_metrics_snapshot() -> dict[str, int]:
+    try:
+        with SessionLocal() as db:
+            return agent_audit_metrics(db)
+    except Exception:
+        logger.warning("agent audit metrics unavailable")
+        return {"calls_total": 0, "success_total": 0, "failure_total": 0}
 
 
 @app.get("/healthz", response_model=HealthResponse)
@@ -492,6 +540,7 @@ def readyz(response: Response):
 @app.get("/metrics", include_in_schema=False)
 def prometheus_metrics(_: None = Depends(require_admin_auth)) -> PlainTextResponse:
     snapshot = request_timing_snapshot()
+    agent_snapshot = _agent_audit_metrics_snapshot()
     lines = [
         "# HELP tquant_http_timing_samples Number of retained HTTP timing samples.",
         "# TYPE tquant_http_timing_samples gauge",
@@ -502,6 +551,15 @@ def prometheus_metrics(_: None = Depends(require_admin_auth)) -> PlainTextRespon
         "# HELP tquant_http_slow_requests Retained slow HTTP request count.",
         "# TYPE tquant_http_slow_requests gauge",
         f"tquant_http_slow_requests {snapshot.get('slow_count', 0)}",
+        "# HELP tquant_agent_tool_calls_total Agent tool calls recorded in the audit log.",
+        "# TYPE tquant_agent_tool_calls_total gauge",
+        f"tquant_agent_tool_calls_total {agent_snapshot.get('calls_total', 0)}",
+        "# HELP tquant_agent_tool_success_total Successful Agent tool calls recorded in the audit log.",
+        "# TYPE tquant_agent_tool_success_total gauge",
+        f"tquant_agent_tool_success_total {agent_snapshot.get('success_total', 0)}",
+        "# HELP tquant_agent_tool_failure_total Failed Agent tool calls recorded in the audit log.",
+        "# TYPE tquant_agent_tool_failure_total gauge",
+        f"tquant_agent_tool_failure_total {agent_snapshot.get('failure_total', 0)}",
     ]
     return PlainTextResponse("\n".join(lines) + "\n", media_type="text/plain; version=0.0.4")
 

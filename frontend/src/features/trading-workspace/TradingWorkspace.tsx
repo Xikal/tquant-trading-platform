@@ -1,4 +1,4 @@
-import { Suspense, lazy, useEffect, useState } from "react";
+import { lazy, useEffect, useState } from "react";
 import { appApi } from "../../api/appClient";
 import { clearAuthTokens, getAuthAccessToken } from "../../api/base";
 import { api } from "../../api/client";
@@ -6,12 +6,10 @@ import type { AiDecisionSupportResponse, AuthUser } from "../../types";
 import { LoginPage } from "./LoginPage";
 import { Topbar } from "./Topbar";
 import { AiInsightDialog, ErrorDialog, StatusStrip, StockDetailDialog } from "./WorkspaceComponents";
-import { MONITOR_REFRESH_INTERVAL_MS, PAGE_PATHS } from "./workspaceConstants";
-import { errorMessage, nullableNumber, parseNumber } from "./workspaceFormatters";
-import { pageFromLocation } from "./workspaceRoutes";
-import { activeLoadingKey, clearLoadingKeys, isLoading, setLoadingFlag, type LoadingState } from "./loadingState";
-import { PageErrorBoundary } from "./PageErrorBoundary";
-import type { AuthDraft, Page, StockCardView, WatchDraft } from "./workspaceTypes";
+import { MONITOR_REFRESH_INTERVAL_MS } from "./workspaceConstants";
+import { nullableNumber, parseNumber } from "./workspaceFormatters";
+import { isLoading } from "./loadingState";
+import type { AuthDraft, StockCardView, WatchDraft } from "./workspaceTypes";
 import { useAnalysisData } from "./useAnalysisData";
 import { useMonitorData } from "./useMonitorData";
 import { usePaperIntraday } from "./usePaperIntraday";
@@ -19,7 +17,10 @@ import { usePaperTrading } from "./usePaperTrading";
 import { usePlaybookData } from "./usePlaybookData";
 import { useResearchData } from "./useResearchData";
 import { useSettingsData } from "./useSettingsData";
+import { useWorkspaceLoading } from "./useWorkspaceLoading";
+import { useWorkspaceNavigation } from "./useWorkspaceNavigation";
 import { useWorkspacePageProps } from "./useWorkspacePageProps";
+import { WorkspacePageContent } from "./WorkspacePageContent";
 
 const AnalysisPage = lazy(async () => ({ default: (await import("./AnalysisPage")).AnalysisPage }));
 const MonitorPage = lazy(async () => ({ default: (await import("./MonitorPage")).MonitorPage }));
@@ -29,26 +30,25 @@ const PlaybookPage = lazy(async () => ({ default: (await import("./PlaybookPage"
 const ResearchPage = lazy(async () => ({ default: (await import("./ResearchPage")).ResearchPage }));
 const SettingsPage = lazy(async () => ({ default: (await import("./SettingsPage")).SettingsPage }));
 
-const PAPER_LOADING_KEYS = [
-  "paper",
-  "paper-refresh",
-  "paper-quotes",
-  "paper-status",
-  "paper-order",
-  "paper-tags",
-];
-
 export function TradingWorkspace() {
   const [authReady, setAuthReady] = useState(false);
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
-  const [page, setPage] = useState<Page>(() => pageFromLocation());
+  const { page, navigatePage } = useWorkspaceNavigation();
   const [aiResult, setAiResult] = useState<AiDecisionSupportResponse | null>(null);
   const [aiDialogOpen, setAiDialogOpen] = useState(false);
-  const [loadingState, setLoadingState] = useState<LoadingState>({});
-  const loading = activeLoadingKey(loadingState);
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
   const [selectedStock, setSelectedStock] = useState<StockCardView | null>(null);
+  const {
+    loading,
+    loadingState,
+    setLoadingKey,
+    setPaperLoading,
+    withLoading,
+  } = useWorkspaceLoading({
+    onError: setError,
+    onAuthRequired: handleAuthRequired,
+  });
   const monitor = useMonitorData({
     withLoading,
     setError,
@@ -136,14 +136,6 @@ export function TradingWorkspace() {
   }, [notice]);
 
   useEffect(() => {
-    function handlePopState() {
-      setPage(pageFromLocation());
-    }
-    window.addEventListener("popstate", handlePopState);
-    return () => window.removeEventListener("popstate", handlePopState);
-  }, []);
-
-  useEffect(() => {
     if (!currentUser) {
       return;
     }
@@ -168,23 +160,6 @@ export function TradingWorkspace() {
     return () => window.clearInterval(timer);
   }, [currentUser, page]);
 
-  async function withLoading<T>(key: string, action: () => Promise<T>): Promise<T | undefined> {
-    try {
-      setLoadingKey(key, true);
-      setError("");
-      return await action();
-    } catch (err) {
-      const message = errorMessage(err);
-      setError(message);
-      if (isAuthErrorMessage(message)) {
-        handleAuthRequired();
-      }
-      return undefined;
-    } finally {
-      setLoadingKey(key, false);
-    }
-  }
-
   async function restoreSession() {
     try {
       setLoadingKey("auth-restore", true);
@@ -205,19 +180,6 @@ export function TradingWorkspace() {
       setLoadingKey("auth-restore", false);
       setAuthReady(true);
     }
-  }
-
-  function setLoadingKey(key: string, active: boolean) {
-    setLoadingState((current) => setLoadingFlag(current, key, active));
-  }
-
-  function setPaperLoading(key: string) {
-    setLoadingState((current) => {
-      if (!key) {
-        return clearLoadingKeys(current, PAPER_LOADING_KEYS);
-      }
-      return setLoadingFlag(current, key, true);
-    });
   }
 
   async function submitAuth(register: boolean) {
@@ -327,17 +289,6 @@ export function TradingWorkspace() {
     });
   }
 
-  function navigatePage(nextPage: Page) {
-    setPage(nextPage);
-    if (typeof window === "undefined") {
-      return;
-    }
-    const nextPath = PAGE_PATHS[nextPage];
-    if (window.location.pathname !== nextPath) {
-      window.history.pushState({}, "", nextPath);
-    }
-  }
-
   if (!authReady) {
     return (
       <div className="app auth-loading">
@@ -386,101 +337,27 @@ export function TradingWorkspace() {
             onClose={() => setAiDialogOpen(false)}
           />
         ) : null}
-        <PageErrorBoundary resetKey={page}>
-        <Suspense fallback={<div className="panel">页面模块加载中...</div>}>
-          {page === "monitor" && (
-            <MonitorPage {...monitorPageProps} />
-          )}
-          {page === "analysis" && (
-            <AnalysisPage
-              draft={analysis.draft}
-              setDraft={analysis.setDraft}
-              result={analysis.result}
-              loading={loading}
-              onRun={() => void analysis.runAnalysis()}
-            />
-          )}
-          {page === "playbook" && (
-            <PlaybookPage
-              strategy={playbookData.strategy}
-              setStrategy={playbookData.setStrategy}
-              playbook={playbookData.playbook}
-              loading={loading}
-              onRefresh={() => void playbookData.loadPlaybook(playbookData.strategy, true)}
-              onAnalyze={analysis.analyzeFromCard}
-              onSelect={setSelectedStock}
-            />
-          )}
-          {page === "research" && (
-            <ResearchPage
-              replays={research.replays}
-              priorityBoard={research.researchBoard}
-              lifecycleItems={research.tradeLifecycles}
-              draft={research.draft}
-              setDraft={research.setDraft}
-              result={research.backtestResult}
-              runs={research.backtestRuns}
-              executionBacktest={research.executionBacktest}
-              strategyValidation={research.strategyValidation}
-              loading={loading}
-              onRun={() => void research.runBacktest()}
-              onValidate={() => void research.runStrategyValidation()}
-              onRefresh={() => void research.loadResearch()}
-            />
-          )}
-          {page === "paper" && (
-            currentUser.can_paper_trade ? (
-              <PaperTradingPage
-                {...paperPageProps}
-              />
-            ) : (
-              <section className="panel auth-guard-panel">
-                <h2>模拟盘需申请白名单权限</h2>
-                <p>当前账号可以查看行情和策略，但暂未开通模拟交易。请联系管理员加入模拟盘白名单。</p>
-              </section>
-            )
-          )}
-          {page === "performance" && (
-            currentUser.can_paper_trade ? (
-              <PerformanceDashboard />
-            ) : (
-              <section className="panel auth-guard-panel">
-                <h2>绩效看板需模拟盘权限</h2>
-                <p>当前账号暂未开通模拟盘白名单，无法查看模拟交易绩效。</p>
-              </section>
-            )
-          )}
-          {page === "settings" && (
-            <SettingsPage
-              settings={settingsData.settings}
-              runtime={monitor.runtime}
-              factorWeights={settingsData.factorWeights}
-              adminTasks={settingsData.adminTasks}
-              strategyGovernance={settingsData.strategyGovernance}
-              factorDraft={settingsData.factorDraft}
-              draft={settingsData.settingsDraft}
-              setDraft={settingsData.setSettingsDraft}
-              setFactorDraft={settingsData.setFactorDraft}
-              loading={loading}
-              onSave={settingsData.saveSettings}
-              onSaveFactors={() => void settingsData.saveFactorWeights()}
-              onRefresh={() => void settingsData.loadSettings()}
-            />
-          )}
-        </Suspense>
-        </PageErrorBoundary>
+        <WorkspacePageContent
+          AnalysisPage={AnalysisPage}
+          MonitorPage={MonitorPage}
+          PaperTradingPage={PaperTradingPage}
+          PerformanceDashboard={PerformanceDashboard}
+          PlaybookPage={PlaybookPage}
+          ResearchPage={ResearchPage}
+          SettingsPage={SettingsPage}
+          analysis={analysis}
+          currentUser={currentUser}
+          loading={loading}
+          monitor={monitor}
+          monitorPageProps={monitorPageProps}
+          page={page}
+          paperPageProps={paperPageProps}
+          playbookData={playbookData}
+          research={research}
+          settingsData={settingsData}
+          onSelectStock={setSelectedStock}
+        />
       </main>
     </div>
-  );
-}
-
-function isAuthErrorMessage(message: string): boolean {
-  const normalized = message.toLowerCase();
-  return (
-    normalized.includes("401") ||
-    normalized.includes("unauthorized") ||
-    normalized.includes("not authenticated") ||
-    message.includes("登录") ||
-    message.includes("账号未开通")
   );
 }

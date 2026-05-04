@@ -49,27 +49,38 @@ class AgentProviderTests(unittest.TestCase):
         self.assertFalse(health.external_agent)
 
     def test_notify_tool_is_denied_by_default(self) -> None:
-        result = NoneProvider().invoke_tool("send_test_notification", {"channel": "feishu"})
+        provider = NoneProvider()
+        provider.policy.settings.agent_enable_notify_tools = False
+        result = provider.invoke_tool("send_test_notification", {"channel": "feishu"})
         self.assertFalse(result.ok)
         self.assertIsNotNone(result.error)
         self.assertEqual(result.error.code, "TOOL_PERMISSION_DENIED")
-        signal_result = NoneProvider().invoke_tool(
+        signal_result = provider.invoke_tool(
             "send_signal_notification",
             {"symbol": "510300", "signal_state": "near_entry"},
         )
         self.assertFalse(signal_result.ok)
         self.assertIsNotNone(signal_result.error)
         self.assertEqual(signal_result.error.code, "TOOL_PERMISSION_DENIED")
-        scan_result = NoneProvider().invoke_tool("scan_priority_board_notifications", {"limit": 3})
+        scan_result = provider.invoke_tool("scan_priority_board_notifications", {"limit": 3})
         self.assertFalse(scan_result.ok)
         self.assertIsNotNone(scan_result.error)
         self.assertEqual(scan_result.error.code, "TOOL_PERMISSION_DENIED")
 
     def test_write_tool_is_denied_by_default(self) -> None:
-        result = NoneProvider().invoke_tool("recommend_orders", {"limit": 3})
+        provider = NoneProvider()
+        provider.policy.settings.agent_enable_write_tools = False
+        result = provider.invoke_tool("recommend_orders", {"limit": 3})
         self.assertFalse(result.ok)
         self.assertIsNotNone(result.error)
         self.assertEqual(result.error.code, "TOOL_PERMISSION_DENIED")
+        paper_result = provider.invoke_tool(
+            "create_paper_order",
+            {"symbol": "510300", "side": "buy", "quantity": 100, "price": 4.0},
+        )
+        self.assertFalse(paper_result.ok)
+        self.assertIsNotNone(paper_result.error)
+        self.assertEqual(paper_result.error.code, "TOOL_PERMISSION_DENIED")
 
     def test_unknown_tool_returns_tool_not_found(self) -> None:
         result = NoneProvider().invoke_tool("missing_tool", {})

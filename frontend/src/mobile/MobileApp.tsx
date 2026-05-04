@@ -9,8 +9,7 @@ import { MobileAppHeader, MobileStatusBanners, MobileTabBar } from "./MobileAppL
 import { MobileAuthScreen } from "./MobileAuthScreen"
 import type { MobileLowBuyCardItem } from "./MobileDesignCards"
 import { AiDecisionSheet, AppUpdateSheet } from "./MobileSheets"
-import { PaperTradingPanel } from "./PaperTradingPanel"
-import { MobileHoldingsSection, MobileHomeSection, MobileLowBuySection } from "./MobileTabSections"
+import { MobileTabContent } from "./MobileTabContent"
 import { LowBuyDetailSheet } from "./mobileSections"
 import type { MobileTab } from "./mobileTypes"
 import { useAppUpdate } from "./useAppUpdate"
@@ -220,52 +219,50 @@ export default function MobileApp() {
       />
 
       <main className="mobile-app-body">
-        {activeTab === "home" ? (
-          <MobileHomeSection
-            metrics={monitorMetrics}
-            priorityBoard={priorityBoard}
-            priorityBoardItems={priorityBoardItems}
-            priorityPulseTime={priorityPulseTime}
-            watchlistMap={watchlistMap}
-            loading={loading}
-            onOpenCandidate={openCandidate}
-            onSwitchToLowBuy={() => handleSwitchTab("low_buy")}
-          />
-        ) : activeTab === "holdings" ? (
-          <MobileHoldingsSection
-            metrics={holdingsMetrics}
-            holdingRows={holdingRows}
-            activeHoldingSignalSymbols={activeHoldingSignalSymbols}
-            loading={loading}
-            onCreateHolding={openCreateHolding}
-            onEditHolding={openEditHolding}
-            onRemoveHolding={handleRemoveHolding}
-          />
-        ) : activeTab === "low_buy" ? (
-          <MobileLowBuySection
-            strategyFilter={strategyFilter}
-            metrics={lowBuyMetrics}
-            playbookItems={playbookItems}
-            playbookGroups={playbookGroups}
-            watchlistMap={watchlistMap}
-            loading={loading}
-            playbookLoading={playbookLoading}
-            onStrategyChange={setStrategyFilter}
-            onOpenAi={() => setAiOpen(true)}
-            onOpenCandidate={openCandidate}
-            onBought={openBoughtEditor}
-          />
-        ) : (
-          <PaperTradingPanel
-            account={paperTrading.paperAccount}
-            positions={paperTrading.paperPositions}
-            orders={paperTrading.paperOrders}
-            trades={paperTrading.paperTrades}
-            performance={paperTrading.paperPerformance}
-            strategyPerformance={paperTrading.paperStrategyPerformance}
-            marketPerformance={paperTrading.paperMarketPerformance}
-          />
-        )}
+        <MobileTabContent
+          activeTab={activeTab}
+          home={{
+            metrics: monitorMetrics,
+            priorityBoard,
+            priorityBoardItems,
+            priorityPulseTime,
+            watchlistMap,
+            loading,
+            onOpenCandidate: openCandidate,
+            onSwitchToLowBuy: () => handleSwitchTab("low_buy"),
+          }}
+          holdings={{
+            metrics: holdingsMetrics,
+            holdingRows,
+            activeHoldingSignalSymbols,
+            loading,
+            onCreateHolding: openCreateHolding,
+            onEditHolding: openEditHolding,
+            onRemoveHolding: handleRemoveHolding,
+          }}
+          lowBuy={{
+            strategyFilter,
+            metrics: lowBuyMetrics,
+            playbookItems,
+            playbookGroups,
+            watchlistMap,
+            loading,
+            playbookLoading,
+            onStrategyChange: setStrategyFilter,
+            onOpenAi: () => setAiOpen(true),
+            onOpenCandidate: openCandidate,
+            onBought: openBoughtEditor,
+          }}
+          paper={{
+            account: paperTrading.paperAccount,
+            positions: paperTrading.paperPositions,
+            orders: paperTrading.paperOrders,
+            trades: paperTrading.paperTrades,
+            performance: paperTrading.paperPerformance,
+            strategyPerformance: paperTrading.paperStrategyPerformance,
+            marketPerformance: paperTrading.paperMarketPerformance,
+          }}
+        />
       </main>
 
       <MobileTabBar activeTab={activeTab} onSwitchTab={handleSwitchTab} />

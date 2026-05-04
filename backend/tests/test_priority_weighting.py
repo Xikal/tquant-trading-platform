@@ -5,7 +5,7 @@ import unittest
 from app.models.schemas import LowBuyCandidateOut, LowBuyPerformanceBucketOut, LowBuyStrategyPerformanceOut
 from app.services.low_buy.priority_board import LowBuyPriorityBoardMixin
 from app.services.low_buy.priority_scoring import LowBuyPriorityScoringMixin
-from app.services.low_buy.priority_types import StrategyHit
+from app.services.low_buy.priority_types import PriorityBaseSnapshot, StrategyHit
 from app.services.low_buy.shared import LOW_BUY_RESULT_VERSION
 from app.services.low_buy.strategy_families import resolve_strategy_family
 
@@ -141,6 +141,24 @@ class PriorityWeightingTests(unittest.TestCase):
     def setUp(self) -> None:
         self.service = _ScoringService()
         self.priority_board = _PriorityBoardService()
+
+    def test_priority_snapshot_warning_hides_internal_stale_strategy_keys(self) -> None:
+        warning = self.priority_board._priority_snapshot_warning(
+            PriorityBaseSnapshot(
+                latest_trade_date="2026-04-28",
+                latest_available_trade_date="2026-04-30",
+                updated_at="2026-04-28 15:30:00",
+                candidates=[],
+                market_context=None,  # type: ignore[arg-type]
+                stale_strategies=["first_board", "volume_shrink"],
+            )
+        )
+
+        self.assertIn("2026-04-30", warning)
+        self.assertIn("最近可用快照", warning)
+        self.assertIn("部分策略结果仍在重建", warning)
+        self.assertNotIn("过期策略", warning)
+        self.assertNotIn("first_board", warning)
 
     def test_recent_performance_does_not_adjust_when_samples_too_small(self) -> None:
         base = _performance(evaluated_signals=42, hit_rate=51.0, avg_return_3d=1.6, avg_return_5d=2.4)

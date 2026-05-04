@@ -13,6 +13,8 @@ from app.api.routes import feishu
 from app.core.config import get_settings
 from app.core.database import get_db
 from app.models.base import Base
+from app.services.agent_workflow_job_service import WorkflowJobView
+from app.services.feishu import FeishuAgentBridge
 
 
 class FeishuRouteTests(unittest.TestCase):
@@ -70,12 +72,57 @@ class FeishuRouteTests(unittest.TestCase):
         text = response.json()["response"]["content"]["text"]
         self.assertIn("需要绑定账户", text)
 
+    def test_research_command_starts_hermes_workflow(self) -> None:
+        bridge = FeishuAgentBridge(workflow_jobs=_WorkflowJobStub())
+        with self.Session() as db:
+            response = bridge.handle_text(db, open_id="ou_test", text="研究 510300,300059")
+
+        self.assertEqual(response["msg_type"], "interactive")
+        fields = response["card"]["elements"][0]["fields"]
+        rendered = "\n".join(item["text"]["content"] for item in fields)
+        self.assertIn("Hermes", response["card"]["header"]["title"]["content"])
+        self.assertIn("510300", rendered)
+        self.assertIn("300059", rendered)
+
+    def test_research_status_returns_latest_workflow_job(self) -> None:
+        bridge = FeishuAgentBridge(workflow_jobs=_WorkflowJobStub(status="succeeded"))
+        with self.Session() as db:
+            response = bridge.handle_text(db, open_id="ou_test", text="研究状态")
+
+        rendered = "\n".join(item["text"]["content"] for item in response["card"]["elements"][0]["fields"])
+        self.assertIn("已完成", rendered)
+
     def _override_db(self):
         db = self.Session()
         try:
             yield db
         finally:
             db.close()
+
+
+class _WorkflowJobStub:
+    def __init__(self, status: str = "queued") -> None:
+        self.status = status
+
+    def start_daily_research(self, db, *, open_id: str = "", symbols=None, channel: str = "feishu"):  # noqa: ANN001, ARG002
+        return WorkflowJobView(
+            job_id="hermes_test",
+            workflow_name="tquant_daily_research",
+            status=self.status,
+            message="started",
+            symbols=list(symbols or []),
+        )
+
+    def latest_daily_research(self, db, *, open_id: str = "", channel: str = "feishu"):  # noqa: ANN001, ARG002
+        return WorkflowJobView(
+            job_id="hermes_test",
+            workflow_name="tquant_daily_research",
+            status=self.status,
+            message="latest",
+            symbols=["510300"],
+            markdown="# 市场概览\n\n测试报告",
+            notification_sent=True,
+        )
 
 
 if __name__ == "__main__":

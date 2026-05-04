@@ -1,6 +1,8 @@
 import type { ReactNode } from "react"
 import mechaAvatarUrl from "../assets/mecha-trading-avatar.png"
 import {
+  formatInteger,
+  formatMoneyPlain,
   formatNumber,
   formatPct,
   formatPrice
@@ -33,9 +35,9 @@ export function PaperTradingPanel({
 }) {
   const latestAction = orders[0] ?? null
   const metrics = [
-    { label: "总资产", value: formatAssetAmount(account?.total_assets), tone: "neutral" as const },
-    { label: "可用", value: formatAssetAmount(account?.cash_available), tone: "neutral" as const },
-    { label: "持仓", value: formatAssetAmount(account?.market_value), tone: "neutral" as const },
+    { label: "总资产", value: formatMoneyPlain(account?.total_assets), tone: "neutral" as const },
+    { label: "可用", value: formatMoneyPlain(account?.cash_available), tone: "neutral" as const },
+    { label: "持仓", value: formatMoneyPlain(account?.market_value), tone: "neutral" as const },
     { label: "收益", value: formatPct(performance?.total_return_pct ?? account?.today_return_pct), tone: paperTone(performance?.total_return_pct ?? account?.today_return_pct) }
   ]
 
@@ -219,19 +221,6 @@ function paperTone(value?: number | null): "positive" | "negative" | "neutral" |
   if (value > 0) return "positive"
   if (value < 0) return "negative"
   return "neutral"
-}
-
-function formatAssetAmount(value?: number | null): string {
-  if (typeof value !== "number" || !Number.isFinite(value)) return "--"
-  return value.toLocaleString("zh-CN", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2
-  })
-}
-
-function formatInteger(value?: number | null) {
-  if (typeof value !== "number" || !Number.isFinite(value)) return "--"
-  return value.toLocaleString("zh-CN", { maximumFractionDigits: 0 })
 }
 
 function paperOrderStatusText(status: PaperOrder["status"]) {
