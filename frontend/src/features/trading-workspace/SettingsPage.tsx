@@ -113,6 +113,9 @@ export function SettingsPage({
                   <strong className={`governance-status ${item.status}`}>
                     {item.strategy_health_score ? `${item.strategy_health_score} / ${item.status_text || item.status}` : item.status_text || item.status}
                   </strong>
+                  {item.auto_governance_reason ? (
+                    <small className="hint">{item.auto_governance_reason}</small>
+                  ) : null}
                 </div>
               ))}
             </div>

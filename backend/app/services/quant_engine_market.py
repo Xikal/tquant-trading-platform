@@ -5,7 +5,7 @@ from app.services.market.regime import MarketRegimeSnapshot
 
 _DEFAULT_MARKET_REGIME = MarketRegimeSnapshot(
     state="low_volume_wait",
-    label="缩量观望",
+    label="缩量无主线",
     description="环境数据不足时按中性偏防守处理，优先等待确认。",
     ranking_bonus=-2.0,
     position_multiplier=0.75,

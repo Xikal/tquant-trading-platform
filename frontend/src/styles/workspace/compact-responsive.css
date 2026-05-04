@@ -1,0 +1,79 @@
+@media (max-width: 1080px) {
+  .topbar,
+  .monitor-grid,
+  .analysis-grid,
+  .playbook-grid,
+  .research-grid,
+  .settings-grid,
+  .research-hero {
+    grid-template-columns: 1fr;
+    grid-template-areas: none;
+  }
+
+  .wide,
+  .hero-card,
+  .chart-panel,
+  .report,
+  .settings-cards,
+  .analysis-grid .hero-card,
+  .analysis-grid .chart-panel,
+  .analysis-grid .split,
+  .analysis-grid .log-strip,
+  .playbook-grid .hero-card,
+  .research-grid .hero-card,
+  .research-grid .report {
+    grid-column: auto;
+  }
+
+  .settings-cards,
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .monitor-summary,
+  .monitor-input,
+  .monitor-priority,
+  .monitor-watch,
+  .analysis-hero,
+  .analysis-identity,
+  .analysis-control,
+  .analysis-decision,
+  .analysis-chart,
+  .analysis-plan,
+  .analysis-log,
+  .playbook-hero,
+  .playbook-metrics,
+  .playbook-performance,
+  .playbook-focus,
+  .playbook-buy,
+  .playbook-near,
+  .playbook-watch,
+  .research-hero,
+  .research-run,
+  .research-samples,
+  .research-report,
+  .settings-hero,
+  .settings-cards,
+  .settings-snapshot {
+    grid-area: auto;
+  }
+
+  .stock-card {
+    grid-template-columns: 1fr;
+  }
+
+  .stock-card .stock-meta,
+  .stock-card p,
+  .stock-card .badge-row,
+  .stock-card .card-actions {
+    grid-column: auto;
+    grid-row: auto;
+    justify-content: start;
+  }
+
+  .topbar nav,
+  .desk-chips {
+    justify-content: start;
+    flex-wrap: wrap;
+  }
+}

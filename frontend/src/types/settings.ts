@@ -119,6 +119,9 @@ export interface LowBuyStrategyGovernanceItem {
   holding_brief: string;
   strategy_health_score: number;
   strategy_health_text: string;
+  auto_governance_status: string;
+  auto_governance_reason: string;
+  auto_governance_updated_at: string;
   performance_sample_count: number;
   notes: string[];
 }

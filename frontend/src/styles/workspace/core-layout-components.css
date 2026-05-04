@@ -1,0 +1,352 @@
+.panel {
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--card);
+  padding: 12px;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+.monitor-summary {
+  grid-area: summary;
+  align-self: start;
+}
+
+.monitor-input {
+  grid-area: input;
+}
+
+.monitor-priority {
+  grid-area: priority;
+  align-self: start;
+}
+
+.monitor-watch {
+  grid-area: watch;
+  align-self: start;
+}
+
+.market-breadth-strip {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.analysis-hero {
+  grid-area: hero;
+}
+
+.analysis-identity {
+  grid-area: identity;
+}
+
+.analysis-control {
+  grid-area: control;
+}
+
+.analysis-decision {
+  grid-area: decision;
+  border-color: #bee8cf;
+  background: #f4fff8;
+}
+
+.analysis-chart {
+  grid-area: chart;
+}
+
+.analysis-plan {
+  grid-area: plan;
+}
+
+.analysis-log {
+  grid-area: log;
+}
+
+.playbook-hero {
+  grid-area: hero;
+}
+
+.playbook-metrics {
+  grid-area: metrics;
+}
+
+.playbook-performance {
+  grid-area: performance;
+}
+
+.playbook-focus {
+  grid-area: focus;
+}
+
+.playbook-buy {
+  grid-area: buy;
+}
+
+.playbook-near {
+  grid-area: near;
+  background: #fff8e6;
+  border-color: #f3cd70;
+}
+
+.playbook-watch {
+  grid-area: watch;
+  border-color: #8fc1ff;
+}
+
+.research-hero {
+  grid-area: hero;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 340px;
+  gap: 10px;
+  border: 3px solid #4095ff;
+  border-radius: 0;
+}
+
+.research-run {
+  grid-area: run;
+}
+
+.research-samples {
+  grid-area: samples;
+}
+
+.research-report {
+  grid-area: report;
+}
+
+.settings-hero {
+  grid-area: hero;
+}
+
+.settings-cards {
+  grid-area: cards;
+}
+
+.settings-snapshot {
+  grid-area: snapshot;
+}
+
+.factor-weight-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.factor-weight-grid label {
+  display: grid;
+  gap: 4px;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #f8fafc;
+}
+
+.factor-weight-grid label span {
+  overflow: hidden;
+  color: var(--text);
+  font-size: 11px;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.factor-weight-grid label small {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.factor-weight-grid label small.factor-status {
+  display: inline-flex;
+  width: fit-content;
+  max-width: 100%;
+  padding: 2px 6px;
+  border-radius: 999px;
+  font-weight: 900;
+}
+
+.factor-status.active {
+  color: #057a55;
+  background: #ecfdf3;
+}
+
+.factor-status.experimental {
+  color: #b45309;
+  background: #fff7ed;
+}
+
+.factor-status.stub {
+  color: #64748b;
+  background: #f1f5f9;
+}
+
+.factor-status.deprecated,
+.factor-status.disabled {
+  color: #991b1b;
+  background: #fef2f2;
+}
+
+.settings-mini-list {
+  display: grid;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.settings-mini-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 6px 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #f8fafc;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.settings-mini-row span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.settings-mini-row strong {
+  flex: 0 0 auto;
+  font-size: 11px;
+}
+
+.governance-status.active,
+.task-ok,
+.task-running {
+  color: #057a55;
+}
+
+.governance-status.watch {
+  color: #b45309;
+}
+
+.governance-status.paused,
+.governance-status.deprecated,
+.task-error {
+  color: #991b1b;
+}
+
+.governance-status.research {
+  color: #475569;
+}
+
+.paper-hero {
+  grid-area: hero;
+}
+
+.paper-metrics {
+  grid-area: metrics;
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+}
+
+.paper-order {
+  grid-area: order;
+}
+
+.paper-positions {
+  grid-area: positions;
+}
+
+.paper-orders {
+  grid-area: orders;
+}
+
+.paper-trades {
+  grid-area: trades;
+}
+
+.paper-performance {
+  grid-area: performance;
+}
+
+.paper-market-performance {
+  grid-area: market;
+}
+
+.panel.dark {
+  background: linear-gradient(180deg, var(--panel), var(--deep));
+  color: #dde3ec;
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.panel-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.panel-title h2 {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.2;
+}
+
+.actions,
+.filter-row,
+.card-actions,
+.report-pill-row,
+.badge-row,
+.tabs {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.hint,
+.muted {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.status-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 10px;
+  padding: 8px 10px;
+  border: 1px solid #ecd59a;
+  border-radius: 10px;
+  background: #fffaf0;
+  color: var(--warning);
+  font-size: 12px;
+}
+
+.status-strip strong {
+  color: var(--negative);
+}
+
+.page-error-boundary {
+  display: grid;
+  gap: 8px;
+  border-color: #efb7ad;
+  background: #fffafa;
+}
+
+.page-error-boundary h2 {
+  margin: 0;
+  color: var(--negative);
+  font-size: 16px;
+}
+
+.page-error-boundary p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.page-error-boundary button {
+  justify-self: start;
+}

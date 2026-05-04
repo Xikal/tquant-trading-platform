@@ -35,6 +35,7 @@ export function PlaybookPage({
   const strategyName = strategyLabel(strategy);
   const loadedStrategyName = playbook?.strategy_title || strategyLabel(playbook?.strategy_key || strategy);
   const switchingText = playbook && playbook.strategy_key !== strategy ? "，正在切换数据" : "";
+  const marketAttributionText = summarizeMarketAttribution(playbook?.performance?.market_state_attribution ?? []);
   return (
     <section className="page-grid playbook-grid">
       <div className="panel playbook-hero">
@@ -68,7 +69,8 @@ export function PlaybookPage({
         <p>近5日 达标率 {formatPct(playbook?.performance?.hit_rate, 0)}　平均收益 {formatPct(playbook?.performance?.avg_return_5d)}　回撤 {formatPct(playbook?.performance?.avg_max_drawdown_5d)}　盈亏比 {formatNumber(playbook?.performance?.profit_factor)}</p>
         <p>尾部风险 CVaR {formatPct(playbook?.performance?.cvar_5pct)}　半凯利参考 {formatPct(playbook?.performance?.kelly_half_position_pct, 1)}　平均盈利/亏损 {formatPct(playbook?.performance?.avg_win_pct)} / {formatPct(playbook?.performance?.avg_loss_pct)}</p>
         <p>板块归因：{playbook?.hot_industries?.slice(0, 3).join("、") || "--"}</p>
-        <p>市场状态归因：{playbook?.market_state_text ?? "--"}</p>
+        <p>市场状态：{playbook?.market_state_category_text || playbook?.market_state_text || "--"}</p>
+        <p>分市场表现：{marketAttributionText}</p>
         <p>执行口径：只展示当前策略命中的股票，确定买入必须同时满足价格区间、承接确认和风控条件。</p>
       </div>
       <aside className="panel dark playbook-focus">
@@ -111,6 +113,16 @@ function uniqueCandidates(items: LowBuyScreenerResult["candidates"]) {
     seen.add(item.symbol);
     return true;
   });
+}
+
+function summarizeMarketAttribution(buckets: NonNullable<LowBuyScreenerResult["performance"]>["market_state_attribution"]) {
+  if (!buckets.length) {
+    return "--";
+  }
+  return buckets
+    .slice(0, 4)
+    .map((bucket) => `${bucket.label} 样本${bucket.sample_count} / 3日${formatPct(bucket.avg_return_3d)} / 胜率${formatPct(bucket.hit_rate, 0)}`)
+    .join(" ｜ ");
 }
 
 function CandidateSection({

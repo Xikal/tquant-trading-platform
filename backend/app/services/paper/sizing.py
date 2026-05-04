@@ -3,7 +3,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 from decimal import Decimal
-from math import floor
 from typing import Any
 
 from app.services.paper.admission import AdmissionResult
@@ -16,8 +15,8 @@ class SizedOrder:
     side: str
     order_type: str
     quantity: int
-    price: float
-    current_price: float
+    price: Decimal
+    current_price: Decimal
     strategy_key: str
     reason: str
     signal_snapshot: dict[str, Any]
@@ -30,8 +29,8 @@ class SizedOrder:
             "side": self.side,
             "order_type": self.order_type,
             "quantity": self.quantity,
-            "price": self.price,
-            "current_price": self.current_price,
+            "price": float(self.price),
+            "current_price": float(self.current_price),
             "quote_time": datetime.now(),
             "is_suspended": bool(self.signal_snapshot.get("is_suspended") or False),
             "source": self.source,
@@ -46,8 +45,8 @@ class PositionSizer:
     """Convert admitted priority-board candidates into paper buy plans."""
 
     def __init__(self, *, max_position_pct: float = 0.10, max_cash_pct: float = 0.30) -> None:
-        self.max_position_pct = float(max_position_pct)
-        self.max_cash_pct = float(max_cash_pct)
+        self.max_position_pct = Decimal(str(max_position_pct))
+        self.max_cash_pct = Decimal(str(max_cash_pct))
 
     def calculate(
         self,
@@ -70,7 +69,7 @@ class PositionSizer:
             if order is None:
                 continue
             orders.append(order)
-            remaining_cash -= Decimal(order.quantity) * Decimal(str(order.current_price))
+            remaining_cash -= Decimal(order.quantity) * order.current_price
             if remaining_cash <= 0:
                 break
         return orders
@@ -80,8 +79,8 @@ class PositionSizer:
         if current_price <= 0:
             return None
 
-        price_value = Decimal(str(current_price))
-        max_value = min(total_assets * Decimal(str(self.max_position_pct)), remaining_cash * Decimal(str(self.max_cash_pct)))
+        price_value = current_price
+        max_value = min(total_assets * self.max_position_pct, remaining_cash * self.max_cash_pct)
         quantity = _round_lot_decimal(max_value / price_value)
         if quantity < 100:
             return None
@@ -105,19 +104,15 @@ class PositionSizer:
         )
 
 
-def _current_price(signal: dict[str, Any]) -> float:
+def _current_price(signal: dict[str, Any]) -> Decimal:
     for key in ("latest_price", "current_price", "last_price", "price"):
         try:
-            value = float(signal.get(key) or 0)
-        except (TypeError, ValueError):
-            value = 0.0
+            value = Decimal(str(signal.get(key) or "0"))
+        except Exception:
+            value = Decimal("0")
         if value > 0:
             return value
-    return 0.0
-
-
-def _round_lot(raw_quantity: float) -> int:
-    return int(floor(raw_quantity / 100) * 100)
+    return Decimal("0")
 
 
 def _round_lot_decimal(raw_quantity: Decimal) -> int:

@@ -178,6 +178,7 @@ class DailyHistoryRepository:
         )
         rows_by_trade_date = {row.trade_date: row for row in existing_rows}
         new_rows: list[DailyBarSnapshot] = []
+        update_rows: list[dict[str, object]] = []
         for item in payloads:
             row = rows_by_trade_date.get(item.trade_date)
             if row is None:
@@ -195,12 +196,19 @@ class DailyHistoryRepository:
                     )
                 )
                 continue
-            row.open_price = item.open_price
-            row.close_price = item.close_price
-            row.high_price = item.high_price
-            row.low_price = item.low_price
-            row.volume = item.volume
-            row.amount = item.amount
-            row.pct_chg = item.pct_chg
+            update_rows.append(
+                {
+                    "id": row.id,
+                    "open_price": item.open_price,
+                    "close_price": item.close_price,
+                    "high_price": item.high_price,
+                    "low_price": item.low_price,
+                    "volume": item.volume,
+                    "amount": item.amount,
+                    "pct_chg": item.pct_chg,
+                }
+            )
         if new_rows:
             self.db.bulk_save_objects(new_rows)
+        if update_rows:
+            self.db.bulk_update_mappings(DailyBarSnapshot, update_rows)

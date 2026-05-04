@@ -65,8 +65,8 @@ class MarketRegimeSnapshot:
 
 STATE_CONFIG = {
     "broad_rally": {
-        "label": "普涨扩散",
-        "description": "行业和个股广度同时修复，主策略可以更积极，但仍保留确认门槛。",
+        "label": "强势主升",
+        "description": "行业和个股广度同时走强，主策略可以更积极，但仍保留确认门槛。",
         "ranking_bonus": 4.0,
         "position_multiplier": 1.15,
         "buy_signal_penalty": -2.0,
@@ -75,8 +75,8 @@ STATE_CONFIG = {
         "negative_threshold_shift": -2.0,
     },
     "weight_support": {
-        "label": "权重护盘",
-        "description": "指数偏强但个股扩散弱，优先做结构票，情绪票明显降级。",
+        "label": "震荡轮动",
+        "description": "指数可能被权重支撑或热点快速切换，优先做结构票，情绪后排明显降级。",
         "ranking_bonus": -4.0,
         "position_multiplier": 0.65,
         "buy_signal_penalty": 2.5,
@@ -85,8 +85,8 @@ STATE_CONFIG = {
         "negative_threshold_shift": 4.5,
     },
     "weight_support_active": {
-        "label": "护盘但题材仍活",
-        "description": "权重稳指数，但题材仍有活口，主策略保留，情绪型只留最强确认。",
+        "label": "震荡轮动-题材活跃",
+        "description": "权重稳指数但题材仍有活口，主策略保留，情绪型只留最强确认。",
         "ranking_bonus": -1.2,
         "position_multiplier": 0.82,
         "buy_signal_penalty": 1.0,
@@ -95,8 +95,8 @@ STATE_CONFIG = {
         "negative_threshold_shift": 2.0,
     },
     "low_volume_wait": {
-        "label": "缩量观望",
-        "description": "量能不足、扩散不够，适合降仓等待，而不是激进出手。",
+        "label": "缩量无主线",
+        "description": "量能不足、扩散不够且主线不清晰，适合降仓等待，而不是激进出手。",
         "ranking_bonus": -2.0,
         "position_multiplier": 0.75,
         "buy_signal_penalty": 1.5,
@@ -115,7 +115,7 @@ STATE_CONFIG = {
         "negative_threshold_shift": 3.0,
     },
     "high_flyer_retreat": {
-        "label": "高位退潮",
+        "label": "下跌退潮",
         "description": "高位股补跌和退潮显性化，情绪票买点必须显著收紧。",
         "ranking_bonus": -5.0,
         "position_multiplier": 0.55,
@@ -125,8 +125,8 @@ STATE_CONFIG = {
         "negative_threshold_shift": 4.0,
     },
     "repair": {
-        "label": "修复中",
-        "description": "市场有修复，但还没进入真正普涨扩散，优先处理强结构票。",
+        "label": "弱势修复",
+        "description": "市场从弱势中修复，但还没进入真正强势主升，优先处理强结构票。",
         "ranking_bonus": 1.5,
         "position_multiplier": 0.95,
         "buy_signal_penalty": -0.5,
@@ -135,7 +135,7 @@ STATE_CONFIG = {
         "negative_threshold_shift": -1.0,
     },
     "risk_release": {
-        "label": "风险释放",
+        "label": "极端风险",
         "description": "市场处于显性风险释放期，新开仓和追逐型做T都应明显收缩。",
         "ranking_bonus": -7.0,
         "position_multiplier": 0.40,

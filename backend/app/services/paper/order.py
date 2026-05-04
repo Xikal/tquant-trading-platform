@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 from app.models.entities import PaperOrder, PaperTrade
 from app.services.paper.account import PaperAccountService
 from app.services.paper.matching import MatchResult, OrderSide, OrderType, PaperMatchingEngine
+from app.services.paper.money import to_decimal
 from app.services.paper.position import PaperPositionService
 from app.services.paper.reasons import normalize_entry_reason, normalize_exit_reason
 from app.services.paper.risk_control import PaperRiskControlService
@@ -150,7 +151,7 @@ class PaperOrderService:
         entry_reason = normalize_entry_reason(order.reason, source=order.source).text if order.side == "buy" else ""
         exit_reason = normalize_exit_reason(_exit_reason_from_order(order), source=order.source).text
         if order.side == "buy":
-            account.cash_available = Decimal(str(account.cash_available or 0)) - net_amount
+            account.cash_available = to_decimal(account.cash_available) - net_amount
             per_share_cost = net_amount / Decimal(order.filled_quantity)
             self.positions.add_position(
                 account_id=order.account_id,
@@ -163,11 +164,11 @@ class PaperOrderService:
             )
         else:
             position = self.positions.get_position(order.account_id, order.symbol)
-            cost_basis = Decimal(str(position.cost_basis if position is not None else 0))
+            cost_basis = to_decimal(position.cost_basis if position is not None else 0)
             self.positions.reduce_position(account_id=order.account_id, symbol=order.symbol, quantity=order.filled_quantity)
-            account.cash_available = Decimal(str(account.cash_available or 0)) + net_amount
+            account.cash_available = to_decimal(account.cash_available) + net_amount
             account.realized_pnl = (
-                Decimal(str(account.realized_pnl or 0))
+                to_decimal(account.realized_pnl)
                 + ((fill_price - cost_basis) * Decimal(order.filled_quantity))
                 - fee_detail.total_fee
             )

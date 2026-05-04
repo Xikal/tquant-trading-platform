@@ -268,7 +268,7 @@ class QuantEngine:
             event_penalty=event_penalty_value,
             scenario=scenario,
             market_state=market_regime.state if market_regime else "low_volume_wait",
-            market_state_text=market_regime.label if market_regime else "缩量观望",
+            market_state_text=market_regime.label if market_regime else "缩量无主线",
             market_bonus=market_regime.ranking_bonus if market_regime else 0.0,
             positive_score=positive_score_value,
             negative_score=negative_score_value,

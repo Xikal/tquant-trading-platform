@@ -160,11 +160,10 @@ class BaseStrategy(ABC):
         )
 
 
-class LegacyLowBuyStrategyAdapter(BaseStrategy):
-    def __init__(self, key: str) -> None:
-        if key not in PLAYBOOKS:
-            raise KeyError(f"Unknown low-buy strategy: {key}")
-        self.key = key
+class RuleBackedLowBuyStrategy(BaseStrategy):
+    """Native strategy class that delegates rule math to the existing rule module."""
+
+    key: str
 
     @property
     def identity(self) -> StrategyIdentity:
@@ -187,12 +186,80 @@ class LegacyLowBuyStrategyAdapter(BaseStrategy):
         )
 
 
+class ClassicRetraceStrategy(RuleBackedLowBuyStrategy):
+    key = "classic_retrace"
+
+
+class MaSupportStrategy(RuleBackedLowBuyStrategy):
+    key = "ma_support"
+
+
+class FirstBoardStrategy(RuleBackedLowBuyStrategy):
+    key = "first_board"
+
+
+class VolumeShrinkStrategy(RuleBackedLowBuyStrategy):
+    key = "volume_shrink"
+
+
+class LateSessionStrongSupportStrategy(RuleBackedLowBuyStrategy):
+    key = "late_session_strong_support"
+
+
+class CoreMidcapVwapMa5RetraceStrategy(RuleBackedLowBuyStrategy):
+    key = "core_midcap_vwap_ma5_retrace"
+
+
+class SectorMainlineFirstDivergenceStrategy(RuleBackedLowBuyStrategy):
+    key = "sector_mainline_first_divergence_low_buy"
+
+
+class BreakoutSupportStrategy(RuleBackedLowBuyStrategy):
+    key = "breakout_support"
+
+
+class LimitUpBreakoutRetraceStrategy(RuleBackedLowBuyStrategy):
+    key = "limit_up_breakout_retrace"
+
+
+class DivergenceConsensusStrategy(RuleBackedLowBuyStrategy):
+    key = "divergence_consensus"
+
+
+class DeepPullbackStrategy(RuleBackedLowBuyStrategy):
+    key = "deep_pullback"
+
+
+class TrendReboundStrategy(RuleBackedLowBuyStrategy):
+    key = "trend_rebound"
+
+
+_STRATEGY_CLASSES: dict[str, type[BaseStrategy]] = {
+    ClassicRetraceStrategy.key: ClassicRetraceStrategy,
+    MaSupportStrategy.key: MaSupportStrategy,
+    FirstBoardStrategy.key: FirstBoardStrategy,
+    VolumeShrinkStrategy.key: VolumeShrinkStrategy,
+    LateSessionStrongSupportStrategy.key: LateSessionStrongSupportStrategy,
+    CoreMidcapVwapMa5RetraceStrategy.key: CoreMidcapVwapMa5RetraceStrategy,
+    SectorMainlineFirstDivergenceStrategy.key: SectorMainlineFirstDivergenceStrategy,
+    BreakoutSupportStrategy.key: BreakoutSupportStrategy,
+    LimitUpBreakoutRetraceStrategy.key: LimitUpBreakoutRetraceStrategy,
+    DivergenceConsensusStrategy.key: DivergenceConsensusStrategy,
+    DeepPullbackStrategy.key: DeepPullbackStrategy,
+    TrendReboundStrategy.key: TrendReboundStrategy,
+}
+
 _STRATEGY_CACHE: dict[str, BaseStrategy] = {}
 
 
 def get_low_buy_strategy(strategy_key: str) -> BaseStrategy:
+    if strategy_key not in PLAYBOOKS:
+        raise KeyError(f"Unknown low-buy strategy: {strategy_key}")
     if strategy_key not in _STRATEGY_CACHE:
-        _STRATEGY_CACHE[strategy_key] = LegacyLowBuyStrategyAdapter(strategy_key)
+        strategy_class = _STRATEGY_CLASSES.get(strategy_key)
+        if strategy_class is None:
+            raise KeyError(f"No strategy class registered for: {strategy_key}")
+        _STRATEGY_CACHE[strategy_key] = strategy_class()
     return _STRATEGY_CACHE[strategy_key]
 
 

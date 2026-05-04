@@ -1,0 +1,115 @@
+@media (max-width: 1280px) {
+  .paper-metrics {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .market-breadth-strip {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 1080px) {
+  .login-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .login-visual,
+  .login-panel-wrap {
+    min-height: auto;
+  }
+
+  .login-panel-wrap {
+    padding: 20px;
+  }
+
+  .paper-grid {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "metrics"
+      "order"
+      "positions"
+      "orders"
+      "trades"
+      "performance"
+      "market";
+  }
+
+  .paper-hero,
+  .paper-metrics,
+  .paper-order,
+  .paper-positions,
+  .paper-orders,
+  .paper-trades,
+  .paper-performance,
+  .paper-market-performance {
+    grid-area: auto;
+  }
+
+  .paper-metrics {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 768px) {
+  .login-shell {
+    padding: 8px;
+    gap: 8px;
+  }
+
+  .login-visual {
+    padding: 16px;
+  }
+
+  .login-visual-head,
+  .login-kpi-card,
+  .login-mini-row,
+  .login-status-row,
+  .login-signal-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .login-visual-head {
+    display: grid;
+  }
+
+  .login-chart-card {
+    min-height: 220px;
+  }
+
+  .login-card {
+    padding: 24px 18px;
+  }
+
+  .paper-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .paper-order .form-grid,
+  .paper-context-row {
+    grid-template-columns: 1fr;
+  }
+
+  .paper-row,
+  .paper-position-row,
+  .paper-trade-row,
+  .paper-trade-row.with-tags {
+    grid-template-columns: 1fr;
+    align-items: start;
+  }
+
+  .paper-positions .stock-list {
+    grid-template-columns: 1fr;
+    max-height: 430px;
+  }
+
+  .paper-performance-table {
+    overflow-x: auto;
+  }
+
+  .paper-performance-head,
+  .paper-performance-row {
+    min-width: 520px;
+  }
+}
+
+/* Paper trading target layout: matches the compact simulation desk reference. */

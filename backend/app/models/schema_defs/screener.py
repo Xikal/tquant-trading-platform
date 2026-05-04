@@ -28,6 +28,9 @@ class LowBuyStrategyGovernanceItemOut(BaseModel):
     holding_brief: str = ""
     strategy_health_score: float = 0.0
     strategy_health_text: str = "暂无绩效样本"
+    auto_governance_status: str = ""
+    auto_governance_reason: str = ""
+    auto_governance_updated_at: str = ""
     performance_sample_count: int = 0
     notes: list[str] = Field(default_factory=list)
 
@@ -245,7 +248,7 @@ class LowBuyCandidateOut(BaseModel):
     market_state: str = "low_volume_wait"
     market_state_text: str = ""
     market_state_category: str = "low_volume_wait"
-    market_state_category_text: str = "缩量观望"
+    market_state_category_text: str = "缩量无主线"
     market_state_strength: float = 0.0
     market_position_multiplier: float = 1.0
     confirmed_trade_date: Optional[str] = None
@@ -380,7 +383,7 @@ class LowBuyPriorityBoardItemOut(BaseModel):
     data_quality_text: str = "数据完整"
     data_quality_tags: list[str] = Field(default_factory=list)
     market_state_category: str = "low_volume_wait"
-    market_state_category_text: str = "缩量观望"
+    market_state_category_text: str = "缩量无主线"
     buy_signal_state: BuySignalState = "watch"
     buy_signal_text: str = "继续观察"
     priority_score: float = 0.0
@@ -478,7 +481,7 @@ class LowBuyPriorityBoardResponse(BaseModel):
     market_state: str = "neutral"
     market_state_text: str = ""
     market_state_category: str = "low_volume_wait"
-    market_state_category_text: str = "缩量观望"
+    market_state_category_text: str = "缩量无主线"
     data_quality: str = "ok"
     data_quality_text: str = "数据完整"
     data_quality_tags: list[str] = Field(default_factory=list)
@@ -553,7 +556,7 @@ class LowBuyScreenerResponse(BaseModel):
     market_state: str = "low_volume_wait"
     market_state_text: str = ""
     market_state_category: str = "low_volume_wait"
-    market_state_category_text: str = "缩量观望"
+    market_state_category_text: str = "缩量无主线"
     data_quality: str = "ok"
     data_quality_text: str = "数据完整"
     data_quality_tags: list[str] = Field(default_factory=list)

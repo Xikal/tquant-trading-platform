@@ -777,7 +777,7 @@ class LowBuyPriorityBoardMixin(LowBuyPriorityScoringMixin):
             return PriorityMarketContext(
                 market_state="low_volume_wait",
                 market_bonus=0.0,
-                market_state_label="缩量观望",
+                market_state_label="缩量无主线",
                 market_state_description="当前还没有可用样本，先按中性偏防守环境处理。",
                 regime_confidence=0.0,
                 state_persistence_days=1,

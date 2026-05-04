@@ -59,7 +59,7 @@ class AgentPriorityBoardItem(BaseModel):
     data_quality_text: str = "数据完整"
     data_quality_tags: list[str] = Field(default_factory=list)
     market_state_category: str = "low_volume_wait"
-    market_state_category_text: str = "缩量观望"
+    market_state_category_text: str = "缩量无主线"
     priority_score: float = 0.0
     buy_signal_text: str = ""
     strategy_titles: list[str] = Field(default_factory=list)
@@ -73,7 +73,7 @@ class AgentPriorityBoardResponse(BaseModel):
     updated_at: str
     market_state_text: str = ""
     market_state_category: str = "low_volume_wait"
-    market_state_category_text: str = "缩量观望"
+    market_state_category_text: str = "缩量无主线"
     data_quality: str = "ok"
     data_quality_text: str = "数据完整"
     data_quality_tags: list[str] = Field(default_factory=list)

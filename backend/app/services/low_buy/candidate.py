@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from app.services.low_buy.candidate_metrics import build_candidate_metrics, passes_common_prefilter
 from app.services.low_buy.exit_plan import build_exit_plan
-from app.services.low_buy.hard_risk import build_hard_risk_assessment
+from app.services.low_buy.hard_risk import build_hard_risk_assessment, hard_untradable_reason
 from app.services.low_buy.market_state_rules import (
     build_low_buy_market_adjustment,
 )
@@ -15,7 +15,13 @@ from app.services.low_buy.dynamic_adjustments import (
 )
 from app.services.low_buy.base_strategy import get_low_buy_strategy
 from app.services.low_buy.candidate_types import CandidateContextAdjustment, CandidateMetrics, StrategySetup
-from app.services.low_buy.data_quality import build_candidate_data_quality, data_quality_payload
+from app.services.low_buy.data_quality import (
+    DataQualitySnapshot,
+    build_candidate_data_quality,
+    build_low_buy_metrics_quality,
+    combine_data_quality,
+    data_quality_payload,
+)
 from app.services.low_buy.factor_scoring import build_factor_scores, weighted_factor_bonus
 from app.services.low_buy.factor_types import FactorContext
 from app.services.low_buy.positioning import build_position_breakdown_text
@@ -172,6 +178,11 @@ class LowBuyCandidateMixin:
         metrics = self._build_candidate_metrics(item=item, latest_trade_date=latest_trade_date, history=history)
         if metrics is None or not self._passes_common_prefilter(item=item, metrics=metrics, strategy=strategy):
             return None
+        metrics_quality = build_low_buy_metrics_quality(metrics)
+        if metrics_quality.quality == "unavailable":
+            return None
+        if hard_untradable_reason(item=item, metrics=metrics)[0]:
+            return None
 
         if not strategy_adapter.passes_prefilter(item=item, metrics=metrics):
             return None
@@ -196,6 +207,7 @@ class LowBuyCandidateMixin:
             market_regime=market_regime,
             signal_profile=signal_profile,
             factor_scores=factor_scores,
+            metrics_quality=metrics_quality,
         )
         factor_bonus = self._weighted_factor_bonus(factor_scores)
         adjusted_score = max(
@@ -218,6 +230,7 @@ class LowBuyCandidateMixin:
             context_adjustment=context_adjustment,
             signal_profile=signal_profile,
             factor_scores=factor_scores,
+            metrics_quality=metrics_quality,
         )
 
     def _passes_candidate_filters(
@@ -243,12 +256,20 @@ class LowBuyCandidateMixin:
         market_regime: MarketRegimeSnapshot | None,
         signal_profile: SignalFamilyProfile,
         factor_scores: dict[str, float],
+        metrics_quality: DataQualitySnapshot | None = None,
     ) -> CandidateContextAdjustment:
         score_penalty = 0.0
         execution_blocked = False
         extra_risks: list[str] = []
         extra_tags: list[str] = []
         market_state_strength = 0.0
+        if metrics_quality is not None and metrics_quality.quality != "ok":
+            extra_tags.extend(metrics_quality.tags)
+            extra_risks.append(metrics_quality.text)
+            if metrics_quality.quality == "degraded":
+                score_penalty += 3.0
+            elif metrics_quality.quality in {"limited", "stale"}:
+                score_penalty += 1.5
 
         if hot_industries and item.industry and item.industry not in hot_industries:
             score_penalty += 1.6
@@ -270,7 +291,7 @@ class LowBuyCandidateMixin:
         extra_tags.extend(risk_decision.tags)
 
         market_state = market_regime.state if market_regime is not None else "low_volume_wait"
-        market_state_text = market_regime.label if market_regime is not None else "缩量观望"
+        market_state_text = market_regime.label if market_regime is not None else "缩量无主线"
         dynamic_adjustment = low_buy_dynamic_adjustment(
             market_regime=market_regime,
             risk_tier=risk_decision.risk_tier,
@@ -361,6 +382,7 @@ class LowBuyCandidateMixin:
         context_adjustment: CandidateContextAdjustment,
         signal_profile: SignalFamilyProfile,
         factor_scores: dict[str, float],
+        metrics_quality: DataQualitySnapshot | None = None,
     ) -> LowBuyCandidateOut:
         if strategy == "first_board":
             stop_anchor = min(metrics.ma10, metrics.recent_low_guard, metrics.board_low)
@@ -397,12 +419,11 @@ class LowBuyCandidateMixin:
             leader_rank=signal_profile.leader_rank,
         )
         market_state_fields = standard_market_state_payload(context_adjustment.market_state)
-        quality_fields = data_quality_payload(
-            build_candidate_data_quality(
-                latest_price=metrics.latest_close,
-                quote_timestamp=metrics.latest_trade_date,
-            )
+        quote_quality = build_candidate_data_quality(
+            latest_price=metrics.latest_close,
+            quote_timestamp=metrics.latest_trade_date,
         )
+        quality_fields = data_quality_payload(combine_data_quality(quote_quality, metrics_quality))
         candidate = LowBuyCandidateOut(
             strategy_key=strategy,
             strategy_title=self._get_playbook(strategy)["title"],

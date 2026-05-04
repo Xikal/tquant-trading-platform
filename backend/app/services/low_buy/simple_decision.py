@@ -22,13 +22,13 @@ BUCKET_LABELS = {
 }
 
 MARKET_PLAIN_TEXT = {
-    "broad_rally": "适合出手",
-    "repair": "适合小仓试错",
+    "broad_rally": "强势主升，可提高关注",
+    "repair": "弱势修复，只适合小仓试错",
     "fast_rotation": "轮动太快，只做最强主线",
     "weight_support": "指数被权重托住，题材股别追高",
     "high_flyer_retreat": "高位退潮，先别买",
     "risk_release": "风险释放中，空仓等待",
-    "low_volume_wait": "缩量观望，等放量确认",
+    "low_volume_wait": "缩量无主线，等放量确认",
     "neutral": "环境一般，小仓观察",
 }
 

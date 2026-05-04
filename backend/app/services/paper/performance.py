@@ -19,6 +19,7 @@ class PaperPerformanceService:
         account = self.db.get(PaperAccount, account_id)
         trades = self._filtered_trades(account_id, target_date)
         returns = [item.return_pct for item in self._filtered_return_records(account_id, target_date)]
+        daily_returns = self._daily_return_series(account_id, account, target_date) if account is not None else []
         wins = [value for value in returns if value > 0]
         losses = [value for value in returns if value < 0]
         total = len(returns)
@@ -38,7 +39,7 @@ class PaperPerformanceService:
             "avg_win_pct": round(sum(wins) / len(wins), 3) if wins else 0.0,
             "avg_loss_pct": round(sum(losses) / len(losses), 3) if losses else 0.0,
             "profit_factor": round(gross_gains / gross_losses, 3) if gross_losses > 0 else None,
-            "sharpe_ratio": round(_sharpe_ratio(returns), 4),
+            "sharpe_ratio": round(_sharpe_ratio(daily_returns or returns), 4),
             "stop_loss_rate_pct": 0.0,
             "total_trades": len(trades),
             "avg_hold_days": 0.0,
@@ -135,6 +136,36 @@ class PaperPerformanceService:
             account.max_drawdown_pct = Decimal(str(round(max_drawdown, 4)))
             self.db.flush()
         return round(max_drawdown, 3)
+
+    def _daily_return_series(
+        self,
+        account_id: int,
+        account: PaperAccount,
+        target_date: date | None = None,
+    ) -> list[float]:
+        statement = select(PaperPerformanceSnapshot).where(PaperPerformanceSnapshot.account_id == account_id)
+        if target_date is not None:
+            statement = statement.where(PaperPerformanceSnapshot.snapshot_date <= target_date)
+        snapshots = self.db.execute(statement.order_by(PaperPerformanceSnapshot.snapshot_date.asc())).scalars().all()
+        dated_values: list[tuple[date, float]] = [
+            (item.snapshot_date, float(item.total_assets or 0))
+            for item in snapshots
+            if float(item.total_assets or 0) > 0
+        ]
+        if target_date is None or target_date >= date.today():
+            current_assets = float(account.total_assets or 0)
+            if current_assets > 0:
+                current_date = date.today()
+                if dated_values and dated_values[-1][0] == current_date:
+                    dated_values[-1] = (current_date, current_assets)
+                else:
+                    dated_values.append((current_date, current_assets))
+        values = [value for _, value in dated_values]
+        return [
+            (current - previous) / previous * 100
+            for previous, current in zip(values, values[1:])
+            if previous > 0
+        ]
 
     def _grouped(self, account_id: int, field: str, target_date: date | None = None) -> list[dict]:
         buckets: dict[str, list[float]] = defaultdict(list)

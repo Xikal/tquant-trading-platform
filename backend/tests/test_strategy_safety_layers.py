@@ -15,6 +15,7 @@ from app.services.distribution_signals import DistributionSnapshot
 from app.services.low_buy.candidate_types import CandidateMetrics
 from app.services.low_buy.candidate_rules import passes_strategy_prefilter
 from app.services.low_buy.dynamic_adjustments import apply_performance_adjustment_to_candidate
+from app.services.low_buy.hard_risk import hard_untradable_reason
 from app.services.low_buy.industry_positioning import build_industry_position_adjustment
 from app.services.low_buy.risk_tiers import resolve_low_buy_risk_tier
 from app.services.low_buy.signal_resolution import intraday_soft_confirmation
@@ -147,16 +148,17 @@ def _candidate() -> LowBuyCandidateOut:
     )
 
 
-def _board_candidate(amount: float = 300_000_000) -> BoardCandidate:
-    return BoardCandidate(
-        symbol="000001",
-        name="平安银行",
-        board_date="2026-04-20",
-        board_count=1,
-        amount=amount,
-        industry="银行",
-    )
-
+def _board_candidate(**overrides) -> BoardCandidate:
+    data = {
+        "symbol": "000001",
+        "name": "平安银行",
+        "board_date": "2026-04-20",
+        "board_count": 1,
+        "amount": 220_000_000.0,
+        "industry": "银行",
+    }
+    data.update(overrides)
+    return BoardCandidate(**data)
 
 class StrategySafetyLayerTests(unittest.TestCase):
     def test_strict_false_breakout_risk_blocks_low_buy(self) -> None:
@@ -196,6 +198,24 @@ class StrategySafetyLayerTests(unittest.TestCase):
                 metrics=_metrics(),
             )
         )
+
+    def test_low_buy_untradable_reason_blocks_limit_locked_candidates(self) -> None:
+        reason, tag = hard_untradable_reason(
+            item=_board_candidate(),
+            metrics=_metrics(latest_change_pct=10.0, close_position_ratio=0.96),
+        )
+
+        self.assertIn("涨停", reason)
+        self.assertEqual(tag, "硬风控:涨停追高")
+
+    def test_low_buy_untradable_reason_blocks_suspected_suspension(self) -> None:
+        reason, tag = hard_untradable_reason(
+            item=_board_candidate(amount=0),
+            metrics=_metrics(),
+        )
+
+        self.assertIn("疑似停牌", reason)
+        self.assertEqual(tag, "硬风控:疑似停牌")
 
     def test_deep_pullback_factor_caps_non_core_position(self) -> None:
         candidate = _candidate().model_copy(

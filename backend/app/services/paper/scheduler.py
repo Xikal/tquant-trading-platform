@@ -482,7 +482,7 @@ def _sized_order_summary(order: SizedOrder) -> dict[str, Any]:
         "name": order.name,
         "score": order.signal_snapshot.get("priority_score", 0),
         "quantity": order.quantity,
-        "price": order.current_price,
+        "price": float(order.current_price),
         "strategy_key": order.strategy_key,
         "reason": order.reason,
     }

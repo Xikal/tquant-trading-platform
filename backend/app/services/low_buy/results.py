@@ -272,7 +272,7 @@ class LowBuyResultStoreMixin:
             market_state=str(summary_filters.get("market_state") or "low_volume_wait"),
             market_state_text=str(summary_filters.get("market_regime") or ""),
             market_state_category=str(summary_filters.get("market_state_category") or "low_volume_wait"),
-            market_state_category_text=str(summary_filters.get("market_state_category_text") or "缩量观望"),
+            market_state_category_text=str(summary_filters.get("market_state_category_text") or "缩量无主线"),
             data_quality=str(summary_filters.get("data_quality") or "ok"),
             data_quality_text=str(summary_filters.get("data_quality_text") or "数据完整"),
             data_quality_tags=self._safe_json_list(summary_filters.get("data_quality_tags_json", "[]")),

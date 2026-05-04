@@ -14,26 +14,26 @@ class MarketStateCategory:
 MARKET_STATE_CATEGORIES: dict[str, MarketStateCategory] = {
     "broad_rally": MarketStateCategory(
         key="broad_rally",
-        label="普涨扩散",
-        description="个股和行业扩散同步改善，允许生产策略正常参与排序。",
+        label="强势主升",
+        description="个股和行业扩散同步改善，主线强度较高，生产策略可正常参与排序。",
         raw_states=("broad_rally",),
     ),
     "repair": MarketStateCategory(
         key="repair",
-        label="修复中",
-        description="市场正在修复但尚未普涨，优先保留强结构和主线票。",
+        label="弱势修复",
+        description="市场从弱势中修复但尚未普涨，优先保留强结构和主线票。",
         raw_states=("repair",),
     ),
     "weight_support": MarketStateCategory(
         key="weight_support",
-        label="权重护盘",
-        description="指数由权重支撑，题材和后排票需要降级处理。",
+        label="震荡轮动",
+        description="指数可能由权重支撑或热点轮动，题材后排需要降级处理。",
         raw_states=("weight_support", "weight_support_active"),
     ),
     "low_volume_wait": MarketStateCategory(
         key="low_volume_wait",
-        label="缩量观望",
-        description="成交和扩散不足，默认降低新开仓优先级。",
+        label="缩量无主线",
+        description="成交和扩散不足，主线不清晰，默认降低新开仓优先级。",
         raw_states=("low_volume_wait",),
     ),
     "fast_rotation": MarketStateCategory(
@@ -44,8 +44,8 @@ MARKET_STATE_CATEGORIES: dict[str, MarketStateCategory] = {
     ),
     "risk_retreat": MarketStateCategory(
         key="risk_retreat",
-        label="退潮/风险释放",
-        description="高位退潮或风险释放，新增买点需要严格收缩。",
+        label="下跌退潮/极端风险",
+        description="高位退潮、风险释放或极端弱势，新增买点需要严格收缩。",
         raw_states=("high_flyer_retreat", "risk_release"),
     ),
 }

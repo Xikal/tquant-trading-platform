@@ -1,0 +1,137 @@
+.tabs button {
+  color: var(--text);
+}
+
+.tabs button.active {
+  background: var(--deep);
+  border-color: var(--deep);
+  color: #fff;
+}
+
+.sample,
+.trade-card,
+.empty-state {
+  display: block;
+  padding: 8px;
+  border-radius: 8px;
+  background: var(--muted-bg);
+  margin-bottom: 6px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.dark-card {
+  display: grid;
+  gap: 5px;
+  margin-top: 10px;
+  padding: 12px;
+  border-radius: 8px;
+  background: #08111f;
+}
+
+.dark-card span {
+  color: #c5cedc;
+  font-size: 12px;
+}
+
+.quick-symbols {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 10px 0;
+}
+
+.quick-symbols button {
+  border: 0;
+  padding: 0;
+  color: var(--accent);
+  background: transparent;
+  font-size: 12px;
+}
+
+.playbook-buy {
+  border-color: #ffb9aa;
+  background: #fff7f4;
+}
+
+.playbook-buy .panel-title h2 {
+  color: var(--up);
+}
+
+.playbook-buy .stock-card {
+  border-color: #ffc8bd;
+  background: #fffaf7;
+}
+
+.playbook-near .stock-card {
+  border-color: #f1cf7c;
+  background: #fffdf6;
+}
+
+.playbook-performance,
+.playbook-focus,
+.playbook-buy,
+.playbook-near,
+.playbook-watch {
+  outline: 2px solid rgba(64, 149, 255, 0.12);
+}
+
+.section-topbar nav button.active {
+  background: transparent;
+  border-color: transparent;
+  color: #fff;
+}
+
+.dark .sample,
+.dark .empty-state {
+  background: #0b1422;
+}
+
+.setting-card {
+  min-height: 250px;
+  display: flex;
+  flex-direction: column;
+}
+
+.setting-fields {
+  display: grid;
+  gap: 8px;
+}
+
+.setting-card .primary {
+  margin-top: auto;
+  width: fit-content;
+}
+
+.ai-result {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+  padding: 10px;
+  border: 1px solid #ecd59a;
+  border-radius: 10px;
+  background: #fffaf0;
+}
+
+.ai-fixed-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.ai-result p,
+.line-list ul {
+  margin: 0;
+}
+
+.line-list span {
+  display: inline-block;
+  margin-bottom: 4px;
+  font-weight: 800;
+}
+
+.line-list li {
+  margin-bottom: 3px;
+  color: var(--muted);
+  font-size: 12px;
+}

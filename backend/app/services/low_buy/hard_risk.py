@@ -17,9 +17,10 @@ def build_hard_risk_assessment(
     level = "clear"
     score_penalty = 0.0
 
-    if _has_name_risk(item.name):
-        reasons.append("名称触发 ST/退市风险标记，低吸策略不参与。")
-        tags.append("硬风控:名称风险")
+    untradable_reason, untradable_tag = hard_untradable_reason(item=item, metrics=metrics)
+    if untradable_reason:
+        reasons.append(untradable_reason)
+        tags.append(untradable_tag)
         return _assessment("block", 99.0, True, reasons, tags)
 
     amount_level, amount_penalty, amount_reason = _amount_risk(item.amount)
@@ -53,6 +54,22 @@ def build_hard_risk_assessment(
         tags.append("硬风控:趋势破坏")
 
     return _assessment(level, score_penalty, level == "block", reasons, tags)
+
+
+def hard_untradable_reason(*, item: BoardCandidate, metrics: CandidateMetrics) -> tuple[str, str]:
+    """Return a hard block reason for symbols that should not enter low-buy scoring."""
+
+    if _has_name_risk(item.name):
+        return "名称触发 ST/退市风险标记，低吸策略不参与。", "硬风控:名称风险"
+    if metrics.latest_close <= 0:
+        return "价格无效，无法确认真实买点。", "硬风控:价格无效"
+    if item.amount <= 0:
+        return "成交额缺失或疑似停牌，暂不进入低吸候选。", "硬风控:疑似停牌"
+    if metrics.latest_change_pct >= 9.7 and metrics.close_position_ratio >= 0.92:
+        return "价格接近涨停强封区域，低吸策略不追高。", "硬风控:涨停追高"
+    if metrics.latest_change_pct <= -9.7 and metrics.close_position_ratio <= 0.12:
+        return "价格接近跌停弱封区域，流动性和止损执行风险过高。", "硬风控:跌停流动性"
+    return "", ""
 
 
 def _has_name_risk(name: str) -> bool:

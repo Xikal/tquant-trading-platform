@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 
 from app.models.entities import PaperPosition, PaperPositionLot
 from app.services.market.trading_calendar import last_a_share_trading_day, next_a_share_trading_day
+from app.services.paper.money import CENT, to_decimal
 from app.services.paper.symbols import is_etf
 
 
@@ -60,7 +61,7 @@ class PaperPositionService:
             self.db.flush()
         old_qty = int(row.quantity or 0)
         new_qty = old_qty + quantity
-        row.cost_basis = _weighted_cost(Decimal(str(row.cost_basis or 0)), old_qty, cost_price, quantity)
+        row.cost_basis = _weighted_cost(to_decimal(row.cost_basis), old_qty, cost_price, quantity)
         row.quantity = new_qty
         row.name = name or row.name or symbol
         row.strategy_sources = _merge_strategy_source(row.strategy_sources, strategy_key)
@@ -160,9 +161,9 @@ class PaperPositionService:
                 continue
             row.latest_price = price
             row.market_value = price * Decimal(row.quantity)
-            row.unrealized_pnl = (price - Decimal(str(row.cost_basis or 0))) * Decimal(row.quantity)
-            cost_amount = Decimal(str(row.cost_basis or 0)) * Decimal(max(row.quantity, 1))
-            row.unrealized_pnl_pct = Decimal(str(row.unrealized_pnl or 0)) / max(cost_amount, Decimal("0.01")) * 100
+            row.unrealized_pnl = (price - to_decimal(row.cost_basis)) * Decimal(row.quantity)
+            cost_amount = to_decimal(row.cost_basis) * Decimal(max(row.quantity, 1))
+            row.unrealized_pnl_pct = to_decimal(row.unrealized_pnl) / max(cost_amount, CENT) * 100
 
 
 def _weighted_cost(current_cost: Decimal, current_qty: int, new_cost: Decimal, new_qty: int) -> Decimal:

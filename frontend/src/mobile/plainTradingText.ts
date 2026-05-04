@@ -1,9 +1,9 @@
 export function plainMarketText(marketState?: string | null) {
   switch (marketState) {
     case "broad_rally":
-      return "适合出手";
+      return "强势主升，可提高关注";
     case "repair":
-      return "适合小仓试错";
+      return "弱势修复，只适合小仓试错";
     case "fast_rotation":
       return "轮动太快，只做最强主线";
     case "weight_support":
@@ -13,7 +13,7 @@ export function plainMarketText(marketState?: string | null) {
     case "risk_release":
       return "风险释放中，空仓等待";
     case "low_volume_wait":
-      return "缩量观望，等放量确认";
+      return "缩量无主线，等放量确认";
     default:
       return "环境一般，小仓观察";
   }

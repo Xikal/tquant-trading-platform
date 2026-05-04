@@ -14,6 +14,7 @@ from app.models.entities import (
     PaperPositionLot,
     PaperTrade,
 )
+from app.services.paper.money import ZERO, to_decimal
 
 
 class PaperAccountService:
@@ -69,11 +70,11 @@ class PaperAccountService:
             .scalars()
             .all()
         )
-        market_value = sum(Decimal(str(position.market_value or 0)) for position in positions)
-        unrealized = sum(Decimal(str(position.unrealized_pnl or 0)) for position in positions)
+        market_value = sum(to_decimal(position.market_value) for position in positions)
+        unrealized = sum(to_decimal(position.unrealized_pnl) for position in positions)
         account.market_value = market_value
         account.unrealized_pnl = unrealized
-        account.total_assets = Decimal(str(account.cash_available or 0)) + market_value
+        account.total_assets = to_decimal(account.cash_available) + market_value
         self.db.flush()
         return account
 
@@ -82,12 +83,12 @@ class PaperAccountService:
         for model in (PaperTrade, PaperPositionLot, PaperOrder, PaperPosition, PaperPerformanceSnapshot, PaperAgentRun):
             self.db.execute(delete(model).where(model.account_id == account_id))
         account.cash_available = account.initial_cash
-        account.frozen_cash = Decimal("0")
-        account.market_value = Decimal("0")
+        account.frozen_cash = ZERO
+        account.market_value = ZERO
         account.total_assets = account.initial_cash
-        account.realized_pnl = Decimal("0")
-        account.unrealized_pnl = Decimal("0")
-        account.max_drawdown_pct = Decimal("0")
+        account.realized_pnl = ZERO
+        account.unrealized_pnl = ZERO
+        account.max_drawdown_pct = ZERO
         account.status = "active"
         self.db.commit()
         self.db.refresh(account)
@@ -109,8 +110,8 @@ class PaperAccountService:
 
     def check_balance(self, account_id: int, required: Decimal) -> bool:
         account = self.get_account(account_id)
-        return Decimal(str(account.cash_available or 0)) >= required
+        return to_decimal(account.cash_available) >= required
 
     def check_balance_locked(self, account_id: int, required: Decimal) -> bool:
         account = self.get_account(account_id, for_update=True)
-        return Decimal(str(account.cash_available or 0)) >= required
+        return to_decimal(account.cash_available) >= required

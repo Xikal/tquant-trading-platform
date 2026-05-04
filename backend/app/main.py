@@ -21,6 +21,7 @@ from app.core.timing import record_request_timing
 from app.models.schemas import HealthResponse, ReadinessResponse
 from app.repositories.low_buy.results import LowBuyResultRepository
 from app.services.low_buy.shared import DEFAULT_PRODUCTION_LOW_BUY_STRATEGY
+from app.services.low_buy.strategy_auto_governance import refresh_low_buy_strategy_auto_governance
 from app.services.low_buy_screener import PLAYBOOKS, LowBuyScreenerService
 from app.services.paper.archive import PaperArchiveService
 from app.services.paper.scheduler import build_auto_trader_config, start_auto_trader, stop_auto_trader
@@ -193,6 +194,14 @@ def _run_monthly_strategy_validation_once() -> None:
             logger.info("月度策略样本外验证完成: run_id=%s", report.run_id)
 
 
+def _refresh_low_buy_strategy_governance_once() -> None:
+    if settings.database_url.startswith("sqlite"):
+        return
+    with SessionLocal() as db:
+        payload = refresh_low_buy_strategy_auto_governance(db)
+        logger.info("低吸策略自动治理刷新完成: items=%s", len(payload.get("items", {})))
+
+
 def _scan_priority_notifications_once() -> None:
     if not settings.notification_signal_scan_enabled:
         return
@@ -251,6 +260,12 @@ async def lifespan(_: FastAPI):
                 interval_seconds=24 * 60 * 60,
                 initial_delay_seconds=180,
             )
+        task_manager.register_loop(
+            name="low_buy_strategy_governance",
+            target=_refresh_low_buy_strategy_governance_once,
+            interval_seconds=60 * 60,
+            initial_delay_seconds=210,
+        )
         if settings.notification_signal_scan_enabled:
             task_manager.register_loop(
                 name="agent_priority_notifications",

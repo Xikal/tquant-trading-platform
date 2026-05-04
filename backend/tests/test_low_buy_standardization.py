@@ -27,7 +27,7 @@ class LowBuyStandardizationTest(unittest.TestCase):
         self.assertEqual(standard_market_state_key("low_volume_wait"), "low_volume_wait")
         self.assertEqual(standard_market_state_key("fast_rotation"), "fast_rotation")
         self.assertEqual(standard_market_state_key("risk_release"), "risk_retreat")
-        self.assertEqual(standard_market_state_label("high_flyer_retreat"), "退潮/风险释放")
+        self.assertEqual(standard_market_state_label("high_flyer_retreat"), "下跌退潮/极端风险")
 
     def test_data_quality_tags_degrade_without_market_inputs(self) -> None:
         market_quality = build_market_data_quality(
@@ -87,7 +87,7 @@ class LowBuyStandardizationTest(unittest.TestCase):
             updated_at="2026-05-03 10:00:00",
         )
         self.assertEqual(response.data_quality, "ok")
-        self.assertEqual(response.market_state_category_text, "缩量观望")
+        self.assertEqual(response.market_state_category_text, "缩量无主线")
 
 
 if __name__ == "__main__":

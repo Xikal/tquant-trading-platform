@@ -283,7 +283,7 @@ class LowBuyScreeningMixin(LowBuyQuoteRefreshMixin):
             full_scan_in_progress=full_scan_in_progress,
             full_scan_updated_at=None,
             market_state_category="low_volume_wait",
-            market_state_category_text="缩量观望",
+            market_state_category_text="缩量无主线",
             data_quality="limited",
             data_quality_text="后台全量深筛仍在补齐",
             data_quality_tags=["全量快照待生成"],
@@ -291,7 +291,7 @@ class LowBuyScreeningMixin(LowBuyQuoteRefreshMixin):
             filters={
                 "scan_mode": "全量物化",
                 "market_state_category": "low_volume_wait",
-                "market_state_category_text": "缩量观望",
+                "market_state_category_text": "缩量无主线",
                 "data_quality": "limited",
                 "data_quality_text": "后台全量深筛仍在补齐",
                 "data_quality_tags_json": json.dumps(["全量快照待生成"], ensure_ascii=False),

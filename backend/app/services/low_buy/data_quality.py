@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Any
 
 
 @dataclass(frozen=True)
@@ -76,6 +77,40 @@ def build_candidate_data_quality(
     if tags:
         return DataQualitySnapshot("partial", "行情字段不完整", tuple(tags))
     return DataQualitySnapshot()
+
+
+def build_low_buy_metrics_quality(metrics: Any) -> DataQualitySnapshot:
+    """Detect obviously unreliable daily-bar derived metrics.
+
+    This is a lightweight statistical guard used by both stock screening and
+    ranking. It does not replace strategy rules; it prevents dirty K-line data
+    from being interpreted as a valid signal.
+    """
+
+    tags: list[str] = []
+    if _non_positive(metrics.latest_close, metrics.latest_high, metrics.latest_low):
+        return DataQualitySnapshot("unavailable", "日线价格不可用", ("日线价格无效",))
+    if metrics.latest_low > metrics.latest_high:
+        return DataQualitySnapshot("unavailable", "日线高低价异常", ("高低价倒挂",))
+    if not (metrics.latest_low * 0.995 <= metrics.latest_close <= metrics.latest_high * 1.005):
+        tags.append("收盘价越界")
+    if abs(metrics.latest_change_pct) > 21.5:
+        tags.append("日涨跌幅越界")
+    if metrics.latest_volume_ratio >= 5.0 or metrics.abnormal_volume_days >= 3:
+        tags.append("量能统计异常")
+    if metrics.max_gap_size_pct >= 12.0:
+        tags.append("缺口过大")
+    if metrics.retracement_atr >= 12.0:
+        tags.append("波动异常")
+    if not tags:
+        return DataQualitySnapshot()
+    quality = "degraded" if any(tag in tags for tag in ("收盘价越界", "日涨跌幅越界", "波动异常")) else "partial"
+    text = "日线数据疑似异常" if quality == "degraded" else "日线数据需复核"
+    return DataQualitySnapshot(quality, text, tuple(tags))
+
+
+def _non_positive(*values: float) -> bool:
+    return any(value <= 0 for value in values)
 
 
 def combine_data_quality(*items: DataQualitySnapshot | None) -> DataQualitySnapshot:

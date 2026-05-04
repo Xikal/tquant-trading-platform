@@ -69,7 +69,7 @@ _DEFAULT_STATE_RULES: dict[str, dict[str, object]] = {
         "hard_buy_allowed": True,
         "soft_max_strength": 0.72,
         "hard_max_strength": 0.62,
-        "notes": ["缩量观望环境下，低吸只保留最强位置和承接。"],
+        "notes": ["缩量无主线环境下，低吸只保留最强位置和承接。"],
     },
     "fast_rotation": {
         "score_penalty": 2.2,
