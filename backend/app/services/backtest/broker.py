@@ -39,6 +39,7 @@ class ExecutionResult:
     side: str
     quantity: int
     status: str
+    requested_price: Decimal | None = None
     fill_price: Decimal | None = None
     fee_detail: FeeDetail | None = None
     reject_reason: str = ""
@@ -84,6 +85,7 @@ class BacktestBroker:
             side=request.side,
             quantity=match.filled_quantity,
             status="filled",
+            requested_price=to_decimal(selected_price),
             fill_price=match.avg_fill_price,
             fee_detail=match.fee_detail,
             execution_model=model.value,
@@ -135,12 +137,14 @@ def _is_limit_down(bar: DailyBar) -> bool:
 
 
 def _rejected(request: ExecutionRequest, reason: str) -> ExecutionResult:
+    requested_price = _selected_price(request, _execution_model(request.execution_model))
     return ExecutionResult(
         trade_date=request.trade_date,
         symbol=request.symbol,
         side=request.side,
         quantity=request.quantity,
         status="rejected",
+        requested_price=to_decimal(requested_price) if requested_price is not None else None,
         reject_reason=reason,
         execution_model=request.execution_model,
         strategy_key=request.signal.strategy_key if request.signal else "",

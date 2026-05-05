@@ -223,6 +223,9 @@ def test_engine_is_reproducible_and_outputs_trades_and_equity_curve() -> None:
     assert first.orders
     assert any(order.status == "filled" for order in first.orders)
     assert first.trades
+    assert all(trade.holding_days >= 1 for trade in first.trades)
+    assert all(trade.fee_amount > 0 for trade in first.trades)
+    assert all(order.requested_price is not None for order in first.orders if order.status == "filled")
     assert first.metrics["trade_count"] >= 1
     assert {"trade_count", "total_return_pct", "max_drawdown_pct", "sharpe_ratio"} <= set(first.metrics)
 
@@ -246,6 +249,8 @@ def test_engine_persists_manifest_quality_trades_and_equity_outputs() -> None:
     assert repository.manifests[0]["source_hash"]
     assert repository.quality_rows
     assert repository.trades
+    assert repository.trades[0]["holding_days"] >= 1
+    assert repository.trades[0]["fee_amount"] > 0
     assert repository.equity
 
 

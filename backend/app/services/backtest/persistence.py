@@ -82,7 +82,7 @@ class BacktestResultPersistence:
                 strategy_key=order.strategy_key,
                 quantity=int(order.quantity or 0),
                 filled_quantity=int(order.quantity or 0) if order.status == "filled" else 0,
-                requested_price=float(order.fill_price or 0.0),
+                requested_price=float(order.requested_price if order.requested_price is not None else order.fill_price or 0.0),
                 filled_price=float(order.fill_price or 0.0),
                 reason=order.reason or order.reject_reason,
                 payload_json=_json_dumps(order.__dict__),
@@ -95,7 +95,7 @@ class BacktestResultPersistence:
     def _create_trades(self, run_id: int, result: BacktestResult, order_id_by_index: dict[int, int]) -> None:
         for index, trade in enumerate(result.trades):
             gross_amount = float(trade.exit_price) * int(trade.quantity or 0)
-            fee_amount = max(float(trade.gross_pnl) - float(trade.net_pnl), 0.0)
+            fee_amount = max(float(getattr(trade, "fee_amount", 0.0) or 0.0), 0.0)
             self.db.add(
                 BacktestTrade(
                     run_id=run_id,

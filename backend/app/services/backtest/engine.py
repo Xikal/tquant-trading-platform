@@ -40,6 +40,7 @@ class BacktestOrder:
     status: str
     strategy_key: str = ""
     execution_model: str = ""
+    requested_price: float | None = None
     fill_price: float | None = None
     reject_reason: str = ""
     reason: str = ""
@@ -459,6 +460,7 @@ def _order_from_execution(result: ExecutionResult, *, strategy_key: str | None =
         status=result.status,
         strategy_key=strategy_key if strategy_key is not None else result.strategy_key,
         execution_model=result.execution_model,
+        requested_price=float(result.requested_price) if result.requested_price is not None else None,
         fill_price=float(result.fill_price) if result.fill_price is not None else None,
         reject_reason=result.reject_reason,
         reason=result.reason,

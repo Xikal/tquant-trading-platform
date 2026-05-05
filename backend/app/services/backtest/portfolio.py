@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from datetime import datetime
 from decimal import Decimal
 
 from app.services.paper.fees import FeeDetail
@@ -21,6 +22,7 @@ class PositionLot:
     quantity: int
     remaining: int
     cost_price: Decimal
+    entry_fee: Decimal
     available_date: str
     entry_date: str
     strategy_key: str = ""
@@ -56,6 +58,8 @@ class RealizedTrade:
     gross_pnl: float
     net_pnl: float
     return_pct: float
+    fee_amount: float
+    holding_days: int
     exit_reason: str
 
 
@@ -139,6 +143,7 @@ class BacktestPortfolio:
                 quantity=quantity,
                 remaining=quantity,
                 cost_price=price,
+                entry_fee=fee.total_fee,
                 available_date=trade_date if is_etf(symbol) else (next_trade_date or trade_date),
                 entry_date=trade_date,
                 strategy_key=strategy_key,
@@ -231,7 +236,9 @@ def _realized_trade(
     exit_reason: str,
 ) -> RealizedTrade:
     gross_pnl = (exit_price - lot.cost_price) * Decimal(quantity)
-    net_pnl = gross_pnl - exit_fee
+    entry_fee = lot.entry_fee * Decimal(quantity) / Decimal(max(lot.quantity, 1))
+    total_fee = entry_fee + exit_fee
+    net_pnl = gross_pnl - total_fee
     cost_amount = lot.cost_price * Decimal(max(quantity, 1))
     return RealizedTrade(
         symbol=position.symbol,
@@ -245,5 +252,16 @@ def _realized_trade(
         gross_pnl=float(to_money(gross_pnl)),
         net_pnl=float(to_money(net_pnl)),
         return_pct=float((net_pnl / max(cost_amount, Decimal("0.01"))) * Decimal("100")),
+        fee_amount=float(to_money(total_fee)),
+        holding_days=_calendar_days(lot.entry_date, trade_date),
         exit_reason=exit_reason,
     )
+
+
+def _calendar_days(entry_date: str, exit_date: str) -> int:
+    try:
+        start = datetime.strptime(entry_date, "%Y-%m-%d").date()
+        end = datetime.strptime(exit_date, "%Y-%m-%d").date()
+    except ValueError:
+        return 0
+    return max((end - start).days, 0)
