@@ -261,7 +261,8 @@
 .strategy-signal-grid {
   display: grid;
   gap: 10px;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: minmax(220px, 1fr) minmax(180px, 260px) auto;
+  align-items: end;
 }
 
 .strategy-signal-card {
@@ -275,6 +276,42 @@
 
 .strategy-signal-card span {
   color: var(--strategy-muted);
+}
+
+.strategy-signal-table {
+  display: grid;
+  gap: 7px;
+  overflow-x: auto;
+}
+
+.strategy-signal-row {
+  display: grid;
+  grid-template-columns: 94px minmax(150px, 1fr) 92px 64px minmax(150px, 1fr) minmax(240px, 1.4fr);
+  gap: 8px;
+  align-items: center;
+  min-width: 920px;
+  padding: 8px 10px;
+  border: 1px solid var(--strategy-border);
+  border-radius: 12px;
+  background: var(--strategy-bg);
+  color: var(--strategy-text);
+  font-size: 12px;
+}
+
+.strategy-signal-row.head {
+  background: var(--strategy-bg-soft);
+  color: var(--strategy-muted);
+  font-weight: 900;
+}
+
+.strategy-signal-row strong {
+  display: grid;
+  gap: 2px;
+}
+
+.strategy-signal-row small {
+  color: var(--strategy-muted);
+  font-size: 11px;
 }
 
 .strategy-history-summary {

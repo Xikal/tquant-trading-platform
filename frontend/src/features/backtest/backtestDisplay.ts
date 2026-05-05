@@ -1,12 +1,8 @@
 import type { BacktestExecutionModel } from "../../api/backtests";
+import { STRATEGY_OPTIONS, type StrategyOption } from "../../constants/strategies";
 
-export const BACKTEST_STRATEGY_OPTIONS = [
-  ["first_board", "首板回调"],
-  ["volume_shrink", "量能低吸"],
-  ["late_session_strong_support", "收盘强势承接"],
-  ["core_midcap_vwap_ma5_retrace", "中军回踩"],
-  ["sector_mainline_first_divergence_low_buy", "主线首分歧"],
-] as const;
+export const BACKTEST_STRATEGY_OPTIONS = STRATEGY_OPTIONS;
+export type BacktestStrategyOption = StrategyOption;
 
 export const BACKTEST_EXECUTION_MODELS: Array<[BacktestExecutionModel, string]> = [
   ["open_price", "开盘价成交"],

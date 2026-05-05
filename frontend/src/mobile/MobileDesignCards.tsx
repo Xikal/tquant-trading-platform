@@ -6,6 +6,7 @@ import type {
   LowBuyPriorityBoardResult,
   WatchlistItem
 } from "../types"
+import { STRATEGY_OPTIONS } from "../constants/strategies"
 import { getPriceToneClass } from "../utils/priceTone"
 
 type Tone = "positive" | "negative" | "neutral" | "warning"
@@ -17,13 +18,7 @@ export interface MobileStrategyTabOption {
   label: string
 }
 
-const MOBILE_STRATEGY_TABS: MobileStrategyTabOption[] = [
-  { key: "first_board", label: "首板回调" },
-  { key: "volume_shrink", label: "量能低吸" },
-  { key: "late_session_strong_support", label: "尾盘" },
-  { key: "core_midcap_vwap_ma5_retrace", label: "中军回踩" },
-  { key: "sector_mainline_first_divergence_low_buy", label: "主线首分歧" }
-]
+const MOBILE_STRATEGY_TABS: MobileStrategyTabOption[] = STRATEGY_OPTIONS.map(([key, label]) => ({ key, label }))
 
 export interface MobileHoldingRowData {
   record: WatchlistItem

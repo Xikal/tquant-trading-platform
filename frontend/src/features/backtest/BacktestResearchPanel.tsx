@@ -22,8 +22,8 @@ import {
 } from "../../components/shared/FormFields";
 import {
   BACKTEST_EXECUTION_MODELS,
-  BACKTEST_STRATEGY_OPTIONS,
   OPTIMIZATION_TARGET_OPTIONS,
+  type BacktestStrategyOption,
   formatBacktestStrategy,
   formatInteger,
   formatMoneyOrPct,
@@ -33,6 +33,7 @@ import {
   pboRiskMeta,
   toneFromNumber,
 } from "./backtestDisplay";
+import { useBacktestStrategyOptions } from "./useBacktestStrategyOptions";
 
 const LazyBacktestCompareChart = lazy(() => import("./LazyBacktestCompareChart"));
 const LazyBacktestMonthlyHeatmap = lazy(() => import("./LazyBacktestMonthlyHeatmap"));
@@ -116,11 +117,13 @@ export function BacktestResearchPanel({
   sections?: BacktestResearchSection[];
   equity?: EquityPoint[];
 }) {
+  const strategyOptions = useBacktestStrategyOptions();
   const visibleSections = new Set<BacktestResearchSection>(
     sections ?? ["optimization", "validation", "compare", "attribution"]
   );
+  const focused = Boolean(sections?.length === 1);
   return (
-    <section className="panel backtest-research">
+    <section className={`panel backtest-research${focused ? " focused" : ""}`}>
       <div className="backtest-research-hero">
         <div>
           <span className="backtest-kicker">Research Loop · Phase2</span>
@@ -136,8 +139,8 @@ export function BacktestResearchPanel({
       {state.error ? <ErrorBanner message={state.error} onRetry={actions.onRefreshResearch} /> : null}
 
       <div className="backtest-research-grid">
-        {visibleSections.has("optimization") ? <OptimizationPanel state={state} actions={actions} /> : null}
-        {visibleSections.has("validation") ? <ValidationPanel state={state} actions={actions} /> : null}
+        {visibleSections.has("optimization") ? <OptimizationPanel state={state} actions={actions} strategyOptions={strategyOptions} /> : null}
+        {visibleSections.has("validation") ? <ValidationPanel state={state} actions={actions} strategyOptions={strategyOptions} /> : null}
         {visibleSections.has("compare") ? <ComparePanel state={state} actions={actions} /> : null}
         {visibleSections.has("attribution") ? <AttributionPanel state={state} equity={equity ?? []} /> : null}
       </div>
@@ -145,14 +148,22 @@ export function BacktestResearchPanel({
   );
 }
 
-function OptimizationPanel({ state, actions }: { state: BacktestResearchState; actions: BacktestResearchActions }) {
+function OptimizationPanel({
+  state,
+  actions,
+  strategyOptions,
+}: {
+  state: BacktestResearchState;
+  actions: BacktestResearchActions;
+  strategyOptions: BacktestStrategyOption[];
+}) {
   const detail = state.selectedOptimization;
   return (
     <section className="backtest-research-card span-2">
       <PanelTitle title="优化任务" meta={`${state.optimizations.length} 条`} />
       <div className="backtest-research-form compact">
         <TextField label="名称" value={state.optimizationForm.name} onChange={(name) => actions.onOptimizationFormChange({ name })} />
-        <SelectField label="策略" value={state.optimizationForm.strategy} options={BACKTEST_STRATEGY_OPTIONS} onChange={(strategy) => actions.onOptimizationFormChange({ strategy })} />
+        <SelectField label="策略" value={state.optimizationForm.strategy} options={strategyOptions} onChange={(strategy) => actions.onOptimizationFormChange({ strategy })} />
         <DateField label="训练开始" value={state.optimizationForm.train_start} onChange={(train_start) => actions.onOptimizationFormChange({ train_start })} />
         <DateField label="训练结束" value={state.optimizationForm.train_end} onChange={(train_end) => actions.onOptimizationFormChange({ train_end })} />
         <DateField label="验证开始" value={state.optimizationForm.test_start} onChange={(test_start) => actions.onOptimizationFormChange({ test_start })} />
@@ -222,18 +233,29 @@ function OptimizationPanel({ state, actions }: { state: BacktestResearchState; a
   );
 }
 
-function ValidationPanel({ state, actions }: { state: BacktestResearchState; actions: BacktestResearchActions }) {
+function ValidationPanel({
+  state,
+  actions,
+  strategyOptions,
+}: {
+  state: BacktestResearchState;
+  actions: BacktestResearchActions;
+  strategyOptions: BacktestStrategyOption[];
+}) {
   const detail = state.selectedValidation;
   return (
     <section className="backtest-research-card span-2">
       <PanelTitle title="Walk-forward 验证" meta={`${state.validations.length} 条`} />
       <div className="backtest-research-form compact">
         <TextField label="名称" value={state.validationForm.name} onChange={(name) => actions.onValidationFormChange({ name })} />
-        <SelectField label="策略" value={state.validationForm.strategy} options={BACKTEST_STRATEGY_OPTIONS} onChange={(strategy) => actions.onValidationFormChange({ strategy })} />
+        <SelectField label="策略" value={state.validationForm.strategy} options={strategyOptions} onChange={(strategy) => actions.onValidationFormChange({ strategy })} />
         <DateField label="开始日期" value={state.validationForm.start_date} onChange={(start_date) => actions.onValidationFormChange({ start_date })} />
         <DateField label="结束日期" value={state.validationForm.end_date} onChange={(end_date) => actions.onValidationFormChange({ end_date })} />
-        <TextField type="number" label="窗口数" value={state.validationForm.window_count} onChange={(window_count) => actions.onValidationFormChange({ window_count })} />
-        <TextField type="number" label="训练比例" value={state.validationForm.train_ratio} onChange={(train_ratio) => actions.onValidationFormChange({ train_ratio })} />
+        <WindowPresetPicker
+          windowCount={state.validationForm.window_count}
+          trainRatio={state.validationForm.train_ratio}
+          onChange={(patch) => actions.onValidationFormChange(patch)}
+        />
         <TextField type="number" label="初始资金" value={state.validationForm.initial_capital} onChange={(initial_capital) => actions.onValidationFormChange({ initial_capital })} />
         <SelectField label="执行模型" value={state.validationForm.execution_model} options={BACKTEST_EXECUTION_MODELS} onChange={(execution_model) => actions.onValidationFormChange({ execution_model: execution_model as BacktestExecutionModel })} />
         <SelectField label="优化目标" value={state.validationForm.optimization_target} options={OPTIMIZATION_TARGET_OPTIONS} onChange={(optimization_target) => actions.onValidationFormChange({ optimization_target })} />
@@ -282,6 +304,43 @@ function ValidationPanel({ state, actions }: { state: BacktestResearchState; act
         ) : <Empty text="选择一条验证任务查看 PBO、稳定性结论和窗口卡片。" />}
       </div>
     </section>
+  );
+}
+
+function WindowPresetPicker({
+  windowCount,
+  trainRatio,
+  onChange,
+}: {
+  windowCount: string;
+  trainRatio: string;
+  onChange: (patch: Pick<ValidationFormState, "window_count" | "train_ratio">) => void;
+}) {
+  const presets = [
+    { label: "稳健", hint: "4 窗口 · 75% 训练", window_count: "4", train_ratio: "0.75" },
+    { label: "滚动", hint: "6 窗口 · 70% 训练", window_count: "6", train_ratio: "0.70" },
+    { label: "严检", hint: "8 窗口 · 65% 训练", window_count: "8", train_ratio: "0.65" },
+  ];
+  return (
+    <div className="backtest-window-presets">
+      <span>验证窗口</span>
+      <div>
+        {presets.map((preset) => {
+          const active = windowCount === preset.window_count && trainRatio === preset.train_ratio;
+          return (
+            <button
+              key={preset.label}
+              type="button"
+              className={active ? "active" : ""}
+              onClick={() => onChange({ window_count: preset.window_count, train_ratio: preset.train_ratio })}
+            >
+              <strong>{preset.label}</strong>
+              <small>{preset.hint}</small>
+            </button>
+          );
+        })}
+      </div>
+    </div>
   );
 }
 

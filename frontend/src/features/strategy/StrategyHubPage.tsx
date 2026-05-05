@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { BacktestRunSummary } from "../../api/backtests";
+import { strategiesApi, type StrategySignalReplayItem } from "../../api/strategies";
 import { EmptyPlaceholder, ErrorBanner, SkeletonBlock } from "../../components/shared/Feedback";
 import { DateField, NumberField, SearchField, SelectField, TextField } from "../../components/shared/FormFields";
 import { useToast } from "../../components/shared/ToastContainer";
@@ -11,6 +12,7 @@ import {
 } from "../backtest/backtestDisplay";
 import { BacktestResearchPanel, type BacktestResearchSection } from "../backtest/BacktestResearchPanel";
 import { useBacktestDashboard } from "../backtest/useBacktestDashboard";
+import { useBacktestStrategyOptions } from "../backtest/useBacktestStrategyOptions";
 import { useStrategyHub, type StrategyHubTab } from "./useStrategyHub";
 
 const TABS: Array<{ key: StrategyHubTab; label: string; hint: string }> = [
@@ -280,6 +282,38 @@ function StrategyBridge({ tab }: { tab: Exclude<StrategyHubTab, "quick" | "histo
 function StrategySignalReplayPanel({ title, subtitle }: { title: string; subtitle: string }) {
   const [symbol, setSymbol] = useState("");
   const [strategy, setStrategy] = useState("first_board");
+  const [items, setItems] = useState<StrategySignalReplayItem[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const requestSeqRef = useRef(0);
+  const strategyOptions = useBacktestStrategyOptions();
+
+  function loadReplay(nextSymbol: string, nextLimit: number) {
+    const requestSeq = requestSeqRef.current + 1;
+    requestSeqRef.current = requestSeq;
+    setLoading(true);
+    setError("");
+    void strategiesApi.listSignalReplay(strategy, nextSymbol, nextLimit)
+      .then((result) => {
+        if (requestSeqRef.current === requestSeq) setItems(result.items ?? []);
+      })
+      .catch((err) => {
+        if (requestSeqRef.current === requestSeq) setError(err instanceof Error ? err.message : String(err));
+      })
+      .finally(() => {
+        if (requestSeqRef.current === requestSeq) setLoading(false);
+      });
+  }
+
+  useEffect(() => {
+    loadReplay("", 12);
+    return () => {
+      requestSeqRef.current += 1;
+    };
+  }, [strategy]);
+  const runReplayQuery = () => {
+    loadReplay(symbol, 24);
+  };
   return (
     <section className="panel strategy-signals-panel">
       <div className="strategy-panel-title">
@@ -294,26 +328,61 @@ function StrategySignalReplayPanel({ title, subtitle }: { title: string; subtitl
           label="策略"
           value={strategy}
           onChange={(event) => setStrategy(event.target.value)}
-          options={[
-            { value: "first_board", label: "首板回调" },
-            { value: "volume_shrink", label: "量能低吸" },
-            { value: "late_session_strong_support", label: "收盘强势承接" },
-            { value: "core_midcap_vwap_ma5_retrace", label: "核心中军回踩" },
-            { value: "sector_mainline_first_divergence_low_buy", label: "主线首分歧" },
-          ]}
+          options={strategyOptions.map(([value, label]) => ({ value, label }))}
         />
+        <button type="button" className="primary" onClick={runReplayQuery} disabled={loading}>
+          {loading ? "查询中" : "查询信号"}
+        </button>
       </div>
-      <div className="strategy-signal-cards">
-        <article className="strategy-signal-card">
-          <strong>查询范围</strong>
-          <span>{symbol ? `${symbol} · ${strategy}` : "先输入标的，可在当前策略下查看信号上下文。"}</span>
-        </article>
-        <article className="strategy-signal-card">
-          <strong>后续动作</strong>
-          <span>信号明细接口未命中时不触发全量扫描，只提示等待后台物化结果。</span>
-        </article>
-      </div>
+      {error ? <ErrorBanner message={`信号复盘查询失败：${error}`} /> : null}
+      <SignalReplayRows items={items} symbol={symbol} strategy={strategy} loading={loading} />
     </section>
+  );
+}
+
+function SignalReplayRows({
+  items,
+  symbol,
+  strategy,
+  loading,
+}: {
+  items: StrategySignalReplayItem[];
+  symbol: string;
+  strategy: string;
+  loading: boolean;
+}) {
+  if (loading) {
+    return <SkeletonBlock rows={4} title />;
+  }
+  if (!items.length) {
+    return (
+      <EmptyPlaceholder
+        title="暂无信号复盘"
+        description={symbol ? `${symbol} 在 ${strategy} 下没有已物化信号。` : "可直接查询当前策略最近已物化信号，不会触发全量扫描。"}
+      />
+    );
+  }
+  return (
+    <div className="strategy-signal-table" role="table" aria-label="策略信号复盘">
+      <div className="strategy-signal-row head" role="row">
+        <span>日期</span>
+        <span>标的</span>
+        <span>状态</span>
+        <span>评分</span>
+        <span>买点/止损</span>
+        <span>摘要</span>
+      </div>
+      {items.map((item) => (
+        <article className="strategy-signal-row" role="row" key={`${item.latest_trade_date}-${item.strategy_key}-${item.symbol}`}>
+          <span>{item.latest_trade_date}</span>
+          <strong>{item.name || item.symbol}<small>{item.symbol}</small></strong>
+          <span>{item.buy_signal_text || item.buy_signal_state}</span>
+          <b>{Number(item.score || 0).toFixed(1)}</b>
+          <span>{item.entry_zone || "--"} / {typeof item.stop_loss === "number" ? item.stop_loss.toFixed(3) : "--"}</span>
+          <span>{item.summary || item.reasons?.[0] || "已读取物化信号"}</span>
+        </article>
+      ))}
+    </div>
   );
 }
 

@@ -10,7 +10,6 @@ import type {
 } from "../../api/backtests";
 import {
   BACKTEST_EXECUTION_MODELS,
-  BACKTEST_STRATEGY_OPTIONS,
   formatBacktestStrategies,
   formatBacktestStrategy,
   formatDateTime,
@@ -23,6 +22,7 @@ import {
   toneFromNumber,
 } from "./backtestDisplay";
 import { BacktestResearchPanel, type BacktestResearchActions, type BacktestResearchState } from "./BacktestResearchPanel";
+import { useBacktestStrategyOptions } from "./useBacktestStrategyOptions";
 import { DateField, NumberField, SelectField, TextField } from "../../components/shared/FormFields";
 import { ErrorBanner } from "../../components/shared/Feedback";
 
@@ -92,6 +92,7 @@ export function BacktestDashboard({
   onSelectRun,
   onCancelRun,
 }: BacktestDashboardProps) {
+  const strategyOptions = useBacktestStrategyOptions();
   const selectedId = selectedRun?.id ?? runs[0]?.id;
   const selectedMetrics = selectedRun ? resolveMetrics(selectedRun) : null;
   const selectedAttribution = selectedRun ? resolveAttribution(selectedRun) : null;
@@ -134,7 +135,7 @@ export function BacktestDashboard({
           />
           <div className="backtest-strategy-picker wide">
             <span>策略多选</span>
-            {BACKTEST_STRATEGY_OPTIONS.map(([key, label]) => (
+            {strategyOptions.map(([key, label]) => (
               <label className={form.strategies.includes(key) ? "selected" : ""} key={key}>
                 <input
                   type="checkbox"

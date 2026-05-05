@@ -39,6 +39,24 @@ export interface SymbolSearchItem {
   instrument_type?: string;
 }
 
+export interface StrategySignalReplayItem {
+  latest_trade_date: string;
+  strategy_key: string;
+  symbol: string;
+  name: string;
+  buy_signal_state: string;
+  buy_signal_text: string;
+  score: number;
+  latest_price?: number | null;
+  change_pct?: number | null;
+  entry_zone?: string;
+  stop_loss?: number | null;
+  suggested_position_text?: string;
+  summary?: string;
+  reasons?: string[];
+  updated_at?: string;
+}
+
 export const strategiesApi = {
   getStrategyMeta: () =>
     requestCached<{ strategies: StrategyMeta[] }>("/strategies/meta", 60_000),
@@ -48,4 +66,15 @@ export const strategiesApi = {
     request<{ items: SymbolSearchItem[]; total: number }>(
       `/symbols/search?q=${encodeURIComponent(query)}&limit=${limit}`
     ),
+  listSignalReplay: (strategy: string, symbol = "", limit = 20) => {
+    const params = new URLSearchParams();
+    params.set("strategy", strategy);
+    params.set("limit", String(limit));
+    if (symbol.trim()) {
+      params.set("symbol", symbol.trim());
+    }
+    return request<{ items: StrategySignalReplayItem[]; total: number }>(
+      `/strategy/signals/replay?${params.toString()}`
+    );
+  },
 };
