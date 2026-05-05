@@ -1,6 +1,7 @@
+import { useState } from "react";
 import type { BacktestRunSummary } from "../../api/backtests";
 import { EmptyPlaceholder, ErrorBanner, SkeletonBlock } from "../../components/shared/Feedback";
-import { DateField, NumberField, SelectField, TextField } from "../../components/shared/FormFields";
+import { DateField, NumberField, SearchField, SelectField, TextField } from "../../components/shared/FormFields";
 import { useToast } from "../../components/shared/ToastContainer";
 import {
   formatBacktestStrategies,
@@ -8,7 +9,8 @@ import {
   formatMoney,
   formatPct,
 } from "../backtest/backtestDisplay";
-import { BacktestPage } from "../backtest/BacktestPage";
+import { BacktestResearchPanel, type BacktestResearchSection } from "../backtest/BacktestResearchPanel";
+import { useBacktestDashboard } from "../backtest/useBacktestDashboard";
 import { useStrategyHub, type StrategyHubTab } from "./useStrategyHub";
 
 const TABS: Array<{ key: StrategyHubTab; label: string; hint: string }> = [
@@ -191,6 +193,7 @@ function RecentRuns({ runs }: { runs: BacktestRunSummary[] }) {
 }
 
 function StrategyHistoryPanel({ runs, onRefresh }: { runs: BacktestRunSummary[]; onRefresh: () => void }) {
+  const summary = summarizeRuns(runs);
   return (
     <section className="panel strategy-history">
       <div className="strategy-panel-title">
@@ -199,6 +202,24 @@ function StrategyHistoryPanel({ runs, onRefresh }: { runs: BacktestRunSummary[];
           <span>集中追踪最近回测、验证和策略任务，避免在多个页面来回查找。</span>
         </div>
         <button type="button" onClick={onRefresh}>刷新历史</button>
+      </div>
+      <div className="strategy-history-summary">
+        <article>
+          <span>最近任务</span>
+          <strong>{runs.length}</strong>
+        </article>
+        <article>
+          <span>完成任务</span>
+          <strong>{summary.completed}</strong>
+        </article>
+        <article>
+          <span>平均收益</span>
+          <strong>{formatPct(summary.avgReturnPct)}</strong>
+        </article>
+        <article>
+          <span>平均胜率</span>
+          <strong>{formatPct(summary.avgWinRatePct)}</strong>
+        </article>
       </div>
       {runs.length ? (
         <div className="strategy-history-table" role="table" aria-label="策略历史任务">
@@ -230,21 +251,80 @@ function StrategyHistoryPanel({ runs, onRefresh }: { runs: BacktestRunSummary[];
 
 function StrategyBridge({ tab }: { tab: Exclude<StrategyHubTab, "quick" | "history"> }) {
   const metaMap: Record<Exclude<StrategyHubTab, "quick" | "history">, [string, string]> = {
-    signals: ["信号复盘", "统一读取策略信号和历史样本，下一步接入详细信号明细表。"],
-    optimize: ["参数优化", "参数优化接口已在回测系统中可用，后续迁移完整表单到此入口。"],
-    validate: ["样本外验证", "Walk-forward 验证接口已可用，后续迁移窗口结果和降级建议。"],
-    compare: ["结果对比", "对比能力已在回测模块可用，后续迁移多任务对比图。"],
+    signals: ["信号复盘", "按标的、策略和时间快速定位历史信号，不再加载完整回测页面。"],
+    optimize: ["参数优化", "只展示参数优化模块，避免整页桥接造成额外 API 与 DOM 负担。"],
+    validate: ["样本外验证", "只展示 Walk-forward 验证模块，重点看样本外稳定性。"],
+    compare: ["结果对比", "只展示结果对比模块，便于快速比较不同任务。"],
   };
   const meta = metaMap[tab];
+  if (tab === "signals") {
+    return <StrategySignalReplayPanel title={meta[0]} subtitle={meta[1]} />;
+  }
+  const sectionMap: Record<Exclude<StrategyHubTab, "quick" | "history" | "signals">, BacktestResearchSection> = {
+    optimize: "optimization",
+    validate: "validation",
+    compare: "compare",
+  };
   return (
     <div className="strategy-bridge">
       <section className="panel strategy-placeholder">
         <h2>{meta[0]}</h2>
         <p>{meta[1]}</p>
-        <p>下方桥接现有完整回测闭环模块，确保优化、验证、对比功能可用；后续可继续拆成单独子页。</p>
+        <p>该入口复用回测闭环 API，但仅加载当前功能模块。</p>
       </section>
-      <BacktestPage />
+      <StrategyResearchFocus section={sectionMap[tab]} />
     </div>
+  );
+}
+
+function StrategySignalReplayPanel({ title, subtitle }: { title: string; subtitle: string }) {
+  const [symbol, setSymbol] = useState("");
+  const [strategy, setStrategy] = useState("first_board");
+  return (
+    <section className="panel strategy-signals-panel">
+      <div className="strategy-panel-title">
+        <div>
+          <h2>{title}</h2>
+          <span>{subtitle}</span>
+        </div>
+      </div>
+      <div className="strategy-signal-grid">
+        <SearchField label="标的搜索" value={symbol} placeholder="输入代码或名称" onChange={setSymbol} />
+        <SelectField
+          label="策略"
+          value={strategy}
+          onChange={(event) => setStrategy(event.target.value)}
+          options={[
+            { value: "first_board", label: "首板回调" },
+            { value: "volume_shrink", label: "量能低吸" },
+            { value: "late_session_strong_support", label: "收盘强势承接" },
+            { value: "core_midcap_vwap_ma5_retrace", label: "核心中军回踩" },
+            { value: "sector_mainline_first_divergence_low_buy", label: "主线首分歧" },
+          ]}
+        />
+      </div>
+      <div className="strategy-signal-cards">
+        <article className="strategy-signal-card">
+          <strong>查询范围</strong>
+          <span>{symbol ? `${symbol} · ${strategy}` : "先输入标的，可在当前策略下查看信号上下文。"}</span>
+        </article>
+        <article className="strategy-signal-card">
+          <strong>后续动作</strong>
+          <span>信号明细接口未命中时不触发全量扫描，只提示等待后台物化结果。</span>
+        </article>
+      </div>
+    </section>
+  );
+}
+
+function StrategyResearchFocus({ section }: { section: BacktestResearchSection }) {
+  const dashboard = useBacktestDashboard();
+  return (
+    <BacktestResearchPanel
+      state={dashboard.research}
+      actions={dashboard.researchActions}
+      sections={[section]}
+    />
   );
 }
 
@@ -293,4 +373,21 @@ function statusText(status: string): string {
   if (status === "failed") return "失败";
   if (status === "cancelled") return "取消";
   return status || "--";
+}
+
+function summarizeRuns(runs: BacktestRunSummary[]) {
+  const completedRuns = runs.filter((run) => run.status === "completed" || run.status === "succeeded");
+  const avgReturnPct = average(completedRuns.map((run) => run.summary?.total_return_pct));
+  const avgWinRatePct = average(completedRuns.map((run) => run.summary?.win_rate_pct));
+  return {
+    completed: completedRuns.length,
+    avgReturnPct,
+    avgWinRatePct,
+  };
+}
+
+function average(values: Array<number | null | undefined>): number | undefined {
+  const filtered = values.filter((value): value is number => typeof value === "number" && Number.isFinite(value));
+  if (!filtered.length) return undefined;
+  return filtered.reduce((sum, value) => sum + value, 0) / filtered.length;
 }

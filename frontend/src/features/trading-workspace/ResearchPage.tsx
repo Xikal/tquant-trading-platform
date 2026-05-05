@@ -60,7 +60,12 @@ export function ResearchPage({
         <PanelTitle title="运行回测" />
         <div className="compact-form-grid">
           <SearchField label="证券代码" value={draft.symbol} placeholder="输入代码或名称" onChange={(value) => setDraft({ ...draft, symbol: value })} />
-          <NumberField label="样本窗口" value={draft.lookback_bars} onChange={(event) => setDraft({ ...draft, lookback_bars: event.target.value })} />
+          <NumberField
+            label="回看K线数量"
+            hint="用于分钟回测，数值越大覆盖越久。"
+            value={draft.lookback_bars}
+            onChange={(event) => setDraft({ ...draft, lookback_bars: event.target.value })}
+          />
           <NumberField label="底仓数量" value={draft.initial_position} onChange={(event) => setDraft({ ...draft, initial_position: event.target.value })} />
           <NumberField label="样本外窗口" value={draft.walk_forward_windows} onChange={(event) => setDraft({ ...draft, walk_forward_windows: event.target.value })} />
           <NumberField label="执行天数" value={draft.low_buy_lookback_days} onChange={(event) => setDraft({ ...draft, low_buy_lookback_days: event.target.value })} />
@@ -73,12 +78,12 @@ export function ResearchPage({
           onChange={(event) => setDraft({ ...draft, low_buy_strategy: event.target.value })}
         />
         <SelectField
-          label="分钟周期"
+          label="走势周期"
           value={draft.bar_period}
           options={[
-            { value: "1m", label: "1m" },
-            { value: "5m", label: "5m" },
-            { value: "15m", label: "15m" },
+            { value: "1m", label: "1分钟走势" },
+            { value: "5m", label: "5分钟走势" },
+            { value: "15m", label: "15分钟走势" },
           ]}
           onChange={(event) => setDraft({ ...draft, bar_period: event.target.value as BacktestDraft["bar_period"] })}
         />

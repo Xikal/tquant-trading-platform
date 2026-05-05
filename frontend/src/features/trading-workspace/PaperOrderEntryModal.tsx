@@ -64,20 +64,8 @@ export function OrderEntryModal({
           <NumberField label="数量" value={draft.quantity} placeholder="100 股整数倍" disabled={locked} onChange={(event) => setDraft({ ...draft, quantity: event.target.value })} />
           <NumberField label="限价" value={draft.price} placeholder="限价单必填" disabled={locked} onChange={(event) => setDraft({ ...draft, price: event.target.value })} />
           <NumberField label="撮合现价" value={draft.current_price} disabled={locked} onChange={(event) => setDraft({ ...draft, current_price: event.target.value })} />
-          <TextField label="策略来源" value={draft.strategy_key} placeholder="如 first_board" disabled={locked} onChange={(event) => setDraft({ ...draft, strategy_key: event.target.value })} />
         </div>
         <TextField fieldClassName="paper-reason" label="执行理由" value={draft.reason} disabled={locked} onChange={(event) => setDraft({ ...draft, reason: event.target.value })} />
-        <SelectField
-          fieldClassName="paper-reason"
-          label="盘中确认"
-          value={draft.require_intraday_confirmation ? "yes" : "no"}
-          disabled={locked}
-          options={[
-            { value: "no", label: "不强制确认" },
-            { value: "yes", label: "买入前必须承接确认" },
-          ]}
-          onChange={(event) => setDraft({ ...draft, require_intraday_confirmation: event.target.value === "yes" })}
-        />
         {feeWarning ? <p className="warn paper-fee-warning">{feeWarning}</p> : null}
         <div className="order-modal-actions">
           <button type="button" className="ghost-button" onClick={onClose}>取消</button>

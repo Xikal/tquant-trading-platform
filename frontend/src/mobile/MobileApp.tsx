@@ -69,6 +69,7 @@ export default function MobileApp() {
   } = useAppPreviewData("first_board", Boolean(authUser))
   const {
     strategyFilter,
+    strategyTabs,
     playbook,
     playbookLoading,
     playbookError,
@@ -242,6 +243,7 @@ export default function MobileApp() {
           }}
           lowBuy={{
             strategyFilter,
+            strategyTabs,
             metrics: lowBuyMetrics,
             playbookItems,
             playbookGroups,

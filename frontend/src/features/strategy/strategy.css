@@ -1,6 +1,51 @@
 .strategy-hub {
+  --strategy-bg: #ffffff;
+  --strategy-bg-soft: #f8fafc;
+  --strategy-border: #dde6f0;
+  --strategy-muted: #475569;
+  --strategy-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
+  --strategy-text: #0f172a;
+  --panel: var(--strategy-bg);
+  --card: var(--strategy-bg);
+  --line: var(--strategy-border);
+  --muted: var(--strategy-muted);
+  --muted-bg: var(--strategy-bg-soft);
+  --text: var(--strategy-text);
   display: grid;
   gap: 12px;
+  color: var(--strategy-text);
+}
+
+.strategy-hub .panel {
+  background: var(--strategy-bg);
+  border-color: var(--strategy-border);
+  color: var(--strategy-text);
+}
+
+.strategy-hub h1,
+.strategy-hub h2,
+.strategy-hub h3,
+.strategy-hub h4,
+.strategy-hub p,
+.strategy-hub strong,
+.strategy-hub b,
+.strategy-hub label,
+.strategy-hub span,
+.strategy-hub small {
+  color: inherit;
+}
+
+.strategy-hub input,
+.strategy-hub select,
+.strategy-hub textarea {
+  background: #ffffff;
+  border: 1px solid var(--strategy-border);
+  color: var(--strategy-text);
+}
+
+.strategy-hub input::placeholder,
+.strategy-hub textarea::placeholder {
+  color: #94a3b8;
 }
 
 .strategy-hero {
@@ -51,10 +96,11 @@
 .strategy-preset-list button,
 .strategy-card-grid button,
 .strategy-run-list article {
-  background: var(--panel);
-  border: 1px solid var(--border);
+  background: var(--strategy-bg);
+  border: 1px solid var(--strategy-border);
   border-radius: 14px;
-  color: var(--text);
+  color: var(--strategy-text);
+  box-shadow: var(--strategy-shadow);
 }
 
 .strategy-tabs button {
@@ -76,8 +122,10 @@
 
 .strategy-tabs button.active,
 .strategy-card-grid button.selected {
+  background: #fffaf0;
   border-color: rgba(210, 160, 84, 0.7);
   box-shadow: inset 0 0 0 1px rgba(210, 160, 84, 0.24);
+  color: var(--strategy-text);
 }
 
 .strategy-layout {
@@ -155,7 +203,7 @@
 }
 
 .strategy-run-metrics {
-  border-top: 1px solid var(--border);
+  border-top: 1px solid var(--strategy-border);
   padding-top: 8px;
 }
 
@@ -184,18 +232,73 @@
 }
 
 .strategy-notice {
+  background: #f0fdf4;
   border-color: rgba(28, 145, 85, 0.24);
   color: var(--green);
   padding: 10px 12px;
 }
 
 .strategy-placeholder {
-  min-height: 260px;
+  min-height: 120px;
 }
 
 .strategy-history {
   display: grid;
   gap: 12px;
+}
+
+.strategy-bridge {
+  display: grid;
+  gap: 12px;
+}
+
+.strategy-signals-panel,
+.strategy-signal-cards {
+  display: grid;
+  gap: 12px;
+}
+
+.strategy-signal-grid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.strategy-signal-card {
+  background: var(--strategy-bg-soft);
+  border: 1px solid var(--strategy-border);
+  border-radius: 12px;
+  display: grid;
+  gap: 6px;
+  padding: 12px;
+}
+
+.strategy-signal-card span {
+  color: var(--strategy-muted);
+}
+
+.strategy-history-summary {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.strategy-history-summary article {
+  background: var(--strategy-bg-soft);
+  border: 1px solid var(--strategy-border);
+  border-radius: 12px;
+  display: grid;
+  gap: 5px;
+  padding: 10px 12px;
+}
+
+.strategy-history-summary span {
+  color: var(--strategy-muted);
+  font-size: 12px;
+}
+
+.strategy-history-summary strong {
+  font-size: 18px;
 }
 
 .strategy-history-table {
@@ -206,10 +309,10 @@
 
 .strategy-history-row {
   align-items: center;
-  background: var(--panel);
-  border: 1px solid var(--border);
+  background: var(--strategy-bg);
+  border: 1px solid var(--strategy-border);
   border-radius: 12px;
-  color: var(--text);
+  color: var(--strategy-text);
   display: grid;
   gap: 10px;
   grid-template-columns: minmax(180px, 1.2fr) minmax(180px, 1fr) 92px 92px 92px 150px;
@@ -218,8 +321,8 @@
 }
 
 .strategy-history-row.head {
-  background: rgba(148, 163, 184, 0.08);
-  color: var(--muted);
+  background: var(--strategy-bg-soft);
+  color: var(--strategy-muted);
   font-weight: 800;
 }
 
@@ -234,10 +337,11 @@
 }
 
 .strategy-dialog {
-  background: var(--panel);
-  border: 1px solid var(--border);
+  background: var(--strategy-bg);
+  border: 1px solid var(--strategy-border);
   border-radius: 18px;
   box-shadow: 0 24px 60px rgba(15, 23, 42, 0.2);
+  color: var(--strategy-text);
   display: grid;
   gap: 12px;
   max-width: 420px;
@@ -256,12 +360,14 @@
 
 @media (max-width: 1180px) {
   .strategy-layout,
-  .strategy-tabs {
+  .strategy-tabs,
+  .strategy-history-summary {
     grid-template-columns: 1fr;
   }
 
   .strategy-form,
-  .strategy-card-grid {
+  .strategy-card-grid,
+  .strategy-signal-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
@@ -275,7 +381,8 @@
   }
 
   .strategy-form,
-  .strategy-card-grid {
+  .strategy-card-grid,
+  .strategy-signal-grid {
     grid-template-columns: 1fr;
   }
 }

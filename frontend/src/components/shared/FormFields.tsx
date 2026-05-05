@@ -1,5 +1,5 @@
 import type { InputHTMLAttributes, ReactNode, SelectHTMLAttributes } from "react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { strategiesApi, type SymbolSearchItem } from "../../api/strategies";
 
 interface FieldFrameProps {
@@ -113,22 +113,34 @@ interface SearchFieldProps {
 export function SearchField({ label, value, placeholder, onChange, onSelect }: SearchFieldProps) {
   const [items, setItems] = useState<SymbolSearchItem[]>([]);
   const [open, setOpen] = useState(false);
+  const requestSeq = useRef(0);
 
   useEffect(() => {
     const query = value.trim();
     if (query.length < 2) {
+      requestSeq.current += 1;
       setItems([]);
+      setOpen(false);
       return undefined;
     }
+    const seq = requestSeq.current + 1;
+    requestSeq.current = seq;
     const timer = window.setTimeout(() => {
       strategiesApi.searchSymbols(query, 8)
         .then((result) => {
+          if (requestSeq.current !== seq) return;
           setItems(result.items ?? []);
           setOpen(true);
         })
-        .catch(() => setItems([]));
+        .catch(() => {
+          if (requestSeq.current !== seq) return;
+          setItems([]);
+          setOpen(false);
+        });
     }, 180);
-    return () => window.clearTimeout(timer);
+    return () => {
+      window.clearTimeout(timer);
+    };
   }, [value]);
 
   return (

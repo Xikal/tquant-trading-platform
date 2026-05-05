@@ -9,6 +9,7 @@ import {
   MobilePriorityStockCard,
   MobileHoldingStockCard,
   MobileSectionTitle,
+  type MobileStrategyTabOption,
   type MobileStrategyTabKey,
   MobileStrategyTabs,
   splitPriorityItems
@@ -118,6 +119,7 @@ export function MobileHoldingsSection({
 
 export function MobileLowBuySection({
   strategyFilter,
+  strategyTabs,
   metrics,
   playbookItems,
   playbookGroups,
@@ -130,6 +132,7 @@ export function MobileLowBuySection({
   onBought
 }: {
   strategyFilter: MobileStrategyTabKey
+  strategyTabs?: MobileStrategyTabOption[]
   metrics: MobileMetricItem[]
   playbookItems: MobileLowBuyCardItem[]
   playbookGroups: LowBuyGroups
@@ -143,7 +146,7 @@ export function MobileLowBuySection({
 }) {
   return (
     <>
-      <MobileStrategyTabs active={strategyFilter} onChange={onStrategyChange} />
+      <MobileStrategyTabs active={strategyFilter} onChange={onStrategyChange} strategies={strategyTabs} />
       <MobileMetricRow items={metrics} />
       <MobileFocusCard item={playbookItems[0]} />
 

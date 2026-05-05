@@ -9,15 +9,15 @@ import type {
 import { getPriceToneClass } from "../utils/priceTone"
 
 type Tone = "positive" | "negative" | "neutral" | "warning"
-export type MobileStrategyTabKey =
-  | "first_board"
-  | "volume_shrink"
-  | "late_session_strong_support"
-  | "core_midcap_vwap_ma5_retrace"
-  | "sector_mainline_first_divergence_low_buy"
+export type MobileStrategyTabKey = string
 export type MobileLowBuyCardItem = LowBuyPriorityBoardItem | LowBuyCandidate
 
-const MOBILE_STRATEGY_TABS: Array<{ key: MobileStrategyTabKey; label: string }> = [
+export interface MobileStrategyTabOption {
+  key: string
+  label: string
+}
+
+const MOBILE_STRATEGY_TABS: MobileStrategyTabOption[] = [
   { key: "first_board", label: "首板回调" },
   { key: "volume_shrink", label: "量能低吸" },
   { key: "late_session_strong_support", label: "尾盘" },
@@ -91,14 +91,17 @@ export function MobileSectionTitle({
 
 export function MobileStrategyTabs({
   active,
-  onChange
+  onChange,
+  strategies
 }: {
   active: MobileStrategyTabKey
   onChange: (key: MobileStrategyTabKey) => void
+  strategies?: MobileStrategyTabOption[]
 }) {
+  const tabs = strategies?.length ? strategies : MOBILE_STRATEGY_TABS
   return (
     <div className="mobile-design-tabs" role="tablist" aria-label="策略分类">
-      {MOBILE_STRATEGY_TABS.map((item) => (
+      {tabs.map((item) => (
         <button
           key={item.key}
           type="button"

@@ -98,13 +98,20 @@ export interface BacktestResearchActions {
   onRefreshResearch: () => void;
 }
 
+export type BacktestResearchSection = "optimization" | "validation" | "compare" | "attribution";
+
 export function BacktestResearchPanel({
   state,
   actions,
+  sections,
 }: {
   state: BacktestResearchState;
   actions: BacktestResearchActions;
+  sections?: BacktestResearchSection[];
 }) {
+  const visibleSections = new Set<BacktestResearchSection>(
+    sections ?? ["optimization", "validation", "compare", "attribution"]
+  );
   return (
     <section className="panel backtest-research">
       <div className="backtest-research-hero">
@@ -122,10 +129,10 @@ export function BacktestResearchPanel({
       {state.error ? <ErrorBanner message={state.error} onRetry={actions.onRefreshResearch} /> : null}
 
       <div className="backtest-research-grid">
-        <OptimizationPanel state={state} actions={actions} />
-        <ValidationPanel state={state} actions={actions} />
-        <ComparePanel state={state} actions={actions} />
-        <AttributionPanel state={state} />
+        {visibleSections.has("optimization") ? <OptimizationPanel state={state} actions={actions} /> : null}
+        {visibleSections.has("validation") ? <ValidationPanel state={state} actions={actions} /> : null}
+        {visibleSections.has("compare") ? <ComparePanel state={state} actions={actions} /> : null}
+        {visibleSections.has("attribution") ? <AttributionPanel state={state} /> : null}
       </div>
     </section>
   );

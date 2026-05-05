@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { api } from "../../api/client";
+import { NumberField } from "../../components/shared/FormFields";
 import type { PaperPerformanceDashboard, PaperStrategyMarketPerformance, PaperStrategyTrend } from "../../types";
 import { EmptyState, MetricGrid } from "./WorkspaceComponents";
 import { formatAmount, formatPct, shortTime, strategyLabel, toneFromChange } from "./workspaceFormatters";
@@ -9,6 +10,7 @@ const RANGE_OPTIONS = [7, 30, 90, 180] as const;
 
 export function PerformanceDashboard() {
   const [days, setDays] = useState<number>(30);
+  const [customDays, setCustomDays] = useState("30");
   const [dashboard, setDashboard] = useState<PaperPerformanceDashboard | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -38,6 +40,13 @@ export function PerformanceDashboard() {
     () => [...(dashboard?.strategy_market_matrix ?? [])].sort(compareStrategyMarket).slice(0, 10),
     [dashboard]
   );
+  const customDaysError = validateCustomDays(customDays);
+  const applyCustomDays = useCallback(() => {
+    const parsed = Math.round(Number(customDays));
+    if (!customDaysError) {
+      setDays(parsed);
+    }
+  }, [customDays, customDaysError]);
 
   return (
     <section className="page-grid performance-dashboard-grid">
@@ -53,6 +62,17 @@ export function PerformanceDashboard() {
               <option value={value} key={value}>{value}日</option>
             ))}
           </select>
+          <NumberField
+            label="自定义天数"
+            value={customDays}
+            min={1}
+            max={730}
+            error={customDaysError}
+            onChange={(event) => setCustomDays(event.target.value)}
+          />
+          <button type="button" className="ghost-button" onClick={applyCustomDays} disabled={Boolean(customDaysError)}>
+            应用
+          </button>
           <button type="button" className="ghost-button" onClick={() => void loadDashboard()} disabled={loading}>
             {loading ? "刷新中..." : "刷新"}
           </button>
@@ -256,6 +276,13 @@ function LineChart({
 
 function EmptyPerformance({ text }: { text: string }) {
   return <EmptyState text={text} className="performance-empty" />;
+}
+
+function validateCustomDays(value: string): string {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed < 1) return "至少 1 天";
+  if (parsed > 730) return "最多 730 天";
+  return "";
 }
 
 function compareStrategyTrend(left: PaperStrategyTrend, right: PaperStrategyTrend): number {

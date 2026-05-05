@@ -49,6 +49,20 @@
   flex: 0 0 auto;
 }
 
+.performance-actions .tq-field {
+  margin: 0;
+  min-width: 118px;
+}
+
+.performance-actions .tq-field__label,
+.performance-actions .tq-field__error {
+  font-size: 10px;
+}
+
+.performance-actions .tq-input {
+  min-height: 32px;
+}
+
 .performance-actions select {
   min-height: 32px;
   border-radius: 8px;
@@ -417,7 +431,8 @@
   }
 
   .performance-actions select,
-  .performance-actions button {
+  .performance-actions button,
+  .performance-actions .tq-field {
     width: 100%;
   }
 

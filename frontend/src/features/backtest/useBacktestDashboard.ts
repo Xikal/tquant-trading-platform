@@ -738,47 +738,81 @@ function startStrategyProgressStream({
   let closed = false;
   let socket: WebSocket | null = null;
   let fallbackTimer: number | undefined;
+  let reconnectTimer: number | undefined;
+  let reconnectAttempts = 0;
+  const maxReconnectAttempts = 2;
 
   const startFallback = () => {
     if (fallbackTimer || closed) return;
     fallbackTimer = window.setInterval(onFallback, 15000);
   };
 
-  request<StrategyStreamTokenResponse>("/strategy/stream-token", { method: "POST" })
-    .then((payload) => {
-      if (closed || !payload.stream_token) return;
-      socket = new WebSocket(strategyProgressUrl(taskType, taskId, payload.stream_token));
-      socket.onmessage = (event) => {
-        try {
-          const message = JSON.parse(event.data) as StrategyProgressMessage;
-          if (message.task_id !== taskId) return;
-          if (message.type === "error") {
-            onError(message.message || "策略任务进度连接异常，已切换轮询。");
-            startFallback();
-            return;
+  const closeSocket = () => {
+    const currentSocket = socket;
+    socket = null;
+    if (currentSocket && currentSocket.readyState !== WebSocket.CLOSED) {
+      currentSocket.close();
+    }
+  };
+
+  const scheduleReconnect = () => {
+    if (closed || fallbackTimer || reconnectTimer) return;
+    if (reconnectAttempts >= maxReconnectAttempts) {
+      startFallback();
+      return;
+    }
+    reconnectAttempts += 1;
+    const delayMs = 800 * reconnectAttempts;
+    reconnectTimer = window.setTimeout(() => {
+      reconnectTimer = undefined;
+      connect();
+    }, delayMs);
+    closeSocket();
+  };
+
+  const connect = () => {
+    request<StrategyStreamTokenResponse>("/strategy/stream-token", { method: "POST" })
+      .then((payload) => {
+        if (closed || !payload.stream_token) return;
+        socket = new WebSocket(strategyProgressUrl(taskType, taskId, payload.stream_token));
+        socket.onmessage = (event) => {
+          try {
+            const message = JSON.parse(event.data) as StrategyProgressMessage;
+            if (message.task_id !== taskId) return;
+            reconnectAttempts = 0;
+            if (message.type === "error") {
+              onError(message.message || "策略任务进度连接异常，已切换轮询。");
+              startFallback();
+              return;
+            }
+            const patch: Partial<ProgressTask> = {
+              status: message.status ?? currentStatus,
+              progress: message.progress_pct,
+              progress_pct: message.progress_pct,
+            };
+            onPatch(patch);
+            if (message.completed) onComplete();
+          } catch {
+            scheduleReconnect();
           }
-          const patch: Partial<ProgressTask> = {
-            status: message.status ?? currentStatus,
-            progress: message.progress_pct,
-            progress_pct: message.progress_pct,
+        };
+        socket.onerror = scheduleReconnect;
+        socket.onclose = (event) => {
+          if (!closed && event.code !== 1000) {
+            scheduleReconnect();
           };
-          onPatch(patch);
-          if (message.completed) onComplete();
-        } catch {
-          startFallback();
-        }
-      };
-      socket.onerror = startFallback;
-      socket.onclose = (event) => {
-        if (!closed && event.code !== 1000) startFallback();
-      };
-    })
-    .catch(startFallback);
+        };
+      })
+      .catch(scheduleReconnect);
+  };
+
+  connect();
 
   return () => {
     closed = true;
     if (fallbackTimer) window.clearInterval(fallbackTimer);
-    socket?.close();
+    if (reconnectTimer) window.clearTimeout(reconnectTimer);
+    closeSocket();
   };
 }
 

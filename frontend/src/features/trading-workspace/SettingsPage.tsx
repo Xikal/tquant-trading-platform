@@ -39,6 +39,11 @@ export function SettingsPage({
   onSaveFactors: () => void;
   onRefresh: () => void;
 }) {
+  const adminTokenError = draft.adminToken.trim() ? "" : "保存配置前需要填写管理令牌";
+  const singleLossError = percentFieldError(draft.risk_max_single_loss_pct, "单笔最大亏损");
+  const dailyLossError = percentFieldError(draft.risk_max_daily_loss_pct, "日内最大亏损");
+  const pauseLossError = integerFieldError(draft.risk_pause_after_losses, "连亏暂停");
+  const minProfitError = percentFieldError(draft.strategy_min_profit_pct, "最小收益");
   return (
     <section className="page-grid settings-grid">
       <div className="panel settings-hero">
@@ -48,7 +53,7 @@ export function SettingsPage({
       <div className="settings-cards">
         <SettingCard title="大模型配置" button="保存大模型配置" onSave={() => onSave("llm")} loading={loading === "settings-llm"}>
           <div className="compact-form-grid">
-            <TextField label="管理令牌" value={draft.adminToken} onChange={(event) => setDraft({ ...draft, adminToken: event.target.value })} />
+            <TextField label="管理令牌" value={draft.adminToken} error={adminTokenError} onChange={(event) => setDraft({ ...draft, adminToken: event.target.value })} />
             <TextField label="API Key" value={draft.llm_api_key} onChange={(event) => setDraft({ ...draft, llm_api_key: event.target.value })} />
             <TextField label="Base URL" value={draft.llm_base_url} onChange={(event) => setDraft({ ...draft, llm_base_url: event.target.value })} />
             <TextField label="模型名" value={draft.llm_model} onChange={(event) => setDraft({ ...draft, llm_model: event.target.value })} />
@@ -58,7 +63,7 @@ export function SettingsPage({
         </SettingCard>
         <SettingCard title="数据库与数据源" button="保存数据配置" onSave={() => onSave("data")} loading={loading === "settings-data"}>
           <div className="compact-form-grid">
-            <TextField label="数据源" value={draft.data_source} onChange={(event) => setDraft({ ...draft, data_source: event.target.value })} />
+            <TextField label="数据源" value={draft.data_source} hint={adminTokenError || "保存数据源配置同样需要管理令牌。"} onChange={(event) => setDraft({ ...draft, data_source: event.target.value })} />
             <TextField label="数据源地址" value={draft.data_source_base_url} onChange={(event) => setDraft({ ...draft, data_source_base_url: event.target.value })} />
           </div>
           <InfoPill label="数据库" value={runtime?.database_url_masked ?? "--"} />
@@ -66,12 +71,12 @@ export function SettingsPage({
         </SettingCard>
         <SettingCard title="风控参数" button="保存风控参数" onSave={() => onSave("risk")} loading={loading === "settings-risk"}>
           <div className="compact-form-grid">
-            <NumberField label="单笔最大亏损" suffix="%" value={draft.risk_max_single_loss_pct} onChange={(event) => setDraft({ ...draft, risk_max_single_loss_pct: event.target.value })} />
-            <NumberField label="日内最大亏损" suffix="%" value={draft.risk_max_daily_loss_pct} onChange={(event) => setDraft({ ...draft, risk_max_daily_loss_pct: event.target.value })} />
-            <NumberField label="连亏暂停" value={draft.risk_pause_after_losses} onChange={(event) => setDraft({ ...draft, risk_pause_after_losses: event.target.value })} />
-            <NumberField label="最小收益" suffix="%" value={draft.strategy_min_profit_pct} onChange={(event) => setDraft({ ...draft, strategy_min_profit_pct: event.target.value })} />
+            <NumberField label="单笔最大亏损" suffix="%" value={draft.risk_max_single_loss_pct} error={singleLossError} onChange={(event) => setDraft({ ...draft, risk_max_single_loss_pct: event.target.value })} />
+            <NumberField label="日内最大亏损" suffix="%" value={draft.risk_max_daily_loss_pct} error={dailyLossError} onChange={(event) => setDraft({ ...draft, risk_max_daily_loss_pct: event.target.value })} />
+            <NumberField label="连亏暂停" value={draft.risk_pause_after_losses} error={pauseLossError} onChange={(event) => setDraft({ ...draft, risk_pause_after_losses: event.target.value })} />
+            <NumberField label="最小收益" suffix="%" value={draft.strategy_min_profit_pct} error={minProfitError} onChange={(event) => setDraft({ ...draft, strategy_min_profit_pct: event.target.value })} />
           </div>
-          <p className="hint">保存后会影响后续信号，不会修改已有复盘记录。</p>
+          <p className="hint">{adminTokenError || "保存后会影响后续信号，不会修改已有复盘记录。"}</p>
         </SettingCard>
         <SettingCard title="因子权重" button="保存因子权重" onSave={onSaveFactors} loading={loading === "settings-factor"}>
           {factorWeights ? (
@@ -144,6 +149,25 @@ export function SettingsPage({
       </aside>
     </section>
   );
+}
+
+function percentFieldError(value: string, label: string): string {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed < 0) {
+    return `${label}必须是非负数字`;
+  }
+  if (parsed > 100) {
+    return `${label}不能超过 100%`;
+  }
+  return "";
+}
+
+function integerFieldError(value: string, label: string): string {
+  const parsed = Number(value);
+  if (!Number.isInteger(parsed) || parsed < 0) {
+    return `${label}必须是非负整数`;
+  }
+  return "";
 }
 
 function strategyGovernanceSummary(payload: LowBuyStrategyGovernanceResponse): string {
