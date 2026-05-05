@@ -14,11 +14,12 @@ from sqlalchemy.pool import StaticPool
 from app.core.auth import get_current_user
 from app.core.database import get_db
 from app.models.base import Base
-from app.models.entities import BacktestRun
+from app.models.entities import BacktestDailySnapshot, BacktestRun, BacktestTrade
 from app.models.schema_defs.backtest import BacktestRunCreate
 from app.services.backtest.data_provider import DataQualityReport
-from app.services.backtest.engine import BacktestResult
+from app.services.backtest.engine import BacktestOrder, BacktestResult
 from app.services.backtest.persistence import BacktestResultPersistence
+from app.services.backtest.portfolio import RealizedTrade
 from app.services.backtest_job_service import BacktestJobService
 
 backtests_route = pytest.importorskip(
@@ -216,6 +217,56 @@ class _BacktestServiceStub:
         self.cancelled_run_id = run_id
         return SimpleNamespace(id=run_id, status="cancelled", owner_user_id=owner_user_id)
 
+    def get_monthly_returns(self, run_id: int, *, owner_user_id: int | None, is_admin: bool):  # noqa: ANN001, ARG002
+        return {
+            "run_id": run_id,
+            "items": [
+                {
+                    "month": "2025-01",
+                    "start_equity": 100000.0,
+                    "end_equity": 103000.0,
+                    "return_pct": 3.0,
+                    "trading_days": 2,
+                }
+            ],
+        }
+
+    def get_attribution(self, run_id: int, *, owner_user_id: int | None, is_admin: bool):  # noqa: ANN001, ARG002
+        return {
+            "run_id": run_id,
+            "strategy": [{"strategy_key": "first_board", "trade_count": 1, "net_pnl": 3000.0}],
+            "industry": [{"bucket": "software", "trade_count": 1, "net_pnl": 3000.0}],
+            "market_state": [{"bucket": "repair", "trade_count": 1, "win_rate_pct": 100.0}],
+            "data_quality": [{"bucket": "ok", "trade_count": 1, "net_pnl": 3000.0}],
+            "notes": ["行业分类可能存在历史偏差"],
+        }
+
+    def get_strategy_correlation(self, run_id: int, *, owner_user_id: int | None, is_admin: bool):  # noqa: ANN001, ARG002
+        return {
+            "run_id": run_id,
+            "strategies": ["first_board", "volume_shrink"],
+            "matrix": [
+                {"strategy_key": "first_board", "correlations": {"first_board": 1.0, "volume_shrink": 0.25}},
+                {"strategy_key": "volume_shrink", "correlations": {"first_board": 0.25, "volume_shrink": 1.0}},
+            ],
+        }
+
+    def compare_runs(self, payload, *, owner_user_id: int | None, is_admin: bool):  # noqa: ANN001, ARG002
+        return {
+            "run_ids": payload.run_ids,
+            "items": [
+                {
+                    "run_id": payload.run_ids[0],
+                    "name": "first_board portfolio test",
+                    "status": "succeeded",
+                    "metrics": {"total_return_pct": 8.2, "sharpe_ratio": 1.35},
+                }
+            ],
+            "equity_curves": [
+                {"run_id": payload.run_ids[0], "points": [{"trade_date": "2025-01-02", "equity": 100000.0}]}
+            ],
+        }
+
 
 @pytest.fixture()
 def service_stub(monkeypatch: pytest.MonkeyPatch) -> _BacktestServiceStub:
@@ -341,6 +392,28 @@ def test_cancel_running_backtest_marks_run_cancelled(client: TestClient, service
     assert service_stub.cancelled_run_id == 42
 
 
+def test_analysis_endpoints_return_typed_shapes(client: TestClient) -> None:
+    monthly = client.get("/api/backtests/42/monthly-returns")
+    attribution = client.get("/api/backtests/42/attribution")
+    correlation = client.get("/api/backtests/42/strategy-correlation")
+    comparison = client.post("/api/backtests/compare", json={"run_ids": [42, 43]})
+
+    assert monthly.status_code == 200
+    assert monthly.json()["items"][0]["month"] == "2025-01"
+    assert monthly.json()["items"][0]["return_pct"] == 3.0
+
+    assert attribution.status_code == 200
+    assert attribution.json()["strategy"][0]["strategy_key"] == "first_board"
+    assert attribution.json()["industry"][0]["bucket"] == "software"
+
+    assert correlation.status_code == 200
+    assert correlation.json()["matrix"][0]["correlations"]["first_board"] == 1.0
+
+    assert comparison.status_code == 200
+    assert comparison.json()["run_ids"] == [42, 43]
+    assert comparison.json()["items"][0]["metrics"]["sharpe_ratio"] == 1.35
+
+
 def test_job_service_create_run_only_queues_without_starting_daemon_thread(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -430,6 +503,124 @@ def test_persistence_does_not_overwrite_cancelled_run_with_succeeded_result() ->
         assert row.result_json == "{}"
 
 
+def test_persistence_links_realized_trade_to_matching_sell_order() -> None:
+    SessionLocal = _sqlite_session_factory()
+    with SessionLocal() as db:
+        run = BacktestRun(
+            name="order-link",
+            status="running",
+            initial_cash=100000.0,
+            final_equity=100000.0,
+            progress_pct=0.0,
+        )
+        db.add(run)
+        db.commit()
+        db.refresh(run)
+
+        BacktestResultPersistence(db).persist(run, _result_with_buy_sell_orders())
+        persisted_trade = db.execute(select(BacktestTrade).where(BacktestTrade.run_id == run.id)).scalar_one()
+
+    assert persisted_trade.order_id is not None
+    assert persisted_trade.order_id != 1
+
+
+def test_worker_marks_timed_out_run_with_timeout_status() -> None:
+    from app.services.backtest_worker import BacktestWorker
+
+    SessionLocal = _sqlite_session_factory()
+    with SessionLocal() as db:
+        created = BacktestJobService(db).create_run(
+            BacktestRunCreate(**_submit_payload_current_schema()),
+            owner_user_id=7,
+        )
+        row = db.get(BacktestRun, created.id)
+        assert row is not None
+        row.status = "running"
+        row.started_at = row.created_at
+        db.commit()
+
+    outcome = BacktestWorker(session_factory=SessionLocal, max_duration_seconds=0.001).run_once()
+
+    with SessionLocal() as db:
+        row = db.get(BacktestRun, created.id)
+
+    assert outcome is not None
+    assert outcome.status == "timeout"
+    assert row is not None
+    assert row.status == "timeout"
+    assert row.error_message == "回测执行超时"
+
+
+def test_job_service_analysis_methods_return_basic_shapes() -> None:
+    SessionLocal = _sqlite_session_factory()
+    with SessionLocal() as db:
+        created = BacktestJobService(db).create_run(
+            BacktestRunCreate(**_submit_payload_current_schema()),
+            owner_user_id=7,
+        )
+        row = db.get(BacktestRun, created.id)
+        assert row is not None
+        row.status = "succeeded"
+        row.final_equity = 103000.0
+        row.result_json = (
+            '{"metrics":{"total_return_pct":3.0,"sharpe_ratio":1.2,'
+            '"by_strategy":{"first_board":{"trade_count":1,"net_pnl":3000.0,"win_rate_pct":100.0,"avg_return_pct":3.0}}},'
+            '"attribution":{"industry":[{"bucket":"software","trade_count":1,"net_pnl":3000.0}],'
+            '"market_state":[{"bucket":"repair","trade_count":1,"win_rate_pct":100.0}],'
+            '"data_quality":[{"bucket":"ok","trade_count":1}],"notes":["行业分类可能存在历史偏差"]}}'
+        )
+        db.add_all(
+            [
+                BacktestDailySnapshot(
+                    run_id=row.id,
+                    trade_date="2025-01-02",
+                    equity=100000.0,
+                    daily_return_pct=0.0,
+                    drawdown_pct=0.0,
+                ),
+                BacktestDailySnapshot(
+                    run_id=row.id,
+                    trade_date="2025-01-31",
+                    equity=103000.0,
+                    daily_return_pct=3.0,
+                    drawdown_pct=0.0,
+                ),
+                BacktestTrade(
+                    run_id=row.id,
+                    trade_date="2025-01-31",
+                    symbol="300001",
+                    side="sell",
+                    strategy_key="first_board",
+                    quantity=1000,
+                    price=10.3,
+                    pnl_amount=3000.0,
+                    pnl_pct=3.0,
+                    market_state="repair",
+                    sector_name="software",
+                ),
+            ]
+        )
+        db.commit()
+
+        service = BacktestJobService(db)
+        monthly = service.get_monthly_returns(row.id, owner_user_id=7, is_admin=False)
+        attribution = service.get_attribution(row.id, owner_user_id=7, is_admin=False)
+        correlation = service.get_strategy_correlation(row.id, owner_user_id=7, is_admin=False)
+        comparison = service.compare_runs(
+            backtests_route.BacktestCompareRequest(run_ids=[row.id]),
+            owner_user_id=7,
+            is_admin=False,
+        )
+
+    assert monthly.items[0].month == "2025-01"
+    assert monthly.items[0].return_pct == pytest.approx(3.0)
+    assert attribution.strategy[0].strategy_key == "first_board"
+    assert attribution.industry[0]["bucket"] == "software"
+    assert correlation.matrix[0].correlations["first_board"] == 1.0
+    assert comparison.items[0].metrics["sharpe_ratio"] == 1.2
+    assert comparison.equity_curves[0].points[0].equity == 100000.0
+
+
 def test_backtest_detail_enforces_owner_or_admin(client: TestClient) -> None:
     response = client.get("/api/backtests/403")
 
@@ -494,6 +685,62 @@ def _minimal_succeeded_result() -> BacktestResult:
         equity_curve=[],
         orders=[],
         trades=[],
+        status="succeeded",
+    )
+
+
+def _result_with_buy_sell_orders() -> BacktestResult:
+    return BacktestResult(
+        version="backtest-core-v2.0",
+        config={},
+        data_quality=DataQualityReport(
+            version="daily_bar_snapshots:v1",
+            start_date="2025-01-02",
+            end_date="2025-01-06",
+            symbol_count=1,
+            trade_date_count=3,
+        ),
+        metrics={"final_equity": 101000.0},
+        equity_curve=[],
+        orders=[
+            BacktestOrder(
+                trade_date="2025-01-02",
+                symbol="300001",
+                side="buy",
+                quantity=1000,
+                status="filled",
+                strategy_key="first_board",
+                fill_price=10.0,
+            ),
+            BacktestOrder(
+                trade_date="2025-01-06",
+                symbol="300001",
+                side="sell",
+                quantity=1000,
+                status="filled",
+                strategy_key="first_board",
+                fill_price=11.0,
+                reason="take_profit",
+            ),
+        ],
+        trades=[
+            RealizedTrade(
+                symbol="300001",
+                name="测试股份",
+                strategy_key="first_board",
+                entry_date="2025-01-02",
+                exit_date="2025-01-06",
+                quantity=1000,
+                entry_price=10.0,
+                exit_price=11.0,
+                gross_pnl=1000.0,
+                net_pnl=990.0,
+                return_pct=9.9,
+                fee_amount=10.0,
+                holding_days=2,
+                exit_reason="take_profit",
+            )
+        ],
         status="succeeded",
     )
 

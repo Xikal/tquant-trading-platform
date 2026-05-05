@@ -142,6 +142,190 @@ describe("BacktestDashboard", () => {
         loading=""
         error=""
         notice=""
+        research={{
+          optimizationForm: {
+            name: "first_board 参数优化",
+            strategy: "first_board",
+            train_start: "2024-01-02",
+            train_end: "2025-12-31",
+            test_start: "2026-01-02",
+            test_end: "2026-04-30",
+            initial_capital: "500000",
+            execution_model: "open_price",
+            optimization_target: "sharpe",
+            min_score: "70,75",
+            max_position_pct: "0.2,0.3",
+            max_holding_days: "3,5",
+            stop_loss_pct: "-0.03,-0.05",
+            take_profit_pct: "0.08,0.12",
+          },
+          optimizations: [
+            {
+              id: 9,
+              name: "first_board 参数优化",
+              strategy: "first_board",
+              status: "completed",
+              progress_pct: 100,
+              best_params: { min_score: 75 },
+              best_is_score: 1.6,
+              best_oos_score: 0.9,
+              oos_downgrade: false,
+              candidates: [
+                {
+                  rank: 1,
+                  params: { min_score: 75 },
+                  total_return_pct: 18.2,
+                  win_rate_pct: 61.5,
+                  stop_loss_rate_pct: 8.2,
+                  max_drawdown_pct: -5.4,
+                  profit_factor: 1.8,
+                  sharpe: 1.6,
+                  sample: "is",
+                },
+              ],
+            },
+          ],
+          selectedOptimizationId: 9,
+          selectedOptimization: {
+            id: 9,
+            name: "first_board 参数优化",
+            strategy: "first_board",
+            status: "completed",
+            progress_pct: 100,
+            best_params: { min_score: 75 },
+            best_is_score: 1.6,
+            best_oos_score: 0.9,
+            oos_downgrade: false,
+            candidates: [
+              {
+                rank: 1,
+                params: { min_score: 75 },
+                total_return_pct: 18.2,
+                win_rate_pct: 61.5,
+                stop_loss_rate_pct: 8.2,
+                max_drawdown_pct: -5.4,
+                profit_factor: 1.8,
+                sharpe: 1.6,
+                sample: "is",
+              },
+            ],
+          },
+          validationForm: {
+            name: "first_board Walk-Forward 验证",
+            strategy: "first_board",
+            start_date: "2024-01-02",
+            end_date: "2026-04-30",
+            window_count: "4",
+            train_ratio: "0.75",
+            initial_capital: "500000",
+            execution_model: "open_price",
+            optimization_target: "sharpe",
+          },
+          validations: [
+            {
+              id: 11,
+              name: "first_board Walk-Forward 验证",
+              strategy: "first_board",
+              status: "completed",
+              progress_pct: 100,
+              avg_oos_sharpe: 0.8,
+              oos_pass_rate: 0.75,
+              pbo_risk: "medium",
+              stability_conclusion: "该策略在 3/4 窗口样本外盈利，稳定性良好",
+              windows: [
+                {
+                  index: 1,
+                  train_start: "2024-01-02",
+                  train_end: "2025-07-01",
+                  test_start: "2025-07-02",
+                  test_end: "2026-01-02",
+                  train_sharpe: 1.2,
+                  test_sharpe: 0.9,
+                  test_return_pct: 6.5,
+                  test_max_drawdown_pct: -3.1,
+                  best_params: { min_score: 75 },
+                },
+              ],
+            },
+          ],
+          selectedValidationId: 11,
+          selectedValidation: {
+            id: 11,
+            name: "first_board Walk-Forward 验证",
+            strategy: "first_board",
+            status: "completed",
+            progress_pct: 100,
+            avg_oos_sharpe: 0.8,
+            oos_pass_rate: 0.75,
+            pbo_risk: "medium",
+            stability_conclusion: "该策略在 3/4 窗口样本外盈利，稳定性良好",
+            windows: [
+              {
+                index: 1,
+                train_start: "2024-01-02",
+                train_end: "2025-07-01",
+                test_start: "2025-07-02",
+                test_end: "2026-01-02",
+                train_sharpe: 1.2,
+                test_sharpe: 0.9,
+                test_return_pct: 6.5,
+                test_max_drawdown_pct: -3.1,
+                best_params: { min_score: 75 },
+              },
+            ],
+          },
+          completedRuns: [],
+          compareRunIds: "42,45,47",
+          compareResult: {
+            items: [
+              {
+                run_id: 42,
+                name: "first_board 联合回测",
+                metrics: { total_return_pct: 12.4, sharpe: 1.32, max_drawdown_pct: -6.2 },
+                equity: equity,
+              },
+            ],
+          },
+          monthlyReturns: {
+            run_id: 42,
+            items: [
+              { month: "2026-01", return_pct: 3.2, benchmark_return_pct: 1.1, trade_count: 8 },
+            ],
+          },
+          attribution: {
+            strategy: [
+              { bucket: "first_board", trade_count: 12, win_rate_pct: 58.3, net_pnl: 18200 },
+            ],
+            industry: run.result?.attribution?.industry,
+            market_state: run.result?.attribution?.market_state,
+            data_quality: run.result?.attribution?.data_quality,
+          },
+          correlation: {
+            strategies: ["first_board", "volume_shrink"],
+            matrix: [
+              [1, 0.42],
+              [0.42, 1],
+            ],
+          },
+          loading: "",
+          error: "",
+          notice: "",
+        }}
+        researchActions={{
+          onOptimizationFormChange: vi.fn(),
+          onSubmitOptimization: vi.fn(),
+          onSelectOptimization: vi.fn(),
+          onCancelOptimization: vi.fn(),
+          onDeleteOptimization: vi.fn(),
+          onValidationFormChange: vi.fn(),
+          onSubmitValidation: vi.fn(),
+          onSelectValidation: vi.fn(),
+          onCancelValidation: vi.fn(),
+          onDeleteValidation: vi.fn(),
+          onCompareRunIdsChange: vi.fn(),
+          onRunCompare: vi.fn(),
+          onRefreshResearch: vi.fn(),
+        }}
         onFormChange={vi.fn()}
         onToggleStrategy={vi.fn()}
         onSubmit={vi.fn()}
@@ -174,5 +358,14 @@ describe("BacktestDashboard", () => {
     expect(html).toContain("软件");
     expect(html).toContain("repair");
     expect(html).toContain("missing_bar");
+    expect(html).toContain("优化任务");
+    expect(html).toContain("参数排名");
+    expect(html).toContain("Walk-forward 验证");
+    expect(html).toContain("PBO");
+    expect(html).toContain("回测对比");
+    expect(html).toContain("归因面板");
+    expect(html).toContain("月度收益");
+    expect(html).toContain("相关性矩阵");
+    expect(html).toContain("该策略在 3/4 窗口样本外盈利");
   });
 });

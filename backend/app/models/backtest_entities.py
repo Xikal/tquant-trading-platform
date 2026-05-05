@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import DateTime, Float, ForeignKey, Integer, String, Text, UniqueConstraint, func
+from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, String, Text, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base
@@ -75,6 +75,7 @@ class BacktestTrade(Base):
     entry_reason: Mapped[str] = mapped_column(String(80), default="")
     exit_reason: Mapped[str] = mapped_column(String(80), default="")
     market_state: Mapped[str] = mapped_column(String(40), default="", index=True)
+    sector: Mapped[str] = mapped_column(String(80), default="", index=True)
     sector_name: Mapped[str] = mapped_column(String(80), default="", index=True)
     payload_json: Mapped[str] = mapped_column(Text, default="{}")
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
@@ -100,6 +101,7 @@ class BacktestDailySnapshot(Base):
     benchmark_symbol: Mapped[str] = mapped_column(String(24), default="")
     benchmark_close: Mapped[float] = mapped_column(Float, default=0.0)
     benchmark_return_pct: Mapped[float] = mapped_column(Float, default=0.0)
+    market_state: Mapped[str] = mapped_column(String(40), default="", index=True)
     payload_json: Mapped[str] = mapped_column(Text, default="{}")
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
@@ -119,3 +121,65 @@ class BacktestDataQuality(Base):
     severity: Mapped[str] = mapped_column(String(24), default="info", index=True)
     details_json: Mapped[str] = mapped_column(Text, default="{}")
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+
+
+class BacktestOptimization(Base):
+    __tablename__ = "backtest_optimizations"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    name: Mapped[str] = mapped_column(String(120), default="")
+    owner_user_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True, index=True)
+    status: Mapped[str] = mapped_column(String(24), default="queued", index=True)
+    strategy_key: Mapped[str] = mapped_column(String(80), default="", index=True)
+    train_start: Mapped[str] = mapped_column(String(16), default="", index=True)
+    train_end: Mapped[str] = mapped_column(String(16), default="", index=True)
+    test_start: Mapped[str] = mapped_column(String(16), default="", index=True)
+    test_end: Mapped[str] = mapped_column(String(16), default="", index=True)
+    optimization_target: Mapped[str] = mapped_column(String(40), default="sharpe")
+    search_method: Mapped[str] = mapped_column(String(24), default="grid")
+    initial_cash: Mapped[float] = mapped_column(Float, default=100000.0)
+    execution_model: Mapped[str] = mapped_column(String(40), default="")
+    progress_pct: Mapped[float] = mapped_column(Float, default=0.0)
+    request_json: Mapped[str] = mapped_column(Text, default="{}")
+    result_json: Mapped[str] = mapped_column(Text, default="{}")
+    error_message: Mapped[str] = mapped_column(Text, default="")
+    started_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    finished_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    cancelled_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    deleted_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, server_default=func.now(), onupdate=func.now()
+    )
+
+
+class BacktestValidation(Base):
+    __tablename__ = "backtest_validations"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    name: Mapped[str] = mapped_column(String(120), default="")
+    owner_user_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True, index=True)
+    status: Mapped[str] = mapped_column(String(24), default="queued", index=True)
+    strategy_key: Mapped[str] = mapped_column(String(80), default="", index=True)
+    start_date: Mapped[str] = mapped_column(String(16), default="", index=True)
+    end_date: Mapped[str] = mapped_column(String(16), default="", index=True)
+    window_count: Mapped[int] = mapped_column(Integer, default=4)
+    train_ratio: Mapped[float] = mapped_column(Float, default=0.75)
+    optimization_target: Mapped[str] = mapped_column(String(40), default="sharpe")
+    pbo_risk: Mapped[str] = mapped_column(String(24), default="")
+    downgrade_review: Mapped[bool] = mapped_column(Boolean, default=False)
+    stability_conclusion: Mapped[str] = mapped_column(String(240), default="")
+    initial_cash: Mapped[float] = mapped_column(Float, default=100000.0)
+    execution_model: Mapped[str] = mapped_column(String(40), default="")
+    progress_pct: Mapped[float] = mapped_column(Float, default=0.0)
+    request_json: Mapped[str] = mapped_column(Text, default="{}")
+    result_json: Mapped[str] = mapped_column(Text, default="{}")
+    error_message: Mapped[str] = mapped_column(Text, default="")
+    started_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    finished_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    cancelled_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    deleted_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, server_default=func.now(), onupdate=func.now()
+    )

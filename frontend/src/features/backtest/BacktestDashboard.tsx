@@ -8,6 +8,21 @@ import type {
   BacktestTrade,
   EquityPoint,
 } from "../../api/backtests";
+import {
+  BACKTEST_EXECUTION_MODELS,
+  BACKTEST_STRATEGY_OPTIONS,
+  formatBacktestStrategies,
+  formatBacktestStrategy,
+  formatDateTime,
+  formatInteger,
+  formatMoney,
+  formatNumber,
+  formatPct,
+  formatPrice,
+  percentFromRatio,
+  toneFromNumber,
+} from "./backtestDisplay";
+import { BacktestResearchPanel, type BacktestResearchActions, type BacktestResearchState } from "./BacktestResearchPanel";
 
 export interface BacktestFormState {
   name: string;
@@ -33,6 +48,8 @@ export interface BacktestDashboardProps {
   loading: string;
   error: string;
   notice: string;
+  research: BacktestResearchState;
+  researchActions: BacktestResearchActions;
   onFormChange: (patch: Partial<BacktestFormState>) => void;
   onToggleStrategy: (strategy: string) => void;
   onSubmit: () => void;
@@ -40,21 +57,6 @@ export interface BacktestDashboardProps {
   onSelectRun: (runId: number) => void;
   onCancelRun: (runId: number) => void;
 }
-
-const STRATEGY_OPTIONS = [
-  ["first_board", "首板回调"],
-  ["volume_shrink", "量能低吸"],
-  ["late_session_strong_support", "收盘强势承接"],
-  ["core_midcap_vwap_ma5_retrace", "中军回踩"],
-  ["sector_mainline_first_divergence_low_buy", "主线首分歧"],
-] as const;
-
-const EXECUTION_MODELS: Array<[BacktestExecutionModel, string]> = [
-  ["open_price", "开盘价成交"],
-  ["next_open", "次日开盘"],
-  ["close_price", "收盘价成交"],
-  ["vwap", "VWAP 近似"],
-];
 
 const STATUS_META: Record<BacktestStatus, { label: string; tone: string }> = {
   pending: { label: "待运行", tone: "pending" },
@@ -65,6 +67,7 @@ const STATUS_META: Record<BacktestStatus, { label: string; tone: string }> = {
   failed: { label: "失败", tone: "failed" },
   cancelled: { label: "已取消", tone: "cancelled" },
   deleted: { label: "已删除", tone: "cancelled" },
+  timeout: { label: "已超时", tone: "failed" },
 };
 
 export function BacktestDashboard({
@@ -76,6 +79,8 @@ export function BacktestDashboard({
   loading,
   error,
   notice,
+  research,
+  researchActions,
   onFormChange,
   onToggleStrategy,
   onSubmit,
@@ -134,12 +139,12 @@ export function BacktestDashboard({
           <label className="backtest-field wide">
             <span>执行模型</span>
             <select value={form.execution_model} onChange={(event) => onFormChange({ execution_model: event.target.value as BacktestExecutionModel })}>
-              {EXECUTION_MODELS.map(([value, label]) => <option value={value} key={value}>{label}</option>)}
+              {BACKTEST_EXECUTION_MODELS.map(([value, label]) => <option value={value} key={value}>{label}</option>)}
             </select>
           </label>
           <div className="backtest-strategy-picker wide">
             <span>策略多选</span>
-            {STRATEGY_OPTIONS.map(([key, label]) => (
+            {BACKTEST_STRATEGY_OPTIONS.map(([key, label]) => (
               <label className={form.strategies.includes(key) ? "selected" : ""} key={key}>
                 <input
                   type="checkbox"
@@ -210,7 +215,7 @@ export function BacktestDashboard({
           <>
             <div className="backtest-summary-line">
               <span>{selectedRun.name}</span>
-              <span>{(selectedRun.strategies ?? []).join(" / ") || "--"}</span>
+              <span>{formatBacktestStrategies(selectedRun.strategies)}</span>
               <span>{selectedRun.execution_model || "--"} · {selectedRun.benchmark || "--"}</span>
             </div>
             {selectedRun.error_message ? <div className="backtest-error">{selectedRun.error_message}</div> : null}
@@ -260,13 +265,15 @@ export function BacktestDashboard({
               <span>{formatInteger(trade.quantity)}</span>
               <span>{formatPrice(trade.price)}</span>
               <span>{formatMoney(trade.net_amount)}</span>
-              <span>{trade.strategy}</span>
+              <span>{formatBacktestStrategy(trade.strategy_key ?? trade.strategy)}</span>
               <span className={toneFromNumber(trade.return_pct)}>{formatPct(trade.return_pct)}</span>
               <span>{trade.exit_reason || "--"}</span>
             </div>
           )) : <EmptyLine text="暂无成交明细。" />}
         </div>
       </section>
+
+      <BacktestResearchPanel state={research} actions={researchActions} />
     </section>
   );
 }
@@ -404,55 +411,4 @@ function statusMeta(status: BacktestStatus): { label: string; tone: string } {
 
 function isCancellableStatus(status: BacktestStatus): boolean {
   return status === "queued" || status === "pending" || status === "running";
-}
-
-function formatDateTime(value?: string | null): string {
-  if (!value) return "--";
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) return value;
-  return parsed.toLocaleString("zh-CN", {
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  });
-}
-
-function formatNumber(value?: number | null): string {
-  if (typeof value !== "number" || !Number.isFinite(value)) return "--";
-  return Math.abs(value) >= 100 ? value.toFixed(0) : value.toFixed(2);
-}
-
-function formatInteger(value?: number | null): string {
-  if (typeof value !== "number" || !Number.isFinite(value)) return "--";
-  return value.toLocaleString("zh-CN", { maximumFractionDigits: 0 });
-}
-
-function formatMoney(value?: number | null): string {
-  if (typeof value !== "number" || !Number.isFinite(value)) return "--";
-  return value.toLocaleString("zh-CN", { maximumFractionDigits: 0 });
-}
-
-function formatPrice(value?: number | null): string {
-  if (typeof value !== "number" || !Number.isFinite(value)) return "--";
-  return value.toFixed(3);
-}
-
-function formatPct(value?: number | null, digits = 2): string {
-  if (typeof value !== "number" || !Number.isFinite(value)) return "--";
-  const sign = value > 0 ? "+" : "";
-  return `${sign}${value.toFixed(digits)}%`;
-}
-
-function percentFromRatio(value?: number | null): number | null {
-  if (typeof value !== "number" || !Number.isFinite(value)) return null;
-  return Math.abs(value) <= 1 ? value * 100 : value;
-}
-
-function toneFromNumber(value?: number | null): string {
-  if (typeof value !== "number" || !Number.isFinite(value)) return "neutral";
-  if (value > 0) return "up";
-  if (value < 0) return "down";
-  return "neutral";
 }

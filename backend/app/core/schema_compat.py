@@ -152,6 +152,10 @@ def _ensure_query_indexes(engine: Engine, existing_tables: set[str]) -> None:
         ("backtest_dataset_manifests", "ix_backtest_manifest_key_dates", ("dataset_key", "start_date", "end_date")),
         ("backtest_data_quality", "ix_backtest_quality_run_tag", ("run_id", "quality_tag", "severity")),
         ("backtest_data_quality", "ix_backtest_quality_symbol_date", ("symbol", "trade_date")),
+        ("backtest_optimizations", "ix_backtest_opt_owner_status_created", ("owner_user_id", "status", "created_at")),
+        ("backtest_optimizations", "ix_backtest_opt_strategy_dates", ("strategy_key", "train_start", "test_end")),
+        ("backtest_validations", "ix_backtest_val_owner_status_created", ("owner_user_id", "status", "created_at")),
+        ("backtest_validations", "ix_backtest_val_strategy_dates", ("strategy_key", "start_date", "end_date")),
     )
     inspector = inspect(engine)
     for table_name, index_name, columns in index_specs:

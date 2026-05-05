@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from dataclasses import asdict
 from math import isfinite, sqrt
 from typing import Any
 
@@ -178,7 +177,3 @@ def _reject_reasons(orders: list[Any]) -> dict[str, int]:
         reason = str(getattr(order, "reject_reason", "") or "unknown")
         output[reason] = output.get(reason, 0) + 1
     return output
-
-
-def dataclass_list(items: list[Any]) -> list[dict[str, Any]]:
-    return [asdict(item) for item in items]

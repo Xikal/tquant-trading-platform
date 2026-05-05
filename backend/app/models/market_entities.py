@@ -124,6 +124,9 @@ class BacktestRun(Base):
     initial_cash: Mapped[float] = mapped_column(Float, default=0.0)
     final_equity: Mapped[float] = mapped_column(Float, default=0.0)
     progress_pct: Mapped[float] = mapped_column(Float, default=0.0)
+    max_duration_seconds: Mapped[int] = mapped_column(Integer, default=1800)
+    optimization_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True, index=True)
+    validation_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True, index=True)
     dataset_manifest_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True, index=True)
     engine_version: Mapped[str] = mapped_column(String(48), default="backtest-v2")
     strategy_version: Mapped[str] = mapped_column(String(80), default="")
@@ -193,6 +196,7 @@ class DailyBarSnapshot(Base):
     volume: Mapped[float] = mapped_column(Float, default=0.0)
     amount: Mapped[float] = mapped_column(Float, default=0.0)
     pct_chg: Mapped[float] = mapped_column(Float, default=0.0)
+    pre_close: Mapped[float] = mapped_column(Float, default=0.0)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime, server_default=func.now(), onupdate=func.now()

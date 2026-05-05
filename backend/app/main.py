@@ -39,6 +39,7 @@ from app.services.auth_service import ensure_auth_secret_configured
 from app.services.agent_daily_workflow_service import AgentDailyWorkflowService
 from app.services.agent_notification_service import AgentNotificationService
 from app.services.agent_signal_scan_service import AgentSignalScanService
+from app.services.backtest_research_worker import BacktestResearchWorker
 from app.services.watchlist_signal_service import WatchlistSignalService
 
 settings = get_settings()
@@ -212,6 +213,18 @@ def _run_monthly_strategy_validation_once() -> None:
         report = MonthlyStrategyValidationJob(db).run_if_due()
         if report is not None:
             logger.info("月度策略样本外验证完成: run_id=%s", report.run_id)
+
+
+def _run_backtest_research_worker_once() -> None:
+    result = BacktestResearchWorker().run_once()
+    if result is not None:
+        logger.info(
+            "回测研究任务处理完成: kind=%s id=%s status=%s message=%s",
+            result.task_kind,
+            result.task_id,
+            result.status,
+            result.message,
+        )
 
 
 def _refresh_low_buy_strategy_governance_once() -> None:
@@ -404,6 +417,12 @@ async def lifespan(_: FastAPI):
                 interval_seconds=24 * 60 * 60,
                 initial_delay_seconds=180,
             )
+        task_manager.register_loop(
+            name="backtest_research_worker",
+            target=_run_backtest_research_worker_once,
+            interval_seconds=15,
+            initial_delay_seconds=45,
+        )
         task_manager.register_loop(
             name="low_buy_strategy_governance",
             target=_refresh_low_buy_strategy_governance_once,

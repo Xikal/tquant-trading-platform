@@ -2,9 +2,10 @@ from __future__ import annotations
 
 import json
 import logging
+import math
 import threading
 from datetime import datetime
-from typing import Any, Protocol
+from typing import Any
 
 from fastapi import HTTPException, status
 from sqlalchemy import func, select
@@ -13,15 +14,21 @@ from sqlalchemy.orm import Session
 from app.models.entities import BacktestRun
 from app.models.backtest_entities import BacktestDailySnapshot, BacktestTrade
 from app.models.schema_defs.backtest import (
+    BacktestAttributionResponse,
+    BacktestCompareRequest,
+    BacktestCompareResponse,
     BacktestEquityPoint,
+    BacktestMonthlyReturnsResponse,
     BacktestRunCreate,
     BacktestRunDetail,
     BacktestRunListResponse,
     BacktestRunSummary,
+    BacktestStrategyCorrelationResponse,
     BacktestTradeOut,
     BacktestTradesResponse,
 )
 from app.services.backtest.data_provider import DailyBarDataProvider
+from app.services.backtest.cancel_token import BacktestCancelToken
 from app.services.backtest.engine import BacktestConfig, BacktestEngine, BacktestResult
 from app.services.backtest.persistence import BacktestResultPersistence
 
@@ -29,29 +36,10 @@ from app.services.backtest.persistence import BacktestResultPersistence
 logger = logging.getLogger(__name__)
 
 
-class _CancelToken(Protocol):
-    def cancel(self) -> None:
-        ...
-
-    def is_cancelled(self) -> bool:
-        ...
-
-
-class _RunCancelToken:
-    def __init__(self) -> None:
-        self._event = threading.Event()
-
-    def cancel(self) -> None:
-        self._event.set()
-
-    def is_cancelled(self) -> bool:
-        return self._event.is_set()
-
-
 class BacktestJobService:
     """Persistent API facade for v2 backtest jobs."""
 
-    _cancel_tokens: dict[int, _CancelToken] = {}
+    _cancel_tokens: dict[int, BacktestCancelToken] = {}
     _token_lock = threading.Lock()
 
     def __init__(self, db: Session) -> None:
@@ -65,6 +53,7 @@ class BacktestJobService:
                 "start_date": payload.start_date,
                 "end_date": payload.end_date,
                 "benchmark_symbol": payload.benchmark_symbol,
+                "max_duration_seconds": payload.max_duration_seconds,
             }
         )
         run = BacktestRun(
@@ -78,6 +67,7 @@ class BacktestJobService:
             initial_cash=float(payload.initial_cash),
             final_equity=float(payload.initial_cash),
             progress_pct=0.0,
+            max_duration_seconds=int(payload.max_duration_seconds),
             dataset_manifest_id=payload.dataset_manifest_id,
             engine_version=payload.engine_version,
             strategy_version=payload.strategy_version,
@@ -203,7 +193,7 @@ class BacktestJobService:
         return self._detail(run)
 
     @classmethod
-    def register_cancel_token(cls, run_id: int, token: _CancelToken) -> None:
+    def register_cancel_token(cls, run_id: int, token: BacktestCancelToken) -> None:
         with cls._token_lock:
             cls._cancel_tokens[run_id] = token
 
@@ -219,7 +209,7 @@ class BacktestJobService:
         if token is not None:
             token.cancel()
 
-    def _run_engine(self, run: BacktestRun, cancel_token: _CancelToken) -> BacktestResult:
+    def _run_engine(self, run: BacktestRun, cancel_token: BacktestCancelToken) -> BacktestResult:
         params = _json_dict(run.params_json)
         config = BacktestConfig(
             start_date=str(run.start_date or params.get("start_date") or ""),
@@ -233,6 +223,7 @@ class BacktestJobService:
             max_signals_per_day=int(params.get("max_signals_per_day") or 20),
             entry_delay_days=int(params.get("entry_delay_days") or 0),
             force_liquidate_at_end=bool(params.get("force_liquidate_at_end", True)),
+            max_duration_seconds=int(run.max_duration_seconds or params.get("max_duration_seconds") or 1800),
         )
         engine = BacktestEngine(DailyBarDataProvider(self.db))
         return engine.run(config, cancel_token=cancel_token)
@@ -256,6 +247,86 @@ class BacktestJobService:
         self.db.commit()
         self.db.refresh(run)
         return self._detail(run)
+
+    def get_monthly_returns(
+        self,
+        run_id: int,
+        *,
+        owner_user_id: int | None,
+        is_admin: bool,
+    ) -> BacktestMonthlyReturnsResponse:
+        self._get_visible_run(run_id, owner_user_id=owner_user_id, is_admin=is_admin)
+        rows = self.db.execute(
+            select(BacktestDailySnapshot)
+            .where(BacktestDailySnapshot.run_id == run_id)
+            .order_by(BacktestDailySnapshot.trade_date.asc())
+        ).scalars().all()
+        return BacktestMonthlyReturnsResponse(run_id=run_id, items=_monthly_returns(rows))
+
+    def get_attribution(
+        self,
+        run_id: int,
+        *,
+        owner_user_id: int | None,
+        is_admin: bool,
+    ) -> BacktestAttributionResponse:
+        run = self._get_visible_run(run_id, owner_user_id=owner_user_id, is_admin=is_admin)
+        result = _json_dict(run.result_json)
+        attribution = _result_attribution(result)
+        trades = self.db.execute(
+            select(BacktestTrade).where(BacktestTrade.run_id == run_id).order_by(BacktestTrade.trade_date.asc())
+        ).scalars().all()
+        return BacktestAttributionResponse(
+            run_id=run_id,
+            strategy=_strategy_attribution(trades, result),
+            industry=list(attribution.get("industry") or _bucket_trades(trades, "sector_name")),
+            market_state=list(attribution.get("market_state") or _bucket_trades(trades, "market_state")),
+            data_quality=list(attribution.get("data_quality") or []),
+            notes=list(attribution.get("notes") or ["行业分类可能存在历史偏差"]),
+        )
+
+    def get_strategy_correlation(
+        self,
+        run_id: int,
+        *,
+        owner_user_id: int | None,
+        is_admin: bool,
+    ) -> BacktestStrategyCorrelationResponse:
+        run = self._get_visible_run(run_id, owner_user_id=owner_user_id, is_admin=is_admin)
+        trades = self.db.execute(
+            select(BacktestTrade).where(BacktestTrade.run_id == run_id).order_by(BacktestTrade.trade_date.asc())
+        ).scalars().all()
+        strategies = _strategy_list(run.strategy_keys) or sorted({trade.strategy_key for trade in trades if trade.strategy_key})
+        matrix = _strategy_correlation(strategies, trades)
+        return BacktestStrategyCorrelationResponse(run_id=run_id, strategies=strategies, matrix=matrix)
+
+    def compare_runs(
+        self,
+        payload: BacktestCompareRequest,
+        *,
+        owner_user_id: int | None,
+        is_admin: bool,
+    ) -> BacktestCompareResponse:
+        items = []
+        curves = []
+        for run_id in payload.run_ids:
+            run = self._get_visible_run(run_id, owner_user_id=owner_user_id, is_admin=is_admin)
+            result = _json_dict(run.result_json)
+            items.append(
+                {
+                    "run_id": run.id,
+                    "name": run.name or "",
+                    "status": run.status or "",
+                    "strategy_keys": _strategy_list(run.strategy_keys),
+                    "start_date": run.start_date,
+                    "end_date": run.end_date,
+                    "initial_cash": float(run.initial_cash or 0.0),
+                    "final_equity": float(run.final_equity or 0.0),
+                    "metrics": dict((result.get("metrics") or {}) if isinstance(result.get("metrics"), dict) else {}),
+                }
+            )
+            curves.append({"run_id": run.id, "points": _compare_equity_points(run.id, self.db)})
+        return BacktestCompareResponse(run_ids=payload.run_ids, items=items, equity_curves=curves)
 
     def _get_visible_run(self, run_id: int, *, owner_user_id: int | None, is_admin: bool) -> BacktestRun:
         statement = select(BacktestRun).where(BacktestRun.id == run_id, BacktestRun.deleted_at.is_(None))
@@ -369,6 +440,121 @@ def _result_attribution(result: dict[str, Any]) -> dict[str, Any]:
     if isinstance(metrics, dict) and isinstance(metrics.get("attribution"), dict):
         return metrics["attribution"]
     return {}
+
+
+def _monthly_returns(rows: list[BacktestDailySnapshot]) -> list[dict[str, Any]]:
+    grouped: dict[str, list[BacktestDailySnapshot]] = {}
+    for row in rows:
+        grouped.setdefault(str(row.trade_date)[:7], []).append(row)
+    output: list[dict[str, Any]] = []
+    for month in sorted(grouped):
+        items = grouped[month]
+        start_equity = float(items[0].equity or 0.0)
+        end_equity = float(items[-1].equity or 0.0)
+        return_pct = 0.0 if start_equity <= 0 else (end_equity / start_equity - 1) * 100
+        output.append(
+            {
+                "month": month,
+                "start_equity": round(start_equity, 2),
+                "end_equity": round(end_equity, 2),
+                "return_pct": round(return_pct, 4),
+                "trading_days": len(items),
+            }
+        )
+    return output
+
+
+def _strategy_attribution(trades: list[BacktestTrade], result: dict[str, Any]) -> list[dict[str, Any]]:
+    metrics = result.get("metrics")
+    by_strategy = metrics.get("by_strategy") if isinstance(metrics, dict) else None
+    if isinstance(by_strategy, dict) and by_strategy:
+        return [
+            {"strategy_key": str(strategy), **dict(payload)}
+            for strategy, payload in sorted(by_strategy.items())
+            if isinstance(payload, dict)
+        ]
+    return [
+        {"strategy_key": item["bucket"], **{key: value for key, value in item.items() if key != "bucket"}}
+        for item in _bucket_trades(trades, "strategy_key")
+    ]
+
+
+def _bucket_trades(trades: list[BacktestTrade], attr_name: str) -> list[dict[str, Any]]:
+    grouped: dict[str, list[BacktestTrade]] = {}
+    for trade in trades:
+        bucket = str(getattr(trade, attr_name, "") or "unknown")
+        grouped.setdefault(bucket, []).append(trade)
+    output = []
+    for bucket, items in sorted(grouped.items()):
+        winners = [trade for trade in items if float(trade.pnl_amount or 0.0) > 0]
+        output.append(
+            {
+                "bucket": bucket,
+                "trade_count": len(items),
+                "win_count": len(winners),
+                "win_rate_pct": round(len(winners) / max(len(items), 1) * 100, 4),
+                "avg_return_pct": round(sum(float(trade.pnl_pct or 0.0) for trade in items) / max(len(items), 1), 4),
+                "net_pnl": round(sum(float(trade.pnl_amount or 0.0) for trade in items), 2),
+                "fee_amount": round(sum(float(trade.fee_amount or 0.0) for trade in items), 2),
+            }
+        )
+    return output
+
+
+def _compare_equity_points(run_id: int, db: Session) -> list[dict[str, Any]]:
+    rows = db.execute(
+        select(BacktestDailySnapshot)
+        .where(BacktestDailySnapshot.run_id == run_id)
+        .order_by(BacktestDailySnapshot.trade_date.asc())
+    ).scalars().all()
+    return [
+        {
+            "trade_date": row.trade_date,
+            "equity": float(row.equity or 0.0),
+            "daily_return_pct": float(row.daily_return_pct or 0.0),
+            "drawdown_pct": float(row.drawdown_pct or 0.0),
+        }
+        for row in rows
+    ]
+
+
+def _strategy_correlation(strategies: list[str], trades: list[BacktestTrade]) -> list[dict[str, Any]]:
+    normalized = sorted({strategy for strategy in strategies if strategy})
+    if not normalized:
+        normalized = sorted({trade.strategy_key for trade in trades if trade.strategy_key})
+    dates = sorted({trade.trade_date for trade in trades})
+    pnl_by_key = {(trade.strategy_key, trade.trade_date): 0.0 for trade in trades}
+    for trade in trades:
+        key = (trade.strategy_key, trade.trade_date)
+        pnl_by_key[key] = pnl_by_key.get(key, 0.0) + float(trade.pnl_amount or 0.0)
+    series = {
+        strategy: [pnl_by_key.get((strategy, trade_date), 0.0) for trade_date in dates]
+        for strategy in normalized
+    }
+    return [
+        {
+            "strategy_key": left,
+            "correlations": {right: _pearson(series.get(left, []), series.get(right, []), same=left == right) for right in normalized},
+        }
+        for left in normalized
+    ]
+
+
+def _pearson(left: list[float], right: list[float], *, same: bool) -> float:
+    if same:
+        return 1.0
+    pairs = list(zip(left, right))
+    if len(pairs) < 2:
+        return 0.0
+    left_avg = sum(item[0] for item in pairs) / len(pairs)
+    right_avg = sum(item[1] for item in pairs) / len(pairs)
+    numerator = sum((left_item - left_avg) * (right_item - right_avg) for left_item, right_item in pairs)
+    left_var = sum((left_item - left_avg) ** 2 for left_item, _ in pairs)
+    right_var = sum((right_item - right_avg) ** 2 for _, right_item in pairs)
+    denominator = math.sqrt(left_var * right_var)
+    if denominator <= 0:
+        return 0.0
+    return round(numerator / denominator, 4)
 
 
 def _safe_error_message(exc: Exception) -> str:

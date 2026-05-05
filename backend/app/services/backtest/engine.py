@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import time
 from dataclasses import asdict, dataclass, field
 from decimal import Decimal
 from typing import Any
@@ -31,6 +32,7 @@ class BacktestConfig:
     entry_delay_days: int = 0
     lot_size: int = 100
     force_liquidate_at_end: bool = True
+    max_duration_seconds: int = 1800
 
 
 @dataclass(frozen=True)
@@ -92,7 +94,14 @@ class BacktestEngine:
         self.analyzer = analyzer or BacktestAnalyzer()
         self.repository = repository
 
-    def run(self, config: BacktestConfig, *, cancel_token: Any | None = None) -> BacktestResult:
+    def run(
+        self,
+        config: BacktestConfig,
+        *,
+        cancel_token: Any | None = None,
+        histories_override: dict[str, list[DailyBar]] | None = None,
+        trade_dates_override: list[str] | None = None,
+    ) -> BacktestResult:
         signals = list(config.signals) or self.data_provider.load_low_buy_signals(
             strategies=config.strategies,
             start_date=config.start_date,
@@ -102,8 +111,16 @@ class BacktestEngine:
         symbols = sorted({signal.symbol for signal in signals})
         benchmark_symbol = _normalize_benchmark_symbol(config.benchmark_symbol)
         data_symbols = sorted({*symbols, *([benchmark_symbol] if benchmark_symbol else [])})
-        trade_dates = self.data_provider.fetch_trade_dates(config.start_date, config.end_date)
-        histories = self.data_provider.fetch_bars(data_symbols, start_date=config.start_date, end_date=config.end_date)
+        trade_dates = (
+            list(trade_dates_override)
+            if trade_dates_override is not None
+            else self.data_provider.fetch_trade_dates(config.start_date, config.end_date)
+        )
+        histories = (
+            histories_override
+            if histories_override is not None
+            else self.data_provider.fetch_bars(data_symbols, start_date=config.start_date, end_date=config.end_date)
+        )
         manifest = _dataset_manifest(self.data_provider, config, data_symbols)
         quality = self.data_provider.quality_report(
             symbols=data_symbols,
@@ -132,11 +149,16 @@ class BacktestEngine:
         equity_curve: list[PortfolioSnapshot] = []
         next_trade_dates = _next_trade_dates(trade_dates)
         cancelled = False
+        timed_out = False
+        started_monotonic = time.monotonic()
         for trade_date in trade_dates:
             bars_for_day = bars_by_date.get(trade_date, {})
             benchmark = benchmark_by_date.get(trade_date, {})
-            if _cancel_requested(cancel_token):
-                cancelled = True
+            if _timeout_requested(started_monotonic, config.max_duration_seconds) or _cancel_requested(cancel_token):
+                timed_out = _timeout_requested(started_monotonic, config.max_duration_seconds) or bool(
+                    getattr(cancel_token, "timed_out", False)
+                )
+                cancelled = not timed_out
                 if not equity_curve:
                     equity_curve.append(
                         portfolio.snapshot(
@@ -178,7 +200,8 @@ class BacktestEngine:
                 )
             )
             if _cancel_requested(cancel_token):
-                cancelled = True
+                timed_out = bool(getattr(cancel_token, "timed_out", False))
+                cancelled = not timed_out
                 break
         metrics = self.analyzer.analyze(
             initial_cash=config.initial_cash,
@@ -206,8 +229,8 @@ class BacktestEngine:
             orders=orders,
             trades=portfolio.realized_trades,
             attribution=attribution,
-            status="cancelled" if cancelled else "succeeded",
-            partial=cancelled,
+            status="timeout" if timed_out else "cancelled" if cancelled else "succeeded",
+            partial=cancelled or timed_out,
         )
         _persist_repository(self.repository, result)
         return result
@@ -433,6 +456,12 @@ def _cancel_requested(cancel_token: Any | None) -> bool:
     if callable(checker):
         return bool(checker())
     return bool(getattr(cancel_token, "cancelled", False))
+
+
+def _timeout_requested(started_monotonic: float, max_duration_seconds: int | float | None) -> bool:
+    if max_duration_seconds is None or max_duration_seconds <= 0:
+        return False
+    return time.monotonic() - started_monotonic >= float(max_duration_seconds)
 
 
 def _dataset_manifest(

@@ -26,6 +26,7 @@ class DailyBar:
     volume: float
     amount: float
     pct_chg: float
+    pre_close: float = 0.0
     instrument_type: str = "stock"
     market: str = "CN"
 
@@ -129,8 +130,12 @@ class DailyBarDataProvider:
             .all()
         )
         grouped: dict[str, list[DailyBar]] = {}
+        previous_close_by_symbol: dict[str, float] = {}
         for row in rows:
-            grouped.setdefault(row.symbol, []).append(_bar_from_row(row))
+            bar = _bar_from_row(row, previous_close=previous_close_by_symbol.get(row.symbol))
+            grouped.setdefault(row.symbol, []).append(bar)
+            if bar.close_price > 0:
+                previous_close_by_symbol[row.symbol] = bar.close_price
         return grouped
 
     def load_low_buy_signals(
@@ -260,20 +265,45 @@ class DailyBarDataProvider:
         }
 
 
-def _bar_from_row(row: DailyBarSnapshot) -> DailyBar:
+def _bar_from_row(row: DailyBarSnapshot, *, previous_close: float | None = None) -> DailyBar:
+    close_price = float(row.close_price or 0)
+    pct_chg = float(row.pct_chg or 0)
     return DailyBar(
         symbol=row.symbol,
         trade_date=str(row.trade_date),
         open_price=float(row.open_price or 0),
-        close_price=float(row.close_price or 0),
+        close_price=close_price,
         high_price=float(row.high_price or 0),
         low_price=float(row.low_price or 0),
         volume=float(row.volume or 0),
         amount=float(row.amount or 0),
-        pct_chg=float(row.pct_chg or 0),
+        pct_chg=pct_chg,
+        pre_close=_resolve_pre_close(row, close_price=close_price, pct_chg=pct_chg, previous_close=previous_close),
         instrument_type=str(row.instrument_type or "stock"),
         market=str(row.market or "CN"),
     )
+
+
+def _resolve_pre_close(
+    row: DailyBarSnapshot,
+    *,
+    close_price: float,
+    pct_chg: float,
+    previous_close: float | None,
+) -> float:
+    raw_pre_close = getattr(row, "pre_close", None)
+    try:
+        pre_close = float(raw_pre_close or 0)
+    except (TypeError, ValueError):
+        pre_close = 0.0
+    if pre_close > 0:
+        return pre_close
+    denominator = 1 + pct_chg / 100
+    if close_price > 0 and denominator > 0:
+        return close_price / denominator
+    if previous_close and previous_close > 0:
+        return float(previous_close)
+    return close_price
 
 
 def _signal_from_low_buy_row(row: LowBuyResultSnapshot) -> BacktestSignal:

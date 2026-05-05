@@ -3,7 +3,6 @@ from app.services.backtest.data_provider import BacktestSignal, DailyBar, DailyB
 from app.services.backtest.engine import BacktestConfig, BacktestEngine, BacktestOrder, BacktestResult
 from app.services.backtest.optimizer import BacktestOptimizer
 from app.services.backtest.portfolio import BacktestPortfolio, PortfolioConfig, PortfolioSnapshot, RealizedTrade
-from app.services.backtest.reporter import BacktestReporter
 from app.services.backtest.validator import BacktestValidator
 
 __all__ = [
@@ -13,7 +12,6 @@ __all__ = [
     "BacktestOptimizer",
     "BacktestOrder",
     "BacktestPortfolio",
-    "BacktestReporter",
     "BacktestResult",
     "BacktestSignal",
     "BacktestValidator",

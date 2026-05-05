@@ -12,12 +12,13 @@ from sqlalchemy.orm import Session
 
 from app.core.database import SessionLocal
 from app.models.entities import BacktestRun
+from app.services.backtest.cancel_token import BacktestCancelToken, TimedDatabaseStatusCancelToken
 from app.services.backtest_job_service import BacktestJobService, _safe_error_message
 
 
 logger = logging.getLogger(__name__)
 
-TERMINAL_STATUSES = {"succeeded", "failed", "cancelled", "deleted"}
+TERMINAL_STATUSES = {"succeeded", "failed", "cancelled", "timeout", "deleted"}
 
 
 @dataclass(frozen=True)
@@ -27,47 +28,6 @@ class BacktestWorkerResult:
     message: str = ""
 
 
-class BacktestWorkerCancelToken:
-    """Cooperative cancellation token backed by local state and DB status."""
-
-    def __init__(
-        self,
-        *,
-        run_id: int,
-        session_factory: Callable[[], Session],
-        max_duration_seconds: float | None,
-    ) -> None:
-        self.run_id = run_id
-        self.session_factory = session_factory
-        self.max_duration_seconds = max_duration_seconds
-        self.started_monotonic = time.monotonic()
-        self.timed_out = False
-        self._event = threading.Event()
-
-    def cancel(self) -> None:
-        self._event.set()
-
-    def is_cancelled(self) -> bool:
-        if self._event.is_set():
-            return True
-        if self.max_duration_seconds is not None and self.max_duration_seconds > 0:
-            if time.monotonic() - self.started_monotonic >= self.max_duration_seconds:
-                self.timed_out = True
-                return True
-        return self._is_cancelled_in_db()
-
-    def _is_cancelled_in_db(self) -> bool:
-        try:
-            with self.session_factory() as db:
-                status = db.execute(
-                    select(BacktestRun.status).where(BacktestRun.id == self.run_id)
-                ).scalar_one_or_none()
-        except Exception:
-            logger.exception("failed to read backtest cancellation status: run_id=%s", self.run_id)
-            return False
-        return status == "cancelled"
-
-
 class BacktestWorker:
     """Consumes persistent backtest jobs from the database queue."""
 
@@ -75,7 +35,7 @@ class BacktestWorker:
         self,
         *,
         session_factory: Callable[[], Session] = SessionLocal,
-        max_duration_seconds: float | None = 60 * 60,
+        max_duration_seconds: float | None = 1800,
     ) -> None:
         self.session_factory = session_factory
         self.max_duration_seconds = max_duration_seconds
@@ -89,10 +49,12 @@ class BacktestWorker:
         if run_id is None:
             return None
 
-        token = BacktestWorkerCancelToken(
-            run_id=run_id,
+        token = TimedDatabaseStatusCancelToken(
+            model=BacktestRun,
+            row_id=run_id,
             session_factory=self.session_factory,
-            max_duration_seconds=self.max_duration_seconds,
+            max_duration_seconds=self._run_max_duration_seconds(run_id),
+            log_label="backtest run",
         )
         BacktestJobService.register_cancel_token(run_id, token)
         try:
@@ -145,10 +107,21 @@ class BacktestWorker:
             db.commit()
             return int(run)
 
+    def _run_max_duration_seconds(self, run_id: int) -> float | None:
+        with self.session_factory() as db:
+            value = db.execute(
+                select(BacktestRun.max_duration_seconds).where(BacktestRun.id == run_id)
+            ).scalar_one_or_none()
+        if value is None or value <= 0:
+            return self.max_duration_seconds
+        if self.max_duration_seconds is None or self.max_duration_seconds <= 0:
+            return float(value)
+        return min(float(value), float(self.max_duration_seconds))
+
     def _execute_claimed_job(
         self,
         run_id: int,
-        cancel_token: BacktestWorkerCancelToken,
+        cancel_token: BacktestCancelToken,
     ) -> BacktestWorkerResult:
         with self.session_factory() as db:
             service = BacktestJobService(db)
@@ -165,6 +138,8 @@ class BacktestWorker:
                 if terminal_status == "cancelled":
                     service._mark_cancelled(run)
                     return BacktestWorkerResult(run_id=run_id, status="cancelled")
+                if terminal_status == "timeout":
+                    return BacktestWorkerResult(run_id=run_id, status="timeout", message="回测执行超时")
                 if terminal_status == "deleted":
                     return BacktestWorkerResult(run_id=run_id, status="deleted")
                 service._persist_result(run.id, result)
@@ -181,7 +156,9 @@ class BacktestWorker:
             if run is None:
                 return BacktestWorkerResult(run_id=run_id, status="missing")
             if timed_out:
+                run.status = "timeout"
                 run.error_message = "回测执行超时"
+                run.finished_at = run.finished_at or _utcnow()
             if run.status in TERMINAL_STATUSES:
                 run.finished_at = run.finished_at or _utcnow()
                 if run.status == "succeeded":
@@ -213,7 +190,7 @@ class BacktestWorker:
             if run is None:
                 return None
 
-            run.status = "failed"
+            run.status = "timeout"
             run.error_message = "回测执行超时"
             run.finished_at = _utcnow()
             run.progress_pct = max(float(run.progress_pct or 0.0), 0.0)
@@ -238,7 +215,7 @@ class BacktestWorker:
                 return
             if run.status in TERMINAL_STATUSES and run.status != "running":
                 return
-            run.status = "failed"
+            run.status = "timeout" if "超时" in message else "failed"
             run.error_message = message
             run.finished_at = _utcnow()
             run.progress_pct = max(float(run.progress_pct or 0.0), 0.0)

@@ -20,7 +20,7 @@ from app.services.backtest.engine import BACKTEST_ENGINE_VERSION, BacktestResult
 from app.services.low_buy.shared import LOW_BUY_RESULT_VERSION
 
 
-_PROTECTED_TERMINAL_STATUSES = {"cancelled", "deleted", "failed"}
+_PROTECTED_TERMINAL_STATUSES = {"cancelled", "deleted", "failed", "timeout"}
 
 
 class BacktestResultPersistence:
@@ -39,8 +39,8 @@ class BacktestResultPersistence:
         self.db.add(manifest)
         self.db.flush()
         self._create_quality_row(run.id, manifest.id, result)
-        order_id_by_index = self._create_orders(run.id, result)
-        self._create_trades(run.id, result, order_id_by_index)
+        persisted_orders = self._create_orders(run.id, result)
+        self._create_trades(run.id, result, persisted_orders)
         self._create_equity_snapshots(run.id, result)
         self._update_run_summary(run, result, manifest.id)
         self.db.commit()
@@ -77,9 +77,9 @@ class BacktestResultPersistence:
             )
         )
 
-    def _create_orders(self, run_id: int, result: BacktestResult) -> dict[int, int]:
-        order_id_by_index: dict[int, int] = {}
-        for index, order in enumerate(result.orders):
+    def _create_orders(self, run_id: int, result: BacktestResult) -> list[tuple[Any, int]]:
+        persisted_orders: list[tuple[Any, int]] = []
+        for order in result.orders:
             row = BacktestOrderEntity(
                 run_id=run_id,
                 trade_date=order.trade_date,
@@ -96,17 +96,17 @@ class BacktestResultPersistence:
             )
             self.db.add(row)
             self.db.flush()
-            order_id_by_index[index] = row.id
-        return order_id_by_index
+            persisted_orders.append((order, row.id))
+        return persisted_orders
 
-    def _create_trades(self, run_id: int, result: BacktestResult, order_id_by_index: dict[int, int]) -> None:
-        for index, trade in enumerate(result.trades):
+    def _create_trades(self, run_id: int, result: BacktestResult, persisted_orders: list[tuple[Any, int]]) -> None:
+        for trade in result.trades:
             gross_amount = float(trade.exit_price) * int(trade.quantity or 0)
             fee_amount = max(float(getattr(trade, "fee_amount", 0.0) or 0.0), 0.0)
             self.db.add(
                 BacktestTrade(
                     run_id=run_id,
-                    order_id=order_id_by_index.get(index),
+                    order_id=_matched_exit_order_id(trade, persisted_orders),
                     trade_date=trade.exit_date,
                     symbol=trade.symbol,
                     name=trade.name,
@@ -122,11 +122,15 @@ class BacktestResultPersistence:
                     holding_days=int(trade.holding_days or 0),
                     entry_reason="entry",
                     exit_reason=trade.exit_reason,
+                    market_state=str(getattr(trade, "market_state", "") or ""),
+                    sector=str(getattr(trade, "sector", "") or getattr(trade, "sector_name", "") or ""),
+                    sector_name=str(getattr(trade, "sector_name", "") or getattr(trade, "sector", "") or ""),
                     payload_json=_json_dumps(trade.__dict__),
                 )
             )
 
     def _create_equity_snapshots(self, run_id: int, result: BacktestResult) -> None:
+        turnover_amounts = _turnover_amounts_by_date(result)
         previous_equity: float | None = None
         peak_equity = 0.0
         for item in result.equity_curve:
@@ -137,6 +141,7 @@ class BacktestResultPersistence:
             previous_equity = equity
             market_value = float(item.market_value)
             exposure = 0.0 if equity <= 0 else market_value / equity * 100
+            turnover = 0.0 if equity <= 0 else turnover_amounts.get(item.trade_date, 0.0) / equity * 100
             self.db.add(
                 BacktestDailySnapshot(
                     run_id=run_id,
@@ -147,10 +152,12 @@ class BacktestResultPersistence:
                     daily_return_pct=daily_return,
                     drawdown_pct=drawdown,
                     exposure_pct=exposure,
+                    turnover=turnover,
                     positions_count=int(item.position_count),
                     benchmark_symbol=str(getattr(item, "benchmark_symbol", "") or ""),
                     benchmark_close=float(getattr(item, "benchmark_close", 0.0) or 0.0),
                     benchmark_return_pct=float(getattr(item, "benchmark_return_pct", 0.0) or 0.0),
+                    market_state=str(getattr(item, "market_state", "") or ""),
                     payload_json=_json_dumps(item.__dict__),
                 )
             )
@@ -202,6 +209,27 @@ def _should_preserve_terminal_run(run: BacktestRun, result: BacktestResult) -> b
     return str(run.status or "") in _PROTECTED_TERMINAL_STATUSES and run.status != result.status
 
 
+def _matched_exit_order_id(trade: Any, persisted_orders: list[tuple[Any, int]]) -> int | None:
+    """Map realized lot-level trades to the sell order that produced them."""
+
+    for order, order_id in persisted_orders:
+        if str(getattr(order, "status", "")) != "filled":
+            continue
+        if str(getattr(order, "side", "")) != "sell":
+            continue
+        if str(getattr(order, "symbol", "")) != str(getattr(trade, "symbol", "")):
+            continue
+        if str(getattr(order, "trade_date", "")) != str(getattr(trade, "exit_date", "")):
+            continue
+        if str(getattr(order, "strategy_key", "") or "") != str(getattr(trade, "strategy_key", "") or ""):
+            continue
+        fill_price = getattr(order, "fill_price", None)
+        if fill_price is not None and round(float(fill_price), 4) != round(float(getattr(trade, "exit_price", 0.0)), 4):
+            continue
+        return order_id
+    return None
+
+
 def _compact_result_payload(result: BacktestResult) -> dict[str, Any]:
     """Keep run detail light; normalized tables store curves, orders and trades."""
 
@@ -220,6 +248,16 @@ def _compact_result_payload(result: BacktestResult) -> dict[str, Any]:
             "trades": len(result.trades),
         },
     }
+
+
+def _turnover_amounts_by_date(result: BacktestResult) -> dict[str, float]:
+    output: dict[str, float] = {}
+    for order in getattr(result, "orders", []) or []:
+        if order.status != "filled" or order.fill_price is None or int(order.quantity or 0) <= 0:
+            continue
+        amount = float(order.fill_price) * int(order.quantity or 0)
+        output[order.trade_date] = output.get(order.trade_date, 0.0) + amount
+    return output
 
 
 def _json_dumps(value: dict[str, Any]) -> str:

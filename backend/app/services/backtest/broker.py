@@ -75,8 +75,8 @@ class BacktestBroker:
             current_price=to_decimal(selected_price),
             quote_time=datetime.now(),
             is_suspended=request.bar.is_suspended,
-            up_limit=to_decimal(selected_price) if _is_limit_up(request.bar) else None,
-            down_limit=to_decimal(selected_price) if _is_limit_down(request.bar) else None,
+            up_limit=_limit_price(request.bar, direction="up") if _is_limit_up(request.bar) else None,
+            down_limit=_limit_price(request.bar, direction="down") if _is_limit_down(request.bar) else None,
         )
         if match.result != MatchResult.FILLED or match.avg_fill_price is None or match.fee_detail is None:
             return _rejected(request, match.reject_reason or "回测委托未成交。")
@@ -149,6 +149,19 @@ def _is_limit_down(bar: DailyBar) -> bool:
     if limit_pct is None:
         return False
     return float(bar.pct_chg or 0) <= -(limit_pct - 0.2)
+
+
+def _limit_price(bar: DailyBar, *, direction: str) -> Decimal | None:
+    limit_pct = a_share_price_limit_pct(
+        bar.symbol,
+        instrument_type=bar.instrument_type,
+        market=bar.market,
+    )
+    pre_close = float(bar.pre_close or 0)
+    if limit_pct is None or pre_close <= 0:
+        return None
+    multiplier = 1 + limit_pct / 100 if direction == "up" else 1 - limit_pct / 100
+    return to_decimal(pre_close * multiplier)
 
 
 def _rejected(request: ExecutionRequest, reason: str) -> ExecutionResult:

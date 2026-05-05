@@ -14,6 +14,8 @@ export function BacktestPage() {
       loading={dashboard.loading}
       error={dashboard.error}
       notice={dashboard.notice}
+      research={dashboard.research}
+      researchActions={dashboard.researchActions}
       onFormChange={dashboard.onFormChange}
       onToggleStrategy={dashboard.onToggleStrategy}
       onSubmit={dashboard.submit}

@@ -17,8 +17,10 @@ from app.models.backtest_entities import (
     BacktestDailySnapshot,
     BacktestDataQuality,
     BacktestDatasetManifest,
+    BacktestOptimization,
     BacktestOrder,
     BacktestTrade,
+    BacktestValidation,
 )
 from app.models.low_buy_entities import (
     LowBuyCloseReviewSnapshot,
@@ -76,6 +78,8 @@ __all__ = [
     "BacktestDatasetManifest",
     "BacktestOrder",
     "BacktestTrade",
+    "BacktestOptimization",
+    "BacktestValidation",
     "MarketEventCache",
     "MinuteBarSnapshot",
     "DailyBarSnapshot",

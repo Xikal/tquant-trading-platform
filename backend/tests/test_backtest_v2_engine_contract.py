@@ -148,6 +148,42 @@ def test_data_provider_manifest_records_hash_and_forward_adjustment_method() -> 
     assert manifest["adjustment_method"] == "forward"
 
 
+def test_data_provider_loads_or_derives_pre_close_from_daily_snapshot() -> None:
+    row_with_pre_close = SimpleNamespace(
+        symbol="300001",
+        trade_date="2025-01-02",
+        open_price=11.0,
+        close_price=12.0,
+        high_price=12.0,
+        low_price=11.0,
+        volume=1_000_000,
+        amount=12_000_000,
+        pct_chg=20.0,
+        pre_close=10.0,
+        instrument_type="stock",
+        market="CN",
+    )
+    row_without_pre_close = SimpleNamespace(
+        symbol="600001",
+        trade_date="2025-01-02",
+        open_price=10.8,
+        close_price=11.0,
+        high_price=11.0,
+        low_price=10.8,
+        volume=1_000_000,
+        amount=11_000_000,
+        pct_chg=10.0,
+        instrument_type="stock",
+        market="CN",
+    )
+
+    loaded = getattr(data_provider_module, "_bar_from_row")(row_with_pre_close)
+    derived = getattr(data_provider_module, "_bar_from_row")(row_without_pre_close)
+
+    assert loaded.pre_close == 10.0
+    assert derived.pre_close == pytest.approx(10.0)
+
+
 def test_broker_rejects_limit_up_limit_down_and_suspension_before_matching() -> None:
     broker = getattr(broker_module, "BacktestBroker")()
     request_cls = getattr(broker_module, "ExecutionRequest")
@@ -255,6 +291,34 @@ def test_broker_applies_market_and_security_type_specific_limit_rules() -> None:
     assert gem_ten_pct_move.status == "filled"
     assert gem_twenty_pct_move.status == "rejected"
     assert "涨停" in gem_twenty_pct_move.reject_reason
+
+
+def test_broker_uses_real_limit_price_from_pre_close_not_selected_price() -> None:
+    broker = getattr(broker_module, "BacktestBroker")()
+    request_cls = getattr(broker_module, "ExecutionRequest")
+
+    result = broker.execute(
+        request_cls(
+            trade_date="2025-01-02",
+            symbol="300001",
+            side="buy",
+            quantity=1000,
+            bar=_bar(
+                "300001",
+                "2025-01-02",
+                open_price=11.0,
+                close_price=12.0,
+                high_price=12.0,
+                low_price=11.0,
+                pct_chg=20.0,
+                pre_close=10.0,
+            ),
+            execution_model="open_price",
+        )
+    )
+
+    assert result.status == "filled"
+    assert result.fill_price == Decimal("11.0000")
 
 
 def test_portfolio_applies_stock_t1_unlock_and_etf_same_day_availability() -> None:
@@ -559,6 +623,7 @@ def _bar(
     volume: int = 1_000_000,
     amount: float = 10_000_000.0,
     pct_chg: float = 0.0,
+    pre_close: float | None = None,
     instrument_type: str = "stock",
     market: str = "CN",
 ):
@@ -573,6 +638,7 @@ def _bar(
         volume=volume,
         amount=amount,
         pct_chg=pct_chg,
+        pre_close=pre_close if pre_close is not None else (close_price / (1 + pct_chg / 100) if pct_chg != -100 else close_price),
         instrument_type=instrument_type,
         market=market,
     )
