@@ -34,7 +34,7 @@ export function useBacktestDashboard() {
       const [detailResult, equityResult, tradesResult] = await Promise.allSettled([
         backtestsApi.getBacktest(runId),
         backtestsApi.getBacktestEquity(runId),
-        backtestsApi.getBacktestTrades(runId, { page: 1, pageSize: 50 }),
+        backtestsApi.getBacktestTrades(runId, { limit: 50, offset: 0 }),
       ]);
       if (detailResult.status === "fulfilled") {
         setSelectedRun(detailResult.value);
@@ -67,7 +67,7 @@ export function useBacktestDashboard() {
     setLoading("list");
     setError("");
     try {
-      const result = await backtestsApi.listBacktests({ page: 1, pageSize: 20 });
+      const result = await backtestsApi.listBacktests({ limit: 20, offset: 0 });
       setRuns(result.items ?? []);
       const nextRun = result.items?.[0];
       if (nextRun) {

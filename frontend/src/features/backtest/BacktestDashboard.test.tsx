@@ -30,6 +30,60 @@ const run: BacktestRunDetail = {
     total_trades: 34,
     profit_factor: 1.48,
   },
+  result: {
+    attribution: {
+      version: "backtest-attribution-v1",
+      industry: [
+        {
+          bucket: "软件",
+          signal_count: 8,
+          trade_count: 5,
+          win_rate_pct: 60,
+          avg_return_pct: 2.4,
+          net_pnl: 12800,
+        },
+      ],
+      market_state: [
+        {
+          bucket: "repair",
+          signal_count: 6,
+          trade_count: 4,
+          win_rate_pct: 75,
+          avg_return_pct: 3.1,
+          net_pnl: 16800,
+        },
+      ],
+      data_quality: [
+        {
+          bucket: "ok",
+          signal_count: 7,
+          trade_count: 5,
+          win_rate_pct: 60,
+          avg_return_pct: 2.4,
+          net_pnl: 12800,
+        },
+        {
+          bucket: "missing_bar",
+          signal_count: 1,
+          rejected_order_count: 1,
+          trade_count: 0,
+          win_rate_pct: 0,
+          avg_return_pct: 0,
+          net_pnl: 0,
+        },
+      ],
+      data_quality_summary: {
+        quality_tag: "warning",
+        missing_bar_count: 1,
+      },
+    },
+    metrics: {
+      sortino_ratio: 1.8,
+      calmar_ratio: 2.4,
+      benchmark_alpha_pct: 7.3,
+      information_ratio: 0.92,
+    },
+  },
   created_at: "2026-05-05T09:30:00",
 };
 
@@ -74,10 +128,13 @@ describe("BacktestDashboard", () => {
         }}
         runs={[
           { ...run, id: 1, status: "pending" },
+          { ...run, id: 6, status: "queued", progress: null },
           { ...run, id: 2, status: "running" },
           run,
+          { ...run, id: 7, status: "succeeded" },
           { ...run, id: 4, status: "failed" },
           { ...run, id: 5, status: "cancelled" },
+          { ...run, id: 8, status: "deleted" },
         ]}
         selectedRun={run}
         equity={equity}
@@ -98,12 +155,24 @@ describe("BacktestDashboard", () => {
     expect(html).toContain("日期范围");
     expect(html).toContain("执行模型");
     expect(html).toContain("pending");
+    expect(html).toContain("queued");
     expect(html).toContain("running");
     expect(html).toContain("completed");
+    expect(html).toContain("succeeded");
     expect(html).toContain("failed");
     expect(html).toContain("cancelled");
+    expect(html).toContain("deleted");
     expect(html).toContain("<svg");
     expect(html).toContain("300059");
     expect(html).toContain("first_board");
+    expect(html).toContain("Sortino");
+    expect(html).toContain("Calmar");
+    expect(html).toContain("Alpha");
+    expect(html).toContain("IR");
+    expect(html).toContain("+7.30%");
+    expect(html).toContain("分桶归因");
+    expect(html).toContain("软件");
+    expect(html).toContain("repair");
+    expect(html).toContain("missing_bar");
   });
 });

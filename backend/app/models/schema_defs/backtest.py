@@ -9,6 +9,29 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 BacktestStatus = Literal["queued", "running", "succeeded", "failed", "cancelled", "deleted"]
 
 
+class BacktestAttributionBucket(BaseModel):
+    bucket: str
+    label: str = ""
+    signal_count: int = 0
+    filled_order_count: int = 0
+    rejected_order_count: int = 0
+    trade_count: int = 0
+    win_count: int = 0
+    win_rate_pct: float = 0.0
+    avg_return_pct: float = 0.0
+    net_pnl: float = 0.0
+    fee_amount: float = 0.0
+
+
+class BacktestAttribution(BaseModel):
+    version: str = ""
+    industry: list[BacktestAttributionBucket] = Field(default_factory=list)
+    market_state: list[BacktestAttributionBucket] = Field(default_factory=list)
+    data_quality: list[BacktestAttributionBucket] = Field(default_factory=list)
+    data_quality_summary: dict[str, Any] = Field(default_factory=dict)
+    notes: list[str] = Field(default_factory=list)
+
+
 class BacktestRunCreate(BaseModel):
     model_config = ConfigDict(populate_by_name=True, extra="allow")
 
@@ -59,6 +82,7 @@ class BacktestRunSummary(BaseModel):
 class BacktestRunDetail(BacktestRunSummary):
     params: dict[str, Any] = Field(default_factory=dict)
     result: dict[str, Any] = Field(default_factory=dict)
+    attribution: BacktestAttribution = Field(default_factory=BacktestAttribution)
     dataset_manifest_id: Optional[int] = None
     engine_version: str = ""
     strategy_version: str = ""
@@ -88,6 +112,7 @@ class BacktestEquityPoint(BaseModel):
     benchmark_symbol: str = ""
     benchmark_close: float = 0.0
     benchmark_return_pct: float = 0.0
+    benchmark_nav: float = 1.0
     payload: dict[str, Any] = Field(default_factory=dict)
 
 

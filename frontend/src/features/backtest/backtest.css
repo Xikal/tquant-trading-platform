@@ -329,6 +329,33 @@
   font-weight: 800;
 }
 
+.backtest-attribution-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid #e8eef6;
+}
+
+.backtest-attribution-strip strong,
+.backtest-attribution-strip span {
+  padding: 5px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+}
+
+.backtest-attribution-strip strong {
+  background: #0b1422;
+  color: #f4d08a;
+}
+
+.backtest-attribution-strip span {
+  background: #f8fafc;
+  color: #475569;
+  font-weight: 800;
+}
+
 .backtest-metric-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));

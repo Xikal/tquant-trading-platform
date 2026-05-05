@@ -9,6 +9,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.models.entities import DailyBarSnapshot, LowBuyResultSnapshot
+from app.services.low_buy.holding_policy import strategy_max_holding_days
 
 
 DATA_PROVIDER_VERSION = "daily_bar_snapshots:v1"
@@ -288,7 +289,11 @@ def _signal_from_low_buy_row(row: LowBuyResultSnapshot) -> BacktestSignal:
         entry_zone_high=_payload_float(payload, "entry_zone_high", "entry_high", "entry_plan_high"),
         stop_loss=_payload_float(payload, "stop_loss"),
         take_profit=_payload_float(payload, "take_profit"),
-        max_holding_days=_payload_int(payload, "max_holding_days", default=5),
+        max_holding_days=_payload_int(
+            payload,
+            "max_holding_days",
+            default=strategy_max_holding_days(str(row.strategy_key)),
+        ),
         position_pct=_payload_float(payload, "position_pct", "suggested_position_pct"),
         metadata=payload,
     )

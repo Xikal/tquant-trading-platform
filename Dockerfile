@@ -27,11 +27,12 @@ COPY backend/requirements.txt /tmp/backend-requirements.txt
 RUN pip install --retries 8 -r /tmp/backend-requirements.txt
 
 COPY backend /app/backend
+COPY scripts /app/scripts
 COPY --from=frontend-builder /app/frontend/dist /app/frontend/dist
 
 RUN adduser --disabled-password --gecos "" --home /home/tquant tquant \
     && mkdir -p /app/backend/data \
-    && chown -R tquant:tquant /app/backend /app/frontend
+    && chown -R tquant:tquant /app/backend /app/frontend /app/scripts
 
 USER tquant
 

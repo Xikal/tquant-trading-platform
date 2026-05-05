@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import type {
+  BacktestAttribution,
   BacktestExecutionModel,
   BacktestRunDetail,
   BacktestRunSummary,
@@ -57,10 +58,13 @@ const EXECUTION_MODELS: Array<[BacktestExecutionModel, string]> = [
 
 const STATUS_META: Record<BacktestStatus, { label: string; tone: string }> = {
   pending: { label: "待运行", tone: "pending" },
+  queued: { label: "队列中", tone: "pending" },
   running: { label: "运行中", tone: "running" },
   completed: { label: "已完成", tone: "completed" },
+  succeeded: { label: "已完成", tone: "completed" },
   failed: { label: "失败", tone: "failed" },
   cancelled: { label: "已取消", tone: "cancelled" },
+  deleted: { label: "已删除", tone: "cancelled" },
 };
 
 export function BacktestDashboard({
@@ -80,6 +84,8 @@ export function BacktestDashboard({
   onCancelRun,
 }: BacktestDashboardProps) {
   const selectedId = selectedRun?.id ?? runs[0]?.id;
+  const selectedMetrics = selectedRun ? resolveMetrics(selectedRun) : null;
+  const selectedAttribution = selectedRun ? resolveAttribution(selectedRun) : null;
   return (
     <section className="page-grid backtest-grid">
       <div className="panel backtest-hero">
@@ -181,8 +187,8 @@ export function BacktestDashboard({
               onClick={() => onSelectRun(run.id)}
               key={run.id}
             >
-              <span className={`backtest-status ${STATUS_META[run.status]?.tone ?? "pending"}`}>
-                {run.status}<small>{STATUS_META[run.status]?.label ?? run.status}</small>
+              <span className={`backtest-status ${statusMeta(run.status).tone}`}>
+                {run.status}<small>{statusMeta(run.status).label}</small>
               </span>
               <strong>{run.name || `回测 #${run.id}`}</strong>
               <span>{dateRange(run)}</span>
@@ -196,7 +202,7 @@ export function BacktestDashboard({
       <section className="panel backtest-detail">
         <PanelHeader
           title={selectedRun ? `详情摘要 #${selectedRun.id}` : "详情摘要"}
-          action={selectedRun && selectedRun.status === "running" ? (
+          action={selectedRun && isCancellableStatus(selectedRun.status) ? (
             <button type="button" className="danger" onClick={() => onCancelRun(selectedRun.id)} disabled={loading === "cancel"}>取消任务</button>
           ) : null}
         />
@@ -209,15 +215,20 @@ export function BacktestDashboard({
             </div>
             {selectedRun.error_message ? <div className="backtest-error">{selectedRun.error_message}</div> : null}
             <div className="backtest-metric-grid">
-              <Metric label="总收益" value={formatPct(selectedRun.summary?.total_return_pct)} tone={toneFromNumber(selectedRun.summary?.total_return_pct)} />
-              <Metric label="基准" value={formatPct(selectedRun.summary?.benchmark_return_pct)} tone={toneFromNumber(selectedRun.summary?.benchmark_return_pct)} />
-              <Metric label="Sharpe" value={formatNumber(selectedRun.summary?.sharpe)} />
-              <Metric label="MaxDD" value={formatPct(selectedRun.summary?.max_drawdown_pct)} tone="down" />
-              <Metric label="胜率" value={formatPct(selectedRun.summary?.win_rate_pct)} />
-              <Metric label="交易数" value={formatInteger(selectedRun.summary?.total_trades)} />
-              <Metric label="利润因子" value={formatNumber(selectedRun.summary?.profit_factor)} />
+              <Metric label="总收益" value={formatPct(selectedMetrics?.total_return_pct)} tone={toneFromNumber(selectedMetrics?.total_return_pct)} />
+              <Metric label="基准" value={formatPct(selectedMetrics?.benchmark_return_pct)} tone={toneFromNumber(selectedMetrics?.benchmark_return_pct)} />
+              <Metric label="Alpha" value={formatPct(selectedMetrics?.benchmark_alpha_pct)} tone={toneFromNumber(selectedMetrics?.benchmark_alpha_pct)} />
+              <Metric label="Sharpe" value={formatNumber(selectedMetrics?.sharpe_ratio ?? selectedMetrics?.sharpe)} />
+              <Metric label="Sortino" value={formatNumber(selectedMetrics?.sortino_ratio ?? selectedMetrics?.sortino)} />
+              <Metric label="Calmar" value={formatNumber(selectedMetrics?.calmar_ratio ?? selectedMetrics?.calmar)} />
+              <Metric label="IR" value={formatNumber(selectedMetrics?.information_ratio)} />
+              <Metric label="MaxDD" value={formatPct(selectedMetrics?.max_drawdown_pct)} tone="down" />
+              <Metric label="胜率" value={formatPct(selectedMetrics?.win_rate_pct)} />
+              <Metric label="交易数" value={formatInteger(selectedMetrics?.total_trades ?? selectedMetrics?.trade_count)} />
+              <Metric label="利润因子" value={formatNumber(selectedMetrics?.profit_factor)} />
               <Metric label="风控" value={`${formatPct(percentFromRatio(selectedRun.risk_limits?.max_position_pct), 0)} / ${selectedRun.risk_limits?.max_positions ?? "--"}仓`} />
             </div>
+            {selectedAttribution ? <AttributionStrip attribution={selectedAttribution} /> : null}
           </>
         ) : <EmptyLine text="选择一条任务查看摘要。" />}
       </section>
@@ -258,6 +269,44 @@ export function BacktestDashboard({
       </section>
     </section>
   );
+}
+
+function resolveMetrics(run: BacktestRunDetail) {
+  return run.result?.metrics ?? run.result?.summary ?? run.summary ?? null;
+}
+
+function resolveAttribution(run: BacktestRunDetail): BacktestAttribution | null {
+  const raw = run.attribution ?? run.result?.attribution ?? run.result?.metrics?.attribution;
+  return isAttribution(raw) ? raw : null;
+}
+
+function AttributionStrip({ attribution }: { attribution: BacktestAttribution }) {
+  const buckets = [
+    ...(attribution.industry ?? []).slice(0, 2).map((item) => ({ ...item, group: "行业" })),
+    ...(attribution.market_state ?? []).slice(0, 2).map((item) => ({ ...item, group: "市场" })),
+    ...(attribution.data_quality ?? []).slice(0, 2).map((item) => ({ ...item, group: "数据" })),
+  ];
+  if (!buckets.length) {
+    return null;
+  }
+  return (
+    <div className="backtest-attribution-strip">
+      <strong>分桶归因</strong>
+      {buckets.map((item) => (
+        <span key={`${item.group}-${item.bucket}`}>
+          {item.group}:{item.bucket} · 信号 {formatInteger(item.signal_count)} · 交易 {formatInteger(item.trade_count)} · 胜率 {formatPct(item.win_rate_pct, 1)}
+        </span>
+      ))}
+    </div>
+  );
+}
+
+function isAttribution(value: unknown): value is BacktestAttribution {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+  const payload = value as BacktestAttribution;
+  return Boolean(payload.industry?.length || payload.market_state?.length || payload.data_quality?.length);
 }
 
 function PanelHeader({ title, action }: { title: string; action?: ReactNode }) {
@@ -342,11 +391,19 @@ function dateRange(run: BacktestRunSummary): string {
 }
 
 function formatProgress(progress: number | null | undefined, status: BacktestStatus): string {
-  if (status === "completed") return "100%";
+  if (status === "completed" || status === "succeeded") return "100%";
   if (typeof progress !== "number" || !Number.isFinite(progress)) {
     return status === "running" ? "运行中" : "--";
   }
   return `${Math.round(progress)}%`;
+}
+
+function statusMeta(status: BacktestStatus): { label: string; tone: string } {
+  return STATUS_META[status] ?? STATUS_META.pending;
+}
+
+function isCancellableStatus(status: BacktestStatus): boolean {
+  return status === "queued" || status === "pending" || status === "running";
 }
 
 function formatDateTime(value?: string | null): string {

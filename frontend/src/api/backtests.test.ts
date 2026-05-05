@@ -34,11 +34,11 @@ describe("backtestsApi", () => {
 
     const urls = fetchMock.mock.calls.map(([url]) => String(url));
     expect(urls).toEqual([
-      "/api/backtests?page=2&page_size=15&status=running",
+      "/api/backtests?limit=15&offset=15&status=running",
       "/api/backtests",
       "/api/backtests/42",
       "/api/backtests/42/equity",
-      "/api/backtests/42/trades?page=3&page_size=25",
+      "/api/backtests/42/trades?limit=25&offset=50",
       "/api/backtests/42/cancel",
     ]);
     expect(fetchMock.mock.calls[1][1]?.method).toBe("POST");

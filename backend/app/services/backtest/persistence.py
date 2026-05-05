@@ -4,7 +4,7 @@ import json
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import delete
+from sqlalchemy import delete, update
 from sqlalchemy.orm import Session
 
 from app.models.backtest_entities import (
@@ -20,6 +20,9 @@ from app.services.backtest.engine import BACKTEST_ENGINE_VERSION, BacktestResult
 from app.services.low_buy.shared import LOW_BUY_RESULT_VERSION
 
 
+_PROTECTED_TERMINAL_STATUSES = {"cancelled", "deleted", "failed"}
+
+
 class BacktestResultPersistence:
     """Persist a completed in-memory backtest result into normalized tables."""
 
@@ -27,6 +30,10 @@ class BacktestResultPersistence:
         self.db = db
 
     def persist(self, run: BacktestRun, result: BacktestResult) -> None:
+        self.db.refresh(run)
+        if _should_preserve_terminal_run(run, result):
+            self.db.commit()
+            return
         self._replace_run_outputs(run.id)
         manifest = self._create_manifest(result)
         self.db.add(manifest)
@@ -141,24 +148,78 @@ class BacktestResultPersistence:
                     drawdown_pct=drawdown,
                     exposure_pct=exposure,
                     positions_count=int(item.position_count),
+                    benchmark_symbol=str(getattr(item, "benchmark_symbol", "") or ""),
+                    benchmark_close=float(getattr(item, "benchmark_close", 0.0) or 0.0),
+                    benchmark_return_pct=float(getattr(item, "benchmark_return_pct", 0.0) or 0.0),
                     payload_json=_json_dumps(item.__dict__),
                 )
             )
 
     def _update_run_summary(self, run: BacktestRun, result: BacktestResult, manifest_id: int) -> None:
+        self.db.flush()
+        self.db.refresh(run)
+        if _should_preserve_terminal_run(run, result):
+            if run.finished_at is None:
+                run.finished_at = datetime.utcnow()
+            if run.status == "cancelled":
+                run.cancelled_at = run.cancelled_at or run.finished_at
+            return
         metrics = dict(result.metrics or {})
-        run.status = result.status
-        run.final_equity = float(metrics.get("final_equity") or run.final_equity or run.initial_cash or 0.0)
-        run.progress_pct = 100.0 if result.status == "succeeded" else max(float(run.progress_pct or 0.0), 0.0)
-        run.dataset_manifest_id = manifest_id
-        run.engine_version = result.version or BACKTEST_ENGINE_VERSION
-        run.strategy_version = str(LOW_BUY_RESULT_VERSION)
-        run.data_version = result.dataset_manifest.get("source_hash") or result.data_quality.source_hash or DATA_PROVIDER_VERSION
-        run.fee_model_version = run.fee_model_version or "paper-fee-model-v1"
-        run.result_json = _json_dumps(result.to_dict())
-        run.finished_at = datetime.utcnow()
+        finished_at = datetime.utcnow()
+        values = {
+            "status": result.status,
+            "final_equity": float(metrics.get("final_equity") or run.final_equity or run.initial_cash or 0.0),
+            "progress_pct": 100.0 if result.status == "succeeded" else max(float(run.progress_pct or 0.0), 0.0),
+            "dataset_manifest_id": manifest_id,
+            "engine_version": result.version or BACKTEST_ENGINE_VERSION,
+            "strategy_version": str(LOW_BUY_RESULT_VERSION),
+            "data_version": result.dataset_manifest.get("source_hash") or result.data_quality.source_hash or DATA_PROVIDER_VERSION,
+            "fee_model_version": run.fee_model_version or "paper-fee-model-v1",
+            "result_json": _json_dumps(_compact_result_payload(result)),
+            "finished_at": finished_at,
+        }
         if result.status == "cancelled":
-            run.cancelled_at = run.cancelled_at or run.finished_at
+            values["cancelled_at"] = run.cancelled_at or finished_at
+        updated = self.db.execute(
+            update(BacktestRun)
+            .where(
+                BacktestRun.id == run.id,
+                ~BacktestRun.status.in_(_PROTECTED_TERMINAL_STATUSES),
+            )
+            .values(**values)
+        )
+        if updated.rowcount != 1:
+            self.db.refresh(run)
+            if run.finished_at is None:
+                run.finished_at = finished_at
+            if run.status == "cancelled":
+                run.cancelled_at = run.cancelled_at or run.finished_at
+            return
+        self.db.refresh(run)
+
+
+def _should_preserve_terminal_run(run: BacktestRun, result: BacktestResult) -> bool:
+    return str(run.status or "") in _PROTECTED_TERMINAL_STATUSES and run.status != result.status
+
+
+def _compact_result_payload(result: BacktestResult) -> dict[str, Any]:
+    """Keep run detail light; normalized tables store curves, orders and trades."""
+
+    return {
+        "version": result.version,
+        "status": result.status,
+        "partial": result.partial,
+        "config": result.config,
+        "dataset_manifest": result.dataset_manifest,
+        "data_quality": result.data_quality.__dict__,
+        "metrics": result.metrics,
+        "attribution": result.attribution,
+        "counts": {
+            "equity_points": len(result.equity_curve),
+            "orders": len(result.orders),
+            "trades": len(result.trades),
+        },
+    }
 
 
 def _json_dumps(value: dict[str, Any]) -> str:

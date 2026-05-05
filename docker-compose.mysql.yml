@@ -64,6 +64,30 @@ services:
       retries: 5
       start_period: 20s
 
+  backtest-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: tquant-web:mysql
+    container_name: tquant-backtest-worker-mysql
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+      app:
+        condition: service_healthy
+    command: ["python", "-c", "from app.services.backtest_worker import BacktestWorker; BacktestWorker(max_duration_seconds=${BACKTEST_WORKER_MAX_DURATION:-3600}).run_forever(poll_interval_seconds=${BACKTEST_WORKER_POLL_INTERVAL:-5})"]
+    environment:
+      APP_NAME: ${APP_NAME:-维斯量化交易平台}
+      API_PREFIX: ${API_PREFIX:-/api}
+      DATABASE_URL: mysql+pymysql://${MYSQL_USER:-tquant_app}:${MYSQL_PASSWORD:?MYSQL_PASSWORD is required}@mysql:3306/${MYSQL_DATABASE:-t_quant}?charset=utf8mb4
+      DEFAULT_DATA_SOURCE: ${DEFAULT_DATA_SOURCE:-akshare_eastmoney}
+      HTTP_TIMEOUT: ${HTTP_TIMEOUT:-12}
+      AUTH_SECRET_KEY: ${AUTH_SECRET_KEY:?AUTH_SECRET_KEY is required}
+      AUTH_COOKIE_SECURE: ${AUTH_COOKIE_SECURE:-true}
+    volumes:
+      - app_runtime_data:/app/backend/data
+
 volumes:
   mysql_data:
   app_runtime_data:

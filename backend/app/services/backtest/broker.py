@@ -9,6 +9,7 @@ from app.services.backtest.data_provider import BacktestSignal, DailyBar
 from app.services.paper.fees import FeeDetail
 from app.services.paper.matching import MatchResult, OrderSide, OrderType, PaperMatchingEngine
 from app.services.paper.money import to_decimal
+from app.services.paper.symbols import a_share_price_limit_pct
 
 
 class ExecutionModel(str, Enum):
@@ -129,11 +130,25 @@ def _entry_zone_price(bar: DailyBar, signal: BacktestSignal | None) -> float | N
 
 
 def _is_limit_up(bar: DailyBar) -> bool:
-    return float(bar.pct_chg or 0) >= 9.8
+    limit_pct = a_share_price_limit_pct(
+        bar.symbol,
+        instrument_type=bar.instrument_type,
+        market=bar.market,
+    )
+    if limit_pct is None:
+        return False
+    return float(bar.pct_chg or 0) >= limit_pct - 0.2
 
 
 def _is_limit_down(bar: DailyBar) -> bool:
-    return float(bar.pct_chg or 0) <= -9.8
+    limit_pct = a_share_price_limit_pct(
+        bar.symbol,
+        instrument_type=bar.instrument_type,
+        market=bar.market,
+    )
+    if limit_pct is None:
+        return False
+    return float(bar.pct_chg or 0) <= -(limit_pct - 0.2)
 
 
 def _rejected(request: ExecutionRequest, reason: str) -> ExecutionResult:

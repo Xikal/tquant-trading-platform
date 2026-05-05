@@ -4,13 +4,12 @@ import json
 import logging
 import threading
 from datetime import datetime
-from typing import Any
+from typing import Any, Protocol
 
 from fastapi import HTTPException, status
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.core.database import SessionLocal
 from app.models.entities import BacktestRun
 from app.models.backtest_entities import BacktestDailySnapshot, BacktestTrade
 from app.models.schema_defs.backtest import (
@@ -23,11 +22,19 @@ from app.models.schema_defs.backtest import (
     BacktestTradesResponse,
 )
 from app.services.backtest.data_provider import DailyBarDataProvider
-from app.services.backtest.engine import BacktestConfig, BacktestEngine
+from app.services.backtest.engine import BacktestConfig, BacktestEngine, BacktestResult
 from app.services.backtest.persistence import BacktestResultPersistence
 
 
 logger = logging.getLogger(__name__)
+
+
+class _CancelToken(Protocol):
+    def cancel(self) -> None:
+        ...
+
+    def is_cancelled(self) -> bool:
+        ...
 
 
 class _RunCancelToken:
@@ -44,8 +51,8 @@ class _RunCancelToken:
 class BacktestJobService:
     """Persistent API facade for v2 backtest jobs."""
 
-    _cancel_tokens: dict[int, _RunCancelToken] = {}
-    _thread_lock = threading.Lock()
+    _cancel_tokens: dict[int, _CancelToken] = {}
+    _token_lock = threading.Lock()
 
     def __init__(self, db: Session) -> None:
         self.db = db
@@ -83,7 +90,6 @@ class BacktestJobService:
         self.db.add(run)
         self.db.commit()
         self.db.refresh(run)
-        self._start_background_run(run.id)
         return self._detail(run)
 
     def list_runs(
@@ -130,24 +136,30 @@ class BacktestJobService:
             .where(BacktestDailySnapshot.run_id == run_id)
             .order_by(BacktestDailySnapshot.trade_date.asc())
         ).scalars().all()
-        return [
-            BacktestEquityPoint(
-                trade_date=row.trade_date,
-                cash=row.cash,
-                market_value=row.market_value,
-                equity=row.equity,
-                daily_return_pct=row.daily_return_pct,
-                drawdown_pct=row.drawdown_pct,
-                exposure_pct=row.exposure_pct,
-                positions_count=row.positions_count,
-                turnover=row.turnover,
-                benchmark_symbol=row.benchmark_symbol,
-                benchmark_close=row.benchmark_close,
-                benchmark_return_pct=row.benchmark_return_pct,
-                payload=_json_dict(row.payload_json),
+        benchmark_nav = 1.0
+        points: list[BacktestEquityPoint] = []
+        for index, row in enumerate(rows):
+            if index > 0:
+                benchmark_nav *= 1 + float(row.benchmark_return_pct or 0.0) / 100
+            points.append(
+                BacktestEquityPoint(
+                    trade_date=row.trade_date,
+                    cash=row.cash,
+                    market_value=row.market_value,
+                    equity=row.equity,
+                    daily_return_pct=row.daily_return_pct,
+                    drawdown_pct=row.drawdown_pct,
+                    exposure_pct=row.exposure_pct,
+                    positions_count=row.positions_count,
+                    turnover=row.turnover,
+                    benchmark_symbol=row.benchmark_symbol,
+                    benchmark_close=row.benchmark_close,
+                    benchmark_return_pct=row.benchmark_return_pct,
+                    benchmark_nav=benchmark_nav,
+                    payload=_json_dict(row.payload_json),
+                )
             )
-            for row in rows
-        ]
+        return points
 
     def get_trades(
         self,
@@ -181,9 +193,7 @@ class BacktestJobService:
         run = self._get_visible_run(run_id, owner_user_id=owner_user_id, is_admin=is_admin)
         if run.status not in {"queued", "running"}:
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="当前回测状态不可取消")
-        token = self._cancel_tokens.get(run.id)
-        if token is not None:
-            token.cancel()
+        self.request_cancel(run.id)
         run.status = "cancelled"
         run.cancelled_at = datetime.utcnow()
         run.finished_at = run.finished_at or run.cancelled_at
@@ -193,54 +203,28 @@ class BacktestJobService:
         return self._detail(run)
 
     @classmethod
-    def _start_background_run(cls, run_id: int) -> None:
-        token = _RunCancelToken()
-        with cls._thread_lock:
+    def register_cancel_token(cls, run_id: int, token: _CancelToken) -> None:
+        with cls._token_lock:
             cls._cancel_tokens[run_id] = token
-        thread = threading.Thread(
-            target=cls._execute_run,
-            args=(run_id, token),
-            name=f"backtest-run-{run_id}",
-            daemon=True,
-        )
-        thread.start()
 
     @classmethod
-    def _execute_run(cls, run_id: int, cancel_token: _RunCancelToken) -> None:
-        with SessionLocal() as db:
-            service = cls(db)
-            try:
-                run = db.get(BacktestRun, run_id)
-                if run is None or run.deleted_at is not None:
-                    return
-                if run.status == "cancelled" or cancel_token.is_cancelled():
-                    service._mark_cancelled(run)
-                    return
-                run.status = "running"
-                run.started_at = datetime.utcnow()
-                run.progress_pct = 5.0
-                db.commit()
-                result = service._run_engine(run, cancel_token)
-                service._persist_result(run.id, result)
-            except Exception as exc:
-                logger.exception("backtest run failed: run_id=%s", run_id)
-                db.rollback()
-                run = db.get(BacktestRun, run_id)
-                if run is not None:
-                    run.status = "failed"
-                    run.error_message = _safe_error_message(exc)
-                    run.finished_at = datetime.utcnow()
-                    run.progress_pct = max(float(run.progress_pct or 0.0), 0.0)
-                    db.commit()
-            finally:
-                with cls._thread_lock:
-                    cls._cancel_tokens.pop(run_id, None)
+    def unregister_cancel_token(cls, run_id: int) -> None:
+        with cls._token_lock:
+            cls._cancel_tokens.pop(run_id, None)
 
-    def _run_engine(self, run: BacktestRun, cancel_token: _RunCancelToken) -> BacktestResult:
+    @classmethod
+    def request_cancel(cls, run_id: int) -> None:
+        with cls._token_lock:
+            token = cls._cancel_tokens.get(run_id)
+        if token is not None:
+            token.cancel()
+
+    def _run_engine(self, run: BacktestRun, cancel_token: _CancelToken) -> BacktestResult:
         params = _json_dict(run.params_json)
         config = BacktestConfig(
             start_date=str(run.start_date or params.get("start_date") or ""),
             end_date=str(run.end_date or params.get("end_date") or ""),
+            benchmark_symbol=str(run.benchmark_symbol or params.get("benchmark_symbol") or "000300"),
             strategies=_strategy_list(run.strategy_keys),
             initial_cash=float(run.initial_cash or 100000.0),
             execution_model=str(params.get("execution_model") or "conservative_slippage"),
@@ -316,10 +300,12 @@ class BacktestJobService:
 
     def _detail(self, row: BacktestRun) -> BacktestRunDetail:
         summary = self._summary(row).model_dump()
+        result = _json_dict(row.result_json)
         return BacktestRunDetail(
             **summary,
             params=_json_dict(row.params_json),
-            result=_json_dict(row.result_json),
+            result=result,
+            attribution=_result_attribution(result),
             dataset_manifest_id=row.dataset_manifest_id,
             engine_version=row.engine_version or "",
             strategy_version=row.strategy_version or "",
@@ -373,6 +359,16 @@ def _json_dict(raw_value: str | None) -> dict[str, Any]:
 
 def _json_dumps(value: dict[str, Any]) -> str:
     return json.dumps(value, ensure_ascii=False, separators=(",", ":"))
+
+
+def _result_attribution(result: dict[str, Any]) -> dict[str, Any]:
+    attribution = result.get("attribution")
+    if isinstance(attribution, dict):
+        return attribution
+    metrics = result.get("metrics")
+    if isinstance(metrics, dict) and isinstance(metrics.get("attribution"), dict):
+        return metrics["attribution"]
+    return {}
 
 
 def _safe_error_message(exc: Exception) -> str:

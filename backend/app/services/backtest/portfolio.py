@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime
 from decimal import Decimal
 
 from app.services.paper.fees import FeeDetail
@@ -70,6 +69,10 @@ class PortfolioSnapshot:
     market_value: float
     total_equity: float
     position_count: int
+    benchmark_symbol: str = ""
+    benchmark_close: float = 0.0
+    benchmark_return_pct: float = 0.0
+    benchmark_nav: float = 0.0
 
 
 class BacktestPortfolio:
@@ -159,6 +162,7 @@ class BacktestPortfolio:
         fee: FeeDetail,
         trade_date: str,
         exit_reason: str,
+        holding_days: int = 0,
     ) -> list[RealizedTrade]:
         position = self.positions.get(symbol)
         if position is None or quantity <= 0:
@@ -182,13 +186,23 @@ class BacktestPortfolio:
                 exit_fee=fee.total_fee * Decimal(used) / Decimal(max(sell_quantity, 1)),
                 trade_date=trade_date,
                 exit_reason=exit_reason,
+                holding_days=holding_days,
             )
             for lot, used in consumed
         ]
         self.realized_trades.extend(trades)
         return trades
 
-    def snapshot(self, trade_date: str, prices: dict[str, float]) -> PortfolioSnapshot:
+    def snapshot(
+        self,
+        trade_date: str,
+        prices: dict[str, float],
+        *,
+        benchmark_symbol: str = "",
+        benchmark_close: float = 0.0,
+        benchmark_return_pct: float = 0.0,
+        benchmark_nav: float = 0.0,
+    ) -> PortfolioSnapshot:
         market_value = self.market_value(prices)
         total_equity = to_money(self.cash + market_value)
         return PortfolioSnapshot(
@@ -197,6 +211,10 @@ class BacktestPortfolio:
             market_value=float(market_value),
             total_equity=float(total_equity),
             position_count=self.open_position_count(),
+            benchmark_symbol=benchmark_symbol,
+            benchmark_close=float(benchmark_close or 0.0),
+            benchmark_return_pct=float(benchmark_return_pct or 0.0),
+            benchmark_nav=float(benchmark_nav or 0.0),
         )
 
     def _consume_lots(
@@ -234,6 +252,7 @@ def _realized_trade(
     exit_fee: Decimal,
     trade_date: str,
     exit_reason: str,
+    holding_days: int,
 ) -> RealizedTrade:
     gross_pnl = (exit_price - lot.cost_price) * Decimal(quantity)
     entry_fee = lot.entry_fee * Decimal(quantity) / Decimal(max(lot.quantity, 1))
@@ -253,15 +272,6 @@ def _realized_trade(
         net_pnl=float(to_money(net_pnl)),
         return_pct=float((net_pnl / max(cost_amount, Decimal("0.01"))) * Decimal("100")),
         fee_amount=float(to_money(total_fee)),
-        holding_days=_calendar_days(lot.entry_date, trade_date),
+        holding_days=max(int(holding_days or 0), 0),
         exit_reason=exit_reason,
     )
-
-
-def _calendar_days(entry_date: str, exit_date: str) -> int:
-    try:
-        start = datetime.strptime(entry_date, "%Y-%m-%d").date()
-        end = datetime.strptime(exit_date, "%Y-%m-%d").date()
-    except ValueError:
-        return 0
-    return max((end - start).days, 0)

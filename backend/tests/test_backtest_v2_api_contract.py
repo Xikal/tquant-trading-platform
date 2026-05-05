@@ -1,14 +1,25 @@
 from __future__ import annotations
 
+import threading
 from types import SimpleNamespace
 from typing import Any
 
 import pytest
 from fastapi import FastAPI, HTTPException
 from fastapi.testclient import TestClient
+from sqlalchemy import create_engine, select
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import StaticPool
 
 from app.core.auth import get_current_user
 from app.core.database import get_db
+from app.models.base import Base
+from app.models.entities import BacktestRun
+from app.models.schema_defs.backtest import BacktestRunCreate
+from app.services.backtest.data_provider import DataQualityReport
+from app.services.backtest.engine import BacktestResult
+from app.services.backtest.persistence import BacktestResultPersistence
+from app.services.backtest_job_service import BacktestJobService
 
 backtests_route = pytest.importorskip(
     "app.api.routes.backtests",
@@ -97,6 +108,14 @@ class _BacktestServiceStub:
             "created_at": "2026-05-05T09:30:00+08:00",
             "params": {"execution_model": "open_price"},
             "result": {
+                "metrics": {
+                    "total_return_pct": 8.2,
+                    "sharpe_ratio": 1.35,
+                    "sortino_ratio": 1.91,
+                    "calmar_ratio": 2.0,
+                    "benchmark_alpha_pct": 3.1,
+                    "information_ratio": 0.72,
+                },
                 "summary": {
                     "total_return_pct": 8.2,
                     "sharpe_ratio": 1.35,
@@ -294,6 +313,10 @@ def test_list_detail_equity_and_trades_expose_reproducible_outputs(client: TestC
     assert detail.status_code == 200
     detail_body = detail.json()
     assert detail_body["result"]["summary"]["total_trades"] == 3
+    assert detail_body["result"]["metrics"]["sortino_ratio"] == 1.91
+    assert detail_body["result"]["metrics"]["calmar_ratio"] == 2.0
+    assert detail_body["result"]["metrics"]["benchmark_alpha_pct"] == 3.1
+    assert detail_body["result"]["metrics"]["information_ratio"] == 0.72
     assert detail_body["result"]["data_quality"]["quality_tag"] == "incomplete"
     assert "adjustment:forward" in detail_body["result"]["data_quality"]["tags"]
     assert detail_body["engine_version"]
@@ -316,6 +339,95 @@ def test_cancel_running_backtest_marks_run_cancelled(client: TestClient, service
     assert response.status_code == 200
     assert response.json()["status"] == "cancelled"
     assert service_stub.cancelled_run_id == 42
+
+
+def test_job_service_create_run_only_queues_without_starting_daemon_thread(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class ForbiddenThread:
+        def __init__(self, *args, **kwargs) -> None:  # noqa: ANN002, ANN003
+            raise AssertionError("create_run must not start a web daemon thread")
+
+    monkeypatch.setattr(threading, "Thread", ForbiddenThread)
+    SessionLocal = _sqlite_session_factory()
+
+    with SessionLocal() as db:
+        detail = BacktestJobService(db).create_run(
+            BacktestRunCreate(**_submit_payload_current_schema()),
+            owner_user_id=7,
+        )
+
+        row = db.get(BacktestRun, detail.id)
+
+    assert detail.status == "queued"
+    assert detail.progress_pct == 0.0
+    assert detail.started_at is None
+    assert row is not None
+    assert row.status == "queued"
+    assert row.started_at is None
+    assert row.finished_at is None
+
+
+def test_backtest_worker_run_once_executes_queued_job(monkeypatch: pytest.MonkeyPatch) -> None:
+    from app.services.backtest_worker import BacktestWorker
+
+    SessionLocal = _sqlite_session_factory()
+    with SessionLocal() as db:
+        created = BacktestJobService(db).create_run(
+            BacktestRunCreate(**_submit_payload_current_schema()),
+            owner_user_id=7,
+        )
+
+    def fake_run_engine(self, run: BacktestRun, cancel_token) -> BacktestResult:  # noqa: ANN001
+        assert run.status == "running"
+        assert not cancel_token.is_cancelled()
+        return SimpleNamespace(status="succeeded")
+
+    def fake_persist_result(self, run_id: int, result: BacktestResult) -> None:
+        run = self.db.get(BacktestRun, run_id)
+        assert run is not None
+        run.status = result.status
+        run.progress_pct = 100.0
+        run.final_equity = 501000.0
+        self.db.commit()
+
+    monkeypatch.setattr(BacktestJobService, "_run_engine", fake_run_engine)
+    monkeypatch.setattr(BacktestJobService, "_persist_result", fake_persist_result)
+
+    outcome = BacktestWorker(session_factory=SessionLocal, max_duration_seconds=60).run_once()
+
+    with SessionLocal() as db:
+        row = db.execute(select(BacktestRun).where(BacktestRun.id == created.id)).scalar_one()
+
+    assert outcome is not None
+    assert outcome.run_id == created.id
+    assert outcome.status == "succeeded"
+    assert row.status == "succeeded"
+    assert row.started_at is not None
+    assert row.finished_at is not None
+    assert row.progress_pct == 100.0
+
+
+def test_persistence_does_not_overwrite_cancelled_run_with_succeeded_result() -> None:
+    SessionLocal = _sqlite_session_factory()
+    with SessionLocal() as db:
+        created = BacktestJobService(db).create_run(
+            BacktestRunCreate(**_submit_payload_current_schema()),
+            owner_user_id=7,
+        )
+        row = db.get(BacktestRun, created.id)
+        assert row is not None
+        row.status = "cancelled"
+        row.progress_pct = 12.0
+        db.commit()
+
+        BacktestResultPersistence(db).persist(row, _minimal_succeeded_result())
+        db.refresh(row)
+
+        assert row.status == "cancelled"
+        assert row.progress_pct == 12.0
+        assert row.final_equity == row.initial_cash
+        assert row.result_json == "{}"
 
 
 def test_backtest_detail_enforces_owner_or_admin(client: TestClient) -> None:
@@ -365,3 +477,33 @@ def _dump(value: Any) -> dict[str, Any]:
     if isinstance(value, dict):
         return value
     return dict(value)
+
+
+def _minimal_succeeded_result() -> BacktestResult:
+    return BacktestResult(
+        version="backtest-core-v2.0",
+        config={},
+        data_quality=DataQualityReport(
+            version="daily_bar_snapshots:v1",
+            start_date="2025-01-02",
+            end_date="2025-01-06",
+            symbol_count=0,
+            trade_date_count=0,
+        ),
+        metrics={"final_equity": 501000.0},
+        equity_curve=[],
+        orders=[],
+        trades=[],
+        status="succeeded",
+    )
+
+
+def _sqlite_session_factory():
+    engine = create_engine(
+        "sqlite+pysqlite://",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+        future=True,
+    )
+    Base.metadata.create_all(engine)
+    return sessionmaker(bind=engine, autoflush=False, autocommit=False, future=True)

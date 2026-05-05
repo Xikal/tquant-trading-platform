@@ -6,6 +6,7 @@ from decimal import Decimal
 from typing import Any
 
 from app.services.backtest.analyzer import BacktestAnalyzer
+from app.services.backtest.attribution import build_backtest_attribution
 from app.services.backtest.broker import BacktestBroker, ExecutionModel, ExecutionRequest, ExecutionResult
 from app.services.backtest.data_provider import BacktestSignal, DailyBar, DailyBarDataProvider, DataQualityReport
 from app.services.backtest.portfolio import BacktestPortfolio, PortfolioConfig, PortfolioSnapshot, RealizedTrade
@@ -19,6 +20,7 @@ BACKTEST_ENGINE_VERSION = "backtest-core-v2.0"
 class BacktestConfig:
     start_date: str
     end_date: str
+    benchmark_symbol: str = "000300"
     strategies: list[str] = field(default_factory=list)
     signals: list[BacktestSignal] = field(default_factory=list)
     initial_cash: float = 100000.0
@@ -55,6 +57,7 @@ class BacktestResult:
     equity_curve: list[PortfolioSnapshot]
     orders: list[BacktestOrder]
     trades: list[RealizedTrade]
+    attribution: dict[str, Any] = field(default_factory=dict)
     status: str = "succeeded"
     partial: bool = False
     dataset_manifest: dict[str, Any] = field(default_factory=dict)
@@ -68,6 +71,7 @@ class BacktestResult:
             "dataset_manifest": self.dataset_manifest,
             "data_quality": asdict(self.data_quality),
             "metrics": self.metrics,
+            "attribution": self.attribution,
             "equity_curve": [asdict(item) for item in self.equity_curve],
             "orders": [asdict(item) for item in self.orders],
             "trades": [asdict(item) for item in self.trades],
@@ -96,17 +100,25 @@ class BacktestEngine:
             max_signals_per_day=config.max_signals_per_day,
         )
         symbols = sorted({signal.symbol for signal in signals})
+        benchmark_symbol = _normalize_benchmark_symbol(config.benchmark_symbol)
+        data_symbols = sorted({*symbols, *([benchmark_symbol] if benchmark_symbol else [])})
         trade_dates = self.data_provider.fetch_trade_dates(config.start_date, config.end_date)
-        histories = self.data_provider.fetch_bars(symbols, start_date=config.start_date, end_date=config.end_date)
-        manifest = _dataset_manifest(self.data_provider, config, symbols)
+        histories = self.data_provider.fetch_bars(data_symbols, start_date=config.start_date, end_date=config.end_date)
+        manifest = _dataset_manifest(self.data_provider, config, data_symbols)
         quality = self.data_provider.quality_report(
-            symbols=symbols,
+            symbols=data_symbols,
             trade_dates=trade_dates,
             histories=histories,
             start_date=config.start_date,
             end_date=config.end_date,
         )
         bars_by_date = _bars_by_date(histories)
+        benchmark_by_date = _benchmark_curve(
+            trade_dates=trade_dates,
+            histories=histories,
+            benchmark_symbol=benchmark_symbol,
+            initial_cash=config.initial_cash,
+        )
         signals_by_date = _signals_by_entry_date(signals, trade_dates, config.entry_delay_days)
         portfolio = BacktestPortfolio(
             PortfolioConfig(
@@ -122,10 +134,20 @@ class BacktestEngine:
         cancelled = False
         for trade_date in trade_dates:
             bars_for_day = bars_by_date.get(trade_date, {})
+            benchmark = benchmark_by_date.get(trade_date, {})
             if _cancel_requested(cancel_token):
                 cancelled = True
                 if not equity_curve:
-                    equity_curve.append(portfolio.snapshot(trade_date, _close_prices(bars_for_day)))
+                    equity_curve.append(
+                        portfolio.snapshot(
+                            trade_date,
+                            _close_prices(bars_for_day),
+                            benchmark_symbol=str(benchmark.get("benchmark_symbol") or ""),
+                            benchmark_close=float(benchmark.get("benchmark_close") or 0.0),
+                            benchmark_return_pct=float(benchmark.get("benchmark_return_pct") or 0.0),
+                            benchmark_nav=float(benchmark.get("benchmark_nav") or 0.0),
+                        )
+                    )
                 break
             self._run_exits(
                 portfolio=portfolio,
@@ -145,7 +167,16 @@ class BacktestEngine:
                 orders=orders,
             )
             prices = _close_prices(bars_for_day)
-            equity_curve.append(portfolio.snapshot(trade_date, prices))
+            equity_curve.append(
+                portfolio.snapshot(
+                    trade_date,
+                    prices,
+                    benchmark_symbol=str(benchmark.get("benchmark_symbol") or ""),
+                    benchmark_close=float(benchmark.get("benchmark_close") or 0.0),
+                    benchmark_return_pct=float(benchmark.get("benchmark_return_pct") or 0.0),
+                    benchmark_nav=float(benchmark.get("benchmark_nav") or 0.0),
+                )
+            )
             if _cancel_requested(cancel_token):
                 cancelled = True
                 break
@@ -155,6 +186,16 @@ class BacktestEngine:
             trades=portfolio.realized_trades,
             orders=orders,
         )
+        attribution = build_backtest_attribution(
+            signals=signals,
+            histories=histories,
+            trade_dates=trade_dates,
+            data_quality=quality,
+            orders=orders,
+            trades=portfolio.realized_trades,
+        )
+        metrics = dict(metrics)
+        metrics["attribution"] = attribution
         result = BacktestResult(
             version=BACKTEST_ENGINE_VERSION,
             config=_config_dict(config),
@@ -164,6 +205,7 @@ class BacktestEngine:
             equity_curve=equity_curve,
             orders=orders,
             trades=portfolio.realized_trades,
+            attribution=attribution,
             status="cancelled" if cancelled else "succeeded",
             partial=cancelled,
         )
@@ -213,6 +255,7 @@ class BacktestEngine:
                     fee=result.fee_detail,
                     trade_date=trade_date,
                     exit_reason=exit_plan["reason"],
+                    holding_days=exit_plan["holding_days"],
                 )
 
     def _run_entries(
@@ -348,6 +391,41 @@ def _close_prices(bars_for_day: dict[str, DailyBar]) -> dict[str, float]:
     return {symbol: bar.close_price for symbol, bar in bars_for_day.items()}
 
 
+def _normalize_benchmark_symbol(value: str | None) -> str:
+    return str(value or "").strip()
+
+
+def _benchmark_curve(
+    *,
+    trade_dates: list[str],
+    histories: dict[str, list[DailyBar]],
+    benchmark_symbol: str,
+    initial_cash: float,
+) -> dict[str, dict[str, float | str]]:
+    if not benchmark_symbol:
+        return {}
+    bars_by_trade_date = {bar.trade_date: bar for bar in histories.get(benchmark_symbol, []) if bar.close_price > 0}
+    first_close = 0.0
+    previous_close = 0.0
+    output: dict[str, dict[str, float | str]] = {}
+    for trade_date in trade_dates:
+        bar = bars_by_trade_date.get(trade_date)
+        close = float(bar.close_price) if bar is not None else previous_close
+        if close > 0 and first_close <= 0:
+            first_close = close
+        return_pct = 0.0 if previous_close <= 0 or close <= 0 else (close / previous_close - 1) * 100
+        nav = 0.0 if first_close <= 0 or close <= 0 else float(initial_cash) * close / first_close
+        output[trade_date] = {
+            "benchmark_symbol": benchmark_symbol,
+            "benchmark_close": close,
+            "benchmark_return_pct": return_pct,
+            "benchmark_nav": nav,
+        }
+        if close > 0:
+            previous_close = close
+    return output
+
+
 def _cancel_requested(cancel_token: Any | None) -> bool:
     if cancel_token is None:
         return False
@@ -430,17 +508,17 @@ def _entry_estimated_price(bar: DailyBar, signal: BacktestSignal, execution_mode
 
 
 def _exit_plan(position, bar: DailyBar, trade_date: str, trade_dates: list[str], *, force_liquidate: bool):
+    holding_days = _holding_days(position.entry_date, trade_date, trade_dates)
     if position.stop_loss and bar.low_price <= position.stop_loss:
         price = min(position.stop_loss, bar.open_price) if bar.open_price < position.stop_loss else position.stop_loss
-        return {"price": price, "reason": "stop_loss"}
+        return {"price": price, "reason": "stop_loss", "holding_days": holding_days}
     if position.take_profit and bar.high_price >= position.take_profit:
         price = max(position.take_profit, bar.open_price) if bar.open_price > position.take_profit else position.take_profit
-        return {"price": price, "reason": "take_profit"}
-    holding_days = _holding_days(position.entry_date, trade_date, trade_dates)
+        return {"price": price, "reason": "take_profit", "holding_days": holding_days}
     if holding_days >= max(position.max_holding_days, 1):
-        return {"price": bar.close_price, "reason": "max_holding_days"}
+        return {"price": bar.close_price, "reason": "max_holding_days", "holding_days": holding_days}
     if force_liquidate:
-        return {"price": bar.close_price, "reason": "end_of_backtest"}
+        return {"price": bar.close_price, "reason": "end_of_backtest", "holding_days": holding_days}
     return None
 
 
