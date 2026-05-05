@@ -19,6 +19,7 @@ interface WorkspacePageContentProps {
   PlaybookPage: ComponentType<ComponentProps<any>>;
   ResearchPage: ComponentType<ComponentProps<any>>;
   SettingsPage: ComponentType<ComponentProps<any>>;
+  StrategyHubPage: ComponentType;
   analysis: ReturnType<typeof useAnalysisData>;
   currentUser: AuthUser;
   loading: string;
@@ -41,6 +42,7 @@ export function WorkspacePageContent({
   PlaybookPage,
   ResearchPage,
   SettingsPage,
+  StrategyHubPage,
   analysis,
   currentUser,
   loading,
@@ -77,6 +79,7 @@ export function WorkspacePageContent({
             onSelect={onSelectStock}
           />
         )}
+        {page === "strategy" && <StrategyHubPage />}
         {page === "research" && (
           <ResearchPage
             replays={research.replays}

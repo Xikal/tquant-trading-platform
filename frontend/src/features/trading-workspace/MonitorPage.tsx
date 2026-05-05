@@ -1,6 +1,7 @@
 import { memo, useMemo } from "react";
 import type { LowBuyPriorityBoardResult, MarketBreadth, RuntimeStatus } from "../../types";
-import { EditableGrid, EmptyState, FamilyStrip, InfoPill, MetricGrid, PanelTitle, StockCard } from "./WorkspaceComponents";
+import { NumberField, SearchField, TextField } from "../../components/shared/FormFields";
+import { EmptyState, FamilyStrip, InfoPill, MetricGrid, PanelTitle, StockCard } from "./WorkspaceComponents";
 import { average, formatPct, riskLevelText, shortTime } from "./workspaceFormatters";
 import type { MetricItem, StockCardView, WatchDraft } from "./workspaceTypes";
 
@@ -73,16 +74,14 @@ export const MonitorPage = memo(function MonitorPage({
       <aside className="panel monitor-input">
         <PanelTitle title="录入底仓约束" />
         <p className="hint">代码、底仓、可卖、成本价决定做T信号是否可执行。A股 T+1 下，当日买入通常次日才进入可用数量。</p>
-        <EditableGrid
-          fields={[
-            ["证券代码", watchDraft.symbol, (value) => setWatchDraft({ ...watchDraft, symbol: value })],
-            ["底仓数量", watchDraft.base_position, (value) => setWatchDraft({ ...watchDraft, base_position: value })],
-            ["可卖数量", watchDraft.available_position, (value) => setWatchDraft({ ...watchDraft, available_position: value })],
-            ["成本价", watchDraft.cost_basis, (value) => setWatchDraft({ ...watchDraft, cost_basis: value })],
-            ["备注", watchDraft.memo, (value) => setWatchDraft({ ...watchDraft, memo: value })],
-            ["名称", watchDraft.name, (value) => setWatchDraft({ ...watchDraft, name: value })],
-          ]}
-        />
+        <div className="compact-form-grid">
+          <SearchField label="证券代码" value={watchDraft.symbol} placeholder="代码或名称" onChange={(value) => setWatchDraft({ ...watchDraft, symbol: value })} />
+          <NumberField label="底仓数量" value={watchDraft.base_position} onChange={(event) => setWatchDraft({ ...watchDraft, base_position: event.target.value })} />
+          <NumberField label="可卖数量" value={watchDraft.available_position} onChange={(event) => setWatchDraft({ ...watchDraft, available_position: event.target.value })} />
+          <NumberField label="成本价" value={watchDraft.cost_basis} onChange={(event) => setWatchDraft({ ...watchDraft, cost_basis: event.target.value })} />
+          <TextField label="备注" value={watchDraft.memo} onChange={(event) => setWatchDraft({ ...watchDraft, memo: event.target.value })} />
+          <TextField label="名称" value={watchDraft.name} onChange={(event) => setWatchDraft({ ...watchDraft, name: event.target.value })} />
+        </div>
         <button className="primary full" onClick={onAddWatchlist} disabled={loading === "watchlist"}>
           {watchDraft.symbol.trim() ? "保存持仓" : "加入自选监控"}
         </button>

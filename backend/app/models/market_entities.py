@@ -37,6 +37,33 @@ class InstrumentRule(Base):
         DateTime, server_default=func.now(), onupdate=func.now()
     )
 
+
+class StrategyMetadata(Base):
+    __tablename__ = "strategy_metadata"
+
+    key: Mapped[str] = mapped_column(String(80), primary_key=True)
+    display_name: Mapped[str] = mapped_column(String(80))
+    description: Mapped[str] = mapped_column(Text, default="")
+    category: Mapped[str] = mapped_column(String(32), default="")
+    risk_level: Mapped[str] = mapped_column(String(16), default="medium")
+    typical_holding_days: Mapped[str] = mapped_column(String(24), default="")
+    sort_order: Mapped[int] = mapped_column(Integer, default=0, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, server_default=func.now(), onupdate=func.now()
+    )
+
+
+class StrategyPreset(Base):
+    __tablename__ = "strategy_presets"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    name: Mapped[str] = mapped_column(String(64), index=True)
+    description: Mapped[str] = mapped_column(Text, default="")
+    config_json: Mapped[str] = mapped_column(Text, default="{}")
+    sort_order: Mapped[int] = mapped_column(Integer, default=0, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+
 class Watchlist(Base):
     __tablename__ = "watchlist"
 

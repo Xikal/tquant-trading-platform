@@ -138,13 +138,15 @@
 }
 
 .backtest-field,
-.backtest-field-group {
+.backtest-field-group,
+.backtest-form > .tq-field {
   display: grid;
   gap: 6px;
 }
 
 .backtest-field.wide,
 .backtest-field-group.wide,
+.backtest-form > .tq-field.wide,
 .backtest-strategy-picker.wide,
 .backtest-submit-button.wide {
   grid-column: 1 / -1;
@@ -160,7 +162,9 @@
 
 .backtest-field input,
 .backtest-field select,
-.backtest-field-group input {
+.backtest-field-group input,
+.backtest-form .tq-input,
+.backtest-form .tq-input-wrap {
   min-height: 34px;
   width: 100%;
   border: 1px solid var(--line);
@@ -411,6 +415,22 @@
   display: block;
   width: 100%;
   min-height: 220px;
+}
+
+.backtest-echarts {
+  background: #08111f;
+  border-radius: 16px;
+  min-height: 300px;
+  width: 100%;
+}
+
+.backtest-monthly-heatmap {
+  background: #f8fafc;
+  border: 1px solid #e3e9f2;
+  border-radius: 14px;
+  height: 260px;
+  margin: 10px 0;
+  width: 100%;
 }
 
 .backtest-chart-legend {

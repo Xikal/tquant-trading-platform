@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { API_BASE, request } from "../../api/base";
 import {
   backtestsApi,
   type BacktestAttributionResponse,
@@ -9,6 +10,7 @@ import {
   type BacktestParamGrid,
   type BacktestRunDetail,
   type BacktestRunSummary,
+  type BacktestStatus,
   type BacktestStrategyCorrelationResponse,
   type BacktestTrade,
   type BacktestValidationDetail,
@@ -17,6 +19,28 @@ import {
 } from "../../api/backtests";
 import type { BacktestFormState } from "./BacktestDashboard";
 import type { OptimizationFormState, ValidationFormState } from "./BacktestResearchPanel";
+
+interface StrategyStreamTokenResponse {
+  stream_token: string;
+  expires_in: number;
+}
+
+interface StrategyProgressMessage {
+  type: "progress" | "error";
+  task_id?: number;
+  status?: BacktestStatus;
+  progress_pct?: number;
+  message?: string;
+  completed?: boolean;
+}
+
+type ProgressTask = {
+  id: number;
+  status: BacktestStatus;
+  progress?: number | null;
+  progress_pct?: number | null;
+  error_message?: string | null;
+};
 
 export const initialBacktestForm: BacktestFormState = {
   name: "低吸策略组合回测",
@@ -203,6 +227,85 @@ export function useBacktestDashboard() {
   useEffect(() => {
     void loadResearch();
   }, [loadResearch]);
+
+  const selectedRunId = selectedRun?.id ?? null;
+  const selectedRunStatus = selectedRun?.status ?? null;
+
+  useEffect(() => {
+    if (!selectedRunId || !selectedRunStatus || !isActiveStatus(selectedRunStatus)) {
+      return undefined;
+    }
+    const runId = selectedRunId;
+    return startStrategyProgressStream({
+      taskType: "backtest",
+      taskId: runId,
+      currentStatus: selectedRunStatus,
+      onPatch: (patch) => {
+        setSelectedRun((current) => (current?.id === runId ? compactProgressPatch(current, patch) : current));
+        setRuns((current) => current.map((run) => (run.id === runId ? compactProgressPatch(run, patch) : run)));
+      },
+      onComplete: () => void loadDetail(runId),
+      onFallback: () => void loadDetail(runId),
+      onError: setError,
+    });
+  }, [loadDetail, selectedRunId, selectedRunStatus]);
+
+  const selectedOptimizationStatus = selectedOptimization?.status ?? null;
+  const selectedValidationStatus = selectedValidation?.status ?? null;
+
+  const patchOptimization = useCallback((optimizationId: number, patch: Partial<ProgressTask>) => {
+    setSelectedOptimization((current) => (current?.id === optimizationId ? compactProgressPatch(current, patch) : current));
+    setOptimizations((current) => current.map((item) => (item.id === optimizationId ? compactProgressPatch(item, patch) : item)));
+  }, []);
+
+  const patchValidation = useCallback((validationId: number, patch: Partial<ProgressTask>) => {
+    setSelectedValidation((current) => (current?.id === validationId ? compactProgressPatch(current, patch) : current));
+    setValidations((current) => current.map((item) => (item.id === validationId ? compactProgressPatch(item, patch) : item)));
+  }, []);
+
+  const refreshOptimizationDetail = useCallback(async (optimizationId: number) => {
+    const detail = await backtestsApi.getOptimization(optimizationId);
+    setSelectedOptimization(detail);
+    setOptimizations((current) => current.map((item) => (item.id === optimizationId ? { ...item, ...detail } : item)));
+  }, []);
+
+  const refreshValidationDetail = useCallback(async (validationId: number) => {
+    const detail = await backtestsApi.getValidation(validationId);
+    setSelectedValidation(detail);
+    setValidations((current) => current.map((item) => (item.id === validationId ? { ...item, ...detail } : item)));
+  }, []);
+
+  useEffect(() => {
+    if (!selectedOptimizationId || !selectedOptimizationStatus || !isActiveStatus(selectedOptimizationStatus)) {
+      return undefined;
+    }
+    const optimizationId = selectedOptimizationId;
+    return startStrategyProgressStream({
+      taskType: "optimize",
+      taskId: optimizationId,
+      currentStatus: selectedOptimizationStatus,
+      onPatch: (patch) => patchOptimization(optimizationId, patch),
+      onComplete: () => void refreshOptimizationDetail(optimizationId),
+      onFallback: () => void refreshOptimizationDetail(optimizationId),
+      onError: setResearchError,
+    });
+  }, [patchOptimization, refreshOptimizationDetail, selectedOptimizationId, selectedOptimizationStatus]);
+
+  useEffect(() => {
+    if (!selectedValidationId || !selectedValidationStatus || !isActiveStatus(selectedValidationStatus)) {
+      return undefined;
+    }
+    const validationId = selectedValidationId;
+    return startStrategyProgressStream({
+      taskType: "validate",
+      taskId: validationId,
+      currentStatus: selectedValidationStatus,
+      onPatch: (patch) => patchValidation(validationId, patch),
+      onComplete: () => void refreshValidationDetail(validationId),
+      onFallback: () => void refreshValidationDetail(validationId),
+      onError: setResearchError,
+    });
+  }, [patchValidation, refreshValidationDetail, selectedValidationId, selectedValidationStatus]);
 
   const onFormChange = useCallback((patch: Partial<BacktestFormState>) => {
     setForm((current) => ({ ...current, ...patch }));
@@ -599,4 +702,94 @@ function parseNullablePercent(value: string): number | null {
 
 function errorMessage(err: unknown): string {
   return err instanceof Error ? err.message : "请求失败";
+}
+
+function isActiveStatus(status: BacktestStatus): boolean {
+  return status === "pending" || status === "queued" || status === "running";
+}
+
+function compactProgressPatch<T extends ProgressTask>(item: T, patch: Partial<ProgressTask>): T {
+  return {
+    ...item,
+    ...(patch.status ? { status: patch.status } : {}),
+    ...(typeof patch.progress === "number" ? { progress: patch.progress } : {}),
+    ...(typeof patch.progress_pct === "number" ? { progress_pct: patch.progress_pct } : {}),
+    ...(patch.error_message ? { error_message: patch.error_message } : {}),
+  };
+}
+
+function startStrategyProgressStream({
+  taskType,
+  taskId,
+  currentStatus,
+  onPatch,
+  onComplete,
+  onFallback,
+  onError,
+}: {
+  taskType: "backtest" | "optimize" | "validate";
+  taskId: number;
+  currentStatus: BacktestStatus;
+  onPatch: (patch: Partial<ProgressTask>) => void;
+  onComplete: () => void;
+  onFallback: () => void;
+  onError: (message: string) => void;
+}): () => void {
+  let closed = false;
+  let socket: WebSocket | null = null;
+  let fallbackTimer: number | undefined;
+
+  const startFallback = () => {
+    if (fallbackTimer || closed) return;
+    fallbackTimer = window.setInterval(onFallback, 15000);
+  };
+
+  request<StrategyStreamTokenResponse>("/strategy/stream-token", { method: "POST" })
+    .then((payload) => {
+      if (closed || !payload.stream_token) return;
+      socket = new WebSocket(strategyProgressUrl(taskType, taskId, payload.stream_token));
+      socket.onmessage = (event) => {
+        try {
+          const message = JSON.parse(event.data) as StrategyProgressMessage;
+          if (message.task_id !== taskId) return;
+          if (message.type === "error") {
+            onError(message.message || "策略任务进度连接异常，已切换轮询。");
+            startFallback();
+            return;
+          }
+          const patch: Partial<ProgressTask> = {
+            status: message.status ?? currentStatus,
+            progress: message.progress_pct,
+            progress_pct: message.progress_pct,
+          };
+          onPatch(patch);
+          if (message.completed) onComplete();
+        } catch {
+          startFallback();
+        }
+      };
+      socket.onerror = startFallback;
+      socket.onclose = (event) => {
+        if (!closed && event.code !== 1000) startFallback();
+      };
+    })
+    .catch(startFallback);
+
+  return () => {
+    closed = true;
+    if (fallbackTimer) window.clearInterval(fallbackTimer);
+    socket?.close();
+  };
+}
+
+function strategyProgressUrl(taskType: string, taskId: number, streamToken: string): string {
+  const apiBase = API_BASE === "__NATIVE_API_BASE_REQUIRED__" ? "/api" : API_BASE;
+  const base = apiBase.startsWith("http")
+    ? apiBase.replace(/\/api\/?$/, "").replace(/^http/, "ws")
+    : `${window.location.protocol === "https:" ? "wss" : "ws"}://${window.location.host}`;
+  const params = new URLSearchParams({
+    stream_token: streamToken,
+    interval_seconds: "3",
+  });
+  return `${base}/ws/strategy/${encodeURIComponent(taskType)}/${encodeURIComponent(String(taskId))}?${params.toString()}`;
 }

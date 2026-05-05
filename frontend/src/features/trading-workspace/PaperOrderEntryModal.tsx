@@ -1,4 +1,5 @@
 import type { PaperOrderDraft } from "./workspaceTypes";
+import { NumberField, SelectField, TextField } from "../../components/shared/FormFields";
 
 export function OrderEntryModal({
   draft,
@@ -38,42 +39,45 @@ export function OrderEntryModal({
         {autoTradingRunning ? <p className="muted">自动交易正在运行，手动委托已临时锁定。停止自动交易后可继续录入。</p> : null}
         {paused ? <p className="muted">模拟账户已暂停，恢复后可继续提交。</p> : null}
         <div className="form-grid order-modal-grid">
-          <OrderInput label="代码" value={draft.symbol} disabled={locked} onChange={(value) => setDraft({ ...draft, symbol: value })} />
-          <OrderInput label="名称" value={draft.name} disabled={locked} onChange={(value) => setDraft({ ...draft, name: value })} />
-          <label>
-            <span>方向</span>
-            <select value={draft.side} disabled={locked} onChange={(event) => setDraft({ ...draft, side: event.target.value as "buy" | "sell" })}>
-              <option value="buy">买入</option>
-              <option value="sell">卖出</option>
-            </select>
-          </label>
-          <label>
-            <span>委托类型</span>
-            <select value={draft.order_type} disabled={locked} onChange={(event) => setDraft({ ...draft, order_type: event.target.value as "market" | "limit" })}>
-              <option value="market">市价</option>
-              <option value="limit">限价</option>
-            </select>
-          </label>
-          <OrderInput label="数量" value={draft.quantity} placeholder="100 股整数倍" inputMode="numeric" disabled={locked} onChange={(value) => setDraft({ ...draft, quantity: value })} />
-          <OrderInput label="限价" value={draft.price} placeholder="限价单必填" inputMode="decimal" disabled={locked} onChange={(value) => setDraft({ ...draft, price: value })} />
-          <OrderInput label="撮合现价" value={draft.current_price} inputMode="decimal" disabled={locked} onChange={(value) => setDraft({ ...draft, current_price: value })} />
-          <OrderInput label="策略来源" value={draft.strategy_key} placeholder="如 first_board" disabled={locked} onChange={(value) => setDraft({ ...draft, strategy_key: value })} />
-        </div>
-        <label className="select-field paper-reason">
-          <span>执行理由</span>
-          <input value={draft.reason} disabled={locked} onChange={(event) => setDraft({ ...draft, reason: event.target.value })} />
-        </label>
-        <label className="select-field paper-reason">
-          <span>盘中确认</span>
-          <select
-            value={draft.require_intraday_confirmation ? "yes" : "no"}
+          <TextField label="代码" value={draft.symbol} disabled={locked} onChange={(event) => setDraft({ ...draft, symbol: event.target.value })} />
+          <TextField label="名称" value={draft.name} disabled={locked} onChange={(event) => setDraft({ ...draft, name: event.target.value })} />
+          <SelectField
+            label="方向"
+            value={draft.side}
             disabled={locked}
-            onChange={(event) => setDraft({ ...draft, require_intraday_confirmation: event.target.value === "yes" })}
-          >
-            <option value="no">不强制确认</option>
-            <option value="yes">买入前必须承接确认</option>
-          </select>
-        </label>
+            options={[
+              { value: "buy", label: "买入" },
+              { value: "sell", label: "卖出" },
+            ]}
+            onChange={(event) => setDraft({ ...draft, side: event.target.value as "buy" | "sell" })}
+          />
+          <SelectField
+            label="委托类型"
+            value={draft.order_type}
+            disabled={locked}
+            options={[
+              { value: "market", label: "市价" },
+              { value: "limit", label: "限价" },
+            ]}
+            onChange={(event) => setDraft({ ...draft, order_type: event.target.value as "market" | "limit" })}
+          />
+          <NumberField label="数量" value={draft.quantity} placeholder="100 股整数倍" disabled={locked} onChange={(event) => setDraft({ ...draft, quantity: event.target.value })} />
+          <NumberField label="限价" value={draft.price} placeholder="限价单必填" disabled={locked} onChange={(event) => setDraft({ ...draft, price: event.target.value })} />
+          <NumberField label="撮合现价" value={draft.current_price} disabled={locked} onChange={(event) => setDraft({ ...draft, current_price: event.target.value })} />
+          <TextField label="策略来源" value={draft.strategy_key} placeholder="如 first_board" disabled={locked} onChange={(event) => setDraft({ ...draft, strategy_key: event.target.value })} />
+        </div>
+        <TextField fieldClassName="paper-reason" label="执行理由" value={draft.reason} disabled={locked} onChange={(event) => setDraft({ ...draft, reason: event.target.value })} />
+        <SelectField
+          fieldClassName="paper-reason"
+          label="盘中确认"
+          value={draft.require_intraday_confirmation ? "yes" : "no"}
+          disabled={locked}
+          options={[
+            { value: "no", label: "不强制确认" },
+            { value: "yes", label: "买入前必须承接确认" },
+          ]}
+          onChange={(event) => setDraft({ ...draft, require_intraday_confirmation: event.target.value === "yes" })}
+        />
         {feeWarning ? <p className="warn paper-fee-warning">{feeWarning}</p> : null}
         <div className="order-modal-actions">
           <button type="button" className="ghost-button" onClick={onClose}>取消</button>
@@ -83,35 +87,6 @@ export function OrderEntryModal({
         </div>
       </section>
     </div>
-  );
-}
-
-function OrderInput({
-  label,
-  value,
-  placeholder,
-  inputMode,
-  disabled,
-  onChange,
-}: {
-  label: string;
-  value: string;
-  placeholder?: string;
-  inputMode?: "numeric" | "decimal";
-  disabled: boolean;
-  onChange: (value: string) => void;
-}) {
-  return (
-    <label>
-      <span>{label}</span>
-      <input
-        value={value}
-        placeholder={placeholder}
-        inputMode={inputMode}
-        disabled={disabled}
-        onChange={(event) => onChange(event.target.value)}
-      />
-    </label>
   );
 }
 

@@ -43,6 +43,8 @@ from app.models.market_entities import (
     MarketEventCache,
     MinuteBarSnapshot,
     SignalReplay,
+    StrategyMetadata,
+    StrategyPreset,
     UserWatchlist,
     Watchlist,
     WatchlistSignalSnapshot,
@@ -63,6 +65,8 @@ from app.models.paper_entities import (
 __all__ = [
     "Instrument",
     "InstrumentRule",
+    "StrategyMetadata",
+    "StrategyPreset",
     "Watchlist",
     "User",
     "UserSession",

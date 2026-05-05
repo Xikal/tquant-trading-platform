@@ -5,4 +5,6 @@
 @import "./workspace/workspace-responsive.css";
 @import "./workspace/paper-trading.css";
 @import "./workspace/performance-dashboard.css";
+@import "./workspace/shared-components.css";
 @import "../features/backtest/backtest.css";
+@import "../features/strategy/strategy.css";

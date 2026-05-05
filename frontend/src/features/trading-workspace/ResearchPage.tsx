@@ -1,5 +1,6 @@
 import type { BacktestResult, BacktestRun, LowBuyExecutionBacktestResult, LowBuyPriorityBoardResult, LowBuyTradeLifecycle, ReplayItem, StrategyValidationReport } from "../../types";
-import { EditableGrid, EmptyState, MetricGrid, PanelTitle } from "./WorkspaceComponents";
+import { NumberField, SearchField, SelectField } from "../../components/shared/FormFields";
+import { EmptyState, MetricGrid, PanelTitle } from "./WorkspaceComponents";
 import { ALL_PLAYBOOK_TABS } from "./workspaceConstants";
 import { actionText, average, executionStatusText, formatNumber, formatPct, formatPrice, lifecycleStatusText, shortTime, strategyLabel, summarizeLifecycle, toneFromChange } from "./workspaceFormatters";
 import type { BacktestDraft } from "./workspaceTypes";
@@ -57,30 +58,30 @@ export function ResearchPage({
       </div>
       <aside className="panel research-run">
         <PanelTitle title="运行回测" />
-        <EditableGrid
-          fields={[
-            ["证券代码", draft.symbol, (value) => setDraft({ ...draft, symbol: value })],
-            ["样本窗口", draft.lookback_bars, (value) => setDraft({ ...draft, lookback_bars: value })],
-            ["底仓数量", draft.initial_position, (value) => setDraft({ ...draft, initial_position: value })],
-            ["样本外窗口", draft.walk_forward_windows, (value) => setDraft({ ...draft, walk_forward_windows: value })],
-            ["执行回测天数", draft.low_buy_lookback_days, (value) => setDraft({ ...draft, low_buy_lookback_days: value })],
-            ["执行样本上限", draft.low_buy_limit, (value) => setDraft({ ...draft, low_buy_limit: value })],
-          ]}
+        <div className="compact-form-grid">
+          <SearchField label="证券代码" value={draft.symbol} placeholder="输入代码或名称" onChange={(value) => setDraft({ ...draft, symbol: value })} />
+          <NumberField label="样本窗口" value={draft.lookback_bars} onChange={(event) => setDraft({ ...draft, lookback_bars: event.target.value })} />
+          <NumberField label="底仓数量" value={draft.initial_position} onChange={(event) => setDraft({ ...draft, initial_position: event.target.value })} />
+          <NumberField label="样本外窗口" value={draft.walk_forward_windows} onChange={(event) => setDraft({ ...draft, walk_forward_windows: event.target.value })} />
+          <NumberField label="执行天数" value={draft.low_buy_lookback_days} onChange={(event) => setDraft({ ...draft, low_buy_lookback_days: event.target.value })} />
+          <NumberField label="样本上限" value={draft.low_buy_limit} onChange={(event) => setDraft({ ...draft, low_buy_limit: event.target.value })} />
+        </div>
+        <SelectField
+          label="低吸策略"
+          value={draft.low_buy_strategy}
+          options={ALL_PLAYBOOK_TABS.map((tab) => ({ value: tab.key, label: tab.label }))}
+          onChange={(event) => setDraft({ ...draft, low_buy_strategy: event.target.value })}
         />
-        <label className="select-field">
-          <span>低吸策略</span>
-          <select value={draft.low_buy_strategy} onChange={(event) => setDraft({ ...draft, low_buy_strategy: event.target.value })}>
-            {ALL_PLAYBOOK_TABS.map((tab) => <option value={tab.key} key={tab.key}>{tab.label}</option>)}
-          </select>
-        </label>
-        <label className="select-field">
-          <span>分钟周期</span>
-          <select value={draft.bar_period} onChange={(event) => setDraft({ ...draft, bar_period: event.target.value as BacktestDraft["bar_period"] })}>
-            <option value="1m">1m</option>
-            <option value="5m">5m</option>
-            <option value="15m">15m</option>
-          </select>
-        </label>
+        <SelectField
+          label="分钟周期"
+          value={draft.bar_period}
+          options={[
+            { value: "1m", label: "1m" },
+            { value: "5m", label: "5m" },
+            { value: "15m", label: "15m" },
+          ]}
+          onChange={(event) => setDraft({ ...draft, bar_period: event.target.value as BacktestDraft["bar_period"] })}
+        />
         <button className="primary full" onClick={onRun} disabled={loading === "backtest"}>运行回测</button>
         <button className="secondary full" onClick={onValidate} disabled={loading === "strategy-validation"}>验证策略组</button>
       </aside>

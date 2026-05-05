@@ -18,6 +18,8 @@ from app.api.routes import (
     research,
     screeners,
     settings,
+    strategy_stream,
+    strategy_meta,
     v1,
     watchlist,
 )
@@ -38,6 +40,8 @@ api_router.include_router(ai.router, tags=["ai"])
 api_router.include_router(research.router, tags=["research"])
 api_router.include_router(screeners.router, tags=["screeners"])
 api_router.include_router(settings.router, tags=["settings"])
+api_router.include_router(strategy_meta.router, tags=["strategy-meta"])
+api_router.include_router(strategy_stream.router, tags=["strategy-stream"])
 api_router.include_router(agent.router, tags=["agent"])
 api_router.include_router(paper.router, tags=["paper"])
 api_router.include_router(feishu.router, tags=["feishu"])

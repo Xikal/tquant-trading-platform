@@ -1,0 +1,239 @@
+import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  backtestsApi,
+  type BacktestCreateRequest,
+  type BacktestExecutionModel,
+  type BacktestRunSummary,
+} from "../../api/backtests";
+import {
+  strategiesApi,
+  type StrategyMeta,
+  type StrategyPreset,
+} from "../../api/strategies";
+
+export type StrategyHubTab = "quick" | "signals" | "optimize" | "validate" | "compare" | "history";
+
+export interface StrategyQuickForm {
+  name: string;
+  start_date: string;
+  end_date: string;
+  initial_capital: string;
+  execution_model: BacktestExecutionModel;
+  max_position_pct: string;
+  max_positions: string;
+  benchmark: string;
+  strategies: string[];
+}
+
+const DEFAULT_FORM: StrategyQuickForm = {
+  name: "策略快速回测",
+  start_date: shiftDate(-365),
+  end_date: shiftDate(0),
+  initial_capital: "500000",
+  execution_model: "open_price",
+  max_position_pct: "30",
+  max_positions: "8",
+  benchmark: "000300",
+  strategies: ["first_board", "volume_shrink"],
+};
+
+export function useStrategyHub() {
+  const [tab, setTabState] = useState<StrategyHubTab>(() => initialTabFromLocation());
+  const [strategies, setStrategies] = useState<StrategyMeta[]>([]);
+  const [presets, setPresets] = useState<StrategyPreset[]>([]);
+  const [runs, setRuns] = useState<BacktestRunSummary[]>([]);
+  const [form, setForm] = useState<StrategyQuickForm>(DEFAULT_FORM);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [loading, setLoading] = useState("");
+  const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
+
+  const selectedStrategies = useMemo(
+    () => strategies.filter((strategy) => form.strategies.includes(strategy.key)),
+    [form.strategies, strategies],
+  );
+
+  const setTab = useCallback((nextTab: StrategyHubTab) => {
+    setTabState(nextTab);
+    if (typeof window !== "undefined") {
+      const url = new URL(window.location.href);
+      url.searchParams.set("tab", nextTab);
+      window.history.replaceState({}, "", `${url.pathname}${url.search}`);
+    }
+  }, []);
+
+  const load = useCallback(async () => {
+    setLoading("load");
+    setError("");
+    try {
+      const [meta, presetResult, runResult] = await Promise.all([
+        strategiesApi.getStrategyMeta(),
+        strategiesApi.getPresets(),
+        backtestsApi.listBacktests({ limit: 8, offset: 0 }),
+      ]);
+      setStrategies(meta.strategies ?? []);
+      setPresets(presetResult.presets ?? []);
+      setRuns(runResult.items ?? []);
+      if (meta.strategies?.length) {
+        setForm((current) => current.strategies.length
+          ? current
+          : { ...current, strategies: meta.strategies.slice(0, 2).map((strategy) => strategy.key) });
+      }
+    } catch (err) {
+      setError(toMessage(err));
+    } finally {
+      setLoading("");
+    }
+  }, []);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  const updateForm = useCallback((patch: Partial<StrategyQuickForm>) => {
+    setForm((current) => ({ ...current, ...patch }));
+  }, []);
+
+  const toggleStrategy = useCallback((key: string) => {
+    setForm((current) => {
+      const exists = current.strategies.includes(key);
+      return {
+        ...current,
+        strategies: exists
+          ? current.strategies.filter((item) => item !== key)
+          : [...current.strategies, key],
+      };
+    });
+  }, []);
+
+  const applyPreset = useCallback((preset: StrategyPreset) => {
+    const config = preset.config ?? {};
+    setForm((current) => ({
+      ...current,
+      name: preset.name,
+      start_date: rangeStart(String(config.range ?? "12m")),
+      end_date: shiftDate(0),
+      initial_capital: String(config.initial_capital ?? current.initial_capital),
+      execution_model: normalizeExecutionModel(config.execution_model, current.execution_model),
+      max_position_pct: String(config.max_position_pct ?? current.max_position_pct),
+      max_positions: String(config.max_positions ?? current.max_positions),
+      benchmark: String(config.benchmark ?? current.benchmark),
+      strategies: Array.isArray(config.strategies)
+        ? config.strategies.map(String)
+        : current.strategies,
+    }));
+    setNotice(`已套用预设：${preset.name}`);
+  }, []);
+
+  const submit = useCallback(async (): Promise<boolean> => {
+    setLoading("submit");
+    setError("");
+    setNotice("");
+    try {
+      validateForm(form);
+      const payload: BacktestCreateRequest = {
+        name: form.name.trim(),
+        start_date: form.start_date,
+        end_date: form.end_date,
+        initial_capital: parsePositive(form.initial_capital),
+        strategies: form.strategies,
+        execution_model: form.execution_model,
+        benchmark: form.benchmark.trim() || "000300",
+        risk_limits: {
+          max_position_pct: parsePercent(form.max_position_pct),
+          max_positions: Math.max(1, Math.round(parsePositive(form.max_positions))),
+          max_daily_loss_pct: 5,
+          max_single_order_pct: parsePercent(form.max_position_pct),
+          min_cash_reserve: 5000,
+        },
+      };
+      const result = await backtestsApi.createBacktest(payload);
+      setConfirmOpen(false);
+      setNotice(result.message || `回测任务 #${result.run_id ?? result.id ?? "--"} 已提交`);
+      const runResult = await backtestsApi.listBacktests({ limit: 8, offset: 0 });
+      setRuns(runResult.items ?? []);
+      return true;
+    } catch (err) {
+      setError(toMessage(err));
+      return false;
+    } finally {
+      setLoading("");
+    }
+  }, [form]);
+
+  return {
+    tab,
+    setTab,
+    strategies,
+    presets,
+    runs,
+    form,
+    selectedStrategies,
+    confirmOpen,
+    setConfirmOpen,
+    loading,
+    error,
+    notice,
+    load,
+    updateForm,
+    toggleStrategy,
+    applyPreset,
+    submit,
+  };
+}
+
+function initialTabFromLocation(): StrategyHubTab {
+  if (typeof window === "undefined") return "quick";
+  const raw = new URLSearchParams(window.location.search).get("tab") || "";
+  if (raw === "replay" || raw === "signals") return "signals";
+  if (raw === "optimize") return "optimize";
+  if (raw === "validate") return "validate";
+  if (raw === "compare") return "compare";
+  if (raw === "history") return "history";
+  return "quick";
+}
+
+function validateForm(form: StrategyQuickForm) {
+  if (!form.name.trim()) throw new Error("请填写回测名称");
+  if (!form.start_date || !form.end_date) throw new Error("请选择回测时间范围");
+  if (new Date(form.start_date) > new Date(form.end_date)) throw new Error("开始日期不能晚于结束日期");
+  if (!form.strategies.length) throw new Error("至少选择一个策略");
+  parsePositive(form.initial_capital);
+  parsePositive(form.max_positions);
+}
+
+function parsePositive(value: string): number {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    throw new Error("数值必须大于 0");
+  }
+  return parsed;
+}
+
+function parsePercent(value: string): number {
+  const parsed = parsePositive(value);
+  return parsed > 1 ? parsed / 100 : parsed;
+}
+
+function normalizeExecutionModel(value: unknown, fallback: BacktestExecutionModel): BacktestExecutionModel {
+  if (value === "open_price" || value === "close_price" || value === "next_open" || value === "vwap") {
+    return value;
+  }
+  return fallback;
+}
+
+function rangeStart(range: string): string {
+  if (range === "24m") return shiftDate(-730);
+  if (range === "6m") return shiftDate(-183);
+  return shiftDate(-365);
+}
+
+function shiftDate(days: number): string {
+  const date = new Date();
+  date.setDate(date.getDate() + days);
+  return date.toISOString().slice(0, 10);
+}
+
+function toMessage(err: unknown): string {
+  return err instanceof Error ? err.message : String(err);
+}

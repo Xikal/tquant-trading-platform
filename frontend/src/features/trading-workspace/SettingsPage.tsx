@@ -5,7 +5,8 @@ import type {
   RuntimeStatus,
   SettingsPayload,
 } from "../../types";
-import { EditableGrid, InfoPill, PanelTitle, SettingCard } from "./WorkspaceComponents";
+import { NumberField, TextField } from "../../components/shared/FormFields";
+import { InfoPill, PanelTitle, SettingCard } from "./WorkspaceComponents";
 import { readySummary } from "./workspaceFormatters";
 import type { SettingsDraft } from "./workspaceTypes";
 
@@ -46,39 +47,30 @@ export function SettingsPage({
       </div>
       <div className="settings-cards">
         <SettingCard title="大模型配置" button="保存大模型配置" onSave={() => onSave("llm")} loading={loading === "settings-llm"}>
-          <EditableGrid
-            fields={[
-              ["管理令牌", draft.adminToken, (value) => setDraft({ ...draft, adminToken: value })],
-              ["API Key", draft.llm_api_key, (value) => setDraft({ ...draft, llm_api_key: value })],
-              ["Base URL", draft.llm_base_url, (value) => setDraft({ ...draft, llm_base_url: value })],
-              ["模型名", draft.llm_model, (value) => setDraft({ ...draft, llm_model: value })],
-            ]}
-          />
-          <label className="select-field">
-            <span>供应商</span>
-            <input value={draft.llm_provider} onChange={(event) => setDraft({ ...draft, llm_provider: event.target.value })} placeholder="openai / deepseek" />
-          </label>
+          <div className="compact-form-grid">
+            <TextField label="管理令牌" value={draft.adminToken} onChange={(event) => setDraft({ ...draft, adminToken: event.target.value })} />
+            <TextField label="API Key" value={draft.llm_api_key} onChange={(event) => setDraft({ ...draft, llm_api_key: event.target.value })} />
+            <TextField label="Base URL" value={draft.llm_base_url} onChange={(event) => setDraft({ ...draft, llm_base_url: event.target.value })} />
+            <TextField label="模型名" value={draft.llm_model} onChange={(event) => setDraft({ ...draft, llm_model: event.target.value })} />
+            <TextField label="供应商" value={draft.llm_provider} placeholder="openai / deepseek" onChange={(event) => setDraft({ ...draft, llm_provider: event.target.value })} />
+          </div>
           <p className="hint">当前状态：{settings?.llm_api_key_configured ? "Key 已配置" : "Key 未配置"}</p>
         </SettingCard>
         <SettingCard title="数据库与数据源" button="保存数据配置" onSave={() => onSave("data")} loading={loading === "settings-data"}>
-          <EditableGrid
-            fields={[
-              ["数据源", draft.data_source, (value) => setDraft({ ...draft, data_source: value })],
-              ["数据源地址", draft.data_source_base_url, (value) => setDraft({ ...draft, data_source_base_url: value })],
-            ]}
-          />
+          <div className="compact-form-grid">
+            <TextField label="数据源" value={draft.data_source} onChange={(event) => setDraft({ ...draft, data_source: event.target.value })} />
+            <TextField label="数据源地址" value={draft.data_source_base_url} onChange={(event) => setDraft({ ...draft, data_source_base_url: event.target.value })} />
+          </div>
           <InfoPill label="数据库" value={runtime?.database_url_masked ?? "--"} />
           <InfoPill label="接口前缀" value={runtime?.api_prefix ?? "/api"} />
         </SettingCard>
         <SettingCard title="风控参数" button="保存风控参数" onSave={() => onSave("risk")} loading={loading === "settings-risk"}>
-          <EditableGrid
-            fields={[
-              ["单笔最大亏损%", draft.risk_max_single_loss_pct, (value) => setDraft({ ...draft, risk_max_single_loss_pct: value })],
-              ["日内最大亏损%", draft.risk_max_daily_loss_pct, (value) => setDraft({ ...draft, risk_max_daily_loss_pct: value })],
-              ["连亏暂停", draft.risk_pause_after_losses, (value) => setDraft({ ...draft, risk_pause_after_losses: value })],
-              ["最小收益%", draft.strategy_min_profit_pct, (value) => setDraft({ ...draft, strategy_min_profit_pct: value })],
-            ]}
-          />
+          <div className="compact-form-grid">
+            <NumberField label="单笔最大亏损" suffix="%" value={draft.risk_max_single_loss_pct} onChange={(event) => setDraft({ ...draft, risk_max_single_loss_pct: event.target.value })} />
+            <NumberField label="日内最大亏损" suffix="%" value={draft.risk_max_daily_loss_pct} onChange={(event) => setDraft({ ...draft, risk_max_daily_loss_pct: event.target.value })} />
+            <NumberField label="连亏暂停" value={draft.risk_pause_after_losses} onChange={(event) => setDraft({ ...draft, risk_pause_after_losses: event.target.value })} />
+            <NumberField label="最小收益" suffix="%" value={draft.strategy_min_profit_pct} onChange={(event) => setDraft({ ...draft, strategy_min_profit_pct: event.target.value })} />
+          </div>
           <p className="hint">保存后会影响后续信号，不会修改已有复盘记录。</p>
         </SettingCard>
         <SettingCard title="因子权重" button="保存因子权重" onSave={onSaveFactors} loading={loading === "settings-factor"}>

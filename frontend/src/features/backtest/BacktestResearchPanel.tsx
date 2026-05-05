@@ -1,6 +1,7 @@
 import type {
   BacktestAttributionResponse,
   BacktestCompareResponse,
+  BacktestMonthlyReturn,
   BacktestExecutionModel,
   BacktestMonthlyReturnsResponse,
   BacktestOptimizationDetail,
@@ -11,6 +12,13 @@ import type {
   BacktestValidationDetail,
   BacktestValidationSummary,
 } from "../../api/backtests";
+import { ErrorBanner } from "../../components/shared/Feedback";
+import {
+  DateField as SharedDateField,
+  SelectField as SharedSelectField,
+  SliderField as SharedSliderField,
+  TextField as SharedTextField,
+} from "../../components/shared/FormFields";
 import {
   BACKTEST_EXECUTION_MODELS,
   BACKTEST_STRATEGY_OPTIONS,
@@ -111,7 +119,7 @@ export function BacktestResearchPanel({
       </div>
 
       {state.notice ? <div className="backtest-notice">{state.notice}</div> : null}
-      {state.error ? <div className="backtest-error">{state.error}</div> : null}
+      {state.error ? <ErrorBanner message={state.error} onRetry={actions.onRefreshResearch} /> : null}
 
       <div className="backtest-research-grid">
         <OptimizationPanel state={state} actions={actions} />
@@ -138,11 +146,11 @@ function OptimizationPanel({ state, actions }: { state: BacktestResearchState; a
         <TextField type="number" label="初始资金" value={state.optimizationForm.initial_capital} onChange={(initial_capital) => actions.onOptimizationFormChange({ initial_capital })} />
         <SelectField label="执行模型" value={state.optimizationForm.execution_model} options={BACKTEST_EXECUTION_MODELS} onChange={(execution_model) => actions.onOptimizationFormChange({ execution_model: execution_model as BacktestExecutionModel })} />
         <SelectField label="优化目标" value={state.optimizationForm.optimization_target} options={OPTIMIZATION_TARGET_OPTIONS} onChange={(optimization_target) => actions.onOptimizationFormChange({ optimization_target })} />
-        <TextField label="min_score" value={state.optimizationForm.min_score} hint="逗号分隔" onChange={(min_score) => actions.onOptimizationFormChange({ min_score })} />
-        <TextField label="max_position_pct" value={state.optimizationForm.max_position_pct} hint="0.2,0.3" onChange={(max_position_pct) => actions.onOptimizationFormChange({ max_position_pct })} />
-        <TextField type="number" label="max_holding_days" value={state.optimizationForm.max_holding_days} onChange={(max_holding_days) => actions.onOptimizationFormChange({ max_holding_days })} />
-        <TextField label="stop_loss_pct" value={state.optimizationForm.stop_loss_pct} hint="-0.03,-0.05" onChange={(stop_loss_pct) => actions.onOptimizationFormChange({ stop_loss_pct })} />
-        <TextField label="take_profit_pct" value={state.optimizationForm.take_profit_pct} hint="0.08,0.12" onChange={(take_profit_pct) => actions.onOptimizationFormChange({ take_profit_pct })} />
+        <SliderParamField label="最低评分" min={60} max={98} step={1} value={firstNumber(state.optimizationForm.min_score, 80)} onChange={(min_score) => actions.onOptimizationFormChange({ min_score: String(min_score) })} />
+        <SliderParamField label="单票仓位上限" min={5} max={50} step={1} suffix="%" value={percentToSlider(state.optimizationForm.max_position_pct, 30)} onChange={(value) => actions.onOptimizationFormChange({ max_position_pct: ratioFromPercent(value) })} />
+        <SliderParamField label="最大持有天数" min={1} max={10} step={1} value={firstNumber(state.optimizationForm.max_holding_days, 3)} onChange={(max_holding_days) => actions.onOptimizationFormChange({ max_holding_days: String(max_holding_days) })} />
+        <SliderParamField label="止损线" min={2} max={12} step={0.5} suffix="%" value={Math.abs(percentToSlider(state.optimizationForm.stop_loss_pct, -5))} onChange={(value) => actions.onOptimizationFormChange({ stop_loss_pct: ratioFromPercent(-Math.abs(value)) })} />
+        <SliderParamField label="止盈线" min={3} max={25} step={0.5} suffix="%" value={percentToSlider(state.optimizationForm.take_profit_pct, 10)} onChange={(value) => actions.onOptimizationFormChange({ take_profit_pct: ratioFromPercent(value) })} />
         <button type="button" className="primary" onClick={actions.onSubmitOptimization} disabled={state.loading === "optimize-submit"}>
           {state.loading === "optimize-submit" ? "提交中..." : "提交优化"}
         </button>
@@ -312,6 +320,7 @@ function ComparePanel({ state, actions }: { state: BacktestResearchState; action
       </div>
       <MultiEquitySvg result={state.compareResult} />
       <PanelTitle title="月度收益" meta="按月聚合" />
+      <MonthlyHeatmapSvg items={state.monthlyReturns?.items ?? []} />
       <div className="backtest-data-table narrow" role="table" aria-label="月度收益">
         <div className="row head" role="row">
           <span>月份</span>
@@ -461,6 +470,60 @@ function MultiEquitySvg({ result }: { result: BacktestCompareResponse | null }) 
   );
 }
 
+function MonthlyHeatmapSvg({ items }: { items: BacktestMonthlyReturn[] }) {
+  if (!items.length) {
+    return null;
+  }
+  const years = Array.from(new Set(items.map((item) => item.month.slice(0, 4)))).sort();
+  const months = ["01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12"];
+  const values = items.map((item) => Number(item.return_pct ?? 0)).filter(Number.isFinite);
+  const maxAbs = Math.max(1, ...values.map((value) => Math.abs(value)));
+  const cellW = 38;
+  const cellH = 24;
+  const width = 64 + months.length * cellW;
+  const height = 26 + years.length * cellH;
+  const itemMap = new Map(items.map((item) => [item.month, item]));
+
+  return (
+    <div className="backtest-monthly-heatmap">
+      <svg viewBox={`0 0 ${width} ${height}`} role="img" aria-label="月度收益热力图">
+        {months.map((month, index) => (
+          <text key={month} x={64 + index * cellW + cellW / 2} y={16} textAnchor="middle">{month}</text>
+        ))}
+        {years.map((year, row) => (
+          <g key={year}>
+            <text x={8} y={36 + row * cellH} textAnchor="start">{year}</text>
+            {months.map((month, col) => {
+              const item = itemMap.get(`${year}-${month}`);
+              const value = Number(item?.return_pct ?? 0);
+              return (
+                <g key={`${year}-${month}`}>
+                  <rect
+                    x={64 + col * cellW}
+                    y={24 + row * cellH}
+                    width={cellW - 4}
+                    height={cellH - 4}
+                    rx={5}
+                    fill={heatmapColor(value, maxAbs)}
+                  />
+                  {item ? <text x={64 + col * cellW + cellW / 2 - 2} y={39 + row * cellH} textAnchor="middle">{value.toFixed(1)}</text> : null}
+                </g>
+              );
+            })}
+          </g>
+        ))}
+      </svg>
+    </div>
+  );
+}
+
+function heatmapColor(value: number, maxAbs: number): string {
+  if (!Number.isFinite(value) || value === 0) return "#f8fafc";
+  const strength = Math.min(Math.abs(value) / maxAbs, 1);
+  const alpha = 0.18 + strength * 0.62;
+  return value > 0 ? `rgba(220, 38, 38, ${alpha})` : `rgba(22, 163, 74, ${alpha})`;
+}
+
 function PanelTitle({ title, meta }: { title: string; meta?: string }) {
   return (
     <div className="backtest-research-title">
@@ -471,31 +534,44 @@ function PanelTitle({ title, meta }: { title: string; meta?: string }) {
 }
 
 function TextField({ label, value, hint, type = "text", onChange }: { label: string; value: string; hint?: string; type?: string; onChange: (value: string) => void }) {
-  return (
-    <label className="backtest-field">
-      <span>{label}</span>
-      <input type={type} value={value} placeholder={hint} onChange={(event) => onChange(event.target.value)} />
-    </label>
-  );
+  return <SharedTextField label={label} value={value} hint={hint} type={type} onChange={(event) => onChange(event.target.value)} />;
 }
 
 function DateField({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
-  return (
-    <label className="backtest-field">
-      <span>{label}</span>
-      <input type="date" value={value} onChange={(event) => onChange(event.target.value)} />
-    </label>
-  );
+  return <SharedDateField label={label} value={value} onChange={(event) => onChange(event.target.value)} />;
 }
 
 function SelectField({ label, value, options, onChange }: { label: string; value: string; options: ReadonlyArray<readonly [string, string]>; onChange: (value: string) => void }) {
+  return <SharedSelectField label={label} value={value} options={options.map(([optionValue, optionLabel]) => ({ value: optionValue, label: optionLabel }))} onChange={(event) => onChange(event.target.value)} />;
+}
+
+function SliderParamField({
+  label,
+  value,
+  min,
+  max,
+  step,
+  suffix,
+  onChange,
+}: {
+  label: string;
+  value: number;
+  min: number;
+  max: number;
+  step: number;
+  suffix?: string;
+  onChange: (value: number) => void;
+}) {
   return (
-    <label className="backtest-field">
-      <span>{label}</span>
-      <select value={value} onChange={(event) => onChange(event.target.value)}>
-        {options.map(([optionValue, optionLabel]) => <option value={optionValue} key={optionValue}>{optionLabel}</option>)}
-      </select>
-    </label>
+    <SharedSliderField
+      label={label}
+      min={min}
+      max={max}
+      step={step}
+      value={value}
+      suffix={suffix}
+      onValueChange={(next) => onChange(Number(next))}
+    />
   );
 }
 
@@ -536,6 +612,20 @@ function parseRunIdsLoose(value: string): number[] {
     .split(/[,\s]+/)
     .map((item) => Number(item.trim()))
     .filter((item) => Number.isInteger(item) && item > 0);
+}
+
+function firstNumber(value: string, fallback: number): number {
+  const first = Number(String(value || "").split(",")[0]?.trim());
+  return Number.isFinite(first) ? first : fallback;
+}
+
+function percentToSlider(value: string, fallbackPct: number): number {
+  const parsed = firstNumber(value, fallbackPct / 100);
+  return Math.abs(parsed) <= 1 ? parsed * 100 : parsed;
+}
+
+function ratioFromPercent(value: number): string {
+  return String(Number((value / 100).toFixed(4)));
 }
 
 function buildLinePath(values: Array<number | null | undefined>, min: number, max: number, width: number, height: number): string {

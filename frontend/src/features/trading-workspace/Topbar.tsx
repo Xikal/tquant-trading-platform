@@ -28,8 +28,7 @@ export function Topbar({
     ["monitor", "实时监控"],
     ["analysis", "量化分析"],
     ["playbook", "选股宝典"],
-    ["research", "研究复盘"],
-    ["backtests", "回测闭环"],
+    ["strategy", "策略工作台"],
     ["paper", "模拟盘"],
     ["performance", "绩效"],
   ];

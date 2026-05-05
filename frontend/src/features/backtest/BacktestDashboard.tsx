@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { lazy, Suspense, type ReactNode } from "react";
 import type {
   BacktestAttribution,
   BacktestExecutionModel,
@@ -23,6 +23,10 @@ import {
   toneFromNumber,
 } from "./backtestDisplay";
 import { BacktestResearchPanel, type BacktestResearchActions, type BacktestResearchState } from "./BacktestResearchPanel";
+import { DateField, NumberField, SelectField, TextField } from "../../components/shared/FormFields";
+import { ErrorBanner } from "../../components/shared/Feedback";
+
+const LazyBacktestEquityChart = lazy(() => import("./LazyBacktestEquityChart"));
 
 export interface BacktestFormState {
   name: string;
@@ -111,37 +115,23 @@ export function BacktestDashboard({
       <aside className="panel backtest-submit">
         <PanelHeader title="提交回测任务" action={<button type="button" onClick={onRefresh} disabled={loading === "list"}>刷新</button>} />
         {notice ? <div className="backtest-notice">{notice}</div> : null}
-        {error ? <div className="backtest-error">{error}</div> : null}
+        {error ? <ErrorBanner message={error} /> : null}
         <div className="backtest-form">
-          <label className="backtest-field wide">
-            <span>任务名称</span>
-            <input value={form.name} onChange={(event) => onFormChange({ name: event.target.value })} />
-          </label>
+          <TextField fieldClassName="wide" label="任务名称" value={form.name} onChange={(event) => onFormChange({ name: event.target.value })} />
           <div className="backtest-field-group wide">
             <span>日期范围</span>
-            <label>
-              <small>开始</small>
-              <input type="date" value={form.start_date} onChange={(event) => onFormChange({ start_date: event.target.value })} />
-            </label>
-            <label>
-              <small>结束</small>
-              <input type="date" value={form.end_date} onChange={(event) => onFormChange({ end_date: event.target.value })} />
-            </label>
+            <DateField label="开始" value={form.start_date} onChange={(event) => onFormChange({ start_date: event.target.value })} />
+            <DateField label="结束" value={form.end_date} onChange={(event) => onFormChange({ end_date: event.target.value })} />
           </div>
-          <label className="backtest-field">
-            <span>初始资金</span>
-            <input inputMode="decimal" value={form.initial_capital} onChange={(event) => onFormChange({ initial_capital: event.target.value })} />
-          </label>
-          <label className="backtest-field">
-            <span>基准</span>
-            <input value={form.benchmark} onChange={(event) => onFormChange({ benchmark: event.target.value })} />
-          </label>
-          <label className="backtest-field wide">
-            <span>执行模型</span>
-            <select value={form.execution_model} onChange={(event) => onFormChange({ execution_model: event.target.value as BacktestExecutionModel })}>
-              {BACKTEST_EXECUTION_MODELS.map(([value, label]) => <option value={value} key={value}>{label}</option>)}
-            </select>
-          </label>
+          <NumberField label="初始资金" value={form.initial_capital} onChange={(event) => onFormChange({ initial_capital: event.target.value })} />
+          <TextField label="基准" value={form.benchmark} onChange={(event) => onFormChange({ benchmark: event.target.value })} />
+          <SelectField
+            fieldClassName="wide"
+            label="执行模型"
+            value={form.execution_model}
+            options={BACKTEST_EXECUTION_MODELS.map(([value, label]) => ({ value, label }))}
+            onChange={(event) => onFormChange({ execution_model: event.target.value as BacktestExecutionModel })}
+          />
           <div className="backtest-strategy-picker wide">
             <span>策略多选</span>
             {BACKTEST_STRATEGY_OPTIONS.map(([key, label]) => (
@@ -156,26 +146,11 @@ export function BacktestDashboard({
               </label>
             ))}
           </div>
-          <label className="backtest-field">
-            <span>单票仓位 %</span>
-            <input inputMode="decimal" value={form.max_position_pct} onChange={(event) => onFormChange({ max_position_pct: event.target.value })} />
-          </label>
-          <label className="backtest-field">
-            <span>最大持仓数</span>
-            <input inputMode="numeric" value={form.max_positions} onChange={(event) => onFormChange({ max_positions: event.target.value })} />
-          </label>
-          <label className="backtest-field">
-            <span>日亏损暂停 %</span>
-            <input inputMode="decimal" value={form.max_daily_loss_pct} onChange={(event) => onFormChange({ max_daily_loss_pct: event.target.value })} />
-          </label>
-          <label className="backtest-field">
-            <span>单笔上限 %</span>
-            <input inputMode="decimal" value={form.max_single_order_pct} onChange={(event) => onFormChange({ max_single_order_pct: event.target.value })} />
-          </label>
-          <label className="backtest-field wide">
-            <span>最低现金保留</span>
-            <input inputMode="decimal" value={form.min_cash_reserve} onChange={(event) => onFormChange({ min_cash_reserve: event.target.value })} />
-          </label>
+          <NumberField label="单票仓位" suffix="%" value={form.max_position_pct} onChange={(event) => onFormChange({ max_position_pct: event.target.value })} />
+          <NumberField label="最大持仓数" value={form.max_positions} onChange={(event) => onFormChange({ max_positions: event.target.value })} />
+          <NumberField label="日亏损暂停" suffix="%" value={form.max_daily_loss_pct} onChange={(event) => onFormChange({ max_daily_loss_pct: event.target.value })} />
+          <NumberField label="单笔上限" suffix="%" value={form.max_single_order_pct} onChange={(event) => onFormChange({ max_single_order_pct: event.target.value })} />
+          <NumberField fieldClassName="wide" label="最低现金保留" value={form.min_cash_reserve} onChange={(event) => onFormChange({ min_cash_reserve: event.target.value })} />
           <button type="button" className="primary backtest-submit-button wide" onClick={onSubmit} disabled={loading === "submit"}>
             {loading === "submit" ? "提交中..." : "提交任务"}
           </button>
@@ -239,8 +214,8 @@ export function BacktestDashboard({
       </section>
 
       <section className="panel backtest-equity">
-        <PanelHeader title="净值曲线" action={<span className="backtest-muted">策略 vs 基准 / SVG 轻量图</span>} />
-        <EquityMiniChart points={equity} />
+        <PanelHeader title="净值曲线" action={<span className="backtest-muted">策略 vs 基准 / 可缩放交互图</span>} />
+        <EquityChart points={equity} />
       </section>
 
       <section className="panel backtest-trades">
@@ -336,6 +311,18 @@ function Metric({ label, value, tone = "neutral" }: { label: string; value: stri
 
 function EmptyLine({ text }: { text: string }) {
   return <div className="backtest-empty">{text}</div>;
+}
+
+function EquityChart({ points }: { points: EquityPoint[] }) {
+  const finite = points.filter((point) => Number.isFinite(point.nav));
+  if (finite.length < 2) {
+    return <div className="backtest-chart-empty">净值曲线等待回测完成后生成。</div>;
+  }
+  return (
+    <Suspense fallback={<EquityMiniChart points={points} />}>
+      <LazyBacktestEquityChart points={points} />
+    </Suspense>
+  );
 }
 
 function EquityMiniChart({ points }: { points: EquityPoint[] }) {

@@ -13,11 +13,12 @@ from uuid import uuid4
 
 from fastapi import Depends, FastAPI, Response
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse
+from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse, RedirectResponse
 from sqlalchemy import delete, select
 
 from app.agent_tools.audit import agent_audit_metrics
 from app.api.router import api_router
+from app.api.routes.strategy_stream import ws_router as strategy_ws_router
 from app.core.admin_auth import require_admin_auth
 from app.core.config import get_settings
 from app.core.database import SessionLocal, init_db, ping_database
@@ -463,6 +464,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 app.include_router(api_router, prefix=settings.api_prefix)
+app.include_router(strategy_ws_router)
 
 
 @app.middleware("http")
@@ -588,6 +590,16 @@ def root():
     if FRONTEND_INDEX_FILE.exists():
         return FileResponse(FRONTEND_INDEX_FILE)
     return HealthResponse(status="ok", app=settings.app_name)
+
+
+@app.get("/backtests", include_in_schema=False)
+def legacy_backtests_redirect():
+    return RedirectResponse(url="/strategy?tab=backtest", status_code=301)
+
+
+@app.get("/research", include_in_schema=False)
+def legacy_research_redirect():
+    return RedirectResponse(url="/strategy?tab=replay", status_code=301)
 
 
 @app.get("/{full_path:path}", include_in_schema=False)

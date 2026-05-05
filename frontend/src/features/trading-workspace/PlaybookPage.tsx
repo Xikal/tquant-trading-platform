@@ -1,3 +1,5 @@
+import { useEffect, useState } from "react";
+import { strategiesApi, type StrategyMeta } from "../../api/strategies";
 import type { LowBuyScreenerResult } from "../../types";
 import { EmptyState, InfoPill, MetricGrid, PanelTitle, StockCard } from "./WorkspaceComponents";
 import { PRODUCTION_PLAYBOOK_TABS } from "./workspaceConstants";
@@ -22,6 +24,27 @@ export function PlaybookPage({
   onAnalyze: (stock: StockCardView) => void;
   onSelect: (stock: StockCardView) => void;
 }) {
+  const [strategyTabs, setStrategyTabs] = useState<Array<{ key: string; label: string }>>(
+    PRODUCTION_PLAYBOOK_TABS.map((tab) => ({ key: tab.key, label: tab.label }))
+  );
+  useEffect(() => {
+    let cancelled = false;
+    strategiesApi.getStrategyMeta()
+      .then((result) => {
+        if (cancelled) return;
+        const nextTabs = (result.strategies ?? []).map((item: StrategyMeta) => ({
+          key: item.key,
+          label: item.display_name || item.name || item.key,
+        }));
+        if (nextTabs.length) {
+          setStrategyTabs(nextTabs);
+        }
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, []);
   const allCandidates = uniqueCandidates([
     ...(playbook?.confirmed_candidates ?? []),
     ...(playbook?.candidates ?? []),
@@ -48,7 +71,7 @@ export function PlaybookPage({
         />
         <p className="hint">全量深筛 + 策略归因 + 买点执行。候选分层展示，避免把所有机会做成同等权重。</p>
         <div className="tabs">
-          {PRODUCTION_PLAYBOOK_TABS.map((tab) => (
+          {strategyTabs.map((tab) => (
             <button key={tab.key} className={strategy === tab.key ? "active" : ""} onClick={() => setStrategy(tab.key)}>
               {tab.label}
             </button>

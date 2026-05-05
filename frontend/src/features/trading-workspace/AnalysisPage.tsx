@@ -1,5 +1,6 @@
 import type { AnalysisResponse } from "../../types";
-import { EditableGrid, InfoPill, LineList, MetricGrid, MiniKline, PanelTitle, StockIdentity } from "./WorkspaceComponents";
+import { NumberField, SearchField, SelectField } from "../../components/shared/FormFields";
+import { InfoPill, LineList, MetricGrid, MiniKline, PanelTitle, StockIdentity } from "./WorkspaceComponents";
 import { actionText, formatAmount, formatNumber, formatPct, formatPrice, plainTradingText, riskText, toneFromChange } from "./workspaceFormatters";
 import type { AnalysisDraft } from "./workspaceTypes";
 
@@ -52,22 +53,22 @@ export function AnalysisPage({
       </div>
       <aside className="panel analysis-control">
         <PanelTitle title="输入控制" />
-        <EditableGrid
-          fields={[
-            ["证券代码", draft.symbol, (value) => setDraft({ ...draft, symbol: value })],
-            ["底仓", draft.base_position, (value) => setDraft({ ...draft, base_position: value })],
-            ["可卖", draft.available_position, (value) => setDraft({ ...draft, available_position: value })],
-            ["成本价", draft.cost_basis, (value) => setDraft({ ...draft, cost_basis: value })],
+        <div className="compact-form-grid">
+          <SearchField label="证券代码" value={draft.symbol} placeholder="输入代码或名称" onChange={(value) => setDraft({ ...draft, symbol: value })} />
+          <NumberField label="底仓" value={draft.base_position} onChange={(event) => setDraft({ ...draft, base_position: event.target.value })} />
+          <NumberField label="可卖" value={draft.available_position} onChange={(event) => setDraft({ ...draft, available_position: event.target.value })} />
+          <NumberField label="成本价" value={draft.cost_basis} onChange={(event) => setDraft({ ...draft, cost_basis: event.target.value })} />
+        </div>
+        <SelectField
+          label="偏好策略"
+          value={draft.prefer_strategy}
+          options={[
+            { value: "auto", label: "自动" },
+            { value: "positive_t", label: "正T" },
+            { value: "negative_t", label: "反T" },
           ]}
+          onChange={(event) => setDraft({ ...draft, prefer_strategy: event.target.value as AnalysisDraft["prefer_strategy"] })}
         />
-        <label className="select-field">
-          <span>偏好策略</span>
-          <select value={draft.prefer_strategy} onChange={(event) => setDraft({ ...draft, prefer_strategy: event.target.value as AnalysisDraft["prefer_strategy"] })}>
-            <option value="auto">自动</option>
-            <option value="positive_t">正T</option>
-            <option value="negative_t">反T</option>
-          </select>
-        </label>
         <button className="primary full" onClick={onRun} disabled={loading === "analysis"}>开始分析</button>
       </aside>
       <div className="panel decision analysis-decision">

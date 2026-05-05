@@ -2,14 +2,16 @@ import { lazy, useEffect, useState } from "react";
 import { appApi } from "../../api/appClient";
 import { clearAuthTokens, getAuthAccessToken } from "../../api/base";
 import { api } from "../../api/client";
+import { strategiesApi, type StrategyMeta } from "../../api/strategies";
 import type { AiDecisionSupportResponse, AuthUser } from "../../types";
+import { CommandPalette } from "./CommandPalette";
 import { LoginPage } from "./LoginPage";
 import { Topbar } from "./Topbar";
 import { AiInsightDialog, ErrorDialog, StatusStrip, StockDetailDialog } from "./WorkspaceComponents";
 import { MONITOR_REFRESH_INTERVAL_MS } from "./workspaceConstants";
 import { nullableNumber, parseNumber } from "./workspaceFormatters";
 import { isLoading } from "./loadingState";
-import type { AuthDraft, StockCardView, WatchDraft } from "./workspaceTypes";
+import type { AuthDraft, Page, StockCardView, WatchDraft } from "./workspaceTypes";
 import { useAnalysisData } from "./useAnalysisData";
 import { useMonitorData } from "./useMonitorData";
 import { usePaperIntraday } from "./usePaperIntraday";
@@ -30,6 +32,7 @@ const PerformanceDashboard = lazy(async () => ({ default: (await import("./Perfo
 const PlaybookPage = lazy(async () => ({ default: (await import("./PlaybookPage")).PlaybookPage }));
 const ResearchPage = lazy(async () => ({ default: (await import("./ResearchPage")).ResearchPage }));
 const SettingsPage = lazy(async () => ({ default: (await import("./SettingsPage")).SettingsPage }));
+const StrategyHubPage = lazy(async () => ({ default: (await import("../strategy/StrategyHubPage")).StrategyHubPage }));
 
 export function TradingWorkspace() {
   const [authReady, setAuthReady] = useState(false);
@@ -37,6 +40,8 @@ export function TradingWorkspace() {
   const { page, navigatePage } = useWorkspaceNavigation();
   const [aiResult, setAiResult] = useState<AiDecisionSupportResponse | null>(null);
   const [aiDialogOpen, setAiDialogOpen] = useState(false);
+  const [commandOpen, setCommandOpen] = useState(false);
+  const [commandStrategies, setCommandStrategies] = useState<StrategyMeta[]>([]);
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
   const [selectedStock, setSelectedStock] = useState<StockCardView | null>(null);
@@ -125,8 +130,33 @@ export function TradingWorkspace() {
   useEffect(() => {
     if (authReady && currentUser) {
       void refreshMonitor();
+      void loadCommandStrategies();
     }
   }, [authReady, currentUser?.id]);
+
+  useEffect(() => {
+    function handleKeyDown(event: KeyboardEvent) {
+      const modifier = event.metaKey || event.ctrlKey;
+      if (modifier && event.key.toLowerCase() === "k") {
+        event.preventDefault();
+        setCommandOpen(true);
+        return;
+      }
+      if (event.key === "Escape") {
+        setCommandOpen(false);
+        return;
+      }
+      if (modifier && /^[1-8]$/.test(event.key)) {
+        const nextPage = shortcutPage(event.key);
+        if (nextPage) {
+          event.preventDefault();
+          navigatePage(nextPage);
+        }
+      }
+    }
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [navigatePage]);
 
   useEffect(() => {
     if (!notice) {
@@ -215,6 +245,25 @@ export function TradingWorkspace() {
 
   async function refreshMonitor() {
     await monitor.refreshMonitor();
+  }
+
+  async function loadCommandStrategies() {
+    try {
+      const result = await strategiesApi.getStrategyMeta();
+      setCommandStrategies(result.strategies ?? []);
+    } catch {
+      setCommandStrategies([]);
+    }
+  }
+
+  function analyzeSymbolFromCommand(symbol: string) {
+    analysis.setDraft((draft) => ({ ...draft, symbol }));
+    navigatePage("analysis");
+  }
+
+  function openStrategyFromCommand(strategyKey: string) {
+    playbookData.setStrategy(strategyKey);
+    navigatePage("playbook");
   }
 
   async function addWatchlist() {
@@ -338,6 +387,14 @@ export function TradingWorkspace() {
             onClose={() => setAiDialogOpen(false)}
           />
         ) : null}
+        <CommandPalette
+          open={commandOpen}
+          strategies={commandStrategies}
+          onClose={() => setCommandOpen(false)}
+          onNavigate={navigatePage}
+          onAnalyzeSymbol={analyzeSymbolFromCommand}
+          onOpenStrategy={openStrategyFromCommand}
+        />
         <WorkspacePageContent
           AnalysisPage={AnalysisPage}
           BacktestPage={BacktestPage}
@@ -347,6 +404,7 @@ export function TradingWorkspace() {
           PlaybookPage={PlaybookPage}
           ResearchPage={ResearchPage}
           SettingsPage={SettingsPage}
+          StrategyHubPage={StrategyHubPage}
           analysis={analysis}
           currentUser={currentUser}
           loading={loading}
@@ -362,4 +420,15 @@ export function TradingWorkspace() {
       </main>
     </div>
   );
+}
+
+function shortcutPage(key: string): Page | null {
+  if (key === "1") return "monitor";
+  if (key === "2") return "analysis";
+  if (key === "3") return "playbook";
+  if (key === "4") return "strategy";
+  if (key === "5") return "paper";
+  if (key === "6") return "performance";
+  if (key === "7") return "settings";
+  return null;
 }

@@ -1,13 +1,18 @@
 import { useCallback, useEffect, useState } from "react";
 import { PAGE_PATHS } from "./workspaceConstants";
-import { pageFromLocation } from "./workspaceRoutes";
+import { normalizeLegacyWorkspacePath, pageFromLocation } from "./workspaceRoutes";
 import type { Page } from "./workspaceTypes";
 
 export function useWorkspaceNavigation() {
-  const [page, setPage] = useState<Page>(() => pageFromLocation());
+  const [page, setPage] = useState<Page>(() => {
+    normalizeLegacyWorkspacePath();
+    return pageFromLocation();
+  });
 
   useEffect(() => {
+    normalizeLegacyWorkspacePath();
     function handlePopState() {
+      normalizeLegacyWorkspacePath();
       setPage(pageFromLocation());
     }
     window.addEventListener("popstate", handlePopState);

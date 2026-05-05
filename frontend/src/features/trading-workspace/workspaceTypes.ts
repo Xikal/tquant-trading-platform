@@ -1,4 +1,13 @@
-export type Page = "monitor" | "analysis" | "playbook" | "research" | "backtests" | "paper" | "performance" | "settings";
+export type Page =
+  | "monitor"
+  | "analysis"
+  | "playbook"
+  | "strategy"
+  | "research"
+  | "backtests"
+  | "paper"
+  | "performance"
+  | "settings";
 export type Tone = "up" | "down" | "neutral" | "warn";
 
 export interface MetricItem {
