@@ -1,0 +1,99 @@
+from __future__ import annotations
+
+from dataclasses import asdict
+from math import sqrt
+from typing import Any
+
+from app.services.backtest.portfolio import PortfolioSnapshot, RealizedTrade
+
+
+class BacktestAnalyzer:
+    def analyze(
+        self,
+        *,
+        initial_cash: float,
+        equity_curve: list[PortfolioSnapshot],
+        trades: list[RealizedTrade],
+        orders: list[Any],
+    ) -> dict[str, Any]:
+        final_equity = equity_curve[-1].total_equity if equity_curve else initial_cash
+        returns = _equity_returns(equity_curve)
+        winning_trades = [trade for trade in trades if trade.net_pnl > 0]
+        losing_trades = [trade for trade in trades if trade.net_pnl < 0]
+        gross_gain = sum(trade.net_pnl for trade in winning_trades)
+        gross_loss = abs(sum(trade.net_pnl for trade in losing_trades))
+        filled_orders = [order for order in orders if getattr(order, "status", "") == "filled"]
+        rejected_orders = [order for order in orders if getattr(order, "status", "") == "rejected"]
+        return {
+            "initial_cash": round(initial_cash, 2),
+            "final_equity": round(final_equity, 2),
+            "total_return_pct": round((final_equity - initial_cash) / max(initial_cash, 0.01) * 100, 4),
+            "max_drawdown_pct": round(_max_drawdown_pct(equity_curve), 4),
+            "sharpe_ratio": round(_sharpe_ratio(returns), 4),
+            "trade_count": len(trades),
+            "filled_order_count": len(filled_orders),
+            "rejected_order_count": len(rejected_orders),
+            "win_rate_pct": round(len(winning_trades) / max(len(trades), 1) * 100, 4),
+            "profit_factor": round(gross_gain / gross_loss, 4) if gross_loss > 0 else None,
+            "avg_trade_return_pct": round(
+                sum(trade.return_pct for trade in trades) / max(len(trades), 1),
+                4,
+            ),
+            "by_strategy": _by_strategy(trades),
+            "reject_reasons": _reject_reasons(rejected_orders),
+        }
+
+
+def _equity_returns(equity_curve: list[PortfolioSnapshot]) -> list[float]:
+    values = [item.total_equity for item in equity_curve]
+    return [
+        (values[index] - values[index - 1]) / max(values[index - 1], 0.01)
+        for index in range(1, len(values))
+    ]
+
+
+def _max_drawdown_pct(equity_curve: list[PortfolioSnapshot]) -> float:
+    peak = 0.0
+    max_drawdown = 0.0
+    for item in equity_curve:
+        peak = max(peak, item.total_equity)
+        if peak > 0:
+            max_drawdown = min(max_drawdown, (item.total_equity - peak) / peak * 100)
+    return max_drawdown
+
+
+def _sharpe_ratio(returns: list[float]) -> float:
+    if len(returns) < 2:
+        return 0.0
+    avg = sum(returns) / len(returns)
+    variance = sum((item - avg) ** 2 for item in returns) / (len(returns) - 1)
+    if variance <= 0:
+        return 0.0
+    return avg / sqrt(variance) * sqrt(252)
+
+
+def _by_strategy(trades: list[RealizedTrade]) -> dict[str, dict[str, float]]:
+    grouped: dict[str, list[RealizedTrade]] = {}
+    for trade in trades:
+        grouped.setdefault(trade.strategy_key or "unknown", []).append(trade)
+    return {
+        strategy: {
+            "trade_count": len(items),
+            "net_pnl": round(sum(item.net_pnl for item in items), 2),
+            "win_rate_pct": round(sum(1 for item in items if item.net_pnl > 0) / max(len(items), 1) * 100, 4),
+            "avg_return_pct": round(sum(item.return_pct for item in items) / max(len(items), 1), 4),
+        }
+        for strategy, items in grouped.items()
+    }
+
+
+def _reject_reasons(orders: list[Any]) -> dict[str, int]:
+    output: dict[str, int] = {}
+    for order in orders:
+        reason = str(getattr(order, "reject_reason", "") or "unknown")
+        output[reason] = output.get(reason, 0) + 1
+    return output
+
+
+def dataclass_list(items: list[Any]) -> list[dict[str, Any]]:
+    return [asdict(item) for item in items]

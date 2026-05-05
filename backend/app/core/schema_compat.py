@@ -142,6 +142,16 @@ def _ensure_query_indexes(engine: Engine, existing_tables: set[str]) -> None:
         ("intraday_confirmation_snapshots", "ix_intraday_confirm_date_score", ("trade_date", "score")),
         ("risk_events", "ix_risk_events_account_status_time", ("account_id", "status", "triggered_at")),
         ("sse_subscriptions", "ix_sse_subscriptions_status_seen", ("status", "last_seen_at")),
+        ("backtest_runs", "ix_backtest_runs_owner_status_created", ("owner_user_id", "status", "created_at")),
+        ("backtest_runs", "ix_backtest_runs_status_dates", ("status", "start_date", "end_date")),
+        ("backtest_orders", "ix_backtest_orders_run_date_symbol", ("run_id", "trade_date", "symbol")),
+        ("backtest_orders", "ix_backtest_orders_run_strategy_state", ("run_id", "strategy_key", "signal_state")),
+        ("backtest_trades", "ix_backtest_trades_run_date_symbol", ("run_id", "trade_date", "symbol")),
+        ("backtest_trades", "ix_backtest_trades_strategy_market", ("strategy_key", "market_state", "trade_date")),
+        ("backtest_daily_snapshots", "ix_backtest_daily_run_date", ("run_id", "trade_date")),
+        ("backtest_dataset_manifests", "ix_backtest_manifest_key_dates", ("dataset_key", "start_date", "end_date")),
+        ("backtest_data_quality", "ix_backtest_quality_run_tag", ("run_id", "quality_tag", "severity")),
+        ("backtest_data_quality", "ix_backtest_quality_symbol_date", ("symbol", "trade_date")),
     )
     inspector = inspect(engine)
     for table_name, index_name, columns in index_specs:

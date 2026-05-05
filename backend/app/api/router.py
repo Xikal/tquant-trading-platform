@@ -8,6 +8,7 @@ from app.api.routes import (
     analysis,
     app_mobile,
     auth,
+    backtests,
     feishu,
     instruments,
     intraday,
@@ -23,6 +24,7 @@ from app.api.routes import (
 
 api_router = APIRouter()
 api_router.include_router(auth.router, tags=["auth"])
+api_router.include_router(backtests.router, tags=["backtests"])
 api_router.include_router(admin_metrics.router, tags=["admin"])
 api_router.include_router(admin_users.router, tags=["admin"])
 api_router.include_router(instruments.router, tags=["market"])

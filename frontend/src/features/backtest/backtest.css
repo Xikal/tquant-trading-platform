@@ -1,0 +1,485 @@
+.backtest-grid {
+  grid-template-columns: minmax(350px, 430px) minmax(0, 1fr);
+  grid-template-areas:
+    "hero hero"
+    "submit runs"
+    "submit detail"
+    "equity equity"
+    "trades trades";
+  gap: 12px;
+}
+
+.backtest-hero {
+  grid-area: hero;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 520px);
+  gap: 18px;
+  align-items: end;
+  min-height: 154px;
+  border-color: rgba(103, 232, 249, 0.28);
+  background:
+    linear-gradient(135deg, rgba(11, 20, 34, 0.96), rgba(17, 27, 45, 0.94)),
+    radial-gradient(circle at 78% 12%, rgba(103, 232, 249, 0.2), transparent 34%);
+  color: #ecfeff;
+  box-shadow: inset 0 0 0 1px rgba(214, 165, 92, 0.14), 0 14px 38px rgba(11, 20, 34, 0.14);
+}
+
+.backtest-kicker {
+  display: inline-flex;
+  margin-bottom: 8px;
+  color: #f4d08a;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.backtest-hero h1 {
+  margin: 0;
+  font-size: clamp(28px, 4vw, 46px);
+  letter-spacing: -0.06em;
+}
+
+.backtest-hero p {
+  max-width: 620px;
+  margin: 8px 0 0;
+  color: #aeb8c7;
+}
+
+.backtest-status-rail {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.backtest-submit {
+  grid-area: submit;
+}
+
+.backtest-runs {
+  grid-area: runs;
+}
+
+.backtest-detail {
+  grid-area: detail;
+}
+
+.backtest-equity {
+  grid-area: equity;
+}
+
+.backtest-trades {
+  grid-area: trades;
+}
+
+.backtest-panel-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.backtest-panel-title h2 {
+  margin: 0;
+  font-size: 15px;
+}
+
+.backtest-muted {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.backtest-notice,
+.backtest-error,
+.backtest-empty,
+.backtest-chart-empty {
+  padding: 9px 10px;
+  border-radius: 10px;
+  font-size: 12px;
+}
+
+.backtest-notice {
+  margin-bottom: 10px;
+  border: 1px solid rgba(31, 139, 76, 0.24);
+  background: #f0fbf4;
+  color: #166534;
+}
+
+.backtest-error {
+  margin-bottom: 10px;
+  border: 1px solid rgba(195, 74, 54, 0.26);
+  background: #fff4f1;
+  color: #991b1b;
+}
+
+.backtest-empty,
+.backtest-chart-empty {
+  border: 1px dashed #cbd5e1;
+  background: #f8fafc;
+  color: var(--muted);
+}
+
+.backtest-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.backtest-field,
+.backtest-field-group {
+  display: grid;
+  gap: 6px;
+}
+
+.backtest-field.wide,
+.backtest-field-group.wide,
+.backtest-strategy-picker.wide,
+.backtest-submit-button.wide {
+  grid-column: 1 / -1;
+}
+
+.backtest-field span,
+.backtest-field-group > span,
+.backtest-strategy-picker > span {
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.backtest-field input,
+.backtest-field select,
+.backtest-field-group input {
+  min-height: 34px;
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: #f9fbff;
+  color: var(--text);
+  padding: 7px 9px;
+}
+
+.backtest-field-group {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.backtest-field-group > span {
+  grid-column: 1 / -1;
+}
+
+.backtest-field-group label {
+  display: grid;
+  gap: 5px;
+}
+
+.backtest-field-group small {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.backtest-strategy-picker {
+  display: grid;
+  gap: 7px;
+}
+
+.backtest-strategy-picker label {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 2px 8px;
+  align-items: center;
+  padding: 8px 10px;
+  border: 1px solid #dce5f0;
+  border-radius: 10px;
+  background: #f8fafc;
+}
+
+.backtest-strategy-picker label.selected {
+  border-color: rgba(214, 165, 92, 0.7);
+  background: #fff8e8;
+}
+
+.backtest-strategy-picker input {
+  grid-row: span 2;
+  accent-color: var(--accent);
+}
+
+.backtest-strategy-picker strong {
+  font-size: 12px;
+}
+
+.backtest-strategy-picker small {
+  color: var(--muted);
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 10px;
+}
+
+.backtest-submit-button {
+  min-height: 38px;
+  border-radius: 10px;
+  background: linear-gradient(90deg, #d6a55c 0%, #0b1422 48%, #0b1422 100%);
+}
+
+.backtest-status {
+  display: inline-grid;
+  gap: 2px;
+  min-width: 82px;
+  padding: 6px 8px;
+  border: 1px solid #dce5f0;
+  border-radius: 10px;
+  background: #f8fafc;
+  color: #475569;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 11px;
+  font-weight: 900;
+  text-align: left;
+}
+
+.backtest-status small {
+  color: inherit;
+  font-family: "IBM Plex Sans", "PingFang SC", sans-serif;
+  font-size: 10px;
+  opacity: 0.76;
+}
+
+.backtest-status.pending {
+  border-color: rgba(214, 165, 92, 0.4);
+  background: #fff8e8;
+  color: #a16207;
+}
+
+.backtest-status.running {
+  border-color: rgba(103, 232, 249, 0.38);
+  background: #ecfeff;
+  color: #036672;
+}
+
+.backtest-status.completed {
+  border-color: rgba(31, 139, 76, 0.28);
+  background: #f0fbf4;
+  color: #166534;
+}
+
+.backtest-status.failed {
+  border-color: rgba(195, 74, 54, 0.28);
+  background: #fff4f1;
+  color: #991b1b;
+}
+
+.backtest-status.cancelled {
+  border-color: rgba(100, 116, 139, 0.25);
+  background: #f1f5f9;
+  color: #475569;
+}
+
+.backtest-run-list {
+  display: grid;
+  gap: 8px;
+}
+
+.backtest-run-row {
+  display: grid;
+  grid-template-columns: 110px minmax(150px, 1fr) minmax(180px, 0.9fr) 84px 92px;
+  gap: 10px;
+  align-items: center;
+  width: 100%;
+  border-radius: 12px;
+  background: #fff;
+  text-align: left;
+}
+
+.backtest-run-row.active {
+  border-color: rgba(214, 165, 92, 0.72);
+  background: linear-gradient(90deg, #fff8e8, #fff);
+}
+
+.backtest-run-row strong,
+.backtest-run-row span,
+.backtest-run-row small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.backtest-run-row > span:not(.backtest-status),
+.backtest-run-row > small {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.backtest-summary-line {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.backtest-summary-line span {
+  padding: 5px 8px;
+  border-radius: 999px;
+  background: #f1f5f9;
+  color: #475569;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.backtest-metric-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.backtest-metric {
+  display: grid;
+  gap: 4px;
+  min-height: 58px;
+  padding: 9px 10px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #f8fafc;
+}
+
+.backtest-metric span {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.backtest-metric strong {
+  font-size: 18px;
+}
+
+.backtest-metric.up {
+  border-color: #f2b8aa;
+  background: #fff4f1;
+  color: var(--up);
+}
+
+.backtest-metric.down {
+  border-color: #b8e5c7;
+  background: #f0fbf4;
+  color: var(--down);
+}
+
+.backtest-chart-wrap {
+  display: grid;
+  gap: 10px;
+  border-radius: 16px;
+  background: #08111f;
+  padding: 12px;
+}
+
+.backtest-chart-wrap svg {
+  display: block;
+  width: 100%;
+  min-height: 220px;
+}
+
+.backtest-chart-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  color: #aeb8c7;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 12px;
+}
+
+.backtest-chart-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.backtest-chart-legend i {
+  width: 20px;
+  height: 3px;
+  border-radius: 999px;
+}
+
+.backtest-chart-legend i.strategy {
+  background: #67e8f9;
+}
+
+.backtest-chart-legend i.benchmark {
+  background: #d6a55c;
+}
+
+.backtest-trade-table {
+  display: grid;
+  gap: 6px;
+  overflow-x: auto;
+}
+
+.backtest-trade-row {
+  display: grid;
+  grid-template-columns: 110px 92px 66px 84px 84px 96px minmax(150px, 1fr) 78px 112px;
+  gap: 8px;
+  align-items: center;
+  min-width: 940px;
+  padding: 8px 10px;
+  border: 1px solid #e8eef6;
+  border-radius: 10px;
+  background: #fff;
+  color: #475569;
+  font-size: 12px;
+}
+
+.backtest-trade-row.head {
+  background: #0b1422;
+  color: #cbd5e1;
+  font-weight: 900;
+}
+
+.backtest-trade-row strong {
+  color: var(--text);
+}
+
+.backtest-trade-row .buy,
+.backtest-trade-row .up {
+  color: var(--up);
+  font-weight: 900;
+}
+
+.backtest-trade-row .sell,
+.backtest-trade-row .down {
+  color: var(--down);
+  font-weight: 900;
+}
+
+@media (max-width: 1080px) {
+  .backtest-grid,
+  .backtest-hero {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "hero"
+      "submit"
+      "runs"
+      "detail"
+      "equity"
+      "trades";
+  }
+
+  .backtest-status-rail,
+  .backtest-metric-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .backtest-run-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .backtest-form,
+  .backtest-field-group,
+  .backtest-status-rail,
+  .backtest-metric-grid {
+    grid-template-columns: 1fr;
+  }
+}

@@ -57,6 +57,17 @@ from app.models.schema_defs.auth import (
     AuthTokenResponse,
     AuthUserOut,
 )
+from app.models.schema_defs.backtest import (
+    BacktestEquityPoint,
+    BacktestEquityResponse,
+    BacktestMutationResponse,
+    BacktestRunCreate,
+    BacktestRunDetail,
+    BacktestRunListResponse as BacktestRunV2ListResponse,
+    BacktestRunSummary,
+    BacktestTradeOut,
+    BacktestTradesResponse,
+)
 from app.models.schema_defs.feishu import FeishuBindingRequest, FeishuBindingResponse, FeishuEventResponse
 from app.models.schema_defs.market import MarketBreadthResponse
 from app.models.schema_defs.paper import (
@@ -205,9 +216,18 @@ __all__ = [
     "AnalysisResponse",
     "BacktestRequest",
     "BacktestResponse",
+    "BacktestEquityPoint",
+    "BacktestEquityResponse",
+    "BacktestMutationResponse",
+    "BacktestRunCreate",
+    "BacktestRunDetail",
     "BacktestRunListResponse",
     "BacktestRunOut",
+    "BacktestRunSummary",
+    "BacktestRunV2ListResponse",
     "BacktestTrade",
+    "BacktestTradeOut",
+    "BacktestTradesResponse",
     "DatabaseCheckRequest",
     "DatabaseCheckResponse",
     "DatabaseMigrationRequest",

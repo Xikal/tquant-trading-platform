@@ -13,6 +13,13 @@ from app.models.auth_system_entities import (
     UserFeishuBinding,
     UserSession,
 )
+from app.models.backtest_entities import (
+    BacktestDailySnapshot,
+    BacktestDataQuality,
+    BacktestDatasetManifest,
+    BacktestOrder,
+    BacktestTrade,
+)
 from app.models.low_buy_entities import (
     LowBuyCloseReviewSnapshot,
     LowBuyHotIndustrySnapshot,
@@ -64,6 +71,11 @@ __all__ = [
     "AnalysisLog",
     "SignalReplay",
     "BacktestRun",
+    "BacktestDailySnapshot",
+    "BacktestDataQuality",
+    "BacktestDatasetManifest",
+    "BacktestOrder",
+    "BacktestTrade",
     "MarketEventCache",
     "MinuteBarSnapshot",
     "DailyBarSnapshot",

@@ -12,6 +12,7 @@ import type { Page, StockCardView } from "./workspaceTypes";
 
 interface WorkspacePageContentProps {
   AnalysisPage: ComponentType<ComponentProps<any>>;
+  BacktestPage: ComponentType;
   MonitorPage: ComponentType<MonitorPageProps>;
   PaperTradingPage: ComponentType<PaperTradingPageProps>;
   PerformanceDashboard: ComponentType;
@@ -33,6 +34,7 @@ interface WorkspacePageContentProps {
 
 export function WorkspacePageContent({
   AnalysisPage,
+  BacktestPage,
   MonitorPage,
   PaperTradingPage,
   PerformanceDashboard,
@@ -92,6 +94,7 @@ export function WorkspacePageContent({
             onRefresh={() => void research.loadResearch()}
           />
         )}
+        {page === "backtests" && <BacktestPage />}
         {page === "paper" && (
           currentUser.can_paper_trade ? (
             <PaperTradingPage {...paperPageProps} />

@@ -5,3 +5,4 @@
 @import "./workspace/workspace-responsive.css";
 @import "./workspace/paper-trading.css";
 @import "./workspace/performance-dashboard.css";
+@import "../features/backtest/backtest.css";

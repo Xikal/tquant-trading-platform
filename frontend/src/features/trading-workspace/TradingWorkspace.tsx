@@ -23,6 +23,7 @@ import { useWorkspacePageProps } from "./useWorkspacePageProps";
 import { WorkspacePageContent } from "./WorkspacePageContent";
 
 const AnalysisPage = lazy(async () => ({ default: (await import("./AnalysisPage")).AnalysisPage }));
+const BacktestPage = lazy(async () => ({ default: (await import("../backtest/BacktestPage")).BacktestPage }));
 const MonitorPage = lazy(async () => ({ default: (await import("./MonitorPage")).MonitorPage }));
 const PaperTradingPage = lazy(async () => ({ default: (await import("./PaperTradingPage")).PaperTradingPage }));
 const PerformanceDashboard = lazy(async () => ({ default: (await import("./PerformanceDashboard")).PerformanceDashboard }));
@@ -339,6 +340,7 @@ export function TradingWorkspace() {
         ) : null}
         <WorkspacePageContent
           AnalysisPage={AnalysisPage}
+          BacktestPage={BacktestPage}
           MonitorPage={MonitorPage}
           PaperTradingPage={PaperTradingPage}
           PerformanceDashboard={PerformanceDashboard}
