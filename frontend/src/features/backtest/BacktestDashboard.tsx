@@ -248,7 +248,7 @@ export function BacktestDashboard({
         </div>
       </section>
 
-      <BacktestResearchPanel state={research} actions={researchActions} />
+      <BacktestResearchPanel state={research} actions={researchActions} equity={equity} />
     </section>
   );
 }

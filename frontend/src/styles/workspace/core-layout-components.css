@@ -211,12 +211,37 @@
 .settings-mini-row span {
   overflow: hidden;
   text-overflow: ellipsis;
+  min-width: 120px;
+}
+
+.settings-mini-row span .hint {
+  display: block;
+  margin-top: 2px;
   white-space: nowrap;
 }
 
 .settings-mini-row strong {
   flex: 0 0 auto;
   font-size: 11px;
+}
+
+.settings-row-actions {
+  display: inline-flex;
+  flex: 0 0 auto;
+  gap: 4px;
+}
+
+.settings-row-actions button {
+  padding: 4px 7px;
+  border-radius: 6px;
+  border: 1px solid var(--line);
+  background: #ffffff;
+  color: var(--ink);
+  font-size: 10px;
+}
+
+.settings-row-actions button:hover:not(:disabled) {
+  border-color: var(--accent);
 }
 
 .governance-status.active,

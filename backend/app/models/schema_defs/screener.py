@@ -41,6 +41,11 @@ class LowBuyStrategyGovernanceResponse(BaseModel):
     items: list[LowBuyStrategyGovernanceItemOut] = Field(default_factory=list)
 
 
+class LowBuyStrategyGovernanceUpdate(BaseModel):
+    status: Literal["active", "watch", "paused"]
+    reason: str = ""
+
+
 class LowBuyExitPlanOut(BaseModel):
     stop_loss: float = 0.0
     first_take_profit: float = 0.0

@@ -131,6 +131,14 @@ export const api = {
   getAdminTasks: () => request<AdminTasksResponse>("/admin/tasks"),
   getLowBuyStrategies: () =>
     requestCached<LowBuyStrategyGovernanceResponse>("/screeners/low-buy/strategies", 30000),
+  updateLowBuyStrategyGovernance: (strategyKey: string, payload: { status: "active" | "watch" | "paused"; reason?: string }) =>
+    request<LowBuyStrategyGovernanceResponse>(`/screeners/low-buy/strategies/${encodeURIComponent(strategyKey)}`, {
+      method: "PATCH",
+      body: JSON.stringify(payload)
+    }).then((result) => {
+      invalidateCache(["/screeners/low-buy/strategies", "/screeners/low-buy", "/monitor/snapshot"]);
+      return result;
+    }),
   migrateDatabase: (payload: {
     target_database_url: string;
     source_database_url?: string;

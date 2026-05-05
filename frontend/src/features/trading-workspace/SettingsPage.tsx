@@ -24,6 +24,7 @@ export function SettingsPage({
   onSave,
   onSaveFactors,
   onRefresh,
+  onUpdateStrategyGovernance,
 }: {
   settings: SettingsPayload | null;
   runtime: RuntimeStatus | null;
@@ -38,6 +39,7 @@ export function SettingsPage({
   onSave: (section: "llm" | "risk" | "data") => void;
   onSaveFactors: () => void;
   onRefresh: () => void;
+  onUpdateStrategyGovernance: (strategyKey: string, status: "active" | "watch" | "paused") => void;
 }) {
   const adminTokenError = draft.adminToken.trim() ? "" : "保存配置前需要填写管理令牌";
   const singleLossError = percentFieldError(draft.risk_max_single_loss_pct, "单笔最大亏损");
@@ -104,15 +106,23 @@ export function SettingsPage({
           <InfoPill label="治理状态" value={strategyGovernance ? strategyGovernanceSummary(strategyGovernance) : "--"} />
           {strategyGovernance ? (
             <div className="settings-mini-list">
-              {strategyGovernance.items.slice(0, 6).map((item) => (
+              {strategyGovernance.items.slice(0, 8).map((item) => (
                 <div key={item.strategy_key} className="settings-mini-row">
-                  <span>{item.strategy_title}</span>
+                  <span>
+                    {item.strategy_title}
+                    <small className="hint">{item.strategy_key}</small>
+                  </span>
                   <strong className={`governance-status ${item.status}`}>
                     {item.strategy_health_score ? `${item.strategy_health_score} / ${item.status_text || item.status}` : item.status_text || item.status}
                   </strong>
                   {item.auto_governance_reason ? (
                     <small className="hint">{item.auto_governance_reason}</small>
                   ) : null}
+                  <div className="settings-row-actions">
+                    <button type="button" onClick={() => onUpdateStrategyGovernance(item.strategy_key, "active")} disabled={loading === "settings"}>恢复</button>
+                    <button type="button" onClick={() => onUpdateStrategyGovernance(item.strategy_key, "watch")} disabled={loading === "settings"}>观察</button>
+                    <button type="button" onClick={() => onUpdateStrategyGovernance(item.strategy_key, "paused")} disabled={loading === "settings"}>暂停</button>
+                  </div>
                 </div>
               ))}
             </div>

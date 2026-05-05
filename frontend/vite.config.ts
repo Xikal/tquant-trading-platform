@@ -43,8 +43,11 @@ function splitVendorChunks(id: string): string | undefined {
   if (!id.includes("node_modules")) {
     return undefined;
   }
-  if (id.includes("/echarts") || id.includes("\\echarts") || id.includes("zrender")) {
-    return "charts";
+  if (id.includes("zrender")) {
+    return "zrender";
+  }
+  if (id.includes("/echarts") || id.includes("\\echarts")) {
+    return "echarts";
   }
   if (id.includes("/@capacitor") || id.includes("\\@capacitor")) {
     return "native";

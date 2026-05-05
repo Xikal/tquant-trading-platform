@@ -1,8 +1,9 @@
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { api } from "../api/client"
 import type {
   PaperAccount,
   PaperGroupedPerformance,
+  PaperOrderCreate,
   PaperOrder,
   PaperPerformance,
   PaperPosition,
@@ -19,12 +20,13 @@ export function useMobilePaperTrading(enabled: boolean) {
   const [paperMarketPerformance, setPaperMarketPerformance] = useState<PaperGroupedPerformance[]>([])
   const [paperLoading, setPaperLoading] = useState("")
   const [paperError, setPaperError] = useState("")
-  const [paperMessage] = useState("")
+  const [paperMessage, setPaperMessage] = useState("")
 
-  async function loadPaper() {
+  const loadPaper = useCallback(async () => {
     try {
       setPaperLoading("paper")
       setPaperError("")
+      setPaperMessage("")
       const [
         accountResult,
         positionsResult,
@@ -57,13 +59,30 @@ export function useMobilePaperTrading(enabled: boolean) {
     } finally {
       setPaperLoading("")
     }
-  }
+  }, [])
+
+  const submitPaperOrder = useCallback(async (payload: PaperOrderCreate) => {
+    try {
+      setPaperLoading("paper_order")
+      setPaperError("")
+      setPaperMessage("")
+      await api.createPaperOrder(payload)
+      setPaperMessage("模拟委托已提交")
+      await loadPaper()
+      return true
+    } catch (error) {
+      setPaperError(error instanceof Error ? error.message : "模拟委托提交失败")
+      return false
+    } finally {
+      setPaperLoading("")
+    }
+  }, [loadPaper])
 
   useEffect(() => {
     if (enabled && !paperAccount && !paperLoading) {
       void loadPaper()
     }
-  }, [enabled, paperAccount, paperLoading])
+  }, [enabled, loadPaper, paperAccount, paperLoading])
 
   return {
     paperAccount,
@@ -76,6 +95,7 @@ export function useMobilePaperTrading(enabled: boolean) {
     paperLoading,
     paperError,
     paperMessage,
-    loadPaper
+    loadPaper,
+    submitPaperOrder
   }
 }

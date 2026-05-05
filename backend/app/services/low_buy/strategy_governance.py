@@ -7,6 +7,7 @@ from typing import Any
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from app.core.timezone import beijing_now_string
 from app.core.database import SessionLocal
 from app.models.entities import (
     LowBuyStrategyPerformanceSnapshot,
@@ -245,14 +246,62 @@ _AUTO_GOVERNANCE_CACHE_TTL_SECONDS = 60
 _AUTO_GOVERNANCE_CACHE: tuple[float, dict[str, dict[str, Any]]] = (0.0, {})
 
 
-def _load_auto_governance_overrides(db: Session) -> dict[str, dict[str, Any]]:
+def set_strategy_governance_override(
+    db: Session,
+    *,
+    strategy_key: str,
+    status: str,
+    reason: str = "",
+) -> LowBuyStrategyGovernanceResponse:
+    if strategy_key not in PLAYBOOKS:
+        raise ValueError(f"未知策略：{strategy_key}")
+    if status not in {"active", "watch", "paused"}:
+        raise ValueError("策略状态只能是 active、watch 或 paused")
+
+    payload = _load_governance_payload(db)
+    items = payload.setdefault("items", {})
+    if status == "active":
+        items.pop(strategy_key, None)
+    else:
+        items[strategy_key] = {
+            "status": status,
+            "reason": reason.strip() or _manual_governance_reason(status),
+            "updated_at": beijing_now_string(),
+            "source": "manual_admin",
+        }
+    payload["updated_at"] = beijing_now_string()
+    SystemSettingRepository(db).upsert(AUTO_GOVERNANCE_SETTING_KEY, json.dumps(payload, ensure_ascii=False))
+    db.commit()
+    _clear_auto_governance_cache()
+    return build_low_buy_strategy_governance(db)
+
+
+def _load_governance_payload(db: Session) -> dict[str, Any]:
     row = SystemSettingRepository(db).fetch(AUTO_GOVERNANCE_SETTING_KEY)
     if row is None or not row.value:
-        return {}
+        return {"items": {}}
     try:
         payload = json.loads(row.value)
     except json.JSONDecodeError:
-        return {}
+        return {"items": {}}
+    return payload if isinstance(payload, dict) else {"items": {}}
+
+
+def _manual_governance_reason(status: str) -> str:
+    if status == "paused":
+        return "管理员手动暂停强信号"
+    if status == "watch":
+        return "管理员手动降级为观察"
+    return ""
+
+
+def _clear_auto_governance_cache() -> None:
+    global _AUTO_GOVERNANCE_CACHE
+    _AUTO_GOVERNANCE_CACHE = (0.0, {})
+
+
+def _load_auto_governance_overrides(db: Session) -> dict[str, dict[str, Any]]:
+    payload = _load_governance_payload(db)
     items = payload.get("items") if isinstance(payload, dict) else {}
     return items if isinstance(items, dict) else {}
 

@@ -1,8 +1,8 @@
 import type {
   BacktestAttributionResponse,
   BacktestCompareResponse,
-  BacktestMonthlyReturn,
   BacktestExecutionModel,
+  EquityPoint,
   BacktestMonthlyReturnsResponse,
   BacktestOptimizationDetail,
   BacktestOptimizationSummary,
@@ -12,6 +12,7 @@ import type {
   BacktestValidationDetail,
   BacktestValidationSummary,
 } from "../../api/backtests";
+import { lazy, Suspense, useMemo, useState } from "react";
 import { ErrorBanner } from "../../components/shared/Feedback";
 import {
   DateField as SharedDateField,
@@ -32,6 +33,10 @@ import {
   pboRiskMeta,
   toneFromNumber,
 } from "./backtestDisplay";
+
+const LazyBacktestCompareChart = lazy(() => import("./LazyBacktestCompareChart"));
+const LazyBacktestMonthlyHeatmap = lazy(() => import("./LazyBacktestMonthlyHeatmap"));
+const LazyBacktestReturnDistribution = lazy(() => import("./LazyBacktestReturnDistribution"));
 
 export interface OptimizationFormState {
   name: string;
@@ -104,10 +109,12 @@ export function BacktestResearchPanel({
   state,
   actions,
   sections,
+  equity = [],
 }: {
   state: BacktestResearchState;
   actions: BacktestResearchActions;
   sections?: BacktestResearchSection[];
+  equity?: EquityPoint[];
 }) {
   const visibleSections = new Set<BacktestResearchSection>(
     sections ?? ["optimization", "validation", "compare", "attribution"]
@@ -132,7 +139,7 @@ export function BacktestResearchPanel({
         {visibleSections.has("optimization") ? <OptimizationPanel state={state} actions={actions} /> : null}
         {visibleSections.has("validation") ? <ValidationPanel state={state} actions={actions} /> : null}
         {visibleSections.has("compare") ? <ComparePanel state={state} actions={actions} /> : null}
-        {visibleSections.has("attribution") ? <AttributionPanel state={state} /> : null}
+        {visibleSections.has("attribution") ? <AttributionPanel state={state} equity={equity ?? []} /> : null}
       </div>
     </section>
   );
@@ -279,7 +286,12 @@ function ValidationPanel({ state, actions }: { state: BacktestResearchState; act
 }
 
 function ComparePanel({ state, actions }: { state: BacktestResearchState; actions: BacktestResearchActions }) {
+  const [sortKey, setSortKey] = useState<"return" | "sharpe" | "drawdown">("return");
   const selectedRunIds = parseRunIdsLoose(state.compareRunIds);
+  const compareItems = useMemo(
+    () => sortCompareItems(state.compareResult?.items ?? [], sortKey),
+    [state.compareResult?.items, sortKey],
+  );
   const toggleRunId = (runId: number) => {
     const next = selectedRunIds.includes(runId)
       ? selectedRunIds.filter((item) => item !== runId)
@@ -288,7 +300,7 @@ function ComparePanel({ state, actions }: { state: BacktestResearchState; action
   };
   return (
     <section className="backtest-research-card">
-      <PanelTitle title="回测对比" meta="指标表 + SVG" />
+      <PanelTitle title="回测对比" meta="复选运行 + 可排序指标 + ECharts" />
       <div className="backtest-run-picker" aria-label="已完成回测快捷选择">
         {state.completedRuns.slice(0, 8).map((run) => (
           <button
@@ -301,21 +313,20 @@ function ComparePanel({ state, actions }: { state: BacktestResearchState; action
           </button>
         ))}
       </div>
-      <label className="backtest-field">
-        <span>Run IDs</span>
-        <input value={state.compareRunIds} placeholder="42,45,47" onChange={(event) => actions.onCompareRunIdsChange(event.target.value)} />
-      </label>
-      <button type="button" onClick={actions.onRunCompare} disabled={state.loading === "compare"}>
-        {state.loading === "compare" ? "对比中..." : "运行对比"}
-      </button>
+      <div className="backtest-compare-actions">
+        <span>已选 {selectedRunIds.length} 个回测</span>
+        <button type="button" onClick={actions.onRunCompare} disabled={state.loading === "compare" || selectedRunIds.length < 2}>
+          {state.loading === "compare" ? "对比中..." : "运行对比"}
+        </button>
+      </div>
       <div className="backtest-data-table narrow" role="table" aria-label="回测对比指标">
         <div className="row head" role="row">
           <span>Run</span>
-          <span>收益</span>
-          <span>Sharpe</span>
-          <span>MaxDD</span>
+          <button type="button" onClick={() => setSortKey("return")}>收益</button>
+          <button type="button" onClick={() => setSortKey("sharpe")}>Sharpe</button>
+          <button type="button" onClick={() => setSortKey("drawdown")}>MaxDD</button>
         </div>
-        {(state.compareResult?.items ?? []).map((item) => (
+        {compareItems.map((item) => (
           <div className="row" role="row" key={item.run_id}>
             <span>#{item.run_id} {item.name ?? ""}</span>
             <span className={toneFromNumber(item.metrics?.total_return_pct)}>{formatPct(item.metrics?.total_return_pct)}</span>
@@ -323,11 +334,15 @@ function ComparePanel({ state, actions }: { state: BacktestResearchState; action
             <span className="down">{formatPct(item.metrics?.max_drawdown_pct)}</span>
           </div>
         ))}
-        {state.compareResult?.items?.length ? null : <Empty text="输入 run ids 后展示多回测指标对比。" />}
+        {compareItems.length ? null : <Empty text="选择至少 2 个已完成回测后运行对比。" />}
       </div>
-      <MultiEquitySvg result={state.compareResult} />
+      <Suspense fallback={<div className="backtest-chart-fallback">对比图加载中...</div>}>
+        <LazyBacktestCompareChart result={state.compareResult} />
+      </Suspense>
       <PanelTitle title="月度收益" meta="按月聚合" />
-      <MonthlyHeatmapSvg items={state.monthlyReturns?.items ?? []} />
+      <Suspense fallback={<div className="backtest-chart-fallback">热力图加载中...</div>}>
+        <LazyBacktestMonthlyHeatmap items={state.monthlyReturns?.items ?? []} />
+      </Suspense>
       <div className="backtest-data-table narrow" role="table" aria-label="月度收益">
         <div className="row head" role="row">
           <span>月份</span>
@@ -349,7 +364,7 @@ function ComparePanel({ state, actions }: { state: BacktestResearchState; action
   );
 }
 
-function AttributionPanel({ state }: { state: BacktestResearchState }) {
+function AttributionPanel({ state, equity }: { state: BacktestResearchState; equity: EquityPoint[] }) {
   const attribution = state.attribution;
   const correlation = state.correlation;
   const strategy = attribution?.strategy ?? attribution?.by_strategy ?? [];
@@ -360,6 +375,11 @@ function AttributionPanel({ state }: { state: BacktestResearchState }) {
       <AttributionTable title="行业归因" items={attribution?.industry ?? []} />
       <AttributionTable title="市场状态归因" items={attribution?.market_state ?? []} />
       <AttributionTable title="质量分桶" items={attribution?.data_quality ?? []} />
+      <StrategyDecompositionTable attribution={attribution} />
+      <PanelTitle title="收益分布" meta="日收益直方图 + 正态拟合" />
+      <Suspense fallback={<div className="backtest-chart-fallback">收益分布加载中...</div>}>
+        <LazyBacktestReturnDistribution points={equity} />
+      </Suspense>
       <PanelTitle title="相关性矩阵" meta="Pearson" />
       <div
         className="backtest-correlation"
@@ -423,6 +443,50 @@ function AttributionTable({ title, items }: { title: string; items: NonNullable<
   );
 }
 
+function StrategyDecompositionTable({ attribution }: { attribution: BacktestAttributionResponse | null }) {
+  const rows = [
+    ...normalizeAttributionRows("策略", attribution?.strategy ?? attribution?.by_strategy ?? []),
+    ...normalizeAttributionRows("行业", attribution?.industry ?? []),
+    ...normalizeAttributionRows("市场", attribution?.market_state ?? []),
+    ...normalizeAttributionRows("质量", attribution?.data_quality ?? []),
+  ]
+    .sort((a, b) => Math.abs(b.returnValue) - Math.abs(a.returnValue))
+    .slice(0, 10);
+  return (
+    <div className="backtest-data-table decomposition" role="table" aria-label="策略拆解对比">
+      <div className="row caption" role="row">策略拆解对比</div>
+      <div className="row head" role="row">
+        <span>类型</span>
+        <span>分桶</span>
+        <span>样本</span>
+        <span>胜率</span>
+        <span>收益贡献</span>
+      </div>
+      {rows.map((item) => (
+        <div className="row" role="row" key={`${item.group}-${item.label}`}>
+          <span>{item.group}</span>
+          <span>{item.label}</span>
+          <span>{formatInteger(item.tradeCount)}</span>
+          <span>{formatPct(item.winRate)}</span>
+          <span className={toneFromNumber(item.returnValue)}>{formatMoneyOrPct(item.netPnl, item.returnValue)}</span>
+        </div>
+      ))}
+      {rows.length ? null : <Empty text="暂无可拆解的策略归因数据。" />}
+    </div>
+  );
+}
+
+function normalizeAttributionRows(group: string, rows: NonNullable<BacktestAttributionResponse["industry"]>) {
+  return rows.map((item) => ({
+    group,
+    label: item.label || item.bucket || "--",
+    tradeCount: Number(item.trade_count ?? 0),
+    winRate: Number(item.win_rate_pct ?? 0),
+    netPnl: item.net_pnl,
+    returnValue: Number(item.contribution_pct ?? item.return_pct ?? item.net_pnl ?? 0),
+  }));
+}
+
 function TaskList<T extends { id: number; name: string; status: string; progress?: number | null; progress_pct?: number | null; strategy?: string }>({
   items,
   selectedId,
@@ -451,84 +515,6 @@ function TaskList<T extends { id: number; name: string; status: string; progress
       {items.length ? null : <Empty text="暂无研究任务。" />}
     </div>
   );
-}
-
-function MultiEquitySvg({ result }: { result: BacktestCompareResponse | null }) {
-  const series = (result?.items ?? []).filter((item) => (item.equity ?? []).length >= 2).slice(0, 4);
-  if (!series.length) {
-    return null;
-  }
-  const values = series.flatMap((item) => (item.equity ?? []).map((point) => point.nav));
-  const min = Math.min(...values);
-  const max = Math.max(...values);
-  const colors = ["#67e8f9", "#d6a55c", "#f97316", "#22c55e"];
-  return (
-    <div className="backtest-compare-chart">
-      <svg viewBox="0 0 520 160" role="img" aria-label="回测对比净值曲线">
-        {[36, 72, 108, 144].map((y) => <line x1="18" x2="502" y1={y} y2={y} key={y} />)}
-        {series.map((item, index) => (
-          <path d={buildLinePath((item.equity ?? []).map((point) => point.nav), min, max, 520, 160)} key={item.run_id} stroke={colors[index]} />
-        ))}
-      </svg>
-      <div className="backtest-chart-legend">
-        {series.map((item, index) => <span key={item.run_id}><i style={{ background: colors[index] }} />#{item.run_id}</span>)}
-      </div>
-    </div>
-  );
-}
-
-function MonthlyHeatmapSvg({ items }: { items: BacktestMonthlyReturn[] }) {
-  if (!items.length) {
-    return null;
-  }
-  const years = Array.from(new Set(items.map((item) => item.month.slice(0, 4)))).sort();
-  const months = ["01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12"];
-  const values = items.map((item) => Number(item.return_pct ?? 0)).filter(Number.isFinite);
-  const maxAbs = Math.max(1, ...values.map((value) => Math.abs(value)));
-  const cellW = 38;
-  const cellH = 24;
-  const width = 64 + months.length * cellW;
-  const height = 26 + years.length * cellH;
-  const itemMap = new Map(items.map((item) => [item.month, item]));
-
-  return (
-    <div className="backtest-monthly-heatmap">
-      <svg viewBox={`0 0 ${width} ${height}`} role="img" aria-label="月度收益热力图">
-        {months.map((month, index) => (
-          <text key={month} x={64 + index * cellW + cellW / 2} y={16} textAnchor="middle">{month}</text>
-        ))}
-        {years.map((year, row) => (
-          <g key={year}>
-            <text x={8} y={36 + row * cellH} textAnchor="start">{year}</text>
-            {months.map((month, col) => {
-              const item = itemMap.get(`${year}-${month}`);
-              const value = Number(item?.return_pct ?? 0);
-              return (
-                <g key={`${year}-${month}`}>
-                  <rect
-                    x={64 + col * cellW}
-                    y={24 + row * cellH}
-                    width={cellW - 4}
-                    height={cellH - 4}
-                    rx={5}
-                    fill={heatmapColor(value, maxAbs)}
-                  />
-                  {item ? <text x={64 + col * cellW + cellW / 2 - 2} y={39 + row * cellH} textAnchor="middle">{value.toFixed(1)}</text> : null}
-                </g>
-              );
-            })}
-          </g>
-        ))}
-      </svg>
-    </div>
-  );
-}
-
-function heatmapColor(value: number, maxAbs: number): string {
-  if (!Number.isFinite(value) || value === 0) return "#f8fafc";
-  const strength = Math.min(Math.abs(value) / maxAbs, 1);
-  const alpha = 0.18 + strength * 0.62;
-  return value > 0 ? `rgba(220, 38, 38, ${alpha})` : `rgba(22, 163, 74, ${alpha})`;
 }
 
 function PanelTitle({ title, meta }: { title: string; meta?: string }) {
@@ -621,6 +607,16 @@ function parseRunIdsLoose(value: string): number[] {
     .filter((item) => Number.isInteger(item) && item > 0);
 }
 
+function sortCompareItems(items: NonNullable<BacktestCompareResponse["items"]>, sortKey: "return" | "sharpe" | "drawdown") {
+  return [...items].sort((a, b) => compareMetric(b, sortKey) - compareMetric(a, sortKey));
+}
+
+function compareMetric(item: NonNullable<BacktestCompareResponse["items"]>[number], sortKey: "return" | "sharpe" | "drawdown") {
+  if (sortKey === "sharpe") return Number(item.metrics?.sharpe ?? item.metrics?.sharpe_ratio ?? -Infinity);
+  if (sortKey === "drawdown") return -Math.abs(Number(item.metrics?.max_drawdown_pct ?? Infinity));
+  return Number(item.metrics?.total_return_pct ?? -Infinity);
+}
+
 function firstNumber(value: string, fallback: number): number {
   const first = Number(String(value || "").split(",")[0]?.trim());
   return Number.isFinite(first) ? first : fallback;
@@ -633,13 +629,4 @@ function percentToSlider(value: string, fallbackPct: number): number {
 
 function ratioFromPercent(value: number): string {
   return String(Number((value / 100).toFixed(4)));
-}
-
-function buildLinePath(values: Array<number | null | undefined>, min: number, max: number, width: number, height: number): string {
-  const range = max - min || 1;
-  return values.map((value, index) => {
-    const x = 18 + (values.length === 1 ? 0 : (index / (values.length - 1)) * (width - 36));
-    const y = height - 16 - (((value ?? min) - min) / range) * (height - 32);
-    return `${index === 0 ? "M" : "L"}${x.toFixed(2)},${y.toFixed(2)}`;
-  }).join(" ");
 }

@@ -3,12 +3,13 @@ import {
   HoldingEditorSheet,
   type HoldingEditorSeed
 } from "../features/app-preview/holdingEditor"
+import { api } from "../api/client"
 import { useAppPreviewData } from "../features/app-preview/hooks"
-import type { WatchlistItem } from "../types"
+import type { LowBuyPriorityBoardItem, PaperOrderCreate, WatchlistItem } from "../types"
 import { MobileAppHeader, MobileStatusBanners, MobileTabBar } from "./MobileAppLayout"
 import { MobileAuthScreen } from "./MobileAuthScreen"
 import type { MobileLowBuyCardItem } from "./MobileDesignCards"
-import { AiDecisionSheet, AppUpdateSheet } from "./MobileSheets"
+import { AiDecisionSheet, AppUpdateSheet, MobilePaperOrderSheet, PriorityActionSheet } from "./MobileSheets"
 import { MobileTabContent } from "./MobileTabContent"
 import { LowBuyDetailSheet } from "./mobileSections"
 import type { MobileTab } from "./mobileTypes"
@@ -78,6 +79,8 @@ export default function MobileApp() {
   } = useMobilePlaybook(Boolean(authUser) && activeTab === "low_buy")
   const paperTrading = useMobilePaperTrading(Boolean(authUser) && activeTab === "paper")
   const [holdingEditor, setHoldingEditor] = useState<HoldingEditorState | null>(null)
+  const [priorityActionItem, setPriorityActionItem] = useState<LowBuyPriorityBoardItem | null>(null)
+  const [paperOrderOpen, setPaperOrderOpen] = useState(false)
   const [aiOpen, setAiOpen] = useState(false)
   const [accountMenuOpen, setAccountMenuOpen] = useState(false)
 
@@ -123,6 +126,63 @@ export default function MobileApp() {
     })
   }
 
+  function findLatestPrice(symbol: string) {
+    const normalizedSymbol = symbol.trim().toUpperCase()
+    const homeItem = home?.items.find((item) => item.symbol.toUpperCase() === normalizedSymbol)
+    if (homeItem?.quote.last_price) {
+      return homeItem.quote.last_price
+    }
+    const boardItem = priorityBoardItems.find((item) => item.symbol.toUpperCase() === normalizedSymbol)
+    return boardItem?.latest_price ?? null
+  }
+
+  async function openSearchHolding(rawSymbol: string) {
+    const normalizedSymbol = rawSymbol.trim().toUpperCase()
+    if (!normalizedSymbol) {
+      return
+    }
+    const existing = watchlistMap.get(normalizedSymbol)
+    if (existing) {
+      openEditHolding(existing)
+      return
+    }
+    const boardItem = priorityBoardItems.find((item) => item.symbol.toUpperCase() === normalizedSymbol)
+    if (boardItem) {
+      setHoldingEditor({
+        mode: "buy",
+        seed: createSeedFromLowBuyItem(boardItem)
+      })
+      return
+    }
+    try {
+      const result = await api.listInstruments(normalizedSymbol)
+      const instrument = result.items.find((item) => item.symbol.toUpperCase() === normalizedSymbol) ?? result.items[0]
+      setHoldingEditor({
+        mode: "create",
+        seed: {
+          symbol: instrument?.symbol ?? normalizedSymbol,
+          name: instrument?.name ?? normalizedSymbol,
+          base_position: 100,
+          available_position: 0,
+          cost_basis: findLatestPrice(instrument?.symbol ?? normalizedSymbol),
+          memo: "App 搜索补录"
+        }
+      })
+    } catch {
+      setHoldingEditor({
+        mode: "create",
+        seed: {
+          symbol: normalizedSymbol,
+          name: normalizedSymbol,
+          base_position: 100,
+          available_position: 0,
+          cost_basis: findLatestPrice(normalizedSymbol),
+          memo: "App 搜索补录"
+        }
+      })
+    }
+  }
+
   function openEditHolding(item: WatchlistItem) {
     setHoldingEditor({
       mode: "edit",
@@ -135,6 +195,15 @@ export default function MobileApp() {
       mode: watchlistMap.has(item.symbol) ? "edit" : "buy",
       seed: createSeedFromLowBuyItem(item, watchlistMap.get(item.symbol))
     })
+  }
+
+  function openPriorityAction(symbol: string) {
+    const item = priorityBoardItems.find((candidate) => candidate.symbol === symbol) ?? null
+    if (item) {
+      setPriorityActionItem(item)
+      return
+    }
+    void openCandidate(symbol)
   }
 
   function openDetailHoldingEditor() {
@@ -174,6 +243,8 @@ export default function MobileApp() {
   function handleSwitchTab(nextTab: MobileTab) {
     setHoldingEditor(null)
     setDetail(null)
+    setPriorityActionItem(null)
+    setPaperOrderOpen(false)
     setAccountMenuOpen(false)
     hideSignalToast()
     setActiveTab(nextTab)
@@ -183,6 +254,10 @@ export default function MobileApp() {
   }
 
   const isDetailInWatchlist = detail ? watchlistMap.has(detail.candidate.symbol) : false
+
+  async function handlePaperOrderSubmit(payload: PaperOrderCreate) {
+    return paperTrading.submitPaperOrder(payload)
+  }
 
   if (!authUser) {
     return (
@@ -229,7 +304,7 @@ export default function MobileApp() {
             priorityPulseTime,
             watchlistMap,
             loading,
-            onOpenCandidate: openCandidate,
+            onOpenCandidate: openPriorityAction,
             onSwitchToLowBuy: () => handleSwitchTab("low_buy"),
           }}
           holdings={{
@@ -238,6 +313,7 @@ export default function MobileApp() {
             activeHoldingSignalSymbols,
             loading,
             onCreateHolding: openCreateHolding,
+            onSearchHolding: openSearchHolding,
             onEditHolding: openEditHolding,
             onRemoveHolding: handleRemoveHolding,
           }}
@@ -263,6 +339,7 @@ export default function MobileApp() {
             performance: paperTrading.paperPerformance,
             strategyPerformance: paperTrading.paperStrategyPerformance,
             marketPerformance: paperTrading.paperMarketPerformance,
+            onCreateOrder: () => setPaperOrderOpen(true),
           }}
         />
       </main>
@@ -283,6 +360,20 @@ export default function MobileApp() {
         saving={actionLoading}
         onClose={() => setHoldingEditor(null)}
         onSubmit={handleSubmitHolding}
+      />
+
+      <PriorityActionSheet
+        item={priorityActionItem}
+        onClose={() => setPriorityActionItem(null)}
+        onOpenDetail={openCandidate}
+        onMarkBought={openBoughtEditor}
+      />
+
+      <MobilePaperOrderSheet
+        open={paperOrderOpen}
+        loading={paperTrading.paperLoading === "paper_order"}
+        onClose={() => setPaperOrderOpen(false)}
+        onSubmit={handlePaperOrderSubmit}
       />
 
       <AppUpdateSheet

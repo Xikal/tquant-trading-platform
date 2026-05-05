@@ -19,7 +19,9 @@ from app.models.base import Base
 class StrategyGovernanceRouteTests(unittest.TestCase):
     def setUp(self) -> None:
         self._auth_secret_original = environ.get("AUTH_SECRET_KEY")
+        self._admin_token_original = environ.get("ADMIN_API_TOKEN")
         environ["AUTH_SECRET_KEY"] = "test-auth-secret"
+        environ["ADMIN_API_TOKEN"] = "test-admin-token"
         get_settings.cache_clear()
         clear_rate_limit_events()
         engine = create_engine(
@@ -51,6 +53,10 @@ class StrategyGovernanceRouteTests(unittest.TestCase):
             environ.pop("AUTH_SECRET_KEY", None)
         else:
             environ["AUTH_SECRET_KEY"] = self._auth_secret_original
+        if self._admin_token_original is None:
+            environ.pop("ADMIN_API_TOKEN", None)
+        else:
+            environ["ADMIN_API_TOKEN"] = self._admin_token_original
         get_settings.cache_clear()
 
     def test_strategy_governance_requires_login(self) -> None:
@@ -78,6 +84,28 @@ class StrategyGovernanceRouteTests(unittest.TestCase):
         self.assertEqual(strategies.status_code, 200)
         self.assertEqual(tools.status_code, 200)
         self.assertTrue(any(item["name"] == "get_priority_board" for item in tools.json()["items"]))
+
+    def test_strategy_governance_admin_update(self) -> None:
+        headers = self._register("strategy_update")
+        response = self.client.patch(
+            "/api/screeners/low-buy/strategies/volume_shrink",
+            headers={**headers, "X-Admin-Token": "test-admin-token"},
+            json={"status": "paused", "reason": "测试暂停"},
+        )
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        by_key = {item["strategy_key"]: item for item in payload["items"]}
+        self.assertEqual(by_key["volume_shrink"]["status"], "paused")
+        self.assertIn("测试暂停", by_key["volume_shrink"]["auto_governance_reason"])
+
+        restored = self.client.patch(
+            "/api/screeners/low-buy/strategies/volume_shrink",
+            headers={**headers, "X-Admin-Token": "test-admin-token"},
+            json={"status": "active"},
+        )
+        self.assertEqual(restored.status_code, 200)
+        restored_by_key = {item["strategy_key"]: item for item in restored.json()["items"]}
+        self.assertNotEqual(restored_by_key["volume_shrink"]["status"], "paused")
 
     def _register(self, username: str) -> dict[str, str]:
         response = self.client.post(

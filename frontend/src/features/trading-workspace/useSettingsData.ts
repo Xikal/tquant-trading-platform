@@ -107,6 +107,21 @@ export function useSettingsData({ withLoading, setError, setNotice, setRuntime }
     });
   }, [factorDraft, settingsDraft.adminToken, setNotice, withLoading]);
 
+  const updateStrategyGovernance = useCallback(async (
+    strategyKey: string,
+    status: "active" | "watch" | "paused",
+  ) => {
+    await withLoading("settings", async () => {
+      setAdminApiToken(settingsDraft.adminToken);
+      if (!getAdminApiToken()) {
+        throw new Error("请先填写正确的管理令牌");
+      }
+      const result = await api.updateLowBuyStrategyGovernance(strategyKey, { status });
+      setStrategyGovernance(result);
+      setNotice(status === "active" ? "策略已恢复自动治理" : status === "watch" ? "策略已降级为观察" : "策略强信号已暂停");
+    });
+  }, [settingsDraft.adminToken, setNotice, withLoading]);
+
   return {
     settings,
     factorWeights,
@@ -119,6 +134,7 @@ export function useSettingsData({ withLoading, setError, setNotice, setRuntime }
     loadSettings,
     saveSettings,
     saveFactorWeights,
+    updateStrategyGovernance,
   };
 }
 

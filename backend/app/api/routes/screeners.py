@@ -9,7 +9,8 @@ from app.core.auth import get_current_user
 from app.core.database import get_db
 from app.core.timing import log_slow_call, monotonic_start
 from app.models.schemas import LowBuyTradeLifecycleUpdate
-from app.services.low_buy.strategy_governance import build_low_buy_strategy_governance
+from app.models.schema_defs.screener import LowBuyStrategyGovernanceUpdate
+from app.services.low_buy.strategy_governance import build_low_buy_strategy_governance, set_strategy_governance_override
 from app.services.low_buy.shared import DEFAULT_PRODUCTION_LOW_BUY_STRATEGY
 from app.services.low_buy_screener import LowBuyScreenerService
 from app.services.market_data import DataSourceError
@@ -22,6 +23,27 @@ low_buy_screener = LowBuyScreenerService()
 @router.get("/low-buy/strategies")
 def low_buy_strategy_governance_view(db: Session = Depends(get_db)):
     return build_low_buy_strategy_governance(db).model_dump()
+
+
+@router.patch("/low-buy/strategies/{strategy_key}")
+def low_buy_strategy_governance_update_view(
+    strategy_key: str,
+    payload: LowBuyStrategyGovernanceUpdate,
+    _: None = Depends(require_admin_auth),
+    db: Session = Depends(get_db),
+):
+    try:
+        result = set_strategy_governance_override(
+            db,
+            strategy_key=strategy_key,
+            status=payload.status,
+            reason=payload.reason,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"策略治理更新失败: {exc}") from exc
+    return result.model_dump()
 
 
 @router.get("/low-buy")

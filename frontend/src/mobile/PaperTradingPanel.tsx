@@ -23,7 +23,8 @@ export function PaperTradingPanel({
   trades,
   performance,
   strategyPerformance,
-  marketPerformance
+  marketPerformance,
+  onCreateOrder
 }: {
   account: PaperAccount | null
   positions: PaperPosition[]
@@ -32,6 +33,7 @@ export function PaperTradingPanel({
   performance: PaperPerformance | null
   strategyPerformance: PaperGroupedPerformance[]
   marketPerformance: PaperGroupedPerformance[]
+  onCreateOrder: () => void
 }) {
   const latestAction = orders[0] ?? null
   const metrics = [
@@ -52,7 +54,7 @@ export function PaperTradingPanel({
         ))}
       </section>
 
-      <PaperMechaCockpit latestAction={latestAction} />
+      <PaperMechaCockpit latestAction={latestAction} onCreateOrder={onCreateOrder} />
 
       <section className="mobile-paper-card">
         <div className="mobile-paper-section-head">
@@ -78,7 +80,7 @@ export function PaperTradingPanel({
   )
 }
 
-function PaperMechaCockpit({ latestAction }: { latestAction: PaperOrder | null }) {
+function PaperMechaCockpit({ latestAction, onCreateOrder }: { latestAction: PaperOrder | null; onCreateOrder: () => void }) {
   const actionSide = latestAction?.side === "sell" ? "sell" : "buy"
   const actionLabel = latestAction
     ? `${latestAction.side === "sell" ? "卖出" : "买入"} ${latestAction.symbol}`
@@ -88,7 +90,7 @@ function PaperMechaCockpit({ latestAction }: { latestAction: PaperOrder | null }
     <section className={`mobile-paper-cockpit action-${actionSide}`}>
       <div className="mobile-paper-cockpit-head">
         <strong>机甲指挥舱</strong>
-        <span>+ 委托</span>
+        <button type="button" onClick={onCreateOrder}>+ 委托</button>
       </div>
       <div className="mobile-paper-mecha">
         <img src={mechaAvatarUrl} alt="像素交易机甲" />

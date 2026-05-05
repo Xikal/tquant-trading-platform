@@ -133,6 +133,7 @@ export function WorkspacePageContent({
             onSave={settingsData.saveSettings}
             onSaveFactors={() => void settingsData.saveFactorWeights()}
             onRefresh={() => void settingsData.loadSettings()}
+            onUpdateStrategyGovernance={(strategyKey: string, status: "active" | "watch" | "paused") => void settingsData.updateStrategyGovernance(strategyKey, status)}
           />
         )}
       </Suspense>

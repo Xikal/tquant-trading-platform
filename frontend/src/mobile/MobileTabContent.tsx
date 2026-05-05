@@ -19,8 +19,9 @@ export function MobileTabContent({
 }: {
   activeTab: MobileTab;
   home: Omit<HomeProps, "onSwitchToLowBuy"> & { onSwitchToLowBuy: () => void };
-  holdings: Omit<HoldingsProps, "onCreateHolding" | "onEditHolding" | "onRemoveHolding"> & {
+  holdings: Omit<HoldingsProps, "onCreateHolding" | "onSearchHolding" | "onEditHolding" | "onRemoveHolding"> & {
     onCreateHolding: () => void;
+    onSearchHolding: (symbol: string) => void | Promise<void>;
     onEditHolding: (item: WatchlistItem) => void;
     onRemoveHolding: (item: WatchlistItem) => void | Promise<void>;
   };

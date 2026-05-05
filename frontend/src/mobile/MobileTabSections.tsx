@@ -1,3 +1,4 @@
+import { useMemo, useState } from "react"
 import type { LowBuyPriorityBoardItem, WatchlistItem } from "../types"
 import {
   MobileFocusCard,
@@ -75,6 +76,7 @@ export function MobileHoldingsSection({
   activeHoldingSignalSymbols,
   loading,
   onCreateHolding,
+  onSearchHolding,
   onEditHolding,
   onRemoveHolding
 }: {
@@ -83,9 +85,30 @@ export function MobileHoldingsSection({
   activeHoldingSignalSymbols: Set<string>
   loading: boolean
   onCreateHolding: () => void
+  onSearchHolding: (symbol: string) => void | Promise<void>
   onEditHolding: (item: WatchlistItem) => void
   onRemoveHolding: (item: WatchlistItem) => void | Promise<void>
 }) {
+  const [query, setQuery] = useState("")
+  const filteredRows = useMemo(() => {
+    const normalized = query.trim().toUpperCase()
+    if (!normalized) {
+      return holdingRows
+    }
+    return holdingRows.filter((row) => {
+      const symbol = row.record.symbol.toUpperCase()
+      const name = row.record.name.toUpperCase()
+      return symbol.includes(normalized) || name.includes(normalized)
+    })
+  }, [holdingRows, query])
+
+  function handleSearchSubmit() {
+    const normalized = query.trim().toUpperCase()
+    if (normalized) {
+      void onSearchHolding(normalized)
+    }
+  }
+
   return (
     <>
       <MobileMetricRow items={metrics} />
@@ -99,8 +122,23 @@ export function MobileHoldingsSection({
           </button>
         }
       />
+      <div className="mobile-holding-search">
+        <input
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === "Enter") {
+              handleSearchSubmit()
+            }
+          }}
+          placeholder="搜索代码/名称，未持仓可自动补全"
+        />
+        <button type="button" onClick={handleSearchSubmit}>
+          搜索
+        </button>
+      </div>
       <section className="mobile-design-list">
-        {holdingRows.map((row) => (
+        {filteredRows.map((row) => (
           <MobileHoldingStockCard
             key={row.record.symbol}
             row={row}
@@ -109,7 +147,7 @@ export function MobileHoldingsSection({
             onRemove={onRemoveHolding}
           />
         ))}
-        {!loading && !holdingRows.length ? (
+        {!loading && !filteredRows.length ? (
           <div className="mobile-app-empty">暂无持仓，点击右上角添加</div>
         ) : null}
       </section>

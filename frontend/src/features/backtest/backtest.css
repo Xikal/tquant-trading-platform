@@ -424,6 +424,28 @@
   width: 100%;
 }
 
+.backtest-echarts.compact {
+  min-height: 230px;
+}
+
+.backtest-echarts.heatmap,
+.backtest-echarts.distribution {
+  min-height: 250px;
+  margin: 10px 0;
+  background: #ffffff;
+  border: 1px solid #e3e9f2;
+}
+
+.backtest-chart-fallback {
+  display: grid;
+  min-height: 140px;
+  place-items: center;
+  border: 1px dashed #d9e2ef;
+  border-radius: 14px;
+  color: #64748b;
+  font-size: 12px;
+}
+
 .backtest-monthly-heatmap {
   background: #f8fafc;
   border: 1px solid #e3e9f2;
@@ -699,6 +721,20 @@
   color: #0b1422;
 }
 
+.backtest-compare-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.backtest-compare-actions span {
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 800;
+}
+
 .backtest-data-table {
   display: grid;
   gap: 6px;
@@ -737,6 +773,21 @@
   background: #0b1422;
   color: #cbd5e1;
   font-weight: 900;
+}
+
+.backtest-data-table .row.head button {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.backtest-data-table.decomposition .row {
+  grid-template-columns: 58px minmax(120px, 1fr) 64px 72px 96px;
+  min-width: 0;
 }
 
 .backtest-data-table .up,
