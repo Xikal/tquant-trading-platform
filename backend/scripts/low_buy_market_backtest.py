@@ -30,6 +30,7 @@ from app.services.market.regime_types import MarketBreadthSnapshot
 from app.services.low_buy_screener import PLAYBOOKS, LowBuyScreenerService
 from app.services.low_buy.candidate_metrics import passes_common_prefilter
 from app.services.low_buy.candidate_rules import build_strategy_setup, passes_strategy_prefilter, score_candidate
+from app.services.low_buy.data_quality import build_low_buy_metrics_quality
 from app.services.low_buy.execution_simulation import bars_from_history_frame, bars_from_repository_rows, simulate_candidate_execution
 from app.services.low_buy.signal_family import build_signal_family_profile, profile_with_setup
 from app.services.low_buy.shared import PERFORMANCE_FORWARD_DAYS, BoardCandidate
@@ -1012,6 +1013,9 @@ def _evaluate_candidate_from_metrics(
     if not passes_strategy_prefilter(strategy=strategy, item=item, metrics=metrics):
         return None
 
+    metrics_quality = build_low_buy_metrics_quality(metrics)
+    if metrics_quality.quality == "unavailable":
+        return None
     base_score = score_candidate(
         strategy=strategy,
         item=item,
@@ -1022,8 +1026,9 @@ def _evaluate_candidate_from_metrics(
         strategy=strategy,
         item=item,
         metrics=metrics,
-        hot_industries=hot_industries,
+            hot_industries=hot_industries,
     )
+    factor_scores = service._factor_scores(metrics, None)
     context_adjustment = service._build_context_adjustment(
         strategy=strategy,
         item=item,
@@ -1031,8 +1036,14 @@ def _evaluate_candidate_from_metrics(
         hot_industries=hot_industries,
         market_regime=market_regime,
         signal_profile=signal_profile,
+        factor_scores=factor_scores,
+        metrics_quality=metrics_quality,
     )
-    adjusted_score = max(0.0, round(base_score + signal_profile.score_bonus - context_adjustment.score_penalty, 1))
+    factor_bonus = service._weighted_factor_bonus(factor_scores)
+    adjusted_score = max(
+        0.0,
+        round(base_score + signal_profile.score_bonus + factor_bonus - context_adjustment.score_penalty, 1),
+    )
     if adjusted_score < 74 + context_adjustment.score_floor_shift:
         return None
 
@@ -1047,6 +1058,8 @@ def _evaluate_candidate_from_metrics(
         hot_industries=hot_industries,
         context_adjustment=context_adjustment,
         signal_profile=signal_profile,
+        factor_scores=factor_scores,
+        metrics_quality=metrics_quality,
     )
 
 
