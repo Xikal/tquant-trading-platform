@@ -1,5 +1,55 @@
 # TQuant 策略与工作台优化方案 v9 执行计划
 
+---
+
+# Phase 4 / Phase 5 生产闭环补齐执行计划（2026-05-07）
+
+## 需求来源
+
+- 用户明确要求把以下现状补齐到生产可用闭环：
+  - SSE 真 push 不能停留在轮询骨架，需要支持 Redis/pubsub 多实例推送。
+  - 数据源 provider 已有抽象，但行情读取链路要统一迁移。
+  - ML 信号模型不能只停留在研究骨架，要具备样本、训练、模型注册、生产推理闭环。
+  - 量化参数版本化已建立，但策略阈值要从代码迁移到参数版本。
+  - Prometheus/Grafana 已有配置，但必须云服务器实际部署验证。
+
+## 角色顺序
+
+- `trading-quant-lead`：确认 ML/参数版本化不直接越权影响生产交易，模型必须可回测、可审计、可降级。
+- `stock-analysis-specialist`：确认策略阈值迁移后仍保留 A 股短线信号语义，不污染生产策略。
+- `product-strategist`：保证新增能力走后端统一结果，前端/API 不重复实现交易判断。
+- `ui-designer`：本轮无 UI 改造，仅保证返回信息可被后续 UI 稳定展示。
+- `fullstack-builder`：落地 SSE、provider、ML、参数版本、监控部署脚本。
+- `qa-tester`：补关键行为测试和 smoke 验证。
+- `devops-operator`：完成 Prometheus/Grafana 云端部署验证和运行说明。
+
+## TODO 状态
+
+- [ ] Redis/pubsub 级 SSE 真推送：运行时任务事件写入 DB 后同步发布到 Redis channel，多实例订阅 Redis；Redis 不可用时回退 DB polling。
+- [ ] 统一数据源 provider：报价、批量报价、分时、板块热力等关键行情读取优先走 provider router，并保留质量标记、失败降级和配置开关。
+- [ ] ML 信号模型：补训练接口、模型注册、artifact 持久化、生产模型选择、推理接口、研究/生产状态边界。
+- [ ] 量化参数版本化：低吸策略 prefilter、执行阈值、信号阈值默认进入参数版本，运行时读取 active 参数，历史回测继续绑定参数版本。
+- [ ] Prometheus/Grafana：补 compose/provisioning/部署脚本，在云服务器启动并验证 target/health。
+- [ ] 测试与部署：补后端测试、运行 frontend build/smoke，提交并部署云端。
+
+## 关键实现决策
+
+- 不接实盘交易，不把未验证 ML 模型直接用于真实交易动作。
+- Redis/pubsub 是事件推送层，DB event log 仍作为审计与断线补偿来源。
+- provider router 默认进入主路径，但保留配置开关和旧链路 fallback，避免单数据源故障拖垮平台。
+- ML 模型 artifact 本地持久化，DB 只记录元数据、状态、指标与路径；生产模型必须显式 promote。
+- 参数版本采用“默认参数深合并现有 active 参数”的方式 backfill，避免覆盖已有人工调整。
+- 监控部署脚本不打印 token，不提交任何 secret。
+
+## 验证计划
+
+- 后端 targeted tests：SSE/pubsub、provider router、ML train/predict、参数版本 resolver。
+- 后端 smoke：`PYTHONPATH=backend:. backend/.venv/bin/python -m pytest ...`
+- 前端：如未改 UI，仅执行 `npm --prefix frontend run build:web`。
+- 云端：主服务部署后，执行 Prometheus/Grafana compose 启动，验证 Prometheus target 和 Grafana health。
+
+---
+
 ## 需求来源
 
 - `/Users/j/Documents/gupiao/docs/TQuant-策略与工作台优化方案-终版-2026-05-06.md`

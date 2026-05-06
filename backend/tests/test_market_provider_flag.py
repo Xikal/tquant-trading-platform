@@ -21,4 +21,4 @@ def test_market_provider_router_flag_exists(monkeypatch) -> None:
     flags = list_feature_flags(_DB())  # type: ignore[arg-type]
     feature_flags.clear_feature_flag_cache()
     assert "market_provider_router_enabled" in {item.key for item in flags}
-    assert next(item for item in flags if item.key == "market_provider_router_enabled").enabled is False
+    assert next(item for item in flags if item.key == "market_provider_router_enabled").enabled is True

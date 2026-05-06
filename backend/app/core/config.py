@@ -42,6 +42,10 @@ class AppSettings(BaseSettings):
     runtime_background_jobs_enabled: bool = False
     runtime_background_jobs_on_sqlite: bool = True
     runtime_worker_poll_interval_seconds: float = 5.0
+    redis_url: str = ""
+    runtime_event_pubsub_backend: str = "auto"
+    runtime_event_stream_timeout_seconds: int = 360
+    runtime_event_stream_poll_seconds: float = 1.0
     schema_compat_repair_enabled: bool = False
     schema_compat_verify_on_startup: bool = False
     legacy_route_compat_enabled: bool = False
@@ -92,7 +96,9 @@ class AppSettings(BaseSettings):
     openbb_api_url: str = ""
     openbb_api_key: str = ""
     market_data_provider_order: str = "tencent,eastmoney,akshare,sina"
+    market_provider_router_enabled: bool = True
     quant_parameter_default_version: str = "quant-params-v1"
+    ml_signal_model_dir: str = "data/ml_models"
     paper_auto_trading_enabled: bool = True
     paper_auto_trading_interval: int = 120
     paper_auto_trading_max_orders: int = 5

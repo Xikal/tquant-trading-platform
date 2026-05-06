@@ -7,10 +7,11 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from app.models.base import Base
-from app.models.entities import BacktestRun, PaperAccount
+from app.models.entities import BacktestRun, MLSignalSample, PaperAccount
 from app.models.schema_defs.phase4 import (
     AgentQualityScoreRequest,
     MLSignalPredictionRequest,
+    MLSignalTrainRequest,
     PaperBacktestComparisonRequest,
     QuantParameterSetCreate,
     RuntimeTaskCreate,
@@ -51,9 +52,12 @@ def test_agent_quality_blocks_incomplete_executable_result():
     assert any(issue.code == "action_conflicts_with_risk" for issue in response.issues)
 
 
-def test_runtime_task_queue_records_events_and_status():
+def test_runtime_task_queue_records_events_and_status(monkeypatch):
     db = _db()
     queue = RuntimeTaskQueue(db)
+    published = []
+
+    monkeypatch.setattr("app.services.tasks.queue.publish_runtime_task_event", lambda event: published.append(event.event_type))
 
     created = queue.enqueue(RuntimeTaskCreate(task_type="noop", payload={"ok": True}))
     claimed = queue.claim_next(worker_id="test-worker")
@@ -64,6 +68,7 @@ def test_runtime_task_queue_records_events_and_status():
     assert finished.status == "succeeded"
     events = queue.events(created.id)
     assert [event.event_type for event in events] == ["queued", "started", "succeeded"]
+    assert published == ["queued", "started", "succeeded"]
 
 
 def test_quant_parameter_version_default_and_create():
@@ -82,8 +87,10 @@ def test_quant_parameter_version_default_and_create():
     )
 
     assert current.version
+    assert "strategy_prefilters" in current.params["low_buy"]
     assert created.version == "test-params-v2"
     assert service.current().version == "test-params-v2"
+    assert "strategy_prefilters" in service.current().params["low_buy"]
 
 
 def test_data_source_probe_reports_configured_chain():
@@ -106,6 +113,58 @@ def test_ml_signal_prediction_is_research_only():
     assert response.research_only is True
     assert response.probability > 0.5
     assert response.label in {"positive", "neutral", "negative"}
+
+
+def test_ml_signal_training_registers_promoted_model(tmp_path, monkeypatch):
+    db = _db()
+    monkeypatch.setenv("ML_SIGNAL_MODEL_DIR", str(tmp_path))
+    from app.core.config import get_settings
+
+    get_settings.cache_clear()
+    for index in range(30):
+        db.add(
+            MLSignalSample(
+                sample_key=f"sample:{index}",
+                symbol="600000",
+                trade_date="2026-05-06",
+                strategy_key="first_board",
+                source="backtest",
+                feature_json=(
+                    '{"price": %s, "quantity": 100, "gross_amount": %s, '
+                    '"strategy_known": 1, "market_state_known": 1, "is_sell": 0, '
+                    '"priority_score": %s, "risk_score": %s, "volume_shrink_ratio": 0.7}'
+                    % (10 + index / 10, 1000 + index, 80 + index % 10, index % 5)
+                ),
+                label_json='{"pnl_pct": 1.5}' if index % 2 == 0 else '{"pnl_pct": -1.0}',
+            )
+        )
+    db.commit()
+
+    service = MLSignalService(db)
+    trained = service.train(
+        MLSignalTrainRequest(
+            model_key="test-logistic",
+            model_type="logistic",
+            source="backtest",
+            min_samples=20,
+            limit=30,
+            promote=True,
+            min_validation_accuracy=0.0,
+        )
+    )
+    predicted = service.predict(
+        MLSignalPredictionRequest(
+            symbol="600000",
+            model_key="test-logistic",
+            features={"price": 11.0, "quantity": 100, "gross_amount": 1100, "strategy_known": 1},
+        )
+    )
+
+    assert trained.status == "production"
+    assert trained.artifact_uri
+    assert predicted.research_only is False
+    assert predicted.model_key == "test-logistic"
+    get_settings.cache_clear()
 
 
 def test_paper_backtest_comparison_flags_large_deviation():

@@ -8,8 +8,10 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
 from app.core.admin_auth import require_admin_auth
-from app.core.database import get_db
+from app.core.config import get_settings
+from app.core.database import SessionLocal, get_db
 from app.models.schema_defs.phase4 import RuntimeTaskCreate, RuntimeTaskEventOut, RuntimeTaskListResponse, RuntimeTaskOut
+from app.services.realtime import redis_runtime_task_events_enabled, subscribe_runtime_task_events
 from app.services.tasks import RuntimeTaskQueue
 
 router = APIRouter(prefix="/runtime-tasks", dependencies=[Depends(require_admin_auth)])
@@ -48,16 +50,63 @@ def list_runtime_task_events(
 
 
 @router.get("/{task_id}/stream")
-def stream_runtime_task_events(task_id: int, db: Session = Depends(get_db)) -> StreamingResponse:
+def stream_runtime_task_events(
+    task_id: int,
+    after_id: int = Query(default=0, ge=0),
+) -> StreamingResponse:
     def event_stream():
-        after_id = 0
-        for _ in range(360):
-            events = RuntimeTaskQueue(db).events(task_id, after_id=after_id, limit=50)
-            for event in events:
-                after_id = max(after_id, event.id)
-                yield f"id: {event.id}\nevent: {event.event_type}\ndata: {json.dumps(event.model_dump(), default=str, ensure_ascii=False)}\n\n"
-                if event.event_type in {"succeeded", "failed", "cancelled"}:
-                    return
-            time.sleep(1)
+        cursor = after_id
+        settings = get_settings()
+        timeout_seconds = int(settings.runtime_event_stream_timeout_seconds or 360)
 
-    return StreamingResponse(event_stream(), media_type="text/event-stream")
+        if redis_runtime_task_events_enabled():
+            with SessionLocal() as stream_db:
+                for event in RuntimeTaskQueue(stream_db).events(task_id, after_id=cursor, limit=100):
+                    cursor = max(cursor, event.id)
+                    yield _sse(event)
+                    if _terminal(event.event_type):
+                        return
+            for payload in subscribe_runtime_task_events(task_id, timeout_seconds=timeout_seconds):
+                if payload.get("heartbeat"):
+                    yield ": heartbeat\n\n"
+                    continue
+                try:
+                    event = RuntimeTaskEventOut.model_validate(payload)
+                except Exception:
+                    continue
+                if event.id <= cursor:
+                    continue
+                cursor = event.id
+                yield _sse(event)
+                if _terminal(event.event_type):
+                    return
+            return
+
+        iterations = max(1, int(timeout_seconds / max(float(settings.runtime_event_stream_poll_seconds or 1.0), 0.2)))
+        for _ in range(iterations):
+            with SessionLocal() as stream_db:
+                events = RuntimeTaskQueue(stream_db).events(task_id, after_id=cursor, limit=50)
+            for event in events:
+                cursor = max(cursor, event.id)
+                yield _sse(event)
+                if _terminal(event.event_type):
+                    return
+            time.sleep(max(float(settings.runtime_event_stream_poll_seconds or 1.0), 0.2))
+
+    return StreamingResponse(
+        event_stream(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
+
+
+def _sse(event: RuntimeTaskEventOut) -> str:
+    return (
+        f"id: {event.id}\n"
+        f"event: {event.event_type}\n"
+        f"data: {json.dumps(event.model_dump(mode='json'), ensure_ascii=False)}\n\n"
+    )
+
+
+def _terminal(event_type: str) -> bool:
+    return event_type in {"succeeded", "failed", "cancelled"}

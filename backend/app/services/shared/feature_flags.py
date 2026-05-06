@@ -38,7 +38,7 @@ _FLAG_DESCRIPTIONS: dict[str, str] = {
     "strategy_governance_enabled": "启用策略层级 promote/demote 治理覆盖。",
     "smart_mode_enabled": "策略工作台启用傻瓜模式摘要。",
     "playbook_lazy_load_enabled": "策略宝典按页面分段加载，减少首屏请求。",
-    "market_provider_router_enabled": "启用统一市场数据 provider router（默认关闭，保持原数据链路）。",
+    "market_provider_router_enabled": "启用统一市场数据 provider router（默认开启，旧链路作为 fallback）。",
 }
 
 
@@ -50,7 +50,7 @@ _DEFAULT_FLAGS = {
     "strategy_governance_enabled": True,
     "smart_mode_enabled": True,
     "playbook_lazy_load_enabled": True,
-    "market_provider_router_enabled": False,
+    "market_provider_router_enabled": True,
 }
 
 

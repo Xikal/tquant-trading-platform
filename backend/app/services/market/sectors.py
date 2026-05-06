@@ -81,6 +81,33 @@ class MarketSectorMixin:
         alignment = max(0.0, min(100.0, (sector_strength + market_strength) / 2))
         return SectorSnapshot(sector_name=sector_name, sector_strength=round(max(0.0, min(100.0, sector_strength)), 2), market_strength=round(max(0.0, min(100.0, market_strength)), 2), alignment_score=round(alignment, 2), notes=notes)
 
+    def get_sector_heatmap(self, limit: int = 30) -> list[SectorSnapshot]:
+        if self._market_provider_router_enabled():
+            result = self.provider_router.fetch_sector_heatmap()
+            if result.usable and result.data:
+                return list(result.data)[:limit]
+        frame = self._load_board_breadth_frame()
+        if frame is None or frame.empty:
+            return []
+        median_change = float(frame["change_pct"].median()) if "change_pct" in frame else 0.0
+        market_strength = round(max(0.0, min(100.0, 50.0 + median_change * 8.0)), 2)
+        items: list[SectorSnapshot] = []
+        for row in frame.head(limit).to_dict("records"):
+            sector_name = str(row.get("industry") or "").strip()
+            if not sector_name:
+                continue
+            sector_strength = round(max(0.0, min(100.0, 50.0 + float(row.get("change_pct") or 0.0) * 8.0)), 2)
+            items.append(
+                SectorSnapshot(
+                    sector_name=sector_name,
+                    sector_strength=sector_strength,
+                    market_strength=market_strength,
+                    alignment_score=round((sector_strength + market_strength) / 2, 2),
+                    notes="板块热力来自统一 market provider fallback。",
+                )
+            )
+        return items
+
     def get_market_events(self, db, symbol: str, quote) -> list[MarketEventOut]:
         events = self._load_or_refresh_cached_events(db, symbol)
         if abs(quote.change_pct) >= 7:

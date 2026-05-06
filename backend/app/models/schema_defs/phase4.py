@@ -131,10 +131,47 @@ class MLSignalSampleBuildResponse(BaseModel):
     warning: str = ""
 
 
+class MLSignalTrainRequest(BaseModel):
+    model_key: str = Field(default="", max_length=120)
+    model_type: Literal["logistic", "xgboost", "lightgbm"] = "xgboost"
+    source: Literal["paper", "backtest", "combined"] = "combined"
+    limit: int = Field(default=5000, ge=20, le=100000)
+    min_samples: int = Field(default=200, ge=20, le=100000)
+    validation_ratio: float = Field(default=0.2, ge=0.05, le=0.5)
+    promote: bool = False
+    min_validation_accuracy: float = Field(default=0.55, ge=0.0, le=1.0)
+
+
+class MLSignalTrainResponse(BaseModel):
+    model_key: str
+    model_type: str
+    status: Literal["research", "production", "failed"] = "research"
+    sample_count: int = 0
+    feature_names: list[str] = Field(default_factory=list)
+    metrics: dict[str, Any] = Field(default_factory=dict)
+    artifact_uri: str = ""
+    warning: str = ""
+
+
+class MLSignalModelOut(BaseModel):
+    model_key: str
+    model_type: str
+    status: str
+    feature_names: list[str] = Field(default_factory=list)
+    metrics: dict[str, Any] = Field(default_factory=dict)
+    artifact_uri: str = ""
+    created_at: datetime
+
+
+class MLSignalModelListResponse(BaseModel):
+    items: list[MLSignalModelOut] = Field(default_factory=list)
+    production_model_key: str = ""
+
+
 class MLSignalPredictionRequest(BaseModel):
     symbol: str = Field(min_length=1, max_length=16)
     features: dict[str, Any] = Field(default_factory=dict)
-    model_key: str = "research-heuristic-v1"
+    model_key: str = ""
 
 
 class MLSignalPredictionResponse(BaseModel):
@@ -146,6 +183,7 @@ class MLSignalPredictionResponse(BaseModel):
     label: Literal["positive", "neutral", "negative"] = "neutral"
     confidence: float = 0.0
     reasons: list[str] = Field(default_factory=list)
+    metrics: dict[str, Any] = Field(default_factory=dict)
     warning: str = "研究模型输出，不进入生产交易建议。"
 
 

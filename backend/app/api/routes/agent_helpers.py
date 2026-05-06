@@ -222,15 +222,15 @@ def agent_sector_heatmap(
         return response
 
     try:
-        frame = market_data._load_board_breadth_frame()
+        snapshots = market_data.get_sector_heatmap(limit=limit)
     except Exception:
-        frame = None
-    if frame is not None:
-        for _, row in frame.head(limit).iterrows():
+        snapshots = []
+    if snapshots:
+        for item in snapshots[:limit]:
             sectors.append(
                 {
-                    "sector_name": str(row.get("industry") or ""),
-                    "change_pct": _float(row.get("change_pct")),
+                    "sector_name": item.sector_name,
+                    "change_pct": round((item.sector_strength - 50.0) / 8.0, 4),
                     "rank": len(sectors) + 1,
                 }
             )

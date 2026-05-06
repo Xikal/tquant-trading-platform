@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 
 from app.models.entities import RuntimeTask, RuntimeTaskEvent
 from app.models.schema_defs.phase4 import RuntimeTaskCreate, RuntimeTaskEventOut, RuntimeTaskListResponse, RuntimeTaskOut
+from app.services.realtime import publish_runtime_task_event
 
 
 TERMINAL_STATUSES = {"succeeded", "failed", "cancelled"}
@@ -45,8 +46,9 @@ class RuntimeTaskQueue:
         )
         self.db.add(row)
         self.db.flush()
-        self.add_event(row.id, "queued", "任务已入队", {"task_type": row.task_type})
+        event = self.add_event(row.id, "queued", "任务已入队", {"task_type": row.task_type})
         self.db.commit()
+        publish_runtime_task_event(event)
         self.db.refresh(row)
         return _task_out(row)
 
@@ -90,8 +92,9 @@ class RuntimeTaskQueue:
         row.locked_at = datetime.utcnow()
         row.started_at = row.started_at or row.locked_at
         row.attempt_count = int(row.attempt_count or 0) + 1
-        self.add_event(row.id, "started", "任务开始执行", {"worker_id": worker_id})
+        event = self.add_event(row.id, "started", "任务开始执行", {"worker_id": worker_id})
         self.db.commit()
+        publish_runtime_task_event(event)
         self.db.refresh(row)
         return row
 
@@ -101,8 +104,9 @@ class RuntimeTaskQueue:
         row.result_json = _json_dumps(result or {})
         row.progress_pct = 100.0
         row.finished_at = datetime.utcnow()
-        self.add_event(task_id, "succeeded", "任务执行完成", result or {})
+        event = self.add_event(task_id, "succeeded", "任务执行完成", result or {})
         self.db.commit()
+        publish_runtime_task_event(event)
         self.db.refresh(row)
         return _task_out(row)
 
@@ -113,20 +117,28 @@ class RuntimeTaskQueue:
         row.error_message = message[:1000]
         if not should_retry:
             row.finished_at = datetime.utcnow()
-        self.add_event(task_id, "retry" if should_retry else "failed", message[:240])
+        event = self.add_event(task_id, "retry" if should_retry else "failed", message[:240])
         self.db.commit()
+        publish_runtime_task_event(event)
         self.db.refresh(row)
         return _task_out(row)
 
-    def add_event(self, task_id: int, event_type: str, message: str = "", payload: dict[str, Any] | None = None) -> None:
-        self.db.add(
-            RuntimeTaskEvent(
-                task_id=task_id,
-                event_type=event_type,
-                message=message,
-                payload_json=_json_dumps(payload or {}),
-            )
+    def add_event(
+        self,
+        task_id: int,
+        event_type: str,
+        message: str = "",
+        payload: dict[str, Any] | None = None,
+    ) -> RuntimeTaskEventOut:
+        row = RuntimeTaskEvent(
+            task_id=task_id,
+            event_type=event_type,
+            message=message,
+            payload_json=_json_dumps(payload or {}),
         )
+        self.db.add(row)
+        self.db.flush()
+        return _event_out(row)
 
     def _get_row(self, task_id: int) -> RuntimeTask:
         row = self.db.get(RuntimeTask, task_id)

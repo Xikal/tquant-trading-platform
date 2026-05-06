@@ -393,6 +393,10 @@ class MarketIntradayMixin:
         return bars
 
     def _load_one_minute_bars(self, symbol: str) -> list[KlineBar]:
+        if self._market_provider_router_enabled():
+            result = self.provider_router.fetch_intraday_bars(symbol)
+            if result.usable and result.data:
+                return list(result.data)
         return self.intraday_router.load_one_minute_bars(symbol)
 
     def _to_tencent_symbol(self, symbol: str) -> str:

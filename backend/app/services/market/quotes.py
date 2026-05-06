@@ -51,12 +51,18 @@ class MarketQuoteMixin:
             return cached_value
         try:
             from app.core.database import SessionLocal
+            from app.core.config import get_settings
             from app.services.shared.feature_flags import feature_enabled
 
             with SessionLocal() as db:
-                enabled = feature_enabled(db, "market_provider_router_enabled", False)
+                enabled = feature_enabled(db, "market_provider_router_enabled", get_settings().market_provider_router_enabled)
         except Exception:
-            enabled = False
+            try:
+                from app.core.config import get_settings
+
+                enabled = get_settings().market_provider_router_enabled
+            except Exception:
+                enabled = True
         MarketQuoteMixin._provider_router_flag_cache = (
             now + MarketQuoteMixin._provider_router_flag_ttl_seconds,
             enabled,
@@ -86,10 +92,22 @@ class MarketQuoteMixin:
             else:
                 remaining.append(symbol)
         if remaining:
-            batch_quotes = self.quote_router.fetch_batch(
-                remaining,
-                allow_slow_fallback=allow_slow_fallback,
-            )
+            batch_quotes: dict[str, QuoteSnapshot] = {}
+            if self._market_provider_router_enabled():
+                unresolved: list[str] = []
+                for symbol in remaining:
+                    try:
+                        batch_quotes[symbol] = self.get_quote(symbol)
+                    except Exception:
+                        unresolved.append(symbol)
+                remaining = unresolved
+            if remaining:
+                batch_quotes.update(
+                    self.quote_router.fetch_batch(
+                        remaining,
+                        allow_slow_fallback=allow_slow_fallback,
+                    )
+                )
             for symbol, snapshot in batch_quotes.items():
                 self._set_quote_cache(symbol, snapshot)
                 result[symbol] = snapshot
