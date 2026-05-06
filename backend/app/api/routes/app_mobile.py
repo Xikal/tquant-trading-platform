@@ -24,6 +24,7 @@ from app.services.app_mobile import AppMobileService
 from app.services.app_mobile.update_manifest import (
     ANDROID_APK_PATH,
     android_apk_size,
+    android_apk_sha256,
     load_android_update_manifest,
 )
 from app.services.market_data import DataSourceError
@@ -70,6 +71,7 @@ def app_android_update(
         changelog=list(manifest.get("changelog") or []),
         apk_url=str(request.url_for("app_android_update_apk")),
         apk_size_bytes=android_apk_size(),
+        apk_sha256=android_apk_sha256() or str(manifest.get("apk_sha256") or ""),
         published_at=str(manifest.get("published_at") or ""),
     )
 

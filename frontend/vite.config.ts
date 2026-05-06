@@ -9,8 +9,22 @@ export default defineConfig(({ mode }) => {
     plugins: [react()],
     base: isNativeMode ? "./" : "/",
     build: {
-      chunkSizeWarningLimit: 600,
+      chunkSizeWarningLimit: 700,
       outDir: isNativeMode ? "dist-native" : "dist",
+      rolldownOptions: isNativeMode
+        ? {
+            input: {
+              index: resolve(__dirname, "index.native.html")
+            },
+            output: {
+              manualChunks: splitVendorChunks
+            }
+          }
+        : {
+            output: {
+              manualChunks: splitVendorChunks
+            }
+          },
       rollupOptions: isNativeMode
         ? {
             input: {

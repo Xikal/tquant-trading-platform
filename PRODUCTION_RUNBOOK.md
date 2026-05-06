@@ -308,6 +308,9 @@ APP_PORT=18090 docker compose -f docker-compose.mysql.yml up -d --build
 - Compose 项目名固定为 `tquant-mysql`
 - MySQL 数据保存在 Docker volume `mysql_data`
 - 应用运行时缓存和运行配置保存在 `app_runtime_data`
+- `app` 容器默认关闭运行时后台任务，只负责 Web/API 响应
+- `runtime-worker` 容器单 worker 执行预热、低吸扫描、归档、通知扫描和模拟盘自动交易
+- `backtest-worker` 容器独立消费回测任务
 - 默认数据库为 `t_quant`
 - 默认应用用户为 `tquant_app`
 - 示例应用端口为 `18090`
@@ -472,6 +475,8 @@ PYTHONPATH=. .venv/bin/python scripts/low_buy_materialization_health.py
 
 ```bash
 docker compose -f docker-compose.mysql.yml logs --tail=200 app
+docker compose -f docker-compose.mysql.yml logs --tail=200 runtime-worker
+docker compose -f docker-compose.mysql.yml logs --tail=200 backtest-worker
 ```
 
 ## 11. 磁盘空间清理

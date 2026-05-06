@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import time
 from datetime import datetime
 from decimal import Decimal
 
@@ -25,6 +26,9 @@ from app.services.agent_context_service import AgentContextService
 from app.services.market_data import MarketDataService
 from app.services.paper import PaperAccountService, PaperOrderService
 from app.services.paper.risk_circuit import PaperRiskCircuitBreaker
+
+_SECTOR_HEATMAP_CACHE: dict[tuple[int], tuple[float, AgentSectorHeatmapResponse]] = {}
+_SECTOR_HEATMAP_TTL_SECONDS = 180.0
 
 
 def agent_backtest_strategy(
@@ -194,7 +198,29 @@ def agent_sector_heatmap(
     custom = getattr(service, "sector_heatmap", None)
     if callable(custom):
         return custom(limit=limit)
-    sectors: list[dict] = []
+    cache_key = (int(limit),)
+    now = time.monotonic()
+    cached = _SECTOR_HEATMAP_CACHE.get(cache_key)
+    if cached and cached[0] > now:
+        return cached[1]
+
+    # Hermes/Feishu 的日报与问答需要快速响应。优先使用市场状态快照
+    # 已经沉淀出的热点行业，避免在请求线程同步等待板块宽度外部源。
+    sentiment = agent_market_sentiment(service, market_data)
+    sectors: list[dict] = [
+        {"sector_name": name, "change_pct": 0.0, "rank": index + 1}
+        for index, name in enumerate(sentiment.hot_industries[:limit])
+    ]
+    if sectors:
+        response = AgentSectorHeatmapResponse(
+            updated_at=_now_string(),
+            limit=limit,
+            sectors=sectors,
+            data_quality_text="快速热点快照，涨跌幅等待后台板块数据刷新",
+        )
+        _SECTOR_HEATMAP_CACHE[cache_key] = (now + _SECTOR_HEATMAP_TTL_SECONDS, response)
+        return response
+
     try:
         frame = market_data._load_board_breadth_frame()
     except Exception:
@@ -208,18 +234,14 @@ def agent_sector_heatmap(
                     "rank": len(sectors) + 1,
                 }
             )
-    if not sectors:
-        sentiment = agent_market_sentiment(service, market_data)
-        sectors = [
-            {"sector_name": name, "change_pct": 0.0, "rank": index + 1}
-            for index, name in enumerate(sentiment.hot_industries[:limit])
-        ]
-    return AgentSectorHeatmapResponse(
+    response = AgentSectorHeatmapResponse(
         updated_at=_now_string(),
         limit=limit,
         sectors=sectors,
         data_quality_text="实时板块榜" if sectors else "板块热度暂无可用数据",
     )
+    _SECTOR_HEATMAP_CACHE[cache_key] = (now + _SECTOR_HEATMAP_TTL_SECONDS, response)
+    return response
 
 
 def agent_position_t_signal(

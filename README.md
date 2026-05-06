@@ -276,7 +276,7 @@ APP_PORT=18080 docker compose -f docker-compose.sqlite.yml up -d --build
 - Compose 项目名固定为 `tquant-sqlite`，可与 MySQL 方案并行运行
 - 默认访问 `http://127.0.0.1:18080`
 
-#### 方案 B：MySQL 双容器
+#### 方案 B：MySQL 生产编排
 
 适合更长期、更稳的持久部署：
 
@@ -289,6 +289,8 @@ APP_PORT=18090 docker compose -f docker-compose.mysql.yml up -d --build
 
 - MySQL 8.4 独立持久化
 - 应用容器自动连接 `mysql` 服务
+- Web 容器默认只处理 HTTP 请求，低吸扫描、预热、归档和模拟盘自动交易由 `runtime-worker` 单独执行，避免多 Gunicorn worker 重复跑后台任务
+- 回测任务由 `backtest-worker` 独立消费，避免长任务阻塞 Web 请求
 - Compose 项目名固定为 `tquant-mysql`，可与 SQLite 方案并行运行
 - 更适合云端长期运行
 

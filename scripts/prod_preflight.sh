@@ -7,10 +7,19 @@ BACKEND_PORT="${BACKEND_PORT:-18080}"
 SMOKE_PORT="${SMOKE_PORT:-18081}"
 RUNTIME_DIR="$ROOT_DIR/.runtime"
 BACKEND_LOG="$RUNTIME_DIR/prod_preflight_backend.log"
+PREFLIGHT_DB_PATH="$RUNTIME_DIR/prod_preflight.db"
+PREFLIGHT_RUNTIME_ENV="$RUNTIME_DIR/runtime.env.prod-preflight"
 
 mkdir -p "$RUNTIME_DIR"
+rm -f "$PREFLIGHT_DB_PATH" "$PREFLIGHT_DB_PATH-shm" "$PREFLIGHT_DB_PATH-wal" "$PREFLIGHT_RUNTIME_ENV"
 
 ./scripts/version_sync.py --check >/dev/null
+
+cd "$ROOT_DIR/frontend"
+npm run build:native >/dev/null
+npx cap sync android >/dev/null
+cd "$ROOT_DIR"
+./scripts/native_release_check.py >/dev/null
 
 cd "$ROOT_DIR/frontend"
 npm run build >/dev/null
@@ -27,11 +36,19 @@ cd "$ROOT_DIR"
 BACKEND_PORT="$SMOKE_PORT" ./scripts/qa_smoke.sh >/dev/null
 
 cd "$ROOT_DIR/backend"
+DATABASE_URL="sqlite:///$PREFLIGHT_DB_PATH" \
+RUNTIME_ENV_PATH="$PREFLIGHT_RUNTIME_ENV" \
+BASE_ENV_PATH="$RUNTIME_DIR/nonexistent.env" \
+AUTH_SECRET_KEY="prod-preflight-secret" \
+ADMIN_API_TOKEN="prod-preflight-admin-token" \
+RUNTIME_BACKGROUND_JOBS_ENABLED=false \
 .venv/bin/python -m uvicorn app.main:app --host 127.0.0.1 --port "$BACKEND_PORT" >"$BACKEND_LOG" 2>&1 &
 BACKEND_PID=$!
 
 cleanup() {
   kill "$BACKEND_PID" >/dev/null 2>&1 || true
+  wait "$BACKEND_PID" >/dev/null 2>&1 || true
+  rm -f "$PREFLIGHT_DB_PATH" "$PREFLIGHT_DB_PATH-shm" "$PREFLIGHT_DB_PATH-wal" "$PREFLIGHT_RUNTIME_ENV"
 }
 trap cleanup EXIT
 
@@ -48,7 +65,21 @@ if ! curl --max-time 2 -s "http://127.0.0.1:${BACKEND_PORT}/healthz" | grep -q '
 fi
 
 ROOT_HTML="$(curl -sS "http://127.0.0.1:${BACKEND_PORT}/")"
-SETTINGS_JSON="$(curl -sS "http://127.0.0.1:${BACKEND_PORT}/api/settings")"
+AUTH_JSON="$(curl -sS -X POST "http://127.0.0.1:${BACKEND_PORT}/api/auth/register" \
+  -H "Content-Type: application/json" \
+  -d '{"username":"prod_preflight","password":"ProdPreflight12345!","display_name":"Prod Preflight"}')"
+AUTH_TOKEN="$(python3 - <<'PY' "$AUTH_JSON"
+import json, sys
+print(json.loads(sys.argv[1]).get("access_token", ""))
+PY
+)"
+if [[ -z "$AUTH_TOKEN" ]]; then
+  echo "Failed to obtain preflight auth token: $AUTH_JSON" >&2
+  exit 1
+fi
+SETTINGS_JSON="$(curl -sS "http://127.0.0.1:${BACKEND_PORT}/api/settings" \
+  -H "Authorization: Bearer $AUTH_TOKEN" \
+  -H "X-Admin-Token: prod-preflight-admin-token")"
 READY_JSON="$(curl -sS "http://127.0.0.1:${BACKEND_PORT}/readyz")"
 
 python3 - <<'PY' "$ROOT_HTML" "$SETTINGS_JSON" "$READY_JSON"

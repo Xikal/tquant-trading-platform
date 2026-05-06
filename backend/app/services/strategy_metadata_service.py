@@ -150,7 +150,7 @@ class StrategyMetadataService:
         include_hidden: bool = False,
     ) -> StrategyMetaResponse:
         overrides = self._load_metadata_overrides()
-        resolver = StrategyTierResolver(self.db)
+        resolver = self._tier_resolver()
         roles = _roles(current_user)
         can_view_factor = _has_any_role(roles, FACTOR_ACCESS_ROLES)
         can_view_backtest_only = _has_any_role(roles, RESEARCH_ACCESS_ROLES)
@@ -219,7 +219,7 @@ class StrategyMetadataService:
         can_use_factor = _has_any_role(roles, FACTOR_ACCESS_ROLES)
         can_use_research = _has_any_role(roles, RESEARCH_ACCESS_ROLES)
         overrides = self._load_metadata_overrides()
-        resolver = StrategyTierResolver(self.db)
+        resolver = self._tier_resolver()
         seen: set[str] = set()
         for raw_key in strategy_keys:
             strategy_key = str(raw_key or "").strip()
@@ -287,7 +287,7 @@ class StrategyMetadataService:
                 raise ValueError(f"策略可见性为 {visibility}，暂不允许提升到生产层")
             if not enabled or not _strategy_feature_enabled(self.db, strategy_key, default=enabled):
                 raise ValueError("策略当前已禁用，暂不允许提升到生产层")
-        current_tier = StrategyTierResolver(self.db).resolve(strategy_key).value
+        current_tier = self._tier_resolver().resolve(strategy_key).value
         row = self.db.execute(
             select(StrategyTierOverride).where(StrategyTierOverride.strategy_key == strategy_key)
         ).scalar_one_or_none()
@@ -329,7 +329,7 @@ class StrategyMetadataService:
         current_user: User,
     ) -> StrategyGovernanceMutationResponse:
         strategy_key = payload.strategy_key.strip()
-        current_tier = StrategyTierResolver(self.db).resolve(strategy_key).value
+        current_tier = self._tier_resolver().resolve(strategy_key).value
         row = self.db.execute(
             select(StrategyTierOverride).where(StrategyTierOverride.strategy_key == strategy_key)
         ).scalar_one_or_none()
@@ -401,20 +401,24 @@ class StrategyMetadataService:
         return SymbolSearchResponse(items=items, total=total)
 
     def _load_metadata_overrides(self) -> dict[str, StrategyMetadata]:
+        if not hasattr(self.db, "execute"):
+            return {}
         try:
             rows = self.db.execute(select(StrategyMetadata)).scalars().all()
-        except SQLAlchemyError:
+        except (AttributeError, SQLAlchemyError):
             return {}
         return {row.key: row for row in rows}
 
     def _load_preset_rows(self) -> list[StrategyPreset]:
+        if not hasattr(self.db, "execute"):
+            return []
         try:
             return list(
                 self.db.execute(select(StrategyPreset).order_by(StrategyPreset.sort_order.asc(), StrategyPreset.id.asc()))
                 .scalars()
                 .all()
             )
-        except SQLAlchemyError:
+        except (AttributeError, SQLAlchemyError):
             return []
 
     def _current_production_strategy_keys(self) -> list[str]:
@@ -423,6 +427,9 @@ class StrategyMetadataService:
             for item in self.list_strategy_meta().strategies
             if item.enabled and item.visibility == "full" and item.category_key in {"core", "auxiliary"}
         ]
+
+    def _tier_resolver(self) -> StrategyTierResolver:
+        return StrategyTierResolver(self.db if hasattr(self.db, "execute") else None)
 
     def _search_instruments(self, keyword: str, limit: int) -> list[Instrument]:
         escaped = _escape_like(keyword)
@@ -578,6 +585,8 @@ def _filter_preset(preset: StrategyPresetOut, *, production_keys: list[str]) -> 
 
 
 def _strategy_feature_enabled(db: Session, strategy_key: str, *, default: bool) -> bool:
+    if not hasattr(db, "execute"):
+        return default
     return feature_enabled(db, f"strategy_{strategy_key}_enabled", default)
 
 

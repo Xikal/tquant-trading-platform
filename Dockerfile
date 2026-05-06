@@ -3,7 +3,7 @@ FROM docker.m.daocloud.io/library/node:20-bookworm-slim AS frontend-builder
 WORKDIR /app/frontend
 
 COPY frontend/package*.json ./
-RUN npm install
+RUN npm ci
 
 COPY frontend/ ./
 RUN npm run build

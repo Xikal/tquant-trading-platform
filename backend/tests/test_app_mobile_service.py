@@ -244,8 +244,8 @@ class AppMobileServiceTests(unittest.TestCase):
 
     def test_new_a_share_holding_unlocks_available_position_on_next_trading_day(self) -> None:
         with self.Session() as db:
-            with patch("app.services.app_mobile.watchlist.date") as date_mock:
-                date_mock.today.return_value = date(2026, 4, 23)
+            with patch("app.services.app_mobile.watchlist.beijing_today") as today_mock:
+                today_mock.return_value = date(2026, 4, 23)
                 self.service.upsert_watchlist(
                     AppWatchlistUpsertRequest(
                         symbol="300750",
@@ -258,8 +258,8 @@ class AppMobileServiceTests(unittest.TestCase):
                 )
                 same_day = self.service.list_watchlist(db, user_id=1)
 
-            with patch("app.services.app_mobile.watchlist.date") as date_mock:
-                date_mock.today.return_value = date(2026, 4, 24)
+            with patch("app.services.app_mobile.watchlist.beijing_today") as today_mock:
+                today_mock.return_value = date(2026, 4, 24)
                 next_day = self.service.list_watchlist(db, user_id=1)
 
             stored = db.query(UserWatchlist).filter(UserWatchlist.symbol == "300750").one()
@@ -289,8 +289,8 @@ class AppMobileServiceTests(unittest.TestCase):
 
     def test_low_buy_summary_and_detail(self) -> None:
         with self.Session() as db:
-            summary = self.service.low_buy(db, strategy="classic_retrace", limit=12, scan_limit=48, scan_mode="full")
-            detail = self.service.get_low_buy_detail("300750", db, strategy="classic_retrace", scan_limit=72)
+            summary = self.service.low_buy(db, strategy="first_board", limit=12, scan_limit=48, scan_mode="full")
+            detail = self.service.get_low_buy_detail("300750", db, strategy="first_board", scan_limit=72)
         self.assertEqual(summary.strategy.strategy_key, "classic_retrace")
         self.assertEqual(len(summary.confirmed_candidates), 1)
         self.assertEqual(len(summary.priority_board.items), 2)

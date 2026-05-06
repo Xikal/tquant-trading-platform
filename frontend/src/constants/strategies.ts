@@ -23,5 +23,12 @@ export const FALLBACK_STRATEGY_META: StrategyMetaFallback[] = [...GENERATED_STRA
 export const STRATEGY_OPTIONS = FALLBACK_STRATEGY_META
   .filter((item) => item.enabled !== false && item.visibility === "full")
   .map((item) => [item.key, item.label] as const);
+export const PRODUCTION_STRATEGY_OPTIONS = FALLBACK_STRATEGY_META
+  .filter((item) => (
+    item.enabled !== false &&
+    item.visibility === "full" &&
+    (item.tier === "core" || item.tier === "auxiliary")
+  ))
+  .map((item) => [item.key, item.label] as const);
 
 export type StrategyOption = readonly [string, string];

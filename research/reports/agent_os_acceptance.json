@@ -1,61 +1,65 @@
 {
-  "generated_at": "2026-05-05T00:07:21",
+  "generated_at": "2026-05-06T18:22:32",
   "project": "TQuant 维斯量化平台",
   "symbols": [
     "300590",
     "000070",
-    "601016",
-    "000811",
-    "600499",
-    "603637",
-    "603637",
-    "002448",
-    "300890",
-    "603967"
+    "601016"
   ],
   "steps": [
     {
-      "name": "hermes_workflow",
+      "name": "hermes_orchestration_contract",
       "status": "ok",
       "ok": true,
-      "message": "Hermes CLI workflow 已完成。",
-      "duration_ms": 30912,
+      "message": "Hermes 编排配置合同校验通过。",
+      "duration_ms": 0,
       "data": {
-        "executable": "/Users/j/.local/bin/hermes",
-        "symbols": [
-          "300590",
-          "000070",
-          "601016",
-          "000811",
-          "600499",
-          "603637",
-          "603637",
-          "002448",
-          "300890",
-          "603967"
+        "workflow_name": "tquant_daily_research",
+        "phase_count": 3,
+        "agent_count": 5,
+        "agents": [
+          "market_state_analyst",
+          "sector_heat_analyst",
+          "technical_analyst",
+          "strategy_validator",
+          "portfolio_manager"
         ],
-        "stdout": "{\n  \"ok\": true,\n  \"health_status\": {\n    \"status\": \"ok\",\n    \"app\": \"维斯量化交易平台\",\n    \"agent_layer\": \"enabled\",\n    \"checks\": {\n      \"database\": true,\n      \"frontend_dist\": true,\n      \"watchlist_signals\": true,\n      \"priority_board\": true\n    },\n    \"errors\": []\n  },\n  \"total_candidates\": 3,\n  \"symbols\": [\n    {\n      \"rank\": 1,\n      \"symbol\": \"300590\",\n      \"name\": \"移为通信\",\n      \"latest_price\": 14.67,\n      \"change_pct\": -2.59,\n      \"priority_score\": 171.24,\n      \"buy_signal_text\": \"继续观察\",\n      \"strategy_titles\": [\"首板回调\"],\n      \"entry_zone\": \"14.149-14.277\",\n      \"stop_loss\": 12.786,\n      \"data_quality\": \"partial\",\n      \"summary\": \"只记录，不追高，不提前买。\"\n    },\n    {\n      \"rank\": 2,\n      \"symbol\": \"603308\",\n      \"name\": \"应流股份\",\n      \"latest_price\": 75.58,\n      \"change_pct\": -1.09,\n      \"priority_score\": 167.84,\n      \"buy_signal_text\": \"继续观察\",\n      \"strategy_titles\": [\"量能低吸\"],\n      \"entry_zone\": \"73.883-74.926\",\n      \"stop_loss\": 73.585,\n      \"data_quality\": \"ok\",\n      \"summary\": \"只记录，不追高，不提前买。\"\n    },\n    {\n      \"rank\": 3,\n      \"symbol\": \"301603\",\n      \"name\": \"乔锋智能\",\n      \"latest_price\": 108.85,\n      \"change_pct\": -3.46,\n      \"priority_score\": 151.21,\n      \"buy_signal_text\": \"继续观察\",\n      \"strategy_titles\": [\"量能低吸\"],\n      \"entry_zone\": \"98.633-100.025\",\n      \"stop_loss\": 98.235,\n      \"data_quality\": \"ok\",\n      \"summary\": \"只记录，不追高，不提前买。\"\n    }\n  ],\n  \"market_state_text\": \"轮动过快。当前环境对低吸偏谨慎。热点：半导体/通信设备/通用设备。方向偏好：观望。\",\n  \"risk_notes\": [\n    \"市场处于 fast_rotation 状态，短线轮动过快，追高风险大\",\n    \"优先榜仅 3 只候选，且全部处于\\\"继续观察\\\"阶段，无立即可执行信号\",\n    \"300590 数据质量 partial（量能统计异常），需复核日线\",\n    \"市场广度与情绪数据缺失，信号置信度受限\",\n    \"参考标的 000070/601016/000811/600499/603637/002448/300890/603967 均未进入优先榜，说明当前无策略覆盖或未触发信号\"\n  ],\n  \"next_actions\": [\n    \"继续观察优先榜 3 只标的，等待进入 entry_zone 后再决策\",\n    \"补齐市场广度和情绪数据以提升信号质量\",\n    \"复核 300590 量能统计异常问题\",\n    \"参考标的列表中 8 只未上榜股票可纳入自选跟踪，等待后续信号触发\"\n  ]\n}\n",
-        "stderr": "",
-        "returncode": 0
+        "required_sections": [
+          "市场概览",
+          "板块主线",
+          "持仓做T信号",
+          "选股宝典 TOP 10",
+          "风控检查",
+          "操作检查清单"
+        ],
+        "errors": []
       }
     },
     {
-      "name": "feishu_daily_push",
-      "status": "ok",
+      "name": "hermes_workflow",
+      "status": "not_configured",
       "ok": true,
-      "message": "飞书日报已推送。",
-      "duration_ms": 32013,
+      "message": "HERMES_API_URL 未配置，跳过真实 Hermes workflow。",
+      "duration_ms": 0,
+      "data": {}
+    },
+    {
+      "name": "feishu_daily_push",
+      "status": "not_configured",
+      "ok": true,
+      "message": "daily report notification skipped: feishu notification channel not configured",
+      "duration_ms": 998,
       "data": {
         "ok": true,
         "channel": "feishu",
-        "trade_date": "2026-05-05",
-        "generated_at": "2026-05-05 00:06:42",
-        "sent": true,
-        "should_notify": true,
+        "trade_date": "2026-05-06",
+        "generated_at": "2026-05-06 18:22:27",
+        "sent": false,
+        "should_notify": false,
         "duplicate": false,
-        "notification_count": 1,
-        "message": "notification sent via hermes",
-        "markdown": "# TQuant 每日决策报告\n## 2026-05-05\n\n### 市场概览（市场状态分析师）\n- 市场状态：轮动过快（置信度 100%）\n- 涨停 0 家 | 跌停 0 家 | 炸板率 0%\n- 建议仓位：15% - 40%\n- 风险等级：medium\n\n### 板块主线（板块热点分析师）\n- 1. 能源金属 | 持续性 82 | 核心标的 待确认\n- 2. 半导体设备 | 持续性 75 | 核心标的 待确认\n- 3. 通信设备 | 持续性 71 | 核心标的 300590\n\n### 持仓做T信号\n- 暂无持仓做T信号。\n\n### 选股宝典 TOP 10\n- 1. 300590 首板回调 | 157.02 | 继续观察 | 三方一致 False\n\n### 风控检查（策略验证员）\n- 风险等级：clear，总计划仓位 0.0%。\n\n### 操作检查清单（组合经理）\n- [ ] 市场状态是否允许开仓？\n- [ ] 目标标的是否在主线板块？\n- [ ] 三方分析师结论是否一致？\n- [ ] 价格是否已进入买点区？\n- [ ] 单票仓位是否 <= 20%？\n- [ ] 止损位是否已设定？\n- [ ] 是否为 T+1 买入日（卖出需检查可用股数）？"
+        "notification_count": 0,
+        "message": "daily report notification skipped: feishu notification channel not configured",
+        "markdown": "# TQuant 每日决策报告\n## 2026-05-06\n\n### 市场概览（市场状态分析师）\n- 市场状态：轮动过快（置信度 100%）\n- 涨停 0 家 | 跌停 0 家 | 炸板率 0%\n- 建议仓位：15% - 40%\n- 风险等级：medium\n\n### 板块主线（板块热点分析师）\n- 1. 能源金属 | 持续性 82 | 核心标的 待确认\n- 2. 半导体设备 | 持续性 75 | 核心标的 待确认\n- 3. 通信设备 | 持续性 71 | 核心标的 300590\n\n### 持仓做T信号\n- 暂无持仓做T信号。\n\n### 选股宝典 TOP 10\n- 1. 300590 首板回调 | 147.26 | 继续观察 | 三方一致 False\n\n### 风控检查（策略验证员）\n- 风险等级：clear，总计划仓位 0.0%。\n\n### 操作检查清单（组合经理）\n- [ ] 市场状态是否允许开仓？\n- [ ] 目标标的是否在主线板块？\n- [ ] 三方分析师结论是否一致？\n- [ ] 价格是否已进入买点区？\n- [ ] 单票仓位是否 <= 20%？\n- [ ] 止损位是否已设定？\n- [ ] 是否为 T+1 买入日（卖出需检查可用股数）？"
       }
     },
     {
@@ -63,7 +67,7 @@
       "status": "ok",
       "ok": true,
       "message": "qlib 标准指标报告已生成。",
-      "duration_ms": 90,
+      "duration_ms": 31,
       "data": {
         "qlib": {
           "available": true,
@@ -103,7 +107,7 @@
       "status": "ok",
       "ok": true,
       "message": "OpenBB 可选数据源已完成真实探测与降级验收。",
-      "duration_ms": 7894,
+      "duration_ms": 4554,
       "data": {
         "adapter_status": {
           "optional": true,
@@ -120,24 +124,24 @@
         "quotes": [
           {
             "symbol": "AAPL",
-            "last_price": 276.245,
-            "change_pct": -1.4291,
+            "last_price": 284.18,
+            "change_pct": 2.6391,
             "source": "openbb_adapter",
             "available": true,
             "message": "ok"
           },
           {
             "symbol": "MSFT",
-            "last_price": 414.61,
-            "change_pct": 0.1002,
+            "last_price": 411.38,
+            "change_pct": -0.5416,
             "source": "openbb_adapter",
             "available": true,
             "message": "ok"
           },
           {
             "symbol": "SPY",
-            "last_price": 716.95,
-            "change_pct": -0.5134,
+            "last_price": 723.77,
+            "change_pct": 0.8022,
             "source": "openbb_adapter",
             "available": true,
             "message": "ok"
@@ -160,8 +164,8 @@
             {
               "code": "DGS10",
               "available": true,
-              "latest_date": "2026-04-30",
-              "latest_value": 4.4,
+              "latest_date": "2026-05-04",
+              "latest_value": 4.45,
               "message": "ok"
             },
             {
@@ -178,7 +182,7 @@
       }
     }
   ],
-  "overall_status": "ok",
+  "overall_status": "degraded",
   "notes": [
     "Hermes/飞书/OpenBB 依赖外部配置；缺配置会返回 not_configured，不影响核心 A 股链路。",
     "qlib 报告使用本地实盘物化信号和 daily_bar_snapshots 计算，不调用外部行情源。"

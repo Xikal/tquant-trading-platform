@@ -402,6 +402,8 @@ export default function MobileApp() {
 
       <AppUpdateSheet
         updateInfo={appUpdate.updateInfo}
+        updateError={appUpdate.updateError}
+        verifying={appUpdate.verifying}
         onClose={appUpdate.dismissUpdate}
         onUpdate={appUpdate.openUpdate}
       />

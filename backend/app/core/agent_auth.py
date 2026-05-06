@@ -76,7 +76,7 @@ def require_current_user_or_agent_token(
         _set_agent_state(
             request,
             agent_id="legacy-agent",
-            scopes=("read", "write", "write_paper", "notify"),
+            scopes=("read",),
             auth_type="agent",
         )
         return None

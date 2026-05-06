@@ -8,6 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models.entities import PaperPosition, PaperPositionLot
+from app.core.timezone import beijing_today
 from app.services.market.trading_calendar import last_a_share_trading_day, next_a_share_trading_day
 from app.services.paper.money import CENT, to_decimal
 from app.services.paper.symbols import is_etf
@@ -72,7 +73,7 @@ class PaperPositionService:
                 symbol=symbol,
                 quantity=quantity,
                 remaining=quantity,
-                available_date=_available_date_for_buy(symbol, trade_date or date.today()),
+                available_date=_available_date_for_buy(symbol, trade_date or beijing_today()),
                 cost_price=cost_price,
                 source_order_id=source_order_id,
             )
@@ -182,7 +183,7 @@ def _available_date_for_buy(symbol: str, trade_date: date) -> date:
 
 
 def _available_as_of_for_sell(symbol: str) -> date:
-    return date.today() if is_etf(symbol) else last_a_share_trading_day()
+    return beijing_today() if is_etf(symbol) else last_a_share_trading_day(beijing_today())
 
 
 def _merge_strategy_source(raw: str, strategy_key: str) -> str:

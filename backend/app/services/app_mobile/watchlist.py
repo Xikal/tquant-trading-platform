@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import threading
 import time
-from datetime import date
 from typing import Optional
 
 from sqlalchemy import select
@@ -18,6 +17,7 @@ from app.models.schemas import (
     AppWatchlistUpsertRequest,
     WatchlistItemOut,
 )
+from app.core.timezone import beijing_today
 from app.services.app_mobile.common import (
     collect_warning_messages,
     derive_stale_flag,
@@ -61,7 +61,7 @@ class AppMobileWatchlistMixin:
             row.available_position = payload.available_position
             row.cost_basis = payload.cost_basis
             row.memo = payload.memo
-        mark_watchlist_t1_availability(row, today=date.today())
+        mark_watchlist_t1_availability(row, today=beijing_today())
         db.commit()
         if user_id is None:
             self.watchlist_signal_service.ensure_background_refresh(force=True)
@@ -263,7 +263,7 @@ class AppMobileWatchlistMixin:
             db,
             model=model,
             user_id=user_id,
-            today=date.today(),
+            today=beijing_today(),
         )
         if not changed:
             return

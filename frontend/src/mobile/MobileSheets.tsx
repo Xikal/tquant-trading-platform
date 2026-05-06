@@ -311,10 +311,14 @@ function AiDecisionBlock({ title, content }: { title: string; content: string })
 
 export function AppUpdateSheet({
   updateInfo,
+  updateError,
+  verifying,
   onClose,
   onUpdate
 }: {
   updateInfo: AppAndroidUpdateResponse | null
+  updateError?: string
+  verifying?: boolean
   onClose: () => void
   onUpdate: () => void | Promise<void>
 }) {
@@ -349,17 +353,19 @@ export function AppUpdateSheet({
           <small>
             安装包 {Math.max(0.1, updateInfo.apk_size_bytes / 1024 / 1024).toFixed(1)} MB
             {updateInfo.mandatory ? " · 必须更新后继续使用" : ""}
+            {updateInfo.apk_sha256 ? ` · SHA256 ${updateInfo.apk_sha256.slice(0, 12)}...` : ""}
           </small>
+          {updateError ? <div className="mobile-app-error">{updateError}</div> : null}
         </div>
 
         <div className="mobile-update-actions">
           {!updateInfo.mandatory ? (
-            <button type="button" className="mobile-app-secondary" onClick={onClose}>
+            <button type="button" className="mobile-app-secondary" onClick={onClose} disabled={verifying}>
               稍后再说
             </button>
           ) : null}
-          <button type="button" className="mobile-app-primary" onClick={() => void onUpdate()}>
-            立即更新
+          <button type="button" className="mobile-app-primary" onClick={() => void onUpdate()} disabled={verifying}>
+            {verifying ? "校验中..." : "立即更新"}
           </button>
         </div>
       </section>

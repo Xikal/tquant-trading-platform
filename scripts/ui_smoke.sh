@@ -16,193 +16,93 @@ print(value or "default")
 PY
 )"
 OUT_DIR="$ROOT_DIR/.runtime/ui-smoke/$OUT_SUFFIX"
-INSERTED_SYMBOLS=()
-
 mkdir -p "$OUT_DIR"
 
-cleanup() {
-  for symbol in "${INSERTED_SYMBOLS[@]:-}"; do
-    curl -sS -X DELETE "$BASE_URL/api/watchlist/$symbol" >/dev/null || true
-  done
+export TQUANT_UI_SMOKE_BASE_URL="$BASE_URL"
+export TQUANT_UI_SMOKE_OUT_DIR="$OUT_DIR"
+
+NODE_PATH="$ROOT_DIR/frontend/node_modules" node <<'NODE'
+const { chromium } = require("playwright");
+const fs = require("fs");
+const path = require("path");
+
+const baseUrl = process.env.TQUANT_UI_SMOKE_BASE_URL;
+const outDir = process.env.TQUANT_UI_SMOKE_OUT_DIR;
+const username = "ui_smoke";
+const password = "UiSmoke12345!";
+
+async function requestJson(page, path, options = {}) {
+  const response = await page.request.fetch(`${baseUrl}${path}`, options);
+  const text = await response.text();
+  let payload = {};
+  try {
+    payload = text ? JSON.parse(text) : {};
+  } catch {
+    payload = { raw: text };
+  }
+  return { response, payload };
 }
-trap cleanup EXIT
 
-TEMP_PAYLOADS="$(
-  python3 - <<'PY' "$BASE_URL"
-import json
-import sys
-import urllib.request
+(async () => {
+  fs.mkdirSync(outDir, { recursive: true });
+  const browser = await chromium.launch({ headless: true, channel: "chrome" });
+  const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+  const consoleErrors = [];
+  page.on("console", (message) => {
+    if (message.type() === "error") consoleErrors.push(message.text());
+  });
+  page.on("pageerror", (error) => consoleErrors.push(error.message));
 
-base_url = sys.argv[1].rstrip("/")
-candidates = [
-    ("600519", "贵州茅台", 500, 500, 1588.0, "UI smoke temp stock"),
-    ("510300", "沪深300ETF", 1200, 800, 3.456, "UI smoke temp etf"),
-    ("159915", "创业板ETF", 1500, 900, 2.145, "UI smoke temp etf"),
-    ("688981", "中芯国际", 400, 400, 48.6, "UI smoke temp stock"),
-]
-with urllib.request.urlopen(f"{base_url}/api/watchlist", timeout=10) as response:
-    existing = {item["symbol"] for item in json.load(response)}
+  const health = await page.request.get(`${baseUrl}/healthz`);
+  if (!health.ok()) {
+    throw new Error(`healthz failed: ${health.status()}`);
+  }
 
-selected = []
-for row in candidates:
-    if row[0] in existing:
-        continue
-    selected.append(
-        json.dumps(
-            {
-                "symbol": row[0],
-                "name": row[1],
-                "base_position": row[2],
-                "available_position": row[3],
-                "cost_basis": row[4],
-                "memo": row[5],
-            },
-            ensure_ascii=False,
-        )
-    )
-    if len(selected) == 2:
-        break
+  let auth = await requestJson(page, "/api/auth/register", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    data: { username, password, display_name: "UI Smoke" },
+  });
+  if (!auth.payload.access_token) {
+    auth = await requestJson(page, "/api/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      data: { username, password },
+    });
+  }
+  if (!auth.payload.access_token) {
+    throw new Error(`auth failed: ${JSON.stringify(auth.payload)}`);
+  }
 
-for payload in selected:
-    print(payload)
-PY
-)"
+  await page.goto(baseUrl, { waitUntil: "networkidle" });
+  if (await page.getByPlaceholder("请输入手机号或账号").count()) {
+    await page.getByPlaceholder("请输入手机号或账号").fill(username);
+    await page.getByPlaceholder("请输入登录密码").fill(password);
+    await page.getByRole("button", { name: /登录进入工作台/ }).click();
+  }
+  await page.getByText("实时监控").waitFor({ timeout: 15000 });
+  await page.screenshot({ path: path.join(outDir, "monitor.png"), fullPage: true });
 
-while IFS= read -r payload; do
-  [[ -z "$payload" ]] && continue
-  symbol="$(python3 - <<'PY' "$payload"
-import json, sys
-print(json.loads(sys.argv[1])["symbol"])
-PY
-)"
-  curl -sS -X POST "$BASE_URL/api/watchlist" \
-    -H "Content-Type: application/json" \
-    -d "$payload" >/dev/null
-  INSERTED_SYMBOLS+=("$symbol")
-done <<< "$TEMP_PAYLOADS"
+  const tabs = ["量化分析", "选股宝典", "策略工作台", "模拟盘", "绩效"];
+  for (const tab of tabs) {
+    await page.getByText(tab).first().click();
+    await page.waitForTimeout(700);
+    await page.screenshot({ path: path.join(outDir, `${tab}.png`), fullPage: true });
+  }
 
-if [[ "${#INSERTED_SYMBOLS[@]}" -gt 0 ]]; then
-  joined_symbols="$(IFS=,; echo "${INSERTED_SYMBOLS[*]}")"
-  signals_ready=0
-  for _ in $(seq 1 3); do
-    signals_json="$(
-      python3 - <<'PY' "$BASE_URL"
-import sys
-import urllib.request
+  const blockedByBackdrop = await page.locator(".modal-backdrop, .strategy-dialog-backdrop, .order-modal-backdrop").count();
+  if (blockedByBackdrop > 0) {
+    throw new Error(`unexpected modal backdrop after navigation: ${blockedByBackdrop}`);
+  }
 
-base_url = sys.argv[1].rstrip("/")
-try:
-    with urllib.request.urlopen(f"{base_url}/api/watchlist/signals", timeout=3) as response:
-        print(response.read().decode("utf-8"))
-except Exception:
-    print("[]")
-PY
-    )"
-    if python3 - <<'PY' "$signals_json" "$joined_symbols"
-import json
-import sys
-
-payload = json.loads(sys.argv[1] or "[]")
-symbols = {item["symbol"] for item in payload}
-required = {item for item in sys.argv[2].split(",") if item}
-if required and required.issubset(symbols):
-    raise SystemExit(0)
-raise SystemExit(1)
-PY
-    then
-      signals_ready=1
-      break
-    fi
-    sleep 1
-  done
-  if [[ "$signals_ready" -ne 1 ]]; then
-    echo "[ui-smoke] inserted symbols did not become ready in time, continue with page smoke" >&2
-  fi
-fi
-
-BACKTEST_JSON="$(curl -sS -X POST "$BASE_URL/api/backtests" \
-  -H "Content-Type: application/json" \
-  -d '{"symbol":"510300","lookback_bars":180,"bar_period":"5m","initial_position":1000,"walk_forward_windows":3}')"
-
-python3 - <<'PY' "$BACKTEST_JSON"
-import json
-import sys
-
-payload = json.loads(sys.argv[1])
-for key in ("symbol", "total_trades", "profit_factor", "walk_forward_score"):
-    assert key in payload, f"backtest payload missing {key}"
-print("ui-backtest:ok")
-PY
-
-DASHBOARD_SIGNALS_JSON="$(
-  python3 - <<'PY' "$BASE_URL"
-import json
-import sys
-import urllib.request
-
-base_url = sys.argv[1].rstrip("/")
-try:
-    with urllib.request.urlopen(f"{base_url}/api/watchlist/signals", timeout=12) as response:
-        print(response.read().decode("utf-8"))
-except Exception:
-    print("[]")
-PY
-)"
-DASHBOARD_WAIT_SELECTOR="$(
-  python3 - <<'PY' "$DASHBOARD_SIGNALS_JSON"
-import json
-import sys
-
-payload = json.loads(sys.argv[1] or "[]")
-if payload:
-    print(f"text={payload[0]['symbol']}")
-else:
-    print("text=已持仓做T信号扫描")
-PY
-)"
-
-echo "[ui-smoke] dashboard -> $BASE_URL/"
-npx --yes playwright screenshot \
-  --channel=chrome \
-  --device="Desktop Chrome" \
-  --full-page \
-  --wait-for-selector="$DASHBOARD_WAIT_SELECTOR" \
-  --wait-for-timeout=3000 \
-  --timeout=30000 \
-  "$BASE_URL/" \
-  "$OUT_DIR/dashboard.png" >/dev/null
-
-echo "[ui-smoke] settings -> $BASE_URL/settings"
-npx --yes playwright screenshot \
-  --channel=chrome \
-  --device="Desktop Chrome" \
-  --full-page \
-  --wait-for-selector='text=当前运行快照' \
-  --wait-for-timeout=1500 \
-  --timeout=20000 \
-  "$BASE_URL/settings" \
-  "$OUT_DIR/settings.png" >/dev/null
-
-echo "[ui-smoke] analysis -> $BASE_URL/analysis"
-npx --yes playwright screenshot \
-  --channel=chrome \
-  --device="Desktop Chrome" \
-  --full-page \
-  --wait-for-selector='text=输入持仓信息后' \
-  --wait-for-timeout=1500 \
-  --timeout=30000 \
-  "$BASE_URL/analysis" \
-  "$OUT_DIR/analysis.png" >/dev/null
-
-echo "[ui-smoke] research -> $BASE_URL/research"
-npx --yes playwright screenshot \
-  --channel=chrome \
-  --device="Desktop Chrome" \
-  --full-page \
-  --wait-for-selector='text=运行回测' \
-  --wait-for-timeout=1500 \
-  --timeout=20000 \
-  "$BASE_URL/research" \
-  "$OUT_DIR/research.png" >/dev/null
-
-echo "UI smoke passed. Screenshots saved to $OUT_DIR"
+  const ignored = consoleErrors.filter((item) => !/favicon|ResizeObserver/i.test(item));
+  if (ignored.length) {
+    throw new Error(`console errors: ${ignored.slice(0, 5).join(" | ")}`);
+  }
+  await browser.close();
+  console.log(`ui-smoke:ok screenshots=${outDir}`);
+})().catch(async (error) => {
+  console.error(error);
+  process.exit(1);
+});
+NODE

@@ -1,6 +1,7 @@
 import type {
   AppBootstrapResponse,
   AppAndroidUpdateResponse,
+  AppLowBuyResponse,
   AuthMeResponse,
   AuthTokenResponse,
   AppHomeResponse,
@@ -135,6 +136,11 @@ export const appApi = {
   getWatchlist: () => requestCachedOffline<AppWatchlistResponse>("/app/watchlist", 8000),
   getWatchlistDetail: (symbol: string) =>
     requestCachedOffline<AppWatchlistDetailResponse>(`/app/watchlist/${encodeURIComponent(symbol)}`, 8000),
+  getLowBuy: (strategy = "first_board", limit = 18) =>
+    requestCachedOffline<AppLowBuyResponse>(
+      `/app/low-buy?strategy=${encodeURIComponent(strategy)}&limit=${limit}&scan_mode=quick`,
+      10000
+    ),
   upsertWatchlist: (payload: Omit<WatchlistItem, "created_at">) =>
     request<AppMutationResponse>("/app/watchlist", {
       method: "POST",

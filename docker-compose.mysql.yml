@@ -55,10 +55,55 @@ services:
       PAPER_AUTO_TRADING_MAX_ORDERS: ${PAPER_AUTO_TRADING_MAX_ORDERS:-5}
       PAPER_AUTO_TRADING_DRY_RUN: ${PAPER_AUTO_TRADING_DRY_RUN:-false}
       PAPER_AUTO_TRADING_MIN_SCORE: ${PAPER_AUTO_TRADING_MIN_SCORE:-75}
+      RUNTIME_BACKGROUND_JOBS_ENABLED: ${WEB_RUNTIME_BACKGROUND_JOBS_ENABLED:-false}
+      RUNTIME_BACKGROUND_JOBS_ON_SQLITE: ${RUNTIME_BACKGROUND_JOBS_ON_SQLITE:-false}
     volumes:
       - app_runtime_data:/app/backend/data
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/readyz', timeout=5)"]
+      interval: 20s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  runtime-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: tquant-web:mysql
+    container_name: tquant-runtime-worker-mysql
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+    command: ["gunicorn", "-k", "uvicorn.workers.UvicornWorker", "-w", "1", "--bind", "127.0.0.1:8001", "app.main:app"]
+    environment:
+      APP_NAME: ${APP_NAME:-维斯量化交易平台}
+      API_PREFIX: ${API_PREFIX:-/api}
+      DATABASE_URL: mysql+pymysql://${MYSQL_USER:-tquant_app}:${MYSQL_PASSWORD:?MYSQL_PASSWORD is required}@mysql:3306/${MYSQL_DATABASE:-t_quant}?charset=utf8mb4
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:8000,http://127.0.0.1:8000,http://localhost:18080,http://127.0.0.1:18080,http://localhost:18090,http://127.0.0.1:18090}
+      DEFAULT_DATA_SOURCE: ${DEFAULT_DATA_SOURCE:-akshare_eastmoney}
+      HTTP_TIMEOUT: ${HTTP_TIMEOUT:-12}
+      ADMIN_API_TOKEN: ${ADMIN_API_TOKEN:-}
+      AUTH_SECRET_KEY: ${AUTH_SECRET_KEY:?AUTH_SECRET_KEY is required}
+      AUTH_COOKIE_SECURE: ${AUTH_COOKIE_SECURE:-true}
+      AGENT_PROVIDER: ${AGENT_PROVIDER:-none}
+      AGENT_API_BASE: ${AGENT_API_BASE:-http://127.0.0.1:8001/api}
+      AGENT_API_TOKEN: ${AGENT_API_TOKEN:-}
+      AGENT_TIMEOUT_SECONDS: ${AGENT_TIMEOUT_SECONDS:-10}
+      HERMES_API_URL: ${HERMES_API_URL:-}
+      HERMES_API_KEY: ${HERMES_API_KEY:-}
+      PAPER_AUTO_TRADING_ENABLED: ${PAPER_AUTO_TRADING_ENABLED:-true}
+      PAPER_AUTO_TRADING_INTERVAL: ${PAPER_AUTO_TRADING_INTERVAL:-120}
+      PAPER_AUTO_TRADING_MAX_ORDERS: ${PAPER_AUTO_TRADING_MAX_ORDERS:-5}
+      PAPER_AUTO_TRADING_DRY_RUN: ${PAPER_AUTO_TRADING_DRY_RUN:-false}
+      PAPER_AUTO_TRADING_MIN_SCORE: ${PAPER_AUTO_TRADING_MIN_SCORE:-75}
+      RUNTIME_BACKGROUND_JOBS_ENABLED: ${RUNTIME_BACKGROUND_JOBS_ENABLED:-true}
+      RUNTIME_BACKGROUND_JOBS_ON_SQLITE: ${RUNTIME_BACKGROUND_JOBS_ON_SQLITE:-false}
+    volumes:
+      - app_runtime_data:/app/backend/data
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8001/readyz', timeout=5)"]
       interval: 20s
       timeout: 5s
       retries: 5

@@ -62,6 +62,7 @@ class AppAndroidUpdateResponse(BaseModel):
     changelog: list[str] = Field(default_factory=list)
     apk_url: str
     apk_size_bytes: int = 0
+    apk_sha256: str = ""
     published_at: str = ""
 
 

@@ -59,7 +59,10 @@ class PaperAccountService:
             statement = statement.where(PaperAccount.user_id.is_(None))
         else:
             statement = statement.where(PaperAccount.user_id == user_id)
-        account = self.db.execute(statement.order_by(PaperAccount.id.asc())).scalar_one_or_none()
+        active_statement = statement.where(PaperAccount.status == "active").order_by(PaperAccount.id.asc()).limit(1)
+        account = self.db.execute(active_statement).scalars().first()
+        if account is None:
+            account = self.db.execute(statement.order_by(PaperAccount.id.asc()).limit(1)).scalars().first()
         if account is not None:
             return account
         return self.create_account("默认模拟账户", Decimal("100000"), user_id=user_id)

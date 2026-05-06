@@ -171,6 +171,13 @@ export function TradingWorkspace() {
   }, [notice]);
 
   useEffect(() => {
+    setAiDialogOpen(false);
+    setCommandOpen(false);
+    setSelectedStock(null);
+    setError("");
+  }, [page]);
+
+  useEffect(() => {
     if (!currentUser) {
       return;
     }

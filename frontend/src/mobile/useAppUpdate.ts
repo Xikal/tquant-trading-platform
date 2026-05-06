@@ -28,6 +28,8 @@ function rememberDismissedVersion(versionCode: number) {
 export function useAppUpdate() {
   const [updateInfo, setUpdateInfo] = useState<AppAndroidUpdateResponse | null>(null)
   const [checking, setChecking] = useState(false)
+  const [verifying, setVerifying] = useState(false)
+  const [updateError, setUpdateError] = useState("")
 
   const checkForUpdate = useCallback(async () => {
     if (!isAndroidNativeApp() || checking) {
@@ -40,6 +42,7 @@ export function useAppUpdate() {
       const shouldShow =
         payload.update_available &&
         (payload.mandatory || dismissed !== String(payload.latest_version_code))
+      setUpdateError("")
       setUpdateInfo(shouldShow ? payload : null)
     } catch {
       // 更新检查不能影响交易主流程。
@@ -53,13 +56,23 @@ export function useAppUpdate() {
       rememberDismissedVersion(updateInfo.latest_version_code)
     }
     setUpdateInfo(null)
+    setUpdateError("")
   }, [updateInfo])
 
   const openUpdate = useCallback(async () => {
     if (!updateInfo?.apk_url) {
       return
     }
-    await Browser.open({ url: updateInfo.apk_url })
+    try {
+      setVerifying(true)
+      setUpdateError("")
+      await verifyApkChecksum(updateInfo.apk_url, updateInfo.apk_sha256)
+      await Browser.open({ url: updateInfo.apk_url })
+    } catch (err) {
+      setUpdateError(err instanceof Error ? err.message : "安装包校验失败，请稍后重试。")
+    } finally {
+      setVerifying(false)
+    }
   }, [updateInfo])
 
   useEffect(() => {
@@ -68,8 +81,34 @@ export function useAppUpdate() {
 
   return {
     updateInfo,
+    updateError,
     checkForUpdate,
     dismissUpdate,
-    openUpdate
+    openUpdate,
+    verifying
+  }
+}
+
+async function verifyApkChecksum(apkUrl: string, expectedSha256: string) {
+  const expected = expectedSha256.trim().toLowerCase()
+  if (!expected) {
+    throw new Error("安装包缺少 SHA256 校验值，已阻止更新。")
+  }
+  if (!globalThis.crypto?.subtle) {
+    throw new Error("当前设备不支持安装包校验，已阻止更新。")
+  }
+  const response = await fetch(apkUrl, {
+    cache: "no-store",
+    credentials: "include"
+  })
+  if (!response.ok) {
+    throw new Error(`安装包下载失败: ${response.status}`)
+  }
+  const digest = await globalThis.crypto.subtle.digest("SHA-256", await response.arrayBuffer())
+  const actual = Array.from(new Uint8Array(digest))
+    .map((byte) => byte.toString(16).padStart(2, "0"))
+    .join("")
+  if (actual !== expected) {
+    throw new Error("安装包 SHA256 校验不一致，已阻止更新。")
   }
 }

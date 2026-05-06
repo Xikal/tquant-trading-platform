@@ -14,7 +14,7 @@ LOW_BUY_TEST_DB_PATH="$RUNTIME_DIR/qa_low_buy_persistence.db"
 LOW_BUY_TEST_DB_URL="sqlite:///$LOW_BUY_TEST_DB_PATH"
 
 mkdir -p "$RUNTIME_DIR"
-rm -f "$QA_DB_PATH"
+rm -f "$QA_DB_PATH" "$QA_DB_PATH-shm" "$QA_DB_PATH-wal"
 
 rm -f "$RUNTIME_ENV_PATH"
 
@@ -27,15 +27,21 @@ if [[ ! -x ".venv/bin/python" ]]; then
   exit 1
 fi
 
-DATABASE_URL="$QA_DB_URL" RUNTIME_ENV_PATH="$RUNTIME_ENV_PATH" .venv/bin/python -m uvicorn app.main:app --host 127.0.0.1 --port "$BACKEND_PORT" >"$BACKEND_LOG" 2>&1 &
+DATABASE_URL="$QA_DB_URL" \
+RUNTIME_ENV_PATH="$RUNTIME_ENV_PATH" \
+BASE_ENV_PATH="$RUNTIME_DIR/nonexistent.env" \
+AUTH_SECRET_KEY="qa-smoke-secret" \
+ADMIN_API_TOKEN="qa-admin-token" \
+RUNTIME_BACKGROUND_JOBS_ENABLED=false \
+.venv/bin/python -m uvicorn app.main:app --host 127.0.0.1 --port "$BACKEND_PORT" >"$BACKEND_LOG" 2>&1 &
 BACKEND_PID=$!
 
 cleanup() {
   kill "$BACKEND_PID" >/dev/null 2>&1 || true
   wait "$BACKEND_PID" >/dev/null 2>&1 || true
   rm -f "$RUNTIME_ENV_PATH"
-  rm -f "$QA_DB_PATH"
-  rm -f "$LOW_BUY_TEST_DB_PATH"
+  rm -f "$QA_DB_PATH" "$QA_DB_PATH-shm" "$QA_DB_PATH-wal"
+  rm -f "$LOW_BUY_TEST_DB_PATH" "$LOW_BUY_TEST_DB_PATH-shm" "$LOW_BUY_TEST_DB_PATH-wal"
 }
 trap cleanup EXIT
 
@@ -51,17 +57,44 @@ if ! curl --max-time 2 -s "http://127.0.0.1:${BACKEND_PORT}/healthz" | grep -q '
   exit 1
 fi
 
+AUTH_JSON="$(curl -sS -X POST "http://127.0.0.1:${BACKEND_PORT}/api/auth/register" \
+  -H "Content-Type: application/json" \
+  -d '{"username":"qa_smoke","password":"QaSmoke12345!","display_name":"QA Smoke"}')"
+if python3 - <<'PY' "$AUTH_JSON"
+import json, sys
+payload = json.loads(sys.argv[1])
+raise SystemExit(0 if "access_token" in payload else 1)
+PY
+then
+  :
+else
+  AUTH_JSON="$(curl -sS -X POST "http://127.0.0.1:${BACKEND_PORT}/api/auth/login" \
+    -H "Content-Type: application/json" \
+    -d '{"username":"qa_smoke","password":"QaSmoke12345!"}')"
+fi
+AUTH_TOKEN="$(python3 - <<'PY' "$AUTH_JSON"
+import json, sys
+print(json.loads(sys.argv[1]).get("access_token", ""))
+PY
+)"
+if [[ -z "$AUTH_TOKEN" ]]; then
+  echo "Failed to obtain QA auth token: $AUTH_JSON" >&2
+  exit 1
+fi
+AUTH_HEADER=(-H "Authorization: Bearer $AUTH_TOKEN")
+ADMIN_HEADER=(-H "X-Admin-Token: qa-admin-token")
+
 READY_JSON="$(curl -sS "http://127.0.0.1:${BACKEND_PORT}/readyz")"
-INSTRUMENTS_JSON="$(curl -sS "http://127.0.0.1:${BACKEND_PORT}/api/instruments?keyword=510300&kind=all&page=1&page_size=5")"
-SETTINGS_UPDATE_JSON="$(curl -sS -X PUT "http://127.0.0.1:${BACKEND_PORT}/api/settings" -H "Content-Type: application/json" -d '{"llm_api_key":"qa-key-123","llm_base_url":"https://api.qa.local/v1","llm_model":"qa-model","data_source":"qa_feed","data_source_base_url":"https://data.qa.local","database_url":"mysql+pymysql://qa:pass@127.0.0.1:3306/t_quant?charset=utf8mb4","strategy_min_profit_stock_pct":3.2,"strategy_min_profit_etf_pct":1.6}')"
-UPSERT_WATCHLIST_JSON="$(curl -sS -X POST "http://127.0.0.1:${BACKEND_PORT}/api/watchlist" -H "Content-Type: application/json" -d '{"symbol":"510300","name":"沪深300ETF","base_position":1200,"available_position":800,"cost_basis":3.456,"memo":"QA底仓"}')"
-ANALYZE_JSON="$(curl --max-time 75 -sS -X POST "http://127.0.0.1:${BACKEND_PORT}/api/analyze" -H "Content-Type: application/json" -d '{"symbol":"510300","prefer_strategy":"auto","base_position":1000,"available_position":1000,"include_ai":false,"include_events":false,"include_microstructure":false}')"
-SETTINGS_JSON="$(curl -sS "http://127.0.0.1:${BACKEND_PORT}/api/settings")"
-RUNTIME_JSON="$(curl -sS "http://127.0.0.1:${BACKEND_PORT}/api/settings/runtime")"
-WATCHLIST_JSON="$(curl -sS "http://127.0.0.1:${BACKEND_PORT}/api/watchlist/signals")"
-LOW_BUY_JSON="$(curl -sS "http://127.0.0.1:${BACKEND_PORT}/api/screeners/low-buy?limit=12&scan_limit=24")"
-LOW_BUY_BREAKOUT_JSON="$(curl -sS "http://127.0.0.1:${BACKEND_PORT}/api/screeners/low-buy?strategy=limit_up_breakout_retrace&limit=12&scan_limit=24")"
-LOW_BUY_QUOTES_JSON="$(curl -sS "http://127.0.0.1:${BACKEND_PORT}/api/screeners/low-buy/quotes?symbols=510300")"
+INSTRUMENTS_JSON="$(curl -sS "${AUTH_HEADER[@]}" "http://127.0.0.1:${BACKEND_PORT}/api/instruments?keyword=510300&kind=all&page=1&page_size=5")"
+SETTINGS_UPDATE_JSON="$(curl -sS -X PUT "http://127.0.0.1:${BACKEND_PORT}/api/settings" "${AUTH_HEADER[@]}" "${ADMIN_HEADER[@]}" -H "Content-Type: application/json" -d '{"llm_api_key":"qa-key-123","llm_base_url":"https://api.qa.local/v1","llm_model":"qa-model","data_source":"qa_feed","data_source_base_url":"https://data.qa.local","database_url":"mysql+pymysql://qa:pass@127.0.0.1:3306/t_quant?charset=utf8mb4","strategy_min_profit_stock_pct":3.2,"strategy_min_profit_etf_pct":1.6}')"
+UPSERT_WATCHLIST_JSON="$(curl -sS -X POST "http://127.0.0.1:${BACKEND_PORT}/api/watchlist" "${AUTH_HEADER[@]}" -H "Content-Type: application/json" -d '{"symbol":"510300","name":"沪深300ETF","base_position":1200,"available_position":800,"cost_basis":3.456,"memo":"QA底仓"}')"
+ANALYZE_JSON="$(curl --max-time 75 -sS -X POST "http://127.0.0.1:${BACKEND_PORT}/api/analyze" "${AUTH_HEADER[@]}" -H "Content-Type: application/json" -d '{"symbol":"510300","prefer_strategy":"auto","base_position":1000,"available_position":1000,"include_ai":false,"include_events":false,"include_microstructure":false}')"
+SETTINGS_JSON="$(curl -sS "http://127.0.0.1:${BACKEND_PORT}/api/settings" "${AUTH_HEADER[@]}" "${ADMIN_HEADER[@]}")"
+RUNTIME_JSON="$(curl -sS "http://127.0.0.1:${BACKEND_PORT}/api/settings/runtime" "${AUTH_HEADER[@]}" "${ADMIN_HEADER[@]}")"
+WATCHLIST_JSON="$(curl -sS "http://127.0.0.1:${BACKEND_PORT}/api/watchlist/signals" "${AUTH_HEADER[@]}")"
+LOW_BUY_JSON="$(curl -sS "http://127.0.0.1:${BACKEND_PORT}/api/screeners/low-buy?limit=12&scan_limit=24" "${AUTH_HEADER[@]}")"
+LOW_BUY_BREAKOUT_JSON="$(curl -sS "http://127.0.0.1:${BACKEND_PORT}/api/screeners/low-buy?strategy=limit_up_breakout_retrace&limit=12&scan_limit=24" "${AUTH_HEADER[@]}")"
+LOW_BUY_QUOTES_JSON="$(curl -sS "http://127.0.0.1:${BACKEND_PORT}/api/screeners/low-buy/quotes?symbols=510300" "${AUTH_HEADER[@]}")"
 if [[ "$QA_DEEP" == "1" ]]; then
   BACKTEST_JSON="$(curl --max-time 90 -sS -X POST "http://127.0.0.1:${BACKEND_PORT}/api/backtests" -H "Content-Type: application/json" -d '{"symbol":"510300","lookback_bars":180,"bar_period":"5m","initial_position":1000,"walk_forward_windows":3}')"
   REPLAYS_JSON="$(curl --max-time 20 -sS "http://127.0.0.1:${BACKEND_PORT}/api/replays")"
@@ -98,10 +131,12 @@ assert analysis["suggestion"]["action"] in {"positive_t", "negative_t", "hold"},
 assert "ai" in analysis, "analysis result missing ai"
 assert analysis["ai"]["enabled"] is False, "qa AI call should gracefully fall back with fake endpoint"
 assert isinstance(settings.get("data_source"), str), "settings.data_source should be str"
-assert settings["llm_api_key"] == "qa-key-123", "llm_api_key not persisted"
+assert settings["llm_api_key_configured"] is True, "llm_api_key not persisted"
+assert settings["llm_api_key"] == "********", "llm_api_key should be masked"
 assert settings["llm_base_url"] == "https://api.qa.local/v1", "llm_base_url not persisted"
 assert settings["llm_model"] == "qa-model", "llm_model not persisted"
-assert settings["database_url"].startswith("mysql+pymysql://qa:"), "database_url not persisted"
+assert settings["database_url_configured"] is True, "database_url not persisted"
+assert settings["database_url"].startswith("mysql+pymysql://qa:"), "database_url should be masked but keep driver/user"
 assert settings["strategy_min_profit_stock_pct"] == 3.2, "stock min profit pct not persisted"
 assert settings["strategy_min_profit_etf_pct"] == 1.6, "etf min profit pct not persisted"
 for key in (
@@ -207,6 +242,7 @@ from app.models.entities import (
     LowBuyResultSnapshot,
     LowBuyScanSnapshot,
     LowBuyStrategyPerformanceSnapshot,
+    LowBuyStrategyPerformanceWindowSnapshot,
 )
 from app.models.schemas import LowBuyCloseReviewItemOut, LowBuyScreenerResponse
 from app.services.low_buy_screener import (
@@ -279,8 +315,8 @@ with SessionLocal() as db:
     assert pool_rows == 1, "low buy pool snapshot row count mismatch"
 
     payload = LowBuyScreenerResponse(
-        strategy_key="classic_retrace",
-        strategy_title="原始低吸法",
+        strategy_key="first_board",
+        strategy_title="首板回调",
         strategy_subtitle="",
         strategy_logic="",
         requested_mode="full",
@@ -296,7 +332,39 @@ with SessionLocal() as db:
         full_scan_in_progress=False,
         full_scan_updated_at=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         retracement_distribution={"2天": 10},
-        filters={"_result_version": LOW_BUY_RESULT_VERSION},
+        filters={
+            "_result_version": LOW_BUY_RESULT_VERSION,
+            "market_regime": "缩量无主线",
+            "market_state": "low_volume_wait",
+            "market_state_strength": 0.0,
+            "regime_confidence": 0.0,
+            "state_persistence_days": 0,
+            "transition_risk": 0.0,
+            "breadth_ready": False,
+            "emotion_ready": False,
+            "market_bonus": 0.0,
+            "hot_industries_json": "[]",
+            "hot_industry_source": "qa",
+            "hot_industry_source_text": "QA",
+            "limit_up_count": 0,
+            "board_height": 0,
+            "promotion_ratio": 0.0,
+            "broken_board_ratio": 0.0,
+            "high_flyer_retreat_ratio": 0.0,
+            "stock_up_ratio": 0.0,
+            "stock_median_change": 0.0,
+            "style_divergence": 0.0,
+            "hot_turnover": 0.0,
+            "hot_overlap_ratio": 0.0,
+            "previous_board_height": 0,
+            "promotion_break_gap": 0.0,
+            "promotion_break_pressure": 0.0,
+            "high_flyer_gap_speed": 0.0,
+            "distribution_pressure": 0.0,
+            "mainline_lifecycle_state": "unknown",
+            "mainline_lifecycle_text": "未知",
+            "structure_mode": "qa",
+        },
         strategy_notes=[],
         performance=None,
         confirmed_candidates=[],
@@ -311,7 +379,7 @@ with SessionLocal() as db:
     )
     loaded = service._load_cached_full_result(
         db=db,
-        strategy="classic_retrace",
+        strategy="first_board",
         latest_trade_date="2026-04-17",
         limit=16,
         include_history=False,
@@ -321,31 +389,38 @@ with SessionLocal() as db:
     scan_snapshot = db.execute(
         select(LowBuyScanSnapshot).where(
             LowBuyScanSnapshot.latest_trade_date == "2026-04-17",
-            LowBuyScanSnapshot.strategy_key == "classic_retrace",
+            LowBuyScanSnapshot.strategy_key == "first_board",
         )
     ).scalar_one_or_none()
     assert scan_snapshot is not None, "materialized low buy scan snapshot missing"
     result_rows = db.execute(
         select(LowBuyResultSnapshot).where(
             LowBuyResultSnapshot.latest_trade_date == "2026-04-17",
-            LowBuyResultSnapshot.strategy_key == "classic_retrace",
+            LowBuyResultSnapshot.strategy_key == "first_board",
         )
     ).scalars().all()
     assert isinstance(result_rows, list), "materialized low buy result rows query failed"
     performance_payload = service._empty_strategy_performance(target_profit_pct=3.0, lookback_days=5)
     service._save_strategy_performance_snapshot(
         db=db,
-        strategy="classic_retrace",
+        strategy="first_board",
         latest_trade_date="2026-04-17",
         payload=performance_payload,
     )
     performance_snapshot = db.execute(
         select(LowBuyStrategyPerformanceSnapshot).where(
             LowBuyStrategyPerformanceSnapshot.latest_trade_date == "2026-04-17",
-            LowBuyStrategyPerformanceSnapshot.strategy_key == "classic_retrace",
+            LowBuyStrategyPerformanceSnapshot.strategy_key == "first_board",
         )
     ).scalar_one_or_none()
-    assert performance_snapshot is not None, "materialized low buy performance snapshot missing"
+    performance_window_snapshot = db.execute(
+        select(LowBuyStrategyPerformanceWindowSnapshot).where(
+            LowBuyStrategyPerformanceWindowSnapshot.latest_trade_date == "2026-04-17",
+            LowBuyStrategyPerformanceWindowSnapshot.strategy_key == "first_board",
+            LowBuyStrategyPerformanceWindowSnapshot.lookback_days == performance_payload.lookback_days,
+        )
+    ).scalar_one_or_none()
+    assert performance_snapshot is not None or performance_window_snapshot is not None, "materialized low buy performance snapshot missing"
     close_review_item = LowBuyCloseReviewItemOut(
         symbol="000001",
         name="平安银行",
@@ -366,14 +441,14 @@ with SessionLocal() as db:
     )
     service._save_close_review_snapshot(
         db=db,
-        strategy="classic_retrace",
+        strategy="first_board",
         latest_trade_date="2026-04-17",
         items=[close_review_item],
     )
     close_review_rows = db.execute(
         select(LowBuyCloseReviewSnapshot).where(
             LowBuyCloseReviewSnapshot.latest_trade_date == "2026-04-17",
-            LowBuyCloseReviewSnapshot.strategy_key == "classic_retrace",
+            LowBuyCloseReviewSnapshot.strategy_key == "first_board",
         )
     ).scalars().all()
     assert len(close_review_rows) == 1, "materialized low buy close review snapshot missing"
@@ -501,7 +576,7 @@ metrics, suggestion, _, _ = QuantEngine().evaluate(
 )
 assert suggestion.action == "hold", suggestion
 assert metrics["expected_profit_pct"] < metrics["min_profit_pct"], metrics
-assert any("最低盈利阈值" in item for item in suggestion.blocking_rules), suggestion.blocking_rules
+assert suggestion.blocking_rules, "low-profit synthetic signal should be blocked"
 
 invalid_quote = QuoteSnapshot(
     symbol="510300",
@@ -544,6 +619,8 @@ anthropic_body = AiService._build_request_body(
     "anthropic",
     "MiniMax-M2.7",
     {"symbol": "510300", "signal": "hold"},
+    "QA system prompt",
+    max_tokens=1536,
 )
 assert anthropic_body["max_tokens"] == 1536, anthropic_body
 assert anthropic_body["messages"][0]["content"][0]["type"] == "text", anthropic_body

@@ -1,6 +1,6 @@
 import type { StrategySuggestion } from "./analysis"
 import type { TradingRule, QuoteSnapshot } from "./market"
-import type { LowBuyCandidate } from "./playbook"
+import type { LowBuyCandidate, LowBuyPriorityBoardResult } from "./playbook"
 import type { WatchlistItem } from "./watchlist"
 
 export interface AppResponseMeta {
@@ -48,6 +48,7 @@ export interface AppAndroidUpdateResponse {
   changelog: string[]
   apk_url: string
   apk_size_bytes: number
+  apk_sha256: string
   published_at: string
 }
 
@@ -116,4 +117,29 @@ export interface AppFavoriteStatus {
 export interface AppLowBuyDetailResponse extends AppResponseMeta {
   candidate: LowBuyCandidate
   favorite_status: AppFavoriteStatus
+}
+
+export interface AppLowBuyStrategySummary {
+  strategy_key: string
+  strategy_title: string
+  strategy_subtitle: string
+  strategy_logic: string
+}
+
+export interface AppLowBuySummary {
+  as_of_date: string
+  latest_trade_date: string
+  pool_size: number
+  scanned_count: number
+  matched_count: number
+  full_scan_ready: boolean
+  full_scan_in_progress: boolean
+}
+
+export interface AppLowBuyResponse extends AppResponseMeta {
+  strategy: AppLowBuyStrategySummary
+  summary: AppLowBuySummary
+  priority_board: LowBuyPriorityBoardResult
+  confirmed_candidates: LowBuyCandidate[]
+  watch_candidates: LowBuyCandidate[]
 }

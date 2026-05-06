@@ -6,7 +6,7 @@ import type {
   LowBuyPriorityBoardResult,
   WatchlistItem
 } from "../types"
-import { STRATEGY_OPTIONS } from "../constants/strategies"
+import { PRODUCTION_STRATEGY_OPTIONS } from "../constants/strategies"
 import { getPriceToneClass } from "../utils/priceTone"
 
 type Tone = "positive" | "negative" | "neutral" | "warning"
@@ -18,7 +18,7 @@ export interface MobileStrategyTabOption {
   label: string
 }
 
-const MOBILE_STRATEGY_TABS: MobileStrategyTabOption[] = STRATEGY_OPTIONS.map(([key, label]) => ({ key, label }))
+const MOBILE_STRATEGY_TABS: MobileStrategyTabOption[] = PRODUCTION_STRATEGY_OPTIONS.map(([key, label]) => ({ key, label }))
 
 export interface MobileHoldingRowData {
   record: WatchlistItem

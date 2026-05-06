@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 from pathlib import Path
 from typing import Any
@@ -18,6 +19,7 @@ DEFAULT_ANDROID_MANIFEST = {
     "title": "当前已是最新版本",
     "message": "当前版本可正常使用。",
     "changelog": [],
+    "apk_sha256": "",
     "published_at": "",
 }
 
@@ -40,3 +42,14 @@ def android_apk_size() -> int:
         return ANDROID_APK_PATH.stat().st_size
     except OSError:
         return 0
+
+
+def android_apk_sha256() -> str:
+    try:
+        digest = hashlib.sha256()
+        with ANDROID_APK_PATH.open("rb") as file:
+            for chunk in iter(lambda: file.read(1024 * 1024), b""):
+                digest.update(chunk)
+        return digest.hexdigest()
+    except OSError:
+        return ""
