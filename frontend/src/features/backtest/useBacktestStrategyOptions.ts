@@ -14,8 +14,13 @@ export function useBacktestStrategyOptions(): BacktestStrategyOption[] {
         if (cancelled) return;
         const next = (result.strategies ?? [])
           .slice()
+          .filter((strategy) => strategy.enabled !== false && strategy.visibility !== "hidden")
           .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
-          .map((strategy) => [strategy.key, strategy.display_name || strategy.name || strategy.key] as BacktestStrategyOption);
+          .map((strategy) => {
+            const label = strategy.display_name || strategy.name || strategy.key;
+            const suffix = strategy.visibility === "backtest_only" ? "（仅回测研究）" : "";
+            return [strategy.key, `${label}${suffix}`] as BacktestStrategyOption;
+          });
         if (next.length) {
           setOptions(next);
         }

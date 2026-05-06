@@ -116,6 +116,10 @@ def build_suggestion(
     rules: TradingRuleOut,
 ) -> StrategySuggestion:
     plain = _plain_t_decision(action=action, trade_plan=trade_plan, blocking_rules=blocking_rules)
+    cost = trade_plan.cost_estimate
+    cost_pass = cost is None or cost.net_profit_pct > 0
+    actionable = action in {"positive_t", "negative_t"} and not blocking_rules and cost_pass
+    effective_action = action if actionable else "hold"
     return StrategySuggestion(
         action=action,  # type: ignore[arg-type]
         entry_price=trade_plan.entry_price,
@@ -139,6 +143,20 @@ def build_suggestion(
         plain_action_reason=plain["plain_action_reason"],
         plain_execution_text=plain["plain_execution_text"],
         plain_invalid_condition=plain["plain_invalid_condition"],
+        estimated_fee=cost.estimated_fee if cost is not None else 0.0,
+        net_profit_pct=cost.net_profit_pct if cost is not None else trade_plan.expected_profit_pct,
+        breakeven_pct=cost.breakeven_pct if cost is not None else 0.0,
+        fee_warning=cost.fee_warning if cost is not None else "",
+        elasticity_score=cost.elasticity_score if cost is not None else 0.0,
+        elasticity_data_quality=cost.elasticity_data_quality if cost is not None else "unavailable",
+        elasticity_tier=cost.elasticity_tier if cost is not None else "",
+        liquidity_warning=cost.liquidity_warning if cost is not None else "",
+        suggested_timing=cost.suggested_timing if cost is not None else "",
+        min_position_value=cost.min_position_value if cost is not None else 0.0,
+        direction=cost.direction if cost is not None else action,
+        min_shares_suggestion=cost.min_shares_suggestion if cost is not None else 0,
+        effective_action=effective_action,  # type: ignore[arg-type]
+        is_actionable=actionable,
     )
 
 

@@ -37,6 +37,10 @@ def main() -> int:
                 "risk_level": seed.risk_level,
                 "typical_holding_days": seed.typical_holding_days,
                 "sort_order": seed.sort_order,
+                "enabled": seed.enabled,
+                "probe_status": seed.probe_status,
+                "probe_summary": seed.probe_summary,
+                "visibility": seed.visibility,
             }
         )
 

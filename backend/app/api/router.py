@@ -10,6 +10,7 @@ from app.api.routes import (
     auth,
     backtests,
     feishu,
+    feature_flags,
     instruments,
     intraday,
     market,
@@ -45,4 +46,5 @@ api_router.include_router(strategy_stream.router, tags=["strategy-stream"])
 api_router.include_router(agent.router, tags=["agent"])
 api_router.include_router(paper.router, tags=["paper"])
 api_router.include_router(feishu.router, tags=["feishu"])
+api_router.include_router(feature_flags.router, tags=["feature-flags"])
 api_router.include_router(v1.router, tags=["v1"])

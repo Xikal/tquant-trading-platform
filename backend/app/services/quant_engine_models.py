@@ -45,6 +45,22 @@ class ScoreSnapshot:
 
 
 @dataclass(frozen=True)
+class TradeCostEstimate:
+    estimated_fee: float = 0.0
+    net_profit_pct: float = 0.0
+    breakeven_pct: float = 0.0
+    fee_warning: str = ""
+    elasticity_score: float = 0.0
+    elasticity_data_quality: str = "unavailable"
+    elasticity_tier: str = ""
+    liquidity_warning: str = ""
+    suggested_timing: str = ""
+    min_position_value: float = 0.0
+    direction: str = ""
+    min_shares_suggestion: int = 0
+
+
+@dataclass(frozen=True)
 class TradePlan:
     action: str
     entry_price: float | None
@@ -61,3 +77,4 @@ class TradePlan:
     trade_scene: str = ""
     trade_scene_text: str = ""
     buyback_trigger: str = ""
+    cost_estimate: TradeCostEstimate | None = None

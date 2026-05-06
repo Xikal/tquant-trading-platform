@@ -12,7 +12,11 @@ export const GENERATED_STRATEGY_META_FALLBACK = [
     "display_category": "生产策略",
     "risk_level": "medium",
     "typical_holding_days": "1-3天",
-    "sort_order": 10
+    "sort_order": 10,
+    "enabled": true,
+    "probe_status": "not_required",
+    "probe_summary": "",
+    "visibility": "full"
   },
   {
     "key": "volume_shrink",
@@ -26,7 +30,11 @@ export const GENERATED_STRATEGY_META_FALLBACK = [
     "display_category": "生产策略",
     "risk_level": "medium",
     "typical_holding_days": "1-3天",
-    "sort_order": 20
+    "sort_order": 20,
+    "enabled": true,
+    "probe_status": "not_required",
+    "probe_summary": "",
+    "visibility": "full"
   },
   {
     "key": "late_session_strong_support",
@@ -40,7 +48,11 @@ export const GENERATED_STRATEGY_META_FALLBACK = [
     "display_category": "辅助策略",
     "risk_level": "medium",
     "typical_holding_days": "1-2天",
-    "sort_order": 30
+    "sort_order": 30,
+    "enabled": true,
+    "probe_status": "not_required",
+    "probe_summary": "",
+    "visibility": "full"
   },
   {
     "key": "core_midcap_vwap_ma5_retrace",
@@ -54,7 +66,11 @@ export const GENERATED_STRATEGY_META_FALLBACK = [
     "display_category": "辅助策略",
     "risk_level": "medium",
     "typical_holding_days": "2-4天",
-    "sort_order": 40
+    "sort_order": 40,
+    "enabled": true,
+    "probe_status": "not_required",
+    "probe_summary": "",
+    "visibility": "full"
   },
   {
     "key": "sector_mainline_first_divergence_low_buy",
@@ -68,6 +84,46 @@ export const GENERATED_STRATEGY_META_FALLBACK = [
     "display_category": "辅助策略",
     "risk_level": "high",
     "typical_holding_days": "1-3天",
-    "sort_order": 50
+    "sort_order": 50,
+    "enabled": true,
+    "probe_status": "not_required",
+    "probe_summary": "",
+    "visibility": "full"
+  },
+  {
+    "key": "ma_channel_band",
+    "name": "均线通道波段",
+    "display_name": "均线通道波段",
+    "label": "均线通道波段",
+    "description": "沿 MA20 通道运行的波段研究策略，关注下轨承接与上轨兑现。",
+    "tier": "research",
+    "category_key": "research",
+    "category": "研究策略",
+    "display_category": "研究策略",
+    "risk_level": "medium",
+    "typical_holding_days": "5-15天",
+    "sort_order": 60,
+    "enabled": true,
+    "probe_status": "not_required",
+    "probe_summary": "",
+    "visibility": "full"
+  },
+  {
+    "key": "leader_pullback_band",
+    "name": "龙头回踩波段",
+    "display_name": "龙头回踩波段",
+    "label": "龙头回踩波段",
+    "description": "热点龙头确认后回踩均线支撑的二波研究策略。",
+    "tier": "research",
+    "category_key": "research",
+    "category": "研究策略",
+    "display_category": "研究策略",
+    "risk_level": "high",
+    "typical_holding_days": "3-10天",
+    "sort_order": 70,
+    "enabled": true,
+    "probe_status": "pending",
+    "probe_summary": "",
+    "visibility": "backtest_only"
   }
 ] as const;

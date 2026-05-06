@@ -104,13 +104,16 @@ export function BacktestDashboard({
           <h1>回测基础看板</h1>
           <p>提交异步组合回测，跟踪任务状态，并用净值曲线和成交明细检查策略闭环。</p>
         </div>
-        <div className="backtest-status-rail" aria-label="任务状态图例">
-          {(Object.keys(STATUS_META) as BacktestStatus[]).map((status) => (
-            <span className={`backtest-status ${STATUS_META[status].tone}`} key={status}>
-              {status}<small>{STATUS_META[status].label}</small>
-            </span>
-          ))}
-        </div>
+        <details className="backtest-status-rail" aria-label="任务状态图例">
+          <summary>任务状态图例</summary>
+          <div>
+            {(Object.keys(STATUS_META) as BacktestStatus[]).map((status) => (
+              <span className={`backtest-status ${STATUS_META[status].tone}`} key={status}>
+                {status}<small>{STATUS_META[status].label}</small>
+              </span>
+            ))}
+          </div>
+        </details>
       </div>
 
       <aside className="panel backtest-submit">
@@ -194,6 +197,7 @@ export function BacktestDashboard({
               <span>{formatBacktestStrategies(selectedRun.strategies)}</span>
               <span>{selectedRun.execution_model || "--"} · {selectedRun.benchmark || "--"}</span>
             </div>
+            <ResultSummaryBanner metrics={selectedMetrics} />
             {selectedRun.error_message ? <div className="backtest-error">{selectedRun.error_message}</div> : null}
             <div className="backtest-metric-grid">
               <Metric label="总收益" value={formatPct(selectedMetrics?.total_return_pct)} tone={toneFromNumber(selectedMetrics?.total_return_pct)} />
@@ -256,6 +260,36 @@ export function BacktestDashboard({
 
 function resolveMetrics(run: BacktestRunDetail) {
   return run.result?.metrics ?? run.result?.summary ?? run.summary ?? null;
+}
+
+function ResultSummaryBanner({ metrics }: { metrics: unknown }) {
+  if (!isRecord(metrics)) return null;
+  const totalReturn = numeric(metrics.total_return_pct);
+  const maxDrawdown = numeric(metrics.max_drawdown_pct);
+  const sharpe = numeric(metrics.sharpe_ratio) ?? numeric(metrics.sharpe);
+  const message = totalReturn === undefined
+    ? "回测已完成，等待指标汇总。"
+    : totalReturn >= 0
+      ? `组合收益 ${formatPct(totalReturn)}，当前结果为正。`
+      : `组合收益 ${formatPct(totalReturn)}，需要复核策略或风控。`;
+  const warnings = [
+    maxDrawdown !== undefined && maxDrawdown <= -15 ? `最大回撤 ${formatPct(maxDrawdown)} 超过警戒线` : "",
+    sharpe !== undefined && sharpe < 0.5 ? `Sharpe ${formatNumber(sharpe)} 偏低` : "",
+  ].filter(Boolean);
+  return (
+    <div className={`backtest-result-banner ${totalReturn !== undefined && totalReturn < 0 ? "warn" : "ok"}`}>
+      <strong>{message}</strong>
+      <span>{warnings.length ? warnings.join("；") : "未触发主要异常标记，仍需结合成交明细确认。"}</span>
+    </div>
+  );
+}
+
+function numeric(value: unknown): number | undefined {
+  return typeof value === "number" && Number.isFinite(value) ? value : undefined;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
 }
 
 function resolveAttribution(run: BacktestRunDetail): BacktestAttribution | null {

@@ -33,6 +33,20 @@ export interface StrategySuggestion {
   plain_action_reason?: string;
   plain_execution_text?: string;
   plain_invalid_condition?: string;
+  estimated_fee?: number;
+  net_profit_pct?: number;
+  breakeven_pct?: number;
+  fee_warning?: string;
+  elasticity_score?: number;
+  elasticity_data_quality?: string;
+  elasticity_tier?: string;
+  liquidity_warning?: string;
+  suggested_timing?: string;
+  min_position_value?: number;
+  direction?: string;
+  min_shares_suggestion?: number;
+  effective_action?: ActionType;
+  is_actionable?: boolean;
 }
 
 export interface AiInsight {

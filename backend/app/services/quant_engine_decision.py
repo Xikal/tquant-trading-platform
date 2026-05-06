@@ -8,6 +8,7 @@ from app.services.market.regime import MarketRegimeSnapshot
 from app.services.quant_engine_models import IndicatorSnapshot, ScoreSnapshot, TradePlan
 from app.services.quant_engine_output import empty_trade_plan
 from app.services.quant_engine_execution import (
+    attach_trade_costs,
     estimate_slippage_bps,
     min_profit_pct_for_quote,
     negative_buyback_allowed,
@@ -115,6 +116,7 @@ def apply_direction_gate(
 
 def resolve_trade_plan(
     action: str,
+    request: AnalysisRequest,
     quote: QuoteSnapshot,
     indicators: IndicatorSnapshot,
     scores: ScoreSnapshot,
@@ -211,8 +213,31 @@ def resolve_trade_plan(
         min_profit_pct=min_profit_pct,
         min_risk_reward_ratio=min_ratio,
         buyback_trigger=buyback_trigger,
+        cost_estimate=attach_trade_costs(
+            symbol=quote.symbol,
+            action=action,
+            entry_price=entry_price,
+            exit_price=exit_price,
+            quantity=_cost_quantity(action=action, request=request, position_pct=position_pct_value),
+            expected_profit_pct=expected_profit_pct,
+        ),
     )
     return _with_trade_scene(trade_plan, trade_scene), blocking_rules
+
+
+def _cost_quantity(*, action: str, request: AnalysisRequest, position_pct: float) -> int:
+    if action == "negative_t":
+        available = max(0, int(request.available_position or 0))
+        return _round_lot(max(100, int(available * max(position_pct, 5.0) / 100))) if available > 0 else 0
+    base = max(0, int(request.base_position or 0))
+    if base <= 0:
+        return 0
+    return _round_lot(max(100, int(base * max(position_pct, 5.0) / 100)))
+
+
+def _round_lot(quantity: int) -> int:
+    lot = 100
+    return max(lot, (int(quantity) // lot) * lot)
 
 
 def _empty_scene_plan(

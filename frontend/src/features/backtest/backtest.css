@@ -49,17 +49,64 @@
 }
 
 .backtest-status-rail {
-  display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 8px;
   padding: 10px;
   border: 1px solid rgba(148, 163, 184, 0.18);
   border-radius: 14px;
   background: rgba(255, 255, 255, 0.05);
 }
 
+.backtest-status-rail summary {
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 800;
+  color: #dbeafe;
+}
+
+.backtest-status-rail > div {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 10px;
+}
+
 .backtest-submit {
   grid-area: submit;
+}
+
+.backtest-advanced-fields {
+  grid-column: 1 / -1;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  border-radius: 14px;
+  padding: 10px;
+}
+
+.backtest-advanced-fields summary {
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.backtest-result-banner {
+  border-radius: 14px;
+  display: grid;
+  gap: 4px;
+  margin: 10px 0;
+  padding: 12px;
+}
+
+.backtest-result-banner.ok {
+  background: rgba(22, 163, 74, 0.12);
+  border: 1px solid rgba(22, 163, 74, 0.22);
+}
+
+.backtest-result-banner.warn {
+  background: rgba(220, 38, 38, 0.1);
+  border: 1px solid rgba(220, 38, 38, 0.2);
+}
+
+.backtest-result-banner span {
+  color: #64748b;
+  font-size: 12px;
 }
 
 .backtest-runs {

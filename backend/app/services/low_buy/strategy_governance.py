@@ -22,14 +22,12 @@ from app.repositories.low_buy import SystemSettingRepository
 from app.services.low_buy.holding_policy import strategy_holding_policy
 from app.services.low_buy.shared import DEFAULT_PRODUCTION_LOW_BUY_STRATEGY, PERFORMANCE_LOOKBACK_DAYS, PLAYBOOKS
 from app.services.low_buy.strategy_policy import (
-    PRODUCTION_PRIORITY_STRATEGIES,
+    StrategyTier,
     get_strategy_tier,
-    participates_in_priority_board,
     requires_mainline_industry,
-    strategy_layer,
-    strong_buy_paused,
 )
 from app.services.low_buy.strategy_pool_config import strategy_pool_profile
+from app.services.low_buy.strategy_tier_resolver import StrategyTierResolver
 
 
 def build_low_buy_strategy_governance(db: Session | None = None) -> LowBuyStrategyGovernanceResponse:
@@ -42,17 +40,24 @@ def build_low_buy_strategy_governance(db: Session | None = None) -> LowBuyStrate
 
     performances = latest_strategy_performance_map(db) if db is not None else {}
     auto_overrides = _load_auto_governance_overrides(db) if db is not None else {}
+    tier_resolver = StrategyTierResolver(db) if db is not None else None
     items = [
         _strategy_item(
             strategy_key,
             performances.get(strategy_key),
             auto_override=auto_overrides.get(strategy_key),
+            tier_resolver=tier_resolver,
         )
         for strategy_key in PLAYBOOKS.keys()
     ]
+    production_strategies = [
+        item.strategy_key
+        for item in items
+        if item.tier in {StrategyTier.CORE.value, StrategyTier.AUXILIARY.value}
+    ]
     return LowBuyStrategyGovernanceResponse(
         default_strategy=DEFAULT_PRODUCTION_LOW_BUY_STRATEGY,
-        production_strategies=sorted(PRODUCTION_PRIORITY_STRATEGIES),
+        production_strategies=sorted(production_strategies),
         items=items,
     )
 
@@ -61,14 +66,16 @@ def _strategy_item(
     strategy_key: str,
     performance: LowBuyStrategyPerformanceOut | None = None,
     auto_override: dict[str, Any] | None = None,
+    tier_resolver: StrategyTierResolver | None = None,
 ) -> LowBuyStrategyGovernanceItemOut:
     playbook = PLAYBOOKS.get(strategy_key, {})
-    tier = get_strategy_tier(strategy_key)
+    tier = tier_resolver.resolve(strategy_key) if tier_resolver is not None else get_strategy_tier(strategy_key)
     pool = strategy_pool_profile(strategy_key)
     holding = strategy_holding_policy(strategy_key)
     health_score, health_text = _strategy_health(performance)
     status, status_text = _status_for_strategy(
         strategy_key,
+        tier=tier,
         performance=performance,
         health_score=health_score,
         auto_override=auto_override,
@@ -81,12 +88,12 @@ def _strategy_item(
         strategy_title=str(playbook.get("title") or strategy_key),
         subtitle=str(playbook.get("subtitle") or ""),
         tier=tier.value,
-        layer=strategy_layer(strategy_key),
+        layer=_layer_for_tier(tier),
         status=status,
         status_text=status_text,
         enabled=pool.enabled,
-        participates_priority_board=participates_in_priority_board(strategy_key),
-        strong_buy_paused=strong_buy_paused(strategy_key),
+        participates_priority_board=tier in {StrategyTier.CORE, StrategyTier.AUXILIARY},
+        strong_buy_paused=tier in {StrategyTier.RESEARCH, StrategyTier.FACTOR},
         requires_mainline_industry=requires_mainline_industry(strategy_key),
         pool_key=pool.pool_key,
         pool_title=pool.title,
@@ -108,11 +115,12 @@ def _strategy_item(
 def _status_for_strategy(
     strategy_key: str,
     *,
+    tier: StrategyTier | None = None,
     performance: LowBuyStrategyPerformanceOut | None = None,
     health_score: float = 0.0,
     auto_override: dict[str, Any] | None = None,
 ) -> tuple[str, str]:
-    tier = get_strategy_tier(strategy_key)
+    tier = tier or get_strategy_tier(strategy_key)
     pool = strategy_pool_profile(strategy_key)
     if not pool.enabled:
         return "paused", "暂停执行，仅保留历史研究"
@@ -133,6 +141,14 @@ def _status_for_strategy(
     if tier.value == "factor":
         return "research", "辅助因子，不单独触发买入"
     return "research", "研究层，不进入强买"
+
+
+def _layer_for_tier(tier: StrategyTier) -> str:
+    if tier in {StrategyTier.CORE, StrategyTier.AUXILIARY}:
+        return "production"
+    if tier == StrategyTier.FACTOR:
+        return "research"
+    return tier.value
 
 
 def latest_strategy_performance_map(db: Session) -> dict[str, LowBuyStrategyPerformanceOut]:

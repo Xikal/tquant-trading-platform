@@ -376,6 +376,7 @@ class BacktestJobService:
             **summary,
             params=_json_dict(row.params_json),
             result=result,
+            result_quality=_result_quality(result),
             attribution=_result_attribution(result),
             dataset_manifest_id=row.dataset_manifest_id,
             engine_version=row.engine_version or "",
@@ -440,6 +441,25 @@ def _result_attribution(result: dict[str, Any]) -> dict[str, Any]:
     if isinstance(metrics, dict) and isinstance(metrics.get("attribution"), dict):
         return metrics["attribution"]
     return {}
+
+
+def _result_quality(result: dict[str, Any]) -> dict[str, Any]:
+    summary = result.get("summary") if isinstance(result.get("summary"), dict) else result
+    if not isinstance(summary, dict):
+        summary = {}
+    total_trades = int(float(summary.get("total_trades") or summary.get("filled_count") or 0))
+    final_equity = float(summary.get("final_equity") or 0.0)
+    warnings: list[str] = []
+    if total_trades <= 0:
+        warnings.append("无成交样本，结果仅可作为数据连通性检查。")
+    if final_equity <= 0:
+        warnings.append("缺少有效最终权益，需检查行情或执行模型。")
+    return {
+        "sample_level": "thin" if total_trades < 30 else "normal",
+        "total_trades": total_trades,
+        "warnings": warnings,
+        "usable_for_decision": total_trades >= 30 and not warnings,
+    }
 
 
 def _monthly_returns(rows: list[BacktestDailySnapshot]) -> list[dict[str, Any]]:

@@ -6,7 +6,8 @@ from app.models.schemas import LowBuyStrategyPerformanceOut
 from app.repositories.low_buy.results import LowBuyResultRepository
 from app.services.low_buy.priority_types import PriorityBaseSnapshot, PriorityCandidate
 from app.services.low_buy.shared import PLAYBOOKS, Session
-from app.services.low_buy.strategy_policy import participates_in_priority_board
+from app.services.low_buy.strategy_policy import StrategyTier
+from app.services.low_buy.strategy_tier_resolver import StrategyTierResolver
 
 
 class PrioritySnapshotBuilder(Protocol):
@@ -56,9 +57,10 @@ def build_priority_base_snapshot(
     updated_at = ""
     missing_strategies: list[str] = []
     stale_strategies: list[str] = []
+    tier_resolver = StrategyTierResolver(db)
 
     for strategy_key in PLAYBOOKS:
-        if not participates_in_priority_board(strategy_key):
+        if tier_resolver.resolve(strategy_key) not in {StrategyTier.CORE, StrategyTier.AUXILIARY}:
             continue
         summary = (
             repository.fetch_latest_scan_summary_on_or_before(

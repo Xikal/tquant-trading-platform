@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { API_BASE, request } from "../../api/base";
 import {
   backtestsApi,
@@ -86,7 +86,16 @@ const initialValidationForm: ValidationFormState = {
   optimization_target: "sharpe",
 };
 
-export function useBacktestDashboard() {
+export type BacktestDashboardActiveSection =
+  | "all"
+  | "quick"
+  | "history"
+  | "optimization"
+  | "validation"
+  | "compare"
+  | "none";
+
+export function useBacktestDashboard(activeSection: BacktestDashboardActiveSection = "all") {
   const [form, setForm] = useState<BacktestFormState>(initialBacktestForm);
   const [runs, setRuns] = useState<BacktestRunSummary[]>([]);
   const [selectedRun, setSelectedRun] = useState<BacktestRunDetail | null>(null);
@@ -111,6 +120,16 @@ export function useBacktestDashboard() {
   const [researchLoading, setResearchLoading] = useState("");
   const [researchError, setResearchError] = useState("");
   const [researchNotice, setResearchNotice] = useState("");
+  const selectedOptimizationIdRef = useRef<number | null>(null);
+  const selectedValidationIdRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    selectedOptimizationIdRef.current = selectedOptimizationId;
+  }, [selectedOptimizationId]);
+
+  useEffect(() => {
+    selectedValidationIdRef.current = selectedValidationId;
+  }, [selectedValidationId]);
 
   const loadDetail = useCallback(async (runId: number) => {
     setLoading("detail");
@@ -192,7 +211,8 @@ export function useBacktestDashboard() {
       if (optimizationList.status === "fulfilled") {
         const items = optimizationList.value.items ?? [];
         setOptimizations(items);
-        const nextId = selectedOptimizationId ?? items[0]?.id ?? null;
+        const nextId = selectedOptimizationIdRef.current ?? items[0]?.id ?? null;
+        selectedOptimizationIdRef.current = nextId;
         setSelectedOptimizationId(nextId);
         if (nextId) {
           const detail = await backtestsApi.getOptimization(nextId);
@@ -204,7 +224,8 @@ export function useBacktestDashboard() {
       if (validationList.status === "fulfilled") {
         const items = validationList.value.items ?? [];
         setValidations(items);
-        const nextId = selectedValidationId ?? items[0]?.id ?? null;
+        const nextId = selectedValidationIdRef.current ?? items[0]?.id ?? null;
+        selectedValidationIdRef.current = nextId;
         setSelectedValidationId(nextId);
         if (nextId) {
           const detail = await backtestsApi.getValidation(nextId);
@@ -218,15 +239,20 @@ export function useBacktestDashboard() {
     } finally {
       setResearchLoading("");
     }
-  }, [selectedOptimizationId, selectedValidationId]);
+  }, []);
 
   useEffect(() => {
-    void loadRuns();
-  }, [loadRuns]);
+    if (activeSection === "none") return;
+    if (["all", "quick", "history", "compare"].includes(activeSection)) {
+      void loadRuns();
+    }
+  }, [activeSection, loadRuns]);
 
   useEffect(() => {
-    void loadResearch();
-  }, [loadResearch]);
+    if (["all", "optimization", "validation", "compare"].includes(activeSection)) {
+      void loadResearch();
+    }
+  }, [activeSection, loadResearch]);
 
   const selectedRunId = selectedRun?.id ?? null;
   const selectedRunStatus = selectedRun?.status ?? null;
@@ -404,6 +430,7 @@ export function useBacktestDashboard() {
   }, [loadResearch, optimizationForm]);
 
   const selectOptimization = useCallback((optimizationId: number) => {
+    selectedOptimizationIdRef.current = optimizationId;
     setSelectedOptimizationId(optimizationId);
     setResearchLoading("optimization-detail");
     setResearchError("");
@@ -434,6 +461,7 @@ export function useBacktestDashboard() {
       const response = await backtestsApi.deleteOptimization(optimizationId);
       setResearchNotice(response.message || `优化任务 #${optimizationId} 已删除`);
       if (selectedOptimizationId === optimizationId) {
+        selectedOptimizationIdRef.current = null;
         setSelectedOptimizationId(null);
         setSelectedOptimization(null);
       }
@@ -476,6 +504,7 @@ export function useBacktestDashboard() {
   }, [loadResearch, validationForm]);
 
   const selectValidation = useCallback((validationId: number) => {
+    selectedValidationIdRef.current = validationId;
     setSelectedValidationId(validationId);
     setResearchLoading("validation-detail");
     setResearchError("");
@@ -506,6 +535,7 @@ export function useBacktestDashboard() {
       const response = await backtestsApi.deleteValidation(validationId);
       setResearchNotice(response.message || `验证任务 #${validationId} 已删除`);
       if (selectedValidationId === validationId) {
+        selectedValidationIdRef.current = null;
         setSelectedValidationId(null);
         setSelectedValidation(null);
       }

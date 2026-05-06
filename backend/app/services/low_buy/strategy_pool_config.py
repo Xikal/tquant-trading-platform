@@ -57,6 +57,21 @@ _STRATEGY_POOL_PROFILES: dict[str, StrategyPoolProfile] = {
         max_size=360,
         uses_daily_scan=True,
     ),
+    "ma_channel_band": StrategyPoolProfile(
+        strategy_key="ma_channel_band",
+        pool_key="daily_channel_pool",
+        title="均线通道波段研究池",
+        source="daily_history",
+        max_size=160,
+        uses_daily_scan=True,
+    ),
+    "leader_pullback_band": StrategyPoolProfile(
+        strategy_key="leader_pullback_band",
+        pool_key="leader_pullback_research_pool",
+        title="龙头回踩波段研究池",
+        source="limit_up_pool",
+        max_size=40,
+    ),
     "deep_pullback": StrategyPoolProfile(
         strategy_key="deep_pullback",
         pool_key="deep_pullback_research_pool",

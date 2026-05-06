@@ -12,6 +12,10 @@ export interface StrategyMeta {
   risk_level: string;
   typical_holding_days: string;
   sort_order: number;
+  enabled?: boolean;
+  probe_status?: string;
+  probe_summary?: string;
+  visibility?: string;
 }
 
 export interface StrategyPreset {
@@ -84,4 +88,20 @@ export const strategiesApi = {
       `/strategy/signals/replay?${params.toString()}`
     );
   },
+  promoteStrategy: (payload: { strategy_key: string; target_tier: string; reason?: string; evidence_summary?: string }) =>
+    request<{ ok: boolean; strategy_key: string; action: string; tier: string; message: string }>(
+      "/strategy/governance/promote",
+      {
+        method: "POST",
+        body: JSON.stringify(payload),
+      }
+    ),
+  demoteStrategy: (payload: { strategy_key: string; reason?: string; evidence_summary?: string }) =>
+    request<{ ok: boolean; strategy_key: string; action: string; tier: string; message: string }>(
+      "/strategy/governance/demote",
+      {
+        method: "POST",
+        body: JSON.stringify(payload),
+      }
+    ),
 };

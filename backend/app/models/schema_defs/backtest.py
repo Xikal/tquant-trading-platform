@@ -99,6 +99,7 @@ class BacktestRunSummary(BaseModel):
 class BacktestRunDetail(BacktestRunSummary):
     params: dict[str, Any] = Field(default_factory=dict)
     result: dict[str, Any] = Field(default_factory=dict)
+    result_quality: dict[str, Any] = Field(default_factory=dict)
     attribution: BacktestAttribution = Field(default_factory=BacktestAttribution)
     dataset_manifest_id: Optional[int] = None
     engine_version: str = ""

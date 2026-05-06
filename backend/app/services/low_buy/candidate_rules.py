@@ -89,6 +89,29 @@ MAINLINE_FIRST_DIVERGENCE_PREFILTER = {
     "max_distribution_risk_score": 5.8,
 }
 
+MA_CHANNEL_BAND_PREFILTER = {
+    "min_amount": 50_000_000.0,
+    "min_platform_days": 20,
+    "min_retracement_days": 2,
+    "max_retracement_days": 14,
+    "max_ma20_distance_pct": 3.2,
+    "max_latest_volume_ratio": 1.20,
+    "max_post_volume_ratio": 1.25,
+    "max_distribution_risk_score": 6.5,
+}
+
+LEADER_PULLBACK_BAND_PREFILTER = {
+    "min_amount": 50_000_000.0,
+    "min_retracement_days": 1,
+    "max_retracement_days": 8,
+    "min_volume_burst_ratio": 1.60,
+    "max_support_distance_pct": 3.5,
+    "max_latest_volume_ratio": 1.25,
+    "max_post_volume_ratio": 1.25,
+    "max_distribution_risk_score": 5.8,
+}
+
+
 def passes_strategy_prefilter(
     strategy: str,
     item: BoardCandidate,
@@ -151,6 +174,10 @@ def passes_strategy_prefilter(
         return _passes_core_midcap_retrace_prefilter(item, metrics)
     if strategy == "sector_mainline_first_divergence_low_buy":
         return _passes_mainline_first_divergence_prefilter(item, metrics)
+    if strategy == "ma_channel_band":
+        return _passes_ma_channel_band_prefilter(item, metrics)
+    if strategy == "leader_pullback_band":
+        return _passes_leader_pullback_band_prefilter(item, metrics)
     if strategy == "breakout_support":
         return (
             1 <= metrics.retracement_days <= 8
@@ -266,6 +293,45 @@ def _passes_mainline_first_divergence_prefilter(item: BoardCandidate, metrics: C
     )
 
 
+def _passes_ma_channel_band_prefilter(item: BoardCandidate, metrics: CandidateMetrics) -> bool:
+    return (
+        item.amount >= MA_CHANNEL_BAND_PREFILTER["min_amount"]
+        and metrics.platform_window_days >= MA_CHANNEL_BAND_PREFILTER["min_platform_days"]
+        and MA_CHANNEL_BAND_PREFILTER["min_retracement_days"]
+        <= metrics.retracement_days
+        <= MA_CHANNEL_BAND_PREFILTER["max_retracement_days"]
+        and metrics.ma20 > metrics.ma60
+        and metrics.latest_close >= metrics.ma20 * 0.96
+        and metrics.close_to_ma20 <= MA_CHANNEL_BAND_PREFILTER["max_ma20_distance_pct"]
+        and metrics.latest_volume_ratio <= MA_CHANNEL_BAND_PREFILTER["max_latest_volume_ratio"]
+        and metrics.post_volume_ratio <= MA_CHANNEL_BAND_PREFILTER["max_post_volume_ratio"]
+        and metrics.distribution_risk_score < MA_CHANNEL_BAND_PREFILTER["max_distribution_risk_score"]
+        and metrics.support_distance_pct <= 3.8
+        and not metrics.false_breakout_flag
+        and not metrics.intraday_reversal_flag
+    )
+
+
+def _passes_leader_pullback_band_prefilter(item: BoardCandidate, metrics: CandidateMetrics) -> bool:
+    return (
+        item.board_count <= 3
+        and not item.symbol.startswith(("300", "688"))
+        and item.amount >= LEADER_PULLBACK_BAND_PREFILTER["min_amount"]
+        and LEADER_PULLBACK_BAND_PREFILTER["min_retracement_days"]
+        <= metrics.retracement_days
+        <= LEADER_PULLBACK_BAND_PREFILTER["max_retracement_days"]
+        and metrics.volume_burst_ratio >= LEADER_PULLBACK_BAND_PREFILTER["min_volume_burst_ratio"]
+        and (metrics.strong_trend or metrics.latest_close >= metrics.ma20)
+        and metrics.board_low_held
+        and metrics.support_distance_pct <= LEADER_PULLBACK_BAND_PREFILTER["max_support_distance_pct"]
+        and metrics.latest_volume_ratio <= LEADER_PULLBACK_BAND_PREFILTER["max_latest_volume_ratio"]
+        and metrics.post_volume_ratio <= LEADER_PULLBACK_BAND_PREFILTER["max_post_volume_ratio"]
+        and metrics.distribution_risk_score < LEADER_PULLBACK_BAND_PREFILTER["max_distribution_risk_score"]
+        and not metrics.false_breakout_flag
+        and not metrics.long_upper_shadow
+    )
+
+
 def _within(value: float, low: float, high: float) -> bool:
     return low <= value <= high
 
@@ -308,6 +374,14 @@ def score_candidate(
         score += 4.0 if item.board_count == 1 else 1.5
         score += max(0.0, 1.2 - metrics.post_volume_ratio) * 4.0
         score += 2.5 if metrics.board_low_held else 0.0
+    if strategy == "ma_channel_band":
+        score += max(0.0, 3.2 - metrics.close_to_ma20) * 2.0
+        score += 3.0 if metrics.latest_close >= metrics.ma20 else 0.0
+        score += 2.0 if metrics.trend_ok else 0.0
+    if strategy == "leader_pullback_band":
+        score += 4.0 if metrics.strong_trend else 1.5
+        score += 3.0 if metrics.board_low_held else 0.0
+        score += min(max(metrics.volume_burst_ratio - 1.5, 0.0), 1.5) * 2.5
     if strategy == "breakout_support" and metrics.breakout_distance_pct <= 2.0:
         score += 4.0
     if strategy == "limit_up_breakout_retrace":
@@ -343,6 +417,8 @@ def build_strategy_setup(
         "late_session_strong_support": _late_session_strong_support_setup,
         "core_midcap_vwap_ma5_retrace": _core_midcap_vwap_ma5_retrace_setup,
         "sector_mainline_first_divergence_low_buy": _sector_mainline_first_divergence_low_buy_setup,
+        "ma_channel_band": _ma_channel_band_setup,
+        "leader_pullback_band": _leader_pullback_band_setup,
         "breakout_support": _breakout_support_setup,
         "limit_up_breakout_retrace": _limit_up_breakout_retrace_setup,
         "divergence_consensus": _divergence_consensus_setup,
@@ -502,6 +578,55 @@ def _sector_mainline_first_divergence_low_buy_setup(item: BoardCandidate, metric
             f"启动放量达到前 5 日均量的 {metrics.volume_burst_ratio:.2f} 倍，主线分歧前有资金参与。",
             f"当前为第 {metrics.retracement_days} 天分歧回踩，仍守住首板低点。",
             f"回踩量能约为启动日的 {metrics.post_volume_ratio:.2f} 倍，尚未演变成放量阴跌。",
+        ],
+    )
+
+
+def _ma_channel_band_setup(item: BoardCandidate, metrics: CandidateMetrics, score: float) -> StrategySetup:
+    anchor = metrics.ma20
+    return StrategySetup(
+        entry_zone_low=round(anchor * 0.986, 3),
+        entry_zone_high=round(anchor * 1.012, 3),
+        execution_ready=(
+            score >= 84.0
+            and metrics.latest_close >= metrics.ma20 * 0.992
+            and metrics.close_to_ma20 <= 2.4
+            and metrics.latest_volume_ratio <= 1.05
+            and metrics.post_volume_ratio <= 1.10
+            and metrics.distribution_risk_score < 4.8
+            and not metrics.false_breakout_flag
+        ),
+        execution_note="均线通道波段仍处研究层，只用于回测和观察，不进入生产强买。",
+        summary_reason="价格沿 20 日均线通道运行，回踩中轨附近但趋势骨架未破。",
+        reasons=[
+            f"股价距离 20 日均线约 {metrics.close_to_ma20:.2f}%，仍在通道承接区。",
+            f"平台/趋势观察窗口约 {metrics.platform_window_days} 天，未明显跌破 60 日线。",
+            f"近期量能约为启动日的 {metrics.post_volume_ratio:.2f} 倍，未出现异常放量破位。",
+        ],
+    )
+
+
+def _leader_pullback_band_setup(item: BoardCandidate, metrics: CandidateMetrics, score: float) -> StrategySetup:
+    anchor = max(min(metrics.ma10, metrics.board_mid_price), metrics.ma20)
+    return StrategySetup(
+        entry_zone_low=round(anchor * 0.99, 3),
+        entry_zone_high=round(anchor * 1.012, 3),
+        execution_ready=(
+            score >= 86.0
+            and metrics.strong_trend
+            and metrics.board_low_held
+            and metrics.support_distance_pct <= 2.6
+            and metrics.latest_volume_ratio <= 1.10
+            and metrics.post_volume_ratio <= 1.12
+            and metrics.distribution_risk_score < 4.8
+            and not metrics.false_breakout_flag
+        ),
+        execution_note="龙头回踩波段为研究策略，只记录二波可能性，不恢复生产强买。",
+        summary_reason="热点龙头启动后回踩关键支撑，观察二波修复结构。",
+        reasons=[
+            f"启动量能达到均量的 {metrics.volume_burst_ratio:.2f} 倍，具备龙头事件基础。",
+            f"当前回踩 {metrics.retracement_days} 天，仍守住启动低点和关键均线。",
+            f"距离支撑约 {metrics.support_distance_pct:.2f}%，适合继续观察承接质量。",
         ],
     )
 

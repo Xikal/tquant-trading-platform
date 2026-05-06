@@ -48,10 +48,77 @@ class StrategyMetadata(Base):
     risk_level: Mapped[str] = mapped_column(String(16), default="medium")
     typical_holding_days: Mapped[str] = mapped_column(String(24), default="")
     sort_order: Mapped[int] = mapped_column(Integer, default=0, index=True)
+    enabled: Mapped[bool] = mapped_column(Boolean, default=True, nullable=True, index=True)
+    probe_status: Mapped[str] = mapped_column(String(20), default="not_required", nullable=True, index=True)
+    probe_summary: Mapped[str] = mapped_column(Text, default="", nullable=True)
+    visibility: Mapped[str] = mapped_column(String(20), default="full", nullable=True, index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime, server_default=func.now(), onupdate=func.now()
     )
+
+
+class StrategyTierOverride(Base):
+    __tablename__ = "strategy_tier_overrides"
+    __table_args__ = (
+        UniqueConstraint("strategy_key", name="uq_strategy_tier_override_key"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    strategy_key: Mapped[str] = mapped_column(String(80), index=True)
+    override_tier: Mapped[str] = mapped_column(String(20), default="research", index=True)
+    reason: Mapped[str] = mapped_column(Text, default="")
+    evidence_summary: Mapped[str] = mapped_column(Text, default="")
+    operator_user_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True, index=True)
+    promoted_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), index=True)
+    reverted_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True, index=True)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, server_default=func.now(), onupdate=func.now()
+    )
+
+
+class StrategyTierOverrideLog(Base):
+    __tablename__ = "strategy_tier_override_log"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    strategy_key: Mapped[str] = mapped_column(String(80), index=True)
+    action: Mapped[str] = mapped_column(String(20), default="", index=True)
+    from_tier: Mapped[str] = mapped_column(String(20), default="")
+    to_tier: Mapped[str] = mapped_column(String(20), default="")
+    reason: Mapped[str] = mapped_column(Text, default="")
+    evidence_summary: Mapped[str] = mapped_column(Text, default="")
+    operator_user_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), index=True)
+
+
+class TradingElasticityCache(Base):
+    __tablename__ = "trading_elasticity_cache"
+    __table_args__ = (
+        UniqueConstraint("symbol", name="uq_trading_elasticity_symbol"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    symbol: Mapped[str] = mapped_column(String(16), index=True)
+    elasticity_score: Mapped[float] = mapped_column(Float, default=10.0)
+    elasticity_tier: Mapped[str] = mapped_column(String(12), default="★★")
+    data_quality: Mapped[str] = mapped_column(String(24), default="unavailable", index=True)
+    sample_count: Mapped[int] = mapped_column(Integer, default=0)
+    payload_json: Mapped[str] = mapped_column(Text, default="{}")
+    computed_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), index=True)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, server_default=func.now(), onupdate=func.now()
+    )
+
+
+class FeatureFlagAuditLog(Base):
+    __tablename__ = "feature_flag_audit_log"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    flag_key: Mapped[str] = mapped_column(String(64), index=True)
+    old_value: Mapped[str] = mapped_column(Text, default="")
+    new_value: Mapped[str] = mapped_column(Text, default="")
+    operator_user_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), index=True)
 
 
 class StrategyPreset(Base):

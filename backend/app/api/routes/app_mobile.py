@@ -39,6 +39,8 @@ def _raise_not_found(exc: LookupError) -> None:
 def _raise_low_buy_error(exc: Exception) -> None:
     if isinstance(exc, DataSourceError):
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+    if isinstance(exc, ValueError):
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     raise HTTPException(status_code=500, detail=f"选股宝典接口失败: {exc}") from exc
 
 

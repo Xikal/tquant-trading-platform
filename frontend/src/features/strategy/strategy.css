@@ -68,14 +68,16 @@
 
 .strategy-hero h1,
 .strategy-panel-title h2,
-.strategy-placeholder h2 {
+.strategy-bridge-header h2,
+.strategy-access-panel h2 {
   color: var(--text);
   margin: 0;
 }
 
 .strategy-hero p,
 .strategy-panel-title span,
-.strategy-placeholder p {
+.strategy-bridge-header p,
+.strategy-access-panel p {
   color: var(--muted);
   margin: 6px 0 0;
 }
@@ -151,6 +153,28 @@
   display: grid;
   gap: 12px;
   grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.strategy-one-click {
+  align-items: center;
+  background: #fff7e6;
+  border: 1px solid rgba(210, 160, 84, 0.45);
+  border-radius: 14px;
+  display: flex;
+  grid-column: 1 / -1;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 12px;
+}
+
+.strategy-one-click div {
+  display: grid;
+  gap: 4px;
+}
+
+.strategy-one-click span {
+  color: var(--muted);
+  font-size: 12px;
 }
 
 .strategy-form .strategy-picker {
@@ -238,7 +262,8 @@
   padding: 10px 12px;
 }
 
-.strategy-placeholder {
+.strategy-bridge-header,
+.strategy-access-panel {
   min-height: 120px;
 }
 
@@ -250,6 +275,18 @@
 .strategy-bridge {
   display: grid;
   gap: 12px;
+  grid-template-columns: minmax(0, 1fr) minmax(300px, 320px);
+}
+
+.strategy-bridge > .backtest-research {
+  grid-column: 1;
+  grid-row: 1;
+}
+
+.strategy-bridge > .strategy-bridge-header,
+.strategy-bridge > .strategy-access-panel {
+  grid-column: 2;
+  grid-row: 1;
 }
 
 .strategy-signals-panel,
@@ -409,9 +446,17 @@
 
 @media (max-width: 1180px) {
   .strategy-layout,
+  .strategy-bridge,
   .strategy-tabs,
   .strategy-history-summary {
     grid-template-columns: 1fr;
+  }
+
+  .strategy-bridge > .backtest-research,
+  .strategy-bridge > .strategy-bridge-header,
+  .strategy-bridge > .strategy-access-panel {
+    grid-column: auto;
+    grid-row: auto;
   }
 
   .strategy-form,

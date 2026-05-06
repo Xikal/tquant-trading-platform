@@ -96,6 +96,8 @@ class AdmissionFilter:
     ) -> str:
         if not symbol:
             return "缺少证券代码"
+        if signal.get("is_actionable") is False:
+            return "信号仅供观察，未通过可执行门槛"
         if score < self.min_score:
             return f"调度分{_score_text(score)}<阈值{self.min_score}"
         if bool(signal.get("is_suspended")) or str(signal.get("risk_tier") or "") == "block":

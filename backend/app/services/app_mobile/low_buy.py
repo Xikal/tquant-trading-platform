@@ -17,6 +17,7 @@ from app.models.schemas import (
 from app.services.app_mobile.common import collect_warning_messages, now_string
 from app.services.app_mobile.low_buy_projection import build_priority_board
 from app.services.low_buy.shared import DEFAULT_PRODUCTION_LOW_BUY_STRATEGY
+from app.services.strategy_metadata_service import StrategyMetadataService
 
 
 class AppMobileLowBuyMixin:
@@ -28,6 +29,7 @@ class AppMobileLowBuyMixin:
         scan_limit: int = 48,
         scan_mode: str = "quick",
     ) -> AppLowBuyResponse:
+        _ensure_app_strategy_allowed(db, strategy)
         screener_payload = self.low_buy_screener.mobile_snapshot(
             db=db,
             strategy=strategy,
@@ -77,6 +79,7 @@ class AppMobileLowBuyMixin:
         scan_limit: int = 72,
         user_id: int | None = None,
     ) -> AppLowBuyDetailResponse:
+        _ensure_app_strategy_allowed(db, strategy)
         detail_scan_limit = min(max(scan_limit, 24), 160)
         candidate, screener_payload = self.low_buy_screener.mobile_candidate_by_symbol(
             db=db,
@@ -138,3 +141,16 @@ class AppMobileLowBuyMixin:
             )
             .scalar_one_or_none()
         )
+
+
+def _ensure_app_strategy_allowed(db: Session, strategy_key: str) -> None:
+    meta = StrategyMetadataService(db).list_strategy_meta().strategies
+    allowed = {
+        item.key
+        for item in meta
+        if item.enabled
+        and item.visibility == "full"
+        and item.tier in {"core", "auxiliary"}
+    }
+    if strategy_key not in allowed:
+        raise ValueError("App 端仅支持生产层低吸策略")

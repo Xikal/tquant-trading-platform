@@ -31,6 +31,7 @@ def ensure_schema_compatibility(engine: Engine) -> None:
             _add_nullable_column(engine, table.name, column)
         _widen_strategy_key_column(engine, table.name, existing_column_info)
     _backfill_user_permission_columns(engine, existing_tables)
+    _backfill_strategy_metadata_columns(engine, existing_tables)
     _backfill_backtest_owner_columns(engine, existing_tables)
     _ensure_query_indexes(engine, existing_tables)
 
@@ -49,6 +50,111 @@ def _backfill_user_permission_columns(engine: Engine, existing_tables: set[str])
             connection.execute(text("UPDATE users SET roles = '' WHERE roles IS NULL"))
     except Exception:
         logger.exception("schema compatibility patch failed to backfill user permission columns")
+
+
+def _backfill_strategy_metadata_columns(engine: Engine, existing_tables: set[str]) -> None:
+    if "strategy_metadata" not in existing_tables:
+        return
+    try:
+        with engine.begin() as connection:
+            connection.execute(text("UPDATE strategy_metadata SET enabled = 1 WHERE enabled IS NULL"))
+            connection.execute(text("UPDATE strategy_metadata SET probe_status = 'not_required' WHERE probe_status IS NULL OR probe_status = ''"))
+            connection.execute(text("UPDATE strategy_metadata SET visibility = 'full' WHERE visibility IS NULL OR visibility = ''"))
+            _upsert_strategy_metadata_seed(
+                connection,
+                key="ma_channel_band",
+                name="均线通道波段",
+                description="沿 MA20 通道运行的波段研究策略，关注下轨承接与上轨兑现。",
+                category="research",
+                risk_level="medium",
+                holding_days="5-15天",
+                sort_order=60,
+                probe_status="not_required",
+                probe_summary="",
+                visibility="full",
+            )
+            _upsert_strategy_metadata_seed(
+                connection,
+                key="leader_pullback_band",
+                name="龙头回踩波段",
+                description="热点龙头确认后回踩均线支撑的二波研究策略。",
+                category="research",
+                risk_level="high",
+                holding_days="3-10天",
+                sort_order=70,
+                probe_status="pending",
+                probe_summary="待样本外验证完成后开放生产入口。",
+                visibility="backtest_only",
+            )
+    except Exception:
+        logger.exception("schema compatibility patch failed to backfill strategy metadata columns")
+
+
+def _upsert_strategy_metadata_seed(
+    connection,
+    *,
+    key: str,
+    name: str,
+    description: str,
+    category: str,
+    risk_level: str,
+    holding_days: str,
+    sort_order: int,
+    probe_status: str,
+    probe_summary: str,
+    visibility: str,
+) -> None:
+    exists = connection.execute(
+        text("SELECT 1 FROM strategy_metadata WHERE key = :key LIMIT 1"),
+        {"key": key},
+    ).scalar()
+    if exists:
+        connection.execute(
+            text(
+                """
+                UPDATE strategy_metadata
+                SET category=:category, enabled=1, probe_status=:probe_status,
+                    probe_summary=:probe_summary, visibility=:visibility
+                WHERE key=:key
+                """
+            ),
+            {
+                "key": key,
+                "category": category,
+                "probe_status": probe_status,
+                "probe_summary": probe_summary,
+                "visibility": visibility,
+            },
+        )
+        return
+    connection.execute(
+        text(
+            """
+            INSERT INTO strategy_metadata (
+                key, display_name, description, category, risk_level,
+                typical_holding_days, sort_order, enabled, probe_status,
+                probe_summary, visibility
+            )
+            VALUES (
+                :key, :name, :description, :category, :risk_level,
+                :holding_days, :sort_order, 1, :probe_status,
+                :probe_summary, :visibility
+            )
+            """
+        ),
+        {
+            "key": key,
+            "name": name,
+            "description": description,
+            "category": category,
+            "risk_level": risk_level,
+            "holding_days": holding_days,
+            "sort_order": sort_order,
+            "probe_status": probe_status,
+            "probe_summary": probe_summary,
+            "visibility": visibility,
+        },
+    )
 
 
 def _backfill_backtest_owner_columns(engine: Engine, existing_tables: set[str]) -> None:
@@ -176,6 +282,10 @@ def _ensure_query_indexes(engine: Engine, existing_tables: set[str]) -> None:
         ("backtest_runs", "ix_backtest_runs_owner_status_created", ("owner_user_id", "status", "created_at")),
         ("backtest_runs", "ix_backtest_runs_status_dates", ("status", "start_date", "end_date")),
         ("strategy_presets", "ix_strategy_presets_preset_key", ("preset_key",)),
+        ("strategy_tier_overrides", "ix_strategy_tier_override_active", ("strategy_key", "reverted_at")),
+        ("strategy_tier_override_log", "ix_strategy_tier_override_log_key_created", ("strategy_key", "created_at")),
+        ("trading_elasticity_cache", "ix_trading_elasticity_cache_quality_updated", ("data_quality", "updated_at")),
+        ("feature_flag_audit_log", "ix_feature_flag_audit_flag_created", ("flag_key", "created_at")),
         ("backtest_orders", "ix_backtest_orders_run_date_symbol", ("run_id", "trade_date", "symbol")),
         ("backtest_orders", "ix_backtest_orders_run_strategy_state", ("run_id", "strategy_key", "signal_state")),
         ("backtest_trades", "ix_backtest_trades_run_date_symbol", ("run_id", "trade_date", "symbol")),

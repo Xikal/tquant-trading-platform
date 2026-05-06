@@ -36,7 +36,7 @@ class _StrategyMetadataServiceStub:
     def __init__(self, db):  # noqa: ANN001
         self.db = db
 
-    def list_strategy_meta(self) -> StrategyMetaResponse:
+    def list_strategy_meta(self, *, current_user=None, include_hidden: bool = False) -> StrategyMetaResponse:  # noqa: ANN001
         return StrategyMetaResponse(
             strategies=[
                 StrategyMetaOut(

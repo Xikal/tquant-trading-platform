@@ -32,6 +32,8 @@ RESEARCH_STRATEGIES = frozenset(
         "breakout_support",
         "limit_up_breakout_retrace",
         "divergence_consensus",
+        "ma_channel_band",
+        "leader_pullback_band",
     }
 )
 

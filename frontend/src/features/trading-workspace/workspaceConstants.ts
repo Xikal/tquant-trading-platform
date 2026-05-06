@@ -3,19 +3,20 @@ import { FALLBACK_STRATEGY_META } from "../../constants/strategies";
 
 export const DEFAULT_PLAYBOOK_STRATEGY = "first_board";
 
-export const CORE_PLAYBOOK_TABS = FALLBACK_STRATEGY_META.filter((item) => item.tier === "core");
+const isFullEnabledStrategy = (item: (typeof FALLBACK_STRATEGY_META)[number]) =>
+  item.enabled !== false && item.visibility === "full";
 
-export const AUXILIARY_PLAYBOOK_TABS = FALLBACK_STRATEGY_META.filter((item) => item.tier === "auxiliary");
+export const CORE_PLAYBOOK_TABS = FALLBACK_STRATEGY_META.filter(
+  (item) => isFullEnabledStrategy(item) && item.tier === "core"
+);
 
-export const RESEARCH_PLAYBOOK_TABS = [
-  { key: "limit_up_breakout_retrace", label: "涨停突破回踩", tier: "research" },
-  { key: "divergence_consensus", label: "分歧转一致", tier: "research" },
-  { key: "classic_retrace", label: "原始低吸", tier: "research" },
-  { key: "ma_support", label: "均线支撑", tier: "factor" },
-  { key: "breakout_support", label: "位置支撑", tier: "factor" },
-  { key: "deep_pullback", label: "深度低吸", tier: "factor" },
-  { key: "trend_rebound", label: "趋势龙回头", tier: "factor" },
-] as const;
+export const AUXILIARY_PLAYBOOK_TABS = FALLBACK_STRATEGY_META.filter(
+  (item) => isFullEnabledStrategy(item) && item.tier === "auxiliary"
+);
+
+export const RESEARCH_PLAYBOOK_TABS = FALLBACK_STRATEGY_META.filter(
+  (item) => isFullEnabledStrategy(item) && (item.tier === "research" || item.tier === "factor")
+);
 
 export const PRODUCTION_PLAYBOOK_TABS = [
   ...CORE_PLAYBOOK_TABS,

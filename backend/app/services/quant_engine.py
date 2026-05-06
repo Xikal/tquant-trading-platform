@@ -118,6 +118,7 @@ class QuantEngine:
         )
         trade_plan, blocking_rules = resolve_trade_plan(
             action=action,
+            request=request,
             quote=quote,
             indicators=indicators,
             scores=scores,

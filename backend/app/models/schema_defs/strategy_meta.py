@@ -17,6 +17,10 @@ class StrategyMetaOut(BaseModel):
     risk_level: str = "medium"
     typical_holding_days: str = ""
     sort_order: int = 0
+    enabled: bool = True
+    probe_status: str = "not_required"
+    probe_summary: str = ""
+    visibility: str = "full"
 
 
 class StrategyMetaResponse(BaseModel):
@@ -34,6 +38,21 @@ class StrategyPresetOut(BaseModel):
 
 class StrategyPresetResponse(BaseModel):
     presets: list[StrategyPresetOut] = Field(default_factory=list)
+
+
+class StrategyGovernanceMutationRequest(BaseModel):
+    strategy_key: str = Field(..., min_length=1, max_length=80)
+    target_tier: str = Field(default="auxiliary", max_length=20)
+    reason: str = Field(default="", max_length=500)
+    evidence_summary: str = Field(default="", max_length=1000)
+
+
+class StrategyGovernanceMutationResponse(BaseModel):
+    ok: bool = True
+    strategy_key: str
+    action: str
+    tier: str = ""
+    message: str = ""
 
 
 class SymbolSearchItem(BaseModel):

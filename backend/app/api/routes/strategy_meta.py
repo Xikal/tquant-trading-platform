@@ -3,14 +3,16 @@ from __future__ import annotations
 import json
 import math
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import desc, func, or_, select
 from sqlalchemy.orm import Session
 
 from app.core.auth import get_current_user
 from app.core.database import get_db
-from app.models.entities import LowBuyResultSnapshot, LowBuyScanSnapshot
+from app.models.entities import LowBuyResultSnapshot, LowBuyScanSnapshot, User
 from app.models.schema_defs.strategy_meta import (
+    StrategyGovernanceMutationRequest,
+    StrategyGovernanceMutationResponse,
     StrategyMetaResponse,
     StrategyPresetResponse,
     StrategySignalReplayItem,
@@ -23,13 +25,47 @@ router = APIRouter(dependencies=[Depends(get_current_user)])
 
 
 @router.get("/strategies/meta", response_model=StrategyMetaResponse)
-def list_strategy_meta(db: Session = Depends(get_db)) -> StrategyMetaResponse:
-    return StrategyMetadataService(db).list_strategy_meta()
+def list_strategy_meta(
+    include_hidden: bool = Query(default=False),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> StrategyMetaResponse:
+    service = StrategyMetadataService(db)
+    return service.list_strategy_meta(
+        current_user=current_user,
+        include_hidden=include_hidden,
+    )
 
 
 @router.get("/strategy/presets", response_model=StrategyPresetResponse)
 def list_strategy_presets(db: Session = Depends(get_db)) -> StrategyPresetResponse:
     return StrategyMetadataService(db).list_presets()
+
+
+@router.post("/strategy/governance/promote", response_model=StrategyGovernanceMutationResponse)
+def promote_strategy(
+    payload: StrategyGovernanceMutationRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> StrategyGovernanceMutationResponse:
+    _require_admin(current_user)
+    try:
+        return StrategyMetadataService(db).promote_strategy(payload, current_user=current_user)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+
+@router.post("/strategy/governance/demote", response_model=StrategyGovernanceMutationResponse)
+def demote_strategy(
+    payload: StrategyGovernanceMutationRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> StrategyGovernanceMutationResponse:
+    _require_admin(current_user)
+    try:
+        return StrategyMetadataService(db).demote_strategy(payload, current_user=current_user)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
 
 @router.get("/symbols/search", response_model=SymbolSearchResponse)
@@ -172,3 +208,10 @@ def _fmt_price(value) -> str:
 
 def _escape_like(value: str) -> str:
     return value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+
+
+def _require_admin(user: User) -> None:
+    roles = {item.strip().lower() for item in (getattr(user, "roles", "") or "").split(",")}
+    if "admin" in roles or "administrator" in roles:
+        return
+    raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="需要管理员权限")

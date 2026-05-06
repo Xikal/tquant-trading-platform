@@ -82,11 +82,14 @@ export function useStrategyHub() {
     if (loadSeqRef.current !== seq) return;
     const failures = [meta, presetResult, runResult].filter((item) => item.status === "rejected");
     if (meta.status === "fulfilled") {
-      setStrategies(meta.value.strategies ?? []);
-      if (meta.value.strategies?.length) {
+      const visibleStrategies = (meta.value.strategies ?? []).filter(
+        (strategy) => strategy.enabled !== false && strategy.visibility !== "hidden",
+      );
+      setStrategies(visibleStrategies);
+      if (visibleStrategies.length) {
         setForm((current) => current.strategies.length
           ? current
-          : { ...current, strategies: meta.value.strategies.slice(0, 2).map((strategy) => strategy.key) });
+          : { ...current, strategies: visibleStrategies.slice(0, 2).map((strategy) => strategy.key) });
       }
     }
     if (presetResult.status === "fulfilled") setPresets(presetResult.value.presets ?? []);
@@ -177,6 +180,53 @@ export function useStrategyHub() {
     }
   }, [form]);
 
+  const submitQuickBacktest = useCallback(async (): Promise<boolean> => {
+    setLoading("quick-submit");
+    setError("");
+    setNotice("");
+    const productionStrategies = strategies
+      .filter((strategy) =>
+        strategy.enabled !== false &&
+        strategy.visibility === "full" &&
+        (strategy.tier === "core" || strategy.tier === "auxiliary")
+      )
+      .map((strategy) => strategy.key);
+    try {
+      const payload: BacktestCreateRequest = {
+        name: "一键快速回测",
+        start_date: shiftDate(-183),
+        end_date: shiftDate(0),
+        initial_capital: 500000,
+        strategies: productionStrategies.length ? productionStrategies : ["first_board", "volume_shrink"],
+        execution_model: "open_price",
+        benchmark: "000300",
+        risk_limits: {
+          max_position_pct: 0.3,
+          max_positions: 8,
+          max_daily_loss_pct: 0.05,
+          max_single_order_pct: 0.15,
+          min_cash_reserve: 5000,
+        },
+      };
+      const result = await backtestsApi.createBacktest(payload);
+      setNotice(result.message || `一键回测任务 #${result.run_id ?? result.id ?? "--"} 已提交，预计 2-5 分钟。`);
+      const runResult = await backtestsApi.listBacktests({ limit: 8, offset: 0 });
+      setRuns(runResult.items ?? []);
+      setTab("history");
+      return true;
+    } catch (err) {
+      setError(toMessage(err));
+      return false;
+    } finally {
+      setLoading("");
+    }
+  }, [setTab, strategies]);
+
+  const selectedStrategyNames = useMemo(() => {
+    const nameByKey = new Map(strategies.map((strategy) => [strategy.key, strategy.display_name || strategy.name || strategy.key]));
+    return form.strategies.map((key) => nameByKey.get(key) || key);
+  }, [form.strategies, strategies]);
+
   return {
     tab,
     setTab,
@@ -185,6 +235,7 @@ export function useStrategyHub() {
     runs,
     form,
     selectedStrategies,
+    selectedStrategyNames,
     confirmOpen,
     setConfirmOpen,
     loading,
@@ -195,6 +246,7 @@ export function useStrategyHub() {
     toggleStrategy,
     applyPreset,
     submit,
+    submitQuickBacktest,
   };
 }
 

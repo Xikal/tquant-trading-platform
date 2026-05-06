@@ -51,6 +51,20 @@ class StrategySuggestion(BaseModel):
     plain_action_reason: str = ""
     plain_execution_text: str = ""
     plain_invalid_condition: str = ""
+    estimated_fee: float = 0.0
+    net_profit_pct: float = 0.0
+    breakeven_pct: float = 0.0
+    fee_warning: str = ""
+    elasticity_score: float = 0.0
+    elasticity_data_quality: str = "unavailable"
+    elasticity_tier: str = ""
+    liquidity_warning: str = ""
+    suggested_timing: str = ""
+    min_position_value: float = 0.0
+    direction: str = ""
+    min_shares_suggestion: int = 0
+    effective_action: ActionType = "hold"
+    is_actionable: bool = False
 
 
 class AiInsight(BaseModel):

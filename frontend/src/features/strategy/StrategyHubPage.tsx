@@ -12,28 +12,40 @@ import {
   formatPct,
 } from "../backtest/backtestDisplay";
 import { BacktestResearchPanel, type BacktestResearchSection } from "../backtest/BacktestResearchPanel";
-import { useBacktestDashboard } from "../backtest/useBacktestDashboard";
+import { useBacktestDashboard, type BacktestDashboardActiveSection } from "../backtest/useBacktestDashboard";
 import { useBacktestStrategyOptions } from "../backtest/useBacktestStrategyOptions";
 import { useStrategyHub, type StrategyHubTab } from "./useStrategyHub";
 
-const TABS: Array<{ key: StrategyHubTab; label: string; hint: string }> = [
-  { key: "quick", label: "快速回测", hint: "一屏提交" },
-  { key: "signals", label: "信号复盘", hint: "入口统一" },
-  { key: "optimize", label: "参数优化", hint: "防过拟合" },
-  { key: "validate", label: "样本外验证", hint: "上线门槛" },
-  { key: "compare", label: "结果对比", hint: "择优淘汰" },
-  { key: "history", label: "策略历史", hint: "任务追踪" },
+const TABS: Array<{ key: StrategyHubTab; label: string }> = [
+  { key: "quick", label: "快速回测" },
+  { key: "signals", label: "信号复盘" },
+  { key: "optimize", label: "参数优化" },
+  { key: "validate", label: "样本外验证" },
+  { key: "compare", label: "结果对比" },
+  { key: "history", label: "策略历史" },
 ];
 
 export function StrategyHubPage({ currentUser }: { currentUser: AuthUser }) {
   const hub = useStrategyHub();
-  const dashboard = useBacktestDashboard();
+  const dashboard = useBacktestDashboard(dashboardSectionForTab(hub.tab));
   const toast = useToast();
 
   function submitWithToast() {
     void hub.submit().then((ok) => {
       if (ok) {
         toast.pushToast({ tone: "success", title: "回测任务已提交", description: "可在右侧任务列表查看进度。" });
+      }
+    });
+  }
+
+  function quickSubmitWithToast() {
+    void hub.submitQuickBacktest().then((ok) => {
+      if (ok) {
+        toast.pushToast({
+          tone: "success",
+          title: "一键回测已提交",
+          description: "已进入策略历史，可在任务列表查看进度。",
+        });
       }
     });
   }
@@ -68,7 +80,6 @@ export function StrategyHubPage({ currentUser }: { currentUser: AuthUser }) {
             onClick={() => hub.setTab(tab.key)}
           >
             <strong>{tab.label}</strong>
-            <span>{tab.hint}</span>
           </button>
         ))}
       </nav>
@@ -76,12 +87,12 @@ export function StrategyHubPage({ currentUser }: { currentUser: AuthUser }) {
       {hub.tab === "quick" ? (
         <div className="strategy-layout">
           <section className="panel strategy-form-panel">
-            <PanelTitle title="快速回测配置" subtitle="默认按生产策略集合执行，参数只保留最常用项。" />
-            <QuickBacktestForm hub={hub} />
+            <PanelTitle title="快速回测配置" />
+            <QuickBacktestForm hub={hub} onQuickSubmit={quickSubmitWithToast} />
           </section>
           <aside className="strategy-side">
             <section className="panel strategy-presets">
-              <PanelTitle title="预设方案" subtitle="减少配置成本，避免参数随意组合。" />
+              <PanelTitle title="预设方案" />
               <div className="strategy-preset-list">
                 {hub.presets.map((preset) => (
                   <button type="button" key={preset.key ?? preset.id ?? preset.name} onClick={() => hub.applyPreset(preset)}>
@@ -94,7 +105,7 @@ export function StrategyHubPage({ currentUser }: { currentUser: AuthUser }) {
               </div>
             </section>
             <section className="panel strategy-run-panel">
-              <PanelTitle title="最近任务" subtitle="提交后自动刷新最近 8 条。" />
+              <PanelTitle title="最近任务" />
               <RecentRuns runs={hub.runs} />
             </section>
           </aside>
@@ -111,7 +122,12 @@ export function StrategyHubPage({ currentUser }: { currentUser: AuthUser }) {
         <ConfirmDialog
           loading={hub.loading === "submit"}
           title="确认提交快速回测"
-          description={`将提交 ${hub.form.strategies.length} 个策略，区间 ${hub.form.start_date} 至 ${hub.form.end_date}。`}
+          description={[
+            `策略：${hub.selectedStrategyNames.join("、") || "未选择"}`,
+            `区间：${hub.form.start_date} 至 ${hub.form.end_date}`,
+            `资金：${formatMoney(Number(hub.form.initial_capital) || 0)}，成交模型：${executionModelText(hub.form.execution_model)}`,
+            "任务异步执行，预计 2-5 分钟，可在策略历史查看进度。",
+          ].join("；")}
           onCancel={() => hub.setConfirmOpen(false)}
           onConfirm={submitWithToast}
         />
@@ -120,9 +136,24 @@ export function StrategyHubPage({ currentUser }: { currentUser: AuthUser }) {
   );
 }
 
-function QuickBacktestForm({ hub }: { hub: ReturnType<typeof useStrategyHub> }) {
+function QuickBacktestForm({
+  hub,
+  onQuickSubmit,
+}: {
+  hub: ReturnType<typeof useStrategyHub>;
+  onQuickSubmit: () => void;
+}) {
   return (
     <div className="strategy-form">
+      <div className="strategy-one-click">
+        <div>
+          <strong>一键快速回测（最近 6 个月）</strong>
+          <span>50 万初始资金 · 开盘价成交 · 当前生产策略集合</span>
+        </div>
+        <button type="button" className="primary" onClick={onQuickSubmit} disabled={hub.loading === "quick-submit"}>
+          {hub.loading === "quick-submit" ? "提交中" : "立即提交"}
+        </button>
+      </div>
       <TextField label="任务名称" value={hub.form.name} onChange={(event) => hub.updateForm({ name: event.target.value })} />
       <DateField label="开始日期" value={hub.form.start_date} onChange={(event) => hub.updateForm({ start_date: event.target.value })} />
       <DateField label="结束日期" value={hub.form.end_date} onChange={(event) => hub.updateForm({ end_date: event.target.value })} />
@@ -138,12 +169,12 @@ function QuickBacktestForm({ hub }: { hub: ReturnType<typeof useStrategyHub> }) 
           { value: "close_price", label: "收盘价成交" },
         ]}
       />
-      <NumberField label="单票仓位上限" suffix="%" value={hub.form.max_position_pct} onChange={(event) => hub.updateForm({ max_position_pct: event.target.value })} />
-      <NumberField label="最大持仓数" value={hub.form.max_positions} onChange={(event) => hub.updateForm({ max_positions: event.target.value })} />
-      <TextField label="基准指数" value={hub.form.benchmark} onChange={(event) => hub.updateForm({ benchmark: event.target.value })} />
       <details className="strategy-advanced-fields">
-        <summary>更多风控参数</summary>
+        <summary>高级设置（使用推荐值即可）</summary>
         <div className="strategy-form compact">
+          <NumberField label="单票仓位上限" suffix="%" value={hub.form.max_position_pct} onChange={(event) => hub.updateForm({ max_position_pct: event.target.value })} />
+          <NumberField label="最大持仓数" value={hub.form.max_positions} onChange={(event) => hub.updateForm({ max_positions: event.target.value })} />
+          <TextField label="基准指数" value={hub.form.benchmark} onChange={(event) => hub.updateForm({ benchmark: event.target.value })} />
           <NumberField label="单笔下单上限" suffix="%" value={hub.form.max_single_order_pct} onChange={(event) => hub.updateForm({ max_single_order_pct: event.target.value })} />
           <NumberField label="单日最大亏损" suffix="%" value={hub.form.max_daily_loss_pct} onChange={(event) => hub.updateForm({ max_daily_loss_pct: event.target.value })} />
           <NumberField label="最低现金保留" value={hub.form.min_cash_reserve} onChange={(event) => hub.updateForm({ min_cash_reserve: event.target.value })} />
@@ -165,7 +196,10 @@ function QuickBacktestForm({ hub }: { hub: ReturnType<typeof useStrategyHub> }) 
                 onClick={() => hub.toggleStrategy(strategy.key)}
               >
                 <strong>{strategy.display_name || strategy.name}</strong>
-                <span>{strategy.display_category || strategy.category} · {strategy.typical_holding_days}</span>
+                <span>
+                  {strategy.display_category || strategy.category} · {strategy.typical_holding_days}
+                  {strategy.visibility === "backtest_only" ? " · 仅回测研究" : ""}
+                </span>
                 <small>{strategy.description}</small>
               </button>
             );
@@ -271,14 +305,14 @@ function StrategyBridge({
   dashboard: ReturnType<typeof useBacktestDashboard>;
 }) {
   const metaMap: Record<Exclude<StrategyHubTab, "quick" | "history">, [string, string]> = {
-    signals: ["信号复盘", "按标的、策略和时间快速定位历史信号，不再加载完整回测页面。"],
-    optimize: ["参数优化", "只展示参数优化模块，避免整页桥接造成额外 API 与 DOM 负担。"],
-    validate: ["样本外验证", "只展示 Walk-forward 验证模块，重点看样本外稳定性。"],
-    compare: ["结果对比", "只展示结果对比模块，便于快速比较不同任务。"],
+    signals: ["信号复盘", ""],
+    optimize: ["参数优化", ""],
+    validate: ["样本外验证", ""],
+    compare: ["结果对比", ""],
   };
   const meta = metaMap[tab];
   if (tab === "signals") {
-    return <StrategySignalReplayPanel title={meta[0]} subtitle={meta[1]} />;
+    return <StrategySignalReplayPanel title={meta[0]} />;
   }
   if (tab === "optimize" && !canOptimize(currentUser)) {
     return <PermissionPanel title="需要参数优化权限" description="当前账号可以查看回测和信号复盘，但不能创建参数优化任务。" />;
@@ -293,16 +327,15 @@ function StrategyBridge({
   };
   return (
     <div className="strategy-bridge">
-      <section className="panel strategy-placeholder">
+      <section className="panel strategy-bridge-header">
         <h2>{meta[0]}</h2>
-        <p>{meta[1]}</p>
       </section>
       <StrategyResearchFocus section={sectionMap[tab]} dashboard={dashboard} />
     </div>
   );
 }
 
-function StrategySignalReplayPanel({ title, subtitle }: { title: string; subtitle: string }) {
+function StrategySignalReplayPanel({ title }: { title: string }) {
   const [symbol, setSymbol] = useState("");
   const [strategy, setStrategy] = useState("first_board");
   const [items, setItems] = useState<StrategySignalReplayItem[]>([]);
@@ -343,7 +376,6 @@ function StrategySignalReplayPanel({ title, subtitle }: { title: string; subtitl
       <div className="strategy-panel-title">
         <div>
           <h2>{title}</h2>
-          <span>{subtitle}</span>
         </div>
       </div>
       <div className="strategy-signal-grid">
@@ -491,7 +523,7 @@ function ConfirmDialog({
 
 function PermissionPanel({ title, description }: { title: string; description: string }) {
   return (
-    <section className="panel strategy-placeholder">
+    <section className="panel strategy-access-panel">
       <h2>{title}</h2>
       <p>{description}</p>
     </section>
@@ -516,13 +548,28 @@ function canValidate(user: AuthUser): boolean {
   return isAdmin(user) || roles.has("backtest_optimizer") || roles.has("backtest_research");
 }
 
-function PanelTitle({ title, subtitle }: { title: string; subtitle: string }) {
+function PanelTitle({ title }: { title: string }) {
   return (
     <div className="strategy-panel-title">
       <h2>{title}</h2>
-      <span>{subtitle}</span>
     </div>
   );
+}
+
+function dashboardSectionForTab(tab: StrategyHubTab): BacktestDashboardActiveSection {
+  if (tab === "quick") return "quick";
+  if (tab === "history") return "history";
+  if (tab === "optimize") return "optimization";
+  if (tab === "validate") return "validation";
+  if (tab === "compare") return "compare";
+  return "none";
+}
+
+function executionModelText(value: string): string {
+  if (value === "vwap") return "VWAP 近似";
+  if (value === "next_open") return "次日开盘";
+  if (value === "close_price") return "收盘价成交";
+  return "开盘价成交";
 }
 
 function statusText(status: string): string {

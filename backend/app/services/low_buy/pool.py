@@ -29,6 +29,7 @@ from app.services.low_buy.strategy_pool_config import (
     strategy_pool_title,
     strategy_uses_daily_scan_pool,
 )
+from app.services.shared.feature_flags import feature_enabled
 from app.services.market.trading_calendar import is_a_share_trading_day
 
 
@@ -37,6 +38,8 @@ _STRATEGY_BOARD_WINDOW_DAYS = {
     "late_session_strong_support": 14,
     "core_midcap_vwap_ma5_retrace": 14,
     "sector_mainline_first_divergence_low_buy": 14,
+    "ma_channel_band": 30,
+    "leader_pullback_band": 18,
 }
 
 _STRATEGY_RETRACEMENT_DAYS_MAX = {
@@ -45,6 +48,8 @@ _STRATEGY_RETRACEMENT_DAYS_MAX = {
     "late_session_strong_support": 8,
     "core_midcap_vwap_ma5_retrace": 8,
     "sector_mainline_first_divergence_low_buy": 8,
+    "ma_channel_band": 14,
+    "leader_pullback_band": 8,
 }
 
 class LowBuyPoolMixin:
@@ -151,6 +156,8 @@ class LowBuyPoolMixin:
         ranked_pool: list[BoardCandidate] | None = None,
     ) -> list[BoardCandidate] | None:
         profile = strategy_pool_profile(strategy)
+        if not profile.enabled or not feature_enabled(db, f"strategy_{strategy}_enabled", profile.enabled):
+            return []
         if requires_mainline_industry(strategy) and not hot_industries:
             return []
 

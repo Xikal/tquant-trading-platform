@@ -5,7 +5,8 @@ import type {
   RuntimeStatus,
   SettingsPayload,
 } from "../../types";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { featureFlagsApi, type FeatureFlagItem } from "../../api/featureFlags";
 import { NumberField, TextField } from "../../components/shared/FormFields";
 import { InfoPill, PanelTitle, SettingCard } from "./WorkspaceComponents";
 import { readySummary } from "./workspaceFormatters";
@@ -43,6 +44,8 @@ export function SettingsPage({
   onUpdateStrategyGovernance: (strategyKey: string, status: "active" | "watch" | "paused") => void;
 }) {
   const [savedSection, setSavedSection] = useState("");
+  const [featureFlags, setFeatureFlags] = useState<FeatureFlagItem[]>([]);
+  const [featureFlagError, setFeatureFlagError] = useState("");
   const savedTimerRef = useRef<number | null>(null);
   const adminTokenError = draft.adminToken.trim() ? "" : "保存配置前需要填写管理令牌";
   const llmKeyError = !settings?.llm_api_key_configured && !draft.llm_api_key.trim() ? "首次配置大模型需要填写 API Key" : "";
@@ -94,6 +97,36 @@ export function SettingsPage({
       window.clearTimeout(savedTimerRef.current);
     }
     savedTimerRef.current = window.setTimeout(() => setSavedSection(""), 3000);
+  }
+
+  useEffect(() => {
+    let cancelled = false;
+    featureFlagsApi.list()
+      .then((payload) => {
+        if (!cancelled) {
+          setFeatureFlags(payload.items ?? []);
+          setFeatureFlagError("");
+        }
+      })
+      .catch((error) => {
+        if (!cancelled) {
+          setFeatureFlagError(error instanceof Error ? error.message : "功能开关加载失败");
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  async function toggleFeatureFlag(item: FeatureFlagItem) {
+    try {
+      const updated = await featureFlagsApi.update(item.key, !item.enabled);
+      setFeatureFlags((current) => current.map((flag) => flag.key === item.key ? updated.item : flag));
+      markSaved("feature-flags");
+      setFeatureFlagError("");
+    } catch (error) {
+      setFeatureFlagError(error instanceof Error ? error.message : "功能开关更新失败");
+    }
   }
 
   return (
@@ -187,6 +220,31 @@ export function SettingsPage({
           ) : (
             <p className="hint">策略治理未加载，刷新后会显示生产/研究/因子分层。</p>
           )}
+        </SettingCard>
+        <SettingCard title="功能开关" button="刷新开关" onSave={() => {
+          featureFlagsApi.list()
+            .then((payload) => {
+              setFeatureFlags(payload.items ?? []);
+              setFeatureFlagError("");
+            })
+            .catch((error) => setFeatureFlagError(error instanceof Error ? error.message : "功能开关加载失败"));
+        }} loading={loading === "settings"} saved={savedSection === "feature-flags"}>
+          {featureFlagError ? <p className="form-error">{featureFlagError}</p> : null}
+          <div className="settings-mini-list">
+            {featureFlags.length ? featureFlags.map((item) => (
+              <div key={item.key} className="settings-mini-row">
+                <span>
+                  {item.key}
+                  <small className="hint">{item.description || "无说明"}</small>
+                </span>
+                <strong className={item.enabled ? "task-ok" : "task-error"}>{item.enabled ? "开启" : "关闭"}</strong>
+                <button type="button" onClick={() => void toggleFeatureFlag(item)}>
+                  {item.enabled ? "关闭" : "开启"}
+                </button>
+              </div>
+            )) : <p className="hint">功能开关未加载。</p>}
+          </div>
+          <p className="hint">普通用户可查看，只有管理员可以修改；修改会写入审计日志。</p>
         </SettingCard>
         <SettingCard title="运行诊断" button="重新检测" onSave={onRefresh} loading={loading === "settings"}>
           <InfoPill label="前端产物" value={runtime?.frontend_dist_ready ? "正常" : "--"} />

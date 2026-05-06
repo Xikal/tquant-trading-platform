@@ -2,15 +2,20 @@ from __future__ import annotations
 
 from typing import Any
 
+from app.core.database import SessionLocal
 from app.models.schemas import MicrostructureSnapshot, QuoteSnapshot, SectorSnapshot
 from app.services.distribution_signals import DistributionSnapshot
 from app.services.market.regime import MarketRegimeSnapshot
 from app.services.quant_engine_common import config_float
+from app.services.quant_engine_models import TradeCostEstimate
 from app.services.quant_engine_market import (
     market_position_multiplier,
     market_profit_threshold_shift,
     market_risk_reward_shift,
 )
+from app.services.shared.trading_costs import estimate_round_trip_cost
+from app.services.shared.feature_flags import feature_enabled
+from app.services.shared.trading_elasticity import get_trading_elasticity
 
 _WEIGHT_SECTOR_KEYWORDS = (
     "银行",
@@ -452,6 +457,34 @@ def trade_levels(
         expected_profit_pct = (sell_price - buy_price) / max(sell_price, 0.001) * 100
         return sell_price, buy_price, stop_loss, take_profit, round(expected_profit_pct, 4)
     return None, None, None, None, 0.0
+
+
+def attach_trade_costs(
+    *,
+    symbol: str,
+    action: str,
+    entry_price: float | None,
+    exit_price: float | None,
+    quantity: int,
+    expected_profit_pct: float,
+) -> TradeCostEstimate:
+    with SessionLocal() as db:
+        if not feature_enabled(db, "t_engine_fee_aware_enabled", True):
+            return TradeCostEstimate(net_profit_pct=round(float(expected_profit_pct or 0.0), 2), direction=action)
+        if feature_enabled(db, "t_engine_elasticity_enabled", True):
+            elasticity = get_trading_elasticity(symbol, db=db)
+        else:
+            elasticity = None
+    return estimate_round_trip_cost(
+        symbol=symbol,
+        action=action,
+        entry_price=entry_price,
+        exit_price=exit_price,
+        quantity=quantity,
+        expected_profit_pct=expected_profit_pct,
+        elasticity_score=elasticity.score if elasticity is not None else 0.0,
+        elasticity_data_quality=elasticity.data_quality if elasticity is not None else "disabled",
+    )
 
 
 def negative_buyback_trigger(

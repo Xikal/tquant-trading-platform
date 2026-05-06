@@ -22,6 +22,7 @@ export function AnalysisPage({
   const suggestion = result?.suggestion;
   const quote = result?.quote;
   const actionHeadline = suggestion?.plain_action_text || (suggestion ? actionText(suggestion.action) : "等待分析");
+  const canOpenPaperOrder = Boolean(draft.symbol.trim() && suggestion?.is_actionable !== false);
   const actionReason = suggestion?.plain_action_reason || plainTradingText(suggestion?.trade_scene_text) || "--";
   const executionText =
     suggestion?.plain_execution_text ||
@@ -80,9 +81,9 @@ export function AnalysisPage({
             <button
               type="button"
               onClick={() => onOpenPaperOrder({ symbol: draft.symbol, name: result?.instrument.name, price: quote?.last_price })}
-              disabled={!draft.symbol.trim()}
+              disabled={!canOpenPaperOrder}
             >
-              模拟下单
+              {suggestion?.is_actionable === false ? "不建议下单" : "模拟下单"}
             </button>
           }
         />
@@ -90,7 +91,11 @@ export function AnalysisPage({
         <InfoPill label="现在怎么做" value={executionText} />
         <InfoPill label="错了怎么办" value={invalidText} />
         <InfoPill label="建议仓位" value={`仓位 ${formatPct(suggestion?.position_pct, 0)} / 预期 ${formatPct(suggestion?.expected_profit_pct)}`} />
+        <InfoPill label="扣费后收益" value={`${formatPct(suggestion?.net_profit_pct)} / 费用约 ${formatAmount(suggestion?.estimated_fee)}`} />
         <InfoPill label="卖出后怎么接回" value={plainTradingText(suggestion?.buyback_trigger) || "没有反T卖出信号时，不需要考虑回补。"} />
+        {suggestion?.fee_warning || suggestion?.liquidity_warning ? (
+          <LineList title="交易成本提示" items={[suggestion.fee_warning, suggestion.liquidity_warning].filter(Boolean).map(plainTradingText)} />
+        ) : null}
         {suggestion?.reasons.length ? <LineList title="主要依据" items={suggestion.reasons.slice(0, 4).map(plainTradingText)} /> : null}
       </div>
       <div className="panel chart-panel analysis-chart">
