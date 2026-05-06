@@ -42,7 +42,7 @@ ssh "${ssh_opts[@]}" "${REMOTE_USER}@${REMOTE_HOST}" \
   "cd '${REMOTE_DIR}' && umask 077 && printf '%s' '${grafana_password_b64}' | base64 -d > .runtime/grafana_admin_password"
 
 ssh "${ssh_opts[@]}" "${REMOTE_USER}@${REMOTE_HOST}" \
-  "cd '${REMOTE_DIR}' && GRAFANA_ADMIN_PASSWORD=\"\$(printf '%s' '${grafana_password_b64}' | base64 -d)\" sudo docker compose -f docker-compose.monitoring.yml up -d"
+  "cd '${REMOTE_DIR}' && sudo env GRAFANA_ADMIN_PASSWORD=\"\$(printf '%s' '${grafana_password_b64}' | base64 -d)\" docker compose -f docker-compose.monitoring.yml up -d"
 
 ssh "${ssh_opts[@]}" "${REMOTE_USER}@${REMOTE_HOST}" \
   "cd '${REMOTE_DIR}' && sudo docker compose -f docker-compose.mysql.yml up -d app runtime-worker backtest-worker"
