@@ -14,6 +14,10 @@ from app.services.market.regime import MarketRegimeMixin
 from app.services.market.quote_router import QuoteSourceRouter
 from app.services.market.quotes import MarketQuoteMixin
 from app.services.market.sectors import MarketSectorMixin
+from app.services.market.providers.akshare_provider import AkshareMarketProvider
+from app.services.market.providers.eastmoney_provider import EastmoneyMarketProvider
+from app.services.market.providers.openbb_provider import OpenBBMarketProvider
+from app.services.market.providers.router import MarketProviderRouter
 
 
 class MarketDataService(
@@ -58,6 +62,13 @@ class MarketDataService(
         self.ak_available = __import__("app.services.market.shared", fromlist=["ak"]).ak is not None
         self.quote_router = QuoteSourceRouter(self)
         self.intraday_router = IntradaySourceRouter(self)
+        self.provider_router = MarketProviderRouter(
+            [
+                EastmoneyMarketProvider(self),
+                AkshareMarketProvider(self),
+                OpenBBMarketProvider(self),
+            ]
+        )
         self.session.headers.update(
             {
                 "User-Agent": (

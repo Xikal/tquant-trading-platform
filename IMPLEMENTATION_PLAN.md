@@ -43,6 +43,7 @@
 ## 本轮验证结果
 
 - `backend/.venv/bin/python -m py_compile ...`：通过。
+- `backend/.venv/bin/python -m compileall backend/app scripts`：通过。
 - `backend/.venv/bin/python -m pytest backend/tests/test_strategy_metadata_service.py backend/tests/test_strategy_meta_routes.py backend/tests/test_feature_flags_service.py`：13 passed，1 个 urllib3/OpenSSL 环境警告。
 - `cd frontend && npm run build:web`：通过。
 - `cd frontend && npm run check:strategy-meta`：通过，1 个 urllib3/OpenSSL 环境警告。
@@ -104,3 +105,52 @@
 - 生产 Docker MySQL 部署改为先跑 `migration`，成功后启动 Web/API 与两个独立 worker。
 - `PRODUCTION_RUNBOOK.md` 已补充迁移容器、后台任务隔离、schema repair 和限流后端说明。
 - 指标测试补齐 MA/RSI/ATR/VWAP 基线。
+
+---
+
+# High-Risk Optimization 执行记录
+
+## 需求来源
+
+- `/Users/j/Documents/gupiao/docs/superpowers/plans/2026-05-06-high-risk-optimization-plan.md`
+- 目标：在不改变交易策略语义的前提下，完成 schema/index 迁移治理、legacy route 退役、CSS 模块化验收、市场数据 provider 质量契约与渐进式路由。
+
+## TODO 状态
+
+- [x] 定位需求文档并核对当前项目实现。
+- [x] Schema/index 审计脚本、测试和 runbook。
+- [x] 确认 hot index 已通过 Alembic 迁移承载，`schema_compat` 不再在默认路径创建索引。
+- [x] legacy `/backtests`、`/research` 调用审计脚本和测试。
+- [x] legacy 路由改为 `legacy_route_compat_enabled` 控制的兼容 301 或结构化 410。
+- [x] CSS 域入口和 UI 回归 checklist。
+- [x] 市场数据 provider 质量模型、适配器和路由测试。
+- [x] `market_provider_router_enabled` feature flag 与低风险路径接入。
+- [x] API 输出保留明确数据质量字段。
+- [x] 执行后端测试、前端构建、审计脚本和必要 smoke。
+
+## 关键约束
+
+- 不直接改生产数据、不触碰密钥、不执行生产发布。
+- 数据库 schema/index 变更必须走 Alembic；本轮只补审计和只读告警。
+- CSS 拆分只移动/组织 import，不在同一任务重命名 selector。
+- provider router 默认关闭，默认行为保持现有数据源链路。
+
+## 本轮修改区域
+
+- Schema/index：`scripts/schema_index_audit.py`、`backend/tests/test_schema_index_audit.py`、`docs/operations/schema-index-runbook.md`。
+- Runtime schema：`backend/app/core/schema_compat.py` 移除默认路径索引创建，索引继续由 Alembic `20260506_0002_query_indexes.py` 承载。
+- Legacy route：`backend/app/core/config.py`、`backend/app/main.py`、`scripts/audit_legacy_routes.py`、`backend/tests/test_legacy_routes.py`、`docs/operations/legacy-route-removal.md`。
+- CSS：新增 `frontend/src/styles/workspace/index.css`、`frontend/src/styles/backtest/index.css`、`frontend/src/styles/mobile/index.css`，并更新全局入口 import。
+- Market provider：新增 `providers/quality.py`、`eastmoney_provider.py`、`akshare_provider.py`、`openbb_provider.py`、`router.py`，新增 `market_provider_router_enabled` flag，默认关闭。
+- Data quality：`QuoteSnapshot` 新增 `data_quality/data_quality_message`，provider router 路径会补充质量信息。
+
+## 本轮验证结果
+
+- `backend/.venv/bin/python -m py_compile ...`：通过。
+- `PYTHONPATH=backend:. backend/.venv/bin/python -m pytest backend/tests/test_schema_index_audit.py backend/tests/test_legacy_routes.py backend/tests/test_market_provider_contract.py backend/tests/test_market_provider_flag.py backend/tests/test_market_data_quality_fields.py -q`：9 passed，1 个 urllib3/OpenSSL 环境警告。
+- `PYTHONPATH=backend:. backend/.venv/bin/python -m pytest backend/tests/test_schema_index_audit.py backend/tests/test_legacy_routes.py backend/tests/test_market_provider_contract.py backend/tests/test_market_provider_flag.py backend/tests/test_market_data_quality_fields.py backend/tests/test_market_routers.py backend/tests/test_feature_flags_service.py -q`：16 passed，1 个 urllib3/OpenSSL 环境警告。
+- `python3 scripts/audit_legacy_routes.py --strict`：通过，0 findings。
+- `PYTHONPATH=backend:. backend/.venv/bin/python scripts/schema_index_audit.py --database-url sqlite:///backend/data/t_quant.db`：脚本可用；本地 seed 库未跑最新 Alembic，报告为 degraded。
+- `PYTHONPATH=backend:. backend/.venv/bin/python scripts/schema_index_audit.py`：本地 `.env` 指向 MySQL 且 MySQL 未启动，脚本返回 `status=unavailable` 结构化结果，不再抛堆栈。
+- `cd frontend && npm run build:web`：通过。
+- `cd frontend && npm run analyze`：通过，生成 `frontend/dist/bundle-report.json`，最大 chunk 仍为 `echarts` 约 588 KB。

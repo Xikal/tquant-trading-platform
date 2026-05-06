@@ -60,6 +60,8 @@ class QuoteSnapshot(BaseModel):
     timestamp: str
     data_source: Optional[str] = None
     source_quality: Optional[str] = None
+    data_quality: str = "fresh"
+    data_quality_message: str = ""
     is_stale: bool = False
 
 

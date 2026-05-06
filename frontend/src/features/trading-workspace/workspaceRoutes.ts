@@ -1,8 +1,6 @@
 import { PATH_PAGE_MAP } from "./workspaceConstants";
 import type { Page } from "./workspaceTypes";
 
-const LEGACY_STRATEGY_PATHS = new Set(["/backtests", "/research"]);
-
 export function pageFromLocation(): Page {
   if (typeof window === "undefined") {
     return "monitor";
@@ -11,10 +9,7 @@ export function pageFromLocation(): Page {
 }
 
 export function normalizeLegacyWorkspacePath(): boolean {
-  if (typeof window === "undefined" || !LEGACY_STRATEGY_PATHS.has(window.location.pathname)) {
-    return false;
-  }
-  const nextSearch = window.location.pathname === "/backtests" ? "?tab=backtest" : "?tab=replay";
-  window.history.replaceState({}, "", `/strategy${nextSearch}`);
-  return true;
+  // Deprecated workspace routes are now handled by the backend.  The SPA no
+  // longer rewrites them silently.
+  return false;
 }

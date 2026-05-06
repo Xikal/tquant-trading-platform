@@ -44,6 +44,7 @@ class AppSettings(BaseSettings):
     runtime_worker_poll_interval_seconds: float = 5.0
     schema_compat_repair_enabled: bool = False
     schema_compat_verify_on_startup: bool = False
+    legacy_route_compat_enabled: bool = False
     max_request_body_bytes: int = 1_048_576
     structured_logs: bool = False
     global_rate_limit_backend: str = "memory"

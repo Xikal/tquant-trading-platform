@@ -18,13 +18,54 @@ from app.services.market.shared import (
 
 
 class MarketQuoteMixin:
+    _provider_router_flag_cache: tuple[float, bool] = (0.0, False)
+    _provider_router_flag_ttl_seconds = 30.0
+
     def get_quote(self, symbol: str) -> QuoteSnapshot:
         cached = self._get_quote_cache(symbol)
         if cached is not None:
             return cached
+        if self._market_provider_router_enabled():
+            result = self.provider_router.fetch_quote(symbol)
+            if result.usable and result.data is not None:
+                snapshot = result.data.model_copy(
+                    update={
+                        "data_source": result.source,
+                        "source_quality": result.quality.value,
+                        "data_quality": result.quality.value,
+                        "data_quality_message": result.message,
+                        "is_stale": result.quality.value != "fresh",
+                    }
+                )
+                self._set_quote_cache(symbol, snapshot)
+                return snapshot
         snapshot = self.quote_router.fetch(symbol)
         self._set_quote_cache(symbol, snapshot)
         return snapshot
+
+    @staticmethod
+    def _market_provider_router_enabled() -> bool:
+        now = time.monotonic()
+        expires_at, cached_value = MarketQuoteMixin._provider_router_flag_cache
+        if now < expires_at:
+            return cached_value
+        try:
+            from app.core.database import SessionLocal
+            from app.services.shared.feature_flags import feature_enabled
+
+            with SessionLocal() as db:
+                enabled = feature_enabled(db, "market_provider_router_enabled", False)
+        except Exception:
+            enabled = False
+        MarketQuoteMixin._provider_router_flag_cache = (
+            now + MarketQuoteMixin._provider_router_flag_ttl_seconds,
+            enabled,
+        )
+        return enabled
+
+    @staticmethod
+    def clear_market_provider_router_flag_cache() -> None:
+        MarketQuoteMixin._provider_router_flag_cache = (0.0, False)
 
     def get_quotes_batch(
         self,

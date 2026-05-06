@@ -14,6 +14,8 @@ from app.core.config import get_settings
 class OpenBBQuote:
     symbol: str
     last_price: float = 0.0
+    previous_close: float = 0.0
+    change_amount: float = 0.0
     change_pct: float = 0.0
     source: str = "openbb_adapter"
     available: bool = False
@@ -66,10 +68,13 @@ class OpenBBDataAdapter:
             meta = payload["chart"]["result"][0]["meta"]
             previous_close = float(meta.get("chartPreviousClose") or 0.0)
             last_price = float(meta.get("regularMarketPrice") or 0.0)
+            change_amount = last_price - previous_close if previous_close else 0.0
             change_pct = ((last_price - previous_close) / previous_close * 100) if previous_close else 0.0
             return OpenBBQuote(
                 symbol=normalized,
                 last_price=round(last_price, 4),
+                previous_close=round(previous_close, 4),
+                change_amount=round(change_amount, 4),
                 change_pct=round(change_pct, 4),
                 available=True,
                 message="ok",

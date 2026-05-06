@@ -638,12 +638,25 @@ def root():
 
 @app.get("/backtests", include_in_schema=False)
 def legacy_backtests_redirect():
-    return RedirectResponse(url="/strategy?tab=backtest", status_code=301)
+    return _legacy_route_response("/strategy?tab=backtest")
 
 
 @app.get("/research", include_in_schema=False)
 def legacy_research_redirect():
-    return RedirectResponse(url="/strategy?tab=replay", status_code=301)
+    return _legacy_route_response("/strategy?tab=replay")
+
+
+def _legacy_route_response(target: str):
+    if settings.legacy_route_compat_enabled:
+        return RedirectResponse(url=target, status_code=301)
+    return JSONResponse(
+        status_code=410,
+        content={
+            "code": "LEGACY_ROUTE_REMOVED",
+            "message": "该旧入口已下线，请使用新的策略工作台入口。",
+            "target": target,
+        },
+    )
 
 
 @app.get("/{full_path:path}", include_in_schema=False)
