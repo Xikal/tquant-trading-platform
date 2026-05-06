@@ -5,7 +5,9 @@ DOMAIN="${DOMAIN:-weisilianghua.cloud}"
 APP_PORT="${APP_PORT:-18090}"
 EMAIL="${EMAIL:-admin@${DOMAIN}}"
 TEMPLATE_PATH="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/deploy/nginx/weisilianghua.conf.template"
+RATE_LIMIT_TEMPLATE_PATH="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/deploy/nginx/tquant-rate-limit.conf.template"
 TARGET_PATH="/etc/nginx/sites-available/weisilianghua.conf"
+RATE_LIMIT_TARGET_PATH="/etc/nginx/conf.d/tquant-rate-limit.conf"
 
 if [[ "$(id -u)" -ne 0 ]]; then
   echo "请使用 root 运行：sudo DOMAIN=$DOMAIN APP_PORT=$APP_PORT $0" >&2
@@ -33,6 +35,7 @@ if [[ ! -f "/etc/letsencrypt/live/$CERT_NAME/fullchain.pem" ]]; then
   exit 1
 fi
 
+install -m 0644 "$RATE_LIMIT_TEMPLATE_PATH" "$RATE_LIMIT_TARGET_PATH"
 DOMAIN="$DOMAIN" CERT_NAME="$CERT_NAME" APP_PORT="$APP_PORT" envsubst '${DOMAIN} ${CERT_NAME} ${APP_PORT}' < "$TEMPLATE_PATH" > "$TARGET_PATH"
 ln -sf "$TARGET_PATH" /etc/nginx/sites-enabled/weisilianghua.conf
 rm -f /etc/nginx/sites-enabled/weisilianghua.cloud
