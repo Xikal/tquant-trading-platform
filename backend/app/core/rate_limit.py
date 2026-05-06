@@ -167,6 +167,8 @@ _auth_register_limiter = SQLiteSlidingWindowRateLimiter(namespace="auth_register
 
 def is_global_rate_allowed(request: Request) -> bool:
     path = request.url.path
+    if path in {"/healthz", "/readyz", "/metrics"}:
+        return True
     if path.startswith("/assets/") or path.endswith((".js", ".css", ".png", ".svg", ".ico")):
         return True
     return _global_limiter.allow(_client_key(request))

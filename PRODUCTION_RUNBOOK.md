@@ -310,7 +310,7 @@ APP_PORT=18090 docker compose -f docker-compose.mysql.yml up -d --build
 - 应用运行时缓存和运行配置保存在 `app_runtime_data`
 - `migration` 容器会先执行 `alembic upgrade head`，成功后才启动 Web/API 与后台 worker
 - `app` 容器默认关闭运行时后台任务，只负责 Web/API 响应
-- `runtime-worker` 容器单 worker 执行预热、低吸扫描、归档、通知扫描和模拟盘自动交易
+- `runtime-worker` 容器运行 `python -m app.workers.runtime_worker`，消费 `runtime_tasks` 持久化任务队列
 - `backtest-worker` 容器独立消费回测任务
 - 默认数据库为 `t_quant`
 - 默认应用用户为 `tquant_app`
@@ -341,8 +341,12 @@ cp .env.docker.example .env
 - `APP_PORT`
 - `SCHEMA_COMPAT_REPAIR_ENABLED`
   默认 `false`。生产环境以 Alembic 迁移为准；只有自托管旧库应急修复时才临时设为 `true`。
+- `SCHEMA_COMPAT_VERIFY_ON_STARTUP`
+  默认 `false`。如需要启动期只读漂移检查才临时设为 `true`，避免常规启动扫描全表结构。
 - `GLOBAL_RATE_LIMIT_BACKEND`
-  MySQL Compose 默认 `sqlite`，用于多 worker 登录/敏感接口限流；如已在 Nginx/网关层限流，可按需改为 `memory`。
+  应用层只保留兜底保护；全局限流建议迁移到 Nginx，配置见 `deploy/nginx/tquant-rate-limit.conf.template`。
+- `RUNTIME_WORKER_POLL_INTERVAL_SECONDS`
+  Runtime Worker 拉取数据库任务队列的间隔，默认 `5` 秒。
 - `CORS_ORIGINS`
   建议保持 JSON 数组字符串格式，例如 `["http://127.0.0.1:18080","http://127.0.0.1:18090"]`
 - `MYSQL_ROOT_PASSWORD`

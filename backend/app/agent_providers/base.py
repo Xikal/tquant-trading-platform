@@ -15,6 +15,8 @@ from app.agent_tools.rate_limit import agent_tool_rate_limiter
 from app.agent_tools.registry import get_tool_definition, list_tool_definitions
 from app.agent_tools.schemas import ToolDefinition
 from app.models.schema_defs.agent import AgentErrorOut, AgentProviderHealth, AgentToolResult
+from app.models.schema_defs.phase4 import AgentQualityScoreRequest
+from app.services.agent_quality import score_agent_result
 
 logger = logging.getLogger(__name__)
 
@@ -88,6 +90,7 @@ class AgentProvider(ABC):
         try:
             data = self._invoke_allowed_tool(tool, arguments)
             result = self._success_result(trace_id, started, tool, data)
+            self._quality_score_if_decision(tool_name=tool.name, arguments=arguments, result=result)
             self._audit(tool=tool, arguments=arguments, result=result)
             return result
         except Exception as exc:
@@ -144,6 +147,34 @@ class AgentProvider(ABC):
             error_code=result.error.code if result.error else None,
             db=self.db,
         )
+
+    def _quality_score_if_decision(
+        self,
+        *,
+        tool_name: str,
+        arguments: dict[str, Any],
+        result: AgentToolResult,
+    ) -> None:
+        if self.db is None or not isinstance(result.data, dict):
+            return
+        data = result.data
+        if not any(key in data for key in ("final_action", "action", "recommendation")):
+            return
+        required_fields = ["final_action", "confidence", "reasons", "risks"] if "final_action" in data else ["action"]
+        try:
+            score_agent_result(
+                AgentQualityScoreRequest(
+                    provider=self.name,
+                    trace_id=result.trace_id,
+                    input_payload={"tool_name": tool_name, "arguments": arguments},
+                    output_payload=data,
+                    required_fields=required_fields,
+                ),
+                db=self.db,
+                persist=True,
+            )
+        except Exception:
+            logger.warning("agent quality scoring failed: provider=%s tool=%s", self.name, tool_name)
 
     @staticmethod
     def _error_from_exception(*, exc: Exception, trace_id: str, tool_name: str) -> AgentErrorOut:
