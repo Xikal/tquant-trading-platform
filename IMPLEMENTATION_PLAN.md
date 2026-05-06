@@ -59,6 +59,7 @@
 - `CLOUD_SSH_KEY=/Users/j/Downloads/gupiao.pem ./scripts/deploy_monitoring_stack.sh`：Prometheus/Grafana 部署成功。
 - 云端 Prometheus target：`tquant-api up`。
 - 云端容器：`tquant-app-mysql`、`tquant-runtime-worker-mysql`、`tquant-backtest-worker-mysql`、`tquant-redis`、`tquant-prometheus`、`tquant-grafana` 均运行。
+- 云端 ML：已沉淀 310 条样本，并训练/注册 `xgboost-production-v1`，`validation_accuracy=0.8871`、`validation_auc=0.9735`。注意：样本量仍偏小，模型输出只作为信号因子，不能绕过风控。
 
 ## 运行说明
 
