@@ -25,8 +25,13 @@ if [[ ! -f .env ]]; then
 fi
 admin_token="$(grep -E '^ADMIN_API_TOKEN=' .env | tail -n 1 | cut -d= -f2- | tr -d '\r')"
 if [[ -z "${admin_token}" ]]; then
-  echo "ADMIN_API_TOKEN is empty; cannot scrape protected /metrics" >&2
-  exit 4
+  admin_token="$(openssl rand -hex 32 2>/dev/null || python3 - <<'PY'
+import secrets
+print(secrets.token_hex(32))
+PY
+)"
+  sed -i '/^ADMIN_API_TOKEN=/d' .env
+  printf 'ADMIN_API_TOKEN=%s\n' "${admin_token}" >> .env
 fi
 umask 077
 printf '%s' "${admin_token}" > .runtime/prometheus/tquant_admin_token
@@ -38,6 +43,9 @@ ssh "${ssh_opts[@]}" "${REMOTE_USER}@${REMOTE_HOST}" \
 
 ssh "${ssh_opts[@]}" "${REMOTE_USER}@${REMOTE_HOST}" \
   "cd '${REMOTE_DIR}' && GRAFANA_ADMIN_PASSWORD=\"\$(printf '%s' '${grafana_password_b64}' | base64 -d)\" sudo docker compose -f docker-compose.monitoring.yml up -d"
+
+ssh "${ssh_opts[@]}" "${REMOTE_USER}@${REMOTE_HOST}" \
+  "cd '${REMOTE_DIR}' && sudo docker compose -f docker-compose.mysql.yml up -d app runtime-worker backtest-worker"
 
 ssh "${ssh_opts[@]}" "${REMOTE_USER}@${REMOTE_HOST}" \
   "curl -fsS http://127.0.0.1:${PROMETHEUS_PORT:-19090}/-/ready >/dev/null && curl -fsS http://127.0.0.1:${GRAFANA_PORT:-13000}/api/health >/dev/null"
