@@ -23,7 +23,7 @@ if [[ ! -f .env ]]; then
   echo ".env not found in remote deploy dir" >&2
   exit 3
 fi
-admin_token="$(grep -E '^ADMIN_API_TOKEN=' .env | tail -n 1 | cut -d= -f2- | tr -d '\r')"
+admin_token="$(grep -E '^ADMIN_API_TOKEN=' .env 2>/dev/null | tail -n 1 | cut -d= -f2- | tr -d '\r' || true)"
 if [[ -z "${admin_token}" ]]; then
   admin_token="$(openssl rand -hex 32 2>/dev/null || python3 - <<'PY'
 import secrets
