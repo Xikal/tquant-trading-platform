@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import date
 import time
 
 from app.models.entities import LowBuyPoolSnapshot
@@ -81,7 +82,7 @@ class LowBuyPoolMixin:
     ) -> str:
         if not trade_dates:
             return latest_completed_trade_date
-        today = beijing_today().isoformat()
+        today = date.today().isoformat()
         if today <= latest_completed_trade_date or today not in trade_dates:
             return latest_completed_trade_date
         now = beijing_now()
@@ -274,7 +275,7 @@ class LowBuyPoolMixin:
     def _latest_completed_calendar_fallback(trade_dates: list[str]) -> str:
         if not trade_dates:
             return ""
-        today = beijing_today().isoformat()
+        today = date.today().isoformat()
         latest_calendar_date = trade_dates[-1]
         if latest_calendar_date < today or len(trade_dates) == 1:
             return latest_calendar_date
@@ -302,7 +303,7 @@ class LowBuyPoolMixin:
         return normalized if normalized in trade_dates else None
 
     def _get_recent_trade_dates(self, count: int) -> list[str]:
-        cache_key = f"recent-trade-dates:{count}:{beijing_today().isoformat()}"
+        cache_key = f"recent-trade-dates:{count}:{date.today().isoformat()}"
         cached = getattr(self, "_trade_dates_cache", {}).get(cache_key)
         now = time.monotonic()
         if cached and cached[0] > now:
@@ -320,7 +321,7 @@ class LowBuyPoolMixin:
         an active A-share session, today's date is appended from the local holiday
         calendar only so request threads never wait on AkShare calendar retries.
         """
-        today_value = beijing_today()
+        today_value = date.today()
         today = today_value.isoformat()
         values = [item for item in local_values if item <= today]
         if is_a_share_trading_day(today_value) and today not in values:
@@ -344,7 +345,7 @@ class LowBuyPoolMixin:
                 values = DailyHistoryRepository(db).fetch_recent_trade_dates(count)
         except Exception:
             return []
-        today = beijing_today().isoformat()
+        today = date.today().isoformat()
         return [item for item in values if item <= today][-count:]
 
     def _cache_recent_trade_dates(self, cache_key: str, values: list[str]) -> list[str]:

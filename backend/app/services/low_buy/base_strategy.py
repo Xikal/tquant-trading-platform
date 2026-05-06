@@ -234,6 +234,14 @@ class TrendReboundStrategy(RuleBackedLowBuyStrategy):
     key = "trend_rebound"
 
 
+class MaChannelBandStrategy(RuleBackedLowBuyStrategy):
+    key = "ma_channel_band"
+
+
+class LeaderPullbackBandStrategy(RuleBackedLowBuyStrategy):
+    key = "leader_pullback_band"
+
+
 _STRATEGY_CLASSES: dict[str, type[BaseStrategy]] = {
     ClassicRetraceStrategy.key: ClassicRetraceStrategy,
     MaSupportStrategy.key: MaSupportStrategy,
@@ -247,6 +255,8 @@ _STRATEGY_CLASSES: dict[str, type[BaseStrategy]] = {
     DivergenceConsensusStrategy.key: DivergenceConsensusStrategy,
     DeepPullbackStrategy.key: DeepPullbackStrategy,
     TrendReboundStrategy.key: TrendReboundStrategy,
+    MaChannelBandStrategy.key: MaChannelBandStrategy,
+    LeaderPullbackBandStrategy.key: LeaderPullbackBandStrategy,
 }
 
 _STRATEGY_CACHE: dict[str, BaseStrategy] = {}
