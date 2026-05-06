@@ -1,6 +1,6 @@
 import { lazy, useEffect, useState } from "react";
 import { appApi } from "../../api/appClient";
-import { clearAuthTokens, getAuthAccessToken } from "../../api/base";
+import { clearAuthTokens, getAuthAccessToken, shouldAttemptAuthRefresh } from "../../api/base";
 import { api } from "../../api/client";
 import { strategiesApi, type StrategyMeta } from "../../api/strategies";
 import type { AiDecisionSupportResponse, AuthUser } from "../../types";
@@ -214,8 +214,12 @@ export function TradingWorkspace() {
           clearAuthTokens();
         }
       }
-      const result = await appApi.refreshAuth();
-      setCurrentUser(result.user);
+      if (shouldAttemptAuthRefresh()) {
+        const result = await appApi.refreshAuth();
+        setCurrentUser(result.user);
+      } else {
+        setCurrentUser(null);
+      }
     } catch {
       setCurrentUser(null);
     } finally {

@@ -11,7 +11,7 @@ import threading
 import time
 from uuid import uuid4
 
-from fastapi import Depends, FastAPI, Response
+from fastapi import Depends, FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse, RedirectResponse
 from sqlalchemy import delete, select
@@ -637,18 +637,20 @@ def root():
 
 
 @app.get("/backtests", include_in_schema=False)
-def legacy_backtests_redirect():
-    return _legacy_route_response("/strategy?tab=backtest")
+def legacy_backtests_redirect(request: Request):
+    return _legacy_route_response("/strategy?tab=backtest", request)
 
 
 @app.get("/research", include_in_schema=False)
-def legacy_research_redirect():
-    return _legacy_route_response("/strategy?tab=replay")
+def legacy_research_redirect(request: Request):
+    return _legacy_route_response("/strategy?tab=replay", request)
 
 
-def _legacy_route_response(target: str):
-    if settings.legacy_route_compat_enabled:
-        return RedirectResponse(url=target, status_code=301)
+def _legacy_route_response(target: str, request: Request):
+    accepts_html = "text/html" in request.headers.get("accept", "").lower()
+    if settings.legacy_route_compat_enabled or accepts_html:
+        status_code = 301 if settings.legacy_route_compat_enabled else 302
+        return RedirectResponse(url=target, status_code=status_code)
     return JSONResponse(
         status_code=410,
         content={

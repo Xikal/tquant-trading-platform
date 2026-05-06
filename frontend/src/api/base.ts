@@ -103,7 +103,7 @@ function buildRequestHeaders(init?: RequestInit): Record<string, string> {
 }
 
 function canRefreshForPath(path: string): boolean {
-  return !path.startsWith("/auth/")
+  return !path.startsWith("/auth/") && Boolean(getAuthAccessToken() || shouldAttemptAuthRefresh())
 }
 
 let refreshAccessPromise: Promise<boolean> | null = null
@@ -224,6 +224,10 @@ export function setAdminApiToken(token: string) {
 
 export function getAuthAccessToken(): string {
   return authAccessToken
+}
+
+export function shouldAttemptAuthRefresh(): boolean {
+  return authPersistenceMode !== "memory"
 }
 
 export function setAuthTokens(accessToken: string, mode: AuthPersistenceMode = authPersistenceMode) {

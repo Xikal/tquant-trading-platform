@@ -39,6 +39,7 @@ export function LoginPage({
             <strong className="danger">78%</strong>
             <small>风险席位 2</small>
           </div>
+          <em>演示数据，仅用于说明界面能力，不代表真实收益。</em>
         </div>
 
         <div className="login-chart-card">

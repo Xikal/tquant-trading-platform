@@ -56,6 +56,14 @@
     gap: 8px;
   }
 
+  .login-panel-wrap {
+    order: -1;
+  }
+
+  .login-market-pill {
+    display: none;
+  }
+
   .login-visual {
     padding: 16px;
   }

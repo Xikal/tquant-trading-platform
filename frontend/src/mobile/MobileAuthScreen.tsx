@@ -43,6 +43,7 @@ export function MobileAuthScreen({ loading, error, onSubmit }: MobileAuthScreenP
           <span>今日策略浮盈</span>
           <strong>+¥128,600</strong>
           <small>命中率 78% · 3 个可执行机会</small>
+          <small>演示数据，不代表真实收益</small>
         </div>
         <div className="mobile-auth-bars" aria-hidden="true">
           <i /><i /><i /><i /><i /><i /><i />
