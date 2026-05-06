@@ -7,13 +7,15 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from app.models.base import Base
-from app.models.entities import SystemSetting, User
+from app.models.entities import StrategyMetadata, SystemSetting, User
 from app.models.schema_defs.strategy_meta import StrategyGovernanceMutationRequest
+from app.services.shared.feature_flags import clear_feature_flag_cache
 from app.services.strategy_metadata_service import StrategyMetadataService
 
 
 class StrategyMetadataServiceTests(unittest.TestCase):
     def setUp(self) -> None:
+        clear_feature_flag_cache()
         engine = create_engine(
             "sqlite+pysqlite:///:memory:",
             connect_args={"check_same_thread": False},
@@ -65,6 +67,61 @@ class StrategyMetadataServiceTests(unittest.TestCase):
             for preset in presets:
                 self.assertNotIn("volume_shrink", preset.config.get("strategies", []))
                 self.assertIn("first_board", preset.config.get("strategies", []))
+
+    def test_backtest_access_rejects_factor_for_ordinary_user(self) -> None:
+        with self.Session() as db:
+            user = User(username="user", display_name="user", password_hash="x", roles="")
+            db.add_all([
+                user,
+                StrategyMetadata(
+                    key="custom_factor",
+                    display_name="测试因子",
+                    category="factor",
+                    enabled=True,
+                    visibility="full",
+                    probe_status="not_required",
+                ),
+            ])
+            db.commit()
+
+            with self.assertRaisesRegex(PermissionError, "因子"):
+                StrategyMetadataService(db).validate_backtest_strategy_access(
+                    ["custom_factor"],
+                    current_user=user,
+                )
+
+    def test_backtest_access_allows_factor_for_research_user(self) -> None:
+        with self.Session() as db:
+            user = User(username="research", display_name="research", password_hash="x", roles="backtest_research")
+            db.add_all([
+                user,
+                StrategyMetadata(
+                    key="custom_factor",
+                    display_name="测试因子",
+                    category="factor",
+                    enabled=True,
+                    visibility="full",
+                    probe_status="not_required",
+                ),
+            ])
+            db.commit()
+
+            StrategyMetadataService(db).validate_backtest_strategy_access(
+                ["custom_factor"],
+                current_user=user,
+            )
+
+    def test_backtest_access_rejects_backtest_only_for_ordinary_user(self) -> None:
+        with self.Session() as db:
+            user = User(username="user", display_name="user", password_hash="x", roles="")
+            db.add(user)
+            db.commit()
+
+            with self.assertRaisesRegex(PermissionError, "研究回测"):
+                StrategyMetadataService(db).validate_backtest_strategy_access(
+                    ["leader_pullback_band"],
+                    current_user=user,
+                )
 
 
 if __name__ == "__main__":

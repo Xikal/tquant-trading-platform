@@ -87,7 +87,7 @@ def _decimal_price(value: float | None) -> Decimal:
 
 
 def _elasticity_tier(score: float, data_quality: str) -> str:
-    if data_quality != "ok":
+    if data_quality != "fresh":
         return "★★"
     if score >= 75:
         return "★★★★★"
@@ -101,8 +101,10 @@ def _elasticity_tier(score: float, data_quality: str) -> str:
 def _liquidity_warning(*, symbol: str, breakeven_pct: float, elasticity_score: float, data_quality: str) -> str:
     if breakeven_pct >= 0.8:
         return "单笔金额偏小，手续费会明显吞噬做T收益。"
-    if data_quality == "ok" and elasticity_score < 35:
+    if data_quality == "fresh" and elasticity_score < 35:
         return "近期冲高弹性较弱，做T空间不足。"
+    if data_quality in {"estimated", "unavailable"}:
+        return "分钟数据不足，弹性只作为参考，不作为强信号。"
     if is_etf(symbol):
         return ""
     return ""

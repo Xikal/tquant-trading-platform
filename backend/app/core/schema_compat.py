@@ -59,6 +59,7 @@ def _backfill_strategy_metadata_columns(engine: Engine, existing_tables: set[str
         with engine.begin() as connection:
             connection.execute(text("UPDATE strategy_metadata SET enabled = 1 WHERE enabled IS NULL"))
             connection.execute(text("UPDATE strategy_metadata SET probe_status = 'not_required' WHERE probe_status IS NULL OR probe_status = ''"))
+            connection.execute(text("UPDATE strategy_metadata SET probe_summary = '' WHERE probe_summary IS NULL"))
             connection.execute(text("UPDATE strategy_metadata SET visibility = 'full' WHERE visibility IS NULL OR visibility = ''"))
             _upsert_strategy_metadata_seed(
                 connection,
@@ -286,6 +287,7 @@ def _ensure_query_indexes(engine: Engine, existing_tables: set[str]) -> None:
         ("strategy_tier_override_log", "ix_strategy_tier_override_log_key_created", ("strategy_key", "created_at")),
         ("trading_elasticity_cache", "ix_trading_elasticity_cache_quality_updated", ("data_quality", "updated_at")),
         ("feature_flag_audit_log", "ix_feature_flag_audit_flag_created", ("flag_key", "created_at")),
+        ("feature_flag_audit_log", "ix_feature_flag_audit_operator_ip", ("operator_ip",)),
         ("backtest_orders", "ix_backtest_orders_run_date_symbol", ("run_id", "trade_date", "symbol")),
         ("backtest_orders", "ix_backtest_orders_run_strategy_state", ("run_id", "strategy_key", "signal_state")),
         ("backtest_trades", "ix_backtest_trades_run_date_symbol", ("run_id", "trade_date", "symbol")),

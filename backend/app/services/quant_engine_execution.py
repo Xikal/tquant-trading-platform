@@ -483,7 +483,7 @@ def attach_trade_costs(
         quantity=quantity,
         expected_profit_pct=expected_profit_pct,
         elasticity_score=elasticity.score if elasticity is not None else 0.0,
-        elasticity_data_quality=elasticity.data_quality if elasticity is not None else "disabled",
+        elasticity_data_quality=elasticity.data_quality if elasticity is not None else "unavailable",
     )
 
 

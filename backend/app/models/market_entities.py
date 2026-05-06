@@ -118,6 +118,7 @@ class FeatureFlagAuditLog(Base):
     old_value: Mapped[str] = mapped_column(Text, default="")
     new_value: Mapped[str] = mapped_column(Text, default="")
     operator_user_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True, index=True)
+    operator_ip: Mapped[str] = mapped_column(String(80), default="", index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), index=True)
 
 

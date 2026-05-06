@@ -9,6 +9,7 @@
     "build:web": "tsc -b && vite build",
     "build:native": "tsc -b && vite build --mode native && node ./scripts/prepare-native-dist.mjs",
     "analyze": "npm run build:web && node ./scripts/bundle-report.mjs",
+    "check:strategy-meta": "python3 ../scripts/sync_strategy_meta_fallback.py --check",
     "preview": "vite preview",
     "test": "vitest run",
     "cap:sync": "npm run build:native && npx cap sync",

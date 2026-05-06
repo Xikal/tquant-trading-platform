@@ -24,6 +24,7 @@ def upgrade() -> None:
 
     if "strategy_metadata" in tables:
         _ensure_strategy_metadata_columns(inspector)
+        _backfill_strategy_metadata_defaults(bind)
         _seed_strategy_metadata(bind)
 
     if "strategy_tier_overrides" not in tables:
@@ -85,9 +86,13 @@ def upgrade() -> None:
             sa.Column("old_value", sa.Text(), nullable=True),
             sa.Column("new_value", sa.Text(), nullable=True),
             sa.Column("operator_user_id", sa.Integer(), nullable=True),
+            sa.Column("operator_ip", sa.String(length=80), nullable=True, server_default=""),
             sa.Column("created_at", sa.DateTime(), server_default=sa.func.now(), nullable=True),
         )
         op.create_index("ix_feature_flag_audit_log_flag_key", "feature_flag_audit_log", ["flag_key"])
+        op.create_index("ix_feature_flag_audit_log_operator_ip", "feature_flag_audit_log", ["operator_ip"])
+    else:
+        _ensure_feature_flag_audit_columns(inspector)
 
 
 def downgrade() -> None:
@@ -110,6 +115,20 @@ def _ensure_strategy_metadata_columns(inspector) -> None:
         op.add_column("strategy_metadata", sa.Column("probe_summary", sa.Text(), nullable=True))
     if "visibility" not in columns:
         op.add_column("strategy_metadata", sa.Column("visibility", sa.String(length=20), nullable=True, server_default="full"))
+
+
+def _backfill_strategy_metadata_defaults(bind) -> None:
+    bind.execute(sa.text("UPDATE strategy_metadata SET enabled = 1 WHERE enabled IS NULL"))
+    bind.execute(sa.text("UPDATE strategy_metadata SET probe_status = 'not_required' WHERE probe_status IS NULL OR probe_status = ''"))
+    bind.execute(sa.text("UPDATE strategy_metadata SET probe_summary = '' WHERE probe_summary IS NULL"))
+    bind.execute(sa.text("UPDATE strategy_metadata SET visibility = 'full' WHERE visibility IS NULL OR visibility = ''"))
+
+
+def _ensure_feature_flag_audit_columns(inspector) -> None:
+    columns = {column["name"] for column in inspector.get_columns("feature_flag_audit_log")}
+    if "operator_ip" not in columns:
+        op.add_column("feature_flag_audit_log", sa.Column("operator_ip", sa.String(length=80), nullable=True, server_default=""))
+        op.create_index("ix_feature_flag_audit_log_operator_ip", "feature_flag_audit_log", ["operator_ip"])
 
 
 def _seed_strategy_metadata(bind) -> None:

@@ -6,7 +6,7 @@ import type {
   SettingsPayload,
 } from "../../types";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { featureFlagsApi, type FeatureFlagItem } from "../../api/featureFlags";
+import { featureFlagsApi, type FeatureFlagAuditItem, type FeatureFlagItem } from "../../api/featureFlags";
 import { NumberField, TextField } from "../../components/shared/FormFields";
 import { InfoPill, PanelTitle, SettingCard } from "./WorkspaceComponents";
 import { readySummary } from "./workspaceFormatters";
@@ -45,6 +45,7 @@ export function SettingsPage({
 }) {
   const [savedSection, setSavedSection] = useState("");
   const [featureFlags, setFeatureFlags] = useState<FeatureFlagItem[]>([]);
+  const [featureFlagAudits, setFeatureFlagAudits] = useState<FeatureFlagAuditItem[]>([]);
   const [featureFlagError, setFeatureFlagError] = useState("");
   const savedTimerRef = useRef<number | null>(null);
   const adminTokenError = draft.adminToken.trim() ? "" : "保存配置前需要填写管理令牌";
@@ -101,27 +102,44 @@ export function SettingsPage({
 
   useEffect(() => {
     let cancelled = false;
-    featureFlagsApi.list()
-      .then((payload) => {
-        if (!cancelled) {
-          setFeatureFlags(payload.items ?? []);
-          setFeatureFlagError("");
-        }
-      })
-      .catch((error) => {
-        if (!cancelled) {
-          setFeatureFlagError(error instanceof Error ? error.message : "功能开关加载失败");
-        }
-      });
+    loadFeatureFlags({ includeAudit: true, cancelled: () => cancelled });
     return () => {
       cancelled = true;
     };
   }, []);
 
+  async function loadFeatureFlags(options: { includeAudit?: boolean; cancelled?: () => boolean } = {}) {
+    try {
+      const payload = await featureFlagsApi.list();
+      if (options.cancelled?.()) return;
+      setFeatureFlags(payload.items ?? []);
+      setFeatureFlagError("");
+      if (options.includeAudit) {
+        try {
+          const auditPayload = await featureFlagsApi.audit();
+          if (!options.cancelled?.()) {
+            setFeatureFlagAudits(auditPayload.items ?? []);
+          }
+        } catch {
+          if (!options.cancelled?.()) {
+            setFeatureFlagAudits([]);
+          }
+        }
+      }
+    } catch (error) {
+      if (!options.cancelled?.()) {
+        setFeatureFlagError(error instanceof Error ? error.message : "功能开关加载失败");
+      }
+    }
+  }
+
   async function toggleFeatureFlag(item: FeatureFlagItem) {
     try {
       const updated = await featureFlagsApi.update(item.key, !item.enabled);
       setFeatureFlags((current) => current.map((flag) => flag.key === item.key ? updated.item : flag));
+      featureFlagsApi.audit()
+        .then((payload) => setFeatureFlagAudits(payload.items ?? []))
+        .catch(() => setFeatureFlagAudits([]));
       markSaved("feature-flags");
       setFeatureFlagError("");
     } catch (error) {
@@ -222,12 +240,7 @@ export function SettingsPage({
           )}
         </SettingCard>
         <SettingCard title="功能开关" button="刷新开关" onSave={() => {
-          featureFlagsApi.list()
-            .then((payload) => {
-              setFeatureFlags(payload.items ?? []);
-              setFeatureFlagError("");
-            })
-            .catch((error) => setFeatureFlagError(error instanceof Error ? error.message : "功能开关加载失败"));
+          void loadFeatureFlags({ includeAudit: true });
         }} loading={loading === "settings"} saved={savedSection === "feature-flags"}>
           {featureFlagError ? <p className="form-error">{featureFlagError}</p> : null}
           <div className="settings-mini-list">
@@ -236,6 +249,7 @@ export function SettingsPage({
                 <span>
                   {item.key}
                   <small className="hint">{item.description || "无说明"}</small>
+                  <small className="hint">来源 {item.source || "--"}{item.updated_at ? ` / 更新 ${item.updated_at}` : ""}</small>
                 </span>
                 <strong className={item.enabled ? "task-ok" : "task-error"}>{item.enabled ? "开启" : "关闭"}</strong>
                 <button type="button" onClick={() => void toggleFeatureFlag(item)}>
@@ -245,6 +259,20 @@ export function SettingsPage({
             )) : <p className="hint">功能开关未加载。</p>}
           </div>
           <p className="hint">普通用户可查看，只有管理员可以修改；修改会写入审计日志。</p>
+          {featureFlagAudits.length ? (
+            <div className="settings-mini-list feature-flag-audit-list">
+              <strong>最近审计</strong>
+              {featureFlagAudits.slice(0, 6).map((item) => (
+                <div key={item.id} className="settings-mini-row">
+                  <span>
+                    {item.flag_key}
+                    <small className="hint">{item.created_at} / 用户 {item.operator_user_id ?? "--"} / {item.operator_ip || "--"}</small>
+                  </span>
+                  <strong>{item.old_value} → {item.new_value}</strong>
+                </div>
+              ))}
+            </div>
+          ) : null}
         </SettingCard>
         <SettingCard title="运行诊断" button="重新检测" onSave={onRefresh} loading={loading === "settings"}>
           <InfoPill label="前端产物" value={runtime?.frontend_dist_ready ? "正常" : "--"} />

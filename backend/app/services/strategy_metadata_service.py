@@ -62,6 +62,10 @@ DEFAULT_STRATEGY_SEEDS_BY_KEY: dict[str, StrategyDisplaySeed] = {
     seed.key: seed for seed in DEFAULT_STRATEGY_META
 }
 
+FACTOR_ACCESS_ROLES = {"admin", "administrator", "backtest_optimizer", "backtest_research"}
+RESEARCH_ACCESS_ROLES = {"admin", "administrator", "backtest_optimizer", "backtest_research"}
+ADMIN_ROLES = {"admin", "administrator"}
+
 
 def _default_production_strategy_keys() -> list[str]:
     return [
@@ -148,8 +152,9 @@ class StrategyMetadataService:
         overrides = self._load_metadata_overrides()
         resolver = StrategyTierResolver(self.db)
         roles = _roles(current_user)
-        can_view_factor = _has_any_role(roles, {"admin", "administrator", "backtest_optimizer", "backtest_research"})
-        can_view_hidden = include_hidden and _has_any_role(roles, {"admin", "administrator"})
+        can_view_factor = _has_any_role(roles, FACTOR_ACCESS_ROLES)
+        can_view_backtest_only = _has_any_role(roles, RESEARCH_ACCESS_ROLES)
+        can_view_hidden = include_hidden and _has_any_role(roles, ADMIN_ROLES)
         items = []
         for seed in DEFAULT_STRATEGY_META:
             row = overrides.get(seed.key)
@@ -177,6 +182,8 @@ class StrategyMetadataService:
             )
             if item.visibility == "hidden" and not can_view_hidden:
                 continue
+            if item.visibility == "backtest_only" and not can_view_backtest_only:
+                continue
             if item.category_key == "factor" and not can_view_factor:
                 continue
             items.append(item)
@@ -193,6 +200,59 @@ class StrategyMetadataService:
         return StrategyPresetResponse(
             presets=[_filter_preset(_preset_from_row(row), production_keys=production_keys) for row in rows]
         )
+
+    def validate_backtest_strategy_access(
+        self,
+        strategy_keys: list[str],
+        *,
+        current_user: User | None,
+    ) -> None:
+        """Validate direct backtest access against the same strategy metadata source.
+
+        UI visibility is not treated as permission.  Direct API calls must pass
+        this gate so hidden/factor/backtest-only strategies cannot be triggered
+        by ordinary users just by sending a raw strategy key.
+        """
+
+        roles = _roles(current_user)
+        is_admin = _has_any_role(roles, ADMIN_ROLES)
+        can_use_factor = _has_any_role(roles, FACTOR_ACCESS_ROLES)
+        can_use_research = _has_any_role(roles, RESEARCH_ACCESS_ROLES)
+        overrides = self._load_metadata_overrides()
+        resolver = StrategyTierResolver(self.db)
+        seen: set[str] = set()
+        for raw_key in strategy_keys:
+            strategy_key = str(raw_key or "").strip()
+            if not strategy_key or strategy_key in seen:
+                continue
+            seen.add(strategy_key)
+            seed = DEFAULT_STRATEGY_SEEDS_BY_KEY.get(strategy_key)
+            row = overrides.get(strategy_key)
+            if seed is None and row is None:
+                raise ValueError(f"未知策略：{strategy_key}")
+            tier = resolver.resolve(strategy_key, fallback=_metadata_fallback_tier(seed, row))
+            visibility = _row_text(
+                getattr(row, "visibility", None) if row is not None else None,
+                seed.visibility if seed is not None else "full",
+            )
+            probe_status = _row_text(
+                getattr(row, "probe_status", None) if row is not None else None,
+                seed.probe_status if seed is not None else "not_required",
+            )
+            enabled = _row_bool(
+                getattr(row, "enabled", None) if row is not None else None,
+                seed.enabled if seed is not None else True,
+            )
+            if probe_status == "failed":
+                raise ValueError(f"策略探针失败，暂不允许回测：{strategy_key}")
+            if visibility == "hidden" and not is_admin:
+                raise PermissionError(f"策略不可见：{strategy_key}")
+            if visibility == "backtest_only" and not can_use_research:
+                raise PermissionError(f"策略仅限研究回测权限使用：{strategy_key}")
+            if tier == StrategyTier.FACTOR and not can_use_factor:
+                raise PermissionError(f"策略因子仅限研究/优化权限使用：{strategy_key}")
+            if not enabled or not _strategy_feature_enabled(self.db, strategy_key, default=enabled):
+                raise ValueError(f"策略已禁用：{strategy_key}")
 
     def promote_strategy(
         self,
@@ -477,6 +537,16 @@ def _strategy_tier(seed: StrategyDisplaySeed) -> StrategyTier:
         return StrategyTier(seed.tier)
     except ValueError:
         return get_strategy_tier(seed.key)
+
+
+def _metadata_fallback_tier(seed: StrategyDisplaySeed | None, row: StrategyMetadata | None) -> StrategyTier:
+    if row is not None:
+        normalized = _normalize_tier(getattr(row, "category", "") or "")
+        if normalized in {"core", "auxiliary", "research", "factor"}:
+            return StrategyTier(normalized)
+    if seed is not None:
+        return _strategy_tier(seed)
+    return StrategyTier.RESEARCH
 
 
 def _strategy_tier_label(tier: StrategyTier) -> str:

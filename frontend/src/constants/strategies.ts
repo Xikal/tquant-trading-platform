@@ -21,7 +21,7 @@ export interface StrategyMetaFallback {
 
 export const FALLBACK_STRATEGY_META: StrategyMetaFallback[] = [...GENERATED_STRATEGY_META_FALLBACK];
 export const STRATEGY_OPTIONS = FALLBACK_STRATEGY_META
-  .filter((item) => item.enabled !== false && item.visibility !== "hidden")
-  .map((item) => [item.key, `${item.label}${item.visibility === "backtest_only" ? "（仅回测研究）" : ""}`] as const);
+  .filter((item) => item.enabled !== false && item.visibility === "full")
+  .map((item) => [item.key, item.label] as const);
 
 export type StrategyOption = readonly [string, string];

@@ -29,6 +29,7 @@ from app.models.schema_defs.backtest import (
 from app.services.backtest_job_service import BacktestJobService
 from app.services.backtest_optimization_service import BacktestOptimizationService
 from app.services.backtest_validation_service import BacktestValidationService
+from app.services.strategy_metadata_service import StrategyMetadataService
 
 router = APIRouter(prefix="/backtests", dependencies=[Depends(get_current_user)])
 
@@ -39,6 +40,7 @@ def create_backtest_run(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> BacktestRunDetail:
+    _validate_backtest_strategy_access(db, payload.strategy_keys, current_user)
     return BacktestJobService(db).create_run(payload, owner_user_id=current_user.id)
 
 
@@ -120,6 +122,7 @@ def create_backtest_optimization(
     db: Session = Depends(get_db),
 ) -> BacktestOptimizationDetail:
     _require_optimizer_access(current_user)
+    _validate_backtest_strategy_access(db, [payload.strategy], current_user)
     return BacktestOptimizationService(db).create_task(payload, owner_user_id=current_user.id)
 
 
@@ -193,6 +196,7 @@ def create_backtest_validation(
     db: Session = Depends(get_db),
 ) -> BacktestValidationDetail:
     _require_research_access(current_user)
+    _validate_backtest_strategy_access(db, [payload.strategy], current_user)
     return BacktestValidationService(db).create_task(payload, owner_user_id=current_user.id)
 
 
@@ -400,3 +404,12 @@ def _require_research_access(user: User) -> None:
     if _is_admin(user) or {"backtest_optimizer", "backtest_research"} & roles:
         return
     raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="账号未开通样本外验证权限")
+
+
+def _validate_backtest_strategy_access(db: Session, strategy_keys: list[str], user: User) -> None:
+    try:
+        StrategyMetadataService(db).validate_backtest_strategy_access(strategy_keys, current_user=user)
+    except PermissionError as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
