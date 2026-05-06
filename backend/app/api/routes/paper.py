@@ -13,6 +13,7 @@ from app.core.admin_auth import require_admin_auth
 from app.core.config import get_settings
 from app.core.database import get_db
 from app.core.paper_auth import require_paper_trading
+from app.core.timezone import beijing_now
 from app.models.entities import (
     PaperAgentRun,
     PaperTradeTag,
@@ -65,8 +66,11 @@ def get_paper_account(
     current_user: User = Depends(require_paper_trading),
     db: Session = Depends(get_db),
 ) -> PaperAccountOut:
-    account = PaperAccountService(db).get_or_create_default(current_user.id)
-    PaperAccountService(db).update_market_value(account.id)
+    service = PaperAccountService(db)
+    account = service.get_or_create_default(current_user.id)
+    if get_settings().paper_auto_trading_enabled:
+        account = service.resume_if_safe_for_auto_trading(account.id)
+    service.update_market_value(account.id)
     return _account_out(account)
 
 
@@ -270,7 +274,9 @@ def cancel_paper_order(
         if order.account_id != account.id:
             raise LookupError("模拟委托不存在")
         return _order_out(service.cancel_order(order_id))
-    except (LookupError, ValueError) as exc:
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
@@ -437,7 +443,7 @@ def get_auto_trading_status(
 ) -> dict:
     settings = get_settings()
     trading_time = is_trading_time()
-    trader = ensure_auto_trader(build_auto_trader_config(settings), now=datetime.now()) if settings.paper_auto_trading_enabled else get_auto_trader()
+    trader = ensure_auto_trader(build_auto_trader_config(settings)) if settings.paper_auto_trading_enabled else get_auto_trader()
     if trader is None:
         return {
             "running": False,
@@ -518,7 +524,7 @@ def _resolve_quote(payload: PaperOrderCreate) -> tuple[Decimal, datetime, str]:
         current_price = Decimal(str(payload.current_price))
         if current_price <= 0:
             raise HTTPException(status_code=400, detail="模拟撮合价格无效。")
-        return current_price, payload.quote_time or datetime.now(), payload.name
+        return current_price, payload.quote_time or _beijing_now_naive(), payload.name
     try:
         quote = market_data.get_quote(payload.symbol)
     except DataSourceError as exc:
@@ -537,7 +543,11 @@ def _parse_quote_time(value: str) -> datetime:
             return datetime.strptime(value, fmt)
         except ValueError:
             continue
-    return datetime.now()
+    return _beijing_now_naive()
+
+
+def _beijing_now_naive() -> datetime:
+    return beijing_now().replace(tzinfo=None)
 
 
 def _agent_run_out(row: PaperAgentRun) -> PaperAgentRunOut:

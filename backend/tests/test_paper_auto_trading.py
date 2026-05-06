@@ -136,8 +136,9 @@ class PaperAutoTradingTest(unittest.TestCase):
 
         trader = PaperAutoTrader({})
         self.assertFalse(trader._is_trading_time(datetime(2026, 5, 2, 10, 0)))
-        self.assertTrue(trader._is_trading_time(datetime(2026, 5, 4, 10, 0)))
-        self.assertFalse(trader._is_trading_time(datetime(2026, 5, 4, 15, 0)))
+        self.assertFalse(trader._is_trading_time(datetime(2026, 5, 4, 10, 0)))
+        self.assertTrue(trader._is_trading_time(datetime(2026, 5, 6, 10, 0)))
+        self.assertFalse(trader._is_trading_time(datetime(2026, 5, 6, 15, 0)))
 
     def test_auto_trader_state_init(self):
         from app.services.paper.scheduler import PaperAutoTrader
@@ -183,8 +184,9 @@ class PaperAutoTradingTest(unittest.TestCase):
         from app.services.paper.scheduler import is_trading_time
 
         self.assertFalse(is_trading_time(datetime(2026, 5, 2, 10, 0)))
-        self.assertTrue(is_trading_time(datetime(2026, 5, 4, 10, 0)))
-        self.assertFalse(is_trading_time(datetime(2026, 5, 4, 15, 0)))
+        self.assertFalse(is_trading_time(datetime(2026, 5, 4, 10, 0)))
+        self.assertTrue(is_trading_time(datetime(2026, 5, 6, 10, 0)))
+        self.assertFalse(is_trading_time(datetime(2026, 5, 6, 15, 0)))
 
     def test_matching_rejects_invalid_prices(self):
         from app.services.paper.matching import OrderSide, OrderType, PaperMatchingEngine

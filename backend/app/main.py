@@ -25,6 +25,7 @@ from app.core.database import SessionLocal, init_db, ping_database
 from app.core.logging_config import configure_logging
 from app.core.rate_limit import is_global_rate_allowed
 from app.core.task_manager import task_manager
+from app.core.timezone import beijing_now, beijing_today
 from app.core.timing import record_request_timing, request_timing_snapshot
 from app.models.entities import LowBuyResultSnapshot, LowBuyScanSnapshot
 from app.models.schemas import HealthResponse, ReadinessResponse
@@ -147,7 +148,7 @@ def _materialized_snapshot_is_fresh(
         )
     except ValueError:
         return False
-    return (datetime.now() - updated_at).total_seconds() < max_age_seconds
+    return (beijing_now().replace(tzinfo=None) - updated_at).total_seconds() < max_age_seconds
 
 
 def _warm_runtime_caches() -> None:
@@ -197,7 +198,7 @@ def _archive_paper_performance_once() -> None:
     global _paper_archive_last_run_date
     if not _paper_archive_due():
         return
-    today = date.today()
+    today = beijing_today()
     if _paper_archive_last_run_date == today:
         return
     with SessionLocal() as db:
@@ -277,11 +278,11 @@ def _paper_archive_due() -> bool:
     except (TypeError, ValueError):
         logger.warning("PAPER_PERF_ARCHIVE_TIME 配置无效: %s", settings.paper_perf_archive_time)
         archive_time = dt_time(hour=15, minute=5)
-    return datetime.now().time() >= archive_time
+    return beijing_now().time() >= archive_time
 
 
 def _agent_daily_report_push_due() -> bool:
-    now = datetime.now()
+    now = beijing_now()
     if now.weekday() >= 5:
         return False
     return now.time() >= dt_time(hour=15, minute=10)

@@ -97,6 +97,11 @@ class PaperRouteTests(unittest.TestCase):
         self.assertEqual(response.status_code, 403)
         self.assertIn("模拟盘权限", response.json()["detail"])
 
+    def test_cancel_missing_order_returns_404(self) -> None:
+        headers = self._register("paper_cancel_missing")
+        response = self.client.post("/api/paper/orders/99999/cancel", headers=headers)
+        self.assertEqual(response.status_code, 404)
+
     def test_order_rejects_non_lot_quantity(self) -> None:
         headers = self._register("paper_lot")
         response = self._paper_order(headers, quantity=150)

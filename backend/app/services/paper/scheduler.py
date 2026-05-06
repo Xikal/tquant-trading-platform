@@ -9,12 +9,14 @@ from datetime import datetime, time as datetime_time, timedelta
 from math import floor
 from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import exists, select
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session
 
 from app.core.database import SessionLocal
-from app.models.entities import PaperAccount, PaperAgentRun, PaperOrder, PaperPosition, User
+from app.core.timezone import BEIJING_TZ, beijing_now
+from app.models.entities import PaperAccount, PaperAgentRun, PaperOrder, PaperPosition, RiskEvent, User
+from app.services.market.trading_calendar import is_a_share_trading_day
 from app.services.market_data import MarketDataService
 from app.services.low_buy.service import LowBuyScreenerService
 from app.services.paper.admission import AdmissionFilter
@@ -89,7 +91,7 @@ class PaperAutoTrader:
 
     def run_loop(self) -> None:
         while not self._stop_event.is_set():
-            self.state.heartbeat_at = datetime.now().isoformat(timespec="seconds")
+            self.state.heartbeat_at = _beijing_now_naive().isoformat(timespec="seconds")
             try:
                 if not is_trading_time():
                     self._sleep(60)
@@ -255,32 +257,61 @@ class PaperAutoTrader:
         return accounts[0] if accounts else None
 
     def _get_active_accounts(self, db: Session) -> list[PaperAccount]:
-        return (
+        accounts = (
             db.execute(
                 select(PaperAccount)
                 .outerjoin(User, PaperAccount.user_id == User.id)
-                .where(PaperAccount.status == "active")
+                .where(PaperAccount.status.in_(["active", "paused"]))
                 .where(
                     (PaperAccount.user_id.is_(None))
                     | ((User.is_active.is_(True)) & (User.can_paper_trade.is_(True)))
                 )
+                .where(~self._blocking_risk_exists())
                 .order_by(PaperAccount.id.asc())
             )
             .scalars()
             .all()
         )
+        self._activate_auto_managed_accounts(db, accounts)
+        return accounts
 
     def _get_account(self, db: Session, *, account_id: int) -> PaperAccount | None:
-        return db.execute(
-            select(PaperAccount).where(PaperAccount.id == account_id, PaperAccount.status == "active")
+        account = db.execute(
+            select(PaperAccount)
+            .where(PaperAccount.id == account_id)
+            .where(PaperAccount.status.in_(["active", "paused"]))
+            .where(~self._blocking_risk_exists())
         ).scalar_one_or_none()
+        self._activate_auto_managed_accounts(db, [account] if account else [])
+        return account
+
+    @staticmethod
+    def _blocking_risk_exists():
+        return exists(
+            select(RiskEvent.id).where(
+                RiskEvent.account_id == PaperAccount.id,
+                RiskEvent.status == "open",
+                RiskEvent.severity.in_(["high", "critical"]),
+            )
+        )
+
+    @staticmethod
+    def _activate_auto_managed_accounts(db: Session, accounts: list[PaperAccount]) -> None:
+        changed = False
+        for account in accounts:
+            if account.status == "paused":
+                account.status = "active"
+                db.add(account)
+                changed = True
+        if changed:
+            db.commit()
 
     def _get_positions_summary(self, db: Session, account: PaperAccount) -> list[dict[str, Any]]:
         rows = db.execute(
             select(PaperPosition).where(PaperPosition.account_id == account.id, PaperPosition.quantity > 0)
         ).scalars().all()
         total_assets = max(float(account.total_assets or 0), 1.0)
-        now = datetime.now()
+        now = _beijing_now_naive()
         return [
             {
                 "symbol": row.symbol,
@@ -291,7 +322,7 @@ class PaperAutoTrader:
         ]
 
     def _get_today_orders(self, db: Session, account_id: int) -> list[dict[str, Any]]:
-        start = datetime.combine(datetime.now().date(), datetime_time.min)
+        start = datetime.combine(_beijing_now_naive().date(), datetime_time.min)
         rows = db.execute(
             select(PaperOrder).where(
                 PaperOrder.account_id == account_id,
@@ -315,7 +346,7 @@ class PaperAutoTrader:
             return []
         prices = self._latest_prices([row.symbol for row in positions])
         orders: list[dict[str, Any]] = []
-        now = datetime.now()
+        now = _beijing_now_naive()
         for row in positions:
             price = prices.get(row.symbol) or float(row.latest_price or 0)
             quantity = _exit_quantity(row, price=price, now=now)
@@ -389,7 +420,7 @@ class PaperAutoTrader:
         return is_trading_time(now)
 
     def _circuit_open(self) -> bool:
-        if self._circuit_until and datetime.now() < self._circuit_until:
+        if self._circuit_until and _beijing_now_naive() < self._circuit_until:
             return True
         if self._circuit_until:
             logger.info("自动交易熔断器恢复")
@@ -400,14 +431,15 @@ class PaperAutoTrader:
         return False
 
     def _open_circuit(self, reason: str) -> None:
-        self._circuit_until = datetime.now() + timedelta(seconds=300)
+        now = _beijing_now_naive()
+        self._circuit_until = now + timedelta(seconds=300)
         self.state.circuit_open = True
         self.state.circuit_reason = reason
-        self.state.circuit_since = datetime.now().isoformat(timespec="seconds")
+        self.state.circuit_since = now.isoformat(timespec="seconds")
         logger.warning("自动交易熔断器开启：%s，暂停至 %s", reason, self._circuit_until)
 
     def _record_cycle(self, *, passed: int, filtered: int, summary: str, executed: int = 0, skipped: int = 0) -> None:
-        self.state.last_cycle_at = datetime.now().isoformat(timespec="seconds")
+        self.state.last_cycle_at = _beijing_now_naive().isoformat(timespec="seconds")
         self.state.last_cycle_passed = passed
         self.state.last_cycle_filtered = filtered
         self.state.last_cycle_executed = executed
@@ -466,8 +498,8 @@ def stop_auto_trader() -> None:
 
 
 def is_trading_time(now: datetime | None = None) -> bool:
-    current = now or datetime.now()
-    if current.weekday() >= 5:
+    current = _normalize_beijing_datetime(now)
+    if not is_a_share_trading_day(current.date()):
         return False
     current_time = current.time()
     return (
@@ -545,3 +577,15 @@ def _round_lot(quantity: int | float) -> int:
 def _is_database_busy(exc: OperationalError) -> bool:
     message = str(exc).lower()
     return "database is locked" in message or "database is busy" in message or "lock wait timeout" in message
+
+
+def _normalize_beijing_datetime(value: datetime | None = None) -> datetime:
+    if value is None:
+        return _beijing_now_naive()
+    if value.tzinfo is not None:
+        return value.astimezone(BEIJING_TZ).replace(tzinfo=None)
+    return value
+
+
+def _beijing_now_naive() -> datetime:
+    return beijing_now().replace(tzinfo=None)

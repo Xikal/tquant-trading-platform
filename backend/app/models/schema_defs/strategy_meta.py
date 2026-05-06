@@ -10,7 +10,10 @@ class StrategyMetaOut(BaseModel):
     name: str
     display_name: str
     description: str = ""
+    tier: str = "research"
+    category_key: str = "research"
     category: str = ""
+    display_category: str = ""
     risk_level: str = "medium"
     typical_holding_days: str = ""
     sort_order: int = 0

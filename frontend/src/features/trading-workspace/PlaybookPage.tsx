@@ -1,5 +1,3 @@
-import { useEffect, useState } from "react";
-import { strategiesApi, type StrategyMeta } from "../../api/strategies";
 import type { LowBuyScreenerResult } from "../../types";
 import { EmptyState, InfoPill, MetricGrid, PanelTitle, StockCard } from "./WorkspaceComponents";
 import { PRODUCTION_PLAYBOOK_TABS } from "./workspaceConstants";
@@ -15,6 +13,7 @@ export function PlaybookPage({
   onRefresh,
   onAnalyze,
   onSelect,
+  strategyTabs,
 }: {
   strategy: string;
   setStrategy: (strategy: string) => void;
@@ -23,28 +22,11 @@ export function PlaybookPage({
   onRefresh: () => void;
   onAnalyze: (stock: StockCardView) => void;
   onSelect: (stock: StockCardView) => void;
+  strategyTabs?: Array<{ key: string; label: string }>;
 }) {
-  const [strategyTabs, setStrategyTabs] = useState<Array<{ key: string; label: string }>>(
+  const tabs = strategyTabs?.length ? strategyTabs : (
     PRODUCTION_PLAYBOOK_TABS.map((tab) => ({ key: tab.key, label: tab.label }))
   );
-  useEffect(() => {
-    let cancelled = false;
-    strategiesApi.getStrategyMeta()
-      .then((result) => {
-        if (cancelled) return;
-        const nextTabs = (result.strategies ?? []).map((item: StrategyMeta) => ({
-          key: item.key,
-          label: item.display_name || item.name || item.key,
-        }));
-        if (nextTabs.length) {
-          setStrategyTabs(nextTabs);
-        }
-      })
-      .catch(() => undefined);
-    return () => {
-      cancelled = true;
-    };
-  }, []);
   const allCandidates = uniqueCandidates([
     ...(playbook?.confirmed_candidates ?? []),
     ...(playbook?.candidates ?? []),
@@ -55,8 +37,8 @@ export function PlaybookPage({
   const avoid = allCandidates.filter((item) => item.buy_signal_state === "avoid").map(candidateToCard);
   const passiveCandidates = [...watch, ...avoid].slice(0, 12);
   const focus = buyNow[0] ?? nearEntry[0] ?? watch[0] ?? avoid[0];
-  const strategyName = strategyLabel(strategy);
-  const loadedStrategyName = playbook?.strategy_title || strategyLabel(playbook?.strategy_key || strategy);
+  const strategyName = tabLabel(strategy, tabs) || strategyLabel(strategy);
+  const loadedStrategyName = playbook?.strategy_title || tabLabel(playbook?.strategy_key || strategy, tabs) || strategyLabel(playbook?.strategy_key || strategy);
   const switchingText = playbook && playbook.strategy_key !== strategy ? "，正在切换数据" : "";
   const hasInsufficientData = playbook?.performance?.data_insufficient || (playbook?.performance?.filled_signals ?? 0) <= 0;
   const hitRateDisplay = hasInsufficientData ? "样本不足" : formatPct(playbook?.performance?.hit_rate);
@@ -71,7 +53,7 @@ export function PlaybookPage({
         />
         <p className="hint">全量深筛 + 策略归因 + 买点执行。候选分层展示，避免把所有机会做成同等权重。</p>
         <div className="tabs">
-          {strategyTabs.map((tab) => (
+          {tabs.map((tab) => (
             <button key={tab.key} className={strategy === tab.key ? "active" : ""} onClick={() => setStrategy(tab.key)}>
               {tab.label}
             </button>
@@ -128,6 +110,13 @@ export function PlaybookPage({
       </div>
     </section>
   );
+}
+
+function tabLabel(strategyKey: string | undefined, tabs: Array<{ key: string; label: string }>) {
+  if (!strategyKey) {
+    return "";
+  }
+  return tabs.find((tab) => tab.key === strategyKey)?.label || "";
 }
 
 function uniqueCandidates(items: LowBuyScreenerResult["candidates"]) {

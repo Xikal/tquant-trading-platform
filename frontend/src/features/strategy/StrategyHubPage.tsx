@@ -165,7 +165,7 @@ function QuickBacktestForm({ hub }: { hub: ReturnType<typeof useStrategyHub> }) 
                 onClick={() => hub.toggleStrategy(strategy.key)}
               >
                 <strong>{strategy.display_name || strategy.name}</strong>
-                <span>{strategy.category} · {strategy.typical_holding_days}</span>
+                <span>{strategy.display_category || strategy.category} · {strategy.typical_holding_days}</span>
                 <small>{strategy.description}</small>
               </button>
             );

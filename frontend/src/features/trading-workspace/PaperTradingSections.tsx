@@ -2,6 +2,7 @@ import type {
   IntradayConfirmationItem,
   PaperAccount,
   PaperAgentRun,
+  PaperAutoTradingStatus,
   PaperGroupedPerformance,
   PaperOrder,
   PaperOrderStatus,
@@ -43,13 +44,15 @@ const ORDER_STATUS_TONE: Record<PaperOrderStatus, StatusTone> = {
 export function PaperMetricGrid({
   account,
   performance,
+  autoTradingStatus,
   loading,
 }: {
   account: PaperAccount | null;
   performance: PaperPerformance | null;
+  autoTradingStatus: PaperAutoTradingStatus | null;
   loading: boolean;
 }) {
-  const paused = account?.status === "paused";
+  const status = resolveAutoManagedStatus(account, autoTradingStatus);
   const metrics = [
     { label: "总资产", value: formatMoneyPlain(account?.total_assets), tone: "neutral" as const },
     { label: "可用资金", value: formatMoneyPlain(account?.cash_available), tone: "neutral" as const },
@@ -57,10 +60,24 @@ export function PaperMetricGrid({
     { label: "浮动盈亏", value: formatNumber(account?.unrealized_pnl), tone: toneFromChange(account?.unrealized_pnl) },
     { label: "总收益率", value: formatPct(performance?.total_return_pct), tone: toneFromChange(performance?.total_return_pct) },
     { label: "净胜率", value: formatPct(performance?.net_win_rate_pct), tone: toneFromChange(performance?.net_win_rate_pct) },
-    { label: "状态", value: account ? (paused ? "已暂停" : "运行中") : "--", tone: paused ? ("warn" as const) : ("down" as const) },
+    { label: "状态", value: status.label, tone: status.tone },
   ] satisfies MetricItem[];
 
   return <MetricGrid items={metrics} className="paper-metrics" loading={loading} as="section" />;
+}
+
+function resolveAutoManagedStatus(
+  account: PaperAccount | null,
+  autoTradingStatus: PaperAutoTradingStatus | null,
+): { label: string; tone: MetricItem["tone"] | "warn" } {
+  if (!account) return { label: "--", tone: "neutral" };
+  if (autoTradingStatus?.circuit_open) return { label: "熔断保护", tone: "warn" };
+  if (autoTradingStatus?.trading_time) {
+    return autoTradingStatus.running
+      ? { label: "自动交易中", tone: "down" }
+      : { label: "等待自动启动", tone: "warn" };
+  }
+  return { label: "非交易时段静默", tone: "neutral" };
 }
 
 export { OrderEntryModal };

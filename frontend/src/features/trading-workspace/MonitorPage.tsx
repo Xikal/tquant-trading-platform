@@ -13,6 +13,7 @@ export interface MonitorPageProps {
   runtime: RuntimeStatus | null;
   watchDraft: WatchDraft;
   setWatchDraft: (draft: WatchDraft) => void;
+  editingWatchSymbol: string;
   loading: string;
   onRefresh: () => void;
   onSync: () => void;
@@ -23,6 +24,7 @@ export interface MonitorPageProps {
   onEdit: (stock: StockCardView) => void;
   onRemove: (symbol: string) => void;
   onAddWatchlist: () => void;
+  onCancelEdit: () => void;
 }
 
 export const MonitorPage = memo(function MonitorPage({
@@ -33,6 +35,7 @@ export const MonitorPage = memo(function MonitorPage({
   runtime,
   watchDraft,
   setWatchDraft,
+  editingWatchSymbol,
   loading,
   onRefresh,
   onSync,
@@ -43,7 +46,9 @@ export const MonitorPage = memo(function MonitorPage({
   onEdit,
   onRemove,
   onAddWatchlist,
+  onCancelEdit,
 }: MonitorPageProps) {
+  const isEditing = Boolean(editingWatchSymbol);
   const metrics: MetricItem[] = useMemo(() => {
     const executableCount = watchCards.filter((card) => card.actionText !== "暂不操作").length;
     const avgScore = average(priorityCards.map((card) => Number(card.scoreText))).toFixed(1);
@@ -72,10 +77,23 @@ export const MonitorPage = memo(function MonitorPage({
       </div>
 
       <aside className="panel monitor-input">
-        <PanelTitle title="录入底仓约束" />
-        <p className="hint">代码、底仓、可卖、成本价决定做T信号是否可执行。A股 T+1 下，当日买入通常次日才进入可用数量。</p>
+        <PanelTitle
+          title={isEditing ? "编辑持仓约束" : "录入底仓约束"}
+          actions={isEditing ? <button type="button" onClick={onCancelEdit}>取消编辑</button> : null}
+        />
+        <p className="hint">
+          {isEditing
+            ? `正在编辑 ${editingWatchSymbol}，修改后点击“更新持仓”。`
+            : "代码、底仓、可卖、成本价决定做T信号是否可执行。A股 T+1 下，当日买入通常次日才进入可用数量。"}
+        </p>
         <div className="compact-form-grid">
-          <SearchField label="证券代码" value={watchDraft.symbol} placeholder="代码或名称" onChange={(value) => setWatchDraft({ ...watchDraft, symbol: value })} />
+          <SearchField
+            label="证券代码"
+            value={watchDraft.symbol}
+            placeholder="代码或名称"
+            disabled={isEditing}
+            onChange={(value) => setWatchDraft({ ...watchDraft, symbol: value })}
+          />
           <NumberField label="底仓数量" value={watchDraft.base_position} onChange={(event) => setWatchDraft({ ...watchDraft, base_position: event.target.value })} />
           <NumberField label="可卖数量" value={watchDraft.available_position} onChange={(event) => setWatchDraft({ ...watchDraft, available_position: event.target.value })} />
           <NumberField label="成本价" value={watchDraft.cost_basis} onChange={(event) => setWatchDraft({ ...watchDraft, cost_basis: event.target.value })} />
@@ -83,7 +101,7 @@ export const MonitorPage = memo(function MonitorPage({
           <TextField label="名称" value={watchDraft.name} onChange={(event) => setWatchDraft({ ...watchDraft, name: event.target.value })} />
         </div>
         <button className="primary full" onClick={onAddWatchlist} disabled={loading === "watchlist"}>
-          {watchDraft.symbol.trim() ? "保存持仓" : "加入自选监控"}
+          {loading === "watchlist" ? "保存中..." : isEditing ? "更新持仓" : watchDraft.symbol.trim() ? "保存持仓" : "加入自选监控"}
         </button>
       </aside>
 

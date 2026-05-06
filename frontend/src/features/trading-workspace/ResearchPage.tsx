@@ -19,6 +19,7 @@ export function ResearchPage({
   onRun,
   onValidate,
   onRefresh,
+  strategyTabs,
 }: {
   replays: ReplayItem[];
   priorityBoard: LowBuyPriorityBoardResult | null;
@@ -33,10 +34,12 @@ export function ResearchPage({
   onRun: () => void;
   onValidate: () => void;
   onRefresh: () => void;
+  strategyTabs?: Array<{ key: string; label: string }>;
 }) {
   const avgPnl = average(replays.map((item) => item.pnl_pct));
   const lifecycleSummary = summarizeLifecycle(lifecycleItems);
   const topFamily = priorityBoard?.family_sections?.[0];
+  const strategyOptions = strategyTabs?.length ? strategyTabs : ALL_PLAYBOOK_TABS;
   return (
     <section className="page-grid research-grid">
       <div className="panel research-hero">
@@ -75,7 +78,7 @@ export function ResearchPage({
         <SelectField
           label="低吸策略"
           value={draft.low_buy_strategy}
-          options={ALL_PLAYBOOK_TABS.map((tab) => ({ value: tab.key, label: tab.label }))}
+          options={strategyOptions.map((tab) => ({ value: tab.key, label: tab.label }))}
           onChange={(event) => setDraft({ ...draft, low_buy_strategy: event.target.value })}
         />
         <SelectField

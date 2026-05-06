@@ -14,11 +14,13 @@ interface UseWorkspacePagePropsParams {
   paper: ReturnType<typeof usePaperTrading>;
   watchDraft: WatchDraft;
   setWatchDraft: (draft: WatchDraft) => void;
+  editingWatchSymbol: string;
   onAddWatchlist: () => void;
   onEditWatchlist: (card: StockCardView) => void;
   onNavigatePage: (page: Page) => void;
   onRefreshMonitor: () => void;
   onRemoveWatchlist: (symbol: string) => void;
+  onCancelWatchlistEdit: () => void;
   onRunPriorityAi: () => void;
   onSelectStock: (stock: StockCardView | null) => void;
 }
@@ -31,11 +33,13 @@ export function useWorkspacePageProps({
   paper,
   watchDraft,
   setWatchDraft,
+  editingWatchSymbol,
   onAddWatchlist,
   onEditWatchlist,
   onNavigatePage,
   onRefreshMonitor,
   onRemoveWatchlist,
+  onCancelWatchlistEdit,
   onRunPriorityAi,
   onSelectStock,
 }: UseWorkspacePagePropsParams) {
@@ -47,6 +51,7 @@ export function useWorkspacePageProps({
     runtime: monitor.runtime,
     watchDraft,
     setWatchDraft,
+    editingWatchSymbol,
     loading,
     onRefresh: onRefreshMonitor,
     onSync: () => void monitor.syncInstruments(),
@@ -57,6 +62,7 @@ export function useWorkspacePageProps({
     onEdit: onEditWatchlist,
     onRemove: onRemoveWatchlist,
     onAddWatchlist,
+    onCancelEdit: onCancelWatchlistEdit,
   };
 
   const paperPageProps: PaperTradingPageProps = {

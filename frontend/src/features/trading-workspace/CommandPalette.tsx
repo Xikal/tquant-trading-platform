@@ -106,7 +106,7 @@ function buildItems(query: string, strategies: StrategyMeta[]): CommandItem[] {
   const strategyItems: CommandItem[] = (strategies.length ? strategies : fallbackStrategies()).map((strategy) => ({
     type: "strategy",
     label: strategy.display_name || strategy.name || strategy.key,
-    hint: `打开选股宝典 · ${strategy.category || "策略"}`,
+    hint: `打开选股宝典 · ${strategy.display_category || strategy.category || "策略"}`,
     strategyKey: strategy.key,
   }));
   const symbolItem = /^\d{6}$/.test(normalized)
@@ -123,13 +123,20 @@ function buildItems(query: string, strategies: StrategyMeta[]): CommandItem[] {
 
 function fallbackStrategies(): StrategyMeta[] {
   return PRODUCTION_PLAYBOOK_TABS.map((item, index) => ({
+    ...fallbackStrategyCategory(item.tier),
     key: item.key,
     name: item.label,
     display_name: item.label,
     description: "",
-    category: "生产策略",
+    tier: item.tier,
+    category_key: item.tier,
     risk_level: "medium",
     typical_holding_days: "1-3天",
     sort_order: index,
   }));
+}
+
+function fallbackStrategyCategory(tier: string) {
+  const label = tier === "core" ? "生产策略" : "辅助策略";
+  return { category: label, display_category: label };
 }

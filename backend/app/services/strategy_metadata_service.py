@@ -17,6 +17,7 @@ from app.models.schema_defs.strategy_meta import (
     SymbolSearchItem,
     SymbolSearchResponse,
 )
+from app.services.low_buy.strategy_policy import StrategyTier, get_strategy_tier
 
 
 @dataclass(frozen=True)
@@ -24,18 +25,18 @@ class StrategyDisplaySeed:
     key: str
     name: str
     description: str
-    category: str
+    tier: str
     risk_level: str
     typical_holding_days: str
     sort_order: int
 
 
 DEFAULT_STRATEGY_META: tuple[StrategyDisplaySeed, ...] = (
-    StrategyDisplaySeed("first_board", "首板回调", "首板启动后回调承接，偏事件低吸。", "生产策略", "medium", "1-3天", 10),
-    StrategyDisplaySeed("volume_shrink", "量能低吸", "放量启动后缩量回踩，等待承接修复。", "生产策略", "medium", "1-3天", 20),
-    StrategyDisplaySeed("late_session_strong_support", "收盘强势承接", "主线标的收盘仍有承接，关注次日冲高兑现。", "辅助策略", "medium", "1-2天", 30),
-    StrategyDisplaySeed("core_midcap_vwap_ma5_retrace", "中军回踩", "板块核心中军回踩均线/VWAP 附近的低吸观察。", "辅助策略", "medium", "2-4天", 40),
-    StrategyDisplaySeed("sector_mainline_first_divergence_low_buy", "主线首分歧", "主线板块首次有效分歧后的修复低吸观察。", "辅助策略", "high", "1-3天", 50),
+    StrategyDisplaySeed("first_board", "首板回调", "首板启动后回调承接，偏事件低吸。", "core", "medium", "1-3天", 10),
+    StrategyDisplaySeed("volume_shrink", "量能低吸", "放量启动后缩量回踩，等待承接修复。", "core", "medium", "1-3天", 20),
+    StrategyDisplaySeed("late_session_strong_support", "收盘强势承接", "主线标的收盘仍有承接，关注次日冲高兑现。", "auxiliary", "medium", "1-2天", 30),
+    StrategyDisplaySeed("core_midcap_vwap_ma5_retrace", "中军回踩", "板块核心中军回踩均线/VWAP 附近的低吸观察。", "auxiliary", "medium", "2-4天", 40),
+    StrategyDisplaySeed("sector_mainline_first_divergence_low_buy", "主线首分歧", "主线板块首次有效分歧后的修复低吸观察。", "auxiliary", "high", "1-3天", 50),
 )
 
 DEFAULT_PRESETS: tuple[dict[str, Any], ...] = (
@@ -111,13 +112,18 @@ class StrategyMetadataService:
         items = []
         for seed in DEFAULT_STRATEGY_META:
             row = overrides.get(seed.key)
+            tier = _strategy_tier(seed)
+            display_category = _display_category(row.category if row else "", tier)
             items.append(
                 StrategyMetaOut(
                     key=seed.key,
                     name=row.display_name if row else seed.name,
                     display_name=row.display_name if row else seed.name,
                     description=row.description if row and row.description else seed.description,
-                    category=row.category if row and row.category else seed.category,
+                    tier=tier.value,
+                    category_key=tier.value,
+                    category=display_category,
+                    display_category=display_category,
                     risk_level=row.risk_level if row and row.risk_level else seed.risk_level,
                     typical_holding_days=(
                         row.typical_holding_days if row and row.typical_holding_days else seed.typical_holding_days
@@ -294,3 +300,26 @@ def _preset_from_row(row: StrategyPreset) -> StrategyPresetOut:
 
 def _escape_like(value: str) -> str:
     return value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+
+
+def _strategy_tier(seed: StrategyDisplaySeed) -> StrategyTier:
+    try:
+        return StrategyTier(seed.tier)
+    except ValueError:
+        return get_strategy_tier(seed.key)
+
+
+def _strategy_tier_label(tier: StrategyTier) -> str:
+    return {
+        StrategyTier.CORE: "生产策略",
+        StrategyTier.AUXILIARY: "辅助策略",
+        StrategyTier.RESEARCH: "研究策略",
+        StrategyTier.FACTOR: "辅助因子",
+    }.get(tier, "研究策略")
+
+
+def _display_category(value: str | None, tier: StrategyTier) -> str:
+    normalized = (value or "").strip()
+    if normalized in {"core", "auxiliary", "research", "factor"}:
+        return _strategy_tier_label(StrategyTier(normalized))
+    return normalized or _strategy_tier_label(tier)

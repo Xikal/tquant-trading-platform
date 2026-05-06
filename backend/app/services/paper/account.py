@@ -13,6 +13,7 @@ from app.models.entities import (
     PaperPosition,
     PaperPositionLot,
     PaperTrade,
+    RiskEvent,
 )
 from app.services.paper.money import ZERO, to_decimal
 
@@ -108,6 +109,15 @@ class PaperAccountService:
         self.db.refresh(account)
         return account
 
+    def resume_if_safe_for_auto_trading(self, account_id: int) -> PaperAccount:
+        account = self.get_account(account_id)
+        if account.status != "paused" or self._has_blocking_risk_event(account_id):
+            return account
+        account.status = "active"
+        self.db.commit()
+        self.db.refresh(account)
+        return account
+
     def check_balance(self, account_id: int, required: Decimal) -> bool:
         account = self.get_account(account_id)
         return to_decimal(account.cash_available) >= required
@@ -115,3 +125,14 @@ class PaperAccountService:
     def check_balance_locked(self, account_id: int, required: Decimal) -> bool:
         account = self.get_account(account_id, for_update=True)
         return to_decimal(account.cash_available) >= required
+
+    def _has_blocking_risk_event(self, account_id: int) -> bool:
+        return self.db.execute(
+            select(RiskEvent.id)
+            .where(
+                RiskEvent.account_id == account_id,
+                RiskEvent.status == "open",
+                RiskEvent.severity.in_(["high", "critical"]),
+            )
+            .limit(1)
+        ).scalar_one_or_none() is not None

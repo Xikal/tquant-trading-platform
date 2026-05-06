@@ -41,6 +41,10 @@ class RemoteAgentGatewayClient:
             raise ProviderUnavailable(f"Remote gateway unavailable: {exc}") from exc
         if isinstance(body, dict) and body.get("ok") is False:
             raise ProviderUnavailable(_remote_error_message(body))
+        if isinstance(body, dict):
+            status = str(body.get("status") or "").strip().lower()
+            if status and status != "success":
+                raise ProviderUnavailable(_remote_error_message(body))
         return body.get("data", body) if isinstance(body, dict) else body
 
     def _headers(self) -> dict[str, str]:

@@ -123,7 +123,15 @@ export function StockCard({
       {actions?.length ? (
         <div className="card-actions">
           {actions.map((action) => (
-            <button type="button" className={action === "移除" ? "danger" : ""} onClick={() => onAction?.(action)} key={action}>
+            <button
+              type="button"
+              className={action === "移除" ? "danger" : ""}
+              onClick={(event) => {
+                event.stopPropagation();
+                onAction?.(action);
+              }}
+              key={action}
+            >
               {action}
             </button>
           ))}

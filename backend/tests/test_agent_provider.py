@@ -41,6 +41,19 @@ class _RemoteErrorClient:
         return _RemoteErrorResponse()
 
 
+class _RemoteStatusFailureResponse:
+    def raise_for_status(self) -> None:
+        return None
+
+    def json(self) -> dict:
+        return {"status": "failed", "message": "workflow failed"}
+
+
+class _RemoteStatusFailureClient(_RemoteErrorClient):
+    def post(self, *args, **kwargs) -> _RemoteStatusFailureResponse:  # noqa: ANN002, ANN003
+        return _RemoteStatusFailureResponse()
+
+
 class AgentProviderTests(unittest.TestCase):
     def test_none_provider_reports_available(self) -> None:
         provider = NoneProvider()
@@ -120,6 +133,13 @@ class AgentProviderTests(unittest.TestCase):
         tool = get_tool_definition("get_priority_board")
         self.assertIsNotNone(tool)
         with patch("app.agent_providers.remote_gateway.httpx.Client", _RemoteErrorClient):
+            with self.assertRaises(ProviderUnavailable):
+                RemoteAgentGatewayClient(base_url="http://agent.local").invoke(tool, {"limit": 12})
+
+    def test_remote_gateway_failed_status_raises_unavailable(self) -> None:
+        tool = get_tool_definition("get_priority_board")
+        self.assertIsNotNone(tool)
+        with patch("app.agent_providers.remote_gateway.httpx.Client", _RemoteStatusFailureClient):
             with self.assertRaises(ProviderUnavailable):
                 RemoteAgentGatewayClient(base_url="http://agent.local").invoke(tool, {"limit": 12})
 

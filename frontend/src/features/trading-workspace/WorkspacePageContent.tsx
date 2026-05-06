@@ -1,4 +1,5 @@
 import { Suspense, type ComponentProps, type ComponentType } from "react";
+import type { StrategyMeta } from "../../api/strategies";
 import type { AuthUser } from "../../types";
 import { PageErrorBoundary } from "./PageErrorBoundary";
 import type { MonitorPageProps } from "./MonitorPage";
@@ -30,6 +31,7 @@ interface WorkspacePageContentProps {
   playbookData: ReturnType<typeof usePlaybookData>;
   research: ReturnType<typeof useResearchData>;
   settingsData: ReturnType<typeof useSettingsData>;
+  strategyMeta: StrategyMeta[];
   onSelectStock: (stock: StockCardView | null) => void;
   onPreparePaperOrder: (payload: { symbol: string; name?: string; price?: number | null }) => void;
 }
@@ -54,9 +56,17 @@ export function WorkspacePageContent({
   playbookData,
   research,
   settingsData,
+  strategyMeta,
   onSelectStock,
   onPreparePaperOrder,
 }: WorkspacePageContentProps) {
+  const sortedStrategyMeta = strategyMeta
+    .slice()
+    .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
+  const productionStrategyTabs = sortedStrategyMeta
+    .filter((item) => isProductionStrategyTier(item))
+    .map(strategyTabFromMeta);
+  const allStrategyTabs = sortedStrategyMeta.map(strategyTabFromMeta);
   return (
     <PageErrorBoundary resetKey={page}>
       <Suspense fallback={<div className="panel">页面模块加载中...</div>}>
@@ -80,6 +90,7 @@ export function WorkspacePageContent({
             onRefresh={() => void playbookData.loadPlaybook(playbookData.strategy, true)}
             onAnalyze={analysis.analyzeFromCard}
             onSelect={onSelectStock}
+            strategyTabs={productionStrategyTabs}
           />
         )}
         {page === "strategy" && <StrategyHubPage currentUser={currentUser} />}
@@ -98,6 +109,7 @@ export function WorkspacePageContent({
             onRun={() => void research.runBacktest()}
             onValidate={() => void research.runStrategyValidation()}
             onRefresh={() => void research.loadResearch()}
+            strategyTabs={allStrategyTabs}
           />
         )}
         {page === "backtests" && <BacktestPage />}
@@ -142,4 +154,13 @@ export function WorkspacePageContent({
       </Suspense>
     </PageErrorBoundary>
   );
+}
+
+function strategyTabFromMeta(item: StrategyMeta) {
+  return { key: item.key, label: item.display_name || item.name || item.key };
+}
+
+function isProductionStrategyTier(item: StrategyMeta) {
+  const tier = item.tier || item.category_key;
+  return tier === "core" || tier === "auxiliary";
 }

@@ -67,7 +67,8 @@ export const PaperTradingPage = memo(function PaperTradingPage({
   onAddTradeTag,
   onDeleteTradeTag,
 }: PaperTradingPageProps) {
-  const paused = account?.status === "paused";
+  const autoManaged = Boolean(autoTradingStatus?.engine_running || autoTradingStatus?.trading_time);
+  const paused = account?.status === "paused" && !autoManaged;
   const paperLoading = loading === "paper";
   const orderLoading = loading === "paper-order";
   const autoTradingRunning = Boolean(autoTradingStatus?.running);
@@ -92,7 +93,7 @@ export const PaperTradingPage = memo(function PaperTradingPage({
 
   return (
     <section className="page-grid paper-grid">
-      <PaperMetricGrid account={account} performance={performance} loading={paperLoading} />
+      <PaperMetricGrid account={account} performance={performance} autoTradingStatus={autoTradingStatus} loading={paperLoading} />
       <PixelTraderWorker
         marketState={marketState}
         paused={paused}

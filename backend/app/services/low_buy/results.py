@@ -150,16 +150,25 @@ class LowBuyResultStoreMixin:
         repair = getattr(self, "_rebuild_materialized_snapshot", None)
         if repair is None or not latest_trade_date:
             return None
+        repair_db = SessionLocal()
         try:
-            return repair(
-                db=db,
+            payload = repair(
+                db=repair_db,
                 strategy=strategy,
                 latest_trade_date=latest_trade_date,
                 limit=limit,
                 include_history=include_history,
             )
+            if payload is None:
+                repair_db.rollback()
+                return None
+            repair_db.commit()
+            return payload
         except Exception:
+            repair_db.rollback()
             return None
+        finally:
+            repair_db.close()
 
     def _save_persisted_full_result(
         self,

@@ -1,17 +1,11 @@
 import type { Page } from "./workspaceTypes";
+import { FALLBACK_STRATEGY_META } from "../../constants/strategies";
 
 export const DEFAULT_PLAYBOOK_STRATEGY = "first_board";
 
-export const CORE_PLAYBOOK_TABS = [
-  { key: "first_board", label: "首板回调", tier: "core" },
-  { key: "volume_shrink", label: "量能低吸", tier: "core" },
-] as const;
+export const CORE_PLAYBOOK_TABS = FALLBACK_STRATEGY_META.filter((item) => item.tier === "core");
 
-export const AUXILIARY_PLAYBOOK_TABS = [
-  { key: "late_session_strong_support", label: "收盘强势承接", tier: "auxiliary" },
-  { key: "core_midcap_vwap_ma5_retrace", label: "中军回踩", tier: "auxiliary" },
-  { key: "sector_mainline_first_divergence_low_buy", label: "主线首分歧", tier: "auxiliary" },
-] as const;
+export const AUXILIARY_PLAYBOOK_TABS = FALLBACK_STRATEGY_META.filter((item) => item.tier === "auxiliary");
 
 export const RESEARCH_PLAYBOOK_TABS = [
   { key: "limit_up_breakout_retrace", label: "涨停突破回踩", tier: "research" },

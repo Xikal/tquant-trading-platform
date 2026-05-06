@@ -34,6 +34,12 @@ class LowBuyScreeningMixin(LowBuyQuoteRefreshMixin):
         limit: int,
         include_history: bool,
     ) -> LowBuyScreenerResponse | None:
+        """Rebuild materialized rows from persisted full-cache JSON.
+
+        This method intentionally does not commit.  Callers own the
+        transaction boundary so external sessions are never committed here.
+        """
+
         setting_key = self._full_cache_setting_key(strategy, latest_trade_date, limit, include_history)
         row = SystemSettingRepository(db).fetch(setting_key)
         if row is None or not row.value or not self._response_payload_is_current(row.value):
@@ -45,7 +51,6 @@ class LowBuyScreeningMixin(LowBuyQuoteRefreshMixin):
         if payload.latest_trade_date != latest_trade_date or payload.strategy_key != strategy:
             return None
         self._persist_materialized_full_result(db=db, payload=payload)
-        db.commit()
         return attach_response_recommendation_durations(db=db, payload=payload)
 
     def refresh_full_scan_cache(

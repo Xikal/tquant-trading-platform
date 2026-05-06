@@ -44,8 +44,10 @@ class AgentSignalScanService:
                     _request_from_priority_item(item, channel=channel),
                     user_id=user_id,
                 )
-                if response.should_notify:
+                if response.should_notify and response.ok:
                     stats.sent += 1
+                elif response.should_notify:
+                    stats.errors.append(f"{getattr(item, 'symbol', '--')}: 通知发送失败")
                 else:
                     stats.suppressed += 1
                 if response.upgraded:

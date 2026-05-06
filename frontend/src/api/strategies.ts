@@ -5,7 +5,10 @@ export interface StrategyMeta {
   name: string;
   display_name: string;
   description: string;
+  tier: "core" | "auxiliary" | "research" | "factor" | string;
+  category_key: "core" | "auxiliary" | "research" | "factor" | string;
   category: string;
+  display_category: string;
   risk_level: string;
   typical_holding_days: string;
   sort_order: number;

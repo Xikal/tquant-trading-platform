@@ -4,6 +4,7 @@ import base64
 import hashlib
 import hmac
 import json
+import logging
 import os
 import subprocess
 import time
@@ -25,6 +26,8 @@ from app.models.schema_defs.agent import (
     AgentSignalNotificationResponse,
 )
 
+
+logger = logging.getLogger(__name__)
 
 SIGNAL_RANKS = {
     "avoid": 0,
@@ -70,12 +73,12 @@ class AgentNotificationService:
         hermes_path = _hermes_cli_path(self.settings.hermes_api_url)
         if hermes_path is not None:
             return self._send_hermes_feishu_text(hermes_path=hermes_path, message=payload.message, channel=payload.channel)
-        if not webhook:
-            return AgentNotificationTestResponse(
-                ok=True,
-                channel=payload.channel,
-                message="notification adapter not configured",
-            )
+        logger.warning("Notification channel not configured, skipping signal notification: channel=%s", channel)
+        return AgentNotificationTestResponse(
+            ok=False,
+            channel=payload.channel,
+            message="notification adapter not configured",
+        )
 
     def send_signal(
         self,
@@ -94,19 +97,29 @@ class AgentNotificationService:
         channel = payload.channel.strip().lower() or "feishu"
         event = self._upsert_signal_event(db=db, payload=payload, channel=channel, user_id=user_id)
         should_notify = self._should_notify(event)
+        send_ok = True
         if should_notify:
             message = payload.message.strip() or _default_signal_message(payload, upgraded=event.upgraded)
             send_result = self.send_test(AgentNotificationTestRequest(channel=channel, message=message))
+            send_ok = bool(send_result.ok)
             if send_result.ok:
                 event.notification_count += 1
                 event.last_notified_at = beijing_now()
+            else:
+                logger.warning(
+                    "Notification send failed, signal ledger not counted: channel=%s symbol=%s strategy=%s reason=%s",
+                    channel,
+                    payload.symbol,
+                    payload.strategy_key,
+                    send_result.message,
+                )
             response_message = send_result.message
         else:
             response_message = "signal notification suppressed by cooldown"
         event.last_seen_at = beijing_now()
         db.commit()
         return AgentSignalNotificationResponse(
-            ok=True,
+            ok=send_ok,
             channel=channel,
             symbol=payload.symbol,
             strategy_key=payload.strategy_key,
@@ -134,12 +147,17 @@ class AgentNotificationService:
         try:
             with urllib.request.urlopen(request, timeout=max(self.settings.agent_timeout_seconds, 1)) as response:
                 status = response.getcode()
-        except urllib.error.URLError:
+                raw_body = response.read().decode("utf-8", errors="replace")
+        except urllib.error.URLError as exc:
+            logger.error("Feishu notification request failed: %s", exc)
             return AgentNotificationTestResponse(ok=False, channel=channel, message="notification request failed")
+        ok, response_message = _feishu_delivery_status(status=status, raw_body=raw_body)
+        if not ok:
+            logger.error("Feishu notification business failure: status=%s body=%s", status, raw_body[:500])
         return AgentNotificationTestResponse(
-            ok=200 <= status < 300,
+            ok=ok,
             channel=channel,
-            message="notification sent" if 200 <= status < 300 else "notification request failed",
+            message=response_message,
         )
 
     def _send_hermes_feishu_text(self, *, hermes_path: Path, message: str, channel: str) -> AgentNotificationTestResponse:
@@ -157,10 +175,19 @@ class AgentNotificationService:
                 timeout=timeout,
                 check=False,
             )
-        except (OSError, subprocess.TimeoutExpired):
+        except (OSError, subprocess.TimeoutExpired) as exc:
+            logger.error("Hermes notification request failed: %s", exc)
             return AgentNotificationTestResponse(ok=False, channel=channel, message="hermes notification request failed")
         if result.returncode != 0:
+            logger.error("Hermes notification exited with non-zero status: returncode=%s stderr=%s", result.returncode, result.stderr[:500])
             return AgentNotificationTestResponse(ok=False, channel=channel, message="hermes notification request failed")
+        if _hermes_output_has_error_marker(result.stdout) or _hermes_output_has_error_marker(result.stderr):
+            logger.error(
+                "Hermes notification output indicates failure: stdout=%s stderr=%s",
+                result.stdout[:500],
+                result.stderr[:500],
+            )
+            return AgentNotificationTestResponse(ok=False, channel=channel, message="hermes notification business failed")
         return AgentNotificationTestResponse(ok=True, channel=channel, message="notification sent via hermes")
 
     def _upsert_signal_event(
@@ -238,6 +265,43 @@ def _feishu_signature(secret: str) -> dict[str, str]:
     string_to_sign = f"{timestamp}\n{secret}"
     digest = hmac.new(string_to_sign.encode("utf-8"), b"", hashlib.sha256).digest()
     return {"timestamp": timestamp, "sign": base64.b64encode(digest).decode("utf-8")}
+
+
+def _feishu_delivery_status(*, status: int, raw_body: str) -> tuple[bool, str]:
+    if not 200 <= status < 300:
+        return False, "notification request failed"
+    try:
+        payload = json.loads(raw_body or "{}")
+    except json.JSONDecodeError:
+        return False, "notification response invalid"
+    code = payload.get("code")
+    if code == 0 or str(code) == "0":
+        return True, "notification sent"
+    return False, str(payload.get("msg") or payload.get("message") or "notification business failed")
+
+
+def _hermes_output_has_error_marker(output: str | None) -> bool:
+    text = (output or "").strip().lower()
+    if not text:
+        return False
+    markers = (
+        "error",
+        "failed",
+        "failure",
+        "exception",
+        "traceback",
+        "invalid",
+        "not configured",
+        "permission denied",
+        "timeout",
+        "timed out",
+        "失败",
+        "错误",
+        "未配置",
+        "无权限",
+        "超时",
+    )
+    return any(marker in text for marker in markers)
 
 
 def _signal_rank(signal_state: str) -> int:

@@ -42,6 +42,7 @@ export function TradingWorkspace() {
   const [aiDialogOpen, setAiDialogOpen] = useState(false);
   const [commandOpen, setCommandOpen] = useState(false);
   const [commandStrategies, setCommandStrategies] = useState<StrategyMeta[]>([]);
+  const [strategyMeta, setStrategyMeta] = useState<StrategyMeta[]>([]);
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
   const [selectedStock, setSelectedStock] = useState<StockCardView | null>(null);
@@ -107,6 +108,7 @@ export function TradingWorkspace() {
     cost_basis: "",
     memo: "",
   });
+  const [editingWatchSymbol, setEditingWatchSymbol] = useState("");
   const { monitorPageProps, paperPageProps } = useWorkspacePageProps({
     analysis,
     intradayConfirmations,
@@ -115,11 +117,13 @@ export function TradingWorkspace() {
     paper,
     watchDraft,
     setWatchDraft,
+    editingWatchSymbol,
     onAddWatchlist: () => void addWatchlist(),
     onEditWatchlist: editWatchlistFromCard,
     onNavigatePage: navigatePage,
     onRefreshMonitor: () => void refreshMonitor(),
     onRemoveWatchlist: removeWatchlist,
+    onCancelWatchlistEdit: cancelWatchlistEdit,
     onRunPriorityAi: () => void runPriorityAi(),
     onSelectStock: setSelectedStock,
   });
@@ -250,9 +254,12 @@ export function TradingWorkspace() {
   async function loadCommandStrategies() {
     try {
       const result = await strategiesApi.getStrategyMeta();
-      setCommandStrategies(result.strategies ?? []);
+      const nextStrategies = result.strategies ?? [];
+      setCommandStrategies(nextStrategies);
+      setStrategyMeta(nextStrategies);
     } catch {
       setCommandStrategies([]);
+      setStrategyMeta([]);
     }
   }
 
@@ -296,7 +303,8 @@ export function TradingWorkspace() {
         cost_basis: nullableNumber(watchDraft.cost_basis),
         memo: watchDraft.memo.trim(),
       });
-      setNotice("持仓信息已保存");
+      setNotice(editingWatchSymbol ? `${symbol} 持仓信息已更新` : "持仓信息已保存");
+      setEditingWatchSymbol("");
       setWatchDraft({
         symbol: "",
         name: "",
@@ -312,6 +320,10 @@ export function TradingWorkspace() {
   async function removeWatchlist(symbol: string) {
     await withLoading("watchlist", async () => {
       await api.deleteWatchlist(symbol);
+      if (editingWatchSymbol === symbol) {
+        setEditingWatchSymbol("");
+        resetWatchDraft();
+      }
       setNotice(`已移除 ${symbol}`);
       await monitor.fetchMonitorData(true);
     });
@@ -331,7 +343,30 @@ export function TradingWorkspace() {
       cost_basis: source.cost_basis == null ? "" : String(source.cost_basis),
       memo: source.memo || "",
     });
-    setNotice(`${card.name} 已载入编辑区，修改后点击保存持仓`);
+    setEditingWatchSymbol(source.symbol);
+    setNotice(`${card.name} 已载入编辑区，修改后点击更新持仓`);
+    window.requestAnimationFrame(() => {
+      document.querySelector(".monitor-input")?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      const input = document.querySelector<HTMLInputElement>(".monitor-input input:not(:disabled)");
+      input?.focus();
+    });
+  }
+
+  function cancelWatchlistEdit() {
+    setEditingWatchSymbol("");
+    resetWatchDraft();
+    setNotice("已取消持仓编辑");
+  }
+
+  function resetWatchDraft() {
+    setWatchDraft({
+      symbol: "",
+      name: "",
+      base_position: "0",
+      available_position: "0",
+      cost_basis: "",
+      memo: "",
+    });
   }
 
   async function runPriorityAi() {
@@ -431,6 +466,7 @@ export function TradingWorkspace() {
           playbookData={playbookData}
           research={research}
           settingsData={settingsData}
+          strategyMeta={strategyMeta}
           onSelectStock={setSelectedStock}
           onPreparePaperOrder={preparePaperOrder}
         />

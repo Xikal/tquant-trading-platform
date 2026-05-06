@@ -44,7 +44,10 @@ class _StrategyMetadataServiceStub:
                     name="首板回调",
                     display_name="首板回调",
                     description="首板回调策略",
+                    tier="core",
+                    category_key="core",
                     category="生产策略",
+                    display_category="生产策略",
                     risk_level="medium",
                     typical_holding_days="1-3天",
                     sort_order=10,
@@ -116,6 +119,9 @@ class StrategyMetaRouteTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         body = response.json()
         self.assertEqual(body["strategies"][0]["key"], "first_board")
+        self.assertEqual(body["strategies"][0]["tier"], "core")
+        self.assertEqual(body["strategies"][0]["category_key"], "core")
+        self.assertEqual(body["strategies"][0]["display_category"], "生产策略")
 
     def test_strategy_presets_return_quick_configs(self) -> None:
         response = self.client.get("/api/strategy/presets")
