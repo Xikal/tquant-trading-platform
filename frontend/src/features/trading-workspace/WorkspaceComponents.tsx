@@ -119,7 +119,11 @@ export function StockCard({
           {stock.subBadges.map((badge) => <span key={badge}>{badge}</span>)}
         </div>
       ) : null}
-      <p>{stock.actionText} · {stock.details}</p>
+      <div className="stock-action-guide">
+        <span><small>现在</small>{stock.actionText}</span>
+        <span><small>原因</small>{stock.details}</span>
+        <span><small>错了</small>{stock.failureText || `风险 ${stock.riskText}，不满足条件就不操作。`}</span>
+      </div>
       {actions?.length ? (
         <div className="card-actions">
           {actions.map((action) => (

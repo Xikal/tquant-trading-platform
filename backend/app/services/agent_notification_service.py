@@ -66,6 +66,7 @@ class AgentNotificationService:
                 ok=False,
                 channel=payload.channel,
                 message=f"notification channel {payload.channel} is not supported",
+                code="NOTIFICATION_CHANNEL_UNSUPPORTED",
             )
         webhook = self.settings.notification_feishu_webhook_url.strip()
         if webhook:
@@ -78,6 +79,7 @@ class AgentNotificationService:
             ok=False,
             channel=payload.channel,
             message="notification adapter not configured",
+            code="NOTIFICATION_NOT_CONFIGURED",
         )
 
     def send_signal(
@@ -102,10 +104,12 @@ class AgentNotificationService:
             message = payload.message.strip() or _default_signal_message(payload, upgraded=event.upgraded)
             send_result = self.send_test(AgentNotificationTestRequest(channel=channel, message=message))
             send_ok = bool(send_result.ok)
+            error_code = ""
             if send_result.ok:
                 event.notification_count += 1
                 event.last_notified_at = beijing_now()
             else:
+                error_code = send_result.code or "NOTIFICATION_DELIVERY_FAILED"
                 logger.warning(
                     "Notification send failed, signal ledger not counted: channel=%s symbol=%s strategy=%s reason=%s",
                     channel,
@@ -116,6 +120,7 @@ class AgentNotificationService:
             response_message = send_result.message
         else:
             response_message = "signal notification suppressed by cooldown"
+            error_code = ""
         event.last_seen_at = beijing_now()
         db.commit()
         return AgentSignalNotificationResponse(
@@ -128,6 +133,7 @@ class AgentNotificationService:
             upgraded=bool(event.upgraded),
             notification_count=int(event.notification_count or 0),
             message=response_message,
+            error_code=error_code,
         )
 
     def _send_feishu_text(self, *, webhook: str, message: str, channel: str) -> AgentNotificationTestResponse:
@@ -150,7 +156,12 @@ class AgentNotificationService:
                 raw_body = response.read().decode("utf-8", errors="replace")
         except urllib.error.URLError as exc:
             logger.error("Feishu notification request failed: %s", exc)
-            return AgentNotificationTestResponse(ok=False, channel=channel, message="notification request failed")
+            return AgentNotificationTestResponse(
+                ok=False,
+                channel=channel,
+                message="notification request failed",
+                code="NOTIFICATION_DELIVERY_FAILED",
+            )
         ok, response_message = _feishu_delivery_status(status=status, raw_body=raw_body)
         if not ok:
             logger.error("Feishu notification business failure: status=%s body=%s", status, raw_body[:500])
@@ -158,6 +169,7 @@ class AgentNotificationService:
             ok=ok,
             channel=channel,
             message=response_message,
+            code="" if ok else "NOTIFICATION_DELIVERY_FAILED",
         )
 
     def _send_hermes_feishu_text(self, *, hermes_path: Path, message: str, channel: str) -> AgentNotificationTestResponse:
@@ -177,17 +189,32 @@ class AgentNotificationService:
             )
         except (OSError, subprocess.TimeoutExpired) as exc:
             logger.error("Hermes notification request failed: %s", exc)
-            return AgentNotificationTestResponse(ok=False, channel=channel, message="hermes notification request failed")
+            return AgentNotificationTestResponse(
+                ok=False,
+                channel=channel,
+                message="hermes notification request failed",
+                code="HERMES_NOTIFICATION_FAILED",
+            )
         if result.returncode != 0:
             logger.error("Hermes notification exited with non-zero status: returncode=%s stderr=%s", result.returncode, result.stderr[:500])
-            return AgentNotificationTestResponse(ok=False, channel=channel, message="hermes notification request failed")
+            return AgentNotificationTestResponse(
+                ok=False,
+                channel=channel,
+                message="hermes notification request failed",
+                code="HERMES_NOTIFICATION_FAILED",
+            )
         if _hermes_output_has_error_marker(result.stdout) or _hermes_output_has_error_marker(result.stderr):
             logger.error(
                 "Hermes notification output indicates failure: stdout=%s stderr=%s",
                 result.stdout[:500],
                 result.stderr[:500],
             )
-            return AgentNotificationTestResponse(ok=False, channel=channel, message="hermes notification business failed")
+            return AgentNotificationTestResponse(
+                ok=False,
+                channel=channel,
+                message="hermes notification business failed",
+                code="HERMES_NOTIFICATION_FAILED",
+            )
         return AgentNotificationTestResponse(ok=True, channel=channel, message="notification sent via hermes")
 
     def _upsert_signal_event(

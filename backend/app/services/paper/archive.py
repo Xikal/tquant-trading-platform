@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import date, datetime
+from datetime import date
 from typing import Any
 
 from sqlalchemy import select
@@ -14,6 +14,7 @@ from app.models.entities import (
     PaperMarketPerfDaily,
     PaperStrategyPerfDaily,
 )
+from app.core.timezone import beijing_now, beijing_today
 from app.services.ai_service import AiService
 from app.services.paper.performance import PaperPerformanceService
 from app.services.settings_service import SettingsService
@@ -35,7 +36,7 @@ class PaperArchiveService:
         target_date: date | None = None,
         include_report: bool = True,
     ) -> dict[str, Any]:
-        archive_date = target_date or date.today()
+        archive_date = target_date or beijing_today()
         account = self.db.get(PaperAccount, account_id)
         if account is None:
             raise LookupError("模拟账户不存在")
@@ -72,7 +73,7 @@ class PaperArchiveService:
         *,
         target_date: date | None = None,
     ) -> PaperDailyReport:
-        report_date = target_date or date.today()
+        report_date = target_date or beijing_today()
         metrics = self._metrics_snapshot(account_id, target_date=report_date)
         summary, highlights, alerts, suggestion, model = self._build_rule_report(metrics)
 
@@ -89,7 +90,7 @@ class PaperArchiveService:
         report.risk_alerts = _json_dumps(alerts)
         report.suggestion = suggestion
         report.raw_metrics_snapshot = _json_dumps(metrics)
-        report.generated_at = datetime.now()
+        report.generated_at = beijing_now().replace(tzinfo=None)
         report.llm_model = model
         self.db.flush()
         return report

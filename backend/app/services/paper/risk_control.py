@@ -8,6 +8,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.models.entities import PaperAccount, PaperOrder, PaperPosition, PaperTrade, RiskEvent
+from app.core.timezone import beijing_today
 from app.services.shared.trading_costs import round_trip_fee_pct
 
 
@@ -216,7 +217,7 @@ class PaperRiskControlService:
 
 
 def _today_window() -> tuple[datetime, datetime]:
-    today = datetime.now().date()
+    today = beijing_today()
     start = datetime.combine(today, time.min)
     end = datetime.combine(today, time.max)
     return start, end

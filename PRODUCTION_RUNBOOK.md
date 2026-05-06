@@ -219,7 +219,7 @@ CLOUD_SSH_KEY=/path/to/gupiao.pem \
 - 打包当前项目，排除 `.runtime`、虚拟环境、`node_modules`、本地数据库运行配置等非发布内容。
 - 上传到云服务器。
 - 备份远端当前 `/home/ubuntu/gupiao-upload`。
-- 使用 `docker-compose.mysql.yml` 重建 `app` 容器，不删除 MySQL volume。
+- 使用 `docker-compose.mysql.yml` 先执行 `migration` 容器完成 Alembic 迁移，再重建 `app`、`runtime-worker`、`backtest-worker`，不删除 MySQL volume。
 - 自动验证 `/readyz`、默认低吸接口和前端首页。
 
 常用参数：
@@ -308,6 +308,7 @@ APP_PORT=18090 docker compose -f docker-compose.mysql.yml up -d --build
 - Compose 项目名固定为 `tquant-mysql`
 - MySQL 数据保存在 Docker volume `mysql_data`
 - 应用运行时缓存和运行配置保存在 `app_runtime_data`
+- `migration` 容器会先执行 `alembic upgrade head`，成功后才启动 Web/API 与后台 worker
 - `app` 容器默认关闭运行时后台任务，只负责 Web/API 响应
 - `runtime-worker` 容器单 worker 执行预热、低吸扫描、归档、通知扫描和模拟盘自动交易
 - `backtest-worker` 容器独立消费回测任务
@@ -338,6 +339,10 @@ cp .env.docker.example .env
 关键项：
 
 - `APP_PORT`
+- `SCHEMA_COMPAT_REPAIR_ENABLED`
+  默认 `false`。生产环境以 Alembic 迁移为准；只有自托管旧库应急修复时才临时设为 `true`。
+- `GLOBAL_RATE_LIMIT_BACKEND`
+  MySQL Compose 默认 `sqlite`，用于多 worker 登录/敏感接口限流；如已在 Nginx/网关层限流，可按需改为 `memory`。
 - `CORS_ORIGINS`
   建议保持 JSON 数组字符串格式，例如 `["http://127.0.0.1:18080","http://127.0.0.1:18090"]`
 - `MYSQL_ROOT_PASSWORD`

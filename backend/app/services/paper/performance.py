@@ -9,6 +9,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models.entities import PaperAccount, PaperPerformanceSnapshot, PaperTrade, PaperTradeTag
+from app.core.timezone import beijing_today
 
 
 class PaperPerformanceService:
@@ -115,7 +116,7 @@ class PaperPerformanceService:
         if account is None:
             raise LookupError("模拟账户不存在")
         overall = self.compute_overall(account_id, target_date=target_date)
-        snapshot_date = target_date or date.today()
+        snapshot_date = target_date or beijing_today()
         row = self.db.execute(
             select(PaperPerformanceSnapshot).where(
                 PaperPerformanceSnapshot.account_id == account_id,
@@ -148,7 +149,7 @@ class PaperPerformanceService:
             statement = statement.where(PaperPerformanceSnapshot.snapshot_date <= target_date)
         snapshots = self.db.execute(statement.order_by(PaperPerformanceSnapshot.snapshot_date.asc())).scalars().all()
         values = [float(item.total_assets or 0) for item in snapshots if float(item.total_assets or 0) > 0]
-        if target_date is None or target_date >= date.today():
+        if target_date is None or target_date >= beijing_today():
             current = float(account.total_assets or 0)
             if current > 0:
                 values.append(current)
@@ -160,7 +161,7 @@ class PaperPerformanceService:
             peak = max(peak, value)
             if peak > 0:
                 max_drawdown = min(max_drawdown, (value - peak) / peak * 100)
-        if target_date is None or target_date >= date.today():
+        if target_date is None or target_date >= beijing_today():
             account.max_drawdown_pct = Decimal(str(round(max_drawdown, 4)))
             self.db.flush()
         return round(max_drawdown, 3)
@@ -180,10 +181,10 @@ class PaperPerformanceService:
             for item in snapshots
             if float(item.total_assets or 0) > 0
         ]
-        if target_date is None or target_date >= date.today():
+        if target_date is None or target_date >= beijing_today():
             current_assets = float(account.total_assets or 0)
             if current_assets > 0:
-                current_date = date.today()
+                current_date = beijing_today()
                 if dated_values and dated_values[-1][0] == current_date:
                     dated_values[-1] = (current_date, current_assets)
                 else:

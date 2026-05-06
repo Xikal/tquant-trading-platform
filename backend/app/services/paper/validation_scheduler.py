@@ -8,6 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
+from app.core.timezone import beijing_today
 from app.models.entities import BacktestRun
 from app.models.schema_defs.research import StrategyValidationRequest
 from app.services.low_buy.strategy_policy import PRODUCTION_PRIORITY_STRATEGIES
@@ -26,7 +27,7 @@ class MonthlyStrategyValidationJob:
         self.settings = get_settings()
 
     def run_if_due(self, today: date | None = None):
-        target_day = today or date.today()
+        target_day = today or beijing_today()
         month_key = target_day.strftime("%Y-%m")
         if self._has_monthly_report(month_key):
             return None

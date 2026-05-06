@@ -256,10 +256,14 @@ export interface LowBuyStrategyPerformance {
   cvar_5pct?: number;
   kelly_half_position_pct?: number;
   win_rate_1d: number;
+  win_rate_2d?: number;
   win_rate_3d: number;
+  win_rate_4d?: number;
   win_rate_5d: number;
   avg_return_1d: number;
+  avg_return_2d?: number;
   avg_return_3d: number;
+  avg_return_4d?: number;
   avg_return_5d: number;
   avg_max_gain_5d: number;
   avg_max_drawdown_5d: number;

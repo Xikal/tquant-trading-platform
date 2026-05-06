@@ -79,12 +79,19 @@ export default function MobileApp() {
     loadMobilePlaybook
   } = useMobilePlaybook(Boolean(authUser) && activeTab === "low_buy")
   const paperTrading = useMobilePaperTrading(Boolean(authUser) && activeTab === "paper")
+  const loadPaper = paperTrading.loadPaper
   const [holdingEditor, setHoldingEditor] = useState<HoldingEditorState | null>(null)
   const [priorityActionItem, setPriorityActionItem] = useState<LowBuyPriorityBoardItem | null>(null)
   const [paperOrderOpen, setPaperOrderOpen] = useState(false)
   const [aiOpen, setAiOpen] = useState(false)
   const [accountMenuOpen, setAccountMenuOpen] = useState(false)
   const [recentBacktests, setRecentBacktests] = useState<BacktestRunSummary[]>([])
+  const [offline, setOffline] = useState(() => {
+    if (typeof navigator === "undefined") {
+      return false
+    }
+    return !navigator.onLine
+  })
 
   useNativeRuntime(() => {
     startTransition(() => {
@@ -113,6 +120,29 @@ export default function MobileApp() {
       cancelled = true
     }
   }, [activeTab, authUser])
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return
+    }
+    const handleOnline = () => {
+      setOffline(false)
+      void refreshActiveTab()
+      if (activeTab === "low_buy") {
+        void loadMobilePlaybook(strategyFilter, true)
+      }
+      if (activeTab === "paper") {
+        void loadPaper()
+      }
+    }
+    const handleOffline = () => setOffline(true)
+    window.addEventListener("online", handleOnline)
+    window.addEventListener("offline", handleOffline)
+    return () => {
+      window.removeEventListener("online", handleOnline)
+      window.removeEventListener("offline", handleOffline)
+    }
+  }, [activeTab, loadMobilePlaybook, loadPaper, refreshActiveTab, strategyFilter])
 
   const {
     watchlistMap,
@@ -301,7 +331,7 @@ export default function MobileApp() {
         accountMenuOpen={accountMenuOpen}
         onRefreshHome={() => void refreshActiveTab()}
         onRefreshHoldings={() => void refreshActiveTab()}
-        onRefreshPaper={() => void paperTrading.loadPaper()}
+        onRefreshPaper={() => void loadPaper()}
         onRefreshLowBuy={() => void loadMobilePlaybook(strategyFilter, true)}
         onToggleAccountMenu={() => setAccountMenuOpen((value) => !value)}
         onLogout={() => void handleLogout()}
@@ -310,6 +340,7 @@ export default function MobileApp() {
       <MobileStatusBanners
         activeTab={activeTab}
         signalToastVisible={signalToastVisible}
+        offline={offline}
         message={message}
         error={error}
         playbookError={playbookError}

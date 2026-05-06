@@ -84,6 +84,7 @@ class NotificationEventTests(unittest.TestCase):
                 result = service.send_test(AgentNotificationTestRequest(channel="feishu", message="test"))
 
             self.assertFalse(result.ok)
+            self.assertEqual(result.code, "NOTIFICATION_NOT_CONFIGURED")
             self.assertIn("Notification channel not configured", "\n".join(logs.output))
 
             signal = service.send_signal(
@@ -99,6 +100,7 @@ class NotificationEventTests(unittest.TestCase):
             )
             row = db.execute(select(NotificationEvent)).scalars().one()
             self.assertFalse(signal.ok)
+            self.assertEqual(signal.error_code, "NOTIFICATION_NOT_CONFIGURED")
             self.assertTrue(signal.should_notify)
             self.assertEqual(signal.notification_count, 0)
             self.assertEqual(row.notification_count, 0)
@@ -133,6 +135,7 @@ class NotificationEventTests(unittest.TestCase):
                     ok=False,
                     channel="feishu",
                     message="hermes notification business failed",
+                    code="HERMES_NOTIFICATION_FAILED",
                 )
             )
             result = service.send_signal(
@@ -147,6 +150,7 @@ class NotificationEventTests(unittest.TestCase):
                 user_id=8,
             )
             self.assertFalse(result.ok)
+            self.assertEqual(result.error_code, "HERMES_NOTIFICATION_FAILED")
             self.assertEqual(result.notification_count, 0)
 
 

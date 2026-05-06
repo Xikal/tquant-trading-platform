@@ -2,8 +2,10 @@ from __future__ import annotations
 
 import unittest
 from contextlib import contextmanager
+from datetime import datetime, timezone
 from os import environ
 
+import jwt
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
@@ -85,6 +87,9 @@ class AuthRouteTests(unittest.TestCase):
         self.assertTrue(registered["access_token"])
         self.assertEqual(registered["refresh_token"], "")
         self.assertIn("tquant_refresh_token", register.headers.get("set-cookie", ""))
+        claims = jwt.decode(registered["access_token"], options={"verify_signature": False})
+        self.assertGreater(int(claims["exp"]), int(datetime.now(timezone.utc).timestamp()))
+        self.assertLessEqual(int(claims["iat"]), int(datetime.now(timezone.utc).timestamp()) + 1)
 
         me = self.client.get(
             "/api/auth/me",

@@ -43,6 +43,7 @@ export function PlaybookPage({
   const hasInsufficientData = playbook?.performance?.data_insufficient || (playbook?.performance?.filled_signals ?? 0) <= 0;
   const hitRateDisplay = hasInsufficientData ? "样本不足" : formatPct(playbook?.performance?.hit_rate);
   const hitRateTone: MetricItem["tone"] = hasInsufficientData ? "neutral" : "up";
+  const sampleReason = sampleInsufficientReason(playbook?.strategy_key || strategy, playbook);
   const marketAttributionText = summarizeMarketAttribution(playbook?.performance?.market_state_attribution ?? []);
   return (
     <section className="page-grid playbook-grid">
@@ -68,6 +69,8 @@ export function PlaybookPage({
           { label: "仅跟踪", value: String(watch.length), tone: "neutral" },
           { label: "今日放弃", value: String(avoid.length), tone: avoid.length ? "down" : "neutral" },
           { label: "全量深筛", value: String(playbook?.scanned_count ?? "--"), tone: "neutral" },
+          { label: "真实成交样本", value: String(playbook?.performance?.filled_signals ?? 0), tone: hasInsufficientData ? "warn" : "up" },
+          { label: "数据状态", value: playbook?.data_quality_text ?? "--", tone: dataQualityTone(playbook?.data_quality) },
           { label: "5日达标率", value: hitRateDisplay, tone: hitRateTone },
         ]}
       />
@@ -75,6 +78,10 @@ export function PlaybookPage({
         <PanelTitle title="最近表现" />
         <p>当前策略：{strategyName}；已加载：{loadedStrategyName}{switchingText}</p>
         <p>近5日 达标率 {hitRateDisplay}　平均收益 {formatPct(playbook?.performance?.avg_return_5d)}　回撤 {formatPct(playbook?.performance?.avg_max_drawdown_5d)}　盈亏比 {formatNumber(playbook?.performance?.profit_factor)}</p>
+        {hasInsufficientData ? <p>样本说明：{sampleReason}</p> : null}
+        <p>样本规模：信号 {playbook?.performance?.signal_count ?? 0}　已评估 {playbook?.performance?.evaluated_signals ?? 0}　真实成交 {playbook?.performance?.filled_signals ?? 0}　未成交 {playbook?.performance?.not_filled_signals ?? 0}</p>
+        <p>1/2/3/4/5日胜率：{formatPct(playbook?.performance?.win_rate_1d, 0)} / {formatPct(playbook?.performance?.win_rate_2d, 0)} / {formatPct(playbook?.performance?.win_rate_3d, 0)} / {formatPct(playbook?.performance?.win_rate_4d, 0)} / {formatPct(playbook?.performance?.win_rate_5d, 0)}</p>
+        <p>1/2/3/4/5日收益：{formatPct(playbook?.performance?.avg_return_1d)} / {formatPct(playbook?.performance?.avg_return_2d)} / {formatPct(playbook?.performance?.avg_return_3d)} / {formatPct(playbook?.performance?.avg_return_4d)} / {formatPct(playbook?.performance?.avg_return_5d)}</p>
         <p>尾部风险 CVaR {formatPct(playbook?.performance?.cvar_5pct)}　半凯利参考 {formatPct(playbook?.performance?.kelly_half_position_pct, 1)}　平均盈利/亏损 {formatPct(playbook?.performance?.avg_win_pct)} / {formatPct(playbook?.performance?.avg_loss_pct)}</p>
         <p>板块归因：{playbook?.hot_industries?.slice(0, 3).join("、") || "--"}</p>
         <p>市场状态：{playbook?.market_state_category_text || playbook?.market_state_text || "--"}</p>
@@ -138,6 +145,25 @@ function summarizeMarketAttribution(buckets: NonNullable<LowBuyScreenerResult["p
     .slice(0, 4)
     .map((bucket) => `${bucket.label} 样本${bucket.sample_count} / 3日${formatPct(bucket.avg_return_3d)} / 胜率${formatPct(bucket.hit_rate, 0)}`)
     .join(" ｜ ");
+}
+
+function sampleInsufficientReason(strategyKey: string, playbook: LowBuyScreenerResult | null): string {
+  const backendNote = playbook?.performance?.attribution_notes?.find(Boolean);
+  if (backendNote) return backendNote;
+  if (strategyKey === "late_session_strong_support") {
+    return "收盘强势承接只统计确定买入后的真实成交绩效；当前多数样本停留在观察/接近买点层，需要次日冲高或分时承接确认后才进入胜率样本。";
+  }
+  if (strategyKey === "sector_mainline_first_divergence_low_buy") {
+    return "主线首分歧要求主线板块、第一次分歧、龙头/强跟随和次日确认同时成立；未触发确定买入时不会计入胜率收益样本。";
+  }
+  return "当前统计口径只计算确定买入且完成后续行情归因的样本；观察票和接近买点票不会计入胜率。";
+}
+
+function dataQualityTone(value?: string | null): "up" | "warn" | "down" | "neutral" {
+  if (value === "ok") return "up";
+  if (value === "partial" || value === "stale" || value === "degraded") return "warn";
+  if (value === "limited" || value === "unavailable") return "down";
+  return "neutral";
 }
 
 function CandidateSection({

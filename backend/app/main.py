@@ -525,6 +525,36 @@ def _agent_audit_metrics_snapshot() -> dict[str, int]:
         return {"calls_total": 0, "success_total": 0, "failure_total": 0}
 
 
+def _phase4_metrics_snapshot() -> dict[str, int]:
+    try:
+        from sqlalchemy import func, select
+
+        from app.models.entities import AgentResultQuality, RuntimeTask
+
+        with SessionLocal() as db:
+            queued = int(db.execute(select(func.count(RuntimeTask.id)).where(RuntimeTask.status == "queued")).scalar() or 0)
+            running = int(db.execute(select(func.count(RuntimeTask.id)).where(RuntimeTask.status == "running")).scalar() or 0)
+            failed = int(db.execute(select(func.count(RuntimeTask.id)).where(RuntimeTask.status == "failed")).scalar() or 0)
+            low_quality = int(
+                db.execute(select(func.count(AgentResultQuality.id)).where(AgentResultQuality.passed.is_(False))).scalar()
+                or 0
+            )
+        return {
+            "runtime_tasks_queued": queued,
+            "runtime_tasks_running": running,
+            "runtime_tasks_failed": failed,
+            "agent_quality_blocked_total": low_quality,
+        }
+    except Exception:
+        logger.warning("phase4 metrics unavailable")
+        return {
+            "runtime_tasks_queued": 0,
+            "runtime_tasks_running": 0,
+            "runtime_tasks_failed": 0,
+            "agent_quality_blocked_total": 0,
+        }
+
+
 @app.get("/healthz", response_model=HealthResponse)
 def healthz():
     return HealthResponse(status="ok", app=settings.app_name)
@@ -563,6 +593,7 @@ def readyz(response: Response):
 def prometheus_metrics(_: None = Depends(require_admin_auth)) -> PlainTextResponse:
     snapshot = request_timing_snapshot()
     agent_snapshot = _agent_audit_metrics_snapshot()
+    phase4_snapshot = _phase4_metrics_snapshot()
     lines = [
         "# HELP tquant_http_timing_samples Number of retained HTTP timing samples.",
         "# TYPE tquant_http_timing_samples gauge",
@@ -582,6 +613,18 @@ def prometheus_metrics(_: None = Depends(require_admin_auth)) -> PlainTextRespon
         "# HELP tquant_agent_tool_failure_total Failed Agent tool calls recorded in the audit log.",
         "# TYPE tquant_agent_tool_failure_total gauge",
         f"tquant_agent_tool_failure_total {agent_snapshot.get('failure_total', 0)}",
+        "# HELP tquant_runtime_tasks_queued Queued runtime worker tasks.",
+        "# TYPE tquant_runtime_tasks_queued gauge",
+        f"tquant_runtime_tasks_queued {phase4_snapshot.get('runtime_tasks_queued', 0)}",
+        "# HELP tquant_runtime_tasks_running Running runtime worker tasks.",
+        "# TYPE tquant_runtime_tasks_running gauge",
+        f"tquant_runtime_tasks_running {phase4_snapshot.get('runtime_tasks_running', 0)}",
+        "# HELP tquant_runtime_tasks_failed Failed runtime worker tasks.",
+        "# TYPE tquant_runtime_tasks_failed gauge",
+        f"tquant_runtime_tasks_failed {phase4_snapshot.get('runtime_tasks_failed', 0)}",
+        "# HELP tquant_agent_quality_blocked_total Agent quality results that failed validation.",
+        "# TYPE tquant_agent_quality_blocked_total gauge",
+        f"tquant_agent_quality_blocked_total {phase4_snapshot.get('agent_quality_blocked_total', 0)}",
     ]
     return PlainTextResponse("\n".join(lines) + "\n", media_type="text/plain; version=0.0.4")
 

@@ -8,7 +8,7 @@ from sqlalchemy import create_engine, event, text
 from sqlalchemy.orm import Session, sessionmaker
 
 from app.core.config import get_settings
-from app.core.schema_compat import ensure_schema_compatibility
+from app.core.schema_compat import ensure_schema_compatibility, verify_schema_compatibility
 from app.models.base import Base
 
 logger = logging.getLogger(__name__)
@@ -105,8 +105,13 @@ def get_db() -> Session:
 
 
 def init_db() -> None:
-    Base.metadata.create_all(bind=engine)
-    ensure_schema_compatibility(engine)
+    if settings.database_url.startswith("sqlite") or settings.schema_compat_repair_enabled:
+        Base.metadata.create_all(bind=engine)
+    if settings.schema_compat_repair_enabled:
+        ensure_schema_compatibility(engine)
+        return
+    if settings.schema_compat_verify_on_startup:
+        verify_schema_compatibility(engine)
 
 
 def ping_database() -> None:

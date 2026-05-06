@@ -65,6 +65,15 @@ from app.models.paper_entities import (
     PaperTrade,
     PaperTradeTag,
 )
+from app.models.phase4_entities import (
+    AgentResultQuality,
+    MLSignalModel,
+    MLSignalSample,
+    PaperBacktestComparison,
+    QuantParameterSet,
+    RuntimeTask,
+    RuntimeTaskEvent,
+)
 
 __all__ = [
     "Instrument",
@@ -120,4 +129,11 @@ __all__ = [
     "IntradayConfirmationSnapshot",
     "RiskEvent",
     "SseSubscription",
+    "RuntimeTask",
+    "RuntimeTaskEvent",
+    "AgentResultQuality",
+    "QuantParameterSet",
+    "MLSignalSample",
+    "MLSignalModel",
+    "PaperBacktestComparison",
 ]

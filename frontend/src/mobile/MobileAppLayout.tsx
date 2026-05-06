@@ -73,6 +73,7 @@ export function MobileAppHeader({
 export function MobileStatusBanners({
   activeTab,
   signalToastVisible,
+  offline,
   message,
   error,
   playbookError,
@@ -81,6 +82,7 @@ export function MobileStatusBanners({
 }: {
   activeTab: MobileTab
   signalToastVisible: boolean
+  offline: boolean
   message: string
   error: string
   playbookError: string
@@ -90,6 +92,7 @@ export function MobileStatusBanners({
   return (
     <>
       {signalToastVisible ? <div className="mobile-app-signal-toast">已发现信号</div> : null}
+      {offline ? <div className="mobile-app-banner">离线模式：正在显示最近缓存数据，恢复网络后会自动刷新。</div> : null}
       {message ? <div className="mobile-app-banner">{message}</div> : null}
       {error ? <div className="mobile-app-error">{error}</div> : null}
       {activeTab === "low_buy" && playbookError ? <div className="mobile-app-error">{playbookError}</div> : null}

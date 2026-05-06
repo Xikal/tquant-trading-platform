@@ -121,6 +121,9 @@ export const MonitorPage = memo(function MonitorPage({
           <InfoPill label="热点板块" value={(priorityBoard?.hot_industries ?? []).slice(0, 4).join(" / ") || "--"} />
           <InfoPill label="宽度情绪" value={`上涨 ${formatPct(priorityBoard?.stock_up_ratio, 0)} / 涨停 ${priorityBoard?.limit_up_count ?? "--"}`} />
           <InfoPill label="组合风险" value={priorityBoard?.portfolio_risk?.risk_level ? riskLevelText(priorityBoard.portfolio_risk.risk_level) : "--"} />
+          <InfoPill label="快照日期" value={`${priorityBoard?.latest_trade_date ?? "--"} / 更新 ${shortTime(priorityBoard?.updated_at) || "--"}`} />
+          <InfoPill label="数据状态" value={priorityBoard?.data_quality_text ?? "--"} tone={dataQualityTone(priorityBoard?.data_quality)} />
+          <InfoPill label="候选覆盖" value={`榜单 ${priorityBoard?.total_candidates ?? 0} / 确定 ${priorityBoard?.immediate_count ?? 0} / 观察 ${priorityBoard?.focus_count ?? 0}`} />
         </div>
         {priorityBoard?.snapshot_warning ? <div className="board-warning">{priorityBoard.snapshot_warning}</div> : null}
         <FamilyStrip priorityBoard={priorityBoard} />

@@ -32,6 +32,8 @@ services:
     depends_on:
       mysql:
         condition: service_healthy
+      migration:
+        condition: service_completed_successfully
     ports:
       - "${APP_PORT:-18090}:8000"
     environment:
@@ -57,6 +59,8 @@ services:
       PAPER_AUTO_TRADING_MIN_SCORE: ${PAPER_AUTO_TRADING_MIN_SCORE:-75}
       RUNTIME_BACKGROUND_JOBS_ENABLED: ${WEB_RUNTIME_BACKGROUND_JOBS_ENABLED:-false}
       RUNTIME_BACKGROUND_JOBS_ON_SQLITE: ${RUNTIME_BACKGROUND_JOBS_ON_SQLITE:-false}
+      SCHEMA_COMPAT_REPAIR_ENABLED: ${SCHEMA_COMPAT_REPAIR_ENABLED:-false}
+      GLOBAL_RATE_LIMIT_BACKEND: ${GLOBAL_RATE_LIMIT_BACKEND:-sqlite}
     volumes:
       - app_runtime_data:/app/backend/data
     healthcheck:
@@ -76,6 +80,8 @@ services:
     depends_on:
       mysql:
         condition: service_healthy
+      migration:
+        condition: service_completed_successfully
     command: ["gunicorn", "-k", "uvicorn.workers.UvicornWorker", "-w", "1", "--bind", "127.0.0.1:8001", "app.main:app"]
     environment:
       APP_NAME: ${APP_NAME:-维斯量化交易平台}
@@ -100,6 +106,8 @@ services:
       PAPER_AUTO_TRADING_MIN_SCORE: ${PAPER_AUTO_TRADING_MIN_SCORE:-75}
       RUNTIME_BACKGROUND_JOBS_ENABLED: ${RUNTIME_BACKGROUND_JOBS_ENABLED:-true}
       RUNTIME_BACKGROUND_JOBS_ON_SQLITE: ${RUNTIME_BACKGROUND_JOBS_ON_SQLITE:-false}
+      SCHEMA_COMPAT_REPAIR_ENABLED: ${SCHEMA_COMPAT_REPAIR_ENABLED:-false}
+      GLOBAL_RATE_LIMIT_BACKEND: ${GLOBAL_RATE_LIMIT_BACKEND:-memory}
     volumes:
       - app_runtime_data:/app/backend/data
     healthcheck:
@@ -119,6 +127,8 @@ services:
     depends_on:
       mysql:
         condition: service_healthy
+      migration:
+        condition: service_completed_successfully
       app:
         condition: service_healthy
     command: ["python", "-c", "from app.services.backtest_worker import BacktestWorker; BacktestWorker(max_duration_seconds=${BACKTEST_WORKER_MAX_DURATION:-3600}).run_forever(poll_interval_seconds=${BACKTEST_WORKER_POLL_INTERVAL:-5})"]
@@ -130,6 +140,23 @@ services:
       HTTP_TIMEOUT: ${HTTP_TIMEOUT:-12}
       AUTH_SECRET_KEY: ${AUTH_SECRET_KEY:?AUTH_SECRET_KEY is required}
       AUTH_COOKIE_SECURE: ${AUTH_COOKIE_SECURE:-true}
+      SCHEMA_COMPAT_REPAIR_ENABLED: ${SCHEMA_COMPAT_REPAIR_ENABLED:-false}
+
+  migration:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: tquant-web:mysql
+    container_name: tquant-migration-mysql
+    restart: "no"
+    depends_on:
+      mysql:
+        condition: service_healthy
+    command: ["alembic", "-c", "alembic.ini", "upgrade", "head"]
+    environment:
+      DATABASE_URL: mysql+pymysql://${MYSQL_USER:-tquant_app}:${MYSQL_PASSWORD:?MYSQL_PASSWORD is required}@mysql:3306/${MYSQL_DATABASE:-t_quant}?charset=utf8mb4
+      AUTH_SECRET_KEY: ${AUTH_SECRET_KEY:?AUTH_SECRET_KEY is required}
+      SCHEMA_COMPAT_REPAIR_ENABLED: "false"
     volumes:
       - app_runtime_data:/app/backend/data
 

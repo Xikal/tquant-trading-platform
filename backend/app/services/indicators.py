@@ -26,9 +26,13 @@ def moving_average(values: list[float], window: int) -> float:
 def exponential_moving_average(values: list[float], window: int) -> float:
     if not values:
         return 0.0
+    if window <= 1:
+        return round(values[-1], 4)
+    if len(values) < window:
+        return round(sum(values) / len(values), 4)
     multiplier = 2 / (window + 1)
-    ema = values[0]
-    for value in values[1:]:
+    ema = sum(values[:window]) / window
+    for value in values[window:]:
         ema = (value - ema) * multiplier + ema
     return round(ema, 4)
 
@@ -36,20 +40,38 @@ def exponential_moving_average(values: list[float], window: int) -> float:
 def macd(values: list[float]) -> tuple[float, float, float]:
     if len(values) < 35:
         return (0.0, 0.0, 0.0)
-    ema12_series: list[float] = []
-    ema26_series: list[float] = []
-    ema12 = values[0]
-    ema26 = values[0]
-    for value in values:
-        ema12 = (value - ema12) * (2 / 13) + ema12
-        ema26 = (value - ema26) * (2 / 27) + ema26
-        ema12_series.append(ema12)
-        ema26_series.append(ema26)
-    dif_series = [fast - slow for fast, slow in zip(ema12_series, ema26_series)]
+    ema12_series = _ema_series(values, 12)
+    ema26_series = _ema_series(values, 26)
+    dif_series = [
+        fast - slow
+        for fast, slow in zip(ema12_series, ema26_series)
+        if fast is not None and slow is not None
+    ]
+    if len(dif_series) < 9:
+        return (0.0, 0.0, 0.0)
     dea = exponential_moving_average(dif_series, 9)
     dif = round(dif_series[-1], 4)
     hist = round((dif - dea) * 2, 4)
     return dif, dea, hist
+
+
+def _ema_series(values: list[float], window: int) -> list[float | None]:
+    """Return EMA series using SMA as the initial seed.
+
+    This matches the common technical-analysis convention used by most charting
+    tools better than seeding from the first close.
+    """
+
+    result: list[float | None] = [None] * len(values)
+    if not values or len(values) < window:
+        return result
+    multiplier = 2 / (window + 1)
+    ema = sum(values[:window]) / window
+    result[window - 1] = ema
+    for index in range(window, len(values)):
+        ema = (values[index] - ema) * multiplier + ema
+        result[index] = ema
+    return result
 
 
 def rsi(values: list[float], period: int = 14) -> float:

@@ -7,6 +7,7 @@ from enum import Enum
 
 from app.services.paper.fees import FeeDetail, calculate_fee
 from app.services.paper.symbols import is_etf
+from app.core.timezone import beijing_now
 
 
 class OrderSide(str, Enum):
@@ -61,7 +62,7 @@ class PaperMatchingEngine:
         up_limit: Decimal | None = None,
         down_limit: Decimal | None = None,
     ) -> MatchResponse:
-        now = datetime.now()
+        now = beijing_now().replace(tzinfo=None)
         price_error = self._price_reject_reason(current_price=current_price, limit_price=limit_price)
         if price_error:
             return self._rejected(price_error, now)

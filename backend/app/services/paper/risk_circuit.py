@@ -1,13 +1,13 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models.entities import PaperAccount, RiskEvent
 from app.models.schema_defs.research import RiskEventOut
+from app.core.timezone import beijing_now
 from app.services.paper.performance import PaperPerformanceService
 
 
@@ -97,7 +97,7 @@ class PaperRiskCircuitBreaker:
         row.severity = severity
         row.message = message
         row.payload_json = json.dumps(payload, ensure_ascii=False)
-        row.triggered_at = datetime.now()
+        row.triggered_at = beijing_now().replace(tzinfo=None)
         return row
 
     def _recent_loss_streak(self, account_id: int) -> int:

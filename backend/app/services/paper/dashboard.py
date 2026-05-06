@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from datetime import date, datetime, timedelta
+from datetime import date, timedelta
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -14,6 +14,7 @@ from app.models.entities import (
     PaperStrategyPerfDaily,
 )
 from app.services.paper.performance import PaperPerformanceService
+from app.core.timezone import beijing_now, beijing_today
 
 
 class PaperPerformanceDashboardService:
@@ -23,7 +24,7 @@ class PaperPerformanceDashboardService:
         self.db = db
 
     def build(self, account: PaperAccount, days: int) -> dict:
-        start_date = date.today() - timedelta(days=days - 1)
+        start_date = beijing_today() - timedelta(days=days - 1)
         snapshots = self._snapshots(account.id, start_date)
         strategies = self._strategies(account.id, start_date)
         markets = self._markets(account.id, start_date)
@@ -46,7 +47,7 @@ class PaperPerformanceDashboardService:
                 start_date=start_date,
             ),
             "today_report": _daily_report(report) if report else None,
-            "updated_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "updated_at": beijing_now().strftime("%Y-%m-%d %H:%M:%S"),
         }
 
     def _snapshots(self, account_id: int, start_date: date) -> list[PaperPerformanceSnapshot]:

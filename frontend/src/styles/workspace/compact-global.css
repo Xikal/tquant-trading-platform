@@ -130,6 +130,7 @@ button {
 }
 
 .stock-card p,
+.stock-card .stock-action-guide,
 .sample,
 .trade-card,
 .empty-state,

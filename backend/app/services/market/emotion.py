@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
-from datetime import date
+from app.core.timezone import beijing_today
 
 from app.services.market.shared import ak
 
@@ -32,7 +32,7 @@ class MarketEmotionMixin:
         trade_dates = self._load_trade_dates()
         if not trade_dates:
             return None
-        today = date.today().isoformat()
+        today = beijing_today().isoformat()
         eligible = [item for item in trade_dates if item <= today]
         return eligible[-1] if eligible else None
 

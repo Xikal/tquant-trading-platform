@@ -9,6 +9,8 @@ from threading import Lock
 
 from fastapi import HTTPException, Request, status
 
+from app.core.config import get_settings
+
 
 class InMemorySlidingWindowRateLimiter:
     """In-process sliding window limiter.
@@ -44,10 +46,11 @@ class InMemorySlidingWindowRateLimiter:
 class SQLiteSlidingWindowRateLimiter:
     """Cross-worker sliding window limiter backed by a local SQLite file."""
 
-    def __init__(self, *, namespace: str, max_calls: int, window_seconds: int) -> None:
+    def __init__(self, *, namespace: str, max_calls: int, window_seconds: int, fail_closed: bool = True) -> None:
         self.namespace = namespace
         self.max_calls = max_calls
         self.window_seconds = window_seconds
+        self.fail_closed = fail_closed
         self._lock = Lock()
         self._fallback = InMemorySlidingWindowRateLimiter(
             namespace=namespace,
@@ -60,26 +63,33 @@ class SQLiteSlidingWindowRateLimiter:
     def allow(self, key: str) -> bool:
         now = time.time()
         cutoff = now - self.window_seconds
-        try:
-            with self._lock, sqlite3.connect(self._db_path, timeout=0.2) as conn:
-                conn.execute("PRAGMA journal_mode=WAL")
-                conn.execute(
-                    "DELETE FROM rate_limit_events WHERE namespace = ? AND client_key = ? AND created_at < ?",
-                    (self.namespace, key, cutoff),
-                )
-                count = conn.execute(
-                    "SELECT COUNT(*) FROM rate_limit_events WHERE namespace = ? AND client_key = ? AND created_at >= ?",
-                    (self.namespace, key, cutoff),
-                ).fetchone()[0]
-                if count >= self.max_calls:
-                    return False
-                conn.execute(
-                    "INSERT INTO rate_limit_events(namespace, client_key, created_at) VALUES (?, ?, ?)",
-                    (self.namespace, key, now),
-                )
-                return True
-        except sqlite3.Error:
-            return self._fallback.allow(key)
+        for attempt in range(2):
+            try:
+                with self._lock, sqlite3.connect(self._db_path, timeout=0.2) as conn:
+                    conn.execute("PRAGMA journal_mode=WAL")
+                    conn.execute(
+                        "DELETE FROM rate_limit_events WHERE namespace = ? AND client_key = ? AND created_at < ?",
+                        (self.namespace, key, cutoff),
+                    )
+                    count = conn.execute(
+                        "SELECT COUNT(*) FROM rate_limit_events WHERE namespace = ? AND client_key = ? AND created_at >= ?",
+                        (self.namespace, key, cutoff),
+                    ).fetchone()[0]
+                    if count >= self.max_calls:
+                        return False
+                    conn.execute(
+                        "INSERT INTO rate_limit_events(namespace, client_key, created_at) VALUES (?, ?, ?)",
+                        (self.namespace, key, now),
+                    )
+                    return True
+            except sqlite3.Error as exc:
+                if attempt == 0 and "locked" in str(exc).lower():
+                    time.sleep(0.03)
+                    continue
+                break
+        if self.fail_closed:
+            return False
+        return self._fallback.allow(key)
 
     def clear(self) -> None:
         self._fallback.clear()
@@ -94,32 +104,62 @@ class SQLiteSlidingWindowRateLimiter:
         try:
             with self._lock, sqlite3.connect(self._db_path, timeout=1.0) as conn:
                 conn.execute("PRAGMA journal_mode=WAL")
-                conn.execute(
-                    """
-                    CREATE TABLE IF NOT EXISTS rate_limit_events (
-                        namespace TEXT NOT NULL,
-                        client_key TEXT NOT NULL,
-                        created_at REAL NOT NULL
-                    )
-                    """
-                )
-                conn.execute(
-                    """
-                    CREATE INDEX IF NOT EXISTS idx_rate_limit_namespace_key_time
-                    ON rate_limit_events(namespace, client_key, created_at)
-                    """
-                )
+                self._ensure_events_table(conn)
         except sqlite3.Error:
             return
+
+    @staticmethod
+    def _ensure_events_table(conn: sqlite3.Connection) -> None:
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS rate_limit_events (
+                namespace TEXT NOT NULL,
+                client_key TEXT NOT NULL,
+                created_at REAL NOT NULL
+            )
+            """
+        )
+        columns = {row[1] for row in conn.execute("PRAGMA table_info(rate_limit_events)").fetchall()}
+        if "client_key" not in columns and "key" in columns:
+            conn.execute("ALTER TABLE rate_limit_events RENAME COLUMN key TO client_key")
+        elif "client_key" not in columns:
+            conn.execute("DROP TABLE IF EXISTS rate_limit_events")
+            conn.execute(
+                """
+                CREATE TABLE rate_limit_events (
+                    namespace TEXT NOT NULL,
+                    client_key TEXT NOT NULL,
+                    created_at REAL NOT NULL
+                )
+                """
+            )
+        conn.execute("DROP INDEX IF EXISTS idx_rate_limit_key_window")
+        conn.execute(
+            """
+            CREATE INDEX IF NOT EXISTS idx_rate_limit_namespace_key_time
+            ON rate_limit_events(namespace, client_key, created_at)
+            """
+        )
 
 
 def _rate_limit_db_path() -> Path:
     return Path(__file__).resolve().parents[2] / "data" / "rate_limit.sqlite3"
 
 
-# Keep the global limiter in-process. It is a coarse abuse guard on a very hot
-# path; durable/global request throttling should live at Nginx or the gateway.
-_global_limiter = InMemorySlidingWindowRateLimiter(namespace="global", max_calls=30, window_seconds=1)
+def _build_global_limiter():
+    backend = (_settings.global_rate_limit_backend or "memory").strip().lower()
+    kwargs = {
+        "namespace": "global",
+        "max_calls": max(int(_settings.global_rate_limit_max_calls or 30), 1),
+        "window_seconds": max(int(_settings.global_rate_limit_window_seconds or 1), 1),
+    }
+    if backend == "sqlite":
+        return SQLiteSlidingWindowRateLimiter(**kwargs)
+    return InMemorySlidingWindowRateLimiter(**kwargs)
+
+
+_settings = get_settings()
+_global_limiter = _build_global_limiter()
 _ai_decision_limiter = SQLiteSlidingWindowRateLimiter(namespace="ai_decision", max_calls=30, window_seconds=60)
 _auth_login_limiter = SQLiteSlidingWindowRateLimiter(namespace="auth_login", max_calls=30, window_seconds=60)
 _auth_register_limiter = SQLiteSlidingWindowRateLimiter(namespace="auth_register", max_calls=30, window_seconds=3600)

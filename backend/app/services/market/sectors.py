@@ -4,6 +4,7 @@ import socket
 import threading
 
 from app.core.config import get_settings
+from app.core.timezone import beijing_now, utc_now_naive
 from app.services.market.shared import (
     Instrument,
     MarketEventCache,
@@ -98,7 +99,7 @@ class MarketSectorMixin:
         return MicrostructureSnapshot(available=True, buy_pressure=round(buy_pressure, 2), sell_pressure=round(100 - buy_pressure, 2), large_order_flow=round(((quote.volume_ratio or 1.0) - 1) * 15, 2), notes="免费数据源下使用价格位置和量能近似盘口压力。")
 
     def _load_or_refresh_cached_events(self, db, symbol: str) -> list[MarketEventOut]:
-        threshold = datetime.utcnow() - __import__("datetime").timedelta(hours=3)
+        threshold = utc_now_naive() - __import__("datetime").timedelta(hours=3)
         rows = db.execute(select(MarketEventCache).where(MarketEventCache.symbol == symbol).order_by(MarketEventCache.id.desc())).scalars().all()
         if rows and rows[0].created_at >= threshold:
             return [MarketEventOut(title=row.title, risk_level=row.risk_level, description=row.description, source=row.source, event_time=row.event_time) for row in rows]
@@ -125,7 +126,7 @@ class MarketSectorMixin:
         return deduped[:8]
 
     def _fetch_notice_events(self, symbol: str) -> list[MarketEventOut]:
-        today = datetime.now().strftime("%Y%m%d")
+        today = beijing_now().strftime("%Y%m%d")
         categories = ("风险提示", "重大事项", "持股变动")
         hits: list[MarketEventOut] = []
         for category in categories:

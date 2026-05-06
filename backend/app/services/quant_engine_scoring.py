@@ -9,14 +9,28 @@ from app.services.quant_engine_market import (
     market_threshold_shift,
 )
 
+QUANT_ENGINE_SCORING_VERSION = "quant-scoring-v1"
+POSITIVE_BASE_SCORE = 35.0
+NEGATIVE_BASE_SCORE = 30.0
+RISK_BASE_SCORE = 25.0
+DEFAULT_POSITIVE_THRESHOLD = 60.0
+DEFAULT_NEGATIVE_THRESHOLD = 62.0
+RISK_LEVEL_HIGH_THRESHOLD = 65.0
+RISK_LEVEL_MEDIUM_THRESHOLD = 38.0
+VWAP_SUPPORT_DISTANCE_PCT = 0.006
+NEGATIVE_MA5_DISTANCE_MULTIPLIER = 1.005
+NEGATIVE_VWAP_DISTANCE_MULTIPLIER = 1.008
+HIGH_RSI_THRESHOLD = 68.0
+HIGH_AMPLITUDE_THRESHOLD = 3.0
+
 
 def action_thresholds(
     scenario: str,
     risk_level: str,
     market_regime: MarketRegimeSnapshot | None = None,
 ) -> tuple[float, float]:
-    positive_threshold = 60.0
-    negative_threshold = 62.0
+    positive_threshold = DEFAULT_POSITIVE_THRESHOLD
+    negative_threshold = DEFAULT_NEGATIVE_THRESHOLD
     if scenario == "open_price_discovery":
         positive_threshold += 5
         negative_threshold += 5
@@ -52,7 +66,7 @@ def positive_score(
     slope10: float,
     distribution: DistributionSnapshot,
 ) -> float:
-    score = 35.0
+    score = POSITIVE_BASE_SCORE
     if quote.last_price >= ma5:
         score += 10
     if ma5 >= ma20:
@@ -63,7 +77,7 @@ def positive_score(
         score += 10
     if macd_hist >= 0:
         score += 8
-    if abs(quote.last_price - vwap_value) / max(vwap_value, 0.01) <= 0.006:
+    if abs(quote.last_price - vwap_value) / max(vwap_value, 0.01) <= VWAP_SUPPORT_DISTANCE_PCT:
         score += 12
     if sector.alignment_score >= 52:
         score += 5
@@ -92,16 +106,16 @@ def negative_score(
     amplitude: float,
     distribution: DistributionSnapshot,
 ) -> float:
-    score = 30.0
-    if quote.last_price >= ma5 * 1.005:
+    score = NEGATIVE_BASE_SCORE
+    if quote.last_price >= ma5 * NEGATIVE_MA5_DISTANCE_MULTIPLIER:
         score += 8
-    if rsi14 >= 68:
+    if rsi14 >= HIGH_RSI_THRESHOLD:
         score += 12
     if macd_hist < 0:
         score += 8
-    if quote.last_price >= vwap_value * 1.008:
+    if quote.last_price >= vwap_value * NEGATIVE_VWAP_DISTANCE_MULTIPLIER:
         score += 12
-    if amplitude >= 3:
+    if amplitude >= HIGH_AMPLITUDE_THRESHOLD:
         score += 8
     if sector.alignment_score <= 54:
         score += 5
@@ -124,7 +138,7 @@ def risk_score(
     sector: SectorSnapshot,
     events: list[MarketEventOut],
 ) -> float:
-    score = 25.0
+    score = RISK_BASE_SCORE
     score += max(0.0, amplitude - 5.0) * 4
     score += atr_value * 3
     score += max(0.0, 55 - tradability_score) * 0.6
@@ -138,9 +152,9 @@ def risk_score(
 
 
 def risk_level(score: float) -> str:
-    if score >= 65:
+    if score >= RISK_LEVEL_HIGH_THRESHOLD:
         return "high"
-    if score >= 38:
+    if score >= RISK_LEVEL_MEDIUM_THRESHOLD:
         return "medium"
     return "low"
 

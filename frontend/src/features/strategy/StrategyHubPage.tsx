@@ -16,13 +16,13 @@ import { useBacktestDashboard, type BacktestDashboardActiveSection } from "../ba
 import { useBacktestStrategyOptions } from "../backtest/useBacktestStrategyOptions";
 import { useStrategyHub, type StrategyHubTab } from "./useStrategyHub";
 
-const TABS: Array<{ key: StrategyHubTab; label: string }> = [
-  { key: "quick", label: "快速回测" },
-  { key: "signals", label: "信号复盘" },
-  { key: "optimize", label: "参数优化" },
-  { key: "validate", label: "样本外验证" },
-  { key: "compare", label: "结果对比" },
-  { key: "history", label: "策略历史" },
+const TABS: Array<{ key: StrategyHubTab; label: string; hint: string }> = [
+  { key: "quick", label: "快速回测", hint: "先看策略能不能用" },
+  { key: "signals", label: "信号复盘", hint: "查每只票为什么入选" },
+  { key: "optimize", label: "参数优化", hint: "找更稳的参数" },
+  { key: "validate", label: "样本外验证", hint: "防止只适合历史" },
+  { key: "compare", label: "结果对比", hint: "选出最终方案" },
+  { key: "history", label: "任务历史", hint: "看进度和结果" },
 ];
 
 export function StrategyHubPage({ currentUser }: { currentUser: AuthUser }) {
@@ -56,7 +56,7 @@ export function StrategyHubPage({ currentUser }: { currentUser: AuthUser }) {
         <div>
           <span className="strategy-kicker">Strategy Workbench · Phase 3</span>
           <h1>策略工作台</h1>
-          <p>把快速回测、信号复盘、参数优化、样本外验证和结果对比统一到一个入口。</p>
+          <p>按“先体检、再复盘、再优化、最后验证”的顺序使用。普通用户先点一键快速回测，完成后只看收益、胜率、最大回撤和失败原因。</p>
         </div>
         <div className="strategy-hero-actions">
           <button type="button" onClick={() => void hub.load()} disabled={hub.loading === "load"}>
@@ -80,6 +80,7 @@ export function StrategyHubPage({ currentUser }: { currentUser: AuthUser }) {
             onClick={() => hub.setTab(tab.key)}
           >
             <strong>{tab.label}</strong>
+            <span>{tab.hint}</span>
           </button>
         ))}
       </nav>
@@ -88,6 +89,7 @@ export function StrategyHubPage({ currentUser }: { currentUser: AuthUser }) {
         <div className="strategy-layout">
           <section className="panel strategy-form-panel">
             <PanelTitle title="快速回测配置" />
+            <StrategyQuickGuide />
             <QuickBacktestForm hub={hub} onQuickSubmit={quickSubmitWithToast} />
           </section>
           <aside className="strategy-side">
@@ -171,7 +173,7 @@ function QuickBacktestForm({
       />
       <details className="strategy-advanced-fields">
         <summary>高级设置（使用推荐值即可）</summary>
-        <div className="strategy-form compact">
+        <div className="strategy-advanced-grid">
           <NumberField label="单票仓位上限" suffix="%" value={hub.form.max_position_pct} onChange={(event) => hub.updateForm({ max_position_pct: event.target.value })} />
           <NumberField label="最大持仓数" value={hub.form.max_positions} onChange={(event) => hub.updateForm({ max_positions: event.target.value })} />
           <TextField label="基准指数" value={hub.form.benchmark} onChange={(event) => hub.updateForm({ benchmark: event.target.value })} />
@@ -211,6 +213,25 @@ function QuickBacktestForm({
   );
 }
 
+function StrategyQuickGuide() {
+  return (
+    <div className="strategy-guide-grid" aria-label="策略工作台使用步骤">
+      <article>
+        <b>1. 先点一键回测</b>
+        <span>用最近 6 个月快速判断生产策略是否还有正期望。</span>
+      </article>
+      <article>
+        <b>2. 看三项结果</b>
+        <span>收益、胜率、最大回撤。运行中任务完成后才会显示。</span>
+      </article>
+      <article>
+        <b>3. 再做优化验证</b>
+        <span>只有结果可用时，再进入参数优化和样本外验证。</span>
+      </article>
+    </div>
+  );
+}
+
 function RecentRuns({ runs }: { runs: BacktestRunSummary[] }) {
   if (!runs.length) {
     return <EmptyPlaceholder title="暂无回测任务" description="提交快速回测后会显示最近任务。" />;
@@ -228,9 +249,9 @@ function RecentRuns({ runs }: { runs: BacktestRunSummary[] }) {
             <small>{formatDateTime(run.created_at)}</small>
           </div>
           <div className="strategy-run-metrics">
-            <span>收益 {formatPct(run.summary?.total_return_pct)}</span>
-            <span>胜率 {formatPct(run.summary?.win_rate_pct)}</span>
-            <span>资产 {formatMoney(run.final_equity)}</span>
+            <span>收益 {runMetricPct(run, "total_return_pct")}</span>
+            <span>胜率 {runMetricPct(run, "win_rate_pct")}</span>
+            <span>资产 {runEquityText(run)}</span>
           </div>
         </article>
       ))}
@@ -282,8 +303,8 @@ function StrategyHistoryPanel({ runs, onRefresh }: { runs: BacktestRunSummary[];
               <strong>{run.name || `任务 #${run.id}`}</strong>
               <span>{formatBacktestStrategies(run.strategies)}</span>
               <b className={`strategy-status ${run.status}`}>{statusText(run.status)}</b>
-              <span>{formatPct(run.summary?.total_return_pct)}</span>
-              <span>{formatPct(run.summary?.win_rate_pct)}</span>
+              <span>{runMetricPct(run, "total_return_pct")}</span>
+              <span>{runMetricPct(run, "win_rate_pct")}</span>
               <span>{formatDateTime(run.created_at)}</span>
             </article>
           ))}
@@ -305,10 +326,10 @@ function StrategyBridge({
   dashboard: ReturnType<typeof useBacktestDashboard>;
 }) {
   const metaMap: Record<Exclude<StrategyHubTab, "quick" | "history">, [string, string]> = {
-    signals: ["信号复盘", ""],
-    optimize: ["参数优化", ""],
-    validate: ["样本外验证", ""],
-    compare: ["结果对比", ""],
+    signals: ["信号复盘", "输入代码或选择策略，查看最近哪些票入选、为什么入选、买点和止损是否清楚。"],
+    optimize: ["参数优化", "快速回测有价值后再用。它会找更稳的评分、仓位、止损和持有天数。"],
+    validate: ["样本外验证", "检查策略是不是只在历史里好看。样本外不通过，就不要上生产。"],
+    compare: ["结果对比", "把多个已完成回测放在一起，看收益、回撤、Sharpe，选择最终方案。"],
   };
   const meta = metaMap[tab];
   if (tab === "signals") {
@@ -329,6 +350,7 @@ function StrategyBridge({
     <div className="strategy-bridge">
       <section className="panel strategy-bridge-header">
         <h2>{meta[0]}</h2>
+        <p>{meta[1]}</p>
       </section>
       <StrategyResearchFocus section={sectionMap[tab]} dashboard={dashboard} />
     </div>
@@ -376,6 +398,7 @@ function StrategySignalReplayPanel({ title }: { title: string }) {
       <div className="strategy-panel-title">
         <div>
           <h2>{title}</h2>
+          <span>先选策略，再按股票代码查询。这里只看历史信号，不会提交新回测。</span>
         </div>
       </div>
       <div className="strategy-signal-grid">
@@ -590,6 +613,22 @@ function summarizeRuns(runs: BacktestRunSummary[]) {
     avgReturnPct,
     avgWinRatePct,
   };
+}
+
+function runMetricPct(run: BacktestRunSummary, key: "total_return_pct" | "win_rate_pct"): string {
+  const value = run.summary?.[key];
+  if (typeof value === "number" && Number.isFinite(value)) return formatPct(value);
+  if (run.status === "running" || run.status === "queued" || run.status === "pending") return "完成后显示";
+  if (run.status === "failed") return "失败";
+  return "暂无结果";
+}
+
+function runEquityText(run: BacktestRunSummary): string {
+  if (typeof run.final_equity === "number" && Number.isFinite(run.final_equity) && run.final_equity > 0) {
+    return formatMoney(run.final_equity);
+  }
+  if (run.status === "running" || run.status === "queued" || run.status === "pending") return "计算中";
+  return "--";
 }
 
 function average(values: Array<number | null | undefined>): number | undefined {

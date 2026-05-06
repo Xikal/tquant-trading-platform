@@ -89,6 +89,7 @@ class BacktestRunSummary(BaseModel):
     progress_pct: float = 0.0
     benchmark_symbol: str = ""
     owner_user_id: Optional[int] = None
+    summary: dict[str, Any] = Field(default_factory=dict)
     created_at: datetime
     updated_at: Optional[datetime] = None
     started_at: Optional[datetime] = None

@@ -1,0 +1,178 @@
+from __future__ import annotations
+
+import json
+from datetime import datetime
+from typing import Any
+
+from sqlalchemy import func, select
+from sqlalchemy.orm import Session
+
+from app.models.entities import RuntimeTask, RuntimeTaskEvent
+from app.models.schema_defs.phase4 import RuntimeTaskCreate, RuntimeTaskEventOut, RuntimeTaskListResponse, RuntimeTaskOut
+
+
+TERMINAL_STATUSES = {"succeeded", "failed", "cancelled"}
+
+
+class RuntimeTaskQueue:
+    """Small DB-backed task queue.
+
+    This is intentionally simple so cloud deployment does not need Redis on day
+    one. It gives us durable status, retries, and an event stream. Celery/RQ can
+    replace the adapter later without changing public API contracts.
+    """
+
+    def __init__(self, db: Session) -> None:
+        self.db = db
+
+    def enqueue(self, payload: RuntimeTaskCreate) -> RuntimeTaskOut:
+        if payload.idempotency_key:
+            existing = self.db.execute(
+                select(RuntimeTask)
+                .where(RuntimeTask.idempotency_key == payload.idempotency_key)
+                .where(~RuntimeTask.status.in_(TERMINAL_STATUSES))
+                .order_by(RuntimeTask.id.desc())
+                .limit(1)
+            ).scalar_one_or_none()
+            if existing is not None:
+                return _task_out(existing)
+        row = RuntimeTask(
+            task_type=payload.task_type,
+            payload_json=_json_dumps(payload.payload),
+            priority=payload.priority,
+            idempotency_key=payload.idempotency_key,
+            max_attempts=payload.max_attempts,
+        )
+        self.db.add(row)
+        self.db.flush()
+        self.add_event(row.id, "queued", "任务已入队", {"task_type": row.task_type})
+        self.db.commit()
+        self.db.refresh(row)
+        return _task_out(row)
+
+    def list(self, *, limit: int = 50, offset: int = 0, status: str | None = None) -> RuntimeTaskListResponse:
+        statement = select(RuntimeTask)
+        count_statement = select(func.count(RuntimeTask.id))
+        if status:
+            statement = statement.where(RuntimeTask.status == status)
+            count_statement = count_statement.where(RuntimeTask.status == status)
+        rows = self.db.execute(
+            statement.order_by(RuntimeTask.id.desc()).offset(offset).limit(limit)
+        ).scalars().all()
+        total = int(self.db.execute(count_statement).scalar() or 0)
+        return RuntimeTaskListResponse(items=[_task_out(row) for row in rows], total=total, limit=limit, offset=offset)
+
+    def get(self, task_id: int) -> RuntimeTaskOut:
+        row = self._get_row(task_id)
+        return _task_out(row)
+
+    def events(self, task_id: int, *, after_id: int = 0, limit: int = 100) -> list[RuntimeTaskEventOut]:
+        rows = self.db.execute(
+            select(RuntimeTaskEvent)
+            .where(RuntimeTaskEvent.task_id == task_id)
+            .where(RuntimeTaskEvent.id > after_id)
+            .order_by(RuntimeTaskEvent.id.asc())
+            .limit(limit)
+        ).scalars().all()
+        return [_event_out(row) for row in rows]
+
+    def claim_next(self, *, worker_id: str) -> RuntimeTask | None:
+        row = self.db.execute(
+            select(RuntimeTask)
+            .where(RuntimeTask.status == "queued")
+            .order_by(RuntimeTask.priority.asc(), RuntimeTask.id.asc())
+            .limit(1)
+        ).scalar_one_or_none()
+        if row is None:
+            return None
+        row.status = "running"
+        row.locked_by = worker_id
+        row.locked_at = datetime.utcnow()
+        row.started_at = row.started_at or row.locked_at
+        row.attempt_count = int(row.attempt_count or 0) + 1
+        self.add_event(row.id, "started", "任务开始执行", {"worker_id": worker_id})
+        self.db.commit()
+        self.db.refresh(row)
+        return row
+
+    def mark_succeeded(self, task_id: int, result: dict[str, Any] | None = None) -> RuntimeTaskOut:
+        row = self._get_row(task_id)
+        row.status = "succeeded"
+        row.result_json = _json_dumps(result or {})
+        row.progress_pct = 100.0
+        row.finished_at = datetime.utcnow()
+        self.add_event(task_id, "succeeded", "任务执行完成", result or {})
+        self.db.commit()
+        self.db.refresh(row)
+        return _task_out(row)
+
+    def mark_failed(self, task_id: int, message: str, *, retryable: bool = True) -> RuntimeTaskOut:
+        row = self._get_row(task_id)
+        should_retry = retryable and int(row.attempt_count or 0) < int(row.max_attempts or 1)
+        row.status = "queued" if should_retry else "failed"
+        row.error_message = message[:1000]
+        if not should_retry:
+            row.finished_at = datetime.utcnow()
+        self.add_event(task_id, "retry" if should_retry else "failed", message[:240])
+        self.db.commit()
+        self.db.refresh(row)
+        return _task_out(row)
+
+    def add_event(self, task_id: int, event_type: str, message: str = "", payload: dict[str, Any] | None = None) -> None:
+        self.db.add(
+            RuntimeTaskEvent(
+                task_id=task_id,
+                event_type=event_type,
+                message=message,
+                payload_json=_json_dumps(payload or {}),
+            )
+        )
+
+    def _get_row(self, task_id: int) -> RuntimeTask:
+        row = self.db.get(RuntimeTask, task_id)
+        if row is None:
+            raise LookupError("后台任务不存在")
+        return row
+
+
+def _task_out(row: RuntimeTask) -> RuntimeTaskOut:
+    return RuntimeTaskOut(
+        id=row.id,
+        task_type=row.task_type,
+        status=row.status,
+        priority=row.priority,
+        payload=_json_dict(row.payload_json),
+        result=_json_dict(row.result_json),
+        error_message=row.error_message,
+        attempt_count=row.attempt_count,
+        max_attempts=row.max_attempts,
+        progress_pct=row.progress_pct,
+        locked_by=row.locked_by,
+        created_at=row.created_at,
+        updated_at=row.updated_at,
+        started_at=row.started_at,
+        finished_at=row.finished_at,
+    )
+
+
+def _event_out(row: RuntimeTaskEvent) -> RuntimeTaskEventOut:
+    return RuntimeTaskEventOut(
+        id=row.id,
+        task_id=row.task_id,
+        event_type=row.event_type,
+        message=row.message,
+        payload=_json_dict(row.payload_json),
+        created_at=row.created_at,
+    )
+
+
+def _json_dumps(value: Any) -> str:
+    return json.dumps(value, ensure_ascii=False, default=str)
+
+
+def _json_dict(raw: str) -> dict[str, Any]:
+    try:
+        value = json.loads(raw or "{}")
+    except Exception:
+        return {}
+    return value if isinstance(value, dict) else {}

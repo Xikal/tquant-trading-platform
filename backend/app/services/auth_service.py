@@ -13,6 +13,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
+from app.core.timezone import utc_now, utc_now_naive
 from app.core.user_permissions import paper_trade_enabled
 from app.models.entities import User, UserSession
 from app.models.schemas import AuthTokenResponse, AuthUserOut
@@ -152,8 +153,8 @@ class AuthService:
         if user is None or not user.is_active:
             raise AuthError("账号不可用")
         settings = get_settings()
-        access_expires_at = datetime.now() + timedelta(minutes=settings.auth_access_token_minutes)
-        session.expires_at = datetime.now() + timedelta(days=settings.auth_refresh_token_days)
+        access_expires_at = utc_now() + timedelta(minutes=settings.auth_access_token_minutes)
+        session.expires_at = utc_now_naive() + timedelta(days=settings.auth_refresh_token_days)
         db.commit()
         return AuthTokenResponse(
             access_token=self._build_access_token(user, access_expires_at),
@@ -167,7 +168,7 @@ class AuthService:
             return
         session = self._get_active_session(db, refresh_token)
         if session is not None:
-            session.revoked_at = datetime.now()
+            session.revoked_at = utc_now_naive()
             db.commit()
 
     def user_from_access_token(self, db: Session, token: str) -> User:
@@ -215,7 +216,7 @@ class AuthService:
                 raise AuthError("无效登录凭证")
             payload = json.loads(_b64decode(payload_text))
             expires_at = int(payload.get("exp", 0))
-            if expires_at < int(datetime.now().timestamp()):
+            if expires_at < int(utc_now().timestamp()):
                 raise AuthError("登录已过期")
             return TokenClaims(
                 user_id=int(payload["sub"]),
@@ -240,8 +241,8 @@ class AuthService:
 
     def _issue_token_pair(self, db: Session, *, user: User, device_name: str = "") -> AuthTokenResponse:
         settings = get_settings()
-        access_expires_at = datetime.now() + timedelta(minutes=settings.auth_access_token_minutes)
-        refresh_expires_at = datetime.now() + timedelta(days=settings.auth_refresh_token_days)
+        access_expires_at = utc_now() + timedelta(minutes=settings.auth_access_token_minutes)
+        refresh_expires_at = utc_now_naive() + timedelta(days=settings.auth_refresh_token_days)
         refresh_token = secrets.token_urlsafe(40)
         session = UserSession(
             user_id=user.id,
@@ -264,7 +265,7 @@ class AuthService:
             "sub": str(user.id),
             "username": user.username,
             "exp": int(expires_at.timestamp()),
-            "iat": int(datetime.now().timestamp()),
+            "iat": int(utc_now().timestamp()),
             "iss": ACCESS_TOKEN_ISSUER,
         }
         return jwt.encode(payload, _auth_secret(), algorithm=ACCESS_TOKEN_ALGORITHM)
@@ -279,6 +280,6 @@ class AuthService:
             select(UserSession).where(
                 UserSession.refresh_token_hash == _hash_token(refresh_token),
                 UserSession.revoked_at.is_(None),
-                UserSession.expires_at > datetime.now(),
+                UserSession.expires_at > utc_now_naive(),
             )
         ).scalar_one_or_none()

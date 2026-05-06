@@ -28,6 +28,7 @@ export function priorityToCard(item: LowBuyPriorityBoardItem): StockCardView {
       `止损 ${formatPrice(item.stop_loss)}`,
     ].filter(Boolean).join(" / "),
     executionHint: [nextDayPlanHint(item.next_day_event_plan), priorityExecutionHint(item), item.exit_plan_text, item.recommendation_duration_text].filter(Boolean).join(" "),
+    failureText: priorityFailureText(item),
     tone: toneFromChange(item.change_pct),
     badges: [
       item.strategy_count > 1 ? `${item.strategy_count}策略命中` : "",
@@ -45,6 +46,18 @@ function priorityExecutionHint(item: LowBuyPriorityBoardItem): string {
     return "接近买点：价格接近买点或已到位但确认不足，只盯承接，不提前买；确认后才进入执行。";
   }
   return "";
+}
+
+function priorityFailureText(item: LowBuyPriorityBoardItem): string {
+  const risk = riskTierText(item.risk_tier);
+  const stopLoss = item.stop_loss ? `跌破 ${formatPrice(item.stop_loss)} 视为失效` : "";
+  if (item.buy_signal_state === "buy_now" || item.buy_signal_state === "soft_buy_now") {
+    return [stopLoss, "出现放量下跌、板块退潮或硬阻断时放弃执行", `风险 ${risk}`].filter(Boolean).join("；");
+  }
+  if (item.buy_signal_state === "near_entry") {
+    return [stopLoss, "没有承接确认、冲高回落或板块转弱时继续观望", `风险 ${risk}`].filter(Boolean).join("；");
+  }
+  return [stopLoss, `风险 ${risk}，不满足买点和承接确认就不操作`].filter(Boolean).join("；");
 }
 
 function uniqueStrings(values: Array<string | undefined | null>): string[] {
@@ -80,6 +93,7 @@ export function candidateToCard(item: LowBuyCandidate): StockCardView {
       item.summary_reason,
     ].filter(Boolean).join(" / "),
     executionHint: [nextDayPlanHint(item.next_day_event_plan), exitPlanHint(item.exit_plan), item.recommendation_duration_text].filter(Boolean).join(" "),
+    failureText: candidateFailureText(item),
     tone: toneFromChange(item.change_pct),
     badges: [
       item.strategy_title,
@@ -137,6 +151,13 @@ function exitPlanHint(plan?: LowBuyCandidate["exit_plan"]) {
   return [plan.time_stop_text, firstRule].filter(Boolean).join(" ");
 }
 
+function candidateFailureText(item: LowBuyCandidate): string {
+  const invalid = item.exit_plan?.invalid_condition || "";
+  const stopLoss = item.stop_loss ? `跌破 ${formatPrice(item.stop_loss)} 视为失效` : "";
+  const firstRule = item.exit_plan?.exit_rules?.[0] || "";
+  return [invalid, stopLoss, firstRule, `风险 ${riskTierText(item.risk_tier)}`].filter(Boolean).join("；");
+}
+
 function recommendationSummary(days?: number, startDate?: string | null): string {
   if (!days || days <= 0) {
     return "";
@@ -161,9 +182,16 @@ export function watchSignalToCard(item: WatchlistSignal): StockCardView {
       item.signal.stop_loss ? `止损 ${formatPrice(item.signal.stop_loss)}` : "",
     ].filter(Boolean).join(" / "),
     executionHint: item.signal.plain_execution_text || item.signal.plain_invalid_condition,
+    failureText: watchSignalFailureText(item),
     tone: toneFromChange(item.quote.change_pct),
     badges: [plainTradingText(item.signal.trade_scene_text), plainTradingText(item.memo)].filter(Boolean),
   };
+}
+
+function watchSignalFailureText(item: WatchlistSignal): string {
+  const invalid = plainTradingText(item.signal.plain_invalid_condition);
+  const stopLoss = item.signal.stop_loss ? `跌破 ${formatPrice(item.signal.stop_loss)} 视为失效` : "";
+  return [invalid, stopLoss, `风险 ${riskText(item.signal.risk_level)}`].filter(Boolean).join("；");
 }
 
 function displayName(symbol: string, ...names: Array<string | undefined | null>) {

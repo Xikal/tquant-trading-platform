@@ -30,6 +30,7 @@ export interface StockCardView {
   actionText: string;
   details: string;
   executionHint?: string;
+  failureText?: string;
   tone: Tone;
   badges?: string[];
   subBadges?: string[];

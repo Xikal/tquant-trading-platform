@@ -1,11 +1,12 @@
 from __future__ import annotations
 
-from datetime import datetime
 from typing import Iterable, Optional
+
+from app.core.timezone import beijing_now
 
 
 def now_string() -> str:
-    return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    return beijing_now().strftime("%Y-%m-%d %H:%M:%S")
 
 
 def dedupe_preserve_order(items: Iterable[str]) -> list[str]:

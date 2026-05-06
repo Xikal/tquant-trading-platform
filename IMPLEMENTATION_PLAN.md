@@ -47,3 +47,60 @@
 - `cd frontend && npm run build:web`：通过。
 - `cd frontend && npm run check:strategy-meta`：通过，1 个 urllib3/OpenSSL 环境警告。
 - `backend/.venv/bin/python scripts/probe_leader_pullback_data.py --dry-run --min-count 1 --output /tmp/leader_probe_report.json`：本地 MySQL 未启动，脚本按预期输出 failed JSON，不再抛出堆栈。
+
+---
+
+# TQuant 深度代码审查整改需求计划执行记录
+
+## 需求来源
+
+- `docs/TQuant-深度代码审查整改需求计划-2026-05-06.md`
+- 来源报告：`/Users/j/Downloads/TQuant-深度代码审查报告.html`
+
+## TODO 状态
+
+- [x] 读取需求文档并核对当前项目实现。
+- [x] R0-1 通知未配置不能返回假成功：当前已返回 `ok=false` 且不计数；本轮补充稳定错误码字段。
+- [x] R0-2/R0-7 时间口径统一：主流程已使用北京时间；本轮修正认证 JWT/session 为 UTC 口径，并补关键服务时间工具。
+- [x] R0-3 Android Release 明文 HTTP：主配置已禁用；本轮补发布检查脚本强约束。
+- [x] R0-4 低吸物化重建事务边界：当前 `_rebuild_materialized_snapshot` 已不提交外部事务。
+- [x] R0-5 策略元数据单一真源：当前前端 fallback 已由后端生成；动态策略 tab 已接入 metadata。
+- [x] R0-6 模拟盘 API 错误语义统一：订单查询/撤单已按 LookupError=404、ValueError=400 处理。
+- [x] R1-1/R1-2 策略权限和提升降级校验：当前已从 seed+DB 合并 metadata 校验。
+- [x] R1-3 Feature flag 热路径优化：当前 `list_feature_flags` 不查询审计表。
+- [x] R1-4 回测预设动态生成：当前根据实时 production strategy keys 生成。
+- [x] R1-5 前端策略标签一致：Playbook 当前策略优先从动态 tabs 读取。
+- [x] R2-1 量化评分魔法数治理：本轮提取评分常量并保留原规则不变。
+- [x] R2-4 指标算法对齐：EMA/MACD 改为 SMA seed 初始化，并补基准测试。
+- [x] R2-2 迁移治理：生产路径改为 Alembic 优先，`schema_compat` 默认只读漂移检查，写修复需显式开启。
+- [x] R2-3 后台任务隔离：Web 默认关闭运行时后台任务，MySQL Compose 增加 `migration`、`runtime-worker`、`backtest-worker` 启动链路。
+- [x] R2-5 全局单例治理：高频限流器改为配置驱动工厂，生产可切换 SQLite/内存后端；服务层保留兼容接口。
+- [x] R2-6 多 worker 限流：新增 `GLOBAL_RATE_LIMIT_BACKEND/MAX_CALLS/WINDOW_SECONDS`，MySQL Compose 默认 Web 使用 SQLite 限流后端。
+- [x] U1 实时监控操作更直观：持仓/榜单卡片改为“现在 / 原因 / 错了”三段式提示，降低专业术语理解成本。
+- [x] U2/U3 数据质量和回测指标展示：实时监控和选股宝典补充快照日期、数据状态、样本量、1-5 日胜率/收益。
+- [x] U5 移动端离线状态：App 监听 online/offline，离线时明确提示使用最近缓存数据，恢复网络后自动刷新当前页。
+- [x] 新增/补充针对本轮改动的测试。
+
+## 本轮修改区域
+
+- 后端认证时间：`backend/app/core/timezone.py`、`backend/app/services/auth_service.py`
+- Agent 通知返回结构：`backend/app/models/schema_defs/agent.py`、`backend/app/services/agent_notification_service.py`
+- Android 发布检查：`scripts/native_release_check.py`
+- 测试：通知、认证、原生发布检查相关用例
+
+## 验证命令
+
+- 已执行：`backend/.venv/bin/python -m py_compile ...`，通过。
+- 已执行：`backend/.venv/bin/pytest backend/tests/test_notification_events.py backend/tests/test_auth_routes.py backend/tests/test_feature_flags_service.py backend/tests/test_strategy_metadata_service.py backend/tests/test_indicators.py -q`，19 passed，1 个 urllib3/OpenSSL 环境警告。
+- 已执行：`backend/.venv/bin/pytest backend/tests/test_paper_performance_archive.py backend/tests/test_paper_routes.py -q`，23 passed，1 个 urllib3/OpenSSL 环境警告。
+- 已执行：`python3 scripts/native_release_check.py`，通过。
+- 已执行：`cd frontend && npm run check:strategy-meta`，通过。
+- 已执行：`cd frontend && npm run build:web`，通过。
+- 已执行：`backend/.venv/bin/pytest backend/tests/test_indicators.py backend/tests/test_feature_flags_service.py backend/tests/test_strategy_metadata_service.py backend/tests/test_notification_events.py backend/tests/test_auth_routes.py backend/tests/test_paper_performance_archive.py backend/tests/test_paper_routes.py -q`，46 passed，1 个 urllib3/OpenSSL 环境警告。
+
+## 继续完成记录
+
+- 新增 Alembic 查询索引迁移：`backend/alembic/versions/20260506_0002_query_indexes.py`。
+- 生产 Docker MySQL 部署改为先跑 `migration`，成功后启动 Web/API 与两个独立 worker。
+- `PRODUCTION_RUNBOOK.md` 已补充迁移容器、后台任务隔离、schema repair 和限流后端说明。
+- 指标测试补齐 MA/RSI/ATR/VWAP 基线。

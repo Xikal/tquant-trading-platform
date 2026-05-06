@@ -114,6 +114,7 @@ PY
   printf 'AUTH_SECRET_KEY=%s\n' \"\$SECRET\" >> .env
 fi
 if ! grep -q '^AUTH_COOKIE_SECURE=' .env; then printf 'AUTH_COOKIE_SECURE=true\n' >> .env; fi
+sudo docker compose -f '$CLOUD_COMPOSE_FILE' up --build --force-recreate --abort-on-container-exit --exit-code-from migration migration
 sudo docker compose -f '$CLOUD_COMPOSE_FILE' up -d --build app runtime-worker backtest-worker
 ls -dt /home/${CLOUD_USER}/gupiao-deploy-backup-* 2>/dev/null | tail -n +$((CLOUD_KEEP_BACKUPS + 1)) | xargs -r rm -rf
 rm -f '$remote_package'

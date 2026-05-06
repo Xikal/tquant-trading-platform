@@ -373,6 +373,7 @@ class AgentNotificationTestResponse(BaseModel):
     ok: bool
     channel: str
     message: str
+    code: str = ""
 
 
 class AgentSignalNotificationRequest(BaseModel):
@@ -403,6 +404,7 @@ class AgentSignalNotificationResponse(BaseModel):
     upgraded: bool = False
     notification_count: int = 0
     message: str = ""
+    error_code: str = ""
 
 
 class AgentSignalNotificationScanResponse(BaseModel):

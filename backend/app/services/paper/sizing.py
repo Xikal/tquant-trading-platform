@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime
 from decimal import Decimal
 from typing import Any
 
+from app.core.timezone import beijing_now
 from app.services.paper.admission import AdmissionResult
 
 
@@ -31,7 +31,7 @@ class SizedOrder:
             "quantity": self.quantity,
             "price": str(self.price),
             "current_price": str(self.current_price),
-            "quote_time": datetime.now(),
+            "quote_time": beijing_now().replace(tzinfo=None),
             "is_suspended": bool(self.signal_snapshot.get("is_suspended") or False),
             "source": self.source,
             "strategy_key": self.strategy_key,

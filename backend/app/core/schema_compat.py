@@ -36,6 +36,41 @@ def ensure_schema_compatibility(engine: Engine) -> None:
     _ensure_query_indexes(engine, existing_tables)
 
 
+def verify_schema_compatibility(engine: Engine) -> None:
+    """Log additive schema drift without mutating the database.
+
+    Production deployments should apply Alembic migrations before starting the
+    app.  This read-only check keeps startup observable while avoiding hidden
+    DDL/DML in Web workers.
+    """
+
+    inspector = inspect(engine)
+    existing_tables = set(inspector.get_table_names())
+    missing_tables: list[str] = []
+    missing_columns: list[str] = []
+    for table in Base.metadata.sorted_tables:
+        if table.name not in existing_tables:
+            missing_tables.append(table.name)
+            continue
+        existing_columns = {column["name"] for column in inspector.get_columns(table.name)}
+        missing_columns.extend(
+            f"{table.name}.{column.name}"
+            for column in table.columns
+            if column.name not in existing_columns and not column.primary_key
+        )
+    if missing_tables:
+        logger.warning(
+            "schema compatibility check found missing tables; run Alembic migrations before starting production: %s",
+            ", ".join(missing_tables[:20]),
+        )
+    if missing_columns:
+        logger.warning(
+            "schema compatibility check found missing columns; run Alembic migrations or set "
+            "SCHEMA_COMPAT_REPAIR_ENABLED=true for one-time self-hosted repair: %s",
+            ", ".join(missing_columns[:20]),
+        )
+
+
 def _backfill_user_permission_columns(engine: Engine, existing_tables: set[str]) -> None:
     if "users" not in existing_tables:
         return

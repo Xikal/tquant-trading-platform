@@ -78,12 +78,35 @@
   border: 1px solid rgba(148, 163, 184, 0.18);
   border-radius: 14px;
   padding: 10px;
+  min-width: 0;
 }
 
 .backtest-advanced-fields summary {
   cursor: pointer;
   font-size: 12px;
   font-weight: 800;
+  list-style-position: inside;
+}
+
+.backtest-advanced-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(180px, 1fr));
+  gap: 10px 12px;
+  margin-top: 10px;
+  align-items: end;
+}
+
+.backtest-advanced-grid.compact {
+  grid-template-columns: repeat(2, minmax(180px, 1fr));
+}
+
+.backtest-advanced-grid .tq-field,
+.backtest-advanced-grid label {
+  min-width: 0;
+}
+
+.backtest-advanced-grid .tq-slider {
+  min-width: 0;
 }
 
 .backtest-result-banner {
@@ -1070,6 +1093,8 @@
 
   .backtest-research-grid,
   .backtest-research-form.compact,
+  .backtest-advanced-grid,
+  .backtest-advanced-grid.compact,
   .backtest-window-grid {
     grid-template-columns: 1fr;
   }

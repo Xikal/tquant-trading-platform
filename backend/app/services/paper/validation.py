@@ -9,6 +9,7 @@ from decimal import Decimal
 from sqlalchemy.orm import Session
 
 from app.models.entities import BacktestRun, LowBuyResultSnapshot
+from app.core.timezone import beijing_now
 from app.models.schema_defs.research import (
     StrategyComparisonRequest,
     StrategyValidationItem,
@@ -41,7 +42,7 @@ class StrategyValidationPipeline:
             for strategy in _unique_strategies(payload.strategies)
         ]
         report = StrategyValidationReport(
-            generated_at=datetime.now(),
+            generated_at=beijing_now().replace(tzinfo=None),
             lookback_days=payload.lookback_days,
             strategy_count=len(items),
             total_filled_signals=sum(item.filled_signals for item in items),
@@ -114,7 +115,7 @@ class StrategyValidationPipeline:
             quantity=100,
             limit_price=None,
             current_price=Decimal(str(entry_price)),
-            quote_time=datetime.now(),
+            quote_time=beijing_now().replace(tzinfo=None),
             is_suspended=False,
         )
         if match.result != MatchResult.FILLED or match.avg_fill_price is None:

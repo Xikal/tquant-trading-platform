@@ -350,6 +350,7 @@ class BacktestJobService:
 
     @staticmethod
     def _summary(row: BacktestRun) -> BacktestRunSummary:
+        result_summary = _result_summary_metrics(_json_dict(row.result_json))
         return BacktestRunSummary(
             id=row.id,
             name=row.name or "",
@@ -362,6 +363,7 @@ class BacktestJobService:
             progress_pct=float(row.progress_pct or 0.0),
             benchmark_symbol=row.benchmark_symbol or "",
             owner_user_id=row.owner_user_id,
+            summary=result_summary,
             created_at=row.created_at,
             updated_at=row.updated_at,
             started_at=row.started_at,
@@ -431,6 +433,37 @@ def _json_dict(raw_value: str | None) -> dict[str, Any]:
 
 def _json_dumps(value: dict[str, Any]) -> str:
     return json.dumps(value, ensure_ascii=False, separators=(",", ":"))
+
+
+def _result_summary_metrics(result: dict[str, Any]) -> dict[str, Any]:
+    """Expose compact metrics in list responses so task cards can show results."""
+
+    if not isinstance(result, dict):
+        return {}
+    metrics = result.get("metrics")
+    if isinstance(metrics, dict):
+        return {
+            key: metrics.get(key)
+            for key in (
+                "total_return_pct",
+                "benchmark_return_pct",
+                "benchmark_alpha_pct",
+                "max_drawdown_pct",
+                "sharpe_ratio",
+                "sortino_ratio",
+                "calmar_ratio",
+                "information_ratio",
+                "win_rate_pct",
+                "trade_count",
+                "filled_order_count",
+                "rejected_order_count",
+                "profit_factor",
+                "avg_trade_return_pct",
+            )
+            if key in metrics
+        }
+    summary = result.get("summary")
+    return summary if isinstance(summary, dict) else {}
 
 
 def _result_attribution(result: dict[str, Any]) -> dict[str, Any]:

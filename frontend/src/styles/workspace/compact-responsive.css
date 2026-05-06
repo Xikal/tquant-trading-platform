@@ -64,6 +64,7 @@
 
   .stock-card .stock-meta,
   .stock-card p,
+  .stock-card .stock-action-guide,
   .stock-card .badge-row,
   .stock-card .card-actions {
     grid-column: auto;

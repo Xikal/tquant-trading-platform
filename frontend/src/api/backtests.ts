@@ -528,6 +528,9 @@ function normalizeBacktestListResponse(payload: BacktestListResponse): BacktestL
 function normalizeBacktestRun<T extends BacktestRunSummary | BacktestRunDetail>(run: T): T {
   const params = isRecord(run.params) ? run.params : {};
   const riskLimits = isRecord(params.risk_limits) ? params.risk_limits : null;
+  const result = isRecord(run.result) ? run.result : {};
+  const resultMetrics = isRecord(result.metrics) ? result.metrics : null;
+  const resultSummary = isRecord(result.summary) ? result.summary : null;
   return {
     ...run,
     status: normalizeBacktestStatus(run.status),
@@ -537,6 +540,7 @@ function normalizeBacktestRun<T extends BacktestRunSummary | BacktestRunDetail>(
     benchmark: stringOrNull(run.benchmark ?? run.benchmark_symbol),
     execution_model: stringOrNull(run.execution_model ?? params.execution_model),
     risk_limits: run.risk_limits ?? riskLimits,
+    summary: run.summary ?? resultMetrics ?? resultSummary ?? null,
     completed_at: run.completed_at ?? run.finished_at,
   };
 }

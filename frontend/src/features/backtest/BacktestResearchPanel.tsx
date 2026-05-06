@@ -128,7 +128,7 @@ export function BacktestResearchPanel({
         <div>
           <span className="backtest-kicker">Research Loop · Phase2</span>
           <h2>回测研究闭环</h2>
-          <p>前端按预期 API 接入参数优化、Walk-forward、对比、归因、月度收益和策略相关性；复杂图表后置，当前保持表格和 SVG 轻量展示。</p>
+          <p>按“优化参数 → 样本外验证 → 多任务对比 → 归因复盘”使用。优先看收益、胜率、最大回撤和样本外通过率。</p>
         </div>
         <button type="button" onClick={actions.onRefreshResearch} disabled={state.loading === "research"}>
           {state.loading === "research" ? "刷新中..." : "刷新研究任务"}
@@ -171,7 +171,7 @@ function OptimizationPanel({
         <SelectField label="优化目标" value={state.optimizationForm.optimization_target} options={OPTIMIZATION_TARGET_OPTIONS} onChange={(optimization_target) => actions.onOptimizationFormChange({ optimization_target })} />
         <details className="backtest-advanced-fields">
           <summary>高级设置（使用推荐值即可）</summary>
-          <div className="backtest-research-form compact">
+          <div className="backtest-advanced-grid">
             <TextField type="number" label="初始资金" value={state.optimizationForm.initial_capital} onChange={(initial_capital) => actions.onOptimizationFormChange({ initial_capital })} />
             <SelectField label="执行模型" value={state.optimizationForm.execution_model} options={BACKTEST_EXECUTION_MODELS} onChange={(execution_model) => actions.onOptimizationFormChange({ execution_model: execution_model as BacktestExecutionModel })} />
             <SliderParamField label="最低评分" min={60} max={98} step={1} value={firstNumber(state.optimizationForm.min_score, 80)} onChange={(min_score) => actions.onOptimizationFormChange({ min_score: String(min_score) })} />
@@ -264,7 +264,7 @@ function ValidationPanel({
         <SelectField label="优化目标" value={state.validationForm.optimization_target} options={OPTIMIZATION_TARGET_OPTIONS} onChange={(optimization_target) => actions.onValidationFormChange({ optimization_target })} />
         <details className="backtest-advanced-fields">
           <summary>高级设置（使用推荐值即可）</summary>
-          <div className="backtest-research-form compact">
+          <div className="backtest-advanced-grid compact">
             <TextField type="number" label="初始资金" value={state.validationForm.initial_capital} onChange={(initial_capital) => actions.onValidationFormChange({ initial_capital })} />
             <SelectField label="执行模型" value={state.validationForm.execution_model} options={BACKTEST_EXECUTION_MODELS} onChange={(execution_model) => actions.onValidationFormChange({ execution_model: execution_model as BacktestExecutionModel })} />
           </div>

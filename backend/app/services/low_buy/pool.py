@@ -19,7 +19,6 @@ from app.services.low_buy.shared import (
     Session,
     SessionLocal,
     ak,
-    date,
     datetime,
 )
 from app.services.low_buy.strategy_policy import requires_mainline_industry
@@ -31,6 +30,7 @@ from app.services.low_buy.strategy_pool_config import (
 )
 from app.services.shared.feature_flags import feature_enabled
 from app.services.market.trading_calendar import is_a_share_trading_day
+from app.core.timezone import beijing_now, beijing_today
 
 
 _STRATEGY_BOARD_WINDOW_DAYS = {
@@ -81,10 +81,10 @@ class LowBuyPoolMixin:
     ) -> str:
         if not trade_dates:
             return latest_completed_trade_date
-        today = date.today().isoformat()
+        today = beijing_today().isoformat()
         if today <= latest_completed_trade_date or today not in trade_dates:
             return latest_completed_trade_date
-        now = datetime.now()
+        now = beijing_now()
         after_structure_open = (now.hour, now.minute) >= (
             INTRADAY_STRUCTURE_START_HOUR,
             INTRADAY_STRUCTURE_START_MINUTE,
@@ -274,7 +274,7 @@ class LowBuyPoolMixin:
     def _latest_completed_calendar_fallback(trade_dates: list[str]) -> str:
         if not trade_dates:
             return ""
-        today = date.today().isoformat()
+        today = beijing_today().isoformat()
         latest_calendar_date = trade_dates[-1]
         if latest_calendar_date < today or len(trade_dates) == 1:
             return latest_calendar_date
@@ -302,7 +302,7 @@ class LowBuyPoolMixin:
         return normalized if normalized in trade_dates else None
 
     def _get_recent_trade_dates(self, count: int) -> list[str]:
-        cache_key = f"recent-trade-dates:{count}:{date.today().isoformat()}"
+        cache_key = f"recent-trade-dates:{count}:{beijing_today().isoformat()}"
         cached = getattr(self, "_trade_dates_cache", {}).get(cache_key)
         now = time.monotonic()
         if cached and cached[0] > now:
@@ -320,7 +320,7 @@ class LowBuyPoolMixin:
         an active A-share session, today's date is appended from the local holiday
         calendar only so request threads never wait on AkShare calendar retries.
         """
-        today_value = date.today()
+        today_value = beijing_today()
         today = today_value.isoformat()
         values = [item for item in local_values if item <= today]
         if is_a_share_trading_day(today_value) and today not in values:
@@ -344,7 +344,7 @@ class LowBuyPoolMixin:
                 values = DailyHistoryRepository(db).fetch_recent_trade_dates(count)
         except Exception:
             return []
-        today = date.today().isoformat()
+        today = beijing_today().isoformat()
         return [item for item in values if item <= today][-count:]
 
     def _cache_recent_trade_dates(self, cache_key: str, values: list[str]) -> list[str]:

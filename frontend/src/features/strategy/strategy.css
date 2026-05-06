@@ -113,6 +113,15 @@
   text-align: left;
 }
 
+.strategy-tabs button strong {
+  font-size: 13px;
+}
+
+.strategy-tabs button span {
+  font-size: 11px;
+  line-height: 1.35;
+}
+
 .strategy-tabs button span,
 .strategy-card-grid small,
 .strategy-card-grid span,
@@ -153,6 +162,34 @@
   display: grid;
   gap: 12px;
   grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.strategy-guide-grid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-bottom: 12px;
+}
+
+.strategy-guide-grid article {
+  background: #f8fafc;
+  border: 1px solid var(--strategy-border);
+  border-radius: 12px;
+  display: grid;
+  gap: 5px;
+  min-height: 74px;
+  padding: 10px 12px;
+}
+
+.strategy-guide-grid b {
+  color: var(--strategy-text);
+  font-size: 13px;
+}
+
+.strategy-guide-grid span {
+  color: var(--strategy-muted);
+  font-size: 12px;
+  line-height: 1.45;
 }
 
 .strategy-one-click {
@@ -312,6 +349,19 @@
   cursor: pointer;
   font-size: 12px;
   font-weight: 900;
+  list-style-position: inside;
+}
+
+.strategy-advanced-grid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(3, minmax(170px, 1fr));
+  margin-top: 10px;
+}
+
+.strategy-advanced-grid .tq-field,
+.strategy-advanced-grid label {
+  min-width: 0;
 }
 
 .strategy-signal-card {
@@ -461,7 +511,9 @@
 
   .strategy-form,
   .strategy-card-grid,
-  .strategy-signal-grid {
+  .strategy-signal-grid,
+  .strategy-guide-grid,
+  .strategy-advanced-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
@@ -476,7 +528,9 @@
 
   .strategy-form,
   .strategy-card-grid,
-  .strategy-signal-grid {
+  .strategy-signal-grid,
+  .strategy-guide-grid,
+  .strategy-advanced-grid {
     grid-template-columns: 1fr;
   }
 }

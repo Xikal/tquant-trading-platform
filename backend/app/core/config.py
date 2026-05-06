@@ -39,10 +39,16 @@ class AppSettings(BaseSettings):
     default_data_source: str = "akshare_eastmoney"
     http_timeout: int = 12
     app_mobile_quick_history_timeout: float = 10.0
-    runtime_background_jobs_enabled: bool = True
+    runtime_background_jobs_enabled: bool = False
     runtime_background_jobs_on_sqlite: bool = True
+    runtime_worker_poll_interval_seconds: float = 5.0
+    schema_compat_repair_enabled: bool = False
+    schema_compat_verify_on_startup: bool = False
     max_request_body_bytes: int = 1_048_576
     structured_logs: bool = False
+    global_rate_limit_backend: str = "memory"
+    global_rate_limit_max_calls: int = 30
+    global_rate_limit_window_seconds: int = 1
     admin_api_token: str = ""
     auth_secret_key: str = ""
     auth_cookie_secure: bool = False
@@ -60,6 +66,7 @@ class AppSettings(BaseSettings):
     agent_enable_notify_tools: bool = False
     agent_allowed_capabilities: Annotated[List[str], NoDecode] = Field(default_factory=list)
     agent_audit_enabled: bool = True
+    agent_quality_min_score: float = 0.72
     notification_feishu_webhook_url: str = ""
     notification_feishu_secret: str = ""
     notification_signal_cooldown_minutes: int = 240
@@ -83,6 +90,8 @@ class AppSettings(BaseSettings):
     pydantic_ai_api_key: str = ""
     openbb_api_url: str = ""
     openbb_api_key: str = ""
+    market_data_provider_order: str = "tencent,eastmoney,akshare,sina"
+    quant_parameter_default_version: str = "quant-params-v1"
     paper_auto_trading_enabled: bool = True
     paper_auto_trading_interval: int = 120
     paper_auto_trading_max_orders: int = 5
