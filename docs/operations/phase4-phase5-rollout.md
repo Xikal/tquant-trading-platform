@@ -8,6 +8,7 @@
 - 生产 Nginx server 模板已按接口类型接入 `limit_req` / `limit_conn`
 - Prometheus scrape 配置：`deploy/prometheus/prometheus.yml`
 - Prometheus 告警规则：`deploy/prometheus/tquant-alerts.yml`
+- Grafana dashboard 初始模板：`deploy/prometheus/grafana-dashboard.json`
 - Agent 结果质量评分接口：`POST /api/agent/quality/score`
 - 行情数据源健康检查：`GET /api/market/data-sources/health`
 - 量化参数版本接口：`GET /api/quant/parameters/current`

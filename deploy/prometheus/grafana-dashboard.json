@@ -1,0 +1,47 @@
+{
+  "title": "TQuant Operations",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "30s",
+  "panels": [
+    {
+      "type": "stat",
+      "title": "API p95 latency ms",
+      "targets": [{"expr": "tquant_http_p95_ms"}],
+      "gridPos": {"x": 0, "y": 0, "w": 6, "h": 4}
+    },
+    {
+      "type": "stat",
+      "title": "Slow requests",
+      "targets": [{"expr": "tquant_http_slow_requests"}],
+      "gridPos": {"x": 6, "y": 0, "w": 6, "h": 4}
+    },
+    {
+      "type": "stat",
+      "title": "Runtime tasks queued",
+      "targets": [{"expr": "tquant_runtime_tasks_queued"}],
+      "gridPos": {"x": 12, "y": 0, "w": 6, "h": 4}
+    },
+    {
+      "type": "stat",
+      "title": "Runtime tasks failed",
+      "targets": [{"expr": "tquant_runtime_tasks_failed"}],
+      "gridPos": {"x": 18, "y": 0, "w": 6, "h": 4}
+    },
+    {
+      "type": "timeseries",
+      "title": "Agent tool calls",
+      "targets": [
+        {"expr": "tquant_agent_tool_success_total", "legendFormat": "success"},
+        {"expr": "tquant_agent_tool_failure_total", "legendFormat": "failure"}
+      ],
+      "gridPos": {"x": 0, "y": 4, "w": 12, "h": 7}
+    },
+    {
+      "type": "timeseries",
+      "title": "Agent quality blocked",
+      "targets": [{"expr": "tquant_agent_quality_blocked_total"}],
+      "gridPos": {"x": 12, "y": 4, "w": 12, "h": 7}
+    }
+  ]
+}
