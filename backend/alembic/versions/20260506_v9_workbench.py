@@ -137,7 +137,7 @@ def _seed_strategy_metadata(bind) -> None:
         ("leader_pullback_band", "龙头回踩波段", "热点龙头确认后回踩均线支撑的二波研究策略。", "research", "high", "3-10天", 70, 1, "pending", "待样本外验证完成后开放生产入口。", "backtest_only"),
     ]
     for seed in seeds:
-        exists = bind.execute(sa.text("SELECT 1 FROM strategy_metadata WHERE key = :key LIMIT 1"), {"key": seed[0]}).scalar()
+        exists = bind.execute(sa.text("SELECT 1 FROM strategy_metadata WHERE `key` = :key LIMIT 1"), {"key": seed[0]}).scalar()
         if exists:
             bind.execute(
                 sa.text(
@@ -145,7 +145,7 @@ def _seed_strategy_metadata(bind) -> None:
                     UPDATE strategy_metadata
                     SET category=:category, enabled=:enabled, probe_status=:probe_status,
                         probe_summary=:probe_summary, visibility=:visibility
-                    WHERE key=:key
+                    WHERE `key`=:key
                     """
                 ),
                 {
@@ -162,7 +162,7 @@ def _seed_strategy_metadata(bind) -> None:
             sa.text(
                 """
                 INSERT INTO strategy_metadata (
-                    key, display_name, description, category, risk_level,
+                    `key`, display_name, description, category, risk_level,
                     typical_holding_days, sort_order, enabled, probe_status,
                     probe_summary, visibility
                 )

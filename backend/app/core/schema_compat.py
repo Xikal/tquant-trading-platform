@@ -106,7 +106,7 @@ def _upsert_strategy_metadata_seed(
     visibility: str,
 ) -> None:
     exists = connection.execute(
-        text("SELECT 1 FROM strategy_metadata WHERE key = :key LIMIT 1"),
+        text("SELECT 1 FROM strategy_metadata WHERE `key` = :key LIMIT 1"),
         {"key": key},
     ).scalar()
     if exists:
@@ -116,7 +116,7 @@ def _upsert_strategy_metadata_seed(
                 UPDATE strategy_metadata
                 SET category=:category, enabled=1, probe_status=:probe_status,
                     probe_summary=:probe_summary, visibility=:visibility
-                WHERE key=:key
+                WHERE `key`=:key
                 """
             ),
             {
@@ -132,7 +132,7 @@ def _upsert_strategy_metadata_seed(
         text(
             """
             INSERT INTO strategy_metadata (
-                key, display_name, description, category, risk_level,
+                `key`, display_name, description, category, risk_level,
                 typical_holding_days, sort_order, enabled, probe_status,
                 probe_summary, visibility
             )
