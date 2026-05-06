@@ -6,10 +6,12 @@ REMOTE_USER="${CLOUD_USER:-ubuntu}"
 REMOTE_DIR="${CLOUD_REMOTE_DIR:-/home/ubuntu/gupiao-upload}"
 SSH_KEY="${CLOUD_SSH_KEY:-/Users/j/Downloads/gupiao.pem}"
 GRAFANA_PASSWORD="${GRAFANA_ADMIN_PASSWORD:-}"
-
 if [[ -z "${GRAFANA_PASSWORD}" ]]; then
-  echo "GRAFANA_ADMIN_PASSWORD is required" >&2
-  exit 2
+  GRAFANA_PASSWORD="$(openssl rand -base64 24 2>/dev/null || python3 - <<'PY'
+import secrets
+print(secrets.token_urlsafe(24))
+PY
+)"
 fi
 
 ssh_opts=(-o StrictHostKeyChecking=no -i "${SSH_KEY}")
@@ -31,6 +33,9 @@ printf '%s' "${admin_token}" > .runtime/prometheus/tquant_admin_token
 REMOTE_SCRIPT
 
 grafana_password_b64="$(printf '%s' "${GRAFANA_PASSWORD}" | base64 | tr -d '\n')"
+ssh "${ssh_opts[@]}" "${REMOTE_USER}@${REMOTE_HOST}" \
+  "cd '${REMOTE_DIR}' && umask 077 && printf '%s' '${grafana_password_b64}' | base64 -d > .runtime/grafana_admin_password"
+
 ssh "${ssh_opts[@]}" "${REMOTE_USER}@${REMOTE_HOST}" \
   "cd '${REMOTE_DIR}' && GRAFANA_ADMIN_PASSWORD=\"\$(printf '%s' '${grafana_password_b64}' | base64 -d)\" sudo docker compose -f docker-compose.monitoring.yml up -d"
 
