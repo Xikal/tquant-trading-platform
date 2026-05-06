@@ -25,12 +25,12 @@
 
 ## TODO 状态
 
-- [ ] Redis/pubsub 级 SSE 真推送：运行时任务事件写入 DB 后同步发布到 Redis channel，多实例订阅 Redis；Redis 不可用时回退 DB polling。
-- [ ] 统一数据源 provider：报价、批量报价、分时、板块热力等关键行情读取优先走 provider router，并保留质量标记、失败降级和配置开关。
-- [ ] ML 信号模型：补训练接口、模型注册、artifact 持久化、生产模型选择、推理接口、研究/生产状态边界。
-- [ ] 量化参数版本化：低吸策略 prefilter、执行阈值、信号阈值默认进入参数版本，运行时读取 active 参数，历史回测继续绑定参数版本。
-- [ ] Prometheus/Grafana：补 compose/provisioning/部署脚本，在云服务器启动并验证 target/health。
-- [ ] 测试与部署：补后端测试、运行 frontend build/smoke，提交并部署云端。
+- [x] Redis/pubsub 级 SSE 真推送：运行时任务事件写入 DB 后同步发布到 Redis channel，多实例订阅 Redis；Redis 不可用时回退 DB polling。
+- [x] 统一数据源 provider：报价、批量报价、分时、板块热力等关键行情读取优先走 provider router，并保留质量标记、失败降级和配置开关。
+- [x] ML 信号模型：补训练接口、模型注册、artifact 持久化、生产模型选择、推理接口、研究/生产状态边界。
+- [x] 量化参数版本化：低吸策略 prefilter、执行阈值、信号阈值默认进入参数版本，运行时读取 active 参数，历史回测继续绑定参数版本。
+- [x] Prometheus/Grafana：补 compose/provisioning/部署脚本，在云服务器启动并验证 target/health。
+- [x] 测试与部署：补后端测试、运行 frontend build/smoke，提交并部署云端。
 
 ## 关键实现决策
 
@@ -47,6 +47,25 @@
 - 后端 smoke：`PYTHONPATH=backend:. backend/.venv/bin/python -m pytest ...`
 - 前端：如未改 UI，仅执行 `npm --prefix frontend run build:web`。
 - 云端：主服务部署后，执行 Prometheus/Grafana compose 启动，验证 Prometheus target 和 Grafana health。
+
+## 本轮验证结果
+
+- `PYTHONPATH=backend:. backend/.venv/bin/python -m py_compile ...`：通过。
+- `PYTHONPATH=backend:. backend/.venv/bin/python -m pytest backend/tests/test_phase4_phase5_foundation.py backend/tests/test_market_provider_contract.py backend/tests/test_market_provider_flag.py -q`：12 passed。
+- `PYTHONPATH=backend:. backend/.venv/bin/python -m pytest backend/tests/test_low_buy_strategy_replacement.py backend/tests/test_strategy_metadata_service.py backend/tests/test_feature_flags_service.py backend/tests/test_market_data_quality_fields.py backend/tests/test_market_routers.py -q`：24 passed。
+- `PYTHONPATH=backend:. backend/.venv/bin/python -m pytest backend/tests -q`：377 passed。
+- `npm --prefix frontend run build:web`：通过。
+- `CLOUD_SSH_KEY=/Users/j/Downloads/gupiao.pem RUN_FULL_TESTS=0 ./scripts/deploy_cloud_server.sh`：主服务部署成功，`readyz/protected_api/frontend` smoke 通过。
+- `CLOUD_SSH_KEY=/Users/j/Downloads/gupiao.pem ./scripts/deploy_monitoring_stack.sh`：Prometheus/Grafana 部署成功。
+- 云端 Prometheus target：`tquant-api up`。
+- 云端容器：`tquant-app-mysql`、`tquant-runtime-worker-mysql`、`tquant-backtest-worker-mysql`、`tquant-redis`、`tquant-prometheus`、`tquant-grafana` 均运行。
+
+## 运行说明
+
+- Grafana 默认端口：`http://43.143.243.97:13000`。
+- Grafana 管理员密码已保存到云服务器：`/home/ubuntu/gupiao-upload/.runtime/grafana_admin_password`。
+- Prometheus 默认端口：`http://43.143.243.97:19090`。
+- Prometheus scrape 使用 `/home/ubuntu/gupiao-upload/.runtime/prometheus/tquant_admin_token`，未在仓库保存密钥。
 
 ---
 
