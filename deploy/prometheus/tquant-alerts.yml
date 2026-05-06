@@ -1,0 +1,38 @@
+groups:
+  - name: tquant-api
+    rules:
+      - alert: TQuantHighHttpLatency
+        expr: tquant_http_p95_ms > 3000
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "TQuant API p95 latency is high"
+          description: "HTTP p95 latency has been above 3000ms for 5 minutes."
+
+      - alert: TQuantRuntimeTaskFailures
+        expr: tquant_runtime_tasks_failed > 0
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "TQuant runtime worker has failed tasks"
+          description: "At least one runtime task is in failed state."
+
+      - alert: TQuantAgentQualityBlocked
+        expr: tquant_agent_quality_blocked_total > 3
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "TQuant Agent quality gate blocked multiple outputs"
+          description: "Agent output quality failures increased in the last 15 minutes."
+
+      - alert: TQuantAgentToolFailures
+        expr: tquant_agent_tool_failure_total > 5
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "TQuant Agent tool failures increased"
+          description: "Agent tool failures increased in the last 15 minutes."

@@ -1,6 +1,7 @@
 # Alembic 迁移说明
 
-生产部署以 Alembic 为主迁移路径。`app.core.schema_compat` 默认只做只读漂移检查；
+生产部署以 Alembic 为主迁移路径。`app.core.schema_compat` 不再作为常规启动路径；
+只有显式设置 `SCHEMA_COMPAT_VERIFY_ON_STARTUP=true` 时才执行只读漂移检查。
 只有在自托管旧库需要一次性救援时，才显式设置 `SCHEMA_COMPAT_REPAIR_ENABLED=true`。
 
 常用命令：

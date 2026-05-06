@@ -56,7 +56,7 @@ make_package() {
   local package_path
   package_path="$(mktemp "/tmp/gupiao-deploy-$(date +%Y%m%d%H%M%S)-XXXXXX")"
   log "create package $package_path"
-  tar \
+  COPYFILE_DISABLE=1 tar \
     --no-xattrs \
     --exclude='.git' \
     --exclude='.codex' \
@@ -80,6 +80,7 @@ make_package() {
     --exclude='*.pyc' \
     --exclude='*.pyo' \
     --exclude='*.log' \
+    --exclude='._*' \
     --exclude='.DS_Store' \
     -czf "$package_path" -C "$ROOT_DIR" .
   printf '%s\n' "$package_path"

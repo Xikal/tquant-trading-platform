@@ -31,6 +31,7 @@ from app.services.backtest.data_provider import DailyBarDataProvider
 from app.services.backtest.cancel_token import BacktestCancelToken
 from app.services.backtest.engine import BacktestConfig, BacktestEngine, BacktestResult
 from app.services.backtest.persistence import BacktestResultPersistence
+from app.services.quant import QuantParameterVersionService
 
 
 logger = logging.getLogger(__name__)
@@ -47,6 +48,7 @@ class BacktestJobService:
 
     def create_run(self, payload: BacktestRunCreate, owner_user_id: int | None) -> BacktestRunDetail:
         params = dict(payload.params)
+        parameter_set = QuantParameterVersionService(self.db).current()
         params.update(
             {
                 "strategy_keys": payload.strategy_keys,
@@ -54,6 +56,8 @@ class BacktestJobService:
                 "end_date": payload.end_date,
                 "benchmark_symbol": payload.benchmark_symbol,
                 "max_duration_seconds": payload.max_duration_seconds,
+                "quant_parameter_version": parameter_set.version,
+                "quant_parameter_set_id": parameter_set.id,
             }
         )
         run = BacktestRun(
@@ -70,7 +74,7 @@ class BacktestJobService:
             max_duration_seconds=int(payload.max_duration_seconds),
             dataset_manifest_id=payload.dataset_manifest_id,
             engine_version=payload.engine_version,
-            strategy_version=payload.strategy_version,
+            strategy_version=payload.strategy_version or parameter_set.version,
             data_version=payload.data_version,
             fee_model_version=payload.fee_model_version,
             slippage_bps=float(payload.slippage_bps),
