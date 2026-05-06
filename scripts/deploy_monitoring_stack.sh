@@ -35,6 +35,7 @@ PY
 fi
 umask 077
 printf '%s' "${admin_token}" > .runtime/prometheus/tquant_admin_token
+chmod 0444 .runtime/prometheus/tquant_admin_token
 REMOTE_SCRIPT
 
 grafana_password_b64="$(printf '%s' "${GRAFANA_PASSWORD}" | base64 | tr -d '\n')"
