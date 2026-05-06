@@ -130,6 +130,17 @@
   background: #f8fafc;
 }
 
+.tq-search-error,
+.tq-search-more {
+  color: #64748b;
+  font-size: 12px;
+  padding: 9px 11px;
+}
+
+.tq-search-error {
+  color: #b91c1c;
+}
+
 .tq-feedback {
   border-radius: 12px;
   display: flex;

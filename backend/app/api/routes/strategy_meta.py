@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 import json
+import math
 
 from fastapi import APIRouter, Depends, Query
-from sqlalchemy import desc, or_, select
+from sqlalchemy import desc, func, or_, select
 from sqlalchemy.orm import Session
 
 from app.core.auth import get_current_user
@@ -65,13 +66,14 @@ def list_strategy_signal_replay(
     )
     keyword = symbol.strip()
     if keyword:
-        like = f"%{keyword}%"
+        like = f"%{_escape_like(keyword)}%"
         statement = statement.where(
             or_(
-                LowBuyResultSnapshot.symbol.ilike(like),
-                LowBuyResultSnapshot.name.ilike(like),
+                LowBuyResultSnapshot.symbol.ilike(like, escape="\\"),
+                LowBuyResultSnapshot.name.ilike(like, escape="\\"),
             )
         )
+    total = int(db.execute(select(func.count()).select_from(statement.subquery())).scalar() or 0)
     rows = (
         db.execute(
             statement.order_by(
@@ -83,7 +85,7 @@ def list_strategy_signal_replay(
         .scalars()
         .all()
     )
-    return StrategySignalReplayResponse(items=[_signal_replay_item(row) for row in rows], total=len(rows))
+    return StrategySignalReplayResponse(items=[_signal_replay_item(row) for row in rows], total=total)
 
 
 def _recent_result_dates(db: Session, *, strategy: str, lookback_days: int) -> list[str]:
@@ -150,7 +152,7 @@ def _signal_replay_item(row: LowBuyResultSnapshot) -> StrategySignalReplayItem:
 def _json_dict(raw_value: str) -> dict:
     try:
         value = json.loads(raw_value or "{}")
-    except Exception:
+    except (TypeError, json.JSONDecodeError):
         return {}
     return value if isinstance(value, dict) else {}
 
@@ -160,9 +162,13 @@ def _float_or_none(value) -> float | None:
         parsed = float(value)
     except (TypeError, ValueError):
         return None
-    return parsed if parsed == parsed else None
+    return parsed if math.isfinite(parsed) else None
 
 
 def _fmt_price(value) -> str:
     parsed = _float_or_none(value)
     return "--" if parsed is None else f"{parsed:.3f}"
+
+
+def _escape_like(value: str) -> str:
+    return value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")

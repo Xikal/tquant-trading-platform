@@ -139,19 +139,25 @@ export function SettingCard({
   children,
   button,
   loading,
+  saved = false,
+  disabled = false,
   onSave,
 }: {
   title: string;
   children: ReactNode;
   button: string;
   loading: boolean;
+  saved?: boolean;
+  disabled?: boolean;
   onSave: () => void;
 }) {
   return (
     <div className="panel setting-card">
       <PanelTitle title={title} />
       <div className="setting-fields">{children}</div>
-      <button className="primary" onClick={onSave} disabled={loading}>{loading ? "保存中..." : button}</button>
+      <button className={`primary ${saved ? "saved" : ""}`} onClick={onSave} disabled={loading || disabled}>
+        {loading ? "保存中..." : saved ? "已保存" : button}
+      </button>
     </div>
   );
 }

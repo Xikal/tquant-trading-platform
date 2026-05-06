@@ -1,9 +1,10 @@
-import { startTransition, useState } from "react"
+import { startTransition, useEffect, useState } from "react"
 import {
   HoldingEditorSheet,
   type HoldingEditorSeed
 } from "../features/app-preview/holdingEditor"
 import { api } from "../api/client"
+import { backtestsApi, type BacktestRunSummary } from "../api/backtests"
 import { useAppPreviewData } from "../features/app-preview/hooks"
 import type { LowBuyPriorityBoardItem, PaperOrderCreate, WatchlistItem } from "../types"
 import { MobileAppHeader, MobileStatusBanners, MobileTabBar } from "./MobileAppLayout"
@@ -83,6 +84,7 @@ export default function MobileApp() {
   const [paperOrderOpen, setPaperOrderOpen] = useState(false)
   const [aiOpen, setAiOpen] = useState(false)
   const [accountMenuOpen, setAccountMenuOpen] = useState(false)
+  const [recentBacktests, setRecentBacktests] = useState<BacktestRunSummary[]>([])
 
   useNativeRuntime(() => {
     startTransition(() => {
@@ -90,6 +92,27 @@ export default function MobileApp() {
       void appUpdate.checkForUpdate()
     })
   })
+
+  useEffect(() => {
+    if (!authUser || activeTab !== "low_buy") {
+      return
+    }
+    let cancelled = false
+    backtestsApi.listBacktests({ limit: 5, offset: 0 })
+      .then((result) => {
+        if (!cancelled) {
+          setRecentBacktests(result.items ?? [])
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setRecentBacktests([])
+        }
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [activeTab, authUser])
 
   const {
     watchlistMap,
@@ -330,6 +353,7 @@ export default function MobileApp() {
             onOpenAi: () => setAiOpen(true),
             onOpenCandidate: openCandidate,
             onBought: openBoughtEditor,
+            recentBacktests,
           }}
           paper={{
             account: paperTrading.paperAccount,

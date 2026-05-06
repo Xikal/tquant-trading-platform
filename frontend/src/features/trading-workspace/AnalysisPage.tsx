@@ -10,12 +10,14 @@ export function AnalysisPage({
   result,
   loading,
   onRun,
+  onOpenPaperOrder,
 }: {
   draft: AnalysisDraft;
   setDraft: (draft: AnalysisDraft) => void;
   result: AnalysisResponse | null;
   loading: string;
   onRun: () => void;
+  onOpenPaperOrder: (payload: { symbol: string; name?: string; price?: number | null }) => void;
 }) {
   const suggestion = result?.suggestion;
   const quote = result?.quote;
@@ -72,7 +74,18 @@ export function AnalysisPage({
         <button className="primary full" onClick={onRun} disabled={loading === "analysis"}>开始分析</button>
       </aside>
       <div className="panel decision analysis-decision">
-        <PanelTitle title={`当前建议 / ${actionHeadline}`} />
+        <PanelTitle
+          title={`当前建议 / ${actionHeadline}`}
+          actions={
+            <button
+              type="button"
+              onClick={() => onOpenPaperOrder({ symbol: draft.symbol, name: result?.instrument.name, price: quote?.last_price })}
+              disabled={!draft.symbol.trim()}
+            >
+              模拟下单
+            </button>
+          }
+        />
         <p>{actionReason || "输入证券代码并点击开始分析，系统会先检查能不能做T，再给出明确的执行边界。"}</p>
         <InfoPill label="现在怎么做" value={executionText} />
         <InfoPill label="错了怎么办" value={invalidText} />

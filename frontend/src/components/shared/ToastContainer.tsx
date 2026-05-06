@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
 export type ToastTone = "info" | "success" | "warning" | "error";
 
@@ -19,6 +19,7 @@ const ToastContext = createContext<ToastContextValue | null>(null);
 
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [messages, setMessages] = useState<ToastMessage[]>([]);
+  const timers = useRef<number[]>([]);
 
   const removeToast = useCallback((id: string) => {
     setMessages((current) => current.filter((item) => item.id !== id));
@@ -29,9 +30,14 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     const next = { ...message, id };
     setMessages((current) => [next, ...current].slice(0, 3));
     if (!message.sticky) {
-      window.setTimeout(() => removeToast(id), message.tone === "error" || message.tone === "warning" ? 6000 : 3500);
+      timers.current.push(window.setTimeout(() => removeToast(id), message.tone === "error" || message.tone === "warning" ? 6000 : 3500));
     }
   }, [removeToast]);
+
+  useEffect(() => () => {
+    timers.current.forEach((timer) => window.clearTimeout(timer));
+    timers.current = [];
+  }, []);
 
   const value = useMemo(() => ({ pushToast, removeToast }), [pushToast, removeToast]);
 
@@ -40,7 +46,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       {children}
       <div className="tq-toast-stack">
         {messages.map((message) => (
-          <div key={message.id} className={`tq-toast tq-toast--${message.tone ?? "info"}`}>
+          <div key={message.id} className={`tq-toast tq-toast--${message.tone ?? "info"}`} role="alert" aria-live="polite">
             <button type="button" onClick={() => removeToast(message.id)} aria-label="关闭提示">×</button>
             <strong>{message.title}</strong>
             {message.description ? <span>{message.description}</span> : null}

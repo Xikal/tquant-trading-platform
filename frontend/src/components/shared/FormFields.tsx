@@ -106,21 +106,26 @@ interface SearchFieldProps {
   label: string;
   value: string;
   placeholder?: string;
+  disabled?: boolean;
   onChange: (value: string) => void;
   onSelect?: (item: SymbolSearchItem) => void;
 }
 
-export function SearchField({ label, value, placeholder, onChange, onSelect }: SearchFieldProps) {
+export function SearchField({ label, value, placeholder, disabled = false, onChange, onSelect }: SearchFieldProps) {
   const [items, setItems] = useState<SymbolSearchItem[]>([]);
+  const [total, setTotal] = useState(0);
   const [open, setOpen] = useState(false);
+  const [error, setError] = useState("");
   const requestSeq = useRef(0);
 
   useEffect(() => {
     const query = value.trim();
-    if (query.length < 2) {
+    if (disabled || query.length < 2) {
       requestSeq.current += 1;
       setItems([]);
+      setTotal(0);
       setOpen(false);
+      setError("");
       return undefined;
     }
     const seq = requestSeq.current + 1;
@@ -130,32 +135,38 @@ export function SearchField({ label, value, placeholder, onChange, onSelect }: S
         .then((result) => {
           if (requestSeq.current !== seq) return;
           setItems(result.items ?? []);
+          setTotal(result.total ?? result.items?.length ?? 0);
           setOpen(true);
+          setError("");
         })
-        .catch(() => {
+        .catch((err) => {
           if (requestSeq.current !== seq) return;
           setItems([]);
-          setOpen(false);
+          setTotal(0);
+          setError(err instanceof Error ? err.message : "搜索失败，请重试");
+          setOpen(true);
         });
     }, 180);
     return () => {
       window.clearTimeout(timer);
     };
-  }, [value]);
+  }, [disabled, value]);
 
   return (
     <div className="tq-search-field">
-      <TextField label={label} value={value} placeholder={placeholder} onChange={(event) => onChange(event.target.value)} />
-      {open && items.length ? (
-        <div className="tq-search-popover">
+      <TextField label={label} value={value} placeholder={placeholder} disabled={disabled} onChange={(event) => onChange(event.target.value)} />
+      {open && (items.length || error) ? (
+        <div className="tq-search-popover" role="listbox" aria-label={`${label}搜索结果`}>
+          {error ? <div className="tq-search-error">{error}</div> : null}
           {items.map((item) => (
             <button
               key={item.symbol}
               type="button"
+              role="option"
               onMouseDown={(event) => event.preventDefault()}
               onClick={() => {
-                onSelect?.(item);
                 onChange(item.symbol);
+                onSelect?.(item);
                 setOpen(false);
               }}
             >
@@ -164,6 +175,9 @@ export function SearchField({ label, value, placeholder, onChange, onSelect }: S
               <small>{item.industry || item.instrument_type || ""}</small>
             </button>
           ))}
+          {!error && total > items.length ? (
+            <div className="tq-search-more">还有 {total - items.length} 条结果，请细化搜索</div>
+          ) : null}
         </div>
       ) : null}
     </div>

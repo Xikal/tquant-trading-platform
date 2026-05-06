@@ -33,7 +33,7 @@ export function useResearchData({
   const [draft, setDraft] = useState<BacktestDraft>({
     symbol: "300059",
     bar_period: "5m",
-    lookback_bars: "480",
+    lookback_bars: "60",
     initial_position: "1000",
     walk_forward_windows: "4",
     low_buy_strategy: DEFAULT_PLAYBOOK_STRATEGY,
@@ -82,7 +82,7 @@ export function useResearchData({
       const [symbolResult, executionResult] = await Promise.allSettled([
         api.runBacktest({
           symbol: draft.symbol.trim(),
-          lookback_bars: parseNumber(draft.lookback_bars),
+          lookback_bars: lookbackDaysToBars(parseNumber(draft.lookback_bars), draft.bar_period),
           bar_period: draft.bar_period,
           initial_position: parseNumber(draft.initial_position),
           walk_forward_windows: parseNumber(draft.walk_forward_windows),
@@ -133,4 +133,9 @@ export function useResearchData({
     runBacktest,
     runStrategyValidation,
   };
+}
+
+function lookbackDaysToBars(days: number, period: BacktestDraft["bar_period"]): number {
+  const barsPerDay = period === "1m" ? 240 : period === "5m" ? 48 : 16;
+  return Math.max(1, Math.round(days * barsPerDay));
 }

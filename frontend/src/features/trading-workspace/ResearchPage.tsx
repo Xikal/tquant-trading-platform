@@ -61,12 +61,13 @@ export function ResearchPage({
         <div className="compact-form-grid">
           <SearchField label="证券代码" value={draft.symbol} placeholder="输入代码或名称" onChange={(value) => setDraft({ ...draft, symbol: value })} />
           <NumberField
-            label="回看分钟数量"
-            hint="用于盘中做T复盘，数值越大覆盖时间越长。"
+            label="回看天数"
+            suffix="天"
+            hint="用于盘中做T复盘，提交时会按分钟周期换算为K线数量。"
             value={draft.lookback_bars}
             onChange={(event) => setDraft({ ...draft, lookback_bars: event.target.value })}
           />
-          <NumberField label="底仓数量" value={draft.initial_position} onChange={(event) => setDraft({ ...draft, initial_position: event.target.value })} />
+          <NumberField label="初始仓位" suffix="股" value={draft.initial_position} onChange={(event) => setDraft({ ...draft, initial_position: event.target.value })} />
           <NumberField label="滚动验证次数" value={draft.walk_forward_windows} onChange={(event) => setDraft({ ...draft, walk_forward_windows: event.target.value })} />
           <NumberField label="低吸复盘天数" value={draft.low_buy_lookback_days} onChange={(event) => setDraft({ ...draft, low_buy_lookback_days: event.target.value })} />
           <NumberField label="样本上限" value={draft.low_buy_limit} onChange={(event) => setDraft({ ...draft, low_buy_limit: event.target.value })} />
@@ -78,7 +79,7 @@ export function ResearchPage({
           onChange={(event) => setDraft({ ...draft, low_buy_strategy: event.target.value })}
         />
         <SelectField
-          label="分钟周期"
+          label="K线周期"
           value={draft.bar_period}
           options={[
             { value: "1m", label: "1分钟走势" },

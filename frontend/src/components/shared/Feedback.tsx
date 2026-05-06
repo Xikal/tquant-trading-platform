@@ -11,12 +11,12 @@ export function EmptyPlaceholder({ title, description, action }: { title: string
 }
 
 export function LoadingSpinner({ label = "加载中..." }: { label?: string }) {
-  return <div className="tq-feedback tq-feedback--loading">{label}</div>;
+  return <div className="tq-feedback tq-feedback--loading" role="status" aria-label={label}>{label}</div>;
 }
 
 export function SkeletonBlock({ rows = 4, title = false }: { rows?: number; title?: boolean }) {
   return (
-    <div className="tq-skeleton" aria-label="内容加载中">
+    <div className="tq-skeleton" role="status" aria-label="加载中">
       {title ? <span className="wide" /> : null}
       {Array.from({ length: rows }).map((_, index) => (
         <span className={index % 3 === 1 ? "medium" : ""} key={index} />
@@ -29,7 +29,7 @@ export function ErrorBanner({ message, onRetry }: { message: string; onRetry?: (
   return (
     <div className="tq-feedback tq-feedback--error">
       <span>{message}</span>
-      {onRetry ? <button type="button" onClick={onRetry}>重试</button> : null}
+      {onRetry ? <button type="button" onClick={onRetry} aria-label="重试加载">重试</button> : null}
     </div>
   );
 }

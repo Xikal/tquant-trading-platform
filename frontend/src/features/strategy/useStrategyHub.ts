@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   backtestsApi,
   type BacktestCreateRequest,
@@ -20,7 +20,10 @@ export interface StrategyQuickForm {
   initial_capital: string;
   execution_model: BacktestExecutionModel;
   max_position_pct: string;
+  max_single_order_pct: string;
   max_positions: string;
+  max_daily_loss_pct: string;
+  min_cash_reserve: string;
   benchmark: string;
   strategies: string[];
 }
@@ -32,7 +35,10 @@ const DEFAULT_FORM: StrategyQuickForm = {
   initial_capital: "500000",
   execution_model: "open_price",
   max_position_pct: "30",
+  max_single_order_pct: "15",
   max_positions: "8",
+  max_daily_loss_pct: "5",
+  min_cash_reserve: "5000",
   benchmark: "000300",
   strategies: ["first_board", "volume_shrink"],
 };
@@ -47,6 +53,7 @@ export function useStrategyHub() {
   const [loading, setLoading] = useState("");
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const loadSeqRef = useRef(0);
 
   const selectedStrategies = useMemo(
     () => strategies.filter((strategy) => form.strategies.includes(strategy.key)),
@@ -63,27 +70,33 @@ export function useStrategyHub() {
   }, []);
 
   const load = useCallback(async () => {
+    const seq = loadSeqRef.current + 1;
+    loadSeqRef.current = seq;
     setLoading("load");
     setError("");
-    try {
-      const [meta, presetResult, runResult] = await Promise.all([
-        strategiesApi.getStrategyMeta(),
-        strategiesApi.getPresets(),
-        backtestsApi.listBacktests({ limit: 8, offset: 0 }),
-      ]);
-      setStrategies(meta.strategies ?? []);
-      setPresets(presetResult.presets ?? []);
-      setRuns(runResult.items ?? []);
-      if (meta.strategies?.length) {
+    const [meta, presetResult, runResult] = await Promise.allSettled([
+      strategiesApi.getStrategyMeta(),
+      strategiesApi.getPresets(),
+      backtestsApi.listBacktests({ limit: 8, offset: 0 }),
+    ]);
+    if (loadSeqRef.current !== seq) return;
+    const failures = [meta, presetResult, runResult].filter((item) => item.status === "rejected");
+    if (meta.status === "fulfilled") {
+      setStrategies(meta.value.strategies ?? []);
+      if (meta.value.strategies?.length) {
         setForm((current) => current.strategies.length
           ? current
-          : { ...current, strategies: meta.strategies.slice(0, 2).map((strategy) => strategy.key) });
+          : { ...current, strategies: meta.value.strategies.slice(0, 2).map((strategy) => strategy.key) });
       }
-    } catch (err) {
-      setError(toMessage(err));
-    } finally {
-      setLoading("");
     }
+    if (presetResult.status === "fulfilled") setPresets(presetResult.value.presets ?? []);
+    if (runResult.status === "fulfilled") setRuns(runResult.value.items ?? []);
+    if (failures.length) {
+      const first = failures[0] as PromiseRejectedResult;
+      setNotice("部分数据加载失败，可稍后重试。");
+      if (meta.status === "rejected") setError(toMessage(first.reason));
+    }
+    if (loadSeqRef.current === seq) setLoading("");
   }, []);
 
   useEffect(() => {
@@ -116,7 +129,10 @@ export function useStrategyHub() {
       initial_capital: String(config.initial_capital ?? current.initial_capital),
       execution_model: normalizeExecutionModel(config.execution_model, current.execution_model),
       max_position_pct: String(config.max_position_pct ?? current.max_position_pct),
+      max_single_order_pct: String(config.max_single_order_pct ?? Math.max(Number(config.max_position_pct ?? current.max_position_pct) / 2, 1)),
       max_positions: String(config.max_positions ?? current.max_positions),
+      max_daily_loss_pct: String(config.max_daily_loss_pct ?? current.max_daily_loss_pct),
+      min_cash_reserve: String(config.min_cash_reserve ?? current.min_cash_reserve),
       benchmark: String(config.benchmark ?? current.benchmark),
       strategies: Array.isArray(config.strategies)
         ? config.strategies.map(String)
@@ -142,9 +158,9 @@ export function useStrategyHub() {
         risk_limits: {
           max_position_pct: parsePercent(form.max_position_pct),
           max_positions: Math.max(1, Math.round(parsePositive(form.max_positions))),
-          max_daily_loss_pct: 5,
-          max_single_order_pct: parsePercent(form.max_position_pct),
-          min_cash_reserve: 5000,
+          max_daily_loss_pct: parsePercent(form.max_daily_loss_pct),
+          max_single_order_pct: parsePercent(form.max_single_order_pct),
+          min_cash_reserve: parsePositive(form.min_cash_reserve),
         },
       };
       const result = await backtestsApi.createBacktest(payload);
@@ -189,7 +205,7 @@ function initialTabFromLocation(): StrategyHubTab {
   if (raw === "optimize") return "optimize";
   if (raw === "validate") return "validate";
   if (raw === "compare") return "compare";
-  if (raw === "history") return "history";
+  if (raw === "history" || raw === "backtest") return "history";
   return "quick";
 }
 
@@ -200,6 +216,9 @@ function validateForm(form: StrategyQuickForm) {
   if (!form.strategies.length) throw new Error("至少选择一个策略");
   parsePositive(form.initial_capital);
   parsePositive(form.max_positions);
+  parsePositive(form.max_daily_loss_pct);
+  parsePositive(form.max_single_order_pct);
+  parsePositive(form.min_cash_reserve);
 }
 
 function parsePositive(value: string): number {

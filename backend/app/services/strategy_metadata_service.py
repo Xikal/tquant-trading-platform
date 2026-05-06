@@ -50,7 +50,10 @@ DEFAULT_PRESETS: tuple[dict[str, Any], ...] = (
             "strategies": [seed.key for seed in DEFAULT_STRATEGY_META],
             "execution_model": "open_price",
             "max_position_pct": 30,
+            "max_single_order_pct": 15,
             "max_positions": 8,
+            "max_daily_loss_pct": 5,
+            "min_cash_reserve": 5000,
             "stop_loss_pct": -5,
             "take_profit_pct": 10,
             "benchmark": "000300",
@@ -67,7 +70,10 @@ DEFAULT_PRESETS: tuple[dict[str, Any], ...] = (
             "strategies": [seed.key for seed in DEFAULT_STRATEGY_META],
             "execution_model": "vwap",
             "max_position_pct": 30,
+            "max_single_order_pct": 15,
             "max_positions": 8,
+            "max_daily_loss_pct": 5,
+            "min_cash_reserve": 5000,
             "stop_loss_pct": -5,
             "take_profit_pct": 10,
             "benchmark": "000300",
@@ -84,7 +90,10 @@ DEFAULT_PRESETS: tuple[dict[str, Any], ...] = (
             "strategies": [seed.key for seed in DEFAULT_STRATEGY_META],
             "execution_model": "open_price",
             "max_position_pct": 30,
+            "max_single_order_pct": 15,
             "max_positions": 8,
+            "max_daily_loss_pct": 5,
+            "min_cash_reserve": 5000,
             "stop_loss_pct": -5,
             "take_profit_pct": 10,
             "benchmark": "000300",
@@ -131,6 +140,7 @@ class StrategyMetadataService:
             return SymbolSearchResponse(items=[], total=0)
         safe_limit = max(1, min(limit, 20))
         rows = self._search_instruments(keyword, safe_limit)
+        total = self._count_instruments(keyword)
         fallback_symbols: list[str] = []
         if len(rows) < safe_limit:
             fallback_symbols = self._search_daily_bar_symbols(
@@ -138,6 +148,7 @@ class StrategyMetadataService:
                 limit=safe_limit - len(rows),
                 excluded={row.symbol for row in rows},
             )
+            total += self._count_daily_bar_symbols(keyword, excluded={row.symbol for row in rows})
         prices = self._latest_prices([row.symbol for row in rows] + fallback_symbols)
         items = [
             SymbolSearchItem(
@@ -160,7 +171,7 @@ class StrategyMetadataService:
             )
             for symbol in fallback_symbols
         )
-        return SymbolSearchResponse(items=items, total=len(items))
+        return SymbolSearchResponse(items=items, total=total)
 
     def _load_metadata_overrides(self) -> dict[str, StrategyMetadata]:
         try:
@@ -180,15 +191,16 @@ class StrategyMetadataService:
             return []
 
     def _search_instruments(self, keyword: str, limit: int) -> list[Instrument]:
-        pattern = f"%{keyword}%"
-        prefix = f"{keyword}%"
+        escaped = _escape_like(keyword)
+        pattern = f"%{escaped}%"
+        prefix = f"{escaped}%"
         statement = (
             select(Instrument)
             .where(
                 or_(
-                    Instrument.symbol.like(prefix),
-                    Instrument.name.like(pattern),
-                    Instrument.sector_name.like(pattern),
+                    Instrument.symbol.like(prefix, escape="\\"),
+                    Instrument.name.like(pattern, escape="\\"),
+                    Instrument.sector_name.like(pattern, escape="\\"),
                 )
             )
             .order_by(Instrument.instrument_type.asc(), Instrument.symbol.asc())
@@ -196,22 +208,48 @@ class StrategyMetadataService:
         )
         return list(self.db.execute(statement).scalars().all())
 
+    def _count_instruments(self, keyword: str) -> int:
+        escaped = _escape_like(keyword)
+        pattern = f"%{escaped}%"
+        prefix = f"{escaped}%"
+        statement = select(func.count(Instrument.id)).where(
+            or_(
+                Instrument.symbol.like(prefix, escape="\\"),
+                Instrument.name.like(pattern, escape="\\"),
+                Instrument.sector_name.like(pattern, escape="\\"),
+            )
+        )
+        return int(self.db.execute(statement).scalar() or 0)
+
     def _search_daily_bar_symbols(self, keyword: str, limit: int, excluded: set[str]) -> list[str]:
         latest_date = self.db.execute(select(func.max(DailyBarSnapshot.trade_date))).scalar()
         if not latest_date:
             return []
-        prefix = f"{keyword}%"
+        prefix = f"{_escape_like(keyword)}%"
         statement = (
             select(distinct(DailyBarSnapshot.symbol))
             .where(
                 DailyBarSnapshot.trade_date == latest_date,
-                DailyBarSnapshot.symbol.like(prefix),
+                DailyBarSnapshot.symbol.like(prefix, escape="\\"),
             )
             .order_by(DailyBarSnapshot.symbol.asc())
             .limit(limit + len(excluded))
         )
         symbols = [str(row[0]) for row in self.db.execute(statement).all()]
         return [symbol for symbol in symbols if symbol not in excluded][:limit]
+
+    def _count_daily_bar_symbols(self, keyword: str, excluded: set[str]) -> int:
+        latest_date = self.db.execute(select(func.max(DailyBarSnapshot.trade_date))).scalar()
+        if not latest_date:
+            return 0
+        prefix = f"{_escape_like(keyword)}%"
+        statement = select(func.count(distinct(DailyBarSnapshot.symbol))).where(
+            DailyBarSnapshot.trade_date == latest_date,
+            DailyBarSnapshot.symbol.like(prefix, escape="\\"),
+        )
+        if excluded:
+            statement = statement.where(DailyBarSnapshot.symbol.notin_(excluded))
+        return int(self.db.execute(statement).scalar() or 0)
 
     def _latest_prices(self, symbols: list[str]) -> dict[str, float]:
         if not symbols:
@@ -246,9 +284,13 @@ def _preset_from_row(row: StrategyPreset) -> StrategyPresetOut:
         config = {}
     return StrategyPresetOut(
         id=row.id,
-        key=str(row.id),
+        key=str(row.preset_key or row.id),
         name=row.name,
         description=row.description or "",
         config=config,
         sort_order=row.sort_order or 0,
     )
+
+
+def _escape_like(value: str) -> str:
+    return value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")

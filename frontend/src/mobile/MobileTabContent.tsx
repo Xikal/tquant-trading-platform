@@ -1,4 +1,5 @@
 import type { ComponentProps } from "react";
+import type { BacktestRunSummary } from "../api/backtests";
 import type { WatchlistItem } from "../types";
 import { PaperTradingPanel } from "./PaperTradingPanel";
 import { MobileHoldingsSection, MobileHomeSection, MobileLowBuySection } from "./MobileTabSections";
@@ -28,6 +29,7 @@ export function MobileTabContent({
   lowBuy: Omit<LowBuyProps, "onOpenAi" | "onBought"> & {
     onOpenAi: () => void;
     onBought: (item: MobileLowBuyCardItem) => void;
+    recentBacktests?: BacktestRunSummary[];
   };
   paper: PaperProps;
 }) {

@@ -22,7 +22,10 @@ export interface StrategyPreset {
     strategies?: string[];
     execution_model?: string;
     max_position_pct?: number;
+    max_single_order_pct?: number;
     max_positions?: number;
+    max_daily_loss_pct?: number;
+    min_cash_reserve?: number;
     stop_loss_pct?: number;
     take_profit_pct?: number;
     benchmark?: string;
@@ -66,10 +69,11 @@ export const strategiesApi = {
     request<{ items: SymbolSearchItem[]; total: number }>(
       `/symbols/search?q=${encodeURIComponent(query)}&limit=${limit}`
     ),
-  listSignalReplay: (strategy: string, symbol = "", limit = 20) => {
+  listSignalReplay: (strategy: string, symbol = "", limit = 20, lookbackDays = 60) => {
     const params = new URLSearchParams();
     params.set("strategy", strategy);
     params.set("limit", String(limit));
+    params.set("lookback_days", String(lookbackDays));
     if (symbol.trim()) {
       params.set("symbol", symbol.trim());
     }

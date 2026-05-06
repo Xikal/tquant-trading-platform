@@ -47,7 +47,7 @@ export function usePaperTrading({ setError, setLoading, setNotice, onAuthRequire
     current_price: "",
     strategy_key: "",
     reason: "",
-    require_intraday_confirmation: false,
+    require_intraday_confirmation: true,
   });
 
   async function load(allowRefresh = true, manageLoading = true) {
@@ -175,7 +175,7 @@ export function usePaperTrading({ setError, setLoading, setNotice, onAuthRequire
         current_price: nullableNumber(draft.current_price),
         strategy_key: draft.strategy_key.trim(),
         reason: draft.reason.trim(),
-        require_intraday_confirmation: draft.require_intraday_confirmation,
+        require_intraday_confirmation: true,
         source: "manual",
       }));
       setNotice(result.status === "filled" ? "模拟委托已成交" : result.reject_reason || "模拟委托已提交");

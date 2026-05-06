@@ -58,6 +58,7 @@ class StrategyPreset(Base):
     __tablename__ = "strategy_presets"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    preset_key: Mapped[Optional[str]] = mapped_column(String(40), nullable=True, unique=True, index=True)
     name: Mapped[str] = mapped_column(String(64), index=True)
     description: Mapped[str] = mapped_column(Text, default="")
     config_json: Mapped[str] = mapped_column(Text, default="{}")

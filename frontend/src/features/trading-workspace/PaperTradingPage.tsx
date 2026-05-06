@@ -109,6 +109,7 @@ export const PaperTradingPage = memo(function PaperTradingPage({
           paused={paused}
           autoTradingRunning={autoTradingRunning}
           loading={orderLoading}
+          positions={positions}
           onClose={() => setOrderModalOpen(false)}
           onSubmitOrder={submitOrderFromModal}
         />

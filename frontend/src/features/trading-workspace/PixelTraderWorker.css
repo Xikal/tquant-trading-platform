@@ -231,7 +231,7 @@
 }
 
 .order-modal {
-  width: min(420px, 100%);
+  width: min(760px, 100%);
   display: grid;
   gap: 10px;
   padding: 14px;
@@ -280,6 +280,72 @@
   gap: 9px 12px;
 }
 
+.order-modal-primary {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) 160px minmax(220px, 1fr);
+  gap: 10px;
+  align-items: end;
+}
+
+.order-side-switch {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 7px;
+}
+
+.order-side-switch button,
+.order-quantity-actions button {
+  min-height: 32px;
+  border: 1px solid #dce5f0;
+  border-radius: 8px;
+  background: #f9fbff;
+  color: #102034;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.order-side-switch button.active.buy {
+  border-color: rgba(220, 38, 38, 0.4);
+  background: #fff1f2;
+  color: #dc2626;
+}
+
+.order-side-switch button.active.sell {
+  border-color: rgba(5, 150, 105, 0.4);
+  background: #ecfdf5;
+  color: #059669;
+}
+
+.order-quantity-block {
+  display: grid;
+  gap: 7px;
+}
+
+.order-quantity-actions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.order-modal-extra {
+  margin-top: 4px;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 9px;
+  background: #f8fafc;
+}
+
+.order-modal-extra summary {
+  cursor: pointer;
+  color: #8a5b12;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.order-symbol-hint {
+  margin: 0;
+}
+
 .order-modal label,
 .order-modal .select-field {
   display: grid;
@@ -325,6 +391,10 @@
 
 @media (max-width: 520px) {
   .order-modal-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .order-modal-primary {
     grid-template-columns: 1fr;
   }
 

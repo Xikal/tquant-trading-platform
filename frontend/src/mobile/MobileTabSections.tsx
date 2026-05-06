@@ -1,4 +1,6 @@
 import { useMemo, useState } from "react"
+import type { BacktestRunSummary } from "../api/backtests"
+import { formatBacktestStrategies, formatPct } from "../utils/backtestFormatters"
 import type { LowBuyPriorityBoardItem, WatchlistItem } from "../types"
 import {
   MobileFocusCard,
@@ -17,6 +19,7 @@ import {
 } from "./MobileDesignCards"
 import type { LowBuyPriorityBoardResult } from "../types"
 
+type Tone = "positive" | "negative" | "neutral" | "warning"
 type LowBuyGroups = ReturnType<typeof splitPriorityItems<MobileLowBuyCardItem>>
 
 export function MobileHomeSection({
@@ -167,7 +170,8 @@ export function MobileLowBuySection({
   onStrategyChange,
   onOpenAi,
   onOpenCandidate,
-  onBought
+  onBought,
+  recentBacktests
 }: {
   strategyFilter: MobileStrategyTabKey
   strategyTabs?: MobileStrategyTabOption[]
@@ -181,12 +185,14 @@ export function MobileLowBuySection({
   onOpenAi: () => void
   onOpenCandidate: (symbol: string, strategy: MobileStrategyTabKey) => void | Promise<void>
   onBought: (item: MobileLowBuyCardItem) => void
+  recentBacktests?: BacktestRunSummary[]
 }) {
   return (
     <>
       <MobileStrategyTabs active={strategyFilter} onChange={onStrategyChange} strategies={strategyTabs} />
       <MobileMetricRow items={metrics} />
       <MobileFocusCard item={playbookItems[0]} />
+      <MobileRecentBacktests runs={recentBacktests ?? []} />
 
       <MobileSectionTitle
         title="确定买入"
@@ -246,4 +252,72 @@ export function MobileLowBuySection({
       </section>
     </>
   )
+}
+
+function MobileRecentBacktests({ runs }: { runs: BacktestRunSummary[] }) {
+  return (
+    <>
+      <MobileSectionTitle title="最近回测" hint="最近 5 条任务摘要" />
+      <section className="mobile-design-list mobile-recent-backtests">
+        {runs.slice(0, 5).map((run) => (
+          <article className="mobile-design-stock-card mobile-backtest-card" key={run.id}>
+            <div className="mobile-design-stock-head">
+              <div className="mobile-design-stock-name">
+                <strong>{run.name || `回测 #${run.id}`}</strong>
+                <span>{formatBacktestStrategies(run.strategies)}</span>
+              </div>
+              <div className={`mobile-design-pill tone-${run.status === "succeeded" ? "positive" : run.status === "failed" ? "negative" : "warning"}`}>
+                {statusText(run.status)}
+              </div>
+            </div>
+            <div className="mobile-design-stock-grid">
+              <MobileBacktestMetric label="收益" value={formatPct(run.summary?.total_return_pct)} tone={signedTone(run.summary?.total_return_pct)} />
+              <MobileBacktestMetric label="胜率" value={formatPct(run.summary?.win_rate_pct)} />
+              <MobileBacktestMetric label="进度" value={`${Math.round(run.progress_pct ?? run.progress ?? 0)}%`} />
+              <MobileBacktestMetric label="资产" value={formatBacktestMoney(run.final_equity)} />
+            </div>
+          </article>
+        ))}
+        {!runs.length ? <div className="mobile-app-empty">暂无最近回测任务</div> : null}
+      </section>
+    </>
+  )
+}
+
+function MobileBacktestMetric({
+  label,
+  value,
+  tone = "neutral"
+}: {
+  label: string
+  value: string
+  tone?: Tone
+}) {
+  return (
+    <div>
+      <span>{label}</span>
+      <strong className={`tone-${tone}`}>{value}</strong>
+    </div>
+  )
+}
+
+function signedTone(value: number | null | undefined): Tone {
+  if (typeof value !== "number" || !Number.isFinite(value)) return "neutral"
+  if (value > 0) return "positive"
+  if (value < 0) return "negative"
+  return "neutral"
+}
+
+function statusText(status?: string) {
+  if (status === "succeeded") return "完成"
+  if (status === "failed") return "失败"
+  if (status === "running") return "运行中"
+  if (status === "queued") return "排队"
+  if (status === "cancelled") return "已取消"
+  return status || "--"
+}
+
+function formatBacktestMoney(value?: number | null) {
+  if (typeof value !== "number" || !Number.isFinite(value)) return "--"
+  return value.toLocaleString("zh-CN", { maximumFractionDigits: 0 })
 }

@@ -19,7 +19,7 @@ interface WorkspacePageContentProps {
   PlaybookPage: ComponentType<ComponentProps<any>>;
   ResearchPage: ComponentType<ComponentProps<any>>;
   SettingsPage: ComponentType<ComponentProps<any>>;
-  StrategyHubPage: ComponentType;
+  StrategyHubPage: ComponentType<{ currentUser: AuthUser }>;
   analysis: ReturnType<typeof useAnalysisData>;
   currentUser: AuthUser;
   loading: string;
@@ -31,6 +31,7 @@ interface WorkspacePageContentProps {
   research: ReturnType<typeof useResearchData>;
   settingsData: ReturnType<typeof useSettingsData>;
   onSelectStock: (stock: StockCardView | null) => void;
+  onPreparePaperOrder: (payload: { symbol: string; name?: string; price?: number | null }) => void;
 }
 
 export function WorkspacePageContent({
@@ -54,6 +55,7 @@ export function WorkspacePageContent({
   research,
   settingsData,
   onSelectStock,
+  onPreparePaperOrder,
 }: WorkspacePageContentProps) {
   return (
     <PageErrorBoundary resetKey={page}>
@@ -66,6 +68,7 @@ export function WorkspacePageContent({
             result={analysis.result}
             loading={loading}
             onRun={() => void analysis.runAnalysis()}
+            onOpenPaperOrder={onPreparePaperOrder}
           />
         )}
         {page === "playbook" && (
@@ -79,7 +82,7 @@ export function WorkspacePageContent({
             onSelect={onSelectStock}
           />
         )}
-        {page === "strategy" && <StrategyHubPage />}
+        {page === "strategy" && <StrategyHubPage currentUser={currentUser} />}
         {page === "research" && (
           <ResearchPage
             replays={research.replays}
@@ -131,7 +134,7 @@ export function WorkspacePageContent({
             setFactorDraft={settingsData.setFactorDraft}
             loading={loading}
             onSave={settingsData.saveSettings}
-            onSaveFactors={() => void settingsData.saveFactorWeights()}
+            onSaveFactors={settingsData.saveFactorWeights}
             onRefresh={() => void settingsData.loadSettings()}
             onUpdateStrategyGovernance={(strategyKey: string, status: "active" | "watch" | "paused") => void settingsData.updateStrategyGovernance(strategyKey, status)}
           />

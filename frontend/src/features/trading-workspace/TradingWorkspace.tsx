@@ -266,6 +266,22 @@ export function TradingWorkspace() {
     navigatePage("playbook");
   }
 
+  function preparePaperOrder(payload: { symbol: string; name?: string; price?: number | null }) {
+    const symbol = payload.symbol.trim();
+    const priceText = payload.price == null ? "" : String(payload.price);
+    paper.setDraft({
+      ...paper.draft,
+      symbol,
+      name: payload.name || paper.draft.name,
+      side: "buy",
+      price: priceText,
+      current_price: priceText,
+      require_intraday_confirmation: true,
+    });
+    setNotice(`${symbol} 已填入模拟委托，打开录入委托即可提交`);
+    navigatePage("paper");
+  }
+
   async function addWatchlist() {
     await withLoading("watchlist", async () => {
       const symbol = watchDraft.symbol.trim();
@@ -416,6 +432,7 @@ export function TradingWorkspace() {
           research={research}
           settingsData={settingsData}
           onSelectStock={setSelectedStock}
+          onPreparePaperOrder={preparePaperOrder}
         />
       </main>
     </div>

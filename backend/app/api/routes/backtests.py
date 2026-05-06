@@ -192,7 +192,7 @@ def create_backtest_validation(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> BacktestValidationDetail:
-    _require_optimizer_access(current_user)
+    _require_research_access(current_user)
     return BacktestValidationService(db).create_task(payload, owner_user_id=current_user.id)
 
 
@@ -205,7 +205,7 @@ def list_backtest_validations(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> BacktestValidationListResponse:
-    _require_optimizer_access(current_user)
+    _require_research_access(current_user)
     return BacktestValidationService(db).list_tasks(
         owner_user_id=current_user.id,
         is_admin=_is_admin(current_user) and include_all,
@@ -221,7 +221,7 @@ def get_backtest_validation(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> BacktestValidationDetail:
-    _require_optimizer_access(current_user)
+    _require_research_access(current_user)
     return BacktestValidationService(db).get_task(
         task_id,
         owner_user_id=current_user.id,
@@ -235,7 +235,7 @@ def cancel_backtest_validation(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> BacktestResearchMutationResponse:
-    _require_optimizer_access(current_user)
+    _require_research_access(current_user)
     task = BacktestValidationService(db).cancel_task(
         task_id,
         owner_user_id=current_user.id,
@@ -250,7 +250,7 @@ def delete_backtest_validation(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> BacktestResearchMutationResponse:
-    _require_optimizer_access(current_user)
+    _require_research_access(current_user)
     task = BacktestValidationService(db).delete_task(
         task_id,
         owner_user_id=current_user.id,
@@ -390,6 +390,13 @@ def _is_admin(user: User) -> bool:
 
 def _require_optimizer_access(user: User) -> None:
     roles = {item.strip().lower() for item in (getattr(user, "roles", "") or "").split(",")}
-    if _is_admin(user) or {"backtest_optimizer", "backtest_research"} & roles:
+    if _is_admin(user) or "backtest_optimizer" in roles:
         return
     raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="账号未开通参数优化权限")
+
+
+def _require_research_access(user: User) -> None:
+    roles = {item.strip().lower() for item in (getattr(user, "roles", "") or "").split(",")}
+    if _is_admin(user) or {"backtest_optimizer", "backtest_research"} & roles:
+        return
+    raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="账号未开通样本外验证权限")

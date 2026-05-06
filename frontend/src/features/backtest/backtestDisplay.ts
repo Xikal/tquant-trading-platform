@@ -1,5 +1,7 @@
 import type { BacktestExecutionModel } from "../../api/backtests";
 import { STRATEGY_OPTIONS, type StrategyOption } from "../../constants/strategies";
+import { formatPct } from "../../utils/backtestFormatters";
+export { formatBacktestStrategy, formatBacktestStrategies, formatPct } from "../../utils/backtestFormatters";
 
 export const BACKTEST_STRATEGY_OPTIONS = STRATEGY_OPTIONS;
 export type BacktestStrategyOption = StrategyOption;
@@ -17,18 +19,6 @@ export const OPTIMIZATION_TARGET_OPTIONS = [
   ["profit_factor", "利润因子"],
   ["win_rate_pct", "胜率"],
 ] as const;
-
-const STRATEGY_LABELS = Object.fromEntries(BACKTEST_STRATEGY_OPTIONS) as Record<string, string>;
-
-export function formatBacktestStrategy(value?: string | null): string {
-  if (!value) return "--";
-  return STRATEGY_LABELS[value] ?? value;
-}
-
-export function formatBacktestStrategies(values?: string[] | null): string {
-  if (!values?.length) return "--";
-  return values.map(formatBacktestStrategy).join(" / ");
-}
 
 export function pboRiskMeta(value?: string | null): { label: string; tone: string } {
   const key = String(value || "").toLowerCase();
@@ -56,12 +46,6 @@ export function formatMoney(value?: number | null): string {
 export function formatPrice(value?: number | null): string {
   if (typeof value !== "number" || !Number.isFinite(value)) return "--";
   return value.toFixed(3);
-}
-
-export function formatPct(value?: number | null, digits = 2): string {
-  if (typeof value !== "number" || !Number.isFinite(value)) return "--";
-  const sign = value > 0 ? "+" : "";
-  return `${sign}${value.toFixed(digits)}%`;
 }
 
 export function formatRatioPct(value?: number | null): string {

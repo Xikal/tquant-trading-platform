@@ -1,9 +1,10 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import type { BacktestRunSummary } from "../../api/backtests";
 import { strategiesApi, type StrategySignalReplayItem } from "../../api/strategies";
 import { EmptyPlaceholder, ErrorBanner, SkeletonBlock } from "../../components/shared/Feedback";
 import { DateField, NumberField, SearchField, SelectField, TextField } from "../../components/shared/FormFields";
 import { useToast } from "../../components/shared/ToastContainer";
+import type { AuthUser } from "../../types";
 import {
   formatBacktestStrategies,
   formatDateTime,
@@ -24,8 +25,9 @@ const TABS: Array<{ key: StrategyHubTab; label: string; hint: string }> = [
   { key: "history", label: "策略历史", hint: "任务追踪" },
 ];
 
-export function StrategyHubPage() {
+export function StrategyHubPage({ currentUser }: { currentUser: AuthUser }) {
   const hub = useStrategyHub();
+  const dashboard = useBacktestDashboard();
   const toast = useToast();
 
   function submitWithToast() {
@@ -101,7 +103,7 @@ export function StrategyHubPage() {
         hub.tab === "history" ? (
           <StrategyHistoryPanel runs={hub.runs} onRefresh={() => void hub.load()} />
         ) : (
-          <StrategyBridge tab={hub.tab} />
+          <StrategyBridge tab={hub.tab} currentUser={currentUser} dashboard={dashboard} />
         )
       )}
 
@@ -139,6 +141,14 @@ function QuickBacktestForm({ hub }: { hub: ReturnType<typeof useStrategyHub> }) 
       <NumberField label="单票仓位上限" suffix="%" value={hub.form.max_position_pct} onChange={(event) => hub.updateForm({ max_position_pct: event.target.value })} />
       <NumberField label="最大持仓数" value={hub.form.max_positions} onChange={(event) => hub.updateForm({ max_positions: event.target.value })} />
       <TextField label="基准指数" value={hub.form.benchmark} onChange={(event) => hub.updateForm({ benchmark: event.target.value })} />
+      <details className="strategy-advanced-fields">
+        <summary>更多风控参数</summary>
+        <div className="strategy-form compact">
+          <NumberField label="单笔下单上限" suffix="%" value={hub.form.max_single_order_pct} onChange={(event) => hub.updateForm({ max_single_order_pct: event.target.value })} />
+          <NumberField label="单日最大亏损" suffix="%" value={hub.form.max_daily_loss_pct} onChange={(event) => hub.updateForm({ max_daily_loss_pct: event.target.value })} />
+          <NumberField label="最低现金保留" value={hub.form.min_cash_reserve} onChange={(event) => hub.updateForm({ min_cash_reserve: event.target.value })} />
+        </div>
+      </details>
       <div className="strategy-picker">
         <div className="strategy-picker-head">
           <strong>策略选择</strong>
@@ -251,7 +261,15 @@ function StrategyHistoryPanel({ runs, onRefresh }: { runs: BacktestRunSummary[];
   );
 }
 
-function StrategyBridge({ tab }: { tab: Exclude<StrategyHubTab, "quick" | "history"> }) {
+function StrategyBridge({
+  tab,
+  currentUser,
+  dashboard,
+}: {
+  tab: Exclude<StrategyHubTab, "quick" | "history">;
+  currentUser: AuthUser;
+  dashboard: ReturnType<typeof useBacktestDashboard>;
+}) {
   const metaMap: Record<Exclude<StrategyHubTab, "quick" | "history">, [string, string]> = {
     signals: ["信号复盘", "按标的、策略和时间快速定位历史信号，不再加载完整回测页面。"],
     optimize: ["参数优化", "只展示参数优化模块，避免整页桥接造成额外 API 与 DOM 负担。"],
@@ -261,6 +279,12 @@ function StrategyBridge({ tab }: { tab: Exclude<StrategyHubTab, "quick" | "histo
   const meta = metaMap[tab];
   if (tab === "signals") {
     return <StrategySignalReplayPanel title={meta[0]} subtitle={meta[1]} />;
+  }
+  if (tab === "optimize" && !canOptimize(currentUser)) {
+    return <PermissionPanel title="需要参数优化权限" description="当前账号可以查看回测和信号复盘，但不能创建参数优化任务。" />;
+  }
+  if (tab === "validate" && !canValidate(currentUser)) {
+    return <PermissionPanel title="需要研究员权限" description="当前账号可以查看回测和信号复盘，但不能创建样本外验证任务。" />;
   }
   const sectionMap: Record<Exclude<StrategyHubTab, "quick" | "history" | "signals">, BacktestResearchSection> = {
     optimize: "optimization",
@@ -272,9 +296,8 @@ function StrategyBridge({ tab }: { tab: Exclude<StrategyHubTab, "quick" | "histo
       <section className="panel strategy-placeholder">
         <h2>{meta[0]}</h2>
         <p>{meta[1]}</p>
-        <p>该入口复用回测闭环 API，但仅加载当前功能模块。</p>
       </section>
-      <StrategyResearchFocus section={sectionMap[tab]} />
+      <StrategyResearchFocus section={sectionMap[tab]} dashboard={dashboard} />
     </div>
   );
 }
@@ -283,6 +306,7 @@ function StrategySignalReplayPanel({ title, subtitle }: { title: string; subtitl
   const [symbol, setSymbol] = useState("");
   const [strategy, setStrategy] = useState("first_board");
   const [items, setItems] = useState<StrategySignalReplayItem[]>([]);
+  const [lookbackDays, setLookbackDays] = useState("60");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const requestSeqRef = useRef(0);
@@ -293,7 +317,7 @@ function StrategySignalReplayPanel({ title, subtitle }: { title: string; subtitl
     requestSeqRef.current = requestSeq;
     setLoading(true);
     setError("");
-    void strategiesApi.listSignalReplay(strategy, nextSymbol, nextLimit)
+    void strategiesApi.listSignalReplay(strategy, nextSymbol, nextLimit, Number(lookbackDays) || 60)
       .then((result) => {
         if (requestSeqRef.current === requestSeq) setItems(result.items ?? []);
       })
@@ -310,7 +334,7 @@ function StrategySignalReplayPanel({ title, subtitle }: { title: string; subtitl
     return () => {
       requestSeqRef.current += 1;
     };
-  }, [strategy]);
+  }, [strategy, lookbackDays]);
   const runReplayQuery = () => {
     loadReplay(symbol, 24);
   };
@@ -330,12 +354,20 @@ function StrategySignalReplayPanel({ title, subtitle }: { title: string; subtitl
           onChange={(event) => setStrategy(event.target.value)}
           options={strategyOptions.map(([value, label]) => ({ value, label }))}
         />
+        <NumberField
+          label="交易日窗口"
+          suffix="个交易日"
+          value={lookbackDays}
+          min={1}
+          max={120}
+          onChange={(event) => setLookbackDays(event.target.value)}
+        />
         <button type="button" className="primary" onClick={runReplayQuery} disabled={loading}>
           {loading ? "查询中" : "查询信号"}
         </button>
       </div>
       {error ? <ErrorBanner message={`信号复盘查询失败：${error}`} /> : null}
-      <SignalReplayRows items={items} symbol={symbol} strategy={strategy} loading={loading} />
+      <SignalReplayRows items={items} symbol={symbol} strategy={strategy} loading={loading} lookbackDays={Number(lookbackDays) || 60} />
     </section>
   );
 }
@@ -345,11 +377,13 @@ function SignalReplayRows({
   symbol,
   strategy,
   loading,
+  lookbackDays,
 }: {
   items: StrategySignalReplayItem[];
   symbol: string;
   strategy: string;
   loading: boolean;
+  lookbackDays: number;
 }) {
   if (loading) {
     return <SkeletonBlock rows={4} title />;
@@ -358,7 +392,7 @@ function SignalReplayRows({
     return (
       <EmptyPlaceholder
         title="暂无信号复盘"
-        description={symbol ? `${symbol} 在 ${strategy} 下没有已物化信号。` : "可直接查询当前策略最近已物化信号，不会触发全量扫描。"}
+        description={symbol ? `${symbol} 在 ${strategy} 最近 ${lookbackDays} 个交易日内无信号记录，可扩大窗口或切换策略。` : `该策略最近 ${lookbackDays} 个交易日内无信号记录，可扩大窗口或切换策略。`}
       />
     );
   }
@@ -386,8 +420,13 @@ function SignalReplayRows({
   );
 }
 
-function StrategyResearchFocus({ section }: { section: BacktestResearchSection }) {
-  const dashboard = useBacktestDashboard();
+function StrategyResearchFocus({
+  section,
+  dashboard,
+}: {
+  section: BacktestResearchSection;
+  dashboard: ReturnType<typeof useBacktestDashboard>;
+}) {
   return (
     <BacktestResearchPanel
       state={dashboard.research}
@@ -410,20 +449,71 @@ function ConfirmDialog({
   onCancel: () => void;
   onConfirm: () => void;
 }) {
+  const titleId = useId();
+  const cancelRef = useRef<HTMLButtonElement | null>(null);
+  const confirmRef = useRef<HTMLButtonElement | null>(null);
+  useEffect(() => {
+    cancelRef.current?.focus();
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        onCancel();
+        return;
+      }
+      if (event.key !== "Tab") return;
+      const targets = [cancelRef.current, confirmRef.current].filter(Boolean) as HTMLButtonElement[];
+      if (!targets.length) return;
+      const currentIndex = targets.indexOf(document.activeElement as HTMLButtonElement);
+      const nextIndex = event.shiftKey
+        ? (currentIndex <= 0 ? targets.length - 1 : currentIndex - 1)
+        : (currentIndex >= targets.length - 1 ? 0 : currentIndex + 1);
+      event.preventDefault();
+      targets[nextIndex]?.focus();
+    }
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [onCancel]);
   return (
     <div className="strategy-dialog-backdrop" role="presentation">
-      <section className="strategy-dialog" role="dialog" aria-modal="true" aria-labelledby="strategy-confirm-title">
-        <h2 id="strategy-confirm-title">{title}</h2>
+      <section className="strategy-dialog" role="dialog" aria-modal="true" aria-labelledby={titleId}>
+        <h2 id={titleId}>{title}</h2>
         <p>{description}</p>
         <div className="strategy-dialog-actions">
-          <button type="button" onClick={onCancel} disabled={loading}>取消</button>
-          <button type="button" className="primary" onClick={onConfirm} disabled={loading}>
+          <button ref={cancelRef} type="button" onClick={onCancel} disabled={loading}>取消</button>
+          <button ref={confirmRef} type="button" className="primary" onClick={onConfirm} disabled={loading}>
             {loading ? "提交中" : "确认提交"}
           </button>
         </div>
       </section>
     </div>
   );
+}
+
+function PermissionPanel({ title, description }: { title: string; description: string }) {
+  return (
+    <section className="panel strategy-placeholder">
+      <h2>{title}</h2>
+      <p>{description}</p>
+    </section>
+  );
+}
+
+function userRoles(user: AuthUser): Set<string> {
+  return new Set((user.roles ?? []).map((role) => role.trim().toLowerCase()).filter(Boolean));
+}
+
+function isAdmin(user: AuthUser): boolean {
+  const roles = userRoles(user);
+  return roles.has("admin") || roles.has("administrator");
+}
+
+function canOptimize(user: AuthUser): boolean {
+  return isAdmin(user) || userRoles(user).has("backtest_optimizer");
+}
+
+function canValidate(user: AuthUser): boolean {
+  const roles = userRoles(user);
+  return isAdmin(user) || roles.has("backtest_optimizer") || roles.has("backtest_research");
 }
 
 function PanelTitle({ title, subtitle }: { title: string; subtitle: string }) {

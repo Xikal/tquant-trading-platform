@@ -26,7 +26,7 @@ interface StrategyStreamTokenResponse {
 }
 
 interface StrategyProgressMessage {
-  type: "progress" | "error";
+  type: "progress" | "error" | "ping";
   task_id?: number;
   status?: BacktestStatus;
   progress_pct?: number;
@@ -740,11 +740,11 @@ function startStrategyProgressStream({
   let fallbackTimer: number | undefined;
   let reconnectTimer: number | undefined;
   let reconnectAttempts = 0;
-  const maxReconnectAttempts = 2;
+  const maxReconnectAttempts = 5;
 
   const startFallback = () => {
     if (fallbackTimer || closed) return;
-    fallbackTimer = window.setInterval(onFallback, 15000);
+    fallbackTimer = window.setInterval(onFallback, 3000);
   };
 
   const closeSocket = () => {
@@ -762,7 +762,7 @@ function startStrategyProgressStream({
       return;
     }
     reconnectAttempts += 1;
-    const delayMs = 800 * reconnectAttempts;
+    const delayMs = Math.min(1000 * 2 ** (reconnectAttempts - 1), 16000);
     reconnectTimer = window.setTimeout(() => {
       reconnectTimer = undefined;
       connect();
@@ -779,6 +779,7 @@ function startStrategyProgressStream({
           try {
             const message = JSON.parse(event.data) as StrategyProgressMessage;
             if (message.task_id !== taskId) return;
+            if (message.type === "ping") return;
             reconnectAttempts = 0;
             if (message.type === "error") {
               onError(message.message || "策略任务进度连接异常，已切换轮询。");

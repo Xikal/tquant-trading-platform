@@ -31,6 +31,7 @@ def ensure_schema_compatibility(engine: Engine) -> None:
             _add_nullable_column(engine, table.name, column)
         _widen_strategy_key_column(engine, table.name, existing_column_info)
     _backfill_user_permission_columns(engine, existing_tables)
+    _backfill_backtest_owner_columns(engine, existing_tables)
     _ensure_query_indexes(engine, existing_tables)
 
 
@@ -48,6 +49,36 @@ def _backfill_user_permission_columns(engine: Engine, existing_tables: set[str])
             connection.execute(text("UPDATE users SET roles = '' WHERE roles IS NULL"))
     except Exception:
         logger.exception("schema compatibility patch failed to backfill user permission columns")
+
+
+def _backfill_backtest_owner_columns(engine: Engine, existing_tables: set[str]) -> None:
+    if "users" not in existing_tables:
+        return
+    try:
+        with engine.begin() as connection:
+            system_user_id = _ensure_system_user(connection)
+            for table_name in ("backtest_runs", "backtest_optimizations", "backtest_validations"):
+                if table_name in existing_tables:
+                    connection.execute(
+                        text(f"UPDATE {table_name} SET owner_user_id = :user_id WHERE owner_user_id IS NULL"),
+                        {"user_id": system_user_id},
+                    )
+    except Exception:
+        logger.exception("schema compatibility patch failed to backfill backtest owner columns")
+
+
+def _ensure_system_user(connection) -> int:
+    existing_id = connection.execute(text("SELECT id FROM users WHERE username = 'system' LIMIT 1")).scalar()
+    if existing_id is not None:
+        return int(existing_id)
+    connection.execute(text(
+        """
+        INSERT INTO users (username, display_name, password_hash, is_active, can_paper_trade, roles)
+        VALUES ('system', '系统管理员', 'disabled-system-user', 0, 0, 'admin')
+        """
+    ))
+    created_id = connection.execute(text("SELECT id FROM users WHERE username = 'system' LIMIT 1")).scalar()
+    return int(created_id)
 
 
 def _add_nullable_column(engine: Engine, table_name: str, source_column) -> None:
@@ -144,6 +175,7 @@ def _ensure_query_indexes(engine: Engine, existing_tables: set[str]) -> None:
         ("sse_subscriptions", "ix_sse_subscriptions_status_seen", ("status", "last_seen_at")),
         ("backtest_runs", "ix_backtest_runs_owner_status_created", ("owner_user_id", "status", "created_at")),
         ("backtest_runs", "ix_backtest_runs_status_dates", ("status", "start_date", "end_date")),
+        ("strategy_presets", "ix_strategy_presets_preset_key", ("preset_key",)),
         ("backtest_orders", "ix_backtest_orders_run_date_symbol", ("run_id", "trade_date", "symbol")),
         ("backtest_orders", "ix_backtest_orders_run_strategy_state", ("run_id", "strategy_key", "signal_state")),
         ("backtest_trades", "ix_backtest_trades_run_date_symbol", ("run_id", "trade_date", "symbol")),
