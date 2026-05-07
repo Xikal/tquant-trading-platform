@@ -9,3 +9,4 @@ class MonitorSnapshotResponse(BaseModel):
     updated_at: str
     watchlist_signals: list[dict[str, Any]] = Field(default_factory=list)
     priority_board: dict[str, Any] = Field(default_factory=dict)
+    sector_etf_t0: dict[str, Any] = Field(default_factory=dict)

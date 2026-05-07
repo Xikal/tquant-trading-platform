@@ -86,6 +86,7 @@ class MarketSectorMixin:
             result = self.provider_router.fetch_sector_heatmap()
             if result.usable and result.data:
                 return list(result.data)[:limit]
+            return []
         frame = self._load_board_breadth_frame()
         if frame is None or frame.empty:
             return []
@@ -140,6 +141,11 @@ class MarketSectorMixin:
         return []
 
     def _fetch_market_events(self, symbol: str) -> list[MarketEventOut]:
+        if self._market_provider_router_enabled():
+            result = self.provider_router.fetch_market_events(symbol)
+            if result.usable and result.data:
+                return list(result.data)[:8]
+            return []
         if ak is None:
             return []
         events = self._fetch_notice_events(symbol) + self._fetch_news_events(symbol)

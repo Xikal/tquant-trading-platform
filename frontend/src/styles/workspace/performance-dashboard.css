@@ -5,7 +5,8 @@
     "metrics metrics metrics metrics"
     "equity equity winrate winrate"
     "report report strategy strategy"
-    "market market matrix matrix";
+    "market market matrix matrix"
+    "correlation correlation correlation correlation";
   gap: 12px;
 }
 
@@ -125,6 +126,10 @@
   grid-area: matrix;
 }
 
+.performance-correlation {
+  grid-area: correlation;
+}
+
 .performance-line-chart {
   display: grid;
   gap: 6px;
@@ -228,6 +233,11 @@
   font-size: 12px;
 }
 
+.performance-correlation-table .performance-table-head,
+.performance-correlation-table .performance-table-row {
+  grid-template-columns: minmax(220px, 1.8fr) minmax(90px, 0.8fr) minmax(100px, 0.8fr) minmax(160px, 1.2fr);
+}
+
 .performance-table-head {
   color: var(--muted);
   background: linear-gradient(180deg, #f8fafc, #f1f5f9);
@@ -313,7 +323,8 @@
       "metrics metrics"
       "equity winrate"
       "report strategy"
-      "market matrix";
+      "market matrix"
+      "correlation correlation";
   }
 
   .paper-positions .stock-list {
@@ -361,6 +372,7 @@
   .performance-strategy,
   .performance-market,
   .performance-strategy-market,
+  .performance-correlation,
   .paper-order,
   .paper-positions,
   .paper-bottom-grid {

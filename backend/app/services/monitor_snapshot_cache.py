@@ -12,6 +12,7 @@ from app.core.timezone import beijing_now_string
 from app.models.entities import SystemSetting, UserWatchlist
 from app.models.schema_defs.phase4 import RuntimeTaskCreate
 from app.services.low_buy_screener import LowBuyScreenerService
+from app.services.sector_etf_t0 import SectorEtfT0Service
 from app.services.tasks import RuntimeTaskQueue
 from app.services.watchlist_signal_service import WatchlistSignalService
 
@@ -22,6 +23,7 @@ _TASK_TYPE = "monitor_snapshot_refresh"
 
 watchlist_signal_service = WatchlistSignalService()
 low_buy_screener = LowBuyScreenerService()
+sector_etf_t0_service = SectorEtfT0Service(low_buy=low_buy_screener)
 
 
 @dataclass(frozen=True)
@@ -114,11 +116,17 @@ def build_and_store_monitor_snapshot(
     rows = list_user_watchlist_rows(db, user_id)
     signature = rows_signature(rows)
     signals = watchlist_signal_service.build_live_signals(db, rows)
-    board = low_buy_screener.priority_board(db=db, limit=priority_limit).model_dump()
+    board_response = low_buy_screener.priority_board(db=db, limit=priority_limit)
+    board = board_response.model_dump()
+    sector_etf_t0 = sector_etf_t0_service.build_from_priority_board(
+        board_response,
+        limit=min(max(priority_limit, 1), 8),
+    ).model_dump()
     payload = {
         "updated_at": beijing_now_string(),
         "watchlist_signals": signals,
         "priority_board": board,
+        "sector_etf_t0": sector_etf_t0,
     }
     _write_monitor_snapshot_cache(
         db,

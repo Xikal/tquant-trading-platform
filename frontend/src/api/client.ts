@@ -13,6 +13,8 @@ import type {
   LowBuyExecutionBacktestResult,
   LowBuyTradeLifecycle,
   MarketBreadth,
+  SectorEtfT0Response,
+  IntradayAnomalyResponse,
   MonitorSnapshot,
   PaperAccount,
   PaperGroupedPerformance,
@@ -66,6 +68,9 @@ export const api = {
     }),
   getWatchlistSignals: () => requestCached<WatchlistSignal[]>("/watchlist/signals", 9000),
   getMarketBreadth: () => requestCached<MarketBreadth>("/market/breadth", 15000),
+  getSectorEtfT0: (limit = 8) => requestCached<SectorEtfT0Response>(`/market/sector-etf-t0?limit=${limit}`, 20000),
+  getIntradayAnomaly: (symbol: string) =>
+    requestCached<IntradayAnomalyResponse>(`/market/intraday-anomaly/${encodeURIComponent(symbol)}`, 15000),
   getMonitorSnapshot: (priorityLimit = 12) =>
     requestCached<MonitorSnapshot>(`/monitor/snapshot?priority_limit=${priorityLimit}`, 15000),
   getPaperAccess: () => request<PaperAccessResponse>("/auth/paper-access"),

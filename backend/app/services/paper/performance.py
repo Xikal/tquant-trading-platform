@@ -103,6 +103,55 @@ class PaperPerformanceService:
             )
         return result
 
+    def compute_strategy_correlation(
+        self,
+        account_id: int,
+        *,
+        target_date: date | None = None,
+        start_date: date | None = None,
+    ) -> dict:
+        records = self._filtered_return_records(account_id, target_date, start_date=start_date)
+        returns_by_strategy_date: dict[str, dict[date, float]] = defaultdict(lambda: defaultdict(float))
+        all_dates: set[date] = set()
+        for item in records:
+            if item.trade_time is None:
+                continue
+            trade_date = item.trade_time.date()
+            strategy_key = item.strategy_key or "未分类"
+            returns_by_strategy_date[strategy_key][trade_date] += item.return_pct
+            all_dates.add(trade_date)
+
+        strategies = sorted(returns_by_strategy_date)
+        dates = sorted(all_dates)
+        series_by_strategy = {
+            strategy: [returns_by_strategy_date[strategy].get(day, 0.0) for day in dates]
+            for strategy in strategies
+        }
+        matrix: list[list[float | None]] = []
+        rows: list[dict] = []
+        for left in strategies:
+            row_values: list[float | None] = []
+            correlations: dict[str, float | None] = {}
+            for right in strategies:
+                value = _pearson(series_by_strategy[left], series_by_strategy[right])
+                row_values.append(value)
+                correlations[right] = value
+            matrix.append(row_values)
+            rows.append({"strategy_key": left, "correlations": correlations})
+
+        notes: list[str] = []
+        if len(strategies) < 2 or len(dates) < 2:
+            notes.append("成交样本不足，暂不能形成稳定的策略相关性判断。")
+        else:
+            notes.append("相关性按每日已卖出交易收益聚合，未交易日期按 0 处理，用于组合集中度观察。")
+        return {
+            "strategies": strategies,
+            "sample_days": len(dates),
+            "matrix": matrix,
+            "rows": rows,
+            "notes": notes,
+        }
+
     def sell_return_records(self, account_id: int) -> list[SellReturnRecord]:
         return self._paired_sell_return_records(account_id)
 
@@ -301,6 +350,20 @@ def _sharpe_ratio(returns: list[float]) -> float:
     if std <= 0:
         return 0.0
     return (mean / std) * (252**0.5)
+
+
+def _pearson(left: list[float], right: list[float]) -> float | None:
+    if len(left) != len(right) or len(left) < 2:
+        return None
+    left_mean = sum(left) / len(left)
+    right_mean = sum(right) / len(right)
+    numerator = sum((a - left_mean) * (b - right_mean) for a, b in zip(left, right))
+    left_var = sum((a - left_mean) ** 2 for a in left)
+    right_var = sum((b - right_mean) ** 2 for b in right)
+    denominator = (left_var * right_var) ** 0.5
+    if denominator <= 0:
+        return None
+    return round(numerator / denominator, 4)
 
 
 @dataclass(frozen=True)

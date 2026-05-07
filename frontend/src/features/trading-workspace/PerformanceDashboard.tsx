@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { api } from "../../api/client";
 import { NumberField } from "../../components/shared/FormFields";
-import type { PaperPerformanceDashboard, PaperStrategyMarketPerformance, PaperStrategyTrend } from "../../types";
+import type { PaperPerformanceDashboard, PaperStrategyCorrelation, PaperStrategyMarketPerformance, PaperStrategyTrend } from "../../types";
 import { EmptyState, MetricGrid } from "./WorkspaceComponents";
 import { formatAmount, formatPct, shortTime, strategyLabel, toneFromChange } from "./workspaceFormatters";
 import type { MetricItem } from "./workspaceTypes";
@@ -40,6 +40,8 @@ export function PerformanceDashboard() {
     () => [...(dashboard?.strategy_market_matrix ?? [])].sort(compareStrategyMarket).slice(0, 10),
     [dashboard]
   );
+  const correlation = dashboard?.strategy_correlation;
+  const correlationPairs = useMemo(() => buildCorrelationPairs(correlation).slice(0, 8), [correlation]);
   const customDaysError = validateCustomDays(customDays);
   const applyCustomDays = useCallback(() => {
     const parsed = Math.round(Number(customDays));
@@ -197,6 +199,28 @@ export function PerformanceDashboard() {
           {matrixRows.length ? matrixRows.map((item) => <StrategyMarketRow item={item} key={`${item.strategy_key}-${item.market_state}`} />) : <EmptyPerformance text="暂无策略环境交叉归档" />}
         </div>
       </section>
+
+      <section className="panel performance-correlation">
+        <div className="panel-title">
+          <h2>策略相关性</h2>
+          <span className="hint">避免多个同向策略同时放大仓位</span>
+        </div>
+        {correlationPairs.length ? (
+          <div className="performance-table performance-correlation-table">
+            <div className="performance-table-head">
+              <span>策略组合</span>
+              <span>相关性</span>
+              <span>重叠交易日</span>
+              <span>风险</span>
+            </div>
+            {correlationPairs.map((item) => (
+              <CorrelationRow item={item} key={`${item.strategy_a}-${item.strategy_b}`} />
+            ))}
+          </div>
+        ) : (
+          <EmptyPerformance text={correlation?.notes?.[0] ?? "暂无足够交易日计算策略相关性。"} />
+        )}
+      </section>
     </section>
   );
 }
@@ -230,6 +254,57 @@ function StrategyMarketRow({ item }: { item: PaperStrategyMarketPerformance }) {
       <span className={avgTone}>{formatPct(item.avg_return_pct)}</span>
     </div>
   );
+}
+
+type CorrelationPair = {
+  strategy_a: string;
+  strategy_b: string;
+  correlation: number;
+  overlap_days: number;
+  risk_level: "low" | "medium" | "high";
+  risk_text: string;
+};
+
+function CorrelationRow({ item }: { item: CorrelationPair }) {
+  const riskTone = item.risk_level === "high" ? "down" : item.risk_level === "medium" ? "warn" : "up";
+  return (
+    <div className="performance-table-row">
+      <strong>{strategyLabel(item.strategy_a)} / {strategyLabel(item.strategy_b)}</strong>
+      <span className={riskTone}>{formatCorrelation(item.correlation)}</span>
+      <span>{item.overlap_days}</span>
+      <span>{item.risk_text}</span>
+    </div>
+  );
+}
+
+function buildCorrelationPairs(correlation?: PaperStrategyCorrelation | null): CorrelationPair[] {
+  if (!correlation?.strategies?.length || !correlation.matrix?.length) {
+    return [];
+  }
+  const pairs: CorrelationPair[] = [];
+  correlation.strategies.forEach((left, leftIndex) => {
+    correlation.strategies.slice(leftIndex + 1).forEach((right, offset) => {
+      const rightIndex = leftIndex + offset + 1;
+      const value = correlation.matrix[leftIndex]?.[rightIndex];
+      if (typeof value !== "number" || !Number.isFinite(value)) {
+        return;
+      }
+      pairs.push({
+        strategy_a: left,
+        strategy_b: right,
+        correlation: value,
+        overlap_days: correlation.sample_days,
+        risk_level: Math.abs(value) >= 0.75 ? "high" : Math.abs(value) >= 0.45 ? "medium" : "low",
+        risk_text:
+          Math.abs(value) >= 0.75
+            ? "同向度高，避免同时加仓"
+            : Math.abs(value) >= 0.45
+              ? "中等相关，注意仓位叠加"
+              : "相关性低，可分散观察",
+      });
+    });
+  });
+  return pairs.sort((left, right) => Math.abs(right.correlation) - Math.abs(left.correlation));
 }
 
 function LineChart({
@@ -296,6 +371,11 @@ function compareStrategyMarket(left: PaperStrategyMarketPerformance, right: Pape
     return right.trades - left.trades;
   }
   return right.avg_return_pct - left.avg_return_pct;
+}
+
+function formatCorrelation(value: number): string {
+  if (!Number.isFinite(value)) return "--";
+  return value.toFixed(2);
 }
 
 function lastOf<T>(items: T[]): T | undefined {

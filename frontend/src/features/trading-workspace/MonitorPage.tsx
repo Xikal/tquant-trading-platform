@@ -1,13 +1,14 @@
 import { memo, useMemo } from "react";
-import type { LowBuyPriorityBoardResult, MarketBreadth, RuntimeStatus } from "../../types";
+import type { LowBuyPriorityBoardResult, MarketBreadth, RuntimeStatus, SectorEtfT0Response } from "../../types";
 import { NumberField, SearchField, TextField } from "../../components/shared/FormFields";
 import { EmptyState, FamilyStrip, InfoPill, MetricGrid, PanelTitle, StockCard } from "./WorkspaceComponents";
-import { average, formatPct, riskLevelText, shortTime } from "./workspaceFormatters";
+import { average, formatPct, formatPrice, riskLevelText, shortTime } from "./workspaceFormatters";
 import type { MetricItem, StockCardView, WatchDraft } from "./workspaceTypes";
 
 export interface MonitorPageProps {
   priorityBoard: LowBuyPriorityBoardResult | null;
   marketBreadth: MarketBreadth | null;
+  sectorEtfT0: SectorEtfT0Response | null;
   priorityCards: StockCardView[];
   watchCards: StockCardView[];
   runtime: RuntimeStatus | null;
@@ -30,6 +31,7 @@ export interface MonitorPageProps {
 export const MonitorPage = memo(function MonitorPage({
   priorityBoard,
   marketBreadth,
+  sectorEtfT0,
   priorityCards,
   watchCards,
   runtime,
@@ -161,6 +163,32 @@ export const MonitorPage = memo(function MonitorPage({
             />
           )) : <EmptyState text="暂无自选持仓。录入底仓后会显示做T信号。" />}
         </div>
+      </div>
+
+      <div className="panel monitor-etf-t0">
+        <PanelTitle title="行业 ETF 做T替代" actions={<span className="muted">利用 ETF T+0 特性，降低个股隔夜风险</span>} />
+        <div className="stock-list compact">
+          {(sectorEtfT0?.opportunities ?? []).length ? sectorEtfT0!.opportunities.slice(0, 6).map((item) => (
+            <article className="stock-card compact-card" key={`${item.etf_symbol}-${item.source_signal_symbol}`}>
+              <div className="stock-card-head">
+                <div>
+                  <strong>{item.etf_name}</strong>
+                  <span>{item.etf_symbol} · 来源 {item.source_signal_name}</span>
+                </div>
+                <span className={`pill ${item.bias === "positive_t" ? "up" : item.bias === "negative_t" ? "down" : "neutral"}`}>{item.bias_text}</span>
+              </div>
+              <div className="stock-card-meta">
+                <span>板块：{item.sector_name || "未分类"}</span>
+                <span>信心：{formatPct(item.confidence, 0)}</span>
+                <span>ETF价：{formatPrice(item.last_price)}</span>
+                <span>ETF涨跌：{formatPct(item.change_pct)}</span>
+              </div>
+              <p className="hint">{item.reason}</p>
+              <p className="hint">买点 {item.entry_zone || "--"}；卖点 {item.sell_zone || "--"}；风险：{item.risk}</p>
+            </article>
+          )) : <EmptyState text="暂无 ETF 做T替代信号。只有板块低吸/热点信号明确时才展示。" />}
+        </div>
+        {sectorEtfT0?.notes?.length ? <p className="hint">{sectorEtfT0.notes[0]}</p> : null}
       </div>
     </section>
   );

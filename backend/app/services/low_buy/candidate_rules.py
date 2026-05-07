@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Any
+
 from app.services.low_buy.candidate_types import CandidateMetrics, StrategySetup
 from app.services.low_buy.research_layers import passes_research_prefilter
 from app.services.low_buy.shared import BoardCandidate, LOW_BUY_THRESHOLDS
@@ -9,6 +11,7 @@ from app.services.low_buy.strategy_parameter_defaults import (
 )
 from app.services.low_buy.strategy_policy import StrategyTier, get_strategy_tier
 from app.services.quant.runtime_parameters import (
+    get_low_buy_scoring,
     get_low_buy_strategy_execution,
     get_low_buy_strategy_prefilter,
 )
@@ -22,6 +25,29 @@ def _prefilter_params(strategy: str) -> dict[str, float]:
 def _execution_params(strategy: str) -> dict[str, float]:
     defaults = LOW_BUY_STRATEGY_EXECUTION_DEFAULTS.get(strategy, {})
     return get_low_buy_strategy_execution(strategy, defaults)
+
+
+def _scoring_params() -> dict[str, Any]:
+    return get_low_buy_scoring()
+
+
+def _strategy_score_params(strategy: str) -> dict[str, Any]:
+    values = _scoring_params().get("strategy_bonuses", {}).get(strategy, {})
+    return values if isinstance(values, dict) else {}
+
+
+def _float_param(params: dict[str, Any], key: str, fallback: float) -> float:
+    try:
+        return float(params.get(key, fallback))
+    except (TypeError, ValueError):
+        return fallback
+
+
+def _int_param(params: dict[str, Any], key: str, fallback: int) -> int:
+    try:
+        return int(params.get(key, fallback))
+    except (TypeError, ValueError):
+        return fallback
 
 
 def passes_strategy_prefilter(
@@ -141,18 +167,30 @@ def compute_score(
     support_distance_pct: float,
     latest_change_pct: float,
 ) -> float:
-    score = 70.0
-    score += min(max(volume_burst_ratio - 1.2, 0.0), 2.0) * 8
-    score += min(max(0.85 - volume_shrink_ratio, 0.0), 0.5) * 24
-    score += max(0.0, 2.4 - support_distance_pct) * 4.5
-    score += max(0.0, 1.8 - abs(latest_change_pct)) * 3.2
-    retracement_bonus = {1: 3.0, 2: 7.2, 3: 8.0, 4: 6.2, 5: 3.8, 6: 1.6, 7: 0.2, 8: -0.6, 9: -1.6, 10: -2.4}
-    score += retracement_bonus.get(retracement_days, 0.0)
+    params = _scoring_params()
+    score = _float_param(params, "base_score", 70.0)
+    score += min(
+        max(volume_burst_ratio - _float_param(params, "volume_burst_base", 1.2), 0.0),
+        _float_param(params, "volume_burst_cap", 2.0),
+    ) * _float_param(params, "volume_burst_weight", 8.0)
+    score += min(
+        max(_float_param(params, "volume_shrink_base", 0.85) - volume_shrink_ratio, 0.0),
+        _float_param(params, "volume_shrink_cap", 0.5),
+    ) * _float_param(params, "volume_shrink_weight", 24.0)
+    score += max(0.0, _float_param(params, "support_distance_base", 2.4) - support_distance_pct) * _float_param(
+        params, "support_distance_weight", 4.5
+    )
+    score += max(0.0, _float_param(params, "latest_change_base", 1.8) - abs(latest_change_pct)) * _float_param(
+        params, "latest_change_weight", 3.2
+    )
+    retracement_bonus = params.get("retracement_bonus", {})
+    if isinstance(retracement_bonus, dict):
+        score += _float_param(retracement_bonus, str(retracement_days), 0.0)
     if board_count == 1:
-        score += 6.0
-    elif board_count >= 3:
-        score -= 4.0
-    return round(max(0.0, min(99.0, score)), 1)
+        score += _float_param(params, "first_board_bonus", 6.0)
+    elif board_count >= _int_param(params, "high_board_count_threshold", 3):
+        score += _float_param(params, "high_board_penalty", -4.0)
+    return round(max(0.0, min(_float_param(params, "max_score", 99.0), score)), 1)
 
 
 def _passes_divergence_consensus_prefilter(item: BoardCandidate, metrics: CandidateMetrics) -> bool:
@@ -166,7 +204,7 @@ def _passes_late_session_support_prefilter(item: BoardCandidate, metrics: Candid
         and params["min_retracement_days"]
         <= metrics.retracement_days
         <= params["max_retracement_days"]
-        and -2.0 <= metrics.latest_change_pct <= 6.5
+        and params["min_latest_change_pct"] <= metrics.latest_change_pct <= params["max_latest_change_pct"]
         and metrics.close_position_ratio >= params["min_close_position_ratio"]
         and metrics.support_distance_pct <= params["max_support_distance_pct"]
         and metrics.latest_volume_ratio <= params["max_latest_volume_ratio"]
@@ -190,7 +228,7 @@ def _passes_core_midcap_retrace_prefilter(item: BoardCandidate, metrics: Candida
         and (metrics.strong_trend or metrics.trend_ok)
         and ma_distance <= params["max_ma_distance_pct"]
         and metrics.support_distance_pct <= params["max_support_distance_pct"]
-        and -4.0 <= metrics.latest_change_pct <= 2.8
+        and params["min_latest_change_pct"] <= metrics.latest_change_pct <= params["max_latest_change_pct"]
         and metrics.latest_volume_ratio <= params["max_latest_volume_ratio"]
         and metrics.post_volume_ratio <= params["max_post_volume_ratio"]
         and metrics.distribution_risk_score < params["max_distribution_risk_score"]
@@ -205,13 +243,13 @@ def _passes_mainline_first_divergence_prefilter(item: BoardCandidate, metrics: C
         LOW_BUY_STRATEGY_PREFILTER_DEFAULTS["sector_mainline_first_divergence_low_buy"],
     )
     return (
-        item.board_count <= 2
+        item.board_count <= params["max_board_count"]
         and item.amount >= params["min_amount"]
         and params["min_retracement_days"]
         <= metrics.retracement_days
         <= params["max_retracement_days"]
         and metrics.volume_burst_ratio >= params["min_volume_burst_ratio"]
-        and -6.0 <= metrics.latest_change_pct <= 2.8
+        and params["min_latest_change_pct"] <= metrics.latest_change_pct <= params["max_latest_change_pct"]
         and metrics.support_distance_pct <= params["max_support_distance_pct"]
         and metrics.latest_volume_ratio <= params["max_latest_volume_ratio"]
         and metrics.post_volume_ratio <= params["max_post_volume_ratio"]
@@ -248,7 +286,7 @@ def _passes_mainline_limitup_shrink_retrace_prefilter(item: BoardCandidate, metr
         and metrics.latest_volume_ratio <= params["max_latest_volume_ratio"]
         and metrics.post_volume_ratio <= params["max_post_volume_ratio"]
         and metrics.distribution_risk_score < params["max_distribution_risk_score"]
-        and -4.5 <= metrics.latest_change_pct <= 3.2
+        and params["min_latest_change_pct"] <= metrics.latest_change_pct <= params["max_latest_change_pct"]
         and not metrics.long_upper_shadow
         and not metrics.weak_close
         and not metrics.false_breakout_flag
@@ -265,12 +303,12 @@ def _passes_ma_channel_band_prefilter(item: BoardCandidate, metrics: CandidateMe
         <= metrics.retracement_days
         <= params["max_retracement_days"]
         and metrics.ma20 > metrics.ma60
-        and metrics.latest_close >= metrics.ma20 * 0.96
+        and metrics.latest_close >= metrics.ma20 * params["min_close_to_ma20_ratio"]
         and metrics.close_to_ma20 <= params["max_ma20_distance_pct"]
         and metrics.latest_volume_ratio <= params["max_latest_volume_ratio"]
         and metrics.post_volume_ratio <= params["max_post_volume_ratio"]
         and metrics.distribution_risk_score < params["max_distribution_risk_score"]
-        and metrics.support_distance_pct <= 3.8
+        and metrics.support_distance_pct <= params["max_support_distance_pct"]
         and not metrics.false_breakout_flag
         and not metrics.intraday_reversal_flag
     )
@@ -278,15 +316,16 @@ def _passes_ma_channel_band_prefilter(item: BoardCandidate, metrics: CandidateMe
 
 def _passes_leader_pullback_band_prefilter(item: BoardCandidate, metrics: CandidateMetrics) -> bool:
     params = _prefilter_params("leader_pullback_band")
+    excluded_prefixes = tuple(str(value) for value in params.get("exclude_symbol_prefixes", ()))
     return (
-        item.board_count <= 3
-        and not item.symbol.startswith(("300", "688"))
+        item.board_count <= params["max_board_count"]
+        and not item.symbol.startswith(excluded_prefixes)
         and item.amount >= params["min_amount"]
         and params["min_retracement_days"]
         <= metrics.retracement_days
         <= params["max_retracement_days"]
         and metrics.volume_burst_ratio >= params["min_volume_burst_ratio"]
-        and (metrics.strong_trend or metrics.latest_close >= metrics.ma20)
+        and (metrics.strong_trend or metrics.latest_close >= metrics.ma20 * params["min_close_to_ma20_ratio"])
         and metrics.board_low_held
         and metrics.support_distance_pct <= params["max_support_distance_pct"]
         and metrics.latest_volume_ratio <= params["max_latest_volume_ratio"]
@@ -322,65 +361,132 @@ def score_candidate(
         support_distance_pct=metrics.support_distance_pct,
         latest_change_pct=metrics.latest_change_pct,
     )
+    scoring = _scoring_params()
+    global_bonuses = scoring.get("global_bonuses", {})
+    global_bonuses = global_bonuses if isinstance(global_bonuses, dict) else {}
+    strategy_bonus = _strategy_score_params(strategy)
+    is_hot_industry = bool(item.industry and hot_industries and item.industry in hot_industries)
     if metrics.strong_trend:
-        score += 5.2
-    if item.industry and hot_industries and item.industry in hot_industries:
-        score += 3.5
+        score += _float_param(global_bonuses, "strong_trend", 5.2)
+    if is_hot_industry:
+        score += _float_param(global_bonuses, "hot_industry", 3.5)
     if metrics.shrink_staircase:
-        score += 2.8
-    if strategy == "ma_support" and metrics.support_distance_pct <= 1.6:
-        score += 4.0
-    if strategy == "first_board" and item.board_count == 1 and metrics.retracement_days <= 3:
-        score += 5.0
-    if strategy == "volume_shrink" and metrics.volume_burst_ratio >= 2.0 and metrics.shrink_staircase:
-        score += 5.5
+        score += _float_param(global_bonuses, "shrink_staircase", 2.8)
+    if strategy == "ma_support" and metrics.support_distance_pct <= _float_param(strategy_bonus, "support_distance_max_pct", 1.6):
+        score += _float_param(strategy_bonus, "bonus", 4.0)
+    if (
+        strategy == "first_board"
+        and item.board_count == 1
+        and metrics.retracement_days <= _int_param(strategy_bonus, "max_retracement_days", 3)
+    ):
+        score += _float_param(strategy_bonus, "bonus", 5.0)
+    if (
+        strategy == "volume_shrink"
+        and metrics.volume_burst_ratio >= _float_param(strategy_bonus, "min_volume_burst_ratio", 2.0)
+        and metrics.shrink_staircase
+    ):
+        score += _float_param(strategy_bonus, "bonus", 5.5)
     if strategy == "late_session_strong_support":
-        score += max(0.0, metrics.close_position_ratio - 0.55) * 12.0
-        score += 3.0 if metrics.latest_change_pct >= 0 else 0.0
-        score += 2.5 if metrics.latest_volume_ratio <= 0.95 else 0.0
+        score += max(0.0, metrics.close_position_ratio - _float_param(strategy_bonus, "close_position_base", 0.55)) * _float_param(
+            strategy_bonus, "close_position_weight", 12.0
+        )
+        score += _float_param(strategy_bonus, "positive_change_bonus", 3.0) if metrics.latest_change_pct >= 0 else 0.0
+        score += (
+            _float_param(strategy_bonus, "latest_volume_bonus", 2.5)
+            if metrics.latest_volume_ratio <= _float_param(strategy_bonus, "latest_volume_max", 0.95)
+            else 0.0
+        )
     if strategy == "core_midcap_vwap_ma5_retrace":
-        score += 4.0 if metrics.strong_trend else 2.0
-        score += max(0.0, 1.8 - min(metrics.close_to_ma5, metrics.close_to_ma10)) * 2.5
-        score += 2.5 if item.amount >= 800_000_000 else 0.0
+        score += _float_param(strategy_bonus, "strong_trend_bonus", 4.0) if metrics.strong_trend else _float_param(
+            strategy_bonus, "trend_ok_bonus", 2.0
+        )
+        score += max(0.0, _float_param(strategy_bonus, "ma_distance_base", 1.8) - min(metrics.close_to_ma5, metrics.close_to_ma10)) * _float_param(
+            strategy_bonus, "ma_distance_weight", 2.5
+        )
+        score += (
+            _float_param(strategy_bonus, "large_amount_bonus", 2.5)
+            if item.amount >= _float_param(strategy_bonus, "large_amount_threshold", 800_000_000.0)
+            else 0.0
+        )
     if strategy == "sector_mainline_first_divergence_low_buy":
-        score += 4.0 if item.board_count == 1 else 1.5
-        score += max(0.0, 1.2 - metrics.post_volume_ratio) * 4.0
-        score += 2.5 if metrics.board_low_held else 0.0
+        score += _float_param(strategy_bonus, "first_board_bonus", 4.0) if item.board_count == 1 else _float_param(
+            strategy_bonus, "non_first_board_bonus", 1.5
+        )
+        score += max(0.0, _float_param(strategy_bonus, "post_volume_base", 1.2) - metrics.post_volume_ratio) * _float_param(
+            strategy_bonus, "post_volume_weight", 4.0
+        )
+        score += _float_param(strategy_bonus, "board_low_held_bonus", 2.5) if metrics.board_low_held else 0.0
     if strategy == "mainline_limitup_shrink_retrace_reclaim":
         ma_confluence_pct = _ma5_ma10_ma20_confluence_pct(metrics)
-        score += 4.0 if item.board_count == 1 else 1.5
-        score += max(0.0, 2.2 - ma_confluence_pct) * 2.2
-        score += min(max(metrics.support_touch_count - 1, 0), 2) * 1.8
-        score += max(0.0, 0.95 - metrics.post_volume_ratio) * 8.0
-        score += 3.0 if metrics.latest_close >= metrics.ma5 else 0.0
-        score += 2.0 if metrics.board_low_held else 0.0
+        score += _float_param(strategy_bonus, "first_board_bonus", 4.0) if item.board_count == 1 else _float_param(
+            strategy_bonus, "non_first_board_bonus", 1.5
+        )
+        score += max(0.0, _float_param(strategy_bonus, "ma_confluence_base", 2.2) - ma_confluence_pct) * _float_param(
+            strategy_bonus, "ma_confluence_weight", 2.2
+        )
+        score += min(
+            max(metrics.support_touch_count - _int_param(strategy_bonus, "support_touch_offset", 1), 0),
+            _int_param(strategy_bonus, "support_touch_cap", 2),
+        ) * _float_param(strategy_bonus, "support_touch_weight", 1.8)
+        score += max(0.0, _float_param(strategy_bonus, "post_volume_base", 0.95) - metrics.post_volume_ratio) * _float_param(
+            strategy_bonus, "post_volume_weight", 8.0
+        )
+        score += _float_param(strategy_bonus, "close_above_ma5_bonus", 3.0) if metrics.latest_close >= metrics.ma5 else 0.0
+        score += _float_param(strategy_bonus, "board_low_held_bonus", 2.0) if metrics.board_low_held else 0.0
     if strategy == "ma_channel_band":
-        score += max(0.0, 3.2 - metrics.close_to_ma20) * 2.0
-        score += 3.0 if metrics.latest_close >= metrics.ma20 else 0.0
-        score += 2.0 if metrics.trend_ok else 0.0
+        score += max(0.0, _float_param(strategy_bonus, "ma20_distance_base", 3.2) - metrics.close_to_ma20) * _float_param(
+            strategy_bonus, "ma20_distance_weight", 2.0
+        )
+        score += _float_param(strategy_bonus, "close_above_ma20_bonus", 3.0) if metrics.latest_close >= metrics.ma20 else 0.0
+        score += _float_param(strategy_bonus, "trend_ok_bonus", 2.0) if metrics.trend_ok else 0.0
     if strategy == "leader_pullback_band":
-        score += 4.0 if metrics.strong_trend else 1.5
-        score += 3.0 if metrics.board_low_held else 0.0
-        score += min(max(metrics.volume_burst_ratio - 1.5, 0.0), 1.5) * 2.5
-    if strategy == "breakout_support" and metrics.breakout_distance_pct <= 2.0:
-        score += 4.0
+        score += _float_param(strategy_bonus, "strong_trend_bonus", 4.0) if metrics.strong_trend else _float_param(
+            strategy_bonus, "trend_ok_bonus", 1.5
+        )
+        score += _float_param(strategy_bonus, "board_low_held_bonus", 3.0) if metrics.board_low_held else 0.0
+        score += min(
+            max(metrics.volume_burst_ratio - _float_param(strategy_bonus, "volume_burst_base", 1.5), 0.0),
+            _float_param(strategy_bonus, "volume_burst_cap", 1.5),
+        ) * _float_param(strategy_bonus, "volume_burst_weight", 2.5)
+    if strategy == "breakout_support" and metrics.breakout_distance_pct <= _float_param(strategy_bonus, "breakout_distance_max_pct", 2.0):
+        score += _float_param(strategy_bonus, "bonus", 4.0)
     if strategy == "limit_up_breakout_retrace":
-        if metrics.platform_breakout_pct >= 2.0:
-            score += 6.0
-        if metrics.post_volume_ratio <= 0.68:
-            score += 4.0
+        if metrics.platform_breakout_pct >= _float_param(strategy_bonus, "platform_breakout_min_pct", 2.0):
+            score += _float_param(strategy_bonus, "platform_breakout_bonus", 6.0)
+        if metrics.post_volume_ratio <= _float_param(strategy_bonus, "post_volume_max", 0.68):
+            score += _float_param(strategy_bonus, "post_volume_bonus", 4.0)
         if metrics.doji_like or metrics.long_lower_shadow:
-            score += 4.0
+            score += _float_param(strategy_bonus, "reversal_candle_bonus", 4.0)
     if strategy == "divergence_consensus":
-        score += 5.0 if metrics.consensus_breakout else -8.0
-        score += min(max(metrics.consensus_volume_ratio - 1.4, 0.0), 1.2) * 4.0
-        score += max(0.0, 0.72 - metrics.consolidation_volume_ratio) * 12.0
-        score += 3.0 if metrics.consensus_close_strength >= 0.68 else 0.0
-        score += 2.0 if item.industry and hot_industries and item.industry in hot_industries else 0.0
-    if strategy == "deep_pullback" and -8.5 <= metrics.drawdown_from_board_pct <= -3.0:
-        score += 5.0
-    if strategy == "trend_rebound" and metrics.latest_close >= metrics.ma10 and metrics.retracement_days >= 2:
-        score += 4.0
+        score += _float_param(strategy_bonus, "breakout_bonus", 5.0) if metrics.consensus_breakout else _float_param(
+            strategy_bonus, "no_breakout_penalty", -8.0
+        )
+        score += min(
+            max(metrics.consensus_volume_ratio - _float_param(strategy_bonus, "volume_ratio_base", 1.4), 0.0),
+            _float_param(strategy_bonus, "volume_ratio_cap", 1.2),
+        ) * _float_param(strategy_bonus, "volume_ratio_weight", 4.0)
+        score += max(0.0, _float_param(strategy_bonus, "consolidation_volume_base", 0.72) - metrics.consolidation_volume_ratio) * _float_param(
+            strategy_bonus, "consolidation_volume_weight", 12.0
+        )
+        score += (
+            _float_param(strategy_bonus, "close_strength_bonus", 3.0)
+            if metrics.consensus_close_strength >= _float_param(strategy_bonus, "close_strength_min", 0.68)
+            else 0.0
+        )
+        score += _float_param(strategy_bonus, "hot_industry_bonus", 2.0) if is_hot_industry else 0.0
+    if (
+        strategy == "deep_pullback"
+        and _float_param(strategy_bonus, "min_drawdown_pct", -8.5)
+        <= metrics.drawdown_from_board_pct
+        <= _float_param(strategy_bonus, "max_drawdown_pct", -3.0)
+    ):
+        score += _float_param(strategy_bonus, "bonus", 5.0)
+    if (
+        strategy == "trend_rebound"
+        and metrics.latest_close >= metrics.ma10
+        and metrics.retracement_days >= _int_param(strategy_bonus, "min_retracement_days", 2)
+    ):
+        score += _float_param(strategy_bonus, "bonus", 4.0)
     return round(max(0.0, min(99.0, score)), 1)
 
 
@@ -411,15 +517,26 @@ def build_strategy_setup(
 
 
 def _ma_support_setup(item: BoardCandidate, metrics: CandidateMetrics, score: float) -> StrategySetup:
-    anchor = metrics.ma5 if metrics.close_to_ma5 <= 1.3 else metrics.ma10 if metrics.close_to_ma10 <= 1.8 else metrics.ma20
+    execution = _execution_params("ma_support")
+    anchor = (
+        metrics.ma5
+        if metrics.close_to_ma5 <= execution["ma5_anchor_max_pct"]
+        else metrics.ma10
+        if metrics.close_to_ma10 <= execution["ma10_anchor_max_pct"]
+        else metrics.ma20
+    )
     return StrategySetup(
-        entry_zone_low=round(anchor * 0.993, 3),
-        entry_zone_high=round(anchor * 1.005, 3),
+        entry_zone_low=round(anchor * execution["entry_low_multiplier"], 3),
+        entry_zone_high=round(anchor * execution["entry_high_multiplier"], 3),
         execution_ready=(
             (metrics.strong_trend or metrics.trend_ok)
-            and metrics.support_distance_pct <= 2.45
+            and metrics.support_distance_pct <= execution["max_support_distance_pct"]
             and (metrics.shrink_basic_ok or metrics.momentum_exhaustion)
-            and (metrics.momentum_exhaustion or metrics.latest_change_pct >= -1.6 or metrics.close_to_ma20 <= 1.2)
+            and (
+                metrics.momentum_exhaustion
+                or metrics.latest_change_pct >= execution["min_latest_change_pct"]
+                or metrics.close_to_ma20 <= execution["max_close_to_ma20_pct"]
+            )
         ),
         execution_note="价格靠近关键均线，只等进入买点区。",
         summary_reason="均线多头排列，回踩关键均线后缩量。",
@@ -432,18 +549,19 @@ def _ma_support_setup(item: BoardCandidate, metrics: CandidateMetrics, score: fl
 
 
 def _first_board_setup(item: BoardCandidate, metrics: CandidateMetrics, score: float) -> StrategySetup:
+    execution = _execution_params("first_board")
     anchor_low = max(min(metrics.board_mid_price, metrics.ma5), metrics.board_low)
     anchor_high = max(metrics.ma5, metrics.board_open)
     return StrategySetup(
-        entry_zone_low=round(anchor_low * 0.995, 3),
-        entry_zone_high=round(anchor_high * 1.004, 3),
+        entry_zone_low=round(anchor_low * execution["entry_low_multiplier"], 3),
+        entry_zone_high=round(anchor_high * execution["entry_high_multiplier"], 3),
         execution_ready=(
             item.board_count == 1
-            and metrics.retracement_days <= 6
+            and metrics.retracement_days <= execution["max_retracement_days"]
             and metrics.board_low_held
-            and (metrics.board_open_held or metrics.latest_close >= metrics.board_open * 0.982)
+            and (metrics.board_open_held or metrics.latest_close >= metrics.board_open * execution["min_board_open_hold_ratio"])
             and metrics.shrink_basic_ok
-            and metrics.distribution_risk_score < 5.2
+            and metrics.distribution_risk_score < execution["max_distribution_risk_score"]
             and not metrics.false_breakout_flag
             and not metrics.intraday_reversal_flag
         ),
@@ -458,21 +576,22 @@ def _first_board_setup(item: BoardCandidate, metrics: CandidateMetrics, score: f
 
 
 def _volume_shrink_setup(item: BoardCandidate, metrics: CandidateMetrics, score: float) -> StrategySetup:
+    execution = _execution_params("volume_shrink")
     anchor = min(metrics.ma5, metrics.ma10)
     return StrategySetup(
-        entry_zone_low=round(anchor * 0.992, 3),
-        entry_zone_high=round(anchor * 1.006, 3),
+        entry_zone_low=round(anchor * execution["entry_low_multiplier"], 3),
+        entry_zone_high=round(anchor * execution["entry_high_multiplier"], 3),
         execution_ready=(
-            metrics.volume_burst_ratio >= 1.5
+            metrics.volume_burst_ratio >= execution["min_volume_burst_ratio"]
             and metrics.shrink_basic_ok
-            and metrics.support_distance_pct <= 2.35
-            and metrics.post_volume_ratio <= 1.08
-            and metrics.latest_volume_ratio <= 1.05
-            and metrics.latest_close >= metrics.ma20 * 0.998
-            and metrics.distribution_risk_score < 5.0
+            and metrics.support_distance_pct <= execution["max_support_distance_pct"]
+            and metrics.post_volume_ratio <= execution["max_post_volume_ratio"]
+            and metrics.latest_volume_ratio <= execution["max_latest_volume_ratio"]
+            and metrics.latest_close >= metrics.ma20 * execution["min_close_to_ma20_ratio"]
+            and metrics.distribution_risk_score < execution["max_distribution_risk_score"]
             and not metrics.false_breakout_flag
             and not metrics.intraday_reversal_flag
-            and (metrics.momentum_exhaustion or metrics.latest_change_pct >= -1.6)
+            and (metrics.momentum_exhaustion or metrics.latest_change_pct >= execution["min_latest_change_pct"])
         ),
         execution_note="启动量能明确，等价格进入缩量承接区。",
         summary_reason="启动放量明显，回调量能持续递减。",
@@ -485,17 +604,21 @@ def _volume_shrink_setup(item: BoardCandidate, metrics: CandidateMetrics, score:
 
 
 def _late_session_strong_support_setup(item: BoardCandidate, metrics: CandidateMetrics, score: float) -> StrategySetup:
-    anchor = max(min(metrics.latest_close, metrics.ma5 * 1.012), metrics.ma10 * 0.995)
+    execution = _execution_params("late_session_strong_support")
+    anchor = max(
+        min(metrics.latest_close, metrics.ma5 * execution["ma5_anchor_multiplier"]),
+        metrics.ma10 * execution["ma10_anchor_multiplier"],
+    )
     return StrategySetup(
-        entry_zone_low=round(anchor * 0.994, 3),
-        entry_zone_high=round(max(metrics.latest_close, anchor) * 1.004, 3),
+        entry_zone_low=round(anchor * execution["entry_low_multiplier"], 3),
+        entry_zone_high=round(max(metrics.latest_close, anchor) * execution["entry_high_multiplier"], 3),
         execution_ready=(
-            score >= 84.0
-            and metrics.close_position_ratio >= 0.60
-            and metrics.support_distance_pct <= 2.4
-            and metrics.latest_volume_ratio <= 1.05
-            and metrics.post_volume_ratio <= 1.08
-            and metrics.distribution_risk_score < 4.8
+            score >= execution["min_score"]
+            and metrics.close_position_ratio >= execution["min_close_position_ratio"]
+            and metrics.support_distance_pct <= execution["max_support_distance_pct"]
+            and metrics.latest_volume_ratio <= execution["max_latest_volume_ratio"]
+            and metrics.post_volume_ratio <= execution["max_post_volume_ratio"]
+            and metrics.distribution_risk_score < execution["max_distribution_risk_score"]
             and not metrics.long_upper_shadow
             and not metrics.weak_close
             and not metrics.intraday_reversal_flag
@@ -511,20 +634,21 @@ def _late_session_strong_support_setup(item: BoardCandidate, metrics: CandidateM
 
 
 def _core_midcap_vwap_ma5_retrace_setup(item: BoardCandidate, metrics: CandidateMetrics, score: float) -> StrategySetup:
+    execution = _execution_params("core_midcap_vwap_ma5_retrace")
     anchor = metrics.ma5 if metrics.close_to_ma5 <= metrics.close_to_ma10 else metrics.ma10
     params = _prefilter_params("core_midcap_vwap_ma5_retrace")
     return StrategySetup(
-        entry_zone_low=round(anchor * 0.994, 3),
-        entry_zone_high=round(anchor * 1.006, 3),
+        entry_zone_low=round(anchor * execution["entry_low_multiplier"], 3),
+        entry_zone_high=round(anchor * execution["entry_high_multiplier"], 3),
         execution_ready=(
-            score >= 84.0
+            score >= execution["min_score"]
             and item.amount >= params["min_amount"]
             and (metrics.strong_trend or metrics.trend_ok)
-            and min(metrics.close_to_ma5, metrics.close_to_ma10) <= 1.5
-            and metrics.support_distance_pct <= 1.8
-            and metrics.latest_volume_ratio <= 1.05
-            and metrics.post_volume_ratio <= 1.12
-            and metrics.distribution_risk_score < 4.8
+            and min(metrics.close_to_ma5, metrics.close_to_ma10) <= execution["max_ma_distance_pct"]
+            and metrics.support_distance_pct <= execution["max_support_distance_pct"]
+            and metrics.latest_volume_ratio <= execution["max_latest_volume_ratio"]
+            and metrics.post_volume_ratio <= execution["max_post_volume_ratio"]
+            and metrics.distribution_risk_score < execution["max_distribution_risk_score"]
             and not metrics.false_breakout_flag
             and not metrics.intraday_reversal_flag
         ),
@@ -539,18 +663,19 @@ def _core_midcap_vwap_ma5_retrace_setup(item: BoardCandidate, metrics: Candidate
 
 
 def _sector_mainline_first_divergence_low_buy_setup(item: BoardCandidate, metrics: CandidateMetrics, score: float) -> StrategySetup:
+    execution = _execution_params("sector_mainline_first_divergence_low_buy")
     anchor = max(metrics.board_low, min(metrics.ma5, metrics.board_mid_price))
     return StrategySetup(
-        entry_zone_low=round(anchor * 0.994, 3),
-        entry_zone_high=round(max(metrics.ma5, metrics.board_open) * 1.004, 3),
+        entry_zone_low=round(anchor * execution["entry_low_multiplier"], 3),
+        entry_zone_high=round(max(metrics.ma5, metrics.board_open) * execution["entry_high_multiplier"], 3),
         execution_ready=(
-            score >= 84.0
-            and metrics.retracement_days <= 3
+            score >= execution["min_score"]
+            and metrics.retracement_days <= execution["max_retracement_days"]
             and metrics.board_low_held
-            and metrics.support_distance_pct <= 2.0
-            and metrics.latest_volume_ratio <= 1.08
-            and metrics.post_volume_ratio <= 1.10
-            and metrics.distribution_risk_score < 4.8
+            and metrics.support_distance_pct <= execution["max_support_distance_pct"]
+            and metrics.latest_volume_ratio <= execution["max_latest_volume_ratio"]
+            and metrics.post_volume_ratio <= execution["max_post_volume_ratio"]
+            and metrics.distribution_risk_score < execution["max_distribution_risk_score"]
             and not metrics.false_breakout_flag
             and not metrics.intraday_reversal_flag
         ),
@@ -574,10 +699,13 @@ def _mainline_limitup_shrink_retrace_reclaim_setup(item: BoardCandidate, metrics
     )
     ma_anchor = (metrics.ma5 + metrics.ma10 + metrics.ma20) / 3.0
     support_anchor = max(metrics.recent_low_guard, min(ma_anchor, metrics.latest_close))
-    entry_high = min(ma_anchor * 1.018, metrics.ma5 * (1 + prefilter["max_close_above_ma5_pct"] / 100.0))
+    entry_high = min(
+        ma_anchor * execution["ma_anchor_entry_high_multiplier"],
+        metrics.ma5 * (1 + prefilter["max_close_above_ma5_pct"] / 100.0),
+    )
     return StrategySetup(
-        entry_zone_low=round(support_anchor * 0.992, 3),
-        entry_zone_high=round(max(entry_high, support_anchor * 1.006), 3),
+        entry_zone_low=round(support_anchor * execution["entry_low_multiplier"], 3),
+        entry_zone_high=round(max(entry_high, support_anchor * execution["entry_high_min_multiplier"]), 3),
         execution_ready=(
             score >= execution["min_score"]
             and metrics.board_low_held
@@ -603,17 +731,18 @@ def _mainline_limitup_shrink_retrace_reclaim_setup(item: BoardCandidate, metrics
 
 
 def _ma_channel_band_setup(item: BoardCandidate, metrics: CandidateMetrics, score: float) -> StrategySetup:
+    execution = _execution_params("ma_channel_band")
     anchor = metrics.ma20
     return StrategySetup(
-        entry_zone_low=round(anchor * 0.986, 3),
-        entry_zone_high=round(anchor * 1.012, 3),
+        entry_zone_low=round(anchor * execution["entry_low_multiplier"], 3),
+        entry_zone_high=round(anchor * execution["entry_high_multiplier"], 3),
         execution_ready=(
-            score >= 84.0
-            and metrics.latest_close >= metrics.ma20 * 0.992
-            and metrics.close_to_ma20 <= 2.4
-            and metrics.latest_volume_ratio <= 1.05
-            and metrics.post_volume_ratio <= 1.10
-            and metrics.distribution_risk_score < 4.8
+            score >= execution["min_score"]
+            and metrics.latest_close >= metrics.ma20 * execution["min_close_to_ma20_ratio"]
+            and metrics.close_to_ma20 <= execution["max_close_to_ma20_pct"]
+            and metrics.latest_volume_ratio <= execution["max_latest_volume_ratio"]
+            and metrics.post_volume_ratio <= execution["max_post_volume_ratio"]
+            and metrics.distribution_risk_score < execution["max_distribution_risk_score"]
             and not metrics.false_breakout_flag
         ),
         execution_note="均线通道波段仍处研究层，只用于回测和观察，不进入生产强买。",
@@ -627,18 +756,19 @@ def _ma_channel_band_setup(item: BoardCandidate, metrics: CandidateMetrics, scor
 
 
 def _leader_pullback_band_setup(item: BoardCandidate, metrics: CandidateMetrics, score: float) -> StrategySetup:
+    execution = _execution_params("leader_pullback_band")
     anchor = max(min(metrics.ma10, metrics.board_mid_price), metrics.ma20)
     return StrategySetup(
-        entry_zone_low=round(anchor * 0.99, 3),
-        entry_zone_high=round(anchor * 1.012, 3),
+        entry_zone_low=round(anchor * execution["entry_low_multiplier"], 3),
+        entry_zone_high=round(anchor * execution["entry_high_multiplier"], 3),
         execution_ready=(
-            score >= 86.0
+            score >= execution["min_score"]
             and metrics.strong_trend
             and metrics.board_low_held
-            and metrics.support_distance_pct <= 2.6
-            and metrics.latest_volume_ratio <= 1.10
-            and metrics.post_volume_ratio <= 1.12
-            and metrics.distribution_risk_score < 4.8
+            and metrics.support_distance_pct <= execution["max_support_distance_pct"]
+            and metrics.latest_volume_ratio <= execution["max_latest_volume_ratio"]
+            and metrics.post_volume_ratio <= execution["max_post_volume_ratio"]
+            and metrics.distribution_risk_score < execution["max_distribution_risk_score"]
             and not metrics.false_breakout_flag
         ),
         execution_note="龙头回踩波段为研究策略，只记录二波可能性，不恢复生产强买。",
@@ -652,14 +782,15 @@ def _leader_pullback_band_setup(item: BoardCandidate, metrics: CandidateMetrics,
 
 
 def _breakout_support_setup(item: BoardCandidate, metrics: CandidateMetrics, score: float) -> StrategySetup:
+    execution = _execution_params("breakout_support")
     anchor = max(metrics.breakout_level, metrics.ma10)
     return StrategySetup(
-        entry_zone_low=round(anchor * 0.993, 3),
-        entry_zone_high=round(anchor * 1.005, 3),
+        entry_zone_low=round(anchor * execution["entry_low_multiplier"], 3),
+        entry_zone_high=round(anchor * execution["entry_high_multiplier"], 3),
         execution_ready=(
-            metrics.breakout_distance_pct <= 2.8
-            and metrics.latest_close >= metrics.breakout_level * 0.99
-            and (metrics.momentum_exhaustion or metrics.latest_change_pct >= -1.4)
+            metrics.breakout_distance_pct <= execution["max_breakout_distance_pct"]
+            and metrics.latest_close >= metrics.breakout_level * execution["min_close_to_breakout_ratio"]
+            and (metrics.momentum_exhaustion or metrics.latest_change_pct >= execution["min_latest_change_pct"])
         ),
         execution_note="突破支撑尚在，等回踩确认后再动手。",
         summary_reason="突破后的关键支撑位还在，位置盈亏比更清晰。",
@@ -679,8 +810,14 @@ def _limit_up_breakout_retrace_setup(item: BoardCandidate, metrics: CandidateMet
     prefilter = _prefilter_params("limit_up_breakout_retrace")
     execution = _execution_params("limit_up_breakout_retrace")
     return StrategySetup(
-        entry_zone_low=round(support_anchor * 0.996, 3),
-        entry_zone_high=round(max(metrics.platform_high * 1.006, min(metrics.board_open, metrics.ma5) * 1.002), 3),
+        entry_zone_low=round(support_anchor * execution.get("entry_low_multiplier", 0.996), 3),
+        entry_zone_high=round(
+            max(
+                metrics.platform_high * execution.get("platform_entry_high_multiplier", 1.006),
+                min(metrics.board_open, metrics.ma5) * execution.get("ma_entry_high_multiplier", 1.002),
+            ),
+            3,
+        ),
         execution_ready=(
             score >= execution["min_score"]
             and item.board_count == 1
@@ -698,7 +835,11 @@ def _limit_up_breakout_retrace_setup(item: BoardCandidate, metrics: CandidateMet
             and metrics.latest_close >= metrics.platform_high
             and metrics.latest_close >= metrics.board_open
             and metrics.momentum_exhaustion
-            and (metrics.doji_like or metrics.long_lower_shadow or metrics.latest_close >= metrics.ma5 * 0.998)
+            and (
+                metrics.doji_like
+                or metrics.long_lower_shadow
+                or metrics.latest_close >= metrics.ma5 * execution.get("min_close_to_ma5_ratio", 0.998)
+            )
         ),
         execution_note="平台突破后的洗盘回踩，只在关键位止跌并二次转强时处理。",
         summary_reason="低位平台放量涨停突破后，缩量回踩关键支撑位，等待二次启动。",
@@ -711,9 +852,9 @@ def _limit_up_breakout_retrace_setup(item: BoardCandidate, metrics: CandidateMet
 
 
 def _divergence_consensus_setup(item: BoardCandidate, metrics: CandidateMetrics, score: float) -> StrategySetup:
-    entry_low = metrics.divergence_high * 0.995
-    entry_high = metrics.divergence_high * 1.035
     execution = _execution_params("divergence_consensus")
+    entry_low = metrics.divergence_high * execution["entry_low_multiplier"]
+    entry_high = metrics.divergence_high * execution["entry_high_multiplier"]
     return StrategySetup(
         entry_zone_low=round(entry_low, 3),
         entry_zone_high=round(entry_high, 3),
@@ -726,7 +867,7 @@ def _divergence_consensus_setup(item: BoardCandidate, metrics: CandidateMetrics,
             and metrics.latest_close <= entry_high
             and not metrics.false_breakout_flag
             and not metrics.intraday_reversal_flag
-            and metrics.distribution_risk_score < 5.5
+            and metrics.distribution_risk_score < execution["max_distribution_risk_score"]
         ),
         execution_note="已放量突破巨量分歧高点，属于右侧确认；只在不跌回突破位时执行。",
         summary_reason="底部涨停后经历分歧横盘，缩量沉淀后放量突破分歧高点。",
@@ -739,15 +880,16 @@ def _divergence_consensus_setup(item: BoardCandidate, metrics: CandidateMetrics,
 
 
 def _deep_pullback_setup(item: BoardCandidate, metrics: CandidateMetrics, score: float) -> StrategySetup:
+    execution = _execution_params("deep_pullback")
     anchor = max(metrics.ma20, metrics.recent_low_guard)
     return StrategySetup(
-        entry_zone_low=round(anchor * 0.988, 3),
-        entry_zone_high=round(anchor * 1.006, 3),
+        entry_zone_low=round(anchor * execution["entry_low_multiplier"], 3),
+        entry_zone_high=round(anchor * execution["entry_high_multiplier"], 3),
         execution_ready=(
             metrics.strong_trend
-            and -9.2 <= metrics.drawdown_from_board_pct <= -2.8
-            and metrics.support_distance_ma20_pct <= 3.6
-            and (metrics.momentum_exhaustion or metrics.latest_change_pct >= -1.2)
+            and execution["min_drawdown_from_board_pct"] <= metrics.drawdown_from_board_pct <= execution["max_drawdown_from_board_pct"]
+            and metrics.support_distance_ma20_pct <= execution["max_support_distance_ma20_pct"]
+            and (metrics.momentum_exhaustion or metrics.latest_change_pct >= execution["min_latest_change_pct"])
         ),
         execution_note="这是高风险深回撤，只能在强趋势龙头上做。",
         summary_reason="龙头错杀回撤已较深，但趋势骨架未坏。",
@@ -760,16 +902,17 @@ def _deep_pullback_setup(item: BoardCandidate, metrics: CandidateMetrics, score:
 
 
 def _trend_rebound_setup(item: BoardCandidate, metrics: CandidateMetrics, score: float) -> StrategySetup:
+    execution = _execution_params("trend_rebound")
     anchor = min(metrics.ma10, max(metrics.ma20, metrics.breakout_level))
     return StrategySetup(
-        entry_zone_low=round(anchor * 0.992, 3),
-        entry_zone_high=round(anchor * 1.006, 3),
+        entry_zone_low=round(anchor * execution["entry_low_multiplier"], 3),
+        entry_zone_high=round(anchor * execution["entry_high_multiplier"], 3),
         execution_ready=(
             (metrics.strong_trend or metrics.latest_close >= metrics.ma20)
-            and metrics.retracement_days >= 1
-            and metrics.support_distance_pct <= 2.9
-            and metrics.latest_close >= metrics.ma10 * 0.988
-            and (metrics.momentum_exhaustion or metrics.latest_change_pct >= -1.4)
+            and metrics.retracement_days >= execution["min_retracement_days"]
+            and metrics.support_distance_pct <= execution["max_support_distance_pct"]
+            and metrics.latest_close >= metrics.ma10 * execution["min_close_to_ma10_ratio"]
+            and (metrics.momentum_exhaustion or metrics.latest_change_pct >= execution["min_latest_change_pct"])
         ),
         execution_note="趋势未坏，等待二次上攻前的标准承接位。",
         summary_reason="趋势龙回头结构仍在，回调后没有破趋势。",
@@ -782,17 +925,18 @@ def _trend_rebound_setup(item: BoardCandidate, metrics: CandidateMetrics, score:
 
 
 def _classic_retrace_setup(item: BoardCandidate, metrics: CandidateMetrics, score: float) -> StrategySetup:
+    execution = _execution_params("classic_retrace")
     anchor = min(metrics.ma5, metrics.ma10)
     return StrategySetup(
-        entry_zone_low=round(anchor * 0.992, 3),
-        entry_zone_high=round(anchor * 1.008, 3),
+        entry_zone_low=round(anchor * execution["entry_low_multiplier"], 3),
+        entry_zone_high=round(anchor * execution["entry_high_multiplier"], 3),
         execution_ready=(
-            score >= 82
-            and 1 <= metrics.retracement_days <= 6
-            and metrics.support_distance_pct <= 2.8
-            and metrics.post_volume_ratio <= 1.22
-            and -3.8 <= metrics.latest_change_pct <= 3.6
-            and (metrics.board_low_held or metrics.latest_close >= metrics.board_low * 0.985)
+            score >= execution["min_score"]
+            and execution["min_retracement_days"] <= metrics.retracement_days <= execution["max_retracement_days"]
+            and metrics.support_distance_pct <= execution["max_support_distance_pct"]
+            and metrics.post_volume_ratio <= execution["max_post_volume_ratio"]
+            and execution["min_latest_change_pct"] <= metrics.latest_change_pct <= execution["max_latest_change_pct"]
+            and (metrics.board_low_held or metrics.latest_close >= metrics.board_low * execution["min_board_low_reclaim_ratio"])
             and (metrics.shrink_basic_ok or metrics.momentum_exhaustion)
         ),
         execution_note="结构已经收敛，先等价格进入低吸区。",

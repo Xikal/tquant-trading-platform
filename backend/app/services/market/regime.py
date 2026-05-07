@@ -262,17 +262,10 @@ class MarketRegimeMixin:
         }
 
     def _load_board_breadth_frame(self) -> pd.DataFrame | None:
-        if self._market_provider_router_enabled():
-            result = self.provider_router.fetch_board_breadth_frame()
-            if result.usable and result.data is not None:
-                return result.data
-        if not self.ak_available:
-            return None
-        try:
-            frame = self._get_industry_board_frame()
-        except Exception:
-            return None
-        return normalize_board_frame(frame)
+        result = self.provider_router.fetch_board_breadth_frame()
+        if result.usable and result.data is not None:
+            return normalize_board_frame(result.data)
+        return None
 
     def _load_market_breadth_snapshot(
         self,
@@ -368,11 +361,10 @@ class MarketRegimeMixin:
 
         def runner() -> None:
             try:
-                snapshot_map = self._load_spot_snapshot_map("stock")
                 snapshot = self._build_market_breadth_snapshot(
-                    snapshot_map=snapshot_map,
+                    snapshot_map={},
                     recent_hot_sequences=recent_hot_sequences,
-                    breadth_ready=bool(snapshot_map),
+                    breadth_ready=False,
                 )
                 self._set_market_breadth_cache(cache_key, snapshot)
             finally:
@@ -452,7 +444,7 @@ class MarketRegimeMixin:
         cached = self._get_limit_down_cache(cache_key)
         if cached is not None:
             return cached
-        if not self.ak_available or not latest_trade_date:
+        if not latest_trade_date:
             return None
         try:
             frame = None
@@ -460,6 +452,10 @@ class MarketRegimeMixin:
                 routed = self.provider_router.fetch_limit_down_pool(latest_trade_date)
                 if routed.usable:
                     frame = routed.data
+                else:
+                    return None
+            else:
+                return None
         except Exception:
             return None
         count = int(len(frame.index)) if frame is not None else 0

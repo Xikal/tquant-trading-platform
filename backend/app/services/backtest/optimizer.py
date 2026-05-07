@@ -373,6 +373,7 @@ def _candidate_or_none(
 def _candidate_metrics(metrics: dict[str, Any], trades: list[Any]) -> dict[str, Any]:
     trade_count = int(metrics.get("trade_count") or len(trades) or 0)
     stop_loss_count = sum(1 for trade in trades if getattr(trade, "exit_reason", "") == "stop_loss")
+    attribution = metrics.get("attribution") if isinstance(metrics.get("attribution"), dict) else {}
     output = {
         "total_return_pct": _float(metrics.get("total_return_pct"), 0.0),
         "win_rate_pct": _float(metrics.get("win_rate_pct"), 0.0),
@@ -381,6 +382,7 @@ def _candidate_metrics(metrics: dict[str, Any], trades: list[Any]) -> dict[str, 
         "profit_factor": _float(metrics.get("profit_factor"), 0.0),
         "sharpe_ratio": _float(metrics.get("sharpe_ratio"), 0.0),
         "trade_count": trade_count,
+        "market_state_attribution": list(attribution.get("market_state") or []),
     }
     return output
 

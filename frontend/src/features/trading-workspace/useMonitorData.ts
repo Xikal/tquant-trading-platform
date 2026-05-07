@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useRef, useState } from "react";
 import { getAdminApiToken } from "../../api/base";
 import { api } from "../../api/client";
-import type { LowBuyPriorityBoardResult, MarketBreadth, RuntimeStatus, WatchlistSignal } from "../../types";
+import type { LowBuyPriorityBoardResult, MarketBreadth, RuntimeStatus, SectorEtfT0Response, WatchlistSignal } from "../../types";
 import { errorMessage } from "./workspaceFormatters";
 import type { StockCardView } from "./workspaceTypes";
 import { priorityToCard, watchSignalToCard } from "./workspaceViewModels";
@@ -18,6 +18,7 @@ export function useMonitorData({ withLoading, setError, setNotice }: UseMonitorD
   const [priorityBoard, setPriorityBoard] = useState<LowBuyPriorityBoardResult | null>(null);
   const [marketBreadth, setMarketBreadth] = useState<MarketBreadth | null>(null);
   const [watchlistSignals, setWatchlistSignals] = useState<WatchlistSignal[]>([]);
+  const [sectorEtfT0, setSectorEtfT0] = useState<SectorEtfT0Response | null>(null);
   const [runtime, setRuntime] = useState<RuntimeStatus | null>(null);
   const monitorRefreshRef = useRef(false);
 
@@ -46,6 +47,7 @@ export function useMonitorData({ withLoading, setError, setNotice }: UseMonitorD
       if (monitorResult.status === "fulfilled") {
         setPriorityBoard(monitorResult.value.priority_board);
         setWatchlistSignals(monitorResult.value.watchlist_signals);
+        setSectorEtfT0(monitorResult.value.sector_etf_t0 ?? null);
       }
       if (breadthResult.status === "fulfilled") {
         setMarketBreadth(breadthResult.value);
@@ -79,6 +81,7 @@ export function useMonitorData({ withLoading, setError, setNotice }: UseMonitorD
   const resetMonitorData = useCallback(() => {
     setPriorityBoard(null);
     setMarketBreadth(null);
+    setSectorEtfT0(null);
     setWatchlistSignals([]);
   }, []);
 
@@ -86,6 +89,7 @@ export function useMonitorData({ withLoading, setError, setNotice }: UseMonitorD
     priorityBoard,
     setPriorityBoard,
     marketBreadth,
+    sectorEtfT0,
     watchlistSignals,
     setWatchlistSignals,
     runtime,

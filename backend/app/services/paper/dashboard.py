@@ -46,6 +46,10 @@ class PaperPerformanceDashboardService:
                 account.id,
                 start_date=start_date,
             ),
+            "strategy_correlation": performance_service.compute_strategy_correlation(
+                account.id,
+                start_date=start_date,
+            ),
             "today_report": _daily_report(report) if report else None,
             "updated_at": beijing_now().strftime("%Y-%m-%d %H:%M:%S"),
         }

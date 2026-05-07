@@ -13,7 +13,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.config import BACKEND_DIR, get_settings
-from app.models.entities import BacktestTrade, MLSignalModel, MLSignalSample, PaperTrade
+from app.models.entities import BacktestTrade, DailyBarSnapshot, MLSignalModel, MLSignalSample, PaperTrade
 from app.models.schema_defs.phase4 import (
     MLSignalModelListResponse,
     MLSignalModelOut,
@@ -36,6 +36,10 @@ FEATURE_NAMES = [
     "priority_score",
     "risk_score",
     "volume_shrink_ratio",
+    "price_momentum_5d",
+    "price_momentum_10d",
+    "volume_slope_5d",
+    "volume_slope_10d",
 ]
 
 HEURISTIC_MODEL_KEY = "research-heuristic-v1"
@@ -51,6 +55,7 @@ class MLSignalService:
 
     def __init__(self, db: Session) -> None:
         self.db = db
+        self._sequence_feature_cache: dict[tuple[str, str], dict[str, float]] = {}
 
     def build_samples(self, payload: MLSignalSampleBuildRequest) -> MLSignalSampleBuildResponse:
         samples: list[dict[str, Any]] = []
@@ -360,6 +365,7 @@ class MLSignalService:
                     strategy_key=row.strategy_key,
                     market_state=row.market_state,
                     side=row.side,
+                    sequence_features=self._sequence_features(row.symbol, row.trade_time.date().isoformat() if row.trade_time else ""),
                 ),
                 "label": {"side": row.side, "net_amount": float(row.net_amount or 0)},
             }
@@ -384,6 +390,7 @@ class MLSignalService:
                     strategy_key=row.strategy_key,
                     market_state=row.market_state,
                     side=row.side,
+                    sequence_features=self._sequence_features(row.symbol, row.trade_date),
                 ),
                 "label": {"pnl_pct": float(row.pnl_pct or 0), "pnl_amount": float(row.pnl_amount or 0)},
             }
@@ -408,6 +415,28 @@ class MLSignalService:
             )
         )
         return True
+
+    def _sequence_features(self, symbol: str, trade_date: str) -> dict[str, float]:
+        key = (str(symbol or ""), str(trade_date or ""))
+        if not key[0] or not key[1]:
+            return _empty_sequence_features()
+        cached = self._sequence_feature_cache.get(key)
+        if cached is not None:
+            return cached
+        rows = (
+            self.db.execute(
+                select(DailyBarSnapshot)
+                .where(DailyBarSnapshot.symbol == key[0])
+                .where(DailyBarSnapshot.trade_date <= key[1])
+                .order_by(DailyBarSnapshot.trade_date.desc())
+                .limit(12)
+            )
+            .scalars()
+            .all()
+        )
+        features = _sequence_features_from_bars(list(reversed(rows)))
+        self._sequence_feature_cache[key] = features
+        return features
 
 
 def _fit_estimator(*, model_type: str, x_matrix: np.ndarray, labels: np.ndarray, validation_ratio: float):
@@ -616,8 +645,9 @@ def _trade_features(
     strategy_key: str,
     market_state: str,
     side: str,
+    sequence_features: dict[str, float] | None = None,
 ) -> dict[str, Any]:
-    return {
+    features = {
         "price": price,
         "quantity": quantity,
         "gross_amount": gross_amount,
@@ -627,6 +657,46 @@ def _trade_features(
         "priority_score": 0.0,
         "risk_score": 0.0,
         "volume_shrink_ratio": 0.0,
+    }
+    features.update(sequence_features or _empty_sequence_features())
+    return features
+
+
+def _empty_sequence_features() -> dict[str, float]:
+    return {
+        "price_momentum_5d": 0.0,
+        "price_momentum_10d": 0.0,
+        "volume_slope_5d": 0.0,
+        "volume_slope_10d": 0.0,
+    }
+
+
+def _sequence_features_from_bars(rows: list[DailyBarSnapshot]) -> dict[str, float]:
+    if not rows:
+        return _empty_sequence_features()
+    closes = [float(row.close_price or 0.0) for row in rows if float(row.close_price or 0.0) > 0]
+    volumes = [float(row.volume or 0.0) for row in rows if float(row.volume or 0.0) >= 0]
+    latest_close = closes[-1] if closes else 0.0
+
+    def momentum(days: int) -> float:
+        if latest_close <= 0 or len(closes) <= days or closes[-days - 1] <= 0:
+            return 0.0
+        return round((latest_close / closes[-days - 1] - 1.0) * 100, 4)
+
+    def slope(days: int) -> float:
+        series = volumes[-days:] if len(volumes) >= days else volumes
+        if len(series) < 3:
+            return 0.0
+        avg_volume = float(np.mean(series)) or 1.0
+        x_values = np.arange(len(series), dtype=float)
+        coef = float(np.polyfit(x_values, np.asarray(series, dtype=float), 1)[0])
+        return round(coef / avg_volume, 6)
+
+    return {
+        "price_momentum_5d": momentum(5),
+        "price_momentum_10d": momentum(10),
+        "volume_slope_5d": slope(5),
+        "volume_slope_10d": slope(10),
     }
 
 

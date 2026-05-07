@@ -76,6 +76,7 @@ export function WorkspacePageContent({
             draft={analysis.draft}
             setDraft={analysis.setDraft}
             result={analysis.result}
+            anomaly={analysis.anomaly}
             loading={loading}
             onRun={() => void analysis.runAnalysis()}
             onOpenPaperOrder={onPreparePaperOrder}

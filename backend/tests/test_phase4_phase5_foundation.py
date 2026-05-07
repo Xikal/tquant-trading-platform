@@ -109,6 +109,14 @@ def test_quant_parameter_version_default_and_create():
 
     assert current.version
     assert "strategy_prefilters" in current.params["low_buy"]
+    assert "strategy_execution" in current.params["low_buy"]
+    assert "scoring" in current.params["low_buy"]
+    assert "thresholds" in current.params["low_buy"]
+    assert "auto_governance" in current.params["low_buy"]
+    assert "research_layers" in current.params["low_buy"]
+    assert "hard_risk" in current.params["low_buy"]
+    assert "dynamic_adjustment" in current.params["low_buy"]
+    assert current.params["low_buy"]["scoring"]["base_score"] > 0
     assert created.version == "test-params-v2"
     assert service.current().version == "test-params-v2"
     assert "strategy_prefilters" in service.current().params["low_buy"]

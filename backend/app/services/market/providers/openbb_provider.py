@@ -106,3 +106,27 @@ class OpenBBMarketProvider:
             source=self.name,
             message="daily history not enabled for OpenBB adapter",
         )
+
+    def fetch_sector_fund_flow_rank(self) -> ProviderResult:
+        return self._unavailable("sector fund flow not enabled for OpenBB adapter")
+
+    def fetch_individual_fund_flow(self, symbol: str, market: str) -> ProviderResult:
+        return self._unavailable("individual fund flow not enabled for OpenBB adapter")
+
+    def fetch_northbound_fund_flow_summary(self) -> ProviderResult:
+        return self._unavailable("northbound fund flow not enabled for OpenBB adapter")
+
+    def fetch_limit_up_snapshot(self) -> ProviderResult:
+        return self._unavailable("limit-up snapshot not enabled for OpenBB adapter")
+
+    def fetch_lhb_stock_statistic(self) -> ProviderResult:
+        return self._unavailable("lhb statistic not enabled for OpenBB adapter")
+
+    def fetch_stock_notice_report(self, symbol: str) -> ProviderResult:
+        return self._unavailable("stock notice report not enabled for OpenBB adapter")
+
+    def fetch_market_events(self, symbol: str) -> ProviderResult:
+        return self._unavailable("market events not enabled for OpenBB adapter")
+
+    def _unavailable(self, message: str) -> ProviderResult:
+        return ProviderResult(quality=MarketDataQuality.UNAVAILABLE, source=self.name, message=message)

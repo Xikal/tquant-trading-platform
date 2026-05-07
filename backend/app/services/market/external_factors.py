@@ -8,38 +8,37 @@ class ExternalFactorDataError(RuntimeError):
 
 
 def stock_sector_fund_flow_rank() -> Any:
-    ak = _akshare()
-    return ak.stock_sector_fund_flow_rank(indicator="今日", sector_type="行业资金流")
+    return _router_data("fetch_sector_fund_flow_rank")
 
 
 def stock_individual_fund_flow(symbol: str, market: str) -> Any:
-    ak = _akshare()
-    return ak.stock_individual_fund_flow(stock=symbol, market=market)
+    return _router_data("fetch_individual_fund_flow", symbol, market)
 
 
 def stock_hsgt_fund_flow_summary_em() -> Any:
-    ak = _akshare()
-    return ak.stock_hsgt_fund_flow_summary_em()
+    return _router_data("fetch_northbound_fund_flow_summary")
 
 
 def stock_zt_pool_em() -> Any:
-    ak = _akshare()
-    return ak.stock_zt_pool_em()
+    return _router_data("fetch_limit_up_snapshot")
 
 
 def stock_lhb_stock_statistic_em() -> Any:
-    ak = _akshare()
-    return ak.stock_lhb_stock_statistic_em(symbol="近一月")
+    return _router_data("fetch_lhb_stock_statistic")
 
 
 def stock_notice_report(symbol: str) -> Any:
-    ak = _akshare()
-    return ak.stock_notice_report(symbol=symbol)
+    return _router_data("fetch_stock_notice_report", symbol)
 
 
-def _akshare() -> Any:
+def _router_data(method_name: str, *args) -> Any:
     try:
-        import akshare as ak  # type: ignore
-    except Exception as exc:  # pragma: no cover - optional dependency
-        raise ExternalFactorDataError("akshare unavailable") from exc
-    return ak
+        from app.services.market.service import MarketDataService
+
+        router = MarketDataService().provider_router
+        result = getattr(router, method_name)(*args)
+    except Exception as exc:  # pragma: no cover - optional data source path
+        raise ExternalFactorDataError("market provider unavailable") from exc
+    if not result.usable or result.data is None:
+        raise ExternalFactorDataError(result.message or "external factor data unavailable")
+    return result.data

@@ -67,6 +67,7 @@ def monitor_snapshot(
         priority_board=_empty_priority_board(
             warning="监控榜单刷新任务已排队，稍后会自动更新。",
         ),
+        sector_etf_t0=_empty_sector_etf_t0(),
     )
 
 
@@ -123,4 +124,15 @@ def _empty_priority_board(*, warning: str) -> dict[str, Any]:
         "family_sections": [],
         "simple_buckets": [],
         "items": [],
+    }
+
+
+def _empty_sector_etf_t0() -> dict[str, Any]:
+    return {
+        "updated_at": beijing_now_string(),
+        "market_state": "neutral",
+        "market_state_text": "数据刷新中",
+        "total": 0,
+        "opportunities": [],
+        "notes": ["监控刷新任务已排队，ETF 做T替代稍后自动更新。"],
     }

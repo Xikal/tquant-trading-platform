@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from datetime import date, timedelta
+
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
@@ -10,6 +12,7 @@ from app.models.entities import User
 from app.models.schemas import (
     PaperGroupedPerformanceOut,
     PaperPerformanceOut,
+    PaperStrategyCorrelationResponse,
     PaperStrategyMarketPerformanceOut,
     PaperTagPerformanceOut,
 )
@@ -67,6 +70,20 @@ def paper_performance_by_tag(
 ) -> list[PaperTagPerformanceOut]:
     account = PaperAccountService(db).get_or_create_default(current_user.id)
     return [PaperTagPerformanceOut(**item) for item in PaperPerformanceService(db).compute_by_tag(account.id)]
+
+
+@router.get("/performance/strategy-correlation", response_model=PaperStrategyCorrelationResponse)
+def paper_performance_strategy_correlation(
+    days: int = Query(default=90, ge=7, le=730),
+    current_user: User = Depends(require_paper_trading),
+    db: Session = Depends(get_db),
+) -> PaperStrategyCorrelationResponse:
+    account = PaperAccountService(db).get_or_create_default(current_user.id)
+    start_date = None
+    if days > 0:
+        start_date = date.today() - timedelta(days=days)
+    payload = PaperPerformanceService(db).compute_strategy_correlation(account.id, start_date=start_date)
+    return PaperStrategyCorrelationResponse(**payload)
 
 
 @router.get("/performance/dashboard")

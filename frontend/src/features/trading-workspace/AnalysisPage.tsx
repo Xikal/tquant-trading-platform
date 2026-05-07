@@ -1,4 +1,4 @@
-import type { AnalysisResponse } from "../../types";
+import type { AnalysisResponse, IntradayAnomalyResponse } from "../../types";
 import { NumberField, SearchField, SelectField } from "../../components/shared/FormFields";
 import { InfoPill, LineList, MetricGrid, MiniKline, PanelTitle, StockIdentity } from "./WorkspaceComponents";
 import { actionStatusText, actionText, formatAmount, formatNumber, formatPct, formatPrice, plainTradingText, riskText, toneFromChange } from "./workspaceFormatters";
@@ -8,6 +8,7 @@ export function AnalysisPage({
   draft,
   setDraft,
   result,
+  anomaly,
   loading,
   onRun,
   onOpenPaperOrder,
@@ -15,6 +16,7 @@ export function AnalysisPage({
   draft: AnalysisDraft;
   setDraft: (draft: AnalysisDraft) => void;
   result: AnalysisResponse | null;
+  anomaly: IntradayAnomalyResponse | null;
   loading: string;
   onRun: () => void;
   onOpenPaperOrder: (payload: { symbol: string; name?: string; price?: number | null }) => void;
@@ -100,6 +102,24 @@ export function AnalysisPage({
           <LineList title="交易成本提示" items={[suggestion.fee_warning, suggestion.liquidity_warning].filter(Boolean).map(plainTradingText)} />
         ) : null}
         {suggestion?.reasons.length ? <LineList title="主要依据" items={suggestion.reasons.slice(0, 4).map(plainTradingText)} /> : null}
+      </div>
+      <div className="panel analysis-anomaly">
+        <PanelTitle title="盘中异常提醒" />
+        {anomaly ? (
+          <>
+            <div className="context-row">
+              <InfoPill label="异常等级" value={anomaly.anomaly_text} tone={anomaly.anomaly_level === "high" ? "down" : anomaly.anomaly_level === "medium" ? "warn" : "neutral"} />
+              <InfoPill label="风险分" value={formatNumber(anomaly.score)} tone={anomaly.score >= 70 ? "down" : anomaly.score >= 45 ? "warn" : "neutral"} />
+              <InfoPill label="类型" value={plainTradingText(anomaly.pattern) || "--"} />
+            </div>
+            <p>{plainTradingText(anomaly.reasons[0] ?? anomaly.anomaly_text)}</p>
+            <InfoPill label="处理建议" value={plainTradingText(anomaly.action_hint)} />
+            {anomaly.reasons.length ? <LineList title="触发原因" items={anomaly.reasons.slice(0, 4).map(plainTradingText)} /> : null}
+            {anomaly.risk_notes.length ? <LineList title="风险提醒" items={anomaly.risk_notes.slice(0, 3).map(plainTradingText)} /> : null}
+          </>
+        ) : (
+          <p className="hint">暂无盘中异常数据。非交易时间或分时数据缺失时会显示为空，不影响基础量化分析。</p>
+        )}
       </div>
       <div className="panel chart-panel analysis-chart">
         <PanelTitle title="K线与指标" />

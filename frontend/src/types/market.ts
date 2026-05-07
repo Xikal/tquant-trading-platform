@@ -100,3 +100,48 @@ export interface MarketBreadth {
   data_quality?: string;
   data_quality_text: string;
 }
+
+export interface SectorEtfT0Opportunity {
+  sector_name: string;
+  etf_symbol: string;
+  etf_name: string;
+  source_signal_symbol: string;
+  source_signal_name: string;
+  source_strategy: string;
+  source_signal_text: string;
+  last_price: number;
+  change_pct: number;
+  bias: "positive_t" | "negative_t" | "hold" | string;
+  bias_text: string;
+  confidence: number;
+  entry_zone: string;
+  sell_zone: string;
+  stop_loss?: number | null;
+  expected_edge_pct: number;
+  reason: string;
+  risk: string;
+  data_quality_text?: string;
+}
+
+export interface SectorEtfT0Response {
+  updated_at: string;
+  market_state: string;
+  market_state_text: string;
+  total: number;
+  opportunities: SectorEtfT0Opportunity[];
+  notes: string[];
+}
+
+export interface IntradayAnomalyResponse {
+  symbol: string;
+  name: string;
+  anomaly_level: "normal" | "watch" | "medium" | "high" | "data_unavailable" | string;
+  anomaly_text: string;
+  score: number;
+  pattern: string;
+  action_hint: string;
+  reasons: string[];
+  risk_notes: string[];
+  data_quality_text?: string;
+  updated_at: string;
+}

@@ -5,6 +5,8 @@ from dataclasses import dataclass
 from app.models.schemas import LowBuyCandidateOut, LowBuyStrategyPerformanceOut
 from app.services.market.regime import MarketRegimeSnapshot
 from app.services.low_buy.shared import LOW_BUY_THRESHOLDS
+from app.services.low_buy.strategy_parameter_defaults import LOW_BUY_DYNAMIC_ADJUSTMENT_DEFAULTS
+from app.services.quant.runtime_parameters import get_low_buy_dynamic_adjustment
 
 
 @dataclass(frozen=True)
@@ -24,24 +26,25 @@ def low_buy_dynamic_adjustment(
     factor_bonuses: dict[str, float] | None = None,
 ) -> LowBuyDynamicAdjustment:
     state = market_regime.state if market_regime is not None else "low_volume_wait"
+    params = _dynamic_params()
     floor_shift = _market_floor_shift(state)
     position_multiplier = 1.0
     reason_parts = [f"环境 {state}"]
 
     if risk_tier == "block":
-        floor_shift += 99.0
+        floor_shift += _float_param(params, "risk_block_shift")
         reason_parts.append("风险阻断")
     elif risk_tier == "degrade":
-        floor_shift += 2.4
+        floor_shift += _float_param(params, "risk_degrade_shift")
         reason_parts.append("风险降级")
 
     if leader_rank == "leader":
-        floor_shift -= 0.7
-        position_multiplier *= 1.04
+        floor_shift += _float_param(params, "leader_floor_shift")
+        position_multiplier *= _float_param(params, "leader_position_multiplier")
         reason_parts.append("主线龙头加权")
     elif leader_rank == "laggard":
-        floor_shift += 1.0
-        position_multiplier *= 0.88
+        floor_shift += _float_param(params, "laggard_floor_shift")
+        position_multiplier *= _float_param(params, "laggard_position_multiplier")
         reason_parts.append("后排降级")
 
     if performance is not None:
@@ -58,13 +61,30 @@ def low_buy_dynamic_adjustment(
         ),
     )
     if factor_bonus > 0:
-        floor_shift -= min(factor_bonus * 0.16, 0.8)
+        floor_shift -= min(
+            factor_bonus * _float_param(params, "factor_bonus_floor_weight"),
+            _float_param(params, "factor_bonus_floor_cap"),
+        )
         reason_parts.append(f"因子加分 +{factor_bonus:.1f}")
-
     return LowBuyDynamicAdjustment(
-        score_floor_shift=round(max(-2.0, min(99.0, floor_shift)), 2),
-        soft_buy_threshold_shift=round(max(-1.5, min(6.0, floor_shift * 0.55)), 2),
-        position_multiplier=round(max(0.0, min(1.2, position_multiplier)), 4),
+        score_floor_shift=round(
+            max(_float_param(params, "score_floor_min"), min(_float_param(params, "score_floor_max"), floor_shift)),
+            2,
+        ),
+        soft_buy_threshold_shift=round(
+            max(
+                _float_param(params, "soft_buy_shift_min"),
+                min(_float_param(params, "soft_buy_shift_max"), floor_shift * _float_param(params, "soft_buy_shift_multiplier")),
+            ),
+            2,
+        ),
+        position_multiplier=round(
+            max(
+                _float_param(params, "position_multiplier_min"),
+                min(_float_param(params, "position_multiplier_max"), position_multiplier),
+            ),
+            4,
+        ),
         reason=" · ".join(reason_parts),
     )
 
@@ -73,7 +93,8 @@ def apply_performance_adjustment_to_candidate(
     candidate: LowBuyCandidateOut,
     performance: LowBuyStrategyPerformanceOut | None,
 ) -> LowBuyCandidateOut:
-    if performance is None or performance.filled_signals < 50:
+    params = _dynamic_params()
+    if performance is None or performance.filled_signals < _int_param(params, "performance_min_filled"):
         return candidate
     _, position_multiplier = _performance_adjustment(performance)
     return candidate.model_copy(
@@ -84,28 +105,45 @@ def apply_performance_adjustment_to_candidate(
 
 
 def _market_floor_shift(state: str) -> float:
-    return {
-        "broad_rally": -1.2,
-        "repair": -0.4,
-        "weight_support_active": 0.6,
-        "low_volume_wait": 1.0,
-        "fast_rotation": 1.8,
-        "weight_support": 2.2,
-        "high_flyer_retreat": 3.2,
-        "risk_release": 5.0,
-    }.get(state, 1.0)
+    shifts = _dynamic_params().get("market_floor_shift", {})
+    if not isinstance(shifts, dict):
+        shifts = LOW_BUY_DYNAMIC_ADJUSTMENT_DEFAULTS["market_floor_shift"]
+    return float(shifts.get(state, shifts.get("default", 1.0)))
 
 
 def _performance_adjustment(performance: LowBuyStrategyPerformanceOut) -> tuple[float, float]:
+    params = _dynamic_params()
     filled = max(performance.filled_signals, 0)
-    if filled < 50:
+    min_filled = _int_param(params, "performance_min_filled")
+    if filled < min_filled:
         return 0.0, 1.0
-    reliability = min(1.0, (filled - 50) / 50.0)
+    reliability = min(1.0, (filled - min_filled) / _float_param(params, "performance_reliability_window"))
     if reliability <= 0:
         return 0.0, 1.0
-    edge = performance.net_win_rate * 0.0175 + performance.avg_net_return_pct * 0.08
-    if performance.avg_max_drawdown_5d < -6.0:
-        edge -= 0.8
-    floor_shift = -max(min(edge, 2.2), -2.8) * reliability
-    multiplier = 1.0 + max(min(edge * 0.035, 0.12), -0.18) * reliability
+    edge = performance.net_win_rate * _float_param(params, "net_win_rate_weight") + performance.avg_net_return_pct * _float_param(
+        params, "avg_return_weight"
+    )
+    if performance.avg_max_drawdown_5d < _float_param(params, "drawdown_penalty_threshold"):
+        edge -= _float_param(params, "drawdown_penalty")
+    floor_shift = -max(
+        min(edge, _float_param(params, "floor_shift_positive_cap")),
+        _float_param(params, "floor_shift_negative_cap"),
+    ) * reliability
+    multiplier = 1.0 + max(
+        min(edge * _float_param(params, "position_edge_weight"), _float_param(params, "position_edge_positive_cap")),
+        _float_param(params, "position_edge_negative_cap"),
+    ) * reliability
     return round(floor_shift, 2), round(multiplier, 4)
+
+
+def _dynamic_params() -> dict:
+    values = {**LOW_BUY_DYNAMIC_ADJUSTMENT_DEFAULTS, **get_low_buy_dynamic_adjustment()}
+    return values
+
+
+def _float_param(params: dict, key: str) -> float:
+    return float(params.get(key, LOW_BUY_DYNAMIC_ADJUSTMENT_DEFAULTS[key]))
+
+
+def _int_param(params: dict, key: str) -> int:
+    return int(params.get(key, LOW_BUY_DYNAMIC_ADJUSTMENT_DEFAULTS[key]))

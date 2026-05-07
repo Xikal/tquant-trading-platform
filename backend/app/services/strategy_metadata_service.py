@@ -30,6 +30,7 @@ from app.models.schema_defs.strategy_meta import (
 )
 from app.services.low_buy.strategy_policy import StrategyTier, get_strategy_tier
 from app.services.low_buy.strategy_tier_resolver import StrategyTierResolver, clear_strategy_tier_cache
+from app.services.low_buy.strategy_governance import latest_strategy_performance_map, _strategy_health
 from app.services.shared.feature_flags import feature_enabled
 
 
@@ -66,6 +67,9 @@ DEFAULT_STRATEGY_SEEDS_BY_KEY: dict[str, StrategyDisplaySeed] = {
 FACTOR_ACCESS_ROLES = {"admin", "administrator", "backtest_optimizer", "backtest_research"}
 RESEARCH_ACCESS_ROLES = {"admin", "administrator", "backtest_optimizer", "backtest_research"}
 ADMIN_ROLES = {"admin", "administrator"}
+RESEARCH_TO_AUXILIARY_GATED_STRATEGIES = {"ma_channel_band", "leader_pullback_band"}
+RESEARCH_TO_AUXILIARY_MIN_FILLED = 100
+RESEARCH_TO_AUXILIARY_MIN_HEALTH = 60.0
 
 
 def _default_production_strategy_keys() -> list[str]:
@@ -288,6 +292,15 @@ class StrategyMetadataService:
                 raise ValueError(f"策略可见性为 {visibility}，暂不允许提升到生产层")
             if not enabled or not _strategy_feature_enabled(self.db, strategy_key, default=enabled):
                 raise ValueError("策略当前已禁用，暂不允许提升到生产层")
+            if strategy_key in RESEARCH_TO_AUXILIARY_GATED_STRATEGIES:
+                performance = latest_strategy_performance_map(self.db).get(strategy_key)
+                health_score, _ = _strategy_health(performance)
+                filled = int(getattr(performance, "filled_signals", 0) or 0)
+                if filled < RESEARCH_TO_AUXILIARY_MIN_FILLED or health_score < RESEARCH_TO_AUXILIARY_MIN_HEALTH:
+                    raise ValueError(
+                        f"策略真实成交样本或健康度不足：成交 {filled}/{RESEARCH_TO_AUXILIARY_MIN_FILLED}，"
+                        f"健康分 {health_score:.1f}/{RESEARCH_TO_AUXILIARY_MIN_HEALTH:.1f}"
+                    )
         current_tier = self._tier_resolver().resolve(strategy_key).value
         row = self.db.execute(
             select(StrategyTierOverride).where(StrategyTierOverride.strategy_key == strategy_key)

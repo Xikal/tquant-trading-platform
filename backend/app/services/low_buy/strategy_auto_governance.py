@@ -12,16 +12,21 @@ from app.services.low_buy.strategy_governance import (
     _strategy_health,
     latest_strategy_performance_map,
 )
+from app.services.low_buy.strategy_parameter_defaults import LOW_BUY_AUTO_GOVERNANCE_DEFAULTS
+from app.services.quant.runtime_parameters import get_low_buy_auto_governance
 
 
-MIN_AUTO_GOVERNANCE_FILLED_SIGNALS = 20
-WATCH_HEALTH_THRESHOLD = 55.0
-PAUSE_HEALTH_THRESHOLD = 35.0
-RECOVERY_MIN_FILLED_SIGNALS = 50
-RECOVERY_HEALTH_THRESHOLD = 65.0
-RECOVERY_MAX_STOP_LOSS_RATE = 20.0
-RECOVERY_WATCH_DAYS = 5
-RECOVERY_PAUSED_DAYS = 10
+def _auto_governance_params() -> dict[str, Any]:
+    params = {**LOW_BUY_AUTO_GOVERNANCE_DEFAULTS, **get_low_buy_auto_governance()}
+    return params
+
+
+def _float_param(params: dict[str, Any], key: str) -> float:
+    return float(params.get(key, LOW_BUY_AUTO_GOVERNANCE_DEFAULTS[key]))
+
+
+def _int_param(params: dict[str, Any], key: str) -> int:
+    return int(params.get(key, LOW_BUY_AUTO_GOVERNANCE_DEFAULTS[key]))
 
 
 def refresh_low_buy_strategy_auto_governance(db: Session) -> dict[str, Any]:
@@ -34,6 +39,7 @@ def refresh_low_buy_strategy_auto_governance(db: Session) -> dict[str, Any]:
 
     performances = latest_strategy_performance_map(db)
     previous_items = _load_previous_items(db)
+    params = _auto_governance_params()
     updated_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     items: dict[str, dict[str, Any]] = {}
     for strategy_key, performance in performances.items():
@@ -43,6 +49,7 @@ def refresh_low_buy_strategy_auto_governance(db: Session) -> dict[str, Any]:
             health_score=health_score,
             stop_loss_rate=performance.stop_loss_rate,
             avg_net_return_pct=performance.avg_net_return_pct,
+            params=params,
         )
         previous = previous_items.get(strategy_key)
         recovery_passed = _recovery_gate_passed(
@@ -50,12 +57,17 @@ def refresh_low_buy_strategy_auto_governance(db: Session) -> dict[str, Any]:
             health_score=health_score,
             stop_loss_rate=performance.stop_loss_rate,
             avg_net_return_pct=performance.avg_net_return_pct,
+            params=params,
         )
         recovery_pass_days = 0
         recovery_required_days = 0
         if decision is None and previous:
             previous_status = str(previous.get("status") or "watch")
-            recovery_required_days = RECOVERY_PAUSED_DAYS if previous_status == "paused" else RECOVERY_WATCH_DAYS
+            recovery_required_days = (
+                _int_param(params, "recovery_paused_days")
+                if previous_status == "paused"
+                else _int_param(params, "recovery_watch_days")
+            )
             recovery_pass_days = (int(previous.get("recovery_pass_days") or 0) + 1) if recovery_passed else 0
             if recovery_pass_days < recovery_required_days:
                 remaining_days = recovery_required_days - recovery_pass_days
@@ -80,7 +92,7 @@ def refresh_low_buy_strategy_auto_governance(db: Session) -> dict[str, Any]:
     payload = {
         "version": 1,
         "updated_at": updated_at,
-        "min_filled_signals": MIN_AUTO_GOVERNANCE_FILLED_SIGNALS,
+        "min_filled_signals": _int_param(params, "min_filled_signals"),
         "items": items,
     }
     SystemSettingRepository(db).upsert(
@@ -97,15 +109,20 @@ def _auto_governance_decision(
     health_score: float,
     stop_loss_rate: float,
     avg_net_return_pct: float,
+    params: dict[str, Any],
 ) -> dict[str, str] | None:
-    if filled_signals < MIN_AUTO_GOVERNANCE_FILLED_SIGNALS:
+    if filled_signals < _int_param(params, "min_filled_signals"):
         return None
-    if health_score < PAUSE_HEALTH_THRESHOLD or (stop_loss_rate >= 32.0 and avg_net_return_pct < 0):
+    if health_score < _float_param(params, "pause_health_threshold") or (
+        stop_loss_rate >= _float_param(params, "pause_stop_loss_rate_threshold") and avg_net_return_pct < 0
+    ):
         return {
             "status": "paused",
             "reason": "真实成交绩效偏弱，自动暂停强信号",
         }
-    if health_score < WATCH_HEALTH_THRESHOLD or stop_loss_rate >= 24.0:
+    if health_score < _float_param(params, "watch_health_threshold") or stop_loss_rate >= _float_param(
+        params, "watch_stop_loss_rate_threshold"
+    ):
         return {
             "status": "watch",
             "reason": "真实成交绩效一般，自动降级观察",
@@ -119,11 +136,12 @@ def _recovery_gate_passed(
     health_score: float,
     stop_loss_rate: float,
     avg_net_return_pct: float,
+    params: dict[str, Any],
 ) -> bool:
     return (
-        filled_signals >= RECOVERY_MIN_FILLED_SIGNALS
-        and health_score >= RECOVERY_HEALTH_THRESHOLD
-        and stop_loss_rate <= RECOVERY_MAX_STOP_LOSS_RATE
+        filled_signals >= _int_param(params, "recovery_min_filled_signals")
+        and health_score >= _float_param(params, "recovery_health_threshold")
+        and stop_loss_rate <= _float_param(params, "recovery_max_stop_loss_rate")
         and avg_net_return_pct > 0
     )
 

@@ -5,7 +5,7 @@ from copy import deepcopy
 from typing import Any
 
 from app.core.database import SessionLocal
-from app.services.quant.parameter_version_service import DEFAULT_QUANT_PARAMETERS, QuantParameterVersionService
+from app.services.quant.parameter_version_service import QuantParameterVersionService, default_quant_parameters
 
 _CACHE_TTL_SECONDS = 30.0
 _CACHE_EXPIRES_AT = 0.0
@@ -20,9 +20,9 @@ def current_quant_parameters() -> dict[str, Any]:
     try:
         with SessionLocal() as db:
             current = QuantParameterVersionService(db).current(scope="low_buy")
-            params = _deep_merge(DEFAULT_QUANT_PARAMETERS, current.params)
+            params = _deep_merge(default_quant_parameters(), current.params)
     except Exception:
-        params = deepcopy(DEFAULT_QUANT_PARAMETERS)
+        params = default_quant_parameters()
     _CACHE_PARAMS = params
     _CACHE_EXPIRES_AT = now + _CACHE_TTL_SECONDS
     return deepcopy(params)
@@ -40,6 +40,41 @@ def get_low_buy_strategy_prefilter(strategy: str, fallback: dict[str, Any]) -> d
 
 def get_low_buy_strategy_execution(strategy: str, fallback: dict[str, Any]) -> dict[str, Any]:
     return _strategy_config("strategy_execution", strategy, fallback)
+
+
+def get_low_buy_scoring() -> dict[str, Any]:
+    values = current_quant_parameters().get("low_buy", {}).get("scoring", {})
+    return deepcopy(values) if isinstance(values, dict) else {}
+
+
+def get_low_buy_thresholds() -> dict[str, Any]:
+    values = current_quant_parameters().get("low_buy", {}).get("thresholds", {})
+    return deepcopy(values) if isinstance(values, dict) else {}
+
+
+def get_low_buy_auto_governance() -> dict[str, Any]:
+    values = current_quant_parameters().get("low_buy", {}).get("auto_governance", {})
+    return deepcopy(values) if isinstance(values, dict) else {}
+
+
+def get_low_buy_research_layers() -> dict[str, Any]:
+    values = current_quant_parameters().get("low_buy", {}).get("research_layers", {})
+    return deepcopy(values) if isinstance(values, dict) else {}
+
+
+def get_low_buy_hard_risk() -> dict[str, Any]:
+    values = current_quant_parameters().get("low_buy", {}).get("hard_risk", {})
+    return deepcopy(values) if isinstance(values, dict) else {}
+
+
+def get_low_buy_dynamic_adjustment() -> dict[str, Any]:
+    values = current_quant_parameters().get("low_buy", {}).get("dynamic_adjustment", {})
+    return deepcopy(values) if isinstance(values, dict) else {}
+
+
+def get_low_buy_market_state_rules() -> dict[str, Any]:
+    values = current_quant_parameters().get("low_buy", {}).get("market_state_rules", {})
+    return deepcopy(values) if isinstance(values, dict) else {}
 
 
 def get_low_buy_hard_buy_min_scores() -> dict[str, float]:
@@ -66,6 +101,11 @@ def get_low_buy_soft_buy_min_scores() -> dict[str, dict[str, float]]:
         if isinstance(thresholds, dict):
             result[str(strategy)] = {str(key): float(value) for key, value in thresholds.items()}
     return result
+
+
+def get_position_t_scoring() -> dict[str, Any]:
+    values = current_quant_parameters().get("position_t", {}).get("scoring", {})
+    return deepcopy(values) if isinstance(values, dict) else {}
 
 
 def _strategy_config(section: str, strategy: str, fallback: dict[str, Any]) -> dict[str, Any]:

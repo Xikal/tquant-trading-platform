@@ -2,6 +2,60 @@
 
 ---
 
+# TQuant 生产闭环/ETF/异常模型/架构重构执行计划（2026-05-07）
+
+## 需求来源
+
+- 用户明确要求以下需求 100% 完成：
+  - 行业 ETF 做 T 策略。
+  - 盘中异常模式检测模型。
+  - 策略阈值全量迁移到参数版本系统。
+  - 剩余 AkShare 直接调用统一接入 Provider Router。
+  - 因子权重缓存线程安全复核。
+  - ML 生产门槛 + K-fold CV 复核。
+  - `ma_channel_band` / `leader_pullback_band` 按真实样本与健康分升层。
+  - ML 序列特征：5 日/10 日价格动量、成交量斜率。
+  - 策略相关性矩阵。
+  - Walk-forward 分市场状态验证。
+  - 低吸服务 Mixin 继承链迁移为组合模式。
+
+## 实施顺序
+
+1. Phase A：生产闭环补强尾项。
+   - [ ] 把 `quant_engine_scoring.py` 和低吸市场状态规则中的剩余阈值纳入参数版本系统。
+   - [ ] 将 `sectors.py`、`external_factors.py` 中剩余直接 AkShare 调用纳入 Provider Router/raw adapter，并保留明确降级。
+   - [ ] 复核因子权重缓存锁、ML K-fold + 生产门槛测试。
+2. Phase A+：新增行业 ETF 做 T 与盘中异常模型。
+   - [ ] 新增行业/板块到 ETF 映射和 `sector_etf_t0` 信号服务。
+   - [ ] 新增 ETF T+0 信号 API/Agent 输出，包含入场区、卖出区、止损、费用净空间、未触发原因。
+   - [ ] 新增盘中异常模式检测服务，支持规则推理、训练样本构建、模型训练/推理降级。
+3. Phase B：策略研究深化与 ML 管线成熟。
+   - [ ] 增加 5/10 日动量、成交量斜率等序列特征。
+   - [ ] 增加策略相关性矩阵服务/API/回测输出。
+   - [ ] 增加 Walk-forward 按市场状态分段统计。
+   - [ ] `ma_channel_band` / `leader_pullback_band` 仅在真实成交样本 ≥100 且健康分持续 >60 后自动升辅助层。
+4. Phase C：低吸服务组合模式。
+   - [ ] 引入 `LowBuyRuntimeServices` 组合容器。
+   - [ ] 逐步把 Screening/Priority/QuoteRefresh 的调用从 Mixin 继承迁移到组合委托。
+   - [ ] 保持现有 `LowBuyScreenerService` 公共 API 不变，旧测试不改调用方。
+
+## 关键约束
+
+- 不直接改生产策略默认语义；阈值迁移必须保持默认值一致。
+- 新增 ETF 做 T 默认作为模拟盘/研究信号，不自动实盘。
+- 异常模型未满足样本、CV、AUC 门槛时只能输出研究预警。
+- Provider Router 接入后，外部源失败必须返回 stale/unavailable，不得阻塞主请求。
+- Mixin 重构只做兼容性组合迁移，不做一次性删除旧 Mixin。
+
+## 验证计划
+
+- 后端编译：`PYTHONDONTWRITEBYTECODE=1 python -m compileall backend/app/services backend/app/api backend/app/models`
+- 后端测试：低吸、市场数据、ML、回测、Agent 相关 targeted tests。
+- 前端构建：如接口模型变化，执行 `npm --prefix frontend run build:web`。
+- 不涉及生产部署，除非用户单独要求。
+
+---
+
 # 主线涨停缩量回调增强策略执行记录（2026-05-07）
 
 ## 需求来源
@@ -361,3 +415,36 @@
 - `PYTHONPATH=backend:. backend/.venv/bin/python -m pytest backend/tests/test_phase4_phase5_foundation.py -q`：9 passed，1 个 urllib3/OpenSSL 环境警告。
 - `PYTHONPATH=backend:. backend/.venv/bin/python -m pytest backend/tests/test_market_provider_contract.py backend/tests/test_market_provider_flag.py backend/tests/test_feature_flags_service.py backend/tests/test_phase4_phase5_foundation.py backend/tests/test_backtest_phase2_research_tasks.py backend/tests/test_backtest_v2_api_contract.py backend/tests/test_backtest_v2_engine_contract.py backend/tests/test_low_buy_backtest_isolation.py -q`：62 passed，1 个 urllib3/OpenSSL 环境警告。
 - `cd frontend && npm run build`：通过。
+
+---
+
+# TQuant 生产闭环/ETF/异常模型/架构重构执行计划（2026-05-07）
+
+## TODO 状态
+
+- [x] 策略阈值迁移补强：做 T 评分、低吸市场状态规则支持运行时参数版本覆盖。
+- [x] 默认市场状态规则写入参数版本：默认参数集会携带完整 `low_buy.market_state_rules`，不再只提供空覆盖口。
+- [x] Provider Router 补强：`emotion.py`、`regime.py` 已无直接 `self.ak.xxx`；外部因子与板块事件优先走统一 Provider Router，AkShare provider 不再反调 service 事件方法。
+- [x] ML 生产门槛 + K-fold：已有 K-fold accuracy/AUC 与生产晋级阻断，本轮补充 5/10 日动量和成交量斜率序列特征。
+- [x] 行业 ETF T+0：新增只读建议服务与 API，用板块低吸/热点信号映射 ETF，强调 T+0 风险替代，不自动下单。
+- [x] 盘中异常模式检测：新增只读异常检测服务与 API，用分时量价、VWAP 偏离和涨跌幅判断拉升/退潮风险。
+- [x] 前端闭环展示：实时监控展示行业 ETF 做T替代，个股分析展示盘中异常提醒。
+- [x] `ma_channel_band` / `leader_pullback_band` 晋级闸门：保留研究层，只有真实成交样本 ≥100 且健康评分 ≥60 才允许升辅助/生产。
+- [x] 策略相关性矩阵：回测侧已有接口；本轮新增模拟盘按每日已卖出收益聚合的生产相关性矩阵、dashboard 输出和前端展示。
+- [x] Walk-forward 分市场状态验证：验证报告输出按市场状态分段的 OOS 稳定性。
+- [x] Mixin → 组合模式低风险推进：`LowBuyScreenerService` 改为协调者，公开入口委托给 screening/priority/mobile/lifecycle/backtest 组件；底层 runtime MRO 保留以避免改动策略语义。
+
+## 验证结果
+
+- `PYTHONDONTWRITEBYTECODE=1 python3 -m compileall backend/app`：通过。
+- `PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=backend:. backend/.venv/bin/pytest backend/tests/test_market_provider_contract.py backend/tests/test_market_provider_flag.py backend/tests/test_phase4_phase5_foundation.py -q`：16 passed，37 个 sklearn/LibreSSL 环境警告。
+- `PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=backend:. backend/.venv/bin/pytest backend/tests/test_paper_performance_archive.py backend/tests/test_paper_routes.py -q`：27 passed，1 个 LibreSSL 环境警告。
+- `cd frontend && npm run build`：通过。
+- `git diff --check`：通过。
+- `PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=backend:. backend/.venv/bin/python - <<'PY' ... default_quant_parameters ... PY`：`low_buy.thresholds/strategy_prefilters/strategy_execution/scoring/market_state_rules` 与 `position_t.scoring` 默认参数完整性检查通过。
+
+## 说明
+
+- ETF T+0 与盘中异常检测均为辅助建议，不改自动交易、不直接下单。
+- `ma_channel_band`、`leader_pullback_band` 未强行升层；按既定风控条件满足后才能由元数据晋级接口放行。
+- 低吸底层 Mixin 仍作为 runtime 兼容层存在；外部服务已转为组合组件协调，后续可逐个把 Mixin 内部职责迁出。

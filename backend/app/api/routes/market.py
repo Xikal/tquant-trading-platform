@@ -4,12 +4,18 @@ from fastapi import APIRouter, Depends
 
 from app.core.auth import get_current_user
 from app.core.timezone import beijing_now_string
-from app.models.schema_defs.market import MarketBreadthResponse
+from app.models.schema_defs.market import IntradayAnomalyResponse, MarketBreadthResponse, SectorEtfT0Response
+from app.services.intraday_anomaly import IntradayAnomalyService
 from app.services.market_data import MarketDataService
 from app.services.market.regime_quality import market_regime_quality_text
+from app.services.sector_etf_t0 import SectorEtfT0Service
+from app.core.database import get_db
+from sqlalchemy.orm import Session
 
 router = APIRouter(prefix="/market", dependencies=[Depends(get_current_user)])
 market_data = MarketDataService()
+sector_etf_t0_service = SectorEtfT0Service(market_data=market_data)
+intraday_anomaly_service = IntradayAnomalyService(market_data=market_data)
 
 
 @router.get("/breadth", response_model=MarketBreadthResponse)
@@ -38,3 +44,16 @@ def market_breadth() -> MarketBreadthResponse:
         hot_overlap_ratio=round(regime.hot_overlap_ratio, 4),
         data_quality_text=market_regime_quality_text(regime),
     )
+
+
+@router.get("/sector-etf-t0", response_model=SectorEtfT0Response)
+def sector_etf_t0(
+    limit: int = 8,
+    db: Session = Depends(get_db),
+) -> SectorEtfT0Response:
+    return sector_etf_t0_service.build(db, limit=max(1, min(limit, 20)))
+
+
+@router.get("/intraday-anomaly/{symbol}", response_model=IntradayAnomalyResponse)
+def intraday_anomaly(symbol: str) -> IntradayAnomalyResponse:
+    return intraday_anomaly_service.detect(symbol.strip())

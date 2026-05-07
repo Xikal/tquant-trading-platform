@@ -34,6 +34,7 @@ class ValidationWindow:
     overfit_signal: bool
     oos_failed: bool = False
     failure_reason: str = ""
+    market_state_segments: list[dict[str, Any]] | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -48,6 +49,7 @@ class ValidationReport:
     downgrade_review: bool
     stability_conclusion: str
     windows: list[ValidationWindow]
+    by_market_state: dict[str, Any] | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -58,6 +60,7 @@ class ValidationReport:
             "downgrade_review": self.downgrade_review,
             "downgrade_review_required": self.downgrade_review,
             "stability_conclusion": self.stability_conclusion,
+            "by_market_state": self.by_market_state or {},
             "windows": [item.to_dict() for item in self.windows],
         }
 
@@ -232,6 +235,7 @@ def _validation_window(
         oos_rank=best_test.rank,
         passed=test_sharpe > 0,
         overfit_signal=overfit_signal,
+        market_state_segments=list(best_test.metrics.get("market_state_attribution") or []),
     )
 
 
@@ -260,6 +264,7 @@ def _failed_validation_window(
         overfit_signal=True,
         oos_failed=True,
         failure_reason=failure_reason,
+        market_state_segments=[],
     )
 
 
@@ -288,7 +293,35 @@ def _report(windows: list[ValidationWindow]) -> ValidationReport:
         downgrade_review=downgrade,
         stability_conclusion=conclusion,
         windows=windows,
+        by_market_state=_market_state_summary(windows),
     )
+
+
+def _market_state_summary(windows: list[ValidationWindow]) -> dict[str, Any]:
+    buckets: dict[str, dict[str, Any]] = {}
+    for window in windows:
+        segments = window.market_state_segments or []
+        if not segments:
+            buckets.setdefault("未标注", {"window_count": 0, "signal_count": 0, "passed_windows": 0, "avg_oos_sharpe": 0.0})
+            buckets["未标注"]["window_count"] += 1
+            buckets["未标注"]["passed_windows"] += 1 if window.passed else 0
+            buckets["未标注"]["avg_oos_sharpe"] += float(window.test_sharpe or 0.0)
+            continue
+        for segment in segments:
+            state = str(segment.get("name") or segment.get("label") or segment.get("market_state") or "未标注")
+            bucket = buckets.setdefault(
+                state,
+                {"window_count": 0, "signal_count": 0, "passed_windows": 0, "avg_oos_sharpe": 0.0},
+            )
+            bucket["window_count"] += 1
+            bucket["signal_count"] += int(segment.get("signal_count") or segment.get("trade_count") or 0)
+            bucket["passed_windows"] += 1 if window.passed else 0
+            bucket["avg_oos_sharpe"] += float(window.test_sharpe or 0.0)
+    for bucket in buckets.values():
+        count = max(int(bucket["window_count"]), 1)
+        bucket["avg_oos_sharpe"] = round(float(bucket["avg_oos_sharpe"]) / count, 4)
+        bucket["pass_rate"] = round(float(bucket["passed_windows"]) / count, 4)
+    return buckets
 
 
 def _calendar_dates(start_date: str, end_date: str) -> list[str]:

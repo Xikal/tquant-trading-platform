@@ -1,6 +1,6 @@
 import { useCallback, useState } from "react";
 import { api } from "../../api/client";
-import type { AnalysisResponse } from "../../types";
+import type { AnalysisResponse, IntradayAnomalyResponse } from "../../types";
 import { nullableNumber, parseNumber } from "./workspaceFormatters";
 import type { AnalysisDraft, Page, StockCardView } from "./workspaceTypes";
 
@@ -25,6 +25,7 @@ export function useAnalysisData({
     cost_basis: "",
   });
   const [result, setResult] = useState<AnalysisResponse | null>(null);
+  const [anomaly, setAnomaly] = useState<IntradayAnomalyResponse | null>(null);
 
   const runAnalysis = useCallback(
     async (symbolOverride?: string) => {
@@ -36,17 +37,25 @@ export function useAnalysisData({
       setDraft((current) => ({ ...current, symbol }));
       navigatePage("analysis");
       await withLoading("analysis", async () => {
-        const response = await api.analyze({
-          symbol,
-          prefer_strategy: draft.prefer_strategy,
-          base_position: parseNumber(draft.base_position),
-          available_position: parseNumber(draft.available_position),
-          cost_basis: nullableNumber(draft.cost_basis),
-          include_ai: false,
-          include_events: true,
-          include_microstructure: true,
-        });
+        const [analysisResult, anomalyResult] = await Promise.allSettled([
+          api.analyze({
+            symbol,
+            prefer_strategy: draft.prefer_strategy,
+            base_position: parseNumber(draft.base_position),
+            available_position: parseNumber(draft.available_position),
+            cost_basis: nullableNumber(draft.cost_basis),
+            include_ai: false,
+            include_events: true,
+            include_microstructure: true,
+          }),
+          api.getIntradayAnomaly(symbol),
+        ]);
+        if (analysisResult.status === "rejected") {
+          throw analysisResult.reason;
+        }
+        const response = analysisResult.value;
         setResult(response);
+        setAnomaly(anomalyResult.status === "fulfilled" ? anomalyResult.value : null);
         setNotice(`${response.instrument.name} 分析完成`);
       });
     },
@@ -64,6 +73,7 @@ export function useAnalysisData({
     draft,
     setDraft,
     result,
+    anomaly,
     runAnalysis,
     analyzeFromCard,
   };

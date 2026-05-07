@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+from copy import deepcopy
 from dataclasses import dataclass
+
+from app.services.quant.runtime_parameters import get_low_buy_market_state_rules
 
 
 @dataclass(frozen=True)
@@ -254,6 +257,28 @@ _SEVERITY_PENALTY_SCALE = {
 }
 
 
+def default_market_state_rule_parameters() -> dict:
+    return {
+        "default_state_rules": deepcopy(_DEFAULT_STATE_RULES),
+        "strategy_overrides": deepcopy(_STRATEGY_OVERRIDES),
+        "severity_penalty_scale": deepcopy(_SEVERITY_PENALTY_SCALE),
+        "directional_bias": {
+            "neutral_states": ["risk_release", "high_flyer_retreat"],
+            "limit_down_neutral_count": 20,
+            "broken_board_negative_ratio": 0.45,
+            "limit_up_negative_max": 25,
+            "positive_states": ["broad_rally", "repair"],
+            "fast_rotation_mainline_min": 0.7,
+            "weight_support_states": ["weight_support", "weight_support_active"],
+            "weight_support_style_divergence_min": 0.35,
+        },
+        "note_thresholds": {
+            "negative_strength": 0.7,
+            "positive_strength": 0.6,
+        },
+    }
+
+
 def build_low_buy_market_adjustment(
     strategy: str,
     market_state: str,
@@ -284,11 +309,15 @@ def resolve_strategy_market_profile(
     market_state: str,
     market_state_strength: float = 0.0,
 ) -> StrategyMarketProfile:
+    rule_params = _runtime_rules()
+    default_state_rules = rule_params["default_state_rules"]
+    strategy_overrides = rule_params["strategy_overrides"]
+    severity_penalty_scale = rule_params["severity_penalty_scale"]
     state = market_state or "low_volume_wait"
     strength = _clamp(market_state_strength)
-    base = dict(_DEFAULT_STATE_RULES.get(state, _DEFAULT_STATE_RULES["low_volume_wait"]))
-    base.update(_STRATEGY_OVERRIDES.get(strategy, {}).get(state, {}))
-    penalty_scale = _SEVERITY_PENALTY_SCALE.get(state, 1.0)
+    base = dict(default_state_rules.get(state, default_state_rules["low_volume_wait"]))
+    base.update(strategy_overrides.get(strategy, {}).get(state, {}))
+    penalty_scale = severity_penalty_scale.get(state, 1.0)
     score_penalty = float(base["score_penalty"]) + penalty_scale * strength
     ranking_bonus = _scaled_ranking_bonus(float(base["ranking_bonus"]), strength)
     position_multiplier = _scaled_position_multiplier(float(base["position_multiplier"]), strength)
@@ -297,9 +326,10 @@ def resolve_strategy_market_profile(
     hard_allowed = bool(base["hard_buy_allowed"]) and strength <= float(base.get("hard_max_strength", 1.0))
     execution_blocked = bool(base.get("execution_blocked", False))
     notes = list(base.get("notes", []))
-    if state in _NEGATIVE_STATES and strength >= 0.7:
+    note_thresholds = rule_params.get("note_thresholds", {})
+    if state in _NEGATIVE_STATES and strength >= float(note_thresholds.get("negative_strength", 0.7)):
         notes.append("当前环境强度偏高，执行信号需要进一步收紧。")
-    elif state in _POSITIVE_STATES and strength >= 0.6:
+    elif state in _POSITIVE_STATES and strength >= float(note_thresholds.get("positive_strength", 0.6)):
         notes.append("当前环境偏正向，但仍要优先做确认充分的结构。")
     return StrategyMarketProfile(
         score_penalty=round(score_penalty, 2),
@@ -336,6 +366,7 @@ def compute_directional_bias(
     emotion_data: dict | None = None,
     mainline_strength: dict | None = None,
 ) -> str:
+    bias_params = _runtime_rules()["directional_bias"]
     state = market_state or "low_volume_wait"
     scores = regime_scores or {}
     emotion = emotion_data or {}
@@ -346,15 +377,15 @@ def compute_directional_bias(
     mainline_score = float(mainline.get("score") or mainline.get("strength") or 0.0)
     style_divergence = float(scores.get("style_divergence") or 0.0)
 
-    if state in {"risk_release", "high_flyer_retreat"} or limit_down_count >= 20:
+    if state in set(bias_params["neutral_states"]) or limit_down_count >= int(bias_params["limit_down_neutral_count"]):
         return "neutral"
-    if broken_ratio >= 0.45 and limit_up_count < 25:
+    if broken_ratio >= float(bias_params["broken_board_negative_ratio"]) and limit_up_count < int(bias_params["limit_up_negative_max"]):
         return "negative_t"
-    if state in {"broad_rally", "repair"}:
+    if state in set(bias_params["positive_states"]):
         return "positive_t"
-    if state == "fast_rotation" and mainline_score >= 0.7:
+    if state == "fast_rotation" and mainline_score >= float(bias_params["fast_rotation_mainline_min"]):
         return "positive_t"
-    if state in {"weight_support", "weight_support_active"} and style_divergence >= 0.35:
+    if state in set(bias_params["weight_support_states"]) and style_divergence >= float(bias_params["weight_support_style_divergence_min"]):
         return "negative_t"
     return "neutral"
 
@@ -380,3 +411,17 @@ def _scaled_position_multiplier(multiplier: float, strength: float) -> float:
 
 def _clamp(value: float, low: float = 0.0, high: float = 1.0) -> float:
     return max(low, min(high, value))
+
+
+def _runtime_rules() -> dict:
+    return _deep_merge(default_market_state_rule_parameters(), get_low_buy_market_state_rules())
+
+
+def _deep_merge(defaults: dict, overrides: dict) -> dict:
+    result = dict(defaults)
+    for key, value in (overrides or {}).items():
+        if isinstance(result.get(key), dict) and isinstance(value, dict):
+            result[key] = _deep_merge(result[key], value)
+        else:
+            result[key] = value
+    return result

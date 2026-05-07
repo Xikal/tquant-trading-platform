@@ -19,7 +19,7 @@ from app.models.entities import BacktestRun, QuantParameterSet
 from app.services.backtest.data_provider import DATA_PROVIDER_VERSION
 from app.services.backtest.engine import BACKTEST_ENGINE_VERSION, BacktestResult
 from app.services.low_buy.shared import LOW_BUY_RESULT_VERSION
-from app.services.quant.parameter_version_service import DEFAULT_QUANT_PARAMETERS
+from app.services.quant.parameter_version_service import default_quant_parameters
 
 
 _PROTECTED_TERMINAL_STATUSES = {"cancelled", "deleted", "failed", "timeout"}
@@ -268,11 +268,11 @@ def _active_quant_parameter_metadata(db: Session) -> dict[str, Any]:
     if row is None:
         version = "default"
         scope = "global"
-        params = DEFAULT_QUANT_PARAMETERS
+        params = default_quant_parameters()
     else:
         version = str(row.version or "unknown")
         scope = str(row.scope or "global")
-        params = _deep_merge(DEFAULT_QUANT_PARAMETERS, _json_dict(row.params_json))
+        params = _deep_merge(default_quant_parameters(), _json_dict(row.params_json))
     payload = _json_dumps(params)
     return {
         "version": version,

@@ -94,7 +94,31 @@ class LowBuyThresholds:
     )
 
 
-LOW_BUY_THRESHOLDS = LowBuyThresholds()
+class RuntimeLowBuyThresholds:
+    """Runtime proxy for low-buy thresholds.
+
+    Existing modules keep using LOW_BUY_THRESHOLDS.X, while values are read
+    from the active quant parameter version. Dataclass defaults are retained
+    as the compatibility fallback when DB/config is unavailable.
+    """
+
+    _fallback = LowBuyThresholds()
+
+    def __getattr__(self, name: str) -> Any:
+        fallback_value = getattr(self._fallback, name)
+        key = name.lower()
+        from app.services.quant.runtime_parameters import get_low_buy_thresholds
+
+        values = get_low_buy_thresholds()
+        value = values.get(key, fallback_value)
+        if name == "PULLBACK_HEALTH_OPTIMAL_DAYS" and isinstance(value, list):
+            return tuple(int(item) for item in value[:2]) if len(value) >= 2 else fallback_value
+        if name == "FACTOR_WEIGHTS" and isinstance(value, dict):
+            return {str(k): float(v) for k, v in value.items()}
+        return value
+
+
+LOW_BUY_THRESHOLDS = RuntimeLowBuyThresholds()
 
 
 DEFAULT_PRODUCTION_LOW_BUY_STRATEGY = "first_board"

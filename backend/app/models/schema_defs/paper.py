@@ -175,6 +175,19 @@ class PaperStrategyMarketPerformanceOut(BaseModel):
     profit_factor: Optional[float] = None
 
 
+class PaperStrategyCorrelationRowOut(BaseModel):
+    strategy_key: str
+    correlations: dict[str, Optional[float]] = Field(default_factory=dict)
+
+
+class PaperStrategyCorrelationResponse(BaseModel):
+    strategies: list[str] = Field(default_factory=list)
+    sample_days: int = 0
+    matrix: list[list[Optional[float]]] = Field(default_factory=list)
+    rows: list[PaperStrategyCorrelationRowOut] = Field(default_factory=list)
+    notes: list[str] = Field(default_factory=list)
+
+
 class PaperRiskStatusOut(BaseModel):
     account_status: str = "active"
     total_assets: float = 0.0

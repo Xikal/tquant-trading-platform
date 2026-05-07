@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from app.models.schemas import KlineBar, QuoteSnapshot, SectorSnapshot
+from app.core.timezone import beijing_now
+from app.models.schemas import KlineBar, MarketEventOut, QuoteSnapshot, SectorSnapshot
 from app.services.market.providers.quality import MarketDataQuality, ProviderResult
 from app.services.market.regime_scoring import normalize_board_frame
 from app.services.market.shared import ak
@@ -225,6 +226,183 @@ class AkshareMarketProvider:
             quality=MarketDataQuality.FRESH if normalized is not None and not normalized.empty else MarketDataQuality.UNAVAILABLE,
             source=self.name,
             data=normalized,
+        )
+
+    def fetch_sector_fund_flow_rank(self) -> ProviderResult:
+        if ak is None:
+            return self._ak_unavailable()
+        try:
+            frame = self.service._call_akshare(
+                ak.stock_sector_fund_flow_rank,
+                indicator="今日",
+                sector_type="行业资金流",
+                purpose="industry",
+            )
+        except Exception as exc:
+            return self._unavailable(str(exc))
+        return self._frame_result(frame)
+
+    def fetch_individual_fund_flow(self, symbol: str, market: str) -> ProviderResult:
+        if ak is None:
+            return self._ak_unavailable()
+        try:
+            frame = self.service._call_akshare(
+                ak.stock_individual_fund_flow,
+                stock=symbol,
+                market=market,
+                purpose="quote",
+            )
+        except Exception as exc:
+            return self._unavailable(str(exc))
+        return self._frame_result(frame)
+
+    def fetch_northbound_fund_flow_summary(self) -> ProviderResult:
+        if ak is None:
+            return self._ak_unavailable()
+        try:
+            frame = self.service._call_akshare(
+                ak.stock_hsgt_fund_flow_summary_em,
+                purpose="market_breadth",
+            )
+        except Exception as exc:
+            return self._unavailable(str(exc))
+        return self._frame_result(frame)
+
+    def fetch_limit_up_snapshot(self) -> ProviderResult:
+        if ak is None:
+            return self._ak_unavailable()
+        try:
+            frame = self.service._call_akshare(ak.stock_zt_pool_em, purpose="limit_pool")
+        except Exception as exc:
+            return self._unavailable(str(exc))
+        return self._frame_result(frame)
+
+    def fetch_lhb_stock_statistic(self) -> ProviderResult:
+        if ak is None:
+            return self._ak_unavailable()
+        try:
+            frame = self.service._call_akshare(
+                ak.stock_lhb_stock_statistic_em,
+                symbol="近一月",
+                purpose="market_breadth",
+            )
+        except Exception as exc:
+            return self._unavailable(str(exc))
+        return self._frame_result(frame)
+
+    def fetch_stock_notice_report(self, symbol: str) -> ProviderResult:
+        if ak is None:
+            return self._ak_unavailable()
+        try:
+            frame = self.service._call_akshare(
+                ak.stock_notice_report,
+                symbol=symbol,
+                purpose="news",
+            )
+        except Exception as exc:
+            return self._unavailable(str(exc))
+        return self._frame_result(frame)
+
+    def fetch_market_events(self, symbol: str) -> ProviderResult[list[MarketEventOut]]:
+        if ak is None:
+            return self._ak_unavailable()
+        try:
+            events = self._fetch_notice_events(symbol) + self._fetch_news_events(symbol)
+        except Exception as exc:
+            return self._unavailable(str(exc))
+        deduped: list[MarketEventOut] = []
+        seen: set[tuple[str, str]] = set()
+        for event in events:
+            key = (event.title, event.source)
+            if key in seen:
+                continue
+            seen.add(key)
+            deduped.append(event)
+        return ProviderResult(
+            quality=MarketDataQuality.FRESH if deduped else MarketDataQuality.UNAVAILABLE,
+            source=self.name,
+            data=deduped[:8] or None,
+        )
+
+    def _fetch_notice_events(self, symbol: str) -> list[MarketEventOut]:
+        today = beijing_now().strftime("%Y%m%d")
+        categories = ("风险提示", "重大事项", "持股变动")
+        hits: list[MarketEventOut] = []
+        for category in categories:
+            try:
+                frame = self.service._call_akshare(
+                    ak.stock_notice_report,
+                    symbol=category,
+                    date=today,
+                    purpose="notice",
+                )
+            except Exception:
+                continue
+            if frame is None or getattr(frame, "empty", True):
+                continue
+            matched = frame[frame["代码"].astype(str) == symbol] if "代码" in frame else frame.iloc[0:0]
+            for _, row in matched.head(3).iterrows():
+                risk_level = "high" if category in {"风险提示", "重大事项"} else "medium"
+                hits.append(
+                    MarketEventOut(
+                        title=str(row.get("公告标题", "相关公告")),
+                        risk_level=risk_level,
+                        description=f"{category}公告，需确认是否影响盘中波动与流动性。",
+                        source="notice",
+                        event_time=str(row.get("公告日期", "")),
+                    )
+                )
+        return hits
+
+    def _fetch_news_events(self, symbol: str) -> list[MarketEventOut]:
+        try:
+            frame = self.service._call_akshare(ak.stock_news_em, symbol=symbol, purpose="news")
+        except Exception:
+            return []
+        if frame is None or getattr(frame, "empty", True):
+            return []
+        risk_keywords = {
+            "停牌": "high",
+            "问询": "high",
+            "立案": "high",
+            "风险提示": "high",
+            "减持": "medium",
+            "诉讼": "high",
+            "异常波动": "medium",
+            "预亏": "high",
+            "预减": "high",
+            "回购": "low",
+            "增持": "low",
+            "中标": "low",
+        }
+        events: list[MarketEventOut] = []
+        for _, row in frame.head(8).iterrows():
+            text = f"{row.get('新闻标题', '')} {row.get('新闻内容', '')}"
+            matched_level = next((level for keyword, level in risk_keywords.items() if keyword in text), None)
+            if matched_level:
+                events.append(
+                    MarketEventOut(
+                        title=str(row.get("新闻标题", "相关新闻")),
+                        risk_level=matched_level,
+                        description=str(row.get("新闻内容", ""))[:120],
+                        source="news",
+                        event_time=str(row.get("发布时间", "")),
+                    )
+                )
+        return events
+
+    def _ak_unavailable(self) -> ProviderResult:
+        return ProviderResult(quality=MarketDataQuality.UNAVAILABLE, source=self.name, message="akshare unavailable")
+
+    def _unavailable(self, message: str) -> ProviderResult:
+        return ProviderResult(quality=MarketDataQuality.UNAVAILABLE, source=self.name, message=message[:160])
+
+    def _frame_result(self, frame) -> ProviderResult:
+        usable = frame is not None and not getattr(frame, "empty", False)
+        return ProviderResult(
+            quality=MarketDataQuality.FRESH if usable else MarketDataQuality.UNAVAILABLE,
+            source=self.name,
+            data=frame if usable else None,
         )
 
 

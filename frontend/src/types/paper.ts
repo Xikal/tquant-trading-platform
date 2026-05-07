@@ -256,6 +256,18 @@ export interface PaperPerformanceDashboard {
   strategy_trend: PaperStrategyTrend[]
   market_perf_heatmap: PaperMarketPerfHeatmapItem[]
   strategy_market_matrix: PaperStrategyMarketPerformance[]
+  strategy_correlation?: PaperStrategyCorrelation
   today_report: PaperDailyReport | null
   updated_at: string
+}
+
+export interface PaperStrategyCorrelation {
+  strategies: string[]
+  sample_days: number
+  matrix: Array<Array<number | null>>
+  rows: Array<{
+    strategy_key: string
+    correlations: Record<string, number | null>
+  }>
+  notes: string[]
 }

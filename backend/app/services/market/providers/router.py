@@ -29,6 +29,20 @@ class MarketProvider(Protocol):
 
     def fetch_daily_history(self, symbol: str, start_date: str, end_date: str): ...
 
+    def fetch_sector_fund_flow_rank(self): ...
+
+    def fetch_individual_fund_flow(self, symbol: str, market: str): ...
+
+    def fetch_northbound_fund_flow_summary(self): ...
+
+    def fetch_limit_up_snapshot(self): ...
+
+    def fetch_lhb_stock_statistic(self): ...
+
+    def fetch_stock_notice_report(self, symbol: str): ...
+
+    def fetch_market_events(self, symbol: str): ...
+
 
 class MarketProviderRouter:
     def __init__(self, providers: list[MarketProvider]) -> None:
@@ -66,6 +80,27 @@ class MarketProviderRouter:
 
     def fetch_daily_history(self, symbol: str, start_date: str, end_date: str) -> ProviderResult:
         return self._first_usable(lambda provider: provider.fetch_daily_history(symbol, start_date, end_date))
+
+    def fetch_sector_fund_flow_rank(self) -> ProviderResult:
+        return self._first_usable(lambda provider: provider.fetch_sector_fund_flow_rank())
+
+    def fetch_individual_fund_flow(self, symbol: str, market: str) -> ProviderResult:
+        return self._first_usable(lambda provider: provider.fetch_individual_fund_flow(symbol, market))
+
+    def fetch_northbound_fund_flow_summary(self) -> ProviderResult:
+        return self._first_usable(lambda provider: provider.fetch_northbound_fund_flow_summary())
+
+    def fetch_limit_up_snapshot(self) -> ProviderResult:
+        return self._first_usable(lambda provider: provider.fetch_limit_up_snapshot())
+
+    def fetch_lhb_stock_statistic(self) -> ProviderResult:
+        return self._first_usable(lambda provider: provider.fetch_lhb_stock_statistic())
+
+    def fetch_stock_notice_report(self, symbol: str) -> ProviderResult:
+        return self._first_usable(lambda provider: provider.fetch_stock_notice_report(symbol))
+
+    def fetch_market_events(self, symbol: str) -> ProviderResult:
+        return self._first_usable(lambda provider: provider.fetch_market_events(symbol))
 
     def _first_usable(self, call) -> ProviderResult:
         last_result: ProviderResult | None = None

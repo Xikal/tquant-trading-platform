@@ -8,20 +8,77 @@ from app.services.quant_engine_market import (
     market_state_text,
     market_threshold_shift,
 )
+from app.services.quant.runtime_parameters import get_position_t_scoring
 
 QUANT_ENGINE_SCORING_VERSION = "quant-scoring-v1"
-POSITIVE_BASE_SCORE = 35.0
-NEGATIVE_BASE_SCORE = 30.0
-RISK_BASE_SCORE = 25.0
-DEFAULT_POSITIVE_THRESHOLD = 60.0
-DEFAULT_NEGATIVE_THRESHOLD = 62.0
-RISK_LEVEL_HIGH_THRESHOLD = 65.0
-RISK_LEVEL_MEDIUM_THRESHOLD = 38.0
-VWAP_SUPPORT_DISTANCE_PCT = 0.006
-NEGATIVE_MA5_DISTANCE_MULTIPLIER = 1.005
-NEGATIVE_VWAP_DISTANCE_MULTIPLIER = 1.008
-HIGH_RSI_THRESHOLD = 68.0
-HIGH_AMPLITUDE_THRESHOLD = 3.0
+_DEFAULT_SCORING = {
+    "version": QUANT_ENGINE_SCORING_VERSION,
+    "base_scores": {"positive": 35.0, "negative": 30.0, "risk": 25.0},
+    "action_thresholds": {
+        "positive": 60.0,
+        "negative": 62.0,
+        "scenario_shifts": {
+            "open_price_discovery": 5.0,
+            "midday_consolidation": 2.0,
+            "closing_repricing": 1.0,
+        },
+        "risk_level_shifts": {"high": 4.0, "low": -2.0},
+    },
+    "risk_level_thresholds": {"high": 65.0, "medium": 38.0},
+    "positive_score": {
+        "ma5_support": 10.0,
+        "ma5_above_ma20": 8.0,
+        "ma20_above_ma60": 6.0,
+        "rsi_low": 44.0,
+        "rsi_high": 62.0,
+        "rsi_band_bonus": 10.0,
+        "macd_non_negative_bonus": 8.0,
+        "vwap_support_distance_pct": 0.006,
+        "vwap_support_bonus": 12.0,
+        "sector_alignment_threshold": 52.0,
+        "sector_alignment_bonus": 5.0,
+        "buy_pressure_threshold": 52.0,
+        "buy_pressure_bonus": 4.0,
+        "slope10_min": -0.3,
+        "slope10_bonus": 5.0,
+        "false_breakout_penalty": 10.0,
+        "intraday_reversal_penalty": 6.0,
+        "stall_after_volume_penalty": 4.0,
+        "distribution_risk_weight": 0.45,
+        "distribution_risk_cap": 4.5,
+    },
+    "negative_score": {
+        "ma5_distance_multiplier": 1.005,
+        "ma5_distance_bonus": 8.0,
+        "high_rsi_threshold": 68.0,
+        "high_rsi_bonus": 12.0,
+        "macd_negative_bonus": 8.0,
+        "vwap_distance_multiplier": 1.008,
+        "vwap_distance_bonus": 12.0,
+        "high_amplitude_threshold": 3.0,
+        "high_amplitude_bonus": 8.0,
+        "sector_alignment_threshold": 54.0,
+        "sector_weak_bonus": 5.0,
+        "sell_pressure_threshold": 52.0,
+        "sell_pressure_bonus": 5.0,
+        "false_breakout_bonus": 8.0,
+        "intraday_reversal_bonus": 5.5,
+        "stall_after_volume_bonus": 4.0,
+        "distribution_risk_weight": 0.35,
+        "distribution_risk_cap": 3.5,
+    },
+    "risk_score": {
+        "amplitude_floor": 5.0,
+        "amplitude_weight": 4.0,
+        "atr_weight": 3.0,
+        "tradability_floor": 55.0,
+        "tradability_weight": 0.6,
+        "sector_alignment_floor": 50.0,
+        "sector_alignment_weight": 0.25,
+        "event_medium_penalty": 6.0,
+        "event_high_penalty": 15.0,
+    },
+}
 
 
 def action_thresholds(
@@ -29,24 +86,33 @@ def action_thresholds(
     risk_level: str,
     market_regime: MarketRegimeSnapshot | None = None,
 ) -> tuple[float, float]:
-    positive_threshold = DEFAULT_POSITIVE_THRESHOLD
-    negative_threshold = DEFAULT_NEGATIVE_THRESHOLD
+    params = _scoring_params()
+    action_params = params["action_thresholds"]
+    positive_threshold = float(action_params["positive"])
+    negative_threshold = float(action_params["negative"])
+    scenario_shifts = action_params.get("scenario_shifts", {})
+    risk_level_shifts = action_params.get("risk_level_shifts", {})
     if scenario == "open_price_discovery":
-        positive_threshold += 5
-        negative_threshold += 5
+        shift = float(scenario_shifts.get("open_price_discovery", 0.0))
+        positive_threshold += shift
+        negative_threshold += shift
     elif scenario == "midday_consolidation":
-        positive_threshold += 2
-        negative_threshold += 2
+        shift = float(scenario_shifts.get("midday_consolidation", 0.0))
+        positive_threshold += shift
+        negative_threshold += shift
     elif scenario == "closing_repricing":
-        positive_threshold += 1
-        negative_threshold += 1
+        shift = float(scenario_shifts.get("closing_repricing", 0.0))
+        positive_threshold += shift
+        negative_threshold += shift
 
     if risk_level == "high":
-        positive_threshold += 4
-        negative_threshold += 4
+        shift = float(risk_level_shifts.get("high", 0.0))
+        positive_threshold += shift
+        negative_threshold += shift
     elif risk_level == "low":
-        positive_threshold -= 2
-        negative_threshold -= 2
+        shift = float(risk_level_shifts.get("low", 0.0))
+        positive_threshold += shift
+        negative_threshold += shift
     positive_shift, negative_shift = market_threshold_shift(market_regime)
     positive_threshold += positive_shift
     negative_threshold += negative_shift
@@ -66,32 +132,37 @@ def positive_score(
     slope10: float,
     distribution: DistributionSnapshot,
 ) -> float:
-    score = POSITIVE_BASE_SCORE
+    params = _scoring_params()
+    score_params = params["positive_score"]
+    score = float(params["base_scores"]["positive"])
     if quote.last_price >= ma5:
-        score += 10
+        score += float(score_params["ma5_support"])
     if ma5 >= ma20:
-        score += 8
+        score += float(score_params["ma5_above_ma20"])
     if ma20 >= ma60:
-        score += 6
-    if 44 <= rsi14 <= 62:
-        score += 10
+        score += float(score_params["ma20_above_ma60"])
+    if float(score_params["rsi_low"]) <= rsi14 <= float(score_params["rsi_high"]):
+        score += float(score_params["rsi_band_bonus"])
     if macd_hist >= 0:
-        score += 8
-    if abs(quote.last_price - vwap_value) / max(vwap_value, 0.01) <= VWAP_SUPPORT_DISTANCE_PCT:
-        score += 12
-    if sector.alignment_score >= 52:
-        score += 5
-    if microstructure.available and microstructure.buy_pressure >= 52:
-        score += 4
-    if slope10 > -0.3:
-        score += 5
+        score += float(score_params["macd_non_negative_bonus"])
+    if abs(quote.last_price - vwap_value) / max(vwap_value, 0.01) <= float(score_params["vwap_support_distance_pct"]):
+        score += float(score_params["vwap_support_bonus"])
+    if sector.alignment_score >= float(score_params["sector_alignment_threshold"]):
+        score += float(score_params["sector_alignment_bonus"])
+    if microstructure.available and microstructure.buy_pressure >= float(score_params["buy_pressure_threshold"]):
+        score += float(score_params["buy_pressure_bonus"])
+    if slope10 > float(score_params["slope10_min"]):
+        score += float(score_params["slope10_bonus"])
     if distribution.false_breakout_flag:
-        score -= 10
+        score -= float(score_params["false_breakout_penalty"])
     elif distribution.intraday_reversal_flag:
-        score -= 6
+        score -= float(score_params["intraday_reversal_penalty"])
     elif distribution.stall_after_volume_flag:
-        score -= 4
-    score -= min(distribution.distribution_risk_score * 0.45, 4.5)
+        score -= float(score_params["stall_after_volume_penalty"])
+    score -= min(
+        distribution.distribution_risk_score * float(score_params["distribution_risk_weight"]),
+        float(score_params["distribution_risk_cap"]),
+    )
     return max(0.0, min(100.0, score))
 
 
@@ -106,28 +177,33 @@ def negative_score(
     amplitude: float,
     distribution: DistributionSnapshot,
 ) -> float:
-    score = NEGATIVE_BASE_SCORE
-    if quote.last_price >= ma5 * NEGATIVE_MA5_DISTANCE_MULTIPLIER:
-        score += 8
-    if rsi14 >= HIGH_RSI_THRESHOLD:
-        score += 12
+    params = _scoring_params()
+    score_params = params["negative_score"]
+    score = float(params["base_scores"]["negative"])
+    if quote.last_price >= ma5 * float(score_params["ma5_distance_multiplier"]):
+        score += float(score_params["ma5_distance_bonus"])
+    if rsi14 >= float(score_params["high_rsi_threshold"]):
+        score += float(score_params["high_rsi_bonus"])
     if macd_hist < 0:
-        score += 8
-    if quote.last_price >= vwap_value * NEGATIVE_VWAP_DISTANCE_MULTIPLIER:
-        score += 12
-    if amplitude >= HIGH_AMPLITUDE_THRESHOLD:
-        score += 8
-    if sector.alignment_score <= 54:
-        score += 5
-    if microstructure.available and microstructure.sell_pressure >= 52:
-        score += 5
+        score += float(score_params["macd_negative_bonus"])
+    if quote.last_price >= vwap_value * float(score_params["vwap_distance_multiplier"]):
+        score += float(score_params["vwap_distance_bonus"])
+    if amplitude >= float(score_params["high_amplitude_threshold"]):
+        score += float(score_params["high_amplitude_bonus"])
+    if sector.alignment_score <= float(score_params["sector_alignment_threshold"]):
+        score += float(score_params["sector_weak_bonus"])
+    if microstructure.available and microstructure.sell_pressure >= float(score_params["sell_pressure_threshold"]):
+        score += float(score_params["sell_pressure_bonus"])
     if distribution.false_breakout_flag:
-        score += 8
+        score += float(score_params["false_breakout_bonus"])
     elif distribution.intraday_reversal_flag:
-        score += 5.5
+        score += float(score_params["intraday_reversal_bonus"])
     elif distribution.stall_after_volume_flag:
-        score += 4
-    score += min(distribution.distribution_risk_score * 0.35, 3.5)
+        score += float(score_params["stall_after_volume_bonus"])
+    score += min(
+        distribution.distribution_risk_score * float(score_params["distribution_risk_weight"]),
+        float(score_params["distribution_risk_cap"]),
+    )
     return max(0.0, min(100.0, score))
 
 
@@ -138,25 +214,42 @@ def risk_score(
     sector: SectorSnapshot,
     events: list[MarketEventOut],
 ) -> float:
-    score = RISK_BASE_SCORE
-    score += max(0.0, amplitude - 5.0) * 4
-    score += atr_value * 3
-    score += max(0.0, 55 - tradability_score) * 0.6
-    score += max(0.0, 50 - sector.alignment_score) * 0.25
+    params = _scoring_params()
+    risk_params = params["risk_score"]
+    score = float(params["base_scores"]["risk"])
+    score += max(0.0, amplitude - float(risk_params["amplitude_floor"])) * float(risk_params["amplitude_weight"])
+    score += atr_value * float(risk_params["atr_weight"])
+    score += max(0.0, float(risk_params["tradability_floor"]) - tradability_score) * float(risk_params["tradability_weight"])
+    score += max(0.0, float(risk_params["sector_alignment_floor"]) - sector.alignment_score) * float(risk_params["sector_alignment_weight"])
     for event in events:
         if event.risk_level == "medium":
-            score += 6
+            score += float(risk_params["event_medium_penalty"])
         elif event.risk_level == "high":
-            score += 15
+            score += float(risk_params["event_high_penalty"])
     return max(0.0, min(100.0, score))
 
 
 def risk_level(score: float) -> str:
-    if score >= RISK_LEVEL_HIGH_THRESHOLD:
+    thresholds = _scoring_params()["risk_level_thresholds"]
+    if score >= float(thresholds["high"]):
         return "high"
-    if score >= RISK_LEVEL_MEDIUM_THRESHOLD:
+    if score >= float(thresholds["medium"]):
         return "medium"
     return "low"
+
+
+def _scoring_params() -> dict:
+    return _deep_merge(_DEFAULT_SCORING, get_position_t_scoring())
+
+
+def _deep_merge(defaults: dict, overrides: dict) -> dict:
+    result = dict(defaults)
+    for key, value in overrides.items():
+        if isinstance(result.get(key), dict) and isinstance(value, dict):
+            result[key] = _deep_merge(result[key], value)
+        else:
+            result[key] = value
+    return result
 
 
 def build_reasons(
