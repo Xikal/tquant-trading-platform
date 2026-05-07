@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import pandas as pd
+from types import SimpleNamespace
 
 from app.services.market.openbb_adapter import OpenBBQuote
 from app.services.market import MarketDataService
@@ -9,6 +10,7 @@ from app.services.market.providers.akshare_provider import AkshareMarketProvider
 from app.services.market.providers.openbb_provider import OpenBBMarketProvider
 from app.services.market.providers.quality import MarketDataQuality, ProviderResult
 from app.services.market.providers.router import MarketProviderRouter
+from app.services.market.sectors import MarketSectorMixin
 
 
 def test_provider_result_quality_values_are_explicit() -> None:
@@ -117,7 +119,7 @@ def test_openbb_provider_keeps_estimated_quote_fields_consistent() -> None:
 
 def test_akshare_sector_provider_uses_raw_board_frame_without_service_recursion() -> None:
     class _Service:
-        def _load_board_breadth_frame(self):
+        def _call_akshare(self, func, *args, purpose="default", **kwargs):  # noqa: ANN001
             return pd.DataFrame(
                 [
                     {"industry": "半导体", "change_pct": 2.0},
@@ -133,3 +135,26 @@ def test_akshare_sector_provider_uses_raw_board_frame_without_service_recursion(
     assert result.quality == MarketDataQuality.FRESH
     assert result.data is not None
     assert [item.sector_name for item in result.data] == ["半导体", "机器人"]
+
+
+def test_sector_snapshot_accepts_normalized_provider_board_fields() -> None:
+    class _SectorService(MarketSectorMixin):
+        _sector_board_cache = {}
+
+        def _board_breadth_frame_from_provider(self):
+            return pd.DataFrame([{"industry": "机器人", "change_pct": 2.0}])
+
+    service = _SectorService()
+    instrument = SimpleNamespace(
+        symbol="002112",
+        market="SZ",
+        instrument_type="stock",
+        sector_name="机器人",
+    )
+    bars = [SimpleNamespace(close=10.0) for _ in range(20)]
+
+    sector = service.get_sector_snapshot(instrument, bars)
+
+    assert sector.sector_name == "机器人"
+    assert sector.sector_strength > 50
+    assert "机器人" in sector.notes

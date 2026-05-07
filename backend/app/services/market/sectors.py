@@ -63,8 +63,8 @@ class MarketSectorMixin:
         board_row = self._lookup_sector_board(sector_name) if use_board_lookup else None
         if board_row is not None:
             sector_strength = self._compute_board_strength(board_row)
-            sector_name = str(board_row["板块名称"])
-            notes = f"行业联动来自东财行业板块：{board_row['板块名称']}。"
+            sector_name = self._board_sector_name(board_row, fallback=sector_name)
+            notes = f"行业联动来自行业板块数据：{sector_name}。"
         elif instrument.market == "SZ" and instrument.symbol.startswith("30"):
             sector_strength += 2
             sector_name = instrument.sector_name or "创业板代理"
@@ -172,6 +172,14 @@ class MarketSectorMixin:
         turnover = float(row.get("换手率") or 0)
         score = 50 + change_pct * 5 + breadth + leader * 0.8 + turnover * 1.2
         return round(max(0.0, min(100.0, score)), 2)
+
+    @staticmethod
+    def _board_sector_name(row: dict[str, object], fallback: str = "") -> str:
+        for key in ("板块名称", "industry", "sector_name", "name", "名称", "行业"):
+            value = row.get(key)
+            if value not in (None, "", "-", "--"):
+                return str(value)
+        return fallback or "未分类行业"
 
     @staticmethod
     @contextmanager
