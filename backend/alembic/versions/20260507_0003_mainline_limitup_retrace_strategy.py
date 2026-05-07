@@ -35,7 +35,7 @@ def upgrade() -> None:
     tables = set(inspector.get_table_names())
     if "strategy_metadata" in tables:
         existing = bind.execute(
-            sa.text("SELECT key FROM strategy_metadata WHERE key = :key"),
+            sa.text("SELECT `key` FROM strategy_metadata WHERE `key` = :key"),
             {"key": STRATEGY_KEY},
         ).first()
         if existing is None:
@@ -43,7 +43,7 @@ def upgrade() -> None:
                 sa.text(
                     """
                     INSERT INTO strategy_metadata
-                        (key, display_name, description, category, risk_level,
+                        (`key`, display_name, description, category, risk_level,
                          typical_holding_days, sort_order, enabled, probe_status,
                          probe_summary, visibility)
                     VALUES
@@ -77,7 +77,7 @@ def downgrade() -> None:
     if "strategy_presets" in tables:
         _remove_strategy_from_presets(bind)
     if "strategy_metadata" in tables:
-        bind.execute(sa.text("DELETE FROM strategy_metadata WHERE key = :key"), {"key": STRATEGY_KEY})
+        bind.execute(sa.text("DELETE FROM strategy_metadata WHERE `key` = :key"), {"key": STRATEGY_KEY})
 
 
 def _append_strategy_to_default_presets(bind) -> None:
