@@ -121,7 +121,7 @@ class QuantEngineExecutionTests(unittest.TestCase):
         )
 
         self.assertFalse(allowed)
-        self.assertIn("回补空间不足", reason)
+        self.assertIn("接回空间不足", reason)
 
     def test_negative_trade_levels_require_buyback_below_vwap_or_ma5_anchor(self) -> None:
         quote = _quote(last_price=10.5, high_price=10.6, low_price=9.92)
@@ -145,7 +145,7 @@ class QuantEngineExecutionTests(unittest.TestCase):
 
         allowed, reason = negative_buyback_allowed(buy_price=10.25, vwap_value=10.15, ma5=10.2)
         self.assertFalse(allowed)
-        self.assertIn("VWAP/MA5 下方", reason)
+        self.assertIn("分时均价线或5日线下方", reason)
 
         ratio, loss_pct = risk_reward_metrics("negative_t", sell_price, buy_price, stop_loss)
         self.assertGreater(ratio, 0)

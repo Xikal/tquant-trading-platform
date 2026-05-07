@@ -321,3 +321,24 @@ class IntradayConfirmationSnapshot(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime, server_default=func.now(), onupdate=func.now()
     )
+
+
+class MarketRegimeSnapshotCache(Base):
+    __tablename__ = "market_regime_snapshots"
+    __table_args__ = (
+        UniqueConstraint("cache_key", name="uq_market_regime_snapshot_cache_key"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    cache_key: Mapped[str] = mapped_column(String(120), index=True)
+    trade_date: Mapped[str] = mapped_column(String(16), index=True)
+    state: Mapped[str] = mapped_column(String(40), default="", index=True)
+    breadth_ready: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
+    emotion_ready: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
+    hot_industry_source: Mapped[str] = mapped_column(String(40), default="", index=True)
+    data_quality: Mapped[str] = mapped_column(String(24), default="limited", index=True)
+    payload_json: Mapped[str] = mapped_column(Text, default="{}")
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, server_default=func.now(), onupdate=func.now(), index=True
+    )

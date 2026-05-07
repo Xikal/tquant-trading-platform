@@ -24,6 +24,10 @@ export interface StrategySuggestion {
   scenario: string;
   trade_scene?: string;
   trade_scene_text?: string;
+  signal_layer?: "hold" | "watch_prepare" | "light_execute" | "strong_execute";
+  signal_layer_text?: string;
+  near_action?: ActionType;
+  why_not_execute?: string;
   buyback_trigger?: string;
   reasons: string[];
   blocking_rules: string[];

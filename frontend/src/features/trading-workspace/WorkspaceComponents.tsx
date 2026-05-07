@@ -428,9 +428,9 @@ export function MiniKline({ bars }: { bars: AnalysisResponse["bars"] }) {
           borderColor0: "#17965a",
         },
       },
-      makeMaSeries("MA5", closePrices, 5, "#f0b44c"),
-      makeMaSeries("MA10", closePrices, 10, "#4f9df7"),
-      makeMaSeries("MA20", closePrices, 20, "#9b7bff"),
+      makeMaSeries("5日线", closePrices, 5, "#f0b44c"),
+      makeMaSeries("10日线", closePrices, 10, "#4f9df7"),
+      makeMaSeries("20日线", closePrices, 20, "#9b7bff"),
       {
         name: "成交量",
         type: "bar",

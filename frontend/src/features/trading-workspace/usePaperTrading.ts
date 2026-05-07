@@ -17,6 +17,10 @@ import type {
 import { errorMessage, nullableNumber, parseNumber } from "./workspaceFormatters";
 import type { PaperOrderDraft } from "./workspaceTypes";
 
+interface PaperLiveRefreshOptions {
+  refreshPrices?: boolean;
+}
+
 interface UsePaperTradingParams {
   setError: (value: string) => void;
   setLoading: (value: string) => void;
@@ -128,6 +132,42 @@ export function usePaperTrading({ setError, setLoading, setNotice, onAuthRequire
     });
   }
 
+  async function refreshLiveSnapshot(options: PaperLiveRefreshOptions = {}) {
+    try {
+      if (options.refreshPrices) {
+        await runAuthenticated(() => api.refreshPaperPositions(), true);
+      }
+      const [
+        accountResult,
+        positionsResult,
+        ordersResult,
+        tradesResult,
+        performanceResult,
+        autoTradingStatusResult,
+      ] = await Promise.allSettled([
+        runAuthenticated(() => api.getPaperAccount(), true),
+        runAuthenticated(() => api.getPaperPositions(), true),
+        runAuthenticated(() => api.getPaperOrders(80), true),
+        runAuthenticated(() => api.getPaperTrades(80), true),
+        runAuthenticated(() => api.getPaperPerformance(), true),
+        runAuthenticated(() => api.getPaperAutoTradingStatus(), true),
+      ]);
+      if (accountResult.status === "fulfilled") setAccount(accountResult.value);
+      if (positionsResult.status === "fulfilled") setPositions(positionsResult.value.positions);
+      if (ordersResult.status === "fulfilled") setOrders(ordersResult.value);
+      if (tradesResult.status === "fulfilled") setTrades(tradesResult.value.trades);
+      if (performanceResult.status === "fulfilled") setPerformance(performanceResult.value);
+      if (autoTradingStatusResult.status === "fulfilled") setAutoTradingStatus(autoTradingStatusResult.value);
+    } catch (err) {
+      if (isAuthError(err)) {
+        requireLogin();
+      }
+      if (import.meta.env.DEV) {
+        console.warn("模拟盘自动刷新失败，已保留上次数据。", err);
+      }
+    }
+  }
+
   async function refreshAutoTradingStatus() {
     try {
       const status = await runAuthenticated(() => api.getPaperAutoTradingStatus(), false);
@@ -142,6 +182,12 @@ export function usePaperTrading({ setError, setLoading, setNotice, onAuthRequire
   refreshAutoTradingStatusRef.current = refreshAutoTradingStatus;
   const stableRefreshAutoTradingStatus = useCallback(
     () => refreshAutoTradingStatusRef.current(),
+    [],
+  );
+  const refreshLiveSnapshotRef = useRef(refreshLiveSnapshot);
+  refreshLiveSnapshotRef.current = refreshLiveSnapshot;
+  const stableRefreshLiveSnapshot = useCallback(
+    (options?: PaperLiveRefreshOptions) => refreshLiveSnapshotRef.current(options),
     [],
   );
 
@@ -306,6 +352,7 @@ export function usePaperTrading({ setError, setLoading, setNotice, onAuthRequire
     setDraft,
     load,
     refreshAll,
+    refreshLiveSnapshot: stableRefreshLiveSnapshot,
     refreshAutoTradingStatus: stableRefreshAutoTradingStatus,
     submitOrder,
     addTradeTag,

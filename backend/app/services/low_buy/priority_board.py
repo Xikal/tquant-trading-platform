@@ -59,6 +59,7 @@ from app.services.low_buy.shared import (
     RECENT_PERFORMANCE_LOOKBACK_DAYS,
     Session,
 )
+from app.services.market.board_exclusions import is_growth_board_stock
 
 
 class LowBuyPriorityBoardMixin(LowBuyPriorityScoringMixin):
@@ -75,6 +76,7 @@ class LowBuyPriorityBoardMixin(LowBuyPriorityScoringMixin):
             rows=refreshed_candidates,
             latest_trade_date=base_snapshot.latest_trade_date,
         )
+        refreshed_candidates = filter_priority_candidates_for_recommendation(refreshed_candidates)
         items = self._build_priority_items(
             refreshed_candidates,
             market_context=base_snapshot.market_context,
@@ -306,6 +308,7 @@ class LowBuyPriorityBoardMixin(LowBuyPriorityScoringMixin):
             recommendation_days_by_title=recommendation_days_by_title,
         )
 
+
     @staticmethod
     def _strategy_performance_text(performance: LowBuyStrategyPerformanceOut | None) -> str:
         return strategy_performance_text(performance)
@@ -323,3 +326,9 @@ class LowBuyPriorityBoardMixin(LowBuyPriorityScoringMixin):
             market_context=market_context,
             selector=self,
         )
+
+
+def filter_priority_candidates_for_recommendation(rows: list[PriorityCandidate]) -> list[PriorityCandidate]:
+    """Keep recommendation boards aligned with current stock-scope policy."""
+
+    return [row for row in rows if not is_growth_board_stock(row.symbol)]

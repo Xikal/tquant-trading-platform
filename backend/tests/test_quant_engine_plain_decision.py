@@ -63,9 +63,9 @@ class QuantEnginePlainDecisionTests(unittest.TestCase):
             rules=_rules(),
         )
 
-        self.assertEqual(suggestion.plain_action_text, "今天适合正T")
+        self.assertEqual(suggestion.plain_action_text, "今天可先买后卖")
         self.assertIn("4.070", suggestion.plain_execution_text)
-        self.assertIn("取消正T", suggestion.plain_invalid_condition)
+        self.assertIn("取消这次操作", suggestion.plain_invalid_condition)
 
     def test_negative_t_outputs_buyback_constraint(self) -> None:
         plan = TradePlan(
@@ -93,7 +93,7 @@ class QuantEnginePlainDecisionTests(unittest.TestCase):
             rules=_rules(),
         )
 
-        self.assertEqual(suggestion.plain_action_text, "今天适合反T")
+        self.assertEqual(suggestion.plain_action_text, "今天可先卖后接回")
         self.assertIn("接不回不追", suggestion.plain_execution_text)
         self.assertIn("回落至 VWAP", suggestion.plain_execution_text)
 
@@ -125,6 +125,74 @@ class QuantEnginePlainDecisionTests(unittest.TestCase):
         self.assertEqual(suggestion.plain_action_text, "今天别动")
         self.assertIn("价差不够", suggestion.plain_action_reason)
         self.assertIn("不追单", suggestion.plain_execution_text)
+
+    def test_watch_prepare_outputs_near_signal_without_actionable_order(self) -> None:
+        plan = TradePlan(
+            action="hold",
+            entry_price=None,
+            exit_price=None,
+            stop_loss=None,
+            take_profit=None,
+            position_pct=0.0,
+            expected_profit_pct=0.0,
+            expected_loss_pct=0.0,
+            risk_reward_ratio=0.0,
+            slippage_bps=4.0,
+            min_profit_pct=0.8,
+            min_risk_reward_ratio=0.0,
+            signal_layer="watch_prepare",
+            signal_layer_text="接近正T",
+            near_action="positive_t",
+            why_not_execute="等重新站稳 VWAP。",
+        )
+
+        suggestion = build_suggestion(
+            action="hold",
+            trade_plan=plan,
+            scores=_scores(),
+            reasons=["接近支撑"],
+            blocking_rules=["正T还未完全确认。"],
+            rules=_rules(),
+        )
+
+        self.assertEqual(suggestion.plain_action_text, "接近先买后卖机会")
+        self.assertFalse(suggestion.is_actionable)
+        self.assertEqual(suggestion.signal_layer, "watch_prepare")
+        self.assertIn("重新站稳 VWAP", suggestion.plain_action_reason)
+
+    def test_light_execute_outputs_small_size_actionable_signal(self) -> None:
+        plan = TradePlan(
+            action="positive_t",
+            entry_price=4.07,
+            exit_price=4.10,
+            stop_loss=4.03,
+            take_profit=4.10,
+            position_pct=8.0,
+            expected_profit_pct=0.74,
+            expected_loss_pct=0.98,
+            risk_reward_ratio=0.9,
+            slippage_bps=4.0,
+            min_profit_pct=0.45,
+            min_risk_reward_ratio=0.8,
+            signal_layer="light_execute",
+            signal_layer_text="轻执行",
+            near_action="positive_t",
+            why_not_execute="急跌修复接近成立，只允许小仓。",
+        )
+
+        suggestion = build_suggestion(
+            action="positive_t",
+            trade_plan=plan,
+            scores=_scores(),
+            reasons=["急跌修复"],
+            blocking_rules=[],
+            rules=_rules(),
+        )
+
+        self.assertEqual(suggestion.plain_action_text, "只适合小仓试做")
+        self.assertTrue(suggestion.is_actionable)
+        self.assertEqual(suggestion.signal_layer, "light_execute")
+        self.assertIn("小仓", suggestion.plain_action_reason)
 
 
 if __name__ == "__main__":

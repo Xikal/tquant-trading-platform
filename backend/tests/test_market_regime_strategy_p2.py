@@ -466,7 +466,7 @@ class MarketRegimeStrategyP2Tests(unittest.TestCase):
         )
 
         self.assertFalse(allowed)
-        self.assertIn("放量滞涨", reason)
+        self.assertIn("放量但价格涨不动", reason)
 
     def test_negative_direction_gate_relaxes_for_distribution_bias(self) -> None:
         quote = QuoteSnapshot(

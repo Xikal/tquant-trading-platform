@@ -3,13 +3,29 @@ import { ALL_PLAYBOOK_TABS } from "./workspaceConstants";
 import type { Tone } from "./workspaceTypes";
 
 export function actionText(action: string): string {
-  if (action === "positive_t") return "回踩可做正T";
-  if (action === "negative_t") return "冲高可做反T";
+  if (action === "positive_t") return "回落企稳，可先买后卖";
+  if (action === "negative_t") return "冲高变弱，可先卖后接回";
   if (action === "hold") return "暂不操作";
   return action;
 }
 
 const PLAIN_TEXT_REPLACEMENTS: Array<[RegExp, string]> = [
+  [/strong_execute/g, "可以按计划操作"],
+  [/light_execute/g, "只适合小仓试做"],
+  [/watch_prepare/g, "先等确认"],
+  [/\bhold\b/g, "今天不做"],
+  [/positive_t/g, "先买后卖"],
+  [/negative_t/g, "先卖后接回"],
+  [/正T/g, "先买后卖"],
+  [/反T/g, "先卖后接回"],
+  [/VWAP/g, "分时均价线"],
+  [/MA5/g, "5日线"],
+  [/MA10/g, "10日线"],
+  [/MA20/g, "20日线"],
+  [/净收益门槛/g, "扣手续费后的最低收益要求"],
+  [/轻执行/g, "小仓试做"],
+  [/强执行/g, "可以按计划操作"],
+  [/信号层级/g, "操作状态"],
   [/弱扩散防守/g, "指数可能被少数大票托住，多数个股跟不上，先防守观察"],
   [/权重护盘/g, "指数被权重大票托住，普通个股仍要谨慎"],
   [/缩量观望/g, "成交量不足，先等资金重新活跃"],
@@ -45,6 +61,14 @@ export function plainTradingText(value?: string | null): string {
     text = text.replace(pattern, replacement);
   }
   return text;
+}
+
+export function actionStatusText(layer?: string, fallback?: string): string {
+  if (layer === "strong_execute") return "可以按计划操作";
+  if (layer === "light_execute") return "只适合小仓试做";
+  if (layer === "watch_prepare") return "先等确认";
+  if (layer === "hold") return "今天不做";
+  return plainTradingText(fallback) || "--";
 }
 
 export function strategyLabel(strategyKey: string): string {

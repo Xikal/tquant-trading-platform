@@ -26,6 +26,7 @@ class PaperAccountOut(BaseModel):
     total_assets: float
     realized_pnl: float = 0.0
     unrealized_pnl: float = 0.0
+    total_return_pct: float = 0.0
     max_drawdown_pct: float = 0.0
     status: str = "active"
     today_return_pct: float = 0.0

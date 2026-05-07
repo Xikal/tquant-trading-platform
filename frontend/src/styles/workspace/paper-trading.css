@@ -148,6 +148,17 @@
   box-shadow: inset 0 0 0 1px rgba(214, 165, 92, 0.22);
 }
 
+.paper-metrics-shell {
+  grid-area: metrics;
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.paper-metrics-shell .paper-metrics {
+  grid-area: auto;
+}
+
 .paper-metrics {
   grid-template-columns: repeat(7, minmax(0, 1fr));
   gap: 10px;
@@ -178,6 +189,54 @@
 .paper-metrics .metric.warn {
   border-color: #f1d28b;
   background: #fff8e8;
+}
+
+.paper-auto-skip-notice {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  min-height: 34px;
+  padding: 8px 12px;
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  border-radius: 10px;
+  background: #fff;
+  color: #334155;
+  font-size: 12px;
+}
+
+.paper-auto-skip-notice strong {
+  color: #0f172a;
+  white-space: nowrap;
+}
+
+.paper-auto-skip-notice span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.paper-auto-skip-notice em {
+  color: #64748b;
+  font-style: normal;
+  white-space: nowrap;
+}
+
+.paper-auto-skip-notice.warn {
+  border-color: rgba(214, 165, 92, 0.48);
+  background: #fff8e8;
+}
+
+.paper-run-reason {
+  grid-column: 1 / -1;
+  color: #8a5b12;
+  background: #fff8e8;
+  border: 1px solid rgba(214, 165, 92, 0.32);
+  border-radius: 8px;
+  padding: 6px 8px;
+  font-size: 12px;
+  line-height: 1.45;
 }
 
 .paper-order,

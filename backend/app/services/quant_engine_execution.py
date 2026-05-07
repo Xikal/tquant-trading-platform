@@ -107,6 +107,38 @@ def min_profit_pct_for_quote(
     return round(max(1.5, adjusted), 2)
 
 
+def light_profit_pct_for_quote(
+    quote: QuoteSnapshot,
+    sector: SectorSnapshot,
+    market_regime: MarketRegimeSnapshot | None = None,
+) -> float:
+    """Lower gross edge used only for small-size light execution signals."""
+
+    asset_bucket = _asset_bucket(quote, sector)
+    base = {"etf": 0.48, "weight_stock": 0.86}.get(asset_bucket, 1.12)
+    state = market_regime.state if market_regime is not None else "low_volume_wait"
+    if state in {"broad_rally", "repair"}:
+        base -= 0.08 if asset_bucket == "etf" else 0.05
+    elif state in {"fast_rotation", "high_flyer_retreat", "risk_release"}:
+        base += 0.08 if asset_bucket == "etf" else 0.15
+    return round(max(0.38 if asset_bucket == "etf" else 0.72, base), 2)
+
+
+def net_profit_floor_pct_for_quote(
+    quote: QuoteSnapshot,
+    action: str,
+    sector: SectorSnapshot | None = None,
+) -> float:
+    """Minimum fee-adjusted edge required before a signal is executable."""
+
+    asset_bucket = _asset_bucket(quote, sector)
+    if asset_bucket == "etf":
+        return 0.25
+    if asset_bucket == "weight_stock":
+        return 0.45 if action == "negative_t" else 0.50
+    return 0.80 if action == "negative_t" else 0.90
+
+
 def positive_direction_gate(
     quote: QuoteSnapshot,
     ma5: float,
@@ -188,27 +220,88 @@ def positive_direction_gate(
         sector=sector,
         microstructure=microstructure,
     ):
-        return False, "题材股处在退潮/快速轮动环境，必须等板块和盘口同时转强后再做正T。"
+        return False, "题材股处在退潮/快速轮动环境，必须等板块和买盘同时转强后再考虑先买后卖。"
     if intraday_structure != "pullback_acceptance":
-        return False, "正T只做回踩承接：必须先回踩 VWAP/MA5，再重新站回 VWAP，且近几根分钟 K 低点抬高、回踩量能收缩。"
+        return False, "先买后卖只做回落后有人接盘：必须先靠近分时均价线或5日线，再重新站回分时均价线，且短线低点抬高、回落时成交量缩小。"
     if quote.last_price < vwap_value * 1.001:
-        return False, "正T需要重新站回 VWAP 后再执行。"
+        return False, "需要重新站回分时均价线后再考虑先买后卖。"
     if quote.last_price > ma5 * price_extension_limit:
-        return False, "价格已显著偏离短均线，正T不建议追价。"
+        return False, "价格离5日线已经偏远，不建议追着买。"
     if quote.last_price < ma20 * 0.992:
-        return False, "价格已经回落到中期均线下方，当前不适合执行正T。"
+        return False, "价格已经跌到20日线下方，当前不适合先买后卖。"
     if slope10 < slope_floor:
-        return False, "短线斜率转弱，正T顺势优势不足。"
+        return False, "短线趋势转弱，先买后卖的成功条件不足。"
     weak_sector = sector.alignment_score < weak_sector_floor
     if asset_bucket == "weight_stock":
         weak_sector = weak_sector and state not in {"weight_support", "weight_support_active"}
     weak_buy_pressure = microstructure.available and microstructure.buy_pressure < weak_buy_pressure_floor
     weak_vwap = quote.last_price < vwap_value * weak_vwap_limit
     if weak_sector and weak_buy_pressure:
-        return False, "板块联动和盘口承接同时偏弱，正T胜率不足。"
+        return False, "板块联动和买盘承接同时偏弱，先买后卖成功率不足。"
     if weak_vwap and slope10 < -0.12:
-        return False, "价格仍弱于 VWAP，先等回到均价附近再考虑正T。"
+        return False, "价格仍弱于分时均价线，先等回到均价附近再考虑先买后卖。"
     return True, ""
+
+
+def positive_light_direction_gate(
+    quote: QuoteSnapshot,
+    ma5: float,
+    ma20: float,
+    slope10: float,
+    vwap_value: float,
+    sector: SectorSnapshot,
+    microstructure: MicrostructureSnapshot,
+    distribution: DistributionSnapshot,
+    market_regime: MarketRegimeSnapshot | None = None,
+    intraday_structure: str = "",
+) -> tuple[bool, str]:
+    asset_bucket = _asset_bucket(quote, sector)
+    state = market_regime.state if market_regime is not None else "low_volume_wait"
+    if asset_bucket == "thematic_stock" and state in {"high_flyer_retreat", "risk_release"}:
+        return False, "退潮或风险释放时，题材股不放宽先买后卖条件。"
+    if distribution.false_breakout_flag or distribution.distribution_risk_score >= (7.6 if asset_bucket == "etf" else 6.4):
+        return False, "出货或假突破风险偏高，不能放宽先买后卖。"
+    if intraday_structure not in {"pullback_acceptance", "sharp_drop_repair"}:
+        return False, "小仓试做只接受回落有人接盘，或急跌后重新收回分时均价线的结构。"
+    if quote.last_price < vwap_value * (0.999 if asset_bucket == "etf" else 1.0):
+        return False, "小仓试做也必须至少回到分时均价线附近。"
+    if quote.last_price > ma5 * (1.045 if asset_bucket == "etf" else 1.032):
+        return False, "价格离5日线过远，小仓也不追。"
+    if quote.last_price < ma20 * 0.985:
+        return False, "价格弱于20日线，小仓试做的成功率不足。"
+    if slope10 < (-0.36 if asset_bucket == "etf" else -0.22):
+        return False, "短线斜率仍偏弱，先等承接继续确认。"
+    if sector.alignment_score < (42.0 if asset_bucket != "thematic_stock" else 50.0):
+        return False, "板块联动不足，小仓试做不放宽。"
+    if microstructure.available and microstructure.buy_pressure < (40.0 if asset_bucket == "etf" else 46.0):
+        return False, "买盘承接不足，小仓试做也不放宽。"
+    return True, "急跌修复或回落接盘已接近成立，只允许小仓先买后卖，并继续看分时均价线是否守住。"
+
+
+def positive_prepare_gate(
+    quote: QuoteSnapshot,
+    ma5: float,
+    vwap_value: float,
+    sector: SectorSnapshot,
+    microstructure: MicrostructureSnapshot,
+    distribution: DistributionSnapshot,
+    market_regime: MarketRegimeSnapshot | None = None,
+    intraday_structure: str = "",
+) -> tuple[bool, str]:
+    asset_bucket = _asset_bucket(quote, sector)
+    state = market_regime.state if market_regime is not None else "low_volume_wait"
+    if asset_bucket == "thematic_stock" and state in {"high_flyer_retreat", "risk_release"}:
+        return False, "市场退潮时，非 ETF 只保留严格确认后的先买后卖信号。"
+    if distribution.false_breakout_flag or distribution.distribution_risk_score >= 7.5:
+        return False, "出货风险偏高，不提前提示先买后卖。"
+    anchor = min(ma5, vwap_value)
+    near_anchor = anchor > 0 and quote.low_price <= anchor * 1.006 and quote.last_price >= anchor * 0.996
+    structure_near = intraday_structure in {"sharp_drop_repair", "range_contraction", "balanced_intraday"}
+    if near_anchor and structure_near:
+        return True, "价格已靠近分时均价线或5日线支撑区，等重新站稳分时均价线并低点抬高后再先买后卖。"
+    if microstructure.available and microstructure.buy_pressure >= 55 and quote.last_price >= vwap_value * 0.997:
+        return True, "买盘承接转强但结构还未完全确认，先列为先买后卖预备信号。"
+    return False, "先买后卖条件尚未接近。"
 
 
 def negative_direction_gate(
@@ -233,7 +326,7 @@ def negative_direction_gate(
         or distribution.distribution_risk_score >= 5.5
     )
     if intraday_structure not in {"overheat_exhaustion", "volume_stall", "false_breakout"}:
-        return False, "反T只做冲高衰竭：需要冲高钝化、放量滞涨或假突破结构，横盘小波动不先卖。"
+        return False, "先卖后接回只做冲高变弱：需要冲高乏力、放量不涨或假突破结构，横盘小波动不先卖。"
     amplitude_floor = 1.8
     if asset_bucket == "etf" and state == "weight_support":
         amplitude_floor = 1.4
@@ -258,7 +351,7 @@ def negative_direction_gate(
     elif distribution.stall_after_volume_flag:
         amplitude_floor = max(1.45, amplitude_floor - 0.12)
     if amplitude < amplitude_floor:
-        return False, "日内振幅不足，反T的冲高回落空间不够。"
+        return False, "当天波动太小，冲高后回落接回的空间不够。"
     room_allowed, room_reason = _negative_buyback_room_allowed(
         quote=quote,
         ma5=ma5,
@@ -274,9 +367,9 @@ def negative_direction_gate(
     if distribution_bias:
         rsi_floor -= 3
     if quote.last_price < ma5 * relative_price_floor and quote.last_price < vwap_value * relative_vwap_floor and rsi14 < rsi_floor:
-        return False, "价格并未明显强于短线均价，反T不适合先卖。"
+        return False, "价格并未明显强于短线均价，不适合先卖。"
     if rsi14 < (56 if not distribution_bias else 53) and macd_hist >= 0.02:
-        return False, "短线并未进入偏热区，反T先卖优势不足。"
+        return False, "短线还没有明显过热，先卖优势不足。"
     sell_pressure_floor = 48
     if asset_bucket == "etf" and state == "weight_support":
         sell_pressure_floor = 46
@@ -298,8 +391,86 @@ def negative_direction_gate(
     rsi_not_hot = rsi14 < (60 if not distribution_bias else 57)
     amplitude_too_small = amplitude < (2.6 if not distribution_bias else 2.3)
     if weak_sell_pressure and rsi_not_hot and amplitude_too_small:
-        return False, "盘口抛压不明显，反T先卖胜率不足。"
+        return False, "卖盘压力不明显，先卖后接回成功率不足。"
     return True, ""
+
+
+def negative_light_direction_gate(
+    quote: QuoteSnapshot,
+    ma5: float,
+    rsi14: float,
+    macd_hist: float,
+    vwap_value: float,
+    amplitude: float,
+    sector: SectorSnapshot,
+    microstructure: MicrostructureSnapshot,
+    distribution: DistributionSnapshot,
+    market_regime: MarketRegimeSnapshot | None = None,
+    intraday_structure: str = "",
+) -> tuple[bool, str]:
+    state = market_regime.state if market_regime is not None else "low_volume_wait"
+    asset_bucket = _asset_bucket(quote, sector)
+    distribution_bias = (
+        distribution.false_breakout_flag
+        or distribution.stall_after_volume_flag
+        or distribution.intraday_reversal_flag
+        or distribution.distribution_risk_score >= 5.2
+    )
+    structure_ok = intraday_structure in {"overheat_exhaustion", "volume_stall", "false_breakout"}
+    soft_structure_ok = intraday_structure in {"balanced_intraday", "range_contraction"} and distribution_bias
+    if not structure_ok and not soft_structure_ok:
+        return False, "小仓先卖也需要冲高变弱，或有明确出货迹象。"
+    amplitude_floor = {"etf": 1.25, "weight_stock": 1.45}.get(asset_bucket, 1.72)
+    if state in {"fast_rotation", "high_flyer_retreat", "risk_release"}:
+        amplitude_floor -= 0.12
+    if amplitude < amplitude_floor:
+        return False, "当天波动仍不足，小仓先卖后的价差不够。"
+    room_allowed, room_reason = _negative_buyback_room_allowed(
+        quote=quote,
+        ma5=ma5,
+        vwap_value=vwap_value,
+        asset_bucket=asset_bucket,
+        distribution_bias=True,
+    )
+    if not room_allowed:
+        return False, room_reason
+    near_high = quote.high_price > 0 and quote.last_price >= quote.high_price * 0.982
+    if not near_high:
+        return False, "小仓先卖也必须在分时高位附近。"
+    heat_ok = rsi14 >= (54 if asset_bucket == "etf" else 57) or macd_hist < -0.01 or distribution_bias
+    pressure_ok = not microstructure.available or microstructure.sell_pressure >= (44 if asset_bucket == "etf" else 48)
+    if not heat_ok or not pressure_ok:
+        return False, "过热或卖盘证据不足，小仓先卖不放宽。"
+    return True, "冲高区域已有出货或变弱倾向，且回落接回空间够，只允许小仓先卖后接回。"
+
+
+def negative_prepare_gate(
+    quote: QuoteSnapshot,
+    ma5: float,
+    vwap_value: float,
+    amplitude: float,
+    sector: SectorSnapshot,
+    microstructure: MicrostructureSnapshot,
+    distribution: DistributionSnapshot,
+    market_regime: MarketRegimeSnapshot | None = None,
+    intraday_structure: str = "",
+) -> tuple[bool, str]:
+    asset_bucket = _asset_bucket(quote, sector)
+    distribution_bias = (
+        distribution.false_breakout_flag
+        or distribution.stall_after_volume_flag
+        or distribution.intraday_reversal_flag
+        or distribution.distribution_risk_score >= 4.8
+    )
+    near_high = quote.high_price > 0 and quote.last_price >= quote.high_price * 0.985
+    anchor = _negative_buyback_anchor(ma5=ma5, vwap_value=vwap_value)
+    room_pct = (quote.last_price - anchor) / max(quote.last_price, 0.01) * 100 if anchor > 0 else 0.0
+    min_room = {"etf": 0.28, "weight_stock": 0.45}.get(asset_bucket, 0.62)
+    if near_high and room_pct >= min_room and (distribution_bias or microstructure.sell_pressure >= 50 or amplitude >= 1.6):
+        return True, "价格接近当天高位且回落接回空间初步够，等冲高变弱或放量不涨确认后再先卖后接回。"
+    if intraday_structure in {"volume_stall", "overheat_exhaustion"} and room_pct >= min_room * 0.8:
+        return True, "已有冲高乏力迹象，但回落接回空间还需扩大，先列为先卖后接回预备信号。"
+    return False, "先卖后接回条件尚未接近。"
 
 
 def _negative_buyback_room_allowed(
@@ -311,23 +482,23 @@ def _negative_buyback_room_allowed(
     distribution_bias: bool,
 ) -> tuple[bool, str]:
     if quote.last_price <= 0 or ma5 <= 0 or vwap_value <= 0:
-        return False, "反T缺少有效 VWAP/MA5 回补锚点，不能先卖。"
+        return False, "缺少有效的分时均价线或5日线参考位，不能先卖。"
     buyback_anchor = _negative_buyback_anchor(ma5=ma5, vwap_value=vwap_value)
     distance_to_reference_pct = (quote.last_price - buyback_anchor) / max(quote.last_price, 0.01) * 100
     min_distance = {"etf": 0.35, "weight_stock": 0.55}.get(asset_bucket, 0.75)
     if distribution_bias:
         min_distance *= 0.75
     if distance_to_reference_pct < min_distance:
-        return False, "反T卖后回补空间不足，当前价距离 VWAP/MA5 太近。"
+        return False, "卖出后回落接回空间不足，当前价距离分时均价线或5日线太近。"
     near_intraday_high = quote.high_price > 0 and quote.last_price >= quote.high_price * (0.982 if distribution_bias else 0.988)
     if not near_intraday_high:
-        return False, "反T需要在分时高位附近处理，当前位置不是冲高衰竭区。"
+        return False, "需要在分时高位附近处理，当前位置不是冲高变弱区。"
     estimated_buyback = buyback_anchor * 0.998
     round_trip_cost = {"etf": 0.12, "weight_stock": 0.22}.get(asset_bucket, 0.28)
     min_net_room = {"etf": 0.28, "weight_stock": 0.42}.get(asset_bucket, 0.55)
     net_room = (quote.last_price - estimated_buyback) / max(quote.last_price, 0.01) * 100 - round_trip_cost
     if net_room < min_net_room:
-        return False, "扣除双边成本和滑点后，反T回补净空间不足。"
+        return False, "扣除买卖费用和成交偏差后，回落接回的实际空间不足。"
     return True, ""
 
 
@@ -342,14 +513,14 @@ def _positive_distribution_block(
     distribution: DistributionSnapshot,
 ) -> str:
     if distribution.false_breakout_flag:
-        return "分时出现假突破回落，正T不适合逆着派发迹象追买。"
+        return "分时出现假突破回落，不适合逆着出货迹象追买。"
     if distribution.intraday_reversal_flag and distribution.distribution_risk_score >= (8.2 if asset_bucket == "etf" else 7.0):
-        return "分时冲高回落明显，正T先等派发压力释放。"
+        return "分时冲高回落明显，先等卖压释放。"
     weak_stall_context = state in {"fast_rotation", "high_flyer_retreat", "risk_release"}
     if distribution.stall_after_volume_flag and asset_bucket == "thematic_stock" and weak_stall_context:
-        return "放量滞涨叠加弱环境，正T胜率不足。"
+        return "放量但价格涨不动，且市场环境偏弱，先买后卖成功率不足。"
     if distribution.distribution_risk_score >= (8.8 if asset_bucket == "etf" else 7.8):
-        return "当前派发风险偏高，正T应等待更强承接。"
+        return "当前出货风险偏高，应等待更强承接。"
     return ""
 
 
@@ -499,8 +670,8 @@ def negative_buyback_trigger(
     anchor_trigger = max(anchor - buffer, quote.low_price)
     cancel_price = quote.last_price + max(buffer, quote.last_price * 0.003)
     return (
-        f"反T回补条件：回落至回补锚点 {anchor_trigger:.3f} 附近，"
-        f"且抛压不再放大；若重新站上 {cancel_price:.3f}，取消回补等待。"
+        f"先卖后接回条件：回落至参考价 {anchor_trigger:.3f} 附近，"
+        f"且卖压不再放大；若重新站上 {cancel_price:.3f}，取消接回等待。"
     )
 
 
@@ -511,8 +682,8 @@ def negative_buyback_allowed(
     ma5: float,
 ) -> tuple[bool, str]:
     if vwap_value <= 0 or ma5 <= 0:
-        return False, "反T缺少有效 VWAP/MA5 回补锚点，不能先卖。"
+        return False, "缺少有效的分时均价线或5日线参考位，不能先卖。"
     max_buyback = _negative_buyback_anchor(ma5=ma5, vwap_value=vwap_value) * 1.003
     if buy_price > max_buyback:
-        return False, "反T回补价没有落到 VWAP/MA5 下方，卖出后回补约束不足。"
+        return False, "计划接回价没有落到分时均价线或5日线下方，卖出后接回约束不足。"
     return True, ""

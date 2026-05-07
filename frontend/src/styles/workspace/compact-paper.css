@@ -173,7 +173,20 @@
 }
 
 .paper-order-row {
-  grid-template-columns: minmax(120px, 1.2fr) 58px 74px minmax(76px, 0.75fr) minmax(76px, 0.75fr) minmax(96px, 1fr);
+  grid-template-columns: minmax(132px, 1.4fr) minmax(86px, 0.82fr) minmax(76px, 0.72fr) minmax(82px, 0.78fr) minmax(86px, 0.82fr);
+}
+
+.paper-order-row.has-note {
+  align-items: start;
+}
+
+.paper-order-row .paper-order-reason {
+  grid-column: 1 / -1;
+  display: block;
+  margin: -2px 0 0;
+  overflow: visible;
+  text-align: left;
+  white-space: normal;
 }
 
 .paper-table-head {
@@ -191,5 +204,5 @@
 }
 
 .paper-order-head {
-  grid-template-columns: minmax(120px, 1.2fr) 58px 74px minmax(76px, 0.75fr) minmax(76px, 0.75fr) minmax(96px, 1fr);
+  grid-template-columns: minmax(132px, 1.4fr) minmax(86px, 0.82fr) minmax(76px, 0.72fr) minmax(82px, 0.78fr) minmax(86px, 0.82fr);
 }

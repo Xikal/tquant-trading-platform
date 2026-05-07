@@ -1,7 +1,7 @@
 import type { AnalysisResponse } from "../../types";
 import { NumberField, SearchField, SelectField } from "../../components/shared/FormFields";
 import { InfoPill, LineList, MetricGrid, MiniKline, PanelTitle, StockIdentity } from "./WorkspaceComponents";
-import { actionText, formatAmount, formatNumber, formatPct, formatPrice, plainTradingText, riskText, toneFromChange } from "./workspaceFormatters";
+import { actionStatusText, actionText, formatAmount, formatNumber, formatPct, formatPrice, plainTradingText, riskText, toneFromChange } from "./workspaceFormatters";
 import type { AnalysisDraft } from "./workspaceTypes";
 
 export function AnalysisPage({
@@ -22,7 +22,8 @@ export function AnalysisPage({
   const suggestion = result?.suggestion;
   const quote = result?.quote;
   const actionHeadline = suggestion?.plain_action_text || (suggestion ? actionText(suggestion.action) : "等待分析");
-  const canOpenPaperOrder = Boolean(draft.symbol.trim() && suggestion?.is_actionable !== false);
+  const canOpenPaperOrder = Boolean(draft.symbol.trim() && suggestion?.is_actionable);
+  const statusText = actionStatusText(suggestion?.signal_layer, suggestion?.signal_layer_text);
   const actionReason = suggestion?.plain_action_reason || plainTradingText(suggestion?.trade_scene_text) || "--";
   const executionText =
     suggestion?.plain_execution_text ||
@@ -47,10 +48,11 @@ export function AnalysisPage({
           items={[
             { label: "当前价", value: formatPrice(quote?.last_price), tone: "neutral" },
             { label: "涨跌", value: formatPct(quote?.change_pct), tone: toneFromChange(quote?.change_pct) },
-            { label: "可交易", value: formatNumber(suggestion?.tradability_score), tone: "neutral" },
-            { label: "信号分", value: formatNumber(suggestion?.signal_score), tone: "warn" },
+            { label: "交易条件", value: formatNumber(suggestion?.tradability_score), tone: "neutral" },
+            { label: "机会强度", value: formatNumber(suggestion?.signal_score), tone: "warn" },
+            { label: "当前状态", value: statusText, tone: suggestion?.signal_layer === "strong_execute" ? "up" : suggestion?.signal_layer === "light_execute" ? "warn" : "neutral" },
             { label: "风险", value: suggestion ? riskText(suggestion.risk_level) : "--", tone: suggestion?.risk_level === "high" ? "down" : "up" },
-            { label: "预期", value: formatPct(suggestion?.expected_profit_pct), tone: toneFromChange(suggestion?.expected_profit_pct) },
+            { label: "预计价差", value: formatPct(suggestion?.expected_profit_pct), tone: toneFromChange(suggestion?.expected_profit_pct) },
           ]}
         />
       </div>
@@ -67,8 +69,8 @@ export function AnalysisPage({
           value={draft.prefer_strategy}
           options={[
             { value: "auto", label: "自动" },
-            { value: "positive_t", label: "正T" },
-            { value: "negative_t", label: "反T" },
+            { value: "positive_t", label: "先买后卖" },
+            { value: "negative_t", label: "先卖后接回" },
           ]}
           onChange={(event) => setDraft({ ...draft, prefer_strategy: event.target.value as AnalysisDraft["prefer_strategy"] })}
         />
@@ -90,9 +92,10 @@ export function AnalysisPage({
         <p>{actionReason || "输入证券代码并点击开始分析，系统会先检查能不能做T，再给出明确的执行边界。"}</p>
         <InfoPill label="现在怎么做" value={executionText} />
         <InfoPill label="错了怎么办" value={invalidText} />
-        <InfoPill label="建议仓位" value={`仓位 ${formatPct(suggestion?.position_pct, 0)} / 预期 ${formatPct(suggestion?.expected_profit_pct)}`} />
-        <InfoPill label="扣费后收益" value={`${formatPct(suggestion?.net_profit_pct)} / 费用约 ${formatAmount(suggestion?.estimated_fee)}`} />
-        <InfoPill label="卖出后怎么接回" value={plainTradingText(suggestion?.buyback_trigger) || "没有反T卖出信号时，不需要考虑回补。"} />
+        <InfoPill label="当前能否操作" value={`${statusText}${suggestion?.why_not_execute ? ` / ${plainTradingText(suggestion.why_not_execute)}` : ""}`} />
+        <InfoPill label="建议仓位" value={`${formatPct(suggestion?.position_pct, 0)} 仓位 / 预计价差 ${formatPct(suggestion?.expected_profit_pct)}`} />
+        <InfoPill label="扣手续费后" value={`${formatPct(suggestion?.net_profit_pct)} / 费用约 ${formatAmount(suggestion?.estimated_fee)}`} />
+        <InfoPill label="先卖后接回条件" value={plainTradingText(suggestion?.buyback_trigger) || "没有先卖后接回信号时，不需要考虑接回。"} />
         {suggestion?.fee_warning || suggestion?.liquidity_warning ? (
           <LineList title="交易成本提示" items={[suggestion.fee_warning, suggestion.liquidity_warning].filter(Boolean).map(plainTradingText)} />
         ) : null}
@@ -109,8 +112,8 @@ export function AnalysisPage({
         </div>
         <MiniKline bars={result?.bars?.slice(-60) ?? []} />
         <div className="context-row">
-          <InfoPill label="盘口增强" value={result?.microstructure.notes ?? "--"} />
-          <InfoPill label="量能结构" value={String(result?.metrics.volume_ratio ?? "--")} />
+          <InfoPill label="买卖盘情况" value={plainTradingText(result?.microstructure.notes) || "--"} />
+          <InfoPill label="成交量" value={String(result?.metrics.volume_ratio ?? "--")} />
           <InfoPill label="成交额" value={formatAmount(quote?.amount)} />
         </div>
       </div>
@@ -119,7 +122,10 @@ export function AnalysisPage({
           <PanelTitle title="执行计划" />
           <p>{executionText}</p>
           <p className="hint">{invalidText}</p>
-          <p className="hint">{plainTradingText(suggestion?.strategy_notes) || "正T只等回落后重新走强，反T只在冲高乏力且有回补空间时执行；AI 只解释，不放宽底线规则。"}</p>
+          <p className="hint">
+            {plainTradingText(suggestion?.strategy_notes) ||
+              "先买后卖只等回落后重新走强；先卖后接回只在冲高乏力且有接回空间时执行；AI 只解释，不放宽底线规则。"}
+          </p>
         </div>
         <div>
           <PanelTitle title="AI 补充说明" />
@@ -129,8 +135,8 @@ export function AnalysisPage({
       </div>
       <div className="panel log-strip analysis-log">
         <InfoPill label="分析日志" value={result?.analysis_log_id ? `日志 #${result.analysis_log_id}` : "等待分析"} />
-        <InfoPill label="阻塞规则" value={suggestion?.blocking_rules.length ? `${suggestion.blocking_rules.length} 条` : "暂无硬阻塞"} />
-        <InfoPill label="事件/微观" value={result ? `${result.events.length} 条事件 / ${result.microstructure.notes || "盘口已检查"}` : "--"} />
+        <InfoPill label="不能操作原因" value={suggestion?.blocking_rules.length ? `${suggestion.blocking_rules.length} 条` : "暂无硬性原因"} />
+        <InfoPill label="风险事件/盘口" value={result ? `${result.events.length} 条事件 / ${plainTradingText(result.microstructure.notes) || "盘口已检查"}` : "--"} />
         <InfoPill label="复盘记录" value={result ? "分析结果已写入研究复盘" : "--"} />
       </div>
     </section>

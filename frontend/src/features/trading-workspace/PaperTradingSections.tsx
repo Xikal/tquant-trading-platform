@@ -53,17 +53,29 @@ export function PaperMetricGrid({
   loading: boolean;
 }) {
   const status = resolveAutoManagedStatus(account, autoTradingStatus);
+  const skipNotice = autoTradingSkipNotice(autoTradingStatus);
   const metrics = [
     { label: "总资产", value: formatMoneyPlain(account?.total_assets), tone: "neutral" as const },
     { label: "可用资金", value: formatMoneyPlain(account?.cash_available), tone: "neutral" as const },
     { label: "持仓市值", value: formatMoneyPlain(account?.market_value), tone: "neutral" as const },
     { label: "浮动盈亏", value: formatNumber(account?.unrealized_pnl), tone: toneFromChange(account?.unrealized_pnl) },
-    { label: "总收益率", value: formatPct(performance?.total_return_pct), tone: toneFromChange(performance?.total_return_pct) },
+    { label: "总收益率", value: formatPct(account?.total_return_pct), tone: toneFromChange(account?.total_return_pct) },
     { label: "净胜率", value: formatPct(performance?.net_win_rate_pct), tone: toneFromChange(performance?.net_win_rate_pct) },
     { label: "状态", value: status.label, tone: status.tone },
   ] satisfies MetricItem[];
 
-  return <MetricGrid items={metrics} className="paper-metrics" loading={loading} as="section" />;
+  return (
+    <section className="paper-metrics-shell">
+      <MetricGrid items={metrics} className="paper-metrics" loading={loading} />
+      {skipNotice ? (
+        <div className={`paper-auto-skip-notice ${skipNotice.tone}`}>
+          <strong>{skipNotice.title}</strong>
+          <span>{skipNotice.text}</span>
+          {skipNotice.time ? <em>{formatPaperDateTime(skipNotice.time)}</em> : null}
+        </div>
+      ) : null}
+    </section>
+  );
 }
 
 function resolveAutoManagedStatus(
@@ -78,6 +90,25 @@ function resolveAutoManagedStatus(
       : { label: "等待自动启动", tone: "warn" };
   }
   return { label: "非交易时段静默", tone: "neutral" };
+}
+
+function autoTradingSkipNotice(
+  autoTradingStatus: PaperAutoTradingStatus | null,
+): { title: string; text: string; time?: string; tone: "warn" | "neutral" } | null {
+  if (!autoTradingStatus) return null;
+  const blockingReason = String(autoTradingStatus.blocking_reason || "").trim();
+  if (blockingReason) {
+    return { title: "未买原因", text: blockingReason, time: autoTradingStatus.last_skip_at, tone: "warn" };
+  }
+  const skipReason = String(autoTradingStatus.last_skip_reason || "").trim();
+  if (!skipReason) return null;
+  const symbol = String(autoTradingStatus.last_skip_symbol || "").trim();
+  return {
+    title: "最近跳过",
+    text: symbol ? `${symbol}：${skipReason}` : skipReason,
+    time: autoTradingStatus.last_skip_at,
+    tone: "neutral",
+  };
 }
 
 export { OrderEntryModal };
@@ -144,11 +175,10 @@ export function PaperBottomPanels({
         <DataBody loading={loading} columns={5}>
           <div className="paper-table-head paper-order-head">
             <span>标的</span>
-            <span>类型</span>
+            <span>方向/类型</span>
             <span>状态</span>
             <span>数量</span>
             <span>成交</span>
-            <span>备注</span>
           </div>
           <div className="line-list">
             {orders.length ? orders.map((item) => <OrderRow key={item.id} item={item} />) : <EmptyState text="暂无委托" />}
@@ -237,7 +267,7 @@ function IntradayConfirmationStrip({ items }: { items: IntradayConfirmationItem[
         const confirmed = item.confirmed || item.late_confirmed;
         return (
           <span key={item.symbol}>
-            {item.symbol}：{confirmed ? "承接确认" : "等待确认"} · VWAP {formatPrice(item.vwap)}
+            {item.symbol}：{confirmed ? "承接确认" : "等待确认"} · 分时均价 {formatPrice(item.vwap)}
           </span>
         );
       })}
@@ -262,17 +292,19 @@ function PositionRow({ item }: { item: PaperPosition }) {
 
 function OrderRow({ item }: { item: PaperOrder }) {
   const statusTone = ORDER_STATUS_TONE[item.status] ?? "neutral";
+  const sideText = item.side === "buy" ? "买入" : "卖出";
+  const orderTypeText = item.order_type === "market" ? "市价" : "限价";
   return (
-    <article className="paper-row paper-order-row">
+    <article className={`paper-row paper-order-row${item.reject_reason ? " has-note" : ""}`}>
       <div className="paper-stock-name">
         <strong>{item.symbol}</strong>
         <span>{item.name || item.strategy_key || "--"}</span>
       </div>
-      <span className="status-chip neutral">{item.order_type === "market" ? "市价" : "限价"}</span>
+      <span className={`status-chip ${item.side === "buy" ? "up" : "down"}`}>{sideText} · {orderTypeText}</span>
       <span className={`status-chip ${statusTone}`}>{ORDER_STATUS_TEXT[item.status] ?? item.status}</span>
       <span className="cell-number">{formatInteger(item.quantity)} 股</span>
       <span className="cell-number">{formatPrice(item.avg_fill_price)}</span>
-      {item.reject_reason ? <span className="warn">{item.reject_reason}</span> : <span className="muted">--</span>}
+      {item.reject_reason ? <span className="paper-order-reason warn">原因：{item.reject_reason}</span> : null}
     </article>
   );
 }

@@ -151,7 +151,7 @@ export function SettingsPage({
     <section className="page-grid settings-grid">
       <div className="panel settings-hero">
         <PanelTitle title="开放式系统配置" actions={<button onClick={onRefresh} disabled={loading === "settings"}>刷新配置</button>} />
-        <p className="hint">管理大模型、数据库、数据源、风险控制和策略阈值。敏感值只保存，不回显明文。</p>
+        <p className="hint">管理大模型、数据库、数据源、风险控制和策略门槛。敏感值只保存，不回显明文。</p>
         {unsavedCount > 0 ? (
           <div className="settings-unsaved-banner">
             <span>有 {unsavedCount} 项未保存的更改</span>

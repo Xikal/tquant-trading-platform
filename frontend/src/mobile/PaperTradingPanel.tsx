@@ -40,7 +40,7 @@ export function PaperTradingPanel({
     { label: "总资产", value: formatMoneyPlain(account?.total_assets), tone: "neutral" as const },
     { label: "可用", value: formatMoneyPlain(account?.cash_available), tone: "neutral" as const },
     { label: "持仓", value: formatMoneyPlain(account?.market_value), tone: "neutral" as const },
-    { label: "收益", value: formatPct(performance?.total_return_pct ?? account?.today_return_pct), tone: paperTone(performance?.total_return_pct ?? account?.today_return_pct) }
+    { label: "收益", value: formatPct(account?.total_return_pct), tone: paperTone(account?.total_return_pct) }
   ]
 
   return (

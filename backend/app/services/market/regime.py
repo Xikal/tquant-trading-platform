@@ -1,11 +1,16 @@
 from __future__ import annotations
 
-from dataclasses import replace
+from dataclasses import asdict, fields, replace
+import json
+import logging
 import threading
 import time
 
 import pandas as pd
+from sqlalchemy import desc, func, select
 
+from app.core.database import SessionLocal
+from app.models.entities import DailyBarSnapshot, MarketRegimeSnapshotCache
 from app.services.market.shared import ak
 from app.services.market.regime_scoring import (
     classify_market_regime,
@@ -20,6 +25,10 @@ from app.services.market.regime_types import (
     MarketBreadthSnapshot,
     MarketRegimeSnapshot,
 )
+
+
+logger = logging.getLogger(__name__)
+_SNAPSHOT_FIELD_NAMES = {field.name for field in fields(MarketRegimeSnapshot)}
 
 
 class MarketRegimeMixin:
@@ -66,7 +75,9 @@ class MarketRegimeMixin:
             snapshot,
             self._peek_market_regime_snapshot(trade_date),
         )
+        snapshot = replace(snapshot, snapshot_source="live", snapshot_source_text="实时市场快照")
         self._set_market_regime_cache(trade_date, snapshot)
+        self._persist_market_regime_snapshot(trade_date, snapshot)
         return snapshot
 
     def get_market_regime_fast(
@@ -89,6 +100,10 @@ class MarketRegimeMixin:
             hot_industry_source_text=hot_industry_source_text,
             recent_hot_sequences=recent_hot_sequences or [],
         )
+        persisted = self._load_persisted_market_regime_snapshot(trade_date, hot_industries)
+        if persisted is not None:
+            self._set_market_regime_cache(trade_date, persisted)
+            return persisted
         return self._build_lightweight_market_regime(
             hot_industries=hot_industries or [],
             hot_industry_source=hot_industry_source,
@@ -131,12 +146,17 @@ class MarketRegimeMixin:
         hot_industry_source: str,
         hot_industry_source_text: str,
     ) -> MarketRegimeSnapshot:
-        return classify_market_regime(
+        snapshot = classify_market_regime(
             None,
             limit_down_count=None,
             hot_industries=hot_industries,
             hot_industry_source=hot_industry_source or "cached_fallback",
             hot_industry_source_text=hot_industry_source_text or "热点来源：后台补齐中",
+        )
+        return replace(
+            snapshot,
+            snapshot_source="warming",
+            snapshot_source_text="市场状态正在刷新，暂用轻量快照",
         )
 
     def _get_compatible_regime_cache(
@@ -241,6 +261,10 @@ class MarketRegimeMixin:
         snapshot_map = self._get_spot_snapshot_cache("stock") or {}
         if not snapshot_map:
             self._warm_market_breadth_snapshot_async(cache_key, sequences)
+            local_snapshot = self._load_local_daily_breadth_snapshot(sequences)
+            if local_snapshot is not None:
+                self._set_market_breadth_cache(cache_key, local_snapshot)
+                return local_snapshot
             return self._build_market_breadth_snapshot(
                 snapshot_map={},
                 recent_hot_sequences=sequences,
@@ -254,6 +278,57 @@ class MarketRegimeMixin:
         )
         self._set_market_breadth_cache(cache_key, snapshot)
         return snapshot
+
+    def _load_local_daily_breadth_snapshot(
+        self,
+        recent_hot_sequences: list[list[str]],
+    ) -> MarketBreadthSnapshot | None:
+        """Fallback breadth from local daily bars when real-time breadth is unavailable."""
+
+        try:
+            with SessionLocal() as db:
+                candidates = db.execute(
+                    select(DailyBarSnapshot.trade_date, func.count(DailyBarSnapshot.id).label("row_count"))
+                    .where(DailyBarSnapshot.instrument_type == "stock")
+                    .group_by(DailyBarSnapshot.trade_date)
+                    .order_by(desc(DailyBarSnapshot.trade_date))
+                    .limit(5)
+                ).all()
+                trade_date = next(
+                    (
+                        row.trade_date
+                        for row in candidates
+                        if int(row._mapping.get("row_count") or 0) >= 1000
+                    ),
+                    None,
+                )
+                if not trade_date:
+                    return None
+                rows = db.execute(
+                    select(DailyBarSnapshot.pct_chg)
+                    .where(
+                        DailyBarSnapshot.instrument_type == "stock",
+                        DailyBarSnapshot.trade_date == trade_date,
+                    )
+                ).all()
+        except Exception:
+            logger.exception("failed to load local daily breadth fallback")
+            return None
+        changes = [float(row.pct_chg or 0.0) for row in rows]
+        if not changes:
+            return None
+        frame = pd.Series(changes, dtype="float64")
+        largecap_change, smallcap_change = self._load_style_proxy_changes()
+        return MarketBreadthSnapshot(
+            breadth_ready=True,
+            stock_up_ratio=round(float((frame > 0).mean()), 4),
+            stock_median_change=round(float(frame.median()), 4),
+            largecap_change=largecap_change,
+            smallcap_change=smallcap_change,
+            style_divergence=round(largecap_change - smallcap_change, 4),
+            hot_turnover=self._compute_hot_turnover(recent_hot_sequences),
+            hot_overlap_ratio=self._compute_hot_overlap_ratio(recent_hot_sequences),
+        )
 
     def _warm_market_breadth_snapshot_async(
         self,
@@ -402,6 +477,62 @@ class MarketRegimeMixin:
             snapshot,
         )
 
+    def _persist_market_regime_snapshot(self, key: str, snapshot: MarketRegimeSnapshot) -> None:
+        try:
+            payload = json.dumps(asdict(snapshot), ensure_ascii=False)
+            with SessionLocal() as db:
+                row = db.execute(
+                    select(MarketRegimeSnapshotCache).where(MarketRegimeSnapshotCache.cache_key == key)
+                ).scalar_one_or_none()
+                if row is None:
+                    row = MarketRegimeSnapshotCache(cache_key=key)
+                    db.add(row)
+                row.trade_date = key
+                row.state = snapshot.state
+                row.breadth_ready = bool(snapshot.breadth_ready)
+                row.emotion_ready = bool(snapshot.emotion_ready)
+                row.hot_industry_source = snapshot.hot_industry_source
+                row.data_quality = _regime_data_quality(snapshot)
+                row.payload_json = payload
+                db.commit()
+        except Exception:
+            logger.exception("failed to persist market regime snapshot")
+
+    def _load_persisted_market_regime_snapshot(
+        self,
+        key: str,
+        hot_industries: list[str] | None,
+    ) -> MarketRegimeSnapshot | None:
+        try:
+            with SessionLocal() as db:
+                row = db.execute(
+                    select(MarketRegimeSnapshotCache).where(MarketRegimeSnapshotCache.cache_key == key)
+                ).scalar_one_or_none()
+                if row is not None and not (row.breadth_ready or row.emotion_ready):
+                    row = None
+                if row is None:
+                    row = db.execute(
+                        select(MarketRegimeSnapshotCache)
+                        .where(MarketRegimeSnapshotCache.breadth_ready.is_(True))
+                        .order_by(desc(MarketRegimeSnapshotCache.trade_date), desc(MarketRegimeSnapshotCache.updated_at))
+                        .limit(1)
+                    ).scalar_one_or_none()
+                if row is None:
+                    return None
+                snapshot = _snapshot_from_payload(row.payload_json)
+        except Exception:
+            logger.exception("failed to load persisted market regime snapshot")
+            return None
+        if snapshot is None:
+            return None
+        if hot_industries and snapshot.hot_industries and hot_industries != snapshot.hot_industries:
+            return None
+        return replace(
+            snapshot,
+            snapshot_source="cached",
+            snapshot_source_text=f"使用 {row.trade_date} 最近完整市场快照，后台正在刷新实时情绪",
+        )
+
     def _get_limit_down_cache(self, key: str) -> int | None:
         return self._get_cached_snapshot(self._limit_down_cache, self._limit_down_cache_ttl, key)
 
@@ -475,6 +606,33 @@ def _rank_continuity_score(latest: list[str], previous: list[str], common: set[s
         for industry in common
     ]
     return sum(scores) / len(scores)
+
+
+def _snapshot_from_payload(raw_payload: str | None) -> MarketRegimeSnapshot | None:
+    try:
+        payload = json.loads(raw_payload or "{}")
+    except Exception:
+        return None
+    if not isinstance(payload, dict):
+        return None
+    filtered = {key: value for key, value in payload.items() if key in _SNAPSHOT_FIELD_NAMES}
+    try:
+        return MarketRegimeSnapshot(**filtered)
+    except TypeError:
+        return None
+
+
+def _regime_data_quality(snapshot: MarketRegimeSnapshot) -> str:
+    if snapshot.breadth_ready and snapshot.emotion_ready and snapshot.hot_industry_source not in {
+        "cached_fallback",
+        "unavailable",
+        "fallback",
+        "none",
+    }:
+        return "ok"
+    if snapshot.breadth_ready or snapshot.emotion_ready:
+        return "partial"
+    return "limited"
 
 
 __all__ = [

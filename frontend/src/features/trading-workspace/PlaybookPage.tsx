@@ -77,7 +77,7 @@ export function PlaybookPage({
       <div className="panel playbook-performance">
         <PanelTitle title="最近表现" />
         <p>当前策略：{strategyName}；已加载：{loadedStrategyName}{switchingText}</p>
-        <p>近5日 达标率 {hitRateDisplay}　平均收益 {formatPct(playbook?.performance?.avg_return_5d)}　回撤 {formatPct(playbook?.performance?.avg_max_drawdown_5d)}　盈亏比 {formatNumber(playbook?.performance?.profit_factor)}</p>
+        <p>近5日 达标率 {hitRateDisplay}　平均收益 {formatPct(playbook?.performance?.avg_return_5d)}　回撤 {formatPct(playbook?.performance?.avg_max_drawdown_5d)}　赚亏比 {formatNumber(playbook?.performance?.profit_factor)}</p>
         {hasInsufficientData ? <p>样本说明：{sampleReason}</p> : null}
         <p>样本规模：信号 {playbook?.performance?.signal_count ?? 0}　已评估 {playbook?.performance?.evaluated_signals ?? 0}　真实成交 {playbook?.performance?.filled_signals ?? 0}　未成交 {playbook?.performance?.not_filled_signals ?? 0}</p>
         <p>1/2/3/4/5日胜率：{formatPct(playbook?.performance?.win_rate_1d, 0)} / {formatPct(playbook?.performance?.win_rate_2d, 0)} / {formatPct(playbook?.performance?.win_rate_3d, 0)} / {formatPct(playbook?.performance?.win_rate_4d, 0)} / {formatPct(playbook?.performance?.win_rate_5d, 0)}</p>

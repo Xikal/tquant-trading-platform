@@ -61,6 +61,8 @@ class MarketRegimeSnapshot:
     regime_confidence: float = 0.0
     state_persistence_days: int = 1
     transition_risk: float = 0.0
+    snapshot_source: str = "live"
+    snapshot_source_text: str = "实时市场快照"
 
 
 STATE_CONFIG = {

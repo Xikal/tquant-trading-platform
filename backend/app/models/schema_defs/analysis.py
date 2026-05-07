@@ -42,6 +42,10 @@ class StrategySuggestion(BaseModel):
     scenario: str
     trade_scene: str = ""
     trade_scene_text: str = ""
+    signal_layer: Literal["hold", "watch_prepare", "light_execute", "strong_execute"] = "hold"
+    signal_layer_text: str = "今天不做"
+    near_action: ActionType = "hold"
+    why_not_execute: str = ""
     buyback_trigger: str = ""
     reasons: list[str]
     blocking_rules: list[str]

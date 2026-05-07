@@ -6,6 +6,7 @@ from app.core.auth import get_current_user
 from app.core.timezone import beijing_now_string
 from app.models.schema_defs.market import MarketBreadthResponse
 from app.services.market_data import MarketDataService
+from app.services.market.regime_quality import market_regime_quality_text
 
 router = APIRouter(prefix="/market", dependencies=[Depends(get_current_user)])
 market_data = MarketDataService()
@@ -35,5 +36,5 @@ def market_breadth() -> MarketBreadthResponse:
         hot_industries=regime.hot_industries[:8],
         hot_turnover=round(regime.hot_turnover, 4),
         hot_overlap_ratio=round(regime.hot_overlap_ratio, 4),
-        data_quality_text="实时数据" if regime.breadth_ready and regime.emotion_ready else "部分数据降级",
+        data_quality_text=market_regime_quality_text(regime),
     )

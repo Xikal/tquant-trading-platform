@@ -71,6 +71,34 @@ class PaperAutoTradingTest(unittest.TestCase):
         self.assertEqual(len(result.passed), 0)
         self.assertIn("退潮", result.filtered[0].reason)
 
+    def test_admission_rejects_chinext_and_star_market_stocks(self):
+        from app.services.paper.admission import AdmissionFilter
+
+        result = AdmissionFilter(min_score=75).evaluate(
+            signals=[
+                {
+                    "symbol": "300059",
+                    "name": "东方财富",
+                    "priority_score": 95,
+                    "risk_tier": "note",
+                    "buy_signal_state": "buy_now",
+                },
+                {
+                    "symbol": "688981",
+                    "name": "中芯国际",
+                    "priority_score": 95,
+                    "risk_tier": "note",
+                    "buy_signal_state": "buy_now",
+                },
+            ],
+            existing_positions=[],
+            today_orders=[],
+            market_direction="positive_t",
+        )
+
+        self.assertEqual(len(result.passed), 0)
+        self.assertTrue(all("创业板/科创板" in item.reason for item in result.filtered))
+
     def test_admission_rejects_same_day_filled_order(self):
         from app.services.paper.admission import AdmissionFilter
 
@@ -187,6 +215,45 @@ class PaperAutoTradingTest(unittest.TestCase):
         self.assertFalse(is_trading_time(datetime(2026, 5, 4, 10, 0)))
         self.assertTrue(is_trading_time(datetime(2026, 5, 6, 10, 0)))
         self.assertFalse(is_trading_time(datetime(2026, 5, 6, 15, 0)))
+
+    def test_blocked_run_dedupes_same_reason_in_recent_window(self):
+        from sqlalchemy import create_engine
+        from sqlalchemy.orm import sessionmaker
+        from sqlalchemy.pool import StaticPool
+
+        from app.models.base import Base
+        from app.models.entities import PaperAccount, PaperAgentRun
+        from app.services.paper.scheduler import PaperAutoTrader
+
+        engine = create_engine(
+            "sqlite+pysqlite:///:memory:",
+            connect_args={"check_same_thread": False},
+            poolclass=StaticPool,
+            future=True,
+        )
+        Base.metadata.create_all(engine)
+        Session = sessionmaker(bind=engine, future=True)
+        with Session() as db:
+            account = PaperAccount(name="测试账户", initial_cash=Decimal("100000"), cash_available=Decimal("100000"), total_assets=Decimal("100000"))
+            db.add(account)
+            db.commit()
+            db.refresh(account)
+            reason = "模拟盘最大回撤 -28.50%，建议暂停新增委托并复盘。"
+            db.add(
+                PaperAgentRun(
+                    account_id=account.id,
+                    provider="paper_auto_trader",
+                    run_type="auto_trade_cycle",
+                    status="skipped",
+                    response_json=f'{{"skipped":[{{"account_id":{account.id},"reason":"{reason}"}}]}}',
+                    created_at=datetime.now(),
+                )
+            )
+            db.commit()
+
+            trader = PaperAutoTrader({})
+            self.assertFalse(trader._should_persist_blocked_run(db, account_id=account.id, blocking_reason=reason))
+            self.assertTrue(trader._should_persist_blocked_run(db, account_id=account.id, blocking_reason="另一条风控原因"))
 
     def test_matching_rejects_invalid_prices(self):
         from app.services.paper.matching import OrderSide, OrderType, PaperMatchingEngine

@@ -15,9 +15,11 @@ from app.core.database import get_db
 from app.core.paper_auth import require_paper_trading
 from app.core.timezone import beijing_now
 from app.models.entities import (
+    PaperAccount,
     PaperAgentRun,
     PaperTradeTag,
     PaperTrade,
+    RiskEvent,
     User,
 )
 from app.models.schemas import (
@@ -71,6 +73,8 @@ def get_paper_account(
     if get_settings().paper_auto_trading_enabled:
         account = service.resume_if_safe_for_auto_trading(account.id)
     service.update_market_value(account.id)
+    db.commit()
+    db.refresh(account)
     return _account_out(account)
 
 
@@ -156,6 +160,7 @@ def refresh_paper_positions(current_user: User = Depends(require_paper_trading),
                 except Exception:
                     continue
     position_service.refresh_quotes(account.id, prices)
+    PaperAccountService(db).update_market_value(account.id)
     db.commit()
     return _positions_response(position_service.get_positions(account.id))
 
@@ -374,7 +379,9 @@ def paper_performance(
     current_user: User = Depends(require_paper_trading),
     db: Session = Depends(get_db),
 ) -> PaperPerformanceOut:
-    account = PaperAccountService(db).get_or_create_default(current_user.id)
+    account_service = PaperAccountService(db)
+    account = account_service.get_or_create_default(current_user.id)
+    account_service.update_market_value(account.id)
     return PaperPerformanceOut(**PaperPerformanceService(db).compute_overall(account.id))
 
 
@@ -423,7 +430,9 @@ def paper_performance_dashboard(
     current_user: User = Depends(require_paper_trading),
     db: Session = Depends(get_db),
 ) -> dict:
-    account = PaperAccountService(db).get_or_create_default(current_user.id)
+    account_service = PaperAccountService(db)
+    account = account_service.get_or_create_default(current_user.id)
+    account_service.update_market_value(account.id)
     return PaperPerformanceDashboardService(db).build(account, days)
 
 
@@ -440,24 +449,32 @@ def archive_paper_performance(
 @router.get("/auto-trading/status")
 def get_auto_trading_status(
     current_user: User = Depends(require_paper_trading),
+    db: Session = Depends(get_db),
 ) -> dict:
     settings = get_settings()
     trading_time = is_trading_time()
+    account = PaperAccountService(db).get_or_create_default(current_user.id)
+    account_context = _auto_trading_account_context(db, account.id)
     trader = ensure_auto_trader(build_auto_trader_config(settings)) if settings.paper_auto_trading_enabled else get_auto_trader()
     if trader is None:
-        return {
+        payload = {
             "running": False,
             "engine_running": False,
             "trading_time": trading_time,
             "reason": "非交易时段，交易时间自动开启" if settings.paper_auto_trading_enabled else "未启动",
         }
+        payload.update(account_context)
+        return payload
     payload = trader.state.to_dict()
     engine_running = bool(payload.get("running"))
     payload["engine_running"] = engine_running
     payload["trading_time"] = trading_time
     payload["running"] = engine_running and trading_time
+    payload.update(account_context)
     if not trading_time:
         payload["reason"] = "非交易时段，交易时间自动开启"
+    elif account_context.get("blocking_reason"):
+        payload["reason"] = f"未买原因：{account_context['blocking_reason']}"
     elif not engine_running:
         payload["reason"] = "未启动"
     return payload
@@ -564,6 +581,89 @@ def _agent_run_out(row: PaperAgentRun) -> PaperAgentRunOut:
     )
 
 
+def _auto_trading_account_context(db: Session, account_id: int) -> dict[str, object]:
+    blocking_reason = _latest_blocking_reason(db, account_id)
+    account = db.get(PaperAccount, account_id)
+    latest_runs = (
+        db.execute(
+            select(PaperAgentRun)
+            .where(PaperAgentRun.account_id == account_id)
+            .order_by(PaperAgentRun.id.desc())
+            .limit(20)
+        )
+        .scalars()
+        .all()
+    )
+    latest_skip: dict[str, object] = {}
+    latest_skip_at = ""
+    for run in latest_runs:
+        candidate = _extract_latest_skip(run)
+        if candidate.get("reason"):
+            latest_skip = candidate
+            latest_skip_at = run.created_at.isoformat(sep=" ")
+            break
+    return {
+        "account_status": str(account.status if account is not None else ""),
+        "blocking_reason": blocking_reason,
+        "last_skip_reason": latest_skip.get("reason", ""),
+        "last_skip_symbol": latest_skip.get("symbol", ""),
+        "last_skip_at": latest_skip_at,
+        "last_skip_reasons": latest_skip.get("reasons", []),
+    }
+
+
+def _latest_blocking_reason(db: Session, account_id: int) -> str:
+    row = (
+        db.execute(
+            select(RiskEvent)
+            .where(
+                RiskEvent.account_id == account_id,
+                RiskEvent.status == "open",
+                RiskEvent.severity.in_(["high", "critical"]),
+            )
+            .order_by(RiskEvent.triggered_at.desc(), RiskEvent.id.desc())
+            .limit(1)
+        )
+        .scalars()
+        .first()
+    )
+    return str(row.message or "").strip() if row is not None else ""
+
+
+def _extract_latest_skip(row: PaperAgentRun) -> dict[str, object]:
+    payload = _json_dict(row.response_json)
+    skipped = payload.get("skipped")
+    reasons: list[dict[str, str]] = []
+    if isinstance(skipped, list):
+        for item in skipped:
+            if not isinstance(item, dict):
+                continue
+            reason = str(item.get("reason") or "").strip()
+            if not reason:
+                continue
+            reasons.append(
+                {
+                    "symbol": str(item.get("symbol") or "").strip(),
+                    "reason": reason,
+                }
+            )
+    if not reasons:
+        filtered_reasons = payload.get("filtered_reasons")
+        if isinstance(filtered_reasons, list):
+            for item in filtered_reasons:
+                if not isinstance(item, dict):
+                    continue
+                reason = str(item.get("reason") or "").strip()
+                if reason:
+                    reasons.append({"symbol": str(item.get("symbol") or "").strip(), "reason": reason})
+    first = reasons[0] if reasons else {}
+    return {
+        "symbol": first.get("symbol", ""),
+        "reason": first.get("reason", ""),
+        "reasons": reasons[:3],
+    }
+
+
 def _json_dict(raw: str) -> dict:
     try:
         value = json.loads(raw or "{}")
@@ -575,6 +675,7 @@ def _json_dict(raw: str) -> dict:
 def _account_out(row) -> PaperAccountOut:
     initial = float(row.initial_cash or 0)
     total = float(row.total_assets or 0)
+    total_return_pct = round((total - initial) / initial * 100, 3) if initial else 0.0
     return PaperAccountOut(
         id=row.id,
         user_id=row.user_id,
@@ -586,9 +687,10 @@ def _account_out(row) -> PaperAccountOut:
         total_assets=total,
         realized_pnl=float(row.realized_pnl or 0),
         unrealized_pnl=float(row.unrealized_pnl or 0),
+        total_return_pct=total_return_pct,
         max_drawdown_pct=float(row.max_drawdown_pct or 0),
         status=row.status,
-        today_return_pct=round((total - initial) / initial * 100, 3) if initial else 0.0,
+        today_return_pct=total_return_pct,
     )
 
 

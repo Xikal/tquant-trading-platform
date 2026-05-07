@@ -45,7 +45,7 @@ export function ResearchPage({
       <div className="panel research-hero">
         <div>
           <PanelTitle title="信号复盘与样本外验证" actions={<button onClick={onRefresh} disabled={loading === "research"}>刷新复盘</button>} />
-          <p className="hint">用复盘和样本外验证检查信号稳定性，核心只看胜率、盈亏比和回撤。样本少时不放大仓位。</p>
+          <p className="hint">用复盘和样本外验证检查信号稳定性，核心只看胜率、赚亏比和回撤。样本少时不放大仓位。</p>
         </div>
         <MetricGrid
           className="summary-panel research-metrics"
@@ -119,7 +119,7 @@ export function ResearchPage({
             { label: "总交易", value: String(result?.total_trades ?? "--"), tone: "neutral" },
             { label: "胜率", value: formatPct(result?.win_rate), tone: "up" },
             { label: "平均收益", value: formatPct(result?.avg_pnl_pct), tone: toneFromChange(result?.avg_pnl_pct) },
-            { label: "盈亏比", value: formatNumber(result?.profit_factor), tone: "neutral" },
+            { label: "赚亏比", value: formatNumber(result?.profit_factor), tone: "neutral" },
             { label: "真实成交", value: executionBacktest ? `${executionBacktest.filled_signals}/${executionBacktest.evaluated_signals}` : "--", tone: "neutral" },
             { label: "净胜优势", value: formatPct(executionBacktest?.net_win_rate), tone: toneFromChange(executionBacktest?.net_win_rate) },
             { label: "净收益", value: formatPct(executionBacktest?.avg_net_return_pct), tone: toneFromChange(executionBacktest?.avg_net_return_pct) },

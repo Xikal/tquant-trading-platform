@@ -3,6 +3,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
+from app.services.market.board_exclusions import GROWTH_BOARD_REJECT_REASON, is_growth_board_stock
+
 
 @dataclass(frozen=True)
 class AdmissionResult:
@@ -96,6 +98,8 @@ class AdmissionFilter:
     ) -> str:
         if not symbol:
             return "缺少证券代码"
+        if is_growth_board_stock(symbol):
+            return GROWTH_BOARD_REJECT_REASON
         if signal.get("is_actionable") is False:
             return "信号仅供观察，未通过可执行门槛"
         if score < self.min_score:

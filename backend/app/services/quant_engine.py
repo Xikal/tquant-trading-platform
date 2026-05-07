@@ -34,6 +34,7 @@ from app.services.quant_engine_decision import (
     apply_position_constraints,
     apply_trade_scene_gate,
     resolve_initial_action,
+    resolve_prepare_action,
     resolve_trade_plan,
 )
 from app.services.quant_engine_models import IndicatorSnapshot, ScoreSnapshot, TradePlan
@@ -95,6 +96,8 @@ class QuantEngine:
             market_regime=market_regime,
         )
         action = resolve_initial_action(request=request, scores=scores, blocking_rules=blocking_rules)
+        if action == "hold":
+            action = resolve_prepare_action(request=request, scores=scores, blocking_rules=blocking_rules)
         action, blocking_rules = apply_trade_scene_gate(
             action=action,
             scores=scores,
@@ -107,7 +110,7 @@ class QuantEngine:
             rules=rules,
             blocking_rules=blocking_rules,
         )
-        action, blocking_rules = apply_direction_gate(
+        action, blocking_rules, signal_layer, near_action, layer_reason = apply_direction_gate(
             action=action,
             quote=quote,
             indicators=indicators,
@@ -126,6 +129,10 @@ class QuantEngine:
             blocking_rules=blocking_rules,
             market_regime=market_regime,
             trade_scene=trade_scene,
+            sector=sector,
+            signal_layer=signal_layer,
+            near_action=near_action,
+            layer_reason=layer_reason,
         )
         reasons = build_reasons(
             action=trade_plan.action,

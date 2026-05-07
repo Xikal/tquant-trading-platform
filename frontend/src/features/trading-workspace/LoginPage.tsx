@@ -23,7 +23,7 @@ export function LoginPage({
         <div className="login-visual-head">
           <div>
             <h1>登录即进入盘中决策台</h1>
-            <p>微信号、低吸候选、风控阈值与 AI 解释统一接入。</p>
+            <p>微信号、低吸候选、风控门槛与 AI 解释统一接入。</p>
           </div>
           <span className="login-live-dot">盘中在线</span>
         </div>

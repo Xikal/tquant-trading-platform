@@ -1,4 +1,4 @@
-import { lazy, useEffect, useState } from "react";
+import { lazy, useEffect, useRef, useState } from "react";
 import { appApi } from "../../api/appClient";
 import { clearAuthTokens, getAuthAccessToken, shouldAttemptAuthRefresh } from "../../api/base";
 import { api } from "../../api/client";
@@ -33,6 +33,8 @@ const PlaybookPage = lazy(async () => ({ default: (await import("./PlaybookPage"
 const ResearchPage = lazy(async () => ({ default: (await import("./ResearchPage")).ResearchPage }));
 const SettingsPage = lazy(async () => ({ default: (await import("./SettingsPage")).SettingsPage }));
 const StrategyHubPage = lazy(async () => ({ default: (await import("../strategy/StrategyHubPage")).StrategyHubPage }));
+const PAPER_TRADING_REFRESH_INTERVAL_MS = 30_000;
+const PAPER_IDLE_REFRESH_INTERVAL_MS = 60 * 60 * 1000;
 
 export function TradingWorkspace() {
   const [authReady, setAuthReady] = useState(false);
@@ -87,6 +89,10 @@ export function TradingWorkspace() {
     setNotice,
     onAuthRequired: handleAuthRequired,
   });
+  const paperLiveRefreshRef = useRef(paper.refreshLiveSnapshot);
+  useEffect(() => {
+    paperLiveRefreshRef.current = paper.refreshLiveSnapshot;
+  }, [paper.refreshLiveSnapshot]);
   const settingsData = useSettingsData({
     withLoading,
     setError,
@@ -201,6 +207,39 @@ export function TradingWorkspace() {
     }, MONITOR_REFRESH_INTERVAL_MS);
     return () => window.clearInterval(timer);
   }, [currentUser, page]);
+
+  useEffect(() => {
+    if (!currentUser || page !== "paper" || !currentUser.can_paper_trade) {
+      return undefined;
+    }
+    let inFlight = false;
+    const isTradingTime = Boolean(paper.autoTradingStatus?.trading_time);
+    const intervalMs = isTradingTime ? PAPER_TRADING_REFRESH_INTERVAL_MS : PAPER_IDLE_REFRESH_INTERVAL_MS;
+    const runRefresh = async () => {
+      if (document.visibilityState !== "visible" || inFlight) {
+        return;
+      }
+      inFlight = true;
+      try {
+        await paperLiveRefreshRef.current({ refreshPrices: isTradingTime });
+      } finally {
+        inFlight = false;
+      }
+    };
+    const timer = window.setInterval(() => {
+      void runRefresh();
+    }, intervalMs);
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        void runRefresh();
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [currentUser, page, currentUser?.can_paper_trade, paper.autoTradingStatus?.trading_time]);
 
   async function restoreSession() {
     try {

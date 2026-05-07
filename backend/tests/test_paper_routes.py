@@ -17,7 +17,7 @@ from app.core.config import get_settings
 from app.core.database import get_db
 from app.core.rate_limit import clear_rate_limit_events
 from app.models.base import Base
-from app.models.entities import PaperOrder, PaperPosition, PaperPositionLot, PaperTrade, User
+from app.models.entities import PaperAccount, PaperAgentRun, PaperOrder, PaperPosition, PaperPositionLot, PaperTrade, RiskEvent, User
 
 
 class PaperRouteTests(unittest.TestCase):
@@ -86,6 +86,26 @@ class PaperRouteTests(unittest.TestCase):
         self.assertEqual(len(positions_a.json()["positions"]), 1)
         self.assertEqual(len(positions_b.json()["positions"]), 0)
 
+    def test_buy_updates_account_total_return_from_position_value(self) -> None:
+        headers = self._register("paper_account_return")
+
+        buy = self._paper_order(headers, symbol="510300", name="沪深300ETF", quantity=100, current_price=4.0)
+        self.assertEqual(buy.status_code, 200)
+
+        account = self.client.get("/api/paper/account", headers=headers)
+        self.assertEqual(account.status_code, 200)
+        body = account.json()
+        expected_market_value = round(float(buy.json()["avg_fill_price"]) * 100, 2)
+        self.assertIn("total_return_pct", body)
+        self.assertEqual(body["market_value"], expected_market_value)
+        self.assertGreater(body["total_assets"], 99900.0)
+        self.assertGreater(body["total_return_pct"], -0.2)
+        self.assertEqual(body["today_return_pct"], body["total_return_pct"])
+
+        with self.Session() as db:
+            row = db.execute(select(PaperAccount)).scalar_one()
+            self.assertEqual(float(row.market_value), expected_market_value)
+
     def test_paper_routes_require_whitelist_permission(self) -> None:
         headers = self._register("paper_blocked")
         with self.Session() as db:
@@ -125,13 +145,19 @@ class PaperRouteTests(unittest.TestCase):
 
     def test_same_day_sell_rejected_by_t1_rule(self) -> None:
         headers = self._register("paper_t1")
-        buy = self._paper_order(headers, symbol="300059", name="东方财富", quantity=100)
+        buy = self._paper_order(headers, symbol="600000", name="浦发银行", quantity=100)
         self.assertEqual(buy.status_code, 200)
         self.assertEqual(buy.json()["status"], "filled")
 
-        sell = self._paper_order(headers, symbol="300059", name="东方财富", side="sell", quantity=100)
+        sell = self._paper_order(headers, symbol="600000", name="浦发银行", side="sell", quantity=100)
         self.assertEqual(sell.status_code, 400)
         self.assertIn("当日买入未解锁", sell.json()["detail"])
+
+    def test_growth_board_buy_is_rejected(self) -> None:
+        headers = self._register("paper_growth_board")
+        response = self._paper_order(headers, symbol="300059", name="东方财富", quantity=100)
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("创业板/科创板", response.json()["detail"])
 
     def test_etf_same_day_sell_allowed_by_t0_rule(self) -> None:
         headers = self._register("paper_etf_t0")
@@ -206,7 +232,7 @@ class PaperRouteTests(unittest.TestCase):
 
     def test_stock_buy_keeps_position_unsellable_until_t1_unlock(self) -> None:
         headers = self._register("paper_stock_t1_available")
-        buy = self._paper_order(headers, symbol="300059", name="东方财富", quantity=100)
+        buy = self._paper_order(headers, symbol="600000", name="浦发银行", quantity=100)
         self.assertEqual(buy.status_code, 200)
 
         positions = self.client.get("/api/paper/positions", headers=headers)
@@ -258,6 +284,62 @@ class PaperRouteTests(unittest.TestCase):
         response = self.client.get("/api/paper/auto-trading/status", headers=headers)
         self.assertEqual(response.status_code, 200)
         self.assertFalse(response.json()["running"])
+
+    def test_auto_trading_status_exposes_blocking_and_skip_reason(self) -> None:
+        headers = self._register("paper_auto_block_reason")
+        account_response = self.client.get("/api/paper/account", headers=headers)
+        self.assertEqual(account_response.status_code, 200)
+        account_id = int(account_response.json()["id"])
+        with self.Session() as db:
+            db.add(
+                RiskEvent(
+                    account_id=account_id,
+                    event_type="drawdown_limit",
+                    severity="high",
+                    status="open",
+                    message="模拟盘最大回撤 -28.50%，建议暂停新增委托并复盘。",
+                )
+            )
+            db.add(
+                PaperAgentRun(
+                    account_id=account_id,
+                    provider="paper_auto_trader",
+                    run_type="auto_trade_cycle",
+                    status="skipped",
+                    response_json='{"skipped":[{"symbol":"600248","reason":"模拟盘最大回撤 -28.50%，建议暂停新增委托并复盘。"}]}',
+                )
+            )
+            db.commit()
+
+        response = self.client.get("/api/paper/auto-trading/status", headers=headers)
+        self.assertEqual(response.status_code, 200)
+        body = response.json()
+        self.assertIn("最大回撤", body["blocking_reason"])
+        self.assertEqual(body["last_skip_symbol"], "600248")
+        self.assertIn("最大回撤", body["last_skip_reason"])
+
+    def test_auto_trading_status_does_not_treat_success_summary_as_skip_reason(self) -> None:
+        headers = self._register("paper_auto_success_summary")
+        account_response = self.client.get("/api/paper/account", headers=headers)
+        self.assertEqual(account_response.status_code, 200)
+        account_id = int(account_response.json()["id"])
+        with self.Session() as db:
+            db.add(
+                PaperAgentRun(
+                    account_id=account_id,
+                    provider="paper_auto_trader",
+                    run_type="auto_trade_cycle",
+                    status="succeeded",
+                    response_json='{"summary":"处理 1 个模拟账户，执行 1 条，跳过 0 条。","executed":[{"symbol":"600248"}]}',
+                )
+            )
+            db.commit()
+
+        response = self.client.get("/api/paper/auto-trading/status", headers=headers)
+        self.assertEqual(response.status_code, 200)
+        body = response.json()
+        self.assertEqual(body["last_skip_reason"], "")
+        self.assertEqual(body["last_skip_symbol"], "")
 
     def test_auto_trading_dry_run_uses_user_account(self) -> None:
         headers = self._register("paper_auto_dry_run")

@@ -78,3 +78,7 @@ class TradePlan:
     trade_scene_text: str = ""
     buyback_trigger: str = ""
     cost_estimate: TradeCostEstimate | None = None
+    signal_layer: str = "hold"
+    signal_layer_text: str = "今天不做"
+    near_action: str = "hold"
+    why_not_execute: str = ""

@@ -24,6 +24,7 @@ from app.models.schema_defs.agent import (
 )
 from app.services.agent_context_service import AgentContextService
 from app.services.market_data import MarketDataService
+from app.services.market.regime_quality import market_regime_quality_text
 from app.services.paper import PaperAccountService, PaperOrderService
 from app.services.paper.risk_circuit import PaperRiskCircuitBreaker
 
@@ -185,7 +186,7 @@ def agent_market_sentiment(
         board_height=int(regime.board_height or 0),
         hot_industries=regime.hot_industries[:8],
         hot_turnover=round(regime.hot_turnover, 4),
-        data_quality_text="实时数据" if regime.breadth_ready and regime.emotion_ready else "部分数据降级",
+        data_quality_text=market_regime_quality_text(regime),
     )
 
 

@@ -8,6 +8,7 @@ export interface PaperAccount {
   total_assets: number
   realized_pnl: number
   unrealized_pnl: number
+  total_return_pct: number
   max_drawdown_pct: number
   status: string
   today_return_pct: number
@@ -159,6 +160,7 @@ export interface PaperAutoTradingStatus {
   engine_running?: boolean
   trading_time?: boolean
   dry_run?: boolean
+  account_status?: string
   interval_seconds?: number
   max_orders_per_cycle?: number
   min_score?: number
@@ -175,6 +177,11 @@ export interface PaperAutoTradingStatus {
   circuit_open?: boolean
   circuit_reason?: string
   circuit_since?: string
+  blocking_reason?: string
+  last_skip_reason?: string
+  last_skip_symbol?: string
+  last_skip_at?: string
+  last_skip_reasons?: Array<{ symbol?: string; reason: string }>
   heartbeat_at?: string
   reason?: string
 }

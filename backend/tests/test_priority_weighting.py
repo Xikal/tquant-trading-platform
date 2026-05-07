@@ -3,9 +3,9 @@ from __future__ import annotations
 import unittest
 
 from app.models.schemas import LowBuyCandidateOut, LowBuyPerformanceBucketOut, LowBuyStrategyPerformanceOut
-from app.services.low_buy.priority_board import LowBuyPriorityBoardMixin
+from app.services.low_buy.priority_board import LowBuyPriorityBoardMixin, filter_priority_candidates_for_recommendation
 from app.services.low_buy.priority_scoring import LowBuyPriorityScoringMixin
-from app.services.low_buy.priority_types import PriorityBaseSnapshot, StrategyHit
+from app.services.low_buy.priority_types import PriorityBaseSnapshot, PriorityCandidate, StrategyHit
 from app.services.low_buy.shared import LOW_BUY_RESULT_VERSION
 from app.services.low_buy.strategy_families import resolve_strategy_family
 
@@ -159,6 +159,20 @@ class PriorityWeightingTests(unittest.TestCase):
         self.assertIn("部分策略结果仍在重建", warning)
         self.assertNotIn("过期策略", warning)
         self.assertNotIn("first_board", warning)
+
+    def test_priority_recommendation_filter_excludes_chinext_and_star_market(self) -> None:
+        rows = [
+            PriorityCandidate(symbol="000001"),
+            PriorityCandidate(symbol="300059"),
+            PriorityCandidate(symbol="301001"),
+            PriorityCandidate(symbol="688981"),
+            PriorityCandidate(symbol="510300"),
+            PriorityCandidate(symbol="588000"),
+        ]
+
+        filtered = filter_priority_candidates_for_recommendation(rows)
+
+        self.assertEqual([row.symbol for row in filtered], ["000001", "510300", "588000"])
 
     def test_recent_performance_does_not_adjust_when_samples_too_small(self) -> None:
         base = _performance(evaluated_signals=42, hit_rate=51.0, avg_return_3d=1.6, avg_return_5d=2.4)

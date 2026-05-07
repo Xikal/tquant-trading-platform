@@ -77,6 +77,7 @@ export function AgentRunList({ items }: { items: PaperAgentRun[] }) {
         const executed = Number(response.executed_count ?? (Array.isArray(response.executed) ? response.executed.length : 0));
         const skipped = Number(response.skipped_count ?? (Array.isArray(response.skipped) ? response.skipped.length : 0));
         const summary = String(response.summary || item.error_message || "--");
+        const skipReason = agentRunSkipReason(response);
         return (
           <article className="paper-row paper-agent-run-row" key={item.id}>
             <div className="paper-stock-name">
@@ -85,11 +86,38 @@ export function AgentRunList({ items }: { items: PaperAgentRun[] }) {
             </div>
             <span>执行 {executed} / 跳过 {skipped}</span>
             <span>{summary}</span>
+            {skipReason ? <span className="paper-run-reason">未买原因：{skipReason}</span> : null}
           </article>
         );
       })}
     </div>
   );
+}
+
+function agentRunSkipReason(response: Record<string, unknown>): string {
+  const skipped = response.skipped;
+  if (Array.isArray(skipped)) {
+    for (const item of skipped) {
+      if (!item || typeof item !== "object") continue;
+      const row = item as Record<string, unknown>;
+      const reason = String(row.reason || "").trim();
+      if (!reason) continue;
+      const symbol = String(row.symbol || "").trim();
+      return symbol ? `${symbol}：${reason}` : reason;
+    }
+  }
+  const filtered = response.filtered_reasons;
+  if (Array.isArray(filtered)) {
+    for (const item of filtered) {
+      if (!item || typeof item !== "object") continue;
+      const row = item as Record<string, unknown>;
+      const reason = String(row.reason || "").trim();
+      if (!reason) continue;
+      const symbol = String(row.symbol || "").trim();
+      return symbol ? `${symbol}：${reason}` : reason;
+    }
+  }
+  return "";
 }
 
 function runStatusText(status: string): string {

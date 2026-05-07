@@ -368,9 +368,9 @@ function signalTone(action: string): Tone {
 function actionLabel(action: string) {
   switch (action) {
     case "positive_t":
-      return "正T"
+      return "先买后卖"
     case "negative_t":
-      return "反T"
+      return "先卖后接回"
     case "buy_now":
       return "买入"
     case "soft_buy_now":

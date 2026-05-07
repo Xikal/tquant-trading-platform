@@ -8,6 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models.entities import PaperOrder, PaperTrade
+from app.services.market.board_exclusions import GROWTH_BOARD_REJECT_REASON, is_growth_board_stock
 from app.services.paper.account import PaperAccountService
 from app.services.paper.matching import MatchResult, OrderSide, OrderType, PaperMatchingEngine
 from app.services.paper.money import to_decimal
@@ -126,6 +127,8 @@ class PaperOrderService:
         if quantity <= 0 or quantity % 100 != 0:
             raise ValueError("委托数量必须是 100 股整数倍。")
         if side == "buy":
+            if is_growth_board_stock(symbol):
+                raise ValueError(GROWTH_BOARD_REJECT_REASON)
             estimated = current_price * Decimal(quantity) + Decimal("20")
             if not self.accounts.check_balance_locked(account_id, estimated):
                 raise ValueError("可用资金不足，模拟买入被拒绝。")
@@ -162,10 +165,12 @@ class PaperOrderService:
                 strategy_key=order.strategy_key,
                 source_order_id=order.id,
             )
+            self.positions.refresh_quotes(order.account_id, {order.symbol: fill_price})
         else:
             position = self.positions.get_position(order.account_id, order.symbol)
             cost_basis = to_decimal(position.cost_basis if position is not None else 0)
             self.positions.reduce_position(account_id=order.account_id, symbol=order.symbol, quantity=order.filled_quantity)
+            self.positions.refresh_quotes(order.account_id, {order.symbol: fill_price})
             account.cash_available = to_decimal(account.cash_available) + net_amount
             account.realized_pnl = (
                 to_decimal(account.realized_pnl)

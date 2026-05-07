@@ -40,9 +40,15 @@ def build_market_data_quality(
 
     if breadth_ready and emotion_ready and not tags:
         return DataQualitySnapshot()
+    text = _market_quality_text(
+        breadth_ready=breadth_ready,
+        emotion_ready=emotion_ready,
+        hot_industry_source=hot_industry_source,
+        snapshot_warning=bool(snapshot_warning),
+    )
     if breadth_ready or emotion_ready:
-        return DataQualitySnapshot("partial", "部分市场数据缺失", tuple(tags))
-    return DataQualitySnapshot("limited", "市场/情绪数据待补齐", tuple(tags))
+        return DataQualitySnapshot("partial", text, tuple(tags))
+    return DataQualitySnapshot("limited", text, tuple(tags))
 
 
 def build_candidate_data_quality(
@@ -111,6 +117,25 @@ def build_low_buy_metrics_quality(metrics: Any) -> DataQualitySnapshot:
 
 def _non_positive(*values: float) -> bool:
     return any(value <= 0 for value in values)
+
+
+def _market_quality_text(
+    *,
+    breadth_ready: bool,
+    emotion_ready: bool,
+    hot_industry_source: str,
+    snapshot_warning: bool,
+) -> str:
+    issues: list[str] = []
+    if snapshot_warning:
+        issues.append("使用最近快照")
+    if hot_industry_source in {"cached_fallback", "unavailable", "fallback", "none"}:
+        issues.append("热点板块回退")
+    if not breadth_ready:
+        issues.append("市场广度补齐中")
+    if not emotion_ready:
+        issues.append("涨停/炸板情绪补齐中")
+    return "，".join(issues) if issues else "市场数据补齐中"
 
 
 def combine_data_quality(*items: DataQualitySnapshot | None) -> DataQualitySnapshot:

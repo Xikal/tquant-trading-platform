@@ -9,7 +9,7 @@ from datetime import datetime, time as datetime_time, timedelta
 from math import floor
 from typing import Any
 
-from sqlalchemy import exists, select
+from sqlalchemy import select
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session
 
@@ -171,17 +171,32 @@ class PaperAutoTrader:
             self.state.last_cycle_duration_ms = round((time.monotonic() - started) * 1000, 1)
 
     def _run_account_cycle(self, *, db: Session, account: PaperAccount, board: dict[str, Any]) -> dict[str, Any]:
-        run = self._start_run(db, account_id=account.id, board=board)
+        run: PaperAgentRun | None = None
         try:
+            blocking_reason = self._blocking_reason(db, account.id)
+            if blocking_reason:
+                result = {
+                    "passed": 0,
+                    "filtered": 0,
+                    "executed": [],
+                    "skipped": [{"account_id": account.id, "reason": blocking_reason}],
+                    "summary": f"账户风控阻断：{blocking_reason}",
+                }
+                if self._should_persist_blocked_run(db, account_id=account.id, blocking_reason=blocking_reason):
+                    run = self._start_run(db, account_id=account.id, board=board)
+                    self._finish_run(db, run, status="skipped", response=result)
+                return result
+            run = self._start_run(db, account_id=account.id, board=board)
             result = self._build_and_execute_account_plan(db=db, account=account, board=board)
             status = "succeeded" if result.get("executed") else "skipped"
             self._finish_run(db, run, status=status, response=result)
             return result
         except Exception as exc:
             db.rollback()
-            persisted = db.get(PaperAgentRun, run.id)
-            if persisted:
-                self._finish_run(db, persisted, status="failed", response={}, error=str(exc))
+            if run is not None:
+                persisted = db.get(PaperAgentRun, run.id)
+                if persisted:
+                    self._finish_run(db, persisted, status="failed", response={}, error=str(exc))
             logger.exception("模拟账户自动交易失败 account_id=%s", account.id)
             return {
                 "passed": 0,
@@ -218,6 +233,10 @@ class PaperAutoTrader:
                 "summary": summary,
                 "exit_order_count": len(exit_orders),
                 "buy_order_count": len(orders),
+                "filtered_reasons": [
+                    {"symbol": item.symbol, "score": item.priority_score, "reason": item.reason}
+                    for item in report.filtered[:5]
+                ],
             }
         result = self._execute_orders(db=db, account_id=account.id, orders=planned_orders)
         return {
@@ -266,7 +285,6 @@ class PaperAutoTrader:
                     (PaperAccount.user_id.is_(None))
                     | ((User.is_active.is_(True)) & (User.can_paper_trade.is_(True)))
                 )
-                .where(~self._blocking_risk_exists())
                 .order_by(PaperAccount.id.asc())
             )
             .scalars()
@@ -280,31 +298,31 @@ class PaperAutoTrader:
             select(PaperAccount)
             .where(PaperAccount.id == account_id)
             .where(PaperAccount.status.in_(["active", "paused"]))
-            .where(~self._blocking_risk_exists())
         ).scalar_one_or_none()
         self._activate_auto_managed_accounts(db, [account] if account else [])
         return account
 
     @staticmethod
-    def _blocking_risk_exists():
-        return exists(
-            select(RiskEvent.id).where(
-                RiskEvent.account_id == PaperAccount.id,
-                RiskEvent.status == "open",
-                RiskEvent.severity.in_(["high", "critical"]),
-            )
-        )
-
-    @staticmethod
     def _activate_auto_managed_accounts(db: Session, accounts: list[PaperAccount]) -> None:
+        blocked_ids = _blocking_account_ids(db, [account.id for account in accounts])
         changed = False
         for account in accounts:
+            if account.id in blocked_ids:
+                continue
             if account.status == "paused":
                 account.status = "active"
                 db.add(account)
                 changed = True
         if changed:
             db.commit()
+
+    @staticmethod
+    def _blocking_reason(db: Session, account_id: int) -> str:
+        return _blocking_reason(db, account_id)
+
+    @staticmethod
+    def _should_persist_blocked_run(db: Session, *, account_id: int, blocking_reason: str) -> bool:
+        return _should_persist_blocked_run(db, account_id=account_id, blocking_reason=blocking_reason)
 
     def _get_positions_summary(self, db: Session, account: PaperAccount) -> list[dict[str, Any]]:
         rows = db.execute(
@@ -577,6 +595,72 @@ def _round_lot(quantity: int | float) -> int:
 def _is_database_busy(exc: OperationalError) -> bool:
     message = str(exc).lower()
     return "database is locked" in message or "database is busy" in message or "lock wait timeout" in message
+
+
+def _blocking_account_ids(db: Session, account_ids: list[int]) -> set[int]:
+    if not account_ids:
+        return set()
+    rows = db.execute(
+        select(RiskEvent.account_id).where(
+            RiskEvent.account_id.in_(account_ids),
+            RiskEvent.status == "open",
+            RiskEvent.severity.in_(["high", "critical"]),
+        )
+    ).scalars().all()
+    return {int(account_id) for account_id in rows if account_id is not None}
+
+
+def _blocking_reason(db: Session, account_id: int) -> str:
+    row = (
+        db.execute(
+            select(RiskEvent)
+            .where(
+                RiskEvent.account_id == account_id,
+                RiskEvent.status == "open",
+                RiskEvent.severity.in_(["high", "critical"]),
+            )
+            .order_by(RiskEvent.triggered_at.desc(), RiskEvent.id.desc())
+            .limit(1)
+        )
+        .scalars()
+        .first()
+    )
+    return str(row.message or "").strip() if row is not None else ""
+
+
+def _should_persist_blocked_run(db: Session, *, account_id: int, blocking_reason: str) -> bool:
+    since = _beijing_now_naive() - timedelta(minutes=15)
+    recent_runs = (
+        db.execute(
+            select(PaperAgentRun)
+            .where(
+                PaperAgentRun.account_id == account_id,
+                PaperAgentRun.run_type == "auto_trade_cycle",
+                PaperAgentRun.status == "skipped",
+                PaperAgentRun.created_at >= since,
+            )
+            .order_by(PaperAgentRun.id.desc())
+            .limit(20)
+        )
+        .scalars()
+        .all()
+    )
+    if not recent_runs:
+        return True
+    for run in recent_runs:
+        try:
+            payload = json.loads(run.response_json or "{}")
+        except Exception:
+            continue
+        if not isinstance(payload, dict):
+            continue
+        skipped = payload.get("skipped")
+        if not isinstance(skipped, list):
+            continue
+        for item in skipped:
+            if isinstance(item, dict) and str(item.get("reason") or "").strip() == blocking_reason:
+                return False
+    return True
 
 
 def _normalize_beijing_datetime(value: datetime | None = None) -> datetime:

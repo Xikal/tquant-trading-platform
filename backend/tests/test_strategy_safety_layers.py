@@ -268,7 +268,7 @@ class StrategySafetyLayerTests(unittest.TestCase):
         allowed, reason = negative_buyback_allowed(buy_price=10.2, vwap_value=0.0, ma5=10.0)
 
         self.assertFalse(allowed)
-        self.assertIn("回补锚点", reason)
+        self.assertIn("参考位", reason)
 
     def test_positive_t_requires_pullback_acceptance_structure(self) -> None:
         allowed, reason = positive_direction_gate(
@@ -284,7 +284,7 @@ class StrategySafetyLayerTests(unittest.TestCase):
         )
 
         self.assertFalse(allowed)
-        self.assertIn("回踩承接", reason)
+        self.assertIn("回落后有人接盘", reason)
 
     def test_negative_t_requires_buyback_room(self) -> None:
         quote = _quote().model_copy(update={"last_price": 10.04, "high_price": 10.08, "low_price": 9.95})
@@ -302,7 +302,7 @@ class StrategySafetyLayerTests(unittest.TestCase):
         )
 
         self.assertFalse(allowed)
-        self.assertIn("回补空间不足", reason)
+        self.assertIn("接回空间不足", reason)
 
     def test_weak_market_blocks_non_mainline_thematic_low_buy(self) -> None:
         candidate = _candidate().model_copy(

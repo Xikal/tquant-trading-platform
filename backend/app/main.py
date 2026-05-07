@@ -34,6 +34,7 @@ from app.services.low_buy.shared import DEFAULT_PRODUCTION_LOW_BUY_STRATEGY, LOW
 from app.services.low_buy.strategy_auto_governance import refresh_low_buy_strategy_auto_governance
 from app.services.low_buy.strategy_policy import PRODUCTION_PRIORITY_STRATEGIES
 from app.services.low_buy_screener import PLAYBOOKS, LowBuyScreenerService
+from app.services.market_data import MarketDataService
 from app.services.paper.archive import PaperArchiveService
 from app.services.paper.scheduler import build_auto_trader_config, start_auto_trader, stop_auto_trader
 from app.services.paper.validation_scheduler import MonthlyStrategyValidationJob
@@ -51,6 +52,7 @@ FRONTEND_DIST_DIR = PROJECT_ROOT / "frontend" / "dist"
 FRONTEND_INDEX_FILE = FRONTEND_DIST_DIR / "index.html"
 FULL_SCAN_REFRESH_SECONDS = 60 * 60
 WATCHLIST_REFRESH_SECONDS = 45
+MARKET_REGIME_REFRESH_SECONDS = 5 * 60
 APP_LOW_BUY_STARTUP_LIMIT = 24
 FULL_SCAN_BACKGROUND_LIMIT = 40
 SQLITE_BACKGROUND_SCAN_LIMIT = 120
@@ -155,6 +157,7 @@ def _warm_runtime_caches() -> None:
     db = SessionLocal()
     watchlist_signal_service = WatchlistSignalService()
     try:
+        _warm_market_regime_once()
         if _startup_low_buy_prewarm_enabled():
             _refresh_materialized_low_buy_snapshots(
                 strategies=_background_low_buy_strategies(),
@@ -192,6 +195,10 @@ def _refresh_full_scan_once() -> None:
 def _refresh_watchlist_signal_once() -> None:
     watchlist_signal_service = WatchlistSignalService()
     watchlist_signal_service.refresh_snapshots(force=True)
+
+
+def _warm_market_regime_once() -> None:
+    MarketDataService().get_market_regime()
 
 
 def _archive_paper_performance_once() -> None:
@@ -404,6 +411,12 @@ async def lifespan(_: FastAPI):
             target=_refresh_watchlist_signal_once,
             interval_seconds=WATCHLIST_REFRESH_SECONDS,
             initial_delay_seconds=20,
+        )
+        task_manager.register_loop(
+            name="market_regime_prewarm",
+            target=_warm_market_regime_once,
+            interval_seconds=MARKET_REGIME_REFRESH_SECONDS,
+            initial_delay_seconds=15,
         )
         if settings.paper_perf_archive_enabled:
             task_manager.register_loop(
