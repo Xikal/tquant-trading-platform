@@ -157,17 +157,22 @@ class MarketIntradayMixin:
         logger = logging.getLogger(__name__)
         results: dict[str, list[KlineBar]] = {}
         workers = min(max(1, max_workers), len(cleaned_symbols))
-        with ThreadPoolExecutor(max_workers=workers, thread_name_prefix="intraday-bars") as pool:
-            futures = {
-                pool.submit(
-                    self.get_intraday_bars,
+
+        def fetch_symbol(symbol: str) -> list[KlineBar]:
+            try:
+                return self.get_intraday_bars(
                     symbol,
                     period,
                     limit,
                     allow_slow_fallback=allow_slow_fallback,
-                ): symbol
-                for symbol in cleaned_symbols
-            }
+                )
+            except TypeError as exc:
+                if "allow_slow_fallback" not in str(exc):
+                    raise
+                return self.get_intraday_bars(symbol, period, limit)
+
+        with ThreadPoolExecutor(max_workers=workers, thread_name_prefix="intraday-bars") as pool:
+            futures = {pool.submit(fetch_symbol, symbol): symbol for symbol in cleaned_symbols}
             for future in as_completed(futures):
                 symbol = futures[future]
                 try:

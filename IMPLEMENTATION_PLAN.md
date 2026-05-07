@@ -17,6 +17,8 @@
 - [x] 前端策略 metadata fallback、生产策略 tab 和回测验证策略列表同步。
 - [x] 增加 Alembic 迁移，为已有库补策略元数据和默认预设。
 - [x] 补充单测覆盖策略注册、筛选规则、双底入口、盘中确认和生产策略列表。
+- [x] 补充专属次日/后续验证计划：次日确认、T+2 降级、最多第 5 天验证、止盈/退出规则。
+- [x] 修复分时批量读取对旧签名 monkey patch 的兼容问题，保证全量测试通过。
 
 ## 关键实现决策
 
@@ -31,6 +33,9 @@
 - `PYTHONPATH=backend:. backend/.venv/bin/python -m pytest backend/tests/test_low_buy_strategy_replacement.py backend/tests/test_low_buy_intraday_confirmation.py backend/tests/test_low_buy_recommendation_duration.py backend/tests/test_strategy_metadata_service.py -q`：27 passed。
 - `PYTHONPATH=backend:. backend/.venv/bin/python -m py_compile backend/alembic/versions/20260507_0003_mainline_limitup_retrace_strategy.py backend/app/services/low_buy/candidate_rules.py backend/app/services/low_buy/intraday_confirmation.py`：通过。
 - `PYTHONPATH=backend:. backend/.venv/bin/python -m pytest backend/tests/test_low_buy_strategy_replacement.py backend/tests/test_low_buy_next_day_event_model.py backend/tests/test_low_buy_standardization.py backend/tests/test_low_buy_repositories.py backend/tests/test_low_buy_intraday_confirmation.py backend/tests/test_low_buy_simple_decision.py backend/tests/test_low_buy_mobile_read.py backend/tests/test_divergence_consensus_strategy.py backend/tests/test_low_buy_backtest_isolation.py backend/tests/test_low_buy_positioning.py backend/tests/test_low_buy_recommendation_duration.py backend/tests/test_strategy_metadata_service.py backend/tests/test_low_buy_trade_controls.py backend/tests/test_low_buy_read_paths.py -q`：89 passed。
+- `PYTHONPATH=backend:. backend/.venv/bin/python -m pytest backend/tests/test_low_buy_strategy_replacement.py backend/tests/test_low_buy_next_day_event_model.py backend/tests/test_low_buy_standardization.py backend/tests/test_low_buy_repositories.py backend/tests/test_low_buy_intraday_confirmation.py backend/tests/test_low_buy_simple_decision.py backend/tests/test_low_buy_mobile_read.py backend/tests/test_divergence_consensus_strategy.py backend/tests/test_low_buy_backtest_isolation.py backend/tests/test_low_buy_positioning.py backend/tests/test_low_buy_recommendation_duration.py backend/tests/test_strategy_metadata_service.py backend/tests/test_low_buy_trade_controls.py backend/tests/test_low_buy_read_paths.py -q`：90 passed。
+- `PYTHONPATH=backend:. backend/.venv/bin/python -m pytest backend/tests/test_performance_regression.py -q`：5 passed。
+- `PYTHONPATH=backend:. backend/.venv/bin/python -m pytest backend/tests -q`：395 passed。
 - `npm --prefix frontend test -- workspaceConstants.test.ts --run`：1 passed。
 - `npm --prefix frontend run check:strategy-meta`：通过。
 - `npm --prefix frontend run build:web`：通过。
