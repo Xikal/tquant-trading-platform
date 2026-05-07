@@ -4,7 +4,12 @@ from fastapi import APIRouter, Depends
 
 from app.core.auth import get_current_user
 from app.core.timezone import beijing_now_string
-from app.models.schema_defs.market import IntradayAnomalyResponse, MarketBreadthResponse, SectorEtfT0Response
+from app.models.schema_defs.market import (
+    IntradayAnomalyResponse,
+    MarketBreadthResponse,
+    MarketModelValidationResponse,
+    SectorEtfT0Response,
+)
 from app.services.intraday_anomaly import IntradayAnomalyService
 from app.services.market_data import MarketDataService
 from app.services.market.regime_quality import market_regime_quality_text
@@ -54,6 +59,20 @@ def sector_etf_t0(
     return sector_etf_t0_service.build(db, limit=max(1, min(limit, 20)))
 
 
+@router.get("/sector-etf-t0/validation", response_model=MarketModelValidationResponse)
+def sector_etf_t0_validation(
+    limit: int = 8,
+    db: Session = Depends(get_db),
+) -> MarketModelValidationResponse:
+    return sector_etf_t0_service.validation_report(db, limit=max(1, min(limit, 20)))
+
+
 @router.get("/intraday-anomaly/{symbol}", response_model=IntradayAnomalyResponse)
 def intraday_anomaly(symbol: str) -> IntradayAnomalyResponse:
     return intraday_anomaly_service.detect(symbol.strip())
+
+
+@router.get("/intraday-anomaly-validation", response_model=MarketModelValidationResponse)
+def intraday_anomaly_validation(symbols: str = "510300,300059,000001,600000,002594") -> MarketModelValidationResponse:
+    symbol_list = [item.strip() for item in symbols.split(",") if item.strip()]
+    return intraday_anomaly_service.validation_report(symbol_list)

@@ -6,8 +6,14 @@ from typing import Any
 from sqlalchemy.orm import Session
 
 from app.core.timezone import beijing_now_string
-from app.models.schema_defs.market import SectorEtfT0Opportunity, SectorEtfT0Response
+from app.models.schema_defs.market import (
+    MarketModelValidationMetric,
+    MarketModelValidationResponse,
+    SectorEtfT0Opportunity,
+    SectorEtfT0Response,
+)
 from app.services.low_buy.service import LowBuyScreenerService
+from app.services.market.parameter_defaults import MARKET_SECTOR_ETF_T0_DEFAULTS
 from app.services.market_data import MarketDataService
 
 
@@ -48,7 +54,12 @@ class SectorEtfT0Service:
         self.low_buy = low_buy or LowBuyScreenerService()
 
     def build(self, db: Session, *, limit: int = 8) -> SectorEtfT0Response:
-        board = self.low_buy.priority_board(db=db, limit=max(12, limit * 3))
+        params = _params()
+        board_limit = max(
+            _int_param(params, "priority_min_limit"),
+            limit * _int_param(params, "priority_limit_multiplier"),
+        )
+        board = self.low_buy.priority_board(db=db, limit=board_limit)
         return self.build_from_priority_board(board, limit=limit)
 
     def build_from_priority_board(self, board: Any, *, limit: int = 8) -> SectorEtfT0Response:
@@ -60,6 +71,7 @@ class SectorEtfT0Service:
         """
 
         regime = self.market_data.get_market_regime_fast()
+        params = _params()
         items = []
         used_etfs: set[str] = set()
         for candidate in _field(board, "items", []) or []:
@@ -81,12 +93,18 @@ class SectorEtfT0Service:
                 continue
             if quote.last_price <= 0:
                 continue
-            confidence = _confidence(_float_value(_field(candidate, "priority_score")), regime.state, quote.change_pct)
-            entry_low = round(quote.last_price * 0.996, 3)
-            entry_high = round(quote.last_price * 1.002, 3)
-            sell_low = round(quote.last_price * 1.008, 3)
-            sell_high = round(quote.last_price * 1.014, 3)
+            confidence = _confidence(
+                _float_value(_field(candidate, "priority_score")),
+                regime.state,
+                quote.change_pct,
+                params,
+            )
+            entry_low = round(quote.last_price * _float_param(params, "entry_low_multiplier"), 3)
+            entry_high = round(quote.last_price * _float_param(params, "entry_high_multiplier"), 3)
+            sell_low = round(quote.last_price * _float_param(params, "sell_low_multiplier"), 3)
+            sell_high = round(quote.last_price * _float_param(params, "sell_high_multiplier"), 3)
             expected_edge = round((sell_low / max(entry_high, 0.01) - 1.0) * 100, 2)
+            positive_confidence_min = _float_param(params, "positive_confidence_min")
             items.append(
                 SectorEtfT0Opportunity(
                     sector_name=sector_name or "行业代理",
@@ -98,20 +116,20 @@ class SectorEtfT0Service:
                     source_signal_text=_string_value(_field(candidate, "buy_signal_text")),
                     last_price=quote.last_price,
                     change_pct=quote.change_pct,
-                    bias="positive_t" if confidence >= 60 else "hold",
-                    bias_text="ETF 正T候选" if confidence >= 60 else "只观察",
+                    bias="positive_t" if confidence >= positive_confidence_min else "hold",
+                    bias_text="ETF 正T候选" if confidence >= positive_confidence_min else "只观察",
                     confidence=confidence,
                     entry_zone=f"{entry_low:.3f}-{entry_high:.3f}",
                     sell_zone=f"{sell_low:.3f}-{sell_high:.3f}",
-                    stop_loss=round(quote.last_price * 0.992, 3),
+                    stop_loss=round(quote.last_price * _float_param(params, "stop_loss_multiplier"), 3),
                     expected_edge_pct=expected_edge,
                     reason=f"{_string_value(_field(candidate, 'name'))} 属于该方向强信号，优先用 ETF 降低个股波动和 T+1 风险。",
-                    risk="ETF 仍受板块回落影响；价差低于 0.8% 时不做，避免手续费和滑点吞噬收益。",
+                    risk=f"ETF 仍受板块回落影响；价差低于 {_float_param(params, 'fee_edge_buffer_pct'):.1f}% 时不做，避免手续费和滑点吞噬收益。",
                     data_quality_text=getattr(quote, "data_quality_message", "") or getattr(quote, "source_quality", "") or "行情正常",
                 )
             )
             used_etfs.add(proxy.symbol)
-            if len(items) >= limit:
+            if len(items) >= min(limit, _int_param(params, "max_opportunities")):
                 break
         notes = [
             "行业 ETF 做T只作为替代执行方案，不等同于个股买入建议。",
@@ -124,6 +142,48 @@ class SectorEtfT0Service:
             total=len(items),
             opportunities=items,
             notes=notes,
+        )
+
+    def validation_report(self, db: Session, *, limit: int = 8) -> MarketModelValidationResponse:
+        """Return an automatic acceptance report for the ETF T+0 model.
+
+        This is a production guardrail, not a promise of profit.  The report
+        checks whether the model currently has enough high-quality opportunities
+        and whether the estimated ETF edge clears a fee/slippage buffer.
+        """
+
+        payload = self.build(db, limit=limit)
+        params = _params()
+        opportunities = payload.opportunities
+        actionable = [item for item in opportunities if item.bias == "positive_t"]
+        edge_pass = [
+            item for item in actionable
+            if item.expected_edge_pct >= _float_param(params, "fee_edge_buffer_pct")
+            and item.confidence >= _float_param(params, "positive_confidence_min")
+        ]
+        sample_count = len(opportunities)
+        pass_rate = len(edge_pass) / max(len(actionable), 1) * 100.0 if actionable else 0.0
+        avg_edge = sum(item.expected_edge_pct for item in actionable) / max(len(actionable), 1) if actionable else 0.0
+        production_ready = len(edge_pass) >= _int_param(params, "production_min_edge_pass") and pass_rate >= _float_param(params, "production_pass_rate_min_pct")
+        return MarketModelValidationResponse(
+            model_key="sector_etf_t0",
+            generated_at=beijing_now_string(),
+            production_ready=production_ready,
+            acceptance_status="passed" if production_ready else "watch",
+            metrics=[
+                MarketModelValidationMetric(
+                    name="ETF 价差覆盖检查",
+                    status="passed" if production_ready else "watch",
+                    sample_count=sample_count,
+                    pass_rate_pct=round(pass_rate, 2),
+                    avg_edge_pct=round(avg_edge, 2),
+                    notes="按当前机会池检查 ETF 预期价差是否覆盖手续费和滑点。",
+                )
+            ],
+            notes=[
+                "行业 ETF 做T当前使用实时机会池自动验收；完整历史回测需继续依赖回测任务沉淀样本。",
+                "未达到验收时只展示观察，不作为自动交易指令。",
+            ],
         )
 
 
@@ -154,14 +214,35 @@ def _proxy_for_sector(sector_name: str) -> SectorEtfProxy | None:
     return None
 
 
-def _confidence(priority_score: float, market_state: str, change_pct: float) -> float:
-    score = 45.0 + max(float(priority_score or 0.0) - 75.0, 0.0) * 0.8
+def _confidence(priority_score: float, market_state: str, change_pct: float, params: dict[str, Any]) -> float:
+    score = _float_param(params, "confidence_base") + max(
+        float(priority_score or 0.0) - _float_param(params, "confidence_priority_floor"),
+        0.0,
+    ) * _float_param(params, "confidence_priority_weight")
     if market_state in {"broad_rally", "repair", "weight_support_active"}:
-        score += 8.0
+        score += _float_param(params, "confidence_positive_market_bonus")
     if market_state in {"risk_release", "high_flyer_retreat"}:
-        score -= 20.0
-    if change_pct > 2.5:
-        score -= 8.0
-    if change_pct < -2.0:
-        score -= 6.0
-    return round(max(0.0, min(score, 95.0)), 1)
+        score -= _float_param(params, "confidence_negative_market_penalty")
+    if change_pct > _float_param(params, "confidence_hot_change_threshold"):
+        score -= _float_param(params, "confidence_hot_change_penalty")
+    if change_pct < _float_param(params, "confidence_weak_change_threshold"):
+        score -= _float_param(params, "confidence_weak_change_penalty")
+    return round(max(0.0, min(score, _float_param(params, "confidence_cap"))), 1)
+
+
+def _params() -> dict[str, Any]:
+    from app.services.quant.runtime_parameters import get_market_sector_etf_t0
+
+    values = get_market_sector_etf_t0()
+    return {**MARKET_SECTOR_ETF_T0_DEFAULTS, **values} if isinstance(values, dict) else dict(MARKET_SECTOR_ETF_T0_DEFAULTS)
+
+
+def _float_param(params: dict[str, Any], key: str) -> float:
+    try:
+        return float(params.get(key, MARKET_SECTOR_ETF_T0_DEFAULTS[key]))
+    except (KeyError, TypeError, ValueError):
+        return float(MARKET_SECTOR_ETF_T0_DEFAULTS[key])
+
+
+def _int_param(params: dict[str, Any], key: str) -> int:
+    return int(round(_float_param(params, key)))

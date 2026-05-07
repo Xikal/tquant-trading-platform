@@ -1,0 +1,60 @@
+from __future__ import annotations
+
+from typing import Any
+
+
+MARKET_SECTOR_ETF_T0_DEFAULTS: dict[str, Any] = {
+    "priority_min_limit": 12,
+    "priority_limit_multiplier": 3,
+    "max_opportunities": 8,
+    "entry_low_multiplier": 0.996,
+    "entry_high_multiplier": 1.002,
+    "sell_low_multiplier": 1.008,
+    "sell_high_multiplier": 1.014,
+    "stop_loss_multiplier": 0.992,
+    "fee_edge_buffer_pct": 0.8,
+    "positive_confidence_min": 60.0,
+    "production_min_edge_pass": 2,
+    "production_pass_rate_min_pct": 60.0,
+    "confidence_base": 45.0,
+    "confidence_priority_floor": 75.0,
+    "confidence_priority_weight": 0.8,
+    "confidence_positive_market_bonus": 8.0,
+    "confidence_negative_market_penalty": 20.0,
+    "confidence_hot_change_threshold": 2.5,
+    "confidence_hot_change_penalty": 8.0,
+    "confidence_weak_change_threshold": -2.0,
+    "confidence_weak_change_penalty": 6.0,
+    "confidence_cap": 95.0,
+}
+
+
+MARKET_INTRADAY_ANOMALY_DEFAULTS: dict[str, Any] = {
+    "intraday_bar_limit": 60,
+    "change_up_threshold_pct": 5.0,
+    "change_up_score": 20.0,
+    "change_down_threshold_pct": -4.0,
+    "change_down_score": 18.0,
+    "volume_ratio_threshold": 2.5,
+    "volume_ratio_score": 14.0,
+    "range_pct_threshold": 4.0,
+    "range_score": 12.0,
+    "high_retrace_threshold_pct": 2.0,
+    "weak_close_position_max": 0.45,
+    "retrace_score": 18.0,
+    "strong_close_position_min": 0.72,
+    "strong_change_min_pct": 1.5,
+    "strong_stretch_score": 8.0,
+    "volume_tail_count": 10,
+    "volume_tail_min_count": 5,
+    "volume_spike_multiplier": 2.0,
+    "volume_spike_score": 10.0,
+    "stale_data_score": 12.0,
+    "high_level_score": 55.0,
+    "medium_level_score": 32.0,
+    "watch_level_score": 18.0,
+    "validation_symbol_limit": 30,
+    "validation_min_score": 18.0,
+    "validation_min_samples": 5,
+    "validation_pass_rate_min_pct": 80.0,
+}

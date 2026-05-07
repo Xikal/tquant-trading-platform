@@ -172,33 +172,34 @@ def build_state_scores(
     high_flyer_retreat_ratio: float,
     high_flyer_gap_speed: float,
 ) -> dict[str, float]:
+    params = _regime_scoring_params()
     limit_down_value = float(limit_down_count or 0)
     breadth_strength = _average(
-        _normalize(positive_ratio, 0.35, 0.75),
-        _normalize(stock_up_ratio, 0.38, 0.72),
-        _normalize(top3_avg_change, 0.15, 1.65),
-        _normalize(median_change, -0.20, 0.95),
-        _normalize(stock_median_change, -0.60, 1.40),
+        _normalize_with_params(params, "positive_ratio", positive_ratio),
+        _normalize_with_params(params, "stock_up_ratio", stock_up_ratio),
+        _normalize_with_params(params, "top3_avg_change", top3_avg_change),
+        _normalize_with_params(params, "median_change", median_change),
+        _normalize_with_params(params, "stock_median_change", stock_median_change),
     )
     risk_pressure = _average(
-        _normalize(limit_down_value, 12.0, 50.0),
-        _normalize(-median_change, -0.2, 1.8),
-        _normalize(-stock_median_change, -0.3, 2.4),
-        _normalize(0.52 - stock_up_ratio, -0.08, 0.30),
+        _normalize_with_params(params, "limit_down_value", limit_down_value),
+        _normalize_with_params(params, "negative_median_change", -median_change),
+        _normalize_with_params(params, "negative_stock_median_change", -stock_median_change),
+        _normalize_with_params(params, "weak_stock_up_gap", 0.52 - stock_up_ratio),
     )
     weight_pressure = _average(
-        _normalize(style_divergence, 0.40, 3.20),
-        _normalize(largecap_change, 0.10, 2.20),
-        _normalize(-smallcap_change, -0.30, 2.40),
-        _normalize(0.52 - stock_up_ratio, -0.05, 0.28),
+        _normalize_with_params(params, "style_divergence", style_divergence),
+        _normalize_with_params(params, "largecap_change", largecap_change),
+        _normalize_with_params(params, "negative_smallcap_change", -smallcap_change),
+        _normalize_with_params(params, "weight_stock_up_gap", 0.52 - stock_up_ratio),
         100.0 if defensive_lead else 0.0,
     )
     rotation_pressure = _average(
-        _normalize(concentration, 0.60, 2.30),
-        _normalize(hot_turnover, 0.15, 1.0),
-        _normalize(0.58 - hot_overlap_ratio, 0.0, 0.58),
-        _normalize(top3_avg_change, 0.50, 1.90),
-        _normalize(positive_ratio, 0.28, 0.58),
+        _normalize_with_params(params, "concentration", concentration),
+        _normalize_with_params(params, "hot_turnover", hot_turnover),
+        _normalize_with_params(params, "hot_overlap_gap", 0.58 - hot_overlap_ratio),
+        _normalize_with_params(params, "rotation_top3_change", top3_avg_change),
+        _normalize_with_params(params, "rotation_positive_ratio", positive_ratio),
     )
     emotion_strength = _emotion_strength(
         emotion_ready,
@@ -419,11 +420,12 @@ def _emotion_strength(
 ) -> float:
     if not emotion_ready:
         return 0.0
+    params = _regime_scoring_params()
     return _average(
-        _normalize(limit_up_count, 8.0, 70.0),
-        _normalize(board_height, 2.0, 7.0),
-        _normalize(promotion_ratio, 0.08, 0.56),
-        _normalize(promotion_break_gap, -0.08, 0.22),
+        _normalize_with_params(params, "limit_up_count", limit_up_count),
+        _normalize_with_params(params, "board_height", board_height),
+        _normalize_with_params(params, "promotion_ratio", promotion_ratio),
+        _normalize_with_params(params, "promotion_break_gap", promotion_break_gap),
     )
 
 
@@ -438,12 +440,13 @@ def _retreat_pressure(
 ) -> float:
     if not emotion_ready:
         return 0.0
+    params = _regime_scoring_params()
     return _average(
-        _normalize(high_flyer_retreat_ratio, 0.06, 0.46),
-        _normalize(broken_board_ratio, 0.10, 0.58),
-        _normalize(limit_down_value, 10.0, 42.0),
-        _normalize(promotion_break_pressure, 0.30, 0.86),
-        _normalize(high_flyer_gap_speed, 0.10, 0.82),
+        _normalize_with_params(params, "high_flyer_retreat_ratio", high_flyer_retreat_ratio),
+        _normalize_with_params(params, "broken_board_ratio", broken_board_ratio),
+        _normalize_with_params(params, "retreat_limit_down_value", limit_down_value),
+        _normalize_with_params(params, "promotion_break_pressure", promotion_break_pressure),
+        _normalize_with_params(params, "high_flyer_gap_speed", high_flyer_gap_speed),
     )
 
 
@@ -457,11 +460,12 @@ def _composite_distribution_pressure(
 ) -> float:
     if not emotion_ready:
         return 0.0
+    params = _regime_scoring_params()
     return _average(
         retreat_pressure,
-        _normalize(high_flyer_gap_speed, 0.10, 0.82),
-        _normalize(promotion_break_pressure, 0.30, 0.86),
-        _normalize(0.60 - stock_up_ratio, 0.0, 0.32),
+        _normalize_with_params(params, "high_flyer_gap_speed", high_flyer_gap_speed),
+        _normalize_with_params(params, "promotion_break_pressure", promotion_break_pressure),
+        _normalize_with_params(params, "distribution_stock_up_gap", 0.60 - stock_up_ratio),
     )
 
 
@@ -478,22 +482,24 @@ def _mainline_lifecycle(
     high_flyer_retreat_ratio: float,
     distribution_pressure: float,
 ) -> tuple[str, str]:
+    params = _regime_scoring_params().get("mainline_lifecycle", {})
     if not hot_industries:
         return "unknown", "主线阶段：热点归因不足"
-    if high_flyer_retreat_ratio >= 0.28 or distribution_pressure >= 62.0:
+    if high_flyer_retreat_ratio >= _param_float(params, "retreat_high_flyer_ratio", 0.28) or distribution_pressure >= _param_float(params, "retreat_distribution_pressure", 62.0):
         return "retreat", "主线阶段：退潮风险"
-    if hot_turnover >= 0.55 or hot_overlap_ratio <= 0.18:
+    if hot_turnover >= _param_float(params, "rotation_hot_turnover", 0.55) or hot_overlap_ratio <= _param_float(params, "rotation_hot_overlap_max", 0.18):
         return "rotation", "主线阶段：轮动过快"
-    if board_height >= 4 and promotion_ratio >= 0.32 and hot_overlap_ratio >= 0.38:
+    if board_height >= _param_float(params, "accelerating_board_height", 4) and promotion_ratio >= _param_float(params, "accelerating_promotion_ratio", 0.32) and hot_overlap_ratio >= _param_float(params, "accelerating_hot_overlap", 0.38):
         return "accelerating", "主线阶段：加速延续"
     if limit_up_count > previous_limit_up_count and board_height >= max(previous_board_height, 2):
         return "warming", "主线阶段：修复升温"
-    if hot_overlap_ratio >= 0.35:
+    if hot_overlap_ratio >= _param_float(params, "stable_hot_overlap", 0.35):
         return "stable", "主线阶段：持续沉淀"
     return "scattered", "主线阶段：热点分散"
 
 
 def _select_state(state_scores: dict[str, float]) -> tuple[str, float]:
+    params = _regime_scoring_params().get("state_selection", {})
     ranked = sorted(state_scores.items(), key=lambda item: item[1], reverse=True)
     if not ranked:
         return "low_volume_wait", 0.0
@@ -501,9 +507,9 @@ def _select_state(state_scores: dict[str, float]) -> tuple[str, float]:
     if len(ranked) == 1:
         return top_state, top_score
     second_state, second_score = ranked[1]
-    if top_state == "repair" and second_state == "low_volume_wait" and top_score - second_score <= 3.0:
+    if top_state == "repair" and second_state == "low_volume_wait" and top_score - second_score <= _param_float(params, "repair_low_volume_max_gap", 3.0):
         return second_state, second_score
-    if top_state == "weight_support" and second_state == "weight_support_active" and top_score - second_score <= 4.0:
+    if top_state == "weight_support" and second_state == "weight_support_active" and top_score - second_score <= _param_float(params, "weight_support_active_max_gap", 4.0):
         return second_state, second_score
     return top_state, top_score
 
@@ -515,10 +521,16 @@ def _regime_confidence(
     emotion_ready: bool,
     distribution_pressure: float,
 ) -> float:
-    readiness = (0.34 if breadth_ready else 0.0) + (0.24 if emotion_ready else 0.0)
-    score_component = _normalize(regime_score, 38.0, 78.0) * 0.34
-    pressure_penalty = _clamp(distribution_pressure / 100.0, 0.0, 1.0) * 0.16
-    return round(_clamp(0.24 + readiness + score_component - pressure_penalty), 4)
+    params = _regime_scoring_params()
+    confidence = params.get("confidence", {})
+    readiness = (
+        _param_float(confidence, "breadth_ready_weight", 0.34) if breadth_ready else 0.0
+    ) + (
+        _param_float(confidence, "emotion_ready_weight", 0.24) if emotion_ready else 0.0
+    )
+    score_component = _normalize_with_params(params, "regime_score", regime_score) * _param_float(confidence, "score_weight", 0.34)
+    pressure_penalty = _clamp(distribution_pressure / 100.0, 0.0, 1.0) * _param_float(confidence, "pressure_penalty_weight", 0.16)
+    return round(_clamp(_param_float(confidence, "base", 0.24) + readiness + score_component - pressure_penalty), 4)
 
 
 def market_breadth_sequence_key(recent_hot_sequences: list[list[str]]) -> str:
@@ -535,6 +547,27 @@ def _normalize(value: float, low: float, high: float) -> float:
         return 0.0
     clipped = min(max(value, low), high)
     return (clipped - low) / (high - low) * 100.0
+
+
+def _normalize_with_params(params: dict, key: str, value: float) -> float:
+    bounds = params.get("normalizers", {}).get(key)
+    if isinstance(bounds, (list, tuple)) and len(bounds) >= 2:
+        return _normalize(float(value), float(bounds[0]), float(bounds[1]))
+    return _normalize(float(value), 0.0, 1.0)
+
+
+def _regime_scoring_params() -> dict:
+    from app.services.quant.runtime_parameters import get_market_regime_scoring
+
+    values = get_market_regime_scoring()
+    return values if isinstance(values, dict) else {}
+
+
+def _param_float(values: dict, key: str, default: float) -> float:
+    try:
+        return float(values.get(key, default))
+    except (TypeError, ValueError):
+        return float(default)
 
 
 def _clamp(value: float, low: float = 0.0, high: float = 1.0) -> float:

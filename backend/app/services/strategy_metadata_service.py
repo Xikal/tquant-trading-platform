@@ -80,6 +80,34 @@ def _default_production_strategy_keys() -> list[str]:
     ]
 
 
+def _promotion_readiness_fields(strategy_key: str, performance) -> dict[str, Any]:
+    if strategy_key not in RESEARCH_TO_AUXILIARY_GATED_STRATEGIES:
+        return {
+            "promotion_eligible": False,
+            "promotion_status_text": "",
+            "promotion_filled_signals": 0,
+            "promotion_health_score": 0.0,
+            "promotion_required_filled": 0,
+            "promotion_required_health": 0.0,
+        }
+    health_score, _ = _strategy_health(performance)
+    filled = int(getattr(performance, "filled_signals", 0) or 0)
+    eligible = filled >= RESEARCH_TO_AUXILIARY_MIN_FILLED and health_score >= RESEARCH_TO_AUXILIARY_MIN_HEALTH
+    status = (
+        "已满足升入辅助层条件"
+        if eligible
+        else f"研究层观察中：真实成交 {filled}/{RESEARCH_TO_AUXILIARY_MIN_FILLED}，健康分 {health_score:.1f}/{RESEARCH_TO_AUXILIARY_MIN_HEALTH:.1f}"
+    )
+    return {
+        "promotion_eligible": eligible,
+        "promotion_status_text": status,
+        "promotion_filled_signals": filled,
+        "promotion_health_score": round(float(health_score), 2),
+        "promotion_required_filled": RESEARCH_TO_AUXILIARY_MIN_FILLED,
+        "promotion_required_health": RESEARCH_TO_AUXILIARY_MIN_HEALTH,
+    }
+
+
 DEFAULT_PRESETS: tuple[dict[str, Any], ...] = (
     {
         "key": "quick_check",
@@ -160,6 +188,7 @@ class StrategyMetadataService:
         can_view_factor = _has_any_role(roles, FACTOR_ACCESS_ROLES)
         can_view_backtest_only = _has_any_role(roles, RESEARCH_ACCESS_ROLES)
         can_view_hidden = include_hidden and _has_any_role(roles, ADMIN_ROLES)
+        performance_map = latest_strategy_performance_map(self.db)
         items = []
         for seed in DEFAULT_STRATEGY_META:
             row = overrides.get(seed.key)
@@ -184,6 +213,7 @@ class StrategyMetadataService:
                 probe_status=_row_text(getattr(row, "probe_status", None), seed.probe_status) if row else seed.probe_status,
                 probe_summary=_row_text(getattr(row, "probe_summary", None), seed.probe_summary) if row else seed.probe_summary,
                 visibility=_row_text(getattr(row, "visibility", None), seed.visibility) if row else seed.visibility,
+                **_promotion_readiness_fields(seed.key, performance_map.get(seed.key)),
             )
             if item.visibility == "hidden" and not can_view_hidden:
                 continue

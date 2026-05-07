@@ -12,6 +12,7 @@ class AkshareMarketProvider:
 
     def __init__(self, service) -> None:
         self.service = service
+        self._industry_board_frame_cache = None
 
     def fetch_quote(self, symbol: str) -> ProviderResult[QuoteSnapshot]:
         try:
@@ -67,10 +68,7 @@ class AkshareMarketProvider:
 
     def fetch_board_breadth_frame(self) -> ProviderResult:
         try:
-            if hasattr(self.service, "_get_industry_board_frame"):
-                frame = self.service._get_industry_board_frame()
-            else:
-                frame = self.service._load_board_breadth_frame()
+            frame = self._industry_board_frame()
             normalized = normalize_board_frame(frame)
         except Exception as exc:
             return ProviderResult(quality=MarketDataQuality.UNAVAILABLE, source=self.name, message=str(exc)[:160])
@@ -81,6 +79,16 @@ class AkshareMarketProvider:
                 message="industry board breadth unavailable",
             )
         return ProviderResult(quality=MarketDataQuality.FRESH, source=self.name, data=normalized)
+
+    def _industry_board_frame(self):
+        if ak is None:
+            raise RuntimeError("akshare unavailable")
+        if self._industry_board_frame_cache is None:
+            self._industry_board_frame_cache = self.service._call_akshare(
+                ak.stock_board_industry_name_em,
+                purpose="industry",
+            )
+        return self._industry_board_frame_cache
 
     def fetch_trade_dates(self) -> ProviderResult[list[str]]:
         if ak is None:

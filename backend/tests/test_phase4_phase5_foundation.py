@@ -16,11 +16,20 @@ from app.models.schema_defs.phase4 import (
     QuantParameterSetCreate,
     RuntimeTaskCreate,
 )
+from app.models.schema_defs.market import (
+    IntradayAnomalyResponse,
+    SectorEtfT0Opportunity,
+    SectorEtfT0Response,
+)
 from app.services.agent_quality import score_agent_result
+from app.services.intraday_anomaly import IntradayAnomalyService
+from app.services.low_buy.screening import LowBuyScreeningMixin
+from app.services.low_buy.service import LowBuyScreenerService
 from app.services.market.providers import DataSourceProbeService
 from app.services.ml_signal import MLSignalService
 from app.services.paper.backtest_compare import PaperBacktestComparisonService
 from app.services.quant import QuantParameterVersionService
+from app.services.sector_etf_t0 import SectorEtfT0Service
 from app.services.tasks import RuntimeTaskQueue
 from app.workers import runtime_worker
 
@@ -92,6 +101,16 @@ def test_runtime_worker_executes_monitor_snapshot_refresh(monkeypatch):
     assert calls == [(db, 3, 30)]
 
 
+def test_low_buy_runtime_cache_methods_use_runtime_state():
+    runtime = LowBuyScreenerService()._runtime
+
+    assert runtime._get_screen_cache("missing-screen-cache") is None
+    assert runtime._get_daily_history_cache("missing-daily-history-cache") is None
+    runtime._set_spot_quote_cache({"600000": {"last_price": 10.0}})
+
+    assert runtime._get_spot_quote_cache() == {"600000": {"last_price": 10.0}}
+
+
 def test_quant_parameter_version_default_and_create():
     db = _db()
     service = QuantParameterVersionService(db)
@@ -116,6 +135,9 @@ def test_quant_parameter_version_default_and_create():
     assert "research_layers" in current.params["low_buy"]
     assert "hard_risk" in current.params["low_buy"]
     assert "dynamic_adjustment" in current.params["low_buy"]
+    assert "market" in current.params
+    assert "regime_scoring" in current.params["market"]
+    assert "normalizers" in current.params["market"]["regime_scoring"]
     assert current.params["low_buy"]["scoring"]["base_score"] > 0
     assert created.version == "test-params-v2"
     assert service.current().version == "test-params-v2"
@@ -259,6 +281,78 @@ def test_ml_signal_rejects_artifact_path_outside_model_dir(tmp_path, monkeypatch
     assert response.research_only is True
     assert "降级启发式" in response.warning
     get_settings.cache_clear()
+
+
+def test_low_buy_runtime_uses_composition_adapter_seam():
+    runtime = LowBuyScreenerService()._runtime
+
+    assert not isinstance(runtime, LowBuyScreeningMixin)
+    assert callable(runtime.screen)
+    assert callable(runtime.priority_board)
+
+
+def test_sector_etf_validation_reports_acceptance_from_current_opportunities(monkeypatch):
+    db = _db()
+    service = SectorEtfT0Service()
+
+    def _build_stub(db_arg, *, limit: int = 8):  # noqa: ANN001
+        return SectorEtfT0Response(
+            updated_at="2026-05-07 10:00:00",
+            market_state="repair",
+            market_state_text="震荡修复",
+            total=2,
+            opportunities=[
+                SectorEtfT0Opportunity(
+                    sector_name="半导体",
+                    etf_symbol="512480",
+                    etf_name="半导体ETF",
+                    bias="positive_t",
+                    confidence=72,
+                    expected_edge_pct=1.05,
+                ),
+                SectorEtfT0Opportunity(
+                    sector_name="证券",
+                    etf_symbol="512880",
+                    etf_name="证券ETF",
+                    bias="positive_t",
+                    confidence=66,
+                    expected_edge_pct=0.95,
+                ),
+            ],
+        )
+
+    monkeypatch.setattr(service, "build", _build_stub)
+
+    report = service.validation_report(db, limit=2)
+
+    assert report.model_key == "sector_etf_t0"
+    assert report.production_ready is True
+    assert report.metrics[0].sample_count == 2
+
+
+def test_intraday_anomaly_validation_requires_structured_outputs(monkeypatch):
+    service = IntradayAnomalyService()
+
+    def _detect_stub(symbol: str):  # noqa: ANN001
+        return IntradayAnomalyResponse(
+            symbol=symbol,
+            name=symbol,
+            updated_at="2026-05-07 10:00:00",
+            anomaly_level="watch",
+            anomaly_text="需要观察",
+            score=22,
+            pattern="拉伸加速",
+            action_hint="只观察，不追高。",
+            risk_notes=["冲高回落风险"],
+        )
+
+    monkeypatch.setattr(service, "detect", _detect_stub)
+
+    report = service.validation_report(["600000", "000001", "601318", "510300", "512480"])
+
+    assert report.model_key == "intraday_anomaly"
+    assert report.production_ready is True
+    assert report.metrics[0].sample_count == 5
 
 
 def test_paper_backtest_comparison_flags_large_deviation():

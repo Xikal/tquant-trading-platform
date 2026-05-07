@@ -4,19 +4,16 @@ import socket
 import threading
 
 from app.core.config import get_settings
-from app.core.timezone import beijing_now, utc_now_naive
+from app.core.timezone import utc_now_naive
 from app.services.market.shared import (
     Instrument,
     MarketEventCache,
     MarketEventOut,
     MicrostructureSnapshot,
     SectorSnapshot,
-    ak,
     contextmanager,
     datetime,
     delete,
-    func,
-    lru_cache,
     os,
     select,
     time,
@@ -82,32 +79,16 @@ class MarketSectorMixin:
         return SectorSnapshot(sector_name=sector_name, sector_strength=round(max(0.0, min(100.0, sector_strength)), 2), market_strength=round(max(0.0, min(100.0, market_strength)), 2), alignment_score=round(alignment, 2), notes=notes)
 
     def get_sector_heatmap(self, limit: int = 30) -> list[SectorSnapshot]:
-        if self._market_provider_router_enabled():
-            result = self.provider_router.fetch_sector_heatmap()
-            if result.usable and result.data:
-                return list(result.data)[:limit]
-            return []
-        frame = self._load_board_breadth_frame()
-        if frame is None or frame.empty:
-            return []
-        median_change = float(frame["change_pct"].median()) if "change_pct" in frame else 0.0
-        market_strength = round(max(0.0, min(100.0, 50.0 + median_change * 8.0)), 2)
-        items: list[SectorSnapshot] = []
-        for row in frame.head(limit).to_dict("records"):
-            sector_name = str(row.get("industry") or "").strip()
-            if not sector_name:
-                continue
-            sector_strength = round(max(0.0, min(100.0, 50.0 + float(row.get("change_pct") or 0.0) * 8.0)), 2)
-            items.append(
-                SectorSnapshot(
-                    sector_name=sector_name,
-                    sector_strength=sector_strength,
-                    market_strength=market_strength,
-                    alignment_score=round((sector_strength + market_strength) / 2, 2),
-                    notes="板块热力来自统一 market provider fallback。",
-                )
-            )
-        return items
+        result = self.provider_router.fetch_sector_heatmap()
+        if result.usable and result.data:
+            return list(result.data)[:limit]
+        return []
+
+    def _board_breadth_frame_from_provider(self):
+        result = self.provider_router.fetch_board_breadth_frame()
+        if not result.usable or result.data is None or result.data.empty:
+            return None
+        return result.data
 
     def get_market_events(self, db, symbol: str, quote) -> list[MarketEventOut]:
         events = self._load_or_refresh_cached_events(db, symbol)
@@ -141,87 +122,30 @@ class MarketSectorMixin:
         return []
 
     def _fetch_market_events(self, symbol: str) -> list[MarketEventOut]:
-        if self._market_provider_router_enabled():
-            result = self.provider_router.fetch_market_events(symbol)
-            if result.usable and result.data:
-                return list(result.data)[:8]
-            return []
-        if ak is None:
-            return []
-        events = self._fetch_notice_events(symbol) + self._fetch_news_events(symbol)
-        deduped: list[MarketEventOut] = []
-        seen: set[tuple[str, str]] = set()
-        for event in events:
-            key = (event.title, event.source)
-            if key not in seen:
-                seen.add(key)
-                deduped.append(event)
-        return deduped[:8]
-
-    def _fetch_notice_events(self, symbol: str) -> list[MarketEventOut]:
-        today = beijing_now().strftime("%Y%m%d")
-        categories = ("风险提示", "重大事项", "持股变动")
-        hits: list[MarketEventOut] = []
-        for category in categories:
-            try:
-                df = self._get_notice_report(category, today)
-            except Exception:
-                continue
-            if df.empty:
-                continue
-            matched = df[df["代码"].astype(str) == symbol]
-            for _, row in matched.head(3).iterrows():
-                risk_level = "high" if category in {"风险提示", "重大事项"} else "medium"
-                hits.append(MarketEventOut(title=str(row["公告标题"]), risk_level=risk_level, description=f"{category}公告，需确认是否影响盘中波动与流动性。", source="notice", event_time=str(row["公告日期"])))
-        return hits
-
-    def _fetch_news_events(self, symbol: str) -> list[MarketEventOut]:
-        try:
-            df = self._call_akshare(ak.stock_news_em, symbol=symbol, purpose="news")
-        except Exception:
-            return []
-        if df.empty:
-            return []
-        risk_keywords = {"停牌": "high", "问询": "high", "立案": "high", "风险提示": "high", "减持": "medium", "诉讼": "high", "异常波动": "medium", "预亏": "high", "预减": "high", "回购": "low", "增持": "low", "中标": "low"}
-        events: list[MarketEventOut] = []
-        for _, row in df.head(8).iterrows():
-            text = f"{row.get('新闻标题', '')} {row.get('新闻内容', '')}"
-            matched_level = next((level for keyword, level in risk_keywords.items() if keyword in text), None)
-            if matched_level:
-                events.append(MarketEventOut(title=str(row.get("新闻标题", "相关新闻")), risk_level=matched_level, description=str(row.get("新闻内容", ""))[:120], source="news", event_time=str(row.get("发布时间", ""))))
-        return events
-
-    @staticmethod
-    @lru_cache(maxsize=32)
-    def _get_notice_report(category: str, date_text: str):
-        with MarketSectorMixin._no_proxy_env():
-            return ak.stock_notice_report(symbol=category, date=date_text)
-
-    @classmethod
-    def _get_industry_board_frame(cls):
-        if cls._industry_board_frame_cache is None:
-            cls._industry_board_frame_cache = cls._call_akshare(
-                ak.stock_board_industry_name_em,
-                purpose="industry",
-            )
-        return cls._industry_board_frame_cache
+        result = self.provider_router.fetch_market_events(symbol)
+        if result.usable and result.data:
+            return list(result.data)[:8]
+        return []
 
     def _lookup_sector_board(self, sector_name: str):
-        if ak is None or not sector_name:
+        if not sector_name:
             return None
         if sector_name in self._sector_board_cache:
             return self._sector_board_cache[sector_name]
         try:
-            df = self._get_industry_board_frame()
+            df = self._board_breadth_frame_from_provider()
         except Exception:
             return None
-        exact = df[df["板块名称"] == sector_name]
+        if df is None or df.empty:
+            return None
+        name_column = "industry" if "industry" in df else "板块名称"
+        exact = df[df[name_column] == sector_name]
         if not exact.empty:
             result = exact.iloc[0].to_dict()
             self._sector_board_cache[sector_name] = result
             return result
         for alias in self._sector_aliases(sector_name):
-            matched = df[df["板块名称"].astype(str).str.contains(alias, na=False)]
+            matched = df[df[name_column].astype(str).str.contains(alias, na=False)]
             if not matched.empty:
                 result = matched.iloc[0].to_dict()
                 self._sector_board_cache[sector_name] = result
@@ -236,6 +160,9 @@ class MarketSectorMixin:
 
     @staticmethod
     def _compute_board_strength(row: dict[str, object]) -> float:
+        if "change_pct" in row:
+            change_pct = float(row.get("change_pct") or 0)
+            return round(max(0.0, min(100.0, 50.0 + change_pct * 8.0)), 2)
         rise_count = float(row.get("上涨家数") or 0)
         fall_count = float(row.get("下跌家数") or 0)
         total = max(rise_count + fall_count, 1.0)

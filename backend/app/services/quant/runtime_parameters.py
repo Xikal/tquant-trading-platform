@@ -108,6 +108,26 @@ def get_position_t_scoring() -> dict[str, Any]:
     return deepcopy(values) if isinstance(values, dict) else {}
 
 
+def get_position_t_decision() -> dict[str, Any]:
+    values = current_quant_parameters().get("position_t", {}).get("decision", {})
+    return deepcopy(values) if isinstance(values, dict) else {}
+
+
+def get_market_regime_scoring() -> dict[str, Any]:
+    values = current_quant_parameters().get("market", {}).get("regime_scoring", {})
+    return deepcopy(values) if isinstance(values, dict) else {}
+
+
+def get_market_sector_etf_t0() -> dict[str, Any]:
+    values = current_quant_parameters().get("market", {}).get("sector_etf_t0", {})
+    return deepcopy(values) if isinstance(values, dict) else {}
+
+
+def get_market_intraday_anomaly() -> dict[str, Any]:
+    values = current_quant_parameters().get("market", {}).get("intraday_anomaly", {})
+    return deepcopy(values) if isinstance(values, dict) else {}
+
+
 def _strategy_config(section: str, strategy: str, fallback: dict[str, Any]) -> dict[str, Any]:
     values = current_quant_parameters().get("low_buy", {}).get(section, {}).get(strategy, {})
     if not isinstance(values, dict):

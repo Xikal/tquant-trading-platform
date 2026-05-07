@@ -29,6 +29,25 @@ from app.services.quant_engine_execution import (
 from app.services.quant_engine_scenes import TradeScene
 
 
+def _decision_params() -> dict[str, Any]:
+    from app.services.low_buy.strategy_parameter_defaults import POSITION_T_DECISION_DEFAULTS
+    from app.services.quant.runtime_parameters import get_position_t_decision
+
+    values = get_position_t_decision()
+    return {**POSITION_T_DECISION_DEFAULTS, **values} if isinstance(values, dict) else dict(POSITION_T_DECISION_DEFAULTS)
+
+
+def _param_float(params: dict[str, Any], key: str, default: float = 0.0) -> float:
+    try:
+        return float(params.get(key, default))
+    except (TypeError, ValueError):
+        return float(default)
+
+
+def _param_int(params: dict[str, Any], key: str, default: int = 0) -> int:
+    return int(round(_param_float(params, key, float(default))))
+
+
 def resolve_initial_action(
     request: AnalysisRequest,
     scores: ScoreSnapshot,
@@ -54,13 +73,16 @@ def resolve_prepare_action(
 
     if blocking_rules:
         return "hold"
+    params = _decision_params()
     preferred_positive = request.prefer_strategy in {"auto", "positive_t"}
     preferred_negative = request.prefer_strategy in {"auto", "negative_t"}
-    positive_near = preferred_positive and scores.positive_score >= scores.positive_threshold - 8
-    negative_near = preferred_negative and scores.negative_score >= scores.negative_threshold - 8
-    if positive_near and scores.positive_score >= scores.negative_score - 2:
+    near_offset = _param_float(params, "near_threshold_offset", 8.0)
+    near_gap = _param_float(params, "near_score_gap", 2.0)
+    positive_near = preferred_positive and scores.positive_score >= scores.positive_threshold - near_offset
+    negative_near = preferred_negative and scores.negative_score >= scores.negative_threshold - near_offset
+    if positive_near and scores.positive_score >= scores.negative_score - near_gap:
         return "positive_t"
-    if negative_near and scores.negative_score > scores.positive_score - 2:
+    if negative_near and scores.negative_score > scores.positive_score - near_gap:
         return "negative_t"
     return "hold"
 
@@ -88,9 +110,11 @@ def apply_trade_scene_gate(
 ) -> tuple[str, list[str]]:
     if action in trade_scene.allowed_actions:
         return action, blocking_rules
-    if "positive_t" in trade_scene.allowed_actions and scores.positive_score >= scores.positive_threshold + 3:
+    params = _decision_params()
+    scene_override_shift = _param_float(params, "scene_override_shift", 3.0)
+    if "positive_t" in trade_scene.allowed_actions and scores.positive_score >= scores.positive_threshold + scene_override_shift:
         return "positive_t", blocking_rules
-    if "negative_t" in trade_scene.allowed_actions and scores.negative_score >= scores.negative_threshold + 3:
+    if "negative_t" in trade_scene.allowed_actions and scores.negative_score >= scores.negative_threshold + scene_override_shift:
         return "negative_t", blocking_rules
     blocking_rules.append(f"场景约束：{trade_scene.label}，{trade_scene.reason}")
     return "hold", blocking_rules
@@ -232,7 +256,11 @@ def resolve_trade_plan(
             why_not_execute=layer_reason or _last_blocking_rule(blocking_rules),
         ), blocking_rules
 
-    max_single_loss_pct = max(0.2, float(risk_config.get("risk_max_single_loss_pct", 1.0)))
+    decision_params = _decision_params()
+    max_single_loss_pct = max(
+        _param_float(decision_params, "max_single_loss_floor_pct", 0.2),
+        float(risk_config.get("risk_max_single_loss_pct", _param_float(decision_params, "default_max_single_loss_pct", 1.0))),
+    )
     slippage_bps = estimate_slippage_bps(
         quote=quote,
         tradability_score=scores.tradability_score,
@@ -317,7 +345,10 @@ def resolve_trade_plan(
             exit_price=exit_price,
             stop_loss=stop_loss,
         )
-    light_min_ratio = max(0.8, min_ratio - 0.22)
+    light_min_ratio = max(
+        _param_float(decision_params, "light_min_ratio_floor", 0.8),
+        min_ratio - _param_float(decision_params, "light_min_ratio_discount", 0.22),
+    )
     if risk_reward_ratio < light_min_ratio:
         blocking_rules.append(f"当前收益和风险不划算，低于小仓试做最低要求 {light_min_ratio:.2f}。")
         return _empty_scene_plan(
@@ -398,23 +429,37 @@ def resolve_trade_plan(
 
 
 def _cost_quantity(*, action: str, request: AnalysisRequest, position_pct: float) -> int:
+    params = _decision_params()
+    lot_size = _param_int(params, "lot_size", 100)
+    min_pct = _param_float(params, "min_position_pct_for_cost", 5.0)
     if action == "negative_t":
         available = max(0, int(request.available_position or 0))
-        return _round_lot(max(100, int(available * max(position_pct, 5.0) / 100))) if available > 0 else 0
+        return _round_lot(max(lot_size, int(available * max(position_pct, min_pct) / 100)), lot_size=lot_size) if available > 0 else 0
     base = max(0, int(request.base_position or 0))
     if base <= 0:
         return 0
-    return _round_lot(max(100, int(base * max(position_pct, 5.0) / 100)))
+    return _round_lot(max(lot_size, int(base * max(position_pct, min_pct) / 100)), lot_size=lot_size)
 
 
-def _round_lot(quantity: int) -> int:
-    lot = 100
+def _round_lot(quantity: int, *, lot_size: int = 100) -> int:
+    lot = max(int(lot_size or 100), 1)
     return max(lot, (int(quantity) // lot) * lot)
 
 
 def _light_position_pct(position_pct_value: float, quote: QuoteSnapshot) -> float:
-    cap = 10.0 if quote.instrument_type == "etf" else 8.0
-    return round(max(5.0, min(cap, position_pct_value * 0.45)), 2)
+    params = _decision_params()
+    cap = (
+        _param_float(params, "light_position_etf_cap_pct", 10.0)
+        if quote.instrument_type == "etf"
+        else _param_float(params, "light_position_stock_cap_pct", 8.0)
+    )
+    return round(
+        max(
+            _param_float(params, "light_position_min_pct", 5.0),
+            min(cap, position_pct_value * _param_float(params, "light_position_multiplier", 0.45)),
+        ),
+        2,
+    )
 
 
 def _empty_scene_plan(

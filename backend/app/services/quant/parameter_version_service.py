@@ -19,6 +19,10 @@ from app.services.low_buy.strategy_parameter_defaults import (
     LOW_BUY_STRATEGY_EXECUTION_DEFAULTS,
     LOW_BUY_STRATEGY_PREFILTER_DEFAULTS,
     LOW_BUY_THRESHOLD_DEFAULTS,
+    MARKET_INTRADAY_ANOMALY_DEFAULTS,
+    MARKET_REGIME_SCORING_DEFAULTS,
+    MARKET_SECTOR_ETF_T0_DEFAULTS,
+    POSITION_T_DECISION_DEFAULTS,
     POSITION_T_SCORING_DEFAULTS,
     quant_parameter_schema,
 )
@@ -100,6 +104,20 @@ DEFAULT_QUANT_PARAMETERS: dict[str, Any] = {
         "min_available_lot": 100,
         "scoring": {
             **POSITION_T_SCORING_DEFAULTS,
+        },
+        "decision": {
+            **POSITION_T_DECISION_DEFAULTS,
+        },
+    },
+    "market": {
+        "regime_scoring": {
+            **MARKET_REGIME_SCORING_DEFAULTS,
+        },
+        "sector_etf_t0": {
+            **MARKET_SECTOR_ETF_T0_DEFAULTS,
+        },
+        "intraday_anomaly": {
+            **MARKET_INTRADAY_ANOMALY_DEFAULTS,
         },
     },
     "ml": {

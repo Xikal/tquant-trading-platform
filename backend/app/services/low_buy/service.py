@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import threading
+import time
+from typing import Any
 
 from app.services.low_buy.candidate import LowBuyCandidateMixin
 from app.services.low_buy.close_review import LowBuyCloseReviewMixin
@@ -17,30 +19,106 @@ from app.services.low_buy.screening import LowBuyScreeningMixin
 from app.services.low_buy.signals import LowBuySignalMixin
 from app.services.low_buy.shared import (
     DEFAULT_PRODUCTION_LOW_BUY_STRATEGY,
+    LowBuyHistoryResponse,
     MarketDataService,
     Session,
     normalize_low_buy_strategy,
+    pd,
 )
 
 
-# MRO is intentional: public orchestration methods live in the leftmost mixins,
-# while shared read/write helpers stay near the right. Keep new mixins narrow and
-# avoid duplicate method names unless explicitly overriding behavior.
-class _LowBuyRuntime(
-    LowBuyExecutionBacktestMixin,
-    LowBuyLifecycleMixin,
-    LowBuyCloseReviewMixin,
-    LowBuyPerformanceMixin,
-    LowBuyHistoryMixin,
-    LowBuyMobileReadMixin,
-    LowBuySignalMixin,
-    LowBuyPriorityBoardMixin,
-    LowBuyCandidateMixin,
-    LowBuyHotIndustryContextMixin,
-    LowBuyPoolMixin,
-    LowBuyResultStoreMixin,
-    LowBuyScreeningMixin,
-):
+class _LowBuyRuntimeAdapter:
+    """Adapter base used to keep legacy mixin methods behind a composed runtime."""
+
+    def __init__(self, runtime: "_LowBuyRuntime") -> None:
+        object.__setattr__(self, "_runtime", runtime)
+
+    def __getattr__(self, name: str) -> Any:
+        return getattr(object.__getattribute__(self, "_runtime"), name)
+
+    def __setattr__(self, name: str, value: Any) -> None:
+        if name == "_runtime":
+            object.__setattr__(self, name, value)
+            return
+        setattr(object.__getattribute__(self, "_runtime"), name, value)
+
+
+class _LowBuyExecutionBacktestAdapter(_LowBuyRuntimeAdapter, LowBuyExecutionBacktestMixin):
+    pass
+
+
+class _LowBuyLifecycleAdapter(_LowBuyRuntimeAdapter, LowBuyLifecycleMixin):
+    pass
+
+
+class _LowBuyCloseReviewAdapter(_LowBuyRuntimeAdapter, LowBuyCloseReviewMixin):
+    pass
+
+
+class _LowBuyPerformanceAdapter(_LowBuyRuntimeAdapter, LowBuyPerformanceMixin):
+    pass
+
+
+class _LowBuyHistoryAdapter(_LowBuyRuntimeAdapter, LowBuyHistoryMixin):
+    pass
+
+
+class _LowBuyMobileAdapter(_LowBuyRuntimeAdapter, LowBuyMobileReadMixin):
+    pass
+
+
+class _LowBuySignalAdapter(_LowBuyRuntimeAdapter, LowBuySignalMixin):
+    pass
+
+
+class _LowBuyPriorityBoardAdapter(_LowBuyRuntimeAdapter, LowBuyPriorityBoardMixin):
+    pass
+
+
+class _LowBuyCandidateAdapter(_LowBuyRuntimeAdapter, LowBuyCandidateMixin):
+    pass
+
+
+class _LowBuyHotIndustryContextAdapter(_LowBuyRuntimeAdapter, LowBuyHotIndustryContextMixin):
+    pass
+
+
+class _LowBuyPoolAdapter(_LowBuyRuntimeAdapter, LowBuyPoolMixin):
+    pass
+
+
+class _LowBuyResultStoreAdapter(_LowBuyRuntimeAdapter, LowBuyResultStoreMixin):
+    pass
+
+
+class _LowBuyScreeningAdapter(_LowBuyRuntimeAdapter, LowBuyScreeningMixin):
+    pass
+
+
+class _LowBuyRuntime:
+    """Composed low-buy runtime.
+
+    Legacy mixin implementations are kept as adapters, but the runtime itself is
+    no longer a multiple-inheritance endpoint.  This provides a stable seam for
+    gradually moving each adapter into native service classes without changing
+    strategy semantics in one large rewrite.
+    """
+
+    _runtime_adapter_classes = (
+        _LowBuyExecutionBacktestAdapter,
+        _LowBuyLifecycleAdapter,
+        _LowBuyCloseReviewAdapter,
+        _LowBuyPerformanceAdapter,
+        _LowBuyHistoryAdapter,
+        _LowBuyMobileAdapter,
+        _LowBuySignalAdapter,
+        _LowBuyPriorityBoardAdapter,
+        _LowBuyCandidateAdapter,
+        _LowBuyHotIndustryContextAdapter,
+        _LowBuyPoolAdapter,
+        _LowBuyResultStoreAdapter,
+        _LowBuyScreeningAdapter,
+    )
     _full_cache_setting_prefix = "low_buy_full_cache"
     _screen_cache = {}
     _daily_history_cache = {}
@@ -63,6 +141,113 @@ class _LowBuyRuntime(
 
     def __init__(self) -> None:
         self.market_data = MarketDataService()
+        self._adapters = [adapter_class(self) for adapter_class in self._runtime_adapter_classes]
+        self._method_map = _build_runtime_method_map(self._adapters)
+
+    def __getattr__(self, name: str) -> Any:
+        adapter = self._method_map.get(name)
+        if adapter is None:
+            raise AttributeError(f"{self.__class__.__name__!s} has no attribute {name!r}")
+        return object.__getattribute__(adapter, name)
+
+    def _get_screen_cache(self, cache_key: str):
+        cls = type(self)
+        now = time.monotonic()
+        with cls._cache_lock:
+            cached = cls._screen_cache.get(cache_key)
+            if cached is None:
+                return None
+            expires_at, payload = cached
+            if expires_at <= now:
+                cls._screen_cache.pop(cache_key, None)
+                return None
+            return payload.model_copy(deep=True)
+
+    def _set_screen_cache(self, cache_key: str, payload, ttl: float | None = None) -> None:
+        cls = type(self)
+        with cls._cache_lock:
+            cls._screen_cache[cache_key] = (
+                time.monotonic() + (ttl or cls._screen_cache_ttl),
+                payload.model_copy(deep=True),
+            )
+
+    def _get_history_cache(self, cache_key: str):
+        cls = type(self)
+        now = time.monotonic()
+        with cls._cache_lock:
+            cached = cls._screen_cache.get(cache_key)
+            if cached is None:
+                return None
+            expires_at, payload = cached
+            if expires_at <= now:
+                cls._screen_cache.pop(cache_key, None)
+                return None
+            if isinstance(payload, LowBuyHistoryResponse):
+                return payload.model_copy(deep=True)
+            return None
+
+    def _set_history_cache(self, cache_key: str, payload: LowBuyHistoryResponse) -> None:
+        cls = type(self)
+        with cls._cache_lock:
+            cls._screen_cache[cache_key] = (
+                time.monotonic() + cls._screen_cache_ttl,
+                payload.model_copy(deep=True),
+            )
+
+    def _get_daily_history_cache(self, cache_key: str):
+        cls = type(self)
+        now = time.monotonic()
+        with cls._cache_lock:
+            cached = cls._daily_history_cache.get(cache_key)
+            if cached is None:
+                return None
+            expires_at, payload = cached
+            if expires_at <= now:
+                cls._daily_history_cache.pop(cache_key, None)
+                return None
+            return payload
+
+    def _set_daily_history_cache(self, cache_key: str, payload: pd.DataFrame | None) -> None:
+        cls = type(self)
+        with cls._cache_lock:
+            cls._daily_history_cache[cache_key] = (
+                time.monotonic() + cls._daily_history_cache_ttl,
+                payload.copy(deep=True) if payload is not None else None,
+            )
+
+    def _get_spot_quote_cache(self):
+        cls = type(self)
+        now = time.monotonic()
+        with cls._cache_lock:
+            cached = cls._spot_quote_cache
+            if cached is None:
+                return None
+            expires_at, payload = cached
+            if expires_at <= now:
+                cls._spot_quote_cache = None
+                return None
+            return dict(payload)
+
+    def _set_spot_quote_cache(self, payload) -> None:
+        cls = type(self)
+        with cls._cache_lock:
+            cls._spot_quote_cache = (time.monotonic() + cls._spot_quote_cache_ttl, dict(payload))
+
+
+def _build_runtime_method_map(adapters: list[_LowBuyRuntimeAdapter]) -> dict[str, _LowBuyRuntimeAdapter]:
+    method_map: dict[str, _LowBuyRuntimeAdapter] = {}
+    for adapter in adapters:
+        for cls in type(adapter).mro():
+            if cls in {_LowBuyRuntimeAdapter, object}:
+                continue
+            for name, value in cls.__dict__.items():
+                if name.startswith("__") or name in method_map:
+                    continue
+                if isinstance(value, classmethod):
+                    continue
+                if callable(value) or isinstance(value, staticmethod):
+                    method_map[name] = adapter
+    return method_map
 
 
 class _LowBuyComponent:
@@ -218,6 +403,16 @@ class LowBuyScreenerService:
         self._mobile = _LowBuyMobileComponent(self._runtime)
         self._lifecycle = _LowBuyLifecycleComponent(self._runtime)
         self._backtest = _LowBuyBacktestComponent(self._runtime)
+
+    def __getattr__(self, name: str) -> Any:
+        """Compatibility seam for legacy tests and internal helpers.
+
+        Public callers should use the explicit component methods above.  This
+        keeps older private method probes working while the implementation is
+        moved from mixins to composed adapters.
+        """
+
+        return getattr(self._runtime, name)
 
     def screen(
         self,

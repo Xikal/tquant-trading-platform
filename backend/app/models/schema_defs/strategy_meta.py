@@ -21,6 +21,12 @@ class StrategyMetaOut(BaseModel):
     probe_status: str = "not_required"
     probe_summary: str = ""
     visibility: str = "full"
+    promotion_eligible: bool = False
+    promotion_status_text: str = ""
+    promotion_filled_signals: int = 0
+    promotion_health_score: float = 0.0
+    promotion_required_filled: int = 0
+    promotion_required_health: float = 0.0
 
 
 class StrategyMetaResponse(BaseModel):

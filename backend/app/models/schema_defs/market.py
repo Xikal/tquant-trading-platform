@@ -70,3 +70,21 @@ class IntradayAnomalyResponse(BaseModel):
     reasons: list[str] = Field(default_factory=list)
     risk_notes: list[str] = Field(default_factory=list)
     data_quality_text: str = ""
+
+
+class MarketModelValidationMetric(BaseModel):
+    name: str
+    status: str = "pending"
+    sample_count: int = 0
+    pass_rate_pct: float = 0.0
+    avg_edge_pct: float = 0.0
+    notes: str = ""
+
+
+class MarketModelValidationResponse(BaseModel):
+    model_key: str
+    generated_at: str
+    production_ready: bool = False
+    acceptance_status: str = "pending"
+    metrics: list[MarketModelValidationMetric] = Field(default_factory=list)
+    notes: list[str] = Field(default_factory=list)
