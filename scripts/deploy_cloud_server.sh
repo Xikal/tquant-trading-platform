@@ -116,8 +116,9 @@ PY
 fi
 if ! grep -q '^AUTH_COOKIE_SECURE=' .env; then printf 'AUTH_COOKIE_SECURE=true\n' >> .env; fi
 sudo docker compose -f '$CLOUD_COMPOSE_FILE' up --build --force-recreate --abort-on-container-exit --exit-code-from migration migration
+sudo docker compose -f '$CLOUD_COMPOSE_FILE' run --rm --user root --entrypoint sh app -c 'mkdir -p /app/backend/data && chown -R tquant:tquant /app/backend/data'
 sudo docker compose -f '$CLOUD_COMPOSE_FILE' up -d --build app runtime-worker backtest-worker
-sudo docker exec -u root tquant-app-mysql sh -c 'mkdir -p /app/backend/data/ml_models && chown -R tquant:tquant /app/backend/data/ml_models' || true
+sudo docker exec -u root tquant-app-mysql sh -c 'mkdir -p /app/backend/data/ml_models && chown -R tquant:tquant /app/backend/data' || true
 ls -dt /home/${CLOUD_USER}/gupiao-deploy-backup-* 2>/dev/null | tail -n +$((CLOUD_KEEP_BACKUPS + 1)) | xargs -r rm -rf
 rm -f '$remote_package'
 sudo docker ps --format 'table {{.Names}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}'"
