@@ -63,6 +63,28 @@ class LowBuyNextDayEventModelTests(unittest.TestCase):
         self.assertIn("T+2", plan.t2_action)
         self.assertTrue(any("分歧高点" in rule for rule in plan.confirmation_rules))
 
+    def test_mainline_limitup_retrace_has_actionable_reclaim_plan(self) -> None:
+        metrics = _metrics(
+            latest_close=10.08,
+            ma5=10.03,
+            post_volume_ratio=0.58,
+            distribution_risk_score=2.6,
+        )
+
+        plan = build_next_day_event_plan(
+            strategy="mainline_limitup_shrink_retrace_reclaim",
+            item=_item(amount=360_000_000),
+            metrics=metrics,
+            research_stage="buy_ready",
+        )
+
+        self.assertEqual(plan.state, "weak_to_strong_candidate")
+        self.assertEqual(plan.state_text, "二次确认候选")
+        self.assertEqual(plan.max_holding_days, 5)
+        self.assertLessEqual(plan.position_pct, 8.0)
+        self.assertIn("5 日线", plan.next_day_action)
+        self.assertTrue(any("VWAP" in rule for rule in plan.confirmation_rules))
+
     def test_research_strategy_exit_plans_are_short_event_windows(self) -> None:
         metrics = _metrics()
         limit_setup = build_strategy_setup("limit_up_breakout_retrace", _item(), metrics, 91.0)

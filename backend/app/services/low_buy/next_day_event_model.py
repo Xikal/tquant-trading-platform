@@ -12,6 +12,7 @@ EVENT_MODEL_STRATEGIES = frozenset(
         "late_session_strong_support",
         "core_midcap_vwap_ma5_retrace",
         "sector_mainline_first_divergence_low_buy",
+        "mainline_limitup_shrink_retrace_reclaim",
     }
 )
 
@@ -33,6 +34,8 @@ def build_next_day_event_plan(
         return _core_midcap_retrace_plan(metrics=metrics)
     if strategy == "sector_mainline_first_divergence_low_buy":
         return _mainline_first_divergence_plan(metrics=metrics)
+    if strategy == "mainline_limitup_shrink_retrace_reclaim":
+        return _mainline_limitup_retrace_plan(metrics=metrics)
     return LowBuyNextDayEventPlanOut()
 
 
@@ -103,6 +106,30 @@ def _mainline_first_divergence_plan(*, metrics: CandidateMetrics) -> LowBuyNextD
             "次日冲高 3%-5% 先兑现。",
             "板块不回流，不做加仓。",
             "第 3 天仍不能转强，退出。",
+        ],
+        risk_notes=_common_risk_notes(metrics),
+    )
+
+
+def _mainline_limitup_retrace_plan(*, metrics: CandidateMetrics) -> LowBuyNextDayEventPlanOut:
+    return LowBuyNextDayEventPlanOut(
+        state="weak_to_strong_candidate",
+        state_text="二次确认候选",
+        next_day_action="只看低开不破支撑后重新站稳 5 日线/VWAP；高开急拉不追，回踩确认后再小仓。",
+        t2_action="T+2 不能脱离买点区或重新跌回 5 日线，直接降级；最多验证到第 5 天。",
+        first_take_profit_pct=3.0,
+        second_take_profit_pct=5.0,
+        max_holding_days=5,
+        position_pct=8.0 if metrics.distribution_risk_score < 4.6 else 0.0,
+        confirmation_rules=[
+            "开盘后不能放量跌破 5 日线和支撑带。",
+            "重新站稳 VWAP，分时低点抬高。",
+            "回调量继续收缩，不能出现放量阴线。",
+        ],
+        exit_rules=[
+            "冲高 3%-5% 先处理一半风险。",
+            "跌回 5 日线、VWAP 或支撑带，直接退出。",
+            "第 5 天仍不能形成修复，不继续占用资金。",
         ],
         risk_notes=_common_risk_notes(metrics),
     )
