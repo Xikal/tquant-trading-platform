@@ -58,17 +58,28 @@ def stream_runtime_task_events(
         cursor = after_id
         settings = get_settings()
         timeout_seconds = int(settings.runtime_event_stream_timeout_seconds or 360)
+        poll_seconds = max(float(settings.runtime_event_stream_poll_seconds or 1.0), 0.2)
+        deadline = time.monotonic() + timeout_seconds
 
         if redis_runtime_task_events_enabled():
-            with SessionLocal() as stream_db:
-                for event in RuntimeTaskQueue(stream_db).events(task_id, after_id=cursor, limit=100):
-                    cursor = max(cursor, event.id)
-                    yield _sse(event)
-                    if _terminal(event.event_type):
-                        return
-            for payload in subscribe_runtime_task_events(task_id, timeout_seconds=timeout_seconds):
+            cursor, terminal, emitted = _db_catch_up(task_id, cursor, limit=100)
+            for event in emitted:
+                yield _sse(event)
+            if terminal:
+                return
+            for payload in subscribe_runtime_task_events(
+                task_id,
+                timeout_seconds=timeout_seconds,
+                heartbeat_seconds=max(poll_seconds, 1.0),
+            ):
                 if payload.get("heartbeat"):
-                    yield ": heartbeat\n\n"
+                    cursor, terminal, emitted = _db_catch_up(task_id, cursor, limit=100)
+                    for event in emitted:
+                        yield _sse(event)
+                    if terminal:
+                        return
+                    if not emitted:
+                        yield ": heartbeat\n\n"
                     continue
                 try:
                     event = RuntimeTaskEventOut.model_validate(payload)
@@ -80,18 +91,19 @@ def stream_runtime_task_events(
                 yield _sse(event)
                 if _terminal(event.event_type):
                     return
-            return
-
-        iterations = max(1, int(timeout_seconds / max(float(settings.runtime_event_stream_poll_seconds or 1.0), 0.2)))
-        for _ in range(iterations):
-            with SessionLocal() as stream_db:
-                events = RuntimeTaskQueue(stream_db).events(task_id, after_id=cursor, limit=50)
-            for event in events:
-                cursor = max(cursor, event.id)
+            cursor, terminal, emitted = _db_catch_up(task_id, cursor, limit=100)
+            for event in emitted:
                 yield _sse(event)
-                if _terminal(event.event_type):
-                    return
-            time.sleep(max(float(settings.runtime_event_stream_poll_seconds or 1.0), 0.2))
+            if terminal or time.monotonic() >= deadline:
+                return
+
+        while time.monotonic() < deadline:
+            cursor, terminal, emitted = _db_catch_up(task_id, cursor, limit=50)
+            for event in emitted:
+                yield _sse(event)
+            if terminal:
+                return
+            time.sleep(poll_seconds)
 
     return StreamingResponse(
         event_stream(),
@@ -110,3 +122,13 @@ def _sse(event: RuntimeTaskEventOut) -> str:
 
 def _terminal(event_type: str) -> bool:
     return event_type in {"succeeded", "failed", "cancelled"}
+
+
+def _db_catch_up(task_id: int, cursor: int, *, limit: int) -> tuple[int, bool, list[RuntimeTaskEventOut]]:
+    with SessionLocal() as stream_db:
+        events = RuntimeTaskQueue(stream_db).events(task_id, after_id=cursor, limit=limit)
+    terminal = False
+    for event in events:
+        cursor = max(cursor, event.id)
+        terminal = terminal or _terminal(event.event_type)
+    return cursor, terminal, events

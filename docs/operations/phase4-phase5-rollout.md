@@ -38,6 +38,15 @@
 bearer_token_file: /etc/prometheus/secrets/tquant_admin_token
 ```
 
+监控容器默认只绑定宿主机本地回环地址，避免无鉴权的 Prometheus 直接暴露公网：
+
+```bash
+PROMETHEUS_BIND_ADDR=127.0.0.1
+GRAFANA_BIND_ADDR=127.0.0.1
+```
+
+如需外部访问 Grafana，应优先通过 Nginx HTTPS、登录鉴权和安全组放行实现；不要直接公网暴露 Prometheus。
+
 Grafana 建议面板：
 
 - API p95 延迟：`tquant_http_p95_ms`
@@ -74,6 +83,7 @@ python -m app.workers.runtime_worker
 - 回测、模拟盘、Agent 分析应记录参数版本。
 - 参数变更新增版本，不覆盖历史版本。
 - ML 输出默认 `research_only=true`，不能直接进入生产交易建议。
+- XGBoost 是可选重型研究依赖，只在需要时安装 `backend/requirements-ml-extra.txt`；默认生产依赖使用轻量模型链路。
 
 ## 不包含内容
 

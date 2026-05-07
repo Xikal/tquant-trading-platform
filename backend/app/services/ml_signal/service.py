@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import pickle
+import hashlib
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -112,13 +113,12 @@ class MLSignalService:
                 feature_names=FEATURE_NAMES,
                 warning=f"模型训练失败：{exc}",
             )
-        can_promote = payload.promote and float(metrics.get("validation_accuracy", 0.0)) >= payload.min_validation_accuracy
+        promotion_blocks = _promotion_blocks(payload=payload, metrics=metrics, sample_count=len(rows))
+        can_promote = payload.promote and not promotion_blocks
         status = "production" if can_promote else "research"
-        if payload.promote and not can_promote:
-            metrics["promotion_blocked_reason"] = (
-                f"validation_accuracy 低于阈值 {payload.min_validation_accuracy:.3f}，已保持 research。"
-            )
-        artifact_uri = self._save_artifact(
+        if payload.promote and promotion_blocks:
+            metrics["promotion_blocked_reason"] = "；".join(promotion_blocks)
+        artifact_uri, artifact_sha256 = self._save_artifact(
             model_key=model_key,
             payload={
                 "model_key": model_key,
@@ -129,6 +129,7 @@ class MLSignalService:
                 "created_at": datetime.utcnow().isoformat(),
             },
         )
+        metrics["artifact_sha256"] = artifact_sha256
         if status == "production":
             self.db.execute(
                 MLSignalModel.__table__.update()
@@ -162,15 +163,15 @@ class MLSignalService:
         rows = self.db.execute(
             select(MLSignalModel).order_by(MLSignalModel.id.desc()).limit(max(1, min(limit, 200)))
         ).scalars().all()
-        production = next((row.model_key for row in rows if row.status == "production"), "")
+        production = next((row.model_key for row in rows if _model_effective_status(row) == "production"), "")
         if not production:
-            production_row = self.db.execute(
+            production_rows = self.db.execute(
                 select(MLSignalModel)
                 .where(MLSignalModel.status == "production")
                 .order_by(MLSignalModel.id.desc())
-                .limit(1)
-            ).scalar_one_or_none()
-            production = production_row.model_key if production_row else ""
+                .limit(20)
+            ).scalars().all()
+            production = next((row.model_key for row in production_rows if _model_effective_status(row) == "production"), "")
         return MLSignalModelListResponse(
             items=[_model_out(row) for row in rows],
             production_model_key=production,
@@ -180,14 +181,20 @@ class MLSignalService:
         row = self._select_model(payload.model_key)
         if row is not None and row.artifact_uri:
             try:
-                artifact = self._load_artifact(row.artifact_uri)
+                metrics = _json_dict(row.metrics_json)
+                artifact = self._load_artifact(
+                    row.artifact_uri,
+                    expected_sha256=str(metrics.get("artifact_sha256") or ""),
+                )
                 probability = _predict_probability(artifact["estimator"], payload.features)
                 label = _label(probability)
+                quality_warning = _production_model_warning(row.status, metrics)
+                research_only = row.status != "production" or bool(quality_warning)
                 return MLSignalPredictionResponse(
                     symbol=payload.symbol,
                     model_key=row.model_key,
                     model_type=row.model_type,
-                    research_only=row.status != "production",
+                    research_only=research_only,
                     probability=probability,
                     label=label,  # type: ignore[arg-type]
                     confidence=round(abs(probability - 0.5) * 2, 3),
@@ -195,8 +202,8 @@ class MLSignalService:
                         f"使用 {row.status} 模型 {row.model_key} 推理。",
                         "输出仅作为信号因子，执行仍需后端风控确认。",
                     ],
-                    metrics=_json_dict(row.metrics_json),
-                    warning="" if row.status == "production" else "模型未进入 production，仅用于研究和观察。",
+                    metrics=metrics,
+                    warning=quality_warning or ("" if row.status == "production" else "模型未进入 production，仅用于研究和观察。"),
                 )
             except Exception as exc:
                 return self._heuristic_predict(payload, warning=f"模型加载或推理失败，已降级启发式：{exc}")
@@ -232,12 +239,13 @@ class MLSignalService:
         cleaned = (model_key or "").strip()
         if cleaned and cleaned != HEURISTIC_MODEL_KEY:
             return self.db.execute(select(MLSignalModel).where(MLSignalModel.model_key == cleaned)).scalar_one_or_none()
-        return self.db.execute(
+        rows = self.db.execute(
             select(MLSignalModel)
             .where(MLSignalModel.status == "production")
             .order_by(MLSignalModel.id.desc())
-            .limit(1)
-        ).scalar_one_or_none()
+            .limit(20)
+        ).scalars().all()
+        return next((row for row in rows if _model_effective_status(row) == "production"), None)
 
     def _load_training_samples(self, *, source: str, limit: int) -> list[MLSignalSample]:
         statement = select(MLSignalSample)
@@ -251,14 +259,20 @@ class MLSignalService:
         base.mkdir(parents=True, exist_ok=True)
         return base
 
-    def _save_artifact(self, *, model_key: str, payload: dict[str, Any]) -> str:
+    def _save_artifact(self, *, model_key: str, payload: dict[str, Any]) -> tuple[str, str]:
         path = self._artifact_dir() / f"{_safe_artifact_name(model_key)}.pkl"
         with path.open("wb") as file:
             pickle.dump(payload, file)
-        return str(path)
+        return str(path), _file_sha256(path)
 
-    def _load_artifact(self, artifact_uri: str) -> dict[str, Any]:
-        with Path(artifact_uri).open("rb") as file:
+    def _load_artifact(self, artifact_uri: str, *, expected_sha256: str = "") -> dict[str, Any]:
+        path = _validated_artifact_path(artifact_uri, self._artifact_dir())
+        if not expected_sha256:
+            raise ValueError("model artifact hash is missing")
+        actual_sha256 = _file_sha256(path)
+        if actual_sha256 != expected_sha256:
+            raise ValueError("model artifact hash mismatch")
+        with path.open("rb") as file:
             payload = pickle.load(file)
         if not isinstance(payload, dict) or "estimator" not in payload:
             raise ValueError("invalid model artifact")
@@ -394,6 +408,42 @@ def _fit_estimator(*, model_type: str, x_matrix: np.ndarray, labels: np.ndarray,
     return estimator, metrics
 
 
+def _promotion_blocks(*, payload: MLSignalTrainRequest, metrics: dict[str, Any], sample_count: int) -> list[str]:
+    settings = get_settings()
+    blocks: list[str] = []
+    min_samples = max(int(settings.ml_signal_min_production_samples), int(payload.min_samples))
+    min_accuracy = max(float(settings.ml_signal_min_production_accuracy), float(payload.min_validation_accuracy))
+    min_auc = float(settings.ml_signal_min_production_auc)
+    validation_accuracy = float(metrics.get("validation_accuracy", 0.0) or 0.0)
+    validation_auc = metrics.get("validation_auc")
+
+    if sample_count < min_samples:
+        blocks.append(f"生产模型样本量不足：当前 {sample_count}，最低需要 {min_samples}")
+    if validation_accuracy < min_accuracy:
+        blocks.append(f"validation_accuracy {validation_accuracy:.3f} 低于生产阈值 {min_accuracy:.3f}")
+    if validation_auc is None:
+        blocks.append("validation_auc 缺失，不能晋级生产模型")
+    elif float(validation_auc or 0.0) < min_auc:
+        blocks.append(f"validation_auc {float(validation_auc):.3f} 低于生产阈值 {min_auc:.3f}")
+    return blocks
+
+
+def _production_model_warning(status: str, metrics: dict[str, Any]) -> str:
+    if status != "production":
+        return "模型未进入 production，仅用于研究和观察。"
+    settings = get_settings()
+    sample_count = int(metrics.get("sample_count", 0) or 0)
+    validation_accuracy = float(metrics.get("validation_accuracy", 0.0) or 0.0)
+    validation_auc = metrics.get("validation_auc")
+    if sample_count < int(settings.ml_signal_min_production_samples):
+        return "production 模型样本量低于当前安全阈值，本次按研究信号处理。"
+    if validation_accuracy < float(settings.ml_signal_min_production_accuracy):
+        return "production 模型准确率低于当前安全阈值，本次按研究信号处理。"
+    if validation_auc is None or float(validation_auc or 0.0) < float(settings.ml_signal_min_production_auc):
+        return "production 模型 AUC 低于当前安全阈值，本次按研究信号处理。"
+    return ""
+
+
 def _samples_to_matrix(rows: list[MLSignalSample]) -> tuple[np.ndarray, np.ndarray]:
     x_rows: list[list[float]] = []
     labels: list[int] = []
@@ -451,15 +501,25 @@ def _label_is_positive(label: dict[str, Any]) -> bool:
 
 def _model_out(row: MLSignalModel) -> MLSignalModelOut:
     schema = _json_dict(row.feature_schema_json)
+    metrics = _json_dict(row.metrics_json)
     return MLSignalModelOut(
         model_key=row.model_key,
         model_type=row.model_type,
-        status=row.status,
+        status=_model_effective_status(row),
         feature_names=list(schema.get("feature_names") or []),
-        metrics=_json_dict(row.metrics_json),
+        metrics=metrics,
         artifact_uri=row.artifact_uri,
         created_at=row.created_at,
     )
+
+
+def _model_effective_status(row: MLSignalModel) -> str:
+    metrics = _json_dict(row.metrics_json)
+    if row.status != "production":
+        return row.status
+    if not row.artifact_uri or not metrics.get("artifact_sha256"):
+        return "research"
+    return "research" if _production_model_warning("production", metrics) else "production"
 
 
 def _label(probability: float) -> str:
@@ -476,6 +536,29 @@ def _generated_model_key(model_type: str) -> str:
 
 def _safe_artifact_name(model_key: str) -> str:
     return "".join(char if char.isalnum() or char in {"-", "_", "."} else "_" for char in model_key)[:120]
+
+
+def _validated_artifact_path(artifact_uri: str, artifact_dir: Path) -> Path:
+    base = artifact_dir.resolve()
+    path = Path(artifact_uri).expanduser()
+    resolved = path.resolve()
+    if resolved.suffix != ".pkl":
+        raise ValueError("invalid model artifact suffix")
+    try:
+        resolved.relative_to(base)
+    except ValueError as exc:
+        raise ValueError("model artifact path escapes configured directory") from exc
+    if not resolved.is_file():
+        raise ValueError("model artifact file does not exist")
+    return resolved
+
+
+def _file_sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as file:
+        for chunk in iter(lambda: file.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
 
 
 def _to_float(value: Any) -> float:

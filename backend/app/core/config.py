@@ -99,6 +99,9 @@ class AppSettings(BaseSettings):
     market_provider_router_enabled: bool = True
     quant_parameter_default_version: str = "quant-params-v1"
     ml_signal_model_dir: str = "data/ml_models"
+    ml_signal_min_production_samples: int = 1000
+    ml_signal_min_production_accuracy: float = 0.55
+    ml_signal_min_production_auc: float = 0.55
     paper_auto_trading_enabled: bool = True
     paper_auto_trading_interval: int = 120
     paper_auto_trading_max_orders: int = 5

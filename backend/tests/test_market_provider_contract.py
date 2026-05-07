@@ -3,6 +3,8 @@ from __future__ import annotations
 import pandas as pd
 
 from app.services.market.openbb_adapter import OpenBBQuote
+from app.services.market import MarketDataService
+from app.models.schemas import QuoteSnapshot
 from app.services.market.providers.akshare_provider import AkshareMarketProvider
 from app.services.market.providers.openbb_provider import OpenBBMarketProvider
 from app.services.market.providers.quality import MarketDataQuality, ProviderResult
@@ -40,6 +42,47 @@ def test_market_provider_router_returns_first_usable_result() -> None:
     assert result.quality == MarketDataQuality.FRESH
     assert result.source == "fresh"
     assert result.data == {"symbol": "000001"}
+
+
+def test_force_refresh_batch_bypasses_cached_provider_quote(monkeypatch) -> None:
+    class Router:
+        count = 0
+
+        def fetch_quote(self, symbol):
+            self.count += 1
+            return ProviderResult(
+                quality=MarketDataQuality.FRESH,
+                source="stub",
+                data=QuoteSnapshot(
+                    symbol=symbol,
+                    name="测试",
+                    market="SH",
+                    instrument_type="stock",
+                    last_price=10.0 + self.count,
+                    change_pct=0.0,
+                    change_amount=0.0,
+                    open_price=10.0,
+                    high_price=10.0 + self.count,
+                    low_price=10.0,
+                    prev_close=10.0,
+                    volume=1000,
+                    amount=10000,
+                    timestamp="2026-05-07 10:00:00",
+                ),
+            )
+
+    MarketDataService._quote_cache.clear()
+    service = MarketDataService()
+    router = Router()
+    service.provider_router = router
+    monkeypatch.setattr(service, "_market_provider_router_enabled", lambda: True)
+
+    first = service.get_quote("600000")
+    refreshed = service.get_quotes_batch(["600000"], force_refresh=True)["600000"]
+
+    assert first.last_price == 11.0
+    assert refreshed.last_price == 12.0
+    assert router.count == 2
 
 
 def test_openbb_provider_keeps_estimated_quote_fields_consistent() -> None:

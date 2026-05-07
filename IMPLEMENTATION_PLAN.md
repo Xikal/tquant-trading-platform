@@ -59,13 +59,13 @@
 - `CLOUD_SSH_KEY=/Users/j/Downloads/gupiao.pem ./scripts/deploy_monitoring_stack.sh`：Prometheus/Grafana 部署成功。
 - 云端 Prometheus target：`tquant-api up`。
 - 云端容器：`tquant-app-mysql`、`tquant-runtime-worker-mysql`、`tquant-backtest-worker-mysql`、`tquant-redis`、`tquant-prometheus`、`tquant-grafana` 均运行。
-- 云端 ML：已沉淀 310 条样本，并训练/注册 `xgboost-production-v1`，`validation_accuracy=0.8871`、`validation_auc=0.9735`。注意：样本量仍偏小，模型输出只作为信号因子，不能绕过风控。
+- 云端 ML：已沉淀 310 条样本，并训练/注册过 `xgboost-production-v1`，`validation_accuracy=0.8871`、`validation_auc=0.9735`。最新安全门槛要求生产模型满足服务端最低样本量、accuracy、AUC 与 artifact hash 校验；样本不足模型会按研究信号降级，不允许绕过风控。
 
 ## 运行说明
 
-- Grafana 默认端口：`http://43.143.243.97:13000`。
+- Grafana 默认绑定本机：`http://127.0.0.1:13000`，公网访问应走 Nginx HTTPS/鉴权或 SSH 隧道。
 - Grafana 管理员密码已保存到云服务器：`/home/ubuntu/gupiao-upload/.runtime/grafana_admin_password`。
-- Prometheus 默认端口：`http://43.143.243.97:19090`。
+- Prometheus 默认绑定本机：`http://127.0.0.1:19090`，不要直接公网暴露。
 - Prometheus scrape 使用 `/home/ubuntu/gupiao-upload/.runtime/prometheus/tquant_admin_token`，未在仓库保存密钥。
 
 ---

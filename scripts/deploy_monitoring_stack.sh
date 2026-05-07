@@ -34,8 +34,10 @@ PY
   printf 'ADMIN_API_TOKEN=%s\n' "${admin_token}" >> .env
 fi
 umask 077
-printf '%s' "${admin_token}" > .runtime/prometheus/tquant_admin_token
-chmod 0444 .runtime/prometheus/tquant_admin_token
+tmp_token="$(mktemp)"
+printf '%s' "${admin_token}" > "${tmp_token}"
+sudo install -m 0444 "${tmp_token}" .runtime/prometheus/tquant_admin_token
+rm -f "${tmp_token}"
 REMOTE_SCRIPT
 
 grafana_password_b64="$(printf '%s' "${GRAFANA_PASSWORD}" | base64 | tr -d '\n')"
@@ -52,6 +54,36 @@ ssh "${ssh_opts[@]}" "${REMOTE_USER}@${REMOTE_HOST}" \
   "curl -fsS http://127.0.0.1:${PROMETHEUS_PORT:-19090}/-/ready >/dev/null && curl -fsS http://127.0.0.1:${GRAFANA_PORT:-13000}/api/health >/dev/null"
 
 ssh "${ssh_opts[@]}" "${REMOTE_USER}@${REMOTE_HOST}" \
-  "curl -fsS http://127.0.0.1:${PROMETHEUS_PORT:-19090}/api/v1/targets | grep -q 'tquant-api'"
+  "python3 - <<'PY'
+import json
+import sys
+import urllib.request
+
+url = 'http://127.0.0.1:${PROMETHEUS_PORT:-19090}/api/v1/targets'
+with urllib.request.urlopen(url, timeout=8) as response:
+    payload = json.loads(response.read().decode('utf-8'))
+
+targets = payload.get('data', {}).get('activeTargets', [])
+matches = [
+    target
+    for target in targets
+    if target.get('labels', {}).get('job') == 'tquant-api'
+]
+if not matches:
+    print('Prometheus target tquant-api is missing', file=sys.stderr)
+    sys.exit(4)
+down = [target for target in matches if target.get('health') != 'up']
+if down:
+    details = [
+        {
+            'health': target.get('health'),
+            'scrapeUrl': target.get('scrapeUrl'),
+            'lastError': target.get('lastError'),
+        }
+        for target in down
+    ]
+    print('Prometheus target tquant-api is not up: ' + json.dumps(details, ensure_ascii=False), file=sys.stderr)
+    sys.exit(5)
+PY"
 
 echo "monitoring stack deployed and verified"

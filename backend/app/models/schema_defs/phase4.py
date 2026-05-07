@@ -133,13 +133,13 @@ class MLSignalSampleBuildResponse(BaseModel):
 
 class MLSignalTrainRequest(BaseModel):
     model_key: str = Field(default="", max_length=120)
-    model_type: Literal["logistic", "xgboost", "lightgbm"] = "xgboost"
+    model_type: Literal["logistic", "xgboost", "lightgbm"] = "logistic"
     source: Literal["paper", "backtest", "combined"] = "combined"
     limit: int = Field(default=5000, ge=20, le=100000)
-    min_samples: int = Field(default=200, ge=20, le=100000)
+    min_samples: int = Field(default=200, ge=100, le=100000)
     validation_ratio: float = Field(default=0.2, ge=0.05, le=0.5)
     promote: bool = False
-    min_validation_accuracy: float = Field(default=0.55, ge=0.0, le=1.0)
+    min_validation_accuracy: float = Field(default=0.55, ge=0.5, le=1.0)
 
 
 class MLSignalTrainResponse(BaseModel):

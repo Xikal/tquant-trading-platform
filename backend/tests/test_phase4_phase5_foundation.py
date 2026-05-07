@@ -7,7 +7,7 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from app.models.base import Base
-from app.models.entities import BacktestRun, MLSignalSample, PaperAccount
+from app.models.entities import BacktestRun, MLSignalModel, MLSignalSample, PaperAccount
 from app.models.schema_defs.phase4 import (
     AgentQualityScoreRequest,
     MLSignalPredictionRequest,
@@ -115,13 +115,13 @@ def test_ml_signal_prediction_is_research_only():
     assert response.label in {"positive", "neutral", "negative"}
 
 
-def test_ml_signal_training_registers_promoted_model(tmp_path, monkeypatch):
+def test_ml_signal_training_blocks_small_sample_production(tmp_path, monkeypatch):
     db = _db()
     monkeypatch.setenv("ML_SIGNAL_MODEL_DIR", str(tmp_path))
     from app.core.config import get_settings
 
     get_settings.cache_clear()
-    for index in range(30):
+    for index in range(120):
         db.add(
             MLSignalSample(
                 sample_key=f"sample:{index}",
@@ -146,10 +146,10 @@ def test_ml_signal_training_registers_promoted_model(tmp_path, monkeypatch):
             model_key="test-logistic",
             model_type="logistic",
             source="backtest",
-            min_samples=20,
-            limit=30,
+            min_samples=100,
+            limit=120,
             promote=True,
-            min_validation_accuracy=0.0,
+            min_validation_accuracy=0.5,
         )
     )
     predicted = service.predict(
@@ -160,10 +160,48 @@ def test_ml_signal_training_registers_promoted_model(tmp_path, monkeypatch):
         )
     )
 
-    assert trained.status == "production"
+    assert trained.status == "research"
     assert trained.artifact_uri
-    assert predicted.research_only is False
+    assert "样本量不足" in trained.metrics["promotion_blocked_reason"]
+    assert predicted.research_only is True
     assert predicted.model_key == "test-logistic"
+    get_settings.cache_clear()
+
+
+def test_ml_signal_rejects_artifact_path_outside_model_dir(tmp_path, monkeypatch):
+    db = _db()
+    model_dir = tmp_path / "models"
+    outside_file = tmp_path / "unsafe.pkl"
+    outside_file.write_bytes(b"not a trusted pickle")
+    monkeypatch.setenv("ML_SIGNAL_MODEL_DIR", str(model_dir))
+    from app.core.config import get_settings
+
+    get_settings.cache_clear()
+    db.add(
+        MLSignalModel(
+            model_key="unsafe-model",
+            model_type="logistic",
+            status="production",
+            feature_schema_json='{"feature_names": []}',
+            metrics_json=(
+                '{"sample_count": 2000, "validation_accuracy": 0.8, '
+                '"validation_auc": 0.75, "artifact_sha256": "unused"}'
+            ),
+            artifact_uri=str(outside_file),
+        )
+    )
+    db.commit()
+
+    response = MLSignalService(db).predict(
+        MLSignalPredictionRequest(
+            symbol="600000",
+            model_key="unsafe-model",
+            features={"priority_score": 88, "risk_score": 2},
+        )
+    )
+
+    assert response.research_only is True
+    assert "降级启发式" in response.warning
     get_settings.cache_clear()
 
 

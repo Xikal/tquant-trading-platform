@@ -21,8 +21,8 @@ class MarketQuoteMixin:
     _provider_router_flag_cache: tuple[float, bool] = (0.0, False)
     _provider_router_flag_ttl_seconds = 30.0
 
-    def get_quote(self, symbol: str) -> QuoteSnapshot:
-        cached = self._get_quote_cache(symbol)
+    def get_quote(self, symbol: str, force_refresh: bool = False) -> QuoteSnapshot:
+        cached = None if force_refresh else self._get_quote_cache(symbol)
         if cached is not None:
             return cached
         if self._market_provider_router_enabled():
@@ -97,7 +97,7 @@ class MarketQuoteMixin:
                 unresolved: list[str] = []
                 for symbol in remaining:
                     try:
-                        batch_quotes[symbol] = self.get_quote(symbol)
+                        batch_quotes[symbol] = self.get_quote(symbol, force_refresh=force_refresh)
                     except Exception:
                         unresolved.append(symbol)
                 remaining = unresolved
