@@ -11,6 +11,7 @@ describe("workspaceConstants", () => {
       "late_session_strong_support",
       "core_midcap_vwap_ma5_retrace",
       "sector_mainline_first_divergence_low_buy",
+      "mainline_limitup_shrink_retrace_reclaim",
     ]);
     expect(keys).not.toContain("classic_retrace");
     expect(keys).not.toContain("ma_support");

@@ -38,6 +38,12 @@ class AppSettings(BaseSettings):
     )
     default_data_source: str = "akshare_eastmoney"
     http_timeout: int = 12
+    market_quote_timeout_seconds: float = 3.0
+    market_batch_timeout_seconds: float = 8.0
+    market_intraday_timeout_seconds: float = 5.0
+    market_calendar_timeout_seconds: float = 5.0
+    akshare_timeout_seconds: float = 12.0
+    notification_timeout_seconds: float = 8.0
     app_mobile_quick_history_timeout: float = 10.0
     runtime_background_jobs_enabled: bool = False
     runtime_background_jobs_on_sqlite: bool = True
@@ -99,9 +105,13 @@ class AppSettings(BaseSettings):
     market_provider_router_enabled: bool = True
     quant_parameter_default_version: str = "quant-params-v1"
     ml_signal_model_dir: str = "data/ml_models"
+    ml_signal_artifact_remote_dir: str = ""
     ml_signal_min_production_samples: int = 1000
-    ml_signal_min_production_accuracy: float = 0.55
-    ml_signal_min_production_auc: float = 0.55
+    ml_signal_min_production_accuracy: float = 0.60
+    ml_signal_min_production_auc: float = 0.65
+    ml_signal_cv_folds: int = 5
+    ml_signal_min_cv_accuracy: float = 0.60
+    ml_signal_min_cv_auc: float = 0.65
     paper_auto_trading_enabled: bool = True
     paper_auto_trading_interval: int = 120
     paper_auto_trading_max_orders: int = 5

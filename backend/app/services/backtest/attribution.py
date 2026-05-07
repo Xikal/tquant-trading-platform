@@ -61,6 +61,8 @@ def build_backtest_attribution(
     trades: Iterable[Any],
 ) -> dict[str, Any]:
     signal_list = list(signals)
+    order_list = list(orders)
+    trade_list = list(trades)
     contexts = _build_signal_contexts(
         signals=signal_list,
         histories=histories,
@@ -78,7 +80,7 @@ def build_backtest_attribution(
         _touch(dimensions["market_state"], context.market_state).signal_count += 1
         _touch(dimensions["data_quality"], context.data_quality).signal_count += 1
 
-    for order in orders:
+    for order in order_list:
         if str(getattr(order, "side", "") or "").lower() != "buy":
             continue
         context = _resolve_context(contexts, getattr(order, "symbol", ""), getattr(order, "strategy_key", ""))
@@ -91,7 +93,7 @@ def build_backtest_attribution(
             elif status == "rejected":
                 bucket.rejected_order_count += 1
 
-    for trade in trades:
+    for trade in trade_list:
         context = _resolve_context(contexts, getattr(trade, "symbol", ""), getattr(trade, "strategy_key", ""))
         if context is None:
             continue
@@ -110,6 +112,7 @@ def build_backtest_attribution(
         "industry": _sorted_buckets(dimensions["industry"]),
         "market_state": _sorted_buckets(dimensions["market_state"]),
         "data_quality": _sorted_buckets(dimensions["data_quality"]),
+        "failure_reasons": _failure_reason_rows(orders=order_list, trades=trade_list),
         "data_quality_summary": _quality_summary(data_quality),
         "notes": [
             "行业和市场状态来自 BacktestSignal.metadata，未标注时归入“未分类/未标注”。",
@@ -221,6 +224,78 @@ def _quality_summary(data_quality: DataQualityReport) -> dict[str, Any]:
         )
     )
     return payload
+
+
+def _failure_reason_rows(*, orders: Iterable[Any], trades: Iterable[Any]) -> list[dict[str, Any]]:
+    rows: dict[str, dict[str, Any]] = {}
+    for order in orders:
+        if str(getattr(order, "status", "") or "").lower() != "rejected":
+            continue
+        reason = str(getattr(order, "reject_reason", "") or "委托未成交")
+        item = rows.setdefault(
+            reason,
+            {
+                "bucket": reason,
+                "label": reason,
+                "signal_count": 0,
+                "filled_order_count": 0,
+                "rejected_order_count": 0,
+                "trade_count": 0,
+                "win_count": 0,
+                "win_rate_pct": 0.0,
+                "avg_return_pct": 0.0,
+                "net_pnl": 0.0,
+                "fee_amount": 0.0,
+            },
+        )
+        item["rejected_order_count"] += 1
+    for trade in trades:
+        reason = str(getattr(trade, "exit_reason", "") or "")
+        if reason not in {"stop_loss", "max_holding_days", "end_of_backtest"}:
+            continue
+        item = rows.setdefault(
+            reason,
+            {
+                "bucket": reason,
+                "label": _exit_reason_label(reason),
+                "signal_count": 0,
+                "filled_order_count": 0,
+                "rejected_order_count": 0,
+                "trade_count": 0,
+                "win_count": 0,
+                "win_rate_pct": 0.0,
+                "avg_return_pct": 0.0,
+                "net_pnl": 0.0,
+                "fee_amount": 0.0,
+            },
+        )
+        item["trade_count"] += 1
+        net_pnl = _float(getattr(trade, "net_pnl", 0.0))
+        item["net_pnl"] += net_pnl
+        item["fee_amount"] += _float(getattr(trade, "fee_amount", 0.0))
+        item["avg_return_pct"] += _float(getattr(trade, "return_pct", 0.0))
+        if net_pnl > 0:
+            item["win_count"] += 1
+    for item in rows.values():
+        trade_count = int(item["trade_count"] or 0)
+        if trade_count:
+            item["win_rate_pct"] = round(float(item["win_count"]) / trade_count * 100, 2)
+            item["avg_return_pct"] = round(float(item["avg_return_pct"]) / trade_count, 2)
+        item["net_pnl"] = round(float(item["net_pnl"]), 2)
+        item["fee_amount"] = round(float(item["fee_amount"]), 2)
+    return sorted(
+        rows.values(),
+        key=lambda item: (int(item["rejected_order_count"] or 0) + int(item["trade_count"] or 0), abs(float(item["net_pnl"] or 0.0))),
+        reverse=True,
+    )
+
+
+def _exit_reason_label(reason: str) -> str:
+    return {
+        "stop_loss": "止损退出",
+        "max_holding_days": "到期退出",
+        "end_of_backtest": "回测结束清仓",
+    }.get(reason, reason or "未知原因")
 
 
 def _float(value: Any) -> float:

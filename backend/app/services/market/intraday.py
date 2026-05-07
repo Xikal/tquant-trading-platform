@@ -27,7 +27,11 @@ class MarketIntradayMixin:
     def _fetch_tencent_minute_bars(self, symbol: str) -> list[KlineBar]:
         tencent_symbol = self._to_tencent_symbol(symbol)
         try:
-            response = self.session.get("https://ifzq.gtimg.cn/appstock/app/minute/query", params={"code": tencent_symbol}, timeout=self.settings.http_timeout)
+            response = self.session.get(
+                "https://ifzq.gtimg.cn/appstock/app/minute/query",
+                params={"code": tencent_symbol},
+                timeout=self.settings.market_intraday_timeout_seconds,
+            )
             response.raise_for_status()
             payload = response.json()
         except (requests.RequestException, ValueError) as exc:
@@ -83,7 +87,13 @@ class MarketIntradayMixin:
             "print(json.dumps(df.tail(240).to_dict('records'), ensure_ascii=False, default=str))\n"
         )
         try:
-            result = subprocess.run([sys.executable, "-c", script], check=True, capture_output=True, text=True, timeout=max(int(self.settings.http_timeout), 10) + 20)
+            result = subprocess.run(
+                [sys.executable, "-c", script],
+                check=True,
+                capture_output=True,
+                text=True,
+                timeout=max(int(self.settings.akshare_timeout_seconds), 10) + 20,
+            )
             rows = json.loads(result.stdout)
         except (subprocess.SubprocessError, json.JSONDecodeError) as exc:
             stderr = (exc.stderr or "").strip() if isinstance(exc, subprocess.CalledProcessError) else ""
@@ -322,7 +332,7 @@ class MarketIntradayMixin:
 
     def _fetch_json(self, url: str, params: dict[str, object]) -> dict[str, object]:
         try:
-            response = self.session.get(url, params=params, timeout=self.settings.http_timeout)
+            response = self.session.get(url, params=params, timeout=self.settings.market_intraday_timeout_seconds)
             response.raise_for_status()
             payload = response.json()
         except (requests.RequestException, ValueError):
@@ -344,7 +354,7 @@ class MarketIntradayMixin:
         try:
             with __import__("urllib.request").request.urlopen(
                 request,
-                timeout=max(int(self.settings.http_timeout), 10) + 5,
+                timeout=max(int(self.settings.market_intraday_timeout_seconds), 5) + 5,
             ) as response:
                 return json.loads(response.read().decode("utf-8", errors="ignore"))
         except Exception as exc:
@@ -370,7 +380,11 @@ class MarketIntradayMixin:
     def _fetch_sina_quote_fields(self, symbol: str) -> list[str]:
         url = f"https://hq.sinajs.cn/list={self._to_sina_symbol(symbol)}"
         try:
-            response = self.session.get(url, headers={"Referer": "https://finance.sina.com.cn"}, timeout=self.settings.http_timeout)
+            response = self.session.get(
+                url,
+                headers={"Referer": "https://finance.sina.com.cn"},
+                timeout=self.settings.market_quote_timeout_seconds,
+            )
             response.raise_for_status()
         except requests.RequestException as exc:
             raise DataSourceError(f"新浪实时行情请求失败: {exc}") from exc

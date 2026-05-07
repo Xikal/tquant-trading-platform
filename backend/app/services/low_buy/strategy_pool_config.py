@@ -57,6 +57,14 @@ _STRATEGY_POOL_PROFILES: dict[str, StrategyPoolProfile] = {
         max_size=360,
         uses_daily_scan=True,
     ),
+    "mainline_limitup_shrink_retrace_reclaim": StrategyPoolProfile(
+        strategy_key="mainline_limitup_shrink_retrace_reclaim",
+        pool_key="mainline_limitup_retrace_pool",
+        title="主线涨停缩量回调确认池",
+        source="daily_history",
+        max_size=320,
+        uses_daily_scan=True,
+    ),
     "ma_channel_band": StrategyPoolProfile(
         strategy_key="ma_channel_band",
         pool_key="daily_channel_pool",

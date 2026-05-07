@@ -11,7 +11,7 @@ class OpenBBMarketProvider:
 
     def __init__(self, service) -> None:
         self.service = service
-        self.adapter = OpenBBDataAdapter(timeout=getattr(service.settings, "http_timeout", 3))
+        self.adapter = OpenBBDataAdapter(timeout=getattr(service.settings, "market_quote_timeout_seconds", 3))
 
     def fetch_quote(self, symbol: str) -> ProviderResult[QuoteSnapshot]:
         quote = self.adapter.quote(symbol)
@@ -59,4 +59,50 @@ class OpenBBMarketProvider:
             quality=MarketDataQuality.UNAVAILABLE,
             source=self.name,
             message="sector heatmap not enabled for OpenBB adapter",
+        )
+
+    def fetch_board_breadth_frame(self) -> ProviderResult:
+        return ProviderResult(
+            quality=MarketDataQuality.UNAVAILABLE,
+            source=self.name,
+            message="board breadth not enabled for OpenBB adapter",
+        )
+
+    def fetch_trade_dates(self) -> ProviderResult:
+        return ProviderResult(
+            quality=MarketDataQuality.UNAVAILABLE,
+            source=self.name,
+            message="trade calendar not enabled for OpenBB adapter",
+        )
+
+    def fetch_market_emotion_pools(
+        self,
+        effective_trade_date: str,
+        previous_trade_date: str | None = None,
+    ) -> ProviderResult:
+        return ProviderResult(
+            quality=MarketDataQuality.UNAVAILABLE,
+            source=self.name,
+            message="market emotion pools not enabled for OpenBB adapter",
+        )
+
+    def fetch_limit_up_pool(self, trade_date: str) -> ProviderResult:
+        return ProviderResult(
+            quality=MarketDataQuality.UNAVAILABLE,
+            source=self.name,
+            message="limit-up pool not enabled for OpenBB adapter",
+        )
+
+    def fetch_limit_down_pool(self, trade_date: str) -> ProviderResult:
+        return ProviderResult(
+            quality=MarketDataQuality.UNAVAILABLE,
+            source=self.name,
+            message="limit-down pool not enabled for OpenBB adapter",
+        )
+
+    def fetch_daily_history(self, symbol: str, start_date: str, end_date: str) -> ProviderResult:
+        return ProviderResult(
+            quality=MarketDataQuality.UNAVAILABLE,
+            source=self.name,
+            message="daily history not enabled for OpenBB adapter",
         )

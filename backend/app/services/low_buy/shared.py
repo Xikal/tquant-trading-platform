@@ -34,11 +34,6 @@ from app.models.schemas import (
 from app.services.market_data import DataSourceError, MarketDataService, guess_market
 from app.services.settings_service import SettingsService
 
-try:
-    import akshare as ak  # type: ignore
-except Exception:  # pragma: no cover
-    ak = None
-
 
 @dataclass
 class BoardCandidate:
@@ -174,6 +169,16 @@ PLAYBOOKS: dict[str, dict[str, Any]] = {
             "必须是强主线或次主线，后排杂毛不做。",
             "只做第一次健康分歧，连续分歧或退潮不接。",
             "收盘承接或次日弱转强确认，仓位轻，失败立即退出。",
+        ],
+    },
+    "mainline_limitup_shrink_retrace_reclaim": {
+        "title": "主线涨停缩量回调",
+        "subtitle": "生产观察 · 主线涨停后 3-8 日缩量回踩，不追高",
+        "logic": "只把主线板块涨停启动票纳入观察，等待 3-8 日缩量回调到 5/10/20 日线合一区或双底支撑，再看是否重新站回 5 日线。",
+        "notes": [
+            "不追涨停和高开拉升，只等回调到支撑带后的二次确认。",
+            "优先主线热点板块里的首板/低位启动票，后排杂毛和高连板不做。",
+            "必须缩量回调、守住启动低点，并重新站回 5 日线；跌破支撑带直接失效。",
         ],
     },
     "ma_channel_band": {

@@ -73,6 +73,8 @@ def _classic_low_buy_plan(
         return _next_day_repair_plan(strategy, metrics, stop_loss, take_profit)
     if strategy == "sector_mainline_first_divergence_low_buy":
         return _mainline_first_divergence_plan(metrics, stop_loss, take_profit)
+    if strategy == "mainline_limitup_shrink_retrace_reclaim":
+        return _mainline_limitup_shrink_retrace_plan(metrics, stop_loss, take_profit)
     max_days = strategy_max_holding_days(strategy)
     trailing_stop = round(max(metrics.ma5, metrics.ma10 * 0.995) * 0.99, 3)
     exit_rules = _classic_exit_rules(strategy)
@@ -157,5 +159,26 @@ def _mainline_first_divergence_plan(
             "次日弱转强或冲高 3%-5% 先处理一半风险。",
             "板块没有回流、个股不强于板块，不继续加仓。",
             "T+2 仍不能脱离买点区，直接降级退出。",
+        ],
+    )
+
+
+def _mainline_limitup_shrink_retrace_plan(
+    metrics: CandidateMetrics,
+    stop_loss: float,
+    take_profit: float,
+) -> LowBuyExitPlanOut:
+    trailing_stop = round(max(metrics.ma5 * 0.99, metrics.recent_low_guard), 3)
+    return LowBuyExitPlanOut(
+        stop_loss=stop_loss,
+        first_take_profit=round(max(take_profit, metrics.latest_close * 1.035), 3),
+        trailing_stop=max(stop_loss, trailing_stop),
+        max_holding_days=strategy_max_holding_days("mainline_limitup_shrink_retrace_reclaim"),
+        time_stop_text=strategy_holding_policy("mainline_limitup_shrink_retrace_reclaim").time_stop_text,
+        invalid_condition="跌回 5 日线、均线合一区或启动低点，主线涨停回调逻辑失效。",
+        exit_rules=[
+            "二次站稳后 2-5 日内验证修复，不能转强就主动降级。",
+            "冲高 3%-5% 先处理一半风险，不把低吸票拿成追高票。",
+            "跌回 5 日线或放量跌破支撑带，直接退出，不补仓硬扛。",
         ],
     )

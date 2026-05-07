@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import threading
 import time
 from dataclasses import dataclass, field
 from typing import Callable, Optional
@@ -42,6 +43,7 @@ class FactorSpec:
 
 _WEIGHT_CACHE: tuple[float, dict[str, float]] | None = None
 _WEIGHT_CACHE_TTL_SECONDS = 15.0
+_WEIGHT_CACHE_LOCK = threading.Lock()
 FACTOR_WEIGHT_SETTING_KEY = "factor_weights"
 
 
@@ -115,7 +117,8 @@ def save_factor_weight_overrides(weights: dict[str, float]) -> dict[str, float]:
 
 def clear_factor_weight_cache() -> None:
     global _WEIGHT_CACHE
-    _WEIGHT_CACHE = None
+    with _WEIGHT_CACHE_LOCK:
+        _WEIGHT_CACHE = None
 
 
 def evaluate_registered_external_factors(
@@ -148,24 +151,28 @@ def _load_factor_weight_overrides() -> dict[str, float]:
     now = time.monotonic()
     if _WEIGHT_CACHE and now - _WEIGHT_CACHE[0] < _WEIGHT_CACHE_TTL_SECONDS:
         return dict(_WEIGHT_CACHE[1])
-    overrides: dict[str, float] = {}
-    try:
-        with SessionLocal() as db:
-            row = db.execute(
-                select(SystemSetting).where(SystemSetting.key == FACTOR_WEIGHT_SETTING_KEY)
-            ).scalar_one_or_none()
-            if row and row.value:
-                raw = json.loads(row.value)
-                if isinstance(raw, dict):
-                    overrides = {
-                        str(key): float(value)
-                        for key, value in raw.items()
-                        if isinstance(value, (int, float, str))
-                    }
-    except Exception:
-        overrides = {}
-    _WEIGHT_CACHE = (now, overrides)
-    return dict(overrides)
+    with _WEIGHT_CACHE_LOCK:
+        now = time.monotonic()
+        if _WEIGHT_CACHE and now - _WEIGHT_CACHE[0] < _WEIGHT_CACHE_TTL_SECONDS:
+            return dict(_WEIGHT_CACHE[1])
+        overrides: dict[str, float] = {}
+        try:
+            with SessionLocal() as db:
+                row = db.execute(
+                    select(SystemSetting).where(SystemSetting.key == FACTOR_WEIGHT_SETTING_KEY)
+                ).scalar_one_or_none()
+                if row and row.value:
+                    raw = json.loads(row.value)
+                    if isinstance(raw, dict):
+                        overrides = {
+                            str(key): float(value)
+                            for key, value in raw.items()
+                            if isinstance(value, (int, float, str))
+                        }
+        except Exception:
+            overrides = {}
+        _WEIGHT_CACHE = (now, overrides)
+        return dict(overrides)
 
 
 def _clamp_weight(value: float | int | str) -> float:

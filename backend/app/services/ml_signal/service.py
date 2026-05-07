@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import pickle
 import hashlib
+import shutil
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -130,6 +131,9 @@ class MLSignalService:
             },
         )
         metrics["artifact_sha256"] = artifact_sha256
+        remote_artifact_uri = self._backup_artifact(artifact_uri, artifact_sha256)
+        if remote_artifact_uri:
+            metrics["remote_artifact_uri"] = remote_artifact_uri
         if status == "production":
             self.db.execute(
                 MLSignalModel.__table__.update()
@@ -145,6 +149,8 @@ class MLSignalService:
         row.feature_schema_json = _json_dumps({"feature_names": FEATURE_NAMES})
         row.metrics_json = _json_dumps(metrics)
         row.artifact_uri = artifact_uri
+        row.remote_artifact_uri = remote_artifact_uri
+        row.artifact_checksum = artifact_sha256
         self.db.commit()
         self.db.refresh(row)
 
@@ -156,6 +162,8 @@ class MLSignalService:
             feature_names=FEATURE_NAMES,
             metrics=metrics,
             artifact_uri=row.artifact_uri,
+            remote_artifact_uri=row.remote_artifact_uri,
+            artifact_checksum=row.artifact_checksum,
             warning="" if status == "production" else "模型已训练但未进入 production，当前仍按研究模型使用。",
         )
 
@@ -184,7 +192,8 @@ class MLSignalService:
                 metrics = _json_dict(row.metrics_json)
                 artifact = self._load_artifact(
                     row.artifact_uri,
-                    expected_sha256=str(metrics.get("artifact_sha256") or ""),
+                    expected_sha256=str(row.artifact_checksum or metrics.get("artifact_sha256") or ""),
+                    remote_artifact_uri=str(row.remote_artifact_uri or metrics.get("remote_artifact_uri") or ""),
                 )
                 probability = _predict_probability(artifact["estimator"], payload.features)
                 label = _label(probability)
@@ -265,7 +274,36 @@ class MLSignalService:
             pickle.dump(payload, file)
         return str(path), _file_sha256(path)
 
-    def _load_artifact(self, artifact_uri: str, *, expected_sha256: str = "") -> dict[str, Any]:
+    def _backup_artifact(self, artifact_uri: str, expected_sha256: str) -> str:
+        remote_dir_raw = (get_settings().ml_signal_artifact_remote_dir or "").strip()
+        if not remote_dir_raw:
+            return ""
+        source = _validated_artifact_path(artifact_uri, self._artifact_dir())
+        remote_dir = Path(remote_dir_raw)
+        if not remote_dir.is_absolute():
+            remote_dir = BACKEND_DIR / remote_dir
+        remote_dir.mkdir(parents=True, exist_ok=True)
+        target = remote_dir / source.name
+        if source.resolve() == target.resolve():
+            return str(target)
+        shutil.copy2(source, target)
+        if _file_sha256(target) != expected_sha256:
+            target.unlink(missing_ok=True)
+            raise ValueError("remote artifact hash mismatch after backup")
+        return str(target)
+
+    def _load_artifact(
+        self,
+        artifact_uri: str,
+        *,
+        expected_sha256: str = "",
+        remote_artifact_uri: str = "",
+    ) -> dict[str, Any]:
+        self._restore_artifact_if_missing(
+            artifact_uri=artifact_uri,
+            remote_artifact_uri=remote_artifact_uri,
+            expected_sha256=expected_sha256,
+        )
         path = _validated_artifact_path(artifact_uri, self._artifact_dir())
         if not expected_sha256:
             raise ValueError("model artifact hash is missing")
@@ -277,6 +315,32 @@ class MLSignalService:
         if not isinstance(payload, dict) or "estimator" not in payload:
             raise ValueError("invalid model artifact")
         return payload
+
+    def _restore_artifact_if_missing(
+        self,
+        *,
+        artifact_uri: str,
+        remote_artifact_uri: str,
+        expected_sha256: str,
+    ) -> None:
+        if not remote_artifact_uri or not expected_sha256:
+            return
+        target = Path(artifact_uri).expanduser()
+        base = self._artifact_dir().resolve()
+        target_resolved = target.resolve()
+        try:
+            target_resolved.relative_to(base)
+        except ValueError as exc:
+            raise ValueError("model artifact restore path escapes configured directory") from exc
+        if target.exists():
+            return
+        remote = Path(remote_artifact_uri).expanduser()
+        if not remote.is_file():
+            return
+        if _file_sha256(remote) != expected_sha256:
+            raise ValueError("remote model artifact hash mismatch")
+        target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(remote, target)
 
     def _paper_samples(self, limit: int) -> list[dict[str, Any]]:
         rows = self.db.execute(
@@ -349,9 +413,6 @@ class MLSignalService:
 def _fit_estimator(*, model_type: str, x_matrix: np.ndarray, labels: np.ndarray, validation_ratio: float):
     from sklearn.metrics import accuracy_score, roc_auc_score
     from sklearn.model_selection import train_test_split
-    from sklearn.pipeline import Pipeline
-    from sklearn.preprocessing import StandardScaler
-    from sklearn.linear_model import LogisticRegression
 
     stratify = labels if min(np.bincount(labels.astype(int))) >= 2 else None
     x_train, x_valid, y_train, y_valid = train_test_split(
@@ -361,38 +422,13 @@ def _fit_estimator(*, model_type: str, x_matrix: np.ndarray, labels: np.ndarray,
         random_state=42,
         stratify=stratify,
     )
-    if model_type == "xgboost":
-        from xgboost import XGBClassifier
-
-        estimator = XGBClassifier(
-            n_estimators=120,
-            max_depth=3,
-            learning_rate=0.05,
-            subsample=0.85,
-            colsample_bytree=0.85,
-            eval_metric="logloss",
-            n_jobs=1,
-            random_state=42,
-        )
-    elif model_type == "lightgbm":
-        from lightgbm import LGBMClassifier
-
-        estimator = LGBMClassifier(
-            n_estimators=120,
-            max_depth=4,
-            learning_rate=0.05,
-            subsample=0.85,
-            colsample_bytree=0.85,
-            random_state=42,
-            verbosity=-1,
-        )
-    else:
-        estimator = Pipeline(
-            [
-                ("scaler", StandardScaler()),
-                ("model", LogisticRegression(max_iter=500, random_state=42)),
-            ]
-        )
+    estimator = _make_estimator(model_type)
+    cv_metrics = _cross_validate_estimator(
+        estimator=estimator,
+        x_matrix=x_matrix,
+        labels=labels,
+        folds=int(get_settings().ml_signal_cv_folds),
+    )
     estimator.fit(x_train, y_train)
     probabilities = _estimator_probabilities(estimator, x_valid)
     predictions = (probabilities >= 0.5).astype(int)
@@ -402,10 +438,89 @@ def _fit_estimator(*, model_type: str, x_matrix: np.ndarray, labels: np.ndarray,
         "validation_count": int(len(y_valid)),
         "positive_rate": round(float(labels.mean()), 4),
         "validation_accuracy": round(float(accuracy_score(y_valid, predictions)), 4),
+        **cv_metrics,
     }
     if len(set(y_valid.tolist())) >= 2:
         metrics["validation_auc"] = round(float(roc_auc_score(y_valid, probabilities)), 4)
     return estimator, metrics
+
+
+def _make_estimator(model_type: str):
+    if model_type == "xgboost":
+        from xgboost import XGBClassifier
+
+        return XGBClassifier(
+            n_estimators=120,
+            max_depth=3,
+            learning_rate=0.05,
+            subsample=0.85,
+            colsample_bytree=0.85,
+            eval_metric="logloss",
+            n_jobs=1,
+            random_state=42,
+        )
+    if model_type == "lightgbm":
+        from lightgbm import LGBMClassifier
+
+        return LGBMClassifier(
+            n_estimators=120,
+            max_depth=4,
+            learning_rate=0.05,
+            subsample=0.85,
+            colsample_bytree=0.85,
+            random_state=42,
+            verbosity=-1,
+        )
+    from sklearn.linear_model import LogisticRegression
+    from sklearn.pipeline import Pipeline
+    from sklearn.preprocessing import StandardScaler
+
+    return Pipeline(
+        [
+            ("scaler", StandardScaler()),
+            ("model", LogisticRegression(max_iter=500, random_state=42)),
+        ]
+    )
+
+
+def _cross_validate_estimator(*, estimator: Any, x_matrix: np.ndarray, labels: np.ndarray, folds: int) -> dict[str, Any]:
+    from sklearn.base import clone
+    from sklearn.metrics import accuracy_score, roc_auc_score
+    from sklearn.model_selection import StratifiedKFold
+
+    class_counts = np.bincount(labels.astype(int))
+    min_class_count = int(class_counts.min()) if len(class_counts) >= 2 else 0
+    fold_count = min(max(int(folds), 2), min_class_count)
+    if fold_count < 2:
+        return {
+            "cv_fold_count": 0,
+            "cv_skipped_reason": "样本类别分布不足，无法执行分层交叉验证。",
+        }
+
+    accuracies: list[float] = []
+    aucs: list[float] = []
+    splitter = StratifiedKFold(n_splits=fold_count, shuffle=True, random_state=42)
+    for train_index, valid_index in splitter.split(x_matrix, labels):
+        fold_estimator = clone(estimator)
+        fold_estimator.fit(x_matrix[train_index], labels[train_index])
+        probabilities = _estimator_probabilities(fold_estimator, x_matrix[valid_index])
+        predictions = (probabilities >= 0.5).astype(int)
+        valid_labels = labels[valid_index]
+        accuracies.append(float(accuracy_score(valid_labels, predictions)))
+        if len(set(valid_labels.tolist())) >= 2:
+            aucs.append(float(roc_auc_score(valid_labels, probabilities)))
+
+    metrics: dict[str, Any] = {
+        "cv_fold_count": fold_count,
+        "cv_accuracy_mean": round(float(np.mean(accuracies)), 4) if accuracies else 0.0,
+        "cv_accuracy_std": round(float(np.std(accuracies)), 4) if accuracies else 0.0,
+    }
+    if aucs:
+        metrics["cv_auc_mean"] = round(float(np.mean(aucs)), 4)
+        metrics["cv_auc_std"] = round(float(np.std(aucs)), 4)
+    else:
+        metrics["cv_auc_missing_reason"] = "交叉验证折内标签类别不足，无法计算 AUC。"
+    return metrics
 
 
 def _promotion_blocks(*, payload: MLSignalTrainRequest, metrics: dict[str, Any], sample_count: int) -> list[str]:
@@ -414,8 +529,13 @@ def _promotion_blocks(*, payload: MLSignalTrainRequest, metrics: dict[str, Any],
     min_samples = max(int(settings.ml_signal_min_production_samples), int(payload.min_samples))
     min_accuracy = max(float(settings.ml_signal_min_production_accuracy), float(payload.min_validation_accuracy))
     min_auc = float(settings.ml_signal_min_production_auc)
+    min_cv_accuracy = float(settings.ml_signal_min_cv_accuracy)
+    min_cv_auc = float(settings.ml_signal_min_cv_auc)
     validation_accuracy = float(metrics.get("validation_accuracy", 0.0) or 0.0)
     validation_auc = metrics.get("validation_auc")
+    cv_fold_count = int(metrics.get("cv_fold_count", 0) or 0)
+    cv_accuracy = metrics.get("cv_accuracy_mean")
+    cv_auc = metrics.get("cv_auc_mean")
 
     if sample_count < min_samples:
         blocks.append(f"生产模型样本量不足：当前 {sample_count}，最低需要 {min_samples}")
@@ -425,6 +545,16 @@ def _promotion_blocks(*, payload: MLSignalTrainRequest, metrics: dict[str, Any],
         blocks.append("validation_auc 缺失，不能晋级生产模型")
     elif float(validation_auc or 0.0) < min_auc:
         blocks.append(f"validation_auc {float(validation_auc):.3f} 低于生产阈值 {min_auc:.3f}")
+    if cv_fold_count < 2:
+        blocks.append("交叉验证未完成，不能晋级生产模型")
+    if cv_accuracy is None:
+        blocks.append("cv_accuracy_mean 缺失，不能晋级生产模型")
+    elif float(cv_accuracy or 0.0) < min_cv_accuracy:
+        blocks.append(f"cv_accuracy_mean {float(cv_accuracy):.3f} 低于生产阈值 {min_cv_accuracy:.3f}")
+    if cv_auc is None:
+        blocks.append("cv_auc_mean 缺失，不能晋级生产模型")
+    elif float(cv_auc or 0.0) < min_cv_auc:
+        blocks.append(f"cv_auc_mean {float(cv_auc):.3f} 低于生产阈值 {min_cv_auc:.3f}")
     return blocks
 
 
@@ -435,12 +565,21 @@ def _production_model_warning(status: str, metrics: dict[str, Any]) -> str:
     sample_count = int(metrics.get("sample_count", 0) or 0)
     validation_accuracy = float(metrics.get("validation_accuracy", 0.0) or 0.0)
     validation_auc = metrics.get("validation_auc")
+    cv_fold_count = int(metrics.get("cv_fold_count", 0) or 0)
+    cv_accuracy = metrics.get("cv_accuracy_mean")
+    cv_auc = metrics.get("cv_auc_mean")
     if sample_count < int(settings.ml_signal_min_production_samples):
         return "production 模型样本量低于当前安全阈值，本次按研究信号处理。"
     if validation_accuracy < float(settings.ml_signal_min_production_accuracy):
         return "production 模型准确率低于当前安全阈值，本次按研究信号处理。"
     if validation_auc is None or float(validation_auc or 0.0) < float(settings.ml_signal_min_production_auc):
         return "production 模型 AUC 低于当前安全阈值，本次按研究信号处理。"
+    if cv_fold_count < 2:
+        return "production 模型缺少交叉验证，本次按研究信号处理。"
+    if cv_accuracy is None or float(cv_accuracy or 0.0) < float(settings.ml_signal_min_cv_accuracy):
+        return "production 模型交叉验证准确率低于当前安全阈值，本次按研究信号处理。"
+    if cv_auc is None or float(cv_auc or 0.0) < float(settings.ml_signal_min_cv_auc):
+        return "production 模型交叉验证 AUC 低于当前安全阈值，本次按研究信号处理。"
     return ""
 
 
@@ -509,6 +648,8 @@ def _model_out(row: MLSignalModel) -> MLSignalModelOut:
         feature_names=list(schema.get("feature_names") or []),
         metrics=metrics,
         artifact_uri=row.artifact_uri,
+        remote_artifact_uri=row.remote_artifact_uri,
+        artifact_checksum=row.artifact_checksum,
         created_at=row.created_at,
     )
 
@@ -517,7 +658,7 @@ def _model_effective_status(row: MLSignalModel) -> str:
     metrics = _json_dict(row.metrics_json)
     if row.status != "production":
         return row.status
-    if not row.artifact_uri or not metrics.get("artifact_sha256"):
+    if not row.artifact_uri or not (row.artifact_checksum or metrics.get("artifact_sha256")):
         return "research"
     return "research" if _production_model_warning("production", metrics) else "production"
 

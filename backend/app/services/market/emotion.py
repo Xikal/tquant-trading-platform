@@ -1,10 +1,7 @@
 from __future__ import annotations
 
-from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from app.core.timezone import beijing_today
-
-from app.services.market.shared import ak
 
 
 @dataclass(frozen=True)
@@ -27,8 +24,6 @@ class MarketEmotionMixin:
     def _resolve_regime_trade_date(self, latest_trade_date: str | None) -> str | None:
         if latest_trade_date:
             return latest_trade_date
-        if ak is None:
-            return None
         trade_dates = self._load_trade_dates()
         if not trade_dates:
             return None
@@ -38,8 +33,6 @@ class MarketEmotionMixin:
 
     def _resolve_previous_trade_date(self, latest_trade_date: str | None) -> str | None:
         if not latest_trade_date:
-            return None
-        if ak is None:
             return None
         trade_dates = self._load_trade_dates()
         if latest_trade_date not in trade_dates:
@@ -54,72 +47,29 @@ class MarketEmotionMixin:
         latest_trade_date: str | None,
     ) -> MarketEmotionSnapshot:
         effective_trade_date = self._resolve_regime_trade_date(latest_trade_date)
-        if not effective_trade_date or ak is None:
+        if not effective_trade_date:
             return self._empty_market_emotion_snapshot()
         cached = self._get_market_emotion_cache(effective_trade_date)
         if cached is not None:
             return cached
 
         previous_trade_date = self._resolve_previous_trade_date(effective_trade_date)
-        current_pool = broken_pool = previous_board_pool = previous_limit_up_pool = None
-
-        def load_current():
-            return self._call_akshare(
-                ak.stock_zt_pool_em,
-                date=effective_trade_date.replace("-", ""),
-                purpose="limit_pool",
+        if self._market_provider_router_enabled():
+            routed = self.provider_router.fetch_market_emotion_pools(
+                effective_trade_date,
+                previous_trade_date,
             )
+            if routed.usable and isinstance(routed.data, dict):
+                snapshot = self._build_market_emotion_snapshot(
+                    current_pool=routed.data.get("current"),
+                    broken_pool=routed.data.get("broken"),
+                    previous_board_pool=routed.data.get("previous_board"),
+                    previous_limit_up_pool=routed.data.get("previous"),
+                )
+                self._set_market_emotion_cache(effective_trade_date, snapshot)
+                return snapshot
 
-        def load_broken():
-            return self._call_akshare(
-                ak.stock_zt_pool_zbgc_em,
-                date=effective_trade_date.replace("-", ""),
-                purpose="limit_pool",
-            )
-
-        def load_previous_board():
-            return self._call_akshare(
-                ak.stock_zt_pool_previous_em,
-                date=effective_trade_date.replace("-", ""),
-                purpose="limit_pool",
-            )
-
-        def load_previous():
-            if not previous_trade_date:
-                return None
-            return self._call_akshare(
-                ak.stock_zt_pool_em,
-                date=previous_trade_date.replace("-", ""),
-                purpose="limit_pool",
-            )
-
-        with ThreadPoolExecutor(max_workers=4, thread_name_prefix="market-emotion") as executor:
-            futures = {
-                "current": executor.submit(load_current),
-                "broken": executor.submit(load_broken),
-                "previous_board": executor.submit(load_previous_board),
-                "previous": executor.submit(load_previous),
-            }
-            for key, future in futures.items():
-                try:
-                    value = future.result()
-                except Exception:
-                    value = None
-                if key == "current":
-                    current_pool = value
-                elif key == "broken":
-                    broken_pool = value
-                elif key == "previous_board":
-                    previous_board_pool = value
-                else:
-                    previous_limit_up_pool = value
-
-        snapshot = self._build_market_emotion_snapshot(
-            current_pool=current_pool,
-            broken_pool=broken_pool,
-            previous_board_pool=previous_board_pool,
-            previous_limit_up_pool=previous_limit_up_pool,
-        )
+        snapshot = self._empty_market_emotion_snapshot()
         self._set_market_emotion_cache(effective_trade_date, snapshot)
         return snapshot
 
@@ -221,18 +171,16 @@ class MarketEmotionMixin:
         )
 
     def _load_trade_dates(self) -> list[str]:
-        if ak is None:
-            return []
         cached = self._get_trade_date_cache("calendar")
         if cached is not None:
             return cached
-        frame = self._call_akshare(ak.tool_trade_date_hist_sina, purpose="trade_dates")
-        values = [
-            item.isoformat() if hasattr(item, "isoformat") else str(item)
-            for item in frame["trade_date"].tolist()
-        ]
-        self._set_trade_date_cache("calendar", values)
-        return values
+        if self._market_provider_router_enabled():
+            routed = self.provider_router.fetch_trade_dates()
+            if routed.usable and routed.data:
+                values = list(routed.data)
+                self._set_trade_date_cache("calendar", values)
+                return values
+        return []
 
     def _get_market_emotion_cache(self, key: str) -> MarketEmotionSnapshot | None:
         return self._get_cached_snapshot(

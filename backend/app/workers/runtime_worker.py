@@ -8,6 +8,7 @@ from typing import Any
 from app.core.config import get_settings
 from app.core.database import SessionLocal
 from app.services.agent_daily_workflow_service import AgentDailyWorkflowService
+from app.services.monitor_snapshot_cache import build_and_store_monitor_snapshot
 from app.services.tasks import RuntimeTaskQueue
 
 logger = logging.getLogger(__name__)
@@ -54,6 +55,16 @@ def _execute_task(task_type: str, payload: dict[str, Any], db) -> dict[str, Any]
         channel = str(payload.get("channel") or "feishu")
         response = AgentDailyWorkflowService().push_daily_report(db, channel=channel)
         return response.model_dump() if hasattr(response, "model_dump") else dict(response)
+    if task_type == "monitor_snapshot_refresh":
+        user_id = int(payload.get("user_id") or 0)
+        priority_limit = int(payload.get("priority_limit") or 12)
+        if user_id <= 0:
+            raise ValueError("monitor snapshot refresh requires user_id")
+        return build_and_store_monitor_snapshot(
+            db,
+            user_id=user_id,
+            priority_limit=max(1, min(priority_limit, 30)),
+        )
     raise ValueError(f"未知任务类型: {task_type}")
 
 

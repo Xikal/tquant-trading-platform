@@ -61,6 +61,12 @@ _POLICIES: dict[str, StrategyHoldingPolicy] = {
         time_stop_text="主线首分歧只验证 T+1/T+2 回流，不能继续强于板块就退出。",
         card_hint="持有建议：T+1/T+2验证，板块不回流就放弃。",
     ),
+    "mainline_limitup_shrink_retrace_reclaim": StrategyHoldingPolicy(
+        max_holding_days=5,
+        brief="2-5日验证",
+        time_stop_text="主线涨停回调只验证二次站稳后的 2-5 日修复，跌回 5 日线或支撑带直接退出。",
+        card_hint="持有建议：2-5日验证，不追高，跌回5日线/支撑带退出。",
+    ),
     "breakout_support": StrategyHoldingPolicy(
         max_holding_days=3,
         brief="支撑因子观察",

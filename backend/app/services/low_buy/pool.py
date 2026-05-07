@@ -19,7 +19,6 @@ from app.services.low_buy.shared import (
     PLAYBOOKS,
     Session,
     SessionLocal,
-    ak,
     datetime,
 )
 from app.services.low_buy.strategy_policy import requires_mainline_industry
@@ -39,6 +38,7 @@ _STRATEGY_BOARD_WINDOW_DAYS = {
     "late_session_strong_support": 14,
     "core_midcap_vwap_ma5_retrace": 14,
     "sector_mainline_first_divergence_low_buy": 14,
+    "mainline_limitup_shrink_retrace_reclaim": 18,
     "ma_channel_band": 30,
     "leader_pullback_band": 18,
 }
@@ -49,6 +49,7 @@ _STRATEGY_RETRACEMENT_DAYS_MAX = {
     "late_session_strong_support": 8,
     "core_midcap_vwap_ma5_retrace": 8,
     "sector_mainline_first_divergence_low_buy": 8,
+    "mainline_limitup_shrink_retrace_reclaim": 8,
     "ma_channel_band": 14,
     "leader_pullback_band": 8,
 }
@@ -329,14 +330,10 @@ class LowBuyPoolMixin:
         return sorted(set(values))[-count:]
 
     def _load_recent_trade_dates_from_remote(self, *, count: int, today: str) -> list[str]:
-        try:
-            trade_df = self.market_data._call_akshare(ak.tool_trade_date_hist_sina, purpose="trade_dates")
-            values = [
-                item.isoformat() if hasattr(item, "isoformat") else str(item)
-                for item in trade_df["trade_date"].tolist()
-            ]
-        except Exception:
+        routed = self.market_data.provider_router.fetch_trade_dates()
+        if not routed.usable or routed.data is None:
             return []
+        values = [item.isoformat() if hasattr(item, "isoformat") else str(item) for item in routed.data["trade_date"].tolist()]
         return [item for item in values if item <= today][-count:]
 
     def _load_recent_trade_dates_from_local_store(self, count: int) -> list[str]:
@@ -360,11 +357,10 @@ class LowBuyPoolMixin:
     def _load_recent_limit_up_pool(self, trade_dates: list[str]) -> dict[str, BoardCandidate]:
         pooled: dict[str, BoardCandidate] = {}
         for trade_date in reversed(trade_dates):
-            frame = self.market_data._call_akshare(
-                ak.stock_zt_pool_em,
-                date=trade_date.replace("-", ""),
-                purpose="limit_pool",
-            )
+            routed = self.market_data.provider_router.fetch_limit_up_pool(trade_date)
+            frame = routed.data if routed.usable else None
+            if frame is None:
+                continue
             if frame.empty:
                 continue
             for row in frame.to_dict("records"):

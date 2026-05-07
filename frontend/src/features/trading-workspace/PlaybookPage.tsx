@@ -156,6 +156,9 @@ function sampleInsufficientReason(strategyKey: string, playbook: LowBuyScreenerR
   if (strategyKey === "sector_mainline_first_divergence_low_buy") {
     return "主线首分歧要求主线板块、第一次分歧、龙头/强跟随和次日确认同时成立；未触发确定买入时不会计入胜率收益样本。";
   }
+  if (strategyKey === "mainline_limitup_shrink_retrace_reclaim") {
+    return "主线涨停回调只统计主线板块、缩量回调、均线合一和重新站回 5 日线同时成立后的样本；未完成二次确认不会计入胜率收益样本。";
+  }
   return "当前统计口径只计算确定买入且完成后续行情归因的样本；观察票和接近买点票不会计入胜率。";
 }
 

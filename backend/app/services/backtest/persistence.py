@@ -1,10 +1,11 @@
 from __future__ import annotations
 
+import hashlib
 import json
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import delete, update
+from sqlalchemy import case, delete, select, update
 from sqlalchemy.orm import Session
 
 from app.models.backtest_entities import (
@@ -14,10 +15,11 @@ from app.models.backtest_entities import (
     BacktestOrder as BacktestOrderEntity,
     BacktestTrade,
 )
-from app.models.entities import BacktestRun
+from app.models.entities import BacktestRun, QuantParameterSet
 from app.services.backtest.data_provider import DATA_PROVIDER_VERSION
 from app.services.backtest.engine import BACKTEST_ENGINE_VERSION, BacktestResult
 from app.services.low_buy.shared import LOW_BUY_RESULT_VERSION
+from app.services.quant.parameter_version_service import DEFAULT_QUANT_PARAMETERS
 
 
 _PROTECTED_TERMINAL_STATUSES = {"cancelled", "deleted", "failed", "timeout"}
@@ -172,6 +174,9 @@ class BacktestResultPersistence:
                 run.cancelled_at = run.cancelled_at or run.finished_at
             return
         metrics = dict(result.metrics or {})
+        quant_parameter = _active_quant_parameter_metadata(self.db)
+        result_payload = _compact_result_payload(result)
+        result_payload["quant_parameter"] = quant_parameter
         finished_at = datetime.utcnow()
         values = {
             "status": result.status,
@@ -182,7 +187,7 @@ class BacktestResultPersistence:
             "strategy_version": str(LOW_BUY_RESULT_VERSION),
             "data_version": result.dataset_manifest.get("source_hash") or result.data_quality.source_hash or DATA_PROVIDER_VERSION,
             "fee_model_version": run.fee_model_version or "paper-fee-model-v1",
-            "result_json": _json_dumps(_compact_result_payload(result)),
+            "result_json": _json_dumps(result_payload),
             "finished_at": finished_at,
         }
         if result.status == "cancelled":
@@ -250,6 +255,32 @@ def _compact_result_payload(result: BacktestResult) -> dict[str, Any]:
     }
 
 
+def _active_quant_parameter_metadata(db: Session) -> dict[str, Any]:
+    """Bind backtest output to the active quant parameter snapshot."""
+
+    row = db.execute(
+        select(QuantParameterSet)
+        .where(QuantParameterSet.status == "active")
+        .where(QuantParameterSet.scope.in_(["global", "low_buy"]))
+        .order_by(case((QuantParameterSet.scope == "low_buy", 0), else_=1), QuantParameterSet.id.desc())
+        .limit(1)
+    ).scalar_one_or_none()
+    if row is None:
+        version = "default"
+        scope = "global"
+        params = DEFAULT_QUANT_PARAMETERS
+    else:
+        version = str(row.version or "unknown")
+        scope = str(row.scope or "global")
+        params = _deep_merge(DEFAULT_QUANT_PARAMETERS, _json_dict(row.params_json))
+    payload = _json_dumps(params)
+    return {
+        "version": version,
+        "scope": scope,
+        "hash": hashlib.sha256(payload.encode("utf-8")).hexdigest(),
+    }
+
+
 def _turnover_amounts_by_date(result: BacktestResult) -> dict[str, float]:
     output: dict[str, float] = {}
     for order in getattr(result, "orders", []) or []:
@@ -262,3 +293,27 @@ def _turnover_amounts_by_date(result: BacktestResult) -> dict[str, float]:
 
 def _json_dumps(value: dict[str, Any]) -> str:
     return json.dumps(value, ensure_ascii=False, separators=(",", ":"))
+
+
+def _json_dict(raw: str) -> dict[str, Any]:
+    try:
+        value = json.loads(raw or "{}")
+    except Exception:
+        return {}
+    return value if isinstance(value, dict) else {}
+
+
+def _deep_merge(defaults: dict[str, Any], overrides: dict[str, Any]) -> dict[str, Any]:
+    result: dict[str, Any] = {}
+    for key, default_value in defaults.items():
+        override_value = overrides.get(key)
+        if isinstance(default_value, dict) and isinstance(override_value, dict):
+            result[key] = _deep_merge(default_value, override_value)
+        elif key in overrides:
+            result[key] = override_value
+        else:
+            result[key] = default_value
+    for key, value in overrides.items():
+        if key not in result:
+            result[key] = value
+    return result

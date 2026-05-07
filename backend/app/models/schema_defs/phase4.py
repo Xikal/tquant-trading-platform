@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any, Literal, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class AgentQualityIssueOut(BaseModel):
@@ -73,6 +73,35 @@ class QuantParameterSetOut(BaseModel):
 class QuantParameterSetListResponse(BaseModel):
     current_version: str = ""
     items: list[QuantParameterSetOut] = Field(default_factory=list)
+
+
+class QuantParameterExportResponse(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
+    current_version: str = ""
+    exported_at: datetime
+    params: dict[str, Any] = Field(default_factory=dict)
+    parameter_schema: dict[str, Any] = Field(default_factory=dict, alias="schema")
+
+
+class QuantParameterRollbackRequest(BaseModel):
+    version: str = Field(min_length=1, max_length=80)
+    scope: str = Field(default="global", max_length=40)
+
+
+class QuantParameterAuditOut(BaseModel):
+    id: int
+    action: str
+    version: str = ""
+    scope: str = "global"
+    operator: str = ""
+    before: dict[str, Any] = Field(default_factory=dict)
+    after: dict[str, Any] = Field(default_factory=dict)
+    created_at: datetime
+
+
+class QuantParameterAuditListResponse(BaseModel):
+    items: list[QuantParameterAuditOut] = Field(default_factory=list)
 
 
 class RuntimeTaskCreate(BaseModel):
@@ -150,6 +179,8 @@ class MLSignalTrainResponse(BaseModel):
     feature_names: list[str] = Field(default_factory=list)
     metrics: dict[str, Any] = Field(default_factory=dict)
     artifact_uri: str = ""
+    remote_artifact_uri: str = ""
+    artifact_checksum: str = ""
     warning: str = ""
 
 
@@ -160,6 +191,8 @@ class MLSignalModelOut(BaseModel):
     feature_names: list[str] = Field(default_factory=list)
     metrics: dict[str, Any] = Field(default_factory=dict)
     artifact_uri: str = ""
+    remote_artifact_uri: str = ""
+    artifact_checksum: str = ""
     created_at: datetime
 
 

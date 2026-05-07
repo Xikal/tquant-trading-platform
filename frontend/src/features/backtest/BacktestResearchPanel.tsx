@@ -12,6 +12,7 @@ import type {
   BacktestValidationDetail,
   BacktestValidationSummary,
 } from "../../api/backtests";
+import type { ReactNode } from "react";
 import { lazy, Suspense, useMemo, useState } from "react";
 import { ErrorBanner } from "../../components/shared/Feedback";
 import {
@@ -437,13 +438,25 @@ function AttributionPanel({ state, equity }: { state: BacktestResearchState; equ
   const attribution = state.attribution;
   const correlation = state.correlation;
   const strategy = attribution?.strategy ?? attribution?.by_strategy ?? [];
+  const canExport = Boolean(
+    strategy.length ||
+    attribution?.industry?.length ||
+    attribution?.market_state?.length ||
+    attribution?.data_quality?.length ||
+    attribution?.failure_reasons?.length
+  );
   return (
     <section className="backtest-research-card">
-      <PanelTitle title="归因面板" meta="策略 / 行业 / 市场 / 质量" />
+      <PanelTitle
+        title="归因面板"
+        meta="策略 / 行业 / 市场 / 质量"
+        action={canExport ? <button type="button" onClick={() => exportAttributionCsv(attribution)}>导出 CSV</button> : null}
+      />
       <AttributionTable title="策略归因" items={strategy} />
       <AttributionTable title="行业归因" items={attribution?.industry ?? []} />
       <AttributionTable title="市场状态归因" items={attribution?.market_state ?? []} />
       <AttributionTable title="质量分桶" items={attribution?.data_quality ?? []} />
+      <AttributionTable title="失败原因" items={attribution?.failure_reasons ?? []} />
       <StrategyDecompositionTable attribution={attribution} />
       <PanelTitle title="收益分布" meta="日收益直方图 + 正态拟合" />
       <Suspense fallback={<div className="backtest-chart-fallback">收益分布加载中...</div>}>
@@ -518,6 +531,7 @@ function StrategyDecompositionTable({ attribution }: { attribution: BacktestAttr
     ...normalizeAttributionRows("行业", attribution?.industry ?? []),
     ...normalizeAttributionRows("市场", attribution?.market_state ?? []),
     ...normalizeAttributionRows("质量", attribution?.data_quality ?? []),
+    ...normalizeAttributionRows("失败", attribution?.failure_reasons ?? []),
   ]
     .sort((a, b) => Math.abs(b.returnValue) - Math.abs(a.returnValue))
     .slice(0, 10);
@@ -586,13 +600,47 @@ function TaskList<T extends { id: number; name: string; status: string; progress
   );
 }
 
-function PanelTitle({ title, meta }: { title: string; meta?: string }) {
+function PanelTitle({ title, meta, action }: { title: string; meta?: string; action?: ReactNode }) {
   return (
     <div className="backtest-research-title">
       <h3>{title}</h3>
       {meta ? <span>{meta}</span> : null}
+      {action}
     </div>
   );
+}
+
+function exportAttributionCsv(attribution: BacktestAttributionResponse | null) {
+  const rows = [
+    ["类型", "分桶", "样本", "胜率", "收益贡献"],
+    ...normalizeAttributionRows("策略", attribution?.strategy ?? attribution?.by_strategy ?? []).map(csvRow),
+    ...normalizeAttributionRows("行业", attribution?.industry ?? []).map(csvRow),
+    ...normalizeAttributionRows("市场", attribution?.market_state ?? []).map(csvRow),
+    ...normalizeAttributionRows("质量", attribution?.data_quality ?? []).map(csvRow),
+    ...normalizeAttributionRows("失败", attribution?.failure_reasons ?? []).map(csvRow),
+  ];
+  const csv = rows.map((row) => row.map(escapeCsvCell).join(",")).join("\n");
+  const blob = new Blob([`\uFEFF${csv}`], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = `backtest-attribution-${new Date().toISOString().slice(0, 10)}.csv`;
+  anchor.click();
+  URL.revokeObjectURL(url);
+}
+
+function csvRow(item: ReturnType<typeof normalizeAttributionRows>[number]) {
+  return [
+    item.group,
+    item.label,
+    String(item.tradeCount),
+    `${item.winRate}`,
+    `${item.returnValue}`,
+  ];
+}
+
+function escapeCsvCell(value: string) {
+  return `"${String(value).replace(/"/g, '""')}"`;
 }
 
 function TextField({ label, value, hint, type = "text", onChange }: { label: string; value: string; hint?: string; type?: string; onChange: (value: string) => void }) {

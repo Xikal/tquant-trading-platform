@@ -72,6 +72,7 @@ from app.models.phase4_entities import (
     MLSignalSample,
     PaperBacktestComparison,
     QuantParameterSet,
+    QuantParameterAuditLog,
     RuntimeTask,
     RuntimeTaskEvent,
 )
@@ -135,6 +136,7 @@ __all__ = [
     "RuntimeTaskEvent",
     "AgentResultQuality",
     "QuantParameterSet",
+    "QuantParameterAuditLog",
     "MLSignalSample",
     "MLSignalModel",
     "PaperBacktestComparison",

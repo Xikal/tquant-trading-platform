@@ -274,7 +274,7 @@ class MarketQuoteMixin:
     def _fetch_tencent_quote(self, symbol: str) -> QuoteSnapshot:
         url = f"https://qt.gtimg.cn/q={self._to_sina_symbol(symbol)}"
         try:
-            response = self.session.get(url, timeout=self.settings.http_timeout)
+            response = self.session.get(url, timeout=self.settings.market_quote_timeout_seconds)
             response.raise_for_status()
         except requests.RequestException as exc:
             raise DataSourceError(f"腾讯实时行情请求失败: {exc}") from exc
@@ -292,7 +292,7 @@ class MarketQuoteMixin:
         sina_map = dict(zip(sina_symbols, symbols))
         url = f"https://qt.gtimg.cn/q={','.join(sina_symbols)}"
         try:
-            response = self.session.get(url, timeout=self.settings.http_timeout)
+            response = self.session.get(url, timeout=self.settings.market_batch_timeout_seconds)
             response.raise_for_status()
         except requests.RequestException as exc:
             raise DataSourceError(f"腾讯批量实时行情请求失败: {exc}") from exc

@@ -2,7 +2,7 @@ import { invalidateCache, request } from "./base";
 
 export type BacktestStatus = "pending" | "queued" | "running" | "completed" | "succeeded" | "failed" | "cancelled" | "deleted" | "timeout";
 
-export type BacktestExecutionModel = "open_price" | "close_price" | "next_open" | "vwap";
+export type BacktestExecutionModel = "open_price" | "close_price" | "next_open" | "vwap" | "market_impact";
 
 export interface BacktestRiskLimits {
   max_position_pct: number;
@@ -55,6 +55,7 @@ export interface BacktestAttribution {
   industry?: BacktestAttributionBucket[];
   market_state?: BacktestAttributionBucket[];
   data_quality?: BacktestAttributionBucket[];
+  failure_reasons?: BacktestAttributionBucket[];
   data_quality_summary?: Record<string, unknown>;
   notes?: string[];
 }

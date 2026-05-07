@@ -35,3 +35,49 @@ class EastmoneyMarketProvider:
             source=self.name,
             message="sector heatmap not provided by this adapter",
         )
+
+    def fetch_board_breadth_frame(self) -> ProviderResult:
+        return ProviderResult(
+            quality=MarketDataQuality.UNAVAILABLE,
+            source=self.name,
+            message="board breadth not provided by this adapter",
+        )
+
+    def fetch_trade_dates(self) -> ProviderResult:
+        return ProviderResult(
+            quality=MarketDataQuality.UNAVAILABLE,
+            source=self.name,
+            message="trade calendar not provided by this adapter",
+        )
+
+    def fetch_market_emotion_pools(
+        self,
+        effective_trade_date: str,
+        previous_trade_date: str | None = None,
+    ) -> ProviderResult:
+        return ProviderResult(
+            quality=MarketDataQuality.UNAVAILABLE,
+            source=self.name,
+            message="market emotion pools not provided by this adapter",
+        )
+
+    def fetch_limit_up_pool(self, trade_date: str) -> ProviderResult:
+        return ProviderResult(
+            quality=MarketDataQuality.UNAVAILABLE,
+            source=self.name,
+            message="limit-up pool not provided by this adapter",
+        )
+
+    def fetch_limit_down_pool(self, trade_date: str) -> ProviderResult:
+        return ProviderResult(
+            quality=MarketDataQuality.UNAVAILABLE,
+            source=self.name,
+            message="limit-down pool not provided by this adapter",
+        )
+
+    def fetch_daily_history(self, symbol: str, start_date: str, end_date: str) -> ProviderResult:
+        return ProviderResult(
+            quality=MarketDataQuality.UNAVAILABLE,
+            source=self.name,
+            message="daily history not provided by this adapter",
+        )

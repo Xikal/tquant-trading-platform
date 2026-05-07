@@ -16,7 +16,6 @@ from app.services.low_buy.shared import (
     LowBuyScreenerResponse,
     Session,
     SessionLocal,
-    ak,
     datetime as shared_datetime,
     json,
     pd,
@@ -374,37 +373,10 @@ class LowBuyHistoryMixin:
     def _fetch_remote_daily_history(self, symbol: str, start_date_iso: str, latest_trade_date: str) -> pd.DataFrame | None:
         start_date_str = start_date_iso.replace("-", "")
         end_date_str = latest_trade_date.replace("-", "")
-        normalized: pd.DataFrame | None = None
-        try:
-            frame = self.market_data._call_akshare(
-                ak.stock_zh_a_daily,
-                symbol=self.market_data._to_sina_symbol(symbol),
-                start_date=start_date_str,
-                end_date=end_date_str,
-                adjust="qfq",
-                purpose="daily_history",
-            )
-            if not frame.empty:
-                normalized = frame.rename(columns={"date": "date", "open": "open", "close": "close", "high": "high", "low": "low", "volume": "volume", "amount": "amount"}).copy()
-                normalized["pct_chg"] = normalized["close"].pct_change().fillna(0.0) * 100
-        except Exception:
-            normalized = None
-        if normalized is None:
-            try:
-                frame = self.market_data._call_akshare(
-                    ak.stock_zh_a_hist_tx,
-                    symbol=self.market_data._to_sina_symbol(symbol),
-                    start_date=start_date_str,
-                    end_date=end_date_str,
-                    purpose="daily_history",
-                )
-                if frame.empty:
-                    return None
-                normalized = frame.rename(columns={"date": "date", "open": "open", "close": "close", "high": "high", "low": "low", "amount": "volume"}).copy()
-                normalized["amount"] = 0.0
-                normalized["pct_chg"] = normalized["close"].pct_change().fillna(0.0) * 100
-            except Exception:
-                return None
+        routed = self.market_data.provider_router.fetch_daily_history(symbol, start_date_str, end_date_str)
+        normalized = routed.data if routed.usable else None
+        if normalized is None or normalized.empty:
+            return None
         return self._finalize_daily_history_frame(normalized, start_date_iso)
 
     def _build_intraday_history(self, history: pd.DataFrame | None, active_trade_date: str, quote) -> pd.DataFrame | None:
@@ -483,7 +455,7 @@ class LowBuyHistoryMixin:
         history_wait_timeout = (
             max(float(wait_timeout_seconds), 1.0)
             if wait_timeout_seconds is not None
-            else max(float(self.market_data.settings.http_timeout or 12), 12.0) * 2.0
+            else max(float(self.market_data.settings.akshare_timeout_seconds or 12), 12.0) * 2.0
         )
         executor = ThreadPoolExecutor(max_workers=max_workers)
         try:

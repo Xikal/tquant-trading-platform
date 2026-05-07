@@ -264,6 +264,8 @@ def profile_with_setup(profile: SignalFamilyProfile, setup: StrategySetup, strat
         trigger = f"回踩 5/10 日线 {setup.entry_zone_low:.3f}-{setup.entry_zone_high:.3f} 后重新转强。"
     elif strategy == "sector_mainline_first_divergence_low_buy":
         trigger = f"主线首分歧回踩 {setup.entry_zone_low:.3f}-{setup.entry_zone_high:.3f}，次日弱转强确认。"
+    elif strategy == "mainline_limitup_shrink_retrace_reclaim":
+        trigger = f"主线涨停后缩量回踩 {setup.entry_zone_low:.3f}-{setup.entry_zone_high:.3f}，重新站回 5 日线。"
     else:
         trigger = f"价格进入 {setup.entry_zone_low:.3f}-{setup.entry_zone_high:.3f}，并出现止跌确认。"
     return replace(profile, trigger_condition=trigger, next_watch_price=round(setup.entry_zone_high, 3))

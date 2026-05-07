@@ -11,6 +11,7 @@ export const BACKTEST_EXECUTION_MODELS: Array<[BacktestExecutionModel, string]> 
   ["next_open", "次日开盘"],
   ["close_price", "收盘价成交"],
   ["vwap", "VWAP 近似"],
+  ["market_impact", "市场冲击成本"],
 ];
 
 export const OPTIMIZATION_TARGET_OPTIONS = [

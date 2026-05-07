@@ -265,7 +265,7 @@ class MarketSectorMixin:
 
     @classmethod
     def _call_akshare(cls, func, *args, purpose: str = "default", **kwargs):
-        timeout_seconds = max(float(get_settings().http_timeout or 12), 3.0)
+        timeout_seconds = max(float(get_settings().akshare_timeout_seconds or 12), 3.0)
         with cls._get_akshare_lock(purpose):
             with cls._no_proxy_env():
                 last_exc = None

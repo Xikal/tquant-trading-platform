@@ -11,7 +11,6 @@ from app.services.low_buy.shared import (
     PERFORMANCE_LOOKBACK_DAYS,
     Session,
     SessionLocal,
-    ak,
     datetime,
     json,
 )
@@ -320,8 +319,6 @@ class LowBuyScreeningMixin(LowBuyQuoteRefreshMixin):
         compute_performance: bool = True,
         history_wait_timeout_seconds: float | None = None,
     ) -> LowBuyScreenerResponse:
-        if ak is None:
-            raise DataSourceError("当前环境未安装 akshare，无法运行低吸选股。")
         playbook = self._get_playbook(strategy)
         trade_dates = self._get_recent_trade_dates(14)
         if len(trade_dates) < 3:

@@ -54,8 +54,9 @@ DEFAULT_STRATEGY_META: tuple[StrategyDisplaySeed, ...] = (
     StrategyDisplaySeed("late_session_strong_support", "收盘强势承接", "主线标的收盘仍有承接，关注次日冲高兑现。", "auxiliary", "medium", "1-2天", 30),
     StrategyDisplaySeed("core_midcap_vwap_ma5_retrace", "中军回踩", "板块核心中军回踩均线/VWAP 附近的低吸观察。", "auxiliary", "medium", "2-4天", 40),
     StrategyDisplaySeed("sector_mainline_first_divergence_low_buy", "主线首分歧", "主线板块首次有效分歧后的修复低吸观察。", "auxiliary", "high", "1-3天", 50),
-    StrategyDisplaySeed("ma_channel_band", "均线通道波段", "沿 MA20 通道运行的波段研究策略，关注下轨承接与上轨兑现。", "research", "medium", "5-15天", 60),
-    StrategyDisplaySeed("leader_pullback_band", "龙头回踩波段", "热点龙头确认后回踩均线支撑的二波研究策略。", "research", "high", "3-10天", 70, probe_status="pending", visibility="backtest_only"),
+    StrategyDisplaySeed("mainline_limitup_shrink_retrace_reclaim", "主线涨停回调", "主线板块涨停启动后，等待缩量回调到均线合一区并重新站回 5 日线。", "auxiliary", "medium", "2-5天", 60),
+    StrategyDisplaySeed("ma_channel_band", "均线通道波段", "沿 MA20 通道运行的波段研究策略，关注下轨承接与上轨兑现。", "research", "medium", "5-15天", 70),
+    StrategyDisplaySeed("leader_pullback_band", "龙头回踩波段", "热点龙头确认后回踩均线支撑的二波研究策略。", "research", "high", "3-10天", 80, probe_status="pending", visibility="backtest_only"),
 )
 
 DEFAULT_STRATEGY_SEEDS_BY_KEY: dict[str, StrategyDisplaySeed] = {

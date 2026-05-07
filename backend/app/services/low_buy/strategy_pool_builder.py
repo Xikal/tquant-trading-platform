@@ -284,6 +284,8 @@ def latest_daily_bar_matches_strategy_pool(strategy: str, latest_bar: DailyPoolB
         return latest_bar.amount >= 180_000_000 and -5.0 <= latest_bar.pct_chg <= 3.2
     if strategy == "sector_mainline_first_divergence_low_buy":
         return latest_bar.amount >= 120_000_000 and -7.0 <= latest_bar.pct_chg <= 3.5
+    if strategy == "mainline_limitup_shrink_retrace_reclaim":
+        return latest_bar.amount >= 120_000_000 and -5.0 <= latest_bar.pct_chg <= 3.5
     if strategy == "ma_channel_band":
         return latest_bar.amount >= 80_000_000 and -4.5 <= latest_bar.pct_chg <= 4.5
     return True
@@ -315,6 +317,9 @@ def daily_anchor_matches_strategy_pool(
     volume_ok = volume_ratio >= 1.15 or anchor.amount >= 180_000_000
     if strategy == "sector_mainline_first_divergence_low_buy":
         return strong_body and volume_ok and anchor.pct_chg >= 4.0
+    if strategy == "mainline_limitup_shrink_retrace_reclaim":
+        anchor_close_position = _daily_close_position(anchor)
+        return anchor.pct_chg >= 9.2 and anchor_close_position >= 0.88 and volume_ratio >= 1.35
     if strategy == "ma_channel_band":
         return volume_ok and anchor.close_price >= anchor.open_price * 1.005
     return strong_body and volume_ok

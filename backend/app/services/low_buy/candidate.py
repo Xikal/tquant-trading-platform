@@ -70,6 +70,7 @@ class LowBuyCandidateMixin:
             "late_session_strong_support": 0.4,
             "core_midcap_vwap_ma5_retrace": 0.6,
             "sector_mainline_first_divergence_low_buy": 0.6,
+            "mainline_limitup_shrink_retrace_reclaim": 0.5,
             "breakout_support": 0.5,
             "limit_up_breakout_retrace": 0.35,
             "divergence_consensus": 0.25,

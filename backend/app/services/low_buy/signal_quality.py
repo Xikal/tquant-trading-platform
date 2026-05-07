@@ -36,6 +36,15 @@ def strategy_hard_buy_quality_gate(candidate: LowBuyCandidateOut) -> bool:
             and candidate.volume_shrink_ratio <= 1.10
             and base_quality_clear(candidate, 4.8)
         )
+    if candidate.strategy_key == "mainline_limitup_shrink_retrace_reclaim":
+        return (
+            candidate.market_state in {"broad_rally", "repair", "low_volume_wait"}
+            and is_hot_frontline_candidate(candidate)
+            and candidate.latest_price >= candidate.ma5
+            and candidate.support_distance_pct <= 1.9
+            and candidate.volume_shrink_ratio <= 0.88
+            and base_quality_clear(candidate, 4.6)
+        )
     return True
 
 
@@ -70,6 +79,15 @@ def strategy_soft_buy_quality_gate(candidate: LowBuyCandidateOut) -> bool:
             and candidate.support_distance_pct <= 2.4
             and candidate.volume_shrink_ratio <= 1.18
             and base_quality_clear(candidate, 5.2)
+        )
+    if candidate.strategy_key == "mainline_limitup_shrink_retrace_reclaim":
+        return (
+            candidate.market_state not in {"risk_release", "high_flyer_retreat"}
+            and is_hot_frontline_candidate(candidate)
+            and candidate.latest_price >= candidate.ma5 * 0.998
+            and candidate.support_distance_pct <= 2.4
+            and candidate.volume_shrink_ratio <= 0.95
+            and base_quality_clear(candidate, 5.0)
         )
     return True
 

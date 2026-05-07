@@ -22,6 +22,7 @@ AUXILIARY_STRATEGIES = frozenset(
         "late_session_strong_support",
         "core_midcap_vwap_ma5_retrace",
         "sector_mainline_first_divergence_low_buy",
+        "mainline_limitup_shrink_retrace_reclaim",
     }
 )
 
@@ -56,6 +57,7 @@ MAINLINE_REQUIRED_STRATEGIES = frozenset(
         "core_midcap_vwap_ma5_retrace",
         "sector_mainline_first_divergence",
         "sector_mainline_first_divergence_low_buy",
+        "mainline_limitup_shrink_retrace_reclaim",
     }
 )
 

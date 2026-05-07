@@ -2,6 +2,74 @@
 
 ---
 
+# 主线涨停缩量回调增强策略执行记录（2026-05-07）
+
+## 需求来源
+
+- 用户要求基于“只做涨停后下跌回调、不追高、等待主线板块首板/低位启动票缩量回调、多线合一或双底、再次站稳 5 日线”的方法，落地一个增强版策略。
+
+## TODO 状态
+
+- [x] 新增生产观察策略 `mainline_limitup_shrink_retrace_reclaim`。
+- [x] 接入策略层级、主线板块过滤、策略池、策略家族、元数据和 feature flag。
+- [x] 实现筛选规则：主线行业、涨停启动、3-8 日缩量回调、均线合一或双底支撑、站回 5 日线、禁止追高、风险阻断。
+- [x] 实现买点区、执行说明、退出计划、仓位建议、市场状态调节和信号质量门槛。
+- [x] 前端策略 metadata fallback、生产策略 tab 和回测验证策略列表同步。
+- [x] 增加 Alembic 迁移，为已有库补策略元数据和默认预设。
+- [x] 补充单测覆盖策略注册、筛选规则、双底入口、盘中确认和生产策略列表。
+
+## 关键实现决策
+
+- 作为 `auxiliary` 生产观察策略参与全策略优先榜，但默认仓位保守，不提升为 core。
+- 只做主线热点行业，必须等待回调确认；涨停当天、高位追涨、放量下跌、假突破、冲高回落都不进入执行。
+- “多线合一”和“双底支撑”二选一满足即可进入结构观察，但最终执行仍要求站回 5 日线和分时/VWAP 确认。
+- 不改现有后端 API 结构，Web/App 通过原有策略榜单和 metadata 自动读取新策略。
+
+## 验证结果
+
+- `PYTHONPATH=backend:. backend/.venv/bin/python -m pytest backend/tests/test_low_buy_strategy_replacement.py backend/tests/test_low_buy_recommendation_duration.py backend/tests/test_strategy_metadata_service.py -q`：20 passed。
+- `PYTHONPATH=backend:. backend/.venv/bin/python -m pytest backend/tests/test_low_buy_strategy_replacement.py backend/tests/test_low_buy_intraday_confirmation.py backend/tests/test_low_buy_recommendation_duration.py backend/tests/test_strategy_metadata_service.py -q`：27 passed。
+- `PYTHONPATH=backend:. backend/.venv/bin/python -m py_compile backend/alembic/versions/20260507_0003_mainline_limitup_retrace_strategy.py backend/app/services/low_buy/candidate_rules.py backend/app/services/low_buy/intraday_confirmation.py`：通过。
+- `PYTHONPATH=backend:. backend/.venv/bin/python -m pytest backend/tests/test_low_buy_strategy_replacement.py backend/tests/test_low_buy_next_day_event_model.py backend/tests/test_low_buy_standardization.py backend/tests/test_low_buy_repositories.py backend/tests/test_low_buy_intraday_confirmation.py backend/tests/test_low_buy_simple_decision.py backend/tests/test_low_buy_mobile_read.py backend/tests/test_divergence_consensus_strategy.py backend/tests/test_low_buy_backtest_isolation.py backend/tests/test_low_buy_positioning.py backend/tests/test_low_buy_recommendation_duration.py backend/tests/test_strategy_metadata_service.py backend/tests/test_low_buy_trade_controls.py backend/tests/test_low_buy_read_paths.py -q`：89 passed。
+- `npm --prefix frontend test -- workspaceConstants.test.ts --run`：1 passed。
+- `npm --prefix frontend run check:strategy-meta`：通过。
+- `npm --prefix frontend run build:web`：通过。
+
+---
+
+# TQuant 代码分析报告整改需求计划执行记录（2026-05-07）
+
+## 需求来源
+
+- `docs/TQuant-代码分析报告整改需求计划-2026-05-07.md`
+- 来源报告：`/Users/j/Downloads/TQuant_代码分析报告.html`
+
+## TODO 状态
+
+- [x] 读取需求文档，核对当前项目实现和已有能力。
+- [x] R-001 策略阈值参数版本化补齐：低吸 prefilter/execution 默认值集中到参数默认模块，运行时优先读取 active 参数；补参数 schema、导出、回滚、审计；回测持久化绑定参数 version/scope/hash。
+- [x] R-002 AkShare 直连迁移 Provider Router：低吸扫描/历史、市场情绪、交易日历、涨跌停池、热点行业主路径迁到 provider/router；剩余 AkShare 调用限定在市场数据 provider/raw adapter 与可选外部因子 adapter 内。
+- [x] R-003 priority cache JSON 序列化优化。
+- [x] R-004 `paper.py` 路由拆分：保持 API 路径兼容，按账户/持仓/订单/绩效/自动交易/风控/日报拆出子路由。
+- [x] R-005 ML 生产门槛提升到 accuracy>=0.60、AUC>=0.65，并加入 5-fold CV。
+- [x] R-006 因子权重缓存加线程锁。
+- [x] R-007 按场景拆分 HTTP timeout 配置。
+- [x] R-008 策略自动治理增加恢复门槛。
+- [x] R-009 ML artifact 远端备份/恢复接口和本地降级。
+- [x] R-010 回测 Market Impact 执行模型。
+- [x] R-011 热点行业最近有效缓存兜底。
+- [x] R-012 回测归因前端增强：补行业/市场/质量归因、失败原因分布和 CSV 导出。
+- [x] R-013/R-016 Roadmap：低风险接口/配置/文档边界已落地；外部资源依赖项按需配置验收。
+
+## 实施原则
+
+- 不改变当前生产策略默认阈值和买卖规则语义。
+- 不触碰生产密钥、不执行破坏性数据库操作。
+- 需要对象存储、Level2、真实推送等外部资源的需求只落接口、配置和安全降级。
+- 每个切片用现有测试或编译/build 验证。
+
+---
+
 # Phase 4 / Phase 5 生产闭环补齐执行计划（2026-05-07）
 
 ## 需求来源
@@ -224,3 +292,67 @@
 - `PYTHONPATH=backend:. backend/.venv/bin/python scripts/schema_index_audit.py`：本地 `.env` 指向 MySQL 且 MySQL 未启动，脚本返回 `status=unavailable` 结构化结果，不再抛堆栈。
 - `cd frontend && npm run build:web`：通过。
 - `cd frontend && npm run analyze`：通过，生成 `frontend/dist/bundle-report.json`，最大 chunk 仍为 `echarts` 约 588 KB。
+
+---
+
+# TQuant 代码分析报告整改执行记录（2026-05-07）
+
+## 需求来源
+
+- `/Users/j/Documents/gupiao/docs/TQuant-代码分析报告整改需求计划-2026-05-07.md`
+- 目标：修复代码分析报告中 P0/P1/P2 项，重点覆盖策略参数版本化、Provider Router、缓存性能、ML 生产门槛、回测执行模型、治理恢复闸门和模拟盘路由拆分。
+
+## TODO 状态
+
+- [x] 定位需求文档并核对当前项目实现。
+- [x] R-003 优先级榜缓存从 `deepcopy` 改为 Pydantic JSON 序列化/反序列化。
+- [x] R-006 因子权重缓存加锁，避免并发刷新读到半更新状态。
+- [x] R-007 HTTP 超时按报价、批量行情、分钟K、AkShare、通知等场景拆分。
+- [x] R-002 Provider Router 扩展到板块宽度、交易日历、涨跌停池、市场情绪池等关键 AkShare 路径；AkShare provider 不再通过 `service._load_board_breadth_frame()` 反调，避免递归。
+- [x] R-011 热点行业在实时板块源失败时使用最近 5 分钟有效列表降级。
+- [x] R-005 ML 生产阈值提升到 accuracy>=0.60、AUC>=0.65，并新增 5 折交叉验证准确率/AUC 门槛。
+- [x] R-009 ML artifact 支持配置远端目录备份与本地缺失恢复，恢复前校验 SHA256。
+- [x] R-010 回测新增 `market_impact` 执行模型，并在前端执行模型选项中展示“市场冲击成本”。
+- [x] R-008 策略自动治理新增恢复闸门，暂停/观察策略需要满足更高健康度、样本量和止损率约束后才解除自动治理。
+- [x] R-004 模拟盘路由完成职责拆分：`paper.py` 保留聚合入口，账户/持仓/风控、委托/成交、绩效、自动交易、共享辅助和响应序列化分别拆入独立模块。
+
+## 本轮修改区域
+
+- 配置：`backend/app/core/config.py`
+- Provider Router：`backend/app/services/market/providers/*`、`backend/app/services/market/regime.py`、`backend/app/services/market/emotion.py`、`backend/app/services/low_buy/pool.py`
+- 超时分层：`backend/app/services/market/quotes.py`、`backend/app/services/market/intraday.py`、`backend/app/services/market/sectors.py`、`backend/app/services/market/openbb_adapter.py`、`backend/app/services/low_buy/history.py`
+- 缓存/因子：`backend/app/services/low_buy/priority_cache.py`、`backend/app/services/low_buy/factor_functions.py`
+- ML：`backend/app/services/ml_signal/service.py`
+- 回测：`backend/app/services/backtest/broker.py`、`frontend/src/api/backtests.ts`、`frontend/src/features/backtest/backtestDisplay.ts`
+- 策略治理：`backend/app/services/low_buy/strategy_auto_governance.py`
+- 模拟盘路由拆分：`backend/app/api/routes/paper.py`、`backend/app/api/routes/paper_account.py`、`backend/app/api/routes/paper_orders.py`、`backend/app/api/routes/paper_performance.py`、`backend/app/api/routes/paper_auto_trading.py`、`backend/app/api/routes/paper_shared.py`、`backend/app/api/routes/paper_serializers.py`
+- 测试：`backend/tests/test_backtest_v2_engine_contract.py`
+
+## 验证结果
+
+- 已执行：`python3 -m compileall backend/app/services/market backend/app/services/ml_signal backend/app/services/backtest backend/app/services/low_buy backend/app/api/routes/paper.py backend/app/api/routes/paper_serializers.py backend/app/core/config.py`，通过。
+- 已执行：`backend/.venv/bin/python -m pytest backend/tests/test_backtest_v2_engine_contract.py -q`，16 passed，1 个 urllib3/OpenSSL 环境警告。
+- 已执行：`PYTHONPATH=backend:. backend/.venv/bin/python -m pytest backend/tests/test_market_provider_contract.py backend/tests/test_market_provider_flag.py backend/tests/test_market_data_quality_fields.py backend/tests/test_market_routers.py -q`，12 passed，1 个 urllib3/OpenSSL 环境警告。
+- 已执行：`PYTHONPATH=backend:. backend/.venv/bin/python -m pytest backend/tests/test_phase4_phase5_foundation.py -q`，8 passed，1 个 urllib3/OpenSSL 环境警告。
+- 已执行：`cd frontend && npm run build:web`，通过。
+- 已执行：`python3 -m compileall backend/app/api/routes/paper.py backend/app/api/routes/paper_account.py backend/app/api/routes/paper_orders.py backend/app/api/routes/paper_performance.py backend/app/api/routes/paper_auto_trading.py backend/app/api/routes/paper_shared.py backend/app/api/routes/paper_serializers.py`，通过。
+- 已执行：`PYTHONPATH=backend:. backend/.venv/bin/python -m pytest backend/tests/test_paper_routes.py -q`，20 passed，1 个 urllib3/OpenSSL 环境警告。
+- 已执行：`PYTHONPATH=backend:. backend/.venv/bin/python -m pytest backend/tests/test_paper_performance_archive.py backend/tests/test_paper_auto_trading.py -q`，24 passed，1 个 urllib3/OpenSSL 环境警告。
+
+## 继续完成记录（2026-05-07）
+
+- R-001 补齐策略阈值参数化闭环：新增低吸策略默认参数模块，`candidate_rules` 只从 runtime 参数读取 prefilter/execution 阈值；量化参数导出、schema、回滚和审计接口已接入。
+- R-002 补齐 Provider Router 主路径：低吸历史/扫描、交易日历、涨跌停池、市场情绪、热点行业和可选外部因子均不再直接调用 AkShare；AkShare 调用限定在 market provider/raw adapter。
+- R-008 补齐策略治理恢复闸门：观察层需要连续 5 天达标，暂停层需要连续 10 天达标，未达标时只记录恢复进度，不自动恢复生产。
+- R-009 补齐 ML artifact 元数据字段：模型记录和 API 响应包含远端 artifact URI 与 SHA256 校验，缺本地 artifact 时先尝试恢复并校验。
+- R-012 补齐回测归因失败原因：后端输出 `failure_reasons`，前端归因面板和 CSV 导出展示拒单、止损、到期、回测结束清仓等失败分布。
+- 收尾审查修复：量化参数 resolver 改为“精确 scope 优先，global 仅兜底”，避免较新的 global 参数覆盖 `low_buy` 专用策略阈值；回测参数绑定同样优先绑定 `low_buy` active 参数。
+
+## 继续完成验证结果（2026-05-07）
+
+- `python3 -m compileall backend/app/services/market/providers backend/app/services/market/emotion.py backend/app/services/market/regime.py backend/app/services/low_buy backend/app/services/quant backend/app/services/backtest backend/app/models/schema_defs/phase4.py backend/app/models/phase4_entities.py backend/app/api/routes/quant_config.py`：通过。
+- `git diff --check`：通过。
+- `PYTHONPATH=backend:. backend/.venv/bin/python -m pytest backend/tests/test_market_provider_contract.py backend/tests/test_market_provider_flag.py backend/tests/test_feature_flags_service.py backend/tests/test_phase4_phase5_foundation.py backend/tests/test_backtest_phase2_research_tasks.py backend/tests/test_backtest_v2_api_contract.py backend/tests/test_backtest_v2_engine_contract.py backend/tests/test_low_buy_backtest_isolation.py -q`：61 passed，1 个 urllib3/OpenSSL 环境警告。
+- `PYTHONPATH=backend:. backend/.venv/bin/python -m pytest backend/tests/test_phase4_phase5_foundation.py -q`：9 passed，1 个 urllib3/OpenSSL 环境警告。
+- `PYTHONPATH=backend:. backend/.venv/bin/python -m pytest backend/tests/test_market_provider_contract.py backend/tests/test_market_provider_flag.py backend/tests/test_feature_flags_service.py backend/tests/test_phase4_phase5_foundation.py backend/tests/test_backtest_phase2_research_tasks.py backend/tests/test_backtest_v2_api_contract.py backend/tests/test_backtest_v2_engine_contract.py backend/tests/test_low_buy_backtest_isolation.py -q`：62 passed，1 个 urllib3/OpenSSL 环境警告。
+- `cd frontend && npm run build`：通过。

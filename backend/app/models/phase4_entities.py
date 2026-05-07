@@ -87,6 +87,21 @@ class QuantParameterSet(Base):
     activated_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
 
 
+class QuantParameterAuditLog(Base):
+    """Append-only audit log for quant parameter changes."""
+
+    __tablename__ = "quant_parameter_audit_log"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    action: Mapped[str] = mapped_column(String(40), default="", index=True)
+    version: Mapped[str] = mapped_column(String(80), default="", index=True)
+    scope: Mapped[str] = mapped_column(String(40), default="global", index=True)
+    operator: Mapped[str] = mapped_column(String(80), default="")
+    before_json: Mapped[str] = mapped_column(Text, default="{}")
+    after_json: Mapped[str] = mapped_column(Text, default="{}")
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), index=True)
+
+
 class MLSignalSample(Base):
     """Training sample store for future XGBoost/LightGBM signal models."""
 
@@ -118,6 +133,8 @@ class MLSignalModel(Base):
     feature_schema_json: Mapped[str] = mapped_column(Text, default="{}")
     metrics_json: Mapped[str] = mapped_column(Text, default="{}")
     artifact_uri: Mapped[str] = mapped_column(String(300), default="")
+    remote_artifact_uri: Mapped[str] = mapped_column(String(500), default="")
+    artifact_checksum: Mapped[str] = mapped_column(String(128), default="")
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), index=True)
 
 

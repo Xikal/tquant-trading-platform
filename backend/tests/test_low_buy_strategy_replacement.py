@@ -30,6 +30,7 @@ class LowBuyStrategyReplacementTests(unittest.TestCase):
             "late_session_strong_support",
             "core_midcap_vwap_ma5_retrace",
             "sector_mainline_first_divergence_low_buy",
+            "mainline_limitup_shrink_retrace_reclaim",
         }
         demoted = {
             "classic_retrace",
@@ -49,6 +50,7 @@ class LowBuyStrategyReplacementTests(unittest.TestCase):
             self.assertFalse(participates_in_priority_board(strategy), strategy)
         self.assertEqual(strategy_layer("deep_pullback"), "research")
         self.assertTrue(requires_mainline_industry("core_midcap_vwap_ma5_retrace"))
+        self.assertTrue(requires_mainline_industry("mainline_limitup_shrink_retrace_reclaim"))
         self.assertEqual(DEFAULT_PRODUCTION_LOW_BUY_STRATEGY, "first_board")
         self.assertEqual(normalize_low_buy_strategy(None), "first_board")
 
@@ -73,12 +75,16 @@ class LowBuyStrategyReplacementTests(unittest.TestCase):
         self.assertGreater(pool._strategy_board_window_days("late_session_strong_support"), 10)
         self.assertGreater(pool._strategy_board_window_days("core_midcap_vwap_ma5_retrace"), 10)
         self.assertGreater(pool._strategy_board_window_days("sector_mainline_first_divergence_low_buy"), 10)
+        self.assertGreater(pool._strategy_board_window_days("mainline_limitup_shrink_retrace_reclaim"), 10)
         self.assertGreater(pool._strategy_retracement_days_max("late_session_strong_support"), 7)
         self.assertIn("主线", pool._strategy_pool_profile_text("sector_mainline_first_divergence_low_buy"))
+        self.assertIn("涨停", pool._strategy_pool_profile_text("mainline_limitup_shrink_retrace_reclaim"))
         self.assertEqual(strategy_pool_key("first_board"), "limit_up_event_pool")
         self.assertEqual(strategy_pool_key("volume_shrink"), "volume_contract_pool")
+        self.assertEqual(strategy_pool_key("mainline_limitup_shrink_retrace_reclaim"), "mainline_limitup_retrace_pool")
         self.assertEqual(strategy_pool_key("classic_retrace"), "legacy_research_pool")
         self.assertTrue(strategy_uses_daily_scan_pool("core_midcap_vwap_ma5_retrace"))
+        self.assertTrue(strategy_uses_daily_scan_pool("mainline_limitup_shrink_retrace_reclaim"))
 
     def test_mainline_strategy_scan_targets_are_filtered_before_history_loading(self) -> None:
         pool = LowBuyPoolMixin()
@@ -226,6 +232,81 @@ class LowBuyStrategyReplacementTests(unittest.TestCase):
 
         self.assertTrue(setup.execution_ready)
         self.assertIn("首分歧", setup.summary_reason)
+
+    def test_mainline_limitup_retrace_waits_for_shrink_and_ma5_reclaim(self) -> None:
+        item = _item(amount=360_000_000, industry="半导体")
+        metrics = _metrics(
+            retracement_days=5,
+            latest_change_pct=1.2,
+            latest_close=10.08,
+            latest_high=10.16,
+            latest_low=9.92,
+            ma5=10.03,
+            ma10=9.96,
+            ma20=9.88,
+            close_to_ma5=0.50,
+            close_to_ma10=1.20,
+            close_to_ma20=2.02,
+            support_distance_pct=1.2,
+            volume_burst_ratio=2.1,
+            latest_volume_ratio=0.82,
+            post_volume_ratio=0.58,
+            board_low_held=True,
+            distribution_risk_score=2.8,
+            long_upper_shadow=False,
+            weak_close=False,
+            false_breakout_flag=False,
+            intraday_reversal_flag=False,
+            recent_low_guard=9.86,
+        )
+
+        strategy = "mainline_limitup_shrink_retrace_reclaim"
+        self.assertTrue(passes_strategy_prefilter(strategy, item, metrics))
+        setup = build_strategy_setup(strategy, item, metrics, 90.0)
+
+        self.assertTrue(setup.execution_ready)
+        self.assertIn("缩量回调", setup.summary_reason)
+        self.assertIn("不追高", setup.execution_note)
+
+        chasing_metrics = _metrics(
+            retracement_days=5,
+            latest_change_pct=5.4,
+            latest_close=10.42,
+            ma5=10.03,
+            ma10=9.96,
+            ma20=9.88,
+            close_to_ma5=3.89,
+            support_distance_pct=3.89,
+            volume_burst_ratio=2.1,
+            latest_volume_ratio=0.82,
+            post_volume_ratio=0.58,
+            board_low_held=True,
+            distribution_risk_score=2.8,
+        )
+
+        self.assertFalse(passes_strategy_prefilter(strategy, item, chasing_metrics))
+
+        double_bottom_metrics = _metrics(
+            retracement_days=6,
+            latest_change_pct=0.8,
+            latest_close=10.12,
+            ma5=10.04,
+            ma10=9.82,
+            ma20=9.54,
+            close_to_ma5=0.80,
+            close_to_ma10=3.05,
+            close_to_ma20=6.08,
+            support_distance_pct=1.4,
+            support_touch_count=2,
+            volume_burst_ratio=2.2,
+            latest_volume_ratio=0.86,
+            post_volume_ratio=0.62,
+            board_low_held=True,
+            distribution_risk_score=2.6,
+            recent_low_guard=9.88,
+        )
+
+        self.assertTrue(passes_strategy_prefilter(strategy, item, double_bottom_metrics))
 
 
 if __name__ == "__main__":

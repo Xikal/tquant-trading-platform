@@ -60,6 +60,19 @@ class WatchlistSignalService:
             for row in rows
         ]
 
+    def fallback_signals_for_rows(self, rows: list, reason: str = "监控信号缓存仍在准备中。") -> list[dict]:
+        """Build non-blocking watchlist cards for monitor fallbacks.
+
+        The desktop monitor endpoint must not perform per-symbol analysis on the
+        request thread.  These payloads keep the UI usable while a background
+        refresh fills the richer signal cache.
+        """
+
+        return [
+            self._public_snapshot_payload(self._fallback_snapshot_from_row(row, reason))
+            for row in rows
+        ]
+
     def ensure_background_refresh(self, force: bool = False) -> bool:
         now = time.monotonic()
         with self._refresh_lock:
@@ -253,6 +266,9 @@ class WatchlistSignalService:
         return db.execute(select(Watchlist).order_by(Watchlist.id.desc())).scalars().all()
 
     def _empty_snapshot_from_row(self, row: Watchlist) -> dict:
+        return self._fallback_snapshot_from_row(row, "监控信号缓存仍在准备中。")
+
+    def _fallback_snapshot_from_row(self, row: Watchlist, reason: str) -> dict:
         return {
             "symbol": row.symbol,
             "name": self._display_name(symbol=row.symbol, stored_name=row.name, resolved_names=[]),
@@ -260,10 +276,10 @@ class WatchlistSignalService:
             "available_position": row.available_position,
             "cost_basis": row.cost_basis,
             "memo": row.memo,
-            "signal": self._fallback_signal_payload("监控信号缓存仍在准备中。"),
+            "signal": self._fallback_signal_payload(reason),
             "quote": self._fallback_quote_payload(row.symbol, row.name or row.symbol),
             "rules": self._fallback_rule_payload(row.symbol),
-            "error": "监控信号缓存仍在准备中。",
+            "error": reason,
         }
 
     @staticmethod

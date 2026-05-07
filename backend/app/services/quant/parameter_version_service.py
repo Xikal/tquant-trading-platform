@@ -4,12 +4,21 @@ import json
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import case, select
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
-from app.models.entities import QuantParameterSet
+from app.models.entities import QuantParameterAuditLog, QuantParameterSet
+from app.services.low_buy.strategy_parameter_defaults import (
+    LOW_BUY_STRATEGY_EXECUTION_DEFAULTS,
+    LOW_BUY_STRATEGY_PREFILTER_DEFAULTS,
+    quant_parameter_schema,
+)
 from app.models.schema_defs.phase4 import (
+    QuantParameterAuditListResponse,
+    QuantParameterAuditOut,
+    QuantParameterExportResponse,
+    QuantParameterRollbackRequest,
     QuantParameterSetCreate,
     QuantParameterSetListResponse,
     QuantParameterSetOut,
@@ -36,110 +45,15 @@ DEFAULT_QUANT_PARAMETERS: dict[str, Any] = {
             "min_tradability_score_buy": 70,
         },
         "strategy_prefilters": {
-            "limit_up_breakout_retrace": {
-                "min_platform_days": 20,
-                "min_retracement_days": 2,
-                "max_retracement_days": 5,
-                "min_volume_burst_ratio": 1.9,
-                "min_breakout_pct": 1.0,
-                "max_platform_range_pct": 35.0,
-                "min_drawdown_pct": -10.0,
-                "max_drawdown_pct": -3.0,
-                "max_post_volume_ratio": 0.78,
-                "max_latest_volume_ratio": 0.82,
-                "max_support_distance_pct": 3.0,
-                "min_board_amount": 150_000_000.0,
-                "min_platform_hold_ratio": 0.995,
-                "min_board_open_hold_ratio": 0.985,
-            },
-            "divergence_consensus": {
-                "min_platform_days": 20,
-                "min_retracement_days": 4,
-                "max_retracement_days": 12,
-                "min_board_amount": 180_000_000.0,
-                "min_volume_burst_ratio": 1.8,
-                "min_platform_breakout_pct": 0.8,
-                "max_platform_range_pct": 38.0,
-                "min_divergence_volume_ratio": 0.55,
-                "min_consolidation_days": 2,
-                "max_consolidation_days": 8,
-                "max_consolidation_volume_ratio": 0.72,
-                "min_consensus_volume_ratio": 1.45,
-                "max_breakout_extension_pct": 8.5,
-            },
-            "late_session_strong_support": {
-                "min_amount": 200_000_000.0,
-                "min_retracement_days": 1,
-                "max_retracement_days": 8,
-                "max_support_distance_pct": 3.2,
-                "max_latest_volume_ratio": 1.25,
-                "max_post_volume_ratio": 1.15,
-                "min_close_position_ratio": 0.55,
-                "max_distribution_risk_score": 5.5,
-            },
-            "core_midcap_vwap_ma5_retrace": {
-                "min_amount": 500_000_000.0,
-                "min_retracement_days": 1,
-                "max_retracement_days": 6,
-                "max_ma_distance_pct": 1.8,
-                "max_support_distance_pct": 2.2,
-                "max_latest_volume_ratio": 1.15,
-                "max_post_volume_ratio": 1.2,
-                "max_distribution_risk_score": 5.5,
-            },
-            "sector_mainline_first_divergence_low_buy": {
-                "min_amount": 200_000_000.0,
-                "min_retracement_days": 1,
-                "max_retracement_days": 5,
-                "min_volume_burst_ratio": 1.4,
-                "max_support_distance_pct": 3.0,
-                "max_latest_volume_ratio": 1.25,
-                "max_post_volume_ratio": 1.25,
-                "max_distribution_risk_score": 5.8,
-            },
-            "ma_channel_band": {
-                "min_amount": 50_000_000.0,
-                "min_platform_days": 20,
-                "min_retracement_days": 2,
-                "max_retracement_days": 14,
-                "max_ma20_distance_pct": 3.2,
-                "max_latest_volume_ratio": 1.2,
-                "max_post_volume_ratio": 1.25,
-                "max_distribution_risk_score": 6.5,
-            },
-            "leader_pullback_band": {
-                "min_amount": 50_000_000.0,
-                "min_retracement_days": 1,
-                "max_retracement_days": 8,
-                "min_volume_burst_ratio": 1.6,
-                "max_support_distance_pct": 3.5,
-                "max_latest_volume_ratio": 1.25,
-                "max_post_volume_ratio": 1.25,
-                "max_distribution_risk_score": 5.8,
-            },
+            **LOW_BUY_STRATEGY_PREFILTER_DEFAULTS,
         },
         "strategy_execution": {
-            "limit_up_breakout_retrace": {
-                "min_score": 88.0,
-                "min_volume_burst_ratio": 2.0,
-                "min_breakout_pct": 1.2,
-                "min_drawdown_pct": -8.5,
-                "max_drawdown_pct": -3.5,
-                "max_post_volume_ratio": 0.72,
-                "max_latest_volume_ratio": 0.78,
-                "max_support_distance_pct": 2.5,
-                "min_board_amount": 200_000_000.0,
-            },
-            "divergence_consensus": {
-                "min_score": 90.0,
-                "min_consensus_volume_ratio": 1.55,
-                "max_consolidation_volume_ratio": 0.66,
-                "min_close_strength": 0.58,
-            },
+            **LOW_BUY_STRATEGY_EXECUTION_DEFAULTS,
         },
         "signal_thresholds": {
             "hard_buy_min_scores": {
                 "default": 80.0,
+                "mainline_limitup_shrink_retrace_reclaim": 86.0,
                 "limit_up_breakout_retrace": 88.0,
                 "divergence_consensus": 90.0,
             },
@@ -151,6 +65,7 @@ DEFAULT_QUANT_PARAMETERS: dict[str, Any] = {
                 "late_session_strong_support": {"in_zone": 86.0, "near_above_zone": 90.0},
                 "core_midcap_vwap_ma5_retrace": {"in_zone": 84.0, "near_above_zone": 88.0},
                 "sector_mainline_first_divergence_low_buy": {"in_zone": 84.0, "near_above_zone": 88.0},
+                "mainline_limitup_shrink_retrace_reclaim": {"in_zone": 86.0, "near_above_zone": 90.0},
                 "breakout_support": {"in_zone": 84.0, "near_above_zone": 88.0},
                 "limit_up_breakout_retrace": {"in_zone": 90.0, "near_above_zone": 94.0},
                 "divergence_consensus": {"in_zone": 92.0},
@@ -208,8 +123,8 @@ class QuantParameterVersionService:
         row = self.db.execute(
             select(QuantParameterSet)
             .where(QuantParameterSet.status == "active")
-            .where(QuantParameterSet.scope.in_([scope, "global"]))
-            .order_by(QuantParameterSet.id.desc())
+            .where(QuantParameterSet.scope.in_(_scope_values(scope)))
+            .order_by(_scope_priority(scope), QuantParameterSet.id.desc())
             .limit(1)
         ).scalar_one_or_none()
         row = row or self.ensure_default()
@@ -224,6 +139,7 @@ class QuantParameterVersionService:
         return QuantParameterSetListResponse(current_version=current.version, items=[_out(row) for row in rows])
 
     def create(self, payload: QuantParameterSetCreate, *, created_by: str = "admin") -> QuantParameterSetOut:
+        before = self.current(scope=payload.scope).params if payload.activate else {}
         if payload.activate:
             self.db.execute(
                 QuantParameterSet.__table__.update()
@@ -241,10 +157,90 @@ class QuantParameterVersionService:
             activated_at=datetime.utcnow() if payload.activate else None,
         )
         self.db.add(row)
+        self.db.flush()
+        self._audit(
+            action="create_activate" if payload.activate else "create_draft",
+            version=row.version,
+            scope=row.scope,
+            operator=created_by,
+            before=before,
+            after=_deep_merge(DEFAULT_QUANT_PARAMETERS, payload.params),
+        )
         self.db.commit()
         _clear_runtime_quant_cache()
         self.db.refresh(row)
         return _out(row)
+
+    def export_current(self, scope: str = "global") -> QuantParameterExportResponse:
+        current = self.current(scope=scope)
+        return QuantParameterExportResponse(
+            current_version=current.version,
+            exported_at=datetime.utcnow(),
+            params=current.params,
+            parameter_schema=quant_parameter_schema(),
+        )
+
+    def schema(self) -> dict[str, Any]:
+        return quant_parameter_schema()
+
+    def rollback(self, payload: QuantParameterRollbackRequest, *, operator: str = "admin") -> QuantParameterSetOut:
+        target = self.db.execute(
+            select(QuantParameterSet)
+            .where(QuantParameterSet.version == payload.version)
+            .where(QuantParameterSet.scope.in_(_scope_values(payload.scope)))
+            .order_by(_scope_priority(payload.scope), QuantParameterSet.id.desc())
+            .limit(1)
+        ).scalar_one_or_none()
+        if target is None:
+            raise ValueError(f"quant parameter version not found: {payload.version}")
+        before = self.current(scope=target.scope).params
+        self.db.execute(
+            QuantParameterSet.__table__.update()
+            .where(QuantParameterSet.scope == target.scope)
+            .values(status="archived")
+        )
+        target.status = "active"
+        target.activated_at = datetime.utcnow()
+        after = _deep_merge(DEFAULT_QUANT_PARAMETERS, _json_dict(target.params_json))
+        self._audit(
+            action="rollback_activate",
+            version=target.version,
+            scope=target.scope,
+            operator=operator,
+            before=before,
+            after=after,
+        )
+        self.db.commit()
+        _clear_runtime_quant_cache()
+        self.db.refresh(target)
+        return _out(target)
+
+    def audit_logs(self, limit: int = 50) -> QuantParameterAuditListResponse:
+        rows = self.db.execute(
+            select(QuantParameterAuditLog).order_by(QuantParameterAuditLog.id.desc()).limit(max(1, min(limit, 200)))
+        ).scalars().all()
+        return QuantParameterAuditListResponse(items=[_audit_out(row) for row in rows])
+
+    def _audit(
+        self,
+        *,
+        action: str,
+        version: str,
+        scope: str,
+        operator: str,
+        before: dict[str, Any],
+        after: dict[str, Any],
+    ) -> None:
+        self.db.add(
+            QuantParameterAuditLog(
+                action=action,
+                version=version,
+                scope=scope,
+                operator=operator,
+                before_json=_json_dumps(before),
+                after_json=_json_dumps(after),
+            )
+        )
 
 
 def _out(row: QuantParameterSet) -> QuantParameterSetOut:
@@ -260,6 +256,30 @@ def _out(row: QuantParameterSet) -> QuantParameterSetOut:
         created_at=row.created_at,
         activated_at=row.activated_at,
     )
+
+
+def _audit_out(row: QuantParameterAuditLog) -> QuantParameterAuditOut:
+    return QuantParameterAuditOut(
+        id=row.id,
+        action=row.action,
+        version=row.version,
+        scope=row.scope,
+        operator=row.operator,
+        before=_json_dict(row.before_json),
+        after=_json_dict(row.after_json),
+        created_at=row.created_at,
+    )
+
+
+def _scope_values(scope: str) -> list[str]:
+    values = [scope]
+    if scope != "global":
+        values.append("global")
+    return values
+
+
+def _scope_priority(scope: str):
+    return case((QuantParameterSet.scope == scope, 0), else_=1)
 
 
 def _json_dumps(value: Any) -> str:

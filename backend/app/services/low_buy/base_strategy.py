@@ -214,6 +214,10 @@ class SectorMainlineFirstDivergenceStrategy(RuleBackedLowBuyStrategy):
     key = "sector_mainline_first_divergence_low_buy"
 
 
+class MainlineLimitupShrinkRetraceReclaimStrategy(RuleBackedLowBuyStrategy):
+    key = "mainline_limitup_shrink_retrace_reclaim"
+
+
 class BreakoutSupportStrategy(RuleBackedLowBuyStrategy):
     key = "breakout_support"
 
@@ -250,6 +254,7 @@ _STRATEGY_CLASSES: dict[str, type[BaseStrategy]] = {
     LateSessionStrongSupportStrategy.key: LateSessionStrongSupportStrategy,
     CoreMidcapVwapMa5RetraceStrategy.key: CoreMidcapVwapMa5RetraceStrategy,
     SectorMainlineFirstDivergenceStrategy.key: SectorMainlineFirstDivergenceStrategy,
+    MainlineLimitupShrinkRetraceReclaimStrategy.key: MainlineLimitupShrinkRetraceReclaimStrategy,
     BreakoutSupportStrategy.key: BreakoutSupportStrategy,
     LimitUpBreakoutRetraceStrategy.key: LimitUpBreakoutRetraceStrategy,
     DivergenceConsensusStrategy.key: DivergenceConsensusStrategy,

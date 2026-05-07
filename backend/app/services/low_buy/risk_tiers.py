@@ -22,6 +22,7 @@ STRICT_STRATEGIES = {
     "late_session_strong_support",
     "core_midcap_vwap_ma5_retrace",
     "sector_mainline_first_divergence_low_buy",
+    "mainline_limitup_shrink_retrace_reclaim",
     "trend_rebound",
     "deep_pullback",
     "limit_up_breakout_retrace",

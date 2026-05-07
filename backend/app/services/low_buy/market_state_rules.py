@@ -188,6 +188,16 @@ _STRATEGY_OVERRIDES: dict[str, dict[str, dict[str, object]]] = {
         "high_flyer_retreat": {"score_penalty": 3.8, "ranking_bonus": -2.6, "position_multiplier": 0.48, "execution_blocked": True},
         "risk_release": {"execution_blocked": True},
     },
+    "mainline_limitup_shrink_retrace_reclaim": {
+        "broad_rally": {"ranking_bonus": 1.0, "position_multiplier": 1.00},
+        "repair": {"score_penalty": 0.8, "ranking_bonus": 0.3, "position_multiplier": 0.92, "hard_max_strength": 0.74},
+        "low_volume_wait": {"score_penalty": 1.8, "ranking_bonus": -0.8, "position_multiplier": 0.78, "soft_buy_allowed": True, "soft_max_strength": 0.54, "hard_max_strength": 0.58},
+        "fast_rotation": {"score_penalty": 2.4, "ranking_bonus": -1.5, "position_multiplier": 0.66, "soft_buy_allowed": False, "hard_buy_allowed": False},
+        "weight_support": {"score_penalty": 2.8, "ranking_bonus": -1.8, "position_multiplier": 0.60, "soft_buy_allowed": False, "hard_buy_allowed": False},
+        "weight_support_active": {"score_penalty": 1.4, "candidate_penalty_weight": 0.32, "ranking_bonus": -0.3, "position_multiplier": 0.80, "soft_buy_allowed": True, "soft_max_strength": 0.58, "hard_max_strength": 0.62},
+        "high_flyer_retreat": {"score_penalty": 3.8, "ranking_bonus": -2.6, "position_multiplier": 0.46, "execution_blocked": True},
+        "risk_release": {"execution_blocked": True},
+    },
     "breakout_support": {
         "repair": {"position_multiplier": 0.98, "hard_max_strength": 0.88},
         "weight_support": {"score_penalty": 1.6, "ranking_bonus": -0.8, "position_multiplier": 0.84, "soft_buy_allowed": True, "soft_max_strength": 0.56, "hard_max_strength": 0.76},

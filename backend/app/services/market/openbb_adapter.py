@@ -32,7 +32,7 @@ class OpenBBDataAdapter:
 
     def __init__(self, timeout: int | float | None = None) -> None:
         self.settings = get_settings()
-        configured_timeout = timeout if timeout is not None else getattr(self.settings, "http_timeout", 3)
+        configured_timeout = timeout if timeout is not None else getattr(self.settings, "market_quote_timeout_seconds", 3)
         self.timeout = max(0.5, min(float(configured_timeout or 3), 3.0))
 
     def is_configured(self) -> bool:

@@ -19,7 +19,7 @@ def current_quant_parameters() -> dict[str, Any]:
         return deepcopy(_CACHE_PARAMS)
     try:
         with SessionLocal() as db:
-            current = QuantParameterVersionService(db).current()
+            current = QuantParameterVersionService(db).current(scope="low_buy")
             params = _deep_merge(DEFAULT_QUANT_PARAMETERS, current.params)
     except Exception:
         params = deepcopy(DEFAULT_QUANT_PARAMETERS)

@@ -11,7 +11,6 @@ from sqlalchemy import desc, func, select
 
 from app.core.database import SessionLocal
 from app.models.entities import DailyBarSnapshot, MarketRegimeSnapshotCache
-from app.services.market.shared import ak
 from app.services.market.regime_scoring import (
     classify_market_regime,
     clone_snapshot_with_state,
@@ -32,6 +31,9 @@ _SNAPSHOT_FIELD_NAMES = {field.name for field in fields(MarketRegimeSnapshot)}
 
 
 class MarketRegimeMixin:
+    _recent_hot_industries_cache: tuple[float, list[str]] = (0.0, [])
+    _recent_hot_industries_ttl_seconds = 300.0
+
     def get_market_regime(
         self,
         *,
@@ -169,16 +171,36 @@ class MarketRegimeMixin:
             return cached
         return None
 
-    @staticmethod
+    @classmethod
     def _resolve_hot_industries(
+        cls,
         board_frame: pd.DataFrame | None,
         hot_industries: list[str] | None,
     ) -> list[str]:
         if hot_industries:
+            cls._remember_hot_industries(hot_industries)
             return hot_industries
         if board_frame is None:
-            return []
-        return board_frame.head(3)["industry"].tolist()
+            return cls._recent_hot_industries()
+        resolved = board_frame.head(3)["industry"].tolist()
+        cls._remember_hot_industries(resolved)
+        return resolved
+
+    @classmethod
+    def _remember_hot_industries(cls, industries: list[str]) -> None:
+        values = [item for item in industries if item]
+        if values:
+            cls._recent_hot_industries_cache = (
+                time.monotonic() + cls._recent_hot_industries_ttl_seconds,
+                values,
+            )
+
+    @classmethod
+    def _recent_hot_industries(cls) -> list[str]:
+        expires_at, values = cls._recent_hot_industries_cache
+        if time.monotonic() < expires_at:
+            return list(values)
+        return []
 
     def _stabilize_market_regime(
         self,
@@ -240,6 +262,10 @@ class MarketRegimeMixin:
         }
 
     def _load_board_breadth_frame(self) -> pd.DataFrame | None:
+        if self._market_provider_router_enabled():
+            result = self.provider_router.fetch_board_breadth_frame()
+            if result.usable and result.data is not None:
+                return result.data
         if not self.ak_available:
             return None
         try:
@@ -429,11 +455,11 @@ class MarketRegimeMixin:
         if not self.ak_available or not latest_trade_date:
             return None
         try:
-            frame = self._call_akshare(
-                ak.stock_zt_pool_dtgc_em,
-                date=latest_trade_date.replace("-", ""),
-                purpose="market_breadth",
-            )
+            frame = None
+            if self._market_provider_router_enabled():
+                routed = self.provider_router.fetch_limit_down_pool(latest_trade_date)
+                if routed.usable:
+                    frame = routed.data
         except Exception:
             return None
         count = int(len(frame.index)) if frame is not None else 0

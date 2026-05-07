@@ -24,6 +24,7 @@ def soft_buy_min_score(strategy: str, entry_position: str, threshold_shift: floa
         "late_session_strong_support": {"in_zone": 86.0, "near_above_zone": 90.0},
         "core_midcap_vwap_ma5_retrace": {"in_zone": 84.0, "near_above_zone": 88.0},
         "sector_mainline_first_divergence_low_buy": {"in_zone": 84.0, "near_above_zone": 88.0},
+        "mainline_limitup_shrink_retrace_reclaim": {"in_zone": 86.0, "near_above_zone": 90.0},
         "breakout_support": {"in_zone": 84.0, "near_above_zone": 88.0},
         "limit_up_breakout_retrace": {"in_zone": 90.0, "near_above_zone": 94.0},
         "divergence_consensus": {"in_zone": 92.0},

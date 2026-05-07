@@ -3,6 +3,8 @@ from __future__ import annotations
 import logging
 import time
 
+from app.services.market import external_factors
+
 logger = logging.getLogger(__name__)
 
 _SECTOR_FLOW_CACHE: dict[str, tuple[float, dict[str, float]]] = {}
@@ -27,9 +29,7 @@ def resolve_sector_flow_ranks() -> dict[str, float]:
     if cached is not None:
         return cached
     try:
-        import akshare as ak  # type: ignore
-
-        frame = ak.stock_sector_fund_flow_rank(indicator="今日", sector_type="行业资金流")
+        frame = external_factors.stock_sector_fund_flow_rank()
     except Exception as exc:  # pragma: no cover - external source
         logger.warning("sector fund flow fetch failed: %s", exc)
         return {}
@@ -97,9 +97,7 @@ def resolve_big_order_flow(symbol: str, retracement_days: int) -> dict[str, floa
     if symbol.startswith("8"):
         market = "bj"
     try:
-        import akshare as ak  # type: ignore
-
-        frame = ak.stock_individual_fund_flow(stock=symbol, market=market)
+        frame = external_factors.stock_individual_fund_flow(symbol=symbol, market=market)
     except Exception as exc:  # pragma: no cover - external source
         logger.warning("big order flow fetch failed for %s: %s", symbol, exc)
         return {}
@@ -181,9 +179,7 @@ def resolve_north_flow_net_inflow() -> float:
     if cached is not None:
         return float(cached)
     try:
-        import akshare as ak  # type: ignore
-
-        frame = ak.stock_hsgt_fund_flow_summary_em()
+        frame = external_factors.stock_hsgt_fund_flow_summary_em()
     except Exception as exc:  # pragma: no cover - external source
         logger.warning("northbound fund flow fetch failed: %s", exc)
         return 0.0
@@ -203,9 +199,7 @@ def resolve_limit_up_pool_quality() -> dict[str, float]:
     if cached is not None:
         return cached
     try:
-        import akshare as ak  # type: ignore
-
-        frame = ak.stock_zt_pool_em()
+        frame = external_factors.stock_zt_pool_em()
     except Exception as exc:  # pragma: no cover - external source
         logger.warning("limit-up pool fetch failed: %s", exc)
         return {}
@@ -238,9 +232,7 @@ def resolve_dragon_board_scores() -> dict[str, float]:
     if cached is not None:
         return cached
     try:
-        import akshare as ak  # type: ignore
-
-        frame = ak.stock_lhb_stock_statistic_em(symbol="近一月")
+        frame = external_factors.stock_lhb_stock_statistic_em()
     except Exception as exc:  # pragma: no cover - external source
         logger.warning("dragon board statistics fetch failed: %s", exc)
         return {}
@@ -272,9 +264,7 @@ def resolve_stock_notice_risk(symbol: str) -> bool:
     if cached is not None:
         return cached
     try:
-        import akshare as ak  # type: ignore
-
-        frame = ak.stock_notice_report(symbol=symbol)
+        frame = external_factors.stock_notice_report(symbol=symbol)
     except Exception:  # pragma: no cover - external source
         _write_cache(_STOCK_NOTICE_CACHE, symbol, False, _STOCK_NOTICE_TTL_SECONDS)
         return False

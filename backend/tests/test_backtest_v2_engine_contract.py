@@ -321,6 +321,34 @@ def test_broker_uses_real_limit_price_from_pre_close_not_selected_price() -> Non
     assert result.fill_price == Decimal("11.0000")
 
 
+def test_broker_market_impact_penalizes_large_daily_participation() -> None:
+    broker = getattr(broker_module, "BacktestBroker")()
+    request_cls = getattr(broker_module, "ExecutionRequest")
+
+    result = broker.execute(
+        request_cls(
+            trade_date="2025-01-02",
+            symbol="600001",
+            side="buy",
+            quantity=1000,
+            bar=_bar(
+                "600001",
+                "2025-01-02",
+                open_price=10.0,
+                close_price=10.0,
+                high_price=10.2,
+                low_price=9.8,
+                amount=100_000.0,
+            ),
+            execution_model="market_impact",
+        )
+    )
+
+    assert result.status == "filled"
+    assert result.execution_model == "market_impact"
+    assert result.fill_price == Decimal("10.0800")
+
+
 def test_portfolio_applies_stock_t1_unlock_and_etf_same_day_availability() -> None:
     config_cls = getattr(portfolio_module, "PortfolioConfig")
     portfolio_cls = getattr(portfolio_module, "BacktestPortfolio")
@@ -541,6 +569,7 @@ def test_engine_outputs_industry_market_state_and_data_quality_attribution() -> 
     industry = {bucket["bucket"]: bucket for bucket in attribution["industry"]}
     market_state = {bucket["bucket"]: bucket for bucket in attribution["market_state"]}
     data_quality = {bucket["bucket"]: bucket for bucket in attribution["data_quality"]}
+    failure_reasons = {bucket["bucket"]: bucket for bucket in attribution["failure_reasons"]}
 
     assert industry["软件"]["signal_count"] == 1
     assert industry["软件"]["trade_count"] == 1
@@ -548,6 +577,7 @@ def test_engine_outputs_industry_market_state_and_data_quality_attribution() -> 
     assert market_state["repair"]["trade_count"] == 1
     assert data_quality["ok"]["trade_count"] == 1
     assert data_quality["missing_bar"]["rejected_order_count"] == 1
+    assert failure_reasons
 
 
 def _config():

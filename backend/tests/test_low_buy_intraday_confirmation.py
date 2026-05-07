@@ -84,6 +84,8 @@ class LowBuyIntradayConfirmationTests(unittest.TestCase):
 
         self.assertFalse(intraday_confirmation_passes("sector_mainline_first_divergence_low_buy", confirmation))
         self.assertIn("分时均价", intraday_confirmation_hint("sector_mainline_first_divergence_low_buy", confirmation))
+        self.assertFalse(intraday_confirmation_passes("mainline_limitup_shrink_retrace_reclaim", confirmation))
+        self.assertIn("分时均价", intraday_confirmation_hint("mainline_limitup_shrink_retrace_reclaim", confirmation))
 
     def test_late_session_strength_confirms_close_support_strategy(self) -> None:
         bars = [

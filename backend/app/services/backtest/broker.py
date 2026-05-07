@@ -18,6 +18,7 @@ class ExecutionModel(str, Enum):
     CLOSE_PRICE = "close_price"
     ENTRY_ZONE_TOUCH = "entry_zone_touch"
     CONSERVATIVE_SLIPPAGE = "conservative_slippage"
+    MARKET_IMPACT = "market_impact"
 
 
 @dataclass(frozen=True)
@@ -62,6 +63,7 @@ class BacktestBroker:
             return _rejected(request, "执行价格不可用。")
         if request.bar.is_suspended:
             return _rejected(request, "标的停牌或日线无效，回测委托被拒绝。")
+        selected_price = _apply_market_impact(request, selected_price) if model == ExecutionModel.MARKET_IMPACT else selected_price
 
         side = OrderSide.BUY if request.side == "buy" else OrderSide.SELL
         order_type = OrderType.MARKET if model == ExecutionModel.CONSERVATIVE_SLIPPAGE else OrderType.LIMIT
@@ -114,9 +116,38 @@ def _selected_price(request: ExecutionRequest, model: ExecutionModel) -> float |
         return bar.close_price
     if model == ExecutionModel.ENTRY_ZONE_TOUCH and request.side == "buy":
         return _entry_zone_price(bar, request.signal)
-    if model == ExecutionModel.CONSERVATIVE_SLIPPAGE:
+    if model in {ExecutionModel.CONSERVATIVE_SLIPPAGE, ExecutionModel.MARKET_IMPACT}:
         return max(bar.open_price, bar.close_price) if request.side == "buy" else min(bar.open_price, bar.close_price)
     return bar.close_price
+
+
+def _apply_market_impact(request: ExecutionRequest, selected_price: float) -> float:
+    """Add liquidity-aware fill impact for daily-bar backtests.
+
+    The model intentionally stays deterministic and conservative: it uses the
+    order's notional amount relative to daily turnover and penalizes larger
+    participation. If turnover is missing, it assumes a conservative high
+    impact rather than silently treating the order as frictionless.
+    """
+
+    daily_amount = float(request.bar.amount or 0)
+    order_amount = float(max(request.quantity, 0)) * float(selected_price)
+    if order_amount <= 0:
+        return selected_price
+    if daily_amount <= 0:
+        impact = 0.008
+    else:
+        participation = order_amount / max(daily_amount, 1.0)
+        if participation >= 0.10:
+            impact = 0.008
+        elif participation >= 0.05:
+            impact = 0.003
+        elif participation >= 0.02:
+            impact = 0.0015
+        else:
+            impact = 0.0008
+    multiplier = 1.0 + impact if request.side == "buy" else 1.0 - impact
+    return round(selected_price * multiplier, 4)
 
 
 def _entry_zone_price(bar: DailyBar, signal: BacktestSignal | None) -> float | None:

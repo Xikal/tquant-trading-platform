@@ -12,7 +12,7 @@ from app.services.low_buy.mainline_strength import (
     normalize_live_industry_frame,
     rank_mainline_industries,
 )
-from app.services.low_buy.shared import Any, BoardCandidate, Session, ak
+from app.services.low_buy.shared import Any, BoardCandidate, Session
 
 
 @dataclass
@@ -42,13 +42,21 @@ class LowBuyHotIndustryContextMixin:
         if cached is not None and cached[0] > now:
             frame = cached[1]
             return frame.copy() if frame is not None else None
-        if ak is None:
-            return None
         try:
-            frame = self.market_data._call_akshare(ak.stock_board_industry_name_em, purpose="industry")
+            snapshots = self.market_data.get_sector_heatmap(limit=50)
         except Exception:
             self._live_industry_frame_cache = (now + 30.0, None)
             return None
+        frame = pd.DataFrame(
+            [
+                {
+                    "industry": item.sector_name,
+                    "change_pct": (float(item.sector_strength) - 50.0) / 8.0,
+                }
+                for item in snapshots
+                if getattr(item, "sector_name", "")
+            ]
+        )
         normalized = normalize_live_industry_frame(frame)
         self._live_industry_frame_cache = (now + self._live_industry_frame_ttl_seconds, normalized)
         return normalized.copy()
@@ -201,16 +209,10 @@ class LowBuyHotIndustryContextMixin:
         return [name for name, _ in ranked[:3]]
 
     def _load_limit_down_count(self, latest_trade_date: str) -> int | None:
-        if ak is None:
+        routed = self.market_data.provider_router.fetch_limit_down_pool(latest_trade_date)
+        if not routed.usable or routed.data is None:
             return None
-        try:
-            frame = self.market_data._call_akshare(
-                ak.stock_zt_pool_dtgc_em,
-                date=latest_trade_date.replace("-", ""),
-                purpose="limit_pool",
-            )
-        except Exception:
-            return None
+        frame = routed.data
         return int(len(frame.index)) if frame is not None else None
 
     def _build_strategy_notes(

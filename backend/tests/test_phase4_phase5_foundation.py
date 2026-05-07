@@ -22,6 +22,7 @@ from app.services.ml_signal import MLSignalService
 from app.services.paper.backtest_compare import PaperBacktestComparisonService
 from app.services.quant import QuantParameterVersionService
 from app.services.tasks import RuntimeTaskQueue
+from app.workers import runtime_worker
 
 
 def _db():
@@ -71,6 +72,26 @@ def test_runtime_task_queue_records_events_and_status(monkeypatch):
     assert published == ["queued", "started", "succeeded"]
 
 
+def test_runtime_worker_executes_monitor_snapshot_refresh(monkeypatch):
+    db = _db()
+    calls = []
+
+    def _build_stub(db_arg, *, user_id: int, priority_limit: int):  # noqa: ANN001
+        calls.append((db_arg, user_id, priority_limit))
+        return {"ok": True, "user_id": user_id, "priority_limit": priority_limit}
+
+    monkeypatch.setattr(runtime_worker, "build_and_store_monitor_snapshot", _build_stub)
+
+    result = runtime_worker._execute_task(
+        "monitor_snapshot_refresh",
+        {"user_id": 3, "priority_limit": 99},
+        db,
+    )
+
+    assert result == {"ok": True, "user_id": 3, "priority_limit": 30}
+    assert calls == [(db, 3, 30)]
+
+
 def test_quant_parameter_version_default_and_create():
     db = _db()
     service = QuantParameterVersionService(db)
@@ -91,6 +112,33 @@ def test_quant_parameter_version_default_and_create():
     assert created.version == "test-params-v2"
     assert service.current().version == "test-params-v2"
     assert "strategy_prefilters" in service.current().params["low_buy"]
+
+
+def test_quant_parameter_current_prefers_exact_scope_over_newer_global():
+    db = _db()
+    service = QuantParameterVersionService(db)
+
+    service.create(
+        QuantParameterSetCreate(
+            version="low-buy-specific",
+            scope="low_buy",
+            params={"low_buy": {"min_priority_score": 81}},
+            activate=True,
+        ),
+        created_by="tester",
+    )
+    service.create(
+        QuantParameterSetCreate(
+            version="newer-global",
+            scope="global",
+            params={"low_buy": {"min_priority_score": 70}},
+            activate=True,
+        ),
+        created_by="tester",
+    )
+
+    assert service.current(scope="low_buy").version == "low-buy-specific"
+    assert service.current(scope="global").version == "newer-global"
 
 
 def test_data_source_probe_reports_configured_chain():
