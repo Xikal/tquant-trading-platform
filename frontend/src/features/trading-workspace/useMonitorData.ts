@@ -38,7 +38,7 @@ export function useMonitorData({ withLoading, setError, setNotice }: UseMonitorD
     try {
       const shouldLoadRuntime = includeRuntime && Boolean(getAdminApiToken());
       const requests = [
-        api.getMonitorSnapshot(24),
+        api.getMonitorSnapshot(12),
         api.getMarketBreadth(),
         shouldLoadRuntime ? api.getRuntimeStatus() : Promise.resolve(null),
       ] as const;

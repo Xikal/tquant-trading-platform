@@ -56,7 +56,7 @@ class _LowBuyRuntime(
     _daily_history_cache_ttl = 300.0
     _spot_quote_cache_ttl = 12.0
     _priority_base_cache_ttl = 120.0
-    _priority_response_cache_ttl = 8.0
+    _priority_response_cache_ttl = 30.0
     _quote_refresh_response_cache_ttl = 8.0
     _trade_dates_cache_ttl = 3600.0
     _default_full_scan_limit = 480

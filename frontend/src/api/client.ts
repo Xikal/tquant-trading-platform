@@ -66,8 +66,8 @@ export const api = {
     }),
   getWatchlistSignals: () => requestCached<WatchlistSignal[]>("/watchlist/signals", 9000),
   getMarketBreadth: () => requestCached<MarketBreadth>("/market/breadth", 15000),
-  getMonitorSnapshot: (priorityLimit = 24) =>
-    requestCached<MonitorSnapshot>(`/monitor/snapshot?priority_limit=${priorityLimit}`, 3000),
+  getMonitorSnapshot: (priorityLimit = 12) =>
+    requestCached<MonitorSnapshot>(`/monitor/snapshot?priority_limit=${priorityLimit}`, 15000),
   getPaperAccess: () => request<PaperAccessResponse>("/auth/paper-access"),
   analyze: (payload: {
     symbol: string;
@@ -198,7 +198,7 @@ export const api = {
       `/screeners/low-buy/quotes?strategy=${encodeURIComponent(strategy)}&symbols=${encodeURIComponent(symbols.join(","))}`
     ),
   getLowBuyPriorityBoard: (limit = 12) =>
-    requestCached<LowBuyPriorityBoardResult>(`/screeners/low-buy/priority-board?limit=${limit}`, 3000),
+    requestCached<LowBuyPriorityBoardResult>(`/screeners/low-buy/priority-board?limit=${limit}`, 15000),
   getLowBuyLifecycle: (strategy?: string, sync = false, limit = 100) =>
     request<{ items: LowBuyTradeLifecycle[] }>(
       `/screeners/low-buy/lifecycle?limit=${limit}&sync=${sync ? "true" : "false"}${strategy ? `&strategy=${encodeURIComponent(strategy)}` : ""}`

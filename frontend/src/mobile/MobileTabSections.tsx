@@ -47,8 +47,8 @@ export function MobileHomeSection({
       <MobileMarketPills board={priorityBoard} />
 
       <MobileSectionTitle
-        title="全策略优先级榜"
-        hint={`按综合分排序 · ${priorityPulseTime} 刷新`}
+        title="选股宝典优先榜"
+        hint={`按当前策略综合分排序 · ${priorityPulseTime} 刷新`}
         action={
           <button type="button" className="mobile-design-pill tone-gold" onClick={onSwitchToLowBuy}>
             去选股宝典

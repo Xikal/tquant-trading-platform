@@ -93,7 +93,7 @@ class MarketQuoteMixin:
                 remaining.append(symbol)
         if remaining:
             batch_quotes: dict[str, QuoteSnapshot] = {}
-            if self._market_provider_router_enabled():
+            if allow_slow_fallback and self._market_provider_router_enabled():
                 unresolved: list[str] = []
                 for symbol in remaining:
                     try:

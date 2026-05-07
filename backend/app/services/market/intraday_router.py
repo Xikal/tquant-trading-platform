@@ -7,7 +7,7 @@ class IntradaySourceRouter:
     def __init__(self, service) -> None:
         self.service = service
 
-    def load_one_minute_bars(self, symbol: str) -> list[KlineBar]:
+    def load_one_minute_bars(self, symbol: str, *, allow_slow_fallback: bool = True) -> list[KlineBar]:
         for loader in (
             self.service._fetch_trend_bars,
             self.service._fetch_tencent_minute_bars,
@@ -18,7 +18,7 @@ class IntradaySourceRouter:
                     return bars
             except Exception:
                 continue
-        if self.service.ak_available:
+        if allow_slow_fallback and self.service.ak_available:
             for loader in (
                 lambda target: self.service._fetch_sina_minute_bars(target, "1m"),
                 self.service._fetch_sina_minute_bars_subprocess,

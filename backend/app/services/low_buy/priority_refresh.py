@@ -4,7 +4,9 @@ from typing import Protocol
 
 from app.models.schemas import LowBuyCandidateOut
 from app.services.low_buy.priority_types import PriorityCandidate, StrategyHit
-from app.services.low_buy.shared import Any, LOW_BUY_THRESHOLDS
+from app.services.low_buy.shared import Any
+
+PRIORITY_INTRADAY_CONFIRMATION_LIMIT = 12
 
 
 class PriorityRefreshBuilder(Protocol):
@@ -69,7 +71,7 @@ def load_priority_intraday_bars(
     builder: PriorityRefreshBuilder,
     rows: list[PriorityCandidate],
     quote_map: dict[str, object],
-    max_symbols: int = LOW_BUY_THRESHOLDS.MAX_SYMBOLS_QUOTE_REFRESH,
+    max_symbols: int = PRIORITY_INTRADAY_CONFIRMATION_LIMIT,
 ) -> dict[str, list]:
     ranked_symbols: list[tuple[tuple[int, float, float], str]] = []
     for row in rows:
@@ -78,12 +80,14 @@ def load_priority_intraday_bars(
             continue
         ranked_symbols.append((priority_intraday_rank(builder=builder, row=row, quote=quote), row.symbol))
     ranked_symbols.sort()
-    eligible_symbols = [symbol for _, symbol in ranked_symbols[:max_symbols]]
+    effective_limit = min(max_symbols, PRIORITY_INTRADAY_CONFIRMATION_LIMIT)
+    eligible_symbols = [symbol for _, symbol in ranked_symbols[:effective_limit]]
     return builder.market_data.get_intraday_bars_batch(
         symbols=eligible_symbols,
         period="1m",
         limit=30,
         max_workers=8,
+        allow_slow_fallback=False,
     )
 
 

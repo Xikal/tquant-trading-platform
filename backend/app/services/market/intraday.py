@@ -105,16 +105,23 @@ class MarketIntradayMixin:
             raise DataSourceError(f"分钟线子进程未解析到 {symbol} 的有效数据。")
         return bars
 
-    def get_intraday_bars(self, symbol: str, period: str = "5m", limit: int = 240) -> list[KlineBar]:
+    def get_intraday_bars(
+        self,
+        symbol: str,
+        period: str = "5m",
+        limit: int = 240,
+        *,
+        allow_slow_fallback: bool = True,
+    ) -> list[KlineBar]:
         cache_key = f"{symbol}:{period}"
         cached = self._get_intraday_cache(cache_key)
         if cached is not None:
             return cached[-limit:]
         if period == "1m":
-            bars = self._load_one_minute_bars(symbol)
+            bars = self._load_one_minute_bars(symbol, allow_slow_fallback=allow_slow_fallback)
             self._set_intraday_cache(cache_key, bars)
             return bars[-limit:]
-        base_bars = self._load_one_minute_bars(symbol)
+        base_bars = self._load_one_minute_bars(symbol, allow_slow_fallback=allow_slow_fallback)
         bars = self._aggregate_bars(base_bars, interval_minutes={"5m": 5, "15m": 15}.get(period, 5))
         if not bars:
             raise DataSourceError(f"未获取到 {symbol} 的 {period} 分钟K线。")
@@ -127,6 +134,7 @@ class MarketIntradayMixin:
         period: str = "1m",
         limit: int = 30,
         max_workers: int = 8,
+        allow_slow_fallback: bool = True,
     ) -> dict[str, list[KlineBar]]:
         """Fetch intraday bars concurrently for independent symbols."""
         import logging
@@ -141,7 +149,13 @@ class MarketIntradayMixin:
         workers = min(max(1, max_workers), len(cleaned_symbols))
         with ThreadPoolExecutor(max_workers=workers, thread_name_prefix="intraday-bars") as pool:
             futures = {
-                pool.submit(self.get_intraday_bars, symbol, period, limit): symbol
+                pool.submit(
+                    self.get_intraday_bars,
+                    symbol,
+                    period,
+                    limit,
+                    allow_slow_fallback=allow_slow_fallback,
+                ): symbol
                 for symbol in cleaned_symbols
             }
             for future in as_completed(futures):
@@ -392,12 +406,15 @@ class MarketIntradayMixin:
             raise DataSourceError(f"未解析到 {symbol} 的新浪分钟线数据。")
         return bars
 
-    def _load_one_minute_bars(self, symbol: str) -> list[KlineBar]:
-        if self._market_provider_router_enabled():
+    def _load_one_minute_bars(self, symbol: str, *, allow_slow_fallback: bool = True) -> list[KlineBar]:
+        if allow_slow_fallback and self._market_provider_router_enabled():
             result = self.provider_router.fetch_intraday_bars(symbol)
             if result.usable and result.data:
                 return list(result.data)
-        return self.intraday_router.load_one_minute_bars(symbol)
+        return self.intraday_router.load_one_minute_bars(
+            symbol,
+            allow_slow_fallback=allow_slow_fallback,
+        )
 
     def _to_tencent_symbol(self, symbol: str) -> str:
         market = guess_market(symbol)

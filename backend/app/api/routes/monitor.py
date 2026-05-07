@@ -20,7 +20,7 @@ low_buy_screener = LowBuyScreenerService()
 
 @router.get("/snapshot", response_model=MonitorSnapshotResponse)
 def monitor_snapshot(
-    priority_limit: int = Query(default=24, ge=1, le=50),
+    priority_limit: int = Query(default=12, ge=1, le=30),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> MonitorSnapshotResponse:

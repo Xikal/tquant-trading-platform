@@ -257,10 +257,10 @@ export function useAppPreviewData(strategy = "first_board", enabled = true) {
   }
 
   async function loadPriorityBoard() {
-    const payload = await api.getLowBuyPriorityBoard(PRIORITY_BOARD_LIMIT)
-    setPriorityBoard(payload)
+    const payload = await appApi.getLowBuy(strategy, PRIORITY_BOARD_LIMIT)
+    setPriorityBoard(payload.priority_board)
     setPriorityPulseTime(formatPulseTime())
-    return payload
+    return payload.priority_board
   }
 
   async function loadInitial() {
@@ -436,7 +436,7 @@ export function useAppPreviewData(strategy = "first_board", enabled = true) {
     if (!enabled || loading) {
       return
     }
-    const intervalMs = activeTab === "home" ? 10000 : 6000
+    const intervalMs = activeTab === "home" ? 20000 : 30000
     const timer = window.setInterval(() => {
       void refreshActiveTab()
     }, intervalMs)
