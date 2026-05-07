@@ -162,6 +162,26 @@ class AuthRouteTests(unittest.TestCase):
             self.assertEqual(allowed.status_code, 200)
             self.assertEqual(allowed.json()["user"]["username"], "allowed_user")
 
+    def test_login_rate_limit_is_scoped_by_username(self) -> None:
+        for _ in range(30):
+            response = self.client.post(
+                "/api/auth/login",
+                json={"username": "alpha_user", "password": "bad-password"},
+            )
+            self.assertEqual(response.status_code, 401)
+
+        blocked = self.client.post(
+            "/api/auth/login",
+            json={"username": "alpha_user", "password": "bad-password"},
+        )
+        self.assertEqual(blocked.status_code, 429)
+
+        other_user = self.client.post(
+            "/api/auth/login",
+            json={"username": "beta_user", "password": "bad-password"},
+        )
+        self.assertEqual(other_user.status_code, 401)
+
 
 if __name__ == "__main__":
     unittest.main()

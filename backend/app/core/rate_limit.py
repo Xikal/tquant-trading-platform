@@ -183,8 +183,8 @@ def require_ai_decision_rate_limit(request: Request) -> None:
     )
 
 
-def require_auth_login_rate_limit(request: Request) -> None:
-    if _auth_login_limiter.allow(_client_key(request)):
+def require_auth_login_rate_limit(request: Request, username: str = "") -> None:
+    if _auth_login_limiter.allow(_auth_login_key(request, username)):
         return
     raise HTTPException(
         status_code=status.HTTP_429_TOO_MANY_REQUESTS,
@@ -211,6 +211,18 @@ def _client_key(request: Request) -> str:
         if _looks_like_ip(real_ip):
             return real_ip
     return client_host or "unknown"
+
+
+def _auth_login_key(request: Request, username: str) -> str:
+    """Scope login throttling by network client and normalized account.
+
+    A pure IP key blocks unrelated users behind the same NAT/proxy. Keeping the
+    IP in the key still slows down repeated guesses for one account from one
+    client while avoiding cross-account lockouts.
+    """
+
+    normalized_username = (username or "").strip().lower() or "unknown"
+    return f"{_client_key(request)}:{normalized_username}"
 
 
 def _is_trusted_proxy_host(host: str) -> bool:

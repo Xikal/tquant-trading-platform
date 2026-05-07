@@ -63,7 +63,7 @@ def login(
     response: Response,
     db: Session = Depends(get_db),
 ):
-    require_auth_login_rate_limit(request)
+    require_auth_login_rate_limit(request, payload.username)
     try:
         tokens = auth_service.login(
             db,
