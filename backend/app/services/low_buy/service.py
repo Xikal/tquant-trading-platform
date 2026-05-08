@@ -152,6 +152,7 @@ class _LowBuyRuntime:
     _priority_response_cache = {}
     _quote_refresh_response_cache = {}
     _trade_dates_cache = {}
+    _confirmed_signal_states = ("buy_now", "soft_buy_now")
     _cache_lock = threading.Lock()
     _screen_cache_ttl = 300.0
     _screen_cache_ttl_full = 300.0
