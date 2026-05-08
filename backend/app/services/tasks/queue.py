@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Any
 
-from sqlalchemy import func, select
+from sqlalchemy import and_, func, or_, select
 from sqlalchemy.orm import Session
 
 from app.models.entities import RuntimeTask, RuntimeTaskEvent
@@ -13,6 +13,8 @@ from app.services.realtime import publish_runtime_task_event
 
 
 TERMINAL_STATUSES = {"succeeded", "failed", "cancelled"}
+RUNNING_TASK_STALE_SECONDS = 15 * 60
+STALE_RECOVERY_BATCH_SIZE = 20
 
 
 class RuntimeTaskQueue:
@@ -27,6 +29,7 @@ class RuntimeTaskQueue:
         self.db = db
 
     def enqueue(self, payload: RuntimeTaskCreate) -> RuntimeTaskOut:
+        self._recover_stale_running_tasks()
         if payload.idempotency_key:
             existing = self.db.execute(
                 select(RuntimeTask)
@@ -79,9 +82,11 @@ class RuntimeTaskQueue:
         return [_event_out(row) for row in rows]
 
     def claim_next(self, *, worker_id: str) -> RuntimeTask | None:
+        self._recover_stale_running_tasks()
         row = self.db.execute(
             select(RuntimeTask)
             .where(RuntimeTask.status == "queued")
+            .where(or_(RuntimeTask.run_after.is_(None), RuntimeTask.run_after <= datetime.utcnow()))
             .order_by(RuntimeTask.priority.asc(), RuntimeTask.id.asc())
             .limit(1)
         ).scalar_one_or_none()
@@ -145,6 +150,50 @@ class RuntimeTaskQueue:
         if row is None:
             raise LookupError("后台任务不存在")
         return row
+
+    def _recover_stale_running_tasks(self) -> None:
+        """Requeue tasks abandoned by a crashed worker.
+
+        Monitor snapshots and other runtime jobs are idempotent. If a worker is
+        killed while a task is running, leaving the row in ``running`` would make
+        future idempotent enqueue calls return that stale row forever and the UI
+        would keep receiving pending/empty snapshots. Recovery is deliberately
+        bounded per queue touch so normal hot paths do not scan the full table.
+        """
+
+        cutoff = datetime.utcnow() - timedelta(seconds=RUNNING_TASK_STALE_SECONDS)
+        rows = self.db.execute(
+            select(RuntimeTask)
+            .where(RuntimeTask.status == "running")
+            .where(
+                or_(
+                    RuntimeTask.locked_at <= cutoff,
+                    and_(RuntimeTask.locked_at.is_(None), RuntimeTask.updated_at <= cutoff),
+                )
+            )
+            .order_by(RuntimeTask.id.asc())
+            .limit(STALE_RECOVERY_BATCH_SIZE)
+        ).scalars().all()
+        if not rows:
+            return
+
+        events: list[RuntimeTaskEventOut] = []
+        now = datetime.utcnow()
+        for row in rows:
+            row.locked_by = ""
+            row.locked_at = None
+            row.error_message = "任务运行超时，已自动恢复。"
+            if int(row.attempt_count or 0) >= int(row.max_attempts or 1):
+                row.status = "failed"
+                row.finished_at = now
+                events.append(self.add_event(row.id, "failed", "任务运行超时，已标记失败"))
+            else:
+                row.status = "queued"
+                row.run_after = None
+                events.append(self.add_event(row.id, "retry", "任务运行超时，已重新排队"))
+        self.db.commit()
+        for event in events:
+            publish_runtime_task_event(event)
 
 
 def _task_out(row: RuntimeTask) -> RuntimeTaskOut:
