@@ -201,6 +201,26 @@ class MLSignalModelListResponse(BaseModel):
     production_model_key: str = ""
 
 
+class MLSignalOnlineLearningStatusResponse(BaseModel):
+    generated_at: str
+    paper_sample_count: int = 0
+    closed_trade_sample_count: int = 0
+    positive_sample_count: int = 0
+    negative_sample_count: int = 0
+    ready_for_training: bool = False
+    min_samples: int = 100
+    feature_names: list[str] = Field(default_factory=list)
+    sequence_feature_names: list[str] = Field(default_factory=list)
+    latest_model: MLSignalModelOut | None = None
+    production_model_key: str = ""
+    latest_incremental_task_id: int | None = None
+    latest_incremental_task_status: str = ""
+    latest_incremental_task_progress_pct: float = 0.0
+    latest_incremental_task_finished_at: datetime | None = None
+    next_training_rule: str = "每周一 16:00 后由 runtime worker 自动触发一次 paper 增量训练。"
+    warnings: list[str] = Field(default_factory=list)
+
+
 class MLSignalPredictionRequest(BaseModel):
     symbol: str = Field(min_length=1, max_length=16)
     features: dict[str, Any] = Field(default_factory=dict)
@@ -230,6 +250,52 @@ class MLSignalArtifactStorageCheckResponse(BaseModel):
     restore_ok: bool = False
     cleanup_ok: bool = False
     message: str = ""
+
+
+class MLSignalIncrementalTrainRequest(MLSignalTrainRequest):
+    model_key: str = Field(default="", max_length=120)
+    source: Literal["paper"] = "paper"
+    limit: int = Field(default=5000, ge=20, le=100000)
+    min_samples: int = Field(default=100, ge=20, le=100000)
+    promote: bool = False
+
+
+class StrategyCapacityRequest(BaseModel):
+    strategies: list[str] = Field(default_factory=list)
+    start_date: str = ""
+    end_date: str = ""
+    capital_levels: list[float] = Field(default_factory=lambda: [500000.0, 1000000.0, 5000000.0])
+    trade_limit: int = Field(default=5000, ge=100, le=100000)
+    bar_limit: int = Field(default=20000, ge=100, le=500000)
+
+
+class StrategyCapacityPoint(BaseModel):
+    capital: float
+    participation_pct: float = 0.0
+    expected_edge_pct: float = 0.0
+    kyle_impact_pct: float = 0.0
+    impact_cost_pct: float = 0.0
+    slippage_cost_pct: float = 0.0
+    net_edge_pct: float = 0.0
+    capacity_status: str = "未知"
+
+
+class StrategyCapacityItem(BaseModel):
+    strategy_key: str
+    sample_count: int = 0
+    symbol_count: int = 0
+    avg_daily_amount: float = 0.0
+    base_edge_pct: float = 0.0
+    kyle_lambda: float = 0.0
+    curve: list[StrategyCapacityPoint] = Field(default_factory=list)
+    notes: list[str] = Field(default_factory=list)
+
+
+class StrategyCapacityResponse(BaseModel):
+    generated_at: str
+    capital_levels: list[float] = Field(default_factory=list)
+    items: list[StrategyCapacityItem] = Field(default_factory=list)
+    assumptions: dict[str, Any] = Field(default_factory=dict)
 
 
 class PaperBacktestComparisonRequest(BaseModel):

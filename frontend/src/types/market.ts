@@ -145,3 +145,38 @@ export interface IntradayAnomalyResponse {
   data_quality_text?: string;
   updated_at: string;
 }
+
+export interface PairedHedgeLeg {
+  role: string;
+  symbol: string;
+  name: string;
+  side: string;
+  notional_ratio: number;
+  latest_price: number;
+  change_pct: number;
+  reason: string;
+}
+
+export interface PairedHedgeIdea {
+  source_signal_symbol: string;
+  source_signal_name: string;
+  source_strategy: string;
+  sector_name: string;
+  confidence: number;
+  hedge_ratio: number;
+  gross_exposure_pct: number;
+  net_exposure_pct: number;
+  estimated_beta: number;
+  hedge_cost_pct: number;
+  tracking_error_pct: number;
+  legs: PairedHedgeLeg[];
+  risk_notes: string[];
+}
+
+export interface PairedHedgeResearchResponse {
+  updated_at: string;
+  mode: "research_only" | string;
+  total: number;
+  ideas: PairedHedgeIdea[];
+  notes: string[];
+}

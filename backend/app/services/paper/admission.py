@@ -4,6 +4,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from app.services.market.board_exclusions import GROWTH_BOARD_REJECT_REASON, is_growth_board_stock
+from app.services.low_buy.position_sizing import KellyPosition
 from app.services.user_sector_preferences import candidate_matches_excluded_sector
 
 
@@ -14,6 +15,7 @@ class AdmissionResult:
     priority_score: float
     reason: str
     signal: dict[str, Any]
+    kelly_position: KellyPosition | None = None
 
     @property
     def name(self) -> str:
@@ -102,6 +104,7 @@ class AdmissionFilter:
             priority_score=score,
             reason=reason or "通过",
             signal=signal,
+            kelly_position=_kelly_from_signal(signal),
         )
 
     def _reject_reason(
@@ -192,3 +195,19 @@ def _float(value: Any) -> float:
 
 def _score_text(score: float) -> str:
     return str(int(score)) if score.is_integer() else f"{score:.1f}"
+
+
+def _kelly_from_signal(signal: dict[str, Any]) -> KellyPosition | None:
+    half_pct = _float(signal.get("kelly_half_position_pct"))
+    if half_pct <= 0:
+        return None
+    half = max(0.0, min(half_pct / 100.0, 1.0))
+    return KellyPosition(
+        full_kelly=round(min(half * 2.0, 1.0), 4),
+        half_kelly=round(half, 4),
+        quarter_kelly=round(half / 2.0, 4),
+        win_rate=_float(signal.get("performance_win_rate")) / 100.0,
+        avg_win_pct=_float(signal.get("performance_avg_win_pct")),
+        avg_loss_pct=-abs(_float(signal.get("performance_avg_loss_pct"))),
+        expected_value=_float(signal.get("performance_expected_value")),
+    )

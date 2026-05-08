@@ -1,4 +1,4 @@
-import type { PaperAgentRun, PaperGroupedPerformance, PaperPerformance, PaperTagPerformance, RiskEventItem } from "../../types";
+import type { PaperAgentRun, PaperGroupedPerformance, PaperPerformance, PaperSectorEtfT0Performance, PaperTagPerformance, RiskEventItem } from "../../types";
 import { EmptyState, InfoPill } from "./WorkspaceComponents";
 import { formatInteger, formatNumber, formatPct, toneFromChange } from "./workspaceFormatters";
 import { formatPaperDateTime } from "./paperTradingFormatters";
@@ -34,6 +34,39 @@ export function TagPerformanceStrip({ items }: { items: PaperTagPerformance[] })
           {item.tag} {item.trades} 笔 · 均收 <b className={toneFromChange(item.avg_return_pct)}>{formatPct(item.avg_return_pct)}</b>
         </span>
       ))}
+    </div>
+  );
+}
+
+export function SectorEtfT0PerformancePanel({ item }: { item: PaperSectorEtfT0Performance | null }) {
+  if (!item) return <EmptyState text="暂无 ETF T+0 自动交易绩效" />;
+  return (
+    <div className="paper-performance-table paper-etf-t0-table">
+      <div className="context-row paper-context-row">
+        <InfoPill label="自动委托" value={`${formatInteger(item.simulated_trades)} 笔`} />
+        <InfoPill label="已闭合" value={`${formatInteger(item.simulated_closed_trades)} 笔`} />
+        <InfoPill label="成交胜率" value={formatPct(item.simulated_win_rate_pct)} />
+        <InfoPill label="平均收益" value={formatPct(item.simulated_avg_return_pct)} tone={toneFromChange(item.simulated_avg_return_pct)} />
+      </div>
+      <div className="paper-performance-head">
+        <span>跟踪样本</span>
+        <span>已结算</span>
+        <span>待结算</span>
+        <span>影子胜率</span>
+        <span>1日均收</span>
+        <span>3日均收</span>
+      </div>
+      <div className="paper-performance-row">
+        <strong>{formatInteger(item.shadow_sample_count)}</strong>
+        <span>{formatInteger(item.shadow_settled_count)}</span>
+        <span>{formatInteger(item.shadow_pending_count)}</span>
+        <span>{formatPct(item.shadow_success_rate_pct)}</span>
+        <span className={toneFromChange(item.shadow_avg_return_1d_pct)}>{formatPct(item.shadow_avg_return_1d_pct)}</span>
+        <span className={toneFromChange(item.shadow_avg_return_3d_pct)}>{formatPct(item.shadow_avg_return_3d_pct)}</span>
+      </div>
+      <p className="muted">
+        {item.notes?.[0] || "只统计 strategy_key=sector_etf_t0 的模拟成交，并和 ETF 机会池影子跟踪对账。"}
+      </p>
     </div>
   );
 }
@@ -76,6 +109,7 @@ export function AgentRunList({ items }: { items: PaperAgentRun[] }) {
         const response = item.response || {};
         const executed = Number(response.executed_count ?? (Array.isArray(response.executed) ? response.executed.length : 0));
         const skipped = Number(response.skipped_count ?? (Array.isArray(response.skipped) ? response.skipped.length : 0));
+        const etfOrders = Number(response.sector_etf_t0_order_count ?? 0);
         const summary = String(response.summary || item.error_message || "--");
         const skipReason = agentRunSkipReason(response);
         return (
@@ -84,7 +118,7 @@ export function AgentRunList({ items }: { items: PaperAgentRun[] }) {
               <strong>{runStatusText(item.status)}</strong>
               <span>{formatPaperDateTime(item.created_at)}</span>
             </div>
-            <span>执行 {executed} / 跳过 {skipped}</span>
+            <span>执行 {executed} / 跳过 {skipped}{etfOrders ? ` / ETF ${etfOrders}` : ""}</span>
             <span>{summary}</span>
             {skipReason ? <span className="paper-run-reason">未买原因：{skipReason}</span> : null}
           </article>

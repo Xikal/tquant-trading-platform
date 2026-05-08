@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from pathlib import Path
 import pandas as pd
 from types import SimpleNamespace
 
@@ -135,6 +136,25 @@ def test_akshare_sector_provider_uses_raw_board_frame_without_service_recursion(
     assert result.quality == MarketDataQuality.FRESH
     assert result.data is not None
     assert [item.sector_name for item in result.data] == ["半导体", "机器人"]
+
+
+def test_market_services_keep_raw_akshare_inside_provider_boundary() -> None:
+    services_root = Path(__file__).resolve().parents[1] / "app" / "services"
+    allowed_parts = {
+        ("market", "providers"),
+        ("market", "raw_sources.py"),
+        ("market", "service.py"),
+    }
+    offenders: list[str] = []
+    for path in services_root.rglob("*.py"):
+        rel = path.relative_to(services_root)
+        if rel.parts[:2] in allowed_parts or rel.parts in allowed_parts:
+            continue
+        text = path.read_text(encoding="utf-8")
+        if "self.ak." in text or "_call_akshare(" in text:
+            offenders.append(str(rel))
+
+    assert offenders == []
 
 
 def test_sector_snapshot_accepts_normalized_provider_board_fields() -> None:

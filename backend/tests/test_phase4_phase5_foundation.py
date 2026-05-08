@@ -8,10 +8,23 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from app.models.base import Base
-from app.models.entities import BacktestRun, MarketModelObservation, MLSignalModel, MLSignalSample, PaperAccount, RuntimeTask
+from app.models.entities import (
+    BacktestRun,
+    BacktestTrade,
+    DailyBarSnapshot,
+    Instrument,
+    MarketModelObservation,
+    MLSignalModel,
+    MLSignalSample,
+    PaperAccount,
+    PaperTrade,
+    RuntimeTask,
+)
+from app.models.schemas import KlineBar, QuoteSnapshot
 from app.models.schema_defs.phase4 import (
     AgentQualityScoreRequest,
     MLSignalPredictionRequest,
+    StrategyCapacityRequest,
     MLSignalTrainRequest,
     PaperBacktestComparisonRequest,
     QuantParameterSetCreate,
@@ -19,19 +32,24 @@ from app.models.schema_defs.phase4 import (
 )
 from app.models.schema_defs.market import (
     IntradayAnomalyResponse,
+    PairedHedgeResearchResponse,
     SectorEtfT0Opportunity,
     SectorEtfT0Response,
 )
 from app.services.agent_quality import score_agent_result
+from app.services.distribution_signals import build_daily_distribution_snapshot
 from app.services.intraday_anomaly import IntradayAnomalyService
 from app.services.low_buy.screening import LowBuyScreeningMixin
 from app.services.low_buy.service import LowBuyScreenerService
 from app.services.market.providers import DataSourceProbeService
 from app.services.market_model_observation_service import MarketModelObservationService
 from app.services.ml_signal import MLSignalService
+from app.services.paired_hedge_research import PairedHedgeResearchService
 from app.services.paper.backtest_compare import PaperBacktestComparisonService
 from app.services.quant import QuantParameterVersionService
+from app.services.quant_engine_intraday_structure import classify_intraday_structure
 from app.services.sector_etf_t0 import SectorEtfT0Service
+from app.services.strategy_capacity import StrategyCapacityService
 from app.services.tasks import RuntimeTaskQueue
 from app.workers import runtime_worker
 
@@ -182,6 +200,8 @@ def test_quant_parameter_version_default_and_create():
     assert "market" in current.params
     assert "regime_scoring" in current.params["market"]
     assert "normalizers" in current.params["market"]["regime_scoring"]
+    assert "distribution_signals" in current.params["market"]
+    assert "intraday_structure" in current.params["position_t"]
     assert current.params["low_buy"]["scoring"]["base_score"] > 0
     assert created.version == "test-params-v2"
     assert service.current().version == "test-params-v2"
@@ -233,6 +253,21 @@ def test_quant_parameter_version_rejects_invalid_numeric_boundary():
         assert "不能低于" in str(exc)
     else:  # pragma: no cover - defensive assertion
         raise AssertionError("negative bounded parameter should be rejected")
+
+    try:
+        service.create(
+            QuantParameterSetCreate(
+                version="invalid-score-max",
+                scope="low_buy",
+                params={"low_buy": {"min_priority_score": 999}},
+                activate=False,
+            ),
+            created_by="tester",
+        )
+    except ValueError as exc:
+        assert "不能高于" in str(exc)
+    else:  # pragma: no cover - defensive assertion
+        raise AssertionError("over-large score parameter should be rejected")
 
 
 def test_data_source_probe_reports_configured_chain():
@@ -347,12 +382,281 @@ def test_ml_signal_rejects_artifact_path_outside_model_dir(tmp_path, monkeypatch
     get_settings.cache_clear()
 
 
+def test_ml_signal_artifact_storage_check_validates_remote_filesystem(tmp_path, monkeypatch):
+    db = _db()
+    model_dir = tmp_path / "models"
+    remote_dir = tmp_path / "remote-artifacts"
+    monkeypatch.setenv("ML_SIGNAL_MODEL_DIR", str(model_dir))
+    monkeypatch.setenv("ML_SIGNAL_ARTIFACT_REMOTE_DIR", str(remote_dir))
+    from app.core.config import get_settings
+
+    get_settings.cache_clear()
+    response = MLSignalService(db).check_artifact_storage()
+
+    assert response.ok is True
+    assert response.configured is True
+    assert response.backend == "filesystem"
+    assert response.write_ok is True
+    assert response.read_ok is True
+    assert response.restore_ok is True
+    assert response.cleanup_ok is True
+    assert not list(remote_dir.glob("storage_probe_*.pkl"))
+    assert not list(model_dir.glob("restore_storage_probe_*.pkl"))
+    get_settings.cache_clear()
+
+
+def test_ml_signal_closed_paper_trade_outcome_is_persisted():
+    db = _db()
+    trade = PaperTrade(
+        id=7,
+        order_id=11,
+        account_id=1,
+        symbol="600000",
+        side="sell",
+        price=Decimal("10.80"),
+        quantity=100,
+        gross_amount=Decimal("1080.00"),
+        commission=Decimal("5.00"),
+        stamp_tax=Decimal("1.08"),
+        transfer_fee=Decimal("0.00"),
+        net_amount=Decimal("1073.92"),
+        strategy_key="first_board",
+    )
+    db.add(trade)
+    db.commit()
+
+    created = MLSignalService(db).persist_paper_trade_outcome(
+        trade,
+        cost_basis=Decimal("10.00"),
+        pnl_amount=Decimal("73.92"),
+        return_pct=Decimal("8.00"),
+    )
+    db.commit()
+    sample = db.query(MLSignalSample).filter(MLSignalSample.sample_key == "paper_close:7").one()
+
+    assert created is True
+    assert sample.source == "paper"
+    assert '"return_pct": 8.0' in sample.label_json
+    assert "price_momentum_5d_z" in sample.feature_json
+
+
+def test_ml_signal_sequence_features_include_zscore_and_sector_strength():
+    db = _db()
+    db.add_all(
+        [
+            Instrument(symbol="600000", name="浦发银行", instrument_type="stock", sector_name="银行"),
+            Instrument(symbol="600001", name="同板块A", instrument_type="stock", sector_name="银行"),
+        ]
+    )
+    for index in range(1, 16):
+        trade_date = f"2026-04-{index:02d}"
+        db.add(
+            DailyBarSnapshot(
+                symbol="600000",
+                trade_date=trade_date,
+                close_price=10 + index * 0.2,
+                volume=10000 + index * 500,
+                amount=1000000 + index * 10000,
+                pct_chg=1.0,
+            )
+        )
+        db.add(
+            DailyBarSnapshot(
+                symbol="600001",
+                trade_date=trade_date,
+                close_price=10 + index * 0.05,
+                volume=9000 + index * 100,
+                amount=900000 + index * 5000,
+                pct_chg=0.2,
+            )
+        )
+    db.commit()
+
+    features = MLSignalService(db)._sequence_features("600000", "2026-04-15")
+
+    assert "price_momentum_5d_z" in features
+    assert "volume_slope_10d_z" in features
+    assert features["sector_relative_strength_5d"] > 0
+
+
+def test_ml_signal_online_learning_status_summarizes_closed_samples():
+    db = _db()
+    for index, return_pct in enumerate([2.1, -0.8, 1.4], start=1):
+        db.add(
+            MLSignalSample(
+                sample_key=f"paper_close:{index}",
+                symbol="600000",
+                trade_date="2026-05-08",
+                strategy_key="first_board",
+                source="paper",
+                feature_json='{"price": 10, "quantity": 100}',
+                label_json=f'{{"closed": true, "return_pct": {return_pct}}}',
+            )
+        )
+    db.add(RuntimeTask(task_type="ml_signal_incremental_train", status="succeeded", progress_pct=100.0))
+    db.commit()
+
+    response = MLSignalService(db).online_learning_status(min_samples=3)
+
+    assert response.paper_sample_count == 3
+    assert response.closed_trade_sample_count == 3
+    assert response.positive_sample_count == 2
+    assert response.negative_sample_count == 1
+    assert response.ready_for_training is True
+    assert response.latest_incremental_task_status == "succeeded"
+
+
+def test_strategy_capacity_outputs_capital_curve():
+    db = _db()
+    db.add(
+        BacktestTrade(
+            run_id=1,
+            trade_date="2026-04-10",
+            symbol="600000",
+            strategy_key="first_board",
+            side="sell",
+            price=10.5,
+            gross_amount=1050.0,
+            pnl_pct=1.2,
+            pnl_amount=12.0,
+        )
+    )
+    for index in range(10):
+        db.add(
+            DailyBarSnapshot(
+                symbol="600000",
+                trade_date=f"2026-04-{index + 1:02d}",
+                close_price=10 + index * 0.1,
+                amount=100_000_000 + index * 1_000_000,
+                pct_chg=0.6,
+            )
+        )
+    db.commit()
+
+    response = StrategyCapacityService(db).evaluate(
+        StrategyCapacityRequest(strategies=["first_board"], capital_levels=[500000.0, 1000000.0])
+    )
+
+    assert response.items
+    assert response.items[0].curve
+    assert response.items[0].curve[0].capacity_status in {"可承载", "谨慎", "过载"}
+
+
+def test_runtime_worker_executes_ml_incremental_train_task(tmp_path, monkeypatch):
+    db = _db()
+    monkeypatch.setenv("ML_SIGNAL_MODEL_DIR", str(tmp_path))
+    from app.core.config import get_settings
+
+    get_settings.cache_clear()
+    for index in range(120):
+        db.add(
+            MLSignalSample(
+                sample_key=f"paper-close:{index}",
+                symbol="600000",
+                trade_date="2026-05-08",
+                strategy_key="first_board",
+                source="paper",
+                feature_json=(
+                    '{"price": %s, "quantity": 100, "gross_amount": %s, '
+                    '"strategy_known": 1, "market_state_known": 1, "is_sell": 1, '
+                    '"priority_score": %s, "risk_score": %s, "volume_shrink_ratio": 0.7}'
+                    % (10 + index / 10, 1000 + index, 70 + index % 8, index % 5)
+                ),
+                label_json='{"return_pct": 1.2}' if index % 2 == 0 else '{"return_pct": -0.8}',
+            )
+        )
+    db.commit()
+
+    result = runtime_worker._execute_task(
+        "ml_signal_incremental_train",
+        {"model_type": "logistic", "limit": 120, "min_samples": 100, "promote": False},
+        db,
+    )
+
+    assert result["status"] in {"research", "failed"}
+    assert result["sample_count"] >= 120
+    get_settings.cache_clear()
+
+
 def test_low_buy_runtime_uses_composition_adapter_seam():
     runtime = LowBuyScreenerService()._runtime
 
     assert not isinstance(runtime, LowBuyScreeningMixin)
+    assert runtime._adapters
+    assert not any(isinstance(adapter, LowBuyScreeningMixin) for adapter in runtime._adapters)
     assert callable(runtime.screen)
     assert callable(runtime.priority_board)
+
+
+def test_distribution_thresholds_are_runtime_parameterized(monkeypatch):
+    monkeypatch.setattr(
+        "app.services.quant.runtime_parameters.get_market_distribution_signals",
+        lambda: {
+            "false_breakout_high_multiplier": 1.005,
+            "false_breakout_close_multiplier": 0.998,
+        },
+    )
+
+    _, snapshot = build_daily_distribution_snapshot(
+        open_price=9.95,
+        high_price=10.07,
+        low_price=9.90,
+        close_price=9.96,
+        latest_change_pct=0.2,
+        breakout_level=10.0,
+        reference_high=10.1,
+        volume_burst_ratio=1.0,
+        latest_volume_ratio=0.2,
+        post_volume_ratio=0.2,
+    )
+
+    assert snapshot.false_breakout_flag is True
+
+
+def test_intraday_structure_thresholds_are_runtime_parameterized(monkeypatch):
+    monkeypatch.setattr(
+        "app.services.quant.runtime_parameters.get_position_t_intraday_structure",
+        lambda: {"min_bars": 10},
+    )
+    quote = QuoteSnapshot(
+        symbol="600000",
+        name="测试",
+        market="SH",
+        instrument_type="stock",
+        last_price=10.0,
+        change_pct=0.0,
+        change_amount=0.0,
+        open_price=10.0,
+        high_price=10.2,
+        low_price=9.8,
+        prev_close=10.0,
+        volume=1000,
+        amount=10000,
+        timestamp="2026-05-08 10:00:00",
+    )
+    bars = [
+        KlineBar(timestamp=f"2026-05-08 10:0{idx}:00", open=10.0, close=10.0, high=10.1, low=9.9, volume=1000, amount=10000)
+        for idx in range(6)
+    ]
+    snapshot = classify_intraday_structure(
+        quote=quote,
+        bars=bars,
+        ma5=10.0,
+        vwap_value=10.0,
+        distribution=type(
+            "Distribution",
+            (),
+            {
+                "false_breakout_flag": False,
+                "stall_after_volume_flag": False,
+                "long_upper_shadow": False,
+                "weak_close": False,
+                "distribution_risk_score": 0.0,
+            },
+        )(),
+    )
+
+    assert snapshot.key == "insufficient_intraday"
 
 
 def test_sector_etf_validation_reports_acceptance_from_current_opportunities(monkeypatch):
@@ -390,8 +694,67 @@ def test_sector_etf_validation_reports_acceptance_from_current_opportunities(mon
     report = service.validation_report(db, limit=2)
 
     assert report.model_key == "sector_etf_t0"
-    assert report.production_ready is True
+    assert report.production_ready is False
+    assert report.metrics[0].status == "passed"
     assert report.metrics[0].sample_count == 2
+    assert report.metrics[1].pending_count >= 0
+    assert report.metrics[1].p_value >= 0
+
+
+def test_sector_etf_proxy_prefers_exact_sector_mapping():
+    from app.services.sector_etf_t0 import _proxy_for_sector
+
+    semiconductor = _proxy_for_sector("半导体")
+    chip = _proxy_for_sector("芯片")
+
+    assert semiconductor is not None
+    assert chip is not None
+    assert semiconductor.symbol == "512480"
+    assert chip.symbol == "512760"
+
+
+def test_paired_hedge_research_response_is_research_only():
+    response = PairedHedgeResearchResponse(
+        updated_at="2026-05-08 10:00:00",
+        total=0,
+        ideas=[],
+    )
+
+    assert response.mode == "research_only"
+
+
+def test_paired_hedge_research_builds_from_priority_board(monkeypatch):
+    class _Quote:
+        def __init__(self, last_price: float, change_pct: float) -> None:
+            self.last_price = last_price
+            self.change_pct = change_pct
+
+    class _MarketData:
+        def get_quotes_batch(self, symbols):  # noqa: ANN001
+            return {
+                "000001": _Quote(10.0, 1.2),
+                "512480": _Quote(1.2, 0.4),
+            }
+
+    service = PairedHedgeResearchService(market_data=_MarketData())
+    board = {
+        "items": [
+            {
+                "symbol": "000001",
+                "name": "测试股份",
+                "sector_name": "半导体",
+                "strategy_title": "首板回调",
+                "priority_score": 92,
+                "change_pct": 1.2,
+            }
+        ]
+    }
+
+    ideas = service.build_from_priority_board(board, limit=1)
+
+    assert len(ideas) == 1
+    assert ideas[0].legs[1].symbol == "512480"
+    assert ideas[0].net_exposure_pct < 100
 
 
 def test_market_model_observation_upserts_same_day_signal():
@@ -447,8 +810,11 @@ def test_intraday_anomaly_validation_requires_structured_outputs(monkeypatch):
     report = service.validation_report(["600000", "000001", "601318", "510300", "512480"])
 
     assert report.model_key == "intraday_anomaly"
-    assert report.production_ready is True
+    assert report.production_ready is False
+    assert report.metrics[0].status == "passed"
     assert report.metrics[0].sample_count == 5
+    assert report.metrics[1].false_positive_rate_pct >= 0
+    assert report.metrics[1].p_value >= 0
 
 
 def test_paper_backtest_comparison_flags_large_deviation():

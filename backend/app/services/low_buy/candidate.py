@@ -46,6 +46,7 @@ from app.services.low_buy.shared import (
     pd,
 )
 from app.services.low_buy.price_math import distance_to_entry_zone_pct
+from app.services.risk.volatility_sizing import build_volatility_position_cap
 
 
 class LowBuyCandidateMixin:
@@ -145,6 +146,11 @@ class LowBuyCandidateMixin:
             adjusted_candidate.buy_signal_state,
             performance,
         )
+        final_cap_pct, cap_reason = _final_position_cap(
+            suggested_position_pct=suggested_position_pct,
+            volatility_position_pct=adjusted_candidate.volatility_position_pct,
+            existing_reason=adjusted_candidate.position_cap_reason,
+        )
         return adjusted_candidate.model_copy(
             update={
                 "entry_distance_pct": self._distance_to_entry_zone_pct(
@@ -153,6 +159,8 @@ class LowBuyCandidateMixin:
                 ),
                 "suggested_position_pct": suggested_position_pct,
                 "suggested_position_text": suggested_position_text,
+                "final_position_cap_pct": final_cap_pct,
+                "position_cap_reason": cap_reason,
                 "position_breakdown_text": build_position_breakdown_text(
                     adjusted_candidate,
                     suggested_position_pct,
@@ -434,6 +442,8 @@ class LowBuyCandidateMixin:
             quote_timestamp=metrics.latest_trade_date,
         )
         quality_fields = data_quality_payload(combine_data_quality(quote_quality, metrics_quality))
+        atr_pct = (metrics.retracement_atr / max(metrics.latest_close, 0.01) * 100) if metrics.latest_close > 0 else 0.0
+        volatility_cap = build_volatility_position_cap(atr_pct)
         candidate = LowBuyCandidateOut(
             strategy_key=strategy,
             strategy_title=self._get_playbook(strategy)["title"],
@@ -485,6 +495,10 @@ class LowBuyCandidateMixin:
             industry_tier=context_adjustment.industry_tier,
             industry_tier_text=context_adjustment.industry_tier_text,
             industry_position_multiplier=context_adjustment.industry_position_multiplier,
+            atr_pct=volatility_cap.atr_pct,
+            volatility_position_pct=volatility_cap.cap_pct,
+            final_position_cap_pct=volatility_cap.cap_pct,
+            position_cap_reason=volatility_cap.reason,
             hard_risk=context_adjustment.hard_risk,
             next_day_event_plan=next_day_event_plan,
             exit_plan=exit_plan,
@@ -692,3 +706,19 @@ def _factor_score_labels(factor_scores: dict[str, float]) -> list[tuple[str, flo
         for key, value in factor_scores.items()
         if value > 0
     ]
+
+
+def _final_position_cap(
+    *,
+    suggested_position_pct: float,
+    volatility_position_pct: float,
+    existing_reason: str,
+) -> tuple[float, str]:
+    if suggested_position_pct <= 0:
+        return 0.0, existing_reason
+    if volatility_position_pct <= 0:
+        return round(suggested_position_pct, 2), existing_reason
+    final_cap = round(min(float(suggested_position_pct), float(volatility_position_pct)), 2)
+    if final_cap < suggested_position_pct:
+        return final_cap, f"{existing_reason}，低于策略建议仓位时按波动率上限执行"
+    return final_cap, existing_reason

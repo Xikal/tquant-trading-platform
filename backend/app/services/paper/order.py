@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import logging
 from datetime import datetime
 from decimal import Decimal
 
@@ -15,6 +16,8 @@ from app.services.paper.money import to_decimal
 from app.services.paper.position import PaperPositionService
 from app.services.paper.reasons import normalize_entry_reason, normalize_exit_reason
 from app.services.paper.risk_control import PaperRiskControlService
+
+logger = logging.getLogger(__name__)
 
 
 class PaperOrderService:
@@ -153,6 +156,9 @@ class PaperOrderService:
         account = self.accounts.get_account(order.account_id)
         entry_reason = normalize_entry_reason(order.reason, source=order.source).text if order.side == "buy" else ""
         exit_reason = normalize_exit_reason(_exit_reason_from_order(order), source=order.source).text
+        cost_basis = Decimal("0")
+        realized_pnl = Decimal("0")
+        return_pct = Decimal("0")
         if order.side == "buy":
             account.cash_available = to_decimal(account.cash_available) - net_amount
             per_share_cost = net_amount / Decimal(order.filled_quantity)
@@ -172,30 +178,56 @@ class PaperOrderService:
             self.positions.reduce_position(account_id=order.account_id, symbol=order.symbol, quantity=order.filled_quantity)
             self.positions.refresh_quotes(order.account_id, {order.symbol: fill_price})
             account.cash_available = to_decimal(account.cash_available) + net_amount
+            realized_pnl = ((fill_price - cost_basis) * Decimal(order.filled_quantity)) - fee_detail.total_fee
+            return_pct = ((fill_price / cost_basis) - Decimal("1")) * Decimal("100") if cost_basis > 0 else Decimal("0")
             account.realized_pnl = (
                 to_decimal(account.realized_pnl)
-                + ((fill_price - cost_basis) * Decimal(order.filled_quantity))
-                - fee_detail.total_fee
+                + realized_pnl
             )
-        self.db.add(
-            PaperTrade(
-                order_id=order.id,
-                account_id=order.account_id,
-                symbol=order.symbol,
-                side=order.side,
-                price=fill_price,
-                quantity=order.filled_quantity,
-                gross_amount=fee_detail.gross_amount,
-                commission=fee_detail.commission,
-                stamp_tax=fee_detail.stamp_tax,
-                transfer_fee=fee_detail.transfer_fee,
-                net_amount=net_amount,
-                strategy_key=order.strategy_key,
-                entry_reason=entry_reason[:240],
-                exit_reason=exit_reason[:80],
-            )
+        trade = PaperTrade(
+            order_id=order.id,
+            account_id=order.account_id,
+            symbol=order.symbol,
+            side=order.side,
+            price=fill_price,
+            quantity=order.filled_quantity,
+            gross_amount=fee_detail.gross_amount,
+            commission=fee_detail.commission,
+            stamp_tax=fee_detail.stamp_tax,
+            transfer_fee=fee_detail.transfer_fee,
+            net_amount=net_amount,
+            strategy_key=order.strategy_key,
+            entry_reason=entry_reason[:240],
+            exit_reason=exit_reason[:80],
         )
+        self.db.add(trade)
+        self.db.flush()
+        if order.side == "sell":
+            self._record_ml_trade_outcome(trade, cost_basis=cost_basis, realized_pnl=realized_pnl, return_pct=return_pct)
         self.accounts.update_market_value(order.account_id)
+
+    def _record_ml_trade_outcome(
+        self,
+        trade: PaperTrade,
+        *,
+        cost_basis: Decimal,
+        realized_pnl: Decimal,
+        return_pct: Decimal,
+    ) -> None:
+        try:
+            from app.services.ml_signal import MLSignalService
+
+            MLSignalService(self.db).persist_paper_trade_outcome(
+                trade,
+                cost_basis=cost_basis,
+                pnl_amount=realized_pnl,
+                return_pct=return_pct,
+                label_note="paper_trade_close",
+            )
+        except Exception:
+            # ML sampling must not break deterministic paper order settlement.
+            logger.warning("failed to persist ML paper-trade outcome", exc_info=True)
+            return
 
 
 def _exit_reason_from_order(order: PaperOrder) -> str:

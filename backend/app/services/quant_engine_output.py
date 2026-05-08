@@ -62,6 +62,7 @@ def build_metrics(
             "macd_dif": indicators.macd_dif,
             "macd_dea": indicators.macd_dea,
             "macd_hist": indicators.macd_hist,
+            "macd_valid": indicators.macd_valid,
             "vwap": indicators.vwap_value,
             "atr14": indicators.atr14,
             "volume_ratio": indicators.volume_ratio_value,

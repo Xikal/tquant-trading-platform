@@ -12,12 +12,14 @@ from app.models.entities import User
 from app.models.schemas import (
     PaperGroupedPerformanceOut,
     PaperPerformanceOut,
+    PaperSectorEtfT0PerformanceOut,
     PaperStrategyCorrelationResponse,
     PaperStrategyMarketPerformanceOut,
     PaperTagPerformanceOut,
 )
 from app.services.paper import PaperAccountService, PaperArchiveService, PaperPerformanceService
 from app.services.paper.dashboard import PaperPerformanceDashboardService
+from app.services.market_model_observation_service import MarketModelObservationService
 
 router = APIRouter()
 
@@ -84,6 +86,25 @@ def paper_performance_strategy_correlation(
         start_date = date.today() - timedelta(days=days)
     payload = PaperPerformanceService(db).compute_strategy_correlation(account.id, start_date=start_date)
     return PaperStrategyCorrelationResponse(**payload)
+
+
+@router.get("/performance/sector-etf-t0", response_model=PaperSectorEtfT0PerformanceOut)
+def paper_performance_sector_etf_t0(
+    current_user: User = Depends(require_paper_trading),
+    db: Session = Depends(get_db),
+) -> PaperSectorEtfT0PerformanceOut:
+    account = PaperAccountService(db).get_or_create_default(current_user.id)
+    simulated = PaperPerformanceService(db).compute_sector_etf_t0(account.id)
+    shadow = MarketModelObservationService().summarize(db, model_key="sector_etf_t0", lookback_days=60)
+    return PaperSectorEtfT0PerformanceOut(
+        **simulated,
+        shadow_sample_count=int(shadow["sample_count"]),
+        shadow_settled_count=int(shadow["settled_count"]),
+        shadow_pending_count=int(shadow["pending_count"]),
+        shadow_success_rate_pct=round(float(shadow["success_rate_pct"] or 0.0), 2),
+        shadow_avg_return_1d_pct=round(float(shadow["avg_return_1d_pct"] or 0.0), 2),
+        shadow_avg_return_3d_pct=round(float(shadow["avg_return_3d_pct"] or 0.0), 2),
+    )
 
 
 @router.get("/performance/dashboard")

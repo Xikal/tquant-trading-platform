@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 from app.core.config import get_settings
 from app.models.entities import QuantParameterAuditLog, QuantParameterSet
 from app.services.low_buy.strategy_parameter_defaults import (
+    BACKTEST_EXECUTION_DEFAULTS,
     LOW_BUY_AUTO_GOVERNANCE_DEFAULTS,
     LOW_BUY_DYNAMIC_ADJUSTMENT_DEFAULTS,
     LOW_BUY_HARD_RISK_DEFAULTS,
@@ -20,10 +21,13 @@ from app.services.low_buy.strategy_parameter_defaults import (
     LOW_BUY_STRATEGY_EXECUTION_DEFAULTS,
     LOW_BUY_STRATEGY_PREFILTER_DEFAULTS,
     LOW_BUY_THRESHOLD_DEFAULTS,
+    RISK_VOLATILITY_SIZING_DEFAULTS,
+    MARKET_DISTRIBUTION_SIGNAL_DEFAULTS,
     MARKET_INTRADAY_ANOMALY_DEFAULTS,
     MARKET_REGIME_SCORING_DEFAULTS,
     MARKET_SECTOR_ETF_T0_DEFAULTS,
     POSITION_T_DECISION_DEFAULTS,
+    POSITION_T_INTRADAY_STRUCTURE_DEFAULTS,
     POSITION_T_SCORING_DEFAULTS,
     quant_parameter_schema,
 )
@@ -44,6 +48,9 @@ DEFAULT_QUANT_PARAMETERS: dict[str, Any] = {
         "max_total_exposure_pct": 0.8,
         "default_stop_loss_pct": -3.0,
         "default_take_profit_pct": 4.5,
+        "volatility_sizing": {
+            **RISK_VOLATILITY_SIZING_DEFAULTS,
+        },
     },
     "low_buy": {
         "min_priority_score": 75,
@@ -109,6 +116,9 @@ DEFAULT_QUANT_PARAMETERS: dict[str, Any] = {
         "decision": {
             **POSITION_T_DECISION_DEFAULTS,
         },
+        "intraday_structure": {
+            **POSITION_T_INTRADAY_STRUCTURE_DEFAULTS,
+        },
     },
     "market": {
         "regime_scoring": {
@@ -120,11 +130,19 @@ DEFAULT_QUANT_PARAMETERS: dict[str, Any] = {
         "intraday_anomaly": {
             **MARKET_INTRADAY_ANOMALY_DEFAULTS,
         },
+        "distribution_signals": {
+            **MARKET_DISTRIBUTION_SIGNAL_DEFAULTS,
+        },
     },
     "ml": {
         "production_enabled": False,
         "min_oos_days": 60,
         "min_samples": 1000,
+    },
+    "backtest": {
+        "execution": {
+            **BACKTEST_EXECUTION_DEFAULTS,
+        },
     },
 }
 
@@ -246,6 +264,7 @@ class QuantParameterVersionService:
         if target is None:
             raise ValueError(f"quant parameter version not found: {payload.version}")
         before = self.current(scope=target.scope).params
+        _validate_parameter_payload(_json_dict(target.params_json))
         self.db.execute(
             QuantParameterSet.__table__.update()
             .where(QuantParameterSet.scope == target.scope)
@@ -365,7 +384,28 @@ def _deep_merge(defaults: dict[str, Any], overrides: dict[str, Any]) -> dict[str
 def _validate_parameter_payload(params: dict[str, Any]) -> dict[str, Any]:
     if not isinstance(params, dict):
         raise ValueError("参数版本内容必须是 JSON 对象")
+    invalid_roots = sorted(set(params) - {"risk", "low_buy", "position_t", "market", "ml", "backtest"})
+    if invalid_roots:
+        raise ValueError(f"参数命名空间不支持: {', '.join(invalid_roots)}")
     schema_map = _flatten_schema(quant_parameter_schema())
+
+    def field_schema_for(path: str) -> dict[str, Any] | None:
+        return schema_map.get(path) or schema_map.get(path.removesuffix("[]"))
+
+    def validate_numeric(value: float, path: str) -> None:
+        if not math.isfinite(value):
+            raise ValueError(f"参数 {path or '<root>'} 必须是有限数字")
+        if abs(value) > 1_000_000_000:
+            raise ValueError(f"参数 {path or '<root>'} 超出安全范围")
+        field_schema = field_schema_for(path)
+        if not field_schema:
+            return
+        minimum = field_schema.get("min")
+        maximum = field_schema.get("max")
+        if minimum is not None and value < float(minimum):
+            raise ValueError(f"参数 {path} 不能低于 {minimum}")
+        if maximum is not None and value > float(maximum):
+            raise ValueError(f"参数 {path} 不能高于 {maximum}")
 
     def visit(value: Any, path: str) -> Any:
         if isinstance(value, dict):
@@ -376,18 +416,7 @@ def _validate_parameter_payload(params: dict[str, Any]) -> dict[str, Any]:
             return value
         if isinstance(value, (int, float)):
             numeric = float(value)
-            if not math.isfinite(numeric):
-                raise ValueError(f"参数 {path or '<root>'} 必须是有限数字")
-            if abs(numeric) > 1_000_000_000:
-                raise ValueError(f"参数 {path or '<root>'} 超出安全范围")
-            field_schema = schema_map.get(path)
-            if field_schema:
-                minimum = field_schema.get("min")
-                maximum = field_schema.get("max")
-                if minimum is not None and numeric < float(minimum):
-                    raise ValueError(f"参数 {path} 不能低于 {minimum}")
-                if maximum is not None and numeric > float(maximum):
-                    raise ValueError(f"参数 {path} 不能高于 {maximum}")
+            validate_numeric(numeric, path)
             return value
         raise ValueError(f"参数 {path or '<root>'} 类型不支持")
 

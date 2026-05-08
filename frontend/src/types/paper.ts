@@ -136,6 +136,22 @@ export interface PaperPerformance {
   win_loss_ratio: number | null
 }
 
+export interface PaperSectorEtfT0Performance {
+  simulated_trades: number
+  simulated_closed_trades: number
+  simulated_win_rate_pct: number
+  simulated_net_win_rate_pct: number
+  simulated_avg_return_pct: number
+  simulated_profit_factor: number | null
+  shadow_sample_count: number
+  shadow_settled_count: number
+  shadow_pending_count: number
+  shadow_success_rate_pct: number
+  shadow_avg_return_1d_pct: number
+  shadow_avg_return_3d_pct: number
+  notes: string[]
+}
+
 export interface PaperGroupedPerformance {
   key: string
   trades: number
@@ -178,6 +194,11 @@ export interface PaperAutoTradingStatus {
   circuit_reason?: string
   circuit_since?: string
   blocking_reason?: string
+  sector_etf_t0_auto_enabled?: boolean
+  sector_etf_t0_max_orders?: number
+  sector_etf_t0_cash_pct?: number
+  sector_etf_t0_min_confidence?: number
+  sector_etf_t0_min_edge_pct?: number
   last_skip_reason?: string
   last_skip_symbol?: string
   last_skip_at?: string

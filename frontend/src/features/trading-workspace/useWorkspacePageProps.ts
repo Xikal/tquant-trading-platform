@@ -72,6 +72,7 @@ export function useWorkspacePageProps({
     orders: paper.orders,
     trades: paper.trades,
     performance: paper.performance,
+    sectorEtfT0Performance: paper.sectorEtfT0Performance,
     strategyPerformance: paper.strategyPerformance,
     marketPerformance: paper.marketPerformance,
     tagPerformance: paper.tagPerformance,

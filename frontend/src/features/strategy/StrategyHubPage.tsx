@@ -22,6 +22,7 @@ const TABS: Array<{ key: StrategyHubTab; label: string; hint: string }> = [
   { key: "optimize", label: "参数优化", hint: "找更稳的参数" },
   { key: "validate", label: "样本外验证", hint: "防止只适合历史" },
   { key: "compare", label: "结果对比", hint: "选出最终方案" },
+  { key: "capacity", label: "ML / 容量", hint: "看在线学习和资金承载" },
   { key: "history", label: "任务历史", hint: "看进度和结果" },
 ];
 
@@ -72,7 +73,7 @@ export function StrategyHubPage({ currentUser }: { currentUser: AuthUser }) {
       {hub.notice ? <div className="panel strategy-notice">{hub.notice}</div> : null}
 
       <nav className="strategy-tabs" aria-label="策略工作台功能">
-        {TABS.map((tab) => (
+        {visibleTabsForUser(currentUser).map((tab) => (
           <button
             key={tab.key}
             type="button"
@@ -330,6 +331,7 @@ function StrategyBridge({
     optimize: ["参数优化", "快速回测有价值后再用。它会找更稳的评分、仓位、止损和持有天数。"],
     validate: ["样本外验证", "检查策略是不是只在历史里好看。样本外不通过，就不要上生产。"],
     compare: ["结果对比", "把多个已完成回测放在一起，看收益、回撤、Sharpe，选择最终方案。"],
+    capacity: ["ML 在线学习 / 容量", "查看模拟盘平仓样本是否进入训练池，并评估策略在不同资金规模下是否还能承载。"],
   };
   const meta = metaMap[tab];
   if (tab === "signals") {
@@ -341,10 +343,14 @@ function StrategyBridge({
   if (tab === "validate" && !canValidate(currentUser)) {
     return <PermissionPanel title="需要研究员权限" description="当前账号可以查看回测和信号复盘，但不能创建样本外验证任务。" />;
   }
+  if (tab === "capacity" && !isAdmin(currentUser)) {
+    return <PermissionPanel title="需要管理员权限" description="ML 在线学习、手动增量训练和容量评估会读取训练样本与模型状态，仅管理员可操作。" />;
+  }
   const sectionMap: Record<Exclude<StrategyHubTab, "quick" | "history" | "signals">, BacktestResearchSection> = {
     optimize: "optimization",
     validate: "validation",
     compare: "compare",
+    capacity: "capacity",
   };
   return (
     <div className="strategy-bridge">
@@ -571,6 +577,10 @@ function canValidate(user: AuthUser): boolean {
   return isAdmin(user) || roles.has("backtest_optimizer") || roles.has("backtest_research");
 }
 
+function visibleTabsForUser(user: AuthUser) {
+  return TABS.filter((tab) => tab.key !== "capacity" || isAdmin(user));
+}
+
 function PanelTitle({ title }: { title: string }) {
   return (
     <div className="strategy-panel-title">
@@ -585,6 +595,7 @@ function dashboardSectionForTab(tab: StrategyHubTab): BacktestDashboardActiveSec
   if (tab === "optimize") return "optimization";
   if (tab === "validate") return "validation";
   if (tab === "compare") return "compare";
+  if (tab === "capacity") return "none";
   return "none";
 }
 

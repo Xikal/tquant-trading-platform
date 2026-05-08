@@ -8,6 +8,7 @@ from enum import Enum
 from app.services.paper.fees import FeeDetail, calculate_fee
 from app.services.paper.symbols import is_etf, price_tick
 from app.core.timezone import beijing_now
+from app.services.quant.runtime_parameters import get_backtest_execution
 
 
 class OrderSide(str, Enum):
@@ -40,12 +41,17 @@ class PaperMatchingEngine:
     def __init__(
         self,
         *,
-        slippage_bps: int = 5,
-        etf_slippage_bps: int = 2,
+        slippage_bps: int | None = None,
+        etf_slippage_bps: int | None = None,
         quote_timeout_seconds: int = 120,
     ) -> None:
-        self.slippage_bps = slippage_bps
-        self.etf_slippage_bps = etf_slippage_bps
+        params = _execution_params()
+        self.slippage_bps = int(slippage_bps if slippage_bps is not None else _float_param(params, "paper_slippage_stock_bps", 5.0))
+        self.etf_slippage_bps = int(etf_slippage_bps if etf_slippage_bps is not None else _float_param(params, "paper_slippage_etf_bps", 2.0))
+        self.mid_liquidity_slippage_bps = int(_float_param(params, "paper_slippage_mid_liquidity_bps", 8.0))
+        self.low_liquidity_slippage_bps = int(_float_param(params, "paper_slippage_low_liquidity_bps", 15.0))
+        self.mid_liquidity_amount = Decimal(str(_float_param(params, "paper_slippage_mid_liquidity_amount", 100_000_000.0)))
+        self.low_liquidity_amount = Decimal(str(_float_param(params, "paper_slippage_low_liquidity_amount", 30_000_000.0)))
         self.quote_timeout_seconds = quote_timeout_seconds
 
     def match(
@@ -61,6 +67,7 @@ class PaperMatchingEngine:
         is_suspended: bool,
         up_limit: Decimal | None = None,
         down_limit: Decimal | None = None,
+        traded_amount: Decimal | None = None,
     ) -> MatchResponse:
         now = beijing_now().replace(tzinfo=None)
         price_error = self._price_reject_reason(current_price=current_price, limit_price=limit_price)
@@ -79,7 +86,7 @@ class PaperMatchingEngine:
         if reject_reason:
             return self._rejected(reject_reason, now)
 
-        fill_price = self._fill_price(symbol, side, order_type, current_price, limit_price)
+        fill_price = self._fill_price(symbol, side, order_type, current_price, limit_price, traded_amount=traded_amount)
         if fill_price is None:
             return self._rejected("限价条件未满足，暂不成交。", now)
         fee = calculate_fee(symbol=symbol, side=side.value, price=fill_price, quantity=quantity)
@@ -123,6 +130,8 @@ class PaperMatchingEngine:
         order_type: OrderType,
         current_price: Decimal,
         limit_price: Decimal | None,
+        *,
+        traded_amount: Decimal | None = None,
     ) -> Decimal | None:
         if order_type == OrderType.LIMIT:
             if limit_price is None:
@@ -132,7 +141,7 @@ class PaperMatchingEngine:
             if side == OrderSide.SELL and current_price < limit_price:
                 return None
             return limit_price.quantize(Decimal(price_tick(symbol)))
-        bps = self.etf_slippage_bps if is_etf(symbol) else self.slippage_bps
+        bps = self._slippage_bps(symbol, traded_amount=traded_amount)
         ratio = Decimal(bps) / Decimal(10000)
         multiplier = Decimal("1.0") + ratio if side == OrderSide.BUY else Decimal("1.0") - ratio
         return (current_price * multiplier).quantize(Decimal(price_tick(symbol)))
@@ -155,3 +164,28 @@ class PaperMatchingEngine:
         if limit_price is not None and (limit_price.is_nan() or limit_price <= 0):
             return "委托价格无效，模拟委托被拒绝。"
         return ""
+
+    def _slippage_bps(self, symbol: str, *, traded_amount: Decimal | None) -> int:
+        if is_etf(symbol):
+            return self.etf_slippage_bps
+        if traded_amount is None or traded_amount <= 0:
+            return self.slippage_bps
+        if traded_amount <= self.low_liquidity_amount:
+            return max(self.slippage_bps, self.low_liquidity_slippage_bps)
+        if traded_amount <= self.mid_liquidity_amount:
+            return max(self.slippage_bps, self.mid_liquidity_slippage_bps)
+        return self.slippage_bps
+
+
+def _execution_params() -> dict[str, object]:
+    try:
+        return get_backtest_execution()
+    except Exception:
+        return {}
+
+
+def _float_param(params: dict[str, object], key: str, fallback: float) -> float:
+    try:
+        return float(params.get(key, fallback))
+    except (TypeError, ValueError):
+        return fallback

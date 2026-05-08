@@ -76,8 +76,15 @@ class MarketModelValidationMetric(BaseModel):
     name: str
     status: str = "pending"
     sample_count: int = 0
+    settled_count: int = 0
+    pending_count: int = 0
     pass_rate_pct: float = 0.0
     avg_edge_pct: float = 0.0
+    avg_return_1d_pct: float = 0.0
+    avg_return_3d_pct: float = 0.0
+    avg_max_adverse_5d_pct: float = 0.0
+    false_positive_rate_pct: float = 0.0
+    p_value: float = 1.0
     notes: str = ""
 
 
@@ -87,4 +94,39 @@ class MarketModelValidationResponse(BaseModel):
     production_ready: bool = False
     acceptance_status: str = "pending"
     metrics: list[MarketModelValidationMetric] = Field(default_factory=list)
+    notes: list[str] = Field(default_factory=list)
+
+
+class PairedHedgeLegOut(BaseModel):
+    role: str
+    symbol: str
+    name: str = ""
+    side: str = "long"
+    notional_ratio: float = 0.0
+    latest_price: float = 0.0
+    change_pct: float = 0.0
+    reason: str = ""
+
+
+class PairedHedgeIdeaOut(BaseModel):
+    source_signal_symbol: str
+    source_signal_name: str = ""
+    source_strategy: str = ""
+    sector_name: str = ""
+    confidence: float = 0.0
+    hedge_ratio: float = 0.0
+    gross_exposure_pct: float = 0.0
+    net_exposure_pct: float = 0.0
+    estimated_beta: float = 0.0
+    hedge_cost_pct: float = 0.0
+    tracking_error_pct: float = 0.0
+    legs: list[PairedHedgeLegOut] = Field(default_factory=list)
+    risk_notes: list[str] = Field(default_factory=list)
+
+
+class PairedHedgeResearchResponse(BaseModel):
+    updated_at: str
+    mode: str = "research_only"
+    total: int = 0
+    ideas: list[PairedHedgeIdeaOut] = Field(default_factory=list)
     notes: list[str] = Field(default_factory=list)

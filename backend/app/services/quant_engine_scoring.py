@@ -97,7 +97,7 @@ def positive_score(
         distribution.distribution_risk_score * float(score_params["distribution_risk_weight"]),
         float(score_params["distribution_risk_cap"]),
     )
-    return max(0.0, min(100.0, score))
+    return _clamp_score(score, params)
 
 
 def negative_score(
@@ -138,7 +138,7 @@ def negative_score(
         distribution.distribution_risk_score * float(score_params["distribution_risk_weight"]),
         float(score_params["distribution_risk_cap"]),
     )
-    return max(0.0, min(100.0, score))
+    return _clamp_score(score, params)
 
 
 def risk_score(
@@ -160,7 +160,7 @@ def risk_score(
             score += float(risk_params["event_medium_penalty"])
         elif event.risk_level == "high":
             score += float(risk_params["event_high_penalty"])
-    return max(0.0, min(100.0, score))
+    return _clamp_score(score, params)
 
 
 def risk_level(score: float) -> str:
@@ -174,6 +174,10 @@ def risk_level(score: float) -> str:
 
 def _scoring_params() -> dict:
     return _deep_merge(_DEFAULT_SCORING, get_position_t_scoring())
+
+
+def _clamp_score(score: float, params: dict) -> float:
+    return max(float(params["score_min"]), min(float(params["score_max"]), score))
 
 
 def _deep_merge(defaults: dict, overrides: dict) -> dict:

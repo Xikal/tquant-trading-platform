@@ -68,6 +68,23 @@ def _execute_task(task_type: str, payload: dict[str, Any], db) -> dict[str, Any]
             user_id=user_id,
             priority_limit=max(1, min(priority_limit, 30)),
         )
+    if task_type == "ml_signal_incremental_train":
+        from app.models.schema_defs.phase4 import MLSignalTrainRequest
+        from app.services.ml_signal import MLSignalService
+
+        response = MLSignalService(db).incremental_train(
+            MLSignalTrainRequest(
+                model_key=str(payload.get("model_key") or ""),
+                model_type=str(payload.get("model_type") or "logistic"),  # type: ignore[arg-type]
+                source="paper",
+                limit=int(payload.get("limit") or 5000),
+                min_samples=int(payload.get("min_samples") or 100),
+                validation_ratio=float(payload.get("validation_ratio") or 0.2),
+                promote=bool(payload.get("promote") or False),
+                min_validation_accuracy=float(payload.get("min_validation_accuracy") or 0.55),
+            )
+        )
+        return response.model_dump() if hasattr(response, "model_dump") else dict(response)
     raise ValueError(f"未知任务类型: {task_type}")
 
 

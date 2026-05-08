@@ -489,3 +489,95 @@
 - ML artifact 已支持 fsspec URI；S3/OSS 生产使用仍需要部署环境安装对应 fsspec 驱动并配置密钥。
 - 全量 Provider Router 收口仍应继续按模块迁移，但本轮已消除 `sectors.py` 全局 socket timeout 风险；AkShare 原始调用应限定在 provider/raw adapter。
 - 大文件拆分、Mixin 彻底移除、Level2/逐笔数据接入属于高风险重构，应独立任务配套回归。
+
+---
+
+# TQuant v3 金融扩展功能执行计划（2026-05-08）
+
+## 需求来源
+
+- `docs/TQuant-v3-financial-indicators-trading-rules-plan-2026-05-08.md`
+- 用户要求：按照文档开始落地，完成度 100%。
+
+## TODO 状态
+
+- [ ] 方向 1：波动率自适应仓位。
+  - [ ] 新增 `risk.volatility_sizing` 参数默认值、schema 和 runtime getter。
+  - [ ] 全策略优先榜 item 输出 `atr_pct/volatility_position_pct/final_position_cap_pct/position_cap_reason`。
+  - [ ] 模拟盘 `PositionSizer` 合并默认上限、半 Kelly、波动率上限、已有持仓剩余额度。
+  - [ ] 委托快照记录最终仓位原因。
+- [ ] 方向 2：ETF T+0 接入模拟盘执行追踪。
+  - [ ] 自动交易根据 `SectorEtfT0Service` 机会生成 `source=sector_etf_t0` 的模拟委托。
+  - [ ] 同 ETF 当日不重复买入；满足 confidence/edge/市场状态门控。
+  - [ ] 增加 ETF T+0 绩效摘要，区分影子跟踪和模拟成交。
+- [ ] 方向 3：多腿组合策略研究。
+  - [ ] 新增 research-only 多腿组合服务，构建股票 alpha leg + ETF hedge leg。
+  - [ ] 输出组合 beta、净敞口、对冲成本、跟踪误差等研究指标。
+  - [ ] 提供后端只读 API，不进入生产榜，不触发自动交易。
+- [ ] 验证。
+  - [ ] 后端编译。
+  - [ ] 相关单测。
+  - [ ] 若涉及前端类型/API，执行必要构建或说明未改前端。
+
+## 实施决策
+
+- 不做真实做空/期货/期权；多腿组合仅为 research-only。
+- ETF T+0 自动交易仍在模拟盘范围内，且必须通过手续费、滑点、市场状态、重复委托门控。
+- 波动率仓位只收缩仓位，不放大超过默认单票上限。
+
+---
+
+# 4.3 可扩展策略与 ML 功能执行记录（2026-05-08）
+
+## 需求来源
+
+- 用户要求落地三项中长期能力：
+  - 在线学习：模拟盘平仓后把 `(features, outcome)` 写入 ML 样本表，每周可做增量训练。
+  - 序列特征扩充：5/10 日价格动量、成交量斜率、rolling z-score、板块内相对强弱，目标用于提升 CV AUC。
+  - 策略容量评估：基于 Kyle Lambda 和 Market Impact 估算 50 万/100 万/500 万资金规模下的超额收益衰减。
+
+## 实施计划与状态
+
+- [x] 在线学习样本管道：模拟盘卖出平仓后自动写入 `MLSignalSample`，label 包含 `return_pct/pnl_amount/cost_basis/exit_reason`。
+- [x] 增量训练入口：新增 `POST /api/ml/signals/incremental-train`，默认只用 paper 闭环样本，并复用生产模型晋级门槛。
+- [x] 序列特征扩充：新增 rolling z-score 版 5/10 日动量、成交量斜率和板块内相对强弱特征。
+- [x] 策略容量评估：新增 `StrategyCapacityService` 和 `POST /api/ml/signals/capacity`，输出资金参与度、Kyle 冲击、分层冲击、滑点和净边际曲线。
+- [x] 测试覆盖：补充平仓样本持久化、序列特征和容量曲线单测。
+
+## 实现边界
+
+- 在线学习不会绕过交易风控；模型训练/晋级仍受样本量、validation、AUC 和 K-fold 稳定性门槛限制。
+- 容量评估不调用外部数据源，只读取本地回测成交、低吸快照和日线事实表。
+- 缺少成交样本时容量评估不会伪造收益，`base_edge_pct` 按 0 处理并返回数据不足说明。
+
+## 验证结果
+
+- `backend/.venv/bin/python -m compileall backend/app/services/ml_signal/service.py backend/app/services/strategy_capacity.py backend/app/api/routes/ml_signals.py backend/app/models/schema_defs/phase4.py backend/app/services/paper/order.py`：通过。
+- `backend/.venv/bin/python -m pytest backend/tests/test_phase4_phase5_foundation.py -q`：26 passed。
+- `backend/.venv/bin/python -m pytest backend/tests/test_phase4_phase5_foundation.py backend/tests/test_paper_auto_trading.py::PaperAutoTradingTest::test_auto_trader_builds_sector_etf_t0_order -q`：27 passed。
+
+
+## 补充完成项
+
+- [x] 每周自动增量训练：后台 leader 每周一 16:00 后按幂等 key 入队 `ml_signal_incremental_train`，由 runtime worker 执行，避免 Web 请求线程训练模型。
+- [x] Runtime worker 支持 `ml_signal_incremental_train`，训练仍强制 `source=paper` 并默认不自动 promote。
+- [x] 新增 worker 任务单测，确认运行时任务能从 paper 样本训练出 research/failed 状态结果。
+
+## 补充验证结果
+
+- `backend/.venv/bin/python -m compileall backend/app/main.py backend/app/workers/runtime_worker.py backend/app/services/ml_signal/service.py backend/app/services/strategy_capacity.py backend/app/api/routes/ml_signals.py backend/app/models/schema_defs/phase4.py backend/app/services/paper/order.py`：通过。
+- `backend/.venv/bin/python -m pytest backend/tests/test_phase4_phase5_foundation.py::test_runtime_worker_executes_ml_incremental_train_task -q`：1 passed。
+
+### 4.3 工程闭环补齐（本轮）
+
+- [x] 在线学习状态可观测：新增 `GET /api/ml/signals/online-learning/status`，返回 paper 样本数、平仓样本、正负样本、最新增量训练任务、生产模型和序列特征清单。
+- [x] 前端可操作：策略工作台新增“ML / 容量”入口；回测研究闭环新增“ML 在线学习 / 策略容量”卡片，可刷新在线学习状态、手动触发研究级增量训练、执行 50万/100万/500万资金容量评估。
+- [x] 容量评估展示闭环：前端表格展示样本、成交额、资金规模下净边际和可承载状态，避免只有 API 无产品入口。
+- [x] 自动训练仍保持安全边界：手动和定时增量训练默认 `promote=false`，生产晋级仍由样本量、validation、AUC、K-fold 门槛控制。
+- [x] 测试补齐：新增在线学习状态汇总回归测试，保留容量曲线和 runtime worker 增量训练测试。
+
+验证：
+- `backend/.venv/bin/python -m compileall backend/app/services/ml_signal/service.py backend/app/services/strategy_capacity.py backend/app/api/routes/ml_signals.py backend/app/models/schema_defs/phase4.py backend/app/services/paper/order.py backend/app/main.py backend/app/workers/runtime_worker.py`。
+- `backend/.venv/bin/python -m pytest backend/tests/test_phase4_phase5_foundation.py -q`。
+- `npm --prefix frontend run build`。
+- `backend/.venv/bin/python -m pytest backend/tests/test_phase4_phase5_foundation.py backend/tests/test_paper_auto_trading.py::PaperAutoTradingTest::test_auto_trader_builds_sector_etf_t0_order -q`：28 passed。

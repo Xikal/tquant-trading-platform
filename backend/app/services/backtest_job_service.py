@@ -114,7 +114,7 @@ class BacktestJobService:
         ).scalars().all()
         total = int(self.db.execute(count_statement).scalar_one() or 0)
         return BacktestRunListResponse(
-            items=[self._summary(row) for row in rows],
+            items=[self._summary_with_queue(row) for row in rows],
             total=total,
             limit=limit,
             offset=offset,
@@ -368,6 +368,8 @@ class BacktestJobService:
             benchmark_symbol=row.benchmark_symbol or "",
             owner_user_id=row.owner_user_id,
             summary=result_summary,
+            queue_depth=0,
+            queue_position=None,
             created_at=row.created_at,
             updated_at=row.updated_at,
             started_at=row.started_at,
@@ -376,7 +378,7 @@ class BacktestJobService:
         )
 
     def _detail(self, row: BacktestRun) -> BacktestRunDetail:
-        summary = self._summary(row).model_dump()
+        summary = self._summary_with_queue(row).model_dump()
         result = _json_dict(row.result_json)
         return BacktestRunDetail(
             **summary,
@@ -392,6 +394,34 @@ class BacktestJobService:
             slippage_bps=float(row.slippage_bps or 0.0),
             error_message=row.error_message or "",
         )
+
+    def _summary_with_queue(self, row: BacktestRun) -> BacktestRunSummary:
+        summary = self._summary(row)
+        if row.status != "queued":
+            return summary
+        queue_depth = int(
+            self.db.execute(
+                select(func.count(BacktestRun.id)).where(
+                    BacktestRun.status == "queued",
+                    BacktestRun.deleted_at.is_(None),
+                )
+            ).scalar_one()
+            or 0
+        )
+        queue_position = int(
+            self.db.execute(
+                select(func.count(BacktestRun.id)).where(
+                    BacktestRun.status == "queued",
+                    BacktestRun.deleted_at.is_(None),
+                    (BacktestRun.created_at < row.created_at)
+                    | ((BacktestRun.created_at == row.created_at) & (BacktestRun.id <= row.id)),
+                )
+            ).scalar_one()
+            or 0
+        )
+        summary.queue_depth = queue_depth
+        summary.queue_position = queue_position
+        return summary
 
     @staticmethod
     def _trade(row: BacktestTrade) -> BacktestTradeOut:
@@ -588,21 +618,39 @@ def _strategy_correlation(strategies: list[str], trades: list[BacktestTrade]) ->
         strategy: [pnl_by_key.get((strategy, trade_date), 0.0) for trade_date in dates]
         for strategy in normalized
     }
-    return [
-        {
-            "strategy_key": left,
-            "correlations": {right: _pearson(series.get(left, []), series.get(right, []), same=left == right) for right in normalized},
-        }
-        for left in normalized
-    ]
+    rows: list[dict[str, Any]] = []
+    for left in normalized:
+        correlations: dict[str, float] = {}
+        p_values: dict[str, float] = {}
+        sample_counts: dict[str, int] = {}
+        notes: dict[str, str] = {}
+        for right in normalized:
+            stats = _pearson_stats(series.get(left, []), series.get(right, []), same=left == right)
+            correlations[right] = stats["correlation"]
+            p_values[right] = stats["p_value"]
+            sample_counts[right] = stats["sample_count"]
+            if stats["sample_count"] < 30 and left != right:
+                notes[right] = "样本少于30个交易日，相关性仅供参考。"
+            elif stats["p_value"] > 0.05 and left != right:
+                notes[right] = "显著性不足，不能据此判断策略联动。"
+        rows.append(
+            {
+                "strategy_key": left,
+                "correlations": correlations,
+                "p_values": p_values,
+                "sample_counts": sample_counts,
+                "significance_notes": notes,
+            }
+        )
+    return rows
 
 
-def _pearson(left: list[float], right: list[float], *, same: bool) -> float:
+def _pearson_stats(left: list[float], right: list[float], *, same: bool) -> dict[str, float | int]:
     if same:
-        return 1.0
-    pairs = list(zip(left, right))
+        return {"correlation": 1.0, "p_value": 0.0, "sample_count": len(left)}
+    pairs = [(l, r) for l, r in zip(left, right) if abs(l) > 0 or abs(r) > 0]
     if len(pairs) < 2:
-        return 0.0
+        return {"correlation": 0.0, "p_value": 1.0, "sample_count": len(pairs)}
     left_avg = sum(item[0] for item in pairs) / len(pairs)
     right_avg = sum(item[1] for item in pairs) / len(pairs)
     numerator = sum((left_item - left_avg) * (right_item - right_avg) for left_item, right_item in pairs)
@@ -610,8 +658,20 @@ def _pearson(left: list[float], right: list[float], *, same: bool) -> float:
     right_var = sum((right_item - right_avg) ** 2 for _, right_item in pairs)
     denominator = math.sqrt(left_var * right_var)
     if denominator <= 0:
-        return 0.0
-    return round(numerator / denominator, 4)
+        return {"correlation": 0.0, "p_value": 1.0, "sample_count": len(pairs)}
+    correlation = max(-0.999999, min(numerator / denominator, 0.999999))
+    return {
+        "correlation": round(correlation, 4),
+        "p_value": round(_pearson_p_value(correlation, len(pairs)), 6),
+        "sample_count": len(pairs),
+    }
+
+
+def _pearson_p_value(correlation: float, sample_count: int) -> float:
+    if sample_count < 4:
+        return 1.0
+    z_score = abs(math.atanh(correlation)) * math.sqrt(max(sample_count - 3, 1))
+    return max(0.0, min(1.0, math.erfc(z_score / math.sqrt(2))))
 
 
 def _safe_error_message(exc: Exception) -> str:

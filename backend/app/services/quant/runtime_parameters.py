@@ -117,6 +117,11 @@ def get_position_t_decision() -> dict[str, Any]:
     return deepcopy(values) if isinstance(values, dict) else {}
 
 
+def get_position_t_intraday_structure() -> dict[str, Any]:
+    values = current_quant_parameters().get("position_t", {}).get("intraday_structure", {})
+    return deepcopy(values) if isinstance(values, dict) else {}
+
+
 def get_market_regime_scoring() -> dict[str, Any]:
     values = current_quant_parameters().get("market", {}).get("regime_scoring", {})
     return deepcopy(values) if isinstance(values, dict) else {}
@@ -129,6 +134,21 @@ def get_market_sector_etf_t0() -> dict[str, Any]:
 
 def get_market_intraday_anomaly() -> dict[str, Any]:
     values = current_quant_parameters().get("market", {}).get("intraday_anomaly", {})
+    return deepcopy(values) if isinstance(values, dict) else {}
+
+
+def get_market_distribution_signals() -> dict[str, Any]:
+    values = current_quant_parameters().get("market", {}).get("distribution_signals", {})
+    return deepcopy(values) if isinstance(values, dict) else {}
+
+
+def get_backtest_execution() -> dict[str, Any]:
+    values = current_quant_parameters().get("backtest", {}).get("execution", {})
+    return deepcopy(values) if isinstance(values, dict) else {}
+
+
+def get_risk_volatility_sizing() -> dict[str, Any]:
+    values = current_quant_parameters().get("risk", {}).get("volatility_sizing", {})
     return deepcopy(values) if isinstance(values, dict) else {}
 
 

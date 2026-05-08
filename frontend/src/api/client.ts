@@ -13,6 +13,7 @@ import type {
   LowBuyExecutionBacktestResult,
   LowBuyTradeLifecycle,
   MarketBreadth,
+  PairedHedgeResearchResponse,
   SectorEtfT0Response,
   IntradayAnomalyResponse,
   MonitorSnapshot,
@@ -25,6 +26,7 @@ import type {
   PaperAgentRun,
   PaperPerformance,
   PaperPerformanceDashboard,
+  PaperSectorEtfT0Performance,
   PaperStrategyMarketPerformance,
   PaperPositionsResponse,
   PaperTagPerformance,
@@ -70,6 +72,8 @@ export const api = {
   getWatchlistSignals: () => requestCached<WatchlistSignal[]>("/watchlist/signals", 9000),
   getMarketBreadth: () => requestCached<MarketBreadth>("/market/breadth", 15000),
   getSectorEtfT0: (limit = 8) => requestCached<SectorEtfT0Response>(`/market/sector-etf-t0?limit=${limit}`, 20000),
+  getPairedHedgeResearch: (limit = 8) =>
+    requestCached<PairedHedgeResearchResponse>(`/market/paired-hedge-research?limit=${limit}`, 30000),
   getIntradayAnomaly: (symbol: string) =>
     requestCached<IntradayAnomalyResponse>(`/market/intraday-anomaly/${encodeURIComponent(symbol)}`, 15000),
   getMonitorSnapshot: (priorityLimit = 12) =>
@@ -253,6 +257,8 @@ export const api = {
   getPaperPerformanceByTag: () => request<PaperTagPerformance[]>("/paper/performance/by-tag"),
   getPaperPerformanceDashboard: (days = 30) =>
     request<PaperPerformanceDashboard>(`/paper/performance/dashboard?days=${days}`),
+  getPaperSectorEtfT0Performance: () =>
+    request<PaperSectorEtfT0Performance>("/paper/performance/sector-etf-t0"),
   archivePaperPerformance: () =>
     request<{ account_id: number; date: string; strategies_saved: number; market_states_saved: number; report_saved: boolean }>(
       "/paper/performance/archive",

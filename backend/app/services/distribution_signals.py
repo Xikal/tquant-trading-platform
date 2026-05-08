@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from typing import Sequence
 
 from app.models.schemas import KlineBar, QuoteSnapshot
+from app.services.market.parameter_defaults import MARKET_DISTRIBUTION_SIGNAL_DEFAULTS
 
 
 @dataclass(frozen=True)
@@ -37,8 +38,11 @@ def build_candle_distribution_features(
     low_price: float,
     close_price: float,
 ) -> CandleDistributionFeatures:
-    intraday_range = max(high_price - low_price, 0.01)
-    body_pct = abs(close_price - open_price) / max(abs(open_price), 0.01) * 100
+    params = _params()
+    denominator_floor = _float_param(params, "denominator_floor")
+    shadow_ratio_threshold = _float_param(params, "shadow_ratio_threshold")
+    intraday_range = max(high_price - low_price, denominator_floor)
+    body_pct = abs(close_price - open_price) / max(abs(open_price), denominator_floor) * 100
     upper_shadow = high_price - max(open_price, close_price)
     lower_shadow = min(open_price, close_price) - low_price
     close_position_ratio = (close_price - low_price) / intraday_range
@@ -49,10 +53,10 @@ def build_candle_distribution_features(
         upper_shadow_ratio=round(upper_shadow_ratio, 4),
         lower_shadow_ratio=round(lower_shadow_ratio, 4),
         close_position_ratio=round(close_position_ratio, 4),
-        doji_like=body_pct <= 1.1,
-        long_lower_shadow=lower_shadow_ratio >= 0.35,
-        long_upper_shadow=upper_shadow_ratio >= 0.35,
-        weak_close=close_position_ratio <= 0.38,
+        doji_like=body_pct <= _float_param(params, "doji_body_pct_max"),
+        long_lower_shadow=lower_shadow_ratio >= shadow_ratio_threshold,
+        long_upper_shadow=upper_shadow_ratio >= shadow_ratio_threshold,
+        weak_close=close_position_ratio <= _float_param(params, "weak_close_position_max"),
     )
 
 
@@ -69,6 +73,7 @@ def build_daily_distribution_snapshot(
     latest_volume_ratio: float,
     post_volume_ratio: float,
 ) -> tuple[CandleDistributionFeatures, DistributionSnapshot]:
+    params = _params()
     candle = build_candle_distribution_features(
         open_price=open_price,
         high_price=high_price,
@@ -77,21 +82,21 @@ def build_daily_distribution_snapshot(
     )
     false_breakout_flag = (
         breakout_level > 0
-        and high_price >= breakout_level * 1.008
-        and close_price < breakout_level * 0.996
+        and high_price >= breakout_level * _float_param(params, "false_breakout_high_multiplier")
+        and close_price < breakout_level * _float_param(params, "false_breakout_close_multiplier")
         and candle.weak_close
     )
     stall_after_volume_flag = (
-        volume_burst_ratio >= 1.7
-        and post_volume_ratio >= 0.68
-        and latest_volume_ratio >= 0.36
-        and abs(latest_change_pct) <= 2.2
-        and close_price < reference_high * 0.995
+        volume_burst_ratio >= _float_param(params, "stall_volume_burst_min")
+        and post_volume_ratio >= _float_param(params, "stall_post_volume_min")
+        and latest_volume_ratio >= _float_param(params, "stall_latest_volume_min")
+        and abs(latest_change_pct) <= _float_param(params, "stall_abs_change_max_pct")
+        and close_price < reference_high * _float_param(params, "stall_reference_close_multiplier")
     )
     intraday_reversal_flag = (
         candle.long_upper_shadow
         and candle.weak_close
-        and latest_change_pct <= 1.8
+        and latest_change_pct <= _float_param(params, "reversal_latest_change_max_pct")
     )
     distribution_risk_score = _distribution_risk_score(
         false_breakout_flag=false_breakout_flag,
@@ -99,6 +104,7 @@ def build_daily_distribution_snapshot(
         intraday_reversal_flag=intraday_reversal_flag,
         upper_shadow_ratio=candle.upper_shadow_ratio,
         weak_close=candle.weak_close,
+        params=params,
     )
     snapshot = DistributionSnapshot(
         upper_shadow_ratio=candle.upper_shadow_ratio,
@@ -119,6 +125,7 @@ def build_intraday_distribution_snapshot(
     quote: QuoteSnapshot,
     vwap_value: float,
 ) -> DistributionSnapshot:
+    params = _params()
     if not bars:
         return _empty_distribution_snapshot()
     latest = bars[-1]
@@ -128,39 +135,43 @@ def build_intraday_distribution_snapshot(
         low_price=latest.low,
         close_price=latest.close,
     )
-    recent_high = max(float(bar.high) for bar in bars[-12:]) if bars else float(latest.high)
+    recent_high_window = _int_param(params, "intraday_recent_high_window")
+    close_window = _int_param(params, "intraday_close_window")
+    recent_volume_window = _int_param(params, "intraday_recent_volume_window")
+    previous_volume_window = _int_param(params, "intraday_previous_volume_window")
+    recent_high = max(float(bar.high) for bar in bars[-recent_high_window:]) if bars else float(latest.high)
     previous_high = max((float(bar.high) for bar in bars[:-1]), default=recent_high)
-    recent_closes = [float(bar.close) for bar in bars[-4:]]
-    recent_volumes = [float(bar.volume) for bar in bars[-3:]]
-    previous_volumes = [float(bar.volume) for bar in bars[-9:-3]]
+    recent_closes = [float(bar.close) for bar in bars[-close_window:]]
+    recent_volumes = [float(bar.volume) for bar in bars[-recent_volume_window:]]
+    previous_volumes = [float(bar.volume) for bar in bars[-(previous_volume_window + recent_volume_window):-recent_volume_window]]
     recent_volume_avg = sum(recent_volumes) / max(len(recent_volumes), 1)
     previous_volume_avg = sum(previous_volumes) / max(len(previous_volumes), 1) if previous_volumes else 0.0
     volume_expansion = (
-        recent_volume_avg >= previous_volume_avg * 1.15
+        recent_volume_avg >= previous_volume_avg * _float_param(params, "intraday_volume_expansion_multiplier")
         if previous_volumes
         else False
     )
     close_band = (
-        (max(recent_closes) - min(recent_closes)) / max(abs(quote.last_price), 0.01)
+        (max(recent_closes) - min(recent_closes)) / max(abs(quote.last_price), _float_param(params, "denominator_floor"))
         if recent_closes
         else 0.0
     )
     false_breakout_flag = (
-        recent_high >= max(previous_high, vwap_value) * 1.006
-        and quote.last_price < recent_high * 0.994
-        and quote.last_price < vwap_value * 0.999
+        recent_high >= max(previous_high, vwap_value) * _float_param(params, "intraday_false_breakout_high_multiplier")
+        and quote.last_price < recent_high * _float_param(params, "intraday_false_breakout_retrace_multiplier")
+        and quote.last_price < vwap_value * _float_param(params, "intraday_false_breakout_vwap_multiplier")
         and candle.weak_close
     )
     stall_after_volume_flag = (
         volume_expansion
-        and close_band <= 0.004
-        and recent_high >= quote.last_price * 1.003
-        and quote.last_price <= max(recent_closes) * 0.998
+        and close_band <= _float_param(params, "intraday_close_band_max")
+        and recent_high >= quote.last_price * _float_param(params, "intraday_stall_high_multiplier")
+        and quote.last_price <= max(recent_closes) * _float_param(params, "intraday_stall_close_multiplier")
     )
     intraday_reversal_flag = (
         candle.long_upper_shadow
         and candle.weak_close
-        and quote.last_price < vwap_value * 0.999
+        and quote.last_price < vwap_value * _float_param(params, "intraday_reversal_vwap_multiplier")
     )
     return DistributionSnapshot(
         upper_shadow_ratio=candle.upper_shadow_ratio,
@@ -176,6 +187,7 @@ def build_intraday_distribution_snapshot(
             intraday_reversal_flag=intraday_reversal_flag,
             upper_shadow_ratio=candle.upper_shadow_ratio,
             weak_close=candle.weak_close,
+            params=params,
         ),
     )
 
@@ -187,18 +199,23 @@ def _distribution_risk_score(
     intraday_reversal_flag: bool,
     upper_shadow_ratio: float,
     weak_close: bool,
+    params: dict[str, object] | None = None,
 ) -> float:
+    params = params or _params()
     score = 0.0
     if false_breakout_flag:
-        score += 5.0
+        score += _float_param(params, "score_false_breakout")
     if stall_after_volume_flag:
-        score += 3.0
+        score += _float_param(params, "score_stall_after_volume")
     if intraday_reversal_flag:
-        score += 2.5
-    score += min(upper_shadow_ratio * 3.2, 1.8)
+        score += _float_param(params, "score_intraday_reversal")
+    score += min(
+        upper_shadow_ratio * _float_param(params, "score_upper_shadow_weight"),
+        _float_param(params, "score_upper_shadow_cap"),
+    )
     if weak_close:
-        score += 0.8
-    return round(min(score, 10.0), 2)
+        score += _float_param(params, "score_weak_close")
+    return round(min(score, _float_param(params, "score_cap")), 2)
 
 
 def _empty_distribution_snapshot() -> DistributionSnapshot:
@@ -212,3 +229,25 @@ def _empty_distribution_snapshot() -> DistributionSnapshot:
         intraday_reversal_flag=False,
         distribution_risk_score=0.0,
     )
+
+
+def _params() -> dict[str, object]:
+    from app.services.quant.runtime_parameters import get_market_distribution_signals
+
+    values = get_market_distribution_signals()
+    return (
+        {**MARKET_DISTRIBUTION_SIGNAL_DEFAULTS, **values}
+        if isinstance(values, dict)
+        else dict(MARKET_DISTRIBUTION_SIGNAL_DEFAULTS)
+    )
+
+
+def _float_param(params: dict[str, object], key: str) -> float:
+    try:
+        return float(params.get(key, MARKET_DISTRIBUTION_SIGNAL_DEFAULTS[key]))
+    except (KeyError, TypeError, ValueError):
+        return float(MARKET_DISTRIBUTION_SIGNAL_DEFAULTS[key])
+
+
+def _int_param(params: dict[str, object], key: str) -> int:
+    return max(1, int(round(_float_param(params, key))))

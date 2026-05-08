@@ -28,6 +28,7 @@ from app.core.task_manager import task_manager
 from app.core.timezone import beijing_now, beijing_today
 from app.core.timing import record_request_timing, request_timing_snapshot
 from app.models.entities import LowBuyResultSnapshot, LowBuyScanSnapshot
+from app.models.schema_defs.phase4 import RuntimeTaskCreate
 from app.models.schemas import HealthResponse, ReadinessResponse
 from app.repositories.low_buy.results import LowBuyResultRepository
 from app.services.low_buy.shared import DEFAULT_PRODUCTION_LOW_BUY_STRATEGY, LOW_BUY_RESULT_VERSION
@@ -44,6 +45,7 @@ from app.services.agent_notification_service import AgentNotificationService
 from app.services.agent_signal_scan_service import AgentSignalScanService
 from app.services.backtest_research_worker import BacktestResearchWorker
 from app.services.watchlist_signal_service import WatchlistSignalService
+from app.services.tasks import RuntimeTaskQueue
 
 settings = get_settings()
 configure_logging(structured=settings.structured_logs)
@@ -278,6 +280,30 @@ def _push_agent_daily_report_once() -> None:
         )
 
 
+def _enqueue_ml_incremental_train_once() -> None:
+    now = beijing_now()
+    if now.weekday() != 0 or now.time() < dt_time(hour=16, minute=0):
+        return
+    week_key = f"{now.isocalendar().year}-W{now.isocalendar().week:02d}"
+    with SessionLocal() as db:
+        task = RuntimeTaskQueue(db).enqueue(
+            RuntimeTaskCreate(
+                task_type="ml_signal_incremental_train",
+                payload={
+                    "model_type": "logistic",
+                    "source": "paper",
+                    "limit": 5000,
+                    "min_samples": 100,
+                    "promote": False,
+                },
+                priority=180,
+                idempotency_key=f"ml_signal_incremental_train:{week_key}",
+                max_attempts=2,
+            )
+        )
+        logger.info("ML 增量训练任务检查完成: week=%s task_id=%s status=%s", week_key, task.id, task.status)
+
+
 def _paper_archive_due() -> bool:
     try:
         hour, minute = [int(part) for part in settings.paper_perf_archive_time.split(":", 1)]
@@ -456,6 +482,12 @@ async def lifespan(_: FastAPI):
             target=_push_agent_daily_report_once,
             interval_seconds=300,
             initial_delay_seconds=150,
+        )
+        task_manager.register_loop(
+            name="ml_signal_incremental_train_weekly",
+            target=_enqueue_ml_incremental_train_once,
+            interval_seconds=60 * 60,
+            initial_delay_seconds=240,
         )
         if settings.paper_auto_trading_enabled:
             logger.info("启动模拟盘自动交易")

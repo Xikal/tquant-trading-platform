@@ -9,7 +9,12 @@ from sqlalchemy.pool import StaticPool
 from app.models.base import Base
 from app.models.entities import StrategyMetadata, SystemSetting, User
 from app.models.schema_defs.strategy_meta import StrategyGovernanceMutationRequest
+from app.repositories.low_buy import SystemSettingRepository
 from app.services.shared.feature_flags import clear_feature_flag_cache
+from app.services.low_buy.strategy_auto_governance import (
+    AUTO_GOVERNANCE_SETTING_KEY,
+    refresh_low_buy_strategy_auto_governance,
+)
 from app.services.strategy_metadata_service import StrategyMetadataService
 
 
@@ -122,6 +127,18 @@ class StrategyMetadataServiceTests(unittest.TestCase):
                     ["leader_pullback_band"],
                     current_user=user,
                 )
+
+    def test_auto_governance_marks_new_auxiliary_strategy_watch_until_evidence_exists(self) -> None:
+        with self.Session() as db:
+            payload = refresh_low_buy_strategy_auto_governance(db)
+            item = payload["items"]["mainline_limitup_shrink_retrace_reclaim"]
+
+            self.assertEqual(item["status"], "watch")
+            self.assertEqual(item["source"], "evidence_gate")
+            self.assertIn("真实成交样本不足", item["reason"])
+
+            persisted = SystemSettingRepository(db).fetch(AUTO_GOVERNANCE_SETTING_KEY)
+            self.assertIsNotNone(persisted)
 
 
 if __name__ == "__main__":

@@ -3,10 +3,39 @@ from __future__ import annotations
 from typing import Any
 
 from app.services.market.parameter_defaults import (
+    MARKET_DISTRIBUTION_SIGNAL_DEFAULTS,
     MARKET_INTRADAY_ANOMALY_DEFAULTS,
     MARKET_SECTOR_PROXY_DEFAULTS,
     MARKET_SECTOR_ETF_T0_DEFAULTS,
+    POSITION_T_INTRADAY_STRUCTURE_DEFAULTS,
 )
+
+BACKTEST_EXECUTION_DEFAULTS: dict[str, Any] = {
+    "max_concurrent_backtests": 2,
+    "queue_depth_warning_threshold": 10,
+    "market_impact_no_turnover_rate": 0.008,
+    "market_impact_participation_thresholds": [0.02, 0.05, 0.10],
+    "market_impact_rates": [0.0008, 0.0015, 0.003, 0.008],
+    "paper_slippage_stock_bps": 5.0,
+    "paper_slippage_etf_bps": 2.0,
+    "paper_slippage_mid_liquidity_bps": 8.0,
+    "paper_slippage_low_liquidity_bps": 15.0,
+    "paper_slippage_mid_liquidity_amount": 100_000_000.0,
+    "paper_slippage_low_liquidity_amount": 30_000_000.0,
+}
+
+RISK_VOLATILITY_SIZING_DEFAULTS: dict[str, Any] = {
+    "enabled": True,
+    "low_atr_pct_max": 2.5,
+    "medium_atr_pct_max": 5.0,
+    "high_atr_pct_max": 8.0,
+    "low_position_cap_pct": 20.0,
+    "medium_position_cap_pct": 15.0,
+    "high_position_cap_pct": 10.0,
+    "extreme_position_cap_pct": 5.0,
+    "unavailable_position_cap_pct": 10.0,
+    "min_position_cap_pct": 3.0,
+}
 
 
 LOW_BUY_STRATEGY_PREFILTER_DEFAULTS: dict[str, dict[str, Any]] = {
@@ -512,6 +541,13 @@ LOW_BUY_AUTO_GOVERNANCE_DEFAULTS: dict[str, Any] = {
     "recovery_max_stop_loss_rate": 20.0,
     "recovery_watch_days": 5,
     "recovery_paused_days": 10,
+    "evidence_gated_strategies": {
+        "mainline_limitup_shrink_retrace_reclaim": {
+            "min_filled_signals": 20,
+            "status": "watch",
+            "reason": "主线涨停回调仍处于生产观察期，真实成交样本不足，暂不放大为强买。",
+        },
+    },
     "health_score": {
         "avg_net_return_low": -2.0,
         "avg_net_return_high": 4.0,
@@ -692,6 +728,8 @@ LOW_BUY_DYNAMIC_ADJUSTMENT_DEFAULTS: dict[str, Any] = {
 
 POSITION_T_SCORING_DEFAULTS: dict[str, Any] = {
     "version": "quant-scoring-v1",
+    "score_min": 0.0,
+    "score_max": 100.0,
     "base_scores": {
         "positive": 35.0,
         "negative": 30.0,
@@ -1050,65 +1088,161 @@ def quant_parameter_schema() -> dict[str, Any]:
     """Return a lightweight machine-readable schema for editable parameters."""
 
     return {
+        "risk.max_single_position_pct": _field_schema(0.3, "risk.max_single_position_pct"),
+        "risk.max_total_exposure_pct": _field_schema(0.8, "risk.max_total_exposure_pct"),
+        "risk.default_stop_loss_pct": _field_schema(-3.0, "risk.default_stop_loss_pct"),
+        "risk.default_take_profit_pct": _field_schema(4.5, "risk.default_take_profit_pct"),
+        "low_buy.min_priority_score": _field_schema(75, "low_buy.min_priority_score"),
+        "low_buy.max_candidates_per_day": _field_schema(12, "low_buy.max_candidates_per_day"),
+        "low_buy.entry_zone_buffer_pct": _field_schema(0.8, "low_buy.entry_zone_buffer_pct"),
+        "low_buy.stale_quote_seconds": _field_schema(90, "low_buy.stale_quote_seconds"),
         "low_buy.strategy_prefilters": {
-            strategy: {key: _field_schema(value) for key, value in params.items()}
+            strategy: {
+                key: _field_schema(value, f"low_buy.strategy_prefilters.{strategy}.{key}")
+                for key, value in params.items()
+            }
             for strategy, params in LOW_BUY_STRATEGY_PREFILTER_DEFAULTS.items()
         },
         "low_buy.strategy_execution": {
-            strategy: {key: _field_schema(value) for key, value in params.items()}
+            strategy: {
+                key: _field_schema(value, f"low_buy.strategy_execution.{strategy}.{key}")
+                for key, value in params.items()
+            }
             for strategy, params in LOW_BUY_STRATEGY_EXECUTION_DEFAULTS.items()
         },
-        "low_buy.scoring": _nested_schema(LOW_BUY_SCORING_DEFAULTS),
-        "low_buy.thresholds": _nested_schema(LOW_BUY_THRESHOLD_DEFAULTS),
-        "low_buy.auto_governance": _nested_schema(LOW_BUY_AUTO_GOVERNANCE_DEFAULTS),
-        "low_buy.research_layers": _nested_schema(LOW_BUY_RESEARCH_LAYER_DEFAULTS),
-        "low_buy.hard_risk": _nested_schema(LOW_BUY_HARD_RISK_DEFAULTS),
-        "low_buy.dynamic_adjustment": _nested_schema(LOW_BUY_DYNAMIC_ADJUSTMENT_DEFAULTS),
+        "low_buy.scoring": _nested_schema(LOW_BUY_SCORING_DEFAULTS, "low_buy.scoring"),
+        "low_buy.thresholds": _nested_schema(LOW_BUY_THRESHOLD_DEFAULTS, "low_buy.thresholds"),
+        "low_buy.auto_governance": _nested_schema(LOW_BUY_AUTO_GOVERNANCE_DEFAULTS, "low_buy.auto_governance"),
+        "low_buy.research_layers": _nested_schema(LOW_BUY_RESEARCH_LAYER_DEFAULTS, "low_buy.research_layers"),
+        "low_buy.hard_risk": _nested_schema(LOW_BUY_HARD_RISK_DEFAULTS, "low_buy.hard_risk"),
+        "low_buy.dynamic_adjustment": _nested_schema(LOW_BUY_DYNAMIC_ADJUSTMENT_DEFAULTS, "low_buy.dynamic_adjustment"),
         "low_buy.market_state_rules": {
             "default_state_rules": {"type": "object", "default": {}, "description": "市场状态默认规则覆盖。", "risk_level": "high"},
             "strategy_overrides": {"type": "object", "default": {}, "description": "按策略和市场状态覆盖执行规则。", "risk_level": "high"},
             "severity_penalty_scale": {"type": "object", "default": {}, "description": "市场强度惩罚系数覆盖。", "risk_level": "high"},
             "directional_bias": {"type": "object", "default": {}, "description": "正T/反T方向偏置阈值覆盖。", "risk_level": "high"},
         },
-        "position_t.scoring": _nested_schema(POSITION_T_SCORING_DEFAULTS),
-        "position_t.decision": _nested_schema(POSITION_T_DECISION_DEFAULTS),
-        "market.regime_scoring": _nested_schema(MARKET_REGIME_SCORING_DEFAULTS),
-        "market.sector_etf_t0": _nested_schema(MARKET_SECTOR_ETF_T0_DEFAULTS),
-        "market.intraday_anomaly": _nested_schema(MARKET_INTRADAY_ANOMALY_DEFAULTS),
+        "position_t.positive_t_min_edge_pct": _field_schema(1.2, "position_t.positive_t_min_edge_pct"),
+        "position_t.negative_t_min_risk_pct": _field_schema(1.0, "position_t.negative_t_min_risk_pct"),
+        "position_t.min_available_lot": _field_schema(100, "position_t.min_available_lot"),
+        "position_t.scoring": _nested_schema(POSITION_T_SCORING_DEFAULTS, "position_t.scoring"),
+        "position_t.decision": _nested_schema(POSITION_T_DECISION_DEFAULTS, "position_t.decision"),
+        "position_t.intraday_structure": _nested_schema(
+            POSITION_T_INTRADAY_STRUCTURE_DEFAULTS,
+            "position_t.intraday_structure",
+        ),
+        "market.regime_scoring": _nested_schema(MARKET_REGIME_SCORING_DEFAULTS, "market.regime_scoring"),
+        "market.sector_etf_t0": _nested_schema(MARKET_SECTOR_ETF_T0_DEFAULTS, "market.sector_etf_t0"),
+        "market.intraday_anomaly": _nested_schema(MARKET_INTRADAY_ANOMALY_DEFAULTS, "market.intraday_anomaly"),
+        "market.distribution_signals": _nested_schema(
+            MARKET_DISTRIBUTION_SIGNAL_DEFAULTS,
+            "market.distribution_signals",
+        ),
+        "risk.volatility_sizing": _nested_schema(RISK_VOLATILITY_SIZING_DEFAULTS, "risk.volatility_sizing"),
+        "ml.production_enabled": _field_schema(False, "ml.production_enabled"),
+        "ml.min_oos_days": _field_schema(60, "ml.min_oos_days"),
+        "ml.min_samples": _field_schema(1000, "ml.min_samples"),
+        "backtest.execution": _nested_schema(BACKTEST_EXECUTION_DEFAULTS, "backtest.execution"),
     }
 
 
-def _field_schema(value: Any) -> dict[str, Any]:
+def _field_schema(value: Any, path: str = "") -> dict[str, Any]:
     if isinstance(value, list):
         return {
             "type": "array",
             "default": value,
+            **_bounds_for_path(path, value),
             "description": "策略运行参数，修改后下一次扫描生效。",
             "risk_level": "medium",
         }
-    kind = "number" if isinstance(value, float) else "integer" if isinstance(value, int) else "string"
+    kind = (
+        "boolean"
+        if isinstance(value, bool)
+        else "number"
+        if isinstance(value, float)
+        else "integer"
+        if isinstance(value, int)
+        else "string"
+    )
+    bounds = _bounds_for_path(path, value)
     return {
         "type": kind,
         "default": value,
-        "min": 0 if isinstance(value, (int, float)) and value >= 0 else None,
-        "max": None,
+        "min": bounds.get("min"),
+        "max": bounds.get("max"),
         "description": "策略运行参数，修改后下一次扫描生效。",
         "risk_level": "medium",
     }
 
 
-def _nested_schema(values: dict[str, Any]) -> dict[str, Any]:
+def _nested_schema(values: dict[str, Any], prefix: str = "") -> dict[str, Any]:
     result: dict[str, Any] = {}
     for key, value in values.items():
+        path = f"{prefix}.{key}" if prefix else str(key)
         if isinstance(value, dict):
-            result[key] = _nested_schema(value)
+            result[key] = _nested_schema(value, path)
         elif isinstance(value, list):
             result[key] = {
                 "type": "array",
                 "default": value,
+                **_bounds_for_path(path, value),
                 "description": "策略运行参数，修改后下一次扫描生效。",
                 "risk_level": "medium",
             }
         else:
-            result[key] = _field_schema(value)
+            result[key] = _field_schema(value, path)
     return result
+
+
+def _bounds_for_path(path: str, value: Any) -> dict[str, float | int | None]:
+    """Conservative safety bounds for editable runtime parameters.
+
+    These bounds are intentionally broad enough for normal strategy tuning but
+    narrow enough to reject obviously destructive values such as 999% stops or
+    million-point scoring weights.
+    """
+
+    if not _contains_numeric(value):
+        return {"min": None, "max": None}
+    normalized = path.lower()
+    leaf = normalized.split(".")[-1]
+    if "sector_proxy_map" in normalized:
+        return {"min": None, "max": None}
+    if "market_state_rules" in normalized:
+        return {"min": -200.0, "max": 200.0}
+    if any(token in leaf for token in ("weight", "bonus", "penalty", "shift")):
+        return {"min": -1000.0, "max": 1000.0}
+    if any(token in leaf for token in ("score", "confidence", "health")):
+        return {"min": 0.0, "max": 100.0}
+    if "bps" in leaf:
+        return {"min": 0.0, "max": 1000.0}
+    if "rate" in leaf:
+        return {"min": -100.0, "max": 100.0}
+    if any(token in leaf for token in ("pct", "percent")):
+        min_value = -100.0 if any(token in leaf for token in ("loss", "drawdown", "adverse", "down")) else 0.0
+        return {"min": min_value, "max": 100.0}
+    if any(token in leaf for token in ("ratio", "multiplier")):
+        return {"min": 0.0, "max": 10.0}
+    if any(token in leaf for token in ("days", "lookback")):
+        return {"min": 0, "max": 3650}
+    if "seconds" in leaf:
+        return {"min": 0, "max": 86400}
+    if any(token in leaf for token in ("window", "bars", "period")):
+        return {"min": 0, "max": 10000}
+    if any(token in leaf for token in ("count", "limit", "samples", "signals", "orders", "candidates")):
+        return {"min": 0, "max": 1_000_000}
+    if any(token in leaf for token in ("amount", "cash", "turnover", "volume")):
+        return {"min": 0.0, "max": 1_000_000_000_000.0}
+    if isinstance(value, (int, float)) and value >= 0:
+        return {"min": 0.0, "max": 1_000_000.0}
+    return {"min": -1_000_000.0, "max": 1_000_000.0}
+
+
+def _contains_numeric(value: Any) -> bool:
+    if isinstance(value, bool):
+        return False
+    if isinstance(value, (int, float)):
+        return True
+    if isinstance(value, list):
+        return any(_contains_numeric(item) for item in value)
+    return False

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from math import comb
 from typing import Any
 
 from sqlalchemy.orm import Session
@@ -27,14 +28,23 @@ class SectorEtfProxy:
 
 SECTOR_ETF_PROXIES: tuple[SectorEtfProxy, ...] = (
     SectorEtfProxy("510300", "沪深300ETF", ("宽基", "沪深300", "大盘", "权重")),
-    SectorEtfProxy("159915", "创业板ETF", ("创业板", "成长", "新能源", "医药", "消费电子")),
-    SectorEtfProxy("588000", "科创50ETF", ("科创", "半导体", "芯片", "人工智能", "算力", "软件")),
-    SectorEtfProxy("512760", "芯片ETF", ("半导体", "芯片", "电子元件")),
+    SectorEtfProxy("159915", "创业板ETF", ("创业板", "成长")),
+    SectorEtfProxy("588000", "科创50ETF", ("科创", "科创50")),
+    SectorEtfProxy("515000", "科技ETF", ("人工智能", "算力", "软件")),
+    SectorEtfProxy("512760", "芯片ETF", ("芯片", "电子元件")),
     SectorEtfProxy("512660", "军工ETF", ("军工", "国防军工", "航天航空", "船舶")),
     SectorEtfProxy("512880", "证券ETF", ("证券", "券商", "金融")),
-    SectorEtfProxy("512480", "半导体ETF", ("半导体", "芯片")),
+    SectorEtfProxy("512480", "半导体ETF", ("半导体",)),
     SectorEtfProxy("515790", "光伏ETF", ("光伏", "新能源", "电力设备")),
     SectorEtfProxy("512170", "医疗ETF", ("医疗", "医药", "医疗器械")),
+    SectorEtfProxy("510310", "消费ETF", ("消费", "食品饮料", "商贸零售", "家电")),
+    SectorEtfProxy("512690", "酒ETF", ("白酒",)),
+    SectorEtfProxy("512400", "有色金属ETF", ("有色", "有色金属", "小金属")),
+    SectorEtfProxy("516780", "稀土ETF", ("稀土",)),
+    SectorEtfProxy("512200", "房地产ETF", ("房地产", "地产", "房屋建设")),
+    SectorEtfProxy("159930", "能源ETF", ("能源", "石油石化")),
+    SectorEtfProxy("515220", "煤炭ETF", ("煤炭",)),
+    SectorEtfProxy("512800", "银行ETF", ("银行",)),
 )
 
 
@@ -53,8 +63,14 @@ class SectorEtfT0Service:
         observation_service: MarketModelObservationService | None = None,
     ) -> None:
         self.market_data = market_data or MarketDataService()
-        self.low_buy = low_buy or LowBuyScreenerService()
+        self._low_buy = low_buy
         self.observations = observation_service or MarketModelObservationService()
+
+    @property
+    def low_buy(self) -> LowBuyScreenerService:
+        if self._low_buy is None:
+            self._low_buy = LowBuyScreenerService()
+        return self._low_buy
 
     def build(self, db: Session, *, limit: int = 8, record_observations: bool = True) -> SectorEtfT0Response:
         params = _params()
@@ -87,7 +103,7 @@ class SectorEtfT0Service:
                 or _field(candidate, "industry_tier_text")
                 or ""
             )
-            proxy = _proxy_for_sector(sector_name)
+            proxy = _proxy_for_sector(sector_name, params=params)
             if proxy is None or proxy.symbol in used_etfs:
                 continue
             buy_signal_state = _string_value(_field(candidate, "buy_signal_state"))
@@ -172,7 +188,13 @@ class SectorEtfT0Service:
         sample_count = len(opportunities)
         pass_rate = len(edge_pass) / max(len(actionable), 1) * 100.0 if actionable else 0.0
         avg_edge = sum(item.expected_edge_pct for item in actionable) / max(len(actionable), 1) if actionable else 0.0
-        production_ready = len(edge_pass) >= _int_param(params, "production_min_edge_pass") and pass_rate >= _float_param(params, "production_pass_rate_min_pct")
+        current_ready = len(edge_pass) >= _int_param(params, "production_min_edge_pass") and pass_rate >= _float_param(params, "production_pass_rate_min_pct")
+        historical_gate = self.historical_acceptance(db, params=params, historical=historical)
+        settled_count = historical_gate["settled_count"]
+        historical_success_rate = historical_gate["success_rate_pct"]
+        p_value = historical_gate["p_value"]
+        historical_ready = historical_gate["production_ready"]
+        production_ready = current_ready and historical_ready
         return MarketModelValidationResponse(
             model_key="sector_etf_t0",
             generated_at=beijing_now_string(),
@@ -181,7 +203,7 @@ class SectorEtfT0Service:
             metrics=[
                 MarketModelValidationMetric(
                     name="ETF 价差覆盖检查",
-                    status="passed" if production_ready else "watch",
+                    status="passed" if current_ready else "watch",
                     sample_count=sample_count,
                     pass_rate_pct=round(pass_rate, 2),
                     avg_edge_pct=round(avg_edge, 2),
@@ -189,18 +211,57 @@ class SectorEtfT0Service:
                 ),
                 MarketModelValidationMetric(
                     name="影子跟踪历史绩效",
-                    status="passed" if historical["settled_count"] >= _int_param(params, "shadow_min_samples") else "watch",
-                    sample_count=int(historical["settled_count"]),
-                    pass_rate_pct=round(float(historical["success_rate_pct"] or 0.0), 2),
+                    status="passed" if historical_ready else "watch",
+                    sample_count=int(historical["sample_count"]),
+                    settled_count=settled_count,
+                    pending_count=int(historical["pending_count"]),
+                    pass_rate_pct=round(historical_success_rate, 2),
                     avg_edge_pct=round(float(historical["avg_return_1d_pct"] or 0.0), 2),
-                    notes="按观察样本后续日线结算胜率、1日收益和最大不利波动；未结算样本会继续保留 pending。",
+                    avg_return_1d_pct=round(float(historical["avg_return_1d_pct"] or 0.0), 2),
+                    avg_return_3d_pct=round(float(historical["avg_return_3d_pct"] or 0.0), 2),
+                    avg_max_adverse_5d_pct=round(float(historical["avg_max_adverse_5d_pct"] or 0.0), 2),
+                    p_value=round(p_value, 6),
+                    notes=(
+                        "按观察样本后续日线结算胜率、1日/3日收益和最大不利波动；"
+                        f"需满足已结算≥{_int_param(params, 'production_min_settled_samples')}、"
+                        f"胜率≥{_float_param(params, 'production_min_success_rate_pct'):.1f}%、"
+                        f"p≤{_float_param(params, 'production_max_p_value'):.3f}。"
+                    ),
                 )
             ],
             notes=[
                 f"行业 ETF 做T已接入影子跟踪和日线结算；待结算样本 {int(historical['pending_count'])} 个。",
-                "未达到验收时只展示观察，不作为自动交易指令。",
+                "未达到统计显著性验收时只展示观察，不作为自动交易指令。",
             ],
         )
+
+    def historical_acceptance(
+        self,
+        db: Session,
+        *,
+        params: dict[str, Any] | None = None,
+        historical: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        """Statistical gate used before ETF T+0 reaches automatic execution."""
+
+        resolved = params or _params()
+        summary = historical or self.observations.summarize(db, model_key="sector_etf_t0", lookback_days=60)
+        settled_count = int(summary.get("settled_count") or 0)
+        success_count = int(summary.get("success_count") or 0)
+        success_rate = float(summary.get("success_rate_pct") or 0.0)
+        p_value = _binomial_one_sided_p_value(success_count, settled_count, baseline=0.5)
+        production_ready = (
+            settled_count >= _int_param(resolved, "production_min_settled_samples")
+            and success_rate >= _float_param(resolved, "production_min_success_rate_pct")
+            and p_value <= _float_param(resolved, "production_max_p_value")
+        )
+        return {
+            "production_ready": production_ready,
+            "settled_count": settled_count,
+            "success_count": success_count,
+            "success_rate_pct": success_rate,
+            "p_value": p_value,
+        }
 
     def _record_observations(self, db: Session, response: SectorEtfT0Response) -> None:
         for item in response.opportunities:
@@ -233,14 +294,41 @@ def _float_value(value: Any) -> float:
         return 0.0
 
 
-def _proxy_for_sector(sector_name: str) -> SectorEtfProxy | None:
+def _proxy_for_sector(sector_name: str, params: dict[str, Any] | None = None) -> SectorEtfProxy | None:
     text = str(sector_name or "")
     if not text:
         return None
+    mapped = _proxy_from_config(text, params or {})
+    if mapped is not None:
+        return mapped
     for proxy in SECTOR_ETF_PROXIES:
         if any(alias in text for alias in proxy.aliases):
             return proxy
     return None
+
+
+def resolve_sector_etf_proxy(sector_name: str, params: dict[str, Any] | None = None) -> SectorEtfProxy | None:
+    return _proxy_for_sector(sector_name, params=params)
+
+
+def _proxy_from_config(sector_name: str, params: dict[str, Any]) -> SectorEtfProxy | None:
+    mapping = params.get("sector_proxy_map")
+    if not isinstance(mapping, dict):
+        return None
+    normalized = sector_name.strip()
+    exact = mapping.get(normalized)
+    if exact is None:
+        for key, value in mapping.items():
+            if str(key or "") and str(key) in normalized:
+                exact = value
+                break
+    if not isinstance(exact, dict):
+        return None
+    symbol = str(exact.get("symbol") or "").strip()
+    name = str(exact.get("name") or "").strip()
+    if not symbol or not name:
+        return None
+    return SectorEtfProxy(symbol=symbol, name=name, aliases=(normalized,))
 
 
 def _confidence(priority_score: float, market_state: str, change_pct: float, params: dict[str, Any]) -> float:
@@ -275,3 +363,13 @@ def _float_param(params: dict[str, Any], key: str) -> float:
 
 def _int_param(params: dict[str, Any], key: str) -> int:
     return int(round(_float_param(params, key)))
+
+
+def _binomial_one_sided_p_value(success_count: int, sample_count: int, *, baseline: float) -> float:
+    if sample_count <= 0 or success_count <= 0:
+        return 1.0
+    success_count = max(0, min(success_count, sample_count))
+    probability = 0.0
+    for k in range(success_count, sample_count + 1):
+        probability += comb(sample_count, k) * (baseline ** k) * ((1 - baseline) ** (sample_count - k))
+    return max(0.0, min(probability, 1.0))

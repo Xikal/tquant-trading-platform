@@ -7,13 +7,15 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from typing import Callable
 
-from sqlalchemy import select, update
+from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session
 
 from app.core.database import SessionLocal
 from app.models.entities import BacktestRun
 from app.services.backtest.cancel_token import BacktestCancelToken, TimedDatabaseStatusCancelToken
 from app.services.backtest_job_service import BacktestJobService, _safe_error_message
+from app.services.low_buy.strategy_parameter_defaults import BACKTEST_EXECUTION_DEFAULTS
+from app.services.quant.runtime_parameters import get_backtest_execution
 
 
 logger = logging.getLogger(__name__)
@@ -70,13 +72,24 @@ class BacktestWorker:
 
     def _claim_next_queued_job(self) -> int | None:
         with self.session_factory() as db:
+            max_concurrent = _max_concurrent_backtests()
+            running_count = int(
+                db.execute(
+                    select(func.count(BacktestRun.id))
+                    .where(BacktestRun.status == "running", BacktestRun.deleted_at.is_(None))
+                )
+                .scalar_one()
+                or 0
+            )
+            if running_count >= max_concurrent:
+                return None
             running_id = db.execute(
                 select(BacktestRun.id)
                 .where(BacktestRun.status == "running", BacktestRun.deleted_at.is_(None))
                 .order_by(BacktestRun.started_at.asc(), BacktestRun.id.asc())
                 .limit(1)
             ).scalar_one_or_none()
-            if running_id is not None:
+            if running_id is not None and max_concurrent <= 1:
                 return None
 
             run = db.execute(
@@ -224,3 +237,12 @@ class BacktestWorker:
 
 def _utcnow() -> datetime:
     return datetime.now(timezone.utc).replace(tzinfo=None)
+
+
+def _max_concurrent_backtests() -> int:
+    try:
+        params = get_backtest_execution()
+        value = int(float(params.get("max_concurrent_backtests") or BACKTEST_EXECUTION_DEFAULTS["max_concurrent_backtests"]))
+    except Exception:
+        value = int(BACKTEST_EXECUTION_DEFAULTS["max_concurrent_backtests"])
+    return max(1, min(value, 8))

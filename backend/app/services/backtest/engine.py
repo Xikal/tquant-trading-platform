@@ -619,8 +619,8 @@ def _execution_assumptions(config: BacktestConfig) -> dict[str, Any]:
         "version": "execution-assumptions-v1",
         "execution_model": config.execution_model,
         "fee_model": {
-            "version": "paper_fee_v1",
-            "commission": "买卖双边按成交额 0.025% 估算，单笔最低 5 元。",
+            "version": "paper_fee_v2",
+            "commission": "股票买卖双边按成交额 0.0085% 估算，单笔最低 5 元；ETF/基金类按成交额 0.005% 估算。",
             "stamp_tax": "股票卖出按成交额 0.05% 估算；ETF/基金类不收印花税。",
             "transfer_fee": "股票按成交额 0.001% 估算；ETF/基金类不收过户费。",
             "source": "app.services.paper.fees.calculate_fee",

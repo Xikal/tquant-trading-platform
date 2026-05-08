@@ -1,24 +1,27 @@
 from __future__ import annotations
 
-import json
-import pickle
 import hashlib
+import json
+import math
+import pickle
 import posixpath
 import shutil
 from datetime import datetime
+from decimal import Decimal
 from pathlib import Path
 from typing import Any
 
 import numpy as np
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.core.config import BACKEND_DIR, get_settings
-from app.models.entities import BacktestTrade, DailyBarSnapshot, MLSignalModel, MLSignalSample, PaperTrade
+from app.models.entities import BacktestTrade, DailyBarSnapshot, Instrument, MLSignalModel, MLSignalSample, PaperTrade, RuntimeTask
 from app.models.schema_defs.phase4 import (
     MLSignalArtifactStorageCheckResponse,
     MLSignalModelListResponse,
     MLSignalModelOut,
+    MLSignalOnlineLearningStatusResponse,
     MLSignalPredictionRequest,
     MLSignalPredictionResponse,
     MLSignalSampleBuildRequest,
@@ -42,6 +45,12 @@ FEATURE_NAMES = [
     "price_momentum_10d",
     "volume_slope_5d",
     "volume_slope_10d",
+    "price_momentum_5d_z",
+    "price_momentum_10d_z",
+    "volume_slope_5d_z",
+    "volume_slope_10d_z",
+    "sector_relative_strength_5d",
+    "sector_relative_strength_10d",
 ]
 
 HEURISTIC_MODEL_KEY = "research-heuristic-v1"
@@ -81,6 +90,76 @@ class MLSignalService:
             feature_names=FEATURE_NAMES,
             warning=warning,
         )
+
+    def incremental_train(self, payload: MLSignalTrainRequest | None = None) -> MLSignalTrainResponse:
+        """Train from recent closed paper trades for the online-learning loop.
+
+        This deliberately reuses the normal promotion gates.  Incremental
+        training may produce a research model every week, but it still cannot
+        enter production unless sample size, validation and K-fold quality pass.
+        """
+
+        train_payload = payload or MLSignalTrainRequest(
+            source="paper",
+            limit=5000,
+            min_samples=100,
+            promote=False,
+            model_key=f"paper-incremental-{datetime.utcnow().strftime('%Y%m%d%H%M%S')}",
+        )
+        if train_payload.source != "paper":
+            train_payload = train_payload.model_copy(update={"source": "paper"})
+        return self.train(train_payload)
+
+    def persist_paper_trade_outcome(
+        self,
+        trade: PaperTrade,
+        *,
+        cost_basis: Decimal | float,
+        pnl_amount: Decimal | float,
+        return_pct: Decimal | float,
+        label_note: str = "",
+    ) -> bool:
+        """Persist a closed paper-trade outcome as an ML sample.
+
+        Called from the paper-trading transaction after a sell trade is matched.
+        The method does not commit; it participates in the caller transaction.
+        """
+
+        if str(trade.side or "").lower() != "sell":
+            return False
+        sample = {
+            "sample_key": f"paper_close:{trade.id or trade.order_id}",
+            "symbol": trade.symbol,
+            "trade_date": trade.trade_time.date().isoformat() if trade.trade_time else datetime.utcnow().date().isoformat(),
+            "strategy_key": trade.strategy_key,
+            "source": "paper",
+            "features": _trade_features(
+                price=float(trade.price or 0),
+                quantity=int(trade.quantity or 0),
+                gross_amount=float(trade.gross_amount or 0),
+                strategy_key=trade.strategy_key,
+                market_state=trade.market_state,
+                side=trade.side,
+                sequence_features=self._sequence_features(
+                    trade.symbol,
+                    trade.trade_time.date().isoformat() if trade.trade_time else datetime.utcnow().date().isoformat(),
+                ),
+            ),
+            "label": {
+                "closed": True,
+                "side": trade.side,
+                "cost_basis": _safe_float(cost_basis),
+                "pnl_amount": _safe_float(pnl_amount),
+                "return_pct": _safe_float(return_pct),
+                "pnl_pct": _safe_float(return_pct),
+                "paper_trade_id": trade.id or 0,
+                "paper_order_id": trade.order_id or 0,
+                "account_id": trade.account_id or 0,
+                "exit_reason": trade.exit_reason or "",
+                "label_note": label_note,
+            },
+        }
+        return self._persist_sample(sample)
 
     def train(self, payload: MLSignalTrainRequest) -> MLSignalTrainResponse:
         rows = self._load_training_samples(source=payload.source, limit=payload.limit)
@@ -190,6 +269,75 @@ class MLSignalService:
         return MLSignalModelListResponse(
             items=[_model_out(row) for row in rows],
             production_model_key=production,
+        )
+
+    def online_learning_status(self, min_samples: int = 100) -> MLSignalOnlineLearningStatusResponse:
+        """Return the operational state of the paper-trade online learning loop."""
+
+        paper_sample_count = int(
+            self.db.execute(
+                select(func.count(MLSignalSample.id)).where(MLSignalSample.source == "paper")
+            ).scalar_one()
+            or 0
+        )
+        recent_samples = (
+            self.db.execute(
+                select(MLSignalSample)
+                .where(MLSignalSample.source == "paper")
+                .order_by(MLSignalSample.id.desc())
+                .limit(max(min_samples * 5, 500))
+            )
+            .scalars()
+            .all()
+        )
+        closed_trade_sample_count = 0
+        positive_count = 0
+        negative_count = 0
+        for row in recent_samples:
+            label = _json_dict(row.label_json)
+            if label.get("closed") is True or str(row.sample_key or "").startswith("paper_close:"):
+                closed_trade_sample_count += 1
+                if _label_is_positive(label):
+                    positive_count += 1
+                else:
+                    negative_count += 1
+
+        latest_model = self.db.execute(select(MLSignalModel).order_by(MLSignalModel.id.desc()).limit(1)).scalar_one_or_none()
+        model_list = self.list_models(limit=20)
+        latest_task = (
+            self.db.execute(
+                select(RuntimeTask)
+                .where(RuntimeTask.task_type == "ml_signal_incremental_train")
+                .order_by(RuntimeTask.id.desc())
+                .limit(1)
+            )
+            .scalar_one_or_none()
+        )
+        warnings: list[str] = []
+        if paper_sample_count < min_samples:
+            warnings.append(f"paper 样本不足：当前 {paper_sample_count}，最低需要 {min_samples}。")
+        if positive_count == 0 or negative_count == 0:
+            warnings.append("近期闭环样本正负类别不完整，增量训练会被生产门槛拦截。")
+        if latest_task is None:
+            warnings.append("尚未发现每周增量训练任务记录，等待调度周期或手动触发。")
+
+        return MLSignalOnlineLearningStatusResponse(
+            generated_at=datetime.utcnow().isoformat(timespec="seconds"),
+            paper_sample_count=paper_sample_count,
+            closed_trade_sample_count=closed_trade_sample_count,
+            positive_sample_count=positive_count,
+            negative_sample_count=negative_count,
+            ready_for_training=paper_sample_count >= min_samples and positive_count > 0 and negative_count > 0,
+            min_samples=min_samples,
+            feature_names=FEATURE_NAMES,
+            sequence_feature_names=[name for name in FEATURE_NAMES if name.startswith(("price_momentum", "volume_slope", "sector_relative"))],
+            latest_model=_model_out(latest_model) if latest_model is not None else None,
+            production_model_key=model_list.production_model_key,
+            latest_incremental_task_id=latest_task.id if latest_task is not None else None,
+            latest_incremental_task_status=latest_task.status if latest_task is not None else "",
+            latest_incremental_task_progress_pct=float(latest_task.progress_pct or 0.0) if latest_task is not None else 0.0,
+            latest_incremental_task_finished_at=latest_task.finished_at if latest_task is not None else None,
+            warnings=warnings,
         )
 
     def predict(self, payload: MLSignalPredictionRequest) -> MLSignalPredictionResponse:
@@ -430,29 +578,71 @@ class MLSignalService:
         shutil.copy2(remote, target)
 
     def _paper_samples(self, limit: int) -> list[dict[str, Any]]:
-        rows = self.db.execute(
-            select(PaperTrade).order_by(PaperTrade.id.desc()).limit(limit)
+        recent_rows = self.db.execute(
+            select(PaperTrade).order_by(PaperTrade.id.desc()).limit(max(limit * 4, 500))
         ).scalars().all()
-        return [
-            {
-                "sample_key": f"paper:{row.id}",
-                "symbol": row.symbol,
-                "trade_date": row.trade_time.date().isoformat() if row.trade_time else "",
-                "strategy_key": row.strategy_key,
-                "source": "paper",
-                "features": _trade_features(
-                    price=float(row.price or 0),
-                    quantity=int(row.quantity or 0),
-                    gross_amount=float(row.gross_amount or 0),
-                    strategy_key=row.strategy_key,
-                    market_state=row.market_state,
-                    side=row.side,
-                    sequence_features=self._sequence_features(row.symbol, row.trade_time.date().isoformat() if row.trade_time else ""),
-                ),
-                "label": {"side": row.side, "net_amount": float(row.net_amount or 0)},
-            }
-            for row in rows
-        ]
+        rows = list(reversed(recent_rows))
+        samples: list[dict[str, Any]] = []
+        ledger: dict[tuple[int, str], dict[str, float]] = {}
+        for row in rows:
+            key = (int(row.account_id or 0), str(row.symbol or ""))
+            quantity = int(row.quantity or 0)
+            if quantity <= 0:
+                continue
+            if row.side == "buy":
+                position = ledger.setdefault(key, {"quantity": 0.0, "cost": 0.0})
+                position["quantity"] += quantity
+                position["cost"] += float(row.net_amount or row.gross_amount or 0)
+                continue
+            if row.side != "sell":
+                continue
+            position = ledger.get(key)
+            if not position or position["quantity"] <= 0:
+                continue
+            matched_quantity = min(quantity, int(position["quantity"]))
+            if matched_quantity <= 0:
+                continue
+            avg_cost = position["cost"] / max(position["quantity"], 1.0)
+            cost_basis = avg_cost
+            fee_amount = float(row.commission or 0) + float(row.stamp_tax or 0) + float(row.transfer_fee or 0)
+            pnl_amount = (float(row.price or 0) - cost_basis) * matched_quantity - fee_amount
+            return_pct = (float(row.price or 0) / cost_basis - 1.0) * 100 if cost_basis > 0 else 0.0
+            trade_date = row.trade_time.date().isoformat() if row.trade_time else ""
+            samples.append(
+                {
+                    "sample_key": f"paper_close:{row.id}",
+                    "symbol": row.symbol,
+                    "trade_date": trade_date,
+                    "strategy_key": row.strategy_key,
+                    "source": "paper",
+                    "features": _trade_features(
+                        price=float(row.price or 0),
+                        quantity=matched_quantity,
+                        gross_amount=float(row.gross_amount or 0),
+                        strategy_key=row.strategy_key,
+                        market_state=row.market_state,
+                        side=row.side,
+                        sequence_features=self._sequence_features(row.symbol, trade_date),
+                    ),
+                    "label": {
+                        "closed": True,
+                        "side": row.side,
+                        "cost_basis": round(cost_basis, 6),
+                        "pnl_amount": round(pnl_amount, 6),
+                        "return_pct": round(return_pct, 6),
+                        "pnl_pct": round(return_pct, 6),
+                        "paper_trade_id": row.id,
+                        "paper_order_id": row.order_id,
+                        "account_id": row.account_id,
+                        "exit_reason": row.exit_reason,
+                    },
+                }
+            )
+            position["quantity"] -= matched_quantity
+            position["cost"] = max(position["quantity"], 0.0) * avg_cost
+            if len(samples) >= limit:
+                break
+        return list(reversed(samples))
 
     def _backtest_samples(self, limit: int) -> list[dict[str, Any]]:
         rows = self.db.execute(
@@ -511,14 +701,86 @@ class MLSignalService:
                 .where(DailyBarSnapshot.symbol == key[0])
                 .where(DailyBarSnapshot.trade_date <= key[1])
                 .order_by(DailyBarSnapshot.trade_date.desc())
-                .limit(12)
+                .limit(80)
             )
             .scalars()
             .all()
         )
         features = _sequence_features_from_bars(list(reversed(rows)))
+        features.update(self._sector_relative_strength(key[0], list(reversed(rows))))
         self._sequence_feature_cache[key] = features
         return features
+
+    def _sector_relative_strength(self, symbol: str, rows: list[DailyBarSnapshot]) -> dict[str, float]:
+        if len(rows) < 11:
+            return {
+                "sector_relative_strength_5d": 0.0,
+                "sector_relative_strength_10d": 0.0,
+            }
+        instrument = self.db.execute(select(Instrument).where(Instrument.symbol == symbol)).scalar_one_or_none()
+        sector = str(instrument.sector_name or "").strip() if instrument is not None else ""
+        if not sector:
+            return {
+                "sector_relative_strength_5d": 0.0,
+                "sector_relative_strength_10d": 0.0,
+            }
+        peers = (
+            self.db.execute(
+                select(Instrument.symbol)
+                .where(Instrument.sector_name == sector)
+                .where(Instrument.instrument_type == "stock")
+                .limit(120)
+            )
+            .scalars()
+            .all()
+        )
+        peer_symbols = [item for item in peers if item and item != symbol]
+        if not peer_symbols:
+            return {
+                "sector_relative_strength_5d": 0.0,
+                "sector_relative_strength_10d": 0.0,
+            }
+        trade_dates = [str(row.trade_date) for row in rows[-11:]]
+        peer_rows = (
+            self.db.execute(
+                select(DailyBarSnapshot)
+                .where(DailyBarSnapshot.symbol.in_(peer_symbols))
+                .where(DailyBarSnapshot.trade_date.in_(trade_dates))
+            )
+            .scalars()
+            .all()
+        )
+        by_symbol: dict[str, dict[str, float]] = {}
+        for row in peer_rows:
+            if float(row.close_price or 0.0) <= 0:
+                continue
+            by_symbol.setdefault(str(row.symbol), {})[str(row.trade_date)] = float(row.close_price or 0.0)
+        symbol_closes = {str(row.trade_date): float(row.close_price or 0.0) for row in rows if float(row.close_price or 0.0) > 0}
+
+        def relative(days: int) -> float:
+            if len(trade_dates) <= days:
+                return 0.0
+            start_date = trade_dates[-days - 1]
+            end_date = trade_dates[-1]
+            own_start = symbol_closes.get(start_date, 0.0)
+            own_end = symbol_closes.get(end_date, 0.0)
+            if own_start <= 0 or own_end <= 0:
+                return 0.0
+            own_momentum = (own_end / own_start - 1.0) * 100
+            peer_momentum: list[float] = []
+            for values in by_symbol.values():
+                start = values.get(start_date, 0.0)
+                end = values.get(end_date, 0.0)
+                if start > 0 and end > 0:
+                    peer_momentum.append((end / start - 1.0) * 100)
+            if not peer_momentum:
+                return 0.0
+            return round(own_momentum - float(np.mean(peer_momentum)), 4)
+
+        return {
+            "sector_relative_strength_5d": relative(5),
+            "sector_relative_strength_10d": relative(10),
+        }
 
 
 def _fit_estimator(*, model_type: str, x_matrix: np.ndarray, labels: np.ndarray, validation_ratio: float):
@@ -768,6 +1030,12 @@ def _empty_sequence_features() -> dict[str, float]:
         "price_momentum_10d": 0.0,
         "volume_slope_5d": 0.0,
         "volume_slope_10d": 0.0,
+        "price_momentum_5d_z": 0.0,
+        "price_momentum_10d_z": 0.0,
+        "volume_slope_5d_z": 0.0,
+        "volume_slope_10d_z": 0.0,
+        "sector_relative_strength_5d": 0.0,
+        "sector_relative_strength_10d": 0.0,
     }
 
 
@@ -778,29 +1046,55 @@ def _sequence_features_from_bars(rows: list[DailyBarSnapshot]) -> dict[str, floa
     volumes = [float(row.volume or 0.0) for row in rows if float(row.volume or 0.0) >= 0]
     latest_close = closes[-1] if closes else 0.0
 
+    def momentum_at(index: int, days: int) -> float:
+        if index - days < 0:
+            return 0.0
+        start = closes[index - days]
+        end = closes[index]
+        if start <= 0 or end <= 0:
+            return 0.0
+        return (end / start - 1.0) * 100
+
     def momentum(days: int) -> float:
         if latest_close <= 0 or len(closes) <= days or closes[-days - 1] <= 0:
             return 0.0
-        return round((latest_close / closes[-days - 1] - 1.0) * 100, 4)
+        return round(momentum_at(len(closes) - 1, days), 4)
 
-    def slope(days: int) -> float:
-        series = volumes[-days:] if len(volumes) >= days else volumes
+    def slope_for_series(series: list[float]) -> float:
         if len(series) < 3:
             return 0.0
         avg_volume = float(np.mean(series)) or 1.0
         x_values = np.arange(len(series), dtype=float)
         coef = float(np.polyfit(x_values, np.asarray(series, dtype=float), 1)[0])
-        return round(coef / avg_volume, 6)
+        return coef / avg_volume
+
+    def slope(days: int) -> float:
+        series = volumes[-days:] if len(volumes) >= days else volumes
+        return round(slope_for_series(series), 6)
+
+    def rolling_momentum_z(days: int) -> float:
+        values = [momentum_at(index, days) for index in range(days, len(closes))]
+        return _zscore(values[-1] if values else 0.0, values)
+
+    def rolling_slope_z(days: int) -> float:
+        values = [slope_for_series(volumes[max(0, index - days + 1) : index + 1]) for index in range(days - 1, len(volumes))]
+        return _zscore(values[-1] if values else 0.0, values)
 
     return {
         "price_momentum_5d": momentum(5),
         "price_momentum_10d": momentum(10),
         "volume_slope_5d": slope(5),
         "volume_slope_10d": slope(10),
+        "price_momentum_5d_z": rolling_momentum_z(5),
+        "price_momentum_10d_z": rolling_momentum_z(10),
+        "volume_slope_5d_z": rolling_slope_z(5),
+        "volume_slope_10d_z": rolling_slope_z(10),
     }
 
 
 def _label_is_positive(label: dict[str, Any]) -> bool:
+    if "return_pct" in label:
+        return _to_float(label.get("return_pct")) > 0
     if "pnl_pct" in label:
         return _to_float(label.get("pnl_pct")) > 0
     if "pnl_amount" in label:
@@ -839,6 +1133,25 @@ def _label(probability: float) -> str:
     if probability <= 0.38:
         return "negative"
     return "neutral"
+
+
+def _zscore(value: float, values: list[float]) -> float:
+    if len(values) < 5:
+        return 0.0
+    array = np.asarray([item for item in values if math.isfinite(float(item))], dtype=float)
+    if len(array) < 5:
+        return 0.0
+    std = float(np.std(array))
+    if std <= 1e-9:
+        return 0.0
+    return round((float(value) - float(np.mean(array))) / std, 4)
+
+
+def _safe_float(value: Decimal | float | int | str | None) -> float:
+    try:
+        return float(value or 0.0)
+    except (TypeError, ValueError):
+        return 0.0
 
 
 def _generated_model_key(model_type: str) -> str:

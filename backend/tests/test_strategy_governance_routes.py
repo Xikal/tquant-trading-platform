@@ -73,6 +73,8 @@ class StrategyGovernanceRouteTests(unittest.TestCase):
         self.assertEqual(by_key["first_board"]["tier"], "core")
         self.assertEqual(by_key["classic_retrace"]["status"], "research")
         self.assertTrue(by_key["late_session_strong_support"]["requires_mainline_industry"])
+        self.assertEqual(by_key["mainline_limitup_shrink_retrace_reclaim"]["status"], "watch")
+        self.assertIn("真实成交样本不足", by_key["mainline_limitup_shrink_retrace_reclaim"]["status_text"])
         self.assertIn("strategy_health_score", by_key["first_board"])
         self.assertIn("strategy_health_text", by_key["first_board"])
         self.assertIn("performance_sample_count", by_key["first_board"])

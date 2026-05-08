@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import threading
 import time
+from types import MethodType
 from typing import Any
 
 from app.services.low_buy.candidate import LowBuyCandidateMixin
@@ -28,12 +29,32 @@ from app.services.low_buy.shared import (
 
 
 class _LowBuyRuntimeAdapter:
-    """Adapter base used to keep legacy mixin methods behind a composed runtime."""
+    """Composition adapter that exposes legacy mixin methods without inheriting them.
 
-    def __init__(self, runtime: "_LowBuyRuntime") -> None:
+    The low-buy implementation still reuses legacy mixin functions, but the
+    runtime component now *contains* the mixin class instead of subclassing it.
+    This removes the remaining MRO dependency while keeping behavior stable for
+    the large strategy surface.
+    """
+
+    def __init__(self, runtime: "_LowBuyRuntime", mixin_cls: type) -> None:
         object.__setattr__(self, "_runtime", runtime)
+        object.__setattr__(self, "_mixin_cls", mixin_cls)
 
     def __getattr__(self, name: str) -> Any:
+        mixin_cls = object.__getattribute__(self, "_mixin_cls")
+        for cls in mixin_cls.mro():
+            if cls is object:
+                continue
+            value = cls.__dict__.get(name)
+            if value is None:
+                continue
+            if isinstance(value, staticmethod):
+                return value.__func__
+            if isinstance(value, classmethod):
+                raise AttributeError(f"classmethod {name!r} is not exposed through low-buy adapters")
+            if callable(value):
+                return MethodType(value, self)
         return getattr(object.__getattribute__(self, "_runtime"), name)
 
     def __setattr__(self, name: str, value: Any) -> None:
@@ -67,58 +88,6 @@ class _LowBuyRuntimeAdapter:
         self._runtime._set_spot_quote_cache(payload)
 
 
-class _LowBuyExecutionBacktestAdapter(_LowBuyRuntimeAdapter, LowBuyExecutionBacktestMixin):
-    pass
-
-
-class _LowBuyLifecycleAdapter(_LowBuyRuntimeAdapter, LowBuyLifecycleMixin):
-    pass
-
-
-class _LowBuyCloseReviewAdapter(_LowBuyRuntimeAdapter, LowBuyCloseReviewMixin):
-    pass
-
-
-class _LowBuyPerformanceAdapter(_LowBuyRuntimeAdapter, LowBuyPerformanceMixin):
-    pass
-
-
-class _LowBuyHistoryAdapter(_LowBuyRuntimeAdapter, LowBuyHistoryMixin):
-    pass
-
-
-class _LowBuyMobileAdapter(_LowBuyRuntimeAdapter, LowBuyMobileReadMixin):
-    pass
-
-
-class _LowBuySignalAdapter(_LowBuyRuntimeAdapter, LowBuySignalMixin):
-    pass
-
-
-class _LowBuyPriorityBoardAdapter(_LowBuyRuntimeAdapter, LowBuyPriorityBoardMixin):
-    pass
-
-
-class _LowBuyCandidateAdapter(_LowBuyRuntimeAdapter, LowBuyCandidateMixin):
-    pass
-
-
-class _LowBuyHotIndustryContextAdapter(_LowBuyRuntimeAdapter, LowBuyHotIndustryContextMixin):
-    pass
-
-
-class _LowBuyPoolAdapter(_LowBuyRuntimeAdapter, LowBuyPoolMixin):
-    pass
-
-
-class _LowBuyResultStoreAdapter(_LowBuyRuntimeAdapter, LowBuyResultStoreMixin):
-    pass
-
-
-class _LowBuyScreeningAdapter(_LowBuyRuntimeAdapter, LowBuyScreeningMixin):
-    pass
-
-
 class _LowBuyRuntime:
     """Composed low-buy runtime.
 
@@ -128,20 +97,20 @@ class _LowBuyRuntime:
     strategy semantics in one large rewrite.
     """
 
-    _runtime_adapter_classes = (
-        _LowBuyExecutionBacktestAdapter,
-        _LowBuyLifecycleAdapter,
-        _LowBuyCloseReviewAdapter,
-        _LowBuyPerformanceAdapter,
-        _LowBuyHistoryAdapter,
-        _LowBuyMobileAdapter,
-        _LowBuySignalAdapter,
-        _LowBuyPriorityBoardAdapter,
-        _LowBuyCandidateAdapter,
-        _LowBuyHotIndustryContextAdapter,
-        _LowBuyPoolAdapter,
-        _LowBuyResultStoreAdapter,
-        _LowBuyScreeningAdapter,
+    _runtime_mixin_classes = (
+        LowBuyExecutionBacktestMixin,
+        LowBuyLifecycleMixin,
+        LowBuyCloseReviewMixin,
+        LowBuyPerformanceMixin,
+        LowBuyHistoryMixin,
+        LowBuyMobileReadMixin,
+        LowBuySignalMixin,
+        LowBuyPriorityBoardMixin,
+        LowBuyCandidateMixin,
+        LowBuyHotIndustryContextMixin,
+        LowBuyPoolMixin,
+        LowBuyResultStoreMixin,
+        LowBuyScreeningMixin,
     )
     _full_cache_setting_prefix = "low_buy_full_cache"
     _screen_cache = {}
@@ -166,14 +135,14 @@ class _LowBuyRuntime:
 
     def __init__(self) -> None:
         self.market_data = MarketDataService()
-        self._adapters = [adapter_class(self) for adapter_class in self._runtime_adapter_classes]
+        self._adapters = [_LowBuyRuntimeAdapter(self, mixin_cls) for mixin_cls in self._runtime_mixin_classes]
         self._method_map = _build_runtime_method_map(self._adapters)
 
     def __getattr__(self, name: str) -> Any:
         adapter = self._method_map.get(name)
         if adapter is None:
             raise AttributeError(f"{self.__class__.__name__!s} has no attribute {name!r}")
-        return object.__getattribute__(adapter, name)
+        return getattr(adapter, name)
 
     def _get_screen_cache(self, cache_key: str):
         cls = type(self)
@@ -258,12 +227,25 @@ class _LowBuyRuntime:
         with cls._cache_lock:
             cls._spot_quote_cache = (time.monotonic() + cls._spot_quote_cache_ttl, dict(payload))
 
+    @classmethod
+    def clear_runtime_caches(cls) -> None:
+        with cls._cache_lock:
+            cls._screen_cache.clear()
+            cls._daily_history_cache.clear()
+            cls._spot_quote_cache = None
+            cls._full_scan_jobs.clear()
+            cls._priority_base_cache.clear()
+            cls._priority_response_cache.clear()
+            cls._quote_refresh_response_cache.clear()
+            cls._trade_dates_cache.clear()
+
 
 def _build_runtime_method_map(adapters: list[_LowBuyRuntimeAdapter]) -> dict[str, _LowBuyRuntimeAdapter]:
     method_map: dict[str, _LowBuyRuntimeAdapter] = {}
     for adapter in adapters:
-        for cls in type(adapter).mro():
-            if cls in {_LowBuyRuntimeAdapter, object}:
+        mixin_cls = object.__getattribute__(adapter, "_mixin_cls")
+        for cls in mixin_cls.mro():
+            if cls is object:
                 continue
             for name, value in cls.__dict__.items():
                 if name.startswith("__") or name in method_map:
@@ -549,3 +531,12 @@ class LowBuyScreenerService:
             lookback_days=lookback_days,
             limit=limit,
         )
+
+    def reset_runtime_caches(self) -> None:
+        self._runtime.clear_runtime_caches()
+
+
+def clear_all_low_buy_runtime_caches() -> None:
+    """Clear all low-buy runtime caches for tests and admin maintenance."""
+
+    _LowBuyRuntime.clear_runtime_caches()

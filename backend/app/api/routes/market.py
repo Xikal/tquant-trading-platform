@@ -8,12 +8,14 @@ from app.models.schema_defs.market import (
     IntradayAnomalyResponse,
     MarketBreadthResponse,
     MarketModelValidationResponse,
+    PairedHedgeResearchResponse,
     SectorEtfT0Response,
 )
 from app.models.entities import User
 from app.services.intraday_anomaly import IntradayAnomalyService
 from app.services.market_data import MarketDataService
 from app.services.market.regime_quality import market_regime_quality_text
+from app.services.paired_hedge_research import PairedHedgeResearchService
 from app.services.sector_etf_t0 import SectorEtfT0Service
 from app.services.user_sector_preferences import UserSectorPreferenceService, filter_monitor_snapshot_payload
 from app.core.database import get_db
@@ -23,6 +25,7 @@ router = APIRouter(prefix="/market", dependencies=[Depends(get_current_user)])
 market_data = MarketDataService()
 sector_etf_t0_service = SectorEtfT0Service(market_data=market_data)
 intraday_anomaly_service = IntradayAnomalyService(market_data=market_data)
+paired_hedge_research_service = PairedHedgeResearchService(market_data=market_data)
 
 
 @router.get("/breadth", response_model=MarketBreadthResponse)
@@ -75,6 +78,11 @@ def sector_etf_t0_validation(
     response = sector_etf_t0_service.validation_report(db, limit=max(1, min(limit, 20)))
     db.commit()
     return response
+
+
+@router.get("/paired-hedge-research", response_model=PairedHedgeResearchResponse)
+def paired_hedge_research(limit: int = 8, db: Session = Depends(get_db)) -> PairedHedgeResearchResponse:
+    return paired_hedge_research_service.build(db, limit=max(1, min(limit, 20)))
 
 
 @router.get("/intraday-anomaly/{symbol}", response_model=IntradayAnomalyResponse)

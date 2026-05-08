@@ -244,6 +244,10 @@ class LowBuyCandidateOut(BaseModel):
     industry_tier_text: str = "中性行业"
     industry_position_multiplier: float = 1.0
     position_breakdown_text: str = ""
+    atr_pct: float = 0.0
+    volatility_position_pct: float = 0.0
+    final_position_cap_pct: float = 0.0
+    position_cap_reason: str = ""
     hard_risk: LowBuyHardRiskOut = Field(default_factory=LowBuyHardRiskOut)
     next_day_event_plan: LowBuyNextDayEventPlanOut = Field(default_factory=LowBuyNextDayEventPlanOut)
     exit_plan: LowBuyExitPlanOut = Field(default_factory=LowBuyExitPlanOut)
@@ -413,6 +417,12 @@ class LowBuyPriorityBoardItemOut(BaseModel):
     execution_quality_score: float = 0.0
     execution_quality_text: str = ""
     strategy_performance_text: str = ""
+    kelly_half_position_pct: float = 0.0
+    kelly_position_text: str = ""
+    atr_pct: float = 0.0
+    volatility_position_pct: float = 0.0
+    final_position_cap_pct: float = 0.0
+    position_cap_reason: str = ""
     next_day_event_plan: LowBuyNextDayEventPlanOut = Field(default_factory=LowBuyNextDayEventPlanOut)
     entry_zone_low: float
     entry_zone_high: float

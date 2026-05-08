@@ -140,6 +140,11 @@ export function formatPct(value?: number | null, digits = 2): string {
   return `${sign}${value.toFixed(digits)}%`;
 }
 
+export function formatPctPlain(value?: number | null, digits = 2): string {
+  if (typeof value !== "number" || !Number.isFinite(value)) return "--";
+  return `${value.toFixed(digits)}%`;
+}
+
 export function formatNumber(value?: number | null): string {
   if (typeof value !== "number" || !Number.isFinite(value)) return "--";
   return Math.abs(value) >= 100 ? value.toFixed(0) : value.toFixed(2);

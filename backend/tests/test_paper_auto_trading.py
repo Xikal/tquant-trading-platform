@@ -5,6 +5,7 @@ import unittest
 from collections import namedtuple
 from datetime import date, datetime
 from decimal import Decimal
+from unittest.mock import patch
 
 
 class PaperAutoTradingTest(unittest.TestCase):
@@ -158,6 +159,157 @@ class PaperAutoTradingTest(unittest.TestCase):
         self.assertGreaterEqual(result[0].quantity, 100)
         self.assertEqual(result[0].quantity % 100, 0)
         self.assertEqual(result[0].source, "auto")
+
+    def test_position_sizer_uses_kelly_cap(self):
+        from app.services.paper.admission import AdmissionResult
+        from app.services.low_buy.position_sizing import KellyPosition
+        from app.services.paper.sizing import PositionSizer
+
+        candidate = AdmissionResult(
+            passed=True,
+            symbol="510300",
+            priority_score=95,
+            reason="通过",
+            signal={
+                "symbol": "510300",
+                "name": "300ETF",
+                "latest_price": 10,
+                "strategy_key": "first_board",
+                "buy_signal_state": "buy_now",
+            },
+            kelly_position=KellyPosition(
+                full_kelly=0.08,
+                half_kelly=0.04,
+                quarter_kelly=0.02,
+                win_rate=0.55,
+                avg_win_pct=2.0,
+                avg_loss_pct=-1.0,
+                expected_value=0.65,
+            ),
+        )
+
+        result = PositionSizer(max_position_pct=0.10, max_cash_pct=1.0).calculate(
+            candidates=[candidate],
+            total_assets=100000,
+            available_cash=100000,
+            max_orders=1,
+        )
+
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0].quantity, 400)
+        self.assertEqual(result[0].signal_snapshot["position_cap_source"], "kelly_half")
+
+    def test_position_sizer_respects_existing_position_cap(self):
+        from app.services.paper.admission import AdmissionResult
+        from app.services.paper.sizing import PositionSizer
+
+        candidate = AdmissionResult(
+            passed=True,
+            symbol="510300",
+            priority_score=95,
+            reason="通过",
+            signal={
+                "symbol": "510300",
+                "name": "300ETF",
+                "latest_price": 10,
+                "strategy_key": "first_board",
+                "buy_signal_state": "buy_now",
+            },
+        )
+
+        result = PositionSizer(max_position_pct=0.10, max_cash_pct=1.0).calculate(
+            candidates=[candidate],
+            total_assets=100000,
+            available_cash=100000,
+            max_orders=1,
+            current_positions={"510300": Decimal("10000")},
+        )
+
+        self.assertEqual(result, [])
+
+    def test_position_sizer_uses_volatility_cap(self):
+        from app.services.paper.admission import AdmissionResult
+        from app.services.paper.sizing import PositionSizer
+
+        candidate = AdmissionResult(
+            passed=True,
+            symbol="510300",
+            priority_score=95,
+            reason="通过",
+            signal={
+                "symbol": "510300",
+                "name": "300ETF",
+                "latest_price": 10,
+                "strategy_key": "first_board",
+                "buy_signal_state": "buy_now",
+                "final_position_cap_pct": 5.0,
+                "volatility_position_pct": 5.0,
+                "position_cap_reason": "ATR 高波动，单票仓位上限 5%",
+            },
+        )
+
+        result = PositionSizer(max_position_pct=0.10, max_cash_pct=1.0).calculate(
+            candidates=[candidate],
+            total_assets=100000,
+            available_cash=100000,
+            max_orders=1,
+        )
+
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0].quantity, 500)
+        self.assertEqual(result[0].signal_snapshot["position_cap_source"], "final_position_cap")
+
+    def test_auto_trader_builds_sector_etf_t0_order(self):
+        from app.models.schema_defs.market import SectorEtfT0Opportunity, SectorEtfT0Response
+        from app.services.paper.scheduler import PaperAutoTrader
+
+        Account = namedtuple("Account", ["id", "cash_available"])
+        fake_response = SectorEtfT0Response(
+            updated_at="2026-05-08 10:00:00",
+            market_state="repair",
+            market_state_text="震荡修复",
+            total=1,
+            opportunities=[
+                SectorEtfT0Opportunity(
+                    sector_name="半导体",
+                    etf_symbol="512480",
+                    etf_name="半导体ETF",
+                    source_signal_symbol="600000",
+                    source_signal_name="测试强信号",
+                    source_strategy="first_board",
+                    source_signal_text="确定买入",
+                    last_price=1.0,
+                    bias="positive_t",
+                    bias_text="ETF 正T候选",
+                    confidence=80,
+                    expected_edge_pct=1.2,
+                    reason="板块低吸信号明确",
+                )
+            ],
+        )
+
+        class FakeSectorEtfT0Service:
+            def __init__(self, **_kwargs):
+                pass
+
+            def build_from_priority_board(self, _board, *, limit: int = 8):
+                return fake_response
+
+        trader = PaperAutoTrader({"max_orders_per_cycle": 3})
+        with patch("app.services.paper.scheduler.SectorEtfT0Service", FakeSectorEtfT0Service):
+            orders = trader._build_sector_etf_t0_orders(
+                db=None,
+                account=Account(id=1, cash_available=Decimal("100000")),
+                board={"market_state": "repair", "items": []},
+                today_orders=[],
+                used_order_count=0,
+            )
+
+        self.assertEqual(len(orders), 1)
+        self.assertEqual(orders[0]["symbol"], "512480")
+        self.assertEqual(orders[0]["strategy_key"], "sector_etf_t0")
+        self.assertEqual(orders[0]["source"], "auto_sector_etf_t0")
+        self.assertEqual(orders[0]["quantity"], 12000)
 
     def test_auto_trader_trading_time(self):
         from app.services.paper.scheduler import PaperAutoTrader

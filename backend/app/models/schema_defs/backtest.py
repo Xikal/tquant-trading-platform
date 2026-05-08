@@ -90,6 +90,8 @@ class BacktestRunSummary(BaseModel):
     benchmark_symbol: str = ""
     owner_user_id: Optional[int] = None
     summary: dict[str, Any] = Field(default_factory=dict)
+    queue_depth: int = 0
+    queue_position: Optional[int] = None
     created_at: datetime
     updated_at: Optional[datetime] = None
     started_at: Optional[datetime] = None
@@ -242,6 +244,9 @@ class BacktestAttributionResponse(BaseModel):
 class BacktestCorrelationRow(BaseModel):
     strategy_key: str
     correlations: dict[str, float] = Field(default_factory=dict)
+    p_values: dict[str, float] = Field(default_factory=dict)
+    sample_counts: dict[str, int] = Field(default_factory=dict)
+    significance_notes: dict[str, str] = Field(default_factory=dict)
 
 
 class BacktestStrategyCorrelationResponse(BaseModel):

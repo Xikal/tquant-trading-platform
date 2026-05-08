@@ -13,6 +13,7 @@ from app.core.database import get_db
 from app.core.paper_auth import require_paper_trading
 from app.models.entities import PaperAgentRun, User
 from app.models.schemas import PaperAgentRunOut
+from app.services.market.parameter_defaults import MARKET_SECTOR_ETF_T0_DEFAULTS
 from app.services.paper import PaperAccountService
 from app.services.paper.scheduler import (
     PaperAutoTrader,
@@ -23,6 +24,7 @@ from app.services.paper.scheduler import (
     start_auto_trader,
     stop_auto_trader,
 )
+from app.services.quant.runtime_parameters import get_market_sector_etf_t0
 
 router = APIRouter()
 
@@ -44,6 +46,7 @@ def get_auto_trading_status(
             "trading_time": trading_time,
             "reason": "非交易时段，交易时间自动开启" if settings.paper_auto_trading_enabled else "未启动",
         }
+        payload.update(_sector_etf_t0_auto_config())
         payload.update(account_context)
         return payload
     payload = trader.state.to_dict()
@@ -51,6 +54,7 @@ def get_auto_trading_status(
     payload["engine_running"] = engine_running
     payload["trading_time"] = trading_time
     payload["running"] = engine_running and trading_time
+    payload.update(_sector_etf_t0_auto_config())
     payload.update(account_context)
     if not trading_time:
         payload["reason"] = "非交易时段，交易时间自动开启"
@@ -117,3 +121,18 @@ def dry_run_auto_trading(
     )
     account = PaperAccountService(db).get_or_create_default(current_user.id)
     return trader.run_once_for_preview(db=db, limit=limit, account_id=account.id)
+
+
+def _sector_etf_t0_auto_config() -> dict:
+    try:
+        values = get_market_sector_etf_t0()
+    except Exception:
+        values = {}
+    params = {**MARKET_SECTOR_ETF_T0_DEFAULTS, **values} if isinstance(values, dict) else dict(MARKET_SECTOR_ETF_T0_DEFAULTS)
+    return {
+        "sector_etf_t0_auto_enabled": bool(params.get("paper_auto_enabled", True)),
+        "sector_etf_t0_max_orders": int(params.get("paper_auto_max_orders") or 0),
+        "sector_etf_t0_cash_pct": float(params.get("paper_auto_cash_pct") or 0.0) * 100,
+        "sector_etf_t0_min_confidence": float(params.get("paper_auto_min_confidence") or 0.0),
+        "sector_etf_t0_min_edge_pct": float(params.get("paper_auto_min_edge_pct") or 0.0),
+    }

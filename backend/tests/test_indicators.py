@@ -6,6 +6,7 @@ from app.services.indicators import (
     atr,
     exponential_moving_average,
     macd,
+    macd_with_validity,
     moving_average,
     rsi,
     sanitize_metrics,
@@ -20,6 +21,9 @@ class IndicatorSanitizeTests(unittest.TestCase):
 
     def test_macd_uses_aligned_sma_seeded_ema_series(self):
         self.assertEqual(macd([float(i) for i in range(1, 41)]), (7.0, 7.0, 0.0))
+
+    def test_macd_marks_insufficient_data_invalid(self):
+        self.assertEqual(macd_with_validity([1.0, 2.0, 3.0]), (0.0, 0.0, 0.0, False))
 
     def test_moving_average_uses_latest_window(self):
         self.assertEqual(moving_average([1, 2, 3, 10], 3), 5.0)

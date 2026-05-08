@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from math import comb
+
 from app.core.timezone import beijing_now_string
 from app.models.schema_defs.market import (
     IntradayAnomalyResponse,
@@ -144,7 +146,7 @@ class IntradayAnomalyService:
             if item.score >= _float_param(params, "validation_min_score") and item.pattern and item.action_hint and item.risk_notes is not None
         ]
         pass_rate = len(high_quality) / max(len(actionable), 1) * 100.0 if actionable else 0.0
-        production_ready = len(valid) >= _int_param(params, "validation_min_samples") and (
+        output_ready = len(valid) >= _int_param(params, "validation_min_samples") and (
             not actionable or pass_rate >= _float_param(params, "validation_pass_rate_min_pct")
         )
         historical = (
@@ -152,6 +154,16 @@ class IntradayAnomalyService:
             if db is not None
             else {"sample_count": 0, "actionable_count": 0, "avg_confidence": 0.0, "settled_count": 0, "success_rate_pct": 0.0, "pending_count": 0}
         )
+        settled_count = int(historical.get("settled_count") or 0)
+        success_count = int(historical.get("success_count") or 0)
+        success_rate = float(historical.get("success_rate_pct") or 0.0)
+        p_value = _binomial_one_sided_p_value(success_count, settled_count, baseline=0.5)
+        historical_ready = (
+            settled_count >= _int_param(params, "shadow_min_samples")
+            and success_rate >= _float_param(params, "production_min_success_rate_pct")
+            and p_value <= _float_param(params, "production_max_p_value")
+        )
+        production_ready = output_ready and historical_ready
         return MarketModelValidationResponse(
             model_key="intraday_anomaly",
             generated_at=beijing_now_string(),
@@ -160,7 +172,7 @@ class IntradayAnomalyService:
             metrics=[
                 MarketModelValidationMetric(
                     name="异常识别输出完整性",
-                    status="passed" if production_ready else "watch",
+                    status="passed" if output_ready else "watch",
                     sample_count=len(valid),
                     pass_rate_pct=round(pass_rate, 2),
                     avg_edge_pct=0.0,
@@ -168,11 +180,23 @@ class IntradayAnomalyService:
                 ),
                 MarketModelValidationMetric(
                     name="异常预警历史绩效",
-                    status="passed" if historical["settled_count"] >= _int_param(params, "shadow_min_samples") else "watch",
-                    sample_count=int(historical["settled_count"]),
-                    pass_rate_pct=round(float(historical.get("success_rate_pct") or 0.0), 2),
+                    status="passed" if historical_ready else "watch",
+                    sample_count=int(historical["sample_count"]),
+                    settled_count=settled_count,
+                    pending_count=int(historical["pending_count"]),
+                    pass_rate_pct=round(success_rate, 2),
                     avg_edge_pct=round(float(historical.get("avg_max_adverse_5d_pct") or 0.0), 2),
-                    notes="按预警后续日线结算命中率和最大不利波动；高/中风险预警以随后出现回撤作为命中。",
+                    avg_return_1d_pct=round(float(historical.get("avg_return_1d_pct") or 0.0), 2),
+                    avg_return_3d_pct=round(float(historical.get("avg_return_3d_pct") or 0.0), 2),
+                    avg_max_adverse_5d_pct=round(float(historical.get("avg_max_adverse_5d_pct") or 0.0), 2),
+                    false_positive_rate_pct=round(100.0 - float(historical.get("success_rate_pct") or 0.0), 2)
+                    if historical.get("settled_count")
+                    else 0.0,
+                    p_value=round(p_value, 6),
+                    notes=(
+                        "按预警后续日线结算命中率和最大不利波动；"
+                        "高/中风险预警以随后出现回撤作为命中，需通过样本量、胜率和显著性门槛。"
+                    ),
                 )
             ],
             notes=[
@@ -210,3 +234,13 @@ def _float_param(params: dict[str, object], key: str) -> float:
 
 def _int_param(params: dict[str, object], key: str) -> int:
     return int(round(_float_param(params, key)))
+
+
+def _binomial_one_sided_p_value(success_count: int, sample_count: int, *, baseline: float) -> float:
+    if sample_count <= 0 or success_count <= 0:
+        return 1.0
+    success_count = max(0, min(success_count, sample_count))
+    probability = 0.0
+    for k in range(success_count, sample_count + 1):
+        probability += comb(sample_count, k) * (baseline ** k) * ((1 - baseline) ** (sample_count - k))
+    return max(0.0, min(probability, 1.0))

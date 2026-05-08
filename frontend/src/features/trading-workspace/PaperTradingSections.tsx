@@ -8,6 +8,7 @@ import type {
   PaperOrderStatus,
   PaperPerformance,
   PaperPosition,
+  PaperSectorEtfT0Performance,
   PaperTagPerformance,
   PaperTrade,
   PaperTradeTag,
@@ -16,9 +17,9 @@ import type {
 import type { ReactNode } from "react";
 import { OrderEntryModal } from "./PaperOrderEntryModal";
 import { EmptyState, MetricGrid } from "./WorkspaceComponents";
-import { formatInteger, formatMoneyPlain, formatNumber, formatPct, formatPrice, toneFromChange } from "./workspaceFormatters";
+import { formatInteger, formatMoneyPlain, formatNumber, formatPct, formatPctPlain, formatPrice, toneFromChange } from "./workspaceFormatters";
 import type { MetricItem } from "./workspaceTypes";
-import { AgentRunList, GroupedPerformanceTable, PerformancePills, RiskEventList, TagPerformanceStrip } from "./PaperTradingPerformance";
+import { AgentRunList, GroupedPerformanceTable, PerformancePills, RiskEventList, SectorEtfT0PerformancePanel, TagPerformanceStrip } from "./PaperTradingPerformance";
 export { formatPaperDateTime } from "./paperTradingFormatters";
 import { formatPaperDateTime } from "./paperTradingFormatters";
 
@@ -67,6 +68,18 @@ export function PaperMetricGrid({
   return (
     <section className="paper-metrics-shell">
       <MetricGrid items={metrics} className="paper-metrics" loading={loading} />
+      {autoTradingStatus?.sector_etf_t0_auto_enabled ? (
+        <div className="context-row paper-context-row">
+          <span>
+            ETF T+0 自动执行：每轮最多 {autoTradingStatus.sector_etf_t0_max_orders ?? 0} 笔，
+            单笔约 {formatPctPlain(autoTradingStatus.sector_etf_t0_cash_pct)} 可用资金
+          </span>
+          <span>
+            门槛：置信度 ≥ {formatNumber(autoTradingStatus.sector_etf_t0_min_confidence)}，
+            预期价差 ≥ {formatPctPlain(autoTradingStatus.sector_etf_t0_min_edge_pct)}
+          </span>
+        </div>
+      ) : null}
       {skipNotice ? (
         <div className={`paper-auto-skip-notice ${skipNotice.tone}`}>
           <strong>{skipNotice.title}</strong>
@@ -143,6 +156,7 @@ export function PaperBottomPanels({
   orders,
   trades,
   performance,
+  sectorEtfT0Performance,
   strategyPerformance,
   marketPerformance,
   tagPerformance,
@@ -156,6 +170,7 @@ export function PaperBottomPanels({
   orders: PaperOrder[];
   trades: PaperTrade[];
   performance: PaperPerformance | null;
+  sectorEtfT0Performance: PaperSectorEtfT0Performance | null;
   strategyPerformance: PaperGroupedPerformance[];
   marketPerformance: PaperGroupedPerformance[];
   tagPerformance: PaperTagPerformance[];
@@ -242,6 +257,16 @@ export function PaperBottomPanels({
         </div>
         <DataBody loading={loading} columns={4}>
           <AgentRunList items={autoTradingRuns} />
+        </DataBody>
+      </section>
+
+      <section className="panel paper-sector-etf-t0">
+        <div className="panel-title">
+          <h2>行业 ETF T+0</h2>
+          <span className="hint">自动交易执行追踪</span>
+        </div>
+        <DataBody loading={loading} columns={5}>
+          <SectorEtfT0PerformancePanel item={sectorEtfT0Performance} />
         </DataBody>
       </section>
     </div>

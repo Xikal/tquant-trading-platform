@@ -188,6 +188,22 @@ class PaperStrategyCorrelationResponse(BaseModel):
     notes: list[str] = Field(default_factory=list)
 
 
+class PaperSectorEtfT0PerformanceOut(BaseModel):
+    simulated_trades: int = 0
+    simulated_closed_trades: int = 0
+    simulated_win_rate_pct: float = 0.0
+    simulated_net_win_rate_pct: float = 0.0
+    simulated_avg_return_pct: float = 0.0
+    simulated_profit_factor: Optional[float] = None
+    shadow_sample_count: int = 0
+    shadow_settled_count: int = 0
+    shadow_pending_count: int = 0
+    shadow_success_rate_pct: float = 0.0
+    shadow_avg_return_1d_pct: float = 0.0
+    shadow_avg_return_3d_pct: float = 0.0
+    notes: list[str] = Field(default_factory=list)
+
+
 class PaperRiskStatusOut(BaseModel):
     account_status: str = "active"
     total_assets: float = 0.0

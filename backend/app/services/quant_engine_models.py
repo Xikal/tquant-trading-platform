@@ -15,6 +15,7 @@ class IndicatorSnapshot:
     macd_dif: float
     macd_dea: float
     macd_hist: float
+    macd_valid: bool
     vwap_value: float
     atr14: float
     volume_ratio_value: float

@@ -143,6 +143,9 @@ def _status_for_strategy(
             return "paused", "绩效健康度较弱，自动暂停强信号"
         if health_score < _float_param(params, "watch_health_threshold"):
             return "watch", "绩效健康度偏弱，自动降级观察"
+    evidence_gate = _evidence_gate_decision(strategy_key, performance, params)
+    if evidence_gate is not None:
+        return evidence_gate["status"], evidence_gate["reason"]
     if tier.value == "core":
         return "active", "核心生产策略"
     if tier.value == "auxiliary":
@@ -328,6 +331,31 @@ def _health_text(score: float, filled_signals: int, governance_params: dict[str,
     if score >= _float_param(params, "restricted_score", 35.0):
         return "偏弱，限制强信号"
     return "较弱，建议研究层"
+
+
+def _evidence_gate_decision(
+    strategy_key: str,
+    performance: LowBuyStrategyPerformanceOut | None,
+    governance_params: dict[str, Any] | None = None,
+) -> dict[str, str] | None:
+    params = governance_params or _auto_governance_params()
+    gates = params.get("evidence_gated_strategies")
+    if not isinstance(gates, dict):
+        return None
+    raw_gate = gates.get(strategy_key)
+    if not isinstance(raw_gate, dict):
+        return None
+    min_filled = int(raw_gate.get("min_filled_signals") or 0)
+    filled = int(getattr(performance, "filled_signals", 0) or 0)
+    if filled >= min_filled:
+        return None
+    status = str(raw_gate.get("status") or "watch")
+    if status not in {"watch", "paused"}:
+        status = "watch"
+    reason = str(raw_gate.get("reason") or "").strip()
+    if not reason:
+        reason = f"真实成交样本 {filled}/{min_filled}，暂不放大为强买。"
+    return {"status": status, "reason": reason}
 
 
 def _auto_governance_params() -> dict[str, Any]:

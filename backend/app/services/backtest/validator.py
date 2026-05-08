@@ -34,6 +34,7 @@ class ValidationWindow:
     overfit_signal: bool
     oos_failed: bool = False
     failure_reason: str = ""
+    train_market_state_segments: list[dict[str, Any]] | None = None
     market_state_segments: list[dict[str, Any]] | None = None
 
     def to_dict(self) -> dict[str, Any]:
@@ -235,6 +236,7 @@ def _validation_window(
         oos_rank=best_test.rank,
         passed=test_sharpe > 0,
         overfit_signal=overfit_signal,
+        train_market_state_segments=list(best_train.metrics.get("market_state_attribution") or []),
         market_state_segments=list(best_test.metrics.get("market_state_attribution") or []),
     )
 
@@ -264,6 +266,7 @@ def _failed_validation_window(
         overfit_signal=True,
         oos_failed=True,
         failure_reason=failure_reason,
+        train_market_state_segments=list(best_train.metrics.get("market_state_attribution") or []),
         market_state_segments=[],
     )
 

@@ -9,6 +9,7 @@ import type {
   PaperOrder,
   PaperPerformance,
   PaperPosition,
+  PaperSectorEtfT0Performance,
   PaperTagPerformance,
   PaperTrade,
   PaperTradeTag,
@@ -34,6 +35,7 @@ export function usePaperTrading({ setError, setLoading, setNotice, onAuthRequire
   const [orders, setOrders] = useState<PaperOrder[]>([]);
   const [trades, setTrades] = useState<PaperTrade[]>([]);
   const [performance, setPerformance] = useState<PaperPerformance | null>(null);
+  const [sectorEtfT0Performance, setSectorEtfT0Performance] = useState<PaperSectorEtfT0Performance | null>(null);
   const [strategyPerformance, setStrategyPerformance] = useState<PaperGroupedPerformance[]>([]);
   const [marketPerformance, setMarketPerformance] = useState<PaperGroupedPerformance[]>([]);
   const [tagPerformance, setTagPerformance] = useState<PaperTagPerformance[]>([]);
@@ -64,6 +66,7 @@ export function usePaperTrading({ setError, setLoading, setNotice, onAuthRequire
         ordersResult,
         tradesResult,
         performanceResult,
+        sectorEtfT0PerformanceResult,
         strategyPerformanceResult,
         marketPerformanceResult,
         tagPerformanceResult,
@@ -76,6 +79,7 @@ export function usePaperTrading({ setError, setLoading, setNotice, onAuthRequire
         api.getPaperOrders(80),
         api.getPaperTrades(80),
         api.getPaperPerformance(),
+        api.getPaperSectorEtfT0Performance(),
         api.getPaperPerformanceByStrategy(),
         api.getPaperPerformanceByMarketState(),
         api.getPaperPerformanceByTag(),
@@ -89,6 +93,7 @@ export function usePaperTrading({ setError, setLoading, setNotice, onAuthRequire
         ordersResult,
         tradesResult,
         performanceResult,
+        sectorEtfT0PerformanceResult,
         strategyPerformanceResult,
         marketPerformanceResult,
         tagPerformanceResult,
@@ -112,6 +117,7 @@ export function usePaperTrading({ setError, setLoading, setNotice, onAuthRequire
         await loadTradeTags(tradesResult.value.trades);
       }
       if (performanceResult.status === "fulfilled") setPerformance(performanceResult.value);
+      if (sectorEtfT0PerformanceResult.status === "fulfilled") setSectorEtfT0Performance(sectorEtfT0PerformanceResult.value);
       if (strategyPerformanceResult.status === "fulfilled") setStrategyPerformance(strategyPerformanceResult.value);
       if (marketPerformanceResult.status === "fulfilled") setMarketPerformance(marketPerformanceResult.value);
       if (tagPerformanceResult.status === "fulfilled") setTagPerformance(tagPerformanceResult.value);
@@ -143,6 +149,7 @@ export function usePaperTrading({ setError, setLoading, setNotice, onAuthRequire
         ordersResult,
         tradesResult,
         performanceResult,
+        sectorEtfT0PerformanceResult,
         autoTradingStatusResult,
       ] = await Promise.allSettled([
         runAuthenticated(() => api.getPaperAccount(), true),
@@ -150,6 +157,7 @@ export function usePaperTrading({ setError, setLoading, setNotice, onAuthRequire
         runAuthenticated(() => api.getPaperOrders(80), true),
         runAuthenticated(() => api.getPaperTrades(80), true),
         runAuthenticated(() => api.getPaperPerformance(), true),
+        runAuthenticated(() => api.getPaperSectorEtfT0Performance(), true),
         runAuthenticated(() => api.getPaperAutoTradingStatus(), true),
       ]);
       if (accountResult.status === "fulfilled") setAccount(accountResult.value);
@@ -157,6 +165,7 @@ export function usePaperTrading({ setError, setLoading, setNotice, onAuthRequire
       if (ordersResult.status === "fulfilled") setOrders(ordersResult.value);
       if (tradesResult.status === "fulfilled") setTrades(tradesResult.value.trades);
       if (performanceResult.status === "fulfilled") setPerformance(performanceResult.value);
+      if (sectorEtfT0PerformanceResult.status === "fulfilled") setSectorEtfT0Performance(sectorEtfT0PerformanceResult.value);
       if (autoTradingStatusResult.status === "fulfilled") setAutoTradingStatus(autoTradingStatusResult.value);
     } catch (err) {
       if (isAuthError(err)) {
@@ -326,6 +335,7 @@ export function usePaperTrading({ setError, setLoading, setNotice, onAuthRequire
     setOrders([]);
     setTrades([]);
     setPerformance(null);
+    setSectorEtfT0Performance(null);
     setStrategyPerformance([]);
     setMarketPerformance([]);
     setTagPerformance([]);
@@ -341,6 +351,7 @@ export function usePaperTrading({ setError, setLoading, setNotice, onAuthRequire
     orders,
     trades,
     performance,
+    sectorEtfT0Performance,
     strategyPerformance,
     marketPerformance,
     tagPerformance,

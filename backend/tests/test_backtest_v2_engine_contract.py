@@ -405,7 +405,9 @@ def test_engine_is_reproducible_and_outputs_trades_and_equity_curve() -> None:
     assert first.metrics["trade_count"] >= 1
     assert {"trade_count", "total_return_pct", "max_drawdown_pct", "sharpe_ratio"} <= set(first.metrics)
     assumptions = first.to_dict()["execution_assumptions"]
-    assert assumptions["fee_model"]["version"] == "paper_fee_v1"
+    assert assumptions["fee_model"]["version"] == "paper_fee_v2"
+    assert "0.0085%" in assumptions["fee_model"]["commission"]
+    assert "0.005%" in assumptions["fee_model"]["commission"]
     assert assumptions["price_limit_handling"]
     assert assumptions["same_bar_path"]
     assert first.metrics["execution_assumptions"]["execution_model"] == config.execution_model

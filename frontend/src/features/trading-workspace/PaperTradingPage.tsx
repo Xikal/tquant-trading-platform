@@ -7,6 +7,7 @@ import type {
   PaperOrder,
   PaperPerformance,
   PaperPosition,
+  PaperSectorEtfT0Performance,
   PaperTagPerformance,
   PaperTrade,
   PaperTradeTag,
@@ -30,6 +31,7 @@ export interface PaperTradingPageProps {
   orders: PaperOrder[];
   trades: PaperTrade[];
   performance: PaperPerformance | null;
+  sectorEtfT0Performance?: PaperSectorEtfT0Performance | null;
   strategyPerformance: PaperGroupedPerformance[];
   marketPerformance: PaperGroupedPerformance[];
   tagPerformance: PaperTagPerformance[];
@@ -52,6 +54,7 @@ export const PaperTradingPage = memo(function PaperTradingPage({
   orders,
   trades,
   performance,
+  sectorEtfT0Performance = null,
   strategyPerformance,
   marketPerformance,
   tagPerformance,
@@ -125,6 +128,7 @@ export const PaperTradingPage = memo(function PaperTradingPage({
         orders={orders}
         trades={trades}
         performance={performance}
+        sectorEtfT0Performance={sectorEtfT0Performance}
         strategyPerformance={strategyPerformance}
         marketPerformance={marketPerformance}
         tagPerformance={tagPerformance}

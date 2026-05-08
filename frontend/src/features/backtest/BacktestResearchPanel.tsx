@@ -12,8 +12,9 @@ import type {
   BacktestValidationDetail,
   BacktestValidationSummary,
 } from "../../api/backtests";
+import { mlSignalsApi, type MLSignalOnlineLearningStatus, type StrategyCapacityResponse } from "../../api/mlSignals";
 import type { ReactNode } from "react";
-import { lazy, Suspense, useMemo, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { ErrorBanner } from "../../components/shared/Feedback";
 import {
   DateField as SharedDateField,
@@ -105,7 +106,7 @@ export interface BacktestResearchActions {
   onRefreshResearch: () => void;
 }
 
-export type BacktestResearchSection = "optimization" | "validation" | "compare" | "attribution";
+export type BacktestResearchSection = "optimization" | "validation" | "compare" | "attribution" | "capacity";
 
 export function BacktestResearchPanel({
   state,
@@ -120,7 +121,7 @@ export function BacktestResearchPanel({
 }) {
   const strategyOptions = useBacktestStrategyOptions();
   const visibleSections = new Set<BacktestResearchSection>(
-    sections ?? ["optimization", "validation", "compare", "attribution"]
+    sections ?? ["optimization", "validation", "compare", "attribution", "capacity"]
   );
   const focused = Boolean(sections?.length === 1);
   return (
@@ -144,6 +145,118 @@ export function BacktestResearchPanel({
         {visibleSections.has("validation") ? <ValidationPanel state={state} actions={actions} strategyOptions={strategyOptions} /> : null}
         {visibleSections.has("compare") ? <ComparePanel state={state} actions={actions} /> : null}
         {visibleSections.has("attribution") ? <AttributionPanel state={state} equity={equity ?? []} /> : null}
+        {visibleSections.has("capacity") ? <MLCapacityPanel strategyOptions={strategyOptions} /> : null}
+      </div>
+    </section>
+  );
+}
+
+function MLCapacityPanel({ strategyOptions }: { strategyOptions: BacktestStrategyOption[] }) {
+  const defaultStrategies = strategyOptions.slice(0, 2).map(([key]) => key).join(",");
+  const [status, setStatus] = useState<MLSignalOnlineLearningStatus | null>(null);
+  const [capacity, setCapacity] = useState<StrategyCapacityResponse | null>(null);
+  const [strategies, setStrategies] = useState(defaultStrategies || "first_board,volume_shrink");
+  const [loading, setLoading] = useState("");
+  const [error, setError] = useState("");
+
+  const selectedStrategies = useMemo(
+    () => strategies.split(",").map((item) => item.trim()).filter(Boolean),
+    [strategies],
+  );
+
+  const loadStatus = async () => {
+    setLoading("status");
+    setError("");
+    try {
+      setStatus(await mlSignalsApi.getOnlineLearningStatus(100));
+    } catch (err) {
+      setError(errorMessage(err));
+    } finally {
+      setLoading("");
+    }
+  };
+
+  const runCapacity = async () => {
+    setLoading("capacity");
+    setError("");
+    try {
+      setCapacity(await mlSignalsApi.evaluateCapacity({
+        strategies: selectedStrategies,
+        capital_levels: [500000, 1000000, 5000000],
+      }));
+    } catch (err) {
+      setError(errorMessage(err));
+    } finally {
+      setLoading("");
+    }
+  };
+
+  const runIncrementalTrain = async () => {
+    setLoading("train");
+    setError("");
+    try {
+      await mlSignalsApi.incrementalTrain({ model_type: "logistic", min_samples: 100, promote: false });
+      await loadStatus();
+    } catch (err) {
+      setError(errorMessage(err));
+      setLoading("");
+    }
+  };
+
+  useEffect(() => {
+    void loadStatus();
+  }, []);
+
+  return (
+    <section className="backtest-research-card span-2">
+      <PanelTitle title="ML 在线学习 / 策略容量" meta="模拟盘闭环 + 资金容量" />
+      {error ? <div className="backtest-error">{error}</div> : null}
+      <div className="backtest-mini-metrics">
+        <Metric label="Paper 样本" value={formatInteger(status?.paper_sample_count)} />
+        <Metric label="平仓样本" value={formatInteger(status?.closed_trade_sample_count)} />
+        <Metric label="正/负样本" value={`${formatInteger(status?.positive_sample_count)} / ${formatInteger(status?.negative_sample_count)}`} />
+        <Metric label="训练状态" value={status?.ready_for_training ? "可训练" : "样本不足"} className={status?.ready_for_training ? "pbo-low" : "pbo-medium"} />
+      </div>
+      <div className="backtest-research-note">
+        {status?.next_training_rule ?? "每周一 16:00 后自动触发增量训练；模型仍受样本量、AUC、K-fold 和生产门槛限制。"}
+        {status?.latest_incremental_task_id ? ` 最近任务 #${status.latest_incremental_task_id}：${status.latest_incremental_task_status || "--"}。` : ""}
+        {status?.production_model_key ? ` 当前生产模型：${status.production_model_key}。` : " 暂无生产模型。"}
+      </div>
+      {status?.warnings?.length ? (
+        <div className="backtest-warning-list">
+          {status.warnings.slice(0, 3).map((item) => <span key={item}>{item}</span>)}
+        </div>
+      ) : null}
+      <div className="backtest-capacity-controls">
+        <TextField label="容量评估策略" value={strategies} hint="英文逗号分隔" onChange={setStrategies} />
+        <button type="button" onClick={loadStatus} disabled={loading === "status"}>{loading === "status" ? "刷新中..." : "刷新 ML 状态"}</button>
+        <button type="button" onClick={runCapacity} disabled={loading === "capacity" || !selectedStrategies.length}>{loading === "capacity" ? "评估中..." : "评估容量"}</button>
+        <button type="button" className="secondary" onClick={runIncrementalTrain} disabled={loading === "train"}>{loading === "train" ? "训练中..." : "手动增量训练"}</button>
+      </div>
+      <div className="backtest-data-table capacity" role="table" aria-label="策略容量评估">
+        <div className="row head" role="row">
+          <span>策略</span>
+          <span>样本</span>
+          <span>成交额</span>
+          <span>50万</span>
+          <span>100万</span>
+          <span>500万</span>
+          <span>提示</span>
+        </div>
+        {(capacity?.items ?? []).map((item) => (
+          <div className="row" role="row" key={item.strategy_key}>
+            <span>{formatBacktestStrategy(item.strategy_key)}</span>
+            <span>{formatInteger(item.sample_count)} / {formatInteger(item.symbol_count)}</span>
+            <span>{formatMoneyCompact(item.avg_daily_amount)}</span>
+            {item.curve.slice(0, 3).map((point) => (
+              <span className={capacityTone(point.capacity_status)} key={`${item.strategy_key}-${point.capital}`}>
+                {point.capacity_status} · {formatPct(point.net_edge_pct)}
+              </span>
+            ))}
+            <span>{item.notes?.[0] || "容量评估完成"}</span>
+          </div>
+        ))}
+        {capacity?.items?.length ? null : <Empty text="点击“评估容量”后显示 Kyle Lambda 与资金冲击曲线。" />}
       </div>
     </section>
   );
@@ -722,6 +835,24 @@ function parseRunIdsLoose(value: string): number[] {
     .split(/[,\s]+/)
     .map((item) => Number(item.trim()))
     .filter((item) => Number.isInteger(item) && item > 0);
+}
+
+function formatMoneyCompact(value?: number | null): string {
+  if (typeof value !== "number" || !Number.isFinite(value) || value <= 0) return "--";
+  if (value >= 100000000) return `${(value / 100000000).toFixed(2)}亿`;
+  if (value >= 10000) return `${(value / 10000).toFixed(1)}万`;
+  return value.toFixed(0);
+}
+
+function capacityTone(status: string): string {
+  if (status === "可承载") return "up";
+  if (status === "谨慎") return "pbo-medium";
+  if (status === "过载") return "down";
+  return "";
+}
+
+function errorMessage(err: unknown): string {
+  return err instanceof Error ? err.message : String(err || "操作失败");
 }
 
 function sortCompareItems(items: NonNullable<BacktestCompareResponse["items"]>, sortKey: "return" | "sharpe" | "drawdown") {

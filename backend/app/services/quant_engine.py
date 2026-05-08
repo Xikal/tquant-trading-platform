@@ -18,7 +18,7 @@ from app.services.indicators import (
     atr,
     closes_from_bars,
     intraday_amplitude,
-    macd,
+    macd_with_validity,
     moving_average,
     obv,
     rsi,
@@ -80,6 +80,8 @@ class QuantEngine:
             market_regime=market_regime,
         )
         assumptions = build_assumptions(request.base_position, request.available_position)
+        if not indicators.macd_valid:
+            assumptions.append("MACD 样本不足，本次不把 0 轴状态作为有效多空信号。")
         blocking_rules = self._initial_blocking_rules(
             quote=quote,
             indicators=indicators,
@@ -176,7 +178,7 @@ class QuantEngine:
 
     def _collect_indicators(self, quote: QuoteSnapshot, bars: list[KlineBar]) -> IndicatorSnapshot:
         closes = closes_from_bars(bars)
-        macd_dif, macd_dea, macd_hist = macd(closes)
+        macd_dif, macd_dea, macd_hist, macd_valid = macd_with_validity(closes)
         vwap_value = vwap(bars)
         ma5 = moving_average(closes, 5)
         ma20 = moving_average(closes, 20)
@@ -201,6 +203,7 @@ class QuantEngine:
             macd_dif=macd_dif,
             macd_dea=macd_dea,
             macd_hist=macd_hist,
+            macd_valid=macd_valid,
             vwap_value=vwap_value,
             atr14=atr(bars, 14),
             volume_ratio_value=quote.volume_ratio or volume_ratio(bars, 20),
@@ -234,13 +237,14 @@ class QuantEngine:
             quote.timestamp or (indicators.latest_bar.timestamp if indicators.latest_bar else ""),
             risk_config,
         )
+        macd_hist_for_score = indicators.macd_hist if indicators.macd_valid else float("nan")
         positive_score_value = positive_score(
             quote,
             indicators.ma5,
             indicators.ma20,
             indicators.ma60,
             indicators.rsi14,
-            indicators.macd_hist,
+            macd_hist_for_score,
             indicators.vwap_value,
             sector,
             microstructure,
@@ -251,7 +255,7 @@ class QuantEngine:
             quote,
             indicators.ma5,
             indicators.rsi14,
-            indicators.macd_hist,
+            macd_hist_for_score,
             indicators.vwap_value,
             sector,
             microstructure,

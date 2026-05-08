@@ -139,7 +139,11 @@ def test_walk_forward_counts_missing_oos_candidate_as_failed_window(monkeypatch:
     train_candidate = OptimizationCandidate(
         params={"min_score": 80},
         score=1.2,
-        metrics={"sharpe_ratio": 1.2, "total_return_pct": 8.0},
+        metrics={
+            "sharpe_ratio": 1.2,
+            "total_return_pct": 8.0,
+            "market_state_attribution": [{"market_state": "repair", "signal_count": 3}],
+        },
         period="is",
         rank=1,
     )
@@ -160,6 +164,7 @@ def test_walk_forward_counts_missing_oos_candidate_as_failed_window(monkeypatch:
     assert report.windows[0].oos_failed is True
     assert report.windows[0].passed is False
     assert report.windows[0].overfit_signal is True
+    assert report.windows[0].train_market_state_segments == [{"market_state": "repair", "signal_count": 3}]
 
 
 def test_research_worker_executes_validation_and_persists_walk_forward_shape(
@@ -215,6 +220,7 @@ def test_research_worker_executes_validation_and_persists_walk_forward_shape(
         detail.result
     )
     assert detail.result["windows"][0]["best_params"]
+    assert "train_market_state_segments" in detail.result["windows"][0]
 
 
 def _fake_engine_run(self, config, *, cancel_token=None):  # noqa: ANN001, ARG001
@@ -239,6 +245,7 @@ def _fake_engine_run(self, config, *, cancel_token=None):  # noqa: ANN001, ARG00
             "profit_factor": 1.4,
             "sharpe_ratio": 1.0 + float(config.max_position_pct or 0.0),
             "trade_count": 2,
+            "market_state_attribution": [{"market_state": "repair", "signal_count": 2}],
         },
         equity_curve=[],
         orders=[],

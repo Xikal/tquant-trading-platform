@@ -17,8 +17,7 @@ from app.services.quant.runtime_parameters import get_low_buy_auto_governance
 
 
 def _auto_governance_params() -> dict[str, Any]:
-    params = {**LOW_BUY_AUTO_GOVERNANCE_DEFAULTS, **get_low_buy_auto_governance()}
-    return params
+    return _deep_merge(LOW_BUY_AUTO_GOVERNANCE_DEFAULTS, get_low_buy_auto_governance())
 
 
 def _float_param(params: dict[str, Any], key: str) -> float:
@@ -42,7 +41,25 @@ def refresh_low_buy_strategy_auto_governance(db: Session) -> dict[str, Any]:
     params = _auto_governance_params()
     updated_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     items: dict[str, dict[str, Any]] = {}
-    for strategy_key, performance in performances.items():
+    evidence_gates = params.get("evidence_gated_strategies")
+    evidence_strategy_keys = set(evidence_gates.keys()) if isinstance(evidence_gates, dict) else set()
+    for strategy_key in sorted(set(performances.keys()).union(evidence_strategy_keys)):
+        performance = performances.get(strategy_key)
+        evidence_decision = _evidence_gate_decision(strategy_key, performance, params)
+        if evidence_decision is not None:
+            items[strategy_key] = {
+                "status": evidence_decision["status"],
+                "reason": evidence_decision["reason"],
+                "health_score": 0.0,
+                "filled_signals": int(getattr(performance, "filled_signals", 0) or 0),
+                "recovery_pass_days": 0,
+                "recovery_required_days": 0,
+                "updated_at": updated_at,
+                "source": "evidence_gate",
+            }
+            continue
+        if performance is None:
+            continue
         health_score, _ = _strategy_health(performance)
         decision = _auto_governance_decision(
             filled_signals=performance.filled_signals,
@@ -156,3 +173,44 @@ def _load_previous_items(db: Session) -> dict[str, dict[str, Any]]:
         return {}
     items = payload.get("items") if isinstance(payload, dict) else None
     return items if isinstance(items, dict) else {}
+
+
+def _evidence_gate_decision(
+    strategy_key: str,
+    performance,
+    params: dict[str, Any],
+) -> dict[str, str] | None:
+    gates = params.get("evidence_gated_strategies")
+    if not isinstance(gates, dict):
+        return None
+    raw_gate = gates.get(strategy_key)
+    if not isinstance(raw_gate, dict):
+        return None
+    min_filled = int(raw_gate.get("min_filled_signals") or 0)
+    filled = int(getattr(performance, "filled_signals", 0) or 0)
+    if filled >= min_filled:
+        return None
+    status = str(raw_gate.get("status") or "watch")
+    if status not in {"watch", "paused"}:
+        status = "watch"
+    reason = str(raw_gate.get("reason") or "").strip()
+    if not reason:
+        reason = f"真实成交样本 {filled}/{min_filled}，暂不放大为强买。"
+    return {"status": status, "reason": reason}
+
+
+def _deep_merge(defaults: dict[str, Any], overrides: dict[str, Any]) -> dict[str, Any]:
+    result: dict[str, Any] = {}
+    for key, default_value in defaults.items():
+        override_value = overrides.get(key) if isinstance(overrides, dict) else None
+        if isinstance(default_value, dict) and isinstance(override_value, dict):
+            result[key] = _deep_merge(default_value, override_value)
+        elif isinstance(overrides, dict) and key in overrides:
+            result[key] = override_value
+        else:
+            result[key] = default_value
+    if isinstance(overrides, dict):
+        for key, value in overrides.items():
+            if key not in result:
+                result[key] = value
+    return result

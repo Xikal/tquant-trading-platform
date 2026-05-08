@@ -10,6 +10,7 @@ from app.services.paper.fees import FeeDetail
 from app.services.paper.matching import MatchResult, OrderSide, OrderType, PaperMatchingEngine
 from app.services.paper.money import to_decimal
 from app.services.paper.symbols import a_share_price_limit_pct
+from app.services.quant.runtime_parameters import get_backtest_execution
 
 
 class ExecutionModel(str, Enum):
@@ -79,6 +80,7 @@ class BacktestBroker:
             is_suspended=request.bar.is_suspended,
             up_limit=_limit_price(request.bar, direction="up") if _is_limit_up(request.bar) else None,
             down_limit=_limit_price(request.bar, direction="down") if _is_limit_down(request.bar) else None,
+            traded_amount=to_decimal(request.bar.amount or 0),
         )
         if match.result != MatchResult.FILLED or match.avg_fill_price is None or match.fee_detail is None:
             return _rejected(request, match.reject_reason or "回测委托未成交。")
@@ -130,24 +132,50 @@ def _apply_market_impact(request: ExecutionRequest, selected_price: float) -> fl
     impact rather than silently treating the order as frictionless.
     """
 
+    params = get_backtest_execution()
     daily_amount = float(request.bar.amount or 0)
     order_amount = float(max(request.quantity, 0)) * float(selected_price)
     if order_amount <= 0:
         return selected_price
     if daily_amount <= 0:
-        impact = 0.008
+        impact = _float_param(params, "market_impact_no_turnover_rate", 0.008)
     else:
         participation = order_amount / max(daily_amount, 1.0)
-        if participation >= 0.10:
-            impact = 0.008
-        elif participation >= 0.05:
-            impact = 0.003
-        elif participation >= 0.02:
-            impact = 0.0015
-        else:
-            impact = 0.0008
+        impact = _market_impact_rate(participation, params)
     multiplier = 1.0 + impact if request.side == "buy" else 1.0 - impact
     return round(selected_price * multiplier, 4)
+
+
+def _market_impact_rate(participation: float, params: dict[str, object]) -> float:
+    thresholds = _float_list(params.get("market_impact_participation_thresholds"), [0.02, 0.05, 0.10])
+    rates = _float_list(params.get("market_impact_rates"), [0.0008, 0.0015, 0.003, 0.008])
+    thresholds = sorted(value for value in thresholds if value >= 0)
+    if not thresholds or not rates:
+        return 0.0008
+    ordered_rates = rates + [rates[-1]] * max(0, len(thresholds) + 1 - len(rates))
+    for index, threshold in enumerate(thresholds):
+        if participation < threshold:
+            return ordered_rates[index]
+    return ordered_rates[len(thresholds)]
+
+
+def _float_list(value: object, fallback: list[float]) -> list[float]:
+    if not isinstance(value, list):
+        return fallback
+    result: list[float] = []
+    for item in value:
+        try:
+            result.append(float(item))
+        except (TypeError, ValueError):
+            continue
+    return result or fallback
+
+
+def _float_param(params: dict[str, object], key: str, fallback: float) -> float:
+    try:
+        return float(params.get(key, fallback))
+    except (TypeError, ValueError):
+        return fallback
 
 
 def _entry_zone_price(bar: DailyBar, signal: BacktestSignal | None) -> float | None:

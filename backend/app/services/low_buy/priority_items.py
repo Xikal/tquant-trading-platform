@@ -87,6 +87,7 @@ def _build_priority_item(
     recommendation_days_by_title_map = recommendation_days_by_title(row.hits)
     recommendation_days = max(recommendation_days_by_title_map.values(), default=candidate.recommendation_days)
     industry_rotation_bonus = builder._sector_rotation_bonus(candidate, market_context)
+    kelly_half_position_pct = round(float(getattr(primary_hit.performance, "kelly_half_position_pct", 0.0) or 0.0), 2)
     return LowBuyPriorityBoardItemOut(
         symbol=candidate.symbol,
         name=candidate.name,
@@ -135,6 +136,12 @@ def _build_priority_item(
         execution_quality_score=candidate.execution_quality_score,
         execution_quality_text=candidate.execution_quality_text,
         strategy_performance_text=strategy_performance_text(primary_hit.performance),
+        kelly_half_position_pct=kelly_half_position_pct,
+        kelly_position_text=_kelly_position_text(kelly_half_position_pct),
+        atr_pct=candidate.atr_pct,
+        volatility_position_pct=candidate.volatility_position_pct,
+        final_position_cap_pct=candidate.final_position_cap_pct,
+        position_cap_reason=candidate.position_cap_reason,
         next_day_event_plan=candidate.next_day_event_plan,
         entry_zone_low=candidate.entry_zone_low,
         entry_zone_high=candidate.entry_zone_high,
@@ -149,3 +156,9 @@ def _build_priority_item(
             recommendation_days_by_title=recommendation_days_by_title_map,
         ),
     )
+
+
+def _kelly_position_text(kelly_half_position_pct: float) -> str:
+    if kelly_half_position_pct <= 0:
+        return ""
+    return f"半凯利建议仓位上限 {kelly_half_position_pct:.1f}%"

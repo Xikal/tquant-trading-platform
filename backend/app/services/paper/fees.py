@@ -5,6 +5,12 @@ from decimal import Decimal, ROUND_HALF_UP
 
 from app.services.paper.symbols import is_etf
 
+STOCK_COMMISSION_RATE = Decimal("0.000085")
+STOCK_MIN_COMMISSION = Decimal("5.00")
+ETF_COMMISSION_RATE = Decimal("0.00005")
+STOCK_STAMP_TAX_RATE = Decimal("0.0005")
+STOCK_TRANSFER_FEE_RATE = Decimal("0.00001")
+
 
 @dataclass(frozen=True)
 class FeeDetail:
@@ -18,9 +24,10 @@ class FeeDetail:
 
 def calculate_fee(*, symbol: str, side: str, price: Decimal, quantity: int) -> FeeDetail:
     gross = _money(price * Decimal(quantity))
-    commission = max(_money(gross * Decimal("0.00025")), Decimal("5.00"))
-    stamp_tax = _money(gross * Decimal("0.0005")) if side == "sell" and not is_etf(symbol) else Decimal("0.00")
-    transfer_fee = Decimal("0.00") if is_etf(symbol) else _money(gross * Decimal("0.00001"))
+    etf = is_etf(symbol)
+    commission = _commission(gross, etf=etf)
+    stamp_tax = _money(gross * STOCK_STAMP_TAX_RATE) if side == "sell" and not etf else Decimal("0.00")
+    transfer_fee = Decimal("0.00") if etf else _money(gross * STOCK_TRANSFER_FEE_RATE)
     total = _money(commission + stamp_tax + transfer_fee)
     net = _money(gross + total) if side == "buy" else _money(gross - total)
     return FeeDetail(
@@ -42,6 +49,12 @@ def commission_warning_text(*, gross_amount: Decimal, total_fee: Decimal) -> str
     if fee_rate >= Decimal("0.005"):
         return "手续费占比偏高，建议合并小额委托。"
     return ""
+
+
+def _commission(gross: Decimal, *, etf: bool) -> Decimal:
+    if etf:
+        return _money(gross * ETF_COMMISSION_RATE)
+    return max(_money(gross * STOCK_COMMISSION_RATE), STOCK_MIN_COMMISSION)
 
 
 def _money(value: Decimal) -> Decimal:

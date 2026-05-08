@@ -11,7 +11,7 @@ import {
   type StrategyPreset,
 } from "../../api/strategies";
 
-export type StrategyHubTab = "quick" | "signals" | "optimize" | "validate" | "compare" | "history";
+export type StrategyHubTab = "quick" | "signals" | "optimize" | "validate" | "compare" | "capacity" | "history";
 
 export interface StrategyQuickForm {
   name: string;
@@ -257,6 +257,7 @@ function initialTabFromLocation(): StrategyHubTab {
   if (raw === "optimize") return "optimize";
   if (raw === "validate") return "validate";
   if (raw === "compare") return "compare";
+  if (raw === "capacity" || raw === "ml") return "capacity";
   if (raw === "history" || raw === "backtest") return "history";
   return "quick";
 }

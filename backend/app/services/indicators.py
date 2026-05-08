@@ -38,20 +38,35 @@ def exponential_moving_average(values: list[float], window: int) -> float:
 
 
 def macd(values: list[float]) -> tuple[float, float, float]:
+    dif, dea, hist, _valid = macd_with_validity(values)
+    return dif, dea, hist
+
+
+def macd_with_validity(values: list[float]) -> tuple[float, float, float, bool]:
     if len(values) < 35:
-        return (0.0, 0.0, 0.0)
-    ema12_series = _ema_series(values, 12)
-    ema26_series = _ema_series(values, 26)
+        return (0.0, 0.0, 0.0, False)
+    if any(not isinstance(value, Real) or not isfinite(float(value)) for value in values):
+        return (0.0, 0.0, 0.0, False)
+    sanitized = [float(value) for value in values]
+    ema12_series = _ema_series(sanitized, 12)
+    ema26_series = _ema_series(sanitized, 26)
     dif_series = [
         fast - slow
         for fast, slow in zip(ema12_series, ema26_series)
         if fast is not None and slow is not None
     ]
     if len(dif_series) < 9:
-        return (0.0, 0.0, 0.0)
+        return (0.0, 0.0, 0.0, False)
     dea = exponential_moving_average(dif_series, 9)
     dif = round(dif_series[-1], 4)
     hist = round((dif - dea) * 2, 4)
+    return dif, dea, hist, True
+
+
+def macd_or_none(values: list[float]) -> tuple[float, float, float] | None:
+    dif, dea, hist, valid = macd_with_validity(values)
+    if not valid:
+        return None
     return dif, dea, hist
 
 

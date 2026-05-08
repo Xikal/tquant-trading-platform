@@ -466,6 +466,7 @@ def _indicators(distribution_risk_score: float) -> IndicatorSnapshot:
         macd_dif=0.1,
         macd_dea=0.08,
         macd_hist=-0.02,
+        macd_valid=True,
         vwap_value=10.05,
         atr14=0.18,
         volume_ratio_value=1.4,

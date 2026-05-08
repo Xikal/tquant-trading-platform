@@ -181,11 +181,17 @@ function estimateCommissionWarning(draft: PaperOrderDraft): string {
   const price = Number(draft.price || draft.current_price || 0);
   const amount = quantity * price;
   if (!Number.isFinite(amount) || amount <= 0) return "";
-  const commission = Math.max(amount * 0.00025, 5);
-  const stampTax = draft.side === "sell" ? amount * 0.0005 : 0;
-  const transferFee = amount * 0.00001;
+  const etf = isEtfSymbol(draft.symbol);
+  const commission = etf ? amount * 0.00005 : Math.max(amount * 0.000085, 5);
+  const stampTax = draft.side === "sell" && !etf ? amount * 0.0005 : 0;
+  const transferFee = etf ? 0 : amount * 0.00001;
   const rate = (commission + stampTax + transferFee) / amount;
   if (rate >= 0.01) return "手续费占比超过 1%，单笔金额偏小，容易吞噬收益。";
   if (rate >= 0.005) return "手续费占比超过 0.5%，建议合并小额委托。";
   return "";
+}
+
+function isEtfSymbol(symbol: string): boolean {
+  const normalized = symbol.trim();
+  return /^(15|16|51|56|58)\d{4}$/.test(normalized);
 }

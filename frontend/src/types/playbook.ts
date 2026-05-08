@@ -190,6 +190,10 @@ export interface LowBuyCandidate {
   industry_tier_text?: string;
   industry_position_multiplier?: number;
   position_breakdown_text?: string;
+  atr_pct?: number;
+  volatility_position_pct?: number;
+  final_position_cap_pct?: number;
+  position_cap_reason?: string;
   hard_risk?: LowBuyHardRisk;
   next_day_event_plan?: LowBuyNextDayEventPlan;
   exit_plan?: LowBuyExitPlan;
@@ -430,6 +434,12 @@ export interface LowBuyPriorityBoardItem {
   execution_quality_score?: number;
   execution_quality_text?: string;
   strategy_performance_text?: string;
+  kelly_half_position_pct?: number;
+  kelly_position_text?: string;
+  atr_pct?: number;
+  volatility_position_pct?: number;
+  final_position_cap_pct?: number;
+  position_cap_reason?: string;
   next_day_event_plan?: LowBuyNextDayEventPlan;
   entry_zone_low: number;
   entry_zone_high: number;

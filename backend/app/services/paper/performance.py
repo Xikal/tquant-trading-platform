@@ -152,6 +152,34 @@ class PaperPerformanceService:
             "notes": notes,
         }
 
+    def compute_sector_etf_t0(self, account_id: int) -> dict:
+        records = [
+            item
+            for item in self._filtered_return_records(account_id, None)
+            if item.strategy_key == "sector_etf_t0"
+        ]
+        trades = [
+            item
+            for item in self._trades(account_id)
+            if item.strategy_key == "sector_etf_t0"
+        ]
+        wins = [item.return_pct for item in records if item.return_pct > 0]
+        losses = [item.return_pct for item in records if item.return_pct < 0]
+        gross_gains = sum(wins)
+        gross_losses = abs(sum(losses))
+        return {
+            "simulated_trades": len(trades),
+            "simulated_closed_trades": len(records),
+            "simulated_win_rate_pct": _rate(len(wins), len(records)),
+            "simulated_net_win_rate_pct": _rate(len(wins) - len(losses), len(records)),
+            "simulated_avg_return_pct": round(sum(item.return_pct for item in records) / max(len(records), 1), 3),
+            "simulated_profit_factor": round(gross_gains / gross_losses, 3) if gross_losses > 0 else None,
+            "notes": [
+                "模拟成交绩效只统计 strategy_key=sector_etf_t0 的已闭合卖出收益。",
+                "影子跟踪绩效来自 ETF T+0 机会池观察样本，用于和真实模拟成交对账。",
+            ],
+        }
+
     def sell_return_records(self, account_id: int) -> list[SellReturnRecord]:
         return self._paired_sell_return_records(account_id)
 
