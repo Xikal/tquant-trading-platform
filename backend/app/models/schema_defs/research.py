@@ -90,6 +90,9 @@ class StrategyValidationItem(BaseModel):
 
 class StrategyValidationReport(BaseModel):
     run_id: Optional[int] = None
+    validation_mode: Literal["quick_replay"] = "quick_replay"
+    validation_mode_text: str = "快速验证"
+    engine_note: str = "该接口用于交互式快速回放，不替代正式 Walk-forward 回测验证。"
     generated_at: datetime
     lookback_days: int
     strategy_count: int

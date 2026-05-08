@@ -43,6 +43,14 @@ class MarketProvider(Protocol):
 
     def fetch_market_events(self, symbol: str): ...
 
+    def fetch_stock_instrument_rows(self): ...
+
+    def fetch_etf_instrument_rows(self): ...
+
+    def fetch_industry_constituent_map(self): ...
+
+    def fetch_stock_industry(self, symbol: str): ...
+
 
 class MarketProviderRouter:
     def __init__(self, providers: list[MarketProvider]) -> None:
@@ -101,6 +109,18 @@ class MarketProviderRouter:
 
     def fetch_market_events(self, symbol: str) -> ProviderResult:
         return self._first_usable(lambda provider: provider.fetch_market_events(symbol))
+
+    def fetch_stock_instrument_rows(self) -> ProviderResult:
+        return self._first_usable(lambda provider: provider.fetch_stock_instrument_rows())
+
+    def fetch_etf_instrument_rows(self) -> ProviderResult:
+        return self._first_usable(lambda provider: provider.fetch_etf_instrument_rows())
+
+    def fetch_industry_constituent_map(self) -> ProviderResult:
+        return self._first_usable(lambda provider: provider.fetch_industry_constituent_map())
+
+    def fetch_stock_industry(self, symbol: str) -> ProviderResult:
+        return self._first_usable(lambda provider: provider.fetch_stock_industry(symbol))
 
     def _first_usable(self, call) -> ProviderResult:
         last_result: ProviderResult | None = None

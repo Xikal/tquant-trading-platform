@@ -7,7 +7,6 @@ from app.services.market.shared import (
     InstrumentOut,
     Session,
     _safe_str,
-    ak,
     func,
     guess_market,
     or_,
@@ -23,17 +22,6 @@ _ST_PREFIX_MARKERS = ("退市",)
 class MarketInstrumentMixin:
     def sync_instruments(self, db: Session, kind: str = "all") -> dict[str, int]:
         counters = {"stock": 0, "etf": 0}
-        if ak is None:
-            if kind in {"all", "stock"}:
-                counters["stock"] = self._sync_seed_instruments(db, "stock")
-            if kind in {"all", "etf"}:
-                counters["etf"] = self._sync_seed_instruments(db, "etf")
-            db.commit()
-            if kind in {"all", "stock"} and counters["stock"] == 0:
-                counters["stock"] = self._count_existing_instruments(db, "stock")
-            if kind in {"all", "etf"} and counters["etf"] == 0:
-                counters["etf"] = self._count_existing_instruments(db, "etf")
-            return counters
         if kind in {"all", "stock"}:
             try:
                 counters["stock"] = self._sync_stock_instruments(db)
@@ -82,9 +70,13 @@ class MarketInstrumentMixin:
 
     def _sync_stock_instruments(self, db: Session) -> int:
         industry_by_symbol = self._load_industry_constituent_map()
+        rows_result = self.provider_router.fetch_stock_instrument_rows()
+        rows = rows_result.data or []
+        if not rows:
+            raise RuntimeError(rows_result.message or "stock instrument provider unavailable")
         total = self._upsert_frame(
             db,
-            self._call_akshare(ak.stock_info_a_code_name, purpose="industry").to_dict("records"),
+            rows,
             symbol_keys=("code", "证券代码", "A股代码", "symbol"),
             name_keys=("name", "证券简称", "A股简称", "name"),
             instrument_type="stock",
@@ -93,15 +85,13 @@ class MarketInstrumentMixin:
         return total
 
     def _sync_etf_instruments(self, db: Session) -> int:
+        rows_result = self.provider_router.fetch_etf_instrument_rows()
+        rows = rows_result.data or []
+        if not rows:
+            raise RuntimeError(rows_result.message or "etf instrument provider unavailable")
         return self._upsert_frame(
             db,
-            self._normalize_sina_etf_rows(
-                self._call_akshare(
-                    ak.fund_etf_category_sina,
-                    symbol="ETF基金",
-                    purpose="industry",
-                ).to_dict("records")
-            ),
+            self._normalize_sina_etf_rows(rows),
             symbol_keys=("代码", "symbol"),
             name_keys=("名称", "name"),
             instrument_type="etf",
@@ -250,125 +240,16 @@ class MarketInstrumentMixin:
         return updated
 
     def _load_industry_constituent_map(self) -> dict[str, str]:
-        result = self._load_em_industry_constituent_map()
-        sw_result = self._load_sw_industry_constituent_map()
-        for symbol, industry in sw_result.items():
-            result.setdefault(symbol, industry)
-        return result
-
-    def _load_em_industry_constituent_map(self) -> dict[str, str]:
-        if ak is None:
-            return {}
-        try:
-            industry_frame = self._call_akshare(ak.stock_board_industry_name_em, purpose="industry")
-        except Exception:
-            return {}
-        industry_names = _extract_industry_names(industry_frame.to_dict("records"))
-        result: dict[str, str] = {}
-        for industry in industry_names:
-            try:
-                constituents = self._call_akshare(
-                    ak.stock_board_industry_cons_em,
-                    symbol=industry,
-                    purpose="industry",
-                )
-            except Exception:
-                continue
-            for record in constituents.to_dict("records"):
-                symbol = _extract_first_value(record, ("代码", "股票代码", "code", "symbol"))
-                name = _extract_first_value(record, ("名称", "股票名称", "name", "证券简称"))
-                if not symbol or _is_st_or_delist_name(name):
-                    continue
-                result.setdefault(symbol, industry)
-        return result
-
-    def _load_sw_industry_constituent_map(self) -> dict[str, str]:
-        if ak is None:
-            return {}
-        try:
-            history_frame = self._call_akshare(ak.stock_industry_clf_hist_sw, purpose="industry")
-            category_frame = self._call_akshare(
-                ak.stock_industry_category_cninfo,
-                symbol="申银万国行业分类标准",
-                purpose="industry",
-            )
-        except Exception:
-            return {}
-        category_map = _build_sw_category_map(category_frame.to_dict("records"))
-        latest_by_symbol: dict[str, tuple[str, str, str]] = {}
-        for row in history_frame.to_dict("records"):
-            symbol = _extract_first_value(row, ("symbol", "股票代码", "代码"))
-            industry_code = _extract_first_value(row, ("industry_code", "行业代码", "类目编码"))
-            if not symbol or not industry_code:
-                continue
-            start_date = _extract_first_value(row, ("start_date", "开始日期"))
-            update_time = _extract_first_value(row, ("update_time", "更新时间"))
-            current = latest_by_symbol.get(symbol)
-            marker = (start_date, update_time)
-            if current is None or marker >= (current[1], current[2]):
-                latest_by_symbol[symbol] = (industry_code, start_date, update_time)
-        result: dict[str, str] = {}
-        for symbol, (industry_code, _, _) in latest_by_symbol.items():
-            industry = _resolve_sw_industry_name(industry_code, category_map)
-            if industry:
-                result[symbol] = industry
-        return result
+        result = self.provider_router.fetch_industry_constituent_map()
+        return dict(result.data or {})
 
     def _infer_sector_name(self, symbol: str, name: str, instrument_type: str) -> str | None:
         if instrument_type == "etf":
             return __import__("app.services.market.shared", fromlist=["MarketRuleService"]).MarketRuleService.infer_etf_theme(name)
         if _is_st_or_delist_name(name):
             return None
-        if ak is None:
-            return None
-        try:
-            info_df = self._call_akshare(ak.stock_individual_info_em, symbol=symbol, purpose="industry")
-            industry_values = info_df.loc[info_df["item"] == "行业", "value"].tolist()
-            if industry_values:
-                return str(industry_values[0]).strip()
-        except Exception:
-            return None
-        return None
-
-
-def _extract_industry_names(rows: Iterable[dict[str, object]]) -> list[str]:
-    names: list[str] = []
-    for row in rows:
-        industry = _extract_first_value(row, ("板块名称", "行业", "name", "industry"))
-        if industry and industry not in names:
-            names.append(industry)
-    return names
-
-
-def _extract_first_value(row: dict[str, object], keys: tuple[str, ...]) -> str:
-    for key in keys:
-        value = _safe_str(row.get(key)).strip()
-        if value:
-            return value
-    return ""
-
-
-def _build_sw_category_map(rows: Iterable[dict[str, object]]) -> dict[str, str]:
-    result: dict[str, str] = {}
-    for row in rows:
-        raw_code = _extract_first_value(row, ("类目编码", "code"))
-        name = _extract_first_value(row, ("类目名称", "name"))
-        if not raw_code or not name:
-            continue
-        code = raw_code.removeprefix("S")
-        result[code] = name
-    return result
-
-
-def _resolve_sw_industry_name(industry_code: str, category_map: dict[str, str]) -> str:
-    code = str(industry_code or "").strip().removeprefix("S")
-    if not code:
-        return ""
-    for candidate in (code[:4], code[:6], code[:2], code):
-        name = category_map.get(candidate)
-        if name:
-            return name
-    return ""
+        result = self.provider_router.fetch_stock_industry(symbol)
+        return str(result.data or "").strip() or None
 
 
 def _chunks(items: list[str], *, size: int) -> list[list[str]]:

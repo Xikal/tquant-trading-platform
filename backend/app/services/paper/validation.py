@@ -33,7 +33,7 @@ class StrategyValidationPipeline:
         self,
         payload: StrategyValidationRequest,
         *,
-        run_name: str = "strategy-validation",
+        run_name: str = "strategy-validation-quick-replay",
         extra_params: dict | None = None,
     ) -> StrategyValidationReport:
         trade_dates = DailyHistoryRepository(self.db).fetch_recent_trade_dates(payload.lookback_days)
@@ -42,6 +42,9 @@ class StrategyValidationPipeline:
             for strategy in _unique_strategies(payload.strategies)
         ]
         report = StrategyValidationReport(
+            validation_mode="quick_replay",
+            validation_mode_text="快速验证",
+            engine_note="该结果基于已物化低吸信号和简化纸面撮合回放，用于快速筛查；正式上线验收请使用回测系统的 Walk-forward/样本外验证。",
             generated_at=beijing_now().replace(tzinfo=None),
             lookback_days=payload.lookback_days,
             strategy_count=len(items),
@@ -357,9 +360,9 @@ def _unique_strategies(strategies: list[str]) -> list[str]:
 
 def _summary_text(items: list[StrategyValidationItem]) -> str:
     if not items:
-        return "暂无可验证策略。"
+        return "暂无可快速验证策略。"
     best = max(items, key=lambda item: (item.avg_return_pct, item.net_win_rate_pct, item.filled_signals))
-    return f"已完成 {len(items)} 个策略验证，当前样本内表现较好的是 {best.strategy_key}。"
+    return f"已完成 {len(items)} 个策略快速验证，当前样本内表现较好的是 {best.strategy_key}。正式上线仍需参考 Walk-forward 回测。"
 
 
 def _policy_recommendations(items: list[StrategyValidationItem]) -> dict[str, str]:
@@ -380,5 +383,5 @@ def _policy_recommendation(item: StrategyValidationItem) -> str:
 
 def _comparison_summary(items: list[StrategyValidationItem]) -> str:
     if not items:
-        return "暂无可对比策略。"
-    return f"策略对比已按平均收益和净胜率排序，当前排名第一：{items[0].strategy_key}。"
+        return "暂无可快速对比策略。"
+    return f"快速对比已按平均收益和净胜率排序，当前排名第一：{items[0].strategy_key}。正式结论以回测系统验证为准。"

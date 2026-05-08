@@ -114,49 +114,10 @@ class MarketQuoteMixin:
         return result
 
     def _fetch_quote_from_spot_snapshot(self, symbol: str) -> QuoteSnapshot:
-        instrument_type = "etf" if __import__("app.services.market.shared", fromlist=["MarketRuleService"]).MarketRuleService.looks_like_etf(symbol) else "stock"
-        snapshot_map = self._load_spot_snapshot_map(instrument_type)
-        snapshot = snapshot_map.get(symbol)
-        if snapshot is None:
-            raise DataSourceError(f"{instrument_type} 实时现货快照中不存在 {symbol}。")
-        return snapshot
-
-    def _load_spot_snapshot_map(self, instrument_type: str) -> dict[str, QuoteSnapshot]:
-        cached = self._get_spot_snapshot_cache(instrument_type)
-        if cached is not None:
-            return cached
-        ak = __import__("app.services.market.shared", fromlist=["ak"]).ak
-        if ak is None:
-            raise DataSourceError("未安装 akshare，无法使用现货快照回退。")
-        frame = self._call_akshare(
-            ak.fund_etf_spot_em if instrument_type == "etf" else ak.stock_zh_a_spot,
-            purpose="spot_snapshot",
-        )
-        if frame.empty:
-            raise DataSourceError(f"{instrument_type} 实时现货快照返回空结果。")
-        result: dict[str, QuoteSnapshot] = {}
-        for row in frame.to_dict("records"):
-            symbol = _safe_str(row.get("代码") or row.get("symbol")).strip()
-            if not symbol:
-                continue
-            if symbol.startswith(("sh", "sz", "bj")):
-                symbol = symbol[-6:]
-            name = _safe_str(row.get("名称") or row.get("name")) or symbol
-            market = guess_market(symbol)
-            latest_price = _safe_float(row.get("最新价") or row.get("最新"))
-            prev_close = _safe_float(row.get("昨收") or row.get("昨收价") or row.get("昨收盘"))
-            open_price = _safe_float(row.get("今开") or row.get("开盘价") or row.get("开盘"))
-            high_price = _safe_float(row.get("最高") or row.get("最高价"))
-            low_price = _safe_float(row.get("最低") or row.get("最低价"))
-            change_amount = _safe_float(row.get("涨跌额"))
-            change_pct = _safe_float(row.get("涨跌幅"))
-            if not change_amount and latest_price and prev_close:
-                change_amount = round(latest_price - prev_close, 4)
-            if not change_pct and change_amount and prev_close:
-                change_pct = round((change_amount / prev_close) * 100, 4)
-            result[symbol] = QuoteSnapshot(symbol=symbol, name=name, market=market, instrument_type=instrument_type, last_price=latest_price, change_pct=change_pct, change_amount=change_amount, open_price=open_price, high_price=high_price, low_price=low_price, prev_close=prev_close, volume=_safe_float(row.get("成交量") or row.get("成交量(手)")), amount=_safe_float(row.get("成交额")), turnover_rate=None, volume_ratio=None, timestamp=self._normalize_quote_timestamp(_safe_str(row.get("时间戳") or row.get("更新时间") or row.get("数据日期"))))
-        self._set_spot_snapshot_cache(instrument_type, result)
-        return result
+        result = self.provider_router.fetch_quote(symbol)
+        if result.usable and result.data is not None:
+            return result.data
+        raise DataSourceError(result.message or f"Provider Router 未返回 {symbol} 的现货快照。")
 
     def _fetch_eastmoney_realtime_quote(self, symbol: str) -> QuoteSnapshot:
         snapshots = self._fetch_eastmoney_realtime_quotes_batch([symbol])

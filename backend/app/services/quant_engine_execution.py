@@ -13,6 +13,7 @@ from app.services.quant_engine_market import (
     market_profit_threshold_shift,
     market_risk_reward_shift,
 )
+from app.services.quant.runtime_parameters import get_position_t_decision
 from app.services.shared.trading_costs import estimate_round_trip_cost
 from app.services.shared.feature_flags import feature_enabled
 from app.services.shared.trading_elasticity import get_trading_elasticity
@@ -38,23 +39,114 @@ def _asset_bucket(quote: QuoteSnapshot, sector: SectorSnapshot | None = None) ->
     return "thematic_stock"
 
 
+def _decision_params() -> dict[str, Any]:
+    try:
+        values = get_position_t_decision()
+    except Exception:
+        values = {}
+    return values if isinstance(values, dict) else {}
+
+
+def _execution_cost_params() -> dict[str, Any]:
+    values = _decision_params().get("execution_costs", {})
+    return values if isinstance(values, dict) else {}
+
+
+def _direction_gate_params(name: str) -> dict[str, Any]:
+    values = _decision_params().get("direction_gates", {})
+    if not isinstance(values, dict):
+        return {}
+    section = values.get(name, {})
+    return section if isinstance(section, dict) else {}
+
+
+def _param_float(params: dict[str, Any], key: str, default: float) -> float:
+    try:
+        return float(params.get(key, default))
+    except (TypeError, ValueError):
+        return default
+
+
+def _dict_param(params: dict[str, Any], key: str) -> dict[str, Any]:
+    value = params.get(key, {})
+    return value if isinstance(value, dict) else {}
+
+
+def _list_param(params: dict[str, Any], key: str) -> list[str]:
+    value = params.get(key, [])
+    return [str(item) for item in value] if isinstance(value, list) else []
+
+
+def _bucket_state_params(params: dict[str, Any], asset_bucket: str, state: str) -> dict[str, float]:
+    result = dict(_dict_param(params, "default"))
+    overrides = _dict_param(params, "state_overrides")
+    specific = overrides.get(f"{asset_bucket}.{state}", {})
+    if isinstance(specific, dict):
+        result.update(specific)
+    return result
+
+
+def _bucket_float(mapping: dict[str, Any], asset_bucket: str, default: float) -> float:
+    try:
+        return float(mapping.get(asset_bucket, mapping.get("thematic_stock", default)))
+    except (TypeError, ValueError):
+        return default
+
+
+def _tier_bonus(tiers: Any, *, value: float, value_key: str, bonus_key: str) -> float:
+    if not isinstance(tiers, list):
+        return 0.0
+    valid_tiers = [item for item in tiers if isinstance(item, dict)]
+    valid_tiers.sort(key=lambda item: _param_float(item, value_key, 0.0), reverse=True)
+    for item in valid_tiers:
+        if value >= _param_float(item, value_key, 0.0):
+            return _param_float(item, bonus_key, 0.0)
+    return 0.0
+
+
+def _range_bonus(tiers: Any, *, value: float, min_key: str, max_key: str, bonus_key: str) -> float:
+    if not isinstance(tiers, list):
+        return 0.0
+    for item in tiers:
+        if not isinstance(item, dict):
+            continue
+        lower = _param_float(item, min_key, 0.0)
+        upper = _param_float(item, max_key, 0.0)
+        if lower < value <= upper:
+            return _param_float(item, bonus_key, 0.0)
+    return 0.0
+
+
+def _liquidity_bonus(params: dict[str, Any], amount: float, bonus_key: str) -> float:
+    tiers = params.get("liquidity_bonus_tiers", [])
+    if not isinstance(tiers, list):
+        return 0.0
+    valid_tiers = [item for item in tiers if isinstance(item, dict)]
+    valid_tiers.sort(key=lambda item: _param_float(item, "min_amount", 0.0), reverse=True)
+    for item in valid_tiers:
+        if amount >= _param_float(item, "min_amount", 0.0):
+            return _param_float(item, bonus_key, 0.0)
+    return 0.0
+
+
 def estimate_slippage_bps(
     quote: QuoteSnapshot,
     tradability_score: float,
     risk_level: str,
     risk_config: dict[str, Any],
 ) -> float:
+    params = _execution_cost_params()
     baseline = (
         config_float(risk_config, "strategy_slippage_etf_bps", 4.0)
         if quote.instrument_type == "etf"
         else config_float(risk_config, "strategy_slippage_stock_bps", 7.0)
     )
-    liquidity_penalty = max(0.0, 60 - tradability_score) * 0.18
+    liquidity_penalty = max(0.0, _param_float(params, "slippage_liquidity_score_floor", 60.0) - tradability_score) * _param_float(params, "slippage_liquidity_penalty_weight", 0.18)
     if risk_level == "medium":
-        baseline += 1.5
+        baseline += _param_float(params, "slippage_medium_risk_add_bps", 1.5)
     elif risk_level == "high":
-        baseline += 3.5
-    return round(max(2.0, min(25.0, baseline + liquidity_penalty)), 2)
+        baseline += _param_float(params, "slippage_high_risk_add_bps", 3.5)
+    return round(max(_param_float(params, "slippage_min_bps", 2.0), min(_param_float(params, "slippage_max_bps", 25.0), baseline + liquidity_penalty)), 2)
 
 
 def min_profit_pct_for_quote(
@@ -64,47 +156,39 @@ def min_profit_pct_for_quote(
     amplitude: float,
     market_regime: MarketRegimeSnapshot | None = None,
 ) -> float:
+    params = _execution_cost_params()
     legacy_default = config_float(config, "strategy_min_profit_pct", 3.0)
-    tradability_bonus = 0.0
-    amplitude_bonus = 0.0
+    tradability_bonus = _tier_bonus(
+        params.get("tradability_bonus_tiers"),
+        value=tradability_score,
+        value_key="min_score",
+        bonus_key="bonus_pct",
+    )
+    amplitude_bonus = _range_bonus(
+        params.get("amplitude_bonus_tiers"),
+        value=amplitude,
+        min_key="min_pct",
+        max_key="max_pct",
+        bonus_key="bonus_pct",
+    )
     liquidity_bonus = 0.0
-    if tradability_score >= 76:
-        tradability_bonus = 0.45
-    elif tradability_score >= 64:
-        tradability_bonus = 0.28
-    elif tradability_score >= 56:
-        tradability_bonus = 0.16
-    if 0 < amplitude <= 2.0:
-        amplitude_bonus = 0.2
-    elif 0 < amplitude <= 2.8:
-        amplitude_bonus = 0.12
     if quote.instrument_type == "etf":
         base = config_float(config, "strategy_min_profit_etf_pct", max(1.5, legacy_default))
-        if quote.amount >= 800_000_000:
-            liquidity_bonus = 0.25
-        elif quote.amount >= 400_000_000:
-            liquidity_bonus = 0.18
-        elif quote.amount >= 250_000_000:
-            liquidity_bonus = 0.12
+        liquidity_bonus = _liquidity_bonus(params, quote.amount, "etf_bonus_pct")
         adjusted = base - tradability_bonus - amplitude_bonus - liquidity_bonus + market_profit_threshold_shift(
             market_regime,
             instrument_type=quote.instrument_type,
         )
-        return round(max(0.6, adjusted), 2)
+        return round(max(_param_float(params, "min_profit_floor_etf_pct", 0.6), adjusted), 2)
     base = config_float(config, "strategy_min_profit_stock_pct", legacy_default)
-    if quote.amount >= 150_000_000:
-        tradability_bonus += 0.25
-    if quote.amount >= 800_000_000:
-        liquidity_bonus = 0.38
-    elif quote.amount >= 400_000_000:
-        liquidity_bonus = 0.25
-    elif quote.amount >= 250_000_000:
-        liquidity_bonus = 0.12
+    if quote.amount >= _param_float(params, "stock_amount_bonus_threshold", 150_000_000.0):
+        tradability_bonus += _param_float(params, "stock_amount_bonus_pct", 0.25)
+    liquidity_bonus = _liquidity_bonus(params, quote.amount, "stock_bonus_pct")
     adjusted = base - tradability_bonus - amplitude_bonus - liquidity_bonus + market_profit_threshold_shift(
         market_regime,
         instrument_type=quote.instrument_type,
     )
-    return round(max(1.5, adjusted), 2)
+    return round(max(_param_float(params, "min_profit_floor_stock_pct", 1.5), adjusted), 2)
 
 
 def light_profit_pct_for_quote(
@@ -115,13 +199,19 @@ def light_profit_pct_for_quote(
     """Lower gross edge used only for small-size light execution signals."""
 
     asset_bucket = _asset_bucket(quote, sector)
-    base = {"etf": 0.48, "weight_stock": 0.86}.get(asset_bucket, 1.12)
+    params = _execution_cost_params()
+    base_map = _dict_param(params, "light_profit_base_pct")
+    floor_map = _dict_param(params, "light_profit_floor_pct")
+    positive_discount_map = _dict_param(params, "light_profit_positive_state_discount_pct")
+    weak_add_map = _dict_param(params, "light_profit_weak_state_add_pct")
+    base = float(base_map.get(asset_bucket, base_map.get("thematic_stock", 1.12)) or 1.12)
     state = market_regime.state if market_regime is not None else "low_volume_wait"
     if state in {"broad_rally", "repair"}:
-        base -= 0.08 if asset_bucket == "etf" else 0.05
+        base -= float(positive_discount_map.get(asset_bucket, positive_discount_map.get("thematic_stock", 0.05)) or 0.05)
     elif state in {"fast_rotation", "high_flyer_retreat", "risk_release"}:
-        base += 0.08 if asset_bucket == "etf" else 0.15
-    return round(max(0.38 if asset_bucket == "etf" else 0.72, base), 2)
+        base += float(weak_add_map.get(asset_bucket, weak_add_map.get("thematic_stock", 0.15)) or 0.15)
+    floor = float(floor_map.get(asset_bucket, floor_map.get("thematic_stock", 0.72)) or 0.72)
+    return round(max(floor, base), 2)
 
 
 def net_profit_floor_pct_for_quote(
@@ -132,11 +222,16 @@ def net_profit_floor_pct_for_quote(
     """Minimum fee-adjusted edge required before a signal is executable."""
 
     asset_bucket = _asset_bucket(quote, sector)
-    if asset_bucket == "etf":
-        return 0.25
-    if asset_bucket == "weight_stock":
-        return 0.45 if action == "negative_t" else 0.50
-    return 0.80 if action == "negative_t" else 0.90
+    params = _execution_cost_params()
+    floor_map = _dict_param(params, "net_profit_floor_pct")
+    bucket_values = floor_map.get(asset_bucket) if isinstance(floor_map.get(asset_bucket), dict) else {}
+    if not isinstance(bucket_values, dict):
+        bucket_values = {}
+    default_bucket = {"etf": 0.25, "weight_stock": 0.45 if action == "negative_t" else 0.50}.get(asset_bucket, 0.80 if action == "negative_t" else 0.90)
+    try:
+        return float(bucket_values.get(action, default_bucket))
+    except (TypeError, ValueError):
+        return float(default_bucket)
 
 
 def positive_direction_gate(
@@ -152,61 +247,14 @@ def positive_direction_gate(
     intraday_structure: str = "",
 ) -> tuple[bool, str]:
     asset_bucket = _asset_bucket(quote, sector)
-    price_extension_limit = 1.035
-    weak_vwap_limit = 0.992
-    slope_floor = -0.26
-    weak_sector_floor = 44.0
-    weak_buy_pressure_floor = 44.0
     state = market_regime.state if market_regime is not None else "low_volume_wait"
-    if asset_bucket == "etf" and state == "weight_support":
-        price_extension_limit = 1.042
-        weak_vwap_limit = 0.989
-        slope_floor = -0.34
-    elif asset_bucket == "etf" and state == "weight_support_active":
-        price_extension_limit = 1.038
-        weak_vwap_limit = 0.991
-        slope_floor = -0.30
-    elif asset_bucket == "weight_stock" and state == "weight_support":
-        price_extension_limit = 1.040
-        weak_vwap_limit = 0.990
-        slope_floor = -0.32
-        weak_sector_floor = 38.0
-        weak_buy_pressure_floor = 40.0
-    elif asset_bucket == "weight_stock" and state == "weight_support_active":
-        price_extension_limit = 1.037
-        weak_vwap_limit = 0.991
-        slope_floor = -0.28
-        weak_sector_floor = 40.0
-        weak_buy_pressure_floor = 41.0
-    elif asset_bucket == "thematic_stock" and state == "weight_support":
-        price_extension_limit = 1.029
-        weak_vwap_limit = 0.995
-        slope_floor = -0.16
-        weak_sector_floor = 48.0
-        weak_buy_pressure_floor = 48.0
-    elif asset_bucket == "thematic_stock" and state == "weight_support_active":
-        price_extension_limit = 1.032
-        weak_vwap_limit = 0.993
-        weak_sector_floor = 42.0
-        weak_buy_pressure_floor = 42.0
-    elif asset_bucket == "thematic_stock" and state == "fast_rotation":
-        price_extension_limit = 1.028
-        weak_vwap_limit = 0.995
-        slope_floor = -0.08
-        weak_sector_floor = 50.0
-        weak_buy_pressure_floor = 50.0
-    if state in {"high_flyer_retreat", "risk_release"} and asset_bucket != "etf":
-        if asset_bucket == "weight_stock":
-            price_extension_limit = 1.032
-            weak_vwap_limit = 0.994
-            weak_sector_floor = 42.0
-            weak_buy_pressure_floor = 44.0
-        else:
-            price_extension_limit = 1.026
-            weak_vwap_limit = 0.996
-            slope_floor = -0.10
-            weak_sector_floor = 48.0
-            weak_buy_pressure_floor = 48.0
+    params = _direction_gate_params("positive")
+    gate = _bucket_state_params(params, asset_bucket, state)
+    price_extension_limit = _param_float(gate, "price_extension_limit", 1.035)
+    weak_vwap_limit = _param_float(gate, "weak_vwap_limit", 0.992)
+    slope_floor = _param_float(gate, "slope_floor", -0.26)
+    weak_sector_floor = _param_float(gate, "weak_sector_floor", 44.0)
+    weak_buy_pressure_floor = _param_float(gate, "weak_buy_pressure_floor", 44.0)
     distribution_reason = _positive_distribution_block(
         asset_bucket=asset_bucket,
         state=state,
@@ -221,24 +269,26 @@ def positive_direction_gate(
         microstructure=microstructure,
     ):
         return False, "题材股处在退潮/快速轮动环境，必须等板块和买盘同时转强后再考虑先买后卖。"
-    if intraday_structure != "pullback_acceptance":
+    if intraday_structure != str(params.get("required_structure") or "pullback_acceptance"):
         return False, "先买后卖只做回落后有人接盘：必须先靠近分时均价线或5日线，再重新站回分时均价线，且短线低点抬高、回落时成交量缩小。"
-    if quote.last_price < vwap_value * 1.001:
+    if quote.last_price < vwap_value * _param_float(params, "reclaim_vwap_multiplier", 1.001):
         return False, "需要重新站回分时均价线后再考虑先买后卖。"
     if quote.last_price > ma5 * price_extension_limit:
         return False, "价格离5日线已经偏远，不建议追着买。"
-    if quote.last_price < ma20 * 0.992:
+    if quote.last_price < ma20 * _param_float(params, "ma20_floor_multiplier", 0.992):
         return False, "价格已经跌到20日线下方，当前不适合先买后卖。"
     if slope10 < slope_floor:
         return False, "短线趋势转弱，先买后卖的成功条件不足。"
     weak_sector = sector.alignment_score < weak_sector_floor
     if asset_bucket == "weight_stock":
-        weak_sector = weak_sector and state not in {"weight_support", "weight_support_active"}
+        weak_sector = weak_sector and state not in set(
+            _list_param(params, "weight_stock_support_states") or ["weight_support", "weight_support_active"]
+        )
     weak_buy_pressure = microstructure.available and microstructure.buy_pressure < weak_buy_pressure_floor
     weak_vwap = quote.last_price < vwap_value * weak_vwap_limit
     if weak_sector and weak_buy_pressure:
         return False, "板块联动和买盘承接同时偏弱，先买后卖成功率不足。"
-    if weak_vwap and slope10 < -0.12:
+    if weak_vwap and slope10 < _param_float(params, "weak_vwap_slope_floor", -0.12):
         return False, "价格仍弱于分时均价线，先等回到均价附近再考虑先买后卖。"
     return True, ""
 
@@ -483,19 +533,25 @@ def _negative_buyback_room_allowed(
 ) -> tuple[bool, str]:
     if quote.last_price <= 0 or ma5 <= 0 or vwap_value <= 0:
         return False, "缺少有效的分时均价线或5日线参考位，不能先卖。"
+    params = _direction_gate_params("negative_buyback_room")
     buyback_anchor = _negative_buyback_anchor(ma5=ma5, vwap_value=vwap_value)
     distance_to_reference_pct = (quote.last_price - buyback_anchor) / max(quote.last_price, 0.01) * 100
-    min_distance = {"etf": 0.35, "weight_stock": 0.55}.get(asset_bucket, 0.75)
+    min_distance = _bucket_float(_dict_param(params, "min_distance_pct"), asset_bucket, 0.75)
     if distribution_bias:
-        min_distance *= 0.75
+        min_distance *= _param_float(params, "distribution_bias_multiplier", 0.75)
     if distance_to_reference_pct < min_distance:
         return False, "卖出后回落接回空间不足，当前价距离分时均价线或5日线太近。"
-    near_intraday_high = quote.high_price > 0 and quote.last_price >= quote.high_price * (0.982 if distribution_bias else 0.988)
+    near_multiplier = _param_float(
+        params,
+        "near_high_distribution_multiplier" if distribution_bias else "near_high_multiplier",
+        0.982 if distribution_bias else 0.988,
+    )
+    near_intraday_high = quote.high_price > 0 and quote.last_price >= quote.high_price * near_multiplier
     if not near_intraday_high:
         return False, "需要在分时高位附近处理，当前位置不是冲高变弱区。"
-    estimated_buyback = buyback_anchor * 0.998
-    round_trip_cost = {"etf": 0.12, "weight_stock": 0.22}.get(asset_bucket, 0.28)
-    min_net_room = {"etf": 0.28, "weight_stock": 0.42}.get(asset_bucket, 0.55)
+    estimated_buyback = buyback_anchor * _param_float(params, "estimated_buyback_multiplier", 0.998)
+    round_trip_cost = _bucket_float(_dict_param(params, "round_trip_cost_pct"), asset_bucket, 0.28)
+    min_net_room = _bucket_float(_dict_param(params, "min_net_room_pct"), asset_bucket, 0.55)
     net_room = (quote.last_price - estimated_buyback) / max(quote.last_price, 0.01) * 100 - round_trip_cost
     if net_room < min_net_room:
         return False, "扣除买卖费用和成交偏差后，回落接回的实际空间不足。"
@@ -512,14 +568,27 @@ def _positive_distribution_block(
     state: str,
     distribution: DistributionSnapshot,
 ) -> str:
+    params = _direction_gate_params("positive_distribution_block")
     if distribution.false_breakout_flag:
         return "分时出现假突破回落，不适合逆着出货迹象追买。"
-    if distribution.intraday_reversal_flag and distribution.distribution_risk_score >= (8.2 if asset_bucket == "etf" else 7.0):
+    reversal_score = _param_float(
+        params,
+        "etf_reversal_score" if asset_bucket == "etf" else "stock_reversal_score",
+        8.2 if asset_bucket == "etf" else 7.0,
+    )
+    if distribution.intraday_reversal_flag and distribution.distribution_risk_score >= reversal_score:
         return "分时冲高回落明显，先等卖压释放。"
-    weak_stall_context = state in {"fast_rotation", "high_flyer_retreat", "risk_release"}
+    weak_stall_context = state in set(
+        _list_param(params, "weak_stall_states") or ["fast_rotation", "high_flyer_retreat", "risk_release"]
+    )
     if distribution.stall_after_volume_flag and asset_bucket == "thematic_stock" and weak_stall_context:
         return "放量但价格涨不动，且市场环境偏弱，先买后卖成功率不足。"
-    if distribution.distribution_risk_score >= (8.8 if asset_bucket == "etf" else 7.8):
+    distribution_score = _param_float(
+        params,
+        "etf_distribution_score" if asset_bucket == "etf" else "stock_distribution_score",
+        8.8 if asset_bucket == "etf" else 7.8,
+    )
+    if distribution.distribution_risk_score >= distribution_score:
         return "当前出货风险偏高，应等待更强承接。"
     return ""
 
@@ -531,11 +600,15 @@ def _thematic_positive_state_block(
     sector: SectorSnapshot,
     microstructure: MicrostructureSnapshot,
 ) -> bool:
-    if asset_bucket != "thematic_stock" or state not in {"fast_rotation", "high_flyer_retreat", "risk_release"}:
+    params = _direction_gate_params("thematic_state_block")
+    blocked_states = set(_list_param(params, "blocked_states") or ["fast_rotation", "high_flyer_retreat", "risk_release"])
+    if asset_bucket != "thematic_stock" or state not in blocked_states:
         return False
     if not microstructure.available:
-        return sector.alignment_score < 55.0
-    return sector.alignment_score < 55.0 or microstructure.buy_pressure < 55.0
+        return sector.alignment_score < _param_float(params, "sector_floor", 55.0)
+    return sector.alignment_score < _param_float(params, "sector_floor", 55.0) or microstructure.buy_pressure < _param_float(
+        params, "buy_pressure_floor", 55.0
+    )
 
 
 def position_pct(

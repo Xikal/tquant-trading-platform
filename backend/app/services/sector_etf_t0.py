@@ -15,6 +15,7 @@ from app.models.schema_defs.market import (
 from app.services.low_buy.service import LowBuyScreenerService
 from app.services.market.parameter_defaults import MARKET_SECTOR_ETF_T0_DEFAULTS
 from app.services.market_data import MarketDataService
+from app.services.market_model_observation_service import MarketModelObservationService
 
 
 @dataclass(frozen=True)
@@ -49,18 +50,24 @@ class SectorEtfT0Service:
         *,
         market_data: MarketDataService | None = None,
         low_buy: LowBuyScreenerService | None = None,
+        observation_service: MarketModelObservationService | None = None,
     ) -> None:
         self.market_data = market_data or MarketDataService()
         self.low_buy = low_buy or LowBuyScreenerService()
+        self.observations = observation_service or MarketModelObservationService()
 
-    def build(self, db: Session, *, limit: int = 8) -> SectorEtfT0Response:
+    def build(self, db: Session, *, limit: int = 8, record_observations: bool = True) -> SectorEtfT0Response:
         params = _params()
         board_limit = max(
             _int_param(params, "priority_min_limit"),
             limit * _int_param(params, "priority_limit_multiplier"),
         )
         board = self.low_buy.priority_board(db=db, limit=board_limit)
-        return self.build_from_priority_board(board, limit=limit)
+        response = self.build_from_priority_board(board, limit=limit)
+        if record_observations:
+            self._record_observations(db, response)
+            db.commit()
+        return response
 
     def build_from_priority_board(self, board: Any, *, limit: int = 8) -> SectorEtfT0Response:
         """Derive ETF T+0 ideas from an already materialized priority board.
@@ -152,9 +159,10 @@ class SectorEtfT0Service:
         and whether the estimated ETF edge clears a fee/slippage buffer.
         """
 
-        payload = self.build(db, limit=limit)
+        payload = self.build(db, limit=limit, record_observations=False)
         params = _params()
         opportunities = payload.opportunities
+        historical = self.observations.summarize(db, model_key="sector_etf_t0", lookback_days=60)
         actionable = [item for item in opportunities if item.bias == "positive_t"]
         edge_pass = [
             item for item in actionable
@@ -178,13 +186,34 @@ class SectorEtfT0Service:
                     pass_rate_pct=round(pass_rate, 2),
                     avg_edge_pct=round(avg_edge, 2),
                     notes="按当前机会池检查 ETF 预期价差是否覆盖手续费和滑点。",
+                ),
+                MarketModelValidationMetric(
+                    name="影子跟踪历史绩效",
+                    status="passed" if historical["settled_count"] >= _int_param(params, "shadow_min_samples") else "watch",
+                    sample_count=int(historical["settled_count"]),
+                    pass_rate_pct=round(float(historical["success_rate_pct"] or 0.0), 2),
+                    avg_edge_pct=round(float(historical["avg_return_1d_pct"] or 0.0), 2),
+                    notes="按观察样本后续日线结算胜率、1日收益和最大不利波动；未结算样本会继续保留 pending。",
                 )
             ],
             notes=[
-                "行业 ETF 做T当前使用实时机会池自动验收；完整历史回测需继续依赖回测任务沉淀样本。",
+                f"行业 ETF 做T已接入影子跟踪和日线结算；待结算样本 {int(historical['pending_count'])} 个。",
                 "未达到验收时只展示观察，不作为自动交易指令。",
             ],
         )
+
+    def _record_observations(self, db: Session, response: SectorEtfT0Response) -> None:
+        for item in response.opportunities:
+            self.observations.record(
+                db,
+                model_key="sector_etf_t0",
+                symbol=item.etf_symbol,
+                name=item.etf_name,
+                signal_state=item.bias,
+                confidence=item.confidence,
+                expected_edge_pct=item.expected_edge_pct,
+                payload=item.model_dump(),
+            )
 
 
 def _field(value: Any, key: str, default: Any = None) -> Any:

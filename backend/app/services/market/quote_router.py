@@ -33,7 +33,6 @@ class QuoteSourceRouter:
         alternatives = (
             self.service._fetch_quote_from_trends,
             self.service._fetch_quote_from_minute_bars,
-            self.service._fetch_quote_from_spot_snapshot,
         )
         with ThreadPoolExecutor(max_workers=3, thread_name_prefix="quote-fallback") as pool:
             futures = {pool.submit(loader, symbol): loader for loader in alternatives}
@@ -86,16 +85,13 @@ class QuoteSourceRouter:
                     result[symbol] = snapshot
         remaining = [symbol for symbol in remaining if symbol not in result]
         if remaining:
-            grouped = self._group_remaining_by_instrument_type(remaining)
-            for instrument_type, grouped_symbols in grouped.items():
+            for symbol in list(remaining):
                 try:
-                    snapshot_map = self.service._load_spot_snapshot_map(instrument_type)
+                    provider_result = self.service.provider_router.fetch_quote(symbol)
                 except Exception:
                     continue
-                for symbol in grouped_symbols:
-                    snapshot = snapshot_map.get(symbol)
-                    if snapshot is not None:
-                        result[symbol] = snapshot
+                if provider_result.usable and provider_result.data is not None:
+                    result[symbol] = provider_result.data
         remaining = [symbol for symbol in remaining if symbol not in result]
         for symbol in remaining:
             try:
@@ -105,14 +101,3 @@ class QuoteSourceRouter:
         for symbol, snapshot in stale_candidates.items():
             result.setdefault(symbol, snapshot)
         return result
-
-    def _group_remaining_by_instrument_type(self, symbols: list[str]) -> dict[str, list[str]]:
-        grouped: dict[str, list[str]] = {"stock": [], "etf": []}
-        for symbol in symbols:
-            instrument_type = (
-                "etf"
-                if __import__("app.services.market.shared", fromlist=["MarketRuleService"]).MarketRuleService.looks_like_etf(symbol)
-                else "stock"
-            )
-            grouped[instrument_type].append(symbol)
-        return {key: value for key, value in grouped.items() if value}

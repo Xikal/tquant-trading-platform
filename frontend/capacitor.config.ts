@@ -9,8 +9,7 @@ const config: CapacitorConfig = {
     androidScheme: "https",
     allowNavigation: [
       "weisilianghua.cloud",
-      "www.weisilianghua.cloud",
-      "43.143.243.97"
+      "www.weisilianghua.cloud"
     ]
   },
   plugins: {

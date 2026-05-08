@@ -7,6 +7,7 @@ from app.core.admin_auth import require_admin_auth
 from app.core.auth import get_current_user
 from app.core.database import get_db
 from app.models.schema_defs.phase4 import (
+    MLSignalArtifactStorageCheckResponse,
     MLSignalPredictionRequest,
     MLSignalPredictionResponse,
     MLSignalModelListResponse,
@@ -47,6 +48,14 @@ def list_ml_signal_models(
     db: Session = Depends(get_db),
 ) -> MLSignalModelListResponse:
     return MLSignalService(db).list_models(limit=limit)
+
+
+@router.get("/artifact-storage/check", response_model=MLSignalArtifactStorageCheckResponse)
+def check_ml_artifact_storage(
+    _: None = Depends(require_admin_auth),
+    db: Session = Depends(get_db),
+) -> MLSignalArtifactStorageCheckResponse:
+    return MLSignalService(db).check_artifact_storage()
 
 
 @router.post("/predict", response_model=MLSignalPredictionResponse)

@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import re
-
 from app.services.market.shared import (
     DataSourceError,
     KlineBar,
@@ -15,12 +13,8 @@ from app.services.market.shared import (
     json,
     requests,
     select,
-    subprocess,
-    sys,
     time,
 )
-
-_SAFE_AKSHARE_SYMBOL_RE = re.compile(r"^[A-Za-z0-9]+$")
 
 
 class MarketIntradayMixin:
@@ -74,45 +68,6 @@ class MarketIntradayMixin:
             previous_amount = cumulative_amount
         if not bars:
             raise DataSourceError(f"未解析到 {symbol} 的腾讯分钟线数据。")
-        return bars
-
-    def _fetch_sina_minute_bars_subprocess(self, symbol: str) -> list[KlineBar]:
-        sina_symbol = self._to_sina_symbol(symbol)
-        if not _SAFE_AKSHARE_SYMBOL_RE.fullmatch(sina_symbol):
-            raise DataSourceError(f"非法证券代码，已拒绝分钟线子进程回退: {symbol}")
-        script = (
-            "import json\n"
-            "import akshare as ak\n"
-            f"df = ak.stock_zh_a_minute(symbol='{sina_symbol}', period='1', adjust='')\n"
-            "print(json.dumps(df.tail(240).to_dict('records'), ensure_ascii=False, default=str))\n"
-        )
-        try:
-            result = subprocess.run(
-                [sys.executable, "-c", script],
-                check=True,
-                capture_output=True,
-                text=True,
-                timeout=max(int(self.settings.akshare_timeout_seconds), 10) + 20,
-            )
-            rows = json.loads(result.stdout)
-        except (subprocess.SubprocessError, json.JSONDecodeError) as exc:
-            stderr = (exc.stderr or "").strip() if isinstance(exc, subprocess.CalledProcessError) else ""
-            detail = f"{exc}" if not stderr else f"{exc}; stderr={stderr[:200]}"
-            raise DataSourceError(f"分钟线子进程回退失败: {detail}") from exc
-        bars: list[KlineBar] = []
-        for row in rows:
-            open_price = _safe_float(row.get("open"))
-            high_price = _safe_float(row.get("high"))
-            low_price = _safe_float(row.get("low"))
-            close_price = _safe_float(row.get("close"))
-            timestamp = _safe_str(row.get("day"))[:16]
-            if not timestamp or close_price <= 0:
-                continue
-            amplitude = round((high_price - low_price) / open_price * 100, 4) if open_price else None
-            change_pct = round((close_price - open_price) / open_price * 100, 4) if open_price else None
-            bars.append(KlineBar(timestamp=timestamp, open=open_price or close_price, close=close_price, high=high_price or close_price, low=low_price or close_price, volume=_safe_float(row.get("volume")), amount=_safe_float(row.get("amount")), amplitude=amplitude, change_pct=change_pct, turnover=None))
-        if not bars:
-            raise DataSourceError(f"分钟线子进程未解析到 {symbol} 的有效数据。")
         return bars
 
     def get_intraday_bars(
@@ -398,32 +353,6 @@ class MarketIntradayMixin:
         if '="' not in text:
             raise DataSourceError(f"新浪实时行情返回异常: {text[:80]}")
         return text.split('="', 1)[1].rsplit('"', 1)[0].split(",")
-
-    def _fetch_sina_minute_bars(self, symbol: str, period: str) -> list[KlineBar]:
-        ak = __import__("app.services.market.shared", fromlist=["ak"]).ak
-        if ak is None:
-            raise DataSourceError("未安装 akshare，无法使用新浪分钟线数据。")
-        df = self._call_akshare(
-            ak.stock_zh_a_minute,
-            symbol=self._to_sina_symbol(symbol),
-            period=period.replace("m", ""),
-            adjust="",
-            purpose="minute_bars",
-        )
-        if df.empty:
-            raise DataSourceError(f"未获取到 {symbol} 的 {period} 分钟K线。")
-        bars: list[KlineBar] = []
-        for row in df.tail(1970).to_dict("records"):
-            open_price = float(row["open"])
-            high_price = float(row["high"])
-            low_price = float(row["low"])
-            close_price = float(row["close"])
-            amplitude = round((high_price - low_price) / open_price * 100, 4) if open_price else None
-            change_pct = round((close_price - open_price) / open_price * 100, 4) if open_price else None
-            bars.append(KlineBar(timestamp=str(row["day"])[:16], open=open_price, close=close_price, high=high_price, low=low_price, volume=float(row["volume"]), amount=float(row["amount"]), amplitude=amplitude, change_pct=change_pct, turnover=None))
-        if not bars:
-            raise DataSourceError(f"未解析到 {symbol} 的新浪分钟线数据。")
-        return bars
 
     def _load_one_minute_bars(self, symbol: str, *, allow_slow_fallback: bool = True) -> list[KlineBar]:
         if allow_slow_fallback and self._market_provider_router_enabled():

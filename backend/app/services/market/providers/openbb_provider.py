@@ -128,5 +128,17 @@ class OpenBBMarketProvider:
     def fetch_market_events(self, symbol: str) -> ProviderResult:
         return self._unavailable("market events not enabled for OpenBB adapter")
 
+    def fetch_stock_instrument_rows(self) -> ProviderResult:
+        return self._unavailable("stock instruments not enabled for OpenBB adapter")
+
+    def fetch_etf_instrument_rows(self) -> ProviderResult:
+        return self._unavailable("etf instruments not enabled for OpenBB adapter")
+
+    def fetch_industry_constituent_map(self) -> ProviderResult:
+        return self._unavailable("industry constituents not enabled for OpenBB adapter")
+
+    def fetch_stock_industry(self, symbol: str) -> ProviderResult:
+        return self._unavailable("stock industry not enabled for OpenBB adapter")
+
     def _unavailable(self, message: str) -> ProviderResult:
         return ProviderResult(quality=MarketDataQuality.UNAVAILABLE, source=self.name, message=message)

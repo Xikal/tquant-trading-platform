@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from app.models.schemas import MicrostructureSnapshot, QuoteSnapshot, SectorSnapshot
 from app.services.market.regime import MarketRegimeSnapshot
 from app.services.quant_engine_models import IndicatorSnapshot
+from app.services.quant.runtime_parameters import get_position_t_decision
 
 
 @dataclass(frozen=True)
@@ -24,6 +25,7 @@ def resolve_trade_scene(
     market_regime: MarketRegimeSnapshot | None,
 ) -> TradeScene:
     state = market_regime.state if market_regime is not None else "low_volume_wait"
+    params = _scene_params()
     distribution = indicators.distribution
     if state == "risk_release" and quote.instrument_type != "etf":
         return _scene(
@@ -32,7 +34,7 @@ def resolve_trade_scene(
             {"hold"},
             "市场处于风险释放期，个股做T先以保护本金为主。",
         )
-    if distribution.false_breakout_flag or distribution.distribution_risk_score >= 7.2:
+    if distribution.false_breakout_flag or distribution.distribution_risk_score >= _param_float(params, "distribution_risk_block_score", 7.2):
         return _scene(
             "distribution_defense",
             "派发防守",
@@ -72,10 +74,14 @@ def _overheat_reversal_setup(
     sector: SectorSnapshot,
     microstructure: MicrostructureSnapshot,
 ) -> bool:
-    price_hot = quote.last_price >= max(indicators.ma5 * 1.008, indicators.vwap_value * 1.006)
-    pressure_hot = indicators.rsi14 >= 66 or indicators.amplitude >= 3.0
-    sell_pressure = microstructure.available and microstructure.sell_pressure >= 52
-    weak_sector = sector.alignment_score <= 52
+    params = _scene_params()
+    price_hot = quote.last_price >= max(
+        indicators.ma5 * _param_float(params, "overheat_price_ma5_multiplier", 1.008),
+        indicators.vwap_value * _param_float(params, "overheat_price_vwap_multiplier", 1.006),
+    )
+    pressure_hot = indicators.rsi14 >= _param_float(params, "overheat_rsi_floor", 66.0) or indicators.amplitude >= _param_float(params, "overheat_amplitude_floor_pct", 3.0)
+    sell_pressure = microstructure.available and microstructure.sell_pressure >= _param_float(params, "overheat_sell_pressure_floor", 52.0)
+    weak_sector = sector.alignment_score <= _param_float(params, "overheat_weak_sector_ceiling", 52.0)
     return price_hot and pressure_hot and (sell_pressure or weak_sector)
 
 
@@ -86,8 +92,27 @@ def _trend_repair_setup(
     microstructure: MicrostructureSnapshot,
     market_state: str,
 ) -> bool:
-    trend_ok = quote.last_price >= indicators.ma20 * 0.995 and indicators.ma5 >= indicators.ma20 * 0.998
-    near_vwap = quote.last_price >= indicators.vwap_value * 0.993
-    buy_pressure = not microstructure.available or microstructure.buy_pressure >= 48
+    params = _scene_params()
+    trend_ok = (
+        quote.last_price >= indicators.ma20 * _param_float(params, "trend_last_price_ma20_multiplier", 0.995)
+        and indicators.ma5 >= indicators.ma20 * _param_float(params, "trend_ma5_ma20_multiplier", 0.998)
+    )
+    near_vwap = quote.last_price >= indicators.vwap_value * _param_float(params, "trend_vwap_multiplier", 0.993)
+    buy_pressure = not microstructure.available or microstructure.buy_pressure >= _param_float(params, "trend_buy_pressure_floor", 48.0)
     market_ok = market_state not in {"risk_release", "high_flyer_retreat"}
-    return trend_ok and near_vwap and buy_pressure and sector.alignment_score >= 45 and market_ok
+    return trend_ok and near_vwap and buy_pressure and sector.alignment_score >= _param_float(params, "trend_sector_alignment_floor", 45.0) and market_ok
+
+
+def _scene_params() -> dict[str, object]:
+    try:
+        values = get_position_t_decision().get("scene_resolution", {})
+    except Exception:
+        values = {}
+    return values if isinstance(values, dict) else {}
+
+
+def _param_float(params: dict[str, object], key: str, default: float) -> float:
+    try:
+        return float(params.get(key, default))
+    except (TypeError, ValueError):
+        return default

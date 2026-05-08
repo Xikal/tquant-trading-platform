@@ -4,6 +4,15 @@ from typing import Any
 
 from app.models.schemas import QuoteSnapshot
 from app.services.quant_engine_common import config_float, has_invalid_trade_snapshot, price_limit_pct
+from app.services.quant.runtime_parameters import get_position_t_decision
+
+
+def _blocking_params() -> dict[str, Any]:
+    try:
+        values = get_position_t_decision().get("blocking", {})
+    except Exception:
+        values = {}
+    return values if isinstance(values, dict) else {}
 
 
 def hard_blocking_rules(
@@ -28,7 +37,8 @@ def hard_blocking_rules(
         return rules
     if not has_latest_bar:
         rules.append("分钟线不足，无法完成分时做T判断。")
-    if tradability_score < 42:
+    params = _blocking_params()
+    if tradability_score < config_float(params, "min_tradability_score", 42.0):
         rules.append("当前流动性/振幅不足，不适合高频做T。")
 
     min_amount = (
@@ -51,11 +61,11 @@ def hard_blocking_rules(
         quote.instrument_type,
         is_st=str(quote.name or "").upper().startswith(("ST", "*ST")),
     )
-    if limit_pct > 0 and abs(quote.change_pct) >= limit_pct * 0.9:
+    if limit_pct > 0 and abs(quote.change_pct) >= limit_pct * config_float(params, "limit_near_ratio", 0.90):
         rules.append("标的接近涨跌停限制，成交与回转风险较高。")
     open_phase_min = config_float(risk_config, "strategy_open_phase_min_tradability", 60.0)
     if scenario == "open_price_discovery" and tradability_score < open_phase_min:
         rules.append("开盘定价阶段噪声较大，建议等待结构稳定后再参与。")
-    if event_penalty_value >= 25:
+    if event_penalty_value >= config_float(params, "event_penalty_block", 25.0):
         rules.append("事件风险偏高，建议缩量或观望。")
     return rules

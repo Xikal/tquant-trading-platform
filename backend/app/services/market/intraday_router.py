@@ -18,15 +18,21 @@ class IntradaySourceRouter:
                     return bars
             except Exception:
                 continue
-        if allow_slow_fallback and self.service.ak_available:
-            for loader in (
-                lambda target: self.service._fetch_sina_minute_bars(target, "1m"),
-                self.service._fetch_sina_minute_bars_subprocess,
-            ):
+        if allow_slow_fallback:
+            provider_router = getattr(self.service, "provider_router", None)
+            if provider_router is not None:
                 try:
-                    bars = loader(symbol)
+                    result = provider_router.fetch_intraday_bars(symbol)
+                    if result.usable and result.data:
+                        return result.data
+                except Exception:
+                    pass
+            legacy_sina_loader = getattr(self.service, "_fetch_sina_minute_bars", None)
+            if legacy_sina_loader is not None:
+                try:
+                    bars = legacy_sina_loader(symbol, "1m")
                     if bars:
                         return bars
                 except Exception:
-                    continue
+                    pass
         raise DataSourceError(f"未获取到 {symbol} 的 1m 分钟K线。")

@@ -8,7 +8,7 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from app.models.base import Base
-from app.models.entities import BacktestRun, MLSignalModel, MLSignalSample, PaperAccount, RuntimeTask
+from app.models.entities import BacktestRun, MarketModelObservation, MLSignalModel, MLSignalSample, PaperAccount, RuntimeTask
 from app.models.schema_defs.phase4 import (
     AgentQualityScoreRequest,
     MLSignalPredictionRequest,
@@ -27,6 +27,7 @@ from app.services.intraday_anomaly import IntradayAnomalyService
 from app.services.low_buy.screening import LowBuyScreeningMixin
 from app.services.low_buy.service import LowBuyScreenerService
 from app.services.market.providers import DataSourceProbeService
+from app.services.market_model_observation_service import MarketModelObservationService
 from app.services.ml_signal import MLSignalService
 from app.services.paper.backtest_compare import PaperBacktestComparisonService
 from app.services.quant import QuantParameterVersionService
@@ -358,7 +359,7 @@ def test_sector_etf_validation_reports_acceptance_from_current_opportunities(mon
     db = _db()
     service = SectorEtfT0Service()
 
-    def _build_stub(db_arg, *, limit: int = 8):  # noqa: ANN001
+    def _build_stub(db_arg, *, limit: int = 8, record_observations: bool = True):  # noqa: ANN001, ARG001
         return SectorEtfT0Response(
             updated_at="2026-05-07 10:00:00",
             market_state="repair",
@@ -391,6 +392,38 @@ def test_sector_etf_validation_reports_acceptance_from_current_opportunities(mon
     assert report.model_key == "sector_etf_t0"
     assert report.production_ready is True
     assert report.metrics[0].sample_count == 2
+
+
+def test_market_model_observation_upserts_same_day_signal():
+    db = _db()
+    service = MarketModelObservationService()
+
+    service.record(
+        db,
+        model_key="sector_etf_t0",
+        symbol="512480",
+        name="半导体ETF",
+        signal_state="positive_t",
+        confidence=61,
+        expected_edge_pct=0.9,
+        payload={"last_price": 1.2},
+    )
+    service.record(
+        db,
+        model_key="sector_etf_t0",
+        symbol="512480",
+        name="半导体ETF",
+        signal_state="positive_t",
+        confidence=72,
+        expected_edge_pct=1.1,
+        payload={"last_price": 1.25},
+    )
+    db.commit()
+
+    rows = db.query(MarketModelObservation).all()
+    assert len(rows) == 1
+    assert rows[0].confidence == 72
+    assert rows[0].expected_edge_pct == 1.1
 
 
 def test_intraday_anomaly_validation_requires_structured_outputs(monkeypatch):

@@ -8,6 +8,7 @@ from app.models.schema_defs.market import (
 )
 from app.services.market.parameter_defaults import MARKET_INTRADAY_ANOMALY_DEFAULTS
 from app.services.market_data import MarketDataService
+from app.services.market_model_observation_service import MarketModelObservationService
 
 
 class IntradayAnomalyService:
@@ -18,8 +19,13 @@ class IntradayAnomalyService:
     instructions so low-quality model output cannot bypass hard risk rules.
     """
 
-    def __init__(self, market_data: MarketDataService | None = None) -> None:
+    def __init__(
+        self,
+        market_data: MarketDataService | None = None,
+        observation_service: MarketModelObservationService | None = None,
+    ) -> None:
         self.market_data = market_data or MarketDataService()
+        self.observations = observation_service or MarketModelObservationService()
 
     def detect(self, symbol: str) -> IntradayAnomalyResponse:
         params = _params()
@@ -118,7 +124,7 @@ class IntradayAnomalyService:
             data_quality_text=quote.data_quality_message or quote.data_quality or "行情正常",
         )
 
-    def validation_report(self, symbols: list[str]) -> MarketModelValidationResponse:
+    def validation_report(self, symbols: list[str], db=None) -> MarketModelValidationResponse:
         """Validate anomaly model readiness on a bounded symbol set."""
 
         params = _params()
@@ -141,6 +147,11 @@ class IntradayAnomalyService:
         production_ready = len(valid) >= _int_param(params, "validation_min_samples") and (
             not actionable or pass_rate >= _float_param(params, "validation_pass_rate_min_pct")
         )
+        historical = (
+            self.observations.summarize(db, model_key="intraday_anomaly", lookback_days=60)
+            if db is not None
+            else {"sample_count": 0, "actionable_count": 0, "avg_confidence": 0.0, "settled_count": 0, "success_rate_pct": 0.0, "pending_count": 0}
+        )
         return MarketModelValidationResponse(
             model_key="intraday_anomaly",
             generated_at=beijing_now_string(),
@@ -154,12 +165,32 @@ class IntradayAnomalyService:
                     pass_rate_pct=round(pass_rate, 2),
                     avg_edge_pct=0.0,
                     notes="检查异常模型是否返回等级、模式、建议和风险提示，避免空字段进入前端或通知。",
+                ),
+                MarketModelValidationMetric(
+                    name="异常预警历史绩效",
+                    status="passed" if historical["settled_count"] >= _int_param(params, "shadow_min_samples") else "watch",
+                    sample_count=int(historical["settled_count"]),
+                    pass_rate_pct=round(float(historical.get("success_rate_pct") or 0.0), 2),
+                    avg_edge_pct=round(float(historical.get("avg_max_adverse_5d_pct") or 0.0), 2),
+                    notes="按预警后续日线结算命中率和最大不利波动；高/中风险预警以随后出现回撤作为命中。",
                 )
             ],
             notes=[
                 "盘中异常模型只做预警，不参与放宽买点或自动买入。",
-                "验收样本不足时仍允许页面展示，但生产通知应保持观察级别。",
+                f"验收样本不足时仍允许页面展示，但生产通知应保持观察级别；待结算样本 {int(historical.get('pending_count') or 0)} 个。",
             ],
+        )
+
+    def record_observation(self, db, response: IntradayAnomalyResponse) -> None:
+        self.observations.record(
+            db,
+            model_key="intraday_anomaly",
+            symbol=response.symbol,
+            name=response.name,
+            signal_state=response.anomaly_level,
+            confidence=response.score,
+            score=response.score,
+            payload=response.model_dump(),
         )
 
 

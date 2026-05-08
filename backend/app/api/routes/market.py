@@ -72,15 +72,25 @@ def sector_etf_t0_validation(
     limit: int = 8,
     db: Session = Depends(get_db),
 ) -> MarketModelValidationResponse:
-    return sector_etf_t0_service.validation_report(db, limit=max(1, min(limit, 20)))
+    response = sector_etf_t0_service.validation_report(db, limit=max(1, min(limit, 20)))
+    db.commit()
+    return response
 
 
 @router.get("/intraday-anomaly/{symbol}", response_model=IntradayAnomalyResponse)
-def intraday_anomaly(symbol: str) -> IntradayAnomalyResponse:
-    return intraday_anomaly_service.detect(symbol.strip())
+def intraday_anomaly(symbol: str, db: Session = Depends(get_db)) -> IntradayAnomalyResponse:
+    response = intraday_anomaly_service.detect(symbol.strip())
+    intraday_anomaly_service.record_observation(db, response)
+    db.commit()
+    return response
 
 
 @router.get("/intraday-anomaly-validation", response_model=MarketModelValidationResponse)
-def intraday_anomaly_validation(symbols: str = "510300,300059,000001,600000,002594") -> MarketModelValidationResponse:
+def intraday_anomaly_validation(
+    symbols: str = "510300,300059,000001,600000,002594",
+    db: Session = Depends(get_db),
+) -> MarketModelValidationResponse:
     symbol_list = [item.strip() for item in symbols.split(",") if item.strip()]
-    return intraday_anomaly_service.validation_report(symbol_list)
+    response = intraday_anomaly_service.validation_report(symbol_list, db=db)
+    db.commit()
+    return response

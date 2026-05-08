@@ -15,6 +15,7 @@ from app.services.market.quote_router import QuoteSourceRouter
 from app.services.market.quotes import MarketQuoteMixin
 from app.services.market.sectors import MarketSectorMixin
 from app.services.market.providers.akshare_provider import AkshareMarketProvider
+from app.services.market.providers.akshare_raw import AkshareRawClient
 from app.services.market.providers.eastmoney_provider import EastmoneyMarketProvider
 from app.services.market.providers.openbb_provider import OpenBBMarketProvider
 from app.services.market.providers.router import MarketProviderRouter
@@ -60,6 +61,7 @@ class MarketDataService(
         self.session = requests.Session()
         self.session.trust_env = False
         self.ak_available = __import__("app.services.market.shared", fromlist=["ak"]).ak is not None
+        self.akshare_raw = AkshareRawClient()
         self.quote_router = QuoteSourceRouter(self)
         self.intraday_router = IntradaySourceRouter(self)
         self.provider_router = MarketProviderRouter(

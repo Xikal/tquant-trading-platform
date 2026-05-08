@@ -63,6 +63,9 @@ export interface StrategyValidationItem {
 
 export interface StrategyValidationReport {
   run_id?: number | null;
+  validation_mode?: "quick_replay";
+  validation_mode_text?: string;
+  engine_note?: string;
   generated_at: string;
   lookback_days: number;
   strategy_count: number;

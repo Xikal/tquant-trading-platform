@@ -54,12 +54,22 @@ def get_backtest_run(run_id: int, db: Session = Depends(get_db)) -> BacktestRunO
     return _backtest_run_out(row)
 
 
-@router.post("/strategy-validation", response_model=StrategyValidationReport)
+@router.post(
+    "/strategy-validation",
+    response_model=StrategyValidationReport,
+    summary="策略快速验证",
+    description="交互式快速回放接口，不替代正式 Walk-forward 回测验证。",
+)
 def run_strategy_validation(payload: StrategyValidationRequest, db: Session = Depends(get_db)):
     return StrategyValidationPipeline(db).validate(payload)
 
 
-@router.post("/strategy-validation/compare", response_model=StrategyValidationReport)
+@router.post(
+    "/strategy-validation/compare",
+    response_model=StrategyValidationReport,
+    summary="策略快速对比",
+    description="基于快速验证结果排序，用于筛查候选策略；正式结论以回测系统为准。",
+)
 def compare_strategy_validation(payload: StrategyComparisonRequest, db: Session = Depends(get_db)):
     return StrategyValidationPipeline(db).compare_strategies(payload)
 

@@ -110,6 +110,35 @@ class TradingElasticityCache(Base):
     )
 
 
+class MarketModelObservation(Base):
+    __tablename__ = "market_model_observations"
+    __table_args__ = (
+        UniqueConstraint(
+            "model_key",
+            "symbol",
+            "trade_date",
+            "signal_state",
+            name="uq_market_model_observation_signal_day",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    model_key: Mapped[str] = mapped_column(String(64), index=True)
+    symbol: Mapped[str] = mapped_column(String(16), default="", index=True)
+    name: Mapped[str] = mapped_column(String(80), default="")
+    trade_date: Mapped[str] = mapped_column(String(16), default="", index=True)
+    signal_state: Mapped[str] = mapped_column(String(32), default="", index=True)
+    confidence: Mapped[float] = mapped_column(Float, default=0.0)
+    expected_edge_pct: Mapped[float] = mapped_column(Float, default=0.0)
+    score: Mapped[float] = mapped_column(Float, default=0.0)
+    outcome_status: Mapped[str] = mapped_column(String(24), default="pending", index=True)
+    payload_json: Mapped[str] = mapped_column(Text, default="{}")
+    observed_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), index=True)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, server_default=func.now(), onupdate=func.now()
+    )
+
+
 class FeatureFlagAuditLog(Base):
     __tablename__ = "feature_flag_audit_log"
 

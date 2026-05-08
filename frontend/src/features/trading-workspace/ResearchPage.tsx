@@ -92,7 +92,7 @@ export function ResearchPage({
           onChange={(event) => setDraft({ ...draft, bar_period: event.target.value as BacktestDraft["bar_period"] })}
         />
         <button className="primary full" onClick={onRun} disabled={loading === "backtest"}>运行回测</button>
-        <button className="secondary full" onClick={onValidate} disabled={loading === "strategy-validation"}>验证策略组</button>
+        <button className="secondary full" onClick={onValidate} disabled={loading === "strategy-validation"}>快速验证策略组</button>
       </aside>
       <aside className="panel dark research-samples">
         <PanelTitle title="复盘样本 / 生命周期" />
@@ -131,7 +131,8 @@ export function ResearchPage({
         <div className="stock-list compact">
           {strategyValidation ? (
             <div className="trade-card">
-              {strategyValidation.summary} · 样本 {strategyValidation.total_filled_signals} · 窗口 {strategyValidation.lookback_days} 天
+              {strategyValidation.validation_mode_text ?? "快速验证"} · {strategyValidation.summary} · 样本 {strategyValidation.total_filled_signals} · 窗口 {strategyValidation.lookback_days} 天
+              <div className="hint">{strategyValidation.engine_note ?? "该结果用于快速筛查，正式结论以回测系统验证为准。"}</div>
             </div>
           ) : null}
           {(strategyValidation?.items ?? []).slice(0, 5).map((item) => (

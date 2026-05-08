@@ -14,7 +14,11 @@ BUILD_GRADLE = ROOT / "frontend" / "android" / "app" / "build.gradle"
 ANDROID_PUBLIC = ROOT / "frontend" / "android" / "app" / "src" / "main" / "assets" / "public"
 ANDROID_MAIN_MANIFEST = ROOT / "frontend" / "android" / "app" / "src" / "main" / "AndroidManifest.xml"
 ANDROID_MAIN_NETWORK_CONFIG = ROOT / "frontend" / "android" / "app" / "src" / "main" / "res" / "xml" / "network_security_config.xml"
+ANDROID_MAIN_CONFIG_XML = ROOT / "frontend" / "android" / "app" / "src" / "main" / "res" / "xml" / "config.xml"
 ANDROID_DEBUG_MANIFEST = ROOT / "frontend" / "android" / "app" / "src" / "debug" / "AndroidManifest.xml"
+IOS_CONFIG_XML = ROOT / "frontend" / "ios" / "App" / "App" / "config.xml"
+CAPACITOR_CONFIG = ROOT / "frontend" / "capacitor.config.ts"
+PRODUCTION_ORIGINS = {"https://weisilianghua.cloud", "https://www.weisilianghua.cloud"}
 
 
 def main() -> int:
@@ -39,6 +43,7 @@ def main() -> int:
         errors.append("Android signing files must not be committed or packaged: " + ", ".join(leaked))
 
     errors.extend(_cleartext_security_errors())
+    errors.extend(_navigation_whitelist_errors())
 
     if not ANDROID_PUBLIC.exists():
         errors.append("Android bundled assets are missing. Run `cd frontend && npm run build:native && npx cap sync android`.")
@@ -103,6 +108,52 @@ def _cleartext_security_errors() -> list[str]:
         if 'usesCleartextTraffic="true"' in debug_text:
             # Debug overlay is allowed to keep localhost/dev-server workflows working.
             return errors
+    return errors
+
+
+def _navigation_whitelist_errors() -> list[str]:
+    errors: list[str] = []
+    if not CAPACITOR_CONFIG.exists():
+        errors.append("Capacitor config is missing.")
+    else:
+        source = CAPACITOR_CONFIG.read_text(encoding="utf-8", errors="ignore")
+        blocked_fragments = ("43.143.243.97", "http://", "localhost", "127.0.0.1")
+        for fragment in blocked_fragments:
+            if fragment in source:
+                errors.append(f"Capacitor production config must not allow navigation to {fragment}.")
+    errors.extend(_config_xml_origin_errors(ANDROID_MAIN_CONFIG_XML, "Android release config.xml"))
+    errors.extend(_config_xml_origin_errors(IOS_CONFIG_XML, "iOS release config.xml"))
+    duplicate_ios_config = ROOT / "frontend" / "ios" / "App" / "App" / "config 2.xml"
+    if duplicate_ios_config.exists():
+        errors.append("Duplicate iOS config 2.xml must not be present in release sources.")
+    return errors
+
+
+def _config_xml_origin_errors(path: Path, label: str) -> list[str]:
+    if not path.exists():
+        return [f"{label} is missing."]
+    try:
+        root = ElementTree.fromstring(path.read_text(encoding="utf-8", errors="ignore"))
+    except ElementTree.ParseError as exc:
+        return [f"{label} is not valid XML: {exc}"]
+    origins = {
+        value.strip()
+        for node in root.findall("{http://www.w3.org/ns/widgets}access")
+        for value in [node.attrib.get("origin", "")]
+        if value.strip()
+    }
+    errors: list[str] = []
+    if "*" in origins:
+        errors.append(f"{label} must not use wildcard access origin.")
+    insecure = sorted(origin for origin in origins if origin.startswith("http://") or "localhost" in origin or "127.0.0.1" in origin)
+    if insecure:
+        errors.append(f"{label} contains non-production origins: {', '.join(insecure)}")
+    unexpected = sorted(origin for origin in origins if origin not in PRODUCTION_ORIGINS)
+    if unexpected:
+        errors.append(f"{label} contains origins outside production whitelist: {', '.join(unexpected)}")
+    missing = sorted(PRODUCTION_ORIGINS - origins)
+    if missing:
+        errors.append(f"{label} is missing production origins: {', '.join(missing)}")
     return errors
 
 

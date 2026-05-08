@@ -103,5 +103,17 @@ class EastmoneyMarketProvider:
     def fetch_market_events(self, symbol: str) -> ProviderResult:
         return self._unavailable("market events not provided by this adapter")
 
+    def fetch_stock_instrument_rows(self) -> ProviderResult:
+        return self._unavailable("stock instruments not provided by this adapter")
+
+    def fetch_etf_instrument_rows(self) -> ProviderResult:
+        return self._unavailable("etf instruments not provided by this adapter")
+
+    def fetch_industry_constituent_map(self) -> ProviderResult:
+        return self._unavailable("industry constituents not provided by this adapter")
+
+    def fetch_stock_industry(self, symbol: str) -> ProviderResult:
+        return self._unavailable("stock industry not provided by this adapter")
+
     def _unavailable(self, message: str) -> ProviderResult:
         return ProviderResult(quality=MarketDataQuality.UNAVAILABLE, source=self.name, message=message)

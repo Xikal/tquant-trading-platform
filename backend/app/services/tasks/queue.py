@@ -5,6 +5,7 @@ from datetime import datetime, timedelta
 from typing import Any
 
 from sqlalchemy import and_, func, or_, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.models.entities import RuntimeTask, RuntimeTaskEvent
@@ -30,14 +31,9 @@ class RuntimeTaskQueue:
 
     def enqueue(self, payload: RuntimeTaskCreate) -> RuntimeTaskOut:
         self._recover_stale_running_tasks()
-        if payload.idempotency_key:
-            existing = self.db.execute(
-                select(RuntimeTask)
-                .where(RuntimeTask.idempotency_key == payload.idempotency_key)
-                .where(~RuntimeTask.status.in_(TERMINAL_STATUSES))
-                .order_by(RuntimeTask.id.desc())
-                .limit(1)
-            ).scalar_one_or_none()
+        active_key = str(payload.idempotency_key or "").strip() or None
+        if active_key:
+            existing = self._find_active_idempotent_task(active_key)
             if existing is not None:
                 return _task_out(existing)
         row = RuntimeTask(
@@ -45,10 +41,19 @@ class RuntimeTaskQueue:
             payload_json=_json_dumps(payload.payload),
             priority=payload.priority,
             idempotency_key=payload.idempotency_key,
+            active_idempotency_key=active_key,
             max_attempts=payload.max_attempts,
         )
         self.db.add(row)
-        self.db.flush()
+        try:
+            self.db.flush()
+        except IntegrityError:
+            self.db.rollback()
+            if active_key:
+                existing = self._find_active_idempotent_task(active_key)
+                if existing is not None:
+                    return _task_out(existing)
+            raise
         event = self.add_event(row.id, "queued", "任务已入队", {"task_type": row.task_type})
         self.db.commit()
         publish_runtime_task_event(event)
@@ -83,13 +88,16 @@ class RuntimeTaskQueue:
 
     def claim_next(self, *, worker_id: str) -> RuntimeTask | None:
         self._recover_stale_running_tasks()
-        row = self.db.execute(
+        statement = (
             select(RuntimeTask)
             .where(RuntimeTask.status == "queued")
             .where(or_(RuntimeTask.run_after.is_(None), RuntimeTask.run_after <= datetime.utcnow()))
             .order_by(RuntimeTask.priority.asc(), RuntimeTask.id.asc())
             .limit(1)
-        ).scalar_one_or_none()
+        )
+        if _supports_skip_locked(self.db):
+            statement = statement.with_for_update(skip_locked=True)
+        row = self.db.execute(statement).scalar_one_or_none()
         if row is None:
             return None
         row.status = "running"
@@ -106,6 +114,7 @@ class RuntimeTaskQueue:
     def mark_succeeded(self, task_id: int, result: dict[str, Any] | None = None) -> RuntimeTaskOut:
         row = self._get_row(task_id)
         row.status = "succeeded"
+        row.active_idempotency_key = None
         row.result_json = _json_dumps(result or {})
         row.progress_pct = 100.0
         row.finished_at = datetime.utcnow()
@@ -121,6 +130,7 @@ class RuntimeTaskQueue:
         row.status = "queued" if should_retry else "failed"
         row.error_message = message[:1000]
         if not should_retry:
+            row.active_idempotency_key = None
             row.finished_at = datetime.utcnow()
         event = self.add_event(task_id, "retry" if should_retry else "failed", message[:240])
         self.db.commit()
@@ -150,6 +160,15 @@ class RuntimeTaskQueue:
         if row is None:
             raise LookupError("后台任务不存在")
         return row
+
+    def _find_active_idempotent_task(self, active_key: str) -> RuntimeTask | None:
+        return self.db.execute(
+            select(RuntimeTask)
+            .where(RuntimeTask.active_idempotency_key == active_key)
+            .where(~RuntimeTask.status.in_(TERMINAL_STATUSES))
+            .order_by(RuntimeTask.id.desc())
+            .limit(1)
+        ).scalar_one_or_none()
 
     def _recover_stale_running_tasks(self) -> None:
         """Requeue tasks abandoned by a crashed worker.
@@ -185,6 +204,7 @@ class RuntimeTaskQueue:
             row.error_message = "任务运行超时，已自动恢复。"
             if int(row.attempt_count or 0) >= int(row.max_attempts or 1):
                 row.status = "failed"
+                row.active_idempotency_key = None
                 row.finished_at = now
                 events.append(self.add_event(row.id, "failed", "任务运行超时，已标记失败"))
             else:
@@ -214,6 +234,13 @@ def _task_out(row: RuntimeTask) -> RuntimeTaskOut:
         started_at=row.started_at,
         finished_at=row.finished_at,
     )
+
+
+def _supports_skip_locked(db: Session) -> bool:
+    bind = db.get_bind()
+    dialect = getattr(bind, "dialect", None)
+    name = getattr(dialect, "name", "")
+    return name in {"mysql", "postgresql"}
 
 
 def _event_out(row: RuntimeTaskEvent) -> RuntimeTaskEventOut:

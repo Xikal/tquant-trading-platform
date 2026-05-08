@@ -16,6 +16,7 @@ from sqlalchemy.orm import Session
 from app.core.config import BACKEND_DIR, get_settings
 from app.models.entities import BacktestTrade, DailyBarSnapshot, MLSignalModel, MLSignalSample, PaperTrade
 from app.models.schema_defs.phase4 import (
+    MLSignalArtifactStorageCheckResponse,
     MLSignalModelListResponse,
     MLSignalModelOut,
     MLSignalPredictionRequest,
@@ -223,6 +224,73 @@ class MLSignalService:
             except Exception as exc:
                 return self._heuristic_predict(payload, warning=f"模型加载或推理失败，已降级启发式：{exc}")
         return self._heuristic_predict(payload)
+
+    def check_artifact_storage(self) -> MLSignalArtifactStorageCheckResponse:
+        """Validate configured artifact storage with write/read/restore/cleanup probes."""
+
+        remote_dir_raw = (get_settings().ml_signal_artifact_remote_dir or "").strip()
+        if not remote_dir_raw:
+            return MLSignalArtifactStorageCheckResponse(
+                ok=True,
+                configured=False,
+                backend="local",
+                message="未配置远端模型存储，当前仅使用本地 artifact 目录。",
+            )
+        artifact_dir = self._artifact_dir()
+        probe_name = f"storage_probe_{datetime.utcnow().strftime('%Y%m%d%H%M%S%f')}.pkl"
+        local_source = artifact_dir / probe_name
+        local_restore = artifact_dir / f"restore_{probe_name}"
+        with local_source.open("wb") as file:
+            pickle.dump({"probe": "tquant_ml_artifact_storage", "created_at": datetime.utcnow().isoformat()}, file)
+        expected_sha256 = _file_sha256(local_source)
+        try:
+            if _is_fsspec_uri(remote_dir_raw):
+                backend = "fsspec"
+                remote_uri = _join_fsspec_uri(remote_dir_raw, probe_name)
+                _copy_local_to_fsspec(local_source, remote_uri)
+                read_ok = _fsspec_sha256(remote_uri) == expected_sha256
+                if read_ok:
+                    _copy_fsspec_to_local(remote_uri, local_restore)
+                restore_ok = local_restore.exists() and _file_sha256(local_restore) == expected_sha256
+                _remove_fsspec_file(remote_uri)
+                cleanup_ok = True
+            else:
+                backend = "filesystem"
+                remote_dir = Path(remote_dir_raw)
+                if not remote_dir.is_absolute():
+                    remote_dir = BACKEND_DIR / remote_dir
+                remote_dir.mkdir(parents=True, exist_ok=True)
+                remote_path = remote_dir / probe_name
+                shutil.copy2(local_source, remote_path)
+                read_ok = _file_sha256(remote_path) == expected_sha256
+                if read_ok:
+                    shutil.copy2(remote_path, local_restore)
+                restore_ok = local_restore.exists() and _file_sha256(local_restore) == expected_sha256
+                remote_path.unlink(missing_ok=True)
+                cleanup_ok = not remote_path.exists()
+            ok = bool(read_ok and restore_ok and cleanup_ok)
+            return MLSignalArtifactStorageCheckResponse(
+                ok=ok,
+                configured=True,
+                backend=backend,
+                remote_dir=_mask_storage_uri(remote_dir_raw),
+                write_ok=True,
+                read_ok=read_ok,
+                restore_ok=restore_ok,
+                cleanup_ok=cleanup_ok,
+                message="远端模型存储写入、读取、恢复、清理验收通过。" if ok else "远端模型存储验收未完全通过。",
+            )
+        except Exception as exc:
+            return MLSignalArtifactStorageCheckResponse(
+                ok=False,
+                configured=True,
+                backend="fsspec" if _is_fsspec_uri(remote_dir_raw) else "filesystem",
+                remote_dir=_mask_storage_uri(remote_dir_raw),
+                message=f"远端模型存储验收失败：{exc}",
+            )
+        finally:
+            local_source.unlink(missing_ok=True)
+            local_restore.unlink(missing_ok=True)
 
     def _heuristic_predict(self, payload: MLSignalPredictionRequest, warning: str = "") -> MLSignalPredictionResponse:
         features = payload.features or {}
@@ -856,6 +924,15 @@ def _remove_fsspec_file(uri: str) -> None:
     fs, path = _fsspec_url_to_fs(uri)
     if fs.exists(path):
         fs.rm(path)
+
+
+def _mask_storage_uri(value: str) -> str:
+    if "://" not in value:
+        return value
+    scheme, rest = value.split("://", 1)
+    if "@" not in rest:
+        return value
+    return f"{scheme}://***@{rest.rsplit('@', 1)[-1]}"
 
 
 def _to_float(value: Any) -> float:

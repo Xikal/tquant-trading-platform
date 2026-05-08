@@ -220,6 +220,18 @@ class MLSignalPredictionResponse(BaseModel):
     warning: str = "研究模型输出，不进入生产交易建议。"
 
 
+class MLSignalArtifactStorageCheckResponse(BaseModel):
+    ok: bool
+    configured: bool = False
+    backend: str = "local"
+    remote_dir: str = ""
+    write_ok: bool = False
+    read_ok: bool = False
+    restore_ok: bool = False
+    cleanup_ok: bool = False
+    message: str = ""
+
+
 class PaperBacktestComparisonRequest(BaseModel):
     backtest_run_id: int = Field(gt=0)
     account_id: Optional[int] = None

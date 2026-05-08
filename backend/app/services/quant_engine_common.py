@@ -4,11 +4,27 @@ from datetime import datetime
 from typing import Any
 
 from app.models.schemas import MarketEventOut, QuoteSnapshot
+from app.services.quant.runtime_parameters import get_position_t_decision
 
 
 def config_float(config: dict[str, Any], key: str, default: float) -> float:
     try:
         return float(config.get(key, default))
+    except (TypeError, ValueError):
+        return default
+
+
+def _decision_section(name: str) -> dict[str, Any]:
+    try:
+        values = get_position_t_decision().get(name, {})
+    except Exception:
+        values = {}
+    return values if isinstance(values, dict) else {}
+
+
+def _param_float(params: dict[str, Any], key: str, default: float) -> float:
+    try:
+        return float(params.get(key, default))
     except (TypeError, ValueError):
         return default
 
@@ -52,16 +68,29 @@ def calc_tradability(
     volume_ratio_value: float,
     atr_value: float,
 ) -> float:
-    amount_score = min(40.0, quote.amount / 100000000)
-    amplitude_score = 30 - abs(amplitude - 4.0) * 4
-    volume_score = 20 - abs(volume_ratio_value - 1.8) * 8
-    atr_score = min(10.0, atr_value / max(quote.last_price, 0.01) * 100 * 4)
+    params = _decision_section("common")
+    amount_score = min(
+        _param_float(params, "tradability_amount_cap", 40.0),
+        quote.amount / max(_param_float(params, "tradability_amount_divisor", 100_000_000.0), 1.0),
+    )
+    amplitude_score = _param_float(params, "tradability_amplitude_base", 30.0) - abs(
+        amplitude - _param_float(params, "tradability_amplitude_target", 4.0)
+    ) * _param_float(params, "tradability_amplitude_weight", 4.0)
+    volume_score = _param_float(params, "tradability_volume_base", 20.0) - abs(
+        volume_ratio_value - _param_float(params, "tradability_volume_target", 1.8)
+    ) * _param_float(params, "tradability_volume_weight", 8.0)
+    atr_score = min(
+        _param_float(params, "tradability_atr_cap", 10.0),
+        atr_value / max(quote.last_price, 0.01) * 100 * _param_float(params, "tradability_atr_weight", 4.0),
+    )
     score = amount_score + amplitude_score + volume_score + atr_score
     return max(0.0, min(100.0, score))
 
 
 def event_penalty(events: list[MarketEventOut]) -> float:
-    penalty_map = {"low": 4, "medium": 10, "high": 22}
+    params = _decision_section("common")
+    penalty_map = params.get("event_penalty", {"low": 4.0, "medium": 10.0, "high": 22.0})
+    penalty_map = penalty_map if isinstance(penalty_map, dict) else {"low": 4.0, "medium": 10.0, "high": 22.0}
     return float(sum(penalty_map.get(event.risk_level, 0) for event in events))
 
 

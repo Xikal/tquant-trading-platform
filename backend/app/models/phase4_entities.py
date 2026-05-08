@@ -13,12 +13,16 @@ class RuntimeTask(Base):
     """Durable background task record used by the standalone runtime worker."""
 
     __tablename__ = "runtime_tasks"
+    __table_args__ = (
+        UniqueConstraint("active_idempotency_key", name="uq_runtime_tasks_active_idempotency"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     task_type: Mapped[str] = mapped_column(String(80), index=True)
     status: Mapped[str] = mapped_column(String(24), default="queued", index=True)
     priority: Mapped[int] = mapped_column(Integer, default=100, index=True)
     idempotency_key: Mapped[str] = mapped_column(String(160), default="", index=True)
+    active_idempotency_key: Mapped[Optional[str]] = mapped_column(String(160), nullable=True)
     payload_json: Mapped[str] = mapped_column(Text, default="{}")
     result_json: Mapped[str] = mapped_column(Text, default="{}")
     error_message: Mapped[str] = mapped_column(Text, default="")

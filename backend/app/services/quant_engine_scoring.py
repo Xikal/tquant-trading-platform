@@ -8,77 +8,11 @@ from app.services.quant_engine_market import (
     market_state_text,
     market_threshold_shift,
 )
+from app.services.low_buy.strategy_parameter_defaults import POSITION_T_SCORING_DEFAULTS
 from app.services.quant.runtime_parameters import get_position_t_scoring
 
 QUANT_ENGINE_SCORING_VERSION = "quant-scoring-v1"
-_DEFAULT_SCORING = {
-    "version": QUANT_ENGINE_SCORING_VERSION,
-    "base_scores": {"positive": 35.0, "negative": 30.0, "risk": 25.0},
-    "action_thresholds": {
-        "positive": 60.0,
-        "negative": 62.0,
-        "scenario_shifts": {
-            "open_price_discovery": 5.0,
-            "midday_consolidation": 2.0,
-            "closing_repricing": 1.0,
-        },
-        "risk_level_shifts": {"high": 4.0, "low": -2.0},
-    },
-    "risk_level_thresholds": {"high": 65.0, "medium": 38.0},
-    "positive_score": {
-        "ma5_support": 10.0,
-        "ma5_above_ma20": 8.0,
-        "ma20_above_ma60": 6.0,
-        "rsi_low": 44.0,
-        "rsi_high": 62.0,
-        "rsi_band_bonus": 10.0,
-        "macd_non_negative_bonus": 8.0,
-        "vwap_support_distance_pct": 0.006,
-        "vwap_support_bonus": 12.0,
-        "sector_alignment_threshold": 52.0,
-        "sector_alignment_bonus": 5.0,
-        "buy_pressure_threshold": 52.0,
-        "buy_pressure_bonus": 4.0,
-        "slope10_min": -0.3,
-        "slope10_bonus": 5.0,
-        "false_breakout_penalty": 10.0,
-        "intraday_reversal_penalty": 6.0,
-        "stall_after_volume_penalty": 4.0,
-        "distribution_risk_weight": 0.45,
-        "distribution_risk_cap": 4.5,
-    },
-    "negative_score": {
-        "ma5_distance_multiplier": 1.005,
-        "ma5_distance_bonus": 8.0,
-        "high_rsi_threshold": 68.0,
-        "high_rsi_bonus": 12.0,
-        "macd_negative_bonus": 8.0,
-        "vwap_distance_multiplier": 1.008,
-        "vwap_distance_bonus": 12.0,
-        "high_amplitude_threshold": 3.0,
-        "high_amplitude_bonus": 8.0,
-        "sector_alignment_threshold": 54.0,
-        "sector_weak_bonus": 5.0,
-        "sell_pressure_threshold": 52.0,
-        "sell_pressure_bonus": 5.0,
-        "false_breakout_bonus": 8.0,
-        "intraday_reversal_bonus": 5.5,
-        "stall_after_volume_bonus": 4.0,
-        "distribution_risk_weight": 0.35,
-        "distribution_risk_cap": 3.5,
-    },
-    "risk_score": {
-        "amplitude_floor": 5.0,
-        "amplitude_weight": 4.0,
-        "atr_weight": 3.0,
-        "tradability_floor": 55.0,
-        "tradability_weight": 0.6,
-        "sector_alignment_floor": 50.0,
-        "sector_alignment_weight": 0.25,
-        "event_medium_penalty": 6.0,
-        "event_high_penalty": 15.0,
-    },
-}
+_DEFAULT_SCORING = POSITION_T_SCORING_DEFAULTS
 
 
 def action_thresholds(
