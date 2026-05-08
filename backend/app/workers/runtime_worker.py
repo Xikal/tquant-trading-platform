@@ -32,12 +32,15 @@ class RuntimeWorker:
             task = queue.claim_next(worker_id=self.worker_id)
             if task is None:
                 return False
+            task_id = int(task.id)
+            task_type = str(task.task_type)
             try:
-                result = _execute_task(task.task_type, _json_payload(task.payload_json), db)
-                queue.mark_succeeded(task.id, result)
+                result = _execute_task(task_type, _json_payload(task.payload_json), db)
+                queue.mark_succeeded(task_id, result)
             except Exception as exc:
-                logger.exception("runtime task failed: id=%s type=%s", task.id, task.task_type)
-                queue.mark_failed(task.id, str(exc), retryable=True)
+                logger.exception("runtime task failed: id=%s type=%s", task_id, task_type)
+                db.rollback()
+                queue.mark_failed(task_id, str(exc), retryable=True)
             return True
 
     def run_forever(self) -> None:
