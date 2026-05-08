@@ -6,7 +6,7 @@ from decimal import Decimal
 from enum import Enum
 
 from app.services.paper.fees import FeeDetail, calculate_fee
-from app.services.paper.symbols import is_etf
+from app.services.paper.symbols import is_etf, price_tick
 from app.core.timezone import beijing_now
 
 
@@ -131,11 +131,11 @@ class PaperMatchingEngine:
                 return None
             if side == OrderSide.SELL and current_price < limit_price:
                 return None
-            return limit_price
+            return limit_price.quantize(Decimal(price_tick(symbol)))
         bps = self.etf_slippage_bps if is_etf(symbol) else self.slippage_bps
         ratio = Decimal(bps) / Decimal(10000)
         multiplier = Decimal("1.0") + ratio if side == OrderSide.BUY else Decimal("1.0") - ratio
-        return (current_price * multiplier).quantize(Decimal("0.0001"))
+        return (current_price * multiplier).quantize(Decimal(price_tick(symbol)))
 
     @staticmethod
     def _rejected(reason: str, now: datetime) -> MatchResponse:

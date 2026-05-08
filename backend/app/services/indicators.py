@@ -77,14 +77,20 @@ def _ema_series(values: list[float], window: int) -> list[float | None]:
 def rsi(values: list[float], period: int = 14) -> float:
     if len(values) < period + 1:
         return 50.0
-    gains = []
-    losses = []
-    for previous, current in zip(values[-period - 1 : -1], values[-period:]):
+    gains: list[float] = []
+    losses: list[float] = []
+    for previous, current in zip(values[:period], values[1 : period + 1]):
         diff = current - previous
         gains.append(max(diff, 0.0))
         losses.append(abs(min(diff, 0.0)))
     avg_gain = sum(gains) / period
     avg_loss = sum(losses) / period
+    for previous, current in zip(values[period:-1], values[period + 1 :]):
+        diff = current - previous
+        gain = max(diff, 0.0)
+        loss = abs(min(diff, 0.0))
+        avg_gain = ((avg_gain * (period - 1)) + gain) / period
+        avg_loss = ((avg_loss * (period - 1)) + loss) / period
     if avg_loss == 0:
         return 100.0 if avg_gain > 0 else 50.0
     rs = avg_gain / avg_loss
@@ -94,15 +100,23 @@ def rsi(values: list[float], period: int = 14) -> float:
 def atr(bars: list[KlineBar], period: int = 14) -> float:
     if len(bars) < period + 1:
         return 0.0
-    ranges = []
-    for previous, current in zip(bars[-period - 1 : -1], bars[-period:]):
+    ranges: list[float] = []
+    for previous, current in zip(bars[:period], bars[1 : period + 1]):
         tr = max(
             current.high - current.low,
             abs(current.high - previous.close),
             abs(current.low - previous.close),
         )
         ranges.append(tr)
-    return round(sum(ranges) / len(ranges), 4)
+    atr_value = sum(ranges) / period
+    for previous, current in zip(bars[period:-1], bars[period + 1 :]):
+        tr = max(
+            current.high - current.low,
+            abs(current.high - previous.close),
+            abs(current.low - previous.close),
+        )
+        atr_value = ((atr_value * (period - 1)) + tr) / period
+    return round(atr_value, 4)
 
 
 def vwap(bars: list[KlineBar]) -> float:
@@ -128,15 +142,15 @@ def volume_ratio(bars: list[KlineBar], lookback: int = 20) -> float:
     return round(latest / base, 4)
 
 
-def intraday_amplitude(bars: list[KlineBar]) -> float:
+def intraday_amplitude(bars: list[KlineBar], prev_close: float | None = None) -> float:
     if not bars:
         return 0.0
     highest = max(bar.high for bar in bars)
     lowest = min(bar.low for bar in bars)
-    prev_close = bars[0].open or bars[0].close
-    if prev_close == 0:
+    baseline = float(prev_close or 0.0) or bars[0].open or bars[0].close
+    if baseline == 0:
         return 0.0
-    return round((highest - lowest) / prev_close * 100, 4)
+    return round((highest - lowest) / baseline * 100, 4)
 
 
 def trend_slope(values: list[float], window: int = 10) -> float:

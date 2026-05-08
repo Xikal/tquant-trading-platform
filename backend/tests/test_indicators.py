@@ -10,6 +10,7 @@ from app.services.indicators import (
     rsi,
     sanitize_metrics,
     vwap,
+    intraday_amplitude,
 )
 
 
@@ -33,6 +34,13 @@ class IndicatorSanitizeTests(unittest.TestCase):
             for index in range(16)
         ]
         self.assertEqual(atr(bars, 14), 3.0)
+
+    def test_intraday_amplitude_uses_explicit_previous_close(self):
+        bars = [
+            KlineBar(timestamp="1", open=11, close=12, high=12, low=10, volume=100, amount=1000),
+            KlineBar(timestamp="2", open=12, close=13, high=13, low=11, volume=100, amount=1000),
+        ]
+        self.assertEqual(intraday_amplitude(bars, prev_close=10), 30.0)
 
     def test_vwap_uses_typical_price_weighted_by_volume(self):
         bars = [

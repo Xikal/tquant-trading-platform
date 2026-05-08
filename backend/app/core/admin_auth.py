@@ -7,6 +7,8 @@ from typing import Optional
 from fastapi import Header, HTTPException, Request, status
 
 from app.core.config import get_settings
+from app.core.database import SessionLocal
+from app.services.auth_service import AuthError, AuthService
 
 logger = logging.getLogger(__name__)
 
@@ -18,6 +20,9 @@ def require_admin_auth(
 ) -> None:
     expected_token = get_settings().admin_api_token.strip()
     provided_token = _extract_token(x_admin_token=x_admin_token, authorization=authorization)
+    bearer_token = _extract_bearer_token(authorization)
+    if bearer_token and _bearer_user_is_admin(bearer_token):
+        return
     if not expected_token:
         logger.error("ADMIN_API_TOKEN is not configured; admin endpoint rejected.")
         raise HTTPException(
@@ -52,3 +57,23 @@ def _extract_token(*, x_admin_token: Optional[str], authorization: Optional[str]
     if scheme.lower() != "bearer":
         return ""
     return token.strip()
+
+
+def _extract_bearer_token(authorization: Optional[str]) -> str:
+    if not authorization:
+        return ""
+    scheme, _, token = authorization.partition(" ")
+    return token.strip() if scheme.lower() == "bearer" else ""
+
+
+def _bearer_user_is_admin(token: str) -> bool:
+    try:
+        with SessionLocal() as db:
+            user = AuthService().user_from_access_token(db, token)
+            roles = {item.strip().lower() for item in (user.roles or "").split(",") if item.strip()}
+            return "admin" in roles
+    except AuthError:
+        return False
+    except Exception:
+        logger.exception("admin bearer auth failed")
+        return False

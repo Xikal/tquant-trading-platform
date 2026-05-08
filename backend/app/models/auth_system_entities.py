@@ -36,6 +36,21 @@ class UserSession(Base):
     revoked_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
+
+class UserSectorExclusion(Base):
+    __tablename__ = "user_sector_exclusions"
+    __table_args__ = (
+        UniqueConstraint("user_id", "sector_name", name="uq_user_sector_exclusion_user_sector"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    sector_name: Mapped[str] = mapped_column(String(80), index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, server_default=func.now(), onupdate=func.now()
+    )
+
 class UserFeishuBinding(Base):
     __tablename__ = "user_feishu_bindings"
     __table_args__ = (

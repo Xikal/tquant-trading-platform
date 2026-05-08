@@ -271,6 +271,33 @@ class PaperAutoTradingTest(unittest.TestCase):
         self.assertEqual(result.result, "rejected")
         self.assertIn("价格无效", result.reject_reason or "")
 
+    def test_matching_quantizes_stock_and_etf_price_ticks(self):
+        from app.services.paper.matching import OrderSide, OrderType, PaperMatchingEngine
+
+        engine = PaperMatchingEngine(slippage_bps=0, etf_slippage_bps=0)
+        stock = engine.match(
+            symbol="600000",
+            side=OrderSide.BUY,
+            order_type=OrderType.MARKET,
+            quantity=100,
+            limit_price=None,
+            current_price=Decimal("10.1234"),
+            quote_time=datetime.now(),
+            is_suspended=False,
+        )
+        etf = engine.match(
+            symbol="510300",
+            side=OrderSide.BUY,
+            order_type=OrderType.MARKET,
+            quantity=100,
+            limit_price=None,
+            current_price=Decimal("3.1234"),
+            quote_time=datetime.now(),
+            is_suspended=False,
+        )
+        self.assertEqual(stock.avg_fill_price, Decimal("10.12"))
+        self.assertEqual(etf.avg_fill_price, Decimal("3.123"))
+
     def test_next_business_day_skips_cn_market_holidays(self):
         from app.services.market.trading_calendar import last_a_share_trading_day, next_a_share_trading_day
 

@@ -143,6 +143,7 @@ def app_low_buy(
     scan_limit: int = Query(48, ge=12, le=480),
     scan_mode: Literal["quick", "full"] = Query("quick"),
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     try:
         return app_mobile_service.low_buy(
@@ -151,6 +152,7 @@ def app_low_buy(
             limit=limit,
             scan_limit=scan_limit,
             scan_mode=scan_mode,
+            user_id=current_user.id,
         )
     except Exception as exc:
         _raise_low_buy_error(exc)

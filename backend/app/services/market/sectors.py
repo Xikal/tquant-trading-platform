@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import socket
 import threading
 
 from app.core.config import get_settings
@@ -42,12 +41,10 @@ class MarketSectorMixin:
     @staticmethod
     @contextmanager
     def _socket_timeout(timeout_seconds: float):
-        previous = socket.getdefaulttimeout()
-        try:
-            socket.setdefaulttimeout(timeout_seconds)
-            yield
-        finally:
-            socket.setdefaulttimeout(previous)
+        # Do not mutate the process-wide socket default timeout from request
+        # paths. Provider-level clients must own explicit timeout behavior.
+        _ = timeout_seconds
+        yield
 
     def get_sector_snapshot(self, instrument: Instrument, bars, use_board_lookup: bool = True) -> SectorSnapshot:
         market_strength = self._compute_market_strength(bars)

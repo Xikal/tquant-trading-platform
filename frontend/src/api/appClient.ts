@@ -25,63 +25,10 @@ function invalidateAppCaches() {
     "/app/watchlist",
     "/app/low-buy"
   ])
-  clearOfflineCaches(["/app/home", "/app/watchlist", "/app/low-buy"])
 }
 
 async function requestCachedOffline<T>(path: string, ttlMs: number): Promise<T> {
-  try {
-    const payload = await requestCached<T>(path, ttlMs)
-    writeOfflineCache(path, payload)
-    return payload
-  } catch (error) {
-    const errorText = String(error)
-    if (errorText.includes("401") || errorText.includes("403")) {
-      throw error
-    }
-    const cached = readOfflineCache<T>(path)
-    if (cached) {
-      return cached
-    }
-    throw error
-  }
-}
-
-function writeOfflineCache<T>(path: string, payload: T) {
-  if (typeof window === "undefined") return
-  try {
-    window.localStorage.setItem(
-      offlineCacheKey(path),
-      JSON.stringify({ cached_at: new Date().toISOString(), payload })
-    )
-  } catch {
-    // 离线缓存是降级能力，写入失败不影响主请求。
-  }
-}
-
-function readOfflineCache<T>(path: string): T | null {
-  if (typeof window === "undefined") return null
-  try {
-    const raw = window.localStorage.getItem(offlineCacheKey(path))
-    if (!raw) return null
-    const parsed = JSON.parse(raw) as { payload?: T }
-    return parsed.payload ?? null
-  } catch {
-    return null
-  }
-}
-
-function offlineCacheKey(path: string): string {
-  return `tquant:offline:${path}`
-}
-
-function clearOfflineCaches(prefixes: string[]) {
-  if (typeof window === "undefined") return
-  for (const key of Object.keys(window.localStorage)) {
-    if (!key.startsWith("tquant:offline:")) continue
-    if (prefixes.some((prefix) => key.includes(prefix))) {
-      window.localStorage.removeItem(key)
-    }
-  }
+  return requestCached<T>(path, ttlMs)
 }
 
 export const appApi = {

@@ -204,7 +204,7 @@ class QuantEngine:
             vwap_value=vwap_value,
             atr14=atr(bars, 14),
             volume_ratio_value=quote.volume_ratio or volume_ratio(bars, 20),
-            amplitude=intraday_amplitude(bars),
+            amplitude=intraday_amplitude(bars, prev_close=quote.prev_close),
             slope10=trend_slope(closes, 10),
             obv_value=obv(bars),
             distribution=distribution,

@@ -8,12 +8,19 @@ from app.core.admin_auth import require_admin_auth
 from app.core.auth import get_current_user
 from app.core.database import get_db
 from app.core.timing import log_slow_call, monotonic_start
+from app.models.entities import User
 from app.models.schemas import LowBuyTradeLifecycleUpdate
 from app.models.schema_defs.screener import LowBuyStrategyGovernanceUpdate
 from app.services.low_buy.strategy_governance import build_low_buy_strategy_governance, set_strategy_governance_override
 from app.services.low_buy.shared import DEFAULT_PRODUCTION_LOW_BUY_STRATEGY
 from app.services.low_buy_screener import LowBuyScreenerService
 from app.services.market_data import DataSourceError
+from app.services.user_sector_preferences import (
+    UserSectorPreferenceService,
+    filter_low_buy_history_response,
+    filter_low_buy_screener_response,
+    filter_priority_board_response,
+)
 
 router = APIRouter(prefix="/screeners", dependencies=[Depends(get_current_user)])
 logger = logging.getLogger(__name__)
@@ -53,6 +60,7 @@ def low_buy_screener_view(
     scan_limit: int = Query(48, ge=12, le=480),
     scan_mode: str = Query("full"),
     include_history: bool = Query(False),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     started_at = monotonic_start()
@@ -65,6 +73,8 @@ def low_buy_screener_view(
             include_history=include_history,
             scan_mode=scan_mode,
         )
+        excluded = UserSectorPreferenceService(db).get_excluded_sector_set(current_user.id)
+        result = filter_low_buy_screener_response(result, excluded)
     except DataSourceError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except Exception as exc:
@@ -115,11 +125,14 @@ def low_buy_quote_refresh_view(
 @router.get("/low-buy/history")
 def low_buy_history_view(
     strategy: str = Query(DEFAULT_PRODUCTION_LOW_BUY_STRATEGY),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     started_at = monotonic_start()
     try:
         result = low_buy_screener.history(db=db, strategy=strategy)
+        excluded = UserSectorPreferenceService(db).get_excluded_sector_set(current_user.id)
+        result = filter_low_buy_history_response(result, excluded)
     except DataSourceError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except Exception as exc:
@@ -132,11 +145,14 @@ def low_buy_history_view(
 @router.get("/low-buy/priority-board")
 def low_buy_priority_board_view(
     limit: int = Query(12, ge=3, le=30),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     started_at = monotonic_start()
     try:
         result = low_buy_screener.priority_board(db=db, limit=limit)
+        excluded = UserSectorPreferenceService(db).get_excluded_sector_set(current_user.id)
+        result = filter_priority_board_response(result, excluded)
     except DataSourceError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except Exception as exc:

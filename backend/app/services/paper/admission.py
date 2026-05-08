@@ -4,6 +4,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from app.services.market.board_exclusions import GROWTH_BOARD_REJECT_REASON, is_growth_board_stock
+from app.services.user_sector_preferences import candidate_matches_excluded_sector
 
 
 @dataclass(frozen=True)
@@ -44,6 +45,7 @@ class AdmissionFilter:
         existing_positions: list[dict[str, Any]],
         today_orders: list[dict[str, Any]],
         market_direction: str | None,
+        excluded_sectors: set[str] | None = None,
     ) -> AdmissionReport:
         if not signals:
             return AdmissionReport(summary="无优先级信号")
@@ -51,11 +53,18 @@ class AdmissionFilter:
         positions = _positions_by_symbol(existing_positions)
         orders = _orders_by_symbol(today_orders)
         direction = _normalize_direction(market_direction)
+        excluded_sector_set = excluded_sectors or set()
         passed: list[AdmissionResult] = []
         filtered: list[AdmissionResult] = []
 
         for signal in _sort_signals(signals):
-            result = self._evaluate_one(signal=signal, positions=positions, orders=orders, direction=direction)
+            result = self._evaluate_one(
+                signal=signal,
+                positions=positions,
+                orders=orders,
+                direction=direction,
+                excluded_sectors=excluded_sector_set,
+            )
             if result.passed:
                 passed.append(result)
             else:
@@ -74,10 +83,19 @@ class AdmissionFilter:
         positions: dict[str, dict[str, Any]],
         orders: dict[str, list[dict[str, Any]]],
         direction: str,
+        excluded_sectors: set[str],
     ) -> AdmissionResult:
         symbol = str(signal.get("symbol") or "").strip()
         score = _float(signal.get("priority_score"))
-        reason = self._reject_reason(symbol=symbol, score=score, signal=signal, positions=positions, orders=orders, direction=direction)
+        reason = self._reject_reason(
+            symbol=symbol,
+            score=score,
+            signal=signal,
+            positions=positions,
+            orders=orders,
+            direction=direction,
+            excluded_sectors=excluded_sectors,
+        )
         return AdmissionResult(
             passed=reason == "",
             symbol=symbol,
@@ -95,11 +113,15 @@ class AdmissionFilter:
         positions: dict[str, dict[str, Any]],
         orders: dict[str, list[dict[str, Any]]],
         direction: str,
+        excluded_sectors: set[str],
     ) -> str:
         if not symbol:
             return "缺少证券代码"
         if is_growth_board_stock(symbol):
             return GROWTH_BOARD_REJECT_REASON
+        if candidate_matches_excluded_sector(signal, excluded_sectors):
+            sector = str(signal.get("sector_name") or signal.get("industry") or "该板块")
+            return f"用户已排除{sector}，不自动买入"
         if signal.get("is_actionable") is False:
             return "信号仅供观察，未通过可执行门槛"
         if score < self.min_score:

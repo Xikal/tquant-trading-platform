@@ -214,6 +214,26 @@ def test_quant_parameter_current_prefers_exact_scope_over_newer_global():
     assert service.current(scope="global").version == "newer-global"
 
 
+def test_quant_parameter_version_rejects_invalid_numeric_boundary():
+    db = _db()
+    service = QuantParameterVersionService(db)
+
+    try:
+        service.create(
+            QuantParameterSetCreate(
+                version="invalid-negative",
+                scope="low_buy",
+                params={"low_buy": {"strategy_prefilters": {"first_board": {"min_volume_burst_ratio": -1}}}},
+                activate=False,
+            ),
+            created_by="tester",
+        )
+    except ValueError as exc:
+        assert "不能低于" in str(exc)
+    else:  # pragma: no cover - defensive assertion
+        raise AssertionError("negative bounded parameter should be rejected")
+
+
 def test_data_source_probe_reports_configured_chain():
     response = DataSourceProbeService().probe()
 

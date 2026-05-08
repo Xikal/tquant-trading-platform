@@ -184,6 +184,8 @@ from app.models.schema_defs.settings import (
     RuntimeStatusResponse,
     SettingsPayload,
     SettingsUpdate,
+    UserSectorExclusionsResponse,
+    UserSectorExclusionsUpdate,
 )
 from app.models.schema_defs.watchlist import WatchlistCreate, WatchlistItemOut
 
@@ -354,6 +356,8 @@ __all__ = [
     "SectorSnapshot",
     "SettingsPayload",
     "SettingsUpdate",
+    "UserSectorExclusionsResponse",
+    "UserSectorExclusionsUpdate",
     "StrategySuggestion",
     "StrategyComparisonRequest",
     "StrategyValidationItem",

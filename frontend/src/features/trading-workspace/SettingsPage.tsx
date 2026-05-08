@@ -4,6 +4,7 @@ import type {
   LowBuyStrategyGovernanceResponse,
   RuntimeStatus,
   SettingsPayload,
+  UserSectorExclusionsResponse,
 } from "../../types";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { featureFlagsApi, type FeatureFlagAuditItem, type FeatureFlagItem } from "../../api/featureFlags";
@@ -18,6 +19,7 @@ export function SettingsPage({
   factorWeights,
   adminTasks,
   strategyGovernance,
+  sectorExclusions,
   factorDraft,
   draft,
   setDraft,
@@ -27,12 +29,14 @@ export function SettingsPage({
   onSaveFactors,
   onRefresh,
   onUpdateStrategyGovernance,
+  onSaveSectorExclusions,
 }: {
   settings: SettingsPayload | null;
   runtime: RuntimeStatus | null;
   factorWeights: FactorWeightsResponse | null;
   adminTasks: AdminTaskStatus[];
   strategyGovernance: LowBuyStrategyGovernanceResponse | null;
+  sectorExclusions: UserSectorExclusionsResponse | null;
   factorDraft: Record<string, string>;
   draft: SettingsDraft;
   setDraft: (draft: SettingsDraft) => void;
@@ -42,11 +46,14 @@ export function SettingsPage({
   onSaveFactors: () => void | Promise<void>;
   onRefresh: () => void;
   onUpdateStrategyGovernance: (strategyKey: string, status: "active" | "watch" | "paused") => void;
+  onSaveSectorExclusions: (excludedSectors: string[]) => void | Promise<void>;
 }) {
   const [savedSection, setSavedSection] = useState("");
   const [featureFlags, setFeatureFlags] = useState<FeatureFlagItem[]>([]);
   const [featureFlagAudits, setFeatureFlagAudits] = useState<FeatureFlagAuditItem[]>([]);
   const [featureFlagError, setFeatureFlagError] = useState("");
+  const [sectorQuery, setSectorQuery] = useState("");
+  const [sectorDraft, setSectorDraft] = useState<string[]>([]);
   const savedTimerRef = useRef<number | null>(null);
   const adminTokenError = draft.adminToken.trim() ? "" : "保存配置前需要填写管理令牌";
   const llmKeyError = !settings?.llm_api_key_configured && !draft.llm_api_key.trim() ? "首次配置大模型需要填写 API Key" : "";
@@ -57,7 +64,14 @@ export function SettingsPage({
   const pauseLossError = integerFieldError(draft.risk_pause_after_losses, "连亏暂停");
   const minProfitError = percentFieldError(draft.strategy_min_profit_pct, "最小收益");
   const dirtyState = useMemo(() => buildSettingsDirtyState(settings, factorWeights, draft, factorDraft), [draft, factorDraft, factorWeights, settings]);
-  const unsavedCount = Object.values(dirtyState).filter(Boolean).length;
+  const sectorDirty = useMemo(() => !sameStringSet(sectorDraft, sectorExclusions?.excluded_sectors ?? []), [sectorDraft, sectorExclusions]);
+  const unsavedCount = Object.values(dirtyState).filter(Boolean).length + (sectorDirty ? 1 : 0);
+  const filteredSectors = useMemo(() => {
+    const query = sectorQuery.trim().toLowerCase();
+    const sectors = sectorExclusions?.available_sectors ?? [];
+    if (!query) return sectors;
+    return sectors.filter((sector) => sector.toLowerCase().includes(query));
+  }, [sectorExclusions, sectorQuery]);
 
   async function saveSection(section: "llm" | "risk" | "data" | "factor") {
     const error = sectionError(section, {
@@ -90,6 +104,9 @@ export function SettingsPage({
     for (const section of sections) {
       await saveSection(section);
     }
+    if (sectorDirty) {
+      await saveSectorExclusions();
+    }
   }
 
   function markSaved(section: string) {
@@ -107,6 +124,10 @@ export function SettingsPage({
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    setSectorDraft(sectorExclusions?.excluded_sectors ?? []);
+  }, [sectorExclusions]);
 
   async function loadFeatureFlags(options: { includeAudit?: boolean; cancelled?: () => boolean } = {}) {
     try {
@@ -145,6 +166,18 @@ export function SettingsPage({
     } catch (error) {
       setFeatureFlagError(error instanceof Error ? error.message : "功能开关更新失败");
     }
+  }
+
+  async function saveSectorExclusions() {
+    await Promise.resolve(onSaveSectorExclusions(sectorDraft));
+    markSaved("sector-exclusions");
+  }
+
+  function toggleSector(sector: string) {
+    setSectorDraft((current) => current.includes(sector)
+      ? current.filter((item) => item !== sector)
+      : [...current, sector].sort((a, b) => a.localeCompare(b, "zh-Hans-CN"))
+    );
   }
 
   return (
@@ -207,6 +240,41 @@ export function SettingsPage({
             </div>
           ) : (
             <p className="hint">填写管理令牌后点击刷新配置，即可加载因子权重。未加载时不会影响策略运行。</p>
+          )}
+        </SettingCard>
+        <SettingCard
+          title="板块过滤"
+          button="保存板块过滤"
+          onSave={() => void saveSectorExclusions()}
+          loading={loading === "settings-sector-exclusions"}
+          saved={savedSection === "sector-exclusions"}
+          disabled={!sectorExclusions || !sectorDirty}
+        >
+          <p className="hint">选择不想参与的板块后，全策略榜单、选股宝典、App 选股和模拟盘自动买入都会过滤这些板块。已有持仓仍会保留风控监控。</p>
+          <div className="sector-filter-summary">
+            <InfoPill label="可选板块" value={sectorExclusions ? `${sectorExclusions.available_sectors.length} 个` : "--"} />
+            <InfoPill label="已排除" value={`${sectorDraft.length} 个`} />
+            <button type="button" onClick={() => setSectorDraft([])} disabled={!sectorDraft.length}>清空</button>
+          </div>
+          <TextField label="搜索板块" value={sectorQuery} placeholder="输入板块名称，例如 半导体、银行、医药" onChange={(event) => setSectorQuery(event.target.value)} />
+          <div className="sector-filter-list">
+            {filteredSectors.length ? filteredSectors.map((sector) => (
+              <label key={sector} className={sectorDraft.includes(sector) ? "sector-filter-option active" : "sector-filter-option"}>
+                <input
+                  type="checkbox"
+                  checked={sectorDraft.includes(sector)}
+                  onChange={() => toggleSector(sector)}
+                />
+                <span>{sector}</span>
+              </label>
+            )) : (
+              <p className="hint">没有匹配的板块。请先同步标的库，或换一个关键词。</p>
+            )}
+          </div>
+          {sectorDraft.length ? (
+            <p className="hint">当前已排除：{sectorDraft.slice(0, 12).join("、")}{sectorDraft.length > 12 ? ` 等 ${sectorDraft.length} 个` : ""}</p>
+          ) : (
+            <p className="hint">当前未排除任何板块。</p>
           )}
         </SettingCard>
         <SettingCard title="策略治理" button="刷新策略状态" onSave={onRefresh} loading={loading === "settings"}>
@@ -408,4 +476,12 @@ function taskHealthSummary(tasks: AdminTaskStatus[]): string {
     return `${running} 个运行中`;
   }
   return `${tasks.length} 个已接入`;
+}
+
+function sameStringSet(left: string[], right: string[]): boolean {
+  if (left.length !== right.length) {
+    return false;
+  }
+  const rightSet = new Set(right);
+  return left.every((item) => rightSet.has(item));
 }

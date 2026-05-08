@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import math
 from copy import deepcopy
 from datetime import datetime
 from typing import Any
@@ -189,6 +190,7 @@ class QuantParameterVersionService:
         return QuantParameterSetListResponse(current_version=current.version, items=[_out(row) for row in rows])
 
     def create(self, payload: QuantParameterSetCreate, *, created_by: str = "admin") -> QuantParameterSetOut:
+        params = _validate_parameter_payload(payload.params)
         before = self.current(scope=payload.scope).params if payload.activate else {}
         if payload.activate:
             self.db.execute(
@@ -201,7 +203,7 @@ class QuantParameterVersionService:
             name=payload.name or payload.version,
             scope=payload.scope,
             status="active" if payload.activate else "draft",
-            params_json=_json_dumps(payload.params),
+            params_json=_json_dumps(params),
             description=payload.description,
             created_by=created_by,
             activated_at=datetime.utcnow() if payload.activate else None,
@@ -214,7 +216,7 @@ class QuantParameterVersionService:
             scope=row.scope,
             operator=created_by,
             before=before,
-            after=_deep_merge(default_quant_parameters(), payload.params),
+            after=_deep_merge(default_quant_parameters(), params),
         )
         self.db.commit()
         _clear_runtime_quant_cache()
@@ -358,6 +360,53 @@ def _deep_merge(defaults: dict[str, Any], overrides: dict[str, Any]) -> dict[str
         if key not in result:
             result[key] = value
     return result
+
+
+def _validate_parameter_payload(params: dict[str, Any]) -> dict[str, Any]:
+    if not isinstance(params, dict):
+        raise ValueError("参数版本内容必须是 JSON 对象")
+    schema_map = _flatten_schema(quant_parameter_schema())
+
+    def visit(value: Any, path: str) -> Any:
+        if isinstance(value, dict):
+            return {str(key): visit(item, f"{path}.{key}" if path else str(key)) for key, item in value.items()}
+        if isinstance(value, list):
+            return [visit(item, f"{path}[]") for item in value]
+        if isinstance(value, bool) or value is None or isinstance(value, str):
+            return value
+        if isinstance(value, (int, float)):
+            numeric = float(value)
+            if not math.isfinite(numeric):
+                raise ValueError(f"参数 {path or '<root>'} 必须是有限数字")
+            if abs(numeric) > 1_000_000_000:
+                raise ValueError(f"参数 {path or '<root>'} 超出安全范围")
+            field_schema = schema_map.get(path)
+            if field_schema:
+                minimum = field_schema.get("min")
+                maximum = field_schema.get("max")
+                if minimum is not None and numeric < float(minimum):
+                    raise ValueError(f"参数 {path} 不能低于 {minimum}")
+                if maximum is not None and numeric > float(maximum):
+                    raise ValueError(f"参数 {path} 不能高于 {maximum}")
+            return value
+        raise ValueError(f"参数 {path or '<root>'} 类型不支持")
+
+    return visit(params, "")
+
+
+def _flatten_schema(schema: dict[str, Any]) -> dict[str, dict[str, Any]]:
+    flat: dict[str, dict[str, Any]] = {}
+
+    def walk(prefix: str, value: Any) -> None:
+        if isinstance(value, dict) and "type" in value:
+            flat[prefix] = value
+            return
+        if isinstance(value, dict):
+            for key, item in value.items():
+                walk(f"{prefix}.{key}" if prefix else str(key), item)
+
+    walk("", schema)
+    return flat
 
 
 def _clear_runtime_quant_cache() -> None:

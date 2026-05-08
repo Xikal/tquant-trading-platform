@@ -40,6 +40,7 @@ import type {
   ReplayItem,
   RiskEventItem,
   SettingsPayload,
+  UserSectorExclusionsResponse,
   StrategyValidationReport,
   WatchlistItem,
   WatchlistSignal
@@ -110,6 +111,22 @@ export const api = {
       body: JSON.stringify(payload)
     }),
   getSettings: () => request<SettingsPayload>("/settings"),
+  getSectorExclusions: () => request<UserSectorExclusionsResponse>("/settings/sector-exclusions"),
+  updateSectorExclusions: (excluded_sectors: string[]) =>
+    request<UserSectorExclusionsResponse>("/settings/sector-exclusions", {
+      method: "PUT",
+      body: JSON.stringify({ excluded_sectors })
+    }).then((result) => {
+      invalidateCache([
+        "/settings/sector-exclusions",
+        "/screeners/low-buy",
+        "/screeners/low-buy/priority-board",
+        "/monitor/snapshot",
+        "/market/sector-etf-t0",
+        "/app/low-buy",
+      ]);
+      return result;
+    }),
   getFactorWeights: () => request<FactorWeightsResponse>("/settings/factor-weights"),
   updateFactorWeights: (weights: Record<string, number>) =>
     request<FactorWeightsResponse>("/settings/factor-weights", {

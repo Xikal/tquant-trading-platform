@@ -96,7 +96,11 @@ def build_metrics(
                 "strategy_min_profit_etf_pct",
                 max(1.5, config_float(risk_config, "strategy_min_profit_pct", 3.0)),
             ),
-            "price_limit_pct": price_limit_pct(quote.symbol, quote.instrument_type),
+            "price_limit_pct": price_limit_pct(
+                quote.symbol,
+                quote.instrument_type,
+                is_st=str(quote.name or "").upper().startswith(("ST", "*ST")),
+            ),
         }
     )
     metrics["scenario"] = scores.scenario

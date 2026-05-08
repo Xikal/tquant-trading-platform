@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import time
+import threading
 from copy import deepcopy
 from typing import Any
 
@@ -10,28 +11,31 @@ from app.services.quant.parameter_version_service import QuantParameterVersionSe
 _CACHE_TTL_SECONDS = 30.0
 _CACHE_EXPIRES_AT = 0.0
 _CACHE_PARAMS: dict[str, Any] | None = None
+_CACHE_LOCK = threading.RLock()
 
 
 def current_quant_parameters() -> dict[str, Any]:
     global _CACHE_EXPIRES_AT, _CACHE_PARAMS
     now = time.monotonic()
-    if _CACHE_PARAMS is not None and now < _CACHE_EXPIRES_AT:
-        return deepcopy(_CACHE_PARAMS)
-    try:
-        with SessionLocal() as db:
-            current = QuantParameterVersionService(db).current(scope="low_buy")
-            params = _deep_merge(default_quant_parameters(), current.params)
-    except Exception:
-        params = default_quant_parameters()
-    _CACHE_PARAMS = params
-    _CACHE_EXPIRES_AT = now + _CACHE_TTL_SECONDS
-    return deepcopy(params)
+    with _CACHE_LOCK:
+        if _CACHE_PARAMS is not None and now < _CACHE_EXPIRES_AT:
+            return deepcopy(_CACHE_PARAMS)
+        try:
+            with SessionLocal() as db:
+                current = QuantParameterVersionService(db).current(scope="low_buy")
+                params = _deep_merge(default_quant_parameters(), current.params)
+        except Exception:
+            params = default_quant_parameters()
+        _CACHE_PARAMS = params
+        _CACHE_EXPIRES_AT = now + _CACHE_TTL_SECONDS
+        return deepcopy(params)
 
 
 def clear_quant_parameter_cache() -> None:
     global _CACHE_EXPIRES_AT, _CACHE_PARAMS
-    _CACHE_EXPIRES_AT = 0.0
-    _CACHE_PARAMS = None
+    with _CACHE_LOCK:
+        _CACHE_EXPIRES_AT = 0.0
+        _CACHE_PARAMS = None
 
 
 def get_low_buy_strategy_prefilter(strategy: str, fallback: dict[str, Any]) -> dict[str, Any]:

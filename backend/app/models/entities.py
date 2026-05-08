@@ -11,6 +11,7 @@ from app.models.auth_system_entities import (
     SystemSetting,
     User,
     UserFeishuBinding,
+    UserSectorExclusion,
     UserSession,
 )
 from app.models.backtest_entities import (
@@ -90,6 +91,7 @@ __all__ = [
     "User",
     "UserSession",
     "UserFeishuBinding",
+    "UserSectorExclusion",
     "UserWatchlist",
     "WatchlistSignalSnapshot",
     "SystemSetting",

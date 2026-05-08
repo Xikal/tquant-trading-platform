@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import pickle
 import hashlib
+import posixpath
 import shutil
 from datetime import datetime
 from pathlib import Path
@@ -284,6 +285,13 @@ class MLSignalService:
         if not remote_dir_raw:
             return ""
         source = _validated_artifact_path(artifact_uri, self._artifact_dir())
+        if _is_fsspec_uri(remote_dir_raw):
+            target_uri = _join_fsspec_uri(remote_dir_raw, source.name)
+            _copy_local_to_fsspec(source, target_uri)
+            if _fsspec_sha256(target_uri) != expected_sha256:
+                _remove_fsspec_file(target_uri)
+                raise ValueError("remote artifact hash mismatch after backup")
+            return target_uri
         remote_dir = Path(remote_dir_raw)
         if not remote_dir.is_absolute():
             remote_dir = BACKEND_DIR / remote_dir
@@ -338,6 +346,12 @@ class MLSignalService:
         except ValueError as exc:
             raise ValueError("model artifact restore path escapes configured directory") from exc
         if target.exists():
+            return
+        if _is_fsspec_uri(remote_artifact_uri):
+            if _fsspec_sha256(remote_artifact_uri) != expected_sha256:
+                raise ValueError("remote model artifact hash mismatch")
+            target.parent.mkdir(parents=True, exist_ok=True)
+            _copy_fsspec_to_local(remote_artifact_uri, target)
             return
         remote = Path(remote_artifact_uri).expanduser()
         if not remote.is_file():
@@ -560,11 +574,15 @@ def _promotion_blocks(*, payload: MLSignalTrainRequest, metrics: dict[str, Any],
     min_auc = float(settings.ml_signal_min_production_auc)
     min_cv_accuracy = float(settings.ml_signal_min_cv_accuracy)
     min_cv_auc = float(settings.ml_signal_min_cv_auc)
+    max_cv_accuracy_std = float(settings.ml_signal_max_cv_accuracy_std)
+    max_cv_auc_std = float(settings.ml_signal_max_cv_auc_std)
     validation_accuracy = float(metrics.get("validation_accuracy", 0.0) or 0.0)
     validation_auc = metrics.get("validation_auc")
     cv_fold_count = int(metrics.get("cv_fold_count", 0) or 0)
     cv_accuracy = metrics.get("cv_accuracy_mean")
     cv_auc = metrics.get("cv_auc_mean")
+    cv_accuracy_std = metrics.get("cv_accuracy_std")
+    cv_auc_std = metrics.get("cv_auc_std")
 
     if sample_count < min_samples:
         blocks.append(f"生产模型样本量不足：当前 {sample_count}，最低需要 {min_samples}")
@@ -580,10 +598,18 @@ def _promotion_blocks(*, payload: MLSignalTrainRequest, metrics: dict[str, Any],
         blocks.append("cv_accuracy_mean 缺失，不能晋级生产模型")
     elif float(cv_accuracy or 0.0) < min_cv_accuracy:
         blocks.append(f"cv_accuracy_mean {float(cv_accuracy):.3f} 低于生产阈值 {min_cv_accuracy:.3f}")
+    if cv_accuracy_std is None:
+        blocks.append("cv_accuracy_std 缺失，不能晋级生产模型")
+    elif float(cv_accuracy_std or 0.0) > max_cv_accuracy_std:
+        blocks.append(f"cv_accuracy_std {float(cv_accuracy_std):.3f} 高于稳定性阈值 {max_cv_accuracy_std:.3f}")
     if cv_auc is None:
         blocks.append("cv_auc_mean 缺失，不能晋级生产模型")
     elif float(cv_auc or 0.0) < min_cv_auc:
         blocks.append(f"cv_auc_mean {float(cv_auc):.3f} 低于生产阈值 {min_cv_auc:.3f}")
+    if cv_auc_std is None:
+        blocks.append("cv_auc_std 缺失，不能晋级生产模型")
+    elif float(cv_auc_std or 0.0) > max_cv_auc_std:
+        blocks.append(f"cv_auc_std {float(cv_auc_std):.3f} 高于稳定性阈值 {max_cv_auc_std:.3f}")
     return blocks
 
 
@@ -597,6 +623,8 @@ def _production_model_warning(status: str, metrics: dict[str, Any]) -> str:
     cv_fold_count = int(metrics.get("cv_fold_count", 0) or 0)
     cv_accuracy = metrics.get("cv_accuracy_mean")
     cv_auc = metrics.get("cv_auc_mean")
+    cv_accuracy_std = metrics.get("cv_accuracy_std")
+    cv_auc_std = metrics.get("cv_auc_std")
     if sample_count < int(settings.ml_signal_min_production_samples):
         return "production 模型样本量低于当前安全阈值，本次按研究信号处理。"
     if validation_accuracy < float(settings.ml_signal_min_production_accuracy):
@@ -607,8 +635,12 @@ def _production_model_warning(status: str, metrics: dict[str, Any]) -> str:
         return "production 模型缺少交叉验证，本次按研究信号处理。"
     if cv_accuracy is None or float(cv_accuracy or 0.0) < float(settings.ml_signal_min_cv_accuracy):
         return "production 模型交叉验证准确率低于当前安全阈值，本次按研究信号处理。"
+    if cv_accuracy_std is None or float(cv_accuracy_std or 0.0) > float(settings.ml_signal_max_cv_accuracy_std):
+        return "production 模型交叉验证稳定性不足，本次按研究信号处理。"
     if cv_auc is None or float(cv_auc or 0.0) < float(settings.ml_signal_min_cv_auc):
         return "production 模型交叉验证 AUC 低于当前安全阈值，本次按研究信号处理。"
+    if cv_auc_std is None or float(cv_auc_std or 0.0) > float(settings.ml_signal_max_cv_auc_std):
+        return "production 模型交叉验证 AUC 波动过大，本次按研究信号处理。"
     return ""
 
 
@@ -770,6 +802,60 @@ def _file_sha256(path: Path) -> str:
         for chunk in iter(lambda: file.read(1024 * 1024), b""):
             digest.update(chunk)
     return digest.hexdigest()
+
+
+def _is_fsspec_uri(value: str) -> bool:
+    return "://" in str(value or "") and not str(value or "").startswith("file://")
+
+
+def _join_fsspec_uri(base_uri: str, filename: str) -> str:
+    cleaned = str(base_uri).rstrip("/")
+    return f"{cleaned}/{filename}"
+
+
+def _fsspec_url_to_fs(uri: str):
+    try:
+        import fsspec
+    except ImportError as exc:
+        raise ValueError(
+            "ml_signal_artifact_remote_dir uses a remote URI; install fsspec and the matching storage driver "
+            "(for example s3fs/ossfs) to enable remote ML artifacts."
+        ) from exc
+    return fsspec.core.url_to_fs(uri)
+
+
+def _copy_local_to_fsspec(source: Path, target_uri: str) -> None:
+    fs, target_path = _fsspec_url_to_fs(target_uri)
+    parent = posixpath.dirname(target_path)
+    if parent:
+        fs.makedirs(parent, exist_ok=True)
+    with source.open("rb") as src, fs.open(target_path, "wb") as dst:
+        shutil.copyfileobj(src, dst)
+
+
+def _copy_fsspec_to_local(source_uri: str, target: Path) -> None:
+    fs, source_path = _fsspec_url_to_fs(source_uri)
+    if not fs.exists(source_path):
+        raise ValueError("remote model artifact file does not exist")
+    with fs.open(source_path, "rb") as src, target.open("wb") as dst:
+        shutil.copyfileobj(src, dst)
+
+
+def _fsspec_sha256(uri: str) -> str:
+    fs, path = _fsspec_url_to_fs(uri)
+    if not fs.exists(path):
+        raise ValueError("remote model artifact file does not exist")
+    digest = hashlib.sha256()
+    with fs.open(path, "rb") as file:
+        for chunk in iter(lambda: file.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _remove_fsspec_file(uri: str) -> None:
+    fs, path = _fsspec_url_to_fs(uri)
+    if fs.exists(path):
+        fs.rm(path)
 
 
 def _to_float(value: Any) -> float:

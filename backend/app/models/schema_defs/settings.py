@@ -129,3 +129,14 @@ class FactorWeightsResponse(BaseModel):
 
 class FactorWeightsUpdate(BaseModel):
     weights: Dict[str, float] = Field(default_factory=dict)
+
+
+class UserSectorExclusionsResponse(BaseModel):
+    available_sectors: List[str] = Field(default_factory=list)
+    excluded_sectors: List[str] = Field(default_factory=list)
+    excluded_count: int = 0
+    updated_at: str = ""
+
+
+class UserSectorExclusionsUpdate(BaseModel):
+    excluded_sectors: List[str] = Field(default_factory=list, max_length=300)

@@ -17,6 +17,7 @@ from app.services.monitor_snapshot_cache import (
     read_monitor_snapshot_cache,
     rows_signature,
 )
+from app.services.user_sector_preferences import UserSectorPreferenceService, filter_monitor_snapshot_payload
 
 router = APIRouter(prefix="/monitor", dependencies=[Depends(get_current_user)])
 
@@ -34,7 +35,8 @@ def monitor_snapshot(
     """
 
     rows = list_user_watchlist_rows(db, current_user.id)
-    signature = rows_signature(rows)
+    excluded = UserSectorPreferenceService(db).get_excluded_sector_set(current_user.id)
+    signature = rows_signature(rows, excluded)
     cached = read_monitor_snapshot_cache(
         db,
         user_id=current_user.id,
@@ -48,7 +50,7 @@ def monitor_snapshot(
                 user_id=current_user.id,
                 priority_limit=priority_limit,
             )
-        return MonitorSnapshotResponse(**cached.payload)
+        return MonitorSnapshotResponse(**filter_monitor_snapshot_payload(cached.payload, excluded))
 
     # Cold start path: return a small, explicit fallback immediately and let the
     # runtime worker perform expensive analysis/priority refresh.  The Web

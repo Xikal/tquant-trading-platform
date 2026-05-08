@@ -10,10 +10,12 @@ from app.models.schema_defs.market import (
     MarketModelValidationResponse,
     SectorEtfT0Response,
 )
+from app.models.entities import User
 from app.services.intraday_anomaly import IntradayAnomalyService
 from app.services.market_data import MarketDataService
 from app.services.market.regime_quality import market_regime_quality_text
 from app.services.sector_etf_t0 import SectorEtfT0Service
+from app.services.user_sector_preferences import UserSectorPreferenceService, filter_monitor_snapshot_payload
 from app.core.database import get_db
 from sqlalchemy.orm import Session
 
@@ -54,9 +56,15 @@ def market_breadth() -> MarketBreadthResponse:
 @router.get("/sector-etf-t0", response_model=SectorEtfT0Response)
 def sector_etf_t0(
     limit: int = 8,
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> SectorEtfT0Response:
-    return sector_etf_t0_service.build(db, limit=max(1, min(limit, 20)))
+    response = sector_etf_t0_service.build(db, limit=max(1, min(limit, 20)))
+    excluded = UserSectorPreferenceService(db).get_excluded_sector_set(current_user.id)
+    if not excluded:
+        return response
+    payload = filter_monitor_snapshot_payload({"sector_etf_t0": response.model_dump()}, excluded)
+    return SectorEtfT0Response.model_validate(payload["sector_etf_t0"])
 
 
 @router.get("/sector-etf-t0/validation", response_model=MarketModelValidationResponse)

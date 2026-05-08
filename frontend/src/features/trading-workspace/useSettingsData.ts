@@ -7,6 +7,7 @@ import type {
   LowBuyStrategyGovernanceResponse,
   RuntimeStatus,
   SettingsPayload,
+  UserSectorExclusionsResponse,
 } from "../../types";
 import type { SettingsDraft } from "./workspaceTypes";
 import { errorMessage } from "./workspaceFormatters";
@@ -24,6 +25,7 @@ export function useSettingsData({ withLoading, setError, setNotice, setRuntime }
   const [factorWeights, setFactorWeights] = useState<FactorWeightsResponse | null>(null);
   const [adminTasks, setAdminTasks] = useState<AdminTaskStatus[]>([]);
   const [strategyGovernance, setStrategyGovernance] = useState<LowBuyStrategyGovernanceResponse | null>(null);
+  const [sectorExclusions, setSectorExclusions] = useState<UserSectorExclusionsResponse | null>(null);
   const [factorDraft, setFactorDraft] = useState<Record<string, string>>({});
   const [settingsDraft, setSettingsDraft] = useState<SettingsDraft>({
     adminToken: getAdminApiToken(),
@@ -45,10 +47,11 @@ export function useSettingsData({ withLoading, setError, setNotice, setRuntime }
         setAdminApiToken(settingsDraft.adminToken);
       }
       const shouldLoadFactors = Boolean(getAdminApiToken());
-      const [settingsResult, runtimeResult, strategyResult] = await Promise.allSettled([
+      const [settingsResult, runtimeResult, strategyResult, sectorExclusionResult] = await Promise.allSettled([
         api.getSettings(),
         api.getRuntimeStatus(),
         api.getLowBuyStrategies(),
+        api.getSectorExclusions(),
       ]);
       if (settingsResult.status === "fulfilled") {
         setSettings(settingsResult.value);
@@ -59,6 +62,9 @@ export function useSettingsData({ withLoading, setError, setNotice, setRuntime }
       }
       if (strategyResult.status === "fulfilled") {
         setStrategyGovernance(strategyResult.value);
+      }
+      if (sectorExclusionResult.status === "fulfilled") {
+        setSectorExclusions(sectorExclusionResult.value);
       }
       if (shouldLoadFactors) {
         const [factorResult, taskResult] = await Promise.allSettled([
@@ -122,11 +128,20 @@ export function useSettingsData({ withLoading, setError, setNotice, setRuntime }
     });
   }, [settingsDraft.adminToken, setNotice, withLoading]);
 
+  const saveSectorExclusions = useCallback(async (excludedSectors: string[]) => {
+    await withLoading("settings-sector-exclusions", async () => {
+      const result = await api.updateSectorExclusions(excludedSectors);
+      setSectorExclusions(result);
+      setNotice(`板块过滤已保存，已排除 ${result.excluded_count} 个板块`);
+    });
+  }, [setNotice, withLoading]);
+
   return {
     settings,
     factorWeights,
     adminTasks,
     strategyGovernance,
+    sectorExclusions,
     factorDraft,
     settingsDraft,
     setFactorDraft,
@@ -135,6 +150,7 @@ export function useSettingsData({ withLoading, setError, setNotice, setRuntime }
     saveSettings,
     saveFactorWeights,
     updateStrategyGovernance,
+    saveSectorExclusions,
   };
 }
 

@@ -63,8 +63,9 @@ class AppSettings(BaseSettings):
     admin_api_token: str = ""
     auth_secret_key: str = ""
     auth_cookie_secure: bool = False
-    auth_access_token_minutes: int = 720
-    auth_refresh_token_days: int = 90
+    auth_access_token_minutes: int = 60
+    auth_refresh_token_days: int = 30
+    auth_allow_legacy_tokens: bool = False
     auth_allowed_usernames: Annotated[List[str], NoDecode] = Field(default_factory=list)
     agent_provider: str = "none"
     agent_api_base: str = "http://127.0.0.1:18090/api"
@@ -112,6 +113,8 @@ class AppSettings(BaseSettings):
     ml_signal_cv_folds: int = 5
     ml_signal_min_cv_accuracy: float = 0.60
     ml_signal_min_cv_auc: float = 0.65
+    ml_signal_max_cv_accuracy_std: float = 0.08
+    ml_signal_max_cv_auc_std: float = 0.06
     paper_auto_trading_enabled: bool = True
     paper_auto_trading_interval: int = 120
     paper_auto_trading_max_orders: int = 5

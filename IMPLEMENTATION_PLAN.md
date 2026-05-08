@@ -448,3 +448,44 @@
 - ETF T+0 与盘中异常检测均为辅助建议，不改自动交易、不直接下单。
 - `ma_channel_band`、`leader_pullback_band` 未强行升层；按既定风控条件满足后才能由元数据晋级接口放行。
 - 低吸底层 Mixin 仍作为 runtime 兼容层存在；外部服务已转为组合组件协调，后续可逐个把 Mixin 内部职责迁出。
+
+---
+
+# TQuant 三模型审查核验总结执行计划（2026-05-08）
+
+## 需求来源
+
+- `/Users/j/Documents/TQuant-三模型审查核验总结-2026-05-08.md`
+
+## TODO 状态
+
+- [x] 安全默认值收口：前端不再读取构建期管理令牌，access token 不落 local/session storage，敏感账户/持仓/自选数据不写离线缓存。
+- [x] 认证会话收口：refresh token 轮换，legacy access token 默认关闭，生产认证密钥继续保持必填。
+- [x] 飞书回调校验改为常量时间比较。
+- [x] 金融指标口径：RSI/ATR 改 Wilder 平滑，盘中振幅支持显式昨收基准。
+- [x] 模拟盘成交价格按证券类型 tick 量化。
+- [x] Provider/缓存并发：外部因子缓存和运行时参数缓存加锁。
+- [x] ML 生产门槛补强：交叉验证 std 纳入晋级与推理降级判断。
+- [x] 参数版本边界校验：创建参数版本前做有限、可解释的数值合法性校验。
+- [x] 回测报告补齐执行假设披露：费用、滑点、同日止盈止损优先级、涨跌停/停牌、数据质量和仓位约束均进入结果 JSON。
+- [x] ML artifact 远端存储补强：本地路径保持原行为，`s3://`/`oss://` 等 fsspec URI 通过可插拔驱动备份和恢复，并继续校验 SHA256。
+- [x] 原生 App 访问白名单收口：iOS `config.xml` 不再使用 `access origin="*"`，仅保留生产域名、服务器地址和 Capacitor 本地 scheme。
+- [x] README 补充当前生产范围：主板 + ETF、研究层不进入生产入口、回测执行假设和数据降级说明。
+- [x] 验证：后端编译、相关单测、前端构建。
+
+## 验证结果
+
+- `python3 -m compileall backend/app/core/admin_auth.py backend/app/services backend/app/api`：通过。
+- `PYTHONPATH=backend:. backend/.venv/bin/python -m pytest backend/tests/test_indicators.py backend/tests/test_auth_routes.py backend/tests/test_security_hardening.py backend/tests/test_paper_auto_trading.py backend/tests/test_phase4_phase5_foundation.py -q`：49 passed，37 个 sklearn/LibreSSL 环境警告。
+- `cd frontend && npm run build`：通过。
+- `git diff --check`：通过。
+- `python3 -m compileall backend/app/services/backtest/engine.py backend/app/services/ml_signal/service.py`：通过。
+- `PYTHONPATH=backend:. backend/.venv/bin/python -m pytest backend/tests/test_backtest_v2_engine_contract.py backend/tests/test_phase4_phase5_foundation.py -q`：32 passed，37 个 sklearn/LibreSSL 环境警告。
+- `cd frontend && npm run build`：通过。
+- `git diff --check`：通过。
+
+## 仍需单独评估的中长期项
+
+- ML artifact 已支持 fsspec URI；S3/OSS 生产使用仍需要部署环境安装对应 fsspec 驱动并配置密钥。
+- 全量 Provider Router 收口仍应继续按模块迁移，但本轮已消除 `sectors.py` 全局 socket timeout 风险；AkShare 原始调用应限定在 provider/raw adapter。
+- 大文件拆分、Mixin 彻底移除、Level2/逐笔数据接入属于高风险重构，应独立任务配套回归。

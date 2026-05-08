@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import secrets
+
 from app.core.config import get_settings
 
 
@@ -15,4 +17,4 @@ class FeishuAppConfig:
         expected = self.settings.feishu_verification_token.strip()
         if not expected:
             return False
-        return token == expected
+        return secrets.compare_digest(token or "", expected)

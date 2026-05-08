@@ -17,7 +17,10 @@ from app.models.schemas import (
     FactorWeightsUpdate,
     RuntimeStatusResponse,
     SettingsUpdate,
+    UserSectorExclusionsResponse,
+    UserSectorExclusionsUpdate,
 )
+from app.models.entities import User
 from app.services.low_buy.factor_functions import (
     default_factor_weights,
     get_effective_factor_weights,
@@ -26,6 +29,7 @@ from app.services.low_buy.factor_functions import (
 )
 from app.services.db_admin_service import DatabaseAdminService
 from app.services.settings_service import SettingsService
+from app.services.user_sector_preferences import UserSectorPreferenceService
 
 router = APIRouter(dependencies=[Depends(get_current_user)])
 db_admin_service = DatabaseAdminService()
@@ -58,6 +62,30 @@ def update_settings(
         ).model_dump(),
         "restart_required": _requires_database_restart(payload.database_url),
     }
+
+
+@router.get("/settings/sector-exclusions", response_model=UserSectorExclusionsResponse)
+def get_sector_exclusions(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    return UserSectorPreferenceService(db).build_response(current_user.id)
+
+
+@router.put("/settings/sector-exclusions", response_model=UserSectorExclusionsResponse)
+def update_sector_exclusions(
+    payload: UserSectorExclusionsUpdate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    try:
+        UserSectorPreferenceService(db).replace_excluded_sectors(
+            current_user.id,
+            payload.excluded_sectors,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return UserSectorPreferenceService(db).build_response(current_user.id)
 
 
 @router.post("/settings/database/check")

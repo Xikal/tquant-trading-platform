@@ -46,7 +46,11 @@ def hard_blocking_rules(
     if atr_ratio >= config_float(risk_config, "strategy_max_atr_pct", 4.0):
         rules.append("波动率过高，当前不适合执行做T。")
 
-    limit_pct = price_limit_pct(quote.symbol, quote.instrument_type)
+    limit_pct = price_limit_pct(
+        quote.symbol,
+        quote.instrument_type,
+        is_st=str(quote.name or "").upper().startswith(("ST", "*ST")),
+    )
     if limit_pct > 0 and abs(quote.change_pct) >= limit_pct * 0.9:
         rules.append("标的接近涨跌停限制，成交与回转风险较高。")
     open_phase_min = config_float(risk_config, "strategy_open_phase_min_tradability", 60.0)

@@ -404,6 +404,11 @@ def test_engine_is_reproducible_and_outputs_trades_and_equity_curve() -> None:
     assert all(order.requested_price is not None for order in first.orders if order.status == "filled")
     assert first.metrics["trade_count"] >= 1
     assert {"trade_count", "total_return_pct", "max_drawdown_pct", "sharpe_ratio"} <= set(first.metrics)
+    assumptions = first.to_dict()["execution_assumptions"]
+    assert assumptions["fee_model"]["version"] == "paper_fee_v1"
+    assert assumptions["price_limit_handling"]
+    assert assumptions["same_bar_path"]
+    assert first.metrics["execution_assumptions"]["execution_model"] == config.execution_model
 
 
 def test_engine_loads_real_benchmark_curve_and_uses_it_for_alpha_ir() -> None:

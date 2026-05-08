@@ -63,6 +63,7 @@ class BacktestResult:
     status: str = "succeeded"
     partial: bool = False
     dataset_manifest: dict[str, Any] = field(default_factory=dict)
+    execution_assumptions: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -71,6 +72,7 @@ class BacktestResult:
             "partial": self.partial,
             "config": self.config,
             "dataset_manifest": self.dataset_manifest,
+            "execution_assumptions": self.execution_assumptions,
             "data_quality": asdict(self.data_quality),
             "metrics": self.metrics,
             "attribution": self.attribution,
@@ -218,11 +220,14 @@ class BacktestEngine:
             trades=portfolio.realized_trades,
         )
         metrics = dict(metrics)
+        execution_assumptions = _execution_assumptions(config)
         metrics["attribution"] = attribution
+        metrics["execution_assumptions"] = execution_assumptions
         result = BacktestResult(
             version=BACKTEST_ENGINE_VERSION,
             config=_config_dict(config),
             dataset_manifest=manifest,
+            execution_assumptions=execution_assumptions,
             data_quality=quality,
             metrics=metrics,
             equity_curve=equity_curve,
@@ -605,3 +610,40 @@ def _config_dict(config: BacktestConfig) -> dict[str, Any]:
         for signal in config.signals
     ]
     return payload
+
+
+def _execution_assumptions(config: BacktestConfig) -> dict[str, Any]:
+    """Return user-facing assumptions that materially affect backtest results."""
+
+    return {
+        "version": "execution-assumptions-v1",
+        "execution_model": config.execution_model,
+        "fee_model": {
+            "version": "paper_fee_v1",
+            "commission": "买卖双边按成交额 0.025% 估算，单笔最低 5 元。",
+            "stamp_tax": "股票卖出按成交额 0.05% 估算；ETF/基金类不收印花税。",
+            "transfer_fee": "股票按成交额 0.001% 估算；ETF/基金类不收过户费。",
+            "source": "app.services.paper.fees.calculate_fee",
+        },
+        "slippage_model": {
+            "open": "按当日开盘价撮合。",
+            "close": "按当日收盘价撮合。",
+            "vwap": "按日线 VWAP 字段撮合；缺失时由数据源决定降级。",
+            "entry_zone_touch": "买入使用买点区上沿作为触发价。",
+            "conservative_slippage": "买入按 max(open, close)，卖出按 min(open, close)，偏保守估算。",
+            "market_impact": "在 conservative_slippage 基础上按成交额参与度追加冲击成本。",
+        },
+        "same_bar_path": "同一交易日同时触发止损和止盈时先按止损处理；每日先处理退出，再处理新开仓。",
+        "price_limit_handling": "撮合前按 A 股涨跌停上下文拒绝不可交易委托；ETF/基金类默认不套用股票涨跌停限制。",
+        "suspension_handling": "缺少有效日线、价格为 0 或停牌导致无可用行情时，订单会被拒绝或跳过。",
+        "data_quality": "结果同时返回 data_quality 与 attribution.data_quality_summary，用于识别缺失、延迟或降级数据。",
+        "position_constraints": {
+            "max_position_pct": config.max_position_pct,
+            "max_positions": config.max_positions,
+            "max_signals_per_day": config.max_signals_per_day,
+            "entry_delay_days": config.entry_delay_days,
+            "lot_size": config.lot_size,
+            "force_liquidate_at_end": config.force_liquidate_at_end,
+        },
+        "disclaimer": "回测为历史模拟和执行假设结果，不代表未来收益或真实成交承诺。",
+    }

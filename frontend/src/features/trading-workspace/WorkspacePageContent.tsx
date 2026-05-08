@@ -141,6 +141,7 @@ export function WorkspacePageContent({
             factorWeights={settingsData.factorWeights}
             adminTasks={settingsData.adminTasks}
             strategyGovernance={settingsData.strategyGovernance}
+            sectorExclusions={settingsData.sectorExclusions}
             factorDraft={settingsData.factorDraft}
             draft={settingsData.settingsDraft}
             setDraft={settingsData.setSettingsDraft}
@@ -150,6 +151,7 @@ export function WorkspacePageContent({
             onSaveFactors={settingsData.saveFactorWeights}
             onRefresh={() => void settingsData.loadSettings()}
             onUpdateStrategyGovernance={(strategyKey: string, status: "active" | "watch" | "paused") => void settingsData.updateStrategyGovernance(strategyKey, status)}
+            onSaveSectorExclusions={(excludedSectors: string[]) => void settingsData.saveSectorExclusions(excludedSectors)}
           />
         )}
       </Suspense>

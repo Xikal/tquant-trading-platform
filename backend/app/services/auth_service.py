@@ -152,16 +152,11 @@ class AuthService:
         user = db.get(User, session.user_id)
         if user is None or not user.is_active:
             raise AuthError("账号不可用")
-        settings = get_settings()
-        access_expires_at = utc_now() + timedelta(minutes=settings.auth_access_token_minutes)
-        session.expires_at = utc_now_naive() + timedelta(days=settings.auth_refresh_token_days)
+        device_name = session.device_name or ""
+        session.revoked_at = utc_now_naive()
+        response = self._issue_token_pair(db, user=user, device_name=device_name)
         db.commit()
-        return AuthTokenResponse(
-            access_token=self._build_access_token(user, access_expires_at),
-            refresh_token=refresh_token,
-            expires_in=settings.auth_access_token_minutes * 60,
-            user=self.to_user_out(user),
-        )
+        return response
 
     def logout(self, db: Session, refresh_token: str) -> None:
         if not refresh_token:
@@ -182,7 +177,7 @@ class AuthService:
         try:
             return self._parse_jwt_access_token(token)
         except AuthError:
-            if token.count(".") != 1:
+            if not get_settings().auth_allow_legacy_tokens or token.count(".") != 1:
                 raise
             return self._parse_legacy_access_token(token)
 

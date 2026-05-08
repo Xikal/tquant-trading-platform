@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import threading
 import time
 
 from app.services.market import external_factors
@@ -13,6 +14,7 @@ _STOCK_NOTICE_CACHE: dict[str, tuple[float, bool]] = {}
 _NORTH_FLOW_CACHE: dict[str, tuple[float, float]] = {}
 _LIMIT_UP_POOL_CACHE: dict[str, tuple[float, dict[str, float]]] = {}
 _DRAGON_BOARD_CACHE: dict[str, tuple[float, dict[str, float]]] = {}
+_CACHE_LOCK = threading.RLock()
 
 _SECTOR_FLOW_TTL_SECONDS = 600
 _BIG_ORDER_TTL_SECONDS = 300
@@ -321,15 +323,17 @@ def _find_column(frame, candidates: tuple[str, ...]) -> str | None:
 
 
 def _read_cache(cache: dict, key: str):
-    cached = cache.get(key)
-    if not cached:
-        return None
-    expires_at, value = cached
-    if expires_at <= time.monotonic():
-        cache.pop(key, None)
-        return None
-    return value
+    with _CACHE_LOCK:
+        cached = cache.get(key)
+        if not cached:
+            return None
+        expires_at, value = cached
+        if expires_at <= time.monotonic():
+            cache.pop(key, None)
+            return None
+        return value
 
 
 def _write_cache(cache: dict, key: str, value, ttl_seconds: int) -> None:
-    cache[key] = (time.monotonic() + ttl_seconds, value)
+    with _CACHE_LOCK:
+        cache[key] = (time.monotonic() + ttl_seconds, value)

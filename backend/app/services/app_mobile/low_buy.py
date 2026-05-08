@@ -18,6 +18,11 @@ from app.services.app_mobile.common import collect_warning_messages, now_string
 from app.services.app_mobile.low_buy_projection import build_priority_board
 from app.services.low_buy.shared import DEFAULT_PRODUCTION_LOW_BUY_STRATEGY
 from app.services.strategy_metadata_service import StrategyMetadataService
+from app.services.user_sector_preferences import (
+    UserSectorPreferenceService,
+    candidate_matches_excluded_sector,
+    filter_low_buy_screener_response,
+)
 
 
 class AppMobileLowBuyMixin:
@@ -28,6 +33,7 @@ class AppMobileLowBuyMixin:
         limit: int = 12,
         scan_limit: int = 48,
         scan_mode: str = "quick",
+        user_id: int | None = None,
     ) -> AppLowBuyResponse:
         _ensure_app_strategy_allowed(db, strategy)
         screener_payload = self.low_buy_screener.mobile_snapshot(
@@ -36,6 +42,9 @@ class AppMobileLowBuyMixin:
             limit=limit,
             fallback_scan_limit=scan_limit,
         )
+        if user_id is not None:
+            excluded = UserSectorPreferenceService(db).get_excluded_sector_set(user_id)
+            screener_payload = filter_low_buy_screener_response(screener_payload, excluded)
         priority_board = build_priority_board(screener_payload, limit=min(limit, 12))
         warnings = collect_warning_messages(
             [
@@ -90,6 +99,10 @@ class AppMobileLowBuyMixin:
         )
         if candidate is None:
             raise LookupError("候选标的不存在")
+        if user_id is not None:
+            excluded = UserSectorPreferenceService(db).get_excluded_sector_set(user_id)
+            if candidate_matches_excluded_sector(candidate, excluded):
+                raise LookupError("该标的所属板块已被当前用户过滤")
 
         row = self._get_favorite_row(db, symbol=symbol, user_id=user_id)
         favorite_status = AppFavoriteStatus(

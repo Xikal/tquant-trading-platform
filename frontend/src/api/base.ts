@@ -2,13 +2,12 @@ import { isNativeHttpRuntime, nativeRequest } from "./nativeHttp"
 
 const isNativeTarget = import.meta.env.VITE_APP_TARGET === "native"
 const configuredApiBase = import.meta.env.VITE_API_BASE_URL
-const configuredAdminToken = import.meta.env.VITE_ADMIN_API_TOKEN
 
 export const API_BASE = configuredApiBase ?? (isNativeTarget ? "__NATIVE_API_BASE_REQUIRED__" : "/api")
 
 const responseCache = new Map<string, { expiresAt: number; payload: unknown }>()
 const inFlightRequests = new Map<string, Promise<unknown>>()
-let adminApiToken = configuredAdminToken ? normalizeAdminApiToken(configuredAdminToken) : ""
+let adminApiToken = ""
 type AuthPersistenceMode = "local" | "session" | "memory"
 
 const AUTH_ACCESS_TOKEN_KEY = "tquant:auth:access_token"
@@ -21,15 +20,8 @@ const OFFLINE_CACHE_PREFIX = "weis_quant:api:"
 const OFFLINE_CACHE_TTL_MS = 6 * 60 * 60 * 1000
 const OFFLINE_CACHEABLE_PATHS = [
   "/agent/reports/daily",
-  "/app/home",
   "/market/breadth",
-  "/monitor/snapshot",
-  "/paper/account",
-  "/paper/performance",
-  "/paper/performance/dashboard",
-  "/paper/positions",
-  "/screeners/low-buy",
-  "/watchlist"
+  "/screeners/low-buy"
 ]
 
 export async function request<T>(path: string, init?: RequestInit): Promise<T> {
@@ -206,9 +198,6 @@ function sleep(ms: number): Promise<void> {
 }
 
 export function getAdminApiToken(): string {
-  if (configuredAdminToken) {
-    return normalizeAdminApiToken(configuredAdminToken)
-  }
   if (typeof window === "undefined") {
     return ""
   }
@@ -216,7 +205,7 @@ export function getAdminApiToken(): string {
 }
 
 export function setAdminApiToken(token: string) {
-  if (typeof window === "undefined" || configuredAdminToken) {
+  if (typeof window === "undefined") {
     return
   }
   adminApiToken = normalizeAdminApiToken(token)
@@ -356,10 +345,6 @@ function hydrateAuthAccessToken(): { accessToken: string; mode: AuthPersistenceM
     return { accessToken: "", mode: "memory" }
   }
   clearLegacyLocalAuthAccessToken()
-  const sessionToken = readStoredAuthAccessToken(window.sessionStorage)
-  if (sessionToken) {
-    return { accessToken: sessionToken, mode: "session" }
-  }
   return { accessToken: "", mode: hydrateAuthPersistenceMode() }
 }
 
@@ -372,22 +357,6 @@ function hydrateAuthPersistenceMode(): AuthPersistenceMode {
     return mode === "local" || mode === "session" ? mode : "memory"
   } catch {
     return "memory"
-  }
-}
-
-function readStoredAuthAccessToken(storage: Storage): string {
-  try {
-    const token = storage.getItem(AUTH_ACCESS_TOKEN_KEY) ?? ""
-    if (!token) {
-      return ""
-    }
-    if (authTokenExpired(token)) {
-      storage.removeItem(AUTH_ACCESS_TOKEN_KEY)
-      return ""
-    }
-    return token
-  } catch {
-    return ""
   }
 }
 
@@ -404,9 +373,6 @@ function persistAuthAccessToken(accessToken: string, mode: AuthPersistenceMode) 
       window.localStorage.setItem(AUTH_PERSISTENCE_MODE_KEY, mode)
     } else {
       window.localStorage.removeItem(AUTH_PERSISTENCE_MODE_KEY)
-    }
-    if (mode === "session") {
-      window.sessionStorage.setItem(AUTH_ACCESS_TOKEN_KEY, accessToken)
     }
   } catch {
     // Browser storage can be disabled; the in-memory token still works for this tab.
@@ -432,25 +398,6 @@ function clearLegacyLocalAuthAccessToken() {
   } catch {
     // Ignore storage cleanup failures.
   }
-}
-
-function authTokenExpired(token: string): boolean {
-  try {
-    const [, payloadText] = token.split(".")
-    if (!payloadText) {
-      return true
-    }
-    const payload = JSON.parse(base64UrlDecode(payloadText)) as { exp?: number }
-    return typeof payload.exp === "number" && payload.exp <= Math.floor(Date.now() / 1000)
-  } catch {
-    return true
-  }
-}
-
-function base64UrlDecode(value: string): string {
-  const normalized = value.replace(/-/g, "+").replace(/_/g, "/")
-  const padding = "=".repeat((4 - (normalized.length % 4)) % 4)
-  return window.atob(`${normalized}${padding}`)
 }
 
 if (typeof window !== "undefined") {

@@ -13,9 +13,22 @@ def config_float(config: dict[str, Any], key: str, default: float) -> float:
         return default
 
 
-def price_limit_pct(symbol: str, instrument_type: str) -> float:
+def price_limit_pct(
+    symbol: str,
+    instrument_type: str,
+    *,
+    is_st: bool = False,
+    listing_days: int | None = None,
+    limit_exempt: bool = False,
+) -> float:
+    if limit_exempt:
+        return 0.0
     if instrument_type == "etf":
-        return 10.0
+        return 0.0
+    if is_st:
+        return 5.0
+    if listing_days is not None and listing_days <= 5:
+        return 0.0
     if symbol.startswith(("300", "688")):
         return 20.0
     if symbol.startswith(("4", "8")):

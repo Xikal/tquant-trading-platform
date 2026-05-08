@@ -131,3 +131,10 @@ export interface LowBuyStrategyGovernanceResponse {
   production_strategies: string[];
   items: LowBuyStrategyGovernanceItem[];
 }
+
+export interface UserSectorExclusionsResponse {
+  available_sectors: string[];
+  excluded_sectors: string[];
+  excluded_count: number;
+  updated_at: string;
+}

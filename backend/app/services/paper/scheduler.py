@@ -25,6 +25,7 @@ from app.services.paper.matching import PaperMatchingEngine
 from app.services.paper.order import PaperOrderService
 from app.services.paper.position import PaperPositionService
 from app.services.paper.sizing import PositionSizer, SizedOrder
+from app.services.user_sector_preferences import UserSectorPreferenceService
 
 logger = logging.getLogger(__name__)
 
@@ -124,6 +125,9 @@ class PaperAutoTrader:
             existing_positions=positions,
             today_orders=today_orders,
             market_direction=board.get("directional_bias"),
+            excluded_sectors=UserSectorPreferenceService(db).get_excluded_sector_set(account.user_id)
+            if account.user_id
+            else set(),
         )
         sized = PositionSizer().calculate(
             candidates=report.passed,
@@ -214,6 +218,9 @@ class PaperAutoTrader:
             existing_positions=positions,
             today_orders=today_orders,
             market_direction=board.get("directional_bias"),
+            excluded_sectors=UserSectorPreferenceService(db).get_excluded_sector_set(account.user_id)
+            if account.user_id
+            else set(),
         )
         exit_orders = self._build_exit_orders(db, account)
         orders = PositionSizer().calculate(
