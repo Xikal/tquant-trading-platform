@@ -46,10 +46,7 @@ def build_priority_base_snapshot(
     repository = LowBuyResultRepository(db)
     target_trade_date = builder._resolve_priority_target_trade_date()
     latest_result_trade_date = repository.fetch_latest_trade_date() or ""
-    latest_available_trade_date = max(
-        (trade_date for trade_date in (latest_result_trade_date, target_trade_date) if trade_date),
-        default="",
-    )
+    latest_available_trade_date = target_trade_date or latest_result_trade_date
     tracked_symbols = builder._load_watchlist_symbols(db)
     merged_candidates: dict[str, PriorityCandidate] = {}
     performance_cache: dict[tuple[str, str, int], LowBuyStrategyPerformanceOut | None] = {}

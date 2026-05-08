@@ -217,8 +217,9 @@ class _MobileService(LowBuyMobileReadMixin, LowBuyPerformanceMixin, LowBuyCandid
 
 
 class _TradeDateService(LowBuyPoolMixin):
-    def __init__(self, latest_artifact_trade_date: str | None) -> None:
+    def __init__(self, latest_artifact_trade_date: str | None, complete_dates: set[str] | None = None) -> None:
         self.latest_artifact_trade_date = latest_artifact_trade_date
+        self.complete_dates = complete_dates or set()
 
     def _load_latest_low_buy_artifact_trade_date(self, trade_dates: list[str]) -> str | None:
         if self.latest_artifact_trade_date in trade_dates:
@@ -227,6 +228,9 @@ class _TradeDateService(LowBuyPoolMixin):
 
     def _load_daily_history(self, symbol: str, latest_trade_date: str, history_window_days: int = 180):  # noqa: ARG002
         return None
+
+    def _has_complete_local_daily_bars(self, trade_date: str, min_stock_count: int = 4500) -> bool:  # noqa: ARG002
+        return trade_date in self.complete_dates
 
 
 class _PrioritySnapshotTargetService:
@@ -512,12 +516,54 @@ class LowBuyReadPathTests(unittest.TestCase):
         self.assertEqual(snapshot.full_scan_updated_at, snapshot.as_of_date)
 
     def test_resolve_latest_completed_trade_date_uses_low_buy_artifact_when_daily_history_lags(self) -> None:
-        service = _TradeDateService(latest_artifact_trade_date="2026-04-24")
+        service = _TradeDateService(
+            latest_artifact_trade_date="2026-04-24",
+            complete_dates={"2026-04-24"},
+        )
 
         self.assertEqual(
             service._resolve_latest_completed_trade_date(["2026-04-22", "2026-04-23", "2026-04-24"]),
             "2026-04-24",
         )
+
+    def test_resolve_latest_completed_trade_date_rejects_incomplete_artifact(self) -> None:
+        service = _TradeDateService(latest_artifact_trade_date="2026-04-30")
+        original_session = pool_module.SessionLocal
+        original_repository = pool_module.DailyHistoryRepository
+
+        class _FakeSession:
+            def __enter__(self):
+                return object()
+
+            def __exit__(self, exc_type, exc, tb):
+                return False
+
+        class _FakeRepository:
+            def __init__(self, db):  # noqa: ARG002
+                pass
+
+            @staticmethod
+            def latest_complete_trade_date(max_trade_date: str, min_stock_count: int):  # noqa: ARG002
+                return None
+
+            @staticmethod
+            def latest_trade_date_for_symbol(symbol: str):  # noqa: ARG002
+                return "2026-04-30"
+
+            @staticmethod
+            def stock_count_by_trade_date(trade_date: str) -> int:
+                return {"2026-04-28": 5177, "2026-04-29": 507, "2026-04-30": 405}.get(trade_date, 0)
+
+        try:
+            pool_module.SessionLocal = _FakeSession
+            pool_module.DailyHistoryRepository = _FakeRepository
+            self.assertEqual(
+                service._resolve_latest_completed_trade_date(["2026-04-28", "2026-04-29", "2026-04-30"]),
+                "2026-04-28",
+            )
+        finally:
+            pool_module.SessionLocal = original_session
+            pool_module.DailyHistoryRepository = original_repository
 
     def test_latest_completed_calendar_fallback_uses_latest_completed_holiday_date(self) -> None:
         service = _TradeDateService(latest_artifact_trade_date=None)
@@ -604,6 +650,55 @@ class LowBuyReadPathTests(unittest.TestCase):
             )
 
         self.assertEqual(snapshot.latest_available_trade_date, "2026-04-30")
+
+    def test_load_latest_materialized_full_result_on_or_before_ignores_newer_incomplete_date(self) -> None:
+        service = _RepairingResultService(repaired_payload=_payload(_candidate()))
+        with self.Session() as db:
+            for trade_date in ("2026-04-28", "2026-05-06"):
+                db.add(
+                    LowBuyScanSnapshot(
+                        latest_trade_date=trade_date,
+                        strategy_key="classic_retrace",
+                        strategy_title="原始低吸法",
+                        strategy_subtitle="测试",
+                        strategy_logic="测试",
+                        as_of_date=f"{trade_date} 15:00:00",
+                        pool_size=1,
+                        scanned_count=1,
+                        matched_count=1,
+                        requested_scan_limit=24,
+                        active_scan_limit=24,
+                        retracement_distribution_json="{}",
+                        filters_json=json.dumps(_current_filters(), ensure_ascii=False),
+                        strategy_notes_json="[]",
+                    )
+                )
+                candidate = _candidate().model_copy(
+                    update={"symbol": "000001" if trade_date == "2026-04-28" else "000002"}
+                )
+                db.add(
+                    LowBuyResultSnapshot(
+                        latest_trade_date=trade_date,
+                        strategy_key="classic_retrace",
+                        symbol=candidate.symbol,
+                        name=candidate.name,
+                        score=candidate.score,
+                        buy_signal_state=candidate.buy_signal_state,
+                        payload_json=candidate.model_dump_json(),
+                    )
+                )
+            db.commit()
+
+            payload = service._load_latest_materialized_full_result_on_or_before(
+                db=db,
+                strategy="classic_retrace",
+                latest_trade_date="2026-04-28",
+                limit=16,
+                include_history=False,
+            )
+
+        self.assertIsNotNone(payload)
+        self.assertEqual(payload.latest_trade_date, "2026-04-28")
 
     def test_load_latest_materialized_full_result_skips_invalid_latest_snapshot_before_fallback(self) -> None:
         repaired_payload = _payload(_candidate()).model_copy(update={"latest_trade_date": "2026-04-25"})

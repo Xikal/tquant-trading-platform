@@ -248,7 +248,11 @@ class LowBuyPoolMixin:
         ):
             return str(latest_stored_trade_date)
         latest_artifact_trade_date = self._load_latest_low_buy_artifact_trade_date(trade_dates)
-        if latest_artifact_trade_date and latest_artifact_trade_date >= latest_completed_fallback:
+        if (
+            latest_artifact_trade_date
+            and latest_artifact_trade_date >= latest_completed_fallback
+            and self._has_complete_local_daily_bars(latest_artifact_trade_date)
+        ):
             return latest_artifact_trade_date
 
         probe = self._load_daily_history("000001", trade_dates[-1], history_window_days=20)

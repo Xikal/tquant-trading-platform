@@ -122,11 +122,7 @@ class LowBuyPriorityBoardMixin(LowBuyPriorityScoringMixin):
         trade_dates = self._get_recent_trade_dates(14)
         if len(trade_dates) < 3:
             return ""
-        latest_completed_trade_date = self._resolve_latest_completed_trade_date(trade_dates)
-        return self._resolve_active_structure_trade_date(
-            trade_dates=trade_dates,
-            latest_completed_trade_date=latest_completed_trade_date,
-        )
+        return self._resolve_latest_completed_trade_date(trade_dates)
 
     @staticmethod
     def _priority_snapshot_warning(snapshot: PriorityBaseSnapshot) -> str:

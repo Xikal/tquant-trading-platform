@@ -25,12 +25,23 @@ class LowBuyMobileReadMixin:
         history_wait_timeout_seconds: float | None = None,
     ) -> LowBuyScreenerResponse:
         normalized_limit = max(limit, 12)
-        materialized = self._load_latest_materialized_full_result(
-            db=db,
-            strategy=strategy,
-            limit=normalized_limit,
-            include_history=False,
-        )
+        latest_trade_date = self._resolve_mobile_target_trade_date()
+        scoped_loader = getattr(self, "_load_latest_materialized_full_result_on_or_before", None)
+        if callable(scoped_loader):
+            materialized = scoped_loader(
+                db=db,
+                strategy=strategy,
+                latest_trade_date=latest_trade_date,
+                limit=normalized_limit,
+                include_history=False,
+            )
+        else:
+            materialized = self._load_latest_materialized_full_result(
+                db=db,
+                strategy=strategy,
+                limit=normalized_limit,
+                include_history=False,
+            )
         if materialized is not None:
             materialized = self._attach_strategy_performance(
                 db=db,
@@ -39,8 +50,7 @@ class LowBuyMobileReadMixin:
             )
             return self._normalize_mobile_snapshot(materialized)
 
-        latest_trade_date = ""
-        if db is not None:
+        if not latest_trade_date and db is not None:
             latest_trade_date = LowBuyResultRepository(db).fetch_latest_trade_date(strategy_key=strategy) or ""
         performance = self._load_strategy_performance_snapshot(
             db=db,
@@ -80,6 +90,15 @@ class LowBuyMobileReadMixin:
                 )
             )
         raise RuntimeError("mobile snapshot requires materialized data or pending response builder")
+
+    def _resolve_mobile_target_trade_date(self) -> str:
+        load_trade_dates = getattr(self, "_get_recent_trade_dates", None)
+        if not callable(load_trade_dates):
+            return ""
+        trade_dates = load_trade_dates(14)
+        if len(trade_dates) < 3:
+            return ""
+        return self._resolve_latest_completed_trade_date(trade_dates)
 
     def mobile_candidate_by_symbol(
         self,

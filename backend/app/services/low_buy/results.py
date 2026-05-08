@@ -139,6 +139,60 @@ class LowBuyResultStoreMixin:
                 return payload
         return None
 
+    def _load_latest_materialized_full_result_on_or_before(
+        self,
+        db: Session,
+        strategy: str,
+        latest_trade_date: str,
+        limit: int,
+        include_history: bool,
+        allow_repair: bool = False,
+    ) -> LowBuyScreenerResponse | None:
+        if not latest_trade_date:
+            return self._load_latest_materialized_full_result(
+                db=db,
+                strategy=strategy,
+                limit=limit,
+                include_history=include_history,
+                allow_repair=allow_repair,
+            )
+
+        repository = LowBuyResultRepository(db)
+        summary = repository.fetch_latest_scan_summary_on_or_before(
+            strategy_key=strategy,
+            latest_trade_date=latest_trade_date,
+        )
+        if summary is None:
+            return None
+
+        summaries = [summary]
+        summaries.extend(
+            item
+            for item in repository.fetch_recent_scan_summaries(strategy_key=strategy, limit=8)
+            if item.id != summary.id and str(item.latest_trade_date) <= latest_trade_date
+        )
+        for item in summaries:
+            payload = self._load_materialized_full_result(
+                db=db,
+                strategy=strategy,
+                latest_trade_date=str(item.latest_trade_date),
+                limit=limit,
+                include_history=include_history,
+            )
+            if payload is not None:
+                return payload
+            if allow_repair and item.id == summary.id:
+                repaired = self._repair_materialized_snapshot(
+                    db=db,
+                    strategy=strategy,
+                    latest_trade_date=str(item.latest_trade_date),
+                    limit=limit,
+                    include_history=include_history,
+                )
+                if repaired is not None:
+                    return repaired
+        return None
+
     def _repair_materialized_snapshot(
         self,
         db: Session,

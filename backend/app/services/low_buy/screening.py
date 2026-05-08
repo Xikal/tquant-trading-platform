@@ -155,9 +155,10 @@ class LowBuyScreeningMixin(LowBuyQuoteRefreshMixin):
         )
 
         if scan_mode == "full":
-            last_completed = self._load_latest_materialized_full_result(
+            last_completed = self._load_latest_materialized_full_result_on_or_before(
                 db=db,
                 strategy=strategy,
+                latest_trade_date=latest_completed_trade_date,
                 limit=limit,
                 include_history=include_history,
                 allow_repair=False,
@@ -206,9 +207,10 @@ class LowBuyScreeningMixin(LowBuyQuoteRefreshMixin):
                 build_if_missing=False,
             )
 
-        latest_snapshot = self._load_latest_materialized_full_result(
+        latest_snapshot = self._load_latest_materialized_full_result_on_or_before(
             db=db,
             strategy=strategy,
+            latest_trade_date=latest_completed_trade_date,
             limit=limit,
             include_history=include_history,
             allow_repair=False,
