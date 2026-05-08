@@ -42,6 +42,30 @@ class _LowBuyRuntimeAdapter:
             return
         setattr(object.__getattribute__(self, "_runtime"), name, value)
 
+    def _get_screen_cache(self, cache_key: str):
+        return self._runtime._get_screen_cache(cache_key)
+
+    def _set_screen_cache(self, cache_key: str, payload, ttl: float | None = None) -> None:
+        self._runtime._set_screen_cache(cache_key, payload, ttl=ttl)
+
+    def _get_history_cache(self, cache_key: str):
+        return self._runtime._get_history_cache(cache_key)
+
+    def _set_history_cache(self, cache_key: str, payload: LowBuyHistoryResponse) -> None:
+        self._runtime._set_history_cache(cache_key, payload)
+
+    def _get_daily_history_cache(self, cache_key: str):
+        return self._runtime._get_daily_history_cache(cache_key)
+
+    def _set_daily_history_cache(self, cache_key: str, payload: pd.DataFrame | None) -> None:
+        self._runtime._set_daily_history_cache(cache_key, payload)
+
+    def _get_spot_quote_cache(self):
+        return self._runtime._get_spot_quote_cache()
+
+    def _set_spot_quote_cache(self, payload) -> None:
+        self._runtime._set_spot_quote_cache(payload)
+
 
 class _LowBuyExecutionBacktestAdapter(_LowBuyRuntimeAdapter, LowBuyExecutionBacktestMixin):
     pass
