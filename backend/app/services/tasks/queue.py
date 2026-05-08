@@ -13,7 +13,7 @@ from app.services.realtime import publish_runtime_task_event
 
 
 TERMINAL_STATUSES = {"succeeded", "failed", "cancelled"}
-RUNNING_TASK_STALE_SECONDS = 15 * 60
+RUNNING_TASK_STALE_SECONDS = 5 * 60
 STALE_RECOVERY_BATCH_SIZE = 20
 
 
