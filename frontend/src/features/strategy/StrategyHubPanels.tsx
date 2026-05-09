@@ -1,0 +1,362 @@
+import type { BacktestRunSummary } from "../../api/backtests";
+import { EmptyPlaceholder, SkeletonBlock } from "../../components/shared/Feedback";
+import { DateField, NumberField, SelectField, TextField } from "../../components/shared/FormFields";
+import type { AuthUser } from "../../types";
+import {
+  formatBacktestStrategies,
+  formatDateTime,
+  formatMoney,
+  formatPct,
+} from "../backtest/backtestDisplay";
+import { BacktestResearchPanel, type BacktestResearchSection } from "../backtest/BacktestResearchPanel";
+import { useBacktestDashboard, type BacktestDashboardActiveSection } from "../backtest/useBacktestDashboard";
+import { StrategySignalReplayPanel } from "./StrategySignalReplayPanel";
+import { useStrategyHub, type StrategyHubTab } from "./useStrategyHub";
+
+export function QuickBacktestForm({
+  hub,
+  onQuickSubmit,
+}: {
+  hub: ReturnType<typeof useStrategyHub>;
+  onQuickSubmit: () => void;
+}) {
+  return (
+    <div className="strategy-form">
+      <div className="strategy-one-click">
+        <div>
+          <strong>一键快速回测（最近 6 个月）</strong>
+          <span>50 万初始资金 · 开盘价成交 · 当前生产策略集合</span>
+        </div>
+        <button type="button" className="primary" onClick={onQuickSubmit} disabled={hub.loading === "quick-submit"}>
+          {hub.loading === "quick-submit" ? "提交中" : "立即提交"}
+        </button>
+      </div>
+      <TextField label="任务名称" value={hub.form.name} onChange={(event) => hub.updateForm({ name: event.target.value })} />
+      <DateField label="开始日期" value={hub.form.start_date} onChange={(event) => hub.updateForm({ start_date: event.target.value })} />
+      <DateField label="结束日期" value={hub.form.end_date} onChange={(event) => hub.updateForm({ end_date: event.target.value })} />
+      <NumberField label="初始资金" value={hub.form.initial_capital} onChange={(event) => hub.updateForm({ initial_capital: event.target.value })} />
+      <SelectField
+        label="成交模型"
+        value={hub.form.execution_model}
+        onChange={(event) => hub.updateForm({ execution_model: event.target.value as typeof hub.form.execution_model })}
+        options={[
+          { value: "open_price", label: "开盘价成交" },
+          { value: "vwap", label: "VWAP 近似" },
+          { value: "next_open", label: "次日开盘" },
+          { value: "close_price", label: "收盘价成交" },
+        ]}
+      />
+      <details className="strategy-advanced-fields">
+        <summary>高级设置（使用推荐值即可）</summary>
+        <div className="strategy-advanced-grid">
+          <NumberField label="单票仓位上限" suffix="%" value={hub.form.max_position_pct} onChange={(event) => hub.updateForm({ max_position_pct: event.target.value })} />
+          <NumberField label="最大持仓数" value={hub.form.max_positions} onChange={(event) => hub.updateForm({ max_positions: event.target.value })} />
+          <TextField label="基准指数" value={hub.form.benchmark} onChange={(event) => hub.updateForm({ benchmark: event.target.value })} />
+          <NumberField label="单笔下单上限" suffix="%" value={hub.form.max_single_order_pct} onChange={(event) => hub.updateForm({ max_single_order_pct: event.target.value })} />
+          <NumberField label="单日最大亏损" suffix="%" value={hub.form.max_daily_loss_pct} onChange={(event) => hub.updateForm({ max_daily_loss_pct: event.target.value })} />
+          <NumberField label="最低现金保留" value={hub.form.min_cash_reserve} onChange={(event) => hub.updateForm({ min_cash_reserve: event.target.value })} />
+        </div>
+      </details>
+      <div className="strategy-picker">
+        <div className="strategy-picker-head">
+          <strong>策略选择</strong>
+          <span>{hub.selectedStrategies.length} 个已选</span>
+        </div>
+        <div className="strategy-card-grid">
+          {hub.strategies.map((strategy) => {
+            const selected = hub.form.strategies.includes(strategy.key);
+            return (
+              <button
+                type="button"
+                key={strategy.key}
+                className={selected ? "selected" : ""}
+                onClick={() => hub.toggleStrategy(strategy.key)}
+              >
+                <strong>{strategy.display_name || strategy.name}</strong>
+                <span>
+                  {strategy.display_category || strategy.category} · {strategy.typical_holding_days}
+                  {strategy.visibility === "backtest_only" ? " · 仅回测研究" : ""}
+                </span>
+                <small>{strategy.description}</small>
+              </button>
+            );
+          })}
+          {!hub.strategies.length && hub.loading === "load" ? <SkeletonBlock rows={5} title /> : null}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export function StrategyQuickGuide() {
+  return (
+    <div className="strategy-guide-grid" aria-label="策略工作台使用步骤">
+      <article>
+        <b>1. 先点一键回测</b>
+        <span>用最近 6 个月快速判断生产策略是否还有正期望。</span>
+      </article>
+      <article>
+        <b>2. 看三项结果</b>
+        <span>收益、胜率、最大回撤。运行中任务完成后才会显示。</span>
+      </article>
+      <article>
+        <b>3. 再做优化验证</b>
+        <span>只有结果可用时，再进入参数优化和样本外验证。</span>
+      </article>
+    </div>
+  );
+}
+
+export function RecentRuns({ runs }: { runs: BacktestRunSummary[] }) {
+  if (!runs.length) {
+    return <EmptyPlaceholder title="暂无回测任务" description="提交快速回测后会显示最近任务。" />;
+  }
+  return (
+    <div className="strategy-run-list">
+      {runs.map((run) => (
+        <article key={run.id}>
+          <div>
+            <strong>{run.name}</strong>
+            <span>{formatBacktestStrategies(run.strategies)}</span>
+          </div>
+          <div>
+            <b className={`strategy-status ${run.status}`}>{statusText(run.status)}</b>
+            <small>{formatDateTime(run.created_at)}</small>
+          </div>
+          <div className="strategy-run-metrics">
+            <span>收益 {runMetricPct(run, "total_return_pct")}</span>
+            <span>胜率 {runMetricPct(run, "win_rate_pct")}</span>
+            <span>资产 {runEquityText(run)}</span>
+          </div>
+        </article>
+      ))}
+    </div>
+  );
+}
+
+export function StrategyHistoryPanel({ runs, onRefresh }: { runs: BacktestRunSummary[]; onRefresh: () => void }) {
+  const summary = summarizeRuns(runs);
+  return (
+    <section className="panel strategy-history">
+      <div className="strategy-panel-title">
+        <div>
+          <h2>策略历史</h2>
+          <span>集中追踪最近回测、验证和策略任务，避免在多个页面来回查找。</span>
+        </div>
+        <button type="button" onClick={onRefresh}>刷新历史</button>
+      </div>
+      <div className="strategy-history-summary">
+        <article>
+          <span>最近任务</span>
+          <strong>{runs.length}</strong>
+        </article>
+        <article>
+          <span>完成任务</span>
+          <strong>{summary.completed}</strong>
+        </article>
+        <article>
+          <span>平均收益</span>
+          <strong>{formatPct(summary.avgReturnPct)}</strong>
+        </article>
+        <article>
+          <span>平均胜率</span>
+          <strong>{formatPct(summary.avgWinRatePct)}</strong>
+        </article>
+      </div>
+      {runs.length ? (
+        <div className="strategy-history-table" role="table" aria-label="策略历史任务">
+          <div className="strategy-history-row head" role="row">
+            <span>任务</span>
+            <span>策略</span>
+            <span>状态</span>
+            <span>收益</span>
+            <span>胜率</span>
+            <span>创建时间</span>
+          </div>
+          {runs.map((run) => (
+            <article className="strategy-history-row" role="row" key={run.id}>
+              <strong>{run.name || `任务 #${run.id}`}</strong>
+              <span>{formatBacktestStrategies(run.strategies)}</span>
+              <b className={`strategy-status ${run.status}`}>{statusText(run.status)}</b>
+              <span>{runMetricPct(run, "total_return_pct")}</span>
+              <span>{runMetricPct(run, "win_rate_pct")}</span>
+              <span>{formatDateTime(run.created_at)}</span>
+            </article>
+          ))}
+        </div>
+      ) : (
+        <EmptyPlaceholder title="暂无策略历史" description="提交快速回测后会自动出现在这里。" />
+      )}
+    </section>
+  );
+}
+
+export function StrategyBridge({
+  tab,
+  currentUser,
+  dashboard,
+}: {
+  tab: Exclude<StrategyHubTab, "quick" | "history">;
+  currentUser: AuthUser;
+  dashboard: ReturnType<typeof useBacktestDashboard>;
+}) {
+  const metaMap: Record<Exclude<StrategyHubTab, "quick" | "history">, [string, string]> = {
+    signals: ["信号复盘", "输入代码或选择策略，查看最近哪些票入选、为什么入选、买点和止损是否清楚。"],
+    optimize: ["参数优化", "快速回测有价值后再用。它会找更稳的评分、仓位、止损和持有天数。"],
+    validate: ["样本外验证", "检查策略是不是只在历史里好看。样本外不通过，就不要上生产。"],
+    compare: ["结果对比", "把多个已完成回测放在一起，看收益、回撤、Sharpe，选择最终方案。"],
+    capacity: ["ML 在线学习 / 容量", "查看模拟盘平仓样本是否进入训练池，并评估策略在不同资金规模下是否还能承载。"],
+  };
+  const meta = metaMap[tab];
+  if (tab === "signals") {
+    return <StrategySignalReplayPanel title={meta[0]} />;
+  }
+  if (tab === "optimize" && !canOptimize(currentUser)) {
+    return <PermissionPanel title="需要参数优化权限" description="当前账号可以查看回测和信号复盘，但不能创建参数优化任务。" />;
+  }
+  if (tab === "validate" && !canValidate(currentUser)) {
+    return <PermissionPanel title="需要研究员权限" description="当前账号可以查看回测和信号复盘，但不能创建样本外验证任务。" />;
+  }
+  if (tab === "capacity" && !isAdmin(currentUser)) {
+    return <PermissionPanel title="需要管理员权限" description="ML 在线学习、手动增量训练和容量评估会读取训练样本与模型状态，仅管理员可操作。" />;
+  }
+  const sectionMap: Record<Exclude<StrategyHubTab, "quick" | "history" | "signals">, BacktestResearchSection> = {
+    optimize: "optimization",
+    validate: "validation",
+    compare: "compare",
+    capacity: "capacity",
+  };
+  return (
+    <div className="strategy-bridge">
+      <section className="panel strategy-bridge-header">
+        <h2>{meta[0]}</h2>
+        <p>{meta[1]}</p>
+      </section>
+      <StrategyResearchFocus section={sectionMap[tab]} dashboard={dashboard} />
+    </div>
+  );
+}
+
+export function PanelTitle({ title }: { title: string }) {
+  return (
+    <div className="strategy-panel-title">
+      <h2>{title}</h2>
+    </div>
+  );
+}
+
+export function visibleTabsForUser(user: AuthUser) {
+  return TABS.filter((tab) => tab.key !== "capacity" || isAdmin(user));
+}
+
+export function dashboardSectionForTab(tab: StrategyHubTab): BacktestDashboardActiveSection {
+  if (tab === "quick") return "quick";
+  if (tab === "history") return "history";
+  if (tab === "optimize") return "optimization";
+  if (tab === "validate") return "validation";
+  if (tab === "compare") return "compare";
+  if (tab === "capacity") return "none";
+  return "none";
+}
+
+export function executionModelText(value: string): string {
+  if (value === "vwap") return "VWAP 近似";
+  if (value === "next_open") return "次日开盘";
+  if (value === "close_price") return "收盘价成交";
+  return "开盘价成交";
+}
+
+function StrategyResearchFocus({
+  section,
+  dashboard,
+}: {
+  section: BacktestResearchSection;
+  dashboard: ReturnType<typeof useBacktestDashboard>;
+}) {
+  return (
+    <BacktestResearchPanel
+      state={dashboard.research}
+      actions={dashboard.researchActions}
+      sections={[section]}
+    />
+  );
+}
+
+function PermissionPanel({ title, description }: { title: string; description: string }) {
+  return (
+    <section className="panel strategy-access-panel">
+      <h2>{title}</h2>
+      <p>{description}</p>
+    </section>
+  );
+}
+
+function userRoles(user: AuthUser): Set<string> {
+  return new Set((user.roles ?? []).map((role) => role.trim().toLowerCase()).filter(Boolean));
+}
+
+function isAdmin(user: AuthUser): boolean {
+  const roles = userRoles(user);
+  return roles.has("admin") || roles.has("administrator");
+}
+
+function canOptimize(user: AuthUser): boolean {
+  return isAdmin(user) || userRoles(user).has("backtest_optimizer");
+}
+
+function canValidate(user: AuthUser): boolean {
+  const roles = userRoles(user);
+  return isAdmin(user) || roles.has("backtest_optimizer") || roles.has("backtest_research");
+}
+
+function statusText(status: string): string {
+  if (status === "running") return "运行中";
+  if (status === "queued" || status === "pending") return "排队";
+  if (status === "completed" || status === "succeeded") return "完成";
+  if (status === "failed") return "失败";
+  if (status === "cancelled") return "取消";
+  return status || "--";
+}
+
+function summarizeRuns(runs: BacktestRunSummary[]) {
+  const completedRuns = runs.filter((run) => run.status === "completed" || run.status === "succeeded");
+  const avgReturnPct = average(completedRuns.map((run) => run.summary?.total_return_pct));
+  const avgWinRatePct = average(completedRuns.map((run) => run.summary?.win_rate_pct));
+  return {
+    completed: completedRuns.length,
+    avgReturnPct,
+    avgWinRatePct,
+  };
+}
+
+function runMetricPct(run: BacktestRunSummary, key: "total_return_pct" | "win_rate_pct"): string {
+  const value = run.summary?.[key];
+  if (typeof value === "number" && Number.isFinite(value)) return formatPct(value);
+  if (run.status === "running" || run.status === "queued" || run.status === "pending") return "完成后显示";
+  if (run.status === "failed") return "失败";
+  return "暂无结果";
+}
+
+function runEquityText(run: BacktestRunSummary): string {
+  if (typeof run.final_equity === "number" && Number.isFinite(run.final_equity) && run.final_equity > 0) {
+    return formatMoney(run.final_equity);
+  }
+  if (run.status === "running" || run.status === "queued" || run.status === "pending") return "计算中";
+  return "--";
+}
+
+function average(values: Array<number | null | undefined>): number | undefined {
+  const filtered = values.filter((value): value is number => typeof value === "number" && Number.isFinite(value));
+  if (!filtered.length) return undefined;
+  return filtered.reduce((sum, value) => sum + value, 0) / filtered.length;
+}
+
+const TABS: Array<{ key: StrategyHubTab; label: string; hint: string }> = [
+  { key: "quick", label: "快速回测", hint: "先看策略能不能用" },
+  { key: "signals", label: "信号复盘", hint: "查每只票为什么入选" },
+  { key: "optimize", label: "参数优化", hint: "找更稳的参数" },
+  { key: "validate", label: "样本外验证", hint: "防止只适合历史" },
+  { key: "compare", label: "结果对比", hint: "选出最终方案" },
+  { key: "capacity", label: "ML / 容量", hint: "看在线学习和资金承载" },
+  { key: "history", label: "任务历史", hint: "看进度和结果" },
+];

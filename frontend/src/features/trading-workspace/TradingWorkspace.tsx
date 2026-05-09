@@ -1,13 +1,11 @@
-import { lazy, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { appApi } from "../../api/appClient";
 import { clearAuthTokens, getAuthAccessToken, shouldAttemptAuthRefresh } from "../../api/base";
 import { api } from "../../api/client";
 import { strategiesApi, type StrategyMeta } from "../../api/strategies";
 import type { AiDecisionSupportResponse, AuthUser } from "../../types";
-import { CommandPalette } from "./CommandPalette";
 import { LoginPage } from "./LoginPage";
-import { Topbar } from "./Topbar";
-import { AiInsightDialog, ErrorDialog, StatusStrip, StockDetailDialog } from "./WorkspaceComponents";
+import { TradingWorkspaceChrome } from "./TradingWorkspaceChrome";
 import { nullableNumber, parseNumber } from "./workspaceFormatters";
 import { isLoading } from "./loadingState";
 import type { AuthDraft, Page, StockCardView, WatchDraft } from "./workspaceTypes";
@@ -22,17 +20,6 @@ import { useWorkspaceLoading } from "./useWorkspaceLoading";
 import { useWorkspaceNavigation } from "./useWorkspaceNavigation";
 import { useWorkspacePageProps } from "./useWorkspacePageProps";
 import { useWorkspaceAutoRefresh } from "./useWorkspaceAutoRefresh";
-import { WorkspacePageContent } from "./WorkspacePageContent";
-
-const AnalysisPage = lazy(async () => ({ default: (await import("./AnalysisPage")).AnalysisPage }));
-const BacktestPage = lazy(async () => ({ default: (await import("../backtest/BacktestPage")).BacktestPage }));
-const MonitorPage = lazy(async () => ({ default: (await import("./MonitorPage")).MonitorPage }));
-const PaperTradingPage = lazy(async () => ({ default: (await import("./PaperTradingPage")).PaperTradingPage }));
-const PerformanceDashboard = lazy(async () => ({ default: (await import("./PerformanceDashboard")).PerformanceDashboard }));
-const PlaybookPage = lazy(async () => ({ default: (await import("./PlaybookPage")).PlaybookPage }));
-const ResearchPage = lazy(async () => ({ default: (await import("./ResearchPage")).ResearchPage }));
-const SettingsPage = lazy(async () => ({ default: (await import("./SettingsPage")).SettingsPage }));
-const StrategyHubPage = lazy(async () => ({ default: (await import("../strategy/StrategyHubPage")).StrategyHubPage }));
 export function TradingWorkspace() {
   const [authReady, setAuthReady] = useState(false);
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
@@ -423,66 +410,39 @@ export function TradingWorkspace() {
   }
 
   return (
-    <div className={`app page-${page}`}>
-      <Topbar
-        page={page}
-        setPage={navigatePage}
-        priorityBoard={monitor.priorityBoard}
-        watchCards={monitor.watchCards}
-        currentUser={currentUser}
-        onLogout={() => void logout()}
-        onPaperRefresh={page === "paper" ? () => void paper.refreshAll() : undefined}
-        paperRefreshLoading={isLoading(loadingState, "paper") || isLoading(loadingState, "paper-refresh") || isLoading(loadingState, "paper-quotes")}
-      />
-      <main className="workspace">
-        <StatusStrip loading={loading} notice={notice} />
-        <ErrorDialog message={error} onClose={() => setError("")} />
-        <StockDetailDialog
-          stock={selectedStock}
-          onClose={() => setSelectedStock(null)}
-          onAnalyze={analysis.analyzeFromCard}
-        />
-        {aiDialogOpen ? (
-          <AiInsightDialog
-            response={aiResult}
-            loading={isLoading(loadingState, "ai")}
-            onClose={() => setAiDialogOpen(false)}
-          />
-        ) : null}
-        <CommandPalette
-          open={commandOpen}
-          strategies={commandStrategies}
-          onClose={() => setCommandOpen(false)}
-          onNavigate={navigatePage}
-          onAnalyzeSymbol={analyzeSymbolFromCommand}
-          onOpenStrategy={openStrategyFromCommand}
-        />
-        <WorkspacePageContent
-          AnalysisPage={AnalysisPage}
-          BacktestPage={BacktestPage}
-          MonitorPage={MonitorPage}
-          PaperTradingPage={PaperTradingPage}
-          PerformanceDashboard={PerformanceDashboard}
-          PlaybookPage={PlaybookPage}
-          ResearchPage={ResearchPage}
-          SettingsPage={SettingsPage}
-          StrategyHubPage={StrategyHubPage}
-          analysis={analysis}
-          currentUser={currentUser}
-          loading={loading}
-          monitor={monitor}
-          monitorPageProps={monitorPageProps}
-          page={page}
-          paperPageProps={paperPageProps}
-          playbookData={playbookData}
-          research={research}
-          settingsData={settingsData}
-          strategyMeta={strategyMeta}
-          onSelectStock={setSelectedStock}
-          onPreparePaperOrder={preparePaperOrder}
-        />
-      </main>
-    </div>
+    <TradingWorkspaceChrome
+      aiDialogOpen={aiDialogOpen}
+      aiLoading={isLoading(loadingState, "ai")}
+      aiResult={aiResult}
+      analysis={analysis}
+      commandOpen={commandOpen}
+      commandStrategies={commandStrategies}
+      currentUser={currentUser}
+      error={error}
+      loading={loading}
+      monitor={monitor}
+      monitorPageProps={monitorPageProps}
+      notice={notice}
+      page={page}
+      paperPageProps={paperPageProps}
+      paperRefreshLoading={isLoading(loadingState, "paper") || isLoading(loadingState, "paper-refresh") || isLoading(loadingState, "paper-quotes")}
+      playbookData={playbookData}
+      research={research}
+      selectedStock={selectedStock}
+      settingsData={settingsData}
+      strategyMeta={strategyMeta}
+      onAnalyzeSymbol={analyzeSymbolFromCommand}
+      onCloseAi={() => setAiDialogOpen(false)}
+      onCloseCommand={() => setCommandOpen(false)}
+      onCloseError={() => setError("")}
+      onCloseStock={() => setSelectedStock(null)}
+      onLogout={() => void logout()}
+      onNavigate={navigatePage}
+      onOpenStrategy={openStrategyFromCommand}
+      onPaperRefresh={page === "paper" ? () => void paper.refreshAll() : undefined}
+      onPreparePaperOrder={preparePaperOrder}
+      onSelectStock={setSelectedStock}
+    />
   );
 }
 

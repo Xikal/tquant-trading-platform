@@ -1,19 +1,23 @@
 from __future__ import annotations
 
 from app.services.low_buy.candidate_metrics import build_candidate_metrics, passes_common_prefilter
-from app.services.low_buy.exit_plan import build_exit_plan
-from app.services.low_buy.hard_risk import build_hard_risk_assessment, hard_untradable_reason
-from app.services.low_buy.market_state_rules import (
-    build_low_buy_market_adjustment,
+from app.services.low_buy.candidate_content import (
+    build_candidate_reasons,
+    build_candidate_risks,
+    build_candidate_tags,
+    entry_tolerance_pct,
+    execution_quality,
+    final_position_cap,
+    initial_signal_state,
 )
+from app.services.low_buy.exit_plan import build_exit_plan
+from app.services.low_buy.hard_risk import hard_untradable_reason
 from app.services.low_buy.next_day_event_model import build_next_day_event_plan
-from app.services.low_buy.industry_positioning import build_industry_position_adjustment
 from app.services.low_buy.mainline_strength import candidate_mainline_info
 from app.services.low_buy.dynamic_adjustments import (
     apply_performance_adjustment_to_candidate,
-    low_buy_dynamic_adjustment,
 )
-from app.services.low_buy.penalty_budget import cap_candidate_score_penalty
+from app.services.low_buy.candidate_context import build_candidate_context_adjustment, merge_risk_tier
 from app.services.low_buy.base_strategy import get_low_buy_strategy
 from app.services.low_buy.candidate_types import CandidateContextAdjustment, CandidateMetrics, StrategySetup
 from app.services.low_buy.data_quality import (
@@ -28,7 +32,6 @@ from app.services.low_buy.factor_types import FactorContext
 from app.services.low_buy.positioning import build_position_breakdown_text
 from app.services.low_buy.candidate_position_advice import position_advice_for_signal
 from app.services.low_buy.research_layers import evaluate_research_layer, is_research_layer_strategy
-from app.services.low_buy.risk_tiers import resolve_low_buy_risk_tier
 from app.services.low_buy.strategy_policy import mainline_industry_allowed
 from app.services.low_buy.signal_family import (
     SignalFamilyProfile,
@@ -63,22 +66,7 @@ class LowBuyCandidateMixin:
 
     @staticmethod
     def _get_entry_tolerance_pct(strategy: str) -> float:
-        tolerance_map = {
-            "classic_retrace": 0.8,
-            "ma_support": 0.8,
-            "first_board": 0.6,
-            "volume_shrink": 0.6,
-            "late_session_strong_support": 0.4,
-            "core_midcap_vwap_ma5_retrace": 0.6,
-            "sector_mainline_first_divergence_low_buy": 0.6,
-            "mainline_limitup_shrink_retrace_reclaim": 0.5,
-            "breakout_support": 0.5,
-            "limit_up_breakout_retrace": 0.35,
-            "divergence_consensus": 0.25,
-            "deep_pullback": 0.0,
-            "trend_rebound": 0.6,
-        }
-        return tolerance_map.get(strategy, 0.5)
+        return entry_tolerance_pct(strategy)
 
     @staticmethod
     def _position_advice_for_signal(candidate: LowBuyCandidateOut, state: str, performance=None) -> tuple[float, str]:
@@ -86,50 +74,7 @@ class LowBuyCandidateMixin:
 
     @staticmethod
     def _execution_quality(candidate: LowBuyCandidateOut) -> tuple[float, str]:
-        state_score = {
-            "buy_now": 34.0,
-            "soft_buy_now": 27.0,
-            "near_entry": 20.0,
-            "watch": 8.0,
-            "avoid": -22.0,
-        }.get(candidate.buy_signal_state, 0.0)
-        distance = max(candidate.entry_distance_pct, 0.0)
-        if distance <= 0:
-            distance_score = 18.0
-        elif distance <= 0.5:
-            distance_score = 12.0
-        elif distance <= 1.0:
-            distance_score = 7.0
-        elif distance <= 2.0:
-            distance_score = 2.0
-        else:
-            distance_score = -min(18.0, distance * 3.0)
-        stop_gap = (
-            (candidate.latest_price - candidate.stop_loss) / max(candidate.latest_price, 0.01) * 100
-            if candidate.latest_price > 0
-            else 0.0
-        )
-        if candidate.stop_loss >= candidate.latest_price:
-            risk_score = -24.0
-        elif 2.0 <= stop_gap <= 9.0:
-            risk_score = 10.0
-        elif stop_gap > 14.0:
-            risk_score = -5.0
-        else:
-            risk_score = 3.0
-        tier_score = {"block": -28.0, "degrade": -10.0, "note": 3.0}.get(candidate.risk_tier, 0.0)
-        distribution_penalty = min(max(candidate.distribution_risk_score - 3.5, 0.0) * 2.6, 12.0)
-        raw_score = 42.0 + state_score + distance_score + risk_score + tier_score - distribution_penalty
-        score = round(max(0.0, min(raw_score, 100.0)), 1)
-        if candidate.risk_tier == "block" or candidate.buy_signal_state == "avoid":
-            label = "禁入"
-        elif score >= 78:
-            label = "高"
-        elif score >= 58:
-            label = "中"
-        else:
-            label = "低"
-        return score, f"执行质量：{label}，到价/止跌/风控综合评分 {score:.1f}"
+        return execution_quality(candidate)
 
     def _apply_candidate_positioning(
         self,
@@ -146,7 +91,7 @@ class LowBuyCandidateMixin:
             adjusted_candidate.buy_signal_state,
             performance,
         )
-        final_cap_pct, cap_reason = _final_position_cap(
+        final_cap_pct, cap_reason = final_position_cap(
             suggested_position_pct=suggested_position_pct,
             volatility_position_pct=adjusted_candidate.volatility_position_pct,
             existing_reason=adjusted_candidate.position_cap_reason,
@@ -268,106 +213,20 @@ class LowBuyCandidateMixin:
         factor_scores: dict[str, float],
         metrics_quality: DataQualitySnapshot | None = None,
     ) -> CandidateContextAdjustment:
-        score_penalty = 0.0
-        execution_blocked = False
-        extra_risks: list[str] = []
-        extra_tags: list[str] = []
-        market_state_strength = 0.0
-        if metrics_quality is not None and metrics_quality.quality != "ok":
-            extra_tags.extend(metrics_quality.tags)
-            extra_risks.append(metrics_quality.text)
-            if metrics_quality.quality == "degraded":
-                score_penalty += 3.0
-            elif metrics_quality.quality in {"limited", "stale"}:
-                score_penalty += 1.5
-
-        if hot_industries and item.industry and item.industry not in hot_industries:
-            score_penalty += 1.6
-            extra_tags.append("非热点行业")
-            extra_risks.append("当前不在强主线行业内，持续性通常弱于热点龙头。")
-        risk_decision = resolve_low_buy_risk_tier(
+        return build_candidate_context_adjustment(
             strategy=strategy,
+            item=item,
             metrics=metrics,
-            market_regime=market_regime,
-        )
-        hard_risk = build_hard_risk_assessment(item=item, metrics=metrics)
-        score_penalty += hard_risk.score_penalty
-        execution_blocked = execution_blocked or hard_risk.execution_blocked
-        extra_risks.extend(hard_risk.reasons)
-        extra_tags.extend(hard_risk.tags)
-        score_penalty += risk_decision.score_penalty
-        execution_blocked = execution_blocked or risk_decision.execution_blocked
-        extra_risks.extend(risk_decision.risks)
-        extra_tags.extend(risk_decision.tags)
-
-        market_state = market_regime.state if market_regime is not None else "low_volume_wait"
-        market_state_text = market_regime.label if market_regime is not None else "缩量无主线"
-        dynamic_adjustment = low_buy_dynamic_adjustment(
-            market_regime=market_regime,
-            risk_tier=risk_decision.risk_tier,
-            leader_rank=signal_profile.leader_rank,
-            factor_bonuses=factor_scores,
-        )
-        market_adjustment = build_low_buy_market_adjustment(
-            strategy=strategy,
-            market_state=market_state,
-            market_state_text=market_state_text,
-            market_state_strength=market_regime.state_strength if market_regime is not None else 0.0,
-        )
-        industry_adjustment = build_industry_position_adjustment(
-            sector_name=item.industry,
             hot_industries=hot_industries,
-            leader_rank=signal_profile.leader_rank,
-            market_state=market_state,
-            market_state_strength=market_regime.state_strength if market_regime is not None else 0.0,
-        )
-        score_penalty += market_adjustment.score_penalty * market_adjustment.candidate_penalty_weight
-        market_state_strength = market_adjustment.market_state_strength
-        extra_risks.extend(market_adjustment.extra_risks)
-        extra_tags.extend(
-            [
-                *market_adjustment.extra_tags,
-                dynamic_adjustment.reason,
-                industry_adjustment.label,
-            ]
-        )
-
-        score_penalty, penalty_capped = cap_candidate_score_penalty(
-            score_penalty=score_penalty,
-            market_state=market_state,
-            execution_blocked=execution_blocked,
-        )
-        if penalty_capped:
-            extra_tags.append("风险扣分封顶")
-
-        risk_tier = self._merge_risk_tier(risk_decision.risk_tier, hard_risk.level)
-        return CandidateContextAdjustment(
-            score_penalty=score_penalty,
-            score_floor_shift=dynamic_adjustment.score_floor_shift,
-            soft_buy_threshold_shift=dynamic_adjustment.soft_buy_threshold_shift,
-            candidate_penalty_weight=market_adjustment.candidate_penalty_weight,
-            market_position_multiplier=round(max(0.0, min(1.2, market_adjustment.position_multiplier)), 4),
-            risk_position_multiplier=round(max(0.0, min(1.0, risk_decision.position_multiplier)), 4),
-            dynamic_position_multiplier=dynamic_adjustment.position_multiplier,
-            industry_tier=industry_adjustment.tier,
-            industry_tier_text=industry_adjustment.label,
-            industry_position_multiplier=industry_adjustment.multiplier,
-            execution_blocked=execution_blocked,
-            risk_tier=risk_tier,
-            dynamic_adjustment_reason=dynamic_adjustment.reason,
-            market_state=market_state,
-            market_state_text=market_state_text,
-            market_state_strength=market_state_strength,
-            hard_risk=hard_risk,
-            extra_risks=extra_risks,
-            extra_tags=extra_tags,
+            market_regime=market_regime,
+            signal_profile=signal_profile,
+            factor_scores=factor_scores,
+            metrics_quality=metrics_quality,
         )
 
     @staticmethod
     def _merge_risk_tier(base_tier: str, hard_risk_level: str) -> str:
-        order = {"note": 0, "degrade": 1, "block": 2}
-        hard_tier = "block" if hard_risk_level == "block" else ("degrade" if hard_risk_level == "degrade" else "note")
-        return hard_tier if order[hard_tier] > order.get(base_tier, 0) else base_tier
+        return merge_risk_tier(base_tier, hard_risk_level)
 
     def _build_candidate_metrics(
         self,
@@ -425,7 +284,7 @@ class LowBuyCandidateMixin:
             research_stage=research_layer.stage,
         )
         execution_ready = setup.execution_ready and not context_adjustment.execution_blocked
-        staged_state = self._initial_signal_state(
+        staged_state = initial_signal_state(
             execution_blocked=context_adjustment.execution_blocked,
             execution_ready=execution_ready,
             score=score,
@@ -525,9 +384,9 @@ class LowBuyCandidateMixin:
             research_failed_rules=research_layer.failed_rules,
             research_near_miss_rules=research_layer.near_miss_rules,
             research_blocked_reason=research_layer.blocked_reason,
-            reasons=self._build_candidate_reasons(setup.reasons, research_layer),
-            risks=self._build_candidate_risks(strategy, metrics, context_adjustment),
-            tags=self._build_candidate_tags(
+            reasons=build_candidate_reasons(setup.reasons, research_layer),
+            risks=build_candidate_risks(strategy, metrics, context_adjustment),
+            tags=build_candidate_tags(
                 strategy=strategy,
                 item=item,
                 metrics=metrics,
@@ -544,181 +403,3 @@ class LowBuyCandidateMixin:
                 "execution_quality_text": execution_quality_text,
             }
         )
-
-    @staticmethod
-    def _initial_signal_state(
-        *,
-        execution_blocked: bool,
-        execution_ready: bool,
-        score: float,
-        research_stage: str,
-    ) -> str:
-        if research_stage == "blocked":
-            return "avoid"
-        if research_stage in {"watch", "near_entry", "buy_ready"}:
-            return "watch"
-        if execution_blocked:
-            return "avoid"
-        return "watch" if execution_ready or score >= 80 else "avoid"
-
-    @staticmethod
-    def _build_candidate_reasons(base_reasons: list[str], research_layer) -> list[str]:
-        reasons = list(base_reasons)
-        if research_layer.stage in {"watch", "near_entry", "buy_ready"} and research_layer.stage_text:
-            reasons.append(f"研究分层：{research_layer.stage_text}。")
-        if research_layer.near_miss_rules:
-            reasons.extend(research_layer.near_miss_rules[:2])
-        if research_layer.failed_rules:
-            reasons.append("仍缺确认：" + "；".join(research_layer.failed_rules[:3]) + "。")
-        if research_layer.blocked_reason:
-            reasons.append(research_layer.blocked_reason)
-        return reasons
-
-    def _build_candidate_risks(
-        self,
-        strategy: str,
-        metrics: CandidateMetrics,
-        context_adjustment: CandidateContextAdjustment,
-    ) -> list[str]:
-        if strategy == "limit_up_breakout_retrace":
-            risks = [
-                "跌回平台高点、涨停开盘价或涨停低点，说明突破回踩失败。",
-                "这类策略只适合低位平台突破后的首轮回踩，不适合追高加速段。",
-            ]
-            if metrics.false_breakout_flag:
-                risks.append("突破后重新跌回关键位，疑似假突破，本轮不执行。")
-            if metrics.intraday_reversal_flag:
-                risks.append("回踩后冲高回落，说明承接不足，需要重新确认。")
-            if metrics.distribution_risk_score >= 5.0:
-                risks.append("派发风险偏高，回踩确认需要降级观察。")
-            if context_adjustment.execution_blocked:
-                risks.append("市场或风险分层阻断强买，只保留观察提醒。")
-            return risks + context_adjustment.extra_risks
-        if strategy == "divergence_consensus":
-            risks = [
-                "跌回分歧高点或横盘下沿，说明突破失败，应直接放弃。",
-                "这类策略是右侧确认，不适合在缩量弱市或高位退潮期追击。",
-            ]
-            if metrics.false_breakout_flag:
-                risks.append("突破后重新跌回关键位，疑似假突破，本轮不执行。")
-            if metrics.stall_after_volume_flag:
-                risks.append("放量后价格扩张变差，可能是边拉边派发。")
-            if metrics.intraday_reversal_flag:
-                risks.append("突破日冲高回落，收盘承接不足，需要重新站稳。")
-            if metrics.distribution_risk_score >= 5.0:
-                risks.append("派发风险偏高，突破确认需要降级观察。")
-            if context_adjustment.execution_blocked:
-                risks.append("风险分层已触发执行阻断，本轮不允许进入确定买入。")
-            return risks + context_adjustment.extra_risks
-        risks = [
-            "跌破止损位说明本次低吸逻辑失效，应直接离场。",
-            "只适合上升趋势或震荡偏强市场，跌停潮里应整体降级处理。",
-        ]
-        if not metrics.shrink_basic_ok:
-            risks.append("回调量能还没基本缩到位，若继续放量下跌，应从名单中剔除。")
-        elif not metrics.shrink_ok:
-            risks.append("当前缩量只是基本成立，还没到最理想的干净洗盘状态。")
-        if not metrics.momentum_exhaustion:
-            risks.append("下跌动能尚未钝化，当前仍不能硬接。")
-        if metrics.distribution_risk_score >= 6.0:
-            risks.append("近期派发风险偏高，哪怕价格到位也要等更强确认。")
-        if metrics.trend_fatigue_score >= 6.0:
-            risks.append("近 3 日出现趋势疲劳迹象，不能只按均线多头判断强势。")
-        if context_adjustment.execution_blocked:
-            risks.append("风险分层已触发执行阻断，本轮不允许进入确定买入。")
-        return risks + context_adjustment.extra_risks
-
-    def _build_candidate_tags(
-        self,
-        strategy: str,
-        item: BoardCandidate,
-        metrics: CandidateMetrics,
-        hot_industries: list[str],
-        context_adjustment: CandidateContextAdjustment,
-        factor_scores: dict[str, float],
-    ) -> list[str]:
-        factor_tags = [f"{label}+{value:.1f}" for label, value in _factor_score_labels(factor_scores)]
-        if strategy == "limit_up_breakout_retrace":
-            return [
-                "热点行业" if item.industry and hot_industries and item.industry in hot_industries else "趋势筛选",
-                "平台回踩",
-                "缩量承接" if metrics.post_volume_ratio <= 1.05 else "缩量待确认",
-                "关键位附近" if metrics.platform_support_distance_pct <= 5.0 else "未到关键位",
-                "首板启动",
-                "研究策略",
-                self._distribution_tag(metrics.distribution_risk_score),
-                f"风险层级:{context_adjustment.risk_tier}",
-                *factor_tags,
-                *context_adjustment.extra_tags,
-            ]
-        if strategy == "divergence_consensus":
-            return [
-                "热点行业" if item.industry and hot_industries and item.industry in hot_industries else "趋势筛选",
-                "分歧突破" if metrics.consensus_breakout else "突破待确认",
-                "横盘缩量" if metrics.consolidation_volume_ratio <= 0.72 else "缩量不足",
-                "首板启动",
-                "右侧确认",
-                self._distribution_tag(metrics.distribution_risk_score),
-                f"风险层级:{context_adjustment.risk_tier}",
-                *factor_tags,
-                *context_adjustment.extra_tags,
-            ]
-        return [
-            "热点行业" if item.industry and hot_industries and item.industry in hot_industries else "趋势筛选",
-            "缩量回调" if metrics.shrink_ok else ("缩量基本成立" if metrics.shrink_basic_ok else "缩量待确认"),
-            "均线支撑" if metrics.support_ok else "靠近支撑",
-            "首板优先" if item.board_count == 1 else f"{item.board_count} 连板",
-            "强趋势" if metrics.strong_trend else "趋势未坏",
-            "趋势疲劳" if metrics.trend_fatigue_score >= 6.0 else "趋势健康",
-            self._distribution_tag(metrics.distribution_risk_score),
-            f"风险层级:{context_adjustment.risk_tier}",
-            *factor_tags,
-            *context_adjustment.extra_tags,
-        ]
-
-    @staticmethod
-    def _distribution_tag(distribution_risk_score: float) -> str:
-        if distribution_risk_score >= 6.0:
-            return "派发风险高"
-        if distribution_risk_score >= 3.5:
-            return "派发风险关注"
-        return "派发风险低"
-
-
-def _factor_score_labels(factor_scores: dict[str, float]) -> list[tuple[str, float]]:
-    labels = {
-        "deep_pullback_factor": "深回踩因子",
-        "trend_rebound_factor": "龙回头因子",
-        "shrink_quality_factor": "缩量质量",
-        "gap_risk_factor": "缺口风险低",
-        "volatility_regime_factor": "波动收敛",
-        "time_efficiency_factor": "回撤节奏",
-        "price_structure_factor": "价格结构",
-        "sector_density_factor": "板块共振",
-        "sector_flow_factor": "板块资金",
-        "big_order_flow_factor": "大单流向",
-        "event_risk_factor": "公告风险低",
-        "signal_freshness_factor": "信号新鲜",
-        "absorption_quality_factor": "分时承接",
-    }
-    return [
-        (labels.get(key, key), value)
-        for key, value in factor_scores.items()
-        if value > 0
-    ]
-
-
-def _final_position_cap(
-    *,
-    suggested_position_pct: float,
-    volatility_position_pct: float,
-    existing_reason: str,
-) -> tuple[float, str]:
-    if suggested_position_pct <= 0:
-        return 0.0, existing_reason
-    if volatility_position_pct <= 0:
-        return round(suggested_position_pct, 2), existing_reason
-    final_cap = round(min(float(suggested_position_pct), float(volatility_position_pct)), 2)
-    if final_cap < suggested_position_pct:
-        return final_cap, f"{existing_reason}，低于策略建议仓位时按波动率上限执行"
-    return final_cap, existing_reason

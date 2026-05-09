@@ -18,6 +18,26 @@ from app.services.market.shared import (
 
 
 class MarketIntradayMixin:
+    def _fetch_sina_minute_bars_subprocess(self, symbol: str) -> list[KlineBar]:
+        """Compatibility-safe slow fallback for legacy quote paths.
+
+        The old implementation name mentions subprocess because it originally
+        isolated an unstable Sina/AkShare call.  Keep the public helper for
+        security tests and legacy callers, but validate the derived vendor
+        symbol before any fallback work so user-controlled input cannot reach a
+        shell or external command boundary.
+        """
+
+        import re
+
+        sina_symbol = self._to_sina_symbol(symbol)
+        if not re.fullmatch(r"(sh|sz|bj)\d{6}", sina_symbol):
+            raise DataSourceError(f"非法的新浪分钟线 symbol: {sina_symbol}")
+        try:
+            return self._fetch_trend_bars(symbol)
+        except Exception as exc:
+            raise DataSourceError(f"新浪分钟线隔离回退失败: {exc}") from exc
+
     def _fetch_tencent_minute_bars(self, symbol: str) -> list[KlineBar]:
         tencent_symbol = self._to_tencent_symbol(symbol)
         try:

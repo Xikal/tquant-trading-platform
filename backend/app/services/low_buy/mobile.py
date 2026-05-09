@@ -9,9 +9,27 @@ from app.services.low_buy.shared import (
     LowBuyScreenerResponse,
     Session,
 )
+from app.services.low_buy.screening_helpers import build_pending_full_response
 
 
 class LowBuyMobileReadMixin:
+    def _build_pending_full_response(
+        self,
+        strategy: str,
+        latest_trade_date: str,
+        requested_scan_limit: int,
+        performance,
+        full_scan_in_progress: bool,
+    ) -> LowBuyScreenerResponse:
+        return build_pending_full_response(
+            strategy=strategy,
+            playbook=self._get_playbook(strategy),
+            latest_trade_date=latest_trade_date,
+            requested_scan_limit=requested_scan_limit,
+            performance=performance,
+            full_scan_in_progress=full_scan_in_progress,
+        )
+
     def _mobile_quick_history_timeout(self) -> float:
         timeout_seconds = float(getattr(self.market_data.settings, "app_mobile_quick_history_timeout", 6.0) or 6.0)
         return max(timeout_seconds, 1.0)
@@ -66,7 +84,7 @@ class LowBuyMobileReadMixin:
                 include_history=False,
             )
         pending_builder = getattr(self, "_build_pending_full_response", None)
-        if callable(pending_builder):
+        if callable(pending_builder) and hasattr(self, "_get_playbook"):
             pending = pending_builder(
                 strategy=strategy,
                 latest_trade_date=latest_trade_date,

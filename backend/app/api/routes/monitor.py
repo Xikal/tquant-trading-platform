@@ -35,8 +35,8 @@ def monitor_snapshot(
     """
 
     rows = list_user_watchlist_rows(db, current_user.id)
-    excluded = UserSectorPreferenceService(db).get_excluded_sector_set(current_user.id)
-    signature = rows_signature(rows, excluded)
+    excluded = _safe_excluded_sectors(db, current_user.id)
+    signature = _rows_signature(rows, excluded)
     cached = read_monitor_snapshot_cache(
         db,
         user_id=current_user.id,
@@ -127,6 +127,20 @@ def _empty_priority_board(*, warning: str) -> dict[str, Any]:
         "simple_buckets": [],
         "items": [],
     }
+
+
+def _safe_excluded_sectors(db: Session, user_id: int) -> set[str]:
+    try:
+        return UserSectorPreferenceService(db).get_excluded_sector_set(user_id)
+    except Exception:
+        return set()
+
+
+def _rows_signature(rows: list[Any], excluded: set[str]) -> Any:
+    try:
+        return rows_signature(rows, excluded)
+    except TypeError:
+        return rows_signature(rows)
 
 
 def _empty_sector_etf_t0() -> dict[str, Any]:

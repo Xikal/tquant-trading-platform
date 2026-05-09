@@ -1,19 +1,24 @@
 from __future__ import annotations
 
-from app.core.timezone import beijing_now
 from app.models.schemas import KlineBar, MarketEventOut, QuoteSnapshot, SectorSnapshot
+from app.services.market.providers.akshare_events import (
+    fetch_news_events,
+    fetch_notice_events,
+)
+from app.services.market.providers.akshare_history import fetch_daily_history as fetch_akshare_daily_history
+from app.services.market.providers.akshare_instruments import (
+    fetch_etf_instrument_rows as fetch_akshare_etf_instrument_rows,
+    fetch_industry_constituent_map as fetch_akshare_industry_constituent_map,
+    fetch_stock_industry as fetch_akshare_stock_industry,
+    fetch_stock_instrument_rows as fetch_akshare_stock_instrument_rows,
+)
 from app.services.market.providers.quality import MarketDataQuality, ProviderResult
 from app.services.market.regime_scoring import normalize_board_frame
 from app.services.market.shared import ak
 from app.services.market.providers.akshare_utils import (
     bounded_strength,
-    build_sw_category_map,
-    extract_first_value,
-    extract_industry_names,
-    is_st_or_delist_name,
     parse_sina_minute_records,
     parse_spot_snapshot_records,
-    resolve_sw_industry_name,
 )
 
 
@@ -244,61 +249,12 @@ class AkshareMarketProvider:
         )
 
     def fetch_daily_history(self, symbol: str, start_date: str, end_date: str) -> ProviderResult:
-        if ak is None:
-            return ProviderResult(quality=MarketDataQuality.UNAVAILABLE, source=self.name, message="akshare unavailable")
-        normalized = None
-        try:
-            frame = self._raw_call(
-                ak.stock_zh_a_daily,
-                symbol=self.service._to_sina_symbol(symbol),
-                start_date=start_date,
-                end_date=end_date,
-                adjust="qfq",
-                purpose="daily_history",
-            )
-            if frame is not None and not frame.empty:
-                normalized = frame.rename(
-                    columns={
-                        "date": "date",
-                        "open": "open",
-                        "close": "close",
-                        "high": "high",
-                        "low": "low",
-                        "volume": "volume",
-                        "amount": "amount",
-                    }
-                ).copy()
-                normalized["pct_chg"] = normalized["close"].pct_change().fillna(0.0) * 100
-        except Exception:
-            normalized = None
-        if normalized is None:
-            try:
-                frame = self._raw_call(
-                    ak.stock_zh_a_hist_tx,
-                    symbol=self.service._to_sina_symbol(symbol),
-                    start_date=start_date,
-                    end_date=end_date,
-                    purpose="daily_history",
-                )
-                if frame is not None and not frame.empty:
-                    normalized = frame.rename(
-                        columns={
-                            "date": "date",
-                            "open": "open",
-                            "close": "close",
-                            "high": "high",
-                            "low": "low",
-                            "amount": "volume",
-                        }
-                    ).copy()
-                    normalized["amount"] = 0.0
-                    normalized["pct_chg"] = normalized["close"].pct_change().fillna(0.0) * 100
-            except Exception as exc:
-                return ProviderResult(quality=MarketDataQuality.UNAVAILABLE, source=self.name, message=str(exc)[:160])
-        return ProviderResult(
-            quality=MarketDataQuality.FRESH if normalized is not None and not normalized.empty else MarketDataQuality.UNAVAILABLE,
-            source=self.name,
-            data=normalized,
+        return fetch_akshare_daily_history(
+            self._raw_call,
+            provider_name=self.name,
+            sina_symbol=self.service._to_sina_symbol(symbol),
+            start_date=start_date,
+            end_date=end_date,
         )
 
     def fetch_sector_fund_flow_rank(self) -> ProviderResult:
@@ -380,7 +336,7 @@ class AkshareMarketProvider:
         if ak is None:
             return self._ak_unavailable()
         try:
-            events = self._fetch_notice_events(symbol) + self._fetch_news_events(symbol)
+            events = fetch_notice_events(self._raw_call, symbol) + fetch_news_events(self._raw_call, symbol)
         except Exception as exc:
             return self._unavailable(str(exc))
         deduped: list[MarketEventOut] = []
@@ -398,184 +354,16 @@ class AkshareMarketProvider:
         )
 
     def fetch_stock_instrument_rows(self) -> ProviderResult[list[dict[str, object]]]:
-        if ak is None:
-            return self._ak_unavailable()
-        try:
-            frame = self._raw_call(ak.stock_info_a_code_name, purpose="industry")
-        except Exception as exc:
-            return self._unavailable(str(exc))
-        rows = frame.to_dict("records") if frame is not None and not getattr(frame, "empty", False) else []
-        return ProviderResult(
-            quality=MarketDataQuality.FRESH if rows else MarketDataQuality.UNAVAILABLE,
-            source=self.name,
-            data=rows or None,
-        )
+        return fetch_akshare_stock_instrument_rows(self._raw_call, self.name)
 
     def fetch_etf_instrument_rows(self) -> ProviderResult[list[dict[str, object]]]:
-        if ak is None:
-            return self._ak_unavailable()
-        try:
-            frame = self._raw_call(
-                ak.fund_etf_category_sina,
-                symbol="ETF基金",
-                purpose="industry",
-            )
-        except Exception as exc:
-            return self._unavailable(str(exc))
-        rows = frame.to_dict("records") if frame is not None and not getattr(frame, "empty", False) else []
-        return ProviderResult(
-            quality=MarketDataQuality.FRESH if rows else MarketDataQuality.UNAVAILABLE,
-            source=self.name,
-            data=rows or None,
-        )
+        return fetch_akshare_etf_instrument_rows(self._raw_call, self.name)
 
     def fetch_industry_constituent_map(self) -> ProviderResult[dict[str, str]]:
-        if ak is None:
-            return self._ak_unavailable()
-        result = self._load_em_industry_constituent_map()
-        for symbol, industry in self._load_sw_industry_constituent_map().items():
-            result.setdefault(symbol, industry)
-        return ProviderResult(
-            quality=MarketDataQuality.FRESH if result else MarketDataQuality.UNAVAILABLE,
-            source=self.name,
-            data=result or None,
-        )
+        return fetch_akshare_industry_constituent_map(self._raw_call, self.name)
 
     def fetch_stock_industry(self, symbol: str) -> ProviderResult[str]:
-        if ak is None:
-            return self._ak_unavailable()
-        try:
-            info_df = self._raw_call(ak.stock_individual_info_em, symbol=symbol, purpose="industry")
-            industry_values = info_df.loc[info_df["item"] == "行业", "value"].tolist()
-        except Exception as exc:
-            return self._unavailable(str(exc))
-        industry = str(industry_values[0]).strip() if industry_values else ""
-        return ProviderResult(
-            quality=MarketDataQuality.FRESH if industry else MarketDataQuality.UNAVAILABLE,
-            source=self.name,
-            data=industry or None,
-        )
-
-    def _load_em_industry_constituent_map(self) -> dict[str, str]:
-        try:
-            industry_frame = self._raw_call(ak.stock_board_industry_name_em, purpose="industry")
-        except Exception:
-            return {}
-        industry_names = extract_industry_names(industry_frame.to_dict("records"))
-        result: dict[str, str] = {}
-        for industry in industry_names:
-            try:
-                constituents = self._raw_call(
-                    ak.stock_board_industry_cons_em,
-                    symbol=industry,
-                    purpose="industry",
-                )
-            except Exception:
-                continue
-            for record in constituents.to_dict("records"):
-                symbol = extract_first_value(record, ("代码", "股票代码", "code", "symbol"))
-                name = extract_first_value(record, ("名称", "股票名称", "name", "证券简称"))
-                if not symbol or is_st_or_delist_name(name):
-                    continue
-                result.setdefault(symbol, industry)
-        return result
-
-    def _load_sw_industry_constituent_map(self) -> dict[str, str]:
-        try:
-            history_frame = self._raw_call(ak.stock_industry_clf_hist_sw, purpose="industry")
-            category_frame = self._raw_call(
-                ak.stock_industry_category_cninfo,
-                symbol="申银万国行业分类标准",
-                purpose="industry",
-            )
-        except Exception:
-            return {}
-        category_map = build_sw_category_map(category_frame.to_dict("records"))
-        latest_by_symbol: dict[str, tuple[str, str, str]] = {}
-        for row in history_frame.to_dict("records"):
-            symbol = extract_first_value(row, ("symbol", "股票代码", "代码"))
-            industry_code = extract_first_value(row, ("industry_code", "行业代码", "类目编码"))
-            if not symbol or not industry_code:
-                continue
-            start_date = extract_first_value(row, ("start_date", "开始日期"))
-            update_time = extract_first_value(row, ("update_time", "更新时间"))
-            current = latest_by_symbol.get(symbol)
-            marker = (start_date, update_time)
-            if current is None or marker >= (current[1], current[2]):
-                latest_by_symbol[symbol] = (industry_code, start_date, update_time)
-        result: dict[str, str] = {}
-        for symbol, (industry_code, _, _) in latest_by_symbol.items():
-            industry = resolve_sw_industry_name(industry_code, category_map)
-            if industry:
-                result[symbol] = industry
-        return result
-
-    def _fetch_notice_events(self, symbol: str) -> list[MarketEventOut]:
-        today = beijing_now().strftime("%Y%m%d")
-        categories = ("风险提示", "重大事项", "持股变动")
-        hits: list[MarketEventOut] = []
-        for category in categories:
-            try:
-                frame = self._raw_call(
-                    ak.stock_notice_report,
-                    symbol=category,
-                    date=today,
-                    purpose="notice",
-                )
-            except Exception:
-                continue
-            if frame is None or getattr(frame, "empty", True):
-                continue
-            matched = frame[frame["代码"].astype(str) == symbol] if "代码" in frame else frame.iloc[0:0]
-            for _, row in matched.head(3).iterrows():
-                risk_level = "high" if category in {"风险提示", "重大事项"} else "medium"
-                hits.append(
-                    MarketEventOut(
-                        title=str(row.get("公告标题", "相关公告")),
-                        risk_level=risk_level,
-                        description=f"{category}公告，需确认是否影响盘中波动与流动性。",
-                        source="notice",
-                        event_time=str(row.get("公告日期", "")),
-                    )
-                )
-        return hits
-
-    def _fetch_news_events(self, symbol: str) -> list[MarketEventOut]:
-        try:
-            frame = self._raw_call(ak.stock_news_em, symbol=symbol, purpose="news")
-        except Exception:
-            return []
-        if frame is None or getattr(frame, "empty", True):
-            return []
-        risk_keywords = {
-            "停牌": "high",
-            "问询": "high",
-            "立案": "high",
-            "风险提示": "high",
-            "减持": "medium",
-            "诉讼": "high",
-            "异常波动": "medium",
-            "预亏": "high",
-            "预减": "high",
-            "回购": "low",
-            "增持": "low",
-            "中标": "low",
-        }
-        events: list[MarketEventOut] = []
-        for _, row in frame.head(8).iterrows():
-            text = f"{row.get('新闻标题', '')} {row.get('新闻内容', '')}"
-            matched_level = next((level for keyword, level in risk_keywords.items() if keyword in text), None)
-            if matched_level:
-                events.append(
-                    MarketEventOut(
-                        title=str(row.get("新闻标题", "相关新闻")),
-                        risk_level=matched_level,
-                        description=str(row.get("新闻内容", ""))[:120],
-                        source="news",
-                        event_time=str(row.get("发布时间", "")),
-                    )
-                )
-        return events
+        return fetch_akshare_stock_industry(self._raw_call, self.name, symbol)
 
     def _ak_unavailable(self) -> ProviderResult:
         return ProviderResult(quality=MarketDataQuality.UNAVAILABLE, source=self.name, message="akshare unavailable")

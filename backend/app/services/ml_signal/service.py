@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import pickle
-import shutil
 from datetime import datetime
 from decimal import Decimal
 from pathlib import Path
@@ -10,7 +8,6 @@ from typing import Any
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.core.config import BACKEND_DIR, get_settings
 from app.models.entities import MLSignalModel, MLSignalSample, PaperTrade, RuntimeTask
 from app.models.schema_defs.phase4 import (
     MLSignalArtifactStorageCheckResponse,
@@ -24,18 +21,7 @@ from app.models.schema_defs.phase4 import (
     MLSignalTrainRequest,
     MLSignalTrainResponse,
 )
-from app.services.ml_signal.artifact_storage import (
-    copy_fsspec_to_local as _copy_fsspec_to_local,
-    copy_local_to_fsspec as _copy_local_to_fsspec,
-    file_sha256 as _file_sha256,
-    fsspec_sha256 as _fsspec_sha256,
-    is_fsspec_uri as _is_fsspec_uri,
-    join_fsspec_uri as _join_fsspec_uri,
-    mask_storage_uri as _mask_storage_uri,
-    remove_fsspec_file as _remove_fsspec_file,
-    safe_artifact_name as _safe_artifact_name,
-    validated_artifact_path as _validated_artifact_path,
-)
+from app.services.ml_signal.artifact_manager import MLSignalArtifactManager
 from app.services.ml_signal.features import (
     FEATURE_NAMES,
     estimator_probabilities as _estimator_probabilities,
@@ -73,6 +59,7 @@ class MLSignalService:
     def __init__(self, db: Session) -> None:
         self.db = db
         self._sample_repository = MLSignalSampleRepository(db)
+        self._artifact_manager = MLSignalArtifactManager()
 
     def build_samples(self, payload: MLSignalSampleBuildRequest) -> MLSignalSampleBuildResponse:
         samples: list[dict[str, Any]] = []
@@ -381,70 +368,7 @@ class MLSignalService:
 
     def check_artifact_storage(self) -> MLSignalArtifactStorageCheckResponse:
         """Validate configured artifact storage with write/read/restore/cleanup probes."""
-
-        remote_dir_raw = (get_settings().ml_signal_artifact_remote_dir or "").strip()
-        if not remote_dir_raw:
-            return MLSignalArtifactStorageCheckResponse(
-                ok=True,
-                configured=False,
-                backend="local",
-                message="未配置远端模型存储，当前仅使用本地 artifact 目录。",
-            )
-        artifact_dir = self._artifact_dir()
-        probe_name = f"storage_probe_{datetime.utcnow().strftime('%Y%m%d%H%M%S%f')}.pkl"
-        local_source = artifact_dir / probe_name
-        local_restore = artifact_dir / f"restore_{probe_name}"
-        with local_source.open("wb") as file:
-            pickle.dump({"probe": "tquant_ml_artifact_storage", "created_at": datetime.utcnow().isoformat()}, file)
-        expected_sha256 = _file_sha256(local_source)
-        try:
-            if _is_fsspec_uri(remote_dir_raw):
-                backend = "fsspec"
-                remote_uri = _join_fsspec_uri(remote_dir_raw, probe_name)
-                _copy_local_to_fsspec(local_source, remote_uri)
-                read_ok = _fsspec_sha256(remote_uri) == expected_sha256
-                if read_ok:
-                    _copy_fsspec_to_local(remote_uri, local_restore)
-                restore_ok = local_restore.exists() and _file_sha256(local_restore) == expected_sha256
-                _remove_fsspec_file(remote_uri)
-                cleanup_ok = True
-            else:
-                backend = "filesystem"
-                remote_dir = Path(remote_dir_raw)
-                if not remote_dir.is_absolute():
-                    remote_dir = BACKEND_DIR / remote_dir
-                remote_dir.mkdir(parents=True, exist_ok=True)
-                remote_path = remote_dir / probe_name
-                shutil.copy2(local_source, remote_path)
-                read_ok = _file_sha256(remote_path) == expected_sha256
-                if read_ok:
-                    shutil.copy2(remote_path, local_restore)
-                restore_ok = local_restore.exists() and _file_sha256(local_restore) == expected_sha256
-                remote_path.unlink(missing_ok=True)
-                cleanup_ok = not remote_path.exists()
-            ok = bool(read_ok and restore_ok and cleanup_ok)
-            return MLSignalArtifactStorageCheckResponse(
-                ok=ok,
-                configured=True,
-                backend=backend,
-                remote_dir=_mask_storage_uri(remote_dir_raw),
-                write_ok=True,
-                read_ok=read_ok,
-                restore_ok=restore_ok,
-                cleanup_ok=cleanup_ok,
-                message="远端模型存储写入、读取、恢复、清理验收通过。" if ok else "远端模型存储验收未完全通过。",
-            )
-        except Exception as exc:
-            return MLSignalArtifactStorageCheckResponse(
-                ok=False,
-                configured=True,
-                backend="fsspec" if _is_fsspec_uri(remote_dir_raw) else "filesystem",
-                remote_dir=_mask_storage_uri(remote_dir_raw),
-                message=f"远端模型存储验收失败：{exc}",
-            )
-        finally:
-            local_source.unlink(missing_ok=True)
-            local_restore.unlink(missing_ok=True)
+        return self._artifact_manager.check_storage()
 
     def _heuristic_predict(self, payload: MLSignalPredictionRequest, warning: str = "") -> MLSignalPredictionResponse:
         features = payload.features or {}
@@ -491,41 +415,13 @@ class MLSignalService:
         return self.db.execute(statement.order_by(MLSignalSample.id.desc()).limit(limit)).scalars().all()
 
     def _artifact_dir(self) -> Path:
-        configured = Path(get_settings().ml_signal_model_dir)
-        base = configured if configured.is_absolute() else BACKEND_DIR / configured
-        base.mkdir(parents=True, exist_ok=True)
-        return base
+        return self._artifact_manager.artifact_dir()
 
     def _save_artifact(self, *, model_key: str, payload: dict[str, Any]) -> tuple[str, str]:
-        path = self._artifact_dir() / f"{_safe_artifact_name(model_key)}.pkl"
-        with path.open("wb") as file:
-            pickle.dump(payload, file)
-        return str(path), _file_sha256(path)
+        return self._artifact_manager.save_artifact(model_key=model_key, payload=payload)
 
     def _backup_artifact(self, artifact_uri: str, expected_sha256: str) -> str:
-        remote_dir_raw = (get_settings().ml_signal_artifact_remote_dir or "").strip()
-        if not remote_dir_raw:
-            return ""
-        source = _validated_artifact_path(artifact_uri, self._artifact_dir())
-        if _is_fsspec_uri(remote_dir_raw):
-            target_uri = _join_fsspec_uri(remote_dir_raw, source.name)
-            _copy_local_to_fsspec(source, target_uri)
-            if _fsspec_sha256(target_uri) != expected_sha256:
-                _remove_fsspec_file(target_uri)
-                raise ValueError("remote artifact hash mismatch after backup")
-            return target_uri
-        remote_dir = Path(remote_dir_raw)
-        if not remote_dir.is_absolute():
-            remote_dir = BACKEND_DIR / remote_dir
-        remote_dir.mkdir(parents=True, exist_ok=True)
-        target = remote_dir / source.name
-        if source.resolve() == target.resolve():
-            return str(target)
-        shutil.copy2(source, target)
-        if _file_sha256(target) != expected_sha256:
-            target.unlink(missing_ok=True)
-            raise ValueError("remote artifact hash mismatch after backup")
-        return str(target)
+        return self._artifact_manager.backup_artifact(artifact_uri, expected_sha256)
 
     def _load_artifact(
         self,
@@ -534,22 +430,11 @@ class MLSignalService:
         expected_sha256: str = "",
         remote_artifact_uri: str = "",
     ) -> dict[str, Any]:
-        self._restore_artifact_if_missing(
-            artifact_uri=artifact_uri,
-            remote_artifact_uri=remote_artifact_uri,
+        return self._artifact_manager.load_artifact(
+            artifact_uri,
             expected_sha256=expected_sha256,
+            remote_artifact_uri=remote_artifact_uri,
         )
-        path = _validated_artifact_path(artifact_uri, self._artifact_dir())
-        if not expected_sha256:
-            raise ValueError("model artifact hash is missing")
-        actual_sha256 = _file_sha256(path)
-        if actual_sha256 != expected_sha256:
-            raise ValueError("model artifact hash mismatch")
-        with path.open("rb") as file:
-            payload = pickle.load(file)
-        if not isinstance(payload, dict) or "estimator" not in payload:
-            raise ValueError("invalid model artifact")
-        return payload
 
     def _restore_artifact_if_missing(
         self,
@@ -558,30 +443,11 @@ class MLSignalService:
         remote_artifact_uri: str,
         expected_sha256: str,
     ) -> None:
-        if not remote_artifact_uri or not expected_sha256:
-            return
-        target = Path(artifact_uri).expanduser()
-        base = self._artifact_dir().resolve()
-        target_resolved = target.resolve()
-        try:
-            target_resolved.relative_to(base)
-        except ValueError as exc:
-            raise ValueError("model artifact restore path escapes configured directory") from exc
-        if target.exists():
-            return
-        if _is_fsspec_uri(remote_artifact_uri):
-            if _fsspec_sha256(remote_artifact_uri) != expected_sha256:
-                raise ValueError("remote model artifact hash mismatch")
-            target.parent.mkdir(parents=True, exist_ok=True)
-            _copy_fsspec_to_local(remote_artifact_uri, target)
-            return
-        remote = Path(remote_artifact_uri).expanduser()
-        if not remote.is_file():
-            return
-        if _file_sha256(remote) != expected_sha256:
-            raise ValueError("remote model artifact hash mismatch")
-        target.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(remote, target)
+        self._artifact_manager.restore_artifact_if_missing(
+            artifact_uri=artifact_uri,
+            remote_artifact_uri=remote_artifact_uri,
+            expected_sha256=expected_sha256,
+        )
 
     def _paper_samples(self, limit: int) -> list[dict[str, Any]]:
         return self._sample_repository.paper_samples(limit)

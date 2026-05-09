@@ -2,26 +2,23 @@ from __future__ import annotations
 
 from datetime import date, datetime, time as dt_time
 import fcntl
-import json
 import logging
 from pathlib import Path
 import tempfile
 import threading
 
-from sqlalchemy import delete, select
-
 from app.core.config import get_settings
 from app.core.database import SessionLocal
 from app.core.task_manager import task_manager
 from app.core.timezone import beijing_now, beijing_today
-from app.models.entities import LowBuyResultSnapshot, LowBuyScanSnapshot
 from app.models.schema_defs.phase4 import RuntimeTaskCreate
+from app.runtime.background_low_buy_cleanup import cleanup_stale_low_buy_snapshots
 from app.repositories.low_buy.results import LowBuyResultRepository
 from app.services.agent_daily_workflow_service import AgentDailyWorkflowService
 from app.services.agent_notification_service import AgentNotificationService
 from app.services.agent_signal_scan_service import AgentSignalScanService
 from app.services.backtest_research_worker import BacktestResearchWorker
-from app.services.low_buy.shared import DEFAULT_PRODUCTION_LOW_BUY_STRATEGY, LOW_BUY_RESULT_VERSION
+from app.services.low_buy.shared import DEFAULT_PRODUCTION_LOW_BUY_STRATEGY
 from app.services.low_buy.strategy_auto_governance import refresh_low_buy_strategy_auto_governance
 from app.services.low_buy.strategy_policy import PRODUCTION_PRIORITY_STRATEGIES
 from app.services.low_buy_screener import PLAYBOOKS, LowBuyScreenerService
@@ -162,7 +159,7 @@ def _warm_runtime_caches() -> None:
 
 def _startup_maintenance_and_warm_runtime_caches() -> None:
     try:
-        _cleanup_stale_low_buy_snapshots()
+        cleanup_stale_low_buy_snapshots()
     except Exception:
         logger.exception("stale low-buy snapshot cleanup failed")
     _warm_runtime_caches()
@@ -302,84 +299,6 @@ def _agent_daily_report_push_due() -> bool:
     if now.weekday() >= 5:
         return False
     return now.time() >= dt_time(hour=15, minute=10)
-
-
-def _cleanup_stale_low_buy_snapshots() -> None:
-    """Remove materialized low-buy rows produced by older strategy versions."""
-    with SessionLocal() as db:
-        result_ids = _stale_low_buy_result_ids(db)
-        scan_ids = _stale_low_buy_scan_ids(db)
-        if result_ids:
-            _delete_low_buy_rows(db, LowBuyResultSnapshot, result_ids)
-        if scan_ids:
-            _delete_low_buy_rows(db, LowBuyScanSnapshot, scan_ids)
-        db.commit()
-    if result_ids or scan_ids:
-        logger.info(
-            "cleaned stale low-buy snapshots: %d results + %d scans removed",
-            len(result_ids),
-            len(scan_ids),
-        )
-
-
-def _stale_low_buy_result_ids(db) -> list[int]:
-    return _stale_snapshot_ids(
-        db=db,
-        model=LowBuyResultSnapshot,
-        json_column=LowBuyResultSnapshot.payload_json,
-        version_key="payload_version",
-    )
-
-
-def _stale_low_buy_scan_ids(db) -> list[int]:
-    return _stale_snapshot_ids(
-        db=db,
-        model=LowBuyScanSnapshot,
-        json_column=LowBuyScanSnapshot.filters_json,
-        version_key="_result_version",
-    )
-
-
-def _stale_snapshot_ids(db, model, json_column, version_key: str, batch_size: int = 1000) -> list[int]:
-    stale_ids: list[int] = []
-    last_id = 0
-    while True:
-        rows = db.execute(
-            select(model.id, json_column)
-            .where(model.id > last_id)
-            .order_by(model.id.asc())
-            .limit(batch_size)
-        ).all()
-        if not rows:
-            break
-        last_id = int(rows[-1][0])
-        stale_ids.extend(
-            int(row_id)
-            for row_id, raw_json in rows
-            if _json_version(raw_json, version_key) != LOW_BUY_RESULT_VERSION
-        )
-    return stale_ids
-
-
-def _delete_low_buy_rows(db, model, row_ids: list[int]) -> None:
-    for index in range(0, len(row_ids), 500):
-        chunk = row_ids[index : index + 500]
-        db.execute(delete(model).where(model.id.in_(chunk)))
-
-
-def _json_version(raw: str | None, key: str) -> int | None:
-    try:
-        payload = json.loads(raw or "{}")
-    except Exception:
-        return None
-    if not isinstance(payload, dict):
-        return None
-    value = payload.get(key)
-    if isinstance(value, int):
-        return value
-    if isinstance(value, str) and value.isdigit():
-        return int(value)
-    return None
 
 
 def _acquire_background_leader_lock() -> bool:

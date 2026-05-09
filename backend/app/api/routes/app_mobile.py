@@ -146,14 +146,21 @@ def app_low_buy(
     current_user: User = Depends(get_current_user),
 ):
     try:
-        return app_mobile_service.low_buy(
-            db=db,
-            strategy=strategy,
-            limit=limit,
-            scan_limit=scan_limit,
-            scan_mode=scan_mode,
-            user_id=current_user.id,
-        )
+        kwargs = {
+            "db": db,
+            "strategy": strategy,
+            "limit": limit,
+            "scan_limit": scan_limit,
+            "scan_mode": scan_mode,
+            "user_id": current_user.id,
+        }
+        try:
+            return app_mobile_service.low_buy(**kwargs)
+        except TypeError as exc:
+            if "user_id" not in str(exc) or "unexpected keyword" not in str(exc):
+                raise
+            kwargs.pop("user_id", None)
+            return app_mobile_service.low_buy(**kwargs)
     except Exception as exc:
         _raise_low_buy_error(exc)
 

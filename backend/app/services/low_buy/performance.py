@@ -15,8 +15,13 @@ from app.services.low_buy.shared import (
     datetime,
 )
 from app.services.low_buy.portfolio_risk import build_portfolio_risk
-from app.services.low_buy.execution_simulation import DailyExecutionBar, bars_from_repository_rows, simulate_candidate_execution
+from app.services.low_buy.execution_simulation import DailyExecutionBar, bars_from_repository_rows
+from app.services.low_buy.performance_records import build_performance_record
 from app.services.low_buy.position_sizing import compute_kelly_position
+from app.services.low_buy.performance_stats import (
+    build_performance_buckets,
+    empty_strategy_performance,
+)
 from app.services.low_buy.risk_metrics import compute_cvar
 
 
@@ -274,49 +279,17 @@ class LowBuyPerformanceMixin:
                 continue
             payload_json = row.payload_json or ""
             bars = rows_by_symbol.get(row.symbol, [])
-            signal_index = self._daily_bar_index(bars, row.latest_trade_date)
-            if signal_index is None:
+            record = build_performance_record(
+                row=row,
+                candidate=candidate,
+                bars=bars,
+                payload_json=payload_json,
+                target_profit_pct=target_profit_pct,
+            )
+            if record is None:
                 pending_signals += 1
                 continue
-            forward = bars[signal_index + 1 : signal_index + 1 + PERFORMANCE_FORWARD_DAYS]
-            if len(forward) < PERFORMANCE_FORWARD_DAYS:
-                pending_signals += 1
-                continue
-
-            execution = simulate_candidate_execution(
-                candidate=candidate.model_copy(update={"confirmed_trade_date": row.latest_trade_date}),
-                rows=bars,
-            )
-            filled = execution.status == "filled"
-            return_1d = self._filled_close_return(bars, execution.entry_trade_date, execution.entry_price, 1) if filled else 0.0
-            return_2d = self._filled_close_return(bars, execution.entry_trade_date, execution.entry_price, 2) if filled else 0.0
-            return_3d = self._filled_close_return(bars, execution.entry_trade_date, execution.entry_price, 3) if filled else 0.0
-            return_4d = self._filled_close_return(bars, execution.entry_trade_date, execution.entry_price, 4) if filled else 0.0
-            return_5d = self._filled_close_return(bars, execution.entry_trade_date, execution.entry_price, 5) if filled else 0.0
-            max_gain_5d = execution.max_gain_pct if filled else 0.0
-            max_drawdown_5d = execution.max_drawdown_pct if filled else 0.0
-            records.append(
-                {
-                    "symbol": candidate.symbol,
-                    "sector_name": candidate.sector_name or "未分类",
-                    "retracement_bucket": self._to_retracement_bucket(candidate.retracement_days),
-                    "market_state": candidate.market_state if '"market_state"' in payload_json else "历史未标注",
-                    "industry_tier": candidate.industry_tier if '"industry_tier"' in payload_json else "历史未标注",
-                    "filled": filled,
-                    "not_filled": execution.status == "not_filled",
-                    "stop_loss": filled and "止损" in execution.exit_reason,
-                    "net_return": execution.net_return_pct if filled else 0.0,
-                    "return_1d": return_1d,
-                    "return_2d": return_2d,
-                    "return_3d": return_3d,
-                    "return_4d": return_4d,
-                    "return_5d": return_5d,
-                    "max_gain_5d": max_gain_5d,
-                    "max_drawdown_5d": max_drawdown_5d,
-                    "legacy_target_hit": filled and max_gain_5d >= target_profit_pct,
-                    "hit": filled and execution.net_return_pct > 0,
-                }
-            )
+            records.append(record)
 
         if not records:
             empty = self._empty_strategy_performance(
@@ -435,28 +408,6 @@ class LowBuyPerformanceMixin:
             for symbol, symbol_rows in raw_rows.items()
         }
 
-    @staticmethod
-    def _daily_bar_index(rows: list[DailyExecutionBar], trade_date: str) -> int | None:
-        for index, row in enumerate(rows):
-            if row.trade_date == trade_date:
-                return index
-        return None
-
-    def _filled_close_return(
-        self,
-        rows: list[DailyExecutionBar],
-        entry_trade_date: str | None,
-        entry_price: float,
-        holding_days: int,
-    ) -> float:
-        if not entry_trade_date or entry_price <= 0:
-            return 0.0
-        entry_index = self._daily_bar_index(rows, entry_trade_date)
-        if entry_index is None:
-            return 0.0
-        target_index = min(entry_index + max(holding_days, 1) - 1, len(rows) - 1)
-        return (rows[target_index].close_price / entry_price - 1) * 100
-
     def _filter_current_performance_rows(self, rows):
         payload_is_current = getattr(self, "_candidate_payload_is_current", None)
         if not callable(payload_is_current):
@@ -464,20 +415,10 @@ class LowBuyPerformanceMixin:
         return [row for row in rows if payload_is_current(row.payload_json)]
 
     def _empty_strategy_performance(self, target_profit_pct: float, lookback_days: int = 0, note: str | None = None) -> LowBuyStrategyPerformanceOut:
-        notes = [
-            "主命中率按真实执行净收益胜率统计。",
-            "净胜优势按盈利笔数减亏损笔数后的成交占比统计。",
-            f"5 日内最高价触及 {target_profit_pct:.1f}% 目标仅作为辅助冲高参考。",
-        ]
-        if note:
-            notes.append(note)
-        return LowBuyStrategyPerformanceOut(
-            snapshot_version=LOW_BUY_PERFORMANCE_SNAPSHOT_VERSION,
+        return empty_strategy_performance(
+            target_profit_pct=target_profit_pct,
             lookback_days=lookback_days,
-            target_profit_pct=round(target_profit_pct, 2),
-            updated_at=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            data_insufficient=True,
-            attribution_notes=notes,
+            note=note,
         )
 
     def _build_performance_buckets(
@@ -487,43 +428,7 @@ class LowBuyPerformanceMixin:
         limit: int | None = 3,
         sort_return_field: str = "avg_return_3d",
     ) -> list[LowBuyPerformanceBucketOut]:
-        grouped: dict[str, list[dict[str, Any]]] = {}
-        for item in records:
-            label = str(item.get(key) or "未分类")
-            grouped.setdefault(label, []).append(item)
-        buckets: list[LowBuyPerformanceBucketOut] = []
-        for label, items in grouped.items():
-            sample_count = len(items)
-            hit_count = sum(1 for item in items if item["hit"])
-            buckets.append(
-                LowBuyPerformanceBucketOut(
-                    label=label,
-                    sample_count=sample_count,
-                    hit_count=hit_count,
-                    hit_rate=round(hit_count / sample_count * 100, 2),
-                    avg_return_3d=round(sum(item["return_3d"] for item in items) / sample_count, 2),
-                    avg_return_5d=round(sum(item["return_5d"] for item in items) / sample_count, 2),
-                )
-            )
-        buckets.sort(
-            key=lambda item: (
-                item.avg_return_5d if sort_return_field == "avg_return_5d" else item.avg_return_3d,
-                item.hit_rate,
-                item.sample_count,
-            ),
-            reverse=True,
-        )
-        if limit is None:
-            return buckets
-        return buckets[:limit]
-
-    @staticmethod
-    def _to_retracement_bucket(retracement_days: int) -> str:
-        if retracement_days <= 2:
-            return "1-2天回调"
-        if retracement_days <= 4:
-            return "3-4天回调"
-        return "5-7天回调"
+        return build_performance_buckets(records, key=key, limit=limit, sort_return_field=sort_return_field)
 
     @staticmethod
     def _load_stock_profit_target_pct(db: Session) -> float:

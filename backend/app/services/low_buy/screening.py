@@ -3,21 +3,23 @@ from __future__ import annotations
 from app.services.low_buy.shared import (
     DataSourceError,
     DEFAULT_PRODUCTION_LOW_BUY_STRATEGY,
-    LOW_BUY_THRESHOLDS,
-    LOW_BUY_RESULT_VERSION,
-    LowBuyCandidateOut,
     LowBuyHistoryResponse,
     LowBuyScreenerResponse,
-    PERFORMANCE_LOOKBACK_DAYS,
     Session,
     SessionLocal,
     datetime,
-    json,
 )
+from app.services.low_buy.screening_read import screen_read_path
 from app.services.low_buy.screening_quotes import LowBuyQuoteRefreshMixin
-from app.services.low_buy.factor_types import FactorContext
 from app.services.low_buy.factor_external import resolve_sector_flow_ranks
 from app.services.low_buy.data_quality import build_market_data_quality, data_quality_payload
+from app.services.low_buy.screening_helpers import (
+    build_factor_sector_counts,
+    build_screen_response,
+    evaluate_scan_targets,
+    prefilter_scan_targets,
+    split_signal_candidates,
+)
 from app.repositories.low_buy import SystemSettingRepository
 from app.services.low_buy.recommendation_duration import attach_response_recommendation_durations
 from app.services.low_buy.strategy_policy import requires_mainline_industry
@@ -108,206 +110,14 @@ class LowBuyScreeningMixin(LowBuyQuoteRefreshMixin):
         include_history: bool = False,
         scan_mode: str = "quick",
     ) -> LowBuyScreenerResponse:
-        if scan_mode not in {"quick", "full"}:
-            raise DataSourceError(f"未知扫描模式: {scan_mode}")
-        trade_dates = self._get_recent_trade_dates(14)
-        if len(trade_dates) < 3:
-            raise DataSourceError("交易日历数据不足，暂时无法运行低吸选股。")
-        latest_completed_trade_date = self._resolve_latest_completed_trade_date(trade_dates)
-        latest_trade_date = self._resolve_active_structure_trade_date(
-            trade_dates=trade_dates,
-            latest_completed_trade_date=latest_completed_trade_date,
-        )
-        cached_full = self._load_cached_full_result(
+        return screen_read_path(
+            self,
             db=db,
             strategy=strategy,
-            latest_trade_date=latest_trade_date,
             limit=limit,
+            scan_limit=scan_limit,
             include_history=include_history,
-        )
-        if scan_mode == "full" and cached_full is not None:
-            cached_full = self._attach_strategy_performance(
-                db=db,
-                payload=cached_full,
-                build_if_missing=False,
-            )
-            cached_full = self._attach_close_review_snapshot(
-                db=db,
-                payload=cached_full,
-                review_trade_date=latest_completed_trade_date,
-                build_if_missing=False,
-            )
-            return cached_full.model_copy(
-                update={
-                    "requested_mode": "full",
-                    "response_mode": "full",
-                    "full_scan_ready": True,
-                    "full_scan_in_progress": False,
-                    "full_scan_updated_at": cached_full.as_of_date,
-                }
-            )
-
-        full_in_progress = self._is_full_scan_running(
-            strategy=strategy,
-            latest_trade_date=latest_trade_date,
-            limit=limit,
-            include_history=include_history,
-        )
-
-        if scan_mode == "full":
-            last_completed = self._load_latest_materialized_full_result_on_or_before(
-                db=db,
-                strategy=strategy,
-                latest_trade_date=latest_completed_trade_date,
-                limit=limit,
-                include_history=include_history,
-                allow_repair=False,
-            )
-            if last_completed is not None:
-                last_completed = self._attach_strategy_performance(
-                    db=db,
-                    payload=last_completed,
-                    build_if_missing=False,
-                )
-                last_completed = self._attach_close_review_snapshot(
-                    db=db,
-                    payload=last_completed,
-                    review_trade_date=latest_completed_trade_date,
-                    build_if_missing=False,
-                )
-                return last_completed.model_copy(
-                    update={
-                        "requested_mode": "full",
-                        "response_mode": "full",
-                        "full_scan_ready": True,
-                        "full_scan_in_progress": full_in_progress,
-                        "full_scan_updated_at": last_completed.as_of_date,
-                    }
-                )
-            placeholder_performance = self._load_strategy_performance_snapshot(
-                db=db,
-                strategy=strategy,
-                latest_trade_date=latest_trade_date,
-            ) or self._empty_strategy_performance(
-                target_profit_pct=self._load_stock_profit_target_pct(db),
-                lookback_days=PERFORMANCE_LOOKBACK_DAYS,
-                note="后台全量深筛仍在补齐，当前先显示等待状态。",
-            )
-            pending = self._build_pending_full_response(
-                strategy=strategy,
-                latest_trade_date=latest_trade_date,
-                requested_scan_limit=self._resolve_full_scan_limit(scan_limit),
-                performance=placeholder_performance,
-                full_scan_in_progress=full_in_progress,
-            )
-            return self._attach_close_review_snapshot(
-                db=db,
-                payload=pending,
-                review_trade_date=latest_completed_trade_date,
-                build_if_missing=False,
-            )
-
-        latest_snapshot = self._load_latest_materialized_full_result_on_or_before(
-            db=db,
-            strategy=strategy,
-            latest_trade_date=latest_completed_trade_date,
-            limit=limit,
-            include_history=include_history,
-            allow_repair=False,
-        )
-        if latest_snapshot is not None:
-            latest_snapshot = self._attach_strategy_performance(
-                db=db,
-                payload=latest_snapshot,
-                build_if_missing=False,
-            )
-            latest_snapshot = self._attach_close_review_snapshot(
-                db=db,
-                payload=latest_snapshot,
-                review_trade_date=latest_completed_trade_date,
-                build_if_missing=False,
-            )
-            return latest_snapshot.model_copy(
-                update={
-                    "requested_mode": scan_mode,
-                    "response_mode": "full",
-                    "full_scan_ready": True,
-                    "full_scan_in_progress": full_in_progress,
-                    "full_scan_updated_at": latest_snapshot.full_scan_updated_at or latest_snapshot.as_of_date,
-                }
-            )
-
-        placeholder_performance = self._load_strategy_performance_snapshot(
-            db=db,
-            strategy=strategy,
-            latest_trade_date=latest_trade_date,
-        ) or self._empty_strategy_performance(
-            target_profit_pct=self._load_stock_profit_target_pct(db),
-            lookback_days=PERFORMANCE_LOOKBACK_DAYS,
-            note="后台全量深筛仍在补齐，当前先显示等待状态。",
-        )
-        pending = self._build_pending_full_response(
-            strategy=strategy,
-            latest_trade_date=latest_trade_date,
-            requested_scan_limit=self._resolve_full_scan_limit(scan_limit),
-            performance=placeholder_performance,
-            full_scan_in_progress=full_in_progress,
-        )
-        pending = self._attach_close_review_snapshot(
-            db=db,
-            payload=pending,
-            review_trade_date=latest_completed_trade_date,
-            build_if_missing=False,
-        )
-        return pending.model_copy(update={"requested_mode": scan_mode, "response_mode": "pending"})
-
-    def _build_pending_full_response(
-        self,
-        strategy: str,
-        latest_trade_date: str,
-        requested_scan_limit: int,
-        performance,
-        full_scan_in_progress: bool,
-    ) -> LowBuyScreenerResponse:
-        playbook = self._get_playbook(strategy)
-        as_of_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        return LowBuyScreenerResponse(
-            strategy_key=strategy,
-            strategy_title=playbook["title"],
-            strategy_subtitle=playbook["subtitle"],
-            strategy_logic=playbook["logic"],
-            requested_mode="full",
-            response_mode="full",
-            as_of_date=as_of_date,
-            latest_trade_date=latest_trade_date,
-            pool_size=0,
-            scanned_count=0,
-            matched_count=0,
-            requested_scan_limit=requested_scan_limit,
-            active_scan_limit=0,
-            full_scan_ready=False,
-            full_scan_in_progress=full_scan_in_progress,
-            full_scan_updated_at=None,
-            market_state_category="low_volume_wait",
-            market_state_category_text="缩量无主线",
-            data_quality="limited",
-            data_quality_text="后台全量深筛仍在补齐",
-            data_quality_tags=["全量快照待生成"],
-            retracement_distribution={},
-            filters={
-                "scan_mode": "全量物化",
-                "market_state_category": "low_volume_wait",
-                "market_state_category_text": "缩量无主线",
-                "data_quality": "limited",
-                "data_quality_text": "后台全量深筛仍在补齐",
-                "data_quality_tags_json": json.dumps(["全量快照待生成"], ensure_ascii=False),
-                "_result_version": LOW_BUY_RESULT_VERSION,
-            },
-            strategy_notes=list(playbook["notes"]),
-            performance=performance,
-            confirmed_candidates=[],
-            history_sections=[],
-            candidates=[],
+            scan_mode=scan_mode,
         )
 
     def _screen_sync(
@@ -412,7 +222,7 @@ class LowBuyScreeningMixin(LowBuyQuoteRefreshMixin):
             scan_targets=scan_targets,
             hot_industries=hot_industries,
         )
-        effective_scan_targets = self._prefilter_scan_targets(scan_targets)
+        effective_scan_targets = prefilter_scan_targets(scan_targets)
         batch_quotes = self.market_data.get_quotes_batch([item.symbol for item in effective_scan_targets])
         histories = self._load_histories(
             effective_scan_targets,
@@ -421,38 +231,29 @@ class LowBuyScreeningMixin(LowBuyQuoteRefreshMixin):
             quote_map=batch_quotes,
             wait_timeout_seconds=history_wait_timeout_seconds,
         )
-        factor_sector_counts = self._build_factor_sector_counts(effective_scan_targets)
+        factor_sector_counts = build_factor_sector_counts(effective_scan_targets)
         sector_flow_ranks = resolve_sector_flow_ranks()
 
-        evaluated: list[LowBuyCandidateOut] = []
-        for item in effective_scan_targets:
-            candidate = self._evaluate_candidate(
-                item=item,
-                latest_trade_date=latest_trade_date,
-                history=histories.get(item.symbol),
-                strategy=strategy,
-                hot_industries=hot_industries,
-                market_regime=market_regime,
-                factor_context=self._build_factor_context(
-                    item=item,
-                    sector_counts=factor_sector_counts,
-                    latest_trade_date=latest_trade_date,
-                    sector_flow_ranks=sector_flow_ranks,
-                ),
-            )
-            if candidate is not None:
-                evaluated.append(candidate)
-
+        evaluated = evaluate_scan_targets(
+            scan_targets=effective_scan_targets,
+            histories=histories,
+            strategy=strategy,
+            latest_trade_date=latest_trade_date,
+            hot_industries=hot_industries,
+            market_regime=market_regime,
+            factor_sector_counts=factor_sector_counts,
+            sector_flow_ranks=sector_flow_ranks,
+            evaluate_candidate=self._evaluate_candidate,
+        )
         evaluated = self._dedupe_candidates(evaluated)
         evaluated = self._apply_live_quotes(evaluated, quote_map=batch_quotes)
         evaluated.sort(key=lambda item: (self._signal_rank(item.buy_signal_state), item.score), reverse=True)
 
-        confirmed_candidates = [
-            item for item in evaluated if item.buy_signal_state in self._confirmed_signal_states
-        ][:12]
-        candidates = [
-            item for item in evaluated if item.buy_signal_state not in self._confirmed_signal_states
-        ][:limit]
+        confirmed_candidates, candidates = split_signal_candidates(
+            evaluated,
+            confirmed_states=self._confirmed_signal_states,
+            limit=limit,
+        )
         history_sections = (
             self._build_history_sections(completed_trade_dates[-4:-1], strategy)
             if include_history and strategy == "classic_retrace"
@@ -466,115 +267,36 @@ class LowBuyScreeningMixin(LowBuyQuoteRefreshMixin):
             hot_industry_source=hot_industry_source,
         )
         quality_fields = data_quality_payload(market_quality)
-        response = LowBuyScreenerResponse(
-            strategy_key=strategy,
-            strategy_title=playbook["title"],
-            strategy_subtitle=playbook["subtitle"],
-            strategy_logic=playbook["logic"],
-            requested_mode=scan_mode,
-            response_mode=scan_mode,
+        response = build_screen_response(
+            strategy=strategy,
+            playbook=playbook,
+            scan_mode=scan_mode,
             as_of_date=as_of_date,
             latest_trade_date=latest_trade_date,
-            pool_size=len(ranked_pool),
-            scanned_count=len(scan_targets),
-            matched_count=len(confirmed_candidates) + len(candidates),
-            requested_scan_limit=scan_limit,
-            active_scan_limit=len(scan_targets),
-            full_scan_ready=scan_mode == "full",
-            full_scan_in_progress=False,
-            full_scan_updated_at=as_of_date if scan_mode == "full" else None,
-            market_state=market_regime.state,
-            market_state_text=market_regime.label,
-            market_state_category=market_state_fields["market_state_category"],
-            market_state_category_text=market_state_fields["market_state_category_text"],
-            **quality_fields,
-            market_bonus=market_regime.ranking_bonus,
-            market_state_strength=market_regime.state_strength,
-            regime_confidence=market_regime.regime_confidence,
-            state_persistence_days=market_regime.state_persistence_days,
-            transition_risk=market_regime.transition_risk,
-            breadth_ready=market_regime.breadth_ready,
-            emotion_ready=market_regime.emotion_ready,
-            stock_up_ratio=market_regime.stock_up_ratio,
-            stock_median_change=market_regime.stock_median_change,
-            style_divergence=market_regime.style_divergence,
-            hot_turnover=market_regime.hot_turnover,
-            hot_overlap_ratio=market_regime.hot_overlap_ratio,
-            limit_down_count=market_regime.limit_down_count,
-            limit_up_count=market_regime.limit_up_count,
-            board_height=market_regime.board_height,
-            previous_board_height=market_regime.previous_board_height,
-            promotion_ratio=market_regime.promotion_ratio,
-            broken_board_ratio=market_regime.broken_board_ratio,
-            promotion_break_gap=market_regime.promotion_break_gap,
-            promotion_break_pressure=market_regime.promotion_break_pressure,
-            high_flyer_retreat_ratio=market_regime.high_flyer_retreat_ratio,
-            high_flyer_gap_speed=market_regime.high_flyer_gap_speed,
-            distribution_pressure=market_regime.distribution_pressure,
+            latest_completed_trade_date=latest_completed_trade_date,
+            ranked_pool=ranked_pool,
+            scan_targets=scan_targets,
+            confirmed_candidates=confirmed_candidates,
+            candidates=candidates,
+            history_sections=history_sections,
+            retracement_buckets=retracement_buckets,
+            board_window_days=board_window_days,
+            scan_limit=scan_limit,
+            retracement_days_max=retracement_days_max,
+            pool_profile_text=self._strategy_pool_profile_text(strategy),
+            market_regime=market_regime,
+            market_state_fields=market_state_fields,
+            quality_fields=quality_fields,
             hot_industries=hot_industries,
             hot_industry_source=hot_industry_source,
             hot_industry_source_text=hot_industry_source_text,
-            mainline_lifecycle_state=market_regime.mainline_lifecycle_state,
-            mainline_lifecycle_text=market_regime.mainline_lifecycle_text,
-            retracement_distribution={f"{days}天": len(items) for days, items in sorted(retracement_buckets.items()) if items},
-            filters={
-                "board_window_days": board_window_days,
-                "scan_limit": scan_limit,
-                "scan_mode": "全量深筛，优先读取物化结果与候选池快照",
-                "retracement_days_max": retracement_days_max,
-                "pool_profile": self._strategy_pool_profile_text(strategy),
-                "support_zone": "分歧高点突破区" if strategy == "divergence_consensus" else "5日/10日均线附近",
-                "volume_rule": "底部涨停放量 + 横盘缩量 + 倍量突破" if strategy == "divergence_consensus" else "启动放量 + 回调缩量",
-                "market_regime": market_regime.label,
-                "market_state": market_regime.state,
-                "market_state_category": market_state_fields["market_state_category"],
-                "market_state_category_text": market_state_fields["market_state_category_text"],
-                "market_regime_text": market_regime.description,
-                "data_quality": quality_fields["data_quality"],
-                "data_quality_text": quality_fields["data_quality_text"],
-                "data_quality_tags_json": json.dumps(quality_fields["data_quality_tags"], ensure_ascii=False),
-                "market_state_strength": market_regime.state_strength,
-                "regime_confidence": market_regime.regime_confidence,
-                "state_persistence_days": market_regime.state_persistence_days,
-                "transition_risk": market_regime.transition_risk,
-                "breadth_ready": market_regime.breadth_ready,
-                "emotion_ready": market_regime.emotion_ready,
-                "market_bonus": market_regime.ranking_bonus,
-                "hot_industries": " / ".join(hot_industries) if hot_industries else "热点过滤不可用",
-                "hot_industries_json": json.dumps(hot_industries, ensure_ascii=False),
-                "hot_industry_source": hot_industry_source,
-                "hot_industry_source_text": hot_industry_source_text,
-                "limit_down_count": limit_down_count if limit_down_count is not None else "未获取",
-                "limit_up_count": market_regime.limit_up_count,
-                "board_height": market_regime.board_height,
-                "promotion_ratio": market_regime.promotion_ratio,
-                "broken_board_ratio": market_regime.broken_board_ratio,
-                "high_flyer_retreat_ratio": market_regime.high_flyer_retreat_ratio,
-                "stock_up_ratio": market_regime.stock_up_ratio,
-                "stock_median_change": market_regime.stock_median_change,
-                "style_divergence": market_regime.style_divergence,
-                "hot_turnover": market_regime.hot_turnover,
-                "hot_overlap_ratio": market_regime.hot_overlap_ratio,
-                "previous_board_height": market_regime.previous_board_height,
-                "promotion_break_gap": market_regime.promotion_break_gap,
-                "promotion_break_pressure": market_regime.promotion_break_pressure,
-                "high_flyer_gap_speed": market_regime.high_flyer_gap_speed,
-                "distribution_pressure": market_regime.distribution_pressure,
-                "mainline_lifecycle_state": market_regime.mainline_lifecycle_state,
-                "mainline_lifecycle_text": market_regime.mainline_lifecycle_text,
-                "structure_mode": "盘中临时结构样本" if latest_trade_date > latest_completed_trade_date else "完整日线样本",
-                "_result_version": LOW_BUY_RESULT_VERSION,
-            },
+            limit_down_count=limit_down_count,
             strategy_notes=self._build_strategy_notes(
                 [*playbook["notes"], f"当前市场状态：{market_regime.label}。{market_regime.description}"],
                 hot_industries,
                 limit_down_count,
                 hot_industry_source_text=hot_industry_source_text,
             ),
-            performance=None,
-            confirmed_candidates=confirmed_candidates,
-            history_sections=history_sections,
-            candidates=candidates,
         )
         response = attach_response_recommendation_durations(db=db, payload=response)
         if compute_performance:
@@ -591,51 +313,6 @@ class LowBuyScreeningMixin(LowBuyQuoteRefreshMixin):
         if scan_mode == "full":
             self._save_persisted_full_result(db=db, payload=response, limit=limit, include_history=include_history)
         return response
-
-    @staticmethod
-    def _build_factor_sector_counts(scan_targets) -> dict[str, int]:
-        counts: dict[str, int] = {}
-        for item in scan_targets:
-            sector = item.industry or "未分类"
-            counts[sector] = counts.get(sector, 0) + 1
-        return counts
-
-    @staticmethod
-    def _prefilter_scan_targets(scan_targets):
-        """Drop obvious non-tradable tails before quote/history fan-out.
-
-        The full strategy rules still run on the remaining candidates.  If the
-        cheap filter would leave too few candidates, fall back to the original
-        pool to avoid changing strategy semantics for sparse pools.
-        """
-        if len(scan_targets) <= 80:
-            return scan_targets
-        min_amount = float(LOW_BUY_THRESHOLDS.MIN_DAILY_AMOUNT_AUXILIARY)
-        filtered = [
-            item
-            for item in scan_targets
-            if getattr(item, "symbol", "") and float(getattr(item, "amount", 0.0) or 0.0) >= min_amount
-        ]
-        minimum_keep = max(30, int(len(scan_targets) * 0.25))
-        return filtered if len(filtered) >= minimum_keep else scan_targets
-
-    @staticmethod
-    def _build_factor_context(
-        item,
-        sector_counts: dict[str, int],
-        latest_trade_date: str,
-        sector_flow_ranks: dict[str, float] | None = None,
-    ) -> FactorContext:
-        return FactorContext(
-            sector_pass_counts=sector_counts,
-            sector_flow_ranks=sector_flow_ranks or {},
-            current_sector=item.industry or "未分类",
-            current_symbol=getattr(item, "symbol", ""),
-            retracement_days=getattr(item, "retracement_days", _estimate_retracement_days(item, latest_trade_date)),
-            confirmed_trade_date=latest_trade_date,
-            current_date=latest_trade_date,
-            total_strategies=1,
-        )
 
     def history(self, db: Session, strategy: str = DEFAULT_PRODUCTION_LOW_BUY_STRATEGY) -> LowBuyHistoryResponse:
         self._get_playbook(strategy)
@@ -671,12 +348,3 @@ class LowBuyScreeningMixin(LowBuyQuoteRefreshMixin):
         )
         self._set_history_cache(cache_key, response)
         return response
-
-
-def _estimate_retracement_days(item, latest_trade_date: str) -> int:
-    try:
-        board_date = datetime.strptime(getattr(item, "board_date", "")[:10], "%Y-%m-%d")
-        latest_date = datetime.strptime(latest_trade_date[:10], "%Y-%m-%d")
-        return max((latest_date - board_date).days, 0)
-    except (TypeError, ValueError):
-        return 0

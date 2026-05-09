@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
+from datetime import time as dt_time
 import logging
 from pathlib import Path
 import time
@@ -19,12 +20,14 @@ from app.core.database import SessionLocal, init_db, ping_database
 from app.core.logging_config import configure_logging
 from app.core.rate_limit import is_global_rate_allowed
 from app.core.timing import record_request_timing, request_timing_snapshot
+from app.core.timezone import beijing_now
 from app.models.schemas import HealthResponse, ReadinessResponse
 from app.runtime.background_jobs import shutdown_runtime_background_jobs, start_runtime_background_jobs
 from app.services.auth_service import ensure_auth_secret_configured
 
 settings = get_settings()
 configure_logging(structured=settings.structured_logs)
+logger = logging.getLogger(__name__)
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 FRONTEND_DIST_DIR = PROJECT_ROOT / "frontend" / "dist"
 FRONTEND_INDEX_FILE = FRONTEND_DIST_DIR / "index.html"
@@ -138,6 +141,27 @@ def _phase4_metrics_snapshot() -> dict[str, int]:
             "runtime_tasks_failed": 0,
             "agent_quality_blocked_total": 0,
         }
+
+
+def _paper_archive_due() -> bool:
+    """Compatibility wrapper for tests and scripts that import main directly."""
+
+    try:
+        hour, minute = [int(part) for part in settings.paper_perf_archive_time.split(":", 1)]
+        archive_time = dt_time(hour=hour, minute=minute)
+    except (TypeError, ValueError):
+        logger.warning("PAPER_PERF_ARCHIVE_TIME 配置无效: %s", settings.paper_perf_archive_time)
+        archive_time = dt_time(hour=15, minute=5)
+    return beijing_now().time() >= archive_time
+
+
+def _agent_daily_report_push_due() -> bool:
+    """Compatibility wrapper for tests and scripts that import main directly."""
+
+    now = beijing_now()
+    if now.weekday() >= 5:
+        return False
+    return now.time() >= dt_time(hour=15, minute=10)
 
 
 @app.get("/healthz", response_model=HealthResponse)

@@ -1,26 +1,30 @@
 from __future__ import annotations
 
 from datetime import date
-import time
 
 from app.models.entities import LowBuyPoolSnapshot
 from app.repositories.low_buy import (
     DailyHistoryRepository,
     LowBuyPoolRepository,
-    LowBuyResultRepository,
 )
 from app.services.low_buy.shared import (
     Any,
     BoardCandidate,
     DataSourceError,
-    INTRADAY_STRUCTURE_START_HOUR,
-    INTRADAY_STRUCTURE_START_MINUTE,
     LowBuyScreenerResponse,
     PLAYBOOKS,
     Session,
     SessionLocal,
-    datetime,
 )
+from app.services.low_buy.pool_helpers import (
+    build_balanced_scan_pool,
+    build_retracement_buckets,
+    dedupe_board_candidates,
+    dedupe_candidates,
+    merge_board_candidates,
+    rank_pool_candidates,
+)
+from app.services.low_buy.pool_trade_dates import LowBuyTradeDateMixin
 from app.services.low_buy.strategy_policy import requires_mainline_industry
 from app.services.low_buy.strategy_pool_builder import StrategyPoolBuilder
 from app.services.low_buy.strategy_pool_config import (
@@ -29,8 +33,6 @@ from app.services.low_buy.strategy_pool_config import (
     strategy_uses_daily_scan_pool,
 )
 from app.services.shared.feature_flags import feature_enabled
-from app.services.market.trading_calendar import is_a_share_trading_day
-from app.core.timezone import beijing_now, beijing_today
 
 
 _STRATEGY_BOARD_WINDOW_DAYS = {
@@ -54,7 +56,7 @@ _STRATEGY_RETRACEMENT_DAYS_MAX = {
     "leader_pullback_band": 8,
 }
 
-class LowBuyPoolMixin:
+class LowBuyPoolMixin(LowBuyTradeDateMixin):
     def _build_retracement_buckets(
         self,
         ranked_pool: list[BoardCandidate],
@@ -62,74 +64,19 @@ class LowBuyPoolMixin:
         latest_trade_date: str,
         max_days: int = 7,
     ) -> dict[int, list[BoardCandidate]]:
-        trade_date_index = {trade_date: index for index, trade_date in enumerate(completed_trade_dates)}
-        latest_index = trade_date_index.get(latest_trade_date)
-        buckets = {days: [] for days in range(1, max_days + 1)}
-        if latest_index is None:
-            return buckets
-        for item in ranked_pool:
-            board_index = trade_date_index.get(item.board_date)
-            if board_index is None:
-                continue
-            retracement_days = latest_index - board_index
-            if 1 <= retracement_days <= max_days:
-                buckets[retracement_days].append(item)
-        return buckets
-
-    def _resolve_active_structure_trade_date(
-        self,
-        trade_dates: list[str],
-        latest_completed_trade_date: str,
-    ) -> str:
-        if not trade_dates:
-            return latest_completed_trade_date
-        today = date.today().isoformat()
-        if today <= latest_completed_trade_date or today not in trade_dates:
-            return latest_completed_trade_date
-        now = beijing_now()
-        after_structure_open = (now.hour, now.minute) >= (
-            INTRADAY_STRUCTURE_START_HOUR,
-            INTRADAY_STRUCTURE_START_MINUTE,
+        return build_retracement_buckets(
+            ranked_pool=ranked_pool,
+            completed_trade_dates=completed_trade_dates,
+            latest_trade_date=latest_trade_date,
+            max_days=max_days,
         )
-        during_session = (now.hour, now.minute) >= (9, 30) and (now.hour, now.minute) <= (15, 10)
-        return today if after_structure_open and during_session else latest_completed_trade_date
 
     def _build_balanced_scan_pool(
         self,
         retracement_buckets: dict[int, list[BoardCandidate]],
         scan_limit: int,
     ) -> list[BoardCandidate]:
-        max_days = max(retracement_buckets) if retracement_buckets else 7
-        day_priority = [2, 3, 4, 1, 5, 6, 7, *range(8, max_days + 1)]
-        available_days = [day for day in day_priority if retracement_buckets.get(day)]
-        if not available_days:
-            return []
-
-        selected: list[BoardCandidate] = []
-        cursor_by_day = {day: 0 for day in available_days}
-        base_quota = max(1, scan_limit // len(available_days))
-        for day in available_days:
-            batch = retracement_buckets[day][:base_quota]
-            selected.extend(batch)
-            cursor_by_day[day] = len(batch)
-
-        while len(selected) < scan_limit:
-            progressed = False
-            for day in day_priority:
-                if day not in cursor_by_day:
-                    continue
-                cursor = cursor_by_day[day]
-                bucket = retracement_buckets[day]
-                if cursor >= len(bucket):
-                    continue
-                selected.append(bucket[cursor])
-                cursor_by_day[day] = cursor + 1
-                progressed = True
-                if len(selected) >= scan_limit:
-                    break
-            if not progressed:
-                break
-        return selected[:scan_limit]
+        return build_balanced_scan_pool(retracement_buckets, scan_limit)
 
     @staticmethod
     def _strategy_board_window_days(strategy: str) -> int:
@@ -220,144 +167,6 @@ class LowBuyPoolMixin:
             return []
         return [item for item in scan_targets if item.industry and item.industry in hot_set]
 
-    def _resolve_latest_completed_trade_date(self, trade_dates: list[str]) -> str:
-        latest_completed_fallback = self._latest_completed_calendar_fallback(trade_dates)
-        try:
-            with SessionLocal() as db:
-                repository = DailyHistoryRepository(db)
-                latest_complete_trade_date = repository.latest_complete_trade_date(
-                    max_trade_date=trade_dates[-1],
-                    min_stock_count=4500,
-                )
-                latest_stored_trade_date = repository.latest_trade_date_for_symbol("000001")
-                latest_stored_count = (
-                    repository.stock_count_by_trade_date(latest_stored_trade_date)
-                    if latest_stored_trade_date
-                    else 0
-                )
-        except Exception:
-            latest_complete_trade_date = None
-            latest_stored_trade_date = None
-            latest_stored_count = 0
-        if latest_complete_trade_date and latest_complete_trade_date >= latest_completed_fallback:
-            return str(latest_complete_trade_date)
-        if (
-            latest_stored_trade_date
-            and latest_stored_trade_date >= latest_completed_fallback
-            and latest_stored_count >= 4500
-        ):
-            return str(latest_stored_trade_date)
-        latest_artifact_trade_date = self._load_latest_low_buy_artifact_trade_date(trade_dates)
-        if (
-            latest_artifact_trade_date
-            and latest_artifact_trade_date >= latest_completed_fallback
-            and self._has_complete_local_daily_bars(latest_artifact_trade_date)
-        ):
-            return latest_artifact_trade_date
-
-        probe = self._load_daily_history("000001", trade_dates[-1], history_window_days=20)
-        if probe is not None and not probe.empty:
-            probe_trade_date = str(probe["date"].iloc[-1])
-            if self._has_complete_local_daily_bars(probe_trade_date):
-                return probe_trade_date
-
-        # Stage 6: walk backward through trade_dates to find a date with sufficient data.
-        # The raw fallback (trade_dates[-2]) may have incomplete daily bar data (e.g.
-        # only 420 stocks instead of 4500+).  Blindly returning it produces zero-filled
-        # performance snapshots for daily-history strategies, which misleads the frontend
-        # into showing 0% 达标率 when the real issue is incomplete data, not strategy failure.
-        try:
-            with SessionLocal() as db:
-                repo = DailyHistoryRepository(db)
-                for candidate_date in reversed(trade_dates[:-1]):
-                    if repo.stock_count_by_trade_date(candidate_date) >= 4500:
-                        return candidate_date
-        except Exception:
-            pass
-        return latest_completed_fallback
-
-    @staticmethod
-    def _latest_completed_calendar_fallback(trade_dates: list[str]) -> str:
-        if not trade_dates:
-            return ""
-        today = date.today().isoformat()
-        latest_calendar_date = trade_dates[-1]
-        if latest_calendar_date < today or len(trade_dates) == 1:
-            return latest_calendar_date
-        return trade_dates[-2]
-
-    @staticmethod
-    def _has_complete_local_daily_bars(trade_date: str, min_stock_count: int = 4500) -> bool:
-        try:
-            with SessionLocal() as db:
-                return DailyHistoryRepository(db).stock_count_by_trade_date(trade_date) >= min_stock_count
-        except Exception:
-            return False
-
-    def _load_latest_low_buy_artifact_trade_date(self, trade_dates: list[str]) -> str | None:
-        if not trade_dates:
-            return None
-        try:
-            with SessionLocal() as db:
-                latest_trade_date = LowBuyResultRepository(db).fetch_latest_trade_date()
-        except Exception:
-            return None
-        if latest_trade_date is None:
-            return None
-        normalized = str(latest_trade_date)
-        return normalized if normalized in trade_dates else None
-
-    def _get_recent_trade_dates(self, count: int) -> list[str]:
-        cache_key = f"recent-trade-dates:{count}:{date.today().isoformat()}"
-        cached = getattr(self, "_trade_dates_cache", {}).get(cache_key)
-        now = time.monotonic()
-        if cached and cached[0] > now:
-            return list(cached[1])
-
-        local_values = self._load_recent_trade_dates_from_local_store(count)
-        trade_dates = self._with_intraday_trade_date(local_values, count=count)
-        return self._cache_recent_trade_dates(cache_key, trade_dates)
-
-    @staticmethod
-    def _with_intraday_trade_date(local_values: list[str], *, count: int) -> list[str]:
-        """Avoid remote calendar calls on read paths while preserving intraday structure mode.
-
-        Daily-history rows are the durable source for completed trade dates.  During
-        an active A-share session, today's date is appended from the local holiday
-        calendar only so request threads never wait on AkShare calendar retries.
-        """
-        today_value = date.today()
-        today = today_value.isoformat()
-        values = [item for item in local_values if item <= today]
-        if is_a_share_trading_day(today_value) and today not in values:
-            values.append(today)
-        return sorted(set(values))[-count:]
-
-    def _load_recent_trade_dates_from_remote(self, *, count: int, today: str) -> list[str]:
-        routed = self.market_data.provider_router.fetch_trade_dates()
-        if not routed.usable or routed.data is None:
-            return []
-        values = [item.isoformat() if hasattr(item, "isoformat") else str(item) for item in routed.data["trade_date"].tolist()]
-        return [item for item in values if item <= today][-count:]
-
-    def _load_recent_trade_dates_from_local_store(self, count: int) -> list[str]:
-        try:
-            with SessionLocal() as db:
-                values = DailyHistoryRepository(db).fetch_recent_trade_dates(count)
-        except Exception:
-            return []
-        today = date.today().isoformat()
-        return [item for item in values if item <= today][-count:]
-
-    def _cache_recent_trade_dates(self, cache_key: str, values: list[str]) -> list[str]:
-        cache = getattr(self, "_trade_dates_cache", None)
-        if cache is None:
-            cache = {}
-            setattr(self, "_trade_dates_cache", cache)
-        ttl = float(getattr(self, "_trade_dates_cache_ttl", 3600.0))
-        cache[cache_key] = (time.monotonic() + ttl, list(values))
-        return list(values)
-
     def _load_recent_limit_up_pool(self, trade_dates: list[str]) -> dict[str, BoardCandidate]:
         pooled: dict[str, BoardCandidate] = {}
         for trade_date in reversed(trade_dates):
@@ -417,11 +226,7 @@ class LowBuyPoolMixin:
         candidates: dict[str, BoardCandidate],
         latest_trade_date: str,
     ) -> list[BoardCandidate]:
-        return sorted(
-            [item for item in candidates.values() if item.board_date < latest_trade_date],
-            key=lambda item: (item.board_date, item.board_count == 1, item.amount),
-            reverse=True,
-        )
+        return rank_pool_candidates(candidates, latest_trade_date)
 
     def _load_latest_valid_persisted_pool(
         self,
@@ -494,32 +299,12 @@ class LowBuyPoolMixin:
 
     @staticmethod
     def _dedupe_board_candidates(items: list[BoardCandidate]) -> list[BoardCandidate]:
-        seen: set[str] = set()
-        result: list[BoardCandidate] = []
-        for item in items:
-            if item.symbol in seen:
-                continue
-            seen.add(item.symbol)
-            result.append(item)
-        return result
+        return dedupe_board_candidates(items)
 
     @staticmethod
     def _merge_candidates(*groups: list[BoardCandidate]) -> list[BoardCandidate]:
-        merged: list[BoardCandidate] = []
-        seen: set[str] = set()
-        for group in groups:
-            for item in group:
-                if item.symbol in seen:
-                    continue
-                seen.add(item.symbol)
-                merged.append(item)
-        return merged
+        return merge_board_candidates(*groups)
 
     @staticmethod
     def _dedupe_candidates(items: list[LowBuyCandidateOut]) -> list[LowBuyCandidateOut]:
-        deduped: dict[str, LowBuyCandidateOut] = {}
-        for item in items:
-            current = deduped.get(item.symbol)
-            if current is None or item.score > current.score:
-                deduped[item.symbol] = item
-        return list(deduped.values())
+        return dedupe_candidates(items)
