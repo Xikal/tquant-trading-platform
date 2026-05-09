@@ -4,15 +4,17 @@ from app.core.timezone import beijing_now
 from app.models.schemas import KlineBar, MarketEventOut, QuoteSnapshot, SectorSnapshot
 from app.services.market.providers.quality import MarketDataQuality, ProviderResult
 from app.services.market.regime_scoring import normalize_board_frame
-from app.services.market.shared import (
-    _safe_float,
-    _safe_str,
-    ak,
-    guess_market,
+from app.services.market.shared import ak
+from app.services.market.providers.akshare_utils import (
+    bounded_strength,
+    build_sw_category_map,
+    extract_first_value,
+    extract_industry_names,
+    is_st_or_delist_name,
+    parse_sina_minute_records,
+    parse_spot_snapshot_records,
+    resolve_sw_industry_name,
 )
-
-_ST_NAME_MARKERS = ("ST", "*ST", "退")
-_ST_PREFIX_MARKERS = ("退市",)
 
 
 class AkshareMarketProvider:
@@ -69,46 +71,12 @@ class AkshareMarketProvider:
         )
         if frame is None or getattr(frame, "empty", False):
             raise RuntimeError(f"{instrument_type} spot snapshot empty")
-        result: dict[str, QuoteSnapshot] = {}
-        for row in frame.to_dict("records"):
-            symbol = _safe_str(row.get("代码") or row.get("symbol")).strip()
-            if not symbol:
-                continue
-            if symbol.startswith(("sh", "sz", "bj")):
-                symbol = symbol[-6:]
-            name = _safe_str(row.get("名称") or row.get("name")) or symbol
-            latest_price = _safe_float(row.get("最新价") or row.get("最新"))
-            prev_close = _safe_float(row.get("昨收") or row.get("昨收价") or row.get("昨收盘"))
-            change_amount = _safe_float(row.get("涨跌额"))
-            change_pct = _safe_float(row.get("涨跌幅"))
-            if not change_amount and latest_price and prev_close:
-                change_amount = round(latest_price - prev_close, 4)
-            if not change_pct and change_amount and prev_close:
-                change_pct = round((change_amount / prev_close) * 100, 4)
-            timestamp = self.service._normalize_quote_timestamp(
-                _safe_str(row.get("时间戳") or row.get("更新时间") or row.get("数据日期"))
-            )
-            result[symbol] = QuoteSnapshot(
-                symbol=symbol,
-                name=name,
-                market=guess_market(symbol),
-                instrument_type=instrument_type,
-                last_price=latest_price,
-                change_pct=change_pct,
-                change_amount=change_amount,
-                open_price=_safe_float(row.get("今开") or row.get("开盘价") or row.get("开盘")),
-                high_price=_safe_float(row.get("最高") or row.get("最高价")),
-                low_price=_safe_float(row.get("最低") or row.get("最低价")),
-                prev_close=prev_close,
-                volume=_safe_float(row.get("成交量") or row.get("成交量(手)")),
-                amount=_safe_float(row.get("成交额")),
-                turnover_rate=None,
-                volume_ratio=None,
-                timestamp=timestamp,
-                data_source=self.name,
-                source_quality=MarketDataQuality.FRESH.value,
-                is_stale=False,
-            )
+        result = parse_spot_snapshot_records(
+            frame.to_dict("records"),
+            instrument_type=instrument_type,
+            source=self.name,
+            normalize_timestamp=self.service._normalize_quote_timestamp,
+        )
         self._spot_snapshot_cache[instrument_type] = result
         return result
 
@@ -124,30 +92,7 @@ class AkshareMarketProvider:
         )
         if frame is None or getattr(frame, "empty", False):
             raise RuntimeError(f"{symbol} minute bars empty")
-        bars: list[KlineBar] = []
-        for row in frame.tail(1970).to_dict("records"):
-            open_price = _safe_float(row.get("open"))
-            high_price = _safe_float(row.get("high"))
-            low_price = _safe_float(row.get("low"))
-            close_price = _safe_float(row.get("close"))
-            if close_price <= 0:
-                continue
-            amplitude = round((high_price - low_price) / open_price * 100, 4) if open_price else None
-            change_pct = round((close_price - open_price) / open_price * 100, 4) if open_price else None
-            bars.append(
-                KlineBar(
-                    timestamp=str(row.get("day"))[:16],
-                    open=open_price or close_price,
-                    close=close_price,
-                    high=high_price or close_price,
-                    low=low_price or close_price,
-                    volume=_safe_float(row.get("volume")),
-                    amount=_safe_float(row.get("amount")),
-                    amplitude=amplitude,
-                    change_pct=change_pct,
-                    turnover=None,
-                )
-            )
+        bars = parse_sina_minute_records(frame.tail(1970).to_dict("records"))
         if not bars:
             raise RuntimeError(f"{symbol} minute bars parse empty")
         return bars
@@ -165,14 +110,14 @@ class AkshareMarketProvider:
                 message="industry board breadth unavailable",
             )
         median_change = float(frame["change_pct"].median()) if "change_pct" in frame else 0.0
-        market_strength = _bounded_strength(median_change)
+        market_strength = bounded_strength(median_change)
         heatmap = [
             SectorSnapshot(
                 sector_name=str(row.get("industry") or ""),
-                sector_strength=_bounded_strength(float(row.get("change_pct") or 0.0)),
+                sector_strength=bounded_strength(float(row.get("change_pct") or 0.0)),
                 market_strength=market_strength,
                 alignment_score=round(
-                    (_bounded_strength(float(row.get("change_pct") or 0.0)) + market_strength) / 2,
+                    (bounded_strength(float(row.get("change_pct") or 0.0)) + market_strength) / 2,
                     2,
                 ),
                 notes="板块热力来自 AkShare 行业板块快照。",
@@ -516,7 +461,7 @@ class AkshareMarketProvider:
             industry_frame = self._raw_call(ak.stock_board_industry_name_em, purpose="industry")
         except Exception:
             return {}
-        industry_names = _extract_industry_names(industry_frame.to_dict("records"))
+        industry_names = extract_industry_names(industry_frame.to_dict("records"))
         result: dict[str, str] = {}
         for industry in industry_names:
             try:
@@ -528,9 +473,9 @@ class AkshareMarketProvider:
             except Exception:
                 continue
             for record in constituents.to_dict("records"):
-                symbol = _extract_first_value(record, ("代码", "股票代码", "code", "symbol"))
-                name = _extract_first_value(record, ("名称", "股票名称", "name", "证券简称"))
-                if not symbol or _is_st_or_delist_name(name):
+                symbol = extract_first_value(record, ("代码", "股票代码", "code", "symbol"))
+                name = extract_first_value(record, ("名称", "股票名称", "name", "证券简称"))
+                if not symbol or is_st_or_delist_name(name):
                     continue
                 result.setdefault(symbol, industry)
         return result
@@ -545,22 +490,22 @@ class AkshareMarketProvider:
             )
         except Exception:
             return {}
-        category_map = _build_sw_category_map(category_frame.to_dict("records"))
+        category_map = build_sw_category_map(category_frame.to_dict("records"))
         latest_by_symbol: dict[str, tuple[str, str, str]] = {}
         for row in history_frame.to_dict("records"):
-            symbol = _extract_first_value(row, ("symbol", "股票代码", "代码"))
-            industry_code = _extract_first_value(row, ("industry_code", "行业代码", "类目编码"))
+            symbol = extract_first_value(row, ("symbol", "股票代码", "代码"))
+            industry_code = extract_first_value(row, ("industry_code", "行业代码", "类目编码"))
             if not symbol or not industry_code:
                 continue
-            start_date = _extract_first_value(row, ("start_date", "开始日期"))
-            update_time = _extract_first_value(row, ("update_time", "更新时间"))
+            start_date = extract_first_value(row, ("start_date", "开始日期"))
+            update_time = extract_first_value(row, ("update_time", "更新时间"))
             current = latest_by_symbol.get(symbol)
             marker = (start_date, update_time)
             if current is None or marker >= (current[1], current[2]):
                 latest_by_symbol[symbol] = (industry_code, start_date, update_time)
         result: dict[str, str] = {}
         for symbol, (industry_code, _, _) in latest_by_symbol.items():
-            industry = _resolve_sw_industry_name(industry_code, category_map)
+            industry = resolve_sw_industry_name(industry_code, category_map)
             if industry:
                 result[symbol] = industry
         return result
@@ -645,53 +590,3 @@ class AkshareMarketProvider:
             source=self.name,
             data=frame if usable else None,
         )
-
-
-def _bounded_strength(change_pct: float) -> float:
-    return round(max(0.0, min(100.0, 50.0 + change_pct * 8.0)), 2)
-
-
-def _extract_industry_names(rows: list[dict[str, object]]) -> list[str]:
-    names: list[str] = []
-    for row in rows:
-        industry = _extract_first_value(row, ("板块名称", "行业", "name", "industry"))
-        if industry and industry not in names:
-            names.append(industry)
-    return names
-
-
-def _extract_first_value(row: dict[str, object], keys: tuple[str, ...]) -> str:
-    for key in keys:
-        value = _safe_str(row.get(key)).strip()
-        if value:
-            return value
-    return ""
-
-
-def _build_sw_category_map(rows: list[dict[str, object]]) -> dict[str, str]:
-    result: dict[str, str] = {}
-    for row in rows:
-        raw_code = _extract_first_value(row, ("类目编码", "code"))
-        name = _extract_first_value(row, ("类目名称", "name"))
-        if not raw_code or not name:
-            continue
-        result[raw_code.removeprefix("S")] = name
-    return result
-
-
-def _resolve_sw_industry_name(industry_code: str, category_map: dict[str, str]) -> str:
-    code = str(industry_code or "").strip().removeprefix("S")
-    if not code:
-        return ""
-    for candidate in (code[:4], code[:6], code[:2], code):
-        name = category_map.get(candidate)
-        if name:
-            return name
-    return ""
-
-
-def _is_st_or_delist_name(name: str) -> bool:
-    text = str(name or "").strip().upper()
-    if not text:
-        return False
-    return text.startswith(_ST_PREFIX_MARKERS) or any(marker in text for marker in _ST_NAME_MARKERS)

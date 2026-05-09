@@ -1,0 +1,481 @@
+from __future__ import annotations
+
+from datetime import date, datetime, time as dt_time
+import fcntl
+import json
+import logging
+from pathlib import Path
+import tempfile
+import threading
+
+from sqlalchemy import delete, select
+
+from app.core.config import get_settings
+from app.core.database import SessionLocal
+from app.core.task_manager import task_manager
+from app.core.timezone import beijing_now, beijing_today
+from app.models.entities import LowBuyResultSnapshot, LowBuyScanSnapshot
+from app.models.schema_defs.phase4 import RuntimeTaskCreate
+from app.repositories.low_buy.results import LowBuyResultRepository
+from app.services.agent_daily_workflow_service import AgentDailyWorkflowService
+from app.services.agent_notification_service import AgentNotificationService
+from app.services.agent_signal_scan_service import AgentSignalScanService
+from app.services.backtest_research_worker import BacktestResearchWorker
+from app.services.low_buy.shared import DEFAULT_PRODUCTION_LOW_BUY_STRATEGY, LOW_BUY_RESULT_VERSION
+from app.services.low_buy.strategy_auto_governance import refresh_low_buy_strategy_auto_governance
+from app.services.low_buy.strategy_policy import PRODUCTION_PRIORITY_STRATEGIES
+from app.services.low_buy_screener import PLAYBOOKS, LowBuyScreenerService
+from app.services.market_data import MarketDataService
+from app.services.paper.archive import PaperArchiveService
+from app.services.paper.scheduler import build_auto_trader_config, start_auto_trader, stop_auto_trader
+from app.services.paper.validation_scheduler import MonthlyStrategyValidationJob
+from app.services.tasks import RuntimeTaskQueue
+from app.services.watchlist_signal_service import WatchlistSignalService
+
+
+settings = get_settings()
+logger = logging.getLogger(__name__)
+
+FULL_SCAN_REFRESH_SECONDS = 60 * 60
+WATCHLIST_REFRESH_SECONDS = 45
+MARKET_REGIME_REFRESH_SECONDS = 5 * 60
+APP_LOW_BUY_STARTUP_LIMIT = 24
+FULL_SCAN_BACKGROUND_LIMIT = 40
+SQLITE_BACKGROUND_SCAN_LIMIT = 120
+DEFAULT_BACKGROUND_SCAN_LIMIT = 480
+_paper_archive_last_run_date: date | None = None
+_background_leader_lock_handle = None
+
+
+def _background_jobs_enabled() -> bool:
+    if not settings.runtime_background_jobs_enabled:
+        return False
+    if settings.database_url.startswith("sqlite") and not settings.runtime_background_jobs_on_sqlite:
+        return False
+    return True
+
+
+def _background_low_buy_strategies() -> list[str]:
+    if settings.database_url.startswith("sqlite"):
+        return [strategy for strategy in PLAYBOOKS if strategy in PRODUCTION_PRIORITY_STRATEGIES]
+    return list(PLAYBOOKS.keys())
+
+
+def _background_low_buy_limit() -> int:
+    if settings.database_url.startswith("sqlite"):
+        return APP_LOW_BUY_STARTUP_LIMIT
+    return FULL_SCAN_BACKGROUND_LIMIT
+
+
+def _background_low_buy_scan_limit() -> int:
+    if settings.database_url.startswith("sqlite"):
+        return SQLITE_BACKGROUND_SCAN_LIMIT
+    return DEFAULT_BACKGROUND_SCAN_LIMIT
+
+
+def _startup_low_buy_prewarm_enabled() -> bool:
+    return True
+
+
+def _startup_low_buy_history_prewarm_enabled() -> bool:
+    return not settings.database_url.startswith("sqlite")
+
+
+def _refresh_materialized_low_buy_snapshots(
+    *,
+    strategies: list[str],
+    limit: int,
+    scan_limit: int,
+    compute_performance: bool,
+) -> None:
+    screener = LowBuyScreenerService()
+    for strategy_key in strategies:
+        if _materialized_snapshot_is_fresh(
+            screener=screener,
+            strategy_key=strategy_key,
+            limit=limit,
+            max_age_seconds=FULL_SCAN_REFRESH_SECONDS,
+        ):
+            continue
+        screener.refresh_full_scan_cache(
+            strategy=strategy_key,
+            limit=limit,
+            scan_limit=scan_limit,
+            include_history=False,
+            compute_performance=compute_performance,
+            build_close_review=False,
+        )
+
+
+def _materialized_snapshot_is_fresh(
+    *,
+    screener: LowBuyScreenerService,
+    strategy_key: str,
+    limit: int,
+    max_age_seconds: int,
+) -> bool:
+    with SessionLocal() as db:
+        repository = LowBuyResultRepository(db)
+        latest_available_trade_date = repository.fetch_latest_trade_date()
+        payload = screener._runtime._load_latest_materialized_full_result(
+            db=db,
+            strategy=strategy_key,
+            limit=limit,
+            include_history=False,
+            allow_repair=False,
+        )
+    if payload is None:
+        return False
+    if latest_available_trade_date and payload.latest_trade_date < latest_available_trade_date:
+        return False
+    try:
+        updated_at = datetime.strptime(
+            payload.full_scan_updated_at or payload.as_of_date,
+            "%Y-%m-%d %H:%M:%S",
+        )
+    except ValueError:
+        return False
+    return (beijing_now().replace(tzinfo=None) - updated_at).total_seconds() < max_age_seconds
+
+
+def _warm_runtime_caches() -> None:
+    db = SessionLocal()
+    watchlist_signal_service = WatchlistSignalService()
+    try:
+        _warm_market_regime_once()
+        if _startup_low_buy_prewarm_enabled():
+            _refresh_materialized_low_buy_snapshots(
+                strategies=_background_low_buy_strategies(),
+                limit=_background_low_buy_limit(),
+                scan_limit=_background_low_buy_scan_limit(),
+                compute_performance=True,
+            )
+        if _startup_low_buy_history_prewarm_enabled():
+            screener = LowBuyScreenerService()
+            screener.history(db=db, strategy=DEFAULT_PRODUCTION_LOW_BUY_STRATEGY)
+        watchlist_signal_service.refresh_snapshots(force=True)
+    except Exception:
+        logger.exception("runtime cache prewarm failed")
+    finally:
+        db.close()
+
+
+def _startup_maintenance_and_warm_runtime_caches() -> None:
+    try:
+        _cleanup_stale_low_buy_snapshots()
+    except Exception:
+        logger.exception("stale low-buy snapshot cleanup failed")
+    _warm_runtime_caches()
+
+
+def _refresh_full_scan_once() -> None:
+    _refresh_materialized_low_buy_snapshots(
+        strategies=_background_low_buy_strategies(),
+        limit=_background_low_buy_limit(),
+        scan_limit=_background_low_buy_scan_limit(),
+        compute_performance=True,
+    )
+
+
+def _refresh_watchlist_signal_once() -> None:
+    watchlist_signal_service = WatchlistSignalService()
+    watchlist_signal_service.refresh_snapshots(force=True)
+
+
+def _warm_market_regime_once() -> None:
+    MarketDataService().get_market_regime()
+
+
+def _archive_paper_performance_once() -> None:
+    global _paper_archive_last_run_date
+    if not _paper_archive_due():
+        return
+    today = beijing_today()
+    if _paper_archive_last_run_date == today:
+        return
+    with SessionLocal() as db:
+        service = PaperArchiveService(db)
+        results = service.archive_all_active(include_report=settings.paper_perf_ai_report_enabled)
+        _paper_archive_last_run_date = today
+        logger.info("模拟盘绩效归档完成: %s", results)
+
+
+def _run_monthly_strategy_validation_once() -> None:
+    if settings.database_url.startswith("sqlite"):
+        return
+    with SessionLocal() as db:
+        report = MonthlyStrategyValidationJob(db).run_if_due()
+        if report is not None:
+            logger.info("月度策略样本外验证完成: run_id=%s", report.run_id)
+
+
+def _run_backtest_research_worker_once() -> None:
+    result = BacktestResearchWorker().run_once()
+    if result is not None:
+        logger.info(
+            "回测研究任务处理完成: kind=%s id=%s status=%s message=%s",
+            result.task_kind,
+            result.task_id,
+            result.status,
+            result.message,
+        )
+
+
+def _refresh_low_buy_strategy_governance_once() -> None:
+    if settings.database_url.startswith("sqlite"):
+        return
+    with SessionLocal() as db:
+        payload = refresh_low_buy_strategy_auto_governance(db)
+        logger.info("低吸策略自动治理刷新完成: items=%s", len(payload.get("items", {})))
+
+
+def _scan_priority_notifications_once() -> None:
+    if not settings.notification_signal_scan_enabled:
+        return
+    notifier = AgentNotificationService()
+    if not notifier.supports_channel("feishu"):
+        return
+    with SessionLocal() as db:
+        result = AgentSignalScanService(notifier).scan_priority_board(db, limit=12, channel="feishu")
+        logger.info(
+            "优先级榜通知扫描完成: scanned=%s sent=%s suppressed=%s upgraded=%s",
+            result.scanned,
+            result.sent,
+            result.suppressed,
+            result.upgraded,
+        )
+
+
+def _push_agent_daily_report_once() -> None:
+    if not _agent_daily_report_push_due():
+        return
+    notifier = AgentNotificationService()
+    if not notifier.supports_channel("feishu"):
+        return
+    with SessionLocal() as db:
+        result = AgentDailyWorkflowService(notification_service=notifier).push_daily_report(db, channel="feishu")
+        logger.info(
+            "Agent 日报推送检查完成: trade_date=%s sent=%s duplicate=%s message=%s",
+            result.trade_date,
+            result.sent,
+            result.duplicate,
+            result.message,
+        )
+
+
+def _enqueue_ml_incremental_train_once() -> None:
+    now = beijing_now()
+    if now.weekday() != 0 or now.time() < dt_time(hour=16, minute=0):
+        return
+    week_key = f"{now.isocalendar().year}-W{now.isocalendar().week:02d}"
+    with SessionLocal() as db:
+        task = RuntimeTaskQueue(db).enqueue(
+            RuntimeTaskCreate(
+                task_type="ml_signal_incremental_train",
+                payload={
+                    "model_type": "logistic",
+                    "source": "paper",
+                    "limit": 5000,
+                    "min_samples": 100,
+                    "promote": False,
+                },
+                priority=180,
+                idempotency_key=f"ml_signal_incremental_train:{week_key}",
+                max_attempts=2,
+            )
+        )
+        logger.info("ML 增量训练任务检查完成: week=%s task_id=%s status=%s", week_key, task.id, task.status)
+
+
+def _paper_archive_due() -> bool:
+    try:
+        hour, minute = [int(part) for part in settings.paper_perf_archive_time.split(":", 1)]
+        archive_time = dt_time(hour=hour, minute=minute)
+    except (TypeError, ValueError):
+        logger.warning("PAPER_PERF_ARCHIVE_TIME 配置无效: %s", settings.paper_perf_archive_time)
+        archive_time = dt_time(hour=15, minute=5)
+    return beijing_now().time() >= archive_time
+
+
+def _agent_daily_report_push_due() -> bool:
+    now = beijing_now()
+    if now.weekday() >= 5:
+        return False
+    return now.time() >= dt_time(hour=15, minute=10)
+
+
+def _cleanup_stale_low_buy_snapshots() -> None:
+    """Remove materialized low-buy rows produced by older strategy versions."""
+    with SessionLocal() as db:
+        result_ids = _stale_low_buy_result_ids(db)
+        scan_ids = _stale_low_buy_scan_ids(db)
+        if result_ids:
+            _delete_low_buy_rows(db, LowBuyResultSnapshot, result_ids)
+        if scan_ids:
+            _delete_low_buy_rows(db, LowBuyScanSnapshot, scan_ids)
+        db.commit()
+    if result_ids or scan_ids:
+        logger.info(
+            "cleaned stale low-buy snapshots: %d results + %d scans removed",
+            len(result_ids),
+            len(scan_ids),
+        )
+
+
+def _stale_low_buy_result_ids(db) -> list[int]:
+    return _stale_snapshot_ids(
+        db=db,
+        model=LowBuyResultSnapshot,
+        json_column=LowBuyResultSnapshot.payload_json,
+        version_key="payload_version",
+    )
+
+
+def _stale_low_buy_scan_ids(db) -> list[int]:
+    return _stale_snapshot_ids(
+        db=db,
+        model=LowBuyScanSnapshot,
+        json_column=LowBuyScanSnapshot.filters_json,
+        version_key="_result_version",
+    )
+
+
+def _stale_snapshot_ids(db, model, json_column, version_key: str, batch_size: int = 1000) -> list[int]:
+    stale_ids: list[int] = []
+    last_id = 0
+    while True:
+        rows = db.execute(
+            select(model.id, json_column)
+            .where(model.id > last_id)
+            .order_by(model.id.asc())
+            .limit(batch_size)
+        ).all()
+        if not rows:
+            break
+        last_id = int(rows[-1][0])
+        stale_ids.extend(
+            int(row_id)
+            for row_id, raw_json in rows
+            if _json_version(raw_json, version_key) != LOW_BUY_RESULT_VERSION
+        )
+    return stale_ids
+
+
+def _delete_low_buy_rows(db, model, row_ids: list[int]) -> None:
+    for index in range(0, len(row_ids), 500):
+        chunk = row_ids[index : index + 500]
+        db.execute(delete(model).where(model.id.in_(chunk)))
+
+
+def _json_version(raw: str | None, key: str) -> int | None:
+    try:
+        payload = json.loads(raw or "{}")
+    except Exception:
+        return None
+    if not isinstance(payload, dict):
+        return None
+    value = payload.get(key)
+    if isinstance(value, int):
+        return value
+    if isinstance(value, str) and value.isdigit():
+        return int(value)
+    return None
+
+
+def _acquire_background_leader_lock() -> bool:
+    """Ensure only one Gunicorn worker runs in-process background jobs."""
+
+    global _background_leader_lock_handle
+    lock_path = Path(tempfile.gettempdir()) / "tquant_runtime_background_jobs.lock"
+    lock_path.parent.mkdir(parents=True, exist_ok=True)
+    handle = lock_path.open("a+")
+    try:
+        fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except BlockingIOError:
+        handle.close()
+        return False
+    except OSError:
+        handle.close()
+        logger.exception("failed to acquire runtime background leader lock")
+        return False
+    _background_leader_lock_handle = handle
+    return True
+
+
+def start_runtime_background_jobs() -> None:
+    background_leader = _background_jobs_enabled() and _acquire_background_leader_lock()
+    if background_leader:
+        threading.Thread(target=_startup_maintenance_and_warm_runtime_caches, daemon=True).start()
+        task_manager.register_loop(
+            name="low_buy_full_scan",
+            target=_refresh_full_scan_once,
+            interval_seconds=FULL_SCAN_REFRESH_SECONDS,
+            initial_delay_seconds=30,
+        )
+        task_manager.register_loop(
+            name="watchlist_signals",
+            target=_refresh_watchlist_signal_once,
+            interval_seconds=WATCHLIST_REFRESH_SECONDS,
+            initial_delay_seconds=20,
+        )
+        task_manager.register_loop(
+            name="market_regime_prewarm",
+            target=_warm_market_regime_once,
+            interval_seconds=MARKET_REGIME_REFRESH_SECONDS,
+            initial_delay_seconds=15,
+        )
+        if settings.paper_perf_archive_enabled:
+            task_manager.register_loop(
+                name="paper_perf_archive",
+                target=_archive_paper_performance_once,
+                interval_seconds=300,
+                initial_delay_seconds=90,
+            )
+        if settings.strategy_validation_monthly_enabled:
+            task_manager.register_loop(
+                name="strategy_validation_monthly",
+                target=_run_monthly_strategy_validation_once,
+                interval_seconds=24 * 60 * 60,
+                initial_delay_seconds=180,
+            )
+        task_manager.register_loop(
+            name="backtest_research_worker",
+            target=_run_backtest_research_worker_once,
+            interval_seconds=15,
+            initial_delay_seconds=45,
+        )
+        task_manager.register_loop(
+            name="low_buy_strategy_governance",
+            target=_refresh_low_buy_strategy_governance_once,
+            interval_seconds=60 * 60,
+            initial_delay_seconds=210,
+        )
+        if settings.notification_signal_scan_enabled:
+            task_manager.register_loop(
+                name="agent_priority_notifications",
+                target=_scan_priority_notifications_once,
+                interval_seconds=max(settings.notification_signal_scan_interval_seconds, 30),
+                initial_delay_seconds=120,
+            )
+        task_manager.register_loop(
+            name="agent_daily_report_push",
+            target=_push_agent_daily_report_once,
+            interval_seconds=300,
+            initial_delay_seconds=150,
+        )
+        task_manager.register_loop(
+            name="ml_signal_incremental_train_weekly",
+            target=_enqueue_ml_incremental_train_once,
+            interval_seconds=60 * 60,
+            initial_delay_seconds=240,
+        )
+        if settings.paper_auto_trading_enabled:
+            logger.info("启动模拟盘自动交易")
+            start_auto_trader(build_auto_trader_config(settings))
+    elif _background_jobs_enabled():
+        logger.info("runtime background jobs skipped in this worker; another worker holds the leader lock")
+
+
+def shutdown_runtime_background_jobs(timeout: int = 30) -> None:
+    stop_auto_trader()
+    task_manager.shutdown(timeout=timeout)

@@ -1,0 +1,300 @@
+.mobile-paper-card {
+  display: grid;
+  gap: 7px;
+  width: 100%;
+  max-width: 100%;
+  padding: 9px;
+  border: 1px solid var(--mobile-border);
+  border-radius: 12px;
+  background: var(--mobile-panel);
+  box-shadow: var(--mobile-shadow);
+  overflow: hidden;
+}
+
+.mobile-paper-section-head strong {
+  color: #102850;
+  font-size: 13px;
+}
+
+.mobile-paper-section-head small {
+  display: block;
+  min-width: 0;
+  color: var(--mobile-text-muted);
+  font-size: 9px;
+  line-height: 1.35;
+}
+
+.mobile-paper-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 5px;
+}
+
+.mobile-paper-metrics-primary {
+  margin-bottom: 1px;
+}
+
+.mobile-paper-metric {
+  display: grid;
+  gap: 2px;
+  min-height: 56px;
+  padding: 7px 5px;
+  border: 1px solid var(--mobile-border);
+  border-radius: 10px;
+  background: linear-gradient(180deg, #fff, #f8fafc);
+}
+
+.mobile-paper-metric small {
+  color: var(--mobile-text-muted);
+  font-size: 8px;
+  font-weight: 800;
+}
+
+.mobile-paper-metric strong {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: inherit;
+  font-family: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 10px;
+  letter-spacing: -0.04em;
+  white-space: nowrap;
+}
+
+.mobile-paper-cockpit {
+  position: relative;
+  display: grid;
+  gap: 6px;
+  padding: 11px 12px;
+  overflow: hidden;
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at 76% 18%, rgba(214, 165, 92, 0.22), transparent 18%),
+    linear-gradient(135deg, rgba(37, 99, 235, 0.14), transparent 42%),
+    #091321;
+  color: #dce8f8;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.18);
+}
+
+.mobile-paper-cockpit::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.035) 0 1px, transparent 1px 12px);
+  pointer-events: none;
+}
+
+.mobile-paper-cockpit::after {
+  content: "";
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  background: linear-gradient(110deg, transparent 0 42%, rgba(255, 255, 255, 0.12) 48%, transparent 55% 100%);
+  transform: translateX(-85%);
+  animation: mobileCockpitSweep 3.6s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.mobile-paper-cockpit-head,
+.mobile-paper-cockpit-foot {
+  position: relative;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.mobile-paper-cockpit-head strong {
+  color: #fff;
+  font-size: 15px;
+  letter-spacing: -0.03em;
+}
+
+.mobile-paper-cockpit-head button {
+  padding: 4px 8px;
+  border: 1px solid rgba(214, 165, 92, 0.38);
+  border-radius: 999px;
+  background: rgba(214, 165, 92, 0.14);
+  color: #d6a55c;
+  font-size: 9px;
+  font-weight: 900;
+}
+
+.mobile-holding-search {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 7px;
+  margin: 3px 0 7px;
+}
+
+.mobile-holding-search input,
+.mobile-paper-order-form input {
+  width: 100%;
+  min-width: 0;
+  min-height: 36px;
+  padding: 0 10px;
+  border: 1px solid var(--mobile-border);
+  border-radius: 10px;
+  background: #fff;
+  color: var(--mobile-text);
+  font-size: 12px;
+}
+
+.mobile-holding-search button {
+  min-height: 36px;
+  padding: 0 12px;
+  border: 1px solid rgba(214, 165, 92, 0.32);
+  border-radius: 10px;
+  background: rgba(214, 165, 92, 0.12);
+  color: #9a6b24;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.mobile-priority-action-sheet,
+.mobile-paper-order-sheet {
+  display: grid;
+  gap: 12px;
+}
+
+.mobile-priority-summary {
+  display: grid;
+  gap: 7px;
+}
+
+.mobile-priority-summary > div,
+.mobile-priority-plan,
+.mobile-paper-order-form label {
+  display: grid;
+  gap: 4px;
+  padding: 10px;
+  border: 1px solid var(--mobile-divider);
+  border-radius: 12px;
+  background: var(--mobile-panel-soft);
+}
+
+.mobile-priority-summary span,
+.mobile-paper-order-form label span {
+  color: var(--mobile-text-muted);
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.mobile-priority-summary strong,
+.mobile-priority-plan strong {
+  color: #102850;
+  font-size: 13px;
+}
+
+.mobile-priority-summary small,
+.mobile-priority-plan p {
+  margin: 0;
+  color: var(--mobile-text-muted);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.mobile-paper-order-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.mobile-paper-order-segment {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 5px;
+  padding: 4px;
+  border: 1px solid var(--mobile-border);
+  border-radius: 12px;
+  background: #fff;
+}
+
+.mobile-paper-order-segment button {
+  min-height: 32px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--mobile-text-muted);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.mobile-paper-order-segment button.active {
+  background: #102850;
+  color: #fff;
+}
+
+.mobile-paper-order-error {
+  grid-column: 1 / -1;
+  padding: 8px 10px;
+  border: 1px solid rgba(227, 59, 59, 0.2);
+  border-radius: 10px;
+  background: rgba(227, 59, 59, 0.08);
+  color: var(--mobile-positive);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.mobile-paper-mecha {
+  position: relative;
+  z-index: 3;
+  width: 176px;
+  height: 124px;
+  margin: 0 auto 2px;
+  overflow: hidden;
+  border: 1px solid rgba(214, 165, 92, 0.2);
+  border-radius: 16px;
+  background: #020403;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.05),
+    0 0 30px rgba(214, 165, 92, 0.22),
+    0 0 54px rgba(31, 139, 76, 0.14);
+  animation: mobileMechaHover 2.8s ease-in-out infinite alternate;
+}
+
+.mobile-paper-mecha img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 46%;
+  image-rendering: pixelated;
+  transform: scale(1.18);
+  filter: contrast(1.12) saturate(1.06) drop-shadow(0 0 12px rgba(245, 158, 11, 0.28));
+  animation: mobileMechaPulse 2.4s ease-in-out infinite alternate;
+}
+
+.mobile-paper-scan-line {
+  position: absolute;
+  pointer-events: none;
+}
+
+.mobile-paper-scan-line {
+  z-index: 4;
+  left: -20%;
+  right: -20%;
+  top: 50%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, rgba(245, 158, 11, 0.76), transparent);
+  box-shadow: 0 0 10px rgba(245, 158, 11, 0.72);
+  animation: mobileMechaScan 1.9s linear infinite;
+}
+
+.mobile-paper-cockpit-foot {
+  font-size: 10px;
+}
+
+.mobile-paper-cockpit-foot b {
+  color: #d6a55c;
+}
+
+.mobile-paper-section-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+}
+

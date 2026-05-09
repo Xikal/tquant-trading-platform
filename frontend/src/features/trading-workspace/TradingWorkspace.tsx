@@ -8,7 +8,6 @@ import { CommandPalette } from "./CommandPalette";
 import { LoginPage } from "./LoginPage";
 import { Topbar } from "./Topbar";
 import { AiInsightDialog, ErrorDialog, StatusStrip, StockDetailDialog } from "./WorkspaceComponents";
-import { MONITOR_REFRESH_INTERVAL_MS } from "./workspaceConstants";
 import { nullableNumber, parseNumber } from "./workspaceFormatters";
 import { isLoading } from "./loadingState";
 import type { AuthDraft, Page, StockCardView, WatchDraft } from "./workspaceTypes";
@@ -22,6 +21,7 @@ import { useSettingsData } from "./useSettingsData";
 import { useWorkspaceLoading } from "./useWorkspaceLoading";
 import { useWorkspaceNavigation } from "./useWorkspaceNavigation";
 import { useWorkspacePageProps } from "./useWorkspacePageProps";
+import { useWorkspaceAutoRefresh } from "./useWorkspaceAutoRefresh";
 import { WorkspacePageContent } from "./WorkspacePageContent";
 
 const AnalysisPage = lazy(async () => ({ default: (await import("./AnalysisPage")).AnalysisPage }));
@@ -33,9 +33,6 @@ const PlaybookPage = lazy(async () => ({ default: (await import("./PlaybookPage"
 const ResearchPage = lazy(async () => ({ default: (await import("./ResearchPage")).ResearchPage }));
 const SettingsPage = lazy(async () => ({ default: (await import("./SettingsPage")).SettingsPage }));
 const StrategyHubPage = lazy(async () => ({ default: (await import("../strategy/StrategyHubPage")).StrategyHubPage }));
-const PAPER_TRADING_REFRESH_INTERVAL_MS = 30_000;
-const PAPER_IDLE_REFRESH_INTERVAL_MS = 60 * 60 * 1000;
-
 export function TradingWorkspace() {
   const [authReady, setAuthReady] = useState(false);
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
@@ -93,6 +90,13 @@ export function TradingWorkspace() {
   useEffect(() => {
     paperLiveRefreshRef.current = paper.refreshLiveSnapshot;
   }, [paper.refreshLiveSnapshot]);
+  useWorkspaceAutoRefresh({
+    currentUser,
+    page,
+    fetchMonitorData: monitor.fetchMonitorData,
+    paperTradingTime: paper.autoTradingStatus?.trading_time,
+    refreshPaperLiveSnapshotRef: paperLiveRefreshRef,
+  });
   const settingsData = useSettingsData({
     withLoading,
     setError,
@@ -197,49 +201,6 @@ export function TradingWorkspace() {
       void paper.load();
     }
   }, [currentUser, page]);
-
-  useEffect(() => {
-    if (!currentUser || page !== "monitor") {
-      return undefined;
-    }
-    const timer = window.setInterval(() => {
-      void monitor.fetchMonitorData(false);
-    }, MONITOR_REFRESH_INTERVAL_MS);
-    return () => window.clearInterval(timer);
-  }, [currentUser, page]);
-
-  useEffect(() => {
-    if (!currentUser || page !== "paper" || !currentUser.can_paper_trade) {
-      return undefined;
-    }
-    let inFlight = false;
-    const isTradingTime = Boolean(paper.autoTradingStatus?.trading_time);
-    const intervalMs = isTradingTime ? PAPER_TRADING_REFRESH_INTERVAL_MS : PAPER_IDLE_REFRESH_INTERVAL_MS;
-    const runRefresh = async () => {
-      if (document.visibilityState !== "visible" || inFlight) {
-        return;
-      }
-      inFlight = true;
-      try {
-        await paperLiveRefreshRef.current({ refreshPrices: isTradingTime });
-      } finally {
-        inFlight = false;
-      }
-    };
-    const timer = window.setInterval(() => {
-      void runRefresh();
-    }, intervalMs);
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === "visible") {
-        void runRefresh();
-      }
-    };
-    document.addEventListener("visibilitychange", handleVisibilityChange);
-    return () => {
-      window.clearInterval(timer);
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
-    };
-  }, [currentUser, page, currentUser?.can_paper_trade, paper.autoTradingStatus?.trading_time]);
 
   async function restoreSession() {
     try {
