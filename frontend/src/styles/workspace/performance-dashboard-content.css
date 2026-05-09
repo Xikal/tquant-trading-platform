@@ -1,0 +1,166 @@
+.performance-line-chart {
+  display: grid;
+  gap: 6px;
+  min-height: 178px;
+}
+
+.performance-line-chart svg {
+  width: 100%;
+  min-height: 164px;
+  border-radius: 10px;
+  background:
+    linear-gradient(rgba(15, 23, 42, 0.055) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(15, 23, 42, 0.055) 1px, transparent 1px),
+    linear-gradient(180deg, #ffffff, #f8fafc);
+  background-size: 100% 42px, 92px 100%, 100% 100%;
+}
+
+.performance-line-chart path {
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.performance-line-chart .line-gold {
+  stroke: #d6a55c;
+}
+
+.performance-line-chart .line-red {
+  stroke: #c62828;
+}
+
+.performance-line-chart circle {
+  fill: #fff;
+  stroke: #0f172a;
+  stroke-width: 2;
+}
+
+.performance-chart-axis {
+  display: flex;
+  justify-content: space-between;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.performance-report-body {
+  display: grid;
+  gap: 10px;
+}
+
+.performance-report-body p {
+  margin: 0;
+  color: var(--text);
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.performance-report-block {
+  display: grid;
+  gap: 5px;
+  padding: 9px;
+  border-radius: 10px;
+  border: 1px solid rgba(226, 232, 240, 0.92);
+  background: #f8fafc;
+}
+
+.performance-report-block strong,
+.performance-suggestion {
+  color: var(--text);
+}
+
+.performance-report-block span,
+.performance-suggestion {
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.performance-suggestion {
+  padding: 9px;
+  border: 1px solid rgba(214, 165, 92, 0.34);
+  border-radius: 10px;
+  background: linear-gradient(135deg, #fff8e8, #fffdf6);
+}
+
+.performance-table {
+  display: grid;
+  overflow: hidden;
+  border: 1px solid rgba(226, 232, 240, 0.95);
+  border-radius: 10px;
+  background: #fff;
+}
+
+.performance-table-head,
+.performance-table-row {
+  display: grid;
+  grid-template-columns: minmax(140px, 1.4fr) repeat(4, minmax(72px, 1fr));
+  gap: 8px;
+  align-items: center;
+  min-height: 32px;
+  padding: 7px 10px;
+  border-bottom: 1px solid rgba(226, 232, 240, 0.92);
+  font-size: 12px;
+}
+
+.performance-correlation-table .performance-table-head,
+.performance-correlation-table .performance-table-row {
+  grid-template-columns: minmax(220px, 1.8fr) minmax(90px, 0.8fr) minmax(100px, 0.8fr) minmax(160px, 1.2fr);
+}
+
+.performance-table-head {
+  color: var(--muted);
+  background: linear-gradient(180deg, #f8fafc, #f1f5f9);
+  font-weight: 800;
+}
+
+.performance-table-row:last-child {
+  border-bottom: 0;
+}
+
+.performance-table-row span,
+.performance-table-head span:not(:first-child) {
+  text-align: right;
+  font-family: "IBM Plex Mono", monospace;
+}
+
+.performance-table-row .up {
+  color: var(--price-up);
+}
+
+.performance-table-row .down {
+  color: var(--price-down);
+}
+
+.market-heatmap {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 9px;
+}
+
+.market-heatmap-card {
+  display: grid;
+  gap: 4px;
+  min-height: 82px;
+  padding: 10px;
+  border: 1px solid rgba(226, 232, 240, 0.95);
+  border-radius: 10px;
+  background: #fff;
+}
+
+.market-heatmap-card.up {
+  border-color: #f2b8aa;
+  background: #fff4f1;
+}
+
+.market-heatmap-card.down {
+  border-color: #b8e5c7;
+  background: #f0fbf4;
+}
+
+.market-heatmap-card span {
+  color: #64748b;
+  font-size: 12px;
+}
+
+.performance-empty {
+  min-height: 76px;
+}
