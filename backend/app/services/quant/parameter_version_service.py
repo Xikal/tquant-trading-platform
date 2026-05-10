@@ -13,6 +13,7 @@ from app.core.config import get_settings
 from app.models.entities import QuantParameterAuditLog, QuantParameterSet
 from app.services.low_buy.strategy_parameter_defaults import (
     BACKTEST_EXECUTION_DEFAULTS,
+    CAPACITY_ANALYSIS_DEFAULTS,
     LOW_BUY_AUTO_GOVERNANCE_DEFAULTS,
     LOW_BUY_DYNAMIC_ADJUSTMENT_DEFAULTS,
     LOW_BUY_HARD_RISK_DEFAULTS,
@@ -26,6 +27,7 @@ from app.services.low_buy.strategy_parameter_defaults import (
     MARKET_INTRADAY_ANOMALY_DEFAULTS,
     MARKET_REGIME_SCORING_DEFAULTS,
     MARKET_SECTOR_ETF_T0_DEFAULTS,
+    ML_SIGNAL_TRAINING_DEFAULTS,
     POSITION_T_DECISION_DEFAULTS,
     POSITION_T_INTRADAY_STRUCTURE_DEFAULTS,
     POSITION_T_SCORING_DEFAULTS,
@@ -138,11 +140,17 @@ DEFAULT_QUANT_PARAMETERS: dict[str, Any] = {
         "production_enabled": False,
         "min_oos_days": 60,
         "min_samples": 1000,
+        "training": {
+            **ML_SIGNAL_TRAINING_DEFAULTS,
+        },
     },
     "backtest": {
         "execution": {
             **BACKTEST_EXECUTION_DEFAULTS,
         },
+    },
+    "capacity": {
+        **CAPACITY_ANALYSIS_DEFAULTS,
     },
 }
 
@@ -384,7 +392,7 @@ def _deep_merge(defaults: dict[str, Any], overrides: dict[str, Any]) -> dict[str
 def _validate_parameter_payload(params: dict[str, Any]) -> dict[str, Any]:
     if not isinstance(params, dict):
         raise ValueError("参数版本内容必须是 JSON 对象")
-    invalid_roots = sorted(set(params) - {"risk", "low_buy", "position_t", "market", "ml", "backtest"})
+    invalid_roots = sorted(set(params) - {"risk", "low_buy", "position_t", "market", "ml", "backtest", "capacity"})
     if invalid_roots:
         raise ValueError(f"参数命名空间不支持: {', '.join(invalid_roots)}")
     schema_map = _flatten_schema(quant_parameter_schema())

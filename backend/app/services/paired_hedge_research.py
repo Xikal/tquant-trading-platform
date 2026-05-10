@@ -34,6 +34,7 @@ class PairedHedgeResearchService:
         return PairedHedgeResearchResponse(
             updated_at=beijing_now_string(),
             total=len(ideas),
+            disclaimer="配对/对冲研究仅用于复盘和假设分析，不自动下单，不构成真实对冲或收益承诺。",
             ideas=ideas,
             notes=[
                 "多腿组合仅用于研究，不自动下单，也不代表可直接做空 ETF。",

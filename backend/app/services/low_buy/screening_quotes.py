@@ -252,6 +252,9 @@ class LowBuyQuoteRefreshMixin:
             invalid_condition=signal.invalid_condition,
             risk_tier=signal.risk_tier,
             next_watch_price=signal.next_watch_price,
+            atr_pct=signal.atr_pct,
+            atr_window=signal.atr_window,
+            atr_source=signal.atr_source,
         )
 
     @staticmethod

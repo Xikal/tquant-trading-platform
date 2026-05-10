@@ -139,6 +139,8 @@ def _build_priority_item(
         kelly_half_position_pct=kelly_half_position_pct,
         kelly_position_text=_kelly_position_text(kelly_half_position_pct),
         atr_pct=candidate.atr_pct,
+        atr_window=candidate.atr_window,
+        atr_source=candidate.atr_source,
         volatility_position_pct=candidate.volatility_position_pct,
         final_position_cap_pct=candidate.final_position_cap_pct,
         position_cap_reason=candidate.position_cap_reason,

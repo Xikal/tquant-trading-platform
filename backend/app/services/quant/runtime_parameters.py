@@ -142,8 +142,18 @@ def get_market_distribution_signals() -> dict[str, Any]:
     return deepcopy(values) if isinstance(values, dict) else {}
 
 
+def get_ml_signal_training() -> dict[str, Any]:
+    values = current_quant_parameters().get("ml", {}).get("training", {})
+    return deepcopy(values) if isinstance(values, dict) else {}
+
+
 def get_backtest_execution() -> dict[str, Any]:
     values = current_quant_parameters().get("backtest", {}).get("execution", {})
+    return deepcopy(values) if isinstance(values, dict) else {}
+
+
+def get_capacity_analysis() -> dict[str, Any]:
+    values = current_quant_parameters().get("capacity", {})
     return deepcopy(values) if isinstance(values, dict) else {}
 
 

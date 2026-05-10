@@ -1,10 +1,12 @@
 import logging
+import re
 
-from fastapi import APIRouter, Body, Depends
+from fastapi import APIRouter, Body, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
 from app.core.auth import get_current_user
 from app.core.database import get_db
+from app.core.rate_limit import require_analysis_batch_rate_limit
 from app.core.timing import log_slow_call, monotonic_start
 from app.models.schemas import AnalysisRequest
 from app.services.analysis_service import AnalysisService
@@ -12,6 +14,8 @@ from app.services.analysis_service import AnalysisService
 router = APIRouter(dependencies=[Depends(get_current_user)])
 logger = logging.getLogger(__name__)
 analysis_service = AnalysisService()
+_SYMBOL_PATTERN = re.compile(r"^\d{6}$")
+_MAX_BATCH_SIZE = 10
 
 
 @router.post("/analyze")
@@ -26,12 +30,34 @@ def analyze_symbol(payload: AnalysisRequest, db: Session = Depends(get_db)):
 
 @router.post("/analyze/batch")
 def analyze_batch(
+    request: Request,
     payloads: list[AnalysisRequest] = Body(...),
     db: Session = Depends(get_db),
 ):
+    require_analysis_batch_rate_limit(request)
+    _validate_batch_payload(payloads)
     started_at = monotonic_start()
     try:
         results = analysis_service.analyze_batch(db, payloads)
         return [item.model_dump() for item in results]
     finally:
         log_slow_call(logger, "analysis.analyze_batch", started_at, count=len(payloads), threshold_seconds=5.0)
+
+
+def _validate_batch_payload(payloads: list[AnalysisRequest]) -> None:
+    if not payloads:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="批量分析至少需要 1 个标的。",
+        )
+    if len(payloads) > _MAX_BATCH_SIZE:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"批量分析最多支持 {_MAX_BATCH_SIZE} 个标的。",
+        )
+    invalid_symbols = [item.symbol for item in payloads if not _SYMBOL_PATTERN.fullmatch((item.symbol or "").strip())]
+    if invalid_symbols:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="批量分析股票代码必须为 6 位数字。",
+        )

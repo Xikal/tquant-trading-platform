@@ -121,6 +121,12 @@
   line-height: 1.45;
 }
 
+.board-warning.danger {
+  border-color: #f2b8b5;
+  background: #fff1f0;
+  color: #9f1d1d;
+}
+
 .info-pill {
   display: grid;
   gap: 4px;

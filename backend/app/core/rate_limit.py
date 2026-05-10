@@ -161,6 +161,7 @@ def _build_global_limiter():
 _settings = get_settings()
 _global_limiter = _build_global_limiter()
 _ai_decision_limiter = SQLiteSlidingWindowRateLimiter(namespace="ai_decision", max_calls=30, window_seconds=60)
+_analysis_batch_limiter = SQLiteSlidingWindowRateLimiter(namespace="analysis_batch", max_calls=10, window_seconds=60)
 _auth_login_limiter = SQLiteSlidingWindowRateLimiter(namespace="auth_login", max_calls=30, window_seconds=60)
 _auth_register_limiter = SQLiteSlidingWindowRateLimiter(namespace="auth_register", max_calls=30, window_seconds=3600)
 
@@ -180,6 +181,15 @@ def require_ai_decision_rate_limit(request: Request) -> None:
     raise HTTPException(
         status_code=status.HTTP_429_TOO_MANY_REQUESTS,
         detail="AI 解读请求过于频繁，请稍后再试。",
+    )
+
+
+def require_analysis_batch_rate_limit(request: Request) -> None:
+    if _analysis_batch_limiter.allow(_client_key(request)):
+        return
+    raise HTTPException(
+        status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+        detail="批量量化分析请求过于频繁，请稍后再试。",
     )
 
 
@@ -250,5 +260,11 @@ def _looks_like_ip(value: str) -> bool:
 def clear_rate_limit_events() -> None:
     """Test/maintenance helper to clear limiter state."""
 
-    for limiter in (_global_limiter, _ai_decision_limiter, _auth_login_limiter, _auth_register_limiter):
+    for limiter in (
+        _global_limiter,
+        _ai_decision_limiter,
+        _analysis_batch_limiter,
+        _auth_login_limiter,
+        _auth_register_limiter,
+    ):
         limiter.clear()

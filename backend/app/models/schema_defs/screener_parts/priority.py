@@ -52,6 +52,8 @@ class LowBuyPriorityBoardItemOut(BaseModel):
     kelly_half_position_pct: float = 0.0
     kelly_position_text: str = ""
     atr_pct: float = 0.0
+    atr_window: int = 14
+    atr_source: str = "daily_ohlcv_true_range_14"
     volatility_position_pct: float = 0.0
     final_position_cap_pct: float = 0.0
     position_cap_reason: str = ""
@@ -165,4 +167,3 @@ class LowBuyPriorityBoardResponse(BaseModel):
     daily_decision: LowBuyDailyDecisionOut = Field(default_factory=LowBuyDailyDecisionOut)
     simple_buckets: list[LowBuySimpleBucketOut] = Field(default_factory=list)
     items: list[LowBuyPriorityBoardItemOut] = Field(default_factory=list)
-

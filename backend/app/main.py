@@ -9,6 +9,7 @@ from uuid import uuid4
 
 from fastapi import Depends, FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse, RedirectResponse
 
 from app.agent_tools.audit import agent_audit_metrics
@@ -31,6 +32,26 @@ logger = logging.getLogger(__name__)
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 FRONTEND_DIST_DIR = PROJECT_ROOT / "frontend" / "dist"
 FRONTEND_INDEX_FILE = FRONTEND_DIST_DIR / "index.html"
+_INTERNAL_ERROR_MESSAGE = "服务内部错误，请稍后重试"
+_CONTENT_SECURITY_POLICY = (
+    "default-src 'self'; "
+    "script-src 'self' https://cdn.jsdelivr.net; "
+    "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
+    "img-src 'self' data: blob: https://fastapi.tiangolo.com; "
+    "font-src 'self' data:; "
+    "connect-src 'self' ws: wss:; "
+    "object-src 'none'; "
+    "base-uri 'self'; "
+    "frame-ancestors 'none'; "
+    "form-action 'self'"
+)
+_SECURITY_HEADERS = {
+    "Content-Security-Policy": _CONTENT_SECURITY_POLICY,
+    "X-Content-Type-Options": "nosniff",
+    "X-Frame-Options": "DENY",
+    "Referrer-Policy": "strict-origin-when-cross-origin",
+    "Permissions-Policy": "camera=(), microphone=(), geolocation=(), payment=()",
+}
 
 
 @asynccontextmanager
@@ -45,6 +66,7 @@ async def lifespan(_: FastAPI):
 
 
 app = FastAPI(title=settings.app_name, lifespan=lifespan)
+app.add_middleware(GZipMiddleware, minimum_size=1000)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins,
@@ -56,14 +78,37 @@ app.include_router(api_router, prefix=settings.api_prefix)
 app.include_router(strategy_ws_router)
 
 
+@app.exception_handler(Exception)
+async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+    trace_id = getattr(request.state, "trace_id", "") or request.headers.get("x-request-id") or f"req_{uuid4().hex}"
+    logger.error(
+        "unhandled_http_exception trace_id=%s method=%s path=%s",
+        trace_id,
+        request.method,
+        request.url.path,
+        exc_info=(type(exc), exc, exc.__traceback__),
+    )
+    response = JSONResponse(
+        status_code=500,
+        content={"detail": _INTERNAL_ERROR_MESSAGE, "request_id": trace_id},
+        headers={"X-Request-ID": trace_id},
+    )
+    _apply_security_headers(response, request)
+    return response
+
+
 @app.middleware("http")
 async def enforce_request_body_limit(request, call_next):
     if not is_global_rate_allowed(request):
-        return JSONResponse(status_code=429, content={"detail": "请求过于频繁，请稍后再试。"})
+        response = JSONResponse(status_code=429, content={"detail": "请求过于频繁，请稍后再试。"})
+        _apply_security_headers(response, request)
+        return response
     if request.method in {"POST", "PUT", "PATCH"}:
         content_length = request.headers.get("content-length")
         if content_length and _content_length_exceeds_limit(content_length):
-            return JSONResponse(status_code=413, content={"detail": "请求体过大"})
+            response = JSONResponse(status_code=413, content={"detail": "请求体过大"})
+            _apply_security_headers(response, request)
+            return response
     return await call_next(request)
 
 
@@ -77,6 +122,7 @@ async def record_http_timing(request, call_next):
         response = await call_next(request)
         status_code = response.status_code
         response.headers["X-Request-ID"] = trace_id
+        _apply_security_headers(response, request)
         return response
     finally:
         duration_ms = int((time.perf_counter() - started) * 1000)
@@ -95,6 +141,18 @@ async def record_http_timing(request, call_next):
                 status_code,
                 duration_ms,
             )
+
+
+def _apply_security_headers(response: Response, request: Request) -> None:
+    for key, value in _SECURITY_HEADERS.items():
+        response.headers.setdefault(key, value)
+    if _request_is_https(request):
+        response.headers.setdefault("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
+
+
+def _request_is_https(request: Request) -> bool:
+    forwarded_proto = request.headers.get("x-forwarded-proto", "").split(",")[0].strip().lower()
+    return request.url.scheme == "https" or forwarded_proto == "https"
 
 
 def _content_length_exceeds_limit(raw_value: str) -> bool:

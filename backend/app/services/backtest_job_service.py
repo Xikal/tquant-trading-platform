@@ -42,6 +42,7 @@ from app.services.backtest_job_helpers import (
     _strategy_correlation,
     _strategy_list,
 )
+from app.services.backtest_queue_metrics import backtest_queue_snapshot
 from app.services.quant import QuantParameterVersionService
 
 
@@ -381,6 +382,8 @@ class BacktestJobService:
             summary=result_summary,
             queue_depth=0,
             queue_position=None,
+            running_count=0,
+            estimated_wait_seconds=0,
             created_at=row.created_at,
             updated_at=row.updated_at,
             started_at=row.started_at,
@@ -408,30 +411,11 @@ class BacktestJobService:
 
     def _summary_with_queue(self, row: BacktestRun) -> BacktestRunSummary:
         summary = self._summary(row)
-        if row.status != "queued":
-            return summary
-        queue_depth = int(
-            self.db.execute(
-                select(func.count(BacktestRun.id)).where(
-                    BacktestRun.status == "queued",
-                    BacktestRun.deleted_at.is_(None),
-                )
-            ).scalar_one()
-            or 0
-        )
-        queue_position = int(
-            self.db.execute(
-                select(func.count(BacktestRun.id)).where(
-                    BacktestRun.status == "queued",
-                    BacktestRun.deleted_at.is_(None),
-                    (BacktestRun.created_at < row.created_at)
-                    | ((BacktestRun.created_at == row.created_at) & (BacktestRun.id <= row.id)),
-                )
-            ).scalar_one()
-            or 0
-        )
-        summary.queue_depth = queue_depth
-        summary.queue_position = queue_position
+        snapshot = backtest_queue_snapshot(self.db, row)
+        summary.queue_depth = snapshot.queue_depth
+        summary.queue_position = snapshot.queue_position
+        summary.running_count = snapshot.running_count
+        summary.estimated_wait_seconds = snapshot.estimated_wait_seconds
         return summary
 
     @staticmethod

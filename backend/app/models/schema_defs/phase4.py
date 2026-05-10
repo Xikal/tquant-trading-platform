@@ -271,9 +271,15 @@ class StrategyCapacityRequest(BaseModel):
 
 class StrategyCapacityPoint(BaseModel):
     capital: float
+    order_amount: float = 0.0
     participation_pct: float = 0.0
     expected_edge_pct: float = 0.0
+    impact_model: str = "sqrt_market_impact"
+    impact_assumption: str = ""
+    average_daily_amount: float = 0.0
+    volatility_pct: float = 0.0
     kyle_impact_pct: float = 0.0
+    impact_pct: float = 0.0
     impact_cost_pct: float = 0.0
     slippage_cost_pct: float = 0.0
     net_edge_pct: float = 0.0
@@ -285,8 +291,10 @@ class StrategyCapacityItem(BaseModel):
     sample_count: int = 0
     symbol_count: int = 0
     avg_daily_amount: float = 0.0
+    volatility_pct: float = 0.0
     base_edge_pct: float = 0.0
     kyle_lambda: float = 0.0
+    impact_model: str = "sqrt_market_impact"
     curve: list[StrategyCapacityPoint] = Field(default_factory=list)
     notes: list[str] = Field(default_factory=list)
 

@@ -25,6 +25,7 @@ from app.services.ml_signal.artifact_manager import MLSignalArtifactManager
 from app.services.ml_signal.features import (
     FEATURE_NAMES,
     estimator_probabilities as _estimator_probabilities,
+    feature_missing_rates as _feature_missing_rates,
     label_is_positive as _label_is_positive,
     predict_probability as _predict_probability,
     safe_float as _safe_float,
@@ -44,6 +45,7 @@ from app.services.ml_signal.modeling import (
     promotion_blocks as _promotion_blocks,
 )
 from app.services.ml_signal.sample_repository import MLSignalSampleRepository
+from app.services.ml_signal.training_runtime import training_parameter_snapshot
 
 HEURISTIC_MODEL_KEY = "research-heuristic-v1"
 
@@ -156,14 +158,15 @@ class MLSignalService:
 
     def train(self, payload: MLSignalTrainRequest) -> MLSignalTrainResponse:
         rows = self._load_training_samples(source=payload.source, limit=payload.limit)
-        if len(rows) < payload.min_samples:
+        min_samples = int(payload.min_samples)
+        if len(rows) < min_samples:
             return MLSignalTrainResponse(
                 model_key=payload.model_key or _generated_model_key(payload.model_type),
                 model_type=payload.model_type,
                 status="failed",
                 sample_count=len(rows),
                 feature_names=FEATURE_NAMES,
-                warning=f"样本量不足：当前 {len(rows)}，最低需要 {payload.min_samples}。",
+                warning=f"样本量不足：当前 {len(rows)}，最低需要 {min_samples}。",
             )
         x_matrix, labels = _samples_to_matrix(rows)
         if len(set(labels.tolist())) < 2:
@@ -193,6 +196,8 @@ class MLSignalService:
                 feature_names=FEATURE_NAMES,
                 warning=f"模型训练失败：{exc}",
             )
+        metrics["quant_parameter"] = training_parameter_snapshot(self.db)
+        metrics["feature_missing_rates"] = _feature_missing_rates(rows)
         promotion_blocks = _promotion_blocks(payload=payload, metrics=metrics, sample_count=len(rows))
         can_promote = payload.promote and not promotion_blocks
         status = "production" if can_promote else "research"

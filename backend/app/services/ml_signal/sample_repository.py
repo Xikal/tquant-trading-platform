@@ -160,15 +160,15 @@ class MLSignalSampleRepository:
     def sector_relative_strength(self, symbol: str, rows: list[DailyBarSnapshot]) -> dict[str, float]:
         if len(rows) < 11:
             return {
-                "sector_relative_strength_5d": 0.0,
-                "sector_relative_strength_10d": 0.0,
+                "sector_relative_strength_5d": float("nan"),
+                "sector_relative_strength_10d": float("nan"),
             }
         instrument = self.db.execute(select(Instrument).where(Instrument.symbol == symbol)).scalar_one_or_none()
         sector = str(instrument.sector_name or "").strip() if instrument is not None else ""
         if not sector:
             return {
-                "sector_relative_strength_5d": 0.0,
-                "sector_relative_strength_10d": 0.0,
+                "sector_relative_strength_5d": float("nan"),
+                "sector_relative_strength_10d": float("nan"),
             }
         peers = (
             self.db.execute(
@@ -183,8 +183,8 @@ class MLSignalSampleRepository:
         peer_symbols = [item for item in peers if item and item != symbol]
         if not peer_symbols:
             return {
-                "sector_relative_strength_5d": 0.0,
-                "sector_relative_strength_10d": 0.0,
+                "sector_relative_strength_5d": float("nan"),
+                "sector_relative_strength_10d": float("nan"),
             }
         trade_dates = [str(row.trade_date) for row in rows[-11:]]
         peer_rows = (

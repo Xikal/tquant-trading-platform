@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session
 from app.core.database import SessionLocal
 from app.models.entities import BacktestRun
 from app.services.backtest.cancel_token import BacktestCancelToken, TimedDatabaseStatusCancelToken
+from app.services.backtest.queue_lock import backtest_claim_lock
 from app.services.backtest_job_service import BacktestJobService, _safe_error_message
 from app.services.low_buy.strategy_parameter_defaults import BACKTEST_EXECUTION_DEFAULTS
 from app.services.quant.runtime_parameters import get_backtest_execution
@@ -72,53 +73,61 @@ class BacktestWorker:
 
     def _claim_next_queued_job(self) -> int | None:
         with self.session_factory() as db:
-            max_concurrent = _max_concurrent_backtests()
-            running_count = int(
-                db.execute(
-                    select(func.count(BacktestRun.id))
-                    .where(BacktestRun.status == "running", BacktestRun.deleted_at.is_(None))
-                )
-                .scalar_one()
-                or 0
-            )
-            if running_count >= max_concurrent:
-                return None
-            running_id = db.execute(
-                select(BacktestRun.id)
-                .where(BacktestRun.status == "running", BacktestRun.deleted_at.is_(None))
-                .order_by(BacktestRun.started_at.asc(), BacktestRun.id.asc())
-                .limit(1)
-            ).scalar_one_or_none()
-            if running_id is not None and max_concurrent <= 1:
-                return None
+            with backtest_claim_lock(db) as acquired:
+                if acquired is False:
+                    return None
+                return self._claim_next_queued_job_locked(db)
 
-            run = db.execute(
-                select(BacktestRun.id)
-                .where(BacktestRun.status == "queued", BacktestRun.deleted_at.is_(None))
-                .order_by(BacktestRun.created_at.asc(), BacktestRun.id.asc())
-                .limit(1)
-            ).scalar_one_or_none()
-            if run is None:
-                return None
-
-            now = _utcnow()
-            claimed = db.execute(
-                update(BacktestRun)
-                .where(BacktestRun.id == run, BacktestRun.status == "queued")
-                .values(
-                    status="running",
-                    started_at=now,
-                    finished_at=None,
-                    cancelled_at=None,
-                    error_message="",
-                    progress_pct=5.0,
+    def _claim_next_queued_job_locked(self, db: Session) -> int | None:
+        max_concurrent = _max_concurrent_backtests()
+        running_count = int(
+            db.execute(
+                select(func.count(BacktestRun.id)).where(
+                    BacktestRun.status == "running",
+                    BacktestRun.deleted_at.is_(None),
                 )
             )
-            if claimed.rowcount != 1:
-                db.rollback()
-                return None
-            db.commit()
-            return int(run)
+            .scalar_one()
+            or 0
+        )
+        if running_count >= max_concurrent:
+            return None
+        running_id = db.execute(
+            select(BacktestRun.id)
+            .where(BacktestRun.status == "running", BacktestRun.deleted_at.is_(None))
+            .order_by(BacktestRun.started_at.asc(), BacktestRun.id.asc())
+            .limit(1)
+        ).scalar_one_or_none()
+        if running_id is not None and max_concurrent <= 1:
+            return None
+
+        run = db.execute(
+            select(BacktestRun.id)
+            .where(BacktestRun.status == "queued", BacktestRun.deleted_at.is_(None))
+            .order_by(BacktestRun.created_at.asc(), BacktestRun.id.asc())
+            .limit(1)
+        ).scalar_one_or_none()
+        if run is None:
+            return None
+
+        now = _utcnow()
+        claimed = db.execute(
+            update(BacktestRun)
+            .where(BacktestRun.id == run, BacktestRun.status == "queued")
+            .values(
+                status="running",
+                started_at=now,
+                finished_at=None,
+                cancelled_at=None,
+                error_message="",
+                progress_pct=5.0,
+            )
+        )
+        if claimed.rowcount != 1:
+            db.rollback()
+            return None
+        db.commit()
+        return int(run)
 
     def _run_max_duration_seconds(self, run_id: int) -> float | None:
         with self.session_factory() as db:

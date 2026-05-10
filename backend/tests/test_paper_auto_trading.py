@@ -407,6 +407,26 @@ class PaperAutoTradingTest(unittest.TestCase):
             self.assertFalse(trader._should_persist_blocked_run(db, account_id=account.id, blocking_reason=reason))
             self.assertTrue(trader._should_persist_blocked_run(db, account_id=account.id, blocking_reason="另一条风控原因"))
 
+    def test_auto_exit_orders_skip_when_quotes_unavailable(self):
+        from app.services.paper import scheduler_exit
+
+        Account = namedtuple("Account", ["id"])
+        Position = namedtuple("Position", ["symbol"])
+
+        class FakePositionService:
+            def __init__(self, _db):
+                pass
+
+            def get_positions(self, _account_id):
+                return [Position(symbol="600000")]
+
+        with patch.object(scheduler_exit, "PaperPositionService", FakePositionService), patch.object(
+            scheduler_exit, "latest_prices", return_value={}
+        ):
+            result = scheduler_exit.build_exit_orders(db=object(), account=Account(id=1))
+
+        self.assertEqual(result, [])
+
     def test_matching_rejects_invalid_prices(self):
         from app.services.paper.matching import OrderSide, OrderType, PaperMatchingEngine
 

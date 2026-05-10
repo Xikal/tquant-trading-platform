@@ -177,6 +177,7 @@ export interface PairedHedgeResearchResponse {
   updated_at: string;
   mode: "research_only" | string;
   total: number;
+  disclaimer?: string;
   ideas: PairedHedgeIdea[];
   notes: string[];
 }

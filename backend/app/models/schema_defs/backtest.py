@@ -92,6 +92,8 @@ class BacktestRunSummary(BaseModel):
     summary: dict[str, Any] = Field(default_factory=dict)
     queue_depth: int = 0
     queue_position: Optional[int] = None
+    running_count: int = 0
+    estimated_wait_seconds: int = 0
     created_at: datetime
     updated_at: Optional[datetime] = None
     started_at: Optional[datetime] = None

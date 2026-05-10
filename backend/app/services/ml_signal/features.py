@@ -68,8 +68,8 @@ def empty_sequence_features() -> dict[str, float]:
         "price_momentum_10d_z": 0.0,
         "volume_slope_5d_z": 0.0,
         "volume_slope_10d_z": 0.0,
-        "sector_relative_strength_5d": 0.0,
-        "sector_relative_strength_10d": 0.0,
+        "sector_relative_strength_5d": math.nan,
+        "sector_relative_strength_10d": math.nan,
     }
 
 
@@ -147,6 +147,25 @@ def samples_to_matrix(rows: list[MLSignalSample]) -> tuple[np.ndarray, np.ndarra
     return np.asarray(x_rows, dtype=float), np.asarray(labels, dtype=int)
 
 
+def feature_missing_rates(rows: list[MLSignalSample]) -> dict[str, float]:
+    if not rows:
+        return {}
+    counts = {name: 0 for name in FEATURE_NAMES}
+    for row in rows:
+        features = json_dict(row.feature_json)
+        for name in FEATURE_NAMES:
+            value = features.get(name)
+            try:
+                numeric = float(value)
+            except (TypeError, ValueError):
+                counts[name] += 1
+                continue
+            if not math.isfinite(numeric):
+                counts[name] += 1
+    total = max(len(rows), 1)
+    return {name: round(count / total, 4) for name, count in counts.items() if count > 0}
+
+
 def predict_probability(estimator: Any, features: dict[str, Any]) -> float:
     x_matrix = np.asarray([[to_float(features.get(name)) for name in FEATURE_NAMES]], dtype=float)
     probability = float(estimator_probabilities(estimator, x_matrix)[0])
@@ -190,9 +209,10 @@ def safe_float(value: Decimal | float | int | str | None) -> float:
 
 def to_float(value: Any) -> float:
     try:
-        return float(value or 0)
+        numeric = float(value or 0)
     except (TypeError, ValueError):
         return 0.0
+    return numeric if math.isfinite(numeric) else 0.0
 
 
 def json_dict(raw: str) -> dict[str, Any]:

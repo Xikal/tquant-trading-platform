@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useRef, useState } from "react";
 import { getAdminApiToken } from "../../api/base";
 import { api } from "../../api/client";
-import type { LowBuyPriorityBoardResult, MarketBreadth, RuntimeStatus, SectorEtfT0Response, WatchlistSignal } from "../../types";
+import type { LowBuyPriorityBoardResult, MarketBreadth, PairedHedgeResearchResponse, RuntimeStatus, SectorEtfT0Response, WatchlistSignal } from "../../types";
 import { errorMessage } from "./workspaceFormatters";
 import type { StockCardView } from "./workspaceTypes";
 import { priorityToCard, watchSignalToCard } from "./workspaceViewModels";
@@ -19,6 +19,7 @@ export function useMonitorData({ withLoading, setError, setNotice }: UseMonitorD
   const [marketBreadth, setMarketBreadth] = useState<MarketBreadth | null>(null);
   const [watchlistSignals, setWatchlistSignals] = useState<WatchlistSignal[]>([]);
   const [sectorEtfT0, setSectorEtfT0] = useState<SectorEtfT0Response | null>(null);
+  const [pairedHedge, setPairedHedge] = useState<PairedHedgeResearchResponse | null>(null);
   const [runtime, setRuntime] = useState<RuntimeStatus | null>(null);
   const monitorRefreshRef = useRef(false);
 
@@ -41,9 +42,10 @@ export function useMonitorData({ withLoading, setError, setNotice }: UseMonitorD
       const requests = [
         api.getMonitorSnapshot(12),
         api.getMarketBreadth(),
+        api.getPairedHedgeResearch(4),
         shouldLoadRuntime ? api.getRuntimeStatus() : Promise.resolve(null),
       ] as const;
-      const [monitorResult, breadthResult, runtimeResult] = await Promise.allSettled(requests);
+      const [monitorResult, breadthResult, hedgeResult, runtimeResult] = await Promise.allSettled(requests);
       if (monitorResult.status === "fulfilled") {
         setPriorityBoard(monitorResult.value.priority_board);
         setWatchlistSignals(monitorResult.value.watchlist_signals);
@@ -51,6 +53,9 @@ export function useMonitorData({ withLoading, setError, setNotice }: UseMonitorD
       }
       if (breadthResult.status === "fulfilled") {
         setMarketBreadth(breadthResult.value);
+      }
+      if (hedgeResult.status === "fulfilled") {
+        setPairedHedge(hedgeResult.value);
       }
       if (runtimeResult.status === "fulfilled" && runtimeResult.value) {
         setRuntime(runtimeResult.value);
@@ -82,6 +87,7 @@ export function useMonitorData({ withLoading, setError, setNotice }: UseMonitorD
     setPriorityBoard(null);
     setMarketBreadth(null);
     setSectorEtfT0(null);
+    setPairedHedge(null);
     setWatchlistSignals([]);
   }, []);
 
@@ -90,6 +96,7 @@ export function useMonitorData({ withLoading, setError, setNotice }: UseMonitorD
     setPriorityBoard,
     marketBreadth,
     sectorEtfT0,
+    pairedHedge,
     watchlistSignals,
     setWatchlistSignals,
     runtime,

@@ -96,6 +96,10 @@ export interface BacktestRunSummary {
   benchmark_symbol?: string | null;
   risk_limits?: Partial<BacktestRiskLimits> | null;
   summary?: BacktestSummaryMetrics | null;
+  queue_depth?: number | null;
+  queue_position?: number | null;
+  running_count?: number | null;
+  estimated_wait_seconds?: number | null;
   attribution?: BacktestAttribution | null;
   result?: {
     attribution?: BacktestAttribution | null;

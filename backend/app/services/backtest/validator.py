@@ -142,6 +142,42 @@ class BacktestValidator:
             progress_callback=progress_callback,
         )
 
+    def regime_aware_walk_forward(
+        self,
+        base_config: BacktestConfig,
+        *,
+        param_grid: dict[str, list[Any]],
+        start_date: str,
+        end_date: str,
+        window_count: int = 4,
+        train_ratio: float = 0.75,
+        max_combinations: int = 500,
+        score_key: str = "sharpe",
+        oos_top_k: int = DEFAULT_OOS_TOP_K,
+        cancel_token: Any | None = None,
+        progress_callback: ProgressCallback | None = None,
+    ) -> ValidationReport:
+        """Walk-forward validation with market-state attribution.
+
+        The backtest engine already emits market_state_attribution in each
+        optimization candidate.  This entrypoint keeps the same execution path
+        but makes the regime-aware contract explicit for callers and reports.
+        """
+
+        return self.walk_forward(
+            base_config,
+            param_grid=param_grid,
+            start_date=start_date,
+            end_date=end_date,
+            window_count=window_count,
+            train_ratio=train_ratio,
+            max_combinations=max_combinations,
+            score_key=score_key,
+            oos_top_k=oos_top_k,
+            cancel_token=cancel_token,
+            progress_callback=progress_callback,
+        )
+
     def walk_forward_windows(
         self,
         base_config: BacktestConfig,

@@ -540,6 +540,13 @@ def test_strategy_capacity_outputs_capital_curve():
     assert response.items
     assert response.items[0].curve
     assert response.items[0].curve[0].capacity_status in {"可承载", "谨慎", "过载"}
+    assert response.assumptions["impact_model"] == "Square-root market impact + participation tier"
+    assert response.items[0].impact_model == "sqrt_market_impact"
+    assert response.items[0].curve[0].impact_model == "sqrt_market_impact"
+    assert response.items[0].curve[0].order_amount == 500000.0
+    assert response.items[0].curve[0].average_daily_amount > 0
+    assert response.items[0].curve[0].impact_pct == response.items[0].curve[0].impact_cost_pct
+    assert response.items[0].curve[0].impact_cost_pct >= 0
 
 
 def test_runtime_worker_executes_ml_incremental_train_task(tmp_path, monkeypatch):

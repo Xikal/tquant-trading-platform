@@ -10,6 +10,7 @@ from app.core.config import get_settings
 from app.models.entities import MLSignalModel
 from app.models.schema_defs.phase4 import MLSignalModelOut, MLSignalTrainRequest
 from app.services.ml_signal.features import estimator_probabilities as _estimator_probabilities
+from app.services.ml_signal.training_runtime import configured_cv_folds, effective_min_train_samples, model_training_params
 
 def fit_estimator(*, model_type: str, x_matrix: np.ndarray, labels: np.ndarray, validation_ratio: float):
     from sklearn.metrics import accuracy_score, roc_auc_score
@@ -28,7 +29,7 @@ def fit_estimator(*, model_type: str, x_matrix: np.ndarray, labels: np.ndarray, 
         estimator=estimator,
         x_matrix=x_matrix,
         labels=labels,
-        folds=int(get_settings().ml_signal_cv_folds),
+        folds=configured_cv_folds(),
     )
     estimator.fit(x_train, y_train)
     probabilities = _estimator_probabilities(estimator, x_valid)
@@ -50,12 +51,13 @@ def _make_estimator(model_type: str):
     if model_type == "xgboost":
         from xgboost import XGBClassifier
 
+        params = model_training_params("xgboost")
         return XGBClassifier(
-            n_estimators=120,
-            max_depth=3,
-            learning_rate=0.05,
-            subsample=0.85,
-            colsample_bytree=0.85,
+            n_estimators=_int_param(params, "n_estimators", 120),
+            max_depth=_int_param(params, "max_depth", 3),
+            learning_rate=_float_param(params, "learning_rate", 0.05),
+            subsample=_float_param(params, "subsample", 0.85),
+            colsample_bytree=_float_param(params, "colsample_bytree", 0.85),
             eval_metric="logloss",
             n_jobs=1,
             random_state=42,
@@ -63,12 +65,13 @@ def _make_estimator(model_type: str):
     if model_type == "lightgbm":
         from lightgbm import LGBMClassifier
 
+        params = model_training_params("lightgbm")
         return LGBMClassifier(
-            n_estimators=120,
-            max_depth=4,
-            learning_rate=0.05,
-            subsample=0.85,
-            colsample_bytree=0.85,
+            n_estimators=_int_param(params, "n_estimators", 120),
+            max_depth=_int_param(params, "max_depth", 4),
+            learning_rate=_float_param(params, "learning_rate", 0.05),
+            subsample=_float_param(params, "subsample", 0.85),
+            colsample_bytree=_float_param(params, "colsample_bytree", 0.85),
             random_state=42,
             verbosity=-1,
         )
@@ -82,6 +85,20 @@ def _make_estimator(model_type: str):
             ("model", LogisticRegression(max_iter=500, random_state=42)),
         ]
     )
+
+
+def _int_param(params: dict[str, Any], key: str, fallback: int) -> int:
+    try:
+        return int(params.get(key, fallback))
+    except (TypeError, ValueError):
+        return fallback
+
+
+def _float_param(params: dict[str, Any], key: str, fallback: float) -> float:
+    try:
+        return float(params.get(key, fallback))
+    except (TypeError, ValueError):
+        return fallback
 
 
 def _cross_validate_estimator(*, estimator: Any, x_matrix: np.ndarray, labels: np.ndarray, folds: int) -> dict[str, Any]:
@@ -127,7 +144,7 @@ def _cross_validate_estimator(*, estimator: Any, x_matrix: np.ndarray, labels: n
 def promotion_blocks(*, payload: MLSignalTrainRequest, metrics: dict[str, Any], sample_count: int) -> list[str]:
     settings = get_settings()
     blocks: list[str] = []
-    min_samples = max(int(settings.ml_signal_min_production_samples), int(payload.min_samples))
+    min_samples = effective_min_train_samples(payload.min_samples)
     min_accuracy = max(float(settings.ml_signal_min_production_accuracy), float(payload.min_validation_accuracy))
     min_auc = float(settings.ml_signal_min_production_auc)
     min_cv_accuracy = float(settings.ml_signal_min_cv_accuracy)
@@ -183,7 +200,7 @@ def production_model_warning(status: str, metrics: dict[str, Any]) -> str:
     cv_auc = metrics.get("cv_auc_mean")
     cv_accuracy_std = metrics.get("cv_accuracy_std")
     cv_auc_std = metrics.get("cv_auc_std")
-    if sample_count < int(settings.ml_signal_min_production_samples):
+    if sample_count < effective_min_train_samples(0):
         return "production 模型样本量低于当前安全阈值，本次按研究信号处理。"
     if validation_accuracy < float(settings.ml_signal_min_production_accuracy):
         return "production 模型准确率低于当前安全阈值，本次按研究信号处理。"

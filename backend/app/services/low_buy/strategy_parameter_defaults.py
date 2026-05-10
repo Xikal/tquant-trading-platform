@@ -25,6 +25,8 @@ from app.services.low_buy.strategy_parameter_defaults_parts.position_t import (
 )
 from app.services.low_buy.strategy_parameter_defaults_parts.runtime import (
     BACKTEST_EXECUTION_DEFAULTS,
+    CAPACITY_ANALYSIS_DEFAULTS,
+    ML_SIGNAL_TRAINING_DEFAULTS,
     RISK_VOLATILITY_SIZING_DEFAULTS,
 )
 
@@ -87,7 +89,9 @@ def quant_parameter_schema() -> dict[str, Any]:
         "ml.production_enabled": _field_schema(False, "ml.production_enabled"),
         "ml.min_oos_days": _field_schema(60, "ml.min_oos_days"),
         "ml.min_samples": _field_schema(1000, "ml.min_samples"),
+        "ml.training": _nested_schema(ML_SIGNAL_TRAINING_DEFAULTS, "ml.training"),
         "backtest.execution": _nested_schema(BACKTEST_EXECUTION_DEFAULTS, "backtest.execution"),
+        "capacity": _nested_schema(CAPACITY_ANALYSIS_DEFAULTS, "capacity"),
     }
 
 

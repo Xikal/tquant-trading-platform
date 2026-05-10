@@ -17,12 +17,24 @@ let authAccessToken = hydratedAuth.accessToken
 let authPersistenceMode: AuthPersistenceMode = hydratedAuth.mode
 const MAX_IDEMPOTENT_RETRIES = 2
 const OFFLINE_CACHE_PREFIX = "weis_quant:api:"
-const OFFLINE_CACHE_TTL_MS = 6 * 60 * 60 * 1000
+const OFFLINE_CACHE_TTL_MS = 30 * 60 * 1000
 const OFFLINE_CACHEABLE_PATHS = [
   "/agent/reports/daily",
   "/market/breadth",
   "/screeners/low-buy"
 ]
+const OFFLINE_CACHE_SENSITIVE_KEYS = new Set([
+  "token",
+  "apikey",
+  "api_key",
+  "password",
+  "passwd",
+  "secret",
+  "database_url",
+  "authorization",
+  "cookie",
+  "key"
+])
 
 export async function request<T>(path: string, init?: RequestInit): Promise<T> {
   if (API_BASE === "__NATIVE_API_BASE_REQUIRED__") {
@@ -208,7 +220,11 @@ export function setAdminApiToken(token: string) {
   if (typeof window === "undefined") {
     return
   }
-  adminApiToken = normalizeAdminApiToken(token)
+  const nextToken = normalizeAdminApiToken(token)
+  if (nextToken !== adminApiToken) {
+    clearOfflineCache()
+  }
+  adminApiToken = nextToken
 }
 
 export function getAuthAccessToken(): string {
@@ -220,6 +236,9 @@ export function shouldAttemptAuthRefresh(): boolean {
 }
 
 export function setAuthTokens(accessToken: string, mode: AuthPersistenceMode = authPersistenceMode) {
+  if (accessToken !== authAccessToken || mode !== authPersistenceMode) {
+    clearOfflineCache()
+  }
   authAccessToken = accessToken
   authPersistenceMode = mode
   persistAuthAccessToken(accessToken, mode)
@@ -287,12 +306,13 @@ function writeOfflineCache(path: string, payload: unknown) {
   if (typeof window === "undefined" || !shouldPersistOffline(path)) {
     return
   }
+  const sanitizedPayload = sanitizeOfflinePayload(payload)
   try {
     window.localStorage.setItem(
       offlineCacheKey(path),
       JSON.stringify({
         expiresAt: Date.now() + OFFLINE_CACHE_TTL_MS,
-        payload
+        payload: sanitizedPayload
       })
     )
   } catch {
@@ -329,7 +349,7 @@ function offlineAuthScope(): string {
   return `${hash >>> 0}`
 }
 
-function clearOfflineCache() {
+export function clearOfflineCache() {
   if (typeof window === "undefined") {
     return
   }
@@ -338,6 +358,41 @@ function clearOfflineCache() {
       window.localStorage.removeItem(key)
     }
   }
+}
+
+function sanitizeOfflinePayload(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    return value.map((item) => sanitizeOfflinePayload(item))
+  }
+  if (!value || typeof value !== "object") {
+    return value
+  }
+  const next: Record<string, unknown> = {}
+  for (const [key, item] of Object.entries(value as Record<string, unknown>)) {
+    if (isSensitiveOfflineCacheKey(key)) {
+      continue
+    }
+    next[key] = sanitizeOfflinePayload(item)
+  }
+  return next
+}
+
+function isSensitiveOfflineCacheKey(key: string): boolean {
+  const normalized = key.trim().toLowerCase()
+  const compact = normalized.replace(/[^a-z0-9]/g, "")
+  if (OFFLINE_CACHE_SENSITIVE_KEYS.has(normalized) || OFFLINE_CACHE_SENSITIVE_KEYS.has(compact)) {
+    return true
+  }
+  return (
+    compact.includes("token") ||
+    compact.includes("apikey") ||
+    compact.includes("password") ||
+    compact.includes("passwd") ||
+    compact.includes("secret") ||
+    compact.includes("databaseurl") ||
+    compact.includes("authorization") ||
+    compact.includes("cookie")
+  )
 }
 
 function hydrateAuthAccessToken(): { accessToken: string; mode: AuthPersistenceMode } {

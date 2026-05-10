@@ -85,6 +85,9 @@ class CandidateMetrics:
     latest_gap_distance_pct: float = 0.0
     retracement_atr: float = 0.0
     retracement_atr_trend: float = 0.0
+    atr14: float = 0.0
+    atr_window: int = 14
+    atr_source: str = "daily_ohlcv_true_range_14"
     drawdown_per_day: float = 0.0
     consecutive_lower_lows: int = 0
     support_touch_count: int = 0

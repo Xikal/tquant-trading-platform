@@ -301,7 +301,7 @@ class LowBuyCandidateMixin:
             quote_timestamp=metrics.latest_trade_date,
         )
         quality_fields = data_quality_payload(combine_data_quality(quote_quality, metrics_quality))
-        atr_pct = (metrics.retracement_atr / max(metrics.latest_close, 0.01) * 100) if metrics.latest_close > 0 else 0.0
+        atr_pct = (metrics.atr14 / max(metrics.latest_close, 0.01) * 100) if metrics.latest_close > 0 else 0.0
         volatility_cap = build_volatility_position_cap(atr_pct)
         candidate = LowBuyCandidateOut(
             strategy_key=strategy,
@@ -355,6 +355,8 @@ class LowBuyCandidateMixin:
             industry_tier_text=context_adjustment.industry_tier_text,
             industry_position_multiplier=context_adjustment.industry_position_multiplier,
             atr_pct=volatility_cap.atr_pct,
+            atr_window=metrics.atr_window,
+            atr_source=metrics.atr_source,
             volatility_position_pct=volatility_cap.cap_pct,
             final_position_cap_pct=volatility_cap.cap_pct,
             position_cap_reason=volatility_cap.reason,

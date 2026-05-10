@@ -1,5 +1,5 @@
 import { memo, useMemo } from "react";
-import type { LowBuyPriorityBoardResult, MarketBreadth, RuntimeStatus, SectorEtfT0Response } from "../../types";
+import type { LowBuyPriorityBoardResult, MarketBreadth, PairedHedgeResearchResponse, RuntimeStatus, SectorEtfT0Response } from "../../types";
 import { NumberField, SearchField, TextField } from "../../components/shared/FormFields";
 import { EmptyState, FamilyStrip, InfoPill, MetricGrid, PanelTitle, StockCard } from "./WorkspaceComponents";
 import { average, formatPct, formatPrice, riskLevelText, shortTime } from "./workspaceFormatters";
@@ -9,6 +9,7 @@ export interface MonitorPageProps {
   priorityBoard: LowBuyPriorityBoardResult | null;
   marketBreadth: MarketBreadth | null;
   sectorEtfT0: SectorEtfT0Response | null;
+  pairedHedge: PairedHedgeResearchResponse | null;
   priorityCards: StockCardView[];
   watchCards: StockCardView[];
   runtime: RuntimeStatus | null;
@@ -32,6 +33,7 @@ export const MonitorPage = memo(function MonitorPage({
   priorityBoard,
   marketBreadth,
   sectorEtfT0,
+  pairedHedge,
   priorityCards,
   watchCards,
   runtime,
@@ -167,6 +169,7 @@ export const MonitorPage = memo(function MonitorPage({
 
       <div className="panel monitor-etf-t0">
         <PanelTitle title="行业 ETF 做T替代" actions={<span className="muted">利用 ETF T+0 特性，降低个股隔夜风险</span>} />
+        {pairedHedge?.disclaimer ? <div className="board-warning danger">{pairedHedge.disclaimer}</div> : null}
         <div className="stock-list compact">
           {(sectorEtfT0?.opportunities ?? []).length ? sectorEtfT0!.opportunities.slice(0, 6).map((item) => (
             <article className="stock-card compact-card" key={`${item.etf_symbol}-${item.source_signal_symbol}`}>

@@ -127,6 +127,7 @@ class PairedHedgeIdeaOut(BaseModel):
 class PairedHedgeResearchResponse(BaseModel):
     updated_at: str
     mode: str = "research_only"
+    disclaimer: str = "配对/对冲研究仅用于复盘和假设分析，不自动下单，不构成真实对冲或收益承诺。"
     total: int = 0
     ideas: list[PairedHedgeIdeaOut] = Field(default_factory=list)
     notes: list[str] = Field(default_factory=list)

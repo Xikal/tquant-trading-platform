@@ -17,6 +17,7 @@ import {
   SectorFilterCard,
   StrategyGovernanceCard,
 } from "./SettingsPagePanels";
+import { QuantParameterMlCard } from "./QuantParameterMlCard";
 import type { SettingsDraft } from "./workspaceTypes";
 
 export function SettingsPage({
@@ -248,6 +249,7 @@ export function SettingsPage({
             <p className="hint">填写管理令牌后点击刷新配置，即可加载因子权重。未加载时不会影响策略运行。</p>
           )}
         </SettingCard>
+        <QuantParameterMlCard adminTokenError={adminTokenError} />
         <SectorFilterCard
           sectorExclusions={sectorExclusions}
           sectorDraft={sectorDraft}

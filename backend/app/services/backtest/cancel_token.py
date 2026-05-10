@@ -46,6 +46,7 @@ class DatabaseStatusCancelToken(EventCancelToken):
         session_factory: Callable[[], Session],
         cancelled_status: str = "cancelled",
         log_label: str = "backtest task",
+        db_poll_interval_seconds: float = 0.5,
     ) -> None:
         super().__init__()
         self.model = model
@@ -53,17 +54,27 @@ class DatabaseStatusCancelToken(EventCancelToken):
         self.session_factory = session_factory
         self.cancelled_status = cancelled_status
         self.log_label = log_label
+        self.db_poll_interval_seconds = max(float(db_poll_interval_seconds or 0.0), 0.0)
+        self._last_db_poll_at = 0.0
+        self._last_db_cancelled = False
 
     def is_cancelled(self) -> bool:
         if super().is_cancelled():
             return True
+        now = time.monotonic()
+        if self._last_db_cancelled:
+            return True
+        if self.db_poll_interval_seconds > 0 and now - self._last_db_poll_at < self.db_poll_interval_seconds:
+            return False
+        self._last_db_poll_at = now
         try:
             with self.session_factory() as db:
                 status = db.execute(select(self.model.status).where(self.model.id == self.row_id)).scalar_one_or_none()
         except Exception:
             logger.exception("failed to read %s cancellation status", self.log_label)
             return False
-        return status == self.cancelled_status
+        self._last_db_cancelled = status == self.cancelled_status
+        return self._last_db_cancelled
 
 
 class TimedDatabaseStatusCancelToken(DatabaseStatusCancelToken):

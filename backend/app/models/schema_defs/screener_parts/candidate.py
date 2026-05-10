@@ -64,6 +64,8 @@ class LowBuyCandidateOut(BaseModel):
     industry_position_multiplier: float = 1.0
     position_breakdown_text: str = ""
     atr_pct: float = 0.0
+    atr_window: int = 14
+    atr_source: str = "daily_ohlcv_true_range_14"
     volatility_position_pct: float = 0.0
     final_position_cap_pct: float = 0.0
     position_cap_reason: str = ""
@@ -122,4 +124,6 @@ class LowBuyQuoteRefreshOut(BaseModel):
     invalid_condition: str = ""
     risk_tier: Literal["block", "degrade", "note"] = "note"
     next_watch_price: Optional[float] = None
-
+    atr_pct: float = 0.0
+    atr_window: int = 14
+    atr_source: str = "daily_ohlcv_true_range_14"
