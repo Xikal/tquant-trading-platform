@@ -34,6 +34,7 @@ interface WorkspacePageContentProps {
   strategyMeta: StrategyMeta[];
   onSelectStock: (stock: StockCardView | null) => void;
   onPreparePaperOrder: (payload: { symbol: string; name?: string; price?: number | null }) => void;
+  onUserUpdate: (user: AuthUser) => void;
 }
 
 export function WorkspacePageContent({
@@ -59,6 +60,7 @@ export function WorkspacePageContent({
   strategyMeta,
   onSelectStock,
   onPreparePaperOrder,
+  onUserUpdate,
 }: WorkspacePageContentProps) {
   const sortedStrategyMeta = strategyMeta
     .slice()
@@ -152,6 +154,8 @@ export function WorkspacePageContent({
             onRefresh={() => void settingsData.loadSettings()}
             onUpdateStrategyGovernance={(strategyKey: string, status: "active" | "watch" | "paused") => void settingsData.updateStrategyGovernance(strategyKey, status)}
             onSaveSectorExclusions={(excludedSectors: string[]) => void settingsData.saveSectorExclusions(excludedSectors)}
+            currentUser={currentUser}
+            onUserUpdate={onUserUpdate}
           />
         )}
       </Suspense>

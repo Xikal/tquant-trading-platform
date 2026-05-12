@@ -3,6 +3,7 @@ from __future__ import annotations
 import time
 
 from sqlalchemy import select
+from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session
 
 from app.models.entities import StrategyTierOverride
@@ -31,12 +32,17 @@ class StrategyTierResolver:
         return tier
 
     def _load_override(self, strategy_key: str) -> StrategyTier | None:
-        row = self.db.execute(
-            select(StrategyTierOverride).where(
-                StrategyTierOverride.strategy_key == strategy_key,
-                StrategyTierOverride.reverted_at.is_(None),
-            )
-        ).scalar_one_or_none()
+        try:
+            row = self.db.execute(
+                select(StrategyTierOverride).where(
+                    StrategyTierOverride.strategy_key == strategy_key,
+                    StrategyTierOverride.reverted_at.is_(None),
+                )
+            ).scalar_one_or_none()
+        except OperationalError as exc:
+            if "no such table" in str(exc).lower():
+                return None
+            raise
         if row is None:
             return None
         try:

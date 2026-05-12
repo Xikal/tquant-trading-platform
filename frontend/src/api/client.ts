@@ -47,7 +47,11 @@ import type {
   WatchlistItem,
   WatchlistSignal
 } from "../types";
-import { invalidateCache, request, requestCached } from "./base";
+import { invalidateCache } from "./base";
+import { apiClient } from "./httpClient";
+
+const request = apiClient.request;
+const requestCached = apiClient.requestCached;
 
 export const api = {
   listInstruments: (keyword = "", kind = "all") =>

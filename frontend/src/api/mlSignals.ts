@@ -70,6 +70,11 @@ export interface StrategyCapacityPoint {
   participation_pct: number;
   expected_edge_pct: number;
   kyle_impact_pct: number;
+  temporary_impact_pct?: number;
+  permanent_impact_pct?: number;
+  almgren_chriss_cost_pct?: number;
+  execution_slices?: number;
+  slice_participation_pct?: number;
   impact_cost_pct: number;
   slippage_cost_pct: number;
   net_edge_pct: number;

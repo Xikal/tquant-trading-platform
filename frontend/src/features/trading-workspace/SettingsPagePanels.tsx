@@ -6,6 +6,7 @@ import type {
   UserSectorExclusionsResponse,
 } from "../../types";
 import type { FeatureFlagAuditItem, FeatureFlagItem } from "../../api/featureFlags";
+import type { OperationAuditItem } from "../../api/operationAudit";
 import { TextField } from "../../components/shared/FormFields";
 import { InfoPill, PanelTitle, SettingCard } from "./WorkspaceComponents";
 import { readySummary } from "./workspaceFormatters";
@@ -203,6 +204,35 @@ export function RuntimeDiagnosticsCard({
           ))}
         </div>
       ) : null}
+    </SettingCard>
+  );
+}
+
+export function OperationAuditCard({
+  items,
+  error,
+  loading,
+  onRefresh,
+}: {
+  items: OperationAuditItem[];
+  error: string;
+  loading: boolean;
+  onRefresh: () => void;
+}) {
+  return (
+    <SettingCard title="操作审计" button="刷新审计" onSave={onRefresh} loading={loading}>
+      {error ? <p className="form-error">{error}</p> : null}
+      <div className="settings-mini-list">
+        {items.length ? items.slice(0, 8).map((item) => (
+          <div key={item.id} className="settings-mini-row">
+            <span>
+              {item.operation}
+              <small className="hint">{item.resource_type || "--"} / {item.created_at}</small>
+            </span>
+            <strong className={item.status === "ok" ? "task-ok" : "task-error"}>{item.status}</strong>
+          </div>
+        )) : <p className="hint">暂无审计记录，只有管理员可查看。</p>}
+      </div>
     </SettingCard>
   );
 }

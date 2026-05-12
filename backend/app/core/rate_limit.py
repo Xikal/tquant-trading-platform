@@ -10,6 +10,7 @@ from threading import Lock
 from fastapi import HTTPException, Request, status
 
 from app.core.config import get_settings
+from app.core.redis_rate_limit import RedisSlidingWindowRateLimiter
 
 
 class InMemorySlidingWindowRateLimiter:
@@ -155,15 +156,29 @@ def _build_global_limiter():
     }
     if backend == "sqlite":
         return SQLiteSlidingWindowRateLimiter(**kwargs)
+    if backend == "redis" and _settings.redis_url:
+        return RedisSlidingWindowRateLimiter(redis_url=_settings.redis_url, **kwargs)
     return InMemorySlidingWindowRateLimiter(**kwargs)
+
+
+def _build_sensitive_limiter(*, namespace: str, max_calls: int, window_seconds: int):
+    if _settings.redis_url:
+        return RedisSlidingWindowRateLimiter(
+            redis_url=_settings.redis_url,
+            namespace=namespace,
+            max_calls=max_calls,
+            window_seconds=window_seconds,
+        )
+    return SQLiteSlidingWindowRateLimiter(namespace=namespace, max_calls=max_calls, window_seconds=window_seconds)
 
 
 _settings = get_settings()
 _global_limiter = _build_global_limiter()
-_ai_decision_limiter = SQLiteSlidingWindowRateLimiter(namespace="ai_decision", max_calls=30, window_seconds=60)
-_analysis_batch_limiter = SQLiteSlidingWindowRateLimiter(namespace="analysis_batch", max_calls=10, window_seconds=60)
-_auth_login_limiter = SQLiteSlidingWindowRateLimiter(namespace="auth_login", max_calls=30, window_seconds=60)
-_auth_register_limiter = SQLiteSlidingWindowRateLimiter(namespace="auth_register", max_calls=30, window_seconds=3600)
+_ai_decision_limiter = _build_sensitive_limiter(namespace="ai_decision", max_calls=30, window_seconds=60)
+_analysis_batch_limiter = _build_sensitive_limiter(namespace="analysis_batch", max_calls=10, window_seconds=60)
+_auth_login_ip_limiter = _build_sensitive_limiter(namespace="auth_login_ip", max_calls=20, window_seconds=300)
+_auth_login_account_limiter = _build_sensitive_limiter(namespace="auth_login_account", max_calls=5, window_seconds=300)
+_auth_register_limiter = _build_sensitive_limiter(namespace="auth_register", max_calls=30, window_seconds=3600)
 
 
 def is_global_rate_allowed(request: Request) -> bool:
@@ -194,7 +209,9 @@ def require_analysis_batch_rate_limit(request: Request) -> None:
 
 
 def require_auth_login_rate_limit(request: Request, username: str = "") -> None:
-    if _auth_login_limiter.allow(_auth_login_key(request, username)):
+    client_allowed = _auth_login_ip_limiter.allow(_client_key(request))
+    account_allowed = _auth_login_account_limiter.allow(_auth_login_key(request, username))
+    if client_allowed and account_allowed:
         return
     raise HTTPException(
         status_code=status.HTTP_429_TOO_MANY_REQUESTS,
@@ -264,7 +281,8 @@ def clear_rate_limit_events() -> None:
         _global_limiter,
         _ai_decision_limiter,
         _analysis_batch_limiter,
-        _auth_login_limiter,
+        _auth_login_ip_limiter,
+        _auth_login_account_limiter,
         _auth_register_limiter,
     ):
         limiter.clear()

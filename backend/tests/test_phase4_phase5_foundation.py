@@ -445,7 +445,7 @@ def test_ml_signal_sequence_features_include_zscore_and_sector_strength():
     db.add_all(
         [
             Instrument(symbol="600000", name="浦发银行", instrument_type="stock", sector_name="银行"),
-            Instrument(symbol="600001", name="同板块A", instrument_type="stock", sector_name="银行"),
+            Instrument(symbol="512800", name="银行ETF", instrument_type="fund", sector_name="银行"),
         ]
     )
     for index in range(1, 16):
@@ -462,7 +462,7 @@ def test_ml_signal_sequence_features_include_zscore_and_sector_strength():
         )
         db.add(
             DailyBarSnapshot(
-                symbol="600001",
+                symbol="512800",
                 trade_date=trade_date,
                 close_price=10 + index * 0.05,
                 volume=9000 + index * 100,
@@ -540,13 +540,15 @@ def test_strategy_capacity_outputs_capital_curve():
     assert response.items
     assert response.items[0].curve
     assert response.items[0].curve[0].capacity_status in {"可承载", "谨慎", "过载"}
-    assert response.assumptions["impact_model"] == "Square-root market impact + participation tier"
-    assert response.items[0].impact_model == "sqrt_market_impact"
-    assert response.items[0].curve[0].impact_model == "sqrt_market_impact"
+    assert response.assumptions["impact_model"] == "Square-root market impact + simplified Almgren-Chriss + participation tier"
+    assert response.items[0].impact_model == "sqrt_plus_almgren_chriss"
+    assert response.items[0].curve[0].impact_model == "sqrt_plus_almgren_chriss"
     assert response.items[0].curve[0].order_amount == 500000.0
     assert response.items[0].curve[0].average_daily_amount > 0
     assert response.items[0].curve[0].impact_pct == response.items[0].curve[0].impact_cost_pct
     assert response.items[0].curve[0].impact_cost_pct >= 0
+    assert response.items[0].curve[0].almgren_chriss_cost_pct >= 0
+    assert response.items[0].curve[0].execution_slices >= 1
 
 
 def test_runtime_worker_executes_ml_incremental_train_task(tmp_path, monkeypatch):

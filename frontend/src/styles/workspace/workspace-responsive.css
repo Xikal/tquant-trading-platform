@@ -107,7 +107,7 @@
 
   .paper-positions .stock-list {
     grid-template-columns: 1fr;
-    max-height: 430px;
+    max-height: none;
   }
 
   .paper-performance-table {

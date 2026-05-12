@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends
 
 from app.core.auth import get_current_user
 from app.core.timezone import beijing_now_string
+from app.core.role_permissions import require_research_access
 from app.models.schema_defs.market import (
     IntradayAnomalyResponse,
     MarketBreadthResponse,
@@ -81,7 +82,12 @@ def sector_etf_t0_validation(
 
 
 @router.get("/paired-hedge-research", response_model=PairedHedgeResearchResponse)
-def paired_hedge_research(limit: int = 8, db: Session = Depends(get_db)) -> PairedHedgeResearchResponse:
+def paired_hedge_research(
+    limit: int = 8,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> PairedHedgeResearchResponse:
+    require_research_access(current_user)
     return paired_hedge_research_service.build(db, limit=max(1, min(limit, 20)))
 
 

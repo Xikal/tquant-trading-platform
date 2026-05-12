@@ -68,12 +68,6 @@ class LowBuyTradeDateMixin:
         ):
             return latest_artifact_trade_date
 
-        probe = self._load_daily_history("000001", trade_dates[-1], history_window_days=20)
-        if probe is not None and not probe.empty:
-            probe_trade_date = str(probe["date"].iloc[-1])
-            if self._has_complete_local_daily_bars(probe_trade_date):
-                return probe_trade_date
-
         try:
             with _session_factory()() as db:
                 repo = _daily_history_repository()(db)
@@ -82,6 +76,8 @@ class LowBuyTradeDateMixin:
                         return candidate_date
         except Exception:
             pass
+        if latest_artifact_trade_date:
+            return latest_artifact_trade_date
         return latest_completed_fallback
 
     @staticmethod

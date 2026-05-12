@@ -149,6 +149,36 @@
   padding: 12px 14px;
 }
 
+.security-card-grid {
+  display: grid;
+  gap: 10px;
+}
+
+.security-secret-box {
+  background: #f8fafc;
+  border: 1px solid #dbe3ef;
+  border-radius: 12px;
+  display: grid;
+  gap: 6px;
+  padding: 10px 12px;
+}
+
+.security-secret-box code {
+  color: #0f172a;
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+
+.success-text {
+  color: #15803d;
+}
+
+.field-error {
+  color: #b91c1c;
+  font-size: 12px;
+  margin: 0;
+}
+
 .tq-feedback--empty,
 .tq-feedback--loading {
   background: #f8fafc;

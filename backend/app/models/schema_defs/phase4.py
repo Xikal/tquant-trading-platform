@@ -52,6 +52,7 @@ class QuantParameterSetCreate(BaseModel):
     version: str = Field(min_length=1, max_length=80)
     name: str = Field(default="", max_length=120)
     scope: str = Field(default="low_buy", max_length=40)
+    market_state_scope: str = Field(default="", max_length=40)
     params: dict[str, Any] = Field(default_factory=dict)
     description: str = ""
     activate: bool = True
@@ -62,6 +63,7 @@ class QuantParameterSetOut(BaseModel):
     version: str
     name: str = ""
     scope: str = "low_buy"
+    market_state_scope: str = ""
     status: str = "active"
     params: dict[str, Any] = Field(default_factory=dict)
     description: str = ""
@@ -87,6 +89,7 @@ class QuantParameterExportResponse(BaseModel):
 class QuantParameterRollbackRequest(BaseModel):
     version: str = Field(min_length=1, max_length=80)
     scope: str = Field(default="global", max_length=40)
+    market_state_scope: str = Field(default="", max_length=40)
 
 
 class QuantParameterAuditOut(BaseModel):
@@ -279,6 +282,11 @@ class StrategyCapacityPoint(BaseModel):
     average_daily_amount: float = 0.0
     volatility_pct: float = 0.0
     kyle_impact_pct: float = 0.0
+    temporary_impact_pct: float = 0.0
+    permanent_impact_pct: float = 0.0
+    almgren_chriss_cost_pct: float = 0.0
+    execution_slices: int = 1
+    slice_participation_pct: float = 0.0
     impact_pct: float = 0.0
     impact_cost_pct: float = 0.0
     slippage_cost_pct: float = 0.0

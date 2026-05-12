@@ -68,6 +68,7 @@ from app.models.paper_entities import (
     PaperTrade,
     PaperTradeTag,
 )
+from app.models.operation_audit_entities import OperationAuditLog
 from app.models.phase4_entities import (
     AgentResultQuality,
     MLSignalModel,
@@ -144,4 +145,5 @@ __all__ = [
     "MLSignalSample",
     "MLSignalModel",
     "PaperBacktestComparison",
+    "OperationAuditLog",
 ]

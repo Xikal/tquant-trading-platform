@@ -13,6 +13,7 @@ from app.services.shared.feature_flags import (
     list_feature_flags,
     update_feature_flag,
 )
+from app.services.operation_audit import record_operation_audit
 
 
 router = APIRouter(prefix="/settings/feature-flags", dependencies=[Depends(get_current_user)])
@@ -63,6 +64,16 @@ def put_feature_flag(
             current_user=current_user,
             operator_ip=_client_ip(request),
         )
+        record_operation_audit(
+            db,
+            operation="feature_flag_update",
+            user=current_user,
+            resource_type="feature_flag",
+            resource_id=key,
+            operator_ip=_client_ip(request),
+            detail={"enabled": payload.enabled},
+        )
+        db.commit()
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     item = flag_to_dict(flag)

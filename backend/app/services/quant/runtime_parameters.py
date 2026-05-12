@@ -9,33 +9,35 @@ from app.core.database import SessionLocal
 from app.services.quant.parameter_version_service import QuantParameterVersionService, default_quant_parameters
 
 _CACHE_TTL_SECONDS = 30.0
-_CACHE_EXPIRES_AT = 0.0
-_CACHE_PARAMS: dict[str, Any] | None = None
+_CACHE_EXPIRES_AT: dict[str, float] = {}
+_CACHE_PARAMS: dict[str, dict[str, Any]] = {}
 _CACHE_LOCK = threading.RLock()
 
 
-def current_quant_parameters() -> dict[str, Any]:
-    global _CACHE_EXPIRES_AT, _CACHE_PARAMS
+def current_quant_parameters(market_state_scope: str = "") -> dict[str, Any]:
     now = time.monotonic()
+    cache_key = market_state_scope.strip() or "__default__"
     with _CACHE_LOCK:
-        if _CACHE_PARAMS is not None and now < _CACHE_EXPIRES_AT:
-            return deepcopy(_CACHE_PARAMS)
+        if cache_key in _CACHE_PARAMS and now < _CACHE_EXPIRES_AT.get(cache_key, 0.0):
+            return deepcopy(_CACHE_PARAMS[cache_key])
         try:
             with SessionLocal() as db:
-                current = QuantParameterVersionService(db).current(scope="low_buy")
+                current = QuantParameterVersionService(db).current(
+                    scope="low_buy",
+                    market_state_scope=market_state_scope,
+                )
                 params = _deep_merge(default_quant_parameters(), current.params)
         except Exception:
             params = default_quant_parameters()
-        _CACHE_PARAMS = params
-        _CACHE_EXPIRES_AT = now + _CACHE_TTL_SECONDS
+        _CACHE_PARAMS[cache_key] = params
+        _CACHE_EXPIRES_AT[cache_key] = now + _CACHE_TTL_SECONDS
         return deepcopy(params)
 
 
 def clear_quant_parameter_cache() -> None:
-    global _CACHE_EXPIRES_AT, _CACHE_PARAMS
     with _CACHE_LOCK:
-        _CACHE_EXPIRES_AT = 0.0
-        _CACHE_PARAMS = None
+        _CACHE_EXPIRES_AT.clear()
+        _CACHE_PARAMS.clear()
 
 
 def get_low_buy_strategy_prefilter(strategy: str, fallback: dict[str, Any]) -> dict[str, Any]:
@@ -159,6 +161,11 @@ def get_capacity_analysis() -> dict[str, Any]:
 
 def get_risk_volatility_sizing() -> dict[str, Any]:
     values = current_quant_parameters().get("risk", {}).get("volatility_sizing", {})
+    return deepcopy(values) if isinstance(values, dict) else {}
+
+
+def get_paper_dynamic_exit() -> dict[str, Any]:
+    values = current_quant_parameters().get("paper", {}).get("dynamic_exit", {})
     return deepcopy(values) if isinstance(values, dict) else {}
 
 

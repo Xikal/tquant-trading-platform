@@ -23,6 +23,7 @@ from app.services.low_buy.strategy_parameter_defaults import (
     LOW_BUY_STRATEGY_PREFILTER_DEFAULTS,
     LOW_BUY_THRESHOLD_DEFAULTS,
     RISK_VOLATILITY_SIZING_DEFAULTS,
+    PAPER_DYNAMIC_EXIT_DEFAULTS,
     MARKET_DISTRIBUTION_SIGNAL_DEFAULTS,
     MARKET_INTRADAY_ANOMALY_DEFAULTS,
     MARKET_REGIME_SCORING_DEFAULTS,
@@ -52,6 +53,11 @@ DEFAULT_QUANT_PARAMETERS: dict[str, Any] = {
         "default_take_profit_pct": 4.5,
         "volatility_sizing": {
             **RISK_VOLATILITY_SIZING_DEFAULTS,
+        },
+    },
+    "paper": {
+        "dynamic_exit": {
+            **PAPER_DYNAMIC_EXIT_DEFAULTS,
         },
     },
     "low_buy": {
@@ -196,12 +202,13 @@ class QuantParameterVersionService:
         self.db.refresh(row)
         return row
 
-    def current(self, scope: str = "global") -> QuantParameterSetOut:
+    def current(self, scope: str = "global", market_state_scope: str = "") -> QuantParameterSetOut:
+        effective_scope = _scope_with_market_state(scope, market_state_scope)
         row = self.db.execute(
             select(QuantParameterSet)
             .where(QuantParameterSet.status == "active")
-            .where(QuantParameterSet.scope.in_(_scope_values(scope)))
-            .order_by(_scope_priority(scope), QuantParameterSet.id.desc())
+            .where(QuantParameterSet.scope.in_(_scope_values(effective_scope)))
+            .order_by(_scope_priority(effective_scope), QuantParameterSet.id.desc())
             .limit(1)
         ).scalar_one_or_none()
         row = row or self.ensure_default()
@@ -217,17 +224,18 @@ class QuantParameterVersionService:
 
     def create(self, payload: QuantParameterSetCreate, *, created_by: str = "admin") -> QuantParameterSetOut:
         params = _validate_parameter_payload(payload.params)
-        before = self.current(scope=payload.scope).params if payload.activate else {}
+        effective_scope = _scope_with_market_state(payload.scope, payload.market_state_scope)
+        before = self.current(scope=payload.scope, market_state_scope=payload.market_state_scope).params if payload.activate else {}
         if payload.activate:
             self.db.execute(
                 QuantParameterSet.__table__.update()
-                .where(QuantParameterSet.scope == payload.scope)
+                .where(QuantParameterSet.scope == effective_scope)
                 .values(status="archived")
             )
         row = QuantParameterSet(
             version=payload.version,
             name=payload.name or payload.version,
-            scope=payload.scope,
+            scope=effective_scope,
             status="active" if payload.activate else "draft",
             params_json=_json_dumps(params),
             description=payload.description,
@@ -249,8 +257,8 @@ class QuantParameterVersionService:
         self.db.refresh(row)
         return _out(row)
 
-    def export_current(self, scope: str = "global") -> QuantParameterExportResponse:
-        current = self.current(scope=scope)
+    def export_current(self, scope: str = "global", market_state_scope: str = "") -> QuantParameterExportResponse:
+        current = self.current(scope=scope, market_state_scope=market_state_scope)
         return QuantParameterExportResponse(
             current_version=current.version,
             exported_at=datetime.utcnow(),
@@ -262,11 +270,12 @@ class QuantParameterVersionService:
         return quant_parameter_schema()
 
     def rollback(self, payload: QuantParameterRollbackRequest, *, operator: str = "admin") -> QuantParameterSetOut:
+        effective_scope = _scope_with_market_state(payload.scope, getattr(payload, "market_state_scope", ""))
         target = self.db.execute(
             select(QuantParameterSet)
             .where(QuantParameterSet.version == payload.version)
-            .where(QuantParameterSet.scope.in_(_scope_values(payload.scope)))
-            .order_by(_scope_priority(payload.scope), QuantParameterSet.id.desc())
+            .where(QuantParameterSet.scope.in_(_scope_values(effective_scope)))
+            .order_by(_scope_priority(effective_scope), QuantParameterSet.id.desc())
             .limit(1)
         ).scalar_one_or_none()
         if target is None:
@@ -323,11 +332,13 @@ class QuantParameterVersionService:
 
 
 def _out(row: QuantParameterSet) -> QuantParameterSetOut:
+    scope, market_state_scope = _split_market_state_scope(row.scope)
     return QuantParameterSetOut(
         id=row.id,
         version=row.version,
         name=row.name,
-        scope=row.scope,
+        scope=scope,
+        market_state_scope=market_state_scope,
         status=row.status,
         params=_deep_merge(default_quant_parameters(), _json_dict(row.params_json)),
         description=row.description,
@@ -352,13 +363,38 @@ def _audit_out(row: QuantParameterAuditLog) -> QuantParameterAuditOut:
 
 def _scope_values(scope: str) -> list[str]:
     values = [scope]
+    base_scope, market_state_scope = _split_market_state_scope(scope)
+    if market_state_scope and base_scope not in values:
+        values.append(base_scope)
     if scope != "global":
         values.append("global")
     return values
 
 
 def _scope_priority(scope: str):
+    base_scope, market_state_scope = _split_market_state_scope(scope)
+    if market_state_scope:
+        return case(
+            (QuantParameterSet.scope == scope, 0),
+            (QuantParameterSet.scope == base_scope, 1),
+            else_=2,
+        )
     return case((QuantParameterSet.scope == scope, 0), else_=1)
+
+
+def _scope_with_market_state(scope: str, market_state_scope: str = "") -> str:
+    clean_scope = (scope or "global").strip() or "global"
+    clean_state = (market_state_scope or "").strip()
+    if not clean_state or clean_scope.endswith(f":{clean_state}"):
+        return clean_scope
+    return f"{clean_scope}:{clean_state}"[:40]
+
+
+def _split_market_state_scope(scope: str) -> tuple[str, str]:
+    if ":" not in (scope or ""):
+        return scope, ""
+    base, state = scope.split(":", 1)
+    return base or "global", state
 
 
 def _json_dumps(value: Any) -> str:
@@ -392,7 +428,7 @@ def _deep_merge(defaults: dict[str, Any], overrides: dict[str, Any]) -> dict[str
 def _validate_parameter_payload(params: dict[str, Any]) -> dict[str, Any]:
     if not isinstance(params, dict):
         raise ValueError("参数版本内容必须是 JSON 对象")
-    invalid_roots = sorted(set(params) - {"risk", "low_buy", "position_t", "market", "ml", "backtest", "capacity"})
+    invalid_roots = sorted(set(params) - {"risk", "paper", "low_buy", "position_t", "market", "ml", "backtest", "capacity"})
     if invalid_roots:
         raise ValueError(f"参数命名空间不支持: {', '.join(invalid_roots)}")
     schema_map = _flatten_schema(quant_parameter_schema())

@@ -62,11 +62,16 @@ class AppSettings(BaseSettings):
     global_rate_limit_window_seconds: int = 1
     admin_api_token: str = ""
     auth_secret_key: str = ""
-    auth_cookie_secure: bool = False
+    auth_cookie_secure: bool = True
+    app_environment: str = "development"
+    auth_cookie_samesite: str = "strict"
     auth_access_token_minutes: int = 60
     auth_refresh_token_days: int = 30
     auth_allow_legacy_tokens: bool = False
+    auth_login_lockout_threshold: int = 5
+    auth_login_lockout_minutes: int = 15
     auth_allowed_usernames: Annotated[List[str], NoDecode] = Field(default_factory=list)
+    auth_require_mfa_for_paper_trade: bool = False
     agent_provider: str = "none"
     agent_api_base: str = "http://127.0.0.1:18090/api"
     agent_api_token: str = ""
@@ -104,6 +109,11 @@ class AppSettings(BaseSettings):
     openbb_api_key: str = ""
     market_data_provider_order: str = "tencent,eastmoney,akshare,sina"
     market_provider_router_enabled: bool = True
+    market_provider_circuit_failure_threshold: int = 3
+    market_provider_circuit_cooldown_seconds: int = 60
+    market_provider_slow_call_ms: int = 3000
+    market_provider_call_timeout_seconds: float = 4.0
+    market_akshare_quote_fallback_enabled: bool = False
     quant_parameter_default_version: str = "quant-params-v1"
     ml_signal_model_dir: str = "data/ml_models"
     ml_signal_artifact_remote_dir: str = ""

@@ -35,14 +35,14 @@ class StrategyCapacityService:
             capital_levels=payload.capital_levels,
             items=items,
             assumptions={
-                "impact_model": "Square-root market impact + participation tier",
+                "impact_model": "Square-root market impact + simplified Almgren-Chriss + participation tier",
                 "capital_levels": payload.capital_levels,
                 "start_date": payload.start_date,
                 "end_date": payload.end_date,
-                "formula": "impact_pct = eta * realized_volatility_pct * sqrt(order_amount / average_daily_amount)",
+                "formula": "impact_pct = max(sqrt_cost, almgren_chriss_cost, participation_tier_cost)",
                 "notes": [
                     "容量评估只用于资金规模约束，不构成交易承诺。",
-                    "平方根冲击模型使用近似订单金额/平均成交额的参与度估算，避免 Kyle Lambda 量纲误用。",
+                    "平方根冲击模型估算总体冲击；Almgren-Chriss 简化项估算分批执行临时/永久冲击。",
                     "缺少成交样本时 base_edge_pct 使用 0，并标记为数据不足。",
                 ],
             },
@@ -111,7 +111,7 @@ class StrategyCapacityService:
             volatility_pct=round(volatility_pct, 4),
             base_edge_pct=round(base_edge_pct, 4),
             kyle_lambda=lambda_value,
-            impact_model="sqrt_market_impact",
+            impact_model="sqrt_plus_almgren_chriss",
             curve=curve,
             notes=notes,
         )
@@ -165,7 +165,13 @@ def _capacity_point(
         params=params,
     )
     tier_impact_pct = _impact_rate(participation, params) * 100.0
-    impact_pct = max(sqrt_impact_pct, tier_impact_pct)
+    almgren = _almgren_chriss_cost_pct(
+        capital=capital,
+        avg_daily_amount=avg_daily_amount,
+        volatility_pct=volatility_pct,
+        params=params,
+    )
+    impact_pct = max(sqrt_impact_pct, tier_impact_pct, almgren["almgren_chriss_cost_pct"])
     net_edge_pct = base_edge_pct - impact_pct - slippage_pct
     if avg_daily_amount <= 0 or participation >= 0.10 or net_edge_pct < 0:
         status = "过载"
@@ -178,13 +184,18 @@ def _capacity_point(
         order_amount=round(capital, 2),
         participation_pct=round(participation * 100.0, 4),
         expected_edge_pct=round(base_edge_pct, 4),
-        impact_model="sqrt_market_impact",
+        impact_model="sqrt_plus_almgren_chriss",
         impact_assumption=(
-            "平方根冲击 + 参与度分层；Kyle Lambda 仅保留为诊断字段，不参与最终冲击成本。"
+            "平方根冲击 + 简化 Almgren-Chriss 分批执行 + 参与度分层；Kyle Lambda 仅保留为诊断字段。"
         ),
         average_daily_amount=round(avg_daily_amount, 2),
         volatility_pct=round(volatility_pct, 4),
         kyle_impact_pct=round(kyle_impact_pct, 4),
+        temporary_impact_pct=round(almgren["temporary_impact_pct"], 4),
+        permanent_impact_pct=round(almgren["permanent_impact_pct"], 4),
+        almgren_chriss_cost_pct=round(almgren["almgren_chriss_cost_pct"], 4),
+        execution_slices=int(almgren["execution_slices"]),
+        slice_participation_pct=round(almgren["slice_participation_pct"], 4),
         impact_pct=round(impact_pct, 4),
         impact_cost_pct=round(impact_pct, 4),
         slippage_cost_pct=round(slippage_pct, 4),
@@ -201,6 +212,41 @@ def _sqrt_impact_pct(*, capital: float, avg_daily_amount: float, volatility_pct:
     participation = max(capital / avg_daily_amount, 0.0)
     impact_pct = eta * max(volatility_pct, 0.0) * math.sqrt(participation)
     return min(max(impact_pct, 0.0), max_impact_pct)
+
+
+def _almgren_chriss_cost_pct(
+    *,
+    capital: float,
+    avg_daily_amount: float,
+    volatility_pct: float,
+    params: dict[str, Any],
+) -> dict[str, float]:
+    max_impact_pct = max(_float_param(params, "max_impact_pct", _float_param(params, "capacity_max_impact_pct", 8.0)), 0.0)
+    execution_slices = max(int(_float_param(params, "execution_slices", 5)), 1)
+    if avg_daily_amount <= 0:
+        return {
+            "temporary_impact_pct": max_impact_pct,
+            "permanent_impact_pct": 0.0,
+            "almgren_chriss_cost_pct": max_impact_pct,
+            "execution_slices": float(execution_slices),
+            "slice_participation_pct": 100.0,
+        }
+    temp_eta = max(_float_param(params, "almgren_temporary_eta", 0.65), 0.0)
+    perm_eta = max(_float_param(params, "almgren_permanent_eta", 0.18), 0.0)
+    participation = max(capital / avg_daily_amount, 0.0)
+    slice_participation = participation / execution_slices
+    max_slice = max(_float_param(params, "max_slice_participation_pct", 2.0), 0.1) / 100.0
+    slice_penalty = max(slice_participation / max_slice, 1.0)
+    temporary = temp_eta * max(volatility_pct, 0.0) * math.sqrt(slice_participation) * slice_penalty
+    permanent = perm_eta * max(volatility_pct, 0.0) * participation
+    cost = min(max(temporary + permanent, 0.0), max_impact_pct)
+    return {
+        "temporary_impact_pct": temporary,
+        "permanent_impact_pct": permanent,
+        "almgren_chriss_cost_pct": cost,
+        "execution_slices": float(execution_slices),
+        "slice_participation_pct": slice_participation * 100.0,
+    }
 
 
 def _kyle_lambda(rows: list[DailyBarSnapshot]) -> float:

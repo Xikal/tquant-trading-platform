@@ -20,6 +20,7 @@ from app.models.schemas import (
     PaperTradesResponse,
 )
 from app.services.intraday_confirmation_service import IntradayConfirmationService
+from app.services.operation_audit import record_operation_audit
 from app.services.paper import PaperAccountService, PaperOrderService
 from app.services.paper.risk_circuit import PaperRiskCircuitBreaker
 
@@ -77,6 +78,15 @@ def create_paper_order(
             down_limit=Decimal(str(payload.down_limit)) if payload.down_limit else None,
             intraday_confirmed=intraday_confirmed,
         )
+        record_operation_audit(
+            db,
+            operation="paper_order_create",
+            user=current_user,
+            resource_type="paper_order",
+            resource_id=order.id,
+            detail={"symbol": order.symbol, "side": order.side, "quantity": order.quantity},
+        )
+        db.commit()
         PaperRiskCircuitBreaker(db).evaluate_account(account.id)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
@@ -111,7 +121,16 @@ def cancel_paper_order(
         account = PaperAccountService(db).get_or_create_default(current_user.id)
         if order.account_id != account.id:
             raise LookupError("模拟委托不存在")
-        return order_out(service.cancel_order(order_id))
+        cancelled = service.cancel_order(order_id)
+        record_operation_audit(
+            db,
+            operation="paper_order_cancel",
+            user=current_user,
+            resource_type="paper_order",
+            resource_id=order_id,
+        )
+        db.commit()
+        return order_out(cancelled)
     except LookupError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except ValueError as exc:

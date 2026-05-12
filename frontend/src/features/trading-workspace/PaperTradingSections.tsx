@@ -139,7 +139,7 @@ export function PaperPositionsPanel({
     <section className="panel paper-positions">
       <div className="panel-title">
         <h2>模拟持仓</h2>
-        <span className="hint">{positions.length ? `${Math.min(positions.length, 10)} / ${positions.length} 只 · 可滑动` : "暂无持仓"}</span>
+        <span className="hint">{positions.length ? `共 ${positions.length} 只，全部展示` : "暂无持仓"}</span>
       </div>
       <DataBody loading={loading} columns={4}>
         <IntradayConfirmationStrip items={intradayConfirmations} />
@@ -185,7 +185,7 @@ export function PaperBottomPanels({
       <section className="panel paper-orders">
         <div className="panel-title">
           <h2>委托记录</h2>
-          <span className="hint">最多显示 3 条 · 可上下滑动</span>
+          <span className="hint">{orders.length ? `共 ${orders.length} 条，全部展示` : "暂无委托"}</span>
         </div>
         <DataBody loading={loading} columns={5}>
           <div className="paper-table-head paper-order-head">

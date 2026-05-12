@@ -101,12 +101,17 @@
 .paper-positions .stock-list {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  max-height: 234px;
-  overflow-y: auto;
-  padding-right: 4px;
+  max-height: none;
+  overflow: visible;
+  padding-right: 0;
 }
 
-.paper-orders .line-list,
+.paper-orders .line-list {
+  max-height: none;
+  overflow: visible;
+  padding-right: 0;
+}
+
 .paper-trades .line-list {
   max-height: 138px;
   overflow-y: auto;

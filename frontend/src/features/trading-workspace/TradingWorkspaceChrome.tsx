@@ -49,6 +49,7 @@ type TradingWorkspaceChromeProps = {
   onPaperRefresh?: () => void;
   onPreparePaperOrder: (payload: { symbol: string; name?: string; price?: number | null }) => void;
   onSelectStock: (stock: StockCardView | null) => void;
+  onUserUpdate: (user: AuthUser) => void;
 };
 
 export function TradingWorkspaceChrome(props: TradingWorkspaceChromeProps) {
@@ -110,6 +111,7 @@ export function TradingWorkspaceChrome(props: TradingWorkspaceChromeProps) {
           strategyMeta={props.strategyMeta}
           onSelectStock={props.onSelectStock}
           onPreparePaperOrder={props.onPreparePaperOrder}
+          onUserUpdate={props.onUserUpdate}
         />
       </main>
     </div>

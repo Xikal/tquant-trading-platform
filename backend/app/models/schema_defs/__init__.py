@@ -49,6 +49,8 @@ from app.models.schema_defs.agent import (
 )
 from app.models.schema_defs.auth import (
     AuthLoginRequest,
+    AuthMfaSetupResponse,
+    AuthMfaUpdateRequest,
     AuthLogoutRequest,
     AuthMeResponse,
     PaperAccessResponse,
@@ -220,6 +222,8 @@ __all__ = [
     "AppWatchlistResponse",
     "AppWatchlistUpsertRequest",
     "AuthLoginRequest",
+    "AuthMfaSetupResponse",
+    "AuthMfaUpdateRequest",
     "AuthLogoutRequest",
     "AuthMeResponse",
     "PaperAccessResponse",

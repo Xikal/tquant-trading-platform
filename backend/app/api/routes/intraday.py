@@ -3,8 +3,9 @@ from __future__ import annotations
 import asyncio
 import json
 from datetime import datetime
+import time
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Header, Query
 from fastapi import HTTPException, status
 from fastapi.responses import StreamingResponse
 from sqlalchemy import select
@@ -12,14 +13,14 @@ from sqlalchemy.orm import Session
 
 from app.core.database import SessionLocal, get_db
 from app.core.auth import get_current_user
-from app.models.entities import SseSubscription
+from app.models.entities import SseSubscription, UserWatchlist
 from app.models.entities import User
 from app.models.schemas import IntradayConfirmationOut, IntradayConfirmationRequest
 from app.services.intraday_confirmation_service import IntradayConfirmationService
 from app.services.sse_token_service import SseStreamTokenService
 
 router = APIRouter(prefix="/intraday")
-stream_tokens = SseStreamTokenService()
+stream_tokens = SseStreamTokenService(ttl_seconds=3600)
 
 
 @router.post("/confirmations", response_model=list[IntradayConfirmationOut])
@@ -60,31 +61,45 @@ def stream_intraday_confirmations(
     symbols: str = Query(default=""),
     client_id: str = Query(default="web"),
     stream_token: str = Query(default=""),
+    last_event_id: str = Query(default=""),
+    last_event_id_header: str = Header(default="", alias="Last-Event-ID"),
     interval_seconds: int = Query(default=15, ge=5, le=120),
 ):
     user_id = _user_id_from_stream_token(stream_token)
     symbol_list = [item.strip() for item in symbols.split(",") if item.strip()]
     return StreamingResponse(
-        _confirmation_event_stream(symbol_list, client_id, user_id, interval_seconds),
+        _confirmation_event_stream(symbol_list, client_id, user_id, interval_seconds, last_event_id or last_event_id_header),
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
 
 
-async def _confirmation_event_stream(symbols: list[str], client_id: str, user_id: int, interval_seconds: int):
+async def _confirmation_event_stream(
+    symbols: list[str],
+    client_id: str,
+    user_id: int,
+    interval_seconds: int,
+    last_event_id: str = "",
+):
     _touch_subscription(client_id, "intraday_confirmations", user_id)
     while True:
         with SessionLocal() as db:
-            if symbols:
-                items = IntradayConfirmationService(db).confirm_symbols(symbols, period="1m", limit=120)
+            target_symbols = symbols or _user_watchlist_symbols(db, user_id)
+            if target_symbols:
+                items = IntradayConfirmationService(db).confirm_symbols(target_symbols, period="1m", limit=120)
             else:
                 items = IntradayConfirmationService(db).list_recent(limit=50)
         payload = json.dumps(
-            {"type": "intraday_confirmations", "items": [item.model_dump(mode="json") for item in items]},
+            {
+                "type": "intraday_confirmations",
+                "last_event_id": last_event_id,
+                "items": [item.model_dump(mode="json") for item in items],
+            },
             ensure_ascii=False,
             default=str,
         )
-        yield f"event: intraday_confirmations\ndata: {payload}\n\n"
+        event_id = f"{user_id}-{int(time.time())}"
+        yield f"id: {event_id}\nevent: intraday_confirmations\ndata: {payload}\n\n"
         await asyncio.sleep(interval_seconds)
 
 
@@ -106,6 +121,20 @@ def _touch_subscription(client_id: str, channel: str, user_id: int) -> None:
         row.user_id = user_id
         row.last_seen_at = datetime.now()
         db.commit()
+
+
+def _user_watchlist_symbols(db: Session, user_id: int) -> list[str]:
+    rows = (
+        db.execute(
+            select(UserWatchlist.symbol)
+            .where(UserWatchlist.user_id == user_id)
+            .order_by(UserWatchlist.updated_at.desc())
+            .limit(20)
+        )
+        .scalars()
+        .all()
+    )
+    return [item for item in rows if item]
 
 
 def _user_id_from_stream_token(stream_token: str) -> int:

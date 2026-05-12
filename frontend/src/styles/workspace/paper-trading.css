@@ -287,7 +287,8 @@
 .paper-positions .stock-list {
   grid-template-columns: repeat(auto-fit, minmax(154px, 1fr));
   gap: 8px;
-  max-height: 204px;
+  max-height: none;
+  overflow: visible;
 }
 
 .paper-positions .paper-position-row {
@@ -334,9 +335,13 @@
   min-height: 142px;
 }
 
-.paper-orders .line-list,
+.paper-orders .line-list {
+  max-height: none;
+  overflow: visible;
+}
+
 .paper-trades .line-list {
-  max-height: 82px;
+  max-height: 132px;
 }
 
 .paper-performance .paper-performance-table,

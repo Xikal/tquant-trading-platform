@@ -65,6 +65,7 @@ export function TradingWorkspace() {
   const [authDraft, setAuthDraft] = useState<AuthDraft>({
     username: "",
     password: "",
+    mfaCode: "",
     remember: true,
   });
   const paper = usePaperTrading({
@@ -224,9 +225,15 @@ export function TradingWorkspace() {
       }
       const result = register
         ? await appApi.register({ username, password, display_name: username, device_name: "web-workspace", remember: authDraft.remember })
-        : await appApi.login({ username, password, device_name: "web-workspace", remember: authDraft.remember });
+        : await appApi.login({
+            username,
+            password,
+            mfa_code: authDraft.mfaCode.trim(),
+            device_name: "web-workspace",
+            remember: authDraft.remember,
+          });
       setCurrentUser(result.user);
-      setAuthDraft((draft) => ({ ...draft, password: "" }));
+      setAuthDraft((draft) => ({ ...draft, password: "", mfaCode: "" }));
       setNotice(register ? "账号已开通，已进入工作台" : "登录成功");
       await monitor.fetchMonitorData(true);
     });
@@ -442,6 +449,7 @@ export function TradingWorkspace() {
       onPaperRefresh={page === "paper" ? () => void paper.refreshAll() : undefined}
       onPreparePaperOrder={preparePaperOrder}
       onSelectStock={setSelectedStock}
+      onUserUpdate={setCurrentUser}
     />
   );
 }

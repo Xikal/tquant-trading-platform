@@ -5,6 +5,11 @@ import threading
 import time
 
 from app.services.market import external_factors
+from app.services.low_buy.external_factor_cache import (
+    get_or_load_ttl_cache,
+    read_ttl_cache,
+    write_ttl_cache,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -27,14 +32,26 @@ _DRAGON_BOARD_TTL_SECONDS = 1800
 def resolve_sector_flow_ranks() -> dict[str, float]:
     """获取板块资金流向排名分；失败时软降级为空，不阻断筛选。"""
 
-    cached = _read_cache(_SECTOR_FLOW_CACHE, "daily")
-    if cached is not None:
-        return cached
     try:
-        frame = external_factors.stock_sector_fund_flow_rank()
+        return get_or_load_ttl_cache(
+            _SECTOR_FLOW_CACHE,
+            _CACHE_LOCK,
+            namespace="sector_flow",
+            key="daily",
+            loader=_load_sector_flow_ranks,
+            ttl_seconds=_SECTOR_FLOW_TTL_SECONDS,
+            failure_value={},
+        )
     except Exception as exc:  # pragma: no cover - external source
         logger.warning("sector fund flow fetch failed: %s", exc)
         return {}
+
+
+def _load_sector_flow_ranks() -> dict[str, float]:
+    try:
+        frame = external_factors.stock_sector_fund_flow_rank()
+    except Exception as exc:  # pragma: no cover - external source
+        raise RuntimeError(str(exc)) from exc
     if frame is None or frame.empty:
         return {}
     flow_column = _find_column(frame, ("主力净流入-净额", "主力净流入", "净流入-净额", "净额"))
@@ -62,7 +79,6 @@ def resolve_sector_flow_ranks() -> dict[str, float]:
         else:
             score = 0.0
         ranks[name] = round(max(0.0, score), 2)
-    _write_cache(_SECTOR_FLOW_CACHE, "daily", ranks, _SECTOR_FLOW_TTL_SECONDS)
     return ranks
 
 
@@ -92,17 +108,29 @@ def evaluate_big_order_flow_factor(symbol: str, retracement_days: int) -> float:
 
 
 def resolve_big_order_flow(symbol: str, retracement_days: int) -> dict[str, float]:
-    cached = _read_cache(_BIG_ORDER_CACHE, symbol)
-    if cached is not None:
-        return cached
+    try:
+        return get_or_load_ttl_cache(
+            _BIG_ORDER_CACHE,
+            _CACHE_LOCK,
+            namespace="big_order",
+            key=symbol,
+            loader=lambda: _load_big_order_flow(symbol=symbol, retracement_days=retracement_days),
+            ttl_seconds=_BIG_ORDER_TTL_SECONDS,
+            failure_value={},
+        )
+    except Exception as exc:  # pragma: no cover - external source
+        logger.warning("big order flow fetch failed for %s: %s", symbol, exc)
+        return {}
+
+
+def _load_big_order_flow(symbol: str, retracement_days: int) -> dict[str, float]:
     market = "sh" if symbol.startswith(("5", "6", "9")) else "sz"
     if symbol.startswith("8"):
         market = "bj"
     try:
         frame = external_factors.stock_individual_fund_flow(symbol=symbol, market=market)
     except Exception as exc:  # pragma: no cover - external source
-        logger.warning("big order flow fetch failed for %s: %s", symbol, exc)
-        return {}
+        raise RuntimeError(str(exc)) from exc
     if frame is None or frame.empty:
         return {}
     recent = frame.tail(max(retracement_days + 3, 5))
@@ -111,7 +139,6 @@ def resolve_big_order_flow(symbol: str, retracement_days: int) -> dict[str, floa
         "super_big_net_inflow_ratio": _mean_column(recent, "超大单净流入-净占比"),
         "retail_net_inflow_ratio": _mean_column(recent, "小单净流入-净占比"),
     }
-    _write_cache(_BIG_ORDER_CACHE, symbol, result, _BIG_ORDER_TTL_SECONDS)
     return result
 
 
@@ -177,14 +204,26 @@ def evaluate_short_balance_factor(_symbol: str) -> float:
 
 
 def resolve_north_flow_net_inflow() -> float:
-    cached = _read_cache(_NORTH_FLOW_CACHE, "north")
-    if cached is not None:
-        return float(cached)
     try:
-        frame = external_factors.stock_hsgt_fund_flow_summary_em()
+        return float(get_or_load_ttl_cache(
+            _NORTH_FLOW_CACHE,
+            _CACHE_LOCK,
+            namespace="north_flow",
+            key="north",
+            loader=_load_north_flow_net_inflow,
+            ttl_seconds=_NORTH_FLOW_TTL_SECONDS,
+            failure_value=0.0,
+        ))
     except Exception as exc:  # pragma: no cover - external source
         logger.warning("northbound fund flow fetch failed: %s", exc)
         return 0.0
+
+
+def _load_north_flow_net_inflow() -> float:
+    try:
+        frame = external_factors.stock_hsgt_fund_flow_summary_em()
+    except Exception as exc:  # pragma: no cover - external source
+        raise RuntimeError(str(exc)) from exc
     if frame is None or frame.empty:
         return 0.0
     try:
@@ -192,19 +231,30 @@ def resolve_north_flow_net_inflow() -> float:
         value = float(north_rows["成交净买额"].astype(float).sum())
     except Exception:
         value = 0.0
-    _write_cache(_NORTH_FLOW_CACHE, "north", round(value, 2), _NORTH_FLOW_TTL_SECONDS)
     return round(value, 2)
 
 
 def resolve_limit_up_pool_quality() -> dict[str, float]:
-    cached = _read_cache(_LIMIT_UP_POOL_CACHE, "latest")
-    if cached is not None:
-        return cached
     try:
-        frame = external_factors.stock_zt_pool_em()
+        return get_or_load_ttl_cache(
+            _LIMIT_UP_POOL_CACHE,
+            _CACHE_LOCK,
+            namespace="limit_up_pool",
+            key="latest",
+            loader=_load_limit_up_pool_quality,
+            ttl_seconds=_LIMIT_UP_POOL_TTL_SECONDS,
+            failure_value={},
+        )
     except Exception as exc:  # pragma: no cover - external source
         logger.warning("limit-up pool fetch failed: %s", exc)
         return {}
+
+
+def _load_limit_up_pool_quality() -> dict[str, float]:
+    try:
+        frame = external_factors.stock_zt_pool_em()
+    except Exception as exc:  # pragma: no cover - external source
+        raise RuntimeError(str(exc)) from exc
     if frame is None or frame.empty:
         return {}
     result: dict[str, float] = {}
@@ -225,19 +275,30 @@ def resolve_limit_up_pool_quality() -> dict[str, float]:
         if open_count <= 1:
             score += 0.4
         result[symbol] = round(min(score, 3.0), 2)
-    _write_cache(_LIMIT_UP_POOL_CACHE, "latest", result, _LIMIT_UP_POOL_TTL_SECONDS)
     return result
 
 
 def resolve_dragon_board_scores() -> dict[str, float]:
-    cached = _read_cache(_DRAGON_BOARD_CACHE, "month")
-    if cached is not None:
-        return cached
     try:
-        frame = external_factors.stock_lhb_stock_statistic_em()
+        return get_or_load_ttl_cache(
+            _DRAGON_BOARD_CACHE,
+            _CACHE_LOCK,
+            namespace="dragon_board",
+            key="month",
+            loader=_load_dragon_board_scores,
+            ttl_seconds=_DRAGON_BOARD_TTL_SECONDS,
+            failure_value={},
+        )
     except Exception as exc:  # pragma: no cover - external source
         logger.warning("dragon board statistics fetch failed: %s", exc)
         return {}
+
+
+def _load_dragon_board_scores() -> dict[str, float]:
+    try:
+        frame = external_factors.stock_lhb_stock_statistic_em()
+    except Exception as exc:  # pragma: no cover - external source
+        raise RuntimeError(str(exc)) from exc
     if frame is None or frame.empty:
         return {}
     result: dict[str, float] = {}
@@ -257,7 +318,6 @@ def resolve_dragon_board_scores() -> dict[str, float]:
             score += min(inst_net_buy / 300_000_000, 1.0)
         if score > 0:
             result[symbol] = round(min(score, 3.0), 2)
-    _write_cache(_DRAGON_BOARD_CACHE, "month", result, _DRAGON_BOARD_TTL_SECONDS)
     return result
 
 
@@ -323,17 +383,8 @@ def _find_column(frame, candidates: tuple[str, ...]) -> str | None:
 
 
 def _read_cache(cache: dict, key: str):
-    with _CACHE_LOCK:
-        cached = cache.get(key)
-        if not cached:
-            return None
-        expires_at, value = cached
-        if expires_at <= time.monotonic():
-            cache.pop(key, None)
-            return None
-        return value
+    return read_ttl_cache(cache, _CACHE_LOCK, key)
 
 
 def _write_cache(cache: dict, key: str, value, ttl_seconds: int) -> None:
-    with _CACHE_LOCK:
-        cache[key] = (time.monotonic() + ttl_seconds, value)
+    write_ttl_cache(cache, _CACHE_LOCK, key, value, ttl_seconds)

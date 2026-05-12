@@ -4,6 +4,7 @@ from math import sqrt
 
 from app.models.schemas import LowBuyCandidateOut, LowBuyPerformanceBucketOut, LowBuyStrategyPerformanceOut
 from app.services.low_buy.market_state_rules import resolve_strategy_market_profile
+from app.services.low_buy.performance_stats import retracement_bucket as resolve_retracement_bucket
 from app.services.low_buy.priority_types import PriorityMarketContext, StrategyHit
 from app.services.low_buy.strategy_families import family_overlap_multiplier
 from app.services.low_buy.strategy_policy import get_tier_weight
@@ -149,7 +150,11 @@ class LowBuyPriorityScoringMixin:
             None,
         )
         retracement_bucket = next(
-            (item for item in reference.retracement_attribution if item.label == self._to_retracement_bucket(candidate.retracement_days)),
+            (
+                item
+                for item in reference.retracement_attribution
+                if item.label == resolve_retracement_bucket(candidate.retracement_days)
+            ),
             None,
         )
         market_bucket = self._find_performance_bucket(

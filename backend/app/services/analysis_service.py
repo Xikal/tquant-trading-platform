@@ -45,20 +45,21 @@ class AnalysisService:
         preloaded_quote: QuoteSnapshot | None = None,
     ) -> AnalysisResponse:
         runtime_settings = runtime_settings or SettingsService(db).get_payload()
+        effective_lightweight = lightweight or _request_allows_lightweight_path(request)
         instrument = self.market_data.get_instrument(db, request.symbol)
         quote = preloaded_quote or self.market_data.get_quote(request.symbol)
         bars = self.market_data.get_intraday_bars_for_analysis(
             db,
             quote,
             period="5m",
-            limit=160 if lightweight else 240,
+            limit=160 if effective_lightweight else 240,
             persist_snapshots=not lightweight,
         )
         rules = self.market_rules.get_or_create_rule(db, instrument)
         sector = self.market_data.get_sector_snapshot(
             instrument,
             bars,
-            use_board_lookup=not lightweight,
+            use_board_lookup=not effective_lightweight,
         )
         events = (
             self.market_data.get_market_events(db, request.symbol, quote)
@@ -340,3 +341,7 @@ class AnalysisService:
             seen.add(item)
             result.append(item)
         return result
+
+
+def _request_allows_lightweight_path(request: AnalysisRequest) -> bool:
+    return not request.include_ai and not request.include_events and not request.include_microstructure

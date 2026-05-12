@@ -6,7 +6,7 @@ describe("LoginPage", () => {
   it("renders unified login copy and actions", () => {
     const html = renderToStaticMarkup(
       <LoginPage
-        draft={{ username: "", password: "", remember: true }}
+        draft={{ username: "", password: "", mfaCode: "", remember: true }}
         error=""
         loading={false}
         setDraft={vi.fn()}

@@ -341,26 +341,60 @@ def _market_state_summary(windows: list[ValidationWindow]) -> dict[str, Any]:
     for window in windows:
         segments = window.market_state_segments or []
         if not segments:
-            buckets.setdefault("未标注", {"window_count": 0, "signal_count": 0, "passed_windows": 0, "avg_oos_sharpe": 0.0})
+            buckets.setdefault(
+                "未标注",
+                _empty_market_state_bucket(),
+            )
             buckets["未标注"]["window_count"] += 1
             buckets["未标注"]["passed_windows"] += 1 if window.passed else 0
             buckets["未标注"]["avg_oos_sharpe"] += float(window.test_sharpe or 0.0)
+            _record_market_state_params(buckets["未标注"], window)
             continue
         for segment in segments:
             state = str(segment.get("name") or segment.get("label") or segment.get("market_state") or "未标注")
             bucket = buckets.setdefault(
                 state,
-                {"window_count": 0, "signal_count": 0, "passed_windows": 0, "avg_oos_sharpe": 0.0},
+                _empty_market_state_bucket(),
             )
             bucket["window_count"] += 1
             bucket["signal_count"] += int(segment.get("signal_count") or segment.get("trade_count") or 0)
             bucket["passed_windows"] += 1 if window.passed else 0
             bucket["avg_oos_sharpe"] += float(window.test_sharpe or 0.0)
+            _record_market_state_params(bucket, window)
     for bucket in buckets.values():
         count = max(int(bucket["window_count"]), 1)
         bucket["avg_oos_sharpe"] = round(float(bucket["avg_oos_sharpe"]) / count, 4)
         bucket["pass_rate"] = round(float(bucket["passed_windows"]) / count, 4)
+        bucket["best_params"] = _best_params_from_counts(bucket.pop("_param_counts", {}))
     return buckets
+
+
+def _empty_market_state_bucket() -> dict[str, Any]:
+    return {
+        "window_count": 0,
+        "signal_count": 0,
+        "passed_windows": 0,
+        "avg_oos_sharpe": 0.0,
+        "_param_counts": {},
+    }
+
+
+def _record_market_state_params(bucket: dict[str, Any], window: ValidationWindow) -> None:
+    key = _params_key(window.best_params)
+    counts = bucket.setdefault("_param_counts", {})
+    row = counts.setdefault(key, {"count": 0, "params": window.best_params, "sharpe_sum": 0.0})
+    row["count"] += 1
+    row["sharpe_sum"] += float(window.test_sharpe or 0.0)
+
+
+def _best_params_from_counts(counts: dict[str, Any]) -> dict[str, Any]:
+    if not counts:
+        return {}
+    best = max(
+        counts.values(),
+        key=lambda item: (int(item.get("count") or 0), float(item.get("sharpe_sum") or 0.0)),
+    )
+    return dict(best.get("params") or {})
 
 
 def _calendar_dates(start_date: str, end_date: str) -> list[str]:

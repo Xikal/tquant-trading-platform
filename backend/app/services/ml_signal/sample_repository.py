@@ -2,17 +2,17 @@ from __future__ import annotations
 
 from typing import Any
 
-import numpy as np
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models.entities import BacktestTrade, DailyBarSnapshot, Instrument, MLSignalSample, PaperTrade
+from app.models.entities import BacktestTrade, DailyBarSnapshot, MLSignalSample, PaperTrade
 from app.services.ml_signal.features import (
     empty_sequence_features,
     sequence_features_from_bars,
     trade_features,
 )
 from app.services.ml_signal.modeling import json_dumps
+from app.services.ml_signal.sector_relative import sector_relative_strength_from_etf_proxy
 
 
 class MLSignalSampleRepository:
@@ -158,72 +158,4 @@ class MLSignalSampleRepository:
         return features
 
     def sector_relative_strength(self, symbol: str, rows: list[DailyBarSnapshot]) -> dict[str, float]:
-        if len(rows) < 11:
-            return {
-                "sector_relative_strength_5d": float("nan"),
-                "sector_relative_strength_10d": float("nan"),
-            }
-        instrument = self.db.execute(select(Instrument).where(Instrument.symbol == symbol)).scalar_one_or_none()
-        sector = str(instrument.sector_name or "").strip() if instrument is not None else ""
-        if not sector:
-            return {
-                "sector_relative_strength_5d": float("nan"),
-                "sector_relative_strength_10d": float("nan"),
-            }
-        peers = (
-            self.db.execute(
-                select(Instrument.symbol)
-                .where(Instrument.sector_name == sector)
-                .where(Instrument.instrument_type == "stock")
-                .limit(120)
-            )
-            .scalars()
-            .all()
-        )
-        peer_symbols = [item for item in peers if item and item != symbol]
-        if not peer_symbols:
-            return {
-                "sector_relative_strength_5d": float("nan"),
-                "sector_relative_strength_10d": float("nan"),
-            }
-        trade_dates = [str(row.trade_date) for row in rows[-11:]]
-        peer_rows = (
-            self.db.execute(
-                select(DailyBarSnapshot)
-                .where(DailyBarSnapshot.symbol.in_(peer_symbols))
-                .where(DailyBarSnapshot.trade_date.in_(trade_dates))
-            )
-            .scalars()
-            .all()
-        )
-        by_symbol: dict[str, dict[str, float]] = {}
-        for row in peer_rows:
-            if float(row.close_price or 0.0) <= 0:
-                continue
-            by_symbol.setdefault(str(row.symbol), {})[str(row.trade_date)] = float(row.close_price or 0.0)
-        symbol_closes = {str(row.trade_date): float(row.close_price or 0.0) for row in rows if float(row.close_price or 0.0) > 0}
-
-        def relative(days: int) -> float:
-            if len(trade_dates) <= days:
-                return 0.0
-            start_date = trade_dates[-days - 1]
-            end_date = trade_dates[-1]
-            own_start = symbol_closes.get(start_date, 0.0)
-            own_end = symbol_closes.get(end_date, 0.0)
-            if own_start <= 0 or own_end <= 0:
-                return 0.0
-            own_momentum = (own_end / own_start - 1.0) * 100
-            peer_momentum: list[float] = []
-            for values in by_symbol.values():
-                start = values.get(start_date, 0.0)
-                end = values.get(end_date, 0.0)
-                if start > 0 and end > 0:
-                    peer_momentum.append((end / start - 1.0) * 100)
-            if not peer_momentum:
-                return 0.0
-            return round(own_momentum - float(np.mean(peer_momentum)), 4)
-
-        return {
-            "sector_relative_strength_5d": relative(5),
-            "sector_relative_strength_10d": relative(10),
-        }
+        return sector_relative_strength_from_etf_proxy(self.db, symbol=symbol, rows=rows)

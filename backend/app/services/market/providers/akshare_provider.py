@@ -40,6 +40,12 @@ class AkshareMarketProvider:
         raise RuntimeError("akshare raw client unavailable")
 
     def fetch_quote(self, symbol: str) -> ProviderResult[QuoteSnapshot]:
+        if not bool(getattr(self.service.settings, "market_akshare_quote_fallback_enabled", False)):
+            return ProviderResult(
+                quality=MarketDataQuality.UNAVAILABLE,
+                source=self.name,
+                message="akshare quote fallback disabled for hot path",
+            )
         try:
             instrument_type = (
                 "etf"

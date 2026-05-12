@@ -145,6 +145,21 @@ export function LoginPage({
             </div>
           </label>
 
+          <label className="login-field">
+            <span>动态验证码（已开启 MFA 时填写）</span>
+            <div>
+              <b aria-hidden="true">•</b>
+              <input
+                value={draft.mfaCode}
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                placeholder="6 位动态验证码，可留空"
+                disabled={loading}
+                onChange={(event) => setDraft({ ...draft, mfaCode: event.target.value })}
+              />
+            </div>
+          </label>
+
           <div className="login-options">
             <label>
               <input

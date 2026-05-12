@@ -3,6 +3,7 @@ import type {
   AppAndroidUpdateResponse,
   AppLowBuyResponse,
   AuthMeResponse,
+  AuthMfaSetupResponse,
   AuthTokenResponse,
   AppHomeResponse,
   AppLowBuyDetailResponse,
@@ -14,10 +15,12 @@ import type {
 import {
   clearAuthTokens,
   invalidateCache,
-  request,
-  requestCached,
   setAuthTokens
 } from "./base"
+import { apiClient } from "./httpClient"
+
+const request = apiClient.request
+const requestCached = apiClient.requestCached
 
 function invalidateAppCaches() {
   invalidateCache([
@@ -32,7 +35,7 @@ async function requestCachedOffline<T>(path: string, ttlMs: number): Promise<T> 
 }
 
 export const appApi = {
-  login: (payload: { username: string; password: string; device_name?: string; remember?: boolean }) => {
+  login: (payload: { username: string; password: string; device_name?: string; mfa_code?: string; remember?: boolean }) => {
     const { remember = true, ...loginPayload } = payload
     return request<AuthTokenResponse>("/auth/login", {
       method: "POST",
@@ -73,6 +76,18 @@ export const appApi = {
     }).catch(() => ({ message: "已退出登录" }))
   },
   getMe: () => request<AuthMeResponse>("/auth/me"),
+  setupTotp: () => request<AuthMfaSetupResponse>("/auth/mfa/totp/setup", {
+    method: "POST",
+    body: JSON.stringify({})
+  }),
+  enableTotp: (code: string) => request<AuthMeResponse>("/auth/mfa/totp/enable", {
+    method: "POST",
+    body: JSON.stringify({ code })
+  }),
+  disableTotp: (code: string) => request<AuthMeResponse>("/auth/mfa/totp/disable", {
+    method: "POST",
+    body: JSON.stringify({ code })
+  }),
   getBootstrap: () => requestCached<AppBootstrapResponse>("/app/bootstrap", 60000),
   checkAndroidUpdate: (currentVersionCode: number) =>
     requestCached<AppAndroidUpdateResponse>(

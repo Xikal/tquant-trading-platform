@@ -18,12 +18,12 @@ def get_model_cache(cache: dict[str, tuple[float, Any]], lock, cache_key: str):
         if expires_at <= now:
             cache.pop(cache_key, None)
             return None
-        return payload.model_copy(deep=True)
+        return _restore_model_payload(payload)
 
 
 def set_model_cache(cache: dict[str, tuple[float, Any]], lock, cache_key: str, payload: Any, ttl: float) -> None:
     with lock:
-        cache[cache_key] = (time.monotonic() + ttl, payload.model_copy(deep=True))
+        cache[cache_key] = (time.monotonic() + ttl, _dump_model_payload(payload))
 
 
 def get_history_cache(cache: dict[str, tuple[float, Any]], lock, cache_key: str):
@@ -66,3 +66,25 @@ def get_spot_quote_cache(cached_entry, lock):
         if expires_at <= now:
             return None
         return dict(payload)
+
+
+def _dump_model_payload(payload: Any) -> Any:
+    if hasattr(payload, "model_dump_json"):
+        return {
+            "__pydantic_model__": payload.__class__,
+            "payload_json": payload.model_dump_json(),
+        }
+    if hasattr(payload, "model_copy"):
+        return payload.model_copy(deep=True)
+    return payload
+
+
+def _restore_model_payload(payload: Any) -> Any:
+    if isinstance(payload, dict) and "__pydantic_model__" in payload:
+        model_cls = payload.get("__pydantic_model__")
+        payload_json = payload.get("payload_json", "")
+        if hasattr(model_cls, "model_validate_json"):
+            return model_cls.model_validate_json(payload_json)
+    if hasattr(payload, "model_copy"):
+        return payload.model_copy(deep=True)
+    return payload

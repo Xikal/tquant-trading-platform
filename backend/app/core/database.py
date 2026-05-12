@@ -107,7 +107,7 @@ def get_db() -> Session:
 def init_db() -> None:
     if settings.database_url.startswith("sqlite") or settings.schema_compat_repair_enabled:
         Base.metadata.create_all(bind=engine)
-    if settings.schema_compat_repair_enabled:
+    if settings.schema_compat_repair_enabled or _sqlite_dev_repair_enabled():
         ensure_schema_compatibility(engine)
         return
     if settings.schema_compat_verify_on_startup:
@@ -117,3 +117,9 @@ def init_db() -> None:
 def ping_database() -> None:
     with engine.connect() as connection:
         connection.execute(text("SELECT 1"))
+
+
+def _sqlite_dev_repair_enabled() -> bool:
+    if not settings.database_url.startswith("sqlite"):
+        return False
+    return settings.app_environment.strip().lower() not in {"prod", "production", "cloud"}

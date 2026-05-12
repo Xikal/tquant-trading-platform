@@ -76,6 +76,7 @@ class LowBuyPriorityBoardMixin(LowBuyPriorityScoringMixin):
             rows=refreshed_candidates,
             latest_trade_date=base_snapshot.latest_trade_date,
         )
+        pre_policy_candidate_count = len(refreshed_candidates)
         refreshed_candidates = filter_priority_candidates_for_recommendation(refreshed_candidates)
         items = self._build_priority_items(
             refreshed_candidates,
@@ -88,6 +89,9 @@ class LowBuyPriorityBoardMixin(LowBuyPriorityScoringMixin):
             family_performance=family_performance,
         )
         snapshot_warning = self._priority_snapshot_warning(base_snapshot)
+        if pre_policy_candidate_count > 0 and not items:
+            policy_warning = "当前候选均已被主板范围、风险或交易规则过滤，暂无可推荐股票。"
+            snapshot_warning = f"{snapshot_warning} {policy_warning}".strip()
         portfolio_risk = build_priority_portfolio_risk(
             db=db,
             rows=refreshed_candidates,

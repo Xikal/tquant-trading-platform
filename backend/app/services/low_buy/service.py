@@ -61,6 +61,7 @@ class _LowBuyRuntimeAdapter:
                 raise AttributeError(f"classmethod {name!r} is not exposed through low-buy adapters")
             if callable(value):
                 return MethodType(value, self)
+            return value
         return getattr(object.__getattribute__(self, "_runtime"), name)
 
     def __setattr__(self, name: str, value: Any) -> None:
@@ -401,3 +402,9 @@ def clear_all_low_buy_runtime_caches() -> None:
     """Clear all low-buy runtime caches for tests and admin maintenance."""
 
     _LowBuyRuntime.clear_runtime_caches()
+
+
+def clear_all_runtime_caches() -> None:
+    """Compatibility alias required by the v4 cache-isolation contract."""
+
+    clear_all_low_buy_runtime_caches()

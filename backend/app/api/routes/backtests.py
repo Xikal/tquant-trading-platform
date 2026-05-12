@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.core.auth import get_current_user
 from app.core.database import get_db
+from app.core.role_permissions import ensure_permission, is_admin_user
 from app.models.entities import User
 from app.models.schema_defs.backtest import (
     BacktestAttributionResponse,
@@ -29,6 +30,8 @@ from app.models.schema_defs.backtest import (
 from app.services.backtest_job_service import BacktestJobService
 from app.services.backtest_optimization_service import BacktestOptimizationService
 from app.services.backtest_validation_service import BacktestValidationService
+from app.services.rl_position_research import run_offline_position_research
+from app.services.strategy_portfolio_optimizer import optimize_strategy_portfolio
 from app.services.strategy_metadata_service import StrategyMetadataService
 
 router = APIRouter(prefix="/backtests", dependencies=[Depends(get_current_user)])
@@ -328,6 +331,29 @@ def get_backtest_strategy_correlation(
     )
 
 
+@router.get("/{run_id}/portfolio-optimization")
+def get_backtest_portfolio_optimization(
+    run_id: int,
+    method: str = Query(default="hrp", pattern="^(hrp|mean_variance)$"),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    _require_research_access(current_user)
+    BacktestJobService(db).get_run(run_id, owner_user_id=current_user.id, is_admin=_is_admin(current_user))
+    return optimize_strategy_portfolio(db, run_id=run_id, method=method)
+
+
+@router.get("/{run_id}/rl-position-research")
+def get_backtest_rl_position_research(
+    run_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    _require_research_access(current_user)
+    BacktestJobService(db).get_run(run_id, owner_user_id=current_user.id, is_admin=_is_admin(current_user))
+    return run_offline_position_research(db, run_id=run_id)
+
+
 @router.get("/{run_id}/equity", response_model=BacktestEquityResponse)
 def get_backtest_equity(
     run_id: int,
@@ -388,22 +414,20 @@ def delete_backtest_run(
 
 
 def _is_admin(user: User) -> bool:
-    roles = {item.strip().lower() for item in (getattr(user, "roles", "") or "").split(",")}
-    return bool(getattr(user, "is_admin", False)) or "admin" in roles or "administrator" in roles
+    return is_admin_user(user)
 
 
 def _require_optimizer_access(user: User) -> None:
-    roles = {item.strip().lower() for item in (getattr(user, "roles", "") or "").split(",")}
-    if _is_admin(user) or "backtest_optimizer" in roles:
-        return
-    raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="账号未开通参数优化权限")
+    ensure_permission(user, "optimizer")
 
 
 def _require_research_access(user: User) -> None:
-    roles = {item.strip().lower() for item in (getattr(user, "roles", "") or "").split(",")}
-    if _is_admin(user) or {"backtest_optimizer", "backtest_research"} & roles:
-        return
-    raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="账号未开通样本外验证权限")
+    try:
+        ensure_permission(user, "research")
+    except HTTPException as exc:
+        if exc.status_code == status.HTTP_403_FORBIDDEN:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="账号未开通样本外验证权限") from exc
+        raise
 
 
 def _validate_backtest_strategy_access(db: Session, strategy_keys: list[str], user: User) -> None:

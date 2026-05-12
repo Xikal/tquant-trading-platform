@@ -482,7 +482,7 @@ qe_module.macd = lambda closes: (0.1, 0.05, 0.2)
 qe_module.vwap = lambda bars: 10.0
 qe_module.atr = lambda bars, period: 0.035
 qe_module.volume_ratio = lambda bars, period: 1.8
-qe_module.intraday_amplitude = lambda bars: 4.0
+qe_module.intraday_amplitude = lambda bars, **kwargs: 4.0
 qe_module.trend_slope = lambda closes, period: 0.2
 qe_module.obv = lambda bars: 1000.0
 

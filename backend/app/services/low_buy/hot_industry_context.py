@@ -13,6 +13,7 @@ from app.services.low_buy.mainline_strength import (
     rank_mainline_industries,
 )
 from app.services.low_buy.shared import Any, BoardCandidate, Session
+from app.services.shared.distributed_cache import get_json_cache, set_json_cache
 
 
 @dataclass
@@ -37,6 +38,9 @@ class LowBuyHotIndustryContextMixin:
     }
 
     def _load_live_industry_frame(self) -> pd.DataFrame | None:
+        distributed = get_json_cache("tquant:low-buy:live-industry-frame")
+        if isinstance(distributed, list) and distributed:
+            return normalize_live_industry_frame(pd.DataFrame(distributed))
         cached = self._live_industry_frame_cache
         now = time.monotonic()
         if cached is not None and cached[0] > now:
@@ -59,6 +63,12 @@ class LowBuyHotIndustryContextMixin:
         )
         normalized = normalize_live_industry_frame(frame)
         self._live_industry_frame_cache = (now + self._live_industry_frame_ttl_seconds, normalized)
+        if normalized is not None and not normalized.empty:
+            set_json_cache(
+                "tquant:low-buy:live-industry-frame",
+                normalized.to_dict(orient="records"),
+                ttl_seconds=self._live_industry_frame_ttl_seconds,
+            )
         return normalized.copy()
 
     def _load_hot_industries(self, latest_trade_date: str) -> list[str]:
@@ -259,6 +269,16 @@ class LowBuyHotIndustryContextMixin:
         db: Session,
         latest_trade_date: str,
     ) -> _HotIndustrySnapshotView | None:
+        distributed = get_json_cache(f"tquant:low-buy:hot-industries:{latest_trade_date}")
+        if isinstance(distributed, dict):
+            industries = [str(item) for item in distributed.get("industries", []) if item]
+            if industries:
+                return _HotIndustrySnapshotView(
+                    latest_trade_date=latest_trade_date,
+                    source=str(distributed.get("source") or "distributed_cache"),
+                    industries=industries,
+                    trade_gap=0,
+                )
         row = LowBuyHotIndustryRepository(db).fetch_latest_valid(latest_trade_date)
         if row is None:
             return None
@@ -302,6 +322,11 @@ class LowBuyHotIndustryContextMixin:
             latest_trade_date=latest_trade_date,
             source=source,
             industries_json=json.dumps(industries, ensure_ascii=False),
+        )
+        set_json_cache(
+            f"tquant:low-buy:hot-industries:{latest_trade_date}",
+            {"source": source, "industries": industries},
+            ttl_seconds=900,
         )
         db.commit()
 

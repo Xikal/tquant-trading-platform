@@ -1,5 +1,6 @@
 import type {
   AdminTaskStatus,
+  AuthUser,
   FactorWeightsResponse,
   LowBuyStrategyGovernanceResponse,
   RuntimeStatus,
@@ -8,16 +9,21 @@ import type {
 } from "../../types";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { featureFlagsApi, type FeatureFlagAuditItem, type FeatureFlagItem } from "../../api/featureFlags";
+import { operationAuditApi, type OperationAuditItem } from "../../api/operationAudit";
 import { NumberField, TextField } from "../../components/shared/FormFields";
+import { AuthSecurityCard } from "./AuthSecurityCard";
 import { InfoPill, PanelTitle, SettingCard } from "./WorkspaceComponents";
 import {
   FeatureFlagsCard,
+  OperationAuditCard,
   RuntimeDiagnosticsCard,
   RuntimeSnapshotPanel,
   SectorFilterCard,
   StrategyGovernanceCard,
 } from "./SettingsPagePanels";
 import { QuantParameterMlCard } from "./QuantParameterMlCard";
+import { QuantParameterPaperExitCard } from "./QuantParameterPaperExitCard";
+import { QuantParameterSectorEtfCard } from "./QuantParameterSectorEtfCard";
 import type { SettingsDraft } from "./workspaceTypes";
 
 export function SettingsPage({
@@ -37,6 +43,8 @@ export function SettingsPage({
   onRefresh,
   onUpdateStrategyGovernance,
   onSaveSectorExclusions,
+  currentUser,
+  onUserUpdate,
 }: {
   settings: SettingsPayload | null;
   runtime: RuntimeStatus | null;
@@ -54,11 +62,16 @@ export function SettingsPage({
   onRefresh: () => void;
   onUpdateStrategyGovernance: (strategyKey: string, status: "active" | "watch" | "paused") => void;
   onSaveSectorExclusions: (excludedSectors: string[]) => void | Promise<void>;
+  currentUser: AuthUser;
+  onUserUpdate: (user: AuthUser) => void;
 }) {
   const [savedSection, setSavedSection] = useState("");
   const [featureFlags, setFeatureFlags] = useState<FeatureFlagItem[]>([]);
   const [featureFlagAudits, setFeatureFlagAudits] = useState<FeatureFlagAuditItem[]>([]);
   const [featureFlagError, setFeatureFlagError] = useState("");
+  const [operationAudits, setOperationAudits] = useState<OperationAuditItem[]>([]);
+  const [operationAuditError, setOperationAuditError] = useState("");
+  const [operationAuditLoading, setOperationAuditLoading] = useState(false);
   const [sectorQuery, setSectorQuery] = useState("");
   const [sectorDraft, setSectorDraft] = useState<string[]>([]);
   const savedTimerRef = useRef<number | null>(null);
@@ -127,6 +140,7 @@ export function SettingsPage({
   useEffect(() => {
     let cancelled = false;
     loadFeatureFlags({ includeAudit: true, cancelled: () => cancelled });
+    loadOperationAudits({ cancelled: () => cancelled });
     return () => {
       cancelled = true;
     };
@@ -172,6 +186,26 @@ export function SettingsPage({
       setFeatureFlagError("");
     } catch (error) {
       setFeatureFlagError(error instanceof Error ? error.message : "功能开关更新失败");
+    }
+  }
+
+  async function loadOperationAudits(options: { cancelled?: () => boolean } = {}) {
+    setOperationAuditLoading(true);
+    try {
+      const payload = await operationAuditApi.list(20);
+      if (!options.cancelled?.()) {
+        setOperationAudits(payload.items ?? []);
+        setOperationAuditError("");
+      }
+    } catch (error) {
+      if (!options.cancelled?.()) {
+        setOperationAudits([]);
+        setOperationAuditError(error instanceof Error ? error.message : "操作审计加载失败");
+      }
+    } finally {
+      if (!options.cancelled?.()) {
+        setOperationAuditLoading(false);
+      }
     }
   }
 
@@ -250,6 +284,9 @@ export function SettingsPage({
           )}
         </SettingCard>
         <QuantParameterMlCard adminTokenError={adminTokenError} />
+        <QuantParameterPaperExitCard adminTokenError={adminTokenError} />
+        <QuantParameterSectorEtfCard adminTokenError={adminTokenError} />
+        <AuthSecurityCard currentUser={currentUser} onUserUpdate={onUserUpdate} />
         <SectorFilterCard
           sectorExclusions={sectorExclusions}
           sectorDraft={sectorDraft}
@@ -279,6 +316,12 @@ export function SettingsPage({
             void loadFeatureFlags({ includeAudit: true });
           }}
           onToggle={(item) => void toggleFeatureFlag(item)}
+        />
+        <OperationAuditCard
+          items={operationAudits}
+          error={operationAuditError}
+          loading={operationAuditLoading}
+          onRefresh={() => void loadOperationAudits()}
         />
         <RuntimeDiagnosticsCard
           runtime={runtime}

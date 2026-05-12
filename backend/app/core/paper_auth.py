@@ -3,6 +3,7 @@ from __future__ import annotations
 from fastapi import Depends, HTTPException, status
 
 from app.core.auth import get_current_user
+from app.core.role_permissions import ensure_permission
 from app.core.user_permissions import paper_trade_enabled
 from app.models.entities import User
 
@@ -15,4 +16,5 @@ def require_paper_trading(current_user: User = Depends(get_current_user)) -> Use
             status_code=status.HTTP_403_FORBIDDEN,
             detail="账号未开通模拟盘权限，请联系管理员加入白名单",
         )
+    ensure_permission(current_user, "paper_trade")
     return current_user

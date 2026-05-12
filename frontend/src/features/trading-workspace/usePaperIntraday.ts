@@ -28,6 +28,7 @@ export function usePaperIntraday({
   useEffect(() => {
     let source: EventSource | undefined;
     let cancelled = false;
+    let lastEventId = "";
     if (!currentUser || page !== "paper" || !positionSymbols) {
       setIntradayConfirmations([]);
       return undefined;
@@ -43,10 +44,12 @@ export function usePaperIntraday({
         }
         const normalizedBase = API_BASE.replace(/\/$/, "");
         const agentBase = normalizedBase.endsWith("/api") ? normalizedBase : `${normalizedBase}/api`;
-        const url = `${agentBase}/intraday/stream?symbols=${encodeURIComponent(positionSymbols)}&client_id=web-paper&stream_token=${encodeURIComponent(payload.stream_token)}&interval_seconds=20`;
+        const buildUrl = () => `${agentBase}/intraday/stream?symbols=${encodeURIComponent(positionSymbols)}&client_id=web-paper&stream_token=${encodeURIComponent(payload.stream_token)}&interval_seconds=20&last_event_id=${encodeURIComponent(lastEventId)}`;
+        const url = buildUrl();
         source = new EventSource(url);
         source.addEventListener("intraday_confirmations", (event) => {
           try {
+            lastEventId = (event as MessageEvent).lastEventId || lastEventId;
             const payload = JSON.parse((event as MessageEvent).data) as { items?: IntradayConfirmationItem[] };
             setIntradayConfirmations(payload.items ?? []);
           } catch {

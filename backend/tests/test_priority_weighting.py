@@ -89,6 +89,7 @@ def _performance(
     avg_max_drawdown_5d: float = -2.0,
     market_state_hit_rate: float = 0.0,
     industry_tier_hit_rate: float = 0.0,
+    retracement_hit_rate: float = 0.0,
 ) -> LowBuyStrategyPerformanceOut:
     return LowBuyStrategyPerformanceOut(
         evaluated_signals=evaluated_signals,
@@ -122,6 +123,18 @@ def _performance(
             )
         ]
         if industry_tier_hit_rate
+        else [],
+        retracement_attribution=[
+            LowBuyPerformanceBucketOut(
+                label="3-4天回调",
+                sample_count=12,
+                hit_count=round(retracement_hit_rate * 0.12),
+                hit_rate=retracement_hit_rate,
+                avg_return_3d=avg_return_3d,
+                avg_return_5d=avg_return_5d,
+            )
+        ]
+        if retracement_hit_rate
         else [],
     )
 
@@ -281,6 +294,21 @@ class PriorityWeightingTests(unittest.TestCase):
         self.assertGreater(
             self.service._strategy_context_bonus(candidate, strong_context, None),
             self.service._strategy_context_bonus(candidate, weak_context, None),
+        )
+
+    def test_retracement_attribution_uses_shared_bucket_resolver(self) -> None:
+        candidate = _candidate().model_copy(update={"retracement_days": 3})
+        strong_context = _performance(
+            evaluated_signals=30,
+            hit_rate=52.0,
+            avg_return_3d=2.0,
+            avg_return_5d=5.0,
+            retracement_hit_rate=70.0,
+        )
+
+        self.assertGreater(
+            self.service._strategy_context_bonus(candidate, strong_context, None),
+            0.0,
         )
 
     def test_priority_action_summary_uses_actual_position_pct(self) -> None:

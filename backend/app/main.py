@@ -20,11 +20,14 @@ from app.core.config import get_settings
 from app.core.database import SessionLocal, init_db, ping_database
 from app.core.logging_config import configure_logging
 from app.core.rate_limit import is_global_rate_allowed
+from app.core.security_config import validate_security_settings
 from app.core.timing import record_request_timing, request_timing_snapshot
 from app.core.timezone import beijing_now
 from app.models.schemas import HealthResponse, ReadinessResponse
 from app.runtime.background_jobs import shutdown_runtime_background_jobs, start_runtime_background_jobs
 from app.services.auth_service import ensure_auth_secret_configured
+from app.services.market.providers.circuit import provider_metrics_snapshot
+from app.services.operation_audit_middleware import OperationAuditMiddleware
 
 settings = get_settings()
 configure_logging(structured=settings.structured_logs)
@@ -57,6 +60,7 @@ _SECURITY_HEADERS = {
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     ensure_auth_secret_configured()
+    validate_security_settings(settings)
     init_db()
     start_runtime_background_jobs()
     try:
@@ -71,11 +75,12 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type", "X-Admin-Token", "X-Request-ID", "X-Requested-With"],
 )
 app.include_router(api_router, prefix=settings.api_prefix)
 app.include_router(strategy_ws_router)
+operation_audit_middleware = OperationAuditMiddleware()
 
 
 @app.exception_handler(Exception)
@@ -118,6 +123,7 @@ async def record_http_timing(request, call_next):
     request.state.trace_id = trace_id
     started = time.perf_counter()
     status_code = 500
+    audit_candidate = operation_audit_middleware.candidate(request)
     try:
         response = await call_next(request)
         status_code = response.status_code
@@ -125,6 +131,7 @@ async def record_http_timing(request, call_next):
         _apply_security_headers(response, request)
         return response
     finally:
+        operation_audit_middleware.record(audit_candidate, status_code=status_code, path=request.url.path)
         duration_ms = int((time.perf_counter() - started) * 1000)
         record_request_timing(
             method=request.method,
@@ -201,6 +208,16 @@ def _phase4_metrics_snapshot() -> dict[str, int]:
         }
 
 
+def _provider_metrics_snapshot() -> dict[str, int]:
+    snapshot = provider_metrics_snapshot()
+    return {
+        "provider_calls_total": int(snapshot.get("provider_calls_total") or 0),
+        "provider_success_total": int(snapshot.get("provider_success_total") or 0),
+        "provider_failures_total": int(snapshot.get("provider_failures_total") or 0),
+        "provider_slow_calls_total": int(snapshot.get("provider_slow_calls_total") or 0),
+    }
+
+
 def _paper_archive_due() -> bool:
     """Compatibility wrapper for tests and scripts that import main directly."""
 
@@ -261,6 +278,7 @@ def prometheus_metrics(_: None = Depends(require_admin_auth)) -> PlainTextRespon
     snapshot = request_timing_snapshot()
     agent_snapshot = _agent_audit_metrics_snapshot()
     phase4_snapshot = _phase4_metrics_snapshot()
+    provider_snapshot = _provider_metrics_snapshot()
     lines = [
         "# HELP tquant_http_timing_samples Number of retained HTTP timing samples.",
         "# TYPE tquant_http_timing_samples gauge",
@@ -292,6 +310,15 @@ def prometheus_metrics(_: None = Depends(require_admin_auth)) -> PlainTextRespon
         "# HELP tquant_agent_quality_blocked_total Agent quality results that failed validation.",
         "# TYPE tquant_agent_quality_blocked_total gauge",
         f"tquant_agent_quality_blocked_total {phase4_snapshot.get('agent_quality_blocked_total', 0)}",
+        "# HELP tquant_provider_calls_total Market provider calls across configured providers.",
+        "# TYPE tquant_provider_calls_total counter",
+        f"tquant_provider_calls_total {provider_snapshot.get('provider_calls_total', 0)}",
+        "# HELP tquant_provider_failures_total Failed market provider calls.",
+        "# TYPE tquant_provider_failures_total counter",
+        f"tquant_provider_failures_total {provider_snapshot.get('provider_failures_total', 0)}",
+        "# HELP tquant_provider_slow_calls_total Slow market provider calls.",
+        "# TYPE tquant_provider_slow_calls_total counter",
+        f"tquant_provider_slow_calls_total {provider_snapshot.get('provider_slow_calls_total', 0)}",
     ]
     return PlainTextResponse("\n".join(lines) + "\n", media_type="text/plain; version=0.0.4")
 

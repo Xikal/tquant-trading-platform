@@ -17,6 +17,7 @@ from app.services.market.sectors import MarketSectorMixin
 from app.services.market.providers.akshare_provider import AkshareMarketProvider
 from app.services.market.providers.akshare_raw import AkshareRawClient
 from app.services.market.providers.eastmoney_provider import EastmoneyMarketProvider
+from app.services.market.providers.local_provider import LocalMarketProvider
 from app.services.market.providers.openbb_provider import OpenBBMarketProvider
 from app.services.market.providers.router import MarketProviderRouter
 
@@ -66,6 +67,7 @@ class MarketDataService(
         self.intraday_router = IntradaySourceRouter(self)
         self.provider_router = MarketProviderRouter(
             [
+                LocalMarketProvider(),
                 EastmoneyMarketProvider(self),
                 AkshareMarketProvider(self),
                 OpenBBMarketProvider(self),

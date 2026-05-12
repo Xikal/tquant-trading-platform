@@ -27,6 +27,7 @@ from app.services.low_buy.strategy_parameter_defaults_parts.runtime import (
     BACKTEST_EXECUTION_DEFAULTS,
     CAPACITY_ANALYSIS_DEFAULTS,
     ML_SIGNAL_TRAINING_DEFAULTS,
+    PAPER_DYNAMIC_EXIT_DEFAULTS,
     RISK_VOLATILITY_SIZING_DEFAULTS,
 )
 
@@ -86,6 +87,7 @@ def quant_parameter_schema() -> dict[str, Any]:
             "market.distribution_signals",
         ),
         "risk.volatility_sizing": _nested_schema(RISK_VOLATILITY_SIZING_DEFAULTS, "risk.volatility_sizing"),
+        "paper.dynamic_exit": _nested_schema(PAPER_DYNAMIC_EXIT_DEFAULTS, "paper.dynamic_exit"),
         "ml.production_enabled": _field_schema(False, "ml.production_enabled"),
         "ml.min_oos_days": _field_schema(60, "ml.min_oos_days"),
         "ml.min_samples": _field_schema(1000, "ml.min_samples"),

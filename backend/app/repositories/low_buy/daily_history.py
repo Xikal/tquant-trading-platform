@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from sqlalchemy import func, select
+from sqlalchemy import func, select, text
 from sqlalchemy.orm import Session
 
 from app.models.entities import DailyBarSnapshot
@@ -18,6 +18,56 @@ class DailyBarRow:
     volume: float
     amount: float
     pct_chg: float
+
+
+def _daily_bar_row_columns():
+    return (
+        DailyBarSnapshot.trade_date,
+        DailyBarSnapshot.open_price,
+        DailyBarSnapshot.close_price,
+        DailyBarSnapshot.high_price,
+        DailyBarSnapshot.low_price,
+        DailyBarSnapshot.volume,
+        DailyBarSnapshot.amount,
+        DailyBarSnapshot.pct_chg,
+    )
+
+
+def _daily_bar_row_query():
+    return select(*_daily_bar_row_columns())
+
+
+def _daily_bar_insert_payload(symbol: str, item: DailyBarRow) -> dict[str, object]:
+    return {
+        "symbol": symbol,
+        "market": "CN",
+        "instrument_type": "stock",
+        "trade_date": item.trade_date,
+        "open_price": item.open_price,
+        "close_price": item.close_price,
+        "high_price": item.high_price,
+        "low_price": item.low_price,
+        "volume": item.volume,
+        "amount": item.amount,
+        "pct_chg": item.pct_chg,
+    }
+
+
+def _daily_bar_insert_statement():
+    return text(
+        """
+        INSERT INTO daily_bar_snapshots (
+            symbol, market, instrument_type, trade_date,
+            open_price, close_price, high_price, low_price,
+            volume, amount, pct_chg
+        )
+        VALUES (
+            :symbol, :market, :instrument_type, :trade_date,
+            :open_price, :close_price, :high_price, :low_price,
+            :volume, :amount, :pct_chg
+        )
+        """
+    )
 
 
 class DailyHistoryRepository:
@@ -89,7 +139,7 @@ class DailyHistoryRepository:
     def fetch_rows(self, symbol: str, start_date_iso: str, latest_trade_date: str) -> list[DailyBarRow]:
         rows = (
             self.db.execute(
-                select(DailyBarSnapshot)
+                _daily_bar_row_query()
                 .where(
                     DailyBarSnapshot.symbol == symbol,
                     DailyBarSnapshot.trade_date >= start_date_iso,
@@ -97,7 +147,6 @@ class DailyHistoryRepository:
                 )
                 .order_by(DailyBarSnapshot.trade_date.asc())
             )
-            .scalars()
             .all()
         )
         return [
@@ -124,7 +173,7 @@ class DailyHistoryRepository:
             return {}
         rows = (
             self.db.execute(
-                select(DailyBarSnapshot)
+                select(DailyBarSnapshot.symbol, *_daily_bar_row_columns())
                 .where(
                     DailyBarSnapshot.symbol.in_(symbols),
                     DailyBarSnapshot.trade_date >= start_date_iso,
@@ -132,7 +181,6 @@ class DailyHistoryRepository:
                 )
                 .order_by(DailyBarSnapshot.symbol.asc(), DailyBarSnapshot.trade_date.asc())
             )
-            .scalars()
             .all()
         )
         grouped: dict[str, list[DailyBarRow]] = {}
@@ -166,39 +214,26 @@ class DailyHistoryRepository:
         trade_dates = [item.trade_date for item in payloads]
         existing_rows = (
             self.db.execute(
-                select(DailyBarSnapshot)
+                select(DailyBarSnapshot.id, DailyBarSnapshot.trade_date)
                 .where(
                     DailyBarSnapshot.symbol == symbol,
                     DailyBarSnapshot.trade_date >= min(trade_dates),
                     DailyBarSnapshot.trade_date <= max(trade_dates),
                 )
             )
-            .scalars()
             .all()
         )
-        rows_by_trade_date = {row.trade_date: row for row in existing_rows}
-        new_rows: list[DailyBarSnapshot] = []
+        ids_by_trade_date = {row.trade_date: row.id for row in existing_rows}
+        new_rows: list[dict[str, object]] = []
         update_rows: list[dict[str, object]] = []
         for item in payloads:
-            row = rows_by_trade_date.get(item.trade_date)
-            if row is None:
-                new_rows.append(
-                    DailyBarSnapshot(
-                        symbol=symbol,
-                        trade_date=item.trade_date,
-                        open_price=item.open_price,
-                        close_price=item.close_price,
-                        high_price=item.high_price,
-                        low_price=item.low_price,
-                        volume=item.volume,
-                        amount=item.amount,
-                        pct_chg=item.pct_chg,
-                    )
-                )
+            row_id = ids_by_trade_date.get(item.trade_date)
+            if row_id is None:
+                new_rows.append(_daily_bar_insert_payload(symbol, item))
                 continue
             update_rows.append(
                 {
-                    "id": row.id,
+                    "id": row_id,
                     "open_price": item.open_price,
                     "close_price": item.close_price,
                     "high_price": item.high_price,
@@ -209,6 +244,6 @@ class DailyHistoryRepository:
                 }
             )
         if new_rows:
-            self.db.bulk_save_objects(new_rows)
+            self.db.execute(_daily_bar_insert_statement(), new_rows)
         if update_rows:
             self.db.bulk_update_mappings(DailyBarSnapshot, update_rows)

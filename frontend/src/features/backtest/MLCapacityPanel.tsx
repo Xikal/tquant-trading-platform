@@ -111,6 +111,7 @@ export function MLCapacityPanel({ strategyOptions }: { strategyOptions: Backtest
             {item.curve.slice(0, 3).map((point) => (
               <span className={capacityTone(point.capacity_status)} key={`${item.strategy_key}-${point.capital}`}>
                 {point.capacity_status} · {formatPct(point.net_edge_pct)}
+                {point.almgren_chriss_cost_pct !== undefined ? ` / 分批${formatPct(point.almgren_chriss_cost_pct)}` : ""}
               </span>
             ))}
             <span>{item.notes?.[0] || "容量评估完成"}</span>

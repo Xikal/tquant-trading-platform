@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text, UniqueConstraint, func
+from sqlalchemy import Boolean, DateTime, ForeignKey, Index, Integer, String, Text, UniqueConstraint, func
 from sqlalchemy.dialects import mysql
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -20,6 +20,11 @@ class User(Base):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, index=True)
     can_paper_trade: Mapped[bool] = mapped_column(Boolean, default=True, index=True)
     roles: Mapped[str] = mapped_column(String(200), default="")
+    mfa_totp_enabled: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
+    mfa_totp_secret: Mapped[str] = mapped_column(String(80), default="")
+    failed_login_count: Mapped[int] = mapped_column(Integer, default=0)
+    locked_until: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True, index=True)
+    last_failed_login_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime, server_default=func.now(), onupdate=func.now()
@@ -27,6 +32,9 @@ class User(Base):
 
 class UserSession(Base):
     __tablename__ = "user_sessions"
+    __table_args__ = (
+        Index("ix_user_sessions_user_revoked_expires", "user_id", "revoked_at", "expires_at"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)

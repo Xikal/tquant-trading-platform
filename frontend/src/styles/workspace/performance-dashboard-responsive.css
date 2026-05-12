@@ -189,6 +189,6 @@
 
   .paper-positions .stock-list {
     grid-template-columns: 1fr;
-    max-height: 420px;
+    max-height: none;
   }
 }

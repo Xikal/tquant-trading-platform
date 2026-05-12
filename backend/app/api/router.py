@@ -18,6 +18,7 @@ from app.api.routes import (
     market_data_sources,
     ml_signals,
     monitor,
+    operation_audit,
     paper,
     paper_compare,
     quant_config,
@@ -57,6 +58,7 @@ api_router.include_router(paper_compare.router, tags=["paper"])
 api_router.include_router(feishu.router, tags=["feishu"])
 api_router.include_router(feature_flags.router, tags=["feature-flags"])
 api_router.include_router(quant_config.router, tags=["quant"])
+api_router.include_router(operation_audit.router, tags=["admin"])
 api_router.include_router(runtime_tasks.router, tags=["runtime-tasks"])
 api_router.include_router(ml_signals.router, tags=["ml"])
 api_router.include_router(v1.router, tags=["v1"])

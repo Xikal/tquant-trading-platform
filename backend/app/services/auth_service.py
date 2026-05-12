@@ -17,6 +17,8 @@ from app.core.timezone import utc_now, utc_now_naive
 from app.core.user_permissions import paper_trade_enabled
 from app.models.entities import User, UserSession
 from app.models.schemas import AuthTokenResponse, AuthUserOut
+from app.services.auth_security_alerts import notify_login_lockout
+from app.services.totp import build_otpauth_uri, generate_totp_secret, verify_totp
 
 PASSWORD_ALGORITHM = "pbkdf2_sha256"
 PASSWORD_ITERATIONS = 210_000
@@ -135,12 +137,21 @@ class AuthService:
         username: str,
         password: str,
         device_name: str = "",
+        mfa_code: str = "",
     ) -> AuthTokenResponse:
         normalized = _normalize_username(username)
         _ensure_username_allowed(normalized)
         user = self._get_user_by_username(db, normalized)
+        if user is not None:
+            self._ensure_not_locked(user)
         if user is None or not user.is_active or not _verify_password(password, user.password_hash):
+            if user is not None and user.is_active:
+                self._record_failed_login(db, user)
             raise AuthError("账号或密码错误")
+        if user.mfa_totp_enabled and not verify_totp(mfa_code, user.mfa_totp_secret):
+            self._record_failed_login(db, user)
+            raise AuthError("请输入有效动态验证码")
+        self._clear_failed_login(user)
         response = self._issue_token_pair(db, user=user, device_name=device_name)
         db.commit()
         return response
@@ -231,8 +242,30 @@ class AuthService:
             display_name=user.display_name or user.username,
             can_paper_trade=paper_trade_enabled(user.can_paper_trade),
             roles=roles,
+            mfa_totp_enabled=bool(getattr(user, "mfa_totp_enabled", False)),
             created_at=user.created_at,
         )
+
+    def prepare_totp_setup(self, db: Session, *, user: User) -> tuple[str, str]:
+        secret = user.mfa_totp_secret or generate_totp_secret()
+        user.mfa_totp_secret = secret
+        db.commit()
+        return secret, build_otpauth_uri(issuer=get_settings().app_name, username=user.username, secret=secret)
+
+    def enable_totp(self, db: Session, *, user: User, code: str) -> None:
+        if not user.mfa_totp_secret:
+            user.mfa_totp_secret = generate_totp_secret()
+        if not verify_totp(code, user.mfa_totp_secret):
+            raise AuthError("动态验证码无效")
+        user.mfa_totp_enabled = True
+        db.commit()
+
+    def disable_totp(self, db: Session, *, user: User, code: str) -> None:
+        if user.mfa_totp_enabled and not verify_totp(code, user.mfa_totp_secret):
+            raise AuthError("动态验证码无效")
+        user.mfa_totp_enabled = False
+        user.mfa_totp_secret = ""
+        db.commit()
 
     def _issue_token_pair(self, db: Session, *, user: User, device_name: str = "") -> AuthTokenResponse:
         settings = get_settings()
@@ -253,6 +286,30 @@ class AuthService:
             expires_in=settings.auth_access_token_minutes * 60,
             user=self.to_user_out(user),
         )
+
+    @staticmethod
+    def _ensure_not_locked(user: User) -> None:
+        locked_until = getattr(user, "locked_until", None)
+        if locked_until is not None and locked_until > utc_now_naive():
+            raise AuthError("账号登录失败次数过多，已临时锁定，请稍后再试")
+
+    @staticmethod
+    def _record_failed_login(db: Session, user: User) -> None:
+        settings = get_settings()
+        threshold = max(int(settings.auth_login_lockout_threshold or 5), 1)
+        lock_minutes = max(int(settings.auth_login_lockout_minutes or 15), 1)
+        user.failed_login_count = int(getattr(user, "failed_login_count", 0) or 0) + 1
+        user.last_failed_login_at = utc_now_naive()
+        if user.failed_login_count >= threshold:
+            user.locked_until = utc_now_naive() + timedelta(minutes=lock_minutes)
+            notify_login_lockout(username=user.username, locked_until=user.locked_until)
+        db.commit()
+
+    @staticmethod
+    def _clear_failed_login(user: User) -> None:
+        user.failed_login_count = 0
+        user.locked_until = None
+        user.last_failed_login_at = None
 
     @staticmethod
     def _build_access_token(user: User, expires_at: datetime) -> str:
