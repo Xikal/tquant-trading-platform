@@ -38,7 +38,10 @@ def upgrade() -> None:
             sa.Column("resource_id", sa.String(length=80), nullable=False, server_default=""),
             sa.Column("status", sa.String(length=24), nullable=False, server_default="ok"),
             sa.Column("operator_ip", sa.String(length=80), nullable=False, server_default=""),
-            sa.Column("detail_json", sa.Text(), nullable=False, server_default="{}"),
+            # MySQL does not allow defaults on TEXT/JSON columns. Application
+            # writes always provide a sanitized JSON string, so keep the column
+            # NOT NULL without a server-side default.
+            sa.Column("detail_json", sa.Text(), nullable=False),
             sa.Column("created_at", sa.DateTime(), server_default=sa.func.now()),
         )
         op.create_index("ix_operation_audit_log_user_id", "operation_audit_log", ["user_id"])
