@@ -1,7 +1,15 @@
 from __future__ import annotations
 
+import logging
+
 from app.models.schemas import KlineBar, QuoteSnapshot, SectorSnapshot
+from app.services.market.providers.eastmoney_fund_flow import (
+    EastMoneyDatacenterClient,
+    SectorFundFlowResult,
+)
 from app.services.market.providers.quality import MarketDataQuality, ProviderResult
+
+logger = logging.getLogger(__name__)
 
 
 class EastmoneyMarketProvider:
@@ -9,6 +17,7 @@ class EastmoneyMarketProvider:
 
     def __init__(self, service) -> None:
         self.service = service
+        self._dc_client = EastMoneyDatacenterClient()
 
     def fetch_quote(self, symbol: str) -> ProviderResult[QuoteSnapshot]:
         try:
@@ -82,8 +91,50 @@ class EastmoneyMarketProvider:
             message="daily history not provided by this adapter",
         )
 
-    def fetch_sector_fund_flow_rank(self) -> ProviderResult:
-        return self._unavailable("sector fund flow not provided by this adapter")
+    def fetch_sector_fund_flow_rank(self) -> ProviderResult[SectorFundFlowResult]:
+        """Fetch sector fund flow ranking via EastMoney datacenter API.
+
+        Returns SectorFundFlowResult (not a DataFrame) so downstream callers
+        get a clean typed object.  The existing akshare path in
+        fetch_sector_fund_flow_rank returns a DataFrame; callers that need a
+        DataFrame should check the data type.
+        """
+        try:
+            result = self._dc_client.fetch_sector_fund_flow(
+                period="today", sector_type="industry", limit=50,
+            )
+        except Exception as exc:
+            logger.warning("eastmoney datacenter fund flow fetch failed: %s", exc)
+            return self._unavailable(str(exc)[:160])
+        if not result.items:
+            return self._unavailable("eastmoney datacenter returned empty fund flow")
+        return ProviderResult(
+            quality=MarketDataQuality.FRESH,
+            source=self.name,
+            data=result,
+        )
+
+    def fetch_sector_fund_flow(
+        self,
+        period: str = "today",
+        sector_type: str = "industry",
+        limit: int = 30,
+    ) -> ProviderResult[SectorFundFlowResult]:
+        """Flexible sector fund flow with period and type control."""
+        try:
+            result = self._dc_client.fetch_sector_fund_flow(
+                period=period, sector_type=sector_type, limit=limit,
+            )
+        except Exception as exc:
+            logger.warning("eastmoney fund flow fetch failed: %s", exc)
+            return self._unavailable(str(exc)[:160])
+        if not result.items:
+            return self._unavailable("eastmoney datacenter returned empty fund flow")
+        return ProviderResult(
+            quality=MarketDataQuality.FRESH,
+            source=self.name,
+            data=result,
+        )
 
     def fetch_individual_fund_flow(self, symbol: str, market: str) -> ProviderResult:
         return self._unavailable("individual fund flow not provided by this adapter")

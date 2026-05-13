@@ -10,6 +10,12 @@ class PaperQuotePrice:
     quality: str
     source: str = ""
     message: str = ""
+    open_price: float = 0.0
+    high_price: float = 0.0
+    low_price: float = 0.0
+    prev_close: float = 0.0
+    change_pct: float = 0.0
+    volume_ratio: float = 0.0
 
     @property
     def usable(self) -> bool:

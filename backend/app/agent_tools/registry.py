@@ -260,6 +260,33 @@ def _tool_registry() -> dict[str, ToolDefinition]:
             timeout_seconds=15,
         ),
         ToolDefinition(
+            name="get_sector_fund_flow",
+            description="获取板块主力资金净流入排行（今日/5日/10日，行业/概念/地域），数据来自东方财富数据中心",
+            method="GET",
+            path="/api/agent/context/sector-fund-flow",
+            input_schema={
+                "type": "object",
+                "properties": {
+                    "period": {
+                        "type": "string",
+                        "default": "today",
+                        "enum": ["today", "5day", "10day"],
+                        "description": "时间周期：today=今日, 5day=5日, 10day=10日",
+                    },
+                    "sector_type": {
+                        "type": "string",
+                        "default": "industry",
+                        "enum": ["industry", "concept", "region"],
+                        "description": "板块类型：industry=行业, concept=概念, region=地域",
+                    },
+                    "limit": {"type": "integer", "default": 30, "minimum": 5, "maximum": 100},
+                },
+            },
+            permission="read",
+            capabilities=("sector_fund_flow_read",),
+            timeout_seconds=15,
+        ),
+        ToolDefinition(
             name="get_position_t_signal",
             description="获取指定持仓的正T/反T信号和建议操作",
             method="POST",

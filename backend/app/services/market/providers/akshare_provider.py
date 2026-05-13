@@ -277,6 +277,10 @@ class AkshareMarketProvider:
             return self._unavailable(str(exc))
         return self._frame_result(frame)
 
+    def fetch_sector_fund_flow(self, period: str = "today", sector_type: str = "industry", limit: int = 30) -> ProviderResult:
+        """AkShare does not support multi-period fund flow; delegate to rank."""
+        return self.fetch_sector_fund_flow_rank()
+
     def fetch_individual_fund_flow(self, symbol: str, market: str) -> ProviderResult:
         if ak is None:
             return self._ak_unavailable()

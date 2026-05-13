@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from datetime import datetime
 
 from app.models.schemas import (
     PaperAccountOut,
@@ -10,6 +11,7 @@ from app.models.schemas import (
     PaperTradeOut,
     PaperTradeTagOut,
 )
+from app.services.paper.dynamic_exit import evaluate_paper_exit
 from app.services.paper.fees import commission_warning_text
 from app.services.paper.reasons import normalize_entry_reason, normalize_exit_reason
 
@@ -46,6 +48,11 @@ def positions_response(rows) -> PaperPositionsResponse:
 
 
 def position_out(row) -> PaperPositionOut:
+    decision = evaluate_paper_exit(
+        row,
+        price=float(row.latest_price or 0),
+        now=datetime.now(),
+    )
     return PaperPositionOut(
         id=row.id,
         symbol=row.symbol,
@@ -60,6 +67,14 @@ def position_out(row) -> PaperPositionOut:
         unrealized_pnl_pct=float(row.unrealized_pnl_pct or 0),
         strategy_sources=_json_list(row.strategy_sources),
         opened_at=row.opened_at,
+        smart_exit_action=decision.code,
+        smart_exit_text=decision.action_text,
+        smart_exit_reason=decision.why or decision.reason,
+        smart_exit_invalid_condition=decision.invalid_condition,
+        smart_exit_failure_action=decision.failure_action,
+        smart_exit_quantity=decision.quantity,
+        smart_exit_net_profit_pct=decision.net_profit_pct,
+        smart_exit_fee_drag_pct=decision.fee_drag_pct,
     )
 
 

@@ -249,6 +249,24 @@ class AgentSectorHeatmapResponse(BaseModel):
     data_quality_text: str = ""
 
 
+class SectorFundFlowItem(BaseModel):
+    """Single sector fund flow record in API response."""
+    board_code: str = ""
+    sector_name: str = ""
+    net_flow_yi: float = 0.0        # 净流入 (亿元)
+    net_flow_rank: int = 0
+
+
+class AgentSectorFundFlowResponse(BaseModel):
+    """Response for /api/agent/context/sector-fund-flow."""
+    updated_at: str
+    period: str = "today"            # "today" / "5day" / "10day"
+    sector_type: str = "industry"    # "industry" / "concept" / "region"
+    total: int = 0
+    items: list[SectorFundFlowItem] = Field(default_factory=list)
+    data_quality_text: str = ""
+
+
 class AgentPositionTSignalRequest(BaseModel):
     symbol: str
     shares: int = 0

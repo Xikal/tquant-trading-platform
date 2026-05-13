@@ -37,7 +37,7 @@ from app.services.paper.scheduler_helpers import (
     _sized_order_summary_list,
 )
 from app.services.paper.scheduler_etf import build_sector_etf_t0_orders
-from app.services.paper.scheduler_exit import build_exit_order_plan, build_exit_orders
+from app.services.paper.scheduler_exit import build_exit_order_plan, build_exit_orders, build_smart_t_order_plan
 from app.services.paper.scheduler_runs import finish_agent_run, record_cycle, start_agent_run
 from app.services.paper.scheduler_state import AutoTraderState
 from app.services.paper.sizing import PositionSizer, SizedOrder
@@ -224,6 +224,12 @@ class PaperAutoTrader:
             else set(),
         )
         exit_orders, exit_skip_reason = self._build_exit_order_plan(db, account)
+        smart_t_orders = self._build_smart_t_order_plan(
+            db=db,
+            account=account,
+            today_orders=today_orders,
+            used_order_count=len(exit_orders),
+        )
         orders = PositionSizer().calculate(
             candidates=report.passed,
             total_assets=float(account.total_assets or 0),
@@ -236,9 +242,9 @@ class PaperAutoTrader:
             account=account,
             board=board,
             today_orders=today_orders,
-            used_order_count=len(exit_orders) + len(orders),
+            used_order_count=len(exit_orders) + len(smart_t_orders) + len(orders),
         )
-        planned_orders = [*exit_orders, *orders, *etf_orders]
+        planned_orders = [*exit_orders, *smart_t_orders, *orders, *etf_orders]
         if not planned_orders:
             summary = report.summary if not report.passed else "资金不足、候选不够或没有触发退出计划"
             skipped = [{"account_id": account.id, "reason": exit_skip_reason}] if exit_skip_reason else []
@@ -249,6 +255,7 @@ class PaperAutoTrader:
                 "skipped": skipped,
                 "summary": summary,
                 "exit_order_count": len(exit_orders),
+                "smart_t_order_count": len(smart_t_orders),
                 "buy_order_count": len(orders),
                 "sector_etf_t0_order_count": len(etf_orders),
                 "filtered_reasons": [
@@ -262,6 +269,7 @@ class PaperAutoTrader:
             "passed": len(report.passed),
             "filtered": len(report.filtered),
             "exit_order_count": len(exit_orders),
+            "smart_t_order_count": len(smart_t_orders),
             "buy_order_count": len(orders),
             "sector_etf_t0_order_count": len(etf_orders),
         }
@@ -331,6 +339,22 @@ class PaperAutoTrader:
 
     def _build_exit_order_plan(self, db: Session, account: PaperAccount) -> tuple[list[dict[str, Any]], str]:
         return build_exit_order_plan(db=db, account=account)
+
+    def _build_smart_t_order_plan(
+        self,
+        *,
+        db: Session,
+        account: PaperAccount,
+        today_orders: list[dict[str, Any]],
+        used_order_count: int,
+    ) -> list[dict[str, Any]]:
+        return build_smart_t_order_plan(
+            db=db,
+            account=account,
+            today_orders=today_orders,
+            used_order_count=used_order_count,
+            max_orders=self.state.max_orders_per_cycle,
+        )
 
     def _build_sector_etf_t0_orders(
         self,

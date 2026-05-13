@@ -20,7 +20,9 @@ from app.models.schema_defs.agent import (
     AgentPaperOrderResponse,
     AgentPositionTSignalRequest,
     AgentPositionTSignalResponse,
+    AgentSectorFundFlowResponse,
     AgentSectorHeatmapResponse,
+    SectorFundFlowItem,
 )
 from app.services.agent_context_service import AgentContextService
 from app.services.market_data import MarketDataService
@@ -30,6 +32,9 @@ from app.services.paper.risk_circuit import PaperRiskCircuitBreaker
 
 _SECTOR_HEATMAP_CACHE: dict[tuple[int], tuple[float, AgentSectorHeatmapResponse]] = {}
 _SECTOR_HEATMAP_TTL_SECONDS = 180.0
+
+_SECTOR_FUND_FLOW_CACHE: dict[tuple[str, str, int], tuple[float, AgentSectorFundFlowResponse]] = {}
+_SECTOR_FUND_FLOW_TTL_SECONDS = 120.0
 
 
 def agent_backtest_strategy(
@@ -242,6 +247,60 @@ def agent_sector_heatmap(
         data_quality_text="实时板块榜" if sectors else "板块热度暂无可用数据",
     )
     _SECTOR_HEATMAP_CACHE[cache_key] = (now + _SECTOR_HEATMAP_TTL_SECONDS, response)
+    return response
+
+
+def agent_sector_fund_flow(
+    market_data: MarketDataService,
+    *,
+    period: str,
+    sector_type: str,
+    limit: int,
+) -> AgentSectorFundFlowResponse:
+    """Fetch sector capital flow from EastMoney datacenter API."""
+    cache_key = (period, sector_type, limit)
+    now = time.monotonic()
+    cached = _SECTOR_FUND_FLOW_CACHE.get(cache_key)
+    if cached and cached[0] > now:
+        return cached[1]
+
+    try:
+        result = market_data.provider_router.fetch_sector_fund_flow(
+            period=period, sector_type=sector_type, limit=limit,
+        )
+    except Exception:
+        result = None
+
+    if result and result.usable and result.data is not None:
+        flow_data = result.data
+        items = [
+            SectorFundFlowItem(
+                board_code=item.board_code,
+                sector_name=item.sector_name,
+                net_flow_yi=round(item.net_flow / 1e8, 2),
+                net_flow_rank=idx + 1,
+            )
+            for idx, item in enumerate(flow_data.items[:limit])
+        ]
+        response = AgentSectorFundFlowResponse(
+            updated_at=_now_string(),
+            period=period,
+            sector_type=sector_type,
+            total=flow_data.total,
+            items=items,
+            data_quality_text=f"东方财富数据中心 {sector_type}板块 {period}主力净流入",
+        )
+    else:
+        response = AgentSectorFundFlowResponse(
+            updated_at=_now_string(),
+            period=period,
+            sector_type=sector_type,
+            total=0,
+            items=[],
+            data_quality_text="板块资金流数据暂不可用",
+        )
+
+    _SECTOR_FUND_FLOW_CACHE[cache_key] = (now + _SECTOR_FUND_FLOW_TTL_SECONDS, response)
     return response
 
 

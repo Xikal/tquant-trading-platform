@@ -46,6 +46,14 @@ class PaperPositionOut(BaseModel):
     unrealized_pnl_pct: float = 0.0
     strategy_sources: list[str] = Field(default_factory=list)
     opened_at: datetime
+    smart_exit_action: str = "hold"
+    smart_exit_text: str = "继续观察"
+    smart_exit_reason: str = ""
+    smart_exit_invalid_condition: str = ""
+    smart_exit_failure_action: str = ""
+    smart_exit_quantity: int = 0
+    smart_exit_net_profit_pct: float = 0.0
+    smart_exit_fee_drag_pct: float = 0.0
 
 
 class PaperPositionsResponse(BaseModel):

@@ -110,6 +110,9 @@ class OpenBBMarketProvider:
     def fetch_sector_fund_flow_rank(self) -> ProviderResult:
         return self._unavailable("sector fund flow not enabled for OpenBB adapter")
 
+    def fetch_sector_fund_flow(self, period: str = "today", sector_type: str = "industry", limit: int = 30) -> ProviderResult:
+        return self._unavailable("sector fund flow not enabled for OpenBB adapter")
+
     def fetch_individual_fund_flow(self, symbol: str, market: str) -> ProviderResult:
         return self._unavailable("individual fund flow not enabled for OpenBB adapter")
 

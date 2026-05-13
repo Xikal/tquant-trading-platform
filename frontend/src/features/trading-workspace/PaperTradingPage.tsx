@@ -106,12 +106,6 @@ export const PaperTradingPage = memo(function PaperTradingPage({
         onOpenOrderEntry={() => setOrderModalOpen(true)}
         recentTrades={recentTrades}
       />
-      <PaperActionBrief
-        autoTradingStatus={autoTradingStatus}
-        riskEvents={riskEvents}
-        intradayConfirmations={intradayConfirmations}
-        autoTradingRuns={autoTradingRuns}
-      />
       {orderModalOpen ? (
         <OrderEntryModal
           draft={draft}
@@ -143,6 +137,12 @@ export const PaperTradingPage = memo(function PaperTradingPage({
         autoTradingRuns={autoTradingRuns}
         onAddTradeTag={onAddTradeTag}
         onDeleteTradeTag={onDeleteTradeTag}
+      />
+      <PaperActionBrief
+        autoTradingStatus={autoTradingStatus}
+        riskEvents={riskEvents}
+        intradayConfirmations={intradayConfirmations}
+        autoTradingRuns={autoTradingRuns}
       />
     </section>
   );

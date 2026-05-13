@@ -7,7 +7,8 @@
   grid-template-areas:
     "metrics metrics"
     "order positions"
-    "bottom bottom";
+    "bottom bottom"
+    "action action";
   gap: 12px;
 }
 
@@ -323,6 +324,31 @@
 .paper-positions .paper-position-row > strong {
   align-self: end;
   font-size: 14px;
+}
+
+.paper-smart-exit {
+  display: grid;
+  gap: 3px;
+  width: 100%;
+  margin-top: 4px;
+  padding: 7px;
+  border: 1px solid rgba(210, 164, 94, 0.34);
+  border-radius: 8px;
+  background: linear-gradient(135deg, rgba(255, 247, 232, 0.92), rgba(248, 250, 252, 0.96));
+  color: #162235;
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.paper-smart-exit b {
+  color: #7a4b00;
+  font-size: 12px;
+}
+
+.paper-smart-exit span {
+  color: #475569;
+  font-family: inherit;
+  white-space: normal;
 }
 
 .paper-orders,

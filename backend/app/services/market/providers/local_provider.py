@@ -108,6 +108,10 @@ class LocalMarketProvider:
             return _unavailable("local sector flow unavailable: empty sector map")
         return ProviderResult(quality=MarketDataQuality.STALE, source=self.name, data=frame)
 
+    def fetch_sector_fund_flow(self, period: str = "today", sector_type: str = "industry", limit: int = 30) -> ProviderResult:
+        """Local provider does not support multi-period fund flow; delegate to rank."""
+        return self.fetch_sector_fund_flow_rank()
+
     def fetch_limit_up_snapshot(self) -> ProviderResult[pd.DataFrame]:
         with SessionLocal() as db:
             latest = _latest_daily_trade_date(db)

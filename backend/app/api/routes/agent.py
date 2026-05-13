@@ -12,6 +12,7 @@ from app.api.routes.agent_helpers import (
     agent_create_paper_order as run_agent_create_paper_order,
     agent_market_sentiment as run_agent_market_sentiment,
     agent_position_t_signal as run_agent_position_t_signal,
+    agent_sector_fund_flow as run_agent_sector_fund_flow,
     agent_sector_heatmap as run_agent_sector_heatmap,
     audit_log_out,
 )
@@ -59,6 +60,7 @@ from app.models.schema_defs.agent import (
     AgentResearchWorkflowStatusResponse,
     AgentRiskCheckRequest,
     AgentSectorHeatmapResponse,
+    AgentSectorFundFlowResponse,
     AgentToolInvokeRequest,
     AgentToolResult,
     AgentWatchlistContextResponse,
@@ -255,6 +257,16 @@ def agent_sector_heatmap(
     _: Optional[User] = Depends(require_agent_tool_permission("get_sector_heatmap", "read")),
 ) -> AgentSectorHeatmapResponse:
     return run_agent_sector_heatmap(context_service, market_data, limit=limit)
+
+
+@router.get("/context/sector-fund-flow", response_model=AgentSectorFundFlowResponse)
+def agent_sector_fund_flow(
+    period: str = Query(default="today", pattern="^(today|5day|10day)$"),
+    sector_type: str = Query(default="industry", pattern="^(industry|concept|region)$"),
+    limit: int = Query(default=30, ge=5, le=100),
+    _: Optional[User] = Depends(require_agent_tool_permission("get_sector_fund_flow", "read")),
+) -> AgentSectorFundFlowResponse:
+    return run_agent_sector_fund_flow(market_data, period=period, sector_type=sector_type, limit=limit)
 
 
 @router.post("/context/position-t-signal", response_model=AgentPositionTSignalResponse)

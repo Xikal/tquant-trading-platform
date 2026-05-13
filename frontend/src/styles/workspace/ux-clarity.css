@@ -98,9 +98,9 @@
 .paper-grid {
   grid-template-areas:
     "metrics metrics"
-    "order action"
     "order positions"
-    "bottom bottom";
+    "bottom bottom"
+    "action action";
 }
 
 .paper-action-brief {
@@ -206,10 +206,10 @@
   .paper-grid {
     grid-template-areas:
       "metrics"
-      "action"
       "order"
       "positions"
-      "bottom";
+      "bottom"
+      "action";
   }
 
   .paper-action-brief-grid,

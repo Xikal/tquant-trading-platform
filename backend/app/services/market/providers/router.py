@@ -37,6 +37,8 @@ class MarketProvider(Protocol):
 
     def fetch_sector_fund_flow_rank(self): ...
 
+    def fetch_sector_fund_flow(self, period: str = "today", sector_type: str = "industry", limit: int = 30): ...
+
     def fetch_individual_fund_flow(self, symbol: str, market: str): ...
 
     def fetch_northbound_fund_flow_summary(self): ...
@@ -107,6 +109,12 @@ class MarketProviderRouter:
 
     def fetch_sector_fund_flow_rank(self) -> ProviderResult:
         return self._first_usable("fetch_sector_fund_flow_rank", lambda provider: provider.fetch_sector_fund_flow_rank())
+
+    def fetch_sector_fund_flow(self, period: str = "today", sector_type: str = "industry", limit: int = 30) -> ProviderResult:
+        return self._first_usable(
+            "fetch_sector_fund_flow",
+            lambda provider: provider.fetch_sector_fund_flow(period=period, sector_type=sector_type, limit=limit),
+        )
 
     def fetch_individual_fund_flow(self, symbol: str, market: str) -> ProviderResult:
         return self._first_usable("fetch_individual_fund_flow", lambda provider: provider.fetch_individual_fund_flow(symbol, market))

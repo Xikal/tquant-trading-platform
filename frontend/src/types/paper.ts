@@ -28,6 +28,14 @@ export interface PaperPosition {
   unrealized_pnl_pct: number
   strategy_sources: string[]
   opened_at: string
+  smart_exit_action?: string
+  smart_exit_text?: string
+  smart_exit_reason?: string
+  smart_exit_invalid_condition?: string
+  smart_exit_failure_action?: string
+  smart_exit_quantity?: number
+  smart_exit_net_profit_pct?: number
+  smart_exit_fee_drag_pct?: number
 }
 
 export interface PaperPositionsResponse {
