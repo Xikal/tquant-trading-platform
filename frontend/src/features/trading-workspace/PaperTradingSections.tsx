@@ -185,7 +185,7 @@ export function PaperBottomPanels({
       <section className="panel paper-orders">
         <div className="panel-title">
           <h2>委托记录</h2>
-          <span className="hint">{orders.length ? `共 ${orders.length} 条，全部展示` : "暂无委托"}</span>
+          <span className="hint">{orders.length ? `共 ${orders.length} 条，最多显示 5 条 · 可上下滑动` : "暂无委托"}</span>
         </div>
         <DataBody loading={loading} columns={5}>
           <div className="paper-table-head paper-order-head">

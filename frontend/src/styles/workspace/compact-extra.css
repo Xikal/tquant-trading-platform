@@ -107,9 +107,9 @@
 }
 
 .paper-orders .line-list {
-  max-height: none;
-  overflow: visible;
-  padding-right: 0;
+  max-height: 218px;
+  overflow-y: auto;
+  padding-right: 4px;
 }
 
 .paper-trades .line-list {

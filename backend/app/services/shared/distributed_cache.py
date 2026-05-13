@@ -1,32 +1,21 @@
 from __future__ import annotations
 
-import logging
 import json
-from functools import lru_cache
+import logging
 from typing import Any
 
-from redis import Redis
 from redis.exceptions import RedisError
 
-from app.core.config import get_settings
+from app.services.shared.distributed_cache_state import (
+    clear_distributed_cache_client_state,
+    get_distributed_cache_client,
+)
 
 logger = logging.getLogger(__name__)
 
 
-@lru_cache(maxsize=1)
-def _redis_client() -> Redis | None:
-    url = get_settings().redis_url.strip()
-    if not url:
-        return None
-    try:
-        return Redis.from_url(url, socket_timeout=0.5, socket_connect_timeout=0.5)
-    except Exception:
-        logger.warning("redis cache client initialization failed", exc_info=True)
-        return None
-
-
 def get_text_cache(key: str) -> str | None:
-    client = _redis_client()
+    client = get_distributed_cache_client()
     if client is None:
         return None
     try:
@@ -40,7 +29,7 @@ def get_text_cache(key: str) -> str | None:
 
 
 def set_text_cache(key: str, value: str, ttl_seconds: int | float) -> None:
-    client = _redis_client()
+    client = get_distributed_cache_client()
     if client is None:
         return
     try:
@@ -70,4 +59,4 @@ def set_json_cache(key: str, value: Any, ttl_seconds: int | float) -> None:
 
 
 def clear_distributed_cache_client() -> None:
-    _redis_client.cache_clear()
+    clear_distributed_cache_client_state()

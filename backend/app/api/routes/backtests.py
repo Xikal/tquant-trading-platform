@@ -30,8 +30,9 @@ from app.models.schema_defs.backtest import (
 from app.services.backtest_job_service import BacktestJobService
 from app.services.backtest_optimization_service import BacktestOptimizationService
 from app.services.backtest_validation_service import BacktestValidationService
-from app.services.rl_position_research import run_offline_position_research
-from app.services.strategy_portfolio_optimizer import optimize_strategy_portfolio
+from app.services.backtest.regime_parameter_promotion import promote_regime_parameter_versions
+from app.services.position_policy_research import run_position_policy_research
+from app.services.portfolio_heuristic_optimizer import optimize_strategy_portfolio
 from app.services.strategy_metadata_service import StrategyMetadataService
 
 router = APIRouter(prefix="/backtests", dependencies=[Depends(get_current_user)])
@@ -199,6 +200,8 @@ def create_backtest_validation(
     db: Session = Depends(get_db),
 ) -> BacktestValidationDetail:
     _require_research_access(current_user)
+    if payload.auto_promote_state_params:
+        _require_optimizer_access(current_user)
     _validate_backtest_strategy_access(db, [payload.strategy], current_user)
     return BacktestValidationService(db).create_task(payload, owner_user_id=current_user.id)
 
@@ -264,6 +267,30 @@ def delete_backtest_validation(
         is_admin=_is_admin(current_user),
     )
     return BacktestResearchMutationResponse(ok=True, task_id=task.id, status=task.status, message="验证任务已删除")
+
+
+@router.post("/validate/{task_id}/promote-state-params")
+def promote_validation_state_params(
+    task_id: int,
+    activate: bool = Query(default=True),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    _require_optimizer_access(current_user)
+    detail = BacktestValidationService(db).get_task(
+        task_id,
+        owner_user_id=current_user.id,
+        is_admin=_is_admin(current_user),
+    )
+    if detail.status != "succeeded":
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="验证任务未成功，不能晋级参数")
+    return promote_regime_parameter_versions(
+        db,
+        validation_result=detail.result,
+        strategy_key=detail.strategy_key,
+        operator=current_user.username or str(current_user.id),
+        activate=activate,
+    )
 
 
 @router.post("/compare", response_model=BacktestCompareResponse)
@@ -334,7 +361,7 @@ def get_backtest_strategy_correlation(
 @router.get("/{run_id}/portfolio-optimization")
 def get_backtest_portfolio_optimization(
     run_id: int,
-    method: str = Query(default="hrp", pattern="^(hrp|mean_variance)$"),
+    method: str = Query(default="hrp", pattern="^(hrp|risk_adjusted|markowitz)$"),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> dict:
@@ -343,15 +370,18 @@ def get_backtest_portfolio_optimization(
     return optimize_strategy_portfolio(db, run_id=run_id, method=method)
 
 
-@router.get("/{run_id}/rl-position-research")
-def get_backtest_rl_position_research(
+@router.get("/{run_id}/position-policy-research")
+def get_backtest_position_policy_research(
     run_id: int,
+    train_shadow: bool = Query(default=False, description="仅后台/管理员研究使用；默认不在请求线程训练 RL shadow"),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> dict:
     _require_research_access(current_user)
+    if train_shadow:
+        _require_optimizer_access(current_user)
     BacktestJobService(db).get_run(run_id, owner_user_id=current_user.id, is_admin=_is_admin(current_user))
-    return run_offline_position_research(db, run_id=run_id)
+    return run_position_policy_research(db, run_id=run_id, train_shadow=train_shadow)
 
 
 @router.get("/{run_id}/equity", response_model=BacktestEquityResponse)

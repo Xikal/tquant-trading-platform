@@ -173,6 +173,7 @@ export function useBacktestDashboard(activeSection: BacktestDashboardActiveSecti
         initial_capital: parsePositiveNumber(form.initial_capital),
         strategies: form.strategies,
         execution_model: form.execution_model,
+        resource_tier: form.resource_tier,
         risk_limits: {
           max_position_pct: parsePercent(form.max_position_pct),
           max_positions: Math.max(1, Math.round(parsePositiveNumber(form.max_positions))),

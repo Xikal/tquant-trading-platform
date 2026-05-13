@@ -1,4 +1,5 @@
 import { isNativeHttpRuntime, nativeRequest } from "./nativeHttp"
+import { clearOfflineCache, readOfflineCache, writeOfflineCache } from "./offlineCache"
 
 const isNativeTarget = import.meta.env.VITE_APP_TARGET === "native"
 const configuredApiBase = import.meta.env.VITE_API_BASE_URL
@@ -16,25 +17,6 @@ const hydratedAuth = hydrateAuthAccessToken()
 let authAccessToken = hydratedAuth.accessToken
 let authPersistenceMode: AuthPersistenceMode = hydratedAuth.mode
 const MAX_IDEMPOTENT_RETRIES = 2
-const OFFLINE_CACHE_PREFIX = "weis_quant:api:"
-const OFFLINE_CACHE_TTL_MS = 30 * 60 * 1000
-const OFFLINE_CACHEABLE_PATHS = [
-  "/agent/reports/daily",
-  "/market/breadth",
-  "/screeners/low-buy"
-]
-const OFFLINE_CACHE_SENSITIVE_KEYS = new Set([
-  "token",
-  "apikey",
-  "api_key",
-  "password",
-  "passwd",
-  "secret",
-  "database_url",
-  "authorization",
-  "cookie",
-  "key"
-])
 
 export async function request<T>(path: string, init?: RequestInit): Promise<T> {
   if (API_BASE === "__NATIVE_API_BASE_REQUIRED__") {
@@ -155,11 +137,14 @@ async function requestWithOfflineFallback<T>(
   try {
     const payload = await operation()
     if (canUseFallback) {
-      writeOfflineCache(path, payload)
+      await writeOfflineCache(path, payload, getAuthAccessToken() || getAdminApiToken() || "cookie")
     }
     return payload
   } catch (error) {
-    const fallback = canUseFallback && isRetryableError(error) ? readOfflineCache<T>(path) : null
+    const fallback =
+      canUseFallback && isRetryableError(error)
+        ? await readOfflineCache<T>(path, getAuthAccessToken() || getAdminApiToken() || "cookie")
+        : null
     if (fallback !== null) {
       return fallback
     }
@@ -222,7 +207,7 @@ export function setAdminApiToken(token: string) {
   }
   const nextToken = normalizeAdminApiToken(token)
   if (nextToken !== adminApiToken) {
-    clearOfflineCache()
+    void clearOfflineCache()
   }
   adminApiToken = nextToken
 }
@@ -237,7 +222,7 @@ export function shouldAttemptAuthRefresh(): boolean {
 
 export function setAuthTokens(accessToken: string, mode: AuthPersistenceMode = authPersistenceMode) {
   if (accessToken !== authAccessToken || mode !== authPersistenceMode) {
-    clearOfflineCache()
+    void clearOfflineCache()
   }
   authAccessToken = accessToken
   authPersistenceMode = mode
@@ -248,7 +233,7 @@ export function clearAuthTokens() {
   authAccessToken = ""
   authPersistenceMode = "memory"
   clearPersistedAuthAccessToken()
-  clearOfflineCache()
+  void clearOfflineCache()
 }
 
 export function normalizeAdminApiToken(token: string): string {
@@ -292,107 +277,6 @@ export function invalidateCache(prefixes: string[]) {
       responseCache.delete(key)
     }
   }
-}
-
-function shouldPersistOffline(path: string): boolean {
-  return OFFLINE_CACHEABLE_PATHS.some((prefix) => path.startsWith(prefix))
-}
-
-function offlineCacheKey(path: string): string {
-  return `${OFFLINE_CACHE_PREFIX}${offlineAuthScope()}:${path}`
-}
-
-function writeOfflineCache(path: string, payload: unknown) {
-  if (typeof window === "undefined" || !shouldPersistOffline(path)) {
-    return
-  }
-  const sanitizedPayload = sanitizeOfflinePayload(payload)
-  try {
-    window.localStorage.setItem(
-      offlineCacheKey(path),
-      JSON.stringify({
-        expiresAt: Date.now() + OFFLINE_CACHE_TTL_MS,
-        payload: sanitizedPayload
-      })
-    )
-  } catch {
-    // localStorage may be unavailable or full; memory cache remains the fast path.
-  }
-}
-
-function readOfflineCache<T>(path: string): T | null {
-  if (typeof window === "undefined" || !shouldPersistOffline(path)) {
-    return null
-  }
-  try {
-    const raw = window.localStorage.getItem(offlineCacheKey(path))
-    if (!raw) {
-      return null
-    }
-    const parsed = JSON.parse(raw) as { expiresAt?: number; payload?: T }
-    if (!parsed.expiresAt || parsed.expiresAt <= Date.now()) {
-      window.localStorage.removeItem(offlineCacheKey(path))
-      return null
-    }
-    return parsed.payload ?? null
-  } catch {
-    return null
-  }
-}
-
-function offlineAuthScope(): string {
-  const token = getAuthAccessToken() || getAdminApiToken() || "cookie"
-  let hash = 5381
-  for (let index = 0; index < token.length; index += 1) {
-    hash = (hash * 33) ^ token.charCodeAt(index)
-  }
-  return `${hash >>> 0}`
-}
-
-export function clearOfflineCache() {
-  if (typeof window === "undefined") {
-    return
-  }
-  for (const key of Object.keys(window.localStorage)) {
-    if (key.startsWith(OFFLINE_CACHE_PREFIX)) {
-      window.localStorage.removeItem(key)
-    }
-  }
-}
-
-function sanitizeOfflinePayload(value: unknown): unknown {
-  if (Array.isArray(value)) {
-    return value.map((item) => sanitizeOfflinePayload(item))
-  }
-  if (!value || typeof value !== "object") {
-    return value
-  }
-  const next: Record<string, unknown> = {}
-  for (const [key, item] of Object.entries(value as Record<string, unknown>)) {
-    if (isSensitiveOfflineCacheKey(key)) {
-      continue
-    }
-    next[key] = sanitizeOfflinePayload(item)
-  }
-  return next
-}
-
-function isSensitiveOfflineCacheKey(key: string): boolean {
-  const normalized = key.trim().toLowerCase()
-  const compact = normalized.replace(/[^a-z0-9]/g, "")
-  if (OFFLINE_CACHE_SENSITIVE_KEYS.has(normalized) || OFFLINE_CACHE_SENSITIVE_KEYS.has(compact)) {
-    return true
-  }
-  return (
-    compact.includes("token") ||
-    compact.includes("apikey") ||
-    compact.includes("password") ||
-    compact.includes("passwd") ||
-    compact.includes("secret") ||
-    compact.includes("databaseurl") ||
-    compact.includes("authorization") ||
-    compact.includes("cookie")
-  )
 }
 
 function hydrateAuthAccessToken(): { accessToken: string; mode: AuthPersistenceMode } {

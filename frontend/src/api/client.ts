@@ -36,6 +36,7 @@ import type {
   RuntimeStatus,
   FactorWeightsResponse,
   AdminTasksResponse,
+  AdminMetricsResponse,
   Instrument,
   IntradayConfirmationItem,
   LowBuyStrategyGovernanceResponse,
@@ -159,6 +160,7 @@ export const api = {
     }),
   getRuntimeStatus: () => requestCached<RuntimeStatus>("/settings/runtime", 10000),
   getAdminTasks: () => request<AdminTasksResponse>("/admin/tasks"),
+  getAdminMetrics: () => request<AdminMetricsResponse>("/admin/metrics"),
   getLowBuyStrategies: () =>
     requestCached<LowBuyStrategyGovernanceResponse>("/screeners/low-buy/strategies", 30000),
   updateLowBuyStrategyGovernance: (strategyKey: string, payload: { status: "active" | "watch" | "paused"; reason?: string }) =>

@@ -142,6 +142,7 @@ export function WorkspacePageContent({
             runtime={monitor.runtime}
             factorWeights={settingsData.factorWeights}
             adminTasks={settingsData.adminTasks}
+            adminMetrics={settingsData.adminMetrics}
             strategyGovernance={settingsData.strategyGovernance}
             sectorExclusions={settingsData.sectorExclusions}
             factorDraft={settingsData.factorDraft}

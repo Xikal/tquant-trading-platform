@@ -10,6 +10,7 @@ from app.core.database import get_db
 from app.core.timezone import beijing_now_string
 from app.models.entities import User
 from app.models.schema_defs.monitor import MonitorSnapshotResponse
+from app.services.latest_data_status import expected_low_buy_trade_date
 from app.services.monitor_snapshot_cache import (
     enqueue_monitor_snapshot_refresh,
     fallback_watchlist_signals,
@@ -37,11 +38,13 @@ def monitor_snapshot(
     rows = list_user_watchlist_rows(db, current_user.id)
     excluded = _safe_excluded_sectors(db, current_user.id)
     signature = _rows_signature(rows, excluded)
+    required_trade_date = expected_low_buy_trade_date(db)
     cached = read_monitor_snapshot_cache(
         db,
         user_id=current_user.id,
         priority_limit=priority_limit,
         signature=signature,
+        required_trade_date=required_trade_date,
     )
     if cached is not None:
         if cached.needs_refresh:

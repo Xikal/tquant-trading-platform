@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from app.services.latest_data_status import expected_low_buy_trade_date, published_low_buy_trade_date
+from app.services.low_buy_materialization import enqueue_low_buy_materialization
 from app.services.low_buy.recommendation_duration import attach_response_recommendation_durations
 from app.services.low_buy.screening_helpers import build_pending_full_response
 from app.services.low_buy.shared import (
@@ -28,11 +30,10 @@ def screen_read_path(
     trade_dates = owner._get_recent_trade_dates(14)
     if len(trade_dates) < 3:
         raise DataSourceError("交易日历数据不足，暂时无法运行低吸选股。")
-    latest_completed_trade_date = owner._resolve_latest_completed_trade_date(trade_dates)
-    latest_trade_date = owner._resolve_active_structure_trade_date(
-        trade_dates=trade_dates,
-        latest_completed_trade_date=latest_completed_trade_date,
-    )
+    expected_trade_date = expected_low_buy_trade_date(db)
+    published_trade_date = published_low_buy_trade_date(db)
+    latest_completed_trade_date = published_trade_date or expected_trade_date
+    latest_trade_date = latest_completed_trade_date
     cached_full = owner._load_cached_full_result(
         db=db,
         strategy=strategy,
@@ -68,13 +69,12 @@ def screen_read_path(
             full_in_progress=full_in_progress,
         )
 
-    latest_snapshot = owner._load_latest_materialized_full_result_on_or_before(
+    latest_snapshot = owner._load_cached_full_result(
         db=db,
         strategy=strategy,
-        latest_trade_date=latest_completed_trade_date,
+        latest_trade_date=latest_trade_date,
         limit=limit,
         include_history=include_history,
-        allow_repair=False,
     )
     if latest_snapshot is not None:
         latest_snapshot = owner._attach_strategy_performance(
@@ -98,6 +98,7 @@ def screen_read_path(
             }
         )
 
+    enqueue_low_buy_materialization(db, reason="screen_latest_missing", commit=True)
     pending = _pending_response(
         owner,
         db=db,
@@ -141,13 +142,12 @@ def _full_or_pending_response(
     include_history: bool,
     full_in_progress: bool,
 ) -> LowBuyScreenerResponse:
-    last_completed = owner._load_latest_materialized_full_result_on_or_before(
+    last_completed = owner._load_cached_full_result(
         db=db,
         strategy=strategy,
         latest_trade_date=latest_completed_trade_date,
         limit=limit,
         include_history=include_history,
-        allow_repair=False,
     )
     if last_completed is not None:
         last_completed = owner._attach_strategy_performance(db=db, payload=last_completed, build_if_missing=False)
@@ -166,6 +166,7 @@ def _full_or_pending_response(
                 "full_scan_updated_at": last_completed.as_of_date,
             }
         )
+    enqueue_low_buy_materialization(db, reason="screen_full_latest_missing", commit=True)
     return _pending_response(
         owner,
         db=db,

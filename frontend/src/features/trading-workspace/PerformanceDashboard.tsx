@@ -3,7 +3,7 @@ import { api } from "../../api/client";
 import { NumberField } from "../../components/shared/FormFields";
 import type { PaperPerformanceDashboard, PaperStrategyCorrelation, PaperStrategyMarketPerformance, PaperStrategyTrend } from "../../types";
 import { EmptyState, MetricGrid } from "./WorkspaceComponents";
-import { formatAmount, formatPct, shortTime, strategyLabel, toneFromChange } from "./workspaceFormatters";
+import { formatAmount, formatMoneyPlain, formatPct, shortTime, strategyLabel, toneFromChange } from "./workspaceFormatters";
 import type { MetricItem } from "./workspaceTypes";
 
 const RANGE_OPTIONS = [7, 30, 90, 180] as const;
@@ -83,7 +83,7 @@ export function PerformanceDashboard() {
 
       <MetricStrip
         items={[
-          { label: "总资产", value: formatAmount(dashboard?.account.total_assets), tone: "neutral" },
+          { label: "总资产", value: formatMoneyPlain(dashboard?.account.total_assets), tone: "neutral" },
           { label: "累计收益", value: formatPct(dashboard?.account.total_return_pct), tone: toneFromChange(dashboard?.account.total_return_pct) },
           { label: "最新净值点", value: latestEquity?.date ?? "--", tone: "neutral" },
           { label: "更新时间", value: shortTime(dashboard?.updated_at) || "--", tone: "neutral" },

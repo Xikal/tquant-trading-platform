@@ -1,4 +1,5 @@
-import { invalidateCache, request } from "./base";
+import { invalidateCache } from "./base";
+import { apiClient } from "./httpClient";
 
 import type {
   BacktestStatus,
@@ -34,6 +35,8 @@ import type {
   BacktestMonthlyReturnsResponse,
   BacktestAttributionResponse,
   BacktestStrategyCorrelationResponse,
+  PortfolioOptimizationResponse,
+  PositionPolicyResearchResponse,
   BacktestListParams,
   BacktestTradesParams,
   RawRecord,
@@ -41,6 +44,8 @@ import type {
 } from "./backtestTypes";
 
 export type * from "./backtestTypes";
+
+const request = apiClient.request;
 
 export const backtestsApi = {
   createBacktest: (payload: BacktestCreateRequest) =>
@@ -164,6 +169,12 @@ export const backtestsApi = {
       return result;
     }),
 
+  promoteValidationStateParams: (validationId: number, activate = true) =>
+    request<Record<string, unknown>>(`/backtests/validate/${validationId}/promote-state-params?activate=${String(activate)}`, {
+      method: "POST",
+      body: JSON.stringify({}),
+    }),
+
   compareBacktests: (runIds: number[]) =>
     request<BacktestCompareResponse>("/backtests/compare", {
       method: "POST",
@@ -178,6 +189,12 @@ export const backtestsApi = {
 
   getStrategyCorrelation: (runId: number) =>
     request<BacktestStrategyCorrelationResponse>(`/backtests/${runId}/strategy-correlation`).then(normalizeStrategyCorrelation),
+
+  getPortfolioOptimization: (runId: number, method: "hrp" | "risk_adjusted" | "markowitz" = "markowitz") =>
+    request<PortfolioOptimizationResponse>(`/backtests/${runId}/portfolio-optimization?method=${method}`),
+
+  getPositionPolicyResearch: (runId: number) =>
+    request<PositionPolicyResearchResponse>(`/backtests/${runId}/position-policy-research`),
 };
 
 function buildListQuery({ page, pageSize, limit, offset, status }: ResearchListParams = {}): URLSearchParams {

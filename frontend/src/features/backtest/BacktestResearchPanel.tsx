@@ -46,6 +46,7 @@ export interface ValidationFormState {
   initial_capital: string;
   execution_model: BacktestExecutionModel;
   optimization_target: string;
+  auto_promote_state_params: boolean;
 }
 
 export interface BacktestResearchState {
@@ -79,6 +80,7 @@ export interface BacktestResearchActions {
   onSelectValidation: (validationId: number) => void;
   onCancelValidation: (validationId: number) => void;
   onDeleteValidation: (validationId: number) => void;
+  onPromoteValidationStateParams: (validationId: number) => void;
   onCompareRunIdsChange: (value: string) => void;
   onRunCompare: () => void;
   onRefreshResearch: () => void;

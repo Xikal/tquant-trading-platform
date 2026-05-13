@@ -28,6 +28,11 @@ from app.services.backtest.data_provider import DailyBarDataProvider
 from app.services.backtest.cancel_token import BacktestCancelToken
 from app.services.backtest.engine import BacktestConfig, BacktestEngine, BacktestResult
 from app.services.backtest.persistence import BacktestResultPersistence
+from app.services.backtest.resource_tiers import (
+    DEFAULT_BACKTEST_RESOURCE_TIER,
+    normalize_backtest_resource_tier,
+    resource_tier_from_params_json,
+)
 from app.services.backtest_job_helpers import (
     _bucket_trades,
     _compare_equity_points,
@@ -61,6 +66,7 @@ class BacktestJobService:
     def create_run(self, payload: BacktestRunCreate, owner_user_id: int | None) -> BacktestRunDetail:
         params = dict(payload.params)
         parameter_set = QuantParameterVersionService(self.db).current()
+        resource_tier = normalize_backtest_resource_tier(payload.resource_tier)
         params.update(
             {
                 "strategy_keys": payload.strategy_keys,
@@ -70,6 +76,7 @@ class BacktestJobService:
                 "max_duration_seconds": payload.max_duration_seconds,
                 "quant_parameter_version": parameter_set.version,
                 "quant_parameter_set_id": parameter_set.id,
+                "resource_tier": resource_tier,
             }
         )
         run = BacktestRun(
@@ -384,6 +391,7 @@ class BacktestJobService:
             queue_position=None,
             running_count=0,
             estimated_wait_seconds=0,
+            resource_tier=resource_tier_from_params_json(row.params_json),
             created_at=row.created_at,
             updated_at=row.updated_at,
             started_at=row.started_at,
@@ -416,6 +424,7 @@ class BacktestJobService:
         summary.queue_position = snapshot.queue_position
         summary.running_count = snapshot.running_count
         summary.estimated_wait_seconds = snapshot.estimated_wait_seconds
+        summary.resource_tier = resource_tier_from_params_json(row.params_json)
         return summary
 
     @staticmethod

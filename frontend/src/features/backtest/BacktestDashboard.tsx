@@ -2,6 +2,7 @@ import { lazy, Suspense, type ReactNode } from "react";
 import type {
   BacktestAttribution,
   BacktestExecutionModel,
+  BacktestResourceTier,
   BacktestRunDetail,
   BacktestRunSummary,
   BacktestStatus,
@@ -18,8 +19,10 @@ import {
   formatNumber,
   formatPct,
   formatPrice,
+  formatResourceTier,
   percentFromRatio,
   toneFromNumber,
+  BACKTEST_RESOURCE_TIER_OPTIONS,
 } from "./backtestDisplay";
 import { BacktestResearchPanel, type BacktestResearchActions, type BacktestResearchState } from "./BacktestResearchPanel";
 import { useBacktestStrategyOptions } from "./useBacktestStrategyOptions";
@@ -35,6 +38,7 @@ export interface BacktestFormState {
   initial_capital: string;
   strategies: string[];
   execution_model: BacktestExecutionModel;
+  resource_tier: BacktestResourceTier;
   max_position_pct: string;
   max_positions: string;
   max_daily_loss_pct: string;
@@ -136,6 +140,13 @@ export function BacktestDashboard({
             options={BACKTEST_EXECUTION_MODELS.map(([value, label]) => ({ value, label }))}
             onChange={(event) => onFormChange({ execution_model: event.target.value as BacktestExecutionModel })}
           />
+          <SelectField
+            fieldClassName="wide"
+            label="资源等级"
+            value={form.resource_tier}
+            options={BACKTEST_RESOURCE_TIER_OPTIONS.map(([value, label]) => ({ value, label }))}
+            onChange={(event) => onFormChange({ resource_tier: event.target.value as BacktestResourceTier })}
+          />
           <div className="backtest-strategy-picker wide">
             <span>策略多选</span>
             {strategyOptions.map(([key, label]) => (
@@ -177,6 +188,7 @@ export function BacktestDashboard({
               <strong>{run.name || `回测 #${run.id}`}</strong>
               <span>{dateRange(run)}</span>
               <span>{formatProgress(run.progress, run.status)}</span>
+              <span>{formatResourceTier(run.resource_tier)}</span>
               <small>{formatDateTime(run.created_at)}</small>
             </button>
           )) : <EmptyLine text="暂无回测任务，提交后会出现在这里。" />}
@@ -195,7 +207,7 @@ export function BacktestDashboard({
             <div className="backtest-summary-line">
               <span>{selectedRun.name}</span>
               <span>{formatBacktestStrategies(selectedRun.strategies)}</span>
-              <span>{selectedRun.execution_model || "--"} · {selectedRun.benchmark || "--"}</span>
+              <span>{selectedRun.execution_model || "--"} · {formatResourceTier(selectedRun.resource_tier)} · {selectedRun.benchmark || "--"}</span>
             </div>
             <ResultSummaryBanner metrics={selectedMetrics} />
             {selectedRun.error_message ? <div className="backtest-error">{selectedRun.error_message}</div> : null}
@@ -211,6 +223,8 @@ export function BacktestDashboard({
               <Metric label="胜率" value={formatPct(selectedMetrics?.win_rate_pct)} />
               <Metric label="交易数" value={formatInteger(selectedMetrics?.total_trades ?? selectedMetrics?.trade_count)} />
               <Metric label="利润因子" value={formatNumber(selectedMetrics?.profit_factor)} />
+              <Metric label="队列深度" value={formatInteger(selectedRun.queue_depth)} />
+              <Metric label="等待时间" value={formatWaitSeconds(selectedRun.estimated_wait_seconds)} />
               <Metric label="风控" value={`${formatPct(percentFromRatio(selectedRun.risk_limits?.max_position_pct), 0)} / ${selectedRun.risk_limits?.max_positions ?? "--"}仓`} />
             </div>
             {selectedAttribution ? <AttributionStrip attribution={selectedAttribution} /> : null}
@@ -433,4 +447,12 @@ function statusMeta(status: BacktestStatus): { label: string; tone: string } {
 
 function isCancellableStatus(status: BacktestStatus): boolean {
   return status === "queued" || status === "pending" || status === "running";
+}
+
+function formatWaitSeconds(value?: number | null): string {
+  if (typeof value !== "number" || !Number.isFinite(value) || value <= 0) return "--";
+  if (value < 60) return `${Math.round(value)} 秒`;
+  const minutes = Math.floor(value / 60);
+  const seconds = Math.round(value % 60);
+  return seconds > 0 ? `${minutes} 分 ${seconds} 秒` : `${minutes} 分`;
 }

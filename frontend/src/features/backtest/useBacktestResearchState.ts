@@ -256,6 +256,7 @@ export function useBacktestResearchState({
         optimization_target: validationForm.optimization_target || "sharpe",
         initial_capital: parsePositiveNumber(validationForm.initial_capital, "初始资金"),
         execution_model: validationForm.execution_model,
+        auto_promote_state_params: validationForm.auto_promote_state_params,
       });
       setResearchNotice(response.message || `验证任务 #${response.id ?? response.run_id ?? "--"} 已提交`);
       await loadResearch();
@@ -310,6 +311,20 @@ export function useBacktestResearchState({
     }
   }, [loadResearch, selectedValidationId]);
 
+  const promoteValidationStateParams = useCallback(async (validationId: number) => {
+    setResearchLoading("validation-promote");
+    setResearchError("");
+    try {
+      const response = await backtestsApi.promoteValidationStateParams(validationId, true);
+      setResearchNotice(`分市场状态参数晋级完成：${String(response.promoted_count ?? 0)} 个，跳过 ${String(response.skipped_count ?? 0)} 个。`);
+      await loadResearch();
+    } catch (err) {
+      setResearchError(errorMessage(err));
+    } finally {
+      setResearchLoading("");
+    }
+  }, [loadResearch]);
+
   const runCompare = useCallback(async () => {
     setResearchLoading("compare");
     setResearchError("");
@@ -355,6 +370,7 @@ export function useBacktestResearchState({
       onSelectValidation: selectValidation,
       onCancelValidation: cancelValidation,
       onDeleteValidation: deleteValidation,
+      onPromoteValidationStateParams: promoteValidationStateParams,
       onCompareRunIdsChange: setCompareRunIds,
       onRunCompare: runCompare,
       onRefreshResearch: loadResearch,

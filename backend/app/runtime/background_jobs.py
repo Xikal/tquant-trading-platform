@@ -18,11 +18,14 @@ from app.services.agent_daily_workflow_service import AgentDailyWorkflowService
 from app.services.agent_notification_service import AgentNotificationService
 from app.services.agent_signal_scan_service import AgentSignalScanService
 from app.services.backtest_research_worker import BacktestResearchWorker
+from app.services.latest_data_status import expected_low_buy_trade_date, publish_latest_trade_date_if_ready
 from app.services.low_buy.shared import DEFAULT_PRODUCTION_LOW_BUY_STRATEGY
 from app.services.low_buy.strategy_auto_governance import refresh_low_buy_strategy_auto_governance
 from app.services.low_buy.strategy_policy import PRODUCTION_PRIORITY_STRATEGIES
 from app.services.low_buy_screener import PLAYBOOKS, LowBuyScreenerService
+from app.services.low_buy_materialization import enqueue_low_buy_materialization
 from app.services.market_data import MarketDataService
+from app.services.market_quote_cache_refresh import quote_cache_refresh_bucket, quote_cache_refresh_due
 from app.services.paper.archive import PaperArchiveService
 from app.services.paper.scheduler import build_auto_trader_config, start_auto_trader, stop_auto_trader
 from app.services.paper.validation_scheduler import MonthlyStrategyValidationJob
@@ -102,6 +105,9 @@ def _refresh_materialized_low_buy_snapshots(
             compute_performance=compute_performance,
             build_close_review=False,
         )
+    with SessionLocal() as db:
+        publish_latest_trade_date_if_ready(db, strategies=sorted(PRODUCTION_PRIORITY_STRATEGIES))
+        db.commit()
 
 
 def _materialized_snapshot_is_fresh(
@@ -113,7 +119,7 @@ def _materialized_snapshot_is_fresh(
 ) -> bool:
     with SessionLocal() as db:
         repository = LowBuyResultRepository(db)
-        latest_available_trade_date = repository.fetch_latest_trade_date()
+        latest_available_trade_date = expected_low_buy_trade_date(db) or repository.fetch_latest_trade_date()
         payload = screener._runtime._load_latest_materialized_full_result(
             db=db,
             strategy=strategy_key,
@@ -270,11 +276,13 @@ def _enqueue_ml_incremental_train_once() -> None:
             RuntimeTaskCreate(
                 task_type="ml_signal_incremental_train",
                 payload={
-                    "model_type": "logistic",
+                    "model_type": "xgboost",
                     "source": "paper",
                     "limit": 5000,
                     "min_samples": 100,
-                    "promote": False,
+                    "promote": True,
+                    "warm_start": True,
+                    "max_validation_p_value": 0.05,
                 },
                 priority=180,
                 idempotency_key=f"ml_signal_incremental_train:{week_key}",
@@ -282,6 +290,50 @@ def _enqueue_ml_incremental_train_once() -> None:
             )
         )
         logger.info("ML 增量训练任务检查完成: week=%s task_id=%s status=%s", week_key, task.id, task.status)
+
+
+def _enqueue_market_quote_cache_refresh_once() -> None:
+    if not quote_cache_refresh_due():
+        return
+    bucket = quote_cache_refresh_bucket()
+    with SessionLocal() as db:
+        task = RuntimeTaskQueue(db).enqueue(
+            RuntimeTaskCreate(
+                task_type="market_quote_cache_refresh",
+                payload={"limit": 200},
+                priority=40,
+                idempotency_key=f"market_quote_cache_refresh:{bucket}",
+                max_attempts=2,
+            )
+        )
+        logger.info("本地行情缓存预热任务检查完成: bucket=%s task_id=%s status=%s", bucket, task.id, task.status)
+
+
+def _enqueue_low_buy_materialization_once() -> None:
+    now = beijing_now()
+    if now.weekday() >= 5 or now.time() < dt_time(hour=15, minute=10):
+        return
+    with SessionLocal() as db:
+        enqueue_low_buy_materialization(db, reason="scheduled_after_close")
+        db.commit()
+
+
+def _enqueue_daily_bar_refresh_once() -> None:
+    now = beijing_now()
+    if now.weekday() >= 5 or now.time() < dt_time(hour=15, minute=10):
+        return
+    bucket = now.strftime("%Y%m%d%H%M")
+    with SessionLocal() as db:
+        task = RuntimeTaskQueue(db).enqueue(
+            RuntimeTaskCreate(
+                task_type="daily_bar_refresh",
+                payload={"limit": 6000},
+                priority=30,
+                idempotency_key=f"daily_bar_refresh:{bucket}",
+                max_attempts=2,
+            )
+        )
+        logger.info("日线快照刷新任务检查完成: bucket=%s task_id=%s status=%s", bucket, task.id, task.status)
 
 
 def _paper_archive_due() -> bool:
@@ -342,6 +394,24 @@ def start_runtime_background_jobs() -> None:
             target=_warm_market_regime_once,
             interval_seconds=MARKET_REGIME_REFRESH_SECONDS,
             initial_delay_seconds=15,
+        )
+        task_manager.register_loop(
+            name="market_quote_cache_refresh",
+            target=_enqueue_market_quote_cache_refresh_once,
+            interval_seconds=30,
+            initial_delay_seconds=10,
+        )
+        task_manager.register_loop(
+            name="low_buy_materialization_refresh",
+            target=_enqueue_low_buy_materialization_once,
+            interval_seconds=300,
+            initial_delay_seconds=60,
+        )
+        task_manager.register_loop(
+            name="daily_bar_refresh",
+            target=_enqueue_daily_bar_refresh_once,
+            interval_seconds=300,
+            initial_delay_seconds=45,
         )
         if settings.paper_perf_archive_enabled:
             task_manager.register_loop(

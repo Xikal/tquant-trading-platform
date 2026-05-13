@@ -13,6 +13,7 @@ const run: BacktestRunDetail = {
   initial_capital: 500000,
   strategies: ["first_board", "volume_shrink"],
   execution_model: "open_price",
+  resource_tier: "full",
   benchmark: "000300",
   risk_limits: {
     max_position_pct: 0.3,
@@ -119,6 +120,7 @@ describe("BacktestDashboard", () => {
           initial_capital: "500000",
           strategies: ["first_board"],
           execution_model: "open_price",
+          resource_tier: "full",
           max_position_pct: "30",
           max_positions: "8",
           max_daily_loss_pct: "5",
@@ -220,6 +222,7 @@ describe("BacktestDashboard", () => {
             initial_capital: "500000",
             execution_model: "open_price",
             optimization_target: "sharpe",
+            auto_promote_state_params: false,
           },
           validations: [
             {
@@ -322,6 +325,7 @@ describe("BacktestDashboard", () => {
           onSelectValidation: vi.fn(),
           onCancelValidation: vi.fn(),
           onDeleteValidation: vi.fn(),
+          onPromoteValidationStateParams: vi.fn(),
           onCompareRunIdsChange: vi.fn(),
           onRunCompare: vi.fn(),
           onRefreshResearch: vi.fn(),

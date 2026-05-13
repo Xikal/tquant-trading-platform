@@ -8,6 +8,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 BacktestStatus = Literal["queued", "running", "succeeded", "failed", "cancelled", "timeout", "deleted"]
 BacktestResearchStatus = Literal["queued", "running", "succeeded", "failed", "cancelled", "deleted"]
+BacktestResourceTier = Literal["light", "full", "walk_forward"]
 OptimizationTarget = Literal["sharpe", "total_return_pct", "profit_factor", "win_rate_pct"]
 ALLOWED_OPTIMIZATION_PARAMS = {
     "min_score",
@@ -64,6 +65,7 @@ class BacktestRunCreate(BaseModel):
     fee_model_version: str = Field(default="", max_length=80)
     slippage_bps: float = Field(default=8.0, ge=0, le=200)
     max_duration_seconds: int = Field(default=1800, ge=1, le=86400)
+    resource_tier: BacktestResourceTier = Field(default="full")
     params: dict[str, Any] = Field(default_factory=dict)
 
     @model_validator(mode="after")
@@ -73,6 +75,7 @@ class BacktestRunCreate(BaseModel):
         for key in ("execution_model", "risk_limits", "param_overrides", "slippage_model"):
             if key in extra and key not in params:
                 params[key] = extra[key]
+        params.setdefault("resource_tier", self.resource_tier)
         self.params = params
         return self
 
@@ -94,6 +97,7 @@ class BacktestRunSummary(BaseModel):
     queue_position: Optional[int] = None
     running_count: int = 0
     estimated_wait_seconds: int = 0
+    resource_tier: BacktestResourceTier = "full"
     created_at: datetime
     updated_at: Optional[datetime] = None
     started_at: Optional[datetime] = None
@@ -279,6 +283,7 @@ class BacktestOptimizationCreate(BaseModel):
     benchmark_symbol: str = Field(default="000300", max_length=24, alias="benchmark")
     execution_model: str = Field(default="conservative_slippage", max_length=40)
     max_combinations: int = Field(default=500, ge=1, le=500)
+    auto_promote_state_params: bool = False
 
     @model_validator(mode="after")
     def validate_param_grid(self) -> "BacktestOptimizationCreate":
@@ -346,6 +351,7 @@ class BacktestValidationCreate(BaseModel):
     benchmark_symbol: str = Field(default="000300", max_length=24, alias="benchmark")
     execution_model: str = Field(default="conservative_slippage", max_length=40)
     max_combinations: int = Field(default=500, ge=1, le=500)
+    auto_promote_state_params: bool = False
 
     @model_validator(mode="after")
     def validate_param_grid(self) -> "BacktestValidationCreate":

@@ -1,5 +1,6 @@
 import type {
   AdminTaskStatus,
+  AdminMetricsResponse,
   AuthUser,
   FactorWeightsResponse,
   LowBuyStrategyGovernanceResponse,
@@ -31,6 +32,7 @@ export function SettingsPage({
   runtime,
   factorWeights,
   adminTasks,
+  adminMetrics,
   strategyGovernance,
   sectorExclusions,
   factorDraft,
@@ -50,6 +52,7 @@ export function SettingsPage({
   runtime: RuntimeStatus | null;
   factorWeights: FactorWeightsResponse | null;
   adminTasks: AdminTaskStatus[];
+  adminMetrics: AdminMetricsResponse | null;
   strategyGovernance: LowBuyStrategyGovernanceResponse | null;
   sectorExclusions: UserSectorExclusionsResponse | null;
   factorDraft: Record<string, string>;
@@ -326,6 +329,7 @@ export function SettingsPage({
         <RuntimeDiagnosticsCard
           runtime={runtime}
           adminTasks={adminTasks}
+          adminMetrics={adminMetrics}
           loading={loading}
           onRefresh={onRefresh}
         />

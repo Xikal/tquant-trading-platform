@@ -3,6 +3,7 @@ import { api } from "../../api/client";
 import { getAdminApiToken, setAdminApiToken } from "../../api/base";
 import type {
   AdminTaskStatus,
+  AdminMetricsResponse,
   FactorWeightsResponse,
   LowBuyStrategyGovernanceResponse,
   RuntimeStatus,
@@ -26,6 +27,7 @@ export function useSettingsData({ withLoading, setError, setNotice, setRuntime }
   const [adminTasks, setAdminTasks] = useState<AdminTaskStatus[]>([]);
   const [strategyGovernance, setStrategyGovernance] = useState<LowBuyStrategyGovernanceResponse | null>(null);
   const [sectorExclusions, setSectorExclusions] = useState<UserSectorExclusionsResponse | null>(null);
+  const [adminMetrics, setAdminMetrics] = useState<AdminMetricsResponse | null>(null);
   const [factorDraft, setFactorDraft] = useState<Record<string, string>>({});
   const [settingsDraft, setSettingsDraft] = useState<SettingsDraft>({
     adminToken: getAdminApiToken(),
@@ -67,9 +69,10 @@ export function useSettingsData({ withLoading, setError, setNotice, setRuntime }
         setSectorExclusions(sectorExclusionResult.value);
       }
       if (shouldLoadFactors) {
-        const [factorResult, taskResult] = await Promise.allSettled([
+        const [factorResult, taskResult, metricsResult] = await Promise.allSettled([
           api.getFactorWeights(),
           api.getAdminTasks(),
+          api.getAdminMetrics(),
         ]);
         if (factorResult.status === "fulfilled") {
           setFactorWeights(factorResult.value);
@@ -78,6 +81,13 @@ export function useSettingsData({ withLoading, setError, setNotice, setRuntime }
         if (taskResult.status === "fulfilled") {
           setAdminTasks(taskResult.value.items);
         }
+        if (metricsResult.status === "fulfilled") {
+          setAdminMetrics(metricsResult.value);
+        }
+      } else {
+        setFactorWeights(null);
+        setAdminTasks([]);
+        setAdminMetrics(null);
       }
       const rejected = [settingsResult, runtimeResult, strategyResult].find(
         (item): item is PromiseRejectedResult => item.status === "rejected"
@@ -140,6 +150,7 @@ export function useSettingsData({ withLoading, setError, setNotice, setRuntime }
     settings,
     factorWeights,
     adminTasks,
+    adminMetrics,
     strategyGovernance,
     sectorExclusions,
     factorDraft,

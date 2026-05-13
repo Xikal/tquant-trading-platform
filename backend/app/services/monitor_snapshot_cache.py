@@ -73,6 +73,7 @@ def read_monitor_snapshot_cache(
     user_id: int,
     priority_limit: int,
     signature: list[list[Any]],
+    required_trade_date: str = "",
 ) -> MonitorSnapshotCacheHit | None:
     row = db.execute(
         select(SystemSetting).where(SystemSetting.key == _cache_key(user_id, priority_limit))
@@ -88,6 +89,8 @@ def read_monitor_snapshot_cache(
         return None
     payload = value.get("payload")
     if not isinstance(payload, dict):
+        return None
+    if required_trade_date and _priority_trade_date(payload) != required_trade_date:
         return None
     expires_at = _float_value(value.get("expires_at"))
     return MonitorSnapshotCacheHit(payload=payload, needs_refresh=expires_at <= now)
@@ -198,3 +201,8 @@ def _float_value(value: Any) -> float:
         return float(value)
     except (TypeError, ValueError):
         return 0.0
+
+
+def _priority_trade_date(payload: dict[str, Any]) -> str:
+    board = payload.get("priority_board")
+    return str(board.get("latest_trade_date") or "") if isinstance(board, dict) else ""

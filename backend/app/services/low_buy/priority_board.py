@@ -11,6 +11,7 @@ from app.models.schemas import (
     LowBuyPriorityBoardResponse,
     LowBuyStrategyPerformanceOut,
 )
+from app.services.latest_data_status import expected_low_buy_trade_date, published_low_buy_trade_date
 from app.services.low_buy.priority_scoring import LowBuyPriorityScoringMixin
 from app.services.low_buy.priority_cache import (
     get_priority_base_cache,
@@ -64,7 +65,8 @@ from app.services.market.board_exclusions import is_growth_board_stock
 
 class LowBuyPriorityBoardMixin(LowBuyPriorityScoringMixin):
     def priority_board(self, db: Session, limit: int = 12) -> LowBuyPriorityBoardResponse:
-        cache_key = f"limit={limit}"
+        target_trade_date = published_low_buy_trade_date(db) or expected_low_buy_trade_date(db)
+        cache_key = f"date={target_trade_date}:limit={limit}"
         cached_response = self._get_priority_response_cache(cache_key)
         if cached_response is not None:
             return cached_response
@@ -111,7 +113,8 @@ class LowBuyPriorityBoardMixin(LowBuyPriorityScoringMixin):
         return response
 
     def _load_priority_base_snapshot(self, db: Session, limit: int) -> PriorityBaseSnapshot:
-        cache_key = f"limit={limit}"
+        target_trade_date = published_low_buy_trade_date(db) or expected_low_buy_trade_date(db)
+        cache_key = f"date={target_trade_date}:limit={limit}"
         cached = self._get_priority_base_cache(cache_key)
         if cached is not None:
             return cached

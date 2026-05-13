@@ -50,6 +50,7 @@ from app.services.low_buy.shared import (
 )
 from app.services.low_buy.price_math import distance_to_entry_zone_pct
 from app.services.risk.volatility_sizing import build_volatility_position_cap
+from app.services.quant.state_scope import reset_market_state_scope, set_market_state_scope
 
 
 class LowBuyCandidateMixin:
@@ -114,6 +115,30 @@ class LowBuyCandidateMixin:
         )
 
     def _evaluate_candidate(
+        self,
+        item: BoardCandidate,
+        latest_trade_date: str,
+        history: pd.DataFrame | None = None,
+        strategy: str = DEFAULT_PRODUCTION_LOW_BUY_STRATEGY,
+        hot_industries: list[str] | None = None,
+        market_regime: MarketRegimeSnapshot | None = None,
+        factor_context: FactorContext | None = None,
+    ) -> LowBuyCandidateOut | None:
+        scope_token = set_market_state_scope(market_regime.state if market_regime is not None else "")
+        try:
+            return self._evaluate_candidate_inner(
+                item=item,
+                latest_trade_date=latest_trade_date,
+                history=history,
+                strategy=strategy,
+                hot_industries=hot_industries,
+                market_regime=market_regime,
+                factor_context=factor_context,
+            )
+        finally:
+            reset_market_state_scope(scope_token)
+
+    def _evaluate_candidate_inner(
         self,
         item: BoardCandidate,
         latest_trade_date: str,

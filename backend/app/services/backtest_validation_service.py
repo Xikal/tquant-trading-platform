@@ -19,6 +19,7 @@ from app.models.schema_defs.backtest import (
 from app.services.backtest.data_provider import DailyBarDataProvider
 from app.services.backtest.cancel_token import BacktestCancelToken
 from app.services.backtest.engine import BacktestConfig, BacktestEngine
+from app.services.backtest.regime_parameter_promotion import promote_regime_parameter_versions
 from app.services.backtest.validator import BacktestValidator
 
 
@@ -154,7 +155,7 @@ class BacktestValidationService:
             request = _json_dict(task.request_json)
             config = _base_config(request)
             validator = BacktestValidator(BacktestEngine(DailyBarDataProvider(self.db)))
-            report = validator.walk_forward(
+            report = validator.regime_aware_walk_forward(
                 config,
                 param_grid=dict(request.get("param_grid") or {}),
                 start_date=str(request.get("start_date") or task.start_date),
@@ -177,6 +178,14 @@ class BacktestValidationService:
                 task.pbo_risk = str(result.get("pbo_risk") or "")
                 task.downgrade_review = bool(result.get("downgrade_review") or False)
                 task.stability_conclusion = str(result.get("stability_conclusion") or "")
+                if bool(request.get("auto_promote_state_params")) and not task.downgrade_review:
+                    result["state_param_promotion"] = promote_regime_parameter_versions(
+                        self.db,
+                        validation_result=result,
+                        strategy_key=task.strategy_key or str(request.get("strategy_key") or ""),
+                        operator="validation-worker",
+                        activate=True,
+                    )
                 task.result_json = _json_dumps(result)
                 task.progress_pct = 100.0
                 task.finished_at = datetime.utcnow()
@@ -289,6 +298,7 @@ def _validation_request(payload: BacktestValidationCreate) -> dict[str, Any]:
         "benchmark_symbol": payload.benchmark_symbol,
         "execution_model": payload.execution_model,
         "max_combinations": payload.max_combinations,
+        "auto_promote_state_params": payload.auto_promote_state_params,
     }
 
 

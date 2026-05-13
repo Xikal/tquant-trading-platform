@@ -1,4 +1,4 @@
-import type { BacktestExecutionModel } from "../../api/backtests";
+import type { BacktestExecutionModel, BacktestResourceTier } from "../../api/backtests";
 import { STRATEGY_OPTIONS, type StrategyOption } from "../../constants/strategies";
 import { formatPct } from "../../utils/backtestFormatters";
 export { formatBacktestStrategy, formatBacktestStrategies, formatPct } from "../../utils/backtestFormatters";
@@ -12,6 +12,12 @@ export const BACKTEST_EXECUTION_MODELS: Array<[BacktestExecutionModel, string]> 
   ["close_price", "收盘价成交"],
   ["vwap", "VWAP 近似"],
   ["market_impact", "市场冲击成本"],
+];
+
+export const BACKTEST_RESOURCE_TIER_OPTIONS: Array<[BacktestResourceTier, string]> = [
+  ["light", "轻量验证"],
+  ["full", "标准回测"],
+  ["walk_forward", "重型 Walk-forward"],
 ];
 
 export const OPTIMIZATION_TARGET_OPTIONS = [
@@ -84,4 +90,10 @@ export function formatDateTime(value?: string | null): string {
     minute: "2-digit",
     hour12: false,
   });
+}
+
+export function formatResourceTier(value?: string | null): string {
+  const tier = String(value || "").trim().toLowerCase();
+  const matched = BACKTEST_RESOURCE_TIER_OPTIONS.find(([key]) => key === tier);
+  return matched?.[1] || "标准回测";
 }

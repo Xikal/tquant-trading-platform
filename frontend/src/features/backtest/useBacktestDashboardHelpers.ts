@@ -35,6 +35,7 @@ export const initialBacktestForm: BacktestFormState = {
   initial_capital: "500000",
   strategies: ["first_board", "volume_shrink"],
   execution_model: "open_price",
+  resource_tier: "full",
   max_position_pct: "30",
   max_positions: "8",
   max_daily_loss_pct: "5",
@@ -70,6 +71,7 @@ export const initialValidationForm: ValidationFormState = {
   initial_capital: "500000",
   execution_model: "open_price",
   optimization_target: "sharpe",
+  auto_promote_state_params: false,
 };
 
 export function validateOptimizationForm(form: OptimizationFormState) {

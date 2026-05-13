@@ -1,4 +1,7 @@
-import { request, requestCached } from "./base";
+import { apiClient } from "./httpClient";
+
+const request = apiClient.request;
+const requestCached = apiClient.requestCached;
 
 export interface StrategyMeta {
   key: string;

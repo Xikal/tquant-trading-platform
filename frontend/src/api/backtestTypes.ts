@@ -1,6 +1,7 @@
 export type BacktestStatus = "pending" | "queued" | "running" | "completed" | "succeeded" | "failed" | "cancelled" | "deleted" | "timeout";
 
 export type BacktestExecutionModel = "open_price" | "close_price" | "next_open" | "vwap" | "market_impact";
+export type BacktestResourceTier = "light" | "full" | "walk_forward";
 
 export interface BacktestRiskLimits {
   max_position_pct: number;
@@ -18,6 +19,7 @@ export interface BacktestCreateRequest {
   strategies: string[];
   execution_model: BacktestExecutionModel;
   risk_limits: BacktestRiskLimits;
+  resource_tier?: BacktestResourceTier;
   benchmark?: string;
   param_overrides?: Record<string, Record<string, number | string | boolean | null>>;
 }
@@ -100,6 +102,7 @@ export interface BacktestRunSummary {
   queue_position?: number | null;
   running_count?: number | null;
   estimated_wait_seconds?: number | null;
+  resource_tier?: BacktestResourceTier | null;
   attribution?: BacktestAttribution | null;
   result?: {
     attribution?: BacktestAttribution | null;
@@ -254,6 +257,7 @@ export interface BacktestValidationCreateRequest {
   initial_capital: number;
   execution_model: BacktestExecutionModel;
   param_grid?: BacktestParamGrid;
+  auto_promote_state_params?: boolean;
 }
 
 export interface BacktestValidationWindow {
@@ -344,6 +348,41 @@ export interface BacktestStrategyCorrelationResponse {
   run_id?: number;
   strategies: string[];
   matrix: number[][];
+}
+
+export interface PortfolioOptimizationWeight {
+  strategy_key: string;
+  weight_pct: number;
+  avg_return_pct?: number | null;
+  volatility_pct?: number | null;
+  sample_count?: number | null;
+}
+
+export interface EfficientFrontierPoint {
+  expected_return_pct: number;
+  volatility_pct: number;
+  sharpe: number;
+}
+
+export interface PortfolioOptimizationResponse {
+  run_id: number;
+  method: string;
+  method_label?: string;
+  weights: PortfolioOptimizationWeight[];
+  expected_return_pct?: number | null;
+  volatility_pct?: number | null;
+  portfolio_sharpe?: number | null;
+  efficient_frontier?: EfficientFrontierPoint[];
+  summary?: string;
+}
+
+export interface PositionPolicyResearchResponse {
+  run_id: number;
+  production_enabled: boolean;
+  algorithm: string;
+  policy?: Array<Record<string, unknown>>;
+  shadow_reinforcement_learning?: Record<string, unknown>;
+  summary?: string;
 }
 
 export type BacktestListParams = {

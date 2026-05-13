@@ -51,6 +51,8 @@ class ValidationReport:
     stability_conclusion: str
     windows: list[ValidationWindow]
     by_market_state: dict[str, Any] | None = None
+    best_params_by_market_state: dict[str, dict[str, Any]] | None = None
+    state_window_details: dict[str, list[dict[str, Any]]] | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -62,6 +64,8 @@ class ValidationReport:
             "downgrade_review_required": self.downgrade_review,
             "stability_conclusion": self.stability_conclusion,
             "by_market_state": self.by_market_state or {},
+            "best_params_by_market_state": self.best_params_by_market_state or {},
+            "state_window_details": self.state_window_details or {},
             "windows": [item.to_dict() for item in self.windows],
         }
 
@@ -157,14 +161,7 @@ class BacktestValidator:
         cancel_token: Any | None = None,
         progress_callback: ProgressCallback | None = None,
     ) -> ValidationReport:
-        """Walk-forward validation with market-state attribution.
-
-        The backtest engine already emits market_state_attribution in each
-        optimization candidate.  This entrypoint keeps the same execution path
-        but makes the regime-aware contract explicit for callers and reports.
-        """
-
-        return self.walk_forward(
+        report = self.walk_forward(
             base_config,
             param_grid=param_grid,
             start_date=start_date,
@@ -177,6 +174,9 @@ class BacktestValidator:
             cancel_token=cancel_token,
             progress_callback=progress_callback,
         )
+        from app.services.backtest.regime_walkforward import enrich_regime_aware_report
+
+        return enrich_regime_aware_report(report)
 
     def walk_forward_windows(
         self,

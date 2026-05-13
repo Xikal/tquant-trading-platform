@@ -98,6 +98,30 @@ export interface AdminTasksResponse {
   items: AdminTaskStatus[];
 }
 
+export interface DataSourceQualityItem {
+  source: string;
+  ok: boolean;
+  quality: "ok" | "degraded" | "stale" | "failed" | string;
+  latency_ms: number;
+  is_stale?: boolean;
+  warning?: string;
+}
+
+export interface DataSourceProbeResponse {
+  updated_at: string;
+  provider_order: string[];
+  items: DataSourceQualityItem[];
+  summary: string;
+}
+
+export interface AdminMetricsResponse {
+  market_data_sources?: DataSourceProbeResponse | null;
+  market_providers?: Record<string, unknown> | null;
+  local_quote_cache?: Record<string, number> | null;
+  latest_low_buy_data?: Record<string, unknown> | null;
+  [key: string]: unknown;
+}
+
 export interface LowBuyStrategyGovernanceItem {
   strategy_key: string;
   strategy_title: string;

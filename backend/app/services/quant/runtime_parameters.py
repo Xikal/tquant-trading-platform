@@ -7,6 +7,7 @@ from typing import Any
 
 from app.core.database import SessionLocal
 from app.services.quant.parameter_version_service import QuantParameterVersionService, default_quant_parameters
+from app.services.quant.state_scope import current_market_state_scope
 
 _CACHE_TTL_SECONDS = 30.0
 _CACHE_EXPIRES_AT: dict[str, float] = {}
@@ -16,7 +17,8 @@ _CACHE_LOCK = threading.RLock()
 
 def current_quant_parameters(market_state_scope: str = "") -> dict[str, Any]:
     now = time.monotonic()
-    cache_key = market_state_scope.strip() or "__default__"
+    resolved_scope = market_state_scope.strip() or current_market_state_scope()
+    cache_key = resolved_scope or "__default__"
     with _CACHE_LOCK:
         if cache_key in _CACHE_PARAMS and now < _CACHE_EXPIRES_AT.get(cache_key, 0.0):
             return deepcopy(_CACHE_PARAMS[cache_key])
@@ -24,7 +26,7 @@ def current_quant_parameters(market_state_scope: str = "") -> dict[str, Any]:
             with SessionLocal() as db:
                 current = QuantParameterVersionService(db).current(
                     scope="low_buy",
-                    market_state_scope=market_state_scope,
+                    market_state_scope=resolved_scope,
                 )
                 params = _deep_merge(default_quant_parameters(), current.params)
         except Exception:

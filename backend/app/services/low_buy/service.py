@@ -52,15 +52,18 @@ class _LowBuyRuntimeAdapter:
         for cls in mixin_cls.mro():
             if cls is object:
                 continue
-            value = cls.__dict__.get(name)
-            if value is None:
+            if name not in cls.__dict__:
                 continue
+            value = cls.__dict__[name]
             if isinstance(value, staticmethod):
                 return value.__func__
             if isinstance(value, classmethod):
                 raise AttributeError(f"classmethod {name!r} is not exposed through low-buy adapters")
             if callable(value):
                 return MethodType(value, self)
+            runtime = object.__getattribute__(self, "_runtime")
+            if hasattr(runtime, name):
+                return getattr(runtime, name)
             return value
         return getattr(object.__getattribute__(self, "_runtime"), name)
 

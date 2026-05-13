@@ -1,5 +1,6 @@
 import type {
   AdminTaskStatus,
+  AdminMetricsResponse,
   LowBuyStrategyGovernanceResponse,
   RuntimeStatus,
   SettingsPayload,
@@ -177,14 +178,18 @@ export function FeatureFlagsCard({
 export function RuntimeDiagnosticsCard({
   runtime,
   adminTasks,
+  adminMetrics,
   loading,
   onRefresh,
 }: {
   runtime: RuntimeStatus | null;
   adminTasks: AdminTaskStatus[];
+  adminMetrics: AdminMetricsResponse | null;
   loading: string;
   onRefresh: () => void;
 }) {
+  const providerSummary = adminMetrics?.market_data_sources;
+  const providerOkCount = providerSummary?.items.filter((item) => item.ok).length ?? 0;
   return (
     <SettingCard title="运行诊断" button="重新检测" onSave={onRefresh} loading={loading === "settings"}>
       <InfoPill label="前端产物" value={runtime?.frontend_dist_ready ? "正常" : "--"} />
@@ -192,6 +197,7 @@ export function RuntimeDiagnosticsCard({
       <InfoPill label="环境文件" value={runtime?.runtime_env_exists ? "存在" : "--"} />
       <InfoPill label="数据库后端" value={runtime?.database_backend ?? "--"} />
       <InfoPill label="后台任务" value={taskHealthSummary(adminTasks)} />
+      <InfoPill label="行情链路" value={providerSummary ? `${providerOkCount}/${providerSummary.items.length} 可用` : "--"} />
       {adminTasks.length > 0 ? (
         <div className="settings-mini-list">
           {adminTasks.slice(0, 4).map((task) => (
@@ -200,6 +206,21 @@ export function RuntimeDiagnosticsCard({
               <strong className={task.last_error ? "task-error" : task.running ? "task-running" : "task-ok"}>
                 {task.last_error ? "异常" : task.running ? "运行中" : task.last_success_at ? "正常" : "等待"}
               </strong>
+            </div>
+          ))}
+        </div>
+      ) : null}
+      {providerSummary?.items?.length ? (
+        <div className="settings-mini-list">
+          <strong>数据源健康</strong>
+          {providerSummary.items.map((item) => (
+            <div key={item.source} className="settings-mini-row">
+              <span>
+                {item.source}
+                <small className="hint">{item.latency_ms}ms / {item.quality}{item.is_stale ? " / stale" : ""}</small>
+                {item.warning ? <small className="hint">{item.warning}</small> : null}
+              </span>
+              <strong className={item.ok ? "task-ok" : "task-error"}>{item.ok ? "可用" : "失败"}</strong>
             </div>
           ))}
         </div>

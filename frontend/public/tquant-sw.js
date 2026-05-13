@@ -1,9 +1,12 @@
-const CACHE_NAME = "tquant-static-v1";
-const SAFE_ASSET = /\.(?:js|css|png|svg|ico|webp|woff2?)$/i;
+const CACHE_NAME = "tquant-static-v2";
+const SAFE_ASSET = /\.(?:js|css|png|svg|ico|webp|woff2?|webmanifest)$/i;
+const APP_SHELL = ["/", "/offline.html", "/manifest.webmanifest"];
 
 self.addEventListener("install", (event) => {
   self.skipWaiting();
-  event.waitUntil(caches.open(CACHE_NAME));
+  event.waitUntil(
+    caches.open(CACHE_NAME).then((cache) => cache.addAll(APP_SHELL).catch(() => undefined))
+  );
 });
 
 self.addEventListener("activate", (event) => {
@@ -20,9 +23,27 @@ self.addEventListener("fetch", (event) => {
   if (request.method !== "GET") return;
   const url = new URL(request.url);
   if (url.pathname.startsWith("/api/")) return;
+  if (request.mode === "navigate") {
+    event.respondWith(navigationFallback(request));
+    return;
+  }
   if (!SAFE_ASSET.test(url.pathname)) return;
   event.respondWith(cacheFirst(request));
 });
+
+async function navigationFallback(request) {
+  try {
+    const response = await fetch(request);
+    const cache = await caches.open(CACHE_NAME);
+    if (response.ok) {
+      cache.put("/", response.clone());
+    }
+    return response;
+  } catch {
+    const cache = await caches.open(CACHE_NAME);
+    return (await cache.match(request)) || (await cache.match("/")) || (await cache.match("/offline.html"));
+  }
+}
 
 async function cacheFirst(request) {
   const cache = await caches.open(CACHE_NAME);

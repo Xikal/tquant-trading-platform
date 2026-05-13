@@ -172,6 +172,8 @@ class MLSignalTrainRequest(BaseModel):
     validation_ratio: float = Field(default=0.2, ge=0.05, le=0.5)
     promote: bool = False
     min_validation_accuracy: float = Field(default=0.55, ge=0.5, le=1.0)
+    warm_start: bool = False
+    max_validation_p_value: float = Field(default=0.05, ge=0.001, le=1.0)
 
 
 class MLSignalTrainResponse(BaseModel):
@@ -260,7 +262,8 @@ class MLSignalIncrementalTrainRequest(MLSignalTrainRequest):
     source: Literal["paper"] = "paper"
     limit: int = Field(default=5000, ge=20, le=100000)
     min_samples: int = Field(default=100, ge=20, le=100000)
-    promote: bool = False
+    promote: bool = True
+    warm_start: bool = True
 
 
 class StrategyCapacityRequest(BaseModel):

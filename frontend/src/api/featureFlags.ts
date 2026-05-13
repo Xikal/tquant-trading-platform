@@ -1,4 +1,6 @@
-import { request } from "./base";
+import { apiClient } from "./httpClient";
+
+const request = apiClient.request;
 
 export interface FeatureFlagItem {
   key: string;

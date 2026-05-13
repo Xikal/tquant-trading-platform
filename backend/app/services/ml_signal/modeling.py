@@ -10,9 +10,22 @@ from app.core.config import get_settings
 from app.models.entities import MLSignalModel
 from app.models.schema_defs.phase4 import MLSignalModelOut, MLSignalTrainRequest
 from app.services.ml_signal.features import estimator_probabilities as _estimator_probabilities
-from app.services.ml_signal.training_runtime import configured_cv_folds, effective_min_train_samples, model_training_params
+from app.services.ml_signal.promotion_quality import binomial_accuracy_p_value
+from app.services.ml_signal.training_runtime import (
+    configured_cv_folds,
+    effective_min_train_samples,
+    max_validation_p_value,
+    model_training_params,
+)
 
-def fit_estimator(*, model_type: str, x_matrix: np.ndarray, labels: np.ndarray, validation_ratio: float):
+def fit_estimator(
+    *,
+    model_type: str,
+    x_matrix: np.ndarray,
+    labels: np.ndarray,
+    validation_ratio: float,
+    warm_start_estimator: Any | None = None,
+):
     from sklearn.metrics import accuracy_score, roc_auc_score
     from sklearn.model_selection import train_test_split
 
@@ -31,20 +44,35 @@ def fit_estimator(*, model_type: str, x_matrix: np.ndarray, labels: np.ndarray, 
         labels=labels,
         folds=configured_cv_folds(),
     )
-    estimator.fit(x_train, y_train)
+    _fit_with_optional_warm_start(estimator, x_train, y_train, warm_start_estimator)
     probabilities = _estimator_probabilities(estimator, x_valid)
     predictions = (probabilities >= 0.5).astype(int)
+    correct_count = int((predictions == y_valid).sum())
     metrics = {
         "sample_count": int(len(labels)),
         "train_count": int(len(y_train)),
         "validation_count": int(len(y_valid)),
         "positive_rate": round(float(labels.mean()), 4),
         "validation_accuracy": round(float(accuracy_score(y_valid, predictions)), 4),
+        "validation_correct_count": correct_count,
+        "validation_accuracy_p_value": round(
+            binomial_accuracy_p_value(correct_count, int(len(y_valid)), baseline=0.5),
+            8,
+        ),
         **cv_metrics,
     }
     if len(set(y_valid.tolist())) >= 2:
         metrics["validation_auc"] = round(float(roc_auc_score(y_valid, probabilities)), 4)
     return estimator, metrics
+
+
+def _fit_with_optional_warm_start(estimator: Any, x_train: np.ndarray, y_train: np.ndarray, previous: Any | None) -> None:
+    if previous is not None and estimator.__class__.__name__ == "XGBClassifier":
+        booster = getattr(previous, "get_booster", lambda: None)()
+        if booster is not None:
+            estimator.fit(x_train, y_train, xgb_model=booster)
+            return
+    estimator.fit(x_train, y_train)
 
 
 def _make_estimator(model_type: str):
@@ -151,6 +179,7 @@ def promotion_blocks(*, payload: MLSignalTrainRequest, metrics: dict[str, Any], 
     min_cv_auc = float(settings.ml_signal_min_cv_auc)
     max_cv_accuracy_std = float(settings.ml_signal_max_cv_accuracy_std)
     max_cv_auc_std = float(settings.ml_signal_max_cv_auc_std)
+    max_p_value = float(getattr(payload, "max_validation_p_value", 0.05) or 0.05)
     validation_accuracy = float(metrics.get("validation_accuracy", 0.0) or 0.0)
     validation_auc = metrics.get("validation_auc")
     cv_fold_count = int(metrics.get("cv_fold_count", 0) or 0)
@@ -158,6 +187,7 @@ def promotion_blocks(*, payload: MLSignalTrainRequest, metrics: dict[str, Any], 
     cv_auc = metrics.get("cv_auc_mean")
     cv_accuracy_std = metrics.get("cv_accuracy_std")
     cv_auc_std = metrics.get("cv_auc_std")
+    validation_p_value = metrics.get("validation_accuracy_p_value")
 
     if sample_count < min_samples:
         blocks.append(f"生产模型样本量不足：当前 {sample_count}，最低需要 {min_samples}")
@@ -167,6 +197,10 @@ def promotion_blocks(*, payload: MLSignalTrainRequest, metrics: dict[str, Any], 
         blocks.append("validation_auc 缺失，不能晋级生产模型")
     elif float(validation_auc or 0.0) < min_auc:
         blocks.append(f"validation_auc {float(validation_auc):.3f} 低于生产阈值 {min_auc:.3f}")
+    if validation_p_value is None:
+        blocks.append("validation_accuracy_p_value 缺失，不能晋级生产模型")
+    elif float(validation_p_value or 1.0) > max_p_value:
+        blocks.append(f"validation_accuracy_p_value {float(validation_p_value):.4f} 高于显著性阈值 {max_p_value:.4f}")
     if cv_fold_count < 2:
         blocks.append("交叉验证未完成，不能晋级生产模型")
     if cv_accuracy is None:
@@ -200,12 +234,15 @@ def production_model_warning(status: str, metrics: dict[str, Any]) -> str:
     cv_auc = metrics.get("cv_auc_mean")
     cv_accuracy_std = metrics.get("cv_accuracy_std")
     cv_auc_std = metrics.get("cv_auc_std")
+    validation_p_value = metrics.get("validation_accuracy_p_value")
     if sample_count < effective_min_train_samples(0):
         return "production 模型样本量低于当前安全阈值，本次按研究信号处理。"
     if validation_accuracy < float(settings.ml_signal_min_production_accuracy):
         return "production 模型准确率低于当前安全阈值，本次按研究信号处理。"
     if validation_auc is None or float(validation_auc or 0.0) < float(settings.ml_signal_min_production_auc):
         return "production 模型 AUC 低于当前安全阈值，本次按研究信号处理。"
+    if validation_p_value is None or float(validation_p_value or 1.0) > max_validation_p_value():
+        return "production 模型验证显著性不足，本次按研究信号处理。"
     if cv_fold_count < 2:
         return "production 模型缺少交叉验证，本次按研究信号处理。"
     if cv_accuracy is None or float(cv_accuracy or 0.0) < float(settings.ml_signal_min_cv_accuracy):

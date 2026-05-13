@@ -27,6 +27,7 @@ from app.models.schemas import HealthResponse, ReadinessResponse
 from app.runtime.background_jobs import shutdown_runtime_background_jobs, start_runtime_background_jobs
 from app.services.auth_service import ensure_auth_secret_configured
 from app.services.market.providers.circuit import provider_metrics_snapshot
+from app.services.market.local_quote_cache import local_quote_cache_metrics_snapshot
 from app.services.operation_audit_middleware import OperationAuditMiddleware
 
 settings = get_settings()
@@ -42,7 +43,12 @@ _CONTENT_SECURITY_POLICY = (
     "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
     "img-src 'self' data: blob: https://fastapi.tiangolo.com; "
     "font-src 'self' data:; "
-    "connect-src 'self' ws: wss:; "
+    "connect-src 'self' "
+    "https://weisilianghua.cloud wss://weisilianghua.cloud "
+    "http://43.143.243.97:18090 "
+    "http://localhost:5173 ws://localhost:5173 "
+    "http://127.0.0.1:5173 ws://127.0.0.1:5173 "
+    "http://127.0.0.1:8000; "
     "object-src 'none'; "
     "base-uri 'self'; "
     "frame-ancestors 'none'; "
@@ -210,11 +216,19 @@ def _phase4_metrics_snapshot() -> dict[str, int]:
 
 def _provider_metrics_snapshot() -> dict[str, int]:
     snapshot = provider_metrics_snapshot()
+    quote_cache = local_quote_cache_metrics_snapshot()
     return {
         "provider_calls_total": int(snapshot.get("provider_calls_total") or 0),
         "provider_success_total": int(snapshot.get("provider_success_total") or 0),
         "provider_failures_total": int(snapshot.get("provider_failures_total") or 0),
         "provider_slow_calls_total": int(snapshot.get("provider_slow_calls_total") or 0),
+        "local_quote_cache_reads_total": int(quote_cache.get("reads") or 0),
+        "local_quote_cache_hits_total": int(quote_cache.get("hits") or 0),
+        "local_quote_cache_writes_total": int(quote_cache.get("writes") or 0),
+        "local_quote_cache_misses_total": int(quote_cache.get("misses") or 0),
+        "local_quote_cache_fresh_hits_total": int(quote_cache.get("fresh_hits") or 0),
+        "local_quote_cache_stale_hits_total": int(quote_cache.get("stale_hits") or 0),
+        "local_quote_cache_estimated_hits_total": int(quote_cache.get("estimated_hits") or 0),
     }
 
 
@@ -319,6 +333,27 @@ def prometheus_metrics(_: None = Depends(require_admin_auth)) -> PlainTextRespon
         "# HELP tquant_provider_slow_calls_total Slow market provider calls.",
         "# TYPE tquant_provider_slow_calls_total counter",
         f"tquant_provider_slow_calls_total {provider_snapshot.get('provider_slow_calls_total', 0)}",
+        "# HELP tquant_local_quote_cache_reads_total Local quote cache reads.",
+        "# TYPE tquant_local_quote_cache_reads_total counter",
+        f"tquant_local_quote_cache_reads_total {provider_snapshot.get('local_quote_cache_reads_total', 0)}",
+        "# HELP tquant_local_quote_cache_hits_total Local quote cache hits.",
+        "# TYPE tquant_local_quote_cache_hits_total counter",
+        f"tquant_local_quote_cache_hits_total {provider_snapshot.get('local_quote_cache_hits_total', 0)}",
+        "# HELP tquant_local_quote_cache_writes_total Local quote cache writes.",
+        "# TYPE tquant_local_quote_cache_writes_total counter",
+        f"tquant_local_quote_cache_writes_total {provider_snapshot.get('local_quote_cache_writes_total', 0)}",
+        "# HELP tquant_local_quote_cache_misses_total Local quote cache misses.",
+        "# TYPE tquant_local_quote_cache_misses_total counter",
+        f"tquant_local_quote_cache_misses_total {provider_snapshot.get('local_quote_cache_misses_total', 0)}",
+        "# HELP tquant_local_quote_cache_fresh_hits_total Fresh local quote cache hits.",
+        "# TYPE tquant_local_quote_cache_fresh_hits_total counter",
+        f"tquant_local_quote_cache_fresh_hits_total {provider_snapshot.get('local_quote_cache_fresh_hits_total', 0)}",
+        "# HELP tquant_local_quote_cache_stale_hits_total Stale local quote cache hits.",
+        "# TYPE tquant_local_quote_cache_stale_hits_total counter",
+        f"tquant_local_quote_cache_stale_hits_total {provider_snapshot.get('local_quote_cache_stale_hits_total', 0)}",
+        "# HELP tquant_local_quote_cache_estimated_hits_total Estimated local quote cache hits.",
+        "# TYPE tquant_local_quote_cache_estimated_hits_total counter",
+        f"tquant_local_quote_cache_estimated_hits_total {provider_snapshot.get('local_quote_cache_estimated_hits_total', 0)}",
     ]
     return PlainTextResponse("\n".join(lines) + "\n", media_type="text/plain; version=0.0.4")
 

@@ -22,6 +22,8 @@ RUN_COMPILE="${RUN_COMPILE:-1}"
 RUN_FRONTEND_BUILD="${RUN_FRONTEND_BUILD:-1}"
 RUN_STRATEGY_TEST="${RUN_STRATEGY_TEST:-1}"
 RUN_FULL_TESTS="${RUN_FULL_TESTS:-0}"
+RUN_LATEST_DATA_ACCEPTANCE="${RUN_LATEST_DATA_ACCEPTANCE:-1}"
+LATEST_DATA_ACCEPTANCE_REQUIRED="${LATEST_DATA_ACCEPTANCE_REQUIRED:-0}"
 
 log() {
   printf '[deploy] %s\n' "$*"
@@ -172,6 +174,22 @@ grep -q '<div id=\"root\"></div>' /tmp/gupiao_home.html
 echo frontend:ok"
 }
 
+verify_latest_data_remote() {
+  if [[ "$RUN_LATEST_DATA_ACCEPTANCE" != "1" ]]; then
+    return 0
+  fi
+  log "verify latest low-buy data closure"
+  local remote_cmd
+  remote_cmd="set -euo pipefail
+cd '$CLOUD_PROJECT_DIR'
+sudo docker exec tquant-app-mysql python scripts/latest_data_acceptance.py --publish-if-ready --repair --enqueue-missing --notify-on-fail"
+  if [[ "$LATEST_DATA_ACCEPTANCE_REQUIRED" == "1" ]]; then
+    cloud_ssh "$remote_cmd"
+  else
+    cloud_ssh "$remote_cmd" || log "warning: 最新数据闭环验收未通过；已尝试入队刷新并发送告警，部署继续"
+  fi
+}
+
 main() {
   run_local_checks
   local package_path
@@ -179,6 +197,7 @@ main() {
   remote_deploy "$package_path"
   remote_configure_ops
   verify_remote
+  verify_latest_data_remote
   rm -f "$package_path"
   log "done: http://${CLOUD_HOST}:${CLOUD_APP_PORT} / https://${CLOUD_DOMAIN}"
 }

@@ -3,6 +3,8 @@ from __future__ import annotations
 from typing import Optional
 
 from app.repositories.low_buy.results import LowBuyResultRepository
+from app.services.latest_data_status import expected_low_buy_trade_date, published_low_buy_trade_date
+from app.services.low_buy_materialization import enqueue_low_buy_materialization
 from app.services.low_buy.shared import (
     DEFAULT_PRODUCTION_LOW_BUY_STRATEGY,
     LowBuyCandidateOut,
@@ -43,23 +45,14 @@ class LowBuyMobileReadMixin:
         history_wait_timeout_seconds: float | None = None,
     ) -> LowBuyScreenerResponse:
         normalized_limit = max(limit, 12)
-        latest_trade_date = self._resolve_mobile_target_trade_date()
-        scoped_loader = getattr(self, "_load_latest_materialized_full_result_on_or_before", None)
-        if callable(scoped_loader):
-            materialized = scoped_loader(
-                db=db,
-                strategy=strategy,
-                latest_trade_date=latest_trade_date,
-                limit=normalized_limit,
-                include_history=False,
-            )
-        else:
-            materialized = self._load_latest_materialized_full_result(
-                db=db,
-                strategy=strategy,
-                limit=normalized_limit,
-                include_history=False,
-            )
+        latest_trade_date = self._resolve_mobile_target_trade_date(db)
+        materialized = self._load_cached_full_result(
+            db=db,
+            strategy=strategy,
+            latest_trade_date=latest_trade_date,
+            limit=normalized_limit,
+            include_history=False,
+        )
         if materialized is not None:
             materialized = self._attach_strategy_performance(
                 db=db,
@@ -68,8 +61,8 @@ class LowBuyMobileReadMixin:
             )
             return self._normalize_mobile_snapshot(materialized)
 
-        if not latest_trade_date and db is not None:
-            latest_trade_date = LowBuyResultRepository(db).fetch_latest_trade_date(strategy_key=strategy) or ""
+        if db is not None:
+            enqueue_low_buy_materialization(db, reason="mobile_latest_missing", commit=True)
         performance = self._load_strategy_performance_snapshot(
             db=db,
             strategy=strategy,
@@ -109,14 +102,8 @@ class LowBuyMobileReadMixin:
             )
         raise RuntimeError("mobile snapshot requires materialized data or pending response builder")
 
-    def _resolve_mobile_target_trade_date(self) -> str:
-        load_trade_dates = getattr(self, "_get_recent_trade_dates", None)
-        if not callable(load_trade_dates):
-            return ""
-        trade_dates = load_trade_dates(14)
-        if len(trade_dates) < 3:
-            return ""
-        return self._resolve_latest_completed_trade_date(trade_dates)
+    def _resolve_mobile_target_trade_date(self, db: Session) -> str:
+        return published_low_buy_trade_date(db) or expected_low_buy_trade_date(db)
 
     def mobile_candidate_by_symbol(
         self,
@@ -127,17 +114,19 @@ class LowBuyMobileReadMixin:
         fallback_scan_limit: int = 24,
         history_wait_timeout_seconds: float | None = None,
     ) -> tuple[Optional[LowBuyCandidateOut], LowBuyScreenerResponse]:
+        target_trade_date = self._resolve_mobile_target_trade_date(db)
         cached_candidate, cached_payload = self._load_cached_candidate_snapshot_by_symbol_any_mode(
             strategy=strategy,
             symbol=symbol,
         )
-        if cached_candidate is not None and cached_payload is not None:
+        if cached_candidate is not None and cached_payload is not None and cached_payload.latest_trade_date == target_trade_date:
             return cached_candidate, self._normalize_mobile_snapshot(cached_payload)
 
         materialized = self._load_latest_materialized_candidate_by_symbol(
             db=db,
             strategy=strategy,
             symbol=symbol,
+            latest_trade_date=target_trade_date,
         )
         if materialized is not None:
             snapshot = self.mobile_snapshot(
@@ -175,8 +164,12 @@ class LowBuyMobileReadMixin:
         db: Session,
         strategy: str,
         symbol: str,
+        latest_trade_date: str,
     ) -> Optional[LowBuyCandidateOut]:
-        summary = LowBuyResultRepository(db).fetch_latest_scan_summary(strategy_key=strategy)
+        summary = LowBuyResultRepository(db).fetch_scan_summary(
+            latest_trade_date=latest_trade_date,
+            strategy_key=strategy,
+        )
         if summary is None:
             return None
         materialized = self._load_materialized_candidates_by_symbol(

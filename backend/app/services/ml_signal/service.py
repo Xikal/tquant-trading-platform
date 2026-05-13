@@ -31,7 +31,6 @@ from app.services.ml_signal.features import (
     safe_float as _safe_float,
     samples_to_matrix as _samples_to_matrix,
     signal_label as _label,
-    to_float as _to_float,
     trade_features as _trade_features,
 )
 from app.services.ml_signal.modeling import (
@@ -46,8 +45,14 @@ from app.services.ml_signal.modeling import (
 )
 from app.services.ml_signal.sample_repository import MLSignalSampleRepository
 from app.services.ml_signal.training_runtime import training_parameter_snapshot
-
-HEURISTIC_MODEL_KEY = "research-heuristic-v1"
+from app.services.ml_signal.training_runtime import (
+    incremental_model_type,
+    incremental_promote_enabled,
+    incremental_warm_start_enabled,
+    max_validation_p_value,
+)
+from app.services.ml_signal.prediction_fallback import HEURISTIC_MODEL_KEY, heuristic_predict
+from app.services.ml_signal.warm_start import load_warm_start_estimator
 
 
 class MLSignalService:
@@ -98,11 +103,18 @@ class MLSignalService:
             source="paper",
             limit=5000,
             min_samples=100,
-            promote=False,
+            model_type=incremental_model_type(),  # type: ignore[arg-type]
+            promote=incremental_promote_enabled(),
+            warm_start=incremental_warm_start_enabled(),
+            max_validation_p_value=max_validation_p_value(),
             model_key=f"paper-incremental-{datetime.utcnow().strftime('%Y%m%d%H%M%S')}",
         )
         if train_payload.source != "paper":
             train_payload = train_payload.model_copy(update={"source": "paper"})
+        if not train_payload.model_key:
+            train_payload = train_payload.model_copy(
+                update={"model_key": f"paper-incremental-{datetime.utcnow().strftime('%Y%m%d%H%M%S')}"}
+            )
         return self.train(train_payload)
 
     def persist_paper_trade_outcome(
@@ -181,11 +193,13 @@ class MLSignalService:
 
         model_key = payload.model_key or _generated_model_key(payload.model_type)
         try:
+            warm_start_estimator = self._warm_start_estimator(payload) if payload.warm_start else None
             estimator, metrics = _fit_estimator(
                 model_type=payload.model_type,
                 x_matrix=x_matrix,
                 labels=labels,
                 validation_ratio=payload.validation_ratio,
+                warm_start_estimator=warm_start_estimator,
             )
         except Exception as exc:
             return MLSignalTrainResponse(
@@ -198,6 +212,7 @@ class MLSignalService:
             )
         metrics["quant_parameter"] = training_parameter_snapshot(self.db)
         metrics["feature_missing_rates"] = _feature_missing_rates(rows)
+        metrics["warm_start_enabled"] = bool(payload.warm_start)
         promotion_blocks = _promotion_blocks(payload=payload, metrics=metrics, sample_count=len(rows))
         can_promote = payload.promote and not promotion_blocks
         status = "production" if can_promote else "research"
@@ -376,30 +391,7 @@ class MLSignalService:
         return self._artifact_manager.check_storage()
 
     def _heuristic_predict(self, payload: MLSignalPredictionRequest, warning: str = "") -> MLSignalPredictionResponse:
-        features = payload.features or {}
-        score = 0.5
-        reasons: list[str] = []
-        if _to_float(features.get("priority_score")) >= 80:
-            score += 0.18
-            reasons.append("优先级分数较高。")
-        if _to_float(features.get("risk_score")) >= 6:
-            score -= 0.2
-            reasons.append("风险分偏高。")
-        if _to_float(features.get("volume_shrink_ratio")) and _to_float(features.get("volume_shrink_ratio")) <= 0.8:
-            score += 0.08
-            reasons.append("缩量承接特征较好。")
-        probability = round(min(max(score, 0.0), 1.0), 3)
-        return MLSignalPredictionResponse(
-            symbol=payload.symbol,
-            model_key=payload.model_key or HEURISTIC_MODEL_KEY,
-            model_type="heuristic",
-            research_only=True,
-            probability=probability,
-            label=_label(probability),  # type: ignore[arg-type]
-            confidence=round(abs(probability - 0.5) * 2, 3),
-            reasons=reasons or ["未找到 production 模型，输出启发式研究结果。"],
-            warning=warning or "研究模型输出，不进入生产交易建议。",
-        )
+        return heuristic_predict(payload, warning=warning)
 
     def _select_model(self, model_key: str | None) -> MLSignalModel | None:
         cleaned = (model_key or "").strip()
@@ -412,6 +404,9 @@ class MLSignalService:
             .limit(20)
         ).scalars().all()
         return next((row for row in rows if _model_effective_status(row) == "production"), None)
+
+    def _warm_start_estimator(self, payload: MLSignalTrainRequest):
+        return load_warm_start_estimator(payload, select_model=self._select_model, load_artifact=self._load_artifact)
 
     def _load_training_samples(self, *, source: str, limit: int) -> list[MLSignalSample]:
         statement = select(MLSignalSample)

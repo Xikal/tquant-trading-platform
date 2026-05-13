@@ -1,4 +1,6 @@
-import { request } from "./base";
+import { apiClient } from "./httpClient";
+
+const request = apiClient.request;
 
 export interface MLSignalModelOut {
   model_key: string;
@@ -40,6 +42,8 @@ export interface MLSignalIncrementalTrainRequest {
   min_samples?: number;
   validation_ratio?: number;
   promote?: boolean;
+  warm_start?: boolean;
+  max_validation_p_value?: number;
   min_validation_accuracy?: number;
 }
 
@@ -106,7 +110,7 @@ export const mlSignalsApi = {
   incrementalTrain: (payload: MLSignalIncrementalTrainRequest = {}) =>
     request<MLSignalTrainResponse>("/ml/signals/incremental-train", {
       method: "POST",
-      body: JSON.stringify({ source: "paper", promote: false, ...payload }),
+      body: JSON.stringify({ source: "paper", model_type: "xgboost", promote: true, warm_start: true, ...payload }),
     }),
 
   evaluateCapacity: (payload: StrategyCapacityRequest) =>

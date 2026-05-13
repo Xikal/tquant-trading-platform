@@ -4,6 +4,7 @@ import time
 import uuid
 
 import redis
+from redis.commands.core import Script
 
 _SLIDING_WINDOW_SCRIPT = """
 redis.call('ZREMRANGEBYSCORE', KEYS[1], 0, ARGV[1])
@@ -26,20 +27,22 @@ class RedisSlidingWindowRateLimiter:
         self.window_seconds = window_seconds
         self.fail_closed = fail_closed
         self._client = redis.Redis.from_url(redis_url, decode_responses=True)
+        self._script: Script = self._client.register_script(_SLIDING_WINDOW_SCRIPT)
 
     def allow(self, key: str) -> bool:
         now = time.time()
         redis_key = f"tquant:rate:{self.namespace}:{key}"
         try:
-            allowed = self._client.eval(
-                _SLIDING_WINDOW_SCRIPT,
-                1,
-                redis_key,
-                now - self.window_seconds,
-                self.max_calls,
-                now,
-                f"{now:.6f}:{uuid.uuid4().hex}",
-                max(self.window_seconds * 2, 1),
+            allowed = self._script(
+                keys=[redis_key],
+                args=[
+                    now - self.window_seconds,
+                    self.max_calls,
+                    now,
+                    f"{now:.6f}:{uuid.uuid4().hex}",
+                    max(self.window_seconds * 2, 1),
+                ],
+                client=self._client,
             )
             return bool(int(allowed))
         except redis.RedisError:

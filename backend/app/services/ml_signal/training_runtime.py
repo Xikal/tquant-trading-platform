@@ -45,6 +45,23 @@ def effective_min_train_samples(payload_min_samples: int) -> int:
     return max(int(payload_min_samples), settings_min, configured_min)
 
 
+def incremental_model_type() -> str:
+    value = str(training_parameters().get("incremental_model_type") or "xgboost").strip().lower()
+    return value if value in {"logistic", "xgboost", "lightgbm"} else "xgboost"
+
+
+def incremental_promote_enabled() -> bool:
+    return _bool_param(training_parameters().get("incremental_promote"), fallback=True)
+
+
+def incremental_warm_start_enabled() -> bool:
+    return _bool_param(training_parameters().get("incremental_warm_start"), fallback=True)
+
+
+def max_validation_p_value() -> float:
+    return _bounded_float(training_parameters().get("promotion_max_p_value"), fallback=0.05, minimum=0.001, maximum=1.0)
+
+
 def training_parameter_snapshot(db: Session) -> dict[str, Any]:
     try:
         current = QuantParameterVersionService(db).current(scope="low_buy")
@@ -63,3 +80,21 @@ def _bounded_int(value: Any, *, fallback: int, minimum: int, maximum: int) -> in
     except (TypeError, ValueError):
         parsed = fallback
     return max(minimum, min(parsed, maximum))
+
+
+def _bounded_float(value: Any, *, fallback: float, minimum: float, maximum: float) -> float:
+    try:
+        parsed = float(value)
+    except (TypeError, ValueError):
+        parsed = fallback
+    return max(minimum, min(parsed, maximum))
+
+
+def _bool_param(value: Any, *, fallback: bool) -> bool:
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        return value.strip().lower() in {"1", "true", "yes", "on"}
+    if value is None:
+        return fallback
+    return bool(value)

@@ -51,6 +51,14 @@ export function ValidationPanel({
           <div className="backtest-advanced-grid compact">
             <TextField type="number" label="初始资金" value={state.validationForm.initial_capital} onChange={(initial_capital) => actions.onValidationFormChange({ initial_capital })} />
             <SelectField label="执行模型" value={state.validationForm.execution_model} options={BACKTEST_EXECUTION_MODELS} onChange={(execution_model) => actions.onValidationFormChange({ execution_model: execution_model as BacktestExecutionModel })} />
+            <label className="backtest-check-field">
+              <input
+                type="checkbox"
+                checked={Boolean(state.validationForm.auto_promote_state_params)}
+                onChange={(event) => actions.onValidationFormChange({ auto_promote_state_params: event.currentTarget.checked })}
+              />
+              验证通过后自动生成市场状态参数版本
+            </label>
           </div>
         </details>
         <button type="button" className="primary" onClick={actions.onSubmitValidation} disabled={state.loading === "validate-submit"}>
@@ -79,6 +87,14 @@ export function ValidationPanel({
             </div>
             {truthyFlag(detail.downgrade_review ?? detail.downgrade_review_required) ? <div className="backtest-error">存在样本外 Sharpe 小于 0 的窗口，建议进入降级复核。</div> : null}
             {detail.stability_conclusion ? <div className="backtest-research-note">{detail.stability_conclusion}</div> : null}
+            <button
+              type="button"
+              className="secondary"
+              onClick={() => actions.onPromoteValidationStateParams(detail.id)}
+              disabled={state.loading === "validation-promote" || detail.status !== "succeeded"}
+            >
+              {state.loading === "validation-promote" ? "晋级中..." : "按市场状态生成参数版本"}
+            </button>
             <div className="backtest-window-grid">
               {(detail.windows ?? []).map((window, index) => (
                 <article className="backtest-window-card" key={`${window.index ?? window.window_index ?? index}`}>

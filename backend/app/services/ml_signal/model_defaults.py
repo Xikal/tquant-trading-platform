@@ -6,6 +6,10 @@ from typing import Any
 DEFAULT_TRAINING_PARAMS: dict[str, Any] = {
     "cv_folds": 5,
     "min_train_samples": 1000,
+    "incremental_model_type": "xgboost",
+    "incremental_promote": True,
+    "incremental_warm_start": True,
+    "promotion_max_p_value": 0.05,
     "xgb_n_estimators": 120,
     "xgb_max_depth": 3,
     "xgb_learning_rate": 0.05,

@@ -1,87 +1,17 @@
 from __future__ import annotations
 
-import math
-from collections import defaultdict
-from statistics import mean, pstdev
+from app.services.portfolio_heuristic_optimizer import (
+    HEURISTIC_OPTIMIZER_METHOD,
+    LEGACY_MEAN_VARIANCE_ALIAS,
+    _normalize,
+    normalize_optimizer_method,
+    optimize_strategy_portfolio,
+)
 
-from sqlalchemy import select
-from sqlalchemy.orm import Session
-
-from app.models.entities import BacktestTrade
-
-
-def optimize_strategy_portfolio(db: Session, run_id: int, method: str = "hrp") -> dict:
-    returns = _strategy_returns(db, run_id)
-    if not returns:
-        return {"run_id": run_id, "method": method, "weights": [], "summary": "暂无可优化的策略成交样本"}
-    stats = [_strategy_stats(key, values) for key, values in returns.items()]
-    if method == "mean_variance":
-        weights = _mean_variance_weights(stats)
-    else:
-        weights = _inverse_risk_weights(stats)
-    portfolio_sharpe = _portfolio_sharpe(stats, weights)
-    return {
-        "run_id": run_id,
-        "method": "mean_variance" if method == "mean_variance" else "hrp",
-        "weights": [
-            {
-                "strategy_key": item["strategy_key"],
-                "weight_pct": round(weights.get(item["strategy_key"], 0.0) * 100, 2),
-                "avg_return_pct": round(item["avg"], 4),
-                "volatility_pct": round(item["vol"], 4),
-                "sample_count": item["count"],
-            }
-            for item in stats
-        ],
-        "portfolio_sharpe": round(portfolio_sharpe, 4),
-        "summary": "研究用途：按历史成交收益和波动给出策略资金权重，不自动用于实盘或模拟盘。",
-    }
-
-
-def _strategy_returns(db: Session, run_id: int) -> dict[str, list[float]]:
-    rows = db.execute(
-        select(BacktestTrade.strategy_key, BacktestTrade.pnl_pct)
-        .where(BacktestTrade.run_id == run_id, BacktestTrade.strategy_key != "")
-    ).all()
-    grouped: dict[str, list[float]] = defaultdict(list)
-    for strategy_key, pnl_pct in rows:
-        if pnl_pct is None:
-            continue
-        grouped[str(strategy_key)].append(float(pnl_pct))
-    return {key: values for key, values in grouped.items() if values}
-
-
-def _strategy_stats(strategy_key: str, values: list[float]) -> dict:
-    avg = mean(values)
-    vol = pstdev(values) if len(values) > 1 else max(abs(avg), 0.01)
-    sharpe = avg / max(vol, 0.01)
-    return {"strategy_key": strategy_key, "avg": avg, "vol": vol, "sharpe": sharpe, "count": len(values)}
-
-
-def _inverse_risk_weights(stats: list[dict]) -> dict[str, float]:
-    raw = {item["strategy_key"]: 1.0 / max(float(item["vol"]), 0.01) for item in stats}
-    return _normalize(raw)
-
-
-def _mean_variance_weights(stats: list[dict]) -> dict[str, float]:
-    raw = {
-        item["strategy_key"]: max(float(item["avg"]), 0.0) / max(float(item["vol"]) ** 2, 0.0001)
-        for item in stats
-    }
-    if not any(value > 0 for value in raw.values()):
-        return _inverse_risk_weights(stats)
-    return _normalize(raw)
-
-
-def _portfolio_sharpe(stats: list[dict], weights: dict[str, float]) -> float:
-    expected = sum(weights.get(item["strategy_key"], 0.0) * float(item["avg"]) for item in stats)
-    risk = math.sqrt(sum((weights.get(item["strategy_key"], 0.0) * float(item["vol"])) ** 2 for item in stats))
-    return expected / max(risk, 0.0001)
-
-
-def _normalize(raw: dict[str, float]) -> dict[str, float]:
-    total = sum(max(value, 0.0) for value in raw.values())
-    if total <= 0:
-        equal = 1.0 / max(len(raw), 1)
-        return {key: equal for key in raw}
-    return {key: max(value, 0.0) / total for key, value in raw.items()}
+__all__ = [
+    "HEURISTIC_OPTIMIZER_METHOD",
+    "LEGACY_MEAN_VARIANCE_ALIAS",
+    "_normalize",
+    "normalize_optimizer_method",
+    "optimize_strategy_portfolio",
+]

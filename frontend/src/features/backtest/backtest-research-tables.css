@@ -196,6 +196,41 @@
   font-weight: 800;
 }
 
+.efficient-frontier-card {
+  display: grid;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid #d9e2ef;
+  border-radius: 14px;
+  background: #fff;
+}
+
+.efficient-frontier-card .chart-title {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  color: #0b1422;
+  font-size: 12px;
+}
+
+.efficient-frontier-card .chart-title span {
+  color: #64748b;
+}
+
+.efficient-frontier-card svg {
+  width: 100%;
+  min-height: 150px;
+}
+
+.efficient-frontier-card line {
+  stroke: #cbd5e1;
+}
+
+.efficient-frontier-card circle {
+  fill: #d6a55c;
+  opacity: 0.78;
+}
+
 .backtest-compare-chart {
   display: grid;
   gap: 8px;
@@ -243,4 +278,3 @@
   font-family: "IBM Plex Sans", "PingFang SC", sans-serif;
   font-weight: 900;
 }
-

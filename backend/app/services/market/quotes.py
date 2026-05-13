@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from app.services.market.local_quote_cache import read_local_quote_snapshot, write_local_quote_snapshot
 from app.services.market.shared import (
     DataSourceError,
     KlineBar,
@@ -25,6 +26,10 @@ class MarketQuoteMixin:
         cached = None if force_refresh else self._get_quote_cache(symbol)
         if cached is not None:
             return cached
+        distributed = None if force_refresh else read_local_quote_snapshot(symbol)
+        if distributed is not None:
+            self._set_quote_cache(symbol, distributed, persist_local=False)
+            return distributed
         if self._market_provider_router_enabled():
             result = self.provider_router.fetch_quote(symbol)
             if result.usable and result.data is not None:
@@ -90,7 +95,12 @@ class MarketQuoteMixin:
             if cached is not None:
                 result[symbol] = cached
             else:
-                remaining.append(symbol)
+                distributed = None if force_refresh else read_local_quote_snapshot(symbol)
+                if distributed is not None:
+                    self._set_quote_cache(symbol, distributed, persist_local=False)
+                    result[symbol] = distributed
+                else:
+                    remaining.append(symbol)
         if remaining:
             batch_quotes: dict[str, QuoteSnapshot] = {}
             if allow_slow_fallback and self._market_provider_router_enabled():
@@ -308,11 +318,13 @@ class MarketQuoteMixin:
             return payload
 
     @classmethod
-    def _set_quote_cache(cls, symbol: str, payload: QuoteSnapshot) -> None:
+    def _set_quote_cache(cls, symbol: str, payload: QuoteSnapshot, *, persist_local: bool = True) -> None:
         with cls._cache_lock:
             cls._quote_cache[symbol] = (time.monotonic() + cls._quote_cache_ttl, payload)
             if len(cls._quote_cache) > 5000:
                 cls._trim_expired_cache(cls._quote_cache, max_items=4000)
+        if persist_local:
+            write_local_quote_snapshot(payload)
 
     @classmethod
     def _get_spot_snapshot_cache(cls, instrument_type: str):

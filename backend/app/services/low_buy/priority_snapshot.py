@@ -4,6 +4,8 @@ from typing import Protocol
 
 from app.models.schemas import LowBuyStrategyPerformanceOut
 from app.repositories.low_buy.results import LowBuyResultRepository
+from app.services.latest_data_status import expected_low_buy_trade_date, published_low_buy_trade_date
+from app.services.low_buy_materialization import enqueue_low_buy_materialization
 from app.services.low_buy.priority_types import PriorityBaseSnapshot, PriorityCandidate
 from app.services.low_buy.shared import PLAYBOOKS, Session
 from app.services.low_buy.strategy_policy import StrategyTier
@@ -44,9 +46,10 @@ def build_priority_base_snapshot(
     limit: int,
 ) -> PriorityBaseSnapshot:
     repository = LowBuyResultRepository(db)
-    target_trade_date = builder._resolve_priority_target_trade_date()
+    expected_trade_date = expected_low_buy_trade_date(db)
+    target_trade_date = published_low_buy_trade_date(db) or expected_trade_date
     latest_result_trade_date = repository.fetch_latest_trade_date() or ""
-    latest_available_trade_date = target_trade_date or latest_result_trade_date
+    latest_available_trade_date = expected_trade_date or target_trade_date or latest_result_trade_date
     tracked_symbols = builder._load_watchlist_symbols(db)
     merged_candidates: dict[str, PriorityCandidate] = {}
     performance_cache: dict[tuple[str, str, int], LowBuyStrategyPerformanceOut | None] = {}
@@ -59,14 +62,10 @@ def build_priority_base_snapshot(
     for strategy_key in PLAYBOOKS:
         if tier_resolver.resolve(strategy_key) not in {StrategyTier.CORE, StrategyTier.AUXILIARY}:
             continue
-        summary = (
-            repository.fetch_latest_scan_summary_on_or_before(
-                strategy_key=strategy_key,
-                latest_trade_date=target_trade_date,
-            )
-            if target_trade_date
-            else repository.fetch_latest_scan_summary(strategy_key=strategy_key)
-        )
+        summary = repository.fetch_scan_summary(
+            strategy_key=strategy_key,
+            latest_trade_date=target_trade_date,
+        ) if target_trade_date else None
         if summary is None:
             missing_strategies.append(strategy_key)
             continue
@@ -80,8 +79,6 @@ def build_priority_base_snapshot(
         if payload is None:
             missing_strategies.append(strategy_key)
             continue
-        if latest_available_trade_date and payload.latest_trade_date < latest_available_trade_date:
-            stale_strategies.append(strategy_key)
         latest_trade_date = max(latest_trade_date, payload.latest_trade_date)
         updated_at = max(updated_at, payload.full_scan_updated_at or payload.as_of_date)
         builder._collect_priority_candidates(
@@ -93,7 +90,9 @@ def build_priority_base_snapshot(
             performance_cache=performance_cache,
         )
 
-    market_context = builder._build_market_context(db=db, latest_trade_date=latest_trade_date)
+    if missing_strategies or not latest_trade_date:
+        enqueue_low_buy_materialization(db, reason="priority_board_latest_missing", commit=True)
+    market_context = builder._build_market_context(db=db, latest_trade_date=latest_trade_date or latest_available_trade_date)
     return PriorityBaseSnapshot(
         latest_trade_date=latest_trade_date,
         latest_available_trade_date=latest_available_trade_date,

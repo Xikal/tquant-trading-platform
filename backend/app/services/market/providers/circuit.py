@@ -1,9 +1,15 @@
 from __future__ import annotations
 
-import threading
 import time
 from dataclasses import dataclass
 from typing import Any
+
+from app.services.market.providers.circuit_state import (
+    ProviderCircuitState,
+    ProviderCircuitStore,
+    ProviderMetrics,
+    global_provider_circuit_store,
+)
 
 
 @dataclass
@@ -13,41 +19,20 @@ class ProviderCircuitConfig:
     slow_call_ms: int = 3000
 
 
-@dataclass
-class ProviderMetrics:
-    calls: int = 0
-    successes: int = 0
-    failures: int = 0
-    slow_calls: int = 0
-    total_latency_ms: int = 0
-    last_error: str = ""
-
-
-@dataclass
-class ProviderCircuitState:
-    failure_count: int = 0
-    opened_until: float = 0.0
-    half_open_probe: bool = False
-
-
-_GLOBAL_LOCK = threading.RLock()
-_GLOBAL_STATES: dict[str, ProviderCircuitState] = {}
-_GLOBAL_METRICS: dict[str, ProviderMetrics] = {}
-
-
 class ProviderCircuitRegistry:
-    """In-process circuit breaker and lightweight provider metrics."""
+    """In-process circuit breaker with optional isolated state store."""
 
-    def __init__(self, config: ProviderCircuitConfig) -> None:
+    def __init__(self, config: ProviderCircuitConfig, store: ProviderCircuitStore | None = None) -> None:
         self.config = config
-        self._lock = _GLOBAL_LOCK
-        self._states = _GLOBAL_STATES
-        self._metrics = _GLOBAL_METRICS
+        self._store = store or global_provider_circuit_store()
+        self._lock = self._store.lock
+        self._states = self._store.states
+        self._metrics = self._store.metrics
 
     def can_call(self, provider_name: str, operation: str) -> bool:
         key = self._key(provider_name, operation)
-        with self._lock:
-            state = self._states.get(key)
+        with self._store.lock:
+            state = self._store.states.get(key)
             if state is None:
                 return True
             if state.opened_until > time.monotonic():
@@ -60,35 +45,32 @@ class ProviderCircuitRegistry:
 
     def record(self, provider_name: str, operation: str, *, ok: bool, latency_ms: int, error: str = "") -> None:
         key = self._key(provider_name, operation)
-        with self._lock:
-            metric = self._metrics.setdefault(key, ProviderMetrics())
+        with self._store.lock:
+            metric = self._store.metrics.setdefault(key, ProviderMetrics())
             metric.calls += 1
             metric.total_latency_ms += max(int(latency_ms), 0)
             if latency_ms >= self.config.slow_call_ms:
                 metric.slow_calls += 1
             if ok:
                 metric.successes += 1
-                self._states[key] = ProviderCircuitState()
+                self._store.states[key] = ProviderCircuitState()
                 return
             metric.failures += 1
             metric.last_error = error[:160]
-            state = self._states.setdefault(key, ProviderCircuitState())
+            state = self._store.states.setdefault(key, ProviderCircuitState())
             state.failure_count += 1
             state.half_open_probe = False
             if state.failure_count >= max(self.config.failure_threshold, 1):
                 state.opened_until = time.monotonic() + max(self.config.cooldown_seconds, 1)
 
     def snapshot(self) -> dict[str, Any]:
-        with self._lock:
+        with self._store.lock:
             providers = {
-                key: _metric_out(item, self._states.get(key, ProviderCircuitState()))
-                for key, item in self._metrics.items()
+                key: _metric_out(item, self._store.states.get(key, ProviderCircuitState()))
+                for key, item in self._store.metrics.items()
             }
-            totals = _totals(self._metrics)
-            return {
-                **totals,
-                "providers": providers,
-            }
+            totals = _totals(self._store.metrics)
+            return {**totals, "providers": providers}
 
     @staticmethod
     def _key(provider_name: str, operation: str) -> str:
@@ -118,11 +100,5 @@ def _totals(metrics: dict[str, ProviderMetrics]) -> dict[str, int]:
 
 
 def provider_metrics_snapshot() -> dict[str, Any]:
-    with _GLOBAL_LOCK:
-        return {
-            **_totals(_GLOBAL_METRICS),
-            "providers": {
-                key: _metric_out(item, _GLOBAL_STATES.get(key, ProviderCircuitState()))
-                for key, item in _GLOBAL_METRICS.items()
-            },
-        }
+    registry = ProviderCircuitRegistry(ProviderCircuitConfig())
+    return registry.snapshot()

@@ -48,14 +48,7 @@ class LocalMarketProvider:
                 for row in rows
             ]
         )
-        if frame.empty:
-            return _unavailable("local daily bars unavailable")
-        latest_local_date = str(frame["date"].iloc[-1])
-        if len(frame) < 60 or latest_local_date < end_iso:
-            return _unavailable(
-                f"local daily bars incomplete: rows={len(frame)}, latest={latest_local_date}, expected={end_iso}"
-            )
-        return ProviderResult(quality=MarketDataQuality.FRESH, source=self.name, data=frame)
+        return _daily_history_result(frame, end_iso)
 
     def fetch_trade_dates(self) -> ProviderResult[list[str]]:
         with SessionLocal() as db:
@@ -232,3 +225,25 @@ def _unavailable(message: str) -> ProviderResult:
 
 def _latest_daily_trade_date(db) -> str:
     return str(db.execute(select(func.max(DailyBarSnapshot.trade_date))).scalar() or "")
+
+
+def _daily_history_result(frame: pd.DataFrame, expected_end_date: str) -> ProviderResult[pd.DataFrame]:
+    if frame.empty:
+        return _unavailable("local daily bars unavailable")
+    latest_local_date = str(frame["date"].iloc[-1])
+    row_count = len(frame)
+    if row_count >= 60 and latest_local_date >= expected_end_date:
+        return ProviderResult(quality=MarketDataQuality.FRESH, source=LocalMarketProvider.name, data=frame)
+    if row_count >= 20:
+        return ProviderResult(
+            quality=MarketDataQuality.ESTIMATED,
+            source=LocalMarketProvider.name,
+            data=frame,
+            message=f"limited_history: rows={row_count}, latest={latest_local_date}, expected={expected_end_date}",
+        )
+    return ProviderResult(
+        quality=MarketDataQuality.STALE,
+        source=LocalMarketProvider.name,
+        data=frame,
+        message=f"partial_local_history: rows={row_count}, latest={latest_local_date}, expected={expected_end_date}",
+    )
