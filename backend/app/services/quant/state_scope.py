@@ -1,23 +1,30 @@
 from __future__ import annotations
 
 from contextlib import contextmanager
-from contextvars import ContextVar
-from contextvars import Token
+from dataclasses import dataclass
+import threading
 from typing import Iterator
 
-_MARKET_STATE_SCOPE: ContextVar[str] = ContextVar("market_state_scope", default="")
+_LOCAL = threading.local()
+
+
+@dataclass(frozen=True)
+class MarketStateScopeToken:
+    previous_scope: str
 
 
 def current_market_state_scope() -> str:
-    return _MARKET_STATE_SCOPE.get().strip()
+    return str(getattr(_LOCAL, "scope", "") or "").strip()
 
 
-def set_market_state_scope(scope: str | None) -> Token[str]:
-    return _MARKET_STATE_SCOPE.set((scope or "").strip())
+def set_market_state_scope(scope: str | None) -> MarketStateScopeToken:
+    token = MarketStateScopeToken(previous_scope=current_market_state_scope())
+    _LOCAL.scope = (scope or "").strip()
+    return token
 
 
-def reset_market_state_scope(token: Token[str]) -> None:
-    _MARKET_STATE_SCOPE.reset(token)
+def reset_market_state_scope(token: MarketStateScopeToken) -> None:
+    _LOCAL.scope = token.previous_scope
 
 
 @contextmanager

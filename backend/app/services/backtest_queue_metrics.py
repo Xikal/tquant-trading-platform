@@ -19,6 +19,15 @@ class BacktestQueueSnapshot:
     queue_position: int | None
     running_count: int
     estimated_wait_seconds: int
+    estimated_wait_reliable: bool
+    estimated_wait_source: str
+
+
+@dataclass(frozen=True)
+class _EstimatedWait:
+    seconds: int
+    reliable: bool
+    source: str
 
 
 def backtest_queue_snapshot(db: Session, row: BacktestRun) -> BacktestQueueSnapshot:
@@ -26,11 +35,14 @@ def backtest_queue_snapshot(db: Session, row: BacktestRun) -> BacktestQueueSnaps
     running_count = _count_status(db, "running")
     queue_position = _queue_position(db, row) if row.status == "queued" else None
     timeline = _timeline_rows(db)
+    estimate = _estimated_wait(row, timeline)
     return BacktestQueueSnapshot(
         queue_depth=queue_depth,
         queue_position=queue_position,
         running_count=running_count,
-        estimated_wait_seconds=_estimated_wait_seconds(row, timeline),
+        estimated_wait_seconds=estimate.seconds,
+        estimated_wait_reliable=estimate.reliable,
+        estimated_wait_source=estimate.source,
     )
 
 
@@ -60,17 +72,23 @@ def _queue_position(db: Session, row: BacktestRun) -> int:
     )
 
 
-def _estimated_wait_seconds(row: BacktestRun, timeline: list[dict[str, Any]]) -> int:
+def _estimated_wait(row: BacktestRun, timeline: list[dict[str, Any]]) -> _EstimatedWait:
     if row.status != "queued":
-        return 0
+        return _EstimatedWait(seconds=0, reliable=True, source="not_queued")
+    ahead = [item for item in timeline if _ahead_of(item, row)]
+    if not ahead:
+        return _EstimatedWait(seconds=0, reliable=True, source="no_wait")
     max_concurrent = _max_concurrent_backtests()
+    reliable = all(bool(item.get("estimate_reliable")) for item in ahead)
+    source = "historical_tier_average" if reliable else "fallback_resource_tier"
     if max_concurrent <= 1:
-        return int(sum(item["cost_seconds"] for item in timeline if _ahead_of(item, row)))
-    total_cost_before = sum(item["cost_seconds"] for item in timeline if _ahead_of(item, row))
-    return int(total_cost_before / max_concurrent)
+        return _EstimatedWait(seconds=int(sum(item["cost_seconds"] for item in ahead)), reliable=reliable, source=source)
+    total_cost_before = sum(item["cost_seconds"] for item in ahead)
+    return _EstimatedWait(seconds=int(total_cost_before / max_concurrent), reliable=reliable, source=source)
 
 
 def _timeline_rows(db: Session) -> list[dict[str, Any]]:
+    recent_seconds_by_tier = _recent_run_seconds_by_tier(db)
     rows = db.execute(
         select(
             BacktestRun.id,
@@ -86,17 +104,47 @@ def _timeline_rows(db: Session) -> list[dict[str, Any]]:
     timeline: list[dict[str, Any]] = []
     for run_id, status, created_at, started_at, params_json in rows:
         tier = resource_tier_from_params_json(params_json)
+        has_history = tier in recent_seconds_by_tier
         timeline.append(
             {
                 "id": int(run_id),
                 "status": str(status or "queued"),
                 "created_at": created_at,
                 "started_at": started_at,
-                "cost_seconds": estimated_seconds_for_tier(tier),
+                "cost_seconds": int(recent_seconds_by_tier.get(tier) or estimated_seconds_for_tier(tier)),
+                "estimate_reliable": has_history,
             }
         )
     timeline.sort(key=lambda item: _timeline_sort_key(item))
     return timeline
+
+
+def _recent_run_seconds_by_tier(db: Session, *, per_tier_limit: int = 10) -> dict[str, int]:
+    rows = db.execute(
+        select(
+            BacktestRun.params_json,
+            BacktestRun.started_at,
+            BacktestRun.finished_at,
+        )
+        .where(
+            BacktestRun.status.in_(("succeeded", "failed", "cancelled", "timeout")),
+            BacktestRun.deleted_at.is_(None),
+            BacktestRun.started_at.is_not(None),
+            BacktestRun.finished_at.is_not(None),
+        )
+        .order_by(BacktestRun.finished_at.desc(), BacktestRun.id.desc())
+        .limit(per_tier_limit * 8)
+    ).all()
+    grouped: dict[str, list[float]] = {}
+    for params_json, started_at, finished_at in rows:
+        if not isinstance(started_at, datetime) or not isinstance(finished_at, datetime):
+            continue
+        seconds = max((finished_at - started_at).total_seconds(), 1.0)
+        tier = resource_tier_from_params_json(params_json)
+        bucket = grouped.setdefault(tier, [])
+        if len(bucket) < per_tier_limit:
+            bucket.append(seconds)
+    return {tier: int(sum(values) / len(values)) for tier, values in grouped.items() if values}
 
 
 def _ahead_of(item: dict[str, Any], row: BacktestRun) -> bool:

@@ -15,6 +15,7 @@ import {
   type MobileStrategyTabOption,
   type MobileStrategyTabKey,
   MobileStrategyTabs,
+  formatPrice,
   splitPriorityItems
 } from "./MobileDesignCards"
 import type { LowBuyPriorityBoardResult } from "../types"
@@ -41,10 +42,16 @@ export function MobileHomeSection({
   onOpenCandidate: (symbol: string) => void | Promise<void>
   onSwitchToLowBuy: () => void
 }) {
+  const top = priorityBoardItems[0]
   return (
     <>
       <MobileMetricRow items={metrics} />
       <MobileMarketPills board={priorityBoard} />
+      <section className="mobile-today-one-thing">
+        <span>今天最重要一件事</span>
+        <strong>{top ? `${top.name}：${top.buy_signal_text || "等待确认"}` : "暂无明确可执行信号"}</strong>
+        <small>{top ? `买点 ${formatPrice(top.entry_zone_low)}-${formatPrice(top.entry_zone_high)}，止损 ${formatPrice(top.stop_loss)}` : "先等榜单刷新，不强行交易。"}</small>
+      </section>
 
       <MobileSectionTitle
         title="选股宝典优先榜"
@@ -195,8 +202,8 @@ export function MobileLowBuySection({
       <MobileRecentBacktests runs={recentBacktests ?? []} />
 
       <MobileSectionTitle
-        title="确定买入"
-        hint="优先执行"
+        title="现在可买"
+        hint="只显示最需要处理的候选"
         action={
           <button type="button" className="mobile-design-pill tone-gold" onClick={onOpenAi}>
             解读榜单
@@ -215,11 +222,11 @@ export function MobileLowBuySection({
           />
         ))}
         {!loading && !playbookLoading && !playbookGroups.buyNow.length ? (
-          <div className="mobile-app-empty">当前策略暂无确定买入</div>
+          <div className="mobile-app-empty">当前策略暂无现在可买的候选</div>
         ) : null}
       </section>
 
-      <MobileSectionTitle title="接近买点" hint="等待确认" />
+      <MobileSectionTitle title="等确认" hint="到价但还缺承接" />
       <section className="mobile-design-list">
         {playbookGroups.nearEntry.slice(0, 4).map((item) => (
           <MobilePriorityStockCard
@@ -235,7 +242,7 @@ export function MobileLowBuySection({
         ) : null}
       </section>
 
-      <MobileSectionTitle title="继续观察" hint="不急执行" />
+      <MobileSectionTitle title="更多观察" hint="不急执行，展开后再看" />
       <section className="mobile-design-list">
         {playbookGroups.watch.slice(0, 4).map((item) => (
           <MobilePriorityStockCard

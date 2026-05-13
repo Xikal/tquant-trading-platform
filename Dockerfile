@@ -26,6 +26,13 @@ RUN apt-get update \
 COPY backend/requirements.txt /tmp/backend-requirements.txt
 RUN pip install --retries 8 -r /tmp/backend-requirements.txt
 
+ARG INSTALL_RL_EXTRAS=0
+ARG WITH_RL=0
+COPY backend/requirements-rl-extra.txt /tmp/backend-requirements-rl-extra.txt
+RUN if [ "$INSTALL_RL_EXTRAS" = "1" ] || [ "$WITH_RL" = "1" ] || [ "$WITH_RL" = "true" ]; then \
+        pip install --retries 8 -r /tmp/backend-requirements-rl-extra.txt; \
+    fi
+
 COPY backend /app/backend
 COPY scripts /app/scripts
 COPY --from=frontend-builder /app/frontend/dist /app/frontend/dist

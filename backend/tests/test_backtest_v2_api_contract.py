@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import threading
+from contextlib import contextmanager
+from datetime import datetime, timedelta
 from types import SimpleNamespace
 from typing import Any
 
@@ -21,6 +23,7 @@ from app.services.backtest.engine import BacktestOrder, BacktestResult
 from app.services.backtest.persistence import BacktestResultPersistence
 from app.services.backtest.portfolio import RealizedTrade
 from app.services.backtest_job_service import BacktestJobService
+from app.services.backtest_queue_metrics import backtest_queue_snapshot
 
 backtests_route = pytest.importorskip(
     "app.api.routes.backtests",
@@ -479,6 +482,73 @@ def test_backtest_worker_run_once_executes_queued_job(monkeypatch: pytest.Monkey
     assert row.started_at is not None
     assert row.finished_at is not None
     assert row.progress_pct == 100.0
+
+
+def test_backtest_worker_respects_process_semaphore(monkeypatch: pytest.MonkeyPatch) -> None:
+    from app.services import backtest_worker as worker_module
+    from app.services.backtest_worker import BacktestWorker
+
+    @contextmanager
+    def denied_slot():
+        yield False
+
+    monkeypatch.setattr(worker_module, "backtest_execution_slot", denied_slot)
+    SessionLocal = _sqlite_session_factory()
+    with SessionLocal() as db:
+        created = BacktestJobService(db).create_run(
+            BacktestRunCreate(**_submit_payload_current_schema()),
+            owner_user_id=7,
+        )
+
+    outcome = BacktestWorker(session_factory=SessionLocal, max_duration_seconds=60).run_once()
+
+    with SessionLocal() as db:
+        row = db.get(BacktestRun, created.id)
+
+    assert outcome is None
+    assert row is not None
+    assert row.status == "queued"
+    assert row.started_at is None
+
+
+def test_backtest_queue_estimate_uses_recent_tier_average() -> None:
+    SessionLocal = _sqlite_session_factory()
+    now = datetime.utcnow()
+    with SessionLocal() as db:
+        db.add(
+            BacktestRun(
+                name="recent-walk-forward",
+                status="succeeded",
+                params_json='{"resource_tier": "walk_forward"}',
+                started_at=now - timedelta(seconds=240),
+                finished_at=now,
+                initial_cash=100000.0,
+                final_equity=101000.0,
+            )
+        )
+        first = BacktestRun(
+            name="queued-one",
+            status="queued",
+            params_json='{"resource_tier": "walk_forward"}',
+            initial_cash=100000.0,
+            final_equity=100000.0,
+        )
+        second = BacktestRun(
+            name="queued-two",
+            status="queued",
+            params_json='{"resource_tier": "light"}',
+            initial_cash=100000.0,
+            final_equity=100000.0,
+        )
+        db.add_all([first, second])
+        db.commit()
+        db.refresh(second)
+
+        snapshot = backtest_queue_snapshot(db, second)
+
+    assert snapshot.estimated_wait_seconds >= 120
+    assert snapshot.estimated_wait_reliable is True
+    assert snapshot.estimated_wait_source == "historical_tier_average"
 
 
 def test_persistence_does_not_overwrite_cancelled_run_with_succeeded_result() -> None:

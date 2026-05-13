@@ -46,10 +46,9 @@ export function AttributionPanel({ state, equity }: { state: BacktestResearchSta
       </Suspense>
       <PanelTitle title="相关性矩阵" meta="Pearson" />
       <div
-        className="backtest-correlation"
+        className={correlationGridClass(correlation?.strategies?.length ?? 0)}
         role="table"
         aria-label="策略相关性矩阵"
-        style={correlation?.strategies?.length ? { gridTemplateColumns: `repeat(${correlation.strategies.length + 1}, minmax(82px, 1fr))` } : undefined}
       >
         {correlation?.strategies?.length ? (
           <>
@@ -63,6 +62,13 @@ export function AttributionPanel({ state, equity }: { state: BacktestResearchSta
       </div>
     </section>
   );
+}
+
+function correlationGridClass(strategyCount: number): string {
+  if (strategyCount <= 0) {
+    return "backtest-correlation";
+  }
+  return `backtest-correlation backtest-correlation-cols-${Math.min(Math.max(strategyCount + 1, 3), 18)}`;
 }
 
 function MatrixRow({

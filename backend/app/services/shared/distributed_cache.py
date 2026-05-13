@@ -9,6 +9,7 @@ from redis.exceptions import RedisError
 from app.services.shared.distributed_cache_state import (
     clear_distributed_cache_client_state,
     get_distributed_cache_client,
+    mark_distributed_cache_unhealthy,
 )
 
 logger = logging.getLogger(__name__)
@@ -21,6 +22,7 @@ def get_text_cache(key: str) -> str | None:
     try:
         value = client.get(key)
     except RedisError:
+        mark_distributed_cache_unhealthy()
         logger.warning("redis cache read failed key=%s", key, exc_info=True)
         return None
     if value is None:
@@ -35,6 +37,7 @@ def set_text_cache(key: str, value: str, ttl_seconds: int | float) -> None:
     try:
         client.setex(key, max(int(ttl_seconds), 1), value)
     except RedisError:
+        mark_distributed_cache_unhealthy()
         logger.warning("redis cache write failed key=%s", key, exc_info=True)
 
 

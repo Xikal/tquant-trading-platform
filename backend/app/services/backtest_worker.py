@@ -13,10 +13,9 @@ from sqlalchemy.orm import Session
 from app.core.database import SessionLocal
 from app.models.entities import BacktestRun
 from app.services.backtest.cancel_token import BacktestCancelToken, TimedDatabaseStatusCancelToken
+from app.services.backtest.concurrency import backtest_execution_slot, max_concurrent_backtests
 from app.services.backtest.queue_lock import backtest_claim_lock
 from app.services.backtest_job_service import BacktestJobService, _safe_error_message
-from app.services.low_buy.strategy_parameter_defaults import BACKTEST_EXECUTION_DEFAULTS
-from app.services.quant.runtime_parameters import get_backtest_execution
 
 
 logger = logging.getLogger(__name__)
@@ -48,22 +47,25 @@ class BacktestWorker:
         if timed_out is not None:
             return timed_out
 
-        run_id = self._claim_next_queued_job()
-        if run_id is None:
-            return None
+        with backtest_execution_slot() as acquired:
+            if not acquired:
+                return None
+            run_id = self._claim_next_queued_job()
+            if run_id is None:
+                return None
 
-        token = TimedDatabaseStatusCancelToken(
-            model=BacktestRun,
-            row_id=run_id,
-            session_factory=self.session_factory,
-            max_duration_seconds=self._run_max_duration_seconds(run_id),
-            log_label="backtest run",
-        )
-        BacktestJobService.register_cancel_token(run_id, token)
-        try:
-            return self._execute_claimed_job(run_id, token)
-        finally:
-            BacktestJobService.unregister_cancel_token(run_id)
+            token = TimedDatabaseStatusCancelToken(
+                model=BacktestRun,
+                row_id=run_id,
+                session_factory=self.session_factory,
+                max_duration_seconds=self._run_max_duration_seconds(run_id),
+                log_label="backtest run",
+            )
+            BacktestJobService.register_cancel_token(run_id, token)
+            try:
+                return self._execute_claimed_job(run_id, token)
+            finally:
+                BacktestJobService.unregister_cancel_token(run_id)
 
     def run_forever(self, *, poll_interval_seconds: float = 5.0, stop_event: threading.Event | None = None) -> None:
         while stop_event is None or not stop_event.is_set():
@@ -249,9 +251,4 @@ def _utcnow() -> datetime:
 
 
 def _max_concurrent_backtests() -> int:
-    try:
-        params = get_backtest_execution()
-        value = int(float(params.get("max_concurrent_backtests") or BACKTEST_EXECUTION_DEFAULTS["max_concurrent_backtests"]))
-    except Exception:
-        value = int(BACKTEST_EXECUTION_DEFAULTS["max_concurrent_backtests"])
-    return max(1, min(value, 8))
+    return max_concurrent_backtests()

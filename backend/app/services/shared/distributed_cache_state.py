@@ -14,7 +14,7 @@ _LOCK = threading.RLock()
 _CLIENT: Redis | None = None
 _HEALTHY_UNTIL = 0.0
 _FAILED_UNTIL = 0.0
-_HEALTHY_TTL_SECONDS = 300.0
+_HEALTHY_TTL_SECONDS = 60.0
 _FAILED_TTL_SECONDS = 20.0
 
 
@@ -51,4 +51,15 @@ def clear_distributed_cache_client_state() -> None:
     with _LOCK:
         _CLIENT = None
         _HEALTHY_UNTIL = 0.0
+        _FAILED_UNTIL = 0.0
+
+
+def mark_distributed_cache_unhealthy() -> None:
+    global _CLIENT, _HEALTHY_UNTIL, _FAILED_UNTIL
+    with _LOCK:
+        _CLIENT = None
+        _HEALTHY_UNTIL = 0.0
+        # A runtime Redis failure invalidates the cached client immediately.
+        # The next cache operation should re-check health instead of waiting
+        # for the initialization backoff window to expire.
         _FAILED_UNTIL = 0.0

@@ -249,6 +249,10 @@ class _LowBuyRuntime:
             cls._quote_refresh_response_cache.clear()
             cls._trade_dates_cache.clear()
 
+    @classmethod
+    def clear_all_caches(cls) -> None:
+        cls.clear_runtime_caches()
+
 
 def _build_runtime_method_map(adapters: list[_LowBuyRuntimeAdapter]) -> dict[str, _LowBuyRuntimeAdapter]:
     method_map: dict[str, _LowBuyRuntimeAdapter] = {}

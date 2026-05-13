@@ -19,6 +19,11 @@ from app.models.entities import User, UserSession
 from app.models.schemas import AuthTokenResponse, AuthUserOut
 from app.services.auth_security_alerts import notify_login_lockout
 from app.services.totp import build_otpauth_uri, generate_totp_secret, verify_totp
+from app.services.totp_secret_crypto import (
+    decrypt_totp_secret,
+    encrypt_totp_secret,
+    is_encrypted_totp_secret,
+)
 
 PASSWORD_ALGORITHM = "pbkdf2_sha256"
 PASSWORD_ITERATIONS = 210_000
@@ -148,9 +153,12 @@ class AuthService:
             if user is not None and user.is_active:
                 self._record_failed_login(db, user)
             raise AuthError("账号或密码错误")
-        if user.mfa_totp_enabled and not verify_totp(mfa_code, user.mfa_totp_secret):
-            self._record_failed_login(db, user)
-            raise AuthError("请输入有效动态验证码")
+        if user.mfa_totp_enabled:
+            secret = self._totp_secret_for_verification(user)
+            if not verify_totp(mfa_code, secret):
+                self._record_failed_login(db, user)
+                raise AuthError("请输入有效动态验证码")
+            self._encrypt_plain_totp_secret_if_needed(user, secret)
         self._clear_failed_login(user)
         response = self._issue_token_pair(db, user=user, device_name=device_name)
         db.commit()
@@ -247,25 +255,41 @@ class AuthService:
         )
 
     def prepare_totp_setup(self, db: Session, *, user: User) -> tuple[str, str]:
-        secret = user.mfa_totp_secret or generate_totp_secret()
-        user.mfa_totp_secret = secret
+        secret = self._totp_secret_for_verification(user) if user.mfa_totp_secret else generate_totp_secret()
+        user.mfa_totp_secret = encrypt_totp_secret(secret)
         db.commit()
         return secret, build_otpauth_uri(issuer=get_settings().app_name, username=user.username, secret=secret)
 
     def enable_totp(self, db: Session, *, user: User, code: str) -> None:
         if not user.mfa_totp_secret:
-            user.mfa_totp_secret = generate_totp_secret()
-        if not verify_totp(code, user.mfa_totp_secret):
+            user.mfa_totp_secret = encrypt_totp_secret(generate_totp_secret())
+        secret = self._totp_secret_for_verification(user)
+        if not verify_totp(code, secret):
             raise AuthError("动态验证码无效")
+        user.mfa_totp_secret = encrypt_totp_secret(secret)
         user.mfa_totp_enabled = True
         db.commit()
 
     def disable_totp(self, db: Session, *, user: User, code: str) -> None:
-        if user.mfa_totp_enabled and not verify_totp(code, user.mfa_totp_secret):
-            raise AuthError("动态验证码无效")
+        if user.mfa_totp_enabled:
+            secret = self._totp_secret_for_verification(user)
+            if not verify_totp(code, secret):
+                raise AuthError("动态验证码无效")
         user.mfa_totp_enabled = False
         user.mfa_totp_secret = ""
         db.commit()
+
+    @staticmethod
+    def _totp_secret_for_verification(user: User) -> str:
+        try:
+            return decrypt_totp_secret(user.mfa_totp_secret)
+        except ValueError as exc:
+            raise AuthError(str(exc)) from exc
+
+    @staticmethod
+    def _encrypt_plain_totp_secret_if_needed(user: User, secret: str) -> None:
+        if user.mfa_totp_secret and not is_encrypted_totp_secret(user.mfa_totp_secret):
+            user.mfa_totp_secret = encrypt_totp_secret(secret)
 
     def _issue_token_pair(self, db: Session, *, user: User, device_name: str = "") -> AuthTokenResponse:
         settings = get_settings()

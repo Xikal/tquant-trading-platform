@@ -6,6 +6,7 @@ import type { AuthUser } from "../types"
 export interface MobileAuthSubmitPayload {
   username: string
   password: string
+  mfa_code?: string
   register: boolean
 }
 
@@ -51,6 +52,7 @@ export function useMobileAuth() {
         : await appApi.login({
             username: payload.username,
             password: payload.password,
+            mfa_code: payload.mfa_code,
             device_name: "mobile-app"
           })
       setAuthUser(result.user)

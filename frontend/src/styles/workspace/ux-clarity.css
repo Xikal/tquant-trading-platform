@@ -1,0 +1,219 @@
+.decision-brief {
+  display: grid;
+  gap: 4px;
+  margin-top: 10px;
+  padding: 12px 14px;
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  border-radius: 14px;
+  background: #ffffff;
+}
+
+.login-field small {
+  color: #64748b;
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.login-error {
+  display: grid;
+  gap: 3px;
+}
+
+.login-error span,
+.login-error small {
+  color: #b42318;
+}
+
+.decision-brief span,
+.stock-direct-action span,
+.strategy-purpose-strip span,
+.paper-action-card span,
+.paper-action-card small {
+  color: #64748b;
+}
+
+.decision-brief strong {
+  color: #0f172a;
+  font-size: 18px;
+}
+
+.decision-brief.up {
+  border-color: rgba(34, 197, 94, 0.34);
+  background: #f0fbf4;
+}
+
+.decision-brief.warn {
+  border-color: rgba(214, 165, 92, 0.38);
+  background: #fff8e8;
+}
+
+.stock-direct-action {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 8px 0 6px;
+}
+
+.stock-direct-action strong {
+  color: #0f172a;
+  font-size: 16px;
+}
+
+.stock-direct-action span {
+  white-space: nowrap;
+  font-size: 12px;
+  font-weight: 800;
+  color: #b7791f;
+}
+
+.strategy-purpose-strip,
+.settings-role-guide {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 10px 0;
+}
+
+.strategy-purpose-strip > *,
+.settings-role-guide span {
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  border-radius: 999px;
+  background: #fff;
+  padding: 7px 10px;
+  font-size: 12px;
+}
+
+.playbook-hero .tabs button {
+  display: grid;
+  gap: 3px;
+}
+
+.playbook-hero .tabs small {
+  color: #64748b;
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.paper-grid {
+  grid-template-areas:
+    "metrics metrics"
+    "order action"
+    "order positions"
+    "bottom bottom";
+}
+
+.paper-action-brief {
+  grid-area: action;
+}
+
+.paper-action-brief-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.paper-action-card {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  border-radius: 12px;
+  background: #fff;
+  padding: 10px;
+}
+
+.paper-action-card strong {
+  color: #0f172a;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.paper-action-card.warn {
+  border-color: rgba(214, 165, 92, 0.4);
+  background: #fff8e8;
+}
+
+.paper-action-card.ok {
+  border-color: rgba(34, 197, 94, 0.28);
+  background: #f0fbf4;
+}
+
+.research-story-list,
+.performance-advice-bars {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.performance-dashboard-grid {
+  grid-template-areas:
+    "hero hero hero hero"
+    "metrics metrics metrics metrics"
+    "plain plain plain plain"
+    "equity equity winrate winrate"
+    "report report strategy strategy"
+    "market market matrix matrix"
+    "correlation correlation correlation correlation";
+}
+
+.research-story-card,
+.performance-plain-summary {
+  display: grid;
+  gap: 4px;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  border-radius: 12px;
+  background: #fff;
+  padding: 10px 12px;
+}
+
+.performance-plain-summary {
+  grid-area: plain;
+}
+
+.performance-advice-row {
+  display: grid;
+  grid-template-columns: minmax(140px, 1fr) 76px minmax(100px, 1fr) minmax(160px, 1.4fr);
+  gap: 10px;
+  align-items: center;
+  font-size: 12px;
+}
+
+.performance-advice-row div {
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #eef2f7;
+}
+
+.performance-advice-row i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #d6a55c, #0f766e);
+}
+
+.performance-advice-row .up {
+  color: #b91c1c;
+}
+
+.performance-advice-row .down {
+  color: #15803d;
+}
+
+@media (max-width: 900px) {
+  .paper-grid {
+    grid-template-areas:
+      "metrics"
+      "action"
+      "order"
+      "positions"
+      "bottom";
+  }
+
+  .paper-action-brief-grid,
+  .performance-advice-row {
+    grid-template-columns: 1fr;
+  }
+}

@@ -1,5 +1,6 @@
 import { isNativeHttpRuntime, nativeRequest } from "./nativeHttp"
 import { clearOfflineCache, readOfflineCache, writeOfflineCache } from "./offlineCache"
+import { fetchWithTimeout } from "./fetchWithTimeout"
 
 const isNativeTarget = import.meta.env.VITE_APP_TARGET === "native"
 const configuredApiBase = import.meta.env.VITE_API_BASE_URL
@@ -48,10 +49,10 @@ export async function request<T>(path: string, init?: RequestInit): Promise<T> {
     path,
     () =>
       retryRequest(async () => {
-        let response = await fetch(`${API_BASE}${path}`, { ...init, headers, credentials: "include" })
+        let response = await fetchWithTimeout(`${API_BASE}${path}`, { ...init, headers, credentials: "include" })
 
         if (response.status === 401 && canRefreshForPath(path) && (await refreshAccessToken())) {
-          response = await fetch(`${API_BASE}${path}`, {
+          response = await fetchWithTimeout(`${API_BASE}${path}`, {
             ...init,
             headers: buildRequestHeaders(init),
             credentials: "include"
@@ -99,7 +100,7 @@ async function refreshAccessToken(): Promise<boolean> {
     return false
   }
   if (!refreshAccessPromise) {
-    refreshAccessPromise = fetch(`${API_BASE}/auth/refresh`, {
+    refreshAccessPromise = fetchWithTimeout(`${API_BASE}/auth/refresh`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({}),

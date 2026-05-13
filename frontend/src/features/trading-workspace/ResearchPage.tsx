@@ -96,6 +96,15 @@ export function ResearchPage({
       </aside>
       <aside className="panel dark research-samples">
         <PanelTitle title="复盘样本 / 生命周期" />
+        <div className="research-story-list">
+          {replays.slice(0, 3).map((item) => (
+            <article key={`story-${item.id}`} className="research-story-card">
+              <strong>{item.symbol}：{item.outcome || "样本结果"}</strong>
+              <span>结果 {formatPct(item.pnl_pct)}，创建于 {shortTime(item.created_at)}。</span>
+              <small>这类样本用于判断策略是否稳定，不代表下一笔一定相同。</small>
+            </article>
+          ))}
+        </div>
         {replays.slice(0, 6).map((item) => (
           <div className="sample" key={item.id}>{item.symbol} · {item.outcome} · {formatPct(item.pnl_pct)}</div>
         ))}
@@ -110,6 +119,7 @@ export function ResearchPage({
           </div>
         ))}
         {!replays.length ? <EmptyState text="暂无复盘样本。" /> : null}
+        {replays.length && replays.length < 20 ? <p className="hint">样本少于 20 条时，只能作为观察线索，不建议直接放大仓位。</p> : null}
       </aside>
       <div className="panel report research-report">
         <PanelTitle title={result ? `${result.symbol} 回测结果` : "回测结果"} />

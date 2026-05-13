@@ -63,6 +63,21 @@ export function StrategyHubPage({ currentUser }: { currentUser: AuthUser }) {
       {hub.error ? <ErrorBanner message={`策略工作台加载失败：${hub.error}`} /> : null}
       {hub.notice ? <div className="panel strategy-notice">{hub.notice}</div> : null}
 
+      <section className="strategy-step-flow" aria-label="策略使用流程">
+        {[
+          ["1", "体检", "先看策略是否健康，红灯不使用。"],
+          ["2", "复盘", "查看历史任务，确认不是偶然盈利。"],
+          ["3", "优化", "只在样本外通过后调整参数。"],
+          ["4", "验证", "验证通过后才考虑模拟盘跟踪。"],
+        ].map(([step, title, desc]) => (
+          <article key={step}>
+            <span>{step}</span>
+            <strong>{title}</strong>
+            <small>{desc}</small>
+          </article>
+        ))}
+      </section>
+
       <nav className="strategy-tabs" aria-label="策略工作台功能">
         {visibleTabsForUser(currentUser).map((tab) => (
           <button

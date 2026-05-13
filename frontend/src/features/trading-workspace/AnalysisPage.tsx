@@ -33,6 +33,12 @@ export function AnalysisPage({
   const invalidText =
     suggestion?.plain_invalid_condition ||
     (suggestion?.blocking_rules.length ? suggestion.blocking_rules.map(plainTradingText).join("；") : "没有硬性阻止条件");
+  const decisionTone = suggestion?.is_actionable ? "up" : suggestion?.signal_layer === "watch_prepare" ? "warn" : "neutral";
+  const decisionTitle = suggestion?.is_actionable
+    ? `当前可以：${actionHeadline}`
+    : suggestion
+      ? `当前先不下单：${statusText}`
+      : "输入股票后先看能不能操作";
   return (
     <section className="page-grid analysis-grid">
       <div className="panel analysis-hero">
@@ -42,6 +48,11 @@ export function AnalysisPage({
           <InfoPill label="操作建议" value={actionHeadline} />
           <InfoPill label="持仓限制" value={`底仓 ${draft.base_position} / 可卖 ${draft.available_position}`} />
           <InfoPill label="风险等级" value={suggestion ? riskText(suggestion.risk_level) : "--"} />
+        </div>
+        <div className={`decision-brief ${decisionTone}`}>
+          <span>综合判断</span>
+          <strong>{decisionTitle}</strong>
+          <small>{suggestion ? actionReason : "系统会先检查价格、持仓、手续费、风险和失效条件。"}</small>
         </div>
       </div>
       <div className="panel analysis-identity">

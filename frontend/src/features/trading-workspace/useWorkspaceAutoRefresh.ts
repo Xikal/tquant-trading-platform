@@ -25,10 +25,31 @@ export function useWorkspaceAutoRefresh({
     if (!currentUser || page !== "monitor") {
       return undefined;
     }
+    let inFlight = false;
+    const runRefresh = async () => {
+      if (document.visibilityState !== "visible" || inFlight) {
+        return;
+      }
+      inFlight = true;
+      try {
+        await fetchMonitorData(false);
+      } finally {
+        inFlight = false;
+      }
+    };
     const timer = window.setInterval(() => {
-      void fetchMonitorData(false);
+      void runRefresh();
     }, MONITOR_REFRESH_INTERVAL_MS);
-    return () => window.clearInterval(timer);
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        void runRefresh();
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
   }, [currentUser, fetchMonitorData, page]);
 
   useEffect(() => {

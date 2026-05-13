@@ -1,6 +1,7 @@
 import { memo, useMemo } from "react";
 import type { LowBuyPriorityBoardResult, MarketBreadth, PairedHedgeResearchResponse, RuntimeStatus, SectorEtfT0Response } from "../../types";
 import { NumberField, SearchField, TextField } from "../../components/shared/FormFields";
+import { directActionTitle } from "../../utils/uxClarity";
 import { EmptyState, FamilyStrip, InfoPill, MetricGrid, PanelTitle, StockCard } from "./WorkspaceComponents";
 import { average, formatPct, formatPrice, riskLevelText, shortTime } from "./workspaceFormatters";
 import type { MetricItem, StockCardView, WatchDraft } from "./workspaceTypes";
@@ -53,13 +54,14 @@ export const MonitorPage = memo(function MonitorPage({
   onCancelEdit,
 }: MonitorPageProps) {
   const isEditing = Boolean(editingWatchSymbol);
+  const primaryAction = useMemo(() => resolveTodayAction(watchCards, priorityCards), [watchCards, priorityCards]);
   const metrics: MetricItem[] = useMemo(() => {
     const executableCount = watchCards.filter((card) => card.actionText !== "暂不操作").length;
     const avgScore = average(priorityCards.map((card) => Number(card.scoreText))).toFixed(1);
     return [
       { label: "已持仓自选", value: String(watchCards.length), tone: "neutral" },
-      { label: "可执行做T", value: String(executableCount), tone: executableCount ? "up" : "neutral" },
-      { label: "高风险席位", value: String(watchCards.filter((card) => card.riskText.includes("高")).length), tone: "down" },
+      { label: "今天可操作", value: String(executableCount), tone: executableCount ? "up" : "neutral" },
+      { label: "需要避险", value: String(watchCards.filter((card) => card.riskText.includes("高")).length), tone: "down" },
       { label: "平均质量分", value: Number.isFinite(Number(avgScore)) ? avgScore : "--", tone: "warn" },
       { label: "榜单 / 刷新", value: `${priorityBoard?.items.length ?? 0} / ${shortTime(priorityBoard?.updated_at) || "--"}`, tone: "neutral" },
     ];
@@ -77,6 +79,11 @@ export const MonitorPage = memo(function MonitorPage({
           }
         />
         <MetricGrid items={metrics} />
+        <div className={`decision-brief ${primaryAction.tone}`}>
+          <span>今天我该做什么</span>
+          <strong>{primaryAction.title}</strong>
+          <small>{primaryAction.detail}</small>
+        </div>
         <MarketBreadthStrip marketBreadth={marketBreadth} />
       </div>
 
@@ -98,11 +105,11 @@ export const MonitorPage = memo(function MonitorPage({
             disabled={isEditing}
             onChange={(value) => setWatchDraft({ ...watchDraft, symbol: value })}
           />
-          <NumberField label="底仓数量" value={watchDraft.base_position} onChange={(event) => setWatchDraft({ ...watchDraft, base_position: event.target.value })} />
-          <NumberField label="可卖数量" value={watchDraft.available_position} onChange={(event) => setWatchDraft({ ...watchDraft, available_position: event.target.value })} />
-          <NumberField label="成本价" value={watchDraft.cost_basis} onChange={(event) => setWatchDraft({ ...watchDraft, cost_basis: event.target.value })} />
-          <TextField label="备注" value={watchDraft.memo} onChange={(event) => setWatchDraft({ ...watchDraft, memo: event.target.value })} />
-          <TextField label="名称" value={watchDraft.name} onChange={(event) => setWatchDraft({ ...watchDraft, name: event.target.value })} />
+          <NumberField label="底仓数量" hint="例：1000，代表当前总持仓。" value={watchDraft.base_position} onChange={(event) => setWatchDraft({ ...watchDraft, base_position: event.target.value })} />
+          <NumberField label="可卖数量" hint="例：600，今天可先卖的底仓数量。" value={watchDraft.available_position} onChange={(event) => setWatchDraft({ ...watchDraft, available_position: event.target.value })} />
+          <NumberField label="成本价" hint="例：12.35，用于计算盈亏和止损。" value={watchDraft.cost_basis} onChange={(event) => setWatchDraft({ ...watchDraft, cost_basis: event.target.value })} />
+          <TextField label="备注" hint="例：主线前排、只做正T。" value={watchDraft.memo} onChange={(event) => setWatchDraft({ ...watchDraft, memo: event.target.value })} />
+          <TextField label="名称" hint="可留空，系统会自动补全。" value={watchDraft.name} onChange={(event) => setWatchDraft({ ...watchDraft, name: event.target.value })} />
         </div>
         <button className="primary full" onClick={onAddWatchlist} disabled={loading === "watchlist"}>
           {loading === "watchlist" ? "保存中..." : isEditing ? "更新持仓" : watchDraft.symbol.trim() ? "保存持仓" : "加入自选监控"}
@@ -224,4 +231,27 @@ function formatRatioPct(value?: number | null): string {
   if (typeof value !== "number" || !Number.isFinite(value)) return "--";
   const normalized = Math.abs(value) <= 1 ? value * 100 : value;
   return `${normalized.toFixed(0)}%`;
+}
+
+function resolveTodayAction(
+  watchCards: StockCardView[],
+  priorityCards: StockCardView[],
+): { title: string; detail: string; tone: "up" | "warn" | "neutral" } {
+  const actionableHolding = watchCards.find((card) => card.actionText !== "暂不操作");
+  if (actionableHolding) {
+    return {
+      title: `${actionableHolding.name}：${directActionTitle(actionableHolding.actionText)}`,
+      detail: actionableHolding.executionHint || actionableHolding.details || "按卡片价格区间执行，失效条件触发就不做。",
+      tone: "up",
+    };
+  }
+  const priority = priorityCards[0];
+  if (priority) {
+    return {
+      title: `${priority.name}：${directActionTitle(priority.actionText)}`,
+      detail: priority.details || "先看买点区和止损位，不满足承接确认就等待。",
+      tone: "warn",
+    };
+  }
+  return { title: "今天先不动", detail: "暂无明确可执行信号，等待榜单或持仓信号刷新。", tone: "neutral" };
 }

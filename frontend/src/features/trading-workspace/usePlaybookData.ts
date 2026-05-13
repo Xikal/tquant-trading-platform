@@ -4,11 +4,14 @@ import { applyQuoteRefreshToResponse } from "../playbook/formatters";
 import type { AuthUser, LowBuyScreenerResult } from "../../types";
 import {
   DEFAULT_PLAYBOOK_STRATEGY,
-  PLAYBOOK_QUOTE_REFRESH_INTERVAL_MS,
   PLAYBOOK_QUOTE_REFRESH_LIMIT,
 } from "./workspaceConstants";
 import type { Page } from "./workspaceTypes";
 import { trackedPlaybookSymbols } from "./workspaceViewModels";
+import {
+  realtimePriceRefreshIntervalMs,
+  shouldRefreshRealtimePrices,
+} from "./realtimePriceRefresh";
 
 type WorkspaceLoader = <T>(key: string, action: () => Promise<T>) => Promise<T | undefined>;
 
@@ -26,10 +29,15 @@ export function usePlaybookData({
   const cacheRef = useRef<Record<string, LowBuyScreenerResult>>({});
   const requestRef = useRef(0);
   const withLoadingRef = useRef(withLoading);
+  const playbookRef = useRef<LowBuyScreenerResult | null>(null);
 
   useEffect(() => {
     withLoadingRef.current = withLoading;
   }, [withLoading]);
+
+  useEffect(() => {
+    playbookRef.current = playbook;
+  }, [playbook]);
 
   const loadPlaybook = useCallback(
     async (nextStrategy: string, force = false) => {
@@ -71,17 +79,19 @@ export function usePlaybookData({
   }, [currentUser, page, strategy, loadPlaybook]);
 
   useEffect(() => {
-    if (!currentUser || page !== "playbook" || !playbook) {
+    if (!currentUser || page !== "playbook") {
       return undefined;
     }
-    const currentPlaybook = playbook;
     let active = true;
     let refreshing = false;
     async function refreshPlaybookQuotes() {
-      if (refreshing) {
+      if (!shouldRefreshRealtimePrices() || refreshing) {
         return;
       }
-      const symbols = trackedPlaybookSymbols(currentPlaybook).slice(0, PLAYBOOK_QUOTE_REFRESH_LIMIT);
+      const currentPlaybook = playbookRef.current;
+      const symbols = currentPlaybook
+        ? trackedPlaybookSymbols(currentPlaybook).slice(0, PLAYBOOK_QUOTE_REFRESH_LIMIT)
+        : [];
       if (!symbols.length) {
         return;
       }
@@ -101,21 +111,36 @@ export function usePlaybookData({
         refreshing = false;
       }
     }
-    const timer = window.setInterval(() => {
-      void refreshPlaybookQuotes();
-    }, PLAYBOOK_QUOTE_REFRESH_INTERVAL_MS);
+    let timer: number | undefined;
+    const scheduleNext = () => {
+      timer = window.setTimeout(() => {
+        void refreshPlaybookQuotes().finally(() => {
+          if (active) {
+            scheduleNext();
+          }
+        });
+      }, realtimePriceRefreshIntervalMs());
+    };
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        void refreshPlaybookQuotes();
+      }
+    };
+    void refreshPlaybookQuotes();
+    scheduleNext();
+    document.addEventListener("visibilitychange", handleVisibilityChange);
     return () => {
       active = false;
-      window.clearInterval(timer);
+      if (timer) {
+        window.clearTimeout(timer);
+      }
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
   }, [
     currentUser,
     page,
     strategy,
-    playbook?.latest_trade_date,
     playbook?.strategy_key,
-    playbook?.confirmed_candidates.length,
-    playbook?.candidates.length,
   ]);
 
   return {

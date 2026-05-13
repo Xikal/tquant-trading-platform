@@ -229,6 +229,11 @@ export function SettingsPage({
       <div className="panel settings-hero">
         <PanelTitle title="开放式系统配置" actions={<button onClick={onRefresh} disabled={loading === "settings"}>刷新配置</button>} />
         <p className="hint">管理大模型、数据库、数据源、风险控制和策略门槛。敏感值只保存，不回显明文。</p>
+        <div className="settings-role-guide">
+          <span><strong>我的账户</strong> 登录安全、二次验证、权限状态</span>
+          <span><strong>交易参数</strong> 风控、策略门槛、行业过滤</span>
+          <span><strong>系统管理</strong> 数据源、功能开关、审计与诊断</span>
+        </div>
         {unsavedCount > 0 ? (
           <div className="settings-unsaved-banner">
             <span>有 {unsavedCount} 项未保存的更改</span>

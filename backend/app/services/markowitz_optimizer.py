@@ -9,6 +9,8 @@ from sqlalchemy.orm import Session
 
 from app.models.entities import BacktestTrade
 
+MIN_SHARED_OBSERVATIONS = 10
+
 
 def optimize_markowitz_portfolio(
     db: Session,
@@ -26,8 +28,33 @@ def optimize_markowitz_portfolio(
             "efficient_frontier": [],
             "summary": "策略成交样本不足，至少需要 2 个策略的历史收益序列。",
         }
-    mean_returns = matrix.mean(axis=0)
-    covariance = np.cov(matrix, rowvar=False)
+    valid_counts = np.isfinite(matrix).sum(axis=0)
+    active_mask = valid_counts > 0
+    if int(active_mask.sum()) < 2:
+        return {
+            "run_id": run_id,
+            "method": "markowitz",
+            "weights": [],
+            "efficient_frontier": [],
+            "summary": "策略成交样本不足，至少需要 2 个策略存在有效收益。",
+        }
+    matrix = matrix[:, active_mask]
+    strategies = [strategy for strategy, active in zip(strategies, active_mask) if bool(active)]
+    valid_counts = valid_counts[active_mask]
+    mean_returns = np.nanmean(matrix, axis=0)
+    covariance, shared_observations = _pairwise_covariance(matrix)
+    min_shared_days = _min_shared_days(shared_observations)
+    if min_shared_days < MIN_SHARED_OBSERVATIONS:
+        return {
+            "run_id": run_id,
+            "method": "markowitz",
+            "method_label": "Markowitz 均值-方差优化",
+            "weights": [],
+            "efficient_frontier": [],
+            "min_shared_days_per_pair": min_shared_days,
+            "shared_observation_days": _shared_observation_days(strategies, shared_observations),
+            "summary": f"策略共同成交日不足：最少 {min_shared_days} 天，低于 {MIN_SHARED_OBSERVATIONS} 天门槛，暂不生成均值-方差权重。",
+        }
     covariance = np.atleast_2d(covariance) + np.eye(len(strategies)) * 1e-8
     weights = _max_sharpe_weights(mean_returns, covariance, risk_free_rate_pct / 100.0)
     expected, volatility, sharpe = _portfolio_metrics(weights, mean_returns, covariance, risk_free_rate_pct / 100.0)
@@ -42,15 +69,17 @@ def optimize_markowitz_portfolio(
                 "weight_pct": round(float(weights[index]) * 100, 2),
                 "avg_return_pct": round(float(mean_returns[index]) * 100, 4),
                 "volatility_pct": round(float(np.sqrt(covariance[index, index])) * 100, 4),
-                "sample_count": int((matrix[:, index] != 0).sum()),
+                "sample_count": int(valid_counts[index]),
             }
             for index, strategy in enumerate(strategies)
         ],
+        "min_shared_days_per_pair": min_shared_days,
+        "shared_observation_days": _shared_observation_days(strategies, shared_observations),
         "expected_return_pct": round(expected * 100, 4),
         "volatility_pct": round(volatility * 100, 4),
         "portfolio_sharpe": round(sharpe, 4),
         "efficient_frontier": frontier,
-        "summary": "研究用途：基于历史成交收益协方差生成风险-收益权重，不自动用于实盘或模拟盘。",
+        "summary": "研究用途：基于策略共同成交日的收益协方差生成风险-收益权重，不自动用于实盘或模拟盘。",
     }
 
 
@@ -96,14 +125,63 @@ def _daily_strategy_return_matrix(db: Session, run_id: int) -> tuple[np.ndarray,
 
 def _strategy_daily_return(bucket: dict[str, Any] | None) -> float:
     if not bucket:
-        return 0.0
+        return float("nan")
     exposure = float(bucket.get("exposure") or 0.0)
     if exposure > 0:
         return float(bucket.get("pnl") or 0.0) / exposure
     pct_values = list(bucket.get("pct_values") or [])
     if not pct_values:
-        return 0.0
+        return float("nan")
     return float(np.mean(np.asarray(pct_values, dtype=float)))
+
+
+def _pairwise_covariance(matrix: np.ndarray, *, min_shared_observations: int = MIN_SHARED_OBSERVATIONS) -> tuple[np.ndarray, np.ndarray]:
+    """Return pairwise covariance using only days where both strategies traded."""
+
+    count = matrix.shape[1]
+    covariance = np.zeros((count, count), dtype=float)
+    shared_observations = np.zeros((count, count), dtype=int)
+    for left in range(count):
+        for right in range(left, count):
+            mask = np.isfinite(matrix[:, left]) & np.isfinite(matrix[:, right])
+            shared = int(mask.sum())
+            shared_observations[left, right] = shared
+            shared_observations[right, left] = shared
+            if left == right:
+                covariance[left, right] = float(np.var(matrix[mask, left], ddof=1)) if shared >= 2 else 0.0
+                continue
+            if shared >= min_shared_observations:
+                pair_cov = float(np.cov(matrix[mask, left], matrix[mask, right], ddof=1)[0, 1])
+            else:
+                pair_cov = 0.0
+            covariance[left, right] = pair_cov
+            covariance[right, left] = pair_cov
+    return covariance, shared_observations
+
+
+def _min_shared_days(shared_observations: np.ndarray) -> int:
+    if shared_observations.shape[0] < 2:
+        return 0
+    values = [
+        int(shared_observations[left, right])
+        for left in range(shared_observations.shape[0])
+        for right in range(left + 1, shared_observations.shape[1])
+    ]
+    return min(values) if values else 0
+
+
+def _shared_observation_days(strategies: list[str], shared_observations: np.ndarray) -> list[dict[str, Any]]:
+    pairs: list[dict[str, Any]] = []
+    for left in range(len(strategies)):
+        for right in range(left + 1, len(strategies)):
+            pairs.append(
+                {
+                    "strategy_a": strategies[left],
+                    "strategy_b": strategies[right],
+                    "shared_days": int(shared_observations[left, right]),
+                }
+            )
+    return pairs
 
 
 def _max_sharpe_weights(mean_returns: np.ndarray, covariance: np.ndarray, risk_free_rate: float) -> np.ndarray:

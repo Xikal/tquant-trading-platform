@@ -43,6 +43,7 @@ export function TradingWorkspace() {
     onAuthRequired: handleAuthRequired,
   });
   const monitor = useMonitorData({
+    active: Boolean(currentUser) && page === "monitor",
     withLoading,
     setError,
     setNotice,

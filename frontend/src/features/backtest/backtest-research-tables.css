@@ -261,6 +261,66 @@
   overflow-x: auto;
 }
 
+.backtest-correlation-cols-4 {
+  grid-template-columns: repeat(4, minmax(82px, 1fr));
+}
+
+.backtest-correlation-cols-5 {
+  grid-template-columns: repeat(5, minmax(82px, 1fr));
+}
+
+.backtest-correlation-cols-6 {
+  grid-template-columns: repeat(6, minmax(82px, 1fr));
+}
+
+.backtest-correlation-cols-7 {
+  grid-template-columns: repeat(7, minmax(82px, 1fr));
+}
+
+.backtest-correlation-cols-8 {
+  grid-template-columns: repeat(8, minmax(82px, 1fr));
+}
+
+.backtest-correlation-cols-9 {
+  grid-template-columns: repeat(9, minmax(82px, 1fr));
+}
+
+.backtest-correlation-cols-10 {
+  grid-template-columns: repeat(10, minmax(82px, 1fr));
+}
+
+.backtest-correlation-cols-11 {
+  grid-template-columns: repeat(11, minmax(82px, 1fr));
+}
+
+.backtest-correlation-cols-12 {
+  grid-template-columns: repeat(12, minmax(82px, 1fr));
+}
+
+.backtest-correlation-cols-13 {
+  grid-template-columns: repeat(13, minmax(82px, 1fr));
+}
+
+.backtest-correlation-cols-14 {
+  grid-template-columns: repeat(14, minmax(82px, 1fr));
+}
+
+.backtest-correlation-cols-15 {
+  grid-template-columns: repeat(15, minmax(82px, 1fr));
+}
+
+.backtest-correlation-cols-16 {
+  grid-template-columns: repeat(16, minmax(82px, 1fr));
+}
+
+.backtest-correlation-cols-17 {
+  grid-template-columns: repeat(17, minmax(82px, 1fr));
+}
+
+.backtest-correlation-cols-18 {
+  grid-template-columns: repeat(18, minmax(82px, 1fr));
+}
+
 .backtest-correlation .cell {
   padding: 8px;
   border: 1px solid #e8eef6;

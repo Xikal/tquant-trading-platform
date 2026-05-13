@@ -46,6 +46,7 @@ import type {
   UserSectorExclusionsResponse,
   StrategyValidationReport,
   WatchlistItem,
+  WatchlistQuoteItem,
   WatchlistSignal
 } from "../types";
 import { invalidateCache } from "./base";
@@ -75,6 +76,7 @@ export const api = {
       return result;
     }),
   getWatchlistSignals: () => requestCached<WatchlistSignal[]>("/watchlist/signals", 9000),
+  getWatchlistQuotes: () => request<WatchlistQuoteItem[]>("/watchlist/quotes"),
   getMarketBreadth: () => requestCached<MarketBreadth>("/market/breadth", 15000),
   getSectorEtfT0: (limit = 8) => requestCached<SectorEtfT0Response>(`/market/sector-etf-t0?limit=${limit}`, 20000),
   getPairedHedgeResearch: (limit = 8) =>

@@ -17,6 +17,10 @@ export function LoginPage({
   onLogin,
   onRegister,
 }: LoginPageProps) {
+  const mfaDigits = draft.mfaCode.replace(/\D/g, "").slice(0, 6);
+  const loginStepText = loading
+    ? "验证成功后会自动加载您的持仓、榜单和模拟盘数据。"
+    : "输入账号密码，已开启 MFA 时再填写手机验证码 App 的 6 位数字。";
   return (
     <main className="login-shell">
       <section className="login-visual" aria-label="盘中决策台概览">
@@ -109,7 +113,7 @@ export function LoginPage({
         >
           <div className="login-title">
             <h2>登录维斯量化平台</h2>
-            <p>同步盘中监控、选股宝典与研究复盘</p>
+            <p>{loginStepText}</p>
           </div>
           <div className="login-status-row">
             <span><i className="red-dot" /> 行情在线</span>
@@ -146,18 +150,20 @@ export function LoginPage({
           </label>
 
           <label className="login-field">
-            <span>动态验证码（已开启 MFA 时填写）</span>
+            <span>动态验证码</span>
             <div>
               <b aria-hidden="true">•</b>
               <input
-                value={draft.mfaCode}
+                value={mfaDigits}
                 inputMode="numeric"
                 autoComplete="one-time-code"
-                placeholder="6 位动态验证码，可留空"
+                placeholder="打开手机验证码 App，输入 6 位数字"
                 disabled={loading}
-                onChange={(event) => setDraft({ ...draft, mfaCode: event.target.value })}
+                maxLength={6}
+                onChange={(event) => setDraft({ ...draft, mfaCode: event.target.value.replace(/\D/g, "").slice(0, 6) })}
               />
             </div>
+            <small>没有开启二次验证可留空；需要下单权限的账号建议开启。</small>
           </label>
 
           <div className="login-options">
@@ -170,13 +176,19 @@ export function LoginPage({
               />
               <span>记住登录</span>
             </label>
-            <button type="button" disabled={loading}>忘记密码？</button>
+            <button type="button" disabled={loading} title="请联系管理员重置密码或二次验证码">忘记密码？联系管理员</button>
           </div>
 
-          {error ? <div className="login-error">{error}</div> : null}
+          {error ? (
+            <div className="login-error">
+              <strong>登录失败</strong>
+              <span>{error}</span>
+              <small>请先检查账号、密码和 6 位验证码；连续失败会触发临时保护。</small>
+            </div>
+          ) : null}
 
           <button type="submit" className="login-submit" disabled={loading}>
-            {loading ? "正在登录..." : "登录进入工作台"} <span aria-hidden="true">→</span>
+            {loading ? "验证成功，正在加载您的数据..." : "登录进入工作台"} <span aria-hidden="true">→</span>
           </button>
           <button type="button" className="login-register" onClick={onRegister} disabled={loading}>
             开户注册

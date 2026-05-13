@@ -71,7 +71,7 @@ class AppSettings(BaseSettings):
     auth_login_lockout_threshold: int = 5
     auth_login_lockout_minutes: int = 15
     auth_allowed_usernames: Annotated[List[str], NoDecode] = Field(default_factory=list)
-    auth_require_mfa_for_paper_trade: bool = False
+    auth_require_mfa_for_paper_trade: bool = True
     agent_provider: str = "none"
     agent_api_base: str = "http://127.0.0.1:18090/api"
     agent_api_token: str = ""
@@ -125,6 +125,8 @@ class AppSettings(BaseSettings):
     ml_signal_min_cv_auc: float = 0.65
     ml_signal_max_cv_accuracy_std: float = 0.08
     ml_signal_max_cv_auc_std: float = 0.06
+    enable_deep_rl: bool = False
+    enable_deep_rl_training: bool = False
     paper_auto_trading_enabled: bool = True
     paper_auto_trading_interval: int = 120
     paper_auto_trading_max_orders: int = 5

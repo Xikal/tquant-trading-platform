@@ -18,6 +18,7 @@ class DailyBarRow:
     volume: float
     amount: float
     pct_chg: float
+    pre_close: float = 0.0
 
 
 def _daily_bar_row_columns():
@@ -30,6 +31,7 @@ def _daily_bar_row_columns():
         DailyBarSnapshot.volume,
         DailyBarSnapshot.amount,
         DailyBarSnapshot.pct_chg,
+        DailyBarSnapshot.pre_close,
     )
 
 
@@ -50,6 +52,7 @@ def _daily_bar_insert_payload(symbol: str, item: DailyBarRow) -> dict[str, objec
         "volume": item.volume,
         "amount": item.amount,
         "pct_chg": item.pct_chg,
+        "pre_close": item.pre_close,
     }
 
 
@@ -59,12 +62,12 @@ def _daily_bar_insert_statement():
         INSERT INTO daily_bar_snapshots (
             symbol, market, instrument_type, trade_date,
             open_price, close_price, high_price, low_price,
-            volume, amount, pct_chg
+            volume, amount, pct_chg, pre_close
         )
         VALUES (
             :symbol, :market, :instrument_type, :trade_date,
             :open_price, :close_price, :high_price, :low_price,
-            :volume, :amount, :pct_chg
+            :volume, :amount, :pct_chg, :pre_close
         )
         """
     )
@@ -159,6 +162,7 @@ class DailyHistoryRepository:
                 volume=row.volume,
                 amount=row.amount,
                 pct_chg=row.pct_chg,
+                pre_close=row.pre_close,
             )
             for row in rows
         ]
@@ -195,6 +199,7 @@ class DailyHistoryRepository:
                     volume=row.volume,
                     amount=row.amount,
                     pct_chg=row.pct_chg,
+                    pre_close=row.pre_close,
                 )
             )
         return grouped
@@ -241,6 +246,7 @@ class DailyHistoryRepository:
                     "volume": item.volume,
                     "amount": item.amount,
                     "pct_chg": item.pct_chg,
+                    "pre_close": item.pre_close,
                 }
             )
         if new_rows:

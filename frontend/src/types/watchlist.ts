@@ -23,3 +23,14 @@ export interface WatchlistSignal {
   rules: TradingRule;
   error?: string | null;
 }
+
+export interface WatchlistQuoteItem {
+  symbol: string;
+  name: string;
+  base_position: number;
+  available_position: number;
+  cost_basis?: number | null;
+  memo: string;
+  quote: QuoteSnapshot;
+  error?: string | null;
+}

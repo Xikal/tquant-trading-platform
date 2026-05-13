@@ -1,0 +1,41 @@
+.mobile-today-one-thing {
+  display: grid;
+  gap: 4px;
+  margin: 10px 0 14px;
+  padding: 14px;
+  border: 1px solid rgba(214, 165, 92, 0.38);
+  border-radius: 18px;
+  background:
+    linear-gradient(135deg, rgba(214, 165, 92, 0.18), rgba(255, 255, 255, 0.04)),
+    rgba(12, 20, 34, 0.92);
+  color: #f8fafc;
+}
+
+.mobile-today-one-thing span,
+.mobile-today-one-thing small,
+.mobile-auth-field small,
+.mobile-auth-safe-note {
+  color: rgba(226, 232, 240, 0.76);
+}
+
+.mobile-today-one-thing strong {
+  color: #f8fafc;
+  font-size: 16px;
+}
+
+.mobile-auth-field small {
+  display: block;
+  margin-top: 5px;
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.mobile-auth-safe-note {
+  margin-top: 10px;
+  border: 1px solid rgba(214, 165, 92, 0.28);
+  border-radius: 12px;
+  padding: 10px;
+  font-size: 12px;
+  line-height: 1.45;
+}
+

@@ -1,0 +1,13 @@
+# Optional RL research dependencies.
+# Production images do not install these by default because they pull PyTorch
+# and increase build size/startup cost substantially.
+#
+# Local install:
+#   pip install -r backend/requirements-rl-extra.txt
+#
+# Docker research image:
+#   docker build --build-arg INSTALL_RL_EXTRAS=1 .
+#   docker build --build-arg WITH_RL=true .
+gymnasium>=0.29,<1.1
+stable-baselines3>=2.3,<3.0
+torch>=2.2,<3.0

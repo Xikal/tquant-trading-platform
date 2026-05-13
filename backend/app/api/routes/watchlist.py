@@ -1,5 +1,5 @@
-import asyncio
-import concurrent.futures
+from __future__ import annotations
+
 from datetime import date, datetime
 import logging
 from typing import Optional
@@ -21,9 +21,6 @@ router = APIRouter(prefix="/watchlist")
 logger = logging.getLogger(__name__)
 market_data = MarketDataService()
 watchlist_signal_service = WatchlistSignalService()
-WATCHLIST_QUOTE_WORKERS = 10
-
-
 def _fallback_quote_payload(symbol: str, name: str) -> dict:
     market = guess_market(symbol)
     instrument_type = guess_instrument_type(symbol, name)
@@ -133,13 +130,7 @@ def remove_watchlist(
     return {"message": "已删除", "symbol": symbol}
 
 
-def _watchlist_quote_item(row: Watchlist) -> dict:
-    error_message = ""
-    try:
-        quote_payload = market_data.get_quote(row.symbol).model_dump()
-    except Exception as exc:
-        quote_payload = _fallback_quote_payload(row.symbol, row.name or row.symbol)
-        error_message = str(exc)
+def _watchlist_quote_item(row: Watchlist, quote_payload: dict, error_message: str | None = None) -> dict:
     return {
         "symbol": row.symbol,
         "name": row.name or quote_payload["name"],
@@ -153,7 +144,7 @@ def _watchlist_quote_item(row: Watchlist) -> dict:
 
 
 @router.get("/quotes")
-async def watchlist_quotes(
+def watchlist_quotes(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -161,12 +152,21 @@ async def watchlist_quotes(
     rows = _list_user_watchlist_rows(db, current_user.id)
     if not rows:
         return []
-    max_workers = min(WATCHLIST_QUOTE_WORKERS, max(len(rows), 1))
-    loop = asyncio.get_running_loop()
-    with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as pool:
-        return await asyncio.gather(
-            *(loop.run_in_executor(pool, _watchlist_quote_item, row) for row in rows)
+    quote_map = market_data.get_quotes_batch([row.symbol for row in rows], force_refresh=True)
+    items: list[dict] = []
+    for row in rows:
+        quote = quote_map.get(row.symbol)
+        if quote is not None:
+            items.append(_watchlist_quote_item(row, quote.model_dump()))
+            continue
+        items.append(
+            _watchlist_quote_item(
+                row,
+                _fallback_quote_payload(row.symbol, row.name or row.symbol),
+                "实时行情暂不可用，已回退默认快照。",
+            )
         )
+    return items
 
 
 @router.get("/signals")

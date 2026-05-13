@@ -97,6 +97,8 @@ class BacktestRunSummary(BaseModel):
     queue_position: Optional[int] = None
     running_count: int = 0
     estimated_wait_seconds: int = 0
+    estimated_wait_reliable: bool = False
+    estimated_wait_source: str = "fallback_resource_tier"
     resource_tier: BacktestResourceTier = "full"
     created_at: datetime
     updated_at: Optional[datetime] = None

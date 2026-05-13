@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import numpy as np
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
@@ -16,6 +17,8 @@ from app.services.position_policy_research import run_position_policy_research
 from app.services.quant import QuantParameterVersionService
 from app.services.quant.runtime_parameters import clear_quant_parameter_cache
 from app.services.quant.state_scope import reset_market_state_scope, set_market_state_scope
+from app.core.config import get_settings
+from app.services.rl.position_shadow import _convergence_status, _convergence_warning, _ppo_timesteps
 
 
 def _db():
@@ -47,7 +50,7 @@ def test_validation_request_accepts_explicit_state_param_promotion_flag() -> Non
 
 def test_markowitz_optimizer_returns_real_weights_and_frontier() -> None:
     db = _db()
-    for idx in range(1, 8):
+    for idx in range(1, 13):
         db.add(
             BacktestTrade(
                 run_id=1,
@@ -75,7 +78,40 @@ def test_markowitz_optimizer_returns_real_weights_and_frontier() -> None:
     assert result["method"] == "markowitz"
     assert result["weights"]
     assert result["efficient_frontier"]
+    assert result["min_shared_days_per_pair"] == 12
     assert abs(sum(item["weight_pct"] for item in result["weights"]) - 100.0) < 0.2
+
+
+def test_markowitz_optimizer_blocks_sparse_shared_observations() -> None:
+    db = _db()
+    for idx in range(1, 6):
+        db.add(
+            BacktestTrade(
+                run_id=12,
+                trade_date=f"2026-04-{idx:02d}",
+                symbol=f"60010{idx}",
+                side="sell",
+                strategy_key="first_board",
+                pnl_pct=1.0,
+            )
+        )
+        db.add(
+            BacktestTrade(
+                run_id=12,
+                trade_date=f"2026-04-{idx:02d}",
+                symbol=f"00010{idx}",
+                side="sell",
+                strategy_key="volume_shrink",
+                pnl_pct=0.5,
+            )
+        )
+    db.commit()
+
+    result = optimize_markowitz_portfolio(db, run_id=12, monte_carlo_samples=32)
+
+    assert result["weights"] == []
+    assert result["efficient_frontier"] == []
+    assert result["min_shared_days_per_pair"] == 5
 
 
 def test_markowitz_daily_returns_are_not_summed_trade_percentages() -> None:
@@ -94,6 +130,7 @@ def test_markowitz_daily_returns_are_not_summed_trade_percentages() -> None:
                 gross_amount=5000.0,
                 pnl_pct=8.0,
             ),
+            BacktestTrade(run_id=11, trade_date="2026-04-02", symbol="600004", side="sell", strategy_key="first_board", pnl_pct=2.0),
         ]
     )
     db.commit()
@@ -103,7 +140,9 @@ def test_markowitz_daily_returns_are_not_summed_trade_percentages() -> None:
     first_board_index = strategies.index("first_board")
     volume_index = strategies.index("volume_shrink")
     assert matrix[0, first_board_index] == 0.0
+    assert round(float(matrix[1, first_board_index]), 4) == 0.02
     assert round(float(matrix[0, volume_index]), 4) == 0.01
+    assert np.isnan(matrix[1, volume_index])
 
 
 def test_market_state_scoped_parameters_override_default() -> None:
@@ -136,8 +175,8 @@ def test_regime_parameter_promotion_uses_only_stable_state_buckets() -> None:
                 "risk_release": {"min_score": 90},
             },
             "by_market_state": {
-                "repair": {"window_count": 2, "pass_rate": 0.5},
-                "risk_release": {"window_count": 1, "pass_rate": 1.0},
+                "repair": {"window_count": 4, "pass_rate": 0.75, "signal_count": 80},
+                "risk_release": {"window_count": 3, "pass_rate": 1.0, "signal_count": 80},
             },
         },
         strategy_key="first_board",
@@ -171,6 +210,23 @@ def test_position_policy_research_includes_rl_shadow_payload() -> None:
     assert result["production_enabled"] is False
     assert shadow["algorithm"] == "ppo_shadow_mode"
     assert shadow["production_enabled"] is False
+
+
+def test_rl_shadow_timesteps_are_marked_as_early_exploration(monkeypatch) -> None:
+    monkeypatch.delenv("ENABLE_DEEP_RL_TRAINING", raising=False)
+    get_settings.cache_clear()
+    default_steps = _ppo_timesteps(30)
+    assert default_steps == 600
+    assert _convergence_status(default_steps) == "insufficient_steps"
+    assert "不足以保证" in _convergence_warning(default_steps)
+
+    monkeypatch.setenv("ENABLE_DEEP_RL_TRAINING", "true")
+    get_settings.cache_clear()
+    deep_steps = _ppo_timesteps(30)
+    assert deep_steps == 50_000
+    assert _convergence_status(deep_steps) == "sufficient_steps"
+    assert _convergence_warning(deep_steps) == ""
+    get_settings.cache_clear()
 
 
 def _param_payload(version: str, market_state_scope: str, min_score: int):

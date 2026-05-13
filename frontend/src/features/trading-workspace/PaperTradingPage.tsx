@@ -106,6 +106,12 @@ export const PaperTradingPage = memo(function PaperTradingPage({
         onOpenOrderEntry={() => setOrderModalOpen(true)}
         recentTrades={recentTrades}
       />
+      <PaperActionBrief
+        autoTradingStatus={autoTradingStatus}
+        riskEvents={riskEvents}
+        intradayConfirmations={intradayConfirmations}
+        autoTradingRuns={autoTradingRuns}
+      />
       {orderModalOpen ? (
         <OrderEntryModal
           draft={draft}
@@ -141,3 +147,44 @@ export const PaperTradingPage = memo(function PaperTradingPage({
     </section>
   );
 });
+
+function PaperActionBrief({
+  autoTradingStatus,
+  riskEvents,
+  intradayConfirmations,
+  autoTradingRuns,
+}: {
+  autoTradingStatus: PaperAutoTradingStatus | null;
+  riskEvents: RiskEventItem[];
+  intradayConfirmations: IntradayConfirmationItem[];
+  autoTradingRuns: PaperAgentRun[];
+}) {
+  const latestRun = autoTradingRuns[0];
+  const openRisk = riskEvents.find((item) => item.status !== "resolved");
+  const confirmation = intradayConfirmations[0];
+  return (
+    <section className="panel paper-action-brief">
+      <div className="panel-title">
+        <h2>系统今日动作日志</h2>
+        <span className="hint">{autoTradingStatus?.running ? "自动交易中" : "等待交易时段"}</span>
+      </div>
+      <div className="paper-action-brief-grid">
+        <div className="paper-action-card">
+          <span>最近执行</span>
+          <strong>{autoTradingStatus?.last_cycle_summary || latestRun?.status || "暂无执行记录"}</strong>
+          <small>{autoTradingStatus?.last_cycle_at ? formatPaperDateTime(autoTradingStatus.last_cycle_at) : "交易时间会自动刷新并执行"}</small>
+        </div>
+        <div className={`paper-action-card ${openRisk ? "warn" : "ok"}`}>
+          <span>需要您处理</span>
+          <strong>{openRisk ? openRisk.message : "暂无未处理风险"}</strong>
+          <small>{openRisk ? `${openRisk.symbol || "账户"} · ${openRisk.severity}` : "触发熔断、止损或异常时会在这里显示"}</small>
+        </div>
+        <div className="paper-action-card">
+          <span>分时确认</span>
+          <strong>{confirmation ? `${confirmation.symbol} ${confirmation.confirmed || confirmation.late_confirmed ? "已确认" : "等待确认"}` : "暂无待确认标的"}</strong>
+          <small>{confirmation ? confirmation.reason : "需要分时承接时，系统会先确认再模拟下单"}</small>
+        </div>
+      </div>
+    </section>
+  );
+}

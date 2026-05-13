@@ -1,6 +1,6 @@
 const CACHE_NAME = "tquant-static-v2";
 const SAFE_ASSET = /\.(?:js|css|png|svg|ico|webp|woff2?|webmanifest)$/i;
-const APP_SHELL = ["/", "/offline.html", "/manifest.webmanifest"];
+const APP_SHELL = ["/", "/offline.html", "/offline.css", "/manifest.webmanifest"];
 
 self.addEventListener("install", (event) => {
   self.skipWaiting();
@@ -22,7 +22,11 @@ self.addEventListener("fetch", (event) => {
   const request = event.request;
   if (request.method !== "GET") return;
   const url = new URL(request.url);
-  if (url.pathname.startsWith("/api/")) return;
+  if (url.origin !== self.location.origin) return;
+  if (url.pathname.startsWith("/api/")) {
+    event.respondWith(fetch(request, { cache: "no-store" }));
+    return;
+  }
   if (request.mode === "navigate") {
     event.respondWith(navigationFallback(request));
     return;

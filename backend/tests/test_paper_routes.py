@@ -23,7 +23,9 @@ from app.models.entities import PaperAccount, PaperAgentRun, PaperOrder, PaperPo
 class PaperRouteTests(unittest.TestCase):
     def setUp(self) -> None:
         self._auth_secret_original = environ.get("AUTH_SECRET_KEY")
+        self._mfa_requirement_original = environ.get("AUTH_REQUIRE_MFA_FOR_PAPER_TRADE")
         environ["AUTH_SECRET_KEY"] = "test-auth-secret"
+        environ["AUTH_REQUIRE_MFA_FOR_PAPER_TRADE"] = "false"
         get_settings.cache_clear()
         clear_rate_limit_events()
         engine = create_engine(
@@ -54,6 +56,10 @@ class PaperRouteTests(unittest.TestCase):
             environ.pop("AUTH_SECRET_KEY", None)
         else:
             environ["AUTH_SECRET_KEY"] = self._auth_secret_original
+        if self._mfa_requirement_original is None:
+            environ.pop("AUTH_REQUIRE_MFA_FOR_PAPER_TRADE", None)
+        else:
+            environ["AUTH_REQUIRE_MFA_FOR_PAPER_TRADE"] = self._mfa_requirement_original
         get_settings.cache_clear()
 
     def test_paper_routes_require_login(self) -> None:

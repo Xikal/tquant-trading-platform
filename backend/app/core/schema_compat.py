@@ -30,6 +30,7 @@ def ensure_schema_compatibility(engine: Engine) -> None:
                 continue
             _add_nullable_column(engine, table.name, column)
         _widen_strategy_key_column(engine, table.name, existing_column_info)
+        _widen_string_column(engine, table.name, existing_column_info, "mfa_totp_secret")
     _backfill_user_permission_columns(engine, existing_tables)
     _backfill_strategy_metadata_columns(engine, existing_tables)
     _backfill_backtest_owner_columns(engine, existing_tables)
@@ -247,16 +248,28 @@ def _widen_strategy_key_column(
     table_name: str,
     existing_columns: dict[str, dict],
 ) -> None:
+    strategy_column = Base.metadata.tables[table_name].columns.get("strategy_key")
+    _widen_string_column(engine, table_name, existing_columns, "strategy_key", source_column=strategy_column)
+
+
+def _widen_string_column(
+    engine: Engine,
+    table_name: str,
+    existing_columns: dict[str, dict],
+    column_name: str,
+    *,
+    source_column=None,
+) -> None:
     if engine.dialect.name not in {"mysql", "mariadb"}:
         return
-    strategy_column = Base.metadata.tables[table_name].columns.get("strategy_key")
-    if strategy_column is None or not isinstance(strategy_column.type, String):
+    column = source_column or Base.metadata.tables[table_name].columns.get(column_name)
+    if column is None or not isinstance(column.type, String):
         return
 
-    current = existing_columns.get("strategy_key")
+    current = existing_columns.get(column_name)
     if current is None:
         return
-    target_length = int(strategy_column.type.length or 0)
+    target_length = int(column.type.length or 0)
     current_length = int(getattr(current.get("type"), "length", 0) or 0)
     if not target_length or current_length >= target_length:
         return
@@ -265,17 +278,18 @@ def _widen_strategy_key_column(
     nullable_sql = "NULL" if current.get("nullable", True) else "NOT NULL"
     statement = (
         f"ALTER TABLE {preparer.quote(table_name)} "
-        f"MODIFY COLUMN {preparer.quote('strategy_key')} VARCHAR({target_length}) {nullable_sql}"
+        f"MODIFY COLUMN {preparer.quote(column_name)} VARCHAR({target_length}) {nullable_sql}"
     )
     try:
         with engine.begin() as connection:
             connection.execute(text(statement))
     except Exception:
-        logger.exception("schema compatibility patch failed to widen %s.strategy_key", table_name)
+        logger.exception("schema compatibility patch failed to widen %s.%s", table_name, column_name)
         return
     logger.info(
-        "schema compatibility patch widened %s.strategy_key from %s to %s",
+        "schema compatibility patch widened %s.%s from %s to %s",
         table_name,
+        column_name,
         current_length,
         target_length,
     )

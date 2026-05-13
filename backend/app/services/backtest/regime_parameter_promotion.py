@@ -9,8 +9,9 @@ from app.models.schema_defs.backtest import ALLOWED_OPTIMIZATION_PARAMS
 from app.models.schema_defs.phase4 import QuantParameterSetCreate, QuantParameterSetOut
 from app.services.quant.parameter_version_service import QuantParameterVersionService
 
-MIN_STATE_WINDOWS = 2
-MIN_STATE_PASS_RATE = 0.5
+MIN_STATE_WINDOWS = 4
+MIN_STATE_PASS_RATE = 0.6
+MIN_STATE_SIGNAL_COUNT = 50
 
 
 def promote_regime_parameter_versions(
@@ -70,7 +71,21 @@ def _state_gate(state: str, params: dict[str, Any], metrics: dict[str, Any]) -> 
     pass_rate = float(metrics.get("pass_rate") or 0.0)
     if pass_rate < MIN_STATE_PASS_RATE:
         return False, f"样本外通过率不足：{pass_rate:.2f} < {MIN_STATE_PASS_RATE:.2f}。"
+    signal_count = _signal_count(metrics)
+    if signal_count < MIN_STATE_SIGNAL_COUNT:
+        return False, f"成交信号样本不足：{signal_count} < {MIN_STATE_SIGNAL_COUNT}。"
     return True, ""
+
+
+def _signal_count(metrics: dict[str, Any]) -> int:
+    for key in ("signal_count", "filled_signals", "filled_count", "trade_count", "sample_count"):
+        value = metrics.get(key)
+        if value is not None:
+            try:
+                return int(float(value))
+            except (TypeError, ValueError):
+                continue
+    return 0
 
 
 def _params_payload(params: dict[str, Any]) -> dict[str, Any]:

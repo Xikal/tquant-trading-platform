@@ -43,6 +43,8 @@ def test_backtest_queue_snapshot_reports_running_and_wait():
     assert snapshot.queue_position == 1
     assert snapshot.running_count == 1
     assert snapshot.estimated_wait_seconds >= 0
+    assert snapshot.estimated_wait_reliable is False
+    assert snapshot.estimated_wait_source == "fallback_resource_tier"
 
 
 def test_daily_atr_uses_true_range_window():

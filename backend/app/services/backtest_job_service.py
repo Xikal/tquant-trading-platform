@@ -391,6 +391,8 @@ class BacktestJobService:
             queue_position=None,
             running_count=0,
             estimated_wait_seconds=0,
+            estimated_wait_reliable=True,
+            estimated_wait_source="not_queued",
             resource_tier=resource_tier_from_params_json(row.params_json),
             created_at=row.created_at,
             updated_at=row.updated_at,
@@ -424,6 +426,8 @@ class BacktestJobService:
         summary.queue_position = snapshot.queue_position
         summary.running_count = snapshot.running_count
         summary.estimated_wait_seconds = snapshot.estimated_wait_seconds
+        summary.estimated_wait_reliable = snapshot.estimated_wait_reliable
+        summary.estimated_wait_source = snapshot.estimated_wait_source
         summary.resource_tier = resource_tier_from_params_json(row.params_json)
         return summary
 

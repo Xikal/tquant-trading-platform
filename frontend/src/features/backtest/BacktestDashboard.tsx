@@ -1,4 +1,4 @@
-import { lazy, Suspense, type ReactNode } from "react";
+import { lazy, Suspense, useState, type ReactNode } from "react";
 import type {
   BacktestAttribution,
   BacktestExecutionModel,
@@ -28,6 +28,7 @@ import { BacktestResearchPanel, type BacktestResearchActions, type BacktestResea
 import { useBacktestStrategyOptions } from "./useBacktestStrategyOptions";
 import { DateField, NumberField, SelectField, TextField } from "../../components/shared/FormFields";
 import { ErrorBanner } from "../../components/shared/Feedback";
+import { backtestVerdict } from "../../utils/uxClarity";
 
 const LazyBacktestEquityChart = lazy(() => import("./LazyBacktestEquityChart"));
 
@@ -100,6 +101,7 @@ export function BacktestDashboard({
   const selectedId = selectedRun?.id ?? runs[0]?.id;
   const selectedMetrics = selectedRun ? resolveMetrics(selectedRun) : null;
   const selectedAttribution = selectedRun ? resolveAttribution(selectedRun) : null;
+  const [mode, setMode] = useState<"quick" | "expert">("quick");
   return (
     <section className="page-grid backtest-grid">
       <div className="panel backtest-hero">
@@ -124,6 +126,11 @@ export function BacktestDashboard({
         <PanelHeader title="提交回测任务" action={<button type="button" onClick={onRefresh} disabled={loading === "list"}>刷新</button>} />
         {notice ? <div className="backtest-notice">{notice}</div> : null}
         {error ? <ErrorBanner message={error} /> : null}
+        <div className="backtest-mode-toggle" role="tablist" aria-label="回测模式">
+          <button type="button" className={mode === "quick" ? "active" : ""} onClick={() => setMode("quick")}>快速模式</button>
+          <button type="button" className={mode === "expert" ? "active" : ""} onClick={() => setMode("expert")}>专家模式</button>
+        </div>
+        <p className="backtest-helper">{mode === "quick" ? "只需要选择策略和日期，系统会用默认仓位、滑点和费用跑出结果。" : "专家模式可调整成交模型、仓位上限、现金保留和风控参数。"}</p>
         <div className="backtest-form">
           <TextField fieldClassName="wide" label="任务名称" value={form.name} onChange={(event) => onFormChange({ name: event.target.value })} />
           <div className="backtest-field-group wide">
@@ -140,13 +147,13 @@ export function BacktestDashboard({
             options={BACKTEST_EXECUTION_MODELS.map(([value, label]) => ({ value, label }))}
             onChange={(event) => onFormChange({ execution_model: event.target.value as BacktestExecutionModel })}
           />
-          <SelectField
+          {mode === "expert" ? <SelectField
             fieldClassName="wide"
             label="资源等级"
             value={form.resource_tier}
             options={BACKTEST_RESOURCE_TIER_OPTIONS.map(([value, label]) => ({ value, label }))}
             onChange={(event) => onFormChange({ resource_tier: event.target.value as BacktestResourceTier })}
-          />
+          /> : null}
           <div className="backtest-strategy-picker wide">
             <span>策略多选</span>
             {strategyOptions.map(([key, label]) => (
@@ -161,11 +168,15 @@ export function BacktestDashboard({
               </label>
             ))}
           </div>
-          <NumberField label="单票仓位" suffix="%" value={form.max_position_pct} onChange={(event) => onFormChange({ max_position_pct: event.target.value })} />
-          <NumberField label="最大持仓数" value={form.max_positions} onChange={(event) => onFormChange({ max_positions: event.target.value })} />
-          <NumberField label="日亏损暂停" suffix="%" value={form.max_daily_loss_pct} onChange={(event) => onFormChange({ max_daily_loss_pct: event.target.value })} />
-          <NumberField label="单笔上限" suffix="%" value={form.max_single_order_pct} onChange={(event) => onFormChange({ max_single_order_pct: event.target.value })} />
-          <NumberField fieldClassName="wide" label="最低现金保留" value={form.min_cash_reserve} onChange={(event) => onFormChange({ min_cash_reserve: event.target.value })} />
+          {mode === "expert" ? (
+            <>
+              <NumberField label="单票仓位" suffix="%" value={form.max_position_pct} onChange={(event) => onFormChange({ max_position_pct: event.target.value })} />
+              <NumberField label="最大持仓数" value={form.max_positions} onChange={(event) => onFormChange({ max_positions: event.target.value })} />
+              <NumberField label="日亏损暂停" suffix="%" value={form.max_daily_loss_pct} onChange={(event) => onFormChange({ max_daily_loss_pct: event.target.value })} />
+              <NumberField label="单笔上限" suffix="%" value={form.max_single_order_pct} onChange={(event) => onFormChange({ max_single_order_pct: event.target.value })} />
+              <NumberField fieldClassName="wide" label="最低现金保留" value={form.min_cash_reserve} onChange={(event) => onFormChange({ min_cash_reserve: event.target.value })} />
+            </>
+          ) : null}
           <button type="button" className="primary backtest-submit-button wide" onClick={onSubmit} disabled={loading === "submit"}>
             {loading === "submit" ? "提交中..." : "提交任务"}
           </button>
@@ -281,18 +292,15 @@ function ResultSummaryBanner({ metrics }: { metrics: unknown }) {
   const totalReturn = numeric(metrics.total_return_pct);
   const maxDrawdown = numeric(metrics.max_drawdown_pct);
   const sharpe = numeric(metrics.sharpe_ratio) ?? numeric(metrics.sharpe);
-  const message = totalReturn === undefined
-    ? "回测已完成，等待指标汇总。"
-    : totalReturn >= 0
-      ? `组合收益 ${formatPct(totalReturn)}，当前结果为正。`
-      : `组合收益 ${formatPct(totalReturn)}，需要复核策略或风控。`;
+  const verdict = backtestVerdict(totalReturn, sharpe, maxDrawdown);
   const warnings = [
     maxDrawdown !== undefined && maxDrawdown <= -15 ? `最大回撤 ${formatPct(maxDrawdown)} 超过警戒线` : "",
     sharpe !== undefined && sharpe < 0.5 ? `Sharpe ${formatNumber(sharpe)} 偏低` : "",
   ].filter(Boolean);
   return (
-    <div className={`backtest-result-banner ${totalReturn !== undefined && totalReturn < 0 ? "warn" : "ok"}`}>
-      <strong>{message}</strong>
+    <div className={`backtest-result-banner ${verdict.tone === "bad" ? "warn" : verdict.tone}`}>
+      <strong>{verdict.title}：{totalReturn === undefined ? "等待指标汇总" : `组合收益 ${formatPct(totalReturn)}`}</strong>
+      <em>{verdict.detail}</em>
       <span>{warnings.length ? warnings.join("；") : "未触发主要异常标记，仍需结合成交明细确认。"}</span>
     </div>
   );

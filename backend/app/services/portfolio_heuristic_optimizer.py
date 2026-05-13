@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import math
 from collections import defaultdict
-from statistics import mean, pstdev
+from statistics import mean, stdev
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -78,7 +78,7 @@ def _strategy_returns(db: Session, run_id: int) -> dict[str, list[float]]:
 
 def _strategy_stats(strategy_key: str, values: list[float]) -> dict:
     avg = mean(values)
-    vol = pstdev(values) if len(values) > 1 else max(abs(avg), 0.01)
+    vol = stdev(values) if len(values) > 1 else max(abs(avg), 0.01)
     sharpe = avg / max(vol, 0.01)
     return {"strategy_key": strategy_key, "avg": avg, "vol": vol, "sharpe": sharpe, "count": len(values)}
 

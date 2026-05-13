@@ -42,6 +42,7 @@ export function PerformanceDashboard() {
   );
   const correlation = dashboard?.strategy_correlation;
   const correlationPairs = useMemo(() => buildCorrelationPairs(correlation).slice(0, 8), [correlation]);
+  const strategyAdviceRows = useMemo(() => strategyRows.map(strategyAdviceRow).slice(0, 6), [strategyRows]);
   const customDaysError = validateCustomDays(customDays);
   const applyCustomDays = useCallback(() => {
     const parsed = Math.round(Number(customDays));
@@ -91,6 +92,11 @@ export function PerformanceDashboard() {
       />
 
       {error ? <section className="panel performance-alert">{error}</section> : null}
+
+      <section className="panel performance-plain-summary">
+        <strong>{monthlySummary(dashboard, days)}</strong>
+        <span>先看总收益和最大回撤，再看哪些策略真正贡献利润；样本少的策略不放大仓位。</span>
+      </section>
 
       <section className="panel performance-chart-panel performance-equity-chart">
         <div className="panel-title">
@@ -151,8 +157,18 @@ export function PerformanceDashboard() {
 
       <section className="panel performance-strategy">
         <div className="panel-title">
-          <h2>策略趋势</h2>
-          <span className="hint">按平均收益排序</span>
+          <h2>哪个策略赚钱 / 亏钱</h2>
+          <span className="hint">按最近收益排序，红绿只代表模拟盘结果</span>
+        </div>
+        <div className="performance-advice-bars">
+          {strategyAdviceRows.map((item) => (
+            <div className="performance-advice-row" key={item.label}>
+              <strong>{item.label}</strong>
+              <span className={item.tone}>{item.value}</span>
+              <div><i style={{ width: `${item.width}%` }} /></div>
+              <small>{item.advice}</small>
+            </div>
+          ))}
         </div>
         <div className="performance-table">
           <div className="performance-table-head">
@@ -223,6 +239,26 @@ export function PerformanceDashboard() {
       </section>
     </section>
   );
+}
+
+function monthlySummary(dashboard: PaperPerformanceDashboard | null, days: number): string {
+  if (!dashboard) return "暂无绩效数据，等待模拟盘归档。";
+  const total = dashboard.account.total_return_pct;
+  const latest = lastOf(dashboard.equity_curve);
+  const tone = total >= 0 ? "盈利" : "回撤";
+  return `最近 ${days} 天模拟盘${tone} ${formatPct(total)}，最新总资产 ${formatMoneyPlain(latest?.total_assets ?? dashboard.account.total_assets)}。`;
+}
+
+function strategyAdviceRow(item: PaperStrategyTrend) {
+  const latest = lastOf(item.points);
+  const value = latest?.avg_return_pct ?? 0;
+  return {
+    label: strategyLabel(item.strategy_key),
+    value: formatPct(value),
+    tone: toneFromChange(value),
+    width: Math.min(100, Math.max(8, Math.abs(value) * 12)),
+    advice: value > 0 ? "继续跟踪，样本够再放大。" : value < 0 ? "先降级观察，复核失败原因。" : "样本不足，先不判断。",
+  };
 }
 
 function MetricStrip({ items }: { items: MetricItem[] }) {

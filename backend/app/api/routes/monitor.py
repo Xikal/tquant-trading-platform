@@ -38,7 +38,7 @@ def monitor_snapshot(
     rows = list_user_watchlist_rows(db, current_user.id)
     excluded = _safe_excluded_sectors(db, current_user.id)
     signature = _rows_signature(rows, excluded)
-    required_trade_date = expected_low_buy_trade_date(db)
+    required_trade_date = _safe_expected_trade_date(db)
     cached = read_monitor_snapshot_cache(
         db,
         user_id=current_user.id,
@@ -130,6 +130,13 @@ def _empty_priority_board(*, warning: str) -> dict[str, Any]:
         "simple_buckets": [],
         "items": [],
     }
+
+
+def _safe_expected_trade_date(db: Session) -> str:
+    try:
+        return expected_low_buy_trade_date(db)
+    except Exception:
+        return ""
 
 
 def _safe_excluded_sectors(db: Session, user_id: int) -> set[str]:

@@ -14,7 +14,7 @@ from app.core.config import get_settings
 from app.core.database import get_db
 from app.core.rate_limit import clear_rate_limit_events
 from app.models.base import Base
-from app.models.entities import OperationAuditLog
+from app.models.entities import OperationAuditLog, User
 from app.models.schema_defs.phase4 import QuantParameterRollbackRequest, QuantParameterSetCreate
 from app.services.market.providers.circuit import ProviderCircuitConfig, ProviderCircuitRegistry
 from app.services.quant import QuantParameterVersionService
@@ -79,6 +79,10 @@ def test_totp_mfa_blocks_plain_login_and_records_audit():
         setup_payload = setup.json()
         assert setup_payload["issuer"]
         assert setup_payload["account_name"] == "mfa_user"
+        with session_factory() as db:
+            stored_user = db.query(User).filter(User.username == "mfa_user").one()
+            assert stored_user.mfa_totp_secret.startswith("enc:v1:")
+            assert stored_user.mfa_totp_secret != setup_payload["secret"]
         code = generate_totp_code(setup_payload["secret"])
         enabled = client.post("/api/auth/mfa/totp/enable", headers=headers, json={"code": code})
         assert enabled.status_code == 200

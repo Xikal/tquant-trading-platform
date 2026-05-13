@@ -168,6 +168,7 @@ def _build_sensitive_limiter(*, namespace: str, max_calls: int, window_seconds: 
             namespace=namespace,
             max_calls=max_calls,
             window_seconds=window_seconds,
+            fail_closed=False,
         )
     return SQLiteSlidingWindowRateLimiter(namespace=namespace, max_calls=max_calls, window_seconds=window_seconds)
 

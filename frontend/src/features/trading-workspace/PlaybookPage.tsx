@@ -1,4 +1,5 @@
 import type { LowBuyScreenerResult } from "../../types";
+import { playbookActionLabel } from "../../utils/uxClarity";
 import { EmptyState, InfoPill, MetricGrid, PanelTitle, StockCard } from "./WorkspaceComponents";
 import { PRODUCTION_PLAYBOOK_TABS } from "./workspaceConstants";
 import { candidateToCard } from "./workspaceViewModels";
@@ -53,10 +54,15 @@ export function PlaybookPage({
           actions={<button onClick={onRefresh} disabled={loading === "playbook"}>刷新全量结果</button>}
         />
         <p className="hint">全量深筛 + 策略归因 + 买点执行。候选分层展示，避免把所有机会做成同等权重。</p>
+        <div className="strategy-purpose-strip">
+          <strong>{strategyName}</strong>
+          <span>{strategyPurpose(strategy)}</span>
+        </div>
         <div className="tabs">
           {tabs.map((tab) => (
             <button key={tab.key} className={strategy === tab.key ? "active" : ""} onClick={() => setStrategy(tab.key)}>
               {tab.label}
+              <small>{strategyPurpose(tab.key)}</small>
             </button>
           ))}
         </div>
@@ -64,10 +70,10 @@ export function PlaybookPage({
       <MetricGrid
         className="summary-panel playbook-metrics"
         items={[
-          { label: "立即处理", value: String(buyNow.length), tone: buyNow.length ? "up" : "neutral" },
-          { label: "重点观察", value: String(nearEntry.length), tone: nearEntry.length ? "warn" : "neutral" },
-          { label: "仅跟踪", value: String(watch.length), tone: "neutral" },
-          { label: "今日放弃", value: String(avoid.length), tone: avoid.length ? "down" : "neutral" },
+          { label: playbookActionLabel("buy_now"), value: String(buyNow.length), tone: buyNow.length ? "up" : "neutral" },
+          { label: playbookActionLabel("near_entry"), value: String(nearEntry.length), tone: nearEntry.length ? "warn" : "neutral" },
+          { label: playbookActionLabel("watch"), value: String(watch.length), tone: "neutral" },
+          { label: playbookActionLabel("avoid"), value: String(avoid.length), tone: avoid.length ? "down" : "neutral" },
           { label: "全量深筛", value: String(playbook?.scanned_count ?? "--"), tone: "neutral" },
           { label: "真实成交样本", value: String(playbook?.performance?.filled_signals ?? 0), tone: hasInsufficientData ? "warn" : "up" },
           { label: "数据状态", value: playbook?.data_quality_text ?? "--", tone: dataQualityTone(playbook?.data_quality) },
@@ -99,10 +105,10 @@ export function PlaybookPage({
           </>
         ) : <EmptyState text="当前策略暂无主看标的。" />}
       </aside>
-      <CandidateSection className="playbook-buy" title="确定买入" items={buyNow} empty="当前没有确定买入的股票" onAnalyze={onAnalyze} onSelect={onSelect} />
-      <CandidateSection className="playbook-near" title="接近买点" items={nearEntry} empty="当前没有接近买点的股票" onAnalyze={onAnalyze} onSelect={onSelect} />
+      <CandidateSection className="playbook-buy" title="现在可买 / 小仓试买" items={buyNow} empty="当前没有可以直接执行的股票" onAnalyze={onAnalyze} onSelect={onSelect} />
+      <CandidateSection className="playbook-near" title="等确认" items={nearEntry} empty="当前没有接近买点的股票" onAnalyze={onAnalyze} onSelect={onSelect} />
       <div className="panel playbook-watch">
-        <PanelTitle title="继续观察 / 历史复盘 / 弹窗" />
+        <PanelTitle title="继续观察 / 今天放弃" />
         <InfoPill label="收盘复盘" value={`样本交易日 ${playbook?.latest_trade_date ?? "--"} / 缓存 ${playbook?.full_scan_ready ? "已就绪" : "生成中"}`} />
         <div className="stock-list compact">
           {passiveCandidates.length ? passiveCandidates.map((stock) => (
@@ -117,6 +123,15 @@ export function PlaybookPage({
       </div>
     </section>
   );
+}
+
+function strategyPurpose(strategyKey: string): string {
+  if (strategyKey.includes("first_board")) return "首板回调，只看启动后第一次承接。";
+  if (strategyKey.includes("volume_shrink")) return "缩量回踩，等价格接近支撑再看。";
+  if (strategyKey.includes("late_session")) return "收盘承接，主要看次日冲高兑现。";
+  if (strategyKey.includes("core_midcap")) return "板块中军回踩，只做主线核心。";
+  if (strategyKey.includes("mainline") || strategyKey.includes("divergence")) return "主线首分歧，确认修复前不追。";
+  return "按当前策略规则分层筛选，先看买点和止损。";
 }
 
 function tabLabel(strategyKey: string | undefined, tabs: Array<{ key: string; label: string }>) {

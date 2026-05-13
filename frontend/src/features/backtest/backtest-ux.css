@@ -1,0 +1,34 @@
+.backtest-mode-toggle {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.backtest-mode-toggle button {
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  border-radius: 12px;
+  background: #fff;
+  color: #0f172a;
+  font-weight: 900;
+}
+
+.backtest-mode-toggle button.active {
+  border-color: rgba(214, 165, 92, 0.7);
+  background: #fff8e8;
+  color: #8a5a16;
+}
+
+.backtest-helper {
+  margin: 0 0 10px;
+  color: #64748b;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.backtest-result-banner em {
+  color: #475569;
+  font-style: normal;
+  font-size: 12px;
+}
+
