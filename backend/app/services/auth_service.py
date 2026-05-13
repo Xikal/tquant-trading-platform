@@ -153,7 +153,7 @@ class AuthService:
             if user is not None and user.is_active:
                 self._record_failed_login(db, user)
             raise AuthError("账号或密码错误")
-        if user.mfa_totp_enabled:
+        if user.mfa_totp_enabled and get_settings().auth_require_mfa_for_login:
             secret = self._totp_secret_for_verification(user)
             if not verify_totp(mfa_code, secret):
                 self._record_failed_login(db, user)

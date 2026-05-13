@@ -64,7 +64,7 @@ def _auth_client(session_factory):
     return TestClient(app)
 
 
-def test_totp_mfa_blocks_plain_login_and_records_audit():
+def test_totp_mfa_blocks_plain_login_and_records_audit(monkeypatch):
     with _auth_env():
         session_factory = _session_factory()
         client = _auth_client(session_factory)
@@ -88,13 +88,19 @@ def test_totp_mfa_blocks_plain_login_and_records_audit():
         assert enabled.status_code == 200
         assert enabled.json()["user"]["mfa_totp_enabled"] is True
 
-        blocked = client.post("/api/auth/login", json={"username": "mfa_user", "password": "secret123"})
-        assert blocked.status_code == 401
-        allowed = client.post(
-            "/api/auth/login",
-            json={"username": "mfa_user", "password": "secret123", "mfa_code": generate_totp_code(setup_payload["secret"])},
-        )
-        assert allowed.status_code == 200
+        try:
+            monkeypatch.setenv("AUTH_REQUIRE_MFA_FOR_LOGIN", "true")
+            get_settings.cache_clear()
+            blocked = client.post("/api/auth/login", json={"username": "mfa_user", "password": "secret123"})
+            assert blocked.status_code == 401
+            allowed = client.post(
+                "/api/auth/login",
+                json={"username": "mfa_user", "password": "secret123", "mfa_code": generate_totp_code(setup_payload["secret"])},
+            )
+            assert allowed.status_code == 200
+        finally:
+            monkeypatch.delenv("AUTH_REQUIRE_MFA_FOR_LOGIN", raising=False)
+            get_settings.cache_clear()
         with session_factory() as db:
             operations = [row.operation for row in db.query(OperationAuditLog).all()]
         assert "auth_mfa_enable" in operations

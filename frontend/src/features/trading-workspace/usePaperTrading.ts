@@ -378,12 +378,14 @@ function upsertTag(tags: PaperTradeTag[], next: PaperTradeTag): PaperTradeTag[] 
 }
 
 function isAuthError(reason: unknown): boolean {
+  const status = (reason as { status?: number } | null)?.status;
+  if (status !== undefined) {
+    return status === 401;
+  }
   const message = errorMessage(reason).toLowerCase();
   return (
     message.includes("401") ||
     message.includes("not authenticated") ||
-    message.includes("unauthorized") ||
-    message.includes("未登录") ||
-    message.includes("登录")
+    message.includes("unauthorized")
   );
 }
