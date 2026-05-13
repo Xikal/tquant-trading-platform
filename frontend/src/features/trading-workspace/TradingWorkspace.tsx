@@ -66,7 +66,6 @@ export function TradingWorkspace() {
   const [authDraft, setAuthDraft] = useState<AuthDraft>({
     username: "",
     password: "",
-    mfaCode: "",
     remember: true,
   });
   const paper = usePaperTrading({
@@ -229,12 +228,11 @@ export function TradingWorkspace() {
         : await appApi.login({
             username,
             password,
-            mfa_code: authDraft.mfaCode.trim(),
             device_name: "web-workspace",
             remember: authDraft.remember,
           });
       setCurrentUser(result.user);
-      setAuthDraft((draft) => ({ ...draft, password: "", mfaCode: "" }));
+      setAuthDraft((draft) => ({ ...draft, password: "" }));
       setNotice(register ? "账号已开通，已进入工作台" : "登录成功");
       await monitor.fetchMonitorData(true);
     });

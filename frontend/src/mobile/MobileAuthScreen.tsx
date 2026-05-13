@@ -3,13 +3,12 @@ import { useState } from "react"
 interface MobileAuthScreenProps {
   loading: boolean
   error: string
-  onSubmit: (payload: { username: string; password: string; mfa_code?: string; register: boolean }) => Promise<void>
+  onSubmit: (payload: { username: string; password: string; register: boolean }) => Promise<void>
 }
 
 export function MobileAuthScreen({ loading, error, onSubmit }: MobileAuthScreenProps) {
   const [username, setUsername] = useState("")
   const [password, setPassword] = useState("")
-  const [mfaCode, setMfaCode] = useState("")
   const [register, setRegister] = useState(false)
   const [formError, setFormError] = useState("")
 
@@ -24,7 +23,7 @@ export function MobileAuthScreen({ loading, error, onSubmit }: MobileAuthScreenP
       return
     }
     setFormError("")
-    await onSubmit({ username: nextUsername, password, mfa_code: mfaCode.trim() || undefined, register })
+    await onSubmit({ username: nextUsername, password, register })
   }
 
   return (
@@ -76,19 +75,6 @@ export function MobileAuthScreen({ loading, error, onSubmit }: MobileAuthScreenP
             placeholder="请输入登录密码"
             type="password"
           />
-        </label>
-
-        <label className="mobile-auth-field">
-          <span>动态验证码</span>
-          <input
-            value={mfaCode}
-            onChange={(event) => setMfaCode(event.target.value.replace(/\D/g, "").slice(0, 6))}
-            placeholder="已开启 MFA 时输入 6 位数字"
-            inputMode="numeric"
-            autoComplete="one-time-code"
-            maxLength={6}
-          />
-          <small>没有开启可留空；验证码来自手机 Authenticator App。</small>
         </label>
 
         {formError || error ? <div className="mobile-app-error">{formError || error}</div> : null}

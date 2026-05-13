@@ -17,10 +17,9 @@ export function LoginPage({
   onLogin,
   onRegister,
 }: LoginPageProps) {
-  const mfaDigits = draft.mfaCode.replace(/\D/g, "").slice(0, 6);
   const loginStepText = loading
     ? "验证成功后会自动加载您的持仓、榜单和模拟盘数据。"
-    : "输入账号密码，已开启 MFA 时再填写手机验证码 App 的 6 位数字。";
+    : "输入账号和密码即可进入工作台，系统会自动恢复您的持仓、榜单和模拟盘数据。";
   return (
     <main className="login-shell">
       <section className="login-visual" aria-label="盘中决策台概览">
@@ -149,23 +148,6 @@ export function LoginPage({
             </div>
           </label>
 
-          <label className="login-field">
-            <span>动态验证码</span>
-            <div>
-              <b aria-hidden="true">•</b>
-              <input
-                value={mfaDigits}
-                inputMode="numeric"
-                autoComplete="one-time-code"
-                placeholder="打开手机验证码 App，输入 6 位数字"
-                disabled={loading}
-                maxLength={6}
-                onChange={(event) => setDraft({ ...draft, mfaCode: event.target.value.replace(/\D/g, "").slice(0, 6) })}
-              />
-            </div>
-            <small>没有开启二次验证可留空；需要下单权限的账号建议开启。</small>
-          </label>
-
           <div className="login-options">
             <label>
               <input
@@ -176,14 +158,14 @@ export function LoginPage({
               />
               <span>记住登录</span>
             </label>
-            <button type="button" disabled={loading} title="请联系管理员重置密码或二次验证码">忘记密码？联系管理员</button>
+            <button type="button" disabled={loading} title="请联系管理员重置密码">忘记密码？联系管理员</button>
           </div>
 
           {error ? (
             <div className="login-error">
               <strong>登录失败</strong>
               <span>{error}</span>
-              <small>请先检查账号、密码和 6 位验证码；连续失败会触发临时保护。</small>
+              <small>请先检查账号和密码；连续失败会触发临时保护。</small>
             </div>
           ) : null}
 

@@ -285,7 +285,11 @@ function hydrateAuthAccessToken(): { accessToken: string; mode: AuthPersistenceM
     return { accessToken: "", mode: "memory" }
   }
   clearLegacyLocalAuthAccessToken()
-  return { accessToken: "", mode: hydrateAuthPersistenceMode() }
+  const mode = hydrateAuthPersistenceMode()
+  return {
+    accessToken: mode === "memory" ? "" : readSessionAuthAccessToken(),
+    mode
+  }
 }
 
 function hydrateAuthPersistenceMode(): AuthPersistenceMode {
@@ -305,13 +309,15 @@ function persistAuthAccessToken(accessToken: string, mode: AuthPersistenceMode) 
     return
   }
   try {
-    // Do not persist access tokens in localStorage. Long-lived sessions are
-    // restored through the httpOnly refresh cookie on first authenticated call.
+    // Never persist bearer tokens in localStorage. A short-lived sessionStorage
+    // copy keeps same-tab refresh usable when the httpOnly refresh cookie is not
+    // available, while long-lived restore still relies on the secure cookie.
     window.localStorage.removeItem(AUTH_ACCESS_TOKEN_KEY)
-    window.sessionStorage.removeItem(AUTH_ACCESS_TOKEN_KEY)
     if (mode === "local" || mode === "session") {
+      window.sessionStorage.setItem(AUTH_ACCESS_TOKEN_KEY, accessToken)
       window.localStorage.setItem(AUTH_PERSISTENCE_MODE_KEY, mode)
     } else {
+      window.sessionStorage.removeItem(AUTH_ACCESS_TOKEN_KEY)
       window.localStorage.removeItem(AUTH_PERSISTENCE_MODE_KEY)
     }
   } catch {
@@ -337,6 +343,14 @@ function clearLegacyLocalAuthAccessToken() {
     window.localStorage.removeItem(AUTH_ACCESS_TOKEN_KEY)
   } catch {
     // Ignore storage cleanup failures.
+  }
+}
+
+function readSessionAuthAccessToken(): string {
+  try {
+    return window.sessionStorage.getItem(AUTH_ACCESS_TOKEN_KEY) ?? ""
+  } catch {
+    return ""
   }
 }
 

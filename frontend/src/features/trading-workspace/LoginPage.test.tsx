@@ -6,7 +6,7 @@ describe("LoginPage", () => {
   it("renders unified login copy and actions", () => {
     const html = renderToStaticMarkup(
       <LoginPage
-        draft={{ username: "", password: "", mfaCode: "", remember: true }}
+        draft={{ username: "", password: "", remember: true }}
         error=""
         loading={false}
         setDraft={vi.fn()}
@@ -18,5 +18,6 @@ describe("LoginPage", () => {
     expect(html).toContain("登录维斯量化平台");
     expect(html).toContain("登录进入工作台");
     expect(html).toContain("开户注册");
+    expect(html).not.toContain("动态验证码");
   });
 });

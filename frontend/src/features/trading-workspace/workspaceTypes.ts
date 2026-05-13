@@ -81,7 +81,6 @@ export interface PaperOrderDraft {
 export interface AuthDraft {
   username: string;
   password: string;
-  mfaCode: string;
   remember: boolean;
 }
 
