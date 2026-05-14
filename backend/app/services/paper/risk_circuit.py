@@ -71,6 +71,28 @@ class PaperRiskCircuitBreaker:
         )
         return [_event_out(row) for row in rows]
 
+    def resolve_open_events(self, account_id: int, *, reason: str = "manual_review") -> list[RiskEventOut]:
+        rows = (
+            self.db.execute(
+                select(RiskEvent).where(
+                    RiskEvent.account_id == account_id,
+                    RiskEvent.status == "open",
+                )
+            )
+            .scalars()
+            .all()
+        )
+        resolved_at = beijing_now().replace(tzinfo=None)
+        for row in rows:
+            payload = _payload_dict(row.payload_json)
+            payload["resolved_reason"] = reason
+            payload["resolved_at"] = resolved_at.isoformat()
+            row.status = "resolved"
+            row.resolved_at = resolved_at
+            row.payload_json = json.dumps(payload, ensure_ascii=False)
+        self.db.commit()
+        return [_event_out(row) for row in rows]
+
     def _ensure_event(
         self,
         *,
@@ -101,7 +123,11 @@ class PaperRiskCircuitBreaker:
         return row
 
     def _recent_loss_streak(self, account_id: int) -> int:
-        rows = PaperPerformanceService(self.db).sell_return_records(account_id)[-6:]
+        cutoff = self._latest_resolved_at(account_id, "loss_streak")
+        records = PaperPerformanceService(self.db).sell_return_records(account_id)
+        if cutoff is not None:
+            records = [row for row in records if row.trade_time and row.trade_time > cutoff]
+        rows = records[-6:]
         streak = 0
         for row in reversed(rows):
             if row.return_pct < 0:
@@ -114,6 +140,30 @@ class PaperRiskCircuitBreaker:
         account = self.db.get(PaperAccount, account_id)
         if account is not None:
             account.status = "paused"
+
+    def _latest_resolved_at(self, account_id: int, event_type: str):
+        return (
+            self.db.execute(
+                select(RiskEvent.resolved_at)
+                .where(
+                    RiskEvent.account_id == account_id,
+                    RiskEvent.event_type == event_type,
+                    RiskEvent.resolved_at.is_not(None),
+                )
+                .order_by(RiskEvent.resolved_at.desc())
+                .limit(1)
+            )
+            .scalars()
+            .first()
+        )
+
+
+def _payload_dict(raw: str | None) -> dict:
+    try:
+        payload = json.loads(raw or "{}")
+    except Exception:
+        return {}
+    return payload if isinstance(payload, dict) else {}
 
 
 def _event_out(row: RiskEvent) -> RiskEventOut:

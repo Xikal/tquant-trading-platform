@@ -101,6 +101,15 @@ export interface MarketBreadth {
   data_quality_text: string;
 }
 
+export interface MarketTradingSession {
+  updated_at: string;
+  is_trading_day: boolean;
+  is_trading_now: boolean;
+  current_time: string;
+  timezone: string;
+  data_quality_text: string;
+}
+
 export interface SectorEtfT0Opportunity {
   sector_name: string;
   etf_symbol: string;

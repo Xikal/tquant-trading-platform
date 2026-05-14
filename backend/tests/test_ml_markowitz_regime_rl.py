@@ -187,6 +187,24 @@ def test_regime_parameter_promotion_uses_only_stable_state_buckets() -> None:
     assert result["skipped_count"] == 1
 
 
+def test_regime_parameter_promotion_warns_on_missing_signal_count(caplog) -> None:
+    caplog.set_level("WARNING", logger="app.services.backtest.regime_parameter_promotion")
+    db = _db()
+    result = promote_regime_parameter_versions(
+        db,
+        validation_result={
+            "best_params_by_market_state": {"repair": {"min_score": 84}},
+            "by_market_state": {"repair": {"window_count": 4, "pass_rate": 0.75, "orders": 80}},
+        },
+        strategy_key="first_board",
+        operator="tester",
+    )
+
+    assert result["promoted_count"] == 0
+    assert "缺少样本数字段" in result["skipped"][0]["reason"]
+    assert "missing signal count field" in caplog.text
+
+
 def test_position_policy_research_includes_rl_shadow_payload() -> None:
     db = _db()
     for idx in range(10):

@@ -1,6 +1,7 @@
 import type { BacktestExecutionModel, BacktestResourceTier } from "../../api/backtests";
 import { STRATEGY_OPTIONS, type StrategyOption } from "../../constants/strategies";
 import { formatPct } from "../../utils/backtestFormatters";
+import type { BacktestVerdictThresholds } from "../../utils/uxClarity";
 export { formatBacktestStrategy, formatBacktestStrategies, formatPct } from "../../utils/backtestFormatters";
 
 export const BACKTEST_STRATEGY_OPTIONS = STRATEGY_OPTIONS;
@@ -19,6 +20,36 @@ export const BACKTEST_RESOURCE_TIER_OPTIONS: Array<[BacktestResourceTier, string
   ["full", "标准回测"],
   ["walk_forward", "重型 Walk-forward"],
 ];
+
+export const BACKTEST_RESOURCE_TIER_HINTS: Record<BacktestResourceTier, string> = {
+  light: "轻量：快速判断参数方向，速度最快，适合初筛，不作为上线依据。",
+  full: "标准：覆盖完整交易成本和风控口径，适合对比生产策略。",
+  walk_forward: "Walk-forward：样本外稳健性验证，耗时最长，适合上线前确认过拟合风险。",
+};
+
+export const BACKTEST_VERDICT_THRESHOLDS: Record<BacktestResourceTier, BacktestVerdictThresholds> = {
+  light: {
+    minReturnPct: 1.0,
+    minSharpe: 0.4,
+    maxDrawdownPct: -18,
+    cautiousMinReturnPct: -1.0,
+    cautiousMaxDrawdownPct: -25,
+  },
+  full: {
+    minReturnPct: 3.0,
+    minSharpe: 0.8,
+    maxDrawdownPct: -12,
+    cautiousMinReturnPct: 0.0,
+    cautiousMaxDrawdownPct: -18,
+  },
+  walk_forward: {
+    minReturnPct: 1.5,
+    minSharpe: 0.6,
+    maxDrawdownPct: -15,
+    cautiousMinReturnPct: -0.5,
+    cautiousMaxDrawdownPct: -22,
+  },
+};
 
 export const OPTIMIZATION_TARGET_OPTIONS = [
   ["sharpe", "Sharpe"],
@@ -96,4 +127,21 @@ export function formatResourceTier(value?: string | null): string {
   const tier = String(value || "").trim().toLowerCase();
   const matched = BACKTEST_RESOURCE_TIER_OPTIONS.find(([key]) => key === tier);
   return matched?.[1] || "标准回测";
+}
+
+export function resourceTierHint(value?: BacktestResourceTier | string | null): string {
+  const tier = normalizeResourceTier(value);
+  return BACKTEST_RESOURCE_TIER_HINTS[tier];
+}
+
+export function backtestVerdictThresholds(value?: BacktestResourceTier | string | null): BacktestVerdictThresholds {
+  return BACKTEST_VERDICT_THRESHOLDS[normalizeResourceTier(value)];
+}
+
+function normalizeResourceTier(value?: BacktestResourceTier | string | null): BacktestResourceTier {
+  const tier = String(value || "").trim().toLowerCase();
+  if (tier === "light" || tier === "walk_forward") {
+    return tier;
+  }
+  return "full";
 }

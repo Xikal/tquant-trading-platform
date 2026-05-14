@@ -7,6 +7,8 @@ from app.services.ml_signal.model_defaults import DEFAULT_TRAINING_PARAMS
 BACKTEST_EXECUTION_DEFAULTS: dict[str, Any] = {
     "max_concurrent_backtests": 2,
     "queue_depth_warning_threshold": 10,
+    "queue_estimate_sample_size": 10,
+    "queue_estimate_max_age_days": 30,
     "market_impact_no_turnover_rate": 0.008,
     "market_impact_participation_thresholds": [0.02, 0.05, 0.10],
     "market_impact_rates": [0.0008, 0.0015, 0.003, 0.008],

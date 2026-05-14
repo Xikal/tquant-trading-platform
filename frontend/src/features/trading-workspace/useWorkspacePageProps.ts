@@ -86,6 +86,7 @@ export function useWorkspacePageProps({
     setDraft: paper.setDraft,
     loading,
     onSubmitOrder: paper.submitOrder,
+    onTogglePause: paper.togglePause,
     onAddTradeTag: (tradeId, tag) => void paper.addTradeTag(tradeId, tag),
     onDeleteTradeTag: (tradeId, tagId) => void paper.deleteTradeTag(tradeId, tagId),
   };

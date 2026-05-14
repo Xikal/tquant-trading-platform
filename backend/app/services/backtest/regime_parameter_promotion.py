@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from datetime import datetime
 from typing import Any
 
@@ -12,6 +13,9 @@ from app.services.quant.parameter_version_service import QuantParameterVersionSe
 MIN_STATE_WINDOWS = 4
 MIN_STATE_PASS_RATE = 0.6
 MIN_STATE_SIGNAL_COUNT = 50
+_SIGNAL_COUNT_FIELDS = ("signal_count", "filled_signals", "filled_count", "trade_count", "sample_count")
+
+logger = logging.getLogger(__name__)
 
 
 def promote_regime_parameter_versions(
@@ -71,21 +75,41 @@ def _state_gate(state: str, params: dict[str, Any], metrics: dict[str, Any]) -> 
     pass_rate = float(metrics.get("pass_rate") or 0.0)
     if pass_rate < MIN_STATE_PASS_RATE:
         return False, f"样本外通过率不足：{pass_rate:.2f} < {MIN_STATE_PASS_RATE:.2f}。"
-    signal_count = _signal_count(metrics)
+    signal_count, count_field = _signal_count(metrics, state=state)
     if signal_count < MIN_STATE_SIGNAL_COUNT:
-        return False, f"成交信号样本不足：{signal_count} < {MIN_STATE_SIGNAL_COUNT}。"
+        field_text = f"（来源字段：{count_field}）" if count_field else "（缺少样本数字段）"
+        return False, f"成交信号样本不足：{signal_count} < {MIN_STATE_SIGNAL_COUNT}{field_text}。"
     return True, ""
 
 
-def _signal_count(metrics: dict[str, Any]) -> int:
-    for key in ("signal_count", "filled_signals", "filled_count", "trade_count", "sample_count"):
+def _signal_count(metrics: dict[str, Any], *, state: str) -> tuple[int, str]:
+    for key in _SIGNAL_COUNT_FIELDS:
         value = metrics.get(key)
         if value is not None:
             try:
-                return int(float(value))
+                count = int(float(value))
             except (TypeError, ValueError):
+                logger.warning(
+                    "regime parameter promotion signal count field invalid: state=%s field=%s value=%r",
+                    state,
+                    key,
+                    value,
+                )
                 continue
-    return 0
+            logger.info(
+                "regime parameter promotion signal count field selected: state=%s field=%s value=%s",
+                state,
+                key,
+                count,
+            )
+            return count, key
+    logger.warning(
+        "regime parameter promotion missing signal count field: state=%s expected=%s available=%s",
+        state,
+        ",".join(_SIGNAL_COUNT_FIELDS),
+        ",".join(sorted(str(key) for key in metrics.keys())),
+    )
+    return 0, ""
 
 
 def _params_payload(params: dict[str, Any]) -> dict[str, Any]:

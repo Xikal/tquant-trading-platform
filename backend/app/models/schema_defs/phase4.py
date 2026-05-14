@@ -222,7 +222,7 @@ class MLSignalOnlineLearningStatusResponse(BaseModel):
     latest_incremental_task_status: str = ""
     latest_incremental_task_progress_pct: float = 0.0
     latest_incremental_task_finished_at: datetime | None = None
-    next_training_rule: str = "每周一 16:00 后由 runtime worker 自动触发一次 paper 增量训练。"
+    next_training_rule: str = "每周五 16:00 后由 runtime worker 自动触发一次 paper 增量训练。"
     warnings: list[str] = Field(default_factory=list)
 
 

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Any
 
 from sqlalchemy import func, select
@@ -88,7 +88,12 @@ def _estimated_wait(row: BacktestRun, timeline: list[dict[str, Any]]) -> _Estima
 
 
 def _timeline_rows(db: Session) -> list[dict[str, Any]]:
-    recent_seconds_by_tier = _recent_run_seconds_by_tier(db)
+    settings = _queue_estimate_settings()
+    recent_seconds_by_tier = _recent_run_seconds_by_tier(
+        db,
+        per_tier_limit=settings["sample_size"],
+        max_age_days=settings["max_age_days"],
+    )
     rows = db.execute(
         select(
             BacktestRun.id,
@@ -119,8 +124,16 @@ def _timeline_rows(db: Session) -> list[dict[str, Any]]:
     return timeline
 
 
-def _recent_run_seconds_by_tier(db: Session, *, per_tier_limit: int = 10) -> dict[str, int]:
-    rows = db.execute(
+def _recent_run_seconds_by_tier(
+    db: Session,
+    *,
+    per_tier_limit: int | None = None,
+    max_age_days: int | None = None,
+) -> dict[str, int]:
+    settings = _queue_estimate_settings()
+    limit = per_tier_limit if per_tier_limit is not None else settings["sample_size"]
+    age_days = max_age_days if max_age_days is not None else settings["max_age_days"]
+    query = (
         select(
             BacktestRun.params_json,
             BacktestRun.started_at,
@@ -132,8 +145,11 @@ def _recent_run_seconds_by_tier(db: Session, *, per_tier_limit: int = 10) -> dic
             BacktestRun.started_at.is_not(None),
             BacktestRun.finished_at.is_not(None),
         )
-        .order_by(BacktestRun.finished_at.desc(), BacktestRun.id.desc())
-        .limit(per_tier_limit * 8)
+    )
+    if age_days > 0:
+        query = query.where(BacktestRun.finished_at >= datetime.utcnow() - timedelta(days=age_days))
+    rows = db.execute(
+        query.order_by(BacktestRun.finished_at.desc(), BacktestRun.id.desc()).limit(limit * 8)
     ).all()
     grouped: dict[str, list[float]] = {}
     for params_json, started_at, finished_at in rows:
@@ -142,7 +158,7 @@ def _recent_run_seconds_by_tier(db: Session, *, per_tier_limit: int = 10) -> dic
         seconds = max((finished_at - started_at).total_seconds(), 1.0)
         tier = resource_tier_from_params_json(params_json)
         bucket = grouped.setdefault(tier, [])
-        if len(bucket) < per_tier_limit:
+        if len(bucket) < limit:
             bucket.append(seconds)
     return {tier: int(sum(values) / len(values)) for tier, values in grouped.items() if values}
 
@@ -175,3 +191,31 @@ def _max_concurrent_backtests() -> int:
     except Exception:
         value = int(BACKTEST_EXECUTION_DEFAULTS["max_concurrent_backtests"])
     return max(1, min(value, 8))
+
+
+def _queue_estimate_settings() -> dict[str, int]:
+    try:
+        params = get_backtest_execution()
+    except Exception:
+        params = {}
+    sample_size = _int_param(
+        params,
+        "queue_estimate_sample_size",
+        BACKTEST_EXECUTION_DEFAULTS["queue_estimate_sample_size"],
+    )
+    max_age_days = _int_param(
+        params,
+        "queue_estimate_max_age_days",
+        BACKTEST_EXECUTION_DEFAULTS["queue_estimate_max_age_days"],
+    )
+    return {
+        "sample_size": max(1, min(sample_size, 200)),
+        "max_age_days": max(0, min(max_age_days, 3650)),
+    }
+
+
+def _int_param(params: dict[str, Any], key: str, default: Any) -> int:
+    try:
+        return int(float(params.get(key, default)))
+    except (TypeError, ValueError):
+        return int(default)

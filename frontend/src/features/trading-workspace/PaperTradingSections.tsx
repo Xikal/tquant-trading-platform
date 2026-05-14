@@ -47,11 +47,13 @@ export function PaperMetricGrid({
   performance,
   autoTradingStatus,
   loading,
+  onTogglePause,
 }: {
   account: PaperAccount | null;
   performance: PaperPerformance | null;
   autoTradingStatus: PaperAutoTradingStatus | null;
   loading: boolean;
+  onTogglePause?: () => void | Promise<void>;
 }) {
   const status = resolveAutoManagedStatus(account, autoTradingStatus);
   const skipNotice = autoTradingSkipNotice(autoTradingStatus);
@@ -85,6 +87,11 @@ export function PaperMetricGrid({
           <strong>{skipNotice.title}</strong>
           <span>{skipNotice.text}</span>
           {skipNotice.time ? <em>{formatPaperDateTime(skipNotice.time)}</em> : null}
+          {account?.status === "paused" && onTogglePause ? (
+            <button type="button" className="paper-skip-action" onClick={() => void onTogglePause()} disabled={loading}>
+              已复盘，恢复自动委托
+            </button>
+          ) : null}
         </div>
       ) : null}
     </section>
@@ -302,7 +309,6 @@ function IntradayConfirmationStrip({ items }: { items: IntradayConfirmationItem[
 
 function PositionRow({ item }: { item: PaperPosition }) {
   const tone = item.latest_price == null ? "neutral" : toneFromChange(item.unrealized_pnl_pct);
-  const hasSmartHint = Boolean(item.smart_exit_text || item.smart_exit_reason || item.smart_exit_invalid_condition);
   return (
     <article className={`paper-row paper-position-row ${tone}`}>
       <div className="paper-stock-name">
@@ -312,18 +318,6 @@ function PositionRow({ item }: { item: PaperPosition }) {
       <span>持仓 {formatInteger(item.quantity)} / 可卖 {formatInteger(item.available_quantity)}</span>
       <span>成本 {formatPrice(item.cost_basis)} / 现价 {formatPrice(item.latest_price)}</span>
       <strong className={tone}>{formatPct(item.unrealized_pnl_pct)}</strong>
-      {hasSmartHint ? (
-        <div className="paper-smart-exit">
-          <b>{item.smart_exit_text || "智能风控观察"}</b>
-          {item.smart_exit_quantity ? <span>建议处理 {formatInteger(item.smart_exit_quantity)} 股</span> : null}
-          {item.smart_exit_reason ? <span>为什么：{item.smart_exit_reason}</span> : null}
-          {item.smart_exit_invalid_condition ? <span>错了怎么办：{item.smart_exit_invalid_condition}</span> : null}
-          {item.smart_exit_failure_action ? <span>后续动作：{item.smart_exit_failure_action}</span> : null}
-          {item.smart_exit_net_profit_pct ? (
-            <span>预计净收益 {formatPct(item.smart_exit_net_profit_pct)}，手续费拖累 {formatPct(item.smart_exit_fee_drag_pct)}</span>
-          ) : null}
-        </div>
-      ) : null}
     </article>
   );
 }

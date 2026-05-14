@@ -78,12 +78,18 @@ export const MonitorPage = memo(function MonitorPage({
             </>
           }
         />
-        <MetricGrid items={metrics} />
-        <div className={`decision-brief ${primaryAction.tone}`}>
-          <span>今天我该做什么</span>
+        <div className={`decision-brief monitor-primary-action-card ${primaryAction.tone}`}>
+          <span>今天最重要的 1 件事</span>
           <strong>{primaryAction.title}</strong>
           <small>{primaryAction.detail}</small>
+          <button type="button" onClick={primaryAction.source === "holding" ? onRefresh : onGoPlaybook}>
+            {primaryAction.source === "holding" ? "刷新确认" : "查看候选"}
+          </button>
         </div>
+        <details className="monitor-metric-details">
+          <summary>展开盘面数字摘要</summary>
+          <MetricGrid items={metrics} />
+        </details>
         <MarketBreadthStrip marketBreadth={marketBreadth} />
       </div>
 
@@ -236,13 +242,14 @@ function formatRatioPct(value?: number | null): string {
 function resolveTodayAction(
   watchCards: StockCardView[],
   priorityCards: StockCardView[],
-): { title: string; detail: string; tone: "up" | "warn" | "neutral" } {
+): { title: string; detail: string; tone: "up" | "warn" | "neutral"; source: "holding" | "priority" | "none" } {
   const actionableHolding = watchCards.find((card) => card.actionText !== "暂不操作");
   if (actionableHolding) {
     return {
       title: `${actionableHolding.name}：${directActionTitle(actionableHolding.actionText)}`,
       detail: actionableHolding.executionHint || actionableHolding.details || "按卡片价格区间执行，失效条件触发就不做。",
       tone: "up",
+      source: "holding",
     };
   }
   const priority = priorityCards[0];
@@ -251,7 +258,8 @@ function resolveTodayAction(
       title: `${priority.name}：${directActionTitle(priority.actionText)}`,
       detail: priority.details || "先看买点区和止损位，不满足承接确认就等待。",
       tone: "warn",
+      source: "priority",
     };
   }
-  return { title: "今天先不动", detail: "暂无明确可执行信号，等待榜单或持仓信号刷新。", tone: "neutral" };
+  return { title: "今天先不动", detail: "暂无明确可执行信号，等待榜单或持仓信号刷新。", tone: "neutral", source: "none" };
 }

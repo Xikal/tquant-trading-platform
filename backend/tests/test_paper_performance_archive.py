@@ -97,6 +97,36 @@ class PaperPerformanceArchiveTest(unittest.TestCase):
             self.assertIn("market_perf_heatmap", payload)
             self.assertIn("strategy_market_matrix", payload)
 
+    def test_dashboard_uses_live_metrics_without_archive_rows(self) -> None:
+        with self.Session() as db:
+            account = PaperAccount(
+                name="测试账户",
+                initial_cash=Decimal("100000"),
+                cash_available=Decimal("100000"),
+                total_assets=Decimal("101000"),
+                status="active",
+            )
+            db.add(account)
+            db.commit()
+            db.refresh(account)
+
+            _add_round_trip(
+                db,
+                account.id,
+                symbol="510300",
+                strategy_key="first_board",
+                market_state="repair",
+                buy_price=Decimal("10"),
+                sell_price=Decimal("11"),
+                traded_at=datetime(2026, 5, 1, 10, 0),
+            )
+
+            payload = PaperPerformanceDashboardService(db).build(account, days=30)
+
+            self.assertTrue(payload["equity_curve"])
+            self.assertEqual(payload["strategy_trend"][0]["strategy_key"], "first_board")
+            self.assertEqual(payload["market_perf_heatmap"][0]["market_state"], "repair")
+
     def test_daily_report_and_snapshot_use_target_date_scope(self) -> None:
         with self.Session() as db:
             account = PaperAccount(
@@ -231,6 +261,45 @@ class PaperPerformanceArchiveTest(unittest.TestCase):
             self.assertEqual(refreshed.status, "paused")
             self.assertEqual(risk_event.severity, "high")
             self.assertTrue(any(item.event_type == "loss_streak" for item in events))
+
+    def test_resolved_loss_streak_does_not_immediately_pause_again(self) -> None:
+        with self.Session() as db:
+            account = PaperAccount(
+                name="测试账户",
+                initial_cash=Decimal("100000"),
+                cash_available=Decimal("100000"),
+                total_assets=Decimal("100000"),
+                status="active",
+            )
+            db.add(account)
+            db.commit()
+            db.refresh(account)
+
+            for index, symbol in enumerate(("510300", "159915", "588000"), start=1):
+                _add_round_trip(
+                    db,
+                    account.id,
+                    symbol=symbol,
+                    strategy_key="first_board",
+                    market_state="repair",
+                    buy_price=Decimal("10"),
+                    sell_price=Decimal("10") - (Decimal(index) / Decimal("10")),
+                    traded_at=datetime(2026, 5, 2, 10, index),
+                )
+
+            breaker = PaperRiskCircuitBreaker(db)
+            breaker.evaluate_account(account.id)
+            breaker.resolve_open_events(account.id, reason="manual_review_resume")
+            account.status = "active"
+            db.commit()
+
+            events = breaker.evaluate_account(account.id)
+            open_events = breaker.list_open_events(account.id)
+            refreshed = db.get(PaperAccount, account.id)
+
+            self.assertEqual(refreshed.status, "active")
+            self.assertFalse(any(item.event_type == "loss_streak" for item in events))
+            self.assertEqual(open_events, [])
 
 
 def _add_round_trip(

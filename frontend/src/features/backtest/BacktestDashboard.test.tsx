@@ -1,6 +1,7 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import { BacktestDashboard } from "./BacktestDashboard";
+import { resourceTierHint } from "./backtestDisplay";
 import type { BacktestRunDetail, BacktestTrade, EquityPoint } from "../../api/backtests";
 
 const run: BacktestRunDetail = {
@@ -342,6 +343,7 @@ describe("BacktestDashboard", () => {
     expect(html).toContain("提交回测任务");
     expect(html).toContain("日期范围");
     expect(html).toContain("执行模型");
+    expect(resourceTierHint("full")).toContain("覆盖完整交易成本和风控口径");
     expect(html).toContain("pending");
     expect(html).toContain("queued");
     expect(html).toContain("running");

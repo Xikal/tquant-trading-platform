@@ -207,6 +207,7 @@ export function usePaperTrading({ setError, setLoading, setNotice, onAuthRequire
         : await runAuthenticated(() => api.pausePaperAccount());
       setAccount(nextAccount);
       setNotice(nextAccount.status === "paused" ? "模拟盘已暂停" : "模拟盘已恢复");
+      await load(false, false);
     });
   }
 

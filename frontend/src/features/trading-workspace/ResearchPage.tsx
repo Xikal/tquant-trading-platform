@@ -95,19 +95,25 @@ export function ResearchPage({
         <button className="secondary full" onClick={onValidate} disabled={loading === "strategy-validation"}>快速验证策略组</button>
       </aside>
       <aside className="panel dark research-samples">
-        <PanelTitle title="复盘样本 / 生命周期" />
+        <PanelTitle title="复盘案例故事" />
+        <div className="research-month-summary">
+          <strong>月度结论</strong>
+          <span>样本 {replays.length} 条，平均收益 {formatPct(avgPnl)}，生命周期：{lifecycleSummary}。</span>
+          <small>胜率和收益必须结合样本量看；样本少于 20 条时只作为研究线索。</small>
+        </div>
         <div className="research-story-list">
           {replays.slice(0, 3).map((item) => (
             <article key={`story-${item.id}`} className="research-story-card">
               <strong>{item.symbol}：{item.outcome || "样本结果"}</strong>
-              <span>结果 {formatPct(item.pnl_pct)}，创建于 {shortTime(item.created_at)}。</span>
-              <small>这类样本用于判断策略是否稳定，不代表下一笔一定相同。</small>
+              <div className="research-story-flow">
+                <span>信号出现</span>
+                <b>结果 {formatPct(item.pnl_pct)}</b>
+                <span>最大冲高 {formatPct(item.max_favorable_excursion)} / 最大回撤 {formatPct(item.max_adverse_excursion)}</span>
+              </div>
+              <small>{item.review_notes || `创建于 ${shortTime(item.created_at)}。这类样本用于判断策略是否稳定，不代表下一笔一定相同。`}</small>
             </article>
           ))}
         </div>
-        {replays.slice(0, 6).map((item) => (
-          <div className="sample" key={item.id}>{item.symbol} · {item.outcome} · {formatPct(item.pnl_pct)}</div>
-        ))}
         {lifecycleItems.slice(0, 5).map((item) => (
           <div className="sample" key={`${item.strategy_key}-${item.symbol}-${item.signal_trade_date}`}>
             {item.symbol} · {lifecycleStatusText(item.status)} · {strategyLabel(item.strategy_key)} · {formatPrice(item.entry_plan_low)}-{formatPrice(item.entry_plan_high)}

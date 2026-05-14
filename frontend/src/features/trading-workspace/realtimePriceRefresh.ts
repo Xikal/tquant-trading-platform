@@ -10,12 +10,42 @@ import type {
 
 const REALTIME_REFRESH_TRADING_MS = 20_000;
 const REALTIME_REFRESH_IDLE_MS = 5 * 60 * 1000;
+const TRADING_SESSION_STATUS_TTL_MS = 60_000;
 const SHANGHAI_TIMEZONE = "Asia/Shanghai";
 
 type ShanghaiPart = "weekday" | "hour" | "minute";
+type TradingSessionStatus = { is_trading_now: boolean };
+
+let tradingSessionCache: { expiresAt: number; isTradingNow: boolean } | null = null;
 
 export function realtimePriceRefreshIntervalMs(now = new Date()): number {
+  if (tradingSessionCache && tradingSessionCache.expiresAt > Date.now()) {
+    return tradingSessionCache.isTradingNow ? REALTIME_REFRESH_TRADING_MS : REALTIME_REFRESH_IDLE_MS;
+  }
   return isTradingSession(now) ? REALTIME_REFRESH_TRADING_MS : REALTIME_REFRESH_IDLE_MS;
+}
+
+export async function refreshTradingSessionStatus(
+  loader: () => Promise<TradingSessionStatus>,
+): Promise<boolean> {
+  const now = Date.now();
+  if (tradingSessionCache && tradingSessionCache.expiresAt > now) {
+    return tradingSessionCache.isTradingNow;
+  }
+  try {
+    const status = await loader();
+    tradingSessionCache = {
+      expiresAt: now + TRADING_SESSION_STATUS_TTL_MS,
+      isTradingNow: Boolean(status.is_trading_now),
+    };
+    return tradingSessionCache.isTradingNow;
+  } catch {
+    tradingSessionCache = {
+      expiresAt: now + TRADING_SESSION_STATUS_TTL_MS,
+      isTradingNow: isTradingSession(new Date()),
+    };
+    return tradingSessionCache.isTradingNow;
+  }
 }
 
 export function shouldRefreshRealtimePrices(): boolean {

@@ -10,6 +10,7 @@ import type { Page } from "./workspaceTypes";
 import { trackedPlaybookSymbols } from "./workspaceViewModels";
 import {
   realtimePriceRefreshIntervalMs,
+  refreshTradingSessionStatus,
   shouldRefreshRealtimePrices,
 } from "./realtimePriceRefresh";
 
@@ -113,21 +114,30 @@ export function usePlaybookData({
     }
     let timer: number | undefined;
     const scheduleNext = () => {
-      timer = window.setTimeout(() => {
-        void refreshPlaybookQuotes().finally(() => {
-          if (active) {
-            scheduleNext();
-          }
-        });
-      }, realtimePriceRefreshIntervalMs());
+      void refreshTradingSessionStatus(api.getMarketTradingSession).finally(() => {
+        if (!active) {
+          return;
+        }
+        timer = window.setTimeout(() => {
+          void refreshPlaybookQuotes().finally(() => {
+            if (active) {
+              scheduleNext();
+            }
+          });
+        }, realtimePriceRefreshIntervalMs());
+      });
     };
     const handleVisibilityChange = () => {
       if (document.visibilityState === "visible") {
         void refreshPlaybookQuotes();
       }
     };
-    void refreshPlaybookQuotes();
-    scheduleNext();
+    void refreshTradingSessionStatus(api.getMarketTradingSession).finally(() => {
+      if (active) {
+        void refreshPlaybookQuotes();
+        scheduleNext();
+      }
+    });
     document.addEventListener("visibilitychange", handleVisibilityChange);
     return () => {
       active = false;

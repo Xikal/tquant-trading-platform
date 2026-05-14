@@ -44,6 +44,7 @@ export interface PaperTradingPageProps {
   setDraft: (draft: PaperOrderDraft) => void;
   loading: string;
   onSubmitOrder: () => void | Promise<void>;
+  onTogglePause: () => void | Promise<void>;
   onAddTradeTag: (tradeId: number, tag: string) => void;
   onDeleteTradeTag: (tradeId: number, tagId: number) => void;
 }
@@ -67,6 +68,7 @@ export const PaperTradingPage = memo(function PaperTradingPage({
   setDraft,
   loading,
   onSubmitOrder,
+  onTogglePause,
   onAddTradeTag,
   onDeleteTradeTag,
 }: PaperTradingPageProps) {
@@ -77,6 +79,13 @@ export const PaperTradingPage = memo(function PaperTradingPage({
   const autoTradingRunning = Boolean(autoTradingStatus?.running);
   const [orderModalOpen, setOrderModalOpen] = useState(false);
   const [lastOrderAction, setLastOrderAction] = useState<{ type: "buy" | "sell"; symbol: string; timestamp: number } | null>(null);
+  const [dismissedConfirmationKey, setDismissedConfirmationKey] = useState("");
+  const pendingConfirmation = useMemo(() => (
+    intradayConfirmations.find((item) => item.confirmed || item.late_confirmed) ?? intradayConfirmations[0] ?? null
+  ), [intradayConfirmations]);
+  const pendingConfirmationKey = pendingConfirmation
+    ? `${pendingConfirmation.symbol}-${pendingConfirmation.updated_at ?? pendingConfirmation.trade_date}-${pendingConfirmation.confirmed}-${pendingConfirmation.late_confirmed}`
+    : "";
   const recentTrades = useMemo(() => trades.slice(0, 3).map((item) => ({
     type: item.side,
     symbol: item.symbol,
@@ -94,9 +103,39 @@ export const PaperTradingPage = memo(function PaperTradingPage({
     setOrderModalOpen(false);
   }
 
+  function confirmIntradayBuy(item: IntradayConfirmationItem) {
+    setDraft({
+      ...draft,
+      symbol: item.symbol,
+      name: item.name || draft.name,
+      side: "buy",
+      order_type: "limit",
+      price: item.latest_price ? String(item.latest_price) : draft.price,
+      current_price: item.latest_price ? String(item.latest_price) : draft.current_price,
+      reason: item.reason || "分时确认后小仓模拟买入",
+      require_intraday_confirmation: false,
+    });
+    setDismissedConfirmationKey(pendingConfirmationKey);
+    setOrderModalOpen(true);
+  }
+
   return (
     <section className="page-grid paper-grid">
-      <PaperMetricGrid account={account} performance={performance} autoTradingStatus={autoTradingStatus} loading={paperLoading} />
+      {pendingConfirmation && pendingConfirmationKey !== dismissedConfirmationKey ? (
+        <IntradayConfirmationDialog
+          item={pendingConfirmation}
+          disabled={paused || autoTradingRunning}
+          onConfirm={() => confirmIntradayBuy(pendingConfirmation)}
+          onDismiss={() => setDismissedConfirmationKey(pendingConfirmationKey)}
+        />
+      ) : null}
+      <PaperMetricGrid
+        account={account}
+        performance={performance}
+        autoTradingStatus={autoTradingStatus}
+        loading={paperLoading}
+        onTogglePause={onTogglePause}
+      />
       <PixelTraderWorker
         marketState={marketState}
         paused={paused}
@@ -147,6 +186,43 @@ export const PaperTradingPage = memo(function PaperTradingPage({
     </section>
   );
 });
+
+function IntradayConfirmationDialog({
+  item,
+  disabled,
+  onConfirm,
+  onDismiss,
+}: {
+  item: IntradayConfirmationItem;
+  disabled: boolean;
+  onConfirm: () => void;
+  onDismiss: () => void;
+}) {
+  const passed = item.confirmed || item.late_confirmed;
+  return (
+    <div className="paper-confirmation-backdrop" role="presentation">
+      <section className={`paper-confirmation-card ${passed ? "ok" : "watch"}`} role="dialog" aria-modal="false" aria-label="盘中确认提醒">
+        <span>{passed ? "盘中确认已通过" : "盘中确认待观察"}</span>
+        <strong>{item.name || item.symbol} {passed ? "可以进入委托确认" : "暂不自动下单"}</strong>
+        <p>
+          参考价 {formatPriceValue(item.latest_price)}，VWAP {formatPriceValue(item.vwap)}，
+          分数 {Number.isFinite(item.score) ? item.score.toFixed(0) : "--"}。
+        </p>
+        <small>{item.reason || "系统正在等待分时承接确认。"}</small>
+        <div>
+          <button type="button" className="primary-button primary" onClick={onConfirm} disabled={disabled || !passed}>
+            确认买入
+          </button>
+          <button type="button" className="ghost-button" onClick={onDismiss}>暂不买</button>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function formatPriceValue(value?: number | null): string {
+  return typeof value === "number" && Number.isFinite(value) ? `¥${value.toFixed(3)}` : "--";
+}
 
 function PaperActionBrief({
   autoTradingStatus,

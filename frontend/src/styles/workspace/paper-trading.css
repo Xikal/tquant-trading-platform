@@ -194,7 +194,7 @@
 
 .paper-auto-skip-notice {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
   align-items: center;
   gap: 10px;
   min-height: 34px;
@@ -227,6 +227,23 @@
 .paper-auto-skip-notice.warn {
   border-color: rgba(214, 165, 92, 0.48);
   background: #fff8e8;
+}
+
+.paper-skip-action {
+  justify-self: end;
+  border: 1px solid rgba(15, 23, 42, 0.18);
+  border-radius: 999px;
+  padding: 6px 12px;
+  background: #0f172a;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.paper-skip-action:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
 }
 
 .paper-run-reason {

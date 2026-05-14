@@ -49,9 +49,13 @@ def resolve_sector_flow_ranks() -> dict[str, float]:
 
 def _load_sector_flow_ranks() -> dict[str, float]:
     try:
-        frame = external_factors.stock_sector_fund_flow_rank()
+        source_data = external_factors.stock_sector_fund_flow_rank()
     except Exception as exc:  # pragma: no cover - external source
         raise RuntimeError(str(exc)) from exc
+    typed_items = getattr(source_data, "items", None)
+    if isinstance(typed_items, list):
+        return _sector_flow_ranks_from_items(typed_items)
+    frame = source_data
     if frame is None or frame.empty:
         return {}
     flow_column = _find_column(frame, ("主力净流入-净额", "主力净流入", "净流入-净额", "净额"))
@@ -67,6 +71,27 @@ def _load_sector_flow_ranks() -> dict[str, float]:
     ranks: dict[str, float] = {}
     for index, (_, row) in enumerate(sorted_frame.iterrows()):
         name = str(row.get(name_column, ""))
+        if not name:
+            continue
+        percentile = index / max(total, 1)
+        if percentile <= 0.1:
+            score = 3.0
+        elif percentile <= 0.3:
+            score = 2.0 - (percentile - 0.1) / 0.2
+        elif percentile <= 0.5:
+            score = 1.0 - (percentile - 0.3) / 0.4
+        else:
+            score = 0.0
+        ranks[name] = round(max(0.0, score), 2)
+    return ranks
+
+
+def _sector_flow_ranks_from_items(items: list) -> dict[str, float]:
+    sorted_items = sorted(items, key=lambda item: _to_float(getattr(item, "net_flow", 0.0)), reverse=True)
+    total = len(sorted_items)
+    ranks: dict[str, float] = {}
+    for index, item in enumerate(sorted_items):
+        name = str(getattr(item, "sector_name", ""))
         if not name:
             continue
         percentile = index / max(total, 1)

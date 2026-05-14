@@ -13,6 +13,7 @@ import type {
   LowBuyExecutionBacktestResult,
   LowBuyTradeLifecycle,
   MarketBreadth,
+  MarketTradingSession,
   PairedHedgeResearchResponse,
   SectorEtfT0Response,
   IntradayAnomalyResponse,
@@ -78,6 +79,7 @@ export const api = {
   getWatchlistSignals: () => requestCached<WatchlistSignal[]>("/watchlist/signals", 9000),
   getWatchlistQuotes: () => request<WatchlistQuoteItem[]>("/watchlist/quotes"),
   getMarketBreadth: () => requestCached<MarketBreadth>("/market/breadth", 15000),
+  getMarketTradingSession: () => requestCached<MarketTradingSession>("/market/trading-session", 60000),
   getSectorEtfT0: (limit = 8) => requestCached<SectorEtfT0Response>(`/market/sector-etf-t0?limit=${limit}`, 20000),
   getPairedHedgeResearch: (limit = 8) =>
     requestCached<PairedHedgeResearchResponse>(`/market/paired-hedge-research?limit=${limit}`, 30000),

@@ -20,6 +20,8 @@ import {
   formatPct,
   formatPrice,
   formatResourceTier,
+  resourceTierHint,
+  backtestVerdictThresholds,
   percentFromRatio,
   toneFromNumber,
   BACKTEST_RESOURCE_TIER_OPTIONS,
@@ -154,6 +156,7 @@ export function BacktestDashboard({
             options={BACKTEST_RESOURCE_TIER_OPTIONS.map(([value, label]) => ({ value, label }))}
             onChange={(event) => onFormChange({ resource_tier: event.target.value as BacktestResourceTier })}
           /> : null}
+          {mode === "expert" ? <p className="backtest-helper wide">{resourceTierHint(form.resource_tier)}</p> : null}
           <div className="backtest-strategy-picker wide">
             <span>策略多选</span>
             {strategyOptions.map(([key, label]) => (
@@ -220,7 +223,7 @@ export function BacktestDashboard({
               <span>{formatBacktestStrategies(selectedRun.strategies)}</span>
               <span>{selectedRun.execution_model || "--"} · {formatResourceTier(selectedRun.resource_tier)} · {selectedRun.benchmark || "--"}</span>
             </div>
-            <ResultSummaryBanner metrics={selectedMetrics} />
+            <ResultSummaryBanner metrics={selectedMetrics} resourceTier={selectedRun.resource_tier} />
             {selectedRun.error_message ? <div className="backtest-error">{selectedRun.error_message}</div> : null}
             <div className="backtest-metric-grid">
               <Metric label="总收益" value={formatPct(selectedMetrics?.total_return_pct)} tone={toneFromNumber(selectedMetrics?.total_return_pct)} />
@@ -287,12 +290,12 @@ function resolveMetrics(run: BacktestRunDetail) {
   return run.result?.metrics ?? run.result?.summary ?? run.summary ?? null;
 }
 
-function ResultSummaryBanner({ metrics }: { metrics: unknown }) {
+function ResultSummaryBanner({ metrics, resourceTier }: { metrics: unknown; resourceTier?: BacktestResourceTier | null }) {
   if (!isRecord(metrics)) return null;
   const totalReturn = numeric(metrics.total_return_pct);
   const maxDrawdown = numeric(metrics.max_drawdown_pct);
   const sharpe = numeric(metrics.sharpe_ratio) ?? numeric(metrics.sharpe);
-  const verdict = backtestVerdict(totalReturn, sharpe, maxDrawdown);
+  const verdict = backtestVerdict(totalReturn, sharpe, maxDrawdown, backtestVerdictThresholds(resourceTier));
   const warnings = [
     maxDrawdown !== undefined && maxDrawdown <= -15 ? `最大回撤 ${formatPct(maxDrawdown)} 超过警戒线` : "",
     sharpe !== undefined && sharpe < 0.5 ? `Sharpe ${formatNumber(sharpe)} 偏低` : "",

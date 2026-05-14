@@ -8,6 +8,7 @@ from app.core.role_permissions import require_research_access
 from app.models.schema_defs.market import (
     IntradayAnomalyResponse,
     MarketBreadthResponse,
+    MarketTradingSessionResponse,
     MarketModelValidationResponse,
     PairedHedgeResearchResponse,
     SectorEtfT0Response,
@@ -16,6 +17,7 @@ from app.models.entities import User
 from app.services.intraday_anomaly import IntradayAnomalyService
 from app.services.market_data import MarketDataService
 from app.services.market.regime_quality import market_regime_quality_text
+from app.services.market.trading_session import current_a_share_trading_session
 from app.services.paired_hedge_research import PairedHedgeResearchService
 from app.services.sector_etf_t0 import SectorEtfT0Service
 from app.services.user_sector_preferences import UserSectorPreferenceService, filter_monitor_snapshot_payload
@@ -54,6 +56,21 @@ def market_breadth() -> MarketBreadthResponse:
         hot_turnover=round(regime.hot_turnover, 4),
         hot_overlap_ratio=round(regime.hot_overlap_ratio, 4),
         data_quality_text=market_regime_quality_text(regime),
+    )
+
+
+@router.get("/trading-session", response_model=MarketTradingSessionResponse)
+def market_trading_session() -> MarketTradingSessionResponse:
+    """Return backend-authoritative A-share trading session status."""
+
+    status = current_a_share_trading_session()
+    return MarketTradingSessionResponse(
+        updated_at=beijing_now_string(),
+        is_trading_day=status.is_trading_day,
+        is_trading_now=status.is_trading_now,
+        current_time=status.current_time,
+        timezone=status.timezone,
+        data_quality_text=status.data_quality_text,
     )
 
 

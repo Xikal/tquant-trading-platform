@@ -24,7 +24,20 @@ export function playbookActionLabel(state?: string): string {
   return "等待";
 }
 
-export function backtestVerdict(totalReturn?: number, sharpe?: number, maxDrawdown?: number): {
+export interface BacktestVerdictThresholds {
+  minReturnPct: number;
+  minSharpe: number;
+  maxDrawdownPct: number;
+  cautiousMinReturnPct: number;
+  cautiousMaxDrawdownPct: number;
+}
+
+export function backtestVerdict(
+  totalReturn: number | undefined,
+  sharpe: number | undefined,
+  maxDrawdown: number | undefined,
+  thresholds: BacktestVerdictThresholds,
+): {
   title: string;
   detail: string;
   tone: "ok" | "warn" | "bad";
@@ -32,12 +45,15 @@ export function backtestVerdict(totalReturn?: number, sharpe?: number, maxDrawdo
   if (typeof totalReturn !== "number" || !Number.isFinite(totalReturn)) {
     return { title: "结果生成中", detail: "任务完成后优先看收益、回撤和胜率。", tone: "warn" };
   }
-  if (totalReturn > 3 && (sharpe ?? 0) >= 0.8 && (maxDrawdown ?? 0) > -12) {
+  if (
+    totalReturn > thresholds.minReturnPct
+    && (sharpe ?? 0) >= thresholds.minSharpe
+    && (maxDrawdown ?? 0) > thresholds.maxDrawdownPct
+  ) {
     return { title: "值得继续验证", detail: "收益为正且回撤可控，可进入样本外和小仓模拟验证。", tone: "ok" };
   }
-  if (totalReturn >= 0 && (maxDrawdown ?? 0) > -18) {
+  if (totalReturn >= thresholds.cautiousMinReturnPct && (maxDrawdown ?? 0) > thresholds.cautiousMaxDrawdownPct) {
     return { title: "谨慎使用", detail: "收益没有明显恶化，但仍需检查成交明细、手续费和极端回撤。", tone: "warn" };
   }
   return { title: "不建议使用", detail: "当前回测收益或回撤不达标，先不要进入自动交易。", tone: "bad" };
 }
-

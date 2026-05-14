@@ -27,6 +27,15 @@ class MarketBreadthResponse(BaseModel):
     data_quality_text: str = ""
 
 
+class MarketTradingSessionResponse(BaseModel):
+    updated_at: str
+    is_trading_day: bool = False
+    is_trading_now: bool = False
+    current_time: str = ""
+    timezone: str = "Asia/Shanghai"
+    data_quality_text: str = ""
+
+
 class SectorEtfT0Opportunity(BaseModel):
     sector_name: str
     etf_symbol: str

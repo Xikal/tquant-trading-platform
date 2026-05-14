@@ -74,6 +74,7 @@ def pause_paper_account(current_user: User = Depends(require_paper_trading), db:
 def resume_paper_account(current_user: User = Depends(require_paper_trading), db: Session = Depends(get_db)) -> PaperAccountOut:
     service = PaperAccountService(db)
     account = service.get_or_create_default(current_user.id)
+    PaperRiskCircuitBreaker(db).resolve_open_events(account.id, reason="manual_review_resume")
     return account_out(service.resume(account.id))
 
 

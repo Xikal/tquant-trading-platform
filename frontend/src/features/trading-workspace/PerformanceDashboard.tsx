@@ -245,8 +245,15 @@ function monthlySummary(dashboard: PaperPerformanceDashboard | null, days: numbe
   if (!dashboard) return "暂无绩效数据，等待模拟盘归档。";
   const total = dashboard.account.total_return_pct;
   const latest = lastOf(dashboard.equity_curve);
+  const strategyReturns = dashboard.strategy_trend
+    .map((item) => ({ key: item.strategy_key, value: lastOf(item.points)?.avg_return_pct ?? 0 }))
+    .filter((item) => Number.isFinite(item.value));
+  const best = [...strategyReturns].sort((left, right) => right.value - left.value)[0];
+  const worst = [...strategyReturns].sort((left, right) => left.value - right.value)[0];
   const tone = total >= 0 ? "盈利" : "回撤";
-  return `最近 ${days} 天模拟盘${tone} ${formatPct(total)}，最新总资产 ${formatMoneyPlain(latest?.total_assets ?? dashboard.account.total_assets)}。`;
+  const bestText = best ? `，表现最好：${strategyLabel(best.key)} ${formatPct(best.value)}` : "";
+  const worstText = worst && worst.key !== best?.key ? `；需要复盘：${strategyLabel(worst.key)} ${formatPct(worst.value)}` : "";
+  return `最近 ${days} 天模拟盘${tone} ${formatPct(total)}，最新总资产 ${formatMoneyPlain(latest?.total_assets ?? dashboard.account.total_assets)}${bestText}${worstText}。`;
 }
 
 function strategyAdviceRow(item: PaperStrategyTrend) {

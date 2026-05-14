@@ -38,6 +38,14 @@ class MarketRouteTests(unittest.TestCase):
         self.assertEqual(body["state_text"], "震荡修复")
         self.assertEqual(body["hot_industries"], ["半导体"])
 
+    def test_market_trading_session_returns_backend_calendar_status(self) -> None:
+        response = self.client.get("/api/market/trading-session")
+        self.assertEqual(response.status_code, 200)
+        body = response.json()
+        self.assertIn("is_trading_day", body)
+        self.assertIn("is_trading_now", body)
+        self.assertEqual(body["timezone"], "Asia/Shanghai")
+
     @staticmethod
     def _regime():
         return SimpleNamespace(

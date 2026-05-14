@@ -86,9 +86,14 @@ export function SettingsPage({
   const dailyLossError = percentFieldError(draft.risk_max_daily_loss_pct, "日内最大亏损");
   const pauseLossError = integerFieldError(draft.risk_pause_after_losses, "连亏暂停");
   const minProfitError = percentFieldError(draft.strategy_min_profit_pct, "最小收益");
+  const isAdmin = useMemo(() => currentUser.roles.some((role) => {
+    const normalized = role.trim().toLowerCase();
+    return normalized === "admin" || normalized === "administrator";
+  }), [currentUser.roles]);
   const dirtyState = useMemo(() => buildSettingsDirtyState(settings, factorWeights, draft, factorDraft), [draft, factorDraft, factorWeights, settings]);
   const sectorDirty = useMemo(() => !sameStringSet(sectorDraft, sectorExclusions?.excluded_sectors ?? []), [sectorDraft, sectorExclusions]);
-  const unsavedCount = Object.values(dirtyState).filter(Boolean).length + (sectorDirty ? 1 : 0);
+  const visibleDirtyCount = Number(dirtyState.risk) + (isAdmin ? Number(dirtyState.llm) + Number(dirtyState.data) + Number(dirtyState.factor) : 0);
+  const unsavedCount = visibleDirtyCount + (sectorDirty ? 1 : 0);
   const filteredSectors = useMemo(() => {
     const query = sectorQuery.trim().toLowerCase();
     const sectors = sectorExclusions?.available_sectors ?? [];
@@ -120,10 +125,10 @@ export function SettingsPage({
 
   async function saveAllDirty() {
     const sections: Array<"llm" | "risk" | "data" | "factor"> = [];
-    if (dirtyState.llm) sections.push("llm");
-    if (dirtyState.data) sections.push("data");
+    if (isAdmin && dirtyState.llm) sections.push("llm");
+    if (isAdmin && dirtyState.data) sections.push("data");
     if (dirtyState.risk) sections.push("risk");
-    if (dirtyState.factor) sections.push("factor");
+    if (isAdmin && dirtyState.factor) sections.push("factor");
     for (const section of sections) {
       await saveSection(section);
     }
@@ -141,13 +146,19 @@ export function SettingsPage({
   }
 
   useEffect(() => {
+    if (!isAdmin) {
+      setFeatureFlags([]);
+      setFeatureFlagAudits([]);
+      setOperationAudits([]);
+      return;
+    }
     let cancelled = false;
     loadFeatureFlags({ includeAudit: true, cancelled: () => cancelled });
     loadOperationAudits({ cancelled: () => cancelled });
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [isAdmin]);
 
   useEffect(() => {
     setSectorDraft(sectorExclusions?.excluded_sectors ?? []);
@@ -243,103 +254,84 @@ export function SettingsPage({
           </div>
         ) : null}
       </div>
-      <div className="settings-cards">
-        <SettingCard title="大模型配置" button="保存大模型配置" onSave={() => void saveSection("llm")} loading={loading === "settings-llm"} saved={savedSection === "llm"} disabled={Boolean(adminTokenError || llmKeyError || llmBaseUrlError)}>
-          <div className="compact-form-grid">
-            <TextField label="管理令牌" value={draft.adminToken} error={adminTokenError} onChange={(event) => setDraft({ ...draft, adminToken: event.target.value })} />
-            <TextField label="API Key" value={draft.llm_api_key} error={llmKeyError} onChange={(event) => setDraft({ ...draft, llm_api_key: event.target.value })} />
-            <TextField label="Base URL" value={draft.llm_base_url} error={llmBaseUrlError} onChange={(event) => setDraft({ ...draft, llm_base_url: event.target.value })} />
-            <TextField label="模型名" value={draft.llm_model} onChange={(event) => setDraft({ ...draft, llm_model: event.target.value })} />
-            <TextField label="供应商" value={draft.llm_provider} placeholder="openai / deepseek" onChange={(event) => setDraft({ ...draft, llm_provider: event.target.value })} />
-          </div>
-          <p className="hint">当前状态：{settings?.llm_api_key_configured ? "Key 已配置" : "Key 未配置"}</p>
-        </SettingCard>
-        <SettingCard title="数据库与数据源" button="保存数据配置" onSave={() => void saveSection("data")} loading={loading === "settings-data"} saved={savedSection === "data"} disabled={Boolean(adminTokenError || dataSourceUrlError)}>
-          <div className="compact-form-grid">
-            <TextField label="数据源" value={draft.data_source} hint={adminTokenError || "保存数据源配置同样需要管理令牌。"} onChange={(event) => setDraft({ ...draft, data_source: event.target.value })} />
-            <TextField label="数据源地址" value={draft.data_source_base_url} error={dataSourceUrlError} onChange={(event) => setDraft({ ...draft, data_source_base_url: event.target.value })} />
-          </div>
-          <InfoPill label="数据库" value={runtime?.database_url_masked ?? "--"} />
-          <InfoPill label="接口前缀" value={runtime?.api_prefix ?? "/api"} />
-        </SettingCard>
-        <SettingCard title="风控参数" button="保存风控参数" onSave={() => void saveSection("risk")} loading={loading === "settings-risk"} saved={savedSection === "risk"} disabled={Boolean(adminTokenError || singleLossError || dailyLossError || pauseLossError || minProfitError)}>
-          <div className="compact-form-grid">
-            <NumberField label="单笔最大亏损" suffix="%" value={draft.risk_max_single_loss_pct} error={singleLossError} onChange={(event) => setDraft({ ...draft, risk_max_single_loss_pct: event.target.value })} />
-            <NumberField label="日内最大亏损" suffix="%" value={draft.risk_max_daily_loss_pct} error={dailyLossError} onChange={(event) => setDraft({ ...draft, risk_max_daily_loss_pct: event.target.value })} />
-            <NumberField label="连亏暂停" value={draft.risk_pause_after_losses} error={pauseLossError} onChange={(event) => setDraft({ ...draft, risk_pause_after_losses: event.target.value })} />
-            <NumberField label="最小收益" suffix="%" value={draft.strategy_min_profit_pct} error={minProfitError} onChange={(event) => setDraft({ ...draft, strategy_min_profit_pct: event.target.value })} />
-          </div>
-          <p className="hint">{adminTokenError || "保存后会影响后续信号，不会修改已有复盘记录。"}</p>
-        </SettingCard>
-        <SettingCard title="因子权重" button="保存因子权重" onSave={() => void saveSection("factor")} loading={loading === "settings-factor"} saved={savedSection === "factor"} disabled={Boolean(adminTokenError)}>
-          {factorWeights ? (
-            <div className="factor-weight-grid">
-              {factorWeights.factors.map((factor) => (
-                <label key={factor.name}>
-                  <span>{factor.name}</span>
-                  <input
-                    value={factorDraft[factor.name] ?? String(factorWeights.weights[factor.name] ?? factor.weight)}
-                    inputMode="decimal"
-                    onChange={(event) => setFactorDraft({ ...factorDraft, [factor.name]: event.target.value })}
-                  />
-                  <small>{factor.data_dependencies.join(" / ") || "基础因子"}</small>
-                  <small className={`factor-status ${factor.status}`}>{factor.status_text || factor.status}</small>
-                </label>
-              ))}
+      <div className="settings-cards role-separated">
+        <section className="settings-section">
+          <div className="settings-section-title"><strong>我的账户</strong><span>登录安全、二次验证和权限状态</span></div>
+          <AuthSecurityCard currentUser={currentUser} onUserUpdate={onUserUpdate} />
+        </section>
+
+        <section className="settings-section">
+          <div className="settings-section-title"><strong>交易参数</strong><span>普通用户常用配置：风控、行业过滤和模拟退出</span></div>
+          <SettingCard title="风控参数" button="保存风控参数" onSave={() => void saveSection("risk")} loading={loading === "settings-risk"} saved={savedSection === "risk"} disabled={Boolean(adminTokenError || singleLossError || dailyLossError || pauseLossError || minProfitError)}>
+            <div className="compact-form-grid">
+              <NumberField label="单笔最大亏损" suffix="%" value={draft.risk_max_single_loss_pct} error={singleLossError} onChange={(event) => setDraft({ ...draft, risk_max_single_loss_pct: event.target.value })} />
+              <NumberField label="日内最大亏损" suffix="%" value={draft.risk_max_daily_loss_pct} error={dailyLossError} onChange={(event) => setDraft({ ...draft, risk_max_daily_loss_pct: event.target.value })} />
+              <NumberField label="连亏暂停" value={draft.risk_pause_after_losses} error={pauseLossError} onChange={(event) => setDraft({ ...draft, risk_pause_after_losses: event.target.value })} />
+              <NumberField label="最小收益" suffix="%" value={draft.strategy_min_profit_pct} error={minProfitError} onChange={(event) => setDraft({ ...draft, strategy_min_profit_pct: event.target.value })} />
             </div>
-          ) : (
-            <p className="hint">填写管理令牌后点击刷新配置，即可加载因子权重。未加载时不会影响策略运行。</p>
-          )}
-        </SettingCard>
-        <QuantParameterMlCard adminTokenError={adminTokenError} />
-        <QuantParameterPaperExitCard adminTokenError={adminTokenError} />
-        <QuantParameterSectorEtfCard adminTokenError={adminTokenError} />
-        <AuthSecurityCard currentUser={currentUser} onUserUpdate={onUserUpdate} />
-        <SectorFilterCard
-          sectorExclusions={sectorExclusions}
-          sectorDraft={sectorDraft}
-          sectorQuery={sectorQuery}
-          filteredSectors={filteredSectors}
-          sectorDirty={sectorDirty}
-          loading={loading}
-          saved={savedSection === "sector-exclusions"}
-          onSave={() => void saveSectorExclusions()}
-          onClear={() => setSectorDraft([])}
-          onQueryChange={setSectorQuery}
-          onToggleSector={toggleSector}
-        />
-        <StrategyGovernanceCard
-          strategyGovernance={strategyGovernance}
-          loading={loading}
-          onRefresh={onRefresh}
-          onUpdateStrategyGovernance={onUpdateStrategyGovernance}
-        />
-        <FeatureFlagsCard
-          featureFlags={featureFlags}
-          featureFlagAudits={featureFlagAudits}
-          featureFlagError={featureFlagError}
-          loading={loading}
-          saved={savedSection === "feature-flags"}
-          onRefresh={() => {
-            void loadFeatureFlags({ includeAudit: true });
-          }}
-          onToggle={(item) => void toggleFeatureFlag(item)}
-        />
-        <OperationAuditCard
-          items={operationAudits}
-          error={operationAuditError}
-          loading={operationAuditLoading}
-          onRefresh={() => void loadOperationAudits()}
-        />
-        <RuntimeDiagnosticsCard
-          runtime={runtime}
-          adminTasks={adminTasks}
-          adminMetrics={adminMetrics}
-          loading={loading}
-          onRefresh={onRefresh}
-        />
+            <p className="hint">{adminTokenError || "保存后会影响后续信号，不会修改已有复盘记录。"}</p>
+          </SettingCard>
+          <SectorFilterCard
+            sectorExclusions={sectorExclusions}
+            sectorDraft={sectorDraft}
+            sectorQuery={sectorQuery}
+            filteredSectors={filteredSectors}
+            sectorDirty={sectorDirty}
+            loading={loading}
+            saved={savedSection === "sector-exclusions"}
+            onSave={() => void saveSectorExclusions()}
+            onClear={() => setSectorDraft([])}
+            onQueryChange={setSectorQuery}
+            onToggleSector={toggleSector}
+          />
+          <QuantParameterPaperExitCard adminTokenError={adminTokenError} />
+          <QuantParameterSectorEtfCard adminTokenError={adminTokenError} />
+        </section>
+
+        {isAdmin ? (
+          <section className="settings-section admin">
+            <div className="settings-section-title"><strong>系统管理</strong><span>仅管理员可见：模型、数据源、策略治理、审计与诊断</span></div>
+            <SettingCard title="大模型配置" button="保存大模型配置" onSave={() => void saveSection("llm")} loading={loading === "settings-llm"} saved={savedSection === "llm"} disabled={Boolean(adminTokenError || llmKeyError || llmBaseUrlError)}>
+              <div className="compact-form-grid">
+                <TextField label="管理令牌" value={draft.adminToken} error={adminTokenError} onChange={(event) => setDraft({ ...draft, adminToken: event.target.value })} />
+                <TextField label="API Key" value={draft.llm_api_key} error={llmKeyError} onChange={(event) => setDraft({ ...draft, llm_api_key: event.target.value })} />
+                <TextField label="Base URL" value={draft.llm_base_url} error={llmBaseUrlError} onChange={(event) => setDraft({ ...draft, llm_base_url: event.target.value })} />
+                <TextField label="模型名" value={draft.llm_model} onChange={(event) => setDraft({ ...draft, llm_model: event.target.value })} />
+                <TextField label="供应商" value={draft.llm_provider} placeholder="openai / deepseek" onChange={(event) => setDraft({ ...draft, llm_provider: event.target.value })} />
+              </div>
+              <p className="hint">当前状态：{settings?.llm_api_key_configured ? "Key 已配置" : "Key 未配置"}</p>
+            </SettingCard>
+            <SettingCard title="数据库与数据源" button="保存数据配置" onSave={() => void saveSection("data")} loading={loading === "settings-data"} saved={savedSection === "data"} disabled={Boolean(adminTokenError || dataSourceUrlError)}>
+              <div className="compact-form-grid">
+                <TextField label="数据源" value={draft.data_source} hint={adminTokenError || "保存数据源配置同样需要管理令牌。"} onChange={(event) => setDraft({ ...draft, data_source: event.target.value })} />
+                <TextField label="数据源地址" value={draft.data_source_base_url} error={dataSourceUrlError} onChange={(event) => setDraft({ ...draft, data_source_base_url: event.target.value })} />
+              </div>
+              <InfoPill label="数据库" value={runtime?.database_url_masked ?? "--"} />
+              <InfoPill label="接口前缀" value={runtime?.api_prefix ?? "/api"} />
+            </SettingCard>
+            <SettingCard title="因子权重" button="保存因子权重" onSave={() => void saveSection("factor")} loading={loading === "settings-factor"} saved={savedSection === "factor"} disabled={Boolean(adminTokenError)}>
+              {factorWeights ? (
+                <div className="factor-weight-grid">
+                  {factorWeights.factors.map((factor) => (
+                    <label key={factor.name}>
+                      <span>{factor.name}</span>
+                      <input value={factorDraft[factor.name] ?? String(factorWeights.weights[factor.name] ?? factor.weight)} inputMode="decimal" onChange={(event) => setFactorDraft({ ...factorDraft, [factor.name]: event.target.value })} />
+                      <small>{factor.data_dependencies.join(" / ") || "基础因子"}</small>
+                      <small className={`factor-status ${factor.status}`}>{factor.status_text || factor.status}</small>
+                    </label>
+                  ))}
+                </div>
+              ) : <p className="hint">填写管理令牌后点击刷新配置，即可加载因子权重。未加载时不会影响策略运行。</p>}
+            </SettingCard>
+            <QuantParameterMlCard adminTokenError={adminTokenError} />
+            <StrategyGovernanceCard strategyGovernance={strategyGovernance} loading={loading} onRefresh={onRefresh} onUpdateStrategyGovernance={onUpdateStrategyGovernance} />
+            <FeatureFlagsCard featureFlags={featureFlags} featureFlagAudits={featureFlagAudits} featureFlagError={featureFlagError} loading={loading} saved={savedSection === "feature-flags"} onRefresh={() => void loadFeatureFlags({ includeAudit: true })} onToggle={(item) => void toggleFeatureFlag(item)} />
+            <OperationAuditCard items={operationAudits} error={operationAuditError} loading={operationAuditLoading} onRefresh={() => void loadOperationAudits()} />
+            <RuntimeDiagnosticsCard runtime={runtime} adminTasks={adminTasks} adminMetrics={adminMetrics} loading={loading} onRefresh={onRefresh} />
+            <RuntimeSnapshotPanel settings={settings} runtime={runtime} />
+          </section>
+        ) : null}
       </div>
-      <RuntimeSnapshotPanel settings={settings} runtime={runtime} />
     </section>
   );
 }

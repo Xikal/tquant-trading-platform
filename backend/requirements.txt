@@ -17,6 +17,6 @@ redis>=5.0,<6.0
 scikit-learn>=1.4,<2.0
 lightgbm>=4.0,<5.0
 fsspec>=2024.6,<2027.0
-# RL shadow training dependencies are intentionally optional because they
-# pull PyTorch. Install backend/requirements-rl-extra.txt only in offline
-# research workers that run PPO/SAC experiments.
+# RL shadow research dependencies are optional because they pull PyTorch.
+# Install backend/requirements-rl-extra.txt or use Docker --build-arg
+# WITH_RL=true only for offline PPO/SAC experiments.

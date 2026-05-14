@@ -20,6 +20,7 @@ import {
   applyWatchlistQuoteRefresh,
   collectPrioritySymbolsByStrategy,
   realtimePriceRefreshIntervalMs,
+  refreshTradingSessionStatus,
   shouldRefreshRealtimePrices,
 } from "./realtimePriceRefresh";
 
@@ -185,21 +186,30 @@ export function useMonitorData({ active, withLoading, setError, setNotice }: Use
       }
     };
     const scheduleNext = () => {
-      timer = window.setTimeout(() => {
-        void refreshQuotes().finally(() => {
-          if (!cancelled) {
-            scheduleNext();
-          }
-        });
-      }, realtimePriceRefreshIntervalMs());
+      void refreshTradingSessionStatus(api.getMarketTradingSession).finally(() => {
+        if (cancelled) {
+          return;
+        }
+        timer = window.setTimeout(() => {
+          void refreshQuotes().finally(() => {
+            if (!cancelled) {
+              scheduleNext();
+            }
+          });
+        }, realtimePriceRefreshIntervalMs());
+      });
     };
     const handleVisibilityChange = () => {
       if (document.visibilityState === "visible") {
         void refreshQuotes();
       }
     };
-    void refreshQuotes();
-    scheduleNext();
+    void refreshTradingSessionStatus(api.getMarketTradingSession).finally(() => {
+      if (!cancelled) {
+        void refreshQuotes();
+        scheduleNext();
+      }
+    });
     document.addEventListener("visibilitychange", handleVisibilityChange);
     return () => {
       cancelled = true;

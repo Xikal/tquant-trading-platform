@@ -25,12 +25,18 @@ class PaperPerformanceDashboardService:
 
     def build(self, account: PaperAccount, days: int) -> dict:
         start_date = beijing_today() - timedelta(days=days - 1)
+        performance_service = PaperPerformanceService(self.db)
         snapshots = self._snapshots(account.id, start_date)
         strategies = self._strategies(account.id, start_date)
         markets = self._markets(account.id, start_date)
         report = self._latest_report(account.id)
-        performance_service = PaperPerformanceService(self.db)
         performance = performance_service.compute_overall(account.id)
+        strategy_trend = _strategy_trend(strategies)
+        market_heatmap = _market_heatmap(markets)
+        if not strategy_trend:
+            strategy_trend = _strategy_trend_from_live(performance_service.compute_by_strategy(account.id))
+        if not market_heatmap:
+            market_heatmap = _market_heatmap_from_live(performance_service.compute_by_market_state(account.id))
         return {
             "account": {
                 "id": account.id,
@@ -38,10 +44,10 @@ class PaperPerformanceDashboardService:
                 "total_return_pct": performance["total_return_pct"],
                 "sharpe_ratio": performance.get("sharpe_ratio", 0.0),
             },
-            "equity_curve": [_snapshot_point(row) for row in snapshots],
-            "win_rate_trend": [_win_rate_point(row) for row in snapshots],
-            "strategy_trend": _strategy_trend(strategies),
-            "market_perf_heatmap": _market_heatmap(markets),
+            "equity_curve": _snapshot_points_with_live(snapshots, account, performance),
+            "win_rate_trend": _win_rate_points_with_live(snapshots, performance),
+            "strategy_trend": strategy_trend,
+            "market_perf_heatmap": market_heatmap,
             "strategy_market_matrix": performance_service.compute_by_strategy_market_state(
                 account.id,
                 start_date=start_date,
@@ -101,12 +107,46 @@ def _snapshot_point(row: PaperPerformanceSnapshot) -> dict:
     }
 
 
+def _snapshot_points_with_live(
+    rows: list[PaperPerformanceSnapshot],
+    account: PaperAccount,
+    performance: dict,
+) -> list[dict]:
+    points = [_snapshot_point(row) for row in rows]
+    today = beijing_today().isoformat()
+    live = {
+        "date": today,
+        "total_assets": float(account.total_assets or 0),
+        "cumulative_return_pct": float(performance.get("total_return_pct") or 0),
+    }
+    if points and points[-1]["date"] == today:
+        points[-1] = live
+    else:
+        points.append(live)
+    return points
+
+
 def _win_rate_point(row: PaperPerformanceSnapshot) -> dict:
     return {
         "date": row.snapshot_date.isoformat(),
         "win_rate_pct": float(row.win_rate_pct or 0),
         "net_win_rate_pct": float(row.net_win_rate_pct or 0),
     }
+
+
+def _win_rate_points_with_live(rows: list[PaperPerformanceSnapshot], performance: dict) -> list[dict]:
+    points = [_win_rate_point(row) for row in rows]
+    today = beijing_today().isoformat()
+    live = {
+        "date": today,
+        "win_rate_pct": float(performance.get("win_rate_pct") or 0),
+        "net_win_rate_pct": float(performance.get("net_win_rate_pct") or 0),
+    }
+    if points and points[-1]["date"] == today:
+        points[-1] = live
+    else:
+        points.append(live)
+    return points
 
 
 def _strategy_trend(rows: list[PaperStrategyPerfDaily]) -> list[dict]:
@@ -148,6 +188,39 @@ def _market_heatmap(rows: list[PaperMarketPerfDaily]) -> list[dict]:
                 "profit_factor": _avg_optional([float(item.profit_factor) for item in items if item.profit_factor is not None]),
             }
         )
+    return sorted(result, key=lambda item: item["trade_count"], reverse=True)
+
+
+def _strategy_trend_from_live(rows: list[dict]) -> list[dict]:
+    today = beijing_today().isoformat()
+    return [
+        {
+            "strategy_key": str(item.get("key") or "未分类"),
+            "points": [
+                {
+                    "date": today,
+                    "win_rate_pct": float(item.get("win_rate_pct") or 0),
+                    "net_win_rate_pct": float(item.get("net_win_rate_pct") or 0),
+                    "avg_return_pct": float(item.get("avg_return_pct") or 0),
+                    "trade_count": int(item.get("trades") or 0),
+                }
+            ],
+        }
+        for item in rows
+    ]
+
+
+def _market_heatmap_from_live(rows: list[dict]) -> list[dict]:
+    result = [
+        {
+            "market_state": str(item.get("key") or "未分类"),
+            "avg_win_rate_pct": float(item.get("win_rate_pct") or 0),
+            "avg_return_pct": float(item.get("avg_return_pct") or 0),
+            "trade_count": int(item.get("trades") or 0),
+            "profit_factor": item.get("profit_factor"),
+        }
+        for item in rows
+    ]
     return sorted(result, key=lambda item: item["trade_count"], reverse=True)
 
 

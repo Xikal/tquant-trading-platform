@@ -273,22 +273,14 @@ def agent_sector_fund_flow(
 
     if result and result.usable and result.data is not None:
         flow_data = result.data
-        items = [
-            SectorFundFlowItem(
-                board_code=item.board_code,
-                sector_name=item.sector_name,
-                net_flow_yi=round(item.net_flow / 1e8, 2),
-                net_flow_rank=idx + 1,
-            )
-            for idx, item in enumerate(flow_data.items[:limit])
-        ]
+        items = _sector_fund_flow_items(flow_data, limit=limit)
         response = AgentSectorFundFlowResponse(
             updated_at=_now_string(),
             period=period,
             sector_type=sector_type,
-            total=flow_data.total,
+            total=_sector_fund_flow_total(flow_data, fallback=len(items)),
             items=items,
-            data_quality_text=f"东方财富数据中心 {sector_type}板块 {period}主力净流入",
+            data_quality_text=_sector_fund_flow_quality_text(result.source, sector_type, period, bool(items)),
         )
     else:
         response = AgentSectorFundFlowResponse(
@@ -302,6 +294,93 @@ def agent_sector_fund_flow(
 
     _SECTOR_FUND_FLOW_CACHE[cache_key] = (now + _SECTOR_FUND_FLOW_TTL_SECONDS, response)
     return response
+
+
+def _sector_fund_flow_items(flow_data, *, limit: int) -> list[SectorFundFlowItem]:
+    """Normalize typed EastMoney results and legacy DataFrame fallbacks."""
+    raw_items = getattr(flow_data, "items", None)
+    if isinstance(raw_items, list):
+        return [
+            SectorFundFlowItem(
+                board_code=str(getattr(item, "board_code", "")),
+                sector_name=str(getattr(item, "sector_name", "")),
+                net_flow_yi=round(_float(getattr(item, "net_flow", 0.0)) / 1e8, 2),
+                net_flow_rank=idx + 1,
+            )
+            for idx, item in enumerate(raw_items[:limit])
+        ]
+    if hasattr(flow_data, "iterrows"):
+        return _sector_fund_flow_items_from_frame(flow_data, limit=limit)
+    return []
+
+
+def _sector_fund_flow_items_from_frame(frame, *, limit: int) -> list[SectorFundFlowItem]:
+    if frame is None or getattr(frame, "empty", True):
+        return []
+    name_column = _find_frame_column(frame, ("名称", "板块名称", "行业名称", "行业", "sector_name"))
+    flow_column = _find_frame_column(frame, ("主力净流入-净额", "主力净流入", "净流入-净额", "净流入", "净额", "amount"))
+    code_column = _find_frame_column(frame, ("代码", "板块代码", "board_code"))
+    if not name_column or not flow_column:
+        return []
+    try:
+        sorted_frame = frame.assign(_fund_flow_value=frame[flow_column].map(_float)).sort_values(
+            "_fund_flow_value",
+            ascending=False,
+        )
+    except Exception:
+        sorted_frame = frame
+    items: list[SectorFundFlowItem] = []
+    for _, row in sorted_frame.head(limit).iterrows():
+        sector_name = str(row.get(name_column, ""))
+        if not sector_name:
+            continue
+        items.append(
+            SectorFundFlowItem(
+                board_code=str(row.get(code_column, "")) if code_column else "",
+                sector_name=sector_name,
+                net_flow_yi=round(_float(row.get(flow_column, 0.0)) / 1e8, 2),
+                net_flow_rank=len(items) + 1,
+            )
+        )
+    return items
+
+
+def _sector_fund_flow_total(flow_data, *, fallback: int) -> int:
+    try:
+        total = getattr(flow_data, "total", None)
+        if total is None:
+            raise TypeError("missing total")
+        return int(total)
+    except (TypeError, ValueError):
+        if hasattr(flow_data, "__len__"):
+            try:
+                return int(len(flow_data))
+            except Exception:
+                pass
+        return fallback
+
+
+def _sector_fund_flow_quality_text(source: str, sector_type: str, period: str, has_items: bool) -> str:
+    if not has_items:
+        return "板块资金流数据暂不可用"
+    source_name = {
+        "eastmoney": "东方财富数据中心",
+        "akshare": "AkShare",
+        "local": "本地快照估算",
+    }.get(source or "", source or "市场数据源")
+    return f"{source_name} {sector_type}板块 {period}主力净流入"
+
+
+def _find_frame_column(frame, candidates: tuple[str, ...]) -> str | None:
+    columns = list(getattr(frame, "columns", []))
+    for candidate in candidates:
+        if candidate in columns:
+            return candidate
+    for column in columns:
+        text = str(column)
+        if any(candidate in text for candidate in candidates):
+            return str(column)
+    return None
 
 
 def agent_position_t_signal(

@@ -43,6 +43,8 @@ APP_LOW_BUY_STARTUP_LIMIT = 24
 FULL_SCAN_BACKGROUND_LIMIT = 40
 SQLITE_BACKGROUND_SCAN_LIMIT = 120
 DEFAULT_BACKGROUND_SCAN_LIMIT = 480
+ML_INCREMENTAL_TRAIN_WEEKDAY = 4  # Friday
+ML_INCREMENTAL_TRAIN_AFTER = dt_time(hour=16, minute=0)
 _paper_archive_last_run_date: date | None = None
 _background_leader_lock_handle = None
 
@@ -268,7 +270,7 @@ def _push_agent_daily_report_once() -> None:
 
 def _enqueue_ml_incremental_train_once() -> None:
     now = beijing_now()
-    if now.weekday() != 0 or now.time() < dt_time(hour=16, minute=0):
+    if not _ml_incremental_train_due(now):
         return
     week_key = f"{now.isocalendar().year}-W{now.isocalendar().week:02d}"
     with SessionLocal() as db:
@@ -290,6 +292,12 @@ def _enqueue_ml_incremental_train_once() -> None:
             )
         )
         logger.info("ML 增量训练任务检查完成: week=%s task_id=%s status=%s", week_key, task.id, task.status)
+
+
+def _ml_incremental_train_due(now: datetime) -> bool:
+    """Online learning runs after Friday close so the week's paper outcomes are settled."""
+
+    return now.weekday() == ML_INCREMENTAL_TRAIN_WEEKDAY and now.time() >= ML_INCREMENTAL_TRAIN_AFTER
 
 
 def _enqueue_market_quote_cache_refresh_once() -> None:
