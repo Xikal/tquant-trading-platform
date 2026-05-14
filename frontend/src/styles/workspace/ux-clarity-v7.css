@@ -32,27 +32,36 @@
 
 .stock-operation-band {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
-  margin: 8px 0;
+  grid-column: 2;
+  grid-template-columns: repeat(3, minmax(104px, 1fr));
+  gap: 6px;
+  margin: 2px 0 0;
+  min-width: 0;
 }
 
 .stock-operation-band span {
   display: grid;
   gap: 2px;
-  border-radius: 10px;
+  min-width: 0;
+  border-radius: 8px;
   background: #f8fafc;
-  padding: 8px;
+  padding: 5px 7px;
 }
 
 .stock-operation-band small {
   color: #64748b;
-  font-size: 11px;
+  font-size: 10px;
+  line-height: 1.2;
+  white-space: nowrap;
 }
 
 .stock-operation-band strong {
   color: #0f172a;
-  font-size: 13px;
+  overflow: hidden;
+  font-size: 12px;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .stock-risk-tag.ok {
@@ -213,10 +222,15 @@
 
 @media (max-width: 900px) {
   .holding-wizard,
-  .stock-operation-band,
   .strategy-traffic-light,
   .order-import-recommend,
   .security-step-guide {
     grid-template-columns: 1fr;
+  }
+
+  .stock-operation-band {
+    grid-column: auto;
+    grid-template-columns: repeat(3, minmax(96px, 1fr));
+    overflow-x: auto;
   }
 }

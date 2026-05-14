@@ -135,6 +135,23 @@
   min-height: 112px;
 }
 
+.monitor-grid .stock-card,
+.playbook-grid .stock-card {
+  min-height: auto;
+  padding: 7px 8px;
+  gap: 4px 8px;
+}
+
+.monitor-grid .stock-direct-action,
+.playbook-grid .stock-direct-action {
+  margin: 2px 0;
+}
+
+.monitor-grid .stock-execution-hint,
+.playbook-grid .stock-execution-hint {
+  display: none;
+}
+
 .table-scroll,
 .order-list,
 .trade-list,

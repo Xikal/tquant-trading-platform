@@ -165,29 +165,8 @@
   grid-column: 2;
 }
 
-.stock-card p,
-.stock-card .stock-action-guide {
+.stock-card p {
   grid-column: 2;
-}
-
-.stock-card .stock-action-guide {
-  display: grid;
-  gap: 3px;
-  color: var(--muted);
-  font-size: 12px;
-  line-height: 1.45;
-}
-
-.stock-card .stock-action-guide span {
-  display: grid;
-  grid-template-columns: 34px minmax(0, 1fr);
-  gap: 6px;
-  align-items: start;
-}
-
-.stock-card .stock-action-guide small {
-  color: #b4771c;
-  font-weight: 800;
 }
 
 .stock-card .badge-row {

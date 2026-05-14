@@ -212,4 +212,61 @@ describe("PaperTradingPage", () => {
     expect(html).toContain("确认买入");
     expect(html).toContain("站上 VWAP");
   });
+
+  it("records intraday confirmation in action log without popup while auto trading is enabled", () => {
+    const html = renderToStaticMarkup(
+      <PaperTradingPage
+        account={null}
+        positions={[]}
+        orders={[]}
+        trades={[]}
+        performance={null}
+        strategyPerformance={[]}
+        marketPerformance={[]}
+        tagPerformance={[]}
+        tradeTags={{}}
+        riskEvents={[]}
+        autoTradingStatus={{ running: true, engine_running: true, trading_time: true }}
+        autoTradingRuns={[]}
+        intradayConfirmations={[{
+          symbol: "600000",
+          name: "浦发银行",
+          trade_date: "2026-05-14",
+          vwap: 10.12,
+          latest_price: 10.18,
+          above_vwap: true,
+          confirmed: true,
+          late_confirmed: false,
+          score: 82,
+          reason: "站上 VWAP，回踩不破。",
+          profile: {},
+          big_order: {},
+          tick: {},
+        }]}
+        draft={{
+          symbol: "",
+          name: "",
+          side: "buy",
+          order_type: "market",
+          quantity: "100",
+          price: "",
+          current_price: "",
+          strategy_key: "",
+          reason: "",
+          require_intraday_confirmation: false,
+        }}
+        setDraft={vi.fn()}
+        loading=""
+        onSubmitOrder={vi.fn()}
+        onTogglePause={vi.fn()}
+        onAddTradeTag={vi.fn()}
+        onDeleteTradeTag={vi.fn()}
+      />
+    );
+
+    expect(html).not.toContain("可以进入委托确认");
+    expect(html).not.toContain("确认买入");
+    expect(html).toContain("分时确认");
+    expect(html).toContain("600000 已确认");
+  });
 });

@@ -86,6 +86,12 @@ export const PaperTradingPage = memo(function PaperTradingPage({
   const pendingConfirmationKey = pendingConfirmation
     ? `${pendingConfirmation.symbol}-${pendingConfirmation.updated_at ?? pendingConfirmation.trade_date}-${pendingConfirmation.confirmed}-${pendingConfirmation.late_confirmed}`
     : "";
+  const shouldShowConfirmationDialog = Boolean(
+    pendingConfirmation
+      && pendingConfirmationKey !== dismissedConfirmationKey
+      && !autoTradingStatus?.engine_running
+      && !autoTradingRunning
+  );
   const recentTrades = useMemo(() => trades.slice(0, 3).map((item) => ({
     type: item.side,
     symbol: item.symbol,
@@ -121,7 +127,7 @@ export const PaperTradingPage = memo(function PaperTradingPage({
 
   return (
     <section className="page-grid paper-grid">
-      {pendingConfirmation && pendingConfirmationKey !== dismissedConfirmationKey ? (
+      {shouldShowConfirmationDialog && pendingConfirmation ? (
         <IntradayConfirmationDialog
           item={pendingConfirmation}
           disabled={paused || autoTradingRunning}
