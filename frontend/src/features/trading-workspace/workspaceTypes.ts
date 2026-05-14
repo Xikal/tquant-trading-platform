@@ -29,6 +29,10 @@ export interface StockCardView {
   expectedText?: string;
   actionText: string;
   details: string;
+  entryText?: string;
+  stopText?: string;
+  operationAmountText?: string;
+  primaryReason?: string;
   executionHint?: string;
   failureText?: string;
   tone: Tone;

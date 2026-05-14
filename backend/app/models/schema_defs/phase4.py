@@ -224,6 +224,9 @@ class MLSignalOnlineLearningStatusResponse(BaseModel):
     latest_incremental_task_finished_at: datetime | None = None
     next_training_rule: str = "每周五 16:00 后由 runtime worker 自动触发一次 paper 增量训练。"
     warnings: list[str] = Field(default_factory=list)
+    drift_ready: bool = False
+    drift_alerts: list[str] = Field(default_factory=list)
+    drift_items: list[dict[str, Any]] = Field(default_factory=list)
 
 
 class MLSignalPredictionRequest(BaseModel):

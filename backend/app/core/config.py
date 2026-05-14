@@ -115,6 +115,7 @@ class AppSettings(BaseSettings):
     market_provider_slow_call_ms: int = 3000
     market_provider_call_timeout_seconds: float = 4.0
     market_akshare_quote_fallback_enabled: bool = False
+    eastmoney_bypass_proxy: bool = False
     quant_parameter_default_version: str = "quant-params-v1"
     ml_signal_model_dir: str = "data/ml_models"
     ml_signal_artifact_remote_dir: str = ""

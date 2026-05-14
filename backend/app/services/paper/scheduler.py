@@ -41,6 +41,7 @@ from app.services.paper.scheduler_exit import build_exit_order_plan, build_exit_
 from app.services.paper.scheduler_runs import finish_agent_run, record_cycle, start_agent_run
 from app.services.paper.scheduler_state import AutoTraderState
 from app.services.paper.sizing import PositionSizer, SizedOrder
+from app.services.paper.strategy_phase_gate import apply_strategy_validation_phase
 from app.services.sector_etf_t0 import SectorEtfT0Service
 from app.services.user_sector_preferences import UserSectorPreferenceService
 
@@ -223,15 +224,18 @@ class PaperAutoTrader:
             if account.user_id
             else set(),
         )
+        phase_passed, phase_filtered = apply_strategy_validation_phase(db, report.passed)
+        filtered_candidates = [*report.filtered, *phase_filtered]
         exit_orders, exit_skip_reason = self._build_exit_order_plan(db, account)
         smart_t_orders = self._build_smart_t_order_plan(
             db=db,
             account=account,
             today_orders=today_orders,
             used_order_count=len(exit_orders),
+            market_state=str(board.get("market_state") or ""),
         )
         orders = PositionSizer().calculate(
-            candidates=report.passed,
+            candidates=phase_passed,
             total_assets=float(account.total_assets or 0),
             available_cash=float(account.cash_available or 0),
             max_orders=self.state.max_orders_per_cycle,
@@ -246,11 +250,11 @@ class PaperAutoTrader:
         )
         planned_orders = [*exit_orders, *smart_t_orders, *orders, *etf_orders]
         if not planned_orders:
-            summary = report.summary if not report.passed else "资金不足、候选不够或没有触发退出计划"
+            summary = f"通过 {len(phase_passed)} 条，过滤 {len(filtered_candidates)} 条" if not phase_passed else "资金不足、候选不够或没有触发退出计划"
             skipped = [{"account_id": account.id, "reason": exit_skip_reason}] if exit_skip_reason else []
             return {
-                "passed": len(report.passed),
-                "filtered": len(report.filtered),
+                "passed": len(phase_passed),
+                "filtered": len(filtered_candidates),
                 "executed": [],
                 "skipped": skipped,
                 "summary": summary,
@@ -260,14 +264,14 @@ class PaperAutoTrader:
                 "sector_etf_t0_order_count": len(etf_orders),
                 "filtered_reasons": [
                     {"symbol": item.symbol, "score": item.priority_score, "reason": item.reason}
-                    for item in report.filtered[:5]
+                    for item in filtered_candidates[:5]
                 ],
             }
         result = self._execute_orders(db=db, account_id=account.id, orders=planned_orders)
         return {
             **result,
-            "passed": len(report.passed),
-            "filtered": len(report.filtered),
+            "passed": len(phase_passed),
+            "filtered": len(filtered_candidates),
             "exit_order_count": len(exit_orders),
             "smart_t_order_count": len(smart_t_orders),
             "buy_order_count": len(orders),
@@ -347,6 +351,7 @@ class PaperAutoTrader:
         account: PaperAccount,
         today_orders: list[dict[str, Any]],
         used_order_count: int,
+        market_state: str = "",
     ) -> list[dict[str, Any]]:
         return build_smart_t_order_plan(
             db=db,
@@ -354,6 +359,7 @@ class PaperAutoTrader:
             today_orders=today_orders,
             used_order_count=used_order_count,
             max_orders=self.state.max_orders_per_cycle,
+            market_state=market_state,
         )
 
     def _build_sector_etf_t0_orders(

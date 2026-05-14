@@ -28,6 +28,10 @@ class LowBuyStrategyGovernanceItemOut(BaseModel):
     auto_governance_status: str = ""
     auto_governance_reason: str = ""
     auto_governance_updated_at: str = ""
+    validation_phase: str = "phase1_shadow"
+    validation_phase_text: str = "Phase 1 影子观察"
+    validation_phase_reason: str = ""
+    validation_position_scale: float = 0.0
     performance_sample_count: int = 0
     notes: list[str] = Field(default_factory=list)
 
@@ -39,4 +43,3 @@ class LowBuyStrategyGovernanceResponse(BaseModel):
 class LowBuyStrategyGovernanceUpdate(BaseModel):
     status: Literal["active", "watch", "paused"]
     reason: str = ""
-

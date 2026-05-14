@@ -77,6 +77,11 @@ export function StrategyHubPage({ currentUser }: { currentUser: AuthUser }) {
           </article>
         ))}
       </section>
+      <section className="strategy-traffic-light panel" aria-label="策略健康灯号说明">
+        <article className="ok"><strong>健康运行</strong><span>胜率、回撤和样本量正常，可继续观察使用。</span></article>
+        <article className="warn"><strong>轻微异常</strong><span>近期表现变弱或样本不足，先小仓或只复盘。</span></article>
+        <article className="bad"><strong>需要关注</strong><span>回撤、胜率或数据质量异常，暂停生产执行。</span></article>
+      </section>
 
       <nav className="strategy-tabs" aria-label="策略工作台功能">
         {visibleTabsForUser(currentUser).map((tab) => (

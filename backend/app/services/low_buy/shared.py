@@ -75,6 +75,11 @@ class LowBuyThresholds:
     QUOTE_REFRESH_INTERVAL_TIER1: int = 30
     QUOTE_REFRESH_INTERVAL_TIER2: int = 60
     QUOTE_REFRESH_INTERVAL_TIER3: int = 120
+    SELECTION_QUALITY_VOLUME_MAX: float = 0.88
+    SELECTION_QUALITY_MA20_DISTANCE_MIN: float = 5.0
+    SELECTION_QUALITY_MA20_DISTANCE_MAX: float = 12.0
+    SELECTION_QUALITY_DISTRIBUTION_RISK_MAX: float = 5.5
+    SELECTION_QUALITY_VOLUME_BURST_MIN: float = 1.35
     FACTOR_WEIGHTS: dict[str, float] = field(
         default_factory=lambda: {
             "deep_pullback_factor": 1.0,
@@ -90,6 +95,7 @@ class LowBuyThresholds:
             "price_structure_factor": 0.9,
             "event_risk_factor": 0.6,
             "absorption_quality_factor": 0.5,
+            "selection_quality_factor": 0.8,
         }
     )
 

@@ -212,6 +212,46 @@ class PaperSectorEtfT0PerformanceOut(BaseModel):
     notes: list[str] = Field(default_factory=list)
 
 
+class PaperSmartTBacktestSampleOut(BaseModel):
+    signal_date: str
+    washout_date: str
+    symbol: str
+    name: str = ""
+    strategy_key: str = ""
+    entry_price: float = 0.0
+    add_price: float = 0.0
+    volume_release_ratio: float = 0.0
+    forward_max_rebound_pct: float = 0.0
+    forward_close_return_pct: float = 0.0
+    net_max_return_pct: float = 0.0
+    success: bool = False
+
+
+class PaperSmartTThresholdStatOut(BaseModel):
+    volume_threshold: float = 0.0
+    sample_count: int = 0
+    success_rate_pct: float = 0.0
+    avg_net_max_return_pct: float = 0.0
+
+
+class PaperSmartTBacktestResponse(BaseModel):
+    start_date: str
+    end_date: str
+    strategies: list[str] = Field(default_factory=list)
+    signal_count: int = 0
+    washout_signal_count: int = 0
+    success_rate_pct: float = 0.0
+    avg_forward_max_rebound_pct: float = 0.0
+    avg_forward_close_return_pct: float = 0.0
+    avg_net_max_return_pct: float = 0.0
+    expected_rebound_pct: float = 0.0
+    min_net_profit_pct: float = 0.0
+    forward_days: int = 3
+    threshold_stats: list[PaperSmartTThresholdStatOut] = Field(default_factory=list)
+    samples: list[PaperSmartTBacktestSampleOut] = Field(default_factory=list)
+    notes: list[str] = Field(default_factory=list)
+
+
 class PaperRiskStatusOut(BaseModel):
     account_status: str = "active"
     total_assets: float = 0.0

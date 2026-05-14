@@ -70,6 +70,7 @@ def test_dynamic_exit_sells_no_volume_rally_in_batches() -> None:
         intraday_usable=True,
         above_vwap=False,
         volume_release_ratio=0.55,
+        volume_usable=True,
         high_pullback_ratio=0.5,
         high_pullback_pct=1.2,
         reason="冲高回落且量能不足。",
@@ -83,6 +84,7 @@ def test_dynamic_exit_sells_no_volume_rally_in_batches() -> None:
 
     assert decision.quantity == 300
     assert decision.code == "no_volume_take_profit"
+    assert decision.action_signal == "scale_out"
     assert "冲高无量" in decision.action_text
 
 
@@ -92,6 +94,7 @@ def test_dynamic_exit_holds_probable_wash_pullback() -> None:
         reclaimed_vwap=True,
         low_rising=True,
         volume_release_ratio=0.5,
+        volume_usable=True,
         reason="缩量回踩后重新站回分时均价线。",
     )
     decision = evaluate_paper_exit(
@@ -103,4 +106,24 @@ def test_dynamic_exit_holds_probable_wash_pullback() -> None:
 
     assert decision.quantity == 0
     assert decision.code == "hold"
+    assert decision.action_signal == "washout"
     assert "疑似洗盘" in decision.action_text
+
+
+def test_dynamic_exit_does_not_treat_unusable_volume_as_washout() -> None:
+    context = PaperExitContext(
+        intraday_usable=True,
+        reclaimed_vwap=True,
+        low_rising=True,
+        volume_release_ratio=0.0,
+        volume_usable=False,
+        reason="分时量能样本不足。",
+    )
+    decision = evaluate_paper_exit(
+        _position(),
+        price=9.82,
+        now=datetime(2026, 5, 9, 10, 0, 0),
+        context=context,
+    )
+
+    assert decision.action_signal != "washout"

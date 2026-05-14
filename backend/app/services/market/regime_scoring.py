@@ -151,6 +151,9 @@ def classify_market_regime(
         ),
         state_persistence_days=1,
         transition_risk=0.0,
+        emotion_temperature=emotion.emotion_temperature,
+        emotion_temperature_text=emotion.emotion_temperature_text,
+        emotion_temperature_score=emotion.emotion_temperature_score,
     )
 
 def _industry_context(

@@ -1,5 +1,5 @@
 import type { AnalysisResponse, IntradayAnomalyResponse } from "../../types";
-import { NumberField, SearchField, SelectField } from "../../components/shared/FormFields";
+import { NumberField, SearchField, SelectField, TextField } from "../../components/shared/FormFields";
 import { InfoPill, LineList, MetricGrid, MiniKline, PanelTitle, StockIdentity } from "./WorkspaceComponents";
 import { actionStatusText, actionText, formatAmount, formatNumber, formatPct, formatPrice, plainTradingText, riskText, toneFromChange } from "./workspaceFormatters";
 import type { AnalysisDraft } from "./workspaceTypes";
@@ -9,16 +9,24 @@ export function AnalysisPage({
   setDraft,
   result,
   anomaly,
+  batchSymbols,
+  setBatchSymbols,
+  batchResults,
   loading,
   onRun,
+  onBatchRun,
   onOpenPaperOrder,
 }: {
   draft: AnalysisDraft;
   setDraft: (draft: AnalysisDraft) => void;
   result: AnalysisResponse | null;
   anomaly: IntradayAnomalyResponse | null;
+  batchSymbols: string;
+  setBatchSymbols: (value: string) => void;
+  batchResults: AnalysisResponse[];
   loading: string;
   onRun: () => void;
+  onBatchRun: () => void;
   onOpenPaperOrder: (payload: { symbol: string; name?: string; price?: number | null }) => void;
 }) {
   const suggestion = result?.suggestion;
@@ -89,6 +97,27 @@ export function AnalysisPage({
         />
         <button className="primary full" onClick={onRun} disabled={loading === "analysis"}>开始分析</button>
       </aside>
+      <div className="panel analysis-batch">
+        <PanelTitle
+          title="批量分析：今日最值得关注"
+          actions={<button type="button" onClick={onBatchRun} disabled={loading === "analysis-batch"}>{loading === "analysis-batch" ? "分析中..." : "批量排序"}</button>}
+        />
+        <TextField
+          label="多个证券代码"
+          value={batchSymbols}
+          placeholder="例：601288, 510300, 002594"
+          onChange={(event) => setBatchSymbols(event.target.value)}
+        />
+        <div className="analysis-batch-list">
+          {batchResults.length ? batchResults.slice(0, 5).map((item, index) => (
+            <article key={item.symbol}>
+              <strong>{index === 0 ? "今日最佳机会：" : `第 ${index + 1} 位：`}{item.instrument.name} {item.symbol}</strong>
+              <span>{item.suggestion.plain_action_text || actionText(item.suggestion.action)} · 分数 {formatNumber(item.suggestion.signal_score)} · 风险 {riskText(item.suggestion.risk_level)}</span>
+              <small>{item.suggestion.plain_action_reason || item.suggestion.reasons[0] || "等待进一步确认。"}</small>
+            </article>
+          )) : <p className="hint">输入 2-8 个代码，系统会按可操作性和机会强度排序。</p>}
+        </div>
+      </div>
       <div className="panel decision analysis-decision">
         <PanelTitle
           title={`当前建议 / ${actionHeadline}`}

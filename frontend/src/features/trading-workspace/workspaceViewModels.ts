@@ -18,6 +18,10 @@ export function priorityToCard(item: LowBuyPriorityBoardItem): StockCardView {
     riskText: riskTierText(item.risk_tier),
     expectedText: item.suggested_position_text,
     actionText: item.buy_signal_text || item.action_summary,
+    entryText: optionalPriceRange(item.entry_zone_low, item.entry_zone_high),
+    stopText: optionalPrice(item.stop_loss),
+    operationAmountText: item.suggested_position_text,
+    primaryReason: item.next_action_text || item.action_summary,
     details: [
       nextDayPlanText(item.next_day_event_plan),
       strategyNames.slice(0, 3).join(" + ") || item.strategy_title,
@@ -83,6 +87,10 @@ export function candidateToCard(item: LowBuyCandidate): StockCardView {
     riskText: riskTierText(item.risk_tier),
     expectedText: item.suggested_position_text,
     actionText: item.buy_signal_text,
+    entryText: optionalPriceRange(item.entry_zone_low, item.entry_zone_high),
+    stopText: optionalPrice(item.stop_loss),
+    operationAmountText: item.suggested_position_text,
+    primaryReason: item.summary_reason,
     details: [
       nextDayPlanText(item.next_day_event_plan),
       exitPlanSummary(item.exit_plan),
@@ -176,6 +184,10 @@ export function watchSignalToCard(item: WatchlistSignal): StockCardView {
     riskText: riskText(item.signal.risk_level),
     expectedText: formatPct(item.signal.expected_profit_pct),
     actionText: item.signal.plain_action_text || actionText(item.signal.action),
+    entryText: optionalPrice(item.signal.entry_price),
+    stopText: optionalPrice(item.signal.stop_loss),
+    operationAmountText: item.signal.min_shares_suggestion ? `${item.signal.min_shares_suggestion} 股起` : `${formatPct(item.signal.position_pct, 0)} 仓位`,
+    primaryReason: plainTradingText(item.signal.plain_action_reason) || plainTradingText(item.signal.scenario),
     details: [
       plainTradingText(item.signal.plain_action_reason) || plainTradingText(item.signal.scenario),
       `仓位 ${formatPct(item.signal.position_pct, 0)}`,
@@ -186,6 +198,17 @@ export function watchSignalToCard(item: WatchlistSignal): StockCardView {
     tone: toneFromChange(item.quote.change_pct),
     badges: [plainTradingText(item.signal.trade_scene_text), plainTradingText(item.memo)].filter(Boolean),
   };
+}
+
+function optionalPrice(value?: number | null): string | undefined {
+  return typeof value === "number" && Number.isFinite(value) ? formatPrice(value) : undefined;
+}
+
+function optionalPriceRange(low?: number | null, high?: number | null): string | undefined {
+  if (typeof low !== "number" || !Number.isFinite(low) || typeof high !== "number" || !Number.isFinite(high)) {
+    return undefined;
+  }
+  return `${formatPrice(low)} - ${formatPrice(high)}`;
 }
 
 function watchSignalFailureText(item: WatchlistSignal): string {

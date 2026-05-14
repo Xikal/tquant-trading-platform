@@ -90,6 +90,9 @@ def clone_snapshot_with_state(
         regime_confidence=snapshot.regime_confidence,
         state_persistence_days=snapshot.state_persistence_days,
         transition_risk=snapshot.transition_risk,
+        emotion_temperature=snapshot.emotion_temperature,
+        emotion_temperature_text=snapshot.emotion_temperature_text,
+        emotion_temperature_score=snapshot.emotion_temperature_score,
     )
 
 

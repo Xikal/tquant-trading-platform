@@ -10,6 +10,7 @@ from app.services.low_buy.factor_functions import (
     get_effective_factor_weights,
 )
 from app.services.low_buy.factor_types import FactorContext
+from app.services.low_buy.selection_quality_factor import evaluate_selection_quality_factor
 from app.services.low_buy.shared import LOW_BUY_THRESHOLDS
 from app.services.low_buy.signal_family import (
     evaluate_absorption_quality_factor,
@@ -39,6 +40,7 @@ def build_factor_scores(metrics: CandidateMetrics, context: FactorContext | None
         "sector_flow_factor": evaluate_sector_flow_factor(context),
         "signal_freshness_factor": evaluate_signal_freshness_factor(context),
         "absorption_quality_factor": evaluate_absorption_quality_factor(),
+        "selection_quality_factor": evaluate_selection_quality_factor(metrics),
     }
     if context is not None and context.current_symbol:
         scores["big_order_flow_factor"] = evaluate_big_order_flow_factor(

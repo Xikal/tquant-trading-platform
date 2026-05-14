@@ -65,6 +65,9 @@ class LowBuyScreenerResponse(BaseModel):
     high_flyer_retreat_ratio: float = 0.0
     high_flyer_gap_speed: float = 0.0
     distribution_pressure: float = 0.0
+    emotion_temperature: str = "unknown"
+    emotion_temperature_text: str = "情绪温度数据不足"
+    emotion_temperature_score: float = 0.0
     hot_industries: list[str] = Field(default_factory=list)
     hot_industry_source: str = ""
     hot_industry_source_text: str = ""
@@ -81,4 +84,3 @@ class LowBuyScreenerResponse(BaseModel):
     confirmed_candidates: list[LowBuyCandidateOut] = Field(default_factory=list)
     history_sections: list[LowBuyHistorySectionOut] = Field(default_factory=list)
     candidates: list[LowBuyCandidateOut]
-

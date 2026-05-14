@@ -158,6 +158,15 @@ class PositionSizer:
                     str(candidate.signal.get("position_cap_reason") or "按 ATR 波动率控制仓位"),
                 )
             )
+        validation_scale = _validation_position_scale(candidate.signal)
+        if validation_scale is not None:
+            caps.append(
+                (
+                    self.max_position_pct * validation_scale,
+                    "validation_phase",
+                    str(candidate.signal.get("validation_phase_reason") or "按策略验证阶段控制仓位"),
+                )
+            )
         cap, source, reason = min(caps, key=lambda item: item[0])
         return max(Decimal("0"), cap), source, reason
 
@@ -192,6 +201,16 @@ def _decimal_pct(value: Any) -> Decimal:
         return Decimal(str(value or "0"))
     except Exception:
         return Decimal("0")
+
+
+def _validation_position_scale(signal: dict[str, Any]) -> Decimal | None:
+    if "validation_position_scale" not in signal:
+        return None
+    try:
+        value = Decimal(str(signal.get("validation_position_scale")))
+    except Exception:
+        return Decimal("0")
+    return max(Decimal("0"), min(value, Decimal("1")))
 
 
 def _strategy_key(signal: dict[str, Any]) -> str:

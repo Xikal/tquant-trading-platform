@@ -70,6 +70,7 @@ def list_factor_specs() -> list[FactorSpec]:
         FactorSpec("price_structure_factor", defaults.get("price_structure_factor", 0.9), ("daily_bars",)),
         FactorSpec("event_risk_factor", defaults.get("event_risk_factor", 0.6), ("event_risk",), status="experimental", status_text="研究中"),
         FactorSpec("absorption_quality_factor", defaults.get("absorption_quality_factor", 0.5), ("intraday_bars",), status="experimental", status_text="研究中"),
+        FactorSpec("selection_quality_factor", defaults.get("selection_quality_factor", 0.8), ("daily_bars",), status_text="已启用"),
         FactorSpec("north_flow_factor", 1.0, ("north_flow",), ("first_board", "ma_support", "classic_retrace"), status="stub", status_text="未启用，数据源未接入"),
         FactorSpec("dragon_board_factor", 0.8, ("dragon_board",), ("classic_retrace", "volume_shrink", "first_board"), status="stub", status_text="未启用，数据源未接入"),
         FactorSpec("limit_up_quality_factor", 0.9, ("limit_up_board",), ("first_board", "divergence_consensus"), status="stub", status_text="未启用，数据源未接入"),

@@ -111,9 +111,16 @@ export function StockCard({
         <span>当前价 {stock.priceText}</span>
         <span className={stock.tone}>涨跌 {stock.changeText}</span>
         {stock.scoreText ? <span>质量分 {stock.scoreText}</span> : null}
-        <span>风险 {stock.riskText}</span>
+        <span className={`stock-risk-tag ${riskToneClass(stock.riskText)}`}>风险 {stock.riskText}</span>
         {stock.expectedText ? <span>预期 {stock.expectedText}</span> : null}
       </div>
+      {(stock.entryText || stock.stopText || stock.operationAmountText) ? (
+        <div className="stock-operation-band">
+          {stock.entryText ? <span><small>建议买入区间</small><strong>{stock.entryText}</strong></span> : null}
+          {stock.stopText ? <span><small>止损价</small><strong>{stock.stopText}</strong></span> : null}
+          {stock.operationAmountText ? <span><small>建议仓位/数量</small><strong>{stock.operationAmountText}</strong></span> : null}
+        </div>
+      ) : null}
       {stock.badges?.length ? (
         <div className="badge-row">
           {stock.badges.map((badge) => <span key={badge}>{badge}</span>)}
@@ -126,7 +133,7 @@ export function StockCard({
       ) : null}
       <div className="stock-action-guide">
         <span><small>现在</small>{stock.actionText}</span>
-        <span><small>原因</small>{stock.details}</span>
+        <span><small>原因</small>{stock.primaryReason || stock.details}</span>
         <span><small>错了</small>{stock.failureText || `风险 ${stock.riskText}，不满足条件就不操作。`}</span>
       </div>
       {actions?.length ? (
@@ -149,6 +156,14 @@ export function StockCard({
       {stock.executionHint ? <div className="stock-execution-hint">{stock.executionHint}</div> : null}
     </article>
   );
+}
+
+function riskToneClass(value?: string): string {
+  const text = value ?? "";
+  if (text.includes("高") || text.includes("阻断")) return "danger";
+  if (text.includes("中") || text.includes("注意") || text.includes("降级")) return "warn";
+  if (text.includes("低") || text.includes("正常") || text.includes("清晰")) return "ok";
+  return "neutral";
 }
 
 export function SettingCard({

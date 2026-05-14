@@ -50,6 +50,9 @@ class PriorityMarketContext:
     high_flyer_retreat_ratio: float
     high_flyer_gap_speed: float
     distribution_pressure: float
+    emotion_temperature: str
+    emotion_temperature_text: str
+    emotion_temperature_score: float
     hot_industries: list[str]
     hot_industry_source: str
     hot_industry_source_text: str

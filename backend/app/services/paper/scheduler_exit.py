@@ -16,6 +16,7 @@ from app.services.paper.scheduler_helpers import (
 )
 from app.services.paper.smart_exit_context import build_exit_context
 from app.services.paper.smart_t import build_smart_t_add_orders
+from app.services.paper.smart_t_exit import build_smart_t_exit_orders
 from app.services.quant.runtime_parameters import get_paper_dynamic_exit
 
 logger = logging.getLogger(__name__)
@@ -104,6 +105,7 @@ def build_smart_t_order_plan(
     today_orders: list[dict[str, Any]],
     used_order_count: int,
     max_orders: int,
+    market_state: str = "",
 ) -> list[dict[str, Any]]:
     positions = PaperPositionService(db).get_positions(account.id)
     if not positions:
@@ -115,7 +117,19 @@ def build_smart_t_order_plan(
     contexts = {row.symbol: build_exit_context(prices.get(row.symbol), bars.get(row.symbol)) for row in positions}
     params = get_paper_dynamic_exit()
     now = _beijing_now_naive()
-    return build_smart_t_add_orders(
+    exit_orders = build_smart_t_exit_orders(
+        db=db,
+        account=account,
+        positions=positions,
+        prices=prices,
+        contexts=contexts,
+        params=params,
+        now=now,
+        used_order_count=used_order_count,
+        max_orders=max_orders,
+        market_state=market_state,
+    )
+    add_orders = build_smart_t_add_orders(
         account=account,
         positions=positions,
         prices=prices,
@@ -123,9 +137,11 @@ def build_smart_t_order_plan(
         today_orders=today_orders,
         params=params,
         now=now,
-        used_order_count=used_order_count,
+        used_order_count=used_order_count + len(exit_orders),
         max_orders=max_orders,
+        market_state=market_state,
     )
+    return [*exit_orders, *add_orders]
 
 
 def latest_prices(symbols: list[str]) -> dict[str, PaperQuotePrice]:

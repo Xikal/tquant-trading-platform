@@ -856,3 +856,25 @@ def test_paper_backtest_comparison_flags_large_deviation():
     assert response.alert is True
     assert response.expected_return_pct == 20.0
     assert response.actual_return_pct == -10.0
+
+
+def test_production_model_warning_accepts_zero_p_value_and_overfit_metrics():
+    from app.services.ml_signal.modeling import production_model_warning
+
+    metrics = {
+        "sample_count": 999999,
+        "validation_accuracy": 0.99,
+        "validation_auc": 0.99,
+        "validation_accuracy_p_value": 0.0,
+        "validation_accuracy_ci95_lower": 0.9,
+        "train_validation_auc_gap": 0.01,
+        "feature_importance_top5_share": 0.2,
+        "feature_importance_max_share": 0.1,
+        "cv_fold_count": 5,
+        "cv_accuracy_mean": 0.99,
+        "cv_auc_mean": 0.99,
+        "cv_accuracy_std": 0.0,
+        "cv_auc_std": 0.0,
+    }
+
+    assert production_model_warning("production", metrics) == ""

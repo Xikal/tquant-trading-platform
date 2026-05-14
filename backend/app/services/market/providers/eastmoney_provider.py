@@ -4,8 +4,8 @@ import logging
 
 from app.models.schemas import KlineBar, QuoteSnapshot, SectorSnapshot
 from app.services.market.providers.eastmoney_fund_flow import (
-    EastMoneyDatacenterClient,
     SectorFundFlowResult,
+    get_shared_eastmoney_datacenter_client,
 )
 from app.services.market.providers.quality import MarketDataQuality, ProviderResult
 
@@ -17,7 +17,7 @@ class EastmoneyMarketProvider:
 
     def __init__(self, service) -> None:
         self.service = service
-        self._dc_client = EastMoneyDatacenterClient()
+        self._dc_client = get_shared_eastmoney_datacenter_client()
 
     def fetch_quote(self, symbol: str) -> ProviderResult[QuoteSnapshot]:
         try:

@@ -1,6 +1,8 @@
 import type { PaperOrderDraft } from "./workspaceTypes";
 import { useEffect, useMemo, useState } from "react";
+import { api } from "../../api/client";
 import { strategiesApi, type StrategyMeta, type SymbolSearchItem } from "../../api/strategies";
+import type { LowBuyPriorityBoardItem } from "../../types";
 import type { PaperPosition } from "../../types";
 import { STRATEGY_OPTIONS } from "../../constants/strategies";
 import { NumberField, SearchField, SelectField, TextField } from "../../components/shared/FormFields";
@@ -26,6 +28,10 @@ export function OrderEntryModal({
 }) {
   const locked = autoTradingRunning || paused;
   const [strategies, setStrategies] = useState<StrategyMeta[]>([]);
+  const [recommended, setRecommended] = useState<LowBuyPriorityBoardItem[]>([]);
+  const [recommendedOpen, setRecommendedOpen] = useState(false);
+  const [recommendedLoading, setRecommendedLoading] = useState(false);
+  const [recommendedError, setRecommendedError] = useState("");
   const feeWarning = estimateCommissionWarning(draft);
   const currentPosition = useMemo(() => (
     positions.find((item) => item.symbol.toUpperCase() === draft.symbol.trim().toUpperCase()) ?? null
@@ -69,6 +75,44 @@ export function OrderEntryModal({
     });
   }
 
+  async function loadRecommendedOrders() {
+    const nextOpen = !recommendedOpen;
+    setRecommendedOpen(nextOpen);
+    if (!nextOpen) {
+      return;
+    }
+    if (recommended.length || recommendedLoading) {
+      return;
+    }
+    try {
+      setRecommendedLoading(true);
+      setRecommendedError("");
+      const payload = await api.getLowBuyPriorityBoard(10);
+      setRecommended(payload.items.filter((item) => item.buy_signal_state === "buy_now" || item.buy_signal_state === "soft_buy_now"));
+    } catch (error) {
+      setRecommendedError(error instanceof Error ? error.message : "今日推荐加载失败");
+    } finally {
+      setRecommendedLoading(false);
+    }
+  }
+
+  function importRecommended(item: LowBuyPriorityBoardItem) {
+    const price = midpoint(item.entry_zone_low, item.entry_zone_high) ?? item.latest_price;
+    setDraft({
+      ...draft,
+      symbol: item.symbol,
+      name: item.name,
+      side: "buy",
+      order_type: "limit",
+      price: price ? String(price.toFixed(3)) : draft.price,
+      current_price: item.latest_price ? String(item.latest_price.toFixed(3)) : draft.current_price,
+      quantity: draft.quantity || "100",
+      strategy_key: item.strategy_key,
+      reason: `${item.strategy_title || "今日推荐"}：${item.buy_signal_text || item.action_summary || "优先级榜导入"}`,
+    });
+    setRecommendedOpen(false);
+  }
+
   function setQuickQuantity(ratio: number) {
     const next = roundLot(quickQuantity * ratio);
     if (next > 0) {
@@ -94,6 +138,25 @@ export function OrderEntryModal({
         </div>
         {autoTradingRunning ? <p className="muted">自动交易正在运行，手动委托已临时锁定。停止自动交易后可继续录入。</p> : null}
         {paused ? <p className="muted">模拟账户已暂停，恢复后可继续提交。</p> : null}
+        <div className="order-import-recommend">
+          <button type="button" disabled={locked || recommendedLoading} onClick={() => void loadRecommendedOrders()}>
+            {recommendedLoading ? "读取今日推荐..." : "从今日推荐导入"}
+          </button>
+          <span>自动填入代码、限价、策略来源和备注，提交前仍可微调。</span>
+        </div>
+        {recommendedOpen ? (
+          <div className="order-recommend-list">
+            {recommendedError ? <p className="warn">{recommendedError}</p> : null}
+            {!recommendedError && !recommended.length && !recommendedLoading ? <p className="hint">当前优先榜没有确定买入/小仓试买标的。</p> : null}
+            {recommended.map((item) => (
+              <button type="button" key={item.symbol} disabled={locked} onClick={() => importRecommended(item)}>
+                <strong>{item.name} {item.symbol}</strong>
+                <span>{item.buy_signal_text} · {item.strategy_title}</span>
+                <small>买入区间 {formatRange(item.entry_zone_low, item.entry_zone_high)}，止损 {formatPrice(item.stop_loss)}</small>
+              </button>
+            ))}
+          </div>
+        ) : null}
         <div className="order-modal-primary">
           <SearchField
             label="标的"
@@ -160,6 +223,24 @@ export function OrderEntryModal({
       </section>
     </div>
   );
+}
+
+function midpoint(low?: number | null, high?: number | null): number | null {
+  if (typeof low === "number" && Number.isFinite(low) && typeof high === "number" && Number.isFinite(high)) {
+    return (low + high) / 2;
+  }
+  return null;
+}
+
+function formatRange(low?: number | null, high?: number | null): string {
+  if (typeof low !== "number" || !Number.isFinite(low) || typeof high !== "number" || !Number.isFinite(high)) {
+    return "--";
+  }
+  return `¥${low.toFixed(3)} - ¥${high.toFixed(3)}`;
+}
+
+function formatPrice(value?: number | null): string {
+  return typeof value === "number" && Number.isFinite(value) ? `¥${value.toFixed(3)}` : "--";
 }
 
 function resolveQuickQuantity(side: "buy" | "sell", position: PaperPosition | null): number {

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from app.core.timezone import beijing_today
+from app.services.market.emotion_temperature import classify_emotion_temperature
 
 
 @dataclass(frozen=True)
@@ -18,6 +19,9 @@ class MarketEmotionSnapshot:
     high_flyer_retreat_ratio: float
     high_flyer_gap_speed: float
     emotion_distribution_pressure: float
+    emotion_temperature: str = "unknown"
+    emotion_temperature_text: str = "情绪温度数据不足"
+    emotion_temperature_score: float = 0.0
 
 
 class MarketEmotionMixin:
@@ -154,6 +158,13 @@ class MarketEmotionMixin:
             + _clamp01(high_flyer_gap_speed) * 0.25
             + _clamp01((0.0 - promotion_break_gap) / 0.3) * 0.20
         )
+        temperature = classify_emotion_temperature(
+            limit_up_count=current_limit_up_count,
+            board_height=current_board_height,
+            promotion_ratio=promotion_ratio,
+            broken_board_ratio=broken_board_ratio,
+            distribution_pressure=emotion_distribution_pressure,
+        )
 
         return MarketEmotionSnapshot(
             emotion_ready=True,
@@ -168,6 +179,9 @@ class MarketEmotionMixin:
             high_flyer_retreat_ratio=round(high_flyer_retreat_ratio, 4),
             high_flyer_gap_speed=round(high_flyer_gap_speed, 4),
             emotion_distribution_pressure=round(min(max(emotion_distribution_pressure, 0.0), 1.0), 4),
+            emotion_temperature=temperature.key,
+            emotion_temperature_text=temperature.text,
+            emotion_temperature_score=temperature.score,
         )
 
     def _load_trade_dates(self) -> list[str]:

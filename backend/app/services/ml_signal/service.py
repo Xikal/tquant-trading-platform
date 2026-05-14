@@ -44,6 +44,7 @@ from app.services.ml_signal.modeling import (
     promotion_blocks as _promotion_blocks,
 )
 from app.services.ml_signal.sample_repository import MLSignalSampleRepository
+from app.services.ml_signal.drift_monitor import feature_drift_summary
 from app.services.ml_signal.training_runtime import training_parameter_snapshot
 from app.services.ml_signal.training_runtime import (
     incremental_model_type,
@@ -333,6 +334,8 @@ class MLSignalService:
             warnings.append("近期闭环样本正负类别不完整，增量训练会被生产门槛拦截。")
         if latest_task is None:
             warnings.append("尚未发现每周增量训练任务记录，等待调度周期或手动触发。")
+        drift = feature_drift_summary(recent_samples)
+        warnings.extend(drift.get("alerts", [])[:3])
 
         return MLSignalOnlineLearningStatusResponse(
             generated_at=datetime.utcnow().isoformat(timespec="seconds"),
@@ -351,6 +354,9 @@ class MLSignalService:
             latest_incremental_task_progress_pct=float(latest_task.progress_pct or 0.0) if latest_task is not None else 0.0,
             latest_incremental_task_finished_at=latest_task.finished_at if latest_task is not None else None,
             warnings=warnings,
+            drift_ready=bool(drift.get("ready")),
+            drift_alerts=list(drift.get("alerts") or []),
+            drift_items=list(drift.get("items") or []),
         )
 
     def predict(self, payload: MLSignalPredictionRequest) -> MLSignalPredictionResponse:

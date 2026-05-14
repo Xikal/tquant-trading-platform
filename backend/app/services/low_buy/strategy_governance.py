@@ -33,6 +33,7 @@ from app.services.low_buy.strategy_governance_health import (
     int_param as _int_param,
     strategy_health as _strategy_health,
 )
+from app.services.low_buy.strategy_validation_phase import resolve_strategy_validation_phase
 from app.services.low_buy.strategy_pool_config import strategy_pool_profile
 from app.services.low_buy.strategy_tier_resolver import StrategyTierResolver
 
@@ -95,6 +96,7 @@ def _strategy_item(
     auto_status = str((auto_override or {}).get("status") or "")
     auto_reason = str((auto_override or {}).get("reason") or "")
     auto_updated_at = str((auto_override or {}).get("updated_at") or "")
+    phase = resolve_strategy_validation_phase(performance, health_score)
     return LowBuyStrategyGovernanceItemOut(
         strategy_key=strategy_key,
         strategy_title=str(playbook.get("title") or strategy_key),
@@ -119,6 +121,10 @@ def _strategy_item(
         auto_governance_status=auto_status,
         auto_governance_reason=auto_reason,
         auto_governance_updated_at=auto_updated_at,
+        validation_phase=phase.phase,
+        validation_phase_text=phase.phase_text,
+        validation_phase_reason=phase.reason,
+        validation_position_scale=phase.position_scale,
         performance_sample_count=performance.filled_signals if performance is not None else 0,
         notes=list(playbook.get("notes") or []),
     )

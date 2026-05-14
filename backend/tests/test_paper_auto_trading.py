@@ -259,6 +259,37 @@ class PaperAutoTradingTest(unittest.TestCase):
         self.assertEqual(result[0].quantity, 500)
         self.assertEqual(result[0].signal_snapshot["position_cap_source"], "final_position_cap")
 
+    def test_position_sizer_respects_validation_phase_scale(self):
+        from app.services.paper.admission import AdmissionResult
+        from app.services.paper.sizing import PositionSizer
+
+        candidate = AdmissionResult(
+            passed=True,
+            symbol="510300",
+            priority_score=95,
+            reason="通过",
+            signal={
+                "symbol": "510300",
+                "name": "300ETF",
+                "latest_price": 10,
+                "strategy_key": "first_board",
+                "buy_signal_state": "buy_now",
+                "validation_position_scale": 0.2,
+                "validation_phase_reason": "Phase 2 小仓验证",
+            },
+        )
+
+        result = PositionSizer(max_position_pct=0.10, max_cash_pct=1.0).calculate(
+            candidates=[candidate],
+            total_assets=100000,
+            available_cash=100000,
+            max_orders=1,
+        )
+
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0].quantity, 200)
+        self.assertEqual(result[0].signal_snapshot["position_cap_source"], "validation_phase")
+
     def test_auto_trader_builds_sector_etf_t0_order(self):
         from app.models.schema_defs.market import SectorEtfT0Opportunity, SectorEtfT0Response
         from app.services.paper.scheduler import PaperAutoTrader

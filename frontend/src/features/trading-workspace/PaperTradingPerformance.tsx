@@ -6,9 +6,13 @@ import { formatPaperDateTime } from "./paperTradingFormatters";
 export function RiskEventList({ items }: { items: RiskEventItem[] }) {
   if (!items.length) return null;
   return (
-    <div className="context-row paper-context-row">
+    <div className="paper-risk-todo-list">
       {items.slice(0, 2).map((item) => (
-        <span key={item.id}>{item.severity === "high" ? "高风险" : "提醒"}：{item.message}</span>
+        <article className={item.severity === "high" ? "high" : "medium"} key={item.id}>
+          <strong>{item.severity === "high" ? "需要立即处理" : "需要关注"}</strong>
+          <span>{item.message}</span>
+          <small>{item.symbol || "账户"} · {item.status === "resolved" ? "已处理" : "待处理"}</small>
+        </article>
       ))}
     </div>
   );

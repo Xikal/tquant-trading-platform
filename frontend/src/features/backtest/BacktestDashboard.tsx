@@ -201,7 +201,7 @@ export function BacktestDashboard({
               </span>
               <strong>{run.name || `回测 #${run.id}`}</strong>
               <span>{dateRange(run)}</span>
-              <span>{formatProgress(run.progress, run.status)}</span>
+              <ProgressCell progress={run.progress} status={run.status} waitSeconds={run.estimated_wait_seconds} />
               <span>{formatResourceTier(run.resource_tier)}</span>
               <small>{formatDateTime(run.created_at)}</small>
             </button>
@@ -283,6 +283,30 @@ export function BacktestDashboard({
 
       <BacktestResearchPanel state={research} actions={researchActions} equity={equity} />
     </section>
+  );
+}
+
+function ProgressCell({
+  progress,
+  status,
+  waitSeconds,
+}: {
+  progress: number | null | undefined;
+  status: BacktestStatus;
+  waitSeconds?: number | null;
+}) {
+  const normalized = status === "completed" || status === "succeeded"
+    ? 100
+    : typeof progress === "number" && Number.isFinite(progress)
+      ? Math.max(0, Math.min(100, progress))
+      : status === "running"
+        ? 12
+        : 0;
+  return (
+    <span className="backtest-progress-cell">
+      <i><b style={{ width: `${normalized}%` }} /></i>
+      <small>{formatProgress(progress, status)}{waitSeconds ? ` · 约${formatWaitSeconds(waitSeconds)}` : ""}</small>
+    </span>
   );
 }
 

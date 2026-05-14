@@ -1,19 +1,20 @@
-"""EastMoney Datacenter API client for sector capital flow data.
-
-Uses data.eastmoney.com/dataapi/bkzj/getbkzj — a free, no-auth JSON API
-that returns sector fund flow rankings.  Bypasses local proxy to avoid
-ProxyError on push2.eastmoney.com.
-"""
+"""EastMoney Datacenter API client for sector capital flow data."""
 from __future__ import annotations
 
 import logging
+import threading
 import time
 from dataclasses import dataclass
 from typing import Any
 
 import requests
 
+from app.core.config import get_settings
+
 logger = logging.getLogger(__name__)
+_SHARED_CLIENT_LOCK = threading.Lock()
+_SHARED_CLIENT: EastMoneyDatacenterClient | None = None
+_SHARED_CLIENT_KEY: tuple[float, bool] | None = None
 
 _DATACENTER_URL = "https://data.eastmoney.com/dataapi/bkzj/getbkzj"
 
@@ -54,22 +55,23 @@ class SectorFundFlowResult:
 class EastMoneyDatacenterClient:
     """Stateless client for EastMoney datacenter API.
 
-    All requests bypass system proxy (proxies=None) to avoid local proxy
-    issues with push2.eastmoney.com.  The datacenter endpoint
-    (data.eastmoney.com) works without proxy bypass too, but we set
-    proxies=None for consistency.
+    Proxy bypass is intentionally controlled by configuration.  Production
+    environments often route outbound traffic through a managed proxy.
     """
 
     def __init__(self, timeout: float = 10.0) -> None:
         self._timeout = timeout
         self._session = requests.Session()
         self._session.headers.update({
-            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
+            "User-Agent": "TQuant-MarketDataService/1.0",
             "Referer": "https://data.eastmoney.com/bkzj/hy.html",
         })
-        # Bypass proxy for all requests
-        self._session.proxies = {"http": None, "https": None}
-        self._session.trust_env = False
+        if bool(get_settings().eastmoney_bypass_proxy):
+            self._session.proxies = {"http": None, "https": None}
+            self._session.trust_env = False
+
+    def close(self) -> None:
+        self._session.close()
 
     def fetch_sector_fund_flow(
         self,
@@ -148,3 +150,28 @@ class EastMoneyDatacenterClient:
             except Exception as exc:
                 logger.warning("Failed to fetch %s %s fund flow: %s", sector_type, period, exc)
         return results
+
+
+def get_shared_eastmoney_datacenter_client(timeout: float = 10.0) -> EastMoneyDatacenterClient:
+    """Return a process-wide EastMoney datacenter client.
+
+    The client owns a requests.Session and should be reused by provider
+    instances so HTTP connection pools are not recreated on every request.
+    """
+    global _SHARED_CLIENT, _SHARED_CLIENT_KEY
+    key = (float(timeout), bool(get_settings().eastmoney_bypass_proxy))
+    with _SHARED_CLIENT_LOCK:
+        if _SHARED_CLIENT is None or _SHARED_CLIENT_KEY != key:
+            _SHARED_CLIENT = EastMoneyDatacenterClient(timeout=timeout)
+            _SHARED_CLIENT_KEY = key
+        return _SHARED_CLIENT
+
+
+def reset_shared_eastmoney_datacenter_client() -> None:
+    """Reset the shared client, primarily for tests/config reloads."""
+    global _SHARED_CLIENT, _SHARED_CLIENT_KEY
+    with _SHARED_CLIENT_LOCK:
+        if _SHARED_CLIENT is not None:
+            _SHARED_CLIENT.close()
+        _SHARED_CLIENT = None
+        _SHARED_CLIENT_KEY = None

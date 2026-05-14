@@ -2,6 +2,7 @@ import { memo, useMemo } from "react";
 import type { LowBuyPriorityBoardResult, MarketBreadth, PairedHedgeResearchResponse, RuntimeStatus, SectorEtfT0Response } from "../../types";
 import { NumberField, SearchField, TextField } from "../../components/shared/FormFields";
 import { directActionTitle } from "../../utils/uxClarity";
+import { MonitorHoldingWizard } from "./MonitorHoldingWizard";
 import { EmptyState, FamilyStrip, InfoPill, MetricGrid, PanelTitle, StockCard } from "./WorkspaceComponents";
 import { average, formatPct, formatPrice, riskLevelText, shortTime } from "./workspaceFormatters";
 import type { MetricItem, StockCardView, WatchDraft } from "./workspaceTypes";
@@ -73,7 +74,13 @@ export const MonitorPage = memo(function MonitorPage({
           title="盘中监控摘要"
           actions={
             <>
-              <button onClick={onSync} disabled={loading === "sync"}>同步全市场标的</button>
+              <button
+                onClick={onSync}
+                disabled={loading === "sync"}
+                title="从数据源更新股票基础信息，通常只在股票名称、行业或代码库异常时使用，可能耗时较久。"
+              >
+                更新股票库（较慢）
+              </button>
               <button onClick={onRefresh} disabled={loading === "monitor"}>手动刷新</button>
             </>
           }
@@ -91,6 +98,7 @@ export const MonitorPage = memo(function MonitorPage({
           <MetricGrid items={metrics} />
         </details>
         <MarketBreadthStrip marketBreadth={marketBreadth} />
+        <p className="hint">“更新股票库”只更新全市场基础资料，不会直接买卖股票；平时看信号点“手动刷新”即可。</p>
       </div>
 
       <aside className="panel monitor-input">
@@ -103,6 +111,7 @@ export const MonitorPage = memo(function MonitorPage({
             ? `正在编辑 ${editingWatchSymbol}，修改后点击“更新持仓”。`
             : "代码、底仓、可卖、成本价决定做T信号是否可执行。A股 T+1 下，当日买入通常次日才进入可用数量。"}
         </p>
+        <MonitorHoldingWizard draft={watchDraft} editing={isEditing} />
         <div className="compact-form-grid">
           <SearchField
             label="证券代码"

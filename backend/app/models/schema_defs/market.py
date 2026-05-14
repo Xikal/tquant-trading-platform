@@ -21,6 +21,9 @@ class MarketBreadthResponse(BaseModel):
     broken_board_ratio: float = 0.0
     promotion_ratio: float = 0.0
     board_height: int = 0
+    emotion_temperature: str = "unknown"
+    emotion_temperature_text: str = "情绪温度数据不足"
+    emotion_temperature_score: float = 0.0
     hot_industries: list[str] = Field(default_factory=list)
     hot_turnover: float = 0.0
     hot_overlap_ratio: float = 0.0

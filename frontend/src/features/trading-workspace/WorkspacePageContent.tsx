@@ -79,8 +79,12 @@ export function WorkspacePageContent({
             setDraft={analysis.setDraft}
             result={analysis.result}
             anomaly={analysis.anomaly}
+            batchSymbols={analysis.batchSymbols}
+            setBatchSymbols={analysis.setBatchSymbols}
+            batchResults={analysis.batchResults}
             loading={loading}
             onRun={() => void analysis.runAnalysis()}
+            onBatchRun={() => void analysis.runBatchAnalysis()}
             onOpenPaperOrder={onPreparePaperOrder}
           />
         )}

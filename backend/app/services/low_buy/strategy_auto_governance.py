@@ -13,6 +13,7 @@ from app.services.low_buy.strategy_governance import (
     latest_strategy_performance_map,
 )
 from app.services.low_buy.strategy_parameter_defaults import LOW_BUY_AUTO_GOVERNANCE_DEFAULTS
+from app.services.low_buy.strategy_validation_phase import resolve_strategy_validation_phase
 from app.services.quant.runtime_parameters import get_low_buy_auto_governance
 
 
@@ -61,6 +62,7 @@ def refresh_low_buy_strategy_auto_governance(db: Session) -> dict[str, Any]:
         if performance is None:
             continue
         health_score, _ = _strategy_health(performance)
+        phase = resolve_strategy_validation_phase(performance, health_score)
         decision = _auto_governance_decision(
             filled_signals=performance.filled_signals,
             health_score=health_score,
@@ -101,6 +103,10 @@ def refresh_low_buy_strategy_auto_governance(db: Session) -> dict[str, Any]:
             "reason": decision["reason"],
             "health_score": health_score,
             "filled_signals": performance.filled_signals,
+            "validation_phase": phase.phase,
+            "validation_phase_text": phase.phase_text,
+            "validation_phase_reason": phase.reason,
+            "validation_position_scale": phase.position_scale,
             "recovery_pass_days": recovery_pass_days,
             "recovery_required_days": recovery_required_days,
             "updated_at": updated_at,

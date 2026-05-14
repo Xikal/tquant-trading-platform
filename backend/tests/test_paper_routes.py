@@ -4,6 +4,7 @@ import unittest
 from unittest.mock import patch
 from os import environ
 from datetime import date
+from types import SimpleNamespace
 
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
@@ -356,6 +357,20 @@ class PaperRouteTests(unittest.TestCase):
         self.assertEqual(response.json()["summary"], "通过 0 条，过滤 0 条")
         self.assertIsNotNone(preview.call_args.kwargs["account_id"])
 
+    def test_smart_t_backtest_route_returns_research_shape(self) -> None:
+        headers = self._register("paper_smart_t_backtest")
+        with patch("app.api.routes.paper_performance.SmartTBacktestService") as service_cls:
+            service_cls.return_value.run.return_value = _smart_t_report_stub()
+            response = self.client.get("/api/paper/performance/smart-t-backtest", headers=headers)
+
+        self.assertEqual(response.status_code, 200)
+        body = response.json()
+        self.assertEqual(body["signal_count"], 3)
+        self.assertEqual(body["washout_signal_count"], 1)
+        self.assertEqual(body["threshold_stats"][0]["volume_threshold"], 0.85)
+        self.assertEqual(body["samples"][0]["symbol"], "600000")
+        self.assertIn("日线代理验证", body["notes"][0])
+
     def _register(self, username: str) -> dict[str, str]:
         response = self.client.post(
             "/api/auth/register",
@@ -388,6 +403,48 @@ class PaperRouteTests(unittest.TestCase):
                 "reason": reason,
             },
         )
+
+
+def _smart_t_report_stub():
+    return SimpleNamespace(
+        start_date="2026-05-01",
+        end_date="2026-05-10",
+        strategies=["first_board"],
+        signal_count=3,
+        washout_signal_count=1,
+        success_rate_pct=100.0,
+        avg_forward_max_rebound_pct=2.0,
+        avg_forward_close_return_pct=1.0,
+        avg_net_max_return_pct=1.2,
+        expected_rebound_pct=1.2,
+        min_net_profit_pct=0.6,
+        forward_days=3,
+        threshold_stats=[
+            SimpleNamespace(
+                volume_threshold=0.85,
+                sample_count=1,
+                success_rate_pct=100.0,
+                avg_net_max_return_pct=1.2,
+            )
+        ],
+        samples=[
+            SimpleNamespace(
+                signal_date="2026-05-01",
+                washout_date="2026-05-08",
+                symbol="600000",
+                name="浦发银行",
+                strategy_key="first_board",
+                entry_price=10.0,
+                add_price=9.9,
+                volume_release_ratio=0.5,
+                forward_max_rebound_pct=2.0,
+                forward_close_return_pct=1.0,
+                net_max_return_pct=1.2,
+                success=True,
+            )
+        ],
+        notes=["当前为日线代理验证；真实盘中分钟级回测仍需更细分时数据。"],
+    )
 
 
 if __name__ == "__main__":

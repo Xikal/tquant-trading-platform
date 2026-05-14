@@ -63,6 +63,9 @@ class MarketRegimeSnapshot:
     transition_risk: float = 0.0
     snapshot_source: str = "live"
     snapshot_source_text: str = "实时市场快照"
+    emotion_temperature: str = "unknown"
+    emotion_temperature_text: str = "情绪温度数据不足"
+    emotion_temperature_score: float = 0.0
 
 
 STATE_CONFIG = {

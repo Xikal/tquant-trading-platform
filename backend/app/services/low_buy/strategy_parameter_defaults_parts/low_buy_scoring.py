@@ -147,6 +147,11 @@ LOW_BUY_THRESHOLD_DEFAULTS: dict[str, Any] = {
     "quote_refresh_interval_tier1": 30,
     "quote_refresh_interval_tier2": 60,
     "quote_refresh_interval_tier3": 120,
+    "selection_quality_volume_max": 0.88,
+    "selection_quality_ma20_distance_min": 5.0,
+    "selection_quality_ma20_distance_max": 12.0,
+    "selection_quality_distribution_risk_max": 5.5,
+    "selection_quality_volume_burst_min": 1.35,
     "factor_weights": {
         "deep_pullback_factor": 1.0,
         "trend_rebound_factor": 0.8,
@@ -161,6 +166,7 @@ LOW_BUY_THRESHOLD_DEFAULTS: dict[str, Any] = {
         "price_structure_factor": 0.9,
         "event_risk_factor": 0.6,
         "absorption_quality_factor": 0.5,
+        "selection_quality_factor": 0.8,
     },
 }
 

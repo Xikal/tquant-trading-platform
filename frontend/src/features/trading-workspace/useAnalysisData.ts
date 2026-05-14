@@ -26,6 +26,8 @@ export function useAnalysisData({
   });
   const [result, setResult] = useState<AnalysisResponse | null>(null);
   const [anomaly, setAnomaly] = useState<IntradayAnomalyResponse | null>(null);
+  const [batchSymbols, setBatchSymbols] = useState("");
+  const [batchResults, setBatchResults] = useState<AnalysisResponse[]>([]);
 
   const runAnalysis = useCallback(
     async (symbolOverride?: string) => {
@@ -69,12 +71,52 @@ export function useAnalysisData({
     [runAnalysis],
   );
 
+  const runBatchAnalysis = useCallback(async () => {
+    const symbols = batchSymbols
+      .split(/[\s,，;；]+/)
+      .map((item) => item.trim())
+      .filter(Boolean)
+      .slice(0, 8);
+    if (!symbols.length) {
+      setError("请填写要批量分析的证券代码，多个代码用逗号或空格分隔");
+      return;
+    }
+    navigatePage("analysis");
+    await withLoading("analysis-batch", async () => {
+      const payload = symbols.map((symbol) => ({
+        symbol,
+        prefer_strategy: draft.prefer_strategy,
+        base_position: parseNumber(draft.base_position),
+        available_position: parseNumber(draft.available_position),
+        cost_basis: nullableNumber(draft.cost_basis),
+        include_ai: false,
+        include_events: true,
+        include_microstructure: true,
+      }));
+      const responses = await api.analyzeBatch(payload);
+      setBatchResults(sortBatchAnalysis(responses));
+      setNotice(`批量分析完成：${responses.length} 只`);
+    });
+  }, [batchSymbols, draft, navigatePage, setError, setNotice, withLoading]);
+
   return {
     draft,
     setDraft,
     result,
     anomaly,
+    batchSymbols,
+    setBatchSymbols,
+    batchResults,
     runAnalysis,
+    runBatchAnalysis,
     analyzeFromCard,
   };
+}
+
+function sortBatchAnalysis(items: AnalysisResponse[]): AnalysisResponse[] {
+  return [...items].sort((left, right) => {
+    const leftAction = left.suggestion.is_actionable ? 1000 : 0;
+    const rightAction = right.suggestion.is_actionable ? 1000 : 0;
+    return (rightAction + right.suggestion.signal_score) - (leftAction + left.suggestion.signal_score);
+  });
 }

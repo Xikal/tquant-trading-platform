@@ -13,12 +13,14 @@ from app.models.schemas import (
     PaperGroupedPerformanceOut,
     PaperPerformanceOut,
     PaperSectorEtfT0PerformanceOut,
+    PaperSmartTBacktestResponse,
     PaperStrategyCorrelationResponse,
     PaperStrategyMarketPerformanceOut,
     PaperTagPerformanceOut,
 )
 from app.services.paper import PaperAccountService, PaperArchiveService, PaperPerformanceService
 from app.services.paper.dashboard import PaperPerformanceDashboardService
+from app.services.paper.smart_t_backtest import SmartTBacktestService
 from app.services.market_model_observation_service import MarketModelObservationService
 
 router = APIRouter()
@@ -107,6 +109,30 @@ def paper_performance_sector_etf_t0(
     )
 
 
+@router.get("/performance/smart-t-backtest", response_model=PaperSmartTBacktestResponse)
+def paper_performance_smart_t_backtest(
+    start_date: str | None = Query(default=None, pattern=r"^\d{4}-\d{2}-\d{2}$"),
+    end_date: str | None = Query(default=None, pattern=r"^\d{4}-\d{2}-\d{2}$"),
+    strategies: list[str] | None = Query(default=None),
+    max_signals_per_day: int = Query(default=20, ge=1, le=100),
+    forward_days: int = Query(default=3, ge=1, le=10),
+    sample_limit: int = Query(default=50, ge=0, le=200),
+    current_user: User = Depends(require_paper_trading),
+    db: Session = Depends(get_db),
+) -> PaperSmartTBacktestResponse:
+    # current_user dependency intentionally gates this research endpoint.
+    _ = current_user
+    report = SmartTBacktestService(db).run(
+        start_date=start_date,
+        end_date=end_date,
+        strategies=strategies,
+        max_signals_per_day=max_signals_per_day,
+        forward_days=forward_days,
+        sample_limit=sample_limit,
+    )
+    return PaperSmartTBacktestResponse(**_report_dict(report))
+
+
 @router.get("/performance/dashboard")
 def paper_performance_dashboard(
     days: int = Query(default=30, ge=7, le=365),
@@ -127,3 +153,11 @@ def archive_paper_performance(
 ) -> dict:
     account = PaperAccountService(db).get_or_create_default(current_user.id)
     return PaperArchiveService(db).archive_all(account.id)
+
+
+def _report_dict(report) -> dict:
+    return {
+        **report.__dict__,
+        "threshold_stats": [item.__dict__ for item in report.threshold_stats],
+        "samples": [item.__dict__ for item in report.samples],
+    }
