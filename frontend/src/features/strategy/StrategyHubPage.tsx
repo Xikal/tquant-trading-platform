@@ -3,18 +3,18 @@ import { useToast } from "../../components/shared/ToastContainer";
 import type { AuthUser } from "../../types";
 import { formatMoney } from "../backtest/backtestDisplay";
 import { useBacktestDashboard } from "../backtest/useBacktestDashboard";
+import { StrategyDoctorPanel } from "./StrategyDoctorPanel";
 import { StrategyConfirmDialog } from "./StrategyConfirmDialog";
 import {
   dashboardSectionForTab,
   executionModelText,
   PanelTitle,
-  QuickBacktestForm,
   RecentRuns,
   StrategyBridge,
   StrategyHistoryPanel,
-  StrategyQuickGuide,
   visibleTabsForUser,
 } from "./StrategyHubPanels";
+import { QuickBacktestForm } from "./StrategyQuickCheckPanel";
 import { useStrategyHub } from "./useStrategyHub";
 
 export function StrategyHubPage({ currentUser }: { currentUser: AuthUser }) {
@@ -46,16 +46,16 @@ export function StrategyHubPage({ currentUser }: { currentUser: AuthUser }) {
     <section className="strategy-hub">
       <header className="panel strategy-hero">
         <div>
-          <span className="strategy-kicker">Strategy Workbench · Phase 3</span>
-          <h1>策略工作台</h1>
-          <p>按“先体检、再复盘、再优化、最后验证”的顺序使用。普通用户先点一键快速回测，完成后只看收益、胜率、最大回撤和失败原因。</p>
+          <span className="strategy-kicker">策略医生</span>
+          <h1>判断策略还能不能用</h1>
+          <p>系统会把回测、复盘和验证翻译成直白结论：可继续观察、谨慎使用，或暂不建议使用。</p>
         </div>
         <div className="strategy-hero-actions">
           <button type="button" onClick={() => void hub.load()} disabled={hub.loading === "load"}>
             {hub.loading === "load" ? "刷新中" : "刷新"}
           </button>
           <button type="button" className="primary" onClick={() => hub.setConfirmOpen(true)} disabled={hub.loading === "submit"}>
-            提交快速回测
+            手动提交体检
           </button>
         </div>
       </header>
@@ -63,25 +63,13 @@ export function StrategyHubPage({ currentUser }: { currentUser: AuthUser }) {
       {hub.error ? <ErrorBanner message={`策略工作台加载失败：${hub.error}`} /> : null}
       {hub.notice ? <div className="panel strategy-notice">{hub.notice}</div> : null}
 
-      <section className="strategy-step-flow" aria-label="策略使用流程">
-        {[
-          ["1", "体检", "先看策略是否健康，红灯不使用。"],
-          ["2", "复盘", "查看历史任务，确认不是偶然盈利。"],
-          ["3", "优化", "只在样本外通过后调整参数。"],
-          ["4", "验证", "验证通过后才考虑模拟盘跟踪。"],
-        ].map(([step, title, desc]) => (
-          <article key={step}>
-            <span>{step}</span>
-            <strong>{title}</strong>
-            <small>{desc}</small>
-          </article>
-        ))}
-      </section>
-      <section className="strategy-traffic-light panel" aria-label="策略健康灯号说明">
-        <article className="ok"><strong>健康运行</strong><span>胜率、回撤和样本量正常，可继续观察使用。</span></article>
-        <article className="warn"><strong>轻微异常</strong><span>近期表现变弱或样本不足，先小仓或只复盘。</span></article>
-        <article className="bad"><strong>需要关注</strong><span>回撤、胜率或数据质量异常，暂停生产执行。</span></article>
-      </section>
+      <StrategyDoctorPanel
+        runs={hub.runs}
+        loading={hub.loading === "quick-submit"}
+        onQuickCheck={quickSubmitWithToast}
+        onOpenSignals={() => hub.setTab("signals")}
+        onOpenCompare={() => hub.setTab("compare")}
+      />
 
       <nav className="strategy-tabs" aria-label="策略工作台功能">
         {visibleTabsForUser(currentUser).map((tab) => (
@@ -100,8 +88,7 @@ export function StrategyHubPage({ currentUser }: { currentUser: AuthUser }) {
       {hub.tab === "quick" ? (
         <div className="strategy-layout">
           <section className="panel strategy-form-panel">
-            <PanelTitle title="快速回测配置" />
-            <StrategyQuickGuide />
+            <PanelTitle title="一键体检" />
             <QuickBacktestForm hub={hub} onQuickSubmit={quickSubmitWithToast} />
           </section>
           <aside className="strategy-side">

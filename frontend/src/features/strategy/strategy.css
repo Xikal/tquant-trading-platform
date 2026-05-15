@@ -53,7 +53,7 @@
   display: flex;
   gap: 16px;
   justify-content: space-between;
-  min-height: 118px;
+  min-height: 96px;
 }
 
 .strategy-kicker {
@@ -268,6 +268,29 @@
   padding-top: 8px;
 }
 
+.strategy-run-verdict {
+  border-radius: 12px;
+  display: grid;
+  gap: 3px;
+  padding: 8px 10px;
+}
+
+.strategy-run-verdict.ok {
+  background: rgba(28, 145, 85, 0.1);
+}
+
+.strategy-run-verdict.warn {
+  background: rgba(210, 160, 84, 0.14);
+}
+
+.strategy-run-verdict.bad {
+  background: rgba(207, 45, 45, 0.1);
+}
+
+.strategy-run-verdict span {
+  font-size: 12px;
+}
+
 .strategy-status {
   border-radius: 999px;
   font-size: 12px;
@@ -324,4 +347,36 @@
 .strategy-bridge > .strategy-access-panel {
   grid-column: 2;
   grid-row: 1;
+}
+
+@media (max-width: 1180px) {
+  .strategy-layout,
+  .strategy-bridge,
+  .strategy-tabs,
+  .strategy-doctor,
+  .strategy-simple-setup {
+    grid-template-columns: 1fr;
+  }
+
+  .strategy-bridge > .backtest-research,
+  .strategy-bridge > .strategy-bridge-header,
+  .strategy-bridge > .strategy-access-panel {
+    grid-column: auto;
+    grid-row: auto;
+  }
+}
+
+@media (max-width: 720px) {
+  .strategy-hero,
+  .strategy-panel-title,
+  .strategy-run-list article > div {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .strategy-form,
+  .strategy-card-grid,
+  .strategy-doctor-metrics {
+    grid-template-columns: 1fr;
+  }
 }

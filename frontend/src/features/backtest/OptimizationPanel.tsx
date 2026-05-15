@@ -37,7 +37,8 @@ export function OptimizationPanel({
   const detail = state.selectedOptimization;
   return (
     <section className="backtest-research-card span-2">
-      <PanelTitle title="优化任务" meta={`${state.optimizations.length} 条`} />
+      <PanelTitle title="自动找更稳参数" meta={`${state.optimizations.length} 条`} />
+      <p className="backtest-research-note">专家工具：体检结果有价值后再使用，用来寻找更稳的评分、仓位、止损和止盈组合。</p>
       <div className="backtest-research-form compact">
         <TextField label="名称" value={state.optimizationForm.name} onChange={(name) => actions.onOptimizationFormChange({ name })} />
         <SelectField label="策略" value={state.optimizationForm.strategy} options={strategyOptions} onChange={(strategy) => actions.onOptimizationFormChange({ strategy })} />
@@ -78,8 +79,8 @@ export function OptimizationPanel({
           <>
             {truthyFlag(detail.oos_downgrade) ? <div className="backtest-error">OOS 降级：{detail.oos_downgrade_reason || "样本外表现低于阈值"}</div> : null}
             <div className="backtest-mini-metrics">
-              <Metric label="IS Score" value={formatNumber(detail.best_is_score)} />
-              <Metric label="OOS Score" value={formatNumber(detail.best_oos_score)} />
+              <Metric label="历史内评分" value={formatNumber(detail.best_is_score)} />
+              <Metric label="样本外评分" value={formatNumber(detail.best_oos_score)} />
               <Metric label="最优参数" value={formatParams(detail.best_params)} />
             </div>
             <div className="backtest-data-table" role="table" aria-label="参数优化排名">

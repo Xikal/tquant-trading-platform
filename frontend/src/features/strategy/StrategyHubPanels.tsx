@@ -1,6 +1,5 @@
 import type { BacktestRunSummary } from "../../api/backtests";
-import { EmptyPlaceholder, SkeletonBlock } from "../../components/shared/Feedback";
-import { DateField, NumberField, SelectField, TextField } from "../../components/shared/FormFields";
+import { EmptyPlaceholder } from "../../components/shared/Feedback";
 import type { AuthUser } from "../../types";
 import {
   formatBacktestStrategies,
@@ -11,101 +10,8 @@ import {
 import { BacktestResearchPanel, type BacktestResearchSection } from "../backtest/BacktestResearchPanel";
 import { useBacktestDashboard, type BacktestDashboardActiveSection } from "../backtest/useBacktestDashboard";
 import { StrategySignalReplayPanel } from "./StrategySignalReplayPanel";
-import { useStrategyHub, type StrategyHubTab } from "./useStrategyHub";
-
-export function QuickBacktestForm({
-  hub,
-  onQuickSubmit,
-}: {
-  hub: ReturnType<typeof useStrategyHub>;
-  onQuickSubmit: () => void;
-}) {
-  return (
-    <div className="strategy-form">
-      <div className="strategy-one-click">
-        <div>
-          <strong>一键快速回测（最近 6 个月）</strong>
-          <span>50 万初始资金 · 开盘价成交 · 当前生产策略集合</span>
-        </div>
-        <button type="button" className="primary" onClick={onQuickSubmit} disabled={hub.loading === "quick-submit"}>
-          {hub.loading === "quick-submit" ? "提交中" : "立即提交"}
-        </button>
-      </div>
-      <TextField label="任务名称" value={hub.form.name} onChange={(event) => hub.updateForm({ name: event.target.value })} />
-      <DateField label="开始日期" value={hub.form.start_date} onChange={(event) => hub.updateForm({ start_date: event.target.value })} />
-      <DateField label="结束日期" value={hub.form.end_date} onChange={(event) => hub.updateForm({ end_date: event.target.value })} />
-      <NumberField label="初始资金" value={hub.form.initial_capital} onChange={(event) => hub.updateForm({ initial_capital: event.target.value })} />
-      <SelectField
-        label="成交模型"
-        value={hub.form.execution_model}
-        onChange={(event) => hub.updateForm({ execution_model: event.target.value as typeof hub.form.execution_model })}
-        options={[
-          { value: "open_price", label: "开盘价成交" },
-          { value: "vwap", label: "VWAP 近似" },
-          { value: "next_open", label: "次日开盘" },
-          { value: "close_price", label: "收盘价成交" },
-        ]}
-      />
-      <details className="strategy-advanced-fields">
-        <summary>高级设置（使用推荐值即可）</summary>
-        <div className="strategy-advanced-grid">
-          <NumberField label="单票仓位上限" suffix="%" value={hub.form.max_position_pct} onChange={(event) => hub.updateForm({ max_position_pct: event.target.value })} />
-          <NumberField label="最大持仓数" value={hub.form.max_positions} onChange={(event) => hub.updateForm({ max_positions: event.target.value })} />
-          <TextField label="基准指数" value={hub.form.benchmark} onChange={(event) => hub.updateForm({ benchmark: event.target.value })} />
-          <NumberField label="单笔下单上限" suffix="%" value={hub.form.max_single_order_pct} onChange={(event) => hub.updateForm({ max_single_order_pct: event.target.value })} />
-          <NumberField label="单日最大亏损" suffix="%" value={hub.form.max_daily_loss_pct} onChange={(event) => hub.updateForm({ max_daily_loss_pct: event.target.value })} />
-          <NumberField label="最低现金保留" value={hub.form.min_cash_reserve} onChange={(event) => hub.updateForm({ min_cash_reserve: event.target.value })} />
-        </div>
-      </details>
-      <div className="strategy-picker">
-        <div className="strategy-picker-head">
-          <strong>策略选择</strong>
-          <span>{hub.selectedStrategies.length} 个已选</span>
-        </div>
-        <div className="strategy-card-grid">
-          {hub.strategies.map((strategy) => {
-            const selected = hub.form.strategies.includes(strategy.key);
-            return (
-              <button
-                type="button"
-                key={strategy.key}
-                className={selected ? "selected" : ""}
-                onClick={() => hub.toggleStrategy(strategy.key)}
-              >
-                <strong>{strategy.display_name || strategy.name}</strong>
-                <span>
-                  {strategy.display_category || strategy.category} · {strategy.typical_holding_days}
-                  {strategy.visibility === "backtest_only" ? " · 仅回测研究" : ""}
-                </span>
-                <small>{strategy.description}</small>
-              </button>
-            );
-          })}
-          {!hub.strategies.length && hub.loading === "load" ? <SkeletonBlock rows={5} title /> : null}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-export function StrategyQuickGuide() {
-  return (
-    <div className="strategy-guide-grid" aria-label="策略工作台使用步骤">
-      <article>
-        <b>1. 先点一键回测</b>
-        <span>用最近 6 个月快速判断生产策略是否还有正期望。</span>
-      </article>
-      <article>
-        <b>2. 看三项结果</b>
-        <span>收益、胜率、最大回撤。运行中任务完成后才会显示。</span>
-      </article>
-      <article>
-        <b>3. 再做优化验证</b>
-        <span>只有结果可用时，再进入参数优化和样本外验证。</span>
-      </article>
-    </div>
-  );
-}
+import { strategyDoctorVerdict, strategyHealthLabel } from "./strategyVerdict";
+import type { StrategyHubTab } from "./useStrategyHub";
 
 export function RecentRuns({ runs }: { runs: BacktestRunSummary[] }) {
   if (!runs.length) {
@@ -123,6 +29,7 @@ export function RecentRuns({ runs }: { runs: BacktestRunSummary[] }) {
             <b className={`strategy-status ${run.status}`}>{statusText(run.status)}</b>
             <small>{formatDateTime(run.created_at)}</small>
           </div>
+          <RunVerdictSummary run={run} />
           <div className="strategy-run-metrics">
             <span>收益 {runMetricPct(run, "total_return_pct")}</span>
             <span>胜率 {runMetricPct(run, "win_rate_pct")}</span>
@@ -130,6 +37,48 @@ export function RecentRuns({ runs }: { runs: BacktestRunSummary[] }) {
           </div>
         </article>
       ))}
+    </div>
+  );
+}
+
+function RunVerdictSummary({ run }: { run: BacktestRunSummary }) {
+  if (run.status === "running" || run.status === "queued" || run.status === "pending") {
+    return (
+      <div className="strategy-run-verdict warn">
+        <strong>正在计算</strong>
+        <span>完成后会显示是否值得继续使用。</span>
+      </div>
+    );
+  }
+  if (run.status === "failed") {
+    return (
+      <div className="strategy-run-verdict bad">
+        <strong>任务失败</strong>
+        <span>先查看失败原因，再重新提交体检。</span>
+      </div>
+    );
+  }
+  if (run.status === "cancelled" || run.status === "deleted") {
+    return (
+      <div className="strategy-run-verdict warn">
+        <strong>任务已取消</strong>
+        <span>这条任务没有产出体检结论，可以重新提交。</span>
+      </div>
+    );
+  }
+  if (run.status === "timeout") {
+    return (
+      <div className="strategy-run-verdict bad">
+        <strong>任务超时</strong>
+        <span>建议缩短时间范围，或改用轻量体检。</span>
+      </div>
+    );
+  }
+  const verdict = strategyDoctorVerdict([run]);
+  return (
+    <div className={`strategy-run-verdict ${verdict.tone}`}>
+      <strong>{strategyHealthLabel(verdict.tone)}</strong>
+      <span>{verdict.action}</span>
     </div>
   );
 }
@@ -201,11 +150,11 @@ export function StrategyBridge({
   dashboard: ReturnType<typeof useBacktestDashboard>;
 }) {
   const metaMap: Record<Exclude<StrategyHubTab, "quick" | "history">, [string, string]> = {
-    signals: ["信号复盘", "输入代码或选择策略，查看最近哪些票入选、为什么入选、买点和止损是否清楚。"],
-    optimize: ["参数优化", "快速回测有价值后再用。它会找更稳的评分、仓位、止损和持有天数。"],
-    validate: ["样本外验证", "检查策略是不是只在历史里好看。样本外不通过，就不要上生产。"],
-    compare: ["结果对比", "把多个已完成回测放在一起，看收益、回撤、Sharpe，选择最终方案。"],
-    capacity: ["ML 在线学习 / 容量", "查看模拟盘平仓样本是否进入训练池，并评估策略在不同资金规模下是否还能承载。"],
+    signals: ["最近信号", "用案例卡查看近期哪些票入选、建议价格、止损和结果线索。"],
+    optimize: ["专家工具：找更稳参数", "只建议研究员使用。它会自动搜索评分、仓位、止损和持有天数。"],
+    validate: ["专家工具：防过拟合检查", "检查策略是不是只在历史里好看。样本外不通过，不要进生产。"],
+    compare: ["策略对比", "把多个体检结果放在一起，直接选择更稳的策略。"],
+    capacity: ["管理员工具：ML / 容量", "查看模拟盘平仓样本是否进入训练池，并评估策略在不同资金规模下是否还能承载。"],
   };
   const meta = metaMap[tab];
   if (tab === "signals") {
@@ -246,7 +195,12 @@ export function PanelTitle({ title }: { title: string }) {
 }
 
 export function visibleTabsForUser(user: AuthUser) {
-  return TABS.filter((tab) => tab.key !== "capacity" || isAdmin(user));
+  return TABS.filter((tab) => {
+    if (tab.key === "optimize") return canOptimize(user);
+    if (tab.key === "validate") return canValidate(user);
+    if (tab.key === "capacity") return isAdmin(user);
+    return true;
+  });
 }
 
 export function dashboardSectionForTab(tab: StrategyHubTab): BacktestDashboardActiveSection {
@@ -352,11 +306,11 @@ function average(values: Array<number | null | undefined>): number | undefined {
 }
 
 const TABS: Array<{ key: StrategyHubTab; label: string; hint: string }> = [
-  { key: "quick", label: "快速回测", hint: "先看策略能不能用" },
-  { key: "signals", label: "信号复盘", hint: "查每只票为什么入选" },
-  { key: "optimize", label: "参数优化", hint: "找更稳的参数" },
-  { key: "validate", label: "样本外验证", hint: "防止只适合历史" },
-  { key: "compare", label: "结果对比", hint: "选出最终方案" },
-  { key: "capacity", label: "ML / 容量", hint: "看在线学习和资金承载" },
-  { key: "history", label: "任务历史", hint: "看进度和结果" },
+  { key: "quick", label: "策略体检", hint: "一键判断能不能用" },
+  { key: "signals", label: "最近信号", hint: "看入选股票和原因" },
+  { key: "compare", label: "策略对比", hint: "选更稳的策略" },
+  { key: "history", label: "任务记录", hint: "看进度和结果" },
+  { key: "optimize", label: "专家：参数", hint: "研究员调参" },
+  { key: "validate", label: "专家：验证", hint: "防过拟合" },
+  { key: "capacity", label: "管理员：ML", hint: "在线学习和容量" },
 ];

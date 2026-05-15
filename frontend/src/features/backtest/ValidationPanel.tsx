@@ -34,7 +34,8 @@ export function ValidationPanel({
   const detail = state.selectedValidation;
   return (
     <section className="backtest-research-card span-2">
-      <PanelTitle title="Walk-forward 验证" meta={`${state.validations.length} 条`} />
+      <PanelTitle title="防过拟合检查" meta={`${state.validations.length} 条`} />
+      <p className="backtest-research-note">专家工具：检查策略是不是只在历史里好看。样本外不通过，就不要进入生产或自动交易。</p>
       <div className="backtest-research-form compact">
         <TextField label="名称" value={state.validationForm.name} onChange={(name) => actions.onValidationFormChange({ name })} />
         <SelectField label="策略" value={state.validationForm.strategy} options={strategyOptions} onChange={(strategy) => actions.onValidationFormChange({ strategy })} />
@@ -76,14 +77,14 @@ export function ValidationPanel({
       />
 
       <div className="backtest-result-block">
-        <PanelTitle title="PBO / 稳定性" meta={detail?.pbo_risk ? `PBO ${detail.pbo_risk}` : "等待结果"} />
+        <PanelTitle title="过拟合风险 / 稳定性" meta={detail?.pbo_risk ? pboRiskMeta(detail.pbo_risk).label : "等待结果"} />
         {detail ? (
           <>
             <div className="backtest-mini-metrics">
-              <Metric label="OOS Sharpe" value={formatNumber(detail.avg_oos_sharpe)} />
-              <Metric label="IS Sharpe" value={formatNumber(detail.avg_is_sharpe)} />
+              <Metric label="样本外表现" value={formatNumber(detail.avg_oos_sharpe)} />
+              <Metric label="历史内表现" value={formatNumber(detail.avg_is_sharpe)} />
               <Metric label="样本外通过率" value={formatRatioPct(detail.oos_pass_rate)} />
-              <Metric label="PBO" value={pboRiskMeta(detail.pbo_risk).label} className={`pbo-${pboRiskMeta(detail.pbo_risk).tone}`} />
+              <Metric label="过拟合风险" value={pboRiskMeta(detail.pbo_risk).label} className={`pbo-${pboRiskMeta(detail.pbo_risk).tone}`} />
             </div>
             {truthyFlag(detail.downgrade_review ?? detail.downgrade_review_required) ? <div className="backtest-error">存在样本外 Sharpe 小于 0 的窗口，建议进入降级复核。</div> : null}
             {detail.stability_conclusion ? <div className="backtest-research-note">{detail.stability_conclusion}</div> : null}
@@ -93,7 +94,7 @@ export function ValidationPanel({
               onClick={() => actions.onPromoteValidationStateParams(detail.id)}
               disabled={state.loading === "validation-promote" || detail.status !== "succeeded"}
             >
-              {state.loading === "validation-promote" ? "晋级中..." : "按市场状态生成参数版本"}
+              {state.loading === "validation-promote" ? "晋级中..." : "生成市场状态参数版本（专家）"}
             </button>
             <div className="backtest-window-grid">
               {(detail.windows ?? []).map((window, index) => (
@@ -112,7 +113,7 @@ export function ValidationPanel({
               {detail.windows?.length ? null : <Empty text="验证完成后显示滚动窗口结果。" />}
             </div>
           </>
-        ) : <Empty text="选择一条验证任务查看 PBO、稳定性结论和窗口卡片。" />}
+        ) : <Empty text="选择一条验证任务查看过拟合风险、稳定性结论和窗口卡片。" />}
       </div>
     </section>
   );

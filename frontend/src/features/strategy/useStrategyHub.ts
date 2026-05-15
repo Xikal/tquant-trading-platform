@@ -30,7 +30,7 @@ export interface StrategyQuickForm {
 
 const DEFAULT_FORM: StrategyQuickForm = {
   name: "策略快速回测",
-  start_date: shiftDate(-365),
+  start_date: shiftDate(-183),
   end_date: shiftDate(0),
   initial_capital: "500000",
   execution_model: "open_price",
@@ -192,12 +192,13 @@ export function useStrategyHub() {
       )
       .map((strategy) => strategy.key);
     try {
+      const selected = form.strategies.length ? form.strategies : productionStrategies;
       const payload: BacktestCreateRequest = {
         name: "一键快速回测",
-        start_date: shiftDate(-183),
-        end_date: shiftDate(0),
+        start_date: form.start_date || shiftDate(-183),
+        end_date: form.end_date || shiftDate(0),
         initial_capital: 500000,
-        strategies: productionStrategies.length ? productionStrategies : ["first_board", "volume_shrink"],
+        strategies: selected.length ? selected : ["first_board", "volume_shrink"],
         execution_model: "open_price",
         benchmark: "000300",
         risk_limits: {
@@ -220,7 +221,7 @@ export function useStrategyHub() {
     } finally {
       setLoading("");
     }
-  }, [setTab, strategies]);
+  }, [form.end_date, form.start_date, form.strategies, setTab, strategies]);
 
   const selectedStrategyNames = useMemo(() => {
     const nameByKey = new Map(strategies.map((strategy) => [strategy.key, strategy.display_name || strategy.name || strategy.key]));

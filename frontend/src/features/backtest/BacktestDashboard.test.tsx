@@ -364,10 +364,10 @@ describe("BacktestDashboard", () => {
     expect(html).toContain("软件");
     expect(html).toContain("repair");
     expect(html).toContain("missing_bar");
-    expect(html).toContain("优化任务");
+    expect(html).toContain("自动找更稳参数");
     expect(html).toContain("参数排名");
-    expect(html).toContain("Walk-forward 验证");
-    expect(html).toContain("PBO");
+    expect(html).toContain("防过拟合检查");
+    expect(html).toContain("过拟合风险");
     expect(html).toContain("回测对比");
     expect(html).toContain("归因面板");
     expect(html).toContain("月度收益");

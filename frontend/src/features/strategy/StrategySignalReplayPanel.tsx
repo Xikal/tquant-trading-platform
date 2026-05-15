@@ -43,7 +43,7 @@ export function StrategySignalReplayPanel({ title }: { title: string }) {
       <div className="strategy-panel-title">
         <div>
           <h2>{title}</h2>
-          <span>先选策略，再按股票代码查询。这里只看历史信号，不会提交新回测。</span>
+          <span>用案例方式看最近信号：当时建议什么价格、止损在哪里、为什么入选。</span>
         </div>
       </div>
       <div className="strategy-signal-grid">
@@ -97,25 +97,47 @@ function SignalReplayRows({
     );
   }
   return (
-    <div className="strategy-signal-table" role="table" aria-label="策略信号复盘">
-      <div className="strategy-signal-row head" role="row">
-        <span>日期</span>
-        <span>标的</span>
-        <span>状态</span>
-        <span>评分</span>
-        <span>买点/止损</span>
-        <span>摘要</span>
-      </div>
+    <div className="strategy-signal-case-grid" aria-label="策略信号案例">
       {items.map((item) => (
-        <article className="strategy-signal-row" role="row" key={`${item.latest_trade_date}-${item.strategy_key}-${item.symbol}`}>
-          <span>{item.latest_trade_date}</span>
-          <strong>{item.name || item.symbol}<small>{item.symbol}</small></strong>
-          <span>{item.buy_signal_text || item.buy_signal_state}</span>
-          <b>{Number(item.score || 0).toFixed(1)}</b>
-          <span>{item.entry_zone || "--"} / {typeof item.stop_loss === "number" ? item.stop_loss.toFixed(3) : "--"}</span>
-          <span>{item.summary || item.reasons?.[0] || "已读取物化信号"}</span>
+        <article className="strategy-signal-case" key={`${item.latest_trade_date}-${item.strategy_key}-${item.symbol}`}>
+          <header>
+            <div>
+              <strong>{item.name || item.symbol}</strong>
+              <span>{item.symbol} · {item.latest_trade_date}</span>
+            </div>
+            <b className={`signal-state ${stateTone(item.buy_signal_state)}`}>{stateLabel(item.buy_signal_state, item.buy_signal_text)}</b>
+          </header>
+          <div className="signal-case-metrics">
+            <span>建议区间 <b>{item.entry_zone || "--"}</b></span>
+            <span>止损价 <b>{typeof item.stop_loss === "number" ? item.stop_loss.toFixed(3) : "--"}</b></span>
+            <span>信号强度 <b>{scoreLabel(item.score)}</b></span>
+          </div>
+          <p>{item.summary || item.reasons?.[0] || "该票进入策略观察池，建议结合买点区间和止损价复盘。"}</p>
         </article>
       ))}
     </div>
   );
+}
+
+function stateLabel(state?: string, fallback?: string): string {
+  if (state === "buy_now") return "立即可买";
+  if (state === "soft_buy_now") return "小仓试买";
+  if (state === "near_entry") return "等待确认";
+  if (state === "watch") return "继续观察";
+  if (state === "avoid") return "今天放弃";
+  return fallback || "等待";
+}
+
+function stateTone(state?: string): string {
+  if (state === "buy_now" || state === "soft_buy_now") return "ok";
+  if (state === "near_entry" || state === "watch") return "warn";
+  if (state === "avoid") return "bad";
+  return "neutral";
+}
+
+function scoreLabel(score?: number | null): string {
+  if (typeof score !== "number" || !Number.isFinite(score)) return "--";
+  if (score >= 85) return "强";
+  if (score >= 75) return "中";
+  return "弱";
 }
