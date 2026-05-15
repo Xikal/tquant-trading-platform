@@ -143,6 +143,10 @@
   text-align: left;
 }
 
+.strategy-simple-setup .strategy-picker {
+  grid-column: 1 / -1;
+}
+
 .strategy-expert-settings summary {
   cursor: pointer;
   font-weight: 900;

@@ -202,9 +202,55 @@
   color: var(--strategy-text);
   display: grid;
   gap: 10px;
-  grid-template-columns: minmax(180px, 1.2fr) minmax(180px, 1fr) 92px 92px 92px 150px;
-  min-width: 900px;
+  grid-template-columns: minmax(180px, 1.2fr) minmax(180px, 1fr) 92px 92px 92px 150px 160px;
+  min-width: 1080px;
   padding: 10px 12px;
+}
+
+.strategy-history-actions {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+}
+
+.strategy-signal-summary {
+  align-items: center;
+  background: var(--strategy-bg-soft);
+  border: 1px solid var(--strategy-border);
+  border-radius: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 10px 12px;
+}
+
+.strategy-signal-summary span {
+  color: var(--strategy-muted);
+  font-size: 12px;
+}
+
+.strategy-signal-summary button {
+  border-radius: 999px;
+  margin-left: auto;
+  padding: 6px 10px;
+}
+
+.strategy-signal-summary button.active {
+  background: rgba(207, 45, 45, 0.1);
+  border-color: rgba(207, 45, 45, 0.32);
+  color: var(--red);
+}
+
+.strategy-signal-detail {
+  background: rgba(15, 23, 42, 0.03);
+  border-radius: 10px;
+  padding: 8px 10px;
+}
+
+.strategy-signal-detail summary {
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 900;
 }
 
 .strategy-history-row.head {
@@ -243,6 +289,37 @@
 
 .strategy-dialog p {
   color: var(--muted);
+}
+
+.strategy-dialog-summary {
+  background: rgba(15, 23, 42, 0.03);
+  border: 1px solid var(--strategy-border);
+  border-radius: 14px;
+  display: grid;
+  gap: 8px;
+  margin: 2px 0 0;
+  padding: 12px;
+}
+
+.strategy-dialog-summary div {
+  align-items: baseline;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: 78px minmax(0, 1fr);
+}
+
+.strategy-dialog-summary dt {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.strategy-dialog-summary dd {
+  color: var(--strategy-text);
+  font-size: 13px;
+  font-weight: 800;
+  margin: 0;
+  overflow-wrap: anywhere;
 }
 
 @media (max-width: 1180px) {

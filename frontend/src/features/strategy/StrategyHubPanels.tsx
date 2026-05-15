@@ -13,13 +13,13 @@ import { StrategySignalReplayPanel } from "./StrategySignalReplayPanel";
 import { strategyDoctorVerdict, strategyHealthLabel } from "./strategyVerdict";
 import type { StrategyHubTab } from "./useStrategyHub";
 
-export function RecentRuns({ runs }: { runs: BacktestRunSummary[] }) {
+export function RecentRuns({ runs, onRerun }: { runs: BacktestRunSummary[]; onRerun?: (run: BacktestRunSummary) => void }) {
   if (!runs.length) {
     return <EmptyPlaceholder title="暂无回测任务" description="提交快速回测后会显示最近任务。" />;
   }
   return (
     <div className="strategy-run-list">
-      {runs.map((run) => (
+      {runs.map((run, index) => (
         <article key={run.id}>
           <div>
             <strong>{run.name}</strong>
@@ -30,11 +30,18 @@ export function RecentRuns({ runs }: { runs: BacktestRunSummary[] }) {
             <small>{formatDateTime(run.created_at)}</small>
           </div>
           <RunVerdictSummary run={run} />
+          <RunProgress run={run} />
           <div className="strategy-run-metrics">
             <span>收益 {runMetricPct(run, "total_return_pct")}</span>
             <span>胜率 {runMetricPct(run, "win_rate_pct")}</span>
             <span>资产 {runEquityText(run)}</span>
           </div>
+          <RunDeltaSummary current={run} previous={runs[index + 1]} />
+          {onRerun ? (
+            <button type="button" className="strategy-rerun-button" onClick={() => onRerun(run)}>
+              重新运行
+            </button>
+          ) : null}
         </article>
       ))}
     </div>
@@ -83,7 +90,15 @@ function RunVerdictSummary({ run }: { run: BacktestRunSummary }) {
   );
 }
 
-export function StrategyHistoryPanel({ runs, onRefresh }: { runs: BacktestRunSummary[]; onRefresh: () => void }) {
+export function StrategyHistoryPanel({
+  runs,
+  onRefresh,
+  onRerun,
+}: {
+  runs: BacktestRunSummary[];
+  onRefresh: () => void;
+  onRerun: (run: BacktestRunSummary) => void;
+}) {
   const summary = summarizeRuns(runs);
   return (
     <section className="panel strategy-history">
@@ -121,8 +136,9 @@ export function StrategyHistoryPanel({ runs, onRefresh }: { runs: BacktestRunSum
             <span>收益</span>
             <span>胜率</span>
             <span>创建时间</span>
+            <span>操作</span>
           </div>
-          {runs.map((run) => (
+          {runs.map((run, index) => (
             <article className="strategy-history-row" role="row" key={run.id}>
               <strong>{run.name || `任务 #${run.id}`}</strong>
               <span>{formatBacktestStrategies(run.strategies)}</span>
@@ -130,6 +146,10 @@ export function StrategyHistoryPanel({ runs, onRefresh }: { runs: BacktestRunSum
               <span>{runMetricPct(run, "total_return_pct")}</span>
               <span>{runMetricPct(run, "win_rate_pct")}</span>
               <span>{formatDateTime(run.created_at)}</span>
+              <span className="strategy-history-actions">
+                <RunDeltaSummary current={run} previous={runs[index + 1]} compact />
+                <button type="button" onClick={() => onRerun(run)}>重新运行</button>
+              </span>
             </article>
           ))}
         </div>
@@ -284,11 +304,21 @@ function summarizeRuns(runs: BacktestRunSummary[]) {
 }
 
 function runMetricPct(run: BacktestRunSummary, key: "total_return_pct" | "win_rate_pct"): string {
+  if (isFinished(run.status) && runTradeCount(run) === 0) return "无成交";
   const value = run.summary?.[key];
   if (typeof value === "number" && Number.isFinite(value)) return formatPct(value);
   if (run.status === "running" || run.status === "queued" || run.status === "pending") return "完成后显示";
   if (run.status === "failed") return "失败";
   return "暂无结果";
+}
+
+function isFinished(status?: string | null): boolean {
+  return status === "completed" || status === "succeeded";
+}
+
+function runTradeCount(run: BacktestRunSummary): number | null {
+  const value = run.summary?.total_trades ?? run.summary?.trade_count;
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
 }
 
 function runEquityText(run: BacktestRunSummary): string {
@@ -307,10 +337,59 @@ function average(values: Array<number | null | undefined>): number | undefined {
 
 const TABS: Array<{ key: StrategyHubTab; label: string; hint: string }> = [
   { key: "quick", label: "策略体检", hint: "一键判断能不能用" },
-  { key: "signals", label: "最近信号", hint: "看入选股票和原因" },
-  { key: "compare", label: "策略对比", hint: "选更稳的策略" },
   { key: "history", label: "任务记录", hint: "看进度和结果" },
+  { key: "signals", label: "最近信号", hint: "看入选股票和原因" },
   { key: "optimize", label: "专家：参数", hint: "研究员调参" },
   { key: "validate", label: "专家：验证", hint: "防过拟合" },
+  { key: "compare", label: "策略对比", hint: "选更稳的策略" },
   { key: "capacity", label: "管理员：ML", hint: "在线学习和容量" },
 ];
+
+function RunProgress({ run }: { run: BacktestRunSummary }) {
+  if (!(run.status === "running" || run.status === "queued" || run.status === "pending")) return null;
+  const pct = Math.max(0, Math.min(100, Number(run.progress_pct ?? run.progress ?? 0)));
+  const estimate = typeof run.estimated_wait_seconds === "number" && run.estimated_wait_seconds > 0
+    ? `预计剩余 ${Math.ceil(run.estimated_wait_seconds / 60)} 分钟`
+    : "正在等待结果";
+  return (
+    <div className="strategy-run-progress" aria-label="任务进度">
+      <span style={{ width: `${pct}%` }} />
+      <small>{pct ? `${pct.toFixed(0)}% · ${estimate}` : estimate}</small>
+    </div>
+  );
+}
+
+function RunDeltaSummary({
+  current,
+  previous,
+  compact = false,
+}: {
+  current: BacktestRunSummary;
+  previous?: BacktestRunSummary;
+  compact?: boolean;
+}) {
+  if (!previous) return compact ? <small>首次记录</small> : null;
+  const winDelta = numericDelta(current.summary?.win_rate_pct, previous.summary?.win_rate_pct);
+  const drawdownDelta = numericDelta(current.summary?.max_drawdown_pct, previous.summary?.max_drawdown_pct);
+  const returnDelta = numericDelta(current.summary?.total_return_pct, previous.summary?.total_return_pct);
+  if (!winDelta && !drawdownDelta && !returnDelta) return compact ? <small>暂无对比</small> : null;
+  return (
+    <div className={compact ? "strategy-run-delta compact" : "strategy-run-delta"}>
+      {winDelta ? <span>{deltaText("胜率", winDelta)}</span> : null}
+      {drawdownDelta ? <span>{deltaText("回撤", drawdownDelta)}</span> : null}
+      {returnDelta ? <span>{deltaText("收益", returnDelta)}</span> : null}
+    </div>
+  );
+}
+
+function numericDelta(current?: number | null, previous?: number | null): number | null {
+  if (typeof current !== "number" || typeof previous !== "number") return null;
+  if (!Number.isFinite(current) || !Number.isFinite(previous)) return null;
+  return current - previous;
+}
+
+function deltaText(label: string, delta: number): string {
+  const better = delta > 0;
+  const arrow = delta === 0 ? "→" : better ? "▲" : "▼";
+  return `${label} ${arrow}${Math.abs(delta).toFixed(1)}%`;
+}

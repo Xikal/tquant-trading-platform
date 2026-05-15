@@ -42,4 +42,4 @@ def _normalize_beijing_datetime(value: datetime | None) -> datetime:
 
 
 def _in_regular_session(value: datetime_time) -> bool:
-    return (_MORNING_OPEN <= value <= _MORNING_CLOSE) or (_AFTERNOON_OPEN <= value <= _AFTERNOON_CLOSE)
+    return (_MORNING_OPEN <= value < _MORNING_CLOSE) or (_AFTERNOON_OPEN <= value < _AFTERNOON_CLOSE)

@@ -228,6 +228,13 @@ function normalizeBacktestRun<T extends BacktestRunSummary | BacktestRunDetail>(
   const result = isRecord(run.result) ? run.result : {};
   const resultMetrics = isRecord(result.metrics) ? result.metrics : null;
   const resultSummary = isRecord(result.summary) ? result.summary : null;
+  const summary = normalizeBacktestSummary({
+    runSummary: run.summary,
+    resultMetrics,
+    resultSummary,
+    initialCapital: run.initial_capital ?? run.initial_cash,
+    finalEquity: run.final_equity,
+  });
   return {
     ...run,
     status: normalizeBacktestStatus(run.status),
@@ -237,9 +244,53 @@ function normalizeBacktestRun<T extends BacktestRunSummary | BacktestRunDetail>(
     benchmark: stringOrNull(run.benchmark ?? run.benchmark_symbol),
     execution_model: stringOrNull(run.execution_model ?? params.execution_model),
     risk_limits: run.risk_limits ?? riskLimits,
-    summary: run.summary ?? resultMetrics ?? resultSummary ?? null,
+    summary,
     completed_at: run.completed_at ?? run.finished_at,
   };
+}
+
+function normalizeBacktestSummary({
+  runSummary,
+  resultMetrics,
+  resultSummary,
+  initialCapital,
+  finalEquity,
+}: {
+  runSummary?: BacktestSummaryMetrics | null;
+  resultMetrics?: RawRecord | null;
+  resultSummary?: RawRecord | null;
+  initialCapital?: number | null;
+  finalEquity?: number | null;
+}): BacktestSummaryMetrics | null {
+  const merged: RawRecord = {};
+  for (const source of [resultSummary, resultMetrics, runSummary]) {
+    if (isRecord(source)) Object.assign(merged, source);
+  }
+  normalizeMetricAlias(merged, "total_return_pct", ["total_return", "return_pct"]);
+  normalizeMetricAlias(merged, "win_rate_pct", ["win_rate"]);
+  normalizeMetricAlias(merged, "max_drawdown_pct", ["max_drawdown"]);
+  normalizeMetricAlias(merged, "trade_count", ["total_trades"]);
+  const initial = numberOrNull(initialCapital ?? merged.initial_cash ?? merged.initial_capital);
+  const finalValue = numberOrNull(finalEquity ?? merged.final_equity);
+  if (typeof initial === "number" && initial > 0 && typeof finalValue === "number" && finalValue > 0) {
+    merged.initial_cash = initial;
+    merged.final_equity = finalValue;
+    const computedReturn = ((finalValue - initial) / initial) * 100;
+    if (!Number.isFinite(numberOrNull(merged.total_return_pct) ?? NaN) || Math.abs(computedReturn) > 0.0001) {
+      merged.total_return_pct = computedReturn;
+    }
+  }
+  return Object.keys(merged).length ? (merged as BacktestSummaryMetrics) : null;
+}
+
+function normalizeMetricAlias(target: RawRecord, canonical: string, aliases: string[]): void {
+  if (typeof target[canonical] === "number") return;
+  for (const alias of aliases) {
+    const value = numberOrNull(target[alias]);
+    if (typeof value !== "number") continue;
+    target[canonical] = alias === "win_rate" && Math.abs(value) <= 1 ? value * 100 : value;
+    return;
+  }
 }
 
 function normalizeBacktestStatus(status: BacktestStatus): BacktestStatus {

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime
 from decimal import Decimal
 from types import SimpleNamespace
 from typing import Any
@@ -8,6 +9,7 @@ from typing import Any
 import pytest
 
 from app.services.backtest.analyzer import BacktestAnalyzer
+from app.services.paper import matching as matching_module
 from app.services.paper.fees import calculate_fee
 
 engine_module = pytest.importorskip(
@@ -225,6 +227,26 @@ def test_broker_rejects_limit_up_limit_down_and_suspension_before_matching() -> 
     assert "停牌" in suspended.reject_reason
     assert limit_down.status == "rejected"
     assert "跌停" in limit_down.reject_reason
+
+
+def test_broker_uses_beijing_time_for_historical_matching(monkeypatch: pytest.MonkeyPatch) -> None:
+    fixed_now = datetime(2030, 1, 2, 10, 0, 0)
+    monkeypatch.setattr(broker_module, "beijing_now", lambda: fixed_now)
+    monkeypatch.setattr(matching_module, "beijing_now", lambda: fixed_now)
+
+    result = getattr(broker_module, "BacktestBroker")().execute(
+        getattr(broker_module, "ExecutionRequest")(
+            trade_date="2025-01-02",
+            symbol="600001",
+            side="buy",
+            quantity=1000,
+            bar=_bar("600001", "2025-01-02", open_price=10.0, close_price=10.1),
+            execution_model="open_price",
+        )
+    )
+
+    assert result.status == "filled"
+    assert "行情时间过旧" not in result.reject_reason
 
 
 def test_broker_applies_market_and_security_type_specific_limit_rules() -> None:

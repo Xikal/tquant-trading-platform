@@ -45,6 +45,7 @@ describe("PaperTradingPage", () => {
     expect(html).toContain("+委托");
     expect(html).toContain("市场状态绩效");
     expect(html).toContain("自动交易日志");
+    expect(html).toContain("个股交易详情与盈利");
   });
 
   it("uses account-level total return for the top paper metric", () => {

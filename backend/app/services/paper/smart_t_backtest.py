@@ -16,15 +16,8 @@ from app.services.paper.dynamic_exit import evaluate_paper_exit
 from app.services.paper.fees import calculate_fee
 from app.services.paper.quote_quality import PaperQuotePrice
 from app.services.paper.smart_exit_context import build_exit_context
+from app.services.paper.smart_t_strategy_scope import smart_t_backtest_strategy_keys
 from app.services.quant.runtime_parameters import get_paper_dynamic_exit
-
-
-DEFAULT_SMART_T_BACKTEST_STRATEGIES = [
-    "first_board",
-    "volume_shrink",
-    "core_midcap_vwap_ma5_retrace",
-    "sector_mainline_first_divergence_low_buy",
-]
 
 
 @dataclass(frozen=True)
@@ -92,7 +85,7 @@ class SmartTBacktestService:
         sample_limit: int = 50,
     ) -> SmartTBacktestReport:
         start, end = self._date_range(start_date=start_date, end_date=end_date)
-        strategy_keys = [item for item in (strategies or DEFAULT_SMART_T_BACKTEST_STRATEGIES) if item]
+        strategy_keys = [item for item in (strategies or smart_t_backtest_strategy_keys(self.db)) if item]
         signals = self.provider.load_low_buy_signals(
             strategies=strategy_keys,
             start_date=start,

@@ -215,10 +215,13 @@ class MLSignalService:
         metrics["feature_missing_rates"] = _feature_missing_rates(rows)
         metrics["warm_start_enabled"] = bool(payload.warm_start)
         promotion_blocks = _promotion_blocks(payload=payload, metrics=metrics, sample_count=len(rows))
-        can_promote = payload.promote and not promotion_blocks
-        status = "production" if can_promote else "research"
-        if payload.promote and promotion_blocks:
+        promotion_candidate = not promotion_blocks
+        metrics["promotion_candidate"] = bool(promotion_candidate)
+        metrics["approval_required"] = bool(promotion_candidate and not payload.promote)
+        if promotion_blocks:
             metrics["promotion_blocked_reason"] = "；".join(promotion_blocks)
+        can_promote = payload.promote and promotion_candidate
+        status = "production" if can_promote else "research"
         artifact_uri, artifact_sha256 = self._save_artifact(
             model_key=model_key,
             payload={
@@ -264,7 +267,7 @@ class MLSignalService:
             artifact_uri=row.artifact_uri,
             remote_artifact_uri=row.remote_artifact_uri,
             artifact_checksum=row.artifact_checksum,
-            warning="" if status == "production" else "模型已训练但未进入 production，当前仍按研究模型使用。",
+            warning=_train_warning(status, metrics),
         )
 
     def list_models(self, limit: int = 50) -> MLSignalModelListResponse:
@@ -321,7 +324,7 @@ class MLSignalService:
         latest_task = (
             self.db.execute(
                 select(RuntimeTask)
-                .where(RuntimeTask.task_type == "ml_signal_incremental_train")
+                .where(RuntimeTask.task_type.in_(("ml_signal_incremental_train", "strategy_self_evolution")))
                 .order_by(RuntimeTask.id.desc())
                 .limit(1)
             )
@@ -469,3 +472,14 @@ class MLSignalService:
 
     def _sector_relative_strength(self, symbol: str, rows) -> dict[str, float]:
         return self._sample_repository.sector_relative_strength(symbol, rows)
+
+
+def _train_warning(status: str, metrics: dict[str, Any]) -> str:
+    if status == "production":
+        return ""
+    if metrics.get("approval_required"):
+        return "模型已达到晋级候选门槛，等待管理员审批后才可进入 production。"
+    blocked = str(metrics.get("promotion_blocked_reason") or "")
+    if blocked:
+        return f"模型已训练但未进入 production：{blocked}"
+    return "模型已训练但未进入 production，当前仍按研究模型使用。"

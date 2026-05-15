@@ -111,3 +111,27 @@
 - `backend/.venv/bin/python -m pytest backend/tests/test_phase4_phase5_foundation.py backend/tests/test_pkg02_pkg04_contracts.py -q` 通过，31 passed。
 - `backend/.venv/bin/python -m pytest backend/tests/test_factor_registry.py backend/tests/test_paper_smart_t.py backend/tests/test_paper_dynamic_exit.py backend/tests/test_paper_smart_t_backtest.py -q` 通过，18 passed。
 - `backend/.venv/bin/python -m pytest backend/tests/test_market_regime_strategy_p2.py backend/tests/test_market_routes.py backend/tests/test_phase4_phase5_foundation.py backend/tests/test_pkg02_pkg04_contracts.py backend/tests/test_ml_markowitz_regime_rl.py -q` 通过，57 passed。
+
+## 策略自进化与在线学习闭环
+
+来源：用户 2026-05-15 需求。
+
+### 目标
+
+1. 每笔模拟盘平仓继续写入 `MLSignalSample`，作为在线学习样本。
+2. 每周五收盘后自动编排“增量训练 → 显著性验证 → 参数晋级草案 → Phase 评估”。
+3. 训练结果达到门槛后只生成晋级候选，必须管理员审批后才进入 production。
+4. 每月执行特征漂移监控，输出漂移告警。
+
+### TODO
+
+- [x] 新增 `StrategySelfEvolutionOrchestrator`，串联增量训练、在线学习状态、漂移监控、分市场状态参数晋级草案和 Phase 评估。
+- [x] 新增 APScheduler 调度，每周五 16:05 入队策略自进化任务，每月 1 日 16:35 入队漂移监控任务。
+- [x] runtime worker 支持 `strategy_self_evolution` 与 `ml_feature_drift_monitor` 任务。
+- [x] 增量训练默认 `promote=False`，训练达标后标记 `promotion_candidate/approval_required`。
+- [x] 新增管理员审批接口 `/api/ml/signals/models/{model_key}/approve-promotion`。
+- [x] 保留 runtime loop 兜底调度，APScheduler 不可用时不影响系统启动。
+
+### 验证
+
+- 本轮将运行 Python 编译和针对性 pytest。

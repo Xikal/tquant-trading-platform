@@ -15,6 +15,7 @@ import type {
 } from "../../types";
 import { memo, useMemo, useState } from "react";
 import { PixelTraderWorker } from "./PixelTraderWorker";
+import { PaperPositionDetailsPanel } from "./PaperPositionDetailsPanel";
 import {
   formatPaperDateTime,
   OrderEntryModal,
@@ -188,6 +189,12 @@ export const PaperTradingPage = memo(function PaperTradingPage({
         riskEvents={riskEvents}
         intradayConfirmations={intradayConfirmations}
         autoTradingRuns={autoTradingRuns}
+      />
+      <PaperPositionDetailsPanel
+        positions={positions}
+        orders={orders}
+        trades={trades}
+        loading={paperLoading}
       />
     </section>
   );

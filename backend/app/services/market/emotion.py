@@ -161,9 +161,9 @@ class MarketEmotionMixin:
         temperature = classify_emotion_temperature(
             limit_up_count=current_limit_up_count,
             board_height=current_board_height,
-            promotion_ratio=promotion_ratio,
-            broken_board_ratio=broken_board_ratio,
-            distribution_pressure=emotion_distribution_pressure,
+            promotion_ratio=_clamp01(promotion_ratio),
+            broken_board_ratio=_clamp01(broken_board_ratio),
+            distribution_pressure=_clamp01(emotion_distribution_pressure),
         )
 
         return MarketEmotionSnapshot(

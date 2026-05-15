@@ -12,6 +12,9 @@ def evaluate_selection_quality_factor(metrics: CandidateMetrics) -> float:
     and lower distribution risk.
     """
 
+    if metrics.false_breakout_flag or metrics.stall_after_volume_flag:
+        return 0.0
+
     score = 0.0
     if _has_continuous_volume_contraction(metrics):
         score += 1.2
@@ -21,8 +24,6 @@ def evaluate_selection_quality_factor(metrics: CandidateMetrics) -> float:
         score += 0.6
     if _has_low_distribution_risk(metrics):
         score += 0.5
-    if metrics.false_breakout_flag or metrics.stall_after_volume_flag:
-        score -= 1.0
     return round(_clamp(score, 0.0, 3.0), 2)
 
 

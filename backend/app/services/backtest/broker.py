@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime
 from decimal import Decimal
 from enum import Enum
 
+from app.core.timezone import beijing_now
 from app.services.backtest.data_provider import BacktestSignal, DailyBar
 from app.services.paper.fees import FeeDetail
 from app.services.paper.matching import MatchResult, OrderSide, OrderType, PaperMatchingEngine
@@ -76,7 +76,7 @@ class BacktestBroker:
             quantity=request.quantity,
             limit_price=limit_price,
             current_price=to_decimal(selected_price),
-            quote_time=datetime.now(),
+            quote_time=beijing_now().replace(tzinfo=None),
             is_suspended=request.bar.is_suspended,
             up_limit=_limit_price(request.bar, direction="up") if _is_limit_up(request.bar) else None,
             down_limit=_limit_price(request.bar, direction="down") if _is_limit_down(request.bar) else None,

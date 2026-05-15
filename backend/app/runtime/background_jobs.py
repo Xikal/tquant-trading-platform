@@ -12,6 +12,12 @@ from app.core.database import SessionLocal
 from app.core.task_manager import task_manager
 from app.core.timezone import beijing_now, beijing_today
 from app.models.schema_defs.phase4 import RuntimeTaskCreate
+from app.runtime.strategy_evolution_scheduler import (
+    enqueue_monthly_drift_monitor_once,
+    enqueue_strategy_self_evolution_once,
+    start_strategy_evolution_scheduler,
+    shutdown_strategy_evolution_scheduler,
+)
 from app.runtime.background_low_buy_cleanup import cleanup_stale_low_buy_snapshots
 from app.repositories.low_buy.results import LowBuyResultRepository
 from app.services.agent_daily_workflow_service import AgentDailyWorkflowService
@@ -269,29 +275,7 @@ def _push_agent_daily_report_once() -> None:
 
 
 def _enqueue_ml_incremental_train_once() -> None:
-    now = beijing_now()
-    if not _ml_incremental_train_due(now):
-        return
-    week_key = f"{now.isocalendar().year}-W{now.isocalendar().week:02d}"
-    with SessionLocal() as db:
-        task = RuntimeTaskQueue(db).enqueue(
-            RuntimeTaskCreate(
-                task_type="ml_signal_incremental_train",
-                payload={
-                    "model_type": "xgboost",
-                    "source": "paper",
-                    "limit": 5000,
-                    "min_samples": 100,
-                    "promote": True,
-                    "warm_start": True,
-                    "max_validation_p_value": 0.05,
-                },
-                priority=180,
-                idempotency_key=f"ml_signal_incremental_train:{week_key}",
-                max_attempts=2,
-            )
-        )
-        logger.info("ML 增量训练任务检查完成: week=%s task_id=%s status=%s", week_key, task.id, task.status)
+    enqueue_strategy_self_evolution_once(beijing_now())
 
 
 def _ml_incremental_train_due(now: datetime) -> bool:
@@ -384,6 +368,7 @@ def _acquire_background_leader_lock() -> bool:
 def start_runtime_background_jobs() -> None:
     background_leader = _background_jobs_enabled() and _acquire_background_leader_lock()
     if background_leader:
+        start_strategy_evolution_scheduler()
         threading.Thread(target=_startup_maintenance_and_warm_runtime_caches, daemon=True).start()
         task_manager.register_loop(
             name="low_buy_full_scan",
@@ -466,6 +451,12 @@ def start_runtime_background_jobs() -> None:
             interval_seconds=60 * 60,
             initial_delay_seconds=240,
         )
+        task_manager.register_loop(
+            name="ml_feature_drift_monitor_monthly",
+            target=enqueue_monthly_drift_monitor_once,
+            interval_seconds=60 * 60,
+            initial_delay_seconds=300,
+        )
         if settings.paper_auto_trading_enabled:
             logger.info("启动模拟盘自动交易")
             start_auto_trader(build_auto_trader_config(settings))
@@ -475,4 +466,5 @@ def start_runtime_background_jobs() -> None:
 
 def shutdown_runtime_background_jobs(timeout: int = 30) -> None:
     stop_auto_trader()
+    shutdown_strategy_evolution_scheduler()
     task_manager.shutdown(timeout=timeout)

@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import base64
+import hashlib
+import threading
 from functools import lru_cache
 
 from cryptography.fernet import Fernet, InvalidToken
@@ -12,6 +14,8 @@ from app.core.config import get_settings
 _PREFIX = "enc:v1:"
 _SALT = b"tquant-totp-secret-v1"
 _INFO = b"tquant totp fernet"
+_FERNET_CACHE_LOCK = threading.Lock()
+_FERNET_SECRET_HASH = ""
 
 
 def is_encrypted_totp_secret(value: str | None) -> bool:
@@ -43,7 +47,17 @@ def _fernet() -> Fernet:
     configured = get_settings().auth_secret_key.strip()
     if not configured:
         raise ValueError("AUTH_SECRET_KEY 未配置，无法加密 TOTP 密钥")
+    _clear_fernet_cache_if_secret_rotated(configured)
     return _fernet_for_secret(configured)
+
+
+def _clear_fernet_cache_if_secret_rotated(configured: str) -> None:
+    global _FERNET_SECRET_HASH
+    digest = hashlib.sha256(configured.encode("utf-8")).hexdigest()
+    with _FERNET_CACHE_LOCK:
+        if _FERNET_SECRET_HASH and _FERNET_SECRET_HASH != digest:
+            _fernet_for_secret.cache_clear()
+        _FERNET_SECRET_HASH = digest
 
 
 @lru_cache(maxsize=4)

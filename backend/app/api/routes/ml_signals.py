@@ -9,6 +9,7 @@ from app.core.database import get_db
 from app.models.schema_defs.phase4 import (
     MLSignalArtifactStorageCheckResponse,
     MLSignalIncrementalTrainRequest,
+    MLSignalModelOut,
     MLSignalPredictionRequest,
     MLSignalPredictionResponse,
     MLSignalModelListResponse,
@@ -21,6 +22,7 @@ from app.models.schema_defs.phase4 import (
     StrategyCapacityResponse,
 )
 from app.services.ml_signal import MLSignalService
+from app.services.ml_signal.promotion_service import MLSignalPromotionService
 from app.services.strategy_capacity import StrategyCapacityService
 
 router = APIRouter(prefix="/ml/signals", dependencies=[Depends(get_current_user)])
@@ -65,6 +67,22 @@ def list_ml_signal_models(
     db: Session = Depends(get_db),
 ) -> MLSignalModelListResponse:
     return MLSignalService(db).list_models(limit=limit)
+
+
+@router.post("/models/{model_key}/approve-promotion", response_model=MLSignalModelOut)
+def approve_ml_signal_model_promotion(
+    model_key: str,
+    current_user=Depends(get_current_user),  # noqa: ANN001
+    _: None = Depends(require_admin_auth),
+    db: Session = Depends(get_db),
+) -> MLSignalModelOut:
+    try:
+        return MLSignalPromotionService(db).approve(
+            model_key,
+            operator=str(getattr(current_user, "username", "") or getattr(current_user, "phone", "") or "admin"),
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 @router.get("/online-learning/status", response_model=MLSignalOnlineLearningStatusResponse)

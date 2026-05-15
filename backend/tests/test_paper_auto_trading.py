@@ -290,6 +290,37 @@ class PaperAutoTradingTest(unittest.TestCase):
         self.assertEqual(result[0].quantity, 200)
         self.assertEqual(result[0].signal_snapshot["position_cap_source"], "validation_phase")
 
+    def test_strategy_phase_gate_injects_scale_before_sizing(self):
+        from app.services.paper.admission import AdmissionResult
+        from app.services.paper.sizing import PositionSizer
+        from app.services.paper.strategy_phase_gate import apply_strategy_validation_phase
+
+        phase = namedtuple("Phase", "phase phase_text reason position_scale")
+        candidate = AdmissionResult(
+            passed=True,
+            symbol="510300",
+            priority_score=95,
+            reason="通过",
+            signal={"symbol": "510300", "latest_price": 10, "strategy_key": "first_board"},
+        )
+        with patch("app.services.paper.strategy_phase_gate.latest_strategy_performance_map", return_value={}):
+            with patch("app.services.paper.strategy_phase_gate.strategy_health", return_value=(70.0, [])):
+                with patch(
+                    "app.services.paper.strategy_phase_gate.resolve_strategy_validation_phase",
+                    return_value=phase("phase2", "Phase 2 小仓验证", "小仓验证", 0.2),
+                ):
+                    passed, filtered = apply_strategy_validation_phase(object(), [candidate])
+
+        self.assertEqual(filtered, [])
+        orders = PositionSizer(max_position_pct=0.10, max_cash_pct=1.0).calculate(
+            candidates=passed,
+            total_assets=100000,
+            available_cash=100000,
+            max_orders=1,
+        )
+        self.assertEqual(orders[0].quantity, 200)
+        self.assertEqual(orders[0].signal_snapshot["validation_position_scale"], 0.2)
+
     def test_auto_trader_builds_sector_etf_t0_order(self):
         from app.models.schema_defs.market import SectorEtfT0Opportunity, SectorEtfT0Response
         from app.services.paper.scheduler import PaperAutoTrader

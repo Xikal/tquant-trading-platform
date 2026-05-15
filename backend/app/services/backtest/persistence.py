@@ -93,7 +93,7 @@ class BacktestResultPersistence:
                 filled_quantity=int(order.quantity or 0) if order.status == "filled" else 0,
                 requested_price=float(order.requested_price if order.requested_price is not None else order.fill_price or 0.0),
                 filled_price=float(order.fill_price or 0.0),
-                reason=order.reason or order.reject_reason,
+                reason=order.reject_reason or order.reason,
                 payload_json=_json_dumps(order.__dict__),
             )
             self.db.add(row)

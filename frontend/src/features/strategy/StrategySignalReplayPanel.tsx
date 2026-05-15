@@ -9,6 +9,7 @@ export function StrategySignalReplayPanel({ title }: { title: string }) {
   const [strategy, setStrategy] = useState("first_board");
   const [items, setItems] = useState<StrategySignalReplayItem[]>([]);
   const [lookbackDays, setLookbackDays] = useState("60");
+  const [onlyFailures, setOnlyFailures] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const requestSeqRef = useRef(0);
@@ -67,7 +68,15 @@ export function StrategySignalReplayPanel({ title }: { title: string }) {
         </button>
       </div>
       {error ? <ErrorBanner message={`信号复盘查询失败：${error}`} /> : null}
-      <SignalReplayRows items={items} symbol={symbol} strategy={strategy} loading={loading} lookbackDays={Number(lookbackDays) || 60} />
+      <SignalReplayRows
+        items={items}
+        symbol={symbol}
+        strategy={strategy}
+        loading={loading}
+        lookbackDays={Number(lookbackDays) || 60}
+        onlyFailures={onlyFailures}
+        onToggleFailures={() => setOnlyFailures((value) => !value)}
+      />
     </section>
   );
 }
@@ -78,12 +87,16 @@ function SignalReplayRows({
   strategy,
   loading,
   lookbackDays,
+  onlyFailures,
+  onToggleFailures,
 }: {
   items: StrategySignalReplayItem[];
   symbol: string;
   strategy: string;
   loading: boolean;
   lookbackDays: number;
+  onlyFailures: boolean;
+  onToggleFailures: () => void;
 }) {
   if (loading) {
     return <SkeletonBlock rows={4} title />;
@@ -96,16 +109,31 @@ function SignalReplayRows({
       />
     );
   }
+  const summary = summarizeReplay(items);
+  const visibleItems = onlyFailures ? items.filter((item) => outcomeTone(item) === "bad") : items;
   return (
-    <div className="strategy-signal-case-grid" aria-label="策略信号案例">
-      {items.map((item) => (
+    <>
+      <div className="strategy-signal-summary">
+        <strong>过去 {lookbackDays} 天共 {items.length} 个信号</strong>
+        <span>✅ {summary.good} 盈利/强信号</span>
+        <span>❌ {summary.bad} 亏损/放弃</span>
+        <span>⏳ {summary.pending} 待验证</span>
+        <button type="button" className={onlyFailures ? "active" : ""} onClick={onToggleFailures}>
+          只看失败信号
+        </button>
+      </div>
+      {!visibleItems.length ? (
+        <EmptyPlaceholder title="没有失败信号" description="当前筛选条件下没有可归类为失败的信号。" />
+      ) : null}
+      <div className="strategy-signal-case-grid" aria-label="策略信号案例">
+      {visibleItems.map((item) => (
         <article className="strategy-signal-case" key={`${item.latest_trade_date}-${item.strategy_key}-${item.symbol}`}>
           <header>
             <div>
               <strong>{item.name || item.symbol}</strong>
               <span>{item.symbol} · {item.latest_trade_date}</span>
             </div>
-            <b className={`signal-state ${stateTone(item.buy_signal_state)}`}>{stateLabel(item.buy_signal_state, item.buy_signal_text)}</b>
+            <b className={`signal-state ${outcomeTone(item)}`}>{outcomeLabel(item)}</b>
           </header>
           <div className="signal-case-metrics">
             <span>建议区间 <b>{item.entry_zone || "--"}</b></span>
@@ -113,9 +141,14 @@ function SignalReplayRows({
             <span>信号强度 <b>{scoreLabel(item.score)}</b></span>
           </div>
           <p>{item.summary || item.reasons?.[0] || "该票进入策略观察池，建议结合买点区间和止损价复盘。"}</p>
+          <details className="strategy-signal-detail">
+            <summary>展开当时的买入依据</summary>
+            <p>{signalReasonText(item)}</p>
+          </details>
         </article>
       ))}
-    </div>
+      </div>
+    </>
   );
 }
 
@@ -133,6 +166,49 @@ function stateTone(state?: string): string {
   if (state === "near_entry" || state === "watch") return "warn";
   if (state === "avoid") return "bad";
   return "neutral";
+}
+
+function outcomeLabel(item: StrategySignalReplayItem): string {
+  const pnl = resolvePnl(item);
+  if (typeof pnl === "number") return pnl >= 0 ? `盈利 ${pnl.toFixed(2)}%` : `亏损 ${pnl.toFixed(2)}%`;
+  if (item.outcome === "win" || item.outcome === "success") return "盈利";
+  if (item.outcome === "loss" || item.outcome === "failed") return "亏损";
+  if (item.buy_signal_state === "avoid") return "今天放弃";
+  return stateLabel(item.buy_signal_state, item.buy_signal_text);
+}
+
+function outcomeTone(item: StrategySignalReplayItem): string {
+  const pnl = resolvePnl(item);
+  if (typeof pnl === "number") return pnl >= 0 ? "ok" : "bad";
+  if (item.outcome === "win" || item.outcome === "success") return "ok";
+  if (item.outcome === "loss" || item.outcome === "failed") return "bad";
+  return stateTone(item.buy_signal_state);
+}
+
+function resolvePnl(item: StrategySignalReplayItem): number | null {
+  if (typeof item.pnl_pct === "number" && Number.isFinite(item.pnl_pct)) return item.pnl_pct;
+  if (typeof item.return_pct === "number" && Number.isFinite(item.return_pct)) return item.return_pct;
+  return null;
+}
+
+function summarizeReplay(items: StrategySignalReplayItem[]) {
+  return items.reduce(
+    (acc, item) => {
+      const tone = outcomeTone(item);
+      if (tone === "ok") acc.good += 1;
+      else if (tone === "bad") acc.bad += 1;
+      else acc.pending += 1;
+      return acc;
+    },
+    { good: 0, bad: 0, pending: 0 }
+  );
+}
+
+function signalReasonText(item: StrategySignalReplayItem): string {
+  if (item.reasons?.length) return item.reasons.join("；");
+  const snapshotReason = typeof item.signal_snapshot?.reason === "string" ? item.signal_snapshot.reason : "";
+  if (snapshotReason) return snapshotReason;
+  return "后端未返回当时完整依据，可结合建议区间、止损价和信号摘要复盘。";
 }
 
 function scoreLabel(score?: number | null): string {

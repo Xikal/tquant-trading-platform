@@ -374,6 +374,16 @@ class BacktestJobService:
     @staticmethod
     def _summary(row: BacktestRun) -> BacktestRunSummary:
         result_summary = _result_summary_metrics(_json_dict(row.result_json))
+        initial_cash = float(row.initial_cash or 0.0)
+        final_equity = float(row.final_equity or 0.0)
+        if initial_cash > 0:
+            result_summary.setdefault("initial_cash", initial_cash)
+        if final_equity > 0:
+            result_summary.setdefault("final_equity", final_equity)
+        if initial_cash > 0 and final_equity > 0:
+            computed_return = (final_equity - initial_cash) / initial_cash * 100
+            if "total_return_pct" not in result_summary or abs(computed_return) > 0.0001:
+                result_summary["total_return_pct"] = round(computed_return, 4)
         return BacktestRunSummary(
             id=row.id,
             name=row.name or "",
@@ -381,8 +391,8 @@ class BacktestJobService:
             strategy_keys=_strategy_list(row.strategy_keys),
             start_date=row.start_date,
             end_date=row.end_date,
-            initial_cash=float(row.initial_cash or 0.0),
-            final_equity=float(row.final_equity or 0.0),
+            initial_cash=initial_cash,
+            final_equity=final_equity,
             progress_pct=float(row.progress_pct or 0.0),
             benchmark_symbol=row.benchmark_symbol or "",
             owner_user_id=row.owner_user_id,

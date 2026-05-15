@@ -94,13 +94,21 @@ def _execute_task(task_type: str, payload: dict[str, Any], db) -> dict[str, Any]
                 limit=int(payload.get("limit") or 5000),
                 min_samples=int(payload.get("min_samples") or 100),
                 validation_ratio=float(payload.get("validation_ratio") or 0.2),
-                promote=bool(payload.get("promote") if "promote" in payload else True),
+                promote=bool(payload.get("promote") if "promote" in payload else False),
                 warm_start=bool(payload.get("warm_start") if "warm_start" in payload else True),
                 max_validation_p_value=float(payload.get("max_validation_p_value") or 0.05),
                 min_validation_accuracy=float(payload.get("min_validation_accuracy") or 0.55),
             )
         )
         return response.model_dump() if hasattr(response, "model_dump") else dict(response)
+    if task_type == "strategy_self_evolution":
+        from app.services.strategy_self_evolution import StrategySelfEvolutionOrchestrator
+
+        return StrategySelfEvolutionOrchestrator(db).run(payload)
+    if task_type == "ml_feature_drift_monitor":
+        from app.services.strategy_self_evolution import StrategySelfEvolutionOrchestrator
+
+        return StrategySelfEvolutionOrchestrator(db).run_drift_monitor(payload)
     raise ValueError(f"未知任务类型: {task_type}")
 
 

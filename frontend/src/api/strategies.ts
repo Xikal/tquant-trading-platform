@@ -67,6 +67,10 @@ export interface StrategySignalReplayItem {
   suggested_position_text?: string;
   summary?: string;
   reasons?: string[];
+  pnl_pct?: number | null;
+  return_pct?: number | null;
+  outcome?: string | null;
+  signal_snapshot?: Record<string, unknown> | null;
   updated_at?: string;
 }
 

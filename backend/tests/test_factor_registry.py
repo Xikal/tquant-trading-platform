@@ -56,6 +56,28 @@ class FactorRegistryTests(unittest.TestCase):
         self.assertEqual(evaluate_selection_quality_factor(above_ma20), 0.0)
         self.assertGreater(evaluate_selection_quality_factor(below_ma20), 0.0)
 
+    def test_selection_quality_blocks_false_breakout_and_stall(self) -> None:
+        common = {
+            "shrink_staircase": True,
+            "post_volume_ratio": 0.6,
+            "latest_volume_ratio": 0.7,
+            "volume_burst_ratio": 2.4,
+            "board_gain_ok": True,
+            "distribution_risk_score": 1.0,
+            "stall_after_volume_flag": False,
+            "ma20": 100.0,
+            "latest_close": 94.0,
+            "close_to_ma20": 6.0,
+        }
+
+        false_breakout = SimpleNamespace(**{**common, "false_breakout_flag": True})
+        stall_after_volume = SimpleNamespace(
+            **{**common, "false_breakout_flag": False, "stall_after_volume_flag": True}
+        )
+
+        self.assertEqual(evaluate_selection_quality_factor(false_breakout), 0.0)
+        self.assertEqual(evaluate_selection_quality_factor(stall_after_volume), 0.0)
+
 
 if __name__ == "__main__":
     unittest.main()

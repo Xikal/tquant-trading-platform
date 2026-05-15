@@ -61,13 +61,22 @@ export function useStrategyHub() {
   );
 
   const setTab = useCallback((nextTab: StrategyHubTab) => {
+    setLoading((current) => (nextTab === tab ? current : "tab-switch"));
     setTabState(nextTab);
     if (typeof window !== "undefined") {
       const url = new URL(window.location.href);
       url.searchParams.set("tab", nextTab);
       window.history.replaceState({}, "", `${url.pathname}${url.search}`);
     }
-  }, []);
+  }, [tab]);
+
+  useEffect(() => {
+    if (loading !== "tab-switch") return undefined;
+    const timer = window.setTimeout(() => {
+      setLoading((current) => (current === "tab-switch" ? "" : current));
+    }, 180);
+    return () => window.clearTimeout(timer);
+  }, [loading, tab]);
 
   const load = useCallback(async () => {
     const seq = loadSeqRef.current + 1;

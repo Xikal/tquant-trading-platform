@@ -1,5 +1,6 @@
 @import "./workspace/index.css";
 @import "./backtest/index.css";
 @import "../features/strategy/strategy.css";
+@import "../features/strategy/strategy-workbench-ux.css";
 @import "../features/strategy/strategy-doctor.css";
 @import "../features/strategy/strategy-signals.css";

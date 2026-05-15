@@ -3,9 +3,10 @@ import type { StrategyMeta } from "../../api/strategies";
 import { useStrategyHub } from "./useStrategyHub";
 
 const RANGE_PRESETS = [
-  { label: "近 3 个月", days: 92 },
-  { label: "近 6 个月", days: 183 },
-  { label: "近 12 个月", days: 365 },
+  { label: "最近 1 个月", days: 31 },
+  { label: "最近 3 个月", days: 92 },
+  { label: "最近 6 个月", days: 183 },
+  { label: "最近 1 年", days: 365 },
 ];
 
 const STYLE_PRESETS = [
@@ -67,10 +68,25 @@ export function QuickBacktestForm({
             </button>
           ))}
         </div>
+        <StrategyPicker
+          strategies={hub.strategies}
+          selected={hub.form.strategies}
+          onToggle={hub.toggleStrategy}
+          onSelectSteady={() => hub.updateForm({ strategies: strategyKeysForStyle(hub.strategies, "steady") })}
+          onSelectAll={() => hub.updateForm({ strategies: strategyKeysForStyle(hub.strategies, "aggressive") })}
+        />
+        <div className="strategy-common-settings" aria-label="常用设置">
+          <NumberField label="单票仓位上限" suffix="%" value={hub.form.max_position_pct} onChange={(event) => hub.updateForm({ max_position_pct: event.target.value })} />
+          <TextField label="基准指数" value={hub.form.benchmark} onChange={(event) => hub.updateForm({ benchmark: event.target.value })} />
+        </div>
+        <div className="strategy-runtime-estimate">
+          <b>预计耗时</b>
+          <span>{runtimeEstimate(hub.form.strategies.length, Number(hub.form.max_positions) || 0)}</span>
+        </div>
       </section>
 
       <details className="strategy-expert-settings">
-        <summary>专家设置（不懂可以不展开）</summary>
+        <summary>专业调优（最大持仓数、资金、成交模型等）</summary>
         <div className="strategy-form">
           <TextField label="任务名称" value={hub.form.name} onChange={(event) => hub.updateForm({ name: event.target.value })} />
           <DateField label="开始日期" value={hub.form.start_date} onChange={(event) => hub.updateForm({ start_date: event.target.value })} />
@@ -87,11 +103,8 @@ export function QuickBacktestForm({
               { value: "close_price", label: "收盘价成交" },
             ]}
           />
-          <NumberField label="单票仓位上限" suffix="%" value={hub.form.max_position_pct} onChange={(event) => hub.updateForm({ max_position_pct: event.target.value })} />
           <NumberField label="最大持仓数" value={hub.form.max_positions} onChange={(event) => hub.updateForm({ max_positions: event.target.value })} />
-          <TextField label="基准指数" value={hub.form.benchmark} onChange={(event) => hub.updateForm({ benchmark: event.target.value })} />
         </div>
-        <StrategyPicker strategies={hub.strategies} selected={hub.form.strategies} onToggle={hub.toggleStrategy} />
       </details>
     </div>
   );
@@ -101,29 +114,48 @@ function StrategyPicker({
   strategies,
   selected,
   onToggle,
+  onSelectSteady,
+  onSelectAll,
 }: {
   strategies: StrategyMeta[];
   selected: string[];
   onToggle: (key: string) => void;
+  onSelectSteady: () => void;
+  onSelectAll: () => void;
 }) {
+  const groups = groupStrategies(strategies);
   return (
     <div className="strategy-picker">
       <div className="strategy-picker-head">
-        <strong>具体策略</strong>
-        <span>{selected.length} 个已选</span>
+        <div>
+          <strong>策略选择（按风险分组）</strong>
+          <span>{selected.length} 个已选</span>
+        </div>
+        <div className="strategy-picker-actions">
+          <button type="button" onClick={onSelectSteady}>一键选稳健型</button>
+          <button type="button" onClick={onSelectAll}>全选生产策略</button>
+        </div>
       </div>
-      <div className="strategy-card-grid">
-        {strategies.map((strategy) => (
-          <button
-            type="button"
-            key={strategy.key}
-            className={selected.includes(strategy.key) ? "selected" : ""}
-            onClick={() => onToggle(strategy.key)}
-          >
-            <strong>{strategy.display_name || strategy.name}</strong>
-            <span>{strategy.display_category || strategy.category}</span>
-            <small>{strategy.description}</small>
-          </button>
+      <div className="strategy-group-grid">
+        {groups.map((group) => (
+          <section key={group.key} className={`strategy-risk-group ${group.key}`}>
+            <h3>{group.title}</h3>
+            <div className="strategy-card-grid">
+              {group.items.map((strategy) => (
+                <button
+                  type="button"
+                  key={strategy.key}
+                  className={selected.includes(strategy.key) ? "selected" : ""}
+                  onClick={() => onToggle(strategy.key)}
+                >
+                  <strong>{strategy.display_name || strategy.name}</strong>
+                  <span>{strategy.display_category || strategy.category}</span>
+                  <small>{strategy.description}</small>
+                  <em>{phaseBadge(strategy)}</em>
+                </button>
+              ))}
+            </div>
+          </section>
         ))}
       </div>
     </div>
@@ -166,4 +198,37 @@ function isStyleActive(selected: string[], strategies: StrategyMeta[], style: ty
   const selectedKeys = [...selected].sort().join(",");
   const expectedKeys = [...expected].sort().join(",");
   return selectedKeys === expectedKeys;
+}
+
+function groupStrategies(strategies: StrategyMeta[]) {
+  const enabled = strategies.filter((item) => item.enabled !== false && item.visibility === "full");
+  return [
+    {
+      key: "steady",
+      title: "🟢 稳健型",
+      items: enabled.filter((item) => ["first_board", "volume_shrink"].includes(item.key)),
+    },
+    {
+      key: "balanced",
+      title: "🟡 均衡型",
+      items: enabled.filter((item) => item.tier === "core" && !["first_board", "volume_shrink"].includes(item.key)),
+    },
+    {
+      key: "aggressive",
+      title: "🔴 激进型",
+      items: enabled.filter((item) => item.tier === "auxiliary"),
+    },
+  ].filter((group) => group.items.length);
+}
+
+function phaseBadge(strategy: StrategyMeta): string {
+  if (strategy.tier === "core") return "P3 已验证";
+  if (strategy.tier === "auxiliary") return "P2 小仓验证";
+  return "P1 观察";
+}
+
+function runtimeEstimate(strategyCount: number, maxPositions: number): string {
+  if (strategyCount <= 2 && maxPositions <= 5) return "< 1 分钟（轻量回测）";
+  if (strategyCount <= 5) return "约 1-3 分钟（完整回测）";
+  return "约 3-10 分钟（策略较多）";
 }

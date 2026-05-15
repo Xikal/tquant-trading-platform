@@ -37,6 +37,16 @@ export function strategyDoctorVerdict(runs: BacktestRunSummary[]): StrategyDocto
     };
   }
   const summary = run.summary ?? {};
+  const trades = numberOrUndefined(summary.total_trades ?? summary.trade_count);
+  if (trades === 0) {
+    return {
+      title: "没有成交样本",
+      detail: "本次回测有信号但没有成交，收益和胜率不能用于判断策略好坏。请先查看拒单原因或重新运行体检。",
+      action: "下一步：查看任务明细和拒单原因",
+      tone: "warn",
+      run,
+    };
+  }
   const verdict = backtestVerdict(
     numberOrUndefined(summary.total_return_pct),
     numberOrUndefined(summary.sharpe_ratio ?? summary.sharpe),

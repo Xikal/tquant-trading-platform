@@ -18,6 +18,7 @@ export function StrategyDoctorPanel({
   const verdict = strategyDoctorVerdict(runs);
   const run = verdict.run;
   const summary = run?.summary ?? {};
+  const noCompletedTrades = isFinished(run?.status) && tradeCount(summary) === 0;
   return (
     <section className={`panel strategy-doctor strategy-doctor-${verdict.tone}`} aria-label="策略医生结论">
       <div className="strategy-doctor-main">
@@ -27,10 +28,10 @@ export function StrategyDoctorPanel({
         <strong>{verdict.action}</strong>
       </div>
       <div className="strategy-doctor-metrics" aria-label="核心体检指标">
-        <DoctorMetric label="收益" value={formatPct(summary.total_return_pct)} />
-        <DoctorMetric label="胜率" value={formatPct(summary.win_rate_pct)} />
+        <DoctorMetric label="收益" value={noCompletedTrades ? "无成交" : formatPct(summary.total_return_pct)} />
+        <DoctorMetric label="胜率" value={noCompletedTrades ? "无成交" : formatPct(summary.win_rate_pct)} />
         <DoctorMetric label="最大回撤" value={formatPct(summary.max_drawdown_pct)} />
-        <DoctorMetric label="样本" value={sampleText(summary.total_trades ?? summary.trade_count)} />
+        <DoctorMetric label="样本" value={sampleText(tradeCount(summary))} />
       </div>
       <div className="strategy-doctor-actions">
         <button type="button" className="primary" onClick={onQuickCheck} disabled={loading}>
@@ -62,4 +63,13 @@ function DoctorMetric({ label, value }: { label: string; value: string }) {
 function sampleText(value?: number | null): string {
   if (typeof value !== "number" || !Number.isFinite(value)) return "--";
   return `${value.toLocaleString("zh-CN")} 笔`;
+}
+
+function tradeCount(summary: { total_trades?: number | null; trade_count?: number | null }): number | null {
+  const value = summary.total_trades ?? summary.trade_count;
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+function isFinished(status?: string | null): boolean {
+  return status === "completed" || status === "succeeded";
 }

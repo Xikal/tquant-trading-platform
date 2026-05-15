@@ -56,6 +56,12 @@
   min-height: 96px;
 }
 
+.strategy-hero small {
+  color: var(--muted);
+  display: block;
+  margin-top: 4px;
+}
+
 .strategy-kicker {
   color: var(--muted);
   display: block;
@@ -145,6 +151,10 @@
   grid-template-columns: minmax(0, 1.5fr) minmax(320px, 0.8fr);
 }
 
+.strategy-tab-skeleton {
+  min-height: 360px;
+}
+
 .strategy-side {
   display: grid;
   gap: 12px;
@@ -232,7 +242,7 @@
 .strategy-card-grid {
   display: grid;
   gap: 10px;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .strategy-card-grid button,

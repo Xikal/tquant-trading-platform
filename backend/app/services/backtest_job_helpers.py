@@ -31,30 +31,60 @@ def _result_summary_metrics(result: dict[str, Any]) -> dict[str, Any]:
 
     if not isinstance(result, dict):
         return {}
-    metrics = result.get("metrics")
-    if isinstance(metrics, dict):
-        return {
-            key: metrics.get(key)
-            for key in (
-                "total_return_pct",
-                "benchmark_return_pct",
-                "benchmark_alpha_pct",
-                "max_drawdown_pct",
-                "sharpe_ratio",
-                "sortino_ratio",
-                "calmar_ratio",
-                "information_ratio",
-                "win_rate_pct",
-                "trade_count",
-                "filled_order_count",
-                "rejected_order_count",
-                "profit_factor",
-                "avg_trade_return_pct",
-            )
-            if key in metrics
-        }
     summary = result.get("summary")
-    return summary if isinstance(summary, dict) else {}
+    metrics = result.get("metrics")
+    merged: dict[str, Any] = {}
+    if isinstance(summary, dict):
+        merged.update(summary)
+    if isinstance(metrics, dict):
+        merged.update(metrics)
+    _copy_alias(merged, "total_return_pct", ("total_return", "return_pct"))
+    _copy_alias(merged, "win_rate_pct", ("win_rate",))
+    _copy_alias(merged, "max_drawdown_pct", ("max_drawdown",))
+    _copy_alias(merged, "trade_count", ("total_trades",))
+    return {
+        key: merged.get(key)
+        for key in (
+            "total_return_pct",
+            "benchmark_return_pct",
+            "benchmark_alpha_pct",
+            "max_drawdown_pct",
+            "sharpe",
+            "sharpe_ratio",
+            "sortino_ratio",
+            "calmar_ratio",
+            "information_ratio",
+            "win_rate_pct",
+            "total_trades",
+            "trade_count",
+            "filled_order_count",
+            "rejected_order_count",
+            "profit_factor",
+            "avg_trade_return_pct",
+            "initial_cash",
+            "final_equity",
+        )
+        if key in merged
+    }
+
+
+def _copy_alias(target: dict[str, Any], canonical: str, aliases: tuple[str, ...]) -> None:
+    if canonical in target:
+        return
+    for alias in aliases:
+        if alias not in target:
+            continue
+        value = target.get(alias)
+        if alias == "win_rate":
+            try:
+                numeric = float(value)
+            except (TypeError, ValueError):
+                target[canonical] = value
+                return
+            target[canonical] = numeric * 100 if abs(numeric) <= 1 else numeric
+            return
+        target[canonical] = value
+        return
 
 
 def _result_attribution(result: dict[str, Any]) -> dict[str, Any]:

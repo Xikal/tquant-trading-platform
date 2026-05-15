@@ -25,6 +25,7 @@ def promote_regime_parameter_versions(
     strategy_key: str,
     operator: str,
     activate: bool = True,
+    source_validation_id: int | None = None,
 ) -> dict[str, Any]:
     best_params_by_state = validation_result.get("best_params_by_market_state") or {}
     by_state = validation_result.get("by_market_state") or {}
@@ -44,7 +45,7 @@ def promote_regime_parameter_versions(
             scope="low_buy",
             market_state_scope=clean_state,
             params=_params_payload(clean_params),
-            description="Walk-forward 分市场状态验证通过后生成；仅影响对应市场状态作用域。",
+            description=_description(source_validation_id),
             activate=activate,
         )
         promoted.append(service.create(payload, created_by=operator))
@@ -149,3 +150,10 @@ def _version(strategy_key: str, market_state: str) -> str:
     clean_state = "".join(ch for ch in market_state if ch.isalnum() or ch in "_-")[:18] or "state"
     clean_strategy = "".join(ch for ch in strategy_key if ch.isalnum() or ch in "_-")[:24] or "strategy"
     return f"wf-{clean_strategy}-{clean_state}-{stamp}"[:80]
+
+
+def _description(source_validation_id: int | None) -> str:
+    text = "Walk-forward 分市场状态验证通过后生成；仅影响对应市场状态作用域。"
+    if source_validation_id is None:
+        return text
+    return f"{text} source_validation_id={source_validation_id}"

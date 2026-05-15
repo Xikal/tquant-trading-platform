@@ -8,7 +8,6 @@ Create Date: 2026-05-13 10:00:00
 from __future__ import annotations
 
 import base64
-import os
 
 import sqlalchemy as sa
 from alembic import op
@@ -35,9 +34,8 @@ def upgrade() -> None:
     if "mfa_totp_secret" not in columns:
         return
     _widen_secret_column()
-    fernet = _fernet_or_none()
-    if fernet is not None:
-        _encrypt_existing_totp_secrets(bind, fernet)
+    fernet = _fernet()
+    _encrypt_existing_totp_secrets(bind, fernet)
 
 
 def downgrade() -> None:
@@ -52,9 +50,7 @@ def downgrade() -> None:
         sa.text("SELECT COUNT(*) FROM users WHERE mfa_totp_secret LIKE 'enc:v1:%'")
     ).scalar()
     if int(encrypted_count or 0) > 0:
-        fernet = _fernet_or_none()
-        if fernet is None:
-            raise RuntimeError("AUTH_SECRET_KEY is required to downgrade encrypted TOTP secrets")
+        fernet = _fernet()
         _decrypt_existing_totp_secrets(bind, fernet)
     with op.batch_alter_table("users") as batch_op:
         batch_op.alter_column(
@@ -110,17 +106,15 @@ def _decrypt_existing_totp_secrets(bind, fernet: Fernet) -> None:
         bind.execute(sa.text("UPDATE users SET mfa_totp_secret = :secret WHERE id = :id"), {"secret": secret, "id": row["id"]})
 
 
-def _fernet_or_none() -> Fernet | None:
-    configured = os.getenv("AUTH_SECRET_KEY", "").strip()
-    if not configured:
-        try:
-            from app.core.config import get_settings
+def _fernet() -> Fernet:
+    try:
+        from app.core.config import get_settings
 
-            configured = get_settings().auth_secret_key.strip()
-        except Exception:
-            configured = ""
+        configured = get_settings().auth_secret_key.strip()
+    except Exception as exc:
+        raise RuntimeError("AUTH_SECRET_KEY is required to migrate encrypted TOTP secrets") from exc
     if not configured:
-        return None
+        raise RuntimeError("AUTH_SECRET_KEY is required to migrate encrypted TOTP secrets")
     key = HKDF(
         algorithm=hashes.SHA256(),
         length=32,
