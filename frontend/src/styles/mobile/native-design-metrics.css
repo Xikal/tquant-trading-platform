@@ -200,6 +200,44 @@
   font-weight: 800;
 }
 
+.mobile-design-inline-signal {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 20px;
+  padding: 0 8px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 900;
+  line-height: 1;
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  background: rgba(248, 250, 252, 0.84);
+}
+
+.mobile-design-inline-signal.tone-positive {
+  color: #15803d;
+  border-color: rgba(34, 197, 94, 0.28);
+  background: rgba(220, 252, 231, 0.9);
+}
+
+.mobile-design-inline-signal.tone-negative {
+  color: #b91c1c;
+  border-color: rgba(248, 113, 113, 0.32);
+  background: rgba(254, 226, 226, 0.92);
+}
+
+.mobile-design-inline-signal.tone-warning {
+  color: #b45309;
+  border-color: rgba(245, 158, 11, 0.3);
+  background: rgba(254, 243, 199, 0.92);
+}
+
+.mobile-design-inline-signal.tone-neutral,
+.mobile-design-inline-signal.tone-gold {
+  color: #475569;
+}
+
 .mobile-design-stock-tags {
   display: flex;
   flex-wrap: wrap;

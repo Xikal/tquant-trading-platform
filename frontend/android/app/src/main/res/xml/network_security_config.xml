@@ -4,4 +4,7 @@
     <domain-config cleartextTrafficPermitted="false">
         <domain includeSubdomains="true">weisilianghua.cloud</domain>
     </domain-config>
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">43.143.243.97</domain>
+    </domain-config>
 </network-security-config>

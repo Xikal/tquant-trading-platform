@@ -3,14 +3,14 @@ import {
   HoldingEditorSheet,
   type HoldingEditorSeed
 } from "../features/app-preview/holdingEditor"
-import { api } from "../api/client"
-import { backtestsApi, type BacktestRunSummary } from "../api/backtests"
+import { appApi } from "../api/appClient"
 import { useAppPreviewData } from "../features/app-preview/hooks"
-import type { LowBuyPriorityBoardItem, PaperOrderCreate, WatchlistItem } from "../types"
+import type { LowBuyPriorityBoardItem, WatchlistItem } from "../types"
 import { MobileAppHeader, MobileStatusBanners, MobileTabBar } from "./MobileAppLayout"
 import { MobileAuthScreen } from "./MobileAuthScreen"
 import type { MobileLowBuyCardItem } from "./MobileDesignCards"
-import { AiDecisionSheet, AppUpdateSheet, MobilePaperOrderSheet, PriorityActionSheet } from "./MobileSheets"
+import { AiDecisionSheet, AppUpdateSheet, PriorityActionSheet } from "./MobileSheets"
+import { MobileSectorSettingsSheet } from "./MobileSectorSettingsSheet"
 import { MobileTabContent } from "./MobileTabContent"
 import { LowBuyDetailSheet } from "./mobileSections"
 import type { MobileTab } from "./mobileTypes"
@@ -18,7 +18,6 @@ import { useAppUpdate } from "./useAppUpdate"
 import { useMobileAppViewModels } from "./useMobileAppViewModels"
 import { useMobileAuth } from "./useMobileAuth"
 import { useMobileHoldingSignals } from "./useMobileHoldingSignals"
-import { useMobilePaperTrading } from "./useMobilePaperTrading"
 import { useMobilePlaybook } from "./useMobilePlaybook"
 import { useNativeRuntime } from "./useNativeRuntime"
 import {
@@ -27,10 +26,7 @@ import {
   createSeedFromWatchlist
 } from "./mobileViewModels"
 
-interface HoldingEditorState {
-  mode: "create" | "buy" | "edit"
-  seed: HoldingEditorSeed
-}
+interface HoldingEditorState { mode: "create" | "buy" | "edit"; seed: HoldingEditorSeed }
 
 const EMPTY_HOLDING_SEED: HoldingEditorSeed = {
   symbol: "",
@@ -78,14 +74,14 @@ export default function MobileApp() {
     setStrategyFilter,
     loadMobilePlaybook
   } = useMobilePlaybook(Boolean(authUser) && activeTab === "low_buy")
-  const paperTrading = useMobilePaperTrading(Boolean(authUser) && activeTab === "paper")
-  const loadPaper = paperTrading.loadPaper
   const [holdingEditor, setHoldingEditor] = useState<HoldingEditorState | null>(null)
   const [priorityActionItem, setPriorityActionItem] = useState<LowBuyPriorityBoardItem | null>(null)
-  const [paperOrderOpen, setPaperOrderOpen] = useState(false)
   const [aiOpen, setAiOpen] = useState(false)
   const [accountMenuOpen, setAccountMenuOpen] = useState(false)
-  const [recentBacktests, setRecentBacktests] = useState<BacktestRunSummary[]>([])
+  const [sectorSettingsOpen, setSectorSettingsOpen] = useState(false)
+  const [sectorSettings, setSectorSettings] = useState<string[]>([])
+  const [availableSectors, setAvailableSectors] = useState<string[]>([])
+  const [sectorSaving, setSectorSaving] = useState(false)
   const [offline, setOffline] = useState(() => {
     if (typeof navigator === "undefined") {
       return false
@@ -101,27 +97,6 @@ export default function MobileApp() {
   })
 
   useEffect(() => {
-    if (!authUser || activeTab !== "low_buy") {
-      return
-    }
-    let cancelled = false
-    backtestsApi.listBacktests({ limit: 5, offset: 0 })
-      .then((result) => {
-        if (!cancelled) {
-          setRecentBacktests(result.items ?? [])
-        }
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setRecentBacktests([])
-        }
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [activeTab, authUser])
-
-  useEffect(() => {
     if (typeof window === "undefined") {
       return
     }
@@ -131,9 +106,6 @@ export default function MobileApp() {
       if (activeTab === "low_buy") {
         void loadMobilePlaybook(strategyFilter, true)
       }
-      if (activeTab === "paper") {
-        void loadPaper()
-      }
     }
     const handleOffline = () => setOffline(true)
     window.addEventListener("online", handleOnline)
@@ -142,7 +114,7 @@ export default function MobileApp() {
       window.removeEventListener("online", handleOnline)
       window.removeEventListener("offline", handleOffline)
     }
-  }, [activeTab, loadMobilePlaybook, loadPaper, refreshActiveTab, strategyFilter])
+  }, [activeTab, loadMobilePlaybook, refreshActiveTab, strategyFilter])
 
   const {
     watchlistMap,
@@ -208,7 +180,7 @@ export default function MobileApp() {
       return
     }
     try {
-      const result = await api.listInstruments(normalizedSymbol)
+      const result = await appApi.searchInstruments(normalizedSymbol, "all")
       const instrument = result.items.find((item) => item.symbol.toUpperCase() === normalizedSymbol) ?? result.items[0]
       setHoldingEditor({
         mode: "create",
@@ -297,19 +269,41 @@ export default function MobileApp() {
     setHoldingEditor(null)
     setDetail(null)
     setPriorityActionItem(null)
-    setPaperOrderOpen(false)
     setAccountMenuOpen(false)
+    setSectorSettingsOpen(false)
     hideSignalToast()
     setActiveTab(nextTab)
-    if (nextTab !== "paper") {
-      setPreviewTab("home")
-    }
+    setPreviewTab("home")
   }
 
   const isDetailInWatchlist = detail ? watchlistMap.has(detail.candidate.symbol) : false
 
-  async function handlePaperOrderSubmit(payload: PaperOrderCreate) {
-    return paperTrading.submitPaperOrder(payload)
+  async function openSectorSettings() {
+    setAccountMenuOpen(false)
+    setSectorSettingsOpen(true)
+    try {
+      const payload = await appApi.getSectorExclusions()
+      setSectorSettings(payload.excluded_sectors)
+      setAvailableSectors(payload.available_sectors)
+    } catch {
+      setAvailableSectors([])
+    }
+  }
+
+  async function saveSectorSettings(nextExcluded: string[]) {
+    try {
+      setSectorSaving(true)
+      const payload = await appApi.updateSectorExclusions(nextExcluded)
+      setSectorSettings(payload.excluded_sectors)
+      setAvailableSectors(payload.available_sectors)
+      await refreshActiveTab()
+      if (activeTab === "low_buy") {
+        await loadMobilePlaybook(strategyFilter, true)
+      }
+      return true
+    } finally {
+      setSectorSaving(false)
+    }
   }
 
   if (!authUser) {
@@ -331,9 +325,9 @@ export default function MobileApp() {
         accountMenuOpen={accountMenuOpen}
         onRefreshHome={() => void refreshActiveTab()}
         onRefreshHoldings={() => void refreshActiveTab()}
-        onRefreshPaper={() => void loadPaper()}
         onRefreshLowBuy={() => void loadMobilePlaybook(strategyFilter, true)}
         onToggleAccountMenu={() => setAccountMenuOpen((value) => !value)}
+        onOpenPreferences={() => void openSectorSettings()}
         onLogout={() => void handleLogout()}
       />
 
@@ -344,8 +338,6 @@ export default function MobileApp() {
         message={message}
         error={error}
         playbookError={playbookError}
-        paperMessage={paperTrading.paperMessage}
-        paperError={paperTrading.paperError}
       />
 
       <main className="mobile-app-body">
@@ -356,6 +348,8 @@ export default function MobileApp() {
             priorityBoard,
             priorityBoardItems,
             priorityPulseTime,
+            todayActionTitle: home?.today_action_title ?? "",
+            todayActionNote: home?.today_action_note ?? "",
             watchlistMap,
             loading,
             onOpenCandidate: openPriorityAction,
@@ -384,17 +378,6 @@ export default function MobileApp() {
             onOpenAi: () => setAiOpen(true),
             onOpenCandidate: openCandidate,
             onBought: openBoughtEditor,
-            recentBacktests,
-          }}
-          paper={{
-            account: paperTrading.paperAccount,
-            positions: paperTrading.paperPositions,
-            orders: paperTrading.paperOrders,
-            trades: paperTrading.paperTrades,
-            performance: paperTrading.paperPerformance,
-            strategyPerformance: paperTrading.paperStrategyPerformance,
-            marketPerformance: paperTrading.paperMarketPerformance,
-            onCreateOrder: () => setPaperOrderOpen(true),
           }}
         />
       </main>
@@ -424,13 +407,6 @@ export default function MobileApp() {
         onMarkBought={openBoughtEditor}
       />
 
-      <MobilePaperOrderSheet
-        open={paperOrderOpen}
-        loading={paperTrading.paperLoading === "paper_order"}
-        onClose={() => setPaperOrderOpen(false)}
-        onSubmit={handlePaperOrderSubmit}
-      />
-
       <AppUpdateSheet
         updateInfo={appUpdate.updateInfo}
         updateError={appUpdate.updateError}
@@ -443,6 +419,15 @@ export default function MobileApp() {
         open={aiOpen}
         board={priorityBoard}
         onClose={() => setAiOpen(false)}
+      />
+
+      <MobileSectorSettingsSheet
+        open={sectorSettingsOpen}
+        availableSectors={availableSectors}
+        excludedSectors={sectorSettings}
+        saving={sectorSaving}
+        onClose={() => setSectorSettingsOpen(false)}
+        onSave={saveSectorSettings}
       />
     </div>
   )

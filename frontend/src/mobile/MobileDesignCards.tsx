@@ -147,7 +147,6 @@ export function MobilePriorityStockCard({
 }) {
   const tone = signalTone(item.buy_signal_state)
   const strategyTags = strategyMarkers(item)
-  const score = priorityScore(item)
   return (
     <article className={`mobile-design-stock-card ${highlight ? "highlight" : ""}`}>
       <button type="button" className="mobile-design-stock-main" onClick={() => onOpen(item.symbol)}>
@@ -156,20 +155,20 @@ export function MobilePriorityStockCard({
           symbol={item.symbol}
           price={item.latest_price}
           changePct={item.change_pct}
+          inlineSignal={{ label: actionLabel(item.buy_signal_state), tone }}
           tags={[
-            { label: actionLabel(item.buy_signal_state), tone },
             ...strategyTags.slice(0, 3).map((tag) => ({ label: tag, tone: "gold" as const }))
           ]}
         />
         <div className="mobile-design-stock-grid">
           <MetricCell label="买点" value={`${formatPrice(item.entry_zone_low)}-${formatPrice(item.entry_zone_high)}`} tone={tone} />
           <MetricCell label="止损" value={formatPrice(item.stop_loss)} tone="negative" />
-          <MetricCell label="评分" value={score.toFixed(1)} tone="positive" />
+          <MetricCell label="信号" value={actionLabel(item.buy_signal_state)} tone={tone} />
           <MetricCell label="仓位" value={shortPositionHint(item.suggested_position_text)} />
         </div>
       </button>
       <div className="mobile-design-card-actions">
-        <small>{lowBuyActionSummary(item)}</small>
+        <small>{`${item.buy_signal_text || actionLabel(item.buy_signal_state)} · ${lowBuyActionSummary(item)}`}</small>
         {onBought ? (
           <button type="button" className="mobile-design-action-button" onClick={() => onBought(item)}>
             {inWatchlist ? "已买入" : "已买入"}
@@ -269,13 +268,15 @@ function StockHead({
   symbol,
   price,
   changePct,
-  tags
+  tags,
+  inlineSignal
 }: {
   name: string
   symbol: string
   price?: number | null
   changePct?: number | null
   tags: Array<{ label: string; tone?: Tone | "gold" }>
+  inlineSignal?: { label: string; tone?: Tone | "gold" }
 }) {
   return (
     <div className="mobile-design-stock-head">
@@ -283,6 +284,11 @@ function StockHead({
         <div className="mobile-design-stock-name">
           <strong>{name}</strong>
           <code>{symbol}</code>
+          {inlineSignal ? (
+            <span className={`mobile-design-inline-signal tone-${inlineSignal.tone ?? "neutral"}`}>
+              {inlineSignal.label}
+            </span>
+          ) : null}
         </div>
         <div className="mobile-design-stock-tags">
           {tags.map((tag, index) => (
@@ -374,13 +380,13 @@ function actionLabel(action: string) {
     case "buy_now":
       return "买入"
     case "soft_buy_now":
-      return "低吸"
+      return "买入"
     case "near_entry":
-      return "接近"
+      return "等待"
     case "watch":
       return "观察"
     case "avoid":
-      return "回避"
+      return "放弃"
     case "hold":
       return "观望"
     default:
@@ -408,10 +414,6 @@ function strategyMarkers(item: MobileLowBuyCardItem) {
     .filter(Boolean)
     .slice(0, 4)
   return markers.length ? markers : ["策"]
-}
-
-function priorityScore(item: MobileLowBuyCardItem) {
-  return "priority_score" in item ? item.priority_score : item.score
 }
 
 function lowBuyActionSummary(item: MobileLowBuyCardItem) {

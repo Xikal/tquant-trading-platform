@@ -1,1 +1,1 @@
-export type MobileTab = "home" | "holdings" | "low_buy" | "paper"
+export type MobileTab = "home" | "holdings" | "low_buy"

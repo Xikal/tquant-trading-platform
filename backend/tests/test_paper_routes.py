@@ -237,6 +237,27 @@ class PaperRouteTests(unittest.TestCase):
             self.assertEqual(position.available_quantity, 0)
             self.assertEqual(lot.remaining, 0)
 
+    def test_stock_pnl_endpoint_replays_full_trade_history(self) -> None:
+        headers = self._register("paper_stock_pnl")
+        self.assertEqual(self._paper_order(headers, symbol="510300", name="沪深300ETF", quantity=100, current_price=4.0).status_code, 200)
+        self.assertEqual(
+            self._paper_order(headers, symbol="510300", name="沪深300ETF", side="sell", quantity=100, current_price=4.2).status_code,
+            200,
+        )
+
+        response = self.client.get("/api/paper/performance/stock-pnl", headers=headers)
+        self.assertEqual(response.status_code, 200)
+        body = response.json()
+        item = body["items"][0]
+        with self.Session() as db:
+            trades = db.execute(select(PaperTrade).order_by(PaperTrade.id.asc())).scalars().all()
+            expected = float(trades[1].net_amount - trades[0].net_amount)
+        self.assertEqual(item["symbol"], "510300")
+        self.assertEqual(item["current_quantity"], 0)
+        self.assertAlmostEqual(item["realized_pnl"], round(expected, 2), places=2)
+        self.assertAlmostEqual(body["summary"]["account_total_pnl"], body["summary"]["stock_total_pnl"], places=2)
+        self.assertAlmostEqual(body["summary"]["reconciliation_gap"], 0.0, places=2)
+
     def test_stock_buy_keeps_position_unsellable_until_t1_unlock(self) -> None:
         headers = self._register("paper_stock_t1_available")
         buy = self._paper_order(headers, symbol="600000", name="浦发银行", quantity=100)

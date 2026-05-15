@@ -1,29 +1,35 @@
-import { EmptyPlaceholder, ErrorBanner, SkeletonBlock } from "../../components/shared/Feedback";
+import { useEffect } from "react";
+import { ErrorBanner } from "../../components/shared/Feedback";
 import { useToast } from "../../components/shared/ToastContainer";
 import type { AuthUser } from "../../types";
 import type { BacktestRunSummary } from "../../api/backtests";
 import { formatDateTime, formatMoney, formatPct } from "../backtest/backtestDisplay";
 import { useBacktestDashboard } from "../backtest/useBacktestDashboard";
-import { StrategyDoctorPanel } from "./StrategyDoctorPanel";
 import { StrategyConfirmDialog } from "./StrategyConfirmDialog";
-import { StrategyTrafficLights } from "./StrategyTrafficLights";
-import { StrategyWorkflowSteps } from "./StrategyWorkflowSteps";
+import { StrategyHubDetailTabs } from "./StrategyHubDetailTabs";
 import {
   dashboardSectionForTab,
   executionModelText,
-  PanelTitle,
-  RecentRuns,
-  StrategyBridge,
-  StrategyHistoryPanel,
   visibleTabsForUser,
 } from "./StrategyHubPanels";
-import { QuickBacktestForm } from "./StrategyQuickCheckPanel";
+import { StrategyHubSimpleFlow } from "./StrategyHubSimpleFlow";
+import { StrategyHubSummaryBar } from "./StrategyHubSummaryBar";
 import { useStrategyHub } from "./useStrategyHub";
 
 export function StrategyHubPage({ currentUser }: { currentUser: AuthUser }) {
   const hub = useStrategyHub();
-  const dashboard = useBacktestDashboard(dashboardSectionForTab(hub.tab));
+  const expertEnabled = visibleTabsForUser(currentUser).some((tab) =>
+    tab.key === "optimize" || tab.key === "validate" || tab.key === "compare" || tab.key === "capacity"
+  );
+  const effectiveTab = !expertEnabled && isExpertHubTab(hub.tab) ? "quick" : hub.tab;
+  const dashboard = useBacktestDashboard(dashboardSectionForTab(effectiveTab));
   const toast = useToast();
+
+  useEffect(() => {
+    if (!expertEnabled && isExpertHubTab(hub.tab)) {
+      hub.setTab("quick");
+    }
+  }, [expertEnabled, hub.tab, hub.setTab]);
 
   function submitWithToast() {
     void hub.submit().then((ok) => {
@@ -75,92 +81,35 @@ export function StrategyHubPage({ currentUser }: { currentUser: AuthUser }) {
   const avgWinRate = average(completedRuns.map((run) => run.summary?.win_rate_pct));
   const heroSummary = `市场今日：以实时监控为准 · 生产策略 ${hub.strategies.filter((item) => item.visibility === "full" && item.enabled !== false).length} 个 · 最近回测胜率 ${formatPct(avgWinRate)}`;
 
-  const content = hub.loading === "tab-switch" ? (
-    <section className="panel strategy-tab-skeleton" aria-live="polite">
-      <SkeletonBlock rows={5} title />
-    </section>
-  ) : hub.tab === "quick" ? (
-    <div className="strategy-layout">
-      <section className="panel strategy-form-panel">
-        <PanelTitle title="一键体检" />
-        <QuickBacktestForm hub={hub} onQuickSubmit={quickSubmitWithToast} />
-      </section>
-      <aside className="strategy-side">
-        <section className="panel strategy-presets">
-          <PanelTitle title="预设方案" />
-          <div className="strategy-preset-list">
-            {hub.presets.map((preset) => (
-              <button type="button" key={preset.key ?? preset.id ?? preset.name} onClick={() => hub.applyPreset(preset)}>
-                <strong>{preset.name}</strong>
-                <span>{preset.description}</span>
-              </button>
-            ))}
-            {!hub.presets.length && hub.loading === "load" ? <SkeletonBlock rows={3} title /> : null}
-            {!hub.presets.length && hub.loading !== "load" ? <EmptyPlaceholder title="暂无预设" description="后端未返回预设配置。" /> : null}
-          </div>
-        </section>
-        <section className="panel strategy-run-panel">
-          <PanelTitle title="最近任务" />
-          <RecentRuns runs={hub.runs} onRerun={rerunBacktest} />
-        </section>
-      </aside>
-    </div>
-  ) : hub.tab === "history" ? (
-    <StrategyHistoryPanel runs={hub.runs} onRefresh={() => void hub.load()} onRerun={rerunBacktest} />
-  ) : (
-    <StrategyBridge tab={hub.tab} currentUser={currentUser} dashboard={dashboard} />
-  );
-
   return (
     <section className="strategy-hub">
-      <header className="panel strategy-hero">
-        <div>
-          <span className="strategy-kicker">策略健康中心</span>
-          <h1>判断策略还能不能用</h1>
-          <p>{heroSummary}</p>
-          <small>系统会把回测、复盘和验证翻译成直白结论：可继续观察、谨慎使用，或暂不建议使用。</small>
-        </div>
-        {latestRun ? <LatestRunCard run={latestRun} /> : null}
-        <div className="strategy-hero-actions">
-          <button type="button" onClick={() => void hub.load()} disabled={hub.loading === "load"}>
-            {hub.loading === "load" ? "刷新中" : "刷新"}
-          </button>
-          <button type="button" className="primary" onClick={() => hub.setConfirmOpen(true)} disabled={hub.loading === "submit"}>
-            🚀 手动提交体检
-          </button>
-        </div>
-      </header>
+      <StrategyHubSummaryBar
+        runs={hub.runs}
+        strategies={hub.strategies}
+        loading={hub.loading === "submit" || hub.loading === "quick-submit"}
+        onStartCheck={() => hub.setConfirmOpen(true)}
+      />
 
       {hub.error ? <ErrorBanner message={`策略工作台加载失败：${hub.error}`} /> : null}
       {hub.notice ? <div className="panel strategy-notice">{hub.notice}</div> : null}
-
-      <StrategyDoctorPanel
-        runs={hub.runs}
-        loading={hub.loading === "quick-submit"}
-        onQuickCheck={quickSubmitWithToast}
-        onOpenSignals={() => hub.setTab("signals")}
-        onOpenCompare={() => hub.setTab("compare")}
+      <section className="panel strategy-hero-mini">
+        <div>
+          <strong>今日状态摘要</strong>
+          <span>{heroSummary}</span>
+        </div>
+        {latestRun ? <LatestRunCard run={latestRun} /> : <small>还没有最近一次回测</small>}
+        <button type="button" onClick={() => void hub.load()} disabled={hub.loading === "load"}>
+          {hub.loading === "load" ? "刷新中" : "刷新"}
+        </button>
+      </section>
+      <StrategyHubSimpleFlow activeTab={effectiveTab} runs={hub.runs} showExpert={expertEnabled} onSelect={hub.setTab} />
+      <StrategyHubDetailTabs
+        currentUser={currentUser}
+        hub={hub}
+        dashboard={dashboard}
+        onQuickSubmit={quickSubmitWithToast}
+        onRerun={rerunBacktest}
       />
-
-      <StrategyWorkflowSteps activeTab={hub.tab} runs={hub.runs} onSelect={hub.setTab} />
-      <StrategyTrafficLights strategies={hub.strategies} />
-
-      <nav className="strategy-tabs" aria-label="策略工作台功能">
-        {visibleTabsForUser(currentUser).map((tab) => (
-          <button
-            key={tab.key}
-            type="button"
-            className={`${hub.tab === tab.key ? "active" : ""} ${tab.key === "quick" ? "primary-tab" : ""}`.trim()}
-            onClick={() => hub.setTab(tab.key)}
-            title={tab.key === "quick" ? "新用户从这里开始" : tab.hint}
-          >
-            <strong>{tab.label}</strong>
-            <span>{tab.key === "quick" ? `新用户从这里开始 · ${tab.hint}` : tab.hint}</span>
-          </button>
-        ))}
-      </nav>
-
-      {content}
 
       {hub.confirmOpen ? (
         <StrategyConfirmDialog
@@ -202,4 +151,8 @@ function estimateSubmitTime(strategyCount: number): string {
   if (strategyCount <= 2) return "< 1 分钟（轻量回测）";
   if (strategyCount <= 5) return "约 1-3 分钟";
   return "约 3-10 分钟";
+}
+
+function isExpertHubTab(tab: string): boolean {
+  return tab === "optimize" || tab === "validate" || tab === "compare" || tab === "capacity";
 }

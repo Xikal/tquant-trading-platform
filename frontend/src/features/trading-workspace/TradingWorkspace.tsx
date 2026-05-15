@@ -69,6 +69,10 @@ export function TradingWorkspace() {
     remember: true,
   });
   const paper = usePaperTrading({
+    canManageReconcile: Boolean(currentUser?.roles.some((role) => {
+      const normalized = role.trim().toLowerCase();
+      return normalized === "admin" || normalized === "administrator";
+    })),
     setError,
     setLoading: setPaperLoading,
     setNotice,
@@ -116,6 +120,7 @@ export function TradingWorkspace() {
     watchDraft,
     setWatchDraft,
     editingWatchSymbol,
+    currentUser,
     onAddWatchlist: () => void addWatchlist(),
     onEditWatchlist: editWatchlistFromCard,
     onNavigatePage: navigatePage,

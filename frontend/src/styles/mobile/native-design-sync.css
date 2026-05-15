@@ -345,6 +345,8 @@ body.native-app-mode {
 }
 
 .mobile-app-tabbar {
+  display: flex;
+  align-items: stretch;
   right: 14px;
   bottom: max(8px, calc(env(safe-area-inset-bottom) - 10px));
   left: 14px;
@@ -359,6 +361,8 @@ body.native-app-mode {
 }
 
 .mobile-app-tabbar button {
+  flex: 1 1 0;
+  min-width: 0;
   border-radius: 14px;
 }
 

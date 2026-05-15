@@ -13,11 +13,13 @@ export function AccountMenu({
   user,
   open,
   onToggle,
+  onOpenPreferences,
   onLogout
 }: {
   user: AuthUser
   open: boolean
   onToggle: () => void
+  onOpenPreferences: () => void
   onLogout: () => void
 }) {
   const displayName = user.display_name || user.username
@@ -35,6 +37,9 @@ export function AccountMenu({
         <div className="mobile-account-menu">
           <strong>{displayName}</strong>
           <small>{user.username}</small>
+          <button type="button" onClick={onOpenPreferences}>
+            交易偏好
+          </button>
           <button type="button" onClick={onLogout}>
             退出登录
           </button>

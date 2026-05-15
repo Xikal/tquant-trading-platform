@@ -126,6 +126,63 @@ class PaperTradesResponse(BaseModel):
     trades: list[PaperTradeOut] = Field(default_factory=list)
 
 
+class PaperStockPnlOut(BaseModel):
+    symbol: str
+    name: str = ""
+    buy_quantity: int = 0
+    sell_quantity: int = 0
+    current_quantity: int = 0
+    avg_cost: Optional[float] = None
+    realized_pnl: float = 0.0
+    unrealized_pnl: float = 0.0
+    total_pnl: float = 0.0
+    total_fees: float = 0.0
+    replay_complete: bool = True
+
+
+class PaperStockPnlSummaryOut(BaseModel):
+    item_count: int = 0
+    account_total_pnl: float = 0.0
+    stock_total_pnl: float = 0.0
+    realized_pnl: float = 0.0
+    unrealized_pnl: float = 0.0
+    reconciliation_gap: float = 0.0
+
+
+class PaperStockPnlResponse(BaseModel):
+    items: list[PaperStockPnlOut] = Field(default_factory=list)
+    summary: PaperStockPnlSummaryOut = Field(default_factory=PaperStockPnlSummaryOut)
+
+
+class PaperLedgerRepairRequest(BaseModel):
+    account_id: Optional[int] = None
+    apply: bool = False
+
+
+class PaperLedgerRepairIssueOut(BaseModel):
+    trade_id: int
+    order_id: int
+    symbol: str
+    side: PaperSide
+    original_quantity: int
+    valid_quantity: int
+    invalid_quantity: int
+    reason: str
+
+
+class PaperLedgerRepairResponse(BaseModel):
+    account_id: int
+    applied: bool = False
+    issue_count: int = 0
+    corrected_cash_available: float = 0.0
+    corrected_realized_pnl: float = 0.0
+    corrected_market_value: float = 0.0
+    corrected_total_assets: float = 0.0
+    reconciliation_gap_before: float = 0.0
+    reconciliation_gap_after: float = 0.0
+    issues: list[PaperLedgerRepairIssueOut] = Field(default_factory=list)
+
+
 class PaperTradeTagCreate(BaseModel):
     tag: str = Field(min_length=1, max_length=40)
     note: str = Field(default="", max_length=240)

@@ -165,6 +165,10 @@ export function useAppPreviewData(strategy = "first_board", enabled = true) {
   async function loadHome() {
     const payload = await appApi.getHome()
     setHome(filterHomePayload(payload))
+    if (payload.priority_board) {
+      setPriorityBoard(payload.priority_board)
+      setPriorityPulseTime(formatPulseTime())
+    }
     setPulseTime(formatPulseTime())
     return payload
   }
@@ -191,9 +195,11 @@ export function useAppPreviewData(strategy = "first_board", enabled = true) {
       setLoading(true)
       setError("")
       await Promise.all([loadBootstrap(), loadHome(), loadWatchlist()])
-      void loadPriorityBoard().catch(() => {
-        // 优先级榜预取失败不阻塞首屏
-      })
+      if (!priorityBoard) {
+        void loadPriorityBoard().catch(() => {
+          // 优先级榜预取失败不阻塞首屏
+        })
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "App 预览加载失败")
     } finally {

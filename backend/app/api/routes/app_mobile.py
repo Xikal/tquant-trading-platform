@@ -11,16 +11,21 @@ from app.models.schemas import (
     AppBootstrapResponse,
     AppAndroidUpdateResponse,
     AppHomeResponse,
+    AppInstrumentSearchResponse,
     AppLowBuyDetailResponse,
     AppLowBuyFavoriteRequest,
     AppLowBuyResponse,
     AppMutationResponse,
+    AppPaperSummaryResponse,
     AppWatchlistDetailResponse,
     AppWatchlistResponse,
     AppWatchlistUpsertRequest,
+    UserSectorExclusionsResponse,
+    UserSectorExclusionsUpdate,
 )
 from app.services.low_buy.shared import DEFAULT_PRODUCTION_LOW_BUY_STRATEGY
 from app.services.app_mobile import AppMobileService
+from app.services.app_mobile.common import now_string
 from app.services.app_mobile.update_manifest import (
     ANDROID_APK_PATH,
     android_apk_size,
@@ -28,6 +33,7 @@ from app.services.app_mobile.update_manifest import (
     load_android_update_manifest,
 )
 from app.services.market_data import DataSourceError
+from app.services.user_sector_preferences import UserSectorPreferenceService
 
 router = APIRouter(prefix="/app")
 app_mobile_service = AppMobileService()
@@ -136,6 +142,24 @@ def app_watchlist_delete(
         _raise_not_found(exc)
 
 
+@router.get("/instruments/search", response_model=AppInstrumentSearchResponse)
+def app_instrument_search(
+    keyword: str = Query("", max_length=40),
+    kind: Literal["all", "stock", "etf"] = Query("all"),
+    page: int = Query(1, ge=1, le=20),
+    page_size: int = Query(20, ge=1, le=50),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    return app_mobile_service.search_instruments(
+        db,
+        keyword=keyword,
+        kind=kind,
+        page=page,
+        page_size=page_size,
+    )
+
+
 @router.get("/low-buy", response_model=AppLowBuyResponse)
 def app_low_buy(
     strategy: str = Query(DEFAULT_PRODUCTION_LOW_BUY_STRATEGY),
@@ -195,3 +219,43 @@ def app_low_buy_favorite(
     current_user: User = Depends(get_current_user),
 ):
     return app_mobile_service.favorite_low_buy(symbol, payload, db, user_id=current_user.id)
+
+
+@router.get("/paper/summary", response_model=AppPaperSummaryResponse)
+def app_paper_summary(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    payload = app_mobile_service.paper_summary(db, user_id=current_user.id)
+    payload.update(
+        {
+            "updated_at": now_string(),
+            "is_stale": False,
+            "warnings": [],
+        }
+    )
+    return payload
+
+
+@router.get("/settings/sector-exclusions", response_model=UserSectorExclusionsResponse)
+def app_sector_exclusions(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    return UserSectorPreferenceService(db).build_response(current_user.id)
+
+
+@router.put("/settings/sector-exclusions", response_model=UserSectorExclusionsResponse)
+def app_update_sector_exclusions(
+    payload: UserSectorExclusionsUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    try:
+        UserSectorPreferenceService(db).replace_excluded_sectors(
+            current_user.id,
+            payload.excluded_sectors,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return UserSectorPreferenceService(db).build_response(current_user.id)

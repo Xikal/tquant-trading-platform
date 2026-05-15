@@ -1,4 +1,4 @@
-import { api } from "../../api/client"
+import { appApi } from "../../api/appClient"
 
 const instrumentIdentityCache = new Map<string, { symbol: string; name: string }>()
 
@@ -76,7 +76,7 @@ export async function resolveInstrumentIdentity(
     }
   }
 
-  const payload = await api.listInstruments(stripMarketSuffix(addExchangeSuffix(keyword)))
+  const payload = await appApi.searchInstruments(stripMarketSuffix(addExchangeSuffix(keyword)), "all")
   const items = payload.items ?? []
   const exact =
     items.find((item) => symbolCacheKeys(item.symbol).some((key) => symbolCacheKeys(keyword).includes(key))) ??

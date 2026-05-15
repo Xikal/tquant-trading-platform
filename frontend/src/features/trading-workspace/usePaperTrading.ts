@@ -6,10 +6,13 @@ import type {
   PaperAgentRun,
   PaperAutoTradingStatus,
   PaperGroupedPerformance,
+  PaperLedgerRepairResponse,
   PaperOrder,
   PaperPerformance,
   PaperPosition,
   PaperSectorEtfT0Performance,
+  PaperStockPnlItem,
+  PaperStockPnlSummary,
   PaperTagPerformance,
   PaperTrade,
   PaperTradeTag,
@@ -23,17 +26,20 @@ interface PaperLiveRefreshOptions {
 }
 
 interface UsePaperTradingParams {
+  canManageReconcile?: boolean;
   setError: (value: string) => void;
   setLoading: (value: string) => void;
   setNotice: (value: string) => void;
   onAuthRequired: () => void;
 }
 
-export function usePaperTrading({ setError, setLoading, setNotice, onAuthRequired }: UsePaperTradingParams) {
+export function usePaperTrading({ canManageReconcile = false, setError, setLoading, setNotice, onAuthRequired }: UsePaperTradingParams) {
   const [account, setAccount] = useState<PaperAccount | null>(null);
   const [positions, setPositions] = useState<PaperPosition[]>([]);
   const [orders, setOrders] = useState<PaperOrder[]>([]);
   const [trades, setTrades] = useState<PaperTrade[]>([]);
+  const [stockPnl, setStockPnl] = useState<PaperStockPnlItem[]>([]);
+  const [stockPnlSummary, setStockPnlSummary] = useState<PaperStockPnlSummary | null>(null);
   const [performance, setPerformance] = useState<PaperPerformance | null>(null);
   const [sectorEtfT0Performance, setSectorEtfT0Performance] = useState<PaperSectorEtfT0Performance | null>(null);
   const [strategyPerformance, setStrategyPerformance] = useState<PaperGroupedPerformance[]>([]);
@@ -43,6 +49,7 @@ export function usePaperTrading({ setError, setLoading, setNotice, onAuthRequire
   const [riskEvents, setRiskEvents] = useState<RiskEventItem[]>([]);
   const [autoTradingStatus, setAutoTradingStatus] = useState<PaperAutoTradingStatus | null>(null);
   const [autoTradingRuns, setAutoTradingRuns] = useState<PaperAgentRun[]>([]);
+  const [ledgerRepairStatus, setLedgerRepairStatus] = useState<PaperLedgerRepairResponse | null>(null);
   const [draft, setDraft] = useState<PaperOrderDraft>({
     symbol: "",
     name: "",
@@ -65,6 +72,7 @@ export function usePaperTrading({ setError, setLoading, setNotice, onAuthRequire
         positionsResult,
         ordersResult,
         tradesResult,
+        stockPnlResult,
         performanceResult,
         sectorEtfT0PerformanceResult,
         strategyPerformanceResult,
@@ -77,7 +85,8 @@ export function usePaperTrading({ setError, setLoading, setNotice, onAuthRequire
         api.getPaperAccount(),
         api.getPaperPositions(),
         api.getPaperOrders(80),
-        api.getPaperTrades(80),
+        api.getPaperTrades(300),
+        api.getPaperStockPnl(),
         api.getPaperPerformance(),
         api.getPaperSectorEtfT0Performance(),
         api.getPaperPerformanceByStrategy(),
@@ -92,6 +101,7 @@ export function usePaperTrading({ setError, setLoading, setNotice, onAuthRequire
         positionsResult,
         ordersResult,
         tradesResult,
+        stockPnlResult,
         performanceResult,
         sectorEtfT0PerformanceResult,
         strategyPerformanceResult,
@@ -116,6 +126,10 @@ export function usePaperTrading({ setError, setLoading, setNotice, onAuthRequire
         setTrades(tradesResult.value.trades);
         await loadTradeTags(tradesResult.value.trades);
       }
+      if (stockPnlResult.status === "fulfilled") {
+        setStockPnl(stockPnlResult.value.items);
+        setStockPnlSummary(stockPnlResult.value.summary);
+      }
       if (performanceResult.status === "fulfilled") setPerformance(performanceResult.value);
       if (sectorEtfT0PerformanceResult.status === "fulfilled") setSectorEtfT0Performance(sectorEtfT0PerformanceResult.value);
       if (strategyPerformanceResult.status === "fulfilled") setStrategyPerformance(strategyPerformanceResult.value);
@@ -124,6 +138,11 @@ export function usePaperTrading({ setError, setLoading, setNotice, onAuthRequire
       if (riskEventsResult.status === "fulfilled") setRiskEvents(riskEventsResult.value);
       if (autoTradingStatusResult.status === "fulfilled") setAutoTradingStatus(autoTradingStatusResult.value);
       if (autoTradingRunsResult.status === "fulfilled") setAutoTradingRuns(autoTradingRunsResult.value);
+      if (canManageReconcile && accountResult.status === "fulfilled") {
+        await refreshLedgerRepairStatus(false, accountResult.value.id);
+      } else if (!canManageReconcile) {
+        setLedgerRepairStatus(null);
+      }
       if (rejected) setError(errorMessage(rejected.reason));
     } finally {
       if (manageLoading) setLoading("");
@@ -148,6 +167,7 @@ export function usePaperTrading({ setError, setLoading, setNotice, onAuthRequire
         positionsResult,
         ordersResult,
         tradesResult,
+        stockPnlResult,
         performanceResult,
         sectorEtfT0PerformanceResult,
         autoTradingStatusResult,
@@ -155,7 +175,8 @@ export function usePaperTrading({ setError, setLoading, setNotice, onAuthRequire
         runAuthenticated(() => api.getPaperAccount(), true),
         runAuthenticated(() => api.getPaperPositions(), true),
         runAuthenticated(() => api.getPaperOrders(80), true),
-        runAuthenticated(() => api.getPaperTrades(80), true),
+        runAuthenticated(() => api.getPaperTrades(300), true),
+        runAuthenticated(() => api.getPaperStockPnl(), true),
         runAuthenticated(() => api.getPaperPerformance(), true),
         runAuthenticated(() => api.getPaperSectorEtfT0Performance(), true),
         runAuthenticated(() => api.getPaperAutoTradingStatus(), true),
@@ -164,6 +185,10 @@ export function usePaperTrading({ setError, setLoading, setNotice, onAuthRequire
       if (positionsResult.status === "fulfilled") setPositions(positionsResult.value.positions);
       if (ordersResult.status === "fulfilled") setOrders(ordersResult.value);
       if (tradesResult.status === "fulfilled") setTrades(tradesResult.value.trades);
+      if (stockPnlResult.status === "fulfilled") {
+        setStockPnl(stockPnlResult.value.items);
+        setStockPnlSummary(stockPnlResult.value.summary);
+      }
       if (performanceResult.status === "fulfilled") setPerformance(performanceResult.value);
       if (sectorEtfT0PerformanceResult.status === "fulfilled") setSectorEtfT0Performance(sectorEtfT0PerformanceResult.value);
       if (autoTradingStatusResult.status === "fulfilled") setAutoTradingStatus(autoTradingStatusResult.value);
@@ -199,6 +224,29 @@ export function usePaperTrading({ setError, setLoading, setNotice, onAuthRequire
     (options?: PaperLiveRefreshOptions) => refreshLiveSnapshotRef.current(options),
     [],
   );
+
+  async function refreshLedgerRepairStatus(allowRefresh = true, accountId?: number) {
+    if (!canManageReconcile) return null;
+    const result = await runAuthenticated(
+      () => api.reconcilePaperAccount({ account_id: accountId ?? account?.id, apply: false }),
+      allowRefresh,
+    );
+    setLedgerRepairStatus(result);
+    return result;
+  }
+
+  async function applyLedgerRepair() {
+    if (!canManageReconcile) {
+      throw new Error("当前账号没有对账修复权限");
+    }
+    return withPaperLoading("paper-ledger-repair", async () => {
+      const result = await runAuthenticated(() => api.reconcilePaperAccount({ account_id: account?.id, apply: true }));
+      setLedgerRepairStatus(result);
+      await load(false, false);
+      setNotice(result.issue_count > 0 ? `已修复 ${result.issue_count} 条异常成交` : "账户已完成重算");
+      return result;
+    });
+  }
 
   async function togglePause() {
     await withPaperLoading("paper-status", async () => {
@@ -335,6 +383,8 @@ export function usePaperTrading({ setError, setLoading, setNotice, onAuthRequire
     setPositions([]);
     setOrders([]);
     setTrades([]);
+    setStockPnl([]);
+    setStockPnlSummary(null);
     setPerformance(null);
     setSectorEtfT0Performance(null);
     setStrategyPerformance([]);
@@ -344,6 +394,7 @@ export function usePaperTrading({ setError, setLoading, setNotice, onAuthRequire
     setRiskEvents([]);
     setAutoTradingStatus(null);
     setAutoTradingRuns([]);
+    setLedgerRepairStatus(null);
   }
 
   return {
@@ -351,6 +402,8 @@ export function usePaperTrading({ setError, setLoading, setNotice, onAuthRequire
     positions,
     orders,
     trades,
+    stockPnl,
+    stockPnlSummary,
     performance,
     sectorEtfT0Performance,
     strategyPerformance,
@@ -360,12 +413,15 @@ export function usePaperTrading({ setError, setLoading, setNotice, onAuthRequire
     riskEvents,
     autoTradingStatus,
     autoTradingRuns,
+    ledgerRepairStatus,
     draft,
     setDraft,
     load,
     refreshAll,
     refreshLiveSnapshot: stableRefreshLiveSnapshot,
     refreshAutoTradingStatus: stableRefreshAutoTradingStatus,
+    refreshLedgerRepairStatus,
+    applyLedgerRepair,
     submitOrder,
     addTradeTag,
     deleteTradeTag,

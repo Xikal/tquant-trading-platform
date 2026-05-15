@@ -2,12 +2,15 @@ import type {
   AppBootstrapResponse,
   AppAndroidUpdateResponse,
   AppLowBuyResponse,
+  AppInstrumentSearchResponse,
   AuthMeResponse,
   AuthMfaSetupResponse,
   AuthTokenResponse,
   AppHomeResponse,
   AppLowBuyDetailResponse,
   AppMutationResponse,
+  AppPaperSummaryResponse,
+  AppSectorExclusionsResponse,
   AppWatchlistDetailResponse,
   AppWatchlistResponse,
   WatchlistItem
@@ -123,6 +126,22 @@ export const appApi = {
       `/app/low-buy/${encodeURIComponent(symbol)}?strategy=${encodeURIComponent(strategy)}&scan_limit=${scanLimit}`,
       10000
     ),
+  getPaperSummary: () => requestCachedOffline<AppPaperSummaryResponse>("/app/paper/summary", 8000),
+  searchInstruments: (keyword: string, kind: "all" | "stock" | "etf" = "all") =>
+    requestCached<AppInstrumentSearchResponse>(
+      `/app/instruments/search?keyword=${encodeURIComponent(keyword)}&kind=${kind}&page=1&page_size=20`,
+      60_000
+    ),
+  getSectorExclusions: () => requestCached<AppSectorExclusionsResponse>("/app/settings/sector-exclusions", 30_000),
+  updateSectorExclusions: (excluded_sectors: string[]) =>
+    request<AppSectorExclusionsResponse>("/app/settings/sector-exclusions", {
+      method: "PUT",
+      body: JSON.stringify({ excluded_sectors })
+    }).then((result) => {
+      invalidateAppCaches()
+      invalidateCache(["/app/settings/sector-exclusions"])
+      return result
+    }),
   favoriteLowBuy: (
     symbol: string,
     payload: {

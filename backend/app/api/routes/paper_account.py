@@ -15,12 +15,16 @@ from app.models.entities import User
 from app.models.schemas import (
     PaperAccountCreate,
     PaperAccountOut,
+    PaperLedgerRepairRequest,
+    PaperLedgerRepairResponse,
     PaperPositionOut,
     PaperPositionsResponse,
     PaperRiskStatusOut,
     RiskEventOut,
 )
+from app.services.operation_audit import record_operation_audit
 from app.services.paper import PaperAccountService, PaperPositionService
+from app.services.paper.ledger_repair import PaperLedgerRepairService
 from app.services.paper.risk_circuit import PaperRiskCircuitBreaker
 from app.services.paper.risk_control import PaperRiskControlService
 
@@ -76,6 +80,39 @@ def resume_paper_account(current_user: User = Depends(require_paper_trading), db
     account = service.get_or_create_default(current_user.id)
     PaperRiskCircuitBreaker(db).resolve_open_events(account.id, reason="manual_review_resume")
     return account_out(service.resume(account.id))
+
+
+@router.post("/account/reconcile", response_model=PaperLedgerRepairResponse)
+def reconcile_paper_account(
+    payload: PaperLedgerRepairRequest,
+    current_user: User = Depends(require_paper_trading),
+    __: None = Depends(require_admin_auth),
+    db: Session = Depends(get_db),
+) -> PaperLedgerRepairResponse:
+    account_id = payload.account_id or PaperAccountService(db).get_or_create_default(current_user.id).id
+    service = PaperLedgerRepairService(db)
+    result = service.apply(account_id) if payload.apply else service.preview(account_id)
+    record_operation_audit(
+        db,
+        operation="paper_account_reconcile",
+        user=current_user,
+        resource_type="paper_account",
+        resource_id=account_id,
+        detail={"apply": payload.apply, "issue_count": result.issue_count},
+    )
+    db.commit()
+    return PaperLedgerRepairResponse(
+        account_id=result.account_id,
+        applied=result.applied,
+        issue_count=result.issue_count,
+        corrected_cash_available=float(result.corrected_cash_available),
+        corrected_realized_pnl=float(result.corrected_realized_pnl),
+        corrected_market_value=float(result.corrected_market_value),
+        corrected_total_assets=float(result.corrected_total_assets),
+        reconciliation_gap_before=float(result.reconciliation_gap_before),
+        reconciliation_gap_after=float(result.reconciliation_gap_after),
+        issues=result.issues,
+    )
 
 
 @router.get("/positions", response_model=PaperPositionsResponse)

@@ -9,12 +9,22 @@ import {
 } from "../features/trading-workspace/workspaceFormatters"
 import type {
   PaperAccount,
+  PaperAgentRun,
+  PaperAutoTradingStatus,
   PaperGroupedPerformance,
   PaperOrder,
   PaperPerformance,
   PaperPosition,
+  PaperStockPnlResponse,
   PaperTrade
 } from "../types"
+import type { RiskEventItem } from "../types"
+import {
+  MobileAutoTradingStatusCard,
+  MobilePaperRecentRunsCard,
+  MobilePaperRiskEventsCard,
+  MobilePaperStockPnlCard,
+} from "./MobilePaperInsights"
 
 export function PaperTradingPanel({
   account,
@@ -24,6 +34,10 @@ export function PaperTradingPanel({
   performance,
   strategyPerformance,
   marketPerformance,
+  stockPnl,
+  autoStatus,
+  recentRuns,
+  riskEvents,
   onCreateOrder
 }: {
   account: PaperAccount | null
@@ -33,6 +47,10 @@ export function PaperTradingPanel({
   performance: PaperPerformance | null
   strategyPerformance: PaperGroupedPerformance[]
   marketPerformance: PaperGroupedPerformance[]
+  stockPnl: PaperStockPnlResponse | null
+  autoStatus: PaperAutoTradingStatus | null
+  recentRuns: PaperAgentRun[]
+  riskEvents: RiskEventItem[]
   onCreateOrder: () => void
 }) {
   const latestAction = orders[0] ?? null
@@ -55,6 +73,10 @@ export function PaperTradingPanel({
       </section>
 
       <PaperMechaCockpit latestAction={latestAction} onCreateOrder={onCreateOrder} />
+      <MobileAutoTradingStatusCard status={autoStatus} />
+      <MobilePaperStockPnlCard stockPnl={stockPnl} />
+      <MobilePaperRiskEventsCard items={riskEvents} />
+      <MobilePaperRecentRunsCard items={recentRuns} />
 
       <section className="mobile-paper-card">
         <div className="mobile-paper-section-head">

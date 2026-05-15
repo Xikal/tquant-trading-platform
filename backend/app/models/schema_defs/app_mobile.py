@@ -5,7 +5,19 @@ from typing import Optional
 from pydantic import BaseModel, Field
 
 from app.models.schema_defs.analysis import StrategySuggestion
-from app.models.schema_defs.common import QuoteSnapshot, TradingRuleOut
+from app.models.schema_defs.common import InstrumentOut, QuoteSnapshot, TradingRuleOut
+from app.models.schema_defs.market import SectorEtfT0Opportunity
+from app.models.schema_defs.paper import (
+    PaperAccountOut,
+    PaperAgentRunOut,
+    PaperGroupedPerformanceOut,
+    PaperOrderOut,
+    PaperPerformanceOut,
+    PaperPositionOut,
+    PaperStockPnlResponse,
+    PaperTradeOut,
+)
+from app.models.schema_defs.research import RiskEventOut
 from app.models.schema_defs.screener import (
     LowBuyCandidateOut,
     LowBuyDailyDecisionOut,
@@ -98,6 +110,9 @@ class AppWatchlistCard(BaseModel):
 class AppHomeResponse(AppResponseMeta):
     summary: AppHomeSummary
     items: list[AppWatchlistCard] = Field(default_factory=list)
+    priority_board: Optional["AppLowBuyPriorityBoard"] = None
+    today_action_title: str = ""
+    today_action_note: str = ""
 
 
 class AppWatchlistResponse(AppResponseMeta):
@@ -212,6 +227,28 @@ class AppLowBuyFavoriteRequest(BaseModel):
     available_position: int = 1000
     cost_basis: Optional[float] = None
     memo: str = "来自选股宝典"
+
+
+class AppInstrumentSearchResponse(BaseModel):
+    items: list[InstrumentOut] = Field(default_factory=list)
+    page: int = 1
+    page_size: int = 20
+    total: int = 0
+
+
+class AppPaperSummaryResponse(AppResponseMeta):
+    account: PaperAccountOut
+    positions: list[PaperPositionOut] = Field(default_factory=list)
+    orders: list[PaperOrderOut] = Field(default_factory=list)
+    trades: list[PaperTradeOut] = Field(default_factory=list)
+    performance: PaperPerformanceOut
+    strategy_performance: list[PaperGroupedPerformanceOut] = Field(default_factory=list)
+    market_performance: list[PaperGroupedPerformanceOut] = Field(default_factory=list)
+    stock_pnl: PaperStockPnlResponse
+    auto_trading_status: dict = Field(default_factory=dict)
+    recent_runs: list[PaperAgentRunOut] = Field(default_factory=list)
+    risk_events: list[RiskEventOut] = Field(default_factory=list)
+    sector_etf_t0: list[SectorEtfT0Opportunity] = Field(default_factory=list)
 
 
 AppWatchlistUpsertRequest = WatchlistCreate

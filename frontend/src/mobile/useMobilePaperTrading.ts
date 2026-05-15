@@ -1,14 +1,19 @@
 import { useCallback, useEffect, useState } from "react"
 import { api } from "../api/client"
+import { appApi } from "../api/appClient"
 import type {
   PaperAccount,
+  PaperAgentRun,
+  PaperAutoTradingStatus,
   PaperGroupedPerformance,
   PaperOrderCreate,
   PaperOrder,
   PaperPerformance,
   PaperPosition,
+  PaperStockPnlResponse,
   PaperTrade
 } from "../types"
+import type { RiskEventItem } from "../types"
 
 export function useMobilePaperTrading(enabled: boolean) {
   const [paperAccount, setPaperAccount] = useState<PaperAccount | null>(null)
@@ -18,6 +23,10 @@ export function useMobilePaperTrading(enabled: boolean) {
   const [paperPerformance, setPaperPerformance] = useState<PaperPerformance | null>(null)
   const [paperStrategyPerformance, setPaperStrategyPerformance] = useState<PaperGroupedPerformance[]>([])
   const [paperMarketPerformance, setPaperMarketPerformance] = useState<PaperGroupedPerformance[]>([])
+  const [paperStockPnl, setPaperStockPnl] = useState<PaperStockPnlResponse | null>(null)
+  const [paperAutoTradingStatus, setPaperAutoTradingStatus] = useState<PaperAutoTradingStatus | null>(null)
+  const [paperRecentRuns, setPaperRecentRuns] = useState<PaperAgentRun[]>([])
+  const [paperRiskEvents, setPaperRiskEvents] = useState<RiskEventItem[]>([])
   const [paperLoading, setPaperLoading] = useState("")
   const [paperError, setPaperError] = useState("")
   const [paperMessage, setPaperMessage] = useState("")
@@ -27,35 +36,31 @@ export function useMobilePaperTrading(enabled: boolean) {
       setPaperLoading("paper")
       setPaperError("")
       setPaperMessage("")
-      const [
-        accountResult,
-        positionsResult,
-        ordersResult,
-        tradesResult,
-        performanceResult,
-        strategyResult,
-        marketResult
-      ] = await Promise.allSettled([
-        api.getPaperAccount(),
-        api.getPaperPositions(),
-        api.getPaperOrders(80),
-        api.getPaperTrades(80),
-        api.getPaperPerformance(),
-        api.getPaperPerformanceByStrategy(),
-        api.getPaperPerformanceByMarketState()
-      ])
-      if (accountResult.status === "fulfilled") setPaperAccount(accountResult.value)
-      if (positionsResult.status === "fulfilled") setPaperPositions(positionsResult.value.positions)
-      if (ordersResult.status === "fulfilled") setPaperOrders(ordersResult.value)
-      if (tradesResult.status === "fulfilled") setPaperTrades(tradesResult.value.trades)
-      if (performanceResult.status === "fulfilled") setPaperPerformance(performanceResult.value)
-      if (strategyResult.status === "fulfilled") setPaperStrategyPerformance(strategyResult.value)
-      if (marketResult.status === "fulfilled") setPaperMarketPerformance(marketResult.value)
-      const rejected = [accountResult, positionsResult, ordersResult, tradesResult, performanceResult, strategyResult, marketResult]
-        .find((result): result is PromiseRejectedResult => result.status === "rejected")
-      if (rejected) {
-        setPaperError(rejected.reason instanceof Error ? rejected.reason.message : "模拟盘加载失败")
-      }
+      const payload = await appApi.getPaperSummary()
+      setPaperAccount(payload.account ?? null)
+      setPaperPositions(payload.positions ?? [])
+      setPaperOrders(payload.orders ?? [])
+      setPaperTrades(payload.trades ?? [])
+      setPaperPerformance(payload.performance ?? null)
+      setPaperStrategyPerformance(payload.strategy_performance ?? [])
+      setPaperMarketPerformance(payload.market_performance ?? [])
+      setPaperStockPnl(payload.stock_pnl ?? null)
+      setPaperAutoTradingStatus(payload.auto_trading_status ?? null)
+      setPaperRecentRuns(payload.recent_runs ?? [])
+      setPaperRiskEvents(payload.risk_events ?? [])
+    } catch (error) {
+      setPaperError(error instanceof Error ? error.message : "模拟盘数据加载失败")
+      setPaperAccount(null)
+      setPaperPositions([])
+      setPaperOrders([])
+      setPaperTrades([])
+      setPaperPerformance(null)
+      setPaperStrategyPerformance([])
+      setPaperMarketPerformance([])
+      setPaperStockPnl(null)
+      setPaperAutoTradingStatus(null)
+      setPaperRecentRuns([])
+      setPaperRiskEvents([])
     } finally {
       setPaperLoading("")
     }
@@ -92,6 +97,10 @@ export function useMobilePaperTrading(enabled: boolean) {
     paperPerformance,
     paperStrategyPerformance,
     paperMarketPerformance,
+    paperStockPnl,
+    paperAutoTradingStatus,
+    paperRecentRuns,
+    paperRiskEvents,
     paperLoading,
     paperError,
     paperMessage,

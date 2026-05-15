@@ -27,9 +27,11 @@ import type {
   PaperAgentRun,
   PaperPerformance,
   PaperPerformanceDashboard,
+  PaperLedgerRepairResponse,
   PaperSectorEtfT0Performance,
   PaperStrategyMarketPerformance,
   PaperPositionsResponse,
+  PaperStockPnlResponse,
   PaperTagPerformance,
   PaperTradeTag,
   PaperTradeTagCreate,
@@ -251,6 +253,12 @@ export const api = {
     request<PaperPositionsResponse>("/paper/positions/refresh", { method: "POST" }),
   getPaperOrders: (limit = 50) => request<PaperOrder[]>(`/paper/orders?limit=${limit}`),
   getPaperTrades: (limit = 50) => request<PaperTradesResponse>(`/paper/trades?limit=${limit}`),
+  getPaperStockPnl: () => request<PaperStockPnlResponse>("/paper/performance/stock-pnl"),
+  reconcilePaperAccount: (payload: { account_id?: number; apply: boolean }) =>
+    request<PaperLedgerRepairResponse>("/paper/account/reconcile", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
   getPaperTradeTags: (tradeId: number) => request<PaperTradeTag[]>(`/paper/trades/${tradeId}/tags`),
   addPaperTradeTag: (tradeId: number, payload: PaperTradeTagCreate) =>
     request<PaperTradeTag>(`/paper/trades/${tradeId}/tags`, {

@@ -1,6 +1,19 @@
 import type { StrategySuggestion } from "./analysis"
-import type { TradingRule, QuoteSnapshot } from "./market"
+import type { Instrument, TradingRule, QuoteSnapshot, SectorEtfT0Opportunity } from "./market"
+import type {
+  PaperAccount,
+  PaperAgentRun,
+  PaperAutoTradingStatus,
+  PaperGroupedPerformance,
+  PaperOrder,
+  PaperPerformance,
+  PaperPosition,
+  PaperStockPnlResponse,
+  PaperTrade
+} from "./paper"
 import type { LowBuyCandidate, LowBuyPriorityBoardResult } from "./playbook"
+import type { RiskEventItem } from "./research"
+import type { UserSectorExclusionsResponse } from "./settings"
 import type { WatchlistItem } from "./watchlist"
 
 export interface AppResponseMeta {
@@ -84,6 +97,9 @@ export interface AppWatchlistCard {
 export interface AppHomeResponse extends AppResponseMeta {
   summary: AppHomeSummary
   items: AppWatchlistCard[]
+  priority_board?: LowBuyPriorityBoardResult | null
+  today_action_title?: string
+  today_action_note?: string
 }
 
 export interface AppWatchlistResponse extends AppResponseMeta {
@@ -143,3 +159,27 @@ export interface AppLowBuyResponse extends AppResponseMeta {
   confirmed_candidates: LowBuyCandidate[]
   watch_candidates: LowBuyCandidate[]
 }
+
+export interface AppInstrumentSearchResponse {
+  items: Instrument[]
+  page: number
+  page_size: number
+  total: number
+}
+
+export interface AppPaperSummaryResponse extends AppResponseMeta {
+  account: PaperAccount
+  positions: PaperPosition[]
+  orders: PaperOrder[]
+  trades: PaperTrade[]
+  performance: PaperPerformance
+  strategy_performance: PaperGroupedPerformance[]
+  market_performance: PaperGroupedPerformance[]
+  stock_pnl: PaperStockPnlResponse
+  auto_trading_status: PaperAutoTradingStatus
+  recent_runs: PaperAgentRun[]
+  risk_events: RiskEventItem[]
+  sector_etf_t0: SectorEtfT0Opportunity[]
+}
+
+export type AppSectorExclusionsResponse = UserSectorExclusionsResponse

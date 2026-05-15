@@ -14,6 +14,7 @@ from app.models.schemas import (
     PaperPerformanceOut,
     PaperSectorEtfT0PerformanceOut,
     PaperSmartTBacktestResponse,
+    PaperStockPnlResponse,
     PaperStrategyCorrelationResponse,
     PaperStrategyMarketPerformanceOut,
     PaperTagPerformanceOut,
@@ -21,6 +22,7 @@ from app.models.schemas import (
 from app.services.paper import PaperAccountService, PaperArchiveService, PaperPerformanceService
 from app.services.paper.dashboard import PaperPerformanceDashboardService
 from app.services.paper.smart_t_backtest import SmartTBacktestService
+from app.services.paper.stock_pnl import PaperStockPnlService
 from app.services.market_model_observation_service import MarketModelObservationService
 
 router = APIRouter()
@@ -107,6 +109,17 @@ def paper_performance_sector_etf_t0(
         shadow_avg_return_1d_pct=round(float(shadow["avg_return_1d_pct"] or 0.0), 2),
         shadow_avg_return_3d_pct=round(float(shadow["avg_return_3d_pct"] or 0.0), 2),
     )
+
+
+@router.get("/performance/stock-pnl", response_model=PaperStockPnlResponse)
+def paper_performance_stock_pnl(
+    current_user: User = Depends(require_paper_trading),
+    db: Session = Depends(get_db),
+) -> PaperStockPnlResponse:
+    account_service = PaperAccountService(db)
+    account = account_service.get_or_create_default(current_user.id)
+    account_service.update_market_value(account.id)
+    return PaperStockPnlResponse(**PaperStockPnlService(db).summary(account.id))
 
 
 @router.get("/performance/smart-t-backtest", response_model=PaperSmartTBacktestResponse)

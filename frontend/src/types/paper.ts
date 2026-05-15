@@ -107,6 +107,58 @@ export interface PaperTradesResponse {
   trades: PaperTrade[]
 }
 
+export interface PaperStockPnlItem {
+  symbol: string
+  name: string
+  buy_quantity: number
+  sell_quantity: number
+  current_quantity: number
+  avg_cost: number | null
+  realized_pnl: number
+  unrealized_pnl: number
+  total_pnl: number
+  total_fees: number
+  replay_complete: boolean
+}
+
+export interface PaperStockPnlSummary {
+  item_count: number
+  account_total_pnl: number
+  stock_total_pnl: number
+  realized_pnl: number
+  unrealized_pnl: number
+  reconciliation_gap: number
+}
+
+export interface PaperStockPnlResponse {
+  items: PaperStockPnlItem[]
+  summary: PaperStockPnlSummary
+}
+
+export interface PaperLedgerRepairIssue {
+  trade_id: number
+  order_id: number
+  symbol: string
+  side: string
+  original_quantity: number
+  valid_quantity: number
+  invalid_quantity: number
+  reason: string
+}
+
+export interface PaperLedgerRepairResponse {
+  account_id: number
+  applied: boolean
+  issue_count: number
+  corrected_cash_available: number
+  corrected_realized_pnl: number
+  corrected_market_value: number
+  corrected_total_assets: number
+  reconciliation_gap_before: number
+  reconciliation_gap_after: number
+  issues: PaperLedgerRepairIssue[]
+}
+
 export interface PaperTradeTag {
   id: number
   trade_id: number

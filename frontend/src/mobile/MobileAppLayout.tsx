@@ -6,8 +6,7 @@ import type { MobileTab } from "./mobileTypes"
 function mobileTabTitle(activeTab: MobileTab) {
   if (activeTab === "home") return "实时监控"
   if (activeTab === "holdings") return "持仓"
-  if (activeTab === "low_buy") return "选股宝典"
-  return "模拟交易"
+  return "选股宝典"
 }
 
 export function MobileAppHeader({
@@ -17,9 +16,9 @@ export function MobileAppHeader({
   accountMenuOpen,
   onRefreshHome,
   onRefreshHoldings,
-  onRefreshPaper,
   onRefreshLowBuy,
   onToggleAccountMenu,
+  onOpenPreferences,
   onLogout
 }: {
   activeTab: MobileTab
@@ -28,9 +27,9 @@ export function MobileAppHeader({
   accountMenuOpen: boolean
   onRefreshHome: () => void
   onRefreshHoldings: () => void
-  onRefreshPaper: () => void
   onRefreshLowBuy: () => void
   onToggleAccountMenu: () => void
+  onOpenPreferences: () => void
   onLogout: () => void
 }) {
   return (
@@ -50,10 +49,6 @@ export function MobileAppHeader({
           <button type="button" className="mobile-app-icon-button" onClick={onRefreshHoldings} aria-label="刷新">
             <Icon name="refresh" />
           </button>
-        ) : activeTab === "paper" ? (
-          <button type="button" className="mobile-app-icon-button" onClick={onRefreshPaper} aria-label="刷新">
-            <Icon name="refresh" />
-          </button>
         ) : (
           <button type="button" className="mobile-app-icon-button" onClick={onRefreshLowBuy} aria-label="刷新">
             <Icon name="refresh" />
@@ -63,6 +58,7 @@ export function MobileAppHeader({
           user={user}
           open={accountMenuOpen}
           onToggle={onToggleAccountMenu}
+          onOpenPreferences={onOpenPreferences}
           onLogout={onLogout}
         />
       </div>
@@ -76,9 +72,7 @@ export function MobileStatusBanners({
   offline,
   message,
   error,
-  playbookError,
-  paperMessage,
-  paperError
+  playbookError
 }: {
   activeTab: MobileTab
   signalToastVisible: boolean
@@ -86,8 +80,6 @@ export function MobileStatusBanners({
   message: string
   error: string
   playbookError: string
-  paperMessage: string
-  paperError: string
 }) {
   return (
     <>
@@ -96,8 +88,6 @@ export function MobileStatusBanners({
       {message ? <div className="mobile-app-banner">{message}</div> : null}
       {error ? <div className="mobile-app-error">{error}</div> : null}
       {activeTab === "low_buy" && playbookError ? <div className="mobile-app-error">{playbookError}</div> : null}
-      {activeTab === "paper" && paperMessage ? <div className="mobile-app-banner">{paperMessage}</div> : null}
-      {activeTab === "paper" && paperError ? <div className="mobile-app-error">{paperError}</div> : null}
     </>
   )
 }
@@ -131,13 +121,6 @@ export function MobileTabBar({
         onClick={() => onSwitchTab("low_buy")}
       >
         <span>选股宝典</span>
-      </button>
-      <button
-        type="button"
-        className={activeTab === "paper" ? "active" : ""}
-        onClick={() => onSwitchTab("paper")}
-      >
-        <span>模拟交易</span>
       </button>
     </nav>
   )

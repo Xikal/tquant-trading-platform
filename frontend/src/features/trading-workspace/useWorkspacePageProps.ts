@@ -1,4 +1,4 @@
-import type { IntradayConfirmationItem } from "../../types";
+import type { AuthUser, IntradayConfirmationItem } from "../../types";
 import type { MonitorPageProps } from "./MonitorPage";
 import type { PaperTradingPageProps } from "./PaperTradingPage";
 import type { useAnalysisData } from "./useAnalysisData";
@@ -15,6 +15,7 @@ interface UseWorkspacePagePropsParams {
   watchDraft: WatchDraft;
   setWatchDraft: (draft: WatchDraft) => void;
   editingWatchSymbol: string;
+  currentUser: AuthUser | null;
   onAddWatchlist: () => void;
   onEditWatchlist: (card: StockCardView) => void;
   onNavigatePage: (page: Page) => void;
@@ -34,6 +35,7 @@ export function useWorkspacePageProps({
   watchDraft,
   setWatchDraft,
   editingWatchSymbol,
+  currentUser,
   onAddWatchlist,
   onEditWatchlist,
   onNavigatePage,
@@ -72,6 +74,8 @@ export function useWorkspacePageProps({
     positions: paper.positions,
     orders: paper.orders,
     trades: paper.trades,
+    stockPnl: paper.stockPnl,
+    stockPnlSummary: paper.stockPnlSummary,
     performance: paper.performance,
     sectorEtfT0Performance: paper.sectorEtfT0Performance,
     strategyPerformance: paper.strategyPerformance,
@@ -81,10 +85,17 @@ export function useWorkspacePageProps({
     riskEvents: paper.riskEvents,
     autoTradingStatus: paper.autoTradingStatus,
     autoTradingRuns: paper.autoTradingRuns,
+    ledgerRepairStatus: paper.ledgerRepairStatus,
+    canManageReconcile: currentUser?.roles.some((role) => {
+      const normalized = role.trim().toLowerCase();
+      return normalized === "admin" || normalized === "administrator";
+    }) ?? false,
     intradayConfirmations,
     draft: paper.draft,
     setDraft: paper.setDraft,
     loading,
+    onRefreshLedgerRepair: () => void paper.refreshLedgerRepairStatus(),
+    onApplyLedgerRepair: () => void paper.applyLedgerRepair(),
     onSubmitOrder: paper.submitOrder,
     onTogglePause: paper.togglePause,
     onAddTradeTag: (tradeId, tag) => void paper.addTradeTag(tradeId, tag),
