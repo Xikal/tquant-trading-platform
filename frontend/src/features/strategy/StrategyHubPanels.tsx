@@ -9,6 +9,7 @@ import {
 } from "../backtest/backtestDisplay";
 import { BacktestResearchPanel, type BacktestResearchSection } from "../backtest/BacktestResearchPanel";
 import { useBacktestDashboard, type BacktestDashboardActiveSection } from "../backtest/useBacktestDashboard";
+import { FactorMiningTab } from "./FactorMiningTab";
 import { StrategySignalReplayPanel } from "./StrategySignalReplayPanel";
 import { strategyDoctorVerdict, strategyHealthLabel } from "./strategyVerdict";
 import type { StrategyHubTab } from "./useStrategyHub";
@@ -175,6 +176,7 @@ export function StrategyBridge({
     validate: ["专家工具：防过拟合检查", "检查策略是不是只在历史里好看。样本外不通过，不要进生产。"],
     compare: ["策略对比", "把多个体检结果放在一起，直接选择更稳的策略。"],
     capacity: ["管理员工具：ML / 容量", "查看模拟盘平仓样本是否进入训练池，并评估策略在不同资金规模下是否还能承载。"],
+    factor: ["因子实验室", "用 DeepSeek 生成因子假设，经过沙盒和统计评估后再人工审批。"],
   };
   const meta = metaMap[tab];
   if (tab === "signals") {
@@ -189,11 +191,18 @@ export function StrategyBridge({
   if (tab === "capacity" && !isAdmin(currentUser)) {
     return <PermissionPanel title="需要管理员权限" description="ML 在线学习、手动增量训练和容量评估会读取训练样本与模型状态，仅管理员可操作。" />;
   }
+  if (tab === "factor" && !canValidate(currentUser)) {
+    return <PermissionPanel title="需要研究员权限" description="因子挖掘会生成研究代码并运行历史评估，仅研究员或管理员可操作。" />;
+  }
+  if (tab === "factor") {
+    return <FactorMiningTab />;
+  }
   const sectionMap: Record<Exclude<StrategyHubTab, "quick" | "history" | "signals">, BacktestResearchSection> = {
     optimize: "optimization",
     validate: "validation",
     compare: "compare",
     capacity: "capacity",
+    factor: "capacity",
   };
   return (
     <div className="strategy-bridge">
@@ -218,6 +227,7 @@ export function visibleTabsForUser(user: AuthUser) {
   return TABS.filter((tab) => {
     if (tab.key === "optimize") return canOptimize(user);
     if (tab.key === "validate") return canValidate(user);
+    if (tab.key === "factor") return canValidate(user);
     if (tab.key === "capacity") return isAdmin(user);
     return true;
   });
@@ -230,6 +240,7 @@ export function dashboardSectionForTab(tab: StrategyHubTab): BacktestDashboardAc
   if (tab === "validate") return "validation";
   if (tab === "compare") return "compare";
   if (tab === "capacity") return "none";
+  if (tab === "factor") return "none";
   return "none";
 }
 
@@ -342,6 +353,7 @@ const TABS: Array<{ key: StrategyHubTab; label: string; hint: string }> = [
   { key: "optimize", label: "专家：参数", hint: "研究员调参" },
   { key: "validate", label: "专家：验证", hint: "防过拟合" },
   { key: "compare", label: "策略对比", hint: "选更稳的策略" },
+  { key: "factor", label: "因子实验室", hint: "挖掘新因子" },
   { key: "capacity", label: "管理员：ML", hint: "在线学习和容量" },
 ];
 

@@ -10,7 +10,7 @@ import type { useBacktestDashboard } from "../backtest/useBacktestDashboard";
 type HubState = ReturnType<typeof useStrategyHub>;
 type DashboardState = ReturnType<typeof useBacktestDashboard>;
 type DetailTabKey = "quick" | "history" | "signals" | "expert";
-type ExpertTabKey = Extract<StrategyHubTab, "optimize" | "validate" | "compare" | "capacity">;
+type ExpertTabKey = Extract<StrategyHubTab, "optimize" | "validate" | "compare" | "capacity" | "factor">;
 
 export function StrategyHubDetailTabs({
   currentUser,
@@ -26,7 +26,7 @@ export function StrategyHubDetailTabs({
   onRerun: (run: BacktestRunSummary) => void;
 }) {
   const expertTabs = visibleTabsForUser(currentUser).filter((tab): tab is typeof tab & { key: ExpertTabKey } =>
-    ["optimize", "validate", "compare", "capacity"].includes(tab.key)
+    ["optimize", "validate", "compare", "capacity", "factor"].includes(tab.key)
   );
   const detailTab = currentDetailTab(hub.tab, expertTabs.length > 0);
   const detailTabs: Array<{ key: DetailTabKey; label: string; hint: string }> = [
@@ -144,5 +144,5 @@ function expertTab(tab: StrategyHubTab, hub: HubState, fallbackToCurrent = true)
 }
 
 function isExpertTab(tab: StrategyHubTab): tab is ExpertTabKey {
-  return tab === "optimize" || tab === "validate" || tab === "compare" || tab === "capacity";
+  return tab === "optimize" || tab === "validate" || tab === "compare" || tab === "capacity" || tab === "factor";
 }

@@ -116,6 +116,27 @@ def _execute_task(task_type: str, payload: dict[str, Any], db) -> dict[str, Any]
             threshold=float(payload.get("threshold") or 1.0),
             channel=str(payload.get("channel") or "feishu"),
         )
+    if task_type == "factor_mining_evaluate":
+        from app.models.schema_defs.factor_mining import FactorEvaluationRequest
+        from app.services.factor_mining.orchestrator import FactorMiningOrchestrator
+
+        factor_key = str(payload.get("factor_key") or "")
+        if not factor_key:
+            raise ValueError("factor_mining_evaluate requires factor_key")
+        response = FactorMiningOrchestrator(db).evaluate_factor(
+            factor_key,
+            FactorEvaluationRequest.model_validate(payload.get("evaluation") or payload),
+        )
+        return response.model_dump(mode="json")
+    if task_type == "factor_mining_monthly":
+        from app.services.factor_mining.hypothesis_agent import FactorHypothesisAgent
+
+        response = FactorHypothesisAgent(db).generate(
+            topic=str(payload.get("topic") or "A股低吸因子挖掘"),
+            count=int(payload.get("count") or 20),
+            use_llm=True,
+        )
+        return response.model_dump(mode="json")
     raise ValueError(f"未知任务类型: {task_type}")
 
 

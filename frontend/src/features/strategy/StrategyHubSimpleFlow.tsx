@@ -81,7 +81,7 @@ function tabToStep(tab: StrategyHubTab): DisplayStep {
 
 function stepToTab(step: StrategyHubTab, activeTab: StrategyHubTab, preserveCurrentExpertTab = false): StrategyHubTab {
   if (step === "optimize" && preserveCurrentExpertTab) {
-    return ["optimize", "validate", "compare", "capacity"].includes(activeTab) ? activeTab : "optimize";
+    return ["optimize", "validate", "compare", "capacity", "factor"].includes(activeTab) ? activeTab : "optimize";
   }
   return step;
 }

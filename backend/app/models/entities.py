@@ -79,6 +79,11 @@ from app.models.phase4_entities import (
     RuntimeTask,
     RuntimeTaskEvent,
 )
+from app.models.factor_mining_entities import (
+    FactorApprovalEntity,
+    FactorDefinitionEntity,
+    FactorEvalRunEntity,
+)
 
 __all__ = [
     "Instrument",
@@ -146,4 +151,7 @@ __all__ = [
     "MLSignalModel",
     "PaperBacktestComparison",
     "OperationAuditLog",
+    "FactorDefinitionEntity",
+    "FactorEvalRunEntity",
+    "FactorApprovalEntity",
 ]

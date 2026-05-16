@@ -33,6 +33,7 @@ from app.services.low_buy_screener import PLAYBOOKS, LowBuyScreenerService
 from app.services.low_buy_materialization import enqueue_low_buy_materialization
 from app.services.market_data import MarketDataService
 from app.services.market_quote_cache_refresh import quote_cache_refresh_bucket, quote_cache_refresh_due
+from app.services.factor_mining.scheduler import enqueue_monthly_factor_mining_once
 from app.services.paper.archive import PaperArchiveService
 from app.services.paper.scheduler import build_auto_trader_config, start_auto_trader, stop_auto_trader
 from app.services.paper.validation_scheduler import MonthlyStrategyValidationJob
@@ -463,6 +464,12 @@ def start_runtime_background_jobs() -> None:
             target=enqueue_daily_ledger_reconcile_preview_once,
             interval_seconds=60 * 60,
             initial_delay_seconds=330,
+        )
+        task_manager.register_loop(
+            name="factor_mining_monthly",
+            target=enqueue_monthly_factor_mining_once,
+            interval_seconds=60 * 60,
+            initial_delay_seconds=360,
         )
         if settings.paper_auto_trading_enabled:
             logger.info("启动模拟盘自动交易")

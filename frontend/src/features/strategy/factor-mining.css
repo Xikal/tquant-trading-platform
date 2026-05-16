@@ -1,0 +1,114 @@
+.factor-lab {
+  display: grid;
+  gap: 14px;
+}
+
+.factor-lab-hero {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+}
+
+.factor-lab-hero h2,
+.factor-lab-hero p {
+  margin: 0;
+}
+
+.factor-topic-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+}
+
+.factor-lab-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 0.8fr);
+  gap: 14px;
+}
+
+.factor-card-list {
+  display: grid;
+  gap: 10px;
+  max-height: 520px;
+  overflow: auto;
+  padding-right: 4px;
+}
+
+.factor-card-list article {
+  border: 1px solid var(--border-soft);
+  border-radius: 12px;
+  display: grid;
+  gap: 6px;
+  padding: 12px;
+}
+
+.factor-card-list article.active {
+  border-color: var(--accent-strong);
+  background: color-mix(in srgb, var(--accent-soft) 12%, #fff);
+}
+
+.factor-card-list span,
+.factor-card-list small {
+  color: var(--text-secondary);
+}
+
+.factor-lab textarea {
+  font-family: "JetBrains Mono", "SFMono-Regular", Consolas, monospace;
+  min-height: 330px;
+  resize: vertical;
+  width: 100%;
+}
+
+.factor-table {
+  display: grid;
+  gap: 8px;
+}
+
+.factor-table article {
+  align-items: center;
+  border: 1px solid var(--border-soft);
+  border-radius: 10px;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: minmax(180px, 1.4fr) repeat(5, minmax(80px, 0.7fr)) auto;
+  padding: 10px 12px;
+}
+
+.factor-table article > div {
+  display: grid;
+  gap: 3px;
+}
+
+.factor-table span {
+  color: var(--text-secondary);
+}
+
+.factor-status {
+  border-radius: 999px;
+  color: #0f172a;
+  padding: 4px 8px;
+  text-align: center;
+}
+
+.factor-status.production {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.factor-status.validated {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.factor-status.candidate {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+@media (max-width: 1100px) {
+  .factor-lab-grid,
+  .factor-topic-row,
+  .factor-table article {
+    grid-template-columns: 1fr;
+  }
+}

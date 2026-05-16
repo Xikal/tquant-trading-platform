@@ -1,5 +1,38 @@
 # TQuant 实施计划
 
+## 因子挖掘系统落地计划
+
+需求来源：`/Users/j/Downloads/TQuant_因子挖掘系统规划方案.html`
+
+### 目标
+
+1. 建立因子库、因子沙盒计算、因子评估、LLM/本地假设生成、代码合成、解释与迭代闭环。
+2. 新增后端 API 与数据库表，支持候选因子从 `candidate` 到 `validated/production/rejected/archived` 的生命周期。
+3. 在策略工作台新增“因子实验室”入口，支持假设生成、因子创建、评估、晋级查看。
+4. 所有新增文件保持 500 行以内，不改动现有策略买卖语义。
+
+### TODO
+
+- [x] 新增 FactorDefinition / FactorEvalRun / FactorApproval 数据模型与 Alembic 迁移。
+- [x] 新增 factor_mining 服务包：模型、因子库、沙盒计算、评估、假设生成、代码合成、结果解释、迭代循环、生产集成。
+- [x] 新增 `/api/factor-mining/*` 路由，覆盖列表、创建、假设生成、代码合成、评估、迭代、晋级和异步评估入队。
+- [x] 策略工作台增加“因子实验室”Tab 与前端 API。
+- [x] 增加后端单元测试，覆盖 AST 安全、假设生成数量、评估指标和 API 基础契约。
+- [x] 运行 Python 编译、针对性 pytest、前端构建验证。
+
+### 已验证
+
+- `backend/.venv/bin/python -m compileall backend/app backend/alembic/versions -q` 通过。
+- `backend/.venv/bin/python -m pytest backend/tests/test_factor_mining.py backend/tests/test_factor_registry.py backend/tests/test_strategy_evolution_scheduler_tasks.py -q` 通过，11 passed。
+- `PYTHONPATH=backend DATABASE_URL=sqlite:////tmp/... AUTH_SECRET_KEY=test-secret backend/.venv/bin/alembic -c backend/alembic.ini upgrade head` 通过。
+- `npm run build` 通过。
+- `make qa` 通过。
+
+### 实施说明
+
+- DeepSeek 适配器固定默认模型 `deepseek-v4-flash`；未配置或接口失败时自动使用本地结构化模板，确保功能不中断。
+- 生产晋级只允许评估结果达到 production gate 后执行，并记录操作审计；动态因子先注册到因子库和 FactorSpec 元数据，不会静默改变现有策略评分。
+
 ## v4 五大整改包剩余项实施计划
 
 需求来源：`docs/TQuant-v4-五大整改包整改需求计划-2026-05-09.md`

@@ -11,6 +11,7 @@ from app.api.routes import (
     auth,
     backtests,
     feishu,
+    factor_mining,
     feature_flags,
     instruments,
     intraday,
@@ -56,6 +57,7 @@ api_router.include_router(agent_quality.router, tags=["agent"])
 api_router.include_router(paper.router, tags=["paper"])
 api_router.include_router(paper_compare.router, tags=["paper"])
 api_router.include_router(feishu.router, tags=["feishu"])
+api_router.include_router(factor_mining.router, tags=["factor-mining"])
 api_router.include_router(feature_flags.router, tags=["feature-flags"])
 api_router.include_router(quant_config.router, tags=["quant"])
 api_router.include_router(operation_audit.router, tags=["admin"])

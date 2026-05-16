@@ -171,5 +171,5 @@ function estimateSubmitTime(strategyCount: number): string {
 }
 
 function isExpertHubTab(tab: string): boolean {
-  return tab === "optimize" || tab === "validate" || tab === "compare" || tab === "capacity";
+  return tab === "optimize" || tab === "validate" || tab === "compare" || tab === "capacity" || tab === "factor";
 }

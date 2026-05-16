@@ -56,7 +56,7 @@ def list_factor_specs() -> list[FactorSpec]:
     """
 
     defaults = LOW_BUY_THRESHOLDS.FACTOR_WEIGHTS
-    return [
+    specs = [
         FactorSpec("deep_pullback_factor", defaults.get("deep_pullback_factor", 1.0), ("daily_bars",)),
         FactorSpec("trend_rebound_factor", defaults.get("trend_rebound_factor", 0.8), ("daily_bars",), status="experimental", status_text="研究中"),
         FactorSpec("sector_density_factor", defaults.get("sector_density_factor", 1.2), ("hot_industries",)),
@@ -81,6 +81,7 @@ def list_factor_specs() -> list[FactorSpec]:
         FactorSpec("insider_trade_factor", 0.5, ("announcements",), (), status="stub", status_text="未启用，数据源未接入"),
         FactorSpec("short_balance_factor", 0.7, ("short_balance",), (), status="stub", status_text="未启用，数据源未接入"),
     ]
+    return specs + _dynamic_factor_specs()
 
 
 def default_factor_weights() -> dict[str, float]:
@@ -182,6 +183,15 @@ def _clamp_weight(value: float | int | str) -> float:
     except (TypeError, ValueError):
         numeric = 0.0
     return round(min(2.0, max(0.0, numeric)), 3)
+
+
+def _dynamic_factor_specs() -> list[FactorSpec]:
+    try:
+        from app.services.factor_mining.integration import dynamic_factor_specs
+
+        return dynamic_factor_specs()
+    except Exception:
+        return []
 
 
 def _evaluate_unavailable_factor(
