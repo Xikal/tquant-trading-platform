@@ -20,6 +20,9 @@ depends_on = None
 def upgrade() -> None:
     bind = op.get_bind()
     inspector = sa.inspect(bind)
+    tables = set(inspector.get_table_names())
+    if "users" not in tables:
+        return
     user_columns = {column["name"] for column in inspector.get_columns("users")}
     if "failed_login_count" not in user_columns:
         op.add_column("users", sa.Column("failed_login_count", sa.Integer(), nullable=False, server_default="0"))
@@ -32,8 +35,8 @@ def upgrade() -> None:
     if "ix_users_locked_until" not in indexes:
         op.create_index("ix_users_locked_until", "users", ["locked_until"])
 
-    session_indexes = {index["name"] for index in inspector.get_indexes("user_sessions")}
-    if "ix_user_sessions_user_revoked_expires" not in session_indexes:
+    session_indexes = {index["name"] for index in inspector.get_indexes("user_sessions")} if "user_sessions" in tables else set()
+    if "user_sessions" in tables and "ix_user_sessions_user_revoked_expires" not in session_indexes:
         op.create_index(
             "ix_user_sessions_user_revoked_expires",
             "user_sessions",
@@ -44,10 +47,13 @@ def upgrade() -> None:
 def downgrade() -> None:
     bind = op.get_bind()
     inspector = sa.inspect(bind)
+    tables = set(inspector.get_table_names())
+    if "users" not in tables:
+        return
     user_indexes = {index["name"] for index in inspector.get_indexes("users")}
     if "ix_users_locked_until" in user_indexes:
         op.drop_index("ix_users_locked_until", table_name="users")
-    session_indexes = {index["name"] for index in inspector.get_indexes("user_sessions")}
+    session_indexes = {index["name"] for index in inspector.get_indexes("user_sessions")} if "user_sessions" in tables else set()
     if "ix_user_sessions_user_revoked_expires" in session_indexes:
         op.drop_index("ix_user_sessions_user_revoked_expires", table_name="user_sessions")
     user_columns = {column["name"] for column in inspector.get_columns("users")}

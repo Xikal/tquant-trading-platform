@@ -3,13 +3,15 @@ from __future__ import annotations
 import json
 from datetime import datetime
 from types import SimpleNamespace
+from zoneinfo import ZoneInfo
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
+from app.core.config import AppSettings
 from app.models.base import Base
-from app.models.entities import BacktestValidation, MLSignalModel, QuantParameterSet
+from app.models.entities import BacktestValidation, MLSignalModel, OperationAuditLog, QuantParameterSet, User
 from app.runtime.strategy_evolution_scheduler import self_evolution_due
 from app.services.ml_signal.promotion_service import MLSignalPromotionService
 from app.services.strategy_self_evolution import StrategySelfEvolutionOrchestrator
@@ -31,6 +33,18 @@ def test_strategy_self_evolution_due_after_friday_close() -> None:
     assert self_evolution_due(datetime(2026, 5, 15, 16, 5)) is True
     assert self_evolution_due(datetime(2026, 5, 15, 15, 59)) is False
     assert self_evolution_due(datetime(2026, 5, 14, 16, 5)) is False
+
+
+def test_strategy_self_evolution_due_respects_configurable_schedule(monkeypatch) -> None:
+    settings = AppSettings(
+        evolution_scheduler_weekday=2,
+        evolution_scheduler_hour=15,
+        evolution_due_minute=30,
+    )
+    monkeypatch.setattr("app.runtime.strategy_evolution_scheduler.get_settings", lambda: settings)
+    assert self_evolution_due(datetime(2026, 5, 13, 15, 30)) is True
+    assert self_evolution_due(datetime(2026, 5, 13, 15, 29)) is False
+    assert self_evolution_due(datetime(2026, 5, 15, 15, 30)) is False
 
 
 def test_manual_ml_model_promotion_requires_candidate() -> None:
@@ -89,6 +103,38 @@ def test_manual_ml_model_promotion_switches_candidate_to_production(monkeypatch)
     assert promoted.metrics["approval_required"] is False
     assert db.query(MLSignalModel).filter_by(model_key="new-candidate").one().status == "production"
     assert db.query(MLSignalModel).filter_by(model_key="old-prod").one().status == "archived"
+
+
+def test_manual_ml_model_promotion_writes_operation_audit(monkeypatch) -> None:
+    db = _db()
+    monkeypatch.setattr("app.services.ml_signal.promotion_service.production_model_warning", lambda status, metrics: "")
+    approver = User(
+        username="qa-admin",
+        display_name="QA Admin",
+        password_hash="x",
+        roles="admin",
+    )
+    db.add(approver)
+    db.flush()
+    db.add(
+        MLSignalModel(
+            model_key="audit-candidate",
+            model_type="xgboost",
+            status="research",
+            feature_schema_json=json.dumps({"feature_names": ["a"]}),
+            metrics_json=json.dumps({"promotion_candidate": True, "approval_required": True, "cv_auc": 0.73}),
+            artifact_uri="local://audit",
+            artifact_checksum="audit-sha",
+        )
+    )
+    db.commit()
+
+    MLSignalPromotionService(db).approve("audit-candidate", operator=approver)
+
+    audit = db.query(OperationAuditLog).filter_by(operation="ml_model_promote", resource_id="audit-candidate").one()
+    assert audit.user_id == approver.id
+    assert audit.resource_type == "ml_signal_model"
+    assert "0.73" in audit.detail_json
 
 
 def test_manual_ml_model_promotion_revalidates_current_thresholds_before_archiving() -> None:
@@ -166,6 +212,32 @@ def test_strategy_self_evolution_orchestrator_marks_human_approval(monkeypatch) 
     assert result["human_approval_required"] is True
     assert result["model_approval"]["required"] is True
     assert result["drift_monitor"]["ready"] is True
+
+
+def test_strategy_self_evolution_generated_at_uses_beijing_timezone(monkeypatch) -> None:
+    db = _db()
+    now = datetime(2026, 5, 16, 9, 5, tzinfo=ZoneInfo("Asia/Shanghai"))
+    train = SimpleNamespace(
+        model_key="candidate",
+        status="research",
+        warning="",
+        metrics={"promotion_candidate": False, "approval_required": False},
+        model_dump=lambda mode="json": {"model_key": "candidate", "status": "research"},
+    )
+    status = SimpleNamespace(
+        drift_ready=False,
+        drift_alerts=[],
+        drift_items=[],
+        model_dump=lambda mode="json": {"drift_ready": False},
+    )
+    monkeypatch.setattr("app.services.strategy_self_evolution.beijing_now", lambda: now)
+    monkeypatch.setattr("app.services.strategy_self_evolution.MLSignalService.incremental_train", lambda self, payload: train)
+    monkeypatch.setattr("app.services.strategy_self_evolution.MLSignalService.online_learning_status", lambda self, min_samples=100: status)
+    monkeypatch.setattr("app.services.strategy_self_evolution.build_low_buy_strategy_governance", lambda db: SimpleNamespace(items=[]))
+
+    result = StrategySelfEvolutionOrchestrator(db).run({"min_samples": 100})
+
+    assert result["generated_at"].endswith("+08:00")
 
 
 def test_strategy_self_evolution_parameter_proposal_deduplicates_validation() -> None:

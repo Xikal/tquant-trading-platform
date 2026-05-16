@@ -23,10 +23,13 @@ from app.models.schema_defs.backtest import (
     BacktestRunListResponse,
     BacktestStrategyCorrelationResponse,
     BacktestTradesResponse,
+    BacktestVerdictThresholdOut,
+    BacktestVerdictThresholdsResponse,
     BacktestValidationCreate,
     BacktestValidationDetail,
     BacktestValidationListResponse,
 )
+from app.services.low_buy.strategy_parameter_defaults import BACKTEST_EXECUTION_DEFAULTS
 from app.services.backtest_job_service import BacktestJobService
 from app.services.backtest_optimization_service import BacktestOptimizationService
 from app.services.backtest_validation_service import BacktestValidationService
@@ -34,8 +37,20 @@ from app.services.backtest.regime_parameter_promotion import promote_regime_para
 from app.services.position_policy_research import run_position_policy_research
 from app.services.portfolio_heuristic_optimizer import optimize_strategy_portfolio
 from app.services.strategy_metadata_service import StrategyMetadataService
+from app.services.quant.runtime_parameters import get_backtest_verdict_thresholds
 
 router = APIRouter(prefix="/backtests", dependencies=[Depends(get_current_user)])
+
+
+@router.get("/verdict-thresholds", response_model=BacktestVerdictThresholdsResponse)
+def get_backtest_verdict_thresholds_route() -> BacktestVerdictThresholdsResponse:
+    thresholds = _normalized_verdict_thresholds()
+    return BacktestVerdictThresholdsResponse(
+        thresholds={
+            key: BacktestVerdictThresholdOut(**values)
+            for key, values in thresholds.items()
+        }
+    )
 
 
 @router.post("", response_model=BacktestRunDetail)
@@ -467,3 +482,24 @@ def _validate_backtest_strategy_access(db: Session, strategy_keys: list[str], us
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+
+def _normalized_verdict_thresholds() -> dict[str, dict[str, float]]:
+    defaults = dict(BACKTEST_EXECUTION_DEFAULTS.get("verdict_thresholds") or {})
+    current = get_backtest_verdict_thresholds()
+    merged = {}
+    for tier in ("light", "full", "walk_forward"):
+        fallback = defaults.get(tier) or {}
+        values = current.get(tier) if isinstance(current.get(tier), dict) else {}
+        merged[tier] = {
+            "min_return_pct": float(values.get("min_return_pct", fallback.get("min_return_pct", 0.0))),
+            "min_sharpe": float(values.get("min_sharpe", fallback.get("min_sharpe", 0.0))),
+            "max_drawdown_pct": float(values.get("max_drawdown_pct", fallback.get("max_drawdown_pct", 0.0))),
+            "cautious_min_return_pct": float(
+                values.get("cautious_min_return_pct", fallback.get("cautious_min_return_pct", 0.0))
+            ),
+            "cautious_max_drawdown_pct": float(
+                values.get("cautious_max_drawdown_pct", fallback.get("cautious_max_drawdown_pct", 0.0))
+            ),
+        }
+    return merged

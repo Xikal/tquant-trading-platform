@@ -95,12 +95,19 @@
   grid-area: positions;
 }
 
-.paper-today-actions {
+.paper-right-column {
   grid-area: actions;
   display: grid;
-  gap: 10px;
+  gap: 12px;
+  align-self: start;
 }
 
+.paper-right-column .pixel-trader-container {
+  grid-area: auto;
+  min-height: 0;
+}
+
+.paper-today-actions,
 .paper-today-status-row {
   display: grid;
   gap: 10px;
@@ -227,18 +234,10 @@
   gap: 2px;
 }
 
-.paper-positions .stock-list.list-view {
-  grid-template-columns: 1fr;
-  gap: 8px;
+.paper-positions .stock-list {
   max-height: 420px;
   overflow-y: auto;
   padding-right: 4px;
-}
-
-.paper-positions .paper-position-row {
-  grid-template-columns: minmax(136px, 1.1fr) minmax(130px, 0.95fr) minmax(156px, 1fr) minmax(160px, 1.05fr) minmax(80px, auto);
-  align-items: center;
-  min-height: 54px;
 }
 
 .paper-position-action {

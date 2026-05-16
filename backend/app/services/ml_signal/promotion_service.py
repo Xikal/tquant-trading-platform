@@ -5,9 +5,10 @@ from datetime import datetime
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models.entities import MLSignalModel
+from app.models.entities import MLSignalModel, User
 from app.models.schema_defs.phase4 import MLSignalModelOut
 from app.services.ml_signal.modeling import json_dict, json_dumps, model_out, production_model_warning
+from app.services.operation_audit import record_operation_audit
 
 
 class MLSignalPromotionService:
@@ -16,7 +17,7 @@ class MLSignalPromotionService:
     def __init__(self, db: Session) -> None:
         self.db = db
 
-    def approve(self, model_key: str, *, operator: str = "admin") -> MLSignalModelOut:
+    def approve(self, model_key: str, *, operator: User | str | None = None) -> MLSignalModelOut:
         row = self.db.execute(select(MLSignalModel).where(MLSignalModel.model_key == model_key)).scalar_one_or_none()
         if row is None:
             raise ValueError(f"模型不存在：{model_key}")
@@ -34,11 +35,44 @@ class MLSignalPromotionService:
             .where(MLSignalModel.status == "production", MLSignalModel.model_key != model_key)
             .values(status="archived")
         )
+        operator_name = _operator_name(operator)
         metrics["approval_required"] = False
-        metrics["approved_by"] = operator
+        metrics["approved_by"] = operator_name
         metrics["approved_at"] = datetime.utcnow().isoformat(timespec="seconds")
         row.status = "production"
         row.metrics_json = json_dumps(metrics)
         self.db.commit()
+        record_operation_audit(
+            self.db,
+            operation="ml_model_promote",
+            user=operator if isinstance(operator, User) else None,
+            resource_type="ml_signal_model",
+            resource_id=model_key,
+            detail={
+                "model_key": model_key,
+                "status": row.status,
+                "cv_auc": metrics.get("cv_auc"),
+                "cv_accuracy": metrics.get("cv_accuracy"),
+                "artifact_checksum": row.artifact_checksum or metrics.get("artifact_sha256") or "",
+                "approved_at": metrics.get("approved_at"),
+                "approved_by": operator_name,
+            },
+        )
+        self.db.commit()
         self.db.refresh(row)
         return model_out(row)
+
+
+def _operator_name(operator: User | str | None) -> str:
+    if operator is None:
+        return "admin"
+    if isinstance(operator, str):
+        return operator.strip() or "admin"
+    username = str(getattr(operator, "username", "") or "").strip()
+    if username:
+        return username
+    phone = str(getattr(operator, "phone", "") or "").strip()
+    if phone:
+        return phone
+    user_id = getattr(operator, "id", None)
+    return f"user:{user_id}" if user_id is not None else "admin"

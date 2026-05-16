@@ -1,4 +1,4 @@
-import { lazy, Suspense, useState, type ReactNode } from "react";
+import { lazy, Suspense, useEffect, useState, type ReactNode } from "react";
 import type {
   BacktestAttribution,
   BacktestExecutionModel,
@@ -22,6 +22,7 @@ import {
   formatResourceTier,
   resourceTierHint,
   backtestVerdictThresholds,
+  loadBacktestVerdictThresholds,
   percentFromRatio,
   toneFromNumber,
   BACKTEST_RESOURCE_TIER_OPTIONS,
@@ -104,6 +105,18 @@ export function BacktestDashboard({
   const selectedMetrics = selectedRun ? resolveMetrics(selectedRun) : null;
   const selectedAttribution = selectedRun ? resolveAttribution(selectedRun) : null;
   const [mode, setMode] = useState<"quick" | "expert">("quick");
+  const [, setThresholdVersion] = useState(0);
+
+  useEffect(() => {
+    let active = true;
+    void loadBacktestVerdictThresholds().then(() => {
+      if (active) setThresholdVersion((value) => value + 1);
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
+
   return (
     <section className="page-grid backtest-grid">
       <div className="panel backtest-hero">

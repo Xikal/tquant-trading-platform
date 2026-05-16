@@ -156,6 +156,11 @@ def get_backtest_execution() -> dict[str, Any]:
     return deepcopy(values) if isinstance(values, dict) else {}
 
 
+def get_backtest_verdict_thresholds() -> dict[str, Any]:
+    values = get_backtest_execution().get("verdict_thresholds", {})
+    return deepcopy(values) if isinstance(values, dict) else {}
+
+
 def get_capacity_analysis() -> dict[str, Any]:
     values = current_quant_parameters().get("capacity", {})
     return deepcopy(values) if isinstance(values, dict) else {}

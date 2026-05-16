@@ -1,12 +1,12 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime
 from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.core.timezone import beijing_now
 from app.models.backtest_entities import BacktestValidation
 from app.models.entities import QuantParameterSet
 from app.models.schema_defs.phase4 import MLSignalIncrementalTrainRequest
@@ -54,7 +54,7 @@ class StrategySelfEvolutionOrchestrator:
         }
         return {
             "ok": True,
-            "generated_at": datetime.utcnow().isoformat(timespec="seconds"),
+            "generated_at": beijing_now().isoformat(timespec="seconds"),
             "operator": operator,
             "training": training.model_dump(mode="json"),
             "model_approval": model_approval,
@@ -76,7 +76,7 @@ class StrategySelfEvolutionOrchestrator:
         status = MLSignalService(self.db).online_learning_status(min_samples=min_samples)
         return {
             "ok": True,
-            "generated_at": datetime.utcnow().isoformat(timespec="seconds"),
+            "generated_at": beijing_now().isoformat(timespec="seconds"),
             "drift_ready": status.drift_ready,
             "drift_alerts": status.drift_alerts,
             "drift_items": status.drift_items,

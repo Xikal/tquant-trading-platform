@@ -16,6 +16,7 @@ from app.services.paper.dynamic_exit import evaluate_paper_exit
 from app.services.paper.fees import calculate_fee
 from app.services.paper.quote_quality import PaperQuotePrice
 from app.services.paper.smart_exit_context import build_exit_context
+from app.services.paper.smart_t_entry_gate import evaluate_smart_t_entry_gate
 from app.services.paper.smart_t_strategy_scope import smart_t_backtest_strategy_keys
 from app.services.quant.runtime_parameters import get_paper_dynamic_exit
 
@@ -171,6 +172,11 @@ def collect_smart_t_washout_samples(
             decision = evaluate_paper_exit(row, price=washout_bar.close_price, now=_date_time(washout_bar.trade_date), context=context)
             if decision.action_signal != "washout":
                 continue
+            if not _profitable_position_gate_allows(entry_price=entry_bar.close_price, add_price=washout_bar.close_price, params=params):
+                continue
+            gate = evaluate_smart_t_entry_gate(quote_price=washout_bar.close_price, context=context, params=params)
+            if not gate.allowed:
+                continue
             samples.append(
                 _sample(
                     signal=signal,
@@ -281,6 +287,13 @@ def _position(signal: BacktestSignal, *, entry_price: float) -> SimpleNamespace:
     )
 
 
+def _profitable_position_gate_allows(*, entry_price: float, add_price: float, params: dict[str, Any]) -> bool:
+    if not _bool_param(params, "smart_t_profitable_position_only", True):
+        return True
+    pnl_pct = _return_pct(add_price, entry_price)
+    return pnl_pct >= _float_param(params, "smart_t_profit_position_pnl_floor_pct", 0.0)
+
+
 def _quote(symbol: str, bar: DailyBar) -> PaperQuotePrice:
     return PaperQuotePrice(
         symbol=symbol,
@@ -334,6 +347,15 @@ def _float_param(params: dict[str, Any], key: str, fallback: float) -> float:
         return float(params.get(key, fallback))
     except (TypeError, ValueError):
         return float(fallback)
+
+
+def _bool_param(params: dict[str, Any], key: str, fallback: bool) -> bool:
+    value = params.get(key, fallback)
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        return value.strip().lower() not in {"0", "false", "off", "no", ""}
+    return bool(value)
 
 
 def _rate(numerator: int, denominator: int) -> float:

@@ -16,7 +16,8 @@ import type {
   PaperTradeTag,
   RiskEventItem,
 } from "../../types";
-import { memo, useMemo, useState } from "react";
+import { memo, useEffect, useMemo, useState } from "react";
+import { PixelTraderWorker } from "./PixelTraderWorker";
 import { PaperDetailTabs } from "./PaperDetailTabs";
 import { PaperTodayActionPanel } from "./PaperTodayActionPanel";
 import { PaperTradingSummaryBar } from "./PaperTradingSummaryBar";
@@ -91,6 +92,7 @@ export const PaperTradingPage = memo(function PaperTradingPage({
   const paperLoading = loading === "paper";
   const orderLoading = loading === "paper-order";
   const autoTradingRunning = Boolean(autoTradingStatus?.running);
+  const [clockMs, setClockMs] = useState(() => Date.now());
   const [orderModalOpen, setOrderModalOpen] = useState(false);
   const [dismissedConfirmationKey, setDismissedConfirmationKey] = useState("");
   const pendingConfirmation = useMemo(() => (
@@ -99,12 +101,38 @@ export const PaperTradingPage = memo(function PaperTradingPage({
   const pendingConfirmationKey = pendingConfirmation
     ? `${pendingConfirmation.symbol}-${pendingConfirmation.updated_at ?? pendingConfirmation.trade_date}-${pendingConfirmation.confirmed}-${pendingConfirmation.late_confirmed}`
     : "";
+  const cockpitMarketState = useMemo(() => (
+    resolveCockpitMarketState(autoTradingStatus, clockMs)
+  ), [autoTradingStatus, clockMs]);
+  const cockpitRecentTrades = useMemo(() => (
+    trades.slice(0, 3).map((item) => ({
+      type: item.side === "sell" ? "sell" as const : "buy" as const,
+      symbol: item.symbol,
+      name: item.symbol,
+      time: formatPaperDateTime(item.trade_time).slice(11, 16),
+    }))
+  ), [trades]);
+  const lastOrderAction = useMemo(() => {
+    const latestTrade = trades[0];
+    if (!latestTrade) return null;
+    const timestamp = latestTrade.trade_time;
+    return {
+      type: latestTrade.side === "sell" ? "sell" as const : "buy" as const,
+      symbol: latestTrade.symbol,
+      timestamp: Date.parse(timestamp),
+    };
+  }, [trades]);
   const shouldShowConfirmationDialog = Boolean(
     pendingConfirmation
       && pendingConfirmationKey !== dismissedConfirmationKey
       && !autoTradingStatus?.engine_running
       && !autoTradingRunning
   );
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setClockMs(Date.now()), 60_000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   async function submitOrderFromModal() {
     await Promise.resolve(onSubmitOrder());
@@ -162,12 +190,23 @@ export const PaperTradingPage = memo(function PaperTradingPage({
         positions={positions}
         loading={paperLoading}
       />
-      <PaperTodayActionPanel
-        autoTradingStatus={autoTradingStatus}
-        riskEvents={riskEvents}
-        intradayConfirmations={intradayConfirmations}
-        autoTradingRuns={autoTradingRuns}
-      />
+      <div className="paper-right-column">
+        <PixelTraderWorker
+          marketState={cockpitMarketState}
+          paused={paused}
+          autoTradingRunning={autoTradingRunning}
+          lastOrderAction={Number.isFinite(lastOrderAction?.timestamp) ? lastOrderAction : null}
+          loading={paperLoading || orderLoading}
+          onOpenOrderEntry={() => setOrderModalOpen(true)}
+          recentTrades={cockpitRecentTrades}
+        />
+        <PaperTodayActionPanel
+          autoTradingStatus={autoTradingStatus}
+          riskEvents={riskEvents}
+          intradayConfirmations={intradayConfirmations}
+          autoTradingRuns={autoTradingRuns}
+        />
+      </div>
       <PaperDetailTabs
         positions={positions}
         orders={orders}
@@ -225,6 +264,22 @@ function IntradayConfirmationDialog({
       </section>
     </div>
   );
+}
+
+function resolveCockpitMarketState(
+  autoTradingStatus: PaperAutoTradingStatus | null,
+  clockMs: number,
+) {
+  if (autoTradingStatus?.engine_running || autoTradingStatus?.running) return "open";
+  if (autoTradingStatus?.trading_time === false) return "closed";
+  const now = new Date(clockMs);
+  const day = now.getDay();
+  if (day === 0 || day === 6) return "closed";
+  const minutes = now.getHours() * 60 + now.getMinutes();
+  if (minutes >= 570 && minutes < 690) return "open";
+  if (minutes >= 690 && minutes < 780) return "lunch_break";
+  if (minutes >= 780 && minutes < 900) return "open";
+  return "closed";
 }
 
 function formatPriceValue(value?: number | null): string {

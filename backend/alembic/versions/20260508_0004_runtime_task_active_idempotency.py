@@ -32,10 +32,11 @@ def upgrade() -> None:
     indexes = {index["name"] for index in inspector.get_indexes("runtime_tasks")}
     unique_constraints = {constraint["name"] for constraint in inspector.get_unique_constraints("runtime_tasks")}
     if "uq_runtime_tasks_active_idempotency" not in indexes and "uq_runtime_tasks_active_idempotency" not in unique_constraints:
-        op.create_unique_constraint(
+        op.create_index(
             "uq_runtime_tasks_active_idempotency",
             "runtime_tasks",
             ["active_idempotency_key"],
+            unique=True,
         )
 
 

@@ -45,6 +45,20 @@ class LowBuyMobileReadMixin:
         history_wait_timeout_seconds: float | None = None,
     ) -> LowBuyScreenerResponse:
         normalized_limit = max(limit, 12)
+        if db is None:
+            fallback_payload = getattr(self, "payload", None)
+            if fallback_payload is not None:
+                return self._normalize_mobile_snapshot(
+                    fallback_payload.model_copy(
+                        update={
+                            "requested_mode": "quick",
+                            "response_mode": "full",
+                            "full_scan_ready": True,
+                            "full_scan_in_progress": False,
+                            "full_scan_updated_at": fallback_payload.as_of_date,
+                        }
+                    )
+                )
         latest_trade_date = self._resolve_mobile_target_trade_date(db)
         materialized = self._load_cached_full_result(
             db=db,
@@ -103,6 +117,9 @@ class LowBuyMobileReadMixin:
         raise RuntimeError("mobile snapshot requires materialized data or pending response builder")
 
     def _resolve_mobile_target_trade_date(self, db: Session) -> str:
+        if db is None:
+            fallback_payload = getattr(self, "payload", None) or getattr(self, "snapshot", None)
+            return str(getattr(fallback_payload, "latest_trade_date", "") or "")
         return published_low_buy_trade_date(db) or expected_low_buy_trade_date(db)
 
     def mobile_candidate_by_symbol(
@@ -114,11 +131,13 @@ class LowBuyMobileReadMixin:
         fallback_scan_limit: int = 24,
         history_wait_timeout_seconds: float | None = None,
     ) -> tuple[Optional[LowBuyCandidateOut], LowBuyScreenerResponse]:
-        target_trade_date = self._resolve_mobile_target_trade_date(db)
         cached_candidate, cached_payload = self._load_cached_candidate_snapshot_by_symbol_any_mode(
             strategy=strategy,
             symbol=symbol,
         )
+        if db is None and cached_candidate is not None and cached_payload is not None:
+            return cached_candidate, self._normalize_mobile_snapshot(cached_payload)
+        target_trade_date = self._resolve_mobile_target_trade_date(db)
         if cached_candidate is not None and cached_payload is not None and cached_payload.latest_trade_date == target_trade_date:
             return cached_candidate, self._normalize_mobile_snapshot(cached_payload)
 

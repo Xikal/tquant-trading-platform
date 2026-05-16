@@ -109,6 +109,13 @@ def _execute_task(task_type: str, payload: dict[str, Any], db) -> dict[str, Any]
         from app.services.strategy_self_evolution import StrategySelfEvolutionOrchestrator
 
         return StrategySelfEvolutionOrchestrator(db).run_drift_monitor(payload)
+    if task_type == "paper_ledger_reconcile_preview":
+        from app.services.paper.ledger_reconcile_monitor import PaperLedgerReconcileMonitorService
+
+        return PaperLedgerReconcileMonitorService(db).run_daily_preview(
+            threshold=float(payload.get("threshold") or 1.0),
+            channel=str(payload.get("channel") or "feishu"),
+        )
     raise ValueError(f"未知任务类型: {task_type}")
 
 

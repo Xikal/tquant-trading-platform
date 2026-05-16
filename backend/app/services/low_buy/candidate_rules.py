@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from app.services.low_buy.candidate_distribution_gate import has_limit_up_distribution_exit
 from app.services.low_buy.candidate_types import CandidateMetrics, StrategySetup
 from app.services.low_buy.candidate_rule_params import (
     execution_params as _execution_params,
@@ -76,6 +77,7 @@ def _ma_support_setup(item: BoardCandidate, metrics: CandidateMetrics, score: fl
 
 def _first_board_setup(item: BoardCandidate, metrics: CandidateMetrics, score: float) -> StrategySetup:
     execution = _execution_params("first_board")
+    prefilter = _prefilter_params("first_board")
     anchor_low = max(min(metrics.board_mid_price, metrics.ma5), metrics.board_low)
     anchor_high = max(metrics.ma5, metrics.board_open)
     return StrategySetup(
@@ -90,6 +92,7 @@ def _first_board_setup(item: BoardCandidate, metrics: CandidateMetrics, score: f
             and metrics.distribution_risk_score < execution["max_distribution_risk_score"]
             and not metrics.false_breakout_flag
             and not metrics.intraday_reversal_flag
+            and not has_limit_up_distribution_exit(metrics, prefilter)
         ),
         execution_note="首板关键价未破，等价格回到首板承接区。",
         summary_reason="首板后的第一次健康回踩，关键价仍然守住。",
@@ -103,6 +106,7 @@ def _first_board_setup(item: BoardCandidate, metrics: CandidateMetrics, score: f
 
 def _volume_shrink_setup(item: BoardCandidate, metrics: CandidateMetrics, score: float) -> StrategySetup:
     execution = _execution_params("volume_shrink")
+    prefilter = _prefilter_params("volume_shrink")
     anchor = min(metrics.ma5, metrics.ma10)
     return StrategySetup(
         entry_zone_low=round(anchor * execution["entry_low_multiplier"], 3),
@@ -117,6 +121,7 @@ def _volume_shrink_setup(item: BoardCandidate, metrics: CandidateMetrics, score:
             and metrics.distribution_risk_score < execution["max_distribution_risk_score"]
             and not metrics.false_breakout_flag
             and not metrics.intraday_reversal_flag
+            and not has_limit_up_distribution_exit(metrics, prefilter)
             and (metrics.momentum_exhaustion or metrics.latest_change_pct >= execution["min_latest_change_pct"])
         ),
         execution_note="启动量能明确，等价格进入缩量承接区。",

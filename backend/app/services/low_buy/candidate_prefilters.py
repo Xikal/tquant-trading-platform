@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from app.services.low_buy.candidate_distribution_gate import has_limit_up_distribution_exit
 from app.services.low_buy.candidate_rule_params import (
     ma5_ma10_ma20_confluence_pct,
     prefilter_params,
@@ -57,6 +58,7 @@ def passes_strategy_prefilter(
             and metrics.distribution_risk_score < params["max_distribution_risk_score"]
             and not metrics.false_breakout_flag
             and not metrics.intraday_reversal_flag
+            and not has_limit_up_distribution_exit(metrics, params)
         )
     if strategy == "volume_shrink":
         params = prefilter_params(strategy)
@@ -72,6 +74,7 @@ def passes_strategy_prefilter(
             and metrics.distribution_risk_score < params["max_distribution_risk_score"]
             and not metrics.false_breakout_flag
             and not metrics.intraday_reversal_flag
+            and not has_limit_up_distribution_exit(metrics, params)
         )
     if strategy == "late_session_strong_support":
         return _passes_late_session_support_prefilter(item, metrics)
@@ -210,6 +213,7 @@ def _passes_mainline_limitup_shrink_retrace_prefilter(item: BoardCandidate, metr
         and not metrics.weak_close
         and not metrics.false_breakout_flag
         and not metrics.intraday_reversal_flag
+        and not has_limit_up_distribution_exit(metrics, params)
     )
 
 

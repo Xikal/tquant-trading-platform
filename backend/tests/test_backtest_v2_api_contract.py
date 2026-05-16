@@ -303,6 +303,7 @@ def test_backtests_router_is_registered_in_main_api_router() -> None:
     paths = {route.path for route in api_router.routes}
 
     assert "/backtests" in paths
+    assert "/backtests/verdict-thresholds" in paths
     assert "/backtests/{run_id}" in paths
     assert "/backtests/{run_id}/equity" in paths
     assert "/backtests/{run_id}/trades" in paths
@@ -394,10 +395,14 @@ def test_cancel_running_backtest_marks_run_cancelled(client: TestClient, service
 
 
 def test_analysis_endpoints_return_typed_shapes(client: TestClient) -> None:
+    thresholds = client.get("/api/backtests/verdict-thresholds")
     monthly = client.get("/api/backtests/42/monthly-returns")
     attribution = client.get("/api/backtests/42/attribution")
     correlation = client.get("/api/backtests/42/strategy-correlation")
     comparison = client.post("/api/backtests/compare", json={"run_ids": [42, 43]})
+
+    assert thresholds.status_code == 200
+    assert thresholds.json()["thresholds"]["full"]["min_return_pct"] == 3.0
 
     assert monthly.status_code == 200
     assert monthly.json()["items"][0]["month"] == "2025-01"

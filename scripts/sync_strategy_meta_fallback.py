@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import os
 import sys
 import argparse
 from pathlib import Path
@@ -10,10 +11,12 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 BACKEND = ROOT / "backend"
 OUTPUT = ROOT / "frontend" / "src" / "generated" / "strategyMetaFallback.ts"
+VENV_PYTHON = BACKEND / ".venv" / "bin" / "python"
 VENV_SITE = sorted((BACKEND / ".venv" / "lib").glob("python*/site-packages"))
 
 
 def main() -> int:
+    _reexec_with_backend_venv_if_needed()
     parser = argparse.ArgumentParser(description="同步或校验前端策略元数据 fallback")
     parser.add_argument("--check", action="store_true", help="只校验生成结果是否与当前文件一致")
     args = parser.parse_args()
@@ -35,20 +38,32 @@ def main() -> int:
     return 0
 
 
+def _reexec_with_backend_venv_if_needed() -> None:
+    if os.environ.get("TQUANT_STRATEGY_META_SYNC_VENV") == "1":
+        return
+    if not VENV_PYTHON.exists():
+        return
+    if Path(sys.executable).resolve() == VENV_PYTHON.resolve():
+        return
+    env = dict(os.environ)
+    env["TQUANT_STRATEGY_META_SYNC_VENV"] = "1"
+    os.execve(str(VENV_PYTHON), [str(VENV_PYTHON), str(Path(__file__).resolve()), *sys.argv[1:]], env)
+
+
 def _generated_content() -> str:
     sys.path.insert(0, str(BACKEND))
     for path in VENV_SITE:
         sys.path.insert(0, str(path))
-    from app.services.strategy_metadata_service import (  # noqa: PLC0415
-        DEFAULT_STRATEGY_META,
-        _strategy_tier,
-        _strategy_tier_label,
+    from app.services.strategy_metadata_defaults import DEFAULT_STRATEGY_META  # noqa: PLC0415
+    from app.services.strategy_metadata_helpers import (  # noqa: PLC0415
+        display_category as _display_category,
+        strategy_tier as _strategy_tier,
     )
 
     items = []
     for seed in DEFAULT_STRATEGY_META:
         tier = _strategy_tier(seed)
-        display_category = _strategy_tier_label(tier)
+        display_category = _display_category("", tier)
         items.append(
             {
                 "key": seed.key,

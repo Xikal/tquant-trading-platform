@@ -140,6 +140,18 @@ class AppSettings(BaseSettings):
     strategy_validation_monthly_enabled: bool = True
     strategy_validation_monthly_lookback_days: int = 252
     strategy_validation_monthly_max_signals_per_day: int = 8
+    evolution_scheduler_weekday: int = 4
+    evolution_scheduler_hour: int = 16
+    evolution_scheduler_minute: int = 5
+    evolution_due_minute: int = 5
+    evolution_drift_scheduler_day: int = 1
+    evolution_drift_scheduler_hour: int = 16
+    evolution_drift_scheduler_minute: int = 35
+    evolution_drift_due_minute: int = 35
+    evolution_ledger_scheduler_hour: int = 19
+    evolution_ledger_scheduler_minute: int = 0
+    evolution_ledger_due_minute: int = 0
+    evolution_ledger_gap_alert_threshold: float = 1.0
 
     model_config = SettingsConfigDict(
         env_prefix="",

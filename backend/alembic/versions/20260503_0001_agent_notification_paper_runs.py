@@ -21,6 +21,7 @@ depends_on = None
 
 def upgrade() -> None:
     bind = op.get_bind()
+    mysql_compatible = bind.dialect.name.startswith("mysql")
     inspector = sa.inspect(bind)
     tables = set(inspector.get_table_names())
     if "paper_agent_runs" not in tables:
@@ -31,8 +32,8 @@ def upgrade() -> None:
             sa.Column("provider", sa.String(length=40), nullable=False, server_default="none"),
             sa.Column("run_type", sa.String(length=40), nullable=False, server_default="explain"),
             sa.Column("status", sa.String(length=20), nullable=False, server_default="pending"),
-            sa.Column("request_json", sa.Text(), nullable=False, server_default="{}"),
-            sa.Column("response_json", sa.Text(), nullable=False, server_default="{}"),
+            _json_text_column("request_json", mysql_compatible=mysql_compatible),
+            _json_text_column("response_json", mysql_compatible=mysql_compatible),
             sa.Column("error_message", sa.String(length=240), nullable=False, server_default=""),
             sa.Column("created_at", sa.DateTime(), server_default=sa.func.now()),
             sa.ForeignKeyConstraint(["account_id"], ["paper_accounts.id"]),
@@ -46,8 +47,8 @@ def upgrade() -> None:
             sa.Column("provider_name", sa.String(length=40), nullable=False, server_default="none"),
             sa.Column("tool_name", sa.String(length=80), nullable=False),
             sa.Column("permission", sa.String(length=20), nullable=False, server_default="read"),
-            sa.Column("input_arguments", sa.Text(), nullable=False, server_default="{}"),
-            sa.Column("result_summary", sa.Text(), nullable=False, server_default="{}"),
+            _json_text_column("input_arguments", mysql_compatible=mysql_compatible),
+            _json_text_column("result_summary", mysql_compatible=mysql_compatible),
             sa.Column("ok", sa.Boolean(), nullable=False, server_default=sa.false()),
             sa.Column("duration_ms", sa.Integer(), nullable=False, server_default="0"),
             sa.Column("error_code", sa.String(length=60), nullable=False, server_default=""),
@@ -71,7 +72,7 @@ def upgrade() -> None:
             sa.Column("previous_signal_state", sa.String(length=32), nullable=False, server_default=""),
             sa.Column("upgraded", sa.Boolean(), nullable=False, server_default=sa.false()),
             sa.Column("notification_count", sa.Integer(), nullable=False, server_default="0"),
-            sa.Column("payload_json", sa.Text(), nullable=False, server_default="{}"),
+            _json_text_column("payload_json", mysql_compatible=mysql_compatible),
             sa.Column("last_notified_at", sa.DateTime(), nullable=True),
             sa.Column("last_seen_at", sa.DateTime(), server_default=sa.func.now()),
             sa.Column("created_at", sa.DateTime(), server_default=sa.func.now()),
@@ -106,3 +107,10 @@ def _ensure_indexes(*, inspector, specs: Sequence[tuple[str, str, tuple[str, ...
         existing = {item["name"] for item in inspector.get_indexes(table_name)}
         if index_name not in existing:
             op.create_index(index_name, table_name, list(columns))
+
+
+def _json_text_column(name: str, *, mysql_compatible: bool) -> sa.Column:
+    kwargs: dict[str, object] = {"nullable": False}
+    if not mysql_compatible:
+        kwargs["server_default"] = "{}"
+    return sa.Column(name, sa.Text(), **kwargs)

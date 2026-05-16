@@ -103,8 +103,14 @@ mkdir gupiao-upload-new
 tar -xzf '$remote_package' -C gupiao-upload-new
 if test -d '$CLOUD_PROJECT_DIR/.runtime'; then cp -a '$CLOUD_PROJECT_DIR/.runtime' gupiao-upload-new/.runtime || true; fi
 if test -f '$CLOUD_PROJECT_DIR/.env'; then cp -a '$CLOUD_PROJECT_DIR/.env' gupiao-upload-new/.env || true; fi
-if test -d '$CLOUD_PROJECT_DIR'; then mv '$CLOUD_PROJECT_DIR' '/home/${CLOUD_USER}/gupiao-deploy-backup-'\$TS; fi
-mv gupiao-upload-new '$CLOUD_PROJECT_DIR'
+PROJECT_PARENT=\$(dirname '$CLOUD_PROJECT_DIR')
+sudo mkdir -p \"\$PROJECT_PARENT\"
+if test -d '$CLOUD_PROJECT_DIR'; then
+  sudo mv '$CLOUD_PROJECT_DIR' '/home/${CLOUD_USER}/gupiao-deploy-backup-'\$TS
+  sudo chown -R '${CLOUD_USER}:${CLOUD_USER}' '/home/${CLOUD_USER}/gupiao-deploy-backup-'\$TS || true
+fi
+sudo mv gupiao-upload-new '$CLOUD_PROJECT_DIR'
+sudo chown -R '${CLOUD_USER}:${CLOUD_USER}' '$CLOUD_PROJECT_DIR'
 cd '$CLOUD_PROJECT_DIR'
 touch .env
 if ! grep -Eq '^AUTH_SECRET_KEY=.{16,}' .env; then
@@ -121,7 +127,7 @@ sudo docker compose -f '$CLOUD_COMPOSE_FILE' up --build --force-recreate --abort
 sudo docker compose -f '$CLOUD_COMPOSE_FILE' run --rm --user root --entrypoint sh app -c 'mkdir -p /app/backend/data && chown -R tquant:tquant /app/backend/data'
 sudo docker compose -f '$CLOUD_COMPOSE_FILE' up -d --build app runtime-worker backtest-worker
 sudo docker exec -u root tquant-app-mysql sh -c 'mkdir -p /app/backend/data/ml_models && chown -R tquant:tquant /app/backend/data' || true
-ls -dt /home/${CLOUD_USER}/gupiao-deploy-backup-* 2>/dev/null | tail -n +$((CLOUD_KEEP_BACKUPS + 1)) | xargs -r rm -rf
+ls -dt /home/${CLOUD_USER}/gupiao-deploy-backup-* 2>/dev/null | tail -n +$((CLOUD_KEEP_BACKUPS + 1)) | xargs -r sudo rm -rf
 rm -f '$remote_package'
 sudo docker ps --format 'table {{.Names}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}'"
 }

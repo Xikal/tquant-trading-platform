@@ -12,6 +12,7 @@ from app.services.paper.dynamic_exit import evaluate_paper_exit, primary_strateg
 from app.services.paper.fees import calculate_fee
 from app.services.paper.quote_quality import PaperQuotePrice
 from app.services.paper.smart_exit_context import PaperExitContext
+from app.services.paper.smart_t_entry_gate import evaluate_smart_t_entry_gate
 
 logger = logging.getLogger(__name__)
 
@@ -81,7 +82,8 @@ def build_smart_t_add_orders(
             continue
         if decision.action_signal != "washout":
             continue
-        if not _context_allows_add(row=row, quote=quote, context=context, params=params):
+        gate = evaluate_smart_t_entry_gate(quote_price=quote.price, context=context, params=params)
+        if not _context_allows_add(row=row, gate=gate, params=params):
             continue
         plan = _size_add_plan(
             row=row,
@@ -89,6 +91,7 @@ def build_smart_t_add_orders(
             quote=quote,
             context=context,
             decision=decision,
+            gate=gate,
             remaining_cash=remaining_cash,
             total_assets=total_assets,
             params=params,
@@ -110,6 +113,7 @@ def _size_add_plan(
     quote: PaperQuotePrice,
     context: PaperExitContext,
     decision,
+    gate,
     remaining_cash: float,
     total_assets: float,
     params: dict[str, Any],
@@ -147,7 +151,10 @@ def _size_add_plan(
         "pnl_pct": decision.pnl_pct,
         "market_state": market_state,
         "expected_rebound_pct": expected_rebound,
-        "entry_gate": "缩量低点不破，且价格低于分时均价线",
+        "entry_gate": gate.reason,
+        "vwap_discount_pct": round(gate.vwap_discount_pct, 4),
+        "required_vwap_discount_pct": round(gate.required_vwap_discount_pct, 4),
+        "max_volume_release_ratio": round(gate.max_volume_release_ratio, 4),
         "invalid_condition": "加仓后不能继续放量跌破分时均价线；冲高优先卖出可卖底仓。",
         "failure_action": "若加仓后没有反抽，下一轮按硬止损或时间退出处理。",
     }
@@ -156,7 +163,7 @@ def _size_add_plan(
         name=row.name or row.symbol,
         quantity=quantity,
         price=quote.price,
-        reason=f"智能做T加仓：疑似缩量洗盘后承接恢复，小仓加仓 {quantity} 股，冲高优先卖出底仓",
+        reason=f"智能做T加仓：满足 VWAP 折价与洗盘量能释放门槛，小仓加仓 {quantity} 股，冲高优先卖出底仓",
         signal_snapshot=snapshot,
     )
 
@@ -181,23 +188,13 @@ def _expected_net_edge_ok(
 def _context_allows_add(
     *,
     row: PaperPosition,
-    quote: PaperQuotePrice,
-    context: PaperExitContext,
+    gate,
     params: dict[str, Any],
 ) -> bool:
     if _bool_param(params, "smart_t_profitable_position_only", True):
         if _float_attr(row, "unrealized_pnl_pct") < _float_param(params, "smart_t_profit_position_pnl_floor_pct", 0.0):
             return False
-    if not context.volume_usable:
-        return False
-    if context.volume_release_ratio > _float_param(params, "smart_t_add_volume_ratio_max", 0.4):
-        return False
-    if _bool_param(params, "smart_t_require_low_rising", True) and not context.low_rising:
-        return False
-    if not context.vwap or context.vwap <= 0:
-        return False
-    max_entry = context.vwap * (1 - _float_param(params, "smart_t_buy_below_vwap_pct", 0.3) / 100)
-    return quote.price <= max_entry
+    return bool(getattr(gate, "allowed", False))
 
 
 def _market_state_allows_add(params: dict[str, Any], market_state: str) -> bool:

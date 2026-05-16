@@ -21,6 +21,29 @@ BACKTEST_EXECUTION_DEFAULTS: dict[str, Any] = {
     "paper_slippage_low_liquidity_bps": 15.0,
     "paper_slippage_mid_liquidity_amount": 100_000_000.0,
     "paper_slippage_low_liquidity_amount": 30_000_000.0,
+    "verdict_thresholds": {
+        "light": {
+            "min_return_pct": 1.0,
+            "min_sharpe": 0.4,
+            "max_drawdown_pct": -18.0,
+            "cautious_min_return_pct": -1.0,
+            "cautious_max_drawdown_pct": -25.0,
+        },
+        "full": {
+            "min_return_pct": 3.0,
+            "min_sharpe": 0.8,
+            "max_drawdown_pct": -12.0,
+            "cautious_min_return_pct": 0.0,
+            "cautious_max_drawdown_pct": -18.0,
+        },
+        "walk_forward": {
+            "min_return_pct": 1.5,
+            "min_sharpe": 0.6,
+            "max_drawdown_pct": -15.0,
+            "cautious_min_return_pct": -0.5,
+            "cautious_max_drawdown_pct": -22.0,
+        },
+    },
 }
 
 CAPACITY_ANALYSIS_DEFAULTS: dict[str, Any] = {
@@ -80,8 +103,10 @@ PAPER_DYNAMIC_EXIT_DEFAULTS: dict[str, Any] = {
     "smart_t_min_available_base": 100,
     "smart_t_allowed_market_states": ["broad_rally", "repair"],
     "smart_t_add_volume_ratio_max": 0.4,
+    "smart_t_add_volume_release_ratio_max": 0.4,
     "smart_t_require_low_rising": True,
     "smart_t_buy_below_vwap_pct": 0.3,
+    "smart_t_add_vwap_discount_pct": 0.3,
     "smart_t_open_avoid_minutes": 30,
     "smart_t_close_avoid_minutes": 30,
     "smart_t_profitable_position_only": True,

@@ -4,6 +4,7 @@ import logging
 from datetime import datetime, time as dt_time
 from typing import Any
 
+from app.core.config import get_settings
 from app.core.database import SessionLocal
 from app.core.timezone import BEIJING_TZ, beijing_now
 from app.models.schema_defs.phase4 import RuntimeTaskCreate
@@ -19,12 +20,26 @@ except Exception:  # pragma: no cover - exercised only when dependency missing.
     CronTrigger = None  # type: ignore[assignment]
 
 _scheduler: Any | None = None
-SELF_EVOLUTION_WEEKDAY = 4
-SELF_EVOLUTION_AFTER = dt_time(hour=16, minute=0)
+
+
+def _self_evolution_due_time() -> dt_time:
+    settings = get_settings()
+    return dt_time(hour=settings.evolution_scheduler_hour, minute=settings.evolution_due_minute)
+
+
+def _monthly_drift_due_time() -> dt_time:
+    settings = get_settings()
+    return dt_time(hour=settings.evolution_drift_scheduler_hour, minute=settings.evolution_drift_due_minute)
+
+
+def _ledger_reconcile_due_time() -> dt_time:
+    settings = get_settings()
+    return dt_time(hour=settings.evolution_ledger_scheduler_hour, minute=settings.evolution_ledger_due_minute)
 
 
 def self_evolution_due(now: datetime) -> bool:
-    return now.weekday() == SELF_EVOLUTION_WEEKDAY and now.time() >= SELF_EVOLUTION_AFTER
+    settings = get_settings()
+    return now.weekday() == settings.evolution_scheduler_weekday and now.time() >= _self_evolution_due_time()
 
 
 def enqueue_strategy_self_evolution_once(now: datetime | None = None) -> Any | None:
@@ -56,7 +71,8 @@ def enqueue_strategy_self_evolution_once(now: datetime | None = None) -> Any | N
 
 def enqueue_monthly_drift_monitor_once(now: datetime | None = None) -> Any | None:
     now = now or beijing_now()
-    if now.day != 1 or now.time() < dt_time(hour=16, minute=30):
+    settings = get_settings()
+    if now.day != settings.evolution_drift_scheduler_day or now.time() < _monthly_drift_due_time():
         return None
     bucket = now.strftime("%Y%m")
     with SessionLocal() as db:
@@ -73,8 +89,31 @@ def enqueue_monthly_drift_monitor_once(now: datetime | None = None) -> Any | Non
         return task
 
 
+def enqueue_daily_ledger_reconcile_preview_once(now: datetime | None = None) -> Any | None:
+    now = now or beijing_now()
+    if now.weekday() >= 5 or now.time() < _ledger_reconcile_due_time():
+        return None
+    bucket = now.strftime("%Y%m%d")
+    with SessionLocal() as db:
+        task = RuntimeTaskQueue(db).enqueue(
+            RuntimeTaskCreate(
+                task_type="paper_ledger_reconcile_preview",
+                payload={
+                    "threshold": float(get_settings().evolution_ledger_gap_alert_threshold),
+                    "channel": "feishu",
+                },
+                priority=140,
+                idempotency_key=f"paper_ledger_reconcile_preview:{bucket}",
+                max_attempts=2,
+            )
+        )
+        logger.info("模拟盘账本预检任务检查完成: bucket=%s task_id=%s status=%s", bucket, task.id, task.status)
+        return task
+
+
 def start_strategy_evolution_scheduler() -> bool:
     global _scheduler
+    settings = get_settings()
     if BackgroundScheduler is None or CronTrigger is None:
         logger.warning("APScheduler 未安装，策略自进化仅使用 runtime loop 兜底调度。")
         return False
@@ -83,7 +122,12 @@ def start_strategy_evolution_scheduler() -> bool:
     scheduler = BackgroundScheduler(timezone=BEIJING_TZ)
     scheduler.add_job(
         enqueue_strategy_self_evolution_once,
-        CronTrigger(day_of_week="fri", hour=16, minute=5, timezone=BEIJING_TZ),
+        CronTrigger(
+            day_of_week=settings.evolution_scheduler_weekday,
+            hour=settings.evolution_scheduler_hour,
+            minute=settings.evolution_scheduler_minute,
+            timezone=BEIJING_TZ,
+        ),
         id="strategy_self_evolution_weekly",
         replace_existing=True,
         max_instances=1,
@@ -91,8 +135,26 @@ def start_strategy_evolution_scheduler() -> bool:
     )
     scheduler.add_job(
         enqueue_monthly_drift_monitor_once,
-        CronTrigger(day=1, hour=16, minute=35, timezone=BEIJING_TZ),
+        CronTrigger(
+            day=settings.evolution_drift_scheduler_day,
+            hour=settings.evolution_drift_scheduler_hour,
+            minute=settings.evolution_drift_scheduler_minute,
+            timezone=BEIJING_TZ,
+        ),
         id="ml_feature_drift_monitor_monthly",
+        replace_existing=True,
+        max_instances=1,
+        coalesce=True,
+    )
+    scheduler.add_job(
+        enqueue_daily_ledger_reconcile_preview_once,
+        CronTrigger(
+            day_of_week="mon-fri",
+            hour=settings.evolution_ledger_scheduler_hour,
+            minute=settings.evolution_ledger_scheduler_minute,
+            timezone=BEIJING_TZ,
+        ),
+        id="paper_ledger_reconcile_preview_daily",
         replace_existing=True,
         max_instances=1,
         coalesce=True,

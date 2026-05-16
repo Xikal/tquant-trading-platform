@@ -18,7 +18,12 @@ scikit-learn>=1.4,<2.0
 lightgbm>=4.0,<5.0
 fsspec>=2024.6,<2027.0
 apscheduler>=3.10,<4.0
-# RL shadow research dependencies are optional: stable-baselines3/gymnasium
-# pull PyTorch and are intentionally kept out of the production base image.
-# Install backend/requirements-rl-extra.txt or use Docker --build-arg
-# WITH_RL=true only for offline PPO/SAC experiments.
+# RL shadow research dependencies are optional and kept out of the default
+# production image:
+#   stable-baselines3
+#   gymnasium
+#   torch
+# Install with:
+#   pip install -r backend/requirements-rl-extra.txt
+# or build a research image with:
+#   docker build --build-arg WITH_RL=true .

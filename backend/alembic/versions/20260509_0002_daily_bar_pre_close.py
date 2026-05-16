@@ -20,6 +20,8 @@ depends_on = None
 def upgrade() -> None:
     bind = op.get_bind()
     inspector = sa.inspect(bind)
+    if "daily_bar_snapshots" not in inspector.get_table_names():
+        return
     columns = {column["name"] for column in inspector.get_columns("daily_bar_snapshots")}
     if "pre_close" not in columns:
         op.add_column(
@@ -31,6 +33,8 @@ def upgrade() -> None:
 def downgrade() -> None:
     bind = op.get_bind()
     inspector = sa.inspect(bind)
+    if "daily_bar_snapshots" not in inspector.get_table_names():
+        return
     columns = {column["name"] for column in inspector.get_columns("daily_bar_snapshots")}
     if "pre_close" in columns:
         op.drop_column("daily_bar_snapshots", "pre_close")

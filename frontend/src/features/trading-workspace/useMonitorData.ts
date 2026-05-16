@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { invalidateCache } from "../../api/base";
 import { getAdminApiToken } from "../../api/base";
 import { api } from "../../api/client";
 import type {
@@ -42,6 +43,8 @@ export function useMonitorData({ active, withLoading, setError, setNotice }: Use
   const [runtime, setRuntime] = useState<RuntimeStatus | null>(null);
   const monitorRefreshRef = useRef(false);
   const quoteRefreshRef = useRef(false);
+  const pendingRetryTimerRef = useRef<number | null>(null);
+  const pendingRetryCountRef = useRef(0);
   const priorityBoardRef = useRef<LowBuyPriorityBoardResult | null>(null);
   const watchlistSignalsRef = useRef<WatchlistSignal[]>([]);
   const sectorEtfT0Ref = useRef<SectorEtfT0Response | null>(null);
@@ -66,6 +69,13 @@ export function useMonitorData({ active, withLoading, setError, setNotice }: Use
   useEffect(() => {
     sectorEtfT0Ref.current = sectorEtfT0;
   }, [sectorEtfT0]);
+
+  const clearPendingRetry = useCallback(() => {
+    if (pendingRetryTimerRef.current != null) {
+      window.clearTimeout(pendingRetryTimerRef.current);
+      pendingRetryTimerRef.current = null;
+    }
+  }, []);
 
   const fetchMonitorData = useCallback(async (includeRuntime: boolean) => {
     if (monitorRefreshRef.current) {
@@ -119,12 +129,36 @@ export function useMonitorData({ active, withLoading, setError, setNotice }: Use
   }, [refreshMonitor, setNotice, withLoading]);
 
   const resetMonitorData = useCallback(() => {
+    clearPendingRetry();
+    pendingRetryCountRef.current = 0;
     setPriorityBoard(null);
     setMarketBreadth(null);
     setSectorEtfT0(null);
     setPairedHedge(null);
     setWatchlistSignals([]);
-  }, []);
+  }, [clearPendingRetry]);
+
+  useEffect(() => {
+    if (!active) {
+      clearPendingRetry();
+      return undefined;
+    }
+    if (!isPendingMonitorSnapshot(priorityBoard)) {
+      clearPendingRetry();
+      pendingRetryCountRef.current = 0;
+      return undefined;
+    }
+    if (pendingRetryCountRef.current >= 5) {
+      return undefined;
+    }
+    clearPendingRetry();
+    pendingRetryTimerRef.current = window.setTimeout(() => {
+      pendingRetryCountRef.current += 1;
+      invalidateCache(["/monitor/snapshot", "/market/breadth"]);
+      void fetchMonitorData(false);
+    }, 3500);
+    return () => clearPendingRetry();
+  }, [active, clearPendingRetry, fetchMonitorData, priorityBoard]);
 
   useEffect(() => {
     if (!active) {
@@ -237,4 +271,12 @@ export function useMonitorData({ active, withLoading, setError, setNotice }: Use
     syncInstruments,
     resetMonitorData,
   };
+}
+
+function isPendingMonitorSnapshot(priorityBoard: LowBuyPriorityBoardResult | null): boolean {
+  if (!priorityBoard) {
+    return false;
+  }
+  const warning = `${priorityBoard.snapshot_warning ?? ""} ${priorityBoard.data_quality_text ?? ""}`;
+  return warning.includes("已排队") || warning.includes("后台刷新中");
 }

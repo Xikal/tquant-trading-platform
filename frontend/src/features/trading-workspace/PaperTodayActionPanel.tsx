@@ -14,7 +14,7 @@ export function PaperTodayActionPanel({
 }) {
   const openRisk = riskEvents.find((item) => item.status !== "resolved") ?? null;
   const confirmation = intradayConfirmations[0] ?? null;
-  const actions = buildActionTimeline(autoTradingStatus, autoTradingRuns);
+  const actions = buildActionTimeline(autoTradingStatus, autoTradingRuns, confirmation);
 
   return (
     <section className="panel paper-today-actions">
@@ -59,6 +59,7 @@ export function PaperTodayActionPanel({
 function buildActionTimeline(
   autoTradingStatus: PaperAutoTradingStatus | null,
   autoTradingRuns: PaperAgentRun[],
+  confirmation: IntradayConfirmationItem | null,
 ) {
   const items = autoTradingRuns.slice(0, 3).map((item) => {
     const response = item.response || {};
@@ -74,6 +75,13 @@ function buildActionTimeline(
       time: formatPaperDateTime(autoTradingStatus.last_cycle_at).slice(11, 16),
       title: "最近一轮",
       detail: autoTradingStatus.last_cycle_summary,
+    });
+  }
+  if (confirmation) {
+    items.unshift({
+      time: formatPaperDateTime(confirmation.updated_at || confirmation.trade_date).slice(11, 16),
+      title: "分时确认",
+      detail: `${confirmation.symbol} ${confirmation.confirmed || confirmation.late_confirmed ? "已确认" : "待观察"} · ${confirmation.reason || "等待盘中承接确认"}`,
     });
   }
   return items.slice(0, 3);

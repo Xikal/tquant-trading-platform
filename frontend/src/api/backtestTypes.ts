@@ -130,6 +130,18 @@ export interface BacktestListResponse {
   offset?: number;
 }
 
+export interface BacktestVerdictThresholdItem {
+  min_return_pct: number;
+  min_sharpe: number;
+  max_drawdown_pct: number;
+  cautious_min_return_pct: number;
+  cautious_max_drawdown_pct: number;
+}
+
+export interface BacktestVerdictThresholdsResponse {
+  thresholds: Record<BacktestResourceTier, BacktestVerdictThresholdItem>;
+}
+
 export interface EquityPoint {
   date: string;
   nav: number;

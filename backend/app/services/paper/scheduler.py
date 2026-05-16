@@ -40,6 +40,7 @@ from app.services.paper.scheduler_etf import build_sector_etf_t0_orders
 from app.services.paper.scheduler_exit import build_exit_order_plan, build_exit_orders, build_smart_t_order_plan
 from app.services.paper.scheduler_runs import finish_agent_run, record_cycle, start_agent_run
 from app.services.paper.scheduler_state import AutoTraderState
+from app.services.paper.scheduler_portfolio import apply_portfolio_weighting
 from app.services.paper.sizing import PositionSizer, SizedOrder
 from app.services.paper.strategy_phase_gate import apply_strategy_validation_phase
 from app.services.sector_etf_t0 import SectorEtfT0Service
@@ -121,8 +122,13 @@ class PaperAutoTrader:
             if account.user_id
             else set(),
         )
-        sized = PositionSizer().calculate(
+        weighted_passed = apply_portfolio_weighting(
+            db=db,
+            account_id=account.id,
             candidates=report.passed,
+        )
+        sized = PositionSizer().calculate(
+            candidates=weighted_passed,
             total_assets=float(account.total_assets or 0),
             available_cash=float(account.cash_available or 0),
             max_orders=self.state.max_orders_per_cycle,
@@ -225,6 +231,11 @@ class PaperAutoTrader:
             else set(),
         )
         phase_passed, phase_filtered = apply_strategy_validation_phase(db, report.passed)
+        phase_passed = apply_portfolio_weighting(
+            db=db,
+            account_id=account.id,
+            candidates=phase_passed,
+        )
         filtered_candidates = [*report.filtered, *phase_filtered]
         exit_orders, exit_skip_reason = self._build_exit_order_plan(db, account)
         smart_t_orders = self._build_smart_t_order_plan(

@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import date
 from decimal import Decimal
+import logging
 
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
@@ -26,6 +27,8 @@ from app.services.paper.ledger_replay import ReplayResult, ReplayTradeIssue, rep
 from app.services.paper.money import ZERO, to_decimal
 from app.services.paper.position import PaperPositionService
 from app.services.paper.symbols import is_etf
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -89,30 +92,43 @@ class PaperLedgerRepairService:
         )
 
     def apply(self, account_id: int) -> PaperLedgerRepairResult:
-        account = self.accounts.get_account(account_id, for_update=True)
-        replay = self._replay(account_id)
-        latest_prices = self._latest_price_snapshot(account_id)
-        before_gap = to_decimal(account.total_assets) - (
-            to_decimal(account.initial_cash) + replay.corrected_cash_delta + self._current_market_value(account_id)
-        )
-        self._apply_trade_repairs(replay.issues)
-        self._rebuild_account_state(account)
-        self._replay_into_account(account_id)
-        if latest_prices:
-            self.positions.refresh_quotes(account_id, latest_prices)
-        account = self.accounts.update_market_value(account_id)
-        self.db.flush()
-        after_gap = self._account_reconciliation_gap(account)
-        return self._build_result(
-            account=account,
-            replay=replay,
-            applied=True,
-            corrected_cash=to_decimal(account.cash_available),
-            corrected_market_value=to_decimal(account.market_value),
-            corrected_total=to_decimal(account.total_assets),
-            before_gap=before_gap,
-            after_gap=after_gap,
-        )
+        try:
+            account = self.accounts.get_account(account_id, for_update=True)
+            replay = self._replay(account_id)
+            latest_prices = self._latest_price_snapshot(account_id)
+            before_gap = to_decimal(account.total_assets) - (
+                to_decimal(account.initial_cash) + replay.corrected_cash_delta + self._current_market_value(account_id)
+            )
+            self._apply_trade_repairs(replay.issues)
+            self._rebuild_account_state(account)
+            self._replay_into_account(account_id)
+            if latest_prices:
+                self.positions.refresh_quotes(account_id, latest_prices)
+            else:
+                logger.warning(
+                    "ledger repair account %s uses DB price snapshot only; no usable latest_price found before replay",
+                    account_id,
+                )
+            account = self.accounts.update_market_value(account_id)
+            self.db.flush()
+            after_gap = self._account_reconciliation_gap(account)
+            if abs(after_gap) > Decimal("0.01"):
+                raise RuntimeError(f"账本修复后对账差额仍为 {after_gap}")
+            result = self._build_result(
+                account=account,
+                replay=replay,
+                applied=True,
+                corrected_cash=to_decimal(account.cash_available),
+                corrected_market_value=to_decimal(account.market_value),
+                corrected_total=to_decimal(account.total_assets),
+                before_gap=before_gap,
+                after_gap=after_gap,
+            )
+            self.db.commit()
+            return result
+        except Exception as exc:
+            self.db.rollback()
+            raise RuntimeError(f"账本修复失败，已回滚: {exc}") from exc
 
     def _replay(self, account_id: int) -> ReplayResult:
         rows = (
@@ -219,12 +235,31 @@ class PaperLedgerRepairService:
         self._persist_rebuilt_positions(account_id, positions)
 
     def _latest_price_snapshot(self, account_id: int) -> dict[str, Decimal]:
+        """Return DB snapshot prices only.
+
+        This intentionally uses the latest persisted PaperPosition.latest_price
+        values, not live quotes. If the quote refresh job is stale these prices
+        may be old, so callers should treat them as a best-effort valuation
+        fallback and log accordingly before applying the repair.
+        """
         rows = (
             self.db.execute(select(PaperPosition).where(PaperPosition.account_id == account_id))
             .scalars()
             .all()
         )
-        return {row.symbol: to_decimal(row.latest_price) for row in rows if row.latest_price is not None}
+        snapshot = {
+            row.symbol: to_decimal(row.latest_price)
+            for row in rows
+            if row.latest_price is not None and to_decimal(row.latest_price) > ZERO
+        }
+        if len(snapshot) < len(rows):
+            logger.warning(
+                "ledger repair account %s found %s/%s positions with usable DB snapshot prices",
+                account_id,
+                len(snapshot),
+                len(rows),
+            )
+        return snapshot
 
     def _current_market_value(self, account_id: int) -> Decimal:
         rows = (

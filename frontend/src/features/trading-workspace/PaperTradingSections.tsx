@@ -23,7 +23,7 @@ export function PaperPositionsPanel({
         <span className="hint">{positions.length ? `共 ${positions.length} 只，首屏直接处理` : "暂无持仓"}</span>
       </div>
       <DataBody loading={loading} columns={4}>
-        <div className="stock-list compact list-view">
+        <div className="stock-list compact">
           {positions.length ? positions.map((item) => <PositionRow key={item.id} item={item} />) : <EmptyState text="暂无模拟持仓" />}
         </div>
       </DataBody>

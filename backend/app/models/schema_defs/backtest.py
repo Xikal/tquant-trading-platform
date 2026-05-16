@@ -128,6 +128,18 @@ class BacktestRunListResponse(BaseModel):
     offset: int
 
 
+class BacktestVerdictThresholdOut(BaseModel):
+    min_return_pct: float = 0.0
+    min_sharpe: float = 0.0
+    max_drawdown_pct: float = 0.0
+    cautious_min_return_pct: float = 0.0
+    cautious_max_drawdown_pct: float = 0.0
+
+
+class BacktestVerdictThresholdsResponse(BaseModel):
+    thresholds: dict[BacktestResourceTier, BacktestVerdictThresholdOut] = Field(default_factory=dict)
+
+
 class BacktestEquityPoint(BaseModel):
     trade_date: str
     cash: float = 0.0

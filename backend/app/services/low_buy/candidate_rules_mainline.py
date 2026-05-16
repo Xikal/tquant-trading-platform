@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from app.services.low_buy.candidate_distribution_gate import has_limit_up_distribution_exit
 from app.services.low_buy.candidate_rule_params import (
     execution_params as _execution_params,
     ma5_ma10_ma20_confluence_pct as _ma5_ma10_ma20_confluence_pct,
@@ -125,6 +126,7 @@ def _mainline_limitup_shrink_retrace_reclaim_setup(item: BoardCandidate, metrics
             and not metrics.weak_close
             and not metrics.false_breakout_flag
             and not metrics.intraday_reversal_flag
+            and not has_limit_up_distribution_exit(metrics, prefilter)
         ),
         execution_note="主线涨停后只等缩量回调确认，不追高；重新站回 5 日线才执行。",
         summary_reason="主线涨停启动后 3-8 日缩量回调，均线合一附近重新站回 5 日线。",

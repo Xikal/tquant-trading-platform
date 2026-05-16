@@ -77,10 +77,7 @@ def approve_ml_signal_model_promotion(
     db: Session = Depends(get_db),
 ) -> MLSignalModelOut:
     try:
-        return MLSignalPromotionService(db).approve(
-            model_key,
-            operator=str(getattr(current_user, "username", "") or getattr(current_user, "phone", "") or "admin"),
-        )
+        return MLSignalPromotionService(db).approve(model_key, operator=current_user)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 

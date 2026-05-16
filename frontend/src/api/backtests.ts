@@ -39,6 +39,7 @@ import type {
   PositionPolicyResearchResponse,
   BacktestListParams,
   BacktestTradesParams,
+  BacktestVerdictThresholdsResponse,
   RawRecord,
   ResearchListParams
 } from "./backtestTypes";
@@ -195,6 +196,9 @@ export const backtestsApi = {
 
   getPositionPolicyResearch: (runId: number) =>
     request<PositionPolicyResearchResponse>(`/backtests/${runId}/position-policy-research`),
+
+  getVerdictThresholds: () =>
+    request<BacktestVerdictThresholdsResponse>("/backtests/verdict-thresholds"),
 };
 
 function buildListQuery({ page, pageSize, limit, offset, status }: ResearchListParams = {}): URLSearchParams {

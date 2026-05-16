@@ -5,6 +5,15 @@
   --strategy-muted: #475569;
   --strategy-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
   --strategy-text: #0f172a;
+  --border-soft: #dde6f0;
+  --panel-elevated: #ffffff;
+  --panel-muted: #f8fafc;
+  --text-secondary: #475569;
+  --text-subtle: #64748b;
+  --accent-strong: #9a6518;
+  --success-strong: #178a5e;
+  --warning-strong: #a16207;
+  --danger-strong: #c34a36;
   --panel: var(--strategy-bg);
   --card: var(--strategy-bg);
   --line: var(--strategy-border);
@@ -20,6 +29,27 @@
   background: var(--strategy-bg);
   border-color: var(--strategy-border);
   color: var(--strategy-text);
+}
+
+.strategy-hub button:not(.primary):not(.danger):not(.gold) {
+  border: 1px solid var(--strategy-border);
+  background: var(--strategy-bg);
+  color: var(--strategy-text);
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    background-color 160ms ease,
+    color 160ms ease;
+}
+
+.strategy-hub button:not(.primary):not(.danger):not(.gold):hover:not(:disabled) {
+  border-color: rgba(154, 101, 24, 0.42);
+  box-shadow: 0 0 0 1px rgba(154, 101, 24, 0.12);
+}
+
+.strategy-hub button:not(.primary):not(.danger):not(.gold):focus-visible {
+  outline: 2px solid rgba(154, 101, 24, 0.3);
+  outline-offset: 2px;
 }
 
 .strategy-hub h1,

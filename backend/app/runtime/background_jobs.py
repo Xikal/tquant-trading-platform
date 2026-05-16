@@ -13,6 +13,7 @@ from app.core.task_manager import task_manager
 from app.core.timezone import beijing_now, beijing_today
 from app.models.schema_defs.phase4 import RuntimeTaskCreate
 from app.runtime.strategy_evolution_scheduler import (
+    enqueue_daily_ledger_reconcile_preview_once,
     enqueue_monthly_drift_monitor_once,
     enqueue_strategy_self_evolution_once,
     start_strategy_evolution_scheduler,
@@ -456,6 +457,12 @@ def start_runtime_background_jobs() -> None:
             target=enqueue_monthly_drift_monitor_once,
             interval_seconds=60 * 60,
             initial_delay_seconds=300,
+        )
+        task_manager.register_loop(
+            name="paper_ledger_reconcile_preview_daily",
+            target=enqueue_daily_ledger_reconcile_preview_once,
+            interval_seconds=60 * 60,
+            initial_delay_seconds=330,
         )
         if settings.paper_auto_trading_enabled:
             logger.info("启动模拟盘自动交易")

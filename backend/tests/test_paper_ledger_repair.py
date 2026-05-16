@@ -107,6 +107,34 @@ class PaperLedgerRepairTests(unittest.TestCase):
         self.assertTrue(applied.json()["applied"])
         self.assertAlmostEqual(applied.json()["reconciliation_gap_after"], 0.0, places=2)
 
+    def test_apply_rolls_back_all_changes_when_replay_fails(self) -> None:
+        with self.Session() as db:
+            account = self._seed_invalid_account(db)
+            original = [
+                (trade.id, trade.quantity, trade.net_amount)
+                for trade in db.execute(
+                    select(PaperTrade).where(PaperTrade.account_id == account.id).order_by(PaperTrade.id.asc())
+                ).scalars()
+            ]
+            service = PaperLedgerRepairService(db)
+
+            def boom(_account_id: int) -> None:
+                raise ValueError("forced replay failure")
+
+            service._replay_into_account = boom  # type: ignore[method-assign]
+
+            with self.assertRaises(RuntimeError):
+                service.apply(account.id)
+
+            db.expire_all()
+            restored = [
+                (trade.id, trade.quantity, trade.net_amount)
+                for trade in db.execute(
+                    select(PaperTrade).where(PaperTrade.account_id == account.id).order_by(PaperTrade.id.asc())
+                ).scalars()
+            ]
+            self.assertEqual(restored, original)
+
     def _register(self, username: str) -> dict[str, str]:
         response = self.client.post("/api/auth/register", json={"username": username, "password": "secret123"})
         self.assertEqual(response.status_code, 200)

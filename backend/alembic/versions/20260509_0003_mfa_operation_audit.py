@@ -20,15 +20,18 @@ depends_on = None
 def upgrade() -> None:
     bind = op.get_bind()
     inspector = sa.inspect(bind)
-    user_columns = {column["name"] for column in inspector.get_columns("users")}
-    if "mfa_totp_enabled" not in user_columns:
-        op.add_column("users", sa.Column("mfa_totp_enabled", sa.Boolean(), nullable=False, server_default=sa.false()))
-    if "mfa_totp_secret" not in user_columns:
-        op.add_column("users", sa.Column("mfa_totp_secret", sa.String(length=80), nullable=False, server_default=""))
-    indexes = {index["name"] for index in inspector.get_indexes("users")}
-    if "ix_users_mfa_totp_enabled" not in indexes:
-        op.create_index("ix_users_mfa_totp_enabled", "users", ["mfa_totp_enabled"])
-    if "operation_audit_log" not in inspector.get_table_names():
+    tables = set(inspector.get_table_names())
+    has_users = "users" in tables
+    if has_users:
+        user_columns = {column["name"] for column in inspector.get_columns("users")}
+        if "mfa_totp_enabled" not in user_columns:
+            op.add_column("users", sa.Column("mfa_totp_enabled", sa.Boolean(), nullable=False, server_default=sa.false()))
+        if "mfa_totp_secret" not in user_columns:
+            op.add_column("users", sa.Column("mfa_totp_secret", sa.String(length=80), nullable=False, server_default=""))
+        indexes = {index["name"] for index in inspector.get_indexes("users")}
+        if "ix_users_mfa_totp_enabled" not in indexes:
+            op.create_index("ix_users_mfa_totp_enabled", "users", ["mfa_totp_enabled"])
+    if has_users and "operation_audit_log" not in tables:
         op.create_table(
             "operation_audit_log",
             sa.Column("id", sa.Integer(), primary_key=True),
@@ -55,8 +58,11 @@ def upgrade() -> None:
 def downgrade() -> None:
     bind = op.get_bind()
     inspector = sa.inspect(bind)
-    if "operation_audit_log" in inspector.get_table_names():
+    tables = set(inspector.get_table_names())
+    if "operation_audit_log" in tables:
         op.drop_table("operation_audit_log")
+    if "users" not in tables:
+        return
     indexes = {index["name"] for index in inspector.get_indexes("users")}
     if "ix_users_mfa_totp_enabled" in indexes:
         op.drop_index("ix_users_mfa_totp_enabled", table_name="users")

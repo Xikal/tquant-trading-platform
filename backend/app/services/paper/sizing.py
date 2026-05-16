@@ -167,6 +167,15 @@ class PositionSizer:
                     str(candidate.signal.get("validation_phase_reason") or "按策略验证阶段控制仓位"),
                 )
             )
+        portfolio_scale = _portfolio_weight_scale(candidate.signal)
+        if portfolio_scale is not None:
+            caps.append(
+                (
+                    self.max_position_pct * portfolio_scale,
+                    "portfolio_markowitz",
+                    str(candidate.signal.get("portfolio_weight_reason") or "按组合层 Markowitz 权重控制仓位"),
+                )
+            )
         cap, source, reason = min(caps, key=lambda item: item[0])
         return max(Decimal("0"), cap), source, reason
 
@@ -208,6 +217,16 @@ def _validation_position_scale(signal: dict[str, Any]) -> Decimal | None:
         return None
     try:
         value = Decimal(str(signal.get("validation_position_scale")))
+    except Exception:
+        return Decimal("0")
+    return max(Decimal("0"), min(value, Decimal("1")))
+
+
+def _portfolio_weight_scale(signal: dict[str, Any]) -> Decimal | None:
+    if "portfolio_weight_scale" not in signal:
+        return None
+    try:
+        value = Decimal(str(signal.get("portfolio_weight_scale")))
     except Exception:
         return Decimal("0")
     return max(Decimal("0"), min(value, Decimal("1")))
