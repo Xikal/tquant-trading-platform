@@ -246,6 +246,14 @@ class LeaderPullbackBandStrategy(RuleBackedLowBuyStrategy):
     key = "leader_pullback_band"
 
 
+class NPatternLongWashStrategy(RuleBackedLowBuyStrategy):
+    key = "n_pattern_long_wash"
+
+
+class NPatternShortWashStrategy(RuleBackedLowBuyStrategy):
+    key = "n_pattern_short_wash"
+
+
 _STRATEGY_CLASSES: dict[str, type[BaseStrategy]] = {
     ClassicRetraceStrategy.key: ClassicRetraceStrategy,
     MaSupportStrategy.key: MaSupportStrategy,
@@ -262,6 +270,8 @@ _STRATEGY_CLASSES: dict[str, type[BaseStrategy]] = {
     TrendReboundStrategy.key: TrendReboundStrategy,
     MaChannelBandStrategy.key: MaChannelBandStrategy,
     LeaderPullbackBandStrategy.key: LeaderPullbackBandStrategy,
+    NPatternLongWashStrategy.key: NPatternLongWashStrategy,
+    NPatternShortWashStrategy.key: NPatternShortWashStrategy,
 }
 
 _STRATEGY_CACHE: dict[str, BaseStrategy] = {}

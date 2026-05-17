@@ -14,6 +14,8 @@ STRATEGY_FAMILY_MAP: dict[str, str] = {
     "first_board": "first_board_retest",
     "deep_pullback": "deep_pullback",
     "trend_rebound": "trend_rebound",
+    "n_pattern_long_wash": "n_pattern_retrace",
+    "n_pattern_short_wash": "n_pattern_retrace",
 }
 
 STRATEGY_FAMILY_LABELS: dict[str, str] = {
@@ -27,6 +29,7 @@ STRATEGY_FAMILY_LABELS: dict[str, str] = {
     "first_board_retest": "首板回踩",
     "deep_pullback": "深回撤低吸",
     "trend_rebound": "趋势龙回头",
+    "n_pattern_retrace": "N字洗盘回踩",
     "uncategorized": "未分类策略",
 }
 

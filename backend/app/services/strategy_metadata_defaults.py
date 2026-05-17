@@ -28,6 +28,8 @@ DEFAULT_STRATEGY_META: tuple[StrategyDisplaySeed, ...] = (
     StrategyDisplaySeed("mainline_limitup_shrink_retrace_reclaim", "主线涨停回调", "主线板块涨停启动后，等待缩量回调到均线合一区并重新站回 5 日线。", "auxiliary", "medium", "2-5天", 60),
     StrategyDisplaySeed("ma_channel_band", "均线通道波段", "沿 MA20 通道运行的波段研究策略，关注下轨承接与上轨兑现。", "research", "medium", "5-15天", 70),
     StrategyDisplaySeed("leader_pullback_band", "龙头回踩波段", "热点龙头确认后回踩均线支撑的二波研究策略。", "research", "high", "3-10天", 80, probe_status="pending", visibility="backtest_only"),
+    StrategyDisplaySeed("n_pattern_long_wash", "长洗N字回踩", "大阳/涨停启动后 7-15 日缩量洗盘，守住启动低点后等待放量修复。", "research", "high", "3-8天", 90),
+    StrategyDisplaySeed("n_pattern_short_wash", "短洗N字试错", "启动后 2-5 日快速分歧，红十字或锤头线守住启动低点，尾盘小仓试错。", "research", "high", "1-3天", 100),
 )
 
 DEFAULT_STRATEGY_SEEDS_BY_KEY: dict[str, StrategyDisplaySeed] = {
@@ -37,7 +39,12 @@ DEFAULT_STRATEGY_SEEDS_BY_KEY: dict[str, StrategyDisplaySeed] = {
 FACTOR_ACCESS_ROLES = {"admin", "administrator", "backtest_optimizer", "backtest_research"}
 RESEARCH_ACCESS_ROLES = {"admin", "administrator", "backtest_optimizer", "backtest_research"}
 ADMIN_ROLES = {"admin", "administrator"}
-RESEARCH_TO_AUXILIARY_GATED_STRATEGIES = {"ma_channel_band", "leader_pullback_band"}
+RESEARCH_TO_AUXILIARY_GATED_STRATEGIES = {
+    "ma_channel_band",
+    "leader_pullback_band",
+    "n_pattern_long_wash",
+    "n_pattern_short_wash",
+}
 RESEARCH_TO_AUXILIARY_MIN_FILLED = 100
 RESEARCH_TO_AUXILIARY_MIN_HEALTH = 60.0
 
@@ -113,4 +120,3 @@ DEFAULT_PRESETS: tuple[dict[str, Any], ...] = (
         },
     },
 )
-

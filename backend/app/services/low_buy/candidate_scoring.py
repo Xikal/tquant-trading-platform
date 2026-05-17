@@ -146,6 +146,25 @@ def score_candidate(
             max(metrics.volume_burst_ratio - float_param(strategy_bonus, "volume_burst_base", 1.5), 0.0),
             float_param(strategy_bonus, "volume_burst_cap", 1.5),
         ) * float_param(strategy_bonus, "volume_burst_weight", 2.5)
+    if strategy == "n_pattern_long_wash":
+        score += float_param(strategy_bonus, "board_low_held_bonus", 3.0) if metrics.board_low_held else 0.0
+        score += max(0.0, float_param(strategy_bonus, "post_volume_base", 0.82) - metrics.post_volume_ratio) * float_param(
+            strategy_bonus, "post_volume_weight", 10.0
+        )
+        score += max(0.0, metrics.close_position_ratio - float_param(strategy_bonus, "close_position_base", 0.50)) * float_param(
+            strategy_bonus, "close_position_weight", 8.0
+        )
+        if metrics.retracement_days >= int_param(strategy_bonus, "long_wash_day_min", 8):
+            score += float_param(strategy_bonus, "long_wash_day_bonus", 2.0)
+    if strategy == "n_pattern_short_wash":
+        score += float_param(strategy_bonus, "board_low_held_bonus", 2.5) if metrics.board_low_held else 0.0
+        if metrics.doji_like or metrics.long_lower_shadow:
+            score += float_param(strategy_bonus, "reversal_candle_bonus", 4.0)
+        score += max(0.0, metrics.close_position_ratio - float_param(strategy_bonus, "close_position_base", 0.45)) * float_param(
+            strategy_bonus, "close_position_weight", 7.0
+        )
+        if metrics.retracement_days <= int_param(strategy_bonus, "short_wash_day_max", 4):
+            score += float_param(strategy_bonus, "short_wash_day_bonus", 2.0)
     if strategy == "breakout_support" and metrics.breakout_distance_pct <= float_param(strategy_bonus, "breakout_distance_max_pct", 2.0):
         score += float_param(strategy_bonus, "bonus", 4.0)
     if strategy == "limit_up_breakout_retrace":

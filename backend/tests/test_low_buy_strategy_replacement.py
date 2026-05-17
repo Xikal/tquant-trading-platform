@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import unittest
+from types import SimpleNamespace
+from unittest.mock import patch
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -11,6 +13,7 @@ from app.services.low_buy.candidate_rules import build_strategy_setup, passes_st
 from app.services.low_buy.exit_plan import build_exit_plan
 from app.services.low_buy.pool import LowBuyPoolMixin
 from app.services.low_buy.shared import DEFAULT_PRODUCTION_LOW_BUY_STRATEGY, PLAYBOOKS, normalize_low_buy_strategy
+from app.services.low_buy.strategy_pool_n_pattern import n_pattern_anchor_matches, n_pattern_latest_bar_matches
 from app.services.low_buy.strategy_policy import (
     mainline_industry_allowed,
     participates_in_priority_board,
@@ -40,6 +43,8 @@ class LowBuyStrategyReplacementTests(unittest.TestCase):
             "trend_rebound",
             "deep_pullback",
             "limit_up_breakout_retrace",
+            "n_pattern_long_wash",
+            "n_pattern_short_wash",
         }
 
         for strategy in production:
@@ -85,6 +90,10 @@ class LowBuyStrategyReplacementTests(unittest.TestCase):
         self.assertEqual(strategy_pool_key("classic_retrace"), "legacy_research_pool")
         self.assertTrue(strategy_uses_daily_scan_pool("core_midcap_vwap_ma5_retrace"))
         self.assertTrue(strategy_uses_daily_scan_pool("mainline_limitup_shrink_retrace_reclaim"))
+        self.assertTrue(strategy_uses_daily_scan_pool("n_pattern_long_wash"))
+        self.assertTrue(strategy_uses_daily_scan_pool("n_pattern_short_wash"))
+        self.assertEqual(strategy_pool_key("n_pattern_long_wash"), "n_pattern_long_wash_pool")
+        self.assertEqual(strategy_pool_key("n_pattern_short_wash"), "n_pattern_short_wash_pool")
 
     def test_mainline_strategy_scan_targets_are_filtered_before_history_loading(self) -> None:
         pool = LowBuyPoolMixin()
@@ -307,6 +316,112 @@ class LowBuyStrategyReplacementTests(unittest.TestCase):
         )
 
         self.assertTrue(passes_strategy_prefilter(strategy, item, double_bottom_metrics))
+
+    def test_n_pattern_strategies_are_research_only_and_use_launch_low_guard(self) -> None:
+        item = _item(amount=220_000_000)
+        long_metrics = _metrics(
+            retracement_days=10,
+            latest_change_pct=1.4,
+            close_position_ratio=0.68,
+            close_to_ma10=2.0,
+            close_to_ma20=2.4,
+            support_distance_pct=2.0,
+            volume_burst_ratio=1.8,
+            latest_volume_ratio=0.86,
+            post_volume_ratio=0.58,
+            board_low_held=True,
+            distribution_risk_score=2.8,
+            false_breakout_flag=False,
+            intraday_reversal_flag=False,
+        )
+        short_metrics = _metrics(
+            retracement_days=3,
+            latest_change_pct=0.8,
+            close_position_ratio=0.62,
+            support_distance_pct=2.6,
+            volume_burst_ratio=1.6,
+            latest_volume_ratio=1.02,
+            post_volume_ratio=0.82,
+            board_low_held=True,
+            doji_like=True,
+            long_lower_shadow=True,
+            long_upper_shadow=False,
+            distribution_risk_score=2.6,
+            false_breakout_flag=False,
+        )
+
+        for strategy, metrics in (
+            ("n_pattern_long_wash", long_metrics),
+            ("n_pattern_short_wash", short_metrics),
+        ):
+            with self.subTest(strategy=strategy):
+                self.assertEqual(strategy_layer(strategy), "research")
+                self.assertTrue(strong_buy_paused(strategy))
+                self.assertTrue(passes_strategy_prefilter(strategy, item, metrics))
+                setup = build_strategy_setup(strategy, item, metrics, 88.0)
+                self.assertTrue(setup.execution_ready)
+                self.assertIn("N 字", setup.execution_note)
+
+        broken_low_metrics = long_metrics.__class__(**{**long_metrics.__dict__, "board_low_held": False})
+        self.assertFalse(passes_strategy_prefilter("n_pattern_long_wash", item, broken_low_metrics))
+
+    def test_short_wash_requires_reversal_candle_not_generic_momentum_exhaustion(self) -> None:
+        item = _item(amount=220_000_000)
+        metrics = _metrics(
+            retracement_days=3,
+            latest_change_pct=0.8,
+            close_position_ratio=0.62,
+            support_distance_pct=2.6,
+            volume_burst_ratio=1.6,
+            latest_volume_ratio=1.02,
+            board_low_held=True,
+            doji_like=False,
+            long_lower_shadow=False,
+            momentum_exhaustion=True,
+            long_upper_shadow=False,
+            distribution_risk_score=2.6,
+            false_breakout_flag=False,
+        )
+
+        self.assertFalse(passes_strategy_prefilter("n_pattern_short_wash", item, metrics))
+        setup = build_strategy_setup("n_pattern_short_wash", item, metrics, 88.0)
+        self.assertFalse(setup.execution_ready)
+
+    def test_n_pattern_daily_pool_thresholds_follow_parameter_config(self) -> None:
+        latest_bar = SimpleNamespace(
+            amount=90_000_000,
+            pct_chg=1.2,
+            high_price=10.8,
+            low_price=10.0,
+            close_price=10.6,
+        )
+        anchor = SimpleNamespace(
+            amount=160_000_000,
+            volume=2_000_000,
+            pct_chg=7.2,
+            open_price=10.0,
+            close_price=10.8,
+            high_price=11.0,
+            low_price=9.8,
+        )
+        prior_rows = [SimpleNamespace(volume=1_000_000), SimpleNamespace(volume=1_100_000)]
+        strict_params = {
+            "min_amount": 120_000_000.0,
+            "latest_bar_min_change_pct": -3.5,
+            "latest_bar_max_change_pct": 6.8,
+            "latest_bar_min_close_position_ratio": 0.45,
+            "anchor_min_pct_chg": 8.0,
+            "anchor_min_close_open_ratio": 1.08,
+            "anchor_min_volume_ratio": 2.5,
+            "anchor_min_close_position_ratio": 0.72,
+        }
+
+        with patch(
+            "app.services.low_buy.strategy_pool_n_pattern.prefilter_params",
+            return_value=strict_params,
+        ):
+            self.assertFalse(n_pattern_latest_bar_matches("n_pattern_long_wash", latest_bar))
+            self.assertFalse(n_pattern_anchor_matches("n_pattern_long_wash", anchor, prior_rows))
 
 
 if __name__ == "__main__":

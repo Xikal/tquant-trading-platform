@@ -9,6 +9,11 @@ from sqlalchemy.orm import Session
 from app.models.entities import DailyBarSnapshot, Instrument, LowBuyStrategyPoolSnapshot
 from app.repositories.low_buy import DailyHistoryRepository, LowBuyStrategyPoolRepository
 from app.services.low_buy.shared import BoardCandidate
+from app.services.low_buy.strategy_pool_n_pattern import (
+    n_pattern_anchor_matches,
+    n_pattern_latest_bar_matches,
+    n_pattern_retracement_matches,
+)
 from app.services.low_buy.strategy_pool_config import STRATEGY_POOL_SNAPSHOT_VERSION, strategy_pool_profile
 
 
@@ -265,6 +270,9 @@ class StrategyPoolBuilder:
                 break
             prior_rows = [row for row, _, _ in rows[max(0, index - 5) : index]]
             if daily_anchor_matches_strategy_pool(strategy, anchor, prior_rows):
+                post_rows = [row for row, _, _ in rows[index + 1 :]]
+                if not n_pattern_retracement_matches(strategy, anchor, post_rows):
+                    continue
                 return BoardCandidate(
                     symbol=latest_bar.symbol,
                     name=latest_name or latest_bar.symbol,
@@ -288,6 +296,8 @@ def latest_daily_bar_matches_strategy_pool(strategy: str, latest_bar: DailyPoolB
         return latest_bar.amount >= 120_000_000 and -5.0 <= latest_bar.pct_chg <= 3.5
     if strategy == "ma_channel_band":
         return latest_bar.amount >= 80_000_000 and -4.5 <= latest_bar.pct_chg <= 4.5
+    if strategy in {"n_pattern_long_wash", "n_pattern_short_wash"}:
+        return n_pattern_latest_bar_matches(strategy, latest_bar)
     return True
 
 
@@ -322,6 +332,8 @@ def daily_anchor_matches_strategy_pool(
         return anchor.pct_chg >= 9.2 and anchor_close_position >= 0.88 and volume_ratio >= 1.35
     if strategy == "ma_channel_band":
         return volume_ok and anchor.close_price >= anchor.open_price * 1.005
+    if strategy in {"n_pattern_long_wash", "n_pattern_short_wash"}:
+        return n_pattern_anchor_matches(strategy, anchor, prior_rows)
     return strong_body and volume_ok
 
 

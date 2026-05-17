@@ -1,16 +1,17 @@
 import { request as baseRequest, requestCached as baseRequestCached } from "./base";
+import type { ApiRequestInit } from "./requestTypes";
 
 export interface IApiClient {
-  request<T>(path: string, init?: RequestInit): Promise<T>;
-  requestCached<T>(path: string, ttlMs: number, init?: RequestInit): Promise<T>;
+  request<T>(path: string, init?: ApiRequestInit): Promise<T>;
+  requestCached<T>(path: string, ttlMs: number, init?: ApiRequestInit): Promise<T>;
 }
 
 class DefaultApiClient implements IApiClient {
-  request<T>(path: string, init?: RequestInit): Promise<T> {
+  request<T>(path: string, init?: ApiRequestInit): Promise<T> {
     return baseRequest<T>(path, init);
   }
 
-  requestCached<T>(path: string, ttlMs: number, init?: RequestInit): Promise<T> {
+  requestCached<T>(path: string, ttlMs: number, init?: ApiRequestInit): Promise<T> {
     return baseRequestCached<T>(path, ttlMs, init);
   }
 }

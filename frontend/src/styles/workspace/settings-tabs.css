@@ -1,0 +1,83 @@
+.settings-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  grid-column: 1 / -1;
+  margin-top: -4px;
+  padding: 8px;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.76);
+}
+
+.settings-tabs button {
+  display: grid;
+  min-width: 148px;
+  max-width: 220px;
+  gap: 2px;
+  padding: 9px 12px;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  border-radius: 12px;
+  background: #fff;
+  color: #334155;
+  text-align: left;
+}
+
+.settings-tabs button span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.settings-tabs button span i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #f59e0b;
+  box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.12);
+}
+
+.settings-tabs button small {
+  color: #64748b;
+  font-size: 11px;
+}
+
+.settings-tabs button.active {
+  border-color: #d7a64f;
+  background: #fffbeb;
+  color: #7c2d12;
+  box-shadow: 0 8px 18px rgba(146, 64, 14, 0.08);
+}
+
+.settings-cards.role-separated.tabbed {
+  gap: 0;
+}
+
+.settings-cards.role-separated.tabbed .settings-section {
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+}
+
+.settings-cards.role-separated .settings-tab-panel {
+  min-height: 320px;
+}
+
+.settings-cards.role-separated.tabbed .compact-form-grid {
+  grid-template-columns: repeat(auto-fit, minmax(150px, 220px));
+  justify-content: start;
+}
+
+.settings-cards.role-separated.tabbed .compact-form-grid .tq-field,
+.settings-cards.role-separated.tabbed .compact-form-grid .tq-search-field {
+  width: min(100%, 220px);
+}
+
+.settings-cards.role-separated.tabbed .compact-form-grid .tq-input,
+.settings-cards.role-separated.tabbed .compact-form-grid .tq-input-wrap {
+  width: 100%;
+}
+
+.settings-cards.role-separated.tabbed .factor-weight-grid {
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+}

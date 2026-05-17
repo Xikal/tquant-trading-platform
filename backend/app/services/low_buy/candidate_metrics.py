@@ -190,6 +190,16 @@ def passes_common_prefilter(
                 item.board_count <= 2,
             ]
         )
+    if strategy in {"n_pattern_long_wash", "n_pattern_short_wash"}:
+        return all(
+            [
+                metrics.volume_burst_ratio >= 0.85,
+                metrics.support_watch_ok,
+                metrics.latest_change_ok,
+                item.board_count <= 2,
+                metrics.latest_close >= metrics.board_low * 0.995,
+            ]
+        )
     return all(
         [
             metrics.board_gain_ok,

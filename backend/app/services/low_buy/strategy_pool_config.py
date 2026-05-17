@@ -80,6 +80,22 @@ _STRATEGY_POOL_PROFILES: dict[str, StrategyPoolProfile] = {
         source="limit_up_pool",
         max_size=40,
     ),
+    "n_pattern_long_wash": StrategyPoolProfile(
+        strategy_key="n_pattern_long_wash",
+        pool_key="n_pattern_long_wash_pool",
+        title="长洗 N 字研究池",
+        source="daily_history",
+        max_size=220,
+        uses_daily_scan=True,
+    ),
+    "n_pattern_short_wash": StrategyPoolProfile(
+        strategy_key="n_pattern_short_wash",
+        pool_key="n_pattern_short_wash_pool",
+        title="短洗 N 字研究池",
+        source="daily_history",
+        max_size=220,
+        uses_daily_scan=True,
+    ),
     "deep_pullback": StrategyPoolProfile(
         strategy_key="deep_pullback",
         pool_key="deep_pullback_research_pool",

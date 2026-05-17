@@ -35,6 +35,8 @@ RESEARCH_STRATEGIES = frozenset(
         "divergence_consensus",
         "ma_channel_band",
         "leader_pullback_band",
+        "n_pattern_long_wash",
+        "n_pattern_short_wash",
     }
 )
 

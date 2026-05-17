@@ -22,6 +22,7 @@ import {
   SectorFilterCard,
   StrategyGovernanceCard,
 } from "./SettingsPagePanels";
+import { SettingsPageTabs, type SettingsTabItem, type SettingsTabKey } from "./SettingsPageTabs";
 import { QuantParameterMlCard } from "./QuantParameterMlCard";
 import { QuantParameterPaperExitCard } from "./QuantParameterPaperExitCard";
 import { QuantParameterSectorEtfCard } from "./QuantParameterSectorEtfCard";
@@ -77,6 +78,7 @@ export function SettingsPage({
   const [operationAuditLoading, setOperationAuditLoading] = useState(false);
   const [sectorQuery, setSectorQuery] = useState("");
   const [sectorDraft, setSectorDraft] = useState<string[]>([]);
+  const [activeTab, setActiveTab] = useState<SettingsTabKey>("account");
   const savedTimerRef = useRef<number | null>(null);
   const adminTokenError = draft.adminToken.trim() ? "" : "保存配置前需要填写管理令牌";
   const llmKeyError = !settings?.llm_api_key_configured && !draft.llm_api_key.trim() ? "首次配置大模型需要填写 API Key" : "";
@@ -100,6 +102,27 @@ export function SettingsPage({
     if (!query) return sectors;
     return sectors.filter((sector) => sector.toLowerCase().includes(query));
   }, [sectorExclusions, sectorQuery]);
+  const settingsTabs = useMemo<SettingsTabItem[]>(() => {
+    const baseTabs: SettingsTabItem[] = [
+      { key: "account", label: "我的账户", description: "安全与权限" },
+      { key: "trading", label: "交易参数", description: "风控、行业、退出", dirty: dirtyState.risk || sectorDirty },
+    ];
+    if (!isAdmin) {
+      return baseTabs;
+    }
+    return [
+      ...baseTabs,
+      { key: "llm", label: "大模型与因子", description: "DeepSeek、权重、ML", dirty: dirtyState.llm || dirtyState.factor },
+      { key: "data", label: "数据库与诊断", description: "数据源、运行状态", dirty: dirtyState.data },
+      { key: "governance", label: "策略治理", description: "开关、审计、治理" },
+    ];
+  }, [dirtyState.data, dirtyState.factor, dirtyState.llm, dirtyState.risk, isAdmin, sectorDirty]);
+
+  useEffect(() => {
+    if (!settingsTabs.some((tab) => tab.key === activeTab)) {
+      setActiveTab(settingsTabs[0]?.key ?? "account");
+    }
+  }, [activeTab, settingsTabs]);
 
   async function saveSection(section: "llm" | "risk" | "data" | "factor") {
     const error = sectionError(section, {
@@ -254,13 +277,17 @@ export function SettingsPage({
           </div>
         ) : null}
       </div>
-      <div className="settings-cards role-separated">
-        <section className="settings-section">
+      <SettingsPageTabs tabs={settingsTabs} activeTab={activeTab} onChange={setActiveTab} />
+      <div className="settings-cards role-separated tabbed">
+        {activeTab === "account" ? (
+        <section className="settings-section settings-tab-panel">
           <div className="settings-section-title"><strong>我的账户</strong><span>登录安全、二次验证和权限状态</span></div>
           <AuthSecurityCard currentUser={currentUser} onUserUpdate={onUserUpdate} />
         </section>
+        ) : null}
 
-        <section className="settings-section">
+        {activeTab === "trading" ? (
+        <section className="settings-section settings-tab-panel">
           <div className="settings-section-title"><strong>交易参数</strong><span>普通用户常用配置：风控、行业过滤和模拟退出</span></div>
           <SettingCard title="风控参数" button="保存风控参数" onSave={() => void saveSection("risk")} loading={loading === "settings-risk"} saved={savedSection === "risk"} disabled={Boolean(adminTokenError || singleLossError || dailyLossError || pauseLossError || minProfitError)}>
             <div className="compact-form-grid">
@@ -287,10 +314,11 @@ export function SettingsPage({
           <QuantParameterPaperExitCard adminTokenError={adminTokenError} />
           <QuantParameterSectorEtfCard adminTokenError={adminTokenError} />
         </section>
+        ) : null}
 
-        {isAdmin ? (
-          <section className="settings-section admin">
-            <div className="settings-section-title"><strong>系统管理</strong><span>仅管理员可见：模型、数据源、策略治理、审计与诊断</span></div>
+        {isAdmin && activeTab === "llm" ? (
+          <section className="settings-section settings-tab-panel admin">
+            <div className="settings-section-title"><strong>大模型与因子</strong><span>DeepSeek、大模型接口、因子权重和 ML 参数</span></div>
             <SettingCard title="大模型配置" button="保存大模型配置" onSave={() => void saveSection("llm")} loading={loading === "settings-llm"} saved={savedSection === "llm"} disabled={Boolean(adminTokenError || llmKeyError || llmBaseUrlError)}>
               <div className="compact-form-grid">
                 <TextField label="管理令牌" value={draft.adminToken} error={adminTokenError} onChange={(event) => setDraft({ ...draft, adminToken: event.target.value })} />
@@ -300,14 +328,6 @@ export function SettingsPage({
                 <TextField label="供应商" value={draft.llm_provider} placeholder="openai / deepseek" onChange={(event) => setDraft({ ...draft, llm_provider: event.target.value })} />
               </div>
               <p className="hint">当前状态：{settings?.llm_api_key_configured ? "Key 已配置" : "Key 未配置"}</p>
-            </SettingCard>
-            <SettingCard title="数据库与数据源" button="保存数据配置" onSave={() => void saveSection("data")} loading={loading === "settings-data"} saved={savedSection === "data"} disabled={Boolean(adminTokenError || dataSourceUrlError)}>
-              <div className="compact-form-grid">
-                <TextField label="数据源" value={draft.data_source} hint={adminTokenError || "保存数据源配置同样需要管理令牌。"} onChange={(event) => setDraft({ ...draft, data_source: event.target.value })} />
-                <TextField label="数据源地址" value={draft.data_source_base_url} error={dataSourceUrlError} onChange={(event) => setDraft({ ...draft, data_source_base_url: event.target.value })} />
-              </div>
-              <InfoPill label="数据库" value={runtime?.database_url_masked ?? "--"} />
-              <InfoPill label="接口前缀" value={runtime?.api_prefix ?? "/api"} />
             </SettingCard>
             <SettingCard title="因子权重" button="保存因子权重" onSave={() => void saveSection("factor")} loading={loading === "settings-factor"} saved={savedSection === "factor"} disabled={Boolean(adminTokenError)}>
               {factorWeights ? (
@@ -324,11 +344,31 @@ export function SettingsPage({
               ) : <p className="hint">填写管理令牌后点击刷新配置，即可加载因子权重。未加载时不会影响策略运行。</p>}
             </SettingCard>
             <QuantParameterMlCard adminTokenError={adminTokenError} />
+          </section>
+        ) : null}
+
+        {isAdmin && activeTab === "data" ? (
+          <section className="settings-section settings-tab-panel admin">
+            <div className="settings-section-title"><strong>数据库与诊断</strong><span>数据源、数据库掩码、运行任务和快照状态</span></div>
+            <SettingCard title="数据库与数据源" button="保存数据配置" onSave={() => void saveSection("data")} loading={loading === "settings-data"} saved={savedSection === "data"} disabled={Boolean(adminTokenError || dataSourceUrlError)}>
+              <div className="compact-form-grid">
+                <TextField label="数据源" value={draft.data_source} hint={adminTokenError || "保存数据源配置同样需要管理令牌。"} onChange={(event) => setDraft({ ...draft, data_source: event.target.value })} />
+                <TextField label="数据源地址" value={draft.data_source_base_url} error={dataSourceUrlError} onChange={(event) => setDraft({ ...draft, data_source_base_url: event.target.value })} />
+              </div>
+              <InfoPill label="数据库" value={runtime?.database_url_masked ?? "--"} />
+              <InfoPill label="接口前缀" value={runtime?.api_prefix ?? "/api"} />
+            </SettingCard>
+            <RuntimeDiagnosticsCard runtime={runtime} adminTasks={adminTasks} adminMetrics={adminMetrics} loading={loading} onRefresh={onRefresh} />
+            <RuntimeSnapshotPanel settings={settings} runtime={runtime} />
+          </section>
+        ) : null}
+
+        {isAdmin && activeTab === "governance" ? (
+          <section className="settings-section settings-tab-panel admin">
+            <div className="settings-section-title"><strong>策略治理</strong><span>策略状态、功能开关和关键操作审计</span></div>
             <StrategyGovernanceCard strategyGovernance={strategyGovernance} loading={loading} onRefresh={onRefresh} onUpdateStrategyGovernance={onUpdateStrategyGovernance} />
             <FeatureFlagsCard featureFlags={featureFlags} featureFlagAudits={featureFlagAudits} featureFlagError={featureFlagError} loading={loading} saved={savedSection === "feature-flags"} onRefresh={() => void loadFeatureFlags({ includeAudit: true })} onToggle={(item) => void toggleFeatureFlag(item)} />
             <OperationAuditCard items={operationAudits} error={operationAuditError} loading={operationAuditLoading} onRefresh={() => void loadOperationAudits()} />
-            <RuntimeDiagnosticsCard runtime={runtime} adminTasks={adminTasks} adminMetrics={adminMetrics} loading={loading} onRefresh={onRefresh} />
-            <RuntimeSnapshotPanel settings={settings} runtime={runtime} />
           </section>
         ) : null}
       </div>

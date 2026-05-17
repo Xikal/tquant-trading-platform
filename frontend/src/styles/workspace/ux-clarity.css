@@ -168,6 +168,37 @@
   background: linear-gradient(135deg, rgba(255, 248, 232, 0.62), rgba(248, 250, 252, 0.92));
 }
 
+.settings-grid {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas:
+    "hero"
+    "cards";
+}
+
+.settings-cards.role-separated {
+  grid-column: 1 / -1;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+}
+
+.settings-cards.role-separated .settings-section {
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  align-items: start;
+}
+
+.settings-cards.role-separated .settings-section-title {
+  grid-column: 1 / -1;
+}
+
+.settings-cards.role-separated .setting-card,
+.settings-cards.role-separated .runtime-snapshot-panel {
+  min-width: 0;
+}
+
+.settings-cards.role-separated .compact-form-grid {
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+
 .playbook-hero .tabs button {
   display: grid;
   gap: 3px;

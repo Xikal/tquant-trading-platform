@@ -13,6 +13,8 @@ EVENT_MODEL_STRATEGIES = frozenset(
         "core_midcap_vwap_ma5_retrace",
         "sector_mainline_first_divergence_low_buy",
         "mainline_limitup_shrink_retrace_reclaim",
+        "n_pattern_long_wash",
+        "n_pattern_short_wash",
     }
 )
 
@@ -36,6 +38,8 @@ def build_next_day_event_plan(
         return _mainline_first_divergence_plan(metrics=metrics)
     if strategy == "mainline_limitup_shrink_retrace_reclaim":
         return _mainline_limitup_retrace_plan(metrics=metrics)
+    if strategy in {"n_pattern_long_wash", "n_pattern_short_wash"}:
+        return _n_pattern_next_day_plan(strategy=strategy, metrics=metrics)
     return LowBuyNextDayEventPlanOut()
 
 
@@ -190,6 +194,39 @@ def _limit_up_retrace_plan(
         confirmation_rules=["平台高点不破。", "回踩量继续收缩。"],
         exit_rules=_take_profit_exit_rules(anchor_name="平台高点"),
         risk_notes=risk_notes,
+    )
+
+
+def _n_pattern_next_day_plan(*, strategy: str, metrics: CandidateMetrics) -> LowBuyNextDayEventPlanOut:
+    is_short = strategy == "n_pattern_short_wash"
+    return LowBuyNextDayEventPlanOut(
+        state="weak_to_strong_candidate",
+        state_text="N字修复候选" if not is_short else "尾盘试错候选",
+        next_day_action=(
+            "只看放量中阳后的回踩不破启动低点，站稳 VWAP 后小仓验证；不追高。"
+            if not is_short
+            else "次日必须弱转强并站稳 VWAP；若低开低走或跌破锤头低点，直接放弃。"
+        ),
+        t2_action=(
+            "T+2 仍不能继续抬高低点或脱离买点区，降级退出。"
+            if not is_short
+            else "T+2 前不能确认转强就退出，不做被动持仓。"
+        ),
+        first_take_profit_pct=3.0 if not is_short else 2.0,
+        second_take_profit_pct=5.0 if not is_short else 4.0,
+        max_holding_days=5 if not is_short else 2,
+        position_pct=0.0,
+        confirmation_rules=[
+            "启动日低点不能被跌破。",
+            "开盘后站稳 VWAP，分时低点继续抬高。",
+            "修复放量不能演变成长上影冲高回落。",
+        ],
+        exit_rules=[
+            "跌破启动日低点直接失效。",
+            "冲高后跌回 VWAP，剩余仓位降级退出。",
+            "没有弱转强确认前，不做加仓。",
+        ],
+        risk_notes=_common_risk_notes(metrics),
     )
 
 

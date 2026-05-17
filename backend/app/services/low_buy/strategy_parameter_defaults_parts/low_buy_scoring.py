@@ -88,6 +88,23 @@ LOW_BUY_SCORING_DEFAULTS: dict[str, Any] = {
             "volume_burst_cap": 1.5,
             "volume_burst_weight": 2.5,
         },
+        "n_pattern_long_wash": {
+            "board_low_held_bonus": 3.0,
+            "post_volume_base": 0.82,
+            "post_volume_weight": 10.0,
+            "close_position_base": 0.50,
+            "close_position_weight": 8.0,
+            "long_wash_day_min": 8,
+            "long_wash_day_bonus": 2.0,
+        },
+        "n_pattern_short_wash": {
+            "board_low_held_bonus": 2.5,
+            "reversal_candle_bonus": 4.0,
+            "close_position_base": 0.45,
+            "close_position_weight": 7.0,
+            "short_wash_day_max": 4,
+            "short_wash_day_bonus": 2.0,
+        },
         "breakout_support": {"breakout_distance_max_pct": 2.0, "bonus": 4.0},
         "limit_up_breakout_retrace": {
             "platform_breakout_min_pct": 2.0,

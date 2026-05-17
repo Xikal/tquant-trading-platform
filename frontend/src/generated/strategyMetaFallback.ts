@@ -143,5 +143,41 @@ export const GENERATED_STRATEGY_META_FALLBACK = [
     "probe_status": "pending",
     "probe_summary": "",
     "visibility": "backtest_only"
+  },
+  {
+    "key": "n_pattern_long_wash",
+    "name": "长洗N字回踩",
+    "display_name": "长洗N字回踩",
+    "label": "长洗N字回踩",
+    "description": "大阳/涨停启动后 7-15 日缩量洗盘，守住启动低点后等待放量修复。",
+    "tier": "research",
+    "category_key": "research",
+    "category": "研究策略",
+    "display_category": "研究策略",
+    "risk_level": "high",
+    "typical_holding_days": "3-8天",
+    "sort_order": 90,
+    "enabled": true,
+    "probe_status": "not_required",
+    "probe_summary": "",
+    "visibility": "full"
+  },
+  {
+    "key": "n_pattern_short_wash",
+    "name": "短洗N字试错",
+    "display_name": "短洗N字试错",
+    "label": "短洗N字试错",
+    "description": "启动后 2-5 日快速分歧，红十字或锤头线守住启动低点，尾盘小仓试错。",
+    "tier": "research",
+    "category_key": "research",
+    "category": "研究策略",
+    "display_category": "研究策略",
+    "risk_level": "high",
+    "typical_holding_days": "1-3天",
+    "sort_order": 100,
+    "enabled": true,
+    "probe_status": "not_required",
+    "probe_summary": "",
+    "visibility": "full"
   }
 ] as const;

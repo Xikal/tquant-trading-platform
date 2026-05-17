@@ -9,8 +9,8 @@ import type { useBacktestDashboard } from "../backtest/useBacktestDashboard";
 
 type HubState = ReturnType<typeof useStrategyHub>;
 type DashboardState = ReturnType<typeof useBacktestDashboard>;
-type DetailTabKey = "quick" | "history" | "signals" | "expert";
-type ExpertTabKey = Extract<StrategyHubTab, "optimize" | "validate" | "compare" | "capacity" | "factor">;
+type DetailTabKey = "quick" | "history" | "signals" | "factor" | "expert";
+type ExpertTabKey = Extract<StrategyHubTab, "optimize" | "validate" | "compare" | "capacity">;
 
 export function StrategyHubDetailTabs({
   currentUser,
@@ -25,15 +25,20 @@ export function StrategyHubDetailTabs({
   onQuickSubmit: () => void;
   onRerun: (run: BacktestRunSummary) => void;
 }) {
-  const expertTabs = visibleTabsForUser(currentUser).filter((tab): tab is typeof tab & { key: ExpertTabKey } =>
-    ["optimize", "validate", "compare", "capacity", "factor"].includes(tab.key)
+  const visibleTabs = visibleTabsForUser(currentUser);
+  const expertTabs = visibleTabs.filter((tab): tab is typeof tab & { key: ExpertTabKey } =>
+    ["optimize", "validate", "compare", "capacity"].includes(tab.key)
   );
-  const detailTab = currentDetailTab(hub.tab, expertTabs.length > 0);
+  const hasFactorLab = visibleTabs.some((tab) => tab.key === "factor");
+  const detailTab = currentDetailTab(hub.tab, expertTabs.length > 0, hasFactorLab);
   const detailTabs: Array<{ key: DetailTabKey; label: string; hint: string }> = [
     { key: "quick", label: "快速体检", hint: "新用户从这里开始" },
     { key: "history", label: "最近结果", hint: "看最近任务和历史变化" },
     { key: "signals", label: "信号复盘", hint: "看有效和失效案例" },
   ];
+  if (hasFactorLab) {
+    detailTabs.push({ key: "factor", label: "因子实验室", hint: "DeepSeek 挖掘新因子" });
+  }
   if (expertTabs.length) {
     detailTabs.push({ key: "expert", label: "专家工具", hint: "调参、验证、对比、容量" });
   }
@@ -99,6 +104,11 @@ export function StrategyHubDetailTabs({
           <StrategyBridge tab="signals" currentUser={currentUser} dashboard={dashboard} />
         </div>
       ) : null}
+      {hub.loading !== "tab-switch" && detailTab === "factor" ? (
+        <div className="strategy-detail-panel">
+          <StrategyBridge tab="factor" currentUser={currentUser} dashboard={dashboard} />
+        </div>
+      ) : null}
       {hub.loading !== "tab-switch" && detailTab === "expert" ? (
         <div className="strategy-detail-panel strategy-expert-panel">
           <div className="strategy-expert-strip" role="tablist" aria-label="专家工具">
@@ -121,10 +131,11 @@ export function StrategyHubDetailTabs({
   );
 }
 
-function currentDetailTab(tab: StrategyHubTab, hasExpertTabs: boolean): DetailTabKey {
+function currentDetailTab(tab: StrategyHubTab, hasExpertTabs: boolean, hasFactorLab: boolean): DetailTabKey {
   if (tab === "quick") return "quick";
   if (tab === "history") return "history";
   if (tab === "signals") return "signals";
+  if (tab === "factor" && hasFactorLab) return "factor";
   if (!hasExpertTabs) return "quick";
   return "expert";
 }
@@ -132,6 +143,10 @@ function currentDetailTab(tab: StrategyHubTab, hasExpertTabs: boolean): DetailTa
 function switchDetailTab(key: DetailTabKey, hub: HubState) {
   if (key === "expert") {
     hub.setTab(expertTab(hub.tab, hub, false));
+    return;
+  }
+  if (key === "factor") {
+    hub.setTab("factor");
     return;
   }
   hub.setTab(key);
@@ -144,5 +159,5 @@ function expertTab(tab: StrategyHubTab, hub: HubState, fallbackToCurrent = true)
 }
 
 function isExpertTab(tab: StrategyHubTab): tab is ExpertTabKey {
-  return tab === "optimize" || tab === "validate" || tab === "compare" || tab === "capacity" || tab === "factor";
+  return tab === "optimize" || tab === "validate" || tab === "compare" || tab === "capacity";
 }

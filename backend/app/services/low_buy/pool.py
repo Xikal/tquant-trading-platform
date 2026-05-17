@@ -43,6 +43,8 @@ _STRATEGY_BOARD_WINDOW_DAYS = {
     "mainline_limitup_shrink_retrace_reclaim": 18,
     "ma_channel_band": 30,
     "leader_pullback_band": 18,
+    "n_pattern_long_wash": 24,
+    "n_pattern_short_wash": 10,
 }
 
 _STRATEGY_RETRACEMENT_DAYS_MAX = {
@@ -54,6 +56,8 @@ _STRATEGY_RETRACEMENT_DAYS_MAX = {
     "mainline_limitup_shrink_retrace_reclaim": 8,
     "ma_channel_band": 14,
     "leader_pullback_band": 8,
+    "n_pattern_long_wash": 15,
+    "n_pattern_short_wash": 5,
 }
 
 class LowBuyPoolMixin(LowBuyTradeDateMixin):

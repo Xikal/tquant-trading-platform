@@ -19,6 +19,8 @@ def entry_tolerance_pct(strategy: str) -> float:
         "breakout_support": 0.5,
         "limit_up_breakout_retrace": 0.35,
         "divergence_consensus": 0.25,
+        "n_pattern_long_wash": 0.45,
+        "n_pattern_short_wash": 0.35,
         "deep_pullback": 0.0,
         "trend_rebound": 0.6,
     }
@@ -136,6 +138,18 @@ def build_candidate_risks(
         if context_adjustment.execution_blocked:
             risks.append("风险分层已触发执行阻断，本轮不允许进入确定买入。")
         return risks + context_adjustment.extra_risks
+    if strategy in {"n_pattern_long_wash", "n_pattern_short_wash"}:
+        risks = [
+            "跌破启动日低点，说明主力成本区失守，N 字结构直接失败。",
+            "当前仍是研究策略，不作为生产自动买入依据。",
+        ]
+        if strategy == "n_pattern_short_wash":
+            risks.append("短洗试错必须次日验证，不能把失败试仓拿成被动持仓。")
+        if metrics.long_upper_shadow or metrics.intraday_reversal_flag:
+            risks.append("出现长上影或冲高回落，说明承接不稳定，需要降级观察。")
+        if metrics.distribution_risk_score >= 5.0:
+            risks.append("派发风险偏高，N 字修复可能是假反抽。")
+        return risks + context_adjustment.extra_risks
     risks = [
         "跌破止损位说明本次低吸逻辑失效，应直接离场。",
         "只适合上升趋势或震荡偏强市场，跌停潮里应整体降级处理。",
@@ -185,6 +199,30 @@ def build_candidate_tags(
             "横盘缩量" if metrics.consolidation_volume_ratio <= 0.72 else "缩量不足",
             "首板启动",
             "右侧确认",
+            distribution_tag(metrics.distribution_risk_score),
+            f"风险层级:{context_adjustment.risk_tier}",
+            *factor_tags,
+            *context_adjustment.extra_tags,
+        ]
+    if strategy in {"n_pattern_long_wash", "n_pattern_short_wash"}:
+        confirmation_tag = (
+            "放量修复"
+            if (
+                strategy == "n_pattern_long_wash"
+                and metrics.latest_change_pct >= 0.6
+                and metrics.close_position_ratio >= 0.50
+            )
+            else "锤头/十字"
+            if strategy == "n_pattern_short_wash" and (metrics.doji_like or metrics.long_lower_shadow)
+            else "修复待确认"
+        )
+        return [
+            "热点行业" if item.industry and hot_industries and item.industry in hot_industries else "趋势筛选",
+            "长洗N字" if strategy == "n_pattern_long_wash" else "短洗N字",
+            "启动低点未破" if metrics.board_low_held else "启动低点失守",
+            "缩量洗盘" if metrics.post_volume_ratio <= 0.9 else "缩量待确认",
+            confirmation_tag,
+            "研究策略",
             distribution_tag(metrics.distribution_risk_score),
             f"风险层级:{context_adjustment.risk_tier}",
             *factor_tags,

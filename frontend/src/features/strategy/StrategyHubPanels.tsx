@@ -191,7 +191,7 @@ export function StrategyBridge({
   if (tab === "capacity" && !isAdmin(currentUser)) {
     return <PermissionPanel title="需要管理员权限" description="ML 在线学习、手动增量训练和容量评估会读取训练样本与模型状态，仅管理员可操作。" />;
   }
-  if (tab === "factor" && !canValidate(currentUser)) {
+  if (tab === "factor" && !canFactorResearch(currentUser)) {
     return <PermissionPanel title="需要研究员权限" description="因子挖掘会生成研究代码并运行历史评估，仅研究员或管理员可操作。" />;
   }
   if (tab === "factor") {
@@ -227,7 +227,7 @@ export function visibleTabsForUser(user: AuthUser) {
   return TABS.filter((tab) => {
     if (tab.key === "optimize") return canOptimize(user);
     if (tab.key === "validate") return canValidate(user);
-    if (tab.key === "factor") return canValidate(user);
+    if (tab.key === "factor") return canFactorResearch(user);
     if (tab.key === "capacity") return isAdmin(user);
     return true;
   });
@@ -292,6 +292,11 @@ function canOptimize(user: AuthUser): boolean {
 function canValidate(user: AuthUser): boolean {
   const roles = userRoles(user);
   return isAdmin(user) || roles.has("backtest_optimizer") || roles.has("backtest_research");
+}
+
+function canFactorResearch(user: AuthUser): boolean {
+  const roles = userRoles(user);
+  return canValidate(user) || roles.has("strategy_config");
 }
 
 function statusText(status: string): string {

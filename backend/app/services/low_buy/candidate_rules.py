@@ -7,6 +7,10 @@ from app.services.low_buy.candidate_rule_params import (
     prefilter_params as _prefilter_params,
 )
 from app.services.low_buy.candidate_prefilters import passes_strategy_prefilter
+from app.services.low_buy.candidate_rules_n_pattern import (
+    n_pattern_long_wash_setup,
+    n_pattern_short_wash_setup,
+)
 from app.services.low_buy.candidate_rules_mainline import (
     _core_midcap_vwap_ma5_retrace_setup,
     _late_session_strong_support_setup,
@@ -33,6 +37,8 @@ def build_strategy_setup(
         "mainline_limitup_shrink_retrace_reclaim": _mainline_limitup_shrink_retrace_reclaim_setup,
         "ma_channel_band": _ma_channel_band_setup,
         "leader_pullback_band": _leader_pullback_band_setup,
+        "n_pattern_long_wash": n_pattern_long_wash_setup,
+        "n_pattern_short_wash": n_pattern_short_wash_setup,
         "breakout_support": _breakout_support_setup,
         "limit_up_breakout_retrace": _limit_up_breakout_retrace_setup,
         "divergence_consensus": _divergence_consensus_setup,

@@ -20,7 +20,7 @@ export function StrategyHubPage({ currentUser }: { currentUser: AuthUser }) {
   const hub = useStrategyHub();
   const [, setThresholdVersion] = useState(0);
   const expertEnabled = visibleTabsForUser(currentUser).some((tab) =>
-    tab.key === "optimize" || tab.key === "validate" || tab.key === "compare" || tab.key === "capacity"
+    tab.key === "optimize" || tab.key === "validate" || tab.key === "compare" || tab.key === "capacity" || tab.key === "factor"
   );
   const effectiveTab = !expertEnabled && isExpertHubTab(hub.tab) ? "quick" : hub.tab;
   const dashboard = useBacktestDashboard(dashboardSectionForTab(effectiveTab));

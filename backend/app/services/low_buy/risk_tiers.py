@@ -27,6 +27,8 @@ STRICT_STRATEGIES = {
     "deep_pullback",
     "limit_up_breakout_retrace",
     "divergence_consensus",
+    "n_pattern_long_wash",
+    "n_pattern_short_wash",
 }
 STRUCTURE_STRATEGIES = {"classic_retrace", "ma_support", "breakout_support"}
 

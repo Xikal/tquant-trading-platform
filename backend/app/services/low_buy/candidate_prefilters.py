@@ -1,6 +1,10 @@
 from __future__ import annotations
 
 from app.services.low_buy.candidate_distribution_gate import has_limit_up_distribution_exit
+from app.services.low_buy.candidate_prefilters_n_pattern import (
+    passes_n_pattern_long_wash_prefilter,
+    passes_n_pattern_short_wash_prefilter,
+)
 from app.services.low_buy.candidate_rule_params import (
     ma5_ma10_ma20_confluence_pct,
     prefilter_params,
@@ -88,6 +92,10 @@ def passes_strategy_prefilter(
         return _passes_ma_channel_band_prefilter(item, metrics)
     if strategy == "leader_pullback_band":
         return _passes_leader_pullback_band_prefilter(item, metrics)
+    if strategy == "n_pattern_long_wash":
+        return passes_n_pattern_long_wash_prefilter(item, metrics)
+    if strategy == "n_pattern_short_wash":
+        return passes_n_pattern_short_wash_prefilter(item, metrics)
     if strategy == "breakout_support":
         params = prefilter_params(strategy)
         return (

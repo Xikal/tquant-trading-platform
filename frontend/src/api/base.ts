@@ -1,6 +1,7 @@
 import { isNativeHttpRuntime, nativeRequest } from "./nativeHttp"
 import { clearOfflineCache, readOfflineCache, writeOfflineCache } from "./offlineCache"
 import { fetchWithTimeout } from "./fetchWithTimeout"
+import type { ApiRequestInit } from "./requestTypes"
 
 const isNativeTarget = import.meta.env.VITE_APP_TARGET === "native"
 const configuredApiBase = import.meta.env.VITE_API_BASE_URL
@@ -19,14 +20,15 @@ let authAccessToken = hydratedAuth.accessToken
 let authPersistenceMode: AuthPersistenceMode = hydratedAuth.mode
 const MAX_IDEMPOTENT_RETRIES = 2
 
-export async function request<T>(path: string, init?: RequestInit): Promise<T> {
+export async function request<T>(path: string, init?: ApiRequestInit): Promise<T> {
   if (API_BASE === "__NATIVE_API_BASE_REQUIRED__") {
     throw new Error("Native build requires VITE_API_BASE_URL to point at the backend /api endpoint.")
   }
 
-  const headers = buildRequestHeaders(init)
+  const { timeoutMs, fetchInit } = splitApiRequestInit(init)
+  const headers = buildRequestHeaders(fetchInit)
 
-  const method = (init?.method ?? "GET").toUpperCase()
+  const method = (fetchInit?.method ?? "GET").toUpperCase()
   const canRetry = method === "GET" || method === "HEAD"
 
   if (isNativeHttpRuntime(isNativeTarget)) {
@@ -36,7 +38,7 @@ export async function request<T>(path: string, init?: RequestInit): Promise<T> {
         retryRequest(
           () =>
             nativeRequest<T>(`${API_BASE}${path}`, {
-              ...init,
+              ...fetchInit,
               headers
             }),
           canRetry
@@ -49,14 +51,22 @@ export async function request<T>(path: string, init?: RequestInit): Promise<T> {
     path,
     () =>
       retryRequest(async () => {
-        let response = await fetchWithTimeout(`${API_BASE}${path}`, { ...init, headers, credentials: "include" })
+        let response = await fetchWithTimeout(
+          `${API_BASE}${path}`,
+          { ...fetchInit, headers, credentials: "include" },
+          timeoutMs
+        )
 
         if (response.status === 401 && canRefreshForPath(path) && (await refreshAccessToken())) {
-          response = await fetchWithTimeout(`${API_BASE}${path}`, {
-            ...init,
-            headers: buildRequestHeaders(init),
-            credentials: "include"
-          })
+          response = await fetchWithTimeout(
+            `${API_BASE}${path}`,
+            {
+              ...fetchInit,
+              headers: buildRequestHeaders(fetchInit),
+              credentials: "include"
+            },
+            timeoutMs
+          )
         }
 
         if (!response.ok) {
@@ -68,6 +78,14 @@ export async function request<T>(path: string, init?: RequestInit): Promise<T> {
       }, canRetry),
     canRetry
   )
+}
+
+function splitApiRequestInit(init?: ApiRequestInit): { timeoutMs?: number; fetchInit?: RequestInit } {
+  if (!init) {
+    return {}
+  }
+  const { timeoutMs, ...fetchInit } = init
+  return { timeoutMs, fetchInit }
 }
 
 function buildRequestHeaders(init?: RequestInit): Record<string, string> {
@@ -247,7 +265,7 @@ export function normalizeAdminApiToken(token: string): string {
   return cleaned
 }
 
-export async function requestCached<T>(path: string, ttlMs: number, init?: RequestInit): Promise<T> {
+export async function requestCached<T>(path: string, ttlMs: number, init?: ApiRequestInit): Promise<T> {
   const cacheKey = `${init?.method ?? "GET"}:${path}`
   const now = Date.now()
   const cached = responseCache.get(cacheKey)
