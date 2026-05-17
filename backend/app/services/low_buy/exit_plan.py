@@ -18,7 +18,7 @@ def build_exit_plan(
     if strategy == "limit_up_breakout_retrace":
         return _limit_up_retrace_plan(metrics, stop_loss, take_profit)
     if strategy in {"n_pattern_long_wash", "n_pattern_short_wash"}:
-        return _n_pattern_plan(strategy, metrics, stop_loss, take_profit)
+        return _n_pattern_plan(strategy, metrics, setup, stop_loss)
     return _classic_low_buy_plan(strategy, metrics, stop_loss, take_profit)
 
 
@@ -68,20 +68,22 @@ def _limit_up_retrace_plan(
 def _n_pattern_plan(
     strategy: str,
     metrics: CandidateMetrics,
+    setup: StrategySetup,
     stop_loss: float,
-    take_profit: float,
 ) -> LowBuyExitPlanOut:
     max_days = strategy_max_holding_days(strategy)
     trailing_stop = round(max(metrics.board_low, metrics.recent_low_guard) * 0.992, 3)
     if strategy == "n_pattern_short_wash":
         invalid_condition = "跌破锤头/红十字低点或启动日低点，短洗 N 字试错失败。"
+        first_take_profit = round(max(setup.entry_zone_high * 1.025, metrics.latest_close * 1.02), 3)
         exit_rules = [
             "次日不能弱转强或站稳 VWAP，直接退出。",
-            "冲高 2%-4% 先兑现，不把试错仓拿成被动持仓。",
+            "冲高 2%-4% 先兑现，不把核心生产仓拿成被动持仓。",
             "跌破启动日低点，不补仓、不等待反抽。",
         ]
     else:
         invalid_condition = "跌破启动日低点或再度放量阴跌，长洗 N 字结构失败。"
+        first_take_profit = round(max(setup.entry_zone_high * 1.035, metrics.latest_close * 1.03), 3)
         exit_rules = [
             "放量修复后 3-5 日内不能脱离买点区，主动降级。",
             "冲高 3%-5% 先处理一半风险，剩余仓位看低点是否继续抬高。",
@@ -89,7 +91,7 @@ def _n_pattern_plan(
         ]
     return LowBuyExitPlanOut(
         stop_loss=stop_loss,
-        first_take_profit=round(max(take_profit, metrics.latest_close * 1.03), 3),
+        first_take_profit=first_take_profit,
         trailing_stop=max(stop_loss, trailing_stop),
         max_holding_days=max_days,
         time_stop_text=strategy_holding_policy(strategy).time_stop_text,

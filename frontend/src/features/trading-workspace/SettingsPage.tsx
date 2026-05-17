@@ -348,7 +348,7 @@ export function SettingsPage({
         ) : null}
 
         {isAdmin && activeTab === "data" ? (
-          <section className="settings-section settings-tab-panel admin">
+          <section className="settings-section settings-tab-panel settings-tab-panel--data admin">
             <div className="settings-section-title"><strong>数据库与诊断</strong><span>数据源、数据库掩码、运行任务和快照状态</span></div>
             <SettingCard title="数据库与数据源" button="保存数据配置" onSave={() => void saveSection("data")} loading={loading === "settings-data"} saved={savedSection === "data"} disabled={Boolean(adminTokenError || dataSourceUrlError)}>
               <div className="compact-form-grid">
@@ -364,7 +364,7 @@ export function SettingsPage({
         ) : null}
 
         {isAdmin && activeTab === "governance" ? (
-          <section className="settings-section settings-tab-panel admin">
+          <section className="settings-section settings-tab-panel settings-tab-panel--governance admin">
             <div className="settings-section-title"><strong>策略治理</strong><span>策略状态、功能开关和关键操作审计</span></div>
             <StrategyGovernanceCard strategyGovernance={strategyGovernance} loading={loading} onRefresh={onRefresh} onUpdateStrategyGovernance={onUpdateStrategyGovernance} />
             <FeatureFlagsCard featureFlags={featureFlags} featureFlagAudits={featureFlagAudits} featureFlagError={featureFlagError} loading={loading} saved={savedSection === "feature-flags"} onRefresh={() => void loadFeatureFlags({ includeAudit: true })} onToggle={(item) => void toggleFeatureFlag(item)} />

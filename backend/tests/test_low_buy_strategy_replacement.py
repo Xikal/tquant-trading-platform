@@ -15,6 +15,8 @@ from app.services.low_buy.pool import LowBuyPoolMixin
 from app.services.low_buy.shared import DEFAULT_PRODUCTION_LOW_BUY_STRATEGY, PLAYBOOKS, normalize_low_buy_strategy
 from app.services.low_buy.strategy_pool_n_pattern import n_pattern_anchor_matches, n_pattern_latest_bar_matches
 from app.services.low_buy.strategy_policy import (
+    StrategyTier,
+    get_strategy_tier,
     mainline_industry_allowed,
     participates_in_priority_board,
     requires_mainline_industry,
@@ -30,6 +32,8 @@ class LowBuyStrategyReplacementTests(unittest.TestCase):
         production = {
             "first_board",
             "volume_shrink",
+            "n_pattern_long_wash",
+            "n_pattern_short_wash",
             "late_session_strong_support",
             "core_midcap_vwap_ma5_retrace",
             "sector_mainline_first_divergence_low_buy",
@@ -43,8 +47,6 @@ class LowBuyStrategyReplacementTests(unittest.TestCase):
             "trend_rebound",
             "deep_pullback",
             "limit_up_breakout_retrace",
-            "n_pattern_long_wash",
-            "n_pattern_short_wash",
         }
 
         for strategy in production:
@@ -317,7 +319,7 @@ class LowBuyStrategyReplacementTests(unittest.TestCase):
 
         self.assertTrue(passes_strategy_prefilter(strategy, item, double_bottom_metrics))
 
-    def test_n_pattern_strategies_are_research_only_and_use_launch_low_guard(self) -> None:
+    def test_n_pattern_strategies_are_core_production_and_use_launch_low_guard(self) -> None:
         item = _item(amount=220_000_000)
         long_metrics = _metrics(
             retracement_days=10,
@@ -340,7 +342,7 @@ class LowBuyStrategyReplacementTests(unittest.TestCase):
             close_position_ratio=0.62,
             support_distance_pct=2.6,
             volume_burst_ratio=1.6,
-            latest_volume_ratio=1.02,
+            latest_volume_ratio=0.82,
             post_volume_ratio=0.82,
             board_low_held=True,
             doji_like=True,
@@ -355,8 +357,10 @@ class LowBuyStrategyReplacementTests(unittest.TestCase):
             ("n_pattern_short_wash", short_metrics),
         ):
             with self.subTest(strategy=strategy):
-                self.assertEqual(strategy_layer(strategy), "research")
-                self.assertTrue(strong_buy_paused(strategy))
+                self.assertEqual(strategy_layer(strategy), "production")
+                self.assertEqual(get_strategy_tier(strategy), StrategyTier.CORE)
+                self.assertFalse(strong_buy_paused(strategy))
+                self.assertTrue(participates_in_priority_board(strategy))
                 self.assertTrue(passes_strategy_prefilter(strategy, item, metrics))
                 setup = build_strategy_setup(strategy, item, metrics, 88.0)
                 self.assertTrue(setup.execution_ready)
@@ -373,7 +377,7 @@ class LowBuyStrategyReplacementTests(unittest.TestCase):
             close_position_ratio=0.62,
             support_distance_pct=2.6,
             volume_burst_ratio=1.6,
-            latest_volume_ratio=1.02,
+            latest_volume_ratio=0.82,
             board_low_held=True,
             doji_like=False,
             long_lower_shadow=False,

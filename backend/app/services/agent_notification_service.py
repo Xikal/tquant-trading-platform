@@ -35,6 +35,7 @@ SIGNAL_RANKS = {
     "research": 1,
     "watch": 2,
     "track": 2,
+    "observe_confirmed": 3,
     "near_entry": 3,
     "focus": 3,
     "soft_buy_now": 4,

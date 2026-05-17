@@ -7,11 +7,9 @@ import {
   formatMoney,
   formatPct,
 } from "../backtest/backtestDisplay";
-import { BacktestResearchPanel, type BacktestResearchSection } from "../backtest/BacktestResearchPanel";
-import { useBacktestDashboard, type BacktestDashboardActiveSection } from "../backtest/useBacktestDashboard";
-import { FactorMiningTab } from "./FactorMiningTab";
 import { StrategySignalReplayPanel } from "./StrategySignalReplayPanel";
 import { strategyDoctorVerdict, strategyHealthLabel } from "./strategyVerdict";
+import { canOptimize, canValidate, isAdmin } from "./strategyPermissions";
 import type { StrategyHubTab } from "./useStrategyHub";
 
 export function RecentRuns({ runs, onRerun }: { runs: BacktestRunSummary[]; onRerun?: (run: BacktestRunSummary) => void }) {
@@ -163,56 +161,13 @@ export function StrategyHistoryPanel({
 
 export function StrategyBridge({
   tab,
-  currentUser,
-  dashboard,
 }: {
-  tab: Exclude<StrategyHubTab, "quick" | "history">;
-  currentUser: AuthUser;
-  dashboard: ReturnType<typeof useBacktestDashboard>;
+  tab: Extract<StrategyHubTab, "signals">;
 }) {
-  const metaMap: Record<Exclude<StrategyHubTab, "quick" | "history">, [string, string]> = {
-    signals: ["最近信号", "用案例卡查看近期哪些票入选、建议价格、止损和结果线索。"],
-    optimize: ["专家工具：找更稳参数", "只建议研究员使用。它会自动搜索评分、仓位、止损和持有天数。"],
-    validate: ["专家工具：防过拟合检查", "检查策略是不是只在历史里好看。样本外不通过，不要进生产。"],
-    compare: ["策略对比", "把多个体检结果放在一起，直接选择更稳的策略。"],
-    capacity: ["管理员工具：ML / 容量", "查看模拟盘平仓样本是否进入训练池，并评估策略在不同资金规模下是否还能承载。"],
-    factor: ["因子实验室", "用 DeepSeek 生成因子假设，经过沙盒和统计评估后再人工审批。"],
-  };
-  const meta = metaMap[tab];
   if (tab === "signals") {
-    return <StrategySignalReplayPanel title={meta[0]} />;
+    return <StrategySignalReplayPanel title="最近信号" />;
   }
-  if (tab === "optimize" && !canOptimize(currentUser)) {
-    return <PermissionPanel title="需要参数优化权限" description="当前账号可以查看回测和信号复盘，但不能创建参数优化任务。" />;
-  }
-  if (tab === "validate" && !canValidate(currentUser)) {
-    return <PermissionPanel title="需要研究员权限" description="当前账号可以查看回测和信号复盘，但不能创建样本外验证任务。" />;
-  }
-  if (tab === "capacity" && !isAdmin(currentUser)) {
-    return <PermissionPanel title="需要管理员权限" description="ML 在线学习、手动增量训练和容量评估会读取训练样本与模型状态，仅管理员可操作。" />;
-  }
-  if (tab === "factor" && !canFactorResearch(currentUser)) {
-    return <PermissionPanel title="需要研究员权限" description="因子挖掘会生成研究代码并运行历史评估，仅研究员或管理员可操作。" />;
-  }
-  if (tab === "factor") {
-    return <FactorMiningTab />;
-  }
-  const sectionMap: Record<Exclude<StrategyHubTab, "quick" | "history" | "signals">, BacktestResearchSection> = {
-    optimize: "optimization",
-    validate: "validation",
-    compare: "compare",
-    capacity: "capacity",
-    factor: "capacity",
-  };
-  return (
-    <div className="strategy-bridge">
-      <section className="panel strategy-bridge-header">
-        <h2>{meta[0]}</h2>
-        <p>{meta[1]}</p>
-      </section>
-      <StrategyResearchFocus section={sectionMap[tab]} dashboard={dashboard} />
-    </div>
-  );
+  return null;
 }
 
 export function PanelTitle({ title }: { title: string }) {
@@ -227,21 +182,9 @@ export function visibleTabsForUser(user: AuthUser) {
   return TABS.filter((tab) => {
     if (tab.key === "optimize") return canOptimize(user);
     if (tab.key === "validate") return canValidate(user);
-    if (tab.key === "factor") return canFactorResearch(user);
     if (tab.key === "capacity") return isAdmin(user);
     return true;
   });
-}
-
-export function dashboardSectionForTab(tab: StrategyHubTab): BacktestDashboardActiveSection {
-  if (tab === "quick") return "quick";
-  if (tab === "history") return "history";
-  if (tab === "optimize") return "optimization";
-  if (tab === "validate") return "validation";
-  if (tab === "compare") return "compare";
-  if (tab === "capacity") return "none";
-  if (tab === "factor") return "none";
-  return "none";
 }
 
 export function executionModelText(value: string): string {
@@ -249,54 +192,6 @@ export function executionModelText(value: string): string {
   if (value === "next_open") return "次日开盘";
   if (value === "close_price") return "收盘价成交";
   return "开盘价成交";
-}
-
-function StrategyResearchFocus({
-  section,
-  dashboard,
-}: {
-  section: BacktestResearchSection;
-  dashboard: ReturnType<typeof useBacktestDashboard>;
-}) {
-  return (
-    <BacktestResearchPanel
-      state={dashboard.research}
-      actions={dashboard.researchActions}
-      sections={[section]}
-    />
-  );
-}
-
-function PermissionPanel({ title, description }: { title: string; description: string }) {
-  return (
-    <section className="panel strategy-access-panel">
-      <h2>{title}</h2>
-      <p>{description}</p>
-    </section>
-  );
-}
-
-function userRoles(user: AuthUser): Set<string> {
-  return new Set((user.roles ?? []).map((role) => role.trim().toLowerCase()).filter(Boolean));
-}
-
-function isAdmin(user: AuthUser): boolean {
-  const roles = userRoles(user);
-  return roles.has("admin") || roles.has("administrator");
-}
-
-function canOptimize(user: AuthUser): boolean {
-  return isAdmin(user) || userRoles(user).has("backtest_optimizer");
-}
-
-function canValidate(user: AuthUser): boolean {
-  const roles = userRoles(user);
-  return isAdmin(user) || roles.has("backtest_optimizer") || roles.has("backtest_research");
-}
-
-function canFactorResearch(user: AuthUser): boolean {
-  const roles = userRoles(user);
-  return canValidate(user) || roles.has("strategy_config");
 }
 
 function statusText(status: string): string {
@@ -358,7 +253,6 @@ const TABS: Array<{ key: StrategyHubTab; label: string; hint: string }> = [
   { key: "optimize", label: "专家：参数", hint: "研究员调参" },
   { key: "validate", label: "专家：验证", hint: "防过拟合" },
   { key: "compare", label: "策略对比", hint: "选更稳的策略" },
-  { key: "factor", label: "因子实验室", hint: "挖掘新因子" },
   { key: "capacity", label: "管理员：ML", hint: "在线学习和容量" },
 ];
 

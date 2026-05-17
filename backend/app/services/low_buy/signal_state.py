@@ -8,10 +8,12 @@ from app.services.low_buy.signal_helpers import (
     buy_now_hint,
     mature_watch_hint,
     near_entry_hint,
+    observe_confirmed_hint,
     restricted_market_avoid_hint,
     strict_strategy_avoid_hint,
     structure_pending_hint,
 )
+from app.services.low_buy.strategy_policy import is_observation_layer_strategy
 from app.services.low_buy.shared import LowBuyCandidateOut
 
 
@@ -116,6 +118,33 @@ def resolve_signal_state(
             confirmed_trade_date=confirmed_trade_date if historical else None,
         )
     if candidate.execution_ready and entry_position in resolver._near_entry_positions(candidate.strategy_key):
+        if buy_restricted and not resolver._restricted_market_track_allowed(candidate, entry_position, entry_distance):
+            return resolver._signal_update(
+                candidate=candidate,
+                state="avoid",
+                text="今日放弃" if not historical else "暂不跟踪",
+                hint=restricted_market_avoid_hint(historical),
+                entry_distance=entry_distance,
+            )
+        state = "observe_confirmed" if is_observation_layer_strategy(candidate.strategy_key) else "near_entry"
+        text = "观察确认" if state == "observe_confirmed" else "接近买点"
+        hint = (
+            observe_confirmed_hint(entry_position, historical)
+            if state == "observe_confirmed"
+            else intraday_hint or near_entry_hint(entry_position, entry_distance, historical)
+        )
+        return resolver._signal_update(
+            candidate=candidate,
+            state=state,
+            text=text,
+            hint=hint,
+            entry_distance=entry_distance,
+        )
+    if (
+        is_observation_layer_strategy(candidate.strategy_key)
+        and entry_position in resolver._near_entry_positions(candidate.strategy_key)
+        and candidate.score >= 78
+    ):
         if buy_restricted and not resolver._restricted_market_track_allowed(candidate, entry_position, entry_distance):
             return resolver._signal_update(
                 candidate=candidate,

@@ -64,6 +64,8 @@ def build_sector_etf_t0_orders(
     for item in response.opportunities:
         if len(orders) >= remaining_slots:
             break
+        if item.source_signal_state not in {"buy_now", "soft_buy_now"}:
+            continue
         if item.etf_symbol in today_symbols or item.bias != "positive_t":
             continue
         if item.confidence < min_confidence or item.expected_edge_pct < min_edge or item.last_price <= 0:

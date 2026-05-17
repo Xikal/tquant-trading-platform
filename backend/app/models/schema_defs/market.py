@@ -45,6 +45,7 @@ class SectorEtfT0Opportunity(BaseModel):
     etf_name: str
     source_signal_symbol: str = ""
     source_signal_name: str = ""
+    source_signal_state: str = ""
     source_strategy: str = ""
     source_signal_text: str = ""
     last_price: float = 0.0

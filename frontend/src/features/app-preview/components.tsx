@@ -1,7 +1,7 @@
 import type { AppWatchlistCard, LowBuyCandidate } from "../../types"
 import { getPriceTone, getPriceToneClass } from "../../utils/priceTone"
 
-type Tone = "positive" | "negative" | "neutral"
+type Tone = "positive" | "negative" | "neutral" | "warning"
 
 export function formatPrice(value: number | null | undefined) {
   if (typeof value !== "number" || !Number.isFinite(value)) {
@@ -29,6 +29,9 @@ export function signalTone(action: string): Tone {
   if (action === "negative_t" || action === "avoid") {
     return "negative"
   }
+  if (action === "observe_confirmed" || action === "near_entry") {
+    return "warning"
+  }
   return "neutral"
 }
 
@@ -44,6 +47,8 @@ export function actionLabel(action: string) {
       return "介入"
     case "soft_buy_now":
       return "低吸"
+    case "observe_confirmed":
+      return "观察确认"
     case "near_entry":
       return "临界"
     case "watch":

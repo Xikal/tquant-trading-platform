@@ -114,10 +114,10 @@ def priority_intraday_rank(
     best_state_rank = 9
     best_distance = 99.0
     best_score = 0.0
-    state_rank = {"buy_now": 0, "soft_buy_now": 1, "near_entry": 2, "watch": 3}
+    state_rank = {"buy_now": 0, "soft_buy_now": 1, "observe_confirmed": 2, "near_entry": 3, "watch": 4}
     for hit in row.hits:
         candidate = hit.candidate
-        best_state_rank = min(best_state_rank, state_rank.get(candidate.buy_signal_state, 4))
+        best_state_rank = min(best_state_rank, state_rank.get(candidate.buy_signal_state, 5))
         distance = builder._distance_to_entry_zone_pct(candidate, latest_price)
         best_distance = min(best_distance, distance)
         best_score = max(best_score, float(candidate.score or 0.0))

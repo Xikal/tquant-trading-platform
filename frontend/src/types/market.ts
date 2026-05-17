@@ -116,6 +116,7 @@ export interface SectorEtfT0Opportunity {
   etf_name: string;
   source_signal_symbol: string;
   source_signal_name: string;
+  source_signal_state?: string;
   source_strategy: string;
   source_signal_text: string;
   last_price: number;

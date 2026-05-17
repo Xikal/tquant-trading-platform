@@ -9,8 +9,7 @@
 }
 
 .page-grid,
-.paper-dashboard,
-.performance-dashboard {
+.paper-dashboard {
   gap: clamp(12px, 1vw, 16px);
 }
 
@@ -20,7 +19,6 @@
 .stock-card,
 .result-card,
 .paper-card,
-.performance-card,
 .playbook-card,
 .strategy-card {
   border-radius: 12px;
@@ -28,7 +26,6 @@
 
 .panel,
 .paper-card,
-.performance-card,
 .playbook-card,
 .strategy-card {
   padding: clamp(12px, 1.1vw, 16px);
@@ -194,7 +191,6 @@
 
   .panel,
   .paper-card,
-  .performance-card,
   .playbook-card,
   .strategy-card {
     padding: 12px;

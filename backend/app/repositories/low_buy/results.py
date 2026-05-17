@@ -234,7 +234,7 @@ class LowBuyResultRepository:
                 .where(
                     LowBuyResultSnapshot.latest_trade_date == latest_trade_date,
                     LowBuyResultSnapshot.strategy_key == strategy_key,
-                    LowBuyResultSnapshot.buy_signal_state.in_(("buy_now", "soft_buy_now", "near_entry")),
+                    LowBuyResultSnapshot.buy_signal_state.in_(("buy_now", "soft_buy_now", "observe_confirmed", "near_entry")),
                 )
                 .order_by(LowBuyResultSnapshot.score.desc())
                 .limit(limit)

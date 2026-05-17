@@ -115,7 +115,7 @@ export interface LowBuyTradeLifecycle {
   strategy_key: string;
   signal_trade_date: string;
   status: "planned" | "entered" | "holding" | "exited" | "invalid";
-  signal_state: "buy_now" | "soft_buy_now" | "near_entry" | "watch" | "avoid";
+  signal_state: "buy_now" | "soft_buy_now" | "observe_confirmed" | "near_entry" | "watch" | "avoid";
   entry_plan_low: number;
   entry_plan_high: number;
   stop_loss: number;
@@ -208,7 +208,7 @@ export interface LowBuyCandidate {
   market_position_multiplier: number;
   confirmed_trade_date?: string | null;
   summary_reason: string;
-  buy_signal_state: "buy_now" | "soft_buy_now" | "near_entry" | "watch" | "avoid";
+  buy_signal_state: "buy_now" | "soft_buy_now" | "observe_confirmed" | "near_entry" | "watch" | "avoid";
   buy_signal_text: string;
   buy_signal_hint: string;
   recommendation_start_date?: string | null;

@@ -98,7 +98,7 @@ function fallbackBucketKey(item: LowBuyPriorityBoardItem): LowBuySimpleBucket["k
   if (item.buy_signal_state === "buy_now" || item.buy_signal_state === "soft_buy_now") {
     return "buy_now";
   }
-  if (item.buy_signal_state === "near_entry") {
+  if (item.buy_signal_state === "observe_confirmed" || item.buy_signal_state === "near_entry") {
     return "wait_price";
   }
   return "give_up";

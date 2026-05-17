@@ -71,7 +71,7 @@ def build_priority_family_sections(
                 family_text=family_text,
                 total_candidates=len(ordered),
                 immediate_count=sum(item.buy_signal_state in {"buy_now", "soft_buy_now"} for item in ordered),
-                focus_count=sum(item.buy_signal_state == "near_entry" for item in ordered),
+                focus_count=sum(item.buy_signal_state in {"observe_confirmed", "near_entry"} for item in ordered),
                 track_count=sum(item.buy_signal_state == "watch" for item in ordered),
                 avg_priority_score=round(sum(item.priority_score for item in ordered) / max(len(ordered), 1), 2),
                 top_strategy_titles=_unique_strategy_titles_from_items(ordered),

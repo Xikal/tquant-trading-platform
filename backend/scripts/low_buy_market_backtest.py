@@ -33,7 +33,6 @@ try:
         CONFIRMED_STATES,
         StrategyBacktestStats,
         TradeOutcome,
-        _signal_group_stats,
         build_report,
         history_window_days,
         render_markdown_report,
@@ -51,7 +50,6 @@ except ImportError:
         CONFIRMED_STATES,
         StrategyBacktestStats,
         TradeOutcome,
-        _signal_group_stats,
         build_report,
         history_window_days,
         render_markdown_report,
@@ -267,6 +265,8 @@ def _load_or_build_snapshot(
 def _count_signal_state(stat: StrategyBacktestStats, state: str) -> None:
     if state in CONFIRMED_STATES:
         stat.confirmed_count += 1
+    elif state == "observe_confirmed":
+        stat.observe_confirmed_count += 1
     elif state == "near_entry":
         stat.near_entry_count += 1
     elif state == "watch":

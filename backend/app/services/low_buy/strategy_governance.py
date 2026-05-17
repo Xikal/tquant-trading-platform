@@ -24,6 +24,7 @@ from app.services.low_buy.shared import DEFAULT_PRODUCTION_LOW_BUY_STRATEGY, PER
 from app.services.low_buy.strategy_policy import (
     StrategyTier,
     get_strategy_tier,
+    is_observation_layer_strategy,
     requires_mainline_industry,
 )
 from app.services.low_buy.strategy_governance_health import (
@@ -163,6 +164,8 @@ def _status_for_strategy(
         return "watch", "生产观察策略，轻仓验证"
     if tier.value == "factor":
         return "research", "辅助因子，不单独触发买入"
+    if is_observation_layer_strategy(strategy_key):
+        return "watch", "观察层策略，只记录样本，不进入强买"
     return "research", "研究层，不进入强买"
 
 

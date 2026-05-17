@@ -31,6 +31,7 @@ def execution_quality(candidate: LowBuyCandidateOut) -> tuple[float, str]:
     state_score = {
         "buy_now": 34.0,
         "soft_buy_now": 27.0,
+        "observe_confirmed": 22.0,
         "near_entry": 20.0,
         "watch": 8.0,
         "avoid": -22.0,
@@ -141,7 +142,7 @@ def build_candidate_risks(
     if strategy in {"n_pattern_long_wash", "n_pattern_short_wash"}:
         risks = [
             "跌破启动日低点，说明主力成本区失守，N 字结构直接失败。",
-            "当前仍是研究策略，不作为生产自动买入依据。",
+            "当前是核心生产策略，只能按小仓冲高止盈纪律执行。",
         ]
         if strategy == "n_pattern_short_wash":
             risks.append("短洗试错必须次日验证，不能把失败试仓拿成被动持仓。")
@@ -222,7 +223,7 @@ def build_candidate_tags(
             "启动低点未破" if metrics.board_low_held else "启动低点失守",
             "缩量洗盘" if metrics.post_volume_ratio <= 0.9 else "缩量待确认",
             confirmation_tag,
-            "研究策略",
+            "核心生产",
             distribution_tag(metrics.distribution_risk_score),
             f"风险层级:{context_adjustment.risk_tier}",
             *factor_tags,

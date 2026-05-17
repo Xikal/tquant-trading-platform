@@ -117,7 +117,7 @@ def load_materialized_candidates_by_symbol(
 
 
 def _default_signal_rank(state: str) -> int:
-    return {"buy_now": 4, "soft_buy_now": 3, "near_entry": 2, "watch": 1}.get(state, 0)
+    return {"buy_now": 5, "soft_buy_now": 4, "observe_confirmed": 3, "near_entry": 2, "watch": 1}.get(state, 0)
 
 
 def _dedupe_candidates_by_symbol(items: list[LowBuyCandidateOut]) -> list[LowBuyCandidateOut]:

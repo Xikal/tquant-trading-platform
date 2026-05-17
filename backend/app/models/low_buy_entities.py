@@ -118,7 +118,7 @@ class LowBuyResultSnapshot(Base):
     symbol: Mapped[str] = mapped_column(String(16), index=True)
     name: Mapped[str] = mapped_column(String(64), default="")
     score: Mapped[float] = mapped_column(Float, default=0.0)
-    buy_signal_state: Mapped[str] = mapped_column(String(16), default="watch", index=True)
+    buy_signal_state: Mapped[str] = mapped_column(String(32), default="watch", index=True)
     payload_json: Mapped[str] = mapped_column(Text, default="{}")
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(

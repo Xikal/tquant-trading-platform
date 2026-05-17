@@ -87,15 +87,15 @@ _POLICIES: dict[str, StrategyHoldingPolicy] = {
     ),
     "n_pattern_long_wash": StrategyHoldingPolicy(
         max_holding_days=5,
-        brief="3-5日修复验证",
-        time_stop_text="长洗 N 字只验证重新放量后的 3-5 日修复，跌破启动低点或再度放量转弱即失败。",
-        card_hint="持有建议：研究层，3-5日验证，跌破启动低点退出。",
+        brief="3-5日冲高止盈",
+        time_stop_text="长洗 N 字只验证重新放量后的 3-5 日冲高，不能脱离买点区就退出。",
+        card_hint="持有建议：核心生产，3-5日内冲高止盈，跌破启动低点退出。",
     ),
     "n_pattern_short_wash": StrategyHoldingPolicy(
         max_holding_days=2,
-        brief="T+1/T+2试错",
-        time_stop_text="短洗 N 字只允许 T+1/T+2 试错，次日不能弱转强或跌破锤头低点就退出。",
-        card_hint="持有建议：研究层小仓试错，失败次日快速T出。",
+        brief="T+1/T+2冲高止盈",
+        time_stop_text="短洗 N 字只验证 T+1/T+2 冲高，次日不能弱转强或跌破锤头低点就退出。",
+        card_hint="持有建议：核心生产，小仓参与，T+1/T+2冲高止盈。",
     ),
     "deep_pullback": StrategyHoldingPolicy(
         max_holding_days=3,

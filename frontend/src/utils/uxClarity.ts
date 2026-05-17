@@ -18,6 +18,7 @@ export function directActionTitle(actionText?: string): string {
 export function playbookActionLabel(state?: string): string {
   if (state === "buy_now") return "现在可买";
   if (state === "soft_buy_now") return "小仓试买";
+  if (state === "observe_confirmed") return "观察确认";
   if (state === "near_entry") return "等确认";
   if (state === "watch") return "继续观察";
   if (state === "avoid") return "今天放弃";

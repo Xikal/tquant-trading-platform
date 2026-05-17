@@ -54,7 +54,7 @@ def market_plain_text(market_state: str) -> str:
 def simple_bucket_key(item: LowBuyPriorityBoardItemOut) -> str:
     if item.buy_signal_state in {"buy_now", "soft_buy_now"} and strategy_layer(item.strategy_key) == "production":
         return "buy_now"
-    if item.buy_signal_state == "near_entry":
+    if item.buy_signal_state in {"observe_confirmed", "near_entry"}:
         return "wait_price"
     return "give_up"
 

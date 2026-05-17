@@ -63,7 +63,7 @@ def _generated_content() -> str:
     items = []
     for seed in DEFAULT_STRATEGY_META:
         tier = _strategy_tier(seed)
-        display_category = _display_category("", tier)
+        display_category = _display_category("", tier, seed.key)
         items.append(
             {
                 "key": seed.key,

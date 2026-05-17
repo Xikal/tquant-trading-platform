@@ -318,8 +318,7 @@
   min-height: 40px;
 }
 
-.research-story-list,
-.performance-advice-bars {
+.research-story-list {
   display: grid;
   gap: 8px;
   margin-bottom: 10px;
@@ -335,29 +334,13 @@
   color: #334155;
 }
 
-.performance-dashboard-grid {
-  grid-template-areas:
-    "hero hero hero hero"
-    "metrics metrics metrics metrics"
-    "plain plain plain plain"
-    "equity equity winrate winrate"
-    "report report strategy strategy"
-    "market market matrix matrix"
-    "correlation correlation correlation correlation";
-}
-
-.research-story-card,
-.performance-plain-summary {
+.research-story-card {
   display: grid;
   gap: 4px;
   border: 1px solid rgba(148, 163, 184, 0.22);
   border-radius: 12px;
   background: #fff;
   padding: 10px 12px;
-}
-
-.performance-plain-summary {
-  grid-area: plain;
 }
 
 .research-story-flow {
@@ -373,36 +356,6 @@
   color: #0f172a;
 }
 
-.performance-advice-row {
-  display: grid;
-  grid-template-columns: minmax(140px, 1fr) 76px minmax(100px, 1fr) minmax(160px, 1.4fr);
-  gap: 10px;
-  align-items: center;
-  font-size: 12px;
-}
-
-.performance-advice-row div {
-  height: 8px;
-  overflow: hidden;
-  border-radius: 999px;
-  background: #eef2f7;
-}
-
-.performance-advice-row i {
-  display: block;
-  height: 100%;
-  border-radius: inherit;
-  background: linear-gradient(90deg, #d6a55c, #0f766e);
-}
-
-.performance-advice-row .up {
-  color: #b91c1c;
-}
-
-.performance-advice-row .down {
-  color: #15803d;
-}
-
 @media (max-width: 900px) {
   .paper-grid {
     grid-template-areas:
@@ -414,7 +367,6 @@
   }
 
   .paper-action-brief-grid,
-  .performance-advice-row,
   .settings-section,
   .research-story-flow {
     grid-template-columns: 1fr;

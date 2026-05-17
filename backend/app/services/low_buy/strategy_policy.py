@@ -14,6 +14,8 @@ CORE_STRATEGIES = frozenset(
     {
         "first_board",
         "volume_shrink",
+        "n_pattern_long_wash",
+        "n_pattern_short_wash",
     }
 )
 
@@ -35,10 +37,10 @@ RESEARCH_STRATEGIES = frozenset(
         "divergence_consensus",
         "ma_channel_band",
         "leader_pullback_band",
-        "n_pattern_long_wash",
-        "n_pattern_short_wash",
     }
 )
+
+OBSERVATION_LAYER_STRATEGIES = frozenset()
 
 FACTOR_STRATEGIES = frozenset(
     {
@@ -87,6 +89,10 @@ def is_core_production(strategy_key: str) -> bool:
 
 def is_factor_strategy(strategy_key: str) -> bool:
     return get_strategy_tier(strategy_key) == StrategyTier.FACTOR
+
+
+def is_observation_layer_strategy(strategy_key: str) -> bool:
+    return strategy_key in OBSERVATION_LAYER_STRATEGIES
 
 
 def get_tier_weight(strategy_key: str) -> float:

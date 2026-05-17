@@ -90,6 +90,9 @@ export function getStateBadgeClass(state: LowBuyCandidate["buy_signal_state"]) {
   if (state === "buy_now" || state === "soft_buy_now") {
     return "playbook-state-badge buy";
   }
+  if (state === "observe_confirmed") {
+    return "playbook-state-badge near";
+  }
   if (state === "near_entry") {
     return "playbook-state-badge near";
   }

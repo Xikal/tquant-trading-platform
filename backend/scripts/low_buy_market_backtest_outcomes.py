@@ -102,6 +102,11 @@ def evaluate_candidate_outcome_from_bars(
         return_5d=_close_return(forward, entry, 5),
         max_gain_5d=round((max(row.high_price for row in forward) / entry - 1) * 100, 4),
         max_drawdown_5d=round((min(row.low_price for row in forward) / entry - 1) * 100, 4),
+        spike_return_1d=_spike_return(forward, entry, 1),
+        spike_return_2d=_spike_return(forward, entry, 2),
+        spike_return_3d=_spike_return(forward, entry, 3),
+        spike_return_4d=_spike_return(forward, entry, 4),
+        spike_return_5d=_spike_return(forward, entry, 5),
         **event_metrics,
     )
 
@@ -154,6 +159,11 @@ def evaluate_candidate_outcome(
         return_5d=round((float(forward.iloc[forward_days - 1]["close"]) / entry - 1) * 100, 4),
         max_gain_5d=round((float(forward["high"].max()) / entry - 1) * 100, 4),
         max_drawdown_5d=round((float(forward["low"].min()) / entry - 1) * 100, 4),
+        spike_return_1d=_spike_return_from_frame(forward, entry, 1),
+        spike_return_2d=_spike_return_from_frame(forward, entry, 2),
+        spike_return_3d=_spike_return_from_frame(forward, entry, 3),
+        spike_return_4d=_spike_return_from_frame(forward, entry, 4),
+        spike_return_5d=_spike_return_from_frame(forward, entry, 5),
         **event_metrics,
     )
 
@@ -168,6 +178,18 @@ def _bar_index(rows: list, trade_date: str) -> int | None:
 def _close_return(rows: list, entry: float, holding_days: int) -> float:
     index = min(max(holding_days - 1, 0), len(rows) - 1)
     return round((rows[index].close_price / entry - 1) * 100, 4)
+
+
+def _spike_return(rows: list, entry: float, holding_days: int) -> float:
+    end = min(max(holding_days, 1), len(rows))
+    high = max(float(row.high_price) for row in rows[:end])
+    return round((high / entry - 1) * 100, 4)
+
+
+def _spike_return_from_frame(frame: pd.DataFrame, entry: float, holding_days: int) -> float:
+    end = min(max(holding_days, 1), len(frame))
+    high = float(frame.iloc[:end]["high"].max())
+    return round((high / entry - 1) * 100, 4)
 
 
 def _next_day_event_metrics_from_bars(*, forward: list, entry: float) -> dict[str, Any]:

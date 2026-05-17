@@ -78,7 +78,7 @@ class StrategyMetadataService:
         for seed in DEFAULT_STRATEGY_META:
             row = overrides.get(seed.key)
             tier = resolver.resolve(seed.key, fallback=_strategy_tier(seed))
-            display_category = _display_category(row.category if row else "", tier)
+            display_category = _display_category(row.category if row else "", tier, seed.key)
             metadata_enabled = _row_bool(getattr(row, "enabled", None), seed.enabled) if row else seed.enabled
             item = StrategyMetaOut(
                 key=seed.key,

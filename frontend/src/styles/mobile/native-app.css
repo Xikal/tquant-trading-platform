@@ -18,11 +18,7 @@
   .mobile-auth-hero::before,
   .mobile-auth-hero::after,
   .mobile-auth-bars i,
-  .mobile-auth-radar::after,
-  .mobile-paper-cockpit::after,
-  .mobile-paper-mecha,
-  .mobile-paper-mecha img,
-  .mobile-paper-scan-line {
+  .mobile-auth-radar::after {
     animation: none;
   }
 }

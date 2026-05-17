@@ -4,11 +4,9 @@ import { useToast } from "../../components/shared/ToastContainer";
 import type { AuthUser } from "../../types";
 import type { BacktestRunSummary } from "../../api/backtests";
 import { formatDateTime, formatMoney, formatPct, loadBacktestVerdictThresholds } from "../backtest/backtestDisplay";
-import { useBacktestDashboard } from "../backtest/useBacktestDashboard";
 import { StrategyConfirmDialog } from "./StrategyConfirmDialog";
 import { StrategyHubDetailTabs } from "./StrategyHubDetailTabs";
 import {
-  dashboardSectionForTab,
   executionModelText,
   visibleTabsForUser,
 } from "./StrategyHubPanels";
@@ -20,10 +18,9 @@ export function StrategyHubPage({ currentUser }: { currentUser: AuthUser }) {
   const hub = useStrategyHub();
   const [, setThresholdVersion] = useState(0);
   const expertEnabled = visibleTabsForUser(currentUser).some((tab) =>
-    tab.key === "optimize" || tab.key === "validate" || tab.key === "compare" || tab.key === "capacity" || tab.key === "factor"
+    tab.key === "optimize" || tab.key === "validate" || tab.key === "compare" || tab.key === "capacity"
   );
   const effectiveTab = !expertEnabled && isExpertHubTab(hub.tab) ? "quick" : hub.tab;
-  const dashboard = useBacktestDashboard(dashboardSectionForTab(effectiveTab));
   const toast = useToast();
 
   useEffect(() => {
@@ -123,7 +120,6 @@ export function StrategyHubPage({ currentUser }: { currentUser: AuthUser }) {
       <StrategyHubDetailTabs
         currentUser={currentUser}
         hub={hub}
-        dashboard={dashboard}
         onQuickSubmit={quickSubmitWithToast}
         onRerun={rerunBacktest}
       />
@@ -171,5 +167,5 @@ function estimateSubmitTime(strategyCount: number): string {
 }
 
 function isExpertHubTab(tab: string): boolean {
-  return tab === "optimize" || tab === "validate" || tab === "compare" || tab === "capacity" || tab === "factor";
+  return tab === "optimize" || tab === "validate" || tab === "compare" || tab === "capacity";
 }

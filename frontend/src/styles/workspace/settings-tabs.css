@@ -63,6 +63,49 @@
   min-height: 320px;
 }
 
+.settings-cards.role-separated.tabbed .settings-tab-panel--data {
+  grid-template-columns: minmax(300px, 0.85fr) minmax(420px, 1.15fr);
+  gap: 14px;
+}
+
+.settings-tab-panel--data > .setting-card {
+  grid-column: 1;
+}
+
+.settings-tab-panel--data .runtime-diagnostics-card {
+  grid-column: 2;
+  grid-row: 2 / span 2;
+}
+
+.settings-tab-panel--data .settings-snapshot {
+  grid-column: 1;
+  min-height: 0;
+}
+
+.settings-cards.role-separated.tabbed .settings-tab-panel--governance {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
+}
+
+.strategy-governance-card .settings-mini-row {
+  display: grid;
+  grid-template-columns: minmax(240px, 1.1fr) minmax(140px, 0.45fr) minmax(260px, 1fr) auto;
+  align-items: center;
+}
+
+.strategy-governance-card .settings-mini-row > span,
+.strategy-governance-card .settings-mini-row > small {
+  min-width: 0;
+}
+
+.strategy-governance-card .settings-mini-row .hint {
+  white-space: normal;
+}
+
+.feature-flags-card .settings-mini-row {
+  align-items: flex-start;
+}
+
 .settings-cards.role-separated.tabbed .compact-form-grid {
   grid-template-columns: repeat(auto-fit, minmax(150px, 220px));
   justify-content: start;
@@ -80,4 +123,25 @@
 
 .settings-cards.role-separated.tabbed .factor-weight-grid {
   grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+}
+
+@media (max-width: 1080px) {
+  .settings-cards.role-separated.tabbed .settings-tab-panel--data {
+    grid-template-columns: 1fr;
+  }
+
+  .settings-tab-panel--data > .setting-card,
+  .settings-tab-panel--data .runtime-diagnostics-card,
+  .settings-tab-panel--data .settings-snapshot {
+    grid-column: auto;
+    grid-row: auto;
+  }
+
+  .strategy-governance-card .settings-mini-row {
+    grid-template-columns: 1fr;
+  }
+
+  .strategy-governance-card .settings-row-actions {
+    justify-content: flex-start;
+  }
 }

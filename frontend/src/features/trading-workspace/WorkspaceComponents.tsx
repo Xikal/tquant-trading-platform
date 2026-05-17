@@ -168,6 +168,7 @@ export function SettingCard({
   loading,
   saved = false,
   disabled = false,
+  className = "",
   onSave,
 }: {
   title: string;
@@ -176,10 +177,11 @@ export function SettingCard({
   loading: boolean;
   saved?: boolean;
   disabled?: boolean;
+  className?: string;
   onSave: () => void;
 }) {
   return (
-    <div className="panel setting-card">
+    <div className={`panel setting-card ${className}`.trim()}>
       <PanelTitle title={title} />
       <div className="setting-fields">{children}</div>
       <button className={`primary ${saved ? "saved" : ""}`} onClick={onSave} disabled={loading || disabled}>

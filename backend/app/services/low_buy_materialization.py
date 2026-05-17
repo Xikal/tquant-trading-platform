@@ -9,7 +9,7 @@ from app.services.latest_data_status import (
     expected_low_buy_trade_date,
     publish_latest_trade_date_if_ready,
 )
-from app.services.low_buy.strategy_policy import PRODUCTION_PRIORITY_STRATEGIES
+from app.services.low_buy.strategy_policy import OBSERVATION_LAYER_STRATEGIES, PRODUCTION_PRIORITY_STRATEGIES
 from app.services.tasks import RuntimeTaskQueue
 
 DEFAULT_LIMIT = 40
@@ -40,7 +40,7 @@ def refresh_latest_low_buy_materialization(
 ) -> dict[str, Any]:
     from app.services.low_buy_screener import LowBuyScreenerService
 
-    required = sorted(strategies or PRODUCTION_PRIORITY_STRATEGIES)
+    required = sorted(strategies or (PRODUCTION_PRIORITY_STRATEGIES | OBSERVATION_LAYER_STRATEGIES))
     screener = LowBuyScreenerService()
     refreshed: list[str] = []
     skipped: list[dict[str, str]] = []

@@ -3,10 +3,7 @@ export type Page =
   | "analysis"
   | "playbook"
   | "strategy"
-  | "research"
-  | "backtests"
   | "paper"
-  | "performance"
   | "settings";
 export type Tone = "up" | "down" | "neutral" | "warn";
 

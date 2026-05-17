@@ -21,6 +21,8 @@ def position_advice_for_signal(
         position, text = _mapped_advice(strategy, _SOFT_BUY_ADVICE, (15.0, "软确认买点只建议轻仓试错。"))
         position, text = _kelly_adjusted_base_position(position, text, performance)
         return _market_adjusted_position(candidate, position, text)
+    if state == "observe_confirmed":
+        return _market_adjusted_position(candidate, 8.0, "观察确认已成立，但策略仍不自动交易；最多预留 8% 观察仓。")
     if state == "near_entry":
         return _market_adjusted_position(candidate, 15.0, "已经接近买点，先列计划，最多预留 15% 试仓。")
     if state == "watch":
@@ -40,8 +42,8 @@ _BUY_NOW_ADVICE: dict[str, tuple[float, str]] = {
     "breakout_support": (20.0, "突破回踩更看确认，先试仓 20%。"),
     "limit_up_breakout_retrace": (18.0, "突破回踩型机会更强调确认，先试仓 18%。"),
     "divergence_consensus": (16.0, "分歧转一致属于右侧确认，先试仓 16%，跌回突破位不留恋。"),
-    "n_pattern_long_wash": (12.0, "长洗 N 字仍是研究层机会，只允许 12% 小仓验证。"),
-    "n_pattern_short_wash": (8.0, "短洗 N 字属于尾盘试错，只允许 8% 轻仓验证。"),
+    "n_pattern_long_wash": (12.0, "长洗 N 字已纳入核心生产策略，只做冲高止盈，先试仓 12%。"),
+    "n_pattern_short_wash": (8.0, "短洗 N 字已纳入核心生产策略，只做 T+1/T+2 冲高止盈，先试仓 8%。"),
     "deep_pullback": (15.0, "深水低吸风险高，只建议 15% 试仓。"),
     "trend_rebound": (25.0, "趋势龙回头，先试仓 25%，不要一次打满。"),
 }
@@ -58,8 +60,8 @@ _SOFT_BUY_ADVICE: dict[str, tuple[float, str]] = {
     "breakout_support": (15.0, "突破回踩先轻仓，等进一步承接。"),
     "limit_up_breakout_retrace": (12.0, "涨停突破回踩先小仓试错，确认二次转强再加。"),
     "divergence_consensus": (10.0, "突破确认还不够硬，只允许 10% 轻仓观察。"),
-    "n_pattern_long_wash": (8.0, "长洗 N 字只记录研究样本，软确认最多 8% 观察仓。"),
-    "n_pattern_short_wash": (5.0, "短洗 N 字未确认前只允许 5% 极轻仓试错。"),
+    "n_pattern_long_wash": (8.0, "长洗 N 字软确认只做 8% 轻仓，盈利来源以冲高兑现为主。"),
+    "n_pattern_short_wash": (5.0, "短洗 N 字软确认只做 5% 轻仓，次日不冲高就快速退出。"),
     "deep_pullback": (10.0, "深水回撤只允许更轻的软确认试仓。"),
     "trend_rebound": (18.0, "龙回头软确认，先轻仓参与。"),
 }

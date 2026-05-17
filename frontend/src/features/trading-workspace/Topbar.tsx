@@ -30,7 +30,6 @@ export function Topbar({
     ["playbook", "选股宝典"],
     ["strategy", "策略工作台"],
     ["paper", "模拟盘"],
-    ["performance", "绩效"],
   ];
   const riskCount = watchCards.filter((item) => item.riskText.includes("高")).length;
   const userName = currentUser.display_name || currentUser.username;
@@ -64,7 +63,7 @@ export function Topbar({
       </div>
       <nav aria-label="主导航">
         {nav.map(([key, label]) => {
-          const paperBlocked = (key === "paper" || key === "performance") && !currentUser.can_paper_trade;
+          const paperBlocked = key === "paper" && !currentUser.can_paper_trade;
           return (
             <button
               className={page === key ? "active" : ""}

@@ -86,7 +86,7 @@ class LowBuyLifecycleMixin:
             candidates.extend(
                 item
                 for item in payload.confirmed_candidates + payload.candidates
-                if item.buy_signal_state in {"buy_now", "soft_buy_now", "near_entry"}
+                if item.buy_signal_state in {"buy_now", "soft_buy_now", "observe_confirmed", "near_entry"}
             )
         candidates.sort(key=lambda item: (item.confirmed_trade_date or item.quote_timestamp, item.score), reverse=True)
         return candidates[:limit]

@@ -135,6 +135,7 @@ class SectorEtfT0Service:
                     etf_name=proxy.name,
                     source_signal_symbol=_string_value(_field(candidate, "symbol")),
                     source_signal_name=_string_value(_field(candidate, "name")),
+                    source_signal_state=buy_signal_state,
                     source_strategy=_string_value(_field(candidate, "strategy_title")),
                     source_signal_text=_string_value(_field(candidate, "buy_signal_text")),
                     last_price=quote.last_price,

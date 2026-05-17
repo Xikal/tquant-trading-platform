@@ -325,7 +325,7 @@ function MetricCell({
 
 export function splitPriorityItems<T extends MobileLowBuyCardItem>(items: T[]) {
   const buyNow = items.filter((item) => item.buy_signal_state === "buy_now" || item.buy_signal_state === "soft_buy_now")
-  const nearEntry = items.filter((item) => item.buy_signal_state === "near_entry")
+  const nearEntry = items.filter((item) => item.buy_signal_state === "observe_confirmed" || item.buy_signal_state === "near_entry")
   const watch = items.filter((item) => !buyNow.includes(item) && !nearEntry.includes(item))
   return { buyNow, nearEntry, watch }
 }
@@ -367,7 +367,7 @@ function signedTone(value: number | null | undefined): Tone {
 function signalTone(action: string): Tone {
   if (action === "positive_t" || action === "buy_now" || action === "soft_buy_now") return "positive"
   if (action === "negative_t" || action === "avoid") return "negative"
-  if (action === "near_entry") return "warning"
+  if (action === "observe_confirmed" || action === "near_entry") return "warning"
   return "neutral"
 }
 
@@ -381,6 +381,8 @@ function actionLabel(action: string) {
       return "买入"
     case "soft_buy_now":
       return "买入"
+    case "observe_confirmed":
+      return "观察确认"
     case "near_entry":
       return "等待"
     case "watch":

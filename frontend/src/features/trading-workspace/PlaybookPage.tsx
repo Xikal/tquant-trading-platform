@@ -1,7 +1,7 @@
 import type { LowBuyScreenerResult } from "../../types";
 import { playbookActionLabel } from "../../utils/uxClarity";
 import { EmptyState, InfoPill, MetricGrid, PanelTitle, StockCard } from "./WorkspaceComponents";
-import { PRODUCTION_PLAYBOOK_TABS } from "./workspaceConstants";
+import { WEB_PLAYBOOK_TABS } from "./workspaceConstants";
 import { candidateToCard } from "./workspaceViewModels";
 import { formatNumber, formatPct, strategyLabel, toneFromChange } from "./workspaceFormatters";
 import type { MetricItem, StockCardView } from "./workspaceTypes";
@@ -26,18 +26,19 @@ export function PlaybookPage({
   strategyTabs?: Array<{ key: string; label: string }>;
 }) {
   const tabs = strategyTabs?.length ? strategyTabs : (
-    PRODUCTION_PLAYBOOK_TABS.map((tab) => ({ key: tab.key, label: tab.label }))
+    WEB_PLAYBOOK_TABS.map((tab) => ({ key: tab.key, label: tab.label }))
   );
   const allCandidates = uniqueCandidates([
     ...(playbook?.confirmed_candidates ?? []),
     ...(playbook?.candidates ?? []),
   ]);
   const buyNow = allCandidates.filter((item) => item.buy_signal_state === "buy_now" || item.buy_signal_state === "soft_buy_now").map(candidateToCard);
+  const observeConfirmed = allCandidates.filter((item) => item.buy_signal_state === "observe_confirmed").map(candidateToCard);
   const nearEntry = allCandidates.filter((item) => item.buy_signal_state === "near_entry").map(candidateToCard);
   const watch = allCandidates.filter((item) => item.buy_signal_state === "watch").map(candidateToCard);
   const avoid = allCandidates.filter((item) => item.buy_signal_state === "avoid").map(candidateToCard);
   const passiveCandidates = [...watch, ...avoid].slice(0, 12);
-  const focus = buyNow[0] ?? nearEntry[0] ?? watch[0] ?? avoid[0];
+  const focus = buyNow[0] ?? observeConfirmed[0] ?? nearEntry[0] ?? watch[0] ?? avoid[0];
   const strategyName = tabLabel(strategy, tabs) || strategyLabel(strategy);
   const loadedStrategyName = playbook?.strategy_title || tabLabel(playbook?.strategy_key || strategy, tabs) || strategyLabel(playbook?.strategy_key || strategy);
   const switchingText = playbook && playbook.strategy_key !== strategy ? "，正在切换数据" : "";
@@ -71,6 +72,7 @@ export function PlaybookPage({
         className="summary-panel playbook-metrics"
         items={[
           { label: playbookActionLabel("buy_now"), value: String(buyNow.length), tone: buyNow.length ? "up" : "neutral" },
+          { label: playbookActionLabel("observe_confirmed"), value: String(observeConfirmed.length), tone: observeConfirmed.length ? "warn" : "neutral" },
           { label: playbookActionLabel("near_entry"), value: String(nearEntry.length), tone: nearEntry.length ? "warn" : "neutral" },
           { label: playbookActionLabel("watch"), value: String(watch.length), tone: "neutral" },
           { label: playbookActionLabel("avoid"), value: String(avoid.length), tone: avoid.length ? "down" : "neutral" },
@@ -100,12 +102,13 @@ export function PlaybookPage({
           <>
             <p>主看：{focus.name} {focus.symbol}，{focus.actionText}，{focus.details}</p>
             <InfoPill label="主线轮动" value={playbook?.hot_industries?.slice(0, 4).join(" / ") || "--"} />
-            <InfoPill label="执行顺序" value="先确定买入，再看接近买点，失效立即降级" />
+            <InfoPill label="执行顺序" value="先确定买入，再看观察确认和接近买点，失效立即降级" />
             <InfoPill label="盘后复盘入口" value="自动归档触发价、失效价和执行结果" />
           </>
         ) : <EmptyState text="当前策略暂无主看标的。" />}
       </aside>
       <CandidateSection className="playbook-buy" title="现在可买 / 小仓试买" items={buyNow} empty="当前没有可以直接执行的股票" onAnalyze={onAnalyze} onSelect={onSelect} />
+      <CandidateSection className="playbook-observe-confirmed" title="观察确认" items={observeConfirmed} empty="当前没有观察确认的股票" onAnalyze={onAnalyze} onSelect={onSelect} />
       <CandidateSection className="playbook-near" title="等确认" items={nearEntry} empty="当前没有接近买点的股票" onAnalyze={onAnalyze} onSelect={onSelect} />
       <div className="panel playbook-watch">
         <PanelTitle title="继续观察 / 今天放弃" />
@@ -131,6 +134,8 @@ function strategyPurpose(strategyKey: string): string {
   if (strategyKey.includes("late_session")) return "收盘承接，主要看次日冲高兑现。";
   if (strategyKey.includes("core_midcap")) return "板块中军回踩，只做主线核心。";
   if (strategyKey.includes("mainline") || strategyKey.includes("divergence")) return "主线首分歧，确认修复前不追。";
+  if (strategyKey.includes("n_pattern_long")) return "长洗 N 字核心生产策略，主要看 3-5 日冲高止盈。";
+  if (strategyKey.includes("n_pattern_short")) return "短洗 N 字核心生产策略，主要看 T+1/T+2 冲高止盈。";
   return "按当前策略规则分层筛选，先看买点和止损。";
 }
 

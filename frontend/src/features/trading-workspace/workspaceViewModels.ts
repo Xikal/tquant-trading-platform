@@ -49,6 +49,9 @@ function priorityExecutionHint(item: LowBuyPriorityBoardItem): string {
   if (item.buy_signal_state === "near_entry") {
     return "接近买点：价格接近买点或已到位但确认不足，只盯承接，不提前买；确认后才进入执行。";
   }
+  if (item.buy_signal_state === "observe_confirmed") {
+    return "观察确认：结构、热点和市场状态已达标，仍需结合买点、仓位和风控执行。";
+  }
   return "";
 }
 
@@ -57,6 +60,9 @@ function priorityFailureText(item: LowBuyPriorityBoardItem): string {
   const stopLoss = item.stop_loss ? `跌破 ${formatPrice(item.stop_loss)} 视为失效` : "";
   if (item.buy_signal_state === "buy_now" || item.buy_signal_state === "soft_buy_now") {
     return [stopLoss, "出现放量下跌、板块退潮或硬阻断时放弃执行", `风险 ${risk}`].filter(Boolean).join("；");
+  }
+  if (item.buy_signal_state === "observe_confirmed") {
+    return [stopLoss, "观察确认不等于自动买入，跌破买点区或板块转弱即降级", `风险 ${risk}`].filter(Boolean).join("；");
   }
   if (item.buy_signal_state === "near_entry") {
     return [stopLoss, "没有承接确认、冲高回落或板块转弱时继续观望", `风险 ${risk}`].filter(Boolean).join("；");

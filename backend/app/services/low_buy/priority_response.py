@@ -53,7 +53,7 @@ def build_priority_board_response(
         updated_at=base_snapshot.updated_at or datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         total_candidates=len(items),
         immediate_count=sum(item.buy_signal_state in {"buy_now", "soft_buy_now"} for item in items),
-        focus_count=sum(item.buy_signal_state == "near_entry" for item in items),
+        focus_count=sum(item.buy_signal_state in {"observe_confirmed", "near_entry"} for item in items),
         track_count=sum(item.buy_signal_state == "watch" for item in items),
         market_state=market_context.market_state,
         market_state_text=market_state_text,

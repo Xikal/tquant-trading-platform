@@ -318,9 +318,10 @@ class LowBuyQuoteRefreshMixin:
         state_rank = {
             "buy_now": 0,
             "soft_buy_now": 1,
-            "near_entry": 2,
-            "watch": 3,
-        }.get(candidate.buy_signal_state, 4)
+            "observe_confirmed": 2,
+            "near_entry": 3,
+            "watch": 4,
+        }.get(candidate.buy_signal_state, 5)
         position_rank = {
             "in_zone": 0,
             "below_zone": 1,

@@ -14,7 +14,6 @@ import { useMonitorData } from "./useMonitorData";
 import { usePaperIntraday } from "./usePaperIntraday";
 import { usePaperTrading } from "./usePaperTrading";
 import { usePlaybookData } from "./usePlaybookData";
-import { useResearchData } from "./useResearchData";
 import { useSettingsData } from "./useSettingsData";
 import { useWorkspaceLoading } from "./useWorkspaceLoading";
 import { useWorkspaceNavigation } from "./useWorkspaceNavigation";
@@ -58,10 +57,6 @@ export function TradingWorkspace() {
     setError,
     setNotice,
     navigatePage,
-  });
-  const research = useResearchData({
-    withLoading,
-    setError,
   });
   const [authDraft, setAuthDraft] = useState<AuthDraft>({
     username: "",
@@ -186,9 +181,6 @@ export function TradingWorkspace() {
     }
     if (page === "settings") {
       void settingsData.loadSettings();
-    }
-    if (page === "research") {
-      void research.loadResearch();
     }
     if (page === "paper") {
       void paper.load();
@@ -438,7 +430,6 @@ export function TradingWorkspace() {
       paperPageProps={paperPageProps}
       paperRefreshLoading={isLoading(loadingState, "paper") || isLoading(loadingState, "paper-refresh") || isLoading(loadingState, "paper-quotes")}
       playbookData={playbookData}
-      research={research}
       selectedStock={selectedStock}
       settingsData={settingsData}
       strategyMeta={strategyMeta}
@@ -464,7 +455,6 @@ function shortcutPage(key: string): Page | null {
   if (key === "3") return "playbook";
   if (key === "4") return "strategy";
   if (key === "5") return "paper";
-  if (key === "6") return "performance";
-  if (key === "7") return "settings";
+  if (key === "6") return "settings";
   return null;
 }

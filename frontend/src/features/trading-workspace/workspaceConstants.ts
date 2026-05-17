@@ -18,9 +18,17 @@ export const RESEARCH_PLAYBOOK_TABS = FALLBACK_STRATEGY_META.filter(
   (item) => isFullEnabledStrategy(item) && (item.tier === "research" || item.tier === "factor")
 );
 
+export const OBSERVATION_PLAYBOOK_KEYS = new Set<string>();
+
+export const OBSERVATION_PLAYBOOK_TABS = [] as const;
+
 export const PRODUCTION_PLAYBOOK_TABS = [
   ...CORE_PLAYBOOK_TABS,
   ...AUXILIARY_PLAYBOOK_TABS,
+] as const;
+
+export const WEB_PLAYBOOK_TABS = [
+  ...PRODUCTION_PLAYBOOK_TABS,
 ] as const;
 
 export const ALL_PLAYBOOK_TABS = [
@@ -34,10 +42,7 @@ export const PAGE_PATHS: Record<Page, string> = {
   analysis: "/analysis",
   playbook: "/low-buy",
   strategy: "/strategy",
-  research: "/strategy",
-  backtests: "/strategy",
   paper: "/paper",
-  performance: "/performance",
   settings: "/settings",
 };
 
@@ -47,7 +52,7 @@ export const PATH_PAGE_MAP: Record<string, Page> = {
   "/low-buy": "playbook",
   "/strategy": "strategy",
   "/paper": "paper",
-  "/performance": "performance",
+  "/performance": "paper",
   "/settings": "settings",
 };
 

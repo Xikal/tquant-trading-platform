@@ -64,7 +64,7 @@ export interface LowBuyStrategyPerformance {
 export interface LowBuyCloseReviewItem {
   symbol: string;
   name: string;
-  signal_state: "buy_now" | "soft_buy_now" | "near_entry" | "watch" | "avoid";
+  signal_state: "buy_now" | "soft_buy_now" | "observe_confirmed" | "near_entry" | "watch" | "avoid";
   signal_text: string;
   review_trade_date: string;
   close_price: number;
@@ -163,7 +163,7 @@ export interface LowBuyQuoteRefreshItem {
   position_breakdown_text?: string;
   execution_quality_score?: number;
   execution_quality_text?: string;
-  buy_signal_state: "buy_now" | "soft_buy_now" | "near_entry" | "watch" | "avoid";
+  buy_signal_state: "buy_now" | "soft_buy_now" | "observe_confirmed" | "near_entry" | "watch" | "avoid";
   buy_signal_text: string;
   buy_signal_hint: string;
   trigger_condition?: string;
@@ -191,7 +191,7 @@ export interface LowBuyPriorityBoardItem {
   data_quality_tags?: string[];
   market_state_category?: string;
   market_state_category_text?: string;
-  buy_signal_state: "buy_now" | "soft_buy_now" | "near_entry" | "watch" | "avoid";
+  buy_signal_state: "buy_now" | "soft_buy_now" | "observe_confirmed" | "near_entry" | "watch" | "avoid";
   buy_signal_text: string;
   priority_score: number;
   strategy_weight_score: number;

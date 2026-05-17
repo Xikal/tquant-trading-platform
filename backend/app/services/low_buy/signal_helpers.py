@@ -61,6 +61,14 @@ def near_entry_hint(entry_position: str, entry_distance: float, historical: bool
     return f"历史回放里距离买点区上沿只差 {entry_distance:.2f}%。" if historical else f"离买点区上沿只差 {entry_distance:.2f}%，承接确认后可准备试仓。"
 
 
+def observe_confirmed_hint(entry_position: str, historical: bool) -> str:
+    if historical:
+        return "结构、热点板块和市场状态都通过观察确认；仍需结合买点区和风控再决定是否执行。"
+    if entry_position in {"in_zone", "below_zone"}:
+        return "结构已经观察确认，买点区内仍需按仓位和止损纪律执行。"
+    return "N 字右侧确认已成立，但价格仍需等到买点区，暂不追高。"
+
+
 def below_stop_hint(historical: bool) -> str:
     return "历史回放里价格已逼近止损线，本次低吸逻辑失效。" if historical else "价格已经逼近或跌破止损线，低吸逻辑失效，今天不再接。"
 

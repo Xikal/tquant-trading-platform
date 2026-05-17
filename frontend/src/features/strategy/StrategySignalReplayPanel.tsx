@@ -155,6 +155,7 @@ function SignalReplayRows({
 function stateLabel(state?: string, fallback?: string): string {
   if (state === "buy_now") return "立即可买";
   if (state === "soft_buy_now") return "小仓试买";
+  if (state === "observe_confirmed") return "观察确认";
   if (state === "near_entry") return "等待确认";
   if (state === "watch") return "继续观察";
   if (state === "avoid") return "今天放弃";
@@ -163,7 +164,7 @@ function stateLabel(state?: string, fallback?: string): string {
 
 function stateTone(state?: string): string {
   if (state === "buy_now" || state === "soft_buy_now") return "ok";
-  if (state === "near_entry" || state === "watch") return "warn";
+  if (state === "observe_confirmed" || state === "near_entry" || state === "watch") return "warn";
   if (state === "avoid") return "bad";
   return "neutral";
 }

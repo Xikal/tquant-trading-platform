@@ -88,7 +88,13 @@ export function StrategyGovernanceCard({
   onUpdateStrategyGovernance: (strategyKey: string, status: "active" | "watch" | "paused") => void;
 }) {
   return (
-    <SettingCard title="策略治理" button="刷新策略状态" onSave={onRefresh} loading={loading === "settings"}>
+    <SettingCard
+      title="策略治理"
+      button="刷新策略状态"
+      onSave={onRefresh}
+      loading={loading === "settings"}
+      className="strategy-governance-card"
+    >
       <InfoPill label="默认策略" value={strategyGovernance?.default_strategy ?? "--"} />
       <InfoPill label="生产策略" value={strategyGovernance ? `${strategyGovernance.production_strategies.length} 个` : "--"} />
       <InfoPill label="治理状态" value={strategyGovernance ? strategyGovernanceSummary(strategyGovernance) : "--"} />
@@ -139,7 +145,14 @@ export function FeatureFlagsCard({
   onToggle: (item: FeatureFlagItem) => void;
 }) {
   return (
-    <SettingCard title="功能开关" button="刷新开关" onSave={onRefresh} loading={loading === "settings"} saved={saved}>
+    <SettingCard
+      title="功能开关"
+      button="刷新开关"
+      onSave={onRefresh}
+      loading={loading === "settings"}
+      saved={saved}
+      className="feature-flags-card"
+    >
       {featureFlagError ? <p className="form-error">{featureFlagError}</p> : null}
       <div className="settings-mini-list">
         {featureFlags.length ? featureFlags.map((item) => (
@@ -191,7 +204,13 @@ export function RuntimeDiagnosticsCard({
   const providerSummary = adminMetrics?.market_data_sources;
   const providerOkCount = providerSummary?.items.filter((item) => item.ok).length ?? 0;
   return (
-    <SettingCard title="运行诊断" button="重新检测" onSave={onRefresh} loading={loading === "settings"}>
+    <SettingCard
+      title="运行诊断"
+      button="重新检测"
+      onSave={onRefresh}
+      loading={loading === "settings"}
+      className="runtime-diagnostics-card"
+    >
       <InfoPill label="前端产物" value={runtime?.frontend_dist_ready ? "正常" : "--"} />
       <InfoPill label="AI 分析" value={runtime?.llm_configured ? "已配置" : "未配置"} />
       <InfoPill label="环境文件" value={runtime?.runtime_env_exists ? "存在" : "--"} />

@@ -8,12 +8,9 @@ import type { Page, StockCardView } from "./workspaceTypes";
 import { WorkspacePageContent } from "./WorkspacePageContent";
 
 const AnalysisPage = lazy(async () => ({ default: (await import("./AnalysisPage")).AnalysisPage }));
-const BacktestPage = lazy(async () => ({ default: (await import("../backtest/BacktestPage")).BacktestPage }));
 const MonitorPage = lazy(async () => ({ default: (await import("./MonitorPage")).MonitorPage }));
 const PaperTradingPage = lazy(async () => ({ default: (await import("./PaperTradingPage")).PaperTradingPage }));
-const PerformanceDashboard = lazy(async () => ({ default: (await import("./PerformanceDashboard")).PerformanceDashboard }));
 const PlaybookPage = lazy(async () => ({ default: (await import("./PlaybookPage")).PlaybookPage }));
-const ResearchPage = lazy(async () => ({ default: (await import("./ResearchPage")).ResearchPage }));
 const SettingsPage = lazy(async () => ({ default: (await import("./SettingsPage")).SettingsPage }));
 const StrategyHubPage = lazy(async () => ({ default: (await import("../strategy/StrategyHubPage")).StrategyHubPage }));
 
@@ -34,7 +31,6 @@ type TradingWorkspaceChromeProps = {
   paperPageProps: any;
   paperRefreshLoading: boolean;
   playbookData: any;
-  research: any;
   selectedStock: StockCardView | null;
   settingsData: any;
   strategyMeta: StrategyMeta[];
@@ -90,12 +86,9 @@ export function TradingWorkspaceChrome(props: TradingWorkspaceChromeProps) {
         />
         <WorkspacePageContent
           AnalysisPage={AnalysisPage}
-          BacktestPage={BacktestPage}
           MonitorPage={MonitorPage}
           PaperTradingPage={PaperTradingPage}
-          PerformanceDashboard={PerformanceDashboard}
           PlaybookPage={PlaybookPage}
-          ResearchPage={ResearchPage}
           SettingsPage={SettingsPage}
           StrategyHubPage={StrategyHubPage}
           analysis={props.analysis}
@@ -106,7 +99,6 @@ export function TradingWorkspaceChrome(props: TradingWorkspaceChromeProps) {
           page={props.page}
           paperPageProps={props.paperPageProps}
           playbookData={props.playbookData}
-          research={props.research}
           settingsData={props.settingsData}
           strategyMeta={props.strategyMeta}
           onSelectStock={props.onSelectStock}

@@ -1,10 +1,8 @@
-import { useEffect, useState } from "react"
 import type {
   AppAndroidUpdateResponse,
   AuthUser,
   LowBuyPriorityBoardItem,
-  LowBuyPriorityBoardResult,
-  PaperOrderCreate
+  LowBuyPriorityBoardResult
 } from "../types"
 import { formatPct, formatPrice } from "../features/trading-workspace/workspaceFormatters"
 import { Icon } from "./mobileSections"
@@ -122,135 +120,6 @@ export function PriorityActionSheet({
             }}
           >
             查看详情
-          </button>
-        </div>
-      </section>
-    </div>
-  )
-}
-
-export function MobilePaperOrderSheet({
-  open,
-  loading,
-  defaultSymbol,
-  defaultName,
-  defaultPrice,
-  onClose,
-  onSubmit
-}: {
-  open: boolean
-  loading: boolean
-  defaultSymbol?: string
-  defaultName?: string
-  defaultPrice?: number | null
-  onClose: () => void
-  onSubmit: (payload: PaperOrderCreate) => Promise<boolean> | boolean
-}) {
-  const [symbol, setSymbol] = useState("")
-  const [name, setName] = useState("")
-  const [side, setSide] = useState<PaperOrderCreate["side"]>("buy")
-  const [orderType, setOrderType] = useState<NonNullable<PaperOrderCreate["order_type"]>>("market")
-  const [quantity, setQuantity] = useState("100")
-  const [price, setPrice] = useState("")
-  const [formError, setFormError] = useState("")
-
-  useEffect(() => {
-    if (!open) {
-      return
-    }
-    setSymbol(defaultSymbol ?? "")
-    setName(defaultName ?? "")
-    setSide("buy")
-    setOrderType("market")
-    setQuantity("100")
-    setPrice(typeof defaultPrice === "number" && Number.isFinite(defaultPrice) ? String(defaultPrice) : "")
-    setFormError("")
-  }, [defaultName, defaultPrice, defaultSymbol, open])
-
-  if (!open) {
-    return null
-  }
-
-  async function handleSubmit() {
-    const normalizedSymbol = symbol.trim().toUpperCase()
-    const numericQuantity = Number.parseInt(quantity, 10)
-    const numericPrice = Number.parseFloat(price)
-
-    if (!normalizedSymbol) {
-      setFormError("代码必填")
-      return
-    }
-    if (!Number.isFinite(numericQuantity) || numericQuantity <= 0 || numericQuantity % 100 !== 0) {
-      setFormError("数量必须是 100 的正整数倍")
-      return
-    }
-    if (orderType === "limit" && (!Number.isFinite(numericPrice) || numericPrice <= 0)) {
-      setFormError("限价委托必须填写有效价格")
-      return
-    }
-
-    setFormError("")
-    const ok = await onSubmit({
-      symbol: normalizedSymbol,
-      name: name.trim() || normalizedSymbol,
-      side,
-      order_type: orderType,
-      quantity: numericQuantity,
-      price: orderType === "limit" ? numericPrice : null,
-      current_price: Number.isFinite(numericPrice) && numericPrice > 0 ? numericPrice : null,
-      source: "mobile_manual",
-      reason: "App 端手动模拟委托"
-    })
-    if (ok) {
-      onClose()
-    }
-  }
-
-  return (
-    <div className="mobile-app-sheet-backdrop" role="presentation" onClick={onClose}>
-      <section className="mobile-app-sheet mobile-paper-order-sheet" onClick={(event) => event.stopPropagation()}>
-        <div className="mobile-app-sheet-head">
-          <div className="mobile-app-sheet-title">
-            <h2>模拟委托</h2>
-            <small>仅记录模拟交易，不代表真实委托</small>
-          </div>
-          <button type="button" className="mobile-app-icon-button" onClick={onClose} aria-label="关闭">
-            <Icon name="close" />
-          </button>
-        </div>
-
-        <div className="mobile-paper-order-form">
-          <label>
-            <span>代码</span>
-            <input value={symbol} onChange={(event) => setSymbol(event.target.value.toUpperCase())} placeholder="510300" />
-          </label>
-          <label>
-            <span>名称</span>
-            <input value={name} onChange={(event) => setName(event.target.value)} placeholder="可选" />
-          </label>
-          <div className="mobile-paper-order-segment">
-            <button type="button" className={side === "buy" ? "active" : ""} onClick={() => setSide("buy")}>买入</button>
-            <button type="button" className={side === "sell" ? "active" : ""} onClick={() => setSide("sell")}>卖出</button>
-          </div>
-          <div className="mobile-paper-order-segment">
-            <button type="button" className={orderType === "market" ? "active" : ""} onClick={() => setOrderType("market")}>市价</button>
-            <button type="button" className={orderType === "limit" ? "active" : ""} onClick={() => setOrderType("limit")}>限价</button>
-          </div>
-          <label>
-            <span>数量</span>
-            <input inputMode="numeric" value={quantity} onChange={(event) => setQuantity(event.target.value)} placeholder="100" />
-          </label>
-          <label>
-            <span>{orderType === "limit" ? "限价" : "参考价"}</span>
-            <input inputMode="decimal" value={price} onChange={(event) => setPrice(event.target.value)} placeholder="可选" />
-          </label>
-          {formError ? <div className="mobile-paper-order-error">{formError}</div> : null}
-        </div>
-
-        <div className="mobile-app-sheet-actions">
-          <button type="button" className="mobile-app-secondary" onClick={onClose}>取消</button>
-          <button type="button" className="mobile-app-primary" disabled={loading} onClick={() => void handleSubmit()}>
-            {loading ? "提交中" : "提交委托"}
           </button>
         </div>
       </section>

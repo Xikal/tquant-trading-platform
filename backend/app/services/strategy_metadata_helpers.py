@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from app.models.entities import StrategyMetadata, StrategyPreset, User
 from app.models.schema_defs.strategy_meta import StrategyPresetOut
 from app.services.low_buy.strategy_governance import _strategy_health
-from app.services.low_buy.strategy_policy import StrategyTier, get_strategy_tier
+from app.services.low_buy.strategy_policy import StrategyTier, get_strategy_tier, is_observation_layer_strategy
 from app.services.shared.feature_flags import feature_enabled
 from app.services.strategy_metadata_defaults import (
     RESEARCH_TO_AUXILIARY_GATED_STRATEGIES,
@@ -116,7 +116,9 @@ def strategy_tier_label(tier: StrategyTier) -> str:
     }.get(tier, "研究策略")
 
 
-def display_category(value: str | None, tier: StrategyTier) -> str:
+def display_category(value: str | None, tier: StrategyTier, strategy_key: str = "") -> str:
+    if strategy_key and is_observation_layer_strategy(strategy_key):
+        return "观察策略"
     normalized = (value or "").strip()
     if normalized in {"core", "auxiliary", "research", "factor"}:
         return strategy_tier_label(StrategyTier(normalized))

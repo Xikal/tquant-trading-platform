@@ -128,6 +128,32 @@ def _backfill_strategy_metadata_columns(engine: Engine, existing_tables: set[str
                 probe_summary="待样本外验证完成后开放生产入口。",
                 visibility="backtest_only",
             )
+            _upsert_strategy_metadata_seed(
+                connection,
+                key="n_pattern_long_wash",
+                name="长洗N字冲高",
+                description="大阳/涨停启动后 7-15 日缩量洗盘，守住启动低点后放量修复，主要做 3-5 日冲高止盈。",
+                category="core",
+                risk_level="high",
+                holding_days="3-5天冲高止盈",
+                sort_order=90,
+                probe_status="not_required",
+                probe_summary="",
+                visibility="full",
+            )
+            _upsert_strategy_metadata_seed(
+                connection,
+                key="n_pattern_short_wash",
+                name="短洗N字冲高",
+                description="启动后 2-5 日快速分歧，红十字或锤头线守住启动低点，主要做 T+1/T+2 冲高止盈。",
+                category="core",
+                risk_level="high",
+                holding_days="1-2天冲高止盈",
+                sort_order=100,
+                probe_status="not_required",
+                probe_summary="",
+                visibility="full",
+            )
     except Exception:
         logger.exception("schema compatibility patch failed to backfill strategy metadata columns")
 

@@ -7,7 +7,7 @@ from app.models.schemas import LowBuyCandidateOut, LowBuyScreenerResponse
 from app.repositories.low_buy.results import LowBuyResultRepository
 from app.services.low_buy.shared import Session
 
-ACTIONABLE_SIGNAL_STATES = frozenset({"buy_now", "soft_buy_now", "near_entry"})
+ACTIONABLE_SIGNAL_STATES = frozenset({"buy_now", "soft_buy_now", "observe_confirmed", "near_entry"})
 RECOMMENDATION_LOOKBACK_DAYS = 80
 
 

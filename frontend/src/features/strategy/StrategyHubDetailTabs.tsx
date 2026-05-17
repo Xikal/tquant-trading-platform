@@ -1,3 +1,4 @@
+import { lazy, Suspense } from "react";
 import type { BacktestRunSummary } from "../../api/backtests";
 import type { AuthUser } from "../../types";
 import { SkeletonBlock } from "../../components/shared/Feedback";
@@ -5,23 +6,23 @@ import type { StrategyHubTab } from "./useStrategyHub";
 import { PanelTitle, RecentRuns, StrategyBridge, StrategyHistoryPanel, visibleTabsForUser } from "./StrategyHubPanels";
 import { QuickBacktestForm } from "./StrategyQuickCheckPanel";
 import type { useStrategyHub } from "./useStrategyHub";
-import type { useBacktestDashboard } from "../backtest/useBacktestDashboard";
 
 type HubState = ReturnType<typeof useStrategyHub>;
-type DashboardState = ReturnType<typeof useBacktestDashboard>;
-type DetailTabKey = "quick" | "history" | "signals" | "factor" | "expert";
+type DetailTabKey = "quick" | "history" | "signals" | "expert";
 type ExpertTabKey = Extract<StrategyHubTab, "optimize" | "validate" | "compare" | "capacity">;
+
+const StrategyHubExpertPanel = lazy(async () => ({
+  default: (await import("./StrategyHubExpertPanel")).StrategyHubExpertPanel,
+}));
 
 export function StrategyHubDetailTabs({
   currentUser,
   hub,
-  dashboard,
   onQuickSubmit,
   onRerun,
 }: {
   currentUser: AuthUser;
   hub: HubState;
-  dashboard: DashboardState;
   onQuickSubmit: () => void;
   onRerun: (run: BacktestRunSummary) => void;
 }) {
@@ -29,16 +30,12 @@ export function StrategyHubDetailTabs({
   const expertTabs = visibleTabs.filter((tab): tab is typeof tab & { key: ExpertTabKey } =>
     ["optimize", "validate", "compare", "capacity"].includes(tab.key)
   );
-  const hasFactorLab = visibleTabs.some((tab) => tab.key === "factor");
-  const detailTab = currentDetailTab(hub.tab, expertTabs.length > 0, hasFactorLab);
+  const detailTab = currentDetailTab(hub.tab, expertTabs.length > 0);
   const detailTabs: Array<{ key: DetailTabKey; label: string; hint: string }> = [
     { key: "quick", label: "快速体检", hint: "新用户从这里开始" },
     { key: "history", label: "最近结果", hint: "看最近任务和历史变化" },
     { key: "signals", label: "信号复盘", hint: "看有效和失效案例" },
   ];
-  if (hasFactorLab) {
-    detailTabs.push({ key: "factor", label: "因子实验室", hint: "DeepSeek 挖掘新因子" });
-  }
   if (expertTabs.length) {
     detailTabs.push({ key: "expert", label: "专家工具", hint: "调参、验证、对比、容量" });
   }
@@ -101,12 +98,7 @@ export function StrategyHubDetailTabs({
       ) : null}
       {hub.loading !== "tab-switch" && detailTab === "signals" ? (
         <div className="strategy-detail-panel">
-          <StrategyBridge tab="signals" currentUser={currentUser} dashboard={dashboard} />
-        </div>
-      ) : null}
-      {hub.loading !== "tab-switch" && detailTab === "factor" ? (
-        <div className="strategy-detail-panel">
-          <StrategyBridge tab="factor" currentUser={currentUser} dashboard={dashboard} />
+          <StrategyBridge tab="signals" />
         </div>
       ) : null}
       {hub.loading !== "tab-switch" && detailTab === "expert" ? (
@@ -124,18 +116,19 @@ export function StrategyHubDetailTabs({
               </button>
             ))}
           </div>
-          <StrategyBridge tab={expertTab(hub.tab, hub)} currentUser={currentUser} dashboard={dashboard} />
+          <Suspense fallback={<SkeletonBlock rows={5} title />}>
+            <StrategyHubExpertPanel tab={expertTab(hub.tab, hub)} currentUser={currentUser} />
+          </Suspense>
         </div>
       ) : null}
     </section>
   );
 }
 
-function currentDetailTab(tab: StrategyHubTab, hasExpertTabs: boolean, hasFactorLab: boolean): DetailTabKey {
+function currentDetailTab(tab: StrategyHubTab, hasExpertTabs: boolean): DetailTabKey {
   if (tab === "quick") return "quick";
   if (tab === "history") return "history";
   if (tab === "signals") return "signals";
-  if (tab === "factor" && hasFactorLab) return "factor";
   if (!hasExpertTabs) return "quick";
   return "expert";
 }
@@ -143,10 +136,6 @@ function currentDetailTab(tab: StrategyHubTab, hasExpertTabs: boolean, hasFactor
 function switchDetailTab(key: DetailTabKey, hub: HubState) {
   if (key === "expert") {
     hub.setTab(expertTab(hub.tab, hub, false));
-    return;
-  }
-  if (key === "factor") {
-    hub.setTab("factor");
     return;
   }
   hub.setTab(key);

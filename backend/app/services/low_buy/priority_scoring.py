@@ -15,6 +15,7 @@ class LowBuyPriorityScoringMixin:
         state_weight = {
             "buy_now": 36.0,
             "soft_buy_now": 31.0,
+            "observe_confirmed": 26.0,
             "near_entry": 24.0,
             "watch": 13.0,
             "avoid": 0.0,
@@ -256,7 +257,7 @@ class LowBuyPriorityScoringMixin:
     def _market_state_bonus(self, candidate: LowBuyCandidateOut, market_context: PriorityMarketContext) -> float:
         if candidate.buy_signal_state in {"buy_now", "soft_buy_now"}:
             multiplier = 0.55
-        elif candidate.buy_signal_state == "near_entry":
+        elif candidate.buy_signal_state in {"observe_confirmed", "near_entry"}:
             multiplier = 0.35
         else:
             multiplier = 0.20
@@ -368,6 +369,8 @@ class LowBuyPriorityScoringMixin:
         if candidate.buy_signal_state in {"buy_now", "soft_buy_now"}:
             trigger = candidate.trigger_condition or "价格到位并确认承接"
             return f"现在可处理，先试 {candidate.suggested_position_pct:.1f}% 仓位；{trigger}"
+        if candidate.buy_signal_state == "observe_confirmed":
+            return "观察确认已成立，但该策略仍不自动交易；只做人工复核。"
         if candidate.buy_signal_state == "near_entry":
             if candidate.entry_distance_pct <= 0:
                 return "已到买点，等最后止跌/承接确认。"
@@ -386,6 +389,8 @@ class LowBuyPriorityScoringMixin:
             if candidate.entry_distance_pct > 0:
                 return f"未到买点，还差 {candidate.entry_distance_pct:.2f}%。"
             return candidate.trigger_condition or "结构还没完全确认。"
+        if candidate.buy_signal_state == "observe_confirmed":
+            return "结构、热点和市场状态已确认，仍需结合买点区、仓位和止损纪律执行。"
         if candidate.buy_signal_state == "near_entry":
             if candidate.entry_distance_pct <= 0:
                 return "价格已到位，但仍缺止跌确认。"
