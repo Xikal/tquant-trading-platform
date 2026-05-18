@@ -11,6 +11,10 @@ from app.services.agent_daily_workflow_service import AgentDailyWorkflowService
 from app.services.market_quote_cache_refresh import MarketQuoteCacheRefreshService
 from app.services.monitor_snapshot_cache import build_and_store_monitor_snapshot
 from app.services.tasks import RuntimeTaskQueue
+from app.workers.latest_data_close_scheduler import (
+    start_latest_data_close_scheduler,
+    stop_latest_data_close_scheduler,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -71,6 +75,40 @@ def _execute_task(task_type: str, payload: dict[str, Any], db) -> dict[str, Any]
         )
     if task_type == "market_quote_cache_refresh":
         return MarketQuoteCacheRefreshService(db).refresh(limit=int(payload.get("limit") or 200))
+    if task_type == "instrument_sync":
+        from app.services.instrument_sync_status import InstrumentSyncStatusService
+        from app.services.market_data import MarketDataService
+
+        kind = str(payload.get("kind") or "all")
+        run_id = str(payload.get("run_id") or "")
+        if not run_id:
+            raise ValueError("instrument_sync requires run_id")
+        status_service = InstrumentSyncStatusService()
+        status_service.update(
+            run_id=run_id,
+            kind=kind,
+            status="running",
+            progress_pct=5.0,
+            message="后台正在更新股票库",
+        )
+
+        def progress(progress_pct: float, message: str, result: dict[str, int] | None = None) -> None:
+            status_service.update(
+                run_id=run_id,
+                kind=kind,
+                status="running",
+                progress_pct=progress_pct,
+                message=message,
+                result=result,
+            )
+
+        try:
+            result = MarketDataService().sync_instruments(db, kind, progress_callback=progress)
+        except Exception as exc:
+            status_service.fail(run_id=run_id, kind=kind, error=str(exc)[:240] or "股票库更新失败")
+            raise
+        status_service.finish(run_id=run_id, kind=kind, result=result)
+        return {"ok": True, "run_id": run_id, "result": result}
     if task_type == "daily_bar_refresh":
         from app.services.daily_bar_refresh import DailyBarRefreshService
 
@@ -152,7 +190,11 @@ def _json_payload(raw: str) -> dict[str, Any]:
 
 def main() -> None:
     logging.basicConfig(level=logging.INFO)
-    RuntimeWorker().run_forever()
+    start_latest_data_close_scheduler()
+    try:
+        RuntimeWorker().run_forever()
+    finally:
+        stop_latest_data_close_scheduler()
 
 
 if __name__ == "__main__":

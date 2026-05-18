@@ -1,7 +1,9 @@
 import { memo, useMemo } from "react";
 import type { LowBuyPriorityBoardResult, MarketBreadth, PairedHedgeResearchResponse, RuntimeStatus, SectorEtfT0Response } from "../../types";
+import type { InstrumentSyncStatus } from "../../types";
 import { NumberField, SearchField, TextField } from "../../components/shared/FormFields";
 import { directActionTitle } from "../../utils/uxClarity";
+import { InstrumentSyncProgress } from "./InstrumentSyncProgress";
 import { MonitorHoldingWizard } from "./MonitorHoldingWizard";
 import { EmptyState, FamilyStrip, InfoPill, MetricGrid, PanelTitle, StockCard } from "./WorkspaceComponents";
 import { average, formatPct, formatPrice, riskLevelText, shortTime } from "./workspaceFormatters";
@@ -15,6 +17,7 @@ export interface MonitorPageProps {
   priorityCards: StockCardView[];
   watchCards: StockCardView[];
   runtime: RuntimeStatus | null;
+  instrumentSyncStatus: InstrumentSyncStatus | null;
   watchDraft: WatchDraft;
   setWatchDraft: (draft: WatchDraft) => void;
   editingWatchSymbol: string;
@@ -39,6 +42,7 @@ export const MonitorPage = memo(function MonitorPage({
   priorityCards,
   watchCards,
   runtime,
+  instrumentSyncStatus,
   watchDraft,
   setWatchDraft,
   editingWatchSymbol,
@@ -68,6 +72,8 @@ export const MonitorPage = memo(function MonitorPage({
       { label: "榜单 / 刷新", value: `${priorityBoard?.items.length ?? 0} / ${shortTime(priorityBoard?.updated_at) || "--"}`, tone: "neutral" },
     ];
   }, [priorityBoard?.items.length, priorityBoard?.updated_at, priorityCards, watchCards]);
+  const instrumentSyncActive =
+    loading === "sync" || instrumentSyncStatus?.status === "queued" || instrumentSyncStatus?.status === "running";
   return (
     <section className="page-grid monitor-grid">
       <div className="panel monitor-summary">
@@ -77,10 +83,10 @@ export const MonitorPage = memo(function MonitorPage({
             <>
               <button
                 onClick={onSync}
-                disabled={loading === "sync"}
+                disabled={instrumentSyncActive}
                 title="从数据源更新股票基础信息，通常只在股票名称、行业或代码库异常时使用，可能耗时较久。"
               >
-                更新股票库（较慢）
+                {instrumentSyncActive ? "股票库更新中" : "更新股票库（较慢）"}
               </button>
               <button onClick={onRefresh} disabled={loading === "monitor"}>手动刷新</button>
             </>
@@ -99,6 +105,7 @@ export const MonitorPage = memo(function MonitorPage({
           <MetricGrid items={metrics} />
         </details>
         <MarketBreadthStrip marketBreadth={marketBreadth} />
+        <InstrumentSyncProgress status={instrumentSyncStatus} loading={loading === "sync"} />
         <p className="hint">“更新股票库”只更新全市场基础资料，不会直接买卖股票；平时看信号点“手动刷新”即可。</p>
       </div>
 

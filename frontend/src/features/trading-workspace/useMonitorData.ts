@@ -5,6 +5,7 @@ import { api } from "../../api/client";
 import type {
   LowBuyPriorityBoardResult,
   LowBuyQuoteRefreshItem,
+  InstrumentSyncStatus,
   MarketBreadth,
   PairedHedgeResearchResponse,
   RuntimeStatus,
@@ -41,8 +42,11 @@ export function useMonitorData({ active, withLoading, setError, setNotice }: Use
   const [sectorEtfT0, setSectorEtfT0] = useState<SectorEtfT0Response | null>(null);
   const [pairedHedge, setPairedHedge] = useState<PairedHedgeResearchResponse | null>(null);
   const [runtime, setRuntime] = useState<RuntimeStatus | null>(null);
+  const [instrumentSyncStatus, setInstrumentSyncStatus] = useState<InstrumentSyncStatus | null>(null);
   const monitorRefreshRef = useRef(false);
   const quoteRefreshRef = useRef(false);
+  const instrumentSyncPollRef = useRef<number | null>(null);
+  const instrumentSyncRunIdRef = useRef<string>("");
   const pendingRetryTimerRef = useRef<number | null>(null);
   const pendingRetryCountRef = useRef(0);
   const priorityBoardRef = useRef<LowBuyPriorityBoardResult | null>(null);
@@ -120,13 +124,69 @@ export function useMonitorData({ active, withLoading, setError, setNotice }: Use
     await withLoading("monitor", () => fetchMonitorData(true));
   }, [fetchMonitorData, withLoading]);
 
+  const stopInstrumentSyncPolling = useCallback(() => {
+    if (instrumentSyncPollRef.current != null) {
+      window.clearInterval(instrumentSyncPollRef.current);
+      instrumentSyncPollRef.current = null;
+    }
+  }, []);
+
+  const pollInstrumentSyncStatus = useCallback(async (runId: string) => {
+    try {
+      const status = await api.getInstrumentSyncStatus(runId);
+      if (instrumentSyncRunIdRef.current !== runId) {
+        return;
+      }
+      setInstrumentSyncStatus(status);
+      if (status.status === "queued" || status.status === "running") {
+        return;
+      }
+      stopInstrumentSyncPolling();
+      if (status.status === "succeeded") {
+        setNotice(status.message || "股票库更新完成");
+        await refreshMonitor();
+      } else if (status.status === "failed") {
+        setError(status.error || status.message || "股票库更新失败");
+      }
+    } catch {
+      // Keep polling; transient auth/network failures should not hide the in-flight task.
+    }
+  }, [refreshMonitor, setError, setNotice, stopInstrumentSyncPolling]);
+
+  const startInstrumentSyncPolling = useCallback((runId: string) => {
+    stopInstrumentSyncPolling();
+    instrumentSyncRunIdRef.current = runId;
+    void pollInstrumentSyncStatus(runId);
+    instrumentSyncPollRef.current = window.setInterval(() => void pollInstrumentSyncStatus(runId), 900);
+  }, [pollInstrumentSyncStatus, stopInstrumentSyncPolling]);
+
   const syncInstruments = useCallback(async () => {
     await withLoading("sync", async () => {
-      const result = await api.syncInstruments();
-      setNotice(result.message || "标的同步完成");
-      await refreshMonitor();
+      setInstrumentSyncStatus({
+        run_id: "pending",
+        kind: "all",
+        status: "queued",
+        progress_pct: 1,
+        message: "正在提交更新请求",
+        result: {},
+        updated_at: new Date().toISOString(),
+      });
+      try {
+        const result = await api.syncInstruments();
+        instrumentSyncRunIdRef.current = result.run_id;
+        setInstrumentSyncStatus(result.status);
+        setNotice(result.message || "股票库更新任务已提交");
+        startInstrumentSyncPolling(result.run_id);
+      } catch (error) {
+        try {
+          setInstrumentSyncStatus(await api.getInstrumentSyncStatus(instrumentSyncRunIdRef.current || undefined));
+        } catch {
+          // Keep the local progress text if the status endpoint is unreachable.
+        }
+        throw error;
+      }
     });
-  }, [refreshMonitor, setNotice, withLoading]);
+  }, [setNotice, startInstrumentSyncPolling, withLoading]);
 
   const resetMonitorData = useCallback(() => {
     clearPendingRetry();
@@ -254,6 +314,8 @@ export function useMonitorData({ active, withLoading, setError, setNotice }: Use
     };
   }, [active]);
 
+  useEffect(() => () => stopInstrumentSyncPolling(), [stopInstrumentSyncPolling]);
+
   return {
     priorityBoard,
     setPriorityBoard,
@@ -264,6 +326,7 @@ export function useMonitorData({ active, withLoading, setError, setNotice }: Use
     setWatchlistSignals,
     runtime,
     setRuntime,
+    instrumentSyncStatus,
     priorityCards,
     watchCards,
     fetchMonitorData,

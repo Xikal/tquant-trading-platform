@@ -43,11 +43,13 @@ def main() -> int:
         status = latest_data_status(db, strategies=strategies)
         summaries = _strategy_summaries(db, status.get("expected_trade_date", ""), strategies)
         failures = _failures(status=status, summaries=summaries)
+        warnings = _warnings(summaries=summaries)
         if failures and args.repair:
             _repair_latest_data(db, status=status, strategies=strategies)
             status = latest_data_status(db, strategies=strategies)
             summaries = _strategy_summaries(db, status.get("expected_trade_date", ""), strategies)
             failures = _failures(status=status, summaries=summaries)
+            warnings = _warnings(summaries=summaries)
         if failures and args.enqueue_missing:
             enqueue_low_buy_materialization(db, reason="latest_data_acceptance_failed")
             db.commit()
@@ -57,6 +59,7 @@ def main() -> int:
         "status": status,
         "strategy_summaries": summaries,
         "failures": failures,
+        "warnings": warnings,
     }
     print(json.dumps(payload, ensure_ascii=False, indent=2, default=str))
     if failures and args.notify_on_fail:
@@ -113,10 +116,15 @@ def _failures(*, status: dict[str, Any], summaries: list[dict[str, Any]]) -> lis
         failures.append(f"{expected} 缺少策略快照：{', '.join(missing)}")
     if published != expected or status.get("status") != "success":
         failures.append(f"最新数据未发布：expected={expected}, published={published}, status={status.get('status')}")
+    return failures
+
+
+def _warnings(*, summaries: list[dict[str, Any]]) -> list[str]:
+    warnings: list[str] = []
     for row in summaries:
         if row["present"] and row["pool_size"] <= 0:
-            failures.append(f"{row['strategy']} 样本池为空")
-    return failures
+            warnings.append(f"{row['strategy']} 样本池为空")
+    return warnings
 
 
 def _notify_failure(payload: dict[str, Any], *, channel: str) -> None:

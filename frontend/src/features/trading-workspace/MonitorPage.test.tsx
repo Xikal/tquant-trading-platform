@@ -23,6 +23,7 @@ describe("MonitorPage", () => {
           tone: "up",
         }]}
         runtime={null}
+        instrumentSyncStatus={null}
         watchDraft={{ symbol: "", name: "", base_position: "", available_position: "", cost_basis: "", memo: "" }}
         setWatchDraft={vi.fn()}
         editingWatchSymbol=""

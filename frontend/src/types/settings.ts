@@ -98,6 +98,29 @@ export interface AdminTasksResponse {
   items: AdminTaskStatus[];
 }
 
+export interface LatestLowBuyDataStatus {
+  expected_trade_date?: string;
+  published_trade_date?: string;
+  status?: string;
+  daily_bar_count?: number;
+  min_daily_bar_count?: number;
+  missing_strategies?: string[];
+  required_strategies?: string[];
+  updated_at?: string;
+  reason?: string;
+}
+
+export interface AdminLatestDataRefreshResponse {
+  ok: boolean;
+  action: string;
+  expected_trade_date?: string;
+  daily_bar_count?: number;
+  task_id?: number;
+  task_status?: string;
+  missing_strategies?: string[];
+  publish_status?: LatestLowBuyDataStatus;
+}
+
 export interface DataSourceQualityItem {
   source: string;
   ok: boolean;
@@ -118,7 +141,7 @@ export interface AdminMetricsResponse {
   market_data_sources?: DataSourceProbeResponse | null;
   market_providers?: Record<string, unknown> | null;
   local_quote_cache?: Record<string, number> | null;
-  latest_low_buy_data?: Record<string, unknown> | null;
+  latest_low_buy_data?: LatestLowBuyDataStatus | null;
   [key: string]: unknown;
 }
 

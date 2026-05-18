@@ -23,6 +23,7 @@ import {
   StrategyGovernanceCard,
 } from "./SettingsPagePanels";
 import { SettingsPageTabs, type SettingsTabItem, type SettingsTabKey } from "./SettingsPageTabs";
+import { LatestDataStatusCard } from "./LatestDataStatusCard";
 import { QuantParameterMlCard } from "./QuantParameterMlCard";
 import { QuantParameterPaperExitCard } from "./QuantParameterPaperExitCard";
 import { QuantParameterSectorEtfCard } from "./QuantParameterSectorEtfCard";
@@ -44,6 +45,7 @@ export function SettingsPage({
   onSave,
   onSaveFactors,
   onRefresh,
+  onRefreshLatestData,
   onUpdateStrategyGovernance,
   onSaveSectorExclusions,
   currentUser,
@@ -64,6 +66,7 @@ export function SettingsPage({
   onSave: (section: "llm" | "risk" | "data") => void | Promise<void>;
   onSaveFactors: () => void | Promise<void>;
   onRefresh: () => void;
+  onRefreshLatestData: () => void | Promise<void>;
   onUpdateStrategyGovernance: (strategyKey: string, status: "active" | "watch" | "paused") => void;
   onSaveSectorExclusions: (excludedSectors: string[]) => void | Promise<void>;
   currentUser: AuthUser;
@@ -358,6 +361,12 @@ export function SettingsPage({
               <InfoPill label="数据库" value={runtime?.database_url_masked ?? "--"} />
               <InfoPill label="接口前缀" value={runtime?.api_prefix ?? "/api"} />
             </SettingCard>
+            <LatestDataStatusCard
+              status={adminMetrics?.latest_low_buy_data ?? null}
+              loading={loading === "latest-data-refresh"}
+              adminTokenError={adminTokenError}
+              onRefresh={onRefreshLatestData}
+            />
             <RuntimeDiagnosticsCard runtime={runtime} adminTasks={adminTasks} adminMetrics={adminMetrics} loading={loading} onRefresh={onRefresh} />
             <RuntimeSnapshotPanel settings={settings} runtime={runtime} />
           </section>

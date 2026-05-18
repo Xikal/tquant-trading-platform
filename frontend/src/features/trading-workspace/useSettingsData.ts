@@ -2,6 +2,7 @@ import { useCallback, useState } from "react";
 import { api } from "../../api/client";
 import { getAdminApiToken, setAdminApiToken } from "../../api/base";
 import type {
+  AdminLatestDataRefreshResponse,
   AdminTaskStatus,
   AdminMetricsResponse,
   FactorWeightsResponse,
@@ -146,6 +147,19 @@ export function useSettingsData({ withLoading, setError, setNotice, setRuntime }
     });
   }, [setNotice, withLoading]);
 
+  const refreshLatestData = useCallback(async () => {
+    await withLoading("latest-data-refresh", async () => {
+      setAdminApiToken(settingsDraft.adminToken);
+      if (!getAdminApiToken()) {
+        throw new Error("请先填写正确的管理令牌");
+      }
+      const result = await api.refreshLatestLowBuyData();
+      const metrics = await api.getAdminMetrics();
+      setAdminMetrics(metrics);
+      setNotice(latestDataRefreshNotice(result));
+    });
+  }, [settingsDraft.adminToken, setNotice, withLoading]);
+
   return {
     settings,
     factorWeights,
@@ -162,7 +176,28 @@ export function useSettingsData({ withLoading, setError, setNotice, setRuntime }
     saveFactorWeights,
     updateStrategyGovernance,
     saveSectorExclusions,
+    refreshLatestData,
   };
+}
+
+function latestDataRefreshNotice(result: AdminLatestDataRefreshResponse): string {
+  if (result.action === "enqueue_daily_bar_refresh") {
+    return `已开始补全 ${result.expected_trade_date ?? "当日"} 日线数据，当前 ${result.daily_bar_count ?? 0} 条`;
+  }
+  if (result.action === "enqueue_low_buy_materialization") {
+    const missingCount = result.missing_strategies?.length ?? 0;
+    return `日线已补齐，已开始重建 ${missingCount} 个策略快照`;
+  }
+  if (result.action === "publish_latest_trade_date") {
+    return result.ok ? "最新数据已发布，前端可直接使用" : "数据发布仍在等待补齐，请稍后刷新";
+  }
+  if (result.action === "already_latest") {
+    return "最新数据已经发布，无需重复补全";
+  }
+  if (result.action === "skip_before_close") {
+    return "当前未到收盘补全时间，系统会在收盘后自动检查";
+  }
+  return "已提交最新数据补全检查";
 }
 
 function factorWeightsToDraft(payload: FactorWeightsResponse): Record<string, string> {

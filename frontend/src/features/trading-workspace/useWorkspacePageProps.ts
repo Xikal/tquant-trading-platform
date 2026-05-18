@@ -53,6 +53,7 @@ export function useWorkspacePageProps({
     priorityCards: monitor.priorityCards,
     watchCards: monitor.watchCards,
     runtime: monitor.runtime,
+    instrumentSyncStatus: monitor.instrumentSyncStatus,
     watchDraft,
     setWatchDraft,
     editingWatchSymbol,

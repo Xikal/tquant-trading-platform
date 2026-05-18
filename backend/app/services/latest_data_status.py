@@ -15,7 +15,7 @@ from app.services.market.trading_calendar import is_a_share_trading_day
 
 SETTING_KEY = "low_buy.latest_data"
 MIN_STOCK_DAILY_BARS = 4500
-PUBLISH_AFTER = dt_time(hour=15, minute=10)
+PUBLISH_AFTER = dt_time(hour=15, minute=1)
 
 
 def expected_low_buy_trade_date(db: Session) -> str:

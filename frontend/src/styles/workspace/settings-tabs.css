@@ -72,6 +72,33 @@
   grid-column: 1;
 }
 
+.latest-data-card {
+  border-color: rgba(148, 163, 184, 0.28);
+}
+
+.latest-data-card.up {
+  border-color: rgba(22, 163, 74, 0.35);
+}
+
+.latest-data-card.warn {
+  border-color: rgba(245, 158, 11, 0.4);
+}
+
+.latest-data-headline {
+  display: grid;
+  gap: 4px;
+}
+
+.latest-data-headline strong {
+  color: #0f172a;
+  font-size: 16px;
+}
+
+.latest-data-headline span {
+  color: #64748b;
+  font-size: 12px;
+}
+
 .settings-tab-panel--data .runtime-diagnostics-card {
   grid-column: 2;
   grid-row: 2 / span 2;

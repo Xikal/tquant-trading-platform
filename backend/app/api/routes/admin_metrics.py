@@ -8,6 +8,7 @@ from app.core.database import get_db
 from app.core.task_manager import task_manager
 from app.core.timing import request_timing_snapshot
 from app.services.latest_data_status import latest_data_status
+from app.services.latest_data_close_refresh import enqueue_latest_data_close_refresh
 from app.services.market.local_quote_cache import local_quote_cache_metrics_snapshot
 from app.services.market.providers.circuit import provider_metrics_snapshot
 from app.services.market.providers.probe import DataSourceProbeService
@@ -24,6 +25,11 @@ def get_admin_metrics(_: None = Depends(require_admin_auth), db=Depends(get_db))
     snapshot["local_quote_cache"] = local_quote_cache_metrics_snapshot()
     snapshot["latest_low_buy_data"] = latest_data_status(db)
     return snapshot
+
+
+@router.post("/latest-data/refresh")
+def refresh_latest_low_buy_data(_: None = Depends(require_admin_auth), db=Depends(get_db)) -> dict:
+    return enqueue_latest_data_close_refresh(db)
 
 
 @router.get("/tasks")

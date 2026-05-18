@@ -9,6 +9,25 @@ export interface Instrument {
   sector_name?: string | null;
 }
 
+export interface InstrumentSyncStatus {
+  run_id: string;
+  kind: string;
+  status: "idle" | "queued" | "running" | "succeeded" | "failed" | string;
+  progress_pct: number;
+  message: string;
+  result: Record<string, number>;
+  error?: string;
+  task_id?: number | null;
+  updated_at: string;
+}
+
+export interface InstrumentSyncStartResponse {
+  message: string;
+  run_id: string;
+  task_id?: number | null;
+  status: InstrumentSyncStatus;
+}
+
 export interface QuoteSnapshot {
   symbol: string;
   name: string;

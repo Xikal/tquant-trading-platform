@@ -40,7 +40,10 @@ import type {
   FactorWeightsResponse,
   AdminTasksResponse,
   AdminMetricsResponse,
+  AdminLatestDataRefreshResponse,
   Instrument,
+  InstrumentSyncStatus,
+  InstrumentSyncStartResponse,
   IntradayConfirmationItem,
   LowBuyStrategyGovernanceResponse,
   ReplayItem,
@@ -63,7 +66,9 @@ export const api = {
     request<{ items: Instrument[]; total: number }>(
       `/instruments?keyword=${encodeURIComponent(keyword)}&kind=${kind}&page=1&page_size=20`
     ),
-  syncInstruments: () => request<{ message: string; result: Record<string, number> }>(`/instruments/sync`, { method: "POST" }),
+  syncInstruments: () => request<InstrumentSyncStartResponse>(`/instruments/sync`, { method: "POST" }),
+  getInstrumentSyncStatus: (runId?: string) =>
+    request<InstrumentSyncStatus>(`/instruments/sync/status${runId ? `?run_id=${encodeURIComponent(runId)}` : ""}`),
   getWatchlist: () => request<WatchlistItem[]>("/watchlist"),
   upsertWatchlist: (payload: Omit<WatchlistItem, "created_at">) =>
     request<{ message: string; symbol: string }>("/watchlist", {
@@ -167,6 +172,11 @@ export const api = {
   getRuntimeStatus: () => requestCached<RuntimeStatus>("/settings/runtime", 10000),
   getAdminTasks: () => request<AdminTasksResponse>("/admin/tasks"),
   getAdminMetrics: () => request<AdminMetricsResponse>("/admin/metrics"),
+  refreshLatestLowBuyData: () =>
+    request<AdminLatestDataRefreshResponse>("/admin/latest-data/refresh", { method: "POST" }).then((result) => {
+      invalidateCache(["/admin/metrics", "/monitor/snapshot", "/screeners/low-buy"]);
+      return result;
+    }),
   getLowBuyStrategies: () =>
     requestCached<LowBuyStrategyGovernanceResponse>("/screeners/low-buy/strategies", 30000),
   updateLowBuyStrategyGovernance: (strategyKey: string, payload: { status: "active" | "watch" | "paused"; reason?: string }) =>

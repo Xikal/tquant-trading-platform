@@ -119,6 +119,7 @@ export function WorkspacePageContent({
             onSave={settingsData.saveSettings}
             onSaveFactors={settingsData.saveFactorWeights}
             onRefresh={() => void settingsData.loadSettings()}
+            onRefreshLatestData={() => void settingsData.refreshLatestData()}
             onUpdateStrategyGovernance={(strategyKey: string, status: "active" | "watch" | "paused") => void settingsData.updateStrategyGovernance(strategyKey, status)}
             onSaveSectorExclusions={(excludedSectors: string[]) => void settingsData.saveSectorExclusions(excludedSectors)}
             currentUser={currentUser}

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Iterable
+from collections.abc import Callable, Iterable
 
 from app.services.market.shared import (
     Instrument,
@@ -20,18 +20,32 @@ _ST_PREFIX_MARKERS = ("退市",)
 
 
 class MarketInstrumentMixin:
-    def sync_instruments(self, db: Session, kind: str = "all") -> dict[str, int]:
+    def sync_instruments(
+        self,
+        db: Session,
+        kind: str = "all",
+        progress_callback: Callable[[float, str, dict[str, int] | None], None] | None = None,
+    ) -> dict[str, int]:
         counters = {"stock": 0, "etf": 0}
         if kind in {"all", "stock"}:
             try:
+                _report_progress(progress_callback, 12.0, "正在读取 A 股股票资料", counters)
                 counters["stock"] = self._sync_stock_instruments(db)
+                _report_progress(progress_callback, 62.0, f"股票资料已写入 {counters['stock']} 条", counters)
             except Exception:
+                _report_progress(progress_callback, 36.0, "股票数据源失败，使用本地种子兜底", counters)
                 counters["stock"] = self._sync_seed_instruments(db, "stock")
+                _report_progress(progress_callback, 62.0, f"股票兜底资料已写入 {counters['stock']} 条", counters)
         if kind in {"all", "etf"}:
             try:
+                _report_progress(progress_callback, 70.0, "正在读取 ETF 资料", counters)
                 counters["etf"] = self._sync_etf_instruments(db)
+                _report_progress(progress_callback, 90.0, f"ETF 资料已写入 {counters['etf']} 条", counters)
             except Exception:
+                _report_progress(progress_callback, 78.0, "ETF 数据源失败，使用本地种子兜底", counters)
                 counters["etf"] = self._sync_seed_instruments(db, "etf")
+                _report_progress(progress_callback, 90.0, f"ETF 兜底资料已写入 {counters['etf']} 条", counters)
+        _report_progress(progress_callback, 96.0, "正在提交数据库变更", counters)
         db.commit()
         return counters
 
@@ -263,3 +277,17 @@ def _is_st_or_delist_name(name: str) -> bool:
     return any(marker in upper_name for marker in _ST_NAME_MARKERS) or any(
         _safe_str(name).startswith(marker) for marker in _ST_PREFIX_MARKERS
     )
+
+
+def _report_progress(
+    callback: Callable[[float, str, dict[str, int] | None], None] | None,
+    progress_pct: float,
+    message: str,
+    result: dict[str, int] | None = None,
+) -> None:
+    if callback is None:
+        return
+    try:
+        callback(progress_pct, message, dict(result or {}))
+    except Exception:
+        return

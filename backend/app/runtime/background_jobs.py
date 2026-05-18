@@ -25,12 +25,12 @@ from app.services.agent_daily_workflow_service import AgentDailyWorkflowService
 from app.services.agent_notification_service import AgentNotificationService
 from app.services.agent_signal_scan_service import AgentSignalScanService
 from app.services.backtest_research_worker import BacktestResearchWorker
+from app.services.latest_data_close_refresh import enqueue_latest_data_close_refresh
 from app.services.latest_data_status import expected_low_buy_trade_date, publish_latest_trade_date_if_ready
 from app.services.low_buy.shared import DEFAULT_PRODUCTION_LOW_BUY_STRATEGY
 from app.services.low_buy.strategy_auto_governance import refresh_low_buy_strategy_auto_governance
 from app.services.low_buy.strategy_policy import PRODUCTION_PRIORITY_STRATEGIES
 from app.services.low_buy_screener import PLAYBOOKS, LowBuyScreenerService
-from app.services.low_buy_materialization import enqueue_low_buy_materialization
 from app.services.market_data import MarketDataService
 from app.services.market_quote_cache_refresh import quote_cache_refresh_bucket, quote_cache_refresh_due
 from app.services.factor_mining.scheduler import enqueue_monthly_factor_mining_once
@@ -304,30 +304,13 @@ def _enqueue_market_quote_cache_refresh_once() -> None:
 
 
 def _enqueue_low_buy_materialization_once() -> None:
-    now = beijing_now()
-    if now.weekday() >= 5 or now.time() < dt_time(hour=15, minute=10):
-        return
     with SessionLocal() as db:
-        enqueue_low_buy_materialization(db, reason="scheduled_after_close")
-        db.commit()
+        enqueue_latest_data_close_refresh(db)
 
 
 def _enqueue_daily_bar_refresh_once() -> None:
-    now = beijing_now()
-    if now.weekday() >= 5 or now.time() < dt_time(hour=15, minute=10):
-        return
-    bucket = now.strftime("%Y%m%d%H%M")
     with SessionLocal() as db:
-        task = RuntimeTaskQueue(db).enqueue(
-            RuntimeTaskCreate(
-                task_type="daily_bar_refresh",
-                payload={"limit": 6000},
-                priority=30,
-                idempotency_key=f"daily_bar_refresh:{bucket}",
-                max_attempts=2,
-            )
-        )
-        logger.info("日线快照刷新任务检查完成: bucket=%s task_id=%s status=%s", bucket, task.id, task.status)
+        enqueue_latest_data_close_refresh(db)
 
 
 def _paper_archive_due() -> bool:
