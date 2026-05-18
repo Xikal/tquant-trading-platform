@@ -55,7 +55,8 @@ export const MonitorPage = memo(function MonitorPage({
   onCancelEdit,
 }: MonitorPageProps) {
   const isEditing = Boolean(editingWatchSymbol);
-  const primaryAction = useMemo(() => resolveTodayAction(watchCards, priorityCards), [watchCards, priorityCards]);
+  const primaryAction = useMemo(() => resolveTodayAction(watchCards, priorityCards, priorityBoard), [watchCards, priorityCards, priorityBoard]);
+  const priorityNotice = useMemo(() => buildPriorityNotice(priorityBoard, priorityCards.length), [priorityBoard, priorityCards.length]);
   const metrics: MetricItem[] = useMemo(() => {
     const executableCount = watchCards.filter((card) => card.actionText !== "暂不操作").length;
     const avgScore = average(priorityCards.map((card) => Number(card.scoreText))).toFixed(1);
@@ -149,8 +150,14 @@ export const MonitorPage = memo(function MonitorPage({
           <InfoPill label="组合风险" value={priorityBoard?.portfolio_risk?.risk_level ? riskLevelText(priorityBoard.portfolio_risk.risk_level) : "--"} />
           <InfoPill label="快照日期" value={`${priorityBoard?.latest_trade_date ?? "--"} / 更新 ${shortTime(priorityBoard?.updated_at) || "--"}`} />
           <InfoPill label="数据状态" value={priorityBoard?.data_quality_text ?? "--"} tone={dataQualityTone(priorityBoard?.data_quality)} />
-          <InfoPill label="候选覆盖" value={`榜单 ${priorityBoard?.total_candidates ?? 0} / 确定 ${priorityBoard?.immediate_count ?? 0} / 观察 ${priorityBoard?.focus_count ?? 0}`} />
+          <InfoPill label="今日分层" value={`确认 ${priorityBoard?.immediate_count ?? 0} / 观察 ${(priorityBoard?.focus_count ?? 0) + (priorityBoard?.track_count ?? 0)} / 榜单 ${priorityBoard?.total_candidates ?? 0}`} tone={(priorityBoard?.immediate_count ?? 0) ? "up" : "warn"} />
         </div>
+        {priorityNotice ? (
+          <div className={`board-warning ${priorityNotice.tone === "danger" ? "danger" : ""}`}>
+            <strong>{priorityNotice.title}</strong>
+            <span>{priorityNotice.detail}</span>
+          </div>
+        ) : null}
         {priorityBoard?.snapshot_warning ? <div className="board-warning">{priorityBoard.snapshot_warning}</div> : null}
         <FamilyStrip priorityBoard={priorityBoard} />
         <div className="stock-list compact">
@@ -251,6 +258,7 @@ function formatRatioPct(value?: number | null): string {
 function resolveTodayAction(
   watchCards: StockCardView[],
   priorityCards: StockCardView[],
+  priorityBoard: LowBuyPriorityBoardResult | null,
 ): { title: string; detail: string; tone: "up" | "warn" | "neutral"; source: "holding" | "priority" | "none" } {
   const actionableHolding = watchCards.find((card) => card.actionText !== "暂不操作");
   if (actionableHolding) {
@@ -259,6 +267,19 @@ function resolveTodayAction(
       detail: actionableHolding.executionHint || actionableHolding.details || "按卡片价格区间执行，失效条件触发就不做。",
       tone: "up",
       source: "holding",
+    };
+  }
+  const immediateCount = priorityBoard?.immediate_count ?? 0;
+  const observeCount = (priorityBoard?.focus_count ?? 0) + (priorityBoard?.track_count ?? 0);
+  if (priorityBoard && immediateCount <= 0) {
+    const market = priorityBoard.market_state_text || priorityBoard.daily_decision?.market_plain_text || "当前市场";
+    return {
+      title: "今日无确认买入",
+      detail: observeCount > 0
+        ? `${market}，系统仅保留 ${observeCount} 只观察票，不能当作买入推荐。`
+        : `${market}，没有股票同时满足买点、承接和风控条件。`,
+      tone: "warn",
+      source: "priority",
     };
   }
   const priority = priorityCards[0];
@@ -271,4 +292,30 @@ function resolveTodayAction(
     };
   }
   return { title: "今天先不动", detail: "暂无明确可执行信号，等待榜单或持仓信号刷新。", tone: "neutral", source: "none" };
+}
+
+function buildPriorityNotice(
+  priorityBoard: LowBuyPriorityBoardResult | null,
+  visibleCount: number,
+): { title: string; detail: string; tone: "warn" | "danger" } | null {
+  if (!priorityBoard || (priorityBoard.immediate_count ?? 0) > 0) {
+    return null;
+  }
+  const observeCount = (priorityBoard.focus_count ?? 0) + (priorityBoard.track_count ?? 0);
+  const blockedMarket = priorityBoard.market_state === "risk_release" || priorityBoard.market_state === "high_flyer_retreat";
+  const marketText = priorityBoard.market_state_text || priorityBoard.daily_decision?.market_plain_text || "当前市场";
+  if (blockedMarket) {
+    return {
+      title: "今日无确认买入：市场风控已收紧",
+      detail: `${marketText}，系统已把弱主线、承接不足或风险偏高的股票降为放弃，仅展示 ${observeCount || visibleCount} 只观察候选。`,
+      tone: "danger",
+    };
+  }
+  return {
+    title: "今日无确认买入",
+    detail: observeCount > 0
+      ? `当前只有 ${observeCount} 只观察候选，需要等价格进入买点区并完成承接确认后才会升级。`
+      : "当前没有股票同时满足价格区间、承接确认和风控条件。",
+    tone: "warn",
+  };
 }

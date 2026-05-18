@@ -38,7 +38,8 @@ export function PlaybookPage({
   const watch = allCandidates.filter((item) => item.buy_signal_state === "watch").map(candidateToCard);
   const avoid = allCandidates.filter((item) => item.buy_signal_state === "avoid").map(candidateToCard);
   const passiveCandidates = [...watch, ...avoid].slice(0, 12);
-  const focus = buyNow[0] ?? observeConfirmed[0] ?? nearEntry[0] ?? watch[0] ?? avoid[0];
+  const executableCount = buyNow.length + observeConfirmed.length + nearEntry.length;
+  const focus = buyNow[0] ?? observeConfirmed[0] ?? nearEntry[0] ?? watch[0];
   const strategyName = tabLabel(strategy, tabs) || strategyLabel(strategy);
   const loadedStrategyName = playbook?.strategy_title || tabLabel(playbook?.strategy_key || strategy, tabs) || strategyLabel(playbook?.strategy_key || strategy);
   const switchingText = playbook && playbook.strategy_key !== strategy ? "，正在切换数据" : "";
@@ -100,11 +101,22 @@ export function PlaybookPage({
         <PanelTitle title="今日主看" />
         {focus ? (
           <>
-            <p>主看：{focus.name} {focus.symbol}，{focus.actionText}，{focus.details}</p>
+            {executableCount <= 0 ? (
+              <div className="board-warning">
+                <strong>今日无可执行买点</strong>
+                <span>当前只有继续观察样本，不能当作确认买入；等待价格进入买点区并完成承接确认。</span>
+              </div>
+            ) : null}
+            <p>{executableCount > 0 ? "主看" : "观察"}：{focus.name} {focus.symbol}，{focus.actionText}，{focus.details}</p>
             <InfoPill label="主线轮动" value={playbook?.hot_industries?.slice(0, 4).join(" / ") || "--"} />
             <InfoPill label="执行顺序" value="先确定买入，再看观察确认和接近买点，失效立即降级" />
             <InfoPill label="盘后复盘入口" value="自动归档触发价、失效价和执行结果" />
           </>
+        ) : avoid.length ? (
+          <div className="board-warning danger">
+            <strong>今日全部放弃</strong>
+            <span>当前策略有样本但都未通过买点、承接或风控过滤，不展示为主看标的。</span>
+          </div>
         ) : <EmptyState text="当前策略暂无主看标的。" />}
       </aside>
       <CandidateSection className="playbook-buy" title="现在可买 / 小仓试买" items={buyNow} empty="当前没有可以直接执行的股票" onAnalyze={onAnalyze} onSelect={onSelect} />

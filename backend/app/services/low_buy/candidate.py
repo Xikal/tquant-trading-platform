@@ -31,7 +31,10 @@ from app.services.low_buy.factor_scoring import build_factor_scores, weighted_fa
 from app.services.low_buy.factor_types import FactorContext
 from app.services.low_buy.positioning import build_position_breakdown_text
 from app.services.low_buy.candidate_position_advice import position_advice_for_signal
-from app.services.low_buy.candidate_observation_confirmation import observation_confirmation_ready
+from app.services.low_buy.candidate_observation_confirmation import (
+    N_PATTERN_CONFIRMATION_STRATEGIES,
+    observation_confirmation_ready,
+)
 from app.services.low_buy.research_layers import evaluate_research_layer, is_research_layer_strategy
 from app.services.low_buy.strategy_policy import mainline_industry_allowed
 from app.services.low_buy.signal_family import (
@@ -309,14 +312,15 @@ class LowBuyCandidateMixin:
             metrics=metrics,
             research_stage=research_layer.stage,
         )
+        bypass_context_block = strategy in N_PATTERN_CONFIRMATION_STRATEGIES
         execution_ready = observation_confirmation_ready(
             strategy=strategy,
-            setup_ready=setup.execution_ready and not context_adjustment.execution_blocked,
+            setup_ready=setup.execution_ready and (bypass_context_block or not context_adjustment.execution_blocked),
             metrics=metrics,
             context=context_adjustment,
         )
         staged_state = initial_signal_state(
-            execution_blocked=context_adjustment.execution_blocked,
+            execution_blocked=context_adjustment.execution_blocked and not bypass_context_block,
             execution_ready=execution_ready,
             score=score,
             research_stage=research_layer.stage,

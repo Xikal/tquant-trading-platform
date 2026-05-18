@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import Callable
 
+from app.services.low_buy.candidate_observation_confirmation import N_PATTERN_CONFIRMATION_STRATEGIES
 from app.services.low_buy.market_state_rules import hard_buy_allowed, resolve_strategy_market_profile, soft_buy_allowed
 from app.services.low_buy.shared import LowBuyCandidateOut
 from app.services.low_buy.strategy_policy import strategy_layer, strong_buy_paused
@@ -28,9 +29,10 @@ def can_hard_buy_now(
         return False
     if candidate.risk_tier == "block":
         return False
-    if weak_market_thematic_block_reason(candidate):
+    morphology_only = candidate.strategy_key in N_PATTERN_CONFIRMATION_STRATEGIES
+    if not morphology_only and weak_market_thematic_block_reason(candidate):
         return False
-    if not hard_buy_allowed(
+    if not morphology_only and not hard_buy_allowed(
         candidate.strategy_key,
         candidate.market_state,
         candidate.market_state_strength,
@@ -72,9 +74,10 @@ def can_soft_buy_now(
         return False
     if candidate.risk_tier == "block":
         return False
-    if weak_market_thematic_block_reason(candidate):
+    morphology_only = candidate.strategy_key in N_PATTERN_CONFIRMATION_STRATEGIES
+    if not morphology_only and weak_market_thematic_block_reason(candidate):
         return False
-    if not soft_buy_allowed(
+    if not morphology_only and not soft_buy_allowed(
         candidate.strategy_key,
         candidate.market_state,
         candidate.market_state_strength,
@@ -123,6 +126,8 @@ def signal_block_hint(
             return reason or "策略绩效自动治理已将该策略降级为观察。"
     if candidate.risk_tier == "block":
         return "风险分层已触发阻断，即使价格到位也不执行。"
+    if candidate.strategy_key in N_PATTERN_CONFIRMATION_STRATEGIES:
+        return ""
     profile = resolve_strategy_market_profile(
         candidate.strategy_key,
         candidate.market_state,

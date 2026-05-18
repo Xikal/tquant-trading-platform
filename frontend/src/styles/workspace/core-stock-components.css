@@ -121,6 +121,15 @@
   line-height: 1.45;
 }
 
+.board-warning strong,
+.board-warning span {
+  display: block;
+}
+
+.board-warning strong {
+  margin-bottom: 2px;
+}
+
 .board-warning.danger {
   border-color: #f2b8b5;
   background: #fff1f0;

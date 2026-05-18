@@ -14,7 +14,7 @@ from app.services.low_buy.candidate_types import CandidateContextAdjustment, Can
 from low_buy_market_backtest_signal_stats import signal_group_stats
 
 
-def test_long_wash_observe_confirmed_requires_hot_sector_and_distribution_clear() -> None:
+def test_long_wash_observe_confirmed_uses_shape_not_sector_gate() -> None:
     metrics = _metrics()
     context = _context()
 
@@ -24,7 +24,7 @@ def test_long_wash_observe_confirmed_requires_hot_sector_and_distribution_clear(
         metrics=metrics,
         context=context,
     )
-    assert not observation_confirmation_ready(
+    assert observation_confirmation_ready(
         strategy="n_pattern_long_wash",
         setup_ready=True,
         metrics=metrics,
@@ -38,7 +38,7 @@ def test_long_wash_observe_confirmed_requires_hot_sector_and_distribution_clear(
     )
 
 
-def test_short_wash_observe_confirmed_rejects_volume_expansion() -> None:
+def test_short_wash_observe_confirmed_keeps_distribution_filter() -> None:
     metrics = replace(_metrics(), latest_volume_ratio=0.82, doji_like=True, long_lower_shadow=True)
     context = _context()
 
@@ -51,7 +51,7 @@ def test_short_wash_observe_confirmed_rejects_volume_expansion() -> None:
     assert not observation_confirmation_ready(
         strategy="n_pattern_short_wash",
         setup_ready=True,
-        metrics=replace(metrics, latest_volume_ratio=1.05),
+        metrics=replace(metrics, false_breakout_flag=True),
         context=context,
     )
 
