@@ -15,6 +15,10 @@ from app.workers.latest_data_close_scheduler import (
     start_latest_data_close_scheduler,
     stop_latest_data_close_scheduler,
 )
+from app.workers.platform_autopilot_scheduler import (
+    start_platform_autopilot_scheduler,
+    stop_platform_autopilot_scheduler,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -154,6 +158,15 @@ def _execute_task(task_type: str, payload: dict[str, Any], db) -> dict[str, Any]
             threshold=float(payload.get("threshold") or 1.0),
             channel=str(payload.get("channel") or "feishu"),
         )
+    if task_type == "hermes_platform_autopilot":
+        from app.services.platform_autopilot import PlatformAutopilotService
+
+        response = PlatformAutopilotService(db).run(
+            auto_repair=bool(payload.get("auto_repair", True)),
+            notify=bool(payload.get("notify", True)),
+            trigger=str(payload.get("trigger") or "scheduled"),
+        )
+        return response.model_dump(mode="json")
     if task_type == "factor_mining_evaluate":
         from app.models.schema_defs.factor_mining import FactorEvaluationRequest
         from app.services.factor_mining.orchestrator import FactorMiningOrchestrator
@@ -191,9 +204,11 @@ def _json_payload(raw: str) -> dict[str, Any]:
 def main() -> None:
     logging.basicConfig(level=logging.INFO)
     start_latest_data_close_scheduler()
+    start_platform_autopilot_scheduler()
     try:
         RuntimeWorker().run_forever()
     finally:
+        stop_platform_autopilot_scheduler()
         stop_latest_data_close_scheduler()
 
 

@@ -140,6 +140,33 @@ def _tool_registry() -> dict[str, ToolDefinition]:
             timeout_seconds=timeout,
         ),
         ToolDefinition(
+            name="get_platform_autopilot_status",
+            description="获取平台自动巡检状态，只读检查，不执行修复动作",
+            method="GET",
+            path="/api/agent/platform/autopilot/latest",
+            input_schema={"type": "object", "properties": {}},
+            permission="read",
+            capabilities=("platform_autopilot_read",),
+            timeout_seconds=timeout,
+        ),
+        ToolDefinition(
+            name="run_platform_autopilot",
+            description="执行白名单平台自动巡检和低风险自愈动作，不部署、不删库、不改策略、不恢复交易",
+            method="POST",
+            path="/api/agent/platform/autopilot/run",
+            input_schema={
+                "type": "object",
+                "properties": {
+                    "auto_repair": {"type": "boolean", "default": True},
+                    "notify": {"type": "boolean", "default": True},
+                    "trigger": {"type": "string", "default": "agent"},
+                },
+            },
+            permission="write",
+            capabilities=("platform_autopilot_run",),
+            timeout_seconds=max(timeout, 30),
+        ),
+        ToolDefinition(
             name="send_signal_notification",
             description="按股票、策略和信号状态发送去重后的通知；信号升级会立即通知",
             method="POST",

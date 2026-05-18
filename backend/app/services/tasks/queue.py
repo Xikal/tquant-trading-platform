@@ -76,6 +76,9 @@ class RuntimeTaskQueue:
         row = self._get_row(task_id)
         return _task_out(row)
 
+    def recover_stale_running_tasks(self) -> None:
+        self._recover_stale_running_tasks()
+
     def events(self, task_id: int, *, after_id: int = 0, limit: int = 100) -> list[RuntimeTaskEventOut]:
         rows = self.db.execute(
             select(RuntimeTaskEvent)

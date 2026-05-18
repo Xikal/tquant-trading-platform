@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import threading
 from dataclasses import dataclass
+from datetime import timedelta
 from uuid import uuid4
 
 from sqlalchemy import select
@@ -19,6 +20,7 @@ from app.services.hermes_workflow_runner import HermesWorkflowRunner, HermesWork
 WORKFLOW_EVENT_TYPE = "hermes_workflow"
 WORKFLOW_SYMBOL = WORKFLOW_NAME
 RUNNING_STATES = {"queued", "running"}
+STALE_WORKFLOW_MINUTES = 45
 
 
 @dataclass(frozen=True)
@@ -135,6 +137,8 @@ class AgentWorkflowJobService:
                 message="暂无 Hermes 研究工作流记录。发送“研究”可启动。",
                 symbols=[],
             )
+        if _expire_stale_job(db, row):
+            db.refresh(row)
         payload = _payload(row)
         return WorkflowJobView(
             job_id=row.strategy_key,
@@ -149,6 +153,8 @@ class AgentWorkflowJobService:
     def _latest_running_job(self, db: Session, *, scope_key: str, channel: str) -> NotificationEvent | None:
         row = _latest_job(db, scope_key=scope_key, channel=channel)
         if row is None or (row.signal_state or "") not in RUNNING_STATES:
+            return None
+        if _expire_stale_job(db, row):
             return None
         return row
 
@@ -263,6 +269,31 @@ def _payload(row: NotificationEvent) -> dict:
         return decoded if isinstance(decoded, dict) else {}
     except json.JSONDecodeError:
         return {}
+
+
+def _expire_stale_job(db: Session, row: NotificationEvent) -> bool:
+    if (row.signal_state or "") not in RUNNING_STATES or not _is_stale(row):
+        return False
+    _update_job(
+        db,
+        row,
+        status="failed",
+        payload_update={
+            "status": "failed",
+            "message": "研究工作流执行超时，已自动释放。请重新发起。",
+        },
+    )
+    return True
+
+
+def _is_stale(row: NotificationEvent) -> bool:
+    last_seen = row.last_seen_at
+    if last_seen is None:
+        return False
+    now = beijing_now()
+    if last_seen.tzinfo is None:
+        last_seen = last_seen.replace(tzinfo=now.tzinfo)
+    return now - last_seen > timedelta(minutes=STALE_WORKFLOW_MINUTES)
 
 
 def _scope_key(open_id: str) -> str:

@@ -65,6 +65,7 @@ from app.models.schema_defs.agent import (
     AgentToolResult,
     AgentWatchlistContextResponse,
 )
+from app.models.schema_defs.agent_platform import AgentPlatformAutopilotResponse, AgentPlatformAutopilotRunRequest
 from app.services.agent_context_service import AgentContextService
 from app.services.agent_daily_workflow_service import AgentDailyWorkflowService
 from app.services.agent_notification_service import AgentNotificationService
@@ -73,6 +74,7 @@ from app.services.agent_report_service import AgentReportService
 from app.services.agent_signal_scan_service import AgentSignalScanService
 from app.services.agent_workflow_job_service import AgentWorkflowJobService
 from app.services.market_data import MarketDataService
+from app.services.platform_autopilot import PlatformAutopilotService
 
 router = APIRouter(prefix="/agent", dependencies=[Depends(require_current_user_or_agent_token)])
 
@@ -175,6 +177,27 @@ def agent_tquant_daily_research_latest(
 ) -> AgentResearchWorkflowStatusResponse:
     job = AgentWorkflowJobService().latest_daily_research(db, open_id=open_id, channel=channel)
     return AgentResearchWorkflowStatusResponse(**job.__dict__)
+
+
+@router.post("/platform/autopilot/run", response_model=AgentPlatformAutopilotResponse)
+def agent_platform_autopilot_run(
+    payload: AgentPlatformAutopilotRunRequest,
+    _: Optional[User] = Depends(require_agent_tool_permission("run_platform_autopilot", "write")),
+    db: Session = Depends(get_db),
+) -> AgentPlatformAutopilotResponse:
+    return PlatformAutopilotService(db).run(
+        auto_repair=payload.auto_repair,
+        notify=payload.notify,
+        trigger=payload.trigger or "agent",
+    )
+
+
+@router.get("/platform/autopilot/latest", response_model=AgentPlatformAutopilotResponse)
+def agent_platform_autopilot_latest(
+    _: Optional[User] = Depends(require_agent_tool_permission("get_platform_autopilot_status", "read")),
+    db: Session = Depends(get_db),
+) -> AgentPlatformAutopilotResponse:
+    return PlatformAutopilotService(db).run(auto_repair=False, notify=False, audit=False, trigger="status")
 
 
 @router.post("/notify/test", response_model=AgentNotificationTestResponse)

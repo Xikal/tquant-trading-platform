@@ -26,12 +26,14 @@ from app.models.schema_defs.agent import (
     AgentRiskCheckRequest,
     AgentSignalNotificationRequest,
 )
+from app.models.schema_defs.agent_platform import AgentPlatformAutopilotRunRequest
 from app.services.agent_context_service import AgentContextService
 from app.services.agent_notification_service import AgentNotificationService
 from app.services.agent_research_service import AgentResearchService
 from app.services.agent_report_service import AgentReportService
 from app.services.agent_signal_scan_service import AgentSignalScanService
 from app.services.market_data import MarketDataService
+from app.services.platform_autopilot import PlatformAutopilotService
 
 
 class LocalSafeApiInvoker:
@@ -66,6 +68,20 @@ class LocalSafeApiInvoker:
         if tool.name == "send_test_notification":
             payload = AgentNotificationTestRequest.model_validate(arguments or {})
             return self.notifications.send_test(payload).model_dump()
+        if tool.name == "get_platform_autopilot_status":
+            return PlatformAutopilotService(self.db).run(
+                auto_repair=False,
+                notify=False,
+                audit=False,
+                trigger="local_provider_status",
+            ).model_dump(mode="json")
+        if tool.name == "run_platform_autopilot":
+            payload = AgentPlatformAutopilotRunRequest.model_validate(arguments or {})
+            return PlatformAutopilotService(self.db).run(
+                auto_repair=payload.auto_repair,
+                notify=payload.notify,
+                trigger=payload.trigger or "local_provider",
+            ).model_dump(mode="json")
         if tool.name == "send_signal_notification":
             payload = AgentSignalNotificationRequest.model_validate(arguments or {})
             return self.notifications.send_signal(self.db, payload, user_id=None).model_dump()

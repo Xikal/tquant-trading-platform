@@ -48,6 +48,10 @@ class AppSettings(BaseSettings):
     runtime_background_jobs_enabled: bool = False
     runtime_background_jobs_on_sqlite: bool = True
     runtime_worker_poll_interval_seconds: float = 5.0
+    platform_autopilot_enabled: bool = True
+    platform_autopilot_notify_enabled: bool = False
+    platform_autopilot_interval_seconds: int = 300
+    platform_autopilot_failed_task_window_hours: int = 24
     redis_url: str = ""
     runtime_event_pubsub_backend: str = "auto"
     runtime_event_stream_timeout_seconds: int = 360
