@@ -29,6 +29,7 @@ from app.services.indicators import (
 from app.services.quant_engine_blocking import hard_blocking_rules
 from app.services.quant_engine_common import calc_tradability, detect_scenario, event_penalty
 from app.services.quant_engine_intraday_structure import classify_intraday_structure
+from app.services.quant_engine_indicator_cache import get_or_compute_indicator_snapshot, indicator_cache_key
 from app.services.quant_engine_decision import (
     apply_direction_gate,
     apply_position_constraints,
@@ -177,6 +178,12 @@ class QuantEngine:
         return metrics, suggestion, compliance_notes, assumptions
 
     def _collect_indicators(self, quote: QuoteSnapshot, bars: list[KlineBar]) -> IndicatorSnapshot:
+        return get_or_compute_indicator_snapshot(
+            indicator_cache_key(quote, bars),
+            lambda: self._compute_indicators(quote=quote, bars=bars),
+        )
+
+    def _compute_indicators(self, quote: QuoteSnapshot, bars: list[KlineBar]) -> IndicatorSnapshot:
         closes = closes_from_bars(bars)
         macd_dif, macd_dea, macd_hist, macd_valid = macd_with_validity(closes)
         vwap_value = vwap(bars)

@@ -13,10 +13,11 @@ export const BACKTEST_STRATEGY_OPTIONS = STRATEGY_OPTIONS;
 export type BacktestStrategyOption = StrategyOption;
 
 export const BACKTEST_EXECUTION_MODELS: Array<[BacktestExecutionModel, string]> = [
-  ["open_price", "开盘价成交"],
-  ["next_open", "次日开盘"],
-  ["close_price", "收盘价成交"],
-  ["vwap", "VWAP 近似"],
+  ["conservative_slippage", "保守滑点成交"],
+  ["open_price", "开盘价加滑点"],
+  ["next_open", "次日保守成交"],
+  ["close_price", "收盘价加滑点"],
+  ["vwap", "VWAP 加滑点"],
   ["market_impact", "市场冲击成本"],
 ];
 

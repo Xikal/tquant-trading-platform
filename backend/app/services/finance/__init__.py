@@ -1,0 +1,2 @@
+"""Shared finance calculation helpers."""
+

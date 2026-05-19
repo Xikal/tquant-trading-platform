@@ -6,6 +6,7 @@ from app.services.ml_signal.model_defaults import DEFAULT_TRAINING_PARAMS
 
 BACKTEST_EXECUTION_DEFAULTS: dict[str, Any] = {
     "max_concurrent_backtests": 2,
+    "risk_free_rate_annual_pct": 2.0,
     "queue_depth_warning_threshold": 10,
     "queue_estimate_sample_size": 10,
     "queue_estimate_max_age_days": 30,
@@ -44,6 +45,17 @@ BACKTEST_EXECUTION_DEFAULTS: dict[str, Any] = {
             "cautious_max_drawdown_pct": -22.0,
         },
     },
+}
+
+PAPER_RISK_CONTROL_DEFAULTS: dict[str, Any] = {
+    "max_single_order_pct": 30.0,
+    "max_single_symbol_position_pct": 40.0,
+    "max_daily_buy_pct": 60.0,
+    "max_daily_order_count": 20,
+    "fee_warning_pct": 1.0,
+    "fee_block_pct": 3.0,
+    "correlation_penalty_threshold": 0.70,
+    "correlation_min_scale": 35.0,
 }
 
 CAPACITY_ANALYSIS_DEFAULTS: dict[str, Any] = {

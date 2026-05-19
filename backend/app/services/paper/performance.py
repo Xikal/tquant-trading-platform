@@ -8,8 +8,14 @@ from decimal import Decimal
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models.entities import PaperAccount, PaperPerformanceSnapshot, PaperTrade, PaperTradeTag
 from app.core.timezone import beijing_today
+from app.models.entities import PaperAccount, PaperPerformanceSnapshot, PaperTrade, PaperTradeTag
+from app.services.finance.performance_math import (
+    annualized_sharpe_ratio,
+    annualized_sortino_ratio,
+    risk_free_rate_from_params,
+)
+from app.services.quant.runtime_parameters import get_backtest_execution
 
 
 class PaperPerformanceService:
@@ -19,18 +25,22 @@ class PaperPerformanceService:
     def compute_overall(self, account_id: int, target_date: date | None = None) -> dict:
         account = self.db.get(PaperAccount, account_id)
         trades = self._filtered_trades(account_id, target_date)
-        returns = [item.return_pct for item in self._filtered_return_records(account_id, target_date)]
+        return_records = self._filtered_return_records(account_id, target_date)
+        returns = [item.return_pct for item in return_records]
         daily_returns = self._daily_return_series(account_id, account, target_date) if account is not None else []
+        risk_free_rate = risk_free_rate_from_params(get_backtest_execution())
         wins = [value for value in returns if value > 0]
         losses = [value for value in returns if value < 0]
         total = len(returns)
         gross_gains = sum(wins)
         gross_losses = abs(sum(losses))
+        directional_stats = _directional_return_stats(return_records)
         total_return_pct = 0.0
         max_drawdown_pct = 0.0
         if account is not None and float(account.initial_cash or 0) > 0:
             total_return_pct = (float(account.total_assets or 0) - float(account.initial_cash)) / float(account.initial_cash) * 100
             max_drawdown_pct = self._compute_equity_curve_drawdown(account_id, account, target_date)
+        return_series = daily_returns or returns
         return {
             "total_return_pct": round(total_return_pct, 3),
             "max_drawdown_pct": max_drawdown_pct,
@@ -40,7 +50,17 @@ class PaperPerformanceService:
             "avg_win_pct": round(sum(wins) / len(wins), 3) if wins else 0.0,
             "avg_loss_pct": round(sum(losses) / len(losses), 3) if losses else 0.0,
             "profit_factor": round(gross_gains / gross_losses, 3) if gross_losses > 0 else None,
-            "sharpe_ratio": round(_sharpe_ratio(daily_returns or returns), 4),
+            "long_win_rate_pct": directional_stats["long"]["win_rate_pct"],
+            "long_profit_factor": directional_stats["long"]["profit_factor"],
+            "long_win_loss_ratio": directional_stats["long"]["win_loss_ratio"],
+            "short_win_rate_pct": directional_stats["short"]["win_rate_pct"],
+            "short_profit_factor": directional_stats["short"]["profit_factor"],
+            "short_win_loss_ratio": directional_stats["short"]["win_loss_ratio"],
+            "directional_stats": directional_stats,
+            "sharpe_ratio": round(_sharpe_ratio(return_series, risk_free_rate), 4),
+            "sortino_ratio": round(_sortino_ratio(return_series, risk_free_rate), 4),
+            "calmar_ratio": round(_calmar_ratio(total_return_pct, max_drawdown_pct, len(return_series)), 4),
+            "risk_free_rate_annual_pct": round(risk_free_rate, 4),
             "stop_loss_rate_pct": 0.0,
             "total_trades": len(trades),
             "avg_hold_days": 0.0,
@@ -319,6 +339,7 @@ class PaperPerformanceService:
                         strategy_key=trade.strategy_key or "未分类",
                         market_state=trade.market_state or "未分类",
                         trade_time=trade.trade_time,
+                        direction="long",
                     )
                 )
             qty_by_symbol[trade.symbol] = max(0, qty_by_symbol.get(trade.symbol, 0) - qty)
@@ -369,15 +390,52 @@ def _rate(part: int, total: int) -> float:
     return round(part / total * 100, 3) if total > 0 else 0.0
 
 
-def _sharpe_ratio(returns: list[float]) -> float:
-    if len(returns) < 2:
+def _sharpe_ratio(returns: list[float], risk_free_rate_annual_pct: float) -> float:
+    return annualized_sharpe_ratio(
+        [value / 100.0 for value in returns],
+        risk_free_rate_annual_pct=risk_free_rate_annual_pct,
+    )
+
+
+def _sortino_ratio(returns: list[float], risk_free_rate_annual_pct: float) -> float:
+    return annualized_sortino_ratio(
+        [value / 100.0 for value in returns],
+        risk_free_rate_annual_pct=risk_free_rate_annual_pct,
+    )
+
+
+def _calmar_ratio(total_return_pct: float, max_drawdown_pct: float, periods: int) -> float:
+    if periods <= 0 or max_drawdown_pct >= 0:
         return 0.0
-    mean = sum(returns) / len(returns)
-    variance = sum((value - mean) ** 2 for value in returns) / (len(returns) - 1)
-    std = variance**0.5
-    if std <= 0:
-        return 0.0
-    return (mean / std) * (252**0.5)
+    total_return = total_return_pct / 100
+    if total_return <= -1:
+        annualized_return_pct = -100.0
+    else:
+        annualized_return_pct = ((1 + total_return) ** (252 / periods) - 1) * 100
+    return annualized_return_pct / abs(max_drawdown_pct)
+
+
+def _directional_return_stats(records: list[SellReturnRecord]) -> dict[str, dict[str, float | None]]:
+    grouped: dict[str, list[float]] = {"long": [], "short": []}
+    for record in records:
+        key = "short" if record.direction == "short" else "long"
+        grouped[key].append(record.return_pct)
+    return {direction: _return_stats(values) for direction, values in grouped.items()}
+
+
+def _return_stats(values: list[float]) -> dict[str, float | None]:
+    wins = [value for value in values if value > 0]
+    losses = [value for value in values if value < 0]
+    gross_gains = sum(wins)
+    gross_losses = abs(sum(losses))
+    avg_win = sum(wins) / len(wins) if wins else 0.0
+    avg_loss = abs(sum(losses) / len(losses)) if losses else 0.0
+    return {
+        "trade_count": len(values),
+        "win_rate_pct": _rate(len(wins), len(values)),
+        "profit_factor": round(gross_gains / gross_losses, 3) if gross_losses > 0 else None,
+        "win_loss_ratio": round(avg_win / avg_loss, 3) if avg_win > 0 and avg_loss > 0 else None,
+    }
 
 
 def _pearson(left: list[float], right: list[float]) -> float | None:
@@ -401,6 +459,7 @@ class SellReturnRecord:
     strategy_key: str
     market_state: str
     trade_time: datetime
+    direction: str = "long"
 
     def group_key(self, field: str) -> str:
         if field == "strategy_key":

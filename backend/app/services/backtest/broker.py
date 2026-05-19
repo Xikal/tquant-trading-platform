@@ -15,6 +15,7 @@ from app.services.quant.runtime_parameters import get_backtest_execution
 
 class ExecutionModel(str, Enum):
     OPEN_PRICE = "open_price"
+    NEXT_OPEN = "next_open"
     VWAP = "vwap"
     CLOSE_PRICE = "close_price"
     ENTRY_ZONE_TOUCH = "entry_zone_touch"
@@ -67,8 +68,11 @@ class BacktestBroker:
         selected_price = _apply_market_impact(request, selected_price) if model == ExecutionModel.MARKET_IMPACT else selected_price
 
         side = OrderSide.BUY if request.side == "buy" else OrderSide.SELL
-        order_type = OrderType.MARKET if model == ExecutionModel.CONSERVATIVE_SLIPPAGE else OrderType.LIMIT
-        limit_price = None if order_type == OrderType.MARKET else to_decimal(selected_price)
+        # Historical bars do not provide bid/ask depth. Route every execution
+        # through the matching engine's market fill so spread/slippage is never
+        # silently bypassed by exact open/close/VWAP limit fills.
+        order_type = OrderType.MARKET
+        limit_price = None
         match = self.matching.match(
             symbol=request.symbol,
             side=side,
@@ -110,7 +114,7 @@ def _selected_price(request: ExecutionRequest, model: ExecutionModel) -> float |
     if request.requested_price is not None:
         return float(request.requested_price)
     bar = request.bar
-    if model == ExecutionModel.OPEN_PRICE:
+    if model in {ExecutionModel.OPEN_PRICE, ExecutionModel.NEXT_OPEN}:
         return bar.open_price
     if model == ExecutionModel.VWAP:
         return bar.vwap

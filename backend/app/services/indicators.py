@@ -134,7 +134,50 @@ def atr(bars: list[KlineBar], period: int = 14) -> float:
     return round(atr_value, 4)
 
 
+def bollinger_bands(values: list[float], window: int = 20, num_std: float = 2.0) -> tuple[float, float, float]:
+    """Return upper/middle/lower Bollinger Bands using sample standard deviation."""
+
+    clean = [float(value) for value in values if isinstance(value, Real) and isfinite(float(value))]
+    if not clean:
+        return (0.0, 0.0, 0.0)
+    window = max(1, int(window or 1))
+    sample = clean[-window:]
+    middle = sum(sample) / len(sample)
+    if len(sample) < 2:
+        std = 0.0
+    else:
+        variance = sum((value - middle) ** 2 for value in sample) / (len(sample) - 1)
+        std = variance ** 0.5
+    upper = middle + float(num_std) * std
+    lower = middle - float(num_std) * std
+    return round(upper, 4), round(middle, 4), round(lower, 4)
+
+
+def stochastic(bars: list[KlineBar], k_period: int = 14, d_period: int = 3) -> tuple[float, float]:
+    """Return %K and %D. %D is a configurable SMA of recent %K values."""
+
+    k_period = max(1, int(k_period or 1))
+    d_period = max(1, int(d_period or 1))
+    if len(bars) < k_period:
+        return (50.0, 50.0)
+    k_values: list[float] = []
+    start = max(k_period - 1, len(bars) - d_period)
+    for index in range(start, len(bars)):
+        window = bars[index - k_period + 1 : index + 1]
+        lowest = min(bar.low for bar in window)
+        highest = max(bar.high for bar in window)
+        close = window[-1].close
+        if highest <= lowest:
+            k_values.append(50.0)
+        else:
+            k_values.append((close - lowest) / (highest - lowest) * 100)
+    latest_k = k_values[-1]
+    latest_d = sum(k_values[-d_period:]) / min(d_period, len(k_values))
+    return round(latest_k, 4), round(latest_d, 4)
+
+
 def vwap(bars: list[KlineBar]) -> float:
+    bars = _latest_session_bars(bars)
     total_turnover = 0.0
     total_volume = 0.0
     for bar in bars:
@@ -144,6 +187,25 @@ def vwap(bars: list[KlineBar]) -> float:
     if total_volume == 0:
         return 0.0
     return round(total_turnover / total_volume, 4)
+
+
+def _latest_session_bars(bars: list[KlineBar]) -> list[KlineBar]:
+    """Use only the latest trading day when timestamps carry date information."""
+
+    if not bars:
+        return []
+    latest_key = _session_key(bars[-1])
+    if not latest_key:
+        return bars
+    filtered = [bar for bar in bars if _session_key(bar) == latest_key]
+    return filtered or bars
+
+
+def _session_key(bar: KlineBar) -> str:
+    raw = str(getattr(bar, "timestamp", "") or "")
+    if len(raw) >= 10 and raw[4] in "-/" and raw[7] in "-/":
+        return raw[:10].replace("/", "-")
+    return ""
 
 
 def volume_ratio(bars: list[KlineBar], lookback: int = 20) -> float:

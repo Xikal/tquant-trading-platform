@@ -33,7 +33,7 @@ const DEFAULT_FORM: StrategyQuickForm = {
   start_date: shiftDate(-183),
   end_date: shiftDate(0),
   initial_capital: "500000",
-  execution_model: "open_price",
+  execution_model: "conservative_slippage",
   max_position_pct: "30",
   max_single_order_pct: "15",
   max_positions: "8",
@@ -208,7 +208,7 @@ export function useStrategyHub() {
         end_date: form.end_date || shiftDate(0),
         initial_capital: 500000,
         strategies: selected.length ? selected : ["first_board", "volume_shrink"],
-        execution_model: "open_price",
+        execution_model: "conservative_slippage",
         benchmark: "000300",
         risk_limits: {
           max_position_pct: 0.3,
@@ -298,7 +298,14 @@ function parsePercent(value: string): number {
 }
 
 function normalizeExecutionModel(value: unknown, fallback: BacktestExecutionModel): BacktestExecutionModel {
-  if (value === "open_price" || value === "close_price" || value === "next_open" || value === "vwap") {
+  if (
+    value === "conservative_slippage" ||
+    value === "open_price" ||
+    value === "close_price" ||
+    value === "next_open" ||
+    value === "vwap" ||
+    value === "market_impact"
+  ) {
     return value;
   }
   return fallback;

@@ -1,6 +1,12 @@
 export type BacktestStatus = "pending" | "queued" | "running" | "completed" | "succeeded" | "failed" | "cancelled" | "deleted" | "timeout";
 
-export type BacktestExecutionModel = "open_price" | "close_price" | "next_open" | "vwap" | "market_impact";
+export type BacktestExecutionModel =
+  | "conservative_slippage"
+  | "open_price"
+  | "close_price"
+  | "next_open"
+  | "vwap"
+  | "market_impact";
 export type BacktestResourceTier = "light" | "full" | "walk_forward";
 
 export interface BacktestRiskLimits {

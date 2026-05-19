@@ -101,6 +101,7 @@ def test_factor_evaluation_records_metrics():
     )
     assert response.result.observation_count > 0
     assert response.result.sample_days > 0
+    assert isinstance(response.result.information_ratio, float)
     assert response.run_id is not None
 
 

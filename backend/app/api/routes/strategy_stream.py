@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 from datetime import datetime
 from typing import Any
 
@@ -52,7 +53,7 @@ async def stream_strategy_task_progress(
         while True:
             payload = _load_task_progress(db, task_type, task_id, int(user_id))
             if payload is None:
-                await websocket.send_json({
+                await _send_json(websocket, {
                     "type": "error",
                     "code": "TASK_NOT_FOUND",
                     "message": "任务不存在或无权查看。",
@@ -61,14 +62,14 @@ async def stream_strategy_task_progress(
                 })
                 await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
                 return
-            await websocket.send_json(payload)
+            await _send_json(websocket, payload)
             if str(payload.get("status") or "").lower() in TERMINAL_STATUSES:
                 await websocket.close(code=status.WS_1000_NORMAL_CLOSURE)
                 return
             try:
                 await asyncio.wait_for(websocket.receive(), timeout=interval_seconds)
             except asyncio.TimeoutError:
-                await websocket.send_json({
+                await _send_json(websocket, {
                     "type": "ping",
                     "task_type": task_type,
                     "task_id": task_id,
@@ -101,6 +102,10 @@ def _load_task_progress(db: Session, task_type: str, task_id: int, user_id: int)
         "updated_at": _iso_datetime(getattr(task, "updated_at", None)),
         "completed": status_text.lower() in TERMINAL_STATUSES,
     }
+
+
+async def _send_json(websocket: WebSocket, payload: dict[str, Any]) -> None:
+    await websocket.send_text(json.dumps(payload, ensure_ascii=False, separators=(",", ":")))
 
 
 def _task_model(task_type: str):

@@ -42,6 +42,8 @@ class OptimizationReport:
 
     def to_dict(self) -> dict[str, Any]:
         return {
+            "validation_protocol": "mandatory_is_oos_split",
+            "oos_required": True,
             "candidates": [item.to_dict() for item in self.candidates],
             "best_is": self.best_is.to_dict() if self.best_is is not None else None,
             "best_oos": self.best_oos.to_dict() if self.best_oos is not None else None,
@@ -83,6 +85,7 @@ class BacktestOptimizer:
         cancel_token: Any | None = None,
         progress_callback: ProgressCallback | None = None,
     ) -> OptimizationReport:
+        _validate_oos_ranges(train_start, train_end, test_start, test_end)
         param_sets, total_count, sampled = enumerate_param_sets(param_grid, max_combinations=max_combinations)
         train_data = _prepare_range_data(self.engine, base_config, train_start, train_end)
         candidates = self.evaluate_param_sets(
@@ -222,6 +225,15 @@ def enumerate_param_sets(
         return combinations, total_count, False
     sampler = random.Random(seed)
     return sampler.sample(combinations, max_combinations), total_count, True
+
+
+def _validate_oos_ranges(train_start: str, train_end: str, test_start: str, test_end: str) -> None:
+    if not all([train_start, train_end, test_start, test_end]):
+        raise ValueError("参数优化必须提供样本内训练期和样本外测试期。")
+    if train_start > train_end or test_start > test_end:
+        raise ValueError("参数优化训练期或样本外测试期日期范围无效。")
+    if train_end >= test_start:
+        raise ValueError("参数优化必须先训练、后样本外验证，禁止全量历史直接寻优。")
 
 
 def _prepare_range_data(engine: BacktestEngine, base_config: BacktestConfig, start_date: str, end_date: str) -> _RangeData:
@@ -398,7 +410,7 @@ def _is_oos_downgrade(is_metrics: dict[str, Any], oos_metrics: dict[str, Any]) -
 def _estimated_entry_price(bar: DailyBar | None, signal: BacktestSignal, execution_model: str) -> float | None:
     if bar is None:
         return signal.entry_zone_high or signal.entry_zone_low
-    if execution_model == "open_price":
+    if execution_model in {"open_price", "next_open"}:
         return bar.open_price
     if execution_model == "vwap":
         return bar.vwap

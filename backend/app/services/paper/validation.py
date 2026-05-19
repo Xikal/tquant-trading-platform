@@ -18,8 +18,10 @@ from app.models.schema_defs.research import (
 )
 from app.repositories.low_buy import DailyHistoryRepository
 from app.repositories.low_buy.results import LowBuyResultRepository
+from app.services.finance.performance_math import annualized_sharpe_ratio, risk_free_rate_from_params
 from app.services.low_buy.risk_metrics import compute_pbo
 from app.services.paper.matching import MatchResult, OrderSide, OrderType, PaperMatchingEngine
+from app.services.quant.runtime_parameters import get_backtest_execution
 
 
 class StrategyValidationPipeline:
@@ -269,15 +271,10 @@ def _validation_signal_mask(size: int) -> list[bool]:
 
 
 def _sharpe_ratio(returns: list[float]) -> float:
-    if len(returns) < 2:
-        return 0.0
-    mean = sum(returns) / len(returns)
-    variance = sum((value - mean) ** 2 for value in returns) / (len(returns) - 1)
-    std = variance**0.5
-    if std <= 0:
-        return 0.0
-    # Daily short-horizon validation uses percent returns; annualize by sqrt(252).
-    return (mean / std) * (252**0.5)
+    return annualized_sharpe_ratio(
+        [value / 100.0 for value in returns],
+        risk_free_rate_annual_pct=risk_free_rate_from_params(get_backtest_execution()),
+    )
 
 
 def _walk_forward(records: list[ReplayRecord], windows: int = 5) -> dict[str, float | int]:

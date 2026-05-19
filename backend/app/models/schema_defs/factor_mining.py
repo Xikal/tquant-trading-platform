@@ -18,6 +18,7 @@ class FactorEvalResultOut(BaseModel):
     half_life_days: int = 0
     top_quintile_return: float = 0.0
     spread_return: float = 0.0
+    information_ratio: float = 0.0
     oos_ic_mean: float = 0.0
     is_oos_consistent: bool = False
     bootstrap_ci_lower: float = 0.0

@@ -44,7 +44,7 @@ class BacktestConfig:
     max_position_pct: float = 0.2
     max_positions: int = 8
     max_signals_per_day: int = 20
-    entry_delay_days: int = 0
+    entry_delay_days: int = 1
     lot_size: int = 100
     force_liquidate_at_end: bool = True
     max_duration_seconds: int = 1800
@@ -194,6 +194,7 @@ class BacktestEngine:
                 trade_date=trade_date,
                 trade_dates=trade_dates,
                 orders=orders,
+                execution_model=config.execution_model,
                 force_liquidate=config.force_liquidate_at_end and trade_date == trade_dates[-1],
             )
             self._run_entries(
@@ -263,6 +264,7 @@ class BacktestEngine:
         trade_date: str,
         trade_dates: list[str],
         orders: list[BacktestOrder],
+        execution_model: str,
         force_liquidate: bool,
     ) -> None:
         for symbol, position in list(portfolio.positions.items()):
@@ -284,7 +286,7 @@ class BacktestEngine:
                     side="sell",
                     quantity=quantity,
                     bar=bar,
-                    execution_model=ExecutionModel.CLOSE_PRICE.value,
+                    execution_model=execution_model,
                     requested_price=exit_plan["price"],
                     reason=exit_plan["reason"],
                 )

@@ -13,6 +13,20 @@ from app.services.low_buy.holding_policy import strategy_max_holding_days
 
 
 DATA_PROVIDER_VERSION = "daily_bar_snapshots:v1"
+_DAILY_BAR_SELECT_COLUMNS = (
+    DailyBarSnapshot.symbol,
+    DailyBarSnapshot.trade_date,
+    DailyBarSnapshot.open_price,
+    DailyBarSnapshot.close_price,
+    DailyBarSnapshot.high_price,
+    DailyBarSnapshot.low_price,
+    DailyBarSnapshot.volume,
+    DailyBarSnapshot.amount,
+    DailyBarSnapshot.pct_chg,
+    DailyBarSnapshot.pre_close,
+    DailyBarSnapshot.instrument_type,
+    DailyBarSnapshot.market,
+)
 
 
 @dataclass(frozen=True)
@@ -47,7 +61,9 @@ class DailyBar:
             value = self.amount / self.volume
             if self.low_price * 0.5 <= value <= self.high_price * 1.5:
                 return value
-        return (self.high_price + self.low_price + self.close_price) / 3
+        # In backtests, H/L/C midpoint fallback leaks the same day's path.
+        # Use the opening print as the execution-time-safe degradation.
+        return self.open_price
 
 
 @dataclass(frozen=True)
@@ -118,15 +134,15 @@ class DailyBarDataProvider:
             return {}
         rows = (
             self.db.execute(
-                select(DailyBarSnapshot)
+                select(*_DAILY_BAR_SELECT_COLUMNS)
                 .where(
                     DailyBarSnapshot.symbol.in_(unique_symbols),
                     DailyBarSnapshot.trade_date >= start_date,
                     DailyBarSnapshot.trade_date <= end_date,
                 )
                 .order_by(DailyBarSnapshot.symbol.asc(), DailyBarSnapshot.trade_date.asc())
+                .execution_options(yield_per=5000)
             )
-            .scalars()
             .all()
         )
         grouped: dict[str, list[DailyBar]] = {}

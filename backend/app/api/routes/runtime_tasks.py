@@ -116,7 +116,7 @@ def _sse(event: RuntimeTaskEventOut) -> str:
     return (
         f"id: {event.id}\n"
         f"event: {event.event_type}\n"
-        f"data: {json.dumps(event.model_dump(mode='json'), ensure_ascii=False)}\n\n"
+        f"data: {json.dumps(event.model_dump(mode='json'), ensure_ascii=False, separators=(',', ':'))}\n\n"
     )
 
 

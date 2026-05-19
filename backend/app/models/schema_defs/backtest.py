@@ -72,7 +72,7 @@ class BacktestRunCreate(BaseModel):
     def collect_documented_extra_params(self) -> "BacktestRunCreate":
         extra = getattr(self, "__pydantic_extra__", None) or {}
         params = dict(self.params)
-        for key in ("execution_model", "risk_limits", "param_overrides", "slippage_model"):
+        for key in ("execution_model", "risk_limits", "param_overrides", "slippage_model", "entry_delay_days"):
             if key in extra and key not in params:
                 params[key] = extra[key]
         params.setdefault("resource_tier", self.resource_tier)

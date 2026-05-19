@@ -9,15 +9,9 @@ from sqlalchemy.orm import Session
 
 from app.models.entities import PaperAccount, PaperOrder, PaperPosition, PaperTrade, RiskEvent
 from app.core.timezone import beijing_today
+from app.services.low_buy.strategy_parameter_defaults_parts.runtime import PAPER_RISK_CONTROL_DEFAULTS
+from app.services.quant.runtime_parameters import get_paper_risk_control
 from app.services.shared.trading_costs import round_trip_fee_pct
-
-
-MAX_SINGLE_ORDER_PCT = Decimal("0.30")
-MAX_SINGLE_SYMBOL_POSITION_PCT = Decimal("0.40")
-MAX_DAILY_BUY_PCT = Decimal("0.60")
-MAX_DAILY_ORDER_COUNT = 20
-FEE_WARNING_PCT = 1.00
-FEE_BLOCK_PCT = 3.00
 
 
 @dataclass(frozen=True)
@@ -52,10 +46,17 @@ class PaperRiskControlService:
         estimated_price: Decimal,
         current_order_counted: bool = False,
     ) -> PaperRiskDecision:
+        params = _risk_params()
         account = self._account(account_id)
         total_assets = self._total_assets(account)
         order_value = estimated_price * Decimal(max(quantity, 0))
-        max_order_value = total_assets * MAX_SINGLE_ORDER_PCT
+        max_single_order_pct = _fraction_param(params, "max_single_order_pct")
+        max_single_symbol_pct = _pct_param(params, "max_single_symbol_position_pct")
+        max_daily_buy_pct = _pct_param(params, "max_daily_buy_pct")
+        max_daily_order_count = int(_numeric_param(params, "max_daily_order_count"))
+        fee_warning_pct = _numeric_param(params, "fee_warning_pct")
+        fee_block_pct = _numeric_param(params, "fee_block_pct")
+        max_order_value = total_assets * max_single_order_pct
         daily_order_count = self._daily_order_count(account_id)
         existing_order_count = max(0, daily_order_count - 1) if current_order_counted else daily_order_count
         reasons: list[str] = []
@@ -66,8 +67,8 @@ class PaperRiskControlService:
         open_risk = self._blocking_risk_event(account_id)
         if open_risk:
             reasons.append(open_risk)
-        if existing_order_count >= MAX_DAILY_ORDER_COUNT:
-            reasons.append(f"今日委托次数已达到 {MAX_DAILY_ORDER_COUNT} 次上限。")
+        if existing_order_count >= max_daily_order_count:
+            reasons.append(f"今日委托次数已达到 {max_daily_order_count} 次上限。")
         if quantity <= 0 or quantity % 100 != 0:
             reasons.append("委托数量必须是 100 股整数倍。")
 
@@ -87,18 +88,18 @@ class PaperRiskControlService:
 
         if side == "buy":
             if order_value > max_order_value:
-                reasons.append("单笔买入金额超过账户资产 30%，已拒绝。")
-            if projected_pct > _pct(MAX_SINGLE_SYMBOL_POSITION_PCT):
-                reasons.append("买入后单只股票仓位会超过 40%，已拒绝。")
-            if daily_buy_used_pct > _pct(MAX_DAILY_BUY_PCT):
-                reasons.append("今日累计买入金额会超过账户资产 60%，已拒绝。")
+                reasons.append(f"单笔买入金额超过账户资产 {_format_pct(_pct(max_single_order_pct))}，已拒绝。")
+            if projected_pct > max_single_symbol_pct:
+                reasons.append(f"买入后单只股票仓位会超过 {_format_pct(max_single_symbol_pct)}，已拒绝。")
+            if daily_buy_used_pct > max_daily_buy_pct:
+                reasons.append(f"今日累计买入金额会超过账户资产 {_format_pct(max_daily_buy_pct)}，已拒绝。")
         elif side != "sell":
             reasons.append("委托方向只能是 buy 或 sell。")
 
         fee_pct = round_trip_fee_pct(symbol=symbol, side=side, price=estimated_price, quantity=quantity)
-        if fee_pct > FEE_BLOCK_PCT:
-            reasons.append(f"交易摩擦约 {fee_pct:.2f}%，超过 3.00%，小额委托已拒绝。")
-        elif fee_pct > FEE_WARNING_PCT:
+        if fee_pct > fee_block_pct:
+            reasons.append(f"交易摩擦约 {fee_pct:.2f}%，超过 {fee_block_pct:.2f}%，小额委托已拒绝。")
+        elif fee_pct > fee_warning_pct:
             warnings.append(f"交易摩擦约 {fee_pct:.2f}%，小额委托会明显吞噬收益。")
 
         if not reasons and side == "buy" and projected_pct >= 30:
@@ -117,14 +118,15 @@ class PaperRiskControlService:
 
     def account_status(self, account_id: int) -> dict:
         account = self._account(account_id)
+        params = _risk_params()
         total_assets = self._total_assets(account)
         return {
             "account_status": account.status,
             "total_assets": float(total_assets),
-            "max_single_order_pct": _pct(MAX_SINGLE_ORDER_PCT),
-            "max_single_symbol_position_pct": _pct(MAX_SINGLE_SYMBOL_POSITION_PCT),
-            "max_daily_buy_pct": _pct(MAX_DAILY_BUY_PCT),
-            "max_daily_order_count": MAX_DAILY_ORDER_COUNT,
+            "max_single_order_pct": _pct(_fraction_param(params, "max_single_order_pct")),
+            "max_single_symbol_position_pct": _pct_param(params, "max_single_symbol_position_pct"),
+            "max_daily_buy_pct": _pct_param(params, "max_daily_buy_pct"),
+            "max_daily_order_count": int(_numeric_param(params, "max_daily_order_count")),
             "daily_order_count": self._daily_order_count(account_id),
             "daily_buy_used_pct": round(
                 self._daily_buy_used_pct(
@@ -225,3 +227,30 @@ def _today_window() -> tuple[datetime, datetime]:
 
 def _pct(value: Decimal) -> float:
     return float(value * Decimal("100"))
+
+
+def _risk_params() -> dict[str, object]:
+    values = {**PAPER_RISK_CONTROL_DEFAULTS}
+    values.update(get_paper_risk_control())
+    return values
+
+
+def _numeric_param(params: dict[str, object], key: str) -> float:
+    fallback = PAPER_RISK_CONTROL_DEFAULTS[key]
+    try:
+        value = float(params.get(key, fallback))
+    except (TypeError, ValueError):
+        value = float(fallback)
+    return max(value, 0.0)
+
+
+def _fraction_param(params: dict[str, object], key: str) -> Decimal:
+    return Decimal(str(_pct_param(params, key))) / Decimal("100")
+
+
+def _pct_param(params: dict[str, object], key: str) -> float:
+    return min(_numeric_param(params, key), 100.0)
+
+
+def _format_pct(value: float) -> str:
+    return f"{value:.0f}%" if abs(value - round(value)) < 0.0001 else f"{value:.2f}%"

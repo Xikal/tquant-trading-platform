@@ -77,7 +77,7 @@ def _metrics(samples: pd.DataFrame, *, min_cross_section: int) -> FactorEvalResu
     icir = ic_mean / ic_std if ic_std > 1e-12 else 0.0
     t_stat = icir * math.sqrt(len(is_ic)) if ic_std > 1e-12 else 0.0
     oos_mean = float(oos_ic.mean()) if not oos_ic.empty else ic_mean
-    top_return, spread = _quintile_returns(samples)
+    top_return, spread, daily_spreads = _quintile_returns(samples)
     bootstrap_lower = _bootstrap_ci_lower(daily_ic.to_numpy())
     half_life = _half_life_days(daily_ic)
     consistent = abs(ic_mean - oos_mean) < 0.03
@@ -91,6 +91,7 @@ def _metrics(samples: pd.DataFrame, *, min_cross_section: int) -> FactorEvalResu
         half_life_days=half_life,
         top_quintile_return=round(top_return, 6),
         spread_return=round(spread, 6),
+        information_ratio=round(_information_ratio(daily_spreads), 6),
         oos_ic_mean=round(oos_mean, 6),
         is_oos_consistent=consistent,
         bootstrap_ci_lower=round(bootstrap_lower, 6),
@@ -114,7 +115,7 @@ def _daily_rank_ic(samples: pd.DataFrame, *, min_cross_section: int) -> pd.Serie
     return pd.Series(values).sort_index()
 
 
-def _quintile_returns(samples: pd.DataFrame) -> tuple[float, float]:
+def _quintile_returns(samples: pd.DataFrame) -> tuple[float, float, list[float]]:
     top_returns: list[float] = []
     spread_returns: list[float] = []
     for _, group in samples.groupby("trade_date"):
@@ -126,7 +127,18 @@ def _quintile_returns(samples: pd.DataFrame) -> tuple[float, float]:
         top = ranked.tail(bucket_size)["future_return"].mean()
         top_returns.append(float(top))
         spread_returns.append(float(top - bottom))
-    return _mean(top_returns), _mean(spread_returns)
+    return _mean(top_returns), _mean(spread_returns), spread_returns
+
+
+def _information_ratio(spread_returns: list[float]) -> float:
+    clean = [value for value in spread_returns if math.isfinite(value)]
+    if len(clean) < 2:
+        return 0.0
+    avg = float(np.mean(clean))
+    tracking_error = float(np.std(clean, ddof=1))
+    if tracking_error <= 1e-12:
+        return 0.0
+    return avg / tracking_error * math.sqrt(252)
 
 
 def _bootstrap_ci_lower(values: np.ndarray) -> float:

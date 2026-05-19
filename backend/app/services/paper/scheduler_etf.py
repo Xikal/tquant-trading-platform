@@ -64,7 +64,7 @@ def build_sector_etf_t0_orders(
     for item in response.opportunities:
         if len(orders) >= remaining_slots:
             break
-        if item.source_signal_state not in {"buy_now", "soft_buy_now"}:
+        if not _is_buy_signal(item):
             continue
         if item.etf_symbol in today_symbols or item.bias != "positive_t":
             continue
@@ -96,3 +96,11 @@ def build_sector_etf_t0_orders(
             }
         )
     return orders
+
+
+def _is_buy_signal(item: Any) -> bool:
+    state = str(getattr(item, "source_signal_state", "") or "")
+    if state in {"buy_now", "soft_buy_now"}:
+        return True
+    text = str(getattr(item, "source_signal_text", "") or "")
+    return any(marker in text for marker in ("确定买入", "确认买入", "小仓试买"))

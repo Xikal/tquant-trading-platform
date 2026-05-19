@@ -186,6 +186,21 @@ def test_data_provider_loads_or_derives_pre_close_from_daily_snapshot() -> None:
     assert derived.pre_close == pytest.approx(10.0)
 
 
+def test_daily_bar_vwap_fallback_does_not_use_same_day_high_low_close() -> None:
+    bar = _bar(
+        "300001",
+        "2025-01-02",
+        open_price=10.0,
+        high_price=12.0,
+        low_price=8.0,
+        close_price=11.0,
+        volume=1_000_000,
+        amount=0.0,
+    )
+
+    assert bar.vwap == pytest.approx(10.0)
+
+
 def test_broker_rejects_limit_up_limit_down_and_suspension_before_matching() -> None:
     broker = getattr(broker_module, "BacktestBroker")()
     request_cls = getattr(broker_module, "ExecutionRequest")
@@ -340,7 +355,9 @@ def test_broker_uses_real_limit_price_from_pre_close_not_selected_price() -> Non
     )
 
     assert result.status == "filled"
-    assert result.fill_price == Decimal("11.0000")
+    assert result.requested_price == Decimal("11.0000")
+    assert result.fill_price is not None
+    assert result.fill_price > result.requested_price
 
 
 def test_broker_market_impact_penalizes_large_daily_participation() -> None:
@@ -368,7 +385,9 @@ def test_broker_market_impact_penalizes_large_daily_participation() -> None:
 
     assert result.status == "filled"
     assert result.execution_model == "market_impact"
-    assert result.fill_price == Decimal("10.0800")
+    assert result.requested_price == Decimal("10.0800")
+    assert result.fill_price is not None
+    assert result.fill_price > result.requested_price
 
 
 def test_portfolio_applies_stock_t1_unlock_and_etf_same_day_availability() -> None:
@@ -557,9 +576,44 @@ def test_engine_records_trading_day_holding_days_across_weekend() -> None:
     result = getattr(engine_module, "BacktestEngine")(_ProviderStub()).run(config)
 
     assert result.trades
-    assert result.trades[0].entry_date == "2025-01-02"
+    assert result.trades[0].entry_date == "2025-01-03"
     assert result.trades[0].exit_date == "2025-01-06"
-    assert result.trades[0].holding_days == 2
+    assert result.trades[0].holding_days == 1
+
+
+def test_engine_enters_signals_on_next_trade_date_and_skips_final_day_signal() -> None:
+    signal_cls = getattr(data_provider_module, "BacktestSignal")
+    config_cls = getattr(engine_module, "BacktestConfig")
+    result = getattr(engine_module, "BacktestEngine")(_ProviderStub()).run(
+        config_cls(
+            start_date="2025-01-02",
+            end_date="2025-01-06",
+            signals=[
+                signal_cls(
+                    signal_date="2025-01-02",
+                    symbol="300001",
+                    strategy_key="first_board",
+                    score=88.0,
+                    signal_state="buy_now",
+                    position_pct=0.2,
+                ),
+                signal_cls(
+                    signal_date="2025-01-06",
+                    symbol="300001",
+                    strategy_key="first_board",
+                    score=99.0,
+                    signal_state="buy_now",
+                    position_pct=0.2,
+                ),
+            ],
+            initial_cash=100000.0,
+            execution_model="open_price",
+            force_liquidate_at_end=True,
+        )
+    )
+
+    filled_buys = [order for order in result.orders if order.side == "buy" and order.status == "filled"]
+    assert [order.trade_date for order in filled_buys] == ["2025-01-03"]
 
 
 def test_engine_cancel_preserves_partial_outputs_and_marks_cancelled() -> None:
@@ -748,10 +802,9 @@ class _AttributionProvider:
             "300001": [
                 _bar("300001", "2025-01-02", open_price=10.0, close_price=10.1, pct_chg=1.0),
                 _bar("300001", "2025-01-03", open_price=10.6, close_price=10.7, pct_chg=5.9),
-                _bar("300001", "2025-01-06", open_price=10.6, close_price=10.4, pct_chg=-2.8),
+                _bar("300001", "2025-01-06", open_price=10.9, close_price=10.8, pct_chg=0.9),
             ],
             "300002": [
-                _bar("300002", "2025-01-03", open_price=20.0, close_price=20.1, pct_chg=0.5),
                 _bar("300002", "2025-01-06", open_price=20.2, close_price=20.3, pct_chg=1.0),
             ],
         }

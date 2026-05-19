@@ -114,6 +114,8 @@ def test_research_worker_executes_optimization_and_persists_candidate_shape(
     assert detail.result["candidates"][0]["params"]["min_score"] in {70, 80}
     assert {"params", "metrics", "score", "period", "rank"} <= set(detail.result["candidates"][0])
     assert {"best_is", "best_oos", "oos_downgrade"} <= set(detail.result)
+    assert detail.result["validation_protocol"] == "mandatory_is_oos_split"
+    assert detail.result["oos_required"] is True
 
 
 def test_optimizer_surfaces_data_provider_failures() -> None:
@@ -132,6 +134,20 @@ def test_optimizer_surfaces_data_provider_failures() -> None:
             param_sets=[{"min_score": 70}],
             start_date="2025-01-02",
             end_date="2025-01-10",
+        )
+
+
+def test_optimizer_requires_out_of_sample_window() -> None:
+    optimizer = BacktestOptimizer(SimpleNamespace())
+
+    with pytest.raises(ValueError, match="样本外验证"):
+        optimizer.optimize_with_oos(
+            BacktestConfig(start_date="2025-01-02", end_date="2025-01-20", strategies=["first_board"]),
+            param_grid={"min_score": [70]},
+            train_start="2025-01-02",
+            train_end="2025-01-10",
+            test_start="2025-01-10",
+            test_end="2025-01-20",
         )
 
 

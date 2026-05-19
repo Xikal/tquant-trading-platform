@@ -24,6 +24,7 @@ from app.services.low_buy.strategy_parameter_defaults import (
     LOW_BUY_THRESHOLD_DEFAULTS,
     RISK_VOLATILITY_SIZING_DEFAULTS,
     PAPER_DYNAMIC_EXIT_DEFAULTS,
+    PAPER_RISK_CONTROL_DEFAULTS,
     MARKET_DISTRIBUTION_SIGNAL_DEFAULTS,
     MARKET_INTRADAY_ANOMALY_DEFAULTS,
     MARKET_REGIME_SCORING_DEFAULTS,
@@ -58,6 +59,9 @@ DEFAULT_QUANT_PARAMETERS: dict[str, Any] = {
     "paper": {
         "dynamic_exit": {
             **PAPER_DYNAMIC_EXIT_DEFAULTS,
+        },
+        "risk_control": {
+            **PAPER_RISK_CONTROL_DEFAULTS,
         },
     },
     "low_buy": {

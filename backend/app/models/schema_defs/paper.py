@@ -214,7 +214,17 @@ class PaperPerformanceOut(BaseModel):
     avg_win_pct: float = 0.0
     avg_loss_pct: float = 0.0
     profit_factor: Optional[float] = None
+    long_win_rate_pct: float = 0.0
+    long_profit_factor: Optional[float] = None
+    long_win_loss_ratio: Optional[float] = None
+    short_win_rate_pct: float = 0.0
+    short_profit_factor: Optional[float] = None
+    short_win_loss_ratio: Optional[float] = None
+    directional_stats: dict[str, dict[str, float | None]] = Field(default_factory=dict)
     sharpe_ratio: float = 0.0
+    sortino_ratio: float = 0.0
+    calmar_ratio: float = 0.0
+    risk_free_rate_annual_pct: float = 0.0
     stop_loss_rate_pct: float = 0.0
     total_trades: int = 0
     avg_hold_days: float = 0.0

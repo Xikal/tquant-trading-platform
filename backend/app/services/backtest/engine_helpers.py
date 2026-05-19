@@ -24,11 +24,14 @@ def signals_by_entry_date(
 ) -> dict[str, list[BacktestSignal]]:
     index_by_date = {trade_date: index for index, trade_date in enumerate(trade_dates)}
     output: dict[str, list[BacktestSignal]] = {}
+    delay = max(int(entry_delay_days or 0), 1)
     for signal in signals:
         index = index_by_date.get(signal.signal_date)
         if index is None:
             continue
-        entry_index = min(index + max(entry_delay_days, 0), len(trade_dates) - 1)
+        entry_index = index + delay
+        if entry_index >= len(trade_dates):
+            continue
         output.setdefault(trade_dates[entry_index], []).append(signal)
     return output
 
@@ -143,7 +146,7 @@ def dataset_manifest(
 
 
 def entry_estimated_price(bar: DailyBar, signal: BacktestSignal, execution_model: str) -> float:
-    if execution_model == ExecutionModel.OPEN_PRICE.value:
+    if execution_model in {ExecutionModel.OPEN_PRICE.value, ExecutionModel.NEXT_OPEN.value}:
         return bar.open_price
     if execution_model == ExecutionModel.VWAP.value:
         return bar.vwap
@@ -178,6 +181,7 @@ def holding_days_between(entry_date: str, trade_date: str, trade_dates: list[str
 
 def config_dict(config: Any) -> dict[str, Any]:
     payload = asdict(config)
+    payload["entry_delay_days"] = max(int(payload.get("entry_delay_days") or 0), 1)
     payload["signals"] = [
         {
             "signal_date": signal.signal_date,
@@ -204,13 +208,15 @@ def execution_assumptions(config: Any) -> dict[str, Any]:
             "source": "app.services.paper.fees.calculate_fee",
         },
         "slippage_model": {
-            "open": "按当日开盘价撮合。",
-            "close": "按当日收盘价撮合。",
-            "vwap": "按日线 VWAP 字段撮合；缺失时由数据源决定降级。",
-            "entry_zone_touch": "买入使用买点区上沿作为触发价。",
-            "conservative_slippage": "买入按 max(open, close)，卖出按 min(open, close)，偏保守估算。",
-            "market_impact": "在 conservative_slippage 基础上按成交额参与度追加冲击成本。",
+            "open": "按入场交易日开盘价作为基准，并追加撮合滑点。",
+            "next_open": "信号日后下一个交易日开盘价作为基准，并追加撮合滑点。",
+            "close": "按入场交易日收盘价作为基准，并追加撮合滑点；不按收盘价精确成交。",
+            "vwap": "按日线 VWAP 字段作为基准；缺失时降级到入场日开盘价，并追加撮合滑点。",
+            "entry_zone_touch": "买入使用买点区上沿作为触发价，并追加撮合滑点。",
+            "conservative_slippage": "买入按 max(open, close)，卖出按 min(open, close)，再追加撮合滑点，偏保守估算。",
+            "market_impact": "在 conservative_slippage 与撮合滑点基础上，按成交额参与度追加冲击成本。",
         },
+        "lookahead_guard": "低吸信号默认在信号日后的下一个交易日才允许入场；区间最后一个交易日产生的信号不会被强行同日成交。",
         "same_bar_path": "同一交易日同时触发止损和止盈时先按止损处理；每日先处理退出，再处理新开仓。",
         "price_limit_handling": "撮合前按 A 股涨跌停上下文拒绝不可交易委托；ETF/基金类默认不套用股票涨跌停限制。",
         "suspension_handling": "缺少有效日线、价格为 0 或停牌导致无可用行情时，订单会被拒绝或跳过。",
@@ -219,7 +225,8 @@ def execution_assumptions(config: Any) -> dict[str, Any]:
             "max_position_pct": config.max_position_pct,
             "max_positions": config.max_positions,
             "max_signals_per_day": config.max_signals_per_day,
-            "entry_delay_days": config.entry_delay_days,
+            "entry_delay_days": max(int(config.entry_delay_days or 0), 1),
+            "effective_entry_delay_days": max(int(config.entry_delay_days or 0), 1),
             "lot_size": config.lot_size,
             "force_liquidate_at_end": config.force_liquidate_at_end,
         },

@@ -8,12 +8,12 @@ import numpy as np
 from scipy.optimize import minimize
 from sqlalchemy.orm import Session
 
+from app.services.low_buy.strategy_parameter_defaults_parts.runtime import PAPER_RISK_CONTROL_DEFAULTS
 from app.services.paper.performance import PaperPerformanceService, SellReturnRecord
+from app.services.quant.runtime_parameters import get_paper_risk_control
 
 MIN_CLOSED_TRADES = 100
 MIN_SHARED_DAYS = 10
-CORRELATION_PENALTY_THRESHOLD = 0.7
-MIN_SCALE = Decimal("0.35")
 
 
 @dataclass(frozen=True)
@@ -46,16 +46,24 @@ class PaperStrategyPortfolioAllocator:
         mean_returns = np.nanmean(matrix, axis=0)
         covariance = np.atleast_2d(covariance) + np.eye(len(strategies)) * 1e-8
         weights = _max_sharpe_weights(mean_returns, covariance)
-        penalties = _correlation_penalties(strategies, shared, matrix, weights)
+        params = _risk_control_params()
+        penalties = _correlation_penalties(
+            strategies,
+            shared,
+            matrix,
+            weights,
+            threshold=_float_param(params, "correlation_penalty_threshold"),
+        )
         max_weight = max(float(value) for value in weights) if len(weights) else 0.0
         if max_weight <= 0:
             return {}
+        min_scale = Decimal(str(_float_param(params, "correlation_min_scale") / 100)).quantize(Decimal("0.0001"))
 
         decisions: dict[str, StrategyWeightDecision] = {}
         for index, strategy in enumerate(strategies):
             adjusted_weight = float(weights[index]) * penalties[index]
             normalized_scale = Decimal(str(adjusted_weight / max_weight if max_weight > 0 else 0.0))
-            scale = min(Decimal("1.0"), max(MIN_SCALE, normalized_scale)).quantize(Decimal("0.0001"))
+            scale = min(Decimal("1.0"), max(min_scale, normalized_scale)).quantize(Decimal("0.0001"))
             max_corr = _max_pair_correlation(index, matrix, shared)
             decisions[strategy] = StrategyWeightDecision(
                 strategy_key=strategy,
@@ -143,12 +151,14 @@ def _correlation_penalties(
     shared: np.ndarray,
     matrix: np.ndarray,
     weights: np.ndarray,
+    *,
+    threshold: float,
 ) -> list[float]:
     penalties = [1.0] * len(strategies)
     for left in range(len(strategies)):
         for right in range(left + 1, len(strategies)):
             corr = _pair_correlation(left, right, matrix, shared)
-            if corr <= CORRELATION_PENALTY_THRESHOLD:
+            if corr <= threshold:
                 continue
             penalized = left if float(weights[left]) <= float(weights[right]) else right
             penalties[penalized] *= 0.8
@@ -176,3 +186,17 @@ def _max_pair_correlation(index: int, matrix: np.ndarray, shared: np.ndarray) ->
 def _reason_for(strategy: str, *, scale: Decimal, weight: float, max_corr: float) -> str:
     corr_part = f"；与其他策略最高相关系数 {max_corr:.2f}" if max_corr > 0 else ""
     return f"{strategy} 组合层权重 {weight * 100:.1f}% ，仓位缩放 {float(scale) * 100:.1f}%{corr_part}"
+
+
+def _risk_control_params() -> dict[str, object]:
+    values = {**PAPER_RISK_CONTROL_DEFAULTS}
+    values.update(get_paper_risk_control())
+    return values
+
+
+def _float_param(params: dict[str, object], key: str) -> float:
+    fallback = PAPER_RISK_CONTROL_DEFAULTS[key]
+    try:
+        return float(params.get(key, fallback))
+    except (TypeError, ValueError):
+        return float(fallback)

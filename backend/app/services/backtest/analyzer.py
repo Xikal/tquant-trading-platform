@@ -4,6 +4,13 @@ from math import isfinite, sqrt
 from typing import Any
 
 from app.services.backtest.portfolio import PortfolioSnapshot, RealizedTrade
+from app.services.finance.performance_math import (
+    annualized_sharpe_ratio,
+    annualized_sortino_ratio,
+    risk_free_rate_from_params,
+    sequence_max_drawdown_pct,
+)
+from app.services.quant.runtime_parameters import get_backtest_execution
 
 
 class BacktestAnalyzer:
@@ -18,6 +25,7 @@ class BacktestAnalyzer:
         final_equity = equity_curve[-1].total_equity if equity_curve else initial_cash
         returns = _equity_returns(equity_curve)
         benchmark_returns = _benchmark_returns(equity_curve)
+        risk_free_rate = risk_free_rate_from_params(get_backtest_execution())
         total_return_pct = (final_equity - initial_cash) / max(initial_cash, 0.01) * 100
         max_drawdown_pct = _max_drawdown_pct(equity_curve)
         benchmark_return_pct = _compound_return_pct(benchmark_returns)
@@ -25,6 +33,7 @@ class BacktestAnalyzer:
         losing_trades = [trade for trade in trades if trade.net_pnl < 0]
         gross_gain = sum(trade.net_pnl for trade in winning_trades)
         gross_loss = abs(sum(trade.net_pnl for trade in losing_trades))
+        directional_stats = _directional_trade_stats(trades)
         filled_orders = [order for order in orders if getattr(order, "status", "") == "filled"]
         rejected_orders = [order for order in orders if getattr(order, "status", "") == "rejected"]
         return {
@@ -32,8 +41,9 @@ class BacktestAnalyzer:
             "final_equity": round(final_equity, 2),
             "total_return_pct": round(total_return_pct, 4),
             "max_drawdown_pct": round(max_drawdown_pct, 4),
-            "sharpe_ratio": round(_sharpe_ratio(returns), 4),
-            "sortino_ratio": round(_sortino_ratio(returns), 4),
+            "sharpe_ratio": round(_sharpe_ratio(returns, risk_free_rate), 4),
+            "sortino_ratio": round(_sortino_ratio(returns, risk_free_rate), 4),
+            "risk_free_rate_annual_pct": round(risk_free_rate, 4),
             "calmar_ratio": round(_calmar_ratio(total_return_pct, max_drawdown_pct, len(returns)), 4),
             "benchmark_return_pct": round(benchmark_return_pct, 4),
             "benchmark_alpha_pct": round(total_return_pct - benchmark_return_pct, 4),
@@ -43,6 +53,13 @@ class BacktestAnalyzer:
             "rejected_order_count": len(rejected_orders),
             "win_rate_pct": round(len(winning_trades) / max(len(trades), 1) * 100, 4),
             "profit_factor": round(gross_gain / gross_loss, 4) if gross_loss > 0 else None,
+            "long_win_rate_pct": directional_stats["long"]["win_rate_pct"],
+            "long_profit_factor": directional_stats["long"]["profit_factor"],
+            "long_win_loss_ratio": directional_stats["long"]["win_loss_ratio"],
+            "short_win_rate_pct": directional_stats["short"]["win_rate_pct"],
+            "short_profit_factor": directional_stats["short"]["profit_factor"],
+            "short_win_loss_ratio": directional_stats["short"]["win_loss_ratio"],
+            "directional_stats": directional_stats,
             "avg_trade_return_pct": round(
                 sum(trade.return_pct for trade in trades) / max(len(trades), 1),
                 4,
@@ -86,13 +103,7 @@ def _benchmark_returns(equity_curve: list[PortfolioSnapshot]) -> list[float]:
 
 
 def _max_drawdown_pct(equity_curve: list[PortfolioSnapshot]) -> float:
-    peak = 0.0
-    max_drawdown = 0.0
-    for item in equity_curve:
-        peak = max(peak, item.total_equity)
-        if peak > 0:
-            max_drawdown = min(max_drawdown, (item.total_equity - peak) / peak * 100)
-    return max_drawdown
+    return sequence_max_drawdown_pct(item.total_equity for item in equity_curve)
 
 
 def _compound_return_pct(returns: list[float]) -> float:
@@ -102,25 +113,12 @@ def _compound_return_pct(returns: list[float]) -> float:
     return (value - 1) * 100
 
 
-def _sharpe_ratio(returns: list[float]) -> float:
-    if len(returns) < 2:
-        return 0.0
-    avg = sum(returns) / len(returns)
-    variance = sum((item - avg) ** 2 for item in returns) / (len(returns) - 1)
-    if variance <= 0:
-        return 0.0
-    return avg / sqrt(variance) * sqrt(252)
+def _sharpe_ratio(returns: list[float], risk_free_rate_annual_pct: float) -> float:
+    return annualized_sharpe_ratio(returns, risk_free_rate_annual_pct=risk_free_rate_annual_pct)
 
 
-def _sortino_ratio(returns: list[float]) -> float:
-    if len(returns) < 2:
-        return 0.0
-    avg = sum(returns) / len(returns)
-    downside = [min(item, 0.0) for item in returns]
-    downside_deviation = sqrt(sum(item**2 for item in downside) / len(returns))
-    if downside_deviation <= 0:
-        return 0.0
-    return avg / downside_deviation * sqrt(252)
+def _sortino_ratio(returns: list[float], risk_free_rate_annual_pct: float) -> float:
+    return annualized_sortino_ratio(returns, risk_free_rate_annual_pct=risk_free_rate_annual_pct)
 
 
 def _calmar_ratio(total_return_pct: float, max_drawdown_pct: float, periods: int) -> float:
@@ -154,6 +152,29 @@ def _as_float(value: Any) -> float | None:
     except (TypeError, ValueError):
         return None
     return number if isfinite(number) else None
+
+
+def _directional_trade_stats(trades: list[RealizedTrade]) -> dict[str, dict[str, float | None]]:
+    grouped: dict[str, list[RealizedTrade]] = {"long": [], "short": []}
+    for trade in trades:
+        direction = str(getattr(trade, "direction", "") or getattr(trade, "side", "") or "long").lower()
+        grouped["short" if "short" in direction else "long"].append(trade)
+    return {direction: _trade_stats(items) for direction, items in grouped.items()}
+
+
+def _trade_stats(trades: list[RealizedTrade]) -> dict[str, float | None]:
+    wins = [trade for trade in trades if trade.net_pnl > 0]
+    losses = [trade for trade in trades if trade.net_pnl < 0]
+    gross_gain = sum(trade.net_pnl for trade in wins)
+    gross_loss = abs(sum(trade.net_pnl for trade in losses))
+    avg_win = sum(trade.return_pct for trade in wins) / len(wins) if wins else 0.0
+    avg_loss = abs(sum(trade.return_pct for trade in losses) / len(losses)) if losses else 0.0
+    return {
+        "trade_count": len(trades),
+        "win_rate_pct": round(len(wins) / max(len(trades), 1) * 100, 4),
+        "profit_factor": round(gross_gain / gross_loss, 4) if gross_loss > 0 else None,
+        "win_loss_ratio": round(avg_win / avg_loss, 4) if avg_win > 0 and avg_loss > 0 else None,
+    }
 
 
 def _by_strategy(trades: list[RealizedTrade]) -> dict[str, dict[str, float]]:

@@ -244,7 +244,7 @@ class BacktestJobService:
             max_position_pct=float((params.get("risk_limits") or {}).get("max_position_pct") or 0.2),
             max_positions=int((params.get("risk_limits") or {}).get("max_positions") or 8),
             max_signals_per_day=int(params.get("max_signals_per_day") or 20),
-            entry_delay_days=int(params.get("entry_delay_days") or 0),
+            entry_delay_days=int(params.get("entry_delay_days") or 1),
             force_liquidate_at_end=bool(params.get("force_liquidate_at_end", True)),
             max_duration_seconds=int(run.max_duration_seconds or params.get("max_duration_seconds") or 1800),
         )

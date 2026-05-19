@@ -13,6 +13,7 @@ from app.services.market.board_exclusions import GROWTH_BOARD_REJECT_REASON, is_
 from app.services.paper.account import PaperAccountService
 from app.services.paper.matching import MatchResult, OrderSide, OrderType, PaperMatchingEngine
 from app.services.paper.money import to_decimal
+from app.services.paper.order_idempotency import duplicate_auto_exit_exists
 from app.services.paper.position import PaperPositionService
 from app.services.paper.reasons import normalize_entry_reason, normalize_exit_reason
 from app.services.paper.risk_control import PaperRiskControlService
@@ -51,6 +52,7 @@ class PaperOrderService:
         commit: bool = True,
     ) -> PaperOrder:
         self.accounts.get_account(account_id, for_update=True)
+        self._idempotency_check(account_id, symbol, side, source, signal_snapshot)
         self._precheck(account_id, symbol, side, quantity, current_price)
         if side == "buy" and not intraday_confirmed:
             raise ValueError("盘中承接未确认，模拟买入被拒绝。")
@@ -151,6 +153,24 @@ class PaperOrderService:
         )
         if not decision.allowed:
             raise ValueError("；".join(decision.reasons))
+
+    def _idempotency_check(
+        self,
+        account_id: int,
+        symbol: str,
+        side: str,
+        source: str,
+        signal_snapshot: dict,
+    ) -> None:
+        if duplicate_auto_exit_exists(
+            self.db,
+            account_id=account_id,
+            symbol=symbol,
+            side=side,
+            source=source,
+            signal_snapshot=signal_snapshot or {},
+        ):
+            raise ValueError("同一自动止损/时间退出委托今日已提交，已阻止重复平仓。")
 
     def _apply_trade(self, order: PaperOrder, fill_price: Decimal, net_amount: Decimal, fee_detail) -> None:
         account = self.accounts.get_account(order.account_id)

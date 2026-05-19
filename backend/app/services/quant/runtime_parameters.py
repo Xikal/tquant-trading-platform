@@ -176,6 +176,11 @@ def get_paper_dynamic_exit() -> dict[str, Any]:
     return deepcopy(values) if isinstance(values, dict) else {}
 
 
+def get_paper_risk_control() -> dict[str, Any]:
+    values = current_quant_parameters().get("paper", {}).get("risk_control", {})
+    return deepcopy(values) if isinstance(values, dict) else {}
+
+
 def _strategy_config(section: str, strategy: str, fallback: dict[str, Any]) -> dict[str, Any]:
     values = current_quant_parameters().get("low_buy", {}).get(section, {}).get(strategy, {})
     if not isinstance(values, dict):
