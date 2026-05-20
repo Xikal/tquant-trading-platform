@@ -37,6 +37,7 @@ from app.services.low_buy.priority_holdings import (
     select_primary_candidates_for_portfolio,
 )
 from app.services.low_buy.priority_items import build_priority_items
+from app.services.low_buy.leader_strength_enrichment import enrich_priority_candidates_with_leader_strength
 from app.services.low_buy.priority_market import build_market_context
 from app.services.low_buy.priority_merging import (
     attach_priority_recommendation_durations,
@@ -78,6 +79,7 @@ class LowBuyPriorityBoardMixin(LowBuyPriorityScoringMixin):
             rows=refreshed_candidates,
             latest_trade_date=base_snapshot.latest_trade_date,
         )
+        refreshed_candidates = enrich_priority_candidates_with_leader_strength(db=db, rows=refreshed_candidates)
         pre_policy_candidate_count = len(refreshed_candidates)
         refreshed_candidates = filter_priority_candidates_for_recommendation(refreshed_candidates)
         items = self._build_priority_items(

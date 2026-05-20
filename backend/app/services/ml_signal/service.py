@@ -24,7 +24,6 @@ from app.models.schema_defs.phase4 import (
 from app.services.ml_signal.artifact_manager import MLSignalArtifactManager
 from app.services.ml_signal.features import (
     FEATURE_NAMES,
-    estimator_probabilities as _estimator_probabilities,
     feature_missing_rates as _feature_missing_rates,
     label_is_positive as _label_is_positive,
     predict_probability as _predict_probability,
@@ -33,6 +32,7 @@ from app.services.ml_signal.features import (
     signal_label as _label,
     trade_features as _trade_features,
 )
+from app.services.ml_signal import feature_schema as _feature_schema
 from app.services.ml_signal.modeling import (
     fit_estimator as _fit_estimator,
     generated_model_key as _generated_model_key,
@@ -46,12 +46,13 @@ from app.services.ml_signal.modeling import (
 from app.services.ml_signal.sample_repository import MLSignalSampleRepository
 from app.services.ml_signal.schedule_info import next_training_rule_text
 from app.services.ml_signal.drift_monitor import feature_drift_summary
-from app.services.ml_signal.training_runtime import training_parameter_snapshot
+from app.services.ml_signal.time_series_validation import chronological_samples
 from app.services.ml_signal.training_runtime import (
     incremental_model_type,
     incremental_promote_enabled,
     incremental_warm_start_enabled,
     max_validation_p_value,
+    training_parameter_snapshot,
 )
 from app.services.ml_signal.prediction_fallback import HEURISTIC_MODEL_KEY, heuristic_predict
 from app.services.ml_signal.warm_start import load_warm_start_estimator
@@ -171,7 +172,7 @@ class MLSignalService:
         return self._persist_sample(sample)
 
     def train(self, payload: MLSignalTrainRequest) -> MLSignalTrainResponse:
-        rows = self._load_training_samples(source=payload.source, limit=payload.limit)
+        rows = chronological_samples(self._load_training_samples(source=payload.source, limit=payload.limit))
         min_samples = int(payload.min_samples)
         if len(rows) < min_samples:
             return MLSignalTrainResponse(
@@ -223,12 +224,18 @@ class MLSignalService:
             metrics["promotion_blocked_reason"] = "；".join(promotion_blocks)
         can_promote = payload.promote and promotion_candidate
         status = "production" if can_promote else "research"
+        _feature_schema.add_model_version_metadata(metrics, status=status, promotion_candidate=promotion_candidate, promote_requested=payload.promote)
+        metrics["model_version_id"] = model_key
+        schema_payload = _feature_schema.feature_schema_payload(FEATURE_NAMES)
         artifact_uri, artifact_sha256 = self._save_artifact(
             model_key=model_key,
             payload={
                 "model_key": model_key,
                 "model_type": payload.model_type,
                 "feature_names": FEATURE_NAMES,
+                "feature_schema": schema_payload,
+                "feature_schema_hash": schema_payload["feature_schema_hash"],
+                "deployment_stage": metrics["deployment_stage"],
                 "estimator": estimator,
                 "metrics": metrics,
                 "created_at": datetime.utcnow().isoformat(),
@@ -250,7 +257,7 @@ class MLSignalService:
             self.db.add(row)
         row.model_type = payload.model_type
         row.status = status
-        row.feature_schema_json = _json_dumps({"feature_names": FEATURE_NAMES})
+        row.feature_schema_json = _json_dumps(schema_payload)
         row.metrics_json = _json_dumps(metrics)
         row.artifact_uri = artifact_uri
         row.remote_artifact_uri = remote_artifact_uri
@@ -369,11 +376,15 @@ class MLSignalService:
         if row is not None and row.artifact_uri:
             try:
                 metrics = _json_dict(row.metrics_json)
+                row_schema = _json_dict(row.feature_schema_json)
                 artifact = self._load_artifact(
                     row.artifact_uri,
                     expected_sha256=str(row.artifact_checksum or metrics.get("artifact_sha256") or ""),
                     remote_artifact_uri=str(row.remote_artifact_uri or metrics.get("remote_artifact_uri") or ""),
                 )
+                schema_warning = _feature_schema.feature_schema_warning(artifact=artifact, metrics=metrics, row_schema=row_schema)
+                if schema_warning:
+                    return self._heuristic_predict(payload, warning=schema_warning)
                 probability = _predict_probability(artifact["estimator"], payload.features)
                 label = _label(probability)
                 quality_warning = _production_model_warning(row.status, metrics)
@@ -388,6 +399,7 @@ class MLSignalService:
                     confidence=round(abs(probability - 0.5) * 2, 3),
                     reasons=[
                         f"使用 {row.status} 模型 {row.model_key} 推理。",
+                        "线上特征签名与训练 artifact 已校验一致。",
                         "输出仅作为信号因子，执行仍需后端风控确认。",
                     ],
                     metrics=metrics,

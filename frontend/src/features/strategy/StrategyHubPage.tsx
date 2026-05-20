@@ -1,9 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { ErrorBanner } from "../../components/shared/Feedback";
 import { useToast } from "../../components/shared/ToastContainer";
 import type { AuthUser } from "../../types";
 import type { BacktestRunSummary } from "../../api/backtests";
-import { formatDateTime, formatMoney, formatPct, loadBacktestVerdictThresholds } from "../backtest/backtestDisplay";
+import { formatDateTime, formatMoney, formatPct } from "../backtest/backtestDisplay";
 import { StrategyConfirmDialog } from "./StrategyConfirmDialog";
 import { StrategyHubDetailTabs } from "./StrategyHubDetailTabs";
 import {
@@ -16,7 +16,6 @@ import { useStrategyHub } from "./useStrategyHub";
 
 export function StrategyHubPage({ currentUser }: { currentUser: AuthUser }) {
   const hub = useStrategyHub();
-  const [, setThresholdVersion] = useState(0);
   const expertEnabled = visibleTabsForUser(currentUser).some((tab) =>
     tab.key === "optimize" || tab.key === "validate" || tab.key === "compare" || tab.key === "capacity"
   );
@@ -28,16 +27,6 @@ export function StrategyHubPage({ currentUser }: { currentUser: AuthUser }) {
       hub.setTab("quick");
     }
   }, [expertEnabled, hub.tab, hub.setTab]);
-
-  useEffect(() => {
-    let active = true;
-    void loadBacktestVerdictThresholds().then(() => {
-      if (active) setThresholdVersion((value) => value + 1);
-    });
-    return () => {
-      active = false;
-    };
-  }, []);
 
   function submitWithToast() {
     void hub.submit().then((ok) => {

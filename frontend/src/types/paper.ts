@@ -352,3 +352,23 @@ export interface PaperStrategyCorrelation {
   }>
   notes: string[]
 }
+
+export interface PaperWorkspaceBffResponse {
+  api_version: string
+  generated_at: string
+  account: PaperAccount | null
+  positions: PaperPosition[]
+  orders: PaperOrder[]
+  trades: PaperTrade[]
+  stock_pnl: PaperStockPnlResponse | null
+  performance: PaperPerformance | null
+  sector_etf_t0_performance: PaperSectorEtfT0Performance | null
+  strategy_performance: PaperGroupedPerformance[]
+  market_performance: PaperGroupedPerformance[]
+  tag_performance: PaperTagPerformance[]
+  risk_events: RiskEventItem[]
+  auto_trading_status: PaperAutoTradingStatus
+  auto_trading_runs: PaperAgentRun[]
+  partial_errors: Array<{ source: string; detail: string }>
+}
+import type { RiskEventItem } from "./research"

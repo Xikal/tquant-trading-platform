@@ -6,15 +6,20 @@ from app.core.auth import get_current_user
 from app.core.timezone import beijing_now_string
 from app.core.role_permissions import require_research_access
 from app.models.schema_defs.market import (
+    IntradayKeyLevelResponse,
     IntradayAnomalyResponse,
     MarketBreadthResponse,
     MarketTradingSessionResponse,
     MarketModelValidationResponse,
     PairedHedgeResearchResponse,
+    SectorRelativeStrengthResponse,
     SectorEtfT0Response,
 )
 from app.models.entities import User
 from app.services.intraday_anomaly import IntradayAnomalyService
+from app.services.intraday_key_levels import IntradayKeyLevelService
+from app.services.alternative_data import AlternativeDataSentimentService
+from app.services.arbitrage_research import build_multi_exchange_arbitrage_research
 from app.services.market_data import MarketDataService
 from app.services.market.regime_quality import market_regime_quality_text
 from app.services.market.trading_session import current_a_share_trading_session
@@ -28,6 +33,7 @@ router = APIRouter(prefix="/market", dependencies=[Depends(get_current_user)])
 market_data = MarketDataService()
 sector_etf_t0_service = SectorEtfT0Service(market_data=market_data)
 intraday_anomaly_service = IntradayAnomalyService(market_data=market_data)
+intraday_key_level_service = IntradayKeyLevelService(market_data=market_data)
 paired_hedge_research_service = PairedHedgeResearchService(market_data=market_data)
 
 
@@ -91,6 +97,19 @@ def sector_etf_t0(
     return SectorEtfT0Response.model_validate(payload["sector_etf_t0"])
 
 
+@router.get("/sector-relative-strength", response_model=SectorRelativeStrengthResponse)
+def sector_relative_strength(
+    limit: int = 8,
+    per_sector_limit: int = 10,
+    db: Session = Depends(get_db),
+) -> SectorRelativeStrengthResponse:
+    return market_data.sector_relative_strength_rank(
+        db,
+        limit=max(1, min(limit, 20)),
+        per_sector_limit=max(1, min(per_sector_limit, 30)),
+    )
+
+
 @router.get("/sector-etf-t0/validation", response_model=MarketModelValidationResponse)
 def sector_etf_t0_validation(
     limit: int = 8,
@@ -111,12 +130,39 @@ def paired_hedge_research(
     return paired_hedge_research_service.build(db, limit=max(1, min(limit, 20)))
 
 
+@router.get("/alternative-sentiment")
+def alternative_sentiment(
+    symbols: str = "",
+    limit: int = 80,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    require_research_access(current_user)
+    symbol_list = [item.strip() for item in symbols.split(",") if item.strip()]
+    return AlternativeDataSentimentService(db).build(symbols=symbol_list or None, limit=limit)
+
+
+@router.get("/multi-exchange-arbitrage/research")
+def multi_exchange_arbitrage_research(
+    symbols: str = "",
+    current_user: User = Depends(get_current_user),
+) -> dict:
+    require_research_access(current_user)
+    symbol_list = [item.strip() for item in symbols.split(",") if item.strip()]
+    return build_multi_exchange_arbitrage_research(symbol_list)
+
+
 @router.get("/intraday-anomaly/{symbol}", response_model=IntradayAnomalyResponse)
 def intraday_anomaly(symbol: str, db: Session = Depends(get_db)) -> IntradayAnomalyResponse:
     response = intraday_anomaly_service.detect(symbol.strip())
     intraday_anomaly_service.record_observation(db, response)
     db.commit()
     return response
+
+
+@router.get("/intraday-key-levels/{symbol}", response_model=IntradayKeyLevelResponse)
+def intraday_key_levels(symbol: str) -> IntradayKeyLevelResponse:
+    return intraday_key_level_service.build(symbol.strip())
 
 
 @router.get("/intraday-anomaly-validation", response_model=MarketModelValidationResponse)

@@ -1,5 +1,80 @@
 # TQuant 实施计划
 
+## Auth 安全整改核验与补强
+
+需求来源：用户 2026-05-20 直接给出的 AUTH-C/AUTH-H 安全问题清单。
+
+### 核验结论
+
+- [x] `JWT_SECRET` 硬编码/弱默认：当前后端使用 `AUTH_SECRET_KEY`，无源码默认密钥；启动期 `main.py` 调用 `ensure_auth_secret_configured()`，生产安全配置拒绝弱密钥。
+- [x] Token 吊销：access token 带 `sid` 和 `token_version`；logout、refresh replay、管理员禁用/降权都会吊销 session 或提升 token_version。
+- [x] API Key/敏感配置明文：系统配置中的 `llm_api_key`、`database_url` 走 Fernet 派生加密，公开响应只返回脱敏值；审计日志会脱敏 token/secret/api_key；运行时配置不再把 `LLM_API_KEY` 写入 `runtime.env`。
+- [x] 登录/注册暴力破解：登录 IP + 账号维度限流、账号失败锁定和注册限流均已存在。
+- [x] RBAC/归属：策略治理、参数、回测/优化/验证、模拟盘、Agent 写工具均有登录、角色或管理员校验；正式回测任务和旧兼容研究回测列表/详情均按 owner_user_id 隔离。
+- [x] 密码哈希：当前为 `scrypt_sha256`，旧 `pbkdf2_sha256` 登录时自动升级；未发现 MD5 密码哈希。
+- [x] Refresh Token：httpOnly Cookie、7 天有效期、每次 refresh 轮换，旧 token 重放会吊销用户全部会话。
+- [x] MFA：模拟盘下单默认要求 TOTP；本轮补齐 Agent 模拟盘下单同样必须使用已登录用户会话并通过 paper_trade/MFA 门禁，Agent token 不能直接下单。
+
+### 本轮修改
+
+- [x] `/api/agent/paper/order` 在工具写权限之外追加用户会话、模拟盘权限和 MFA 校验。
+- [x] 增加回归测试：Agent scoped token 即使有 write_paper scope 也不能直接创建模拟盘委托；写工具打开时未开启 MFA 的用户会被拒绝。
+- [x] 旧兼容 `/api/backtests/runs` 和 `/api/backtests/runs/{id}` 增加 owner_user_id 过滤；旧 `/api/backtests` 创建的回测记录写入当前用户 ID。
+- [x] 系统设置保存时清理历史 `runtime.env` 中的 `LLM_API_KEY`，后续只允许从数据库加密字段读取/更新 API Key；保留旧环境变量读取兼容但不再持久化。
+
+### 验证结果
+
+- [x] `backend/.venv/bin/python -m compileall backend/app backend/tests/test_agent_routes.py backend/tests/test_research_route_ownership.py -q` 通过。
+- [x] `backend/.venv/bin/python -m compileall backend/app/services/settings_service.py backend/tests/test_low_buy_trade_controls.py -q` 通过。
+- [x] `PYTHONPATH=. backend/.venv/bin/python -m pytest backend/tests/test_low_buy_trade_controls.py::LowBuyTradeControlTests::test_settings_public_payload_masks_secrets_and_preserves_masked_updates -q` 通过，1 passed。
+- [x] `cd backend && .venv/bin/python -m pytest tests/test_auth_routes.py tests/test_auth_hardening.py tests/test_auth_cookie_security.py tests/test_login_lockout.py tests/test_agent_routes.py tests/test_paper_routes.py tests/test_research_route_ownership.py -q` 通过，55 passed。
+- [x] `PYTHONPATH=. backend/.venv/bin/python -m pytest backend/tests/test_low_buy_trade_controls.py::LowBuyTradeControlTests::test_settings_public_payload_masks_secrets_and_preserves_masked_updates backend/tests/test_security_quant_extensions.py backend/tests/test_totp_secret_crypto.py backend/tests/test_security_hardening.py -q` 通过，9 passed。
+
+## 量化增强闭环：Kelly+ATR、Regime、实盘回测监控、BL、另类数据、在线学习、执行算法、套利研究
+
+需求来源：用户 2026-05-20 直接需求。
+
+### 执行口径
+
+- 不接真实券商和真实交易所下单。
+- 现有 Kelly+ATR、市场状态、Markowitz、在线学习、真实撮合滑点已有基础实现，本轮只补缺口和生产接入。
+- “多交易所套利”在 A 股平台中按研究/诊断能力落地，不进入自动交易。
+- 新增文件保持 500 行以内，不改变现有策略买卖语义。
+
+### TODO
+
+- [x] P0：核实并补强 Kelly+ATR 仓位管理在模拟盘自动下单链路中的结构化输出与测试。
+- [x] P0：核实并补强市场状态识别对策略参数/仓位缩放的生产链路。
+- [x] P0：新增实盘/模拟盘 vs 回测表现对比监控，输出策略失效和滑点损耗告警。
+- [x] P1：补齐 Black-Litterman 组合优化方法，并接入现有 portfolio-optimization API。
+- [x] P1：新增另类数据情绪/事件评分服务，作为研究信号和候选加权输入，不直接自动交易。
+- [x] P1：核实在线学习闭环已由 paper trade 样本、warm_start、人工审批构成，并补测试/报告字段。
+- [x] P1：扩展回测执行算法：TWAP、VWAP、Implementation Shortfall 语义明确，成交假设写入输出。
+- [x] P1：新增多市场/多交易所套利研究诊断接口，默认只报告不可交易/需人工确认。
+- [x] 最终运行编译、针对性测试和前端构建。
+
+### 当前发现
+
+- `PositionSizer` 已读取 `kelly_position`、`final_position_cap_pct`、`volatility_position_pct`、`validation_position_scale`、`portfolio_weight_scale`。
+- 市场状态、分市场参数晋级和自进化调度已有实现。
+- Markowitz 已用共同成交日和 NaN 协方差，缺 Black-Litterman。
+- ML 在线学习已有 paper sample、warm_start、时序验证、artifact hash 和人工审批。
+- Backtest broker 已支持 VWAP、保守滑点、市场冲击，缺 TWAP/IS 枚举和成交假设。
+
+### 本轮落地
+
+- 新增 `black_litterman_optimizer.py`，`/api/backtests/{run_id}/portfolio-optimization?method=black_litterman` 可返回 BL 权重和有效前沿。
+- 新增 `/api/backtests/live-comparison`，比较模拟盘真实平仓收益与最近回测收益差，发现策略实盘损耗。
+- 新增 `/api/market/alternative-sentiment`，基于缓存新闻/公告/社交事件源输出研究层情绪分，不进入自动交易。
+- 新增 `/api/market/multi-exchange-arbitrage/research`，明确多交易所套利当前为研究边界，不把 Provider 价差误当可交易机会。
+- Backtest execution model 新增 `twap` 和 `implementation_shortfall`，并写入前端选项和执行假设。
+
+### 本轮验证
+
+- `backend/.venv/bin/python -m compileall backend/app backend/tests/test_quant_enhancement_completion.py -q` 通过。
+- `cd backend && .venv/bin/python -m pytest tests/test_quant_enhancement_completion.py tests/test_ml_markowitz_regime_rl.py tests/test_bff_routes.py -q` 通过，18 passed。
+- `cd frontend && npm run build` 通过。
+
 ## 因子挖掘系统落地计划
 
 需求来源：`/Users/j/Downloads/TQuant_因子挖掘系统规划方案.html`

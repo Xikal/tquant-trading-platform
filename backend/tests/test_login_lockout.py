@@ -13,7 +13,7 @@ from app.services.auth_service import AuthError, AuthService
 
 
 def test_login_lockout_after_repeated_failures() -> None:
-    environ["AUTH_SECRET_KEY"] = "test-auth-secret"
+    environ["AUTH_SECRET_KEY"] = "login-lockout-secret-0123456789abcdef0123456789abcdef0123456789abcdef"
     environ["AUTH_LOGIN_LOCKOUT_THRESHOLD"] = "2"
     environ["AUTH_LOGIN_LOCKOUT_MINUTES"] = "15"
     get_settings.cache_clear()

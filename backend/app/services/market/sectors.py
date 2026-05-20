@@ -53,6 +53,17 @@ class MarketSectorMixin:
             return list(result.data)[:limit]
         return []
 
+    def sector_relative_strength_rank(self, db, limit: int = 8, per_sector_limit: int = 10):
+        from app.services.market.sector_relative_strength import build_sector_relative_strength_rank
+
+        regime = self.get_market_regime_fast()
+        return build_sector_relative_strength_rank(
+            db,
+            hot_sectors=list(getattr(regime, "hot_industries", []) or []),
+            sector_limit=limit,
+            per_sector_limit=per_sector_limit,
+        )
+
     def _board_breadth_frame_from_provider(self):
         result = self.provider_router.fetch_board_breadth_frame()
         if not result.usable or result.data is None or result.data.empty:

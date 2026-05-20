@@ -69,14 +69,14 @@ class AppSettings(BaseSettings):
     auth_cookie_secure: bool = True
     app_environment: str = "development"
     auth_cookie_samesite: str = "strict"
-    auth_access_token_minutes: int = 60
-    auth_refresh_token_days: int = 30
+    auth_access_token_minutes: int = 15
+    auth_refresh_token_days: int = 7
     auth_allow_legacy_tokens: bool = False
     auth_login_lockout_threshold: int = 5
     auth_login_lockout_minutes: int = 15
     auth_allowed_usernames: Annotated[List[str], NoDecode] = Field(default_factory=list)
     auth_require_mfa_for_login: bool = False
-    auth_require_mfa_for_paper_trade: bool = False
+    auth_require_mfa_for_paper_trade: bool = True
     agent_provider: str = "none"
     agent_api_base: str = "http://127.0.0.1:18090/api"
     agent_api_token: str = ""

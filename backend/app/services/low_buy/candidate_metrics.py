@@ -4,6 +4,7 @@ from app.services.distribution_signals import build_daily_distribution_snapshot
 from app.services.low_buy.candidate_metrics_divergence import build_divergence_consensus_metrics
 from app.services.low_buy.candidate_types import CandidateMetrics
 from app.services.low_buy.atr_metrics import ATR_SOURCE, ATR_WINDOW, compute_daily_atr
+from app.services.low_buy.multi_timeframe import evaluate_multi_timeframe_resonance
 from app.services.low_buy.shared import BoardCandidate, DEFAULT_PRODUCTION_LOW_BUY_STRATEGY, LOW_BUY_THRESHOLDS, pd
 
 
@@ -66,6 +67,7 @@ def build_candidate_metrics(
         post_volume_ratio=volume_metrics["post_volume_ratio"],
     )
     trend_fatigue_score = _trend_fatigue_score(history=history, latest_index=latest_index)
+    resonance = evaluate_multi_timeframe_resonance(history, float(latest["close"]))
     base_trend_ok = float(latest["close"]) >= ma20 and float(latest["close"]) >= ma60 and ma10 >= ma20 * 0.99 and ma20 >= ma60 * 0.99
     base_strong_trend = ma5 >= ma10 >= ma20 >= ma60 * 0.995 and float(latest["close"]) >= ma20
     return CandidateMetrics(
@@ -158,6 +160,8 @@ def build_candidate_metrics(
         consecutive_lower_lows=int(price_structure_metrics["consecutive_lower_lows"]),
         support_touch_count=int(price_structure_metrics["support_touch_count"]),
         retracement_smoothness=price_structure_metrics["retracement_smoothness"],
+        multi_timeframe_resonance_score=resonance.score,
+        multi_timeframe_resonance_text=resonance.text,
     )
 
 

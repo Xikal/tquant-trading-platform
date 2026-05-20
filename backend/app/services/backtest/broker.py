@@ -21,6 +21,8 @@ class ExecutionModel(str, Enum):
     ENTRY_ZONE_TOUCH = "entry_zone_touch"
     CONSERVATIVE_SLIPPAGE = "conservative_slippage"
     MARKET_IMPACT = "market_impact"
+    TWAP = "twap"
+    IMPLEMENTATION_SHORTFALL = "implementation_shortfall"
 
 
 @dataclass(frozen=True)
@@ -122,6 +124,14 @@ def _selected_price(request: ExecutionRequest, model: ExecutionModel) -> float |
         return bar.close_price
     if model == ExecutionModel.ENTRY_ZONE_TOUCH and request.side == "buy":
         return _entry_zone_price(bar, request.signal)
+    if model == ExecutionModel.TWAP:
+        prices = [bar.open_price, bar.vwap or 0, bar.close_price]
+        usable = [value for value in prices if value and value > 0]
+        return sum(usable) / len(usable) if usable else None
+    if model == ExecutionModel.IMPLEMENTATION_SHORTFALL:
+        anchor = bar.vwap if bar.vwap and bar.vwap > 0 else bar.open_price
+        conservative = max(bar.open_price, anchor, bar.close_price) if request.side == "buy" else min(bar.open_price, anchor, bar.close_price)
+        return _apply_market_impact(request, conservative)
     if model in {ExecutionModel.CONSERVATIVE_SLIPPAGE, ExecutionModel.MARKET_IMPACT}:
         return max(bar.open_price, bar.close_price) if request.side == "buy" else min(bar.open_price, bar.close_price)
     return bar.close_price

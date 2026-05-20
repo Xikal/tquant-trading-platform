@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+from dataclasses import replace
 from typing import Any
 
 from sqlalchemy.orm import Session
@@ -17,6 +18,7 @@ from app.services.paper.scheduler_helpers import (
 from app.services.paper.smart_exit_context import build_exit_context
 from app.services.paper.smart_t import build_smart_t_add_orders
 from app.services.paper.smart_t_exit import build_smart_t_exit_orders
+from app.services.paper.trailing_stop_state import update_position_trailing_high
 from app.services.quant.runtime_parameters import get_paper_dynamic_exit
 
 logger = logging.getLogger(__name__)
@@ -54,6 +56,14 @@ def build_exit_order_plan(*, db: Session, account: PaperAccount) -> tuple[list[d
             continue
         price = quote.price
         context = build_exit_context(quote, intraday_bars.get(row.symbol))
+        context = _attach_trailing_stop_context(
+            db=db,
+            account=account,
+            row=row,
+            price=price,
+            quote_high=float(getattr(quote, "high_price", 0.0) or 0.0),
+            context=context,
+        )
         decision = evaluate_paper_exit(row, price=price, now=now, context=context)
         if decision.quantity <= 0:
             continue
@@ -90,6 +100,8 @@ def build_exit_order_plan(*, db: Session, account: PaperAccount) -> tuple[list[d
                     "above_vwap": context.above_vwap,
                     "volume_release_ratio": context.volume_release_ratio,
                     "high_pullback_ratio": context.high_pullback_ratio,
+                    "trailing_high_price": context.trailing_high_price,
+                    "trailing_stop_price": context.trailing_stop_price,
                     "dynamic_exit": True,
                 },
             }
@@ -184,3 +196,20 @@ def latest_intraday_bars(symbols: list[str]) -> dict[str, list[Any]]:
     except Exception:
         logger.warning("自动退出计划分时数据获取失败，本轮按静态动态止盈止损处理", exc_info=True)
         return {}
+
+
+def _attach_trailing_stop_context(*, db: Session, account: PaperAccount, row, price: float, quote_high: float, context):
+    params = get_paper_dynamic_exit()
+    trailing_stop_pct = float(params.get("trailing_stop_pct", 2.0) or 2.0)
+    high_price = update_position_trailing_high(
+        db,
+        account_id=int(account.id),
+        position=row,
+        current_price=max(price, quote_high),
+    )
+    stop_price = high_price * (1 - trailing_stop_pct / 100.0) if high_price > 0 else 0.0
+    return replace(
+        context,
+        trailing_high_price=round(high_price, 4),
+        trailing_stop_price=round(stop_price, 4),
+    )

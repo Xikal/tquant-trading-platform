@@ -1,5 +1,6 @@
 export type Page =
   | "monitor"
+  | "emotion"
   | "analysis"
   | "playbook"
   | "strategy"

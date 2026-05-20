@@ -37,6 +37,7 @@ import type {
   BacktestStrategyCorrelationResponse,
   PortfolioOptimizationResponse,
   PositionPolicyResearchResponse,
+  LiveBacktestComparisonResponse,
   BacktestListParams,
   BacktestTradesParams,
   BacktestVerdictThresholdsResponse,
@@ -191,8 +192,15 @@ export const backtestsApi = {
   getStrategyCorrelation: (runId: number) =>
     request<BacktestStrategyCorrelationResponse>(`/backtests/${runId}/strategy-correlation`).then(normalizeStrategyCorrelation),
 
-  getPortfolioOptimization: (runId: number, method: "hrp" | "risk_adjusted" | "markowitz" = "markowitz") =>
+  getPortfolioOptimization: (runId: number, method: "hrp" | "risk_adjusted" | "markowitz" | "black_litterman" = "markowitz") =>
     request<PortfolioOptimizationResponse>(`/backtests/${runId}/portfolio-optimization?method=${method}`),
+
+  getLiveBacktestComparison: (accountId?: number, days = 60) => {
+    const params = new URLSearchParams();
+    params.set("days", String(days));
+    if (accountId) params.set("account_id", String(accountId));
+    return request<LiveBacktestComparisonResponse>(`/backtests/live-comparison?${params.toString()}`);
+  },
 
   getPositionPolicyResearch: (runId: number) =>
     request<PositionPolicyResearchResponse>(`/backtests/${runId}/position-policy-research`),

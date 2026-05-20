@@ -160,7 +160,7 @@ class AnalysisService:
                     logger.warning("batch analysis item failed", exc_info=True)
         return [item for item in results if item is not None]
 
-    def run_backtest(self, db: Session, request, instrument) -> Any:
+    def run_backtest(self, db: Session, request, instrument, *, owner_user_id: int | None = None) -> Any:
         bars = self.market_data.get_intraday_bars(
             request.symbol,
             period=request.bar_period,
@@ -214,6 +214,7 @@ class AnalysisService:
             quote_factory=quote_factory,
             runtime_context_factory=runtime_context_factory,
             risk_config=runtime_settings.model_dump(),
+            owner_user_id=owner_user_id,
         )
 
     @staticmethod

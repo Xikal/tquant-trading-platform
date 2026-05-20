@@ -8,16 +8,20 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models.entities import BacktestTrade
+from app.services.black_litterman_optimizer import optimize_black_litterman_portfolio
 from app.services.markowitz_optimizer import optimize_markowitz_portfolio
 
 HEURISTIC_OPTIMIZER_METHOD = "risk_adjusted"
 LEGACY_MEAN_VARIANCE_ALIAS = "mean_variance"
 MARKOWITZ_METHOD = "markowitz"
+BLACK_LITTERMAN_METHOD = "black_litterman"
 
 
 def optimize_strategy_portfolio(db: Session, run_id: int, method: str = "hrp") -> dict:
     if (method or "").strip().lower() == MARKOWITZ_METHOD:
         return optimize_markowitz_portfolio(db, run_id=run_id)
+    if (method or "").strip().lower() in {BLACK_LITTERMAN_METHOD, "bl"}:
+        return optimize_black_litterman_portfolio(db, run_id=run_id)
     returns = _strategy_returns(db, run_id)
     normalized_method = normalize_optimizer_method(method)
     if not returns:
@@ -58,7 +62,9 @@ def normalize_optimizer_method(method: str) -> str:
     cleaned = (method or "hrp").strip().lower()
     if cleaned == LEGACY_MEAN_VARIANCE_ALIAS:
         return HEURISTIC_OPTIMIZER_METHOD
-    if cleaned in {"hrp", HEURISTIC_OPTIMIZER_METHOD, MARKOWITZ_METHOD}:
+    if cleaned == "bl":
+        return BLACK_LITTERMAN_METHOD
+    if cleaned in {"hrp", HEURISTIC_OPTIMIZER_METHOD, MARKOWITZ_METHOD, BLACK_LITTERMAN_METHOD}:
         return cleaned
     return "hrp"
 

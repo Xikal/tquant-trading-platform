@@ -12,6 +12,7 @@ from app.services.low_buy.shared import (
 from app.services.low_buy.screening_read import screen_read_path
 from app.services.low_buy.screening_quotes import LowBuyQuoteRefreshMixin
 from app.services.low_buy.factor_external import resolve_sector_flow_ranks
+from app.services.low_buy.leader_strength_enrichment import enrich_low_buy_candidates_with_leader_strength
 from app.services.low_buy.data_quality import build_market_data_quality, data_quality_payload
 from app.services.low_buy.screening_helpers import (
     build_factor_sector_counts,
@@ -246,6 +247,11 @@ class LowBuyScreeningMixin(LowBuyQuoteRefreshMixin):
             evaluate_candidate=self._evaluate_candidate,
         )
         evaluated = self._dedupe_candidates(evaluated)
+        evaluated = enrich_low_buy_candidates_with_leader_strength(
+            db=db,
+            candidates=evaluated,
+            market_data=self.market_data,
+        )
         evaluated = self._apply_live_quotes(evaluated, quote_map=batch_quotes)
         evaluated.sort(key=lambda item: (self._signal_rank(item.buy_signal_state), item.score), reverse=True)
 

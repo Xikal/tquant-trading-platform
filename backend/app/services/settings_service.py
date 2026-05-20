@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 from app.core.config import RUNTIME_ENV_PATH
 from app.models.entities import SystemSetting
 from app.models.schemas import SettingsPayload, SettingsUpdate
+from app.services.secret_field_crypto import decrypt_secret_field, encrypt_secret_field
 
 
 DEFAULT_RUNTIME_SETTINGS = SettingsPayload()
@@ -24,6 +25,12 @@ RUNTIME_ENV_KEY_MAP = {
     "data_source": "DEFAULT_DATA_SOURCE",
     "data_source_base_url": "DATA_SOURCE_BASE_URL",
 }
+RUNTIME_ENV_PERSIST_KEY_MAP = {
+    key: value
+    for key, value in RUNTIME_ENV_KEY_MAP.items()
+    if key != "llm_api_key"
+}
+SENSITIVE_RUNTIME_ENV_KEYS_TO_DROP = {"LLM_API_KEY"}
 
 
 class SettingsService:
@@ -36,7 +43,7 @@ class SettingsService:
         rows = self.db.execute(select(SystemSetting)).scalars().all()
         for row in rows:
             if row.key in payload:
-                payload[row.key] = self._coerce_value(row.key, row.value, payload[row.key])
+                payload[row.key] = self._coerce_value(row.key, self._decrypt_if_sensitive(row.key, row.value), payload[row.key])
         return SettingsPayload(**payload)
 
     def get_public_payload(self, *, admin_auth_required: bool = False) -> SettingsPayload:
@@ -58,10 +65,10 @@ class SettingsService:
                 select(SystemSetting).where(SystemSetting.key == key)
             ).scalar_one_or_none()
             if row is None:
-                row = SystemSetting(key=key, value=self._serialize_value(value))
+                row = SystemSetting(key=key, value=self._serialize_setting_value(key, value))
                 self.db.add(row)
             else:
-                row.value = self._serialize_value(value)
+                row.value = self._serialize_setting_value(key, value)
 
         self.db.commit()
         runtime_keys = set(changes) & set(RUNTIME_ENV_KEY_MAP)
@@ -96,6 +103,15 @@ class SettingsService:
         return str(value)
 
     @staticmethod
+    def _serialize_setting_value(key: str, value: Any) -> str:
+        serialized = SettingsService._serialize_value(value)
+        return encrypt_secret_field(serialized) if key in SENSITIVE_SETTING_FIELDS else serialized
+
+    @staticmethod
+    def _decrypt_if_sensitive(key: str, value: str) -> str:
+        return decrypt_secret_field(value) if key in SENSITIVE_SETTING_FIELDS else value
+
+    @staticmethod
     def _coerce_value(key: str, raw: str, default: Any) -> Any:
         if isinstance(default, bool):
             return str(raw).lower() in {"1", "true", "yes", "on"}
@@ -120,7 +136,10 @@ class SettingsService:
                 if value is not None
             }
 
-        for field_name, env_name in RUNTIME_ENV_KEY_MAP.items():
+        for env_name in SENSITIVE_RUNTIME_ENV_KEYS_TO_DROP:
+            existing.pop(env_name, None)
+
+        for field_name, env_name in RUNTIME_ENV_PERSIST_KEY_MAP.items():
             if field_name not in payload:
                 continue
             raw_value = payload.get(field_name, "")

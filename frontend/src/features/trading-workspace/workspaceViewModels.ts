@@ -25,6 +25,8 @@ export function priorityToCard(item: LowBuyPriorityBoardItem): StockCardView {
     details: [
       nextDayPlanText(item.next_day_event_plan),
       strategyNames.slice(0, 3).join(" + ") || item.strategy_title,
+      item.leader_strength_text,
+      item.multi_timeframe_resonance_text,
       sectorText,
       recommendationSummary(item.recommendation_days, item.recommendation_start_date),
       item.exit_plan_text,
@@ -37,6 +39,8 @@ export function priorityToCard(item: LowBuyPriorityBoardItem): StockCardView {
     badges: [
       item.strategy_count > 1 ? `${item.strategy_count}策略命中` : "",
       item.family_count && item.family_count > 1 ? `${item.family_count}类逻辑共振` : "",
+      item.leader_strength_rank ? `板块龙头#${item.leader_strength_rank}` : "",
+      item.multi_timeframe_resonance_score ? "多周期共振" : "",
     ].filter(Boolean),
     highlight,
   };
@@ -100,6 +104,8 @@ export function candidateToCard(item: LowBuyCandidate): StockCardView {
     details: [
       nextDayPlanText(item.next_day_event_plan),
       exitPlanSummary(item.exit_plan),
+      item.leader_strength_text,
+      item.multi_timeframe_resonance_text,
       `${formatPrice(item.entry_zone_low)}-${formatPrice(item.entry_zone_high)}`,
       `止损 ${formatPrice(item.stop_loss)}`,
       quoteQualityText(item),
@@ -111,6 +117,8 @@ export function candidateToCard(item: LowBuyCandidate): StockCardView {
     tone: toneFromChange(item.change_pct),
     badges: [
       item.strategy_title,
+      item.leader_strength_rank ? `板块龙头#${item.leader_strength_rank}` : "",
+      item.multi_timeframe_resonance_score ? "多周期共振" : "",
       item.mainline_tier_text || "",
       item.execution_quality_text || "",
       item.is_stale ? "行情过期" : "",

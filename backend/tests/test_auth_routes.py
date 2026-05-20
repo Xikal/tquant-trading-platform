@@ -18,6 +18,8 @@ from app.core.database import get_db
 from app.core.rate_limit import clear_rate_limit_events
 from app.models.base import Base
 
+STRONG_TEST_SECRET = "auth-route-test-secret-0123456789abcdef0123456789abcdef0123456789abcdef"
+
 
 @contextmanager
 def settings_env(key: str, value: str):
@@ -37,7 +39,7 @@ def settings_env(key: str, value: str):
 class AuthRouteTests(unittest.TestCase):
     def setUp(self) -> None:
         self._auth_secret_original = environ.get("AUTH_SECRET_KEY")
-        environ["AUTH_SECRET_KEY"] = "test-auth-secret"
+        environ["AUTH_SECRET_KEY"] = STRONG_TEST_SECRET
         get_settings.cache_clear()
         clear_rate_limit_events()
         engine = create_engine(
@@ -90,6 +92,11 @@ class AuthRouteTests(unittest.TestCase):
         claims = jwt.decode(registered["access_token"], options={"verify_signature": False})
         self.assertGreater(int(claims["exp"]), int(datetime.now(timezone.utc).timestamp()))
         self.assertLessEqual(int(claims["iat"]), int(datetime.now(timezone.utc).timestamp()) + 1)
+        self.assertEqual(claims["aud"], "tquant-client")
+        self.assertEqual(claims["iss"], "tquant")
+        self.assertGreater(int(claims["sid"]), 0)
+        self.assertEqual(int(claims["tv"]), 0)
+        self.assertTrue(claims["jti"])
 
         me = self.client.get(
             "/api/auth/me",
@@ -141,6 +148,12 @@ class AuthRouteTests(unittest.TestCase):
             json={},
         )
         self.assertEqual(revoked.status_code, 401)
+
+        revoked_access = self.client.get(
+            "/api/auth/me",
+            headers={"Authorization": f"Bearer {refreshed['access_token']}"},
+        )
+        self.assertEqual(revoked_access.status_code, 401)
 
     def test_private_route_requires_bearer_token(self) -> None:
         response = self.client.get("/api/auth/me")

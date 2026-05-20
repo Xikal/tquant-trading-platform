@@ -2,13 +2,16 @@ from __future__ import annotations
 
 import tempfile
 import unittest
+from os import environ
 from pathlib import Path
+from unittest.mock import patch
 
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, select
 from sqlalchemy.orm import sessionmaker
 
+from app.core.config import get_settings
 from app.models.base import Base
-from app.models.entities import DailyBarSnapshot, LowBuyResultSnapshot, LowBuyScanSnapshot
+from app.models.entities import DailyBarSnapshot, LowBuyResultSnapshot, LowBuyScanSnapshot, SystemSetting
 from app.models.schemas import LowBuyCandidateOut, LowBuyExecutionBacktestItemOut, LowBuyStrategyPerformanceOut, SettingsUpdate
 from app.repositories.low_buy.lifecycle import LowBuyTradeLifecycleRepository
 from app.services.low_buy.candidate_rules import build_strategy_setup
@@ -208,33 +211,68 @@ class LowBuyTradeControlTests(unittest.TestCase):
         self.assertEqual(fetched.entry_plan_high, 10.3)
 
     def test_settings_public_payload_masks_secrets_and_preserves_masked_updates(self) -> None:
-        with tempfile.TemporaryDirectory() as tmpdir:
-            engine = create_engine(f"sqlite:///{Path(tmpdir) / 'test.db'}", future=True)
-            Base.metadata.create_all(engine)
-            SessionLocal = sessionmaker(bind=engine, future=True)
-            with SessionLocal() as db:
-                service = SettingsService(db)
-                service.update_payload(
-                    SettingsUpdate(
-                        llm_api_key="sk-test-secret",
-                        database_url="mysql+pymysql://root:db-secret@localhost/app",
-                    )
+        original_secret = environ.get("AUTH_SECRET_KEY")
+        environ["AUTH_SECRET_KEY"] = "settings-test-secret-0123456789abcdef0123456789abcdef0123456789abcdef"
+        get_settings.cache_clear()
+        try:
+            with tempfile.TemporaryDirectory() as tmpdir:
+                tmp_path = Path(tmpdir)
+                runtime_env_path = tmp_path / "runtime.env"
+                runtime_env_path.write_text(
+                    'LLM_API_KEY="old-plain-key"\nLLM_MODEL="qwen-old"\n',
+                    encoding="utf-8",
                 )
-                public = service.get_public_payload(admin_auth_required=True)
-                service.update_payload(
-                    SettingsUpdate(
-                        llm_api_key=public.llm_api_key,
-                        database_url=public.database_url,
-                        llm_model="qwen-plus",
-                    )
-                )
-                raw = service.get_payload()
+                engine = create_engine(f"sqlite:///{tmp_path / 'test.db'}", future=True)
+                Base.metadata.create_all(engine)
+                SessionLocal = sessionmaker(bind=engine, future=True)
+                with patch("app.services.settings_service.RUNTIME_ENV_PATH", runtime_env_path):
+                    with SessionLocal() as db:
+                        service = SettingsService(db)
+                        service.update_payload(
+                            SettingsUpdate(
+                                llm_api_key="sk-test-secret",
+                                database_url="mysql+pymysql://root:db-secret@localhost/app",
+                            )
+                        )
+                        public = service.get_public_payload(admin_auth_required=True)
+                        service.update_payload(
+                            SettingsUpdate(
+                                llm_api_key=public.llm_api_key,
+                                database_url=public.database_url,
+                                llm_model="qwen-plus",
+                            )
+                        )
+                        raw = service.get_payload()
+                        stored_api_key = db.execute(
+                            select(SystemSetting).where(SystemSetting.key == "llm_api_key")
+                        ).scalar_one()
+                        stored_database_url = db.execute(
+                            select(SystemSetting).where(SystemSetting.key == "database_url")
+                        ).scalar_one()
+                        runtime_text = runtime_env_path.read_text(encoding="utf-8")
+        finally:
+            if original_secret is None:
+                environ.pop("AUTH_SECRET_KEY", None)
+            else:
+                environ["AUTH_SECRET_KEY"] = original_secret
+            get_settings.cache_clear()
 
         self.assertEqual(public.llm_api_key, "********")
         self.assertNotIn("db-secret", public.database_url)
         self.assertEqual(raw.llm_api_key, "sk-test-secret")
         self.assertIn("db-secret", raw.database_url)
         self.assertEqual(raw.llm_model, "qwen-plus")
+        self.assertIsNotNone(stored_api_key)
+        self.assertIsNotNone(stored_database_url)
+        self.assertNotIn("sk-test-secret", stored_api_key.value)
+        self.assertNotIn("db-secret", stored_database_url.value)
+        self.assertNotIn("LLM_API_KEY", runtime_text)
+        self.assertNotIn("old-plain-key", runtime_text)
+        self.assertNotIn("sk-test-secret", runtime_text)
+        self.assertIn("DATABASE_URL", runtime_text)
+        self.assertIn("LLM_MODEL", runtime_text)
+        self.assertTrue(stored_api_key.value.startswith("enc:v1:"))
+        self.assertTrue(stored_database_url.value.startswith("enc:v1:"))
 
 
 def _candidate(

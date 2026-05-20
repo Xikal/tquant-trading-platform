@@ -39,6 +39,52 @@ class MarketTradingSessionResponse(BaseModel):
     data_quality_text: str = ""
 
 
+class SectorRelativeStrengthItem(BaseModel):
+    sector_name: str
+    symbol: str
+    name: str = ""
+    latest_price: float = 0.0
+    change_pct: float = 0.0
+    sector_median_change_pct: float = 0.0
+    relative_strength_ratio: float | None = None
+    volume_ratio: float = 0.0
+    turnover_proxy: float = 0.0
+    leader_score: float = 0.0
+    rank: int = 0
+    data_quality_text: str = ""
+
+
+class SectorRelativeStrengthResponse(BaseModel):
+    updated_at: str
+    trade_date: str = ""
+    sector_count: int = 0
+    items: list[SectorRelativeStrengthItem] = Field(default_factory=list)
+    notes: list[str] = Field(default_factory=list)
+
+
+class IntradayKeyLevelOut(BaseModel):
+    level_type: str
+    level_text: str
+    price: float
+    distance_pct: float = 0.0
+    alert: bool = False
+
+
+class IntradayKeyLevelResponse(BaseModel):
+    symbol: str
+    name: str = ""
+    updated_at: str
+    latest_price: float = 0.0
+    vwap: float = 0.0
+    entry_zone_low: float | None = None
+    entry_zone_high: float | None = None
+    alert_threshold_pct: float = 0.3
+    alert_triggered: bool = False
+    alert_text: str = ""
+    levels: list[IntradayKeyLevelOut] = Field(default_factory=list)
+    data_quality_text: str = ""
+
+
 class SectorEtfT0Opportunity(BaseModel):
     sector_name: str
     etf_symbol: str

@@ -3,6 +3,7 @@ import { STRATEGY_OPTIONS, type StrategyOption } from "../../constants/strategie
 import { formatPct } from "../../utils/backtestFormatters";
 export {
   backtestVerdictThresholds,
+  applyBacktestVerdictThresholds,
   currentBacktestVerdictThresholds,
   loadBacktestVerdictThresholds,
   type BacktestVerdictThresholdMap,
@@ -19,6 +20,8 @@ export const BACKTEST_EXECUTION_MODELS: Array<[BacktestExecutionModel, string]> 
   ["close_price", "收盘价加滑点"],
   ["vwap", "VWAP 加滑点"],
   ["market_impact", "市场冲击成本"],
+  ["twap", "TWAP 分批均价"],
+  ["implementation_shortfall", "执行偏差模型"],
 ];
 
 export const BACKTEST_RESOURCE_TIER_OPTIONS: Array<[BacktestResourceTier, string]> = [

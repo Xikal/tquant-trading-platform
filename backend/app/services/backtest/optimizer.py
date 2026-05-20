@@ -414,6 +414,13 @@ def _estimated_entry_price(bar: DailyBar | None, signal: BacktestSignal, executi
         return bar.open_price
     if execution_model == "vwap":
         return bar.vwap
+    if execution_model == "twap":
+        values = [bar.open_price, bar.vwap or 0, bar.close_price]
+        usable = [value for value in values if value and value > 0]
+        return sum(usable) / len(usable) if usable else bar.open_price
+    if execution_model == "implementation_shortfall":
+        anchor = bar.vwap if bar.vwap and bar.vwap > 0 else bar.open_price
+        return max(bar.open_price, anchor, bar.close_price)
     if execution_model == "close_price":
         return bar.close_price
     if execution_model == "entry_zone_touch" and signal.entry_zone_high:

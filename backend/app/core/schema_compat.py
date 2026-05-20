@@ -87,6 +87,7 @@ def _backfill_user_permission_columns(engine: Engine, existing_tables: set[str])
             connection.execute(text("UPDATE users SET can_paper_trade = 1 WHERE can_paper_trade IS NULL"))
             connection.execute(text("UPDATE users SET roles = '' WHERE roles IS NULL"))
             connection.execute(text("UPDATE users SET failed_login_count = 0 WHERE failed_login_count IS NULL"))
+            connection.execute(text("UPDATE users SET token_version = 0 WHERE token_version IS NULL"))
             connection.execute(text("UPDATE users SET mfa_totp_enabled = 0 WHERE mfa_totp_enabled IS NULL"))
             connection.execute(text("UPDATE users SET mfa_totp_secret = '' WHERE mfa_totp_secret IS NULL"))
     except Exception:

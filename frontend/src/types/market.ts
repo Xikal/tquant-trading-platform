@@ -101,6 +101,9 @@ export interface MarketBreadth {
   updated_at: string;
   state: string;
   state_text: string;
+  emotion_temperature?: string;
+  emotion_temperature_text?: string;
+  emotion_temperature_score?: number;
   breadth_ready: boolean;
   emotion_ready: boolean;
   stock_up_ratio: number;
@@ -127,6 +130,52 @@ export interface MarketTradingSession {
   current_time: string;
   timezone: string;
   data_quality_text: string;
+}
+
+export interface SectorRelativeStrengthItem {
+  sector_name: string;
+  symbol: string;
+  name: string;
+  latest_price: number;
+  change_pct: number;
+  sector_median_change_pct: number;
+  relative_strength_ratio?: number | null;
+  volume_ratio: number;
+  turnover_proxy: number;
+  leader_score: number;
+  rank: number;
+  data_quality_text?: string;
+}
+
+export interface SectorRelativeStrengthResponse {
+  updated_at: string;
+  trade_date: string;
+  sector_count: number;
+  items: SectorRelativeStrengthItem[];
+  notes: string[];
+}
+
+export interface IntradayKeyLevelItem {
+  level_type: string;
+  level_text: string;
+  price: number;
+  distance_pct: number;
+  alert: boolean;
+}
+
+export interface IntradayKeyLevelResponse {
+  symbol: string;
+  name: string;
+  updated_at: string;
+  latest_price: number;
+  vwap: number;
+  entry_zone_low?: number | null;
+  entry_zone_high?: number | null;
+  alert_threshold_pct: number;
+  alert_triggered: boolean;
+  alert_text: string;
+  levels: IntradayKeyLevelItem[];
+  data_quality_text?: string;
 }
 
 export interface SectorEtfT0Opportunity {
@@ -209,4 +258,41 @@ export interface PairedHedgeResearchResponse {
   disclaimer?: string;
   ideas: PairedHedgeIdea[];
   notes: string[];
+}
+
+export interface AlternativeSentimentEvent {
+  title: string;
+  risk_level: string;
+  source: string;
+  event_time: string;
+  score: number;
+}
+
+export interface AlternativeSentimentItem {
+  symbol: string;
+  event_count: number;
+  sentiment_score: number;
+  sentiment_label: "positive" | "negative" | "neutral" | string;
+  source_mix: Record<string, number>;
+  latest_events: AlternativeSentimentEvent[];
+}
+
+export interface AlternativeSentimentResponse {
+  generated_at: string;
+  mode: "research_only" | string;
+  source: string;
+  items: AlternativeSentimentItem[];
+  summary: string;
+  notes: string[];
+}
+
+export interface MultiExchangeArbitrageResearchResponse {
+  generated_at: string;
+  mode: "research_only" | string;
+  production_enabled: boolean;
+  tradable: boolean;
+  symbols: string[];
+  opportunities: unknown[];
+  required_before_production: string[];
+  summary: string;
 }

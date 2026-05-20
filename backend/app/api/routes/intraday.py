@@ -17,10 +17,14 @@ from app.models.entities import SseSubscription, UserWatchlist
 from app.models.entities import User
 from app.models.schemas import IntradayConfirmationOut, IntradayConfirmationRequest
 from app.services.intraday_confirmation_service import IntradayConfirmationService
+from app.models.schema_defs.agent import AgentNotificationTestRequest
+from app.services.agent_notification_service import AgentNotificationService
+from app.services.intraday_key_levels import IntradayKeyLevelService
 from app.services.sse_token_service import SseStreamTokenService
 
 router = APIRouter(prefix="/intraday")
 stream_tokens = SseStreamTokenService(ttl_seconds=3600)
+key_level_service = IntradayKeyLevelService()
 
 
 @router.post("/confirmations", response_model=list[IntradayConfirmationOut])
@@ -74,6 +78,25 @@ def stream_intraday_confirmations(
     )
 
 
+@router.get("/key-levels/stream")
+def stream_intraday_key_levels(
+    symbols: str = Query(default=""),
+    entry_zones: str = Query(default=""),
+    client_id: str = Query(default="web"),
+    stream_token: str = Query(default=""),
+    interval_seconds: int = Query(default=20, ge=10, le=120),
+    feishu: bool = Query(default=False),
+):
+    user_id = _user_id_from_stream_token(stream_token)
+    symbol_list = [item.strip() for item in symbols.split(",") if item.strip()]
+    entry_zone_map = _parse_entry_zones(entry_zones)
+    return StreamingResponse(
+        _key_level_event_stream(symbol_list, entry_zone_map, client_id, user_id, interval_seconds, feishu),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
+
+
 async def _confirmation_event_stream(
     symbols: list[str],
     client_id: str,
@@ -100,6 +123,44 @@ async def _confirmation_event_stream(
         )
         event_id = f"{user_id}-{int(time.time())}"
         yield f"id: {event_id}\nevent: intraday_confirmations\ndata: {payload}\n\n"
+        await asyncio.sleep(interval_seconds)
+
+
+async def _key_level_event_stream(
+    symbols: list[str],
+    entry_zone_map: dict[str, tuple[float | None, float | None]],
+    client_id: str,
+    user_id: int,
+    interval_seconds: int,
+    feishu: bool,
+):
+    _touch_subscription(client_id, "intraday_key_levels", user_id)
+    notified: set[str] = set()
+    while True:
+        with SessionLocal() as db:
+            target_symbols = symbols or _user_watchlist_symbols(db, user_id)
+        items = [
+            key_level_service.build(
+                symbol,
+                entry_zone_low=entry_zone_map.get(symbol, (None, None))[0],
+                entry_zone_high=entry_zone_map.get(symbol, (None, None))[1],
+            )
+            for symbol in target_symbols[:20]
+        ]
+        alerts = [item for item in items if item.alert_triggered]
+        if feishu:
+            _notify_key_level_alerts(alerts, notified)
+        payload = json.dumps(
+            {
+                "type": "intraday_key_levels",
+                "items": [item.model_dump(mode="json") for item in items],
+                "alerts": [item.model_dump(mode="json") for item in alerts],
+            },
+            ensure_ascii=False,
+            default=str,
+        )
+        event_id = f"{user_id}-levels-{int(time.time())}"
+        yield f"id: {event_id}\nevent: intraday_key_levels\ndata: {payload}\n\n"
         await asyncio.sleep(interval_seconds)
 
 
@@ -144,3 +205,27 @@ def _user_id_from_stream_token(stream_token: str) -> int:
     if user_id is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="SSE 连接令牌无效或已过期")
     return int(user_id)
+
+
+def _parse_entry_zones(raw: str) -> dict[str, tuple[float | None, float | None]]:
+    result: dict[str, tuple[float | None, float | None]] = {}
+    for chunk in (raw or "").split(";"):
+        parts = [item.strip() for item in chunk.split(":")]
+        if len(parts) != 3 or not parts[0]:
+            continue
+        try:
+            result[parts[0]] = (float(parts[1]), float(parts[2]))
+        except (TypeError, ValueError):
+            continue
+    return result
+
+
+def _notify_key_level_alerts(alerts: list, notified: set[str]) -> None:
+    for item in alerts[:5]:
+        key = f"{item.symbol}:{item.alert_text}"
+        if not item.alert_text or key in notified:
+            continue
+        notified.add(key)
+        AgentNotificationService().send_test(
+            AgentNotificationTestRequest(channel="feishu", message=f"盘中关键价位预警：{item.alert_text}")
+        )

@@ -24,7 +24,7 @@ from app.services.totp import generate_totp_code
 @contextmanager
 def _auth_env():
     original = environ.get("AUTH_SECRET_KEY")
-    environ["AUTH_SECRET_KEY"] = "test-auth-secret"
+    environ["AUTH_SECRET_KEY"] = "security-extensions-secret-0123456789abcdef0123456789abcdef0123456789abcdef"
     get_settings.cache_clear()
     clear_rate_limit_events()
     try:

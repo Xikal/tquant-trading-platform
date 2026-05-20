@@ -6,7 +6,9 @@ export type BacktestExecutionModel =
   | "close_price"
   | "next_open"
   | "vwap"
-  | "market_impact";
+  | "market_impact"
+  | "twap"
+  | "implementation_shortfall";
 export type BacktestResourceTier = "light" | "full" | "walk_forward";
 
 export interface BacktestRiskLimits {
@@ -372,6 +374,8 @@ export interface PortfolioOptimizationWeight {
   strategy_key: string;
   weight_pct: number;
   avg_return_pct?: number | null;
+  posterior_return_pct?: number | null;
+  sample_avg_return_pct?: number | null;
   volatility_pct?: number | null;
   sample_count?: number | null;
 }
@@ -401,6 +405,27 @@ export interface PositionPolicyResearchResponse {
   policy?: Array<Record<string, unknown>>;
   shadow_reinforcement_learning?: Record<string, unknown>;
   summary?: string;
+}
+
+export interface LiveBacktestComparisonItem {
+  strategy_key: string;
+  live_trade_count: number;
+  backtest_trade_count: number;
+  live_avg_return_pct: number;
+  backtest_avg_return_pct: number;
+  return_gap_pct: number;
+  status: "ok" | "degraded" | "insufficient_live" | string;
+  message: string;
+}
+
+export interface LiveBacktestComparisonResponse {
+  ok: boolean;
+  account_id?: number;
+  lookback_days?: number;
+  items: LiveBacktestComparisonItem[];
+  alerts: Array<{ strategy_key: string; level: string; message: string }>;
+  summary: string;
+  generated_at?: string;
 }
 
 export type BacktestListParams = {

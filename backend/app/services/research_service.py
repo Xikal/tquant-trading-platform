@@ -71,6 +71,7 @@ class ResearchService:
         quote_factory,
         runtime_context_factory,
         risk_config: dict[str, Any],
+        owner_user_id: int | None = None,
     ) -> BacktestResponse:
         window = 60 if request.bar_period == "1m" else 48
         trades: list[BacktestTrade] = []
@@ -139,6 +140,7 @@ class ResearchService:
 
         run = BacktestRun(
             name=f"{request.symbol}-{request.bar_period}-walkforward",
+            owner_user_id=owner_user_id,
             params_json=request.model_dump_json(),
             result_json=response.model_dump_json(),
         )

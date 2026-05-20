@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from datetime import datetime, timedelta
 from decimal import Decimal
 
@@ -339,9 +340,29 @@ def test_ml_signal_training_blocks_small_sample_production(tmp_path, monkeypatch
 
     assert trained.status == "research"
     assert trained.artifact_uri
+    assert trained.metrics["validation_method"] == "time_series_holdout"
+    assert trained.metrics["cv_splitter"] == "TimeSeriesSplit"
+    assert trained.metrics["scaler_fit_scope"] == "train_only"
+    assert trained.metrics["temporal_order_enforced"] is True
+    assert trained.metrics["feature_schema_hash"]
+    assert trained.metrics["deployment_stage"] == "research"
     assert "样本量不足" in trained.metrics["promotion_blocked_reason"]
     assert predicted.research_only is True
     assert predicted.model_key == "test-logistic"
+    row = db.query(MLSignalModel).filter_by(model_key="test-logistic").one()
+    metrics = json.loads(row.metrics_json)
+    metrics["feature_schema_hash"] = "stale-hash"
+    row.metrics_json = json.dumps(metrics)
+    db.commit()
+    mismatch = service.predict(
+        MLSignalPredictionRequest(
+            symbol="600000",
+            model_key="test-logistic",
+            features={"price": 11.0, "quantity": 100, "gross_amount": 1100, "strategy_known": 1},
+        )
+    )
+    assert mismatch.model_type == "heuristic"
+    assert "特征签名" in mismatch.warning
     get_settings.cache_clear()
 
 
@@ -870,6 +891,8 @@ def test_production_model_warning_accepts_zero_p_value_and_overfit_metrics():
         "train_validation_auc_gap": 0.01,
         "feature_importance_top5_share": 0.2,
         "feature_importance_max_share": 0.1,
+        "temporal_order_enforced": True,
+        "feature_schema_hash": "hash",
         "cv_fold_count": 5,
         "cv_accuracy_mean": 0.99,
         "cv_auc_mean": 0.99,

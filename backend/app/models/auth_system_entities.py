@@ -23,6 +23,7 @@ class User(Base):
     mfa_totp_enabled: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
     mfa_totp_secret: Mapped[str] = mapped_column(String(255), default="")
     failed_login_count: Mapped[int] = mapped_column(Integer, default=0)
+    token_version: Mapped[int] = mapped_column(Integer, default=0)
     locked_until: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True, index=True)
     last_failed_login_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())

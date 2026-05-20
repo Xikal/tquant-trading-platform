@@ -25,7 +25,7 @@ class PaperRouteTests(unittest.TestCase):
     def setUp(self) -> None:
         self._auth_secret_original = environ.get("AUTH_SECRET_KEY")
         self._mfa_requirement_original = environ.get("AUTH_REQUIRE_MFA_FOR_PAPER_TRADE")
-        environ["AUTH_SECRET_KEY"] = "test-auth-secret"
+        environ["AUTH_SECRET_KEY"] = "paper-routes-secret-0123456789abcdef0123456789abcdef0123456789abcdef"
         environ["AUTH_REQUIRE_MFA_FOR_PAPER_TRADE"] = "false"
         get_settings.cache_clear()
         clear_rate_limit_events()

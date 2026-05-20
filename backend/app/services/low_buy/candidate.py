@@ -407,6 +407,8 @@ class LowBuyCandidateMixin:
             market_state_category_text=market_state_fields["market_state_category_text"],
             market_state_strength=context_adjustment.market_state_strength,
             market_position_multiplier=context_adjustment.market_position_multiplier,
+            multi_timeframe_resonance_score=metrics.multi_timeframe_resonance_score,
+            multi_timeframe_resonance_text=metrics.multi_timeframe_resonance_text,
             confirmed_trade_date=metrics.latest_trade_date if execution_ready else None,
             summary_reason=setup.summary_reason,
             buy_signal_state=staged_state,

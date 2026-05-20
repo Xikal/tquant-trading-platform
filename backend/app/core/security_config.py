@@ -2,6 +2,9 @@ from __future__ import annotations
 
 from app.core.config import AppSettings
 
+_MIN_AUTH_SECRET_LENGTH = 64
+_WEAK_AUTH_SECRETS = {"default_secret", "tquant_secret_2024", "test-secret", "test-auth-secret"}
+
 
 def validate_security_settings(settings: AppSettings) -> None:
     """Fail fast for production-like insecure auth cookie settings."""
@@ -12,6 +15,8 @@ def validate_security_settings(settings: AppSettings) -> None:
         raise RuntimeError("生产环境必须启用 AUTH_COOKIE_SECURE=true")
     if settings.auth_cookie_samesite.strip().lower() != "strict":
         raise RuntimeError("生产环境必须启用 AUTH_COOKIE_SAMESITE=strict")
+    if _weak_auth_secret(settings.auth_secret_key):
+        raise RuntimeError("生产环境 AUTH_SECRET_KEY 必须配置为不少于 64 字符的非默认强密钥")
 
 
 def _production_like(settings: AppSettings) -> bool:
@@ -20,3 +25,8 @@ def _production_like(settings: AppSettings) -> bool:
         return True
     origins = [item.lower() for item in settings.cors_origins]
     return any("localhost" not in item and "127.0.0.1" not in item for item in origins)
+
+
+def _weak_auth_secret(secret: str) -> bool:
+    clean = secret.strip()
+    return len(clean) < _MIN_AUTH_SECRET_LENGTH or clean in _WEAK_AUTH_SECRETS

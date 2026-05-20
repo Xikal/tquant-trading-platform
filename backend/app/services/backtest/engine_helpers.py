@@ -150,6 +150,13 @@ def entry_estimated_price(bar: DailyBar, signal: BacktestSignal, execution_model
         return bar.open_price
     if execution_model == ExecutionModel.VWAP.value:
         return bar.vwap
+    if execution_model == ExecutionModel.TWAP.value:
+        values = [bar.open_price, bar.vwap or 0, bar.close_price]
+        usable = [value for value in values if value and value > 0]
+        return sum(usable) / len(usable) if usable else bar.open_price
+    if execution_model == ExecutionModel.IMPLEMENTATION_SHORTFALL.value:
+        anchor = bar.vwap if bar.vwap and bar.vwap > 0 else bar.open_price
+        return max(bar.open_price, anchor, bar.close_price)
     if execution_model == ExecutionModel.CLOSE_PRICE.value:
         return bar.close_price
     if execution_model == ExecutionModel.ENTRY_ZONE_TOUCH.value and signal.entry_zone_high:
@@ -215,6 +222,8 @@ def execution_assumptions(config: Any) -> dict[str, Any]:
             "entry_zone_touch": "买入使用买点区上沿作为触发价，并追加撮合滑点。",
             "conservative_slippage": "买入按 max(open, close)，卖出按 min(open, close)，再追加撮合滑点，偏保守估算。",
             "market_impact": "在 conservative_slippage 与撮合滑点基础上，按成交额参与度追加冲击成本。",
+            "twap": "按开盘价、日内 VWAP、收盘价的可用均值作为 TWAP 近似基准，并追加撮合滑点。",
+            "implementation_shortfall": "按 VWAP/开盘/收盘中对交易更保守的一侧估算，并追加市场冲击成本，用于大额执行偏差研究。",
         },
         "lookahead_guard": "低吸信号默认在信号日后的下一个交易日才允许入场；区间最后一个交易日产生的信号不会被强行同日成交。",
         "same_bar_path": "同一交易日同时触发止损和止盈时先按止损处理；每日先处理退出，再处理新开仓。",

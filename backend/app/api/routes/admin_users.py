@@ -10,8 +10,9 @@ from sqlalchemy.orm import Session
 
 from app.core.admin_auth import require_admin_auth
 from app.core.database import get_db
+from app.core.timezone import utc_now_naive
 from app.core.user_permissions import paper_trade_enabled
-from app.models.entities import User
+from app.models.entities import User, UserSession
 
 router = APIRouter(prefix="/admin/users")
 
@@ -80,17 +81,34 @@ def update_user(
     user = db.get(User, user_id)
     if user is None:
         raise HTTPException(status_code=404, detail="用户不存在")
+    should_revoke_sessions = False
     if payload.display_name is not None:
         user.display_name = payload.display_name.strip()
-    if payload.is_active is not None:
+    if payload.is_active is not None and payload.is_active != user.is_active:
         user.is_active = payload.is_active
-    if payload.can_paper_trade is not None:
+        should_revoke_sessions = True
+    if payload.can_paper_trade is not None and payload.can_paper_trade != user.can_paper_trade:
         user.can_paper_trade = payload.can_paper_trade
+        should_revoke_sessions = True
     if payload.roles is not None:
-        user.roles = _roles_to_text(payload.roles)
+        roles_text = _roles_to_text(payload.roles)
+        if roles_text != (user.roles or ""):
+            user.roles = roles_text
+            should_revoke_sessions = True
+    if should_revoke_sessions:
+        user.token_version = int(getattr(user, "token_version", 0) or 0) + 1
+        _revoke_user_sessions(db, user.id)
     db.commit()
     db.refresh(user)
     return _user_out(user)
+
+
+def _revoke_user_sessions(db: Session, user_id: int) -> None:
+    db.execute(
+        UserSession.__table__.update()
+        .where(UserSession.user_id == user_id, UserSession.revoked_at.is_(None))
+        .values(revoked_at=utc_now_naive())
+    )
 
 
 def _roles_to_text(value: Union[list[str], str]) -> str:

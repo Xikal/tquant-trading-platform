@@ -17,6 +17,7 @@ logger = logging.getLogger(__name__)
 
 
 def persist_market_regime_snapshot(key: str, snapshot: MarketRegimeSnapshot) -> None:
+    previous_state = ""
     try:
         payload = json.dumps(asdict(snapshot), ensure_ascii=False)
         set_json_cache(_cache_key(key), {"trade_date": key, "payload": asdict(snapshot)}, ttl_seconds=180)
@@ -27,6 +28,8 @@ def persist_market_regime_snapshot(key: str, snapshot: MarketRegimeSnapshot) -> 
             if row is None:
                 row = MarketRegimeSnapshotCache(cache_key=key)
                 db.add(row)
+            else:
+                previous_state = str(row.state or "")
             row.trade_date = key
             row.state = snapshot.state
             row.breadth_ready = bool(snapshot.breadth_ready)
@@ -35,6 +38,7 @@ def persist_market_regime_snapshot(key: str, snapshot: MarketRegimeSnapshot) -> 
             row.data_quality = regime_data_quality(snapshot)
             row.payload_json = payload
             db.commit()
+        _trigger_portfolio_review(previous_state, snapshot.state)
     except Exception:
         logger.exception("failed to persist market regime snapshot")
 
@@ -105,3 +109,14 @@ def _load_distributed_snapshot(key: str) -> MarketRegimeSnapshot | None:
 
 def _snapshot_industries_match(snapshot: MarketRegimeSnapshot, hot_industries: list[str] | None) -> bool:
     return not (hot_industries and snapshot.hot_industries and hot_industries != snapshot.hot_industries)
+
+
+def _trigger_portfolio_review(previous_state: str, current_state: str) -> None:
+    if not previous_state or previous_state == current_state:
+        return
+    try:
+        from app.services.paper.portfolio_risk_review import review_portfolios_on_regime_change
+
+        review_portfolios_on_regime_change(previous_state, current_state)
+    except Exception:
+        logger.warning("failed to trigger portfolio risk review", exc_info=True)

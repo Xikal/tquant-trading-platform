@@ -44,6 +44,11 @@ export function backtestVerdictThresholds(value?: BacktestResourceTier | string 
   return currentBacktestVerdictThresholds()[tier];
 }
 
+export function applyBacktestVerdictThresholds(payload: BacktestVerdictThresholdsResponse | null | undefined): void {
+  if (!payload) return;
+  cachedThresholds = normalizeThresholdResponse(payload);
+}
+
 export async function loadBacktestVerdictThresholds(force = false): Promise<BacktestVerdictThresholdMap> {
   if (!force && inflight) return inflight;
   inflight = backtestsApi.getVerdictThresholds()

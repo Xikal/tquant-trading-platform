@@ -1,46 +1,20 @@
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass
 from datetime import datetime
 from decimal import Decimal
 from math import floor
-from typing import Any, Literal
+from typing import Any
 
 from app.models.entities import PaperPosition
 from app.services.low_buy.holding_policy import strategy_holding_policy
 from app.services.low_buy.strategy_parameter_defaults_parts.runtime import PAPER_DYNAMIC_EXIT_DEFAULTS
 from app.services.market.parameter_defaults import MARKET_SECTOR_ETF_T0_DEFAULTS
+from app.services.paper.exit_types import PaperExitActionSignal, PaperExitDecision
 from app.services.paper.fees import calculate_fee
 from app.services.paper.smart_exit_context import PaperExitContext
+from app.services.paper.trailing_stop_decision import trailing_stop_decision
 from app.services.quant.runtime_parameters import get_market_sector_etf_t0, get_paper_dynamic_exit
-
-PaperExitActionSignal = Literal[
-    "hold",
-    "washout",
-    "hard_stop",
-    "time_stop",
-    "profit_take",
-    "scale_out",
-]
-
-
-@dataclass(frozen=True)
-class PaperExitDecision:
-    quantity: int
-    reason: str
-    code: str
-    pnl_pct: float
-    hold_days: int
-    sell_ratio: float
-    strategy_key: str
-    action_signal: PaperExitActionSignal = "hold"
-    action_text: str = "继续观察"
-    why: str = ""
-    invalid_condition: str = ""
-    failure_action: str = ""
-    fee_drag_pct: float = 0.0
-    net_profit_pct: float = 0.0
 
 
 def evaluate_paper_exit(
@@ -249,6 +223,21 @@ def _evaluate_stock_exit(
             fee_drag_pct=fee_drag_pct,
             net_profit_pct=net_profit_pct,
         )
+    trailing = trailing_stop_decision(
+        available=available,
+        price=price,
+        pnl_pct=pnl_pct,
+        hold_days=hold_days,
+        strategy_key=strategy_key,
+        context=context,
+        params=params,
+        fee_drag_pct=fee_drag_pct,
+        net_profit_pct=net_profit_pct,
+        make_decision=_decision,
+        float_param=_float_param,
+    )
+    if trailing is not None:
+        return trailing
     protect_pct = _float_param(params, "protect_profit_trigger_pct", 3.0)
     if (
         context is not None

@@ -18,27 +18,36 @@ depends_on = None
 
 
 def upgrade() -> None:
-    op.alter_column(
-        "low_buy_result_snapshots",
-        "buy_signal_state",
-        existing_type=sa.String(length=16),
-        type_=sa.String(length=32),
-        existing_nullable=True,
-        existing_server_default=None,
-    )
+    if not _table_exists("low_buy_result_snapshots"):
+        return
+    with op.batch_alter_table("low_buy_result_snapshots") as batch_op:
+        batch_op.alter_column(
+            "buy_signal_state",
+            existing_type=sa.String(length=16),
+            type_=sa.String(length=32),
+            existing_nullable=True,
+            existing_server_default=None,
+        )
 
 
 def downgrade() -> None:
+    if not _table_exists("low_buy_result_snapshots"):
+        return
     op.execute(
         "UPDATE low_buy_result_snapshots "
         "SET buy_signal_state = 'near_entry' "
         "WHERE buy_signal_state = 'observe_confirmed'"
     )
-    op.alter_column(
-        "low_buy_result_snapshots",
-        "buy_signal_state",
-        existing_type=sa.String(length=32),
-        type_=sa.String(length=16),
-        existing_nullable=True,
-        existing_server_default=None,
-    )
+    with op.batch_alter_table("low_buy_result_snapshots") as batch_op:
+        batch_op.alter_column(
+            "buy_signal_state",
+            existing_type=sa.String(length=32),
+            type_=sa.String(length=16),
+            existing_nullable=True,
+            existing_server_default=None,
+        )
+
+
+def _table_exists(table_name: str) -> bool:
+    bind = op.get_bind()
+    return table_name in sa.inspect(bind).get_table_names()

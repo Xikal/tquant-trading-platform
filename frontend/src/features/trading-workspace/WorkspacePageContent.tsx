@@ -3,6 +3,7 @@ import type { StrategyMeta } from "../../api/strategies";
 import type { AuthUser } from "../../types";
 import { PageErrorBoundary } from "./PageErrorBoundary";
 import type { MonitorPageProps } from "./MonitorPage";
+import type { MarketEmotionPageProps } from "./MarketEmotionPage";
 import type { PaperTradingPageProps } from "./PaperTradingPage";
 import type { useAnalysisData } from "./useAnalysisData";
 import type { useMonitorData } from "./useMonitorData";
@@ -13,6 +14,7 @@ import type { Page, StockCardView } from "./workspaceTypes";
 
 interface WorkspacePageContentProps {
   AnalysisPage: ComponentType<ComponentProps<any>>;
+  MarketEmotionPage: ComponentType<MarketEmotionPageProps>;
   MonitorPage: ComponentType<MonitorPageProps>;
   PaperTradingPage: ComponentType<PaperTradingPageProps>;
   PlaybookPage: ComponentType<ComponentProps<any>>;
@@ -35,6 +37,7 @@ interface WorkspacePageContentProps {
 
 export function WorkspacePageContent({
   AnalysisPage,
+  MarketEmotionPage,
   MonitorPage,
   PaperTradingPage,
   PlaybookPage,
@@ -64,6 +67,7 @@ export function WorkspacePageContent({
     <PageErrorBoundary resetKey={page}>
       <Suspense fallback={<div className="panel">页面模块加载中...</div>}>
         {page === "monitor" && <MonitorPage {...monitorPageProps} />}
+        {page === "emotion" && <MarketEmotionPage marketBreadth={monitor.marketBreadth} sectorRelativeStrength={monitor.sectorRelativeStrength} />}
         {page === "analysis" && (
           <AnalysisPage
             draft={analysis.draft}

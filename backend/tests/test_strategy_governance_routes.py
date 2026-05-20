@@ -20,7 +20,7 @@ class StrategyGovernanceRouteTests(unittest.TestCase):
     def setUp(self) -> None:
         self._auth_secret_original = environ.get("AUTH_SECRET_KEY")
         self._admin_token_original = environ.get("ADMIN_API_TOKEN")
-        environ["AUTH_SECRET_KEY"] = "test-auth-secret"
+        environ["AUTH_SECRET_KEY"] = "strategy-governance-secret-0123456789abcdef0123456789abcdef0123456789abcdef"
         environ["ADMIN_API_TOKEN"] = "test-admin-token"
         get_settings.cache_clear()
         clear_rate_limit_events()

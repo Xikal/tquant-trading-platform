@@ -1,15 +1,16 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  backtestsApi,
   type BacktestCreateRequest,
   type BacktestExecutionModel,
   type BacktestRunSummary,
+  backtestsApi,
 } from "../../api/backtests";
 import {
   strategiesApi,
   type StrategyMeta,
   type StrategyPreset,
 } from "../../api/strategies";
+import { applyBacktestVerdictThresholds } from "../backtest/backtestDisplay";
 
 export type StrategyHubTab = "quick" | "signals" | "optimize" | "validate" | "compare" | "capacity" | "history";
 
@@ -83,15 +84,12 @@ export function useStrategyHub() {
     loadSeqRef.current = seq;
     setLoading("load");
     setError("");
-    const [meta, presetResult, runResult] = await Promise.allSettled([
-      strategiesApi.getStrategyMeta(),
-      strategiesApi.getPresets(),
-      backtestsApi.listBacktests({ limit: 8, offset: 0 }),
-    ]);
+    const workspaceResult = await Promise.allSettled([strategiesApi.getStrategyWorkspaceBff()]);
     if (loadSeqRef.current !== seq) return;
-    const failures = [meta, presetResult, runResult].filter((item) => item.status === "rejected");
-    if (meta.status === "fulfilled") {
-      const visibleStrategies = (meta.value.strategies ?? []).filter(
+    const workspace = workspaceResult[0];
+    if (workspace.status === "fulfilled") {
+      const payload = workspace.value;
+      const visibleStrategies = (payload.strategy_meta?.strategies ?? []).filter(
         (strategy) => strategy.enabled !== false && strategy.visibility !== "hidden",
       );
       setStrategies(visibleStrategies);
@@ -100,13 +98,14 @@ export function useStrategyHub() {
           ? current
           : { ...current, strategies: visibleStrategies.slice(0, 2).map((strategy) => strategy.key) });
       }
-    }
-    if (presetResult.status === "fulfilled") setPresets(presetResult.value.presets ?? []);
-    if (runResult.status === "fulfilled") setRuns(runResult.value.items ?? []);
-    if (failures.length) {
-      const first = failures[0] as PromiseRejectedResult;
-      setNotice("部分数据加载失败，可稍后重试。");
-      if (meta.status === "rejected") setError(toMessage(first.reason));
+      setPresets(payload.presets?.presets ?? []);
+      setRuns(payload.recent_runs?.items ?? []);
+      applyBacktestVerdictThresholds(payload.verdict_thresholds);
+      if (payload.partial_errors.length) {
+        setNotice("部分策略数据加载失败，可稍后重试。");
+      }
+    } else {
+      setError(toMessage(workspace.reason));
     }
     if (loadSeqRef.current === seq) setLoading("");
   }, []);

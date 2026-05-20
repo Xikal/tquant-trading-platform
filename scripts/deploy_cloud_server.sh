@@ -113,7 +113,7 @@ sudo mv gupiao-upload-new '$CLOUD_PROJECT_DIR'
 sudo chown -R '${CLOUD_USER}:${CLOUD_USER}' '$CLOUD_PROJECT_DIR'
 cd '$CLOUD_PROJECT_DIR'
 touch .env
-if ! grep -Eq '^AUTH_SECRET_KEY=.{16,}' .env; then
+if ! grep -Eq '^AUTH_SECRET_KEY=.{64,}' .env; then
   sed -i '/^AUTH_SECRET_KEY=/d' .env
   SECRET=\$(openssl rand -hex 32 2>/dev/null || python3 - <<'PY'
 import secrets

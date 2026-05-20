@@ -19,6 +19,8 @@ class PaperExitContext:
     volume_usable: bool = False
     high_pullback_ratio: float = 0.0
     high_pullback_pct: float = 0.0
+    trailing_high_price: float = 0.0
+    trailing_stop_price: float = 0.0
     day_change_pct: float = 0.0
     reason: str = "分时数据不足，按静态持仓规则处理。"
 

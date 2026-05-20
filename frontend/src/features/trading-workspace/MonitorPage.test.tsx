@@ -8,6 +8,8 @@ describe("MonitorPage", () => {
       <MonitorPage
         priorityBoard={null}
         marketBreadth={null}
+        sectorRelativeStrength={null}
+        keyLevelAlerts={[]}
         sectorEtfT0={null}
         pairedHedge={null}
         priorityCards={[]}

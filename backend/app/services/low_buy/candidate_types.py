@@ -92,6 +92,8 @@ class CandidateMetrics:
     consecutive_lower_lows: int = 0
     support_touch_count: int = 0
     retracement_smoothness: float = 0.0
+    multi_timeframe_resonance_score: float = 0.0
+    multi_timeframe_resonance_text: str = ""
 
 
 @dataclass(frozen=True)

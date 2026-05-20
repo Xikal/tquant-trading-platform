@@ -1,5 +1,5 @@
 import type { LowBuyPriorityBoardResult } from "./playbook";
-import type { SectorEtfT0Response } from "./market";
+import type { MarketBreadth, PairedHedgeResearchResponse, SectorEtfT0Response, SectorRelativeStrengthResponse } from "./market";
 import type { WatchlistSignal } from "./watchlist";
 
 export interface MonitorSnapshot {
@@ -7,4 +7,19 @@ export interface MonitorSnapshot {
   watchlist_signals: WatchlistSignal[];
   priority_board: LowBuyPriorityBoardResult;
   sector_etf_t0?: SectorEtfT0Response;
+}
+
+export interface BffPartialError {
+  source: string;
+  detail: string;
+}
+
+export interface MonitorWorkspaceBffResponse {
+  api_version: string;
+  generated_at: string;
+  monitor_snapshot?: MonitorSnapshot | null;
+  market_breadth?: MarketBreadth | null;
+  sector_relative_strength?: SectorRelativeStrengthResponse | null;
+  paired_hedge?: PairedHedgeResearchResponse | null;
+  partial_errors: BffPartialError[];
 }

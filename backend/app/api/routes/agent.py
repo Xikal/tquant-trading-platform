@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Optional
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -24,6 +24,7 @@ from app.core.admin_auth import require_admin_auth
 from app.core.agent_auth import require_agent_tool_permission, require_current_user_or_agent_token
 from app.core.config import get_settings
 from app.core.database import get_db
+from app.core.role_permissions import ensure_permission
 from app.models.entities import AgentAuditLog, User
 from app.models.schema_defs.agent import (
     AgentAnalysisRequest,
@@ -264,6 +265,12 @@ def agent_create_paper_order(
     current_user: Optional[User] = Depends(require_agent_tool_permission("create_paper_order", "write")),
     db: Session = Depends(get_db),
 ) -> AgentPaperOrderResponse:
+    if current_user is None:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Agent 令牌不能直接创建模拟盘委托，请使用已登录且完成动态验证码保护的用户会话。",
+        )
+    ensure_permission(current_user, "paper_trade")
     return run_agent_create_paper_order(context_service, db, payload, user_id=getattr(current_user, "id", None))
 
 

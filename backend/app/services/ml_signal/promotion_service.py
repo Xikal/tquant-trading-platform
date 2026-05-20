@@ -39,6 +39,11 @@ class MLSignalPromotionService:
         metrics["approval_required"] = False
         metrics["approved_by"] = operator_name
         metrics["approved_at"] = datetime.utcnow().isoformat(timespec="seconds")
+        metrics["deployment_stage"] = "production"
+        metrics["model_version_status"] = "production"
+        metrics["shadow_traffic_pct"] = 0.0
+        metrics["canary_traffic_pct"] = 0.0
+        metrics["production_traffic_pct"] = 100.0
         row.status = "production"
         row.metrics_json = json_dumps(metrics)
         self.db.commit()

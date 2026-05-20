@@ -13,7 +13,12 @@ import type {
   LowBuyExecutionBacktestResult,
   LowBuyTradeLifecycle,
   MarketBreadth,
+  MonitorWorkspaceBffResponse,
   MarketTradingSession,
+  SectorRelativeStrengthResponse,
+  IntradayKeyLevelResponse,
+  AlternativeSentimentResponse,
+  MultiExchangeArbitrageResearchResponse,
   PairedHedgeResearchResponse,
   SectorEtfT0Response,
   IntradayAnomalyResponse,
@@ -27,6 +32,7 @@ import type {
   PaperAgentRun,
   PaperPerformance,
   PaperPerformanceDashboard,
+  PaperWorkspaceBffResponse,
   PaperLedgerRepairResponse,
   PaperSectorEtfT0Performance,
   PaperStrategyMarketPerformance,
@@ -87,13 +93,35 @@ export const api = {
   getWatchlistQuotes: () => request<WatchlistQuoteItem[]>("/watchlist/quotes"),
   getMarketBreadth: () => requestCached<MarketBreadth>("/market/breadth", 15000),
   getMarketTradingSession: () => requestCached<MarketTradingSession>("/market/trading-session", 60000),
+  getSectorRelativeStrength: (limit = 8, perSectorLimit = 10) =>
+    requestCached<SectorRelativeStrengthResponse>(
+      `/market/sector-relative-strength?limit=${limit}&per_sector_limit=${perSectorLimit}`,
+      20000,
+    ),
+  getIntradayKeyLevels: (symbol: string) =>
+    requestCached<IntradayKeyLevelResponse>(`/market/intraday-key-levels/${encodeURIComponent(symbol)}`, 10000),
   getSectorEtfT0: (limit = 8) => requestCached<SectorEtfT0Response>(`/market/sector-etf-t0?limit=${limit}`, 20000),
   getPairedHedgeResearch: (limit = 8) =>
     requestCached<PairedHedgeResearchResponse>(`/market/paired-hedge-research?limit=${limit}`, 30000),
+  getAlternativeSentiment: (symbols: string[] = [], limit = 80) =>
+    requestCached<AlternativeSentimentResponse>(
+      `/market/alternative-sentiment?symbols=${encodeURIComponent(symbols.join(","))}&limit=${limit}`,
+      30000,
+    ),
+  getMultiExchangeArbitrageResearch: (symbols: string[] = []) =>
+    requestCached<MultiExchangeArbitrageResearchResponse>(
+      `/market/multi-exchange-arbitrage/research?symbols=${encodeURIComponent(symbols.join(","))}`,
+      60000,
+    ),
   getIntradayAnomaly: (symbol: string) =>
     requestCached<IntradayAnomalyResponse>(`/market/intraday-anomaly/${encodeURIComponent(symbol)}`, 15000),
   getMonitorSnapshot: (priorityLimit = 12) =>
     requestCached<MonitorSnapshot>(`/monitor/snapshot?priority_limit=${priorityLimit}`, 15000),
+  getMonitorWorkspaceBff: (priorityLimit = 12) =>
+    requestCached<MonitorWorkspaceBffResponse>(
+      `/bff/v1/workspace/monitor?priority_limit=${priorityLimit}&sector_limit=8&per_sector_limit=8&hedge_limit=4`,
+      15000
+    ),
   getPaperAccess: () => request<PaperAccessResponse>("/auth/paper-access"),
   analyze: (payload: {
     symbol: string;
@@ -142,6 +170,7 @@ export const api = {
         "/screeners/low-buy",
         "/screeners/low-buy/priority-board",
         "/monitor/snapshot",
+        "/bff/v1/workspace/monitor",
         "/market/sector-etf-t0",
         "/app/low-buy",
       ]);
@@ -153,7 +182,7 @@ export const api = {
       method: "PUT",
       body: JSON.stringify({ weights })
     }).then((result) => {
-      invalidateCache(["/screeners/low-buy", "/monitor/snapshot"]);
+      invalidateCache(["/screeners/low-buy", "/monitor/snapshot", "/bff/v1/workspace/monitor"]);
       return result;
     }),
   updateSettings: (payload: Partial<SettingsPayload>) =>
@@ -174,7 +203,7 @@ export const api = {
   getAdminMetrics: () => request<AdminMetricsResponse>("/admin/metrics"),
   refreshLatestLowBuyData: () =>
     request<AdminLatestDataRefreshResponse>("/admin/latest-data/refresh", { method: "POST" }).then((result) => {
-      invalidateCache(["/admin/metrics", "/monitor/snapshot", "/screeners/low-buy"]);
+      invalidateCache(["/admin/metrics", "/monitor/snapshot", "/bff/v1/workspace/monitor", "/screeners/low-buy"]);
       return result;
     }),
   getLowBuyStrategies: () =>
@@ -184,7 +213,7 @@ export const api = {
       method: "PATCH",
       body: JSON.stringify(payload)
     }).then((result) => {
-      invalidateCache(["/screeners/low-buy/strategies", "/screeners/low-buy", "/monitor/snapshot"]);
+      invalidateCache(["/screeners/low-buy/strategies", "/screeners/low-buy", "/monitor/snapshot", "/bff/v1/workspace/monitor"]);
       return result;
     }),
   migrateDatabase: (payload: {
@@ -256,6 +285,8 @@ export const api = {
       `/screeners/low-buy/execution-backtest?strategy=${encodeURIComponent(strategy)}&lookback_days=${lookbackDays}&limit=${limit}`
     ),
   getPaperAccount: () => request<PaperAccount>("/paper/account"),
+  getPaperWorkspaceBff: () =>
+    request<PaperWorkspaceBffResponse>("/bff/v1/workspace/paper?order_limit=80&trade_limit=300&run_limit=20"),
   pausePaperAccount: () => request<PaperAccount>("/paper/account/pause", { method: "POST" }),
   resumePaperAccount: () => request<PaperAccount>("/paper/account/resume", { method: "POST" }),
   getPaperPositions: () => request<PaperPositionsResponse>("/paper/positions"),

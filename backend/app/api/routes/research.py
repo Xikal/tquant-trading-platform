@@ -6,7 +6,8 @@ from sqlalchemy.orm import Session
 
 from app.core.auth import get_current_user
 from app.core.database import get_db
-from app.models.entities import BacktestRun
+from app.core.role_permissions import is_admin_user
+from app.models.entities import BacktestRun, User
 from app.models.schemas import (
     BacktestRequest,
     BacktestRunListResponse,
@@ -31,25 +32,37 @@ def get_replays(db: Session = Depends(get_db), limit: int = 100):
 
 
 @router.post("/backtests")
-def run_backtest(payload: BacktestRequest, db: Session = Depends(get_db)):
+def run_backtest(
+    payload: BacktestRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
     instrument = market_data.get_instrument(db, payload.symbol)
-    result = analysis_service.run_backtest(db, payload, instrument)
+    result = analysis_service.run_backtest(db, payload, instrument, owner_user_id=current_user.id)
     return result.model_dump()
 
 
 @router.get("/backtests/runs", response_model=BacktestRunListResponse)
 def list_backtest_runs(
     limit: int = Query(default=50, ge=1, le=200),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> BacktestRunListResponse:
-    rows = db.execute(select(BacktestRun).order_by(BacktestRun.id.desc()).limit(limit)).scalars().all()
+    statement = select(BacktestRun).order_by(BacktestRun.id.desc()).limit(limit)
+    if not is_admin_user(current_user):
+        statement = statement.where(BacktestRun.owner_user_id == current_user.id)
+    rows = db.execute(statement).scalars().all()
     return BacktestRunListResponse(runs=[_backtest_run_out(row) for row in rows])
 
 
 @router.get("/backtests/runs/{run_id}", response_model=BacktestRunOut)
-def get_backtest_run(run_id: int, db: Session = Depends(get_db)) -> BacktestRunOut:
+def get_backtest_run(
+    run_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> BacktestRunOut:
     row = db.get(BacktestRun, run_id)
-    if row is None:
+    if row is None or (not is_admin_user(current_user) and row.owner_user_id != current_user.id):
         raise HTTPException(status_code=404, detail="回测报告不存在")
     return _backtest_run_out(row)
 

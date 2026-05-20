@@ -1,15 +1,16 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { invalidateCache } from "../../api/base";
-import { getAdminApiToken } from "../../api/base";
+import { API_BASE, getAuthAccessToken, getAdminApiToken, invalidateCache, request } from "../../api/base";
 import { api } from "../../api/client";
 import type {
   LowBuyPriorityBoardResult,
   LowBuyQuoteRefreshItem,
   InstrumentSyncStatus,
   MarketBreadth,
+  IntradayKeyLevelResponse,
   PairedHedgeResearchResponse,
   RuntimeStatus,
   SectorEtfT0Response,
+  SectorRelativeStrengthResponse,
   WatchlistSignal,
 } from "../../types";
 import { DEFAULT_PLAYBOOK_STRATEGY } from "./workspaceConstants";
@@ -38,6 +39,8 @@ interface UseMonitorDataOptions {
 export function useMonitorData({ active, withLoading, setError, setNotice }: UseMonitorDataOptions) {
   const [priorityBoard, setPriorityBoard] = useState<LowBuyPriorityBoardResult | null>(null);
   const [marketBreadth, setMarketBreadth] = useState<MarketBreadth | null>(null);
+  const [sectorRelativeStrength, setSectorRelativeStrength] = useState<SectorRelativeStrengthResponse | null>(null);
+  const [keyLevelAlerts, setKeyLevelAlerts] = useState<IntradayKeyLevelResponse[]>([]);
   const [watchlistSignals, setWatchlistSignals] = useState<WatchlistSignal[]>([]);
   const [sectorEtfT0, setSectorEtfT0] = useState<SectorEtfT0Response | null>(null);
   const [pairedHedge, setPairedHedge] = useState<PairedHedgeResearchResponse | null>(null);
@@ -61,6 +64,16 @@ export function useMonitorData({ active, withLoading, setError, setNotice }: Use
     () => watchlistSignals.map(watchSignalToCard),
     [watchlistSignals]
   );
+  const keyLevelSymbols = useMemo(() => [...new Set([
+    ...(priorityBoard?.items ?? []).slice(0, 8).map((item) => item.symbol),
+    ...watchlistSignals.slice(0, 8).map((item) => item.symbol),
+  ].filter(Boolean))].slice(0, 16), [priorityBoard?.items, watchlistSignals]);
+  const keyLevelSymbolsKey = keyLevelSymbols.join(",");
+  const keyLevelEntryZonesKey = useMemo(() => (priorityBoard?.items ?? [])
+    .slice(0, 8)
+    .filter((item) => item.entry_zone_low > 0 && item.entry_zone_high > 0)
+    .map((item) => `${item.symbol}:${item.entry_zone_low}:${item.entry_zone_high}`)
+    .join(";"), [priorityBoard?.items]);
 
   useEffect(() => {
     priorityBoardRef.current = priorityBoard;
@@ -89,27 +102,31 @@ export function useMonitorData({ active, withLoading, setError, setNotice }: Use
     try {
       const shouldLoadRuntime = includeRuntime && Boolean(getAdminApiToken());
       const requests = [
-        api.getMonitorSnapshot(12),
-        api.getMarketBreadth(),
-        api.getPairedHedgeResearch(4),
+        api.getMonitorWorkspaceBff(12),
         shouldLoadRuntime ? api.getRuntimeStatus() : Promise.resolve(null),
       ] as const;
-      const [monitorResult, breadthResult, hedgeResult, runtimeResult] = await Promise.allSettled(requests);
-      if (monitorResult.status === "fulfilled") {
-        setPriorityBoard(monitorResult.value.priority_board);
-        setWatchlistSignals(monitorResult.value.watchlist_signals);
-        setSectorEtfT0(monitorResult.value.sector_etf_t0 ?? null);
-      }
-      if (breadthResult.status === "fulfilled") {
-        setMarketBreadth(breadthResult.value);
-      }
-      if (hedgeResult.status === "fulfilled") {
-        setPairedHedge(hedgeResult.value);
+      const [workspaceResult, runtimeResult] = await Promise.allSettled(requests);
+      if (workspaceResult.status === "fulfilled") {
+        const monitorSnapshot = workspaceResult.value.monitor_snapshot;
+        if (monitorSnapshot) {
+          setPriorityBoard(monitorSnapshot.priority_board);
+          setWatchlistSignals(monitorSnapshot.watchlist_signals);
+          setSectorEtfT0(monitorSnapshot.sector_etf_t0 ?? null);
+        }
+        if (workspaceResult.value.market_breadth) {
+          setMarketBreadth(workspaceResult.value.market_breadth);
+        }
+        if (workspaceResult.value.sector_relative_strength) {
+          setSectorRelativeStrength(workspaceResult.value.sector_relative_strength);
+        }
+        if (workspaceResult.value.paired_hedge) {
+          setPairedHedge(workspaceResult.value.paired_hedge);
+        }
       }
       if (runtimeResult.status === "fulfilled" && runtimeResult.value) {
         setRuntime(runtimeResult.value);
       }
-      const rejected = [monitorResult, runtimeResult].find(
+      const rejected = [workspaceResult, runtimeResult].find(
         (item): item is PromiseRejectedResult => item.status === "rejected"
       );
       if (rejected) {
@@ -193,6 +210,8 @@ export function useMonitorData({ active, withLoading, setError, setNotice }: Use
     pendingRetryCountRef.current = 0;
     setPriorityBoard(null);
     setMarketBreadth(null);
+    setSectorRelativeStrength(null);
+    setKeyLevelAlerts([]);
     setSectorEtfT0(null);
     setPairedHedge(null);
     setWatchlistSignals([]);
@@ -214,7 +233,7 @@ export function useMonitorData({ active, withLoading, setError, setNotice }: Use
     clearPendingRetry();
     pendingRetryTimerRef.current = window.setTimeout(() => {
       pendingRetryCountRef.current += 1;
-      invalidateCache(["/monitor/snapshot", "/market/breadth"]);
+      invalidateCache(["/monitor/snapshot", "/bff/v1/workspace/monitor", "/market/breadth"]);
       void fetchMonitorData(false);
     }, 3500);
     return () => clearPendingRetry();
@@ -314,12 +333,50 @@ export function useMonitorData({ active, withLoading, setError, setNotice }: Use
     };
   }, [active]);
 
+  useEffect(() => {
+    if (!active || !getAuthAccessToken()) {
+      setKeyLevelAlerts([]);
+      return undefined;
+    }
+    const symbols = keyLevelSymbolsKey ? keyLevelSymbolsKey.split(",") : [];
+    if (!symbols.length) {
+      setKeyLevelAlerts([]);
+      return undefined;
+    }
+    let source: EventSource | undefined;
+    let cancelled = false;
+    void request<{ stream_token: string; expires_in: number }>("/intraday/subscribe", { method: "POST" })
+      .then((payload) => {
+        if (cancelled || !payload.stream_token) return;
+        const normalizedBase = API_BASE.replace(/\/$/, "");
+        const apiBase = normalizedBase.endsWith("/api") ? normalizedBase : `${normalizedBase}/api`;
+        const url = `${apiBase}/intraday/key-levels/stream?symbols=${encodeURIComponent(symbols.join(","))}&entry_zones=${encodeURIComponent(keyLevelEntryZonesKey)}&client_id=web-monitor-key-levels&stream_token=${encodeURIComponent(payload.stream_token)}&interval_seconds=20&feishu=true`;
+        source = new EventSource(url);
+        source.addEventListener("intraday_key_levels", (event) => {
+          try {
+            const payload = JSON.parse((event as MessageEvent).data) as { alerts?: IntradayKeyLevelResponse[] };
+            setKeyLevelAlerts(payload.alerts ?? []);
+          } catch {
+            setKeyLevelAlerts([]);
+          }
+        });
+        source.onerror = () => source?.close();
+      })
+      .catch(() => setKeyLevelAlerts([]));
+    return () => {
+      cancelled = true;
+      source?.close();
+    };
+  }, [active, keyLevelSymbolsKey, keyLevelEntryZonesKey]);
+
   useEffect(() => () => stopInstrumentSyncPolling(), [stopInstrumentSyncPolling]);
 
   return {
     priorityBoard,
     setPriorityBoard,
     marketBreadth,
+    sectorRelativeStrength,
+    keyLevelAlerts,
     sectorEtfT0,
     pairedHedge,
     watchlistSignals,

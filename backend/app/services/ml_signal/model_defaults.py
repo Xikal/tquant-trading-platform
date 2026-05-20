@@ -5,6 +5,7 @@ from typing import Any
 
 DEFAULT_TRAINING_PARAMS: dict[str, Any] = {
     "cv_folds": 5,
+    "time_series_cv_gap_samples": 20,
     "min_train_samples": 1000,
     "incremental_model_type": "xgboost",
     "incremental_promote": True,

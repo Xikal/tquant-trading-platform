@@ -36,6 +36,7 @@ from app.services.backtest_validation_service import BacktestValidationService
 from app.services.backtest.regime_parameter_promotion import promote_regime_parameter_versions
 from app.services.position_policy_research import run_position_policy_research
 from app.services.portfolio_heuristic_optimizer import optimize_strategy_portfolio
+from app.services.live_backtest_monitor import build_live_backtest_comparison
 from app.services.strategy_metadata_service import StrategyMetadataService
 from app.services.quant.runtime_parameters import get_backtest_verdict_thresholds
 
@@ -51,6 +52,17 @@ def get_backtest_verdict_thresholds_route() -> BacktestVerdictThresholdsResponse
             for key, values in thresholds.items()
         }
     )
+
+
+@router.get("/live-comparison")
+def get_live_backtest_comparison(
+    account_id: int | None = Query(default=None, ge=1),
+    days: int = Query(default=60, ge=1, le=365),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    _require_research_access(current_user)
+    return build_live_backtest_comparison(db, user_id=current_user.id, account_id=account_id, days=days)
 
 
 @router.post("", response_model=BacktestRunDetail)
@@ -376,7 +388,7 @@ def get_backtest_strategy_correlation(
 @router.get("/{run_id}/portfolio-optimization")
 def get_backtest_portfolio_optimization(
     run_id: int,
-    method: str = Query(default="hrp", pattern="^(hrp|risk_adjusted|markowitz)$"),
+    method: str = Query(default="hrp", pattern="^(hrp|risk_adjusted|markowitz|black_litterman|bl)$"),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> dict:

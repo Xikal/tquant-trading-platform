@@ -50,7 +50,7 @@ cd "$ROOT_DIR/backend"
 DATABASE_URL="sqlite:///$PREFLIGHT_DB_PATH" \
 RUNTIME_ENV_PATH="$PREFLIGHT_RUNTIME_ENV" \
 BASE_ENV_PATH="$RUNTIME_DIR/nonexistent.env" \
-AUTH_SECRET_KEY="prod-preflight-secret" \
+AUTH_SECRET_KEY="prod-preflight-secret-0123456789abcdef0123456789abcdef0123456789abcdef" \
 ADMIN_API_TOKEN="prod-preflight-admin-token" \
 RUNTIME_BACKGROUND_JOBS_ENABLED=false \
 .venv/bin/python -m uvicorn app.main:app --host 127.0.0.1 --port "$BACKEND_PORT" >"$BACKEND_LOG" 2>&1 &

@@ -51,6 +51,9 @@ class LowBuyCandidateOut(BaseModel):
     invalid_condition: str = ""
     next_watch_price: Optional[float] = None
     leader_rank: str = "unknown"
+    leader_strength_score: float = 0.0
+    leader_strength_rank: int = 0
+    leader_strength_text: str = ""
     mainline_rank: int = 0
     mainline_tier: str = "unknown"
     mainline_tier_text: str = "主线未知"
@@ -81,6 +84,8 @@ class LowBuyCandidateOut(BaseModel):
     market_state_category_text: str = "缩量无主线"
     market_state_strength: float = 0.0
     market_position_multiplier: float = 1.0
+    multi_timeframe_resonance_score: float = 0.0
+    multi_timeframe_resonance_text: str = ""
     confirmed_trade_date: Optional[str] = None
     summary_reason: str = ""
     buy_signal_state: BuySignalState = "watch"

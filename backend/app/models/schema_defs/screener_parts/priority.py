@@ -43,6 +43,9 @@ class LowBuyPriorityBoardItemOut(BaseModel):
     risk_tier: Literal["block", "degrade", "note"] = "note"
     next_watch_price: Optional[float] = None
     leader_rank: str = "unknown"
+    leader_strength_score: float = 0.0
+    leader_strength_rank: int = 0
+    leader_strength_text: str = ""
     mainline_rank: int = 0
     mainline_tier: str = "unknown"
     mainline_tier_text: str = "主线未知"
@@ -58,6 +61,8 @@ class LowBuyPriorityBoardItemOut(BaseModel):
     final_position_cap_pct: float = 0.0
     position_cap_reason: str = ""
     next_day_event_plan: LowBuyNextDayEventPlanOut = Field(default_factory=LowBuyNextDayEventPlanOut)
+    multi_timeframe_resonance_score: float = 0.0
+    multi_timeframe_resonance_text: str = ""
     entry_zone_low: float
     entry_zone_high: float
     stop_loss: float

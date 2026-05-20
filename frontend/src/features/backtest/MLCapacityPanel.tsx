@@ -19,6 +19,7 @@ export function MLCapacityPanel({ strategyOptions }: { strategyOptions: Backtest
   const [strategies, setStrategies] = useState(defaultStrategies || "first_board,volume_shrink");
   const [runId, setRunId] = useState("");
   const [markowitz, setMarkowitz] = useState<PortfolioOptimizationResponse | null>(null);
+  const [blackLitterman, setBlackLitterman] = useState<PortfolioOptimizationResponse | null>(null);
   const [policy, setPolicy] = useState<PositionPolicyResearchResponse | null>(null);
   const [loading, setLoading] = useState("");
   const [error, setError] = useState("");
@@ -76,11 +77,13 @@ export function MLCapacityPanel({ strategyOptions }: { strategyOptions: Backtest
     setLoading("portfolio");
     setError("");
     try {
-      const [markowitzResult, policyResult] = await Promise.all([
+      const [markowitzResult, blackLittermanResult, policyResult] = await Promise.all([
         backtestsApi.getPortfolioOptimization(numericRunId, "markowitz"),
+        backtestsApi.getPortfolioOptimization(numericRunId, "black_litterman"),
         backtestsApi.getPositionPolicyResearch(numericRunId),
       ]);
       setMarkowitz(markowitzResult);
+      setBlackLitterman(blackLittermanResult);
       setPolicy(policyResult);
     } catch (err) {
       setError(errorMessage(err));
@@ -141,6 +144,12 @@ export function MLCapacityPanel({ strategyOptions }: { strategyOptions: Backtest
         </div>
       ) : null}
       {markowitz?.efficient_frontier?.length ? <EfficientFrontierChart points={markowitz.efficient_frontier} /> : null}
+      {blackLitterman ? (
+        <div className="backtest-research-note">
+          Black-Litterman：预期 {formatPct(blackLitterman.expected_return_pct)}，波动 {formatPct(blackLitterman.volatility_pct)}，
+          Sharpe {blackLitterman.portfolio_sharpe ?? "--"}。{blackLitterman.summary || ""}
+        </div>
+      ) : null}
       {policy ? (
         <div className="backtest-research-note">
           RL Shadow：{policy.summary || "仅研究输出，不自动交易。"} 样本 {String(policy.shadow_reinforcement_learning?.sample_count ?? "--")}。

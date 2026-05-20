@@ -30,7 +30,7 @@ fi
 DATABASE_URL="$QA_DB_URL" \
 RUNTIME_ENV_PATH="$RUNTIME_ENV_PATH" \
 BASE_ENV_PATH="$RUNTIME_DIR/nonexistent.env" \
-AUTH_SECRET_KEY="qa-smoke-secret" \
+AUTH_SECRET_KEY="qa-smoke-secret-0123456789abcdef0123456789abcdef0123456789abcdef" \
 ADMIN_API_TOKEN="qa-admin-token" \
 RUNTIME_BACKGROUND_JOBS_ENABLED=false \
 .venv/bin/python -m uvicorn app.main:app --host 127.0.0.1 --port "$BACKEND_PORT" >"$BACKEND_LOG" 2>&1 &

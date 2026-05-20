@@ -34,6 +34,7 @@ LOW_BUY_SCORING_DEFAULTS: dict[str, Any] = {
         "strong_trend": 5.2,
         "hot_industry": 3.5,
         "shrink_staircase": 2.8,
+        "multi_timeframe_resonance": 5.0,
     },
     "strategy_bonuses": {
         "ma_support": {"support_distance_max_pct": 1.6, "bonus": 4.0},

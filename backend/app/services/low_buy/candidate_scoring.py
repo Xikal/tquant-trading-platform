@@ -70,6 +70,8 @@ def score_candidate(
         score += float_param(global_bonuses, "hot_industry", 3.5)
     if metrics.shrink_staircase:
         score += float_param(global_bonuses, "shrink_staircase", 2.8)
+    if metrics.multi_timeframe_resonance_score > 0:
+        score += min(metrics.multi_timeframe_resonance_score, float_param(global_bonuses, "multi_timeframe_resonance", 5.0))
     if strategy == "ma_support" and metrics.support_distance_pct <= float_param(strategy_bonus, "support_distance_max_pct", 1.6):
         score += float_param(strategy_bonus, "bonus", 4.0)
     if (

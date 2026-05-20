@@ -14,10 +14,12 @@ from app.services.ml_signal.overfit_guards import bootstrap_accuracy_ci, feature
 from app.services.ml_signal.promotion_quality import binomial_accuracy_p_value
 from app.services.ml_signal.training_runtime import (
     configured_cv_folds,
+    configured_cv_gap_samples,
     effective_min_train_samples,
     max_validation_p_value,
     model_training_params,
 )
+from app.services.ml_signal.time_series_validation import time_series_cv_metrics, time_series_holdout_split
 
 def fit_estimator(
     *,
@@ -28,15 +30,13 @@ def fit_estimator(
     warm_start_estimator: Any | None = None,
 ):
     from sklearn.metrics import accuracy_score, roc_auc_score
-    from sklearn.model_selection import train_test_split
 
-    stratify = labels if min(np.bincount(labels.astype(int))) >= 2 else None
-    x_train, x_valid, y_train, y_valid = train_test_split(
+    gap = configured_cv_gap_samples()
+    x_train, x_valid, y_train, y_valid, split_metadata = time_series_holdout_split(
         x_matrix,
         labels,
-        test_size=validation_ratio,
-        random_state=42,
-        stratify=stratify,
+        validation_ratio=validation_ratio,
+        gap=gap,
     )
     estimator = _make_estimator(model_type)
     cv_metrics = _cross_validate_estimator(
@@ -44,6 +44,7 @@ def fit_estimator(
         x_matrix=x_matrix,
         labels=labels,
         folds=configured_cv_folds(),
+        gap=gap,
     )
     _fit_with_optional_warm_start(estimator, x_train, y_train, warm_start_estimator)
     probabilities = _estimator_probabilities(estimator, x_valid)
@@ -54,6 +55,10 @@ def fit_estimator(
         "sample_count": int(len(labels)),
         "train_count": int(len(y_train)),
         "validation_count": int(len(y_valid)),
+        "validation_method": "time_series_holdout",
+        "validation_gap_samples": int(split_metadata.get("gap", gap)),
+        "scaler_fit_scope": "train_only",
+        "temporal_order_enforced": True,
         "positive_rate": round(float(labels.mean()), 4),
         "validation_accuracy": round(float(accuracy_score(y_valid, predictions)), 4),
         "validation_correct_count": correct_count,
@@ -139,44 +144,23 @@ def _float_param(params: dict[str, Any], key: str, fallback: float) -> float:
         return fallback
 
 
-def _cross_validate_estimator(*, estimator: Any, x_matrix: np.ndarray, labels: np.ndarray, folds: int) -> dict[str, Any]:
-    from sklearn.base import clone
-    from sklearn.metrics import accuracy_score, roc_auc_score
-    from sklearn.model_selection import StratifiedKFold
-
+def _cross_validate_estimator(*, estimator: Any, x_matrix: np.ndarray, labels: np.ndarray, folds: int, gap: int) -> dict[str, Any]:
     class_counts = np.bincount(labels.astype(int))
-    min_class_count = int(class_counts.min()) if len(class_counts) >= 2 else 0
-    fold_count = min(max(int(folds), 2), min_class_count)
-    if fold_count < 2:
+    if len(class_counts) < 2 or int(class_counts.min()) < 2:
         return {
             "cv_fold_count": 0,
-            "cv_skipped_reason": "样本类别分布不足，无法执行分层交叉验证。",
+            "cv_splitter": "TimeSeriesSplit",
+            "cv_skipped_reason": "样本类别分布不足，无法执行时序交叉验证。",
         }
 
-    accuracies: list[float] = []
-    aucs: list[float] = []
-    splitter = StratifiedKFold(n_splits=fold_count, shuffle=True, random_state=42)
-    for train_index, valid_index in splitter.split(x_matrix, labels):
-        fold_estimator = clone(estimator)
-        fold_estimator.fit(x_matrix[train_index], labels[train_index])
-        probabilities = _estimator_probabilities(fold_estimator, x_matrix[valid_index])
-        predictions = (probabilities >= 0.5).astype(int)
-        valid_labels = labels[valid_index]
-        accuracies.append(float(accuracy_score(valid_labels, predictions)))
-        if len(set(valid_labels.tolist())) >= 2:
-            aucs.append(float(roc_auc_score(valid_labels, probabilities)))
-
-    metrics: dict[str, Any] = {
-        "cv_fold_count": fold_count,
-        "cv_accuracy_mean": round(float(np.mean(accuracies)), 4) if accuracies else 0.0,
-        "cv_accuracy_std": round(float(np.std(accuracies)), 4) if accuracies else 0.0,
-    }
-    if aucs:
-        metrics["cv_auc_mean"] = round(float(np.mean(aucs)), 4)
-        metrics["cv_auc_std"] = round(float(np.std(aucs)), 4)
-    else:
-        metrics["cv_auc_missing_reason"] = "交叉验证折内标签类别不足，无法计算 AUC。"
-    return metrics
+    return time_series_cv_metrics(
+        estimator=estimator,
+        x_matrix=x_matrix,
+        labels=labels,
+        folds=folds,
+        gap=gap,
+        probability_fn=_estimator_probabilities,
+    )
 
 
 def promotion_blocks(*, payload: MLSignalTrainRequest, metrics: dict[str, Any], sample_count: int) -> list[str]:
@@ -279,6 +263,10 @@ def production_model_warning(status: str, metrics: dict[str, Any]) -> str:
     max_share = metrics.get("feature_importance_max_share")
     if sample_count < effective_min_train_samples(0):
         return "production 模型样本量低于当前安全阈值，本次按研究信号处理。"
+    if metrics.get("temporal_order_enforced") is not True:
+        return "production 模型缺少时序验证防泄漏标记，本次按研究信号处理。"
+    if not metrics.get("feature_schema_hash"):
+        return "production 模型缺少特征签名，本次按研究信号处理。"
     if validation_accuracy < float(settings.ml_signal_min_production_accuracy):
         return "production 模型准确率低于当前安全阈值，本次按研究信号处理。"
     if validation_auc is None or float(validation_auc or 0.0) < float(settings.ml_signal_min_production_auc):

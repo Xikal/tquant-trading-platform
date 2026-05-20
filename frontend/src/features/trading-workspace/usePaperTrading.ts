@@ -67,51 +67,19 @@ export function usePaperTrading({ canManageReconcile = false, setError, setLoadi
     try {
       if (manageLoading) setLoading("paper");
       setError("");
-      const [
-        accountResult,
-        positionsResult,
-        ordersResult,
-        tradesResult,
-        stockPnlResult,
-        performanceResult,
-        sectorEtfT0PerformanceResult,
-        strategyPerformanceResult,
-        marketPerformanceResult,
-        tagPerformanceResult,
-        riskEventsResult,
-        autoTradingStatusResult,
-        autoTradingRunsResult,
-      ] = await Promise.allSettled([
-        api.getPaperAccount(),
-        api.getPaperPositions(),
-        api.getPaperOrders(80),
-        api.getPaperTrades(300),
-        api.getPaperStockPnl(),
-        api.getPaperPerformance(),
-        api.getPaperSectorEtfT0Performance(),
-        api.getPaperPerformanceByStrategy(),
-        api.getPaperPerformanceByMarketState(),
-        api.getPaperPerformanceByTag(),
-        api.evaluatePaperRiskEvents(),
-        api.getPaperAutoTradingStatus(),
-        api.getPaperAutoTradingRuns(20),
-      ]);
-      const rejected = [
-        accountResult,
-        positionsResult,
-        ordersResult,
-        tradesResult,
-        stockPnlResult,
-        performanceResult,
-        sectorEtfT0PerformanceResult,
-        strategyPerformanceResult,
-        marketPerformanceResult,
-        tagPerformanceResult,
-        riskEventsResult,
-        autoTradingStatusResult,
-        autoTradingRunsResult,
-      ].find((item): item is PromiseRejectedResult => item.status === "rejected");
-      if (rejected && isAuthError(rejected.reason)) {
+      const workspace = await api.getPaperWorkspaceBff();
+      applyPaperWorkspace(workspace);
+      await loadTradeTags(workspace.trades);
+      if (canManageReconcile && workspace.account) {
+        await refreshLedgerRepairStatus(false, workspace.account.id);
+      } else if (!canManageReconcile) {
+        setLedgerRepairStatus(null);
+      }
+      if (workspace.partial_errors.length > 0) {
+        setError(workspace.partial_errors.map((item) => item.detail).join("；"));
+      }
+    } catch (err) {
+      if (isAuthError(err)) {
         if (allowRefresh && (await refreshSession())) {
           await load(false, manageLoading);
           return;
@@ -119,34 +87,27 @@ export function usePaperTrading({ canManageReconcile = false, setError, setLoadi
         requireLogin();
         return;
       }
-      if (accountResult.status === "fulfilled") setAccount(accountResult.value);
-      if (positionsResult.status === "fulfilled") setPositions(positionsResult.value.positions);
-      if (ordersResult.status === "fulfilled") setOrders(ordersResult.value);
-      if (tradesResult.status === "fulfilled") {
-        setTrades(tradesResult.value.trades);
-        await loadTradeTags(tradesResult.value.trades);
-      }
-      if (stockPnlResult.status === "fulfilled") {
-        setStockPnl(stockPnlResult.value.items);
-        setStockPnlSummary(stockPnlResult.value.summary);
-      }
-      if (performanceResult.status === "fulfilled") setPerformance(performanceResult.value);
-      if (sectorEtfT0PerformanceResult.status === "fulfilled") setSectorEtfT0Performance(sectorEtfT0PerformanceResult.value);
-      if (strategyPerformanceResult.status === "fulfilled") setStrategyPerformance(strategyPerformanceResult.value);
-      if (marketPerformanceResult.status === "fulfilled") setMarketPerformance(marketPerformanceResult.value);
-      if (tagPerformanceResult.status === "fulfilled") setTagPerformance(tagPerformanceResult.value);
-      if (riskEventsResult.status === "fulfilled") setRiskEvents(riskEventsResult.value);
-      if (autoTradingStatusResult.status === "fulfilled") setAutoTradingStatus(autoTradingStatusResult.value);
-      if (autoTradingRunsResult.status === "fulfilled") setAutoTradingRuns(autoTradingRunsResult.value);
-      if (canManageReconcile && accountResult.status === "fulfilled") {
-        await refreshLedgerRepairStatus(false, accountResult.value.id);
-      } else if (!canManageReconcile) {
-        setLedgerRepairStatus(null);
-      }
-      if (rejected) setError(errorMessage(rejected.reason));
+      setError(errorMessage(err));
     } finally {
       if (manageLoading) setLoading("");
     }
+  }
+
+  function applyPaperWorkspace(workspace: Awaited<ReturnType<typeof api.getPaperWorkspaceBff>>) {
+    setAccount(workspace.account);
+    setPositions(workspace.positions);
+    setOrders(workspace.orders);
+    setTrades(workspace.trades);
+    setStockPnl(workspace.stock_pnl?.items ?? []);
+    setStockPnlSummary(workspace.stock_pnl?.summary ?? null);
+    setPerformance(workspace.performance);
+    setSectorEtfT0Performance(workspace.sector_etf_t0_performance);
+    setStrategyPerformance(workspace.strategy_performance);
+    setMarketPerformance(workspace.market_performance);
+    setTagPerformance(workspace.tag_performance);
+    setRiskEvents(workspace.risk_events);
+    setAutoTradingStatus(workspace.auto_trading_status);
+    setAutoTradingRuns(workspace.auto_trading_runs);
   }
 
   async function refreshAll() {

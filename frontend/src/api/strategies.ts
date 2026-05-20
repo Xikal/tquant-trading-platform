@@ -1,4 +1,5 @@
 import { apiClient } from "./httpClient";
+import type { BacktestListResponse, BacktestVerdictThresholdsResponse } from "./backtestTypes";
 
 const request = apiClient.request;
 const requestCached = apiClient.requestCached;
@@ -74,7 +75,19 @@ export interface StrategySignalReplayItem {
   updated_at?: string;
 }
 
+export interface StrategyWorkspaceBffResponse {
+  api_version: string;
+  generated_at: string;
+  strategy_meta: { strategies: StrategyMeta[] } | null;
+  presets: { presets: StrategyPreset[] } | null;
+  recent_runs: BacktestListResponse | null;
+  verdict_thresholds: BacktestVerdictThresholdsResponse | null;
+  partial_errors: Array<{ source: string; detail: string }>;
+}
+
 export const strategiesApi = {
+  getStrategyWorkspaceBff: () =>
+    request<StrategyWorkspaceBffResponse>("/bff/v1/workspace/strategy?run_limit=8"),
   getStrategyMeta: () =>
     requestCached<{ strategies: StrategyMeta[] }>("/strategies/meta", 60_000),
   getPresets: () =>

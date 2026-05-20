@@ -1,5 +1,13 @@
 import { memo, useMemo } from "react";
-import type { LowBuyPriorityBoardResult, MarketBreadth, PairedHedgeResearchResponse, RuntimeStatus, SectorEtfT0Response } from "../../types";
+import type {
+  IntradayKeyLevelResponse,
+  LowBuyPriorityBoardResult,
+  MarketBreadth,
+  PairedHedgeResearchResponse,
+  RuntimeStatus,
+  SectorEtfT0Response,
+  SectorRelativeStrengthResponse,
+} from "../../types";
 import type { InstrumentSyncStatus } from "../../types";
 import { NumberField, SearchField, TextField } from "../../components/shared/FormFields";
 import { directActionTitle } from "../../utils/uxClarity";
@@ -12,6 +20,8 @@ import type { MetricItem, StockCardView, WatchDraft } from "./workspaceTypes";
 export interface MonitorPageProps {
   priorityBoard: LowBuyPriorityBoardResult | null;
   marketBreadth: MarketBreadth | null;
+  sectorRelativeStrength: SectorRelativeStrengthResponse | null;
+  keyLevelAlerts: IntradayKeyLevelResponse[];
   sectorEtfT0: SectorEtfT0Response | null;
   pairedHedge: PairedHedgeResearchResponse | null;
   priorityCards: StockCardView[];
@@ -37,6 +47,8 @@ export interface MonitorPageProps {
 export const MonitorPage = memo(function MonitorPage({
   priorityBoard,
   marketBreadth,
+  sectorRelativeStrength,
+  keyLevelAlerts,
   sectorEtfT0,
   pairedHedge,
   priorityCards,
@@ -105,6 +117,8 @@ export const MonitorPage = memo(function MonitorPage({
           <MetricGrid items={metrics} />
         </details>
         <MarketBreadthStrip marketBreadth={marketBreadth} />
+        <MarketEmotionDashboard marketBreadth={marketBreadth} sectorRelativeStrength={sectorRelativeStrength} />
+        <KeyLevelAlerts alerts={keyLevelAlerts} />
         <InstrumentSyncProgress status={instrumentSyncStatus} loading={loading === "sync"} />
         <p className="hint">“更新股票库”只更新全市场基础资料，不会直接买卖股票；平时看信号点“手动刷新”即可。</p>
       </div>
@@ -247,6 +261,69 @@ function MarketBreadthStrip({ marketBreadth }: { marketBreadth: MarketBreadth | 
       <InfoPill label="数据质量" value={marketBreadth.data_quality_text || "--"} tone={dataQualityTone(marketBreadth.data_quality)} />
     </div>
   );
+}
+
+function MarketEmotionDashboard({
+  marketBreadth,
+  sectorRelativeStrength,
+}: {
+  marketBreadth: MarketBreadth | null;
+  sectorRelativeStrength: SectorRelativeStrengthResponse | null;
+}) {
+  if (!marketBreadth && !sectorRelativeStrength?.items.length) {
+    return null;
+  }
+  const distribution = buildBoardDistribution(marketBreadth?.board_height ?? 0);
+  const leaders = (sectorRelativeStrength?.items ?? []).slice(0, 5);
+  return (
+    <div className="market-emotion-dashboard">
+      <div className="emotion-header">
+        <strong>市场情绪与龙头强度</strong>
+        <span>{marketBreadth?.emotion_temperature_text || marketBreadth?.state_text || "等待情绪数据"}</span>
+      </div>
+      <div className="emotion-grid">
+        <div className="limit-board-bars" aria-label="涨停连板高度分布">
+          {distribution.map((item) => (
+            <span key={item.label} style={{ height: `${item.height}%` }} title={`${item.label}：相对高度 ${item.height}%`}>
+              <i>{item.label}</i>
+            </span>
+          ))}
+        </div>
+        <div className="leader-rank-mini">
+          {leaders.length ? leaders.map((item) => (
+            <span key={`${item.sector_name}-${item.symbol}`}>
+              <b>{item.name}</b>
+              <em>{item.sector_name} #{item.rank} · 龙头分 {item.leader_score.toFixed(0)}</em>
+            </span>
+          )) : <small>暂无板块龙头强度数据</small>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function KeyLevelAlerts({ alerts }: { alerts: IntradayKeyLevelResponse[] }) {
+  const triggered = alerts.filter((item) => item.alert_triggered).slice(0, 4);
+  if (!triggered.length) {
+    return null;
+  }
+  return (
+    <div className="key-level-alerts" role="alert" aria-live="polite">
+      {triggered.map((item) => (
+        <span className="key-level-alert" key={item.symbol}>
+          {item.name} 接近关键价位：{item.alert_text || `现价 ${formatPrice(item.latest_price)}`}
+        </span>
+      ))}
+    </div>
+  );
+}
+
+function buildBoardDistribution(boardHeight: number): Array<{ label: string; height: number }> {
+  const current = Math.max(0, Math.min(6, Math.round(boardHeight || 0)));
+  return ["1板", "2板", "3板", "4板", "5+"].map((label, index) => ({
+    label,
+    height: Math.max(12, index + 1 <= current ? 28 + index * 14 : 12),
+  }));
 }
 
 function dataQualityTone(value?: string | null): "up" | "warn" | "down" | "neutral" {

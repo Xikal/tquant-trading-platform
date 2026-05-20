@@ -208,6 +208,9 @@ export interface LowBuyPriorityBoardItem {
   risk_tier?: "block" | "degrade" | "note";
   next_watch_price?: number | null;
   leader_rank?: string;
+  leader_strength_score?: number;
+  leader_strength_rank?: number;
+  leader_strength_text?: string;
   mainline_rank?: number;
   mainline_tier?: string;
   mainline_tier_text?: string;
@@ -230,6 +233,8 @@ export interface LowBuyPriorityBoardItem {
   recommendation_days?: number;
   strategy_recommendation_days?: Record<string, number>;
   recommendation_duration_text?: string;
+  multi_timeframe_resonance_score?: number;
+  multi_timeframe_resonance_text?: string;
   simple_bucket?: "buy_now" | "wait_price" | "give_up";
   simple_bucket_text?: string;
   next_action_text?: string;

@@ -48,6 +48,8 @@ export function useWorkspacePageProps({
   const monitorPageProps: MonitorPageProps = {
     priorityBoard: monitor.priorityBoard,
     marketBreadth: monitor.marketBreadth,
+    sectorRelativeStrength: monitor.sectorRelativeStrength,
+    keyLevelAlerts: monitor.keyLevelAlerts,
     sectorEtfT0: monitor.sectorEtfT0,
     pairedHedge: monitor.pairedHedge,
     priorityCards: monitor.priorityCards,

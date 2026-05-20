@@ -26,6 +26,7 @@ export function Topbar({
   const [pulse, setPulse] = useState(() => realTimePulse());
   const nav: Array<[Page, string]> = [
     ["monitor", "实时监控"],
+    ["emotion", "市场情绪"],
     ["analysis", "量化分析"],
     ["playbook", "选股宝典"],
     ["strategy", "策略工作台"],

@@ -218,7 +218,10 @@ class AgentRouteTests(unittest.TestCase):
         self.original_signal_scan_service = agent.AgentSignalScanService
         self.original_daily_workflow_service = agent.AgentDailyWorkflowService
         self.original_notify_enabled = environ.get("AGENT_ENABLE_NOTIFY_TOOLS")
+        self.original_write_enabled = environ.get("AGENT_ENABLE_WRITE_TOOLS")
+        self.original_paper_mfa = environ.get("AUTH_REQUIRE_MFA_FOR_PAPER_TRADE")
         environ["AGENT_ENABLE_NOTIFY_TOOLS"] = "false"
+        environ["AGENT_ENABLE_WRITE_TOOLS"] = "false"
         get_settings.cache_clear()
         agent.context_service = _ContextServiceStub()
         agent.report_service = _ReportServiceStub()
@@ -246,6 +249,14 @@ class AgentRouteTests(unittest.TestCase):
             environ.pop("AGENT_ENABLE_NOTIFY_TOOLS", None)
         else:
             environ["AGENT_ENABLE_NOTIFY_TOOLS"] = self.original_notify_enabled
+        if self.original_write_enabled is None:
+            environ.pop("AGENT_ENABLE_WRITE_TOOLS", None)
+        else:
+            environ["AGENT_ENABLE_WRITE_TOOLS"] = self.original_write_enabled
+        if self.original_paper_mfa is None:
+            environ.pop("AUTH_REQUIRE_MFA_FOR_PAPER_TRADE", None)
+        else:
+            environ["AUTH_REQUIRE_MFA_FOR_PAPER_TRADE"] = self.original_paper_mfa
         get_settings.cache_clear()
 
     def test_agent_health_route(self) -> None:
@@ -325,6 +336,42 @@ class AgentRouteTests(unittest.TestCase):
         finally:
             self.app.dependency_overrides[require_current_user_or_agent_token] = _override_user
         self.assertEqual(response.status_code, 403)
+
+    def test_scoped_agent_token_cannot_directly_create_paper_order_even_with_write_scope(self) -> None:
+        self.app.dependency_overrides.pop(require_current_user_or_agent_token, None)
+        environ["AGENT_ENABLE_WRITE_TOOLS"] = "true"
+        environ["AGENT_TOKENS"] = '{"agent-analyst":"scoped-write-token:write_paper"}'
+        get_settings.cache_clear()
+        try:
+            response = self.client.post(
+                "/api/agent/paper/order",
+                headers={"Authorization": "Bearer scoped-write-token"},
+                json={"symbol": "510300", "side": "buy", "quantity": 100, "price": 4.0},
+            )
+        finally:
+            self.app.dependency_overrides[require_current_user_or_agent_token] = _override_user
+        self.assertEqual(response.status_code, 403)
+        self.assertIn("用户会话", response.json()["detail"])
+
+    def test_agent_paper_order_requires_user_mfa_gate_when_write_tools_enabled(self) -> None:
+        class UserWithoutMfa:
+            id = 1
+            username = "paper_agent_user"
+            is_active = True
+            can_paper_trade = True
+            mfa_totp_enabled = False
+            roles = ""
+
+        environ["AGENT_ENABLE_WRITE_TOOLS"] = "true"
+        environ["AUTH_REQUIRE_MFA_FOR_PAPER_TRADE"] = "true"
+        get_settings.cache_clear()
+        self.app.dependency_overrides[require_current_user_or_agent_token] = lambda: UserWithoutMfa()
+        response = self.client.post(
+            "/api/agent/paper/order",
+            json={"symbol": "510300", "side": "buy", "quantity": 100, "price": 4.0},
+        )
+        self.assertEqual(response.status_code, 403)
+        self.assertIn("动态验证码", response.json()["detail"])
 
     def test_watchlist_context_route(self) -> None:
         response = self.client.get("/api/agent/context/watchlist")

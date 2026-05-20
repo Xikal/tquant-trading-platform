@@ -34,6 +34,15 @@ def configured_cv_folds() -> int:
     return _bounded_int(training_parameters().get("cv_folds"), fallback=fallback, minimum=2, maximum=20)
 
 
+def configured_cv_gap_samples() -> int:
+    return _bounded_int(
+        training_parameters().get("time_series_cv_gap_samples"),
+        fallback=20,
+        minimum=0,
+        maximum=500,
+    )
+
+
 def effective_min_train_samples(payload_min_samples: int) -> int:
     settings_min = int(get_settings().ml_signal_min_production_samples)
     configured_min = _bounded_int(
