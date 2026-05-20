@@ -36,7 +36,7 @@ def upgrade() -> None:
             sa.text(
                 """
                 SELECT id, value FROM system_settings
-                WHERE key = :key AND value IS NOT NULL AND value <> '' AND value NOT LIKE 'enc:v1:%'
+                WHERE `key` = :key AND value IS NOT NULL AND value <> '' AND value NOT LIKE 'enc:v1:%'
                 """
             ),
             {"key": key},
@@ -53,7 +53,7 @@ def downgrade() -> None:
     fernet = _fernet()
     for key in _SENSITIVE_KEYS:
         rows = bind.execute(
-            sa.text("SELECT id, value FROM system_settings WHERE key = :key AND value LIKE 'enc:v1:%'"),
+            sa.text("SELECT id, value FROM system_settings WHERE `key` = :key AND value LIKE 'enc:v1:%'"),
             {"key": key},
         ).mappings()
         for row in rows:
