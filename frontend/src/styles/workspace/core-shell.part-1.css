@@ -21,9 +21,45 @@
 .brand span,
 .brand .ant-typography,
 .desk-chips,
-.topbar-menu {
+.topbar-menu,
+.topbar-nav {
   color: #aeb8c7;
   font-size: 12px;
+}
+
+.topbar-nav {
+  display: flex;
+  min-width: 0;
+  justify-content: center;
+  gap: 6px;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.topbar-nav button {
+  min-height: 34px;
+  border-color: transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: #aeb8c7;
+  white-space: nowrap;
+}
+
+.topbar-nav button:hover:not(:disabled) {
+  border-color: rgba(214, 165, 92, 0.38);
+  color: #fff;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.topbar-nav button.active {
+  border-color: rgba(214, 165, 92, 0.72);
+  background: var(--accent);
+  color: var(--deep);
+}
+
+.topbar-nav button:disabled {
+  color: #64748b;
+  background: rgba(255, 255, 255, 0.04);
 }
 
 .topbar-menu.ant-menu {

@@ -1,4 +1,4 @@
-import { Badge, Button, Dropdown, Menu, Space, Typography } from "antd";
+import { Badge, Button, Dropdown, Space, Typography } from "antd";
 import { useEffect, useMemo, useState } from "react";
 import type { AuthUser, LowBuyPriorityBoardResult } from "../../types";
 import type { Page, StockCardView } from "../workspace-shared/workspaceTypes";
@@ -33,12 +33,15 @@ export function Topbar({
   ], []);
   const riskCount = watchCards.filter((item) => item.riskText.includes("高")).length;
   const userName = currentUser.display_name || currentUser.username;
-  const menuItems = nav.map(([key, label]) => ({
-    key,
-    label: key === "paper" && !currentUser.can_paper_trade ? "模拟盘需申请" : label,
-    disabled: key === "paper" && !currentUser.can_paper_trade,
-    title: key === "paper" && !currentUser.can_paper_trade ? "模拟盘需申请白名单权限" : "",
-  }));
+  const menuItems = nav.map(([key, label]) => {
+    const paperDisabled = key === "paper" && !currentUser.can_paper_trade;
+    return {
+      key,
+      label: paperDisabled ? "模拟盘需申请" : label,
+      disabled: paperDisabled,
+      title: paperDisabled ? "模拟盘需申请白名单权限" : "",
+    };
+  });
 
   useEffect(() => {
     const timer = window.setInterval(() => setPulse(realTimePulse()), 1000);
@@ -50,13 +53,21 @@ export function Topbar({
       <div className="brand">
         <Typography.Text strong>维斯量化交易平台</Typography.Text>
       </div>
-      <Menu
-        className="topbar-menu"
-        mode="horizontal"
-        selectedKeys={[page]}
-        items={menuItems}
-        onClick={({ key }) => setPage(key as Page)}
-      />
+      <nav className="topbar-nav" aria-label="主导航">
+        {menuItems.map((item) => (
+          <button
+            key={item.key}
+            type="button"
+            className={page === item.key ? "active" : ""}
+            disabled={item.disabled}
+            title={item.title}
+            aria-current={page === item.key ? "page" : undefined}
+            onClick={() => setPage(item.key)}
+          >
+            {item.label}
+          </button>
+        ))}
+      </nav>
       <Space className="desk-chips" size={10}>
         {page === "paper" && onPaperRefresh ? (
           <Button type="primary" size="small" onClick={onPaperRefresh} loading={paperRefreshLoading}>
