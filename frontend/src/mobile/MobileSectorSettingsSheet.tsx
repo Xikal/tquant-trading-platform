@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { Button } from "antd-mobile";
 import { Icon } from "./mobileSections";
 
 export function MobileSectorSettingsSheet({
@@ -58,9 +59,9 @@ export function MobileSectorSettingsSheet({
             <h2>交易偏好</h2>
             <small>选择你不想参与的行业</small>
           </div>
-          <button type="button" className="mobile-app-icon-button" onClick={onClose} aria-label="关闭">
+          <Button fill="none" className="mobile-app-icon-button" onClick={onClose} aria-label="关闭">
             <Icon name="close" />
-          </button>
+          </Button>
         </div>
 
         <div className="mobile-sector-settings-summary">
@@ -72,25 +73,26 @@ export function MobileSectorSettingsSheet({
           {availableSectors.map((sector) => {
             const active = selected.includes(sector);
             return (
-              <button
+              <Button
                 key={sector}
-                type="button"
+                fill={active ? "solid" : "outline"}
+                color={active ? "primary" : "default"}
                 className={`mobile-sector-tag ${active ? "active" : ""}`}
                 onClick={() => toggleSector(sector)}
               >
                 {sector}
-              </button>
+              </Button>
             );
           })}
         </div>
 
         <div className="mobile-app-sheet-actions">
-          <button type="button" className="mobile-app-secondary" onClick={onClose}>
+          <Button fill="outline" className="mobile-app-secondary" onClick={onClose}>
             取消
-          </button>
-          <button type="button" className="mobile-app-primary" disabled={saving} onClick={() => void handleSave()}>
+          </Button>
+          <Button color="primary" className="mobile-app-primary" disabled={saving} onClick={() => void handleSave()}>
             {saving ? "保存中" : "保存偏好"}
-          </button>
+          </Button>
         </div>
       </section>
     </div>

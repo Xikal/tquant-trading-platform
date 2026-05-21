@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { Button } from "antd";
 import {
   DateField as SharedDateField,
   SelectField as SharedSelectField,
@@ -210,12 +211,12 @@ export function TaskList<T extends { id: number; name: string; status: string; p
     <div className="backtest-task-list">
       {items.map((item) => (
         <div className={`backtest-task-row${selectedId === item.id ? " active" : ""}`} key={item.id}>
-          <button type="button" onClick={() => onSelect(item.id)}>
+          <Button type="text" onClick={() => onSelect(item.id)}>
             <strong>{item.name || `任务 #${item.id}`}</strong>
             <span>{formatStrategy(item.strategy)} · {item.status} · {formatProgress(item.progress ?? item.progress_pct, item.status)}</span>
-          </button>
-          <button type="button" onClick={() => onCancel(item.id)} disabled={!isCancellable(item.status)}>取消</button>
-          <button type="button" className="danger subtle" onClick={() => onDelete(item.id)}>删除</button>
+          </Button>
+          <Button onClick={() => onCancel(item.id)} disabled={!isCancellable(item.status)}>取消</Button>
+          <Button danger type="text" onClick={() => onDelete(item.id)}>删除</Button>
         </div>
       ))}
       {items.length ? null : <Empty text="暂无研究任务。" />}

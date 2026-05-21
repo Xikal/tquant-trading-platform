@@ -1,4 +1,5 @@
-import type { AuthDraft } from "./workspaceTypes";
+import type { AuthDraft } from "../workspace-shared/workspaceTypes";
+import { Button, Checkbox, Input } from "antd";
 
 interface LoginPageProps {
   draft: AuthDraft;
@@ -123,7 +124,7 @@ export function LoginPage({
             <span>手机号 / 账号</span>
             <div>
               <b aria-hidden="true">⌕</b>
-              <input
+              <Input
                 value={draft.username}
                 autoComplete="username"
                 placeholder="请输入手机号或账号"
@@ -137,7 +138,7 @@ export function LoginPage({
             <span>登录密码</span>
             <div>
               <b aria-hidden="true">□</b>
-              <input
+              <Input
                 value={draft.password}
                 type="password"
                 autoComplete="current-password"
@@ -149,16 +150,14 @@ export function LoginPage({
           </label>
 
           <div className="login-options">
-            <label>
-              <input
-                type="checkbox"
-                checked={draft.remember}
-                disabled={loading}
-                onChange={(event) => setDraft({ ...draft, remember: event.target.checked })}
-              />
-              <span>记住登录</span>
-            </label>
-            <button type="button" disabled={loading} title="请联系管理员重置密码">忘记密码？联系管理员</button>
+            <Checkbox
+              checked={draft.remember}
+              disabled={loading}
+              onChange={(event) => setDraft({ ...draft, remember: event.target.checked })}
+            >
+              记住登录
+            </Checkbox>
+            <Button type="text" disabled={loading} title="请联系管理员重置密码">忘记密码？联系管理员</Button>
           </div>
 
           {error ? (
@@ -169,12 +168,12 @@ export function LoginPage({
             </div>
           ) : null}
 
-          <button type="submit" className="login-submit" disabled={loading}>
+          <Button htmlType="submit" type="primary" className="login-submit" loading={loading}>
             {loading ? "验证成功，正在加载您的数据..." : "登录进入工作台"} <span aria-hidden="true">→</span>
-          </button>
-          <button type="button" className="login-register" onClick={onRegister} disabled={loading}>
+          </Button>
+          <Button type="default" className="login-register" onClick={onRegister} disabled={loading}>
             开户注册
-          </button>
+          </Button>
 
           <div className="login-protection">
             <strong>登录保护</strong>

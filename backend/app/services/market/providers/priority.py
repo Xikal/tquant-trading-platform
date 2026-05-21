@@ -2,6 +2,9 @@ from __future__ import annotations
 
 from typing import Any, Iterable
 
+SLOW_PROVIDER_NAMES = frozenset({"akshare", "openbb"})
+FAST_PROVIDER_NAMES = frozenset({"eastmoney", "local", "tencent", "sina"})
+
 
 def order_providers_for_operation(providers: Iterable[Any], metrics_snapshot: dict, operation: str) -> list[Any]:
     """Return providers ordered by recent reliability for the requested operation.
@@ -38,3 +41,12 @@ def _provider_sort_key(item, provider_metrics: dict, operation: str) -> tuple[fl
     latency = float(metrics.get("avg_latency_ms") or 0.0) / 10000.0
     circuit_penalty = 1.0 if metrics.get("circuit_open") else 0.0
     return (failure_rate + slow_rate * 0.25 + latency + circuit_penalty, latency, index)
+
+
+def provider_execution_tier(provider: Any) -> str:
+    provider_name = str(getattr(provider, "name", provider.__class__.__name__) or "").lower()
+    if provider_name in SLOW_PROVIDER_NAMES:
+        return "slow"
+    if provider_name in FAST_PROVIDER_NAMES:
+        return "fast"
+    return str(getattr(provider, "execution_tier", "") or "fast").lower()

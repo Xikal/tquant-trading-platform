@@ -1,4 +1,5 @@
 import { useState } from "react"
+import { Button, Input } from "antd-mobile"
 
 interface MobileAuthScreenProps {
   loading: boolean
@@ -59,9 +60,9 @@ export function MobileAuthScreen({ loading, error, onSubmit }: MobileAuthScreenP
 
         <label className="mobile-auth-field">
           <span>手机号 / 账号</span>
-          <input
+          <Input
             value={username}
-            onChange={(event) => setUsername(event.target.value)}
+            onChange={setUsername}
             placeholder="请输入手机号或账号"
             autoCapitalize="none"
           />
@@ -69,9 +70,9 @@ export function MobileAuthScreen({ loading, error, onSubmit }: MobileAuthScreenP
 
         <label className="mobile-auth-field">
           <span>登录密码</span>
-          <input
+          <Input
             value={password}
-            onChange={(event) => setPassword(event.target.value)}
+            onChange={setPassword}
             placeholder="请输入登录密码"
             type="password"
           />
@@ -81,19 +82,19 @@ export function MobileAuthScreen({ loading, error, onSubmit }: MobileAuthScreenP
 
         <div className="mobile-auth-row">
           <span>☑ 记住登录</span>
-          <button type="button" onClick={() => setRegister((value) => !value)}>
+          <Button fill="none" onClick={() => setRegister((value) => !value)}>
             {register ? "返回登录" : "开户注册"}
-          </button>
+          </Button>
         </div>
 
-        <button
-          type="button"
+        <Button
+          fill="solid"
           className="mobile-app-primary mobile-auth-submit"
           onClick={() => void handleSubmit()}
-          disabled={loading}
+          loading={loading}
         >
           {loading ? "处理中" : register ? "注册并登录 →" : "登录进入工作台 →"}
-        </button>
+        </Button>
         <div className="mobile-auth-safe-note">支持系统保存登录态；后续可接入 Face ID / 指纹快速打开。</div>
       </section>
     </div>

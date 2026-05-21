@@ -1,4 +1,5 @@
 import type { ReactNode } from "react"
+import { Button, CapsuleTabs } from "antd-mobile"
 import type {
   AppWatchlistCard,
   LowBuyCandidate,
@@ -8,6 +9,20 @@ import type {
 } from "../types"
 import { PRODUCTION_STRATEGY_OPTIONS } from "../constants/strategies"
 import { getPriceToneClass } from "../utils/priceTone"
+import {
+  actionLabel,
+  formatAmountCompact,
+  formatPercent,
+  formatPrice,
+  formatRatioPercent,
+  formatSigned,
+  riskLabel,
+  signalTone,
+  signedTone,
+  splitPriorityItems
+} from "./MobileDesignFormatters"
+
+export { formatAmountCompact, formatPrice, splitPriorityItems } from "./MobileDesignFormatters"
 
 type Tone = "positive" | "negative" | "neutral" | "warning"
 export type MobileStrategyTabKey = string
@@ -95,20 +110,18 @@ export function MobileStrategyTabs({
 }) {
   const tabs = strategies?.length ? strategies : MOBILE_STRATEGY_TABS
   return (
-    <div className="mobile-design-tabs" role="tablist" aria-label="策略分类">
+    <CapsuleTabs
+      className="mobile-design-tabs mobile-design-capsule-tabs"
+      activeKey={active}
+      onChange={(key) => onChange(key)}
+    >
       {tabs.map((item) => (
-        <button
+        <CapsuleTabs.Tab
           key={item.key}
-          type="button"
-          role="tab"
-          aria-selected={active === item.key}
-          className={`mobile-design-tab ${active === item.key ? "active" : ""}`}
-          onClick={() => onChange(item.key)}
-        >
-          {item.label}
-        </button>
+          title={item.label}
+        />
       ))}
-    </div>
+    </CapsuleTabs>
   )
 }
 
@@ -149,7 +162,7 @@ export function MobilePriorityStockCard({
   const strategyTags = strategyMarkers(item)
   return (
     <article className={`mobile-design-stock-card ${highlight ? "highlight" : ""}`}>
-      <button type="button" className="mobile-design-stock-main" onClick={() => onOpen(item.symbol)}>
+      <Button fill="none" className="mobile-design-stock-main" onClick={() => onOpen(item.symbol)}>
         <StockHead
           name={item.name}
           symbol={item.symbol}
@@ -166,13 +179,13 @@ export function MobilePriorityStockCard({
           <MetricCell label="信号" value={actionLabel(item.buy_signal_state)} tone={tone} />
           <MetricCell label="仓位" value={shortPositionHint(item.suggested_position_text)} />
         </div>
-      </button>
+      </Button>
       <div className="mobile-design-card-actions">
         <small>{`${item.buy_signal_text || actionLabel(item.buy_signal_state)} · ${lowBuyActionSummary(item)}`}</small>
         {onBought ? (
-          <button type="button" className="mobile-design-action-button" onClick={() => onBought(item)}>
+          <Button fill="outline" size="mini" className="mobile-design-action-button" onClick={() => onBought(item)}>
             {inWatchlist ? "已买入" : "已买入"}
-          </button>
+          </Button>
         ) : null}
       </div>
     </article>
@@ -207,9 +220,9 @@ export function MobileMonitorStockCard({
       </div>
       <div className="mobile-design-card-actions">
         <small>{buildMonitorNote(item.headline_reason, item.headline_blocker)}</small>
-        <button type="button" className="mobile-design-action-button danger" onClick={() => void onRemove(item.symbol)}>
+        <Button fill="outline" size="mini" className="mobile-design-action-button danger" onClick={() => void onRemove(item.symbol)}>
           移除
-        </button>
+        </Button>
       </div>
     </article>
   )
@@ -251,12 +264,12 @@ export function MobileHoldingStockCard({
       <div className="mobile-design-card-actions">
         <small>{row.plainActionReason || `现价 ${formatPrice(price)}，按持仓规则处理。`}</small>
         <div className="mobile-design-action-group">
-          <button type="button" className="mobile-design-action-button" onClick={() => onEdit(row.record)}>
+          <Button fill="outline" size="mini" className="mobile-design-action-button" onClick={() => onEdit(row.record)}>
             编辑
-          </button>
-          <button type="button" className="mobile-design-action-button danger" onClick={() => void onRemove(row.record)}>
+          </Button>
+          <Button fill="outline" size="mini" className="mobile-design-action-button danger" onClick={() => void onRemove(row.record)}>
             删除
-          </button>
+          </Button>
         </div>
       </div>
     </article>
@@ -321,92 +334,6 @@ function MetricCell({
       <strong className={`tone-${tone}`}>{value}</strong>
     </div>
   )
-}
-
-export function splitPriorityItems<T extends MobileLowBuyCardItem>(items: T[]) {
-  const buyNow = items.filter((item) => item.buy_signal_state === "buy_now" || item.buy_signal_state === "soft_buy_now")
-  const nearEntry = items.filter((item) => item.buy_signal_state === "observe_confirmed" || item.buy_signal_state === "near_entry")
-  const watch = items.filter((item) => !buyNow.includes(item) && !nearEntry.includes(item))
-  return { buyNow, nearEntry, watch }
-}
-
-export function formatPrice(value: number | null | undefined) {
-  if (typeof value !== "number" || !Number.isFinite(value)) return "--"
-  return value >= 100 ? value.toFixed(2) : value.toFixed(3)
-}
-
-export function formatAmountCompact(value: number | null | undefined) {
-  if (typeof value !== "number" || !Number.isFinite(value)) return "--"
-  return value.toLocaleString("zh-CN", {
-    maximumFractionDigits: 0
-  })
-}
-
-function formatPercent(value: number | null | undefined) {
-  if (typeof value !== "number" || !Number.isFinite(value)) return "--"
-  return `${value >= 0 ? "+" : ""}${value.toFixed(2)}%`
-}
-
-function formatRatioPercent(value: number | null | undefined) {
-  if (typeof value !== "number" || !Number.isFinite(value)) return "--"
-  return `${(value * 100).toFixed(0)}%`
-}
-
-function formatSigned(value: number | null | undefined) {
-  if (typeof value !== "number" || !Number.isFinite(value)) return "--"
-  return `${value >= 0 ? "+" : ""}${value.toFixed(2)}`
-}
-
-function signedTone(value: number | null | undefined): Tone {
-  if (typeof value !== "number" || !Number.isFinite(value)) return "neutral"
-  if (value > 0) return "positive"
-  if (value < 0) return "negative"
-  return "neutral"
-}
-
-function signalTone(action: string): Tone {
-  if (action === "positive_t" || action === "buy_now" || action === "soft_buy_now") return "positive"
-  if (action === "negative_t" || action === "avoid") return "negative"
-  if (action === "observe_confirmed" || action === "near_entry") return "warning"
-  return "neutral"
-}
-
-function actionLabel(action: string) {
-  switch (action) {
-    case "positive_t":
-      return "先买后卖"
-    case "negative_t":
-      return "先卖后接回"
-    case "buy_now":
-      return "买入"
-    case "soft_buy_now":
-      return "买入"
-    case "observe_confirmed":
-      return "观察确认"
-    case "near_entry":
-      return "等待"
-    case "watch":
-      return "观察"
-    case "avoid":
-      return "放弃"
-    case "hold":
-      return "观望"
-    default:
-      return action
-  }
-}
-
-function riskLabel(level: string) {
-  switch (level) {
-    case "low":
-      return "低"
-    case "medium":
-      return "中"
-    case "high":
-      return "高"
-    default:
-      return level
-  }
 }
 
 function strategyMarkers(item: MobileLowBuyCardItem) {

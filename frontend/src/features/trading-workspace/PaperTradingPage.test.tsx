@@ -1,6 +1,6 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
-import { PaperTradingPage } from "./PaperTradingPage";
+import { PaperTradingPage } from "../paper/PaperTradingPage";
 
 describe("PaperTradingPage", () => {
   it("renders paper trading panels and mecha order cockpit", () => {

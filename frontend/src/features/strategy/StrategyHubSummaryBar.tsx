@@ -1,3 +1,4 @@
+import { Button } from "antd";
 import type { BacktestRunSummary } from "../../api/backtests";
 import type { StrategyMeta } from "../../api/strategies";
 import { formatDateTime, formatPct } from "../backtest/backtestDisplay";
@@ -44,9 +45,9 @@ export function StrategyHubSummaryBar({
         </article>
       </div>
       <div className="strategy-summary-actions">
-        <button type="button" className="primary" onClick={onStartCheck} disabled={loading}>
+        <Button type="primary" onClick={onStartCheck} disabled={loading}>
           {loading ? "提交中" : "开始策略体检"}
-        </button>
+        </Button>
       </div>
       <div className="strategy-summary-lights">
         <article className="strategy-summary-light ok">

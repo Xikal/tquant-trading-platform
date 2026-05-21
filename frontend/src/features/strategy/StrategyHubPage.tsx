@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { Button } from "antd";
 import { ErrorBanner } from "../../components/shared/Feedback";
 import { useToast } from "../../components/shared/ToastContainer";
 import type { AuthUser } from "../../types";
@@ -10,15 +11,13 @@ import {
   executionModelText,
   visibleTabsForUser,
 } from "./StrategyHubPanels";
-import { StrategyHubSimpleFlow } from "./StrategyHubSimpleFlow";
 import { StrategyHubSummaryBar } from "./StrategyHubSummaryBar";
+import { StrategyWorkflow } from "./StrategyWorkflow";
 import { useStrategyHub } from "./useStrategyHub";
 
 export function StrategyHubPage({ currentUser }: { currentUser: AuthUser }) {
   const hub = useStrategyHub();
-  const expertEnabled = visibleTabsForUser(currentUser).some((tab) =>
-    tab.key === "optimize" || tab.key === "validate" || tab.key === "compare" || tab.key === "capacity"
-  );
+  const expertEnabled = visibleTabsForUser(currentUser).some((tab) => isExpertHubTab(tab.key));
   const effectiveTab = !expertEnabled && isExpertHubTab(hub.tab) ? "quick" : hub.tab;
   const toast = useToast();
 
@@ -95,11 +94,11 @@ export function StrategyHubPage({ currentUser }: { currentUser: AuthUser }) {
           <span>{heroSummary}</span>
         </div>
         {latestRun ? <LatestRunCard run={latestRun} /> : <small>还没有最近一次回测</small>}
-        <button type="button" onClick={() => void hub.load()} disabled={hub.loading === "load"}>
+        <Button type="default" onClick={() => void hub.load()} loading={hub.loading === "load"}>
           {hub.loading === "load" ? "刷新中" : "刷新"}
-        </button>
+        </Button>
       </section>
-      <StrategyHubSimpleFlow
+      <StrategyWorkflow
         activeTab={effectiveTab}
         runs={hub.runs}
         mode={expertEnabled ? "expert" : "simple"}
@@ -156,5 +155,5 @@ function estimateSubmitTime(strategyCount: number): string {
 }
 
 function isExpertHubTab(tab: string): boolean {
-  return tab === "optimize" || tab === "validate" || tab === "compare" || tab === "capacity";
+  return tab === "optimize" || tab === "validate" || tab === "compare" || tab === "capacity" || tab === "factor";
 }

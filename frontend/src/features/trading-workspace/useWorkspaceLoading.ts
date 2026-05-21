@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { activeLoadingKey, clearLoadingKeys, setLoadingFlag, type LoadingState } from "./loadingState";
-import { errorMessage } from "./workspaceFormatters";
+import { errorMessage } from "../workspace-shared/workspaceFormatters";
 
 const PAPER_LOADING_KEYS = [
   "paper",

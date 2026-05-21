@@ -5,9 +5,9 @@ import type { AuthUser, LowBuyScreenerResult } from "../../types";
 import {
   DEFAULT_PLAYBOOK_STRATEGY,
   PLAYBOOK_QUOTE_REFRESH_LIMIT,
-} from "./workspaceConstants";
-import type { Page } from "./workspaceTypes";
-import { trackedPlaybookSymbols } from "./workspaceViewModels";
+} from "../workspace-shared/workspaceConstants";
+import type { Page } from "../workspace-shared/workspaceTypes";
+import { trackedPlaybookSymbols } from "../workspace-shared/workspaceViewModels";
 import {
   realtimePriceRefreshIntervalMs,
   refreshTradingSessionStatus,

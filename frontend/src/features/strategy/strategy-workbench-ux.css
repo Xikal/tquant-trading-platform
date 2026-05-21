@@ -19,15 +19,13 @@
   box-shadow: inset 0 0 0 1px rgba(37, 99, 235, 0.14), var(--strategy-shadow);
 }
 
-.strategy-workflow,
-.strategy-light-grid {
+.strategy-workflow {
   display: grid;
   gap: 10px;
   grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
-.strategy-workflow button,
-.strategy-light-grid article {
+.strategy-workflow button {
   background: #ffffff;
   border: 1px solid var(--strategy-border);
   border-radius: 14px;
@@ -43,9 +41,7 @@
   box-shadow: inset 0 0 0 1px rgba(37, 99, 235, 0.16);
 }
 
-.strategy-workflow span,
-.strategy-light-grid span,
-.strategy-light-grid small {
+.strategy-workflow span {
   color: var(--muted);
   font-size: 12px;
   line-height: 1.45;
@@ -60,22 +56,16 @@
   padding: 3px 8px;
 }
 
-.strategy-workflow em.done,
-.strategy-light-grid article.ok {
+.strategy-workflow em.done {
   background: rgba(28, 145, 85, 0.08);
 }
 
-.strategy-workflow em.warn,
-.strategy-light-grid article.warn {
+.strategy-workflow em.warn {
   background: rgba(210, 160, 84, 0.12);
 }
 
 .strategy-workflow em.current {
   background: rgba(37, 99, 235, 0.1);
-}
-
-.strategy-light-grid article.bad {
-  background: rgba(207, 45, 45, 0.08);
 }
 
 .strategy-picker-head div {
@@ -186,7 +176,6 @@
 
 @media (max-width: 1180px) {
   .strategy-workflow,
-  .strategy-light-grid,
   .strategy-group-grid {
     grid-template-columns: 1fr;
   }

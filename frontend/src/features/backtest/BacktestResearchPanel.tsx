@@ -1,3 +1,4 @@
+import { Button } from "antd";
 import type {
   BacktestAttributionResponse,
   BacktestCompareResponse,
@@ -112,9 +113,9 @@ export function BacktestResearchPanel({
           <h2>回测研究闭环</h2>
           <p>按“优化参数 → 样本外验证 → 多任务对比 → 归因复盘”使用。优先看收益、胜率、最大回撤和样本外通过率。</p>
         </div>
-        <button type="button" onClick={actions.onRefreshResearch} disabled={state.loading === "research"}>
+        <Button onClick={actions.onRefreshResearch} disabled={state.loading === "research"}>
           {state.loading === "research" ? "刷新中..." : "刷新研究任务"}
-        </button>
+        </Button>
       </div>
 
       {state.notice ? <div className="backtest-notice">{state.notice}</div> : null}

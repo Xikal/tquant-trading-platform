@@ -1,10 +1,10 @@
 import type { AuthUser, IntradayConfirmationItem } from "../../types";
-import type { MonitorPageProps } from "./MonitorPage";
-import type { PaperTradingPageProps } from "./PaperTradingPage";
+import type { MonitorPageProps } from "../monitor/MonitorPage";
+import type { PaperTradingPageProps } from "../paper/PaperTradingPage";
 import type { useAnalysisData } from "./useAnalysisData";
 import type { useMonitorData } from "./useMonitorData";
 import type { usePaperTrading } from "./usePaperTrading";
-import type { Page, StockCardView, WatchDraft } from "./workspaceTypes";
+import type { Page, StockCardView, WatchDraft } from "../workspace-shared/workspaceTypes";
 
 interface UseWorkspacePagePropsParams {
   analysis: ReturnType<typeof useAnalysisData>;

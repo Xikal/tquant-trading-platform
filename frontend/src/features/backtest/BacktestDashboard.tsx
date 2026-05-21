@@ -1,4 +1,5 @@
-import { lazy, Suspense, useEffect, useState, type ReactNode } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
+import { Button, Checkbox, Segmented } from "antd";
 import type {
   BacktestAttribution,
   BacktestExecutionModel,
@@ -27,6 +28,14 @@ import {
   toneFromNumber,
   BACKTEST_RESOURCE_TIER_OPTIONS,
 } from "./backtestDisplay";
+import { EmptyLine, Metric, PanelHeader, ProgressCell } from "./BacktestDashboard.components";
+import {
+  STATUS_META,
+  dateRange,
+  formatWaitSeconds,
+  isCancellableStatus,
+  statusMeta,
+} from "./BacktestDashboard.helpers";
 import { BacktestResearchPanel, type BacktestResearchActions, type BacktestResearchState } from "./BacktestResearchPanel";
 import { useBacktestStrategyOptions } from "./useBacktestStrategyOptions";
 import { DateField, NumberField, SelectField, TextField } from "../../components/shared/FormFields";
@@ -69,18 +78,6 @@ export interface BacktestDashboardProps {
   onSelectRun: (runId: number) => void;
   onCancelRun: (runId: number) => void;
 }
-
-const STATUS_META: Record<BacktestStatus, { label: string; tone: string }> = {
-  pending: { label: "待运行", tone: "pending" },
-  queued: { label: "队列中", tone: "pending" },
-  running: { label: "运行中", tone: "running" },
-  completed: { label: "已完成", tone: "completed" },
-  succeeded: { label: "已完成", tone: "completed" },
-  failed: { label: "失败", tone: "failed" },
-  cancelled: { label: "已取消", tone: "cancelled" },
-  deleted: { label: "已删除", tone: "cancelled" },
-  timeout: { label: "已超时", tone: "failed" },
-};
 
 export function BacktestDashboard({
   form,
@@ -138,13 +135,19 @@ export function BacktestDashboard({
       </div>
 
       <aside className="panel backtest-submit">
-        <PanelHeader title="提交回测任务" action={<button type="button" onClick={onRefresh} disabled={loading === "list"}>刷新</button>} />
+        <PanelHeader title="提交回测任务" action={<Button size="small" onClick={onRefresh} disabled={loading === "list"}>刷新</Button>} />
         {notice ? <div className="backtest-notice">{notice}</div> : null}
         {error ? <ErrorBanner message={error} /> : null}
-        <div className="backtest-mode-toggle" role="tablist" aria-label="回测模式">
-          <button type="button" className={mode === "quick" ? "active" : ""} onClick={() => setMode("quick")}>快速模式</button>
-          <button type="button" className={mode === "expert" ? "active" : ""} onClick={() => setMode("expert")}>专家模式</button>
-        </div>
+        <Segmented
+          className="backtest-mode-segmented"
+          block
+          value={mode}
+          onChange={(value) => setMode(value as "quick" | "expert")}
+          options={[
+            { label: "快速模式", value: "quick" },
+            { label: "专家模式", value: "expert" },
+          ]}
+        />
         <p className="backtest-helper">{mode === "quick" ? "只需要选择策略和日期，系统会用默认仓位、滑点和费用跑出结果。" : "专家模式可调整成交模型、仓位上限、现金保留和风控参数。"}</p>
         <div className="backtest-form">
           <TextField fieldClassName="wide" label="任务名称" value={form.name} onChange={(event) => onFormChange({ name: event.target.value })} />
@@ -174,8 +177,7 @@ export function BacktestDashboard({
             <span>策略多选</span>
             {strategyOptions.map(([key, label]) => (
               <label className={form.strategies.includes(key) ? "selected" : ""} key={key}>
-                <input
-                  type="checkbox"
+                <Checkbox
                   checked={form.strategies.includes(key)}
                   onChange={() => onToggleStrategy(key)}
                 />
@@ -193,9 +195,15 @@ export function BacktestDashboard({
               <NumberField fieldClassName="wide" label="最低现金保留" value={form.min_cash_reserve} onChange={(event) => onFormChange({ min_cash_reserve: event.target.value })} />
             </>
           ) : null}
-          <button type="button" className="primary backtest-submit-button wide" onClick={onSubmit} disabled={loading === "submit"}>
-            {loading === "submit" ? "提交中..." : "提交任务"}
-          </button>
+          <Button
+            className="backtest-submit-button wide"
+            type="primary"
+            onClick={onSubmit}
+            loading={loading === "submit"}
+            disabled={loading === "submit"}
+          >
+            提交任务
+          </Button>
         </div>
       </aside>
 
@@ -203,8 +211,8 @@ export function BacktestDashboard({
         <PanelHeader title="任务列表" action={<span className="backtest-muted">{runs.length} 条</span>} />
         <div className="backtest-run-list">
           {runs.length ? runs.map((run) => (
-            <button
-              type="button"
+            <Button
+              type="text"
               className={`backtest-run-row${selectedId === run.id ? " active" : ""}`}
               onClick={() => onSelectRun(run.id)}
               key={run.id}
@@ -217,7 +225,7 @@ export function BacktestDashboard({
               <ProgressCell progress={run.progress} status={run.status} waitSeconds={run.estimated_wait_seconds} />
               <span>{formatResourceTier(run.resource_tier)}</span>
               <small>{formatDateTime(run.created_at)}</small>
-            </button>
+            </Button>
           )) : <EmptyLine text="暂无回测任务，提交后会出现在这里。" />}
         </div>
       </section>
@@ -226,7 +234,7 @@ export function BacktestDashboard({
         <PanelHeader
           title={selectedRun ? `详情摘要 #${selectedRun.id}` : "详情摘要"}
           action={selectedRun && isCancellableStatus(selectedRun.status) ? (
-            <button type="button" className="danger" onClick={() => onCancelRun(selectedRun.id)} disabled={loading === "cancel"}>取消任务</button>
+            <Button size="small" danger onClick={() => onCancelRun(selectedRun.id)} disabled={loading === "cancel"} loading={loading === "cancel"}>取消任务</Button>
           ) : null}
         />
         {selectedRun ? (
@@ -299,30 +307,6 @@ export function BacktestDashboard({
   );
 }
 
-function ProgressCell({
-  progress,
-  status,
-  waitSeconds,
-}: {
-  progress: number | null | undefined;
-  status: BacktestStatus;
-  waitSeconds?: number | null;
-}) {
-  const normalized = status === "completed" || status === "succeeded"
-    ? 100
-    : typeof progress === "number" && Number.isFinite(progress)
-      ? Math.max(0, Math.min(100, progress))
-      : status === "running"
-        ? 12
-        : 0;
-  return (
-    <span className="backtest-progress-cell">
-      <i><b style={{ width: `${normalized}%` }} /></i>
-      <small>{formatProgress(progress, status)}{waitSeconds ? ` · 约${formatWaitSeconds(waitSeconds)}` : ""}</small>
-    </span>
-  );
-}
-
 function resolveMetrics(run: BacktestRunDetail) {
   return run.result?.metrics ?? run.result?.summary ?? run.summary ?? null;
 }
@@ -388,28 +372,6 @@ function isAttribution(value: unknown): value is BacktestAttribution {
   return Boolean(payload.industry?.length || payload.market_state?.length || payload.data_quality?.length);
 }
 
-function PanelHeader({ title, action }: { title: string; action?: ReactNode }) {
-  return (
-    <div className="backtest-panel-title">
-      <h2>{title}</h2>
-      {action ? <div>{action}</div> : null}
-    </div>
-  );
-}
-
-function Metric({ label, value, tone = "neutral" }: { label: string; value: string; tone?: string }) {
-  return (
-    <div className={`backtest-metric ${tone}`}>
-      <span>{label}</span>
-      <strong>{value}</strong>
-    </div>
-  );
-}
-
-function EmptyLine({ text }: { text: string }) {
-  return <div className="backtest-empty">{text}</div>;
-}
-
 function EquityChart({ points }: { points: EquityPoint[] }) {
   const finite = points.filter((point) => Number.isFinite(point.nav));
   if (finite.length < 2) {
@@ -472,35 +434,4 @@ function buildLinePath(values: Array<number | null | undefined>, min: number, ma
     const y = 188 - (((value ?? min) - min) / range) * height;
     return `${index === 0 ? "M" : "L"}${x.toFixed(2)},${y.toFixed(2)}`;
   }).join(" ");
-}
-
-function dateRange(run: BacktestRunSummary): string {
-  if (!run.start_date && !run.end_date) {
-    return "--";
-  }
-  return `${run.start_date ?? "--"} → ${run.end_date ?? "--"}`;
-}
-
-function formatProgress(progress: number | null | undefined, status: BacktestStatus): string {
-  if (status === "completed" || status === "succeeded") return "100%";
-  if (typeof progress !== "number" || !Number.isFinite(progress)) {
-    return status === "running" ? "运行中" : "--";
-  }
-  return `${Math.round(progress)}%`;
-}
-
-function statusMeta(status: BacktestStatus): { label: string; tone: string } {
-  return STATUS_META[status] ?? STATUS_META.pending;
-}
-
-function isCancellableStatus(status: BacktestStatus): boolean {
-  return status === "queued" || status === "pending" || status === "running";
-}
-
-function formatWaitSeconds(value?: number | null): string {
-  if (typeof value !== "number" || !Number.isFinite(value) || value <= 0) return "--";
-  if (value < 60) return `${Math.round(value)} 秒`;
-  const minutes = Math.floor(value / 60);
-  const seconds = Math.round(value % 60);
-  return seconds > 0 ? `${minutes} 分 ${seconds} 秒` : `${minutes} 分`;
 }

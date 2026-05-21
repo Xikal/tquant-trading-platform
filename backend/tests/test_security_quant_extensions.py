@@ -164,3 +164,28 @@ def test_provider_circuit_allows_single_half_open_probe():
     assert registry.can_call(provider, operation) is False
     registry.record(provider, operation, ok=True, latency_ms=1)
     assert registry.can_call(provider, operation) is True
+
+
+def test_provider_circuit_uses_exponential_cooldown_sequence():
+    registry = ProviderCircuitRegistry(
+        ProviderCircuitConfig(
+            failure_threshold=1,
+            cooldown_seconds=20,
+            cooldown_second_seconds=45,
+            cooldown_max_seconds=90,
+            slow_call_ms=1000,
+        )
+    )
+    provider = "unit_provider_backoff"
+    operation = "quote"
+    key = f"{provider}:{operation}"
+
+    registry.record(provider, operation, ok=False, latency_ms=1, error="first")
+    first_remaining = registry.snapshot()["providers"][key]["cooldown_remaining_seconds"]
+    registry._states[key].opened_until = 0
+    registry.can_call(provider, operation)
+    registry.record(provider, operation, ok=False, latency_ms=1, error="second")
+    second_remaining = registry.snapshot()["providers"][key]["cooldown_remaining_seconds"]
+
+    assert 15 <= first_remaining <= 20
+    assert 40 <= second_remaining <= 45

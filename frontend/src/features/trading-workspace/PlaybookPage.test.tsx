@@ -1,6 +1,6 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
-import { PlaybookPage } from "./PlaybookPage";
+import { PlaybookPage } from "../playbook/PlaybookPage";
 
 describe("PlaybookPage", () => {
   it("shows strategy switching state when selected tab differs from loaded playbook", () => {

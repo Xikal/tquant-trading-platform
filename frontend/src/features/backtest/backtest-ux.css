@@ -1,20 +1,14 @@
-.backtest-mode-toggle {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
+.backtest-mode-segmented {
   margin-bottom: 8px;
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  background: #fff;
 }
 
-.backtest-mode-toggle button {
-  border: 1px solid rgba(148, 163, 184, 0.28);
-  border-radius: 12px;
-  background: #fff;
-  color: #0f172a;
+.backtest-mode-segmented .ant-segmented-item {
   font-weight: 900;
 }
 
-.backtest-mode-toggle button.active {
-  border-color: rgba(214, 165, 92, 0.7);
+.backtest-mode-segmented .ant-segmented-item-selected {
   background: #fff8e8;
   color: #8a5a16;
 }
@@ -31,4 +25,3 @@
   font-style: normal;
   font-size: 12px;
 }
-

@@ -61,11 +61,21 @@ class AppSettings(BaseSettings):
     legacy_route_compat_enabled: bool = False
     max_request_body_bytes: int = 1_048_576
     structured_logs: bool = False
+    tquant_market_service_url: str = ""
+    tquant_strategy_service_url: str = ""
+    tquant_backtest_service_url: str = ""
+    tquant_trade_service_url: str = ""
+    tquant_factor_service_url: str = ""
+    tquant_admin_service_url: str = ""
+    tquant_internal_service_token: str = ""
+    tquant_service_call_timeout_seconds: float = 5.0
+    tquant_service_circuit_breaker_seconds: float = 30.0
     global_rate_limit_backend: str = "memory"
     global_rate_limit_max_calls: int = 30
     global_rate_limit_window_seconds: int = 1
     admin_api_token: str = ""
     auth_secret_key: str = ""
+    tquant_settings_encryption_key: str = ""
     auth_cookie_secure: bool = True
     app_environment: str = "development"
     auth_cookie_samesite: str = "strict"
@@ -115,9 +125,14 @@ class AppSettings(BaseSettings):
     market_data_provider_order: str = "tencent,eastmoney,akshare,sina"
     market_provider_router_enabled: bool = True
     market_provider_circuit_failure_threshold: int = 3
-    market_provider_circuit_cooldown_seconds: int = 60
+    # First provider circuit open cooldown. Opening auction often recovers
+    # quickly; keep this short and let repeated failures back off.
+    market_provider_circuit_cooldown_seconds: int = 20
+    market_provider_circuit_cooldown_second_seconds: int = 45
+    market_provider_circuit_cooldown_max_seconds: int = 90
     market_provider_slow_call_ms: int = 3000
     market_provider_call_timeout_seconds: float = 4.0
+    bff_workspace_timeout_seconds: float = 8.0
     market_akshare_quote_fallback_enabled: bool = False
     eastmoney_bypass_proxy: bool = False
     quant_parameter_default_version: str = "quant-params-v1"

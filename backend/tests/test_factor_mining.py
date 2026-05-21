@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import date, timedelta
 
+import pandas as pd
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
@@ -9,15 +10,19 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from app.api.routes import factor_mining
+from app.core.admin_auth import require_admin_auth
 from app.core.auth import get_current_user
 from app.core.database import get_db
 from app.models.base import Base
 from app.models.entities import DailyBarSnapshot, User
 from app.models.schema_defs.factor_mining import FactorCreateRequest, FactorEvaluationRequest
+from app.services.factor_mining.combination import ridge_regression_combination
 from app.services.factor_mining.compute_engine import FactorComputeEngine, FactorSafetyError
+from app.services.factor_mining.evaluation import _walk_forward_ic
 from app.services.factor_mining.hypothesis_agent import FactorHypothesisAgent
 from app.services.factor_mining.library import FactorLibrary
 from app.services.factor_mining.orchestrator import FactorMiningOrchestrator
+from app.services.factor_mining.scheduler import monthly_factor_mining_topic
 
 
 def _db():
@@ -71,6 +76,45 @@ def test_factor_compute_engine_blocks_loops_and_file_readers():
         raise AssertionError("unsafe factor code should be rejected")
 
 
+def test_factor_compute_engine_does_not_execute_top_level_code_in_main_process():
+    formula = (
+        "1 / 0\n"
+        "def compute_factor(bars):\n"
+        "    return bars['close_price'].astype(float)\n"
+    )
+    try:
+        FactorComputeEngine(timeout_seconds=5, parallel_workers=1).compute(
+            formula,
+            pd.DataFrame(
+                [
+                    {"symbol": "600000", "trade_date": "2026-01-01", "close_price": 10.0},
+                    {"symbol": "600000", "trade_date": "2026-01-02", "close_price": 10.2},
+                ]
+            ),
+        )
+    except ZeroDivisionError:
+        return
+    else:
+        raise AssertionError("worker should fail after main process safety validation")
+
+
+def test_walk_forward_ic_requires_stable_rolling_oos_windows():
+    dates = pd.bdate_range("2025-01-01", periods=180)
+    values = pd.Series([0.04] * 140 + [-0.02] * 40, index=[item.date().isoformat() for item in dates])
+
+    windows = _walk_forward_ic(values, train_months=3, oos_months=1, min_train_days=40, min_oos_days=5)
+
+    assert windows
+    assert any(value < 0 for value in windows)
+
+
+def test_monthly_factor_mining_topic_rotates_research_domains():
+    january = monthly_factor_mining_topic(date(2026, 1, 1))
+    february = monthly_factor_mining_topic(date(2026, 2, 1))
+
+    assert january != february
+
+
 def test_hypothesis_agent_generates_at_least_twenty_without_llm():
     db = _db()
     response = FactorHypothesisAgent(db).generate(topic="量价结构", count=20, use_llm=False)
@@ -112,11 +156,27 @@ def test_factor_mining_routes_basic_contract():
     user = User(id=1, username="tester", password_hash="x", roles="admin")
     app.dependency_overrides[get_db] = lambda: db
     app.dependency_overrides[get_current_user] = lambda: user
+    app.dependency_overrides[require_admin_auth] = lambda: None
     client = TestClient(app)
 
     response = client.post("/api/factor-mining/hypotheses", json={"topic": "缩量", "count": 20, "use_llm": False})
     assert response.status_code == 200
     assert len(response.json()["items"]) == 20
+
+    activation = client.put("/api/factor-mining/factors/demo/activation", json={"active": True})
+    assert activation.status_code == 200
+    assert activation.json() == {"factor_key": "demo", "active": True}
+
+    ridge = client.post(
+        "/api/factor-mining/combine",
+        json={
+            "method": "ridge",
+            "factor_returns": {"a": [0.01, 0.02, 0.03, 0.04, 0.05], "b": [0.05, 0.04, 0.03, 0.02, 0.01]},
+            "target_returns": [0.01, 0.02, 0.03, 0.04, 0.05],
+        },
+    )
+    assert ridge.status_code == 200
+    assert ridge.json()["method"] in {"ridge_regression", "equal_weight"}
 
 
 def test_factor_mining_routes_require_research_permission():
@@ -130,3 +190,11 @@ def test_factor_mining_routes_require_research_permission():
 
     response = client.get("/api/factor-mining/factors")
     assert response.status_code == 403
+
+
+def test_ridge_regression_combination_prefers_predictive_factor():
+    result = ridge_regression_combination(
+        {"a": [0.01, 0.02, 0.03, 0.04, 0.05, 0.06], "b": [0.06, 0.05, 0.04, 0.03, 0.02, 0.01]},
+        [0.01, 0.02, 0.03, 0.04, 0.05, 0.06],
+    )
+    assert result.weights["a"] > result.weights["b"]

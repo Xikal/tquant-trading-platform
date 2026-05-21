@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import random
 
+from app.services.finance.performance_math import annualized_sharpe_ratio
+
 
 def compute_cvar(returns: list[float], confidence: float = 0.95) -> float:
     """Return the average of the worst tail returns."""
@@ -52,14 +54,10 @@ def compute_pbo(
 
 
 def _compute_sharpe_from_returns(returns: list[float], risk_free: float = 0.02) -> float:
-    if not returns:
-        return 0.0
-    mean = sum(returns) / len(returns)
-    variance = sum((item - mean) ** 2 for item in returns) / max(len(returns) - 1, 1)
-    std = variance**0.5
-    if std <= 0:
-        return 0.0
-    return (mean - risk_free / 252) / std
+    return annualized_sharpe_ratio(
+        [float(item) / 100.0 for item in returns],
+        risk_free_rate_annual_pct=float(risk_free) * 100,
+    )
 
 
 def _empty_pbo(*, real_sharpe: float, n_permutations: int) -> dict:

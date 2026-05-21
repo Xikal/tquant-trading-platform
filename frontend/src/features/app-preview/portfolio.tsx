@@ -1,3 +1,4 @@
+import { Button } from "antd-mobile"
 import type { AppWatchlistCard, LowBuyPriorityBoardItem, WatchlistItem } from "../../types"
 import { getPriceToneClass } from "../../utils/priceTone"
 import {
@@ -50,17 +51,17 @@ export function HoldingCard({
           <small>{row.record.symbol}</small>
         </div>
         <div className="mobile-holding-card-actions">
-          <button type="button" className="mobile-inline-action" onClick={() => onEdit(row.record)}>
+          <Button fill="none" className="mobile-inline-action" onClick={() => onEdit(row.record)}>
             编辑
-          </button>
-          <button
-            type="button"
+          </Button>
+          <Button
+            fill="none"
             className="mobile-inline-action mobile-inline-danger"
             aria-label={`删除 ${row.record.name}`}
             onClick={() => void onRemove(row.record)}
           >
             删除
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -117,7 +118,7 @@ export function PriorityBoardCard({
 
   return (
     <article className="mobile-priority-card">
-      <button type="button" className="mobile-priority-main" onClick={() => onOpen(item.symbol)}>
+      <Button fill="none" className="mobile-priority-main" onClick={() => onOpen(item.symbol)}>
         <div className="mobile-priority-headline">
           <div className={`app-preview-rank-badge rank-${Math.min(rank, 3)}`}>{rank}</div>
           <div className="mobile-priority-identity">
@@ -158,7 +159,7 @@ export function PriorityBoardCard({
         {item.recommendation_duration_text ? (
           <p className="mobile-priority-note">{item.recommendation_duration_text}</p>
         ) : null}
-      </button>
+      </Button>
 
       <div className="mobile-priority-actions">
         <div className="mobile-priority-strategy-tags" aria-label="策略">
@@ -166,9 +167,9 @@ export function PriorityBoardCard({
             <span key={`${tag}-${index}`}>{tag}</span>
           ))}
         </div>
-        <button type="button" className="mobile-inline-action" onClick={() => onBought(item)}>
+        <Button fill="none" className="mobile-inline-action" onClick={() => onBought(item)}>
           {inWatchlist ? "已买入" : "模拟买入"}
-        </button>
+        </Button>
       </div>
     </article>
   )

@@ -1,4 +1,5 @@
 import { startTransition, useEffect, useState } from "react"
+import { PullToRefresh } from "antd-mobile"
 import {
   HoldingEditorSheet,
   type HoldingEditorSeed
@@ -19,6 +20,7 @@ import { useMobileAppViewModels } from "./useMobileAppViewModels"
 import { useMobileAuth } from "./useMobileAuth"
 import { useMobileHoldingSignals } from "./useMobileHoldingSignals"
 import { useMobilePlaybook } from "./useMobilePlaybook"
+import { useMobileSectorSettings } from "./useMobileSectorSettings"
 import { useNativeRuntime } from "./useNativeRuntime"
 import {
   createSeedFromDetail,
@@ -78,10 +80,6 @@ export default function MobileApp() {
   const [priorityActionItem, setPriorityActionItem] = useState<LowBuyPriorityBoardItem | null>(null)
   const [aiOpen, setAiOpen] = useState(false)
   const [accountMenuOpen, setAccountMenuOpen] = useState(false)
-  const [sectorSettingsOpen, setSectorSettingsOpen] = useState(false)
-  const [sectorSettings, setSectorSettings] = useState<string[]>([])
-  const [availableSectors, setAvailableSectors] = useState<string[]>([])
-  const [sectorSaving, setSectorSaving] = useState(false)
   const [offline, setOffline] = useState(() => {
     if (typeof navigator === "undefined") {
       return false
@@ -136,6 +134,12 @@ export default function MobileApp() {
     signalToastVisible,
     hideSignalToast
   } = useMobileHoldingSignals(activeTab, holdingRows)
+  const sectorSettings = useMobileSectorSettings({
+    activeTab,
+    refreshActiveTab,
+    loadMobilePlaybook,
+    strategyFilter
+  })
 
   function openCreateHolding() {
     setHoldingEditor({
@@ -270,7 +274,7 @@ export default function MobileApp() {
     setDetail(null)
     setPriorityActionItem(null)
     setAccountMenuOpen(false)
-    setSectorSettingsOpen(false)
+    sectorSettings.closeSectorSettings()
     hideSignalToast()
     setActiveTab(nextTab)
     setPreviewTab("home")
@@ -278,32 +282,12 @@ export default function MobileApp() {
 
   const isDetailInWatchlist = detail ? watchlistMap.has(detail.candidate.symbol) : false
 
-  async function openSectorSettings() {
-    setAccountMenuOpen(false)
-    setSectorSettingsOpen(true)
-    try {
-      const payload = await appApi.getSectorExclusions()
-      setSectorSettings(payload.excluded_sectors)
-      setAvailableSectors(payload.available_sectors)
-    } catch {
-      setAvailableSectors([])
+  async function handlePullRefresh() {
+    if (activeTab === "low_buy") {
+      await loadMobilePlaybook(strategyFilter, true)
+      return
     }
-  }
-
-  async function saveSectorSettings(nextExcluded: string[]) {
-    try {
-      setSectorSaving(true)
-      const payload = await appApi.updateSectorExclusions(nextExcluded)
-      setSectorSettings(payload.excluded_sectors)
-      setAvailableSectors(payload.available_sectors)
-      await refreshActiveTab()
-      if (activeTab === "low_buy") {
-        await loadMobilePlaybook(strategyFilter, true)
-      }
-      return true
-    } finally {
-      setSectorSaving(false)
-    }
+    await refreshActiveTab()
   }
 
   if (!authUser) {
@@ -327,7 +311,10 @@ export default function MobileApp() {
         onRefreshHoldings={() => void refreshActiveTab()}
         onRefreshLowBuy={() => void loadMobilePlaybook(strategyFilter, true)}
         onToggleAccountMenu={() => setAccountMenuOpen((value) => !value)}
-        onOpenPreferences={() => void openSectorSettings()}
+        onOpenPreferences={() => {
+          setAccountMenuOpen(false)
+          void sectorSettings.openSectorSettings()
+        }}
         onLogout={() => void handleLogout()}
       />
 
@@ -341,45 +328,47 @@ export default function MobileApp() {
       />
 
       <main className="mobile-app-body">
-        <MobileTabContent
-          activeTab={activeTab}
-          home={{
-            metrics: monitorMetrics,
-            priorityBoard,
-            priorityBoardItems,
-            priorityPulseTime,
-            todayActionTitle: home?.today_action_title ?? "",
-            todayActionNote: home?.today_action_note ?? "",
-            watchlistMap,
-            loading,
-            onOpenCandidate: openPriorityAction,
-            onSwitchToLowBuy: () => handleSwitchTab("low_buy"),
-          }}
-          holdings={{
-            metrics: holdingsMetrics,
-            holdingRows,
-            activeHoldingSignalSymbols,
-            loading,
-            onCreateHolding: openCreateHolding,
-            onSearchHolding: openSearchHolding,
-            onEditHolding: openEditHolding,
-            onRemoveHolding: handleRemoveHolding,
-          }}
-          lowBuy={{
-            strategyFilter,
-            strategyTabs,
-            metrics: lowBuyMetrics,
-            playbookItems,
-            playbookGroups,
-            watchlistMap,
-            loading,
-            playbookLoading,
-            onStrategyChange: setStrategyFilter,
-            onOpenAi: () => setAiOpen(true),
-            onOpenCandidate: openCandidate,
-            onBought: openBoughtEditor,
-          }}
-        />
+        <PullToRefresh onRefresh={handlePullRefresh}>
+          <MobileTabContent
+            activeTab={activeTab}
+            home={{
+              metrics: monitorMetrics,
+              priorityBoard,
+              priorityBoardItems,
+              priorityPulseTime,
+              todayActionTitle: home?.today_action_title ?? "",
+              todayActionNote: home?.today_action_note ?? "",
+              watchlistMap,
+              loading,
+              onOpenCandidate: openPriorityAction,
+              onSwitchToLowBuy: () => handleSwitchTab("low_buy"),
+            }}
+            holdings={{
+              metrics: holdingsMetrics,
+              holdingRows,
+              activeHoldingSignalSymbols,
+              loading,
+              onCreateHolding: openCreateHolding,
+              onSearchHolding: openSearchHolding,
+              onEditHolding: openEditHolding,
+              onRemoveHolding: handleRemoveHolding,
+            }}
+            lowBuy={{
+              strategyFilter,
+              strategyTabs,
+              metrics: lowBuyMetrics,
+              playbookItems,
+              playbookGroups,
+              watchlistMap,
+              loading,
+              playbookLoading,
+              onStrategyChange: setStrategyFilter,
+              onOpenAi: () => setAiOpen(true),
+              onOpenCandidate: openCandidate,
+              onBought: openBoughtEditor,
+            }}
+          />
+        </PullToRefresh>
       </main>
 
       <MobileTabBar activeTab={activeTab} onSwitchTab={handleSwitchTab} />
@@ -422,12 +411,12 @@ export default function MobileApp() {
       />
 
       <MobileSectorSettingsSheet
-        open={sectorSettingsOpen}
-        availableSectors={availableSectors}
-        excludedSectors={sectorSettings}
-        saving={sectorSaving}
-        onClose={() => setSectorSettingsOpen(false)}
-        onSave={saveSectorSettings}
+        open={sectorSettings.open}
+        availableSectors={sectorSettings.availableSectors}
+        excludedSectors={sectorSettings.excludedSectors}
+        saving={sectorSettings.saving}
+        onClose={sectorSettings.closeSectorSettings}
+        onSave={sectorSettings.saveSectorSettings}
       />
     </div>
   )

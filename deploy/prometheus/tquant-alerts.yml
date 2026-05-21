@@ -10,6 +10,24 @@ groups:
           summary: "TQuant API p95 latency is high"
           description: "HTTP p95 latency has been above 3000ms for 5 minutes."
 
+      - alert: TQuantBffLatencyDegraded
+        expr: tquant_http_p95_ms > 2000
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "TQuant BFF/API latency is degraded"
+          description: "HTTP p95 latency has been above 2000ms for 5 minutes. Check BFF workspace aggregation and database latency."
+
+      - alert: TQuantProviderFailuresIncreased
+        expr: increase(tquant_provider_failures_total[5m]) > 20
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "TQuant market provider failures increased"
+          description: "Market provider failures increased by more than 20 in 5 minutes. Check AkShare/EastMoney/OpenBB status and circuit breaker metrics."
+
       - alert: TQuantRuntimeTaskFailures
         expr: tquant_runtime_tasks_failed > 0
         for: 2m

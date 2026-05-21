@@ -185,3 +185,18 @@ export interface UserSectorExclusionsResponse {
   excluded_count: number;
   updated_at: string;
 }
+
+export interface SettingsWorkspaceBffResponse {
+  api_version: string;
+  schema_version?: string;
+  generated_at: string;
+  settings: SettingsPayload | null;
+  sector_exclusions: UserSectorExclusionsResponse | null;
+  strategy_governance: LowBuyStrategyGovernanceResponse | null;
+  runtime: RuntimeStatus | null;
+  factor_weights: FactorWeightsResponse | null;
+  admin_tasks: AdminTasksResponse | null;
+  admin_metrics: AdminMetricsResponse | null;
+  admin_enabled: boolean;
+  partial_errors: Array<{ source: string; detail: string }>;
+}

@@ -1,8 +1,8 @@
 import { useCallback, useState } from "react";
 import { api } from "../../api/client";
 import type { AnalysisResponse, IntradayAnomalyResponse } from "../../types";
-import { nullableNumber, parseNumber } from "./workspaceFormatters";
-import type { AnalysisDraft, Page, StockCardView } from "./workspaceTypes";
+import { nullableNumber, parseNumber } from "../workspace-shared/workspaceFormatters";
+import type { AnalysisDraft, Page, StockCardView } from "../workspace-shared/workspaceTypes";
 
 type WorkspaceLoader = <T>(key: string, action: () => Promise<T>) => Promise<T | undefined>;
 

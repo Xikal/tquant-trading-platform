@@ -7,7 +7,7 @@ from unittest.mock import patch
 from app.models.schema_defs.backtest import default_walk_forward_param_grid
 from app.services.backtest.validator import BacktestValidator, ValidationWindow
 from app.services.market.providers.quality import MarketDataQuality, ProviderResult
-from app.services.market.providers.priority import order_providers_for_operation
+from app.services.market.providers.priority import order_providers_for_operation, provider_execution_tier
 from app.services.market.providers.router import MarketProviderRouter
 from app.services.paper.quote_quality import PaperQuotePrice
 
@@ -30,6 +30,13 @@ def test_provider_priority_prefers_healthier_provider() -> None:
     ordered = order_providers_for_operation([slow, fast], snapshot, "fetch_quote")
 
     assert [item.name for item in ordered] == ["fast", "slow"]
+
+
+def test_provider_execution_tier_separates_fast_and_slow_sources() -> None:
+    assert provider_execution_tier(_Provider("eastmoney")) == "fast"
+    assert provider_execution_tier(_Provider("local")) == "fast"
+    assert provider_execution_tier(_Provider("akshare")) == "slow"
+    assert provider_execution_tier(_Provider("openbb")) == "slow"
 
 
 def test_provider_router_marks_timed_out_provider_unavailable() -> None:

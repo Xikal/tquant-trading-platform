@@ -1,4 +1,5 @@
 import { lazy, Suspense } from "react";
+import { Button } from "antd";
 import type {
   BacktestAttributionResponse,
   BacktestStrategyCorrelationResponse,
@@ -32,7 +33,7 @@ export function AttributionPanel({ state, equity }: { state: BacktestResearchSta
       <PanelTitle
         title="归因面板"
         meta="策略 / 行业 / 市场 / 质量"
-        action={canExport ? <button type="button" onClick={() => exportAttributionCsv(attribution)}>导出 CSV</button> : null}
+        action={canExport ? <Button onClick={() => exportAttributionCsv(attribution)}>导出 CSV</Button> : null}
       />
       <AttributionTable title="策略归因" items={strategy} />
       <AttributionTable title="行业归因" items={attribution?.industry ?? []} />

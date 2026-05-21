@@ -1,10 +1,11 @@
+import { Button } from "antd-mobile"
 import type {
   AppAndroidUpdateResponse,
   AuthUser,
   LowBuyPriorityBoardItem,
   LowBuyPriorityBoardResult
 } from "../types"
-import { formatPct, formatPrice } from "../features/trading-workspace/workspaceFormatters"
+import { formatPct, formatPrice } from "../features/workspace-shared/workspaceFormatters"
 import { Icon } from "./mobileSections"
 
 export function AccountMenu({
@@ -23,24 +24,24 @@ export function AccountMenu({
   const displayName = user.display_name || user.username
   return (
     <div className="mobile-account-menu-wrap">
-      <button
-        type="button"
+      <Button
+        fill="none"
         className="mobile-app-icon-button mobile-account-button"
         onClick={onToggle}
         aria-expanded={open}
       >
         <span>{displayName}</span>
-      </button>
+      </Button>
       {open ? (
         <div className="mobile-account-menu">
           <strong>{displayName}</strong>
           <small>{user.username}</small>
-          <button type="button" onClick={onOpenPreferences}>
+          <Button fill="none" onClick={onOpenPreferences}>
             交易偏好
-          </button>
-          <button type="button" onClick={onLogout}>
+          </Button>
+          <Button fill="none" onClick={onLogout}>
             退出登录
-          </button>
+          </Button>
         </div>
       ) : null}
     </div>
@@ -72,9 +73,9 @@ export function PriorityActionSheet({
             <h2>{item.name} {item.symbol}</h2>
             <small>{item.buy_signal_text || "等待确认"}</small>
           </div>
-          <button type="button" className="mobile-app-icon-button" onClick={onClose} aria-label="关闭">
+          <Button fill="none" className="mobile-app-icon-button" onClick={onClose} aria-label="关闭">
             <Icon name="close" />
-          </button>
+          </Button>
         </div>
 
         <div className="mobile-priority-summary">
@@ -101,8 +102,8 @@ export function PriorityActionSheet({
         </div>
 
         <div className="mobile-app-sheet-actions">
-          <button
-            type="button"
+          <Button
+            fill="outline"
             className="mobile-app-secondary"
             onClick={() => {
               onMarkBought(item)
@@ -110,9 +111,9 @@ export function PriorityActionSheet({
             }}
           >
             记为持仓
-          </button>
-          <button
-            type="button"
+          </Button>
+          <Button
+            color="primary"
             className="mobile-app-primary"
             onClick={() => {
               void onOpenDetail(item.symbol)
@@ -120,7 +121,7 @@ export function PriorityActionSheet({
             }}
           >
             查看详情
-          </button>
+          </Button>
         </div>
       </section>
     </div>
@@ -159,9 +160,9 @@ export function AiDecisionSheet({
               <small>只解释硬规则，不放宽买点</small>
             </div>
           </div>
-          <button type="button" className="mobile-app-icon-button" onClick={onClose}>
+          <Button fill="none" className="mobile-app-icon-button" onClick={onClose}>
             <Icon name="close" />
-          </button>
+          </Button>
         </div>
         <div className="mobile-ai-grid">
           <AiDecisionBlock title="能不能买" content={canBuy} />
@@ -209,9 +210,9 @@ export function AppUpdateSheet({
             <small>最新版 {updateInfo.latest_version_name}</small>
           </div>
           {!updateInfo.mandatory ? (
-            <button type="button" className="mobile-app-icon-button" onClick={onClose} aria-label="关闭">
+            <Button fill="none" className="mobile-app-icon-button" onClick={onClose} aria-label="关闭">
               关闭
-            </button>
+            </Button>
           ) : null}
         </div>
 
@@ -234,13 +235,13 @@ export function AppUpdateSheet({
 
         <div className="mobile-update-actions">
           {!updateInfo.mandatory ? (
-            <button type="button" className="mobile-app-secondary" onClick={onClose} disabled={verifying}>
+            <Button fill="outline" className="mobile-app-secondary" onClick={onClose} disabled={verifying}>
               稍后再说
-            </button>
+            </Button>
           ) : null}
-          <button type="button" className="mobile-app-primary" onClick={() => void onUpdate()} disabled={verifying}>
+          <Button color="primary" className="mobile-app-primary" onClick={() => void onUpdate()} disabled={verifying}>
             {verifying ? "校验中..." : "立即更新"}
-          </button>
+          </Button>
         </div>
       </section>
     </div>

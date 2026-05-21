@@ -1,4 +1,5 @@
 import { lazy, Suspense } from "react";
+import { Button, Tabs } from "antd";
 import type { BacktestRunSummary } from "../../api/backtests";
 import type { AuthUser } from "../../types";
 import { SkeletonBlock } from "../../components/shared/Feedback";
@@ -9,10 +10,14 @@ import type { useStrategyHub } from "./useStrategyHub";
 
 type HubState = ReturnType<typeof useStrategyHub>;
 type DetailTabKey = "quick" | "history" | "signals" | "expert";
-type ExpertTabKey = Extract<StrategyHubTab, "optimize" | "validate" | "compare" | "capacity">;
+type ExpertTabKey = Extract<StrategyHubTab, "optimize" | "validate" | "compare" | "capacity" | "factor">;
+type ResearchExpertTabKey = Exclude<ExpertTabKey, "factor">;
 
 const StrategyHubExpertPanel = lazy(async () => ({
   default: (await import("./StrategyHubExpertPanel")).StrategyHubExpertPanel,
+}));
+const FactorMiningTab = lazy(async () => ({
+  default: (await import("../factor-mining/FactorMiningTab")).FactorMiningTab,
 }));
 
 export function StrategyHubDetailTabs({
@@ -28,7 +33,7 @@ export function StrategyHubDetailTabs({
 }) {
   const visibleTabs = visibleTabsForUser(currentUser);
   const expertTabs = visibleTabs.filter((tab): tab is typeof tab & { key: ExpertTabKey } =>
-    ["optimize", "validate", "compare", "capacity"].includes(tab.key)
+    ["optimize", "validate", "compare", "capacity", "factor"].includes(tab.key)
   );
   const detailTab = currentDetailTab(hub.tab, expertTabs.length > 0);
   const detailTabs: Array<{ key: DetailTabKey; label: string; hint: string }> = [
@@ -37,7 +42,7 @@ export function StrategyHubDetailTabs({
     { key: "signals", label: "信号复盘", hint: "看有效和失效案例" },
   ];
   if (expertTabs.length) {
-    detailTabs.push({ key: "expert", label: "专家工具", hint: "调参、验证、对比、容量" });
+    detailTabs.push({ key: "expert", label: "专家工具", hint: "调参、验证、对比、因子" });
   }
 
   return (
@@ -46,21 +51,20 @@ export function StrategyHubDetailTabs({
         <h2>详细信息</h2>
         <span className="hint">复杂信息统一收纳，首屏只保留结论和下一步。</span>
       </div>
-      <div className="strategy-detail-strip" role="tablist" aria-label="策略工作台详情">
-        {detailTabs.map((item) => (
-          <button
-            key={item.key}
-            type="button"
-            className={detailTab === item.key ? "active" : ""}
-            onClick={() => switchDetailTab(item.key, hub)}
-            role="tab"
-            aria-selected={detailTab === item.key}
-          >
-            <strong>{item.label}</strong>
-            <span>{item.hint}</span>
-          </button>
-        ))}
-      </div>
+      <Tabs
+        className="strategy-detail-tabs-antd"
+        activeKey={detailTab}
+        onChange={(key) => switchDetailTab(key as DetailTabKey, hub)}
+        items={detailTabs.map((item) => ({
+          key: item.key,
+          label: (
+            <span className="strategy-tab-label">
+              <strong>{item.label}</strong>
+              <small>{item.hint}</small>
+            </span>
+          ),
+        }))}
+      />
       {hub.loading === "tab-switch" ? (
         <div className="strategy-detail-panel">
           <SkeletonBlock rows={5} title />
@@ -77,10 +81,10 @@ export function StrategyHubDetailTabs({
               <PanelTitle title="预设方案" />
               <div className="strategy-preset-list compact">
                 {hub.presets.map((preset) => (
-                  <button type="button" key={preset.key ?? preset.id ?? preset.name} onClick={() => hub.applyPreset(preset)}>
+                  <Button type="text" key={preset.key ?? preset.id ?? preset.name} onClick={() => hub.applyPreset(preset)}>
                     <strong>{preset.name}</strong>
                     <span>{preset.description}</span>
-                  </button>
+                  </Button>
                 ))}
               </div>
             </section>
@@ -103,21 +107,26 @@ export function StrategyHubDetailTabs({
       ) : null}
       {hub.loading !== "tab-switch" && detailTab === "expert" ? (
         <div className="strategy-detail-panel strategy-expert-panel">
-          <div className="strategy-expert-strip" role="tablist" aria-label="专家工具">
-            {expertTabs.map((tab) => (
-              <button
-                key={tab.key}
-                type="button"
-                className={hub.tab === tab.key ? "active" : ""}
-                onClick={() => hub.setTab(tab.key as StrategyHubTab)}
-              >
-                <strong>{tab.label}</strong>
-                <span>{tab.hint}</span>
-              </button>
-            ))}
-          </div>
+          <Tabs
+            className="strategy-expert-tabs-antd"
+            activeKey={hub.tab}
+            onChange={(key) => hub.setTab(key as StrategyHubTab)}
+            items={expertTabs.map((tab) => ({
+              key: tab.key,
+              label: (
+                <span className="strategy-tab-label">
+                  <strong>{tab.label}</strong>
+                  <small>{tab.hint}</small>
+                </span>
+              ),
+            }))}
+          />
           <Suspense fallback={<SkeletonBlock rows={5} title />}>
-            <StrategyHubExpertPanel tab={expertTab(hub.tab, hub)} currentUser={currentUser} />
+            {hub.tab === "factor" ? (
+              <FactorMiningTab currentUser={currentUser} />
+            ) : (
+              <StrategyHubExpertPanel tab={researchExpertTab(hub.tab, hub)} currentUser={currentUser} />
+            )}
           </Suspense>
         </div>
       ) : null}
@@ -148,5 +157,10 @@ function expertTab(tab: StrategyHubTab, hub: HubState, fallbackToCurrent = true)
 }
 
 function isExpertTab(tab: StrategyHubTab): tab is ExpertTabKey {
-  return tab === "optimize" || tab === "validate" || tab === "compare" || tab === "capacity";
+  return tab === "optimize" || tab === "validate" || tab === "compare" || tab === "capacity" || tab === "factor";
+}
+
+function researchExpertTab(tab: StrategyHubTab, hub: HubState): ResearchExpertTabKey {
+  const current = expertTab(tab, hub);
+  return current === "factor" ? "optimize" : current;
 }

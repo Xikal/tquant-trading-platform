@@ -2,14 +2,13 @@ import { isNativeHttpRuntime, nativeRequest } from "./nativeHttp"
 import { clearOfflineCache, readOfflineCache, writeOfflineCache } from "./offlineCache"
 import { fetchWithTimeout } from "./fetchWithTimeout"
 import type { ApiRequestInit } from "./requestTypes"
+import { queryClient } from "../app/query/queryClient"
 
 const isNativeTarget = import.meta.env.VITE_APP_TARGET === "native"
 const configuredApiBase = import.meta.env.VITE_API_BASE_URL
 
 export const API_BASE = configuredApiBase ?? (isNativeTarget ? "__NATIVE_API_BASE_REQUIRED__" : "/api")
 
-const responseCache = new Map<string, { expiresAt: number; payload: unknown }>()
-const inFlightRequests = new Map<string, Promise<unknown>>()
 let adminApiToken = ""
 type AuthPersistenceMode = "local" | "session" | "memory"
 
@@ -227,6 +226,7 @@ export function setAdminApiToken(token: string) {
   const nextToken = normalizeAdminApiToken(token)
   if (nextToken !== adminApiToken) {
     void clearOfflineCache()
+    clearQueryApiCache()
   }
   adminApiToken = nextToken
 }
@@ -242,6 +242,7 @@ export function shouldAttemptAuthRefresh(): boolean {
 export function setAuthTokens(accessToken: string, mode: AuthPersistenceMode = authPersistenceMode) {
   if (accessToken !== authAccessToken || mode !== authPersistenceMode) {
     void clearOfflineCache()
+    clearQueryApiCache()
   }
   authAccessToken = accessToken
   authPersistenceMode = mode
@@ -253,6 +254,7 @@ export function clearAuthTokens() {
   authPersistenceMode = "memory"
   clearPersistedAuthAccessToken()
   void clearOfflineCache()
+  clearQueryApiCache()
 }
 
 export function normalizeAdminApiToken(token: string): string {
@@ -266,36 +268,34 @@ export function normalizeAdminApiToken(token: string): string {
 }
 
 export async function requestCached<T>(path: string, ttlMs: number, init?: ApiRequestInit): Promise<T> {
-  const cacheKey = `${init?.method ?? "GET"}:${path}`
-  const now = Date.now()
-  const cached = responseCache.get(cacheKey)
-  if (cached && cached.expiresAt > now) {
-    return cached.payload as T
-  }
-
-  const pending = inFlightRequests.get(cacheKey)
-  if (pending) {
-    return pending as Promise<T>
-  }
-
-  const promise = request<T>(path, init)
-    .then((payload) => {
-      responseCache.set(cacheKey, { expiresAt: Date.now() + ttlMs, payload })
-      return payload
-    })
-    .finally(() => {
-      inFlightRequests.delete(cacheKey)
-    })
-  inFlightRequests.set(cacheKey, promise as Promise<unknown>)
-  return promise
+  return queryClient.fetchQuery({
+    queryKey: apiCacheKey(path, init),
+    queryFn: () => request<T>(path, init),
+    staleTime: ttlMs,
+    gcTime: Math.max(ttlMs * 2, 5 * 60_000),
+  })
 }
 
 export function invalidateCache(prefixes: string[]) {
-  for (const key of [...responseCache.keys()]) {
-    if (prefixes.some((prefix) => key.includes(prefix))) {
-      responseCache.delete(key)
+  queryClient.removeQueries({
+    predicate: (query) => {
+      const key = query.queryKey
+      return Array.isArray(key)
+        && key[0] === "api-cache"
+        && typeof key[2] === "string"
+        && prefixes.some((prefix) => key[2].includes(prefix))
     }
-  }
+  })
+}
+
+function apiCacheKey(path: string, init?: ApiRequestInit) {
+  return ["api-cache", (init?.method ?? "GET").toUpperCase(), path] as const
+}
+
+function clearQueryApiCache() {
+  queryClient.removeQueries({
+    predicate: (query) => Array.isArray(query.queryKey) && query.queryKey[0] === "api-cache"
+  })
 }
 
 function hydrateAuthAccessToken(): { accessToken: string; mode: AuthPersistenceMode } {
@@ -370,15 +370,4 @@ function readSessionAuthAccessToken(): string {
   } catch {
     return ""
   }
-}
-
-if (typeof window !== "undefined") {
-  window.setInterval(() => {
-    const now = Date.now()
-    for (const [key, item] of responseCache.entries()) {
-      if (item.expiresAt <= now) {
-        responseCache.delete(key)
-      }
-    }
-  }, 60_000)
 }

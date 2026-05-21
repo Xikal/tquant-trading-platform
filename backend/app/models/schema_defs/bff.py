@@ -4,6 +4,12 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
+from app.models.schema_defs.market import (
+    MarketBreadthResponse,
+    PairedHedgeResearchResponse,
+    SectorRelativeStrengthResponse,
+)
+from app.models.schema_defs.monitor import MonitorSnapshotResponse
 from app.models.schema_defs.paper import (
     PaperAccountOut,
     PaperAgentRunOut,
@@ -18,7 +24,16 @@ from app.models.schema_defs.paper import (
 )
 from app.models.schema_defs.research import RiskEventOut
 from app.models.schema_defs.backtest import BacktestRunListResponse, BacktestVerdictThresholdsResponse
+from app.models.schema_defs.screener import LowBuyStrategyGovernanceResponse
+from app.models.schema_defs.settings import (
+    FactorWeightsResponse,
+    RuntimeStatusResponse,
+    SettingsPayload,
+    UserSectorExclusionsResponse,
+)
 from app.models.schema_defs.strategy_meta import StrategyMetaResponse, StrategyPresetResponse
+
+BFF_SCHEMA_VERSION = "v13"
 
 
 class BffPartialError(BaseModel):
@@ -26,15 +41,35 @@ class BffPartialError(BaseModel):
     detail: str
 
 
+class BffWorkspaceManifest(BaseModel):
+    path: str
+    schema_version: str = BFF_SCHEMA_VERSION
+    model: str
+
+
 class BffManifestResponse(BaseModel):
     api_version: str = "v1"
     bff_version: str = "v1"
+    schema_version: str = BFF_SCHEMA_VERSION
     gateway_prefix: str = "/api"
     modules: list[str] = Field(default_factory=list)
+    workspaces: dict[str, BffWorkspaceManifest] = Field(default_factory=dict)
+
+
+class MonitorWorkspaceBffResponse(BaseModel):
+    api_version: str = "v1"
+    schema_version: str = BFF_SCHEMA_VERSION
+    generated_at: str
+    monitor_snapshot: MonitorSnapshotResponse | None = None
+    market_breadth: MarketBreadthResponse | None = None
+    sector_relative_strength: SectorRelativeStrengthResponse | None = None
+    paired_hedge: PairedHedgeResearchResponse | None = None
+    partial_errors: list[BffPartialError] = Field(default_factory=list)
 
 
 class PaperWorkspaceBffResponse(BaseModel):
     api_version: str = "v1"
+    schema_version: str = BFF_SCHEMA_VERSION
     generated_at: str
     account: PaperAccountOut | None = None
     positions: list[PaperPositionOut] = Field(default_factory=list)
@@ -54,9 +89,25 @@ class PaperWorkspaceBffResponse(BaseModel):
 
 class StrategyWorkspaceBffResponse(BaseModel):
     api_version: str = "v1"
+    schema_version: str = BFF_SCHEMA_VERSION
     generated_at: str
     strategy_meta: StrategyMetaResponse | None = None
     presets: StrategyPresetResponse | None = None
     recent_runs: BacktestRunListResponse | None = None
     verdict_thresholds: BacktestVerdictThresholdsResponse | None = None
+    partial_errors: list[BffPartialError] = Field(default_factory=list)
+
+
+class SettingsWorkspaceBffResponse(BaseModel):
+    api_version: str = "v1"
+    schema_version: str = BFF_SCHEMA_VERSION
+    generated_at: str
+    settings: SettingsPayload | None = None
+    sector_exclusions: UserSectorExclusionsResponse | None = None
+    strategy_governance: LowBuyStrategyGovernanceResponse | None = None
+    runtime: RuntimeStatusResponse | None = None
+    factor_weights: FactorWeightsResponse | None = None
+    admin_tasks: dict[str, Any] | None = None
+    admin_metrics: dict[str, Any] | None = None
+    admin_enabled: bool = False
     partial_errors: list[BffPartialError] = Field(default_factory=list)

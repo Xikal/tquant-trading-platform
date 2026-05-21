@@ -355,6 +355,7 @@ export interface PaperStrategyCorrelation {
 
 export interface PaperWorkspaceBffResponse {
   api_version: string
+  schema_version?: string
   generated_at: string
   account: PaperAccount | null
   positions: PaperPosition[]

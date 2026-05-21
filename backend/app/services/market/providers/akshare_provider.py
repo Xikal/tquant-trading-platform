@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import time
+
 from app.models.schemas import KlineBar, MarketEventOut, QuoteSnapshot, SectorSnapshot
 from app.services.market.providers.akshare_events import (
     fetch_news_events,
@@ -27,8 +29,10 @@ class AkshareMarketProvider:
 
     def __init__(self, service) -> None:
         self.service = service
-        self._industry_board_frame_cache = None
-        self._spot_snapshot_cache: dict[str, dict[str, QuoteSnapshot]] = {}
+        self._industry_board_frame_cache: tuple[float, object] | None = None
+        self._spot_snapshot_cache: dict[str, tuple[float, dict[str, QuoteSnapshot]]] = {}
+        self._industry_board_frame_cache_ttl = 30.0
+        self._spot_snapshot_cache_ttl = 12.0
 
     def _raw_call(self, func, *args, purpose: str = "default", **kwargs):  # noqa: ANN001
         raw_client = getattr(self.service, "akshare_raw", None)
@@ -74,8 +78,8 @@ class AkshareMarketProvider:
         if ak is None:
             raise RuntimeError("akshare unavailable")
         cached = self._spot_snapshot_cache.get(instrument_type)
-        if cached is not None:
-            return cached
+        if cached is not None and cached[0] > time.monotonic():
+            return cached[1]
         frame = self._raw_call(
             ak.fund_etf_spot_em if instrument_type == "etf" else ak.stock_zh_a_spot,
             purpose="spot_snapshot",
@@ -88,7 +92,7 @@ class AkshareMarketProvider:
             source=self.name,
             normalize_timestamp=self.service._normalize_quote_timestamp,
         )
-        self._spot_snapshot_cache[instrument_type] = result
+        self._spot_snapshot_cache[instrument_type] = (time.monotonic() + self._spot_snapshot_cache_ttl, result)
         return result
 
     def _fetch_sina_minute_bars(self, symbol: str, period: str) -> list[KlineBar]:
@@ -159,12 +163,15 @@ class AkshareMarketProvider:
     def _industry_board_frame(self):
         if ak is None:
             raise RuntimeError("akshare unavailable")
-        if self._industry_board_frame_cache is None:
-            self._industry_board_frame_cache = self._raw_call(
-                ak.stock_board_industry_name_em,
-                purpose="industry",
-            )
-        return self._industry_board_frame_cache
+        cached = self._industry_board_frame_cache
+        if cached is not None and cached[0] > time.monotonic():
+            return cached[1]
+        frame = self._raw_call(
+            ak.stock_board_industry_name_em,
+            purpose="industry",
+        )
+        self._industry_board_frame_cache = (time.monotonic() + self._industry_board_frame_cache_ttl, frame)
+        return frame
 
     def fetch_trade_dates(self) -> ProviderResult[list[str]]:
         if ak is None:

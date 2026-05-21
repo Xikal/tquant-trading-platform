@@ -1,6 +1,8 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends
+from typing import Annotated
+
+from fastapi import APIRouter, Depends, Query
 
 from app.core.auth import get_current_user
 from app.core.timezone import beijing_now_string
@@ -38,10 +40,15 @@ paired_hedge_research_service = PairedHedgeResearchService(market_data=market_da
 
 
 @router.get("/breadth", response_model=MarketBreadthResponse)
-def market_breadth() -> MarketBreadthResponse:
+def market_breadth(
+    realtime: Annotated[bool, Query(description="是否同步刷新实时市场广度/情绪快照")] = True,
+) -> MarketBreadthResponse:
     """Return compact market breadth and sentiment data for the monitor page."""
 
-    regime = market_data.get_market_regime_fast()
+    if realtime and hasattr(market_data, "get_market_regime"):
+        regime = market_data.get_market_regime()
+    else:
+        regime = market_data.get_market_regime_fast()
     return MarketBreadthResponse(
         updated_at=beijing_now_string(),
         state=regime.state,

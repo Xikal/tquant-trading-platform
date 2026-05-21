@@ -344,7 +344,11 @@ cp .env.docker.example .env
 - `SCHEMA_COMPAT_VERIFY_ON_STARTUP`
   默认 `false`。如需要启动期只读漂移检查才临时设为 `true`，避免常规启动扫描全表结构。
 - `GLOBAL_RATE_LIMIT_BACKEND`
-  应用层只保留兜底保护；全局限流建议迁移到 Nginx，配置见 `deploy/nginx/tquant-rate-limit.conf.template`。
+  MySQL/Gunicorn 生产部署不得使用 `memory`。`docker-compose.mysql.yml` 默认使用 `redis`；如改回 `memory`，应用会拒绝启动。
+- `TQUANT_SETTINGS_ENCRYPTION_KEY`
+  必填，长度不少于 64 字符，且必须与 `AUTH_SECRET_KEY` 不同。用于加密系统配置中的 `llm_api_key`、`database_url` 等敏感字段。
+- `TQUANT_INTERNAL_SERVICE_TOKEN`
+  配置 `TQUANT_*_SERVICE_URL` 微服务地址时必填。BFF 到远端服务请求必须携带该 token，远端服务会拒绝缺失或不匹配的内部请求。
 - `RUNTIME_WORKER_POLL_INTERVAL_SECONDS`
   Runtime Worker 拉取数据库任务队列的间隔，默认 `5` 秒。
 - `CORS_ORIGINS`
@@ -353,6 +357,16 @@ cp .env.docker.example .env
 - `MYSQL_DATABASE`
 - `MYSQL_USER`
 - `MYSQL_PASSWORD`
+
+密钥轮换：
+
+```bash
+OLD_TQUANT_SETTINGS_ENCRYPTION_KEY="$OLD_KEY" \
+NEW_TQUANT_SETTINGS_ENCRYPTION_KEY="$NEW_KEY" \
+python scripts/reencrypt_settings.py
+```
+
+该脚本会在单个事务中把敏感配置从旧 settings 加密密钥重加密到新密钥；成功后再更新生产环境的 `TQUANT_SETTINGS_ENCRYPTION_KEY`。
 
 ### 7.4 发布建议
 

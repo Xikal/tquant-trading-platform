@@ -10,7 +10,8 @@ from app.models.entities import BacktestTrade
 from app.models.schema_defs.backtest import BacktestValidationCreate
 from app.models.schema_defs.phase4 import MLSignalTrainRequest
 from app.services.backtest.regime_parameter_promotion import promote_regime_parameter_versions
-from app.services.markowitz_optimizer import _daily_strategy_return_matrix, optimize_markowitz_portfolio
+from app.services.finance.portfolio_math import daily_strategy_return_matrix
+from app.services.markowitz_optimizer import optimize_markowitz_portfolio
 from app.services.ml_signal.modeling import promotion_blocks
 from app.services.ml_signal.promotion_quality import binomial_accuracy_p_value
 from app.services.position_policy_research import run_position_policy_research
@@ -135,7 +136,7 @@ def test_markowitz_daily_returns_are_not_summed_trade_percentages() -> None:
     )
     db.commit()
 
-    matrix, strategies = _daily_strategy_return_matrix(db, run_id=11)
+    matrix, strategies = daily_strategy_return_matrix(db, run_id=11)
 
     first_board_index = strategies.index("first_board")
     volume_index = strategies.index("volume_shrink")

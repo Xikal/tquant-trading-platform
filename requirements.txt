@@ -6,3 +6,8 @@ requests>=2.32,<3.0
 python-dotenv>=1.0,<2.0
 pymysql>=1.1,<2.0
 redis>=5.0,<7.0
+
+# RL research extras are optional and intentionally excluded from the default
+# install because stable-baselines3/gymnasium/torch materially increase image
+# size and startup cost. Use backend/requirements-rl-extra.txt or Docker
+# build arg WITH_RL=true for research images.

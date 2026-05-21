@@ -1,4 +1,5 @@
 import type { BacktestRunSummary } from "../../api/backtests";
+import { Button } from "antd";
 import { formatBacktestStrategies, formatMoney, formatPct } from "../backtest/backtestDisplay";
 import { strategyDoctorVerdict, strategyHealthLabel } from "./strategyVerdict";
 
@@ -34,11 +35,11 @@ export function StrategyDoctorPanel({
         <DoctorMetric label="样本" value={sampleText(tradeCount(summary))} />
       </div>
       <div className="strategy-doctor-actions">
-        <button type="button" className="primary" onClick={onQuickCheck} disabled={loading}>
+        <Button type="primary" onClick={onQuickCheck} loading={loading}>
           {loading ? "提交中" : "一键体检"}
-        </button>
-        <button type="button" onClick={onOpenSignals}>看最近信号</button>
-        <button type="button" onClick={onOpenCompare}>比较策略</button>
+        </Button>
+        <Button type="default" onClick={onOpenSignals}>看最近信号</Button>
+        <Button type="default" onClick={onOpenCompare}>比较策略</Button>
       </div>
       {run ? (
         <div className="strategy-doctor-run">

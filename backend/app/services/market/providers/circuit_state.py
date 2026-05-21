@@ -17,6 +17,7 @@ class ProviderMetrics:
 @dataclass
 class ProviderCircuitState:
     failure_count: int = 0
+    open_count: int = 0
     opened_until: float = 0.0
     half_open_probe: bool = False
 

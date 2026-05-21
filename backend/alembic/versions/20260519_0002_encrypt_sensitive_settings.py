@@ -70,11 +70,15 @@ def _fernet() -> Fernet:
     try:
         from app.core.config import get_settings
 
-        configured = get_settings().auth_secret_key.strip()
+        settings = get_settings()
+        configured = (
+            getattr(settings, "tquant_settings_encryption_key", "").strip()
+            or settings.auth_secret_key.strip()
+        )
     except Exception as exc:
-        raise RuntimeError("AUTH_SECRET_KEY is required to migrate encrypted settings") from exc
+        raise RuntimeError("TQUANT_SETTINGS_ENCRYPTION_KEY is required to migrate encrypted settings") from exc
     if not configured:
-        raise RuntimeError("AUTH_SECRET_KEY is required to migrate encrypted settings")
+        raise RuntimeError("TQUANT_SETTINGS_ENCRYPTION_KEY is required to migrate encrypted settings")
     key = HKDF(
         algorithm=hashes.SHA256(),
         length=32,

@@ -13,10 +13,10 @@ import type {
   SectorRelativeStrengthResponse,
   WatchlistSignal,
 } from "../../types";
-import { DEFAULT_PLAYBOOK_STRATEGY } from "./workspaceConstants";
-import { errorMessage } from "./workspaceFormatters";
-import type { StockCardView } from "./workspaceTypes";
-import { priorityToCard, watchSignalToCard } from "./workspaceViewModels";
+import { DEFAULT_PLAYBOOK_STRATEGY } from "../workspace-shared/workspaceConstants";
+import { errorMessage } from "../workspace-shared/workspaceFormatters";
+import type { StockCardView } from "../workspace-shared/workspaceTypes";
+import { priorityToCard, watchSignalToCard } from "../workspace-shared/workspaceViewModels";
 import {
   applyPriorityBoardQuoteRefresh,
   applySectorEtfQuoteRefresh,

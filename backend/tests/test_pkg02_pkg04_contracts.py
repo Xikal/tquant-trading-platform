@@ -51,8 +51,19 @@ def test_daily_atr_uses_true_range_window():
     frame = pd.DataFrame(
         [
             {"high": 10 + index, "low": 9 + index, "close": 9.5 + index}
-            for index in range(ATR_WINDOW + 1)
+            for index in range(ATR_WINDOW * 2)
         ]
     )
 
     assert compute_daily_atr(frame, ATR_WINDOW) > 0
+
+
+def test_daily_atr_short_history_returns_unavailable():
+    frame = pd.DataFrame(
+        [
+            {"high": 10 + index, "low": 9 + index, "close": 9.5 + index}
+            for index in range(ATR_WINDOW + 1)
+        ]
+    )
+
+    assert compute_daily_atr(frame, ATR_WINDOW) == 0.0

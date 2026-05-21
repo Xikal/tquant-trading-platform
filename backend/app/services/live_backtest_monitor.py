@@ -15,7 +15,7 @@ from app.services.paper.performance import PaperPerformanceService
 def build_live_backtest_comparison(
     db: Session,
     *,
-    user_id: int | None,
+    user_id: int,
     account_id: int | None = None,
     days: int = 60,
     min_trades: int = 3,
@@ -52,14 +52,15 @@ def build_live_backtest_comparison(
 
 
 def _resolve_account(db: Session, *, user_id: int | None, account_id: int | None) -> PaperAccount | None:
+    if user_id is None:
+        return None
     if account_id is not None:
         row = db.get(PaperAccount, int(account_id))
-        if row is not None and (user_id is None or row.user_id in {None, user_id}):
+        if row is not None and row.user_id in {None, user_id}:
             return row
         return None
     statement = select(PaperAccount).order_by(PaperAccount.id.asc())
-    if user_id is not None:
-        statement = statement.where(PaperAccount.user_id.in_([user_id, None]))
+    statement = statement.where(PaperAccount.user_id.in_([user_id, None]))
     return db.execute(statement.limit(1)).scalars().first()
 
 
@@ -74,15 +75,14 @@ def _live_strategy_returns(db: Session, account_id: int, *, days: int) -> dict[s
     return dict(grouped)
 
 
-def _latest_backtest_strategy_returns(db: Session, *, user_id: int | None) -> dict[str, list[float]]:
+def _latest_backtest_strategy_returns(db: Session, *, user_id: int) -> dict[str, list[float]]:
     run_statement = (
         select(BacktestRun.id)
         .where(BacktestRun.status.in_(["succeeded", "completed"]), BacktestRun.deleted_at.is_(None))
         .order_by(BacktestRun.finished_at.desc().nullslast(), BacktestRun.id.desc())
         .limit(5)
     )
-    if user_id is not None:
-        run_statement = run_statement.where(BacktestRun.owner_user_id.in_([user_id, None]))
+    run_statement = run_statement.where(BacktestRun.owner_user_id.in_([user_id, None]))
     run_ids = [int(value) for value in db.execute(run_statement).scalars().all()]
     if not run_ids:
         return {}

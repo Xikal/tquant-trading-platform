@@ -1,4 +1,4 @@
-.settings-tabs {
+.settings-tabs:not(.settings-antd-tabs) {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
@@ -10,7 +10,7 @@
   background: rgba(255, 255, 255, 0.76);
 }
 
-.settings-tabs button {
+.settings-tabs:not(.settings-antd-tabs) button {
   display: grid;
   min-width: 148px;
   max-width: 220px;
@@ -23,7 +23,7 @@
   text-align: left;
 }
 
-.settings-tabs button span {
+.settings-tabs:not(.settings-antd-tabs) button span {
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -31,7 +31,7 @@
   font-weight: 900;
 }
 
-.settings-tabs button span i {
+.settings-tabs:not(.settings-antd-tabs) button span i {
   width: 7px;
   height: 7px;
   border-radius: 50%;
@@ -39,12 +39,12 @@
   box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.12);
 }
 
-.settings-tabs button small {
+.settings-tabs:not(.settings-antd-tabs) button small {
   color: #64748b;
   font-size: 11px;
 }
 
-.settings-tabs button.active {
+.settings-tabs:not(.settings-antd-tabs) button.active {
   border-color: #d7a64f;
   background: #fffbeb;
   color: #7c2d12;

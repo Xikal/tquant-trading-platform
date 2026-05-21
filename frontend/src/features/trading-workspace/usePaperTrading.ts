@@ -18,8 +18,8 @@ import type {
   PaperTradeTag,
   RiskEventItem,
 } from "../../types";
-import { errorMessage, nullableNumber, parseNumber } from "./workspaceFormatters";
-import type { PaperOrderDraft } from "./workspaceTypes";
+import { errorMessage, nullableNumber, parseNumber } from "../workspace-shared/workspaceFormatters";
+import type { PaperOrderDraft } from "../workspace-shared/workspaceTypes";
 
 interface PaperLiveRefreshOptions {
   refreshPrices?: boolean;

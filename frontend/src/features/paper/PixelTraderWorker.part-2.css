@@ -1,0 +1,184 @@
+.order-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgba(8, 17, 31, 0.62);
+  backdrop-filter: blur(5px);
+}
+
+.order-modal {
+  width: min(760px, 100%);
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid rgba(214, 165, 92, 0.45);
+  border-radius: 12px;
+  background:
+    linear-gradient(rgba(15, 23, 36, 0.035) 1px, transparent 1px),
+    #ffffff;
+  background-size: 12px 12px;
+  box-shadow: 0 24px 80px rgba(8, 17, 31, 0.36);
+}
+
+.order-modal-title {
+  display: flex;
+  justify-content: space-between;
+  align-items: start;
+  gap: 12px;
+}
+
+.order-modal-title span {
+  color: #8a5b12;
+  font-family: "IBM Plex Mono", "SFMono-Regular", monospace;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+}
+
+.order-modal-title h2 {
+  margin: 2px 0 0;
+  color: #102034;
+  font-size: 17px;
+}
+
+.order-modal-close {
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border-radius: 8px;
+  font-size: 18px;
+  line-height: 1;
+}
+
+.order-modal-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 9px 12px;
+}
+
+.order-modal-primary {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) 160px minmax(220px, 1fr);
+  gap: 10px;
+  align-items: end;
+}
+
+.order-side-switch {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 7px;
+}
+
+.order-side-switch button,
+.order-quantity-actions button {
+  min-height: 32px;
+  border: 1px solid #dce5f0;
+  border-radius: 8px;
+  background: #f9fbff;
+  color: #102034;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.order-side-switch button.active.buy {
+  border-color: rgba(220, 38, 38, 0.4);
+  background: #fff1f2;
+  color: #dc2626;
+}
+
+.order-side-switch button.active.sell {
+  border-color: rgba(5, 150, 105, 0.4);
+  background: #ecfdf5;
+  color: #059669;
+}
+
+.order-quantity-block {
+  display: grid;
+  gap: 7px;
+}
+
+.order-quantity-actions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.order-modal-extra {
+  margin-top: 4px;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 9px;
+  background: #f8fafc;
+}
+
+.order-modal-extra summary {
+  cursor: pointer;
+  color: #8a5b12;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.order-symbol-hint {
+  margin: 0;
+}
+
+.order-modal label,
+.order-modal .select-field {
+  display: grid;
+  gap: 5px;
+}
+
+.order-modal label span,
+.order-modal .select-field span {
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.order-modal input,
+.order-modal select {
+  width: 100%;
+  min-height: 32px;
+  border: 1px solid #dce5f0;
+  border-radius: 8px;
+  padding: 5px 9px;
+  color: #102034;
+  background: #f9fbff;
+}
+
+.order-modal.paused input,
+.order-modal.paused select,
+.order-modal.auto-running input,
+.order-modal.auto-running select {
+  color: #94a3b8;
+  background: #eef2f7;
+}
+
+.order-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding-top: 2px;
+}
+
+.order-modal-actions button {
+  min-height: 34px;
+}
+
+@media (max-width: 520px) {
+  .order-modal-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .order-modal-primary {
+    grid-template-columns: 1fr;
+  }
+
+  .order-modal-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+}

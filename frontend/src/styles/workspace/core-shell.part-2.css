@@ -1,0 +1,56 @@
+.research-grid {
+  grid-template-columns: 420px minmax(0, 1fr);
+  grid-template-areas:
+    "hero hero"
+    "run report"
+    "samples report";
+}
+
+.settings-grid {
+  grid-template-columns: minmax(0, 1fr) 390px;
+  grid-template-areas:
+    "hero hero"
+    "cards snapshot";
+}
+
+.paper-grid {
+  grid-template-columns: 380px minmax(0, 1fr);
+  grid-template-areas:
+    "metrics metrics"
+    "order positions"
+    "orders trades"
+    "performance market";
+}
+
+.wide,
+.hero-card,
+.chart-panel,
+.report,
+.settings-cards {
+  grid-column: span 2;
+}
+
+.analysis-grid .hero-card {
+  grid-column: span 2;
+}
+
+.analysis-grid .chart-panel,
+.analysis-grid .split,
+.analysis-grid .log-strip {
+  grid-column: 2 / 4;
+}
+
+.playbook-grid .hero-card {
+  grid-column: span 2;
+}
+
+.research-grid .hero-card,
+.research-grid .report {
+  grid-column: span 2;
+}
+
+.settings-cards {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}

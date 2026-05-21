@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
-import { PAGE_PATHS } from "./workspaceConstants";
+import { PAGE_PATHS } from "../workspace-shared/workspaceConstants";
 import { normalizeLegacyWorkspacePath, pageFromLocation } from "./workspaceRoutes";
-import type { Page } from "./workspaceTypes";
+import type { Page } from "../workspace-shared/workspaceTypes";
 
 export function useWorkspaceNavigation() {
   const [page, setPage] = useState<Page>(() => {

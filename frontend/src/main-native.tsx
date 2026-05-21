@@ -1,7 +1,11 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
-import MobileApp from "./mobile/MobileApp";
+import "antd-mobile/es/global";
+import { AppProviders } from "./app/AppProviders";
+import { NativeApp } from "./app/NativeApp";
 import "./styles/native-index.css";
+import "./ui/theme/mobileTheme.css";
+import "./ui/theme/tokens.css";
 
 if (typeof document !== "undefined") {
   document.body.classList.add("native-app-mode");
@@ -9,6 +13,8 @@ if (typeof document !== "undefined") {
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
-    <MobileApp />
+    <AppProviders>
+      <NativeApp />
+    </AppProviders>
   </React.StrictMode>
 );

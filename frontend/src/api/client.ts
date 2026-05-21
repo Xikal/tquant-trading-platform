@@ -44,6 +44,7 @@ import type {
   PaperTradesResponse,
   RuntimeStatus,
   FactorWeightsResponse,
+  SettingsWorkspaceBffResponse,
   AdminTasksResponse,
   AdminMetricsResponse,
   AdminLatestDataRefreshResponse,
@@ -91,7 +92,7 @@ export const api = {
     }),
   getWatchlistSignals: () => requestCached<WatchlistSignal[]>("/watchlist/signals", 9000),
   getWatchlistQuotes: () => request<WatchlistQuoteItem[]>("/watchlist/quotes"),
-  getMarketBreadth: () => requestCached<MarketBreadth>("/market/breadth", 15000),
+  getMarketBreadth: () => requestCached<MarketBreadth>("/market/breadth", 10000),
   getMarketTradingSession: () => requestCached<MarketTradingSession>("/market/trading-session", 60000),
   getSectorRelativeStrength: (limit = 8, perSectorLimit = 10) =>
     requestCached<SectorRelativeStrengthResponse>(
@@ -120,7 +121,7 @@ export const api = {
   getMonitorWorkspaceBff: (priorityLimit = 12) =>
     requestCached<MonitorWorkspaceBffResponse>(
       `/bff/v1/workspace/monitor?priority_limit=${priorityLimit}&sector_limit=8&per_sector_limit=8&hedge_limit=4`,
-      15000
+      10000
     ),
   getPaperAccess: () => request<PaperAccessResponse>("/auth/paper-access"),
   analyze: (payload: {
@@ -159,6 +160,7 @@ export const api = {
       body: JSON.stringify(payload)
     }),
   getSettings: () => request<SettingsPayload>("/settings"),
+  getSettingsWorkspaceBff: () => request<SettingsWorkspaceBffResponse>("/bff/v1/workspace/settings"),
   getSectorExclusions: () => request<UserSectorExclusionsResponse>("/settings/sector-exclusions"),
   updateSectorExclusions: (excluded_sectors: string[]) =>
     request<UserSectorExclusionsResponse>("/settings/sector-exclusions", {
@@ -167,6 +169,7 @@ export const api = {
     }).then((result) => {
       invalidateCache([
         "/settings/sector-exclusions",
+        "/bff/v1/workspace/settings",
         "/screeners/low-buy",
         "/screeners/low-buy/priority-board",
         "/monitor/snapshot",
@@ -182,7 +185,7 @@ export const api = {
       method: "PUT",
       body: JSON.stringify({ weights })
     }).then((result) => {
-      invalidateCache(["/screeners/low-buy", "/monitor/snapshot", "/bff/v1/workspace/monitor"]);
+      invalidateCache(["/screeners/low-buy", "/monitor/snapshot", "/bff/v1/workspace/monitor", "/bff/v1/workspace/settings"]);
       return result;
     }),
   updateSettings: (payload: Partial<SettingsPayload>) =>
@@ -190,7 +193,7 @@ export const api = {
       method: "PUT",
       body: JSON.stringify(payload)
     }).then((result) => {
-      invalidateCache(["/settings/runtime"]);
+      invalidateCache(["/settings/runtime", "/bff/v1/workspace/settings"]);
       return result;
     }),
   checkDatabase: (database_url: string) =>
@@ -213,7 +216,13 @@ export const api = {
       method: "PATCH",
       body: JSON.stringify(payload)
     }).then((result) => {
-      invalidateCache(["/screeners/low-buy/strategies", "/screeners/low-buy", "/monitor/snapshot", "/bff/v1/workspace/monitor"]);
+      invalidateCache([
+        "/screeners/low-buy/strategies",
+        "/screeners/low-buy",
+        "/monitor/snapshot",
+        "/bff/v1/workspace/monitor",
+        "/bff/v1/workspace/settings",
+      ]);
       return result;
     }),
   migrateDatabase: (payload: {

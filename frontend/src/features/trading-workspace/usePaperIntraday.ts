@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { API_BASE, getAuthAccessToken, request } from "../../api/base";
 import type { AuthUser, IntradayConfirmationItem, PaperPosition } from "../../types";
-import type { Page } from "./workspaceTypes";
+import type { Page } from "../workspace-shared/workspaceTypes";
 
 export function usePaperIntraday({
   currentUser,

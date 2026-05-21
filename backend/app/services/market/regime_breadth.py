@@ -23,7 +23,7 @@ def load_market_breadth_snapshot(owner: Any, recent_hot_sequences: list[list[str
     if cached is not None:
         return cached
 
-    snapshot_map = owner._get_spot_snapshot_cache("stock") or {}
+    snapshot_map = _load_realtime_stock_snapshot_map(owner)
     if not snapshot_map:
         owner._warm_market_breadth_snapshot_async(cache_key, sequences)
         local_snapshot = owner._load_local_daily_breadth_snapshot(sequences)
@@ -43,6 +43,16 @@ def load_market_breadth_snapshot(owner: Any, recent_hot_sequences: list[list[str
     )
     owner._set_market_breadth_cache(cache_key, snapshot)
     return snapshot
+
+
+def _load_realtime_stock_snapshot_map(owner: Any) -> dict[str, Any]:
+    try:
+        loader = getattr(owner, "get_stock_spot_snapshot_map", None)
+        if callable(loader):
+            return dict(loader() or {})
+    except Exception as exc:
+        logger.warning("failed to load realtime stock breadth snapshot: %s", exc)
+    return owner._get_spot_snapshot_cache("stock") or {}
 
 
 def load_local_daily_breadth_snapshot(owner: Any, recent_hot_sequences: list[list[str]]) -> MarketBreadthSnapshot | None:

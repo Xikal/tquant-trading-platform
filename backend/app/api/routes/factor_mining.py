@@ -24,10 +24,11 @@ from app.models.schema_defs.factor_mining import (
 )
 from app.models.schema_defs.phase4 import RuntimeTaskCreate, RuntimeTaskOut
 from app.services.factor_mining.code_synth_agent import FactorCodeSynthAgent
-from app.services.factor_mining.combination import ic_weighted_combination
+from app.services.factor_mining.combination import ic_weighted_combination, ridge_regression_combination
 from app.services.factor_mining.health import FactorHealthService
 from app.services.factor_mining.library import FactorLibrary
 from app.services.factor_mining.orchestrator import FactorMiningOrchestrator
+from app.services.factor_mining.runtime_values import is_factor_active, set_factor_active
 from app.services.operation_audit import record_operation_audit
 from app.services.tasks import RuntimeTaskQueue
 
@@ -153,6 +154,35 @@ def promote_factor(
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
+@router.get("/factors/{factor_key}/activation")
+def get_factor_activation(factor_key: str) -> dict:
+    return {"factor_key": factor_key, "active": is_factor_active(factor_key)}
+
+
+@router.put("/factors/{factor_key}/activation")
+def update_factor_activation(
+    factor_key: str,
+    payload: dict,
+    request: Request,
+    current_user: User = Depends(get_current_user),
+    _: None = Depends(require_admin_auth),
+    db: Session = Depends(get_db),
+) -> dict:
+    active = bool(payload.get("active"))
+    set_factor_active(db, factor_key, active)
+    record_operation_audit(
+        db,
+        operation="factor_mining_activation",
+        user=current_user,
+        resource_type="factor_definition",
+        resource_id=factor_key,
+        operator_ip=_client_ip(request),
+        detail={"active": active},
+    )
+    db.commit()
+    return {"factor_key": factor_key, "active": active}
+
+
 @router.post("/iterate", response_model=FactorIterationResponse)
 def iterate_factor(
     payload: FactorIterationRequest,
@@ -195,10 +225,22 @@ def factor_health_dashboard(
 
 @router.post("/combine")
 def combine_factor_weights(payload: dict) -> dict:
-    metrics = payload.get("metrics_by_factor")
-    if not isinstance(metrics, dict):
-        raise HTTPException(status_code=400, detail="metrics_by_factor required")
-    result = ic_weighted_combination(metrics)
+    method = str(payload.get("method") or "ic_weighted").strip().lower()
+    if method in {"ridge", "ridge_regression"}:
+        factor_returns = payload.get("factor_returns")
+        target_returns = payload.get("target_returns")
+        if not isinstance(factor_returns, dict) or not isinstance(target_returns, list):
+            raise HTTPException(status_code=400, detail="factor_returns and target_returns required for ridge")
+        result = ridge_regression_combination(
+            factor_returns,
+            target_returns,
+            alpha=float(payload.get("alpha") or 1.0),
+        )
+    else:
+        metrics = payload.get("metrics_by_factor")
+        if not isinstance(metrics, dict):
+            raise HTTPException(status_code=400, detail="metrics_by_factor required")
+        result = ic_weighted_combination(metrics)
     return {"weights": result.weights, "method": result.method, "warning": result.warning}
 
 

@@ -1,0 +1,109 @@
+.mobile-decision-card {
+  border-left: 4px solid var(--mobile-warning);
+}
+
+.mobile-decision-card.decision-tradable {
+  border-left-color: var(--mobile-positive);
+  background: #fff8f8;
+}
+
+.mobile-decision-card.decision-observe_only {
+  border-left-color: var(--mobile-warning);
+  background: #fffaf1;
+}
+
+.mobile-decision-card.decision-wait {
+  border-left-color: var(--mobile-negative);
+  background: #f2fbf6;
+}
+
+.mobile-decision-card small,
+.mobile-simple-head small,
+.mobile-risk-text,
+.mobile-wait-price-list small,
+.mobile-holding-action-row small {
+  color: var(--mobile-text-muted);
+  font-size: 9px;
+  line-height: 1.35;
+}
+
+.mobile-decision-card h2 {
+  margin: 2px 0;
+  color: #102850;
+  font-size: 18px;
+  line-height: 1.1;
+}
+
+.mobile-decision-card p,
+.mobile-risk-text {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.mobile-decision-steps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.mobile-decision-steps span {
+  padding: 3px 7px;
+  border-radius: 999px;
+  background: rgba(31, 111, 235, 0.08);
+  color: var(--mobile-blue);
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.mobile-simple-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.mobile-simple-head strong {
+  color: #102850;
+  font-size: 12px;
+}
+
+.mobile-wait-price-list {
+  display: grid;
+  gap: 5px;
+  padding-top: 2px;
+}
+
+.mobile-wait-price-list strong {
+  font-size: 11px;
+  color: #102850;
+}
+
+.mobile-wait-price-list button,
+.mobile-holding-action-row {
+  display: grid;
+  grid-template-columns: minmax(0, 0.75fr) minmax(0, 1.25fr);
+  gap: 4px 8px;
+  align-items: center;
+  padding: 7px;
+  border: 1px solid var(--mobile-divider);
+  border-radius: 10px;
+  background: var(--mobile-panel-soft);
+  color: var(--mobile-text);
+  text-align: left;
+}
+
+.mobile-wait-price-list button span,
+.mobile-holding-action-row strong,
+.mobile-holding-action-row span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 10px;
+}
+
+.mobile-wait-price-list button small,
+.mobile-holding-action-row small {
+  grid-column: 1 / -1;
+}

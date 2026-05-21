@@ -1,4 +1,5 @@
 import type { BacktestRunSummary } from "../../api/backtests";
+import { Button } from "antd";
 import { EmptyPlaceholder } from "../../components/shared/Feedback";
 import type { AuthUser } from "../../types";
 import {
@@ -9,7 +10,7 @@ import {
 } from "../backtest/backtestDisplay";
 import { StrategySignalReplayPanel } from "./StrategySignalReplayPanel";
 import { strategyDoctorVerdict, strategyHealthLabel } from "./strategyVerdict";
-import { canOptimize, canValidate, isAdmin } from "./strategyPermissions";
+import { canOptimize, canResearchFactors, canValidate, isAdmin } from "./strategyPermissions";
 import type { StrategyHubTab } from "./useStrategyHub";
 
 export function RecentRuns({ runs, onRerun }: { runs: BacktestRunSummary[]; onRerun?: (run: BacktestRunSummary) => void }) {
@@ -37,9 +38,9 @@ export function RecentRuns({ runs, onRerun }: { runs: BacktestRunSummary[]; onRe
           </div>
           <RunDeltaSummary current={run} previous={runs[index + 1]} />
           {onRerun ? (
-            <button type="button" className="strategy-rerun-button" onClick={() => onRerun(run)}>
+            <Button type="default" size="small" className="strategy-rerun-button" onClick={() => onRerun(run)}>
               重新运行
-            </button>
+            </Button>
           ) : null}
         </article>
       ))}
@@ -106,7 +107,7 @@ export function StrategyHistoryPanel({
           <h2>策略历史</h2>
           <span>集中追踪最近回测、验证和策略任务，避免在多个页面来回查找。</span>
         </div>
-        <button type="button" onClick={onRefresh}>刷新历史</button>
+        <Button type="default" onClick={onRefresh}>刷新历史</Button>
       </div>
       <div className="strategy-history-summary">
         <article>
@@ -147,7 +148,7 @@ export function StrategyHistoryPanel({
               <span>{formatDateTime(run.created_at)}</span>
               <span className="strategy-history-actions">
                 <RunDeltaSummary current={run} previous={runs[index + 1]} compact />
-                <button type="button" onClick={() => onRerun(run)}>重新运行</button>
+                <Button type="default" size="small" onClick={() => onRerun(run)}>重新运行</Button>
               </span>
             </article>
           ))}
@@ -183,6 +184,7 @@ export function visibleTabsForUser(user: AuthUser) {
     if (tab.key === "optimize") return canOptimize(user);
     if (tab.key === "validate") return canValidate(user);
     if (tab.key === "capacity") return isAdmin(user);
+    if (tab.key === "factor") return canResearchFactors(user);
     return true;
   });
 }
@@ -253,6 +255,7 @@ const TABS: Array<{ key: StrategyHubTab; label: string; hint: string }> = [
   { key: "optimize", label: "专家：参数", hint: "研究员调参" },
   { key: "validate", label: "专家：验证", hint: "防过拟合" },
   { key: "compare", label: "策略对比", hint: "选更稳的策略" },
+  { key: "factor", label: "因子实验室", hint: "挖掘和验证新因子" },
   { key: "capacity", label: "管理员：ML", hint: "在线学习和容量" },
 ];
 

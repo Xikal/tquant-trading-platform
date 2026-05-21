@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react"
+import { Button, Input } from "antd-mobile"
 import type { LowBuyPriorityBoardItem, WatchlistItem } from "../types"
 import {
   MobileFocusCard,
@@ -59,9 +60,9 @@ export function MobileHomeSection({
         title="选股宝典优先榜"
         hint={`按当前策略综合分排序 · ${priorityPulseTime} 刷新`}
         action={
-          <button type="button" className="mobile-design-pill tone-gold" onClick={onSwitchToLowBuy}>
+          <Button fill="outline" className="mobile-design-pill tone-gold" onClick={onSwitchToLowBuy}>
             去选股宝典
-          </button>
+          </Button>
         }
       />
       <section className="mobile-design-priority-scroll">
@@ -129,15 +130,15 @@ export function MobileHoldingsSection({
         title={`持仓 (${holdingRows.length})`}
         hint="编辑成本价、持仓数、可用数"
         action={
-          <button type="button" className="mobile-design-pill tone-gold" onClick={onCreateHolding}>
+          <Button fill="outline" className="mobile-design-pill tone-gold" onClick={onCreateHolding}>
             新增持仓
-          </button>
+          </Button>
         }
       />
       <div className="mobile-holding-search">
-        <input
+        <Input
           value={query}
-          onChange={(event) => setQuery(event.target.value)}
+          onChange={setQuery}
           onKeyDown={(event) => {
             if (event.key === "Enter") {
               handleSearchSubmit()
@@ -145,9 +146,9 @@ export function MobileHoldingsSection({
           }}
           placeholder="搜索代码/名称，未持仓可自动补全"
         />
-        <button type="button" onClick={handleSearchSubmit}>
+        <Button onClick={handleSearchSubmit}>
           搜索
-        </button>
+        </Button>
       </div>
       <section className="mobile-design-list">
         {filteredRows.map((row) => (
@@ -204,9 +205,9 @@ export function MobileLowBuySection({
         title="现在可买"
         hint="只显示最需要处理的候选"
         action={
-          <button type="button" className="mobile-design-pill tone-gold" onClick={onOpenAi}>
+          <Button fill="outline" className="mobile-design-pill tone-gold" onClick={onOpenAi}>
             解读榜单
-          </button>
+          </Button>
         }
       />
       <section className="mobile-design-list">

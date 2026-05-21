@@ -15,6 +15,7 @@ from app.services.factor_mining.evaluation import FactorEvaluationEngine
 from app.services.factor_mining.hypothesis_agent import FactorHypothesisAgent
 from app.services.factor_mining.interpreter_agent import FactorResultInterpreter
 from app.services.factor_mining.library import FactorLibrary, factor_out
+from app.services.factor_mining.runtime_values import store_latest_factor_values
 
 
 class FactorMiningOrchestrator:
@@ -29,6 +30,7 @@ class FactorMiningOrchestrator:
         row = self.library.get(factor_key)
         payload = FactorEvaluationEngine(self.db).evaluate(row.formula_code, request)
         interpretation = FactorResultInterpreter(self.db).interpret(factor_name=row.name, result=payload.result)
+        store_latest_factor_values(self.db, row.factor_key, payload.factor_values)
         run = self.library.save_evaluation(
             row,
             result=payload.result,

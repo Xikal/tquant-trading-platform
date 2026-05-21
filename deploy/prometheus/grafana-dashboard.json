@@ -42,6 +42,26 @@
       "title": "Agent quality blocked",
       "targets": [{"expr": "tquant_agent_quality_blocked_total"}],
       "gridPos": {"x": 12, "y": 4, "w": 12, "h": 7}
+    },
+    {
+      "type": "timeseries",
+      "title": "Market provider calls",
+      "targets": [
+        {"expr": "rate(tquant_provider_calls_total[5m])", "legendFormat": "calls/s"},
+        {"expr": "rate(tquant_provider_failures_total[5m])", "legendFormat": "failures/s"},
+        {"expr": "rate(tquant_provider_slow_calls_total[5m])", "legendFormat": "slow/s"}
+      ],
+      "gridPos": {"x": 0, "y": 11, "w": 12, "h": 7}
+    },
+    {
+      "type": "timeseries",
+      "title": "Quote cache quality",
+      "targets": [
+        {"expr": "rate(tquant_local_quote_cache_hits_total[5m])", "legendFormat": "hits/s"},
+        {"expr": "rate(tquant_local_quote_cache_misses_total[5m])", "legendFormat": "misses/s"},
+        {"expr": "rate(tquant_local_quote_cache_stale_hits_total[5m])", "legendFormat": "stale/s"}
+      ],
+      "gridPos": {"x": 12, "y": 11, "w": 12, "h": 7}
     }
   ]
 }

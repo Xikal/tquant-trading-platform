@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { Button } from "antd";
 import { backtestsApi, type PortfolioOptimizationResponse, type PositionPolicyResearchResponse } from "../../api/backtests";
 import { mlSignalsApi, type MLSignalOnlineLearningStatus, type StrategyCapacityResponse } from "../../api/mlSignals";
 import { formatBacktestStrategy, formatInteger, formatPct, type BacktestStrategyOption } from "./backtestDisplay";
@@ -119,10 +120,10 @@ export function MLCapacityPanel({ strategyOptions }: { strategyOptions: Backtest
       <div className="backtest-capacity-controls">
         <TextField label="容量评估策略" value={strategies} hint="英文逗号分隔" onChange={setStrategies} />
         <TextField label="回测任务 ID" value={runId} hint="用于 Markowitz / RL shadow" onChange={setRunId} />
-        <button type="button" onClick={loadStatus} disabled={loading === "status"}>{loading === "status" ? "刷新中..." : "刷新 ML 状态"}</button>
-        <button type="button" onClick={runCapacity} disabled={loading === "capacity" || !selectedStrategies.length}>{loading === "capacity" ? "评估中..." : "评估容量"}</button>
-        <button type="button" className="secondary" onClick={runIncrementalTrain} disabled={loading === "train"}>{loading === "train" ? "训练中..." : "手动增量训练"}</button>
-        <button type="button" className="secondary" onClick={runPortfolioResearch} disabled={loading === "portfolio"}>{loading === "portfolio" ? "计算中..." : "组合 / RL 研究"}</button>
+        <Button onClick={loadStatus} disabled={loading === "status"}>{loading === "status" ? "刷新中..." : "刷新 ML 状态"}</Button>
+        <Button onClick={runCapacity} disabled={loading === "capacity" || !selectedStrategies.length}>{loading === "capacity" ? "评估中..." : "评估容量"}</Button>
+        <Button onClick={runIncrementalTrain} disabled={loading === "train"}>{loading === "train" ? "训练中..." : "手动增量训练"}</Button>
+        <Button onClick={runPortfolioResearch} disabled={loading === "portfolio"}>{loading === "portfolio" ? "计算中..." : "组合 / RL 研究"}</Button>
       </div>
       {markowitz ? (
         <div className="backtest-research-note">

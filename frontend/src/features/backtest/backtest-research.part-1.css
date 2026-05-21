@@ -1,0 +1,219 @@
+.backtest-research {
+  display: grid;
+  gap: 12px;
+  border-color: rgba(11, 20, 34, 0.12);
+  background:
+    radial-gradient(circle at 18% 0%, rgba(214, 165, 92, 0.14), transparent 28%),
+    linear-gradient(180deg, #ffffff, #f8fafc);
+}
+
+.backtest-research-hero {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px;
+  border: 1px solid rgba(214, 165, 92, 0.24);
+  border-radius: 16px;
+  background: #0b1422;
+  color: #ecfeff;
+}
+
+.backtest-research.focused {
+  gap: 10px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.backtest-research.focused .backtest-research-hero {
+  align-items: center;
+  padding: 10px 12px;
+  border-radius: 14px;
+}
+
+.backtest-research.focused .backtest-research-hero h2 {
+  font-size: 19px;
+}
+
+.backtest-research.focused .backtest-research-hero p {
+  max-width: 760px;
+  margin-top: 3px;
+  font-size: 12px;
+}
+
+.backtest-research-hero h2 {
+  margin: 0;
+  font-size: clamp(22px, 3vw, 34px);
+  letter-spacing: -0.04em;
+}
+
+.backtest-research-hero p {
+  max-width: 820px;
+  margin: 6px 0 0;
+  color: #aeb8c7;
+}
+
+.backtest-research-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.backtest-research.focused .backtest-research-grid {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 10px;
+}
+
+.backtest-research-card {
+  display: grid;
+  align-content: start;
+  gap: 12px;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid #e3eaf3;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.92);
+}
+
+.backtest-research.focused .backtest-research-card {
+  gap: 10px;
+  padding: 10px;
+  border-radius: 14px;
+}
+
+.backtest-research-card.span-2 {
+  grid-column: 1 / -1;
+}
+
+.backtest-research.focused .backtest-research-card.span-2 {
+  grid-column: auto;
+}
+
+.backtest-research-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.backtest-research-title h3 {
+  margin: 0;
+  font-size: 15px;
+}
+
+.backtest-research-title span {
+  color: var(--muted);
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.backtest-research-form.compact {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(130px, 1fr));
+  gap: 9px;
+}
+
+.backtest-research.focused .backtest-research-form.compact {
+  grid-template-columns: repeat(6, minmax(112px, 1fr));
+  gap: 8px;
+}
+
+.backtest-research-form.compact button {
+  align-self: end;
+  min-height: 34px;
+}
+
+.backtest-task-list {
+  display: grid;
+  gap: 7px;
+}
+
+.backtest-research.focused .backtest-task-list {
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+}
+
+.backtest-task-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 8px;
+  align-items: center;
+  padding: 7px;
+  border: 1px solid #e8eef6;
+  border-radius: 12px;
+  background: #fff;
+}
+
+.backtest-task-row.active {
+  border-color: rgba(214, 165, 92, 0.7);
+  background: #fff8e8;
+}
+
+.backtest-task-row > button:first-child {
+  display: grid;
+  gap: 3px;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  padding: 0;
+  text-align: left;
+}
+
+.backtest-task-row span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.backtest-task-row .subtle {
+  background: #fff4f1;
+}
+
+.backtest-result-block {
+  display: grid;
+  gap: 10px;
+}
+
+.backtest-mini-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.backtest-research.focused .backtest-mini-metrics {
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+}
+
+.backtest-mini-metrics > div {
+  display: grid;
+  gap: 4px;
+  min-height: 56px;
+  padding: 8px;
+  border: 1px solid #e8eef6;
+  border-radius: 10px;
+  background: #f8fafc;
+}
+
+.backtest-mini-metrics span {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.backtest-mini-metrics strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.backtest-mini-metrics .pbo-low {
+  border-color: rgba(31, 139, 76, 0.28);
+  background: #edfdf4;
+  color: #166534;
+}
+
+.backtest-mini-metrics .pbo-medium {
+  border-color: rgba(214, 165, 92, 0.36);
+  background: #fff7e6;
+  color: #9a5b00;
+}

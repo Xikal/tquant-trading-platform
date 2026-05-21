@@ -90,8 +90,20 @@ def _ema_series(values: list[float], window: int) -> list[float | None]:
 
 
 def rsi(values: list[float], period: int = 14) -> float:
+    """Return RSI using Wilder RMA smoothing.
+
+    The initial average gain/loss is the Wilder-compatible seed for the first
+    period, then subsequent values use RMA. Keeping this explicit function name
+    avoids accidental fallback to SMA-only RSI implementations.
+    """
+
+    return rsi_wilder(values, period)
+
+
+def rsi_wilder(values: list[float], period: int = 14) -> float:
     if len(values) < period + 1:
         return 50.0
+    period = max(1, int(period or 1))
     gains: list[float] = []
     losses: list[float] = []
     for previous, current in zip(values[:period], values[1 : period + 1]):
@@ -112,9 +124,13 @@ def rsi(values: list[float], period: int = 14) -> float:
     return round(100 - (100 / (1 + rs)), 4)
 
 
-def atr(bars: list[KlineBar], period: int = 14) -> float:
-    if len(bars) < period + 1:
-        return 0.0
+def atr(bars: list[KlineBar], period: int = 14) -> float | None:
+    period = max(1, int(period or 1))
+    # A single seed window is too unstable for stop-loss placement. Require at
+    # least one full seed window plus another full update window before emitting
+    # a tradable ATR value; callers should use conservative fallback sizing.
+    if len(bars) < period * 2:
+        return None
     ranges: list[float] = []
     for previous, current in zip(bars[:period], bars[1 : period + 1]):
         tr = max(

@@ -5,16 +5,17 @@ from sqlalchemy import select
 from app.core.database import SessionLocal
 from app.models.entities import FactorDefinitionEntity
 from app.services.factor_mining.json_utils import json_dict, json_list
+from app.services.factor_mining.runtime_values import is_factor_active, read_factor_value
+from app.services.low_buy.factor_types import FactorContext
 from app.services.low_buy.factor_functions import FactorSpec
 
 
 def dynamic_factor_specs() -> list[FactorSpec]:
     """Expose approved factors to the existing factor registry.
 
-    Generated factors are registered as metadata first. Their scoring evaluator
-    intentionally returns 0 until a strategy explicitly consumes the factor
-    values from the factor store, preventing unverified code from silently
-    changing production recommendations.
+    Generated factors remain inert until an admin explicitly activates the
+    factor. Active production factors read the latest evaluated point-in-time
+    values from the factor value store, keeping scoring controlled and auditable.
     """
 
     try:
@@ -39,7 +40,19 @@ def dynamic_factor_specs() -> list[FactorSpec]:
                 activation_condition="production_factor_library",
                 status="active",
                 status_text="因子实验室已晋级",
-                evaluator=lambda _metrics, _context: 0.0,
+                evaluator=_dynamic_factor_evaluator(row.factor_key),
             )
         )
     return specs
+
+
+def _dynamic_factor_evaluator(factor_key: str):
+    def evaluator(_metrics, context: FactorContext | None) -> float:
+        if context is None or not context.current_symbol:
+            return 0.0
+        if not is_factor_active(factor_key):
+            return 0.0
+        trade_date = context.current_date or context.confirmed_trade_date
+        return read_factor_value(factor_key, context.current_symbol, trade_date)
+
+    return evaluator

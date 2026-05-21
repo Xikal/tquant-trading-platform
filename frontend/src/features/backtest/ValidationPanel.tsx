@@ -1,3 +1,4 @@
+import { Button, Checkbox } from "antd";
 import type { BacktestExecutionModel } from "../../api/backtests";
 import {
   BACKTEST_EXECUTION_MODELS,
@@ -52,19 +53,18 @@ export function ValidationPanel({
           <div className="backtest-advanced-grid compact">
             <TextField type="number" label="初始资金" value={state.validationForm.initial_capital} onChange={(initial_capital) => actions.onValidationFormChange({ initial_capital })} />
             <SelectField label="执行模型" value={state.validationForm.execution_model} options={BACKTEST_EXECUTION_MODELS} onChange={(execution_model) => actions.onValidationFormChange({ execution_model: execution_model as BacktestExecutionModel })} />
-            <label className="backtest-check-field">
-              <input
-                type="checkbox"
+            <Checkbox
+              className="backtest-check-field"
                 checked={Boolean(state.validationForm.auto_promote_state_params)}
-                onChange={(event) => actions.onValidationFormChange({ auto_promote_state_params: event.currentTarget.checked })}
-              />
+              onChange={(event) => actions.onValidationFormChange({ auto_promote_state_params: event.target.checked })}
+            >
               验证通过后自动生成市场状态参数版本
-            </label>
+            </Checkbox>
           </div>
         </details>
-        <button type="button" className="primary" onClick={actions.onSubmitValidation} disabled={state.loading === "validate-submit"}>
+        <Button type="primary" onClick={actions.onSubmitValidation} disabled={state.loading === "validate-submit"}>
           {state.loading === "validate-submit" ? "提交中..." : "提交验证"}
-        </button>
+        </Button>
       </div>
 
       <TaskList
@@ -88,14 +88,12 @@ export function ValidationPanel({
             </div>
             {truthyFlag(detail.downgrade_review ?? detail.downgrade_review_required) ? <div className="backtest-error">存在样本外 Sharpe 小于 0 的窗口，建议进入降级复核。</div> : null}
             {detail.stability_conclusion ? <div className="backtest-research-note">{detail.stability_conclusion}</div> : null}
-            <button
-              type="button"
-              className="secondary"
+            <Button
               onClick={() => actions.onPromoteValidationStateParams(detail.id)}
               disabled={state.loading === "validation-promote" || detail.status !== "succeeded"}
             >
               {state.loading === "validation-promote" ? "晋级中..." : "生成市场状态参数版本（专家）"}
-            </button>
+            </Button>
             <div className="backtest-window-grid">
               {(detail.windows ?? []).map((window, index) => (
                 <article className="backtest-window-card" key={`${window.index ?? window.window_index ?? index}`}>
@@ -140,15 +138,14 @@ function WindowPresetPicker({
         {presets.map((preset) => {
           const active = windowCount === preset.window_count && trainRatio === preset.train_ratio;
           return (
-            <button
+            <Button
               key={preset.label}
-              type="button"
-              className={active ? "active" : ""}
+              type={active ? "primary" : "default"}
               onClick={() => onChange({ window_count: preset.window_count, train_ratio: preset.train_ratio })}
             >
               <strong>{preset.label}</strong>
               <small>{preset.hint}</small>
-            </button>
+            </Button>
           );
         })}
       </div>

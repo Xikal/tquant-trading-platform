@@ -1,0 +1,220 @@
+.app-preview-metric span {
+  font-size: 7px;
+  color: var(--mobile-text-muted);
+}
+
+.app-preview-metric strong {
+  font-size: 9px;
+  line-height: 1.1;
+}
+
+.app-preview-card-metrics-watchlist .app-preview-metric strong {
+  font-size: 10px;
+}
+
+.app-preview-card-metrics-watchlist .app-preview-metric span {
+  letter-spacing: 0.01em;
+}
+
+.app-preview-card-footer {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+}
+
+.app-preview-card-foot-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+  min-width: 0;
+  font-size: 8px;
+  color: var(--mobile-text-muted);
+}
+
+.app-preview-candidate-compact {
+  gap: 4px;
+  padding: 7px 8px;
+  border-radius: 13px;
+}
+
+.app-preview-candidate-compact .app-preview-card-top {
+  gap: 5px;
+}
+
+.app-preview-candidate-compact .app-preview-rank-badge {
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  font-size: 12px;
+}
+
+.app-preview-candidate-compact .app-preview-card-title strong {
+  font-size: 13px;
+}
+
+.app-preview-candidate-compact .app-preview-card-title small {
+  font-size: 9px;
+}
+
+.app-preview-candidate-compact .app-preview-tag,
+.app-preview-candidate-compact .mobile-app-sheet-tags span,
+.app-preview-candidate-compact .app-preview-position-row span {
+  padding: 1px 6px;
+  font-size: 9px;
+}
+
+.app-preview-candidate-compact .app-preview-score-box {
+  min-width: 38px;
+}
+
+.app-preview-candidate-compact .app-preview-score-box strong {
+  font-size: 14px;
+}
+
+.app-preview-candidate-compact .app-preview-score-box small {
+  font-size: 8px;
+}
+
+.app-preview-candidate-compact .app-preview-card-metrics {
+  border-radius: 10px;
+}
+
+.app-preview-candidate-compact .app-preview-metric {
+  gap: 2px;
+  padding: 4px 2px;
+}
+
+.app-preview-candidate-compact .app-preview-metric span {
+  font-size: 7.5px;
+}
+
+.app-preview-candidate-compact .app-preview-metric strong {
+  font-size: 9px;
+  white-space: nowrap;
+}
+
+.app-preview-candidate-compact .app-preview-card-footer {
+  gap: 4px;
+}
+
+.app-preview-candidate-compact .app-preview-card-foot-meta {
+  gap: 4px;
+  font-size: 8.5px;
+}
+
+.app-preview-candidate-compact .app-preview-pill {
+  min-height: 18px;
+  padding: 0 6px;
+  font-size: 9px;
+}
+
+.app-preview-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 18px;
+  padding: 0 6px;
+  border-radius: 7px;
+  font-size: 9px;
+  font-weight: 700;
+  border: 1px solid transparent;
+}
+
+.app-preview-pill.tone-positive {
+  background: rgba(227, 59, 59, 0.1);
+  color: var(--mobile-positive);
+  border-color: rgba(227, 59, 59, 0.12);
+}
+
+.app-preview-pill.tone-negative {
+  background: rgba(30, 164, 92, 0.12);
+  color: var(--mobile-negative);
+  border-color: rgba(30, 164, 92, 0.14);
+}
+
+.app-preview-pill.tone-neutral {
+  background: rgba(231, 142, 26, 0.12);
+  color: var(--mobile-warning);
+  border-color: rgba(231, 142, 26, 0.14);
+}
+
+.app-preview-mini-chart {
+  width: 54px;
+  height: 20px;
+  flex: none;
+  justify-self: end;
+}
+
+.app-preview-mini-chart path {
+  fill: none;
+  stroke-width: 2.2;
+}
+
+.app-preview-mini-chart.tone-positive path {
+  stroke: var(--mobile-positive);
+}
+
+.app-preview-mini-chart.tone-negative path {
+  stroke: var(--mobile-negative);
+}
+
+.app-preview-mini-chart.tone-neutral path {
+  stroke: var(--mobile-warning);
+}
+
+.app-preview-card-note,
+.app-preview-warning {
+  margin: 0;
+  font-size: 8px;
+  line-height: 1.25;
+}
+
+.app-preview-card-note {
+  color: var(--mobile-text-muted);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.app-preview-warning {
+  color: var(--mobile-warning);
+}
+
+.mobile-app-tabbar {
+  position: fixed;
+  right: 8px;
+  bottom: max(6px, calc(env(safe-area-inset-bottom) - 10px));
+  left: 8px;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid var(--mobile-border);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 14px 30px rgba(16, 42, 87, 0.12);
+  backdrop-filter: blur(16px);
+  max-width: calc(100vw - 16px);
+}
+
+.mobile-app-tabbar button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 4px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--mobile-text-muted);
+  font: inherit;
+}
+
+.mobile-app-tabbar button span {
+  font-size: 9px;
+  font-weight: 700;
+  white-space: nowrap;
+}

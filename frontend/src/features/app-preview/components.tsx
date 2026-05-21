@@ -1,3 +1,4 @@
+import { Button } from "antd-mobile"
 import type { AppWatchlistCard, LowBuyCandidate } from "../../types"
 import { getPriceTone, getPriceToneClass } from "../../utils/priceTone"
 
@@ -165,7 +166,7 @@ export function CandidateCard({
 }) {
   if (!compact) {
     return (
-      <button type="button" className="app-preview-candidate" onClick={() => onOpen(candidate.symbol)}>
+      <Button fill="none" className="app-preview-candidate" onClick={() => onOpen(candidate.symbol)}>
         <div className="app-preview-row">
           <div>
             <strong>
@@ -187,15 +188,15 @@ export function CandidateCard({
           <span>分数 {candidate.score.toFixed(1)}</span>
         </div>
         <p>{candidate.summary_reason}</p>
-      </button>
+      </Button>
     )
   }
 
   const tone = signalTone(candidate.buy_signal_state)
   const candidateTags = listOrEmpty(candidate.tags)
   return (
-    <button
-      type="button"
+    <Button
+      fill="none"
       className="app-preview-candidate app-preview-candidate-compact"
       onClick={() => onOpen(candidate.symbol)}
     >
@@ -244,7 +245,7 @@ export function CandidateCard({
         </div>
         <MiniTrend tone={tone} />
       </div>
-    </button>
+    </Button>
   )
 }
 
@@ -330,14 +331,14 @@ export function HomeCard({
           {monitorNote}
         </p>
         {onRemove ? (
-          <button
-            type="button"
+          <Button
+            fill="outline"
             className="app-preview-remove-button"
             aria-label={`移除 ${item.name}`}
             onClick={() => void onRemove(item)}
           >
             移除
-          </button>
+          </Button>
         ) : null}
       </div>
     </article>

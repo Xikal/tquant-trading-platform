@@ -41,8 +41,8 @@ _CONTENT_SECURITY_POLICY = (
     "default-src 'self'; "
     "script-src 'self'; "
     "style-src 'self'; "
-    "img-src 'self' data: blob: https://fastapi.tiangolo.com; "
-    "font-src 'self' data:; "
+    "img-src 'self' blob:; "
+    "font-src 'self'; "
     "connect-src 'self'; "
     "object-src 'none'; "
     "base-uri 'self'; "
@@ -101,6 +101,18 @@ async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONR
     )
     _apply_security_headers(response, request)
     return response
+
+
+@app.middleware("http")
+async def enforce_internal_service_token(request, call_next):
+    if _requires_internal_service_token(request):
+        expected = settings.tquant_internal_service_token.strip()
+        provided = request.headers.get("x-internal-service-token", "").strip()
+        if not expected or provided != expected:
+            response = JSONResponse(status_code=403, content={"detail": "内部服务认证失败"})
+            _apply_security_headers(response, request)
+            return response
+    return await call_next(request)
 
 
 @app.middleware("http")
@@ -168,6 +180,13 @@ def _content_length_exceeds_limit(raw_value: str) -> bool:
         return int(raw_value) > settings.max_request_body_bytes
     except (TypeError, ValueError):
         return False
+
+
+def _requires_internal_service_token(request: Request) -> bool:
+    return bool(
+        request.headers.get("x-tquant-bff-hop")
+        or request.headers.get("x-internal-service-token")
+    )
 
 
 def _agent_audit_metrics_snapshot() -> dict[str, int]:

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { Button } from "antd";
 import { strategiesApi, type StrategySignalReplayItem } from "../../api/strategies";
 import { EmptyPlaceholder, ErrorBanner, SkeletonBlock } from "../../components/shared/Feedback";
 import { NumberField, SearchField, SelectField } from "../../components/shared/FormFields";
@@ -63,9 +64,9 @@ export function StrategySignalReplayPanel({ title }: { title: string }) {
           max={120}
           onChange={(event) => setLookbackDays(event.target.value)}
         />
-        <button type="button" className="primary" onClick={() => loadReplay(symbol, 24)} disabled={loading}>
+        <Button type="primary" onClick={() => loadReplay(symbol, 24)} loading={loading}>
           {loading ? "查询中" : "查询信号"}
-        </button>
+        </Button>
       </div>
       {error ? <ErrorBanner message={`信号复盘查询失败：${error}`} /> : null}
       <SignalReplayRows
@@ -118,9 +119,9 @@ function SignalReplayRows({
         <span>✅ {summary.good} 盈利/强信号</span>
         <span>❌ {summary.bad} 亏损/放弃</span>
         <span>⏳ {summary.pending} 待验证</span>
-        <button type="button" className={onlyFailures ? "active" : ""} onClick={onToggleFailures}>
+        <Button type={onlyFailures ? "primary" : "default"} size="small" className={onlyFailures ? "active" : ""} onClick={onToggleFailures}>
           只看失败信号
-        </button>
+        </Button>
       </div>
       {!visibleItems.length ? (
         <EmptyPlaceholder title="没有失败信号" description="当前筛选条件下没有可归类为失败的信号。" />

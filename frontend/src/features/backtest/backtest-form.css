@@ -1,0 +1,105 @@
+.backtest-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.backtest-field,
+.backtest-field-group,
+.backtest-form > .tq-field {
+  display: grid;
+  gap: 6px;
+}
+
+.backtest-field.wide,
+.backtest-field-group.wide,
+.backtest-form > .tq-field.wide,
+.backtest-strategy-picker.wide,
+.backtest-submit-button.wide {
+  grid-column: 1 / -1;
+}
+
+.backtest-field span,
+.backtest-field-group > span,
+.backtest-strategy-picker > span {
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.backtest-field input,
+.backtest-field select,
+.backtest-field-group input,
+.backtest-form .tq-input,
+.backtest-form .tq-input-wrap {
+  min-height: 34px;
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: #f9fbff;
+  color: var(--text);
+  padding: 7px 9px;
+}
+
+.backtest-field-group {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.backtest-field-group > span {
+  grid-column: 1 / -1;
+}
+
+.backtest-field-group label {
+  display: grid;
+  gap: 5px;
+}
+
+.backtest-field-group small {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.backtest-strategy-picker {
+  display: grid;
+  gap: 7px;
+}
+
+.backtest-strategy-picker label {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 2px 8px;
+  align-items: center;
+  padding: 8px 10px;
+  border: 1px solid #dce5f0;
+  border-radius: 10px;
+  background: #f8fafc;
+}
+
+.backtest-strategy-picker label.selected {
+  border-color: rgba(214, 165, 92, 0.7);
+  background: #fff8e8;
+}
+
+.backtest-strategy-picker input,
+.backtest-strategy-picker .ant-checkbox-wrapper {
+  grid-row: span 2;
+  accent-color: var(--accent);
+}
+
+.backtest-strategy-picker strong {
+  font-size: 12px;
+}
+
+.backtest-strategy-picker small {
+  color: var(--muted);
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 10px;
+}
+
+.backtest-submit-button {
+  min-height: 38px;
+  border-radius: 10px;
+  background: linear-gradient(90deg, #d6a55c 0%, #0b1422 48%, #0b1422 100%);
+  font-weight: 900;
+}

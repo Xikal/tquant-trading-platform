@@ -1,7 +1,7 @@
 import { useEffect, type RefObject } from "react";
 import type { AuthUser } from "../../types";
-import { MONITOR_REFRESH_INTERVAL_MS } from "./workspaceConstants";
-import type { Page } from "./workspaceTypes";
+import { MONITOR_REFRESH_INTERVAL_MS } from "../workspace-shared/workspaceConstants";
+import type { Page } from "../workspace-shared/workspaceTypes";
 
 const PAPER_TRADING_REFRESH_INTERVAL_MS = 30_000;
 const PAPER_IDLE_REFRESH_INTERVAL_MS = 60 * 60 * 1000;
@@ -22,7 +22,7 @@ export function useWorkspaceAutoRefresh({
   refreshPaperLiveSnapshotRef,
 }: UseWorkspaceAutoRefreshParams) {
   useEffect(() => {
-    if (!currentUser || page !== "monitor") {
+    if (!currentUser || !["monitor", "emotion"].includes(page)) {
       return undefined;
     }
     let inFlight = false;

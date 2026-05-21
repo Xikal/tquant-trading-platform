@@ -2,15 +2,15 @@ import { Suspense, type ComponentProps, type ComponentType } from "react";
 import type { StrategyMeta } from "../../api/strategies";
 import type { AuthUser } from "../../types";
 import { PageErrorBoundary } from "./PageErrorBoundary";
-import type { MonitorPageProps } from "./MonitorPage";
-import type { MarketEmotionPageProps } from "./MarketEmotionPage";
-import type { PaperTradingPageProps } from "./PaperTradingPage";
+import type { MarketEmotionPageProps } from "../market-emotion/MarketEmotionPage";
+import type { MonitorPageProps } from "../monitor/MonitorPage";
+import type { PaperTradingPageProps } from "../paper/PaperTradingPage";
 import type { useAnalysisData } from "./useAnalysisData";
 import type { useMonitorData } from "./useMonitorData";
 import type { usePlaybookData } from "./usePlaybookData";
 import type { useSettingsData } from "./useSettingsData";
-import { OBSERVATION_PLAYBOOK_KEYS } from "./workspaceConstants";
-import type { Page, StockCardView } from "./workspaceTypes";
+import { OBSERVATION_PLAYBOOK_KEYS } from "../workspace-shared/workspaceConstants";
+import type { Page, StockCardView } from "../workspace-shared/workspaceTypes";
 
 interface WorkspacePageContentProps {
   AnalysisPage: ComponentType<ComponentProps<any>>;

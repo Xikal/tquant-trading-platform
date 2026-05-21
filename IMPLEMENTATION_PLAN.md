@@ -1,5 +1,83 @@
 # TQuant 实施计划
 
+## 前端最终重构优化基础层
+
+需求来源：`docs/frontend-final-refactor-optimization-plan-2026-05-21.md`
+
+### 本轮执行范围
+
+- [x] 安装第一批基础依赖：Ant Design、Ant Design Icons、antd-mobile、TanStack Query、TanStack Virtual、React Router。
+- [x] 新增 `frontend/src/app` 基础层：通用 Providers、Web/Native Router、QueryClient、Query Keys、权限 Guard。
+- [x] 新增 `frontend/src/ui` 设计系统基础层：主题 token、AntD 主题、移动端 CSS variables、Shell、反馈态、数据展示、表单、图表容器。
+- [x] 重构 Web 入口：`main.tsx` 接入 AppProviders、WebUiProviders、React Router。
+- [x] 重构 Native 入口：`main-native.tsx` 接入 AppProviders、Memory Router，并避免引入桌面 AntD Provider。
+- [x] 新增 Query seam：monitor / playbook / holdings / paper / settings 查询或 mutation 包装，供后续页面迁移复用。
+- [x] Web 工作台顶部 Shell 导航迁移到 Ant Design `Menu` / `Badge` / `Dropdown`，保留现有页面状态和权限逻辑。
+- [x] Web 核心页面第一批控件迁移：系统配置分类、选股宝典策略切换、模拟盘详情切换统一改为 Ant Design `Tabs`。
+- [x] 交易工作台共享动作控件迁移：股票卡片操作、设置卡保存、错误弹窗、股票详情弹窗改用 Ant Design `Button` / `Modal`。
+- [x] 实时监控和系统配置主操作按钮改用 Ant Design `Button`，保留原有回调和 loading 语义。
+- [x] App 壳层第一批迁移：底部导航改用 `antd-mobile` `TabBar`，状态提示改用 `NoticeBar`。
+- [x] 回测页面大文件拆分：`BacktestDashboard.tsx` 降到 471 行，新增纯 helper 文件；`api/backtests.ts` 降到 496 行，新增 API helper 文件。
+- [x] 系统配置页继续拆分：校验/dirty state helper 独立，页面降到 396 行；修复旧 `.settings-tabs button` 规则误伤 AntD Tabs 的风险。
+- [x] 系统配置管理操作继续迁移 Ant Design：板块过滤清空、策略治理操作、功能开关切换改用 `Button` / `Switch`。
+- [x] App 端继续拆分：`MobileDesignCards.tsx` 格式化逻辑独立，策略切换改用 `antd-mobile` `CapsuleTabs`，板块偏好逻辑独立为 hook。
+- [x] 实时监控页继续拆分：盘面摘要、今日动作、数据质量、榜单提示等纯逻辑抽入 helper，页面降到 320 行。
+- [x] 回测页面继续拆分：任务进度、PanelHeader、Metric、EmptyLine 独立组件化，页面保持 437 行。
+- [x] 回测 API 层继续拆分：响应归一化逻辑独立到 `backtests.normalizers.ts`，`api/backtests.ts` 降到 219 行。
+- [x] 回测表单样式继续拆分：新增 `backtest-form.css`，`backtest.css` 降到 370 行。
+- [x] 回测页面常用控件继续迁移 Ant Design：刷新、快速/专家切换、策略多选、提交、取消任务改用 `Button` / `Segmented` / `Checkbox`。
+- [x] 策略工作台继续迁移 Ant Design：刷新、一键体检、策略确认弹窗和确认摘要按钮改用 `Button` / `Modal`。
+- [x] 因子实验室继续迁移 Ant Design：刷新、生成假设、合成代码、保存草稿、评估、晋级和激活开关改用 `Button` / `Input` / `Checkbox` / `Switch`。
+- [x] 系统配置继续迁移 Ant Design：板块过滤多选改用 `Checkbox`，因子权重输入改用 `InputNumber`。
+- [x] 模拟盘盘中确认弹窗按钮改用 Ant Design `Button`。
+- [x] 回测研究区剩余控件迁移 Ant Design：优化、样本外验证、对比、归因导出、ML/容量面板和任务列表统一改用 `Button` / `Checkbox`。
+- [x] 策略工作台剩余控件迁移 Ant Design：健康摘要、流程步骤、预设选择、因子库列表统一改用 `Button`。
+- [x] 工作台剩余通用控件迁移 Ant Design：命令面板、账本修复、个股详情切换、ETF 参数开关、页面错误重试、成交标签、机甲委托入口统一改用 `Button` / `Input` / `Checkbox`。
+- [x] App / App Preview 剩余控件迁移 antd-mobile：账户菜单、候选详情、更新弹窗、行业偏好、持仓搜索、持仓编辑、候选/持仓操作统一改用 `Button` / `Input`。
+- [x] App 壳层补齐 `PullToRefresh`：按当前 Tab 触发对应刷新，低吸 Tab 支持强制刷新候选池。
+- [x] App 持仓编辑 Sheet 改为 `antd-mobile` `Popup`，保留原有表单语义和样式入口。
+- [x] Vitest 增加 `antd-mobile` 测试轻量 mock，解决 SSR 测试解析移动端组件 CSS 的问题；生产和 Native 构建仍使用真实 `antd-mobile`。
+- [x] Web/Native 根路由改为 `React.lazy`：`TradingWorkspace` 和 `MobileApp` 从入口同步包中拆出，降低首屏同步加载压力。
+- [x] 核心页面新增 feature 入口并完成真实实现搬迁：`analysis`、`market-emotion`、`playbook`、`paper`、`monitor`、`settings` 页面实现已在对应 feature 目录，`trading-workspace` 旧兼容 re-export 已删除。
+- [x] 删除根路由懒加载后不再被引用的旧 `frontend/src/App.tsx`。
+- [x] 删除前端可确认无引用的占位/废弃组件、旧策略交通灯组件、空目录和对应无用样式；保留 `vite-env.d.ts`、测试 mock 等必要基础文件。
+- [x] 目标范围内不再存在原生 `button` / checkbox / select / textarea 残留：`frontend/src/features/backtest`、`strategy`、`factor-mining`、`trading-workspace`、`mobile`、`app-preview` 扫描为 0。
+- [x] 保留现有页面业务行为，不在本批次直接替换核心交易页面，避免影响策略与模拟盘逻辑。
+
+### 已验证
+
+- [x] `cd frontend && npm run build:web` 通过。
+- [x] `cd frontend && npm run build:native` 通过；Native 构建未引入桌面 AntD 大包，根路由懒加载后 `MobileApp` 独立 chunk gzip 约 21.36 kB，`antd-mobile` 独立 chunk gzip 约 83.33 kB。
+- [x] `cd frontend && npm run analyze` 通过，并生成 `frontend/dist/bundle-report.json`；最大动态 chunk 为 `antd` 与 `echarts`，均已从通用 vendor 拆出。
+- [x] `cd frontend && npm test` 通过，12 files / 33 tests。
+- [x] `cd frontend && npm audit --audit-level=moderate` 通过，0 vulnerabilities；曾发现的 `brace-expansion` moderate 已通过 `npm audit fix` 修复。
+- [x] `git diff --check` 通过。
+- [x] `rg -n "<button|<input\\s+type=\\\"checkbox\\\"|<select|<textarea" frontend/src/features/backtest frontend/src/features/strategy frontend/src/features/factor-mining frontend/src/features/trading-workspace frontend/src/mobile frontend/src/features/app-preview` 无结果。
+- [x] 新增 `frontend/src/app` / `frontend/src/ui` 文件均小于 500 行；新增最大文件为 `tokens.css` 85 行。
+- [x] 本轮新增/拆分文件均小于 500 行；搬迁后的 `features/settings/SettingsPage.tsx` 400 行、`features/monitor/MonitorPage.tsx` 320 行、`features/paper/PaperTradingPage.tsx` 288 行、`features/playbook/PlaybookPage.tsx` 241 行。
+- [x] `api/backtests.ts` 从 496 行降到 219 行，归一化文件 305 行。
+- [x] `backtest.css` 从 476 行降到 370 行，新增 `backtest-form.css` 105 行。
+- [x] 样式文件按规则边界继续拆分，`frontend/src` 下 CSS 单文件已控制在 250 行以内；原入口文件保留顺序 `@import` 以降低视觉回归风险。
+- [x] Vite vendor chunk 继续拆分为 `antd` / `antd-mobile` / `tanstack` / `react-vendor` / `echarts` / `native`，避免通用 vendor 单包过大。
+- [x] `trading-workspace` 旧 re-export wrappers 已清理，测试与业务引用改为直接指向目标 feature / shared 模块。
+- [x] 前端无引用文件启发式扫描仅剩 `vite-env.d.ts`，该文件为 Vite 类型声明，需保留。
+
+### 保留项与原因
+
+- [x] 页面 class 命名已完成阻塞项核查：剩余 class 是布局/状态语义和既有样式锚点，不再作为未完成项处理；进一步命名精简需要配合视觉回归单独小步推进。
+- [x] 第一批核心页面实现已从 `trading-workspace` 搬迁到业务 feature 目录；旧兼容 re-export wrappers 已删除，避免继续扩大 shell 目录职责。
+- [x] 共享业务 UI 组件 `WorkspaceComponents` 搬迁到 `features/workspace-shared`，旧路径兼容 re-export 已删除。
+- [x] 共享格式化、类型、视图模型和工作台常量 `workspaceFormatters` / `workspaceTypes` / `workspaceViewModels` / `workspaceConstants` 搬迁到 `features/workspace-shared`。
+- [x] 模拟盘主要子组件 `PaperDetailTabs`、`PaperTradingSections`、`PaperTradingSummaryBar`、`PaperTodayActionPanel` 搬迁到 `features/paper`。
+- [x] 模拟盘详情与委托组件 `PaperTradingPerformance`、`PaperLedgerRepairPanel`、`PaperPositionDetailsPanel`、`PaperOrderEntryModal` 搬迁到 `features/paper`，旧路径兼容 re-export 已删除。
+- [x] 模拟盘日期/状态工具与机甲舱组件、动画资产搬迁到 `features/paper`，旧路径兼容 re-export / CSS import 已删除。
+- [x] 设置页主要子组件 `SettingsPagePanels`、`SettingsPageTabs`、`AuthSecurityCard`、`LatestDataStatusCard` 搬迁到 `features/settings`。
+- [x] 设置页量化参数卡片 `QuantParameter*` 与 `quantParameterCardUtils` 搬迁到 `features/settings`，旧路径兼容 re-export 已删除。
+- [x] 监控页小组件 `InstrumentSyncProgress`、`MonitorHoldingWizard` 搬迁到 `features/monitor`，旧路径兼容 re-export 已删除。
+- [x] K 线通用 ECharts 渲染器搬迁到 `ui/charts`，工作台业务包装搬迁到 `features/workspace-shared`，旧路径兼容 re-export 已删除。
+- [x] `requestCached` 保留兼容函数名，但底层已迁移为 TanStack Query `fetchQuery`，鉴权/管理令牌变化和显式 invalidation 会清理 Query cache。
+- [x] ECharts 与专家面板已按动态 chunk 加载；`antd` 和 `echarts` 仍是最大生产依赖，但已从通用 vendor 拆出，后续优化应基于真实首屏 profiling 决定是否进一步替换组件。
+
 ## Auth 安全整改核验与补强
 
 需求来源：用户 2026-05-20 直接给出的 AUTH-C/AUTH-H 安全问题清单。

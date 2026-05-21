@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { formatAmount, formatInteger, formatMoneyPlain, formatPct, formatPrice, plainTradingText, shortTime, toneFromChange } from "./workspaceFormatters";
+import { formatAmount, formatInteger, formatMoneyPlain, formatPct, formatPrice, plainTradingText, shortTime, toneFromChange } from "../workspace-shared/workspaceFormatters";
 
 describe("workspaceFormatters", () => {
   it("formats finance values with stable precision", () => {

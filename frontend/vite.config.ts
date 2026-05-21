@@ -4,9 +4,18 @@ import { resolve } from "node:path";
 
 export default defineConfig(({ mode }) => {
   const isNativeMode = mode === "native";
+  const isTestMode = mode === "test";
 
   return {
     plugins: [react()],
+    resolve: {
+      alias: isTestMode
+        ? {
+            "antd-mobile/es/global": resolve(__dirname, "src/test/emptyModule.ts"),
+            "antd-mobile": resolve(__dirname, "src/test/antdMobileMock.tsx"),
+          }
+        : undefined,
+    },
     base: isNativeMode ? "./" : "/",
     build: {
       chunkSizeWarningLimit: 700,
@@ -65,6 +74,15 @@ function splitVendorChunks(id: string): string | undefined {
   }
   if (id.includes("/@capacitor") || id.includes("\\@capacitor")) {
     return "native";
+  }
+  if (id.includes("/@ant-design") || id.includes("\\@ant-design") || id.includes("/antd/") || id.includes("\\antd\\")) {
+    return "antd";
+  }
+  if (id.includes("/antd-mobile") || id.includes("\\antd-mobile")) {
+    return "antd-mobile";
+  }
+  if (id.includes("/@tanstack") || id.includes("\\@tanstack")) {
+    return "tanstack";
   }
   if (id.includes("/react") || id.includes("\\react")) {
     return "react-vendor";

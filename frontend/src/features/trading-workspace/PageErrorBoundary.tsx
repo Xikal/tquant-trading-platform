@@ -1,4 +1,5 @@
 import { Component, type ErrorInfo, type ReactNode } from "react";
+import { Button } from "antd";
 
 interface PageErrorBoundaryProps {
   children: ReactNode;
@@ -36,7 +37,7 @@ export class PageErrorBoundary extends Component<PageErrorBoundaryProps, PageErr
       <section className="panel page-error-boundary">
         <h2>页面加载失败</h2>
         <p>{this.state.message}</p>
-        <button type="button" onClick={() => this.setState({ message: "" })}>重试</button>
+        <Button onClick={() => this.setState({ message: "" })}>重试</Button>
       </section>
     );
   }

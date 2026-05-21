@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import math
 from collections import defaultdict
 from statistics import mean, stdev
 
@@ -9,7 +8,9 @@ from sqlalchemy.orm import Session
 
 from app.models.entities import BacktestTrade
 from app.services.black_litterman_optimizer import optimize_black_litterman_portfolio
+from app.services.finance.performance_math import annualized_sharpe_ratio, risk_free_rate_from_params
 from app.services.markowitz_optimizer import optimize_markowitz_portfolio
+from app.services.quant.runtime_parameters import get_backtest_execution
 
 HEURISTIC_OPTIMIZER_METHOD = "risk_adjusted"
 LEGACY_MEAN_VARIANCE_ALIAS = "mean_variance"
@@ -37,7 +38,7 @@ def optimize_strategy_portfolio(db: Session, run_id: int, method: str = "hrp") -
         weights = _risk_adjusted_weights(stats)
     else:
         weights = _inverse_risk_weights(stats)
-    portfolio_sharpe = _portfolio_sharpe(stats, weights)
+    portfolio_sharpe = _portfolio_sharpe(returns, weights)
     return {
         "run_id": run_id,
         "method": normalized_method,
@@ -85,7 +86,10 @@ def _strategy_returns(db: Session, run_id: int) -> dict[str, list[float]]:
 def _strategy_stats(strategy_key: str, values: list[float]) -> dict:
     avg = mean(values)
     vol = stdev(values) if len(values) > 1 else max(abs(avg), 0.01)
-    sharpe = avg / max(vol, 0.01)
+    sharpe = annualized_sharpe_ratio(
+        [value / 100.0 for value in values],
+        risk_free_rate_annual_pct=risk_free_rate_from_params(get_backtest_execution()),
+    )
     return {"strategy_key": strategy_key, "avg": avg, "vol": vol, "sharpe": sharpe, "count": len(values)}
 
 
@@ -104,10 +108,21 @@ def _risk_adjusted_weights(stats: list[dict]) -> dict[str, float]:
     return _normalize(raw)
 
 
-def _portfolio_sharpe(stats: list[dict], weights: dict[str, float]) -> float:
-    expected = sum(weights.get(item["strategy_key"], 0.0) * float(item["avg"]) for item in stats)
-    risk = math.sqrt(sum((weights.get(item["strategy_key"], 0.0) * float(item["vol"])) ** 2 for item in stats))
-    return expected / max(risk, 0.0001)
+def _portfolio_sharpe(returns: dict[str, list[float]], weights: dict[str, float]) -> float:
+    max_len = max((len(values) for values in returns.values()), default=0)
+    if max_len < 2:
+        return 0.0
+    portfolio_returns = []
+    for index in range(max_len):
+        daily_pct = 0.0
+        for strategy_key, values in returns.items():
+            if index < len(values):
+                daily_pct += weights.get(strategy_key, 0.0) * float(values[index])
+        portfolio_returns.append(daily_pct / 100.0)
+    return annualized_sharpe_ratio(
+        portfolio_returns,
+        risk_free_rate_annual_pct=risk_free_rate_from_params(get_backtest_execution()),
+    )
 
 
 def _normalize(raw: dict[str, float]) -> dict[str, float]:

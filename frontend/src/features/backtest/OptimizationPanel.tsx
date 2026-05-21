@@ -1,3 +1,4 @@
+import { Button } from "antd";
 import type { BacktestExecutionModel } from "../../api/backtests";
 import {
   BACKTEST_EXECUTION_MODELS,
@@ -59,9 +60,9 @@ export function OptimizationPanel({
             <SliderParamField label="止盈线" min={3} max={25} step={0.5} suffix="%" value={percentToSlider(state.optimizationForm.take_profit_pct, 10)} onChange={(value) => actions.onOptimizationFormChange({ take_profit_pct: ratioFromPercent(value) })} />
           </div>
         </details>
-        <button type="button" className="primary" onClick={actions.onSubmitOptimization} disabled={state.loading === "optimize-submit"}>
+        <Button type="primary" onClick={actions.onSubmitOptimization} disabled={state.loading === "optimize-submit"}>
           {state.loading === "optimize-submit" ? "提交中..." : "提交优化"}
-        </button>
+        </Button>
       </div>
 
       <TaskList

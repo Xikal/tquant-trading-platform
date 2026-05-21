@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { PRODUCTION_PLAYBOOK_TABS, WEB_PLAYBOOK_TABS } from "./workspaceConstants";
+import { PRODUCTION_PLAYBOOK_TABS, WEB_PLAYBOOK_TABS } from "../workspace-shared/workspaceConstants";
 
 describe("workspaceConstants", () => {
   it("shows only active playbook strategies in production tabs", () => {

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react"
+import { Button, Input, Popup } from "antd-mobile"
 import type { WatchlistItem } from "../../types"
 
 export interface HoldingEditorSeed {
@@ -65,10 +66,6 @@ export function HoldingEditorSheet({
     setFormError("")
   }, [open, seed])
 
-  if (!open) {
-    return null
-  }
-
   const numericBase = parseLots(basePosition)
   const numericAvailable = parseLots(availablePosition)
 
@@ -112,24 +109,30 @@ export function HoldingEditorSheet({
   const title = mode === "buy" ? "加入持仓" : mode === "create" ? "新增持仓" : "编辑持仓"
 
   return (
-    <div className="mobile-app-sheet-backdrop mobile-holding-editor-backdrop" role="presentation" onClick={onClose}>
-      <section className="mobile-app-sheet mobile-holding-editor" onClick={(event) => event.stopPropagation()}>
+    <Popup
+      visible={open}
+      onMaskClick={onClose}
+      position="bottom"
+      bodyClassName="mobile-holding-editor-popup"
+      destroyOnClose
+    >
+      <section className="mobile-app-sheet mobile-holding-editor">
         <div className="mobile-app-sheet-head">
           <div className="mobile-app-sheet-title">
             <h2>{title}</h2>
             <small>100 股递增</small>
           </div>
-          <button type="button" className="mobile-app-icon-button" onClick={onClose} aria-label="关闭">
+          <Button fill="none" className="mobile-app-icon-button" onClick={onClose} aria-label="关闭">
             ×
-          </button>
+          </Button>
         </div>
 
         <div className="mobile-holding-form">
           <label className="mobile-holding-field">
             <span>代码</span>
-            <input
+            <Input
               value={symbol}
-              onChange={(event) => setSymbol(event.target.value.toUpperCase())}
+              onChange={(value) => setSymbol(value.toUpperCase())}
               placeholder="600000.SH"
               autoCapitalize="characters"
             />
@@ -140,9 +143,9 @@ export function HoldingEditorSheet({
 
           <label className="mobile-holding-field">
             <span>成本价</span>
-            <input
+            <Input
               value={costBasis}
-              onChange={(event) => setCostBasis(event.target.value)}
+              onChange={setCostBasis}
               placeholder="0.000"
               inputMode="decimal"
             />
@@ -151,42 +154,42 @@ export function HoldingEditorSheet({
           <div className="mobile-holding-field">
             <span>持仓数</span>
             <div className="mobile-stepper">
-              <button type="button" className="mobile-step-button" onClick={() => setBasePosition(String(stepLots(numericBase, -100)))}>
+              <Button fill="none" className="mobile-step-button" onClick={() => setBasePosition(String(stepLots(numericBase, -100)))}>
                 -100
-              </button>
-              <input
+              </Button>
+              <Input
                 value={basePosition}
-                onChange={(event) => setBasePosition(event.target.value)}
+                onChange={setBasePosition}
                 inputMode="numeric"
               />
-              <button type="button" className="mobile-step-button" onClick={() => setBasePosition(String(stepLots(numericBase, 100)))}>
+              <Button fill="none" className="mobile-step-button" onClick={() => setBasePosition(String(stepLots(numericBase, 100)))}>
                 +100
-              </button>
+              </Button>
             </div>
           </div>
 
           <div className="mobile-holding-field">
             <span>可用数</span>
             <div className="mobile-stepper">
-              <button
-                type="button"
+              <Button
+                fill="none"
                 className="mobile-step-button"
                 onClick={() => setAvailablePosition(String(stepLots(numericAvailable, -100)))}
               >
                 -100
-              </button>
-              <input
+              </Button>
+              <Input
                 value={availablePosition}
-                onChange={(event) => setAvailablePosition(event.target.value)}
+                onChange={setAvailablePosition}
                 inputMode="numeric"
               />
-              <button
-                type="button"
+              <Button
+                fill="none"
                 className="mobile-step-button"
                 onClick={() => setAvailablePosition(String(stepLots(numericAvailable, 100)))}
               >
                 +100
-              </button>
+              </Button>
             </div>
           </div>
         </div>
@@ -195,15 +198,15 @@ export function HoldingEditorSheet({
 
         <div className="mobile-holding-editor-actions">
           <div className="mobile-holding-editor-buttons">
-            <button type="button" className="mobile-app-secondary" onClick={onClose} disabled={saving}>
+            <Button fill="outline" className="mobile-app-secondary" onClick={onClose} disabled={saving}>
               取消
-            </button>
-            <button type="button" className="mobile-app-primary" onClick={() => void handleSubmit()} disabled={saving}>
+            </Button>
+            <Button color="primary" className="mobile-app-primary" onClick={() => void handleSubmit()} disabled={saving}>
               {saving ? "保存中" : "保存"}
-            </button>
+            </Button>
           </div>
         </div>
       </section>
-    </div>
+    </Popup>
   )
 }

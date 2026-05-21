@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from app.core.admin_auth import require_admin_auth
 from app.core.auth import get_current_user
 from app.core.database import get_db
+from app.models.entities import User
 from app.models.schema_defs.phase4 import (
     MLSignalArtifactStorageCheckResponse,
     MLSignalIncrementalTrainRequest,
@@ -72,7 +73,7 @@ def list_ml_signal_models(
 @router.post("/models/{model_key}/approve-promotion", response_model=MLSignalModelOut)
 def approve_ml_signal_model_promotion(
     model_key: str,
-    current_user=Depends(get_current_user),  # noqa: ANN001
+    current_user: User = Depends(get_current_user),
     _: None = Depends(require_admin_auth),
     db: Session = Depends(get_db),
 ) -> MLSignalModelOut:

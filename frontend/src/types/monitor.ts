@@ -16,6 +16,7 @@ export interface BffPartialError {
 
 export interface MonitorWorkspaceBffResponse {
   api_version: string;
+  schema_version?: string;
   generated_at: string;
   monitor_snapshot?: MonitorSnapshot | null;
   market_breadth?: MarketBreadth | null;

@@ -1,0 +1,188 @@
+.factor-mining-tab,
+.factor-left,
+.factor-right,
+.factor-hypothesis-panel,
+.factor-draft-editor,
+.factor-library-list,
+.factor-eval-card,
+.factor-health-dashboard {
+  display: grid;
+  gap: 14px;
+}
+
+.factor-hero {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px;
+  border: 1px solid var(--border-soft);
+  border-radius: 14px;
+  background: var(--panel-elevated);
+}
+
+.factor-hero h2,
+.factor-section-title h3 {
+  margin: 0;
+}
+
+.factor-hero p,
+.factor-section-title span {
+  margin: 4px 0 0;
+  color: var(--text-secondary);
+}
+
+.factor-mining-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(320px, 0.95fr);
+  gap: 16px;
+}
+
+.factor-hypothesis-panel,
+.factor-draft-editor,
+.factor-library-list,
+.factor-eval-card,
+.factor-health-dashboard {
+  padding: 14px;
+  border: 1px solid var(--border-soft);
+  border-radius: 14px;
+  background: var(--panel-elevated);
+}
+
+.factor-topic-row,
+.factor-draft-fields,
+.factor-actions,
+.factor-health-summary,
+.factor-metric-grid {
+  display: grid;
+  gap: 10px;
+}
+
+.factor-topic-row {
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+}
+
+.factor-topic-row label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.factor-draft-fields,
+.factor-health-summary,
+.factor-metric-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.factor-hypothesis-list,
+.factor-health-list {
+  display: grid;
+  gap: 10px;
+  max-height: 360px;
+  overflow: auto;
+}
+
+.factor-hypothesis-list article,
+.factor-library-list article,
+.factor-health-list article {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  padding: 10px;
+  border: 1px solid var(--border-soft);
+  border-radius: 12px;
+  background: var(--panel-muted);
+}
+
+.factor-hypothesis-list article div,
+.factor-library-list article button,
+.factor-health-list article div {
+  display: grid;
+  gap: 4px;
+}
+
+.factor-hypothesis-list span,
+.factor-hypothesis-list small,
+.factor-library-list span,
+.factor-library-list small,
+.factor-health-list span,
+.factor-health-list small {
+  color: var(--text-secondary);
+}
+
+.factor-library-list article.active {
+  border-color: var(--accent-strong);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent-strong) 28%, transparent);
+}
+
+.factor-library-list article button {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+}
+
+.factor-draft-editor textarea,
+.factor-draft-editor input,
+.factor-topic-row input {
+  width: 100%;
+}
+
+.factor-metric-grid article,
+.factor-health-summary article {
+  display: grid;
+  gap: 4px;
+  padding: 10px;
+  border: 1px solid var(--border-soft);
+  border-radius: 12px;
+  background: var(--panel-muted);
+}
+
+.factor-metric-grid article.ok strong,
+.factor-health-list b.improving {
+  color: var(--success-strong);
+}
+
+.factor-metric-grid article.warn strong,
+.factor-health-list b.stable {
+  color: var(--warning-strong);
+}
+
+.factor-metric-grid article.bad strong,
+.factor-health-list b.decaying {
+  color: var(--danger-strong);
+}
+
+.factor-warnings {
+  margin: 0;
+  padding-left: 18px;
+  color: var(--warning-strong);
+}
+
+.factor-inline-error {
+  margin: 0;
+  color: var(--danger-strong);
+}
+
+.factor-activation {
+  min-width: 108px;
+}
+
+.factor-activation.ant-switch-checked {
+  background: var(--success-strong);
+}
+
+@media (max-width: 1180px) {
+  .factor-mining-grid,
+  .factor-topic-row,
+  .factor-draft-fields,
+  .factor-health-summary,
+  .factor-metric-grid {
+    grid-template-columns: 1fr;
+  }
+}

@@ -1,5 +1,5 @@
-import { PATH_PAGE_MAP } from "./workspaceConstants";
-import type { Page } from "./workspaceTypes";
+import { PATH_PAGE_MAP } from "../workspace-shared/workspaceConstants";
+import type { Page } from "../workspace-shared/workspaceTypes";
 
 export function pageFromLocation(): Page {
   if (typeof window === "undefined") {

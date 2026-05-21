@@ -10,6 +10,7 @@ from app.services.indicators import (
     macd_with_validity,
     moving_average,
     rsi,
+    rsi_wilder,
     sanitize_metrics,
     stochastic,
     vwap,
@@ -33,13 +34,21 @@ class IndicatorSanitizeTests(unittest.TestCase):
     def test_rsi_returns_expected_extremes_and_neutral_short_series(self):
         self.assertEqual(rsi([1, 2, 3], 14), 50.0)
         self.assertEqual(rsi([float(i) for i in range(1, 17)], 14), 100.0)
+        self.assertEqual(rsi_wilder([float(i) for i in range(1, 17)], 14), 100.0)
 
     def test_atr_uses_true_range(self):
         bars = [
             KlineBar(timestamp=str(index), open=10, close=10 + index, high=12 + index, low=9 + index, volume=100, amount=1000)
-            for index in range(16)
+            for index in range(28)
         ]
         self.assertEqual(atr(bars, 14), 3.0)
+
+    def test_atr_returns_none_for_short_series(self):
+        bars = [
+            KlineBar(timestamp=str(index), open=10, close=10 + index, high=12 + index, low=9 + index, volume=100, amount=1000)
+            for index in range(16)
+        ]
+        self.assertIsNone(atr(bars, 14))
 
     def test_bollinger_bands_use_sample_standard_deviation(self):
         upper, middle, lower = bollinger_bands([1, 2, 3, 4, 5], window=5, num_std=2)

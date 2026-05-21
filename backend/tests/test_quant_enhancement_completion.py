@@ -126,6 +126,17 @@ def test_live_backtest_comparison_flags_degraded_strategy() -> None:
     assert result["alerts"]
 
 
+def test_live_backtest_comparison_requires_user_scope() -> None:
+    db = _db()
+    db.add(PaperAccount(user_id=99, initial_cash=Decimal("100000"), total_assets=Decimal("100000")))
+    db.commit()
+
+    result = build_live_backtest_comparison(db, user_id=None, account_id=None)
+
+    assert result["items"] == []
+    assert "未找到模拟账户" in result["summary"]
+
+
 def test_alternative_sentiment_and_arbitrage_are_research_only() -> None:
     db = _db()
     db.add(MarketEventCache(symbol="600000", title="公司公告回购并获得大额订单", source="news", risk_level="low"))

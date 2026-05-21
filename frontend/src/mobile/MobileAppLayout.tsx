@@ -1,4 +1,5 @@
 import type { AuthUser } from "../types"
+import { Button, NoticeBar, TabBar } from "antd-mobile"
 import { AccountMenu } from "./MobileSheets"
 import { Icon } from "./mobileSections"
 import type { MobileTab } from "./mobileTypes"
@@ -40,19 +41,19 @@ export function MobileAppHeader({
       <div className="mobile-app-topbar-meta">
         {activeTab === "home" ? (
           <>
-            <button type="button" className="mobile-app-icon-button" onClick={onRefreshHome} aria-label="刷新">
+            <Button fill="none" className="mobile-app-icon-button" onClick={onRefreshHome} aria-label="刷新">
               <Icon name="refresh" />
-            </button>
+            </Button>
             <span className="mobile-app-time">{pulseTime}</span>
           </>
         ) : activeTab === "holdings" ? (
-          <button type="button" className="mobile-app-icon-button" onClick={onRefreshHoldings} aria-label="刷新">
+          <Button fill="none" className="mobile-app-icon-button" onClick={onRefreshHoldings} aria-label="刷新">
             <Icon name="refresh" />
-          </button>
+          </Button>
         ) : (
-          <button type="button" className="mobile-app-icon-button" onClick={onRefreshLowBuy} aria-label="刷新">
+          <Button fill="none" className="mobile-app-icon-button" onClick={onRefreshLowBuy} aria-label="刷新">
             <Icon name="refresh" />
-          </button>
+          </Button>
         )}
         <AccountMenu
           user={user}
@@ -83,11 +84,11 @@ export function MobileStatusBanners({
 }) {
   return (
     <>
-      {signalToastVisible ? <div className="mobile-app-signal-toast">已发现信号</div> : null}
-      {offline ? <div className="mobile-app-banner">离线模式：正在显示最近缓存数据，恢复网络后会自动刷新。</div> : null}
-      {message ? <div className="mobile-app-banner">{message}</div> : null}
-      {error ? <div className="mobile-app-error">{error}</div> : null}
-      {activeTab === "low_buy" && playbookError ? <div className="mobile-app-error">{playbookError}</div> : null}
+      {signalToastVisible ? <NoticeBar className="mobile-app-notice" content="已发现信号" color="success" /> : null}
+      {offline ? <NoticeBar className="mobile-app-notice" content="离线模式：正在显示最近缓存数据，恢复网络后会自动刷新。" color="alert" /> : null}
+      {message ? <NoticeBar className="mobile-app-notice" content={message} color="info" /> : null}
+      {error ? <NoticeBar className="mobile-app-notice" content={error} color="error" /> : null}
+      {activeTab === "low_buy" && playbookError ? <NoticeBar className="mobile-app-notice" content={playbookError} color="error" /> : null}
     </>
   )
 }
@@ -100,28 +101,15 @@ export function MobileTabBar({
   onSwitchTab: (tab: MobileTab) => void
 }) {
   return (
-    <nav className="mobile-app-tabbar" aria-label="移动端导航">
-      <button
-        type="button"
-        className={activeTab === "home" ? "active" : ""}
-        onClick={() => onSwitchTab("home")}
-      >
-        <span>实时监控</span>
-      </button>
-      <button
-        type="button"
-        className={activeTab === "holdings" ? "active" : ""}
-        onClick={() => onSwitchTab("holdings")}
-      >
-        <span>持仓</span>
-      </button>
-      <button
-        type="button"
-        className={activeTab === "low_buy" ? "active" : ""}
-        onClick={() => onSwitchTab("low_buy")}
-      >
-        <span>选股宝典</span>
-      </button>
-    </nav>
+    <TabBar
+      className="mobile-app-tabbar mobile-app-adm-tabbar"
+      activeKey={activeTab}
+      onChange={(key) => onSwitchTab(key as MobileTab)}
+      safeArea
+    >
+      <TabBar.Item key="home" title="实时监控" />
+      <TabBar.Item key="holdings" title="持仓" />
+      <TabBar.Item key="low_buy" title="选股宝典" />
+    </TabBar>
   )
 }

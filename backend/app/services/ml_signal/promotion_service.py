@@ -61,6 +61,7 @@ class MLSignalPromotionService:
                 "artifact_checksum": row.artifact_checksum or metrics.get("artifact_sha256") or "",
                 "approved_at": metrics.get("approved_at"),
                 "approved_by": operator_name,
+                "approved_by_user_id": getattr(operator, "id", None) if isinstance(operator, User) else None,
             },
         )
         self.db.commit()
@@ -70,9 +71,9 @@ class MLSignalPromotionService:
 
 def _operator_name(operator: User | str | None) -> str:
     if operator is None:
-        return "admin"
+        return "unknown"
     if isinstance(operator, str):
-        return operator.strip() or "admin"
+        return operator.strip() or "unknown"
     username = str(getattr(operator, "username", "") or "").strip()
     if username:
         return username
@@ -80,4 +81,4 @@ def _operator_name(operator: User | str | None) -> str:
     if phone:
         return phone
     user_id = getattr(operator, "id", None)
-    return f"user:{user_id}" if user_id is not None else "admin"
+    return f"user:{user_id}" if user_id is not None else "unknown"

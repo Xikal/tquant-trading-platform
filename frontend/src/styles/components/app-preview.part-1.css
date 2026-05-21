@@ -1,0 +1,222 @@
+.app-preview-page {
+  padding-top: 20px;
+}
+
+.app-preview-stage {
+  display: grid;
+  gap: 24px;
+  grid-template-columns: minmax(280px, 420px) minmax(320px, 420px);
+  align-items: start;
+}
+
+.app-preview-copy {
+  display: grid;
+  gap: 14px;
+  padding: 10px 0;
+}
+
+.app-preview-copy h2 {
+  margin: 0;
+  font-size: 34px;
+  line-height: 1.1;
+}
+
+.app-preview-copy p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 15px;
+}
+
+.app-preview-meta {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+  color: var(--muted);
+}
+
+.app-preview-banner {
+  padding: 10px 14px;
+  border: 1px solid rgba(23, 138, 94, 0.18);
+  border-radius: var(--radius-md);
+  background: rgba(23, 138, 94, 0.08);
+  color: var(--positive);
+}
+
+.app-preview-phone {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 30px;
+  background:
+    radial-gradient(circle at top, rgba(214, 165, 92, 0.18), transparent 34%),
+    linear-gradient(180deg, #0d1728 0%, #132038 54%, #f5f7fb 54%, #edf2f8 100%);
+  box-shadow: 0 26px 48px rgba(11, 20, 34, 0.22);
+}
+
+.app-preview-phone::before {
+  content: "";
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  width: 120px;
+  height: 6px;
+  margin-left: -60px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.22);
+}
+
+.app-preview-phone-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 28px 20px 18px;
+  color: #f8fafc;
+}
+
+.app-preview-phone-header strong,
+.app-preview-phone-header small {
+  display: block;
+}
+
+.app-preview-phone-header small {
+  margin-top: 4px;
+  color: rgba(241, 245, 249, 0.72);
+}
+
+.app-preview-status {
+  align-self: start;
+  padding: 6px 10px;
+  border: 1px solid rgba(214, 165, 92, 0.24);
+  border-radius: 999px;
+  background: rgba(214, 165, 92, 0.14);
+  color: #f7d8a2;
+  font-size: 12px;
+}
+
+.app-preview-body {
+  min-height: 620px;
+  padding: 0 16px 88px;
+}
+
+.app-preview-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.app-preview-summary-grid article,
+.app-preview-detail-grid article {
+  display: grid;
+  gap: 6px;
+  padding: 14px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.92);
+}
+
+.app-preview-summary-grid span,
+.app-preview-detail-grid span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.app-preview-summary-grid strong,
+.app-preview-detail-grid strong {
+  font-size: 18px;
+}
+
+.app-preview-section {
+  display: grid;
+  gap: 12px;
+}
+
+.app-preview-section-head,
+.app-preview-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: start;
+}
+
+.app-preview-section-head h3,
+.app-preview-row strong {
+  margin: 0;
+}
+
+.app-preview-section-head small,
+.app-preview-row small {
+  color: var(--muted);
+}
+
+.app-preview-list {
+  display: grid;
+  gap: 10px;
+}
+
+.app-preview-monitor-card,
+.app-preview-candidate {
+  display: grid;
+  gap: 10px;
+  width: 100%;
+  padding: 14px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 14px 28px rgba(15, 23, 42, 0.06);
+  text-align: left;
+}
+
+.app-preview-candidate {
+  cursor: pointer;
+}
+
+.mobile-priority-card-breakout-focus {
+  border-color: rgba(214, 165, 92, 0.34);
+  background: linear-gradient(180deg, rgba(214, 165, 92, 0.12) 0%, rgba(255, 255, 255, 0.96) 48%);
+  box-shadow: inset 4px 0 0 rgba(214, 165, 92, 0.84);
+}
+
+.app-preview-monitor-price {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.app-preview-monitor-price strong {
+  font-size: 24px;
+}
+
+.app-preview-candidate-metrics {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.app-preview-pill {
+  padding: 5px 9px;
+  border-radius: 999px;
+  font-size: 12px;
+  border: 1px solid transparent;
+}
+
+.tone-positive {
+  background: rgba(23, 138, 94, 0.1);
+  color: var(--positive);
+  border-color: rgba(23, 138, 94, 0.16);
+}
+
+.tone-negative {
+  background: rgba(195, 74, 54, 0.1);
+  color: var(--negative);
+  border-color: rgba(195, 74, 54, 0.16);
+}
+
+.tone-neutral {
+  background: rgba(22, 34, 53, 0.06);
+  color: var(--text);
+  border-color: rgba(22, 34, 53, 0.08);
+}

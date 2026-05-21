@@ -3,16 +3,16 @@ import type { AiDecisionSupportResponse, AuthUser } from "../../types";
 import type { StrategyMeta } from "../../api/strategies";
 import { CommandPalette } from "./CommandPalette";
 import { Topbar } from "./Topbar";
-import { AiInsightDialog, ErrorDialog, StatusStrip, StockDetailDialog } from "./WorkspaceComponents";
-import type { Page, StockCardView } from "./workspaceTypes";
+import { AiInsightDialog, ErrorDialog, StatusStrip, StockDetailDialog } from "../workspace-shared/WorkspaceComponents";
+import type { Page, StockCardView } from "../workspace-shared/workspaceTypes";
 import { WorkspacePageContent } from "./WorkspacePageContent";
 
-const AnalysisPage = lazy(async () => ({ default: (await import("./AnalysisPage")).AnalysisPage }));
-const MarketEmotionPage = lazy(async () => ({ default: (await import("./MarketEmotionPage")).MarketEmotionPage }));
-const MonitorPage = lazy(async () => ({ default: (await import("./MonitorPage")).MonitorPage }));
-const PaperTradingPage = lazy(async () => ({ default: (await import("./PaperTradingPage")).PaperTradingPage }));
-const PlaybookPage = lazy(async () => ({ default: (await import("./PlaybookPage")).PlaybookPage }));
-const SettingsPage = lazy(async () => ({ default: (await import("./SettingsPage")).SettingsPage }));
+const AnalysisPage = lazy(async () => ({ default: (await import("../analysis/AnalysisPage")).AnalysisPage }));
+const MarketEmotionPage = lazy(async () => ({ default: (await import("../market-emotion/MarketEmotionPage")).MarketEmotionPage }));
+const MonitorPage = lazy(async () => ({ default: (await import("../monitor/MonitorPage")).MonitorPage }));
+const PaperTradingPage = lazy(async () => ({ default: (await import("../paper/PaperTradingPage")).PaperTradingPage }));
+const PlaybookPage = lazy(async () => ({ default: (await import("../playbook/PlaybookPage")).PlaybookPage }));
+const SettingsPage = lazy(async () => ({ default: (await import("../settings/SettingsPage")).SettingsPage }));
 const StrategyHubPage = lazy(async () => ({ default: (await import("../strategy/StrategyHubPage")).StrategyHubPage }));
 
 type TradingWorkspaceChromeProps = {

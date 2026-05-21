@@ -51,10 +51,10 @@ class MarketDataService(
     _quote_cache_ttl = 10.0
     _intraday_cache_ttl = 20.0
     _spot_snapshot_cache_ttl = 12.0
-    _market_breadth_cache_ttl = 45.0
-    _market_regime_cache_ttl = 45.0
-    _market_emotion_cache_ttl = 120.0
-    _limit_down_cache_ttl = 60.0
+    _market_breadth_cache_ttl = 20.0
+    _market_regime_cache_ttl = 20.0
+    _market_emotion_cache_ttl = 45.0
+    _limit_down_cache_ttl = 45.0
     _trade_dates_cache_ttl = 600.0
 
     def __init__(self) -> None:

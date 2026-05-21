@@ -1,0 +1,222 @@
+.mobile-design-metric-row {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.mobile-design-metric {
+  min-height: 58px;
+  padding: 8px;
+  border: 1px solid var(--mobile-border);
+  border-radius: 13px;
+  background: #fff;
+  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.04);
+}
+
+.mobile-design-metric span {
+  display: block;
+  color: var(--mobile-text-muted);
+  font-size: 9.5px;
+  font-weight: 800;
+}
+
+.mobile-design-metric strong {
+  display: block;
+  margin-top: 6px;
+  overflow: hidden;
+  font-size: 16px;
+  line-height: 1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mobile-design-pill-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-bottom: 7px;
+}
+
+.mobile-design-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 20px;
+  padding: 4px 8px;
+  border: 1px solid var(--mobile-divider);
+  border-radius: 999px;
+  background: var(--mobile-panel-soft);
+  color: var(--mobile-text);
+  font: inherit;
+  font-size: 9.5px;
+  font-weight: 900;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.mobile-design-pill.tone-positive {
+  background: #fee2e2;
+  color: var(--mobile-positive);
+}
+
+.mobile-design-pill.tone-negative {
+  background: #d1fae5;
+  color: var(--mobile-negative);
+}
+
+.mobile-design-pill.tone-warning {
+  background: #fef3c7;
+  color: var(--mobile-warning);
+}
+
+.mobile-design-pill.tone-gold {
+  border-color: rgba(214, 165, 92, 0.35);
+  background: var(--mobile-accent-soft);
+  color: #9a6418;
+}
+
+.mobile-design-section-title {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 13px 0 7px;
+}
+
+.mobile-design-section-title h3 {
+  margin: 0;
+  color: var(--mobile-text);
+  font-size: 17px;
+  line-height: 1.1;
+  font-weight: 900;
+  letter-spacing: -0.04em;
+}
+
+.mobile-design-section-title small {
+  display: block;
+  margin-top: 4px;
+  color: var(--mobile-text-muted);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.mobile-design-priority-scroll,
+.mobile-design-list {
+  display: grid;
+  gap: 7px;
+}
+
+.mobile-design-priority-scroll {
+  max-height: 466px;
+  overflow-y: auto;
+  padding-right: 2px;
+  overscroll-behavior: contain;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.mobile-design-priority-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.mobile-design-stock-card {
+  position: relative;
+  display: grid;
+  gap: 6px;
+  min-height: 101px;
+  padding: 9px 10px;
+  border: 1px solid var(--mobile-border);
+  border-radius: 15px;
+  background: #fff;
+  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.05);
+  overflow: hidden;
+}
+
+.mobile-design-stock-card.highlight::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 4px;
+  border-radius: 15px 0 0 15px;
+  background: var(--mobile-accent);
+}
+
+.mobile-design-stock-card.signal-active {
+  border-color: rgba(198, 40, 40, 0.44);
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(255, 247, 247, 0.98)),
+    #fff;
+  animation: mobileHoldingSignalBreath 1.8s ease-in-out infinite;
+}
+
+.mobile-design-stock-card.signal-active::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 4px;
+  border-radius: 15px 0 0 15px;
+  background: linear-gradient(180deg, var(--mobile-positive), var(--mobile-warning));
+}
+
+.mobile-design-stock-main {
+  display: grid;
+  gap: 6px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+}
+
+.mobile-design-stock-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 6px;
+}
+
+.mobile-design-stock-name {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+}
+
+.mobile-design-stock-name strong {
+  overflow: hidden;
+  color: var(--mobile-text);
+  font-size: 15px;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mobile-design-stock-name code {
+  flex: none;
+  color: var(--mobile-text-muted);
+  font-family: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.mobile-design-inline-signal {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 20px;
+  padding: 0 8px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 900;
+  line-height: 1;
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  background: rgba(248, 250, 252, 0.84);
+}
+
+.mobile-design-inline-signal.tone-positive {
+  color: #15803d;
+  border-color: rgba(34, 197, 94, 0.28);
+  background: rgba(220, 252, 231, 0.9);
+}

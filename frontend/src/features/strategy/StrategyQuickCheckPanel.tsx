@@ -1,3 +1,4 @@
+import { Button } from "antd";
 import { DateField, NumberField, SelectField, TextField } from "../../components/shared/FormFields";
 import type { StrategyMeta } from "../../api/strategies";
 import { useStrategyHub } from "./useStrategyHub";
@@ -29,9 +30,9 @@ export function QuickBacktestForm({
           <strong>一键体检默认稳健策略</strong>
           <span>默认用 50 万模拟资金、真实费用和风控，普通用户不用改参数。</span>
         </div>
-        <button type="button" className="primary" onClick={onQuickSubmit} disabled={hub.loading === "quick-submit"}>
+        <Button type="primary" onClick={onQuickSubmit} loading={hub.loading === "quick-submit"}>
           {hub.loading === "quick-submit" ? "提交中" : "开始体检"}
-        </button>
+        </Button>
       </section>
 
       <section className="strategy-simple-setup" aria-label="快速体检设置">
@@ -41,14 +42,14 @@ export function QuickBacktestForm({
         </div>
         <div className="strategy-chip-row">
           {RANGE_PRESETS.map((preset) => (
-            <button
+            <Button
               key={preset.label}
-              type="button"
+              type={isRangeActive(hub.form.start_date, preset.days) ? "primary" : "default"}
               className={isRangeActive(hub.form.start_date, preset.days) ? "active" : ""}
               onClick={() => hub.updateForm({ start_date: shiftDate(-preset.days), end_date: shiftDate(0) })}
             >
               {preset.label}
-            </button>
+            </Button>
           ))}
         </div>
         <div>
@@ -57,15 +58,15 @@ export function QuickBacktestForm({
         </div>
         <div className="strategy-style-grid">
           {STYLE_PRESETS.map((preset) => (
-            <button
+            <Button
               key={preset.key}
-              type="button"
+              type={isStyleActive(hub.form.strategies, hub.strategies, preset.key) ? "primary" : "default"}
               className={isStyleActive(hub.form.strategies, hub.strategies, preset.key) ? "active" : ""}
               onClick={() => hub.updateForm({ strategies: strategyKeysForStyle(hub.strategies, preset.key) })}
             >
               <strong>{preset.label}</strong>
               <span>{preset.hint}</span>
-            </button>
+            </Button>
           ))}
         </div>
         <StrategyPicker
@@ -132,8 +133,8 @@ function StrategyPicker({
           <span>{selected.length} 个已选</span>
         </div>
         <div className="strategy-picker-actions">
-          <button type="button" onClick={onSelectSteady}>一键选稳健型</button>
-          <button type="button" onClick={onSelectAll}>全选生产策略</button>
+          <Button type="default" size="small" onClick={onSelectSteady}>一键选稳健型</Button>
+          <Button type="default" size="small" onClick={onSelectAll}>全选生产策略</Button>
         </div>
       </div>
       <div className="strategy-group-grid">
@@ -142,8 +143,8 @@ function StrategyPicker({
             <h3>{group.title}</h3>
             <div className="strategy-card-grid">
               {group.items.map((strategy) => (
-                <button
-                  type="button"
+                <Button
+                  type={selected.includes(strategy.key) ? "primary" : "default"}
                   key={strategy.key}
                   className={selected.includes(strategy.key) ? "selected" : ""}
                   onClick={() => onToggle(strategy.key)}
@@ -152,7 +153,7 @@ function StrategyPicker({
                   <span>{strategy.display_category || strategy.category}</span>
                   <small>{strategy.description}</small>
                   <em>{phaseBadge(strategy)}</em>
-                </button>
+                </Button>
               ))}
             </div>
           </section>

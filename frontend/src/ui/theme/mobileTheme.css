@@ -1,0 +1,13 @@
+:root:root {
+  --adm-color-primary: #0b1f3a;
+  --adm-color-success: #08875d;
+  --adm-color-warning: #b7791f;
+  --adm-color-danger: #b42318;
+  --adm-font-family: "PingFang SC", "Microsoft YaHei", "Noto Sans SC", sans-serif;
+  --adm-radius-m: 12px;
+  --adm-radius-l: 14px;
+}
+
+.adm-list-item-content-main {
+  min-height: 44px;
+}

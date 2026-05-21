@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { Button, Input } from "antd";
+import type { InputRef } from "antd";
 import type { StrategyMeta } from "../../api/strategies";
-import { PRODUCTION_PLAYBOOK_TABS } from "./workspaceConstants";
-import type { Page } from "./workspaceTypes";
+import { PRODUCTION_PLAYBOOK_TABS } from "../workspace-shared/workspaceConstants";
+import type { Page } from "../workspace-shared/workspaceTypes";
 
 interface CommandPaletteProps {
   open: boolean;
@@ -35,7 +37,7 @@ export function CommandPalette({
   onOpenStrategy,
 }: CommandPaletteProps) {
   const [query, setQuery] = useState("");
-  const inputRef = useRef<HTMLInputElement | null>(null);
+  const inputRef = useRef<InputRef | null>(null);
   const items = useMemo(() => buildItems(query, strategies), [query, strategies]);
 
   useEffect(() => {
@@ -65,7 +67,7 @@ export function CommandPalette({
   return (
     <div className="command-palette-backdrop" role="presentation" onMouseDown={onClose}>
       <section className="command-palette" role="dialog" aria-modal="true" aria-label="全局搜索" onMouseDown={(event) => event.stopPropagation()}>
-        <input
+        <Input
           ref={inputRef}
           value={query}
           onChange={(event) => setQuery(event.target.value)}
@@ -81,10 +83,10 @@ export function CommandPalette({
         />
         <div className="command-palette-list">
           {items.map((item) => (
-            <button type="button" key={`${item.type}-${item.label}`} onClick={() => execute(item)}>
+            <Button type="text" key={`${item.type}-${item.label}`} onClick={() => execute(item)}>
               <strong>{item.label}</strong>
               <span>{item.hint}</span>
-            </button>
+            </Button>
           ))}
           {!items.length ? (
             <div className="command-palette-empty">没有匹配结果。输入股票代码可直接跳转量化分析。</div>

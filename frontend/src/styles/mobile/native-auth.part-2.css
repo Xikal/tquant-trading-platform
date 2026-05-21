@@ -1,0 +1,54 @@
+.mobile-auth-field input {
+  width: 100%;
+  min-height: 42px;
+  border: 1px solid var(--mobile-border);
+  border-radius: 12px;
+  padding: 0 12px;
+  background: var(--mobile-panel-soft);
+  color: var(--mobile-text);
+  font: inherit;
+  font-size: 14px;
+}
+
+.mobile-auth-submit {
+  width: 100%;
+}
+
+.mobile-auth-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  color: var(--mobile-text);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.mobile-auth-row button,
+.mobile-auth-switch {
+  border: 0;
+  background: transparent;
+  color: var(--mobile-blue);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+@keyframes mobileAuthScan {
+  from { transform: translateX(-90px); }
+  to { transform: translateX(90px); }
+}
+
+@keyframes mobileAuthPulse {
+  from { opacity: 0.55; transform: scale(1); }
+  to { opacity: 1; transform: scale(1.04); }
+}
+
+@keyframes mobileAuthBar {
+  from { transform: scaleY(0.72); opacity: 0.7; }
+  to { transform: scaleY(1.08); opacity: 1; }
+}
+
+@keyframes mobileAuthRadar {
+  to { transform: rotate(360deg); }
+}

@@ -1,3 +1,4 @@
+import { Button } from "antd-mobile"
 import type { AppLowBuyDetailResponse } from "../types"
 import { formatPercent, formatPrice } from "../features/app-preview/components"
 import { getPriceToneClass } from "../utils/priceTone"
@@ -130,9 +131,9 @@ export function LowBuyDetailSheet({
           <div className="mobile-app-sheet-score">
             <strong>{detail.candidate.score.toFixed(1)}</strong>
             <small>信号综合分</small>
-            <button type="button" className="mobile-app-icon-button" onClick={onClose}>
+            <Button fill="none" className="mobile-app-icon-button" onClick={onClose}>
               <Icon name="close" />
-            </button>
+            </Button>
           </div>
         </div>
 
@@ -147,11 +148,11 @@ export function LowBuyDetailSheet({
               </span>
             </div>
             <div className="mobile-app-detail-tabs">
-              <button type="button" className="active">
+              <Button fill="solid" color="primary" className="active">
                 分时
-              </button>
-              <button type="button">日K</button>
-              <button type="button">周K</button>
+              </Button>
+              <Button fill="none">日K</Button>
+              <Button fill="none">周K</Button>
             </div>
             <div className="mobile-app-detail-chart">
               <div className="mobile-app-detail-curve" />
@@ -210,17 +211,17 @@ export function LowBuyDetailSheet({
         </section>
 
         <div className="mobile-app-sheet-actions">
-          <button type="button" className="mobile-app-secondary" onClick={onClose}>
+          <Button fill="outline" className="mobile-app-secondary" onClick={onClose}>
             收起
-          </button>
-          <button
-            type="button"
+          </Button>
+          <Button
+            color="primary"
             className="mobile-app-primary"
             onClick={onMarkBought}
             disabled={markBoughtDisabled}
           >
             {inWatchlist ? "已买入 ✓" : "模拟买入"}
-          </button>
+          </Button>
         </div>
       </section>
     </div>

@@ -1,0 +1,93 @@
+.settings-antd-tabs {
+  display: block;
+  grid-column: 1 / -1;
+  margin-top: -4px;
+  padding: 8px 10px 0;
+}
+
+.settings-antd-tabs .ant-tabs-nav {
+  margin: 0;
+}
+
+.settings-antd-tabs .ant-tabs-tab {
+  min-width: 148px;
+  padding: 8px 12px;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  border-radius: 12px 12px 0 0;
+  background: #fff;
+}
+
+.settings-antd-tabs .ant-tabs-tab-active {
+  border-color: #d7a64f;
+  background: #fffbeb;
+}
+
+.settings-antd-tabs .ant-tabs-ink-bar,
+.playbook-strategy-tabs .ant-tabs-ink-bar,
+.paper-detail-antd-tabs .ant-tabs-ink-bar {
+  background: #cfa15a;
+}
+
+.settings-tab-label,
+.playbook-tab-label,
+.paper-tab-label {
+  display: grid;
+  gap: 2px;
+  text-align: left;
+}
+
+.settings-tab-label > span,
+.playbook-tab-label > strong,
+.paper-tab-label > strong {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #0f172a;
+  font-weight: 900;
+}
+
+.settings-tab-label i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #f59e0b;
+  box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.12);
+}
+
+.settings-tab-label small,
+.playbook-tab-label small,
+.paper-tab-label small {
+  color: #64748b;
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.playbook-strategy-tabs {
+  margin-top: 8px;
+}
+
+.playbook-strategy-tabs .ant-tabs-nav,
+.paper-detail-antd-tabs .ant-tabs-nav {
+  margin-bottom: 0;
+}
+
+.playbook-strategy-tabs .ant-tabs-tab {
+  padding: 8px 12px;
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  border-radius: 10px 10px 0 0;
+  background: rgba(255, 255, 255, 0.82);
+}
+
+.playbook-strategy-tabs .ant-tabs-tab-active,
+.paper-detail-antd-tabs .ant-tabs-tab-active {
+  background: #fffaf0;
+}
+
+.playbook-strategy-tabs .ant-tabs-tab-active {
+  border-color: rgba(207, 161, 90, 0.6);
+}
+
+.paper-detail-antd-tabs .ant-tabs-tab {
+  min-width: 118px;
+  padding: 8px 10px;
+}

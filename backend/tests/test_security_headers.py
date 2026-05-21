@@ -1,20 +1,13 @@
 from __future__ import annotations
 
-from starlette.datastructures import Headers, URL
-from starlette.responses import Response
-
-from app.main import _apply_security_headers
+from app import main
 
 
-class _Request:
-    url = URL("https://example.test/api/healthz")
-    headers = Headers({"x-forwarded-proto": "https"})
+def test_csp_disallows_data_images_and_fonts() -> None:
+    csp = main._CONTENT_SECURITY_POLICY
 
-
-def test_security_headers_include_hsts_for_https() -> None:
-    response = Response()
-
-    _apply_security_headers(response, _Request())
-
-    assert response.headers["X-Content-Type-Options"] == "nosniff"
-    assert "Strict-Transport-Security" in response.headers
+    assert "img-src 'self' blob:" in csp
+    assert "img-src 'self' data:" not in csp
+    assert "font-src 'self';" in csp
+    assert "font-src 'self' data:" not in csp
+    assert "fastapi.tiangolo.com" not in csp

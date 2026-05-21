@@ -77,6 +77,7 @@ export interface StrategySignalReplayItem {
 
 export interface StrategyWorkspaceBffResponse {
   api_version: string;
+  schema_version?: string;
   generated_at: string;
   strategy_meta: { strategies: StrategyMeta[] } | null;
   presets: { presets: StrategyPreset[] } | null;

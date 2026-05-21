@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import date, timedelta
+from datetime import date, datetime, time, timedelta
 
 import pandas as pd
 from sqlalchemy import func, select
@@ -15,18 +15,29 @@ class FactorDataStore:
     def __init__(self, db: Session) -> None:
         self.db = db
 
-    def daily_bars(self, *, start_date: str, end_date: str, limit_symbols: int) -> pd.DataFrame:
+    def daily_bars(
+        self,
+        *,
+        start_date: str,
+        end_date: str,
+        limit_symbols: int,
+        as_of_date: str | None = None,
+    ) -> pd.DataFrame:
         start_date, end_date = self._resolve_window(start_date, end_date)
-        symbols = self._liquid_symbols(start_date=start_date, end_date=end_date, limit=limit_symbols)
+        as_of = _as_of_end(as_of_date)
+        symbols = self._liquid_symbols(start_date=start_date, end_date=end_date, limit=limit_symbols, as_of=as_of)
         if not symbols:
             return pd.DataFrame()
-        rows = self.db.execute(
+        statement = (
             select(DailyBarSnapshot)
             .where(DailyBarSnapshot.symbol.in_(symbols))
             .where(DailyBarSnapshot.trade_date >= start_date)
             .where(DailyBarSnapshot.trade_date <= end_date)
             .order_by(DailyBarSnapshot.symbol.asc(), DailyBarSnapshot.trade_date.asc())
-        ).scalars().all()
+        )
+        if as_of is not None:
+            statement = statement.where(DailyBarSnapshot.created_at <= as_of)
+        rows = self.db.execute(statement).scalars().all()
         return pd.DataFrame(
             [
                 {
@@ -45,6 +56,19 @@ class FactorDataStore:
             ]
         )
 
+    def point_in_time_bars(self, *, as_of_date: str, lookback_days: int = 365 * 3, limit_symbols: int = 500) -> pd.DataFrame:
+        try:
+            end_day = date.fromisoformat(as_of_date)
+            start_date = (end_day - timedelta(days=lookback_days)).isoformat()
+        except ValueError:
+            start_date = ""
+        return self.daily_bars(
+            start_date=start_date,
+            end_date=as_of_date,
+            limit_symbols=limit_symbols,
+            as_of_date=as_of_date,
+        )
+
     def _resolve_window(self, start_date: str, end_date: str) -> tuple[str, str]:
         latest = self.db.execute(select(func.max(DailyBarSnapshot.trade_date))).scalar()
         resolved_end = end_date or str(latest or "")
@@ -56,13 +80,25 @@ class FactorDataStore:
         except ValueError:
             return "", resolved_end
 
-    def _liquid_symbols(self, *, start_date: str, end_date: str, limit: int) -> list[str]:
-        rows = self.db.execute(
+    def _liquid_symbols(self, *, start_date: str, end_date: str, limit: int, as_of: datetime | None) -> list[str]:
+        statement = (
             select(DailyBarSnapshot.symbol, func.sum(DailyBarSnapshot.amount).label("amount_sum"))
             .where(DailyBarSnapshot.trade_date >= start_date)
             .where(DailyBarSnapshot.trade_date <= end_date)
             .group_by(DailyBarSnapshot.symbol)
             .order_by(func.sum(DailyBarSnapshot.amount).desc())
             .limit(limit)
-        ).all()
+        )
+        if as_of is not None:
+            statement = statement.where(DailyBarSnapshot.created_at <= as_of)
+        rows = self.db.execute(statement).all()
         return [str(row[0]) for row in rows]
+
+
+def _as_of_end(value: str | None) -> datetime | None:
+    if not value:
+        return None
+    try:
+        return datetime.combine(date.fromisoformat(value), time.max)
+    except ValueError:
+        return None

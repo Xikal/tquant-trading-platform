@@ -1,6 +1,6 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
-import { MonitorPage } from "./MonitorPage";
+import { MonitorPage } from "../monitor/MonitorPage";
 
 describe("MonitorPage", () => {
   it("puts the direct action card before numeric metrics", () => {

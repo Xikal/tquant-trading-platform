@@ -6,12 +6,13 @@ from typing import Protocol, TypeVar
 
 from app.core.config import get_settings
 from app.services.market.providers.circuit import ProviderCircuitConfig, ProviderCircuitRegistry
-from app.services.market.providers.priority import order_providers_for_operation
+from app.services.market.providers.priority import order_providers_for_operation, provider_execution_tier
 from app.services.market.providers.quality import MarketDataQuality, ProviderResult
 
 
 T = TypeVar("T")
-_PROVIDER_EXECUTOR = ThreadPoolExecutor(max_workers=16, thread_name_prefix="market-provider")
+_FAST_EXECUTOR = ThreadPoolExecutor(max_workers=8, thread_name_prefix="market-provider-fast")
+_SLOW_EXECUTOR = ThreadPoolExecutor(max_workers=8, thread_name_prefix="market-provider-slow")
 
 
 class MarketProvider(Protocol):
@@ -68,6 +69,8 @@ class MarketProviderRouter:
             ProviderCircuitConfig(
                 failure_threshold=settings.market_provider_circuit_failure_threshold,
                 cooldown_seconds=settings.market_provider_circuit_cooldown_seconds,
+                cooldown_second_seconds=settings.market_provider_circuit_cooldown_second_seconds,
+                cooldown_max_seconds=settings.market_provider_circuit_cooldown_max_seconds,
                 slow_call_ms=settings.market_provider_slow_call_ms,
             )
         )
@@ -208,7 +211,8 @@ class MarketProviderRouter:
 def _call_provider(*, provider: MarketProvider, call, timeout_seconds: float) -> ProviderResult:
     if timeout_seconds <= 0:
         return call(provider)
-    future = _PROVIDER_EXECUTOR.submit(call, provider)
+    executor = _SLOW_EXECUTOR if provider_execution_tier(provider) == "slow" else _FAST_EXECUTOR
+    future = executor.submit(call, provider)
     try:
         return future.result(timeout=timeout_seconds)
     except FutureTimeoutError:

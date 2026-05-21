@@ -1,4 +1,5 @@
 import { lazy, Suspense, useMemo, useState } from "react";
+import { Button } from "antd";
 import {
   formatBacktestStrategy,
   formatInteger,
@@ -30,28 +31,27 @@ export function ComparePanel({ state, actions }: { state: BacktestResearchState;
       <PanelTitle title="回测对比" meta="复选运行 + 可排序指标 + ECharts" />
       <div className="backtest-run-picker" aria-label="已完成回测快捷选择">
         {state.completedRuns.slice(0, 8).map((run) => (
-          <button
-            type="button"
-            className={selectedRunIds.includes(run.id) ? "selected" : ""}
+          <Button
+            type={selectedRunIds.includes(run.id) ? "primary" : "default"}
             onClick={() => toggleRunId(run.id)}
             key={run.id}
           >
             #{run.id} {formatBacktestStrategy(run.strategies?.[0] ?? run.strategy_keys?.[0])}
-          </button>
+          </Button>
         ))}
       </div>
       <div className="backtest-compare-actions">
         <span>已选 {selectedRunIds.length} 个回测</span>
-        <button type="button" onClick={actions.onRunCompare} disabled={state.loading === "compare" || selectedRunIds.length < 2}>
+        <Button onClick={actions.onRunCompare} disabled={state.loading === "compare" || selectedRunIds.length < 2}>
           {state.loading === "compare" ? "对比中..." : "运行对比"}
-        </button>
+        </Button>
       </div>
       <div className="backtest-data-table narrow" role="table" aria-label="回测对比指标">
         <div className="row head" role="row">
           <span>Run</span>
-          <button type="button" onClick={() => setSortKey("return")}>收益</button>
-          <button type="button" onClick={() => setSortKey("sharpe")}>Sharpe</button>
-          <button type="button" onClick={() => setSortKey("drawdown")}>MaxDD</button>
+          <Button type="text" size="small" onClick={() => setSortKey("return")}>收益</Button>
+          <Button type="text" size="small" onClick={() => setSortKey("sharpe")}>Sharpe</Button>
+          <Button type="text" size="small" onClick={() => setSortKey("drawdown")}>MaxDD</Button>
         </div>
         {compareItems.map((item) => (
           <div className="row" role="row" key={item.run_id}>

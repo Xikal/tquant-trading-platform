@@ -21,8 +21,13 @@ class FactorEvalResultOut(BaseModel):
     information_ratio: float = 0.0
     oos_ic_mean: float = 0.0
     is_oos_consistent: bool = False
+    walk_forward_oos_ic_mean: float = 0.0
+    walk_forward_window_count: int = 0
+    walk_forward_positive_window_rate_pct: float = 0.0
+    walk_forward_no_negative_windows: bool = False
     bootstrap_ci_lower: float = 0.0
     max_existing_factor_corr: float = 0.0
+    max_existing_factor_key: str = ""
     passed_candidate_gate: bool = False
     passed_production_gate: bool = False
     sample_days: int = 0

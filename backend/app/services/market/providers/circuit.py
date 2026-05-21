@@ -16,6 +16,8 @@ from app.services.market.providers.circuit_state import (
 class ProviderCircuitConfig:
     failure_threshold: int = 3
     cooldown_seconds: int = 60
+    cooldown_second_seconds: int = 45
+    cooldown_max_seconds: int = 90
     slow_call_ms: int = 3000
 
 
@@ -61,7 +63,8 @@ class ProviderCircuitRegistry:
             state.failure_count += 1
             state.half_open_probe = False
             if state.failure_count >= max(self.config.failure_threshold, 1):
-                state.opened_until = time.monotonic() + max(self.config.cooldown_seconds, 1)
+                state.open_count += 1
+                state.opened_until = time.monotonic() + _cooldown_seconds(self.config, state.open_count)
 
     def snapshot(self) -> dict[str, Any]:
         with self._store.lock:
@@ -78,6 +81,7 @@ class ProviderCircuitRegistry:
 
 
 def _metric_out(item: ProviderMetrics, state: ProviderCircuitState) -> dict[str, Any]:
+    remaining = max(state.opened_until - time.monotonic(), 0.0)
     return {
         "calls": item.calls,
         "successes": item.successes,
@@ -86,6 +90,8 @@ def _metric_out(item: ProviderMetrics, state: ProviderCircuitState) -> dict[str,
         "avg_latency_ms": round(item.total_latency_ms / max(item.calls, 1), 2),
         "last_error": item.last_error,
         "circuit_open": state.opened_until > time.monotonic(),
+        "open_count": state.open_count,
+        "cooldown_remaining_seconds": round(remaining, 3),
         "half_open_probe": state.half_open_probe,
     }
 
@@ -102,3 +108,11 @@ def _totals(metrics: dict[str, ProviderMetrics]) -> dict[str, int]:
 def provider_metrics_snapshot() -> dict[str, Any]:
     registry = ProviderCircuitRegistry(ProviderCircuitConfig())
     return registry.snapshot()
+
+
+def _cooldown_seconds(config: ProviderCircuitConfig, open_count: int) -> int:
+    if open_count <= 1:
+        return max(int(config.cooldown_seconds), 1)
+    if open_count == 2:
+        return max(int(config.cooldown_second_seconds), 1)
+    return max(int(config.cooldown_max_seconds), 1)

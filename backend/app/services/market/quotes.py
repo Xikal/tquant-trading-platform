@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from app.services.market.local_quote_cache import read_local_quote_snapshot, write_local_quote_snapshot
+from app.services.market.spot_snapshot import fetch_eastmoney_stock_spot_snapshot_map
 from app.services.market.shared import (
     DataSourceError,
     KlineBar,
@@ -122,6 +123,15 @@ class MarketQuoteMixin:
                 self._set_quote_cache(symbol, snapshot)
                 result[symbol] = snapshot
         return result
+
+    def get_stock_spot_snapshot_map(self, *, force_refresh: bool = False) -> dict[str, QuoteSnapshot]:
+        cached = None if force_refresh else self._get_spot_snapshot_cache("stock")
+        if cached is not None:
+            return cached
+        snapshot_map = fetch_eastmoney_stock_spot_snapshot_map(self)
+        if snapshot_map:
+            self._set_spot_snapshot_cache("stock", snapshot_map)
+        return snapshot_map
 
     def _fetch_quote_from_spot_snapshot(self, symbol: str) -> QuoteSnapshot:
         result = self.provider_router.fetch_quote(symbol)

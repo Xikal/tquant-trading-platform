@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { candidateToCard, settingsPayload, trackedPlaybookSymbols, watchSignalToCard } from "./workspaceViewModels";
+import { candidateToCard, settingsPayload, trackedPlaybookSymbols, watchSignalToCard } from "../workspace-shared/workspaceViewModels";
 
 describe("workspaceViewModels", () => {
   it("keeps playbook symbols unique across confirmed and watch buckets", () => {

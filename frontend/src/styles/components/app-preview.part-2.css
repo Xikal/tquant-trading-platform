@@ -1,0 +1,118 @@
+.app-preview-callout,
+.app-preview-warning {
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(161, 98, 7, 0.1);
+  color: var(--warning);
+}
+
+.app-preview-empty {
+  padding: 18px 16px;
+  border: 1px dashed rgba(100, 116, 139, 0.28);
+  border-radius: 16px;
+  color: var(--muted);
+  text-align: center;
+}
+
+.app-preview-tabbar {
+  position: absolute;
+  right: 14px;
+  bottom: 14px;
+  left: 14px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  padding: 10px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.96);
+  backdrop-filter: blur(18px);
+}
+
+.app-preview-tabbar button {
+  padding: 12px 14px;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--muted);
+}
+
+.app-preview-tabbar button.active {
+  background: linear-gradient(135deg, #10203b 0%, #1a3157 100%);
+  color: #f8fafc;
+}
+
+.app-preview-sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  display: flex;
+  justify-content: center;
+  align-items: end;
+  padding: 20px;
+  background: rgba(8, 17, 31, 0.34);
+  backdrop-filter: blur(8px);
+}
+
+.app-preview-sheet {
+  width: min(560px, 100%);
+  display: grid;
+  gap: 16px;
+  padding: 20px;
+  border-radius: 24px 24px 16px 16px;
+  background: #f8fafc;
+  box-shadow: 0 24px 44px rgba(8, 17, 31, 0.2);
+}
+
+.app-preview-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.app-preview-detail-note {
+  margin: 0;
+  color: var(--text);
+}
+
+.app-preview-detail-list {
+  display: grid;
+  gap: 14px;
+}
+
+.app-preview-detail-list span {
+  display: block;
+  margin-bottom: 8px;
+  color: var(--muted);
+}
+
+.app-preview-detail-list ul {
+  margin: 0;
+  padding-left: 18px;
+  color: var(--text);
+}
+
+.app-preview-favorite {
+  width: 100%;
+  justify-content: center;
+}
+
+@media (max-width: 1080px) {
+  .app-preview-stage {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .app-preview-copy h2 {
+    font-size: 28px;
+  }
+
+  .app-preview-body {
+    min-height: 560px;
+  }
+
+  .app-preview-detail-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}

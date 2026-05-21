@@ -9,11 +9,12 @@ import type {
   LowBuyStrategyGovernanceResponse,
   RuntimeStatus,
   SettingsPayload,
+  SettingsWorkspaceBffResponse,
   UserSectorExclusionsResponse,
 } from "../../types";
-import type { SettingsDraft } from "./workspaceTypes";
-import { errorMessage } from "./workspaceFormatters";
-import { settingsPayload, settingsToDraft } from "./workspaceViewModels";
+import { errorMessage } from "../workspace-shared/workspaceFormatters";
+import type { SettingsDraft } from "../workspace-shared/workspaceTypes";
+import { settingsPayload, settingsToDraft } from "../workspace-shared/workspaceViewModels";
 
 interface UseSettingsDataParams {
   withLoading: <T>(key: string, action: () => Promise<T>) => Promise<T | undefined>;
@@ -44,10 +45,51 @@ export function useSettingsData({ withLoading, setError, setNotice, setRuntime }
     strategy_min_profit_pct: "",
   });
 
+  const applySettingsWorkspace = useCallback((workspace: SettingsWorkspaceBffResponse) => {
+    if (workspace.settings) {
+      setSettings(workspace.settings);
+      setSettingsDraft((draft) => settingsToDraft(workspace.settings as SettingsPayload, draft.adminToken));
+    }
+    if (workspace.runtime) {
+      setRuntime(workspace.runtime);
+    }
+    if (workspace.strategy_governance) {
+      setStrategyGovernance(workspace.strategy_governance);
+    }
+    if (workspace.sector_exclusions) {
+      setSectorExclusions(workspace.sector_exclusions);
+    }
+    if (workspace.factor_weights) {
+      setFactorWeights(workspace.factor_weights);
+      setFactorDraft(factorWeightsToDraft(workspace.factor_weights));
+    } else {
+      setFactorWeights(null);
+    }
+    setAdminTasks(workspace.admin_tasks?.items ?? []);
+    setAdminMetrics(workspace.admin_metrics ?? null);
+  }, [setRuntime]);
+
   const loadSettings = useCallback(async () => {
     await withLoading("settings", async () => {
       if (settingsDraft.adminToken) {
         setAdminApiToken(settingsDraft.adminToken);
+      }
+      try {
+        const workspace = await api.getSettingsWorkspaceBff();
+        if (!workspace.settings) {
+          throw new Error("系统配置 BFF 未返回基础配置");
+        }
+        applySettingsWorkspace(workspace);
+        const blockingErrors = workspace.partial_errors.filter((item) =>
+          ["settings", "sector_exclusions"].includes(item.source)
+        );
+        if (blockingErrors.length > 0) {
+          setError(blockingErrors.map((item) => `${item.source}: ${item.detail}`).join("；"));
+        }
+        return;
+      } catch {
+        // Keep the legacy fan-out path as a compatibility fallback while the
+        // Settings BFF is rolled out across independently deployed services.
       }
       const shouldLoadFactors = Boolean(getAdminApiToken());
       const [settingsResult, runtimeResult, strategyResult, sectorExclusionResult] = await Promise.allSettled([
@@ -97,7 +139,7 @@ export function useSettingsData({ withLoading, setError, setNotice, setRuntime }
         setError(errorMessage(rejected.reason));
       }
     });
-  }, [setError, setRuntime, settingsDraft.adminToken, withLoading]);
+  }, [applySettingsWorkspace, setError, settingsDraft.adminToken, withLoading]);
 
   const saveSettings = useCallback(async (section: "llm" | "risk" | "data") => {
     await withLoading(`settings-${section}`, async () => {

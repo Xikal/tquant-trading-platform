@@ -1,0 +1,185 @@
+.paper-auto-skip-notice em {
+  color: #64748b;
+  font-style: normal;
+  white-space: nowrap;
+}
+
+.paper-auto-skip-notice.warn {
+  border-color: rgba(214, 165, 92, 0.48);
+  background: #fff8e8;
+}
+
+.paper-skip-action {
+  justify-self: end;
+  border: 1px solid rgba(15, 23, 42, 0.18);
+  border-radius: 999px;
+  padding: 6px 12px;
+  background: #0f172a;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.paper-skip-action:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.paper-run-reason {
+  grid-column: 1 / -1;
+  color: #8a5b12;
+  background: #fff8e8;
+  border: 1px solid rgba(214, 165, 92, 0.32);
+  border-radius: 8px;
+  padding: 6px 8px;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.paper-order,
+.paper-positions,
+.paper-orders,
+.paper-trades,
+.paper-performance,
+.paper-market-performance {
+  padding: 13px;
+  border-radius: 11px;
+}
+
+.paper-order .panel-title,
+.paper-positions .panel-title,
+.paper-orders .panel-title,
+.paper-trades .panel-title,
+.paper-performance .panel-title,
+.paper-market-performance .panel-title {
+  margin-bottom: 9px;
+}
+
+.paper-order .form-grid {
+  gap: 9px 18px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.paper-order label span,
+.paper-order .select-field span {
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.paper-order input,
+.paper-order select {
+  min-height: 30px;
+  border-radius: 8px;
+  background: #f9fbff;
+}
+
+.paper-order .primary-button {
+  min-height: 36px;
+  margin-top: 12px;
+  border-radius: 9px;
+  background: linear-gradient(90deg, #d2a45e 0%, #0b1422 42%, #0b1422 100%);
+}
+
+.paper-positions .stock-list {
+  grid-template-columns: repeat(auto-fit, minmax(154px, 1fr));
+  gap: 8px;
+  max-height: none;
+  overflow: visible;
+}
+
+.paper-positions .paper-position-row {
+  min-height: 86px;
+  grid-template-columns: 1fr;
+  gap: 3px;
+  align-items: start;
+  padding: 9px;
+  border-radius: 9px;
+}
+
+.paper-positions .paper-stock-name {
+  display: grid;
+  gap: 2px;
+}
+
+.paper-positions .paper-stock-name strong {
+  font-size: 13px;
+}
+
+.paper-positions .paper-stock-name span {
+  color: #64748b;
+  font-size: 11px;
+}
+
+.paper-positions .paper-position-row > span {
+  font-size: 11px;
+  line-height: 1.35;
+  white-space: normal;
+}
+
+.paper-positions .paper-position-row > strong {
+  align-self: end;
+  font-size: 14px;
+}
+
+.paper-smart-exit {
+  display: grid;
+  gap: 3px;
+  width: 100%;
+  margin-top: 4px;
+  padding: 7px;
+  border: 1px solid rgba(210, 164, 94, 0.34);
+  border-radius: 8px;
+  background: linear-gradient(135deg, rgba(255, 247, 232, 0.92), rgba(248, 250, 252, 0.96));
+  color: #162235;
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.paper-smart-exit b {
+  color: #7a4b00;
+  font-size: 12px;
+}
+
+.paper-smart-exit span {
+  color: #475569;
+  font-family: inherit;
+  white-space: normal;
+}
+
+.paper-orders,
+.paper-trades,
+.paper-performance,
+.paper-market-performance {
+  grid-area: auto;
+  width: 100%;
+  min-width: 0;
+  min-height: 142px;
+}
+
+.paper-orders .line-list {
+  max-height: 218px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.paper-trades .line-list {
+  max-height: 132px;
+}
+
+.paper-performance .paper-performance-table,
+.paper-market-performance .paper-performance-table {
+  max-height: 82px;
+}
+
+.paper-order-row,
+.paper-trade-row {
+  min-height: 32px;
+}
+
+.paper-context-row {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+/* 模拟盘绩效看板 */
