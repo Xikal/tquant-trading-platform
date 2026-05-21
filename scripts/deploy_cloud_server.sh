@@ -122,6 +122,15 @@ PY
 )
   printf 'AUTH_SECRET_KEY=%s\n' \"\$SECRET\" >> .env
 fi
+if ! grep -Eq '^TQUANT_SETTINGS_ENCRYPTION_KEY=.{64,}' .env; then
+  sed -i '/^TQUANT_SETTINGS_ENCRYPTION_KEY=/d' .env
+  SETTINGS_SECRET=\$(openssl rand -hex 32 2>/dev/null || python3 - <<'PY'
+import secrets
+print(secrets.token_hex(32))
+PY
+)
+  printf 'TQUANT_SETTINGS_ENCRYPTION_KEY=%s\n' \"\$SETTINGS_SECRET\" >> .env
+fi
 if ! grep -q '^AUTH_COOKIE_SECURE=' .env; then printf 'AUTH_COOKIE_SECURE=true\n' >> .env; fi
 sudo docker compose -f '$CLOUD_COMPOSE_FILE' up --build --force-recreate --abort-on-container-exit --exit-code-from migration migration
 sudo docker compose -f '$CLOUD_COMPOSE_FILE' run --rm --user root --entrypoint sh app -c 'mkdir -p /app/backend/data && chown -R tquant:tquant /app/backend/data'
