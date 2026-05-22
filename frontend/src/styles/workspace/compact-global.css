@@ -56,11 +56,9 @@ button {
 }
 
 .actions,
-.filter-row,
 .card-actions,
 .report-pill-row,
-.badge-row,
-.tabs {
+.badge-row {
   gap: 6px;
 }
 
@@ -89,8 +87,7 @@ button {
 
 .metric span,
 .info-pill span,
-.form-grid span,
-.select-field span {
+.form-grid span {
   font-size: 10px;
 }
 
@@ -130,10 +127,7 @@ button {
 }
 
 .stock-card p,
-.sample,
-.trade-card,
 .empty-state,
-.dark-card span,
 .line-list li {
   font-size: 11px;
 }
@@ -171,23 +165,16 @@ button {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
-.form-grid label,
-.select-field {
+.form-grid label {
   min-width: 0;
   gap: 3px;
 }
 
-.form-grid input,
-.select-field input,
-.select-field select {
+.form-grid input {
   min-width: 0;
   border-radius: 7px;
   padding: 6px 8px;
   font-size: 11px;
-}
-
-.select-field {
-  margin: 6px 0;
 }
 
 .chart {
@@ -212,19 +199,10 @@ button {
   font-size: 11px;
 }
 
-.sample,
-.trade-card,
 .empty-state {
   padding: 6px;
   border-radius: 7px;
   margin-bottom: 5px;
-}
-
-.dark-card {
-  gap: 4px;
-  margin-top: 8px;
-  padding: 9px;
-  border-radius: 7px;
 }
 
 .setting-card {

@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useEffect, useMemo, useRef } from "react"
+import { useMobileUiStore } from "../stores/mobileUiStore"
 import type { MobileHoldingRowData } from "./MobileDesignCards"
 import { buildHoldingSignalSignature, isHoldingTSignalActive } from "./holdingSignal"
 import type { MobileTab } from "./mobileTypes"
@@ -13,7 +14,8 @@ function holdingSignalInput(row: MobileHoldingRowData) {
 }
 
 export function useMobileHoldingSignals(activeTab: MobileTab, holdingRows: MobileHoldingRowData[]) {
-  const [signalToastVisible, setSignalToastVisible] = useState(false)
+  const signalToastVisible = useMobileUiStore((state) => state.signalToastVisible)
+  const setSignalToastVisible = useMobileUiStore((state) => state.setSignalToastVisible)
   const lastSignalToastSignature = useRef("")
 
   const activeHoldingSignalSymbols = useMemo(() => {
@@ -45,7 +47,7 @@ export function useMobileHoldingSignals(activeTab: MobileTab, holdingRows: Mobil
     setSignalToastVisible(true)
     const timeout = window.setTimeout(() => setSignalToastVisible(false), 3000)
     return () => window.clearTimeout(timeout)
-  }, [activeTab, holdingSignalSignature])
+  }, [activeTab, holdingSignalSignature, setSignalToastVisible])
 
   return {
     activeHoldingSignalSymbols,

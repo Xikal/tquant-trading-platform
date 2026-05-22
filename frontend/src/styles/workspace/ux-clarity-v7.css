@@ -128,34 +128,6 @@
   background: linear-gradient(90deg, #d6a55c, #38bdf8);
 }
 
-.strategy-traffic-light {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
-}
-
-.strategy-traffic-light article {
-  display: grid;
-  gap: 4px;
-  border-radius: 14px;
-  padding: 12px;
-}
-
-.strategy-traffic-light .ok {
-  background: #f0fbf4;
-  color: #166534;
-}
-
-.strategy-traffic-light .warn {
-  background: #fff8e8;
-  color: #8a5a16;
-}
-
-.strategy-traffic-light .bad {
-  background: #fef2f2;
-  color: #991b1b;
-}
-
 .security-step-guide {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -222,7 +194,6 @@
 
 @media (max-width: 900px) {
   .holding-wizard,
-  .strategy-traffic-light,
   .order-import-recommend,
   .security-step-guide {
     grid-template-columns: 1fr;

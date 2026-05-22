@@ -2,10 +2,6 @@
   color-scheme: light;
   font-size: 14px;
   --bg: #eef2f7;
-  --bg-deep: #0b1422;
-  --bg-panel: #111b2d;
-  --bg-soft: rgba(255, 255, 255, 0.94);
-  --bg-soft-muted: #f6f8fb;
   --line: rgba(15, 23, 42, 0.08);
   --line-strong: rgba(100, 116, 139, 0.18);
   --text: #162235;
@@ -18,21 +14,6 @@
   --price-down: #1f8b4c;
   --price-flat: #162235;
   --warning: #a16207;
-  --shadow: 0 6px 18px rgba(15, 23, 42, 0.06);
-  --shadow-deep: 0 12px 28px rgba(8, 17, 31, 0.16);
-  --radius-xs: 6px;
-  --radius-sm: 8px;
-  --radius-md: 10px;
-  --radius-lg: 12px;
-  --radius-xl: 14px;
-  --space-1: 4px;
-  --space-2: 6px;
-  --space-3: 8px;
-  --space-4: 10px;
-  --space-5: 12px;
-  --space-6: 14px;
-  --space-7: 16px;
-  --space-8: 18px;
   font-family: "IBM Plex Sans", "Inter", "PingFang SC", "Microsoft YaHei", sans-serif;
   line-height: 1.42;
   font-weight: 400;
@@ -85,4 +66,18 @@ a {
 
 .price-flat {
   color: var(--price-flat);
+}
+
+:root:root {
+  --adm-color-primary: #0b1f3a;
+  --adm-color-success: #08875d;
+  --adm-color-warning: #b7791f;
+  --adm-color-danger: #b42318;
+  --adm-font-family: "PingFang SC", "Microsoft YaHei", "Noto Sans SC", sans-serif;
+  --adm-radius-m: 12px;
+  --adm-radius-l: 14px;
+}
+
+.adm-list-item-content-main {
+  min-height: 44px;
 }

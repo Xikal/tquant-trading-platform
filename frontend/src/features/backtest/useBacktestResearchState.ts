@@ -1,24 +1,18 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import {
   backtestsApi,
   type BacktestAttributionResponse,
-  type BacktestCompareResponse,
   type BacktestMonthlyReturnsResponse,
-  type BacktestOptimizationDetail,
-  type BacktestOptimizationSummary,
   type BacktestRunSummary,
   type BacktestStrategyCorrelationResponse,
-  type BacktestValidationDetail,
-  type BacktestValidationSummary,
 } from "../../api/backtests";
-import type { OptimizationFormState, ValidationFormState } from "./BacktestResearchPanel";
+import { useBacktestUiStore } from "../../stores/backtestUiStore";
+import type { OptimizationFormState, ValidationFormState } from "./backtestForms";
 import type { BacktestDashboardActiveSection } from "./useBacktestDashboard";
 import {
   buildParamGrid,
   compactProgressPatch,
   errorMessage,
-  initialOptimizationForm,
-  initialValidationForm,
   isActiveStatus,
   parsePositiveNumber,
   parseRunIds,
@@ -43,19 +37,32 @@ export function useBacktestResearchState({
   attribution,
   correlation,
 }: UseBacktestResearchStateParams) {
-  const [optimizationForm, setOptimizationForm] = useState<OptimizationFormState>(initialOptimizationForm);
-  const [optimizations, setOptimizations] = useState<BacktestOptimizationSummary[]>([]);
-  const [selectedOptimizationId, setSelectedOptimizationId] = useState<number | null>(null);
-  const [selectedOptimization, setSelectedOptimization] = useState<BacktestOptimizationDetail | null>(null);
-  const [validationForm, setValidationForm] = useState<ValidationFormState>(initialValidationForm);
-  const [validations, setValidations] = useState<BacktestValidationSummary[]>([]);
-  const [selectedValidationId, setSelectedValidationId] = useState<number | null>(null);
-  const [selectedValidation, setSelectedValidation] = useState<BacktestValidationDetail | null>(null);
-  const [compareRunIds, setCompareRunIds] = useState("");
-  const [compareResult, setCompareResult] = useState<BacktestCompareResponse | null>(null);
-  const [researchLoading, setResearchLoading] = useState("");
-  const [researchError, setResearchError] = useState("");
-  const [researchNotice, setResearchNotice] = useState("");
+  const optimizationForm = useBacktestUiStore((state) => state.optimizationForm);
+  const optimizations = useBacktestUiStore((state) => state.optimizations);
+  const selectedOptimizationId = useBacktestUiStore((state) => state.selectedOptimizationId);
+  const selectedOptimization = useBacktestUiStore((state) => state.selectedOptimization);
+  const validationForm = useBacktestUiStore((state) => state.validationForm);
+  const validations = useBacktestUiStore((state) => state.validations);
+  const selectedValidationId = useBacktestUiStore((state) => state.selectedValidationId);
+  const selectedValidation = useBacktestUiStore((state) => state.selectedValidation);
+  const compareRunIds = useBacktestUiStore((state) => state.compareRunIds);
+  const compareResult = useBacktestUiStore((state) => state.compareResult);
+  const researchLoading = useBacktestUiStore((state) => state.researchLoading);
+  const researchError = useBacktestUiStore((state) => state.researchError);
+  const researchNotice = useBacktestUiStore((state) => state.researchNotice);
+  const setOptimizationForm = useBacktestUiStore((state) => state.setOptimizationForm);
+  const setOptimizations = useBacktestUiStore((state) => state.setOptimizations);
+  const setSelectedOptimizationId = useBacktestUiStore((state) => state.setSelectedOptimizationId);
+  const setSelectedOptimization = useBacktestUiStore((state) => state.setSelectedOptimization);
+  const setValidationForm = useBacktestUiStore((state) => state.setValidationForm);
+  const setValidations = useBacktestUiStore((state) => state.setValidations);
+  const setSelectedValidationId = useBacktestUiStore((state) => state.setSelectedValidationId);
+  const setSelectedValidation = useBacktestUiStore((state) => state.setSelectedValidation);
+  const setCompareRunIds = useBacktestUiStore((state) => state.setCompareRunIds);
+  const setCompareResult = useBacktestUiStore((state) => state.setCompareResult);
+  const setResearchLoading = useBacktestUiStore((state) => state.setResearchLoading);
+  const setResearchError = useBacktestUiStore((state) => state.setResearchError);
+  const setResearchNotice = useBacktestUiStore((state) => state.setResearchNotice);
   const selectedOptimizationIdRef = useRef<number | null>(null);
   const selectedValidationIdRef = useRef<number | null>(null);
 

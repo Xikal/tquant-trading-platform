@@ -1,19 +1,10 @@
-import { useCallback, useEffect, useState } from "react";
-import {
-  backtestsApi,
-  type BacktestAttributionResponse,
-  type BacktestMonthlyReturnsResponse,
-  type BacktestRunDetail,
-  type BacktestRunSummary,
-  type BacktestStrategyCorrelationResponse,
-  type BacktestTrade,
-  type EquityPoint,
-} from "../../api/backtests";
-import type { BacktestFormState } from "./BacktestDashboard";
+import { useCallback, useEffect } from "react";
+import { backtestsApi } from "../../api/backtests";
+import { useBacktestUiStore } from "../../stores/backtestUiStore";
+import type { BacktestFormState } from "./backtestForms";
 import {
   compactProgressPatch,
   errorMessage,
-  initialBacktestForm,
   isActiveStatus,
   parseNullablePercent,
   parseNullableNumber,
@@ -34,17 +25,28 @@ export type BacktestDashboardActiveSection =
   | "none";
 
 export function useBacktestDashboard(activeSection: BacktestDashboardActiveSection = "all") {
-  const [form, setForm] = useState<BacktestFormState>(initialBacktestForm);
-  const [runs, setRuns] = useState<BacktestRunSummary[]>([]);
-  const [selectedRun, setSelectedRun] = useState<BacktestRunDetail | null>(null);
-  const [equity, setEquity] = useState<EquityPoint[]>([]);
-  const [trades, setTrades] = useState<BacktestTrade[]>([]);
-  const [loading, setLoading] = useState("");
-  const [error, setError] = useState("");
-  const [notice, setNotice] = useState("");
-  const [monthlyReturns, setMonthlyReturns] = useState<BacktestMonthlyReturnsResponse | null>(null);
-  const [attribution, setAttribution] = useState<BacktestAttributionResponse | null>(null);
-  const [correlation, setCorrelation] = useState<BacktestStrategyCorrelationResponse | null>(null);
+  const form = useBacktestUiStore((state) => state.form);
+  const runs = useBacktestUiStore((state) => state.runs);
+  const selectedRun = useBacktestUiStore((state) => state.selectedRun);
+  const equity = useBacktestUiStore((state) => state.equity);
+  const trades = useBacktestUiStore((state) => state.trades);
+  const loading = useBacktestUiStore((state) => state.loading);
+  const error = useBacktestUiStore((state) => state.error);
+  const notice = useBacktestUiStore((state) => state.notice);
+  const monthlyReturns = useBacktestUiStore((state) => state.monthlyReturns);
+  const attribution = useBacktestUiStore((state) => state.attribution);
+  const correlation = useBacktestUiStore((state) => state.correlation);
+  const setForm = useBacktestUiStore((state) => state.setForm);
+  const setRuns = useBacktestUiStore((state) => state.setRuns);
+  const setSelectedRun = useBacktestUiStore((state) => state.setSelectedRun);
+  const setEquity = useBacktestUiStore((state) => state.setEquity);
+  const setTrades = useBacktestUiStore((state) => state.setTrades);
+  const setLoading = useBacktestUiStore((state) => state.setLoading);
+  const setError = useBacktestUiStore((state) => state.setError);
+  const setNotice = useBacktestUiStore((state) => state.setNotice);
+  const setMonthlyReturns = useBacktestUiStore((state) => state.setMonthlyReturns);
+  const setAttribution = useBacktestUiStore((state) => state.setAttribution);
+  const setCorrelation = useBacktestUiStore((state) => state.setCorrelation);
 
   const loadDetail = useCallback(async (runId: number) => {
     setLoading("detail");

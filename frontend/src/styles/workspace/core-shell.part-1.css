@@ -21,7 +21,6 @@
 .brand span,
 .brand .ant-typography,
 .desk-chips,
-.topbar-menu,
 .topbar-nav {
   color: #aeb8c7;
   font-size: 12px;
@@ -62,28 +61,6 @@
   background: rgba(255, 255, 255, 0.04);
 }
 
-.topbar-menu.ant-menu {
-  min-width: 0;
-  justify-content: center;
-  border: 0;
-  background: transparent;
-  color: #aeb8c7;
-}
-
-.topbar-menu.ant-menu-horizontal > .ant-menu-item {
-  border-radius: 8px;
-  color: #aeb8c7;
-}
-
-.topbar-menu.ant-menu-horizontal > .ant-menu-item-selected {
-  background: var(--accent);
-  color: var(--deep);
-}
-
-.topbar-menu.ant-menu-horizontal > .ant-menu-item::after {
-  display: none;
-}
-
 .desk-chips {
   display: flex;
   align-items: center;
@@ -91,8 +68,7 @@
   font-family: "IBM Plex Mono", monospace;
 }
 
-.desk-chip,
-.topbar-refresh-card {
+.desk-chip {
   min-height: 34px;
   display: inline-grid;
   grid-template-columns: auto auto;
@@ -150,75 +126,6 @@
 
 .desk-chip.pulse strong {
   color: #67e8f9;
-}
-
-.topbar-refresh-card {
-  cursor: pointer;
-  color: #f4d08a;
-  border-color: rgba(214, 165, 92, 0.58);
-  background: linear-gradient(135deg, rgba(214, 165, 92, 0.2), rgba(15, 23, 42, 0.16));
-}
-
-.topbar-refresh-card:hover:not(:disabled) {
-  border-color: rgba(244, 208, 138, 0.86);
-  transform: translateY(-1px);
-}
-
-.topbar-refresh-card:disabled {
-  cursor: wait;
-  opacity: 0.65;
-}
-
-.topbar-user-menu {
-  position: relative;
-  display: inline-flex;
-}
-
-.topbar-user-button {
-  max-width: 148px;
-  overflow: hidden;
-  padding: 3px 9px;
-  border-color: rgba(255, 255, 255, 0.18);
-  color: #cbd5e1;
-  background: rgba(255, 255, 255, 0.06);
-  font-size: 11px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.topbar-user-button.active,
-.topbar-user-button[aria-expanded="true"] {
-  border-color: rgba(214, 165, 92, 0.66);
-  color: #f4d08a;
-  background: rgba(214, 165, 92, 0.12);
-}
-
-.topbar-user-dropdown {
-  position: absolute;
-  top: calc(100% + 8px);
-  right: 0;
-  z-index: 30;
-  display: grid;
-  min-width: 128px;
-  gap: 4px;
-  padding: 6px;
-  border: 1px solid rgba(100, 116, 139, 0.22);
-  border-radius: 10px;
-  background: #fff;
-  box-shadow: 0 14px 32px rgba(15, 23, 42, 0.18);
-}
-
-.topbar-user-dropdown button {
-  justify-content: flex-start;
-  width: 100%;
-  border-color: transparent;
-  color: var(--text);
-  background: transparent;
-  text-align: left;
-}
-
-.topbar-user-dropdown button:hover {
-  background: #f6f8fb;
 }
 
 .workspace {

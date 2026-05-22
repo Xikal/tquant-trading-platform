@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { Input } from "antd";
 import { appApi } from "../../api/appClient";
-import type { AuthMfaSetupResponse, AuthUser } from "../../types";
+import type { AuthUser } from "../../types";
 import { SettingCard } from "../workspace-shared/WorkspaceComponents";
+import { useSettingsUiStore } from "../../stores/settingsUiStore";
 
 type AuthSecurityCardProps = {
   currentUser: AuthUser;
@@ -9,57 +10,49 @@ type AuthSecurityCardProps = {
 };
 
 export function AuthSecurityCard({ currentUser, onUserUpdate }: AuthSecurityCardProps) {
-  const [setup, setSetup] = useState<AuthMfaSetupResponse | null>(null);
-  const [code, setCode] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState("");
-  const [error, setError] = useState("");
+  const mfa = useSettingsUiStore((state) => state.mfa);
+  const setMfa = useSettingsUiStore((state) => state.setMfa);
+  const { setup, code, loading, message, error } = mfa;
 
   async function startSetup() {
     await run(async () => {
       const payload = await appApi.setupTotp();
-      setSetup(payload);
-      setMessage("请把密钥加入认证器，然后输入 6 位验证码启用。");
+      setMfa({ setup: payload, message: "请把密钥加入认证器，然后输入 6 位验证码启用。" });
     });
   }
 
   async function enable() {
     if (!code.trim()) {
-      setError("请输入认证器里的 6 位验证码");
+      setMfa({ error: "请输入认证器里的 6 位验证码" });
       return;
     }
     await run(async () => {
       const payload = await appApi.enableTotp(code.trim());
       onUserUpdate(payload.user);
-      setSetup(null);
-      setCode("");
-      setMessage("二次验证已启用，下次登录需要输入动态验证码。");
+      setMfa({ setup: null, code: "", message: "二次验证已启用，下次登录需要输入动态验证码。" });
     });
   }
 
   async function disable() {
     if (!code.trim()) {
-      setError("请输入认证器里的 6 位验证码");
+      setMfa({ error: "请输入认证器里的 6 位验证码" });
       return;
     }
     await run(async () => {
       const payload = await appApi.disableTotp(code.trim());
       onUserUpdate(payload.user);
-      setSetup(null);
-      setCode("");
-      setMessage("二次验证已关闭。");
+      setMfa({ setup: null, code: "", message: "二次验证已关闭。" });
     });
   }
 
   async function run(action: () => Promise<void>) {
     try {
-      setLoading(true);
-      setError("");
+      setMfa({ loading: true, error: "" });
       await action();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "账号安全设置失败");
+      setMfa({ error: err instanceof Error ? err.message : "账号安全设置失败" });
     } finally {
-      setLoading(false);
+      setMfa({ loading: false });
     }
   }
 
@@ -92,12 +85,12 @@ export function AuthSecurityCard({ currentUser, onUserUpdate }: AuthSecurityCard
         ) : null}
         <label className="tq-field">
           <span>动态验证码</span>
-          <input
+          <Input
             value={code}
             inputMode="numeric"
             maxLength={6}
             placeholder={enabled ? "关闭时输入 6 位验证码" : "启用时输入 6 位验证码"}
-            onChange={(event) => setCode(event.target.value.replace(/\D/g, "").slice(0, 6))}
+            onChange={(event) => setMfa({ code: event.target.value.replace(/\D/g, "").slice(0, 6) })}
           />
         </label>
         {message ? <p className="hint success-text">{message}</p> : null}

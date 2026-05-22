@@ -1,28 +1,3 @@
-.paper-trade-head {
-  grid-template-columns: minmax(126px, 1.25fr) 64px minmax(76px, 0.7fr) minmax(76px, 0.7fr) minmax(154px, 1.2fr);
-}
-
-.paper-trade-head.with-tags {
-  grid-template-columns: minmax(112px, 1.1fr) 58px minmax(68px, 0.6fr) minmax(68px, 0.6fr) minmax(130px, 1fr) minmax(150px, 1.2fr);
-}
-
-.paper-order-head span:nth-child(4),
-.paper-order-head span:nth-child(5),
-.paper-trade-head span:nth-child(3),
-.paper-trade-head span:nth-child(4),
-.paper-order-row .cell-number,
-.paper-trade-row .cell-number {
-  text-align: right;
-}
-
-.paper-order-head span:nth-child(2),
-.paper-order-head span:nth-child(3),
-.paper-trade-head span:nth-child(2),
-.paper-order-row .status-chip,
-.paper-trade-row .status-chip {
-  justify-self: center;
-}
-
 .paper-stock-name {
   min-width: 0;
   display: flex;
@@ -41,20 +16,6 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.paper-stock-name .paper-trade-reason {
-  flex-basis: 100%;
-  color: var(--muted);
-  font-size: 10px;
-  font-weight: 700;
-}
-
-.paper-chip-group {
-  display: flex;
-  gap: 5px;
-  align-items: center;
-  flex-wrap: wrap;
 }
 
 .paper-trade-tags,
@@ -98,49 +59,6 @@
   border-style: dashed;
 }
 
-.paper-positions .stock-list {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  max-height: none;
-  overflow: visible;
-  padding-right: 0;
-}
-
-.paper-orders .line-list {
-  max-height: 218px;
-  overflow-y: auto;
-  padding-right: 4px;
-}
-
-.paper-trades .line-list {
-  max-height: 138px;
-  overflow-y: auto;
-  padding-right: 4px;
-}
-
-.paper-performance .paper-performance-table,
-.paper-market-performance .paper-performance-table {
-  max-height: 128px;
-  overflow-y: auto;
-}
-
-.paper-positions .stock-list::-webkit-scrollbar,
-.paper-orders .line-list::-webkit-scrollbar,
-.paper-trades .line-list::-webkit-scrollbar,
-.paper-performance .paper-performance-table::-webkit-scrollbar,
-.paper-market-performance .paper-performance-table::-webkit-scrollbar {
-  width: 6px;
-}
-
-.paper-positions .stock-list::-webkit-scrollbar-thumb,
-.paper-orders .line-list::-webkit-scrollbar-thumb,
-.paper-trades .line-list::-webkit-scrollbar-thumb,
-.paper-performance .paper-performance-table::-webkit-scrollbar-thumb,
-.paper-market-performance .paper-performance-table::-webkit-scrollbar-thumb {
-  border-radius: 999px;
-  background: rgba(102, 117, 138, 0.32);
-}
-
 .status-chip {
   display: inline-flex;
   align-items: center;
@@ -166,62 +84,6 @@
 
 .status-chip.warn {
   background: #fff8e8;
-}
-
-.paper-performance-table {
-  gap: 0;
-  overflow: hidden;
-  border: 1px solid var(--line-strong, rgba(100, 116, 139, 0.18));
-  border-radius: 8px;
-  background: #fff;
-}
-
-.paper-performance-head,
-.paper-performance-row {
-  grid-template-columns: minmax(104px, 1.5fr) minmax(48px, 0.7fr) repeat(4, minmax(62px, 1fr));
-  border: 0;
-  border-radius: 0;
-  border-bottom: 1px solid var(--line, rgba(15, 23, 42, 0.08));
-  background: transparent;
-}
-
-.paper-performance-head {
-  background: var(--bg-soft-muted, #f6f8fb);
-  font-weight: 800;
-}
-
-.paper-performance-row:last-child {
-  border-bottom: 0;
-}
-
-.paper-performance-row strong,
-.paper-performance-row span {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.paper-performance-head span:not(:first-child),
-.paper-performance-row span {
-  text-align: right;
-  font-family: "IBM Plex Mono", monospace;
-}
-
-.paper-skeleton-list {
-  display: grid;
-  gap: 6px;
-}
-
-.paper-skeleton-row {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(72px, 1fr));
-  gap: 8px;
-  min-height: 40px;
-  align-items: center;
-  padding: 8px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: #fff;
 }
 
 .skeleton-line {

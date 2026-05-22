@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { Button, Tabs } from "antd";
 import type {
   PaperAgentRun,
@@ -28,11 +28,12 @@ import {
 import { formatPaperDateTime } from "./paperTradingFormatters";
 import { EmptyState } from "../workspace-shared/WorkspaceComponents";
 import { formatInteger, formatPrice } from "../workspace-shared/workspaceFormatters";
-
-type DetailTabKey = "orders" | "trades" | "pnl" | "strategy" | "risk" | "diagnostic";
+import { DataTable } from "../../ui/table/DataTable";
+import { usePaperUiStore, type PaperDetailTabKey } from "../../stores/paperUiStore";
 
 export function PaperDetailTabs(props: PaperDetailTabsProps) {
-  const [tab, setTab] = useState<DetailTabKey>("orders");
+  const tab = usePaperUiStore((state) => state.detailTab);
+  const setTab = usePaperUiStore((state) => state.setDetailTab);
   const tabs = useMemo(() => buildTabs(props), [props]);
 
   return (
@@ -44,7 +45,7 @@ export function PaperDetailTabs(props: PaperDetailTabsProps) {
       <Tabs
         className="paper-detail-antd-tabs"
         activeKey={tab}
-        onChange={(key) => setTab(key as DetailTabKey)}
+        onChange={(key) => setTab(key as PaperDetailTabKey)}
         items={tabs.map((item) => ({
           key: item.key,
           label: (
@@ -137,24 +138,55 @@ function buildTabs(props: PaperDetailTabsProps) {
     { key: "strategy", label: "策略绩效", hint: `${props.strategyPerformance.length + props.marketPerformance.length} 组` },
     { key: "risk", label: "风险与日志", hint: `${props.riskEvents.length} 个风险` },
     { key: "diagnostic", label: "对账诊断", hint: props.canManageReconcile ? "可修复" : "只读" },
-  ] as Array<{ key: DetailTabKey; label: string; hint: string }>;
+  ] as Array<{ key: PaperDetailTabKey; label: string; hint: string }>;
 }
 
 function OrdersTab({ orders, loading }: { orders: PaperOrder[]; loading: boolean }) {
-  if (loading) return <EmptyState text="委托记录加载中…" />;
   return (
-    <div className="paper-tab-scroll">
-      <div className="paper-table-head paper-order-head">
-        <span>标的</span>
-        <span>方向/类型</span>
-        <span>状态</span>
-        <span>数量</span>
-        <span>成交</span>
-      </div>
-      <div className="line-list">
-        {orders.length ? orders.map((item) => <OrderRow key={item.id} item={item} />) : <EmptyState text="暂无委托" />}
-      </div>
-    </div>
+    <DataTable<PaperOrder>
+      rowKey="id"
+      loading={loading}
+      dataSource={orders}
+      scroll={{ y: 320, x: 760 }}
+      columns={[
+        {
+          title: "标的",
+          dataIndex: "symbol",
+          render: (_, item) => (
+            <div className="paper-stock-name">
+              <strong>{item.symbol}</strong>
+              <span>{item.name || item.strategy_key || "--"}</span>
+              {item.reject_reason ? <small className="warn">原因：{item.reject_reason}</small> : null}
+            </div>
+          ),
+        },
+        {
+          title: "方向/类型",
+          render: (_, item) => (
+            <span className={`status-chip ${item.side === "buy" ? "up" : "down"}`}>
+              {item.side === "buy" ? "买入" : "卖出"} · {item.order_type === "market" ? "市价" : "限价"}
+            </span>
+          ),
+        },
+        {
+          title: "状态",
+          dataIndex: "status",
+          render: (status: PaperOrder["status"]) => <span className={`status-chip ${orderStatusTone(status)}`}>{orderStatusText(status)}</span>,
+        },
+        {
+          title: "数量",
+          dataIndex: "quantity",
+          align: "right",
+          render: (value: number) => `${formatInteger(value)} 股`,
+        },
+        {
+          title: "成交价",
+          dataIndex: "avg_fill_price",
+          align: "right",
+          render: (value?: number | null) => formatPrice(value),
+        },
+      ]}
+    />
   );
 }
 
@@ -175,30 +207,53 @@ function TradesTab({
   onAddTradeTag: (tradeId: number, tag: string) => void;
   onDeleteTradeTag: (tradeId: number, tagId: number) => void;
 }) {
-  if (loading) return <EmptyState text="成交记录加载中…" />;
   return (
     <div className="paper-tab-scroll">
       <PerformancePills performance={performance} />
       <TagPerformanceStrip items={tagPerformance} />
-      <div className="paper-table-head paper-trade-head with-tags">
-        <span>标的</span>
-        <span>方向</span>
-        <span>数量</span>
-        <span>价格</span>
-        <span>时间</span>
-        <span>标签</span>
-      </div>
-      <div className="line-list">
-        {trades.length ? trades.map((item) => (
-          <TradeRow
-            key={item.id}
-            item={item}
-            tags={tradeTags[item.id] ?? []}
-            onAddTag={onAddTradeTag}
-            onDeleteTag={onDeleteTradeTag}
-          />
-        )) : <EmptyState text="暂无成交" />}
-      </div>
+      <DataTable<PaperTrade>
+        rowKey="id"
+        loading={loading}
+        dataSource={trades}
+        scroll={{ y: 340, x: 980 }}
+        columns={[
+          {
+            title: "标的",
+            dataIndex: "symbol",
+            render: (_, item) => {
+              const reasonText = item.side === "buy" ? item.entry_reason : item.exit_reason;
+              return (
+                <div className="paper-stock-name">
+                  <strong>{item.symbol}</strong>
+                  <span>{item.strategy_key || "未标注"}</span>
+                  <small className={item.commission_warning ? "warn" : ""}>
+                    {item.commission_warning || reasonText || (item.side === "buy" ? "买入原因未记录" : "退出原因未记录")}
+                  </small>
+                </div>
+              );
+            },
+          },
+          {
+            title: "方向",
+            dataIndex: "side",
+            render: (side: PaperTrade["side"]) => <span className={`status-chip ${side === "buy" ? "up" : "down"}`}>{side === "buy" ? "买入" : "卖出"}</span>,
+          },
+          { title: "数量", dataIndex: "quantity", align: "right", render: (value: number) => `${formatInteger(value)} 股` },
+          { title: "价格", dataIndex: "price", align: "right", render: (value?: number | null) => formatPrice(value) },
+          { title: "时间", dataIndex: "trade_time", render: (value: string) => formatPaperDateTime(value) },
+          {
+            title: "标签",
+            render: (_, item) => (
+              <TradeTags
+                item={item}
+                tags={tradeTags[item.id] ?? []}
+                onAddTag={onAddTradeTag}
+                onDeleteTag={onDeleteTradeTag}
+              />
+            ),
+          },
+        ]}
+      />
     </div>
   );
 }
@@ -295,26 +350,7 @@ function DiagnosticTab({
   );
 }
 
-function OrderRow({ item }: { item: PaperOrder }) {
-  const statusTone = orderStatusTone(item.status);
-  const sideText = item.side === "buy" ? "买入" : "卖出";
-  const orderTypeText = item.order_type === "market" ? "市价" : "限价";
-  return (
-    <article className={`paper-row paper-order-row${item.reject_reason ? " has-note" : ""}`}>
-      <div className="paper-stock-name">
-        <strong>{item.symbol}</strong>
-        <span>{item.name || item.strategy_key || "--"}</span>
-      </div>
-      <span className={`status-chip ${item.side === "buy" ? "up" : "down"}`}>{sideText} · {orderTypeText}</span>
-      <span className={`status-chip ${statusTone}`}>{orderStatusText(item.status)}</span>
-      <span className="cell-number">{formatInteger(item.quantity)} 股</span>
-      <span className="cell-number">{formatPrice(item.avg_fill_price)}</span>
-      {item.reject_reason ? <span className="paper-order-reason warn">原因：{item.reject_reason}</span> : null}
-    </article>
-  );
-}
-
-function TradeRow({
+function TradeTags({
   item,
   tags,
   onAddTag,
@@ -326,32 +362,19 @@ function TradeRow({
   onDeleteTag: (tradeId: number, tagId: number) => void;
 }) {
   const quickTags = ["止盈", "止损", "做T", "计划外"].filter((tag) => !tags.some((entry) => entry.tag === tag));
-  const reasonText = item.side === "buy" ? item.entry_reason : item.exit_reason;
   return (
-    <article className="paper-row paper-trade-row with-tags">
-      <div className="paper-stock-name">
-        <strong>{item.symbol}</strong>
-        <span>{item.strategy_key || "未标注"}</span>
-        <span className="paper-trade-reason">{reasonText || (item.side === "buy" ? "买入原因未记录" : "退出原因未记录")}</span>
-        {item.commission_warning ? <span className="paper-trade-reason warn">{item.commission_warning}</span> : null}
-      </div>
-      <span className={`status-chip ${item.side === "buy" ? "up" : "down"}`}>{item.side === "buy" ? "买入" : "卖出"}</span>
-      <span className="cell-number">{formatInteger(item.quantity)} 股</span>
-      <span className="cell-number">{formatPrice(item.price)}</span>
-      <span>{formatPaperDateTime(item.trade_time)}</span>
-      <div className="paper-trade-tags">
-        {tags.map((tag) => (
-          <Button type="text" size="small" className="paper-tag-chip" key={tag.id} onClick={() => onDeleteTag(item.id, tag.id)} title="点击删除标签">
-            {tag.tag} ×
-          </Button>
-        ))}
-        {quickTags.slice(0, tags.length ? 1 : 2).map((tag) => (
-          <Button type="text" size="small" className="paper-tag-add" key={tag} onClick={() => onAddTag(item.id, tag)}>
-            +{tag}
-          </Button>
-        ))}
-      </div>
-    </article>
+    <div className="paper-trade-tags">
+      {tags.map((tag) => (
+        <Button type="text" size="small" className="paper-tag-chip" key={tag.id} onClick={() => onDeleteTag(item.id, tag.id)} title="点击删除标签">
+          {tag.tag} ×
+        </Button>
+      ))}
+      {quickTags.slice(0, tags.length ? 1 : 2).map((tag) => (
+        <Button type="text" size="small" className="paper-tag-add" key={tag} onClick={() => onAddTag(item.id, tag)}>
+          +{tag}
+        </Button>
+      ))}
+    </div>
   );
 }
 

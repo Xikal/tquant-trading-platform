@@ -1,5 +1,5 @@
 import { Button } from "antd";
-import type { BacktestExecutionModel } from "../../api/backtests";
+import type { BacktestExecutionModel, BacktestOptimizationCandidate } from "../../api/backtests";
 import {
   BACKTEST_EXECUTION_MODELS,
   OPTIMIZATION_TARGET_OPTIONS,
@@ -25,6 +25,7 @@ import {
   TextField,
   truthyFlag,
 } from "./BacktestResearchShared";
+import { DataTable } from "../../ui/table/DataTable";
 
 export function OptimizationPanel({
   state,
@@ -84,33 +85,24 @@ export function OptimizationPanel({
               <Metric label="样本外评分" value={formatNumber(detail.best_oos_score)} />
               <Metric label="最优参数" value={formatParams(detail.best_params)} />
             </div>
-            <div className="backtest-data-table" role="table" aria-label="参数优化排名">
-              <div className="row head" role="row">
-                <span>Rank</span>
-                <span>参数</span>
-                <span>样本</span>
-                <span>收益</span>
-                <span>胜率</span>
-                <span>止损率</span>
-                <span>MaxDD</span>
-                <span>PF</span>
-                <span>Sharpe</span>
-              </div>
-              {(detail.candidates ?? []).slice(0, 8).map((item, index) => (
-                <div className="row" role="row" key={`${item.rank ?? index}-${formatParams(item.params)}`}>
-                  <span>{item.rank ?? index + 1}</span>
-                  <span>{formatParams(item.params)}</span>
-                  <span>{item.sample ?? (item.is_oos ? "oos" : "is")}</span>
-                  <span className={toneFromNumber(item.total_return_pct)}>{formatPct(item.total_return_pct)}</span>
-                  <span>{formatPct(item.win_rate_pct)}</span>
-                  <span>{formatPct(item.stop_loss_rate_pct)}</span>
-                  <span className="down">{formatPct(item.max_drawdown_pct)}</span>
-                  <span>{formatNumber(item.profit_factor)}</span>
-                  <span>{formatNumber(item.sharpe ?? item.sharpe_ratio)}</span>
-                </div>
-              ))}
-              {detail.candidates?.length ? null : <Empty text="优化完成后显示参数组合排名。" />}
-            </div>
+            <DataTable<BacktestOptimizationCandidate>
+              className="backtest-data-table"
+              rowKey={(item, index) => `${item.rank ?? index}-${formatParams(item.params)}`}
+              dataSource={(detail.candidates ?? []).slice(0, 8)}
+              locale={{ emptyText: <Empty text="优化完成后显示参数组合排名。" /> }}
+              scroll={{ x: 980 }}
+              columns={[
+                { title: "Rank", render: (_value, item, index) => item.rank ?? index + 1 },
+                { title: "参数", render: (_value, item) => formatParams(item.params) },
+                { title: "样本", render: (_value, item) => item.sample ?? (item.is_oos ? "oos" : "is") },
+                { title: "收益", align: "right", render: (_value, item) => <span className={toneFromNumber(item.total_return_pct)}>{formatPct(item.total_return_pct)}</span> },
+                { title: "胜率", align: "right", render: (_value, item) => formatPct(item.win_rate_pct) },
+                { title: "止损率", align: "right", render: (_value, item) => formatPct(item.stop_loss_rate_pct) },
+                { title: "MaxDD", align: "right", render: (_value, item) => <span className="down">{formatPct(item.max_drawdown_pct)}</span> },
+                { title: "PF", align: "right", render: (_value, item) => formatNumber(item.profit_factor) },
+                { title: "Sharpe", align: "right", render: (_value, item) => formatNumber(item.sharpe ?? item.sharpe_ratio) },
+              ]}
+            />
           </>
         ) : <Empty text="选择一条优化任务查看 IS/OOS 对比和候选排名。" />}
       </div>

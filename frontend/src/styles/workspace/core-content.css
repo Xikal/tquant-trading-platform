@@ -1,15 +1,3 @@
-.tabs button {
-  color: var(--text);
-}
-
-.tabs button.active {
-  background: var(--deep);
-  border-color: var(--deep);
-  color: #fff;
-}
-
-.sample,
-.trade-card,
 .empty-state {
   display: block;
   padding: 8px;
@@ -17,35 +5,6 @@
   background: var(--muted-bg);
   margin-bottom: 6px;
   color: var(--muted);
-  font-size: 12px;
-}
-
-.dark-card {
-  display: grid;
-  gap: 5px;
-  margin-top: 10px;
-  padding: 12px;
-  border-radius: 8px;
-  background: #08111f;
-}
-
-.dark-card span {
-  color: #c5cedc;
-  font-size: 12px;
-}
-
-.quick-symbols {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin: 10px 0;
-}
-
-.quick-symbols button {
-  border: 0;
-  padding: 0;
-  color: var(--accent);
-  background: transparent;
   font-size: 12px;
 }
 
@@ -82,7 +41,6 @@
   color: #fff;
 }
 
-.dark .sample,
 .dark .empty-state {
   background: #0b1422;
 }

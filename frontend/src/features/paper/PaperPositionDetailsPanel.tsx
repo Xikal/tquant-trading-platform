@@ -1,4 +1,4 @@
-import { Children, useMemo, useState } from "react";
+import { Children, useMemo } from "react";
 import type { ReactNode } from "react";
 import { Button } from "antd";
 
@@ -13,6 +13,7 @@ import {
   plainTradingText,
   toneFromChange,
 } from "../workspace-shared/workspaceFormatters";
+import { usePaperUiStore } from "../../stores/paperUiStore";
 
 interface PaperPositionDetailsPanelProps {
   positions: PaperPosition[];
@@ -48,7 +49,8 @@ export function PaperPositionDetailsPanel({
   embedded = false,
 }: PaperPositionDetailsPanelProps) {
   const details = useMemo(() => buildStockTradeDetails(positions, orders, trades, stockPnl), [positions, orders, trades, stockPnl]);
-  const [selectedSymbol, setSelectedSymbol] = useState("");
+  const selectedSymbol = usePaperUiStore((state) => state.selectedPositionSymbol);
+  const setSelectedSymbol = usePaperUiStore((state) => state.setSelectedPositionSymbol);
   const selected = details.find((item) => item.symbol === selectedSymbol) ?? details[0] ?? null;
   const Container = embedded ? "div" : "section";
 

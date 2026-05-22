@@ -1,5 +1,38 @@
 # TQuant 实施计划
 
+## 前端重构 Codex 版报告核验与落地
+
+需求来源：`/Users/j/Downloads/TQuant_前端重构完整方案_Codex版.html`
+
+### 核验结论
+
+- 报告中的基础设施建议大部分已在当前项目落地：Ant Design / antd-mobile、React Router、TanStack Query、主题 token、按 feature 拆目录、因子实验室、Vendor chunk 分包均已存在。
+- “一次性删除所有手写 CSS、全站重写为 antd 组件”的建议不适合当前阶段直接执行：交易工作台、模拟盘和 App 端仍依赖既有语义 class 与视觉回归，贸然删除 CSS 会引入高风险视觉漂移。
+- 当前最有价值、低风险的剩余建议：路由直达与 404 明确化、统一状态页组件命名、Bundle 报告补 gzip 和首屏 JS 指标、保留旧路由兼容。
+
+### 本轮落地范围
+
+- [x] Web Router 从单一 `*` 捕获改为白名单路由：`/monitor`、`/emotion`、`/analysis`、`/playbook`、`/low-buy`、`/strategy`、`/paper`、`/performance`、`/settings`。
+- [x] 根路径 `/` 重定向到 `/monitor`，保留旧 `/low-buy` 与 `/performance` 兼容。
+- [x] 未知路径不再静默显示监控页，改为明确的 404 状态页并提供返回实时监控按钮。
+- [x] `PAGE_PATHS` 增加报告建议的规范 URL：监控 `/monitor`，选股宝典 `/playbook`。
+- [x] 新增 `StateViews.tsx`，提供报告要求的 `TqEmpty` / `TqPageLoading` / `TqErrorResult` / `TqForbidden` 统一状态组件。
+- [x] 旧 `EmptyState` / `LoadingState` / `ErrorState` 改为兼容包装，避免大范围改动调用点。
+- [x] Bundle 报告补充 gzip 体积、资源分类和首屏 JS gzip 估算，便于后续性能验收。
+
+### 暂不落地项
+
+- [ ] 全站 CSS 清零：保留为后续视觉回归专项，不在本轮执行。
+- [ ] Zustand 全量迁移：当前 auth 与业务数据流运行稳定，若强行迁移会扩大鉴权回归风险。
+- [ ] 全站表格/Form 完全 antd 化：已完成关键控件迁移，剩余应按页面配合截图回归小步推进。
+
+### 验证
+
+- [x] `cd frontend && npm run build:web` 通过。
+- [x] `cd frontend && npm run analyze` 通过，`bundle-report.json` 已包含 gzip 与首屏 JS 指标。
+- [x] `cd frontend && npm test` 通过，12 files / 33 tests。
+- [x] `npm run preview -- --host 127.0.0.1 --port 4173` + Playwright 冒烟通过：`/` 跳 `/monitor`，`/monitor` 与 `/playbook` 可直达，未知路径显示 404。
+
 ## 前端最终重构优化基础层
 
 需求来源：`docs/frontend-final-refactor-optimization-plan-2026-05-21.md`

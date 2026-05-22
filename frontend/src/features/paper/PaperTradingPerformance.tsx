@@ -2,6 +2,7 @@ import type { PaperAgentRun, PaperGroupedPerformance, PaperPerformance, PaperSec
 import { EmptyState, InfoPill } from "../workspace-shared/WorkspaceComponents";
 import { formatPaperDateTime } from "./paperTradingFormatters";
 import { formatInteger, formatNumber, formatPct, toneFromChange } from "../workspace-shared/workspaceFormatters";
+import { DataTable } from "../../ui/table/DataTable";
 
 export function RiskEventList({ items }: { items: RiskEventItem[] }) {
   if (!items.length) return null;
@@ -52,22 +53,18 @@ export function SectorEtfT0PerformancePanel({ item }: { item: PaperSectorEtfT0Pe
         <InfoPill label="成交胜率" value={formatPct(item.simulated_win_rate_pct)} />
         <InfoPill label="平均收益" value={formatPct(item.simulated_avg_return_pct)} tone={toneFromChange(item.simulated_avg_return_pct)} />
       </div>
-      <div className="paper-performance-head">
-        <span>跟踪样本</span>
-        <span>已结算</span>
-        <span>待结算</span>
-        <span>影子胜率</span>
-        <span>1日均收</span>
-        <span>3日均收</span>
-      </div>
-      <div className="paper-performance-row">
-        <strong>{formatInteger(item.shadow_sample_count)}</strong>
-        <span>{formatInteger(item.shadow_settled_count)}</span>
-        <span>{formatInteger(item.shadow_pending_count)}</span>
-        <span>{formatPct(item.shadow_success_rate_pct)}</span>
-        <span className={toneFromChange(item.shadow_avg_return_1d_pct)}>{formatPct(item.shadow_avg_return_1d_pct)}</span>
-        <span className={toneFromChange(item.shadow_avg_return_3d_pct)}>{formatPct(item.shadow_avg_return_3d_pct)}</span>
-      </div>
+      <DataTable<PaperSectorEtfT0Performance>
+        rowKey={() => "sector-etf-t0"}
+        dataSource={[item]}
+        columns={[
+          { title: "跟踪样本", dataIndex: "shadow_sample_count", render: (value) => <strong>{formatInteger(value)}</strong> },
+          { title: "已结算", dataIndex: "shadow_settled_count", render: (value) => formatInteger(value) },
+          { title: "待结算", dataIndex: "shadow_pending_count", render: (value) => formatInteger(value) },
+          { title: "影子胜率", dataIndex: "shadow_success_rate_pct", render: (value) => formatPct(value) },
+          { title: "1日均收", dataIndex: "shadow_avg_return_1d_pct", render: (value) => <span className={toneFromChange(value)}>{formatPct(value)}</span> },
+          { title: "3日均收", dataIndex: "shadow_avg_return_3d_pct", render: (value) => <span className={toneFromChange(value)}>{formatPct(value)}</span> },
+        ]}
+      />
       <p className="muted">
         {item.notes?.[0] || "只统计 strategy_key=sector_etf_t0 的模拟成交，并和 ETF 机会池影子跟踪对账。"}
       </p>
@@ -78,30 +75,24 @@ export function SectorEtfT0PerformancePanel({ item }: { item: PaperSectorEtfT0Pe
 export function GroupedPerformanceTable({ items, emptyText }: { items: PaperGroupedPerformance[]; emptyText: string }) {
   if (!items.length) return <EmptyState text={emptyText} />;
   return (
-    <div className="paper-performance-table">
-      <div className="paper-performance-head">
-        <span>分组</span>
-        <span>成交</span>
-        <span>胜率</span>
-        <span>净胜率</span>
-        <span>均收</span>
-        <span>PF</span>
-      </div>
-      {items.map((item) => {
-        const avgTone = toneFromChange(item.avg_return_pct);
-        const pfTone = typeof item.profit_factor === "number" && item.profit_factor > 1 ? "up" : "neutral";
-        return (
-          <div className="paper-performance-row" key={item.key || "unlabeled"}>
-            <strong>{item.key || "未标注"}</strong>
-            <span>{formatInteger(item.trades)}</span>
-            <span>{formatPct(item.win_rate_pct)}</span>
-            <span>{formatPct(item.net_win_rate_pct)}</span>
-            <span className={avgTone}>{formatPct(item.avg_return_pct)}</span>
-            <span className={pfTone}>{formatNumber(item.profit_factor)}</span>
-          </div>
-        );
-      })}
-    </div>
+    <DataTable<PaperGroupedPerformance>
+      className="paper-performance-table"
+      rowKey={(item) => item.key || "unlabeled"}
+      dataSource={items}
+      columns={[
+        { title: "分组", render: (_value, item) => <strong>{item.key || "未标注"}</strong> },
+        { title: "成交", dataIndex: "trades", align: "right", render: (value) => formatInteger(value) },
+        { title: "胜率", dataIndex: "win_rate_pct", align: "right", render: (value) => formatPct(value) },
+        { title: "净胜率", dataIndex: "net_win_rate_pct", align: "right", render: (value) => formatPct(value) },
+        { title: "均收", dataIndex: "avg_return_pct", align: "right", render: (value) => <span className={toneFromChange(value)}>{formatPct(value)}</span> },
+        {
+          title: "PF",
+          dataIndex: "profit_factor",
+          align: "right",
+          render: (value) => <span className={typeof value === "number" && value > 1 ? "up" : "neutral"}>{formatNumber(value)}</span>,
+        },
+      ]}
+    />
   );
 }
 

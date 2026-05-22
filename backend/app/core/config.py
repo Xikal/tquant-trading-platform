@@ -86,7 +86,6 @@ class AppSettings(BaseSettings):
     auth_login_lockout_minutes: int = 15
     auth_allowed_usernames: Annotated[List[str], NoDecode] = Field(default_factory=list)
     auth_require_mfa_for_login: bool = False
-    auth_require_mfa_for_paper_trade: bool = True
     agent_provider: str = "none"
     agent_api_base: str = "http://127.0.0.1:18090/api"
     agent_api_token: str = ""

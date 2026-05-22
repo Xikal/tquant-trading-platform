@@ -8,6 +8,7 @@ import {
   formatMoney,
   formatPct,
 } from "../backtest/backtestDisplay";
+import { DataTable } from "../../ui/table/DataTable";
 import { StrategySignalReplayPanel } from "./StrategySignalReplayPanel";
 import { strategyDoctorVerdict, strategyHealthLabel } from "./strategyVerdict";
 import { canOptimize, canResearchFactors, canValidate, isAdmin } from "./strategyPermissions";
@@ -127,35 +128,51 @@ export function StrategyHistoryPanel({
           <strong>{formatPct(summary.avgWinRatePct)}</strong>
         </article>
       </div>
-      {runs.length ? (
-        <div className="strategy-history-table" role="table" aria-label="策略历史任务">
-          <div className="strategy-history-row head" role="row">
-            <span>任务</span>
-            <span>策略</span>
-            <span>状态</span>
-            <span>收益</span>
-            <span>胜率</span>
-            <span>创建时间</span>
-            <span>操作</span>
-          </div>
-          {runs.map((run, index) => (
-            <article className="strategy-history-row" role="row" key={run.id}>
-              <strong>{run.name || `任务 #${run.id}`}</strong>
-              <span>{formatBacktestStrategies(run.strategies)}</span>
-              <b className={`strategy-status ${run.status}`}>{statusText(run.status)}</b>
-              <span>{runMetricPct(run, "total_return_pct")}</span>
-              <span>{runMetricPct(run, "win_rate_pct")}</span>
-              <span>{formatDateTime(run.created_at)}</span>
+      <DataTable<BacktestRunSummary>
+        rowKey="id"
+        dataSource={runs}
+        locale={{ emptyText: <EmptyPlaceholder title="暂无策略历史" description="提交快速回测后会自动出现在这里。" /> }}
+        scroll={{ x: 980 }}
+        columns={[
+          {
+            title: "任务",
+            dataIndex: "name",
+            render: (_value, run) => <strong>{run.name || `任务 #${run.id}`}</strong>,
+          },
+          {
+            title: "策略",
+            dataIndex: "strategies",
+            render: (_value, run) => formatBacktestStrategies(run.strategies),
+          },
+          {
+            title: "状态",
+            dataIndex: "status",
+            render: (_value, run) => <b className={`strategy-status ${run.status}`}>{statusText(run.status)}</b>,
+          },
+          {
+            title: "收益",
+            render: (_value, run) => runMetricPct(run, "total_return_pct"),
+          },
+          {
+            title: "胜率",
+            render: (_value, run) => runMetricPct(run, "win_rate_pct"),
+          },
+          {
+            title: "创建时间",
+            dataIndex: "created_at",
+            render: (_value, run) => formatDateTime(run.created_at),
+          },
+          {
+            title: "操作",
+            render: (_value, run, index) => (
               <span className="strategy-history-actions">
                 <RunDeltaSummary current={run} previous={runs[index + 1]} compact />
                 <Button type="default" size="small" onClick={() => onRerun(run)}>重新运行</Button>
               </span>
-            </article>
-          ))}
-        </div>
-      ) : (
-        <EmptyPlaceholder title="暂无策略历史" description="提交快速回测后会自动出现在这里。" />
-      )}
+            ),
+          },
+        ]}
+      />
     </section>
   );
 }

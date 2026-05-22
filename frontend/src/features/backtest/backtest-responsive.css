@@ -36,8 +36,6 @@
 }
 
 @media (max-width: 640px) {
-  .backtest-form,
-  .backtest-field-group,
   .backtest-status-rail,
   .backtest-metric-grid {
     grid-template-columns: 1fr;

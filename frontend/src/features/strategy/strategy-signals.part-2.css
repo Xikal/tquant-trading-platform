@@ -27,22 +27,6 @@
   font-weight: 900;
 }
 
-.strategy-history-row.head {
-  background: var(--strategy-bg-soft);
-  color: var(--strategy-muted);
-  font-weight: 800;
-}
-
-.strategy-dialog-backdrop {
-  align-items: center;
-  background: rgba(15, 23, 42, 0.42);
-  display: flex;
-  inset: 0;
-  justify-content: center;
-  position: fixed;
-  z-index: 40;
-}
-
 .strategy-dialog {
   background: var(--strategy-bg);
   border: 1px solid var(--strategy-border);
@@ -97,9 +81,7 @@
 }
 
 @media (max-width: 1180px) {
-  .strategy-layout,
   .strategy-bridge,
-  .strategy-tabs,
   .strategy-history-summary {
     grid-template-columns: 1fr;
   }
@@ -113,15 +95,12 @@
 
   .strategy-form,
   .strategy-card-grid,
-  .strategy-signal-grid,
-  .strategy-guide-grid,
-  .strategy-advanced-grid {
+  .strategy-signal-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
 @media (max-width: 720px) {
-  .strategy-hero,
   .strategy-panel-title,
   .strategy-run-list article > div {
     align-items: stretch;
@@ -131,9 +110,7 @@
   .strategy-form,
   .strategy-card-grid,
   .strategy-signal-grid,
-  .strategy-signal-case-grid,
-  .strategy-guide-grid,
-  .strategy-advanced-grid {
+  .strategy-signal-case-grid {
     grid-template-columns: 1fr;
   }
 }

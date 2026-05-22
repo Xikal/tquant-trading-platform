@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import { Checkbox } from "antd";
 
-import { quantParametersApi, type QuantParameterSet } from "../../api/quantParameters";
+import { quantParametersApi } from "../../api/quantParameters";
 import { NumberField } from "../../components/shared/FormFields";
 import { SettingCard } from "../workspace-shared/WorkspaceComponents";
 import { getNested, setNested, structuredCloneSafe, type QuantFieldSpec } from "./quantParameterCardUtils";
+import { useSettingsUiStore } from "../../stores/settingsUiStore";
 
 const ETF_FIELD_SPECS: QuantFieldSpec[] = [
   { path: "market.sector_etf_t0.paper_auto_max_orders", label: "每轮最多委托", min: 0, max: 10 },
@@ -16,23 +17,22 @@ const ETF_FIELD_SPECS: QuantFieldSpec[] = [
 ];
 
 export function QuantParameterSectorEtfCard({ adminTokenError }: { adminTokenError: string }) {
-  const [current, setCurrent] = useState<QuantParameterSet | null>(null);
-  const [draft, setDraft] = useState<Record<string, string>>({});
-  const [enabled, setEnabled] = useState(true);
-  const [loading, setLoading] = useState(false);
-  const [saved, setSaved] = useState(false);
-  const [error, setError] = useState("");
+  const card = useSettingsUiStore((state) => state.quantCards.sectorEtf);
+  const setCard = useSettingsUiStore((state) => state.setQuantCard);
+  const { current, draft, enabled, loading, saved, error } = card;
 
   const load = useCallback(async () => {
-    setError("");
+    setCard("sectorEtf", { error: "" });
     const response = await quantParametersApi.current("low_buy");
-    setCurrent(response);
-    setEnabled(Boolean(getNested(response.params, "market.sector_etf_t0.paper_auto_enabled") ?? true));
-    setDraft(Object.fromEntries(ETF_FIELD_SPECS.map((field) => [field.path, String(getNested(response.params, field.path) ?? "")])));
-  }, []);
+    setCard("sectorEtf", {
+      current: response,
+      enabled: Boolean(getNested(response.params, "market.sector_etf_t0.paper_auto_enabled") ?? true),
+      draft: Object.fromEntries(ETF_FIELD_SPECS.map((field) => [field.path, String(getNested(response.params, field.path) ?? "")])),
+    });
+  }, [setCard]);
 
   useEffect(() => {
-    void load().catch((exc: unknown) => setError(exc instanceof Error ? exc.message : "ETF 参数加载失败"));
+    void load().catch((exc: unknown) => setCard("sectorEtf", { error: exc instanceof Error ? exc.message : "ETF 参数加载失败" }));
   }, [load]);
 
   const fieldError = useMemo(() => {
@@ -48,9 +48,7 @@ export function QuantParameterSectorEtfCard({ adminTokenError }: { adminTokenErr
 
   async function save() {
     if (!current || adminTokenError || fieldError) return;
-    setLoading(true);
-    setSaved(false);
-    setError("");
+    setCard("sectorEtf", { loading: true, saved: false, error: "" });
     try {
       const params = structuredCloneSafe(current.params);
       for (const field of ETF_FIELD_SPECS) {
@@ -65,12 +63,12 @@ export function QuantParameterSectorEtfCard({ adminTokenError }: { adminTokenErr
         description: "系统配置页调整行业 ETF T+0 自动交易门槛。",
         activate: true,
       });
-      setSaved(true);
+      setCard("sectorEtf", { saved: true });
       await load();
     } catch (exc: unknown) {
-      setError(exc instanceof Error ? exc.message : "保存失败");
+      setCard("sectorEtf", { error: exc instanceof Error ? exc.message : "保存失败" });
     } finally {
-      setLoading(false);
+      setCard("sectorEtf", { loading: false });
     }
   }
 
@@ -79,7 +77,7 @@ export function QuantParameterSectorEtfCard({ adminTokenError }: { adminTokenErr
       <p className="muted">控制模拟盘是否自动执行行业 ETF T+0 机会，以及单轮委托、置信度、价差、止盈止损门槛。</p>
       <label className="tq-field tq-checkbox-field">
         <span className="tq-field__label">自动执行</span>
-        <Checkbox checked={enabled} onChange={(event) => setEnabled(event.target.checked)} />
+        <Checkbox checked={enabled} onChange={(event) => setCard("sectorEtf", { enabled: event.target.checked })} />
         <span>{enabled ? "已启用" : "已关闭"}</span>
       </label>
       {ETF_FIELD_SPECS.map((field) => (
@@ -91,7 +89,7 @@ export function QuantParameterSectorEtfCard({ adminTokenError }: { adminTokenErr
           step={field.step ?? "1"}
           suffix={field.suffix}
           value={draft[field.path] ?? ""}
-          onChange={(event) => setDraft((values) => ({ ...values, [field.path]: event.target.value }))}
+          onChange={(event) => setCard("sectorEtf", { draft: { ...draft, [field.path]: event.target.value } })}
         />
       ))}
       {adminTokenError || fieldError || error ? <span className="tq-field__error">{adminTokenError || fieldError || error}</span> : null}

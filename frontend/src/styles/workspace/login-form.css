@@ -85,13 +85,34 @@
 
 .login-card {
   width: min(430px, 100%);
-  display: grid;
-  gap: 16px;
-  padding: 34px 30px 30px;
   border: 1px solid #dbe3ee;
   border-radius: 22px;
   background: #fff;
   box-shadow: 0 26px 60px rgba(15, 23, 42, 0.14);
+}
+
+.login-card .ant-card-body {
+  display: grid;
+  gap: 14px;
+  padding: 34px 30px 30px;
+}
+
+.login-card .ant-form-item {
+  margin-bottom: 0;
+}
+
+.login-card .ant-form-item-label > label {
+  color: #334155;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.login-card .ant-input-affix-wrapper,
+.login-card .ant-input,
+.login-card .ant-input-password {
+  min-height: 46px;
+  border-color: #d9e2ee;
+  border-radius: 12px;
 }
 
 .login-title {
@@ -110,9 +131,7 @@
 }
 
 .login-status-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
+  width: 100%;
 }
 
 .login-status-row span {
@@ -126,51 +145,6 @@
   background: #f7f9fc;
   font-size: 12px;
   font-weight: 800;
-}
-
-.login-status-row .gold {
-  border-color: #ecd59a;
-  background: #fff7e8;
-  color: #8a5b12;
-}
-
-.login-status-row .gold i {
-  width: 8px;
-  height: 8px;
-  border-radius: 999px;
-  background: #d6a55c;
-}
-
-.login-field {
-  display: grid;
-  gap: 8px;
-  color: #334155;
-  font-size: 12px;
-  font-weight: 800;
-}
-
-.login-field div {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-height: 48px;
-  padding: 0 12px;
-  border: 1px solid #d9e2ee;
-  border-radius: 12px;
-  background: #fff;
-}
-
-.login-field b {
-  color: #94a3b8;
-  font-weight: 800;
-}
-
-.login-field input {
-  width: 100%;
-  border: 0;
-  outline: 0;
-  color: #0f172a;
-  background: transparent;
 }
 
 .login-options {
@@ -199,16 +173,6 @@
   color: #b47316;
   background: transparent;
   font-size: 12px;
-}
-
-.login-error {
-  padding: 9px 11px;
-  border: 1px solid #f3b7ad;
-  border-radius: 10px;
-  color: #b42318;
-  background: #fff2ef;
-  font-size: 12px;
-  font-weight: 700;
 }
 
 .login-submit,

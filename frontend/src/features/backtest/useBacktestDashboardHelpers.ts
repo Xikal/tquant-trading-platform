@@ -3,8 +3,8 @@ import type {
   BacktestParamGrid,
   BacktestStatus,
 } from "../../api/backtests";
-import type { BacktestFormState } from "./BacktestDashboard";
-import type { OptimizationFormState, ValidationFormState } from "./BacktestResearchPanel";
+import type { BacktestFormState, OptimizationFormState, ValidationFormState } from "./backtestForms";
+export { initialBacktestForm, initialOptimizationForm, initialValidationForm } from "./backtestForms";
 
 interface StrategyStreamTokenResponse {
   stream_token: string;
@@ -26,52 +26,6 @@ export type ProgressTask = {
   progress?: number | null;
   progress_pct?: number | null;
   error_message?: string | null;
-};
-
-export const initialBacktestForm: BacktestFormState = {
-  name: "低吸策略组合回测",
-  start_date: "2025-01-02",
-  end_date: "2026-04-30",
-  initial_capital: "500000",
-  strategies: ["first_board", "volume_shrink"],
-  execution_model: "conservative_slippage",
-  resource_tier: "full",
-  max_position_pct: "30",
-  max_positions: "8",
-  max_daily_loss_pct: "5",
-  max_single_order_pct: "30",
-  min_cash_reserve: "5000",
-  benchmark: "000300",
-};
-
-export const initialOptimizationForm: OptimizationFormState = {
-  name: "first_board 参数优化",
-  strategy: "first_board",
-  train_start: "2024-01-02",
-  train_end: "2025-12-31",
-  test_start: "2026-01-02",
-  test_end: "2026-04-30",
-  initial_capital: "500000",
-  execution_model: "conservative_slippage",
-  optimization_target: "sharpe",
-  min_score: "70,75,80,85,90",
-  max_position_pct: "0.2,0.3",
-  max_holding_days: "3,5,7,10",
-  stop_loss_pct: "-0.03,-0.05,-0.07",
-  take_profit_pct: "0.08,0.12",
-};
-
-export const initialValidationForm: ValidationFormState = {
-  name: "first_board Walk-Forward 验证",
-  strategy: "first_board",
-  start_date: "2024-01-02",
-  end_date: "2026-04-30",
-  window_count: "4",
-  train_ratio: "0.75",
-  initial_capital: "500000",
-  execution_model: "conservative_slippage",
-  optimization_target: "sharpe",
-  auto_promote_state_params: false,
 };
 
 export function validateOptimizationForm(form: OptimizationFormState) {

@@ -1,6 +1,15 @@
-import type { InputHTMLAttributes, ReactNode, SelectHTMLAttributes } from "react";
-import { useEffect, useRef, useState } from "react";
+import type { ChangeEvent, InputHTMLAttributes, ReactNode, SelectHTMLAttributes } from "react";
+import { useEffect, useId, useRef } from "react";
+import { Form, Input, Select, Slider } from "antd";
 import { strategiesApi, type SymbolSearchItem } from "../../api/strategies";
+import { useSharedUiStore } from "../../stores/sharedUiStore";
+
+const EMPTY_SEARCH_RESULT = {
+  items: [] as SymbolSearchItem[],
+  total: 0,
+  open: false,
+  error: "",
+};
 
 interface FieldFrameProps {
   label: string;
@@ -12,12 +21,15 @@ interface FieldFrameProps {
 
 function FieldFrame({ label, hint, error, className = "", children }: FieldFrameProps) {
   return (
-    <label className={`tq-field ${className}`.trim()}>
-      <span className="tq-field__label">{label}</span>
+    <Form.Item
+      className={`tq-field ${className}`.trim()}
+      label={label}
+      validateStatus={error ? "error" : undefined}
+      help={error || undefined}
+      extra={!error && hint ? hint : undefined}
+    >
       {children}
-      {error ? <span className="tq-field__error">{error}</span> : null}
-      {!error && hint ? <span className="tq-field__hint">{hint}</span> : null}
-    </label>
+    </Form.Item>
   );
 }
 
@@ -28,10 +40,10 @@ type TextFieldProps = InputHTMLAttributes<HTMLInputElement> & {
   fieldClassName?: string;
 };
 
-export function TextField({ label, hint, error, fieldClassName = "", className = "", ...props }: TextFieldProps) {
+export function TextField({ label, hint, error, fieldClassName = "", className = "", size: _nativeSize, ...props }: TextFieldProps) {
   return (
     <FieldFrame label={label} hint={hint} error={error} className={fieldClassName}>
-      <input className={`tq-input ${className}`.trim()} {...props} />
+      <Input className={`tq-input ${className}`.trim()} {...props} />
     </FieldFrame>
   );
 }
@@ -44,11 +56,11 @@ type NumberFieldProps = TextFieldProps & {
   suffix?: string;
 };
 
-export function NumberField({ label, hint, error, suffix, fieldClassName = "", className = "", ...props }: NumberFieldProps) {
+export function NumberField({ label, hint, error, suffix, fieldClassName = "", className = "", size: _nativeSize, ...props }: NumberFieldProps) {
   return (
     <FieldFrame label={label} hint={hint} error={error} className={fieldClassName}>
       <span className="tq-input-wrap">
-        <input className={`tq-input ${className}`.trim()} {...props} type="number" />
+        <Input className={`tq-input ${className}`.trim()} {...props} type="number" />
         {suffix ? <span className="tq-input-suffix">{suffix}</span> : null}
       </span>
     </FieldFrame>
@@ -63,16 +75,19 @@ type SelectFieldProps = SelectHTMLAttributes<HTMLSelectElement> & {
   options: Array<{ value: string; label: string }>;
 };
 
-export function SelectField({ label, hint, error, options, fieldClassName = "", className = "", ...props }: SelectFieldProps) {
+export function SelectField({ label, hint, error, options, fieldClassName = "", className = "", value, disabled, onChange, ...props }: SelectFieldProps) {
   return (
     <FieldFrame label={label} hint={hint} error={error} className={fieldClassName}>
-      <select className={`tq-input ${className}`.trim()} {...props}>
-        {options.map((option) => (
-          <option key={option.value} value={option.value}>
-            {option.label}
-          </option>
-        ))}
-      </select>
+      <Select
+        className={`tq-input ${className}`.trim()}
+        value={String(value ?? "")}
+        disabled={disabled}
+        options={options}
+        onChange={(nextValue) => {
+          onChange?.({ target: { value: String(nextValue) } } as ChangeEvent<HTMLSelectElement>);
+        }}
+        aria-label={props["aria-label"] || label}
+      />
     </FieldFrame>
   );
 }
@@ -85,20 +100,27 @@ type SliderFieldProps = InputHTMLAttributes<HTMLInputElement> & {
 };
 
 export function SliderField({ label, value, suffix, onValueChange, ...props }: SliderFieldProps) {
+  const { min, max, step, disabled } = props;
   return (
-    <label className="tq-field tq-slider-field">
-      <span className="tq-field__label">
+    <Form.Item
+      className="tq-field tq-slider-field"
+      label={(
+        <span>
         {label}
         <strong>{value}{suffix ?? ""}</strong>
       </span>
-      <input
+      )}
+    >
+      <Slider
         className="tq-slider"
-        {...props}
-        type="range"
-        value={value}
-        onChange={(event) => onValueChange(event.target.value)}
+        min={typeof min === "number" ? min : Number(min ?? 0)}
+        max={typeof max === "number" ? max : Number(max ?? 100)}
+        step={typeof step === "number" ? step : Number(step ?? 1)}
+        disabled={disabled}
+        value={Number(value)}
+        onChange={(nextValue) => onValueChange(String(nextValue))}
       />
-    </label>
+    </Form.Item>
   );
 }
 
@@ -112,20 +134,17 @@ interface SearchFieldProps {
 }
 
 export function SearchField({ label, value, placeholder, disabled = false, onChange, onSelect }: SearchFieldProps) {
-  const [items, setItems] = useState<SymbolSearchItem[]>([]);
-  const [total, setTotal] = useState(0);
-  const [open, setOpen] = useState(false);
-  const [error, setError] = useState("");
+  const fieldKey = useId();
+  const { items, total, open, error } = useSharedUiStore((state) => state.symbolSearch[fieldKey] ?? EMPTY_SEARCH_RESULT);
+  const setSymbolSearch = useSharedUiStore((state) => state.setSymbolSearch);
+  const resetSymbolSearch = useSharedUiStore((state) => state.resetSymbolSearch);
   const requestSeq = useRef(0);
 
   useEffect(() => {
     const query = value.trim();
     if (disabled || query.length < 2) {
       requestSeq.current += 1;
-      setItems([]);
-      setTotal(0);
-      setOpen(false);
-      setError("");
+      resetSymbolSearch(fieldKey);
       return undefined;
     }
     const seq = requestSeq.current + 1;
@@ -134,23 +153,27 @@ export function SearchField({ label, value, placeholder, disabled = false, onCha
       strategiesApi.searchSymbols(query, 8)
         .then((result) => {
           if (requestSeq.current !== seq) return;
-          setItems(result.items ?? []);
-          setTotal(result.total ?? result.items?.length ?? 0);
-          setOpen(true);
-          setError("");
+          setSymbolSearch(fieldKey, {
+            items: result.items ?? [],
+            total: result.total ?? result.items?.length ?? 0,
+            open: true,
+            error: "",
+          });
         })
         .catch((err) => {
           if (requestSeq.current !== seq) return;
-          setItems([]);
-          setTotal(0);
-          setError(err instanceof Error ? err.message : "搜索失败，请重试");
-          setOpen(true);
+          setSymbolSearch(fieldKey, {
+            items: [],
+            total: 0,
+            error: err instanceof Error ? err.message : "搜索失败，请重试",
+            open: true,
+          });
         });
     }, 180);
     return () => {
       window.clearTimeout(timer);
     };
-  }, [disabled, value]);
+  }, [disabled, fieldKey, resetSymbolSearch, setSymbolSearch, value]);
 
   return (
     <div className="tq-search-field">
@@ -167,7 +190,7 @@ export function SearchField({ label, value, placeholder, disabled = false, onCha
               onClick={() => {
                 onChange(item.symbol);
                 onSelect?.(item);
-                setOpen(false);
+                setSymbolSearch(fieldKey, { open: false });
               }}
             >
               <strong>{item.symbol}</strong>

@@ -39,7 +39,8 @@
   color: #102850;
 }
 
-.mobile-app-sheet-title small {
+.mobile-app-sheet-title small,
+.mobile-app-sheet-score small {
   color: var(--mobile-text-muted);
   font-size: 10px;
 }
@@ -62,11 +63,6 @@
 .mobile-app-sheet-score strong {
   font-size: 16px;
   color: var(--mobile-positive);
-}
-
-.mobile-app-sheet-score small {
-  color: var(--mobile-text-muted);
-  font-size: 10px;
 }
 
 .mobile-app-sheet-body {

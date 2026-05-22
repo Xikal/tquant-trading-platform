@@ -1,13 +1,14 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo } from "react";
 import { Button, Modal } from "antd";
 
 import { api } from "../../api/client";
-import { strategiesApi, type StrategyMeta, type SymbolSearchItem } from "../../api/strategies";
+import { strategiesApi, type SymbolSearchItem } from "../../api/strategies";
 import { STRATEGY_OPTIONS } from "../../constants/strategies";
 import { NumberField, SearchField, SelectField, TextField } from "../../components/shared/FormFields";
 import type { LowBuyPriorityBoardItem, PaperPosition } from "../../types";
 import { estimateOrderFeeWarning } from "../../utils/orderFeePreview";
 import type { PaperOrderDraft } from "../workspace-shared/workspaceTypes";
+import { usePaperUiStore } from "../../stores/paperUiStore";
 
 export function OrderEntryModal({
   draft,
@@ -29,11 +30,16 @@ export function OrderEntryModal({
   onSubmitOrder: () => void | Promise<void>;
 }) {
   const locked = autoTradingRunning || paused;
-  const [strategies, setStrategies] = useState<StrategyMeta[]>([]);
-  const [recommended, setRecommended] = useState<LowBuyPriorityBoardItem[]>([]);
-  const [recommendedOpen, setRecommendedOpen] = useState(false);
-  const [recommendedLoading, setRecommendedLoading] = useState(false);
-  const [recommendedError, setRecommendedError] = useState("");
+  const strategies = usePaperUiStore((state) => state.orderStrategies);
+  const recommended = usePaperUiStore((state) => state.recommendedOrders);
+  const recommendedOpen = usePaperUiStore((state) => state.recommendedOrdersOpen);
+  const recommendedLoading = usePaperUiStore((state) => state.recommendedOrdersLoading);
+  const recommendedError = usePaperUiStore((state) => state.recommendedOrdersError);
+  const setStrategies = usePaperUiStore((state) => state.setOrderStrategies);
+  const setRecommended = usePaperUiStore((state) => state.setRecommendedOrders);
+  const setRecommendedOpen = usePaperUiStore((state) => state.setRecommendedOrdersOpen);
+  const setRecommendedLoading = usePaperUiStore((state) => state.setRecommendedOrdersLoading);
+  const setRecommendedError = usePaperUiStore((state) => state.setRecommendedOrdersError);
   const feeWarning = estimateCommissionWarning(draft);
   const currentPosition = useMemo(() => (
     positions.find((item) => item.symbol.toUpperCase() === draft.symbol.trim().toUpperCase()) ?? null

@@ -1,59 +1,41 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import {
   type BacktestCreateRequest,
   type BacktestExecutionModel,
-  type BacktestRunSummary,
   backtestsApi,
 } from "../../api/backtests";
 import {
   strategiesApi,
-  type StrategyMeta,
   type StrategyPreset,
 } from "../../api/strategies";
 import { applyBacktestVerdictThresholds } from "../backtest/backtestDisplay";
+import {
+  useStrategyHubUiStore,
+  type StrategyHubTab,
+  type StrategyQuickForm,
+} from "../../stores/strategyHubStore";
 
-export type StrategyHubTab = "quick" | "signals" | "optimize" | "validate" | "compare" | "capacity" | "factor" | "history";
-
-export interface StrategyQuickForm {
-  name: string;
-  start_date: string;
-  end_date: string;
-  initial_capital: string;
-  execution_model: BacktestExecutionModel;
-  max_position_pct: string;
-  max_single_order_pct: string;
-  max_positions: string;
-  max_daily_loss_pct: string;
-  min_cash_reserve: string;
-  benchmark: string;
-  strategies: string[];
-}
-
-const DEFAULT_FORM: StrategyQuickForm = {
-  name: "策略快速回测",
-  start_date: shiftDate(-183),
-  end_date: shiftDate(0),
-  initial_capital: "500000",
-  execution_model: "conservative_slippage",
-  max_position_pct: "30",
-  max_single_order_pct: "15",
-  max_positions: "8",
-  max_daily_loss_pct: "5",
-  min_cash_reserve: "5000",
-  benchmark: "000300",
-  strategies: ["first_board", "volume_shrink"],
-};
+export type { StrategyHubTab, StrategyQuickForm } from "../../stores/strategyHubStore";
 
 export function useStrategyHub() {
-  const [tab, setTabState] = useState<StrategyHubTab>(() => initialTabFromLocation());
-  const [strategies, setStrategies] = useState<StrategyMeta[]>([]);
-  const [presets, setPresets] = useState<StrategyPreset[]>([]);
-  const [runs, setRuns] = useState<BacktestRunSummary[]>([]);
-  const [form, setForm] = useState<StrategyQuickForm>(DEFAULT_FORM);
-  const [confirmOpen, setConfirmOpen] = useState(false);
-  const [loading, setLoading] = useState("");
-  const [error, setError] = useState("");
-  const [notice, setNotice] = useState("");
+  const tab = useStrategyHubUiStore((state) => state.tab);
+  const setTabState = useStrategyHubUiStore((state) => state.setTab);
+  const confirmOpen = useStrategyHubUiStore((state) => state.confirmOpen);
+  const setConfirmOpen = useStrategyHubUiStore((state) => state.setConfirmOpen);
+  const strategies = useStrategyHubUiStore((state) => state.strategies);
+  const presets = useStrategyHubUiStore((state) => state.presets);
+  const runs = useStrategyHubUiStore((state) => state.runs);
+  const form = useStrategyHubUiStore((state) => state.form);
+  const loading = useStrategyHubUiStore((state) => state.loading);
+  const error = useStrategyHubUiStore((state) => state.error);
+  const notice = useStrategyHubUiStore((state) => state.notice);
+  const setStrategies = useStrategyHubUiStore((state) => state.setStrategies);
+  const setPresets = useStrategyHubUiStore((state) => state.setPresets);
+  const setRuns = useStrategyHubUiStore((state) => state.setRuns);
+  const setForm = useStrategyHubUiStore((state) => state.setForm);
+  const setLoading = useStrategyHubUiStore((state) => state.setLoading);
+  const setError = useStrategyHubUiStore((state) => state.setError);
+  const setNotice = useStrategyHubUiStore((state) => state.setNotice);
   const loadSeqRef = useRef(0);
 
   const selectedStrategies = useMemo(
@@ -257,19 +239,6 @@ export function useStrategyHub() {
     submit,
     submitQuickBacktest,
   };
-}
-
-function initialTabFromLocation(): StrategyHubTab {
-  if (typeof window === "undefined") return "quick";
-  const raw = new URLSearchParams(window.location.search).get("tab") || "";
-  if (raw === "replay" || raw === "signals") return "signals";
-  if (raw === "optimize") return "optimize";
-  if (raw === "validate") return "validate";
-  if (raw === "compare") return "compare";
-  if (raw === "factor" || raw === "factor-mining") return "factor";
-  if (raw === "capacity" || raw === "ml") return "capacity";
-  if (raw === "history" || raw === "backtest") return "history";
-  return "quick";
 }
 
 function validateForm(form: StrategyQuickForm) {

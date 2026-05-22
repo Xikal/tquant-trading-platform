@@ -1,4 +1,4 @@
-import { startTransition, useEffect, useState } from "react"
+import { startTransition, useEffect } from "react"
 import { PullToRefresh } from "antd-mobile"
 import {
   HoldingEditorSheet,
@@ -6,7 +6,7 @@ import {
 } from "../features/app-preview/holdingEditor"
 import { appApi } from "../api/appClient"
 import { useAppPreviewData } from "../features/app-preview/hooks"
-import type { LowBuyPriorityBoardItem, WatchlistItem } from "../types"
+import type { WatchlistItem } from "../types"
 import { MobileAppHeader, MobileStatusBanners, MobileTabBar } from "./MobileAppLayout"
 import { MobileAuthScreen } from "./MobileAuthScreen"
 import type { MobileLowBuyCardItem } from "./MobileDesignCards"
@@ -27,8 +27,7 @@ import {
   createSeedFromLowBuyItem,
   createSeedFromWatchlist
 } from "./mobileViewModels"
-
-interface HoldingEditorState { mode: "create" | "buy" | "edit"; seed: HoldingEditorSeed }
+import { useMobileUiStore } from "../stores/mobileUiStore"
 
 const EMPTY_HOLDING_SEED: HoldingEditorSeed = {
   symbol: "",
@@ -47,7 +46,18 @@ export default function MobileApp() {
     handleAuthSubmit,
     handleLogout
   } = useMobileAuth()
-  const [activeTab, setActiveTab] = useState<MobileTab>("home")
+  const activeTab = useMobileUiStore((state) => state.activeTab)
+  const holdingEditor = useMobileUiStore((state) => state.holdingEditor)
+  const priorityActionItem = useMobileUiStore((state) => state.priorityActionItem)
+  const aiOpen = useMobileUiStore((state) => state.aiOpen)
+  const accountMenuOpen = useMobileUiStore((state) => state.accountMenuOpen)
+  const offline = useMobileUiStore((state) => state.offline)
+  const setActiveTab = useMobileUiStore((state) => state.setActiveTab)
+  const setHoldingEditor = useMobileUiStore((state) => state.setHoldingEditor)
+  const setPriorityActionItem = useMobileUiStore((state) => state.setPriorityActionItem)
+  const setAiOpen = useMobileUiStore((state) => state.setAiOpen)
+  const setAccountMenuOpen = useMobileUiStore((state) => state.setAccountMenuOpen)
+  const setOffline = useMobileUiStore((state) => state.setOffline)
   const appUpdate = useAppUpdate()
   const {
     home,
@@ -76,17 +86,6 @@ export default function MobileApp() {
     setStrategyFilter,
     loadMobilePlaybook
   } = useMobilePlaybook(Boolean(authUser) && activeTab === "low_buy")
-  const [holdingEditor, setHoldingEditor] = useState<HoldingEditorState | null>(null)
-  const [priorityActionItem, setPriorityActionItem] = useState<LowBuyPriorityBoardItem | null>(null)
-  const [aiOpen, setAiOpen] = useState(false)
-  const [accountMenuOpen, setAccountMenuOpen] = useState(false)
-  const [offline, setOffline] = useState(() => {
-    if (typeof navigator === "undefined") {
-      return false
-    }
-    return !navigator.onLine
-  })
-
   useNativeRuntime(() => {
     startTransition(() => {
       void refreshActiveTab()

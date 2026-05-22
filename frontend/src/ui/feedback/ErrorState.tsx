@@ -1,4 +1,4 @@
-import { Button, Result } from "antd";
+import { TqErrorResult } from "./StateViews";
 
 export function ErrorState({
   title = "数据暂时不可用",
@@ -9,12 +9,5 @@ export function ErrorState({
   description?: string;
   onRetry?: () => void;
 }) {
-  return (
-    <Result
-      status="warning"
-      title={title}
-      subTitle={description}
-      extra={onRetry ? <Button onClick={onRetry}>重试</Button> : null}
-    />
-  );
+  return <TqErrorResult title={title} description={description} onRetry={onRetry} />;
 }

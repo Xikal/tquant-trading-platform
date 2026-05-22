@@ -1,20 +1,28 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { Button } from "antd";
 import { strategiesApi, type StrategySignalReplayItem } from "../../api/strategies";
 import { EmptyPlaceholder, ErrorBanner, SkeletonBlock } from "../../components/shared/Feedback";
 import { NumberField, SearchField, SelectField } from "../../components/shared/FormFields";
 import { useBacktestStrategyOptions } from "../backtest/useBacktestStrategyOptions";
+import { useStrategySignalReplayStore } from "../../stores/strategySignalReplayStore";
 
 export function StrategySignalReplayPanel({ title }: { title: string }) {
-  const [symbol, setSymbol] = useState("");
-  const [strategy, setStrategy] = useState("first_board");
-  const [items, setItems] = useState<StrategySignalReplayItem[]>([]);
-  const [lookbackDays, setLookbackDays] = useState("60");
-  const [onlyFailures, setOnlyFailures] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
   const requestSeqRef = useRef(0);
   const strategyOptions = useBacktestStrategyOptions();
+  const symbol = useStrategySignalReplayStore((state) => state.symbol);
+  const strategy = useStrategySignalReplayStore((state) => state.strategy);
+  const lookbackDays = useStrategySignalReplayStore((state) => state.lookbackDays);
+  const onlyFailures = useStrategySignalReplayStore((state) => state.onlyFailures);
+  const items = useStrategySignalReplayStore((state) => state.items);
+  const loading = useStrategySignalReplayStore((state) => state.loading);
+  const error = useStrategySignalReplayStore((state) => state.error);
+  const setSymbol = useStrategySignalReplayStore((state) => state.setSymbol);
+  const setStrategy = useStrategySignalReplayStore((state) => state.setStrategy);
+  const setLookbackDays = useStrategySignalReplayStore((state) => state.setLookbackDays);
+  const toggleOnlyFailures = useStrategySignalReplayStore((state) => state.toggleOnlyFailures);
+  const setItems = useStrategySignalReplayStore((state) => state.setItems);
+  const setLoading = useStrategySignalReplayStore((state) => state.setLoading);
+  const setError = useStrategySignalReplayStore((state) => state.setError);
 
   function loadReplay(nextSymbol: string, nextLimit: number) {
     const requestSeq = requestSeqRef.current + 1;
@@ -76,7 +84,7 @@ export function StrategySignalReplayPanel({ title }: { title: string }) {
         loading={loading}
         lookbackDays={Number(lookbackDays) || 60}
         onlyFailures={onlyFailures}
-        onToggleFailures={() => setOnlyFailures((value) => !value)}
+        onToggleFailures={toggleOnlyFailures}
       />
     </section>
   );

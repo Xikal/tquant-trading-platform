@@ -165,10 +165,6 @@
   font-size: 12px;
 }
 
-.backtest-task-row .subtle {
-  background: #fff4f1;
-}
-
 .backtest-result-block {
   display: grid;
   gap: 10px;

@@ -4,17 +4,12 @@
   gap: 8px;
 }
 
-.playbook-metrics,
-.research-metrics {
+.playbook-metrics {
   align-content: stretch;
 }
 
 .playbook-metrics {
   grid-template-columns: repeat(3, minmax(120px, 1fr));
-}
-
-.research-metrics {
-  grid-template-columns: repeat(2, minmax(120px, 1fr));
 }
 
 .metric {
@@ -30,8 +25,7 @@
 
 .metric span,
 .info-pill span,
-.form-grid span,
-.select-field span {
+.form-grid span {
   color: var(--muted);
   font-size: 11px;
 }
@@ -81,33 +75,6 @@
 
 .family-strip {
   margin: 8px 0;
-}
-
-.priority-family-list {
-  display: grid;
-  gap: 8px;
-}
-
-.priority-family-group {
-  display: grid;
-  gap: 6px;
-  padding: 8px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: #fbfcff;
-}
-
-.priority-family-heading {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  color: var(--ink);
-}
-
-.priority-family-heading span {
-  color: var(--muted);
-  font-size: 12px;
 }
 
 .board-warning {

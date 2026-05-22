@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { API_BASE, getAuthAccessToken, request } from "../../api/base";
+import { usePaperIntradayStore } from "../../stores/paperIntradayStore";
 import type { AuthUser, IntradayConfirmationItem, PaperPosition } from "../../types";
 import type { Page } from "../workspace-shared/workspaceTypes";
 
@@ -14,7 +15,8 @@ export function usePaperIntraday({
   positions: PaperPosition[];
   refreshAutoTradingStatus: () => Promise<void>;
 }) {
-  const [intradayConfirmations, setIntradayConfirmations] = useState<IntradayConfirmationItem[]>([]);
+  const intradayConfirmations = usePaperIntradayStore((state) => state.intradayConfirmations);
+  const setIntradayConfirmations = usePaperIntradayStore((state) => state.setIntradayConfirmations);
   const refreshAutoTradingStatusRef = useRef(refreshAutoTradingStatus);
   const positionSymbols = useMemo(
     () => positions.map((item) => item.symbol).filter(Boolean).slice(0, 12).join(","),

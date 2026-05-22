@@ -8,10 +8,11 @@ import type {
 } from "../../types";
 import type { FeatureFlagAuditItem, FeatureFlagItem } from "../../api/featureFlags";
 import type { OperationAuditItem } from "../../api/operationAudit";
-import { Button, Checkbox, Switch } from "antd";
+import { Button, Checkbox, Space, Switch, Tag } from "antd";
 import { TextField } from "../../components/shared/FormFields";
 import { InfoPill, PanelTitle, SettingCard } from "../workspace-shared/WorkspaceComponents";
 import { readySummary } from "../workspace-shared/workspaceFormatters";
+import { DataTable } from "../../ui/table/DataTable";
 
 export function SectorFilterCard({
   sectorExclusions,
@@ -100,27 +101,48 @@ export function StrategyGovernanceCard({
       <InfoPill label="生产策略" value={strategyGovernance ? `${strategyGovernance.production_strategies.length} 个` : "--"} />
       <InfoPill label="治理状态" value={strategyGovernance ? strategyGovernanceSummary(strategyGovernance) : "--"} />
       {strategyGovernance ? (
-        <div className="settings-mini-list">
-          {strategyGovernance.items.slice(0, 8).map((item) => (
-            <div key={item.strategy_key} className="settings-mini-row">
-              <span>
-                {item.strategy_title}
-                <small className="hint">{item.strategy_key}</small>
-              </span>
-              <strong className={`governance-status ${item.status}`}>
-                {item.strategy_health_score ? `${item.strategy_health_score} / ${item.status_text || item.status}` : item.status_text || item.status}
-              </strong>
-              {item.auto_governance_reason ? (
-                <small className="hint">{item.auto_governance_reason}</small>
-              ) : null}
-              <div className="settings-row-actions">
-                <Button size="small" htmlType="button" onClick={() => onUpdateStrategyGovernance(item.strategy_key, "active")} disabled={loading === "settings"}>恢复</Button>
-                <Button size="small" htmlType="button" onClick={() => onUpdateStrategyGovernance(item.strategy_key, "watch")} disabled={loading === "settings"}>观察</Button>
-                <Button size="small" danger htmlType="button" onClick={() => onUpdateStrategyGovernance(item.strategy_key, "paused")} disabled={loading === "settings"}>暂停</Button>
-              </div>
-            </div>
-          ))}
-        </div>
+        <DataTable
+          rowKey="strategy_key"
+          dataSource={strategyGovernance.items.slice(0, 8)}
+          columns={[
+            {
+              title: "策略",
+              dataIndex: "strategy_title",
+              render: (value, item) => (
+                <span>
+                  <strong>{value}</strong>
+                  <small className="hint">{item.strategy_key}</small>
+                </span>
+              ),
+            },
+            {
+              title: "状态",
+              dataIndex: "status",
+              width: 150,
+              render: (_, item) => (
+                <Tag color={governanceStatusColor(item.status)}>
+                  {item.strategy_health_score ? `${item.strategy_health_score} / ${item.status_text || item.status}` : item.status_text || item.status}
+                </Tag>
+              ),
+            },
+            {
+              title: "原因",
+              dataIndex: "auto_governance_reason",
+              render: (value) => value || "--",
+            },
+            {
+              title: "操作",
+              width: 170,
+              render: (_, item) => (
+                <Space size={4} wrap>
+                  <Button size="small" htmlType="button" onClick={() => onUpdateStrategyGovernance(item.strategy_key, "active")} disabled={loading === "settings"}>恢复</Button>
+                  <Button size="small" htmlType="button" onClick={() => onUpdateStrategyGovernance(item.strategy_key, "watch")} disabled={loading === "settings"}>观察</Button>
+                  <Button size="small" danger htmlType="button" onClick={() => onUpdateStrategyGovernance(item.strategy_key, "paused")} disabled={loading === "settings"}>暂停</Button>
+                </Space>
+              ),
+            },
+          ]}
+        />
       ) : (
         <p className="hint">策略治理未加载，刷新后会显示生产/研究/因子分层。</p>
       )}
@@ -155,33 +177,57 @@ export function FeatureFlagsCard({
       className="feature-flags-card"
     >
       {featureFlagError ? <p className="form-error">{featureFlagError}</p> : null}
-      <div className="settings-mini-list">
-        {featureFlags.length ? featureFlags.map((item) => (
-          <div key={item.key} className="settings-mini-row">
-            <span>
-              {item.key}
-              <small className="hint">{item.description || "无说明"}</small>
-              <small className="hint">来源 {item.source || "--"}{item.updated_at ? ` / 更新 ${item.updated_at}` : ""}</small>
-            </span>
-            <strong className={item.enabled ? "task-ok" : "task-error"}>{item.enabled ? "开启" : "关闭"}</strong>
-            <Switch checked={item.enabled} checkedChildren="开" unCheckedChildren="关" onChange={() => onToggle(item)} />
-          </div>
-        )) : <p className="hint">功能开关未加载。</p>}
-      </div>
+      <DataTable
+        rowKey="key"
+        dataSource={featureFlags}
+        locale={{ emptyText: "功能开关未加载" }}
+        columns={[
+          {
+            title: "开关",
+            dataIndex: "key",
+            render: (value, item) => (
+              <span>
+                <strong>{value}</strong>
+                <small className="hint">{item.description || "无说明"}</small>
+                <small className="hint">来源 {item.source || "--"}{item.updated_at ? ` / 更新 ${item.updated_at}` : ""}</small>
+              </span>
+            ),
+          },
+          {
+            title: "状态",
+            width: 90,
+            render: (_, item) => <Tag color={item.enabled ? "green" : "red"}>{item.enabled ? "开启" : "关闭"}</Tag>,
+          },
+          {
+            title: "操作",
+            width: 90,
+            render: (_, item) => <Switch checked={item.enabled} checkedChildren="开" unCheckedChildren="关" onChange={() => onToggle(item)} />,
+          },
+        ]}
+      />
       <p className="hint">普通用户可查看，只有管理员可以修改；修改会写入审计日志。</p>
       {featureFlagAudits.length ? (
-        <div className="settings-mini-list feature-flag-audit-list">
-          <strong>最近审计</strong>
-          {featureFlagAudits.slice(0, 6).map((item) => (
-            <div key={item.id} className="settings-mini-row">
-              <span>
-                {item.flag_key}
-                <small className="hint">{item.created_at} / 用户 {item.operator_user_id ?? "--"} / {item.operator_ip || "--"}</small>
-              </span>
-              <strong>{item.old_value} → {item.new_value}</strong>
-            </div>
-          ))}
-        </div>
+        <DataTable
+          rowKey="id"
+          dataSource={featureFlagAudits.slice(0, 6)}
+          columns={[
+            {
+              title: "最近审计",
+              dataIndex: "flag_key",
+              render: (value, item) => (
+                <span>
+                  <strong>{value}</strong>
+                  <small className="hint">{item.created_at} / 用户 {item.operator_user_id ?? "--"} / {item.operator_ip || "--"}</small>
+                </span>
+              ),
+            },
+            {
+              title: "变化",
+              width: 160,
+              render: (_, item) => `${item.old_value} → ${item.new_value}`,
+            },
+          ]}
+        />
       ) : null}
     </SettingCard>
   );
@@ -217,31 +263,46 @@ export function RuntimeDiagnosticsCard({
       <InfoPill label="后台任务" value={taskHealthSummary(adminTasks)} />
       <InfoPill label="行情链路" value={providerSummary ? `${providerOkCount}/${providerSummary.items.length} 可用` : "--"} />
       {adminTasks.length > 0 ? (
-        <div className="settings-mini-list">
-          {adminTasks.slice(0, 4).map((task) => (
-            <div key={task.name} className="settings-mini-row">
-              <span>{task.name}</span>
-              <strong className={task.last_error ? "task-error" : task.running ? "task-running" : "task-ok"}>
-                {task.last_error ? "异常" : task.running ? "运行中" : task.last_success_at ? "正常" : "等待"}
-              </strong>
-            </div>
-          ))}
-        </div>
+        <DataTable
+          rowKey="name"
+          dataSource={adminTasks.slice(0, 4)}
+          columns={[
+            { title: "后台任务", dataIndex: "name" },
+            {
+              title: "状态",
+              width: 100,
+              render: (_, task) => (
+                <Tag color={task.last_error ? "red" : task.running ? "blue" : "green"}>
+                  {task.last_error ? "异常" : task.running ? "运行中" : task.last_success_at ? "正常" : "等待"}
+                </Tag>
+              ),
+            },
+          ]}
+        />
       ) : null}
       {providerSummary?.items?.length ? (
-        <div className="settings-mini-list">
-          <strong>数据源健康</strong>
-          {providerSummary.items.map((item) => (
-            <div key={item.source} className="settings-mini-row">
-              <span>
-                {item.source}
-                <small className="hint">{item.latency_ms}ms / {item.quality}{item.is_stale ? " / stale" : ""}</small>
-                {item.warning ? <small className="hint">{item.warning}</small> : null}
-              </span>
-              <strong className={item.ok ? "task-ok" : "task-error"}>{item.ok ? "可用" : "失败"}</strong>
-            </div>
-          ))}
-        </div>
+        <DataTable
+          rowKey="source"
+          dataSource={providerSummary.items}
+          columns={[
+            {
+              title: "数据源健康",
+              dataIndex: "source",
+              render: (value, item) => (
+                <span>
+                  <strong>{value}</strong>
+                  <small className="hint">{item.latency_ms}ms / {item.quality}{item.is_stale ? " / stale" : ""}</small>
+                  {item.warning ? <small className="hint">{item.warning}</small> : null}
+                </span>
+              ),
+            },
+            {
+              title: "状态",
+              width: 90,
+              render: (_, item) => <Tag color={item.ok ? "green" : "red"}>{item.ok ? "可用" : "失败"}</Tag>,
+            },
+          ]}
+        />
       ) : null}
     </SettingCard>
   );
@@ -261,17 +322,28 @@ export function OperationAuditCard({
   return (
     <SettingCard title="操作审计" button="刷新审计" onSave={onRefresh} loading={loading}>
       {error ? <p className="form-error">{error}</p> : null}
-      <div className="settings-mini-list">
-        {items.length ? items.slice(0, 8).map((item) => (
-          <div key={item.id} className="settings-mini-row">
-            <span>
-              {item.operation}
-              <small className="hint">{item.resource_type || "--"} / {item.created_at}</small>
-            </span>
-            <strong className={item.status === "ok" ? "task-ok" : "task-error"}>{item.status}</strong>
-          </div>
-        )) : <p className="hint">暂无审计记录，只有管理员可查看。</p>}
-      </div>
+      <DataTable
+        rowKey="id"
+        dataSource={items.slice(0, 8)}
+        locale={{ emptyText: "暂无审计记录，只有管理员可查看" }}
+        columns={[
+          {
+            title: "操作",
+            dataIndex: "operation",
+            render: (value, item) => (
+              <span>
+                <strong>{value}</strong>
+                <small className="hint">{item.resource_type || "--"} / {item.created_at}</small>
+              </span>
+            ),
+          },
+          {
+            title: "状态",
+            width: 90,
+            render: (_, item) => <Tag color={item.status === "ok" ? "green" : "red"}>{item.status}</Tag>,
+          },
+        ]}
+      />
     </SettingCard>
   );
 }
@@ -314,4 +386,11 @@ function taskHealthSummary(tasks: AdminTaskStatus[]): string {
     return `${running} 个运行中`;
   }
   return `${tasks.length} 个已接入`;
+}
+
+function governanceStatusColor(status: string): string {
+  if (status === "active") return "green";
+  if (status === "watch") return "gold";
+  if (status === "paused" || status === "deprecated") return "red";
+  return "default";
 }

@@ -1,5 +1,8 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import { activeLoadingKey, clearLoadingKeys, setLoadingFlag, type LoadingState } from "./loadingState";
+import { useCallback, useEffect, useRef } from "react";
+import {
+  selectActiveWorkspaceLoading,
+  useWorkspaceLoadingStore,
+} from "../../stores/workspaceLoadingStore";
 import { errorMessage } from "../workspace-shared/workspaceFormatters";
 
 const PAPER_LOADING_KEYS = [
@@ -18,8 +21,10 @@ export function useWorkspaceLoading({
   onError: (message: string) => void;
   onAuthRequired: () => void;
 }) {
-  const [loadingState, setLoadingState] = useState<LoadingState>({});
-  const loading = activeLoadingKey(loadingState);
+  const loadingState = useWorkspaceLoadingStore((state) => state.loadingState);
+  const loading = useWorkspaceLoadingStore(selectActiveWorkspaceLoading);
+  const setLoadingKeyState = useWorkspaceLoadingStore((state) => state.setLoadingKey);
+  const clearLoadingKeysState = useWorkspaceLoadingStore((state) => state.clearLoadingKeys);
   const onErrorRef = useRef(onError);
   const onAuthRequiredRef = useRef(onAuthRequired);
 
@@ -29,17 +34,16 @@ export function useWorkspaceLoading({
   }, [onAuthRequired, onError]);
 
   const setLoadingKey = useCallback((key: string, active: boolean) => {
-    setLoadingState((current) => setLoadingFlag(current, key, active));
-  }, []);
+    setLoadingKeyState(key, active);
+  }, [setLoadingKeyState]);
 
   const setPaperLoading = useCallback((key: string) => {
-    setLoadingState((current) => {
-      if (!key) {
-        return clearLoadingKeys(current, PAPER_LOADING_KEYS);
-      }
-      return setLoadingFlag(current, key, true);
-    });
-  }, []);
+    if (!key) {
+      clearLoadingKeysState(PAPER_LOADING_KEYS);
+      return;
+    }
+    setLoadingKeyState(key, true);
+  }, [clearLoadingKeysState, setLoadingKeyState]);
 
   const withLoading = useCallback(async <T,>(key: string, action: () => Promise<T>): Promise<T | undefined> => {
     try {

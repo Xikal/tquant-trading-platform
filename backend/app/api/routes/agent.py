@@ -268,7 +268,7 @@ def agent_create_paper_order(
     if current_user is None:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Agent 令牌不能直接创建模拟盘委托，请使用已登录且完成动态验证码保护的用户会话。",
+            detail="Agent 令牌不能直接创建模拟盘委托，请使用已登录且具备模拟盘权限的用户会话。",
         )
     ensure_permission(current_user, "paper_trade")
     return run_agent_create_paper_order(context_service, db, payload, user_id=getattr(current_user, "id", None))

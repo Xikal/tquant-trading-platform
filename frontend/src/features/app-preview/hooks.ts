@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useEffect, useMemo, useRef } from "react"
 import { appApi } from "../../api/appClient"
 import { deriveDailyDecision, deriveSimpleBuckets } from "../../mobile/simpleDecision"
+import { useAppPreviewStore, type AppPreviewTab } from "../../stores/appPreviewStore"
 import {
   addExchangeSuffix,
   normalizeSymbol,
@@ -18,7 +19,7 @@ import type {
   WatchlistItem
 } from "../../types"
 
-export type AppPreviewTab = "home" | "low_buy"
+export type { AppPreviewTab } from "../../stores/appPreviewStore"
 
 const PRIORITY_BOARD_LIMIT = 12
 
@@ -33,20 +34,34 @@ function formatPulseTime() {
 
 export function useAppPreviewData(strategy = "first_board", enabled = true) {
   const locallyRemovedSymbolKeysRef = useRef<Set<string>>(new Set())
-  const [bootstrap, setBootstrap] = useState<AppBootstrapResponse | null>(null)
-  const [home, setHome] = useState<AppHomeResponse | null>(null)
-  const [watchlist, setWatchlist] = useState<AppWatchlistResponse | null>(null)
-  const [priorityBoard, setPriorityBoard] = useState<LowBuyPriorityBoardResult | null>(null)
-  const [activeTab, setActiveTab] = useState<AppPreviewTab>("home")
-  const [loading, setLoading] = useState(true)
-  const [tabLoading, setTabLoading] = useState(false)
-  const [detailLoading, setDetailLoading] = useState(false)
-  const [actionLoading, setActionLoading] = useState(false)
-  const [detail, setDetail] = useState<AppLowBuyDetailResponse | null>(null)
-  const [error, setError] = useState("")
-  const [message, setMessage] = useState("")
-  const [pulseTime, setPulseTime] = useState("--")
-  const [priorityPulseTime, setPriorityPulseTime] = useState("--")
+  const bootstrap = useAppPreviewStore((state) => state.bootstrap)
+  const home = useAppPreviewStore((state) => state.home)
+  const watchlist = useAppPreviewStore((state) => state.watchlist)
+  const priorityBoard = useAppPreviewStore((state) => state.priorityBoard)
+  const activeTab = useAppPreviewStore((state) => state.activeTab)
+  const loading = useAppPreviewStore((state) => state.loading)
+  const tabLoading = useAppPreviewStore((state) => state.tabLoading)
+  const detailLoading = useAppPreviewStore((state) => state.detailLoading)
+  const actionLoading = useAppPreviewStore((state) => state.actionLoading)
+  const detail = useAppPreviewStore((state) => state.detail)
+  const error = useAppPreviewStore((state) => state.error)
+  const message = useAppPreviewStore((state) => state.message)
+  const pulseTime = useAppPreviewStore((state) => state.pulseTime)
+  const priorityPulseTime = useAppPreviewStore((state) => state.priorityPulseTime)
+  const setBootstrap = useAppPreviewStore((state) => state.setBootstrap)
+  const setHome = useAppPreviewStore((state) => state.setHome)
+  const setWatchlist = useAppPreviewStore((state) => state.setWatchlist)
+  const setPriorityBoard = useAppPreviewStore((state) => state.setPriorityBoard)
+  const setActiveTab = useAppPreviewStore((state) => state.setActiveTab)
+  const setLoading = useAppPreviewStore((state) => state.setLoading)
+  const setTabLoading = useAppPreviewStore((state) => state.setTabLoading)
+  const setDetailLoading = useAppPreviewStore((state) => state.setDetailLoading)
+  const setActionLoading = useAppPreviewStore((state) => state.setActionLoading)
+  const setDetail = useAppPreviewStore((state) => state.setDetail)
+  const setError = useAppPreviewStore((state) => state.setError)
+  const setMessage = useAppPreviewStore((state) => state.setMessage)
+  const setPulseTime = useAppPreviewStore((state) => state.setPulseTime)
+  const setPriorityPulseTime = useAppPreviewStore((state) => state.setPriorityPulseTime)
   const dailyDecision = useMemo(() => deriveDailyDecision(priorityBoard), [priorityBoard])
   const simpleBuckets = useMemo(
     () => priorityBoard?.simple_buckets ?? deriveSimpleBuckets(priorityBoard?.items ?? []),

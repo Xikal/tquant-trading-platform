@@ -1,17 +1,22 @@
-import { useState } from "react";
 import { Button, Checkbox, Input } from "antd";
 import { factorMiningApi, type FactorHypothesis } from "../../api/factorMining";
+import { useFactorMiningUiStore } from "../../stores/factorMiningUiStore";
 
 export function HypothesisPanel({
   onCodeReady,
 }: {
   onCodeReady: (hypothesis: FactorHypothesis, code: string) => void;
 }) {
-  const [topic, setTopic] = useState("量价结构与板块接力");
-  const [useLlm, setUseLlm] = useState(true);
-  const [items, setItems] = useState<FactorHypothesis[]>([]);
-  const [loading, setLoading] = useState("");
-  const [error, setError] = useState("");
+  const topic = useFactorMiningUiStore((state) => state.hypothesisTopic);
+  const useLlm = useFactorMiningUiStore((state) => state.useLlm);
+  const items = useFactorMiningUiStore((state) => state.hypothesisItems);
+  const loading = useFactorMiningUiStore((state) => state.hypothesisLoading);
+  const error = useFactorMiningUiStore((state) => state.hypothesisError);
+  const setTopic = useFactorMiningUiStore((state) => state.setHypothesisTopic);
+  const setUseLlm = useFactorMiningUiStore((state) => state.setUseLlm);
+  const setItems = useFactorMiningUiStore((state) => state.setHypothesisItems);
+  const setLoading = useFactorMiningUiStore((state) => state.setHypothesisLoading);
+  const setError = useFactorMiningUiStore((state) => state.setHypothesisError);
 
   async function generate() {
     setLoading("generate");

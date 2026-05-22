@@ -1,29 +1,27 @@
 .tq-field {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
   min-width: 0;
 }
 
-.tq-field__label {
-  color: #62708a;
-  display: flex;
-  font-size: 12px;
-  font-weight: 700;
-  justify-content: space-between;
+.tq-field.ant-form-item {
+  margin-bottom: 0;
 }
 
-.tq-field__hint,
-.tq-field__error,
+.tq-field .ant-form-item-label > label {
+  color: #62708a;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.tq-field .ant-form-item-extra,
+.tq-field .ant-form-item-explain,
 .tq-inline-error {
   font-size: 11px;
 }
 
-.tq-field__hint {
+.tq-field .ant-form-item-extra {
   color: #7b879d;
 }
 
-.tq-field__error,
 .tq-inline-error {
   color: #d62f2f;
 }

@@ -2,7 +2,6 @@ import { Button } from "antd";
 import type {
   BacktestAttributionResponse,
   BacktestCompareResponse,
-  BacktestExecutionModel,
   EquityPoint,
   BacktestMonthlyReturnsResponse,
   BacktestOptimizationDetail,
@@ -19,36 +18,9 @@ import { ComparePanel } from "./ComparePanel";
 import { MLCapacityPanel } from "./MLCapacityPanel";
 import { OptimizationPanel } from "./OptimizationPanel";
 import { ValidationPanel } from "./ValidationPanel";
+import type { OptimizationFormState, ValidationFormState } from "./backtestForms";
 
-export interface OptimizationFormState {
-  name: string;
-  strategy: string;
-  train_start: string;
-  train_end: string;
-  test_start: string;
-  test_end: string;
-  initial_capital: string;
-  execution_model: BacktestExecutionModel;
-  optimization_target: string;
-  min_score: string;
-  max_position_pct: string;
-  max_holding_days: string;
-  stop_loss_pct: string;
-  take_profit_pct: string;
-}
-
-export interface ValidationFormState {
-  name: string;
-  strategy: string;
-  start_date: string;
-  end_date: string;
-  window_count: string;
-  train_ratio: string;
-  initial_capital: string;
-  execution_model: BacktestExecutionModel;
-  optimization_target: string;
-  auto_promote_state_params: boolean;
-}
+export type { OptimizationFormState, ValidationFormState } from "./backtestForms";
 
 export interface BacktestResearchState {
   optimizationForm: OptimizationFormState;

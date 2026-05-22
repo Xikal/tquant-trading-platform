@@ -1,8 +1,4 @@
 @media (max-width: 1280px) {
-  .paper-metrics {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-  }
-
   .market-breadth-strip {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
@@ -22,32 +18,6 @@
     padding: 20px;
   }
 
-  .paper-grid {
-    grid-template-columns: 1fr;
-    grid-template-areas:
-      "metrics"
-      "order"
-      "positions"
-      "orders"
-      "trades"
-      "performance"
-      "market";
-  }
-
-  .paper-hero,
-  .paper-metrics,
-  .paper-order,
-  .paper-positions,
-  .paper-orders,
-  .paper-trades,
-  .paper-performance,
-  .paper-market-performance {
-    grid-area: auto;
-  }
-
-  .paper-metrics {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
 }
 
 @media (max-width: 768px) {
@@ -88,36 +58,20 @@
     padding: 24px 18px;
   }
 
-  .paper-metrics {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .paper-order .form-grid,
   .paper-context-row {
     grid-template-columns: 1fr;
   }
 
   .paper-row,
-  .paper-position-row,
-  .paper-trade-row,
-  .paper-trade-row.with-tags {
+  .paper-position-row {
     grid-template-columns: 1fr;
     align-items: start;
-  }
-
-  .paper-positions .stock-list {
-    grid-template-columns: 1fr;
-    max-height: none;
   }
 
   .paper-performance-table {
     overflow-x: auto;
   }
 
-  .paper-performance-head,
-  .paper-performance-row {
-    min-width: 520px;
-  }
 }
 
 /* Paper trading target layout: matches the compact simulation desk reference. */

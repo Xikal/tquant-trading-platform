@@ -8,10 +8,10 @@ import type {
   SettingsPayload,
   UserSectorExclusionsResponse,
 } from "../../types";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { Button, InputNumber } from "antd";
-import { featureFlagsApi, type FeatureFlagAuditItem, type FeatureFlagItem } from "../../api/featureFlags";
-import { operationAuditApi, type OperationAuditItem } from "../../api/operationAudit";
+import { featureFlagsApi, type FeatureFlagItem } from "../../api/featureFlags";
+import { operationAuditApi } from "../../api/operationAudit";
 import { NumberField, TextField } from "../../components/shared/FormFields";
 import { AuthSecurityCard } from "./AuthSecurityCard";
 import { InfoPill, PanelTitle, SettingCard } from "../workspace-shared/WorkspaceComponents";
@@ -28,6 +28,7 @@ import { LatestDataStatusCard } from "./LatestDataStatusCard";
 import { QuantParameterMlCard } from "./QuantParameterMlCard";
 import { QuantParameterPaperExitCard } from "./QuantParameterPaperExitCard";
 import { QuantParameterSectorEtfCard } from "./QuantParameterSectorEtfCard";
+import { useSettingsUiStore } from "../../stores/settingsUiStore";
 import {
   buildSettingsDirtyState,
   integerFieldError,
@@ -82,16 +83,26 @@ export function SettingsPage({
   currentUser: AuthUser;
   onUserUpdate: (user: AuthUser) => void;
 }) {
-  const [savedSection, setSavedSection] = useState("");
-  const [featureFlags, setFeatureFlags] = useState<FeatureFlagItem[]>([]);
-  const [featureFlagAudits, setFeatureFlagAudits] = useState<FeatureFlagAuditItem[]>([]);
-  const [featureFlagError, setFeatureFlagError] = useState("");
-  const [operationAudits, setOperationAudits] = useState<OperationAuditItem[]>([]);
-  const [operationAuditError, setOperationAuditError] = useState("");
-  const [operationAuditLoading, setOperationAuditLoading] = useState(false);
-  const [sectorQuery, setSectorQuery] = useState("");
-  const [sectorDraft, setSectorDraft] = useState<string[]>([]);
-  const [activeTab, setActiveTab] = useState<SettingsTabKey>("account");
+  const sectorQuery = useSettingsUiStore((state) => state.sectorQuery);
+  const activeTab = useSettingsUiStore((state) => state.activeTab);
+  const savedSection = useSettingsUiStore((state) => state.savedSection);
+  const sectorDraft = useSettingsUiStore((state) => state.sectorDraft);
+  const featureFlags = useSettingsUiStore((state) => state.featureFlags);
+  const featureFlagAudits = useSettingsUiStore((state) => state.featureFlagAudits);
+  const featureFlagError = useSettingsUiStore((state) => state.featureFlagError);
+  const operationAudits = useSettingsUiStore((state) => state.operationAudits);
+  const operationAuditError = useSettingsUiStore((state) => state.operationAuditError);
+  const operationAuditLoading = useSettingsUiStore((state) => state.operationAuditLoading);
+  const setSectorQuery = useSettingsUiStore((state) => state.setSectorQuery);
+  const setActiveTab = useSettingsUiStore((state) => state.setActiveTab);
+  const setSavedSection = useSettingsUiStore((state) => state.setSavedSection);
+  const setSectorDraft = useSettingsUiStore((state) => state.setSectorDraft);
+  const setFeatureFlags = useSettingsUiStore((state) => state.setFeatureFlags);
+  const setFeatureFlagAudits = useSettingsUiStore((state) => state.setFeatureFlagAudits);
+  const setFeatureFlagError = useSettingsUiStore((state) => state.setFeatureFlagError);
+  const setOperationAudits = useSettingsUiStore((state) => state.setOperationAudits);
+  const setOperationAuditError = useSettingsUiStore((state) => state.setOperationAuditError);
+  const setOperationAuditLoading = useSettingsUiStore((state) => state.setOperationAuditLoading);
   const savedTimerRef = useRef<number | null>(null);
   const adminTokenError = draft.adminToken.trim() ? "" : "保存配置前需要填写管理令牌";
   const llmKeyError = !settings?.llm_api_key_configured && !draft.llm_api_key.trim() ? "首次配置大模型需要填写 API Key" : "";

@@ -1,5 +1,5 @@
-import { useState } from "react";
 import { appApi } from "../api/appClient";
+import { useMobileUiStore } from "../stores/mobileUiStore";
 import type { MobileTab } from "./mobileTypes";
 
 export function useMobileSectorSettings({
@@ -13,10 +13,14 @@ export function useMobileSectorSettings({
   loadMobilePlaybook: (strategy: string, force?: boolean) => Promise<unknown> | unknown;
   strategyFilter: string;
 }) {
-  const [open, setOpen] = useState(false);
-  const [excludedSectors, setExcludedSectors] = useState<string[]>([]);
-  const [availableSectors, setAvailableSectors] = useState<string[]>([]);
-  const [saving, setSaving] = useState(false);
+  const open = useMobileUiStore((state) => state.sectorSettingsOpen);
+  const excludedSectors = useMobileUiStore((state) => state.excludedSectors);
+  const availableSectors = useMobileUiStore((state) => state.availableSectors);
+  const saving = useMobileUiStore((state) => state.sectorSettingsSaving);
+  const setOpen = useMobileUiStore((state) => state.setSectorSettingsOpen);
+  const setExcludedSectors = useMobileUiStore((state) => state.setExcludedSectors);
+  const setAvailableSectors = useMobileUiStore((state) => state.setAvailableSectors);
+  const setSaving = useMobileUiStore((state) => state.setSectorSettingsSaving);
 
   async function openSectorSettings() {
     setOpen(true);

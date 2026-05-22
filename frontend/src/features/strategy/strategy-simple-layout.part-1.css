@@ -29,7 +29,8 @@
   color: var(--text-secondary);
 }
 
-.strategy-summary-stats {
+.strategy-summary-stats,
+.strategy-summary-lights {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px;
@@ -46,7 +47,9 @@
   background: var(--panel-elevated);
 }
 
-.strategy-summary-stats article {
+.strategy-summary-stats article,
+.strategy-summary-light,
+.strategy-summary-item {
   display: grid;
   gap: 4px;
   padding: 12px 14px;
@@ -77,18 +80,6 @@
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
 }
 
-.strategy-summary-lights {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
-}
-
-.strategy-summary-light {
-  display: grid;
-  gap: 4px;
-  padding: 12px 14px;
-}
-
 .strategy-summary-light.ok strong {
   color: var(--success-strong);
 }
@@ -107,12 +98,6 @@
   gap: 10px;
 }
 
-.strategy-summary-item {
-  display: grid;
-  gap: 4px;
-  padding: 12px 14px;
-}
-
 .strategy-summary-item.ok strong {
   color: var(--success-strong);
 }
@@ -126,6 +111,10 @@
 }
 
 .strategy-hero-mini {
+  padding: 0;
+}
+
+.strategy-hero-mini .ant-card-body {
   display: grid;
   grid-template-columns: minmax(0, 1.6fr) minmax(220px, 0.8fr) auto;
   gap: 12px;
@@ -133,7 +122,6 @@
   padding: 14px 18px;
 }
 
-.strategy-hero-mini > div,
 .strategy-latest-run {
   display: grid;
   gap: 4px;

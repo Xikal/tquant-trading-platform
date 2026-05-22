@@ -1,7 +1,7 @@
 import type {
   PaperPosition,
 } from "../../types";
-import type { ReactNode } from "react";
+import { Card, List, Skeleton, Space, Tag, Typography } from "antd";
 import { OrderEntryModal } from "./PaperOrderEntryModal";
 import { EmptyState } from "../workspace-shared/WorkspaceComponents";
 import { formatInteger, formatPct, formatPrice, toneFromChange } from "../workspace-shared/workspaceFormatters";
@@ -17,51 +17,41 @@ export function PaperPositionsPanel({
   loading: boolean;
 }) {
   return (
-    <section className="panel paper-positions">
-      <div className="panel-title">
-        <h2>当前持仓</h2>
-        <span className="hint">{positions.length ? `共 ${positions.length} 只，首屏直接处理` : "暂无持仓"}</span>
-      </div>
-      <DataBody loading={loading} columns={4}>
-        <div className="stock-list compact">
-          {positions.length ? positions.map((item) => <PositionRow key={item.id} item={item} />) : <EmptyState text="暂无模拟持仓" />}
-        </div>
-      </DataBody>
-    </section>
+    <Card
+      className="paper-positions"
+      title="当前持仓"
+      extra={<Typography.Text type="secondary">{positions.length ? `共 ${positions.length} 只，首屏直接处理` : "暂无持仓"}</Typography.Text>}
+      variant="borderless"
+    >
+      {loading ? (
+        <Skeleton active paragraph={{ rows: 4 }} />
+      ) : positions.length ? (
+        <List
+          className="paper-position-list"
+          dataSource={positions}
+          renderItem={(item) => <PositionRow item={item} />}
+        />
+      ) : (
+        <EmptyState text="暂无模拟持仓" />
+      )}
+    </Card>
   );
 }
 function PositionRow({ item }: { item: PaperPosition }) {
   const tone = item.latest_price == null ? "neutral" : toneFromChange(item.unrealized_pnl_pct);
   const actionText = item.smart_exit_text || item.smart_exit_action || "按计划持有";
   return (
-    <article className={`paper-row paper-position-row ${tone}`}>
-      <div className="paper-stock-name">
-        <strong>{item.name || item.symbol}</strong>
-        <span>{item.symbol}</span>
-      </div>
-      <span>持仓 {formatInteger(item.quantity)} / 可卖 {formatInteger(item.available_quantity)}</span>
-      <span>成本 {formatPrice(item.cost_basis)} / 现价 {formatPrice(item.latest_price)}</span>
-      <span className="paper-position-action">{actionText}</span>
-      <strong className={tone}>{formatPct(item.unrealized_pnl_pct)}</strong>
-    </article>
-  );
-}
-
-function DataBody({ loading, columns, children }: { loading: boolean; columns: number; children: ReactNode }) {
-  if (loading) return <SkeletonList columns={columns} />;
-  return <>{children}</>;
-}
-
-function SkeletonList({ columns }: { columns: number }) {
-  return (
-    <div className="paper-skeleton-list" aria-label="加载中">
-      {Array.from({ length: 4 }).map((_, row) => (
-        <div className="paper-skeleton-row" key={row}>
-          {Array.from({ length: columns }).map((__, col) => (
-            <span className="skeleton-line" key={col} />
-          ))}
-        </div>
-      ))}
-    </div>
+    <List.Item className={`paper-position-row ${tone}`}>
+      <List.Item.Meta
+        title={<Typography.Text strong>{item.name || item.symbol}</Typography.Text>}
+        description={item.symbol}
+      />
+      <Space size={12} wrap>
+        <Typography.Text>持仓 {formatInteger(item.quantity)} / 可卖 {formatInteger(item.available_quantity)}</Typography.Text>
+        <Typography.Text>成本 {formatPrice(item.cost_basis)} / 现价 {formatPrice(item.latest_price)}</Typography.Text>
+        <Tag color="blue">{actionText}</Tag>
+        <Typography.Text strong className={tone}>{formatPct(item.unrealized_pnl_pct)}</Typography.Text>
+      </Space>
+    </List.Item>
   );
 }

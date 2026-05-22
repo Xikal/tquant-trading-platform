@@ -1,14 +1,14 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { appApi } from "../../api/appClient";
 import { clearAuthTokens, getAuthAccessToken, shouldAttemptAuthRefresh } from "../../api/base";
 import { api } from "../../api/client";
-import { strategiesApi, type StrategyMeta } from "../../api/strategies";
-import type { AiDecisionSupportResponse, AuthUser } from "../../types";
+import { strategiesApi } from "../../api/strategies";
+import { useWorkspaceStore } from "../../stores/workspaceStore";
 import { LoginPage } from "./LoginPage";
 import { TradingWorkspaceChrome } from "./TradingWorkspaceChrome";
 import { nullableNumber, parseNumber } from "../workspace-shared/workspaceFormatters";
 import { isLoading } from "./loadingState";
-import type { AuthDraft, Page, StockCardView, WatchDraft } from "../workspace-shared/workspaceTypes";
+import type { Page, StockCardView } from "../workspace-shared/workspaceTypes";
 import { useAnalysisData } from "./useAnalysisData";
 import { useMonitorData } from "./useMonitorData";
 import { usePaperIntraday } from "./usePaperIntraday";
@@ -20,17 +20,34 @@ import { useWorkspaceNavigation } from "./useWorkspaceNavigation";
 import { useWorkspacePageProps } from "./useWorkspacePageProps";
 import { useWorkspaceAutoRefresh } from "./useWorkspaceAutoRefresh";
 export function TradingWorkspace() {
-  const [authReady, setAuthReady] = useState(false);
-  const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
   const { page, navigatePage } = useWorkspaceNavigation();
-  const [aiResult, setAiResult] = useState<AiDecisionSupportResponse | null>(null);
-  const [aiDialogOpen, setAiDialogOpen] = useState(false);
-  const [commandOpen, setCommandOpen] = useState(false);
-  const [commandStrategies, setCommandStrategies] = useState<StrategyMeta[]>([]);
-  const [strategyMeta, setStrategyMeta] = useState<StrategyMeta[]>([]);
-  const [notice, setNotice] = useState("");
-  const [error, setError] = useState("");
-  const [selectedStock, setSelectedStock] = useState<StockCardView | null>(null);
+  const authReady = useWorkspaceStore((state) => state.authReady);
+  const currentUser = useWorkspaceStore((state) => state.currentUser);
+  const notice = useWorkspaceStore((state) => state.notice);
+  const error = useWorkspaceStore((state) => state.error);
+  const commandOpen = useWorkspaceStore((state) => state.commandOpen);
+  const aiDialogOpen = useWorkspaceStore((state) => state.aiDialogOpen);
+  const selectedStock = useWorkspaceStore((state) => state.selectedStock);
+  const authDraft = useWorkspaceStore((state) => state.authDraft);
+  const watchDraft = useWorkspaceStore((state) => state.watchDraft);
+  const editingWatchSymbol = useWorkspaceStore((state) => state.editingWatchSymbol);
+  const aiResult = useWorkspaceStore((state) => state.aiResult);
+  const commandStrategies = useWorkspaceStore((state) => state.commandStrategies);
+  const strategyMeta = useWorkspaceStore((state) => state.strategyMeta);
+  const setAuthReady = useWorkspaceStore((state) => state.setAuthReady);
+  const setAuthDraft = useWorkspaceStore((state) => state.setAuthDraft);
+  const setWatchDraft = useWorkspaceStore((state) => state.setWatchDraft);
+  const setEditingWatchSymbol = useWorkspaceStore((state) => state.setEditingWatchSymbol);
+  const setCurrentUser = useWorkspaceStore((state) => state.setCurrentUser);
+  const setNotice = useWorkspaceStore((state) => state.setNotice);
+  const setError = useWorkspaceStore((state) => state.setError);
+  const setCommandOpen = useWorkspaceStore((state) => state.setCommandOpen);
+  const setAiDialogOpen = useWorkspaceStore((state) => state.setAiDialogOpen);
+  const setSelectedStock = useWorkspaceStore((state) => state.setSelectedStock);
+  const setAiResult = useWorkspaceStore((state) => state.setAiResult);
+  const setCommandStrategies = useWorkspaceStore((state) => state.setCommandStrategies);
+  const setStrategyMeta = useWorkspaceStore((state) => state.setStrategyMeta);
+  const clearTransientUi = useWorkspaceStore((state) => state.clearTransientUi);
   const {
     loading,
     loadingState,
@@ -57,11 +74,6 @@ export function TradingWorkspace() {
     setError,
     setNotice,
     navigatePage,
-  });
-  const [authDraft, setAuthDraft] = useState<AuthDraft>({
-    username: "",
-    password: "",
-    remember: true,
   });
   const paper = usePaperTrading({
     canManageReconcile: Boolean(currentUser?.roles.some((role) => {
@@ -96,16 +108,6 @@ export function TradingWorkspace() {
     positions: paper.positions,
     refreshAutoTradingStatus: paper.refreshAutoTradingStatus,
   });
-
-  const [watchDraft, setWatchDraft] = useState<WatchDraft>({
-    symbol: "",
-    name: "",
-    base_position: "0",
-    available_position: "0",
-    cost_basis: "",
-    memo: "",
-  });
-  const [editingWatchSymbol, setEditingWatchSymbol] = useState("");
   const { monitorPageProps, paperPageProps } = useWorkspacePageProps({
     analysis,
     intradayConfirmations,
@@ -169,11 +171,8 @@ export function TradingWorkspace() {
   }, [notice]);
 
   useEffect(() => {
-    setAiDialogOpen(false);
-    setCommandOpen(false);
-    setSelectedStock(null);
-    setError("");
-  }, [page]);
+    clearTransientUi();
+  }, [clearTransientUi, page]);
 
   useEffect(() => {
     if (!currentUser) {

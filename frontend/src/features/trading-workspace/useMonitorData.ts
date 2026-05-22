@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import { API_BASE, getAuthAccessToken, getAdminApiToken, invalidateCache, request } from "../../api/base";
 import { api } from "../../api/client";
+import { useWorkspaceMonitorStore } from "../../stores/workspaceMonitorStore";
 import type {
   LowBuyPriorityBoardResult,
   LowBuyQuoteRefreshItem,
@@ -37,15 +38,25 @@ interface UseMonitorDataOptions {
 }
 
 export function useMonitorData({ active, withLoading, setError, setNotice }: UseMonitorDataOptions) {
-  const [priorityBoard, setPriorityBoard] = useState<LowBuyPriorityBoardResult | null>(null);
-  const [marketBreadth, setMarketBreadth] = useState<MarketBreadth | null>(null);
-  const [sectorRelativeStrength, setSectorRelativeStrength] = useState<SectorRelativeStrengthResponse | null>(null);
-  const [keyLevelAlerts, setKeyLevelAlerts] = useState<IntradayKeyLevelResponse[]>([]);
-  const [watchlistSignals, setWatchlistSignals] = useState<WatchlistSignal[]>([]);
-  const [sectorEtfT0, setSectorEtfT0] = useState<SectorEtfT0Response | null>(null);
-  const [pairedHedge, setPairedHedge] = useState<PairedHedgeResearchResponse | null>(null);
-  const [runtime, setRuntime] = useState<RuntimeStatus | null>(null);
-  const [instrumentSyncStatus, setInstrumentSyncStatus] = useState<InstrumentSyncStatus | null>(null);
+  const priorityBoard = useWorkspaceMonitorStore((state) => state.priorityBoard);
+  const marketBreadth = useWorkspaceMonitorStore((state) => state.marketBreadth);
+  const sectorRelativeStrength = useWorkspaceMonitorStore((state) => state.sectorRelativeStrength);
+  const keyLevelAlerts = useWorkspaceMonitorStore((state) => state.keyLevelAlerts);
+  const watchlistSignals = useWorkspaceMonitorStore((state) => state.watchlistSignals);
+  const sectorEtfT0 = useWorkspaceMonitorStore((state) => state.sectorEtfT0);
+  const pairedHedge = useWorkspaceMonitorStore((state) => state.pairedHedge);
+  const runtime = useWorkspaceMonitorStore((state) => state.runtime);
+  const instrumentSyncStatus = useWorkspaceMonitorStore((state) => state.instrumentSyncStatus);
+  const setPriorityBoard = useWorkspaceMonitorStore((state) => state.setPriorityBoard);
+  const setMarketBreadth = useWorkspaceMonitorStore((state) => state.setMarketBreadth);
+  const setSectorRelativeStrength = useWorkspaceMonitorStore((state) => state.setSectorRelativeStrength);
+  const setKeyLevelAlerts = useWorkspaceMonitorStore((state) => state.setKeyLevelAlerts);
+  const setWatchlistSignals = useWorkspaceMonitorStore((state) => state.setWatchlistSignals);
+  const setSectorEtfT0 = useWorkspaceMonitorStore((state) => state.setSectorEtfT0);
+  const setPairedHedge = useWorkspaceMonitorStore((state) => state.setPairedHedge);
+  const setRuntime = useWorkspaceMonitorStore((state) => state.setRuntime);
+  const setInstrumentSyncStatus = useWorkspaceMonitorStore((state) => state.setInstrumentSyncStatus);
+  const resetMonitorState = useWorkspaceMonitorStore((state) => state.resetMonitorData);
   const monitorRefreshRef = useRef(false);
   const quoteRefreshRef = useRef(false);
   const instrumentSyncPollRef = useRef<number | null>(null);
@@ -208,14 +219,8 @@ export function useMonitorData({ active, withLoading, setError, setNotice }: Use
   const resetMonitorData = useCallback(() => {
     clearPendingRetry();
     pendingRetryCountRef.current = 0;
-    setPriorityBoard(null);
-    setMarketBreadth(null);
-    setSectorRelativeStrength(null);
-    setKeyLevelAlerts([]);
-    setSectorEtfT0(null);
-    setPairedHedge(null);
-    setWatchlistSignals([]);
-  }, [clearPendingRetry]);
+    resetMonitorState();
+  }, [clearPendingRetry, resetMonitorState]);
 
   useEffect(() => {
     if (!active) {

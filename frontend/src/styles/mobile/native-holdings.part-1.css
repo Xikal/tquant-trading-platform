@@ -1,17 +1,10 @@
-.mobile-app-list-toolbar-actions {
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
-}
-
 .mobile-inline-action,
-.mobile-text-button,
 .mobile-step-button,
 .mobile-holding-field input {
   font: inherit;
 }
 
 .mobile-inline-action,
-.mobile-text-button,
 .mobile-step-button {
   border: 1px solid var(--mobile-border);
   border-radius: 10px;
@@ -32,24 +25,6 @@
   border-color: rgba(227, 59, 59, 0.18);
 }
 
-.mobile-text-button {
-  min-height: 36px;
-  padding: 0 10px;
-  color: var(--mobile-positive);
-  background: rgba(227, 59, 59, 0.08);
-  border-color: rgba(227, 59, 59, 0.12);
-}
-
-.mobile-holdings-head {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 0;
-  padding: 0 3px;
-  color: var(--mobile-text-muted);
-  font-size: 9px;
-  text-align: center;
-}
-
 .mobile-holding-card,
 .mobile-priority-card {
   display: grid;
@@ -67,7 +42,6 @@
 
 .mobile-holding-card-head,
 .mobile-priority-actions,
-.mobile-priority-top,
 .mobile-priority-headline {
   display: grid;
   align-items: center;
@@ -141,7 +115,6 @@
   line-height: 1.1;
 }
 
-.mobile-holding-grid,
 .mobile-priority-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -152,7 +125,6 @@
   background: var(--mobile-panel-soft);
 }
 
-.mobile-holding-cell,
 .mobile-priority-grid div {
   display: grid;
   gap: 2px;
@@ -160,19 +132,15 @@
   text-align: center;
 }
 
-.mobile-holding-cell + .mobile-holding-cell,
 .mobile-priority-grid div + div {
   border-left: 1px solid var(--mobile-divider);
 }
 
-.mobile-holding-cell span,
-.mobile-holding-cell small,
 .mobile-priority-grid span {
   color: var(--mobile-text-muted);
   font-size: 8px;
 }
 
-.mobile-holding-cell strong,
 .mobile-priority-grid strong {
   font-size: 10px;
   line-height: 1.15;
@@ -195,17 +163,6 @@
   grid-template-columns: auto minmax(0, 1fr) auto;
   gap: 6px;
   min-width: 0;
-}
-
-.mobile-priority-top {
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  gap: 6px;
-}
-
-.mobile-priority-identity-inline {
-  grid-template-columns: minmax(0, auto) auto;
-  align-items: baseline;
-  gap: 4px;
 }
 
 .mobile-priority-title-line {

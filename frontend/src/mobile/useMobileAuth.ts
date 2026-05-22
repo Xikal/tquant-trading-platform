@@ -1,7 +1,7 @@
-import { useEffect, useState } from "react"
+import { useEffect } from "react"
 import { clearAuthTokens, getAuthAccessToken } from "../api/base"
 import { appApi } from "../api/appClient"
-import type { AuthUser } from "../types"
+import { useMobileUiStore } from "../stores/mobileUiStore"
 
 export interface MobileAuthSubmitPayload {
   username: string
@@ -10,9 +10,12 @@ export interface MobileAuthSubmitPayload {
 }
 
 export function useMobileAuth() {
-  const [authUser, setAuthUser] = useState<AuthUser | null>(null)
-  const [authLoading, setAuthLoading] = useState(true)
-  const [authError, setAuthError] = useState("")
+  const authUser = useMobileUiStore((state) => state.authUser)
+  const authLoading = useMobileUiStore((state) => state.authLoading)
+  const authError = useMobileUiStore((state) => state.authError)
+  const setAuthUser = useMobileUiStore((state) => state.setAuthUser)
+  const setAuthLoading = useMobileUiStore((state) => state.setAuthLoading)
+  const setAuthError = useMobileUiStore((state) => state.setAuthError)
 
   useEffect(() => {
     const restoreAuth = async () => {
@@ -35,7 +38,7 @@ export function useMobileAuth() {
       }
     }
     void restoreAuth()
-  }, [])
+  }, [setAuthError, setAuthLoading, setAuthUser])
 
   async function handleAuthSubmit(payload: MobileAuthSubmitPayload) {
     try {

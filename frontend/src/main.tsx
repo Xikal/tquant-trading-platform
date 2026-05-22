@@ -6,7 +6,6 @@ import { WebApp } from "./app/WebApp";
 import { WebUiProviders } from "./app/WebUiProviders";
 import { registerServiceWorker } from "./registerServiceWorker";
 import "./styles/index.css";
-import "./ui/theme/tokens.css";
 
 registerServiceWorker();
 

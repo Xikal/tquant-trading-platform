@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo } from "react";
 import { Button } from "antd";
-import { backtestsApi, type PortfolioOptimizationResponse, type PositionPolicyResearchResponse } from "../../api/backtests";
-import { mlSignalsApi, type MLSignalOnlineLearningStatus, type StrategyCapacityResponse } from "../../api/mlSignals";
+import { backtestsApi, type PortfolioOptimizationResponse, type PortfolioOptimizationWeight, type PositionPolicyResearchResponse } from "../../api/backtests";
+import { mlSignalsApi, type MLSignalOnlineLearningStatus, type StrategyCapacityItem, type StrategyCapacityResponse } from "../../api/mlSignals";
 import { formatBacktestStrategy, formatInteger, formatPct, type BacktestStrategyOption } from "./backtestDisplay";
 import {
   capacityTone,
@@ -12,18 +12,29 @@ import {
   PanelTitle,
   TextField,
 } from "./BacktestResearchShared";
+import { DataTable } from "../../ui/table/DataTable";
+import { useBacktestResearchUiStore } from "../../stores/backtestResearchUiStore";
 
 export function MLCapacityPanel({ strategyOptions }: { strategyOptions: BacktestStrategyOption[] }) {
   const defaultStrategies = strategyOptions.slice(0, 2).map(([key]) => key).join(",");
-  const [status, setStatus] = useState<MLSignalOnlineLearningStatus | null>(null);
-  const [capacity, setCapacity] = useState<StrategyCapacityResponse | null>(null);
-  const [strategies, setStrategies] = useState(defaultStrategies || "first_board,volume_shrink");
-  const [runId, setRunId] = useState("");
-  const [markowitz, setMarkowitz] = useState<PortfolioOptimizationResponse | null>(null);
-  const [blackLitterman, setBlackLitterman] = useState<PortfolioOptimizationResponse | null>(null);
-  const [policy, setPolicy] = useState<PositionPolicyResearchResponse | null>(null);
-  const [loading, setLoading] = useState("");
-  const [error, setError] = useState("");
+  const strategies = useBacktestResearchUiStore((ui) => ui.capacityStrategies) || defaultStrategies || "first_board,volume_shrink";
+  const runId = useBacktestResearchUiStore((ui) => ui.capacityRunId);
+  const status = useBacktestResearchUiStore((ui) => ui.mlStatus);
+  const capacity = useBacktestResearchUiStore((ui) => ui.capacity);
+  const markowitz = useBacktestResearchUiStore((ui) => ui.markowitz);
+  const blackLitterman = useBacktestResearchUiStore((ui) => ui.blackLitterman);
+  const policy = useBacktestResearchUiStore((ui) => ui.policy);
+  const loading = useBacktestResearchUiStore((ui) => ui.capacityLoading);
+  const error = useBacktestResearchUiStore((ui) => ui.capacityError);
+  const setStrategies = useBacktestResearchUiStore((ui) => ui.setCapacityStrategies);
+  const setRunId = useBacktestResearchUiStore((ui) => ui.setCapacityRunId);
+  const setStatus = useBacktestResearchUiStore((ui) => ui.setMlStatus);
+  const setCapacity = useBacktestResearchUiStore((ui) => ui.setCapacity);
+  const setMarkowitz = useBacktestResearchUiStore((ui) => ui.setMarkowitz);
+  const setBlackLitterman = useBacktestResearchUiStore((ui) => ui.setBlackLitterman);
+  const setPolicy = useBacktestResearchUiStore((ui) => ui.setPolicy);
+  const setLoading = useBacktestResearchUiStore((ui) => ui.setCapacityLoading);
+  const setError = useBacktestResearchUiStore((ui) => ui.setCapacityError);
 
   const selectedStrategies = useMemo(
     () => strategies.split(",").map((item) => item.trim()).filter(Boolean),
@@ -132,17 +143,17 @@ export function MLCapacityPanel({ strategyOptions }: { strategyOptions: Backtest
         </div>
       ) : null}
       {markowitz?.weights?.length ? (
-        <div className="backtest-data-table compact" role="table" aria-label="Markowitz 权重">
-          <div className="row head" role="row"><span>策略</span><span>权重</span><span>均值</span><span>波动</span></div>
-          {markowitz.weights.slice(0, 8).map((item) => (
-            <div className="row" role="row" key={item.strategy_key}>
-              <span>{formatBacktestStrategy(item.strategy_key)}</span>
-              <span>{formatPct(item.weight_pct)}</span>
-              <span>{formatPct(item.avg_return_pct)}</span>
-              <span>{formatPct(item.volatility_pct)}</span>
-            </div>
-          ))}
-        </div>
+        <DataTable<PortfolioOptimizationWeight>
+          className="backtest-data-table compact"
+          rowKey="strategy_key"
+          dataSource={markowitz.weights.slice(0, 8)}
+          columns={[
+            { title: "策略", dataIndex: "strategy_key", render: (value) => formatBacktestStrategy(value) },
+            { title: "权重", dataIndex: "weight_pct", align: "right", render: (value) => formatPct(value) },
+            { title: "均值", dataIndex: "avg_return_pct", align: "right", render: (value) => formatPct(value) },
+            { title: "波动", dataIndex: "volatility_pct", align: "right", render: (value) => formatPct(value) },
+          ]}
+        />
       ) : null}
       {markowitz?.efficient_frontier?.length ? <EfficientFrontierChart points={markowitz.efficient_frontier} /> : null}
       {blackLitterman ? (
@@ -156,32 +167,32 @@ export function MLCapacityPanel({ strategyOptions }: { strategyOptions: Backtest
           RL Shadow：{policy.summary || "仅研究输出，不自动交易。"} 样本 {String(policy.shadow_reinforcement_learning?.sample_count ?? "--")}。
         </div>
       ) : null}
-      <div className="backtest-data-table capacity" role="table" aria-label="策略容量评估">
-        <div className="row head" role="row">
-          <span>策略</span>
-          <span>样本</span>
-          <span>成交额</span>
-          <span>50万</span>
-          <span>100万</span>
-          <span>500万</span>
-          <span>提示</span>
-        </div>
-        {(capacity?.items ?? []).map((item) => (
-          <div className="row" role="row" key={item.strategy_key}>
-            <span>{formatBacktestStrategy(item.strategy_key)}</span>
-            <span>{formatInteger(item.sample_count)} / {formatInteger(item.symbol_count)}</span>
-            <span>{formatMoneyCompact(item.avg_daily_amount)}</span>
-            {item.curve.slice(0, 3).map((point) => (
-              <span className={capacityTone(point.capacity_status)} key={`${item.strategy_key}-${point.capital}`}>
-                {point.capacity_status} · {formatPct(point.net_edge_pct)}
-                {point.almgren_chriss_cost_pct !== undefined ? ` / 分批${formatPct(point.almgren_chriss_cost_pct)}` : ""}
-              </span>
-            ))}
-            <span>{item.notes?.[0] || "容量评估完成"}</span>
-          </div>
-        ))}
-        {capacity?.items?.length ? null : <Empty text="点击“评估容量”后显示 Kyle Lambda 与资金冲击曲线。" />}
-      </div>
+      <DataTable<StrategyCapacityItem>
+        className="backtest-data-table capacity"
+        rowKey="strategy_key"
+        dataSource={capacity?.items ?? []}
+        locale={{ emptyText: <Empty text="点击“评估容量”后显示 Kyle Lambda 与资金冲击曲线。" /> }}
+        scroll={{ x: 1120 }}
+        columns={[
+          { title: "策略", dataIndex: "strategy_key", render: (value) => formatBacktestStrategy(value) },
+          { title: "样本", render: (_value, item) => `${formatInteger(item.sample_count)} / ${formatInteger(item.symbol_count)}` },
+          { title: "成交额", dataIndex: "avg_daily_amount", align: "right", render: (value) => formatMoneyCompact(value) },
+          ...[0, 1, 2].map((index) => ({
+            title: ["50万", "100万", "500万"][index],
+            render: (_value: unknown, item: StrategyCapacityItem) => {
+              const point = item.curve[index];
+              if (!point) return "--";
+              return (
+                <span className={capacityTone(point.capacity_status)}>
+                  {point.capacity_status} · {formatPct(point.net_edge_pct)}
+                  {point.almgren_chriss_cost_pct !== undefined ? ` / 分批${formatPct(point.almgren_chriss_cost_pct)}` : ""}
+                </span>
+              );
+            },
+          })),
+          { title: "提示", render: (_value, item) => item.notes?.[0] || "容量评估完成" },
+        ]}
+      />
     </section>
   );
 }

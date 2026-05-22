@@ -2,11 +2,14 @@ import { App as CapacitorApp, type AppState } from "@capacitor/app"
 import { Capacitor } from "@capacitor/core"
 import { Network, type ConnectionStatus } from "@capacitor/network"
 import { StatusBar, Style } from "@capacitor/status-bar"
-import { useEffect, useState } from "react"
+import { useEffect } from "react"
+import { useMobileUiStore } from "../stores/mobileUiStore"
+
+const isNativeApp = Capacitor.isNativePlatform()
 
 export function useNativeRuntime(onResume?: () => void) {
-  const [isNativeApp] = useState(() => Capacitor.isNativePlatform())
-  const [isOnline, setIsOnline] = useState(true)
+  const offline = useMobileUiStore((state) => state.offline)
+  const setOffline = useMobileUiStore((state) => state.setOffline)
 
   useEffect(() => {
     if (!isNativeApp) {
@@ -21,7 +24,7 @@ export function useNativeRuntime(onResume?: () => void) {
 
     void Network.getStatus()
       .then((status) => {
-        setIsOnline(status.connected)
+        setOffline(!status.connected)
       })
       .catch(() => undefined)
 
@@ -34,7 +37,7 @@ export function useNativeRuntime(onResume?: () => void) {
     })
 
     void Network.addListener("networkStatusChange", (status: ConnectionStatus) => {
-      setIsOnline(status.connected)
+      setOffline(!status.connected)
     }).then((listener) => {
       networkListener = listener
     })
@@ -43,10 +46,10 @@ export function useNativeRuntime(onResume?: () => void) {
       void activeListener?.remove()
       void networkListener?.remove()
     }
-  }, [isNativeApp, onResume])
+  }, [onResume, setOffline])
 
   return {
     isNativeApp,
-    isOnline
+    isOnline: !offline
   }
 }

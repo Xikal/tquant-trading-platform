@@ -1,4 +1,5 @@
-.backtest-run-picker {
+.backtest-run-picker,
+.backtest-window-card div {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
@@ -58,16 +59,6 @@
 .backtest-data-table.narrow .row {
   grid-template-columns: repeat(4, minmax(86px, 1fr));
   min-width: 0;
-}
-
-.backtest-data-table .row.caption {
-  display: block;
-  min-width: 0;
-  border-color: transparent;
-  background: transparent;
-  color: #0b1422;
-  font-weight: 900;
-  padding: 0;
 }
 
 .backtest-data-table .row.head {
@@ -171,12 +162,6 @@
 .backtest-window-card small {
   color: var(--muted);
   font-size: 12px;
-}
-
-.backtest-window-card div {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
 }
 
 .backtest-window-card b {

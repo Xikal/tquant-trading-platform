@@ -1,14 +1,5 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-
-export type ToastTone = "info" | "success" | "warning" | "error";
-
-export interface ToastMessage {
-  id: string;
-  title: string;
-  description?: string;
-  tone?: ToastTone;
-  sticky?: boolean;
-}
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, type ReactNode } from "react";
+import { useSharedUiStore, type ToastMessage } from "../../stores/sharedUiStore";
 
 interface ToastContextValue {
   pushToast: (message: Omit<ToastMessage, "id">) => void;
@@ -18,21 +9,21 @@ interface ToastContextValue {
 const ToastContext = createContext<ToastContextValue | null>(null);
 
 export function ToastProvider({ children }: { children: ReactNode }) {
-  const [messages, setMessages] = useState<ToastMessage[]>([]);
+  const messages = useSharedUiStore((state) => state.toasts);
+  const addToast = useSharedUiStore((state) => state.addToast);
+  const removeStoredToast = useSharedUiStore((state) => state.removeToast);
   const timers = useRef<number[]>([]);
 
   const removeToast = useCallback((id: string) => {
-    setMessages((current) => current.filter((item) => item.id !== id));
-  }, []);
+    removeStoredToast(id);
+  }, [removeStoredToast]);
 
   const pushToast = useCallback((message: Omit<ToastMessage, "id">) => {
-    const id = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
-    const next = { ...message, id };
-    setMessages((current) => [next, ...current].slice(0, 3));
+    const id = addToast(message);
     if (!message.sticky) {
       timers.current.push(window.setTimeout(() => removeToast(id), message.tone === "error" || message.tone === "warning" ? 6000 : 3500));
     }
-  }, [removeToast]);
+  }, [addToast, removeToast]);
 
   useEffect(() => () => {
     timers.current.forEach((timer) => window.clearTimeout(timer));

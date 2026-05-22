@@ -5,7 +5,6 @@ from typing import Literal
 from fastapi import Depends, HTTPException, status
 
 from app.core.auth import get_current_user
-from app.core.config import get_settings
 from app.core.user_permissions import paper_trade_enabled
 from app.models.entities import User
 
@@ -50,8 +49,6 @@ def ensure_permission(user: User, permission: PermissionName) -> None:
             status_code=status.HTTP_403_FORBIDDEN,
             detail=_permission_message(permission),
         )
-    if permission == "paper_trade":
-        _ensure_paper_trade_mfa(user)
 
 
 def require_permission(permission: PermissionName):
@@ -60,17 +57,6 @@ def require_permission(permission: PermissionName):
         return current_user
 
     return dependency
-
-
-def _ensure_paper_trade_mfa(user: User) -> None:
-    if not get_settings().auth_require_mfa_for_paper_trade:
-        return
-    if getattr(user, "mfa_totp_enabled", False):
-        return
-    raise HTTPException(
-        status_code=status.HTTP_403_FORBIDDEN,
-        detail="模拟盘下单权限要求先开启动态验证码，请在系统配置的登录保护中启用",
-    )
 
 
 def _permission_message(permission: PermissionName) -> str:

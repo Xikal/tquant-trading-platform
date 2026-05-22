@@ -1,100 +1,70 @@
-.backtest-form {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
+.backtest-ant-form {
+  width: 100%;
 }
 
-.backtest-field,
-.backtest-field-group,
-.backtest-form > .tq-field {
-  display: grid;
-  gap: 6px;
+.backtest-ant-form .ant-form-item {
+  margin-bottom: 12px;
 }
 
-.backtest-field.wide,
-.backtest-field-group.wide,
-.backtest-form > .tq-field.wide,
-.backtest-strategy-picker.wide,
-.backtest-submit-button.wide {
-  grid-column: 1 / -1;
-}
-
-.backtest-field span,
-.backtest-field-group > span,
-.backtest-strategy-picker > span {
-  color: #64748b;
+.backtest-ant-form .ant-form-item-label > label {
+  color: #475569;
   font-size: 12px;
   font-weight: 800;
 }
 
-.backtest-field input,
-.backtest-field select,
-.backtest-field-group input,
-.backtest-form .tq-input,
-.backtest-form .tq-input-wrap {
-  min-height: 34px;
-  width: 100%;
-  border: 1px solid var(--line);
+.backtest-ant-form .ant-input,
+.backtest-ant-form .ant-input-number,
+.backtest-ant-form .ant-select-selector {
+  border-color: var(--line);
   border-radius: 9px;
   background: #f9fbff;
-  color: var(--text);
-  padding: 7px 9px;
 }
 
-.backtest-field-group {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+.backtest-ant-form .ant-input-number,
+.backtest-ant-form .full-width {
+  width: 100%;
 }
 
-.backtest-field-group > span {
-  grid-column: 1 / -1;
-}
-
-.backtest-field-group label {
+.backtest-strategy-checkboxes {
   display: grid;
-  gap: 5px;
+  gap: 8px;
 }
 
-.backtest-field-group small {
-  color: var(--muted);
-  font-size: 11px;
-  font-weight: 800;
-}
-
-.backtest-strategy-picker {
-  display: grid;
-  gap: 7px;
-}
-
-.backtest-strategy-picker label {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  gap: 2px 8px;
-  align-items: center;
+.backtest-strategy-checkboxes .ant-checkbox-wrapper {
+  margin-inline-start: 0;
   padding: 8px 10px;
   border: 1px solid #dce5f0;
   border-radius: 10px;
   background: #f8fafc;
 }
 
-.backtest-strategy-picker label.selected {
+.backtest-strategy-checkboxes .ant-checkbox-wrapper-checked {
   border-color: rgba(214, 165, 92, 0.7);
   background: #fff8e8;
 }
 
-.backtest-strategy-picker input,
-.backtest-strategy-picker .ant-checkbox-wrapper {
-  grid-row: span 2;
-  accent-color: var(--accent);
+.backtest-strategy-option {
+  display: grid;
+  gap: 2px;
 }
 
-.backtest-strategy-picker strong {
+.backtest-strategy-option strong {
+  color: var(--text);
   font-size: 12px;
 }
 
-.backtest-strategy-picker small {
+.backtest-strategy-option small {
   color: var(--muted);
   font-family: "IBM Plex Mono", monospace;
   font-size: 10px;
+}
+
+.backtest-expert-fields {
+  width: 100%;
+}
+
+.backtest-number-setting {
+  width: min(150px, 100%);
 }
 
 .backtest-submit-button {

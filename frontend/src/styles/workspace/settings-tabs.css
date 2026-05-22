@@ -114,25 +114,6 @@
   gap: 12px;
 }
 
-.strategy-governance-card .settings-mini-row {
-  display: grid;
-  grid-template-columns: minmax(240px, 1.1fr) minmax(140px, 0.45fr) minmax(260px, 1fr) auto;
-  align-items: center;
-}
-
-.strategy-governance-card .settings-mini-row > span,
-.strategy-governance-card .settings-mini-row > small {
-  min-width: 0;
-}
-
-.strategy-governance-card .settings-mini-row .hint {
-  white-space: normal;
-}
-
-.feature-flags-card .settings-mini-row {
-  align-items: flex-start;
-}
-
 .settings-cards.role-separated.tabbed .compact-form-grid {
   grid-template-columns: repeat(auto-fit, minmax(150px, 220px));
   justify-content: start;
@@ -164,11 +145,4 @@
     grid-row: auto;
   }
 
-  .strategy-governance-card .settings-mini-row {
-    grid-template-columns: 1fr;
-  }
-
-  .strategy-governance-card .settings-row-actions {
-    justify-content: flex-start;
-  }
 }

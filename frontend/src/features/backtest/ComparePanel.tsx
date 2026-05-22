@@ -1,5 +1,6 @@
-import { lazy, Suspense, useMemo, useState } from "react";
+import { lazy, Suspense, useMemo } from "react";
 import { Button } from "antd";
+import type { BacktestCompareItem, BacktestMonthlyReturn } from "../../api/backtests";
 import {
   formatBacktestStrategy,
   formatInteger,
@@ -9,12 +10,15 @@ import {
 } from "./backtestDisplay";
 import type { BacktestResearchActions, BacktestResearchState } from "./BacktestResearchPanel";
 import { Empty, parseRunIdsLoose, PanelTitle, sortCompareItems } from "./BacktestResearchShared";
+import { DataTable } from "../../ui/table/DataTable";
+import { useBacktestResearchUiStore } from "../../stores/backtestResearchUiStore";
 
 const LazyBacktestCompareChart = lazy(() => import("./LazyBacktestCompareChart"));
 const LazyBacktestMonthlyHeatmap = lazy(() => import("./LazyBacktestMonthlyHeatmap"));
 
 export function ComparePanel({ state, actions }: { state: BacktestResearchState; actions: BacktestResearchActions }) {
-  const [sortKey, setSortKey] = useState<"return" | "sharpe" | "drawdown">("return");
+  const sortKey = useBacktestResearchUiStore((ui) => ui.compareSortKey);
+  const setSortKey = useBacktestResearchUiStore((ui) => ui.setCompareSortKey);
   const selectedRunIds = parseRunIdsLoose(state.compareRunIds);
   const compareItems = useMemo(
     () => sortCompareItems(state.compareResult?.items ?? [], sortKey),
@@ -46,23 +50,27 @@ export function ComparePanel({ state, actions }: { state: BacktestResearchState;
           {state.loading === "compare" ? "对比中..." : "运行对比"}
         </Button>
       </div>
-      <div className="backtest-data-table narrow" role="table" aria-label="回测对比指标">
-        <div className="row head" role="row">
-          <span>Run</span>
-          <Button type="text" size="small" onClick={() => setSortKey("return")}>收益</Button>
-          <Button type="text" size="small" onClick={() => setSortKey("sharpe")}>Sharpe</Button>
-          <Button type="text" size="small" onClick={() => setSortKey("drawdown")}>MaxDD</Button>
-        </div>
-        {compareItems.map((item) => (
-          <div className="row" role="row" key={item.run_id}>
-            <span>#{item.run_id} {item.name ?? ""}</span>
-            <span className={toneFromNumber(item.metrics?.total_return_pct)}>{formatPct(item.metrics?.total_return_pct)}</span>
-            <span>{formatNumber(item.metrics?.sharpe ?? item.metrics?.sharpe_ratio)}</span>
-            <span className="down">{formatPct(item.metrics?.max_drawdown_pct)}</span>
-          </div>
-        ))}
-        {compareItems.length ? null : <Empty text="选择至少 2 个已完成回测后运行对比。" />}
-      </div>
+      <DataTable<BacktestCompareItem>
+        className="backtest-data-table narrow"
+        rowKey="run_id"
+        dataSource={compareItems}
+        locale={{ emptyText: <Empty text="选择至少 2 个已完成回测后运行对比。" /> }}
+        columns={[
+          { title: "Run", render: (_value, item) => `#${item.run_id} ${item.name ?? ""}` },
+          {
+            title: <Button type="text" size="small" onClick={() => setSortKey("return")}>收益</Button>,
+            render: (_value, item) => <span className={toneFromNumber(item.metrics?.total_return_pct)}>{formatPct(item.metrics?.total_return_pct)}</span>,
+          },
+          {
+            title: <Button type="text" size="small" onClick={() => setSortKey("sharpe")}>Sharpe</Button>,
+            render: (_value, item) => formatNumber(item.metrics?.sharpe ?? item.metrics?.sharpe_ratio),
+          },
+          {
+            title: <Button type="text" size="small" onClick={() => setSortKey("drawdown")}>MaxDD</Button>,
+            render: (_value, item) => <span className="down">{formatPct(item.metrics?.max_drawdown_pct)}</span>,
+          },
+        ]}
+      />
       <Suspense fallback={<div className="backtest-chart-fallback">对比图加载中...</div>}>
         <LazyBacktestCompareChart result={state.compareResult} />
       </Suspense>
@@ -70,23 +78,18 @@ export function ComparePanel({ state, actions }: { state: BacktestResearchState;
       <Suspense fallback={<div className="backtest-chart-fallback">热力图加载中...</div>}>
         <LazyBacktestMonthlyHeatmap items={state.monthlyReturns?.items ?? []} />
       </Suspense>
-      <div className="backtest-data-table narrow" role="table" aria-label="月度收益">
-        <div className="row head" role="row">
-          <span>月份</span>
-          <span>策略</span>
-          <span>基准</span>
-          <span>交易</span>
-        </div>
-        {(state.monthlyReturns?.items ?? []).map((item) => (
-          <div className="row" role="row" key={item.month}>
-            <span>{item.month}</span>
-            <span className={toneFromNumber(item.return_pct)}>{formatPct(item.return_pct)}</span>
-            <span>{formatPct(item.benchmark_return_pct)}</span>
-            <span>{formatInteger(item.trade_count)}</span>
-          </div>
-        ))}
-        {state.monthlyReturns?.items?.length ? null : <Empty text="选择已完成回测后读取月度收益。" />}
-      </div>
+      <DataTable<BacktestMonthlyReturn>
+        className="backtest-data-table narrow"
+        rowKey="month"
+        dataSource={state.monthlyReturns?.items ?? []}
+        locale={{ emptyText: <Empty text="选择已完成回测后读取月度收益。" /> }}
+        columns={[
+          { title: "月份", dataIndex: "month" },
+          { title: "策略", dataIndex: "return_pct", render: (value) => <span className={toneFromNumber(value)}>{formatPct(value)}</span> },
+          { title: "基准", dataIndex: "benchmark_return_pct", render: (value) => formatPct(value) },
+          { title: "交易", dataIndex: "trade_count", align: "right", render: (value) => formatInteger(value) },
+        ]}
+      />
     </section>
   );
 }

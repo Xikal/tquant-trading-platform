@@ -86,7 +86,6 @@
 }
 
 .factor-hypothesis-list article,
-.factor-library-list article,
 .factor-health-list article {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
@@ -99,7 +98,6 @@
 }
 
 .factor-hypothesis-list article div,
-.factor-library-list article button,
 .factor-health-list article div {
   display: grid;
   gap: 4px;
@@ -107,24 +105,26 @@
 
 .factor-hypothesis-list span,
 .factor-hypothesis-list small,
-.factor-library-list span,
-.factor-library-list small,
 .factor-health-list span,
 .factor-health-list small {
   color: var(--text-secondary);
 }
 
-.factor-library-list article.active {
-  border-color: var(--accent-strong);
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent-strong) 28%, transparent);
+.factor-library-list .ant-table-row.active td {
+  background: color-mix(in srgb, var(--accent-strong) 8%, var(--panel-elevated));
 }
 
-.factor-library-list article button {
+.factor-table-name {
+  display: grid;
+  gap: 2px;
   padding: 0;
-  border: 0;
-  background: transparent;
-  color: var(--text);
+  height: auto;
   text-align: left;
+}
+
+.factor-table-name span {
+  color: var(--text-secondary);
+  font-size: 12px;
 }
 
 .factor-draft-editor textarea,

@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { Button, Input } from "antd";
 import type { InputRef } from "antd";
 import type { StrategyMeta } from "../../api/strategies";
 import { PRODUCTION_PLAYBOOK_TABS } from "../workspace-shared/workspaceConstants";
 import type { Page } from "../workspace-shared/workspaceTypes";
+import { useWorkspaceStore } from "../../stores/workspaceStore";
 
 interface CommandPaletteProps {
   open: boolean;
@@ -36,7 +37,8 @@ export function CommandPalette({
   onAnalyzeSymbol,
   onOpenStrategy,
 }: CommandPaletteProps) {
-  const [query, setQuery] = useState("");
+  const query = useWorkspaceStore((state) => state.commandQuery);
+  const setQuery = useWorkspaceStore((state) => state.setCommandQuery);
   const inputRef = useRef<InputRef | null>(null);
   const items = useMemo(() => buildItems(query, strategies), [query, strategies]);
 

@@ -1,6 +1,6 @@
-import { useState } from "react";
 import { Switch } from "antd";
 import { factorMiningApi } from "../../api/factorMining";
+import { useFactorMiningUiStore } from "../../stores/factorMiningUiStore";
 
 export function FactorActivationToggle({
   factorKey,
@@ -11,15 +11,16 @@ export function FactorActivationToggle({
   active: boolean;
   onChange: (active: boolean) => void;
 }) {
-  const [saving, setSaving] = useState(false);
+  const saving = useFactorMiningUiStore((state) => Boolean(state.activationSaving[factorKey]));
+  const setSaving = useFactorMiningUiStore((state) => state.setActivationSaving);
 
   async function toggle() {
-    setSaving(true);
+    setSaving(factorKey, true);
     try {
       const result = await factorMiningApi.updateActivation(factorKey, !active);
       onChange(result.active);
     } finally {
-      setSaving(false);
+      setSaving(factorKey, false);
     }
   }
 

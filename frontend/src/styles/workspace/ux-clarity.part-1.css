@@ -8,27 +8,20 @@
   background: #ffffff;
 }
 
-.login-field small {
+.playbook-hero .tabs small {
   color: #64748b;
   font-size: 11px;
   line-height: 1.35;
 }
 
-.login-error {
+.playbook-hero .tabs button {
   display: grid;
   gap: 3px;
 }
 
-.login-error span,
-.login-error small {
-  color: #b42318;
-}
-
 .decision-brief span,
 .stock-direct-action span,
-.strategy-purpose-strip span,
-.paper-action-card span,
-.paper-action-card small {
+.strategy-purpose-strip span {
   color: #64748b;
 }
 
@@ -101,7 +94,8 @@
   margin: 8px 0 6px;
 }
 
-.stock-direct-action strong {
+.stock-direct-action strong,
+.settings-section-title strong {
   color: #0f172a;
   font-size: 16px;
 }
@@ -130,11 +124,6 @@
   font-size: 12px;
 }
 
-.settings-cards.role-separated {
-  display: grid;
-  gap: 14px;
-}
-
 .settings-section {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -151,11 +140,6 @@
   align-items: baseline;
   justify-content: space-between;
   gap: 12px;
-}
-
-.settings-section-title strong {
-  color: #0f172a;
-  font-size: 16px;
 }
 
 .settings-section-title span {
@@ -176,6 +160,8 @@
 }
 
 .settings-cards.role-separated {
+  display: grid;
+  gap: 14px;
   grid-column: 1 / -1;
   grid-template-columns: minmax(0, 1fr);
   align-items: start;
@@ -190,30 +176,10 @@
   grid-column: 1 / -1;
 }
 
-.settings-cards.role-separated .setting-card,
-.settings-cards.role-separated .runtime-snapshot-panel {
+.settings-cards.role-separated .setting-card {
   min-width: 0;
 }
 
 .settings-cards.role-separated .compact-form-grid {
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-}
-
-.playbook-hero .tabs button {
-  display: grid;
-  gap: 3px;
-}
-
-.playbook-hero .tabs small {
-  color: #64748b;
-  font-size: 11px;
-  line-height: 1.35;
-}
-
-.paper-grid {
-  grid-template-areas:
-    "metrics metrics"
-    "order positions"
-    "bottom bottom"
-    "action action";
 }

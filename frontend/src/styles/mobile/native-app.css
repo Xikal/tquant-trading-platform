@@ -54,10 +54,6 @@ body.native-app-mode *::after {
   color: var(--mobile-negative);
 }
 
-.tone-neutral {
-  color: var(--mobile-text);
-}
-
 .tone-warning {
   color: var(--mobile-warning);
 }
@@ -77,14 +73,6 @@ body.native-app-mode *::after {
   justify-content: space-between;
   gap: 8px;
   margin-bottom: 4px;
-}
-
-.mobile-app-kicker {
-  display: block;
-  margin-bottom: 2px;
-  font-size: 9px;
-  letter-spacing: 0.04em;
-  color: var(--mobile-text-muted);
 }
 
 .mobile-app-topbar h1 {
@@ -136,13 +124,6 @@ body.native-app-mode *::after {
   font-size: 10px;
 }
 
-.mobile-app-add-button {
-  border-color: rgba(31, 111, 235, 0.22);
-  background: linear-gradient(180deg, #2b78ef 0%, #1f6feb 100%);
-  color: #fff;
-}
-
-.mobile-app-banner,
 .mobile-app-error,
 .mobile-app-callout {
   margin-bottom: 5px;
@@ -150,11 +131,6 @@ body.native-app-mode *::after {
   border-radius: 10px;
   font-size: 9px;
   line-height: 1.4;
-}
-
-.mobile-app-banner {
-  background: #edf5ff;
-  color: var(--mobile-blue);
 }
 
 .mobile-app-error {
@@ -185,8 +161,18 @@ body.native-app-mode *::after {
   min-width: 0;
 }
 
-.mobile-app-body > *,
-.mobile-app-list > * {
+.mobile-app-body > * {
   min-width: 0;
   max-width: 100%;
+}
+
+.mobile-app-empty {
+  padding: 12px 9px;
+  border: 1px dashed var(--mobile-border);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.72);
+  color: var(--mobile-text-muted);
+  font-size: 10px;
+  line-height: 1.4;
+  text-align: center;
 }

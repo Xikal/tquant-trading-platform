@@ -14,6 +14,7 @@ import {
 } from "./backtestDisplay";
 import type { BacktestResearchState } from "./BacktestResearchPanel";
 import { Empty, normalizeAttributionRows, PanelTitle } from "./BacktestResearchShared";
+import { DataTable } from "../../ui/table/DataTable";
 
 const LazyBacktestReturnDistribution = lazy(() => import("./LazyBacktestReturnDistribution"));
 
@@ -46,71 +47,62 @@ export function AttributionPanel({ state, equity }: { state: BacktestResearchSta
         <LazyBacktestReturnDistribution points={equity} />
       </Suspense>
       <PanelTitle title="相关性矩阵" meta="Pearson" />
-      <div
-        className={correlationGridClass(correlation?.strategies?.length ?? 0)}
-        role="table"
-        aria-label="策略相关性矩阵"
-      >
-        {correlation?.strategies?.length ? (
-          <>
-            <div className="cell head">策略</div>
-            {correlation.strategies.map((strategyName) => <div className="cell head" key={strategyName}>{strategyName}</div>)}
-            {correlation.strategies.map((strategyName, rowIndex) => (
-              <MatrixRow correlation={correlation} strategyName={strategyName} rowIndex={rowIndex} key={strategyName} />
-            ))}
-          </>
-        ) : <Empty text="选择多策略回测后显示策略相关性矩阵。" />}
-      </div>
+      <CorrelationMatrixTable correlation={correlation} />
     </section>
   );
 }
 
-function correlationGridClass(strategyCount: number): string {
-  if (strategyCount <= 0) {
-    return "backtest-correlation";
-  }
-  return `backtest-correlation backtest-correlation-cols-${Math.min(Math.max(strategyCount + 1, 3), 18)}`;
+interface CorrelationRow {
+  strategy: string;
+  values: Record<string, number | undefined>;
 }
 
-function MatrixRow({
-  correlation,
-  strategyName,
-  rowIndex,
-}: {
-  correlation: BacktestStrategyCorrelationResponse;
-  strategyName: string;
-  rowIndex: number;
-}) {
+function CorrelationMatrixTable({ correlation }: { correlation: BacktestStrategyCorrelationResponse | null }) {
+  const strategies = correlation?.strategies ?? [];
+  const rows: CorrelationRow[] = strategies.map((strategy, rowIndex) => ({
+    strategy,
+    values: Object.fromEntries(strategies.map((target, columnIndex) => [target, correlation?.matrix?.[rowIndex]?.[columnIndex]])),
+  }));
   return (
-    <>
-      <div className="cell head">{strategyName}</div>
-      {correlation.strategies.map((target, columnIndex) => (
-        <div className="cell" key={`${strategyName}-${target}`}>{formatNumber(correlation.matrix?.[rowIndex]?.[columnIndex])}</div>
-      ))}
-    </>
+    <DataTable<CorrelationRow>
+      className="backtest-correlation"
+      rowKey="strategy"
+      dataSource={rows}
+      locale={{ emptyText: <Empty text="选择多策略回测后显示策略相关性矩阵。" /> }}
+      scroll={{ x: Math.max(680, strategies.length * 96) }}
+      columns={[
+        { title: "策略", dataIndex: "strategy", fixed: "left" },
+        ...strategies.map((strategy) => ({
+          title: strategy,
+          render: (_value: unknown, row: CorrelationRow) => formatNumber(row.values[strategy]),
+        })),
+      ]}
+    />
   );
 }
 
 function AttributionTable({ title, items }: { title: string; items: NonNullable<BacktestAttributionResponse["industry"]> }) {
   return (
-    <div className="backtest-data-table narrow" role="table" aria-label={title}>
-      <div className="row caption" role="row">{title}</div>
-      <div className="row head" role="row">
-        <span>分桶</span>
-        <span>交易</span>
-        <span>胜率</span>
-        <span>收益贡献</span>
-      </div>
-      {items.slice(0, 6).map((item) => (
-        <div className="row" role="row" key={`${title}-${item.bucket}`}>
-          <span>{item.label || item.bucket}</span>
-          <span>{formatInteger(item.trade_count)}</span>
-          <span>{formatPct(item.win_rate_pct)}</span>
-          <span className={toneFromNumber(item.net_pnl ?? item.contribution_pct ?? item.return_pct)}>{formatMoneyOrPct(item.net_pnl, item.contribution_pct ?? item.return_pct)}</span>
-        </div>
-      ))}
-      {items.length ? null : <Empty text={`${title} 等待接口返回。`} />}
-    </div>
+    <DataTable<NonNullable<BacktestAttributionResponse["industry"]>[number]>
+      className="backtest-data-table narrow"
+      rowKey={(item) => `${title}-${item.bucket}`}
+      title={() => title}
+      dataSource={items.slice(0, 6)}
+      locale={{ emptyText: <Empty text={`${title} 等待接口返回。`} /> }}
+      columns={[
+        { title: "分桶", render: (_value, item) => item.label || item.bucket },
+        { title: "交易", dataIndex: "trade_count", align: "right", render: (value) => formatInteger(value) },
+        { title: "胜率", dataIndex: "win_rate_pct", align: "right", render: (value) => formatPct(value) },
+        {
+          title: "收益贡献",
+          align: "right",
+          render: (_value, item) => {
+            const value = item.net_pnl ?? item.contribution_pct ?? item.return_pct;
+            return <span className={toneFromNumber(value)}>{formatMoneyOrPct(item.net_pnl, item.contribution_pct ?? item.return_pct)}</span>;
+          },
+        },
+      ]}
+    />
   );
 }
 
@@ -125,26 +117,24 @@ function StrategyDecompositionTable({ attribution }: { attribution: BacktestAttr
     .sort((a, b) => Math.abs(b.returnValue) - Math.abs(a.returnValue))
     .slice(0, 10);
   return (
-    <div className="backtest-data-table decomposition" role="table" aria-label="策略拆解对比">
-      <div className="row caption" role="row">策略拆解对比</div>
-      <div className="row head" role="row">
-        <span>类型</span>
-        <span>分桶</span>
-        <span>样本</span>
-        <span>胜率</span>
-        <span>收益贡献</span>
-      </div>
-      {rows.map((item) => (
-        <div className="row" role="row" key={`${item.group}-${item.label}`}>
-          <span>{item.group}</span>
-          <span>{item.label}</span>
-          <span>{formatInteger(item.tradeCount)}</span>
-          <span>{formatPct(item.winRate)}</span>
-          <span className={toneFromNumber(item.returnValue)}>{formatMoneyOrPct(item.netPnl, item.returnValue)}</span>
-        </div>
-      ))}
-      {rows.length ? null : <Empty text="暂无可拆解的策略归因数据。" />}
-    </div>
+    <DataTable<(typeof rows)[number]>
+      className="backtest-data-table decomposition"
+      rowKey={(item) => `${item.group}-${item.label}`}
+      title={() => "策略拆解对比"}
+      dataSource={rows}
+      locale={{ emptyText: <Empty text="暂无可拆解的策略归因数据。" /> }}
+      columns={[
+        { title: "类型", dataIndex: "group" },
+        { title: "分桶", dataIndex: "label" },
+        { title: "样本", dataIndex: "tradeCount", align: "right", render: (value) => formatInteger(value) },
+        { title: "胜率", dataIndex: "winRate", align: "right", render: (value) => formatPct(value) },
+        {
+          title: "收益贡献",
+          align: "right",
+          render: (_value, item) => <span className={toneFromNumber(item.returnValue)}>{formatMoneyOrPct(item.netPnl, item.returnValue)}</span>,
+        },
+      ]}
+    />
   );
 }
 

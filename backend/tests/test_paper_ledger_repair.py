@@ -23,10 +23,8 @@ class PaperLedgerRepairTests(unittest.TestCase):
     def setUp(self) -> None:
         self._auth_secret_original = environ.get("AUTH_SECRET_KEY")
         self._admin_token_original = environ.get("ADMIN_API_TOKEN")
-        self._mfa_requirement_original = environ.get("AUTH_REQUIRE_MFA_FOR_PAPER_TRADE")
         environ["AUTH_SECRET_KEY"] = "paper-ledger-secret-0123456789abcdef0123456789abcdef0123456789abcdef"
         environ["ADMIN_API_TOKEN"] = "test-admin-token"
-        environ["AUTH_REQUIRE_MFA_FOR_PAPER_TRADE"] = "false"
         get_settings.cache_clear()
         clear_rate_limit_events()
         engine = create_engine(
@@ -55,7 +53,6 @@ class PaperLedgerRepairTests(unittest.TestCase):
     def tearDown(self) -> None:
         self._restore_env("AUTH_SECRET_KEY", self._auth_secret_original)
         self._restore_env("ADMIN_API_TOKEN", self._admin_token_original)
-        self._restore_env("AUTH_REQUIRE_MFA_FOR_PAPER_TRADE", self._mfa_requirement_original)
         get_settings.cache_clear()
 
     def test_service_rebuilds_account_after_invalid_oversell(self) -> None:

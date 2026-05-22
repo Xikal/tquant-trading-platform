@@ -38,10 +38,10 @@ export const ALL_PLAYBOOK_TABS = [
 ] as const;
 
 export const PAGE_PATHS: Record<Page, string> = {
-  monitor: "/",
+  monitor: "/monitor",
   emotion: "/emotion",
   analysis: "/analysis",
-  playbook: "/low-buy",
+  playbook: "/playbook",
   strategy: "/strategy",
   paper: "/paper",
   settings: "/settings",
@@ -49,9 +49,11 @@ export const PAGE_PATHS: Record<Page, string> = {
 
 export const PATH_PAGE_MAP: Record<string, Page> = {
   "/": "monitor",
+  "/monitor": "monitor",
   "/emotion": "emotion",
   "/analysis": "analysis",
   "/low-buy": "playbook",
+  "/playbook": "playbook",
   "/strategy": "strategy",
   "/paper": "paper",
   "/performance": "paper",

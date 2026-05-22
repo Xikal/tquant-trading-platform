@@ -19,43 +19,12 @@
   background: #fef2f2;
 }
 
-.settings-mini-list {
-  display: grid;
-  gap: 6px;
-  margin-top: 8px;
-}
-
-.settings-mini-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  padding: 6px 8px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: #f8fafc;
-  color: var(--muted);
-  font-size: 11px;
-}
-
-.settings-mini-row span {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  min-width: 120px;
-}
-
-.settings-mini-row span .hint {
-  display: block;
-  margin-top: 2px;
-  white-space: nowrap;
-}
-
-.settings-mini-row strong {
-  flex: 0 0 auto;
-  font-size: 11px;
-}
-
-.sector-filter-summary {
+.sector-filter-summary,
+.actions,
+.card-actions,
+.report-pill-row,
+.badge-row,
+.tabs {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -106,78 +75,6 @@
   background: #fffbeb;
 }
 
-.settings-row-actions {
-  display: inline-flex;
-  flex: 0 0 auto;
-  gap: 4px;
-}
-
-.settings-row-actions button {
-  padding: 4px 7px;
-  border-radius: 6px;
-  border: 1px solid var(--line);
-  background: #ffffff;
-  color: var(--ink);
-  font-size: 10px;
-}
-
-.settings-row-actions button:hover:not(:disabled) {
-  border-color: var(--accent);
-}
-
-.governance-status.active,
-.task-ok,
-.task-running {
-  color: #057a55;
-}
-
-.governance-status.watch {
-  color: #b45309;
-}
-
-.governance-status.paused,
-.governance-status.deprecated,
-.task-error {
-  color: #991b1b;
-}
-
-.governance-status.research {
-  color: #475569;
-}
-
-.paper-hero {
-  grid-area: hero;
-}
-
-.paper-metrics {
-  grid-area: metrics;
-  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
-}
-
-.paper-order {
-  grid-area: order;
-}
-
-.paper-positions {
-  grid-area: positions;
-}
-
-.paper-orders {
-  grid-area: orders;
-}
-
-.paper-trades {
-  grid-area: trades;
-}
-
-.paper-performance {
-  grid-area: performance;
-}
-
-.paper-market-performance {
-  grid-area: market;
-}
-
 .panel.dark {
   background: linear-gradient(180deg, var(--panel), var(--deep));
   color: #dde3ec;
@@ -196,18 +93,6 @@
   margin: 0;
   font-size: 15px;
   line-height: 1.2;
-}
-
-.actions,
-.filter-row,
-.card-actions,
-.report-pill-row,
-.badge-row,
-.tabs {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  flex-wrap: wrap;
 }
 
 .hint,

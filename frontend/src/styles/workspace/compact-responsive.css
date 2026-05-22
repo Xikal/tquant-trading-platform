@@ -3,25 +3,17 @@
   .monitor-grid,
   .analysis-grid,
   .playbook-grid,
-  .research-grid,
-  .settings-grid,
-  .research-hero {
+  .settings-grid {
     grid-template-columns: 1fr;
     grid-template-areas: none;
   }
 
   .wide,
-  .hero-card,
   .chart-panel,
-  .report,
   .settings-cards,
-  .analysis-grid .hero-card,
   .analysis-grid .chart-panel,
   .analysis-grid .split,
-  .analysis-grid .log-strip,
-  .playbook-grid .hero-card,
-  .research-grid .hero-card,
-  .research-grid .report {
+  .analysis-grid .log-strip {
     grid-column: auto;
   }
 
@@ -48,10 +40,6 @@
   .playbook-buy,
   .playbook-near,
   .playbook-watch,
-  .research-hero,
-  .research-run,
-  .research-samples,
-  .research-report,
   .settings-hero,
   .settings-cards,
   .settings-snapshot {

@@ -182,32 +182,6 @@
   padding: 14px;
 }
 
-.paper-tab-strip {
-  display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
-  gap: 8px;
-}
-
-.paper-tab-strip button {
-  display: grid;
-  gap: 3px;
-  padding: 10px 12px;
-  text-align: left;
-  border: 1px solid var(--line, rgba(100, 116, 139, 0.18));
-  border-radius: 10px;
-  background: #fff;
-}
-
-.paper-tab-strip button.active {
-  border-color: rgba(210, 160, 84, 0.6);
-  background: #fffaf0;
-}
-
-.paper-tab-strip button span {
-  color: var(--muted);
-  font-size: 11px;
-}
-
 .paper-tab-panel {
   min-height: 360px;
 }

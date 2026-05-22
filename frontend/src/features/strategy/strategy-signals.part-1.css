@@ -1,5 +1,4 @@
-.strategy-signals-panel,
-.strategy-signal-cards {
+.strategy-signals-panel {
   display: grid;
   gap: 12px;
 }
@@ -9,80 +8,6 @@
   gap: 10px;
   grid-template-columns: minmax(180px, 1.2fr) minmax(150px, 220px) minmax(130px, 180px) minmax(130px, 180px) auto;
   align-items: end;
-}
-
-.strategy-advanced-fields {
-  border: 1px solid var(--strategy-border);
-  border-radius: 12px;
-  padding: 10px;
-}
-
-.strategy-advanced-fields summary {
-  cursor: pointer;
-  font-size: 12px;
-  font-weight: 900;
-  list-style-position: inside;
-}
-
-.strategy-advanced-grid {
-  display: grid;
-  gap: 10px;
-  grid-template-columns: repeat(3, minmax(170px, 1fr));
-  margin-top: 10px;
-}
-
-.strategy-advanced-grid .tq-field,
-.strategy-advanced-grid label {
-  min-width: 0;
-}
-
-.strategy-signal-card {
-  background: var(--strategy-bg-soft);
-  border: 1px solid var(--strategy-border);
-  border-radius: 12px;
-  display: grid;
-  gap: 6px;
-  padding: 12px;
-}
-
-.strategy-signal-card span {
-  color: var(--strategy-muted);
-}
-
-.strategy-signal-table {
-  display: grid;
-  gap: 7px;
-  overflow-x: auto;
-}
-
-.strategy-signal-row {
-  display: grid;
-  grid-template-columns: 94px minmax(150px, 1fr) 92px 64px minmax(150px, 1fr) minmax(240px, 1.4fr);
-  gap: 8px;
-  align-items: center;
-  min-width: 920px;
-  padding: 8px 10px;
-  border: 1px solid var(--strategy-border);
-  border-radius: 12px;
-  background: var(--strategy-bg);
-  color: var(--strategy-text);
-  font-size: 12px;
-}
-
-.strategy-signal-row.head {
-  background: var(--strategy-bg-soft);
-  color: var(--strategy-muted);
-  font-weight: 900;
-}
-
-.strategy-signal-row strong {
-  display: grid;
-  gap: 2px;
-}
-
-.strategy-signal-row small {
-  color: var(--strategy-muted);
-  font-size: 11px;
 }
 
 .strategy-signal-case-grid {
@@ -186,25 +111,6 @@
 
 .strategy-history-summary strong {
   font-size: 18px;
-}
-
-.strategy-history-table {
-  display: grid;
-  gap: 7px;
-  overflow-x: auto;
-}
-
-.strategy-history-row {
-  align-items: center;
-  background: var(--strategy-bg);
-  border: 1px solid var(--strategy-border);
-  border-radius: 12px;
-  color: var(--strategy-text);
-  display: grid;
-  gap: 10px;
-  grid-template-columns: minmax(180px, 1.2fr) minmax(180px, 1fr) 92px 92px 92px 150px 160px;
-  min-width: 1080px;
-  padding: 10px 12px;
 }
 
 .strategy-history-actions {

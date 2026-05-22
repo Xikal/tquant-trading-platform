@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo } from "react";
 import { Button } from "antd-mobile";
 import { Icon } from "./mobileSections";
+import { useMobileUiStore } from "../stores/mobileUiStore";
 
 export function MobileSectorSettingsSheet({
   open,
@@ -17,7 +18,8 @@ export function MobileSectorSettingsSheet({
   onClose: () => void;
   onSave: (nextExcluded: string[]) => Promise<boolean>;
 }) {
-  const [selected, setSelected] = useState<string[]>(excludedSectors);
+  const selected = useMobileUiStore((state) => state.sectorSelection);
+  const setSelected = useMobileUiStore((state) => state.setSectorSelection);
 
   useEffect(() => {
     if (open) {

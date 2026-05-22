@@ -16,7 +16,7 @@ import type {
   PaperTradeTag,
   RiskEventItem,
 } from "../../types";
-import { memo, useEffect, useMemo, useState } from "react";
+import { memo, useEffect, useMemo } from "react";
 import { Button } from "antd";
 import { PixelTraderWorker } from "./PixelTraderWorker";
 import { PaperDetailTabs } from "./PaperDetailTabs";
@@ -28,6 +28,7 @@ import {
   PaperPositionsPanel,
 } from "./PaperTradingSections";
 import type { PaperOrderDraft } from "../workspace-shared/workspaceTypes";
+import { usePaperUiStore } from "../../stores/paperUiStore";
 
 export interface PaperTradingPageProps {
   account: PaperAccount | null;
@@ -93,9 +94,12 @@ export const PaperTradingPage = memo(function PaperTradingPage({
   const paperLoading = loading === "paper";
   const orderLoading = loading === "paper-order";
   const autoTradingRunning = Boolean(autoTradingStatus?.running);
-  const [clockMs, setClockMs] = useState(() => Date.now());
-  const [orderModalOpen, setOrderModalOpen] = useState(false);
-  const [dismissedConfirmationKey, setDismissedConfirmationKey] = useState("");
+  const clockMs = usePaperUiStore((state) => state.clockMs);
+  const setClockMs = usePaperUiStore((state) => state.setClockMs);
+  const orderModalOpen = usePaperUiStore((state) => state.orderModalOpen);
+  const dismissedConfirmationKey = usePaperUiStore((state) => state.dismissedConfirmationKey);
+  const setOrderModalOpen = usePaperUiStore((state) => state.setOrderModalOpen);
+  const setDismissedConfirmationKey = usePaperUiStore((state) => state.setDismissedConfirmationKey);
   const pendingConfirmation = useMemo(() => (
     intradayConfirmations.find((item) => item.confirmed || item.late_confirmed) ?? intradayConfirmations[0] ?? null
   ), [intradayConfirmations]);

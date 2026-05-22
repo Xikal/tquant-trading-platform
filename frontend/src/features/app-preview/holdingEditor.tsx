@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react"
+import { useEffect } from "react"
 import { Button, Input, Popup } from "antd-mobile"
 import type { WatchlistItem } from "../../types"
+import { useMobileUiStore } from "../../stores/mobileUiStore"
 
 export interface HoldingEditorSeed {
   symbol: string
@@ -47,24 +48,17 @@ export function HoldingEditorSheet({
   onClose: () => void
   onSubmit: (payload: Omit<WatchlistItem, "created_at">) => Promise<void> | void
 }) {
-  const [symbol, setSymbol] = useState("")
-  const [costBasis, setCostBasis] = useState("")
-  const [basePosition, setBasePosition] = useState("0")
-  const [availablePosition, setAvailablePosition] = useState("0")
-  const [formError, setFormError] = useState("")
+  const holdingForm = useMobileUiStore((state) => state.holdingForm)
+  const setHoldingForm = useMobileUiStore((state) => state.setHoldingForm)
+  const resetHoldingForm = useMobileUiStore((state) => state.resetHoldingForm)
+  const { symbol, costBasis, basePosition, availablePosition, formError } = holdingForm
 
   useEffect(() => {
     if (!open) {
       return
     }
-    setSymbol(seed.symbol)
-    setCostBasis(
-      typeof seed.cost_basis === "number" && Number.isFinite(seed.cost_basis) ? String(seed.cost_basis) : ""
-    )
-    setBasePosition(String(seed.base_position))
-    setAvailablePosition(String(seed.available_position))
-    setFormError("")
-  }, [open, seed])
+    resetHoldingForm(seed)
+  }, [open, resetHoldingForm, seed])
 
   const numericBase = parseLots(basePosition)
   const numericAvailable = parseLots(availablePosition)
@@ -76,26 +70,26 @@ export function HoldingEditorSheet({
     const normalizedCost = parseCost(costBasis)
 
     if (!normalizedSymbol) {
-      setFormError("代码必填")
+      setHoldingForm({ formError: "代码必填" })
       return
     }
 
     if (normalizedBase <= 0) {
-      setFormError("持仓数大于 0")
+      setHoldingForm({ formError: "持仓数大于 0" })
       return
     }
 
     if (!isLotAligned(normalizedBase) || !isLotAligned(normalizedAvailable)) {
-      setFormError("股数填 100 的倍数")
+      setHoldingForm({ formError: "股数填 100 的倍数" })
       return
     }
 
     if (normalizedAvailable > normalizedBase) {
-      setFormError("可用数不能大于持仓")
+      setHoldingForm({ formError: "可用数不能大于持仓" })
       return
     }
 
-    setFormError("")
+    setHoldingForm({ formError: "" })
     await onSubmit({
       symbol: normalizedSymbol,
       name: normalizedSymbol === seed.symbol.trim().toUpperCase() ? seed.name.trim() : "",
@@ -132,7 +126,7 @@ export function HoldingEditorSheet({
             <span>代码</span>
             <Input
               value={symbol}
-              onChange={(value) => setSymbol(value.toUpperCase())}
+              onChange={(value) => setHoldingForm({ symbol: value.toUpperCase() })}
               placeholder="600000.SH"
               autoCapitalize="characters"
             />
@@ -145,7 +139,7 @@ export function HoldingEditorSheet({
             <span>成本价</span>
             <Input
               value={costBasis}
-              onChange={setCostBasis}
+              onChange={(value) => setHoldingForm({ costBasis: value })}
               placeholder="0.000"
               inputMode="decimal"
             />
@@ -154,15 +148,15 @@ export function HoldingEditorSheet({
           <div className="mobile-holding-field">
             <span>持仓数</span>
             <div className="mobile-stepper">
-              <Button fill="none" className="mobile-step-button" onClick={() => setBasePosition(String(stepLots(numericBase, -100)))}>
+              <Button fill="none" className="mobile-step-button" onClick={() => setHoldingForm({ basePosition: String(stepLots(numericBase, -100)) })}>
                 -100
               </Button>
               <Input
                 value={basePosition}
-                onChange={setBasePosition}
+                onChange={(value) => setHoldingForm({ basePosition: value })}
                 inputMode="numeric"
               />
-              <Button fill="none" className="mobile-step-button" onClick={() => setBasePosition(String(stepLots(numericBase, 100)))}>
+              <Button fill="none" className="mobile-step-button" onClick={() => setHoldingForm({ basePosition: String(stepLots(numericBase, 100)) })}>
                 +100
               </Button>
             </div>
@@ -174,19 +168,19 @@ export function HoldingEditorSheet({
               <Button
                 fill="none"
                 className="mobile-step-button"
-                onClick={() => setAvailablePosition(String(stepLots(numericAvailable, -100)))}
+                onClick={() => setHoldingForm({ availablePosition: String(stepLots(numericAvailable, -100)) })}
               >
                 -100
               </Button>
               <Input
                 value={availablePosition}
-                onChange={setAvailablePosition}
+                onChange={(value) => setHoldingForm({ availablePosition: value })}
                 inputMode="numeric"
               />
               <Button
                 fill="none"
                 className="mobile-step-button"
-                onClick={() => setAvailablePosition(String(stepLots(numericAvailable, 100)))}
+                onClick={() => setHoldingForm({ availablePosition: String(stepLots(numericAvailable, 100)) })}
               >
                 +100
               </Button>

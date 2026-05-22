@@ -1,5 +1,5 @@
-import { lazy, Suspense, useEffect, useState } from "react";
-import { Button, Checkbox, Segmented } from "antd";
+import { lazy, Suspense, useEffect } from "react";
+import { Button } from "antd";
 import type {
   BacktestAttribution,
   BacktestExecutionModel,
@@ -10,8 +10,8 @@ import type {
   BacktestTrade,
   EquityPoint,
 } from "../../api/backtests";
+import type { BacktestFormState } from "./backtestForms";
 import {
-  BACKTEST_EXECUTION_MODELS,
   formatBacktestStrategies,
   formatBacktestStrategy,
   formatDateTime,
@@ -21,12 +21,10 @@ import {
   formatPct,
   formatPrice,
   formatResourceTier,
-  resourceTierHint,
   backtestVerdictThresholds,
   loadBacktestVerdictThresholds,
   percentFromRatio,
   toneFromNumber,
-  BACKTEST_RESOURCE_TIER_OPTIONS,
 } from "./backtestDisplay";
 import { EmptyLine, Metric, PanelHeader, ProgressCell } from "./BacktestDashboard.components";
 import {
@@ -38,27 +36,14 @@ import {
 } from "./BacktestDashboard.helpers";
 import { BacktestResearchPanel, type BacktestResearchActions, type BacktestResearchState } from "./BacktestResearchPanel";
 import { useBacktestStrategyOptions } from "./useBacktestStrategyOptions";
-import { DateField, NumberField, SelectField, TextField } from "../../components/shared/FormFields";
-import { ErrorBanner } from "../../components/shared/Feedback";
 import { backtestVerdict } from "../../utils/uxClarity";
+import { useBacktestUiStore } from "../../stores/backtestUiStore";
+import { DataTable } from "../../ui/table/DataTable";
+import { BacktestSubmitPanel } from "./BacktestSubmitPanel";
 
 const LazyBacktestEquityChart = lazy(() => import("./LazyBacktestEquityChart"));
 
-export interface BacktestFormState {
-  name: string;
-  start_date: string;
-  end_date: string;
-  initial_capital: string;
-  strategies: string[];
-  execution_model: BacktestExecutionModel;
-  resource_tier: BacktestResourceTier;
-  max_position_pct: string;
-  max_positions: string;
-  max_daily_loss_pct: string;
-  max_single_order_pct: string;
-  min_cash_reserve: string;
-  benchmark: string;
-}
+export type { BacktestFormState } from "./backtestForms";
 
 export interface BacktestDashboardProps {
   form: BacktestFormState;
@@ -91,7 +76,6 @@ export function BacktestDashboard({
   research,
   researchActions,
   onFormChange,
-  onToggleStrategy,
   onSubmit,
   onRefresh,
   onSelectRun,
@@ -101,18 +85,20 @@ export function BacktestDashboard({
   const selectedId = selectedRun?.id ?? runs[0]?.id;
   const selectedMetrics = selectedRun ? resolveMetrics(selectedRun) : null;
   const selectedAttribution = selectedRun ? resolveAttribution(selectedRun) : null;
-  const [mode, setMode] = useState<"quick" | "expert">("quick");
-  const [, setThresholdVersion] = useState(0);
+  const mode = useBacktestUiStore((state) => state.mode);
+  useBacktestUiStore((state) => state.verdictThresholdVersion);
+  const setMode = useBacktestUiStore((state) => state.setMode);
+  const bumpVerdictThresholdVersion = useBacktestUiStore((state) => state.bumpVerdictThresholdVersion);
 
   useEffect(() => {
     let active = true;
     void loadBacktestVerdictThresholds().then(() => {
-      if (active) setThresholdVersion((value) => value + 1);
+      if (active) bumpVerdictThresholdVersion();
     });
     return () => {
       active = false;
     };
-  }, []);
+  }, [bumpVerdictThresholdVersion]);
 
   return (
     <section className="page-grid backtest-grid">
@@ -134,78 +120,18 @@ export function BacktestDashboard({
         </details>
       </div>
 
-      <aside className="panel backtest-submit">
-        <PanelHeader title="提交回测任务" action={<Button size="small" onClick={onRefresh} disabled={loading === "list"}>刷新</Button>} />
-        {notice ? <div className="backtest-notice">{notice}</div> : null}
-        {error ? <ErrorBanner message={error} /> : null}
-        <Segmented
-          className="backtest-mode-segmented"
-          block
-          value={mode}
-          onChange={(value) => setMode(value as "quick" | "expert")}
-          options={[
-            { label: "快速模式", value: "quick" },
-            { label: "专家模式", value: "expert" },
-          ]}
-        />
-        <p className="backtest-helper">{mode === "quick" ? "只需要选择策略和日期，系统会用默认仓位、滑点和费用跑出结果。" : "专家模式可调整成交模型、仓位上限、现金保留和风控参数。"}</p>
-        <div className="backtest-form">
-          <TextField fieldClassName="wide" label="任务名称" value={form.name} onChange={(event) => onFormChange({ name: event.target.value })} />
-          <div className="backtest-field-group wide">
-            <span>日期范围</span>
-            <DateField label="开始" value={form.start_date} onChange={(event) => onFormChange({ start_date: event.target.value })} />
-            <DateField label="结束" value={form.end_date} onChange={(event) => onFormChange({ end_date: event.target.value })} />
-          </div>
-          <NumberField label="初始资金" value={form.initial_capital} onChange={(event) => onFormChange({ initial_capital: event.target.value })} />
-          <TextField label="基准" value={form.benchmark} onChange={(event) => onFormChange({ benchmark: event.target.value })} />
-          <SelectField
-            fieldClassName="wide"
-            label="执行模型"
-            value={form.execution_model}
-            options={BACKTEST_EXECUTION_MODELS.map(([value, label]) => ({ value, label }))}
-            onChange={(event) => onFormChange({ execution_model: event.target.value as BacktestExecutionModel })}
-          />
-          {mode === "expert" ? <SelectField
-            fieldClassName="wide"
-            label="资源等级"
-            value={form.resource_tier}
-            options={BACKTEST_RESOURCE_TIER_OPTIONS.map(([value, label]) => ({ value, label }))}
-            onChange={(event) => onFormChange({ resource_tier: event.target.value as BacktestResourceTier })}
-          /> : null}
-          {mode === "expert" ? <p className="backtest-helper wide">{resourceTierHint(form.resource_tier)}</p> : null}
-          <div className="backtest-strategy-picker wide">
-            <span>策略多选</span>
-            {strategyOptions.map(([key, label]) => (
-              <label className={form.strategies.includes(key) ? "selected" : ""} key={key}>
-                <Checkbox
-                  checked={form.strategies.includes(key)}
-                  onChange={() => onToggleStrategy(key)}
-                />
-                <strong>{label}</strong>
-                <small>{key}</small>
-              </label>
-            ))}
-          </div>
-          {mode === "expert" ? (
-            <>
-              <NumberField label="单票仓位" suffix="%" value={form.max_position_pct} onChange={(event) => onFormChange({ max_position_pct: event.target.value })} />
-              <NumberField label="最大持仓数" value={form.max_positions} onChange={(event) => onFormChange({ max_positions: event.target.value })} />
-              <NumberField label="日亏损暂停" suffix="%" value={form.max_daily_loss_pct} onChange={(event) => onFormChange({ max_daily_loss_pct: event.target.value })} />
-              <NumberField label="单笔上限" suffix="%" value={form.max_single_order_pct} onChange={(event) => onFormChange({ max_single_order_pct: event.target.value })} />
-              <NumberField fieldClassName="wide" label="最低现金保留" value={form.min_cash_reserve} onChange={(event) => onFormChange({ min_cash_reserve: event.target.value })} />
-            </>
-          ) : null}
-          <Button
-            className="backtest-submit-button wide"
-            type="primary"
-            onClick={onSubmit}
-            loading={loading === "submit"}
-            disabled={loading === "submit"}
-          >
-            提交任务
-          </Button>
-        </div>
-      </aside>
+      <BacktestSubmitPanel
+        form={form}
+        loading={loading}
+        error={error}
+        notice={notice}
+        mode={mode}
+        strategyOptions={strategyOptions}
+        onModeChange={setMode}
+        onFormChange={onFormChange}
+        onSubmit={onSubmit}
+        onRefresh={onRefresh}
+      />
 
       <section className="panel backtest-runs">
         <PanelHeader title="任务列表" action={<span className="backtest-muted">{runs.length} 条</span>} />
@@ -274,32 +200,58 @@ export function BacktestDashboard({
 
       <section className="panel backtest-trades">
         <PanelHeader title="交易明细" action={<span className="backtest-muted">{trades.length} 笔</span>} />
-        <div className="backtest-trade-table" role="table" aria-label="回测交易明细">
-          <div className="backtest-trade-row head" role="row">
-            <span>日期</span>
-            <span>标的</span>
-            <span>方向</span>
-            <span>数量</span>
-            <span>成交价</span>
-            <span>净额</span>
-            <span>策略</span>
-            <span>收益</span>
-            <span>退出</span>
-          </div>
-          {trades.length ? trades.map((trade) => (
-            <div className="backtest-trade-row" role="row" key={trade.id}>
-              <span>{trade.trade_date}</span>
-              <strong>{trade.symbol}</strong>
-              <span className={trade.side === "buy" ? "buy" : "sell"}>{trade.side}</span>
-              <span>{formatInteger(trade.quantity)}</span>
-              <span>{formatPrice(trade.price)}</span>
-              <span>{formatMoney(trade.net_amount)}</span>
-              <span>{formatBacktestStrategy(trade.strategy_key ?? trade.strategy)}</span>
-              <span className={toneFromNumber(trade.return_pct)}>{formatPct(trade.return_pct)}</span>
-              <span>{trade.exit_reason || "--"}</span>
-            </div>
-          )) : <EmptyLine text="暂无成交明细。" />}
-        </div>
+        <DataTable<BacktestTrade>
+          rowKey={(trade) => String(trade.id)}
+          dataSource={trades}
+          locale={{ emptyText: <EmptyLine text="暂无成交明细。" /> }}
+          scroll={{ x: 980, y: 360 }}
+          columns={[
+            { title: "日期", dataIndex: "trade_date" },
+            {
+              title: "标的",
+              dataIndex: "symbol",
+              render: (symbol) => <strong>{symbol}</strong>,
+            },
+            {
+              title: "方向",
+              dataIndex: "side",
+              render: (side) => <span className={side === "buy" ? "buy" : "sell"}>{side === "buy" ? "买入" : "卖出"}</span>,
+            },
+            {
+              title: "数量",
+              dataIndex: "quantity",
+              align: "right",
+              render: (quantity) => formatInteger(quantity),
+            },
+            {
+              title: "成交价",
+              dataIndex: "price",
+              align: "right",
+              render: (price) => formatPrice(price),
+            },
+            {
+              title: "净额",
+              dataIndex: "net_amount",
+              align: "right",
+              render: (amount) => formatMoney(amount),
+            },
+            {
+              title: "策略",
+              render: (_value, trade) => formatBacktestStrategy(trade.strategy_key ?? trade.strategy),
+            },
+            {
+              title: "收益",
+              dataIndex: "return_pct",
+              align: "right",
+              render: (value) => <span className={toneFromNumber(value)}>{formatPct(value)}</span>,
+            },
+            {
+              title: "退出",
+              dataIndex: "exit_reason",
+              render: (reason) => reason || "--",
+            },
+          ]}
+        />
       </section>
 
       <BacktestResearchPanel state={research} actions={researchActions} equity={equity} />

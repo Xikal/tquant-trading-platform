@@ -1,8 +1,8 @@
 import { Browser } from "@capacitor/browser"
 import { Capacitor } from "@capacitor/core"
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect } from "react"
 import { appApi } from "../api/appClient"
-import type { AppAndroidUpdateResponse } from "../types"
+import { useMobileUiStore } from "../stores/mobileUiStore"
 
 const CURRENT_ANDROID_VERSION_CODE = Number(import.meta.env.VITE_NATIVE_VERSION_CODE ?? "1")
 const DISMISSED_UPDATE_KEY = "tquant.dismissed_android_update"
@@ -26,10 +26,14 @@ function rememberDismissedVersion(versionCode: number) {
 }
 
 export function useAppUpdate() {
-  const [updateInfo, setUpdateInfo] = useState<AppAndroidUpdateResponse | null>(null)
-  const [checking, setChecking] = useState(false)
-  const [verifying, setVerifying] = useState(false)
-  const [updateError, setUpdateError] = useState("")
+  const updateInfo = useMobileUiStore((state) => state.updateInfo)
+  const checking = useMobileUiStore((state) => state.updateChecking)
+  const verifying = useMobileUiStore((state) => state.updateVerifying)
+  const updateError = useMobileUiStore((state) => state.updateError)
+  const setUpdateInfo = useMobileUiStore((state) => state.setUpdateInfo)
+  const setChecking = useMobileUiStore((state) => state.setUpdateChecking)
+  const setVerifying = useMobileUiStore((state) => state.setUpdateVerifying)
+  const setUpdateError = useMobileUiStore((state) => state.setUpdateError)
 
   const checkForUpdate = useCallback(async () => {
     if (!isAndroidNativeApp() || checking) {
@@ -49,7 +53,7 @@ export function useAppUpdate() {
     } finally {
       setChecking(false)
     }
-  }, [checking])
+  }, [checking, setChecking, setUpdateError, setUpdateInfo])
 
   const dismissUpdate = useCallback(() => {
     if (updateInfo && !updateInfo.mandatory) {
@@ -57,7 +61,7 @@ export function useAppUpdate() {
     }
     setUpdateInfo(null)
     setUpdateError("")
-  }, [updateInfo])
+  }, [setUpdateError, setUpdateInfo, updateInfo])
 
   const openUpdate = useCallback(async () => {
     if (!updateInfo?.apk_url) {
@@ -73,7 +77,7 @@ export function useAppUpdate() {
     } finally {
       setVerifying(false)
     }
-  }, [updateInfo])
+  }, [setUpdateError, setVerifying, updateInfo])
 
   useEffect(() => {
     void checkForUpdate()

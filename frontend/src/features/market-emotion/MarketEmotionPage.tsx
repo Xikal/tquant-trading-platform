@@ -1,6 +1,7 @@
-import type { MarketBreadth, SectorRelativeStrengthResponse } from "../../types";
+import type { MarketBreadth, SectorRelativeStrengthItem, SectorRelativeStrengthResponse } from "../../types";
 import { EmptyState, InfoPill, PanelTitle } from "../workspace-shared/WorkspaceComponents";
 import { formatPct, shortTime } from "../workspace-shared/workspaceFormatters";
+import { DataTable } from "../../ui/table/DataTable";
 
 export interface MarketEmotionPageProps {
   marketBreadth: MarketBreadth | null;
@@ -36,19 +37,40 @@ export function MarketEmotionPage({ marketBreadth, sectorRelativeStrength }: Mar
 
       <div className="panel emotion-page-leaders">
         <PanelTitle title="实时龙头强度排行" actions={<span className="muted">{sectorRelativeStrength?.trade_date || "--"}</span>} />
-        {leaders.length ? (
-          <div className="emotion-leader-table">
-            {leaders.slice(0, 30).map((item) => (
-              <div key={`${item.sector_name}-${item.symbol}`} className="emotion-leader-row">
-                <strong>{item.name} <small>{item.symbol}</small></strong>
-                <span>{item.sector_name} #{item.rank}</span>
-                <span>涨跌 {formatPct(item.change_pct)}</span>
-                <span>量比 {item.volume_ratio.toFixed(2)}</span>
-                <b>龙头分 {item.leader_score.toFixed(0)}</b>
-              </div>
-            ))}
-          </div>
-        ) : <EmptyState text="暂无板块龙头强度数据，等待市场快照刷新。" />}
+        <DataTable<SectorRelativeStrengthItem>
+          rowKey={(item) => `${item.sector_name}-${item.symbol}`}
+          dataSource={leaders.slice(0, 30)}
+          locale={{ emptyText: <EmptyState text="暂无板块龙头强度数据，等待市场快照刷新。" /> }}
+          scroll={{ x: 760, y: 520 }}
+          columns={[
+            {
+              title: "标的",
+              render: (_value, item) => <strong>{item.name} <small>{item.symbol}</small></strong>,
+            },
+            {
+              title: "板块",
+              render: (_value, item) => `${item.sector_name} #${item.rank}`,
+            },
+            {
+              title: "涨跌",
+              dataIndex: "change_pct",
+              align: "right",
+              render: (value) => formatPct(value),
+            },
+            {
+              title: "量比",
+              dataIndex: "volume_ratio",
+              align: "right",
+              render: (value) => value.toFixed(2),
+            },
+            {
+              title: "龙头分",
+              dataIndex: "leader_score",
+              align: "right",
+              render: (value) => <b>{value.toFixed(0)}</b>,
+            },
+          ]}
+        />
       </div>
     </section>
   );

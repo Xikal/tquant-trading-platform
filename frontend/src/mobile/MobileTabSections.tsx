@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react"
+import { useMemo } from "react"
 import { Button, Input } from "antd-mobile"
 import type { LowBuyPriorityBoardItem, WatchlistItem } from "../types"
 import {
@@ -18,6 +18,7 @@ import {
   splitPriorityItems
 } from "./MobileDesignCards"
 import type { LowBuyPriorityBoardResult } from "../types"
+import { useMobileUiStore } from "../stores/mobileUiStore"
 
 type Tone = "positive" | "negative" | "neutral" | "warning"
 type LowBuyGroups = ReturnType<typeof splitPriorityItems<MobileLowBuyCardItem>>
@@ -102,7 +103,8 @@ export function MobileHoldingsSection({
   onEditHolding: (item: WatchlistItem) => void
   onRemoveHolding: (item: WatchlistItem) => void | Promise<void>
 }) {
-  const [query, setQuery] = useState("")
+  const query = useMobileUiStore((state) => state.holdingQuery)
+  const setQuery = useMobileUiStore((state) => state.setHoldingQuery)
   const filteredRows = useMemo(() => {
     const normalized = query.trim().toUpperCase()
     if (!normalized) {

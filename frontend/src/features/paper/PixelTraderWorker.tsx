@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { Button } from "antd";
 import {
   resolvePixelTraderFrame,
@@ -16,7 +16,9 @@ import type {
   PixelTraderOrderAction,
   PixelTraderRecentTrade,
 } from "./pixelTrader/types";
-import "./PixelTraderWorker.css";
+import { usePaperUiStore } from "../../stores/paperUiStore";
+import "./PixelTraderWorker.part-1.css";
+import "./PixelTraderWorker.part-2.css";
 
 interface PixelTraderWorkerProps {
   marketState: PixelTraderMarketState;
@@ -48,7 +50,8 @@ export function PixelTraderWorker({
     consumedActionTimestamp: 0,
     lastFrameAt: 0,
   });
-  const [visualState, setVisualState] = useState<PixelTraderAnimationState>("idle");
+  const visualState = usePaperUiStore((state) => state.pixelTraderVisualState);
+  const setVisualState = usePaperUiStore((state) => state.setPixelTraderVisualState);
   const latestTradeText = useMemo(() => formatLatestTrade(recentTrades), [recentTrades]);
 
   useEffect(() => {
@@ -97,7 +100,9 @@ export function PixelTraderWorker({
         drawMechaScene(ctx, result.frame);
         drawParticles(ctx, particlesRef.current);
 
-        setVisualState((current) => (current === result.state ? current : result.state));
+        if (usePaperUiStore.getState().pixelTraderVisualState !== result.state) {
+          setVisualState(result.state);
+        }
       }
       rafId = window.requestAnimationFrame(render);
     };
@@ -107,7 +112,7 @@ export function PixelTraderWorker({
       window.cancelAnimationFrame(rafId);
       document.removeEventListener("visibilitychange", onVisibilityChange);
     };
-  }, [autoTradingRunning, lastOrderAction, marketState, paused]);
+  }, [autoTradingRunning, lastOrderAction, marketState, paused, setVisualState]);
 
   const status = statusConfig(visualState, marketState, paused, autoTradingRunning);
 

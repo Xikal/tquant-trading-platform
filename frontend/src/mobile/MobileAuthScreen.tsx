@@ -1,5 +1,5 @@
-import { useState } from "react"
 import { Button, Input } from "antd-mobile"
+import { useMobileUiStore } from "../stores/mobileUiStore"
 
 interface MobileAuthScreenProps {
   loading: boolean
@@ -8,22 +8,21 @@ interface MobileAuthScreenProps {
 }
 
 export function MobileAuthScreen({ loading, error, onSubmit }: MobileAuthScreenProps) {
-  const [username, setUsername] = useState("")
-  const [password, setPassword] = useState("")
-  const [register, setRegister] = useState(false)
-  const [formError, setFormError] = useState("")
+  const authDraft = useMobileUiStore((state) => state.authDraft)
+  const setAuthDraft = useMobileUiStore((state) => state.setAuthDraft)
+  const { username, password, register, formError } = authDraft
 
   async function handleSubmit() {
     const nextUsername = username.trim()
     if (nextUsername.length < 3) {
-      setFormError("账号至少 3 位")
+      setAuthDraft({ formError: "账号至少 3 位" })
       return
     }
     if (password.length < 6) {
-      setFormError("密码至少 6 位")
+      setAuthDraft({ formError: "密码至少 6 位" })
       return
     }
-    setFormError("")
+    setAuthDraft({ formError: "" })
     await onSubmit({ username: nextUsername, password, register })
   }
 
@@ -62,7 +61,7 @@ export function MobileAuthScreen({ loading, error, onSubmit }: MobileAuthScreenP
           <span>手机号 / 账号</span>
           <Input
             value={username}
-            onChange={setUsername}
+            onChange={(value) => setAuthDraft({ username: value })}
             placeholder="请输入手机号或账号"
             autoCapitalize="none"
           />
@@ -72,7 +71,7 @@ export function MobileAuthScreen({ loading, error, onSubmit }: MobileAuthScreenP
           <span>登录密码</span>
           <Input
             value={password}
-            onChange={setPassword}
+            onChange={(value) => setAuthDraft({ password: value })}
             placeholder="请输入登录密码"
             type="password"
           />
@@ -82,7 +81,7 @@ export function MobileAuthScreen({ loading, error, onSubmit }: MobileAuthScreenP
 
         <div className="mobile-auth-row">
           <span>☑ 记住登录</span>
-          <Button fill="none" onClick={() => setRegister((value) => !value)}>
+          <Button fill="none" onClick={() => setAuthDraft({ register: !register })}>
             {register ? "返回登录" : "开户注册"}
           </Button>
         </div>

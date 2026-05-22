@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 
-import { quantParametersApi, type QuantParameterSet } from "../../api/quantParameters";
+import { quantParametersApi } from "../../api/quantParameters";
 import { NumberField } from "../../components/shared/FormFields";
 import { SettingCard } from "../workspace-shared/WorkspaceComponents";
 import { getNested, setNested, structuredCloneSafe } from "./quantParameterCardUtils";
+import { useSettingsUiStore } from "../../stores/settingsUiStore";
 
 type FieldSpec = {
   path: string;
@@ -25,21 +26,21 @@ const FIELD_SPECS: FieldSpec[] = [
 ];
 
 export function QuantParameterMlCard({ adminTokenError }: { adminTokenError: string }) {
-  const [current, setCurrent] = useState<QuantParameterSet | null>(null);
-  const [draft, setDraft] = useState<Record<string, string>>({});
-  const [loading, setLoading] = useState(false);
-  const [saved, setSaved] = useState(false);
-  const [error, setError] = useState("");
+  const card = useSettingsUiStore((state) => state.quantCards.ml);
+  const setCard = useSettingsUiStore((state) => state.setQuantCard);
+  const { current, draft, loading, saved, error } = card;
 
   const load = useCallback(async () => {
-    setError("");
+    setCard("ml", { error: "" });
     const response = await quantParametersApi.current("low_buy");
-    setCurrent(response);
-    setDraft(Object.fromEntries(FIELD_SPECS.map((field) => [field.path, String(getNested(response.params, field.path) ?? "")])));
-  }, []);
+    setCard("ml", {
+      current: response,
+      draft: Object.fromEntries(FIELD_SPECS.map((field) => [field.path, String(getNested(response.params, field.path) ?? "")])),
+    });
+  }, [setCard]);
 
   useEffect(() => {
-    void load().catch((exc: unknown) => setError(exc instanceof Error ? exc.message : "参数加载失败"));
+    void load().catch((exc: unknown) => setCard("ml", { error: exc instanceof Error ? exc.message : "参数加载失败" }));
   }, [load]);
 
   const fieldError = useMemo(() => {
@@ -55,9 +56,7 @@ export function QuantParameterMlCard({ adminTokenError }: { adminTokenError: str
 
   const save = async () => {
     if (!current || adminTokenError || fieldError) return;
-    setLoading(true);
-    setSaved(false);
-    setError("");
+    setCard("ml", { loading: true, saved: false, error: "" });
     try {
       const params = structuredCloneSafe(current.params);
       for (const field of FIELD_SPECS) {
@@ -71,12 +70,12 @@ export function QuantParameterMlCard({ adminTokenError }: { adminTokenError: str
         description: "系统配置页调整 ML 训练与交叉验证参数。",
         activate: true,
       });
-      setSaved(true);
+      setCard("ml", { saved: true });
       await load();
     } catch (exc: unknown) {
-      setError(exc instanceof Error ? exc.message : "保存失败");
+      setCard("ml", { error: exc instanceof Error ? exc.message : "保存失败" });
     } finally {
-      setLoading(false);
+      setCard("ml", { loading: false });
     }
   };
 
@@ -91,7 +90,7 @@ export function QuantParameterMlCard({ adminTokenError }: { adminTokenError: str
           max={field.max}
           step={field.step ?? "1"}
           value={draft[field.path] ?? ""}
-          onChange={(event) => setDraft((values) => ({ ...values, [field.path]: event.target.value }))}
+          onChange={(event) => setCard("ml", { draft: { ...draft, [field.path]: event.target.value } })}
         />
       ))}
       {adminTokenError || fieldError || error ? <span className="tq-field__error">{adminTokenError || fieldError || error}</span> : null}

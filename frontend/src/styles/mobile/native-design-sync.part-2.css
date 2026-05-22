@@ -10,9 +10,7 @@
 .app-preview-pill,
 .mobile-app-sheet-tags span,
 .app-preview-position-row span,
-.mobile-priority-strategy-tags span,
-.mobile-priority-tags span,
-.mobile-priority-tag-compact {
+.mobile-priority-strategy-tags span {
   min-height: 20px;
   border-color: var(--mobile-divider);
   border-radius: 999px;
@@ -43,8 +41,7 @@
 }
 
 .app-preview-card-metrics,
-.mobile-priority-grid,
-.mobile-holding-grid {
+.mobile-priority-grid {
   border-color: var(--mobile-divider);
   border-radius: 13px;
   background: var(--mobile-panel-soft);
@@ -84,7 +81,6 @@
 }
 
 .mobile-inline-action,
-.mobile-text-button,
 .mobile-step-button {
   border-color: var(--mobile-border);
   border-radius: 12px;

@@ -31,48 +31,6 @@
     font-size: 19px;
   }
 
-  .mobile-app-kicker {
-    font-size: 10px;
-  }
-
-  .mobile-app-segment-tabs button {
-    padding: 7px 4px;
-    font-size: 10px;
-  }
-
-  .mobile-app-market-pulse {
-    padding: 7px 8px;
-  }
-
-  .mobile-app-pulse-head {
-    grid-template-columns: 1fr;
-    gap: 2px;
-  }
-
-  .mobile-app-pulse-grid span {
-    font-size: 8.5px;
-  }
-
-  .mobile-app-market-cell {
-    padding: 8px 6px 7px;
-  }
-
-  .mobile-app-market-cell strong {
-    font-size: 15px;
-  }
-
-  .mobile-app-list-toolbar {
-    grid-template-columns: 1fr;
-    gap: 2px;
-  }
-
-  .mobile-app-list-toolbar strong,
-  .mobile-app-list-toolbar small {
-    font-size: 11px;
-    white-space: normal;
-    text-overflow: unset;
-  }
-
   .app-preview-card-top {
     row-gap: 6px;
   }

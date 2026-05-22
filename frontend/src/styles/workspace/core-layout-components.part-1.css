@@ -150,27 +150,6 @@
   border-color: #8fc1ff;
 }
 
-.research-hero {
-  grid-area: hero;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 340px;
-  gap: 10px;
-  border: 3px solid #4095ff;
-  border-radius: 0;
-}
-
-.research-run {
-  grid-area: run;
-}
-
-.research-samples {
-  grid-area: samples;
-}
-
-.research-report {
-  grid-area: report;
-}
-
 .settings-hero {
   grid-area: hero;
 }

@@ -82,7 +82,8 @@
   background: #fff;
 }
 
-.paper-position-summary-item span {
+.paper-position-summary-item span,
+.paper-position-detail-list-title span {
   color: #64748b;
   font-size: 12px;
 }
@@ -140,11 +141,6 @@
 .paper-position-detail-list-title strong {
   color: #0f172a;
   font-size: 14px;
-}
-
-.paper-position-detail-list-title span {
-  color: #64748b;
-  font-size: 12px;
 }
 
 .paper-position-detail-scroll {

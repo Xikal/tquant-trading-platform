@@ -179,7 +179,6 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .mobile-app-signal-toast,
   .mobile-design-stock-card.signal-active {
     animation: none;
   }
@@ -199,10 +198,6 @@
   .mobile-app-icon-button {
     min-width: 36px;
     min-height: 36px;
-  }
-
-  .mobile-app-list-toolbar strong {
-    font-size: 15px;
   }
 
   .mobile-design-metric-row {

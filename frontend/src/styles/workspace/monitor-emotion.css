@@ -123,37 +123,3 @@
 .limit-board-bars.large {
   min-height: 150px;
 }
-
-.emotion-leader-table {
-  display: grid;
-  gap: 7px;
-  max-height: 620px;
-  overflow: auto;
-}
-
-.emotion-leader-row {
-  display: grid;
-  grid-template-columns: minmax(140px, 1.2fr) minmax(110px, 1fr) repeat(3, minmax(80px, 0.8fr));
-  gap: 8px;
-  align-items: center;
-  padding: 8px 10px;
-  border: 1px solid rgba(148, 163, 184, 0.2);
-  border-radius: 9px;
-  background: rgba(255, 255, 255, 0.76);
-  color: #475569;
-  font-size: 12px;
-}
-
-.emotion-leader-row strong {
-  color: #0f172a;
-}
-
-.emotion-leader-row small {
-  color: #64748b;
-  font-weight: 500;
-}
-
-.emotion-leader-row b {
-  color: #b45309;
-  text-align: right;
-}

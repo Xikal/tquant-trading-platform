@@ -4,9 +4,10 @@ import { actionText, formatPct, formatPrice, parseNumber, plainTradingText, risk
 import type { SettingsDraft, StockCardView } from "./workspaceTypes";
 
 export function priorityToCard(item: LowBuyPriorityBoardItem): StockCardView {
-  const highlight = item.strategy_key === "limit_up_breakout_retrace" || item.strategy_titles.some((title) => title.includes("涨停"));
+  const strategyTitles = Array.isArray(item.strategy_titles) ? item.strategy_titles : [];
+  const highlight = item.strategy_key === "limit_up_breakout_retrace" || strategyTitles.some((title) => title.includes("涨停"));
   const sectorText = item.sector_name?.trim() || "未归类板块";
-  const strategyNames = uniqueStrings([item.strategy_title, ...item.strategy_titles]);
+  const strategyNames = uniqueStrings([item.strategy_title, ...strategyTitles]);
   return {
     name: item.name,
     symbol: item.symbol,
@@ -15,7 +16,7 @@ export function priorityToCard(item: LowBuyPriorityBoardItem): StockCardView {
     sectorText,
     priceText: formatPrice(item.latest_price),
     changeText: formatPct(item.change_pct),
-    scoreText: item.priority_score.toFixed(0),
+    scoreText: fixedNumberText(item.priority_score, 0),
     riskText: riskTierText(item.risk_tier),
     expectedText: item.suggested_position_text,
     actionText: item.buy_signal_text || item.action_summary,
@@ -38,7 +39,7 @@ export function priorityToCard(item: LowBuyPriorityBoardItem): StockCardView {
     failureText: priorityFailureText(item),
     tone: toneFromChange(item.change_pct),
     badges: [
-      item.strategy_count > 1 ? `${item.strategy_count}策略命中` : "",
+      (item.strategy_count ?? 0) > 1 ? `${item.strategy_count}策略命中` : "",
       item.family_count && item.family_count > 1 ? `${item.family_count}类逻辑共振` : "",
       item.leader_strength_rank ? `板块龙头#${item.leader_strength_rank}` : "",
       item.multi_timeframe_resonance_score ? "多周期共振" : "",
@@ -94,7 +95,7 @@ export function candidateToCard(item: LowBuyCandidate): StockCardView {
     identityTags: [item.mainline_tier_text || ""].filter(Boolean),
     priceText: formatPrice(item.latest_price),
     changeText: formatPct(item.change_pct),
-    scoreText: item.score.toFixed(0),
+    scoreText: fixedNumberText(item.score, 0),
     riskText: riskTierText(item.risk_tier),
     expectedText: item.suggested_position_text,
     actionText: item.buy_signal_text,
@@ -195,7 +196,7 @@ export function watchSignalToCard(item: WatchlistSignal): StockCardView {
     identityNote: `成本价 ${formatPrice(item.cost_basis)}`,
     priceText: formatPrice(item.quote.last_price),
     changeText: formatPct(item.quote.change_pct),
-    scoreText: item.signal.signal_score.toFixed(0),
+    scoreText: fixedNumberText(item.signal.signal_score, 0),
     riskText: riskText(item.signal.risk_level),
     expectedText: formatPct(item.signal.expected_profit_pct),
     actionText: item.signal.plain_action_text || actionText(item.signal.action),
@@ -224,6 +225,10 @@ function optionalPriceRange(low?: number | null, high?: number | null): string |
     return undefined;
   }
   return `${formatPrice(low)} - ${formatPrice(high)}`;
+}
+
+function fixedNumberText(value: number | undefined | null, digits: number): string {
+  return typeof value === "number" && Number.isFinite(value) ? value.toFixed(digits) : "--";
 }
 
 function watchSignalFailureText(item: WatchlistSignal): string {

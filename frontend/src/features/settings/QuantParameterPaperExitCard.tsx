@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 
-import { quantParametersApi, type QuantParameterSet } from "../../api/quantParameters";
+import { quantParametersApi } from "../../api/quantParameters";
 import { NumberField } from "../../components/shared/FormFields";
 import { SettingCard } from "../workspace-shared/WorkspaceComponents";
 import { getNested, setNested, structuredCloneSafe, type QuantFieldSpec } from "./quantParameterCardUtils";
+import { useSettingsUiStore } from "../../stores/settingsUiStore";
 
 const PAPER_EXIT_FIELDS: QuantFieldSpec[] = [
   { path: "paper.dynamic_exit.hard_stop_loss_pct", label: "硬止损线", min: -20, max: 0, step: "0.1", suffix: "%" },
@@ -34,21 +35,21 @@ const PAPER_EXIT_FIELDS: QuantFieldSpec[] = [
 ];
 
 export function QuantParameterPaperExitCard({ adminTokenError }: { adminTokenError: string }) {
-  const [current, setCurrent] = useState<QuantParameterSet | null>(null);
-  const [draft, setDraft] = useState<Record<string, string>>({});
-  const [loading, setLoading] = useState(false);
-  const [saved, setSaved] = useState(false);
-  const [error, setError] = useState("");
+  const card = useSettingsUiStore((state) => state.quantCards.paperExit);
+  const setCard = useSettingsUiStore((state) => state.setQuantCard);
+  const { current, draft, loading, saved, error } = card;
 
   const load = useCallback(async () => {
-    setError("");
+    setCard("paperExit", { error: "" });
     const response = await quantParametersApi.current("low_buy");
-    setCurrent(response);
-    setDraft(Object.fromEntries(PAPER_EXIT_FIELDS.map((field) => [field.path, String(getNested(response.params, field.path) ?? "")])));
-  }, []);
+    setCard("paperExit", {
+      current: response,
+      draft: Object.fromEntries(PAPER_EXIT_FIELDS.map((field) => [field.path, String(getNested(response.params, field.path) ?? "")])),
+    });
+  }, [setCard]);
 
   useEffect(() => {
-    void load().catch((exc: unknown) => setError(exc instanceof Error ? exc.message : "动态退出参数加载失败"));
+    void load().catch((exc: unknown) => setCard("paperExit", { error: exc instanceof Error ? exc.message : "动态退出参数加载失败" }));
   }, [load]);
 
   const fieldError = useMemo(() => {
@@ -64,9 +65,7 @@ export function QuantParameterPaperExitCard({ adminTokenError }: { adminTokenErr
 
   async function save() {
     if (!current || adminTokenError || fieldError) return;
-    setLoading(true);
-    setSaved(false);
-    setError("");
+    setCard("paperExit", { loading: true, saved: false, error: "" });
     try {
       const params = structuredCloneSafe(current.params);
       for (const field of PAPER_EXIT_FIELDS) {
@@ -80,12 +79,12 @@ export function QuantParameterPaperExitCard({ adminTokenError }: { adminTokenErr
         description: "系统配置页调整模拟盘自动退出、利润保护和时间退出门槛。",
         activate: true,
       });
-      setSaved(true);
+      setCard("paperExit", { saved: true });
       await load();
     } catch (exc: unknown) {
-      setError(exc instanceof Error ? exc.message : "保存失败");
+      setCard("paperExit", { error: exc instanceof Error ? exc.message : "保存失败" });
     } finally {
-      setLoading(false);
+      setCard("paperExit", { loading: false });
     }
   }
 
@@ -101,7 +100,7 @@ export function QuantParameterPaperExitCard({ adminTokenError }: { adminTokenErr
           step={field.step ?? "1"}
           suffix={field.suffix}
           value={draft[field.path] ?? ""}
-          onChange={(event) => setDraft((values) => ({ ...values, [field.path]: event.target.value }))}
+          onChange={(event) => setCard("paperExit", { draft: { ...draft, [field.path]: event.target.value } })}
         />
       ))}
       {adminTokenError || fieldError || error ? <span className="tq-field__error">{adminTokenError || fieldError || error}</span> : null}

@@ -8,37 +8,26 @@
   padding-top: 10px;
 }
 
-.page-grid,
-.paper-dashboard {
+.page-grid {
   gap: clamp(12px, 1vw, 16px);
 }
 
 .panel,
 .metric,
-.status-card,
-.stock-card,
-.result-card,
-.paper-card,
-.playbook-card,
-.strategy-card {
+.stock-card {
   border-radius: 12px;
 }
 
-.panel,
-.paper-card,
-.playbook-card,
-.strategy-card {
+.panel {
   padding: clamp(12px, 1.1vw, 16px);
 }
 
-.metric,
-.status-card {
+.metric {
   min-height: 64px;
   padding: 10px 12px;
 }
 
-.metric strong,
-.status-card strong {
+.metric strong {
   font-size: clamp(18px, 1.45vw, 22px);
   line-height: 1.15;
 }
@@ -59,10 +48,7 @@
 .topbar nav button,
 .login-submit,
 .login-register,
-.form-grid button,
-.action-button,
-.primary-action,
-.ghost-button {
+.form-grid button {
   min-height: 34px;
 }
 
@@ -70,19 +56,14 @@
   white-space: nowrap;
 }
 
-.desk-chips,
-.topbar-actions,
-.toolbar,
-.filter-row {
+.desk-chips {
   flex-wrap: wrap;
   gap: 8px;
 }
 
 .form-grid input,
 .form-grid select,
-.form-grid textarea,
-.login-field input,
-.mobile-auth-field input {
+.form-grid textarea {
   min-height: 38px;
   font-size: 13px;
 }
@@ -94,24 +75,15 @@
 }
 
 .login-card {
-  gap: 14px;
+  border-radius: 18px;
+}
+
+.login-card .ant-card-body {
   padding: clamp(24px, 2.5vw, 34px);
 }
 
 .login-title h2 {
   font-size: clamp(24px, 2vw, 30px);
-}
-
-.login-field {
-  gap: 7px;
-}
-
-.login-field div {
-  min-height: 46px;
-}
-
-.login-error {
-  padding: 10px 12px;
 }
 
 .monitor-grid {
@@ -126,9 +98,7 @@
   grid-template-columns: minmax(360px, 430px) minmax(0, 1fr);
 }
 
-.stock-card,
-.watchlist-card,
-.candidate-card {
+.stock-card {
   min-height: 112px;
 }
 
@@ -149,21 +119,13 @@
   display: none;
 }
 
-.table-scroll,
-.order-list,
-.trade-list,
-.position-list {
-  max-height: min(58vh, 520px);
-}
-
 @media (max-width: 1180px) {
   .topbar {
     grid-template-columns: 1fr;
   }
 
   .topbar nav,
-  .desk-chips,
-  .topbar-actions {
+  .desk-chips {
     width: 100%;
   }
 
@@ -189,16 +151,11 @@
     width: 100%;
   }
 
-  .panel,
-  .paper-card,
-  .playbook-card,
-  .strategy-card {
+  .panel {
     padding: 12px;
   }
 
-  .metric-grid,
-  .paper-metrics,
-  .status-grid {
+  .metric-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 

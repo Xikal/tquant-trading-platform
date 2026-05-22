@@ -1,5 +1,6 @@
 import type { AuthDraft } from "../workspace-shared/workspaceTypes";
-import { Button, Checkbox, Input } from "antd";
+import { Alert, Button, Card, Checkbox, Form, Input, Space, Tag, Typography } from "antd";
+import { AppForm } from "../../ui/forms/AppForm";
 
 interface LoginPageProps {
   draft: AuthDraft;
@@ -104,82 +105,72 @@ export function LoginPage({
           <strong>资金净流入 ¥42.8亿</strong>
         </div>
 
-        <form
-          className="login-card"
-          onSubmit={(event) => {
-            event.preventDefault();
-            onLogin();
-          }}
-        >
-          <div className="login-title">
-            <h2>登录维斯量化平台</h2>
-            <p>{loginStepText}</p>
-          </div>
-          <div className="login-status-row">
-            <span><i className="red-dot" /> 行情在线</span>
-            <span className="gold"><i /> 安全接入</span>
-          </div>
+        <Card className="login-card" variant="borderless">
+          <AppForm<AuthDraft>
+            layout="vertical"
+            initialValues={draft}
+            onValuesChange={(_, values) => setDraft({ ...draft, ...values })}
+            onFinish={onLogin}
+            requiredMark={false}
+          >
+            <div className="login-title">
+              <Typography.Title level={2}>登录维斯量化平台</Typography.Title>
+              <Typography.Paragraph>{loginStepText}</Typography.Paragraph>
+            </div>
+            <Space wrap className="login-status-row">
+              <Tag color="red"><i className="red-dot" /> 行情在线</Tag>
+              <Tag color="gold">安全接入</Tag>
+            </Space>
 
-          <label className="login-field">
-            <span>手机号 / 账号</span>
-            <div>
-              <b aria-hidden="true">⌕</b>
+            <Form.Item name="username" label="手机号 / 账号" rules={[{ required: true, message: "请输入手机号或账号" }]}>
               <Input
-                value={draft.username}
                 autoComplete="username"
                 placeholder="请输入手机号或账号"
                 disabled={loading}
-                onChange={(event) => setDraft({ ...draft, username: event.target.value })}
+                prefix="⌕"
               />
-            </div>
-          </label>
+            </Form.Item>
 
-          <label className="login-field">
-            <span>登录密码</span>
-            <div>
-              <b aria-hidden="true">□</b>
-              <Input
-                value={draft.password}
-                type="password"
+            <Form.Item name="password" label="登录密码" rules={[{ required: true, message: "请输入登录密码" }]}>
+              <Input.Password
                 autoComplete="current-password"
                 placeholder="请输入登录密码"
                 disabled={loading}
-                onChange={(event) => setDraft({ ...draft, password: event.target.value })}
               />
+            </Form.Item>
+
+            <div className="login-options">
+              <Form.Item name="remember" valuePropName="checked" noStyle>
+                <Checkbox disabled={loading}>记住登录</Checkbox>
+              </Form.Item>
+              <Button type="text" disabled={loading} title="请联系管理员重置密码">忘记密码？联系管理员</Button>
             </div>
-          </label>
 
-          <div className="login-options">
-            <Checkbox
-              checked={draft.remember}
-              disabled={loading}
-              onChange={(event) => setDraft({ ...draft, remember: event.target.checked })}
-            >
-              记住登录
-            </Checkbox>
-            <Button type="text" disabled={loading} title="请联系管理员重置密码">忘记密码？联系管理员</Button>
-          </div>
+            {error ? (
+              <Alert
+                type="error"
+                showIcon
+                message="登录失败"
+                description={`${error}。请先检查账号和密码；连续失败会触发临时保护。`}
+              />
+            ) : null}
 
-          {error ? (
-            <div className="login-error">
-              <strong>登录失败</strong>
-              <span>{error}</span>
-              <small>请先检查账号和密码；连续失败会触发临时保护。</small>
-            </div>
-          ) : null}
+            <Button htmlType="submit" type="primary" className="login-submit" loading={loading} block>
+              {loading ? "验证成功，正在加载您的数据..." : "登录进入工作台"} <span aria-hidden="true">→</span>
+            </Button>
+            <Button type="default" className="login-register" onClick={onRegister} disabled={loading} block>
+              开户注册
+            </Button>
 
-          <Button htmlType="submit" type="primary" className="login-submit" loading={loading}>
-            {loading ? "验证成功，正在加载您的数据..." : "登录进入工作台"} <span aria-hidden="true">→</span>
-          </Button>
-          <Button type="default" className="login-register" onClick={onRegister} disabled={loading}>
-            开户注册
-          </Button>
-
-          <div className="login-protection">
-            <strong>登录保护</strong>
-            <p>管理令牌、本机加密和行情缓存同步校验，进入后可直接查看盘中信号。</p>
-          </div>
-        </form>
+            <Alert
+              className="login-protection"
+              type="info"
+              showIcon
+              message="登录保护"
+              description="管理令牌、本机加密和行情缓存同步校验，进入后可直接查看盘中信号。"
+            />
+          </AppForm>
+        </Card>
       </section>
     </main>
   );

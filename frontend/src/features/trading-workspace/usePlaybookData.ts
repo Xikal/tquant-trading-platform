@@ -1,9 +1,9 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { api } from "../../api/client";
 import { applyQuoteRefreshToResponse } from "../playbook/formatters";
 import type { AuthUser, LowBuyScreenerResult } from "../../types";
+import { useWorkspacePlaybookStore } from "../../stores/workspacePlaybookStore";
 import {
-  DEFAULT_PLAYBOOK_STRATEGY,
   PLAYBOOK_QUOTE_REFRESH_LIMIT,
 } from "../workspace-shared/workspaceConstants";
 import type { Page } from "../workspace-shared/workspaceTypes";
@@ -25,12 +25,17 @@ export function usePlaybookData({
   page: Page;
   withLoading: WorkspaceLoader;
 }) {
-  const [strategy, setStrategyState] = useState(DEFAULT_PLAYBOOK_STRATEGY);
-  const [playbook, setPlaybook] = useState<LowBuyScreenerResult | null>(null);
-  const cacheRef = useRef<Record<string, LowBuyScreenerResult>>({});
+  const strategy = useWorkspacePlaybookStore((state) => state.strategy);
+  const playbook = useWorkspacePlaybookStore((state) => state.playbook);
+  const cache = useWorkspacePlaybookStore((state) => state.cache);
+  const setStrategyState = useWorkspacePlaybookStore((state) => state.setStrategy);
+  const setPlaybook = useWorkspacePlaybookStore((state) => state.setPlaybook);
+  const cachePlaybook = useWorkspacePlaybookStore((state) => state.cachePlaybook);
+  const resetPlaybookState = useWorkspacePlaybookStore((state) => state.resetPlaybook);
   const requestRef = useRef(0);
   const withLoadingRef = useRef(withLoading);
   const playbookRef = useRef<LowBuyScreenerResult | null>(null);
+  const cacheRef = useRef<Record<string, LowBuyScreenerResult>>({});
 
   useEffect(() => {
     withLoadingRef.current = withLoading;
@@ -39,6 +44,10 @@ export function usePlaybookData({
   useEffect(() => {
     playbookRef.current = playbook;
   }, [playbook]);
+
+  useEffect(() => {
+    cacheRef.current = cache;
+  }, [cache]);
 
   const loadPlaybook = useCallback(
     async (nextStrategy: string, force = false) => {
@@ -51,13 +60,12 @@ export function usePlaybookData({
         const requestId = ++requestRef.current;
         const result = await api.getLowBuyCandidates(nextStrategy, 18, 480, false, "full");
         if (requestId === requestRef.current) {
-          setPlaybook(result);
-          cacheRef.current = { ...cacheRef.current, [nextStrategy]: result };
+          cachePlaybook(nextStrategy, result);
         }
         return result;
       });
     },
-    [],
+    [cachePlaybook, setPlaybook],
   );
 
   const setStrategy = useCallback(
@@ -69,9 +77,8 @@ export function usePlaybookData({
   );
 
   const resetPlaybook = useCallback(() => {
-    setPlaybook(null);
-    cacheRef.current = {};
-  }, []);
+    resetPlaybookState();
+  }, [resetPlaybookState]);
 
   useEffect(() => {
     if (currentUser && page === "playbook") {

@@ -24,8 +24,7 @@
   font-weight: 800;
 }
 
-.mobile-auth-row button,
-.mobile-auth-switch {
+.mobile-auth-row button {
   border: 0;
   background: transparent;
   color: var(--mobile-blue);

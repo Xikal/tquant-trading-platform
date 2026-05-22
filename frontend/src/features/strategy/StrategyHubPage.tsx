@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { Button } from "antd";
+import { Alert, Button, Card, Space, Typography } from "antd";
 import { ErrorBanner } from "../../components/shared/Feedback";
 import { useToast } from "../../components/shared/ToastContainer";
 import type { AuthUser } from "../../types";
@@ -87,17 +87,17 @@ export function StrategyHubPage({ currentUser }: { currentUser: AuthUser }) {
       />
 
       {hub.error ? <ErrorBanner message={`策略工作台加载失败：${hub.error}`} /> : null}
-      {hub.notice ? <div className="panel strategy-notice">{hub.notice}</div> : null}
-      <section className="panel strategy-hero-mini">
-        <div>
-          <strong>今日状态摘要</strong>
-          <span>{heroSummary}</span>
-        </div>
+      {hub.notice ? <Alert type="info" showIcon message={hub.notice} /> : null}
+      <Card className="strategy-hero-mini" variant="borderless">
+        <Space direction="vertical" size={2}>
+          <Typography.Text strong>今日状态摘要</Typography.Text>
+          <Typography.Text type="secondary">{heroSummary}</Typography.Text>
+        </Space>
         {latestRun ? <LatestRunCard run={latestRun} /> : <small>还没有最近一次回测</small>}
         <Button type="default" onClick={() => void hub.load()} loading={hub.loading === "load"}>
           {hub.loading === "load" ? "刷新中" : "刷新"}
         </Button>
-      </section>
+      </Card>
       <StrategyWorkflow
         activeTab={effectiveTab}
         runs={hub.runs}

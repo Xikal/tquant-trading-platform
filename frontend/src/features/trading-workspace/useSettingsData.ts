@@ -1,19 +1,15 @@
-import { useCallback, useState } from "react";
+import { useCallback } from "react";
 import { api } from "../../api/client";
 import { getAdminApiToken, setAdminApiToken } from "../../api/base";
+import { useSettingsUiStore } from "../../stores/settingsUiStore";
 import type {
   AdminLatestDataRefreshResponse,
-  AdminTaskStatus,
-  AdminMetricsResponse,
   FactorWeightsResponse,
-  LowBuyStrategyGovernanceResponse,
   RuntimeStatus,
   SettingsPayload,
   SettingsWorkspaceBffResponse,
-  UserSectorExclusionsResponse,
 } from "../../types";
 import { errorMessage } from "../workspace-shared/workspaceFormatters";
-import type { SettingsDraft } from "../workspace-shared/workspaceTypes";
 import { settingsPayload, settingsToDraft } from "../workspace-shared/workspaceViewModels";
 
 interface UseSettingsDataParams {
@@ -24,26 +20,22 @@ interface UseSettingsDataParams {
 }
 
 export function useSettingsData({ withLoading, setError, setNotice, setRuntime }: UseSettingsDataParams) {
-  const [settings, setSettings] = useState<SettingsPayload | null>(null);
-  const [factorWeights, setFactorWeights] = useState<FactorWeightsResponse | null>(null);
-  const [adminTasks, setAdminTasks] = useState<AdminTaskStatus[]>([]);
-  const [strategyGovernance, setStrategyGovernance] = useState<LowBuyStrategyGovernanceResponse | null>(null);
-  const [sectorExclusions, setSectorExclusions] = useState<UserSectorExclusionsResponse | null>(null);
-  const [adminMetrics, setAdminMetrics] = useState<AdminMetricsResponse | null>(null);
-  const [factorDraft, setFactorDraft] = useState<Record<string, string>>({});
-  const [settingsDraft, setSettingsDraft] = useState<SettingsDraft>({
-    adminToken: getAdminApiToken(),
-    llm_provider: "",
-    llm_api_key: "",
-    llm_base_url: "",
-    llm_model: "",
-    data_source: "",
-    data_source_base_url: "",
-    risk_max_single_loss_pct: "",
-    risk_max_daily_loss_pct: "",
-    risk_pause_after_losses: "",
-    strategy_min_profit_pct: "",
-  });
+  const settings = useSettingsUiStore((state) => state.settings);
+  const factorWeights = useSettingsUiStore((state) => state.factorWeights);
+  const adminTasks = useSettingsUiStore((state) => state.adminTasks);
+  const strategyGovernance = useSettingsUiStore((state) => state.strategyGovernance);
+  const sectorExclusions = useSettingsUiStore((state) => state.sectorExclusions);
+  const adminMetrics = useSettingsUiStore((state) => state.adminMetrics);
+  const factorDraft = useSettingsUiStore((state) => state.factorDraft);
+  const settingsDraft = useSettingsUiStore((state) => state.settingsDraft);
+  const setSettings = useSettingsUiStore((state) => state.setSettings);
+  const setFactorWeights = useSettingsUiStore((state) => state.setFactorWeights);
+  const setAdminTasks = useSettingsUiStore((state) => state.setAdminTasks);
+  const setStrategyGovernance = useSettingsUiStore((state) => state.setStrategyGovernance);
+  const setSectorExclusions = useSettingsUiStore((state) => state.setSectorExclusions);
+  const setAdminMetrics = useSettingsUiStore((state) => state.setAdminMetrics);
+  const setFactorDraft = useSettingsUiStore((state) => state.setFactorDraft);
+  const setSettingsDraft = useSettingsUiStore((state) => state.setSettingsDraft);
 
   const applySettingsWorkspace = useCallback((workspace: SettingsWorkspaceBffResponse) => {
     if (workspace.settings) {

@@ -1,5 +1,6 @@
 import { Badge, Button, Dropdown, Space, Typography } from "antd";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo } from "react";
+import { useWorkspaceStore } from "../../stores/workspaceStore";
 import type { AuthUser, LowBuyPriorityBoardResult } from "../../types";
 import type { Page, StockCardView } from "../workspace-shared/workspaceTypes";
 
@@ -22,7 +23,8 @@ export function Topbar({
   onPaperRefresh?: () => void;
   paperRefreshLoading?: boolean;
 }) {
-  const [pulse, setPulse] = useState(() => realTimePulse());
+  const pulse = useWorkspaceStore((state) => state.topbarPulse);
+  const setTopbarPulse = useWorkspaceStore((state) => state.setTopbarPulse);
   const nav: Array<[Page, string]> = useMemo(() => [
     ["monitor", "实时监控"],
     ["emotion", "市场情绪"],
@@ -44,9 +46,9 @@ export function Topbar({
   });
 
   useEffect(() => {
-    const timer = window.setInterval(() => setPulse(realTimePulse()), 1000);
+    const timer = window.setInterval(() => setTopbarPulse(realTimePulse()), 1000);
     return () => window.clearInterval(timer);
-  }, []);
+  }, [setTopbarPulse]);
 
   return (
     <header className={`topbar ${page === "monitor" ? "monitor-topbar" : "section-topbar"}`}>

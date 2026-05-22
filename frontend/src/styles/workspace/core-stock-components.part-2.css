@@ -8,29 +8,6 @@
   gap: 6px;
 }
 
-.paper-performance-head,
-.paper-performance-row {
-  display: grid;
-  grid-template-columns: minmax(90px, 1.5fr) repeat(5, minmax(58px, 1fr));
-  gap: 6px;
-  align-items: center;
-  padding: 7px 8px;
-  border: 1px solid var(--line);
-  border-radius: 7px;
-  background: #fff;
-  font-size: 12px;
-}
-
-.paper-performance-head {
-  color: var(--muted);
-  background: #f6f8fb;
-}
-
-.paper-performance-row span {
-  color: var(--muted);
-  font-family: "IBM Plex Mono", monospace;
-}
-
 .stock-card p {
   margin: 0;
   color: var(--muted);

@@ -48,7 +48,8 @@
 }
 
 .strategy-quick-main,
-.strategy-quick-side {
+.strategy-quick-side,
+.strategy-expert-panel {
   display: grid;
   gap: 14px;
 }
@@ -73,11 +74,6 @@
   background: var(--panel-muted);
   color: var(--text);
   text-align: left;
-}
-
-.strategy-expert-panel {
-  display: grid;
-  gap: 14px;
 }
 
 @media (max-width: 1180px) {

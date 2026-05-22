@@ -1,14 +1,3 @@
-.strategy-guide-grid b {
-  color: var(--strategy-text);
-  font-size: 13px;
-}
-
-.strategy-guide-grid span {
-  color: var(--strategy-muted);
-  font-size: 12px;
-  line-height: 1.45;
-}
-
 .strategy-one-click {
   align-items: center;
   background: #fff7e6;
@@ -132,13 +121,6 @@
   color: var(--red);
 }
 
-.strategy-notice {
-  background: #f0fdf4;
-  border-color: rgba(28, 145, 85, 0.24);
-  color: var(--green);
-  padding: 10px 12px;
-}
-
 .strategy-bridge-header,
 .strategy-access-panel {
   min-height: 120px;
@@ -167,9 +149,7 @@
 }
 
 @media (max-width: 1180px) {
-  .strategy-layout,
   .strategy-bridge,
-  .strategy-tabs,
   .strategy-doctor,
   .strategy-simple-setup {
     grid-template-columns: 1fr;
@@ -184,7 +164,6 @@
 }
 
 @media (max-width: 720px) {
-  .strategy-hero,
   .strategy-panel-title,
   .strategy-run-list article > div {
     align-items: stretch;

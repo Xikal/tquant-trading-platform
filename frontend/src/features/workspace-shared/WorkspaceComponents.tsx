@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Button, Modal } from "antd";
+import { Button, Input, Modal } from "antd";
 import type { AiDecisionSupportResponse, LowBuyPriorityBoardResult } from "../../types";
 import { directActionTitle, scoreStars } from "../../utils/uxClarity";
 import { formatPct, normalizeLines, plainTradingText } from "./workspaceFormatters";
@@ -58,7 +58,7 @@ export function EditableGrid({
       {fields.map(([label, value, onChange]) => (
         <label key={label}>
           <span>{label}</span>
-          <input value={value} onChange={(event) => onChange(event.target.value)} />
+          <Input value={value} onChange={(event) => onChange(event.target.value)} />
         </label>
       ))}
     </div>

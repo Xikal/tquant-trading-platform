@@ -1,10 +1,8 @@
-import { useEffect, useMemo, useState } from "react";
-import { Button, Input } from "antd";
+import { useEffect, useMemo } from "react";
+import { Button, Form, Input } from "antd";
 import {
   factorMiningApi,
   type FactorDefinition,
-  type FactorEvalResult,
-  type FactorHealthItem,
   type FactorHypothesis,
 } from "../../api/factorMining";
 import type { AuthUser } from "../../types";
@@ -14,19 +12,30 @@ import { EvalResultCard } from "./EvalResultCard";
 import { FactorActivationToggle } from "./FactorActivationToggle";
 import { FactorHealthDashboard } from "./FactorHealthDashboard";
 import { HypothesisPanel } from "./HypothesisPanel";
+import { DataTable } from "../../ui/table/DataTable";
+import { AppForm, SubmitBar } from "../../ui/forms/AppForm";
+import { useFactorMiningUiStore, type FactorDraft } from "../../stores/factorMiningUiStore";
 
 const { TextArea } = Input;
 
 export function FactorMiningTab({ currentUser }: { currentUser: AuthUser }) {
-  const [factors, setFactors] = useState<FactorDefinition[]>([]);
-  const [healthItems, setHealthItems] = useState<FactorHealthItem[]>([]);
-  const [activation, setActivation] = useState<Record<string, boolean>>({});
-  const [selectedKey, setSelectedKey] = useState("");
-  const [draft, setDraft] = useState({ key: "", name: "", hypothesis: "", code: "" });
-  const [result, setResult] = useState<FactorEvalResult | null>(null);
-  const [loading, setLoading] = useState("load");
-  const [error, setError] = useState("");
   const admin = isAdmin(currentUser);
+  const selectedKey = useFactorMiningUiStore((state) => state.selectedKey);
+  const draft = useFactorMiningUiStore((state) => state.draft);
+  const factors = useFactorMiningUiStore((state) => state.factors);
+  const healthItems = useFactorMiningUiStore((state) => state.healthItems);
+  const activation = useFactorMiningUiStore((state) => state.activation);
+  const result = useFactorMiningUiStore((state) => state.result);
+  const loading = useFactorMiningUiStore((state) => state.loading);
+  const error = useFactorMiningUiStore((state) => state.error);
+  const setSelectedKey = useFactorMiningUiStore((state) => state.setSelectedKey);
+  const setDraft = useFactorMiningUiStore((state) => state.setDraft);
+  const setFactors = useFactorMiningUiStore((state) => state.setFactors);
+  const setHealthItems = useFactorMiningUiStore((state) => state.setHealthItems);
+  const setActivation = useFactorMiningUiStore((state) => state.setActivation);
+  const setResult = useFactorMiningUiStore((state) => state.setResult);
+  const setLoading = useFactorMiningUiStore((state) => state.setLoading);
+  const setError = useFactorMiningUiStore((state) => state.setError);
   const selected = useMemo(() => factors.find((item) => item.factor_key === selectedKey), [factors, selectedKey]);
 
   useEffect(() => {
@@ -40,7 +49,7 @@ export function FactorMiningTab({ currentUser }: { currentUser: AuthUser }) {
       const [list, health] = await Promise.all([factorMiningApi.listFactors(), factorMiningApi.getHealth()]);
       setFactors(list.items ?? []);
       setHealthItems(health.items ?? []);
-      setSelectedKey((current) => current || list.items?.[0]?.factor_key || "");
+      if (!useFactorMiningUiStore.getState().selectedKey) setSelectedKey(list.items?.[0]?.factor_key || "");
       const productionKeys = (list.items ?? []).filter((item) => item.status === "production").map((item) => item.factor_key);
       const activePairs = await Promise.allSettled(productionKeys.map(async (key) => [key, (await factorMiningApi.getActivation(key)).active] as const));
       setActivation(Object.fromEntries(activePairs.flatMap((item) => item.status === "fulfilled" ? [item.value] : [])));
@@ -177,27 +186,33 @@ function DraftFactorEditor({
   onChange,
   onCreate,
 }: {
-  draft: { key: string; name: string; hypothesis: string; code: string };
+  draft: FactorDraft;
   loading: boolean;
-  onChange: (draft: { key: string; name: string; hypothesis: string; code: string }) => void;
+  onChange: (draft: FactorDraft) => void;
   onCreate: () => void;
 }) {
   return (
-    <section className="factor-draft-editor">
+    <AppForm className="factor-draft-editor" onFinish={onCreate}>
       <div className="factor-section-title">
         <h3>2. 因子代码草稿</h3>
         <span>可以人工调整后再保存到因子库。</span>
       </div>
       <div className="factor-draft-fields">
-        <Input value={draft.key} onChange={(event) => onChange({ ...draft, key: event.target.value })} placeholder="factor_key" />
-        <Input value={draft.name} onChange={(event) => onChange({ ...draft, name: event.target.value })} placeholder="因子名称" />
+        <Form.Item label="因子 Key" required>
+          <Input value={draft.key} onChange={(event) => onChange({ ...draft, key: event.target.value })} placeholder="factor_key" />
+        </Form.Item>
+        <Form.Item label="因子名称" required>
+          <Input value={draft.name} onChange={(event) => onChange({ ...draft, name: event.target.value })} placeholder="因子名称" />
+        </Form.Item>
       </div>
-      <TextArea value={draft.hypothesis} onChange={(event) => onChange({ ...draft, hypothesis: event.target.value })} placeholder="经济学假设" rows={3} />
-      <TextArea value={draft.code} onChange={(event) => onChange({ ...draft, code: event.target.value })} placeholder="def compute_factor(bars):" rows={8} />
-      <Button type="primary" onClick={onCreate} loading={loading} disabled={!draft.key.trim() || !draft.name.trim() || !draft.code.trim()}>
-        {loading ? "保存中" : "保存到因子库"}
-      </Button>
-    </section>
+      <Form.Item label="经济学假设">
+        <TextArea value={draft.hypothesis} onChange={(event) => onChange({ ...draft, hypothesis: event.target.value })} placeholder="经济学假设" rows={3} />
+      </Form.Item>
+      <Form.Item label="因子代码" required>
+        <TextArea value={draft.code} onChange={(event) => onChange({ ...draft, code: event.target.value })} placeholder="def compute_factor(bars):" rows={8} />
+      </Form.Item>
+      <SubmitBar submitText={loading ? "保存中" : "保存到因子库"} loading={loading} disabled={!draft.key.trim() || !draft.name.trim() || !draft.code.trim()} />
+    </AppForm>
   );
 }
 
@@ -225,22 +240,52 @@ function FactorLibraryList({
         <h3>因子库</h3>
         <span>{factors.length} 个因子</span>
       </div>
-      {factors.map((factor) => (
-        <article key={factor.factor_key} className={selectedKey === factor.factor_key ? "active" : ""}>
-          <Button type="text" onClick={() => onSelect(factor.factor_key)}>
-            <strong>{factor.name}</strong>
-            <span>{factor.factor_key}</span>
-            <small>{statusText(factor.status)} · IC {((factor.eval_result?.ic_mean ?? 0) * 100).toFixed(2)}%</small>
-          </Button>
-          {admin && factor.status === "production" ? (
-            <FactorActivationToggle
-              factorKey={factor.factor_key}
-              active={Boolean(activation[factor.factor_key])}
-              onChange={(active) => onActivationChange(factor.factor_key, active)}
-            />
-          ) : null}
-        </article>
-      ))}
+      <DataTable<FactorDefinition>
+        rowKey="factor_key"
+        dataSource={factors}
+        rowClassName={(factor) => selectedKey === factor.factor_key ? "active" : ""}
+        onRow={(factor) => ({
+          onClick: () => onSelect(factor.factor_key),
+        })}
+        scroll={{ x: 760, y: 360 }}
+        columns={[
+          {
+            title: "因子",
+            dataIndex: "name",
+            render: (_value, factor) => (
+              <Button type="text" className="factor-table-name" onClick={() => onSelect(factor.factor_key)}>
+                <strong>{factor.name}</strong>
+                <span>{factor.factor_key}</span>
+              </Button>
+            ),
+          },
+          {
+            title: "状态",
+            dataIndex: "status",
+            render: (status) => statusText(status),
+          },
+          {
+            title: "IC",
+            render: (_value, factor) => `${((factor.eval_result?.ic_mean ?? 0) * 100).toFixed(2)}%`,
+            align: "right",
+          },
+          {
+            title: "方向",
+            dataIndex: "direction",
+            render: (direction) => direction === "higher_better" ? "越高越好" : "越低越好",
+          },
+          {
+            title: "接入评分",
+            render: (_value, factor) => admin && factor.status === "production" ? (
+              <FactorActivationToggle
+                factorKey={factor.factor_key}
+                active={Boolean(activation[factor.factor_key])}
+                onChange={(active) => onActivationChange(factor.factor_key, active)}
+              />
+            ) : "--",
+          },
+        ]}
+      />
     </section>
   );
 }
