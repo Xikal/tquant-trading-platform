@@ -21,14 +21,16 @@
   --muted-bg: var(--strategy-bg-soft);
   --text: var(--strategy-text);
   display: grid;
-  gap: 12px;
+  gap: 8px;
   color: var(--strategy-text);
+  font-size: 12px;
 }
 
 .strategy-hub .panel {
   background: var(--strategy-bg);
   border-color: var(--strategy-border);
   color: var(--strategy-text);
+  padding: 10px;
 }
 
 .strategy-hub button:not(.primary):not(.danger):not(.gold) {
@@ -84,7 +86,7 @@
   font-size: 11px;
   font-weight: 800;
   letter-spacing: 0.16em;
-  margin-bottom: 8px;
+  margin-bottom: 4px;
   text-transform: uppercase;
 }
 
@@ -135,13 +137,13 @@
 .strategy-panel-title {
   align-items: flex-start;
   display: flex;
-  gap: 12px;
+  gap: 8px;
   justify-content: space-between;
-  margin-bottom: 12px;
+  margin-bottom: 8px;
 }
 
 .strategy-form {
   display: grid;
-  gap: 12px;
+  gap: 10px;
   grid-template-columns: repeat(4, minmax(0, 1fr));
 }

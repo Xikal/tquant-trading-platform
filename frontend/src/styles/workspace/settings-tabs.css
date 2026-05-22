@@ -55,12 +55,59 @@
   gap: 0;
 }
 
+.settings-cards.role-separated.tabbed .setting-card {
+  min-height: auto;
+}
+
 .settings-cards.role-separated.tabbed .settings-section {
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
 }
 
 .settings-cards.role-separated .settings-tab-panel {
   min-height: 320px;
+}
+
+.settings-cards.role-separated.tabbed .settings-tab-panel--trading {
+  grid-template-columns: minmax(280px, 0.82fr) minmax(420px, 1.18fr);
+  gap: 14px;
+}
+
+.settings-tab-panel--trading .settings-section-title {
+  grid-column: 1 / -1;
+}
+
+.settings-tab-panel--trading .risk-params-card,
+.settings-tab-panel--trading .paper-exit-params-card,
+.settings-tab-panel--trading .sector-etf-params-card {
+  grid-column: 1;
+}
+
+.settings-tab-panel--trading .sector-filter-card {
+  grid-column: 2;
+  grid-row: 2 / span 3;
+  min-height: 0;
+}
+
+.settings-cards.role-separated.tabbed .settings-tab-panel--llm {
+  grid-template-columns: minmax(280px, 0.82fr) minmax(420px, 1.18fr);
+  gap: 14px;
+}
+
+.settings-tab-panel--llm .settings-section-title {
+  grid-column: 1 / -1;
+}
+
+.settings-tab-panel--llm .llm-config-card {
+  grid-column: 1;
+}
+
+.settings-tab-panel--llm .factor-weight-card {
+  grid-column: 2;
+  grid-row: 2 / span 2;
+}
+
+.settings-tab-panel--llm .ml-params-card {
+  grid-column: 1;
 }
 
 .settings-cards.role-separated.tabbed .settings-tab-panel--data {
@@ -134,13 +181,22 @@
 }
 
 @media (max-width: 1080px) {
-  .settings-cards.role-separated.tabbed .settings-tab-panel--data {
+  .settings-cards.role-separated.tabbed .settings-tab-panel--data,
+  .settings-cards.role-separated.tabbed .settings-tab-panel--trading,
+  .settings-cards.role-separated.tabbed .settings-tab-panel--llm {
     grid-template-columns: 1fr;
   }
 
   .settings-tab-panel--data > .setting-card,
   .settings-tab-panel--data .runtime-diagnostics-card,
-  .settings-tab-panel--data .settings-snapshot {
+  .settings-tab-panel--data .settings-snapshot,
+  .settings-tab-panel--trading .risk-params-card,
+  .settings-tab-panel--trading .paper-exit-params-card,
+  .settings-tab-panel--trading .sector-etf-params-card,
+  .settings-tab-panel--trading .sector-filter-card,
+  .settings-tab-panel--llm .llm-config-card,
+  .settings-tab-panel--llm .factor-weight-card,
+  .settings-tab-panel--llm .ml-params-card {
     grid-column: auto;
     grid-row: auto;
   }

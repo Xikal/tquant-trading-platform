@@ -89,7 +89,7 @@ export function QuantParameterPaperExitCard({ adminTokenError }: { adminTokenErr
   }
 
   return (
-    <SettingCard title="模拟盘动态止盈止损" button="保存动态退出参数" onSave={() => void save()} loading={loading} saved={saved} disabled={Boolean(adminTokenError || fieldError || !current)}>
+    <SettingCard className="paper-exit-params-card" title="模拟盘动态止盈止损" button="保存动态退出参数" onSave={() => void save()} loading={loading} saved={saved} disabled={Boolean(adminTokenError || fieldError || !current)}>
       <p className="muted">控制自动交易持仓的硬止损、冲高无量分批止盈、利润保护和洗盘容忍，避免利润大幅回吐，同时防止固定止损卖在缩量洗盘低点。</p>
       {PAPER_EXIT_FIELDS.map((field) => (
         <NumberField

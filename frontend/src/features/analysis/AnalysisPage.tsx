@@ -80,8 +80,8 @@ export function AnalysisPage({
       </div>
       <aside className="panel analysis-control">
         <PanelTitle title="输入控制" />
-        <div className="compact-form-grid">
-          <SearchField label="证券代码" value={draft.symbol} placeholder="输入代码或名称" onChange={(value) => setDraft({ ...draft, symbol: value })} />
+        <div className="compact-form-grid analysis-control-form">
+          <SearchField label="证券代码" value={draft.symbol} placeholder="代码/名称，例 600000" onChange={(value) => setDraft({ ...draft, symbol: value })} />
           <NumberField label="底仓" value={draft.base_position} onChange={(event) => setDraft({ ...draft, base_position: event.target.value })} />
           <NumberField label="可卖" value={draft.available_position} onChange={(event) => setDraft({ ...draft, available_position: event.target.value })} />
           <NumberField label="成本价" value={draft.cost_basis} onChange={(event) => setDraft({ ...draft, cost_basis: event.target.value })} />

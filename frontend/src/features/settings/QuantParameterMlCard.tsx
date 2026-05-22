@@ -80,7 +80,7 @@ export function QuantParameterMlCard({ adminTokenError }: { adminTokenError: str
   };
 
   return (
-    <SettingCard title="ML 训练参数" button="保存 ML 参数" onSave={() => void save()} loading={loading} saved={saved} disabled={Boolean(adminTokenError || fieldError || !current)}>
+    <SettingCard className="ml-params-card" title="ML 训练参数" button="保存 ML 参数" onSave={() => void save()} loading={loading} saved={saved} disabled={Boolean(adminTokenError || fieldError || !current)}>
       <p className="muted">控制模型训练样本量、K-fold 验证和树模型参数。修改后新训练任务生效，不会改变历史模型。</p>
       {FIELD_SPECS.map((field) => (
         <NumberField

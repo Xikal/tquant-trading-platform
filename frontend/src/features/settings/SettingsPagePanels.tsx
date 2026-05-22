@@ -43,6 +43,7 @@ export function SectorFilterCard({
     <SettingCard
       title="板块过滤"
       button="保存板块过滤"
+      className="sector-filter-card"
       onSave={onSave}
       loading={loading === "settings-sector-exclusions"}
       saved={saved}

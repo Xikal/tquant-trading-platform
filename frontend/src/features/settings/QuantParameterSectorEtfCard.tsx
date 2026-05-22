@@ -73,7 +73,7 @@ export function QuantParameterSectorEtfCard({ adminTokenError }: { adminTokenErr
   }
 
   return (
-    <SettingCard title="行业 ETF T+0 自动交易" button="保存 ETF 参数" onSave={() => void save()} loading={loading} saved={saved} disabled={Boolean(adminTokenError || fieldError || !current)}>
+    <SettingCard className="sector-etf-params-card" title="行业 ETF T+0 自动交易" button="保存 ETF 参数" onSave={() => void save()} loading={loading} saved={saved} disabled={Boolean(adminTokenError || fieldError || !current)}>
       <p className="muted">控制模拟盘是否自动执行行业 ETF T+0 机会，以及单轮委托、置信度、价差、止盈止损门槛。</p>
       <label className="tq-field tq-checkbox-field">
         <span className="tq-field__label">自动执行</span>

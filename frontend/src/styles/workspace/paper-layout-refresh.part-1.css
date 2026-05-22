@@ -104,7 +104,7 @@
 
 .paper-right-column .pixel-trader-container {
   grid-area: auto;
-  min-height: 0;
+  min-height: 330px;
 }
 
 .paper-today-actions,

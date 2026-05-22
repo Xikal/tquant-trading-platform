@@ -66,16 +66,44 @@
   margin-top: 8px;
 }
 
+.playbook-strategy-tabs .ant-tabs-nav-wrap {
+  overflow: visible;
+}
+
+.playbook-strategy-tabs .ant-tabs-nav-list {
+  flex-wrap: wrap;
+  gap: 6px;
+  transform: none !important;
+}
+
+.playbook-strategy-tabs .ant-tabs-nav-operations {
+  display: none !important;
+}
+
 .playbook-strategy-tabs .ant-tabs-nav,
 .paper-detail-antd-tabs .ant-tabs-nav {
   margin-bottom: 0;
 }
 
 .playbook-strategy-tabs .ant-tabs-tab {
-  padding: 8px 12px;
+  margin: 0 !important;
+  padding: 6px 10px;
   border: 1px solid rgba(148, 163, 184, 0.28);
-  border-radius: 10px 10px 0 0;
+  border-radius: 999px;
   background: rgba(255, 255, 255, 0.82);
+}
+
+.playbook-tab-label {
+  display: inline-flex;
+  align-items: center;
+}
+
+.playbook-tab-label > strong {
+  overflow: visible;
+  font-size: 12px;
+  line-height: 1.2;
+  text-overflow: clip;
+  white-space: nowrap;
 }
 
 .playbook-strategy-tabs .ant-tabs-tab-active,

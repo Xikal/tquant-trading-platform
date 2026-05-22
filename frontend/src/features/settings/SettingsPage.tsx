@@ -311,9 +311,9 @@ export function SettingsPage({
         ) : null}
 
         {activeTab === "trading" ? (
-        <section className="settings-section settings-tab-panel">
+        <section className="settings-section settings-tab-panel settings-tab-panel--trading">
           <div className="settings-section-title"><strong>交易参数</strong><span>普通用户常用配置：风控、行业过滤和模拟退出</span></div>
-          <SettingCard title="风控参数" button="保存风控参数" onSave={() => void saveSection("risk")} loading={loading === "settings-risk"} saved={savedSection === "risk"} disabled={Boolean(adminTokenError || singleLossError || dailyLossError || pauseLossError || minProfitError)}>
+          <SettingCard className="risk-params-card" title="风控参数" button="保存风控参数" onSave={() => void saveSection("risk")} loading={loading === "settings-risk"} saved={savedSection === "risk"} disabled={Boolean(adminTokenError || singleLossError || dailyLossError || pauseLossError || minProfitError)}>
             <div className="compact-form-grid">
               <NumberField label="单笔最大亏损" suffix="%" value={draft.risk_max_single_loss_pct} error={singleLossError} onChange={(event) => setDraft({ ...draft, risk_max_single_loss_pct: event.target.value })} />
               <NumberField label="日内最大亏损" suffix="%" value={draft.risk_max_daily_loss_pct} error={dailyLossError} onChange={(event) => setDraft({ ...draft, risk_max_daily_loss_pct: event.target.value })} />
@@ -341,9 +341,9 @@ export function SettingsPage({
         ) : null}
 
         {isAdmin && activeTab === "llm" ? (
-          <section className="settings-section settings-tab-panel admin">
+          <section className="settings-section settings-tab-panel settings-tab-panel--llm admin">
             <div className="settings-section-title"><strong>大模型与因子</strong><span>DeepSeek、大模型接口、因子权重和 ML 参数</span></div>
-            <SettingCard title="大模型配置" button="保存大模型配置" onSave={() => void saveSection("llm")} loading={loading === "settings-llm"} saved={savedSection === "llm"} disabled={Boolean(adminTokenError || llmKeyError || llmBaseUrlError)}>
+            <SettingCard className="llm-config-card" title="大模型配置" button="保存大模型配置" onSave={() => void saveSection("llm")} loading={loading === "settings-llm"} saved={savedSection === "llm"} disabled={Boolean(adminTokenError || llmKeyError || llmBaseUrlError)}>
               <div className="compact-form-grid">
                 <TextField label="管理令牌" value={draft.adminToken} error={adminTokenError} onChange={(event) => setDraft({ ...draft, adminToken: event.target.value })} />
                 <TextField label="API Key" value={draft.llm_api_key} error={llmKeyError} onChange={(event) => setDraft({ ...draft, llm_api_key: event.target.value })} />
@@ -353,7 +353,7 @@ export function SettingsPage({
               </div>
               <p className="hint">当前状态：{settings?.llm_api_key_configured ? "Key 已配置" : "Key 未配置"}</p>
             </SettingCard>
-            <SettingCard title="因子权重" button="保存因子权重" onSave={() => void saveSection("factor")} loading={loading === "settings-factor"} saved={savedSection === "factor"} disabled={Boolean(adminTokenError)}>
+            <SettingCard className="factor-weight-card" title="因子权重" button="保存因子权重" onSave={() => void saveSection("factor")} loading={loading === "settings-factor"} saved={savedSection === "factor"} disabled={Boolean(adminTokenError)}>
               {factorWeights ? (
                 <div className="factor-weight-grid">
                   {factorWeights.factors.map((factor) => (

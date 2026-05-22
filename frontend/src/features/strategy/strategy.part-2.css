@@ -44,9 +44,9 @@
 .strategy-card-grid button,
 .strategy-preset-list button {
   display: grid;
-  gap: 6px;
-  min-height: 92px;
-  padding: 12px;
+  gap: 4px;
+  min-height: auto;
+  padding: 9px 10px;
   text-align: left;
 }
 
@@ -58,13 +58,14 @@
 
 .strategy-run-list article {
   display: grid;
-  gap: 8px;
-  padding: 12px;
+  gap: 6px;
+  padding: 9px 10px;
 }
 
 .strategy-run-list article > div {
   align-items: center;
   display: flex;
+  flex-wrap: wrap;
   gap: 10px;
   justify-content: space-between;
 }

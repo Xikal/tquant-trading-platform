@@ -1,7 +1,7 @@
 .strategy-detail-tabs {
   display: grid;
-  gap: 12px;
-  padding: 16px;
+  gap: 8px;
+  padding: 10px;
 }
 
 .strategy-detail-tabs-antd,
@@ -12,13 +12,13 @@
 .strategy-tab-label {
   display: grid;
   gap: 2px;
-  min-width: 92px;
+  min-width: 72px;
   color: var(--text);
   text-align: left;
 }
 
 .strategy-tab-label strong {
-  font-size: 13px;
+  font-size: 12px;
 }
 
 .strategy-tab-label small {
@@ -38,26 +38,26 @@
 }
 
 .strategy-detail-panel {
-  min-height: 320px;
+  min-height: 280px;
 }
 
 .strategy-quick-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1.7fr) minmax(260px, 0.9fr);
-  gap: 16px;
+  grid-template-columns: minmax(0, 1.35fr) minmax(240px, 0.85fr);
+  gap: 10px;
 }
 
 .strategy-quick-main,
 .strategy-quick-side,
 .strategy-expert-panel {
   display: grid;
-  gap: 14px;
+  gap: 10px;
 }
 
 .strategy-side-card {
   display: grid;
-  gap: 12px;
-  padding: 14px;
+  gap: 8px;
+  padding: 10px;
 }
 
 .strategy-preset-list.compact {

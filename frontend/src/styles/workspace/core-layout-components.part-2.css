@@ -33,7 +33,7 @@
 
 .sector-filter-list {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   gap: 6px;
   max-height: 240px;
   overflow: auto;
@@ -45,9 +45,10 @@
 
 .sector-filter-option {
   display: inline-flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 6px;
   min-width: 0;
+  min-height: 32px;
   padding: 6px 8px;
   border: 1px solid transparent;
   border-radius: 8px;
@@ -64,9 +65,10 @@
 }
 
 .sector-filter-option span {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow: visible;
+  line-height: 1.25;
+  text-overflow: clip;
+  white-space: normal;
 }
 
 .sector-filter-option.active {

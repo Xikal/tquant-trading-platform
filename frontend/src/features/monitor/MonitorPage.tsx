@@ -135,7 +135,7 @@ export const MonitorPage = memo(function MonitorPage({
             : "代码、底仓、可卖、成本价决定做T信号是否可执行。A股 T+1 下，当日买入通常次日才进入可用数量。"}
         </p>
         <MonitorHoldingWizard draft={watchDraft} editing={isEditing} />
-        <div className="compact-form-grid">
+        <div className="compact-form-grid monitor-holding-form-grid">
           <SearchField
             label="证券代码"
             value={watchDraft.symbol}

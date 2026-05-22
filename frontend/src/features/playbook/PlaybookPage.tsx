@@ -65,12 +65,12 @@ export function PlaybookPage({
           className="playbook-strategy-tabs"
           activeKey={strategy}
           onChange={setStrategy}
+          tabBarGutter={6}
           items={tabs.map((tab) => ({
             key: tab.key,
             label: (
               <span className="playbook-tab-label">
                 <strong>{tab.label}</strong>
-                <small>{strategyPurpose(tab.key)}</small>
               </span>
             ),
           }))}

@@ -35,6 +35,17 @@
   outline: 2px solid rgba(64, 149, 255, 0.12);
 }
 
+.playbook-performance p {
+  margin: 4px 0;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.42;
+}
+
+.playbook-performance .panel-title h2 {
+  font-size: 13px;
+}
+
 .section-topbar nav button.active {
   background: transparent;
   border-color: transparent;

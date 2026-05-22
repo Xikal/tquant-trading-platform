@@ -1,7 +1,7 @@
 .strategy-summary-bar {
   display: grid;
-  gap: 14px;
-  padding: 18px 20px;
+  gap: 10px;
+  padding: 14px 16px;
 }
 
 .strategy-summary-copy {
@@ -19,7 +19,7 @@
 
 .strategy-summary-copy h1 {
   margin: 0;
-  font-size: 28px;
+  font-size: 22px;
   line-height: 1.2;
 }
 
@@ -33,7 +33,7 @@
 .strategy-summary-lights {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
+  gap: 8px;
 }
 
 .strategy-summary-stats article,
@@ -52,7 +52,7 @@
 .strategy-summary-item {
   display: grid;
   gap: 4px;
-  padding: 12px 14px;
+  padding: 9px 10px;
 }
 
 .strategy-summary-stats span,
@@ -65,7 +65,7 @@
 
 .strategy-summary-stats strong,
 .strategy-latest-run strong {
-  font-size: 18px;
+  font-size: 15px;
 }
 
 .strategy-summary-actions {
@@ -95,7 +95,7 @@
 .strategy-summary-list {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 10px;
+  gap: 8px;
 }
 
 .strategy-summary-item.ok strong {
@@ -116,10 +116,10 @@
 
 .strategy-hero-mini .ant-card-body {
   display: grid;
-  grid-template-columns: minmax(0, 1.6fr) minmax(220px, 0.8fr) auto;
-  gap: 12px;
+  grid-template-columns: minmax(0, 1.25fr) minmax(190px, 0.75fr) auto;
+  gap: 8px;
   align-items: center;
-  padding: 14px 18px;
+  padding: 10px 12px;
 }
 
 .strategy-latest-run {
@@ -137,7 +137,7 @@
 }
 
 .strategy-latest-run {
-  padding: 10px 12px;
+  padding: 8px 10px;
   border: 1px solid var(--border-soft);
   border-radius: 10px;
   background: var(--panel-muted);
@@ -145,15 +145,15 @@
 
 .strategy-simple-flow {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 12px;
-  padding: 14px;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 8px;
+  padding: 10px;
 }
 
 .strategy-simple-flow button {
   display: grid;
-  gap: 6px;
-  padding: 14px;
+  gap: 4px;
+  padding: 9px 10px;
   border: 1px solid var(--border-soft);
   border-radius: 12px;
   background: var(--panel-elevated);
@@ -182,7 +182,7 @@
 }
 
 .strategy-simple-flow b {
-  font-size: 15px;
+  font-size: 13px;
 }
 
 .strategy-simple-flow span {
