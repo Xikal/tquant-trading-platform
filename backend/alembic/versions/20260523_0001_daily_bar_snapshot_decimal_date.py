@@ -1,6 +1,6 @@
 """daily bar snapshot date and decimal precision
 
-Revision ID: 20260523_0001_daily_bar_decimal_date
+Revision ID: 20260523_0001
 Revises: 20260519_0002_encrypt_settings
 Create Date: 2026-05-23
 """
@@ -10,7 +10,7 @@ from __future__ import annotations
 import sqlalchemy as sa
 from alembic import op
 
-revision = "20260523_0001_daily_bar_decimal_date"
+revision = "20260523_0001"
 down_revision = "20260519_0002_encrypt_settings"
 branch_labels = None
 depends_on = None
