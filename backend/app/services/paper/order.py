@@ -54,8 +54,6 @@ class PaperOrderService:
         self.accounts.get_account(account_id, for_update=True)
         self._idempotency_check(account_id, symbol, side, source, signal_snapshot)
         self._precheck(account_id, symbol, side, quantity, current_price)
-        if side == "buy" and not intraday_confirmed:
-            raise ValueError("盘中承接未确认，模拟买入被拒绝。")
         self._risk_check(account_id, symbol, side, quantity, current_price)
         match = self.matching.match(
             symbol=symbol,

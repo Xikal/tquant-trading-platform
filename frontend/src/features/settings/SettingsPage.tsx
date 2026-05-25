@@ -46,12 +46,12 @@ import type { SettingsDraft } from "../workspace-shared/workspaceTypes";
 const SETTINGS_PAGE_STYLE: CSSProperties = {
   display: "grid",
   gap: 8,
-  gridTemplateColumns: "minmax(0, 1fr) 390px",
-  gridTemplateAreas: '"hero hero" "cards snapshot"',
+  gridTemplateColumns: "minmax(0, 1fr)",
+  gridTemplateAreas: '"hero" "tabs" "cards"',
 };
 
 const SETTINGS_HERO_STYLE: CSSProperties = { gridArea: "hero" };
-const SETTINGS_TABS_STYLE: CSSProperties = { gridArea: "snapshot" };
+const SETTINGS_TABS_STYLE: CSSProperties = { gridArea: "tabs" };
 const SETTINGS_CARDS_STYLE: CSSProperties = {
   display: "grid",
   alignItems: "start",
@@ -69,21 +69,6 @@ const SETTINGS_FORM_GRID_COMPACT_STYLE: CSSProperties = {
   gap: 10,
   gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
 };
-const SETTINGS_ROLE_GUIDE_STYLE: CSSProperties = {
-  display: "flex",
-  flexWrap: "wrap",
-  gap: 8,
-  margin: "10px 0",
-};
-
-const SETTINGS_ROLE_GUIDE_ITEM_STYLE: CSSProperties = {
-  border: "1px solid rgba(148, 163, 184, 0.24)",
-  borderRadius: 999,
-  background: "#fff",
-  padding: "7px 10px",
-  fontSize: 12,
-};
-
 const SETTINGS_UNSAVED_BANNER_STYLE: CSSProperties = {
   display: "flex",
   alignItems: "center",
@@ -345,12 +330,6 @@ export function SettingsPage({
     <section style={SETTINGS_PAGE_STYLE}>
       <div className="panel" style={SETTINGS_HERO_STYLE}>
         <PanelTitle title="开放式系统配置" actions={<Button onClick={onRefresh} loading={loading === "settings"}>刷新配置</Button>} />
-        <p className="hint">管理大模型、数据库、数据源、风险控制和策略门槛。敏感值只保存，不回显明文。</p>
-        <div style={SETTINGS_ROLE_GUIDE_STYLE}>
-          <span style={SETTINGS_ROLE_GUIDE_ITEM_STYLE}><strong>我的账户</strong> 登录安全、二次验证、权限状态</span>
-          <span style={SETTINGS_ROLE_GUIDE_ITEM_STYLE}><strong>交易参数</strong> 风控、策略门槛、行业过滤</span>
-          <span style={SETTINGS_ROLE_GUIDE_ITEM_STYLE}><strong>系统管理</strong> 数据源、功能开关、审计与诊断</span>
-        </div>
         {unsavedCount > 0 ? (
           <div style={SETTINGS_UNSAVED_BANNER_STYLE}>
             <span>有 {unsavedCount} 项未保存的更改</span>

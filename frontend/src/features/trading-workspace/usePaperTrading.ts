@@ -231,7 +231,7 @@ export function usePaperTrading({ canManageReconcile = false, setError, setLoadi
         current_price: nullableNumber(draft.current_price),
         strategy_key: draft.strategy_key.trim(),
         reason: draft.reason.trim(),
-        require_intraday_confirmation: true,
+        require_intraday_confirmation: false,
         source: "manual",
       }));
       setNotice(result.status === "filled" ? "模拟委托已成交" : result.reject_reason || "模拟委托已提交");

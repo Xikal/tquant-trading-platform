@@ -28,7 +28,7 @@ export const DEFAULT_PAPER_ORDER_DRAFT: PaperOrderDraft = {
   current_price: "",
   strategy_key: "",
   reason: "",
-  require_intraday_confirmation: true,
+  require_intraday_confirmation: false,
 };
 
 interface PaperTradingStore {

@@ -1,16 +1,13 @@
 import { useEffect } from "react";
-import { Alert, Button, Card, Flex, Space, Typography } from "antd";
+import { Alert, Space } from "antd";
 import { ErrorBanner } from "../../components/shared/Feedback";
 import { useToast } from "../../components/shared/ToastContainer";
 import type { AuthUser } from "../../types";
 import type { BacktestRunSummary } from "../../api/backtests";
-import { formatDateTime, formatMoney, formatPct } from "../backtest/backtestDisplay";
+import { formatMoney } from "../backtest/backtestDisplay";
 import { StrategyConfirmDialog } from "./StrategyConfirmDialog";
 import { StrategyHubDetailTabs } from "./StrategyHubDetailTabs";
-import {
-  executionModelText,
-  visibleTabsForUser,
-} from "./StrategyHubPanels";
+import { executionModelText, visibleTabsForUser } from "./StrategyHubPanels";
 import { StrategyHubSummaryBar } from "./StrategyHubSummaryBar";
 import { StrategyWorkflow } from "./StrategyWorkflow";
 import { useStrategyHub } from "./useStrategyHub";
@@ -72,11 +69,6 @@ export function StrategyHubPage({ currentUser }: { currentUser: AuthUser }) {
     { label: "成交模型", value: executionModelText(hub.form.execution_model) },
     { label: "预计耗时", value: estimateSubmitTime(hub.form.strategies.length) },
   ];
-  const latestRun = hub.runs[0];
-  const completedRuns = hub.runs.filter((run) => run.status === "completed" || run.status === "succeeded");
-  const avgWinRate = average(completedRuns.map((run) => run.summary?.win_rate_pct));
-  const heroSummary = `市场今日：以实时监控为准 · 生产策略 ${hub.strategies.filter((item) => item.visibility === "full" && item.enabled !== false).length} 个 · 最近回测胜率 ${formatPct(avgWinRate)}`;
-
   return (
     <Space direction="vertical" size={8} style={{ display: "flex" }}>
       <StrategyHubSummaryBar
@@ -88,18 +80,6 @@ export function StrategyHubPage({ currentUser }: { currentUser: AuthUser }) {
 
       {hub.error ? <ErrorBanner message={`策略工作台加载失败：${hub.error}`} /> : null}
       {hub.notice ? <Alert type="info" showIcon message={hub.notice} /> : null}
-      <Card variant="borderless" styles={{ body: { padding: "10px 12px" } }}>
-        <Flex align="center" justify="space-between" gap={8} wrap>
-          <Space direction="vertical" size={2} style={{ flex: "1 1 380px", minWidth: 0 }}>
-            <Typography.Text strong>今日状态摘要</Typography.Text>
-            <Typography.Text type="secondary">{heroSummary}</Typography.Text>
-          </Space>
-          {latestRun ? <LatestRunCard run={latestRun} /> : <Typography.Text type="secondary">还没有最近一次回测</Typography.Text>}
-          <Button type="default" onClick={() => void hub.load()} loading={hub.loading === "load"}>
-            {hub.loading === "load" ? "刷新中" : "刷新"}
-          </Button>
-        </Flex>
-      </Card>
       <StrategyWorkflow
         activeTab={effectiveTab}
         runs={hub.runs}
@@ -117,7 +97,7 @@ export function StrategyHubPage({ currentUser }: { currentUser: AuthUser }) {
       {hub.confirmOpen ? (
         <StrategyConfirmDialog
           loading={hub.loading === "submit"}
-          title="🚀 确认提交回测"
+          title="确认提交回测"
           description="提交前请核对策略、日期和资金。任务异步执行，可在策略历史查看进度。"
           summaryItems={confirmSummaryItems}
           onCancel={() => hub.setConfirmOpen(false)}
@@ -126,30 +106,6 @@ export function StrategyHubPage({ currentUser }: { currentUser: AuthUser }) {
       ) : null}
     </Space>
   );
-}
-
-function LatestRunCard({ run }: { run: BacktestRunSummary }) {
-  const winRate = typeof run.summary?.win_rate_pct === "number" ? formatPct(run.summary.win_rate_pct) : "完成后显示";
-  const conclusion = run.status === "completed" || run.status === "succeeded"
-    ? `胜率 ${winRate}`
-    : run.status === "failed"
-      ? "任务失败"
-      : "正在计算";
-  return (
-    <Card size="small" aria-label="最近一次回测" style={{ minWidth: 190 }}>
-      <Space direction="vertical" size={2}>
-        <Typography.Text type="secondary" style={{ fontSize: 12 }}>我的最近一次回测</Typography.Text>
-        <Typography.Text strong>{conclusion}</Typography.Text>
-        <Typography.Text type="secondary" style={{ fontSize: 12 }}>{formatDateTime(run.created_at)}</Typography.Text>
-      </Space>
-    </Card>
-  );
-}
-
-function average(values: Array<number | null | undefined>): number | undefined {
-  const filtered = values.filter((value): value is number => typeof value === "number" && Number.isFinite(value));
-  if (!filtered.length) return undefined;
-  return filtered.reduce((sum, value) => sum + value, 0) / filtered.length;
 }
 
 function estimateSubmitTime(strategyCount: number): string {

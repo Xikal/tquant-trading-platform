@@ -19,7 +19,6 @@ from app.models.schemas import (
     PaperTradeTagOut,
     PaperTradesResponse,
 )
-from app.services.intraday_confirmation_service import IntradayConfirmationService
 from app.services.operation_audit import record_operation_audit
 from app.services.paper import PaperAccountService, PaperOrderService
 from app.services.paper.risk_circuit import PaperRiskCircuitBreaker
@@ -48,16 +47,6 @@ def create_paper_order(
 ) -> PaperOrderOut:
     account = PaperAccountService(db).get_or_create_default(current_user.id)
     quote_price, quote_time, quote_name = resolve_quote(payload)
-    intraday_confirmed = True
-    if payload.require_intraday_confirmation and payload.side == "buy":
-        confirmations = IntradayConfirmationService(db).confirm_symbols(
-            [payload.symbol.strip()],
-            period="1m",
-            limit=120,
-        )
-        intraday_confirmed = bool(
-            confirmations and (confirmations[0].confirmed or confirmations[0].late_confirmed)
-        )
     try:
         order = PaperOrderService(db).create_order(
             account_id=account.id,
@@ -76,7 +65,7 @@ def create_paper_order(
             is_suspended=payload.is_suspended,
             up_limit=Decimal(str(payload.up_limit)) if payload.up_limit else None,
             down_limit=Decimal(str(payload.down_limit)) if payload.down_limit else None,
-            intraday_confirmed=intraday_confirmed,
+            intraday_confirmed=True,
         )
         record_operation_audit(
             db,

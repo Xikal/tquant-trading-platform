@@ -37,7 +37,7 @@ class SizedOrder:
             "strategy_key": self.strategy_key,
             "reason": self.reason,
             "signal_snapshot": self.signal_snapshot,
-            "require_intraday_confirmation": bool(self.signal_snapshot.get("require_intraday_confirmation") or False),
+            "require_intraday_confirmation": False,
         }
 
 

@@ -1,27 +1,25 @@
 import { Card, Col, Row, Space, Statistic, Tag, Timeline, Typography } from "antd";
-import type { IntradayConfirmationItem, PaperAgentRun, PaperAutoTradingStatus, RiskEventItem } from "../../types";
+import type { PaperAgentRun, PaperAutoTradingStatus, RiskEventItem } from "../../types";
 import { formatPaperDateTime } from "./paperTradingFormatters";
 
 export function PaperTodayActionPanel({
   autoTradingStatus,
   autoTradingRuns,
   riskEvents,
-  intradayConfirmations,
 }: {
   autoTradingStatus: PaperAutoTradingStatus | null;
   autoTradingRuns: PaperAgentRun[];
   riskEvents: RiskEventItem[];
-  intradayConfirmations: IntradayConfirmationItem[];
 }) {
   const openRisk = riskEvents.find((item) => item.status !== "resolved") ?? null;
-  const confirmation = intradayConfirmations[0] ?? null;
-  const actions = buildActionTimeline(autoTradingStatus, autoTradingRuns, confirmation);
+  const actions = buildActionTimeline(autoTradingStatus, autoTradingRuns);
 
   return (
     <Card
+      size="small"
       title="今日动作"
       extra={<Tag color={autoTradingStatus?.running ? "green" : "default"}>{autoTradingStatus?.running ? "系统自动执行中" : "当前未自动下单"}</Tag>}
-      styles={{ body: { display: "flex", flexDirection: "column", gap: 12 } }}
+      styles={{ body: { display: "flex", flexDirection: "column", gap: 10 } }}
     >
       <Row gutter={[8, 8]}>
         <StatusItem
@@ -36,9 +34,9 @@ export function PaperTodayActionPanel({
           tone={openRisk ? "warning" : "success"}
         />
         <StatusItem
-          label="盘中确认"
-          value={confirmation ? `${confirmation.symbol} ${confirmation.confirmed || confirmation.late_confirmed ? "已确认" : "待观察"}` : "暂无待确认"}
-          detail={confirmation?.reason || "没有需要人工确认的信号。"}
+          label="自动交易触发"
+          value={autoTradingStatus?.running ? "已执行" : autoTradingStatus?.trading_time ? "等待下一轮" : "非交易时间"}
+          detail={autoTradingStatus?.last_cycle_summary || "自动交易按计划轮询，不依赖人工确认。"}
         />
       </Row>
       {actions.length ? (
@@ -46,7 +44,7 @@ export function PaperTodayActionPanel({
           items={actions.map((item, index) => ({
             key: `${item.time}-${index}`,
             children: (
-              <Space direction="vertical" size={1}>
+              <Space orientation="vertical" size={1}>
                 <Typography.Text strong>{item.time} {item.title}</Typography.Text>
                 <Typography.Text type="secondary">{item.detail}</Typography.Text>
               </Space>
@@ -71,12 +69,17 @@ function StatusItem({
 }) {
   return (
     <Col xs={24}>
-      <Card size="small" style={tone === "success" ? { background: "#f0fbf4" } : tone === "warning" ? { background: "#fff8e8" } : undefined}>
-        <Space direction="vertical" size={3}>
-          <Statistic title={label} value={value} valueStyle={{ fontSize: 15 }} />
+      <div style={{
+        background: tone === "success" ? "#f0fbf4" : tone === "warning" ? "#fff8e8" : "#fff",
+        border: "1px solid #edf0f5",
+        borderRadius: 8,
+        padding: 10,
+      }}>
+        <Space orientation="vertical" size={3}>
+          <Statistic title={label} value={value} styles={{ content: { fontSize: 15 } }} />
           <Typography.Text type="secondary">{detail}</Typography.Text>
         </Space>
-      </Card>
+      </div>
     </Col>
   );
 }
@@ -84,7 +87,6 @@ function StatusItem({
 function buildActionTimeline(
   autoTradingStatus: PaperAutoTradingStatus | null,
   autoTradingRuns: PaperAgentRun[],
-  confirmation: IntradayConfirmationItem | null,
 ) {
   const items = autoTradingRuns.slice(0, 3).map((item) => {
     const response = item.response || {};
@@ -100,13 +102,6 @@ function buildActionTimeline(
       time: formatPaperDateTime(autoTradingStatus.last_cycle_at).slice(11, 16),
       title: "最近一轮",
       detail: autoTradingStatus.last_cycle_summary,
-    });
-  }
-  if (confirmation) {
-    items.unshift({
-      time: formatPaperDateTime(confirmation.updated_at || confirmation.trade_date).slice(11, 16),
-      title: "分时确认",
-      detail: `${confirmation.symbol} ${confirmation.confirmed || confirmation.late_confirmed ? "已确认" : "待观察"} · ${confirmation.reason || "等待盘中承接确认"}`,
     });
   }
   return items.slice(0, 3);

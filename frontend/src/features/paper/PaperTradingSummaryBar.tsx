@@ -39,7 +39,7 @@ export function PaperTradingSummaryBar({
   return (
     <Card className="panel" variant="borderless" style={{ gridArea: "summary" }} styles={{ body: { display: "grid", gap: 10, padding: 14 } }}>
       <Flex gap={12} align="start" justify="space-between" wrap style={{ minWidth: 0 }}>
-        <Space direction="vertical" size={4} style={{ flex: "1 1 220px", minWidth: 0 }}>
+        <Space orientation="vertical" size={4} style={{ flex: "1 1 220px", minWidth: 0 }}>
           <Tag color={statusTagColor(status.tone)}> {status.label}</Tag>
           {autoTradingStatus?.last_cycle_at ? (
             <span style={{ color: token.colorTextSecondary, fontSize: 12 }}>最近刷新 {formatPaperDateTime(autoTradingStatus.last_cycle_at)}</span>
@@ -60,13 +60,13 @@ export function PaperTradingSummaryBar({
             </Col>
           ))}
         </Row>
-        <Space direction="vertical" size={8} style={{ flex: "0 0 auto" }}>
+        <Space orientation="vertical" size={8} style={{ flex: "0 0 auto" }}>
           <Button
             type="primary"
             disabled={!canOpenOrder || loading}
             onClick={onOpenOrderEntry}
           >
-            {canOpenOrder ? "录入委托" : "自动交易中"}
+            {canOpenOrder ? "委托录入" : "自动交易中"}
           </Button>
           {account?.status === "paused" && onTogglePause ? (
             <Button type="default" disabled={loading} onClick={() => void onTogglePause()}>

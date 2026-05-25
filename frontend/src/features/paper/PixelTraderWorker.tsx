@@ -62,7 +62,7 @@ const SURFACE_STYLE: CSSProperties = {
   minHeight: 330,
   display: "grid",
   gap: 10,
-  overflow: "hidden",
+  overflow: "visible",
   padding: 13,
   borderRadius: 11,
   color: "#c8d6e5",
@@ -118,18 +118,23 @@ const BADGE_STYLE: CSSProperties = {
 };
 
 const CANVAS_BUTTON_STYLE: CSSProperties = {
-  width: "min(100%, 276px)",
+  width: "min(100%, 292px)",
+  height: "auto",
+  minHeight: 0,
   margin: "0 auto",
   display: "grid",
   placeItems: "center",
-  padding: 8,
+  overflow: "visible",
+  padding: 6,
   borderRadius: 10,
+  lineHeight: 1,
 };
 
 const CANVAS_STYLE: CSSProperties = {
-  width: "min(232px, 100%)",
+  width: "min(256px, 100%)",
   maxWidth: "100%",
   height: "auto",
+  display: "block",
   imageRendering: "pixelated",
 };
 

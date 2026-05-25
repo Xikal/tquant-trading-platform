@@ -1,4 +1,4 @@
-import type { AuthUser, IntradayConfirmationItem } from "../../types";
+import type { AuthUser } from "../../types";
 import type { MonitorPageProps } from "../monitor/MonitorPage";
 import type { PaperTradingPageProps } from "../paper/PaperTradingPage";
 import type { useAnalysisData } from "./useAnalysisData";
@@ -8,7 +8,6 @@ import type { Page, StockCardView, WatchDraft } from "../workspace-shared/worksp
 
 interface UseWorkspacePagePropsParams {
   analysis: ReturnType<typeof useAnalysisData>;
-  intradayConfirmations: IntradayConfirmationItem[];
   loading: string;
   monitor: ReturnType<typeof useMonitorData>;
   paper: ReturnType<typeof usePaperTrading>;
@@ -28,7 +27,6 @@ interface UseWorkspacePagePropsParams {
 
 export function useWorkspacePageProps({
   analysis,
-  intradayConfirmations,
   loading,
   monitor,
   paper,
@@ -93,7 +91,6 @@ export function useWorkspacePageProps({
       const normalized = role.trim().toLowerCase();
       return normalized === "admin" || normalized === "administrator";
     }) ?? false,
-    intradayConfirmations,
     draft: paper.draft,
     setDraft: paper.setDraft,
     loading,

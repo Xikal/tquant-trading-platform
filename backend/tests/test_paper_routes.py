@@ -144,6 +144,12 @@ class PaperRouteTests(unittest.TestCase):
         self.assertEqual(response.status_code, 400)
         self.assertIn("单笔买入金额超过账户资产 30%", response.json()["detail"])
 
+    def test_buy_order_accepts_legacy_intraday_confirmation_flag(self) -> None:
+        headers = self._register("paper_legacy_confirmation")
+        response = self._paper_order(headers, require_intraday_confirmation=True)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["status"], "filled")
+
     def test_same_day_sell_rejected_by_t1_rule(self) -> None:
         headers = self._register("paper_t1")
         buy = self._paper_order(headers, symbol="600000", name="浦发银行", quantity=100)
@@ -404,19 +410,23 @@ class PaperRouteTests(unittest.TestCase):
         quantity: int = 100,
         current_price: float = 4.0,
         reason: str = "测试委托",
+        require_intraday_confirmation: bool | None = None,
     ):
+        payload = {
+            "symbol": symbol,
+            "name": name,
+            "side": side,
+            "order_type": "market",
+            "quantity": quantity,
+            "current_price": current_price,
+            "reason": reason,
+        }
+        if require_intraday_confirmation is not None:
+            payload["require_intraday_confirmation"] = require_intraday_confirmation
         return self.client.post(
             "/api/paper/orders",
             headers=headers,
-            json={
-                "symbol": symbol,
-                "name": name,
-                "side": side,
-                "order_type": "market",
-                "quantity": quantity,
-                "current_price": current_price,
-                "reason": reason,
-            },
+            json=payload,
         )
 
 

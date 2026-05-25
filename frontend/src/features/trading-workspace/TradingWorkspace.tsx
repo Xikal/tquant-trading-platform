@@ -103,7 +103,7 @@ export function TradingWorkspace() {
     setNotice,
     setRuntime: monitor.setRuntime,
   });
-  const intradayConfirmations = usePaperIntraday({
+  usePaperIntraday({
     currentUser,
     page,
     positions: paper.positions,
@@ -111,7 +111,6 @@ export function TradingWorkspace() {
   });
   const { monitorPageProps, paperPageProps } = useWorkspacePageProps({
     analysis,
-    intradayConfirmations,
     loading,
     monitor,
     paper,
@@ -190,18 +189,28 @@ export function TradingWorkspace() {
   async function restoreSession() {
     try {
       setLoadingKey("auth-restore", true);
+      let restored = false;
       if (getAuthAccessToken()) {
         try {
           const result = await appApi.getMe();
           setCurrentUser(result.user);
-          return;
+          restored = true;
         } catch {
-          clearAuthTokens();
+          // Fall through to refresh; do not clear tokens before trying the
+          // httpOnly refresh cookie-backed path.
         }
       }
+      if (restored) {
+        return;
+      }
       if (shouldAttemptAuthRefresh()) {
-        const result = await appApi.refreshAuth();
-        setCurrentUser(result.user);
+        try {
+          const result = await appApi.refreshAuth();
+          setCurrentUser(result.user);
+        } catch {
+          clearAuthTokens();
+          setCurrentUser(null);
+        }
       } else {
         setCurrentUser(null);
       }
@@ -284,7 +293,7 @@ export function TradingWorkspace() {
       side: "buy",
       price: priceText,
       current_price: priceText,
-      require_intraday_confirmation: true,
+      require_intraday_confirmation: false,
     });
     setNotice(`${symbol} 已填入模拟委托，打开录入委托即可提交`);
     navigatePage("paper");

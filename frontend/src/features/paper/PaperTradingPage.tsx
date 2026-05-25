@@ -1,5 +1,4 @@
 import type {
-  IntradayConfirmationItem,
   PaperAccount,
   PaperGroupedPerformance,
   PaperLedgerRepairResponse,
@@ -17,7 +16,7 @@ import type {
   RiskEventItem,
 } from "../../types";
 import { memo, useEffect, useMemo } from "react";
-import { Button, Col, Modal, Row, Space, Typography } from "antd";
+import { Col, Row, Space } from "antd";
 import { PixelTraderWorker } from "./PixelTraderWorker";
 import { PaperDetailTabs } from "./PaperDetailTabs";
 import { PaperTodayActionPanel } from "./PaperTodayActionPanel";
@@ -48,7 +47,6 @@ export interface PaperTradingPageProps {
   autoTradingRuns: PaperAgentRun[];
   ledgerRepairStatus?: PaperLedgerRepairResponse | null;
   canManageReconcile?: boolean;
-  intradayConfirmations: IntradayConfirmationItem[];
   draft: PaperOrderDraft;
   setDraft: (draft: PaperOrderDraft) => void;
   loading: string;
@@ -78,7 +76,6 @@ export const PaperTradingPage = memo(function PaperTradingPage({
   autoTradingRuns,
   ledgerRepairStatus = null,
   canManageReconcile = false,
-  intradayConfirmations,
   draft,
   setDraft,
   loading,
@@ -97,15 +94,7 @@ export const PaperTradingPage = memo(function PaperTradingPage({
   const clockMs = usePaperUiStore((state) => state.clockMs);
   const setClockMs = usePaperUiStore((state) => state.setClockMs);
   const orderModalOpen = usePaperUiStore((state) => state.orderModalOpen);
-  const dismissedConfirmationKey = usePaperUiStore((state) => state.dismissedConfirmationKey);
   const setOrderModalOpen = usePaperUiStore((state) => state.setOrderModalOpen);
-  const setDismissedConfirmationKey = usePaperUiStore((state) => state.setDismissedConfirmationKey);
-  const pendingConfirmation = useMemo(() => (
-    intradayConfirmations.find((item) => item.confirmed || item.late_confirmed) ?? intradayConfirmations[0] ?? null
-  ), [intradayConfirmations]);
-  const pendingConfirmationKey = pendingConfirmation
-    ? `${pendingConfirmation.symbol}-${pendingConfirmation.updated_at ?? pendingConfirmation.trade_date}-${pendingConfirmation.confirmed}-${pendingConfirmation.late_confirmed}`
-    : "";
   const cockpitMarketState = useMemo(() => (
     resolveCockpitMarketState(autoTradingStatus, clockMs)
   ), [autoTradingStatus, clockMs]);
@@ -127,12 +116,6 @@ export const PaperTradingPage = memo(function PaperTradingPage({
       timestamp: Date.parse(timestamp),
     };
   }, [trades]);
-  const shouldShowConfirmationDialog = Boolean(
-    pendingConfirmation
-      && pendingConfirmationKey !== dismissedConfirmationKey
-      && !autoTradingStatus?.engine_running
-      && !autoTradingRunning
-  );
 
   useEffect(() => {
     const timer = window.setInterval(() => setClockMs(Date.now()), 60_000);
@@ -144,32 +127,8 @@ export const PaperTradingPage = memo(function PaperTradingPage({
     setOrderModalOpen(false);
   }
 
-  function confirmIntradayBuy(item: IntradayConfirmationItem) {
-    setDraft({
-      ...draft,
-      symbol: item.symbol,
-      name: item.name || draft.name,
-      side: "buy",
-      order_type: "limit",
-      price: item.latest_price ? String(item.latest_price) : draft.price,
-      current_price: item.latest_price ? String(item.latest_price) : draft.current_price,
-      reason: item.reason || "分时确认后小仓模拟买入",
-      require_intraday_confirmation: false,
-    });
-    setDismissedConfirmationKey(pendingConfirmationKey);
-    setOrderModalOpen(true);
-  }
-
   return (
-    <Space direction="vertical" size={12} style={{ display: "flex", width: "100%" }}>
-      {shouldShowConfirmationDialog && pendingConfirmation ? (
-        <IntradayConfirmationDialog
-          item={pendingConfirmation}
-          disabled={paused || autoTradingRunning}
-          onConfirm={() => confirmIntradayBuy(pendingConfirmation)}
-          onDismiss={() => setDismissedConfirmationKey(pendingConfirmationKey)}
-        />
-      ) : null}
+    <Space orientation="vertical" size={12} style={{ display: "flex", width: "100%" }}>
       <PaperTradingSummaryBar
         account={account}
         performance={performance}
@@ -191,7 +150,7 @@ export const PaperTradingPage = memo(function PaperTradingPage({
           onSubmitOrder={submitOrderFromModal}
         />
       ) : null}
-      <Row gutter={[12, 12]} align="top">
+      <Row gutter={[12, 12]} align="top" style={{ marginInline: 0 }}>
         <Col xs={24} xl={15}>
           <PaperPositionsPanel
             positions={positions}
@@ -199,7 +158,7 @@ export const PaperTradingPage = memo(function PaperTradingPage({
           />
         </Col>
         <Col xs={24} xl={9}>
-          <Space direction="vertical" size={12} style={{ display: "flex" }}>
+          <Space orientation="vertical" size={12} style={{ display: "flex" }}>
             <PixelTraderWorker
               marketState={cockpitMarketState}
               paused={paused}
@@ -212,7 +171,6 @@ export const PaperTradingPage = memo(function PaperTradingPage({
             <PaperTodayActionPanel
               autoTradingStatus={autoTradingStatus}
               riskEvents={riskEvents}
-              intradayConfirmations={intradayConfirmations}
               autoTradingRuns={autoTradingRuns}
             />
           </Space>
@@ -244,50 +202,6 @@ export const PaperTradingPage = memo(function PaperTradingPage({
   );
 });
 
-function IntradayConfirmationDialog({
-  item,
-  disabled,
-  onConfirm,
-  onDismiss,
-}: {
-  item: IntradayConfirmationItem;
-  disabled: boolean;
-  onConfirm: () => void;
-  onDismiss: () => void;
-}) {
-  const passed = item.confirmed || item.late_confirmed;
-  return (
-    <Modal
-      open
-      centered
-      title={passed ? "盘中确认已通过" : "盘中确认待观察"}
-      onCancel={onDismiss}
-      footer={[
-        <Button key="dismiss" onClick={onDismiss}>
-          暂不买
-        </Button>,
-        <Button key="confirm" type="primary" onClick={onConfirm} disabled={disabled || !passed}>
-          确认买入
-        </Button>,
-      ]}
-      destroyOnHidden
-      styles={{ body: { padding: 16 } }}
-    >
-      <Space direction="vertical" size={12} style={{ width: "100%" }}>
-        <Typography.Text type="secondary">
-          {item.name || item.symbol} {passed ? "可以进入委托确认" : "暂不自动下单"}
-        </Typography.Text>
-        <Typography.Text>
-          参考价 {formatPriceValue(item.latest_price)}，VWAP {formatPriceValue(item.vwap)}，分数 {Number.isFinite(item.score) ? item.score.toFixed(0) : "--"}。
-        </Typography.Text>
-        <Typography.Text type="secondary">
-          {item.reason || "系统正在等待分时承接确认。"}
-        </Typography.Text>
-      </Space>
-    </Modal>
-  );
-}
-
 function resolveCockpitMarketState(
   autoTradingStatus: PaperAutoTradingStatus | null,
   clockMs: number,
@@ -302,8 +216,4 @@ function resolveCockpitMarketState(
   if (minutes >= 690 && minutes < 780) return "lunch_break";
   if (minutes >= 780 && minutes < 900) return "open";
   return "closed";
-}
-
-function formatPriceValue(value?: number | null): string {
-  return typeof value === "number" && Number.isFinite(value) ? `¥${value.toFixed(3)}` : "--";
 }

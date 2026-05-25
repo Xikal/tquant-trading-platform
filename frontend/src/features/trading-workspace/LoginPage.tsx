@@ -10,7 +10,6 @@ import {
   Input,
   Row,
   Space,
-  Statistic,
   Tag,
   Typography,
 } from "antd";
@@ -41,93 +40,54 @@ export function LoginPage({
     <main
       style={{
         alignItems: "center",
-        background: "linear-gradient(145deg, #eef3f8 0%, #f8fafc 52%, #e9eff7 100%)",
+        background: "#f5f7fb",
         display: "flex",
         minHeight: "100vh",
-        padding: 16,
+        padding: 14,
       }}
     >
-      <Row align="stretch" gutter={[16, 16]} style={{ margin: "0 auto", maxWidth: 1280, width: "100%" }}>
-        <Col xs={24} lg={14}>
-          <Card
+      <Row align="middle" gutter={[14, 14]} style={{ margin: "0 auto", maxWidth: 1040, width: "100%" }}>
+        <Col xs={24} lg={10}>
+          <section
             aria-label="盘中决策台概览"
-            variant="borderless"
-            style={{ background: "#0c1626", color: "#fff", height: "100%", minHeight: 560 }}
-            styles={{
-              body: {
-                display: "flex",
-                flexDirection: "column",
-                gap: 24,
-                height: "100%",
-                justifyContent: "space-between",
-                padding: 28,
-              },
+            style={{
+              background: "#101827",
+              border: "1px solid rgba(148, 163, 184, 0.2)",
+              borderRadius: 10,
+              color: "#fff",
+              display: "grid",
+              gap: 12,
+              padding: 18,
             }}
           >
-            <Flex align="flex-start" gap={16} justify="space-between" wrap>
-              <Space direction="vertical" size={4}>
-                <Typography.Title level={1} style={{ color: "#fff", fontSize: 30, margin: 0 }}>
-                  登录即进入盘中决策台
-                </Typography.Title>
-                <Typography.Text style={{ color: "#94a3b8", fontSize: 15 }}>
-                  低吸候选、持仓风控与分析解释统一接入。
-                </Typography.Text>
-              </Space>
-              <Tag color="gold">盘中在线</Tag>
+            <Flex align="center" justify="space-between" gap={10} wrap>
+              <Typography.Text style={{ color: "#94a3b8", fontSize: 12, fontWeight: 700 }}>
+                盘中决策台
+              </Typography.Text>
+              <Tag color="gold" style={{ margin: 0 }}>在线</Tag>
             </Flex>
-
-            <Space direction="vertical" size={16} style={{ width: "100%" }}>
-              <Row gutter={[12, 12]}>
-                <Col xs={24} sm={12}>
-                  <Card size="small" style={{ background: "#122239", borderColor: "#263951" }}>
-                    <Statistic
-                      title={<span style={{ color: "#94a3b8" }}>低吸机会</span>}
-                      value="3 个确认"
-                      valueStyle={{ color: "#f87171", fontSize: 24 }}
-                    />
-                  </Card>
-                </Col>
-                <Col xs={24} sm={12}>
-                  <Card size="small" style={{ background: "#122239", borderColor: "#263951" }}>
-                    <Statistic
-                      title={<span style={{ color: "#94a3b8" }}>做 T 可执行</span>}
-                      value="2 单通过"
-                      valueStyle={{ color: "#f3bb5d", fontSize: 24 }}
-                    />
-                  </Card>
-                </Col>
-              </Row>
-              <Card size="small" style={{ background: "#122239", borderColor: "#263951" }}>
-                <Space direction="vertical" size={12} style={{ width: "100%" }}>
-                  <Flex justify="space-between" wrap gap={8}>
-                    <Typography.Text strong style={{ color: "#fff" }}>
-                      交易保护
-                    </Typography.Text>
-                    <Tag color="green">风控校验已接入</Tag>
-                  </Flex>
-                  <Typography.Text style={{ color: "#cbd5e1" }}>
-                    信号、仓位、止损与模拟交易均由平台统一校验，研究信号不会直接绕过风控下单。
-                  </Typography.Text>
-                  <Flex gap={8} wrap>
-                    <Tag color="blue">行情同步</Tag>
-                    <Tag color="gold">策略复盘</Tag>
-                    <Tag color="red">风险提醒</Tag>
-                  </Flex>
-                </Space>
-              </Card>
-            </Space>
-
-            <Typography.Text style={{ color: "#94a3b8", fontSize: 12 }}>
-              界面示例仅用于说明平台能力，不构成收益承诺或交易建议。
+            <Typography.Title level={2} style={{ color: "#fff", fontSize: 24, lineHeight: 1.18, margin: 0 }}>
+              登录即进入低吸、持仓与模拟盘工作流
+            </Typography.Title>
+            <Typography.Text style={{ color: "#cbd5e1", fontSize: 13 }}>
+              信号、仓位、止损和模拟交易统一经过风控校验。
             </Typography.Text>
-          </Card>
+            <Flex gap={6} wrap>
+              <Tag color="blue" style={{ margin: 0 }}>行情同步</Tag>
+              <Tag color="green" style={{ margin: 0 }}>风控校验</Tag>
+              <Tag color="red" style={{ margin: 0 }}>风险提醒</Tag>
+            </Flex>
+            <Typography.Text style={{ color: "#94a3b8", fontSize: 11 }}>
+              不构成收益承诺或交易建议。
+            </Typography.Text>
+          </section>
         </Col>
-        <Col xs={24} lg={10}>
-          <Flex justify="center" vertical style={{ height: "100%" }}>
+        <Col xs={24} lg={14}>
+          <Flex justify="center" vertical>
             <Card
               variant="borderless"
-              style={{ border: "1px solid #dbe3ee", boxShadow: "0 20px 48px rgba(15, 23, 42, 0.08)" }}
-              styles={{ body: { padding: 32 } }}
+              style={{ border: "1px solid #dbe3ee", boxShadow: "0 12px 30px rgba(15, 23, 42, 0.07)" }}
+              styles={{ body: { padding: 22 } }}
             >
               <AppForm<AuthDraft>
                 layout="vertical"
@@ -136,12 +96,12 @@ export function LoginPage({
                 onFinish={onLogin}
                 requiredMark={false}
               >
-                <Space direction="vertical" size={18} style={{ width: "100%" }}>
-                  <Space direction="vertical" size={2} style={{ textAlign: "center", width: "100%" }}>
-                    <Typography.Title level={2} style={{ margin: 0 }}>
+                <Space orientation="vertical" size={12} style={{ width: "100%" }}>
+                  <Space orientation="vertical" size={1} style={{ textAlign: "center", width: "100%" }}>
+                    <Typography.Title level={3} style={{ fontSize: 22, margin: 0 }}>
                       登录维斯量化平台
                     </Typography.Title>
-                    <Typography.Paragraph type="secondary" style={{ margin: 0 }}>
+                    <Typography.Paragraph type="secondary" style={{ fontSize: 13, margin: 0 }}>
                       {loginStepText}
                     </Typography.Paragraph>
                   </Space>
@@ -159,7 +119,7 @@ export function LoginPage({
                       autoComplete="username"
                       placeholder="请输入手机号或账号"
                       disabled={loading}
-                      size="large"
+                      size="middle"
                     />
                   </Form.Item>
                   <Form.Item
@@ -172,7 +132,7 @@ export function LoginPage({
                       autoComplete="current-password"
                       placeholder="请输入登录密码"
                       disabled={loading}
-                      size="large"
+                      size="middle"
                     />
                   </Form.Item>
                   <Flex align="center" justify="space-between" wrap gap={8}>
@@ -191,10 +151,10 @@ export function LoginPage({
                       description={`${error}。请先检查账号和密码；连续失败会触发临时保护。`}
                     />
                   ) : null}
-                  <Button htmlType="submit" size="large" type="primary" loading={loading} block>
+                  <Button htmlType="submit" type="primary" loading={loading} block>
                     {loading ? "验证成功，正在加载您的数据..." : "登录进入工作台"}
                   </Button>
-                  <Button size="large" type="default" onClick={onRegister} disabled={loading} block>
+                  <Button type="default" onClick={onRegister} disabled={loading} block>
                     开户注册
                   </Button>
                   <Alert

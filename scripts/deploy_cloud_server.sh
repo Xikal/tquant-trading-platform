@@ -17,6 +17,7 @@ AUTO_CONFIGURE_HTTPS="${AUTO_CONFIGURE_HTTPS:-1}"
 HTTPS_REQUIRED="${HTTPS_REQUIRED:-0}"
 CLOUD_DOMAIN="${CLOUD_DOMAIN:-}"
 CLOUD_CERT_EMAIL="${CLOUD_CERT_EMAIL:-}"
+CLOUD_AUTH_COOKIE_SECURE="${CLOUD_AUTH_COOKIE_SECURE:-}"
 BACKUP_TIME="${BACKUP_TIME:-02:20}"
 RUN_COMPILE="${RUN_COMPILE:-1}"
 RUN_FRONTEND_BUILD="${RUN_FRONTEND_BUILD:-1}"
@@ -150,7 +151,16 @@ PY
 )
   printf 'TQUANT_SETTINGS_ENCRYPTION_KEY=%s\n' \"\$SETTINGS_SECRET\" >> .env
 fi
-if ! grep -q '^AUTH_COOKIE_SECURE=' .env; then printf 'AUTH_COOKIE_SECURE=true\n' >> .env; fi
+AUTH_COOKIE_SECURE_VALUE='$CLOUD_AUTH_COOKIE_SECURE'
+if test -z \"\$AUTH_COOKIE_SECURE_VALUE\"; then
+  if test '$AUTO_CONFIGURE_HTTPS' = '1' -a -n '$CLOUD_DOMAIN'; then
+    AUTH_COOKIE_SECURE_VALUE=true
+  else
+    AUTH_COOKIE_SECURE_VALUE=false
+  fi
+fi
+sed -i '/^AUTH_COOKIE_SECURE=/d' .env
+printf 'AUTH_COOKIE_SECURE=%s\n' \"\$AUTH_COOKIE_SECURE_VALUE\" >> .env
 sudo docker compose -f '$CLOUD_COMPOSE_FILE' up --build --force-recreate --abort-on-container-exit --exit-code-from migration migration
 sudo docker compose -f '$CLOUD_COMPOSE_FILE' run --rm --user root --entrypoint sh app -c 'mkdir -p /app/backend/data && chown -R tquant:tquant /app/backend/data'
 sudo docker compose -f '$CLOUD_COMPOSE_FILE' up -d --build app runtime-worker backtest-worker

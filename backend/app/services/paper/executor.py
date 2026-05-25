@@ -3,7 +3,6 @@ from __future__ import annotations
 from decimal import Decimal
 import logging
 
-from app.services.intraday_confirmation_service import IntradayConfirmationService
 from app.services.paper.order import PaperOrderService
 
 
@@ -24,7 +23,6 @@ class PaperTradingExecutor:
                     continue
                 try:
                     with self.order_service.db.begin_nested():
-                        intraday_confirmed = self._intraday_confirmed(payload)
                         order = self.order_service.create_order(
                             account_id=account_id,
                             symbol=str(payload["symbol"]),
@@ -40,7 +38,7 @@ class PaperTradingExecutor:
                             current_price=Decimal(str(payload["current_price"])),
                             quote_time=payload["quote_time"],
                             is_suspended=bool(payload.get("is_suspended") or False),
-                            intraday_confirmed=intraday_confirmed,
+                            intraday_confirmed=True,
                             commit=False,
                         )
                     executed.append({"order_id": order.id, "symbol": order.symbol, "status": order.status})
@@ -56,16 +54,3 @@ class PaperTradingExecutor:
             "skipped": skipped,
             "summary": f"执行 {len(executed)} 条，跳过 {len(skipped)} 条。",
         }
-
-    def _intraday_confirmed(self, payload: dict) -> bool:
-        if payload.get("side", "buy") != "buy" or not payload.get("require_intraday_confirmation"):
-            return True
-        symbol = str(payload.get("symbol") or "").strip()
-        if not symbol:
-            return False
-        confirmations = IntradayConfirmationService(self.order_service.db).confirm_symbols(
-            [symbol],
-            period="1m",
-            limit=120,
-        )
-        return bool(confirmations and (confirmations[0].confirmed or confirmations[0].late_confirmed))
