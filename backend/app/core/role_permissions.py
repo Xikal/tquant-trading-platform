@@ -3,6 +3,8 @@ from __future__ import annotations
 from typing import Literal
 
 from fastapi import Depends, HTTPException, status
+from sqlalchemy import inspect as sa_inspect
+from sqlalchemy.exc import NoInspectionAvailable
 
 from app.core.auth import get_current_user
 from app.core.user_permissions import paper_trade_enabled
@@ -12,7 +14,18 @@ PermissionName = Literal["read_only", "paper_trade", "strategy_config", "researc
 
 
 def user_roles(user: User) -> set[str]:
-    return {item.strip().lower() for item in (getattr(user, "roles", "") or "").split(",") if item.strip()}
+    try:
+        state = sa_inspect(user)
+    except NoInspectionAvailable:
+        value = getattr(user, "roles", "")
+    else:
+        if state is not None:
+            value = state.dict.get("roles", "")
+            if not value and "roles" in state.unloaded:
+                value = ""
+        else:
+            value = getattr(user, "roles", "")
+    return {item.strip().lower() for item in (value or "").split(",") if item.strip()}
 
 
 def is_admin_user(user: User) -> bool:
