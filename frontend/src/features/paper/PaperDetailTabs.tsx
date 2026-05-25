@@ -39,25 +39,23 @@ export function PaperDetailTabs(props: PaperDetailTabsProps) {
   return (
     <Card
       title="详情信息"
-      extra={<Typography.Text type="secondary">低频信息统一收纳，避免首屏堆满。</Typography.Text>}
+      size="small"
       style={{ gridArea: "details" }}
+      styles={{ body: { padding: 10 } }}
     >
       <Tabs
-        type="card"
+        size="small"
         activeKey={tab}
         onChange={(key) => setTab(key as PaperDetailTabKey)}
-        tabBarStyle={{ marginBottom: 0 }}
+        tabBarStyle={{ marginBottom: 6 }}
         items={tabs.map((item) => ({
           key: item.key,
           label: (
-            <Space direction="vertical" size={2} style={{ minWidth: 96, textAlign: "left" }}>
-              <Typography.Text strong>{item.label}</Typography.Text>
-              <Typography.Text type="secondary" style={{ fontSize: 11 }}>{item.hint}</Typography.Text>
-            </Space>
+            <Typography.Text strong style={{ fontSize: 12 }}>{item.label} <Typography.Text type="secondary" style={{ fontSize: 11 }}>{item.hint}</Typography.Text></Typography.Text>
           ),
         }))}
       />
-      <div role="tabpanel" style={{ minHeight: 360 }}>
+      <div role="tabpanel" style={{ minHeight: 260 }}>
         {tab === "orders" ? <OrdersTab orders={props.orders} loading={props.loading} /> : null}
         {tab === "trades" ? (
           <TradesTab

@@ -16,6 +16,12 @@ const STYLE_PRESETS = [
   { key: "aggressive", label: "激进", hint: "加入辅助策略做压力测试" },
 ] as const;
 
+const ACTIVE_BUTTON_STYLE = {
+  borderColor: "#91caff",
+  background: "#e6f4ff",
+  color: "#0958d9",
+};
+
 export function QuickBacktestForm({
   hub,
   onQuickSubmit,
@@ -69,9 +75,9 @@ export function QuickBacktestForm({
                 <Col key={preset.key} xs={24} sm={8}>
                   <Button
                     block
-                    type={active ? "primary" : "default"}
+                    type="default"
                     onClick={() => hub.updateForm({ strategies: strategyKeysForStyle(hub.strategies, preset.key) })}
-                    style={{ height: "auto", padding: "10px 12px", whiteSpace: "normal", textAlign: "left" }}
+                    style={{ height: "auto", padding: "10px 12px", whiteSpace: "normal", textAlign: "left", ...(active ? ACTIVE_BUTTON_STYLE : undefined) }}
                   >
                     <Space direction="vertical" size={0} style={{ width: "100%" }}>
                       <Typography.Text strong>{preset.label}</Typography.Text>
@@ -200,9 +206,9 @@ function StrategyPicker({
                     <Button
                       key={strategy.key}
                       block
-                      type={active ? "primary" : "default"}
+                      type="default"
                       onClick={() => onToggle(strategy.key)}
-                      style={{ height: "auto", padding: "10px 12px", whiteSpace: "normal", textAlign: "left" }}
+                      style={{ height: "auto", padding: "8px 10px", whiteSpace: "normal", textAlign: "left", ...(active ? ACTIVE_BUTTON_STYLE : undefined) }}
                     >
                       <Space direction="vertical" size={2} style={{ width: "100%" }}>
                         <Flex justify="space-between" align="start" gap={12}>

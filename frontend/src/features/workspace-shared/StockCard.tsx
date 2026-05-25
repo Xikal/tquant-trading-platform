@@ -232,15 +232,18 @@ export function StockCard({
   stock,
   actions,
   onAction,
+  compact = false,
 }: {
   stock: StockCardView;
   actions?: string[];
   onAction?: (action: string) => void;
+  compact?: boolean;
 }) {
   const screens = useBreakpoint();
   const wide = screens.md ?? true;
   const cardStyle: CSSProperties = {
     ...STOCK_CARD_STYLE,
+    ...(compact ? { gap: 6, padding: 7 } : undefined),
     ...(wide ? STOCK_CARD_WIDE_STYLE : STOCK_CARD_NARROW_STYLE),
     ...STOCK_CARD_TONE_STYLES[stock.tone],
     ...(stock.highlight ? STOCK_CARD_HIGHLIGHT_STYLE : undefined),
@@ -250,10 +253,10 @@ export function StockCard({
       <StockIdentity name={stock.name} symbol={stock.symbol} note={stock.identityNote} tags={stock.identityTags} />
       <div style={STOCK_CARD_BODY_STYLE}>
         <div style={STOCK_DIRECT_ACTION_STYLE}>
-          <strong style={STOCK_DIRECT_ACTION_TITLE_STYLE}>{directActionTitle(stock.actionText)}</strong>
+          <strong style={{ ...STOCK_DIRECT_ACTION_TITLE_STYLE, ...(compact ? { fontSize: 13 } : undefined) }}>{directActionTitle(stock.actionText)}</strong>
           {stock.scoreText ? <span style={STOCK_SCORE_BADGE_STYLE} title={`质量分 ${stock.scoreText}`}>质量 {scoreStars(stock.scoreText)}</span> : null}
         </div>
-        <div style={STOCK_META_STYLE}>
+        <div style={{ ...STOCK_META_STYLE, ...(compact ? { gap: 7, fontSize: 10 } : undefined) }}>
           <span>当前价 {stock.priceText}</span>
           <span style={STOCK_TONE_TEXT_STYLES[stock.tone]}>涨跌 {stock.changeText}</span>
           {stock.scoreText ? <span>质量分 {stock.scoreText}</span> : null}

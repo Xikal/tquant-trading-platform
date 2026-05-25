@@ -5,7 +5,9 @@ import { formatPct, normalizeLines, plainTradingText } from "./workspaceFormatte
 import type { MetricItem, StockCardView, Tone } from "./workspaceTypes";
 import {
   DISPLAY_TONE_VALUE_STYLES,
+  INFO_PILL_COMPACT_STYLE,
   INFO_PILL_STYLE,
+  INFO_PILL_TEXT_COMPACT_STYLE,
   INFO_PILL_TEXT_STYLE,
   METRIC_GRID_COMPACT_STYLE,
   METRIC_GRID_STYLE,
@@ -219,15 +221,17 @@ export function MetricGrid({
   className = "",
   loading = false,
   as: Component = "div",
+  compact: compactProp = false,
   style,
 }: {
   items: MetricItem[];
   className?: string;
   loading?: boolean;
   as?: "div" | "section";
+  compact?: boolean;
   style?: CSSProperties;
 }) {
-  const compact = className.includes("compact");
+  const compact = compactProp || className.includes("compact");
   return (
     <Component style={{ ...METRIC_GRID_STYLE, ...(compact ? METRIC_GRID_COMPACT_STYLE : undefined), ...style }}>
       {items.map((item) => (
@@ -250,11 +254,22 @@ export function ContextRow({ children, style }: { children: ReactNode; style?: C
   return <div style={{ ...CONTEXT_ROW_STYLE, ...style }}>{children}</div>;
 }
 
-export function InfoPill({ label, value, tone = "neutral" }: { label: string; value: string; tone?: "up" | "down" | "neutral" | "warn" }) {
+export function InfoPill({
+  label,
+  value,
+  tone = "neutral",
+  compact = false,
+}: {
+  label: string;
+  value: string;
+  tone?: "up" | "down" | "neutral" | "warn";
+  compact?: boolean;
+}) {
+  const textStyle = compact ? { ...INFO_PILL_TEXT_STYLE, ...INFO_PILL_TEXT_COMPACT_STYLE } : INFO_PILL_TEXT_STYLE;
   return (
-    <div style={INFO_PILL_STYLE}>
-      <span style={INFO_PILL_TEXT_STYLE}>{label}</span>
-      <strong style={{ ...INFO_PILL_TEXT_STYLE, ...DISPLAY_TONE_VALUE_STYLES[tone] }}>{value}</strong>
+    <div style={{ ...INFO_PILL_STYLE, ...(compact ? INFO_PILL_COMPACT_STYLE : undefined) }}>
+      <span style={textStyle}>{label}</span>
+      <strong style={{ ...textStyle, ...DISPLAY_TONE_VALUE_STYLES[tone] }}>{value}</strong>
     </div>
   );
 }

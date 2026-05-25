@@ -35,11 +35,11 @@ import {
 } from "../trading-workspace/workspaceShellStyles";
 
 const MONITOR_METRIC_DETAILS_STYLE: CSSProperties = {
-  marginTop: 10,
+  marginTop: 8,
   border: "1px solid rgba(148, 163, 184, 0.2)",
-  borderRadius: 12,
+  borderRadius: 8,
   background: "#fff",
-  padding: "8px 10px",
+  padding: "6px 8px",
 };
 
 const MONITOR_METRIC_SUMMARY_STYLE: CSSProperties = {
@@ -50,15 +50,19 @@ const MONITOR_METRIC_SUMMARY_STYLE: CSSProperties = {
 };
 
 const MONITOR_METRIC_GRID_STYLE: CSSProperties = {
-  marginTop: 8,
+  marginTop: 6,
 };
 const MONITOR_HOLDING_GRID_STYLE: CSSProperties = {
   display: "grid",
-  gap: 10,
+  gap: 6,
   gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
   alignItems: "start",
 };
 const MONITOR_HOLDING_SEARCH_STYLE: CSSProperties = {
+  gridColumn: "1 / -1",
+};
+
+const MONITOR_HOLDING_SPAN_STYLE: CSSProperties = {
   gridColumn: "1 / -1",
 };
 
@@ -203,7 +207,7 @@ export const MonitorPage = memo(function MonitorPage({
         />
         <details style={MONITOR_METRIC_DETAILS_STYLE}>
           <summary style={MONITOR_METRIC_SUMMARY_STYLE}>展开盘面数字摘要</summary>
-          <MetricGrid items={metrics} style={MONITOR_METRIC_GRID_STYLE} />
+          <MetricGrid items={metrics} compact style={MONITOR_METRIC_GRID_STYLE} />
         </details>
         <MarketBreadthStrip marketBreadth={marketBreadth} />
         <MarketEmotionDashboard marketBreadth={marketBreadth} sectorRelativeStrength={sectorRelativeStrength} />
@@ -217,11 +221,7 @@ export const MonitorPage = memo(function MonitorPage({
           title={isEditing ? "编辑持仓约束" : "录入底仓约束"}
           actions={isEditing ? <Button htmlType="button" onClick={onCancelEdit}>取消编辑</Button> : null}
         />
-        <p className="hint">
-          {isEditing
-            ? `正在编辑 ${editingWatchSymbol}，修改后点击“更新持仓”。`
-            : "代码、底仓、可卖、成本价决定做T信号是否可执行。A股 T+1 下，当日买入通常次日才进入可用数量。"}
-        </p>
+        <p className="hint">{isEditing ? `正在编辑 ${editingWatchSymbol}。` : "填写底仓、可卖和成本价，系统按 T+1 判断做T信号。"}</p>
         <MonitorHoldingWizard draft={watchDraft} editing={isEditing} />
         <div style={MONITOR_HOLDING_GRID_STYLE}>
           <div style={MONITOR_HOLDING_SEARCH_STYLE}>
@@ -233,11 +233,13 @@ export const MonitorPage = memo(function MonitorPage({
               onChange={(value) => setWatchDraft({ ...watchDraft, symbol: value })}
             />
           </div>
-          <NumberField label="底仓数量" hint="例：1000，代表当前总持仓。" value={watchDraft.base_position} onChange={(event) => setWatchDraft({ ...watchDraft, base_position: event.target.value })} />
-          <NumberField label="可卖数量" hint="例：600，今天可先卖的底仓数量。" value={watchDraft.available_position} onChange={(event) => setWatchDraft({ ...watchDraft, available_position: event.target.value })} />
-          <NumberField label="成本价" hint="例：12.35，用于计算盈亏和止损。" value={watchDraft.cost_basis} onChange={(event) => setWatchDraft({ ...watchDraft, cost_basis: event.target.value })} />
-          <TextField label="备注" hint="例：主线前排、只做正T。" value={watchDraft.memo} onChange={(event) => setWatchDraft({ ...watchDraft, memo: event.target.value })} />
-          <TextField label="名称" hint="可留空，系统会自动补全。" value={watchDraft.name} onChange={(event) => setWatchDraft({ ...watchDraft, name: event.target.value })} />
+          <NumberField label="底仓数量" value={watchDraft.base_position} onChange={(event) => setWatchDraft({ ...watchDraft, base_position: event.target.value })} />
+          <NumberField label="可卖数量" value={watchDraft.available_position} onChange={(event) => setWatchDraft({ ...watchDraft, available_position: event.target.value })} />
+          <NumberField label="成本价" value={watchDraft.cost_basis} onChange={(event) => setWatchDraft({ ...watchDraft, cost_basis: event.target.value })} />
+          <TextField label="名称" value={watchDraft.name} onChange={(event) => setWatchDraft({ ...watchDraft, name: event.target.value })} />
+          <div style={MONITOR_HOLDING_SPAN_STYLE}>
+            <TextField label="备注" value={watchDraft.memo} onChange={(event) => setWatchDraft({ ...watchDraft, memo: event.target.value })} />
+          </div>
         </div>
         <Button type="primary" style={MONITOR_FULL_ACTION_STYLE} onClick={onAddWatchlist} loading={loading === "watchlist"}>
           {loading === "watchlist" ? "保存中..." : isEditing ? "更新持仓" : watchDraft.symbol.trim() ? "保存持仓" : "加入自选监控"}
@@ -255,14 +257,14 @@ export const MonitorPage = memo(function MonitorPage({
           }
         />
         <ContextRow>
-          <InfoPill label="今日方向" value={priorityBoard?.directional_bias_text ?? "--"} />
-          <InfoPill label="市场状态" value={priorityBoard?.market_state_text ?? "--"} />
-          <InfoPill label="热点板块" value={(priorityBoard?.hot_industries ?? []).slice(0, 4).join(" / ") || "--"} />
-          <InfoPill label="宽度情绪" value={`上涨 ${formatPct(priorityBoard?.stock_up_ratio, 0)} / 涨停 ${priorityBoard?.limit_up_count ?? "--"}`} />
-          <InfoPill label="组合风险" value={priorityBoard?.portfolio_risk?.risk_level ? riskLevelText(priorityBoard.portfolio_risk.risk_level) : "--"} />
-          <InfoPill label="快照日期" value={`${priorityBoard?.latest_trade_date ?? "--"} / 更新 ${shortTime(priorityBoard?.updated_at) || "--"}`} />
-          <InfoPill label="数据状态" value={priorityBoard?.data_quality_text ?? "--"} tone={dataQualityTone(priorityBoard?.data_quality)} />
-          <InfoPill label="今日分层" value={`确认 ${priorityBoard?.immediate_count ?? 0} / 观察 ${(priorityBoard?.focus_count ?? 0) + (priorityBoard?.track_count ?? 0)} / 榜单 ${priorityBoard?.total_candidates ?? 0}`} tone={(priorityBoard?.immediate_count ?? 0) ? "up" : "warn"} />
+          <InfoPill compact label="今日方向" value={priorityBoard?.directional_bias_text ?? "--"} />
+          <InfoPill compact label="市场状态" value={priorityBoard?.market_state_text ?? "--"} />
+          <InfoPill compact label="热点板块" value={(priorityBoard?.hot_industries ?? []).slice(0, 4).join(" / ") || "--"} />
+          <InfoPill compact label="宽度情绪" value={`上涨 ${formatPct(priorityBoard?.stock_up_ratio, 0)} / 涨停 ${priorityBoard?.limit_up_count ?? "--"}`} />
+          <InfoPill compact label="组合风险" value={priorityBoard?.portfolio_risk?.risk_level ? riskLevelText(priorityBoard.portfolio_risk.risk_level) : "--"} />
+          <InfoPill compact label="快照日期" value={`${priorityBoard?.latest_trade_date ?? "--"} / 更新 ${shortTime(priorityBoard?.updated_at) || "--"}`} />
+          <InfoPill compact label="数据状态" value={priorityBoard?.data_quality_text ?? "--"} tone={dataQualityTone(priorityBoard?.data_quality)} />
+          <InfoPill compact label="今日分层" value={`确认 ${priorityBoard?.immediate_count ?? 0} / 观察 ${(priorityBoard?.focus_count ?? 0) + (priorityBoard?.track_count ?? 0)} / 榜单 ${priorityBoard?.total_candidates ?? 0}`} tone={(priorityBoard?.immediate_count ?? 0) ? "up" : "warn"} />
         </ContextRow>
         {priorityNotice ? (
           <Callout title={priorityNotice.title} detail={priorityNotice.detail} tone={priorityNotice.tone === "danger" ? "down" : "warn"} compact />
@@ -275,6 +277,7 @@ export const MonitorPage = memo(function MonitorPage({
               key={`${stock.symbol}-${stock.actionText}`}
               stock={stock}
               actions={["详情", "分析"]}
+              compact
               onAction={(action) => (action === "分析" ? onAnalyze(stock) : onSelect(stock))}
             />
           )) : <EmptyState text="暂无优先级榜单结果，等待后台全量深筛缓存完成。" />}
@@ -342,22 +345,22 @@ function MarketBreadthStrip({ marketBreadth }: { marketBreadth: MarketBreadth | 
   return (
     <Row gutter={[8, 8]} style={{ marginTop: 10 }}>
       <Col xs={24} sm={12} lg={8} xl={4}>
-        <InfoPill label="市场宽度" value={formatRatioPct(marketBreadth.stock_up_ratio)} />
+        <InfoPill compact label="市场宽度" value={formatRatioPct(marketBreadth.stock_up_ratio)} />
       </Col>
       <Col xs={24} sm={12} lg={8} xl={4}>
-        <InfoPill label="中位涨跌" value={formatPct(marketBreadth.stock_median_change)} />
+        <InfoPill compact label="中位涨跌" value={formatPct(marketBreadth.stock_median_change)} />
       </Col>
       <Col xs={24} sm={12} lg={8} xl={4}>
-        <InfoPill label="涨停/跌停" value={`${marketBreadth.limit_up_count} / ${marketBreadth.limit_down_count ?? "--"}`} />
+        <InfoPill compact label="涨停/跌停" value={`${marketBreadth.limit_up_count} / ${marketBreadth.limit_down_count ?? "--"}`} />
       </Col>
       <Col xs={24} sm={12} lg={8} xl={4}>
-        <InfoPill label="炸板率" value={formatRatioPct(marketBreadth.broken_board_ratio)} />
+        <InfoPill compact label="炸板率" value={formatRatioPct(marketBreadth.broken_board_ratio)} />
       </Col>
       <Col xs={24} sm={12} lg={8} xl={4}>
-        <InfoPill label="连板高度" value={String(marketBreadth.board_height || "--")} />
+        <InfoPill compact label="连板高度" value={String(marketBreadth.board_height || "--")} />
       </Col>
       <Col xs={24} sm={12} lg={8} xl={4}>
-        <InfoPill label="数据质量" value={marketBreadth.data_quality_text || "--"} tone={dataQualityTone(marketBreadth.data_quality)} />
+        <InfoPill compact label="数据质量" value={marketBreadth.data_quality_text || "--"} tone={dataQualityTone(marketBreadth.data_quality)} />
       </Col>
     </Row>
   );
@@ -379,12 +382,13 @@ function MarketEmotionDashboard({
     <Card
       size="small"
       style={{ background: "#f8fbff", borderColor: "#d9eaf7", marginTop: 10 }}
+      styles={{ header: { minHeight: 34, padding: "0 10px" }, body: { padding: 8 } }}
       title="市场情绪与龙头强度"
       extra={<Tag color="blue">{marketBreadth?.emotion_temperature_text || marketBreadth?.state_text || "等待情绪数据"}</Tag>}
     >
       <Row gutter={[12, 12]}>
         <Col xs={24} md={9}>
-          <Flex align="flex-end" gap={6} style={{ height: 92, paddingBottom: 20 }} aria-label="涨停连板高度分布">
+          <Flex align="flex-end" gap={5} style={{ height: 64, paddingBottom: 8 }} aria-label="涨停连板高度分布">
             {distribution.map((item) => (
               <Flex align="center" justify="flex-end" vertical key={item.label} style={{ flex: 1, height: "100%" }}>
                 <div
@@ -397,7 +401,7 @@ function MarketEmotionDashboard({
                     width: "100%",
                   }}
                 />
-                <Typography.Text type="secondary" style={{ fontSize: 11, marginTop: 4 }}>
+                <Typography.Text type="secondary" style={{ fontSize: 10, marginTop: 2 }}>
                   {item.label}
                 </Typography.Text>
               </Flex>
@@ -405,16 +409,16 @@ function MarketEmotionDashboard({
           </Flex>
         </Col>
         <Col xs={24} md={15}>
-          <Space direction="vertical" size={5} style={{ width: "100%" }}>
+          <Space direction="vertical" size={4} style={{ width: "100%" }}>
             {leaders.length ? leaders.map((item) => (
               <Flex
                 gap={8}
                 justify="space-between"
                 key={`${item.sector_name}-${item.symbol}`}
-                style={{ background: "#fff", borderRadius: 6, padding: "5px 8px" }}
+                style={{ background: "#fff", borderRadius: 6, padding: "4px 6px" }}
               >
-                <Typography.Text strong>{item.name}</Typography.Text>
-                <Typography.Text type="secondary">
+                <Typography.Text strong style={{ fontSize: 12 }}>{item.name}</Typography.Text>
+                <Typography.Text type="secondary" style={{ fontSize: 11 }}>
                   {item.sector_name} #{item.rank} · 龙头分 {item.leader_score.toFixed(0)}
                 </Typography.Text>
               </Flex>
@@ -427,7 +431,7 @@ function MarketEmotionDashboard({
 }
 
 function KeyLevelAlerts({ alerts }: { alerts: IntradayKeyLevelResponse[] }) {
-  const triggered = alerts.filter((item) => item.alert_triggered).slice(0, 4);
+  const triggered = alerts.filter((item) => item.alert_triggered).slice(0, 2);
   if (!triggered.length) {
     return null;
   }
@@ -436,15 +440,16 @@ function KeyLevelAlerts({ alerts }: { alerts: IntradayKeyLevelResponse[] }) {
       direction="vertical"
       role="alert"
       aria-live="polite"
-      style={{ bottom: 18, maxWidth: "min(420px, calc(100vw - 28px))", position: "fixed", right: 18, zIndex: 60 }}
+      style={{ bottom: 10, maxWidth: "min(300px, calc(100vw - 20px))", position: "fixed", right: 10, zIndex: 60 }}
     >
       {triggered.map((item) => (
         <Alert
           key={item.symbol}
           type="warning"
           showIcon
-          message={`${item.name} 接近关键价位`}
-          description={item.alert_text || `现价 ${formatPrice(item.latest_price)}`}
+          style={{ padding: "6px 8px" }}
+          message={<span style={{ fontSize: 12 }}>{item.name} 接近关键价位</span>}
+          description={<span style={{ fontSize: 11 }}>{item.alert_text || `现价 ${formatPrice(item.latest_price)}`}</span>}
         />
       ))}
     </Space>

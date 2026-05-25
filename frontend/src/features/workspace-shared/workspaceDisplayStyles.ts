@@ -57,7 +57,7 @@ export const METRIC_VALUE_STYLE: CSSProperties = {
 };
 
 export const METRIC_VALUE_COMPACT_STYLE: CSSProperties = {
-  fontSize: 17,
+  fontSize: 13,
 };
 
 export const INFO_PILL_STYLE: CSSProperties = {
