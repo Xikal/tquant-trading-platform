@@ -7,13 +7,18 @@ from types import SimpleNamespace
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-
 from app.api.routes import bff
 from app.core.auth import get_current_user
 from app.core.database import get_db
 from app.core.paper_auth import require_paper_trading
-from app.models.schema_defs.bff import PaperWorkspaceBffResponse, SettingsWorkspaceBffResponse, StrategyWorkspaceBffResponse
+from app.models.schema_defs.bff import (
+    MonitorWorkspaceBffResponse,
+    PaperWorkspaceBffResponse,
+    SettingsWorkspaceBffResponse,
+    StrategyWorkspaceBffResponse,
+)
 from app.services.bff import remote_adapters, remote_client
+from app.services.bff import workspace_cache
 
 
 def test_bff_manifest_exposes_versioned_frontend_contract() -> None:
@@ -92,6 +97,46 @@ def test_paper_workspace_timeout_returns_partial_payload(monkeypatch) -> None:
     assert response.status_code == 200
     payload = response.json()
     assert payload["partial_errors"][0]["source"] == "paper_workspace"
+
+
+def test_monitor_workspace_timeout_returns_partial_payload(monkeypatch) -> None:
+    app = FastAPI()
+    app.include_router(bff.router, prefix="/api")
+    user = SimpleNamespace(id=1, username="tester", is_active=True, roles="")
+    app.dependency_overrides[get_current_user] = lambda: user
+    app.dependency_overrides[get_db] = lambda: object()
+    monkeypatch.setattr(
+        bff,
+        "get_settings",
+        lambda: SimpleNamespace(
+            bff_workspace_timeout_seconds=0.01,
+            tquant_internal_service_token="",
+        ),
+    )
+    monkeypatch.setattr(
+        workspace_cache,
+        "get_settings",
+        lambda: SimpleNamespace(
+            bff_workspace_cache_enabled=False,
+            bff_monitor_cache_ttl_seconds=0,
+            bff_paper_cache_ttl_seconds=0,
+            bff_strategy_cache_ttl_seconds=0,
+            bff_settings_cache_ttl_seconds=0,
+        ),
+    )
+
+    def slow_builder(*args, **kwargs):
+        time.sleep(0.05)
+        return MonitorWorkspaceBffResponse(generated_at="2026-05-20 09:30:00")
+
+    monkeypatch.setattr(bff, "_build_monitor_workspace", slow_builder)
+
+    response = TestClient(app).get("/api/bff/v1/workspace/monitor")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["monitor_snapshot"] is None
+    assert payload["partial_errors"][0]["source"] == "monitor_workspace"
 
 
 def test_paper_workspace_can_use_remote_adapter(monkeypatch) -> None:
@@ -256,7 +301,7 @@ def test_remote_client_does_not_forward_credentials_to_untrusted_http(monkeypatc
     monkeypatch.setattr(remote_client.requests, "get", fake_get)
 
     payload = remote_client.remote_bff_get(
-        "http://43.143.243.97:18090",
+        "http://remote-bff.example.invalid:18090",
         "/api/bff/v1/workspace/paper",
         forward_headers={
             "Authorization": "Bearer user-token",
@@ -267,6 +312,51 @@ def test_remote_client_does_not_forward_credentials_to_untrusted_http(monkeypatc
 
     assert payload == {"ok": True}
     assert captured["headers"] == {"X-TQuant-Bff-Hop": "1"}
+
+
+def test_remote_client_forwards_request_id_to_trusted_target(monkeypatch) -> None:
+    remote_client._CIRCUIT_OPEN_UNTIL.clear()
+    monkeypatch.setattr(
+        remote_client,
+        "get_settings",
+        lambda: SimpleNamespace(
+            tquant_service_call_timeout_seconds=1.0,
+            tquant_service_circuit_breaker_seconds=30.0,
+            tquant_internal_service_token="internal-secret",
+        ),
+    )
+    captured: dict[str, object] = {}
+
+    class FakeResponse:
+        def raise_for_status(self) -> None:
+            return None
+
+        def json(self) -> dict[str, object]:
+            return {"ok": True}
+
+    def fake_get(*args, **kwargs):
+        captured["headers"] = kwargs["headers"]
+        return FakeResponse()
+
+    monkeypatch.setattr(remote_client.requests, "get", fake_get)
+
+    payload = remote_client.remote_bff_get(
+        "http://trade-service",
+        "/api/bff/v1/workspace/paper",
+        forward_headers={
+            "Authorization": "Bearer user-token",
+            "X-Request-ID": "req-test-123",
+        },
+    )
+
+    assert payload == {"ok": True}
+    assert captured["headers"]["Authorization"] == "Bearer user-token"
+    assert captured["headers"]["X-Request-ID"] == "req-test-123"
+    assert captured["headers"]["X-Internal-Service-Token"] == "internal-secret"
+    assert captured["headers"]["X-TQuant-Bff-Hop"] == "1"
+    metrics = remote_client.remote_bff_metrics_snapshot()
+    assert metrics["calls"] >= 1
+    assert metrics["successes"] >= 1
 
 
 def test_remote_client_opens_circuit_after_failure(monkeypatch) -> None:
@@ -294,3 +384,54 @@ def test_remote_client_opens_circuit_after_failure(monkeypatch) -> None:
         remote_client.remote_bff_get("http://trade-service", "/api/bff/v1/workspace/paper")
 
     assert calls["count"] == 1
+    metrics = remote_client.remote_bff_metrics_snapshot()
+    assert metrics["failures"] >= 1
+    assert metrics["circuit_short_circuits"] >= 1
+
+
+def test_bff_workspace_cache_reuses_valid_payload(monkeypatch) -> None:
+    calls = {"count": 0}
+    cache: dict[str, object] = {}
+
+    monkeypatch.setattr(
+        workspace_cache,
+        "get_settings",
+        lambda: SimpleNamespace(
+            bff_workspace_cache_enabled=True,
+            bff_monitor_cache_ttl_seconds=5,
+            bff_paper_cache_ttl_seconds=3,
+            bff_strategy_cache_ttl_seconds=30,
+            bff_settings_cache_ttl_seconds=30,
+        ),
+    )
+    monkeypatch.setattr(workspace_cache, "get_json_cache", lambda key: cache.get(key))
+    monkeypatch.setattr(workspace_cache, "set_json_cache", lambda key, value, ttl: cache.setdefault(key, value))
+
+    def loader():
+        calls["count"] += 1
+        return PaperWorkspaceBffResponse(
+            generated_at="2026-05-22 09:30:00",
+            auto_trading_status={"source": "local"},
+        )
+
+    first = workspace_cache.load_cached_workspace(
+        workspace="paper",
+        model=PaperWorkspaceBffResponse,
+        user_id=7,
+        params={"order_limit": 5},
+        loader=loader,
+    )
+    second = workspace_cache.load_cached_workspace(
+        workspace="paper",
+        model=PaperWorkspaceBffResponse,
+        user_id=7,
+        params={"order_limit": 5},
+        loader=loader,
+    )
+
+    assert calls["count"] == 1
+    assert first.auto_trading_status == second.auto_trading_status == {"source": "local"}
+    metrics = workspace_cache.bff_workspace_cache_metrics_snapshot()
+    assert metrics["reads"] >= 2
+    assert metrics["hits"] >= 1
+    assert metrics["writes"] >= 1

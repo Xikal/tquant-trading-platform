@@ -1,6 +1,27 @@
+import type { CSSProperties } from "react";
 import type { LatestLowBuyDataStatus } from "../../types";
 import { Button } from "antd";
-import { InfoPill, PanelTitle } from "../workspace-shared/WorkspaceComponents";
+import { MetricGrid, PanelTitle } from "../workspace-shared/WorkspaceComponents";
+
+const LATEST_DATA_CARD_STYLE: CSSProperties = {
+  display: "flex",
+  flexDirection: "column",
+  minHeight: 216,
+};
+
+const LATEST_DATA_FIELDS_STYLE: CSSProperties = {
+  display: "grid",
+  gap: 6,
+};
+
+const LATEST_DATA_BUTTON_STYLE: CSSProperties = {
+  width: "fit-content",
+  marginTop: "auto",
+};
+
+const LATEST_DATA_WARNING_STYLE: CSSProperties = {
+  color: "var(--warning)",
+};
 
 export function LatestDataStatusCard({
   status,
@@ -15,28 +36,31 @@ export function LatestDataStatusCard({
 }) {
   const view = latestDataView(status);
   return (
-    <div className={`panel setting-card latest-data-card ${view.tone}`}>
+    <div className={`panel ${view.tone}`} style={LATEST_DATA_CARD_STYLE}>
       <PanelTitle title="每日最新数据" />
-      <div className="setting-fields">
+      <div style={LATEST_DATA_FIELDS_STYLE}>
         <div className="latest-data-headline">
           <strong>{view.title}</strong>
           <span>{view.description}</span>
         </div>
-        <div className="metric-grid compact">
-          <InfoPill label="目标交易日" value={status?.expected_trade_date || "--"} tone={view.tone} />
-          <InfoPill label="已发布交易日" value={status?.published_trade_date || "--"} tone={view.tone} />
-          <InfoPill label="日线数量" value={dailyCountText(status)} tone={view.tone} />
-          <InfoPill label="待补策略" value={`${status?.missing_strategies?.length ?? 0} 个`} tone={view.tone} />
-        </div>
+        <MetricGrid
+          className="compact"
+          items={[
+            { label: "目标交易日", value: status?.expected_trade_date || "--", tone: view.tone },
+            { label: "已发布交易日", value: status?.published_trade_date || "--", tone: view.tone },
+            { label: "日线数量", value: dailyCountText(status), tone: view.tone },
+            { label: "待补策略", value: `${status?.missing_strategies?.length ?? 0} 个`, tone: view.tone },
+          ]}
+        />
         {status?.missing_strategies?.length ? (
           <p className="hint">待补策略：{status.missing_strategies.join("、")}</p>
         ) : null}
         <p className="hint">更新时间：{status?.updated_at || "--"}</p>
       </div>
-      <Button type="primary" onClick={() => void onRefresh()} loading={loading} disabled={Boolean(adminTokenError)}>
+      <Button type="primary" style={LATEST_DATA_BUTTON_STYLE} onClick={() => void onRefresh()} loading={loading} disabled={Boolean(adminTokenError)}>
         {loading ? "补全中..." : "一键补全当日最新数据"}
       </Button>
-      {adminTokenError ? <p className="hint warn">需要填写管理令牌后才能手动补全。</p> : null}
+      {adminTokenError ? <p className="hint" style={LATEST_DATA_WARNING_STYLE}>需要填写管理令牌后才能手动补全。</p> : null}
     </div>
   );
 }

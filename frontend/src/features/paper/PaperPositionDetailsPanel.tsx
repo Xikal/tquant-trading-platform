@@ -1,6 +1,6 @@
 import { Children, useMemo } from "react";
 import type { ReactNode } from "react";
-import { Button } from "antd";
+import { Button, Card, Col, Flex, Row, Skeleton, Space, Statistic, Tag, Typography } from "antd";
 
 import type { PaperOrder, PaperPosition, PaperStockPnlItem, PaperStockPnlSummary, PaperTrade } from "../../types";
 import { EmptyState } from "../workspace-shared/WorkspaceComponents";
@@ -52,22 +52,14 @@ export function PaperPositionDetailsPanel({
   const selectedSymbol = usePaperUiStore((state) => state.selectedPositionSymbol);
   const setSelectedSymbol = usePaperUiStore((state) => state.setSelectedPositionSymbol);
   const selected = details.find((item) => item.symbol === selectedSymbol) ?? details[0] ?? null;
-  const Container = embedded ? "div" : "section";
-
-  return (
-    <Container className={`paper-position-details${embedded ? " embedded" : " panel"}`}>
-      {!embedded ? (
-        <div className="panel-title">
-          <h2>个股交易详情与盈利</h2>
-          <span className="hint">按股票查看成交、委托和后台盈亏汇总</span>
-        </div>
-      ) : null}
+  const content = (
+    <Space direction="vertical" size={12} style={{ display: "flex", width: "100%" }}>
       {loading ? <DetailSkeleton /> : null}
       {!loading && !details.length ? <EmptyState text="暂无持仓或成交明细" /> : null}
       {!loading && selected ? (
         <>
           {stockPnlSummary ? <PortfolioPnlSummary summary={stockPnlSummary} /> : null}
-          <div className="paper-position-symbol-tabs" role="tablist" aria-label="选择股票">
+          <Flex gap={8} role="tablist" aria-label="选择股票" style={{ overflowX: "auto", paddingBottom: 2 }}>
             {details.map((item) => {
               const tone = toneFromChange(item.totalPnl);
               const active = item.symbol === selected.symbol;
@@ -75,20 +67,28 @@ export function PaperPositionDetailsPanel({
                 <Button
                   type={active ? "primary" : "default"}
                   key={item.symbol}
-                  className={`paper-position-symbol-tab ${active ? "active" : ""} ${tone}`}
                   onClick={() => setSelectedSymbol(item.symbol)}
                   role="tab"
                   aria-selected={active}
+                  style={{ flex: "0 0 156px", height: "auto", padding: "8px 10px", textAlign: "left" }}
                 >
-                  <strong>{item.name}</strong>
-                  <span>{item.symbol}</span>
-                  <em>{formatSignedMoney(item.totalPnl)}</em>
+                  <Space direction="vertical" size={1} style={{ width: "100%" }}>
+                    <Typography.Text strong ellipsis style={active ? { color: "#fff" } : undefined}>
+                      {item.name}
+                    </Typography.Text>
+                    <Typography.Text style={active ? { color: "rgba(255,255,255,0.8)" } : undefined} type={active ? undefined : "secondary"}>
+                      {item.symbol}
+                    </Typography.Text>
+                    <Typography.Text style={{ color: active ? "#fff" : amountColor(item.totalPnl, tone) }}>
+                      {formatSignedMoney(item.totalPnl)}
+                    </Typography.Text>
+                  </Space>
                 </Button>
               );
             })}
-          </div>
+          </Flex>
           <SelectedStockSummary detail={selected} />
-          <div className="paper-position-detail-columns">
+          <Row gutter={[12, 12]}>
             <DetailList
               title="最近成交"
               hint={selected.trades.length ? `共 ${selected.trades.length} 笔` : "暂无成交"}
@@ -103,13 +103,24 @@ export function PaperPositionDetailsPanel({
             >
               {selected.orders.slice(0, 10).map((item) => <OrderDetailRow item={item} key={item.id} />)}
             </DetailList>
-          </div>
-          <p className="paper-position-detail-note">
+          </Row>
+          <Typography.Text type="secondary" style={{ fontSize: 12 }}>
             已实现盈亏由后台按全量成交顺序回放，当前持仓盈亏以后台持仓价和最新行情为准。
-          </p>
+          </Typography.Text>
         </>
       ) : null}
-    </Container>
+    </Space>
+  );
+
+  if (embedded) return content;
+
+  return (
+    <Card
+      title="个股交易详情与盈利"
+      extra={<Typography.Text type="secondary">按股票查看成交、委托和后台盈亏汇总</Typography.Text>}
+    >
+      {content}
+    </Card>
   );
 }
 
@@ -123,14 +134,11 @@ function PortfolioPnlSummary({ summary }: { summary: PaperStockPnlSummary }) {
     { label: "对账差额", value: formatSignedMoney(summary.reconciliation_gap), tone: gapWarn ? "down" : "neutral" },
   ];
   return (
-    <div className="paper-position-summary portfolio">
+    <Row gutter={[8, 8]}>
       {items.map((item) => (
-        <div className={`paper-position-summary-item ${item.tone}`} key={item.label}>
-          <span>{item.label}</span>
-          <strong>{item.value}</strong>
-        </div>
+        <SummaryMetric key={item.label} label={item.label} value={item.value} tone={item.tone} />
       ))}
-    </div>
+    </Row>
   );
 }
 
@@ -197,14 +205,21 @@ function SelectedStockSummary({ detail }: { detail: StockTradeDetail }) {
     { label: "累计手续费", value: formatMoneyWithYuan(detail.totalFees), tone: "neutral" },
   ];
   return (
-    <div className="paper-position-summary">
+    <Row gutter={[8, 8]}>
       {summaryItems.map((item) => (
-        <div className={`paper-position-summary-item ${item.tone}`} key={item.label}>
-          <span>{item.label}</span>
-          <strong>{item.value}</strong>
-        </div>
+        <SummaryMetric key={item.label} label={item.label} value={item.value} tone={item.tone} />
       ))}
-    </div>
+    </Row>
+  );
+}
+
+function SummaryMetric({ label, value, tone }: { label: string; value: string; tone: string }) {
+  return (
+    <Col xs={24} sm={12} lg={8} xl={5}>
+      <Card size="small">
+        <Statistic title={label} value={value} valueStyle={{ color: amountColor(undefined, tone), fontSize: 15 }} />
+      </Card>
+    </Col>
   );
 }
 
@@ -220,15 +235,13 @@ function DetailList({
   children: ReactNode;
 }) {
   return (
-    <section className="paper-position-detail-list">
-      <div className="paper-position-detail-list-title">
-        <strong>{title}</strong>
-        <span>{hint}</span>
-      </div>
-      <div className="paper-position-detail-scroll">
-        {Children.count(children) ? children : <EmptyState text={emptyText} />}
-      </div>
-    </section>
+    <Col xs={24} lg={12}>
+      <Card size="small" title={title} extra={<Typography.Text type="secondary">{hint}</Typography.Text>}>
+        <Space direction="vertical" size={8} style={{ display: "flex", maxHeight: 320, overflowY: "auto" }}>
+          {Children.count(children) ? children : <EmptyState text={emptyText} />}
+        </Space>
+      </Card>
+    </Col>
   );
 }
 
@@ -236,18 +249,20 @@ function TradeDetailRow({ item }: { item: PaperTrade }) {
   const sideText = item.side === "buy" ? "买入" : "卖出";
   const reason = plainTradingText(item.side === "buy" ? item.entry_reason : item.exit_reason);
   return (
-    <article className="paper-position-detail-row">
-      <div>
-        <strong className={item.side === "buy" ? "up" : "down"}>{sideText} {formatInteger(item.quantity)} 股</strong>
-        <span>{formatPaperDateTime(item.trade_time)}</span>
-      </div>
-      <div>
-        <span>价格 {formatPriceWithYuan(item.price)}</span>
-        <span>成交额 {formatMoneyWithYuan(item.gross_amount)}</span>
-        <span>费用 {formatMoneyWithYuan(tradeFees(item))}</span>
-      </div>
-      {reason ? <small>{reason}</small> : null}
-    </article>
+    <Card size="small">
+      <Space direction="vertical" size={6} style={{ width: "100%" }}>
+        <Flex justify="space-between" wrap gap={8}>
+          <Tag color={item.side === "buy" ? "red" : "green"}>{sideText} {formatInteger(item.quantity)} 股</Tag>
+          <Typography.Text type="secondary">{formatPaperDateTime(item.trade_time)}</Typography.Text>
+        </Flex>
+        <Flex wrap gap={12}>
+          <Typography.Text>价格 {formatPriceWithYuan(item.price)}</Typography.Text>
+          <Typography.Text>成交额 {formatMoneyWithYuan(item.gross_amount)}</Typography.Text>
+          <Typography.Text>费用 {formatMoneyWithYuan(tradeFees(item))}</Typography.Text>
+        </Flex>
+        {reason ? <Typography.Text type="secondary">{reason}</Typography.Text> : null}
+      </Space>
+    </Card>
   );
 }
 
@@ -255,27 +270,40 @@ function OrderDetailRow({ item }: { item: PaperOrder }) {
   const sideText = item.side === "buy" ? "买入" : "卖出";
   const statusText = orderStatusText(item.status);
   return (
-    <article className="paper-position-detail-row">
-      <div>
-        <strong className={item.side === "buy" ? "up" : "down"}>{sideText} {formatInteger(item.quantity)} 股</strong>
-        <span>{formatPaperDateTime(item.created_at)}</span>
-      </div>
-      <div>
-        <span>{item.order_type === "market" ? "市价" : "限价"} {formatPriceWithYuan(item.price ?? item.avg_fill_price)}</span>
-        <span>已成 {formatInteger(item.filled_quantity)} 股</span>
-        <span>{statusText}</span>
-      </div>
-      {item.reject_reason ? <small className="warn">{plainTradingText(item.reject_reason)}</small> : null}
-    </article>
+    <Card size="small">
+      <Space direction="vertical" size={6} style={{ width: "100%" }}>
+        <Flex justify="space-between" wrap gap={8}>
+          <Tag color={item.side === "buy" ? "red" : "green"}>{sideText} {formatInteger(item.quantity)} 股</Tag>
+          <Typography.Text type="secondary">{formatPaperDateTime(item.created_at)}</Typography.Text>
+        </Flex>
+        <Flex wrap gap={12}>
+          <Typography.Text>{item.order_type === "market" ? "市价" : "限价"} {formatPriceWithYuan(item.price ?? item.avg_fill_price)}</Typography.Text>
+          <Typography.Text>已成 {formatInteger(item.filled_quantity)} 股</Typography.Text>
+          <Typography.Text>{statusText}</Typography.Text>
+        </Flex>
+        {item.reject_reason ? <Typography.Text type="warning">{plainTradingText(item.reject_reason)}</Typography.Text> : null}
+      </Space>
+    </Card>
   );
 }
 
 function DetailSkeleton() {
   return (
-    <div className="paper-position-detail-skeleton" aria-label="个股详情加载中">
-      {Array.from({ length: 4 }).map((_, index) => <span className="skeleton-line" key={index} />)}
-    </div>
+    <Row gutter={[8, 8]} aria-label="个股详情加载中">
+      {Array.from({ length: 4 }).map((_, index) => (
+        <Col xs={24} sm={12} lg={6} key={index}>
+          <Skeleton.Button active block style={{ height: 54 }} />
+        </Col>
+      ))}
+    </Row>
   );
+}
+
+function amountColor(value?: number | null, tone?: string): string | undefined {
+  const resolvedTone = tone ?? toneFromChange(value);
+  if (resolvedTone === "up") return "#cf2626";
+  if (resolvedTone === "down") return "#1f8b4c";
+  return undefined;
 }
 
 function orderStatusText(status: PaperOrder["status"]): string {

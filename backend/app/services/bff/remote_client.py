@@ -14,9 +14,17 @@ from app.core.config import get_settings
 
 logger = logging.getLogger(__name__)
 
-_FORWARDED_HEADERS = {"authorization", "x-admin-token"}
+_FORWARDED_HEADERS = {"authorization", "x-admin-token", "x-request-id"}
 _CIRCUIT_OPEN_UNTIL: dict[str, float] = {}
 _CIRCUIT_LOCK = Lock()
+_METRICS_LOCK = Lock()
+_METRICS: dict[str, int] = {
+    "calls": 0,
+    "successes": 0,
+    "failures": 0,
+    "circuit_short_circuits": 0,
+    "credentials_suppressed": 0,
+}
 
 
 class RemoteBffError(RuntimeError):
@@ -43,7 +51,9 @@ def remote_bff_get(
     cleaned_base = base_url.strip().rstrip("/")
     if not cleaned_base:
         raise RemoteBffError("remote base_url is empty")
+    _increment("calls")
     if _is_circuit_open(cleaned_base):
+        _increment("circuit_short_circuits")
         raise RemoteBffError("remote circuit is open")
 
     settings = get_settings()
@@ -54,6 +64,7 @@ def remote_bff_get(
     if settings.tquant_internal_service_token and trusted:
         headers["X-Internal-Service-Token"] = settings.tquant_internal_service_token
     if not trusted and forward_headers:
+        _increment("credentials_suppressed")
         logger.warning("remote bff credentials suppressed for untrusted target base=%s", cleaned_base)
 
     try:
@@ -66,19 +77,28 @@ def remote_bff_get(
         response.raise_for_status()
         payload = response.json()
     except requests.RequestException as exc:
+        _increment("failures")
         open_remote_bff_circuit(cleaned_base)
         logger.warning("remote bff request failed base=%s path=%s", cleaned_base, path)
         raise RemoteBffError(str(exc)) from exc
     except ValueError as exc:
+        _increment("failures")
         open_remote_bff_circuit(cleaned_base)
         raise RemoteBffError("remote response is not valid JSON") from exc
 
     if not isinstance(payload, dict):
+        _increment("failures")
         open_remote_bff_circuit(cleaned_base)
         raise RemoteBffError("remote response must be a JSON object")
     with _CIRCUIT_LOCK:
         _CIRCUIT_OPEN_UNTIL.pop(cleaned_base, None)
+    _increment("successes")
     return payload
+
+
+def remote_bff_metrics_snapshot() -> dict[str, int]:
+    with _METRICS_LOCK:
+        return dict(_METRICS)
 
 
 def open_remote_bff_circuit(base_url: str) -> None:
@@ -118,3 +138,8 @@ def _trusted_credential_target(base_url: str) -> bool:
     except ValueError:
         return host.endswith((".internal", ".local"))
     return addr.is_private or addr.is_loopback
+
+
+def _increment(key: str) -> None:
+    with _METRICS_LOCK:
+        _METRICS[key] = int(_METRICS.get(key, 0)) + 1

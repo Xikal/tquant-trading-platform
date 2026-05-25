@@ -207,7 +207,7 @@ HOST=0.0.0.0 PORT=18080 ./scripts/run_local_prod.sh
 项目根目录已提供云端快速部署脚本：
 
 ```bash
-CLOUD_HOST=43.143.243.97 \
+CLOUD_HOST=<server-ip-or-domain> \
 CLOUD_USER=ubuntu \
 CLOUD_SSH_KEY=/path/to/gupiao.pem \
 ./scripts/deploy_cloud_server.sh
@@ -245,7 +245,7 @@ CLOUD_PASSWORD='服务器密码' ./scripts/deploy_cloud_server.sh
 清理脚本默认只预览，不删除：
 
 ```bash
-CLOUD_HOST=43.143.243.97 \
+CLOUD_HOST=<server-ip-or-domain> \
 CLOUD_USER=ubuntu \
 CLOUD_SSH_KEY=/path/to/gupiao.pem \
 ./scripts/cloud_server_cleanup.sh
@@ -254,7 +254,7 @@ CLOUD_SSH_KEY=/path/to/gupiao.pem \
 确认无误后执行实际清理：
 
 ```bash
-CLOUD_HOST=43.143.243.97 \
+CLOUD_HOST=<server-ip-or-domain> \
 CLOUD_USER=ubuntu \
 CLOUD_SSH_KEY=/path/to/gupiao.pem \
 APPLY=1 \
@@ -424,8 +424,8 @@ gunzip -c backups/t_quant-YYYYMMDD-HHMMSS.sql.gz | \
 `scripts/deploy_cloud_server.sh` 默认会自动安装 nginx、签发 Let's Encrypt 正式证书并配置 HTTPS 反向代理。
 
 ```bash
-CLOUD_DOMAIN=weisilianghua.cloud \
-CLOUD_CERT_EMAIL=admin@weisilianghua.cloud \
+CLOUD_DOMAIN=<your-domain> \
+CLOUD_CERT_EMAIL=<ops-email> \
 AUTO_CONFIGURE_HTTPS=1 \
 ./scripts/deploy_cloud_server.sh
 ```
@@ -445,7 +445,7 @@ AUTO_CONFIGURE_HTTPS=0 ./scripts/deploy_cloud_server.sh
 服务器上可用脚本安装 nginx + certbot：
 
 ```bash
-sudo DOMAIN=weisilianghua.cloud APP_PORT=18090 EMAIL=你的邮箱 ./scripts/install_https_nginx.sh
+sudo DOMAIN=<your-domain> APP_PORT=18090 EMAIL=<ops-email> ./scripts/install_https_nginx.sh
 ```
 
 脚本会读取 `deploy/nginx/weisilianghua.conf.template`，配置：

@@ -6,6 +6,7 @@ import { Topbar } from "./Topbar";
 import { AiInsightDialog, ErrorDialog, StatusStrip, StockDetailDialog } from "../workspace-shared/WorkspaceComponents";
 import type { Page, StockCardView } from "../workspace-shared/workspaceTypes";
 import { WorkspacePageContent } from "./WorkspacePageContent";
+import { WORKSPACE_APP_STYLE, WORKSPACE_MAIN_STYLE } from "./workspaceShellStyles";
 
 const AnalysisPage = lazy(async () => ({ default: (await import("../analysis/AnalysisPage")).AnalysisPage }));
 const MarketEmotionPage = lazy(async () => ({ default: (await import("../market-emotion/MarketEmotionPage")).MarketEmotionPage }));
@@ -51,7 +52,7 @@ type TradingWorkspaceChromeProps = {
 
 export function TradingWorkspaceChrome(props: TradingWorkspaceChromeProps) {
   return (
-    <div className={`app page-${props.page}`}>
+    <div style={WORKSPACE_APP_STYLE}>
       <Topbar
         page={props.page}
         setPage={props.onNavigate}
@@ -62,7 +63,7 @@ export function TradingWorkspaceChrome(props: TradingWorkspaceChromeProps) {
         onPaperRefresh={props.onPaperRefresh}
         paperRefreshLoading={props.paperRefreshLoading}
       />
-      <main className="workspace">
+      <main style={WORKSPACE_MAIN_STYLE}>
         <StatusStrip loading={props.loading} notice={props.notice} />
         <ErrorDialog message={props.error} onClose={props.onCloseError} />
         <StockDetailDialog

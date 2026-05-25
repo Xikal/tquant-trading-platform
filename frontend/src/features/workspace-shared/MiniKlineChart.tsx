@@ -1,12 +1,38 @@
+import type { CSSProperties } from "react";
 import { lazy, Suspense } from "react";
 import type { AnalysisResponse } from "../../types";
 
 const LazyKlineChart = lazy(() => import("../../ui/charts/LazyKlineChart"));
 
+const MINI_KLINE_STYLE: CSSProperties = {
+  display: "flex",
+  alignItems: "stretch",
+  gap: 7,
+  height: 210,
+  padding: "14px 18px",
+  borderRadius: 8,
+  background: "#0b1422",
+};
+
+const MINI_KLINE_EMPTY_STYLE: CSSProperties = {
+  display: "grid",
+  placeItems: "center",
+  flex: 1,
+  minWidth: 0,
+  color: "#aeb8c7",
+  fontSize: 12,
+};
+
+const MINI_KLINE_CHART_STYLE: CSSProperties = {
+  flex: 1,
+  minWidth: 0,
+  minHeight: 0,
+};
+
 export function MiniKline({ bars }: { bars: AnalysisResponse["bars"] }) {
   const visible = bars.filter((bar) => Number.isFinite(bar.open) && Number.isFinite(bar.close));
   if (!visible.length) {
-    return <div className="chart empty-chart">等待分析后显示K线</div>;
+    return <div style={MINI_KLINE_STYLE}><div style={MINI_KLINE_EMPTY_STYLE}>等待分析后显示K线</div></div>;
   }
   const labels = visible.map((bar) => bar.timestamp.slice(5, 16).replace("T", " "));
   const candleData = visible.map((bar) => [
@@ -116,9 +142,9 @@ export function MiniKline({ bars }: { bars: AnalysisResponse["bars"] }) {
     ],
   };
   return (
-    <div className="chart kline-chart" aria-label="分钟K线">
-      <Suspense fallback={<div className="chart empty-chart">K线加载中...</div>}>
-        <LazyKlineChart option={option} className="ths-kline-chart" />
+    <div style={MINI_KLINE_STYLE} aria-label="分钟K线">
+      <Suspense fallback={<div style={MINI_KLINE_EMPTY_STYLE}>K线加载中...</div>}>
+        <LazyKlineChart option={option} style={MINI_KLINE_CHART_STYLE} />
       </Suspense>
     </div>
   );

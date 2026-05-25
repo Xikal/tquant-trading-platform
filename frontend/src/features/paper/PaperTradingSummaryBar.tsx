@@ -1,5 +1,5 @@
 import type { PaperAccount, PaperAutoTradingStatus, PaperPerformance } from "../../types";
-import { Button } from "antd";
+import { Alert, Button, Card, Col, Flex, Row, Space, Statistic, Tag, theme } from "antd";
 import { formatMoneyPlain, formatPct, toneFromChange } from "../workspace-shared/workspaceFormatters";
 import { autoTradingSkipNotice, resolveAutoManagedStatus } from "./paperTradingStatus";
 import { formatPaperDateTime } from "./paperTradingFormatters";
@@ -21,6 +21,7 @@ export function PaperTradingSummaryBar({
   onOpenOrderEntry: () => void;
   onTogglePause?: () => void | Promise<void>;
 }) {
+  const { token } = theme.useToken();
   const status = resolveAutoManagedStatus(account, autoTradingStatus);
   const skipNotice = autoTradingSkipNotice(autoTradingStatus);
   const totalTone = toneFromChange(account?.total_return_pct);
@@ -36,25 +37,30 @@ export function PaperTradingSummaryBar({
   ] as const;
 
   return (
-    <section className="panel paper-summary-bar">
-      <div className="paper-summary-main">
-        <div className="paper-summary-status">
-          <span className={`status-chip ${status.tone}`}>{status.label}</span>
+    <Card className="panel" variant="borderless" style={{ gridArea: "summary" }} styles={{ body: { display: "grid", gap: 10, padding: 14 } }}>
+      <Flex gap={12} align="start" justify="space-between" wrap style={{ minWidth: 0 }}>
+        <Space direction="vertical" size={4} style={{ flex: "1 1 220px", minWidth: 0 }}>
+          <Tag color={statusTagColor(status.tone)}> {status.label}</Tag>
           {autoTradingStatus?.last_cycle_at ? (
-            <small>最近刷新 {formatPaperDateTime(autoTradingStatus.last_cycle_at)}</small>
+            <span style={{ color: token.colorTextSecondary, fontSize: 12 }}>最近刷新 {formatPaperDateTime(autoTradingStatus.last_cycle_at)}</span>
           ) : (
-            <small>交易时间内自动刷新</small>
+            <span style={{ color: token.colorTextSecondary, fontSize: 12 }}>交易时间内自动刷新</span>
           )}
-        </div>
-        <div className="paper-summary-metrics">
+        </Space>
+        <Row gutter={[8, 8]} style={{ flex: "1 1 560px", minWidth: 0 }}>
           {metrics.map((item) => (
-            <article key={item.label} className={`paper-summary-metric ${item.tone}`}>
-              <span>{item.label}</span>
-              <strong>{item.value}</strong>
-            </article>
+            <Col key={item.label} xs={12} sm={8} lg={4}>
+              <Card size="small" styles={{ body: { padding: 10 } }}>
+                <Statistic
+                  title={item.label}
+                  value={item.value}
+                  valueStyle={{ color: metricColor(item.tone, token) }}
+                />
+              </Card>
+            </Col>
           ))}
-        </div>
-        <div className="paper-summary-actions">
+        </Row>
+        <Space direction="vertical" size={8} style={{ flex: "0 0 auto" }}>
           <Button
             type="primary"
             disabled={!canOpenOrder || loading}
@@ -67,15 +73,39 @@ export function PaperTradingSummaryBar({
               恢复自动委托
             </Button>
           ) : null}
-        </div>
-      </div>
+        </Space>
+      </Flex>
       {skipNotice ? (
-        <div className={`paper-summary-alert ${skipNotice.tone}`}>
-          <strong>{skipNotice.title}</strong>
-          <span>{skipNotice.text}</span>
-          {skipNotice.time ? <em>{formatPaperDateTime(skipNotice.time)}</em> : null}
-        </div>
+        <Alert
+          type={skipTone(skipNotice.tone)}
+          showIcon
+          message={skipNotice.title}
+          description={
+            <Flex gap={12} align="center" wrap justify="space-between">
+              <span style={{ minWidth: 0, flex: "1 1 auto" }}>{skipNotice.text}</span>
+              {skipNotice.time ? <span style={{ color: token.colorTextSecondary, fontSize: 12 }}>{formatPaperDateTime(skipNotice.time)}</span> : null}
+            </Flex>
+          }
+        />
       ) : null}
-    </section>
+    </Card>
   );
+}
+
+function metricColor(tone: string, token: ReturnType<typeof theme.useToken>["token"]) {
+  if (tone === "up") return token.colorError;
+  if (tone === "down") return token.colorSuccess;
+  return token.colorText;
+}
+
+function statusTagColor(tone: string) {
+  if (tone === "bad") return "error";
+  if (tone === "warn") return "warning";
+  return "success";
+}
+
+function skipTone(tone: string) {
+  if (tone === "bad") return "error" as const;
+  if (tone === "warn") return "warning" as const;
+  return "info" as const;
 }

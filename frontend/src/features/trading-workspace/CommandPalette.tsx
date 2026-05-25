@@ -1,3 +1,4 @@
+import type { CSSProperties } from "react";
 import { useEffect, useMemo, useRef } from "react";
 import { Button, Input } from "antd";
 import type { InputRef } from "antd";
@@ -28,6 +29,83 @@ const PAGE_COMMANDS: CommandItem[] = [
   { type: "page", label: "模拟盘", hint: "打开模拟交易账户", page: "paper" },
   { type: "page", label: "系统配置", hint: "打开运行配置与治理", page: "settings" },
 ];
+
+const BACKDROP_STYLE: CSSProperties = {
+  alignItems: "flex-start",
+  background: "rgba(15, 23, 42, 0.38)",
+  display: "flex",
+  inset: 0,
+  justifyContent: "center",
+  paddingTop: "min(12vh, 96px)",
+  position: "fixed",
+  zIndex: 1100,
+};
+
+const PALETTE_STYLE: CSSProperties = {
+  background: "#ffffff",
+  border: "1px solid #dbe3ef",
+  borderRadius: 18,
+  boxShadow: "0 28px 72px rgba(15, 23, 42, 0.28)",
+  color: "#0f172a",
+  overflow: "hidden",
+  width: "min(680px, calc(100vw - 32px))",
+};
+
+const PALETTE_INPUT_STYLE: CSSProperties = {
+  border: 0,
+  borderBottom: "1px solid #e2e8f0",
+  color: "#0f172a",
+  fontSize: 17,
+  outline: "none",
+  padding: "18px 20px",
+  width: "100%",
+};
+
+const PALETTE_LIST_STYLE: CSSProperties = {
+  display: "grid",
+  maxHeight: 420,
+  overflow: "auto",
+  padding: 8,
+};
+
+const PALETTE_ITEM_STYLE: CSSProperties = {
+  alignItems: "center",
+  background: "transparent",
+  border: 0,
+  borderRadius: 12,
+  color: "#0f172a",
+  cursor: "pointer",
+  display: "grid",
+  gap: 4,
+  justifyItems: "start",
+  padding: "11px 12px",
+  textAlign: "left",
+};
+
+const PALETTE_ITEM_HOVER_STYLE: CSSProperties = {
+  background: "#f3f6fb",
+};
+
+const PALETTE_ITEM_META_STYLE: CSSProperties = {
+  color: "#64748b",
+};
+
+const PALETTE_EMPTY_STYLE: CSSProperties = {
+  color: "#64748b",
+  padding: "18px 14px",
+};
+
+const PALETTE_FOOTER_STYLE: CSSProperties = {
+  alignItems: "center",
+  background: "#f8fafc",
+  borderTop: "1px solid #e2e8f0",
+  display: "flex",
+  flexWrap: "wrap",
+  fontSize: 12,
+  gap: 12,
+  padding: "10px 14px",
+  color: "#64748b",
+};
 
 export function CommandPalette({
   open,
@@ -67,10 +145,12 @@ export function CommandPalette({
   };
 
   return (
-    <div className="command-palette-backdrop" role="presentation" onMouseDown={onClose}>
-      <section className="command-palette" role="dialog" aria-modal="true" aria-label="全局搜索" onMouseDown={(event) => event.stopPropagation()}>
+    <div style={BACKDROP_STYLE} role="presentation" onMouseDown={onClose}>
+      <section style={PALETTE_STYLE} role="dialog" aria-modal="true" aria-label="全局搜索" onMouseDown={(event) => event.stopPropagation()}>
         <Input
           ref={inputRef}
+          variant="borderless"
+          style={PALETTE_INPUT_STYLE}
           value={query}
           onChange={(event) => setQuery(event.target.value)}
           onKeyDown={(event) => {
@@ -83,18 +163,25 @@ export function CommandPalette({
           }}
           placeholder="搜索页面、策略或输入 6 位股票代码"
         />
-        <div className="command-palette-list">
+        <div style={PALETTE_LIST_STYLE}>
           {items.map((item) => (
-            <Button type="text" key={`${item.type}-${item.label}`} onClick={() => execute(item)}>
+            <Button
+              type="text"
+              key={`${item.type}-${item.label}`}
+              onClick={() => execute(item)}
+              style={PALETTE_ITEM_STYLE}
+              onMouseEnter={(event) => Object.assign(event.currentTarget.style, PALETTE_ITEM_HOVER_STYLE)}
+              onMouseLeave={(event) => Object.assign(event.currentTarget.style, PALETTE_ITEM_STYLE)}
+            >
               <strong>{item.label}</strong>
-              <span>{item.hint}</span>
+              <span style={PALETTE_ITEM_META_STYLE}>{item.hint}</span>
             </Button>
           ))}
           {!items.length ? (
-            <div className="command-palette-empty">没有匹配结果。输入股票代码可直接跳转量化分析。</div>
+            <div style={PALETTE_EMPTY_STYLE}>没有匹配结果。输入股票代码可直接跳转量化分析。</div>
           ) : null}
         </div>
-        <footer>
+        <footer style={PALETTE_FOOTER_STYLE}>
           <span>Enter 执行</span>
           <span>Esc 关闭</span>
           <span>Cmd/Ctrl+1~6 切换页面</span>

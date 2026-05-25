@@ -5,7 +5,7 @@ from decimal import Decimal
 from typing import Optional
 
 from sqlalchemy import Date, DateTime, ForeignKey, Integer, Numeric, String, Text, UniqueConstraint, func
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base
 
@@ -53,6 +53,11 @@ class PaperPosition(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime, server_default=func.now(), onupdate=func.now()
     )
+    lots: Mapped[list["PaperPositionLot"]] = relationship(
+        "PaperPositionLot",
+        back_populates="position",
+        lazy="selectin",
+    )
 
 class PaperPositionLot(Base):
     __tablename__ = "paper_position_lots"
@@ -67,6 +72,7 @@ class PaperPositionLot(Base):
     cost_price: Mapped[Decimal] = mapped_column(Numeric(18, 4), default=Decimal("0.0000"))
     source_order_id: Mapped[Optional[int]] = mapped_column(ForeignKey("paper_orders.id"), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    position: Mapped[PaperPosition] = relationship("PaperPosition", back_populates="lots")
 
 class PaperOrder(Base):
     __tablename__ = "paper_orders"
@@ -199,14 +205,7 @@ class PaperMarketPerfDaily(Base):
     profit_factor: Mapped[Optional[float]] = mapped_column(Numeric(8, 4), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
-class PaperDailyReport(Base):
-    """模拟盘每日战绩点评，存储规则或大模型生成的复盘摘要。"""
-
-    __tablename__ = "paper_daily_reports"
-    __table_args__ = (
-        UniqueConstraint("account_id", "report_date", name="uq_pdr_account_date"),
-    )
-
+class _PaperReportFields:
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     account_id: Mapped[int] = mapped_column(ForeignKey("paper_accounts.id"), index=True)
     report_date: Mapped[date] = mapped_column(Date, index=True)
@@ -217,3 +216,23 @@ class PaperDailyReport(Base):
     raw_metrics_snapshot: Mapped[str] = mapped_column(Text, default="{}")
     generated_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
     llm_model: Mapped[str] = mapped_column(String(80), default="")
+
+
+class PaperDailyReport(_PaperReportFields, Base):
+    """模拟盘每日战绩点评，存储规则或大模型生成的复盘摘要。"""
+
+    __tablename__ = "paper_daily_reports"
+    __table_args__ = (
+        UniqueConstraint("account_id", "report_date", name="uq_pdr_account_date"),
+    )
+
+
+class PaperReviewReport(_PaperReportFields, Base):
+    """午盘/收盘两段式复盘，用于盘中指导与收盘总结。"""
+
+    __tablename__ = "paper_review_reports"
+    __table_args__ = (
+        UniqueConstraint("account_id", "report_date", "report_slot", name="uq_prr_account_date_slot"),
+    )
+
+    report_slot: Mapped[str] = mapped_column(String(16), default="close", index=True)

@@ -5,7 +5,7 @@ import time
 from typing import Optional
 
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 from app.models.entities import UserWatchlist, Watchlist
 from app.models.schemas import (
@@ -174,7 +174,15 @@ class AppMobileWatchlistMixin:
 
     def _list_watchlist_rows(self, db: Session, user_id: int | None = None) -> list:
         if user_id is None:
-            return db.execute(select(Watchlist).order_by(Watchlist.id.desc())).scalars().all()
+            return (
+                db.execute(
+                    select(Watchlist)
+                    .options(selectinload(Watchlist.latest_signal))
+                    .order_by(Watchlist.id.desc())
+                )
+                .scalars()
+                .all()
+            )
         return (
             db.execute(
                 select(UserWatchlist)
@@ -187,7 +195,14 @@ class AppMobileWatchlistMixin:
 
     def _get_watchlist_row(self, db: Session, symbol: str, user_id: int | None = None):
         if user_id is None:
-            return db.execute(select(Watchlist).where(Watchlist.symbol == symbol)).scalar_one_or_none()
+            return (
+                db.execute(
+                    select(Watchlist)
+                    .options(selectinload(Watchlist.latest_signal))
+                    .where(Watchlist.symbol == symbol)
+                )
+                .scalar_one_or_none()
+            )
         return (
             db.execute(
                 select(UserWatchlist).where(

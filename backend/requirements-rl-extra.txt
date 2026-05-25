@@ -8,6 +8,8 @@
 # Docker research image:
 #   docker build --build-arg INSTALL_RL_EXTRAS=1 .
 #   docker build --build-arg WITH_RL=true .
+# This file must stay outside backend/requirements.txt and the default Docker
+# image path; import sites must keep optional try/except guards.
 gymnasium>=0.29,<1.1
 stable-baselines3>=2.3,<3.0
 torch>=2.2,<3.0

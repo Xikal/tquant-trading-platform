@@ -5,7 +5,7 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 source "$ROOT_DIR/scripts/cloud_ssh_lib.sh"
 
-CLOUD_HOST="${CLOUD_HOST:-43.143.243.97}"
+CLOUD_HOST="${CLOUD_HOST:-}"
 CLOUD_USER="${CLOUD_USER:-ubuntu}"
 CLOUD_PROJECT_DIR="${CLOUD_PROJECT_DIR:-/home/ubuntu/gupiao-upload}"
 KEEP_BACKUPS="${KEEP_BACKUPS:-3}"
@@ -15,6 +15,14 @@ PRUNE_DOCKER="${PRUNE_DOCKER:-1}"
 
 log() {
   printf '[cleanup] %s\n' "$*"
+}
+
+require_cloud_host() {
+  if [[ -n "$CLOUD_HOST" ]]; then
+    return 0
+  fi
+  log "CLOUD_HOST is required. Example: CLOUD_HOST=<server-ip-or-domain> $0"
+  exit 2
 }
 
 remote_script() {
@@ -121,6 +129,7 @@ SH
 }
 
 main() {
+  require_cloud_host
   log "mode: $([[ "$APPLY" == "1" ]] && echo apply || echo dry-run)"
   local local_script remote_path
   local_script="$(mktemp /tmp/gupiao-cloud-cleanup-XXXXXX)"

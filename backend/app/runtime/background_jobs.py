@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import date, datetime, time as dt_time
+from datetime import datetime, time as dt_time
 import fcntl
 import logging
 from pathlib import Path
@@ -10,7 +10,7 @@ import threading
 from app.core.config import get_settings
 from app.core.database import SessionLocal
 from app.core.task_manager import task_manager
-from app.core.timezone import beijing_now, beijing_today
+from app.core.timezone import beijing_now
 from app.models.schema_defs.phase4 import RuntimeTaskCreate
 from app.runtime.strategy_evolution_scheduler import (
     enqueue_daily_ledger_reconcile_preview_once,
@@ -20,6 +20,10 @@ from app.runtime.strategy_evolution_scheduler import (
     shutdown_strategy_evolution_scheduler,
 )
 from app.runtime.background_low_buy_cleanup import cleanup_stale_low_buy_snapshots
+from app.runtime.paper_review_jobs import (
+    archive_paper_performance_once,
+    generate_midday_paper_review_once,
+)
 from app.repositories.low_buy.results import LowBuyResultRepository
 from app.services.agent_daily_workflow_service import AgentDailyWorkflowService
 from app.services.agent_notification_service import AgentNotificationService
@@ -28,13 +32,17 @@ from app.services.backtest_research_worker import BacktestResearchWorker
 from app.services.latest_data_close_refresh import enqueue_latest_data_close_refresh
 from app.services.latest_data_status import expected_low_buy_trade_date, publish_latest_trade_date_if_ready
 from app.services.low_buy.shared import DEFAULT_PRODUCTION_LOW_BUY_STRATEGY
+from app.services.low_buy.go_scan_shadow import trigger_go_scan_shadow
 from app.services.low_buy.strategy_auto_governance import refresh_low_buy_strategy_auto_governance
 from app.services.low_buy.strategy_policy import PRODUCTION_PRIORITY_STRATEGIES
 from app.services.low_buy_screener import PLAYBOOKS, LowBuyScreenerService
 from app.services.market_data import MarketDataService
+from app.services.market.hourly_snapshot import (
+    hourly_all_market_snapshot_bucket,
+    hourly_all_market_snapshot_due,
+)
 from app.services.market_quote_cache_refresh import quote_cache_refresh_bucket, quote_cache_refresh_due
 from app.services.factor_mining.scheduler import enqueue_monthly_factor_mining_once
-from app.services.paper.archive import PaperArchiveService
 from app.services.paper.scheduler import build_auto_trader_config, start_auto_trader, stop_auto_trader
 from app.services.paper.validation_scheduler import MonthlyStrategyValidationJob
 from app.services.tasks import RuntimeTaskQueue
@@ -53,7 +61,6 @@ SQLITE_BACKGROUND_SCAN_LIMIT = 120
 DEFAULT_BACKGROUND_SCAN_LIMIT = 480
 ML_INCREMENTAL_TRAIN_WEEKDAY = 4  # Friday
 ML_INCREMENTAL_TRAIN_AFTER = dt_time(hour=16, minute=0)
-_paper_archive_last_run_date: date | None = None
 _background_leader_lock_handle = None
 
 
@@ -118,6 +125,7 @@ def _refresh_materialized_low_buy_snapshots(
     with SessionLocal() as db:
         publish_latest_trade_date_if_ready(db, strategies=sorted(PRODUCTION_PRIORITY_STRATEGIES))
         db.commit()
+    trigger_go_scan_shadow(strategies=strategies, scan_limit=scan_limit, reason="low_buy_materialized_refresh")
 
 
 def _materialized_snapshot_is_fresh(
@@ -197,20 +205,6 @@ def _refresh_watchlist_signal_once() -> None:
 
 def _warm_market_regime_once() -> None:
     MarketDataService().get_market_regime()
-
-
-def _archive_paper_performance_once() -> None:
-    global _paper_archive_last_run_date
-    if not _paper_archive_due():
-        return
-    today = beijing_today()
-    if _paper_archive_last_run_date == today:
-        return
-    with SessionLocal() as db:
-        service = PaperArchiveService(db)
-        results = service.archive_all_active(include_report=settings.paper_perf_ai_report_enabled)
-        _paper_archive_last_run_date = today
-        logger.info("模拟盘绩效归档完成: %s", results)
 
 
 def _run_monthly_strategy_validation_once() -> None:
@@ -303,6 +297,23 @@ def _enqueue_market_quote_cache_refresh_once() -> None:
         logger.info("本地行情缓存预热任务检查完成: bucket=%s task_id=%s status=%s", bucket, task.id, task.status)
 
 
+def _enqueue_hourly_all_market_snapshot_once() -> None:
+    if not hourly_all_market_snapshot_due():
+        return
+    bucket = hourly_all_market_snapshot_bucket()
+    with SessionLocal() as db:
+        task = RuntimeTaskQueue(db).enqueue(
+            RuntimeTaskCreate(
+                task_type="market_hourly_all_a_snapshot",
+                payload={"reason": "runtime_hourly_market_pulse"},
+                priority=25,
+                idempotency_key=f"market_hourly_all_a_snapshot:{bucket}",
+                max_attempts=2,
+            )
+        )
+        logger.info("全 A 股小时快照任务检查完成: bucket=%s task_id=%s status=%s", bucket, task.id, task.status)
+
+
 def _enqueue_low_buy_materialization_once() -> None:
     with SessionLocal() as db:
         enqueue_latest_data_close_refresh(db)
@@ -311,16 +322,6 @@ def _enqueue_low_buy_materialization_once() -> None:
 def _enqueue_daily_bar_refresh_once() -> None:
     with SessionLocal() as db:
         enqueue_latest_data_close_refresh(db)
-
-
-def _paper_archive_due() -> bool:
-    try:
-        hour, minute = [int(part) for part in settings.paper_perf_archive_time.split(":", 1)]
-        archive_time = dt_time(hour=hour, minute=minute)
-    except (TypeError, ValueError):
-        logger.warning("PAPER_PERF_ARCHIVE_TIME 配置无效: %s", settings.paper_perf_archive_time)
-        archive_time = dt_time(hour=15, minute=5)
-    return beijing_now().time() >= archive_time
 
 
 def _agent_daily_report_push_due() -> bool:
@@ -380,6 +381,12 @@ def start_runtime_background_jobs() -> None:
             initial_delay_seconds=10,
         )
         task_manager.register_loop(
+            name="market_hourly_all_a_snapshot",
+            target=_enqueue_hourly_all_market_snapshot_once,
+            interval_seconds=60,
+            initial_delay_seconds=25,
+        )
+        task_manager.register_loop(
             name="low_buy_materialization_refresh",
             target=_enqueue_low_buy_materialization_once,
             interval_seconds=300,
@@ -393,8 +400,16 @@ def start_runtime_background_jobs() -> None:
         )
         if settings.paper_perf_archive_enabled:
             task_manager.register_loop(
+                name="paper_midday_review",
+                target=generate_midday_paper_review_once,
+                interval_seconds=300,
+                initial_delay_seconds=75,
+            )
+            task_manager.register_loop(
                 name="paper_perf_archive",
-                target=_archive_paper_performance_once,
+                target=lambda: archive_paper_performance_once(
+                    include_report=settings.paper_perf_ai_report_enabled
+                ),
                 interval_seconds=300,
                 initial_delay_seconds=90,
             )

@@ -8,6 +8,7 @@ from typing import Any
 from app.core.config import get_settings
 from app.core.database import SessionLocal
 from app.services.agent_daily_workflow_service import AgentDailyWorkflowService
+from app.services.market.hourly_snapshot import HourlyAllMarketSnapshotService
 from app.services.market_quote_cache_refresh import MarketQuoteCacheRefreshService
 from app.services.monitor_snapshot_cache import build_and_store_monitor_snapshot
 from app.services.tasks import RuntimeTaskQueue
@@ -79,6 +80,10 @@ def _execute_task(task_type: str, payload: dict[str, Any], db) -> dict[str, Any]
         )
     if task_type == "market_quote_cache_refresh":
         return MarketQuoteCacheRefreshService(db).refresh(limit=int(payload.get("limit") or 200))
+    if task_type == "market_hourly_all_a_snapshot":
+        return HourlyAllMarketSnapshotService(db).refresh(
+            reason=str(payload.get("reason") or "runtime_hourly_market_pulse")
+        )
     if task_type == "instrument_sync":
         from app.services.instrument_sync_status import InstrumentSyncStatusService
         from app.services.market_data import MarketDataService
@@ -117,6 +122,15 @@ def _execute_task(task_type: str, payload: dict[str, Any], db) -> dict[str, Any]
         from app.services.daily_bar_refresh import DailyBarRefreshService
 
         return DailyBarRefreshService(db).refresh_latest(limit=int(payload.get("limit") or 6000))
+    if task_type == "paper_review_report":
+        from app.services.paper.archive import PaperArchiveService
+
+        return {
+            "ok": True,
+            "results": PaperArchiveService(db).generate_review_reports_for_active(
+                report_slot=str(payload.get("report_slot") or "midday")
+            ),
+        }
     if task_type == "low_buy_materialization_refresh":
         from app.services.low_buy_materialization import refresh_latest_low_buy_materialization
 

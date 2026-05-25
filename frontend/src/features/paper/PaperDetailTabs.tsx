@@ -1,5 +1,5 @@
-import { useMemo } from "react";
-import { Button, Tabs } from "antd";
+import { type ReactNode, useMemo } from "react";
+import { Button, Card, Space, Tabs, Typography } from "antd";
 import type {
   PaperAgentRun,
   PaperGroupedPerformance,
@@ -37,26 +37,27 @@ export function PaperDetailTabs(props: PaperDetailTabsProps) {
   const tabs = useMemo(() => buildTabs(props), [props]);
 
   return (
-    <section className="panel paper-detail-tabs">
-      <div className="panel-title">
-        <h2>详情信息</h2>
-        <span className="hint">低频信息统一收纳，避免首屏堆满。</span>
-      </div>
+    <Card
+      title="详情信息"
+      extra={<Typography.Text type="secondary">低频信息统一收纳，避免首屏堆满。</Typography.Text>}
+      style={{ gridArea: "details" }}
+    >
       <Tabs
-        className="paper-detail-antd-tabs"
+        type="card"
         activeKey={tab}
         onChange={(key) => setTab(key as PaperDetailTabKey)}
+        tabBarStyle={{ marginBottom: 0 }}
         items={tabs.map((item) => ({
           key: item.key,
           label: (
-            <span className="paper-tab-label">
-              <strong>{item.label}</strong>
-              <small>{item.hint}</small>
-            </span>
+            <Space direction="vertical" size={2} style={{ minWidth: 96, textAlign: "left" }}>
+              <Typography.Text strong>{item.label}</Typography.Text>
+              <Typography.Text type="secondary" style={{ fontSize: 11 }}>{item.hint}</Typography.Text>
+            </Space>
           ),
         }))}
       />
-      <div className="paper-tab-panel" role="tabpanel">
+      <div role="tabpanel" style={{ minHeight: 360 }}>
         {tab === "orders" ? <OrdersTab orders={props.orders} loading={props.loading} /> : null}
         {tab === "trades" ? (
           <TradesTab
@@ -103,7 +104,7 @@ export function PaperDetailTabs(props: PaperDetailTabsProps) {
           />
         ) : null}
       </div>
-    </section>
+    </Card>
   );
 }
 
@@ -153,25 +154,27 @@ function OrdersTab({ orders, loading }: { orders: PaperOrder[]; loading: boolean
           title: "标的",
           dataIndex: "symbol",
           render: (_, item) => (
-            <div className="paper-stock-name">
+            <Space direction="vertical" size={0} style={{ minWidth: 0 }}>
               <strong>{item.symbol}</strong>
-              <span>{item.name || item.strategy_key || "--"}</span>
-              {item.reject_reason ? <small className="warn">原因：{item.reject_reason}</small> : null}
-            </div>
+              <Typography.Text type="secondary" style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                {item.name || item.strategy_key || "--"}
+              </Typography.Text>
+              {item.reject_reason ? <Typography.Text type="warning" style={{ fontSize: 11 }}>原因：{item.reject_reason}</Typography.Text> : null}
+            </Space>
           ),
         },
         {
           title: "方向/类型",
           render: (_, item) => (
-            <span className={`status-chip ${item.side === "buy" ? "up" : "down"}`}>
+            <StatusChip tone={item.side === "buy" ? "up" : "down"}>
               {item.side === "buy" ? "买入" : "卖出"} · {item.order_type === "market" ? "市价" : "限价"}
-            </span>
+            </StatusChip>
           ),
         },
         {
           title: "状态",
           dataIndex: "status",
-          render: (status: PaperOrder["status"]) => <span className={`status-chip ${orderStatusTone(status)}`}>{orderStatusText(status)}</span>,
+          render: (status: PaperOrder["status"]) => <StatusChip tone={orderStatusTone(status)}>{orderStatusText(status)}</StatusChip>,
         },
         {
           title: "数量",
@@ -208,7 +211,7 @@ function TradesTab({
   onDeleteTradeTag: (tradeId: number, tagId: number) => void;
 }) {
   return (
-    <div className="paper-tab-scroll">
+    <TabScroll>
       <PerformancePills performance={performance} />
       <TagPerformanceStrip items={tagPerformance} />
       <DataTable<PaperTrade>
@@ -223,20 +226,22 @@ function TradesTab({
             render: (_, item) => {
               const reasonText = item.side === "buy" ? item.entry_reason : item.exit_reason;
               return (
-                <div className="paper-stock-name">
+                <Space direction="vertical" size={0} style={{ minWidth: 0 }}>
                   <strong>{item.symbol}</strong>
-                  <span>{item.strategy_key || "未标注"}</span>
-                  <small className={item.commission_warning ? "warn" : ""}>
+                  <Typography.Text type="secondary" style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {item.strategy_key || "未标注"}
+                  </Typography.Text>
+                  <Typography.Text type={item.commission_warning ? "warning" : "secondary"} style={{ fontSize: 11 }}>
                     {item.commission_warning || reasonText || (item.side === "buy" ? "买入原因未记录" : "退出原因未记录")}
-                  </small>
-                </div>
+                  </Typography.Text>
+                </Space>
               );
             },
           },
           {
             title: "方向",
             dataIndex: "side",
-            render: (side: PaperTrade["side"]) => <span className={`status-chip ${side === "buy" ? "up" : "down"}`}>{side === "buy" ? "买入" : "卖出"}</span>,
+            render: (side: PaperTrade["side"]) => <StatusChip tone={side === "buy" ? "up" : "down"}>{side === "buy" ? "买入" : "卖出"}</StatusChip>,
           },
           { title: "数量", dataIndex: "quantity", align: "right", render: (value: number) => `${formatInteger(value)} 股` },
           { title: "价格", dataIndex: "price", align: "right", render: (value?: number | null) => formatPrice(value) },
@@ -254,7 +259,7 @@ function TradesTab({
           },
         ]}
       />
-    </div>
+    </TabScroll>
   );
 }
 
@@ -268,29 +273,17 @@ function StrategyTab({
   sectorEtfT0Performance: PaperSectorEtfT0Performance | null;
 }) {
   return (
-    <div className="paper-tab-scroll">
-      <section className="paper-detail-card">
-        <div className="paper-detail-card-title">
-          <strong>按策略</strong>
-          <span>看哪个策略赚钱，哪个策略拖后腿。</span>
-        </div>
+    <TabScroll>
+      <Card size="small" title="按策略" extra={<Typography.Text type="secondary">看哪个策略赚钱，哪个策略拖后腿。</Typography.Text>}>
         <GroupedPerformanceTable items={strategyPerformance} emptyText="暂无策略绩效" />
-      </section>
-      <section className="paper-detail-card">
-        <div className="paper-detail-card-title">
-          <strong>按市场状态</strong>
-          <span>判断不同环境下表现是否稳定。</span>
-        </div>
+      </Card>
+      <Card size="small" title="按市场状态" extra={<Typography.Text type="secondary">判断不同环境下表现是否稳定。</Typography.Text>}>
         <GroupedPerformanceTable items={marketPerformance} emptyText="暂无市场状态绩效" />
-      </section>
-      <section className="paper-detail-card">
-        <div className="paper-detail-card-title">
-          <strong>行业 ETF T+0</strong>
-          <span>单独查看 ETF 做T 自动执行结果。</span>
-        </div>
+      </Card>
+      <Card size="small" title="行业 ETF T+0" extra={<Typography.Text type="secondary">单独查看 ETF 做 T 自动执行结果。</Typography.Text>}>
         <SectorEtfT0PerformancePanel item={sectorEtfT0Performance} />
-      </section>
-    </div>
+      </Card>
+    </TabScroll>
   );
 }
 
@@ -302,23 +295,15 @@ function RiskTab({
   autoTradingRuns: PaperAgentRun[];
 }) {
   return (
-    <div className="paper-tab-scroll">
-      <section className="paper-detail-card">
-        <div className="paper-detail-card-title">
-          <strong>风险待办</strong>
-          <span>只保留需要你处理的风险。</span>
-        </div>
+    <TabScroll>
+      <Card size="small" title="风险待办" extra={<Typography.Text type="secondary">只保留需要你处理的风险。</Typography.Text>}>
         <RiskEventList items={riskEvents} />
         {!riskEvents.length ? <EmptyState text="暂无风险待办" /> : null}
-      </section>
-      <section className="paper-detail-card">
-        <div className="paper-detail-card-title">
-          <strong>系统日志</strong>
-          <span>最近 5 次自动交易执行记录。</span>
-        </div>
+      </Card>
+      <Card size="small" title="系统日志" extra={<Typography.Text type="secondary">最近 5 次自动交易执行记录。</Typography.Text>}>
         <AgentRunList items={autoTradingRuns} />
-      </section>
-    </div>
+      </Card>
+    </TabScroll>
   );
 }
 
@@ -339,14 +324,22 @@ function DiagnosticTab({
     return <EmptyState text="当前账号没有对账修复权限。" />;
   }
   return (
-    <div className="paper-tab-scroll">
+    <TabScroll>
       <PaperLedgerRepairPanel
         loading={loading}
         status={ledgerRepairStatus ?? null}
         onRefresh={() => void onRefreshLedgerRepair()}
         onApply={() => void onApplyLedgerRepair()}
       />
-    </div>
+    </TabScroll>
+  );
+}
+
+function TabScroll({ children }: { children: ReactNode }) {
+  return (
+    <Space direction="vertical" size={12} style={{ display: "flex", maxHeight: 420, overflowY: "auto", paddingRight: 4 }}>
+      {children}
+    </Space>
   );
 }
 
@@ -363,19 +356,72 @@ function TradeTags({
 }) {
   const quickTags = ["止盈", "止损", "做T", "计划外"].filter((tag) => !tags.some((entry) => entry.tag === tag));
   return (
-    <div className="paper-trade-tags">
+    <Space wrap size={5}>
       {tags.map((tag) => (
-        <Button type="text" size="small" className="paper-tag-chip" key={tag.id} onClick={() => onDeleteTag(item.id, tag.id)} title="点击删除标签">
+        <Button
+          type="text"
+          size="small"
+          key={tag.id}
+          onClick={() => onDeleteTag(item.id, tag.id)}
+          title="点击删除标签"
+          style={{
+            border: "1px solid rgba(31, 139, 76, 0.22)",
+            borderRadius: 999,
+            background: "#f2fbf5",
+            color: "var(--price-down, #1f8b4c)",
+            fontSize: 10,
+            fontWeight: 800,
+            padding: "2px 6px",
+          }}
+        >
           {tag.tag} ×
         </Button>
       ))}
       {quickTags.slice(0, tags.length ? 1 : 2).map((tag) => (
-        <Button type="text" size="small" className="paper-tag-add" key={tag} onClick={() => onAddTag(item.id, tag)}>
+        <Button
+          type="text"
+          size="small"
+          key={tag}
+          onClick={() => onAddTag(item.id, tag)}
+          style={{
+            border: "1px dashed var(--line)",
+            borderRadius: 999,
+            background: "#fff",
+            color: "var(--muted)",
+            fontSize: 10,
+            fontWeight: 800,
+            padding: "2px 6px",
+          }}
+        >
           +{tag}
         </Button>
       ))}
-    </div>
+    </Space>
   );
+}
+
+function StatusChip({ tone, children }: { tone: "up" | "down" | "warn" | "neutral"; children: ReactNode }) {
+  const style = {
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    minHeight: 22,
+    padding: "2px 7px",
+    borderRadius: 999,
+    background:
+      tone === "up" ? "#fff7f4" : tone === "down" ? "#f2fbf5" : tone === "warn" ? "#fff8e8" : "#eef2f7",
+    color:
+      tone === "up"
+        ? "var(--price-up, #c62828)"
+        : tone === "down"
+          ? "var(--price-down, #1f8b4c)"
+          : tone === "warn"
+            ? "var(--muted)"
+            : "var(--muted)",
+    fontSize: 11,
+    fontWeight: 800,
+  } as const;
+  return <span style={style}>{children}</span>;
 }
 
 function orderStatusText(status: PaperOrder["status"]): string {

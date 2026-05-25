@@ -15,6 +15,8 @@ import {
 import type { BacktestResearchState } from "./BacktestResearchPanel";
 import { Empty, normalizeAttributionRows, PanelTitle } from "./BacktestResearchShared";
 import { DataTable } from "../../ui/table/DataTable";
+import { BACKTEST_CHART_FALLBACK_STYLE } from "./backtestChartStyles";
+import { BACKTEST_RESEARCH_CARD_STYLE, backtestToneTextStyle } from "./backtestResearchStyles";
 
 const LazyBacktestReturnDistribution = lazy(() => import("./LazyBacktestReturnDistribution"));
 
@@ -30,7 +32,7 @@ export function AttributionPanel({ state, equity }: { state: BacktestResearchSta
     attribution?.failure_reasons?.length
   );
   return (
-    <section className="backtest-research-card">
+    <section style={BACKTEST_RESEARCH_CARD_STYLE}>
       <PanelTitle
         title="归因面板"
         meta="策略 / 行业 / 市场 / 质量"
@@ -43,7 +45,7 @@ export function AttributionPanel({ state, equity }: { state: BacktestResearchSta
       <AttributionTable title="失败原因" items={attribution?.failure_reasons ?? []} />
       <StrategyDecompositionTable attribution={attribution} />
       <PanelTitle title="收益分布" meta="日收益直方图 + 正态拟合" />
-      <Suspense fallback={<div className="backtest-chart-fallback">收益分布加载中...</div>}>
+      <Suspense fallback={<div style={BACKTEST_CHART_FALLBACK_STYLE}>收益分布加载中...</div>}>
         <LazyBacktestReturnDistribution points={equity} />
       </Suspense>
       <PanelTitle title="相关性矩阵" meta="Pearson" />
@@ -98,7 +100,7 @@ function AttributionTable({ title, items }: { title: string; items: NonNullable<
           align: "right",
           render: (_value, item) => {
             const value = item.net_pnl ?? item.contribution_pct ?? item.return_pct;
-            return <span className={toneFromNumber(value)}>{formatMoneyOrPct(item.net_pnl, item.contribution_pct ?? item.return_pct)}</span>;
+            return <span style={backtestToneTextStyle(toneFromNumber(value))}>{formatMoneyOrPct(item.net_pnl, item.contribution_pct ?? item.return_pct)}</span>;
           },
         },
       ]}
@@ -131,7 +133,7 @@ function StrategyDecompositionTable({ attribution }: { attribution: BacktestAttr
         {
           title: "收益贡献",
           align: "right",
-          render: (_value, item) => <span className={toneFromNumber(item.returnValue)}>{formatMoneyOrPct(item.netPnl, item.returnValue)}</span>,
+          render: (_value, item) => <span style={backtestToneTextStyle(toneFromNumber(item.returnValue))}>{formatMoneyOrPct(item.netPnl, item.returnValue)}</span>,
         },
       ]}
     />

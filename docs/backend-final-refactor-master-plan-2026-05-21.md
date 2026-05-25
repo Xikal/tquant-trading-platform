@@ -1,5 +1,7 @@
 # TQuant 后端最终重构总方案
 
+> 状态：已归档。当前后端执行口径以 `docs/backend-go-rust-refactor-final-plan-2026-05-22.md` 和 `IMPLEMENTATION_PLAN.md` 为准，本文件仅作历史审查材料保留。
+
 生成日期：2026-05-21
 输入材料：
 

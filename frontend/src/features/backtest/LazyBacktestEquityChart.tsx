@@ -10,6 +10,7 @@ import {
 import * as echarts from "echarts/core";
 import { CanvasRenderer } from "echarts/renderers";
 import type { EquityPoint } from "../../api/backtests";
+import { BACKTEST_ECHARTS_STYLE } from "./backtestStyles";
 
 echarts.use([
   CanvasRenderer,
@@ -44,7 +45,7 @@ export default function LazyBacktestEquityChart({ points }: { points: EquityPoin
     chartRef.current?.setOption(option, true, true);
   }, [option]);
 
-  return <div ref={elementRef} className="backtest-echarts" />;
+  return <div ref={elementRef} style={BACKTEST_ECHARTS_STYLE} />;
 }
 
 function buildOption(points: EquityPoint[]): echarts.EChartsCoreOption {

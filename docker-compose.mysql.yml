@@ -13,6 +13,14 @@ services:
     command:
       - --character-set-server=utf8mb4
       - --collation-server=utf8mb4_unicode_ci
+      - --max-connections=${MYSQL_MAX_CONNECTIONS:-300}
+      - --innodb-buffer-pool-size=${MYSQL_INNODB_BUFFER_POOL_SIZE:-512M}
+      - --innodb-log-file-size=${MYSQL_INNODB_LOG_FILE_SIZE:-256M}
+      - --innodb-flush-log-at-trx-commit=${MYSQL_INNODB_FLUSH_LOG_AT_TRX_COMMIT:-2}
+      - --slow-query-log=${MYSQL_SLOW_QUERY_LOG:-ON}
+      - --long-query-time=${MYSQL_LONG_QUERY_TIME:-1}
+      - --log-output=${MYSQL_LOG_OUTPUT:-FILE}
+      - --slow-query-log-file=/var/lib/mysql/mysql-slow.log
     volumes:
       - mysql_data:/var/lib/mysql
     healthcheck:
@@ -26,7 +34,22 @@ services:
     image: docker.m.daocloud.io/library/redis:7-alpine
     container_name: tquant-redis
     restart: unless-stopped
-    command: ["redis-server", "--appendonly", "yes"]
+    command:
+      - redis-server
+      - --appendonly
+      - "yes"
+      - --appendfsync
+      - everysec
+      - --auto-aof-rewrite-percentage
+      - "100"
+      - --auto-aof-rewrite-min-size
+      - 64mb
+      - --save
+      - "900"
+      - "1"
+      - --save
+      - "300"
+      - "10"
     volumes:
       - redis_data:/data
     healthcheck:
@@ -57,6 +80,10 @@ services:
       APP_ENVIRONMENT: ${APP_ENVIRONMENT:-production}
       API_PREFIX: ${API_PREFIX:-/api}
       DATABASE_URL: mysql+pymysql://${MYSQL_USER:-tquant_app}:${MYSQL_PASSWORD:?MYSQL_PASSWORD is required}@mysql:3306/${MYSQL_DATABASE:-t_quant}?charset=utf8mb4
+      DB_POOL_SIZE: ${DB_POOL_SIZE:-12}
+      DB_MAX_OVERFLOW: ${DB_MAX_OVERFLOW:-24}
+      DB_POOL_TIMEOUT: ${DB_POOL_TIMEOUT:-30}
+      DB_POOL_RECYCLE: ${DB_POOL_RECYCLE:-1800}
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:8000,http://127.0.0.1:8000,http://localhost:18080,http://127.0.0.1:18080,http://localhost:18090,http://127.0.0.1:18090}
       DEFAULT_DATA_SOURCE: ${DEFAULT_DATA_SOURCE:-akshare_eastmoney}
       HTTP_TIMEOUT: ${HTTP_TIMEOUT:-12}
@@ -75,7 +102,7 @@ services:
       PAPER_AUTO_TRADING_MAX_ORDERS: ${PAPER_AUTO_TRADING_MAX_ORDERS:-5}
       PAPER_AUTO_TRADING_DRY_RUN: ${PAPER_AUTO_TRADING_DRY_RUN:-false}
       PAPER_AUTO_TRADING_MIN_SCORE: ${PAPER_AUTO_TRADING_MIN_SCORE:-75}
-      RUNTIME_BACKGROUND_JOBS_ENABLED: ${WEB_RUNTIME_BACKGROUND_JOBS_ENABLED:-false}
+      RUNTIME_BACKGROUND_JOBS_ENABLED: ${WEB_RUNTIME_BACKGROUND_JOBS_ENABLED:-true}
       RUNTIME_BACKGROUND_JOBS_ON_SQLITE: ${RUNTIME_BACKGROUND_JOBS_ON_SQLITE:-false}
       REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
       RUNTIME_EVENT_PUBSUB_BACKEND: ${RUNTIME_EVENT_PUBSUB_BACKEND:-redis}
@@ -83,6 +110,22 @@ services:
       PLATFORM_AUTOPILOT_FAILED_TASK_WINDOW_HOURS: ${PLATFORM_AUTOPILOT_FAILED_TASK_WINDOW_HOURS:-24}
       SCHEMA_COMPAT_REPAIR_ENABLED: ${SCHEMA_COMPAT_REPAIR_ENABLED:-false}
       GLOBAL_RATE_LIMIT_BACKEND: ${GLOBAL_RATE_LIMIT_BACKEND:-redis}
+      APP_WORKERS: ${APP_WORKERS:-4}
+      TQUANT_INTERNAL_SERVICE_TOKEN: ${TQUANT_INTERNAL_SERVICE_TOKEN:-}
+      TQUANT_MARKET_SERVICE_URL: ${TQUANT_MARKET_SERVICE_URL:-}
+      TQUANT_MARKET_READ_SERVICE_URL: ${TQUANT_MARKET_READ_SERVICE_URL:-}
+      TQUANT_GO_SCAN_WORKER_URL: ${TQUANT_GO_SCAN_WORKER_URL:-}
+      TQUANT_GO_SCAN_SHADOW_ENABLED: ${TQUANT_GO_SCAN_SHADOW_ENABLED:-false}
+      TQUANT_STRATEGY_SERVICE_URL: ${TQUANT_STRATEGY_SERVICE_URL:-}
+      TQUANT_TRADE_SERVICE_URL: ${TQUANT_TRADE_SERVICE_URL:-}
+      TQUANT_ADMIN_SERVICE_URL: ${TQUANT_ADMIN_SERVICE_URL:-}
+      TQUANT_FACTOR_SERVICE_URL: ${TQUANT_FACTOR_SERVICE_URL:-}
+      TQUANT_BACKTEST_SERVICE_URL: ${TQUANT_BACKTEST_SERVICE_URL:-}
+      BFF_WORKSPACE_CACHE_ENABLED: ${BFF_WORKSPACE_CACHE_ENABLED:-true}
+      BFF_MONITOR_CACHE_TTL_SECONDS: ${BFF_MONITOR_CACHE_TTL_SECONDS:-5}
+      BFF_PAPER_CACHE_TTL_SECONDS: ${BFF_PAPER_CACHE_TTL_SECONDS:-3}
+      BFF_STRATEGY_CACHE_TTL_SECONDS: ${BFF_STRATEGY_CACHE_TTL_SECONDS:-30}
+      BFF_SETTINGS_CACHE_TTL_SECONDS: ${BFF_SETTINGS_CACHE_TTL_SECONDS:-30}
     volumes:
       - app_runtime_data:/app/backend/data
     healthcheck:
@@ -112,6 +155,10 @@ services:
       APP_ENVIRONMENT: ${APP_ENVIRONMENT:-production}
       API_PREFIX: ${API_PREFIX:-/api}
       DATABASE_URL: mysql+pymysql://${MYSQL_USER:-tquant_app}:${MYSQL_PASSWORD:?MYSQL_PASSWORD is required}@mysql:3306/${MYSQL_DATABASE:-t_quant}?charset=utf8mb4
+      DB_POOL_SIZE: ${DB_POOL_SIZE:-12}
+      DB_MAX_OVERFLOW: ${DB_MAX_OVERFLOW:-24}
+      DB_POOL_TIMEOUT: ${DB_POOL_TIMEOUT:-30}
+      DB_POOL_RECYCLE: ${DB_POOL_RECYCLE:-1800}
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:8000,http://127.0.0.1:8000,http://localhost:18080,http://127.0.0.1:18080,http://localhost:18090,http://127.0.0.1:18090}
       DEFAULT_DATA_SOURCE: ${DEFAULT_DATA_SOURCE:-akshare_eastmoney}
       HTTP_TIMEOUT: ${HTTP_TIMEOUT:-12}
@@ -139,6 +186,16 @@ services:
       RUNTIME_EVENT_PUBSUB_BACKEND: ${RUNTIME_EVENT_PUBSUB_BACKEND:-redis}
       SCHEMA_COMPAT_REPAIR_ENABLED: ${SCHEMA_COMPAT_REPAIR_ENABLED:-false}
       GLOBAL_RATE_LIMIT_BACKEND: ${GLOBAL_RATE_LIMIT_BACKEND:-redis}
+      TQUANT_INTERNAL_SERVICE_TOKEN: ${TQUANT_INTERNAL_SERVICE_TOKEN:-}
+      TQUANT_MARKET_SERVICE_URL: ${TQUANT_MARKET_SERVICE_URL:-}
+      TQUANT_MARKET_READ_SERVICE_URL: ${TQUANT_MARKET_READ_SERVICE_URL:-}
+      TQUANT_GO_SCAN_WORKER_URL: ${TQUANT_GO_SCAN_WORKER_URL:-}
+      TQUANT_GO_SCAN_SHADOW_ENABLED: ${TQUANT_GO_SCAN_SHADOW_ENABLED:-false}
+      TQUANT_STRATEGY_SERVICE_URL: ${TQUANT_STRATEGY_SERVICE_URL:-}
+      TQUANT_TRADE_SERVICE_URL: ${TQUANT_TRADE_SERVICE_URL:-}
+      TQUANT_ADMIN_SERVICE_URL: ${TQUANT_ADMIN_SERVICE_URL:-}
+      TQUANT_FACTOR_SERVICE_URL: ${TQUANT_FACTOR_SERVICE_URL:-}
+      TQUANT_BACKTEST_SERVICE_URL: ${TQUANT_BACKTEST_SERVICE_URL:-}
     volumes:
       - app_runtime_data:/app/backend/data
     healthcheck:
@@ -168,12 +225,24 @@ services:
       APP_ENVIRONMENT: ${APP_ENVIRONMENT:-production}
       API_PREFIX: ${API_PREFIX:-/api}
       DATABASE_URL: mysql+pymysql://${MYSQL_USER:-tquant_app}:${MYSQL_PASSWORD:?MYSQL_PASSWORD is required}@mysql:3306/${MYSQL_DATABASE:-t_quant}?charset=utf8mb4
+      DB_POOL_SIZE: ${DB_POOL_SIZE:-12}
+      DB_MAX_OVERFLOW: ${DB_MAX_OVERFLOW:-24}
+      DB_POOL_TIMEOUT: ${DB_POOL_TIMEOUT:-30}
+      DB_POOL_RECYCLE: ${DB_POOL_RECYCLE:-1800}
       DEFAULT_DATA_SOURCE: ${DEFAULT_DATA_SOURCE:-akshare_eastmoney}
       HTTP_TIMEOUT: ${HTTP_TIMEOUT:-12}
       AUTH_SECRET_KEY: ${AUTH_SECRET_KEY:?AUTH_SECRET_KEY is required}
       TQUANT_SETTINGS_ENCRYPTION_KEY: ${TQUANT_SETTINGS_ENCRYPTION_KEY:?TQUANT_SETTINGS_ENCRYPTION_KEY is required}
       AUTH_COOKIE_SECURE: ${AUTH_COOKIE_SECURE:-true}
       SCHEMA_COMPAT_REPAIR_ENABLED: ${SCHEMA_COMPAT_REPAIR_ENABLED:-false}
+      TQUANT_INTERNAL_SERVICE_TOKEN: ${TQUANT_INTERNAL_SERVICE_TOKEN:-}
+      TQUANT_MARKET_SERVICE_URL: ${TQUANT_MARKET_SERVICE_URL:-}
+      TQUANT_MARKET_READ_SERVICE_URL: ${TQUANT_MARKET_READ_SERVICE_URL:-}
+      TQUANT_STRATEGY_SERVICE_URL: ${TQUANT_STRATEGY_SERVICE_URL:-}
+      TQUANT_TRADE_SERVICE_URL: ${TQUANT_TRADE_SERVICE_URL:-}
+      TQUANT_ADMIN_SERVICE_URL: ${TQUANT_ADMIN_SERVICE_URL:-}
+      TQUANT_FACTOR_SERVICE_URL: ${TQUANT_FACTOR_SERVICE_URL:-}
+      TQUANT_BACKTEST_SERVICE_URL: ${TQUANT_BACKTEST_SERVICE_URL:-}
 
   migration:
     build:
@@ -188,13 +257,102 @@ services:
     command: ["alembic", "-c", "alembic.ini", "upgrade", "head"]
     environment:
       DATABASE_URL: mysql+pymysql://${MYSQL_USER:-tquant_app}:${MYSQL_PASSWORD:?MYSQL_PASSWORD is required}@mysql:3306/${MYSQL_DATABASE:-t_quant}?charset=utf8mb4
+      DB_POOL_SIZE: ${DB_POOL_SIZE:-12}
+      DB_MAX_OVERFLOW: ${DB_MAX_OVERFLOW:-24}
+      DB_POOL_TIMEOUT: ${DB_POOL_TIMEOUT:-30}
+      DB_POOL_RECYCLE: ${DB_POOL_RECYCLE:-1800}
       AUTH_SECRET_KEY: ${AUTH_SECRET_KEY:?AUTH_SECRET_KEY is required}
       TQUANT_SETTINGS_ENCRYPTION_KEY: ${TQUANT_SETTINGS_ENCRYPTION_KEY:?TQUANT_SETTINGS_ENCRYPTION_KEY is required}
       SCHEMA_COMPAT_REPAIR_ENABLED: "false"
     volumes:
       - app_runtime_data:/app/backend/data
 
+  mysql-backup:
+    image: docker.m.daocloud.io/databack/mysql-backup:latest
+    container_name: tquant-mysql-backup
+    restart: unless-stopped
+    profiles: ["backup"]
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      DB_SERVER: mysql
+      DB_PORT: "3306"
+      DB_USER: ${MYSQL_USER:-tquant_app}
+      DB_PASS: ${MYSQL_PASSWORD:?MYSQL_PASSWORD is required}
+      DB_NAMES: ${MYSQL_DATABASE:-t_quant}
+      DB_DUMP_FREQ: ${MYSQL_BACKUP_FREQ:-1440}
+      DB_DUMP_BEGIN: ${MYSQL_BACKUP_BEGIN:-0200}
+      DB_CLEANUP_TIME: ${MYSQL_BACKUP_RETENTION_MINUTES:-10080}
+      DB_DUMP_TARGET: /backups
+    volumes:
+      - mysql_backups:/backups
+
+  go-bff-gateway:
+    build:
+      context: ./go-services/bff-gateway
+      dockerfile: Dockerfile
+    image: tquant-go-bff:mysql
+    container_name: tquant-go-bff-gateway
+    restart: unless-stopped
+    profiles: ["go-bff"]
+    depends_on:
+      app:
+        condition: service_healthy
+    environment:
+      PORT: 8091
+      TQUANT_PYTHON_API_BASE: http://app:8000
+      TQUANT_INTERNAL_SERVICE_TOKEN: ${TQUANT_INTERNAL_SERVICE_TOKEN:-}
+      TQUANT_SERVICE_CALL_TIMEOUT_SECONDS: ${TQUANT_SERVICE_CALL_TIMEOUT_SECONDS:-5}
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8091/readyz"]
+      interval: 20s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  go-market-read-service:
+    build:
+      context: ./go-services/market-read-service
+      dockerfile: Dockerfile
+    image: tquant-go-market-read:mysql
+    container_name: tquant-go-market-read-service
+    restart: unless-stopped
+    profiles: ["go-market"]
+    environment:
+      PORT: 8092
+      TQUANT_INTERNAL_SERVICE_TOKEN: ${TQUANT_INTERNAL_SERVICE_TOKEN:-}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+      DATABASE_URL: ${DATABASE_URL}
+      MYSQL_DSN: ${MYSQL_DSN:-}
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8092/readyz"]
+      interval: 20s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  go-scan-worker:
+    build:
+      context: ./go-services/scan-worker
+      dockerfile: Dockerfile
+    image: tquant-go-scan-worker:mysql
+    container_name: tquant-go-scan-worker
+    restart: unless-stopped
+    profiles: ["go-scan"]
+    environment:
+      PORT: 8093
+      GO_SCAN_SHADOW_ENABLED: ${GO_SCAN_SHADOW_ENABLED:-false}
+      TQUANT_INTERNAL_SERVICE_TOKEN: ${TQUANT_INTERNAL_SERVICE_TOKEN:-}
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8093/readyz"]
+      interval: 20s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
 volumes:
   mysql_data:
   app_runtime_data:
   redis_data:
+  mysql_backups:

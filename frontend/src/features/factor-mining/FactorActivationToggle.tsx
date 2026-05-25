@@ -26,7 +26,7 @@ export function FactorActivationToggle({
 
   return (
     <Switch
-      className="factor-activation"
+      style={{ minWidth: 108 }}
       checked={active}
       loading={saving}
       checkedChildren="已接入评分"

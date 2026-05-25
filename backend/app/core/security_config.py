@@ -9,6 +9,8 @@ _WEAK_AUTH_SECRETS = {"default_secret", "tquant_secret_2024", "test-secret", "te
 def validate_security_settings(settings: AppSettings) -> None:
     """Fail fast for production-like insecure auth cookie settings."""
 
+    if settings.app_workers > 1 and (settings.global_rate_limit_backend or "memory").strip().lower() == "memory":
+        raise RuntimeError("多 worker 部署必须配置 GLOBAL_RATE_LIMIT_BACKEND=redis 或网关限流")
     if not _production_like(settings):
         return
     if not settings.auth_cookie_secure:

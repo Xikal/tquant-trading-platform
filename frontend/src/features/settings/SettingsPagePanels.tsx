@@ -8,11 +8,58 @@ import type {
 } from "../../types";
 import type { FeatureFlagAuditItem, FeatureFlagItem } from "../../api/featureFlags";
 import type { OperationAuditItem } from "../../api/operationAudit";
+import type { CSSProperties } from "react";
 import { Button, Checkbox, Space, Switch, Tag } from "antd";
 import { TextField } from "../../components/shared/FormFields";
 import { InfoPill, PanelTitle, SettingCard } from "../workspace-shared/WorkspaceComponents";
 import { readySummary } from "../workspace-shared/workspaceFormatters";
 import { DataTable } from "../../ui/table/DataTable";
+
+const SECTOR_FILTER_SUMMARY_STYLE: CSSProperties = {
+  display: "flex",
+  flexWrap: "wrap",
+  alignItems: "center",
+  gap: 8,
+};
+
+const SECTOR_FILTER_LIST_STYLE: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))",
+  gap: 6,
+  maxHeight: 240,
+  overflow: "auto",
+  padding: 6,
+  border: "1px solid var(--line)",
+  borderRadius: 10,
+  background: "#f8fafc",
+};
+
+const SECTOR_FILTER_OPTION_STYLE: CSSProperties = {
+  display: "inline-flex",
+  alignItems: "flex-start",
+  gap: 6,
+  minWidth: 0,
+  minHeight: 32,
+  padding: "6px 8px",
+  border: "1px solid transparent",
+  borderRadius: 8,
+  color: "var(--text)",
+  fontSize: 11,
+  fontWeight: 800,
+  cursor: "pointer",
+};
+
+const SECTOR_FILTER_OPTION_ACTIVE_STYLE: CSSProperties = {
+  borderColor: "#f59e0b",
+  color: "#92400e",
+  background: "#fffbeb",
+};
+
+const RUNTIME_SNAPSHOT_PANEL_STYLE: CSSProperties = {
+  borderColor: "rgba(255, 255, 255, 0.1)",
+  background: "linear-gradient(180deg, var(--panel), var(--deep))",
+  color: "#dde3ec",
+};
 
 export function SectorFilterCard({
   sectorExclusions,
@@ -50,17 +97,17 @@ export function SectorFilterCard({
       disabled={!sectorExclusions || !sectorDirty}
     >
       <p className="hint">选择不想参与的板块后，全策略榜单、选股宝典、App 选股和模拟盘自动买入都会过滤这些板块。已有持仓仍会保留风控监控。</p>
-      <div className="sector-filter-summary">
+      <div style={SECTOR_FILTER_SUMMARY_STYLE}>
         <InfoPill label="可选板块" value={sectorExclusions ? `${sectorExclusions.available_sectors.length} 个` : "--"} />
         <InfoPill label="已排除" value={`${sectorDraft.length} 个`} />
         <Button size="small" htmlType="button" onClick={onClear} disabled={!sectorDraft.length}>清空</Button>
       </div>
       <TextField label="搜索板块" value={sectorQuery} placeholder="输入板块名称，例如 半导体、银行、医药" onChange={(event) => onQueryChange(event.target.value)} />
-      <div className="sector-filter-list">
+      <div style={SECTOR_FILTER_LIST_STYLE}>
         {filteredSectors.length ? filteredSectors.map((sector) => (
           <Checkbox
             key={sector}
-            className={sectorDraft.includes(sector) ? "sector-filter-option active" : "sector-filter-option"}
+            style={sectorDraft.includes(sector) ? { ...SECTOR_FILTER_OPTION_STYLE, ...SECTOR_FILTER_OPTION_ACTIVE_STYLE } : SECTOR_FILTER_OPTION_STYLE}
             checked={sectorDraft.includes(sector)}
             onChange={() => onToggleSector(sector)}
           >
@@ -357,7 +404,7 @@ export function RuntimeSnapshotPanel({
   runtime: RuntimeStatus | null;
 }) {
   return (
-    <aside className="panel dark settings-snapshot">
+    <aside className="panel" style={RUNTIME_SNAPSHOT_PANEL_STYLE}>
       <PanelTitle title="运行快照" />
       <InfoPill label="数据库" value={runtime?.database_backend ?? "--"} />
       <InfoPill label="数据源" value={settings?.data_source || "--"} />

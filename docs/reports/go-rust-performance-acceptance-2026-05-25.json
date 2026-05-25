@@ -1,0 +1,89 @@
+{
+  "generated_at": "2026-05-25 15:41:39",
+  "go": {
+    "ok": true,
+    "checks": [
+      {
+        "name": "market-read-service",
+        "command": "go test ./...",
+        "ok": true,
+        "elapsed_ms": 60222.66,
+        "stdout_tail": "ok  \ttquant/go-services/market-read-service/cmd/market-read-service\t(cached)\n",
+        "stderr_tail": ""
+      },
+      {
+        "name": "market-read-service quote benchmark",
+        "command": "go test -run Test -bench BenchmarkQuoteBatchHandlerCachedPayload -benchmem ./...",
+        "ok": true,
+        "elapsed_ms": 63499.104,
+        "stdout_tail": "goos: darwin\ngoarch: arm64\npkg: tquant/go-services/market-read-service/cmd/market-read-service\ncpu: Apple M5\nBenchmarkQuoteBatchHandlerCachedPayload-10    \t  156910\t      7693 ns/op\t   10791 B/op\t     200 allocs/op\nPASS\nok  \ttquant/go-services/market-read-service/cmd/market-read-service\t2.890s\n",
+        "stderr_tail": ""
+      },
+      {
+        "name": "bff-gateway",
+        "command": "go test ./...",
+        "ok": true,
+        "elapsed_ms": 103.7,
+        "stdout_tail": "ok  \ttquant/go-services/bff-gateway/cmd/bff-gateway\t(cached)\n",
+        "stderr_tail": ""
+      },
+      {
+        "name": "scan-worker",
+        "command": "go test ./...",
+        "ok": true,
+        "elapsed_ms": 98.832,
+        "stdout_tail": "ok  \ttquant/go-services/scan-worker/cmd/scan-worker\t(cached)\n",
+        "stderr_tail": ""
+      }
+    ],
+    "benchmark": {
+      "ok": true,
+      "name": "market-read-service benchmark",
+      "command": "go test -run Test -bench BenchmarkQuoteBatchHandlerCachedPayload -benchmem ./...",
+      "ns_per_op": 7542.0,
+      "bytes_per_op": 10791.0,
+      "allocs_per_op": 200.0,
+      "thresholds": {
+        "ns_per_op_max": 10000.0,
+        "bytes_per_op_max": 12000.0,
+        "allocs_per_op_max": 250.0
+      },
+      "stdout_tail": "goos: darwin\ngoarch: arm64\npkg: tquant/go-services/market-read-service/cmd/market-read-service\ncpu: Apple M5\nBenchmarkQuoteBatchHandlerCachedPayload-10    \t  141667\t      7542 ns/op\t   10791 B/op\t     200 allocs/op\nPASS\nok  \ttquant/go-services/market-read-service/cmd/market-read-service\t1.512s\n",
+      "stderr_tail": ""
+    }
+  },
+  "rust": {
+    "name": "tquant-rs cargo test",
+    "command": "cargo test --no-default-features",
+    "ok": true,
+    "elapsed_ms": 354.498,
+    "stdout_tail": "\nrunning 3 tests\ntest tests::max_drawdown_uses_time_ordered_peak_to_trough ... ok\ntest tests::rolling_mean_keeps_warmup_empty ... ok\ntest tests::atr_wilder_matches_expected_sequence ... ok\n\ntest result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s\n\n\nrunning 0 tests\n\ntest result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s\n\n",
+    "stderr_tail": "    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.07s\n     Running unittests src/lib.rs (target/debug/deps/tquant_rs-ad69bff55e09aab8)\n   Doc-tests tquant_rs\n"
+  },
+  "python_rust_seam": {
+    "ok": true,
+    "metric": "rust_python_extension_import_and_parity",
+    "speedup_threshold": 5.0,
+    "drawdown": 1.0,
+    "expected_drawdown": 1.0,
+    "speedups": {
+      "max_drawdown": 6.659,
+      "rolling_mean": 12.265,
+      "atr_wilder": 9.633
+    },
+    "timings_ms": {
+      "python_drawdown_ms": 10.550540999999997,
+      "rust_drawdown_ms": 1.5845000000000165,
+      "python_rolling_ms": 28.399000000000008,
+      "rust_rolling_ms": 2.3155420000000038,
+      "python_atr_ms": 30.946249999999953,
+      "rust_atr_ms": 3.2125420000000404
+    },
+    "rolling_len": 160000,
+    "atr_len": 120000,
+    "import_elapsed_ms": 17.419,
+    "backend_python": "/Users/j/Documents/gupiao/backend/.venv/bin/python",
+    "notes": "Rust abi3 extension imports under backend python, matches python parity, and clears the release benchmark threshold."
+  },
+  "ok": true
+}

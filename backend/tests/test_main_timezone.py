@@ -6,6 +6,7 @@ from unittest.mock import patch
 
 from app.core.timezone import BEIJING_TZ
 from app import main
+from app.runtime import paper_review_jobs
 
 
 class MainTimezoneTests(unittest.TestCase):
@@ -22,6 +23,18 @@ class MainTimezoneTests(unittest.TestCase):
             self.assertFalse(main._agent_daily_report_push_due())
         with patch("app.main.beijing_now", return_value=datetime(2026, 5, 9, 15, 30, tzinfo=BEIJING_TZ)):
             self.assertFalse(main._agent_daily_report_push_due())
+
+    def test_midday_paper_review_due_uses_beijing_time_and_weekday(self) -> None:
+        with patch("app.runtime.paper_review_jobs.beijing_now", return_value=datetime(2026, 5, 6, 11, 36, tzinfo=BEIJING_TZ)):
+            self.assertTrue(paper_review_jobs.paper_midday_review_due())
+        with patch("app.runtime.paper_review_jobs.beijing_now", return_value=datetime(2026, 5, 6, 11, 34, tzinfo=BEIJING_TZ)):
+            self.assertFalse(paper_review_jobs.paper_midday_review_due())
+        with patch("app.runtime.paper_review_jobs.beijing_now", return_value=datetime(2026, 5, 9, 11, 40, tzinfo=BEIJING_TZ)):
+            self.assertFalse(paper_review_jobs.paper_midday_review_due())
+
+    def test_main_midday_wrapper_remains_available(self) -> None:
+        with patch("app.main.beijing_now", return_value=datetime(2026, 5, 6, 11, 36, tzinfo=BEIJING_TZ)):
+            self.assertTrue(main._paper_midday_review_due())
 
 
 if __name__ == "__main__":

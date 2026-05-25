@@ -1,8 +1,6 @@
-import { useEffect, useMemo, useRef } from "react";
-import { Button } from "antd";
-import {
-  resolvePixelTraderFrame,
-} from "./pixelTrader/animations";
+import { useEffect, useMemo, useRef, type CSSProperties } from "react";
+import { Button, Tag, Typography } from "antd";
+import { resolvePixelTraderFrame } from "./pixelTrader/animations";
 import { drawMechaScene } from "./pixelTrader/character";
 import {
   createActionParticles,
@@ -17,8 +15,6 @@ import type {
   PixelTraderRecentTrade,
 } from "./pixelTrader/types";
 import { usePaperUiStore } from "../../stores/paperUiStore";
-import "./PixelTraderWorker.part-1.css";
-import "./PixelTraderWorker.part-2.css";
 
 interface PixelTraderWorkerProps {
   marketState: PixelTraderMarketState;
@@ -30,8 +26,164 @@ interface PixelTraderWorkerProps {
   recentTrades: PixelTraderRecentTrade[];
 }
 
+type PixelTraderTone = "neutral" | "amber" | "cyan" | "green";
+
+interface PixelTraderTheme {
+  label: string;
+  tone: PixelTraderTone;
+  surfaceBackground: string;
+  surfaceBorder: string;
+  surfaceShadow: string;
+  textColor: string;
+  kickerColor: string;
+  titleColor: string;
+  buttonBackground: string;
+  buttonBorder: string;
+  buttonColor: string;
+  badgeBackground: string;
+  badgeBorder: string;
+  badgeColor: string;
+  dotColor: string;
+  dotShadow?: string;
+  canvasBackground: string;
+  canvasBorder: string;
+  canvasShadow: string;
+  canvasFilter?: string;
+  statusBarBackground: string;
+  statusBarBorder: string;
+  statusBarColor: string;
+}
+
 const CANVAS_WIDTH = 256;
 const CANVAS_HEIGHT = 288;
+
+const SURFACE_STYLE: CSSProperties = {
+  position: "relative",
+  minHeight: 330,
+  display: "grid",
+  gap: 10,
+  overflow: "hidden",
+  padding: 13,
+  borderRadius: 11,
+  color: "#c8d6e5",
+};
+
+const HEADER_STYLE: CSSProperties = {
+  display: "flex",
+  justifyContent: "space-between",
+  gap: 12,
+  alignItems: "flex-start",
+};
+
+const KICKER_STYLE: CSSProperties = {
+  display: "block",
+  marginBottom: 3,
+  fontFamily: '"IBM Plex Mono", "SFMono-Regular", monospace',
+  fontSize: 10,
+  fontWeight: 800,
+  letterSpacing: "0.16em",
+};
+
+const TITLE_STYLE: CSSProperties = {
+  margin: 0,
+  fontSize: 16,
+  lineHeight: 1.15,
+};
+
+const ACTIONS_STYLE: CSSProperties = {
+  display: "flex",
+  gap: 7,
+  alignItems: "center",
+  flexWrap: "wrap",
+  justifyContent: "flex-end",
+};
+
+const MINI_BUTTON_STYLE: CSSProperties = {
+  minHeight: 27,
+  padding: "4px 9px",
+  borderRadius: 8,
+  fontWeight: 900,
+};
+
+const BADGE_STYLE: CSSProperties = {
+  minHeight: 24,
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  padding: "0 8px",
+  borderRadius: 999,
+  fontSize: 11,
+  fontWeight: 900,
+  margin: 0,
+};
+
+const CANVAS_BUTTON_STYLE: CSSProperties = {
+  width: "min(100%, 276px)",
+  margin: "0 auto",
+  display: "grid",
+  placeItems: "center",
+  padding: 8,
+  borderRadius: 10,
+};
+
+const CANVAS_STYLE: CSSProperties = {
+  width: "min(232px, 100%)",
+  maxWidth: "100%",
+  height: "auto",
+  imageRendering: "pixelated",
+};
+
+const STATUS_BAR_STYLE: CSSProperties = {
+  display: "flex",
+  justifyContent: "space-between",
+  gap: 8,
+  alignItems: "center",
+  width: "100%",
+  padding: "7px 9px",
+  borderRadius: 8,
+  fontFamily: '"IBM Plex Mono", "SFMono-Regular", monospace',
+  fontSize: 11,
+  flexWrap: "wrap",
+};
+
+const STATUS_TEXT_STYLE: CSSProperties = {
+  minWidth: 0,
+  overflow: "hidden",
+  textOverflow: "ellipsis",
+  whiteSpace: "nowrap",
+  display: "inline-flex",
+  alignItems: "center",
+};
+
+const DOT_STYLE: CSSProperties = {
+  width: 6,
+  height: 6,
+  display: "inline-block",
+  marginRight: 5,
+  borderRadius: "50%",
+};
+
+const BASE_THEME: Omit<PixelTraderTheme, "label" | "tone"> = {
+  surfaceBackground: "#101826",
+  surfaceBorder: "rgba(148, 163, 184, 0.18)",
+  surfaceShadow: "inset 0 0 0 1px rgba(148, 163, 184, 0.08), 0 10px 24px rgba(15, 23, 42, 0.18)",
+  textColor: "#c8d6e5",
+  kickerColor: "rgba(200, 214, 229, 0.58)",
+  titleColor: "#f8fafc",
+  buttonBackground: "rgba(15, 23, 36, 0.72)",
+  buttonBorder: "rgba(214, 165, 92, 0.5)",
+  buttonColor: "#f4d08a",
+  badgeBackground: "rgba(15, 23, 36, 0.72)",
+  badgeBorder: "rgba(148, 163, 184, 0.18)",
+  badgeColor: "#c8d6e5",
+  dotColor: "#66758a",
+  canvasBackground: "#08111f",
+  canvasBorder: "rgba(42, 63, 90, 0.82)",
+  canvasShadow: "inset 0 0 24px rgba(59, 130, 246, 0.08)",
+  statusBarBackground: "rgba(15, 23, 36, 0.72)",
+  statusBarBorder: "rgba(214, 165, 92, 0.15)",
+  statusBarColor: "#c8d6e5",
+};
 
 export function PixelTraderWorker({
   marketState,
@@ -114,39 +266,97 @@ export function PixelTraderWorker({
     };
   }, [autoTradingRunning, lastOrderAction, marketState, paused, setVisualState]);
 
-  const status = statusConfig(visualState, marketState, paused, autoTradingRunning);
+  const theme = statusConfig(visualState, marketState, paused, autoTradingRunning);
+  const disabled = loading || paused || autoTradingRunning;
 
   return (
-    <section className={`pixel-trader-container ${status.className}`} aria-label="机甲指挥舱">
-      <div className="pixel-trader-head">
+    <section
+      aria-label="机甲指挥舱"
+      style={{
+        ...SURFACE_STYLE,
+        border: `1px solid ${theme.surfaceBorder}`,
+        background: theme.surfaceBackground,
+        boxShadow: theme.surfaceShadow,
+      }}
+    >
+      <div style={HEADER_STYLE}>
         <div>
-          <span className="pixel-trader-kicker">MECHA TRADER</span>
-          <h2>机甲指挥舱</h2>
+          <span style={{ ...KICKER_STYLE, color: theme.kickerColor }}>MECHA TRADER</span>
+          <Typography.Title level={5} style={{ ...TITLE_STYLE, color: theme.titleColor }}>
+            机甲指挥舱
+          </Typography.Title>
         </div>
-        <div className="pixel-trader-actions">
-          <Button className="pixel-trader-mini-button" onClick={onOpenOrderEntry} disabled={loading || paused || autoTradingRunning}>
+        <div style={ACTIONS_STYLE}>
+          <Button
+            size="small"
+            onClick={onOpenOrderEntry}
+            disabled={disabled}
+            style={{
+              ...MINI_BUTTON_STYLE,
+              borderColor: theme.buttonBorder,
+              background: theme.buttonBackground,
+              color: theme.buttonColor,
+            }}
+          >
             +委托
           </Button>
-          <span className={`pixel-trader-state ${status.className}`}>{status.label}</span>
+          <Tag
+            style={{
+              ...BADGE_STYLE,
+              border: `1px solid ${theme.badgeBorder}`,
+              background: theme.badgeBackground,
+              color: theme.badgeColor,
+            }}
+          >
+            {theme.label}
+          </Tag>
         </div>
       </div>
 
       <Button
         type="text"
-        className="pixel-trader-canvas-button"
+        style={{
+          ...CANVAS_BUTTON_STYLE,
+          border: `1px solid ${theme.canvasBorder}`,
+          background: theme.canvasBackground,
+          boxShadow: theme.canvasShadow,
+        }}
         onClick={onOpenOrderEntry}
-        disabled={loading || paused || autoTradingRunning}
+        disabled={disabled}
         aria-label="打开模拟委托弹窗"
       >
-        <canvas ref={canvasRef} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} />
+        <canvas
+          ref={canvasRef}
+          width={CANVAS_WIDTH}
+          height={CANVAS_HEIGHT}
+          style={{
+            ...CANVAS_STYLE,
+            filter: theme.canvasFilter,
+          }}
+        />
       </Button>
 
-      <div className="pixel-trader-status-bar">
-        <span>
-          <i className={`pixel-trader-status-dot ${status.className}`} />
+      <div
+        style={{
+          ...STATUS_BAR_STYLE,
+          border: `1px solid ${theme.statusBarBorder}`,
+          background: theme.statusBarBackground,
+          color: theme.statusBarColor,
+        }}
+      >
+        <span style={STATUS_TEXT_STYLE}>
+          <i
+            style={{
+              ...DOT_STYLE,
+              background: theme.dotColor,
+              boxShadow: theme.dotShadow,
+            }}
+          />
           最近动作：{latestTradeText}
         </span>
-        <span>核心温度：{autoTradingRunning ? "98%" : paused ? "18%" : marketState === "closed" ? "24%" : "72%"}</span>
+        <span style={STATUS_TEXT_STYLE}>
+          核心温度：{autoTradingRunning ? "98%" : paused ? "18%" : marketState === "closed" ? "24%" : "72%"}
+        </span>
       </div>
     </section>
   );
@@ -164,12 +374,100 @@ function statusConfig(
   marketState: PixelTraderMarketState,
   paused: boolean,
   autoTradingRunning: boolean,
-) {
-  if (paused) return { className: "paused", label: "冻结" };
-  if (autoTradingRunning || state === "auto_trading") return { className: "auto", label: "超频" };
-  if (state === "buy_anim") return { className: "buy", label: "买入充能" };
-  if (state === "sell_anim") return { className: "sell", label: "卖出冷却" };
-  if (marketState === "closed" || state === "closed") return { className: "closed", label: "休眠" };
-  if (marketState === "open" || state === "working") return { className: "working", label: "扫描中" };
-  return { className: "idle", label: "待命" };
+): PixelTraderTheme {
+  if (paused) {
+    return createTheme("冻结", {
+      tone: "amber",
+      badgeBackground: "rgba(245, 158, 11, 0.12)",
+      badgeBorder: "rgba(245, 158, 11, 0.38)",
+      badgeColor: "#fbbf24",
+      buttonBackground: "rgba(245, 158, 11, 0.1)",
+      buttonBorder: "rgba(245, 158, 11, 0.45)",
+      buttonColor: "#fbbf24",
+      dotColor: "#f59e0b",
+      canvasFilter: "grayscale(0.45) brightness(0.72) sepia(0.18)",
+      statusBarBorder: "rgba(245, 158, 11, 0.18)",
+    });
+  }
+  if (autoTradingRunning || state === "auto_trading") {
+    return createTheme("超频", {
+      tone: "amber",
+      surfaceBorder: "rgba(214, 165, 92, 0.62)",
+      surfaceBackground: "#1a1520",
+      badgeBackground: "rgba(214, 165, 92, 0.16)",
+      badgeBorder: "rgba(214, 165, 92, 0.58)",
+      badgeColor: "#ffd58a",
+      buttonBackground: "rgba(214, 165, 92, 0.1)",
+      buttonBorder: "rgba(214, 165, 92, 0.5)",
+      buttonColor: "#ffd58a",
+      dotColor: "#d6a55c",
+      statusBarBorder: "rgba(214, 165, 92, 0.18)",
+    });
+  }
+  if (state === "buy_anim") {
+    return createTheme("买入充能", {
+      tone: "amber",
+      badgeBackground: "rgba(214, 165, 92, 0.16)",
+      badgeBorder: "rgba(214, 165, 92, 0.58)",
+      badgeColor: "#ffd58a",
+      buttonBackground: "rgba(214, 165, 92, 0.1)",
+      buttonBorder: "rgba(214, 165, 92, 0.5)",
+      buttonColor: "#ffd58a",
+      dotColor: "#d6a55c",
+      statusBarBorder: "rgba(214, 165, 92, 0.18)",
+    });
+  }
+  if (state === "sell_anim") {
+    return createTheme("卖出冷却", {
+      tone: "cyan",
+      badgeBackground: "rgba(6, 182, 212, 0.12)",
+      badgeBorder: "rgba(6, 182, 212, 0.38)",
+      badgeColor: "#9ee9ff",
+      buttonBackground: "rgba(6, 182, 212, 0.1)",
+      buttonBorder: "rgba(6, 182, 212, 0.38)",
+      buttonColor: "#9ee9ff",
+      dotColor: "#1f8b4c",
+      statusBarBorder: "rgba(6, 182, 212, 0.18)",
+    });
+  }
+  if (marketState === "closed" || state === "closed") {
+    return createTheme("休眠", {
+      tone: "neutral",
+      badgeBackground: "rgba(71, 85, 105, 0.16)",
+      badgeBorder: "rgba(100, 116, 139, 0.25)",
+      badgeColor: "#cbd5e1",
+      buttonBackground: "rgba(71, 85, 105, 0.14)",
+      buttonBorder: "rgba(100, 116, 139, 0.22)",
+      buttonColor: "#cbd5e1",
+      dotColor: "#475569",
+      canvasFilter: "grayscale(0.45) brightness(0.72) sepia(0.18)",
+      statusBarBorder: "rgba(100, 116, 139, 0.18)",
+    });
+  }
+  if (marketState === "open" || state === "working") {
+    return createTheme("扫描中", {
+      tone: "cyan",
+      badgeBackground: "rgba(6, 182, 212, 0.12)",
+      badgeBorder: "rgba(6, 182, 212, 0.38)",
+      badgeColor: "#9ee9ff",
+      buttonBackground: "rgba(6, 182, 212, 0.1)",
+      buttonBorder: "rgba(6, 182, 212, 0.38)",
+      buttonColor: "#9ee9ff",
+      dotColor: "#06b6d4",
+      dotShadow: "0 0 6px #06b6d4",
+      statusBarBorder: "rgba(6, 182, 212, 0.18)",
+    });
+  }
+  return createTheme("待命", {
+    tone: "neutral",
+  });
+}
+
+function createTheme(label: string, overrides: Partial<PixelTraderTheme>): PixelTraderTheme {
+  return {
+    ...BASE_THEME,
+    label,
+    tone: "neutral",
+    ...overrides,
+  };
 }

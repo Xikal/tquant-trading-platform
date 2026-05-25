@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { Alert, Button, Card, Space, Typography } from "antd";
+import { Alert, Button, Card, Flex, Space, Typography } from "antd";
 import { ErrorBanner } from "../../components/shared/Feedback";
 import { useToast } from "../../components/shared/ToastContainer";
 import type { AuthUser } from "../../types";
@@ -78,7 +78,7 @@ export function StrategyHubPage({ currentUser }: { currentUser: AuthUser }) {
   const heroSummary = `市场今日：以实时监控为准 · 生产策略 ${hub.strategies.filter((item) => item.visibility === "full" && item.enabled !== false).length} 个 · 最近回测胜率 ${formatPct(avgWinRate)}`;
 
   return (
-    <section className="strategy-hub">
+    <Space direction="vertical" size={8} style={{ display: "flex" }}>
       <StrategyHubSummaryBar
         runs={hub.runs}
         strategies={hub.strategies}
@@ -88,15 +88,17 @@ export function StrategyHubPage({ currentUser }: { currentUser: AuthUser }) {
 
       {hub.error ? <ErrorBanner message={`策略工作台加载失败：${hub.error}`} /> : null}
       {hub.notice ? <Alert type="info" showIcon message={hub.notice} /> : null}
-      <Card className="strategy-hero-mini" variant="borderless">
-        <Space direction="vertical" size={2}>
-          <Typography.Text strong>今日状态摘要</Typography.Text>
-          <Typography.Text type="secondary">{heroSummary}</Typography.Text>
-        </Space>
-        {latestRun ? <LatestRunCard run={latestRun} /> : <small>还没有最近一次回测</small>}
-        <Button type="default" onClick={() => void hub.load()} loading={hub.loading === "load"}>
-          {hub.loading === "load" ? "刷新中" : "刷新"}
-        </Button>
+      <Card variant="borderless" styles={{ body: { padding: "10px 12px" } }}>
+        <Flex align="center" justify="space-between" gap={8} wrap>
+          <Space direction="vertical" size={2} style={{ flex: "1 1 380px", minWidth: 0 }}>
+            <Typography.Text strong>今日状态摘要</Typography.Text>
+            <Typography.Text type="secondary">{heroSummary}</Typography.Text>
+          </Space>
+          {latestRun ? <LatestRunCard run={latestRun} /> : <Typography.Text type="secondary">还没有最近一次回测</Typography.Text>}
+          <Button type="default" onClick={() => void hub.load()} loading={hub.loading === "load"}>
+            {hub.loading === "load" ? "刷新中" : "刷新"}
+          </Button>
+        </Flex>
       </Card>
       <StrategyWorkflow
         activeTab={effectiveTab}
@@ -122,7 +124,7 @@ export function StrategyHubPage({ currentUser }: { currentUser: AuthUser }) {
           onConfirm={submitWithToast}
         />
       ) : null}
-    </section>
+    </Space>
   );
 }
 
@@ -134,11 +136,13 @@ function LatestRunCard({ run }: { run: BacktestRunSummary }) {
       ? "任务失败"
       : "正在计算";
   return (
-    <aside className="strategy-latest-run" aria-label="最近一次回测">
-      <span>我的最近一次回测</span>
-      <strong>{conclusion}</strong>
-      <small>{formatDateTime(run.created_at)}</small>
-    </aside>
+    <Card size="small" aria-label="最近一次回测" style={{ minWidth: 190 }}>
+      <Space direction="vertical" size={2}>
+        <Typography.Text type="secondary" style={{ fontSize: 12 }}>我的最近一次回测</Typography.Text>
+        <Typography.Text strong>{conclusion}</Typography.Text>
+        <Typography.Text type="secondary" style={{ fontSize: 12 }}>{formatDateTime(run.created_at)}</Typography.Text>
+      </Space>
+    </Card>
   );
 }
 

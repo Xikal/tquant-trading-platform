@@ -1,9 +1,70 @@
+import type { CSSProperties } from "react";
 import type { AnalysisResponse, IntradayAnomalyResponse } from "../../types";
 import { Button } from "antd";
 import { NumberField, SearchField, SelectField, TextField } from "../../components/shared/FormFields";
-import { InfoPill, LineList, MetricGrid, MiniKline, PanelTitle, StockIdentity } from "../workspace-shared/WorkspaceComponents";
+import { Callout, ContextRow, InfoPill, LineList, MetricGrid, MiniKline, PanelTitle, StockIdentity } from "../workspace-shared/WorkspaceComponents";
 import { actionStatusText, actionText, formatAmount, formatNumber, formatPct, formatPrice, plainTradingText, riskText, toneFromChange } from "../workspace-shared/workspaceFormatters";
 import type { AnalysisDraft } from "../workspace-shared/workspaceTypes";
+
+const ANALYSIS_PAGE_STYLE: CSSProperties = {
+  display: "grid",
+  gap: 8,
+  gridTemplateColumns: "1fr 390px",
+  gridTemplateAreas: '"hero hero" "identity control" "batch batch" "decision decision" "anomaly anomaly" "chart chart" "plan plan" "log log"',
+};
+
+const ANALYSIS_HERO_STYLE: CSSProperties = { gridArea: "hero" };
+const ANALYSIS_IDENTITY_STYLE: CSSProperties = { gridArea: "identity" };
+const ANALYSIS_CONTROL_STYLE: CSSProperties = { gridArea: "control" };
+const ANALYSIS_BATCH_STYLE: CSSProperties = { gridArea: "batch" };
+const ANALYSIS_DECISION_STYLE: CSSProperties = { gridArea: "decision" };
+const ANALYSIS_ANOMALY_STYLE: CSSProperties = { gridArea: "anomaly" };
+const ANALYSIS_CHART_STYLE: CSSProperties = { gridArea: "chart" };
+const ANALYSIS_PLAN_STYLE: CSSProperties = { gridArea: "plan" };
+const ANALYSIS_LOG_STYLE: CSSProperties = { gridArea: "log" };
+const ANALYSIS_PLAN_PANEL_STYLE: CSSProperties = {
+  ...ANALYSIS_PLAN_STYLE,
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+  gap: 8,
+};
+const ANALYSIS_CONTROL_GRID_STYLE: CSSProperties = {
+  display: "grid",
+  gap: 10,
+  gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+};
+const ANALYSIS_CONTROL_SEARCH_STYLE: CSSProperties = {
+  gridColumn: "1 / -1",
+};
+const ANALYSIS_BATCH_LIST_STYLE: CSSProperties = {
+  display: "grid",
+  gap: 8,
+  marginTop: 10,
+};
+
+const ANALYSIS_BATCH_ITEM_STYLE: CSSProperties = {
+  display: "grid",
+  gap: 3,
+  border: "1px solid rgba(148, 163, 184, 0.24)",
+  borderRadius: 12,
+  background: "#fff",
+  padding: 10,
+};
+
+const ANALYSIS_BATCH_META_STYLE: CSSProperties = {
+  color: "#64748b",
+  lineHeight: 1.4,
+};
+
+const ANALYSIS_CHART_META_STYLE: CSSProperties = {
+  display: "flex",
+  flexWrap: "wrap",
+  gap: 16,
+  margin: "0 0 8px",
+  color: "#aeb8c7",
+  fontFamily: "\"IBM Plex Mono\", monospace",
+  fontSize: 11,
+};
 
 export function AnalysisPage({
   draft,
@@ -49,22 +110,23 @@ export function AnalysisPage({
       ? `当前先不下单：${statusText}`
       : "输入股票后先看能不能操作";
   return (
-    <section className="page-grid analysis-grid">
-      <div className="panel analysis-hero">
+    <section style={ANALYSIS_PAGE_STYLE}>
+      <div className="panel" style={ANALYSIS_HERO_STYLE}>
         <PanelTitle title="个股量化分析" />
         <p className="hint">先判断现在能不能动手，再给出买卖价、止损、仓位和不能操作的原因。AI 只负责解释，不改变规则。</p>
-        <div className="context-row">
+        <ContextRow>
           <InfoPill label="操作建议" value={actionHeadline} />
           <InfoPill label="持仓限制" value={`底仓 ${draft.base_position} / 可卖 ${draft.available_position}`} />
           <InfoPill label="风险等级" value={suggestion ? riskText(suggestion.risk_level) : "--"} />
-        </div>
-        <div className={`decision-brief ${decisionTone}`}>
-          <span>综合判断</span>
-          <strong>{decisionTitle}</strong>
-          <small>{suggestion ? actionReason : "系统会先检查价格、持仓、手续费、风险和失效条件。"}</small>
-        </div>
+        </ContextRow>
+        <Callout
+          label="综合判断"
+          title={decisionTitle}
+          detail={suggestion ? actionReason : "系统会先检查价格、持仓、手续费、风险和失效条件。"}
+          tone={decisionTone}
+        />
       </div>
-      <div className="panel analysis-identity">
+      <div className="panel" style={ANALYSIS_IDENTITY_STYLE}>
         <StockIdentity name={result?.instrument.name ?? draft.symbol} symbol={draft.symbol} />
         <MetricGrid
           items={[
@@ -78,10 +140,12 @@ export function AnalysisPage({
           ]}
         />
       </div>
-      <aside className="panel analysis-control">
+      <aside className="panel" style={ANALYSIS_CONTROL_STYLE}>
         <PanelTitle title="输入控制" />
-        <div className="compact-form-grid analysis-control-form">
-          <SearchField label="证券代码" value={draft.symbol} placeholder="代码/名称，例 600000" onChange={(value) => setDraft({ ...draft, symbol: value })} />
+        <div style={ANALYSIS_CONTROL_GRID_STYLE}>
+          <div style={ANALYSIS_CONTROL_SEARCH_STYLE}>
+            <SearchField label="证券代码" value={draft.symbol} placeholder="代码/名称，例 600000" onChange={(value) => setDraft({ ...draft, symbol: value })} />
+          </div>
           <NumberField label="底仓" value={draft.base_position} onChange={(event) => setDraft({ ...draft, base_position: event.target.value })} />
           <NumberField label="可卖" value={draft.available_position} onChange={(event) => setDraft({ ...draft, available_position: event.target.value })} />
           <NumberField label="成本价" value={draft.cost_basis} onChange={(event) => setDraft({ ...draft, cost_basis: event.target.value })} />
@@ -98,7 +162,7 @@ export function AnalysisPage({
         />
         <Button type="primary" block onClick={onRun} loading={loading === "analysis"}>开始分析</Button>
       </aside>
-      <div className="panel analysis-batch">
+      <div className="panel" style={ANALYSIS_BATCH_STYLE}>
         <PanelTitle
           title="批量分析：今日最值得关注"
           actions={<Button type="default" onClick={onBatchRun} loading={loading === "analysis-batch"}>{loading === "analysis-batch" ? "分析中..." : "批量排序"}</Button>}
@@ -109,17 +173,17 @@ export function AnalysisPage({
           placeholder="例：601288, 510300, 002594"
           onChange={(event) => setBatchSymbols(event.target.value)}
         />
-        <div className="analysis-batch-list">
+        <div style={ANALYSIS_BATCH_LIST_STYLE}>
           {batchResults.length ? batchResults.slice(0, 5).map((item, index) => (
-            <article key={item.symbol}>
+            <article key={item.symbol} style={ANALYSIS_BATCH_ITEM_STYLE}>
               <strong>{index === 0 ? "今日最佳机会：" : `第 ${index + 1} 位：`}{item.instrument.name} {item.symbol}</strong>
-              <span>{item.suggestion.plain_action_text || actionText(item.suggestion.action)} · 分数 {formatNumber(item.suggestion.signal_score)} · 风险 {riskText(item.suggestion.risk_level)}</span>
-              <small>{item.suggestion.plain_action_reason || item.suggestion.reasons[0] || "等待进一步确认。"}</small>
+              <span style={ANALYSIS_BATCH_META_STYLE}>{item.suggestion.plain_action_text || actionText(item.suggestion.action)} · 分数 {formatNumber(item.suggestion.signal_score)} · 风险 {riskText(item.suggestion.risk_level)}</span>
+              <small style={ANALYSIS_BATCH_META_STYLE}>{item.suggestion.plain_action_reason || item.suggestion.reasons[0] || "等待进一步确认。"}</small>
             </article>
           )) : <p className="hint">输入 2-8 个代码，系统会按可操作性和机会强度排序。</p>}
         </div>
       </div>
-      <div className="panel decision analysis-decision">
+      <div className="panel decision" style={ANALYSIS_DECISION_STYLE}>
         <PanelTitle
           title={`当前建议 / ${actionHeadline}`}
           actions={
@@ -144,15 +208,15 @@ export function AnalysisPage({
         ) : null}
         {suggestion?.reasons.length ? <LineList title="主要依据" items={suggestion.reasons.slice(0, 4).map(plainTradingText)} /> : null}
       </div>
-      <div className="panel analysis-anomaly">
+      <div className="panel" style={ANALYSIS_ANOMALY_STYLE}>
         <PanelTitle title="盘中异常提醒" />
         {anomaly ? (
           <>
-            <div className="context-row">
+            <ContextRow>
               <InfoPill label="异常等级" value={anomaly.anomaly_text} tone={anomaly.anomaly_level === "high" ? "down" : anomaly.anomaly_level === "medium" ? "warn" : "neutral"} />
               <InfoPill label="风险分" value={formatNumber(anomaly.score)} tone={anomaly.score >= 70 ? "down" : anomaly.score >= 45 ? "warn" : "neutral"} />
               <InfoPill label="类型" value={plainTradingText(anomaly.pattern) || "--"} />
-            </div>
+            </ContextRow>
             <p>{plainTradingText(anomaly.reasons[0] ?? anomaly.anomaly_text)}</p>
             <InfoPill label="处理建议" value={plainTradingText(anomaly.action_hint)} />
             {anomaly.reasons.length ? <LineList title="触发原因" items={anomaly.reasons.slice(0, 4).map(plainTradingText)} /> : null}
@@ -162,9 +226,9 @@ export function AnalysisPage({
           <p className="hint">暂无盘中异常数据。非交易时间或分时数据缺失时会显示为空，不影响基础量化分析。</p>
         )}
       </div>
-      <div className="panel chart-panel analysis-chart">
+      <div className="panel" style={ANALYSIS_CHART_STYLE}>
         <PanelTitle title="K线与指标" />
-        <div className="chart-meta">
+        <div style={ANALYSIS_CHART_META_STYLE}>
           <span>开 {formatPrice(quote?.open_price)}</span>
           <span>高 {formatPrice(quote?.high_price)}</span>
           <span>低 {formatPrice(quote?.low_price)}</span>
@@ -172,13 +236,13 @@ export function AnalysisPage({
           <span>振幅 {formatPct(result?.metrics.amplitude_pct as number | undefined)}</span>
         </div>
         <MiniKline bars={result?.bars?.slice(-60) ?? []} />
-        <div className="context-row">
+        <ContextRow>
           <InfoPill label="买卖盘情况" value={plainTradingText(result?.microstructure.notes) || "--"} />
           <InfoPill label="成交量" value={String(result?.metrics.volume_ratio ?? "--")} />
           <InfoPill label="成交额" value={formatAmount(quote?.amount)} />
-        </div>
+        </ContextRow>
       </div>
-      <div className="panel split analysis-plan">
+      <div className="panel" style={ANALYSIS_PLAN_PANEL_STYLE}>
         <div>
           <PanelTitle title="执行计划" />
           <p>{executionText}</p>
@@ -194,7 +258,7 @@ export function AnalysisPage({
           {result?.compliance_notes.length ? <LineList title="合规与假设" items={[...result.compliance_notes, ...result.assumptions].slice(0, 4)} /> : null}
         </div>
       </div>
-      <div className="panel log-strip analysis-log">
+      <div className="panel" style={ANALYSIS_LOG_STYLE}>
         <InfoPill label="分析日志" value={result?.analysis_log_id ? `日志 #${result.analysis_log_id}` : "等待分析"} />
         <InfoPill label="不能操作原因" value={suggestion?.blocking_rules.length ? `${suggestion.blocking_rules.length} 条` : "暂无硬性原因"} />
         <InfoPill label="风险事件/盘口" value={result ? `${result.events.length} 条事件 / ${plainTradingText(result.microstructure.notes) || "盘口已检查"}` : "--"} />

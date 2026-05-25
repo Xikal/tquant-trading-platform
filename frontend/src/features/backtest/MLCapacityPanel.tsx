@@ -4,6 +4,25 @@ import { backtestsApi, type PortfolioOptimizationResponse, type PortfolioOptimiz
 import { mlSignalsApi, type MLSignalOnlineLearningStatus, type StrategyCapacityItem, type StrategyCapacityResponse } from "../../api/mlSignals";
 import { formatBacktestStrategy, formatInteger, formatPct, type BacktestStrategyOption } from "./backtestDisplay";
 import {
+  BACKTEST_CAPACITY_BUTTON_STYLE,
+  BACKTEST_CAPACITY_CONTROLS_STYLE,
+  BACKTEST_CAPACITY_FIELD_STYLE,
+  BACKTEST_FRONTIER_AXIS_STYLE,
+  BACKTEST_FRONTIER_POINT_STYLE,
+  BACKTEST_WARNING_ITEM_STYLE,
+  BACKTEST_WARNING_LIST_STYLE,
+} from "./backtestStyles";
+import {
+  BACKTEST_FRONTIER_CARD_STYLE,
+  BACKTEST_FRONTIER_SVG_STYLE,
+  BACKTEST_FRONTIER_TITLE_META_STYLE,
+  BACKTEST_FRONTIER_TITLE_STYLE,
+  BACKTEST_MINI_METRICS_STYLE,
+  BACKTEST_RESEARCH_CARD_STYLE,
+  BACKTEST_RESEARCH_CARD_WIDE_STYLE,
+  BACKTEST_RESEARCH_NOTE_STYLE,
+} from "./backtestResearchStyles";
+import {
   capacityTone,
   Empty,
   errorMessage,
@@ -14,6 +33,8 @@ import {
 } from "./BacktestResearchShared";
 import { DataTable } from "../../ui/table/DataTable";
 import { useBacktestResearchUiStore } from "../../stores/backtestResearchUiStore";
+import { BACKTEST_ERROR_STYLE } from "./backtestPageLayoutStyles";
+import { combineBacktestStyles } from "./backtestStyles";
 
 export function MLCapacityPanel({ strategyOptions }: { strategyOptions: BacktestStrategyOption[] }) {
   const defaultStrategies = strategyOptions.slice(0, 2).map(([key]) => key).join(",");
@@ -109,35 +130,39 @@ export function MLCapacityPanel({ strategyOptions }: { strategyOptions: Backtest
   }, []);
 
   return (
-    <section className="backtest-research-card span-2">
+    <section style={combineBacktestStyles(BACKTEST_RESEARCH_CARD_STYLE, BACKTEST_RESEARCH_CARD_WIDE_STYLE)}>
       <PanelTitle title="ML 在线学习 / 策略容量" meta="模拟盘闭环 + 资金容量" />
-      {error ? <div className="backtest-error">{error}</div> : null}
-      <div className="backtest-mini-metrics">
+      {error ? <div style={BACKTEST_ERROR_STYLE}>{error}</div> : null}
+      <div style={BACKTEST_MINI_METRICS_STYLE}>
         <Metric label="Paper 样本" value={formatInteger(status?.paper_sample_count)} />
         <Metric label="平仓样本" value={formatInteger(status?.closed_trade_sample_count)} />
         <Metric label="正/负样本" value={`${formatInteger(status?.positive_sample_count)} / ${formatInteger(status?.negative_sample_count)}`} />
         <Metric label="训练状态" value={status?.ready_for_training ? "可训练" : "样本不足"} className={status?.ready_for_training ? "pbo-low" : "pbo-medium"} />
       </div>
-      <div className="backtest-research-note">
+      <div style={BACKTEST_RESEARCH_NOTE_STYLE}>
         {status?.next_training_rule ?? "每周一 16:00 后自动触发增量训练；模型仍受样本量、AUC、K-fold 和生产门槛限制。"}
         {status?.latest_incremental_task_id ? ` 最近任务 #${status.latest_incremental_task_id}：${status.latest_incremental_task_status || "--"}。` : ""}
         {status?.production_model_key ? ` 当前生产模型：${status.production_model_key}。` : " 暂无生产模型。"}
       </div>
       {status?.warnings?.length ? (
-        <div className="backtest-warning-list">
-          {status.warnings.slice(0, 3).map((item) => <span key={item}>{item}</span>)}
+        <div style={BACKTEST_WARNING_LIST_STYLE}>
+          {status.warnings.slice(0, 3).map((item) => <span key={item} style={BACKTEST_WARNING_ITEM_STYLE}>{item}</span>)}
         </div>
       ) : null}
-      <div className="backtest-capacity-controls">
-        <TextField label="容量评估策略" value={strategies} hint="英文逗号分隔" onChange={setStrategies} />
-        <TextField label="回测任务 ID" value={runId} hint="用于 Markowitz / RL shadow" onChange={setRunId} />
-        <Button onClick={loadStatus} disabled={loading === "status"}>{loading === "status" ? "刷新中..." : "刷新 ML 状态"}</Button>
-        <Button onClick={runCapacity} disabled={loading === "capacity" || !selectedStrategies.length}>{loading === "capacity" ? "评估中..." : "评估容量"}</Button>
-        <Button onClick={runIncrementalTrain} disabled={loading === "train"}>{loading === "train" ? "训练中..." : "手动增量训练"}</Button>
-        <Button onClick={runPortfolioResearch} disabled={loading === "portfolio"}>{loading === "portfolio" ? "计算中..." : "组合 / RL 研究"}</Button>
+      <div style={BACKTEST_CAPACITY_CONTROLS_STYLE}>
+        <div style={BACKTEST_CAPACITY_FIELD_STYLE}>
+          <TextField label="容量评估策略" value={strategies} hint="英文逗号分隔" onChange={setStrategies} />
+        </div>
+        <div style={BACKTEST_CAPACITY_FIELD_STYLE}>
+          <TextField label="回测任务 ID" value={runId} hint="用于 Markowitz / RL shadow" onChange={setRunId} />
+        </div>
+        <Button style={BACKTEST_CAPACITY_BUTTON_STYLE} onClick={loadStatus} disabled={loading === "status"}>{loading === "status" ? "刷新中..." : "刷新 ML 状态"}</Button>
+        <Button style={BACKTEST_CAPACITY_BUTTON_STYLE} onClick={runCapacity} disabled={loading === "capacity" || !selectedStrategies.length}>{loading === "capacity" ? "评估中..." : "评估容量"}</Button>
+        <Button style={BACKTEST_CAPACITY_BUTTON_STYLE} onClick={runIncrementalTrain} disabled={loading === "train"}>{loading === "train" ? "训练中..." : "手动增量训练"}</Button>
+        <Button style={BACKTEST_CAPACITY_BUTTON_STYLE} onClick={runPortfolioResearch} disabled={loading === "portfolio"}>{loading === "portfolio" ? "计算中..." : "组合 / RL 研究"}</Button>
       </div>
       {markowitz ? (
-        <div className="backtest-research-note">
+        <div style={BACKTEST_RESEARCH_NOTE_STYLE}>
           Markowitz：预期 {formatPct(markowitz.expected_return_pct)}，波动 {formatPct(markowitz.volatility_pct)}，
           Sharpe {markowitz.portfolio_sharpe ?? "--"}。{markowitz.summary || ""}
         </div>
@@ -157,13 +182,13 @@ export function MLCapacityPanel({ strategyOptions }: { strategyOptions: Backtest
       ) : null}
       {markowitz?.efficient_frontier?.length ? <EfficientFrontierChart points={markowitz.efficient_frontier} /> : null}
       {blackLitterman ? (
-        <div className="backtest-research-note">
+        <div style={BACKTEST_RESEARCH_NOTE_STYLE}>
           Black-Litterman：预期 {formatPct(blackLitterman.expected_return_pct)}，波动 {formatPct(blackLitterman.volatility_pct)}，
           Sharpe {blackLitterman.portfolio_sharpe ?? "--"}。{blackLitterman.summary || ""}
         </div>
       ) : null}
       {policy ? (
-        <div className="backtest-research-note">
+        <div style={BACKTEST_RESEARCH_NOTE_STYLE}>
           RL Shadow：{policy.summary || "仅研究输出，不自动交易。"} 样本 {String(policy.shadow_reinforcement_learning?.sample_count ?? "--")}。
         </div>
       ) : null}
@@ -205,15 +230,15 @@ function EfficientFrontierChart({ points }: { points: NonNullable<PortfolioOptim
   const maxReturn = Math.max(...returns, 1);
   const range = Math.max(maxReturn - minReturn, 1);
   return (
-    <div className="efficient-frontier-card" aria-label="Markowitz 有效前沿">
-      <div className="chart-title"><b>风险-收益有效前沿</b><span>横轴波动，纵轴预期收益</span></div>
-      <svg viewBox="0 0 320 150" role="img">
-        <line x1="28" y1="122" x2="300" y2="122" />
-        <line x1="28" y1="18" x2="28" y2="122" />
+    <div style={BACKTEST_FRONTIER_CARD_STYLE} aria-label="Markowitz 有效前沿">
+      <div style={BACKTEST_FRONTIER_TITLE_STYLE}><b>风险-收益有效前沿</b><span style={BACKTEST_FRONTIER_TITLE_META_STYLE}>横轴波动，纵轴预期收益</span></div>
+      <svg viewBox="0 0 320 150" role="img" style={BACKTEST_FRONTIER_SVG_STYLE}>
+        <line x1="28" y1="122" x2="300" y2="122" style={BACKTEST_FRONTIER_AXIS_STYLE} />
+        <line x1="28" y1="18" x2="28" y2="122" style={BACKTEST_FRONTIER_AXIS_STYLE} />
         {visible.map((point, index) => {
           const x = 28 + (Number(point.volatility_pct || 0) / maxRisk) * 268;
           const y = 122 - ((Number(point.expected_return_pct || 0) - minReturn) / range) * 100;
-          return <circle key={`${point.volatility_pct}-${point.expected_return_pct}-${index}`} cx={x} cy={y} r={2.3} />;
+          return <circle key={`${point.volatility_pct}-${point.expected_return_pct}-${index}`} cx={x} cy={y} r={2.3} style={BACKTEST_FRONTIER_POINT_STYLE} />;
         })}
       </svg>
     </div>

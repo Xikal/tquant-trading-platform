@@ -28,6 +28,8 @@ from app.runtime.background_jobs import shutdown_runtime_background_jobs, start_
 from app.services.auth_service import ensure_auth_secret_configured
 from app.services.market.providers.circuit import provider_metrics_snapshot
 from app.services.market.local_quote_cache import local_quote_cache_metrics_snapshot
+from app.services.bff.workspace_cache import bff_workspace_cache_metrics_snapshot
+from app.services.bff.remote_client import remote_bff_metrics_snapshot
 from app.services.operation_audit_middleware import OperationAuditMiddleware
 
 settings = get_settings()
@@ -269,6 +271,15 @@ def _agent_daily_report_push_due() -> bool:
     return now.time() >= dt_time(hour=15, minute=10)
 
 
+def _paper_midday_review_due() -> bool:
+    """Compatibility wrapper for tests and scripts that import main directly."""
+
+    now = beijing_now()
+    if now.weekday() >= 5:
+        return False
+    return now.time() >= dt_time(hour=11, minute=35)
+
+
 @app.get("/healthz", response_model=HealthResponse)
 def healthz():
     return HealthResponse(status="ok", app=settings.app_name)
@@ -309,6 +320,8 @@ def prometheus_metrics(_: None = Depends(require_admin_auth)) -> PlainTextRespon
     agent_snapshot = _agent_audit_metrics_snapshot()
     phase4_snapshot = _phase4_metrics_snapshot()
     provider_snapshot = _provider_metrics_snapshot()
+    bff_cache_snapshot = bff_workspace_cache_metrics_snapshot()
+    bff_remote_snapshot = remote_bff_metrics_snapshot()
     lines = [
         "# HELP tquant_http_timing_samples Number of retained HTTP timing samples.",
         "# TYPE tquant_http_timing_samples gauge",
@@ -340,6 +353,36 @@ def prometheus_metrics(_: None = Depends(require_admin_auth)) -> PlainTextRespon
         "# HELP tquant_agent_quality_blocked_total Agent quality results that failed validation.",
         "# TYPE tquant_agent_quality_blocked_total gauge",
         f"tquant_agent_quality_blocked_total {phase4_snapshot.get('agent_quality_blocked_total', 0)}",
+        "# HELP tquant_bff_workspace_cache_reads_total BFF workspace cache read attempts.",
+        "# TYPE tquant_bff_workspace_cache_reads_total counter",
+        f"tquant_bff_workspace_cache_reads_total {bff_cache_snapshot.get('reads', 0)}",
+        "# HELP tquant_bff_workspace_cache_hits_total BFF workspace cache hits.",
+        "# TYPE tquant_bff_workspace_cache_hits_total counter",
+        f"tquant_bff_workspace_cache_hits_total {bff_cache_snapshot.get('hits', 0)}",
+        "# HELP tquant_bff_workspace_cache_writes_total BFF workspace cache writes.",
+        "# TYPE tquant_bff_workspace_cache_writes_total counter",
+        f"tquant_bff_workspace_cache_writes_total {bff_cache_snapshot.get('writes', 0)}",
+        "# HELP tquant_bff_workspace_cache_skips_total BFF workspace cache skipped loads.",
+        "# TYPE tquant_bff_workspace_cache_skips_total counter",
+        f"tquant_bff_workspace_cache_skips_total {bff_cache_snapshot.get('skips', 0)}",
+        "# HELP tquant_bff_workspace_cache_schema_misses_total BFF workspace cache schema mismatches.",
+        "# TYPE tquant_bff_workspace_cache_schema_misses_total counter",
+        f"tquant_bff_workspace_cache_schema_misses_total {bff_cache_snapshot.get('schema_misses', 0)}",
+        "# HELP tquant_bff_remote_calls_total BFF remote adapter call attempts.",
+        "# TYPE tquant_bff_remote_calls_total counter",
+        f"tquant_bff_remote_calls_total {bff_remote_snapshot.get('calls', 0)}",
+        "# HELP tquant_bff_remote_success_total BFF remote adapter successful calls.",
+        "# TYPE tquant_bff_remote_success_total counter",
+        f"tquant_bff_remote_success_total {bff_remote_snapshot.get('successes', 0)}",
+        "# HELP tquant_bff_remote_failures_total BFF remote adapter failed calls.",
+        "# TYPE tquant_bff_remote_failures_total counter",
+        f"tquant_bff_remote_failures_total {bff_remote_snapshot.get('failures', 0)}",
+        "# HELP tquant_bff_remote_circuit_short_circuits_total BFF remote calls skipped by open circuit.",
+        "# TYPE tquant_bff_remote_circuit_short_circuits_total counter",
+        f"tquant_bff_remote_circuit_short_circuits_total {bff_remote_snapshot.get('circuit_short_circuits', 0)}",
+        "# HELP tquant_bff_remote_credentials_suppressed_total BFF remote calls with credentials suppressed for untrusted targets.",
+        "# TYPE tquant_bff_remote_credentials_suppressed_total counter",
+        f"tquant_bff_remote_credentials_suppressed_total {bff_remote_snapshot.get('credentials_suppressed', 0)}",
         "# HELP tquant_provider_calls_total Market provider calls across configured providers.",
         "# TYPE tquant_provider_calls_total counter",
         f"tquant_provider_calls_total {provider_snapshot.get('provider_calls_total', 0)}",

@@ -8,7 +8,7 @@ import threading
 import time
 
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 from sqlalchemy.orm.exc import StaleDataError
 
 from app.core.config import get_settings
@@ -263,7 +263,15 @@ class WatchlistSignalService:
 
     @staticmethod
     def _list_watchlist_rows(db: Session) -> list[Watchlist]:
-        return db.execute(select(Watchlist).order_by(Watchlist.id.desc())).scalars().all()
+        return (
+            db.execute(
+                select(Watchlist)
+                .options(selectinload(Watchlist.latest_signal))
+                .order_by(Watchlist.id.desc())
+            )
+            .scalars()
+            .all()
+        )
 
     def _empty_snapshot_from_row(self, row: Watchlist) -> dict:
         return self._fallback_snapshot_from_row(row, "监控信号缓存仍在准备中。")

@@ -1,4 +1,4 @@
-import { Button } from "antd";
+import { Card, Space, Steps, Tag, Typography } from "antd";
 import type { BacktestRunSummary } from "../../api/backtests";
 import type { StrategyHubTab } from "./useStrategyHub";
 
@@ -51,26 +51,33 @@ export function StrategyWorkflow({
   const activeStep = tabToStep(activeTab);
   const hasResult = runs.some((run) => run.status === "completed" || run.status === "succeeded");
   const steps = (mode === "expert" ? EXPERT_STEPS : SIMPLE_STEPS).filter((step) => showExpert || step.step !== "expert");
+  const activeIndex = steps.findIndex((step) => (mode === "expert" ? step.target === activeTab : tabToStep(step.target) === activeStep));
 
   return (
-    <section className="panel strategy-simple-flow" aria-label="策略工作流程">
-      {steps.map((step) => {
-        const status = stepBadge(step.step, activeStep, hasResult);
-        const isActive = step.step === "expert" ? activeTab === step.target : activeStep === step.step;
-        return (
-          <Button
-            key={step.id}
-            type={isActive ? "primary" : "default"}
-            className={isActive ? "active" : ""}
-            onClick={() => onSelect(stepToTab(step.target, activeTab, step.preserveCurrentExpertTab))}
-          >
-            <b>{step.title}</b>
-            <span>{step.description}</span>
-            <em className={status.tone}>{status.label}</em>
-          </Button>
-        );
-      })}
-    </section>
+    <Card variant="borderless" aria-label="策略工作流程" styles={{ body: { padding: 14 } }}>
+      <Steps
+        current={activeIndex < 0 ? 0 : activeIndex}
+        responsive
+        onChange={(current) => {
+          const step = steps[current];
+          if (!step) return;
+          onSelect(stepToTab(step.target, activeTab, step.preserveCurrentExpertTab));
+        }}
+        items={steps.map((step) => {
+          const status = stepBadge(step.step, activeStep, hasResult);
+          return {
+            title: <Typography.Text strong>{step.title}</Typography.Text>,
+            description: (
+              <Space direction="vertical" size={2}>
+                <Typography.Text type="secondary">{step.description}</Typography.Text>
+                <Tag color={status.color}>{status.label}</Tag>
+              </Space>
+            ),
+            status: status.status,
+          };
+        })}
+      />
+    </Card>
   );
 }
 
@@ -89,9 +96,9 @@ function stepToTab(step: StrategyHubTab, activeTab: StrategyHubTab, preserveCurr
 }
 
 function stepBadge(step: DisplayStep, active: DisplayStep, hasResult: boolean) {
-  if (step === active) return { label: "⏳ 当前步骤", tone: "current" };
-  if ((step === "quick" || step === "history") && hasResult) return { label: "✅ 已完成", tone: "done" };
-  if (step === "signals" && hasResult) return { label: "✅ 可查看", tone: "done" };
-  if (step === "expert" && !hasResult) return { label: "⚠ 先体检", tone: "warn" };
-  return { label: "⚠ 建议执行", tone: "warn" };
+  if (step === active) return { label: "当前步骤", color: "processing", status: "process" as const };
+  if ((step === "quick" || step === "history") && hasResult) return { label: "已完成", color: "success", status: "finish" as const };
+  if (step === "signals" && hasResult) return { label: "可查看", color: "success", status: "finish" as const };
+  if (step === "expert" && !hasResult) return { label: "先体检", color: "warning", status: "wait" as const };
+  return { label: "建议执行", color: "warning", status: "wait" as const };
 }

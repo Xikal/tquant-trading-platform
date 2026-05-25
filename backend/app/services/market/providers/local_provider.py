@@ -36,7 +36,7 @@ class LocalMarketProvider:
         frame = pd.DataFrame(
             [
                 {
-                    "date": row.trade_date,
+                    "date": _date_iso(row.trade_date),
                     "open": float(row.open_price or 0),
                     "close": float(row.close_price or 0),
                     "high": float(row.high_price or 0),
@@ -64,7 +64,7 @@ class LocalMarketProvider:
         return ProviderResult(
             quality=MarketDataQuality.FRESH if rows else MarketDataQuality.UNAVAILABLE,
             source=self.name,
-            data=list(rows) or None,
+            data=[_date_iso(row) for row in rows] or None,
             message="" if rows else "local trade dates unavailable",
         )
 

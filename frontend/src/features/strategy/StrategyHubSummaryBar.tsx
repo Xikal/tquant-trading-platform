@@ -1,4 +1,4 @@
-import { Button } from "antd";
+import { Button, Card, Col, Flex, Row, Space, Statistic, Tag, Typography, theme } from "antd";
 import type { BacktestRunSummary } from "../../api/backtests";
 import type { StrategyMeta } from "../../api/strategies";
 import { formatDateTime, formatPct } from "../backtest/backtestDisplay";
@@ -15,6 +15,7 @@ export function StrategyHubSummaryBar({
   loading: boolean;
   onStartCheck: () => void;
 }) {
+  const { token } = theme.useToken();
   const verdict = strategyDoctorVerdict(runs);
   const latestRun = latestFinishedRun(runs);
   const production = strategies.filter((item) => item.visibility === "full" && (item.tier === "core" || item.tier === "auxiliary"));
@@ -23,59 +24,85 @@ export function StrategyHubSummaryBar({
   const badCount = production.filter((item) => lightTone(item) === "bad").length;
 
   return (
-    <section className="panel strategy-summary-bar">
-      <div className="strategy-summary-copy">
-        <span className="strategy-kicker">策略健康中心</span>
-        <h1>现在该不该继续用这些策略</h1>
-        <p>{verdict.detail}</p>
-        <small>{verdict.action}</small>
-      </div>
-      <div className="strategy-summary-stats">
-        <article>
-          <span>当前结论</span>
-          <strong className={verdict.tone}>{strategyHealthLabel(verdict.tone)}</strong>
-        </article>
-        <article>
-          <span>最近体检</span>
-          <strong>{latestRun ? formatDateTime(latestRun.created_at) : "暂无"}</strong>
-        </article>
-        <article>
-          <span>最近胜率</span>
-          <strong>{latestRun?.summary?.win_rate_pct != null ? formatPct(latestRun.summary.win_rate_pct) : "--"}</strong>
-        </article>
-      </div>
-      <div className="strategy-summary-actions">
-        <Button type="primary" onClick={onStartCheck} disabled={loading}>
-          {loading ? "提交中" : "开始策略体检"}
-        </Button>
-      </div>
-      <div className="strategy-summary-lights">
-        <article className="strategy-summary-light ok">
-          <strong>🟢 {okCount}</strong>
-          <span>可继续观察</span>
-        </article>
-        <article className="strategy-summary-light warn">
-          <strong>🟡 {warnCount}</strong>
-          <span>小仓验证</span>
-        </article>
-        <article className="strategy-summary-light bad">
-          <strong>🔴 {badCount}</strong>
-          <span>建议暂停</span>
-        </article>
-      </div>
-      <div className="strategy-summary-list">
+    <Card variant="borderless" styles={{ body: { display: "grid", gap: 10, padding: 16 } }}>
+      <Flex gap={16} align="start" justify="space-between" wrap>
+        <Space direction="vertical" size={2} style={{ minWidth: 0, flex: "1 1 420px" }}>
+          <Typography.Text style={{ fontSize: 12, fontWeight: 700, letterSpacing: "0.08em", color: token.colorTextSecondary }}>
+            策略健康中心
+          </Typography.Text>
+          <Typography.Title level={1}>现在该不该继续用这些策略</Typography.Title>
+          <Typography.Paragraph>{verdict.detail}</Typography.Paragraph>
+          <Typography.Text type="secondary">{verdict.action}</Typography.Text>
+        </Space>
+        <Space direction="vertical" size={10} style={{ minWidth: 0, flex: "1 1 440px" }}>
+          <Row gutter={[8, 8]}>
+            <Col span={8}>
+              <Card size="small" styles={{ body: { padding: 10 } }}>
+                <Statistic title="当前结论" value={strategyHealthLabel(verdict.tone)} valueStyle={{ color: toneColor(verdict.tone, token) }} />
+              </Card>
+            </Col>
+            <Col span={8}>
+              <Card size="small" styles={{ body: { padding: 10 } }}>
+                <Statistic title="最近体检" value={latestRun ? formatDateTime(latestRun.created_at) : "暂无"} />
+              </Card>
+            </Col>
+            <Col span={8}>
+              <Card size="small" styles={{ body: { padding: 10 } }}>
+                <Statistic title="最近胜率" value={latestRun?.summary?.win_rate_pct != null ? formatPct(latestRun.summary.win_rate_pct) : "--"} />
+              </Card>
+            </Col>
+          </Row>
+          <div>
+            <Button type="primary" onClick={onStartCheck} disabled={loading}>
+              {loading ? "提交中" : "开始策略体检"}
+            </Button>
+          </div>
+          <Row gutter={[8, 8]}>
+            <Col span={8}>
+              <Card size="small" styles={{ body: { padding: 10 } }}>
+                <Tag color="success" style={{ marginBottom: 6 }}>🟢 {okCount}</Tag>
+                <div>可继续观察</div>
+              </Card>
+            </Col>
+            <Col span={8}>
+              <Card size="small" styles={{ body: { padding: 10 } }}>
+                <Tag color="warning" style={{ marginBottom: 6 }}>🟡 {warnCount}</Tag>
+                <div>小仓验证</div>
+              </Card>
+            </Col>
+            <Col span={8}>
+              <Card size="small" styles={{ body: { padding: 10 } }}>
+                <Tag color="error" style={{ marginBottom: 6 }}>🔴 {badCount}</Tag>
+                <div>建议暂停</div>
+              </Card>
+            </Col>
+          </Row>
+        </Space>
+      </Flex>
+      <Row gutter={[8, 8]}>
         {production.slice(0, 4).map((strategy) => {
           const tone = lightTone(strategy);
           return (
-            <article key={strategy.key} className={`strategy-summary-item ${tone}`}>
-              <strong>{strategy.display_name || strategy.name}</strong>
-              <span>{strategyHint(strategy)}</span>
-            </article>
+            <Col key={strategy.key} xs={24} sm={12} lg={6}>
+              <Card size="small" styles={{ body: { padding: 10 } }}>
+                <Space direction="vertical" size={2} style={{ display: "flex" }}>
+                  <Typography.Text strong style={{ color: toneColor(tone, token) }}>{strategy.display_name || strategy.name}</Typography.Text>
+                  <Typography.Text type="secondary">{strategyHint(strategy)}</Typography.Text>
+                </Space>
+              </Card>
+            </Col>
           );
         })}
-      </div>
-    </section>
+      </Row>
+    </Card>
   );
+}
+
+function toneColor(tone: "ok" | "warn" | "bad" | "processing", token: ReturnType<typeof theme.useToken>["token"]) {
+  if (tone === "ok") return token.colorSuccess;
+  if (tone === "warn") return token.colorWarning;
+  if (tone === "bad") return token.colorError;
+  return token.colorPrimary;
 }
 
 function lightTone(strategy: StrategyMeta): "ok" | "warn" | "bad" {

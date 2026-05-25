@@ -5,7 +5,7 @@ from datetime import date
 from decimal import Decimal
 
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 from app.models.entities import PaperPosition, PaperPositionLot
 from app.core.timezone import beijing_today
@@ -23,6 +23,7 @@ class PaperPositionService:
         return (
             self.db.execute(
                 select(PaperPosition)
+                .options(selectinload(PaperPosition.lots))
                 .where(PaperPosition.account_id == account_id, PaperPosition.quantity > 0)
                 .order_by(PaperPosition.updated_at.desc())
             )
@@ -33,7 +34,9 @@ class PaperPositionService:
     def get_position(self, account_id: int, symbol: str) -> PaperPosition | None:
         self.refresh_available_quantities(account_id, symbol=symbol)
         return self.db.execute(
-            select(PaperPosition).where(PaperPosition.account_id == account_id, PaperPosition.symbol == symbol)
+            select(PaperPosition)
+            .options(selectinload(PaperPosition.lots))
+            .where(PaperPosition.account_id == account_id, PaperPosition.symbol == symbol)
         ).scalar_one_or_none()
 
     def add_position(

@@ -19,6 +19,7 @@ import { useWorkspaceLoading } from "./useWorkspaceLoading";
 import { useWorkspaceNavigation } from "./useWorkspaceNavigation";
 import { useWorkspacePageProps } from "./useWorkspacePageProps";
 import { useWorkspaceAutoRefresh } from "./useWorkspaceAutoRefresh";
+import { WORKSPACE_AUTH_LOADING_STYLE } from "./workspaceShellStyles";
 export function TradingWorkspace() {
   const { page, navigatePage } = useWorkspaceNavigation();
   const authReady = useWorkspaceStore((state) => state.authReady);
@@ -392,7 +393,7 @@ export function TradingWorkspace() {
 
   if (!authReady) {
     return (
-      <div className="app auth-loading">
+      <div style={WORKSPACE_AUTH_LOADING_STYLE}>
         <div className="panel">正在恢复登录状态...</div>
       </div>
     );

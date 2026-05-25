@@ -1,5 +1,5 @@
 import { lazy, Suspense } from "react";
-import { Button, Tabs } from "antd";
+import { Button, Card, Col, Row, Space, Tabs, Typography } from "antd";
 import type { BacktestRunSummary } from "../../api/backtests";
 import type { AuthUser } from "../../types";
 import { SkeletonBlock } from "../../components/shared/Feedback";
@@ -46,78 +46,86 @@ export function StrategyHubDetailTabs({
   }
 
   return (
-    <section className="panel strategy-detail-tabs">
-      <div className="panel-title">
-        <h2>详细信息</h2>
-        <span className="hint">复杂信息统一收纳，首屏只保留结论和下一步。</span>
-      </div>
+    <Card variant="borderless" styles={{ body: { display: "grid", gap: 8, padding: 10 } }}>
+      <Space direction="vertical" size={2}>
+        <Typography.Text strong>详细信息</Typography.Text>
+        <Typography.Text type="secondary">复杂信息统一收纳，首屏只保留结论和下一步。</Typography.Text>
+      </Space>
       <Tabs
-        className="strategy-detail-tabs-antd"
+        type="card"
         activeKey={detailTab}
         onChange={(key) => switchDetailTab(key as DetailTabKey, hub)}
+        tabBarStyle={{ marginBottom: 0 }}
         items={detailTabs.map((item) => ({
           key: item.key,
           label: (
-            <span className="strategy-tab-label">
-              <strong>{item.label}</strong>
-              <small>{item.hint}</small>
-            </span>
+            <Space direction="vertical" size={2} style={{ minWidth: 72, textAlign: "left" }}>
+              <Typography.Text strong style={{ fontSize: 12 }}>{item.label}</Typography.Text>
+              <Typography.Text type="secondary" style={{ fontSize: 11 }}>{item.hint}</Typography.Text>
+            </Space>
           ),
         }))}
       />
       {hub.loading === "tab-switch" ? (
-        <div className="strategy-detail-panel">
+        <div style={{ minHeight: 280 }}>
           <SkeletonBlock rows={5} title />
         </div>
       ) : null}
       {hub.loading !== "tab-switch" && detailTab === "quick" ? (
-        <div className="strategy-detail-panel strategy-quick-layout">
-          <section className="strategy-quick-main">
-            <PanelTitle title="一键体检" />
-            <QuickBacktestForm hub={hub} onQuickSubmit={onQuickSubmit} />
-          </section>
-          <aside className="strategy-quick-side">
-            <section className="strategy-side-card">
-              <PanelTitle title="预设方案" />
-              <div className="strategy-preset-list compact">
-                {hub.presets.map((preset) => (
-                  <Button type="text" key={preset.key ?? preset.id ?? preset.name} onClick={() => hub.applyPreset(preset)}>
-                    <strong>{preset.name}</strong>
-                    <span>{preset.description}</span>
-                  </Button>
-                ))}
-              </div>
-            </section>
-            <section className="strategy-side-card">
-              <PanelTitle title="最近任务" />
-              <RecentRuns runs={hub.runs.slice(0, 3)} onRerun={onRerun} />
-            </section>
-          </aside>
-        </div>
+        <Row gutter={[10, 10]} style={{ minHeight: 280 }}>
+          <Col xs={24} xl={15}>
+            <Space direction="vertical" size={10} style={{ display: "flex" }}>
+              <PanelTitle title="一键体检" />
+              <QuickBacktestForm hub={hub} onQuickSubmit={onQuickSubmit} />
+            </Space>
+          </Col>
+          <Col xs={24} xl={9}>
+            <Space direction="vertical" size={10} style={{ display: "flex" }}>
+              <Card size="small">
+                <Space direction="vertical" size={8} style={{ display: "flex" }}>
+                  <PanelTitle title="预设方案" />
+                  {hub.presets.map((preset) => (
+                    <Button block type="text" key={preset.key ?? preset.id ?? preset.name} onClick={() => hub.applyPreset(preset)} style={{ height: "auto", textAlign: "left" }}>
+                      <Space direction="vertical" size={2} style={{ display: "flex" }}>
+                        <Typography.Text strong>{preset.name}</Typography.Text>
+                        <Typography.Text type="secondary">{preset.description}</Typography.Text>
+                      </Space>
+                    </Button>
+                  ))}
+                </Space>
+              </Card>
+              <Card size="small">
+                <PanelTitle title="最近任务" />
+                <RecentRuns runs={hub.runs.slice(0, 3)} onRerun={onRerun} />
+              </Card>
+            </Space>
+          </Col>
+        </Row>
       ) : null}
       {hub.loading !== "tab-switch" && detailTab === "history" ? (
-        <div className="strategy-detail-panel">
+        <div style={{ minHeight: 280 }}>
           <StrategyHistoryPanel runs={hub.runs} onRefresh={() => void hub.load()} onRerun={onRerun} />
         </div>
       ) : null}
       {hub.loading !== "tab-switch" && detailTab === "signals" ? (
-        <div className="strategy-detail-panel">
+        <div style={{ minHeight: 280 }}>
           <StrategyBridge tab="signals" />
         </div>
       ) : null}
       {hub.loading !== "tab-switch" && detailTab === "expert" ? (
-        <div className="strategy-detail-panel strategy-expert-panel">
+        <Space direction="vertical" size={10} style={{ display: "flex", minHeight: 280 }}>
           <Tabs
-            className="strategy-expert-tabs-antd"
+            type="card"
             activeKey={hub.tab}
             onChange={(key) => hub.setTab(key as StrategyHubTab)}
+            tabBarStyle={{ marginBottom: 0 }}
             items={expertTabs.map((tab) => ({
               key: tab.key,
               label: (
-                <span className="strategy-tab-label">
-                  <strong>{tab.label}</strong>
-                  <small>{tab.hint}</small>
-                </span>
+                <Space direction="vertical" size={2} style={{ textAlign: "left" }}>
+                  <Typography.Text strong style={{ fontSize: 12 }}>{tab.label}</Typography.Text>
+                  <Typography.Text type="secondary" style={{ fontSize: 11 }}>{tab.hint}</Typography.Text>
+                </Space>
               ),
             }))}
           />
@@ -128,9 +136,9 @@ export function StrategyHubDetailTabs({
               <StrategyHubExpertPanel tab={researchExpertTab(hub.tab, hub)} currentUser={currentUser} />
             )}
           </Suspense>
-        </div>
+        </Space>
       ) : null}
-    </section>
+    </Card>
   );
 }
 

@@ -5,7 +5,7 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 source "$ROOT_DIR/scripts/cloud_ssh_lib.sh"
 
-CLOUD_HOST="${CLOUD_HOST:-43.143.243.97}"
+CLOUD_HOST="${CLOUD_HOST:-}"
 CLOUD_USER="${CLOUD_USER:-ubuntu}"
 CLOUD_PROJECT_DIR="${CLOUD_PROJECT_DIR:-/home/ubuntu/gupiao-upload}"
 CLOUD_COMPOSE_FILE="${CLOUD_COMPOSE_FILE:-docker-compose.mysql.yml}"
@@ -15,8 +15,8 @@ AUTO_INITIAL_GIT_COMMIT="${AUTO_INITIAL_GIT_COMMIT:-1}"
 AUTO_INSTALL_BACKUP_CRON="${AUTO_INSTALL_BACKUP_CRON:-1}"
 AUTO_CONFIGURE_HTTPS="${AUTO_CONFIGURE_HTTPS:-1}"
 HTTPS_REQUIRED="${HTTPS_REQUIRED:-0}"
-CLOUD_DOMAIN="${CLOUD_DOMAIN:-weisilianghua.cloud}"
-CLOUD_CERT_EMAIL="${CLOUD_CERT_EMAIL:-admin@${CLOUD_DOMAIN}}"
+CLOUD_DOMAIN="${CLOUD_DOMAIN:-}"
+CLOUD_CERT_EMAIL="${CLOUD_CERT_EMAIL:-}"
 BACKUP_TIME="${BACKUP_TIME:-02:20}"
 RUN_COMPILE="${RUN_COMPILE:-1}"
 RUN_FRONTEND_BUILD="${RUN_FRONTEND_BUILD:-1}"
@@ -27,6 +27,24 @@ LATEST_DATA_ACCEPTANCE_REQUIRED="${LATEST_DATA_ACCEPTANCE_REQUIRED:-0}"
 
 log() {
   printf '[deploy] %s\n' "$*"
+}
+
+require_cloud_host() {
+  if [[ -n "$CLOUD_HOST" ]]; then
+    return 0
+  fi
+  log "CLOUD_HOST is required. Example: CLOUD_HOST=<server-ip-or-domain> $0"
+  exit 2
+}
+
+require_https_config() {
+  if [[ "$AUTO_CONFIGURE_HTTPS" != "1" ]]; then
+    return 0
+  fi
+  if [[ -z "$CLOUD_DOMAIN" || -z "$CLOUD_CERT_EMAIL" ]]; then
+    log "CLOUD_DOMAIN and CLOUD_CERT_EMAIL are required when AUTO_CONFIGURE_HTTPS=1"
+    exit 2
+  fi
 }
 
 run_local_checks() {
@@ -79,6 +97,7 @@ make_package() {
     --exclude='frontend/node_modules' \
     --exclude='frontend/dist' \
     --exclude='frontend/*.tsbuildinfo' \
+    --exclude='rust/*/target' \
     --exclude='*.pyc' \
     --exclude='*.pyo' \
     --exclude='*.log' \
@@ -206,6 +225,8 @@ sudo docker exec tquant-app-mysql python scripts/latest_data_acceptance.py --pub
 }
 
 main() {
+  require_cloud_host
+  require_https_config
   run_local_checks
   local package_path
   package_path="$(make_package | tail -n 1)"

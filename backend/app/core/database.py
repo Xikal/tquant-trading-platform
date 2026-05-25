@@ -58,10 +58,10 @@ _engine_kwargs = dict(
 )
 if settings.database_url.startswith("mysql"):
     _engine_kwargs.update(
-        pool_size=12,
-        max_overflow=24,
-        pool_timeout=30,
-        pool_recycle=1800,
+        pool_size=max(int(settings.db_pool_size or 12), 1),
+        max_overflow=max(int(settings.db_max_overflow or 24), 0),
+        pool_timeout=max(int(settings.db_pool_timeout or 30), 1),
+        pool_recycle=max(int(settings.db_pool_recycle or 1800), 60),
     )
 
 engine = create_engine(

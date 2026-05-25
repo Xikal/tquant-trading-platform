@@ -1,5 +1,114 @@
 # TQuant 实施计划
 
+## 2026-05-23 全模块代码审查报告整改
+
+需求来源：`TQuant_全模块代码审查报告_2026-05-23.md`
+
+### 已完成
+
+- [x] `VERSION.json` 从正式 1.0.0 改为 `0.9.0` + `release_stage=stabilization`，避免在关键问题未完全验收前误标正式版。
+- [x] 2026-05-21 后端/前端旧重构方案文档增加归档/历史状态说明，避免多份方案并行造成执行口径冲突。
+- [x] `DailyBarSnapshot.trade_date` 模型改为 DATE 语义，OHLCV 改为 `Numeric` 精度列，并新增 Alembic 迁移 `20260523_0001_daily_bar_snapshot_decimal_date.py`。
+- [x] 日线仓库增加 ISO 日期归一化，兼容既有字符串调用方和迁移后的 DATE 返回值。
+- [x] 模拟盘持仓与批次建立 ORM relationship，并在 `PaperPositionService.get_positions/get_position` 使用 `selectinload`，避免批次访问退化为 N+1。
+- [x] 生产环境 `GLOBAL_RATE_LIMIT_BACKEND=memory` 已在 `security_config.py` 中 fail-fast；MySQL compose 默认注入 Redis 限流。
+- [x] 前端 `antd` / `antd-mobile` 依赖改为精确版本锁定，避免 clean install 被范围版本漂移影响。
+- [x] RL 研究依赖保持可选 requirements 文件，并在 `position_shadow.py` 中显式 ImportError 降级说明，默认生产镜像不加载 PyTorch。
+- [x] 部署/清理/监控脚本移除默认公网 IP，要求显式传入 `CLOUD_HOST`；HTTPS 脚本要求显式传入 `DOMAIN`/`EMAIL`。
+- [x] `PRODUCTION_RUNBOOK.md` 示例改为占位符，不再写死公网 IP 和生产域名。
+- [x] MySQL compose 增加 `/var/lib/mysql/mysql-slow.log` 显式路径，慢日志随 `mysql_data` volume 持久化，避免 `/var/log/mysql` 权限风险。
+- [x] Web Router 从单一 workspaceElement 改为每条业务路由显式传入页面标识，`useWorkspaceNavigation` 改用 React Router `navigate/location`，不再手写 `window.history.pushState` / `popstate`。
+- [x] 新增后端回归测试锁住 `DailyBarSnapshot` 类型和模拟盘持仓批次 eager load 查询上限。
+
+### 核验说明
+
+- [x] 报告中 “antd 6 不存在” 与当前 npm registry 状态不符：`npm view antd version` 为 `6.4.3`。本轮采用精确锁定而非降级到旧大版本，避免破坏现有 AntD 6 组件实现。
+- [x] 报告提到的 watchlist/latest_signal 与 low_buy/signal_detail N+1 关系在当前模型中是 JSON 快照/批量仓库读取，不存在可 `selectinload` 的 ORM relation；本轮对真实存在的 paper position lots N+1 风险做硬修复和测试。
+
+### 本轮验证
+
+- [x] `npm view antd version --silent` 返回 `6.4.3`。
+- [x] `cd frontend && npm ci --ignore-scripts` 通过。
+- [x] `cd frontend && npm run build:web` 通过。
+- [x] `backend/.venv/bin/python -m compileall backend/app backend/tests/test_backend_refactor_foundation.py -q` 通过。
+- [x] `cd backend && .venv/bin/python -m pytest tests/test_backend_refactor_foundation.py tests/test_bff_routes.py tests/test_performance_regression.py -q` 通过，27 passed。
+- [x] SQLite Alembic 空库 `upgrade head`、新增迁移 `downgrade`、再 `upgrade head` 均通过。
+- [x] `backend/.venv/bin/python` 静态解析 `docker-compose.mysql.yml`，确认 MySQL slow log 与 Redis 限流配置存在。
+- [x] `make qa` 通过。
+- [x] `make prod-preflight` 通过。
+- [x] `git diff --check` 通过。
+
+## 后端 Go/Rust 重构最终方案落地
+
+需求来源：`docs/backend-go-rust-refactor-final-plan-2026-05-22.md`
+
+### 执行约束
+
+- [x] 不修改任何策略公式、策略阈值、选股规则、自动交易规则。
+- [x] Go/Rust 新能力默认不启用，不影响现有 Python 生产路径。
+- [x] 先完成 Phase 0 基础加固，再补 Phase 1-4 的可插拔骨架。
+
+### 已完成
+
+- [x] DB 连接池配置化：新增 `DB_POOL_SIZE`、`DB_MAX_OVERFLOW`、`DB_POOL_TIMEOUT`、`DB_POOL_RECYCLE`，MySQL engine 不再硬编码连接池参数。
+- [x] BFF Redis 短缓存：新增 `workspace_cache.py`，支持 monitor/paper/strategy/settings 按用户和参数缓存，partial response 不缓存。
+- [x] BFF 缓存配置化：新增 `BFF_WORKSPACE_CACHE_ENABLED` 和各 workspace TTL。
+- [x] Docker Compose MySQL 生产参数补齐：连接数、buffer pool、redo log、slow query、long query time 可配置。
+- [x] Docker Compose Redis 持久化补齐：AOF everysec、AOF rewrite、RDB save 策略。
+- [x] Docker Compose 应用/worker 注入 DB 连接池环境变量。
+- [x] Docker Compose 增加可选 `mysql-backup` profile，不默认启动，避免影响现有部署。
+- [x] Go BFF Gateway 骨架：健康检查、metrics、内部 token 校验、manifest/workspace 只读透传、`X-TQuant-Bff-Hop` 防循环。
+- [x] Go BFF 影子校验接入 Python BFF：可选 `TQUANT_BFF_GATEWAY_URL` + `TQUANT_BFF_SHADOW_ENABLED`，对 manifest / workspace 做后台契约比对，不影响现有响应。
+- [x] Go Market Read Service 骨架：健康检查、metrics、批量报价只读 Redis 本地行情缓存，未命中时返回 partial/unavailable，不接外部源、不写数据库。
+- [x] Go Market Read Service 补齐只读聚合能力：基于 Redis 本地行情快照计算板块内相对强度和分时关键位，Redis 未命中时可只读 MySQL 最新日线快照兜底，接口均受内部 token 保护。
+- [x] Python 行情批量读取增加可选 Go market-read seam：配置 `TQUANT_MARKET_READ_SERVICE_URL` 后先读 Go 本地快照，失败或未配置时回退现有 Python Provider Router。
+- [x] Go Scan Worker 骨架：shadow 状态接口，明确 production write 禁止。
+- [x] Go Scan Worker 增加影子触发 seam：`/api/scan-worker/v1/shadow/run` 仅接受请求并返回只读状态，不写生产快照。
+- [x] Python 低吸物化刷新接入 Go Scan Worker 影子触发：新增 `TQUANT_GO_SCAN_WORKER_URL` / `TQUANT_GO_SCAN_SHADOW_ENABLED`，默认关闭；开启后只触发 shadow run，不改变 Python 策略结果。
+- [x] Go Market / Scan 内部接口增加 `X-Internal-Service-Token` 校验，健康检查不受影响，避免 profile 启用后裸读内部接口。
+- [x] Python BFF 远端适配补齐 `X-Request-ID` 透传，跨服务调用可按 request_id 串联日志。
+- [x] Python BFF 远端适配指标接入 `/metrics`：calls/successes/failures/circuit_short_circuits/credentials_suppressed。
+- [x] Go BFF 生成缺失 `X-Request-ID` 时同步写入上游请求头和响应头，保证 Python 上游和客户端看到同一链路 ID。
+- [x] Docker Compose 增加可选 `go-bff`、`go-market`、`go-scan` profiles，默认不启动。
+- [x] Docker Compose 为 app/worker 注入 `TQUANT_INTERNAL_SERVICE_TOKEN` 和远端服务 URL 开关，默认空值保持当前 Python 路径。
+- [x] Rust PyO3 `tquant-rs` 骨架：`max_drawdown`、`rolling_mean`、`atr_wilder`。
+- [x] Python Rust 可选入口：`rust_math.py` 默认关闭，包装 `max_drawdown`、`rolling_mean`、`atr_wilder`，失败自动回退，不影响现有计算。
+- [x] 新增测试覆盖配置化、BFF cache 和 Rust 默认关闭。
+- [x] BFF 缓存指标接入 `/metrics`：reads/hits/writes/skips/schema_misses。
+- [x] BFF 本地聚合统一超时：monitor/paper/strategy/settings 均通过 `run_workspace_with_timeout`，慢数据源返回 partial response，避免拖住前端请求。
+- [x] 清理未跟踪 `output/` 本地产物，并将 `output/` 加入 `.gitignore`。
+- [x] Go/Rust 骨架补测试源码并已本地执行：Go BFF/Market/Scan 与 Rust `tquant-rs` 基础单元测试均通过。
+- [x] 新增 `scripts/verify_backend_refactor_foundation.sh`，统一验证 Python、Compose、Go、Rust 基础骨架。
+- [x] 验证脚本无 Docker 时仍解析 `docker-compose.mysql.yml`，至少校验关键服务存在，避免本地完全跳过 Compose 结构检查。
+- [x] 新增运行手册：`docs/backend-refactor-runtime-runbook-2026-05-22.md`，明确 Go/Rust 默认禁用、启用条件、验证和回滚方式。
+
+### 默认关闭 / 条件启用项
+
+- [x] Go BFF 已具备影子比对接入点，默认关闭，不接管生产主路由；待 Go/Docker 构建与云端 shadow 验收后再决定是否扩大接入。
+- [x] Go market read service 已接 Redis 本地报价缓存读取、MySQL 最新日线兜底、板块相对强度和分时关键位计算；Python 批量报价已具备可选 Go 读服务 seam；当前不读取外部行情源。
+- [x] Go scan worker 已接入影子触发 seam：为保证策略稳定，生产扫描仍由 Python 负责，Go 不写生产快照；生产接管需另走连续交易日 parity 验收。
+- [x] Rust PyO3 已接入可选指标 seam：`performance_math.sequence_max_drawdown_pct()` 可在 `RUST_FINANCE_MATH_ENABLED=true` 且模块可用时走 Rust，失败自动回退 Python；默认关闭。
+- [x] MinuteBar 时序库升级不在本轮执行：文档定义为条件触发，当前不做破坏性数据迁移；后续只有分钟数据规模真实触发阈值后再进维护窗口。
+
+### 本轮验证
+
+- [x] Python 编译：`backend/.venv/bin/python -m compileall backend/app backend/tests/test_backend_refactor_foundation.py -q` 通过。
+- [x] 后端针对性 pytest：`cd backend && .venv/bin/python -m pytest tests/test_backend_refactor_foundation.py tests/test_bff_routes.py tests/test_performance_regression.py -q` 通过，23 passed。
+- [x] 统一验证脚本：`scripts/verify_backend_refactor_foundation.sh` 通过，Python `34 passed`，Go BFF/Market/Scan `go test` 通过，Rust `cargo test` 通过；Compose YAML 静态解析通过。
+- [x] Go scan shadow 新增测试：`backend/tests/test_backend_refactor_foundation.py` 覆盖默认关闭和多策略触发；统一验证脚本更新为 Python `34 passed`。
+- [x] `make qa` 通过。
+- [x] `make prod-preflight` 通过。
+- [x] Compose YAML 解析：`backend/.venv/bin/python - <<'PY' ... yaml.safe_load(...)` 通过，识别 10 个 services。
+- [x] diff 检查：`git diff --check` 通过。
+- [x] 新增文件行数检查：本轮新增 Go/Rust/Python 文件均小于 500 行。
+- [x] Compose 结构静态检查替代验证：本机未安装 Docker，无法执行 `docker compose config`；统一验证脚本已用 YAML 静态解析覆盖关键服务存在性。
+- [x] Go/Rust 编译测试：本机已安装 Go/Rust 后补跑通过；Rust 使用 ABI3 兼容环境变量执行测试。
+- [x] `make runtime-snapshot`：本地 SQLite 临时后端启动后通过 healthz/readyz，runtime 详情因端点要求登录态返回“请先登录”，符合当前安全设计。
+- [x] 云端部署：`scripts/deploy_cloud_server.sh` 已完成，远端 migration/app/runtime-worker/backtest-worker 重建成功。
+- [x] 云端验收：`http://43.143.243.97:18090/readyz`、`https://43.143.243.97/readyz -k` 均返回 ok；远端 Compose profile 识别 `go-bff-gateway`、`go-market-read-service`、`go-scan-worker`。
+- [x] 最新数据闭环验收：云端 `latest_data_acceptance.py` 返回 ok，预期/发布交易日均为 `2026-05-22`，日线 5208 条，8 个生产策略快照齐全，无失败和警告。
+- [x] HTTPS 本机回环验收：服务器本机通过 `--resolve weisilianghua.cloud:443:127.0.0.1` 访问 `/readyz` 返回 ok；外网直连域名当前 TLS 握手被重置，属于域名/SNI/云网络层问题，IP HTTPS 和 HTTP 服务正常。
+
 ## 前端重构 Codex 版报告核验与落地
 
 需求来源：`/Users/j/Downloads/TQuant_前端重构完整方案_Codex版.html`
@@ -263,6 +372,32 @@
 - `backend/.venv/bin/python -m pytest backend/tests/test_auth_cookie_security.py backend/tests/test_login_lockout.py backend/tests/test_security_headers.py backend/tests/test_v4_completion_contracts.py backend/tests/test_v4_remaining_contracts.py -q` 通过，10 passed。
 - `npm run build` 通过。
 - 生产代码文件未发现超过 500 行；现存超过 500 行的是既有测试文件。
+
+## 2026-05-25 审查整改与 CSS 收敛收尾
+
+### 已完成
+
+- [x] 交易时段内每小时全市场拉取已落地，新增市场小时快照任务与路由/调度接入。
+- [x] 中午复盘与下午收盘复盘链路已落地，新增复盘任务、归档与前端类型。
+- [x] 监控页 BFF `paired_hedge` DetachedInstanceError 已修复。
+- [x] Go / Rust 性能验收已通过，release 版 Rust 基准对 Python 达到 5x 以上，Go market-read benchmark 维持在阈值内。
+- [x] 生产 compose 默认开启后台调度，交易时段内每小时全市场快照与午盘/收盘复盘会在主应用进程中按 leader lock 执行。
+- [x] Web 端页面级装饰 CSS 继续收敛，删除工作台 shell、股票卡片、metric/info pill 相关全局 CSS。
+- [x] 生产代码单文件超过 500 行的问题已清零，`backend/app/api/routes/backtests.py` 已拆分到 474 行。
+
+### 验证
+
+- [x] `cd frontend && npm run build` 通过。
+- [x] `cd backend && .venv/bin/python -m pytest -q tests/test_market_hourly_snapshot.py tests/test_market_routes.py tests/test_paper_performance_archive.py tests/test_main_timezone.py tests/test_bff_routes.py tests/test_finance_performance_math.py tests/test_backend_refactor_foundation.py tests/test_backtest_v2_api_contract.py tests/test_backtest_phase2_research_tasks.py tests/test_research_route_ownership.py` 通过。
+- [x] `python3 scripts/verify_go_rust_performance_acceptance.py` 已生成 `docs/reports/go-rust-performance-acceptance-2026-05-25.json`，Go/Rust/ABI3 seam 验收通过，Rust 三项速度比分别为 `6.785x` / `12.381x` / `9.854x`。
+- [x] `git diff --check` 通过。
+- [x] 生产代码超过 500 行扫描结果为 0。
+
+### 当前进度
+
+- Web CSS：63 行。
+- 全站 CSS：2799 行。
+- 剩余 CSS 主要是移动端页面和主题 token，不再包含工作台页面级装饰壳。
 
 ## v7 全界面易用性优化执行计划
 

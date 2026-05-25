@@ -18,12 +18,29 @@ import {
   formatPct,
   type BacktestStrategyOption,
 } from "./backtestDisplay";
+import { combineBacktestStyles } from "./backtestStyles";
+import { BACKTEST_EMPTY_STYLE } from "./backtestPageLayoutStyles";
+import {
+  BACKTEST_MINI_METRIC_LABEL_STYLE,
+  BACKTEST_MINI_METRIC_LOW_STYLE,
+  BACKTEST_MINI_METRIC_MEDIUM_STYLE,
+  BACKTEST_MINI_METRIC_STYLE,
+  BACKTEST_MINI_METRIC_VALUE_STYLE,
+  BACKTEST_RESEARCH_TITLE_HEADING_STYLE,
+  BACKTEST_RESEARCH_TITLE_META_STYLE,
+  BACKTEST_RESEARCH_TITLE_STYLE,
+  BACKTEST_TASK_BUTTON_STYLE,
+  BACKTEST_TASK_LIST_STYLE,
+  BACKTEST_TASK_META_STYLE,
+  BACKTEST_TASK_ROW_ACTIVE_STYLE,
+  BACKTEST_TASK_ROW_STYLE,
+} from "./backtestResearchStyles";
 
 export function PanelTitle({ title, meta, action }: { title: string; meta?: string; action?: ReactNode }) {
   return (
-    <div className="backtest-research-title">
-      <h3>{title}</h3>
-      {meta ? <span>{meta}</span> : null}
+    <div style={BACKTEST_RESEARCH_TITLE_STYLE}>
+      <h3 style={BACKTEST_RESEARCH_TITLE_HEADING_STYLE}>{title}</h3>
+      {meta ? <span style={BACKTEST_RESEARCH_TITLE_META_STYLE}>{meta}</span> : null}
       {action}
     </div>
   );
@@ -101,16 +118,21 @@ export function SliderParamField({
 }
 
 export function Metric({ label, value, className = "" }: { label: string; value: string; className?: string }) {
+  const toneStyle = className === "pbo-low"
+    ? BACKTEST_MINI_METRIC_LOW_STYLE
+    : className === "pbo-medium"
+      ? BACKTEST_MINI_METRIC_MEDIUM_STYLE
+      : undefined;
   return (
-    <div className={className}>
-      <span>{label}</span>
-      <strong>{value}</strong>
+    <div style={combineBacktestStyles(BACKTEST_MINI_METRIC_STYLE, toneStyle)}>
+      <span style={BACKTEST_MINI_METRIC_LABEL_STYLE}>{label}</span>
+      <strong style={BACKTEST_MINI_METRIC_VALUE_STYLE}>{value}</strong>
     </div>
   );
 }
 
 export function Empty({ text }: { text: string }) {
-  return <div className="backtest-empty">{text}</div>;
+  return <div style={BACKTEST_EMPTY_STYLE}>{text}</div>;
 }
 
 export function formatParams(params?: Record<string, BacktestParamValue> | null): string {
@@ -208,12 +230,12 @@ export function TaskList<T extends { id: number; name: string; status: string; p
   formatStrategy: (strategy?: string) => string;
 }) {
   return (
-    <div className="backtest-task-list">
+    <div style={BACKTEST_TASK_LIST_STYLE}>
       {items.map((item) => (
-        <div className={`backtest-task-row${selectedId === item.id ? " active" : ""}`} key={item.id}>
-          <Button type="text" onClick={() => onSelect(item.id)}>
+        <div style={combineBacktestStyles(BACKTEST_TASK_ROW_STYLE, selectedId === item.id ? BACKTEST_TASK_ROW_ACTIVE_STYLE : undefined)} key={item.id}>
+          <Button type="text" onClick={() => onSelect(item.id)} style={BACKTEST_TASK_BUTTON_STYLE}>
             <strong>{item.name || `任务 #${item.id}`}</strong>
-            <span>{formatStrategy(item.strategy)} · {item.status} · {formatProgress(item.progress ?? item.progress_pct, item.status)}</span>
+            <span style={BACKTEST_TASK_META_STYLE}>{formatStrategy(item.strategy)} · {item.status} · {formatProgress(item.progress ?? item.progress_pct, item.status)}</span>
           </Button>
           <Button onClick={() => onCancel(item.id)} disabled={!isCancellable(item.status)}>取消</Button>
           <Button danger type="text" onClick={() => onDelete(item.id)}>删除</Button>

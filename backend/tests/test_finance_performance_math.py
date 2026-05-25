@@ -8,6 +8,7 @@ from app.services.finance.performance_math import (
     risk_free_rate_from_params,
     sequence_max_drawdown_pct,
 )
+from app.services.finance import performance_math
 from app.services.indicators import atr, rsi_wilder
 from app.services.low_buy.risk_metrics import _compute_sharpe_from_returns
 
@@ -33,6 +34,11 @@ def test_low_buy_sharpe_path_uses_annualized_math() -> None:
 
 def test_sequence_max_drawdown_respects_time_order() -> None:
     assert sequence_max_drawdown_pct([100.0, 80.0, 120.0, 110.0]) == pytest.approx(-20.0)
+
+
+def test_sequence_max_drawdown_uses_rust_fallback_when_available(monkeypatch) -> None:
+    monkeypatch.setattr(performance_math, "rust_max_drawdown", lambda _: 0.25)
+    assert performance_math.sequence_max_drawdown_pct([100.0, 80.0, 120.0, 110.0]) == pytest.approx(-25.0)
 
 
 def test_atr_uses_wilder_rma_not_last_sma() -> None:

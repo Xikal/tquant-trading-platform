@@ -1,4 +1,5 @@
 import type { AuthUser } from "../../types";
+import { Card, Col, Row, Space, Typography } from "antd";
 import { BacktestResearchPanel, type BacktestResearchSection } from "../backtest/BacktestResearchPanel";
 import { useBacktestDashboard } from "../backtest/useBacktestDashboard";
 import type { StrategyHubTab } from "./useStrategyHub";
@@ -26,17 +27,23 @@ export function StrategyHubExpertPanel({
 
   const dashboard = useBacktestDashboard(sectionForTab(tab));
   return (
-    <div className="strategy-bridge">
-      <section className="panel strategy-bridge-header">
-        <h2>{meta[0]}</h2>
-        <p>{meta[1]}</p>
-      </section>
-      <BacktestResearchPanel
-        state={dashboard.research}
-        actions={dashboard.researchActions}
-        sections={[researchSectionForTab(tab)]}
-      />
-    </div>
+    <Row gutter={[12, 12]}>
+      <Col xs={24} xl={7}>
+        <Card size="small">
+          <Space direction="vertical" size={4}>
+            <Typography.Title level={4} style={{ margin: 0 }}>{meta[0]}</Typography.Title>
+            <Typography.Text type="secondary">{meta[1]}</Typography.Text>
+          </Space>
+        </Card>
+      </Col>
+      <Col xs={24} xl={17}>
+        <BacktestResearchPanel
+          state={dashboard.research}
+          actions={dashboard.researchActions}
+          sections={[researchSectionForTab(tab)]}
+        />
+      </Col>
+    </Row>
   );
 }
 
@@ -56,10 +63,12 @@ function researchSectionForTab(tab: ExpertTabKey): BacktestResearchSection {
 
 function PermissionPanel({ title, description }: { title: string; description: string }) {
   return (
-    <section className="panel strategy-access-panel">
-      <h2>{title}</h2>
-      <p>{description}</p>
-    </section>
+    <Card size="small">
+      <Space direction="vertical" size={4}>
+        <Typography.Title level={4} style={{ margin: 0 }}>{title}</Typography.Title>
+        <Typography.Text type="secondary">{description}</Typography.Text>
+      </Space>
+    </Card>
   );
 }
 

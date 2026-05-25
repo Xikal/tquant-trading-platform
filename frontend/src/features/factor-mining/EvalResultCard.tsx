@@ -1,13 +1,16 @@
 import type { FactorEvalResult } from "../../api/factorMining";
+import { Alert, Card, Col, Row, Space, Statistic, Tag, Typography } from "antd";
 import { formatPct } from "../backtest/backtestDisplay";
 
 export function EvalResultCard({ result }: { result: FactorEvalResult | null | undefined }) {
   if (!result) {
     return (
-      <section className="factor-eval-card empty">
-        <strong>暂无评估结果</strong>
-        <span>先选择因子并点击“评估因子”，系统会展示 IC、Walk-forward 和生产门槛。</span>
-      </section>
+      <Card size="small">
+        <Space direction="vertical" size={2}>
+          <Typography.Text strong>暂无评估结果</Typography.Text>
+          <Typography.Text type="secondary">先选择因子并点击“评估因子”，系统会展示 IC、Walk-forward 和生产门槛。</Typography.Text>
+        </Space>
+      </Card>
     );
   }
   const items = [
@@ -19,30 +22,40 @@ export function EvalResultCard({ result }: { result: FactorEvalResult | null | u
     { label: "生产门槛", value: result.passed_production_gate ? "通过" : "未通过", tone: result.passed_production_gate ? "ok" : "bad" },
   ];
   return (
-    <section className="factor-eval-card">
-      <div className="factor-section-title">
-        <h3>评估结果</h3>
-        <span>样本 {result.observation_count} 条 · 交易日 {result.sample_days} 天 · Walk-forward {result.walk_forward_window_count ?? 0} 窗口</span>
-      </div>
-      <div className="factor-metric-grid">
+    <Card
+      size="small"
+      title="评估结果"
+      extra={<Typography.Text type="secondary">样本 {result.observation_count} 条 · 交易日 {result.sample_days} 天 · Walk-forward {result.walk_forward_window_count ?? 0} 窗口</Typography.Text>}
+    >
+      <Space direction="vertical" size={12} style={{ width: "100%" }}>
+        <Row gutter={[8, 8]}>
         {items.map((item) => (
-          <article key={item.label} className={item.tone}>
-            <span>{item.label}</span>
-            <strong>{item.value}</strong>
-          </article>
+          <Col key={item.label} xs={12} md={8}>
+            <Card size="small" styles={{ body: { padding: "8px 10px" } }}>
+              <Statistic title={item.label} value={item.value} valueStyle={{ fontSize: 16, color: metricColor(item.tone) }} />
+            </Card>
+          </Col>
         ))}
-      </div>
-      {result.warnings?.length ? (
-        <ul className="factor-warnings">
-          {result.warnings.map((warning) => (
-            <li key={warning}>{warning}</li>
-          ))}
-        </ul>
-      ) : null}
-    </section>
+        </Row>
+        {result.warnings?.length ? (
+          <Alert
+            type="warning"
+            showIcon
+            message="评估提醒"
+            description={<Space direction="vertical" size={2}>{result.warnings.map((warning) => <Typography.Text key={warning}>{warning}</Typography.Text>)}</Space>}
+          />
+        ) : <Tag color="green">未发现门槛警告</Tag>}
+      </Space>
+    </Card>
   );
 }
 
 function pct(value: number): string {
   return `${(value * 100).toFixed(2)}%`;
+}
+
+function metricColor(tone: string): string {
+  if (tone === "ok") return "#178a5e";
+  if (tone === "bad") return "#c34a36";
+  return "#a16207";
 }

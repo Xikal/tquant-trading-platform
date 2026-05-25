@@ -42,8 +42,7 @@ def run_position_shadow(samples: list[PositionSample]) -> dict[str, Any]:
 
 
 def _train_ppo_shadow(samples: list[PositionSample]) -> dict[str, Any]:
-    from stable_baselines3 import PPO
-    from stable_baselines3 import SAC
+    PPO, SAC = _load_stable_baselines3()
 
     ppo_timesteps = _ppo_timesteps(len(samples))
     env = make_discrete_env(samples)
@@ -77,6 +76,18 @@ def _train_sac_shadow(samples: list[PositionSample], sac_cls: Any) -> dict[str, 
         return {"trained": True, "policy": _policy_from_sac_model(model, samples), "total_timesteps": sac_timesteps}
     except Exception as exc:
         return {"trained": False, "policy": [], "total_timesteps": 0, "warning": str(exc)[:120]}
+
+
+def _load_stable_baselines3() -> tuple[Any, Any]:
+    try:
+        from stable_baselines3 import PPO
+        from stable_baselines3 import SAC
+    except ImportError as exc:
+        raise RuntimeError(
+            "stable_baselines3/gymnasium 是可选 RL 研究依赖，"
+            "请使用 backend/requirements-rl-extra.txt 在独立研究环境安装。"
+        ) from exc
+    return PPO, SAC
 
 
 def _deep_rl_training_enabled() -> bool:

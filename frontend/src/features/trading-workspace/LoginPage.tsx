@@ -1,5 +1,19 @@
 import type { AuthDraft } from "../workspace-shared/workspaceTypes";
-import { Alert, Button, Card, Checkbox, Form, Input, Space, Tag, Typography } from "antd";
+import {
+  Alert,
+  Button,
+  Card,
+  Checkbox,
+  Col,
+  Flex,
+  Form,
+  Input,
+  Row,
+  Space,
+  Statistic,
+  Tag,
+  Typography,
+} from "antd";
 import { AppForm } from "../../ui/forms/AppForm";
 
 interface LoginPageProps {
@@ -22,156 +36,179 @@ export function LoginPage({
   const loginStepText = loading
     ? "验证成功后会自动加载您的持仓、榜单和模拟盘数据。"
     : "输入账号和密码即可进入工作台，系统会自动恢复您的持仓、榜单和模拟盘数据。";
+
   return (
-    <main className="login-shell">
-      <section className="login-visual" aria-label="盘中决策台概览">
-        <div className="login-visual-head">
-          <div>
-            <h1>登录即进入盘中决策台</h1>
-            <p>微信号、低吸候选、风控门槛与 AI 解释统一接入。</p>
-          </div>
-          <span className="login-live-dot">盘中在线</span>
-        </div>
-
-        <div className="login-kpi-card">
-          <div>
-            <span>今日策略浮盈</span>
-            <strong>+¥128,600</strong>
-            <small>已覆盖 6 个自选 · 3 个可执行机会</small>
-          </div>
-          <div>
-            <span>策略命中率</span>
-            <strong className="danger">78%</strong>
-            <small>风险席位 2</small>
-          </div>
-          <em>演示数据，仅用于说明界面能力，不代表真实收益。</em>
-        </div>
-
-        <div className="login-chart-card">
-          <div className="login-chart-label">资金流入扫描</div>
-          <div className="login-grid-lines" aria-hidden="true" />
-          <svg className="login-chart-line" viewBox="0 0 720 180" role="img" aria-label="资金曲线">
-            <path d="M8 150 C96 140 108 98 182 105 S285 122 354 68 492 78 566 54 646 72 712 34" />
-          </svg>
-          <div className="login-bars" aria-hidden="true">
-            <span className="green" />
-            <span className="red" />
-            <span className="green" />
-            <span className="red tall" />
-            <span className="red" />
-            <span className="green" />
-            <span className="red" />
-            <span className="gold" />
-          </div>
-          <span className="login-point blue" />
-          <span className="login-point gold main" />
-          <span className="login-point red" />
-          <span className="login-point pale" />
-          <span className="login-arrow">↗</span>
-        </div>
-
-        <div className="login-signal-grid">
-          <div>
-            <span>低吸机会</span>
-            <strong className="danger">3 个确认</strong>
-          </div>
-          <div>
-            <span>做T可执行</span>
-            <strong>2 单通过</strong>
-          </div>
-        </div>
-
-        <div className="login-mini-row">
-          <div className="login-mini-chart">
-            <div className="login-mini-line" />
-            <span className="tag red">红盘突破</span>
-            <span className="tag yellow">低吸 +3.6%</span>
-            <span className="tag green">风控通过</span>
-          </div>
-          <div className="login-radar">
-            <div className="radar-circle one" />
-            <div className="radar-circle two" />
-            <div className="radar-line" />
-            <span />
-            <strong>机会捕捉中</strong>
-          </div>
-        </div>
-      </section>
-
-      <section className="login-panel-wrap">
-        <div className="login-market-pill">
-          <span />
-          <strong>上证指数 3278.62&nbsp;&nbsp;+0.86%</strong>
-          <strong>资金净流入 ¥42.8亿</strong>
-        </div>
-
-        <Card className="login-card" variant="borderless">
-          <AppForm<AuthDraft>
-            layout="vertical"
-            initialValues={draft}
-            onValuesChange={(_, values) => setDraft({ ...draft, ...values })}
-            onFinish={onLogin}
-            requiredMark={false}
+    <main
+      style={{
+        alignItems: "center",
+        background: "linear-gradient(145deg, #eef3f8 0%, #f8fafc 52%, #e9eff7 100%)",
+        display: "flex",
+        minHeight: "100vh",
+        padding: 16,
+      }}
+    >
+      <Row align="stretch" gutter={[16, 16]} style={{ margin: "0 auto", maxWidth: 1280, width: "100%" }}>
+        <Col xs={24} lg={14}>
+          <Card
+            aria-label="盘中决策台概览"
+            variant="borderless"
+            style={{ background: "#0c1626", color: "#fff", height: "100%", minHeight: 560 }}
+            styles={{
+              body: {
+                display: "flex",
+                flexDirection: "column",
+                gap: 24,
+                height: "100%",
+                justifyContent: "space-between",
+                padding: 28,
+              },
+            }}
           >
-            <div className="login-title">
-              <Typography.Title level={2}>登录维斯量化平台</Typography.Title>
-              <Typography.Paragraph>{loginStepText}</Typography.Paragraph>
-            </div>
-            <Space wrap className="login-status-row">
-              <Tag color="red"><i className="red-dot" /> 行情在线</Tag>
-              <Tag color="gold">安全接入</Tag>
+            <Flex align="flex-start" gap={16} justify="space-between" wrap>
+              <Space direction="vertical" size={4}>
+                <Typography.Title level={1} style={{ color: "#fff", fontSize: 30, margin: 0 }}>
+                  登录即进入盘中决策台
+                </Typography.Title>
+                <Typography.Text style={{ color: "#94a3b8", fontSize: 15 }}>
+                  低吸候选、持仓风控与分析解释统一接入。
+                </Typography.Text>
+              </Space>
+              <Tag color="gold">盘中在线</Tag>
+            </Flex>
+
+            <Space direction="vertical" size={16} style={{ width: "100%" }}>
+              <Row gutter={[12, 12]}>
+                <Col xs={24} sm={12}>
+                  <Card size="small" style={{ background: "#122239", borderColor: "#263951" }}>
+                    <Statistic
+                      title={<span style={{ color: "#94a3b8" }}>低吸机会</span>}
+                      value="3 个确认"
+                      valueStyle={{ color: "#f87171", fontSize: 24 }}
+                    />
+                  </Card>
+                </Col>
+                <Col xs={24} sm={12}>
+                  <Card size="small" style={{ background: "#122239", borderColor: "#263951" }}>
+                    <Statistic
+                      title={<span style={{ color: "#94a3b8" }}>做 T 可执行</span>}
+                      value="2 单通过"
+                      valueStyle={{ color: "#f3bb5d", fontSize: 24 }}
+                    />
+                  </Card>
+                </Col>
+              </Row>
+              <Card size="small" style={{ background: "#122239", borderColor: "#263951" }}>
+                <Space direction="vertical" size={12} style={{ width: "100%" }}>
+                  <Flex justify="space-between" wrap gap={8}>
+                    <Typography.Text strong style={{ color: "#fff" }}>
+                      交易保护
+                    </Typography.Text>
+                    <Tag color="green">风控校验已接入</Tag>
+                  </Flex>
+                  <Typography.Text style={{ color: "#cbd5e1" }}>
+                    信号、仓位、止损与模拟交易均由平台统一校验，研究信号不会直接绕过风控下单。
+                  </Typography.Text>
+                  <Flex gap={8} wrap>
+                    <Tag color="blue">行情同步</Tag>
+                    <Tag color="gold">策略复盘</Tag>
+                    <Tag color="red">风险提醒</Tag>
+                  </Flex>
+                </Space>
+              </Card>
             </Space>
 
-            <Form.Item name="username" label="手机号 / 账号" rules={[{ required: true, message: "请输入手机号或账号" }]}>
-              <Input
-                autoComplete="username"
-                placeholder="请输入手机号或账号"
-                disabled={loading}
-                prefix="⌕"
-              />
-            </Form.Item>
-
-            <Form.Item name="password" label="登录密码" rules={[{ required: true, message: "请输入登录密码" }]}>
-              <Input.Password
-                autoComplete="current-password"
-                placeholder="请输入登录密码"
-                disabled={loading}
-              />
-            </Form.Item>
-
-            <div className="login-options">
-              <Form.Item name="remember" valuePropName="checked" noStyle>
-                <Checkbox disabled={loading}>记住登录</Checkbox>
-              </Form.Item>
-              <Button type="text" disabled={loading} title="请联系管理员重置密码">忘记密码？联系管理员</Button>
-            </div>
-
-            {error ? (
-              <Alert
-                type="error"
-                showIcon
-                message="登录失败"
-                description={`${error}。请先检查账号和密码；连续失败会触发临时保护。`}
-              />
-            ) : null}
-
-            <Button htmlType="submit" type="primary" className="login-submit" loading={loading} block>
-              {loading ? "验证成功，正在加载您的数据..." : "登录进入工作台"} <span aria-hidden="true">→</span>
-            </Button>
-            <Button type="default" className="login-register" onClick={onRegister} disabled={loading} block>
-              开户注册
-            </Button>
-
-            <Alert
-              className="login-protection"
-              type="info"
-              showIcon
-              message="登录保护"
-              description="管理令牌、本机加密和行情缓存同步校验，进入后可直接查看盘中信号。"
-            />
-          </AppForm>
-        </Card>
-      </section>
+            <Typography.Text style={{ color: "#94a3b8", fontSize: 12 }}>
+              界面示例仅用于说明平台能力，不构成收益承诺或交易建议。
+            </Typography.Text>
+          </Card>
+        </Col>
+        <Col xs={24} lg={10}>
+          <Flex justify="center" vertical style={{ height: "100%" }}>
+            <Card
+              variant="borderless"
+              style={{ border: "1px solid #dbe3ee", boxShadow: "0 20px 48px rgba(15, 23, 42, 0.08)" }}
+              styles={{ body: { padding: 32 } }}
+            >
+              <AppForm<AuthDraft>
+                layout="vertical"
+                initialValues={draft}
+                onValuesChange={(_, values) => setDraft({ ...draft, ...values })}
+                onFinish={onLogin}
+                requiredMark={false}
+              >
+                <Space direction="vertical" size={18} style={{ width: "100%" }}>
+                  <Space direction="vertical" size={2} style={{ textAlign: "center", width: "100%" }}>
+                    <Typography.Title level={2} style={{ margin: 0 }}>
+                      登录维斯量化平台
+                    </Typography.Title>
+                    <Typography.Paragraph type="secondary" style={{ margin: 0 }}>
+                      {loginStepText}
+                    </Typography.Paragraph>
+                  </Space>
+                  <Flex gap={8} justify="center" wrap>
+                    <Tag color="green">行情在线</Tag>
+                    <Tag color="gold">安全接入</Tag>
+                  </Flex>
+                  <Form.Item
+                    name="username"
+                    label="手机号 / 账号"
+                    rules={[{ required: true, message: "请输入手机号或账号" }]}
+                    style={{ marginBottom: 0 }}
+                  >
+                    <Input
+                      autoComplete="username"
+                      placeholder="请输入手机号或账号"
+                      disabled={loading}
+                      size="large"
+                    />
+                  </Form.Item>
+                  <Form.Item
+                    name="password"
+                    label="登录密码"
+                    rules={[{ required: true, message: "请输入登录密码" }]}
+                    style={{ marginBottom: 0 }}
+                  >
+                    <Input.Password
+                      autoComplete="current-password"
+                      placeholder="请输入登录密码"
+                      disabled={loading}
+                      size="large"
+                    />
+                  </Form.Item>
+                  <Flex align="center" justify="space-between" wrap gap={8}>
+                    <Form.Item name="remember" valuePropName="checked" noStyle>
+                      <Checkbox disabled={loading}>记住登录</Checkbox>
+                    </Form.Item>
+                    <Button type="text" disabled={loading} title="请联系管理员重置密码">
+                      忘记密码？联系管理员
+                    </Button>
+                  </Flex>
+                  {error ? (
+                    <Alert
+                      type="error"
+                      showIcon
+                      message="登录失败"
+                      description={`${error}。请先检查账号和密码；连续失败会触发临时保护。`}
+                    />
+                  ) : null}
+                  <Button htmlType="submit" size="large" type="primary" loading={loading} block>
+                    {loading ? "验证成功，正在加载您的数据..." : "登录进入工作台"}
+                  </Button>
+                  <Button size="large" type="default" onClick={onRegister} disabled={loading} block>
+                    开户注册
+                  </Button>
+                  <Alert
+                    type="info"
+                    showIcon
+                    message="登录保护"
+                    description="管理令牌、本机加密和行情缓存同步校验，进入后可直接查看盘中信号。"
+                  />
+                </Space>
+              </AppForm>
+            </Card>
+          </Flex>
+        </Col>
+      </Row>
     </main>
   );
 }

@@ -684,7 +684,7 @@ cd android
 Command:
 
 ```bash
-curl -sS 'http://43.143.243.97:18090/api/app/update/android?current_version_code=2' | python3 -m json.tool
+curl -sS 'http://<server-ip>:18090/api/app/update/android?current_version_code=2' | python3 -m json.tool
 ```
 
 Expected:
@@ -754,13 +754,13 @@ rsync -az --delete -e 'ssh -i /Users/j/Downloads/gupiao.pem -o StrictHostKeyChec
   --exclude 'artifacts' --exclude 'data' --exclude 'backend/.venv' --exclude 'backend/data' \
   --exclude 'frontend/node_modules' --exclude 'frontend/dist' --exclude 'frontend/dist-native' \
   --exclude 'frontend/android' --exclude 'frontend/ios' --exclude '*.tgz' \
-  /Users/j/Documents/gupiao/ ubuntu@43.143.243.97:/opt/gupiao/
+  /Users/j/Documents/gupiao/ ubuntu@<server-ip>:/opt/gupiao/
 ```
 
 Then:
 
 ```bash
-ssh -i /Users/j/Downloads/gupiao.pem ubuntu@43.143.243.97 \
+ssh -i /Users/j/Downloads/gupiao.pem ubuntu@<server-ip> \
   "cd /opt/gupiao && echo 'bjl.199602' | sudo -S docker compose -f docker-compose.mysql.yml up -d --build app"
 ```
 
@@ -769,9 +769,9 @@ ssh -i /Users/j/Downloads/gupiao.pem ubuntu@43.143.243.97 \
 Commands:
 
 ```bash
-curl -sS http://43.143.243.97:18090/readyz
-curl -sS 'http://43.143.243.97:18090/api/screeners/low-buy/priority-board?limit=3'
-curl -sS 'http://43.143.243.97:18090/api/app/update/android?current_version_code=2'
+curl -sS http://<server-ip>:18090/readyz
+curl -sS 'http://<server-ip>:18090/api/screeners/low-buy/priority-board?limit=3'
+curl -sS 'http://<server-ip>:18090/api/app/update/android?current_version_code=2'
 ```
 
 Expected:

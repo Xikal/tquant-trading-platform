@@ -8,6 +8,7 @@ from fastapi.testclient import TestClient
 
 from app.api.routes import market
 from app.core.auth import get_current_user
+from app.core.database import get_db
 
 
 def _override_user():
@@ -26,6 +27,9 @@ class MarketRouteTests(unittest.TestCase):
         app = FastAPI()
         app.include_router(market.router, prefix="/api")
         app.dependency_overrides[get_current_user] = _override_user
+        app.dependency_overrides[get_db] = lambda: SimpleNamespace(
+            execute=lambda *_args, **_kwargs: SimpleNamespace(scalar_one_or_none=lambda: None)
+        )
         self.client = TestClient(app)
 
     def tearDown(self) -> None:
@@ -37,6 +41,7 @@ class MarketRouteTests(unittest.TestCase):
         body = response.json()
         self.assertEqual(body["state_text"], "震荡修复")
         self.assertEqual(body["hot_industries"], ["半导体"])
+        self.assertEqual(body["hourly_all_market_snapshot"], {})
 
     def test_market_trading_session_returns_backend_calendar_status(self) -> None:
         response = self.client.get("/api/market/trading-session")

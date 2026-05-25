@@ -1494,7 +1494,7 @@ PYTHONPATH=backend:. backend/.venv/bin/python -m pytest backend/tests/test_legac
 Deploy:
 
 ```bash
-CLOUD_HOST=43.143.243.97 \
+CLOUD_HOST=<server-ip-or-domain> \
 CLOUD_USER=ubuntu \
 CLOUD_SSH_KEY=/path/to/gupiao.pem \
 ./scripts/deploy_cloud_server.sh
@@ -1503,8 +1503,8 @@ CLOUD_SSH_KEY=/path/to/gupiao.pem \
 Verify:
 
 ```bash
-curl -sS https://43.143.243.97/readyz -k
-curl -sS http://43.143.243.97:18090/readyz
+curl -sS https://<server-ip-or-domain>/readyz -k
+curl -sS http://<server-ip-or-domain>:18090/readyz
 ```
 ```
 
@@ -1518,7 +1518,7 @@ Append:
 Use the previous deployment backup directory on the server:
 
 ```bash
-ssh ubuntu@43.143.243.97
+ssh ubuntu@<server-ip-or-domain>
 ls -dt /home/ubuntu/gupiao-deploy-backup-*
 ```
 

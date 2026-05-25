@@ -1,4 +1,35 @@
+import type { CSSProperties } from "react";
 import type { WatchDraft } from "../workspace-shared/workspaceTypes";
+
+const HOLDING_WIZARD_STYLE: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
+  gap: 8,
+  margin: "10px 0 12px",
+};
+
+const HOLDING_WIZARD_CARD_STYLE: CSSProperties = {
+  display: "grid",
+  gap: 4,
+  minWidth: 0,
+  border: "1px solid rgba(148, 163, 184, 0.24)",
+  borderRadius: 12,
+  background: "#ffffff",
+  padding: 10,
+};
+
+const HOLDING_WIZARD_LABEL_STYLE: CSSProperties = {
+  color: "#64748b",
+  fontSize: 11,
+  lineHeight: 1.35,
+};
+
+const HOLDING_WIZARD_VALUE_STYLE: CSSProperties = {
+  color: "#0f172a",
+  overflow: "hidden",
+  textOverflow: "ellipsis",
+  whiteSpace: "nowrap",
+};
 
 export function MonitorHoldingWizard({
   draft,
@@ -31,12 +62,12 @@ export function MonitorHoldingWizard({
   ];
 
   return (
-    <div className="holding-wizard" aria-label={editing ? "编辑持仓步骤" : "录入持仓步骤"}>
+    <div style={HOLDING_WIZARD_STYLE} aria-label={editing ? "编辑持仓步骤" : "录入持仓步骤"}>
       {steps.map((step) => (
-        <article key={step.title}>
-          <span>{step.title}</span>
-          <strong>{step.value}</strong>
-          <small>{step.helper}</small>
+        <article key={step.title} style={HOLDING_WIZARD_CARD_STYLE}>
+          <span style={HOLDING_WIZARD_LABEL_STYLE}>{step.title}</span>
+          <strong style={HOLDING_WIZARD_VALUE_STYLE}>{step.value}</strong>
+          <small style={HOLDING_WIZARD_LABEL_STYLE}>{step.helper}</small>
         </article>
       ))}
     </div>

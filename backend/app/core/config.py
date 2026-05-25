@@ -53,6 +53,10 @@ class AppSettings(BaseSettings):
     platform_autopilot_interval_seconds: int = 300
     platform_autopilot_failed_task_window_hours: int = 24
     redis_url: str = ""
+    db_pool_size: int = 12
+    db_max_overflow: int = 24
+    db_pool_recycle: int = 1800
+    db_pool_timeout: int = 30
     runtime_event_pubsub_backend: str = "auto"
     runtime_event_stream_timeout_seconds: int = 360
     runtime_event_stream_poll_seconds: float = 1.0
@@ -62,6 +66,11 @@ class AppSettings(BaseSettings):
     max_request_body_bytes: int = 1_048_576
     structured_logs: bool = False
     tquant_market_service_url: str = ""
+    tquant_bff_gateway_url: str = ""
+    tquant_bff_shadow_enabled: bool = False
+    tquant_market_read_service_url: str = ""
+    tquant_go_scan_worker_url: str = ""
+    tquant_go_scan_shadow_enabled: bool = False
     tquant_strategy_service_url: str = ""
     tquant_backtest_service_url: str = ""
     tquant_trade_service_url: str = ""
@@ -70,6 +79,13 @@ class AppSettings(BaseSettings):
     tquant_internal_service_token: str = ""
     tquant_service_call_timeout_seconds: float = 5.0
     tquant_service_circuit_breaker_seconds: float = 30.0
+    bff_workspace_cache_enabled: bool = True
+    bff_monitor_cache_ttl_seconds: int = 5
+    bff_paper_cache_ttl_seconds: int = 3
+    bff_strategy_cache_ttl_seconds: int = 30
+    bff_settings_cache_ttl_seconds: int = 30
+    rust_finance_math_enabled: bool = False
+    app_workers: int = 1
     global_rate_limit_backend: str = "memory"
     global_rate_limit_max_calls: int = 30
     global_rate_limit_window_seconds: int = 1

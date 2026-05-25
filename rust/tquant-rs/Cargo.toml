@@ -1,0 +1,18 @@
+[package]
+name = "tquant_rs"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "tquant_rs"
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+pyo3 = { version = "0.22", features = ["abi3-py39"] }
+
+[build-dependencies]
+pyo3-build-config = "0.22"
+
+[features]
+default = ["extension-module"]
+extension-module = ["pyo3/extension-module"]

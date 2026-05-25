@@ -1,15 +1,54 @@
+import type { CSSProperties } from "react";
+import { Col, List, Row, Space, Typography } from "antd";
 import type { PaperAgentRun, PaperGroupedPerformance, PaperPerformance, PaperSectorEtfT0Performance, PaperTagPerformance, RiskEventItem } from "../../types";
-import { EmptyState, InfoPill } from "../workspace-shared/WorkspaceComponents";
+import { EmptyState, InfoPill, toneTextStyle } from "../workspace-shared/WorkspaceComponents";
 import { formatPaperDateTime } from "./paperTradingFormatters";
 import { formatInteger, formatNumber, formatPct, toneFromChange } from "../workspace-shared/workspaceFormatters";
 import { DataTable } from "../../ui/table/DataTable";
 
+const FULL_WIDTH_STYLE: CSSProperties = { width: "100%" };
+const PERFORMANCE_PILL_ROW_STYLE: CSSProperties = { marginBottom: 8 };
+const TAG_PERFORMANCE_STYLE: CSSProperties = {
+  marginBottom: 6,
+  padding: "6px 8px",
+  border: "1px solid rgba(214, 165, 92, 0.22)",
+  borderRadius: 8,
+  background: "#fffaf0",
+  color: "#6b5a3a",
+  fontSize: 11,
+};
+const TRUNCATED_TEXT_STYLE: CSSProperties = {
+  display: "block",
+  minWidth: 0,
+  overflow: "hidden",
+  textOverflow: "ellipsis",
+  whiteSpace: "nowrap",
+};
+const RISK_TODO_LIST_STYLE: CSSProperties = {
+  display: "grid",
+  gap: 8,
+};
+const RISK_TODO_ITEM_STYLE: CSSProperties = {
+  display: "grid",
+  gap: 3,
+  borderRadius: 12,
+  padding: 10,
+};
+const RISK_TODO_ITEM_HIGH_STYLE: CSSProperties = {
+  background: "#fef2f2",
+  color: "#991b1b",
+};
+const RISK_TODO_ITEM_MEDIUM_STYLE: CSSProperties = {
+  background: "#fff8e8",
+  color: "#8a5a16",
+};
+
 export function RiskEventList({ items }: { items: RiskEventItem[] }) {
   if (!items.length) return null;
   return (
-    <div className="paper-risk-todo-list">
+    <div style={RISK_TODO_LIST_STYLE}>
       {items.slice(0, 2).map((item) => (
-        <article className={item.severity === "high" ? "high" : "medium"} key={item.id}>
+        <article key={item.id} style={item.severity === "high" ? { ...RISK_TODO_ITEM_STYLE, ...RISK_TODO_ITEM_HIGH_STYLE } : { ...RISK_TODO_ITEM_STYLE, ...RISK_TODO_ITEM_MEDIUM_STYLE }}>
           <strong>{item.severity === "high" ? "需要立即处理" : "需要关注"}</strong>
           <span>{item.message}</span>
           <small>{item.symbol || "账户"} · {item.status === "resolved" ? "已处理" : "待处理"}</small>
@@ -21,41 +60,58 @@ export function RiskEventList({ items }: { items: RiskEventItem[] }) {
 
 export function PerformancePills({ performance }: { performance: PaperPerformance | null }) {
   return (
-    <div className="context-row paper-context-row">
-      <InfoPill label="成交笔数" value={String(performance?.total_trades ?? 0)} />
-      <InfoPill label="胜率" value={formatPct(performance?.win_rate_pct)} />
-      <InfoPill label="平均单笔" value={formatPct(performance?.avg_trade_return_pct)} tone={toneFromChange(performance?.avg_trade_return_pct)} />
-      <InfoPill label="最大回撤" value={formatPct(performance?.max_drawdown_pct)} tone={toneFromChange(performance?.max_drawdown_pct)} />
-    </div>
+    <Row gutter={[8, 8]} style={PERFORMANCE_PILL_ROW_STYLE}>
+      <Col xs={24} sm={12} xl={6}>
+        <InfoPill label="成交笔数" value={String(performance?.total_trades ?? 0)} />
+      </Col>
+      <Col xs={24} sm={12} xl={6}>
+        <InfoPill label="胜率" value={formatPct(performance?.win_rate_pct)} />
+      </Col>
+      <Col xs={24} sm={12} xl={6}>
+        <InfoPill label="平均单笔" value={formatPct(performance?.avg_trade_return_pct)} tone={toneFromChange(performance?.avg_trade_return_pct)} />
+      </Col>
+      <Col xs={24} sm={12} xl={6}>
+        <InfoPill label="最大回撤" value={formatPct(performance?.max_drawdown_pct)} tone={toneFromChange(performance?.max_drawdown_pct)} />
+      </Col>
+    </Row>
   );
 }
 
 export function TagPerformanceStrip({ items }: { items: PaperTagPerformance[] }) {
   if (!items.length) return null;
   return (
-    <div className="paper-tag-performance">
+    <Space wrap size={[5, 5]} style={TAG_PERFORMANCE_STYLE}>
       {items.slice(0, 4).map((item) => (
-        <span key={item.tag}>
-          {item.tag} {item.trades} 笔 · 均收 <b className={toneFromChange(item.avg_return_pct)}>{formatPct(item.avg_return_pct)}</b>
-        </span>
+        <Typography.Text key={item.tag} style={{ color: "#6b5a3a", fontSize: 11 }}>
+          {item.tag} {item.trades} 笔 · 均收 <Typography.Text strong style={toneTextStyle(toneFromChange(item.avg_return_pct))}>{formatPct(item.avg_return_pct)}</Typography.Text>
+        </Typography.Text>
       ))}
-    </div>
+    </Space>
   );
 }
 
 export function SectorEtfT0PerformancePanel({ item }: { item: PaperSectorEtfT0Performance | null }) {
   if (!item) return <EmptyState text="暂无 ETF T+0 自动交易绩效" />;
   return (
-    <div className="paper-performance-table paper-etf-t0-table">
-      <div className="context-row paper-context-row">
-        <InfoPill label="自动委托" value={`${formatInteger(item.simulated_trades)} 笔`} />
-        <InfoPill label="已闭合" value={`${formatInteger(item.simulated_closed_trades)} 笔`} />
-        <InfoPill label="成交胜率" value={formatPct(item.simulated_win_rate_pct)} />
-        <InfoPill label="平均收益" value={formatPct(item.simulated_avg_return_pct)} tone={toneFromChange(item.simulated_avg_return_pct)} />
-      </div>
+    <Space direction="vertical" size={6} style={FULL_WIDTH_STYLE}>
+      <Row gutter={[8, 8]}>
+        <Col xs={24} sm={12} xl={6}>
+          <InfoPill label="自动委托" value={`${formatInteger(item.simulated_trades)} 笔`} />
+        </Col>
+        <Col xs={24} sm={12} xl={6}>
+          <InfoPill label="已闭合" value={`${formatInteger(item.simulated_closed_trades)} 笔`} />
+        </Col>
+        <Col xs={24} sm={12} xl={6}>
+          <InfoPill label="成交胜率" value={formatPct(item.simulated_win_rate_pct)} />
+        </Col>
+        <Col xs={24} sm={12} xl={6}>
+          <InfoPill label="平均收益" value={formatPct(item.simulated_avg_return_pct)} tone={toneFromChange(item.simulated_avg_return_pct)} />
+        </Col>
+      </Row>
       <DataTable<PaperSectorEtfT0Performance>
         rowKey={() => "sector-etf-t0"}
         dataSource={[item]}
+        scroll={{ x: 680 }}
         columns={[
           { title: "跟踪样本", dataIndex: "shadow_sample_count", render: (value) => <strong>{formatInteger(value)}</strong> },
           { title: "已结算", dataIndex: "shadow_settled_count", render: (value) => formatInteger(value) },
@@ -65,10 +121,10 @@ export function SectorEtfT0PerformancePanel({ item }: { item: PaperSectorEtfT0Pe
           { title: "3日均收", dataIndex: "shadow_avg_return_3d_pct", render: (value) => <span className={toneFromChange(value)}>{formatPct(value)}</span> },
         ]}
       />
-      <p className="muted">
+      <Typography.Text type="secondary">
         {item.notes?.[0] || "只统计 strategy_key=sector_etf_t0 的模拟成交，并和 ETF 机会池影子跟踪对账。"}
-      </p>
-    </div>
+      </Typography.Text>
+    </Space>
   );
 }
 
@@ -76,9 +132,9 @@ export function GroupedPerformanceTable({ items, emptyText }: { items: PaperGrou
   if (!items.length) return <EmptyState text={emptyText} />;
   return (
     <DataTable<PaperGroupedPerformance>
-      className="paper-performance-table"
       rowKey={(item) => item.key || "unlabeled"}
       dataSource={items}
+      scroll={{ x: 680 }}
       columns={[
         { title: "分组", render: (_value, item) => <strong>{item.key || "未标注"}</strong> },
         { title: "成交", dataIndex: "trades", align: "right", render: (value) => formatInteger(value) },
@@ -99,8 +155,10 @@ export function GroupedPerformanceTable({ items, emptyText }: { items: PaperGrou
 export function AgentRunList({ items }: { items: PaperAgentRun[] }) {
   if (!items.length) return <EmptyState text="暂无自动交易日志" />;
   return (
-    <div className="line-list">
-      {items.slice(0, 5).map((item) => {
+    <List
+      size="small"
+      dataSource={items.slice(0, 5)}
+      renderItem={(item) => {
         const response = item.response || {};
         const executed = Number(response.executed_count ?? (Array.isArray(response.executed) ? response.executed.length : 0));
         const skipped = Number(response.skipped_count ?? (Array.isArray(response.skipped) ? response.skipped.length : 0));
@@ -108,18 +166,32 @@ export function AgentRunList({ items }: { items: PaperAgentRun[] }) {
         const summary = String(response.summary || item.error_message || "--");
         const skipReason = agentRunSkipReason(response);
         return (
-          <article className="paper-row paper-agent-run-row" key={item.id}>
-            <div className="paper-stock-name">
-              <strong>{runStatusText(item.status)}</strong>
-              <span>{formatPaperDateTime(item.created_at)}</span>
-            </div>
-            <span>执行 {executed} / 跳过 {skipped}{etfOrders ? ` / ETF ${etfOrders}` : ""}</span>
-            <span>{summary}</span>
-            {skipReason ? <span className="paper-run-reason">未买原因：{skipReason}</span> : null}
-          </article>
+          <List.Item>
+            <Row gutter={[8, 4]} align="middle" style={FULL_WIDTH_STYLE}>
+              <Col xs={24} md={6}>
+                <Space direction="vertical" size={0}>
+                  <Typography.Text strong>{runStatusText(item.status)}</Typography.Text>
+                  <Typography.Text type="secondary">{formatPaperDateTime(item.created_at)}</Typography.Text>
+                </Space>
+              </Col>
+              <Col xs={24} md={5}>
+                <Typography.Text type="secondary">
+                  执行 {executed} / 跳过 {skipped}{etfOrders ? ` / ETF ${etfOrders}` : ""}
+                </Typography.Text>
+              </Col>
+              <Col xs={24} md={skipReason ? 8 : 13}>
+                <Typography.Text type="secondary" style={TRUNCATED_TEXT_STYLE} title={summary}>{summary}</Typography.Text>
+              </Col>
+              {skipReason ? (
+                <Col xs={24} md={5}>
+                  <Typography.Text type="secondary" style={TRUNCATED_TEXT_STYLE} title={skipReason}>未买原因：{skipReason}</Typography.Text>
+                </Col>
+              ) : null}
+            </Row>
+          </List.Item>
         );
-      })}
-    </div>
+      }}
+    />
   );
 }
 

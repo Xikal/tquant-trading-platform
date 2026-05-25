@@ -1,7 +1,7 @@
-import { Button } from "antd";
+import { Alert, Button, Card, Col, Flex, Row, Space, Statistic, Typography } from "antd";
 
 import type { PaperLedgerRepairResponse } from "../../types";
-import { formatMoneyPlain, plainTradingText, toneFromChange } from "../workspace-shared/workspaceFormatters";
+import { formatMoneyPlain, plainTradingText } from "../workspace-shared/workspaceFormatters";
 
 interface PaperLedgerRepairPanelProps {
   loading: boolean;
@@ -19,60 +19,73 @@ export function PaperLedgerRepairPanel({
   const issueCount = status?.issue_count ?? 0;
   const beforeGap = status?.reconciliation_gap_before ?? 0;
   const afterGap = status?.reconciliation_gap_after ?? 0;
-  const gapTone = toneFromChange(beforeGap);
   const actionDisabled = loading || issueCount <= 0;
 
   return (
-    <section className="panel paper-ledger-repair">
-      <div className="panel-title">
-        <h2>账户对账修复</h2>
-        <span className="hint">仅管理员可见。检查历史成交是否存在异常多卖、现金漂移或账本不平。</span>
-      </div>
-      <div className="paper-ledger-repair-summary">
-        <div className={`paper-ledger-repair-item ${gapTone}`}>
-          <span>当前差额</span>
-          <strong>{formatSignedMoney(beforeGap)}</strong>
-        </div>
-        <div className="paper-ledger-repair-item">
-          <span>异常成交</span>
-          <strong>{issueCount} 条</strong>
-        </div>
-        <div className="paper-ledger-repair-item">
-          <span>修复后差额</span>
-          <strong>{formatSignedMoney(afterGap)}</strong>
-        </div>
-        <div className="paper-ledger-repair-item">
-          <span>重算总资产</span>
-          <strong>{formatMoneyWithYuan(status?.corrected_total_assets)}</strong>
-        </div>
-      </div>
+    <Card
+      title="账户对账修复"
+      extra={<Typography.Text type="secondary">仅管理员可见。检查异常多卖、现金漂移或账本不平。</Typography.Text>}
+      styles={{ body: { display: "flex", flexDirection: "column", gap: 12 } }}
+    >
+      <Row gutter={[8, 8]}>
+        <SummaryItem label="当前差额" value={formatSignedMoney(beforeGap)} color={amountColor(beforeGap)} />
+        <SummaryItem label="异常成交" value={`${issueCount} 条`} />
+        <SummaryItem label="修复后差额" value={formatSignedMoney(afterGap)} color={amountColor(afterGap)} />
+        <SummaryItem label="重算总资产" value={formatMoneyWithYuan(status?.corrected_total_assets)} />
+      </Row>
       {status?.issues?.length ? (
-        <div className="paper-ledger-repair-issues">
+        <Space direction="vertical" size={8}>
           {status.issues.slice(0, 5).map((item) => (
-            <article className="paper-ledger-repair-issue" key={`${item.trade_id}-${item.order_id}`}>
-              <strong>{item.symbol} {item.side === "buy" ? "买入" : "卖出"}异常</strong>
-              <span>
-                原数量 {item.original_quantity} 股，保留 {item.valid_quantity} 股，剔除 {item.invalid_quantity} 股
-              </span>
-              <small>{plainTradingText(item.reason)}</small>
-            </article>
+            <Alert
+              key={`${item.trade_id}-${item.order_id}`}
+              type="warning"
+              showIcon
+              message={`${item.symbol} ${item.side === "buy" ? "买入" : "卖出"}异常`}
+              description={
+                <Space direction="vertical" size={2}>
+                  <Typography.Text>
+                    原数量 {item.original_quantity} 股，保留 {item.valid_quantity} 股，剔除 {item.invalid_quantity} 股
+                  </Typography.Text>
+                  <Typography.Text type="secondary">{plainTradingText(item.reason)}</Typography.Text>
+                </Space>
+              }
+            />
           ))}
-        </div>
+        </Space>
       ) : (
-        <p className="paper-ledger-repair-empty">
-          当前未发现异常成交记录。若顶部总盈亏与个股累计盈亏仍不一致，可点击“重新检查”再次校验。
-        </p>
+        <Alert
+          type="success"
+          showIcon
+          message="当前未发现异常成交记录"
+          description="若顶部总盈亏与个股累计盈亏仍不一致，可点击“重新检查”再次校验。"
+        />
       )}
-      <div className="paper-ledger-repair-actions">
+      <Flex gap={10} justify="flex-end" wrap>
         <Button onClick={onRefresh} disabled={loading}>
           {loading ? "检查中..." : "重新检查"}
         </Button>
         <Button type="primary" onClick={onApply} disabled={actionDisabled}>
           {loading ? "重算中..." : issueCount > 0 ? "一键重算并修复" : "账本已平，无需修复"}
         </Button>
-      </div>
-    </section>
+      </Flex>
+    </Card>
   );
+}
+
+function SummaryItem({ label, value, color }: { label: string; value: string; color?: string }) {
+  return (
+    <Col xs={24} sm={12} lg={6}>
+      <Card size="small">
+        <Statistic title={label} value={value} valueStyle={color ? { color } : undefined} />
+      </Card>
+    </Col>
+  );
+}
+
+function amountColor(value: number): string | undefined {
+  if (value > 0) return "#cf2626";
+  if (value < 0) return "#1f8b4c";
+  return undefined;
 }
 
 function formatSignedMoney(value: number | null | undefined) {

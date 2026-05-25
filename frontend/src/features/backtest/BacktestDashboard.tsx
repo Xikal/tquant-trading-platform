@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect } from "react";
-import { Button } from "antd";
+import { Alert, Button, Grid, Space, Typography } from "antd";
 import type {
   BacktestAttribution,
   BacktestExecutionModel,
@@ -40,8 +40,48 @@ import { backtestVerdict } from "../../utils/uxClarity";
 import { useBacktestUiStore } from "../../stores/backtestUiStore";
 import { DataTable } from "../../ui/table/DataTable";
 import { BacktestSubmitPanel } from "./BacktestSubmitPanel";
+import {
+  BACKTEST_ATTRIBUTION_ITEM_STYLE,
+  BACKTEST_ATTRIBUTION_STRIP_STYLE,
+  BACKTEST_ATTRIBUTION_TITLE_STYLE,
+  BACKTEST_METRIC_GRID_STYLE,
+  BACKTEST_RUN_LIST_STYLE,
+  BACKTEST_RUN_ROW_ACTIVE_STYLE,
+  BACKTEST_RUN_ROW_META_STYLE,
+  BACKTEST_RUN_ROW_STYLE,
+  BACKTEST_RUN_ROW_TEXT_STYLE,
+  BACKTEST_STATUS_BASE_STYLE,
+  BACKTEST_STATUS_LABEL_STYLE,
+  BACKTEST_SUMMARY_ITEM_STYLE,
+  BACKTEST_SUMMARY_LINE_STYLE,
+  backtestStatusToneStyle,
+  combineBacktestStyles,
+} from "./backtestStyles";
+import {
+  BACKTEST_CHART_LEGEND_BENCHMARK_STYLE,
+  BACKTEST_CHART_LEGEND_ITEM_STYLE,
+  BACKTEST_CHART_LEGEND_STRATEGY_STYLE,
+  BACKTEST_CHART_LEGEND_STYLE,
+  BACKTEST_CHART_SVG_STYLE,
+  BACKTEST_CHART_WRAP_STYLE,
+} from "./backtestChartStyles";
+import {
+  BACKTEST_CHART_EMPTY_STYLE,
+  BACKTEST_ERROR_STYLE,
+  BACKTEST_HERO_TEXT_STYLE,
+  BACKTEST_HERO_TITLE_STYLE,
+  BACKTEST_KICKER_STYLE,
+  BACKTEST_SECTION_META_STYLE,
+  BACKTEST_STATUS_RAIL_GRID_STYLE,
+  BACKTEST_STATUS_RAIL_STYLE,
+  BACKTEST_STATUS_RAIL_SUMMARY_STYLE,
+  backtestDashboardGridStyle,
+  backtestHeroStyle,
+} from "./backtestPageLayoutStyles";
+import { backtestToneTextStyle } from "./backtestResearchStyles";
 
 const LazyBacktestEquityChart = lazy(() => import("./LazyBacktestEquityChart"));
+const { useBreakpoint } = Grid;
 
 export type { BacktestFormState } from "./backtestForms";
 
@@ -86,6 +126,8 @@ export function BacktestDashboard({
   const selectedMetrics = selectedRun ? resolveMetrics(selectedRun) : null;
   const selectedAttribution = selectedRun ? resolveAttribution(selectedRun) : null;
   const mode = useBacktestUiStore((state) => state.mode);
+  const screens = useBreakpoint();
+  const wideLayout = Boolean(screens.xl);
   useBacktestUiStore((state) => state.verdictThresholdVersion);
   const setMode = useBacktestUiStore((state) => state.setMode);
   const bumpVerdictThresholdVersion = useBacktestUiStore((state) => state.bumpVerdictThresholdVersion);
@@ -101,19 +143,22 @@ export function BacktestDashboard({
   }, [bumpVerdictThresholdVersion]);
 
   return (
-    <section className="page-grid backtest-grid">
-      <div className="panel backtest-hero">
+    <section style={backtestDashboardGridStyle(wideLayout)}>
+      <div className="panel" style={backtestHeroStyle(wideLayout)}>
         <div>
-          <span className="backtest-kicker">Backtest Loop v2 · Phase3</span>
-          <h1>回测基础看板</h1>
-          <p>提交异步组合回测，跟踪任务状态，并用净值曲线和成交明细检查策略闭环。</p>
+          <span style={BACKTEST_KICKER_STYLE}>Backtest Loop v2 · Phase3</span>
+          <h1 style={BACKTEST_HERO_TITLE_STYLE}>回测基础看板</h1>
+          <p style={BACKTEST_HERO_TEXT_STYLE}>提交异步组合回测，跟踪任务状态，并用净值曲线和成交明细检查策略闭环。</p>
         </div>
-        <details className="backtest-status-rail" aria-label="任务状态图例">
-          <summary>任务状态图例</summary>
-          <div>
+        <details style={BACKTEST_STATUS_RAIL_STYLE} aria-label="任务状态图例">
+          <summary style={BACKTEST_STATUS_RAIL_SUMMARY_STYLE}>任务状态图例</summary>
+          <div style={BACKTEST_STATUS_RAIL_GRID_STYLE}>
             {(Object.keys(STATUS_META) as BacktestStatus[]).map((status) => (
-              <span className={`backtest-status ${STATUS_META[status].tone}`} key={status}>
-                {status}<small>{STATUS_META[status].label}</small>
+              <span
+                key={status}
+                style={combineBacktestStyles(BACKTEST_STATUS_BASE_STYLE, backtestStatusToneStyle(STATUS_META[status].tone))}
+              >
+                {status}<small style={BACKTEST_STATUS_LABEL_STYLE}>{STATUS_META[status].label}</small>
               </span>
             ))}
           </div>
@@ -133,30 +178,32 @@ export function BacktestDashboard({
         onRefresh={onRefresh}
       />
 
-      <section className="panel backtest-runs">
-        <PanelHeader title="任务列表" action={<span className="backtest-muted">{runs.length} 条</span>} />
-        <div className="backtest-run-list">
+      <section className="panel" style={{ gridArea: "runs" }}>
+        <PanelHeader title="任务列表" action={<span style={BACKTEST_SECTION_META_STYLE}>{runs.length} 条</span>} />
+        <div style={BACKTEST_RUN_LIST_STYLE}>
           {runs.length ? runs.map((run) => (
             <Button
               type="text"
-              className={`backtest-run-row${selectedId === run.id ? " active" : ""}`}
               onClick={() => onSelectRun(run.id)}
               key={run.id}
+              style={combineBacktestStyles(BACKTEST_RUN_ROW_STYLE, selectedId === run.id ? BACKTEST_RUN_ROW_ACTIVE_STYLE : undefined)}
             >
-              <span className={`backtest-status ${statusMeta(run.status).tone}`}>
-                {run.status}<small>{statusMeta(run.status).label}</small>
+              <span
+                style={combineBacktestStyles(BACKTEST_STATUS_BASE_STYLE, backtestStatusToneStyle(statusMeta(run.status).tone))}
+              >
+                {run.status}<small style={BACKTEST_STATUS_LABEL_STYLE}>{statusMeta(run.status).label}</small>
               </span>
-              <strong>{run.name || `回测 #${run.id}`}</strong>
-              <span>{dateRange(run)}</span>
+              <strong style={BACKTEST_RUN_ROW_TEXT_STYLE}>{run.name || `回测 #${run.id}`}</strong>
+              <span style={BACKTEST_RUN_ROW_TEXT_STYLE}>{dateRange(run)}</span>
               <ProgressCell progress={run.progress} status={run.status} waitSeconds={run.estimated_wait_seconds} />
-              <span>{formatResourceTier(run.resource_tier)}</span>
-              <small>{formatDateTime(run.created_at)}</small>
+              <span style={BACKTEST_RUN_ROW_META_STYLE}>{formatResourceTier(run.resource_tier)}</span>
+              <small style={BACKTEST_RUN_ROW_META_STYLE}>{formatDateTime(run.created_at)}</small>
             </Button>
           )) : <EmptyLine text="暂无回测任务，提交后会出现在这里。" />}
         </div>
       </section>
 
-      <section className="panel backtest-detail">
+      <section className="panel" style={{ gridArea: "detail" }}>
         <PanelHeader
           title={selectedRun ? `详情摘要 #${selectedRun.id}` : "详情摘要"}
           action={selectedRun && isCancellableStatus(selectedRun.status) ? (
@@ -165,14 +212,14 @@ export function BacktestDashboard({
         />
         {selectedRun ? (
           <>
-            <div className="backtest-summary-line">
-              <span>{selectedRun.name}</span>
-              <span>{formatBacktestStrategies(selectedRun.strategies)}</span>
-              <span>{selectedRun.execution_model || "--"} · {formatResourceTier(selectedRun.resource_tier)} · {selectedRun.benchmark || "--"}</span>
+            <div style={BACKTEST_SUMMARY_LINE_STYLE}>
+              <span style={BACKTEST_SUMMARY_ITEM_STYLE}>{selectedRun.name}</span>
+              <span style={BACKTEST_SUMMARY_ITEM_STYLE}>{formatBacktestStrategies(selectedRun.strategies)}</span>
+              <span style={BACKTEST_SUMMARY_ITEM_STYLE}>{selectedRun.execution_model || "--"} · {formatResourceTier(selectedRun.resource_tier)} · {selectedRun.benchmark || "--"}</span>
             </div>
             <ResultSummaryBanner metrics={selectedMetrics} resourceTier={selectedRun.resource_tier} />
-            {selectedRun.error_message ? <div className="backtest-error">{selectedRun.error_message}</div> : null}
-            <div className="backtest-metric-grid">
+            {selectedRun.error_message ? <div style={BACKTEST_ERROR_STYLE}>{selectedRun.error_message}</div> : null}
+            <div style={BACKTEST_METRIC_GRID_STYLE}>
               <Metric label="总收益" value={formatPct(selectedMetrics?.total_return_pct)} tone={toneFromNumber(selectedMetrics?.total_return_pct)} />
               <Metric label="基准" value={formatPct(selectedMetrics?.benchmark_return_pct)} tone={toneFromNumber(selectedMetrics?.benchmark_return_pct)} />
               <Metric label="Alpha" value={formatPct(selectedMetrics?.benchmark_alpha_pct)} tone={toneFromNumber(selectedMetrics?.benchmark_alpha_pct)} />
@@ -193,13 +240,13 @@ export function BacktestDashboard({
         ) : <EmptyLine text="选择一条任务查看摘要。" />}
       </section>
 
-      <section className="panel backtest-equity">
-        <PanelHeader title="净值曲线" action={<span className="backtest-muted">策略 vs 基准 / 可缩放交互图</span>} />
+      <section className="panel" style={{ gridArea: "equity" }}>
+        <PanelHeader title="净值曲线" action={<span style={BACKTEST_SECTION_META_STYLE}>策略 vs 基准 / 可缩放交互图</span>} />
         <EquityChart points={equity} />
       </section>
 
-      <section className="panel backtest-trades">
-        <PanelHeader title="交易明细" action={<span className="backtest-muted">{trades.length} 笔</span>} />
+      <section className="panel" style={{ gridArea: "trades" }}>
+        <PanelHeader title="交易明细" action={<span style={BACKTEST_SECTION_META_STYLE}>{trades.length} 笔</span>} />
         <DataTable<BacktestTrade>
           rowKey={(trade) => String(trade.id)}
           dataSource={trades}
@@ -243,7 +290,7 @@ export function BacktestDashboard({
               title: "收益",
               dataIndex: "return_pct",
               align: "right",
-              render: (value) => <span className={toneFromNumber(value)}>{formatPct(value)}</span>,
+              render: (value) => <span style={backtestToneTextStyle(toneFromNumber(value))}>{formatPct(value)}</span>,
             },
             {
               title: "退出",
@@ -274,11 +321,20 @@ function ResultSummaryBanner({ metrics, resourceTier }: { metrics: unknown; reso
     sharpe !== undefined && sharpe < 0.5 ? `Sharpe ${formatNumber(sharpe)} 偏低` : "",
   ].filter(Boolean);
   return (
-    <div className={`backtest-result-banner ${verdict.tone === "bad" ? "warn" : verdict.tone}`}>
-      <strong>{verdict.title}：{totalReturn === undefined ? "等待指标汇总" : `组合收益 ${formatPct(totalReturn)}`}</strong>
-      <em>{verdict.detail}</em>
-      <span>{warnings.length ? warnings.join("；") : "未触发主要异常标记，仍需结合成交明细确认。"}</span>
-    </div>
+    <Alert
+      style={{ margin: "10px 0" }}
+      type={verdict.tone === "bad" ? "warning" : verdict.tone === "warn" ? "warning" : "success"}
+      showIcon
+      message={`${verdict.title}：${totalReturn === undefined ? "等待指标汇总" : `组合收益 ${formatPct(totalReturn)}`}`}
+      description={
+        <Space direction="vertical" size={2}>
+          <Typography.Text type="secondary">{verdict.detail}</Typography.Text>
+          <Typography.Text type="secondary">
+            {warnings.length ? warnings.join("；") : "未触发主要异常标记，仍需结合成交明细确认。"}
+          </Typography.Text>
+        </Space>
+      }
+    />
   );
 }
 
@@ -305,10 +361,10 @@ function AttributionStrip({ attribution }: { attribution: BacktestAttribution })
     return null;
   }
   return (
-    <div className="backtest-attribution-strip">
-      <strong>分桶归因</strong>
+    <div style={BACKTEST_ATTRIBUTION_STRIP_STYLE}>
+      <strong style={BACKTEST_ATTRIBUTION_TITLE_STYLE}>分桶归因</strong>
       {buckets.map((item) => (
-        <span key={`${item.group}-${item.bucket}`}>
+        <span key={`${item.group}-${item.bucket}`} style={BACKTEST_ATTRIBUTION_ITEM_STYLE}>
           {item.group}:{item.bucket} · 信号 {formatInteger(item.signal_count)} · 交易 {formatInteger(item.trade_count)} · 胜率 {formatPct(item.win_rate_pct, 1)}
         </span>
       ))}
@@ -327,7 +383,7 @@ function isAttribution(value: unknown): value is BacktestAttribution {
 function EquityChart({ points }: { points: EquityPoint[] }) {
   const finite = points.filter((point) => Number.isFinite(point.nav));
   if (finite.length < 2) {
-    return <div className="backtest-chart-empty">净值曲线等待回测完成后生成。</div>;
+    return <div style={BACKTEST_CHART_EMPTY_STYLE}>净值曲线等待回测完成后生成。</div>;
   }
   return (
     <Suspense fallback={<EquityMiniChart points={points} />}>
@@ -339,7 +395,7 @@ function EquityChart({ points }: { points: EquityPoint[] }) {
 function EquityMiniChart({ points }: { points: EquityPoint[] }) {
   const finite = points.filter((point) => Number.isFinite(point.nav));
   if (finite.length < 2) {
-    return <div className="backtest-chart-empty">净值曲线等待回测完成后生成。</div>;
+    return <div style={BACKTEST_CHART_EMPTY_STYLE}>净值曲线等待回测完成后生成。</div>;
   }
 
   const values = finite.flatMap((point) => [
@@ -353,8 +409,8 @@ function EquityMiniChart({ points }: { points: EquityPoint[] }) {
   const last = finite[finite.length - 1];
 
   return (
-    <div className="backtest-chart-wrap">
-      <svg viewBox="0 0 640 220" role="img" aria-label="回测净值曲线">
+    <div style={BACKTEST_CHART_WRAP_STYLE}>
+      <svg viewBox="0 0 640 220" role="img" aria-label="回测净值曲线" style={BACKTEST_CHART_SVG_STYLE}>
         <defs>
           <linearGradient id="backtestGlow" x1="0" x2="1" y1="0" y2="1">
             <stop offset="0%" stopColor="#67e8f9" stopOpacity="0.36" />
@@ -368,9 +424,9 @@ function EquityMiniChart({ points }: { points: EquityPoint[] }) {
         <path d={benchmarkPath} fill="none" stroke="rgba(214, 165, 92, 0.72)" strokeDasharray="7 6" strokeWidth="3" />
         <path d={strategyPath} fill="none" stroke="#67e8f9" strokeWidth="4" strokeLinecap="round" />
       </svg>
-      <div className="backtest-chart-legend">
-        <span><i className="strategy" /> 策略 NAV {formatNumber(last.nav)}</span>
-        <span><i className="benchmark" /> 基准 NAV {formatNumber(last.benchmark_nav)}</span>
+      <div style={BACKTEST_CHART_LEGEND_STYLE}>
+        <span style={BACKTEST_CHART_LEGEND_ITEM_STYLE}><i style={BACKTEST_CHART_LEGEND_STRATEGY_STYLE} /> 策略 NAV {formatNumber(last.nav)}</span>
+        <span style={BACKTEST_CHART_LEGEND_ITEM_STYLE}><i style={BACKTEST_CHART_LEGEND_BENCHMARK_STYLE} /> 基准 NAV {formatNumber(last.benchmark_nav)}</span>
         <span>样本 {finite[0].date} → {last.date}</span>
       </div>
     </div>

@@ -15,6 +15,7 @@ from app.models.entities import (
     PaperMarketPerfDaily,
     PaperOrder,
     PaperPerformanceSnapshot,
+    PaperReviewReport,
     PaperStrategyPerfDaily,
     PaperTrade,
     RiskEvent,
@@ -75,6 +76,33 @@ class PaperPerformanceArchiveTest(unittest.TestCase):
         self.assertEqual(PaperStrategyPerfDaily.__tablename__, "paper_strategy_perf_daily")
         self.assertEqual(PaperMarketPerfDaily.__tablename__, "paper_market_perf_daily")
         self.assertEqual(PaperDailyReport.__tablename__, "paper_daily_reports")
+        self.assertEqual(PaperReviewReport.__tablename__, "paper_review_reports")
+
+    def test_midday_and_close_review_reports_can_coexist(self) -> None:
+        with self.Session() as db:
+            account = PaperAccount(
+                name="测试账户",
+                initial_cash=Decimal("100000"),
+                cash_available=Decimal("100000"),
+                total_assets=Decimal("100000"),
+                status="active",
+            )
+            db.add(account)
+            db.commit()
+            db.refresh(account)
+
+            service = PaperArchiveService(db)
+            midday = service.generate_review_report(account.id, report_slot="midday", target_date=date(2026, 5, 25))
+            midday_again = service.generate_review_report(account.id, report_slot="midday", target_date=date(2026, 5, 25))
+            close = service.generate_review_report(account.id, report_slot="close", target_date=date(2026, 5, 25))
+            reports = db.execute(select(PaperReviewReport)).scalars().all()
+
+            self.assertEqual(midday.id, midday_again.id)
+            self.assertNotEqual(midday.id, close.id)
+            self.assertEqual({row.report_slot for row in reports}, {"midday", "close"})
+            self.assertIn("午盘复盘", midday_again.overall_summary)
+            self.assertIn("下午", midday_again.suggestion)
+            self.assertIn("收盘复盘", close.overall_summary)
 
     def test_dashboard_service_returns_stable_shape(self) -> None:
         with self.Session() as db:
@@ -96,6 +124,7 @@ class PaperPerformanceArchiveTest(unittest.TestCase):
             self.assertIn("strategy_trend", payload)
             self.assertIn("market_perf_heatmap", payload)
             self.assertIn("strategy_market_matrix", payload)
+            self.assertIn("review_reports", payload)
 
     def test_dashboard_uses_live_metrics_without_archive_rows(self) -> None:
         with self.Session() as db:

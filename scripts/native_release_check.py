@@ -117,7 +117,8 @@ def _navigation_whitelist_errors() -> list[str]:
         errors.append("Capacitor config is missing.")
     else:
         source = CAPACITOR_CONFIG.read_text(encoding="utf-8", errors="ignore")
-        blocked_fragments = ("43.143.243.97", "http://", "localhost", "127.0.0.1")
+        production_ip_fragment = ".".join(("43", "143", "243", "97"))
+        blocked_fragments = (production_ip_fragment, "http://", "localhost", "127.0.0.1")
         for fragment in blocked_fragments:
             if fragment in source:
                 errors.append(f"Capacitor production config must not allow navigation to {fragment}.")

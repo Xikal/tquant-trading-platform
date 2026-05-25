@@ -1,4 +1,4 @@
-import { Tabs } from "antd";
+import { Badge, Space, Tabs, Typography } from "antd";
 
 export type SettingsTabKey = "account" | "trading" | "llm" | "data" | "governance";
 
@@ -19,22 +19,25 @@ export function SettingsPageTabs({
   onChange: (tab: SettingsTabKey) => void;
 }) {
   return (
-    <Tabs
-      className="settings-tabs settings-antd-tabs"
-      activeKey={activeTab}
-      onChange={(key) => onChange(key as SettingsTabKey)}
-      items={tabs.map((tab) => ({
-        key: tab.key,
-        label: (
-          <span className="settings-tab-label">
-            <span>
-              {tab.label}
-              {tab.dirty ? <i aria-label="有未保存更改" /> : null}
-            </span>
-            <small>{tab.description}</small>
-          </span>
-        ),
-      }))}
-    />
+    <div style={{ gridColumn: "1 / -1", marginTop: -4, padding: "8px 10px 0" }}>
+      <Tabs
+        type="card"
+        activeKey={activeTab}
+        onChange={(key) => onChange(key as SettingsTabKey)}
+        tabBarStyle={{ margin: 0 }}
+        items={tabs.map((tab) => ({
+          key: tab.key,
+          label: (
+            <Space direction="vertical" size={2} style={{ minWidth: 124, textAlign: "left" }}>
+              <Space size={6}>
+                <Typography.Text strong>{tab.label}</Typography.Text>
+                {tab.dirty ? <Badge status="warning" aria-label="有未保存更改" /> : null}
+              </Space>
+              <Typography.Text type="secondary" style={{ fontSize: 11 }}>{tab.description}</Typography.Text>
+            </Space>
+          ),
+        }))}
+      />
+    </div>
   );
 }

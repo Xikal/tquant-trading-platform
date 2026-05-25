@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import date
 
 from sqlalchemy import func, select, text
 from sqlalchemy.orm import Session
@@ -44,7 +45,7 @@ def _daily_bar_insert_payload(symbol: str, item: DailyBarRow) -> dict[str, objec
         "symbol": symbol,
         "market": "CN",
         "instrument_type": "stock",
-        "trade_date": item.trade_date,
+        "trade_date": _as_iso_date(item.trade_date),
         "open_price": item.open_price,
         "close_price": item.close_price,
         "high_price": item.high_price,
@@ -154,7 +155,7 @@ class DailyHistoryRepository:
         )
         return [
             DailyBarRow(
-                trade_date=row.trade_date,
+                trade_date=_as_iso_date(row.trade_date),
                 open_price=row.open_price,
                 close_price=row.close_price,
                 high_price=row.high_price,
@@ -191,7 +192,7 @@ class DailyHistoryRepository:
         for row in rows:
             grouped.setdefault(row.symbol, []).append(
                 DailyBarRow(
-                    trade_date=row.trade_date,
+                    trade_date=_as_iso_date(row.trade_date),
                     open_price=row.open_price,
                     close_price=row.close_price,
                     high_price=row.high_price,
@@ -216,7 +217,7 @@ class DailyHistoryRepository:
     def upsert_rows(self, symbol: str, payloads: list[DailyBarRow]) -> None:
         if not payloads:
             return
-        trade_dates = [item.trade_date for item in payloads]
+        trade_dates = [_as_iso_date(item.trade_date) for item in payloads]
         existing_rows = (
             self.db.execute(
                 select(DailyBarSnapshot.id, DailyBarSnapshot.trade_date)
@@ -228,11 +229,11 @@ class DailyHistoryRepository:
             )
             .all()
         )
-        ids_by_trade_date = {row.trade_date: row.id for row in existing_rows}
+        ids_by_trade_date = {_as_iso_date(row.trade_date): row.id for row in existing_rows}
         new_rows: list[dict[str, object]] = []
         update_rows: list[dict[str, object]] = []
         for item in payloads:
-            row_id = ids_by_trade_date.get(item.trade_date)
+            row_id = ids_by_trade_date.get(_as_iso_date(item.trade_date))
             if row_id is None:
                 new_rows.append(_daily_bar_insert_payload(symbol, item))
                 continue
@@ -253,3 +254,9 @@ class DailyHistoryRepository:
             self.db.execute(_daily_bar_insert_statement(), new_rows)
         if update_rows:
             self.db.bulk_update_mappings(DailyBarSnapshot, update_rows)
+
+
+def _as_iso_date(value: object) -> str:
+    if isinstance(value, date):
+        return value.isoformat()
+    return str(value)[:10]

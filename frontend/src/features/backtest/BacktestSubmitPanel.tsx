@@ -6,6 +6,21 @@ import {
   resourceTierHint,
 } from "./backtestDisplay";
 import type { BacktestFormState } from "./backtestForms";
+import {
+  BACKTEST_EXPERT_FIELDS_STYLE,
+  BACKTEST_FORM_STACK_STYLE,
+  BACKTEST_HELP_STYLE,
+  BACKTEST_LABEL_STYLE,
+  BACKTEST_NUMBER_INPUT_STYLE,
+  BACKTEST_NUMBER_SETTING_STYLE,
+  BACKTEST_SEGMENTED_STYLE,
+  BACKTEST_STRATEGY_ITEM_ACTIVE_STYLE,
+  BACKTEST_STRATEGY_ITEM_STYLE,
+  BACKTEST_STRATEGY_KEY_STYLE,
+  BACKTEST_STRATEGY_LIST_STYLE,
+  BACKTEST_STRATEGY_TITLE_STYLE,
+  BACKTEST_SUBMIT_BUTTON_STYLE,
+} from "./backtestStyles";
 
 type BacktestMode = "quick" | "expert";
 
@@ -36,17 +51,17 @@ export function BacktestSubmitPanel({
 }: BacktestSubmitPanelProps) {
   return (
     <Card
-      className="backtest-submit"
       title="提交回测任务"
       extra={<Button size="small" onClick={onRefresh} disabled={loading === "list"}>刷新</Button>}
       variant="borderless"
+      style={{ gridArea: "submit" }}
     >
-      <Space direction="vertical" size={12} className="backtest-ant-form">
+      <Space direction="vertical" size={12} style={BACKTEST_FORM_STACK_STYLE}>
         {notice ? <Alert type="info" showIcon message={notice} /> : null}
         {error ? <Alert type="error" showIcon message="回测任务异常" description={error} /> : null}
         <Segmented
-          className="backtest-mode-segmented"
           block
+          style={BACKTEST_SEGMENTED_STYLE}
           value={mode}
           onChange={(value) => onModeChange(value as BacktestMode)}
           options={[
@@ -54,16 +69,16 @@ export function BacktestSubmitPanel({
             { label: "专家模式", value: "expert" },
           ]}
         />
-        <Typography.Text type="secondary" className="backtest-helper">
+        <Typography.Text type="secondary" style={BACKTEST_HELP_STYLE}>
           {mode === "quick"
             ? "只需要选择策略和日期，系统会用默认仓位、滑点和费用跑出结果。"
             : "专家模式可调整成交模型、仓位上限、现金保留和风控参数。"}
         </Typography.Text>
         <Form layout="vertical" component={false} requiredMark={false}>
-          <Form.Item label="任务名称">
+          <Form.Item label={<Typography.Text style={BACKTEST_LABEL_STYLE}>任务名称</Typography.Text>}>
             <Input value={form.name} onChange={(event) => onFormChange({ name: event.target.value })} />
           </Form.Item>
-          <Form.Item label="日期范围">
+          <Form.Item label={<Typography.Text style={BACKTEST_LABEL_STYLE}>日期范围</Typography.Text>}>
             <Space.Compact block>
               <Input
                 type="date"
@@ -79,35 +94,46 @@ export function BacktestSubmitPanel({
               />
             </Space.Compact>
           </Form.Item>
-          <Form.Item label="策略多选">
-            <Checkbox.Group
-              className="backtest-strategy-checkboxes"
-              value={form.strategies}
-              onChange={(values) => onFormChange({ strategies: values.map(String) })}
-              options={strategyOptions.map(([key, label]) => ({
-                value: key,
-                label: (
-                  <span className="backtest-strategy-option">
-                    <strong>{label}</strong>
-                    <small>{key}</small>
-                  </span>
-                ),
-              }))}
-            />
+          <Form.Item label={<Typography.Text style={BACKTEST_LABEL_STYLE}>策略多选</Typography.Text>}>
+            <Space direction="vertical" size={8} style={BACKTEST_STRATEGY_LIST_STYLE}>
+              {strategyOptions.map(([key, label]) => {
+                const checked = form.strategies.includes(key);
+                return (
+                  <Checkbox
+                    key={key}
+                    checked={checked}
+                    onChange={(event) => onFormChange({
+                      strategies: event.target.checked
+                        ? [...form.strategies, key]
+                        : form.strategies.filter((item) => item !== key),
+                    })}
+                    style={{
+                      ...BACKTEST_STRATEGY_ITEM_STYLE,
+                      ...(checked ? BACKTEST_STRATEGY_ITEM_ACTIVE_STYLE : null),
+                    }}
+                  >
+                    <span style={{ display: "grid", gap: 2 }}>
+                      <strong style={BACKTEST_STRATEGY_TITLE_STYLE}>{label}</strong>
+                      <small style={BACKTEST_STRATEGY_KEY_STYLE}>{key}</small>
+                    </span>
+                  </Checkbox>
+                );
+              })}
+            </Space>
           </Form.Item>
-          <Form.Item label="初始资金">
+          <Form.Item label={<Typography.Text style={BACKTEST_LABEL_STYLE}>初始资金</Typography.Text>}>
             <InputNumber
               stringMode
               value={form.initial_capital}
               onChange={(value) => onFormChange({ initial_capital: String(value ?? "") })}
               min="0"
-              className="full-width"
+              style={BACKTEST_NUMBER_INPUT_STYLE}
             />
           </Form.Item>
-          <Form.Item label="基准指数">
+          <Form.Item label={<Typography.Text style={BACKTEST_LABEL_STYLE}>基准指数</Typography.Text>}>
             <Input value={form.benchmark} onChange={(event) => onFormChange({ benchmark: event.target.value })} />
           </Form.Item>
-          <Form.Item label="执行模型">
+          <Form.Item label={<Typography.Text style={BACKTEST_LABEL_STYLE}>执行模型</Typography.Text>}>
             <Select
               value={form.execution_model}
               options={BACKTEST_EXECUTION_MODELS.map(([value, label]) => ({ value, label }))}
@@ -116,14 +142,14 @@ export function BacktestSubmitPanel({
           </Form.Item>
           {mode === "expert" ? (
             <>
-              <Form.Item label="资源等级" extra={resourceTierHint(form.resource_tier)}>
+              <Form.Item label={<Typography.Text style={BACKTEST_LABEL_STYLE}>资源等级</Typography.Text>} extra={resourceTierHint(form.resource_tier)}>
                 <Select
                   value={form.resource_tier}
                   options={BACKTEST_RESOURCE_TIER_OPTIONS.map(([value, label]) => ({ value, label }))}
                   onChange={(value) => onFormChange({ resource_tier: value as BacktestResourceTier })}
                 />
               </Form.Item>
-              <Space size={10} wrap className="backtest-expert-fields">
+              <Space size={10} wrap style={BACKTEST_EXPERT_FIELDS_STYLE}>
                 <NumberSetting label="单票仓位" suffix="%" value={form.max_position_pct} onChange={(value) => onFormChange({ max_position_pct: value })} />
                 <NumberSetting label="最大持仓数" value={form.max_positions} onChange={(value) => onFormChange({ max_positions: value })} />
                 <NumberSetting label="日亏损暂停" suffix="%" value={form.max_daily_loss_pct} onChange={(value) => onFormChange({ max_daily_loss_pct: value })} />
@@ -133,12 +159,12 @@ export function BacktestSubmitPanel({
             </>
           ) : null}
           <Button
-            className="backtest-submit-button"
             type="primary"
             block
             onClick={onSubmit}
             loading={loading === "submit"}
             disabled={loading === "submit"}
+            style={BACKTEST_SUBMIT_BUTTON_STYLE}
           >
             提交任务
           </Button>
@@ -160,12 +186,13 @@ function NumberSetting({
   onChange: (value: string) => void;
 }) {
   return (
-    <Form.Item label={label} className="backtest-number-setting">
+    <Form.Item label={<Typography.Text style={BACKTEST_LABEL_STYLE}>{label}</Typography.Text>} style={BACKTEST_NUMBER_SETTING_STYLE}>
       <InputNumber
         stringMode
         value={value}
         min="0"
         addonAfter={suffix}
+        style={BACKTEST_NUMBER_INPUT_STYLE}
         onChange={(nextValue) => onChange(String(nextValue ?? ""))}
       />
     </Form.Item>

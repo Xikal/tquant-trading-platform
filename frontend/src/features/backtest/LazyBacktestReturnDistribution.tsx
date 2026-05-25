@@ -4,6 +4,11 @@ import { GridComponent, LegendComponent, TooltipComponent } from "echarts/compon
 import * as echarts from "echarts/core";
 import { CanvasRenderer } from "echarts/renderers";
 import type { EquityPoint } from "../../api/backtests";
+import {
+  BACKTEST_ECHARTS_ALT_STYLE,
+  BACKTEST_ECHARTS_STYLE,
+  combineBacktestStyles,
+} from "./backtestStyles";
 
 echarts.use([BarChart, CanvasRenderer, GridComponent, LegendComponent, LineChart, TooltipComponent]);
 
@@ -28,7 +33,7 @@ export default function LazyBacktestReturnDistribution({ points }: { points: Equ
     chartRef.current?.setOption(option, true, true);
   }, [option]);
 
-  return <div ref={elementRef} className="backtest-echarts distribution" />;
+  return <div ref={elementRef} style={combineBacktestStyles(BACKTEST_ECHARTS_STYLE, BACKTEST_ECHARTS_ALT_STYLE)} />;
 }
 
 function buildOption(points: EquityPoint[]): echarts.EChartsCoreOption {

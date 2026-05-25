@@ -1,4 +1,4 @@
-import type { ChangeEvent, InputHTMLAttributes, ReactNode, SelectHTMLAttributes } from "react";
+import type { CSSProperties, ChangeEvent, InputHTMLAttributes, ReactNode, SelectHTMLAttributes } from "react";
 import { useEffect, useId, useRef } from "react";
 import { Form, Input, Select, Slider } from "antd";
 import { strategiesApi, type SymbolSearchItem } from "../../api/strategies";
@@ -9,6 +9,113 @@ const EMPTY_SEARCH_RESULT = {
   total: 0,
   open: false,
   error: "",
+};
+
+const FIELD_FRAME_STYLE: CSSProperties = {
+  minWidth: 0,
+  marginBottom: 0,
+};
+
+const FIELD_LABEL_STYLE: CSSProperties = {
+  color: "#62708a",
+  fontSize: 12,
+  fontWeight: 700,
+};
+
+const FIELD_EXTRA_STYLE: CSSProperties = {
+  color: "#7b879d",
+  fontSize: 11,
+};
+
+const FIELD_CONTROL_STYLE: CSSProperties = {
+  minHeight: 34,
+  borderRadius: 10,
+  background: "#f8fafc",
+  color: "#0f172a",
+};
+
+const NUMBER_INPUT_WRAP_STYLE: CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  minHeight: 34,
+  border: "1px solid #dbe3ef",
+  borderRadius: 10,
+  background: "#f8fafc",
+  padding: "0 11px",
+};
+
+const NUMBER_INPUT_STYLE: CSSProperties = {
+  flex: 1,
+  minHeight: 32,
+  border: 0,
+  boxShadow: "none",
+  background: "transparent",
+  padding: 0,
+};
+
+const INPUT_SUFFIX_STYLE: CSSProperties = {
+  color: "#7b879d",
+  fontSize: 12,
+};
+
+const SLIDER_FIELD_STYLE: CSSProperties = {
+  ...FIELD_FRAME_STYLE,
+  border: "1px solid #e3e9f2",
+  borderRadius: 12,
+  background: "#f8fafc",
+  padding: "10px 12px",
+};
+
+const SLIDER_LABEL_STYLE: CSSProperties = {
+  display: "flex",
+  justifyContent: "space-between",
+  gap: 8,
+  width: "100%",
+  ...FIELD_LABEL_STYLE,
+};
+
+const SEARCH_FIELD_STYLE: CSSProperties = {
+  position: "relative",
+};
+
+const SEARCH_POPOVER_STYLE: CSSProperties = {
+  position: "absolute",
+  zIndex: 20,
+  top: "calc(100% + 6px)",
+  right: 0,
+  left: 0,
+  maxHeight: 260,
+  overflow: "auto",
+  border: "1px solid #dbe3ef",
+  borderRadius: 12,
+  background: "#fff",
+  boxShadow: "0 16px 32px rgba(15, 23, 42, 0.12)",
+};
+
+const SEARCH_OPTION_STYLE: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "74px 1fr auto",
+  alignItems: "center",
+  gap: 4,
+  width: "100%",
+  border: 0,
+  borderBottom: "1px solid #eef2f7",
+  background: "transparent",
+  color: "#0f172a",
+  cursor: "pointer",
+  padding: "9px 11px",
+  textAlign: "left",
+};
+
+const SEARCH_MESSAGE_STYLE: CSSProperties = {
+  color: "#64748b",
+  fontSize: 12,
+  padding: "9px 11px",
+};
+
+const SEARCH_ERROR_STYLE: CSSProperties = {
+  ...SEARCH_MESSAGE_STYLE,
+  color: "#b91c1c",
 };
 
 interface FieldFrameProps {
@@ -22,11 +129,12 @@ interface FieldFrameProps {
 function FieldFrame({ label, hint, error, className = "", children }: FieldFrameProps) {
   return (
     <Form.Item
-      className={`tq-field ${className}`.trim()}
-      label={label}
+      className={className || undefined}
+      style={FIELD_FRAME_STYLE}
+      label={<span style={FIELD_LABEL_STYLE}>{label}</span>}
       validateStatus={error ? "error" : undefined}
       help={error || undefined}
-      extra={!error && hint ? hint : undefined}
+      extra={!error && hint ? <span style={FIELD_EXTRA_STYLE}>{hint}</span> : undefined}
     >
       {children}
     </Form.Item>
@@ -40,10 +148,10 @@ type TextFieldProps = InputHTMLAttributes<HTMLInputElement> & {
   fieldClassName?: string;
 };
 
-export function TextField({ label, hint, error, fieldClassName = "", className = "", size: _nativeSize, ...props }: TextFieldProps) {
+export function TextField({ label, hint, error, fieldClassName = "", className = "", size: _nativeSize, style, ...props }: TextFieldProps) {
   return (
     <FieldFrame label={label} hint={hint} error={error} className={fieldClassName}>
-      <Input className={`tq-input ${className}`.trim()} {...props} />
+      <Input className={className || undefined} style={{ ...FIELD_CONTROL_STYLE, ...style }} {...props} />
     </FieldFrame>
   );
 }
@@ -56,12 +164,12 @@ type NumberFieldProps = TextFieldProps & {
   suffix?: string;
 };
 
-export function NumberField({ label, hint, error, suffix, fieldClassName = "", className = "", size: _nativeSize, ...props }: NumberFieldProps) {
+export function NumberField({ label, hint, error, suffix, fieldClassName = "", className = "", size: _nativeSize, style, ...props }: NumberFieldProps) {
   return (
     <FieldFrame label={label} hint={hint} error={error} className={fieldClassName}>
-      <span className="tq-input-wrap">
-        <Input className={`tq-input ${className}`.trim()} {...props} type="number" />
-        {suffix ? <span className="tq-input-suffix">{suffix}</span> : null}
+      <span style={NUMBER_INPUT_WRAP_STYLE}>
+        <Input className={className || undefined} style={{ ...NUMBER_INPUT_STYLE, ...style }} {...props} type="number" />
+        {suffix ? <span style={INPUT_SUFFIX_STYLE}>{suffix}</span> : null}
       </span>
     </FieldFrame>
   );
@@ -75,11 +183,12 @@ type SelectFieldProps = SelectHTMLAttributes<HTMLSelectElement> & {
   options: Array<{ value: string; label: string }>;
 };
 
-export function SelectField({ label, hint, error, options, fieldClassName = "", className = "", value, disabled, onChange, ...props }: SelectFieldProps) {
+export function SelectField({ label, hint, error, options, fieldClassName = "", className = "", value, disabled, onChange, style, ...props }: SelectFieldProps) {
   return (
     <FieldFrame label={label} hint={hint} error={error} className={fieldClassName}>
       <Select
-        className={`tq-input ${className}`.trim()}
+        className={className || undefined}
+        style={{ width: "100%", ...FIELD_CONTROL_STYLE, ...style }}
         value={String(value ?? "")}
         disabled={disabled}
         options={options}
@@ -103,16 +212,15 @@ export function SliderField({ label, value, suffix, onValueChange, ...props }: S
   const { min, max, step, disabled } = props;
   return (
     <Form.Item
-      className="tq-field tq-slider-field"
+      style={SLIDER_FIELD_STYLE}
       label={(
-        <span>
-        {label}
-        <strong>{value}{suffix ?? ""}</strong>
-      </span>
+        <span style={SLIDER_LABEL_STYLE}>
+          {label}
+          <strong>{value}{suffix ?? ""}</strong>
+        </span>
       )}
     >
       <Slider
-        className="tq-slider"
         min={typeof min === "number" ? min : Number(min ?? 0)}
         max={typeof max === "number" ? max : Number(max ?? 100)}
         step={typeof step === "number" ? step : Number(step ?? 1)}
@@ -176,16 +284,17 @@ export function SearchField({ label, value, placeholder, disabled = false, onCha
   }, [disabled, fieldKey, resetSymbolSearch, setSymbolSearch, value]);
 
   return (
-    <div className="tq-search-field">
+    <div style={SEARCH_FIELD_STYLE}>
       <TextField label={label} value={value} placeholder={placeholder} disabled={disabled} onChange={(event) => onChange(event.target.value)} />
       {open && (items.length || error) ? (
-        <div className="tq-search-popover" role="listbox" aria-label={`${label}搜索结果`}>
-          {error ? <div className="tq-search-error">{error}</div> : null}
+        <div style={SEARCH_POPOVER_STYLE} role="listbox" aria-label={`${label}搜索结果`}>
+          {error ? <div style={SEARCH_ERROR_STYLE}>{error}</div> : null}
           {items.map((item) => (
             <button
               key={item.symbol}
               type="button"
               role="option"
+              style={SEARCH_OPTION_STYLE}
               onMouseDown={(event) => event.preventDefault()}
               onClick={() => {
                 onChange(item.symbol);
@@ -199,7 +308,7 @@ export function SearchField({ label, value, placeholder, disabled = false, onCha
             </button>
           ))}
           {!error && total > items.length ? (
-            <div className="tq-search-more">还有 {total - items.length} 条结果，请细化搜索</div>
+            <div style={SEARCH_MESSAGE_STYLE}>还有 {total - items.length} 条结果，请细化搜索</div>
           ) : null}
         </div>
       ) : null}

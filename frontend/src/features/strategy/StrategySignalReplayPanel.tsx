@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { Button } from "antd";
+import { Alert, Button, Card, Col, Flex, Row, Space, Tag, Typography } from "antd";
 import { strategiesApi, type StrategySignalReplayItem } from "../../api/strategies";
 import { EmptyPlaceholder, ErrorBanner, SkeletonBlock } from "../../components/shared/Feedback";
 import { NumberField, SearchField, SelectField } from "../../components/shared/FormFields";
@@ -49,44 +49,50 @@ export function StrategySignalReplayPanel({ title }: { title: string }) {
   }, [strategy, lookbackDays]);
 
   return (
-    <section className="panel strategy-signals-panel">
-      <div className="strategy-panel-title">
-        <div>
-          <h2>{title}</h2>
-          <span>用案例方式看最近信号：当时建议什么价格、止损在哪里、为什么入选。</span>
-        </div>
-      </div>
-      <div className="strategy-signal-grid">
-        <SearchField label="标的搜索" value={symbol} placeholder="输入代码或名称" onChange={setSymbol} />
-        <SelectField
-          label="策略"
-          value={strategy}
-          onChange={(event) => setStrategy(event.target.value)}
-          options={strategyOptions.map(([value, label]) => ({ value, label }))}
+    <Card
+      size="small"
+      title={
+        <Space direction="vertical" size={0}>
+          <Typography.Text strong>{title}</Typography.Text>
+          <Typography.Text type="secondary">用案例方式看最近信号：当时建议什么价格、止损在哪里、为什么入选。</Typography.Text>
+        </Space>
+      }
+      extra={
+        <Flex gap={8} wrap>
+          <SearchField label="标的搜索" value={symbol} placeholder="输入代码或名称" onChange={setSymbol} />
+          <SelectField
+            label="策略"
+            value={strategy}
+            onChange={(event) => setStrategy(event.target.value)}
+            options={strategyOptions.map(([value, label]) => ({ value, label }))}
+          />
+          <NumberField
+            label="交易日窗口"
+            suffix="个交易日"
+            value={lookbackDays}
+            min={1}
+            max={120}
+            onChange={(event) => setLookbackDays(event.target.value)}
+          />
+          <Button type="primary" onClick={() => loadReplay(symbol, 24)} loading={loading}>
+            {loading ? "查询中" : "查询信号"}
+          </Button>
+        </Flex>
+      }
+    >
+      <Space direction="vertical" size={12} style={{ width: "100%" }}>
+        {error ? <ErrorBanner message={`信号复盘查询失败：${error}`} /> : null}
+        <SignalReplayRows
+          items={items}
+          symbol={symbol}
+          strategy={strategy}
+          loading={loading}
+          lookbackDays={Number(lookbackDays) || 60}
+          onlyFailures={onlyFailures}
+          onToggleFailures={toggleOnlyFailures}
         />
-        <NumberField
-          label="交易日窗口"
-          suffix="个交易日"
-          value={lookbackDays}
-          min={1}
-          max={120}
-          onChange={(event) => setLookbackDays(event.target.value)}
-        />
-        <Button type="primary" onClick={() => loadReplay(symbol, 24)} loading={loading}>
-          {loading ? "查询中" : "查询信号"}
-        </Button>
-      </div>
-      {error ? <ErrorBanner message={`信号复盘查询失败：${error}`} /> : null}
-      <SignalReplayRows
-        items={items}
-        symbol={symbol}
-        strategy={strategy}
-        loading={loading}
-        lookbackDays={Number(lookbackDays) || 60}
-        onlyFailures={onlyFailures}
-        onToggleFailures={toggleOnlyFailures}
-      />
-    </section>
+      </Space>
+    </Card>
   );
 }
 
@@ -121,43 +127,66 @@ function SignalReplayRows({
   const summary = summarizeReplay(items);
   const visibleItems = onlyFailures ? items.filter((item) => outcomeTone(item) === "bad") : items;
   return (
-    <>
-      <div className="strategy-signal-summary">
-        <strong>过去 {lookbackDays} 天共 {items.length} 个信号</strong>
-        <span>✅ {summary.good} 盈利/强信号</span>
-        <span>❌ {summary.bad} 亏损/放弃</span>
-        <span>⏳ {summary.pending} 待验证</span>
-        <Button type={onlyFailures ? "primary" : "default"} size="small" className={onlyFailures ? "active" : ""} onClick={onToggleFailures}>
-          只看失败信号
-        </Button>
-      </div>
-      {!visibleItems.length ? (
-        <EmptyPlaceholder title="没有失败信号" description="当前筛选条件下没有可归类为失败的信号。" />
-      ) : null}
-      <div className="strategy-signal-case-grid" aria-label="策略信号案例">
-      {visibleItems.map((item) => (
-        <article className="strategy-signal-case" key={`${item.latest_trade_date}-${item.strategy_key}-${item.symbol}`}>
-          <header>
-            <div>
-              <strong>{item.name || item.symbol}</strong>
-              <span>{item.symbol} · {item.latest_trade_date}</span>
-            </div>
-            <b className={`signal-state ${outcomeTone(item)}`}>{outcomeLabel(item)}</b>
-          </header>
-          <div className="signal-case-metrics">
-            <span>建议区间 <b>{item.entry_zone || "--"}</b></span>
-            <span>止损价 <b>{typeof item.stop_loss === "number" ? item.stop_loss.toFixed(3) : "--"}</b></span>
-            <span>信号强度 <b>{scoreLabel(item.score)}</b></span>
-          </div>
-          <p>{item.summary || item.reasons?.[0] || "该票进入策略观察池，建议结合买点区间和止损价复盘。"}</p>
-          <details className="strategy-signal-detail">
-            <summary>展开当时的买入依据</summary>
-            <p>{signalReasonText(item)}</p>
-          </details>
-        </article>
-      ))}
-      </div>
-    </>
+    <Space direction="vertical" size={12} style={{ width: "100%" }}>
+      <Alert
+        type="info"
+        showIcon
+        message={`过去 ${lookbackDays} 天共 ${items.length} 个信号`}
+        description={`✅ ${summary.good} 盈利/强信号 · ❌ ${summary.bad} 亏损/放弃 · ⏳ ${summary.pending} 待验证`}
+        action={
+          <Button type={onlyFailures ? "primary" : "default"} size="small" onClick={onToggleFailures}>
+            只看失败信号
+          </Button>
+        }
+      />
+      {!visibleItems.length ? <EmptyPlaceholder title="没有失败信号" description="当前筛选条件下没有可归类为失败的信号。" /> : null}
+      <Row gutter={[12, 12]} aria-label="策略信号案例">
+        {visibleItems.map((item) => (
+          <Col key={`${item.latest_trade_date}-${item.strategy_key}-${item.symbol}`} xs={24} lg={12}>
+            <Card
+              size="small"
+              title={
+                <Flex justify="space-between" align="start" gap={12} wrap>
+                  <Space direction="vertical" size={0}>
+                    <Typography.Text strong>{item.name || item.symbol}</Typography.Text>
+                    <Typography.Text type="secondary">
+                      {item.symbol} · {item.latest_trade_date}
+                    </Typography.Text>
+                  </Space>
+                  <Tag color={outcomeColor(item)}>{outcomeLabel(item)}</Tag>
+                </Flex>
+              }
+            >
+              <Space direction="vertical" size={10} style={{ width: "100%" }}>
+                <Row gutter={[8, 8]}>
+                  <Col xs={24} sm={8}><ValueChip label="建议区间" value={item.entry_zone || "--"} /></Col>
+                  <Col xs={24} sm={8}><ValueChip label="止损价" value={typeof item.stop_loss === "number" ? item.stop_loss.toFixed(3) : "--"} /></Col>
+                  <Col xs={24} sm={8}><ValueChip label="信号强度" value={scoreLabel(item.score)} /></Col>
+                </Row>
+                <Typography.Paragraph style={{ marginBottom: 0 }}>
+                  {item.summary || item.reasons?.[0] || "该票进入策略观察池，建议结合买点区间和止损价复盘。"}
+                </Typography.Paragraph>
+                <details style={{ border: "1px solid #e5e7eb", borderRadius: 8, padding: "8px 10px" }}>
+                  <summary style={{ cursor: "pointer", fontWeight: 600 }}>展开当时的买入依据</summary>
+                  <Typography.Paragraph style={{ margin: "8px 0 0" }}>{signalReasonText(item)}</Typography.Paragraph>
+                </details>
+              </Space>
+            </Card>
+          </Col>
+        ))}
+      </Row>
+    </Space>
+  );
+}
+
+function ValueChip({ label, value }: { label: string; value: string }) {
+  return (
+    <Card size="small" styles={{ body: { padding: "8px 10px" } }}>
+      <Space direction="vertical" size={0}>
+        <Typography.Text type="secondary">{label}</Typography.Text>
+        <Typography.Text strong>{value}</Typography.Text>
+      </Space>
+    </Card>
   );
 }
 
@@ -193,6 +222,14 @@ function outcomeTone(item: StrategySignalReplayItem): string {
   if (item.outcome === "win" || item.outcome === "success") return "ok";
   if (item.outcome === "loss" || item.outcome === "failed") return "bad";
   return stateTone(item.buy_signal_state);
+}
+
+function outcomeColor(item: StrategySignalReplayItem): string {
+  const tone = outcomeTone(item);
+  if (tone === "ok") return "green";
+  if (tone === "bad") return "red";
+  if (tone === "warn") return "gold";
+  return "default";
 }
 
 function resolvePnl(item: StrategySignalReplayItem): number | null {

@@ -28,6 +28,7 @@ class MarketBreadthResponse(BaseModel):
     hot_turnover: float = 0.0
     hot_overlap_ratio: float = 0.0
     data_quality_text: str = ""
+    hourly_all_market_snapshot: dict = Field(default_factory=dict)
 
 
 class MarketTradingSessionResponse(BaseModel):

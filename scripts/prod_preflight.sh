@@ -25,7 +25,7 @@ PY
 )
 VITE_NATIVE_VERSION_CODE="${VITE_NATIVE_VERSION_CODE:-$VERSION_CODE}" \
 VITE_NATIVE_VERSION_NAME="${VITE_NATIVE_VERSION_NAME:-$VERSION_NAME}" \
-VITE_API_BASE_URL="${VITE_API_BASE_URL:-https://weisilianghua.cloud/api}" \
+VITE_API_BASE_URL="${VITE_API_BASE_URL:-https://tquant.example.invalid/api}" \
 npm run build:native >/dev/null
 npx cap sync android >/dev/null
 cd "$ROOT_DIR"

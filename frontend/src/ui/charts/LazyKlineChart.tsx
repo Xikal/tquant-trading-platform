@@ -1,3 +1,4 @@
+import type { CSSProperties } from "react";
 import { useEffect, useRef } from "react";
 import { BarChart, CandlestickChart, LineChart } from "echarts/charts";
 import { GridComponent, LegendComponent, TooltipComponent } from "echarts/components";
@@ -6,7 +7,7 @@ import { CanvasRenderer } from "echarts/renderers";
 
 echarts.use([BarChart, CandlestickChart, GridComponent, LegendComponent, LineChart, CanvasRenderer, TooltipComponent]);
 
-export default function LazyKlineChart({ option, className = "" }: { option: unknown; className?: string }) {
+export default function LazyKlineChart({ option, className = "", style }: { option: unknown; className?: string; style?: CSSProperties }) {
   const elementRef = useRef<HTMLDivElement | null>(null);
   const chartRef = useRef<echarts.EChartsType | null>(null);
 
@@ -28,5 +29,5 @@ export default function LazyKlineChart({ option, className = "" }: { option: unk
     chartRef.current?.setOption(option as echarts.EChartsCoreOption, true, true);
   }, [option]);
 
-  return <div ref={elementRef} className={className} />;
+  return <div ref={elementRef} className={className || undefined} style={style} />;
 }

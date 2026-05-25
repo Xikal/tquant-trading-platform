@@ -1,5 +1,5 @@
 import { useEffect, useMemo } from "react";
-import { Button, Form, Input } from "antd";
+import { Button, Card, Col, Flex, Form, Input, Row, Space, Tag, Typography } from "antd";
 import {
   factorMiningApi,
   type FactorDefinition,
@@ -128,21 +128,24 @@ export function FactorMiningTab({ currentUser }: { currentUser: AuthUser }) {
   const currentResult = result ?? selected?.eval_result;
 
   return (
-    <div className="factor-mining-tab">
-      <section className="factor-hero">
-        <div>
-          <h2>因子实验室</h2>
-          <p>生成假设、合成代码、跑 IC / Walk-forward 评估。未通过生产门槛的因子不会进入策略评分。</p>
-        </div>
-        <Button type="default" onClick={() => void load()} loading={loading === "load"}>
-          {loading === "load" ? "刷新中" : "刷新"}
-        </Button>
-      </section>
+    <Space direction="vertical" size={12} style={{ width: "100%" }}>
+      <Card size="small">
+        <Flex align="start" justify="space-between" gap={16} wrap>
+          <Space direction="vertical" size={2}>
+            <Typography.Title level={4} style={{ margin: 0 }}>因子实验室</Typography.Title>
+            <Typography.Text type="secondary">生成假设、合成代码、跑 IC / Walk-forward 评估。未通过生产门槛的因子不会进入策略评分。</Typography.Text>
+          </Space>
+          <Button type="default" onClick={() => void load()} loading={loading === "load"}>
+            {loading === "load" ? "刷新中" : "刷新"}
+          </Button>
+        </Flex>
+      </Card>
       {error ? <ErrorBanner message={`因子实验室错误：${error}`} /> : null}
       {loading === "load" ? <SkeletonBlock rows={4} title /> : null}
       {loading !== "load" ? (
-        <div className="factor-mining-grid">
-          <div className="factor-left">
+        <Row gutter={[12, 12]}>
+          <Col xs={24} xl={13}>
+            <Space direction="vertical" size={12} style={{ width: "100%" }}>
             <HypothesisPanel onCodeReady={handleCodeReady} />
             <DraftFactorEditor
               draft={draft}
@@ -150,8 +153,10 @@ export function FactorMiningTab({ currentUser }: { currentUser: AuthUser }) {
               onChange={setDraft}
               onCreate={createDraftFactor}
             />
-          </div>
-          <div className="factor-right">
+            </Space>
+          </Col>
+          <Col xs={24} xl={11}>
+            <Space direction="vertical" size={12} style={{ width: "100%" }}>
             <FactorLibraryList
               factors={factors}
               selectedKey={selectedKey}
@@ -161,7 +166,7 @@ export function FactorMiningTab({ currentUser }: { currentUser: AuthUser }) {
               onActivationChange={(key, active) => setActivation((current) => ({ ...current, [key]: active }))}
             />
             <EvalResultCard result={currentResult} />
-            <div className="factor-actions">
+            <Flex gap={8} wrap>
               <Button type="primary" onClick={() => void evaluateSelected()} disabled={!selected} loading={loading === "evaluate"}>
                 {loading === "evaluate" ? "评估中" : "评估因子"}
               </Button>
@@ -171,12 +176,13 @@ export function FactorMiningTab({ currentUser }: { currentUser: AuthUser }) {
               <Button type="default" onClick={() => void promoteSelected("production")} disabled={!admin || !selected} loading={loading === "promote-production"}>
                 晋级生产
               </Button>
-            </div>
+            </Flex>
             <FactorHealthDashboard items={healthItems} />
-          </div>
-        </div>
+            </Space>
+          </Col>
+        </Row>
       ) : null}
-    </div>
+    </Space>
   );
 }
 
@@ -192,27 +198,29 @@ function DraftFactorEditor({
   onCreate: () => void;
 }) {
   return (
-    <AppForm className="factor-draft-editor" onFinish={onCreate}>
-      <div className="factor-section-title">
-        <h3>2. 因子代码草稿</h3>
-        <span>可以人工调整后再保存到因子库。</span>
-      </div>
-      <div className="factor-draft-fields">
-        <Form.Item label="因子 Key" required>
-          <Input value={draft.key} onChange={(event) => onChange({ ...draft, key: event.target.value })} placeholder="factor_key" />
+    <Card size="small" title="2. 因子代码草稿" extra={<Typography.Text type="secondary">可以人工调整后再保存到因子库。</Typography.Text>}>
+      <AppForm onFinish={onCreate}>
+        <Row gutter={12}>
+          <Col xs={24} sm={12}>
+            <Form.Item label="因子 Key" required>
+              <Input value={draft.key} onChange={(event) => onChange({ ...draft, key: event.target.value })} placeholder="factor_key" />
+            </Form.Item>
+          </Col>
+          <Col xs={24} sm={12}>
+            <Form.Item label="因子名称" required>
+              <Input value={draft.name} onChange={(event) => onChange({ ...draft, name: event.target.value })} placeholder="因子名称" />
+            </Form.Item>
+          </Col>
+        </Row>
+        <Form.Item label="经济学假设">
+          <TextArea value={draft.hypothesis} onChange={(event) => onChange({ ...draft, hypothesis: event.target.value })} placeholder="经济学假设" rows={3} />
         </Form.Item>
-        <Form.Item label="因子名称" required>
-          <Input value={draft.name} onChange={(event) => onChange({ ...draft, name: event.target.value })} placeholder="因子名称" />
+        <Form.Item label="因子代码" required>
+          <TextArea value={draft.code} onChange={(event) => onChange({ ...draft, code: event.target.value })} placeholder="def compute_factor(bars):" rows={8} />
         </Form.Item>
-      </div>
-      <Form.Item label="经济学假设">
-        <TextArea value={draft.hypothesis} onChange={(event) => onChange({ ...draft, hypothesis: event.target.value })} placeholder="经济学假设" rows={3} />
-      </Form.Item>
-      <Form.Item label="因子代码" required>
-        <TextArea value={draft.code} onChange={(event) => onChange({ ...draft, code: event.target.value })} placeholder="def compute_factor(bars):" rows={8} />
-      </Form.Item>
-      <SubmitBar submitText={loading ? "保存中" : "保存到因子库"} loading={loading} disabled={!draft.key.trim() || !draft.name.trim() || !draft.code.trim()} />
-    </AppForm>
+        <SubmitBar submitText={loading ? "保存中" : "保存到因子库"} loading={loading} disabled={!draft.key.trim() || !draft.name.trim() || !draft.code.trim()} />
+      </AppForm>
+    </Card>
   );
 }
 
@@ -235,15 +243,10 @@ function FactorLibraryList({
     return <EmptyPlaceholder title="暂无因子" description="先生成假设并保存代码草稿。" />;
   }
   return (
-    <section className="factor-library-list">
-      <div className="factor-section-title">
-        <h3>因子库</h3>
-        <span>{factors.length} 个因子</span>
-      </div>
+    <Card size="small" title="因子库" extra={<Typography.Text type="secondary">{factors.length} 个因子</Typography.Text>}>
       <DataTable<FactorDefinition>
         rowKey="factor_key"
         dataSource={factors}
-        rowClassName={(factor) => selectedKey === factor.factor_key ? "active" : ""}
         onRow={(factor) => ({
           onClick: () => onSelect(factor.factor_key),
         })}
@@ -253,16 +256,21 @@ function FactorLibraryList({
             title: "因子",
             dataIndex: "name",
             render: (_value, factor) => (
-              <Button type="text" className="factor-table-name" onClick={() => onSelect(factor.factor_key)}>
-                <strong>{factor.name}</strong>
-                <span>{factor.factor_key}</span>
+              <Button type="text" onClick={() => onSelect(factor.factor_key)} style={{ height: "auto", padding: 0, textAlign: "left" }}>
+                <Space direction="vertical" size={0} style={{ alignItems: "flex-start" }}>
+                  <Space size={4}>
+                    <Typography.Text strong>{factor.name}</Typography.Text>
+                    {selectedKey === factor.factor_key ? <Tag color="blue">已选择</Tag> : null}
+                  </Space>
+                  <Typography.Text type="secondary" style={{ fontSize: 12 }}>{factor.factor_key}</Typography.Text>
+                </Space>
               </Button>
             ),
           },
           {
             title: "状态",
             dataIndex: "status",
-            render: (status) => statusText(status),
+            render: (status) => <Tag color={statusColor(status)}>{statusText(status)}</Tag>,
           },
           {
             title: "IC",
@@ -286,7 +294,7 @@ function FactorLibraryList({
           },
         ]}
       />
-    </section>
+    </Card>
   );
 }
 
@@ -296,6 +304,14 @@ function statusText(status: string): string {
   if (status === "rejected") return "已拒绝";
   if (status === "archived") return "归档";
   return "研究";
+}
+
+function statusColor(status: string): string {
+  if (status === "production") return "green";
+  if (status === "validated") return "blue";
+  if (status === "rejected") return "red";
+  if (status === "archived") return "default";
+  return "gold";
 }
 
 function toMessage(err: unknown): string {

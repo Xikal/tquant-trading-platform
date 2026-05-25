@@ -1,5 +1,7 @@
 # TQuant 后端服务最终重构优化落地方案
 
+> 状态：已归档。当前后端执行口径以 `docs/backend-go-rust-refactor-final-plan-2026-05-22.md` 和 `IMPLEMENTATION_PLAN.md` 为准，本文件仅作历史审查材料保留。
+
 生成日期：2026-05-21
 适用项目：维斯量化 TQuant A 股短线交易辅助平台
 目标读者：Codex / Claude Code / 后端开发 / DevOps / QA / 量化策略负责人

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo } from "react";
+import type { CSSProperties } from "react";
 
 import { quantParametersApi } from "../../api/quantParameters";
 import { NumberField } from "../../components/shared/FormFields";
@@ -24,6 +25,11 @@ const FIELD_SPECS: FieldSpec[] = [
   { path: "ml.training.lgb_max_depth", label: "LightGBM 深度", min: 1, max: 20 },
   { path: "ml.training.lgb_learning_rate", label: "LightGBM 学习率", min: 0.001, max: 1, step: "0.001" },
 ];
+
+const INLINE_FIELD_ERROR_STYLE: CSSProperties = {
+  color: "#b91c1c",
+  fontSize: 12,
+};
 
 export function QuantParameterMlCard({ adminTokenError }: { adminTokenError: string }) {
   const card = useSettingsUiStore((state) => state.quantCards.ml);
@@ -93,7 +99,7 @@ export function QuantParameterMlCard({ adminTokenError }: { adminTokenError: str
           onChange={(event) => setCard("ml", { draft: { ...draft, [field.path]: event.target.value } })}
         />
       ))}
-      {adminTokenError || fieldError || error ? <span className="tq-field__error">{adminTokenError || fieldError || error}</span> : null}
+      {adminTokenError || fieldError || error ? <span style={INLINE_FIELD_ERROR_STYLE}>{adminTokenError || fieldError || error}</span> : null}
     </SettingCard>
   );
 }

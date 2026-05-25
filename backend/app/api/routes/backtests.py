@@ -5,7 +5,6 @@ from sqlalchemy.orm import Session
 
 from app.core.auth import get_current_user
 from app.core.database import get_db
-from app.core.role_permissions import ensure_permission, is_admin_user
 from app.models.entities import User
 from app.models.schema_defs.backtest import (
     BacktestAttributionResponse,
@@ -29,7 +28,13 @@ from app.models.schema_defs.backtest import (
     BacktestValidationDetail,
     BacktestValidationListResponse,
 )
-from app.services.low_buy.strategy_parameter_defaults import BACKTEST_EXECUTION_DEFAULTS
+from app.api.routes.backtest_route_helpers import (
+    is_admin,
+    normalized_verdict_thresholds,
+    require_optimizer_access,
+    require_research_access,
+    validate_backtest_strategy_access,
+)
 from app.services.backtest_job_service import BacktestJobService
 from app.services.backtest_optimization_service import BacktestOptimizationService
 from app.services.backtest_validation_service import BacktestValidationService
@@ -37,15 +42,13 @@ from app.services.backtest.regime_parameter_promotion import promote_regime_para
 from app.services.position_policy_research import run_position_policy_research
 from app.services.portfolio_heuristic_optimizer import optimize_strategy_portfolio
 from app.services.live_backtest_monitor import build_live_backtest_comparison
-from app.services.strategy_metadata_service import StrategyMetadataService
-from app.services.quant.runtime_parameters import get_backtest_verdict_thresholds
 
 router = APIRouter(prefix="/backtests", dependencies=[Depends(get_current_user)])
 
 
 @router.get("/verdict-thresholds", response_model=BacktestVerdictThresholdsResponse)
 def get_backtest_verdict_thresholds_route() -> BacktestVerdictThresholdsResponse:
-    thresholds = _normalized_verdict_thresholds()
+    thresholds = normalized_verdict_thresholds()
     return BacktestVerdictThresholdsResponse(
         thresholds={
             key: BacktestVerdictThresholdOut(**values)
@@ -61,7 +64,7 @@ def get_live_backtest_comparison(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> dict:
-    _require_research_access(current_user)
+    require_research_access(current_user)
     return build_live_backtest_comparison(db, user_id=current_user.id, account_id=account_id, days=days)
 
 
@@ -71,7 +74,7 @@ def create_backtest_run(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> BacktestRunDetail:
-    _validate_backtest_strategy_access(db, payload.strategy_keys, current_user)
+    validate_backtest_strategy_access(db, payload.strategy_keys, current_user)
     return BacktestJobService(db).create_run(payload, owner_user_id=current_user.id)
 
 
@@ -85,10 +88,10 @@ def list_backtest_runs(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> BacktestRunListResponse:
-    is_admin = _is_admin(current_user) and include_all
+    include_admin_runs = is_admin(current_user) and include_all
     return BacktestJobService(db).list_runs(
         owner_user_id=current_user.id,
-        is_admin=is_admin,
+        is_admin=include_admin_runs,
         limit=limit,
         offset=offset,
         status_filter=status,
@@ -106,7 +109,7 @@ def list_legacy_backtest_runs(
 
     page = BacktestJobService(db).list_runs(
         owner_user_id=current_user.id,
-        is_admin=_is_admin(current_user),
+        is_admin=is_admin(current_user),
         limit=limit,
         offset=0,
     )
@@ -135,7 +138,7 @@ def get_legacy_backtest_run(
     item = BacktestJobService(db).get_run(
         run_id,
         owner_user_id=current_user.id,
-        is_admin=_is_admin(current_user),
+        is_admin=is_admin(current_user),
     )
     return {
         "id": item.id,
@@ -152,8 +155,8 @@ def create_backtest_optimization(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> BacktestOptimizationDetail:
-    _require_optimizer_access(current_user)
-    _validate_backtest_strategy_access(db, [payload.strategy], current_user)
+    require_optimizer_access(current_user)
+    validate_backtest_strategy_access(db, [payload.strategy], current_user)
     return BacktestOptimizationService(db).create_task(payload, owner_user_id=current_user.id)
 
 
@@ -166,10 +169,10 @@ def list_backtest_optimizations(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> BacktestOptimizationListResponse:
-    _require_optimizer_access(current_user)
+    require_optimizer_access(current_user)
     return BacktestOptimizationService(db).list_tasks(
         owner_user_id=current_user.id,
-        is_admin=_is_admin(current_user) and include_all,
+        is_admin=is_admin(current_user) and include_all,
         limit=limit,
         offset=offset,
         status_filter=status_filter,
@@ -182,11 +185,11 @@ def get_backtest_optimization(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> BacktestOptimizationDetail:
-    _require_optimizer_access(current_user)
+    require_optimizer_access(current_user)
     return BacktestOptimizationService(db).get_task(
         task_id,
         owner_user_id=current_user.id,
-        is_admin=_is_admin(current_user),
+        is_admin=is_admin(current_user),
     )
 
 
@@ -196,11 +199,11 @@ def cancel_backtest_optimization(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> BacktestResearchMutationResponse:
-    _require_optimizer_access(current_user)
+    require_optimizer_access(current_user)
     task = BacktestOptimizationService(db).cancel_task(
         task_id,
         owner_user_id=current_user.id,
-        is_admin=_is_admin(current_user),
+        is_admin=is_admin(current_user),
     )
     return BacktestResearchMutationResponse(ok=True, task_id=task.id, status=task.status, message="优化任务已取消")
 
@@ -211,11 +214,11 @@ def delete_backtest_optimization(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> BacktestResearchMutationResponse:
-    _require_optimizer_access(current_user)
+    require_optimizer_access(current_user)
     task = BacktestOptimizationService(db).delete_task(
         task_id,
         owner_user_id=current_user.id,
-        is_admin=_is_admin(current_user),
+        is_admin=is_admin(current_user),
     )
     return BacktestResearchMutationResponse(ok=True, task_id=task.id, status=task.status, message="优化任务已删除")
 
@@ -226,10 +229,10 @@ def create_backtest_validation(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> BacktestValidationDetail:
-    _require_research_access(current_user)
+    require_research_access(current_user)
     if payload.auto_promote_state_params:
-        _require_optimizer_access(current_user)
-    _validate_backtest_strategy_access(db, [payload.strategy], current_user)
+        require_optimizer_access(current_user)
+    validate_backtest_strategy_access(db, [payload.strategy], current_user)
     return BacktestValidationService(db).create_task(payload, owner_user_id=current_user.id)
 
 
@@ -242,10 +245,10 @@ def list_backtest_validations(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> BacktestValidationListResponse:
-    _require_research_access(current_user)
+    require_research_access(current_user)
     return BacktestValidationService(db).list_tasks(
         owner_user_id=current_user.id,
-        is_admin=_is_admin(current_user) and include_all,
+        is_admin=is_admin(current_user) and include_all,
         limit=limit,
         offset=offset,
         status_filter=status_filter,
@@ -258,11 +261,11 @@ def get_backtest_validation(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> BacktestValidationDetail:
-    _require_research_access(current_user)
+    require_research_access(current_user)
     return BacktestValidationService(db).get_task(
         task_id,
         owner_user_id=current_user.id,
-        is_admin=_is_admin(current_user),
+        is_admin=is_admin(current_user),
     )
 
 
@@ -272,11 +275,11 @@ def cancel_backtest_validation(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> BacktestResearchMutationResponse:
-    _require_research_access(current_user)
+    require_research_access(current_user)
     task = BacktestValidationService(db).cancel_task(
         task_id,
         owner_user_id=current_user.id,
-        is_admin=_is_admin(current_user),
+        is_admin=is_admin(current_user),
     )
     return BacktestResearchMutationResponse(ok=True, task_id=task.id, status=task.status, message="验证任务已取消")
 
@@ -287,11 +290,11 @@ def delete_backtest_validation(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> BacktestResearchMutationResponse:
-    _require_research_access(current_user)
+    require_research_access(current_user)
     task = BacktestValidationService(db).delete_task(
         task_id,
         owner_user_id=current_user.id,
-        is_admin=_is_admin(current_user),
+        is_admin=is_admin(current_user),
     )
     return BacktestResearchMutationResponse(ok=True, task_id=task.id, status=task.status, message="验证任务已删除")
 
@@ -303,11 +306,11 @@ def promote_validation_state_params(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> dict:
-    _require_optimizer_access(current_user)
+    require_optimizer_access(current_user)
     detail = BacktestValidationService(db).get_task(
         task_id,
         owner_user_id=current_user.id,
-        is_admin=_is_admin(current_user),
+        is_admin=is_admin(current_user),
     )
     if detail.status != "succeeded":
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="验证任务未成功，不能晋级参数")
@@ -329,7 +332,7 @@ def compare_backtest_runs(
     return BacktestJobService(db).compare_runs(
         payload,
         owner_user_id=current_user.id,
-        is_admin=_is_admin(current_user),
+        is_admin=is_admin(current_user),
     )
 
 
@@ -342,7 +345,7 @@ def get_backtest_run(
     return BacktestJobService(db).get_run(
         run_id,
         owner_user_id=current_user.id,
-        is_admin=_is_admin(current_user),
+        is_admin=is_admin(current_user),
     )
 
 
@@ -355,7 +358,7 @@ def get_backtest_monthly_returns(
     return BacktestJobService(db).get_monthly_returns(
         run_id,
         owner_user_id=current_user.id,
-        is_admin=_is_admin(current_user),
+        is_admin=is_admin(current_user),
     )
 
 
@@ -368,7 +371,7 @@ def get_backtest_attribution(
     return BacktestJobService(db).get_attribution(
         run_id,
         owner_user_id=current_user.id,
-        is_admin=_is_admin(current_user),
+        is_admin=is_admin(current_user),
     )
 
 
@@ -381,7 +384,7 @@ def get_backtest_strategy_correlation(
     return BacktestJobService(db).get_strategy_correlation(
         run_id,
         owner_user_id=current_user.id,
-        is_admin=_is_admin(current_user),
+        is_admin=is_admin(current_user),
     )
 
 
@@ -392,8 +395,8 @@ def get_backtest_portfolio_optimization(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> dict:
-    _require_research_access(current_user)
-    BacktestJobService(db).get_run(run_id, owner_user_id=current_user.id, is_admin=_is_admin(current_user))
+    require_research_access(current_user)
+    BacktestJobService(db).get_run(run_id, owner_user_id=current_user.id, is_admin=is_admin(current_user))
     return optimize_strategy_portfolio(db, run_id=run_id, method=method)
 
 
@@ -404,10 +407,10 @@ def get_backtest_position_policy_research(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> dict:
-    _require_research_access(current_user)
+    require_research_access(current_user)
     if train_shadow:
-        _require_optimizer_access(current_user)
-    BacktestJobService(db).get_run(run_id, owner_user_id=current_user.id, is_admin=_is_admin(current_user))
+        require_optimizer_access(current_user)
+    BacktestJobService(db).get_run(run_id, owner_user_id=current_user.id, is_admin=is_admin(current_user))
     return run_position_policy_research(db, run_id=run_id, train_shadow=train_shadow)
 
 
@@ -420,7 +423,7 @@ def get_backtest_equity(
     items = BacktestJobService(db).get_equity(
         run_id,
         owner_user_id=current_user.id,
-        is_admin=_is_admin(current_user),
+        is_admin=is_admin(current_user),
     )
     return BacktestEquityResponse(run_id=run_id, items=items)
 
@@ -436,7 +439,7 @@ def get_backtest_trades(
     return BacktestJobService(db).get_trades(
         run_id,
         owner_user_id=current_user.id,
-        is_admin=_is_admin(current_user),
+        is_admin=is_admin(current_user),
         limit=limit,
         offset=offset,
     )
@@ -451,7 +454,7 @@ def cancel_backtest_run(
     run = BacktestJobService(db).cancel_run(
         run_id,
         owner_user_id=current_user.id,
-        is_admin=_is_admin(current_user),
+        is_admin=is_admin(current_user),
     )
     return BacktestMutationResponse(ok=True, run_id=run.id, status=run.status, message="回测任务已取消")
 
@@ -465,53 +468,6 @@ def delete_backtest_run(
     run = BacktestJobService(db).delete_run(
         run_id,
         owner_user_id=current_user.id,
-        is_admin=_is_admin(current_user),
+        is_admin=is_admin(current_user),
     )
     return BacktestMutationResponse(ok=True, run_id=run.id, status=run.status, message="回测任务已删除")
-
-
-def _is_admin(user: User) -> bool:
-    return is_admin_user(user)
-
-
-def _require_optimizer_access(user: User) -> None:
-    ensure_permission(user, "optimizer")
-
-
-def _require_research_access(user: User) -> None:
-    try:
-        ensure_permission(user, "research")
-    except HTTPException as exc:
-        if exc.status_code == status.HTTP_403_FORBIDDEN:
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="账号未开通样本外验证权限") from exc
-        raise
-
-
-def _validate_backtest_strategy_access(db: Session, strategy_keys: list[str], user: User) -> None:
-    try:
-        StrategyMetadataService(db).validate_backtest_strategy_access(strategy_keys, current_user=user)
-    except PermissionError as exc:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
-    except ValueError as exc:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
-
-
-def _normalized_verdict_thresholds() -> dict[str, dict[str, float]]:
-    defaults = dict(BACKTEST_EXECUTION_DEFAULTS.get("verdict_thresholds") or {})
-    current = get_backtest_verdict_thresholds()
-    merged = {}
-    for tier in ("light", "full", "walk_forward"):
-        fallback = defaults.get(tier) or {}
-        values = current.get(tier) if isinstance(current.get(tier), dict) else {}
-        merged[tier] = {
-            "min_return_pct": float(values.get("min_return_pct", fallback.get("min_return_pct", 0.0))),
-            "min_sharpe": float(values.get("min_sharpe", fallback.get("min_sharpe", 0.0))),
-            "max_drawdown_pct": float(values.get("max_drawdown_pct", fallback.get("max_drawdown_pct", 0.0))),
-            "cautious_min_return_pct": float(
-                values.get("cautious_min_return_pct", fallback.get("cautious_min_return_pct", 0.0))
-            ),
-            "cautious_max_drawdown_pct": float(
-                values.get("cautious_max_drawdown_pct", fallback.get("cautious_max_drawdown_pct", 0.0))
-            ),
-        }
-    return merged

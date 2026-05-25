@@ -19,6 +19,17 @@ import { MLCapacityPanel } from "./MLCapacityPanel";
 import { OptimizationPanel } from "./OptimizationPanel";
 import { ValidationPanel } from "./ValidationPanel";
 import type { OptimizationFormState, ValidationFormState } from "./backtestForms";
+import {
+  BACKTEST_HERO_TEXT_STYLE,
+  BACKTEST_HERO_TITLE_STYLE,
+  BACKTEST_KICKER_STYLE,
+  BACKTEST_NOTICE_STYLE,
+} from "./backtestPageLayoutStyles";
+import {
+  BACKTEST_RESEARCH_GRID_STYLE,
+  BACKTEST_RESEARCH_HERO_STYLE,
+  backtestResearchPanelStyle,
+} from "./backtestResearchStyles";
 
 export type { OptimizationFormState, ValidationFormState } from "./backtestForms";
 
@@ -78,22 +89,22 @@ export function BacktestResearchPanel({
   );
   const focused = Boolean(sections?.length === 1);
   return (
-    <section className={`panel backtest-research${focused ? " focused" : ""}`}>
-      <div className="backtest-research-hero">
+    <section className="panel" style={backtestResearchPanelStyle(focused)}>
+      <div style={BACKTEST_RESEARCH_HERO_STYLE}>
         <div>
-          <span className="backtest-kicker">Research Loop · Phase2</span>
-          <h2>回测研究闭环</h2>
-          <p>按“优化参数 → 样本外验证 → 多任务对比 → 归因复盘”使用。优先看收益、胜率、最大回撤和样本外通过率。</p>
+          <span style={BACKTEST_KICKER_STYLE}>Research Loop · Phase2</span>
+          <h2 style={BACKTEST_HERO_TITLE_STYLE}>回测研究闭环</h2>
+          <p style={BACKTEST_HERO_TEXT_STYLE}>按“优化参数 → 样本外验证 → 多任务对比 → 归因复盘”使用。优先看收益、胜率、最大回撤和样本外通过率。</p>
         </div>
         <Button onClick={actions.onRefreshResearch} disabled={state.loading === "research"}>
           {state.loading === "research" ? "刷新中..." : "刷新研究任务"}
         </Button>
       </div>
 
-      {state.notice ? <div className="backtest-notice">{state.notice}</div> : null}
+      {state.notice ? <div style={BACKTEST_NOTICE_STYLE}>{state.notice}</div> : null}
       {state.error ? <ErrorBanner message={state.error} onRetry={actions.onRefreshResearch} /> : null}
 
-      <div className="backtest-research-grid">
+      <div style={BACKTEST_RESEARCH_GRID_STYLE}>
         {visibleSections.has("optimization") ? <OptimizationPanel state={state} actions={actions} strategyOptions={strategyOptions} /> : null}
         {visibleSections.has("validation") ? <ValidationPanel state={state} actions={actions} strategyOptions={strategyOptions} /> : null}
         {visibleSections.has("compare") ? <ComparePanel state={state} actions={actions} /> : null}

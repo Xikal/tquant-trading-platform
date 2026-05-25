@@ -1,11 +1,35 @@
+import type { CSSProperties } from "react";
 import type { LowBuyScreenerResult } from "../../types";
-import { Button, Tabs } from "antd";
+import { Button, Flex } from "antd";
 import { playbookActionLabel } from "../../utils/uxClarity";
-import { EmptyState, InfoPill, MetricGrid, PanelTitle, StockCard } from "../workspace-shared/WorkspaceComponents";
+import { Callout, EmptyState, InfoPill, MetricGrid, PanelTitle, StockCard, StockCardList } from "../workspace-shared/WorkspaceComponents";
 import { WEB_PLAYBOOK_TABS } from "../workspace-shared/workspaceConstants";
 import { candidateToCard } from "../workspace-shared/workspaceViewModels";
-import { formatNumber, formatPct, strategyLabel, toneFromChange } from "../workspace-shared/workspaceFormatters";
+import { formatNumber, formatPct, strategyLabel } from "../workspace-shared/workspaceFormatters";
 import type { MetricItem, StockCardView } from "../workspace-shared/workspaceTypes";
+
+const PLAYBOOK_PAGE_STYLE: CSSProperties = {
+  display: "grid",
+  gap: 8,
+  gridTemplateColumns: "460px minmax(0, 1fr)",
+  gridTemplateAreas: '"hero metrics" "performance buy" "focus observe" "focus near" "focus watch"',
+};
+
+const PLAYBOOK_HERO_STYLE: CSSProperties = { gridArea: "hero" };
+const PLAYBOOK_PURPOSE_STRIP_STYLE: CSSProperties = { marginTop: 8 };
+const PLAYBOOK_METRICS_STYLE: CSSProperties = { gridArea: "metrics", alignContent: "stretch", gridTemplateColumns: "repeat(3, minmax(120px, 1fr))" };
+const PLAYBOOK_PERFORMANCE_STYLE: CSSProperties = { gridArea: "performance", outline: "2px solid rgba(64, 149, 255, 0.12)" };
+const PLAYBOOK_FOCUS_STYLE: CSSProperties = { gridArea: "focus", outline: "2px solid rgba(64, 149, 255, 0.12)" };
+const PLAYBOOK_DARK_FOCUS_STYLE: CSSProperties = {
+  ...PLAYBOOK_FOCUS_STYLE,
+  borderColor: "rgba(255, 255, 255, 0.1)",
+  background: "linear-gradient(180deg, var(--panel), var(--deep))",
+  color: "#dde3ec",
+};
+const PLAYBOOK_BUY_STYLE: CSSProperties = { gridArea: "buy", borderColor: "#ffb9aa", background: "#fff7f4", outline: "2px solid rgba(64, 149, 255, 0.12)" };
+const PLAYBOOK_OBSERVE_STYLE: CSSProperties = { gridArea: "observe", outline: "2px solid rgba(64, 149, 255, 0.12)" };
+const PLAYBOOK_NEAR_STYLE: CSSProperties = { gridArea: "near", borderColor: "#f1cf7c", background: "#fffdf6", outline: "2px solid rgba(64, 149, 255, 0.12)" };
+const PLAYBOOK_WATCH_STYLE: CSSProperties = { gridArea: "watch", outline: "2px solid rgba(64, 149, 255, 0.12)" };
 
 export function PlaybookPage({
   strategy,
@@ -50,34 +74,29 @@ export function PlaybookPage({
   const sampleReason = sampleInsufficientReason(playbook?.strategy_key || strategy, playbook);
   const marketAttributionText = summarizeMarketAttribution(playbook?.performance?.market_state_attribution ?? []);
   return (
-    <section className="page-grid playbook-grid">
-      <div className="panel playbook-hero">
+    <section style={PLAYBOOK_PAGE_STYLE}>
+      <div className="panel" style={PLAYBOOK_HERO_STYLE}>
         <PanelTitle
           title="选股宝典"
           actions={<Button onClick={onRefresh} loading={loading === "playbook"}>刷新全量结果</Button>}
         />
         <p className="hint">全量深筛 + 策略归因 + 买点执行。候选分层展示，避免把所有机会做成同等权重。</p>
-        <div className="strategy-purpose-strip">
-          <strong>{strategyName}</strong>
-          <span>{strategyPurpose(strategy)}</span>
-        </div>
-        <Tabs
-          className="playbook-strategy-tabs"
-          activeKey={strategy}
-          onChange={setStrategy}
-          tabBarGutter={6}
-          items={tabs.map((tab) => ({
-            key: tab.key,
-            label: (
-              <span className="playbook-tab-label">
-                <strong>{tab.label}</strong>
-              </span>
-            ),
-          }))}
-        />
+        <Callout title={strategyName} detail={strategyPurpose(strategy)} compact style={PLAYBOOK_PURPOSE_STRIP_STYLE} />
+        <Flex wrap gap={6} style={{ marginTop: 8 }}>
+          {tabs.map((tab) => (
+            <Button
+              key={tab.key}
+              type={strategy === tab.key ? "primary" : "default"}
+              size="small"
+              onClick={() => setStrategy(tab.key)}
+            >
+              {tab.label}
+            </Button>
+          ))}
+        </Flex>
       </div>
       <MetricGrid
-        className="summary-panel playbook-metrics"
+        style={PLAYBOOK_METRICS_STYLE}
         items={[
           { label: playbookActionLabel("buy_now"), value: String(buyNow.length), tone: buyNow.length ? "up" : "neutral" },
           { label: playbookActionLabel("observe_confirmed"), value: String(observeConfirmed.length), tone: observeConfirmed.length ? "warn" : "neutral" },
@@ -90,8 +109,8 @@ export function PlaybookPage({
           { label: "5日达标率", value: hitRateDisplay, tone: hitRateTone },
         ]}
       />
-      <div className="panel playbook-performance">
-        <PanelTitle title="最近表现" />
+      <div className="panel" style={PLAYBOOK_PERFORMANCE_STYLE}>
+        <PanelTitle title="最近表现" style={{ marginBottom: 4 }} />
         <p>当前策略：{strategyName}；已加载：{loadedStrategyName}{switchingText}</p>
         <p>近5日 达标率 {hitRateDisplay}　平均收益 {formatPct(playbook?.performance?.avg_return_5d)}　回撤 {formatPct(playbook?.performance?.avg_max_drawdown_5d)}　赚亏比 {formatNumber(playbook?.performance?.profit_factor)}</p>
         {hasInsufficientData ? <p>样本说明：{sampleReason}</p> : null}
@@ -104,15 +123,17 @@ export function PlaybookPage({
         <p>分市场表现：{marketAttributionText}</p>
         <p>执行口径：只展示当前策略命中的股票，确定买入必须同时满足价格区间、承接确认和风控条件。</p>
       </div>
-      <aside className="panel dark playbook-focus">
+      <aside className="panel" style={PLAYBOOK_DARK_FOCUS_STYLE}>
         <PanelTitle title="今日主看" />
         {focus ? (
           <>
             {executableCount <= 0 ? (
-              <div className="board-warning">
-                <strong>今日无可执行买点</strong>
-                <span>当前只有继续观察样本，不能当作确认买入；等待价格进入买点区并完成承接确认。</span>
-              </div>
+              <Callout
+                title="今日无可执行买点"
+                detail="当前只有继续观察样本，不能当作确认买入；等待价格进入买点区并完成承接确认。"
+                tone="warn"
+                compact
+              />
             ) : null}
             <p>{executableCount > 0 ? "主看" : "观察"}：{focus.name} {focus.symbol}，{focus.actionText}，{focus.details}</p>
             <InfoPill label="主线轮动" value={playbook?.hot_industries?.slice(0, 4).join(" / ") || "--"} />
@@ -120,19 +141,21 @@ export function PlaybookPage({
             <InfoPill label="盘后复盘入口" value="自动归档触发价、失效价和执行结果" />
           </>
         ) : avoid.length ? (
-          <div className="board-warning danger">
-            <strong>今日全部放弃</strong>
-            <span>当前策略有样本但都未通过买点、承接或风控过滤，不展示为主看标的。</span>
-          </div>
+          <Callout
+            title="今日全部放弃"
+            detail="当前策略有样本但都未通过买点、承接或风控过滤，不展示为主看标的。"
+            tone="down"
+            compact
+          />
         ) : <EmptyState text="当前策略暂无主看标的。" />}
       </aside>
-      <CandidateSection className="playbook-buy" title="现在可买 / 小仓试买" items={buyNow} empty="当前没有可以直接执行的股票" onAnalyze={onAnalyze} onSelect={onSelect} />
-      <CandidateSection className="playbook-observe-confirmed" title="观察确认" items={observeConfirmed} empty="当前没有观察确认的股票" onAnalyze={onAnalyze} onSelect={onSelect} />
-      <CandidateSection className="playbook-near" title="等确认" items={nearEntry} empty="当前没有接近买点的股票" onAnalyze={onAnalyze} onSelect={onSelect} />
-      <div className="panel playbook-watch">
+      <CandidateSection style={PLAYBOOK_BUY_STYLE} title="现在可买 / 小仓试买" items={buyNow} empty="当前没有可以直接执行的股票" onAnalyze={onAnalyze} onSelect={onSelect} />
+      <CandidateSection style={PLAYBOOK_OBSERVE_STYLE} title="观察确认" items={observeConfirmed} empty="当前没有观察确认的股票" onAnalyze={onAnalyze} onSelect={onSelect} />
+      <CandidateSection style={PLAYBOOK_NEAR_STYLE} title="等确认" items={nearEntry} empty="当前没有接近买点的股票" onAnalyze={onAnalyze} onSelect={onSelect} />
+      <div className="panel" style={PLAYBOOK_WATCH_STYLE}>
         <PanelTitle title="继续观察 / 今天放弃" />
         <InfoPill label="收盘复盘" value={`样本交易日 ${playbook?.latest_trade_date ?? "--"} / 缓存 ${playbook?.full_scan_ready ? "已就绪" : "生成中"}`} />
-        <div className="stock-list compact">
+        <StockCardList compact>
           {passiveCandidates.length ? passiveCandidates.map((stock) => (
             <StockCard
               key={stock.symbol}
@@ -141,7 +164,7 @@ export function PlaybookPage({
               onAction={(action) => (action === "分析" ? onAnalyze(stock) : onSelect(stock))}
             />
           )) : <EmptyState text="这一档为空，说明当前结构要么未到位，要么质量不足。" />}
-        </div>
+        </StockCardList>
       </div>
     </section>
   );
@@ -214,19 +237,19 @@ function CandidateSection({
   empty,
   onAnalyze,
   onSelect,
-  className = "",
+  style,
 }: {
   title: string;
   items: StockCardView[];
   empty: string;
   onAnalyze: (stock: StockCardView) => void;
   onSelect: (stock: StockCardView) => void;
-  className?: string;
+  style?: CSSProperties;
 }) {
   return (
-    <div className={`panel ${className}`}>
+    <div className="panel" style={style}>
       <PanelTitle title={title} />
-      <div className="stock-list compact">
+      <StockCardList compact>
         {items.length ? items.map((stock) => (
           <StockCard
             key={`${title}-${stock.symbol}`}
@@ -235,7 +258,7 @@ function CandidateSection({
             onAction={(action) => (action === "分析" ? onAnalyze(stock) : onSelect(stock))}
           />
         )) : <EmptyState text={empty} />}
-      </div>
+      </StockCardList>
     </div>
   );
 }

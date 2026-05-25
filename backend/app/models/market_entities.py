@@ -3,10 +3,11 @@ from __future__ import annotations
 from datetime import date, datetime
 from typing import Optional
 
-from sqlalchemy import Boolean, Date, DateTime, Float, ForeignKey, Integer, String, Text, UniqueConstraint, func
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy import Boolean, Date, DateTime, Float, ForeignKey, Integer, Numeric, String, Text, UniqueConstraint, func
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base
+from app.models.sqlalchemy_types import FlexibleDate
 
 
 class Instrument(Base):
@@ -174,6 +175,13 @@ class Watchlist(Base):
     cost_basis: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     memo: Mapped[str] = mapped_column(String(200), default="")
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    latest_signal: Mapped[Optional["WatchlistSignalSnapshot"]] = relationship(
+        "WatchlistSignalSnapshot",
+        uselist=False,
+        primaryjoin="Watchlist.symbol == foreign(WatchlistSignalSnapshot.symbol)",
+        viewonly=True,
+        lazy="selectin",
+    )
 
 class UserWatchlist(Base):
     __tablename__ = "user_watchlists"
@@ -207,6 +215,13 @@ class WatchlistSignalSnapshot(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime, server_default=func.now(), onupdate=func.now()
+    )
+    watchlist: Mapped[Optional[Watchlist]] = relationship(
+        "Watchlist",
+        uselist=False,
+        primaryjoin="foreign(WatchlistSignalSnapshot.symbol) == Watchlist.symbol",
+        viewonly=True,
+        lazy="selectin",
     )
 
 class AnalysisLog(Base):
@@ -291,6 +306,7 @@ class MinuteBarSnapshot(Base):
     market: Mapped[str] = mapped_column(String(16), default="CN")
     instrument_type: Mapped[str] = mapped_column(String(16), default="stock", index=True)
     bar_period: Mapped[str] = mapped_column(String(8), default="1m", index=True)
+    trade_date: Mapped[Optional[date]] = mapped_column(FlexibleDate(), nullable=True, index=True)
     bar_timestamp: Mapped[str] = mapped_column(String(32), index=True)
     quote_timestamp: Mapped[str] = mapped_column(String(32), default="")
     last_price: Mapped[float] = mapped_column(Float, default=0.0)
@@ -313,13 +329,13 @@ class DailyBarSnapshot(Base):
     symbol: Mapped[str] = mapped_column(String(16), index=True)
     market: Mapped[str] = mapped_column(String(16), default="CN")
     instrument_type: Mapped[str] = mapped_column(String(16), default="stock", index=True)
-    trade_date: Mapped[str] = mapped_column(String(16), index=True)
-    open_price: Mapped[float] = mapped_column(Float, default=0.0)
-    close_price: Mapped[float] = mapped_column(Float, default=0.0)
-    high_price: Mapped[float] = mapped_column(Float, default=0.0)
-    low_price: Mapped[float] = mapped_column(Float, default=0.0)
-    volume: Mapped[float] = mapped_column(Float, default=0.0)
-    amount: Mapped[float] = mapped_column(Float, default=0.0)
+    trade_date: Mapped[date] = mapped_column(FlexibleDate(), index=True)
+    open_price: Mapped[float] = mapped_column(Numeric(18, 4, asdecimal=False), default=0.0)
+    close_price: Mapped[float] = mapped_column(Numeric(18, 4, asdecimal=False), default=0.0)
+    high_price: Mapped[float] = mapped_column(Numeric(18, 4, asdecimal=False), default=0.0)
+    low_price: Mapped[float] = mapped_column(Numeric(18, 4, asdecimal=False), default=0.0)
+    volume: Mapped[float] = mapped_column(Numeric(20, 0, asdecimal=False), default=0.0)
+    amount: Mapped[float] = mapped_column(Numeric(20, 2, asdecimal=False), default=0.0)
     pct_chg: Mapped[float] = mapped_column(Float, default=0.0)
     pre_close: Mapped[float] = mapped_column(Float, default=0.0)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())

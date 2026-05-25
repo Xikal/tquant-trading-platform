@@ -12,6 +12,15 @@ import type { BacktestResearchActions, BacktestResearchState } from "./BacktestR
 import { Empty, parseRunIdsLoose, PanelTitle, sortCompareItems } from "./BacktestResearchShared";
 import { DataTable } from "../../ui/table/DataTable";
 import { useBacktestResearchUiStore } from "../../stores/backtestResearchUiStore";
+import { BACKTEST_CHART_FALLBACK_STYLE } from "./backtestChartStyles";
+import {
+  BACKTEST_COMPARE_ACTIONS_META_STYLE,
+  BACKTEST_COMPARE_ACTIONS_STYLE,
+  BACKTEST_RESEARCH_CARD_STYLE,
+  BACKTEST_RUN_PICKER_BUTTON_STYLE,
+  BACKTEST_RUN_PICKER_STYLE,
+  backtestToneTextStyle,
+} from "./backtestResearchStyles";
 
 const LazyBacktestCompareChart = lazy(() => import("./LazyBacktestCompareChart"));
 const LazyBacktestMonthlyHeatmap = lazy(() => import("./LazyBacktestMonthlyHeatmap"));
@@ -31,21 +40,22 @@ export function ComparePanel({ state, actions }: { state: BacktestResearchState;
     actions.onCompareRunIdsChange(next.join(","));
   };
   return (
-    <section className="backtest-research-card">
+    <section style={BACKTEST_RESEARCH_CARD_STYLE}>
       <PanelTitle title="回测对比" meta="复选运行 + 可排序指标 + ECharts" />
-      <div className="backtest-run-picker" aria-label="已完成回测快捷选择">
+      <div style={BACKTEST_RUN_PICKER_STYLE} aria-label="已完成回测快捷选择">
         {state.completedRuns.slice(0, 8).map((run) => (
           <Button
             type={selectedRunIds.includes(run.id) ? "primary" : "default"}
             onClick={() => toggleRunId(run.id)}
             key={run.id}
+            style={BACKTEST_RUN_PICKER_BUTTON_STYLE}
           >
             #{run.id} {formatBacktestStrategy(run.strategies?.[0] ?? run.strategy_keys?.[0])}
           </Button>
         ))}
       </div>
-      <div className="backtest-compare-actions">
-        <span>已选 {selectedRunIds.length} 个回测</span>
+      <div style={BACKTEST_COMPARE_ACTIONS_STYLE}>
+        <span style={BACKTEST_COMPARE_ACTIONS_META_STYLE}>已选 {selectedRunIds.length} 个回测</span>
         <Button onClick={actions.onRunCompare} disabled={state.loading === "compare" || selectedRunIds.length < 2}>
           {state.loading === "compare" ? "对比中..." : "运行对比"}
         </Button>
@@ -59,7 +69,7 @@ export function ComparePanel({ state, actions }: { state: BacktestResearchState;
           { title: "Run", render: (_value, item) => `#${item.run_id} ${item.name ?? ""}` },
           {
             title: <Button type="text" size="small" onClick={() => setSortKey("return")}>收益</Button>,
-            render: (_value, item) => <span className={toneFromNumber(item.metrics?.total_return_pct)}>{formatPct(item.metrics?.total_return_pct)}</span>,
+            render: (_value, item) => <span style={backtestToneTextStyle(toneFromNumber(item.metrics?.total_return_pct))}>{formatPct(item.metrics?.total_return_pct)}</span>,
           },
           {
             title: <Button type="text" size="small" onClick={() => setSortKey("sharpe")}>Sharpe</Button>,
@@ -67,15 +77,15 @@ export function ComparePanel({ state, actions }: { state: BacktestResearchState;
           },
           {
             title: <Button type="text" size="small" onClick={() => setSortKey("drawdown")}>MaxDD</Button>,
-            render: (_value, item) => <span className="down">{formatPct(item.metrics?.max_drawdown_pct)}</span>,
+            render: (_value, item) => <span style={backtestToneTextStyle("down")}>{formatPct(item.metrics?.max_drawdown_pct)}</span>,
           },
         ]}
       />
-      <Suspense fallback={<div className="backtest-chart-fallback">对比图加载中...</div>}>
+      <Suspense fallback={<div style={BACKTEST_CHART_FALLBACK_STYLE}>对比图加载中...</div>}>
         <LazyBacktestCompareChart result={state.compareResult} />
       </Suspense>
       <PanelTitle title="月度收益" meta="按月聚合" />
-      <Suspense fallback={<div className="backtest-chart-fallback">热力图加载中...</div>}>
+      <Suspense fallback={<div style={BACKTEST_CHART_FALLBACK_STYLE}>热力图加载中...</div>}>
         <LazyBacktestMonthlyHeatmap items={state.monthlyReturns?.items ?? []} />
       </Suspense>
       <DataTable<BacktestMonthlyReturn>
@@ -85,7 +95,7 @@ export function ComparePanel({ state, actions }: { state: BacktestResearchState;
         locale={{ emptyText: <Empty text="选择已完成回测后读取月度收益。" /> }}
         columns={[
           { title: "月份", dataIndex: "month" },
-          { title: "策略", dataIndex: "return_pct", render: (value) => <span className={toneFromNumber(value)}>{formatPct(value)}</span> },
+          { title: "策略", dataIndex: "return_pct", render: (value) => <span style={backtestToneTextStyle(toneFromNumber(value))}>{formatPct(value)}</span> },
           { title: "基准", dataIndex: "benchmark_return_pct", render: (value) => formatPct(value) },
           { title: "交易", dataIndex: "trade_count", align: "right", render: (value) => formatInteger(value) },
         ]}

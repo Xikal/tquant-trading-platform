@@ -11,6 +11,7 @@ from app.models.entities import (
     PaperDailyReport,
     PaperMarketPerfDaily,
     PaperPerformanceSnapshot,
+    PaperReviewReport,
     PaperStrategyPerfDaily,
 )
 from app.services.paper.performance import PaperPerformanceService
@@ -30,6 +31,7 @@ class PaperPerformanceDashboardService:
         strategies = self._strategies(account.id, start_date)
         markets = self._markets(account.id, start_date)
         report = self._latest_report(account.id)
+        review_reports = self._review_reports(account.id)
         performance = performance_service.compute_overall(account.id)
         strategy_trend = _strategy_trend(strategies)
         market_heatmap = _market_heatmap(markets)
@@ -57,6 +59,7 @@ class PaperPerformanceDashboardService:
                 start_date=start_date,
             ),
             "today_report": _daily_report(report) if report else None,
+            "review_reports": [_review_report(row) for row in review_reports],
             "updated_at": beijing_now().strftime("%Y-%m-%d %H:%M:%S"),
         }
 
@@ -97,6 +100,14 @@ class PaperPerformanceDashboardService:
             .order_by(PaperDailyReport.report_date.desc())
             .limit(1)
         ).scalar_one_or_none()
+
+    def _review_reports(self, account_id: int) -> list[PaperReviewReport]:
+        return self.db.execute(
+            select(PaperReviewReport)
+            .where(PaperReviewReport.account_id == account_id)
+            .order_by(PaperReviewReport.report_date.desc(), PaperReviewReport.report_slot.asc())
+            .limit(4)
+        ).scalars().all()
 
 
 def _snapshot_point(row: PaperPerformanceSnapshot) -> dict:
@@ -235,6 +246,12 @@ def _daily_report(row: PaperDailyReport) -> dict:
         "generated_at": row.generated_at.isoformat() if row.generated_at else "",
         "llm_model": row.llm_model,
     }
+
+
+def _review_report(row: PaperReviewReport) -> dict:
+    payload = _daily_report(row)
+    payload["report_slot"] = row.report_slot
+    return payload
 
 
 def _json_dict_list(raw: str) -> list[dict]:

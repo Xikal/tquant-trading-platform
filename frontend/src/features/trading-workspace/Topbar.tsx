@@ -1,8 +1,27 @@
-import { Badge, Button, Dropdown, Space, Typography } from "antd";
+import type { CSSProperties } from "react";
+import { Badge, Button, Dropdown, Grid, Space, Typography } from "antd";
 import { useEffect, useMemo } from "react";
 import { useWorkspaceStore } from "../../stores/workspaceStore";
 import type { AuthUser, LowBuyPriorityBoardResult } from "../../types";
 import type { Page, StockCardView } from "../workspace-shared/workspaceTypes";
+import {
+  TOPBAR_BRAND_STYLE,
+  TOPBAR_BRAND_TEXT_STYLE,
+  TOPBAR_CHIP_LABEL_STYLE,
+  TOPBAR_CHIPS_STYLE,
+  TOPBAR_NAV_ACTIVE_STYLE,
+  TOPBAR_NAV_BUTTON_STYLE,
+  TOPBAR_NAV_SECTION_ACTIVE_STYLE,
+  TOPBAR_NAV_STACKED_STYLE,
+  TOPBAR_NAV_STYLE,
+  TOPBAR_OPPORTUNITY_CHIP_STYLE,
+  TOPBAR_PULSE_CHIP_STYLE,
+  TOPBAR_PULSE_VALUE_STYLE,
+  TOPBAR_RISK_CHIP_STYLE,
+  topbarStyle,
+} from "./workspaceShellStyles";
+
+const { useBreakpoint } = Grid;
 
 export function Topbar({
   page,
@@ -25,6 +44,8 @@ export function Topbar({
 }) {
   const pulse = useWorkspaceStore((state) => state.topbarPulse);
   const setTopbarPulse = useWorkspaceStore((state) => state.setTopbarPulse);
+  const screens = useBreakpoint();
+  const stacked = !screens.lg;
   const nav: Array<[Page, string]> = useMemo(() => [
     ["monitor", "实时监控"],
     ["emotion", "市场情绪"],
@@ -51,38 +72,39 @@ export function Topbar({
   }, [setTopbarPulse]);
 
   return (
-    <header className={`topbar ${page === "monitor" ? "monitor-topbar" : "section-topbar"}`}>
-      <div className="brand">
-        <Typography.Text strong>维斯量化交易平台</Typography.Text>
+    <header style={topbarStyle(stacked)}>
+      <div style={TOPBAR_BRAND_STYLE}>
+        <Typography.Text strong style={TOPBAR_BRAND_TEXT_STYLE}>维斯量化交易平台</Typography.Text>
       </div>
-      <nav className="topbar-nav" aria-label="主导航">
+      <nav style={{ ...TOPBAR_NAV_STYLE, ...(stacked ? TOPBAR_NAV_STACKED_STYLE : undefined) }} aria-label="主导航">
         {menuItems.map((item) => (
-          <button
+          <Button
             key={item.key}
-            type="button"
-            className={page === item.key ? "active" : ""}
+            htmlType="button"
+            size="small"
+            style={navButtonStyle(page, item.key)}
             disabled={item.disabled}
             title={item.title}
             aria-current={page === item.key ? "page" : undefined}
             onClick={() => setPage(item.key)}
           >
             {item.label}
-          </button>
+          </Button>
         ))}
       </nav>
-      <Space className="desk-chips" size={10}>
+      <Space style={TOPBAR_CHIPS_STYLE} size={10}>
         {page === "paper" && onPaperRefresh ? (
           <Button type="primary" size="small" onClick={onPaperRefresh} loading={paperRefreshLoading}>
             {paperRefreshLoading ? "刷新中" : "刷新"}
           </Button>
         ) : null}
         <Badge count={priorityBoard?.total_candidates ?? 0} showZero color="#d92d20">
-          <span className="desk-chip opportunity"><small>机会</small></span>
+          <span style={TOPBAR_OPPORTUNITY_CHIP_STYLE}><small style={TOPBAR_CHIP_LABEL_STYLE}>机会</small></span>
         </Badge>
         <Badge count={riskCount} showZero color="#b42318">
-          <span className="desk-chip risk"><small>风险</small></span>
+          <span style={TOPBAR_RISK_CHIP_STYLE}><small style={TOPBAR_CHIP_LABEL_STYLE}>风险</small></span>
         </Badge>
-        <span className="desk-chip pulse"><small>脉冲</small><strong>{pulse}</strong></span>
+        <span style={TOPBAR_PULSE_CHIP_STYLE}><small style={TOPBAR_CHIP_LABEL_STYLE}>脉冲</small><strong style={TOPBAR_PULSE_VALUE_STYLE}>{pulse}</strong></span>
         <Dropdown
           menu={{
             items: [
@@ -93,13 +115,23 @@ export function Topbar({
           }}
           trigger={["click"]}
         >
-          <Button className={page === "settings" ? "active" : ""}>
+          <Button type={page === "settings" ? "primary" : "default"}>
             {userName}
           </Button>
         </Dropdown>
       </Space>
     </header>
   );
+}
+
+function navButtonStyle(currentPage: Page, itemKey: string): CSSProperties {
+  if (currentPage !== itemKey) {
+    return TOPBAR_NAV_BUTTON_STYLE;
+  }
+  return {
+    ...TOPBAR_NAV_BUTTON_STYLE,
+    ...(currentPage === "monitor" ? TOPBAR_NAV_ACTIVE_STYLE : TOPBAR_NAV_SECTION_ACTIVE_STYLE),
+  };
 }
 
 function realTimePulse(): string {

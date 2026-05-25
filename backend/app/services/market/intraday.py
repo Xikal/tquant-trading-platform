@@ -3,18 +3,16 @@ from __future__ import annotations
 from app.services.market.shared import (
     DataSourceError,
     KlineBar,
-    MinuteBarSnapshot,
     QuoteSnapshot,
     _safe_float,
     _safe_str,
     datetime,
-    func,
     guess_market,
     json,
     requests,
-    select,
     time,
 )
+from app.services.market.minute_bar_store import MinuteBarSnapshotStore
 
 
 class MarketIntradayMixin:
@@ -262,33 +260,7 @@ class MarketIntradayMixin:
         return bars[-limit:]
 
     def persist_minute_snapshots(self, db, quote: QuoteSnapshot, bars: list[KlineBar], bar_period: str = "1m") -> int:
-        if not bars:
-            return 0
-        latest_stored = db.execute(select(func.max(MinuteBarSnapshot.bar_timestamp)).where(MinuteBarSnapshot.symbol == quote.symbol, MinuteBarSnapshot.bar_period == bar_period)).scalar_one()
-        candidate_bars = [bar for bar in bars if not latest_stored or bar.timestamp >= str(latest_stored)]
-        if not candidate_bars:
-            return 0
-        existing_rows = db.execute(select(MinuteBarSnapshot).where(MinuteBarSnapshot.symbol == quote.symbol, MinuteBarSnapshot.bar_period == bar_period, MinuteBarSnapshot.bar_timestamp.in_([bar.timestamp for bar in candidate_bars]))).scalars().all()
-        rows_by_timestamp = {row.bar_timestamp: row for row in existing_rows}
-        persisted = 0
-        for bar in candidate_bars:
-            row = rows_by_timestamp.get(bar.timestamp)
-            if row is None:
-                row = MinuteBarSnapshot(symbol=quote.symbol, market=quote.market, instrument_type=quote.instrument_type, bar_period=bar_period, bar_timestamp=bar.timestamp)
-                db.add(row)
-                persisted += 1
-            row.quote_timestamp = quote.timestamp
-            row.last_price = quote.last_price
-            row.change_pct = quote.change_pct
-            row.open_price = bar.open
-            row.close_price = bar.close
-            row.high_price = bar.high
-            row.low_price = bar.low
-            row.volume = bar.volume
-            row.amount = bar.amount
-        if persisted or existing_rows:
-            db.commit()
-        return len(candidate_bars)
+        return MinuteBarSnapshotStore(db).persist(quote, bars, bar_period=bar_period)
 
     @staticmethod
     def _profile_vwap(bars: list[KlineBar]) -> float:

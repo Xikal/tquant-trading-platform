@@ -25,6 +25,7 @@ try:
         build_ranked_pools_from_daily_rows as _build_ranked_pools_from_daily_rows,
         is_stock_symbol,
     )
+    from .low_buy_market_backtest_signal_stats import signal_group_stats
     from .low_buy_market_backtest_runner import (
         run_fast_isolated_backtest,
         run_legacy_backtest,
@@ -42,6 +43,7 @@ except ImportError:
         build_ranked_pools_from_daily_rows as _build_ranked_pools_from_daily_rows,
         is_stock_symbol,
     )
+    from low_buy_market_backtest_signal_stats import signal_group_stats
     from low_buy_market_backtest_runner import (
         run_fast_isolated_backtest,
         run_legacy_backtest,
@@ -54,6 +56,8 @@ except ImportError:
         history_window_days,
         render_markdown_report,
     )
+
+_signal_group_stats = signal_group_stats
 
 
 def build_parser() -> argparse.ArgumentParser:

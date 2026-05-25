@@ -64,6 +64,21 @@ def test_production_rejects_memory_rate_limit() -> None:
         validate_security_settings(settings)
 
 
+def test_multi_worker_rejects_memory_rate_limit_even_outside_production() -> None:
+    settings = AppSettings(
+        app_environment="development",
+        auth_cookie_secure=False,
+        auth_cookie_samesite="lax",
+        auth_secret_key="",
+        tquant_settings_encryption_key="",
+        app_workers=4,
+        global_rate_limit_backend="memory",
+    )
+
+    with pytest.raises(RuntimeError, match="多 worker"):
+        validate_security_settings(settings)
+
+
 def test_production_requires_internal_token_for_microservice_urls() -> None:
     settings = AppSettings(
         app_environment="production",

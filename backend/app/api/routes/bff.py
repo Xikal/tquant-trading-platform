@@ -3,7 +3,8 @@ from __future__ import annotations
 import logging
 from typing import Callable, TypeVar
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request
+from fastapi import APIRouter, BackgroundTasks, Depends, Header, HTTPException, Query, Request
+from sqlalchemy import inspect as sa_inspect, select
 from sqlalchemy.orm import Session
 
 from app.api.routes.market import market_breadth, paired_hedge_research, sector_relative_strength
@@ -33,9 +34,11 @@ from app.services.bff.remote_adapters import (
     load_remote_strategy_workspace,
 )
 from app.services.bff.remote_client import forwarded_request_headers
+from app.services.bff.go_gateway_shadow import schedule_go_bff_shadow_check
 from app.services.bff.settings_workspace import build_settings_workspace
 from app.services.bff.strategy_workspace import build_strategy_workspace
 from app.services.bff.timeout import run_workspace_with_timeout
+from app.services.bff.workspace_cache import load_cached_workspace
 from app.services.monitor_snapshot_service import build_monitor_snapshot
 
 logger = logging.getLogger(__name__)
@@ -44,10 +47,10 @@ T = TypeVar("T")
 
 
 @router.get("/manifest", response_model=BffManifestResponse)
-def bff_manifest() -> BffManifestResponse:
+def bff_manifest(request: Request, background_tasks: BackgroundTasks) -> BffManifestResponse:
     """Expose the stable BFF contract consumed by Web/App frontends."""
 
-    return BffManifestResponse(
+    response = BffManifestResponse(
         modules=[
             "auth",
             "market",
@@ -80,11 +83,20 @@ def bff_manifest() -> BffManifestResponse:
             ),
         },
     )
+    schedule_go_bff_shadow_check(
+        background_tasks,
+        workspace="manifest",
+        response_model=BffManifestResponse,
+        local_payload=response,
+        request_headers=forwarded_request_headers(request.headers),
+    )
+    return response
 
 
 @router.get("/workspace/monitor", response_model=MonitorWorkspaceBffResponse)
 def monitor_workspace_bff(
     request: Request,
+    background_tasks: BackgroundTasks,
     priority_limit: int = Query(default=12, ge=1, le=30),
     sector_limit: int = Query(default=8, ge=1, le=20),
     per_sector_limit: int = Query(default=8, ge=1, le=30),
@@ -94,6 +106,7 @@ def monitor_workspace_bff(
 ) -> MonitorWorkspaceBffResponse:
     """Aggregate monitor first-screen data behind a frontend-specific seam."""
 
+    remote_used = False
     if _remote_adapter_allowed(request):
         remote = load_remote_monitor_workspace(
             priority_limit=priority_limit,
@@ -103,34 +116,71 @@ def monitor_workspace_bff(
             forward_headers=forwarded_request_headers(request.headers),
         )
         if remote is not None:
-            return remote
+            remote_used = True
+            response = remote
+            schedule_go_bff_shadow_check(
+                background_tasks,
+                workspace="monitor",
+                response_model=MonitorWorkspaceBffResponse,
+                local_payload=response,
+                request_headers=forwarded_request_headers(request.headers),
+                params={
+                    "priority_limit": priority_limit,
+                    "sector_limit": sector_limit,
+                    "per_sector_limit": per_sector_limit,
+                    "hedge_limit": hedge_limit,
+                },
+            )
+            return response
 
-    errors: list[BffPartialError] = []
-    return MonitorWorkspaceBffResponse(
-        generated_at=beijing_now_string(),
-        monitor_snapshot=_safe(
-            "monitor_snapshot",
-            errors,
-            lambda: build_monitor_snapshot(db, current_user=current_user, priority_limit=priority_limit),
+    response = load_cached_workspace(
+        workspace="monitor",
+        model=MonitorWorkspaceBffResponse,
+        user_id=current_user.id,
+        params={
+            "priority_limit": priority_limit,
+            "sector_limit": sector_limit,
+            "per_sector_limit": per_sector_limit,
+            "hedge_limit": hedge_limit,
+        },
+        loader=lambda: run_workspace_with_timeout(
+            source="monitor_workspace",
+            timeout_seconds=_bff_timeout_seconds(),
+            loader=lambda: _build_monitor_workspace(
+                db,
+                current_user=current_user,
+                priority_limit=priority_limit,
+                sector_limit=sector_limit,
+                per_sector_limit=per_sector_limit,
+                hedge_limit=hedge_limit,
+            ),
+            fallback=lambda error: MonitorWorkspaceBffResponse(
+                generated_at=beijing_now_string(),
+                partial_errors=[error],
+            ),
         ),
-        market_breadth=_safe("market_breadth", errors, market_breadth),
-        sector_relative_strength=_safe(
-            "sector_relative_strength",
-            errors,
-            lambda: sector_relative_strength(sector_limit, per_sector_limit, db),
-        ),
-        paired_hedge=_safe(
-            "paired_hedge",
-            errors,
-            lambda: paired_hedge_research(hedge_limit, current_user, db),
-        ),
-        partial_errors=errors,
     )
+    if not remote_used:
+        schedule_go_bff_shadow_check(
+            background_tasks,
+            workspace="monitor",
+            response_model=MonitorWorkspaceBffResponse,
+            local_payload=response,
+            request_headers=forwarded_request_headers(request.headers),
+            params={
+                "priority_limit": priority_limit,
+                "sector_limit": sector_limit,
+                "per_sector_limit": per_sector_limit,
+                "hedge_limit": hedge_limit,
+            },
+        )
+    return response
 
 
 @router.get("/workspace/paper", response_model=PaperWorkspaceBffResponse)
 def paper_workspace_bff(
     request: Request,
+    background_tasks: BackgroundTasks,
     order_limit: int = Query(default=80, ge=1, le=200),
     trade_limit: int = Query(default=300, ge=1, le=300),
     run_limit: int = Query(default=20, ge=1, le=100),
@@ -139,6 +189,7 @@ def paper_workspace_bff(
 ) -> PaperWorkspaceBffResponse:
     """Aggregate the paper trading first-screen payload for Web/App clients."""
 
+    remote_used = False
     if _remote_adapter_allowed(request):
         remote = load_remote_paper_workspace(
             order_limit=order_limit,
@@ -147,56 +198,111 @@ def paper_workspace_bff(
             forward_headers=forwarded_request_headers(request.headers),
         )
         if remote is not None:
-            return remote
+            remote_used = True
+            response = remote
+            schedule_go_bff_shadow_check(
+                background_tasks,
+                workspace="paper",
+                response_model=PaperWorkspaceBffResponse,
+                local_payload=response,
+                request_headers=forwarded_request_headers(request.headers),
+                params={"order_limit": order_limit, "trade_limit": trade_limit, "run_limit": run_limit},
+            )
+            return response
 
-    return run_workspace_with_timeout(
-        source="paper_workspace",
-        timeout_seconds=_bff_timeout_seconds(),
-        loader=lambda: build_paper_workspace(
-            db,
-            current_user=current_user,
-            order_limit=order_limit,
-            trade_limit=trade_limit,
-            run_limit=run_limit,
-        ),
-        fallback=lambda error: PaperWorkspaceBffResponse(
-            generated_at=beijing_now_string(),
-            partial_errors=[error],
+    response = load_cached_workspace(
+        workspace="paper",
+        model=PaperWorkspaceBffResponse,
+        user_id=current_user.id,
+        params={"order_limit": order_limit, "trade_limit": trade_limit, "run_limit": run_limit},
+        loader=lambda: run_workspace_with_timeout(
+            source="paper_workspace",
+            timeout_seconds=_bff_timeout_seconds(),
+            loader=lambda: build_paper_workspace(
+                db,
+                current_user=current_user,
+                order_limit=order_limit,
+                trade_limit=trade_limit,
+                run_limit=run_limit,
+            ),
+            fallback=lambda error: PaperWorkspaceBffResponse(
+                generated_at=beijing_now_string(),
+                partial_errors=[error],
+            ),
         ),
     )
+    if not remote_used:
+        schedule_go_bff_shadow_check(
+            background_tasks,
+            workspace="paper",
+            response_model=PaperWorkspaceBffResponse,
+            local_payload=response,
+            request_headers=forwarded_request_headers(request.headers),
+            params={"order_limit": order_limit, "trade_limit": trade_limit, "run_limit": run_limit},
+        )
+    return response
 
 
 @router.get("/workspace/strategy", response_model=StrategyWorkspaceBffResponse)
 def strategy_workspace_bff(
     request: Request,
+    background_tasks: BackgroundTasks,
     run_limit: int = Query(default=8, ge=1, le=50),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> StrategyWorkspaceBffResponse:
     """Aggregate StrategyHub first-screen data for Web/App clients."""
 
+    remote_used = False
     if _remote_adapter_allowed(request):
         remote = load_remote_strategy_workspace(
             run_limit=run_limit,
             forward_headers=forwarded_request_headers(request.headers),
         )
         if remote is not None:
-            return remote
+            remote_used = True
+            response = remote
+            schedule_go_bff_shadow_check(
+                background_tasks,
+                workspace="strategy",
+                response_model=StrategyWorkspaceBffResponse,
+                local_payload=response,
+                request_headers=forwarded_request_headers(request.headers),
+                params={"run_limit": run_limit},
+            )
+            return response
 
-    return run_workspace_with_timeout(
-        source="strategy_workspace",
-        timeout_seconds=_bff_timeout_seconds(),
-        loader=lambda: build_strategy_workspace(db, current_user=current_user, run_limit=run_limit),
-        fallback=lambda error: StrategyWorkspaceBffResponse(
-            generated_at=beijing_now_string(),
-            partial_errors=[error],
+    response = load_cached_workspace(
+        workspace="strategy",
+        model=StrategyWorkspaceBffResponse,
+        user_id=current_user.id,
+        params={"run_limit": run_limit},
+        loader=lambda: run_workspace_with_timeout(
+            source="strategy_workspace",
+            timeout_seconds=_bff_timeout_seconds(),
+            loader=lambda: build_strategy_workspace(db, current_user=current_user, run_limit=run_limit),
+            fallback=lambda error: StrategyWorkspaceBffResponse(
+                generated_at=beijing_now_string(),
+                partial_errors=[error],
+            ),
         ),
     )
+    if not remote_used:
+        schedule_go_bff_shadow_check(
+            background_tasks,
+            workspace="strategy",
+            response_model=StrategyWorkspaceBffResponse,
+            local_payload=response,
+            request_headers=forwarded_request_headers(request.headers),
+            params={"run_limit": run_limit},
+        )
+    return response
 
 
 @router.get("/workspace/settings", response_model=SettingsWorkspaceBffResponse)
 def settings_workspace_bff(
     request: Request,
+    background_tasks: BackgroundTasks,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
     x_admin_token: str | None = Header(default=None, alias="X-Admin-Token"),
@@ -210,27 +316,86 @@ def settings_workspace_bff(
         x_admin_token=x_admin_token,
         authorization=authorization,
     )
+    remote_used = False
     if _remote_adapter_allowed(request):
         remote = load_remote_settings_workspace(
             include_admin=include_admin,
             forward_headers=forwarded_request_headers(request.headers),
         )
         if remote is not None:
-            return remote
+            remote_used = True
+            response = remote
+            schedule_go_bff_shadow_check(
+                background_tasks,
+                workspace="settings",
+                response_model=SettingsWorkspaceBffResponse,
+                local_payload=response,
+                request_headers=forwarded_request_headers(request.headers),
+                params={"include_admin": str(include_admin).lower()},
+            )
+            return response
 
-    return run_workspace_with_timeout(
-        source="settings_workspace",
-        timeout_seconds=_bff_timeout_seconds(),
-        loader=lambda: build_settings_workspace(
-            db,
-            current_user=current_user,
-            include_admin=include_admin,
+    response = load_cached_workspace(
+        workspace="settings",
+        model=SettingsWorkspaceBffResponse,
+        user_id=current_user.id,
+        params={"include_admin": include_admin},
+        loader=lambda: run_workspace_with_timeout(
+            source="settings_workspace",
+            timeout_seconds=_bff_timeout_seconds(),
+            loader=lambda: build_settings_workspace(
+                db,
+                current_user=current_user,
+                include_admin=include_admin,
+            ),
+            fallback=lambda error: SettingsWorkspaceBffResponse(
+                generated_at=beijing_now_string(),
+                admin_enabled=include_admin,
+                partial_errors=[error],
+            ),
         ),
-        fallback=lambda error: SettingsWorkspaceBffResponse(
-            generated_at=beijing_now_string(),
-            admin_enabled=include_admin,
-            partial_errors=[error],
+    )
+    if not remote_used:
+        schedule_go_bff_shadow_check(
+            background_tasks,
+            workspace="settings",
+            response_model=SettingsWorkspaceBffResponse,
+            local_payload=response,
+            request_headers=forwarded_request_headers(request.headers),
+            params={"include_admin": str(include_admin).lower()},
+        )
+    return response
+
+
+def _build_monitor_workspace(
+    db: Session,
+    *,
+    current_user: User,
+    priority_limit: int,
+    sector_limit: int,
+    per_sector_limit: int,
+    hedge_limit: int,
+) -> MonitorWorkspaceBffResponse:
+    errors: list[BffPartialError] = []
+    return MonitorWorkspaceBffResponse(
+        generated_at=beijing_now_string(),
+        monitor_snapshot=_safe(
+            "monitor_snapshot",
+            errors,
+            lambda: build_monitor_snapshot(db, current_user=current_user, priority_limit=priority_limit),
         ),
+        market_breadth=_safe("market_breadth", errors, lambda: market_breadth(db=db)),
+        sector_relative_strength=_safe(
+            "sector_relative_strength",
+            errors,
+            lambda: sector_relative_strength(sector_limit, per_sector_limit, db),
+        ),
+        paired_hedge=_safe(
+            "paired_hedge",
+            errors,
+            lambda: paired_hedge_research(hedge_limit, _attached_user(db, current_user), db),
+        ),
+        partial_errors=errors,
     )
 
 
@@ -244,6 +409,30 @@ def _safe(source: str, errors: list[BffPartialError], loader: Callable[[], T]) -
         logger.warning("bff source failed source=%s", source, exc_info=(type(exc), exc, exc.__traceback__))
         errors.append(BffPartialError(source=source, detail="数据暂时不可用"))
         return None
+
+
+def _attached_user(db: Session, user: User) -> User:
+    user_id = 0
+    try:
+        identity = sa_inspect(user).identity
+        if identity:
+            user_id = int(identity[0] or 0)
+    except Exception:
+        user_dict = getattr(user, "__dict__", {})
+        if isinstance(user_dict, dict):
+            try:
+                user_id = int(user_dict.get("id") or 0)
+            except Exception:
+                user_id = 0
+    if user_id <= 0:
+        try:
+            user_id = int(getattr(user, "id", 0) or 0)
+        except Exception:
+            user_id = 0
+    if user_id <= 0:
+        return user
+    refreshed = db.execute(select(User).where(User.id == user_id)).scalar_one_or_none()
+    return refreshed or user
 
 
 def _remote_adapter_allowed(request: Request) -> bool:

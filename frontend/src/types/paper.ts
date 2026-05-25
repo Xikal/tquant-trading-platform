@@ -303,6 +303,7 @@ export interface PaperMarketPerfHeatmapItem {
 export interface PaperDailyReport {
   id: number
   report_date: string
+  report_slot?: "midday" | "close" | string
   overall_summary: string
   strategy_highlights: Array<{
     strategy: string
@@ -339,6 +340,7 @@ export interface PaperPerformanceDashboard {
   strategy_market_matrix: PaperStrategyMarketPerformance[]
   strategy_correlation?: PaperStrategyCorrelation
   today_report: PaperDailyReport | null
+  review_reports?: PaperDailyReport[]
   updated_at: string
 }
 

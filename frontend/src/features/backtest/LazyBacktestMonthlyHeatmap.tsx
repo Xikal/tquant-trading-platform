@@ -4,6 +4,11 @@ import { CalendarComponent, TooltipComponent, VisualMapComponent } from "echarts
 import * as echarts from "echarts/core";
 import { CanvasRenderer } from "echarts/renderers";
 import type { BacktestMonthlyReturn } from "../../api/backtests";
+import {
+  BACKTEST_ECHARTS_ALT_STYLE,
+  BACKTEST_ECHARTS_STYLE,
+  combineBacktestStyles,
+} from "./backtestStyles";
 
 echarts.use([CalendarComponent, CanvasRenderer, HeatmapChart, TooltipComponent, VisualMapComponent]);
 
@@ -28,7 +33,7 @@ export default function LazyBacktestMonthlyHeatmap({ items }: { items: BacktestM
     chartRef.current?.setOption(option, true, true);
   }, [option]);
 
-  return <div ref={elementRef} className="backtest-echarts heatmap" />;
+  return <div ref={elementRef} style={combineBacktestStyles(BACKTEST_ECHARTS_STYLE, BACKTEST_ECHARTS_ALT_STYLE)} />;
 }
 
 function buildOption(items: BacktestMonthlyReturn[]): echarts.EChartsCoreOption {

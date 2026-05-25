@@ -1,5 +1,24 @@
-import { Component, type ErrorInfo, type ReactNode } from "react";
+import { Component, type CSSProperties, type ErrorInfo, type ReactNode } from "react";
 import { Button } from "antd";
+
+const PAGE_ERROR_BOUNDARY_STYLE: CSSProperties = {
+  display: "grid",
+  gap: 8,
+  borderColor: "#efb7ad",
+  background: "#fffafa",
+};
+
+const PAGE_ERROR_TITLE_STYLE: CSSProperties = {
+  margin: 0,
+  color: "var(--negative)",
+  fontSize: 16,
+};
+
+const PAGE_ERROR_TEXT_STYLE: CSSProperties = {
+  margin: 0,
+  color: "var(--muted)",
+  fontSize: 12,
+};
 
 interface PageErrorBoundaryProps {
   children: ReactNode;
@@ -34,9 +53,9 @@ export class PageErrorBoundary extends Component<PageErrorBoundaryProps, PageErr
       return this.props.children;
     }
     return (
-      <section className="panel page-error-boundary">
-        <h2>页面加载失败</h2>
-        <p>{this.state.message}</p>
+      <section className="panel" style={PAGE_ERROR_BOUNDARY_STYLE}>
+        <h2 style={PAGE_ERROR_TITLE_STYLE}>页面加载失败</h2>
+        <p style={PAGE_ERROR_TEXT_STYLE}>{this.state.message}</p>
         <Button onClick={() => this.setState({ message: "" })}>重试</Button>
       </section>
     );

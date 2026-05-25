@@ -4,6 +4,11 @@ import { DataZoomComponent, GridComponent, LegendComponent, TooltipComponent } f
 import * as echarts from "echarts/core";
 import { CanvasRenderer } from "echarts/renderers";
 import type { BacktestCompareResponse } from "../../api/backtests";
+import {
+  BACKTEST_ECHARTS_COMPACT_STYLE,
+  BACKTEST_ECHARTS_STYLE,
+  combineBacktestStyles,
+} from "./backtestStyles";
 
 echarts.use([CanvasRenderer, DataZoomComponent, GridComponent, LegendComponent, LineChart, TooltipComponent]);
 
@@ -28,7 +33,7 @@ export default function LazyBacktestCompareChart({ result }: { result: BacktestC
     chartRef.current?.setOption(option, true, true);
   }, [option]);
 
-  return <div ref={elementRef} className="backtest-echarts compact" />;
+  return <div ref={elementRef} style={combineBacktestStyles(BACKTEST_ECHARTS_STYLE, BACKTEST_ECHARTS_COMPACT_STYLE)} />;
 }
 
 function buildOption(result: BacktestCompareResponse | null): echarts.EChartsCoreOption {

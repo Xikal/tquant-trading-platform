@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo } from "react";
+import type { CSSProperties } from "react";
 
 import { quantParametersApi } from "../../api/quantParameters";
 import { NumberField } from "../../components/shared/FormFields";
@@ -33,6 +34,11 @@ const PAPER_EXIT_FIELDS: QuantFieldSpec[] = [
   { path: "paper.dynamic_exit.weak_hold_exit_days", label: "未转强退出天数", min: 1, max: 20, step: "1", suffix: "天" },
   { path: "paper.dynamic_exit.time_exit_min_return_pct", label: "时间退出最低收益", min: 0, max: 20, step: "0.1", suffix: "%" },
 ];
+
+const INLINE_FIELD_ERROR_STYLE: CSSProperties = {
+  color: "#b91c1c",
+  fontSize: 12,
+};
 
 export function QuantParameterPaperExitCard({ adminTokenError }: { adminTokenError: string }) {
   const card = useSettingsUiStore((state) => state.quantCards.paperExit);
@@ -103,7 +109,7 @@ export function QuantParameterPaperExitCard({ adminTokenError }: { adminTokenErr
           onChange={(event) => setCard("paperExit", { draft: { ...draft, [field.path]: event.target.value } })}
         />
       ))}
-      {adminTokenError || fieldError || error ? <span className="tq-field__error">{adminTokenError || fieldError || error}</span> : null}
+      {adminTokenError || fieldError || error ? <span style={INLINE_FIELD_ERROR_STYLE}>{adminTokenError || fieldError || error}</span> : null}
     </SettingCard>
   );
 }

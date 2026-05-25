@@ -1,4 +1,4 @@
-import { Button, Checkbox, Input } from "antd";
+import { Alert, Button, Card, Checkbox, Flex, Input, Space, Typography } from "antd";
 import { factorMiningApi, type FactorHypothesis } from "../../api/factorMining";
 import { useFactorMiningUiStore } from "../../stores/factorMiningUiStore";
 
@@ -46,36 +46,36 @@ export function HypothesisPanel({
   }
 
   return (
-    <section className="factor-hypothesis-panel">
-      <div className="factor-section-title">
-        <h3>1. 生成因子假设</h3>
-        <span>输入研究方向，系统生成候选假设，再选择一个合成代码。</span>
-      </div>
-      <div className="factor-topic-row">
-        <Input value={topic} onChange={(event) => setTopic(event.target.value)} placeholder="例如：分时 VWAP 折价、涨停后缩量洗盘" />
-        <Checkbox checked={useLlm} onChange={(event) => setUseLlm(event.target.checked)}>
-          使用 deepseek-v4-flash
-        </Checkbox>
-        <Button type="primary" onClick={() => void generate()} loading={loading === "generate"} disabled={!topic.trim()}>
-          {loading === "generate" ? "生成中" : "生成假设"}
-        </Button>
-      </div>
-      {error ? <p className="factor-inline-error">{error}</p> : null}
-      <div className="factor-hypothesis-list">
+    <Card size="small" title="1. 生成因子假设" extra={<Typography.Text type="secondary">输入研究方向，选择假设后合成代码。</Typography.Text>}>
+      <Space direction="vertical" size={12} style={{ width: "100%" }}>
+        <Flex gap={8} align="center" wrap>
+          <Input style={{ flex: "1 1 280px" }} value={topic} onChange={(event) => setTopic(event.target.value)} placeholder="例如：分时 VWAP 折价、涨停后缩量洗盘" />
+          <Checkbox checked={useLlm} onChange={(event) => setUseLlm(event.target.checked)}>
+            使用 deepseek-v4-flash
+          </Checkbox>
+          <Button type="primary" onClick={() => void generate()} loading={loading === "generate"} disabled={!topic.trim()}>
+            {loading === "generate" ? "生成中" : "生成假设"}
+          </Button>
+        </Flex>
+        {error ? <Alert type="warning" showIcon message={error} /> : null}
+        <Space direction="vertical" size={8} style={{ width: "100%", maxHeight: 360, overflowY: "auto" }}>
         {items.map((item) => (
-          <article key={item.factor_key}>
-            <div>
-              <strong>{item.factor_name}</strong>
-              <span>{item.hypothesis}</span>
-              <small>字段：{item.data_deps.join("、") || "默认日线字段"}</small>
-            </div>
-            <Button type="default" onClick={() => void synthesize(item)} loading={loading === item.factor_key}>
-              {loading === item.factor_key ? "合成中" : "合成代码"}
-            </Button>
-          </article>
+          <Card key={item.factor_key} size="small">
+            <Flex justify="space-between" gap={12} align="center" wrap>
+              <Space direction="vertical" size={2} style={{ flex: "1 1 260px" }}>
+                <Typography.Text strong>{item.factor_name}</Typography.Text>
+                <Typography.Text>{item.hypothesis}</Typography.Text>
+                <Typography.Text type="secondary" style={{ fontSize: 12 }}>字段：{item.data_deps.join("、") || "默认日线字段"}</Typography.Text>
+              </Space>
+              <Button type="default" onClick={() => void synthesize(item)} loading={loading === item.factor_key}>
+                {loading === item.factor_key ? "合成中" : "合成代码"}
+              </Button>
+            </Flex>
+          </Card>
         ))}
-      </div>
-    </section>
+        </Space>
+      </Space>
+    </Card>
   );
 }
 

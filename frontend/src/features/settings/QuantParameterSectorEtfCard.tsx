@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo } from "react";
+import type { CSSProperties } from "react";
 import { Checkbox } from "antd";
 
 import { quantParametersApi } from "../../api/quantParameters";
@@ -15,6 +16,24 @@ const ETF_FIELD_SPECS: QuantFieldSpec[] = [
   { path: "market.sector_etf_t0.paper_auto_take_profit_pct", label: "止盈线", min: 0, max: 10, step: "0.1", suffix: "%" },
   { path: "market.sector_etf_t0.paper_auto_stop_loss_pct", label: "止损线", min: -10, max: 0, step: "0.1", suffix: "%" },
 ];
+
+const INLINE_CHECKBOX_FIELD_STYLE: CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  gap: 8,
+  minWidth: 0,
+};
+
+const INLINE_FIELD_LABEL_STYLE: CSSProperties = {
+  color: "#62708a",
+  fontSize: 12,
+  fontWeight: 700,
+};
+
+const INLINE_FIELD_ERROR_STYLE: CSSProperties = {
+  color: "#b91c1c",
+  fontSize: 12,
+};
 
 export function QuantParameterSectorEtfCard({ adminTokenError }: { adminTokenError: string }) {
   const card = useSettingsUiStore((state) => state.quantCards.sectorEtf);
@@ -75,8 +94,8 @@ export function QuantParameterSectorEtfCard({ adminTokenError }: { adminTokenErr
   return (
     <SettingCard className="sector-etf-params-card" title="行业 ETF T+0 自动交易" button="保存 ETF 参数" onSave={() => void save()} loading={loading} saved={saved} disabled={Boolean(adminTokenError || fieldError || !current)}>
       <p className="muted">控制模拟盘是否自动执行行业 ETF T+0 机会，以及单轮委托、置信度、价差、止盈止损门槛。</p>
-      <label className="tq-field tq-checkbox-field">
-        <span className="tq-field__label">自动执行</span>
+      <label style={INLINE_CHECKBOX_FIELD_STYLE}>
+        <span style={INLINE_FIELD_LABEL_STYLE}>自动执行</span>
         <Checkbox checked={enabled} onChange={(event) => setCard("sectorEtf", { enabled: event.target.checked })} />
         <span>{enabled ? "已启用" : "已关闭"}</span>
       </label>
@@ -92,7 +111,7 @@ export function QuantParameterSectorEtfCard({ adminTokenError }: { adminTokenErr
           onChange={(event) => setCard("sectorEtf", { draft: { ...draft, [field.path]: event.target.value } })}
         />
       ))}
-      {adminTokenError || fieldError || error ? <span className="tq-field__error">{adminTokenError || fieldError || error}</span> : null}
+      {adminTokenError || fieldError || error ? <span style={INLINE_FIELD_ERROR_STYLE}>{adminTokenError || fieldError || error}</span> : null}
     </SettingCard>
   );
 }

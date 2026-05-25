@@ -12,6 +12,7 @@ from app.models.entities import (
     PaperAccount,
     PaperDailyReport,
     PaperMarketPerfDaily,
+    PaperReviewReport,
     PaperStrategyPerfDaily,
 )
 from app.core.timezone import beijing_now, beijing_today
@@ -45,6 +46,7 @@ class PaperArchiveService:
         strategy_count = self._archive_strategy_perf(account_id, archive_date)
         market_count = self._archive_market_perf(account_id, archive_date)
         report = self.generate_daily_report(account_id, target_date=archive_date) if include_report else None
+        review = self.generate_review_report(account_id, report_slot="close", target_date=archive_date) if include_report else None
         self.db.commit()
         return {
             "account_id": account_id,
@@ -52,6 +54,7 @@ class PaperArchiveService:
             "strategies_saved": strategy_count,
             "market_states_saved": market_count,
             "report_saved": report is not None,
+            "close_review_saved": review is not None,
         }
 
     def archive_all_active(self, *, include_report: bool = True) -> list[dict[str, Any]]:
@@ -94,6 +97,63 @@ class PaperArchiveService:
         report.llm_model = model
         self.db.flush()
         return report
+
+    def generate_review_report(
+        self,
+        account_id: int,
+        *,
+        report_slot: str,
+        target_date: date | None = None,
+    ) -> PaperReviewReport:
+        slot = _normalize_report_slot(report_slot)
+        report_date = target_date or beijing_today()
+        metrics = self._metrics_snapshot(account_id, target_date=report_date)
+        summary, highlights, alerts, suggestion, model = self._build_rule_report(metrics)
+        summary, suggestion, alerts = _slot_guidance(slot, summary, suggestion, alerts, metrics)
+
+        report = self._find_review_report(account_id, report_date, slot)
+        if report is None:
+            report = PaperReviewReport(account_id=account_id, report_date=report_date, report_slot=slot)
+            self.db.add(report)
+        report.overall_summary = summary
+        report.strategy_highlights = _json_dumps(highlights)
+        report.risk_alerts = _json_dumps(alerts)
+        report.suggestion = suggestion
+        report.raw_metrics_snapshot = _json_dumps({**metrics, "report_slot": slot})
+        report.generated_at = beijing_now().replace(tzinfo=None)
+        report.llm_model = model
+        self.db.flush()
+        return report
+
+    def generate_review_reports_for_active(
+        self,
+        *,
+        report_slot: str,
+        target_date: date | None = None,
+    ) -> list[dict[str, Any]]:
+        slot = _normalize_report_slot(report_slot)
+        report_date = target_date or beijing_today()
+        accounts = self.db.execute(
+            select(PaperAccount).where(PaperAccount.status.in_(["active", "paused"]))
+        ).scalars().all()
+        results: list[dict[str, Any]] = []
+        for account in accounts:
+            try:
+                report = self.generate_review_report(account.id, report_slot=slot, target_date=report_date)
+                results.append(
+                    {
+                        "account_id": account.id,
+                        "date": report_date.isoformat(),
+                        "report_slot": slot,
+                        "report_id": report.id,
+                        "report_saved": True,
+                    }
+                )
+            except Exception:
+                logger.exception("模拟盘复盘报告生成失败: account_id=%s slot=%s", account.id, slot)
+                results.append({"account_id": account.id, "report_slot": slot, "error": "复盘报告生成失败"})
+        self.db.commit()
+        return results
 
     def _archive_strategy_perf(self, account_id: int, snapshot_date: date) -> int:
         rows = self.performance.compute_by_strategy(account_id, target_date=snapshot_date)
@@ -208,6 +268,15 @@ class PaperArchiveService:
             )
         ).scalar_one_or_none()
 
+    def _find_review_report(self, account_id: int, report_date: date, report_slot: str) -> PaperReviewReport | None:
+        return self.db.execute(
+            select(PaperReviewReport).where(
+                PaperReviewReport.account_id == account_id,
+                PaperReviewReport.report_date == report_date,
+                PaperReviewReport.report_slot == report_slot,
+            )
+        ).scalar_one_or_none()
+
 
 def _apply_strategy_stats(row: PaperStrategyPerfDaily, item: dict[str, Any]) -> None:
     trades = int(item.get("trades") or 0)
@@ -265,6 +334,41 @@ def _rule_suggestion(total_trades: int, net_win: float, total_return: float) -> 
     if net_win < 0 or total_return < 0:
         return "先缩小仓位，重点复盘亏损样本是否违反市场环境、板块强度或止损规则。"
     return "维持当前规则执行，优先扩大样本记录，不因单日结果临时放宽买点。"
+
+
+def _normalize_report_slot(value: str) -> str:
+    slot = str(value or "").strip().lower()
+    if slot not in {"midday", "close"}:
+        raise ValueError("复盘报告类型必须是 midday 或 close")
+    return slot
+
+
+def _slot_guidance(
+    slot: str,
+    summary: str,
+    suggestion: str,
+    alerts: list[dict[str, str]],
+    metrics: dict[str, Any],
+) -> tuple[str, str, list[dict[str, str]]]:
+    overall = metrics.get("overall", {})
+    total_return = float(overall.get("total_return_pct") or 0.0)
+    if slot == "midday":
+        prefix = "午盘复盘："
+        if total_return < 0:
+            guidance = "下午优先降频和确认止损，不加码修复亏损样本。"
+        else:
+            guidance = "下午只延续已验证方向，新增交易必须等待市场强弱和板块承接同步确认。"
+        alerts = [
+            *alerts,
+            {
+                "level": "info",
+                "content": "午盘报告用于约束下午执行，不作为放宽买点或提高仓位的依据。",
+            },
+        ]
+    else:
+        prefix = "收盘复盘："
+        guidance = "收盘后只做记录、归因和次日计划，不追认盘中临时交易。"
+    return f"{prefix}{summary}", f"{suggestion} {guidance}", alerts
 
 
 def _safe_list(value: Any) -> list[dict[str, str]]:

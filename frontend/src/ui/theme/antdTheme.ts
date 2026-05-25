@@ -19,9 +19,24 @@ export const antdTheme: ThemeConfig = {
     Button: {
       controlHeight: 36,
       borderRadius: 8,
+      defaultShadow: "none",
+      dangerShadow: "none",
+      primaryShadow: "none",
     },
     Card: {
       borderRadiusLG: 12,
+    },
+    Form: {
+      itemMarginBottom: 14,
+    },
+    Input: {
+      borderRadius: 8,
+    },
+    InputNumber: {
+      borderRadius: 8,
+    },
+    Select: {
+      borderRadius: 8,
     },
     Table: {
       fontSize: 13,

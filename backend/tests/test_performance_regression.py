@@ -94,6 +94,8 @@ class PerformanceRegressionTest(unittest.TestCase):
         self.assertIn("tquant_agent_tool_calls_total 2", body)
         self.assertIn("tquant_agent_tool_success_total 1", body)
         self.assertIn("tquant_agent_tool_failure_total 1", body)
+        self.assertIn("tquant_bff_remote_calls_total", body)
+        self.assertIn("tquant_bff_remote_failures_total", body)
 
 
 if __name__ == "__main__":

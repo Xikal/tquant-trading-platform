@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-REMOTE_HOST="${CLOUD_HOST:-43.143.243.97}"
+REMOTE_HOST="${CLOUD_HOST:-}"
 REMOTE_USER="${CLOUD_USER:-ubuntu}"
 REMOTE_DIR="${CLOUD_REMOTE_DIR:-/home/ubuntu/gupiao-upload}"
 SSH_KEY="${CLOUD_SSH_KEY:-/Users/j/Downloads/gupiao.pem}"
@@ -12,6 +12,11 @@ import secrets
 print(secrets.token_urlsafe(24))
 PY
 )"
+fi
+
+if [[ -z "$REMOTE_HOST" ]]; then
+  echo "CLOUD_HOST is required. Example: CLOUD_HOST=<server-ip-or-domain> $0" >&2
+  exit 2
 fi
 
 ssh_opts=(-o StrictHostKeyChecking=no -i "${SSH_KEY}")

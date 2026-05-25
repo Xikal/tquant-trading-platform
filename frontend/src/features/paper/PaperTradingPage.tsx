@@ -17,7 +17,7 @@ import type {
   RiskEventItem,
 } from "../../types";
 import { memo, useEffect, useMemo } from "react";
-import { Button } from "antd";
+import { Button, Col, Modal, Row, Space, Typography } from "antd";
 import { PixelTraderWorker } from "./PixelTraderWorker";
 import { PaperDetailTabs } from "./PaperDetailTabs";
 import { PaperTodayActionPanel } from "./PaperTodayActionPanel";
@@ -161,7 +161,7 @@ export const PaperTradingPage = memo(function PaperTradingPage({
   }
 
   return (
-    <section className="page-grid paper-grid">
+    <Space direction="vertical" size={12} style={{ display: "flex", width: "100%" }}>
       {shouldShowConfirmationDialog && pendingConfirmation ? (
         <IntradayConfirmationDialog
           item={pendingConfirmation}
@@ -191,27 +191,33 @@ export const PaperTradingPage = memo(function PaperTradingPage({
           onSubmitOrder={submitOrderFromModal}
         />
       ) : null}
-      <PaperPositionsPanel
-        positions={positions}
-        loading={paperLoading}
-      />
-      <div className="paper-right-column">
-        <PixelTraderWorker
-          marketState={cockpitMarketState}
-          paused={paused}
-          autoTradingRunning={autoTradingRunning}
-          lastOrderAction={Number.isFinite(lastOrderAction?.timestamp) ? lastOrderAction : null}
-          loading={paperLoading || orderLoading}
-          onOpenOrderEntry={() => setOrderModalOpen(true)}
-          recentTrades={cockpitRecentTrades}
-        />
-        <PaperTodayActionPanel
-          autoTradingStatus={autoTradingStatus}
-          riskEvents={riskEvents}
-          intradayConfirmations={intradayConfirmations}
-          autoTradingRuns={autoTradingRuns}
-        />
-      </div>
+      <Row gutter={[12, 12]} align="top">
+        <Col xs={24} xl={15}>
+          <PaperPositionsPanel
+            positions={positions}
+            loading={paperLoading}
+          />
+        </Col>
+        <Col xs={24} xl={9}>
+          <Space direction="vertical" size={12} style={{ display: "flex" }}>
+            <PixelTraderWorker
+              marketState={cockpitMarketState}
+              paused={paused}
+              autoTradingRunning={autoTradingRunning}
+              lastOrderAction={Number.isFinite(lastOrderAction?.timestamp) ? lastOrderAction : null}
+              loading={paperLoading || orderLoading}
+              onOpenOrderEntry={() => setOrderModalOpen(true)}
+              recentTrades={cockpitRecentTrades}
+            />
+            <PaperTodayActionPanel
+              autoTradingStatus={autoTradingStatus}
+              riskEvents={riskEvents}
+              intradayConfirmations={intradayConfirmations}
+              autoTradingRuns={autoTradingRuns}
+            />
+          </Space>
+        </Col>
+      </Row>
       <PaperDetailTabs
         positions={positions}
         orders={orders}
@@ -234,7 +240,7 @@ export const PaperTradingPage = memo(function PaperTradingPage({
         onAddTradeTag={onAddTradeTag}
         onDeleteTradeTag={onDeleteTradeTag}
       />
-    </section>
+    </Space>
   );
 });
 
@@ -251,23 +257,34 @@ function IntradayConfirmationDialog({
 }) {
   const passed = item.confirmed || item.late_confirmed;
   return (
-    <div className="paper-confirmation-backdrop" role="presentation">
-      <section className={`paper-confirmation-card ${passed ? "ok" : "watch"}`} role="dialog" aria-modal="false" aria-label="盘中确认提醒">
-        <span>{passed ? "盘中确认已通过" : "盘中确认待观察"}</span>
-        <strong>{item.name || item.symbol} {passed ? "可以进入委托确认" : "暂不自动下单"}</strong>
-        <p>
-          参考价 {formatPriceValue(item.latest_price)}，VWAP {formatPriceValue(item.vwap)}，
-          分数 {Number.isFinite(item.score) ? item.score.toFixed(0) : "--"}。
-        </p>
-        <small>{item.reason || "系统正在等待分时承接确认。"}</small>
-        <div>
-          <Button type="primary" onClick={onConfirm} disabled={disabled || !passed}>
-            确认买入
-          </Button>
-          <Button type="default" onClick={onDismiss}>暂不买</Button>
-        </div>
-      </section>
-    </div>
+    <Modal
+      open
+      centered
+      title={passed ? "盘中确认已通过" : "盘中确认待观察"}
+      onCancel={onDismiss}
+      footer={[
+        <Button key="dismiss" onClick={onDismiss}>
+          暂不买
+        </Button>,
+        <Button key="confirm" type="primary" onClick={onConfirm} disabled={disabled || !passed}>
+          确认买入
+        </Button>,
+      ]}
+      destroyOnHidden
+      styles={{ body: { padding: 16 } }}
+    >
+      <Space direction="vertical" size={12} style={{ width: "100%" }}>
+        <Typography.Text type="secondary">
+          {item.name || item.symbol} {passed ? "可以进入委托确认" : "暂不自动下单"}
+        </Typography.Text>
+        <Typography.Text>
+          参考价 {formatPriceValue(item.latest_price)}，VWAP {formatPriceValue(item.vwap)}，分数 {Number.isFinite(item.score) ? item.score.toFixed(0) : "--"}。
+        </Typography.Text>
+        <Typography.Text type="secondary">
+          {item.reason || "系统正在等待分时承接确认。"}
+        </Typography.Text>
+      </Space>
+    </Modal>
   );
 }
 

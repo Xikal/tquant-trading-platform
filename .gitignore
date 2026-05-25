@@ -18,6 +18,8 @@ backend/data/*.sqlite
 backend/data/runtime.env
 data/
 artifacts/
+output/
+rust/**/target/
 .runtime/
 .mysql-local/
 .mysql-dist/*.tar

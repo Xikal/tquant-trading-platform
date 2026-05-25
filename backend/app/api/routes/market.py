@@ -24,6 +24,7 @@ from app.services.alternative_data import AlternativeDataSentimentService
 from app.services.arbitrage_research import build_multi_exchange_arbitrage_research
 from app.services.market_data import MarketDataService
 from app.services.market.regime_quality import market_regime_quality_text
+from app.services.market.hourly_snapshot import latest_hourly_all_market_snapshot
 from app.services.market.trading_session import current_a_share_trading_session
 from app.services.paired_hedge_research import PairedHedgeResearchService
 from app.services.sector_etf_t0 import SectorEtfT0Service
@@ -42,6 +43,7 @@ paired_hedge_research_service = PairedHedgeResearchService(market_data=market_da
 @router.get("/breadth", response_model=MarketBreadthResponse)
 def market_breadth(
     realtime: Annotated[bool, Query(description="是否同步刷新实时市场广度/情绪快照")] = True,
+    db: Session = Depends(get_db),
 ) -> MarketBreadthResponse:
     """Return compact market breadth and sentiment data for the monitor page."""
 
@@ -72,6 +74,7 @@ def market_breadth(
         hot_turnover=round(regime.hot_turnover, 4),
         hot_overlap_ratio=round(regime.hot_overlap_ratio, 4),
         data_quality_text=market_regime_quality_text(regime),
+        hourly_all_market_snapshot=latest_hourly_all_market_snapshot(db),
     )
 
 
