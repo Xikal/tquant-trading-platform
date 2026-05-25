@@ -6,6 +6,8 @@ from sqlalchemy.orm import sessionmaker
 from app.api.routes import bff
 from app.models.base import Base
 from app.models.entities import User
+from fastapi import HTTPException
+
 from app.models.schema_defs.market import MarketBreadthResponse, SectorRelativeStrengthResponse
 from app.models.schema_defs.monitor import MonitorSnapshotResponse
 
@@ -78,8 +80,9 @@ def test_monitor_workspace_uses_attached_db_for_market_breadth_and_detached_user
     db = _db_with_user(11)
     calls: dict[str, object] = {}
 
-    def fake_market_breadth(*, db):
+    def fake_market_breadth(*, db, realtime=True):
         calls["market_breadth_db"] = db
+        calls["market_breadth_realtime"] = realtime
         return MarketBreadthResponse(updated_at="2026-05-25 10:00:00")
 
     def fake_paired_hedge(limit, current_user, _db):
@@ -112,4 +115,45 @@ def test_monitor_workspace_uses_attached_db_for_market_breadth_and_detached_user
     assert response.paired_hedge is not None
     assert response.partial_errors == []
     assert calls["market_breadth_db"] is db
+    assert calls["market_breadth_realtime"] is False
     assert calls["paired_user_id"] == 11
+
+
+def test_monitor_workspace_hides_forbidden_paired_hedge_for_standard_user(monkeypatch) -> None:
+    db = _db_with_user(12)
+
+    monkeypatch.setattr(
+        bff,
+        "build_monitor_snapshot",
+        lambda *args, **kwargs: MonitorSnapshotResponse(updated_at="2026-05-25 10:00:00"),
+    )
+    monkeypatch.setattr(
+        bff,
+        "market_breadth",
+        lambda *args, **kwargs: MarketBreadthResponse(updated_at="2026-05-25 10:00:00"),
+    )
+    monkeypatch.setattr(
+        bff,
+        "sector_relative_strength",
+        lambda *args: SectorRelativeStrengthResponse(updated_at="2026-05-25 10:00:00"),
+    )
+    monkeypatch.setattr(
+        bff,
+        "paired_hedge_research",
+        lambda *args: (_ for _ in ()).throw(HTTPException(status_code=403, detail="账号未开通研究权限")),
+    )
+
+    response = bff._build_monitor_workspace(
+        db,
+        current_user=DetachedUser(12),
+        priority_limit=12,
+        sector_limit=8,
+        per_sector_limit=8,
+        hedge_limit=4,
+    )
+
+    assert response.monitor_snapshot is not None
+    assert response.market_breadth is not None
+    assert response.sector_relative_strength is not None
+    assert response.paired_hedge is None
+    assert response.partial_errors == []

@@ -4,12 +4,13 @@ set -euo pipefail
 DOMAIN="${DOMAIN:-}"
 APP_PORT="${APP_PORT:-18090}"
 EMAIL="${EMAIL:-}"
+REQUIRE_EMAIL="${REQUIRE_EMAIL:-1}"
 TEMPLATE_PATH="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/deploy/nginx/weisilianghua.conf.template"
 RATE_LIMIT_TEMPLATE_PATH="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/deploy/nginx/tquant-rate-limit.conf.template"
 TARGET_PATH="/etc/nginx/sites-available/weisilianghua.conf"
 RATE_LIMIT_TARGET_PATH="/etc/nginx/conf.d/tquant-rate-limit.conf"
 
-if [[ -z "$DOMAIN" || -z "$EMAIL" ]]; then
+if [[ -z "$DOMAIN" || ( "$REQUIRE_EMAIL" == "1" && -z "$EMAIL" ) ]]; then
   echo "DOMAIN and EMAIL are required. Example: sudo DOMAIN=<your-domain> EMAIL=<ops-email> APP_PORT=$APP_PORT $0" >&2
   exit 2
 fi
@@ -29,6 +30,10 @@ if [[ ! -f "/etc/letsencrypt/live/$CERT_NAME/fullchain.pem" && -f "/etc/letsencr
 fi
 
 if [[ ! -f "/etc/letsencrypt/live/$CERT_NAME/fullchain.pem" ]]; then
+  if [[ -z "$EMAIL" ]]; then
+    echo "EMAIL is required when issuing a new certificate." >&2
+    exit 2
+  fi
   certbot certonly --nginx --non-interactive --agree-tos -m "$EMAIL" -d "$DOMAIN" -d "www.$DOMAIN"
   CERT_NAME="$DOMAIN"
   if [[ ! -f "/etc/letsencrypt/live/$CERT_NAME/fullchain.pem" && -f "/etc/letsencrypt/live/www.$DOMAIN/fullchain.pem" ]]; then

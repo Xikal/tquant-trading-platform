@@ -99,7 +99,40 @@ def test_paper_workspace_timeout_returns_partial_payload(monkeypatch) -> None:
     assert payload["partial_errors"][0]["source"] == "paper_workspace"
 
 
-def test_monitor_workspace_timeout_returns_partial_payload(monkeypatch) -> None:
+def test_monitor_workspace_builder_errors_return_partial_payload(monkeypatch) -> None:
+    app = FastAPI()
+    app.include_router(bff.router, prefix="/api")
+    user = SimpleNamespace(id=1, username="tester", is_active=True, roles="")
+    app.dependency_overrides[get_current_user] = lambda: user
+    app.dependency_overrides[get_db] = lambda: object()
+    monkeypatch.setattr(bff, "get_settings", lambda: SimpleNamespace(tquant_internal_service_token=""))
+    monkeypatch.setattr(
+        workspace_cache,
+        "get_settings",
+        lambda: SimpleNamespace(
+            bff_workspace_cache_enabled=False,
+            bff_monitor_cache_ttl_seconds=0,
+            bff_paper_cache_ttl_seconds=0,
+            bff_strategy_cache_ttl_seconds=0,
+            bff_settings_cache_ttl_seconds=0,
+        ),
+    )
+
+    monkeypatch.setattr(bff, "build_monitor_snapshot", lambda *args, **kwargs: (_ for _ in ()).throw(RuntimeError("offline")))
+    monkeypatch.setattr(bff, "market_breadth", lambda *args, **kwargs: {"updated_at": "2026-05-25 10:00:00"})
+    monkeypatch.setattr(bff, "sector_relative_strength", lambda *args: {"updated_at": "2026-05-25 10:00:00"})
+    monkeypatch.setattr(bff, "paired_hedge_research", lambda *args: {"updated_at": "2026-05-25 10:00:00", "ideas": []})
+
+    response = TestClient(app).get("/api/bff/v1/workspace/monitor")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["monitor_snapshot"] is None
+    assert payload["market_breadth"] is not None
+    assert payload["partial_errors"][0]["source"] == "monitor_snapshot"
+
+
+def test_monitor_workspace_uses_fast_breadth_without_workspace_timeout(monkeypatch) -> None:
     app = FastAPI()
     app.include_router(bff.router, prefix="/api")
     user = SimpleNamespace(id=1, username="tester", is_active=True, roles="")
@@ -124,19 +157,34 @@ def test_monitor_workspace_timeout_returns_partial_payload(monkeypatch) -> None:
             bff_settings_cache_ttl_seconds=0,
         ),
     )
+    calls: dict[str, object] = {}
 
-    def slow_builder(*args, **kwargs):
-        time.sleep(0.05)
-        return MonitorWorkspaceBffResponse(generated_at="2026-05-20 09:30:00")
+    monkeypatch.setattr(
+        bff,
+        "build_monitor_snapshot",
+        lambda *args, **kwargs: {"updated_at": "2026-05-25 10:00:00"},
+    )
 
-    monkeypatch.setattr(bff, "_build_monitor_workspace", slow_builder)
+    def fake_market_breadth(*, realtime=True, db):
+        calls["realtime"] = realtime
+        return {"updated_at": "2026-05-25 10:00:00", "state": "neutral"}
+
+    monkeypatch.setattr(bff, "market_breadth", fake_market_breadth)
+    monkeypatch.setattr(
+        bff,
+        "sector_relative_strength",
+        lambda *args: {"updated_at": "2026-05-25 10:00:00", "items": []},
+    )
+    monkeypatch.setattr(bff, "paired_hedge_research", lambda *args: {"updated_at": "2026-05-25 10:00:00", "ideas": []})
 
     response = TestClient(app).get("/api/bff/v1/workspace/monitor")
 
     assert response.status_code == 200
     payload = response.json()
-    assert payload["monitor_snapshot"] is None
-    assert payload["partial_errors"][0]["source"] == "monitor_workspace"
+    assert payload["monitor_snapshot"]["updated_at"] == "2026-05-25 10:00:00"
+    assert payload["market_breadth"]["state"] == "neutral"
+    assert payload["partial_errors"] == []
+    assert calls["realtime"] is False
 
 
 def test_paper_workspace_can_use_remote_adapter(monkeypatch) -> None:

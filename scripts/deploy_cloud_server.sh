@@ -185,6 +185,13 @@ sudo DOMAIN='$CLOUD_DOMAIN' APP_PORT='$CLOUD_APP_PORT' EMAIL='$CLOUD_CERT_EMAIL'
     else
       cloud_ssh "$https_cmd" || log "warning: HTTPS 自动配置失败；部署继续，检查 DNS/80端口/证书限额后重试"
     fi
+  else
+    log "refresh remote nginx config when HTTPS site already exists"
+    cloud_ssh "set -euo pipefail
+cd '$CLOUD_PROJECT_DIR'
+if test -n '$CLOUD_DOMAIN' -a -f /etc/nginx/sites-available/weisilianghua.conf; then
+  sudo REQUIRE_EMAIL=0 DOMAIN='$CLOUD_DOMAIN' APP_PORT='$CLOUD_APP_PORT' ./scripts/install_https_nginx.sh
+fi"
   fi
 }
 

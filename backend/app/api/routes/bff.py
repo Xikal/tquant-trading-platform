@@ -143,21 +143,13 @@ def monitor_workspace_bff(
             "per_sector_limit": per_sector_limit,
             "hedge_limit": hedge_limit,
         },
-        loader=lambda: run_workspace_with_timeout(
-            source="monitor_workspace",
-            timeout_seconds=_bff_timeout_seconds(),
-            loader=lambda: _build_monitor_workspace(
-                db,
-                current_user=current_user,
-                priority_limit=priority_limit,
-                sector_limit=sector_limit,
-                per_sector_limit=per_sector_limit,
-                hedge_limit=hedge_limit,
-            ),
-            fallback=lambda error: MonitorWorkspaceBffResponse(
-                generated_at=beijing_now_string(),
-                partial_errors=[error],
-            ),
+        loader=lambda: _build_monitor_workspace(
+            db,
+            current_user=current_user,
+            priority_limit=priority_limit,
+            sector_limit=sector_limit,
+            per_sector_limit=per_sector_limit,
+            hedge_limit=hedge_limit,
         ),
     )
     if not remote_used:
@@ -384,7 +376,7 @@ def _build_monitor_workspace(
             errors,
             lambda: build_monitor_snapshot(db, current_user=current_user, priority_limit=priority_limit),
         ),
-        market_breadth=_safe("market_breadth", errors, lambda: market_breadth(db=db)),
+        market_breadth=_safe("market_breadth", errors, lambda: market_breadth(realtime=False, db=db)),
         sector_relative_strength=_safe(
             "sector_relative_strength",
             errors,
@@ -394,15 +386,24 @@ def _build_monitor_workspace(
             "paired_hedge",
             errors,
             lambda: paired_hedge_research(hedge_limit, _attached_user(db, current_user), db),
+            ignore_forbidden=True,
         ),
         partial_errors=errors,
     )
 
 
-def _safe(source: str, errors: list[BffPartialError], loader: Callable[[], T]) -> T | None:
+def _safe(
+    source: str,
+    errors: list[BffPartialError],
+    loader: Callable[[], T],
+    *,
+    ignore_forbidden: bool = False,
+) -> T | None:
     try:
         return loader()
     except HTTPException as exc:
+        if ignore_forbidden and exc.status_code == 403:
+            return None
         errors.append(BffPartialError(source=source, detail=str(exc.detail)))
         return None
     except Exception as exc:
@@ -431,7 +432,10 @@ def _attached_user(db: Session, user: User) -> User:
             user_id = 0
     if user_id <= 0:
         return user
-    refreshed = db.execute(select(User).where(User.id == user_id)).scalar_one_or_none()
+    try:
+        refreshed = db.execute(select(User).where(User.id == user_id)).scalar_one_or_none()
+    except Exception:
+        return user
     return refreshed or user
 
 
