@@ -52,6 +52,38 @@ const MONITOR_METRIC_SUMMARY_STYLE: CSSProperties = {
 const MONITOR_METRIC_GRID_STYLE: CSSProperties = {
   marginTop: 6,
 };
+const MONITOR_EMOTION_CARD_STYLE: CSSProperties = {
+  background: "#f8fbff",
+  borderColor: "#d9eaf7",
+  marginTop: 10,
+};
+const MONITOR_BAR_STAGE_STYLE: CSSProperties = {
+  display: "flex",
+  alignItems: "stretch",
+  gap: 6,
+  minHeight: 164,
+  height: 196,
+  padding: "2px 4px 0",
+};
+const MONITOR_BAR_COLUMN_STYLE: CSSProperties = {
+  display: "flex",
+  flexDirection: "column",
+  justifyContent: "flex-end",
+  alignItems: "center",
+  flex: 1,
+  minWidth: 0,
+  height: "100%",
+};
+const MONITOR_BAR_FILL_STYLE: CSSProperties = {
+  width: "100%",
+  minHeight: 16,
+  borderRadius: "8px 8px 3px 3px",
+};
+const MONITOR_BAR_LABEL_STYLE: CSSProperties = {
+  marginTop: 4,
+  fontSize: 10,
+  lineHeight: 1.1,
+};
 const MONITOR_HOLDING_GRID_STYLE: CSSProperties = {
   display: "grid",
   gap: 6,
@@ -379,55 +411,53 @@ function MarketEmotionDashboard({
   const distribution = buildBoardDistribution(marketBreadth?.board_height ?? 0);
   const leaders = (sectorRelativeStrength?.items ?? []).slice(0, 5);
   return (
-    <Card
-      size="small"
-      style={{ background: "#f8fbff", borderColor: "#d9eaf7", marginTop: 10 }}
-      styles={{ header: { minHeight: 34, padding: "0 10px" }, body: { padding: 8 } }}
-      title="市场情绪与龙头强度"
-      extra={<Tag color="blue">{marketBreadth?.emotion_temperature_text || marketBreadth?.state_text || "等待情绪数据"}</Tag>}
-    >
-      <Row gutter={[12, 12]}>
-        <Col xs={24} md={9}>
-          <Flex align="flex-end" gap={5} style={{ height: 64, paddingBottom: 8 }} aria-label="涨停连板高度分布">
-            {distribution.map((item) => (
-              <Flex align="center" justify="flex-end" vertical key={item.label} style={{ flex: 1, height: "100%" }}>
-                <div
-                  title={`${item.label}：相对高度 ${item.height}%`}
-                  style={{
-                    background: "linear-gradient(180deg, #ef4444, #f59e0b)",
-                    borderRadius: "8px 8px 3px 3px",
-                    height: `${item.height}%`,
-                    minHeight: 12,
-                    width: "100%",
-                  }}
-                />
-                <Typography.Text type="secondary" style={{ fontSize: 10, marginTop: 2 }}>
-                  {item.label}
-                </Typography.Text>
-              </Flex>
-            ))}
-          </Flex>
-        </Col>
-        <Col xs={24} md={15}>
-          <Space direction="vertical" size={4} style={{ width: "100%" }}>
+      <Card
+        size="small"
+        style={MONITOR_EMOTION_CARD_STYLE}
+        styles={{ header: { minHeight: 34, padding: "0 10px" }, body: { padding: 8 } }}
+        title="市场情绪与龙头强度"
+        extra={<Tag color="blue">{marketBreadth?.emotion_temperature_text || marketBreadth?.state_text || "等待情绪数据"}</Tag>}
+      >
+        <Row gutter={[10, 10]} align="stretch">
+          <Col xs={24} md={10} style={{ display: "flex" }}>
+            <div style={MONITOR_BAR_STAGE_STYLE} aria-label="涨停连板高度分布">
+              {distribution.map((item) => (
+                <div key={item.label} style={MONITOR_BAR_COLUMN_STYLE}>
+                  <div
+                    title={`${item.label}：相对高度 ${item.height}%`}
+                    style={{
+                      ...MONITOR_BAR_FILL_STYLE,
+                      background: "linear-gradient(180deg, #ef4444, #f59e0b)",
+                      height: `${item.height}%`,
+                    }}
+                  />
+                  <Typography.Text type="secondary" style={MONITOR_BAR_LABEL_STYLE}>
+                    {item.label}
+                  </Typography.Text>
+                </div>
+              ))}
+            </div>
+          </Col>
+          <Col xs={24} md={14} style={{ display: "flex" }}>
+            <Space direction="vertical" size={3} style={{ width: "100%" }}>
             {leaders.length ? leaders.map((item) => (
               <Flex
                 gap={8}
                 justify="space-between"
                 key={`${item.sector_name}-${item.symbol}`}
-                style={{ background: "#fff", borderRadius: 6, padding: "4px 6px" }}
+                style={{ background: "#fff", borderRadius: 6, padding: "3px 6px" }}
               >
-                <Typography.Text strong style={{ fontSize: 12 }}>{item.name}</Typography.Text>
-                <Typography.Text type="secondary" style={{ fontSize: 11 }}>
+                <Typography.Text strong style={{ fontSize: 11.5 }}>{item.name}</Typography.Text>
+                <Typography.Text type="secondary" style={{ fontSize: 10.5 }}>
                   {item.sector_name} #{item.rank} · 龙头分 {item.leader_score.toFixed(0)}
                 </Typography.Text>
               </Flex>
             )) : <Typography.Text type="secondary">暂无板块龙头强度数据</Typography.Text>}
-          </Space>
-        </Col>
-      </Row>
-    </Card>
-  );
+            </Space>
+          </Col>
+        </Row>
+      </Card>
+    );
 }
 
 function KeyLevelAlerts({ alerts }: { alerts: IntradayKeyLevelResponse[] }) {

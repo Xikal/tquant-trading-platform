@@ -19,7 +19,6 @@ import { memo, useEffect, useMemo } from "react";
 import { Col, Row, Space } from "antd";
 import { PixelTraderWorker } from "./PixelTraderWorker";
 import { PaperDetailTabs } from "./PaperDetailTabs";
-import { PaperTodayActionPanel } from "./PaperTodayActionPanel";
 import { PaperTradingSummaryBar } from "./PaperTradingSummaryBar";
 import {
   formatPaperDateTime,
@@ -168,11 +167,6 @@ export const PaperTradingPage = memo(function PaperTradingPage({
               onOpenOrderEntry={() => setOrderModalOpen(true)}
               recentTrades={cockpitRecentTrades}
             />
-            <PaperTodayActionPanel
-              autoTradingStatus={autoTradingStatus}
-              riskEvents={riskEvents}
-              autoTradingRuns={autoTradingRuns}
-            />
           </Space>
         </Col>
       </Row>
@@ -183,6 +177,7 @@ export const PaperTradingPage = memo(function PaperTradingPage({
         stockPnl={stockPnl}
         stockPnlSummary={stockPnlSummary}
         performance={performance}
+        autoTradingStatus={autoTradingStatus}
         sectorEtfT0Performance={sectorEtfT0Performance}
         strategyPerformance={strategyPerformance}
         marketPerformance={marketPerformance}

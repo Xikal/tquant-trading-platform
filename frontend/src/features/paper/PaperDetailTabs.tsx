@@ -2,6 +2,7 @@ import { type ReactNode, useMemo } from "react";
 import { Button, Card, Space, Tabs, Typography } from "antd";
 import type {
   PaperAgentRun,
+  PaperAutoTradingStatus,
   PaperGroupedPerformance,
   PaperLedgerRepairResponse,
   PaperOrder,
@@ -17,6 +18,7 @@ import type {
 } from "../../types";
 import { PaperLedgerRepairPanel } from "./PaperLedgerRepairPanel";
 import { PaperPositionDetailsPanel } from "./PaperPositionDetailsPanel";
+import { PaperTodayActionPanel } from "./PaperTodayActionPanel";
 import {
   AgentRunList,
   GroupedPerformanceTable,
@@ -43,6 +45,13 @@ export function PaperDetailTabs(props: PaperDetailTabsProps) {
       style={{ gridArea: "details" }}
       styles={{ body: { padding: 10 } }}
     >
+      <div style={{ marginBottom: 8, paddingBottom: 8, borderBottom: "1px solid var(--line)" }}>
+        <PaperTodayActionPanel
+          autoTradingStatus={props.autoTradingStatus}
+          autoTradingRuns={props.autoTradingRuns}
+          riskEvents={props.riskEvents}
+        />
+      </div>
       <Tabs
         size="small"
         activeKey={tab}
@@ -113,6 +122,7 @@ interface PaperDetailTabsProps {
   stockPnl: PaperStockPnlItem[];
   stockPnlSummary: PaperStockPnlSummary | null;
   performance: PaperPerformance | null;
+  autoTradingStatus: PaperAutoTradingStatus | null;
   sectorEtfT0Performance: PaperSectorEtfT0Performance | null;
   strategyPerformance: PaperGroupedPerformance[];
   marketPerformance: PaperGroupedPerformance[];

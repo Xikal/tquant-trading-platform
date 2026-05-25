@@ -1,4 +1,4 @@
-import { Card, Col, Row, Space, Statistic, Tag, Timeline, Typography } from "antd";
+import { Col, Row, Space, Statistic, Tag, Timeline, Typography } from "antd";
 import type { PaperAgentRun, PaperAutoTradingStatus, RiskEventItem } from "../../types";
 import { formatPaperDateTime } from "./paperTradingFormatters";
 
@@ -15,12 +15,13 @@ export function PaperTodayActionPanel({
   const actions = buildActionTimeline(autoTradingStatus, autoTradingRuns);
 
   return (
-    <Card
-      size="small"
-      title="今日动作"
-      extra={<Tag color={autoTradingStatus?.running ? "green" : "default"}>{autoTradingStatus?.running ? "系统自动执行中" : "当前未自动下单"}</Tag>}
-      styles={{ body: { display: "flex", flexDirection: "column", gap: 10 } }}
-    >
+    <Space direction="vertical" size={8} style={{ width: "100%" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+        <Typography.Text strong style={{ fontSize: 13 }}>今日动作</Typography.Text>
+        <Tag color={autoTradingStatus?.running ? "green" : "default"}>
+          {autoTradingStatus?.running ? "系统自动执行中" : "当前未自动下单"}
+        </Tag>
+      </div>
       <Row gutter={[8, 8]}>
         <StatusItem
           label="自动交易状态"
@@ -52,7 +53,7 @@ export function PaperTodayActionPanel({
           }))}
         />
       ) : <Typography.Text type="secondary">今日暂无执行记录。</Typography.Text>}
-    </Card>
+    </Space>
   );
 }
 
@@ -72,12 +73,12 @@ function StatusItem({
       <div style={{
         background: tone === "success" ? "#f0fbf4" : tone === "warning" ? "#fff8e8" : "#fff",
         border: "1px solid #edf0f5",
-        borderRadius: 8,
-        padding: 10,
+        borderRadius: 6,
+        padding: 8,
       }}>
         <Space orientation="vertical" size={3}>
-          <Statistic title={label} value={value} styles={{ content: { fontSize: 15 } }} />
-          <Typography.Text type="secondary">{detail}</Typography.Text>
+          <Statistic title={label} value={value} styles={{ content: { fontSize: 14 } }} />
+          <Typography.Text type="secondary" style={{ fontSize: 12, lineHeight: 1.35 }}>{detail}</Typography.Text>
         </Space>
       </div>
     </Col>
