@@ -101,6 +101,7 @@ from app.models.schema_defs.paper import (
     PaperTagPerformanceOut,
     PaperTradeTagCreate,
     PaperTradeTagOut,
+    PaperTradeTagsBatchResponse,
     PaperTradeOut,
     PaperTradesResponse,
 )
@@ -373,6 +374,7 @@ __all__ = [
     "PaperTagPerformanceOut",
     "PaperTradeTagCreate",
     "PaperTradeTagOut",
+    "PaperTradeTagsBatchResponse",
     "PaperTradeOut",
     "PaperTradesResponse",
     "PaperBacktestComparisonRequest",

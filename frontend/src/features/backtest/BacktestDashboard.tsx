@@ -28,6 +28,7 @@ import {
 import { EmptyLine, Metric, PanelHeader, ProgressCell } from "./BacktestDashboard.components";
 import {
   STATUS_META,
+  dateRange,
   formatWaitSeconds,
   isCancellableStatus,
   statusMeta,
@@ -45,8 +46,10 @@ import {
   BACKTEST_METRIC_GRID_STYLE,
   BACKTEST_RUN_LIST_STYLE,
   BACKTEST_RUN_ROW_ACTIVE_STYLE,
+  BACKTEST_RUN_ROW_META_STYLE,
   BACKTEST_RUN_ROW_STYLE,
   BACKTEST_RUN_ROW_TEXT_STYLE,
+  BACKTEST_RUN_ROW_TITLE_STYLE,
   BACKTEST_STATUS_BASE_STYLE,
   BACKTEST_STATUS_LABEL_STYLE,
   BACKTEST_SUMMARY_ITEM_STYLE,
@@ -298,7 +301,14 @@ function RunListPanel({
             >
               {run.status}<small style={BACKTEST_STATUS_LABEL_STYLE}>{statusMeta(run.status).label}</small>
             </span>
-            <strong style={BACKTEST_RUN_ROW_TEXT_STYLE}>{run.name || `回测 #${run.id}`}</strong>
+            <span style={BACKTEST_RUN_ROW_TEXT_STYLE}>
+              <strong style={BACKTEST_RUN_ROW_TITLE_STYLE}>{run.name || `回测 #${run.id}`}</strong>
+              <span style={BACKTEST_RUN_ROW_META_STYLE}>
+                <span>#{run.id}</span>
+                <span>{formatBacktestStrategies(run.strategies ?? run.strategy_keys ?? []) || "--"}</span>
+                <span>{dateRange(run)}</span>
+              </span>
+            </span>
             <ProgressCell progress={run.progress} status={run.status} waitSeconds={run.estimated_wait_seconds} />
           </Button>
         )) : <EmptyLine text="暂无回测任务，提交后会出现在这里。" />}

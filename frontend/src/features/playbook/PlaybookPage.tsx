@@ -121,8 +121,6 @@ export function PlaybookPage({
         <WorkspacePageIntro
           title="选股宝典"
           summary={`${strategyName}：${strategyPurpose(strategy)}`}
-          more="候选按可买、观察确认、接近买点和放弃分层，避免把所有信号做成同等权重。"
-          moreLabel="分层口径"
           tone={buyNow.length ? "up" : executableCount > 0 ? "warn" : "neutral"}
           actions={<Button onClick={onRefresh} loading={loading === "playbook"}>刷新全量结果</Button>}
           pills={[

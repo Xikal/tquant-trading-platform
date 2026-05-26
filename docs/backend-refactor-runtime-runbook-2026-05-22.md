@@ -4,12 +4,13 @@
 
 ## 当前边界
 
-本轮 Go/Rust 重构落地受控生产增强路径，不改变策略口径：
+本轮 Go/Rust 重构落地受控生产增强路径，不改变策略口径。策略相关内容只依赖 Python：
 
 - Python FastAPI 仍是策略计算 reference 与业务写入真源。
-- 低吸策略、全策略优先榜、模拟盘自动交易、回测策略语义不迁移。
-- Go BFF、Go 行情读服务、Go 扫描 Worker 可按 profile 与服务 URL 受控启用；生产配置启用 Go 后默认优先命中 Go 主路径，异常时保留 Python 回退且必须可观测。
-- Rust `tquant_rs` 是生产计算主路径的一部分；导入失败或计算异常时保留 Python 回退，fallback/hit/error 必须通过 `/metrics` 观察。
+- 低吸策略、全策略优先榜、模拟盘自动交易、回测策略语义、候选排序、风控判断不迁移到 Go/Rust。
+- Go BFF、Go 行情读服务、Go 扫描 Worker 可按 profile 与服务 URL 受控启用；生产配置启用 Go 后默认优先命中非策略主路径，异常时保留 Python 回退且必须可观测。
+- Go scan-worker 是扫描编排与观测入口，不是独立策略公式内核；策略计算来源必须标注为 `python_reference`。
+- Rust `tquant_rs` 是 Python 调用的指标加速层；导入失败或计算异常时保留 Python 回退，fallback/hit/error 必须通过 `/metrics` 观察。Rust 不作为策略结果真源。
 - 生产 compose 的 `app` 服务默认开启 `RUNTIME_BACKGROUND_JOBS_ENABLED=true`，由主应用进程在 leader lock 下执行小时全市场快照、午盘复盘和收盘复盘；`qa_smoke.sh` / `prod_preflight.sh` 仍显式关闭背景任务，避免重复调度。
 - 午盘/收盘复盘是全市场复盘，主展示入口是实时监控页；模拟盘只保留历史或跳转入口，不作为复盘主入口。
 
@@ -154,7 +155,7 @@ curl -H "X-Internal-Service-Token: $TQUANT_INTERNAL_SERVICE_TOKEN" \
 docker compose -f docker-compose.mysql.yml --profile go-scan up -d go-scan-worker
 ```
 
-当前支持生产状态查询与生产扫描触发。Go scan-worker 是生产扫描编排入口，不是独立策略公式内核。
+当前支持生产状态查询与生产扫描触发。Go scan-worker 是生产扫描编排入口，不是独立策略公式内核；策略相关内容只依赖 Python reference。
 
 - `production_scan_enabled=true` 表示 Go 编排入口可用。
 - `production_write_enabled=true` 只表示本次链路允许 Python reference 成功写入 snapshot，不表示 Go 独立执行策略公式。
@@ -162,7 +163,7 @@ docker compose -f docker-compose.mysql.yml --profile go-scan up -d go-scan-worke
 - `scan_worker_role=go_orchestrated_reference` 表示 Go 角色是编排和观测。
 - `production_readiness=python_reference_orchestrator` 是当前准确状态。
 
-扫描仍通过内部 Python strategy reference 执行业务规则和 snapshot 写入，Go 负责主路径触发、失败回退状态、指标和内部认证。
+扫描仍通过内部 Python strategy reference 执行业务规则、候选排序和 snapshot 写入，Go 负责主路径触发、失败回退状态、指标和内部认证。
 状态和触发接口受 `X-Internal-Service-Token` 保护；健康检查不要求该 header。
 
 生产触发示例：
@@ -186,7 +187,7 @@ curl -H "X-Internal-Service-Token: $TQUANT_INTERNAL_SERVICE_TOKEN" \
 RUST_FINANCE_MATH_ENABLED=true
 ```
 
-生产镜像必须预装 `tquant_rs` wheel，不能依赖运行时现编译。`RUST_FINANCE_MATH_ENABLED=false` 只用于紧急回滚或本地诊断，不是生产默认口径。
+生产镜像必须预装 `tquant_rs` wheel，不能依赖运行时现编译。`RUST_FINANCE_MATH_ENABLED=false` 可用于紧急回滚或本地诊断；无论开关状态如何，策略、风控、回测和模拟盘决策结果都必须以 Python reference 为准。
 
 当前 Python 可选包装函数：
 
@@ -211,10 +212,11 @@ maturin develop
 BACKEND_PYTHON=backend/.venv/bin/python python3 scripts/verify_go_rust_performance_acceptance.py
 ```
 
-启用后仍需确认 Python fallback：
+启用后仍需确认 Python fallback 与策略不变：
 
 - 扩展导入失败必须进入明确 degraded/fallback 观测，不能静默当作正常结果。
 - 计算结果与 Python 实现误差在测试阈值内。
+- 启用 Rust 前后，策略筛选、风控、回测、模拟盘关键结果必须保持一致。
 - 云端部署镜像包含 Rust wheel，而不是运行时编译。
 - `/metrics` 暴露 `tquant_rust_math_hits_total`、`tquant_rust_math_fallbacks_total`、`tquant_rust_math_errors_total`、`tquant_rust_math_disabled_total`。
 - 标准性能入口：`make rust-bench` 运行 criterion benchmark；`make go-rust-acceptance` 运行 Go/Rust 接受度脚本。
@@ -239,5 +241,5 @@ make rust-bench
 ## 回滚方式
 
 - 不启用任何 `go-*` profile，即完全回到 Python 单体路径。
-- 紧急回滚时设置 `RUST_FINANCE_MATH_ENABLED=false`，禁用 Rust 扩展；回滚期间必须关注 Rust fallback 指标，确认 Python 路径承压可接受。
+- 紧急回滚时设置 `RUST_FINANCE_MATH_ENABLED=false`，禁用 Rust 指标加速；回滚期间必须关注 Rust fallback 指标，确认 Python 路径承压可接受。
 - 清空微服务 URL 环境变量，Python BFF 不会走远端适配器。

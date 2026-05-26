@@ -2,7 +2,7 @@
 
 适用项目：`gupiao`  
 当前日期：`2026-05-25`
-文档状态：`V2，包含 Web BFF/Go/Rust 生产主路径契约`
+文档状态：`V2，包含 Web BFF/Go/Rust 非策略主路径契约`
 
 ## 0. Web/服务端新增契约（2026-05-25）
 
@@ -37,19 +37,21 @@
 
 模拟盘页面只保留历史入口，不作为午盘/收盘复盘主展示入口。
 
-### 0.4 Go 服务生产主路径
+### 0.4 Go 服务生产主路径边界
+
+策略、筛选、风控、回测、模拟盘决策结果只依赖 Python reference。Go 服务只能承担 BFF 聚合、行情读取和扫描编排，不作为策略公式、候选排序或交易决策真源。
 
 | 服务 | 生产入口 | 回退/观测 |
 |---|---|---|
 | `bff-gateway` | `/api/bff/v1/workspace/monitor` 聚合 monitor/pulse/review | `tquant_bff_gateway_aggregate_hits_total`、`proxy_fallbacks_total`、`cache_hits_total` |
 | `market-read-service` | quote batch、sector strength、intraday key levels、intraday latest batch | `tquant_market_read_hits_total`、`fallbacks_total`、`partials_total` |
-| `scan-worker` | `/api/scan-worker/v1/run` | `production_scan_enabled=true`、`production_write_enabled=true`，失败返回 fallback reason 且不写 latest |
+| `scan-worker` | `/api/scan-worker/v1/run` 扫描编排入口 | `strategy_engine=python_reference`、`scan_worker_role=go_orchestrated_reference`；失败返回 fallback reason 且不污染 latest |
 
 生产环境配置 Go URL 时必须同时配置 `TQUANT_INTERNAL_SERVICE_TOKEN`；Go 服务在 `APP_ENVIRONMENT=production` 且 token 为空时拒绝启动。
 
-### 0.5 Rust 计算主路径
+### 0.5 Rust 指标加速路径
 
-`RUST_FINANCE_MATH_ENABLED=true` 为生产默认。Rust wheel 作为镜像产物安装，Python wrapper 保留 fallback 并暴露 `tquant_rust_math_hits_total`、`fallbacks_total`、`errors_total`、`disabled_total`。
+`RUST_FINANCE_MATH_ENABLED=true` 可作为生产指标加速开关。Rust wheel 作为镜像产物安装，Python wrapper 保留 fallback 并暴露 `tquant_rust_math_hits_total`、`fallbacks_total`、`errors_total`、`disabled_total`。Rust 不作为策略、风控、回测或模拟盘结果的独立真源；启用或关闭 Rust 时，策略结果必须与 Python reference 保持一致。
 
 ## 1. 目标
 

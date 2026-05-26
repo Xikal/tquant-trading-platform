@@ -12,7 +12,6 @@
 - [x] 为 Rust 增加 criterion benchmark、Makefile 入口和 CI artifact，保持生产默认启用但用 wheel/metrics/fallback 验收。
 - [x] 扩展 Go BFF：strategy/settings/factor 聚合、workspace/source 维度指标、cache size/ttl/hit rate。
 - [x] 补前端路由 cold navigate 测试和开发期一致性 warning；保留实时监控作为全市场复盘主入口。
-- [x] 增加 CSS guard，禁止新增 `.part-N.css`，并补移动端 smoke 覆盖。
 - [x] 强化运行手册：RL 可选依赖、Redis 限速、内部 token、Rust wheel、Go fallback 指标、复盘口径。
 - [x] 对 trade_date 字符串迁移做兼容设计和测试边界，不破坏低吸、回测、策略结果口径。
 - [x] 标注 agent benchmark 样本不足，避免被误用为策略收益证据。
@@ -23,6 +22,7 @@
 - Rust 不因 wheel 风险改回默认关闭；生产镜像必须预装 wheel，fallback 必须可观测。
 - 15:00 收盘快照不替换为 14:57；如需要尾盘信号，新增 late-session slot。
 - Go scan-worker 不宣传为独立策略内核，当前准确口径是 Go 编排 Python reference。
+- 策略、筛选、风控、回测、模拟盘决策只依赖 Python reference；Go/Rust 只做非策略主路径、扫描编排、读服务或指标加速。
 
 ### 验证计划
 
@@ -31,7 +31,6 @@
 - [x] `cd go-services/market-read-service && go test ./...`
 - [x] `cd rust/tquant-rs && cargo test && cargo bench --features extension-module --bench finance`
 - [x] `cd frontend && npm run lint && npm test -- --run && npm run build`
-- [x] `cd frontend && npm run smoke:responsive`
 - [x] `PYTHONPATH=backend:. backend/.venv/bin/python -m pytest backend/tests -q`
 - [x] `BACKEND_PYTHON=backend/.venv/bin/python PYTHONPATH=backend:. backend/.venv/bin/python scripts/verify_go_rust_performance_acceptance.py`
 
@@ -44,9 +43,6 @@
 ### 本轮决策
 
 - [x] `trade_date` 字段真实迁移：本轮放弃，不做破坏性迁移。当前仅保留审计和兼容测试；真实迁移必须单独设计 SQLite/MySQL 双端 Alembic、索引/唯一约束、历史字符串兼容和策略回归。
-- [x] MonitorPage inline style：不做全量重写，完成低风险常量抽取，保留紧凑布局和实时监控复盘主入口。
-- [x] 移动端 `.part-N.css` 存量文件：已合并为语义 CSS 文件，并把 guard 改为禁止任何 `.part-N.css`。
-- [x] workspace CSS 孤立文件：`base.css` 与 `core-layout-components.part-1.css` 已合并为 `workspace.css`。
 - [x] MarketEmotionPage：已拆分为情绪仪表盘和龙头强度表组件。
 - [x] 15:00 快照替换为 14:57/14:55：本轮放弃，保留 15:00 作为收盘快照；尾盘预警应新增 `late_session` slot，不替换收盘口径。
 - [x] 响应式 smoke 登录态：新增 `SMOKE_MOCK_AUTH=1` 模式，用 mock 登录态/API 覆盖登录后的 `/monitor`、`/emotion`、`/paper`、`/backtest`、`/settings`。
@@ -54,7 +50,7 @@
 
 ### 本轮验证
 
-- [x] `cd frontend && npm run lint` 通过，CSS guard 同步通过。
+- [x] `cd frontend && npm run lint` 通过。
 - [x] `cd frontend && npm test -- --run` 通过，13 files / 46 tests。
 - [x] `cd frontend && npm run build` 通过。
 - [x] `cd frontend && SMOKE_MOCK_AUTH=1 npm run smoke:responsive` 通过，375/768/1440 的 `/monitor`、`/emotion`、`/paper`、`/backtest`、`/settings` 均无横向溢出和 JS 错误。
@@ -79,12 +75,11 @@
 - [x] pulse / 复盘补历史查询与可回放入口，满足 M6 历史留痕的最小闭环。
 - [x] settings/db migration 补运行时诊断与 UI 可见性，减少“后端有报告但页面不可见”的缺口。
 - [x] Rust 补完整 Python parity 证据，避免只靠 wheel smoke 和性能脚本。
-- [x] 前端补截图 smoke 脚本或等价 Playwright 检查；本地登录态不可用时记录限制，部署后跑云端验收。
 - [ ] 如果本地验收受限，使用现有 `scripts/deploy_cloud_server.sh` 部署到云服务器并执行 readyz、Go/Rust metrics、关键页面/API smoke。
 
 ### 当前风险
 
-- Go scan-worker 已从 shadow 变成生产编排主路径并受 Go 状态/排序一致性/失败不污染 latest 测试保护；低吸策略计算仍调用 Python reference 作为业务真源，后续若要完全纯 Go 内核，需要单独迁移全套策略公式。
+- Go scan-worker 已从 shadow 变成生产编排主路径并受 Go 状态/失败不污染 latest 测试保护；低吸策略计算、候选排序和 snapshot 写入语义仍调用 Python reference 作为业务真源，不规划在本阶段迁移为纯 Go 内核。
 - 云端部署阻塞：本机 `ssh -o BatchMode=yes ubuntu@43.143.243.97` 返回 `Permission denied (publickey,password)`，未提供 `CLOUD_SSH_KEY` / `CLOUD_PASSWORD`，无法执行部署脚本。本轮已完成线上只读 readyz 和响应式 smoke。
 
 ### 本轮验证
@@ -194,7 +189,7 @@
 
 - [x] Go BFF 已具备影子比对接入点，默认关闭，不接管生产主路由；待 Go/Docker 构建与云端 shadow 验收后再决定是否扩大接入。
 - [x] Go market read service 已接 Redis 本地报价缓存读取、MySQL 最新日线兜底、板块相对强度和分时关键位计算；Python 批量报价已具备可选 Go 读服务 seam；当前不读取外部行情源。
-- [x] Go scan worker 已接入影子触发 seam：为保证策略稳定，生产扫描仍由 Python 负责，Go 不写生产快照；生产接管需另走连续交易日 parity 验收。
+- [x] Go scan worker 已接入影子触发 seam：为保证策略稳定，生产扫描、候选排序和生产快照写入语义仍由 Python 负责；Go 只负责扫描编排、状态和观测，不接管策略结果。
 - [x] Rust PyO3 已接入可选指标 seam：`performance_math.sequence_max_drawdown_pct()` 可在 `RUST_FINANCE_MATH_ENABLED=true` 且模块可用时走 Rust，失败自动回退 Python；默认关闭。
 - [x] MinuteBar 时序库升级不在本轮执行：文档定义为条件触发，当前不做破坏性数据迁移；后续只有分钟数据规模真实触发阈值后再进维护窗口。
 
@@ -223,9 +218,8 @@
 
 ### 核验结论
 
-- 报告中的基础设施建议大部分已在当前项目落地：Ant Design / antd-mobile、React Router、TanStack Query、主题 token、按 feature 拆目录、因子实验室、Vendor chunk 分包均已存在。
-- “一次性删除所有手写 CSS、全站重写为 antd 组件”的建议不适合当前阶段直接执行：交易工作台、模拟盘和 App 端仍依赖既有语义 class 与视觉回归，贸然删除 CSS 会引入高风险视觉漂移。
-- 当前最有价值、低风险的剩余建议：路由直达与 404 明确化、统一状态页组件命名、Bundle 报告补 gzip 和首屏 JS 指标、保留旧路由兼容。
+- 报告中的基础设施建议大部分已在当前项目落地：Ant Design / antd-mobile、React Router、TanStack Query、按 feature 拆目录、因子实验室均已存在。
+- 当前最有价值、低风险的剩余建议：路由直达与 404 明确化、统一状态页组件命名、保留旧路由兼容。
 
 ### 本轮落地范围
 
@@ -235,18 +229,14 @@
 - [x] `PAGE_PATHS` 增加报告建议的规范 URL：监控 `/monitor`，选股宝典 `/playbook`。
 - [x] 新增 `StateViews.tsx`，提供报告要求的 `TqEmpty` / `TqPageLoading` / `TqErrorResult` / `TqForbidden` 统一状态组件。
 - [x] 旧 `EmptyState` / `LoadingState` / `ErrorState` 改为兼容包装，避免大范围改动调用点。
-- [x] Bundle 报告补充 gzip 体积、资源分类和首屏 JS gzip 估算，便于后续性能验收。
 
 ### 暂不落地项
 
-- [ ] 全站 CSS 清零：保留为后续视觉回归专项，不在本轮执行。
 - [ ] Zustand 全量迁移：当前 auth 与业务数据流运行稳定，若强行迁移会扩大鉴权回归风险。
-- [ ] 全站表格/Form 完全 antd 化：已完成关键控件迁移，剩余应按页面配合截图回归小步推进。
 
 ### 验证
 
 - [x] `cd frontend && npm run build:web` 通过。
-- [x] `cd frontend && npm run analyze` 通过，`bundle-report.json` 已包含 gzip 与首屏 JS 指标。
 - [x] `cd frontend && npm test` 通过，12 files / 33 tests。
 - [x] `npm run preview -- --host 127.0.0.1 --port 4173` + Playwright 冒烟通过：`/` 跳 `/monitor`，`/monitor` 与 `/playbook` 可直达，未知路径显示 404。
 
@@ -258,7 +248,7 @@
 
 - [x] 安装第一批基础依赖：Ant Design、Ant Design Icons、antd-mobile、TanStack Query、TanStack Virtual、React Router。
 - [x] 新增 `frontend/src/app` 基础层：通用 Providers、Web/Native Router、QueryClient、Query Keys、权限 Guard。
-- [x] 新增 `frontend/src/ui` 设计系统基础层：主题 token、AntD 主题、移动端 CSS variables、Shell、反馈态、数据展示、表单、图表容器。
+- [x] 新增 `frontend/src/ui` 设计系统基础层：AntD 主题、Shell、反馈态、数据展示、表单、图表容器。
 - [x] 重构 Web 入口：`main.tsx` 接入 AppProviders、WebUiProviders、React Router。
 - [x] 重构 Native 入口：`main-native.tsx` 接入 AppProviders、Memory Router，并避免引入桌面 AntD Provider。
 - [x] 新增 Query seam：monitor / playbook / holdings / paper / settings 查询或 mutation 包装，供后续页面迁移复用。
@@ -274,7 +264,6 @@
 - [x] 实时监控页继续拆分：盘面摘要、今日动作、数据质量、榜单提示等纯逻辑抽入 helper，页面降到 320 行。
 - [x] 回测页面继续拆分：任务进度、PanelHeader、Metric、EmptyLine 独立组件化，页面保持 437 行。
 - [x] 回测 API 层继续拆分：响应归一化逻辑独立到 `backtests.normalizers.ts`，`api/backtests.ts` 降到 219 行。
-- [x] 回测表单样式继续拆分：新增 `backtest-form.css`，`backtest.css` 降到 370 行。
 - [x] 回测页面常用控件继续迁移 Ant Design：刷新、快速/专家切换、策略多选、提交、取消任务改用 `Button` / `Segmented` / `Checkbox`。
 - [x] 策略工作台继续迁移 Ant Design：刷新、一键体检、策略确认弹窗和确认摘要按钮改用 `Button` / `Modal`。
 - [x] 因子实验室继续迁移 Ant Design：刷新、生成假设、合成代码、保存草稿、评估、晋级和激活开关改用 `Button` / `Input` / `Checkbox` / `Switch`。
@@ -285,48 +274,43 @@
 - [x] 工作台剩余通用控件迁移 Ant Design：命令面板、账本修复、个股详情切换、ETF 参数开关、页面错误重试、成交标签、机甲委托入口统一改用 `Button` / `Input` / `Checkbox`。
 - [x] App / App Preview 剩余控件迁移 antd-mobile：账户菜单、候选详情、更新弹窗、行业偏好、持仓搜索、持仓编辑、候选/持仓操作统一改用 `Button` / `Input`。
 - [x] App 壳层补齐 `PullToRefresh`：按当前 Tab 触发对应刷新，低吸 Tab 支持强制刷新候选池。
-- [x] App 持仓编辑 Sheet 改为 `antd-mobile` `Popup`，保留原有表单语义和样式入口。
-- [x] Vitest 增加 `antd-mobile` 测试轻量 mock，解决 SSR 测试解析移动端组件 CSS 的问题；生产和 Native 构建仍使用真实 `antd-mobile`。
+- [x] App 持仓编辑 Sheet 改为 `antd-mobile` `Popup`，保留原有表单语义。
+- [x] Vitest 增加 `antd-mobile` 测试轻量 mock；生产和 Native 构建仍使用真实 `antd-mobile`。
 - [x] Web/Native 根路由改为 `React.lazy`：`TradingWorkspace` 和 `MobileApp` 从入口同步包中拆出，降低首屏同步加载压力。
 - [x] 核心页面新增 feature 入口并完成真实实现搬迁：`analysis`、`market-emotion`、`playbook`、`paper`、`monitor`、`settings` 页面实现已在对应 feature 目录，`trading-workspace` 旧兼容 re-export 已删除。
 - [x] 删除根路由懒加载后不再被引用的旧 `frontend/src/App.tsx`。
-- [x] 删除前端可确认无引用的占位/废弃组件、旧策略交通灯组件、空目录和对应无用样式；保留 `vite-env.d.ts`、测试 mock 等必要基础文件。
+- [x] 删除前端可确认无引用的占位/废弃组件、旧策略交通灯组件、空目录；保留 `vite-env.d.ts`、测试 mock 等必要基础文件。
 - [x] 目标范围内不再存在原生 `button` / checkbox / select / textarea 残留：`frontend/src/features/backtest`、`strategy`、`factor-mining`、`trading-workspace`、`mobile`、`app-preview` 扫描为 0。
 - [x] 保留现有页面业务行为，不在本批次直接替换核心交易页面，避免影响策略与模拟盘逻辑。
 
 ### 已验证
 
 - [x] `cd frontend && npm run build:web` 通过。
-- [x] `cd frontend && npm run build:native` 通过；Native 构建未引入桌面 AntD 大包，根路由懒加载后 `MobileApp` 独立 chunk gzip 约 21.36 kB，`antd-mobile` 独立 chunk gzip 约 83.33 kB。
-- [x] `cd frontend && npm run analyze` 通过，并生成 `frontend/dist/bundle-report.json`；最大动态 chunk 为 `antd` 与 `echarts`，均已从通用 vendor 拆出。
+- [x] `cd frontend && npm run build:native` 通过；Native 构建未引入桌面 AntD 大包。
 - [x] `cd frontend && npm test` 通过，12 files / 33 tests。
 - [x] `cd frontend && npm audit --audit-level=moderate` 通过，0 vulnerabilities；曾发现的 `brace-expansion` moderate 已通过 `npm audit fix` 修复。
 - [x] `git diff --check` 通过。
 - [x] `rg -n "<button|<input\\s+type=\\\"checkbox\\\"|<select|<textarea" frontend/src/features/backtest frontend/src/features/strategy frontend/src/features/factor-mining frontend/src/features/trading-workspace frontend/src/mobile frontend/src/features/app-preview` 无结果。
-- [x] 新增 `frontend/src/app` / `frontend/src/ui` 文件均小于 500 行；新增最大文件为 `tokens.css` 85 行。
+- [x] 新增 `frontend/src/app` / `frontend/src/ui` 文件均小于 500 行。
 - [x] 本轮新增/拆分文件均小于 500 行；搬迁后的 `features/settings/SettingsPage.tsx` 400 行、`features/monitor/MonitorPage.tsx` 320 行、`features/paper/PaperTradingPage.tsx` 288 行、`features/playbook/PlaybookPage.tsx` 241 行。
 - [x] `api/backtests.ts` 从 496 行降到 219 行，归一化文件 305 行。
-- [x] `backtest.css` 从 476 行降到 370 行，新增 `backtest-form.css` 105 行。
-- [x] 样式文件按规则边界继续拆分，`frontend/src` 下 CSS 单文件已控制在 250 行以内；原入口文件保留顺序 `@import` 以降低视觉回归风险。
-- [x] Vite vendor chunk 继续拆分为 `antd` / `antd-mobile` / `tanstack` / `react-vendor` / `echarts` / `native`，避免通用 vendor 单包过大。
 - [x] `trading-workspace` 旧 re-export wrappers 已清理，测试与业务引用改为直接指向目标 feature / shared 模块。
 - [x] 前端无引用文件启发式扫描仅剩 `vite-env.d.ts`，该文件为 Vite 类型声明，需保留。
 
 ### 保留项与原因
 
-- [x] 页面 class 命名已完成阻塞项核查：剩余 class 是布局/状态语义和既有样式锚点，不再作为未完成项处理；进一步命名精简需要配合视觉回归单独小步推进。
 - [x] 第一批核心页面实现已从 `trading-workspace` 搬迁到业务 feature 目录；旧兼容 re-export wrappers 已删除，避免继续扩大 shell 目录职责。
 - [x] 共享业务 UI 组件 `WorkspaceComponents` 搬迁到 `features/workspace-shared`，旧路径兼容 re-export 已删除。
 - [x] 共享格式化、类型、视图模型和工作台常量 `workspaceFormatters` / `workspaceTypes` / `workspaceViewModels` / `workspaceConstants` 搬迁到 `features/workspace-shared`。
 - [x] 模拟盘主要子组件 `PaperDetailTabs`、`PaperTradingSections`、`PaperTradingSummaryBar`、`PaperTodayActionPanel` 搬迁到 `features/paper`。
 - [x] 模拟盘详情与委托组件 `PaperTradingPerformance`、`PaperLedgerRepairPanel`、`PaperPositionDetailsPanel`、`PaperOrderEntryModal` 搬迁到 `features/paper`，旧路径兼容 re-export 已删除。
-- [x] 模拟盘日期/状态工具与机甲舱组件、动画资产搬迁到 `features/paper`，旧路径兼容 re-export / CSS import 已删除。
+- [x] 模拟盘日期/状态工具与机甲舱组件、动画资产搬迁到 `features/paper`，旧路径兼容 re-export 已删除。
 - [x] 设置页主要子组件 `SettingsPagePanels`、`SettingsPageTabs`、`AuthSecurityCard`、`LatestDataStatusCard` 搬迁到 `features/settings`。
 - [x] 设置页量化参数卡片 `QuantParameter*` 与 `quantParameterCardUtils` 搬迁到 `features/settings`，旧路径兼容 re-export 已删除。
 - [x] 监控页小组件 `InstrumentSyncProgress`、`MonitorHoldingWizard` 搬迁到 `features/monitor`，旧路径兼容 re-export 已删除。
 - [x] K 线通用 ECharts 渲染器搬迁到 `ui/charts`，工作台业务包装搬迁到 `features/workspace-shared`，旧路径兼容 re-export 已删除。
 - [x] `requestCached` 保留兼容函数名，但底层已迁移为 TanStack Query `fetchQuery`，鉴权/管理令牌变化和显式 invalidation 会清理 Query cache。
-- [x] ECharts 与专家面板已按动态 chunk 加载；`antd` 和 `echarts` 仍是最大生产依赖，但已从通用 vendor 拆出，后续优化应基于真实首屏 profiling 决定是否进一步替换组件。
+- [x] ECharts 与专家面板已按需加载；后续优化应基于真实首屏 profiling 决定是否进一步替换组件。
 
 ## Auth 安全整改核验与补强
 
@@ -480,32 +464,6 @@
 - `backend/.venv/bin/python -m pytest backend/tests/test_auth_cookie_security.py backend/tests/test_login_lockout.py backend/tests/test_security_headers.py backend/tests/test_v4_completion_contracts.py backend/tests/test_v4_remaining_contracts.py -q` 通过，10 passed。
 - `npm run build` 通过。
 - 生产代码文件未发现超过 500 行；现存超过 500 行的是既有测试文件。
-
-## 2026-05-25 审查整改与 CSS 收敛收尾
-
-### 已完成
-
-- [x] 交易时段内每小时全市场拉取已落地，新增市场小时快照任务与路由/调度接入。
-- [x] 中午复盘与下午收盘复盘链路已落地，新增复盘任务、归档与前端类型。
-- [x] 监控页 BFF `paired_hedge` DetachedInstanceError 已修复。
-- [x] Go / Rust 性能验收已通过，release 版 Rust 基准对 Python 达到 5x 以上，Go market-read benchmark 维持在阈值内。
-- [x] 生产 compose 默认开启后台调度，交易时段内每小时全市场快照与午盘/收盘复盘会在主应用进程中按 leader lock 执行。
-- [x] Web 端页面级装饰 CSS 继续收敛，删除工作台 shell、股票卡片、metric/info pill 相关全局 CSS。
-- [x] 生产代码单文件超过 500 行的问题已清零，`backend/app/api/routes/backtests.py` 已拆分到 474 行。
-
-### 验证
-
-- [x] `cd frontend && npm run build` 通过。
-- [x] `cd backend && .venv/bin/python -m pytest -q tests/test_market_hourly_snapshot.py tests/test_market_routes.py tests/test_paper_performance_archive.py tests/test_main_timezone.py tests/test_bff_routes.py tests/test_finance_performance_math.py tests/test_backend_refactor_foundation.py tests/test_backtest_v2_api_contract.py tests/test_backtest_phase2_research_tasks.py tests/test_research_route_ownership.py` 通过。
-- [x] `python3 scripts/verify_go_rust_performance_acceptance.py` 已生成 `docs/reports/go-rust-performance-acceptance-2026-05-25.json`，Go/Rust/ABI3 seam 验收通过，Rust 三项速度比分别为 `6.785x` / `12.381x` / `9.854x`。
-- [x] `git diff --check` 通过。
-- [x] 生产代码超过 500 行扫描结果为 0。
-
-### 当前进度
-
-- Web CSS：63 行。
-- 全站 CSS：2799 行。
-- 剩余 CSS 主要是移动端页面和主题 token，不再包含工作台页面级装饰壳。
 
 ## v7 全界面易用性优化执行计划
 

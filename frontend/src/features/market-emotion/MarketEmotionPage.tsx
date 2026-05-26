@@ -38,8 +38,6 @@ export function MarketEmotionPage({ marketBreadth, marketPulse, sectorRelativeSt
         <WorkspacePageIntro
           title="市场情绪"
           summary={marketBreadth?.emotion_temperature_text || marketPulse?.emotion_text || "市场温度、龙头强度、板块轮动。"}
-          more="这里解释盘面结构；午盘和收盘复盘仍回到实时监控页查看。"
-          moreLabel="页面边界"
           tone={marketPulse?.data_quality === "fresh" ? "up" : marketPulse?.data_quality === "unavailable" ? "down" : marketPulse?.data_quality ? "warn" : "neutral"}
           pills={[
             { label: "情绪温度", value: marketBreadth?.emotion_temperature_text || "--" },

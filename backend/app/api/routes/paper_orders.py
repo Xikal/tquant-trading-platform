@@ -17,6 +17,7 @@ from app.models.schemas import (
     PaperOrderOut,
     PaperTradeTagCreate,
     PaperTradeTagOut,
+    PaperTradeTagsBatchResponse,
     PaperTradesResponse,
 )
 from app.services.operation_audit import record_operation_audit
@@ -141,6 +142,40 @@ def list_paper_trades(
     return PaperTradesResponse(trades=[trade_out(row) for row in rows])
 
 
+@router.get("/trades/tags", response_model=PaperTradeTagsBatchResponse)
+def list_paper_trade_tags_batch(
+    trade_ids: str = Query(default="", max_length=600),
+    current_user: User = Depends(require_paper_trading),
+    db: Session = Depends(get_db),
+) -> PaperTradeTagsBatchResponse:
+    account = PaperAccountService(db).get_or_create_default(current_user.id)
+    ids = _parse_trade_ids(trade_ids)
+    if not ids:
+        return PaperTradeTagsBatchResponse(items={})
+    owned_ids = set(
+        db.execute(
+            select(PaperTrade.id).where(PaperTrade.account_id == account.id, PaperTrade.id.in_(ids))
+        )
+        .scalars()
+        .all()
+    )
+    if not owned_ids:
+        return PaperTradeTagsBatchResponse(items={})
+    rows = (
+        db.execute(
+            select(PaperTradeTag)
+            .where(PaperTradeTag.account_id == account.id, PaperTradeTag.trade_id.in_(owned_ids))
+            .order_by(PaperTradeTag.trade_id, PaperTradeTag.created_at.desc())
+        )
+        .scalars()
+        .all()
+    )
+    items: dict[int, list[PaperTradeTagOut]] = {trade_id: [] for trade_id in ids if trade_id in owned_ids}
+    for row in rows:
+        items.setdefault(row.trade_id, []).append(trade_tag_out(row))
+    return PaperTradeTagsBatchResponse(items=items)
+
+
 @router.get("/trades/{trade_id}/tags", response_model=list[PaperTradeTagOut])
 def list_paper_trade_tags(
     trade_id: int,
@@ -213,3 +248,20 @@ def delete_paper_trade_tag(
     db.delete(row)
     db.commit()
     return {"message": "标签已删除", "tag_id": tag_id}
+
+
+def _parse_trade_ids(raw: str) -> list[int]:
+    ids: list[int] = []
+    seen: set[int] = set()
+    for item in (raw or "").split(","):
+        try:
+            trade_id = int(item.strip())
+        except (TypeError, ValueError):
+            continue
+        if trade_id <= 0 or trade_id in seen:
+            continue
+        seen.add(trade_id)
+        ids.append(trade_id)
+        if len(ids) >= 50:
+            break
+    return ids

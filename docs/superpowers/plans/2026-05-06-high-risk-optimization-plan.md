@@ -2,11 +2,11 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Safely complete the high-risk optimization work for schema/index migration, legacy route removal, CSS modularization, and market data provider refactoring without changing trading strategy behavior.
+**Goal:** Safely complete the high-risk optimization work for schema/index migration, legacy route removal, and market data provider refactoring without changing trading strategy behavior.
 
-**Architecture:** The work is split into four independently verifiable tracks. Database changes go through Alembic and MySQL validation; legacy routes are removed through an explicit compatibility gate; CSS is split with visual regression screenshots; external data providers are deepened behind a stable interface while preserving current fallback semantics.
+**Architecture:** The work is split into three independently verifiable tracks. Database changes go through Alembic and MySQL validation; legacy routes are removed through an explicit compatibility gate; external data providers are deepened behind a stable interface while preserving current fallback semantics.
 
-**Tech Stack:** Python FastAPI, SQLAlchemy, Alembic, MySQL, React, Vite, TypeScript, CSS modules-by-domain, pytest, Vitest, Playwright/UI smoke, nginx/cloud deployment scripts.
+**Tech Stack:** Python FastAPI, SQLAlchemy, Alembic, MySQL, React, Vite, TypeScript, pytest, Vitest, nginx/cloud deployment scripts.
 
 ---
 
@@ -16,7 +16,6 @@
 - Do not edit secrets, `.env`, cloud credentials, production database contents, or real notification tokens.
 - Do not remove old routes until the route audit confirms no first-party caller still depends on them.
 - Every database schema change must have an Alembic migration, a downgrade path, and a MySQL validation command.
-- Every UI refactor must pass frontend build and produce UI smoke screenshots before merge.
 - Every external data provider change must return explicit `fresh`, `stale`, `estimated`, or `unavailable` quality states.
 - Commit after each task. Rollback should be possible by reverting one task commit.
 
@@ -38,15 +37,7 @@
 
 **Strategy:** Audit all first-party references, add explicit deprecation telemetry, introduce a runtime flag that can reject legacy routes with a structured 410, then remove route definitions after one verified release window.
 
-### Risk C: Large CSS Split
-
-**Current problem:** Global CSS files and page-level CSS files are large and risk selector bleed. Mechanical splitting can silently change UI because selector order matters.
-
-**Impact range:** Web app layout, mobile app visual sync, paper trading page, strategy workspace, backtest dashboard.
-
-**Strategy:** Split by page/domain while preserving import order. Use screenshots and UI smoke before and after. Do not rename selectors in the same task as moving them.
-
-### Risk D: External AkShare / OpenBB Provider Rewrite
+### Risk C: External AkShare / OpenBB Provider Rewrite
 
 **Current problem:** Market provider fallback is spread across services. AkShare lock/fallback protects stability but restricts throughput; OpenBB is present but not deeply integrated. A rewrite can alter data quality and strategy outputs.
 
@@ -76,18 +67,6 @@
 - Modify: `scripts/qa_smoke.sh`
 - Create: `backend/tests/test_legacy_routes.py`
 - Create: `docs/operations/legacy-route-removal.md`
-
-### CSS Split Track
-
-- Modify: `frontend/src/styles/index.css`
-- Modify: `frontend/src/features/backtest/backtest.css`
-- Modify: `frontend/src/styles/mobile/native-app.css`
-- Modify: `frontend/src/styles/mobile/native-design-sync.css`
-- Modify: `frontend/src/main.tsx`
-- Create: `frontend/src/styles/workspace/index.css`
-- Create: `frontend/src/styles/backtest/index.css`
-- Create: `frontend/src/styles/mobile/index.css`
-- Create: `docs/operations/ui-regression-checklist.md`
 
 ### Data Provider Track
 
@@ -734,186 +713,7 @@ Expected: commit succeeds. If `.runtime/legacy-route-audit.json` is ignored, do 
 
 ---
 
-## Task 7: Prepare CSS Split Without Selector Renames
-
-**Files:**
-- Create: `docs/operations/ui-regression-checklist.md`
-- Create: `frontend/src/styles/workspace/index.css`
-- Create: `frontend/src/styles/backtest/index.css`
-- Create: `frontend/src/styles/mobile/index.css`
-- Modify: `frontend/src/main.tsx`
-
-- [ ] **Step 1: Write UI regression checklist**
-
-Create `docs/operations/ui-regression-checklist.md` with:
-
-```markdown
-# UI Regression Checklist
-
-## Required screenshots
-
-Run:
-
-```bash
-./scripts/ui_smoke.sh http://127.0.0.1:18080
-```
-
-Compare these screenshots before and after CSS moves:
-
-- `.runtime/ui-smoke/127.0.0.1_18080/dashboard.png`
-- `.runtime/ui-smoke/127.0.0.1_18080/analysis.png`
-- `.runtime/ui-smoke/127.0.0.1_18080/research.png`
-- `.runtime/ui-smoke/127.0.0.1_18080/settings.png`
-
-## Acceptance
-
-- No horizontal overflow on desktop width 1440px.
-- Top navigation remains visible.
-- Paper dashboard cards keep equal widths.
-- Strategy workspace panels use white surfaces and readable black text.
-- Error toasts appear as overlays, not inline layout-breaking text.
-```
-
-- [ ] **Step 2: Add page/domain CSS entrypoints**
-
-Create `frontend/src/styles/workspace/index.css`:
-
-```css
-@import "./core-layout.css";
-@import "./core-layout-components.css";
-@import "./performance-dashboard.css";
-```
-
-Create `frontend/src/styles/backtest/index.css`:
-
-```css
-@import "../../features/backtest/backtest.css";
-```
-
-Create `frontend/src/styles/mobile/index.css`:
-
-```css
-@import "./native-app.css";
-@import "./native-design-sync.css";
-@import "./native-holdings.css";
-```
-
-- [ ] **Step 3: Centralize imports without moving selectors yet**
-
-In `frontend/src/main.tsx`, replace individual workspace/backtest/mobile style imports with:
-
-```ts
-import "./styles/workspace/index.css";
-import "./styles/backtest/index.css";
-import "./styles/mobile/index.css";
-```
-
-Keep `frontend/src/styles/index.css` imported first.
-
-- [ ] **Step 4: Run build**
-
-Run:
-
-```bash
-cd frontend && npm run build:web
-```
-
-Expected: build passes.
-
-- [ ] **Step 5: Commit**
-
-Run:
-
-```bash
-git add docs/operations/ui-regression-checklist.md frontend/src/styles/workspace/index.css frontend/src/styles/backtest/index.css frontend/src/styles/mobile/index.css frontend/src/main.tsx
-git commit -m "chore: add css domain entrypoints"
-```
-
-Expected: commit succeeds.
-
----
-
-## Task 8: Split CSS by Moving Selectors in Small Groups
-
-**Files:**
-- Modify: `frontend/src/styles/index.css`
-- Modify: `frontend/src/styles/workspace/*.css`
-- Modify: `frontend/src/features/backtest/backtest.css`
-- Modify: `frontend/src/styles/mobile/*.css`
-
-- [ ] **Step 1: Move only workspace selectors**
-
-Move selectors that start with these prefixes from `frontend/src/styles/index.css` into existing workspace CSS files:
-
-```text
-.workspace-
-.monitor-
-.paper-
-.settings-
-.analysis-
-.research-
-.stock-
-```
-
-Do not rename selectors. Preserve relative order within the moved block.
-
-- [ ] **Step 2: Build after workspace move**
-
-Run:
-
-```bash
-cd frontend && npm run build:web
-```
-
-Expected: build passes.
-
-- [ ] **Step 3: Move only backtest selectors**
-
-Move selectors that start with these prefixes into `frontend/src/features/backtest/backtest.css`:
-
-```text
-.backtest-
-.optimizer-
-.validation-
-.comparison-
-```
-
-Do not rename selectors. Preserve relative order within the moved block.
-
-- [ ] **Step 4: Build after backtest move**
-
-Run:
-
-```bash
-cd frontend && npm run build:web
-```
-
-Expected: build passes.
-
-- [ ] **Step 5: Run UI smoke**
-
-Run:
-
-```bash
-./scripts/ui_smoke.sh http://127.0.0.1:18080
-```
-
-Expected: screenshots are generated. If the script cannot start because local services are not running, record it as environment-blocked and run `npm run build:web` as minimum verification.
-
-- [ ] **Step 6: Commit**
-
-Run:
-
-```bash
-git add frontend/src/styles/index.css frontend/src/styles/workspace frontend/src/features/backtest/backtest.css frontend/src/styles/mobile
-git commit -m "refactor: split css by product domain"
-```
-
-Expected: commit succeeds.
-
----
-
-## Task 9: Define Market Data Provider Quality Contract
+## Task 7: Define Market Data Provider Quality Contract
 
 **Files:**
 - Create: `backend/app/services/market/providers/quality.py`
@@ -1022,7 +822,7 @@ Expected: commit succeeds.
 
 ---
 
-## Task 10: Wrap Existing Providers Without Changing Consumers
+## Task 8: Wrap Existing Providers Without Changing Consumers
 
 **Files:**
 - Create: `backend/app/services/market/providers/eastmoney_provider.py`
@@ -1224,7 +1024,7 @@ Expected: tests pass and commit succeeds.
 
 ---
 
-## Task 11: Gradually Wire Provider Router Behind Feature Flag
+## Task 9: Gradually Wire Provider Router Behind Feature Flag
 
 **Files:**
 - Modify: `backend/app/services/market/quotes.py`
@@ -1317,7 +1117,7 @@ Expected: tests pass and commit succeeds.
 
 ---
 
-## Task 12: Preserve Data Quality in API Responses
+## Task 10: Preserve Data Quality in API Responses
 
 **Files:**
 - Modify: `backend/app/models/schema_defs/agent.py`
@@ -1380,7 +1180,7 @@ Expected: tests pass and commit succeeds.
 
 ---
 
-## Task 13: Full Verification Matrix
+## Task 11: Full Verification Matrix
 
 **Files:**
 - Modify: none unless verification exposes a defect
@@ -1469,7 +1269,7 @@ Expected: only intended documentation or generated fallback changes remain. Comm
 
 ---
 
-## Task 14: Deployment and Rollback Plan
+## Task 12: Deployment and Rollback Plan
 
 **Files:**
 - Modify: `PRODUCTION_RUNBOOK.md`
@@ -1544,8 +1344,6 @@ Expected: commit succeeds.
 - [ ] Runtime compatibility code warns but does not silently create production indexes.
 - [ ] Legacy routes return structured `410` by default.
 - [ ] First-party callers use current `/api/backtests` paths.
-- [ ] CSS split preserves selector names and import order.
-- [ ] UI smoke screenshots are generated or documented as environment-blocked.
 - [ ] Provider router is behind a disabled-by-default feature flag.
 - [ ] Data quality states are explicit.
 - [ ] Frontend build passes.
@@ -1560,8 +1358,6 @@ The high-risk optimization is complete only when:
 1. `alembic upgrade head` succeeds against local SQLite and a MySQL staging database.
 2. `scripts/schema_index_audit.py` reports no missing indexes on staging.
 3. `/backtests` and `/research` return explicit `410` unless compatibility flag is enabled.
-4. `npm run build:web` passes after CSS split.
-5. UI smoke screenshots show no visible regression on dashboard, analysis, research, and settings.
-6. Market provider router tests pass and the feature flag remains disabled by default.
-7. `qa_smoke.sh` and `prod_preflight.sh` pass or have documented external-service blockers.
-8. Deployment runbook and rollback instructions are updated.
+4. Market provider router tests pass and the feature flag remains disabled by default.
+5. `qa_smoke.sh` and `prod_preflight.sh` pass or have documented external-service blockers.
+6. Deployment runbook and rollback instructions are updated.

@@ -117,8 +117,6 @@ export function AnalysisPage({
         <WorkspacePageIntro
           title="量化分析"
           summary={decisionTitle}
-          more="单票分析先判断是否可操作，再给出执行计划、失效条件和模拟下单入口。"
-          moreLabel="分析口径"
           tone={decisionTone}
           actions={<Button type="primary" onClick={onRun} loading={loading === "analysis"}>开始分析</Button>}
           pills={[

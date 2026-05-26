@@ -13,7 +13,7 @@
 本次评估方式：
 
 - 通读报告全文，提取 P1/P2/P3、已修复项、强化方向、上线建议。
-- 对照当前仓库抽查 Go scan-worker、Go BFF、Rust PyO3、CI、前端路由、移动端 CSS、复盘链路、限速配置、日期字段等关键代码。
+- 对照当前仓库抽查 Go scan-worker、Go BFF、Rust PyO3、CI、前端路由、复盘链路、限速配置、日期字段等关键代码。
 - 按当前产品约束重新校准：复盘必须作为“实时监控”的主展示入口；Go/Rust 应按生产主路径治理，不使用长期 shadow/optional 作为终态表述。
 
 ## 2. 总体采纳结论
@@ -22,7 +22,7 @@
 
 采纳分类：
 
-- 直接采纳：Go scan-worker 状态语义修正、Rust 性能基准量化、路由模式文档化与测试、移动端 CSS 债务收敛、Go BFF 覆盖面扩展、BFF cache 指标、agent benchmark 样本扩充。
+- 直接采纳：Go scan-worker 状态语义修正、Rust 性能基准量化、路由模式文档化与测试、Go BFF 覆盖面扩展、BFF cache 指标、agent benchmark 样本扩充。
 - 调整后采纳：Rust wheel/默认启用建议、复盘前端入口建议、小时快照末段 slot 建议、trade_date 迁移建议。
 - 已部分完成，仅保留验收：RL 可选依赖注释、Rust wheel 构建 smoke、Go/Python 内部 token、实时监控复盘展示、全市场复盘服务。
 - 暂不按原文采纳：把复盘主入口放到模拟盘、在生产路径要求下把 Rust 默认改回关闭、未验证就把 15:00 slot 直接改成 14:57。
@@ -127,31 +127,6 @@
 - `/backtest` 仍可达，不被重定向覆盖。
 - 路由错误边界和 Suspense 的限制在文档中说明清楚。
 
-### P1-04 移动端 CSS 分片未收敛
-
-结论：采纳，但不作为上线阻塞；作为下一迭代前端债务。
-
-当前核验：
-
-- `frontend/src/styles/mobile/` 仍存在多份 `native-*.part-1.css` / `native-*.part-2.css`。
-- `frontend/src/styles/workspace/` 仍有 `base.css` 和 `core-layout-components.part-1.css`。
-
-为什么采纳：
-
-- `.part-N.css` 是机械拆分痕迹，不是稳定的功能边界。
-- 移动端继续扩展时容易出现样式覆盖和窄屏回归。
-
-执行要求：
-
-- CI 增加 guard：禁止新增 `.part-N.css`。
-- 分阶段合并移动端 CSS，优先合并 `native-auth`、`native-holdings`、`native-sheets`。
-- 迁移到 antd-mobile CSS Variables 或组件级 CSS Modules。
-
-验收：
-
-- 375px、768px、1440px 截图或 smoke 检查通过。
-- 移动端登录、持仓、设置页无横向滚动、无遮挡。
-
 ## 4. P2 项采纳决策
 
 ### P2-01 stable_baselines3 可选依赖说明
@@ -172,24 +147,6 @@
 
 - Docker 默认构建不安装 PyTorch/stable-baselines3。
 - RL import site 保留 try/except guard。
-
-### P2-02 MonitorPage inline style 和魔法数
-
-结论：采纳，作为前端债务。
-
-当前核验：
-
-- `frontend/src/features/monitor/MonitorPage.tsx` 仍有大量 `CSSProperties` 常量和局部 inline style。
-
-执行要求：
-
-- 将固定 margin/padding/borderRadius 收敛为 antd token 或共享 layout primitives。
-- 不为了清理样式改变监控页的信息密度和首屏复盘展示。
-
-验收：
-
-- MonitorPage 视觉保持紧凑。
-- 复盘状态、午盘复盘、收盘复盘、风险提示、建议动作、空状态、下一次触发时间仍在实时监控页可见。
 
 ### P2-03 Go BFF 聚合覆盖面不足
 
@@ -253,15 +210,6 @@
 - 回测与低吸候选结果不因迁移改变排序口径。
 
 ## 5. P3 项采纳决策
-
-### P3-01 workspace CSS 孤立文件
-
-结论：采纳，纳入 CSS 收敛任务。
-
-执行要求：
-
-- `frontend/src/styles/workspace/base.css` 和 `core-layout-components.part-1.css` 逐步迁移到 tokens 或组件级样式。
-- 不在本次上线前强行清理，避免扩大 UI 回归面。
 
 ### P3-02 Go BFF cache metrics 不完整
 
@@ -375,7 +323,7 @@
 
 优先级 5：未来架构方向
 
-- Level2 数据、OpenTelemetry、MySQL 分区、自动止损、移动端 CSS 现代化可以进入路线图，不作为当前上线阻塞。
+- Level2 数据、OpenTelemetry、MySQL 分区、自动止损可以进入路线图，不作为当前上线阻塞。
 
 ## 8. 灰度前执行清单
 
@@ -390,9 +338,7 @@
 建议同步完成：
 
 1. BFF cache metrics 增加 cache size/ttl/hit rate。
-2. CI 增加禁止新增 `.part-N.css` 的 guard。
-3. 监控页补 375px smoke 或截图检查。
-4. `agent_benchmark` 标注样本不足，不用于策略收益结论。
+2. `agent_benchmark` 标注样本不足，不用于策略收益结论。
 
 灰度观察指标：
 
@@ -485,4 +431,4 @@ curl -fsS http://43.143.243.97:18090/api/market/review-summary
 - 全市场午盘/收盘复盘已进入实时监控页主展示，模拟盘只作为辅助入口。
 - Go 已进入生产读聚合和扫描编排主路径，但 scan-worker 策略公式来源需明确标注为 Python reference。
 - Rust 已进入生产计算路径，必须用 wheel 预装、benchmark、metrics、fallback 共同验收。
-- 前端路由和 CSS 仍有结构性债务，但不阻塞当前灰度。
+- 前端路由仍有结构性债务，但不阻塞当前灰度。

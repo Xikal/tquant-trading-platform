@@ -12,7 +12,6 @@ describe("MonitorPage", () => {
         hourlySnapshotHistory={[]}
         reviewStatus={null}
         reviewReports={[]}
-        sectorRelativeStrength={null}
         keyLevelAlerts={[]}
         sectorEtfT0={null}
         pairedHedge={null}
@@ -93,7 +92,6 @@ describe("MonitorPage", () => {
         hourlySnapshotHistory={[]}
         reviewStatus={null}
         reviewReports={[]}
-        sectorRelativeStrength={null}
         keyLevelAlerts={[]}
         sectorEtfT0={null}
         pairedHedge={null}
@@ -165,7 +163,6 @@ describe("MonitorPage", () => {
         marketPulse={null}
         reviewStatus={null}
         reviewReports={[]}
-        sectorRelativeStrength={null}
         keyLevelAlerts={[]}
         sectorEtfT0={null}
         pairedHedge={null}
@@ -205,7 +202,6 @@ describe("MonitorPage", () => {
           data_quality: "partial",
           data_quality_text: "部分可用",
           market_strength_text: "市场宽度修复",
-          leader_strength_text: "龙头强度偏强",
           emotion_text: "情绪温度升温",
           hourly_snapshot_text: "小时快照温和修复",
           pulse_level: "balanced",
@@ -213,7 +209,6 @@ describe("MonitorPage", () => {
           suggested_action: "只做已入池候选，控制追高。",
           partial_errors: [{ source: "paired_hedge", detail: "暂不可用" }],
           market_breadth_summary: {},
-          leader_strength_summary: {},
           emotion_summary: {},
           hourly_snapshot_summary: {},
           autofill_details: [{ source: "emotion_temperature", detail: "情绪温度由市场涨跌面派生" }],
@@ -245,7 +240,6 @@ describe("MonitorPage", () => {
           missing_data: [{ source: "sector_relative_strength", name: "板块/龙头强度" }],
           autofill_details: [{ source: "emotion_temperature", detail: "情绪温度由市场涨跌面派生" }],
         }]}
-        sectorRelativeStrength={null}
         keyLevelAlerts={[]}
         sectorEtfT0={null}
         pairedHedge={null}

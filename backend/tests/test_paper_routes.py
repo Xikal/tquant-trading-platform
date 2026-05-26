@@ -298,6 +298,33 @@ class PaperRouteTests(unittest.TestCase):
         deleted = self.client.delete(f"/api/paper/trades/{trade_id}/tags/{tag_id}", headers=headers)
         self.assertEqual(deleted.status_code, 200)
 
+    def test_trade_tags_batch_returns_owned_trade_tags(self) -> None:
+        headers = self._register("paper_tags_batch")
+        other_headers = self._register("paper_tags_batch_other")
+        buy = self._paper_order(headers, quantity=100, reason="批量标签测试")
+        other_buy = self._paper_order(other_headers, symbol="510500", name="中证500ETF", quantity=100)
+        self.assertEqual(buy.status_code, 200)
+        self.assertEqual(other_buy.status_code, 200)
+
+        trade_id = self.client.get("/api/paper/trades", headers=headers).json()["trades"][0]["id"]
+        other_trade_id = self.client.get("/api/paper/trades", headers=other_headers).json()["trades"][0]["id"]
+        created = self.client.post(
+            f"/api/paper/trades/{trade_id}/tags",
+            headers=headers,
+            json={"tag": "回踩承接", "note": "批量读取"},
+        )
+        self.assertEqual(created.status_code, 200)
+
+        listed = self.client.get(
+            f"/api/paper/trades/tags?trade_ids={trade_id},{other_trade_id},999999,{trade_id}",
+            headers=headers,
+        )
+        self.assertEqual(listed.status_code, 200)
+        payload = listed.json()["items"]
+        self.assertIn(str(trade_id), payload)
+        self.assertEqual(payload[str(trade_id)][0]["tag"], "回踩承接")
+        self.assertNotIn(str(other_trade_id), payload)
+
     def test_risk_status_requires_login_and_returns_limits(self) -> None:
         self.assertEqual(self.client.get("/api/paper/risk").status_code, 401)
         headers = self._register("paper_risk_status")

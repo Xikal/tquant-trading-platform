@@ -196,6 +196,10 @@ class PaperTradeTagOut(BaseModel):
     created_at: datetime
 
 
+class PaperTradeTagsBatchResponse(BaseModel):
+    items: dict[int, list[PaperTradeTagOut]] = Field(default_factory=dict)
+
+
 class PaperTagPerformanceOut(BaseModel):
     tag: str
     trades: int = 0

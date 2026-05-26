@@ -18,6 +18,7 @@ export function usePaperIntraday({
   const intradayConfirmations = usePaperIntradayStore((state) => state.intradayConfirmations);
   const setIntradayConfirmations = usePaperIntradayStore((state) => state.setIntradayConfirmations);
   const refreshAutoTradingStatusRef = useRef(refreshAutoTradingStatus);
+  const streamOpenedRef = useRef(false);
   const positionSymbols = useMemo(
     () => positions.map((item) => item.symbol).filter(Boolean).slice(0, 12).join(","),
     [positions],
@@ -32,11 +33,16 @@ export function usePaperIntraday({
     let cancelled = false;
     let lastEventId = "";
     if (!currentUser || page !== "paper" || !positionSymbols) {
+      streamOpenedRef.current = false;
       setIntradayConfirmations([]);
       return undefined;
     }
     if (!getAuthAccessToken()) {
+      streamOpenedRef.current = false;
       setIntradayConfirmations([]);
+      return undefined;
+    }
+    if (streamOpenedRef.current) {
       return undefined;
     }
     void request<{ stream_token: string; expires_in: number }>("/intraday/subscribe", { method: "POST" })
@@ -49,6 +55,7 @@ export function usePaperIntraday({
         const buildUrl = () => `${agentBase}/intraday/stream?symbols=${encodeURIComponent(positionSymbols)}&client_id=web-paper&stream_token=${encodeURIComponent(payload.stream_token)}&interval_seconds=20&last_event_id=${encodeURIComponent(lastEventId)}`;
         const url = buildUrl();
         source = new EventSource(url);
+        streamOpenedRef.current = true;
         source.addEventListener("intraday_confirmations", (event) => {
           try {
             lastEventId = (event as MessageEvent).lastEventId || lastEventId;
@@ -59,12 +66,17 @@ export function usePaperIntraday({
           }
         });
         source.onerror = () => {
+          streamOpenedRef.current = false;
           source?.close();
         };
       })
-      .catch(() => setIntradayConfirmations([]));
+      .catch(() => {
+        streamOpenedRef.current = false;
+        setIntradayConfirmations([]);
+      });
     return () => {
       cancelled = true;
+      streamOpenedRef.current = false;
       source?.close();
     };
   }, [currentUser, page, positionSymbols]);

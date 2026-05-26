@@ -172,7 +172,7 @@ export interface IntradayMarketPulse {
   data_quality: "fresh" | "stale" | "partial" | "unavailable" | string;
   data_quality_text: string;
   market_strength_text: string;
-  leader_strength_text: string;
+  leader_strength_text?: string;
   emotion_text: string;
   hourly_snapshot_text: string;
   pulse_level: string;
@@ -180,7 +180,7 @@ export interface IntradayMarketPulse {
   suggested_action: string;
   partial_errors: Array<{ source: string; detail: string }>;
   market_breadth_summary: Record<string, unknown>;
-  leader_strength_summary: Record<string, unknown>;
+  leader_strength_summary?: Record<string, unknown>;
   emotion_summary: Record<string, unknown>;
   hourly_snapshot_summary: Record<string, unknown>;
   autofill_details?: Array<{ source: string; method?: string; detail: string; filled_at?: string; [key: string]: unknown }>;

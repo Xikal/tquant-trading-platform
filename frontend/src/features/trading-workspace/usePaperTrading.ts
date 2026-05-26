@@ -17,6 +17,9 @@ interface UsePaperTradingParams {
   onAuthRequired: () => void;
 }
 
+const PAPER_TRADE_TAG_LIMIT = 12;
+const PAPER_TRADE_TAG_FETCH_CONCURRENCY = 3;
+
 export function usePaperTrading({ canManageReconcile = false, setError, setLoading, setNotice, onAuthRequired }: UsePaperTradingParams) {
   const account = usePaperTradingStore((state) => state.account);
   const positions = usePaperTradingStore((state) => state.positions);
@@ -277,19 +280,24 @@ export function usePaperTrading({ canManageReconcile = false, setError, setLoadi
   }
 
   async function loadTradeTags(tradeItems: PaperTrade[]) {
-    const visibleTrades = tradeItems.slice(0, 20);
+    const visibleTrades = tradeItems.slice(0, PAPER_TRADE_TAG_LIMIT);
     if (!visibleTrades.length) {
       setTradeTags({});
       return;
     }
-    const results = await Promise.allSettled(
-      visibleTrades.map(async (trade) => [trade.id, await api.getPaperTradeTags(trade.id)] as const)
-    );
     const next: Record<number, PaperTradeTag[]> = {};
-    for (const result of results) {
-      if (result.status === "fulfilled") {
-        const [tradeId, tags] = result.value;
-        next[tradeId] = tags;
+    try {
+      const response = await api.getPaperTradeTagsBatch(visibleTrades.map((trade) => trade.id));
+      for (const [tradeId, tags] of Object.entries(response.items)) {
+        next[Number(tradeId)] = tags;
+      }
+    } catch {
+      const results = await fetchTradeTagsInBatches(visibleTrades);
+      for (const result of results) {
+        if (result.status === "fulfilled") {
+          const [tradeId, tags] = result.value;
+          next[tradeId] = tags;
+        }
       }
     }
     setTradeTags(next);
@@ -383,6 +391,18 @@ export function usePaperTrading({ canManageReconcile = false, setError, setLoadi
 function upsertTag(tags: PaperTradeTag[], next: PaperTradeTag): PaperTradeTag[] {
   const withoutCurrent = tags.filter((item) => item.id !== next.id && item.tag !== next.tag);
   return [next, ...withoutCurrent];
+}
+
+async function fetchTradeTagsInBatches(trades: PaperTrade[]): Promise<Array<PromiseSettledResult<readonly [number, PaperTradeTag[]]>>> {
+  const results: Array<PromiseSettledResult<readonly [number, PaperTradeTag[]]>> = [];
+  for (let index = 0; index < trades.length; index += PAPER_TRADE_TAG_FETCH_CONCURRENCY) {
+    const batch = trades.slice(index, index + PAPER_TRADE_TAG_FETCH_CONCURRENCY);
+    const settled = await Promise.allSettled(
+      batch.map(async (trade) => [trade.id, await api.getPaperTradeTags(trade.id)] as const),
+    );
+    results.push(...settled);
+  }
+  return results;
 }
 
 function isAuthError(reason: unknown): boolean {

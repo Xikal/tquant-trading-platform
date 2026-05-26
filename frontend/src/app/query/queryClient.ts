@@ -6,13 +6,7 @@ export const queryClient = new QueryClient({
       staleTime: 15_000,
       gcTime: 5 * 60_000,
       refetchOnWindowFocus: false,
-      retry: (failureCount, error) => {
-        const status = typeof error === "object" && error !== null && "status" in error
-          ? Number((error as { status?: number }).status)
-          : 0;
-        if (status >= 400 && status < 500) return false;
-        return failureCount < 2;
-      },
+      retry: false,
     },
     mutations: {
       retry: false,

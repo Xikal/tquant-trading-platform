@@ -104,14 +104,22 @@ async def _confirmation_event_stream(
     interval_seconds: int,
     last_event_id: str = "",
 ):
-    _touch_subscription(client_id, "intraday_confirmations", user_id)
+    try:
+        _touch_subscription(client_id, "intraday_confirmations", user_id)
+    except Exception as exc:
+        yield _error_event("intraday_confirmations", f"订阅记录暂不可用：{exc}")
+        return
     while True:
-        with SessionLocal() as db:
-            target_symbols = symbols or _user_watchlist_symbols(db, user_id)
-            if target_symbols:
-                items = IntradayConfirmationService(db).confirm_symbols(target_symbols, period="1m", limit=120)
-            else:
-                items = IntradayConfirmationService(db).list_recent(limit=50)
+        try:
+            with SessionLocal() as db:
+                target_symbols = symbols or _user_watchlist_symbols(db, user_id)
+                if target_symbols:
+                    items = IntradayConfirmationService(db).confirm_symbols(target_symbols, period="1m", limit=120)
+                else:
+                    items = IntradayConfirmationService(db).list_recent(limit=50)
+        except Exception as exc:
+            yield _error_event("intraday_confirmations", f"盘中确认暂不可用：{exc}")
+            return
         payload = json.dumps(
             {
                 "type": "intraday_confirmations",
@@ -134,22 +142,30 @@ async def _key_level_event_stream(
     interval_seconds: int,
     feishu: bool,
 ):
-    _touch_subscription(client_id, "intraday_key_levels", user_id)
+    try:
+        _touch_subscription(client_id, "intraday_key_levels", user_id)
+    except Exception as exc:
+        yield _error_event("intraday_key_levels", f"关键价位订阅暂不可用：{exc}")
+        return
     notified: set[str] = set()
     while True:
-        with SessionLocal() as db:
-            target_symbols = symbols or _user_watchlist_symbols(db, user_id)
-        items = [
-            key_level_service.build(
-                symbol,
-                entry_zone_low=entry_zone_map.get(symbol, (None, None))[0],
-                entry_zone_high=entry_zone_map.get(symbol, (None, None))[1],
-            )
-            for symbol in target_symbols[:20]
-        ]
-        alerts = [item for item in items if item.alert_triggered]
-        if feishu:
-            _notify_key_level_alerts(alerts, notified)
+        try:
+            with SessionLocal() as db:
+                target_symbols = symbols or _user_watchlist_symbols(db, user_id)
+            items = [
+                key_level_service.build(
+                    symbol,
+                    entry_zone_low=entry_zone_map.get(symbol, (None, None))[0],
+                    entry_zone_high=entry_zone_map.get(symbol, (None, None))[1],
+                )
+                for symbol in target_symbols[:20]
+            ]
+            alerts = [item for item in items if item.alert_triggered]
+            if feishu:
+                _notify_key_level_alerts(alerts, notified)
+        except Exception as exc:
+            yield _error_event("intraday_key_levels", f"关键价位暂不可用：{exc}")
+            return
         payload = json.dumps(
             {
                 "type": "intraday_key_levels",
@@ -218,6 +234,11 @@ def _parse_entry_zones(raw: str) -> dict[str, tuple[float | None, float | None]]
         except (TypeError, ValueError):
             continue
     return result
+
+
+def _error_event(event: str, detail: str) -> str:
+    payload = json.dumps({"type": event, "error": detail, "items": [], "alerts": []}, ensure_ascii=False)
+    return f"event: {event}\ndata: {payload}\n\n"
 
 
 def _notify_key_level_alerts(alerts: list, notified: set[str]) -> None:

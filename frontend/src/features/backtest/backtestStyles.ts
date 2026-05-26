@@ -192,40 +192,56 @@ export function backtestStatusToneStyle(tone: string): CSSProperties {
 
 export const BACKTEST_RUN_LIST_STYLE: CSSProperties = {
   display: "grid",
-  gap: 4,
-  maxHeight: 236,
+  gap: 6,
+  maxHeight: 300,
   overflowY: "auto",
   paddingRight: 2,
 };
 
 export const BACKTEST_RUN_ROW_STYLE: CSSProperties = {
   display: "grid",
-  gridTemplateColumns: "64px minmax(0, 1fr) minmax(54px, 0.4fr)",
-  gap: 4,
+  gridTemplateColumns: "78px minmax(0, 1fr) minmax(80px, 0.42fr)",
+  gap: "4px 8px",
   alignItems: "center",
   width: "100%",
-  minHeight: 38,
-  padding: "4px 6px",
-  borderRadius: 7,
+  minHeight: 58,
+  height: "auto",
+  padding: "7px 8px",
+  border: "1px solid #dce5f0",
+  borderRadius: 8,
   background: "#fff",
   textAlign: "left",
   overflow: "hidden",
+  boxShadow: "0 1px 0 rgba(15, 23, 42, 0.03)",
 };
 
 export const BACKTEST_RUN_ROW_ACTIVE_STYLE: CSSProperties = {
   borderColor: "rgba(214, 165, 92, 0.72)",
   background: "linear-gradient(90deg, #fff8e8, #fff)",
+  boxShadow: "inset 3px 0 0 #d6a55c",
 };
 
 export const BACKTEST_RUN_ROW_TEXT_STYLE: CSSProperties = {
+  display: "grid",
+  gap: 2,
+  minWidth: 0,
+};
+
+export const BACKTEST_RUN_ROW_TITLE_STYLE: CSSProperties = {
   overflow: "hidden",
   textOverflow: "ellipsis",
   whiteSpace: "nowrap",
+  color: "var(--text)",
+  fontSize: 12,
+  fontWeight: 900,
 };
 
 export const BACKTEST_RUN_ROW_META_STYLE: CSSProperties = {
+  display: "flex",
+  flexWrap: "wrap",
+  gap: 6,
   color: "var(--muted)",
-  fontSize: 12,
+  fontSize: 10,
   overflow: "hidden",
   textOverflow: "ellipsis",
   whiteSpace: "nowrap",

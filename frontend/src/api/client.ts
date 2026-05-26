@@ -313,6 +313,10 @@ export const api = {
       body: JSON.stringify(payload),
     }),
   getPaperTradeTags: (tradeId: number) => request<PaperTradeTag[]>(`/paper/trades/${tradeId}/tags`),
+  getPaperTradeTagsBatch: (tradeIds: number[]) =>
+    request<{ items: Record<string, PaperTradeTag[]> }>(
+      `/paper/trades/tags?trade_ids=${encodeURIComponent(tradeIds.join(","))}`,
+    ),
   addPaperTradeTag: (tradeId: number, payload: PaperTradeTagCreate) =>
     request<PaperTradeTag>(`/paper/trades/${tradeId}/tags`, {
       method: "POST",

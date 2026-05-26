@@ -71,6 +71,7 @@ export function useMonitorData({ active, withLoading, setError, setNotice }: Use
   const instrumentSyncRunIdRef = useRef<string>("");
   const pendingRetryTimerRef = useRef<number | null>(null);
   const pendingRetryCountRef = useRef(0);
+  const keyLevelStreamOpenedRef = useRef(false);
   const priorityBoardRef = useRef<LowBuyPriorityBoardResult | null>(null);
   const watchlistSignalsRef = useRef<WatchlistSignal[]>([]);
   const sectorEtfT0Ref = useRef<SectorEtfT0Response | null>(null);
@@ -247,15 +248,15 @@ export function useMonitorData({ active, withLoading, setError, setNotice }: Use
       pendingRetryCountRef.current = 0;
       return undefined;
     }
-    if (pendingRetryCountRef.current >= 5) {
+    if (pendingRetryCountRef.current >= 2) {
       return undefined;
     }
     clearPendingRetry();
     pendingRetryTimerRef.current = window.setTimeout(() => {
       pendingRetryCountRef.current += 1;
-      invalidateCache(["/monitor/snapshot", "/bff/v1/workspace/monitor", "/market/breadth"]);
+      invalidateCache(["/bff/v1/workspace/monitor"]);
       void fetchMonitorData(false);
-    }, 3500);
+    }, 15000);
     return () => clearPendingRetry();
   }, [active, clearPendingRetry, fetchMonitorData, priorityBoard]);
 
@@ -355,12 +356,17 @@ export function useMonitorData({ active, withLoading, setError, setNotice }: Use
 
   useEffect(() => {
     if (!active || !getAuthAccessToken()) {
+      keyLevelStreamOpenedRef.current = false;
       setKeyLevelAlerts([]);
       return undefined;
     }
     const symbols = keyLevelSymbolsKey ? keyLevelSymbolsKey.split(",") : [];
     if (!symbols.length) {
+      keyLevelStreamOpenedRef.current = false;
       setKeyLevelAlerts([]);
+      return undefined;
+    }
+    if (keyLevelStreamOpenedRef.current) {
       return undefined;
     }
     let source: EventSource | undefined;
@@ -372,6 +378,7 @@ export function useMonitorData({ active, withLoading, setError, setNotice }: Use
         const apiBase = normalizedBase.endsWith("/api") ? normalizedBase : `${normalizedBase}/api`;
         const url = `${apiBase}/intraday/key-levels/stream?symbols=${encodeURIComponent(symbols.join(","))}&entry_zones=${encodeURIComponent(keyLevelEntryZonesKey)}&client_id=web-monitor-key-levels&stream_token=${encodeURIComponent(payload.stream_token)}&interval_seconds=20&feishu=true`;
         source = new EventSource(url);
+        keyLevelStreamOpenedRef.current = true;
         source.addEventListener("intraday_key_levels", (event) => {
           try {
             const payload = JSON.parse((event as MessageEvent).data) as { alerts?: IntradayKeyLevelResponse[] };
@@ -380,11 +387,18 @@ export function useMonitorData({ active, withLoading, setError, setNotice }: Use
             setKeyLevelAlerts([]);
           }
         });
-        source.onerror = () => source?.close();
+        source.onerror = () => {
+          keyLevelStreamOpenedRef.current = false;
+          source?.close();
+        };
       })
-      .catch(() => setKeyLevelAlerts([]));
+      .catch(() => {
+        keyLevelStreamOpenedRef.current = false;
+        setKeyLevelAlerts([]);
+      });
     return () => {
       cancelled = true;
+      keyLevelStreamOpenedRef.current = false;
       source?.close();
     };
   }, [active, keyLevelSymbolsKey, keyLevelEntryZonesKey]);

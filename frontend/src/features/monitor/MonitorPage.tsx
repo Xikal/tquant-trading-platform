@@ -12,13 +12,11 @@ import type {
   PairedHedgeResearchResponse,
   RuntimeStatus,
   SectorEtfT0Response,
-  SectorRelativeStrengthResponse,
 } from "../../types";
 import type { InstrumentSyncStatus } from "../../types";
 import { NumberField, SearchField, TextField } from "../../components/shared/FormFields";
 import { InstrumentSyncProgress } from "./InstrumentSyncProgress";
 import {
-  buildBoardDistribution,
   buildMonitorMetrics,
   buildPriorityNotice,
   dataQualityTone,
@@ -66,38 +64,6 @@ const MONITOR_COLLAPSE_BODY_STYLE: CSSProperties = {
   display: "grid",
   gap: 8,
   padding: 8,
-};
-const MONITOR_EMOTION_CARD_STYLE: CSSProperties = {
-  background: "#f8fbff",
-  borderColor: "#d9eaf7",
-  marginTop: 10,
-};
-const MONITOR_BAR_STAGE_STYLE: CSSProperties = {
-  display: "flex",
-  alignItems: "stretch",
-  gap: 6,
-  minHeight: 164,
-  height: 196,
-  padding: "2px 4px 0",
-};
-const MONITOR_BAR_COLUMN_STYLE: CSSProperties = {
-  display: "flex",
-  flexDirection: "column",
-  justifyContent: "flex-end",
-  alignItems: "center",
-  flex: 1,
-  minWidth: 0,
-  height: "100%",
-};
-const MONITOR_BAR_FILL_STYLE: CSSProperties = {
-  width: "100%",
-  minHeight: 16,
-  borderRadius: "8px 8px 3px 3px",
-};
-const MONITOR_BAR_LABEL_STYLE: CSSProperties = {
-  marginTop: 4,
-  fontSize: 10,
-  lineHeight: 1.1,
 };
 const MONITOR_HOLDING_GRID_STYLE: CSSProperties = {
   display: "grid",
@@ -198,27 +164,6 @@ const MONITOR_TREND_LABEL_STYLE: CSSProperties = {
   fontSize: 10,
   textAlign: "center",
 };
-const MONITOR_EMOTION_COLUMN_STYLE: CSSProperties = {
-  display: "flex",
-};
-const MONITOR_EMOTION_HEADER_STYLE: CSSProperties = {
-  minHeight: 34,
-  padding: "0 10px",
-};
-const MONITOR_EMOTION_BODY_STYLE: CSSProperties = {
-  padding: 8,
-};
-const MONITOR_LEADER_ROW_STYLE: CSSProperties = {
-  background: "#fff",
-  borderRadius: 6,
-  padding: "3px 6px",
-};
-const MONITOR_LEADER_NAME_STYLE: CSSProperties = {
-  fontSize: 11.5,
-};
-const MONITOR_LEADER_META_STYLE: CSSProperties = {
-  fontSize: 10.5,
-};
 const MONITOR_KEY_ALERT_WRAP_STYLE: CSSProperties = {
   bottom: 10,
   maxWidth: "min(300px, calc(100vw - 20px))",
@@ -293,7 +238,6 @@ export interface MonitorPageProps {
   hourlySnapshotHistory: MarketHourlySnapshotHistoryItem[];
   reviewStatus: MarketReviewStatus | null;
   reviewReports: MarketReviewReport[];
-  sectorRelativeStrength: SectorRelativeStrengthResponse | null;
   keyLevelAlerts: IntradayKeyLevelResponse[];
   sectorEtfT0: SectorEtfT0Response | null;
   pairedHedge: PairedHedgeResearchResponse | null;
@@ -324,7 +268,6 @@ export const MonitorPage = memo(function MonitorPage({
   hourlySnapshotHistory,
   reviewStatus,
   reviewReports,
-  sectorRelativeStrength,
   keyLevelAlerts,
   sectorEtfT0,
   pairedHedge,
@@ -364,8 +307,6 @@ export const MonitorPage = memo(function MonitorPage({
         <WorkspacePageIntro
           title="实时监控"
           summary={reviewStatus?.status_text || marketPulse?.pulse_text || "今日复盘、Pulse 和风险动作。"}
-          more="全市场午盘/收盘复盘以实时监控为主入口；模拟盘只保留历史入口。"
-          moreLabel="页面说明"
           tone={marketPulse?.data_quality === "fresh" ? "up" : marketPulse?.data_quality === "unavailable" ? "down" : marketPulse?.data_quality ? "warn" : "neutral"}
           actions={
             <>
@@ -379,12 +320,6 @@ export const MonitorPage = memo(function MonitorPage({
               <Button onClick={onRefresh} loading={loading === "monitor"}>手动刷新</Button>
             </>
           }
-          pills={[
-            { label: "今日复盘", value: reviewStatus?.status_text || "--", tone: reviewStatus?.has_midday || reviewStatus?.has_close ? "up" : "warn" },
-            { label: "下一次触发", value: shortTime(reviewStatus?.next_trigger_at) || "--" },
-            { label: "Pulse", value: marketPulse?.data_quality_text || "--", tone: marketPulse?.data_quality === "fresh" ? "up" : marketPulse?.data_quality === "unavailable" ? "down" : marketPulse?.data_quality ? "warn" : "neutral" },
-            { label: "风险提示", value: String(reviewStatus?.risk_alert_count ?? 0), tone: (reviewStatus?.risk_alert_count ?? 0) > 0 ? "warn" : "neutral" },
-          ]}
           style={MONITOR_REVIEW_DRAFT_STYLE}
         />
         <Callout
@@ -416,7 +351,6 @@ export const MonitorPage = memo(function MonitorPage({
                 </details>
                 <MarketBreadthStrip marketBreadth={marketBreadth} />
                 <HourlyAllMarketPulse marketBreadth={marketBreadth} history={hourlySnapshotHistory} />
-                <MarketEmotionDashboard marketBreadth={marketBreadth} sectorRelativeStrength={sectorRelativeStrength} />
                 <InstrumentSyncProgress status={instrumentSyncStatus} loading={loading === "sync"} />
               </>
             ),
@@ -615,17 +549,9 @@ function MonitorInputSideRail({
         title="右侧速览"
         actions={<Button size="small" onClick={primaryAction.source === "holding" ? onRefresh : onGoPlaybook}>{primaryAction.source === "holding" ? "刷新" : "榜单"}</Button>}
       />
-      <Callout
-        title={primaryAction.title}
-        detail={primaryAction.detail}
-        tone={primaryAction.tone}
-        compact
-      />
       <div style={MONITOR_SIDE_GRID_STYLE}>
         <InfoPill compact label="复盘状态" value={reviewStatus?.status_text || "等待"} tone={reviewStatus?.has_midday || reviewStatus?.has_close ? "up" : "warn"} />
         <InfoPill compact label="下次触发" value={shortTime(reviewStatus?.next_trigger_at) || "--"} />
-        <InfoPill compact label="Pulse" value={marketPulse?.data_quality_text || "--"} tone={marketPulse?.data_quality === "fresh" ? "up" : marketPulse?.data_quality ? "warn" : "neutral"} />
-        <InfoPill compact label="风险数" value={String(reviewStatus?.risk_alert_count ?? 0)} tone={(reviewStatus?.risk_alert_count ?? 0) > 0 ? "down" : "neutral"} />
       </div>
       <MiniMonitorList
         emptyText="暂无可执行持仓信号"
@@ -702,19 +628,14 @@ function IntradayPulseCard({ pulse }: { pulse: IntradayMarketPulse | null }) {
           compact
         />
         <Row gutter={[8, 8]}>
-          <Col xs={24} sm={12} xl={6}>
+          <Col xs={24} sm={12} xl={12}>
             <InfoPill compact label="市场宽度" value={pulse.market_strength_text || "--"} />
           </Col>
-          <Col xs={24} sm={12} xl={6}>
-            <InfoPill compact label="龙头强度" value={pulse.leader_strength_text || "--"} />
-          </Col>
-          <Col xs={24} sm={12} xl={6}>
+          <Col xs={24} sm={12} xl={12}>
             <InfoPill compact label="情绪温度" value={pulse.emotion_text || "--"} />
           </Col>
-          <Col xs={24} sm={12} xl={6}>
-            <InfoPill compact label="小时快照" value={pulse.hourly_snapshot_text || "--"} />
-          </Col>
         </Row>
+        <InfoPill compact label="小时快照" value={pulse.hourly_snapshot_text || "--"} />
         {pulse.partial_errors?.length ? <InfoPill compact label="降级源" value={pulse.partial_errors.map((item) => item.source).join(" / ")} tone="warn" /> : null}
       </Space>
     </Card>
@@ -979,68 +900,6 @@ function hourlyPulseTone(score?: number): "up" | "warn" | "down" | "neutral" {
   if (score >= 10) return "up";
   if (score <= -10) return "down";
   return "warn";
-}
-
-function MarketEmotionDashboard({
-  marketBreadth,
-  sectorRelativeStrength,
-}: {
-  marketBreadth: MarketBreadth | null;
-  sectorRelativeStrength: SectorRelativeStrengthResponse | null;
-}) {
-  if (!marketBreadth && !sectorRelativeStrength?.items.length) {
-    return null;
-  }
-  const distribution = buildBoardDistribution(marketBreadth?.board_height ?? 0);
-  const leaders = (sectorRelativeStrength?.items ?? []).slice(0, 5);
-  return (
-      <Card
-        size="small"
-        style={MONITOR_EMOTION_CARD_STYLE}
-        styles={{ header: MONITOR_EMOTION_HEADER_STYLE, body: MONITOR_EMOTION_BODY_STYLE }}
-        title="市场情绪与龙头强度"
-        extra={<Tag color="blue">{marketBreadth?.emotion_temperature_text || marketBreadth?.state_text || "等待情绪数据"}</Tag>}
-      >
-        <Row gutter={[10, 10]} align="stretch">
-          <Col xs={24} md={10} style={MONITOR_EMOTION_COLUMN_STYLE}>
-            <div style={MONITOR_BAR_STAGE_STYLE} aria-label="涨停连板高度分布">
-              {distribution.map((item) => (
-                <div key={item.label} style={MONITOR_BAR_COLUMN_STYLE}>
-                  <div
-                    title={`${item.label}：相对高度 ${item.height}%`}
-                    style={{
-                      ...MONITOR_BAR_FILL_STYLE,
-                      background: "linear-gradient(180deg, #ef4444, #f59e0b)",
-                      height: `${item.height}%`,
-                    }}
-                  />
-                  <Typography.Text type="secondary" style={MONITOR_BAR_LABEL_STYLE}>
-                    {item.label}
-                  </Typography.Text>
-                </div>
-              ))}
-            </div>
-          </Col>
-          <Col xs={24} md={14} style={MONITOR_EMOTION_COLUMN_STYLE}>
-            <Space direction="vertical" size={3} style={MONITOR_FULL_WIDTH_STYLE}>
-            {leaders.length ? leaders.map((item) => (
-              <Flex
-                gap={8}
-                justify="space-between"
-                key={`${item.sector_name}-${item.symbol}`}
-                style={MONITOR_LEADER_ROW_STYLE}
-              >
-                <Typography.Text strong style={MONITOR_LEADER_NAME_STYLE}>{item.name}</Typography.Text>
-                <Typography.Text type="secondary" style={MONITOR_LEADER_META_STYLE}>
-                  {item.sector_name} #{item.rank} · 龙头分 {item.leader_score.toFixed(0)}
-                </Typography.Text>
-              </Flex>
-            )) : <Typography.Text type="secondary">暂无板块龙头强度数据</Typography.Text>}
-            </Space>
-          </Col>
-        </Row>
-      </Card>
-    );
 }
 
 function KeyLevelAlerts({ alerts }: { alerts: IntradayKeyLevelResponse[] }) {

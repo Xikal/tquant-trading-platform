@@ -111,7 +111,7 @@ const trades: BacktestTrade[] = [
 ];
 
 describe("BacktestDashboard", () => {
-  it("renders phase3 form, statuses, equity chart, and trades", () => {
+  it("renders phase3 submit form, statuses, and dense task list", () => {
     const html = renderToStaticMarkup(
       <BacktestDashboard
         form={{
@@ -353,25 +353,10 @@ describe("BacktestDashboard", () => {
     expect(html).toContain("cancelled");
     expect(html).toContain("deleted");
     expect(html).toContain("<svg");
-    expect(html).toContain("300059");
     expect(html).toContain("first_board");
-    expect(html).toContain("Sortino");
-    expect(html).toContain("Calmar");
-    expect(html).toContain("Alpha");
-    expect(html).toContain("IR");
-    expect(html).toContain("+7.30%");
-    expect(html).toContain("分桶归因");
-    expect(html).toContain("软件");
-    expect(html).toContain("repair");
-    expect(html).toContain("missing_bar");
-    expect(html).toContain("自动找更稳参数");
-    expect(html).toContain("参数排名");
-    expect(html).toContain("防过拟合检查");
-    expect(html).toContain("过拟合风险");
-    expect(html).toContain("回测对比");
-    expect(html).toContain("归因面板");
-    expect(html).toContain("月度收益");
-    expect(html).toContain("相关性矩阵");
-    expect(html).toContain("该策略在 3/4 窗口样本外盈利");
+    expect(html).toContain("任务列表");
+    expect(html).toContain("#42");
+    expect(html).toContain("首板回调 / 量能低吸");
+    expect(html).toContain("2025-01-02 → 2026-04-30");
   });
 });

@@ -18,7 +18,6 @@
 - ECharts 5
 - Capacitor 8
 - 自研 API 请求层、缓存、离线兜底
-- 自写 CSS 样式体系
 - Web 入口：`frontend/src/main.tsx`
 - Native 入口：`frontend/src/main-native.tsx`
 - Web 工作台主入口：`frontend/src/features/trading-workspace/TradingWorkspace.tsx`
@@ -27,7 +26,6 @@
 当前主要问题不是 React/Vite 架构选错，而是 UI 工程层缺少成熟组件库与统一设计系统，导致：
 
 - 基础组件大量手写：按钮、表单、弹窗、卡片、空态、加载态、Toast、Sheet、Tab、列表均有重复实现。
-- CSS 分散且补丁化严重：`frontend/src/styles` 约 9000+ 行，多份 `compact`、`ux-clarity`、`native-*` 样式并存。
 - 页面视觉不统一：Web 与 App 之间组件语言、间距、字号、状态表达不一致。
 - 交互成本高：操作入口分散，主要动作和次要动作层级不清。
 - 前端数据状态自管过多：存在自研 `requestCached`、手工 loading key、局部 refresh 逻辑，后续维护成本高。
@@ -48,7 +46,7 @@
 不建议微前端：
 
 - 当前前端代码总量约 3.7 万行，仍处于单体可维护规模。
-- 业务模块之间共享认证、行情、持仓、策略元数据和 BFF 响应，微前端会增加状态同步、样式隔离、构建部署复杂度。
+- 业务模块之间共享认证、行情、持仓、策略元数据和 BFF 响应，微前端会增加状态同步、构建部署复杂度。
 - 微前端适合多团队、多子系统独立发布；当前更需要模块化单体和统一设计系统。
 
 需要做的架构升级：
@@ -70,7 +68,7 @@
 适配原因：
 
 - 企业级中后台场景成熟，适合交易工作台、策略设置、榜单表格、模拟盘、配置页。
-- 官方支持 React、TypeScript、Vite、主题 Token、国际化。
+- 官方支持 React、TypeScript、Vite、国际化。
 - 组件覆盖完整：Layout、Menu、Table、Form、Modal、Drawer、Tabs、Segmented、Statistic、Tag、Badge、Alert、Result、Skeleton、Tooltip、Dropdown、DatePicker、InputNumber。
 - 与 Ant Design Charts、ProComponents、Ant Design Mobile 生态一致。
 - 当前官方版本 `antd@6.4.3` peer dependency 为 React `>=18.0.0`，与当前 React 18.3.1 匹配。
@@ -108,7 +106,7 @@ ProComponents 使用边界：
 
 - 专注移动 Web / WebView，适合 Capacitor App。
 - 覆盖移动端高频组件：NavBar、TabBar、PullToRefresh、InfiniteScroll、List、Popup、Dialog、Form、Input、Stepper、Toast、SafeArea、Skeleton、SwipeAction。
-- 基于 CSS variables 定制主题，能与 Ant Design PC 的 Token 体系保持一致。
+- 与 Ant Design PC 生态保持一致。
 - 当前官方包 `antd-mobile@5.42.3` 支持 React 16/17/18/19，兼容当前项目。
 
 建议依赖：
@@ -209,11 +207,9 @@ frontend/src
 │   ├── holdingsApi.ts
 │   ├── paperApi.ts
 │   └── settingsApi.ts
-├── ui
-│   ├── theme
-│   │   ├── antdTheme.ts
-│   │   ├── mobileTheme.css
-│   │   └── tokens.css
+	├── ui
+	│   ├── theme
+	│   │   └── antdTheme.ts
 │   ├── layout
 │   │   ├── WorkspaceShell.tsx
 │   │   ├── MobileShell.tsx
@@ -290,7 +286,6 @@ frontend/src
 重构完成后应删除或停止新增：
 
 - `workspaceConstants.ts` 中的手写页面路由状态。
-- 大量 `.css` 补丁式文件，例如 `ux-clarity-v7.css`、`compact-extra.css` 这类版本化补丁命名。
 - 手写通用 Button、Modal、Toast、Sheet、FormField。
 - 业务页面直接维护多个 loading key。
 - 页面内直接调用 `api.xxx` 并手工控制缓存。
@@ -338,22 +333,17 @@ A 股行情语义：
 注意：
 
 - A 股中红色代表上涨，绿色代表下跌，所有 PC/App 必须统一。
-- 风险、错误、上涨不能都用同一种红色，需要用语义 Token 区分。
+- 风险、错误、上涨不能都用同一种红色，需要用语义规则区分。
 
 ### 4.3 字体与数字
 
 正文：
 
-```css
-font-family: "PingFang SC", "Microsoft YaHei", "Noto Sans SC", sans-serif;
-```
+中文字体建议使用系统中文字体栈。
 
 数字：
 
-```css
-font-family: "DIN Alternate", "Bahnschrift", "Roboto Mono", monospace;
-font-variant-numeric: tabular-nums;
-```
+数字字体建议使用等宽或表格数字字体，保证价格与金额便于纵向比较。
 
 字号层级：
 
@@ -666,25 +656,7 @@ font-variant-numeric: tabular-nums;
 - 页面里散写 Toast、Modal、Drawer。
 - 同一个字段格式化在多个文件重复实现。
 
-### 7.2 样式管理
-
-最终样式结构：
-
-```text
-frontend/src/ui/theme/tokens.css
-frontend/src/ui/theme/antdTheme.ts
-frontend/src/ui/theme/mobileTheme.css
-frontend/src/ui/theme/overrides.css
-```
-
-原则：
-
-- Ant Design 组件通过 `ConfigProvider` token 定制。
-- antd-mobile 通过 CSS variables 定制。
-- 业务组件只写极少布局样式。
-- 删除历史补丁 CSS，不继续追加 `v8`、`compact-new` 这类文件。
-
-### 7.3 接口请求与状态管理
+### 7.2 接口请求与状态管理
 
 保留：
 
@@ -723,14 +695,13 @@ mutation 后必须 invalidate 相关 query：
 - 策略参数变更：`priorityBoard`、`monitor`
 - 设置变更：`settings`
 
-### 7.4 文件大小约束
+### 7.3 文件大小约束
 
 硬性约束：
 
 - 页面文件建议不超过 220 行。
 - 业务组件文件建议不超过 180 行。
 - Hook 文件建议不超过 220 行。
-- CSS 单文件不超过 250 行。
 - 超过上限必须拆分为组件、hook、formatter、view model。
 
 优先拆分当前大文件：
@@ -778,18 +749,17 @@ mutation 后必须 invalidate 相关 query：
 - App 卡片超过 80 条启用虚拟列表。
 - 搜索结果分页，不一次性渲染全部。
 
-### 8.4 CSS 与资源
+### 8.4 资源
 
 措施：
 
-- 删除历史 CSS 补丁文件。
 - 统一图标库，删除散落 SVG/字符图标。
 - 图片资源压缩，App 机甲头像使用 WebP/PNG 双格式。
-- 登录页动效使用 CSS transform/opacity，不做大面积滤镜动画。
+- 登录页动效避免大面积滤镜动画。
 
 ## 9. 实施流程与优先级
 
-说明：这是最终架构落地，不做长期双 UI 过渡。允许在开发分支短期保留 legacy adapter，但验收前必须删除旧组件和旧 CSS。
+说明：这是最终架构落地，不做长期双 UI 过渡。允许在开发分支短期保留 legacy adapter，但验收前必须删除旧组件。
 
 ### P0：基础架构与设计系统
 
@@ -812,7 +782,7 @@ mutation 后必须 invalidate 相关 query：
 - `npm run build:web` 通过。
 - `npm run build:native` 通过。
 - 登录页、工作台 Shell、App Shell 能正常打开。
-- 新增主题 token 生效。
+- 新增主题配置生效。
 
 ### P1：Web 核心页面重构
 
@@ -876,15 +846,14 @@ mutation 后必须 invalidate 相关 query：
 
 目标：
 
-- 删除旧 CSS、旧通用组件、重复 formatter。
+- 删除旧通用组件、重复 formatter。
 - 完成 bundle、E2E、UI smoke 验收。
 
 验收标准：
 
-- `frontend/src/styles` 中旧补丁 CSS 明显减少。
 - 无未使用组件和死代码。
 - `npm run build:web`、`npm run build:native`、`npm test` 通过。
-- UI smoke 截图覆盖核心页面。
+- UI smoke 覆盖核心页面。
 
 ## 10. 新旧兼容方式
 
@@ -900,7 +869,6 @@ mutation 后必须 invalidate 相关 query：
 - 同一个页面同时存在新旧两套 UI。
 - 新 UI 调新接口，旧 UI 调旧接口。
 - 业务逻辑在新旧 UI 中重复实现。
-- 旧 CSS 与新主题长期并存。
 
 开发期兼容策略：
 
@@ -969,7 +937,6 @@ App：
 
 - `npm run analyze`
 - Chrome Performance 录制核心页面。
-- Playwright 截图对比。
 - 网络面板检查重复请求。
 
 ## 12. 给 Codex 的执行需求文档
@@ -1013,8 +980,6 @@ App：
    - `frontend/src/app/router/webRoutes.tsx`
    - `frontend/src/app/router/nativeRoutes.tsx`
    - `frontend/src/ui/theme/antdTheme.ts`
-   - `frontend/src/ui/theme/tokens.css`
-   - `frontend/src/ui/theme/mobileTheme.css`
 
 3. 重构入口：
    - `frontend/src/main.tsx` 使用 `AppProviders` + Web Router。
@@ -1042,7 +1007,7 @@ App：
    - App 持仓
    - App 选股宝典
 
-6. 删除对应旧页面组件与旧 CSS，不保留重复实现。
+6. 删除对应旧页面组件，不保留重复实现。
 
 ### 12.4 第二批开发任务
 
@@ -1052,7 +1017,6 @@ App：
 4. 重构个股分析页。
 5. 重构登录页。
 6. 将旧 `requestCached` 逐步迁移为 Query 缓存。
-7. 清理 `frontend/src/styles` 中旧补丁 CSS。
 
 ### 12.5 验收命令
 
@@ -1077,7 +1041,7 @@ PYTHONPATH=backend:. backend/.venv/bin/python -m pytest backend/tests -q
 
 - 已重构页面
 - 新增依赖
-- 删除旧组件/CSS
+- 删除旧组件
 - 仍保留的 legacy 文件和原因
 - 测试结果
 - 未完成风险

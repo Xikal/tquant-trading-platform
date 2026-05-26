@@ -78,8 +78,6 @@ export function StrategyHubPage({ currentUser }: { currentUser: AuthUser }) {
         <WorkspacePageIntro
           title="策略工作台"
           summary={expertEnabled ? "生产策略、研究验证、容量评估。" : "一键体检、策略历史、可执行入口。"}
-          more="回测页保持独立入口；策略工作台负责策略选择、提交和运行状态。"
-          moreLabel="工作台边界"
           tone={runningCount ? "warn" : hub.error ? "down" : "neutral"}
           actions={<Button type="primary" onClick={() => hub.setConfirmOpen(true)} loading={hub.loading === "submit"}>提交回测</Button>}
           pills={[
