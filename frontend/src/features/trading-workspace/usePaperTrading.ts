@@ -34,6 +34,7 @@ export function usePaperTrading({ canManageReconcile = false, setError, setLoadi
   const autoTradingStatus = usePaperTradingStore((state) => state.autoTradingStatus);
   const autoTradingRuns = usePaperTradingStore((state) => state.autoTradingRuns);
   const ledgerRepairStatus = usePaperTradingStore((state) => state.ledgerRepairStatus);
+  const performanceDashboard = usePaperTradingStore((state) => state.performanceDashboard);
   const draft = usePaperTradingStore((state) => state.draft);
   const setAccount = usePaperTradingStore((state) => state.setAccount);
   const setPositions = usePaperTradingStore((state) => state.setPositions);
@@ -51,6 +52,7 @@ export function usePaperTrading({ canManageReconcile = false, setError, setLoadi
   const setAutoTradingStatus = usePaperTradingStore((state) => state.setAutoTradingStatus);
   const setAutoTradingRuns = usePaperTradingStore((state) => state.setAutoTradingRuns);
   const setLedgerRepairStatus = usePaperTradingStore((state) => state.setLedgerRepairStatus);
+  const setPerformanceDashboard = usePaperTradingStore((state) => state.setPerformanceDashboard);
   const setDraft = usePaperTradingStore((state) => state.setDraft);
   const clearPaperData = usePaperTradingStore((state) => state.clearPaperData);
 
@@ -60,6 +62,7 @@ export function usePaperTrading({ canManageReconcile = false, setError, setLoadi
       setError("");
       const workspace = await api.getPaperWorkspaceBff();
       applyPaperWorkspace(workspace);
+      await refreshPerformanceDashboard();
       await loadTradeTags(workspace.trades);
       if (canManageReconcile && workspace.account) {
         await refreshLedgerRepairStatus(false, workspace.account.id);
@@ -99,6 +102,15 @@ export function usePaperTrading({ canManageReconcile = false, setError, setLoadi
     setRiskEvents(workspace.risk_events);
     setAutoTradingStatus(workspace.auto_trading_status);
     setAutoTradingRuns(workspace.auto_trading_runs);
+  }
+
+  async function refreshPerformanceDashboard() {
+    try {
+      const dashboard = await runAuthenticated(() => api.getPaperPerformanceDashboard(), true);
+      setPerformanceDashboard(dashboard);
+    } catch {
+      setPerformanceDashboard(null);
+    }
   }
 
   async function refreshAll() {
@@ -144,6 +156,7 @@ export function usePaperTrading({ canManageReconcile = false, setError, setLoadi
       if (performanceResult.status === "fulfilled") setPerformance(performanceResult.value);
       if (sectorEtfT0PerformanceResult.status === "fulfilled") setSectorEtfT0Performance(sectorEtfT0PerformanceResult.value);
       if (autoTradingStatusResult.status === "fulfilled") setAutoTradingStatus(autoTradingStatusResult.value);
+      void refreshPerformanceDashboard();
     } catch (err) {
       if (isAuthError(err)) {
         requireLogin();
@@ -351,6 +364,7 @@ export function usePaperTrading({ canManageReconcile = false, setError, setLoadi
     autoTradingStatus,
     autoTradingRuns,
     ledgerRepairStatus,
+    performanceDashboard,
     draft,
     setDraft,
     load,

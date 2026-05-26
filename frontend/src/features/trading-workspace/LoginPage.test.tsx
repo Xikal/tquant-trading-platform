@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import { LoginPage } from "./LoginPage";
 
 describe("LoginPage", () => {
-  it("renders unified login copy and actions", () => {
+  it("renders the centered login scene and actions", () => {
     const html = renderToStaticMarkup(
       <LoginPage
         draft={{ username: "", password: "", remember: true }}
@@ -15,9 +15,11 @@ describe("LoginPage", () => {
       />
     );
 
-    expect(html).toContain("登录维斯量化平台");
+    expect(html).toContain("维斯量化交易平台");
     expect(html).toContain("登录进入工作台");
     expect(html).toContain("开户注册");
+    expect(html).toContain("login-finance-scene");
+    expect(html).toContain("MARKET PULSE");
     expect(html).not.toContain("动态验证码");
   });
 });

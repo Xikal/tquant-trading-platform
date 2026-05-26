@@ -6,13 +6,21 @@ edition = "2021"
 [lib]
 name = "tquant_rs"
 crate-type = ["cdylib", "rlib"]
+bench = false
 
 [dependencies]
 pyo3 = { version = "0.22", features = ["abi3-py39"] }
+
+[dev-dependencies]
+criterion = "0.5"
 
 [build-dependencies]
 pyo3-build-config = "0.22"
 
 [features]
-default = ["extension-module"]
+default = []
 extension-module = ["pyo3/extension-module"]
+
+[[bench]]
+name = "finance"
+harness = false

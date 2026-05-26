@@ -94,6 +94,29 @@ def test_production_requires_internal_token_for_microservice_urls() -> None:
         validate_security_settings(settings)
 
 
+@pytest.mark.parametrize(
+    "field_name, url_value",
+    [
+        ("tquant_bff_gateway_url", "http://go-bff-gateway:8091"),
+        ("tquant_market_read_service_url", "http://go-market-read-service:8092"),
+        ("tquant_go_scan_worker_url", "http://go-scan-worker:8093"),
+    ],
+)
+def test_production_requires_internal_token_for_go_service_urls(field_name: str, url_value: str) -> None:
+    settings = AppSettings(
+        app_environment="production",
+        auth_cookie_secure=True,
+        auth_cookie_samesite="strict",
+        auth_secret_key=STRONG_TEST_SECRET,
+        tquant_settings_encryption_key=STRONG_SETTINGS_SECRET,
+        global_rate_limit_backend="redis",
+        **{field_name: url_value},
+    )
+
+    with pytest.raises(RuntimeError, match="TQUANT_INTERNAL_SERVICE_TOKEN"):
+        validate_security_settings(settings)
+
+
 def test_production_requires_separate_settings_encryption_key() -> None:
     settings = AppSettings(
         app_environment="production",

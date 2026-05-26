@@ -4,6 +4,8 @@ from dataclasses import dataclass
 from datetime import datetime, time
 from typing import Any
 
+from app.services.finance.rust_math import rust_vwap
+
 VWAP_CONFIRMATION_STRATEGIES = {
     "core_midcap_vwap_ma5_retrace",
     "sector_mainline_first_divergence_low_buy",
@@ -112,9 +114,12 @@ def _bar_value(bar: Any, field: str) -> float:
 
 def calculate_intraday_vwap(bars: list[Any] | None) -> float:
     """Use成交额/成交量优先，缺失时再退回典型价格近似。"""
+    cleaned_bars = list(bars or [])
     total_turnover = 0.0
     total_volume = 0.0
-    for bar in bars or []:
+    prices: list[float] = []
+    volumes: list[float] = []
+    for bar in cleaned_bars:
         volume = _bar_value(bar, "volume")
         if volume <= 0:
             continue
@@ -125,8 +130,14 @@ def calculate_intraday_vwap(bars: list[Any] | None) -> float:
             continue
         typical_price = _typical_price(bar)
         if typical_price > 0:
+            prices.append(typical_price)
+            volumes.append(volume)
             total_turnover += typical_price * volume
             total_volume += volume
+    if total_volume > 0 and len(prices) == len(volumes) == len([bar for bar in cleaned_bars if _bar_value(bar, "volume") > 0]):
+        rust_value = rust_vwap(prices, volumes)
+        if rust_value is not None:
+            return round(float(rust_value), 4)
     if total_volume > 0:
         return round(total_turnover / total_volume, 4)
     return 0.0

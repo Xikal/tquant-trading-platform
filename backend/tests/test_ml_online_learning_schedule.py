@@ -89,7 +89,8 @@ def test_runtime_background_jobs_register_market_and_paper_loops_when_enabled(mo
     shutdown_runtime_background_jobs(timeout=7)
 
     assert "market_hourly_all_a_snapshot" in calls
-    assert "paper_midday_review" in calls
+    assert "market_midday_review" in calls
+    assert "market_close_review" in calls
     assert "paper_perf_archive" in calls
     assert "scheduler-start" in calls
     assert "scheduler-stop" in calls

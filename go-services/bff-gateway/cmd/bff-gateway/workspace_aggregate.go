@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-const schemaVersion = "v13"
+const schemaVersion = "v14"
 
 type aggregateResult struct {
 	status      int
@@ -37,6 +37,12 @@ func aggregateWorkspace(cfg config, client *http.Client, r *http.Request) aggreg
 		return aggregateMonitorWorkspace(cfg, client, r)
 	case "paper":
 		return aggregatePaperWorkspace(cfg, client, r)
+	case "strategy":
+		return aggregateStrategyWorkspace(cfg, client, r)
+	case "settings":
+		return aggregateSettingsWorkspace(cfg, client, r)
+	case "factor":
+		return aggregateFactorWorkspace(cfg, client, r)
 	default:
 		return aggregateResult{}
 	}
@@ -66,6 +72,7 @@ func aggregateManifest() aggregateResult {
 				"model":          "StrategyWorkspaceBffResponse",
 			},
 			"settings": map[string]any{"path": "/api/bff/v1/workspace/settings", "schema_version": schemaVersion, "model": "SettingsWorkspaceBffResponse"},
+			"factor":   map[string]any{"path": "/api/bff/v1/workspace/factor", "schema_version": schemaVersion, "model": "FactorWorkspaceBffResponse"},
 		},
 	}
 	return jsonPayload(http.StatusOK, payload)
@@ -76,6 +83,8 @@ func aggregateMonitorWorkspace(cfg config, client *http.Client, r *http.Request)
 	sources := []rawSource{
 		{name: "monitor_snapshot", path: "/api/monitor/snapshot", query: values("priority_limit", queryDefault(q, "priority_limit", "12"))},
 		{name: "market_breadth", path: "/api/market/breadth", query: values("realtime", "true")},
+		{name: "market_pulse", path: "/api/market/pulse"},
+		{name: "monitor_review", path: "/api/market/review-summary"},
 		{name: "sector_relative_strength", path: "/api/market/sector-relative-strength", query: values(
 			"limit", queryDefault(q, "sector_limit", "8"),
 			"per_sector_limit", queryDefault(q, "per_sector_limit", "8"),
@@ -89,6 +98,9 @@ func aggregateMonitorWorkspace(cfg config, client *http.Client, r *http.Request)
 		"generated_at":             beijingNowString(),
 		"monitor_snapshot":         nullableJSON(results["monitor_snapshot"]),
 		"market_breadth":           nullableJSON(results["market_breadth"]),
+		"market_pulse":             nullableJSON(results["market_pulse"]),
+		"review_status":            jsonObjectField(results["monitor_review"], "review_status"),
+		"review_reports":           jsonArrayField(results["monitor_review"], "review_reports"),
 		"sector_relative_strength": nullableJSON(results["sector_relative_strength"]),
 		"paired_hedge":             nullableJSON(results["paired_hedge"]),
 		"partial_errors":           errors,
@@ -136,6 +148,84 @@ func aggregatePaperWorkspace(cfg config, client *http.Client, r *http.Request) a
 	return jsonPayload(http.StatusOK, payload)
 }
 
+func aggregateStrategyWorkspace(cfg config, client *http.Client, r *http.Request) aggregateResult {
+	q := r.URL.Query()
+	sources := []rawSource{
+		{name: "strategy_meta", path: "/api/strategies/meta"},
+		{name: "presets", path: "/api/strategy/presets"},
+		{name: "recent_runs", path: "/api/backtests", query: values("limit", queryDefault(q, "run_limit", "8"), "offset", "0")},
+		{name: "verdict_thresholds", path: "/api/backtests/verdict-thresholds"},
+		{name: "factor_health", path: "/api/factor-mining/health", query: values("limit", queryDefault(q, "factor_limit", "20"))},
+	}
+	results, errors := fetchSources(cfg, client, r, sources)
+	payload := map[string]any{
+		"api_version":        "v1",
+		"schema_version":     schemaVersion,
+		"generated_at":       beijingNowString(),
+		"strategy_meta":      nullableJSON(results["strategy_meta"]),
+		"presets":            nullableJSON(results["presets"]),
+		"recent_runs":        nullableJSON(results["recent_runs"]),
+		"verdict_thresholds": nullableJSON(results["verdict_thresholds"]),
+		"factor_health":      nullableJSON(results["factor_health"]),
+		"partial_errors":     errors,
+	}
+	return jsonPayload(http.StatusOK, payload)
+}
+
+func aggregateSettingsWorkspace(cfg config, client *http.Client, r *http.Request) aggregateResult {
+	q := r.URL.Query()
+	includeAdmin := strings.EqualFold(queryDefault(q, "include_admin", "false"), "true")
+	sources := []rawSource{
+		{name: "settings", path: "/api/settings"},
+		{name: "sector_exclusions", path: "/api/settings/sector-exclusions"},
+		{name: "strategy_governance", path: "/api/screeners/low-buy/strategies"},
+	}
+	if includeAdmin {
+		sources = append(sources,
+			rawSource{name: "runtime", path: "/api/settings/runtime"},
+			rawSource{name: "factor_weights", path: "/api/settings/factor-weights"},
+			rawSource{name: "admin_tasks", path: "/api/admin/tasks"},
+			rawSource{name: "admin_metrics", path: "/api/admin/metrics"},
+		)
+	}
+	results, errors := fetchSources(cfg, client, r, sources)
+	payload := map[string]any{
+		"api_version":         "v1",
+		"schema_version":      schemaVersion,
+		"generated_at":        beijingNowString(),
+		"settings":            nullableJSON(results["settings"]),
+		"sector_exclusions":   nullableJSON(results["sector_exclusions"]),
+		"strategy_governance": nullableJSON(results["strategy_governance"]),
+		"runtime":             nullableJSON(results["runtime"]),
+		"factor_weights":      nullableJSON(results["factor_weights"]),
+		"admin_tasks":         nullableJSON(results["admin_tasks"]),
+		"admin_metrics":       nullableJSON(results["admin_metrics"]),
+		"admin_enabled":       includeAdmin,
+		"partial_errors":      errors,
+	}
+	return jsonPayload(http.StatusOK, payload)
+}
+
+func aggregateFactorWorkspace(cfg config, client *http.Client, r *http.Request) aggregateResult {
+	q := r.URL.Query()
+	sources := []rawSource{
+		{name: "factors", path: "/api/factor-mining/factors", query: values("limit", queryDefault(q, "factor_limit", "50"), "offset", "0")},
+		{name: "factor_health", path: "/api/factor-mining/health", query: values("limit", queryDefault(q, "health_limit", "50"))},
+		{name: "factor_weights", path: "/api/settings/factor-weights"},
+	}
+	results, errors := fetchSources(cfg, client, r, sources)
+	payload := map[string]any{
+		"api_version":    "v1",
+		"schema_version": schemaVersion,
+		"generated_at":   beijingNowString(),
+		"factors":        nullableJSON(results["factors"]),
+		"factor_health":  nullableJSON(results["factor_health"]),
+		"factor_weights": nullableJSON(results["factor_weights"]),
+		"partial_errors": errors,
+	}
+	return jsonPayload(http.StatusOK, payload)
+}
+
 func fetchSources(cfg config, client *http.Client, r *http.Request, sources []rawSource) (map[string]json.RawMessage, []partialError) {
 	results := make(map[string]json.RawMessage, len(sources))
 	errors := make([]partialError, 0)
@@ -149,6 +239,7 @@ func fetchSources(cfg config, client *http.Client, r *http.Request, sources []ra
 			mu.Lock()
 			defer mu.Unlock()
 			if err != nil {
+				bffPartialSourceFailures.Add(1)
 				errors = append(errors, partialError{Source: source.name, Detail: "数据暂时不可用"})
 				return
 			}
@@ -246,6 +337,20 @@ func jsonObject(raw json.RawMessage) any {
 		return map[string]any{}
 	}
 	return raw
+}
+
+func jsonObjectField(raw json.RawMessage, field string) any {
+	if len(raw) == 0 {
+		return nil
+	}
+	var object map[string]json.RawMessage
+	if err := json.Unmarshal(raw, &object); err != nil {
+		return nil
+	}
+	if value, ok := object[field]; ok && len(value) > 0 {
+		return value
+	}
+	return nil
 }
 
 func jsonArrayField(raw json.RawMessage, field string) any {

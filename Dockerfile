@@ -9,6 +9,19 @@ COPY frontend/ ./
 RUN npm run build
 
 
+FROM docker.m.daocloud.io/library/rust:1.95-bookworm AS rust-builder
+
+WORKDIR /app/rust/tquant-rs
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends python3-dev python3-pip \
+    && pip3 install --break-system-packages --no-cache-dir --retries 20 --timeout 600 --progress-bar off -i https://pypi.tuna.tsinghua.edu.cn/simple maturin \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY rust/tquant-rs/ ./
+RUN PYO3_USE_ABI3_FORWARD_COMPATIBILITY=1 maturin build --release --strip --features extension-module -o /tmp/wheels
+
+
 FROM docker.m.daocloud.io/library/python:3.11-slim AS runtime
 
 ENV PYTHONDONTWRITEBYTECODE=1
@@ -25,6 +38,8 @@ RUN apt-get update \
 
 COPY backend/requirements.txt /tmp/backend-requirements.txt
 RUN pip install --retries 8 -r /tmp/backend-requirements.txt
+COPY --from=rust-builder /tmp/wheels/*.whl /tmp/
+RUN pip install /tmp/*.whl && rm -f /tmp/*.whl
 
 ARG INSTALL_RL_EXTRAS=0
 ARG WITH_RL=0

@@ -37,39 +37,40 @@ export function PaperTradingSummaryBar({
   ] as const;
 
   return (
-    <Card className="panel" variant="borderless" style={{ gridArea: "summary" }} styles={{ body: { display: "grid", gap: 10, padding: 14 } }}>
-      <Flex gap={12} align="start" justify="space-between" wrap style={{ minWidth: 0 }}>
-        <Space orientation="vertical" size={4} style={{ flex: "1 1 220px", minWidth: 0 }}>
+    <Card className="panel" variant="borderless" style={{ gridArea: "summary" }} styles={{ body: { display: "grid", gap: 6, padding: 6, fontSize: 11 } }}>
+      <Flex gap={8} align="start" justify="space-between" wrap style={{ minWidth: 0 }}>
+        <Space direction="vertical" size={2} style={{ flex: "1 1 180px", minWidth: 0 }}>
           <Tag color={statusTagColor(status.tone)}> {status.label}</Tag>
           {autoTradingStatus?.last_cycle_at ? (
-            <span style={{ color: token.colorTextSecondary, fontSize: 12 }}>最近刷新 {formatPaperDateTime(autoTradingStatus.last_cycle_at)}</span>
+            <span style={{ color: token.colorTextSecondary, fontSize: 11 }}>最近刷新 {formatPaperDateTime(autoTradingStatus.last_cycle_at)}</span>
           ) : (
-            <span style={{ color: token.colorTextSecondary, fontSize: 12 }}>交易时间内自动刷新</span>
+            <span style={{ color: token.colorTextSecondary, fontSize: 11 }}>交易时间内自动刷新</span>
           )}
         </Space>
-        <Row gutter={[8, 8]} style={{ flex: "1 1 560px", minWidth: 0 }}>
+        <Row gutter={[6, 6]} style={{ flex: "1 1 560px", minWidth: 0 }}>
           {metrics.map((item) => (
             <Col key={item.label} xs={12} sm={8} lg={4}>
-              <Card size="small" styles={{ body: { padding: 10 } }}>
+              <Card size="small" styles={{ body: { padding: 6 } }}>
                 <Statistic
                   title={item.label}
                   value={item.value}
-                  valueStyle={{ color: metricColor(item.tone, token) }}
+                  styles={{ content: { color: metricColor(item.tone, token), fontSize: 12, lineHeight: 1.1 } }}
                 />
               </Card>
             </Col>
           ))}
         </Row>
-        <Space orientation="vertical" size={8} style={{ flex: "0 0 auto" }}>
+        <Space direction="vertical" size={5} style={{ flex: "0 0 auto" }}>
           <Button
             type="primary"
+            size="small"
             disabled={!canOpenOrder || loading}
             onClick={onOpenOrderEntry}
           >
             {canOpenOrder ? "委托录入" : "自动交易中"}
           </Button>
           {account?.status === "paused" && onTogglePause ? (
-            <Button type="default" disabled={loading} onClick={() => void onTogglePause()}>
+            <Button type="default" size="small" disabled={loading} onClick={() => void onTogglePause()}>
               恢复自动委托
             </Button>
           ) : null}
@@ -82,8 +83,8 @@ export function PaperTradingSummaryBar({
           message={skipNotice.title}
           description={
             <Flex gap={12} align="center" wrap justify="space-between">
-              <span style={{ minWidth: 0, flex: "1 1 auto" }}>{skipNotice.text}</span>
-              {skipNotice.time ? <span style={{ color: token.colorTextSecondary, fontSize: 12 }}>{formatPaperDateTime(skipNotice.time)}</span> : null}
+              <span style={{ minWidth: 0, flex: "1 1 auto", fontSize: 11 }}>{skipNotice.text}</span>
+              {skipNotice.time ? <span style={{ color: token.colorTextSecondary, fontSize: 11 }}>{formatPaperDateTime(skipNotice.time)}</span> : null}
             </Flex>
           }
         />

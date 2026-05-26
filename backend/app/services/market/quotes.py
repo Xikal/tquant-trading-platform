@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from app.services.market.local_quote_cache import read_local_quote_snapshot, write_local_quote_snapshot
-from app.services.market.go_read_client import load_go_market_read_quotes
+from app.services.market.go_read_client import load_go_intraday_latest, load_go_market_read_quotes
 from app.services.market.spot_snapshot import fetch_eastmoney_stock_spot_snapshot_map
 from app.services.market.shared import (
     DataSourceError,
@@ -32,6 +32,11 @@ class MarketQuoteMixin:
         if distributed is not None:
             self._set_quote_cache(symbol, distributed, persist_local=False)
             return distributed
+        if not force_refresh:
+            go_latest = load_go_intraday_latest([symbol]).get(symbol)
+            if go_latest is not None:
+                self._set_quote_cache(symbol, go_latest, persist_local=False)
+                return go_latest
         if self._market_provider_router_enabled():
             result = self.provider_router.fetch_quote(symbol)
             if result.usable and result.data is not None:
@@ -106,7 +111,7 @@ class MarketQuoteMixin:
         if remaining:
             batch_quotes: dict[str, QuoteSnapshot] = {}
             if not force_refresh:
-                remote_quotes = load_go_market_read_quotes(remaining)
+                remote_quotes = load_go_intraday_latest(remaining) or load_go_market_read_quotes(remaining)
                 for symbol, snapshot in remote_quotes.items():
                     batch_quotes[symbol] = snapshot
                     self._set_quote_cache(symbol, snapshot, persist_local=False)

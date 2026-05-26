@@ -319,11 +319,28 @@ export interface PaperDailyReport {
   llm_model: string
 }
 
+export interface PaperReviewStatus {
+  trade_date: string
+  status: string
+  status_text: string
+  has_midday: boolean
+  has_close: boolean
+  next_trigger_at: string
+  risk_alert_count: number
+  suggested_action: string
+}
+
+export interface MarketReviewHistoryEntry extends PaperDailyReport {
+  review_subject?: string
+  source_scope?: "market" | string
+}
+
 export interface PaperPerformanceDashboard {
   account: {
     id: number
     total_assets: number
     total_return_pct: number
+    sharpe_ratio?: number
   }
   equity_curve: Array<{
     date: string
@@ -340,7 +357,7 @@ export interface PaperPerformanceDashboard {
   strategy_market_matrix: PaperStrategyMarketPerformance[]
   strategy_correlation?: PaperStrategyCorrelation
   today_report: PaperDailyReport | null
-  review_reports?: PaperDailyReport[]
+  review_reports?: MarketReviewHistoryEntry[]
   updated_at: string
 }
 

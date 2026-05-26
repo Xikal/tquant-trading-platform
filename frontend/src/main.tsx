@@ -5,8 +5,7 @@ import { AppProviders } from "./app/AppProviders";
 import { WebApp } from "./app/WebApp";
 import { WebUiProviders } from "./app/WebUiProviders";
 import { registerServiceWorker } from "./registerServiceWorker";
-import "./styles/workspace/base.css";
-import "./styles/workspace/core-layout-components.part-1.css";
+import "./styles/workspace/workspace.css";
 
 registerServiceWorker();
 

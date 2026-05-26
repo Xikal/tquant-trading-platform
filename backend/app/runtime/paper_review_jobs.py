@@ -6,10 +6,13 @@ from datetime import date, time as dt_time
 from app.core.database import SessionLocal
 from app.core.timezone import beijing_now, beijing_today
 from app.services.paper.archive import PaperArchiveService
+from app.runtime.market_review_jobs import (
+    generate_midday_market_review_once,
+    market_midday_review_due,
+)
 
 logger = logging.getLogger(__name__)
 _paper_archive_last_run_date: date | None = None
-_paper_midday_review_last_run_date: date | None = None
 
 
 def archive_paper_performance_once(*, include_report: bool = True) -> None:
@@ -27,19 +30,7 @@ def archive_paper_performance_once(*, include_report: bool = True) -> None:
 
 
 def generate_midday_paper_review_once() -> None:
-    global _paper_midday_review_last_run_date
-    if not paper_midday_review_due():
-        return
-    today = beijing_today()
-    if _paper_midday_review_last_run_date == today:
-        return
-    with SessionLocal() as db:
-        results = PaperArchiveService(db).generate_review_reports_for_active(
-            report_slot="midday",
-            target_date=today,
-        )
-        _paper_midday_review_last_run_date = today
-        logger.info("模拟盘午盘复盘完成: %s", results)
+    generate_midday_market_review_once()
 
 
 def paper_archive_due() -> bool:
@@ -56,7 +47,4 @@ def paper_archive_due() -> bool:
 
 
 def paper_midday_review_due() -> bool:
-    now = beijing_now()
-    if now.weekday() >= 5:
-        return False
-    return now.time() >= dt_time(hour=11, minute=35)
+    return market_midday_review_due()

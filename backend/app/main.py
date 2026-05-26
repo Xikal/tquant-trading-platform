@@ -30,6 +30,7 @@ from app.services.market.providers.circuit import provider_metrics_snapshot
 from app.services.market.local_quote_cache import local_quote_cache_metrics_snapshot
 from app.services.bff.workspace_cache import bff_workspace_cache_metrics_snapshot
 from app.services.bff.remote_client import remote_bff_metrics_snapshot
+from app.services.finance.rust_math import rust_math_metrics_snapshot
 from app.services.operation_audit_middleware import OperationAuditMiddleware
 
 settings = get_settings()
@@ -274,10 +275,9 @@ def _agent_daily_report_push_due() -> bool:
 def _paper_midday_review_due() -> bool:
     """Compatibility wrapper for tests and scripts that import main directly."""
 
-    now = beijing_now()
-    if now.weekday() >= 5:
-        return False
-    return now.time() >= dt_time(hour=11, minute=35)
+    from app.runtime.market_review_jobs import market_midday_review_due
+
+    return market_midday_review_due()
 
 
 @app.get("/healthz", response_model=HealthResponse)
@@ -322,6 +322,7 @@ def prometheus_metrics(_: None = Depends(require_admin_auth)) -> PlainTextRespon
     provider_snapshot = _provider_metrics_snapshot()
     bff_cache_snapshot = bff_workspace_cache_metrics_snapshot()
     bff_remote_snapshot = remote_bff_metrics_snapshot()
+    rust_snapshot = rust_math_metrics_snapshot()
     lines = [
         "# HELP tquant_http_timing_samples Number of retained HTTP timing samples.",
         "# TYPE tquant_http_timing_samples gauge",
@@ -383,6 +384,18 @@ def prometheus_metrics(_: None = Depends(require_admin_auth)) -> PlainTextRespon
         "# HELP tquant_bff_remote_credentials_suppressed_total BFF remote calls with credentials suppressed for untrusted targets.",
         "# TYPE tquant_bff_remote_credentials_suppressed_total counter",
         f"tquant_bff_remote_credentials_suppressed_total {bff_remote_snapshot.get('credentials_suppressed', 0)}",
+        "# HELP tquant_rust_math_hits_total Rust finance math successful calls.",
+        "# TYPE tquant_rust_math_hits_total counter",
+        f"tquant_rust_math_hits_total {rust_snapshot.get('hits', 0)}",
+        "# HELP tquant_rust_math_fallbacks_total Rust finance math module fallback calls.",
+        "# TYPE tquant_rust_math_fallbacks_total counter",
+        f"tquant_rust_math_fallbacks_total {rust_snapshot.get('fallbacks', 0)}",
+        "# HELP tquant_rust_math_errors_total Rust finance math execution errors.",
+        "# TYPE tquant_rust_math_errors_total counter",
+        f"tquant_rust_math_errors_total {rust_snapshot.get('errors', 0)}",
+        "# HELP tquant_rust_math_disabled_total Rust finance math disabled checks.",
+        "# TYPE tquant_rust_math_disabled_total counter",
+        f"tquant_rust_math_disabled_total {rust_snapshot.get('disabled', 0)}",
         "# HELP tquant_provider_calls_total Market provider calls across configured providers.",
         "# TYPE tquant_provider_calls_total counter",
         f"tquant_provider_calls_total {provider_snapshot.get('provider_calls_total', 0)}",

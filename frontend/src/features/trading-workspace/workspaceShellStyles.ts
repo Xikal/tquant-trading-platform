@@ -1,6 +1,9 @@
 import type { CSSProperties } from "react";
 
 export const WORKSPACE_APP_STYLE: CSSProperties = {
+  minHeight: "100vh",
+  maxWidth: "100vw",
+  overflowX: "hidden",
   padding: "clamp(8px, 1vw, 16px)",
 };
 
@@ -12,6 +15,9 @@ export const WORKSPACE_AUTH_LOADING_STYLE: CSSProperties = {
 };
 
 export const WORKSPACE_MAIN_STYLE: CSSProperties = {
+  maxWidth: "100%",
+  minWidth: 0,
+  overflowX: "hidden",
   width: "min(1440px, calc(100vw - 16px))",
   margin: "0 auto",
   paddingTop: 10,
@@ -28,9 +34,11 @@ export function topbarStyle(stacked: boolean): CSSProperties {
     alignItems: "center",
     minHeight: 60,
     borderRadius: 10,
-    background: "var(--deep)",
+    border: "1px solid rgba(148, 163, 184, 0.18)",
+    background: "linear-gradient(135deg, #07111f 0%, #101827 58%, #16233a 100%)",
     color: "#fff",
     padding: "10px 14px",
+    boxShadow: "0 12px 28px rgba(15, 23, 42, 0.14)",
   };
 }
 
@@ -41,7 +49,7 @@ export const TOPBAR_BRAND_STYLE: CSSProperties = {
 
 export const TOPBAR_BRAND_TEXT_STYLE: CSSProperties = {
   color: "#f8fafc",
-  fontSize: 14,
+  fontSize: 13,
 };
 
 export const TOPBAR_NAV_STYLE: CSSProperties = {
@@ -158,11 +166,9 @@ export function monitorGridStyle(stacked: boolean): CSSProperties {
       ? `"summary"
          "input"
          "priority"
-         "watch"
          "etf"`
       : `"summary input"
          "priority input"
-         "watch input"
          "etf input"`,
     gridAutoRows: "min-content",
     gap: "clamp(12px, 1vw, 16px)",

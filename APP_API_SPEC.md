@@ -1,8 +1,55 @@
 # App API 接口规范
 
 适用项目：`gupiao`  
-当前日期：`2026-04-29`  
-文档状态：`V1，可直接用于 App 联调`
+当前日期：`2026-05-25`
+文档状态：`V2，包含 Web BFF/Go/Rust 生产主路径契约`
+
+## 0. Web/服务端新增契约（2026-05-25）
+
+### 0.1 `GET /api/bff/v1/workspace/monitor`
+
+`schema_version=v14`。除原有 `monitor_snapshot`、`market_breadth`、`sector_relative_strength`、`paired_hedge`、`partial_errors` 外，新增：
+
+| 字段 | 类型 | 兼容策略 |
+|---|---|---|
+| `market_pulse` | object/null | 子源失败时返回 null 或 `data_quality=partial/unavailable`，页面不得白屏 |
+| `review_status` | object/null | 无模拟盘账户时为今日空状态 |
+| `review_reports` | array | 无报告时为空数组 |
+
+`market_pulse` 必含：`updated_at`、`data_quality`(`fresh/stale/partial/unavailable`)、`data_quality_text`、`market_strength_text`、`leader_strength_text`、`emotion_text`、`hourly_snapshot_text`、`pulse_level`、`pulse_text`、`suggested_action`、`partial_errors`。
+
+`review_status` 必含：`trade_date`、`status`、`status_text`、`has_midday`、`has_close`、`next_trigger_at`、`risk_alert_count`、`suggested_action`。
+
+### 0.2 `GET /api/market/pulse`
+
+返回盘中统一 pulse，聚合市场宽度、小时全市场快照、龙头强度与情绪温度。部分子源失败时返回 `data_quality=partial` 并填充 `partial_errors[]`。
+
+### 0.3 `GET /api/paper/performance/review-summary`
+
+返回实时监控页复盘摘要：
+
+```json
+{
+  "review_status": {"status": "midday_ready", "next_trigger_at": "2026-05-25 15:05"},
+  "review_reports": []
+}
+```
+
+模拟盘页面只保留历史入口，不作为午盘/收盘复盘主展示入口。
+
+### 0.4 Go 服务生产主路径
+
+| 服务 | 生产入口 | 回退/观测 |
+|---|---|---|
+| `bff-gateway` | `/api/bff/v1/workspace/monitor` 聚合 monitor/pulse/review | `tquant_bff_gateway_aggregate_hits_total`、`proxy_fallbacks_total`、`cache_hits_total` |
+| `market-read-service` | quote batch、sector strength、intraday key levels、intraday latest batch | `tquant_market_read_hits_total`、`fallbacks_total`、`partials_total` |
+| `scan-worker` | `/api/scan-worker/v1/run` | `production_scan_enabled=true`、`production_write_enabled=true`，失败返回 fallback reason 且不写 latest |
+
+生产环境配置 Go URL 时必须同时配置 `TQUANT_INTERNAL_SERVICE_TOKEN`；Go 服务在 `APP_ENVIRONMENT=production` 且 token 为空时拒绝启动。
+
+### 0.5 Rust 计算主路径
+
+`RUST_FINANCE_MATH_ENABLED=true` 为生产默认。Rust wheel 作为镜像产物安装，Python wrapper 保留 fallback 并暴露 `tquant_rust_math_hits_total`、`fallbacks_total`、`errors_total`、`disabled_total`。
 
 ## 1. 目标
 

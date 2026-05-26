@@ -14,17 +14,34 @@ from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 REPORT_PATH = PROJECT_ROOT / "docs" / "reports" / "go-rust-performance-acceptance-2026-05-25.json"
-BACKEND_PYTHON = PROJECT_ROOT / "backend" / ".venv" / "bin" / "python"
+BACKEND_PYTHON = Path(
+    os.environ.get("BACKEND_PYTHON", "")
+).expanduser() if os.environ.get("BACKEND_PYTHON") else Path(shutil.which("python3") or shutil.which("python") or "")
+if str(BACKEND_PYTHON) and not BACKEND_PYTHON.is_absolute():
+    BACKEND_PYTHON = PROJECT_ROOT / BACKEND_PYTHON
 RUST_TARGET_RELEASE_DIR = PROJECT_ROOT / "rust" / "tquant-rs" / "target" / "release" / "deps"
 
 GO_QUOTE_BENCHMARK_NS_PER_OP_MAX = 10_000.0
 GO_QUOTE_BENCHMARK_BYTES_PER_OP_MAX = 12_000.0
 GO_QUOTE_BENCHMARK_ALLOCS_PER_OP_MAX = 250.0
+GO_CHECK_TIMEOUT_SECONDS = 120
+GO_QUOTE_BENCHMARK_TIMEOUT_SECONDS = 60
 RUST_BENCHMARK_MIN_SPEEDUP = 5.0
 RUST_BENCH_REPEAT = 5
 RUST_BENCH_DRAWDOWN_SIZE = 300_000
 RUST_BENCH_ROLLING_SIZE = 160_000
 RUST_BENCH_ATR_SIZE = 120_000
+GO_QUOTE_BENCHMARK_COMMAND = [
+    "go",
+    "test",
+    "-run",
+    "^$",
+    "-bench",
+    "^BenchmarkQuoteBatchHandlerCachedPayload$",
+    "-benchmem",
+    "-benchtime=1s",
+    "./...",
+]
 
 GO_QUOTE_BENCHMARK_PATTERN = re.compile(
     r"BenchmarkQuoteBatchHandlerCachedPayload-\d+\s+\d+\s+"
@@ -50,16 +67,11 @@ def main() -> int:
 
 def _go_checks() -> dict:
     commands = [
-        ("market-read-service", ["go", "test", "./..."], PROJECT_ROOT / "go-services" / "market-read-service"),
-        (
-            "market-read-service quote benchmark",
-            ["go", "test", "-run", "Test", "-bench", "BenchmarkQuoteBatchHandlerCachedPayload", "-benchmem", "./..."],
-            PROJECT_ROOT / "go-services" / "market-read-service",
-        ),
-        ("bff-gateway", ["go", "test", "./..."], PROJECT_ROOT / "go-services" / "bff-gateway"),
-        ("scan-worker", ["go", "test", "./..."], PROJECT_ROOT / "go-services" / "scan-worker"),
+        ("market-read-service", ["go", "test", "./..."], PROJECT_ROOT / "go-services" / "market-read-service", GO_CHECK_TIMEOUT_SECONDS),
+        ("bff-gateway", ["go", "test", "./..."], PROJECT_ROOT / "go-services" / "bff-gateway", GO_CHECK_TIMEOUT_SECONDS),
+        ("scan-worker", ["go", "test", "./..."], PROJECT_ROOT / "go-services" / "scan-worker", GO_CHECK_TIMEOUT_SECONDS),
     ]
-    results = [_run(name, cmd, cwd) for name, cmd, cwd in commands]
+    results = [_run(name, cmd, cwd, timeout=timeout) for name, cmd, cwd, timeout in commands]
     benchmark = _go_quote_benchmark()
     return {
         "ok": all(item["ok"] for item in results) and benchmark["ok"],
@@ -87,7 +99,7 @@ def _python_rust_seam_check() -> dict:
         }
     build = _run(
         "tquant-rs cargo build release",
-        ["cargo", "build", "--release"],
+        ["cargo", "build", "--release", "--features", "extension-module"],
         PROJECT_ROOT / "rust" / "tquant-rs",
         extra_env={"PYO3_USE_ABI3_FORWARD_COMPATIBILITY": "1"},
     )
@@ -109,7 +121,14 @@ def _python_rust_seam_check() -> dict:
     speedups = bench["speedups"]
     speedup_ok = min(speedups.values()) >= RUST_BENCHMARK_MIN_SPEEDUP
     ok = (
-        module_info["payload"] == {"drawdown": 0.25, "rolling": 4, "atr": 3}
+        module_info["payload"] == {
+            "drawdown": 0.25,
+            "rolling": 4,
+            "atr": 3,
+            "rsi": 83.3333,
+            "vwap": 10.5,
+            "rank_ic": -1.0,
+        }
         and abs(float(payload["drawdown"]) - expected_drawdown) < 1e-8
         and payload["rolling_len"] == RUST_BENCH_ROLLING_SIZE
         and payload["atr_len"] == RUST_BENCH_ATR_SIZE
@@ -139,7 +158,10 @@ def _import_rust_module(python: Path, *, target_dir: Path) -> dict:
         "payload = {"
         "'drawdown': tquant_rs.max_drawdown([100.0, 120.0, 90.0]), "
         "'rolling': len(tquant_rs.rolling_mean([1.0, 2.0, 3.0, 4.0], 2)), "
-        "'atr': len(tquant_rs.atr_wilder([10.0, 11.0, 12.0], [9.0, 9.5, 10.0], [9.5, 10.5, 11.0], 2))"
+        "'atr': len(tquant_rs.atr_wilder([10.0, 11.0, 12.0], [9.0, 9.5, 10.0], [9.5, 10.5, 11.0], 2)), "
+        "'rsi': round(tquant_rs.rsi_wilder([10.0, 11.0, 12.0, 11.0, 13.0], 3), 4), "
+        "'vwap': round(tquant_rs.vwap([10.0, 11.0], [100.0, 100.0]), 4), "
+        "'rank_ic': round(tquant_rs.rank_ic([1.0, 2.0, 3.0], [3.0, 2.0, 1.0]), 4)"
         "}; "
         "print(json.dumps(payload))"
     )
@@ -290,6 +312,7 @@ def _run_rust_module_script(python: Path, script: str, metric: str, *, target_di
         completed = subprocess.run(
             [str(python), "-c", f"import sys; sys.path.insert(0, {tmp!r}); {script}"],
             cwd=tmp,
+            env={**os.environ, "TQUANT_RUST_MATH_LOCAL_IMPORT": "1"},
             text=True,
             capture_output=True,
             check=False,
@@ -317,13 +340,37 @@ def _go_quote_benchmark() -> dict:
     cwd = PROJECT_ROOT / "go-services" / "market-read-service"
     if shutil.which("go") is None:
         return {"ok": False, "name": "market-read-service benchmark", "notes": "go executable not found"}
-    completed = subprocess.run(
-        ["go", "test", "-run", "Test", "-bench", "BenchmarkQuoteBatchHandlerCachedPayload", "-benchmem", "./..."],
-        cwd=cwd,
-        text=True,
-        capture_output=True,
-        check=False,
-    )
+    try:
+        env = os.environ.copy()
+        env.update(_go_env())
+        completed = subprocess.run(
+            GO_QUOTE_BENCHMARK_COMMAND,
+            cwd=cwd,
+            text=True,
+            capture_output=True,
+            check=False,
+            timeout=GO_QUOTE_BENCHMARK_TIMEOUT_SECONDS,
+            env=env,
+        )
+    except subprocess.TimeoutExpired as exc:
+        stdout = exc.stdout if isinstance(exc.stdout, str) else (exc.stdout or b"").decode("utf-8", errors="replace")
+        stderr = exc.stderr if isinstance(exc.stderr, str) else (exc.stderr or b"").decode("utf-8", errors="replace")
+        return {
+            "ok": False,
+            "name": "market-read-service benchmark",
+            "command": " ".join(GO_QUOTE_BENCHMARK_COMMAND),
+            "timeout_seconds": GO_QUOTE_BENCHMARK_TIMEOUT_SECONDS,
+            "ns_per_op": None,
+            "bytes_per_op": None,
+            "allocs_per_op": None,
+            "thresholds": {
+                "ns_per_op_max": GO_QUOTE_BENCHMARK_NS_PER_OP_MAX,
+                "bytes_per_op_max": GO_QUOTE_BENCHMARK_BYTES_PER_OP_MAX,
+                "allocs_per_op_max": GO_QUOTE_BENCHMARK_ALLOCS_PER_OP_MAX,
+            },
+            "stdout_tail": stdout[-1000:],
+            "stderr_tail": stderr[-1000:],
+        }
     output = (completed.stdout or "") + "\n" + (completed.stderr or "")
     result = _parse_go_quote_benchmark(output)
     ok = completed.returncode == 0 and result is not None and all(
@@ -336,7 +383,7 @@ def _go_quote_benchmark() -> dict:
     return {
         "ok": ok,
         "name": "market-read-service benchmark",
-        "command": "go test -run Test -bench BenchmarkQuoteBatchHandlerCachedPayload -benchmem ./...",
+        "command": " ".join(GO_QUOTE_BENCHMARK_COMMAND),
         "ns_per_op": result["ns_per_op"] if result else None,
         "bytes_per_op": result["bytes_per_op"] if result else None,
         "allocs_per_op": result["allocs_per_op"] if result else None,
@@ -363,6 +410,19 @@ def _parse_go_quote_benchmark(output: str) -> dict[str, float] | None:
     return None
 
 
+def _go_env() -> dict[str, str]:
+    env = {"GOTELEMETRY": "off"}
+    if os.environ.get("CI", "").lower() not in {"1", "true", "yes"}:
+        env.update(
+            {
+                "GOTOOLCHAIN": "local",
+                "GOPROXY": "off",
+                "GOSUMDB": "off",
+            }
+        )
+    return env
+
+
 def _target_extension_suffixes(python: Path) -> list[str]:
     completed = subprocess.run(
         [
@@ -383,12 +443,27 @@ def _target_extension_suffixes(python: Path) -> list[str]:
     return [str(item) for item in suffixes if isinstance(item, str)]
 
 
-def _run(name: str, command: list[str], cwd: Path, extra_env: dict[str, str] | None = None) -> dict:
+def _run(name: str, command: list[str], cwd: Path, extra_env: dict[str, str] | None = None, timeout: int | None = None) -> dict:
     started = time.perf_counter()
     env = os.environ.copy()
+    env.update(_go_env())
     if extra_env:
         env.update(extra_env)
-    completed = subprocess.run(command, cwd=cwd, text=True, capture_output=True, check=False, env=env)
+    try:
+        completed = subprocess.run(command, cwd=cwd, text=True, capture_output=True, check=False, env=env, timeout=timeout)
+    except subprocess.TimeoutExpired as exc:
+        elapsed_ms = (time.perf_counter() - started) * 1000
+        stdout = exc.stdout if isinstance(exc.stdout, str) else (exc.stdout or b"").decode("utf-8", errors="replace")
+        stderr = exc.stderr if isinstance(exc.stderr, str) else (exc.stderr or b"").decode("utf-8", errors="replace")
+        return {
+            "name": name,
+            "command": " ".join(command),
+            "ok": False,
+            "elapsed_ms": round(elapsed_ms, 3),
+            "timeout_seconds": timeout,
+            "stdout_tail": stdout[-1000:],
+            "stderr_tail": stderr[-1000:],
+        }
     elapsed_ms = (time.perf_counter() - started) * 1000
     return {
         "name": name,

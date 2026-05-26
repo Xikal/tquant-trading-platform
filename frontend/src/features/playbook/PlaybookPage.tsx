@@ -1,8 +1,9 @@
 import type { CSSProperties } from "react";
 import type { LowBuyScreenerResult } from "../../types";
-import { Button, Flex } from "antd";
+import { Button, Collapse, Flex, Tabs, Typography } from "antd";
 import { playbookActionLabel } from "../../utils/uxClarity";
-import { Callout, EmptyState, InfoPill, MetricGrid, PanelTitle, StockCard, StockCardList } from "../workspace-shared/WorkspaceComponents";
+import { Callout, EmptyState, InfoPill, MetricGrid, PanelTitle } from "../workspace-shared/WorkspaceComponents";
+import { WorkspacePageIntro } from "../workspace-shared/WorkspacePageIntro";
 import { WEB_PLAYBOOK_TABS } from "../workspace-shared/workspaceConstants";
 import { candidateToCard } from "../workspace-shared/workspaceViewModels";
 import { formatNumber, formatPct, strategyLabel } from "../workspace-shared/workspaceFormatters";
@@ -10,14 +11,15 @@ import type { MetricItem, StockCardView } from "../workspace-shared/workspaceTyp
 
 const PLAYBOOK_PAGE_STYLE: CSSProperties = {
   display: "grid",
-  gap: 8,
-  gridTemplateColumns: "460px minmax(0, 1fr)",
-  gridTemplateAreas: '"hero metrics" "performance buy" "focus observe" "focus near" "focus watch"',
+  gap: 6,
+  gridTemplateColumns: "minmax(300px, 380px) minmax(0, 1fr)",
+  gridTemplateAreas: '"hero hero" "performance candidates" "focus candidates"',
+  fontSize: 11,
+  lineHeight: 1.32,
 };
 
 const PLAYBOOK_HERO_STYLE: CSSProperties = { gridArea: "hero" };
-const PLAYBOOK_PURPOSE_STRIP_STYLE: CSSProperties = { marginTop: 8 };
-const PLAYBOOK_METRICS_STYLE: CSSProperties = { gridArea: "metrics", alignContent: "stretch", gridTemplateColumns: "repeat(3, minmax(120px, 1fr))" };
+const PLAYBOOK_METRICS_STYLE: CSSProperties = { alignContent: "stretch", gridTemplateColumns: "repeat(3, minmax(72px, 1fr))", gap: 4 };
 const PLAYBOOK_PERFORMANCE_STYLE: CSSProperties = { gridArea: "performance", outline: "2px solid rgba(64, 149, 255, 0.12)" };
 const PLAYBOOK_FOCUS_STYLE: CSSProperties = { gridArea: "focus", outline: "2px solid rgba(64, 149, 255, 0.12)" };
 const PLAYBOOK_DARK_FOCUS_STYLE: CSSProperties = {
@@ -26,10 +28,50 @@ const PLAYBOOK_DARK_FOCUS_STYLE: CSSProperties = {
   background: "linear-gradient(180deg, var(--panel), var(--deep))",
   color: "#dde3ec",
 };
-const PLAYBOOK_BUY_STYLE: CSSProperties = { gridArea: "buy", borderColor: "#ffb9aa", background: "#fff7f4", outline: "2px solid rgba(64, 149, 255, 0.12)" };
-const PLAYBOOK_OBSERVE_STYLE: CSSProperties = { gridArea: "observe", outline: "2px solid rgba(64, 149, 255, 0.12)" };
-const PLAYBOOK_NEAR_STYLE: CSSProperties = { gridArea: "near", borderColor: "#f1cf7c", background: "#fffdf6", outline: "2px solid rgba(64, 149, 255, 0.12)" };
-const PLAYBOOK_WATCH_STYLE: CSSProperties = { gridArea: "watch", outline: "2px solid rgba(64, 149, 255, 0.12)" };
+const PLAYBOOK_CANDIDATE_TABS_STYLE: CSSProperties = { gridArea: "candidates", minHeight: 0 };
+const PLAYBOOK_TAB_BODY_STYLE: CSSProperties = {
+  maxHeight: "min(52vh, 520px)",
+  overflowY: "auto",
+  paddingRight: 2,
+};
+const PLAYBOOK_DENSE_LIST_STYLE: CSSProperties = {
+  display: "grid",
+  gap: 4,
+};
+const PLAYBOOK_DENSE_ROW_STYLE: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "minmax(94px, 0.9fr) minmax(0, 1.8fr) minmax(76px, 0.6fr) auto",
+  gap: 6,
+  alignItems: "center",
+  border: "1px solid rgba(148, 163, 184, 0.2)",
+  borderRadius: 7,
+  background: "#fff",
+  padding: "5px 6px",
+  minWidth: 0,
+};
+const PLAYBOOK_DENSE_NAME_STYLE: CSSProperties = {
+  display: "grid",
+  gap: 1,
+  minWidth: 0,
+};
+const PLAYBOOK_DENSE_TEXT_STYLE: CSSProperties = {
+  minWidth: 0,
+  overflow: "hidden",
+  textOverflow: "ellipsis",
+  whiteSpace: "nowrap",
+  fontSize: 11,
+};
+const PLAYBOOK_DENSE_META_STYLE: CSSProperties = {
+  color: "#64748b",
+  fontSize: 10,
+};
+const PLAYBOOK_TAB_LABEL_STYLE: CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  gap: 4,
+  fontSize: 11,
+  fontWeight: 800,
+};
 
 export function PlaybookPage({
   strategy,
@@ -62,7 +104,7 @@ export function PlaybookPage({
   const nearEntry = allCandidates.filter((item) => item.buy_signal_state === "near_entry").map(candidateToCard);
   const watch = allCandidates.filter((item) => item.buy_signal_state === "watch").map(candidateToCard);
   const avoid = allCandidates.filter((item) => item.buy_signal_state === "avoid").map(candidateToCard);
-  const passiveCandidates = [...watch, ...avoid].slice(0, 12);
+  const passiveCandidates = [...watch, ...avoid].slice(0, 16);
   const executableCount = buyNow.length + observeConfirmed.length + nearEntry.length;
   const focus = buyNow[0] ?? observeConfirmed[0] ?? nearEntry[0] ?? watch[0];
   const strategyName = tabLabel(strategy, tabs) || strategyLabel(strategy);
@@ -76,12 +118,20 @@ export function PlaybookPage({
   return (
     <section style={PLAYBOOK_PAGE_STYLE}>
       <div className="panel" style={PLAYBOOK_HERO_STYLE}>
-        <PanelTitle
+        <WorkspacePageIntro
           title="选股宝典"
+          summary={`${strategyName}：${strategyPurpose(strategy)}`}
+          more="候选按可买、观察确认、接近买点和放弃分层，避免把所有信号做成同等权重。"
+          moreLabel="分层口径"
+          tone={buyNow.length ? "up" : executableCount > 0 ? "warn" : "neutral"}
           actions={<Button onClick={onRefresh} loading={loading === "playbook"}>刷新全量结果</Button>}
+          pills={[
+            { label: "可执行", value: String(executableCount), tone: executableCount ? "up" : "neutral" },
+            { label: "全量深筛", value: String(playbook?.scanned_count ?? "--") },
+            { label: "数据状态", value: playbook?.data_quality_text ?? "--", tone: dataQualityTone(playbook?.data_quality) },
+            { label: "交易日", value: playbook?.latest_trade_date ?? "--" },
+          ]}
         />
-        <p className="hint">全量深筛 + 策略归因 + 买点执行。候选分层展示，避免把所有机会做成同等权重。</p>
-        <Callout title={strategyName} detail={strategyPurpose(strategy)} compact style={PLAYBOOK_PURPOSE_STRIP_STYLE} />
         <Flex wrap gap={6} style={{ marginTop: 8 }}>
           {tabs.map((tab) => (
             <Button
@@ -96,6 +146,7 @@ export function PlaybookPage({
         </Flex>
       </div>
       <MetricGrid
+        compact
         style={PLAYBOOK_METRICS_STYLE}
         items={[
           { label: playbookActionLabel("buy_now"), value: String(buyNow.length), tone: buyNow.length ? "up" : "neutral" },
@@ -114,14 +165,23 @@ export function PlaybookPage({
         <p>当前策略：{strategyName}；已加载：{loadedStrategyName}{switchingText}</p>
         <p>近5日 达标率 {hitRateDisplay}　平均收益 {formatPct(playbook?.performance?.avg_return_5d)}　回撤 {formatPct(playbook?.performance?.avg_max_drawdown_5d)}　赚亏比 {formatNumber(playbook?.performance?.profit_factor)}</p>
         {hasInsufficientData ? <p>样本说明：{sampleReason}</p> : null}
-        <p>样本规模：信号 {playbook?.performance?.signal_count ?? 0}　已评估 {playbook?.performance?.evaluated_signals ?? 0}　真实成交 {playbook?.performance?.filled_signals ?? 0}　未成交 {playbook?.performance?.not_filled_signals ?? 0}</p>
-        <p>1/2/3/4/5日胜率：{formatPct(playbook?.performance?.win_rate_1d, 0)} / {formatPct(playbook?.performance?.win_rate_2d, 0)} / {formatPct(playbook?.performance?.win_rate_3d, 0)} / {formatPct(playbook?.performance?.win_rate_4d, 0)} / {formatPct(playbook?.performance?.win_rate_5d, 0)}</p>
-        <p>1/2/3/4/5日收益：{formatPct(playbook?.performance?.avg_return_1d)} / {formatPct(playbook?.performance?.avg_return_2d)} / {formatPct(playbook?.performance?.avg_return_3d)} / {formatPct(playbook?.performance?.avg_return_4d)} / {formatPct(playbook?.performance?.avg_return_5d)}</p>
-        <p>尾部风险 CVaR {formatPct(playbook?.performance?.cvar_5pct)}　半凯利参考 {formatPct(playbook?.performance?.kelly_half_position_pct, 1)}　平均盈利/亏损 {formatPct(playbook?.performance?.avg_win_pct)} / {formatPct(playbook?.performance?.avg_loss_pct)}</p>
-        <p>板块归因：{playbook?.hot_industries?.slice(0, 3).join("、") || "--"}</p>
-        <p>市场状态：{playbook?.market_state_category_text || playbook?.market_state_text || "--"}</p>
-        <p>分市场表现：{marketAttributionText}</p>
-        <p>执行口径：只展示当前策略命中的股票，确定买入必须同时满足价格区间、承接确认和风控条件。</p>
+        <Collapse
+          ghost
+          size="small"
+          items={[{
+            key: "perf-detail",
+            label: "样本、胜率、收益与归因明细",
+            children: (
+              <>
+                <p>样本规模：信号 {playbook?.performance?.signal_count ?? 0}　已评估 {playbook?.performance?.evaluated_signals ?? 0}　真实成交 {playbook?.performance?.filled_signals ?? 0}　未成交 {playbook?.performance?.not_filled_signals ?? 0}</p>
+                <p>1/2/3/4/5日胜率：{formatPct(playbook?.performance?.win_rate_1d, 0)} / {formatPct(playbook?.performance?.win_rate_2d, 0)} / {formatPct(playbook?.performance?.win_rate_3d, 0)} / {formatPct(playbook?.performance?.win_rate_4d, 0)} / {formatPct(playbook?.performance?.win_rate_5d, 0)}</p>
+                <p>1/2/3/4/5日收益：{formatPct(playbook?.performance?.avg_return_1d)} / {formatPct(playbook?.performance?.avg_return_2d)} / {formatPct(playbook?.performance?.avg_return_3d)} / {formatPct(playbook?.performance?.avg_return_4d)} / {formatPct(playbook?.performance?.avg_return_5d)}</p>
+                <p>尾部风险 CVaR {formatPct(playbook?.performance?.cvar_5pct)}　半凯利参考 {formatPct(playbook?.performance?.kelly_half_position_pct, 1)}　平均盈利/亏损 {formatPct(playbook?.performance?.avg_win_pct)} / {formatPct(playbook?.performance?.avg_loss_pct)}</p>
+                <p>板块归因：{playbook?.hot_industries?.slice(0, 3).join("、") || "--"}；市场状态：{playbook?.market_state_category_text || playbook?.market_state_text || "--"}；分市场表现：{marketAttributionText}</p>
+              </>
+            ),
+          }]}
+        />
       </div>
       <aside className="panel" style={PLAYBOOK_DARK_FOCUS_STYLE}>
         <PanelTitle title="今日主看" />
@@ -137,8 +197,6 @@ export function PlaybookPage({
             ) : null}
             <p>{executableCount > 0 ? "主看" : "观察"}：{focus.name} {focus.symbol}，{focus.actionText}，{focus.details}</p>
             <InfoPill label="主线轮动" value={playbook?.hot_industries?.slice(0, 4).join(" / ") || "--"} />
-            <InfoPill label="执行顺序" value="先确定买入，再看观察确认和接近买点，失效立即降级" />
-            <InfoPill label="盘后复盘入口" value="自动归档触发价、失效价和执行结果" />
           </>
         ) : avoid.length ? (
           <Callout
@@ -149,23 +207,14 @@ export function PlaybookPage({
           />
         ) : <EmptyState text="当前策略暂无主看标的。" />}
       </aside>
-      <CandidateSection style={PLAYBOOK_BUY_STYLE} title="现在可买 / 小仓试买" items={buyNow} empty="当前没有可以直接执行的股票" onAnalyze={onAnalyze} onSelect={onSelect} />
-      <CandidateSection style={PLAYBOOK_OBSERVE_STYLE} title="观察确认" items={observeConfirmed} empty="当前没有观察确认的股票" onAnalyze={onAnalyze} onSelect={onSelect} />
-      <CandidateSection style={PLAYBOOK_NEAR_STYLE} title="等确认" items={nearEntry} empty="当前没有接近买点的股票" onAnalyze={onAnalyze} onSelect={onSelect} />
-      <div className="panel" style={PLAYBOOK_WATCH_STYLE}>
-        <PanelTitle title="继续观察 / 今天放弃" />
-        <InfoPill label="收盘复盘" value={`样本交易日 ${playbook?.latest_trade_date ?? "--"} / 缓存 ${playbook?.full_scan_ready ? "已就绪" : "生成中"}`} />
-        <StockCardList compact>
-          {passiveCandidates.length ? passiveCandidates.map((stock) => (
-            <StockCard
-              key={stock.symbol}
-              stock={stock}
-              actions={["详情", "分析"]}
-              onAction={(action) => (action === "分析" ? onAnalyze(stock) : onSelect(stock))}
-            />
-          )) : <EmptyState text="这一档为空，说明当前结构要么未到位，要么质量不足。" />}
-        </StockCardList>
-      </div>
+      <CandidateTabs
+        buyNow={buyNow}
+        observeConfirmed={observeConfirmed}
+        nearEntry={nearEntry}
+        passiveCandidates={passiveCandidates}
+        onAnalyze={onAnalyze}
+        onSelect={onSelect}
+      />
     </section>
   );
 }
@@ -231,34 +280,77 @@ function dataQualityTone(value?: string | null): "up" | "warn" | "down" | "neutr
   return "neutral";
 }
 
-function CandidateSection({
-  title,
+function CandidateTabs({
+  buyNow,
+  observeConfirmed,
+  nearEntry,
+  passiveCandidates,
+  onAnalyze,
+  onSelect,
+}: {
+  buyNow: StockCardView[];
+  observeConfirmed: StockCardView[];
+  nearEntry: StockCardView[];
+  passiveCandidates: StockCardView[];
+  onAnalyze: (stock: StockCardView) => void;
+  onSelect: (stock: StockCardView) => void;
+}) {
+  const sections = [
+    { key: "buy", title: "现在可买 / 小仓试买", short: "可买", items: buyNow, empty: "当前没有可以直接执行的股票" },
+    { key: "observe", title: "观察确认", short: "观察", items: observeConfirmed, empty: "当前没有观察确认的股票" },
+    { key: "near", title: "等确认", short: "等确认", items: nearEntry, empty: "当前没有接近买点的股票" },
+    { key: "watch", title: "继续观察 / 今天放弃", short: "观察/放弃", items: passiveCandidates, empty: "这一档为空，说明当前结构要么未到位，要么质量不足。" },
+  ];
+  return (
+    <div className="panel" style={PLAYBOOK_CANDIDATE_TABS_STYLE}>
+      <Tabs
+        size="small"
+        tabBarStyle={{ marginBottom: 6 }}
+        items={sections.map((section) => ({
+          key: section.key,
+          label: <span style={PLAYBOOK_TAB_LABEL_STYLE}>{section.short}<Typography.Text type="secondary" style={{ fontSize: 10 }}>{section.items.length}</Typography.Text></span>,
+          children: (
+            <div style={PLAYBOOK_TAB_BODY_STYLE}>
+              <PanelTitle title={section.title} />
+              <DenseCandidateList items={section.items} empty={section.empty} onAnalyze={onAnalyze} onSelect={onSelect} />
+            </div>
+          ),
+        }))}
+      />
+    </div>
+  );
+}
+
+function DenseCandidateList({
   items,
   empty,
   onAnalyze,
   onSelect,
-  style,
 }: {
-  title: string;
   items: StockCardView[];
   empty: string;
   onAnalyze: (stock: StockCardView) => void;
   onSelect: (stock: StockCardView) => void;
-  style?: CSSProperties;
 }) {
+  if (!items.length) {
+    return <EmptyState text={empty} />;
+  }
   return (
-    <div className="panel" style={style}>
-      <PanelTitle title={title} />
-      <StockCardList compact>
-        {items.length ? items.map((stock) => (
-          <StockCard
-            key={`${title}-${stock.symbol}`}
-            stock={stock}
-            actions={["详情", "已买入", "分析"]}
-            onAction={(action) => (action === "分析" ? onAnalyze(stock) : onSelect(stock))}
-          />
-        )) : <EmptyState text={empty} />}
-      </StockCardList>
+    <div style={PLAYBOOK_DENSE_LIST_STYLE}>
+      {items.slice(0, 18).map((stock) => (
+        <article key={`${stock.symbol}-${stock.actionText}`} style={PLAYBOOK_DENSE_ROW_STYLE}>
+          <div style={PLAYBOOK_DENSE_NAME_STYLE}>
+            <strong style={PLAYBOOK_DENSE_TEXT_STYLE}>{stock.name}</strong>
+            <span style={PLAYBOOK_DENSE_META_STYLE}>{stock.symbol}</span>
+          </div>
+          <span style={PLAYBOOK_DENSE_TEXT_STYLE} title={stock.details}>{stock.actionText} · {stock.details}</span>
+          <span style={PLAYBOOK_DENSE_META_STYLE}>{stock.scoreText ? `质量 ${stock.scoreText}` : stock.riskText}</span>
+          <Flex gap={4} justify="flex-end">
+            <Button size="small" onClick={() => onSelect(stock)}>详情</Button>
+            <Button size="small" type="primary" onClick={() => onAnalyze(stock)}>分析</Button>
+          </Flex>
+        </article>
+      ))}
     </div>
   );
 }

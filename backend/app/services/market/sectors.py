@@ -54,12 +54,22 @@ class MarketSectorMixin:
         return []
 
     def sector_relative_strength_rank(self, db, limit: int = 8, per_sector_limit: int = 10):
+        from app.services.market.go_read_client import load_go_sector_relative_strength
         from app.services.market.sector_relative_strength import build_sector_relative_strength_rank
 
         regime = self.get_market_regime_fast()
+        hot_sectors = list(getattr(regime, "hot_industries", []) or [])
+        go_response = load_go_sector_relative_strength(
+            db,
+            hot_sectors=hot_sectors,
+            sector_limit=limit,
+            per_sector_limit=per_sector_limit,
+        )
+        if go_response is not None:
+            return go_response
         return build_sector_relative_strength_rank(
             db,
-            hot_sectors=list(getattr(regime, "hot_industries", []) or []),
+            hot_sectors=hot_sectors,
             sector_limit=limit,
             per_sector_limit=per_sector_limit,
         )

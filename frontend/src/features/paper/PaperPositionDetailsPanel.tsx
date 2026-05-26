@@ -53,7 +53,7 @@ export function PaperPositionDetailsPanel({
   const setSelectedSymbol = usePaperUiStore((state) => state.setSelectedPositionSymbol);
   const selected = details.find((item) => item.symbol === selectedSymbol) ?? details[0] ?? null;
   const content = (
-    <Space direction="vertical" size={12} style={{ display: "flex", width: "100%" }}>
+    <Space direction="vertical" size={8} style={{ display: "flex", width: "100%", fontSize: 11 }}>
       {loading ? <DetailSkeleton /> : null}
       {!loading && !details.length ? <EmptyState text="暂无持仓或成交明细" /> : null}
       {!loading && selected ? (
@@ -70,16 +70,16 @@ export function PaperPositionDetailsPanel({
                   onClick={() => setSelectedSymbol(item.symbol)}
                   role="tab"
                   aria-selected={active}
-                  style={{ flex: "0 0 156px", height: "auto", padding: "8px 10px", textAlign: "left" }}
+                  style={{ flex: "0 0 132px", height: "auto", padding: "6px 8px", textAlign: "left" }}
                 >
                   <Space direction="vertical" size={1} style={{ width: "100%" }}>
-                    <Typography.Text strong ellipsis style={active ? { color: "#fff" } : undefined}>
+                    <Typography.Text strong ellipsis style={active ? { color: "#fff", fontSize: 11 } : { fontSize: 11 }}>
                       {item.name}
                     </Typography.Text>
-                    <Typography.Text style={active ? { color: "rgba(255,255,255,0.8)" } : undefined} type={active ? undefined : "secondary"}>
+                    <Typography.Text style={active ? { color: "rgba(255,255,255,0.8)", fontSize: 10 } : { fontSize: 10 }} type={active ? undefined : "secondary"}>
                       {item.symbol}
                     </Typography.Text>
-                    <Typography.Text style={{ color: active ? "#fff" : amountColor(item.totalPnl, tone) }}>
+                    <Typography.Text style={{ color: active ? "#fff" : amountColor(item.totalPnl, tone), fontSize: 11 }}>
                       {formatSignedMoney(item.totalPnl)}
                     </Typography.Text>
                   </Space>
@@ -104,7 +104,7 @@ export function PaperPositionDetailsPanel({
               {selected.orders.slice(0, 10).map((item) => <OrderDetailRow item={item} key={item.id} />)}
             </DetailList>
           </Row>
-          <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+          <Typography.Text type="secondary" style={{ fontSize: 11 }}>
             已实现盈亏由后台按全量成交顺序回放，当前持仓盈亏以后台持仓价和最新行情为准。
           </Typography.Text>
         </>
@@ -215,9 +215,9 @@ function SelectedStockSummary({ detail }: { detail: StockTradeDetail }) {
 
 function SummaryMetric({ label, value, tone }: { label: string; value: string; tone: string }) {
   return (
-    <Col xs={24} sm={12} lg={8} xl={5}>
-      <Card size="small">
-        <Statistic title={label} value={value} valueStyle={{ color: amountColor(undefined, tone), fontSize: 15 }} />
+    <Col xs={12} sm={8} lg={6} xl={4}>
+      <Card size="small" styles={{ body: { padding: 6 } }}>
+        <Statistic title={label} value={value} styles={{ content: { color: amountColor(undefined, tone), fontSize: 12, lineHeight: 1.1 } }} />
       </Card>
     </Col>
   );
@@ -236,8 +236,8 @@ function DetailList({
 }) {
   return (
     <Col xs={24} lg={12}>
-      <Card size="small" title={title} extra={<Typography.Text type="secondary">{hint}</Typography.Text>}>
-        <Space direction="vertical" size={8} style={{ display: "flex", maxHeight: 320, overflowY: "auto" }}>
+      <Card size="small" title={title} extra={<Typography.Text type="secondary" style={{ fontSize: 11 }}>{hint}</Typography.Text>} styles={{ body: { padding: 6 } }}>
+        <Space direction="vertical" size={6} style={{ display: "flex", maxHeight: 260, overflowY: "auto" }}>
           {Children.count(children) ? children : <EmptyState text={emptyText} />}
         </Space>
       </Card>
@@ -249,18 +249,18 @@ function TradeDetailRow({ item }: { item: PaperTrade }) {
   const sideText = item.side === "buy" ? "买入" : "卖出";
   const reason = plainTradingText(item.side === "buy" ? item.entry_reason : item.exit_reason);
   return (
-    <Card size="small">
-      <Space direction="vertical" size={6} style={{ width: "100%" }}>
+    <Card size="small" styles={{ body: { padding: 6 } }}>
+      <Space direction="vertical" size={5} style={{ width: "100%", fontSize: 11 }}>
         <Flex justify="space-between" wrap gap={8}>
           <Tag color={item.side === "buy" ? "red" : "green"}>{sideText} {formatInteger(item.quantity)} 股</Tag>
-          <Typography.Text type="secondary">{formatPaperDateTime(item.trade_time)}</Typography.Text>
+          <Typography.Text type="secondary" style={{ fontSize: 11 }}>{formatPaperDateTime(item.trade_time)}</Typography.Text>
         </Flex>
         <Flex wrap gap={12}>
           <Typography.Text>价格 {formatPriceWithYuan(item.price)}</Typography.Text>
           <Typography.Text>成交额 {formatMoneyWithYuan(item.gross_amount)}</Typography.Text>
           <Typography.Text>费用 {formatMoneyWithYuan(tradeFees(item))}</Typography.Text>
         </Flex>
-        {reason ? <Typography.Text type="secondary">{reason}</Typography.Text> : null}
+        {reason ? <Typography.Text type="secondary" style={{ fontSize: 11 }}>{reason}</Typography.Text> : null}
       </Space>
     </Card>
   );
@@ -270,18 +270,18 @@ function OrderDetailRow({ item }: { item: PaperOrder }) {
   const sideText = item.side === "buy" ? "买入" : "卖出";
   const statusText = orderStatusText(item.status);
   return (
-    <Card size="small">
-      <Space direction="vertical" size={6} style={{ width: "100%" }}>
+    <Card size="small" styles={{ body: { padding: 6 } }}>
+      <Space direction="vertical" size={5} style={{ width: "100%", fontSize: 11 }}>
         <Flex justify="space-between" wrap gap={8}>
           <Tag color={item.side === "buy" ? "red" : "green"}>{sideText} {formatInteger(item.quantity)} 股</Tag>
-          <Typography.Text type="secondary">{formatPaperDateTime(item.created_at)}</Typography.Text>
+          <Typography.Text type="secondary" style={{ fontSize: 11 }}>{formatPaperDateTime(item.created_at)}</Typography.Text>
         </Flex>
         <Flex wrap gap={12}>
           <Typography.Text>{item.order_type === "market" ? "市价" : "限价"} {formatPriceWithYuan(item.price ?? item.avg_fill_price)}</Typography.Text>
           <Typography.Text>已成 {formatInteger(item.filled_quantity)} 股</Typography.Text>
           <Typography.Text>{statusText}</Typography.Text>
         </Flex>
-        {item.reject_reason ? <Typography.Text type="warning">{plainTradingText(item.reject_reason)}</Typography.Text> : null}
+        {item.reject_reason ? <Typography.Text type="warning" style={{ fontSize: 11 }}>{plainTradingText(item.reject_reason)}</Typography.Text> : null}
       </Space>
     </Card>
   );

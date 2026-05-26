@@ -12,14 +12,14 @@ service tokens, with Python fallbacks preserved for rollback.
   local quote cache written by Python and can return quote batches, sector
   relative strength, and intraday key levels without calling external data
   providers.
-- `scan-worker`: production read-only scan worker endpoint. It accepts internal
-  scan requests and is safe for mainline orchestration because production
-  snapshot writes remain Python-owned until parity promotion is approved.
+- `scan-worker`: production scan orchestrator. It owns the scheduled scan entry
+  point, calls the Python strategy reference through an internal endpoint, and
+  only publishes latest snapshots when the reference write succeeds.
 
 ## Safety Rules
 
-- No Go service writes production strategy snapshots until parity promotion is
-  explicitly approved.
+- Go scan-worker is the production entry point for scheduled low-buy scans.
+  Python remains the business-rule fallback/reference behind the internal call.
 - Internal calls must use `X-Internal-Service-Token` in production.
 - Python remains the fallback path.
 

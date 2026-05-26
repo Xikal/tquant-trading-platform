@@ -36,6 +36,7 @@ class HourlyAllMarketSnapshotService:
         snapshots = self.market_data.get_stock_spot_snapshot_map(force_refresh=True)
         payload = self._build_payload(snapshots, reason=reason)
         _write_state(self.db, payload)
+        _write_pulse_event(self.db)
         self.db.commit()
         return payload
 
@@ -120,8 +121,71 @@ def _write_state(db: Session, payload: dict[str, Any]) -> None:
     raw = json.dumps(payload, ensure_ascii=False, default=str)
     if row is None:
         db.add(SystemSetting(key=SETTING_KEY, value=raw))
-    else:
+    elif not _should_keep_previous_state(_json_dict(row.value), payload):
         row.value = raw
+    from app.services.market.pulse_history import record_hourly_snapshot_history
+
+    record_hourly_snapshot_history(db, payload)
+    db.flush()
+
+
+def _should_keep_previous_state(previous: dict[str, Any], payload: dict[str, Any]) -> bool:
+    """Do not let a transient empty refresh erase a usable snapshot for the same slot."""
+
+    if not previous:
+        return False
+    if not previous.get("ok") or int(previous.get("snapshot_count") or 0) <= 0:
+        return False
+    if payload.get("ok") or int(payload.get("snapshot_count") or 0) > 0:
+        return False
+    return _payload_bucket(previous) == _payload_bucket(payload)
+
+
+def _payload_bucket(payload: dict[str, Any]) -> str:
+    raw = str(payload.get("updated_at") or "")
+    try:
+        parsed = datetime.strptime(raw, "%Y-%m-%d %H:%M:%S")
+    except ValueError:
+        return ""
+    return hourly_all_market_snapshot_bucket(parsed.replace(tzinfo=BEIJING_TZ))
+
+
+def _json_dict(raw: str | None) -> dict[str, Any]:
+    try:
+        parsed = json.loads(raw or "{}")
+    except Exception:
+        return {}
+    return parsed if isinstance(parsed, dict) else {}
+
+
+def _write_pulse_event(db: Session) -> None:
+    from app.models.schema_defs.market import MarketBreadthResponse, SectorRelativeStrengthResponse
+    from app.services.market.pulse import build_intraday_market_pulse
+    from app.services.market.pulse_history import record_market_pulse_event
+
+    hourly = latest_hourly_all_market_snapshot(db)
+    pulse = build_intraday_market_pulse(
+        market_breadth=MarketBreadthResponse(
+            updated_at=str(hourly.get("updated_at") or beijing_now_string()),
+            state="",
+            state_text=str(hourly.get("market_strength_text") or ""),
+            breadth_ready=bool(hourly.get("ok", False)),
+            emotion_ready=False,
+            stock_up_ratio=float(hourly.get("stock_up_ratio") or 0.0),
+            stock_median_change=float(hourly.get("stock_median_change") or 0.0),
+            data_quality="fresh" if hourly.get("ok", False) else "unavailable",
+            data_quality_text=str(hourly.get("data_quality_text") or ""),
+            hourly_all_market_snapshot=hourly,
+        ),
+        sector_relative_strength=SectorRelativeStrengthResponse(
+            updated_at=str(hourly.get("updated_at") or beijing_now_string()),
+            trade_date=str(hourly.get("updated_at") or "")[:10],
+            sector_count=0,
+            items=[],
+            notes=["小时全市场快照任务记录的 pulse 事件不刷新板块龙头排行。"],
+        ),
+    )
+    record_market_pulse_event(db, pulse)
     db.flush()
 
 

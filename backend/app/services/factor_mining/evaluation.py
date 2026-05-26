@@ -9,6 +9,7 @@ import pandas as pd
 from sqlalchemy.orm import Session
 
 from app.models.schema_defs.factor_mining import FactorEvaluationRequest, FactorEvalResultOut
+from app.services.finance.rust_math import rust_rank_ic
 from app.services.factor_mining.compute_engine import FactorComputeEngine
 from app.services.factor_mining.data_store import FactorDataStore
 
@@ -140,7 +141,9 @@ def _daily_rank_ic(samples: pd.DataFrame, *, min_cross_section: int) -> pd.Serie
     for trade_date, group in samples.groupby("trade_date"):
         if len(group) < min_cross_section:
             continue
-        corr = group["factor_value"].rank().corr(group["future_return"].rank())
+        corr = rust_rank_ic(group["factor_value"].tolist(), group["future_return"].tolist())
+        if corr is None:
+            corr = group["factor_value"].rank().corr(group["future_return"].rank())
         if pd.notna(corr):
             values[str(trade_date)] = float(corr)
     return pd.Series(values).sort_index()

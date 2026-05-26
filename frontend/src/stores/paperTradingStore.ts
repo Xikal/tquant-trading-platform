@@ -7,6 +7,7 @@ import type {
   PaperLedgerRepairResponse,
   PaperOrder,
   PaperPerformance,
+  PaperPerformanceDashboard,
   PaperPosition,
   PaperSectorEtfT0Performance,
   PaperStockPnlItem,
@@ -48,6 +49,7 @@ interface PaperTradingStore {
   autoTradingStatus: PaperAutoTradingStatus | null;
   autoTradingRuns: PaperAgentRun[];
   ledgerRepairStatus: PaperLedgerRepairResponse | null;
+  performanceDashboard: PaperPerformanceDashboard | null;
   draft: PaperOrderDraft;
   setAccount: (account: PaperAccount | null) => void;
   setPositions: (positions: PaperPosition[]) => void;
@@ -65,6 +67,7 @@ interface PaperTradingStore {
   setAutoTradingStatus: (status: PaperAutoTradingStatus | null) => void;
   setAutoTradingRuns: (runs: PaperAgentRun[]) => void;
   setLedgerRepairStatus: (status: PaperLedgerRepairResponse | null) => void;
+  setPerformanceDashboard: (dashboard: PaperPerformanceDashboard | null) => void;
   setDraft: (draft: PaperOrderDraft | ((current: PaperOrderDraft) => PaperOrderDraft)) => void;
   clearPaperData: () => void;
 }
@@ -86,6 +89,7 @@ export const usePaperTradingStore = create<PaperTradingStore>((set) => ({
   autoTradingStatus: null,
   autoTradingRuns: [],
   ledgerRepairStatus: null,
+  performanceDashboard: null,
   draft: DEFAULT_PAPER_ORDER_DRAFT,
   setAccount: (account) => set({ account }),
   setPositions: (positions) => set({ positions }),
@@ -105,6 +109,7 @@ export const usePaperTradingStore = create<PaperTradingStore>((set) => ({
   setAutoTradingStatus: (autoTradingStatus) => set({ autoTradingStatus }),
   setAutoTradingRuns: (autoTradingRuns) => set({ autoTradingRuns }),
   setLedgerRepairStatus: (ledgerRepairStatus) => set({ ledgerRepairStatus }),
+  setPerformanceDashboard: (performanceDashboard) => set({ performanceDashboard }),
   setDraft: (draft) => set((state) => ({
     draft: typeof draft === "function" ? draft(state.draft) : draft,
   })),
@@ -125,5 +130,6 @@ export const usePaperTradingStore = create<PaperTradingStore>((set) => ({
     autoTradingStatus: null,
     autoTradingRuns: [],
     ledgerRepairStatus: null,
+    performanceDashboard: null,
   }),
 }));

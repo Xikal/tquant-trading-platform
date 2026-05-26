@@ -18,7 +18,7 @@ from app.models.entities import DailyBarSnapshot, User
 from app.models.schema_defs.factor_mining import FactorCreateRequest, FactorEvaluationRequest
 from app.services.factor_mining.combination import ridge_regression_combination
 from app.services.factor_mining.compute_engine import FactorComputeEngine, FactorSafetyError
-from app.services.factor_mining.evaluation import _walk_forward_ic
+from app.services.factor_mining.evaluation import _daily_rank_ic, _walk_forward_ic
 from app.services.factor_mining.hypothesis_agent import FactorHypothesisAgent
 from app.services.factor_mining.library import FactorLibrary
 from app.services.factor_mining.orchestrator import FactorMiningOrchestrator
@@ -106,6 +106,28 @@ def test_walk_forward_ic_requires_stable_rolling_oos_windows():
 
     assert windows
     assert any(value < 0 for value in windows)
+
+
+def test_daily_rank_ic_uses_rust_when_available(monkeypatch):
+    calls = []
+
+    def fake_rank_ic(factors, returns):
+        calls.append((factors, returns))
+        return 0.42
+
+    monkeypatch.setattr("app.services.factor_mining.evaluation.rust_rank_ic", fake_rank_ic)
+    samples = pd.DataFrame(
+        [
+            {"trade_date": "2026-05-25", "symbol": "600000", "factor_value": 1.0, "future_return": 0.01},
+            {"trade_date": "2026-05-25", "symbol": "600001", "factor_value": 2.0, "future_return": 0.02},
+            {"trade_date": "2026-05-25", "symbol": "600002", "factor_value": 3.0, "future_return": 0.03},
+        ]
+    )
+
+    values = _daily_rank_ic(samples, min_cross_section=3)
+
+    assert calls
+    assert values.iloc[0] == 0.42
 
 
 def test_monthly_factor_mining_topic_rotates_research_domains():

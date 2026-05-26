@@ -308,6 +308,8 @@ export function RuntimeDiagnosticsCard({
       <InfoPill label="AI 分析" value={runtime?.llm_configured ? "已配置" : "未配置"} />
       <InfoPill label="环境文件" value={runtime?.runtime_env_exists ? "存在" : "--"} />
       <InfoPill label="数据库后端" value={runtime?.database_backend ?? "--"} />
+      <InfoPill label="配置一致性" value={runtime?.settings_consistency_text ?? "--"} />
+      <InfoPill label="敏感字段" value={runtime?.runtime_llm_secret_persisted ? "需清理" : "未明文持久化"} />
       <InfoPill label="后台任务" value={taskHealthSummary(adminTasks)} />
       <InfoPill label="行情链路" value={providerSummary ? `${providerOkCount}/${providerSummary.items.length} 可用` : "--"} />
       {adminTasks.length > 0 ? (
@@ -410,6 +412,7 @@ export function RuntimeSnapshotPanel({
       <InfoPill label="数据源" value={settings?.data_source || "--"} />
       <InfoPill label="AI 分析" value={runtime?.llm_configured ? "已配置" : "未配置"} />
       <InfoPill label="运行诊断" value={runtime?.ready_checks ? readySummary(runtime.ready_checks) : "--"} />
+      <InfoPill label="配置一致性" value={runtime?.settings_consistency_status ?? "--"} />
     </aside>
   );
 }

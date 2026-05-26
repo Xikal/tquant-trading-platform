@@ -59,12 +59,12 @@ const CANVAS_HEIGHT = 288;
 
 const SURFACE_STYLE: CSSProperties = {
   position: "relative",
-  minHeight: 330,
+  minHeight: 300,
   display: "grid",
-  gap: 10,
+  gap: 8,
   overflow: "visible",
-  padding: 13,
-  borderRadius: 11,
+  padding: 10,
+  borderRadius: 8,
   color: "#c8d6e5",
 };
 
@@ -86,7 +86,7 @@ const KICKER_STYLE: CSSProperties = {
 
 const TITLE_STYLE: CSSProperties = {
   margin: 0,
-  fontSize: 16,
+  fontSize: 13,
   lineHeight: 1.15,
 };
 
@@ -99,10 +99,11 @@ const ACTIONS_STYLE: CSSProperties = {
 };
 
 const MINI_BUTTON_STYLE: CSSProperties = {
-  minHeight: 27,
-  padding: "4px 9px",
+  minHeight: 24,
+  padding: "3px 8px",
   borderRadius: 8,
   fontWeight: 900,
+  fontSize: 11,
 };
 
 const BADGE_STYLE: CSSProperties = {
@@ -112,20 +113,20 @@ const BADGE_STYLE: CSSProperties = {
   justifyContent: "center",
   padding: "0 8px",
   borderRadius: 999,
-  fontSize: 11,
+  fontSize: 10,
   fontWeight: 900,
   margin: 0,
 };
 
 const CANVAS_BUTTON_STYLE: CSSProperties = {
-  width: "min(100%, 292px)",
+  width: "min(100%, 260px)",
   height: "auto",
   minHeight: 0,
   margin: "0 auto",
   display: "grid",
   placeItems: "center",
   overflow: "visible",
-  padding: 6,
+  padding: 5,
   borderRadius: 10,
   lineHeight: 1,
 };
@@ -144,10 +145,10 @@ const STATUS_BAR_STYLE: CSSProperties = {
   gap: 8,
   alignItems: "center",
   width: "100%",
-  padding: "7px 9px",
+  padding: "6px 8px",
   borderRadius: 8,
   fontFamily: '"IBM Plex Mono", "SFMono-Regular", monospace',
-  fontSize: 11,
+  fontSize: 10,
   flexWrap: "wrap",
 };
 

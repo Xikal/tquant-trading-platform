@@ -121,6 +121,105 @@ export interface MarketBreadth {
   hot_overlap_ratio: number;
   data_quality?: string;
   data_quality_text: string;
+  autofill_details?: Array<{ source: string; method?: string; detail: string; filled_at?: string; [key: string]: unknown }>;
+  hourly_all_market_snapshot?: {
+    ok?: boolean;
+    reason?: string;
+    updated_at?: string;
+    snapshot_count?: number;
+    stock_up_ratio?: number;
+    stock_down_ratio?: number;
+    stock_flat_count?: number;
+    stock_median_change?: number;
+    strong_count?: number;
+    weak_count?: number;
+    market_strength_score?: number;
+    market_strength_text?: string;
+    source?: string;
+    data_quality_text?: string;
+  };
+}
+
+export interface MarketHourlySnapshotHistoryItem {
+  id: number;
+  trade_date: string;
+  snapshot_bucket: string;
+  data_quality: "fresh" | "stale" | "partial" | "unavailable" | string;
+  snapshot_count: number;
+  market_strength_score: number;
+  payload: {
+    updated_at?: string;
+    market_strength_text?: string;
+    stock_up_ratio?: number;
+    stock_down_ratio?: number;
+    stock_median_change?: number;
+    strong_count?: number;
+    weak_count?: number;
+    data_quality_text?: string;
+    [key: string]: unknown;
+  };
+  created_at: string;
+  updated_at: string;
+}
+
+export interface MarketHourlySnapshotHistoryResponse {
+  items: MarketHourlySnapshotHistoryItem[];
+  total: number;
+}
+
+export interface IntradayMarketPulse {
+  updated_at: string;
+  data_quality: "fresh" | "stale" | "partial" | "unavailable" | string;
+  data_quality_text: string;
+  market_strength_text: string;
+  leader_strength_text: string;
+  emotion_text: string;
+  hourly_snapshot_text: string;
+  pulse_level: string;
+  pulse_text: string;
+  suggested_action: string;
+  partial_errors: Array<{ source: string; detail: string }>;
+  market_breadth_summary: Record<string, unknown>;
+  leader_strength_summary: Record<string, unknown>;
+  emotion_summary: Record<string, unknown>;
+  hourly_snapshot_summary: Record<string, unknown>;
+  autofill_details?: Array<{ source: string; method?: string; detail: string; filled_at?: string; [key: string]: unknown }>;
+}
+
+export interface MarketReviewReport {
+  id: number;
+  report_date: string;
+  report_slot?: "midday" | "close" | string;
+  review_subject?: string;
+  source_scope?: "market" | string;
+  overall_summary: string;
+  strategy_highlights: Array<{
+    strategy: string;
+    comment: string;
+    trend: "improving" | "stable" | "declining" | "new" | string;
+  }>;
+  risk_alerts: Array<{
+    level: "info" | "warning" | "danger" | string;
+    content: string;
+  }>;
+  suggestion: string;
+  generated_at: string;
+  llm_model: string;
+  missing_data?: Array<{ source: string; name?: string; detail?: string; [key: string]: unknown }>;
+  autofill_details?: Array<{ source: string; method?: string; detail: string; filled_at?: string; [key: string]: unknown }>;
+}
+
+export interface MarketReviewStatus {
+  trade_date: string;
+  status: string;
+  status_text: string;
+  review_subject?: string;
+  source_scope?: "market" | string;
+  has_midday: boolean;
+  has_close: boolean;
+  next_trigger_at: string;
+  risk_alert_count: number;
+  suggested_action: string;
 }
 
 export interface MarketTradingSession {

@@ -39,6 +39,10 @@ def evaluate_multi_timeframe_resonance(history: pd.DataFrame, latest_close: floa
 
 def _aggregate_ohlcv(history: pd.DataFrame, rule: str) -> pd.DataFrame:
     frame = history.copy()
+    if "amount" not in frame.columns:
+        frame["amount"] = 0.0
+    if "volume" not in frame.columns:
+        frame["volume"] = 0.0
     frame["date"] = pd.to_datetime(frame["date"])
     frame = frame.set_index("date").sort_index()
     aggregated = frame.resample(rule).agg(

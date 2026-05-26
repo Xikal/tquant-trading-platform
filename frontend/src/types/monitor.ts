@@ -1,5 +1,5 @@
 import type { LowBuyPriorityBoardResult } from "./playbook";
-import type { MarketBreadth, PairedHedgeResearchResponse, SectorEtfT0Response, SectorRelativeStrengthResponse } from "./market";
+import type { IntradayMarketPulse, MarketBreadth, MarketReviewReport, MarketReviewStatus, PairedHedgeResearchResponse, SectorEtfT0Response, SectorRelativeStrengthResponse } from "./market";
 import type { WatchlistSignal } from "./watchlist";
 
 export interface MonitorSnapshot {
@@ -20,6 +20,9 @@ export interface MonitorWorkspaceBffResponse {
   generated_at: string;
   monitor_snapshot?: MonitorSnapshot | null;
   market_breadth?: MarketBreadth | null;
+  market_pulse?: IntradayMarketPulse | null;
+  review_status?: MarketReviewStatus | null;
+  review_reports?: MarketReviewReport[];
   sector_relative_strength?: SectorRelativeStrengthResponse | null;
   paired_hedge?: PairedHedgeResearchResponse | null;
   partial_errors: BffPartialError[];

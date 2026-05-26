@@ -16,6 +16,7 @@ import { operationAuditApi } from "../../api/operationAudit";
 import { NumberField, TextField } from "../../components/shared/FormFields";
 import { AuthSecurityCard } from "./AuthSecurityCard";
 import { InfoPill, PanelTitle, SettingCard } from "../workspace-shared/WorkspaceComponents";
+import { WorkspacePageIntro } from "../workspace-shared/WorkspacePageIntro";
 import {
   FeatureFlagsCard,
   OperationAuditCard,
@@ -329,7 +330,20 @@ export function SettingsPage({
   return (
     <section style={SETTINGS_PAGE_STYLE}>
       <div className="panel" style={SETTINGS_HERO_STYLE}>
-        <PanelTitle title="开放式系统配置" actions={<Button onClick={onRefresh} loading={loading === "settings"}>刷新配置</Button>} />
+        <WorkspacePageIntro
+          title="系统设置"
+          summary={runtime?.settings_consistency_text || "账户安全、风控参数、数据源、策略治理。"}
+          more="配置保存采用一致性语义；敏感字段只显示配置状态，不回显真实值。"
+          moreLabel="保存规则"
+          tone={unsavedCount > 0 ? "warn" : runtime?.settings_consistency_status === "ok" ? "up" : "neutral"}
+          actions={<Button onClick={onRefresh} loading={loading === "settings"}>刷新配置</Button>}
+          pills={[
+            { label: "当前页签", value: settingsTabs.find((tab) => tab.key === activeTab)?.label || "--" },
+            { label: "未保存", value: String(unsavedCount), tone: unsavedCount > 0 ? "warn" : "neutral" },
+            { label: "数据库", value: runtime?.database_backend || "--" },
+            { label: "大模型", value: runtime?.llm_configured ? "已配置" : "未配置", tone: runtime?.llm_configured ? "up" : "neutral" },
+          ]}
+        />
         {unsavedCount > 0 ? (
           <div style={SETTINGS_UNSAVED_BANNER_STYLE}>
             <span>有 {unsavedCount} 项未保存的更改</span>
@@ -344,13 +358,13 @@ export function SettingsPage({
       </div>
       <div style={SETTINGS_CARDS_STYLE}>
         {activeTab === "account" ? (
-          <SettingsSection title="我的账户" description="登录安全、二次验证和权限状态">
+          <SettingsSection title="我的账户" description="安全 / 权限">
             <AuthSecurityCard currentUser={currentUser} onUserUpdate={onUserUpdate} />
           </SettingsSection>
         ) : null}
 
         {activeTab === "trading" ? (
-        <SettingsSection title="交易参数" description="普通用户常用配置：风控、行业过滤和模拟退出">
+        <SettingsSection title="交易参数" description="风控 / 行业 / 退出">
             <SettingCard className="risk-params-card" title="风控参数" button="保存风控参数" onSave={() => void saveSection("risk")} loading={loading === "settings-risk"} saved={savedSection === "risk"} disabled={Boolean(adminTokenError || singleLossError || dailyLossError || pauseLossError || minProfitError)}>
               <div style={SETTINGS_FORM_GRID_STYLE}>
                 <NumberField label="单笔最大亏损" suffix="%" value={draft.risk_max_single_loss_pct} error={singleLossError} onChange={(event) => setDraft({ ...draft, risk_max_single_loss_pct: event.target.value })} />
@@ -379,7 +393,7 @@ export function SettingsPage({
         ) : null}
 
         {isAdmin && activeTab === "llm" ? (
-          <SettingsSection title="大模型与因子" description="DeepSeek、大模型接口、因子权重和 ML 参数" admin>
+          <SettingsSection title="大模型与因子" description="LLM / 因子 / ML" admin>
             <SettingCard className="llm-config-card" title="大模型配置" button="保存大模型配置" onSave={() => void saveSection("llm")} loading={loading === "settings-llm"} saved={savedSection === "llm"} disabled={Boolean(adminTokenError || llmKeyError || llmBaseUrlError)}>
               <div style={SETTINGS_FORM_GRID_STYLE}>
                 <TextField label="管理令牌" value={draft.adminToken} error={adminTokenError} onChange={(event) => setDraft({ ...draft, adminToken: event.target.value })} />
@@ -404,7 +418,7 @@ export function SettingsPage({
         ) : null}
 
         {isAdmin && activeTab === "data" ? (
-          <SettingsSection title="数据库与诊断" description="数据源、数据库掩码、运行任务和快照状态" admin>
+          <SettingsSection title="数据库与诊断" description="数据源 / 任务 / 快照" admin>
             <SettingCard title="数据库与数据源" button="保存数据配置" onSave={() => void saveSection("data")} loading={loading === "settings-data"} saved={savedSection === "data"} disabled={Boolean(adminTokenError || dataSourceUrlError)}>
               <div style={SETTINGS_FORM_GRID_COMPACT_STYLE}>
                 <TextField label="数据源" value={draft.data_source} hint={adminTokenError || "保存数据源配置同样需要管理令牌。"} onChange={(event) => setDraft({ ...draft, data_source: event.target.value })} />
@@ -425,7 +439,7 @@ export function SettingsPage({
         ) : null}
 
         {isAdmin && activeTab === "governance" ? (
-          <SettingsSection title="策略治理" description="策略状态、功能开关和关键操作审计" admin>
+          <SettingsSection title="策略治理" description="状态 / 开关 / 审计" admin>
             <StrategyGovernanceCard strategyGovernance={strategyGovernance} loading={loading} onRefresh={onRefresh} onUpdateStrategyGovernance={onUpdateStrategyGovernance} />
             <FeatureFlagsCard featureFlags={featureFlags} featureFlagAudits={featureFlagAudits} featureFlagError={featureFlagError} loading={loading} saved={savedSection === "feature-flags"} onRefresh={() => void loadFeatureFlags({ includeAudit: true })} onToggle={(item) => void toggleFeatureFlag(item)} />
             <OperationAuditCard items={operationAudits} error={operationAuditError} loading={operationAuditLoading} onRefresh={() => void loadOperationAudits()} />

@@ -4,6 +4,7 @@ import type {
   PaperLedgerRepairResponse,
   PaperOrder,
   PaperPerformance,
+  PaperPerformanceDashboard,
   PaperPosition,
   PaperAgentRun,
   PaperAutoTradingStatus,
@@ -15,8 +16,9 @@ import type {
   PaperTradeTag,
   RiskEventItem,
 } from "../../types";
+import type { CSSProperties } from "react";
 import { memo, useEffect, useMemo } from "react";
-import { Col, Row, Space } from "antd";
+import { Card, Col, Collapse, Row, Space, Typography } from "antd";
 import { PixelTraderWorker } from "./PixelTraderWorker";
 import { PaperDetailTabs } from "./PaperDetailTabs";
 import { PaperTradingSummaryBar } from "./PaperTradingSummaryBar";
@@ -27,6 +29,33 @@ import {
 } from "./PaperTradingSections";
 import type { PaperOrderDraft } from "../workspace-shared/workspaceTypes";
 import { usePaperUiStore } from "../../stores/paperUiStore";
+
+const PAPER_PAGE_STACK_STYLE: CSSProperties = {
+  display: "flex",
+  fontSize: 11,
+  lineHeight: 1.32,
+  maxWidth: "100%",
+  minWidth: 0,
+  overflowX: "hidden",
+  width: "100%",
+};
+const PAPER_ROW_STYLE: CSSProperties = {
+  marginLeft: 0,
+  marginInline: 0,
+  marginRight: 0,
+  maxWidth: "100%",
+  minWidth: 0,
+  overflowX: "hidden",
+};
+const PAPER_SIDE_STACK_STYLE: CSSProperties = {
+  display: "flex",
+  fontSize: 11,
+};
+const PAPER_REVIEW_SUMMARY_BODY_STYLE: CSSProperties = {
+  display: "grid",
+  gap: 6,
+  padding: 10,
+};
 
 export interface PaperTradingPageProps {
   account: PaperAccount | null;
@@ -45,6 +74,7 @@ export interface PaperTradingPageProps {
   autoTradingStatus: PaperAutoTradingStatus | null;
   autoTradingRuns: PaperAgentRun[];
   ledgerRepairStatus?: PaperLedgerRepairResponse | null;
+  performanceDashboard?: PaperPerformanceDashboard | null;
   canManageReconcile?: boolean;
   draft: PaperOrderDraft;
   setDraft: (draft: PaperOrderDraft) => void;
@@ -74,6 +104,7 @@ export const PaperTradingPage = memo(function PaperTradingPage({
   autoTradingStatus,
   autoTradingRuns,
   ledgerRepairStatus = null,
+  performanceDashboard = null,
   canManageReconcile = false,
   draft,
   setDraft,
@@ -127,7 +158,7 @@ export const PaperTradingPage = memo(function PaperTradingPage({
   }
 
   return (
-    <Space orientation="vertical" size={12} style={{ display: "flex", width: "100%" }}>
+    <Space direction="vertical" size={8} style={PAPER_PAGE_STACK_STYLE}>
       <PaperTradingSummaryBar
         account={account}
         performance={performance}
@@ -137,6 +168,7 @@ export const PaperTradingPage = memo(function PaperTradingPage({
         onOpenOrderEntry={() => setOrderModalOpen(true)}
         onTogglePause={onTogglePause}
       />
+      <PaperReviewOverview dashboard={performanceDashboard} />
       {orderModalOpen ? (
         <OrderEntryModal
           draft={draft}
@@ -149,7 +181,7 @@ export const PaperTradingPage = memo(function PaperTradingPage({
           onSubmitOrder={submitOrderFromModal}
         />
       ) : null}
-      <Row gutter={[12, 12]} align="top" style={{ marginInline: 0 }}>
+      <Row gutter={[8, 8]} align="top" style={PAPER_ROW_STYLE}>
         <Col xs={24} xl={15}>
           <PaperPositionsPanel
             positions={positions}
@@ -157,7 +189,7 @@ export const PaperTradingPage = memo(function PaperTradingPage({
           />
         </Col>
         <Col xs={24} xl={9}>
-          <Space orientation="vertical" size={12} style={{ display: "flex" }}>
+          <Space direction="vertical" size={8} style={PAPER_SIDE_STACK_STYLE}>
             <PixelTraderWorker
               marketState={cockpitMarketState}
               paused={paused}
@@ -196,6 +228,35 @@ export const PaperTradingPage = memo(function PaperTradingPage({
     </Space>
   );
 });
+
+function PaperReviewOverview({ dashboard }: { dashboard: PaperPerformanceDashboard | null }) {
+  if (!dashboard) {
+    return null;
+  }
+  const reports = dashboard.review_reports ?? [];
+  return (
+    <Row gutter={[12, 12]} align="stretch" style={PAPER_ROW_STYLE}>
+      <Col xs={24}>
+        <Collapse
+          size="small"
+          items={[{
+            key: "review-history",
+            label: `复盘历史入口 · ${reports.length} 条`,
+            children: (
+              <Card
+                size="small"
+                extra={<Typography.Text type="secondary">{dashboard.updated_at || "--"}</Typography.Text>}
+                styles={{ body: PAPER_REVIEW_SUMMARY_BODY_STYLE }}
+              >
+                <Typography.Text type="secondary">全市场复盘主入口在实时监控页。</Typography.Text>
+              </Card>
+            ),
+          }]}
+        />
+      </Col>
+    </Row>
+  );
+}
 
 function resolveCockpitMarketState(
   autoTradingStatus: PaperAutoTradingStatus | null,

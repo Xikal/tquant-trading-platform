@@ -1,13 +1,5 @@
-import { useLayoutEffect } from "react";
-import { TradingWorkspace } from "../../features/trading-workspace/TradingWorkspace";
-import { useWorkspaceStore } from "../../stores/workspaceStore";
+import { WorkspaceRoute } from "./WorkspaceRoute";
 
 export function EmotionRoute() {
-  const setPage = useWorkspaceStore((state) => state.setPage);
-
-  useLayoutEffect(() => {
-    setPage("emotion");
-  }, [setPage]);
-
-  return <TradingWorkspace />;
+  return <WorkspaceRoute page="emotion" />;
 }

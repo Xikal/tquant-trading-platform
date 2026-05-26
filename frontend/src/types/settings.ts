@@ -52,9 +52,14 @@ export interface RuntimeStatus {
   api_prefix: string;
   database_backend: string;
   database_url_masked: string;
+  runtime_database_url_masked: string;
   runtime_env_path: string;
   runtime_env_exists: boolean;
   runtime_database_override: boolean;
+  runtime_database_matches_settings: boolean;
+  runtime_llm_secret_persisted: boolean;
+  settings_consistency_status: string;
+  settings_consistency_text: string;
   frontend_dist_path: string;
   frontend_dist_ready: boolean;
   llm_configured: boolean;

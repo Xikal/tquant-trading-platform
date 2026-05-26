@@ -54,8 +54,9 @@ export function StrategyWorkflow({
   const activeIndex = steps.findIndex((step) => (mode === "expert" ? step.target === activeTab : tabToStep(step.target) === activeStep));
 
   return (
-    <Card variant="borderless" aria-label="策略工作流程" styles={{ body: { padding: 14 } }}>
+    <Card variant="borderless" aria-label="策略工作流程" styles={{ body: { padding: 8 } }}>
       <Steps
+        size="small"
         current={activeIndex < 0 ? 0 : activeIndex}
         responsive
         onChange={(current) => {

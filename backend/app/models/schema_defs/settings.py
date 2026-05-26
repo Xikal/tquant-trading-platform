@@ -88,9 +88,15 @@ class DatabaseMigrationResponse(BaseModel):
     ok: bool
     source_database_url: str
     target_database_url: str
+    scope: str = "full_sqlalchemy_metadata"
+    copied_tables: List[str] = Field(default_factory=list)
+    cleared_tables: List[str] = Field(default_factory=list)
+    skipped_tables: List[str] = Field(default_factory=list)
+    failed_tables: List[str] = Field(default_factory=list)
     copied_rows: Dict[str, int]
     total_rows: int
     activated_on_restart: bool
+    recovery_hint: str = ""
     message: str
 
 
@@ -99,9 +105,14 @@ class RuntimeStatusResponse(BaseModel):
     api_prefix: str
     database_backend: str
     database_url_masked: str
+    runtime_database_url_masked: str = ""
     runtime_env_path: str
     runtime_env_exists: bool
     runtime_database_override: bool
+    runtime_database_matches_settings: bool = True
+    runtime_llm_secret_persisted: bool = False
+    settings_consistency_status: str = "ok"
+    settings_consistency_text: str = "运行时配置一致"
     frontend_dist_path: str
     frontend_dist_ready: bool
     llm_configured: bool

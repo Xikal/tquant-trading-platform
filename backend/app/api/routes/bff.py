@@ -39,7 +39,9 @@ from app.services.bff.settings_workspace import build_settings_workspace
 from app.services.bff.strategy_workspace import build_strategy_workspace
 from app.services.bff.timeout import run_workspace_with_timeout
 from app.services.bff.workspace_cache import load_cached_workspace
+from app.services.market.pulse import build_intraday_market_pulse
 from app.services.monitor_snapshot_service import build_monitor_snapshot
+from app.services.market.review import build_market_review_summary
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/bff/v1", dependencies=[Depends(get_current_user)])
@@ -369,25 +371,41 @@ def _build_monitor_workspace(
     hedge_limit: int,
 ) -> MonitorWorkspaceBffResponse:
     errors: list[BffPartialError] = []
+    monitor_snapshot_payload = _safe(
+        "monitor_snapshot",
+        errors,
+        lambda: build_monitor_snapshot(db, current_user=current_user, priority_limit=priority_limit),
+    )
+    market_breadth_payload = _safe("market_breadth", errors, lambda: market_breadth(realtime=False, db=db))
+    sector_payload = _safe(
+        "sector_relative_strength",
+        errors,
+        lambda: sector_relative_strength(sector_limit, per_sector_limit, db),
+    )
+    paired_payload = _safe(
+        "paired_hedge",
+        errors,
+        lambda: paired_hedge_research(hedge_limit, _attached_user(db, current_user), db),
+        ignore_forbidden=True,
+    )
+    review_status, review_reports = _safe(
+        "monitor_review",
+        errors,
+        lambda: build_market_review_summary(db),
+    ) or (None, [])
     return MonitorWorkspaceBffResponse(
         generated_at=beijing_now_string(),
-        monitor_snapshot=_safe(
-            "monitor_snapshot",
-            errors,
-            lambda: build_monitor_snapshot(db, current_user=current_user, priority_limit=priority_limit),
+        monitor_snapshot=monitor_snapshot_payload,
+        market_breadth=market_breadth_payload,
+        sector_relative_strength=sector_payload,
+        market_pulse=build_intraday_market_pulse(
+            market_breadth=market_breadth_payload,
+            sector_relative_strength=sector_payload,
+            partial_errors=[item.model_dump() for item in errors],
         ),
-        market_breadth=_safe("market_breadth", errors, lambda: market_breadth(realtime=False, db=db)),
-        sector_relative_strength=_safe(
-            "sector_relative_strength",
-            errors,
-            lambda: sector_relative_strength(sector_limit, per_sector_limit, db),
-        ),
-        paired_hedge=_safe(
-            "paired_hedge",
-            errors,
-            lambda: paired_hedge_research(hedge_limit, _attached_user(db, current_user), db),
-            ignore_forbidden=True,
-        ),
+        review_status=review_status,
+        review_reports=review_reports,
+        paired_hedge=paired_payload,
         partial_errors=errors,
     )
 

@@ -5,7 +5,10 @@ from typing import Any
 from pydantic import BaseModel, Field
 
 from app.models.schema_defs.market import (
+    IntradayMarketPulse,
     MarketBreadthResponse,
+    MarketReviewReportOut,
+    MarketReviewStatusOut,
     PairedHedgeResearchResponse,
     SectorRelativeStrengthResponse,
 )
@@ -33,7 +36,7 @@ from app.models.schema_defs.settings import (
 )
 from app.models.schema_defs.strategy_meta import StrategyMetaResponse, StrategyPresetResponse
 
-BFF_SCHEMA_VERSION = "v13"
+BFF_SCHEMA_VERSION = "v14"
 
 
 class BffPartialError(BaseModel):
@@ -62,6 +65,9 @@ class MonitorWorkspaceBffResponse(BaseModel):
     generated_at: str
     monitor_snapshot: MonitorSnapshotResponse | None = None
     market_breadth: MarketBreadthResponse | None = None
+    market_pulse: IntradayMarketPulse | None = None
+    review_status: MarketReviewStatusOut | None = None
+    review_reports: list[MarketReviewReportOut] = Field(default_factory=list)
     sector_relative_strength: SectorRelativeStrengthResponse | None = None
     paired_hedge: PairedHedgeResearchResponse | None = None
     partial_errors: list[BffPartialError] = Field(default_factory=list)

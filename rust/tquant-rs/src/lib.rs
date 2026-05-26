@@ -1,68 +1,45 @@
 use pyo3::prelude::*;
 
+mod finance_core;
+
+pub use finance_core::{
+    atr_wilder_values, max_drawdown_values, rank_ic_value, rolling_mean_values, rsi_wilder_value,
+    vwap_value,
+};
+
 #[pyfunction]
 fn max_drawdown(equity: Vec<f64>) -> PyResult<f64> {
-    if equity.is_empty() {
-        return Ok(0.0);
-    }
-    let mut peak = equity[0];
-    let mut max_dd = 0.0_f64;
-    for value in equity {
-        if value > peak {
-            peak = value;
-        }
-        if peak > 0.0 {
-            let dd = (peak - value) / peak;
-            if dd > max_dd {
-                max_dd = dd;
-            }
-        }
-    }
-    Ok(max_dd)
+    Ok(max_drawdown_values(&equity))
 }
 
 #[pyfunction]
 fn rolling_mean(values: Vec<f64>, window: usize) -> PyResult<Vec<Option<f64>>> {
-    if window == 0 {
-        return Ok(vec![None; values.len()]);
-    }
-    let mut result = Vec::with_capacity(values.len());
-    let mut sum = 0.0_f64;
-    for idx in 0..values.len() {
-        sum += values[idx];
-        if idx >= window {
-            sum -= values[idx - window];
-        }
-        if idx + 1 >= window {
-            result.push(Some(sum / window as f64));
-        } else {
-            result.push(None);
-        }
-    }
-    Ok(result)
+    Ok(rolling_mean_values(&values, window))
 }
 
 #[pyfunction]
-fn atr_wilder(highs: Vec<f64>, lows: Vec<f64>, closes: Vec<f64>, period: usize) -> PyResult<Vec<Option<f64>>> {
-    let len = highs.len().min(lows.len()).min(closes.len());
-    if period == 0 || len < period + 1 {
-        return Ok(vec![None; len]);
-    }
-    let mut true_ranges = Vec::with_capacity(len - 1);
-    for idx in 1..len {
-        let high_low = highs[idx] - lows[idx];
-        let high_close = (highs[idx] - closes[idx - 1]).abs();
-        let low_close = (lows[idx] - closes[idx - 1]).abs();
-        true_ranges.push(high_low.max(high_close).max(low_close));
-    }
-    let mut result = vec![None; len];
-    let mut atr = true_ranges[..period].iter().sum::<f64>() / period as f64;
-    result[period] = Some(atr);
-    for idx in period..true_ranges.len() {
-        atr = (atr * (period as f64 - 1.0) + true_ranges[idx]) / period as f64;
-        result[idx + 1] = Some(atr);
-    }
-    Ok(result)
+fn atr_wilder(
+    highs: Vec<f64>,
+    lows: Vec<f64>,
+    closes: Vec<f64>,
+    period: usize,
+) -> PyResult<Vec<Option<f64>>> {
+    Ok(atr_wilder_values(&highs, &lows, &closes, period))
+}
+
+#[pyfunction]
+fn rsi_wilder(values: Vec<f64>, period: usize) -> PyResult<Option<f64>> {
+    Ok(rsi_wilder_value(&values, period))
+}
+
+#[pyfunction]
+fn vwap(prices: Vec<f64>, volumes: Vec<f64>) -> PyResult<Option<f64>> {
+    Ok(vwap_value(&prices, &volumes))
+}
+
+#[pyfunction]
+fn rank_ic(factor: Vec<f64>, returns: Vec<f64>) -> PyResult<Option<f64>> {
+    Ok(rank_ic_value(&factor, &returns))
 }
 
 #[pymodule]
@@ -70,6 +47,9 @@ fn tquant_rs(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(max_drawdown, m)?)?;
     m.add_function(wrap_pyfunction!(rolling_mean, m)?)?;
     m.add_function(wrap_pyfunction!(atr_wilder, m)?)?;
+    m.add_function(wrap_pyfunction!(rsi_wilder, m)?)?;
+    m.add_function(wrap_pyfunction!(vwap, m)?)?;
+    m.add_function(wrap_pyfunction!(rank_ic, m)?)?;
     Ok(())
 }
 
@@ -103,5 +83,40 @@ mod tests {
         assert!(values[2].is_none());
         assert!((values[3].unwrap() - 1.8333333333333333).abs() < 1e-9);
         assert!((values[4].unwrap() - 1.8888888888888886).abs() < 1e-9);
+    }
+
+    #[test]
+    fn rsi_wilder_matches_known_sequence() {
+        let values = vec![
+            44.0, 44.15, 43.9, 44.35, 44.8, 45.0, 44.7, 44.9, 45.2, 45.5, 45.1, 45.7, 46.0, 46.4,
+            46.1, 46.8,
+        ];
+        let value = rsi_wilder(values, 14).unwrap().unwrap();
+
+        assert!((value - 76.6523).abs() < 0.0002);
+    }
+
+    #[test]
+    fn rsi_wilder_returns_neutral_for_flat_sequence() {
+        let values = vec![10.0; 16];
+        let value = rsi_wilder(values, 14).unwrap().unwrap();
+
+        assert!((value - 50.0).abs() < 1e-9);
+    }
+
+    #[test]
+    fn vwap_weights_by_volume() {
+        let value = vwap(vec![10.0, 12.0], vec![100.0, 300.0]).unwrap().unwrap();
+
+        assert!((value - 11.5).abs() < 1e-9);
+    }
+
+    #[test]
+    fn rank_ic_uses_spearman_correlation() {
+        let value = rank_ic(vec![1.0, 2.0, 3.0], vec![3.0, 2.0, 1.0])
+            .unwrap()
+            .unwrap();
+
+        assert!((value + 1.0).abs() < 1e-9);
     }
 }

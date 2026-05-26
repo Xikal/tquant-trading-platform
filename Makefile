@@ -1,6 +1,6 @@
 SHELL := /bin/bash
 
-.PHONY: frontend-build native-build native-sync backend-compile version-sync version-check qa ui-smoke prod-preflight runtime-snapshot public-up public-down docker-sqlite-up docker-sqlite-down docker-mysql-up docker-mysql-down
+.PHONY: frontend-build native-build native-sync backend-compile version-sync version-check qa ui-smoke prod-preflight runtime-snapshot rust-bench go-rust-acceptance public-up public-down docker-sqlite-up docker-sqlite-down docker-mysql-up docker-mysql-down
 
 frontend-build:
 	cd frontend && npm run build
@@ -31,6 +31,12 @@ prod-preflight:
 
 runtime-snapshot:
 	./scripts/runtime_snapshot.sh
+
+rust-bench:
+	cd rust/tquant-rs && cargo bench --features extension-module --bench finance
+
+go-rust-acceptance:
+	python scripts/verify_go_rust_performance_acceptance.py
 
 public-up:
 	./scripts/run_public_app.sh

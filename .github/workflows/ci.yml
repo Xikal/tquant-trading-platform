@@ -63,8 +63,46 @@ jobs:
         working-directory: frontend
         run: npm test -- --run
 
+  go-rust:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+      - name: Run Go service tests
+        run: |
+          (cd go-services/bff-gateway && go test ./...)
+          (cd go-services/market-read-service && go test ./...)
+          (cd go-services/scan-worker && go test ./...)
+      - name: Run Rust tests and wheel smoke
+        run: |
+          (cd rust/tquant-rs && cargo test)
+          python -m pip install --upgrade pip maturin
+          (cd rust/tquant-rs && maturin build --release --features extension-module --out dist)
+          python -m pip install rust/tquant-rs/dist/*.whl
+          python - <<'PY'
+          import tquant_rs
+          assert tquant_rs.max_drawdown([100.0, 80.0, 120.0]) == 0.2
+          assert abs(tquant_rs.rank_ic([1.0, 2.0, 3.0], [3.0, 2.0, 1.0]) + 1.0) < 1e-9
+          PY
+      - name: Run Rust finance benchmarks
+        run: |
+          mkdir -p docs/reports
+          (cd rust/tquant-rs && cargo bench --features extension-module --bench finance 2>&1) | tee docs/reports/rust-finance-bench.txt
+      - name: Upload Rust benchmark artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: rust-finance-bench
+          path: docs/reports/rust-finance-bench.txt
+
   deploy:
-    needs: [backend, frontend]
+    needs: [backend, frontend, go-rust]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: ubuntu-latest
     steps:

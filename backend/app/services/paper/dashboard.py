@@ -7,11 +7,11 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models.entities import (
+    MarketReviewReport,
     PaperAccount,
     PaperDailyReport,
     PaperMarketPerfDaily,
     PaperPerformanceSnapshot,
-    PaperReviewReport,
     PaperStrategyPerfDaily,
 )
 from app.services.paper.performance import PaperPerformanceService
@@ -101,11 +101,11 @@ class PaperPerformanceDashboardService:
             .limit(1)
         ).scalar_one_or_none()
 
-    def _review_reports(self, account_id: int) -> list[PaperReviewReport]:
+    def _review_reports(self, account_id: int) -> list[MarketReviewReport]:
+        _ = account_id
         return self.db.execute(
-            select(PaperReviewReport)
-            .where(PaperReviewReport.account_id == account_id)
-            .order_by(PaperReviewReport.report_date.desc(), PaperReviewReport.report_slot.asc())
+            select(MarketReviewReport)
+            .order_by(MarketReviewReport.report_date.desc(), MarketReviewReport.report_slot.asc())
             .limit(4)
         ).scalars().all()
 
@@ -248,10 +248,20 @@ def _daily_report(row: PaperDailyReport) -> dict:
     }
 
 
-def _review_report(row: PaperReviewReport) -> dict:
-    payload = _daily_report(row)
-    payload["report_slot"] = row.report_slot
-    return payload
+def _review_report(row: MarketReviewReport) -> dict:
+    return {
+        "id": row.id,
+        "report_date": row.report_date.isoformat(),
+        "report_slot": row.report_slot,
+        "review_subject": "全市场",
+        "source_scope": "market",
+        "overall_summary": row.overall_summary,
+        "strategy_highlights": _json_dict_list(row.strategy_highlights),
+        "risk_alerts": _json_dict_list(row.risk_alerts),
+        "suggestion": row.suggestion,
+        "generated_at": row.generated_at.isoformat() if row.generated_at else "",
+        "llm_model": row.llm_model,
+    }
 
 
 def _json_dict_list(raw: str) -> list[dict]:

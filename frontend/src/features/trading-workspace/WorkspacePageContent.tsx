@@ -14,6 +14,7 @@ import type { Page, StockCardView } from "../workspace-shared/workspaceTypes";
 
 interface WorkspacePageContentProps {
   AnalysisPage: ComponentType<ComponentProps<any>>;
+  BacktestPage: ComponentType<ComponentProps<any>>;
   MarketEmotionPage: ComponentType<MarketEmotionPageProps>;
   MonitorPage: ComponentType<MonitorPageProps>;
   PaperTradingPage: ComponentType<PaperTradingPageProps>;
@@ -37,6 +38,7 @@ interface WorkspacePageContentProps {
 
 export function WorkspacePageContent({
   AnalysisPage,
+  BacktestPage,
   MarketEmotionPage,
   MonitorPage,
   PaperTradingPage,
@@ -67,7 +69,7 @@ export function WorkspacePageContent({
     <PageErrorBoundary resetKey={page}>
       <Suspense fallback={<div className="panel">页面模块加载中...</div>}>
         {page === "monitor" && <MonitorPage {...monitorPageProps} />}
-        {page === "emotion" && <MarketEmotionPage marketBreadth={monitor.marketBreadth} sectorRelativeStrength={monitor.sectorRelativeStrength} />}
+        {page === "emotion" && <MarketEmotionPage marketBreadth={monitor.marketBreadth} marketPulse={monitor.marketPulse} sectorRelativeStrength={monitor.sectorRelativeStrength} />}
         {page === "analysis" && (
           <AnalysisPage
             draft={analysis.draft}
@@ -96,6 +98,7 @@ export function WorkspacePageContent({
           />
         )}
         {page === "strategy" && <StrategyHubPage currentUser={currentUser} />}
+        {page === "backtest" && <BacktestPage />}
         {page === "paper" && (
           currentUser.can_paper_trade ? (
             <PaperTradingPage {...paperPageProps} />

@@ -6,6 +6,7 @@ from typing import Any
 from app.core.timezone import beijing_now_string
 from app.models.schema_defs.market import IntradayKeyLevelOut, IntradayKeyLevelResponse
 from app.services.low_buy.intraday_confirmation import calculate_intraday_vwap
+from app.services.market.go_read_client import load_go_intraday_key_levels
 from app.services.market_data import DataSourceError, MarketDataService
 
 
@@ -22,6 +23,14 @@ class IntradayKeyLevelService:
         threshold_pct: float = 0.3,
     ) -> IntradayKeyLevelResponse:
         symbol = symbol.strip()
+        go_response = load_go_intraday_key_levels(
+            symbol,
+            entry_zone_low=entry_zone_low,
+            entry_zone_high=entry_zone_high,
+            threshold_pct=threshold_pct,
+        )
+        if go_response is not None:
+            return go_response
         try:
             quote = self.market_data.get_quote(symbol)
         except Exception:

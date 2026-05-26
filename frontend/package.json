@@ -9,15 +9,17 @@
     "build:web": "npm run lint && tsc -b && vite build",
     "build:native": "npm run lint && tsc -b && node ./scripts/build-native.mjs && node ./scripts/prepare-native-dist.mjs",
     "analyze": "npm run build:web && node ./scripts/bundle-report.mjs",
-    "lint": "npm run lint:state && npm run check:refactor",
+    "lint": "npm run lint:state && npm run check:refactor && npm run check:css",
     "lint:state": "eslint \"src/**/*.{ts,tsx}\" --max-warnings=0",
     "check:refactor": "node ./scripts/check-refactor-guard.mjs",
+    "check:css": "node ./scripts/check-css-guard.mjs",
     "check:strategy-meta": "python3 ../scripts/sync_strategy_meta_fallback.py --check",
     "preview": "vite preview",
     "test": "vitest run",
     "cap:sync": "npm run build:native && npx cap sync",
     "cap:ios": "npm run cap:sync && npx cap open ios",
-    "cap:android": "npm run cap:sync && npx cap open android"
+    "cap:android": "npm run cap:sync && npx cap open android",
+    "smoke:responsive": "node ./scripts/smoke-responsive.mjs"
   },
   "dependencies": {
     "@ant-design/icons": "^6.2.3",

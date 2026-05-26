@@ -5,12 +5,18 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Query
 
 from app.core.auth import get_current_user
+from app.core.timezone import beijing_today
 from app.core.timezone import beijing_now_string
 from app.core.role_permissions import require_research_access
 from app.models.schema_defs.market import (
     IntradayKeyLevelResponse,
     IntradayAnomalyResponse,
+    IntradayMarketPulse,
+    MarketHourlySnapshotHistoryResponse,
     MarketBreadthResponse,
+    MarketPulseHistoryResponse,
+    MarketReviewHistoryResponse,
+    MarketReviewSummaryResponse,
     MarketTradingSessionResponse,
     MarketModelValidationResponse,
     PairedHedgeResearchResponse,
@@ -24,7 +30,14 @@ from app.services.alternative_data import AlternativeDataSentimentService
 from app.services.arbitrage_research import build_multi_exchange_arbitrage_research
 from app.services.market_data import MarketDataService
 from app.services.market.regime_quality import market_regime_quality_text
+from app.services.market.autofill import MarketDataAutofillService
 from app.services.market.hourly_snapshot import latest_hourly_all_market_snapshot
+from app.services.market.pulse import build_intraday_market_pulse
+from app.services.market.pulse_history import (
+    list_hourly_snapshot_history,
+    list_market_pulse_events,
+)
+from app.services.market.review import build_market_review_summary, list_market_review_history
 from app.services.market.trading_session import current_a_share_trading_session
 from app.services.paired_hedge_research import PairedHedgeResearchService
 from app.services.sector_etf_t0 import SectorEtfT0Service
@@ -51,6 +64,71 @@ def market_breadth(
         regime = market_data.get_market_regime()
     else:
         regime = market_data.get_market_regime_fast()
+    response = _market_breadth_response(regime, db)
+    if hasattr(db, "commit") and hasattr(db, "flush") and hasattr(db, "execute"):
+        autofill = MarketDataAutofillService(db).fill_for_pulse(
+            market_breadth=response,
+            sector_relative_strength=market_data.sector_relative_strength_rank(db, limit=8, per_sector_limit=8),
+            trade_date=beijing_today().isoformat(),
+        )
+        return autofill.market_breadth or response
+    return response
+
+
+@router.get("/pulse", response_model=IntradayMarketPulse)
+def market_pulse(
+    db: Session = Depends(get_db),
+) -> IntradayMarketPulse:
+    breadth = market_breadth(realtime=False, db=db)
+    sector_strength = market_data.sector_relative_strength_rank(db, limit=8, per_sector_limit=8)
+    autofill_service = MarketDataAutofillService(db) if hasattr(db, "commit") and hasattr(db, "flush") and hasattr(db, "execute") else None
+    pulse = build_intraday_market_pulse(
+        market_breadth=breadth,
+        sector_relative_strength=sector_strength,
+        autofill_service=autofill_service,
+        trade_date=beijing_today().isoformat(),
+    )
+    return pulse
+
+
+@router.get("/pulse/history", response_model=MarketPulseHistoryResponse)
+def market_pulse_history(
+    trade_date: str = "",
+    limit: int = 50,
+    db: Session = Depends(get_db),
+) -> MarketPulseHistoryResponse:
+    items = list_market_pulse_events(db, trade_date=trade_date.strip(), limit=limit)
+    return MarketPulseHistoryResponse(items=items, total=len(items))
+
+
+@router.get("/hourly-snapshots/history", response_model=MarketHourlySnapshotHistoryResponse)
+def market_hourly_snapshot_history(
+    trade_date: str = "",
+    limit: int = 24,
+    db: Session = Depends(get_db),
+) -> MarketHourlySnapshotHistoryResponse:
+    items = list_hourly_snapshot_history(db, trade_date=trade_date.strip(), limit=limit)
+    return MarketHourlySnapshotHistoryResponse(items=items, total=len(items))
+
+
+@router.get("/review-summary", response_model=MarketReviewSummaryResponse)
+def market_review_summary(
+    db: Session = Depends(get_db),
+) -> MarketReviewSummaryResponse:
+    status, reports = build_market_review_summary(db)
+    return MarketReviewSummaryResponse(review_status=status, review_reports=reports)
+
+
+@router.get("/review-history", response_model=MarketReviewHistoryResponse)
+def market_review_history(
+    limit: int = Query(default=20, ge=1, le=200),
+    db: Session = Depends(get_db),
+) -> MarketReviewHistoryResponse:
+    reports = list_market_review_history(db, limit=limit)
+    return MarketReviewHistoryResponse(items=reports, total=len(reports))
+
+
+def _market_breadth_response(regime, db: Session) -> MarketBreadthResponse:
     return MarketBreadthResponse(
         updated_at=beijing_now_string(),
         state=regime.state,
@@ -73,6 +151,7 @@ def market_breadth(
         hot_industries=regime.hot_industries[:8],
         hot_turnover=round(regime.hot_turnover, 4),
         hot_overlap_ratio=round(regime.hot_overlap_ratio, 4),
+        data_quality="fresh" if regime.breadth_ready and regime.emotion_ready else "partial",
         data_quality_text=market_regime_quality_text(regime),
         hourly_all_market_snapshot=latest_hourly_all_market_snapshot(db),
     )

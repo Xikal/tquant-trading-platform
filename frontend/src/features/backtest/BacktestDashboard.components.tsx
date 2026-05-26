@@ -39,7 +39,7 @@ const BACKTEST_PANEL_TITLE_STYLE: CSSProperties = {
 
 const BACKTEST_PANEL_TITLE_HEADING_STYLE: CSSProperties = {
   margin: 0,
-  fontSize: 15,
+  fontSize: 12,
 };
 
 const BACKTEST_EMPTY_STYLE: CSSProperties = {

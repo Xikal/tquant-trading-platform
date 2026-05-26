@@ -47,6 +47,9 @@ def _microservice_urls_configured(settings: AppSettings) -> bool:
         str(value).strip()
         for value in (
             settings.tquant_market_service_url,
+            settings.tquant_bff_gateway_url,
+            settings.tquant_market_read_service_url,
+            settings.tquant_go_scan_worker_url,
             settings.tquant_strategy_service_url,
             settings.tquant_backtest_service_url,
             settings.tquant_trade_service_url,

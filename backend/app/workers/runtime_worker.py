@@ -122,14 +122,19 @@ def _execute_task(task_type: str, payload: dict[str, Any], db) -> dict[str, Any]
         from app.services.daily_bar_refresh import DailyBarRefreshService
 
         return DailyBarRefreshService(db).refresh_latest(limit=int(payload.get("limit") or 6000))
-    if task_type == "paper_review_report":
-        from app.services.paper.archive import PaperArchiveService
+    if task_type in {"market_review_report", "paper_review_report"}:
+        from app.services.market.review import MarketReviewService
 
+        report = MarketReviewService(db).generate_review_report(
+            report_slot=str(payload.get("report_slot") or "midday")
+        )
+        db.commit()
         return {
             "ok": True,
-            "results": PaperArchiveService(db).generate_review_reports_for_active(
-                report_slot=str(payload.get("report_slot") or "midday")
-            ),
+            "scope": "market",
+            "report_id": report.id,
+            "report_slot": report.report_slot,
+            "report_date": report.report_date.isoformat() if report.report_date else "",
         }
     if task_type == "low_buy_materialization_refresh":
         from app.services.low_buy_materialization import refresh_latest_low_buy_materialization

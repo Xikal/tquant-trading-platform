@@ -7,7 +7,7 @@ import { formatInteger, formatNumber, formatPct, toneFromChange } from "../works
 import { DataTable } from "../../ui/table/DataTable";
 
 const FULL_WIDTH_STYLE: CSSProperties = { width: "100%" };
-const PERFORMANCE_PILL_ROW_STYLE: CSSProperties = { marginBottom: 8 };
+const PERFORMANCE_PILL_ROW_STYLE: CSSProperties = { marginBottom: 6 };
 const TAG_PERFORMANCE_STYLE: CSSProperties = {
   marginBottom: 6,
   padding: "6px 8px",
@@ -26,13 +26,14 @@ const TRUNCATED_TEXT_STYLE: CSSProperties = {
 };
 const RISK_TODO_LIST_STYLE: CSSProperties = {
   display: "grid",
-  gap: 8,
+  gap: 6,
 };
 const RISK_TODO_ITEM_STYLE: CSSProperties = {
   display: "grid",
   gap: 3,
-  borderRadius: 12,
-  padding: 10,
+  borderRadius: 8,
+  padding: 7,
+  fontSize: 11,
 };
 const RISK_TODO_ITEM_HIGH_STYLE: CSSProperties = {
   background: "#fef2f2",
@@ -62,16 +63,16 @@ export function PerformancePills({ performance }: { performance: PaperPerformanc
   return (
     <Row gutter={[8, 8]} style={PERFORMANCE_PILL_ROW_STYLE}>
       <Col xs={24} sm={12} xl={6}>
-        <InfoPill label="成交笔数" value={String(performance?.total_trades ?? 0)} />
+        <InfoPill compact label="成交笔数" value={String(performance?.total_trades ?? 0)} />
       </Col>
       <Col xs={24} sm={12} xl={6}>
-        <InfoPill label="胜率" value={formatPct(performance?.win_rate_pct)} />
+        <InfoPill compact label="胜率" value={formatPct(performance?.win_rate_pct)} />
       </Col>
       <Col xs={24} sm={12} xl={6}>
-        <InfoPill label="平均单笔" value={formatPct(performance?.avg_trade_return_pct)} tone={toneFromChange(performance?.avg_trade_return_pct)} />
+        <InfoPill compact label="平均单笔" value={formatPct(performance?.avg_trade_return_pct)} tone={toneFromChange(performance?.avg_trade_return_pct)} />
       </Col>
       <Col xs={24} sm={12} xl={6}>
-        <InfoPill label="最大回撤" value={formatPct(performance?.max_drawdown_pct)} tone={toneFromChange(performance?.max_drawdown_pct)} />
+        <InfoPill compact label="最大回撤" value={formatPct(performance?.max_drawdown_pct)} tone={toneFromChange(performance?.max_drawdown_pct)} />
       </Col>
     </Row>
   );
@@ -96,16 +97,16 @@ export function SectorEtfT0PerformancePanel({ item }: { item: PaperSectorEtfT0Pe
     <Space direction="vertical" size={6} style={FULL_WIDTH_STYLE}>
       <Row gutter={[8, 8]}>
         <Col xs={24} sm={12} xl={6}>
-          <InfoPill label="自动委托" value={`${formatInteger(item.simulated_trades)} 笔`} />
+          <InfoPill compact label="自动委托" value={`${formatInteger(item.simulated_trades)} 笔`} />
         </Col>
         <Col xs={24} sm={12} xl={6}>
-          <InfoPill label="已闭合" value={`${formatInteger(item.simulated_closed_trades)} 笔`} />
+          <InfoPill compact label="已闭合" value={`${formatInteger(item.simulated_closed_trades)} 笔`} />
         </Col>
         <Col xs={24} sm={12} xl={6}>
-          <InfoPill label="成交胜率" value={formatPct(item.simulated_win_rate_pct)} />
+          <InfoPill compact label="成交胜率" value={formatPct(item.simulated_win_rate_pct)} />
         </Col>
         <Col xs={24} sm={12} xl={6}>
-          <InfoPill label="平均收益" value={formatPct(item.simulated_avg_return_pct)} tone={toneFromChange(item.simulated_avg_return_pct)} />
+          <InfoPill compact label="平均收益" value={formatPct(item.simulated_avg_return_pct)} tone={toneFromChange(item.simulated_avg_return_pct)} />
         </Col>
       </Row>
       <DataTable<PaperSectorEtfT0Performance>
@@ -121,7 +122,7 @@ export function SectorEtfT0PerformancePanel({ item }: { item: PaperSectorEtfT0Pe
           { title: "3日均收", dataIndex: "shadow_avg_return_3d_pct", render: (value) => <span className={toneFromChange(value)}>{formatPct(value)}</span> },
         ]}
       />
-      <Typography.Text type="secondary">
+      <Typography.Text type="secondary" style={{ fontSize: 11 }}>
         {item.notes?.[0] || "只统计 strategy_key=sector_etf_t0 的模拟成交，并和 ETF 机会池影子跟踪对账。"}
       </Typography.Text>
     </Space>
@@ -170,21 +171,21 @@ export function AgentRunList({ items }: { items: PaperAgentRun[] }) {
             <Row gutter={[8, 4]} align="middle" style={FULL_WIDTH_STYLE}>
               <Col xs={24} md={6}>
                 <Space direction="vertical" size={0}>
-                  <Typography.Text strong>{runStatusText(item.status)}</Typography.Text>
-                  <Typography.Text type="secondary">{formatPaperDateTime(item.created_at)}</Typography.Text>
+                  <Typography.Text strong style={{ fontSize: 11 }}>{runStatusText(item.status)}</Typography.Text>
+                  <Typography.Text type="secondary" style={{ fontSize: 11 }}>{formatPaperDateTime(item.created_at)}</Typography.Text>
                 </Space>
               </Col>
               <Col xs={24} md={5}>
-                <Typography.Text type="secondary">
+                <Typography.Text type="secondary" style={{ fontSize: 11 }}>
                   执行 {executed} / 跳过 {skipped}{etfOrders ? ` / ETF ${etfOrders}` : ""}
                 </Typography.Text>
               </Col>
               <Col xs={24} md={skipReason ? 8 : 13}>
-                <Typography.Text type="secondary" style={TRUNCATED_TEXT_STYLE} title={summary}>{summary}</Typography.Text>
+                <Typography.Text type="secondary" style={{ ...TRUNCATED_TEXT_STYLE, fontSize: 11 }} title={summary}>{summary}</Typography.Text>
               </Col>
               {skipReason ? (
                 <Col xs={24} md={5}>
-                  <Typography.Text type="secondary" style={TRUNCATED_TEXT_STYLE} title={skipReason}>未买原因：{skipReason}</Typography.Text>
+                  <Typography.Text type="secondary" style={{ ...TRUNCATED_TEXT_STYLE, fontSize: 11 }} title={skipReason}>未买原因：{skipReason}</Typography.Text>
                 </Col>
               ) : null}
             </Row>

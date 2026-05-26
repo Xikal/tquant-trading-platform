@@ -7,47 +7,14 @@ from sqlalchemy.orm import sessionmaker
 
 from app.core.database import _sqlite_connect_args
 from app.models.base import Base
-from app.models.entities import (
-    AnalysisLog,
-    BacktestRun,
-    DailyBarSnapshot,
-    Instrument,
-    InstrumentRule,
-    LowBuyCloseReviewSnapshot,
-    LowBuyHotIndustrySnapshot,
-    LowBuyResultSnapshot,
-    LowBuyScanSnapshot,
-    LowBuyStrategyPerformanceSnapshot,
-    LowBuyStrategyPerformanceWindowSnapshot,
-    LowBuyPoolSnapshot,
-    MarketEventCache,
-    MinuteBarSnapshot,
-    SignalReplay,
-    SystemSetting,
-    Watchlist,
-    WatchlistSignalSnapshot,
-)
+import app.models.entities  # noqa: F401
 from app.models.schemas import DatabaseCheckResponse, DatabaseMigrationResponse
 
+_TABLE_MODEL_MAP = {mapper.local_table: mapper.class_ for mapper in Base.registry.mappers}
 MODEL_COPY_ORDER = [
-    Instrument,
-    InstrumentRule,
-    Watchlist,
-    WatchlistSignalSnapshot,
-    SystemSetting,
-    AnalysisLog,
-    SignalReplay,
-    BacktestRun,
-    MarketEventCache,
-    MinuteBarSnapshot,
-    DailyBarSnapshot,
-    LowBuyPoolSnapshot,
-    LowBuyHotIndustrySnapshot,
-    LowBuyScanSnapshot,
-    LowBuyResultSnapshot,
-    LowBuyStrategyPerformanceSnapshot,
-    LowBuyStrategyPerformanceWindowSnapshot,
-    LowBuyCloseReviewSnapshot,
+    _TABLE_MODEL_MAP[table]
+    for table in Base.metadata.sorted_tables
+    if table in _TABLE_MODEL_MAP
 ]
 
 
@@ -117,41 +84,48 @@ class DatabaseAdminService:
         target_session = target_bundle.session_factory()
 
         try:
-            if overwrite:
-                for model in reversed(MODEL_COPY_ORDER):
-                    target_session.execute(delete(model))
-                target_session.commit()
-            else:
-                occupied = {}
-                for model in MODEL_COPY_ORDER:
-                    count = target_session.execute(select(model)).scalars().first()
-                    if count is not None:
-                        occupied[model.__tablename__] = 1
-                if occupied:
-                    names = "、".join(sorted(occupied))
-                    raise ValueError(f"目标数据库已存在数据，请先清空或勾选覆盖迁移：{names}")
-
             copied_rows: dict[str, int] = {}
-            total_rows = 0
-            for model in MODEL_COPY_ORDER:
-                rows = source_session.execute(select(model)).scalars().all()
-                copied_rows[model.__tablename__] = len(rows)
-                for row in rows:
-                    payload = {
-                        column.name: getattr(row, column.name)
-                        for column in model.__table__.columns
-                    }
-                    target_session.merge(model(**payload))
-                target_session.commit()
-                total_rows += len(rows)
+            cleared_tables: list[str] = []
+            with target_session.begin():
+                if overwrite:
+                    for model in reversed(MODEL_COPY_ORDER):
+                        target_session.execute(delete(model))
+                        cleared_tables.append(model.__tablename__)
+                else:
+                    occupied = {}
+                    for model in MODEL_COPY_ORDER:
+                        count = target_session.execute(select(model)).scalars().first()
+                        if count is not None:
+                            occupied[model.__tablename__] = 1
+                    if occupied:
+                        names = "、".join(sorted(occupied))
+                        raise ValueError(f"目标数据库已存在数据，请先清空或勾选覆盖迁移：{names}")
+
+                total_rows = 0
+                for model in MODEL_COPY_ORDER:
+                    rows = source_session.execute(select(model)).scalars().all()
+                    copied_rows[model.__tablename__] = len(rows)
+                    for row in rows:
+                        payload = {
+                            column.name: getattr(row, column.name)
+                            for column in model.__table__.columns
+                        }
+                        target_session.merge(model(**payload))
+                    total_rows += len(rows)
 
             return DatabaseMigrationResponse(
                 ok=True,
                 source_database_url=source_database_url,
                 target_database_url=target_database_url,
+                scope="full_sqlalchemy_metadata",
+                copied_tables=sorted(copied_rows),
+                cleared_tables=sorted(cleared_tables),
+                skipped_tables=[],
+                failed_tables=[],
                 copied_rows=copied_rows,
                 total_rows=total_rows,
                 activated_on_restart=False,
+                recovery_hint="迁移在目标库单事务内执行；失败时目标库事务回滚，旧 runtime.env 不会被切换。",
                 message="数据迁移完成。",
             )
         finally:

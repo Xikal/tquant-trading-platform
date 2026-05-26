@@ -22,7 +22,7 @@ export function PaperPositionsPanel({
       title="当前持仓"
       extra={<Typography.Text type="secondary">{positions.length ? `共 ${positions.length} 只，首屏直接处理` : "暂无持仓"}</Typography.Text>}
       variant="borderless"
-      styles={{ body: { padding: 8, minHeight: 0 } }}
+      styles={{ body: { padding: 6, minHeight: 0, fontSize: 11 } }}
     >
       {loading ? (
         <Skeleton active paragraph={{ rows: 4 }} />
@@ -30,7 +30,7 @@ export function PaperPositionsPanel({
         <List
           split={false}
           style={{
-            maxHeight: positions.length > 6 ? 340 : undefined,
+            maxHeight: positions.length > 6 ? 300 : undefined,
             overflowY: positions.length > 6 ? "auto" : "visible",
             paddingRight: positions.length > 6 ? 4 : 0,
           }}
@@ -52,19 +52,19 @@ function PositionRow({ item }: { item: PaperPosition }) {
         border: "1px solid rgba(100, 116, 139, 0.18)",
         borderRadius: 8,
         boxShadow: `inset 3px 0 0 ${toneColor(tone)}`,
-        marginBottom: 6,
-        padding: "6px 8px",
+        marginBottom: 5,
+        padding: "5px 6px",
       }}
     >
       <List.Item.Meta
-        title={<Typography.Text strong style={{ fontSize: 12 }}>{item.name || item.symbol}</Typography.Text>}
-        description={<Typography.Text type="secondary" style={{ fontSize: 11 }}>{item.symbol}</Typography.Text>}
+        title={<Typography.Text strong style={{ fontSize: 11 }}>{item.name || item.symbol}</Typography.Text>}
+        description={<Typography.Text type="secondary" style={{ fontSize: 10 }}>{item.symbol}</Typography.Text>}
       />
-      <Space size={8} wrap style={{ fontSize: 12 }}>
-        <Typography.Text style={{ fontSize: 12 }}>持仓 {formatInteger(item.quantity)} / 可卖 {formatInteger(item.available_quantity)}</Typography.Text>
-        <Typography.Text style={{ fontSize: 12 }}>成本 {formatPrice(item.cost_basis)} / 现价 {formatPrice(item.latest_price)}</Typography.Text>
+      <Space size={6} wrap style={{ fontSize: 11 }}>
+        <Typography.Text style={{ fontSize: 11 }}>持仓 {formatInteger(item.quantity)} / 可卖 {formatInteger(item.available_quantity)}</Typography.Text>
+        <Typography.Text style={{ fontSize: 11 }}>成本 {formatPrice(item.cost_basis)} / 现价 {formatPrice(item.latest_price)}</Typography.Text>
         <Tag color="blue">{actionText}</Tag>
-        <Typography.Text strong style={{ color: toneColor(tone) }}>{formatPct(item.unrealized_pnl_pct)}</Typography.Text>
+        <Typography.Text strong style={{ color: toneColor(tone), fontSize: 11 }}>{formatPct(item.unrealized_pnl_pct)}</Typography.Text>
       </Space>
     </List.Item>
   );

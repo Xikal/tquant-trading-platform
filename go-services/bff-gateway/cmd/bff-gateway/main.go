@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"io"
 	"log"
 	"net/http"
@@ -8,8 +9,11 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"time"
 )
+
+var errMissingProductionInternalToken = errors.New("TQUANT_INTERNAL_SERVICE_TOKEN is required when APP_ENVIRONMENT=production")
 
 type config struct {
 	addr              string
@@ -19,6 +23,22 @@ type config struct {
 	workspaceCacheTTL time.Duration
 }
 
+var bffAggregateHits atomic.Int64
+var bffProxyFallbacks atomic.Int64
+var bffCacheHits atomic.Int64
+var bffCacheLookups atomic.Int64
+var bffPartialSourceFailures atomic.Int64
+var bffWorkspaceAggregateMonitorHits atomic.Int64
+var bffWorkspaceAggregatePaperHits atomic.Int64
+var bffWorkspaceAggregateStrategyHits atomic.Int64
+var bffWorkspaceAggregateSettingsHits atomic.Int64
+var bffWorkspaceAggregateFactorHits atomic.Int64
+var bffWorkspaceProxyMonitorFallbacks atomic.Int64
+var bffWorkspaceProxyPaperFallbacks atomic.Int64
+var bffWorkspaceProxyStrategyFallbacks atomic.Int64
+var bffWorkspaceProxySettingsFallbacks atomic.Int64
+var bffWorkspaceProxyFactorFallbacks atomic.Int64
+
 func main() {
 	cfg := loadConfig()
 	client := &http.Client{Timeout: cfg.timeout}
@@ -26,7 +46,7 @@ func main() {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/healthz", healthHandler)
 	mux.HandleFunc("/readyz", healthHandler)
-	mux.HandleFunc("/metrics", metricsHandler)
+	mux.HandleFunc("/metrics", metricsHandler(cache))
 	mux.HandleFunc("/api/bff/v1/manifest", manifestHandler(cache))
 	mux.HandleFunc("/bff/v1/manifest", manifestHandler(cache))
 	mux.HandleFunc("/api/bff/v1/workspace/", proxyWorkspaceHandler(cfg, client, cache))
@@ -44,27 +64,74 @@ func main() {
 }
 
 func loadConfig() config {
+	internalToken := strings.TrimSpace(os.Getenv("TQUANT_INTERNAL_SERVICE_TOKEN"))
+	if err := validateInternalToken(internalToken); err != nil {
+		log.Fatal(err)
+	}
 	return config{
 		addr:              ":" + env("PORT", "8091"),
 		pythonAPIBase:     strings.TrimRight(env("TQUANT_PYTHON_API_BASE", "http://127.0.0.1:8000"), "/"),
-		internalToken:     os.Getenv("TQUANT_INTERNAL_SERVICE_TOKEN"),
+		internalToken:     internalToken,
 		timeout:           durationSeconds("TQUANT_SERVICE_CALL_TIMEOUT_SECONDS", 5),
 		workspaceCacheTTL: durationSeconds("BFF_WORKSPACE_CACHE_TTL_SECONDS", 5),
 	}
+}
+
+func productionProfile() bool {
+	value := strings.ToLower(strings.TrimSpace(env("APP_ENVIRONMENT", env("APP_ENV", ""))))
+	return value == "production" || value == "prod" || value == "cloud"
+}
+
+func validateInternalToken(token string) error {
+	if productionProfile() && strings.TrimSpace(token) == "" {
+		return errMissingProductionInternalToken
+	}
+	return nil
 }
 
 func healthHandler(w http.ResponseWriter, _ *http.Request) {
 	writeJSON(w, http.StatusOK, `{"ok":true}`)
 }
 
-func metricsHandler(w http.ResponseWriter, _ *http.Request) {
-	w.Header().Set("Content-Type", "text/plain; version=0.0.4")
-	_, _ = w.Write([]byte("tquant_bff_gateway_up 1\n"))
+func metricsHandler(cache *workspaceCache) http.HandlerFunc {
+	return func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "text/plain; version=0.0.4")
+		lookups := bffCacheLookups.Load()
+		cacheHits := bffCacheHits.Load()
+		hitRate := 0.0
+		if lookups > 0 {
+			hitRate = float64(cacheHits) / float64(lookups)
+		}
+		lines := []string{
+			"tquant_bff_gateway_up 1",
+			"tquant_bff_gateway_aggregate_hits_total " + strconv.FormatInt(bffAggregateHits.Load(), 10),
+			"tquant_bff_gateway_proxy_fallbacks_total " + strconv.FormatInt(bffProxyFallbacks.Load(), 10),
+			"tquant_bff_gateway_cache_lookups_total " + strconv.FormatInt(lookups, 10),
+			"tquant_bff_gateway_cache_hits_total " + strconv.FormatInt(bffCacheHits.Load(), 10),
+			"tquant_bff_gateway_cache_hit_rate " + strconv.FormatFloat(hitRate, 'f', 6, 64),
+			"tquant_bff_gateway_cache_items " + strconv.Itoa(cache.size()),
+			"tquant_bff_gateway_cache_ttl_seconds " + strconv.FormatFloat(cache.ttlSeconds(), 'f', 3, 64),
+			"tquant_bff_gateway_partial_source_failures_total " + strconv.FormatInt(bffPartialSourceFailures.Load(), 10),
+			"tquant_bff_gateway_workspace_aggregate_hits_total{workspace=\"monitor\"} " + strconv.FormatInt(bffWorkspaceAggregateMonitorHits.Load(), 10),
+			"tquant_bff_gateway_workspace_aggregate_hits_total{workspace=\"paper\"} " + strconv.FormatInt(bffWorkspaceAggregatePaperHits.Load(), 10),
+			"tquant_bff_gateway_workspace_aggregate_hits_total{workspace=\"strategy\"} " + strconv.FormatInt(bffWorkspaceAggregateStrategyHits.Load(), 10),
+			"tquant_bff_gateway_workspace_aggregate_hits_total{workspace=\"settings\"} " + strconv.FormatInt(bffWorkspaceAggregateSettingsHits.Load(), 10),
+			"tquant_bff_gateway_workspace_aggregate_hits_total{workspace=\"factor\"} " + strconv.FormatInt(bffWorkspaceAggregateFactorHits.Load(), 10),
+			"tquant_bff_gateway_workspace_proxy_fallbacks_total{workspace=\"monitor\"} " + strconv.FormatInt(bffWorkspaceProxyMonitorFallbacks.Load(), 10),
+			"tquant_bff_gateway_workspace_proxy_fallbacks_total{workspace=\"paper\"} " + strconv.FormatInt(bffWorkspaceProxyPaperFallbacks.Load(), 10),
+			"tquant_bff_gateway_workspace_proxy_fallbacks_total{workspace=\"strategy\"} " + strconv.FormatInt(bffWorkspaceProxyStrategyFallbacks.Load(), 10),
+			"tquant_bff_gateway_workspace_proxy_fallbacks_total{workspace=\"settings\"} " + strconv.FormatInt(bffWorkspaceProxySettingsFallbacks.Load(), 10),
+			"tquant_bff_gateway_workspace_proxy_fallbacks_total{workspace=\"factor\"} " + strconv.FormatInt(bffWorkspaceProxyFactorFallbacks.Load(), 10),
+		}
+		_, _ = w.Write([]byte(strings.Join(lines, "\n") + "\n"))
+	}
 }
 
 func manifestHandler(cache *workspaceCache) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		bffCacheLookups.Add(1)
 		if cached, ok := cache.get(workspaceCacheKey(r)); ok {
+			bffCacheHits.Add(1)
 			if cached.contentType != "" {
 				w.Header().Set("Content-Type", cached.contentType)
 			}
@@ -85,7 +152,9 @@ func proxyWorkspaceHandler(cfg config, client *http.Client, cache *workspaceCach
 			writeJSON(w, http.StatusForbidden, `{"detail":"internal service auth failed"}`)
 			return
 		}
+		bffCacheLookups.Add(1)
 		if cached, ok := cache.get(workspaceCacheKey(r)); ok {
+			bffCacheHits.Add(1)
 			if cached.contentType != "" {
 				w.Header().Set("Content-Type", cached.contentType)
 			}
@@ -94,11 +163,16 @@ func proxyWorkspaceHandler(cfg config, client *http.Client, cache *workspaceCach
 			_, _ = w.Write(cached.body)
 			return
 		}
+		workspace := workspaceName(r.URL.Path)
 		if result := aggregateWorkspace(cfg, client, r); result.ok {
+			bffAggregateHits.Add(1)
+			incrementWorkspaceAggregate(workspace)
 			cache.set(workspaceCacheKey(r), result.status, result.body, result.contentType)
 			writeAggregate(w, result)
 			return
 		}
+		bffProxyFallbacks.Add(1)
+		incrementWorkspaceProxyFallback(workspace)
 		target, err := workspaceTargetURL(cfg.pythonAPIBase, r)
 		if err != nil {
 			writeJSON(w, http.StatusBadRequest, `{"detail":"invalid workspace request"}`)
@@ -131,6 +205,36 @@ func proxyWorkspaceHandler(cfg config, client *http.Client, cache *workspaceCach
 		cache.set(workspaceCacheKey(r), resp.StatusCode, body, resp.Header.Get("Content-Type"))
 		w.WriteHeader(resp.StatusCode)
 		_, _ = w.Write(body)
+	}
+}
+
+func incrementWorkspaceAggregate(workspace string) {
+	switch workspace {
+	case "monitor":
+		bffWorkspaceAggregateMonitorHits.Add(1)
+	case "paper":
+		bffWorkspaceAggregatePaperHits.Add(1)
+	case "strategy":
+		bffWorkspaceAggregateStrategyHits.Add(1)
+	case "settings":
+		bffWorkspaceAggregateSettingsHits.Add(1)
+	case "factor":
+		bffWorkspaceAggregateFactorHits.Add(1)
+	}
+}
+
+func incrementWorkspaceProxyFallback(workspace string) {
+	switch workspace {
+	case "monitor":
+		bffWorkspaceProxyMonitorFallbacks.Add(1)
+	case "paper":
+		bffWorkspaceProxyPaperFallbacks.Add(1)
+	case "strategy":
+		bffWorkspaceProxyStrategyFallbacks.Add(1)
+	case "settings":
+		bffWorkspaceProxySettingsFallbacks.Add(1)
+	case "factor":
+		bffWorkspaceProxyFactorFallbacks.Add(1)
 	}
 }
 

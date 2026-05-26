@@ -32,7 +32,7 @@ export function EvalResultCard({ result }: { result: FactorEvalResult | null | u
         {items.map((item) => (
           <Col key={item.label} xs={12} md={8}>
             <Card size="small" styles={{ body: { padding: "8px 10px" } }}>
-              <Statistic title={item.label} value={item.value} valueStyle={{ fontSize: 16, color: metricColor(item.tone) }} />
+              <Statistic title={item.label} value={item.value} valueStyle={{ fontSize: 12, color: metricColor(item.tone) }} />
             </Card>
           </Col>
         ))}

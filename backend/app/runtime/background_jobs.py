@@ -22,8 +22,8 @@ from app.runtime.strategy_evolution_scheduler import (
 from app.runtime.background_low_buy_cleanup import cleanup_stale_low_buy_snapshots
 from app.runtime.paper_review_jobs import (
     archive_paper_performance_once,
-    generate_midday_paper_review_once,
 )
+from app.runtime.market_review_jobs import generate_close_market_review_once, generate_midday_market_review_once
 from app.repositories.low_buy.results import LowBuyResultRepository
 from app.services.agent_daily_workflow_service import AgentDailyWorkflowService
 from app.services.agent_notification_service import AgentNotificationService
@@ -32,7 +32,6 @@ from app.services.backtest_research_worker import BacktestResearchWorker
 from app.services.latest_data_close_refresh import enqueue_latest_data_close_refresh
 from app.services.latest_data_status import expected_low_buy_trade_date, publish_latest_trade_date_if_ready
 from app.services.low_buy.shared import DEFAULT_PRODUCTION_LOW_BUY_STRATEGY
-from app.services.low_buy.go_scan_shadow import trigger_go_scan_shadow
 from app.services.low_buy.strategy_auto_governance import refresh_low_buy_strategy_auto_governance
 from app.services.low_buy.strategy_policy import PRODUCTION_PRIORITY_STRATEGIES
 from app.services.low_buy_screener import PLAYBOOKS, LowBuyScreenerService
@@ -105,27 +104,14 @@ def _refresh_materialized_low_buy_snapshots(
     scan_limit: int,
     compute_performance: bool,
 ) -> None:
-    screener = LowBuyScreenerService()
-    for strategy_key in strategies:
-        if _materialized_snapshot_is_fresh(
-            screener=screener,
-            strategy_key=strategy_key,
-            limit=limit,
-            max_age_seconds=FULL_SCAN_REFRESH_SECONDS,
-        ):
-            continue
-        screener.refresh_full_scan_cache(
-            strategy=strategy_key,
-            limit=limit,
-            scan_limit=scan_limit,
-            include_history=False,
-            compute_performance=compute_performance,
-            build_close_review=False,
-        )
-    with SessionLocal() as db:
-        publish_latest_trade_date_if_ready(db, strategies=sorted(PRODUCTION_PRIORITY_STRATEGIES))
-        db.commit()
-    trigger_go_scan_shadow(strategies=strategies, scan_limit=scan_limit, reason="low_buy_materialized_refresh")
+    from app.services.low_buy_materialization import refresh_latest_low_buy_materialization
+
+    refresh_latest_low_buy_materialization(
+        strategies=strategies,
+        limit=limit,
+        scan_limit=scan_limit,
+        prefer_go=True,
+    )
 
 
 def _materialized_snapshot_is_fresh(
@@ -400,10 +386,16 @@ def start_runtime_background_jobs() -> None:
         )
         if settings.paper_perf_archive_enabled:
             task_manager.register_loop(
-                name="paper_midday_review",
-                target=generate_midday_paper_review_once,
+                name="market_midday_review",
+                target=generate_midday_market_review_once,
                 interval_seconds=300,
                 initial_delay_seconds=75,
+            )
+            task_manager.register_loop(
+                name="market_close_review",
+                target=generate_close_market_review_once,
+                interval_seconds=300,
+                initial_delay_seconds=90,
             )
             task_manager.register_loop(
                 name="paper_perf_archive",
@@ -411,7 +403,7 @@ def start_runtime_background_jobs() -> None:
                     include_report=settings.paper_perf_ai_report_enabled
                 ),
                 interval_seconds=300,
-                initial_delay_seconds=90,
+                initial_delay_seconds=105,
             )
         if settings.strategy_validation_monthly_enabled:
             task_manager.register_loop(

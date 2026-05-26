@@ -2,8 +2,12 @@ import { create } from "zustand";
 import type {
   InstrumentSyncStatus,
   IntradayKeyLevelResponse,
+  IntradayMarketPulse,
   LowBuyPriorityBoardResult,
   MarketBreadth,
+  MarketHourlySnapshotHistoryItem,
+  MarketReviewReport,
+  MarketReviewStatus,
   PairedHedgeResearchResponse,
   RuntimeStatus,
   SectorEtfT0Response,
@@ -14,6 +18,10 @@ import type {
 interface WorkspaceMonitorStore {
   priorityBoard: LowBuyPriorityBoardResult | null;
   marketBreadth: MarketBreadth | null;
+  marketPulse: IntradayMarketPulse | null;
+  hourlySnapshotHistory: MarketHourlySnapshotHistoryItem[];
+  reviewStatus: MarketReviewStatus | null;
+  reviewReports: MarketReviewReport[];
   sectorRelativeStrength: SectorRelativeStrengthResponse | null;
   keyLevelAlerts: IntradayKeyLevelResponse[];
   watchlistSignals: WatchlistSignal[];
@@ -23,6 +31,10 @@ interface WorkspaceMonitorStore {
   instrumentSyncStatus: InstrumentSyncStatus | null;
   setPriorityBoard: (value: LowBuyPriorityBoardResult | null | ((current: LowBuyPriorityBoardResult | null) => LowBuyPriorityBoardResult | null)) => void;
   setMarketBreadth: (value: MarketBreadth | null) => void;
+  setMarketPulse: (value: IntradayMarketPulse | null) => void;
+  setHourlySnapshotHistory: (value: MarketHourlySnapshotHistoryItem[]) => void;
+  setReviewStatus: (value: MarketReviewStatus | null) => void;
+  setReviewReports: (value: MarketReviewReport[]) => void;
   setSectorRelativeStrength: (value: SectorRelativeStrengthResponse | null) => void;
   setKeyLevelAlerts: (value: IntradayKeyLevelResponse[]) => void;
   setWatchlistSignals: (value: WatchlistSignal[] | ((current: WatchlistSignal[]) => WatchlistSignal[])) => void;
@@ -36,6 +48,10 @@ interface WorkspaceMonitorStore {
 export const useWorkspaceMonitorStore = create<WorkspaceMonitorStore>((set) => ({
   priorityBoard: null,
   marketBreadth: null,
+  marketPulse: null,
+  hourlySnapshotHistory: [],
+  reviewStatus: null,
+  reviewReports: [],
   sectorRelativeStrength: null,
   keyLevelAlerts: [],
   watchlistSignals: [],
@@ -47,6 +63,10 @@ export const useWorkspaceMonitorStore = create<WorkspaceMonitorStore>((set) => (
     priorityBoard: typeof value === "function" ? value(state.priorityBoard) : value,
   })),
   setMarketBreadth: (marketBreadth) => set({ marketBreadth }),
+  setMarketPulse: (marketPulse) => set({ marketPulse }),
+  setHourlySnapshotHistory: (hourlySnapshotHistory) => set({ hourlySnapshotHistory }),
+  setReviewStatus: (reviewStatus) => set({ reviewStatus }),
+  setReviewReports: (reviewReports) => set({ reviewReports }),
   setSectorRelativeStrength: (sectorRelativeStrength) => set({ sectorRelativeStrength }),
   setKeyLevelAlerts: (keyLevelAlerts) => set({ keyLevelAlerts }),
   setWatchlistSignals: (value) => set((state) => ({
@@ -61,6 +81,10 @@ export const useWorkspaceMonitorStore = create<WorkspaceMonitorStore>((set) => (
   resetMonitorData: () => set({
     priorityBoard: null,
     marketBreadth: null,
+    marketPulse: null,
+    hourlySnapshotHistory: [],
+    reviewStatus: null,
+    reviewReports: [],
     sectorRelativeStrength: null,
     keyLevelAlerts: [],
     watchlistSignals: [],

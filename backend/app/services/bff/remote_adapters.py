@@ -27,6 +27,20 @@ def load_remote_monitor_workspace(
     forward_headers: Mapping[str, str] | None = None,
 ) -> MonitorWorkspaceBffResponse | None:
     settings = get_settings()
+    go_payload = _load_remote(
+        settings.tquant_bff_gateway_url,
+        "monitor",
+        params={
+            "priority_limit": priority_limit,
+            "sector_limit": sector_limit,
+            "per_sector_limit": per_sector_limit,
+            "hedge_limit": hedge_limit,
+        },
+        forward_headers=forward_headers,
+    )
+    go_response = _validate_remote_payload(MonitorWorkspaceBffResponse, go_payload, "monitor", settings.tquant_bff_gateway_url)
+    if go_response is not None:
+        return go_response
     payload = _load_remote(
         settings.tquant_market_service_url,
         "monitor",

@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 )
 
 func TestHealthHandler(t *testing.T) {
@@ -45,6 +46,22 @@ func TestInternalOnlyRejectsMissingToken(t *testing.T) {
 	}
 }
 
+func TestValidateInternalTokenRejectsProductionEmptyToken(t *testing.T) {
+	t.Setenv("APP_ENVIRONMENT", "production")
+
+	if err := validateInternalToken(""); err != errMissingProductionInternalToken {
+		t.Fatalf("expected missing token error, got %v", err)
+	}
+}
+
+func TestValidateInternalTokenAllowsDevelopmentEmptyToken(t *testing.T) {
+	t.Setenv("APP_ENVIRONMENT", "development")
+
+	if err := validateInternalToken(""); err != nil {
+		t.Fatalf("expected nil error, got %v", err)
+	}
+}
+
 func TestQuoteBatchReadsRedisLocalQuotePayload(t *testing.T) {
 	cache := mapQuoteCache{
 		"tquant:market:quote:000001": []byte(`{"cached_at":4102444800,"payload":{"symbol":"000001","last_price":10.12}}`),
@@ -70,6 +87,32 @@ func TestQuoteBatchReadsRedisLocalQuotePayload(t *testing.T) {
 	}
 }
 
+func TestIntradayLatestMarksExpiredCacheStale(t *testing.T) {
+	cache := mapQuoteCache{
+		"tquant:market:quote:000001": []byte(`{"cached_at":1,"payload":{"symbol":"000001","last_price":10.12}}`),
+	}
+	recorder := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/api/market-read/v1/intraday-latest-batch?symbols=000001", nil)
+
+	intradayLatestBatchHandler(cache).ServeHTTP(recorder, req)
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("status mismatch want=%d got=%d", http.StatusOK, recorder.Code)
+	}
+	var payload map[string]any
+	if err := json.Unmarshal(recorder.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("invalid json response: %v", err)
+	}
+	items := payload["items"].([]any)
+	first := items[0].(map[string]any)
+	if first["data_quality"] != "stale" {
+		t.Fatalf("expected stale quality, got %v", first["data_quality"])
+	}
+	if age, _ := first["age_seconds"].(float64); age < float64(24*time.Hour/time.Second) {
+		t.Fatalf("expected old cache age, got %v", first["age_seconds"])
+	}
+}
+
 func TestMySQLDSNParsesSQLAlchemyURL(t *testing.T) {
 	dsn := mysqlDSN("mysql+pymysql://user:pass@mysql:3306/tquant")
 
@@ -83,7 +126,7 @@ func TestIntradayKeyLevelsUseCachedQuote(t *testing.T) {
 		"tquant:market:quote:000001": []byte(`{"cached_at":4102444800,"payload":{"symbol":"000001","name":"平安银行","last_price":10.12,"open_price":10,"prev_close":9.9}}`),
 	}
 	recorder := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodGet, "/api/market-read/v1/intraday-key-levels?symbol=000001&entry_zone_low=10.1", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/market-read/v1/intraday-key-levels?symbol=000001&entry_zone_low=10.1&entry_zone_high=10.3", nil)
 
 	intradayKeyLevelsHandler(cache).ServeHTTP(recorder, req)
 
@@ -97,6 +140,12 @@ func TestIntradayKeyLevelsUseCachedQuote(t *testing.T) {
 	levels := payload["levels"].([]any)
 	if len(levels) == 0 {
 		t.Fatalf("expected key levels")
+	}
+	if payload["entry_zone_low"] != 10.1 {
+		t.Fatalf("expected entry_zone_low echo, got %v", payload["entry_zone_low"])
+	}
+	if payload["entry_zone_high"] != 10.3 {
+		t.Fatalf("expected entry_zone_high echo, got %v", payload["entry_zone_high"])
 	}
 }
 
@@ -124,5 +173,25 @@ func TestSectorStrengthRanksCachedQuotes(t *testing.T) {
 	top := leaders[0].(map[string]any)
 	if top["symbol"] != "000001" {
 		t.Fatalf("top leader mismatch: %v", top["symbol"])
+	}
+}
+
+func TestIntradayLatestBatchHandlerReturnsPartialPayload(t *testing.T) {
+	cache := mapQuoteCache{
+		"tquant:market:quote:000001": []byte(`{"cached_at":4102444800,"payload":{"symbol":"000001","last_price":10.1,"change_pct":1.2,"timestamp":"2026-05-25 10:00:00"}}`),
+	}
+	recorder := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/api/market-read/v1/intraday-latest-batch?symbols=000001,000002", nil)
+
+	intradayLatestBatchHandler(cache).ServeHTTP(recorder, req)
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("status mismatch want=%d got=%d body=%s", http.StatusOK, recorder.Code, recorder.Body.String())
+	}
+	if !bytes.Contains(recorder.Body.Bytes(), []byte(`"data_quality":"partial"`)) {
+		t.Fatalf("expected partial quality body=%s", recorder.Body.String())
+	}
+	if !bytes.Contains(recorder.Body.Bytes(), []byte(`"latest"`)) {
+		t.Fatalf("expected latest payload body=%s", recorder.Body.String())
 	}
 }

@@ -70,7 +70,7 @@ class AppSettings(BaseSettings):
     tquant_bff_shadow_enabled: bool = False
     tquant_market_read_service_url: str = ""
     tquant_go_scan_worker_url: str = ""
-    tquant_go_scan_shadow_enabled: bool = False
+    tquant_go_scan_enabled: bool = True
     tquant_strategy_service_url: str = ""
     tquant_backtest_service_url: str = ""
     tquant_trade_service_url: str = ""
@@ -84,7 +84,7 @@ class AppSettings(BaseSettings):
     bff_paper_cache_ttl_seconds: int = 3
     bff_strategy_cache_ttl_seconds: int = 30
     bff_settings_cache_ttl_seconds: int = 30
-    rust_finance_math_enabled: bool = False
+    rust_finance_math_enabled: bool = True
     app_workers: int = 1
     global_rate_limit_backend: str = "memory"
     global_rate_limit_max_calls: int = 30

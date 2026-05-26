@@ -3,7 +3,7 @@ import type { StrategyMeta } from "../api/strategies";
 import type { LowBuyPriorityBoardItem } from "../types";
 import type { PixelTraderAnimationState } from "../features/paper/pixelTrader/types";
 
-export type PaperDetailTabKey = "orders" | "trades" | "pnl" | "strategy" | "risk" | "diagnostic";
+export type PaperDetailTabKey = "today" | "orders" | "trades" | "pnl" | "strategy" | "risk" | "diagnostic";
 
 interface PaperUiStore {
   detailTab: PaperDetailTabKey;
@@ -31,7 +31,7 @@ interface PaperUiStore {
 }
 
 export const usePaperUiStore = create<PaperUiStore>((set) => ({
-  detailTab: "orders",
+  detailTab: "today",
   orderModalOpen: false,
   dismissedConfirmationKey: "",
   selectedPositionSymbol: "",

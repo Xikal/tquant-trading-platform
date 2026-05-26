@@ -4,6 +4,7 @@ export type Page =
   | "analysis"
   | "playbook"
   | "strategy"
+  | "backtest"
   | "paper"
   | "settings";
 export type Tone = "up" | "down" | "neutral" | "warn";

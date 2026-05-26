@@ -9,6 +9,7 @@ import { WorkspacePageContent } from "./WorkspacePageContent";
 import { WORKSPACE_APP_STYLE, WORKSPACE_MAIN_STYLE } from "./workspaceShellStyles";
 
 const AnalysisPage = lazy(async () => ({ default: (await import("../analysis/AnalysisPage")).AnalysisPage }));
+const BacktestPage = lazy(async () => ({ default: (await import("../backtest/BacktestPage")).BacktestPage }));
 const MarketEmotionPage = lazy(async () => ({ default: (await import("../market-emotion/MarketEmotionPage")).MarketEmotionPage }));
 const MonitorPage = lazy(async () => ({ default: (await import("../monitor/MonitorPage")).MonitorPage }));
 const PaperTradingPage = lazy(async () => ({ default: (await import("../paper/PaperTradingPage")).PaperTradingPage }));
@@ -88,6 +89,7 @@ export function TradingWorkspaceChrome(props: TradingWorkspaceChromeProps) {
         />
         <WorkspacePageContent
           AnalysisPage={AnalysisPage}
+          BacktestPage={BacktestPage}
           MarketEmotionPage={MarketEmotionPage}
           MonitorPage={MonitorPage}
           PaperTradingPage={PaperTradingPage}

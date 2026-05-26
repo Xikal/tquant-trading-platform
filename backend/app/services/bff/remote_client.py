@@ -48,6 +48,42 @@ def remote_bff_get(
     params: dict[str, Any] | None = None,
     forward_headers: Mapping[str, str] | None = None,
 ) -> dict[str, Any]:
+    return _remote_bff_request(
+        "GET",
+        base_url,
+        path,
+        params=params,
+        forward_headers=forward_headers,
+    )
+
+
+def remote_bff_post(
+    base_url: str,
+    path: str,
+    *,
+    json_body: dict[str, Any] | None = None,
+    params: dict[str, Any] | None = None,
+    forward_headers: Mapping[str, str] | None = None,
+) -> dict[str, Any]:
+    return _remote_bff_request(
+        "POST",
+        base_url,
+        path,
+        params=params,
+        forward_headers=forward_headers,
+        json_body=json_body,
+    )
+
+
+def _remote_bff_request(
+    method: str,
+    base_url: str,
+    path: str,
+    *,
+    params: dict[str, Any] | None = None,
+    forward_headers: Mapping[str, str] | None = None,
+    json_body: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     cleaned_base = base_url.strip().rstrip("/")
     if not cleaned_base:
         raise RemoteBffError("remote base_url is empty")
@@ -68,12 +104,30 @@ def remote_bff_get(
         logger.warning("remote bff credentials suppressed for untrusted target base=%s", cleaned_base)
 
     try:
-        response = requests.get(
-            f"{cleaned_base}{path}",
-            params=params,
-            headers=headers,
-            timeout=timeout,
-        )
+        if method.upper() == "GET":
+            response = requests.get(
+                f"{cleaned_base}{path}",
+                params=params,
+                headers=headers,
+                timeout=timeout,
+            )
+        elif method.upper() == "POST":
+            response = requests.post(
+                f"{cleaned_base}{path}",
+                params=params,
+                json=json_body,
+                headers=headers,
+                timeout=timeout,
+            )
+        else:
+            response = requests.request(
+                method,
+                f"{cleaned_base}{path}",
+                params=params,
+                json=json_body,
+                headers=headers,
+                timeout=timeout,
+            )
         response.raise_for_status()
         payload = response.json()
     except requests.RequestException as exc:

@@ -52,11 +52,11 @@ def test_go_bff_manifest_shadow_schedules_and_uses_manifest_path(monkeypatch) ->
         return {
             "api_version": "v1",
             "bff_version": "v1",
-            "schema_version": "v13",
+            "schema_version": "v14",
             "gateway_prefix": "/api",
             "modules": ["auth", "market"],
             "workspaces": {
-                "paper": {"path": "/api/bff/v1/workspace/paper", "schema_version": "v13", "model": "PaperWorkspaceBffResponse"},
+                "paper": {"path": "/api/bff/v1/workspace/paper", "schema_version": "v14", "model": "PaperWorkspaceBffResponse"},
             },
         }
 
@@ -72,7 +72,7 @@ def test_go_bff_manifest_shadow_schedules_and_uses_manifest_path(monkeypatch) ->
             workspaces={
                 "paper": BffWorkspaceManifest(
                     path="/api/bff/v1/workspace/paper",
-                    schema_version="v13",
+                    schema_version="v14",
                     model="PaperWorkspaceBffResponse",
                 )
             },
@@ -104,7 +104,7 @@ def test_go_bff_workspace_shadow_uses_workspace_path(monkeypatch) -> None:
         captured["params"] = params
         return {
             "api_version": "v1",
-            "schema_version": "v13",
+            "schema_version": "v14",
             "generated_at": "2026-05-23 10:00:00",
             "account": None,
             "positions": [],

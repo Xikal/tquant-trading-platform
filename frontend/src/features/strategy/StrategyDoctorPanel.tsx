@@ -27,7 +27,7 @@ export function StrategyDoctorPanel({
           <Col xs={24} xl={9}>
             <Space direction="vertical" size={4}>
               <Tag color={toneTagColor(verdict.tone)}>策略医生</Tag>
-              <Typography.Title level={3} style={{ margin: 0 }}>{strategyHealthLabel(verdict.tone)}</Typography.Title>
+              <Typography.Title level={3} style={{ margin: 0, fontSize: 12 }}>{strategyHealthLabel(verdict.tone)}</Typography.Title>
               <Typography.Text type="secondary">{verdict.detail}</Typography.Text>
               <Typography.Text strong style={{ color: toneColor(verdict.tone) }}>{verdict.action}</Typography.Text>
             </Space>
@@ -66,7 +66,7 @@ export function StrategyDoctorPanel({
 function DoctorMetric({ label, value }: { label: string; value: string }) {
   return (
     <Card size="small" styles={{ body: { padding: "8px 10px" } }}>
-      <Statistic title={label} value={value || "--"} valueStyle={{ fontSize: 16, fontWeight: 600 }} />
+      <Statistic title={label} value={value || "--"} styles={{ content: { fontSize: 12, fontWeight: 600, lineHeight: 1.15 } }} />
     </Card>
   );
 }

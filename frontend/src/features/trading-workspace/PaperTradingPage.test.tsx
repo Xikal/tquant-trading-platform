@@ -237,4 +237,92 @@ describe("PaperTradingPage", () => {
     expect(html).not.toContain("分时确认");
     expect(html).toContain("自动交易按计划轮询，不依赖人工确认");
   });
+
+  it("keeps paper review as history entry instead of the main review surface", () => {
+    const html = renderToStaticMarkup(
+      <PaperTradingPage
+        account={null}
+        positions={[]}
+        orders={[]}
+        trades={[]}
+        performance={null}
+        performanceDashboard={{
+          account: { id: 1, total_assets: 100500, total_return_pct: 0.5, sharpe_ratio: 1.2 },
+          equity_curve: [],
+          win_rate_trend: [],
+          strategy_trend: [],
+          market_perf_heatmap: [],
+          strategy_market_matrix: [],
+          today_report: {
+            id: 1,
+            report_date: "2026-05-25",
+            report_slot: "midday",
+            overall_summary: "模拟盘日报稳定",
+            strategy_highlights: [],
+            risk_alerts: [],
+            suggestion: "午后控制追高",
+            generated_at: "2026-05-25 11:35:00",
+            llm_model: "",
+          },
+          review_reports: [
+            {
+              id: 1,
+              report_date: "2026-05-25",
+              report_slot: "midday",
+              review_subject: "全市场",
+              source_scope: "market",
+              overall_summary: "午盘市场稳定",
+              strategy_highlights: [],
+              risk_alerts: [],
+              suggestion: "午后控制追高",
+              generated_at: "2026-05-25 11:35:00",
+              llm_model: "",
+            },
+            {
+              id: 2,
+              report_date: "2026-05-25",
+              report_slot: "close",
+              review_subject: "全市场",
+              source_scope: "market",
+              overall_summary: "收盘市场复盘完成",
+              strategy_highlights: [],
+              risk_alerts: [],
+              suggestion: "明日优先处理弱势仓位",
+              generated_at: "2026-05-25 15:05:00",
+              llm_model: "",
+            },
+          ],
+          updated_at: "2026-05-25 15:05:00",
+        }}
+        strategyPerformance={[]}
+        marketPerformance={[]}
+        tagPerformance={[]}
+        tradeTags={{}}
+        riskEvents={[]}
+        autoTradingStatus={{ running: false }}
+        autoTradingRuns={[]}
+        draft={{
+          symbol: "",
+          name: "",
+          side: "buy",
+          order_type: "market",
+          quantity: "100",
+          price: "",
+          current_price: "",
+          strategy_key: "",
+          reason: "",
+          require_intraday_confirmation: false,
+        }}
+        setDraft={vi.fn()}
+        loading=""
+        onSubmitOrder={vi.fn()}
+        onTogglePause={vi.fn()}
+        onAddTradeTag={vi.fn()}
+        onDeleteTradeTag={vi.fn()}
+      />
+    );
+
+    expect(html).toContain("复盘历史入口 · 2 条");
+    expect(html).not.toContain("明日优先处理弱势仓位");
+  });
 });

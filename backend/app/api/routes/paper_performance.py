@@ -19,11 +19,13 @@ from app.models.schemas import (
     PaperStrategyMarketPerformanceOut,
     PaperTagPerformanceOut,
 )
+from app.models.schema_defs.market import MarketReviewReportOut, MarketReviewStatusOut
 from app.services.paper import PaperAccountService, PaperArchiveService, PaperPerformanceService
 from app.services.paper.dashboard import PaperPerformanceDashboardService
 from app.services.paper.smart_t_backtest import SmartTBacktestService
 from app.services.paper.stock_pnl import PaperStockPnlService
 from app.services.market_model_observation_service import MarketModelObservationService
+from app.services.monitor_review import build_monitor_review_summary, list_monitor_review_history
 
 router = APIRouter()
 
@@ -156,6 +158,25 @@ def paper_performance_dashboard(
     account = account_service.get_or_create_default(current_user.id)
     account_service.update_market_value(account.id)
     return PaperPerformanceDashboardService(db).build(account, days)
+
+
+@router.get("/performance/review-summary")
+def paper_performance_review_summary(
+    current_user: User = Depends(require_paper_trading),
+    db: Session = Depends(get_db),
+) -> dict[str, MarketReviewStatusOut | list[MarketReviewReportOut]]:
+    status, reports = build_monitor_review_summary(db, user_id=current_user.id)
+    return {"review_status": status, "review_reports": reports}
+
+
+@router.get("/performance/review-history")
+def paper_performance_review_history(
+    limit: int = Query(default=20, ge=1, le=200),
+    current_user: User = Depends(require_paper_trading),
+    db: Session = Depends(get_db),
+) -> dict[str, list[MarketReviewReportOut] | int]:
+    reports = list_monitor_review_history(db, user_id=current_user.id, limit=limit)
+    return {"items": reports, "total": len(reports)}
 
 
 @router.post("/performance/archive")

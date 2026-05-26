@@ -43,8 +43,13 @@ func quoteBatchHandler(cache quoteCache) http.Handler {
 		if len(items) == 0 {
 			status = http.StatusServiceUnavailable
 			quality = "unavailable"
+			marketReadFallbacks.Add(1)
 		} else if len(missing) > 0 {
 			quality = "partial"
+			marketReadPartials.Add(1)
+			marketReadHits.Add(1)
+		} else {
+			marketReadHits.Add(1)
 		}
 		writeJSON(w, status, map[string]any{
 			"source":       "redis_local_quote_cache",

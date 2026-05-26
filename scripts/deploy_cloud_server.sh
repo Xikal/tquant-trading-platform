@@ -115,55 +115,124 @@ remote_deploy() {
   cloud_scp_to "$package_path" "$remote_package"
 
   log "backup current release and rebuild app container"
-  cloud_ssh "set -euo pipefail
-TS=\$(date +%Y%m%d%H%M%S)
-cd /home/${CLOUD_USER}
+  cloud_ssh env \
+    CLOUD_PROJECT_DIR="$CLOUD_PROJECT_DIR" \
+    CLOUD_COMPOSE_FILE="$CLOUD_COMPOSE_FILE" \
+    CLOUD_USER="$CLOUD_USER" \
+    CLOUD_KEEP_BACKUPS="$CLOUD_KEEP_BACKUPS" \
+    CLOUD_AUTH_COOKIE_SECURE="${CLOUD_AUTH_COOKIE_SECURE:-}" \
+    REMOTE_PACKAGE="$remote_package" \
+    bash -s <<'REMOTE'
+set -euo pipefail
+TS=$(date +%Y%m%d%H%M%S)
+cd /home/$CLOUD_USER
 rm -rf gupiao-upload-new
 mkdir gupiao-upload-new
-tar -xzf '$remote_package' -C gupiao-upload-new
-if test -d '$CLOUD_PROJECT_DIR/.runtime'; then cp -a '$CLOUD_PROJECT_DIR/.runtime' gupiao-upload-new/.runtime || true; fi
-if test -f '$CLOUD_PROJECT_DIR/.env'; then cp -a '$CLOUD_PROJECT_DIR/.env' gupiao-upload-new/.env || true; fi
-PROJECT_PARENT=\$(dirname '$CLOUD_PROJECT_DIR')
-sudo mkdir -p \"\$PROJECT_PARENT\"
-if test -d '$CLOUD_PROJECT_DIR'; then
-  sudo mv '$CLOUD_PROJECT_DIR' '/home/${CLOUD_USER}/gupiao-deploy-backup-'\$TS
-  sudo chown -R '${CLOUD_USER}:${CLOUD_USER}' '/home/${CLOUD_USER}/gupiao-deploy-backup-'\$TS || true
+tar -xzf "$REMOTE_PACKAGE" -C gupiao-upload-new
+if test -d "$CLOUD_PROJECT_DIR/.runtime"; then cp -a "$CLOUD_PROJECT_DIR/.runtime" gupiao-upload-new/.runtime || true; fi
+if test -f "$CLOUD_PROJECT_DIR/.env"; then cp -a "$CLOUD_PROJECT_DIR/.env" gupiao-upload-new/.env || true; fi
+PROJECT_PARENT=$(dirname "$CLOUD_PROJECT_DIR")
+sudo mkdir -p "$PROJECT_PARENT"
+if test -d "$CLOUD_PROJECT_DIR"; then
+  sudo mv "$CLOUD_PROJECT_DIR" "/home/$CLOUD_USER/gupiao-deploy-backup-$TS"
+  sudo chown -R "$CLOUD_USER:$CLOUD_USER" "/home/$CLOUD_USER/gupiao-deploy-backup-$TS" || true
 fi
-sudo mv gupiao-upload-new '$CLOUD_PROJECT_DIR'
-sudo chown -R '${CLOUD_USER}:${CLOUD_USER}' '$CLOUD_PROJECT_DIR'
-cd '$CLOUD_PROJECT_DIR'
+sudo mv gupiao-upload-new "$CLOUD_PROJECT_DIR"
+sudo chown -R "$CLOUD_USER:$CLOUD_USER" "$CLOUD_PROJECT_DIR"
+cd "$CLOUD_PROJECT_DIR"
 touch .env
 if ! grep -Eq '^AUTH_SECRET_KEY=.{64,}' .env; then
   sed -i '/^AUTH_SECRET_KEY=/d' .env
-  SECRET=\$(openssl rand -hex 32 2>/dev/null || python3 - <<'PY'
+  SECRET=$(openssl rand -hex 32 2>/dev/null || python3 - <<'PY'
 import secrets
 print(secrets.token_hex(32))
 PY
 )
-  printf 'AUTH_SECRET_KEY=%s\n' \"\$SECRET\" >> .env
+  printf 'AUTH_SECRET_KEY=%s\n' "$SECRET" >> .env
 fi
 if ! grep -Eq '^TQUANT_SETTINGS_ENCRYPTION_KEY=.{64,}' .env; then
   sed -i '/^TQUANT_SETTINGS_ENCRYPTION_KEY=/d' .env
-  SETTINGS_SECRET=\$(openssl rand -hex 32 2>/dev/null || python3 - <<'PY'
+  SETTINGS_SECRET=$(openssl rand -hex 32 2>/dev/null || python3 - <<'PY'
 import secrets
 print(secrets.token_hex(32))
 PY
 )
-  printf 'TQUANT_SETTINGS_ENCRYPTION_KEY=%s\n' \"\$SETTINGS_SECRET\" >> .env
+  printf 'TQUANT_SETTINGS_ENCRYPTION_KEY=%s\n' "$SETTINGS_SECRET" >> .env
 fi
-AUTH_COOKIE_SECURE_VALUE='$CLOUD_AUTH_COOKIE_SECURE'
-if test -z \"\$AUTH_COOKIE_SECURE_VALUE\"; then
+if ! grep -Eq '^TQUANT_INTERNAL_SERVICE_TOKEN=.{32,}' .env; then
+  sed -i '/^TQUANT_INTERNAL_SERVICE_TOKEN=/d' .env
+  INTERNAL_SERVICE_TOKEN=$(openssl rand -hex 32 2>/dev/null || python3 - <<'PY'
+import secrets
+print(secrets.token_hex(32))
+PY
+)
+  printf 'TQUANT_INTERNAL_SERVICE_TOKEN=%s\n' "$INTERNAL_SERVICE_TOKEN" >> .env
+fi
+AUTH_COOKIE_SECURE_VALUE="$CLOUD_AUTH_COOKIE_SECURE"
+if test -z "$AUTH_COOKIE_SECURE_VALUE"; then
+  AUTH_COOKIE_SECURE_VALUE=true
+fi
+if test "$(printf '%s' "$AUTH_COOKIE_SECURE_VALUE" | tr '[:upper:]' '[:lower:]')" != "true"; then
+  echo "warning: forcing AUTH_COOKIE_SECURE=true for production cloud deployment"
   AUTH_COOKIE_SECURE_VALUE=true
 fi
 sed -i '/^AUTH_COOKIE_SECURE=/d' .env
-printf 'AUTH_COOKIE_SECURE=%s\n' \"\$AUTH_COOKIE_SECURE_VALUE\" >> .env
-sudo docker compose -f '$CLOUD_COMPOSE_FILE' up --build --force-recreate --abort-on-container-exit --exit-code-from migration migration
-sudo docker compose -f '$CLOUD_COMPOSE_FILE' run --rm --user root --entrypoint sh app -c 'mkdir -p /app/backend/data && chown -R tquant:tquant /app/backend/data'
-sudo docker compose -f '$CLOUD_COMPOSE_FILE' up -d --build app runtime-worker backtest-worker
+printf 'AUTH_COOKIE_SECURE=%s\n' "$AUTH_COOKIE_SECURE_VALUE" >> .env
+sudo docker compose -f "$CLOUD_COMPOSE_FILE" build app
+sudo docker compose -f "$CLOUD_COMPOSE_FILE" up --no-build --force-recreate --abort-on-container-exit --exit-code-from migration migration
+sudo docker rm -f tquant-app-mysql tquant-runtime-worker-mysql tquant-backtest-worker-mysql 2>/dev/null || true
+sudo docker compose -f "$CLOUD_COMPOSE_FILE" up -d --no-build --force-recreate app runtime-worker backtest-worker
+EXPECTED_WEB_IMAGE=$(sudo docker image inspect tquant-web:mysql --format '{{.Id}}')
+for container in tquant-app-mysql tquant-runtime-worker-mysql tquant-backtest-worker-mysql; do
+  ACTUAL_WEB_IMAGE=$(sudo docker inspect "$container" --format '{{.Image}}')
+  if test "$ACTUAL_WEB_IMAGE" != "$EXPECTED_WEB_IMAGE"; then
+    echo "$container is still running $ACTUAL_WEB_IMAGE; expected $EXPECTED_WEB_IMAGE" >&2
+    exit 1
+  fi
+done
+echo "web_image:updated"
+sudo docker exec -u root tquant-app-mysql sh -c 'mkdir -p /app/backend/data && chown -R tquant:tquant /app/backend/data' || true
+python3 - <<'PY'
+from pathlib import Path
+from urllib.parse import quote
+
+path = Path('.env')
+text = path.read_text(encoding='utf-8')
+values = {}
+for line in text.splitlines():
+    if line.startswith('#') or '=' not in line:
+        continue
+    key, value = line.split('=', 1)
+    values[key.strip()] = value.strip()
+
+dsn = values.get('MYSQL_DSN', '').strip()
+if not dsn:
+    user = values.get('MYSQL_USER', 'tquant_app').strip() or 'tquant_app'
+    password = values.get('MYSQL_PASSWORD', '').strip()
+    database = values.get('MYSQL_DATABASE', 't_quant').strip() or 't_quant'
+    if password:
+        dsn = f"mysql+pymysql://{quote(user, safe='')}:{quote(password, safe='')}@mysql:3306/{quote(database, safe='')}?charset=utf8mb4"
+        if not text.endswith('\n'):
+            text += '\n'
+        text += f"MYSQL_DSN={dsn}\n"
+        path.write_text(text, encoding='utf-8')
+        print('mysql_dsn:created')
+PY
+sudo docker compose -f "$CLOUD_COMPOSE_FILE" --profile go-bff --profile go-market --profile go-scan build go-bff-gateway go-market-read-service go-scan-worker
+sudo docker compose -f "$CLOUD_COMPOSE_FILE" --profile go-bff --profile go-market --profile go-scan up -d --no-build --force-recreate go-bff-gateway go-market-read-service go-scan-worker
+EXPECTED_WEB_IMAGE=$(sudo docker image inspect tquant-web:mysql --format '{{.Id}}')
+for container in tquant-app-mysql tquant-runtime-worker-mysql tquant-backtest-worker-mysql; do
+  ACTUAL_WEB_IMAGE=$(sudo docker inspect "$container" --format '{{.Image}}')
+  if test "$ACTUAL_WEB_IMAGE" != "$EXPECTED_WEB_IMAGE"; then
+    echo "$container changed away from web image after Go service deploy" >&2
+    exit 1
+  fi
+done
 sudo docker exec -u root tquant-app-mysql sh -c 'mkdir -p /app/backend/data/ml_models && chown -R tquant:tquant /app/backend/data' || true
-ls -dt /home/${CLOUD_USER}/gupiao-deploy-backup-* 2>/dev/null | tail -n +$((CLOUD_KEEP_BACKUPS + 1)) | xargs -r sudo rm -rf
-rm -f '$remote_package'
-sudo docker ps --format 'table {{.Names}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}'"
+ls -dt /home/$CLOUD_USER/gupiao-deploy-backup-* 2>/dev/null | tail -n +$((CLOUD_KEEP_BACKUPS + 1)) | xargs -r sudo rm -rf
+rm -f "$REMOTE_PACKAGE"
+sudo docker ps --format 'table {{.Names}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}'
+REMOTE
 }
 
 remote_configure_ops() {
@@ -197,14 +266,15 @@ fi"
 
 verify_remote() {
   log "wait for container health"
-  cloud_ssh "set -euo pipefail
-for _ in \$(seq 1 40); do
-  STATUS=\$(sudo docker inspect tquant-app-mysql --format '{{.State.Health.Status}}' 2>/dev/null || echo none)
-  echo health:\$STATUS
-  if test \"\$STATUS\" = healthy; then break; fi
+  cloud_ssh env CLOUD_APP_PORT="$CLOUD_APP_PORT" bash -s <<'REMOTE'
+set -euo pipefail
+for _ in $(seq 1 40); do
+  STATUS=$(sudo docker inspect tquant-app-mysql --format '{{.State.Health.Status}}' 2>/dev/null || echo none)
+  echo "health:$STATUS"
+  if test "$STATUS" = healthy; then break; fi
   sleep 3
 done
-curl -sS -f --max-time 10 http://127.0.0.1:${CLOUD_APP_PORT}/readyz >/tmp/gupiao_readyz.json
+curl -sS -f --max-time 10 "http://127.0.0.1:${CLOUD_APP_PORT}/readyz" >/tmp/gupiao_readyz.json
 python3 - <<'PY'
 import json
 payload = json.load(open('/tmp/gupiao_readyz.json', encoding='utf-8'))
@@ -213,12 +283,40 @@ assert payload.get('checks', {}).get('database') is True, payload
 assert payload.get('checks', {}).get('frontend_dist') is True, payload
 print('readyz:ok')
 PY
-AUTH_STATUS=\$(curl -sS -o /tmp/gupiao_auth_guard.json -w '%{http_code}' --max-time 10 'http://127.0.0.1:${CLOUD_APP_PORT}/api/screeners/low-buy?limit=4&scan_limit=24')
-test \"\$AUTH_STATUS\" = 401
+AUTH_STATUS=$(curl -sS -o /tmp/gupiao_auth_guard.json -w '%{http_code}' --max-time 10 "http://127.0.0.1:${CLOUD_APP_PORT}/api/screeners/low-buy?limit=4&scan_limit=24")
+test "$AUTH_STATUS" = 401
 echo protected_api:ok
-curl -sS -f -o /tmp/gupiao_home.html --max-time 10 http://127.0.0.1:${CLOUD_APP_PORT}/
-grep -q '<div id=\"root\"></div>' /tmp/gupiao_home.html
-echo frontend:ok"
+curl -sS -f -o /tmp/gupiao_home.html --max-time 10 "http://127.0.0.1:${CLOUD_APP_PORT}/"
+grep -q '<div id="root"></div>' /tmp/gupiao_home.html
+echo frontend:ok
+REMOTE
+}
+
+verify_go_remote() {
+  log "verify go services"
+  cloud_ssh bash -s <<'REMOTE'
+set -euo pipefail
+for name in tquant-go-bff-gateway tquant-go-market-read-service tquant-go-scan-worker; do
+  for _ in $(seq 1 30); do
+    STATUS=$(sudo docker inspect "$name" --format '{{.State.Health.Status}}' 2>/dev/null || echo none)
+    echo "$name health:$STATUS"
+    if test "$STATUS" = healthy; then
+      break
+    fi
+    sleep 2
+  done
+done
+sudo docker exec tquant-go-bff-gateway wget -qO- http://127.0.0.1:8091/readyz >/tmp/go_bff_readyz.json
+sudo docker exec tquant-go-market-read-service wget -qO- http://127.0.0.1:8092/readyz >/tmp/go_market_readyz.json
+sudo docker exec tquant-go-scan-worker wget -qO- http://127.0.0.1:8093/readyz >/tmp/go_scan_readyz.json
+python3 - <<'PY'
+import json
+for path in ['/tmp/go_bff_readyz.json', '/tmp/go_market_readyz.json', '/tmp/go_scan_readyz.json']:
+    payload = json.load(open(path, encoding='utf-8'))
+    assert payload.get('ok') is True or payload.get('status') == 'ok', payload
+print('go_services:ok')
+PY
+REMOTE
 }
 
 verify_latest_data_remote() {
@@ -246,6 +344,7 @@ main() {
   remote_deploy "$package_path"
   remote_configure_ops
   verify_remote
+  verify_go_remote
   verify_latest_data_remote
   rm -f "$package_path"
   log "done: http://${CLOUD_HOST}:${CLOUD_APP_PORT} / https://${CLOUD_DOMAIN}"

@@ -52,6 +52,7 @@ export function Topbar({
     ["analysis", "量化分析"],
     ["playbook", "选股宝典"],
     ["strategy", "策略工作台"],
+    ["backtest", "回测页"],
     ["paper", "模拟盘"],
   ], []);
   const riskCount = watchCards.filter((item) => item.riskText.includes("高")).length;

@@ -17,6 +17,7 @@ from app.models.schema_defs.bff import (
     SettingsWorkspaceBffResponse,
     StrategyWorkspaceBffResponse,
 )
+from app.models.schema_defs.market import MarketBreadthResponse, SectorRelativeStrengthResponse
 from app.services.bff import remote_adapters, remote_client
 from app.services.bff import workspace_cache
 
@@ -37,11 +38,11 @@ def test_bff_manifest_exposes_versioned_frontend_contract() -> None:
     payload = response.json()
     assert payload["api_version"] == "v1"
     assert payload["bff_version"] == "v1"
-    assert payload["schema_version"] == "v13"
+    assert payload["schema_version"] == "v14"
     assert "market" in payload["modules"]
     assert "strategy" in payload["modules"]
     assert "settings" in payload["modules"]
-    assert payload["workspaces"]["strategy"]["schema_version"] == "v13"
+    assert payload["workspaces"]["strategy"]["schema_version"] == "v14"
     assert payload["workspaces"]["paper"]["path"] == "/api/bff/v1/workspace/paper"
 
 
@@ -66,7 +67,7 @@ def test_paper_workspace_uses_bff_contract(monkeypatch) -> None:
     assert response.status_code == 200
     payload = response.json()
     assert payload["api_version"] == "v1"
-    assert payload["schema_version"] == "v13"
+    assert payload["schema_version"] == "v14"
     assert payload["auto_trading_status"]["running"] is False
 
 
@@ -119,8 +120,9 @@ def test_monitor_workspace_builder_errors_return_partial_payload(monkeypatch) ->
     )
 
     monkeypatch.setattr(bff, "build_monitor_snapshot", lambda *args, **kwargs: (_ for _ in ()).throw(RuntimeError("offline")))
-    monkeypatch.setattr(bff, "market_breadth", lambda *args, **kwargs: {"updated_at": "2026-05-25 10:00:00"})
-    monkeypatch.setattr(bff, "sector_relative_strength", lambda *args: {"updated_at": "2026-05-25 10:00:00"})
+    monkeypatch.setattr(bff, "market_breadth", lambda *args, **kwargs: MarketBreadthResponse(updated_at="2026-05-25 10:00:00"))
+    monkeypatch.setattr(bff, "sector_relative_strength", lambda *args: SectorRelativeStrengthResponse(updated_at="2026-05-25 10:00:00"))
+    monkeypatch.setattr(bff, "build_market_review_summary", lambda *args, **kwargs: (None, []))
     monkeypatch.setattr(bff, "paired_hedge_research", lambda *args: {"updated_at": "2026-05-25 10:00:00", "ideas": []})
 
     response = TestClient(app).get("/api/bff/v1/workspace/monitor")
@@ -167,14 +169,15 @@ def test_monitor_workspace_uses_fast_breadth_without_workspace_timeout(monkeypat
 
     def fake_market_breadth(*, realtime=True, db):
         calls["realtime"] = realtime
-        return {"updated_at": "2026-05-25 10:00:00", "state": "neutral"}
+        return MarketBreadthResponse(updated_at="2026-05-25 10:00:00", state="neutral")
 
     monkeypatch.setattr(bff, "market_breadth", fake_market_breadth)
     monkeypatch.setattr(
         bff,
         "sector_relative_strength",
-        lambda *args: {"updated_at": "2026-05-25 10:00:00", "items": []},
+        lambda *args: SectorRelativeStrengthResponse(updated_at="2026-05-25 10:00:00"),
     )
+    monkeypatch.setattr(bff, "build_market_review_summary", lambda *args, **kwargs: (None, []))
     monkeypatch.setattr(bff, "paired_hedge_research", lambda *args: {"updated_at": "2026-05-25 10:00:00", "ideas": []})
 
     response = TestClient(app).get("/api/bff/v1/workspace/monitor")

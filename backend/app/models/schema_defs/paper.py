@@ -231,6 +231,29 @@ class PaperPerformanceOut(BaseModel):
     win_loss_ratio: Optional[float] = None
 
 
+class PaperReviewReportOut(BaseModel):
+    id: int = 0
+    report_date: str = ""
+    report_slot: str = ""
+    overall_summary: str = ""
+    strategy_highlights: list[dict[str, Any]] = Field(default_factory=list)
+    risk_alerts: list[dict[str, Any]] = Field(default_factory=list)
+    suggestion: str = ""
+    generated_at: str = ""
+    llm_model: str = ""
+
+
+class PaperReviewStatusOut(BaseModel):
+    trade_date: str = ""
+    status: str = "empty"
+    status_text: str = "今日暂无复盘"
+    has_midday: bool = False
+    has_close: bool = False
+    next_trigger_at: str = ""
+    risk_alert_count: int = 0
+    suggested_action: str = "等待午盘或收盘复盘生成。"
+
+
 class PaperGroupedPerformanceOut(BaseModel):
     key: str
     trades: int = 0

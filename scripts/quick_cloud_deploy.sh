@@ -1,0 +1,206 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+source "$ROOT_DIR/scripts/cloud_ssh_lib.sh"
+
+CLOUD_HOST="${CLOUD_HOST:-43.143.243.97}"
+CLOUD_USER="${CLOUD_USER:-ubuntu}"
+CLOUD_SSH_KEY="${CLOUD_SSH_KEY:-/Users/j/Downloads/gupiao.pem}"
+CLOUD_PROJECT_DIR="${CLOUD_PROJECT_DIR:-/home/ubuntu/gupiao-upload}"
+CLOUD_APP_PORT="${CLOUD_APP_PORT:-18090}"
+CLOUD_DOMAIN="${CLOUD_DOMAIN:-}"
+CLOUD_CERT_EMAIL="${CLOUD_CERT_EMAIL:-}"
+CLOUD_SSH_TIMEOUT="${CLOUD_SSH_TIMEOUT:-2400}"
+CLOUD_SSH_CONNECT_TIMEOUT="${CLOUD_SSH_CONNECT_TIMEOUT:-15}"
+CLOUD_SSH_SERVER_ALIVE_COUNT_MAX="${CLOUD_SSH_SERVER_ALIVE_COUNT_MAX:-120}"
+
+FAST_MODE=1
+VERIFY_ONLY=0
+RUN_LOCAL_CHECKS=0
+RUN_FULL_TESTS=0
+RUN_STRATEGY_TEST=0
+RUN_LATEST_DATA_ACCEPTANCE=0
+AUTO_INITIAL_GIT_COMMIT=0
+AUTO_INSTALL_BACKUP_CRON=0
+AUTO_CONFIGURE_HTTPS=0
+HTTPS_REQUIRED=0
+CLOUD_AUTH_COOKIE_SECURE=true
+
+log() {
+  printf '[quick-deploy] %s\n' "$*"
+}
+
+usage() {
+  cat <<'EOF'
+Usage: scripts/quick_cloud_deploy.sh [options]
+
+Defaults:
+  host   43.143.243.97
+  user   ubuntu
+  key    /Users/j/Downloads/gupiao.pem
+  port   18090
+
+Options:
+  --verify-only   Skip deploy and only verify the current remote state.
+  --full          Run the slower local checks and latest-data acceptance.
+  --host <host>   Override cloud host.
+  --user <user>   Override cloud ssh user.
+  --key <path>    Override ssh private key path.
+  --project-dir <path>
+  --port <port>
+  --help
+EOF
+}
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --verify-only)
+      VERIFY_ONLY=1
+      shift
+      ;;
+    --full)
+      FAST_MODE=0
+      RUN_LOCAL_CHECKS=1
+      RUN_FULL_TESTS=1
+      RUN_STRATEGY_TEST=1
+      RUN_LATEST_DATA_ACCEPTANCE=1
+      shift
+      ;;
+    --host)
+      CLOUD_HOST="${2:?missing host}"
+      shift 2
+      ;;
+    --user)
+      CLOUD_USER="${2:?missing user}"
+      shift 2
+      ;;
+    --key)
+      CLOUD_SSH_KEY="${2:?missing key}"
+      shift 2
+      ;;
+    --project-dir)
+      CLOUD_PROJECT_DIR="${2:?missing project dir}"
+      shift 2
+      ;;
+    --port)
+      CLOUD_APP_PORT="${2:?missing port}"
+      shift 2
+      ;;
+    --help|-h)
+      usage
+      exit 0
+      ;;
+    *)
+      log "unknown option: $1"
+      usage
+      exit 2
+      ;;
+  esac
+done
+
+export CLOUD_HOST CLOUD_USER CLOUD_SSH_KEY CLOUD_PROJECT_DIR CLOUD_APP_PORT
+export CLOUD_SSH_TIMEOUT CLOUD_SSH_CONNECT_TIMEOUT CLOUD_SSH_SERVER_ALIVE_COUNT_MAX
+export CLOUD_DOMAIN CLOUD_CERT_EMAIL CLOUD_AUTH_COOKIE_SECURE
+export AUTO_INITIAL_GIT_COMMIT AUTO_INSTALL_BACKUP_CRON AUTO_CONFIGURE_HTTPS HTTPS_REQUIRED
+export RUN_COMPILE RUN_FRONTEND_BUILD RUN_STRATEGY_TEST RUN_FULL_TESTS RUN_LATEST_DATA_ACCEPTANCE
+export CLOUD_SSH_TIMEOUT CLOUD_SSH_CONNECT_TIMEOUT CLOUD_SSH_SERVER_ALIVE_COUNT_MAX
+
+if [[ ! -f "$CLOUD_SSH_KEY" ]]; then
+  log "ssh key not found: $CLOUD_SSH_KEY"
+  exit 2
+fi
+chmod 600 "$CLOUD_SSH_KEY" 2>/dev/null || true
+
+verify_remote() {
+  log "verify remote service health"
+  cloud_ssh env CLOUD_APP_PORT="$CLOUD_APP_PORT" CLOUD_PROJECT_DIR="$CLOUD_PROJECT_DIR" bash -s <<'REMOTE'
+set -euo pipefail
+wait_for_container() {
+  local name="$1"
+  local status=""
+  for _ in $(seq 1 60); do
+    status=$(sudo docker inspect "$name" --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' 2>/dev/null || echo missing)
+    echo "$name status:$status"
+    case "$status" in
+      healthy|running)
+        return 0
+        ;;
+    esac
+    sleep 2
+  done
+  echo "$name status did not reach running/healthy" >&2
+  return 1
+}
+for name in tquant-app-mysql tquant-runtime-worker-mysql tquant-backtest-worker-mysql tquant-go-bff-gateway tquant-go-market-read-service tquant-go-scan-worker; do
+  wait_for_container "$name"
+done
+EXPECTED_WEB_IMAGE=$(sudo docker image inspect tquant-web:mysql --format '{{.Id}}')
+for container in tquant-app-mysql tquant-runtime-worker-mysql tquant-backtest-worker-mysql; do
+  ACTUAL_WEB_IMAGE=$(sudo docker inspect "$container" --format '{{.Image}}')
+  test "$ACTUAL_WEB_IMAGE" = "$EXPECTED_WEB_IMAGE"
+done
+echo web_image:ok
+grep -Eq '^AUTH_COOKIE_SECURE=true$' "$CLOUD_PROJECT_DIR/.env"
+grep -Eq '^TQUANT_INTERNAL_SERVICE_TOKEN=.{32,}$' "$CLOUD_PROJECT_DIR/.env"
+curl -sS -f --max-time 10 "http://127.0.0.1:${CLOUD_APP_PORT}/readyz" >/tmp/gupiao_readyz.json
+python3 - <<'PY'
+import json
+payload = json.load(open('/tmp/gupiao_readyz.json', encoding='utf-8'))
+assert payload.get('status') == 'ok', payload
+assert payload.get('checks', {}).get('database') is True, payload
+assert payload.get('checks', {}).get('frontend_dist') is True, payload
+print('readyz:ok')
+PY
+AUTH_STATUS=$(curl -sS -o /tmp/gupiao_auth_guard.json -w '%{http_code}' --max-time 10 "http://127.0.0.1:${CLOUD_APP_PORT}/api/screeners/low-buy?limit=4&scan_limit=24")
+test "$AUTH_STATUS" = 401
+echo protected_api:ok
+curl -sS -f -o /tmp/gupiao_home.html --max-time 10 "http://127.0.0.1:${CLOUD_APP_PORT}/"
+grep -q '<div id="root"></div>' /tmp/gupiao_home.html
+echo frontend:ok
+sudo docker exec tquant-go-bff-gateway wget -qO- http://127.0.0.1:8091/readyz >/tmp/go_bff_readyz.json
+sudo docker exec tquant-go-market-read-service wget -qO- http://127.0.0.1:8092/readyz >/tmp/go_market_readyz.json
+sudo docker exec tquant-go-scan-worker wget -qO- http://127.0.0.1:8093/readyz >/tmp/go_scan_readyz.json
+python3 - <<'PY'
+import json
+for path in ['/tmp/go_bff_readyz.json', '/tmp/go_market_readyz.json', '/tmp/go_scan_readyz.json']:
+    payload = json.load(open(path, encoding='utf-8'))
+    assert payload.get('ok') is True or payload.get('status') == 'ok', payload
+print('go_services:ok')
+PY
+REMOTE
+}
+
+if [[ "$VERIFY_ONLY" == "1" ]]; then
+  verify_remote
+  log "verification completed for http://${CLOUD_HOST}:${CLOUD_APP_PORT}"
+  exit 0
+fi
+
+log "deploy to ${CLOUD_USER}@${CLOUD_HOST} using ${CLOUD_SSH_KEY}"
+log "fast mode: local checks skipped, HTTPS/cron disabled, auth cookie stays secure"
+RUN_COMPILE="$RUN_LOCAL_CHECKS" \
+RUN_FRONTEND_BUILD="$RUN_LOCAL_CHECKS" \
+RUN_STRATEGY_TEST="$RUN_STRATEGY_TEST" \
+RUN_FULL_TESTS="$RUN_FULL_TESTS" \
+RUN_LATEST_DATA_ACCEPTANCE="$RUN_LATEST_DATA_ACCEPTANCE" \
+AUTO_INITIAL_GIT_COMMIT="$AUTO_INITIAL_GIT_COMMIT" \
+AUTO_INSTALL_BACKUP_CRON="$AUTO_INSTALL_BACKUP_CRON" \
+AUTO_CONFIGURE_HTTPS="$AUTO_CONFIGURE_HTTPS" \
+HTTPS_REQUIRED="$HTTPS_REQUIRED" \
+CLOUD_HOST="$CLOUD_HOST" \
+CLOUD_USER="$CLOUD_USER" \
+CLOUD_SSH_KEY="$CLOUD_SSH_KEY" \
+CLOUD_PROJECT_DIR="$CLOUD_PROJECT_DIR" \
+CLOUD_APP_PORT="$CLOUD_APP_PORT" \
+CLOUD_DOMAIN="$CLOUD_DOMAIN" \
+CLOUD_CERT_EMAIL="$CLOUD_CERT_EMAIL" \
+CLOUD_AUTH_COOKIE_SECURE="$CLOUD_AUTH_COOKIE_SECURE" \
+CLOUD_SSH_TIMEOUT="$CLOUD_SSH_TIMEOUT" \
+CLOUD_SSH_CONNECT_TIMEOUT="$CLOUD_SSH_CONNECT_TIMEOUT" \
+CLOUD_SSH_SERVER_ALIVE_COUNT_MAX="$CLOUD_SSH_SERVER_ALIVE_COUNT_MAX" \
+"$ROOT_DIR/scripts/deploy_cloud_server.sh"
+
+verify_remote
+log "done: http://${CLOUD_HOST}:${CLOUD_APP_PORT}"

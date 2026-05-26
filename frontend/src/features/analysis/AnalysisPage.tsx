@@ -1,8 +1,9 @@
 import type { CSSProperties } from "react";
 import type { AnalysisResponse, IntradayAnomalyResponse } from "../../types";
-import { Button } from "antd";
+import { Button, Collapse } from "antd";
 import { NumberField, SearchField, SelectField, TextField } from "../../components/shared/FormFields";
 import { Callout, ContextRow, InfoPill, LineList, MetricGrid, MiniKline, PanelTitle, StockIdentity } from "../workspace-shared/WorkspaceComponents";
+import { WorkspacePageIntro } from "../workspace-shared/WorkspacePageIntro";
 import { actionStatusText, actionText, formatAmount, formatNumber, formatPct, formatPrice, plainTradingText, riskText, toneFromChange } from "../workspace-shared/workspaceFormatters";
 import type { AnalysisDraft } from "../workspace-shared/workspaceTypes";
 
@@ -10,7 +11,7 @@ const ANALYSIS_PAGE_STYLE: CSSProperties = {
   display: "grid",
   gap: 8,
   gridTemplateColumns: "minmax(0, 1fr) minmax(300px, 340px)",
-  gridTemplateAreas: '"hero control" "decision control" "identity batch" "chart chart" "plan plan" "anomaly anomaly"',
+  gridTemplateAreas: '"hero hero" "decision control" "identity batch" "chart chart" "plan plan" "anomaly anomaly"',
   fontSize: 12,
   lineHeight: 1.35,
 };
@@ -113,12 +114,20 @@ export function AnalysisPage({
   return (
     <section style={ANALYSIS_PAGE_STYLE}>
       <div className="panel" style={ANALYSIS_HERO_STYLE}>
-        <PanelTitle title="个股量化分析" />
-        <ContextRow>
-          <InfoPill compact label="操作建议" value={actionHeadline} />
-          <InfoPill compact label="持仓限制" value={`底仓 ${draft.base_position} / 可卖 ${draft.available_position}`} />
-          <InfoPill compact label="风险等级" value={suggestion ? riskText(suggestion.risk_level) : "--"} />
-        </ContextRow>
+        <WorkspacePageIntro
+          title="量化分析"
+          summary={decisionTitle}
+          more="单票分析先判断是否可操作，再给出执行计划、失效条件和模拟下单入口。"
+          moreLabel="分析口径"
+          tone={decisionTone}
+          actions={<Button type="primary" onClick={onRun} loading={loading === "analysis"}>开始分析</Button>}
+          pills={[
+            { label: "证券", value: draft.symbol || "--" },
+            { label: "操作建议", value: actionHeadline, tone: decisionTone },
+            { label: "风险等级", value: suggestion ? riskText(suggestion.risk_level) : "--", tone: suggestion?.risk_level === "high" ? "down" : "neutral" },
+            { label: "批量结果", value: String(batchResults.length) },
+          ]}
+        />
         <Callout
           label="综合判断"
           title={decisionTitle}
@@ -232,21 +241,34 @@ export function AnalysisPage({
           <InfoPill compact label="成交额" value={formatAmount(quote?.amount)} />
         </ContextRow>
       </div>
-      <div className="panel" style={ANALYSIS_PLAN_PANEL_STYLE}>
-        <div>
-          <PanelTitle title="执行计划" />
-          <p>{executionText}</p>
-          <p className="hint">{invalidText}</p>
-          <p className="hint">
-            {plainTradingText(suggestion?.strategy_notes) ||
-              "先买后卖只等回落后重新走强；先卖后接回只在冲高乏力且有接回空间时执行；AI 只解释，不放宽底线规则。"}
-          </p>
-        </div>
-        {result?.ai.summary ? <div>
-          <PanelTitle title="AI 补充说明" />
-          <p>{plainTradingText(result.ai.summary)}</p>
-          {result?.compliance_notes.length ? <LineList title="合规与假设" items={[...result.compliance_notes, ...result.assumptions].slice(0, 4)} /> : null}
-        </div> : null}
+      <div className="panel" style={ANALYSIS_PLAN_STYLE}>
+        <Collapse
+          size="small"
+          items={[
+            {
+              key: "plan",
+              label: "执行计划、AI 补充与合规假设",
+              children: (
+                <div style={ANALYSIS_PLAN_PANEL_STYLE}>
+                  <div>
+                    <PanelTitle title="执行计划" />
+                    <p>{executionText}</p>
+                    <p className="hint">{invalidText}</p>
+                    <p className="hint">
+                      {plainTradingText(suggestion?.strategy_notes) ||
+                        "先买后卖只等回落后重新走强；先卖后接回只在冲高乏力且有接回空间时执行；AI 只解释，不放宽底线规则。"}
+                    </p>
+                  </div>
+                  {result?.ai.summary ? <div>
+                    <PanelTitle title="AI 补充说明" />
+                    <p>{plainTradingText(result.ai.summary)}</p>
+                    {result?.compliance_notes.length ? <LineList title="合规与假设" items={[...result.compliance_notes, ...result.assumptions].slice(0, 4)} /> : null}
+                  </div> : null}
+                </div>
+              ),
+            },
+          ]}
+        />
       </div>
     </section>
   );

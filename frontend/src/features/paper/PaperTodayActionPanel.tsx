@@ -15,14 +15,14 @@ export function PaperTodayActionPanel({
   const actions = buildActionTimeline(autoTradingStatus, autoTradingRuns);
 
   return (
-    <Space direction="vertical" size={8} style={{ width: "100%" }}>
+    <Space direction="vertical" size={6} style={{ width: "100%", fontSize: 11 }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
-        <Typography.Text strong style={{ fontSize: 13 }}>今日动作</Typography.Text>
+        <Typography.Text strong style={{ fontSize: 12 }}>今日动作</Typography.Text>
         <Tag color={autoTradingStatus?.running ? "green" : "default"}>
           {autoTradingStatus?.running ? "系统自动执行中" : "当前未自动下单"}
         </Tag>
       </div>
-      <Row gutter={[8, 8]}>
+      <Row gutter={[6, 6]}>
         <StatusItem
           label="自动交易状态"
           value={autoTradingStatus?.running ? "运行中" : autoTradingStatus?.trading_time ? "待启动" : "非交易时间"}
@@ -45,14 +45,15 @@ export function PaperTodayActionPanel({
           items={actions.map((item, index) => ({
             key: `${item.time}-${index}`,
             children: (
-              <Space orientation="vertical" size={1}>
-                <Typography.Text strong>{item.time} {item.title}</Typography.Text>
-                <Typography.Text type="secondary">{item.detail}</Typography.Text>
+              <Space direction="vertical" size={1}>
+                <Typography.Text strong style={{ fontSize: 11 }}>{item.time} {item.title}</Typography.Text>
+                <Typography.Text type="secondary" style={{ fontSize: 11 }}>{item.detail}</Typography.Text>
               </Space>
             ),
           }))}
+          style={{ fontSize: 11 }}
         />
-      ) : <Typography.Text type="secondary">今日暂无执行记录。</Typography.Text>}
+      ) : <Typography.Text type="secondary" style={{ fontSize: 11 }}>今日暂无执行记录。</Typography.Text>}
     </Space>
   );
 }
@@ -69,16 +70,17 @@ function StatusItem({
   tone?: "success" | "warning";
 }) {
   return (
-    <Col xs={24}>
+    <Col xs={24} md={8}>
       <div style={{
         background: tone === "success" ? "#f0fbf4" : tone === "warning" ? "#fff8e8" : "#fff",
         border: "1px solid #edf0f5",
         borderRadius: 6,
-        padding: 8,
+        padding: 6,
+        minHeight: 76,
       }}>
-        <Space orientation="vertical" size={3}>
-          <Statistic title={label} value={value} styles={{ content: { fontSize: 14 } }} />
-          <Typography.Text type="secondary" style={{ fontSize: 12, lineHeight: 1.35 }}>{detail}</Typography.Text>
+        <Space direction="vertical" size={3}>
+          <Statistic title={label} value={value} styles={{ content: { fontSize: 12, lineHeight: 1.1 } }} />
+          <Typography.Text type="secondary" style={{ fontSize: 11, lineHeight: 1.32 }}>{detail}</Typography.Text>
         </Space>
       </div>
     </Col>

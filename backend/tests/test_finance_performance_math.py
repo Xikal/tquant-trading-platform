@@ -10,6 +10,7 @@ from app.services.finance.performance_math import (
 )
 from app.services.finance import performance_math
 from app.services.indicators import atr, rsi_wilder
+from app.services.finance import rust_math
 from app.services.low_buy.risk_metrics import _compute_sharpe_from_returns
 
 
@@ -41,6 +42,80 @@ def test_sequence_max_drawdown_uses_rust_fallback_when_available(monkeypatch) ->
     assert performance_math.sequence_max_drawdown_pct([100.0, 80.0, 120.0, 110.0]) == pytest.approx(-25.0)
 
 
+def test_rust_wrappers_tolerate_empty_short_none_and_nan(monkeypatch) -> None:
+    monkeypatch.setattr(rust_math, "_load_rust_module", lambda: None)
+    assert rust_math.rust_max_drawdown([None, float("nan"), 100.0, 90.0]) is None
+    assert rust_math.rust_rolling_mean([1.0, None, 3.0], 2) is None
+    assert rust_math.rust_atr_wilder([1.0], [1.0], [1.0], 14) is None
+    assert rust_math.rust_vwap([1.0, None], [10.0, 20.0]) is None
+    assert rust_math.rust_rank_ic([1.0, None, 2.0], [2.0, 1.0, float("nan")]) is None
+
+
+def test_rust_wrappers_match_python_reference_for_migrated_metrics(monkeypatch) -> None:
+    class FakeRustModule:
+        @staticmethod
+        def max_drawdown(values):
+            peak = 0.0
+            max_dd = 0.0
+            for value in values:
+                peak = max(peak, float(value))
+                if peak > 0:
+                    max_dd = max(max_dd, (peak - float(value)) / peak)
+            return max_dd
+
+        @staticmethod
+        def rolling_mean(values, window):
+            return [
+                None if index + 1 < window else sum(values[index + 1 - window : index + 1]) / window
+                for index in range(len(values))
+            ]
+
+        @staticmethod
+        def atr_wilder(highs, lows, closes, period):
+            return _python_atr_wilder(highs, lows, closes, period)
+
+        @staticmethod
+        def rsi_wilder(values, period):
+            return _python_rsi_wilder(values, period)
+
+        @staticmethod
+        def vwap(prices, volumes):
+            total_volume = sum(volumes)
+            return sum(price * volume for price, volume in zip(prices, volumes)) / total_volume
+
+        @staticmethod
+        def rank_ic(factors, returns):
+            return _spearman(factors, returns)
+
+    monkeypatch.setattr(rust_math, "_load_rust_module", lambda: FakeRustModule)
+    values = [100.0, 110.0, 104.0, 112.0, 90.0, 95.0]
+    highs = [10.0, 11.0, 12.0, 11.5, 13.0, 12.0]
+    lows = [9.5, 10.0, 10.5, 10.0, 11.0, 10.8]
+    closes = [9.8, 10.5, 11.2, 10.7, 12.4, 11.3]
+    prices = [10.0, 11.0, 12.0]
+    volumes = [100.0, 120.0, 80.0]
+
+    assert rust_math.rust_max_drawdown(values) == pytest.approx(0.1964285714)
+    assert rust_math.rust_rolling_mean(values, 3) == pytest.approx([None, None, 104.6666667, 108.6666667, 102.0, 99.0])
+    assert rust_math.rust_atr_wilder(highs, lows, closes, 3) == pytest.approx(_python_atr_wilder(highs, lows, closes, 3))
+    assert rust_math.rust_rsi_wilder(values, 3) == pytest.approx(_python_rsi_wilder(values, 3))
+    assert rust_math.rust_vwap(prices, volumes) == pytest.approx(10.9333333333)
+    assert rust_math.rust_rank_ic([1.0, 2.0, 3.0], [3.0, 2.0, 1.0]) == pytest.approx(-1.0)
+
+
+def test_rust_rsi_wilder_flat_sequence_matches_python_reference(monkeypatch) -> None:
+    class FakeRustModule:
+        @staticmethod
+        def rsi_wilder(values, period):
+            return _python_rsi_wilder(values, period)
+
+    monkeypatch.setattr(rust_math, "_load_rust_module", lambda: FakeRustModule)
+    values = [10.0] * 16
+
+    assert rust_math.rust_rsi_wilder(values, 14) == pytest.approx(50.0)
+    assert rust_math.rust_rsi_wilder(values, 14) == pytest.approx(_python_rsi_wilder(values, 14))
+
+
 def test_atr_uses_wilder_rma_not_last_sma() -> None:
     bars = [
         KlineBar(timestamp="0", open=9.5, close=9.5, high=10.0, low=9.0, volume=100, amount=1000),
@@ -69,3 +144,67 @@ def test_rsi_wilder_is_explicit_and_stable() -> None:
 def test_risk_free_rate_is_bounded_and_configurable() -> None:
     assert risk_free_rate_from_params({"risk_free_rate_annual_pct": 3.5}) == 3.5
     assert risk_free_rate_from_params({"risk_free_rate_annual_pct": 999}) == 20.0
+
+
+def _python_atr_wilder(highs: list[float], lows: list[float], closes: list[float], period: int) -> list[float | None]:
+    length = min(len(highs), len(lows), len(closes))
+    if period <= 0 or length < period + 1:
+        return [None] * length
+    true_ranges = [
+        max(highs[index] - lows[index], abs(highs[index] - closes[index - 1]), abs(lows[index] - closes[index - 1]))
+        for index in range(1, length)
+    ]
+    result: list[float | None] = [None] * length
+    atr_value = sum(true_ranges[:period]) / period
+    result[period] = atr_value
+    for index in range(period, len(true_ranges)):
+        atr_value = (atr_value * (period - 1) + true_ranges[index]) / period
+        result[index + 1] = atr_value
+    return result
+
+
+def _python_rsi_wilder(values: list[float], period: int) -> float | None:
+    if len(values) < period + 1:
+        return None
+    gains: list[float] = []
+    losses: list[float] = []
+    for previous, current in zip(values[:period], values[1 : period + 1]):
+        diff = current - previous
+        gains.append(max(diff, 0.0))
+        losses.append(abs(min(diff, 0.0)))
+    avg_gain = sum(gains) / period
+    avg_loss = sum(losses) / period
+    for previous, current in zip(values[period:-1], values[period + 1 :]):
+        diff = current - previous
+        avg_gain = ((avg_gain * (period - 1)) + max(diff, 0.0)) / period
+        avg_loss = ((avg_loss * (period - 1)) + abs(min(diff, 0.0))) / period
+    if avg_loss == 0:
+        return 100.0 if avg_gain > 0 else 50.0
+    rs = avg_gain / avg_loss
+    return 100 - (100 / (1 + rs))
+
+
+def _spearman(left: list[float], right: list[float]) -> float:
+    left_ranks = _ranks(left)
+    right_ranks = _ranks(right)
+    left_mean = sum(left_ranks) / len(left_ranks)
+    right_mean = sum(right_ranks) / len(right_ranks)
+    covariance = sum((a - left_mean) * (b - right_mean) for a, b in zip(left_ranks, right_ranks))
+    left_var = sum((a - left_mean) ** 2 for a in left_ranks)
+    right_var = sum((b - right_mean) ** 2 for b in right_ranks)
+    return covariance / ((left_var * right_var) ** 0.5)
+
+
+def _ranks(values: list[float]) -> list[float]:
+    ordered = sorted((value, index) for index, value in enumerate(values))
+    result = [0.0] * len(values)
+    cursor = 0
+    while cursor < len(ordered):
+        end = cursor + 1
+        while end < len(ordered) and ordered[end][0] == ordered[cursor][0]:
+            end += 1
+        rank = (cursor + 1 + end) / 2
+        for _, index in ordered[cursor:end]:
+            result[index] = rank
+        cursor = end
+    return result

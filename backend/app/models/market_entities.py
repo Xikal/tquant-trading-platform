@@ -387,3 +387,53 @@ class MarketRegimeSnapshotCache(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime, server_default=func.now(), onupdate=func.now(), index=True
     )
+
+
+class MarketHourlySnapshotHistory(Base):
+    __tablename__ = "market_hourly_snapshot_history"
+    __table_args__ = (
+        UniqueConstraint("trade_date", "snapshot_bucket", name="uq_market_hourly_snapshot_bucket"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    trade_date: Mapped[str] = mapped_column(String(16), index=True)
+    snapshot_bucket: Mapped[str] = mapped_column(String(24), index=True)
+    data_quality: Mapped[str] = mapped_column(String(24), default="fresh", index=True)
+    snapshot_count: Mapped[int] = mapped_column(Integer, default=0)
+    market_strength_score: Mapped[float] = mapped_column(Float, default=0.0)
+    payload_json: Mapped[str] = mapped_column(Text, default="{}")
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), index=True)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, server_default=func.now(), onupdate=func.now(), index=True
+    )
+
+
+class MarketPulseEvent(Base):
+    __tablename__ = "market_pulse_events"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    trade_date: Mapped[str] = mapped_column(String(16), index=True)
+    pulse_level: Mapped[str] = mapped_column(String(24), default="unknown", index=True)
+    data_quality: Mapped[str] = mapped_column(String(24), default="unavailable", index=True)
+    pulse_text: Mapped[str] = mapped_column(Text, default="")
+    suggested_action: Mapped[str] = mapped_column(Text, default="")
+    payload_json: Mapped[str] = mapped_column(Text, default="{}")
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), index=True)
+
+
+class MarketReviewReport(Base):
+    __tablename__ = "market_review_reports"
+    __table_args__ = (
+        UniqueConstraint("report_date", "report_slot", name="uq_market_review_date_slot"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    report_date: Mapped[date] = mapped_column(Date, index=True)
+    report_slot: Mapped[str] = mapped_column(String(16), default="close", index=True)
+    overall_summary: Mapped[str] = mapped_column(Text, default="")
+    strategy_highlights: Mapped[str] = mapped_column(Text, default="[]")
+    risk_alerts: Mapped[str] = mapped_column(Text, default="[]")
+    suggestion: Mapped[str] = mapped_column(Text, default="")
+    raw_metrics_snapshot: Mapped[str] = mapped_column(Text, default="{}")
+    generated_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), index=True)
+    llm_model: Mapped[str] = mapped_column(String(80), default="market-rule")

@@ -7,6 +7,8 @@
     "message": "qlib 可用，可按需初始化离线研究环境。"
   },
   "sample_count": 2,
+  "sample_warning": "sample_count < 30，仅证明 benchmark 流程可运行，不能作为策略收益、胜率、IC 或 IR 有效性结论。",
+  "minimum_decision_sample_count": 30,
   "win_rate": 0.0,
   "avg_return_3d": -0.027644,
   "sharpe": -1.624111,

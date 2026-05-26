@@ -47,6 +47,28 @@ func (cache *workspaceCache) get(key string) (cachedWorkspaceResponse, bool) {
 	return item, true
 }
 
+func (cache *workspaceCache) size() int {
+	if cache == nil {
+		return 0
+	}
+	cache.mu.Lock()
+	defer cache.mu.Unlock()
+	now := time.Now()
+	for key, item := range cache.items {
+		if now.After(item.expiresAt) {
+			delete(cache.items, key)
+		}
+	}
+	return len(cache.items)
+}
+
+func (cache *workspaceCache) ttlSeconds() float64 {
+	if cache == nil {
+		return 0
+	}
+	return cache.ttl.Seconds()
+}
+
 func (cache *workspaceCache) set(key string, status int, body []byte, contentType string) {
 	if cache == nil || status < http.StatusOK || status >= http.StatusMultipleChoices {
 		return

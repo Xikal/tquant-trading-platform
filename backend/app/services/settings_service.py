@@ -1,4 +1,7 @@
+from __future__ import annotations
+
 import json
+import tempfile
 from pathlib import Path
 from typing import Any
 from urllib.parse import SplitResult, urlsplit, urlunsplit
@@ -60,20 +63,34 @@ class SettingsService:
         changes = _drop_masked_sensitive_values(update.model_dump(exclude_none=True))
         current.update(changes)
 
-        for key, value in changes.items():
-            row = self.db.execute(
-                select(SystemSetting).where(SystemSetting.key == key)
-            ).scalar_one_or_none()
-            if row is None:
-                row = SystemSetting(key=key, value=self._serialize_setting_value(key, value))
-                self.db.add(row)
-            else:
-                row.value = self._serialize_setting_value(key, value)
-
-        self.db.commit()
         runtime_keys = set(changes) & set(RUNTIME_ENV_KEY_MAP)
-        if runtime_keys:
-            self.persist_runtime_settings(current)
+        runtime_backup_path = _backup_runtime_settings() if runtime_keys and RUNTIME_ENV_PATH.exists() else None
+        runtime_preexisted = RUNTIME_ENV_PATH.exists()
+        try:
+            if runtime_keys:
+                self.persist_runtime_settings(current)
+
+            for key, value in changes.items():
+                row = self.db.execute(
+                    select(SystemSetting).where(SystemSetting.key == key)
+                ).scalar_one_or_none()
+                if row is None:
+                    row = SystemSetting(key=key, value=self._serialize_setting_value(key, value))
+                    self.db.add(row)
+                else:
+                    row.value = self._serialize_setting_value(key, value)
+
+            self.db.commit()
+        except Exception:
+            self.db.rollback()
+            if runtime_backup_path is not None:
+                _restore_runtime_settings(runtime_backup_path)
+            elif runtime_keys and not runtime_preexisted:
+                RUNTIME_ENV_PATH.unlink(missing_ok=True)
+            raise
+        finally:
+            if runtime_backup_path is not None and runtime_backup_path.exists():
+                runtime_backup_path.unlink(missing_ok=True)
         return SettingsPayload(**current)
 
     @staticmethod
@@ -154,7 +171,14 @@ class SettingsService:
         for key in sorted(existing):
             value = existing[key]
             lines.append(f"{key}={json.dumps(value, ensure_ascii=False)}\n")
-        Path(RUNTIME_ENV_PATH).write_text("".join(lines), encoding="utf-8")
+        with tempfile.NamedTemporaryFile("w", encoding="utf-8", delete=False, dir=RUNTIME_ENV_PATH.parent) as handle:
+            handle.write("".join(lines))
+            temp_path = Path(handle.name)
+        try:
+            temp_path.replace(RUNTIME_ENV_PATH)
+        finally:
+            if temp_path.exists():
+                temp_path.unlink(missing_ok=True)
 
     @staticmethod
     def persist_runtime_database_url(database_url: str) -> None:
@@ -175,6 +199,21 @@ def _drop_masked_sensitive_values(changes: dict[str, Any]) -> dict[str, Any]:
 def _is_masked_or_empty_secret(value: str) -> bool:
     cleaned = value.strip()
     return not cleaned or cleaned == MASKED_SECRET or "***" in cleaned
+
+
+def _backup_runtime_settings() -> Path | None:
+    if not RUNTIME_ENV_PATH.exists():
+        return None
+    RUNTIME_ENV_PATH.parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.NamedTemporaryFile("w", encoding="utf-8", delete=False, dir=RUNTIME_ENV_PATH.parent) as handle:
+        handle.write(RUNTIME_ENV_PATH.read_text(encoding="utf-8"))
+        return Path(handle.name)
+
+
+def _restore_runtime_settings(backup_path: Path) -> None:
+    if not backup_path.exists():
+        return
+    backup_path.replace(RUNTIME_ENV_PATH)
 
 
 def _mask_database_url(database_url: str) -> str:

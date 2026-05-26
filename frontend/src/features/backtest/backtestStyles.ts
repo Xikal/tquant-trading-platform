@@ -4,20 +4,37 @@ export const BACKTEST_FORM_STACK_STYLE: CSSProperties = {
   width: "100%",
   display: "flex",
   flexDirection: "column",
-  gap: 12,
+  gap: 8,
+};
+
+export const BACKTEST_COMPACT_FORM_GRID_STYLE: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fit, minmax(128px, 1fr))",
+  gap: "8px 8px",
+  alignItems: "end",
+  minWidth: 0,
+};
+
+export const BACKTEST_FORM_FULL_ROW_STYLE: CSSProperties = {
+  gridColumn: "1 / -1",
+  marginBottom: 0,
+};
+
+export const BACKTEST_FORM_ITEM_STYLE: CSSProperties = {
+  marginBottom: 0,
 };
 
 export const BACKTEST_SEGMENTED_STYLE: CSSProperties = {
-  marginBottom: 8,
+  marginBottom: 4,
   border: "1px solid rgba(148, 163, 184, 0.24)",
   background: "#fff",
 };
 
 export const BACKTEST_HELP_STYLE: CSSProperties = {
-  margin: "0 0 10px",
+  margin: 0,
   color: "#64748b",
   fontSize: 12,
-  lineHeight: 1.45,
+  lineHeight: 1.35,
 };
 
 export const BACKTEST_LABEL_STYLE: CSSProperties = {
@@ -28,18 +45,23 @@ export const BACKTEST_LABEL_STYLE: CSSProperties = {
 
 export const BACKTEST_STRATEGY_LIST_STYLE: CSSProperties = {
   display: "grid",
-  gap: 8,
+  gridTemplateColumns: "repeat(auto-fit, minmax(116px, 1fr))",
+  gap: 6,
+  maxHeight: 132,
+  overflowY: "auto",
+  paddingRight: 2,
 };
 
 export const BACKTEST_STRATEGY_ITEM_STYLE: CSSProperties = {
   display: "flex",
   alignItems: "flex-start",
-  gap: 8,
+  gap: 6,
   width: "100%",
-  padding: "8px 10px",
+  minWidth: 0,
+  padding: "7px 8px",
   textAlign: "left",
   border: "1px solid #dce5f0",
-  borderRadius: 10,
+  borderRadius: 8,
   background: "#f8fafc",
 };
 
@@ -52,6 +74,9 @@ export const BACKTEST_STRATEGY_TITLE_STYLE: CSSProperties = {
   color: "var(--text)",
   fontSize: 12,
   fontWeight: 800,
+  overflow: "hidden",
+  textOverflow: "ellipsis",
+  whiteSpace: "nowrap",
 };
 
 export const BACKTEST_STRATEGY_KEY_STYLE: CSSProperties = {
@@ -61,6 +86,11 @@ export const BACKTEST_STRATEGY_KEY_STYLE: CSSProperties = {
 };
 
 export const BACKTEST_EXPERT_FIELDS_STYLE: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+  gap: "6px 8px",
+  gridColumn: "1 / -1",
+  minWidth: 0,
   width: "100%",
 };
 
@@ -109,10 +139,10 @@ export const BACKTEST_FRONTIER_POINT_STYLE: CSSProperties = {
 export const BACKTEST_STATUS_BASE_STYLE: CSSProperties = {
   display: "inline-grid",
   gap: 2,
-  minWidth: 82,
-  padding: "6px 8px",
+  minWidth: 70,
+  padding: "4px 6px",
   border: "1px solid #dce5f0",
-  borderRadius: 10,
+  borderRadius: 8,
   background: "#f8fafc",
   color: "#475569",
   fontFamily: '"IBM Plex Mono", monospace',
@@ -162,18 +192,24 @@ export function backtestStatusToneStyle(tone: string): CSSProperties {
 
 export const BACKTEST_RUN_LIST_STYLE: CSSProperties = {
   display: "grid",
-  gap: 8,
+  gap: 4,
+  maxHeight: 236,
+  overflowY: "auto",
+  paddingRight: 2,
 };
 
 export const BACKTEST_RUN_ROW_STYLE: CSSProperties = {
   display: "grid",
-  gridTemplateColumns: "110px minmax(150px, 1fr) minmax(180px, 0.9fr) 84px 92px",
-  gap: 10,
+  gridTemplateColumns: "64px minmax(0, 1fr) minmax(54px, 0.4fr)",
+  gap: 4,
   alignItems: "center",
   width: "100%",
-  borderRadius: 12,
+  minHeight: 38,
+  padding: "4px 6px",
+  borderRadius: 7,
   background: "#fff",
   textAlign: "left",
+  overflow: "hidden",
 };
 
 export const BACKTEST_RUN_ROW_ACTIVE_STYLE: CSSProperties = {
@@ -190,74 +226,86 @@ export const BACKTEST_RUN_ROW_TEXT_STYLE: CSSProperties = {
 export const BACKTEST_RUN_ROW_META_STYLE: CSSProperties = {
   color: "var(--muted)",
   fontSize: 12,
+  overflow: "hidden",
+  textOverflow: "ellipsis",
+  whiteSpace: "nowrap",
 };
 
 export const BACKTEST_SUMMARY_LINE_STYLE: CSSProperties = {
   display: "flex",
   flexWrap: "wrap",
-  gap: 8,
-  marginBottom: 10,
+  gap: 4,
+  marginBottom: 6,
 };
 
 export const BACKTEST_SUMMARY_ITEM_STYLE: CSSProperties = {
-  padding: "5px 8px",
+  maxWidth: "100%",
+  padding: "3px 6px",
   borderRadius: 999,
   background: "#f1f5f9",
   color: "#475569",
-  fontSize: 12,
+  fontSize: 11,
   fontWeight: 800,
+  overflow: "hidden",
+  textOverflow: "ellipsis",
+  whiteSpace: "nowrap",
 };
 
 export const BACKTEST_ATTRIBUTION_STRIP_STYLE: CSSProperties = {
   display: "flex",
   flexWrap: "wrap",
-  gap: 7,
-  marginTop: 10,
-  paddingTop: 10,
+  gap: 4,
+  marginTop: 6,
+  paddingTop: 6,
   borderTop: "1px solid #e8eef6",
 };
 
 export const BACKTEST_ATTRIBUTION_TITLE_STYLE: CSSProperties = {
-  padding: "5px 8px",
+  padding: "3px 6px",
   borderRadius: 999,
   background: "#0b1422",
   color: "#f4d08a",
-  fontSize: 12,
+  fontSize: 11,
 };
 
 export const BACKTEST_ATTRIBUTION_ITEM_STYLE: CSSProperties = {
-  padding: "5px 8px",
+  padding: "3px 6px",
   borderRadius: 999,
   background: "#f8fafc",
   color: "#475569",
-  fontSize: 12,
+  fontSize: 11,
   fontWeight: 800,
 };
 
 export const BACKTEST_METRIC_GRID_STYLE: CSSProperties = {
   display: "grid",
-  gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
-  gap: 8,
+  gridTemplateColumns: "repeat(auto-fit, minmax(78px, 1fr))",
+  gap: 4,
 };
 
 export const BACKTEST_METRIC_STYLE: CSSProperties = {
   display: "grid",
-  gap: 4,
-  minHeight: 58,
-  padding: "9px 10px",
+  gap: 2,
+  minHeight: 38,
+  minWidth: 0,
+  padding: "5px 6px",
   border: "1px solid var(--line)",
-  borderRadius: 10,
+  borderRadius: 8,
   background: "#f8fafc",
 };
 
 export const BACKTEST_METRIC_LABEL_STYLE: CSSProperties = {
   color: "var(--muted)",
-  fontSize: 11,
+  fontSize: 10,
   fontWeight: 800,
 };
 
 export const BACKTEST_METRIC_VALUE_STYLE: CSSProperties = {
-  fontSize: 18,
+  minWidth: 0,
+  overflow: "hidden",
+  textOverflow: "ellipsis",
+  whiteSpace: "nowrap",
+  fontSize: 12,
 };
 
 export const BACKTEST_METRIC_UP_STYLE: CSSProperties = {
@@ -273,7 +321,9 @@ export const BACKTEST_METRIC_DOWN_STYLE: CSSProperties = {
 };
 
 export const BACKTEST_NUMBER_SETTING_STYLE: CSSProperties = {
-  width: "min(150px, 100%)",
+  marginBottom: 0,
+  minWidth: 0,
+  width: "100%",
 };
 
 export const BACKTEST_NUMBER_INPUT_STYLE: CSSProperties = {
@@ -281,21 +331,22 @@ export const BACKTEST_NUMBER_INPUT_STYLE: CSSProperties = {
 };
 
 export const BACKTEST_SUBMIT_BUTTON_STYLE: CSSProperties = {
-  minHeight: 38,
-  borderRadius: 10,
+  gridColumn: "1 / -1",
+  minHeight: 34,
+  borderRadius: 8,
   background: "linear-gradient(90deg, #d6a55c 0%, #0b1422 48%, #0b1422 100%)",
   fontWeight: 900,
 };
 
 export const BACKTEST_ECHARTS_STYLE: CSSProperties = {
   width: "100%",
-  minHeight: 300,
-  borderRadius: 16,
+  minHeight: 252,
+  borderRadius: 8,
   background: "#08111f",
 };
 
 export const BACKTEST_ECHARTS_COMPACT_STYLE: CSSProperties = {
-  minHeight: 230,
+  minHeight: 210,
 };
 
 export const BACKTEST_ECHARTS_ALT_STYLE: CSSProperties = {

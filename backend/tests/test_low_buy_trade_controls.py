@@ -274,6 +274,51 @@ class LowBuyTradeControlTests(unittest.TestCase):
         self.assertTrue(stored_api_key.value.startswith("enc:v1:"))
         self.assertTrue(stored_database_url.value.startswith("enc:v1:"))
 
+    def test_settings_update_rolls_back_runtime_file_when_db_commit_fails(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp_path = Path(tmpdir)
+            runtime_env_path = tmp_path / "runtime.env"
+            runtime_env_path.write_text('LLM_MODEL="old-model"\n', encoding="utf-8")
+            engine = create_engine(f"sqlite:///{tmp_path / 'test.db'}", future=True)
+            Base.metadata.create_all(engine)
+            SessionLocal = sessionmaker(bind=engine, future=True)
+            with patch("app.services.settings_service.RUNTIME_ENV_PATH", runtime_env_path):
+                with SessionLocal() as db:
+                    service = SettingsService(db)
+                    with patch.object(db, "commit", side_effect=RuntimeError("commit failed")):
+                        with self.assertRaises(RuntimeError):
+                            service.update_payload(SettingsUpdate(llm_model="new-model"))
+
+                    stored = db.execute(
+                        select(SystemSetting).where(SystemSetting.key == "llm_model")
+                    ).scalar_one_or_none()
+                    runtime_text = runtime_env_path.read_text(encoding="utf-8")
+
+            self.assertIsNone(stored)
+            self.assertIn('LLM_MODEL="old-model"', runtime_text)
+
+    def test_settings_update_removes_new_runtime_file_when_db_commit_fails(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp_path = Path(tmpdir)
+            runtime_env_path = tmp_path / "runtime.env"
+            engine = create_engine(f"sqlite:///{tmp_path / 'test.db'}", future=True)
+            Base.metadata.create_all(engine)
+            SessionLocal = sessionmaker(bind=engine, future=True)
+            with patch("app.services.settings_service.RUNTIME_ENV_PATH", runtime_env_path):
+                with SessionLocal() as db:
+                    service = SettingsService(db)
+                    with patch.object(db, "commit", side_effect=RuntimeError("commit failed")):
+                        with self.assertRaises(RuntimeError):
+                            service.update_payload(SettingsUpdate(llm_model="new-model"))
+
+                    stored = db.execute(
+                        select(SystemSetting).where(SystemSetting.key == "llm_model")
+                    ).scalar_one_or_none()
+                    runtime_exists = runtime_env_path.exists()
+
+            self.assertIsNone(stored)
+            self.assertFalse(runtime_exists)
+
 
 def _candidate(
     symbol: str = "000001",

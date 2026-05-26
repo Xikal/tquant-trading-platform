@@ -1,10 +1,11 @@
 import { useEffect } from "react";
-import { Alert, Space } from "antd";
+import { Alert, Button, Space } from "antd";
 import { ErrorBanner } from "../../components/shared/Feedback";
 import { useToast } from "../../components/shared/ToastContainer";
 import type { AuthUser } from "../../types";
 import type { BacktestRunSummary } from "../../api/backtests";
 import { formatMoney } from "../backtest/backtestDisplay";
+import { WorkspacePageIntro } from "../workspace-shared/WorkspacePageIntro";
 import { StrategyConfirmDialog } from "./StrategyConfirmDialog";
 import { StrategyHubDetailTabs } from "./StrategyHubDetailTabs";
 import { executionModelText, visibleTabsForUser } from "./StrategyHubPanels";
@@ -69,8 +70,26 @@ export function StrategyHubPage({ currentUser }: { currentUser: AuthUser }) {
     { label: "成交模型", value: executionModelText(hub.form.execution_model) },
     { label: "预计耗时", value: estimateSubmitTime(hub.form.strategies.length) },
   ];
+  const runningCount = hub.runs.filter((run) => run.status === "queued" || run.status === "running").length;
+  const completedCount = hub.runs.filter((run) => run.status === "completed" || run.status === "succeeded").length;
   return (
     <Space direction="vertical" size={8} style={{ display: "flex" }}>
+      <div className="panel">
+        <WorkspacePageIntro
+          title="策略工作台"
+          summary={expertEnabled ? "生产策略、研究验证、容量评估。" : "一键体检、策略历史、可执行入口。"}
+          more="回测页保持独立入口；策略工作台负责策略选择、提交和运行状态。"
+          moreLabel="工作台边界"
+          tone={runningCount ? "warn" : hub.error ? "down" : "neutral"}
+          actions={<Button type="primary" onClick={() => hub.setConfirmOpen(true)} loading={hub.loading === "submit"}>提交回测</Button>}
+          pills={[
+            { label: "策略数", value: String(hub.strategies.length) },
+            { label: "任务数", value: String(hub.runs.length) },
+            { label: "运行中", value: String(runningCount), tone: runningCount ? "warn" : "neutral" },
+            { label: "已完成", value: String(completedCount), tone: completedCount ? "up" : "neutral" },
+          ]}
+        />
+      </div>
       <StrategyHubSummaryBar
         runs={hub.runs}
         strategies={hub.strategies}

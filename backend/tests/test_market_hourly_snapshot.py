@@ -8,7 +8,7 @@ from sqlalchemy.orm import sessionmaker
 
 from app.core.timezone import BEIJING_TZ
 from app.models.base import Base
-from app.models.entities import SystemSetting
+from app.models.entities import MarketPulseEvent, SystemSetting
 from app.models.schemas import QuoteSnapshot
 from app.services.market import hourly_snapshot
 from app.services.market.hourly_snapshot import (
@@ -75,6 +75,7 @@ def test_hourly_all_market_snapshot_refresh_stores_strength_payload() -> None:
     payload = HourlyAllMarketSnapshotService(db, market).refresh(reason="test")
     state = latest_hourly_all_market_snapshot(db)
     row = db.query(SystemSetting).filter(SystemSetting.key == hourly_snapshot.SETTING_KEY).one()
+    pulse_count = db.query(MarketPulseEvent).count()
 
     assert payload["ok"] is True
     assert payload["snapshot_count"] == 3
@@ -83,3 +84,37 @@ def test_hourly_all_market_snapshot_refresh_stores_strength_payload() -> None:
     assert payload["weak_count"] == 1
     assert state["reason"] == "test"
     assert row.value
+    assert pulse_count == 1
+
+
+def test_hourly_all_market_snapshot_refresh_does_not_overwrite_slot_with_empty_payload(monkeypatch) -> None:
+    db = _session()
+    valid_market = SimpleNamespace(
+        get_stock_spot_snapshot_map=lambda force_refresh: {
+            "600000": _quote("600000", 4.2),
+            "000001": _quote("000001", -1.0),
+        }
+    )
+    empty_market = SimpleNamespace(get_stock_spot_snapshot_map=lambda force_refresh: {})
+
+    monkeypatch.setattr(
+        hourly_snapshot,
+        "beijing_now",
+        lambda: datetime(2026, 5, 25, 15, 0, tzinfo=BEIJING_TZ),
+    )
+    monkeypatch.setattr(hourly_snapshot, "beijing_now_string", lambda: "2026-05-25 15:00:00")
+    HourlyAllMarketSnapshotService(db, valid_market).refresh(reason="test")
+
+    monkeypatch.setattr(
+        hourly_snapshot,
+        "beijing_now",
+        lambda: datetime(2026, 5, 25, 15, 4, tzinfo=BEIJING_TZ),
+    )
+    monkeypatch.setattr(hourly_snapshot, "beijing_now_string", lambda: "2026-05-25 15:04:00")
+    HourlyAllMarketSnapshotService(db, empty_market).refresh(reason="test")
+
+    state = latest_hourly_all_market_snapshot(db)
+
+    assert state["ok"] is True
+    assert state["snapshot_count"] == 2
+    assert state["updated_at"] == "2026-05-25 15:00:00"

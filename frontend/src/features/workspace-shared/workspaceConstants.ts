@@ -43,6 +43,7 @@ export const PAGE_PATHS: Record<Page, string> = {
   analysis: "/analysis",
   playbook: "/playbook",
   strategy: "/strategy",
+  backtest: "/backtest",
   paper: "/paper",
   settings: "/settings",
 };
@@ -55,6 +56,7 @@ export const PATH_PAGE_MAP: Record<string, Page> = {
   "/low-buy": "playbook",
   "/playbook": "playbook",
   "/strategy": "strategy",
+  "/backtest": "backtest",
   "/paper": "paper",
   "/performance": "paper",
   "/settings": "settings",

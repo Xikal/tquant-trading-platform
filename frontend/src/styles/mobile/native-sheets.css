@@ -216,3 +216,129 @@
   font-size: 12px;
   line-height: 1.5;
 }
+
+.mobile-update-body ul {
+  display: grid;
+  gap: 5px;
+  margin: 0;
+  padding-left: 18px;
+  color: var(--mobile-text);
+  font-size: 12px;
+}
+
+.mobile-update-body small {
+  color: var(--mobile-text-muted);
+  font-size: 10px;
+}
+
+.mobile-update-actions {
+  display: grid;
+  grid-template-columns: 0.85fr 1.15fr;
+  gap: 8px;
+}
+
+.mobile-update-actions .mobile-app-primary:only-child {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 480px) {
+  .mobile-app-topbar {
+    align-items: center;
+  }
+
+  .mobile-app-topbar h1 {
+    font-size: 19px;
+  }
+
+  .app-preview-card-top {
+    row-gap: 6px;
+  }
+
+  .app-preview-card-top-watchlist {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .app-preview-card-top-candidate {
+    grid-template-columns: 28px minmax(0, 1fr) auto;
+  }
+
+  .app-preview-price-box,
+  .app-preview-score-box {
+    grid-column: 1 / -1;
+    justify-items: start;
+    min-width: 0;
+  }
+
+  .app-preview-card-top-watchlist .app-preview-price-box {
+    grid-column: auto;
+    justify-items: end;
+  }
+
+  .app-preview-remove-button {
+    min-height: 24px;
+    padding: 0 6px;
+    font-size: 9px;
+  }
+
+  .app-preview-card-top-candidate .app-preview-score-box {
+    grid-column: auto;
+    justify-items: end;
+    min-width: 48px;
+  }
+
+  .app-preview-card-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .app-preview-card-metrics-watchlist {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .app-preview-card-metrics-candidate {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .app-preview-candidate-compact .app-preview-card-top-candidate {
+    grid-template-columns: 24px minmax(0, 1fr) auto;
+  }
+
+  .app-preview-card-title strong {
+    font-size: 13px;
+  }
+
+  .app-preview-card-title small {
+    font-size: 10px;
+  }
+
+  .app-preview-inline-price {
+    font-size: 10px;
+  }
+
+  .app-preview-score-box strong,
+  .app-preview-price-box strong {
+    font-size: 15px;
+  }
+
+  .app-preview-price-box small,
+  .app-preview-score-box small {
+    font-size: 10px;
+  }
+
+  .app-preview-card-footer {
+    grid-template-columns: 1fr;
+    justify-items: start;
+  }
+
+  .app-preview-card-foot-meta {
+    gap: 6px;
+    font-size: 10px;
+  }
+
+  .app-preview-mini-chart {
+    display: none;
+  }
+
+  .mobile-app-sheet-body {
+    grid-template-columns: 1fr;
+  }
+}

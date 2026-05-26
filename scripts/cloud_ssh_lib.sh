@@ -7,6 +7,7 @@ cloud_build_ssh_opts() {
     -o StrictHostKeyChecking=no
     -o ConnectTimeout="${CLOUD_SSH_CONNECT_TIMEOUT:-10}"
     -o ServerAliveInterval=30
+    -o ServerAliveCountMax="${CLOUD_SSH_SERVER_ALIVE_COUNT_MAX:-120}"
   )
   if [[ -n "${CLOUD_SSH_KEY:-}" ]]; then
     CLOUD_SSH_OPTS+=(-i "$CLOUD_SSH_KEY")

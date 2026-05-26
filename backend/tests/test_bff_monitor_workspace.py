@@ -8,7 +8,7 @@ from app.models.base import Base
 from app.models.entities import User
 from fastapi import HTTPException
 
-from app.models.schema_defs.market import MarketBreadthResponse, SectorRelativeStrengthResponse
+from app.models.schema_defs.market import MarketBreadthResponse, MarketReviewStatusOut, SectorRelativeStrengthResponse
 from app.models.schema_defs.monitor import MonitorSnapshotResponse
 
 
@@ -62,6 +62,22 @@ def test_monitor_workspace_paired_hedge_reloads_detached_user(monkeypatch) -> No
         "paired_hedge_research",
         lambda limit, current_user, _db: {"updated_at": "2026-05-25 10:00:00", "total": limit, "ideas": []},
     )
+    monkeypatch.setattr(
+        bff,
+        "build_market_review_summary",
+        lambda *_args, **_kwargs: (
+            MarketReviewStatusOut(
+                trade_date="2026-05-25",
+                status="midday_ready",
+                status_text="今日市场午盘复盘已生成，等待收盘复盘",
+                has_midday=True,
+                next_trigger_at="2026-05-25 15:05",
+                risk_alert_count=0,
+                suggested_action="午后控制追高",
+            ),
+            [],
+        ),
+    )
 
     response = bff._build_monitor_workspace(
         db,
@@ -73,6 +89,9 @@ def test_monitor_workspace_paired_hedge_reloads_detached_user(monkeypatch) -> No
     )
 
     assert response.paired_hedge is not None
+    assert response.market_pulse is not None
+    assert response.review_status is not None
+    assert response.review_status.suggested_action == "午后控制追高"
     assert response.partial_errors == []
 
 

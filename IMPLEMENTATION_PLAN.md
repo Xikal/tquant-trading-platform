@@ -1,5 +1,113 @@
 # TQuant 实施计划
 
+## 2026-05-26 上线前审查报告采纳计划落地
+
+需求来源：
+
+- `docs/prelaunch-review-adoption-plan-2026-05-26.md`
+
+### 本轮目标
+
+- [x] 修正 Go scan-worker status/health 语义，明确 Go 是生产编排层、策略引擎为 Python reference，并补测试。
+- [x] 为 Rust 增加 criterion benchmark、Makefile 入口和 CI artifact，保持生产默认启用但用 wheel/metrics/fallback 验收。
+- [x] 扩展 Go BFF：strategy/settings/factor 聚合、workspace/source 维度指标、cache size/ttl/hit rate。
+- [x] 补前端路由 cold navigate 测试和开发期一致性 warning；保留实时监控作为全市场复盘主入口。
+- [x] 增加 CSS guard，禁止新增 `.part-N.css`，并补移动端 smoke 覆盖。
+- [x] 强化运行手册：RL 可选依赖、Redis 限速、内部 token、Rust wheel、Go fallback 指标、复盘口径。
+- [x] 对 trade_date 字符串迁移做兼容设计和测试边界，不破坏低吸、回测、策略结果口径。
+- [x] 标注 agent benchmark 样本不足，避免被误用为策略收益证据。
+
+### 当前决策
+
+- 复盘仍作为全市场复盘在实时监控主展示，模拟盘只保留辅助入口。
+- Rust 不因 wheel 风险改回默认关闭；生产镜像必须预装 wheel，fallback 必须可观测。
+- 15:00 收盘快照不替换为 14:57；如需要尾盘信号，新增 late-session slot。
+- Go scan-worker 不宣传为独立策略内核，当前准确口径是 Go 编排 Python reference。
+
+### 验证计划
+
+- [x] `cd go-services/scan-worker && go test ./...`
+- [x] `cd go-services/bff-gateway && go test ./...`
+- [x] `cd go-services/market-read-service && go test ./...`
+- [x] `cd rust/tquant-rs && cargo test && cargo bench --features extension-module --bench finance`
+- [x] `cd frontend && npm run lint && npm test -- --run && npm run build`
+- [x] `cd frontend && npm run smoke:responsive`
+- [x] `PYTHONPATH=backend:. backend/.venv/bin/python -m pytest backend/tests -q`
+- [x] `BACKEND_PYTHON=backend/.venv/bin/python PYTHONPATH=backend:. backend/.venv/bin/python scripts/verify_go_rust_performance_acceptance.py`
+
+## 2026-05-26 未完成/部分完成项最终收尾与上线验证
+
+需求来源：
+
+- 用户明确列出的“未完成 / 部分完成”清单。
+
+### 本轮决策
+
+- [x] `trade_date` 字段真实迁移：本轮放弃，不做破坏性迁移。当前仅保留审计和兼容测试；真实迁移必须单独设计 SQLite/MySQL 双端 Alembic、索引/唯一约束、历史字符串兼容和策略回归。
+- [x] MonitorPage inline style：不做全量重写，完成低风险常量抽取，保留紧凑布局和实时监控复盘主入口。
+- [x] 移动端 `.part-N.css` 存量文件：已合并为语义 CSS 文件，并把 guard 改为禁止任何 `.part-N.css`。
+- [x] workspace CSS 孤立文件：`base.css` 与 `core-layout-components.part-1.css` 已合并为 `workspace.css`。
+- [x] MarketEmotionPage：已拆分为情绪仪表盘和龙头强度表组件。
+- [x] 15:00 快照替换为 14:57/14:55：本轮放弃，保留 15:00 作为收盘快照；尾盘预警应新增 `late_session` slot，不替换收盘口径。
+- [x] 响应式 smoke 登录态：新增 `SMOKE_MOCK_AUTH=1` 模式，用 mock 登录态/API 覆盖登录后的 `/monitor`、`/emotion`、`/paper`、`/backtest`、`/settings`。
+- [x] 云端部署验收：已部署到 `http://43.143.243.97:18090`，并完成 readyz、Go health、前端未登录/登录态 smoke。
+
+### 本轮验证
+
+- [x] `cd frontend && npm run lint` 通过，CSS guard 同步通过。
+- [x] `cd frontend && npm test -- --run` 通过，13 files / 46 tests。
+- [x] `cd frontend && npm run build` 通过。
+- [x] `cd frontend && SMOKE_MOCK_AUTH=1 npm run smoke:responsive` 通过，375/768/1440 的 `/monitor`、`/emotion`、`/paper`、`/backtest`、`/settings` 均无横向溢出和 JS 错误。
+- [x] 首次云端部署发现 `rust:1.82` 无法解析锁定依赖 `clap_lex 1.1.0` 的 edition 2024 manifest，已将生产 Rust builder 升级到 `rust:1.95-bookworm`，保持 wheel 作为镜像产物。
+- [x] `scripts/quick_cloud_deploy.sh --key /Users/j/Downloads/gupiao.pem` 已完成部署；过程中修复一键部署脚本，确保 Python app/runtime/backtest 容器强制替换到新 `tquant-web:mysql` 镜像，避免“镜像构建成功但线上仍服务旧前端”。最终完整脚本复跑通过，输出 `web_image:updated` 与 `web_image:ok`。
+- [x] `scripts/quick_cloud_deploy.sh --key /Users/j/Downloads/gupiao.pem --verify-only` 通过，包含 `web_image:ok`、readyz、受保护 API、前端入口和三个 Go 服务 readyz。
+- [x] 线上 `FRONTEND_SMOKE_URL=http://43.143.243.97:18090 npm run smoke:responsive` 通过，最大横向溢出 0。
+- [x] 线上 `FRONTEND_SMOKE_URL=http://43.143.243.97:18090 SMOKE_MOCK_AUTH=1 npm run smoke:responsive` 通过，最大横向溢出 0。
+
+## 2026-05-26 M0-M6 未完成项继续收敛
+
+需求来源：
+
+- `docs/market-trading-enhancement-requirements-2026-05-25.md`
+- `docs/market-trading-enhancement-execution-plan-2026-05-25.md`
+- 用户要求继续完成上一轮明确的未完成/部分完成项，必要时部署到云服务器验收。
+
+### 本轮目标
+
+- [x] Go market-read-service 不只停留 quote batch，继续接入 sector strength、key levels、intraday latest 到 Python 主读路径。
+- [x] Go scan-worker 尽量补强生产扫描证据：状态、排序一致性、失败不污染 latest、benchmark/acceptance 证据；如仍依赖 Python reference，必须明确为业务真源 fallback 而非 shadow。
+- [x] pulse / 复盘补历史查询与可回放入口，满足 M6 历史留痕的最小闭环。
+- [x] settings/db migration 补运行时诊断与 UI 可见性，减少“后端有报告但页面不可见”的缺口。
+- [x] Rust 补完整 Python parity 证据，避免只靠 wheel smoke 和性能脚本。
+- [x] 前端补截图 smoke 脚本或等价 Playwright 检查；本地登录态不可用时记录限制，部署后跑云端验收。
+- [ ] 如果本地验收受限，使用现有 `scripts/deploy_cloud_server.sh` 部署到云服务器并执行 readyz、Go/Rust metrics、关键页面/API smoke。
+
+### 当前风险
+
+- Go scan-worker 已从 shadow 变成生产编排主路径并受 Go 状态/排序一致性/失败不污染 latest 测试保护；低吸策略计算仍调用 Python reference 作为业务真源，后续若要完全纯 Go 内核，需要单独迁移全套策略公式。
+- 云端部署阻塞：本机 `ssh -o BatchMode=yes ubuntu@43.143.243.97` 返回 `Permission denied (publickey,password)`，未提供 `CLOUD_SSH_KEY` / `CLOUD_PASSWORD`，无法执行部署脚本。本轮已完成线上只读 readyz 和响应式 smoke。
+
+### 本轮验证
+
+- [x] `git diff --check` 通过。
+- [x] `PYTHONPATH=backend:. backend/.venv/bin/python -m compileall backend/app -q` 通过。
+- [x] `PYTHONPATH=backend:. backend/.venv/bin/python -m pytest backend/tests -q` 通过，668 passed / 47 warnings。
+- [x] `cd frontend && npm run lint` 通过。
+- [x] `cd frontend && npm test -- --run` 通过，13 files / 37 tests。
+- [x] `cd frontend && npm run build` 通过。
+- [x] `cd go-services/bff-gateway && go test ./...` 通过。
+- [x] `cd go-services/market-read-service && go test ./...` 通过。
+- [x] `cd go-services/scan-worker && go test ./...` 通过。
+- [x] `cd rust/tquant-rs && cargo test` 通过，6 tests。
+- [x] `cd rust/tquant-rs && cargo test --no-default-features` 通过，6 tests。
+- [x] `BACKEND_PYTHON=backend/.venv/bin/python PYTHONPATH=backend:. backend/.venv/bin/python scripts/verify_go_rust_performance_acceptance.py` 通过，Go quote benchmark 7612 ns/op，Rust speedup max_drawdown 6.988 / rolling_mean 11.862 / atr_wilder 9.408。
+- [x] `PYTHONPATH=backend:. backend/.venv/bin/python - <<'PY' ... rust_math.rust_available()` 通过，Rust extension available=true。
+- [x] Alembic 空库 `DATABASE_URL=sqlite:///$tmp/app.db backend/.venv/bin/alembic upgrade head` 通过，包含 `20260526_0001`。
+- [x] 本地 `FRONTEND_SMOKE_URL=http://127.0.0.1:4173 npm run smoke:responsive` 通过，375/768/1440、`/monitor` `/emotion` `/backtest` `/settings` 无横向溢出和 JS 错误；未登录态被记录为 `authenticated=false`。
+- [x] 线上只读 `curl http://43.143.243.97:18090/readyz` 通过，database/frontend_dist 均 true。
+- [x] 线上只读 `FRONTEND_SMOKE_URL=http://43.143.243.97:18090 npm run smoke:responsive` 通过，未登录态记录为 `authenticated=false`。
+- [ ] 云端部署未执行：缺 SSH 凭据，无法上传和重建容器。
+
 ## 2026-05-23 全模块代码审查报告整改
 
 需求来源：`TQuant_全模块代码审查报告_2026-05-23.md`
@@ -489,3 +597,35 @@
 ### 验证
 
 - 本轮将运行 Python 编译和针对性 pytest。
+
+## 2026-05-26 市场复盘数据自动补全
+
+需求来源：用户要求“数据不全的时候自动补全”。
+
+### 本轮目标
+
+- [x] 新增市场复盘/pulse 前置自动补全服务。
+- [x] 情绪温度缺失时使用市场涨跌面派生保守情绪，不伪装为真实涨停情绪。
+- [x] 板块/龙头强度缺失时优先使用既有行业/日线排行，仍缺时用全市场强势扩散代理。
+- [x] 全市场快照缺失时优先保留同桶/同日最近有效样本，禁止 0 样本污染。
+- [x] 复盘风险提示列出仍未补齐项，并输出已补齐项审计信息。
+- [x] 补测试并部署云端验证。
+
+### 结果
+
+- [x] 自动补全服务已接到 `market/pulse` 与 `market/review` 生成链路。
+- [x] `market_breadth`、`market_pulse`、`review_reports` 的返回 schema 均增加了 `autofill_details`，复盘同时携带 `missing_data`。
+- [x] 监控页与市场情绪页显示自动补全审计文案，用户可直接看到补齐项和剩余缺口。
+- [x] 本地相关后端/前端测试通过，云端部署由现有脚本执行与验证。
+
+### 当前决策
+
+- 自动补全只能降低 `unavailable`，不能把派生数据标成 `fresh`。
+- 派生情绪、强势扩散代理都标记为 `partial`，并写入 `autofill_details`。
+- 午盘复盘只允许使用午盘截止前数据；收盘复盘使用全天最新可用数据。
+
+### 验证计划
+
+- [ ] `backend/.venv/bin/python -m pytest backend/tests/test_market_review.py backend/tests/test_market_hourly_snapshot.py backend/tests/test_market_routes.py backend/tests/test_backend_refactor_foundation.py -q`
+- [ ] `scripts/quick_cloud_deploy.sh --key /Users/j/Downloads/gupiao.pem`
+- [ ] 云端重新生成当日午盘/收盘复盘并检查缺失/补齐清单。

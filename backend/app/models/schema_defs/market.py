@@ -1,8 +1,101 @@
 from __future__ import annotations
 
-from typing import Optional
+from typing import Any, Literal, Optional
 
 from pydantic import BaseModel, Field
+
+DataQualityState = Literal["fresh", "stale", "partial", "unavailable"]
+
+
+class IntradayMarketPulse(BaseModel):
+    updated_at: str
+    data_quality: DataQualityState = "unavailable"
+    data_quality_text: str = "盘中 pulse 暂不可用"
+    market_strength_text: str = "市场强弱待确认"
+    leader_strength_text: str = "龙头强度待确认"
+    emotion_text: str = "情绪温度待确认"
+    hourly_snapshot_text: str = "小时快照待确认"
+    pulse_level: str = "unknown"
+    pulse_text: str = "等待盘中数据刷新。"
+    suggested_action: str = "只读观察，不触发交易。"
+    partial_errors: list[dict[str, str]] = Field(default_factory=list)
+    market_breadth_summary: dict[str, Any] = Field(default_factory=dict)
+    leader_strength_summary: dict[str, Any] = Field(default_factory=dict)
+    emotion_summary: dict[str, Any] = Field(default_factory=dict)
+    hourly_snapshot_summary: dict[str, Any] = Field(default_factory=dict)
+    autofill_details: list[dict[str, Any]] = Field(default_factory=list)
+
+
+class MarketHourlySnapshotHistoryOut(BaseModel):
+    id: int = 0
+    trade_date: str = ""
+    snapshot_bucket: str = ""
+    data_quality: DataQualityState = "unavailable"
+    snapshot_count: int = 0
+    market_strength_score: float = 0.0
+    payload: dict[str, Any] = Field(default_factory=dict)
+    created_at: str = ""
+    updated_at: str = ""
+
+
+class MarketPulseEventOut(BaseModel):
+    id: int = 0
+    trade_date: str = ""
+    pulse_level: str = "unknown"
+    data_quality: DataQualityState = "unavailable"
+    pulse_text: str = ""
+    suggested_action: str = ""
+    payload: dict[str, Any] = Field(default_factory=dict)
+    created_at: str = ""
+
+
+class MarketPulseHistoryResponse(BaseModel):
+    items: list[MarketPulseEventOut] = Field(default_factory=list)
+    total: int = 0
+
+
+class MarketHourlySnapshotHistoryResponse(BaseModel):
+    items: list[MarketHourlySnapshotHistoryOut] = Field(default_factory=list)
+    total: int = 0
+
+
+class MarketReviewReportOut(BaseModel):
+    id: int = 0
+    report_date: str = ""
+    report_slot: str = ""
+    review_subject: str = "全市场"
+    source_scope: str = "market"
+    overall_summary: str = ""
+    strategy_highlights: list[dict[str, Any]] = Field(default_factory=list)
+    risk_alerts: list[dict[str, Any]] = Field(default_factory=list)
+    suggestion: str = ""
+    generated_at: str = ""
+    llm_model: str = "market-rule"
+    missing_data: list[dict[str, Any]] = Field(default_factory=list)
+    autofill_details: list[dict[str, Any]] = Field(default_factory=list)
+
+
+class MarketReviewStatusOut(BaseModel):
+    trade_date: str = ""
+    status: str = "empty"
+    status_text: str = "今日暂无市场复盘"
+    review_subject: str = "全市场"
+    source_scope: str = "market"
+    has_midday: bool = False
+    has_close: bool = False
+    next_trigger_at: str = ""
+    risk_alert_count: int = 0
+    suggested_action: str = "等待午盘或收盘市场复盘生成。"
+
+
+class MarketReviewSummaryResponse(BaseModel):
+    review_status: MarketReviewStatusOut
+    review_reports: list[MarketReviewReportOut] = Field(default_factory=list)
+
+
+class MarketReviewHistoryResponse(BaseModel):
+    items: list[MarketReviewReportOut] = Field(default_factory=list)
+    total: int = 0
 
 
 class MarketBreadthResponse(BaseModel):
@@ -27,8 +120,10 @@ class MarketBreadthResponse(BaseModel):
     hot_industries: list[str] = Field(default_factory=list)
     hot_turnover: float = 0.0
     hot_overlap_ratio: float = 0.0
+    data_quality: DataQualityState = "fresh"
     data_quality_text: str = ""
     hourly_all_market_snapshot: dict = Field(default_factory=dict)
+    autofill_details: list[dict[str, Any]] = Field(default_factory=list)
 
 
 class MarketTradingSessionResponse(BaseModel):

@@ -26,6 +26,7 @@ const PAGE_COMMANDS: CommandItem[] = [
   { type: "page", label: "量化分析", hint: "打开单票做T分析", page: "analysis" },
   { type: "page", label: "选股宝典", hint: "打开低吸策略候选", page: "playbook" },
   { type: "page", label: "策略工作台", hint: "打开回测、复盘、优化和对比", page: "strategy" },
+  { type: "page", label: "回测页", hint: "打开完整回测看板", page: "backtest" },
   { type: "page", label: "模拟盘", hint: "打开模拟交易账户", page: "paper" },
   { type: "page", label: "系统配置", hint: "打开运行配置与治理", page: "settings" },
 ];
@@ -44,7 +45,7 @@ const BACKDROP_STYLE: CSSProperties = {
 const PALETTE_STYLE: CSSProperties = {
   background: "#ffffff",
   border: "1px solid #dbe3ef",
-  borderRadius: 18,
+  borderRadius: 10,
   boxShadow: "0 28px 72px rgba(15, 23, 42, 0.28)",
   color: "#0f172a",
   overflow: "hidden",
@@ -55,9 +56,9 @@ const PALETTE_INPUT_STYLE: CSSProperties = {
   border: 0,
   borderBottom: "1px solid #e2e8f0",
   color: "#0f172a",
-  fontSize: 17,
+  fontSize: 12,
   outline: "none",
-  padding: "18px 20px",
+  padding: "10px 12px",
   width: "100%",
 };
 
@@ -72,13 +73,13 @@ const PALETTE_ITEM_STYLE: CSSProperties = {
   alignItems: "center",
   background: "transparent",
   border: 0,
-  borderRadius: 12,
+  borderRadius: 8,
   color: "#0f172a",
   cursor: "pointer",
   display: "grid",
   gap: 4,
   justifyItems: "start",
-  padding: "11px 12px",
+  padding: "7px 8px",
   textAlign: "left",
 };
 
@@ -92,7 +93,7 @@ const PALETTE_ITEM_META_STYLE: CSSProperties = {
 
 const PALETTE_EMPTY_STYLE: CSSProperties = {
   color: "#64748b",
-  padding: "18px 14px",
+  padding: "10px 8px",
 };
 
 const PALETTE_FOOTER_STYLE: CSSProperties = {
@@ -184,7 +185,7 @@ export function CommandPalette({
         <footer style={PALETTE_FOOTER_STYLE}>
           <span>Enter 执行</span>
           <span>Esc 关闭</span>
-          <span>Cmd/Ctrl+1~6 切换页面</span>
+          <span>Cmd/Ctrl+1~7 切换页面</span>
         </footer>
       </section>
     </div>

@@ -67,6 +67,22 @@ func TestProxyWorkspaceRejectsMissingInternalToken(t *testing.T) {
 	}
 }
 
+func TestValidateInternalTokenRejectsProductionEmptyToken(t *testing.T) {
+	t.Setenv("APP_ENVIRONMENT", "production")
+
+	if err := validateInternalToken(""); err != errMissingProductionInternalToken {
+		t.Fatalf("expected missing token error, got %v", err)
+	}
+}
+
+func TestValidateInternalTokenAllowsDevelopmentEmptyToken(t *testing.T) {
+	t.Setenv("APP_ENVIRONMENT", "development")
+
+	if err := validateInternalToken(""); err != nil {
+		t.Fatalf("expected nil error, got %v", err)
+	}
+}
+
 func TestDurationSecondsAcceptsNumberAndDurationSyntax(t *testing.T) {
 	t.Setenv("TEST_TIMEOUT_SECONDS", "2.5")
 	if got := durationSeconds("TEST_TIMEOUT_SECONDS", 5); got != 2500*time.Millisecond {
@@ -114,6 +130,12 @@ func TestWorkspaceCacheReturnsFreshEntryAndExpires(t *testing.T) {
 	time.Sleep(35 * time.Millisecond)
 	if _, ok := cache.get("key"); ok {
 		t.Fatal("expected cache item to expire")
+	}
+	if got := cache.size(); got != 0 {
+		t.Fatalf("expected expired cache size 0 got=%d", got)
+	}
+	if got := cache.ttlSeconds(); got <= 0 {
+		t.Fatalf("expected positive ttl got=%f", got)
 	}
 }
 
@@ -201,6 +223,207 @@ func TestAggregatePaperWorkspaceBuildsPayloadFromSourceEndpoints(t *testing.T) {
 	}
 	if !bytes.Contains(result.body, []byte(`"partial_errors":[]`)) {
 		t.Fatalf("paper aggregate should not report partial errors: %s", string(result.body))
+	}
+}
+
+func TestMetricsExposeCacheAndWorkspaceDimensions(t *testing.T) {
+	cache := newWorkspaceCache(2 * time.Second)
+	cache.set("key", http.StatusOK, []byte(`{"ok":true}`), "application/json")
+	bffCacheLookups.Store(4)
+	bffCacheHits.Store(1)
+	bffWorkspaceAggregateStrategyHits.Store(2)
+	bffWorkspaceProxySettingsFallbacks.Store(1)
+	recorder := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/metrics", nil)
+
+	metricsHandler(cache).ServeHTTP(recorder, req)
+
+	body := recorder.Body.String()
+	if !bytes.Contains([]byte(body), []byte("tquant_bff_gateway_cache_items 1")) {
+		t.Fatalf("metrics missing cache item count: %s", body)
+	}
+	if !bytes.Contains([]byte(body), []byte("tquant_bff_gateway_cache_hit_rate 0.250000")) {
+		t.Fatalf("metrics missing cache hit rate: %s", body)
+	}
+	if !bytes.Contains([]byte(body), []byte(`tquant_bff_gateway_workspace_aggregate_hits_total{workspace="strategy"} 2`)) {
+		t.Fatalf("metrics missing strategy aggregate dimension: %s", body)
+	}
+	if !bytes.Contains([]byte(body), []byte(`tquant_bff_gateway_workspace_proxy_fallbacks_total{workspace="settings"} 1`)) {
+		t.Fatalf("metrics missing settings proxy dimension: %s", body)
+	}
+}
+
+func TestAggregateMonitorWorkspaceIncludesPulseAndReview(t *testing.T) {
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch r.URL.Path {
+		case "/api/monitor/snapshot":
+			_, _ = w.Write([]byte(`{"updated_at":"2026-05-25 10:00:00","watchlist_signals":[],"priority_board":{"items":[]}}`))
+		case "/api/market/breadth":
+			_, _ = w.Write([]byte(`{"updated_at":"2026-05-25 10:00:00","state":"repair","data_quality":"fresh"}`))
+		case "/api/market/pulse":
+			_, _ = w.Write([]byte(`{"updated_at":"2026-05-25 10:00:00","data_quality":"partial","pulse_text":"盘中结构转为可观察","suggested_action":"控制追高"}`))
+		case "/api/market/review-summary":
+			_, _ = w.Write([]byte(`{"review_status":{"trade_date":"2026-05-25","status":"midday_ready","status_text":"今日市场午盘复盘已生成，等待收盘复盘","review_subject":"全市场","source_scope":"market","has_midday":true,"has_close":false,"next_trigger_at":"2026-05-25 15:05","risk_alert_count":1,"suggested_action":"午后控制追高"},"review_reports":[{"id":1,"report_slot":"midday","review_subject":"全市场","source_scope":"market","suggestion":"午后控制追高"}]}`))
+		case "/api/market/sector-relative-strength":
+			_, _ = w.Write([]byte(`{"updated_at":"2026-05-25 10:00:00","items":[]}`))
+		case "/api/market/paired-hedge-research":
+			_, _ = w.Write([]byte(`{"updated_at":"2026-05-25 10:00:00","ideas":[]}`))
+		default:
+			t.Fatalf("unexpected upstream path %s", r.URL.Path)
+		}
+	}))
+	defer upstream.Close()
+	cfg := config{pythonAPIBase: upstream.URL, timeout: time.Second}
+	req := httptest.NewRequest(http.MethodGet, "/api/bff/v1/workspace/monitor?priority_limit=3", nil)
+
+	result := aggregateMonitorWorkspace(cfg, upstream.Client(), req)
+
+	if !result.ok {
+		t.Fatal("expected monitor aggregate result")
+	}
+	assertJSONField(t, result.body, "schema_version", schemaVersion)
+	if !bytes.Contains(result.body, []byte(`"market_pulse":{"updated_at"`)) {
+		t.Fatalf("monitor aggregate missing market_pulse: %s", string(result.body))
+	}
+	if !bytes.Contains(result.body, []byte(`"review_status":{"trade_date":"2026-05-25"`)) {
+		t.Fatalf("monitor aggregate missing review_status: %s", string(result.body))
+	}
+	if !bytes.Contains(result.body, []byte(`"review_reports":[{"id":1`)) {
+		t.Fatalf("monitor aggregate missing review reports: %s", string(result.body))
+	}
+}
+
+func TestAggregateStrategyWorkspaceBuildsPayloadFromSourceEndpoints(t *testing.T) {
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch r.URL.Path {
+		case "/api/strategies/meta":
+			_, _ = w.Write([]byte(`{"strategies":[{"key":"first_board","display_name":"首板"}]}`))
+		case "/api/strategy/presets":
+			_, _ = w.Write([]byte(`{"presets":[{"preset_key":"default","name":"默认"}]}`))
+		case "/api/backtests":
+			if got := r.URL.Query().Get("limit"); got != "4" {
+				t.Fatalf("run limit mismatch got=%s", got)
+			}
+			_, _ = w.Write([]byte(`{"items":[{"id":1}],"total":1}`))
+		case "/api/backtests/verdict-thresholds":
+			_, _ = w.Write([]byte(`{"thresholds":{"light":{"min_return_pct":1}}}`))
+		case "/api/factor-mining/health":
+			_, _ = w.Write([]byte(`{"total":0,"items":[]}`))
+		default:
+			t.Fatalf("unexpected upstream path %s", r.URL.Path)
+		}
+	}))
+	defer upstream.Close()
+	cfg := config{pythonAPIBase: upstream.URL, timeout: time.Second}
+	req := httptest.NewRequest(http.MethodGet, "/api/bff/v1/workspace/strategy?run_limit=4", nil)
+
+	result := aggregateStrategyWorkspace(cfg, upstream.Client(), req)
+
+	if !result.ok {
+		t.Fatal("expected strategy aggregate result")
+	}
+	if !bytes.Contains(result.body, []byte(`"strategy_meta":{"strategies"`)) {
+		t.Fatalf("strategy aggregate missing metadata: %s", string(result.body))
+	}
+	if !bytes.Contains(result.body, []byte(`"factor_health":{"total":0`)) {
+		t.Fatalf("strategy aggregate missing factor health: %s", string(result.body))
+	}
+}
+
+func TestAggregateSettingsWorkspaceBuildsAdminPayload(t *testing.T) {
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch r.URL.Path {
+		case "/api/settings":
+			_, _ = w.Write([]byte(`{"database_url":"sqlite:///app.db"}`))
+		case "/api/settings/sector-exclusions":
+			_, _ = w.Write([]byte(`{"items":[]}`))
+		case "/api/screeners/low-buy/strategies":
+			_, _ = w.Write([]byte(`{"items":[]}`))
+		case "/api/settings/runtime":
+			_, _ = w.Write([]byte(`{"database_backend":"sqlite"}`))
+		case "/api/settings/factor-weights":
+			_, _ = w.Write([]byte(`{"items":[]}`))
+		case "/api/admin/tasks":
+			_, _ = w.Write([]byte(`{"queued":0}`))
+		case "/api/admin/metrics":
+			_, _ = w.Write([]byte(`{"ok":true}`))
+		default:
+			t.Fatalf("unexpected upstream path %s", r.URL.Path)
+		}
+	}))
+	defer upstream.Close()
+	cfg := config{pythonAPIBase: upstream.URL, timeout: time.Second}
+	req := httptest.NewRequest(http.MethodGet, "/api/bff/v1/workspace/settings?include_admin=true", nil)
+
+	result := aggregateSettingsWorkspace(cfg, upstream.Client(), req)
+
+	if !result.ok {
+		t.Fatal("expected settings aggregate result")
+	}
+	if !bytes.Contains(result.body, []byte(`"admin_enabled":true`)) {
+		t.Fatalf("settings aggregate missing admin flag: %s", string(result.body))
+	}
+	if !bytes.Contains(result.body, []byte(`"runtime":{"database_backend":"sqlite"`)) {
+		t.Fatalf("settings aggregate missing runtime: %s", string(result.body))
+	}
+}
+
+func TestAggregateFactorWorkspaceBuildsPayload(t *testing.T) {
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch r.URL.Path {
+		case "/api/factor-mining/factors":
+			_, _ = w.Write([]byte(`{"items":[{"factor_key":"demo","name":"演示"}],"total":1}`))
+		case "/api/factor-mining/health":
+			_, _ = w.Write([]byte(`{"total":1,"items":[{"factor_key":"demo"}]}`))
+		case "/api/settings/factor-weights":
+			_, _ = w.Write([]byte(`{"items":[]}`))
+		default:
+			t.Fatalf("unexpected upstream path %s", r.URL.Path)
+		}
+	}))
+	defer upstream.Close()
+	cfg := config{pythonAPIBase: upstream.URL, timeout: time.Second}
+	req := httptest.NewRequest(http.MethodGet, "/api/bff/v1/workspace/factor", nil)
+
+	result := aggregateFactorWorkspace(cfg, upstream.Client(), req)
+
+	if !result.ok {
+		t.Fatal("expected factor aggregate result")
+	}
+	if !bytes.Contains(result.body, []byte(`"factors":{"items":[{"factor_key":"demo"`)) {
+		t.Fatalf("factor aggregate missing factors: %s", string(result.body))
+	}
+}
+
+func TestAggregateMonitorWorkspacePartialFailureIsObservable(t *testing.T) {
+	bffPartialSourceFailures.Store(0)
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch r.URL.Path {
+		case "/api/market/review-summary":
+			http.Error(w, "review unavailable", http.StatusBadGateway)
+		default:
+			_, _ = w.Write([]byte(`{}`))
+		}
+	}))
+	defer upstream.Close()
+	cfg := config{pythonAPIBase: upstream.URL, timeout: time.Second}
+	req := httptest.NewRequest(http.MethodGet, "/api/bff/v1/workspace/monitor", nil)
+
+	result := aggregateMonitorWorkspace(cfg, upstream.Client(), req)
+
+	if !result.ok {
+		t.Fatal("expected monitor aggregate result")
+	}
+	if !bytes.Contains(result.body, []byte(`"source":"monitor_review"`)) {
+		t.Fatalf("monitor aggregate should report review partial error: %s", string(result.body))
+	}
+	if bffPartialSourceFailures.Load() == 0 {
+		t.Fatal("expected partial source failure metric to increment")
 	}
 }
 

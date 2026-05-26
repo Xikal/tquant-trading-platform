@@ -37,14 +37,42 @@ def refresh_latest_low_buy_materialization(
     limit: int = DEFAULT_LIMIT,
     scan_limit: int = DEFAULT_SCAN_LIMIT,
     strategies: list[str] | None = None,
+    prefer_go: bool = True,
+) -> dict[str, Any]:
+    required = sorted(strategies or (PRODUCTION_PRIORITY_STRATEGIES | OBSERVATION_LAYER_STRATEGIES))
+    if prefer_go:
+        from app.services.low_buy.go_scan_worker import run_go_scan_worker
+
+        go_result = run_go_scan_worker(
+            strategies=required,
+            scan_limit=scan_limit,
+            limit=limit,
+            reason="latest_low_buy_materialization",
+        )
+        if go_result.get("ok"):
+            return {**go_result, "source": "go_scan_worker"}
+
+    return _refresh_latest_low_buy_materialization_python(
+        limit=limit,
+        scan_limit=scan_limit,
+        strategies=required,
+        fallback_reason=None if not prefer_go else go_result.get("fallback_reason", "go_scan_worker_unavailable"),
+    )
+
+
+def _refresh_latest_low_buy_materialization_python(
+    *,
+    limit: int,
+    scan_limit: int,
+    strategies: list[str],
+    fallback_reason: str | None = None,
 ) -> dict[str, Any]:
     from app.services.low_buy_screener import LowBuyScreenerService
 
-    required = sorted(strategies or (PRODUCTION_PRIORITY_STRATEGIES | OBSERVATION_LAYER_STRATEGIES))
     screener = LowBuyScreenerService()
     refreshed: list[str] = []
     skipped: list[dict[str, str]] = []
-    for strategy in required:
+    for strategy in strategies:
         try:
             payload = screener.refresh_full_scan_cache(
                 strategy=strategy,
@@ -60,10 +88,12 @@ def refresh_latest_low_buy_materialization(
     from app.core.database import SessionLocal
 
     with SessionLocal() as db:
-        status = publish_latest_trade_date_if_ready(db, strategies=required)
+        status = publish_latest_trade_date_if_ready(db, strategies=strategies)
         db.commit()
     return {
         "ok": not skipped,
+        "source": "python_fallback" if fallback_reason else "python",
+        "fallback_reason": fallback_reason or "",
         "refreshed": refreshed,
         "skipped": skipped,
         "publish_status": status,

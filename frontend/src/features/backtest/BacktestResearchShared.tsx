@@ -234,11 +234,11 @@ export function TaskList<T extends { id: number; name: string; status: string; p
       {items.map((item) => (
         <div style={combineBacktestStyles(BACKTEST_TASK_ROW_STYLE, selectedId === item.id ? BACKTEST_TASK_ROW_ACTIVE_STYLE : undefined)} key={item.id}>
           <Button type="text" onClick={() => onSelect(item.id)} style={BACKTEST_TASK_BUTTON_STYLE}>
-            <strong>{item.name || `任务 #${item.id}`}</strong>
+            <strong style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.name || `任务 #${item.id}`}</strong>
             <span style={BACKTEST_TASK_META_STYLE}>{formatStrategy(item.strategy)} · {item.status} · {formatProgress(item.progress ?? item.progress_pct, item.status)}</span>
           </Button>
-          <Button onClick={() => onCancel(item.id)} disabled={!isCancellable(item.status)}>取消</Button>
-          <Button danger type="text" onClick={() => onDelete(item.id)}>删除</Button>
+          <Button size="small" onClick={() => onCancel(item.id)} disabled={!isCancellable(item.status)}>取消</Button>
+          <Button size="small" danger type="text" onClick={() => onDelete(item.id)}>删除</Button>
         </div>
       ))}
       {items.length ? null : <Empty text="暂无研究任务。" />}

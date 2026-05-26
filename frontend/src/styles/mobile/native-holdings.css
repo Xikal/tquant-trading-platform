@@ -183,3 +183,139 @@
   line-height: 1.05;
   color: #102850;
 }
+
+.mobile-priority-code {
+  white-space: nowrap;
+  color: var(--mobile-text-muted);
+  font-size: 9px;
+}
+
+.mobile-priority-meta-line {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--mobile-text-muted);
+  font-size: 9px;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mobile-priority-title {
+  display: grid;
+  grid-template-columns: minmax(0, auto) auto auto;
+  align-items: baseline;
+  gap: 5px;
+}
+
+.mobile-priority-price {
+  display: block;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.1;
+  white-space: nowrap;
+}
+
+.mobile-priority-score {
+  display: grid;
+  gap: 1px;
+  justify-items: end;
+  min-width: 44px;
+}
+
+.mobile-priority-score strong {
+  font-size: 15px;
+  line-height: 1;
+  color: var(--mobile-positive);
+}
+
+.mobile-priority-score-inline {
+  min-width: 40px;
+}
+
+.mobile-priority-score-inline strong {
+  font-size: 14px;
+}
+
+.mobile-priority-grid-three {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.mobile-priority-grid-three div:nth-child(4) {
+  display: none;
+}
+
+.mobile-priority-grid-three div:nth-child(3) {
+  border-left: 1px solid var(--mobile-divider);
+}
+
+.mobile-priority-note {
+  margin: 0;
+  color: var(--mobile-text-muted);
+  font-size: 9px;
+  line-height: 1.35;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.mobile-priority-action-text,
+.mobile-holding-action-note {
+  margin: 0;
+  padding: 5px 6px;
+  border-radius: 8px;
+  background: rgba(31, 111, 235, 0.07);
+  color: var(--mobile-text);
+  font-size: 9px;
+  line-height: 1.35;
+}
+
+.mobile-holding-action-note {
+  display: grid;
+  gap: 2px;
+  background: #fffaf1;
+}
+
+.mobile-holding-action-note strong {
+  color: #102850;
+  font-size: 10px;
+}
+
+.mobile-holding-action-note span,
+.mobile-holding-action-note small {
+  color: var(--mobile-text-muted);
+}
+
+.mobile-holding-action-note small {
+  font-size: 8px;
+  line-height: 1.35;
+}
+
+.mobile-priority-actions {
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 6px;
+  align-items: center;
+}
+
+.mobile-priority-strategy-tags {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 3px;
+  min-width: 0;
+}
+
+.mobile-priority-strategy-tags span {
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border: 1px solid var(--mobile-divider);
+  border-radius: 7px;
+  background: var(--mobile-panel-soft);
+  color: var(--mobile-text-muted);
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 17px;
+  text-align: center;
+}

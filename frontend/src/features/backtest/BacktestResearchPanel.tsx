@@ -91,7 +91,7 @@ export function BacktestResearchPanel({
   return (
     <section className="panel" style={backtestResearchPanelStyle(focused)}>
       <div style={BACKTEST_RESEARCH_HERO_STYLE}>
-        <div>
+        <div style={{ minWidth: 0 }}>
           <span style={BACKTEST_KICKER_STYLE}>Research Loop · Phase2</span>
           <h2 style={BACKTEST_HERO_TITLE_STYLE}>回测研究闭环</h2>
           <p style={BACKTEST_HERO_TEXT_STYLE}>按“优化参数 → 样本外验证 → 多任务对比 → 归因复盘”使用。优先看收益、胜率、最大回撤和样本外通过率。</p>

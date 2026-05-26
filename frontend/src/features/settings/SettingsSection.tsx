@@ -4,12 +4,12 @@ const SECTION_STYLE: CSSProperties = {
   display: "grid",
   gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
   alignItems: "start",
-  gap: 12,
+  gap: 8,
   minWidth: 0,
   border: "1px solid rgba(148, 163, 184, 0.22)",
-  borderRadius: 16,
+  borderRadius: 8,
   background: "rgba(248, 250, 252, 0.76)",
-  padding: 12,
+  padding: 8,
 };
 
 const ADMIN_SECTION_STYLE: CSSProperties = {
@@ -22,12 +22,12 @@ const TITLE_STYLE: CSSProperties = {
   gridColumn: "1 / -1",
   alignItems: "baseline",
   justifyContent: "space-between",
-  gap: 12,
+  gap: 8,
 };
 
 const TITLE_TEXT_STYLE: CSSProperties = {
   color: "#0f172a",
-  fontSize: 16,
+  fontSize: 13,
 };
 
 const DESCRIPTION_STYLE: CSSProperties = {

@@ -46,13 +46,15 @@ func buildKeyLevelsResponse(symbol string, quote map[string]any, r *http.Request
 		return nil, errors.New("latest price unavailable")
 	}
 	thresholdPct := parseQueryFloat(r, "threshold_pct", 0.3)
+	entryLow := parseQueryFloat(r, "entry_zone_low", 0)
+	entryHigh := parseQueryFloat(r, "entry_zone_high", 0)
 	levels := buildKeyLevels(
 		latestPrice,
 		floatField(quote, "vwap"),
 		floatField(quote, "open_price"),
 		floatField(quote, "prev_close"),
-		parseQueryFloat(r, "entry_zone_low", 0),
-		parseQueryFloat(r, "entry_zone_high", 0),
+		entryLow,
+		entryHigh,
 		thresholdPct,
 	)
 	alerts := make([]map[string]any, 0)
@@ -66,19 +68,28 @@ func buildKeyLevelsResponse(symbol string, quote map[string]any, r *http.Request
 		alertText = symbol + " 接近" + stringField(alerts[0], "level_text")
 	}
 	return map[string]any{
-		"source":             "redis_local_quote_cache",
-		"data_quality":       "partial",
-		"data_quality_text":  "Go 读服务基于本地行情快照计算关键位；VWAP 仅在缓存字段存在时返回。",
-		"symbol":             symbol,
-		"name":               stringField(quote, "name"),
-		"updated_at":         time.Now().Format(time.RFC3339),
-		"latest_price":       roundFloat(latestPrice, 4),
-		"vwap":               roundFloat(floatField(quote, "vwap"), 4),
+		"source":              "redis_local_quote_cache",
+		"data_quality":        "partial",
+		"data_quality_text":   "Go 读服务基于本地行情快照计算关键位；VWAP 仅在缓存字段存在时返回。",
+		"symbol":              symbol,
+		"name":                stringField(quote, "name"),
+		"updated_at":          time.Now().Format(time.RFC3339),
+		"latest_price":        roundFloat(latestPrice, 4),
+		"vwap":                roundFloat(floatField(quote, "vwap"), 4),
+		"entry_zone_low":      optionalRoundedFloat(entryLow, 4),
+		"entry_zone_high":     optionalRoundedFloat(entryHigh, 4),
 		"alert_threshold_pct": thresholdPct,
-		"alert_triggered":    len(alerts) > 0,
-		"alert_text":         alertText,
-		"levels":             levels,
+		"alert_triggered":     len(alerts) > 0,
+		"alert_text":          alertText,
+		"levels":              levels,
 	}, nil
+}
+
+func optionalRoundedFloat(value float64, places int) any {
+	if value <= 0 {
+		return nil
+	}
+	return roundFloat(value, places)
 }
 
 func buildKeyLevels(latestPrice, vwap, openPrice, prevClose, entryLow, entryHigh, thresholdPct float64) []map[string]any {

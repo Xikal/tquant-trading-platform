@@ -11,7 +11,7 @@ const PAGE_ERROR_BOUNDARY_STYLE: CSSProperties = {
 const PAGE_ERROR_TITLE_STYLE: CSSProperties = {
   margin: 0,
   color: "var(--negative)",
-  fontSize: 16,
+  fontSize: 13,
 };
 
 const PAGE_ERROR_TEXT_STYLE: CSSProperties = {

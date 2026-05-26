@@ -150,7 +150,7 @@ export function TradingWorkspace() {
         setCommandOpen(false);
         return;
       }
-      if (modifier && /^[1-8]$/.test(event.key)) {
+      if (modifier && /^[1-7]$/.test(event.key)) {
         const nextPage = shortcutPage(event.key);
         if (nextPage) {
           event.preventDefault();
@@ -463,7 +463,8 @@ function shortcutPage(key: string): Page | null {
   if (key === "2") return "analysis";
   if (key === "3") return "playbook";
   if (key === "4") return "strategy";
-  if (key === "5") return "paper";
-  if (key === "6") return "settings";
+  if (key === "5") return "backtest";
+  if (key === "6") return "paper";
+  if (key === "7") return "settings";
   return null;
 }

@@ -40,6 +40,10 @@ interface UseMonitorDataOptions {
 export function useMonitorData({ active, withLoading, setError, setNotice }: UseMonitorDataOptions) {
   const priorityBoard = useWorkspaceMonitorStore((state) => state.priorityBoard);
   const marketBreadth = useWorkspaceMonitorStore((state) => state.marketBreadth);
+  const marketPulse = useWorkspaceMonitorStore((state) => state.marketPulse);
+  const hourlySnapshotHistory = useWorkspaceMonitorStore((state) => state.hourlySnapshotHistory);
+  const reviewStatus = useWorkspaceMonitorStore((state) => state.reviewStatus);
+  const reviewReports = useWorkspaceMonitorStore((state) => state.reviewReports);
   const sectorRelativeStrength = useWorkspaceMonitorStore((state) => state.sectorRelativeStrength);
   const keyLevelAlerts = useWorkspaceMonitorStore((state) => state.keyLevelAlerts);
   const watchlistSignals = useWorkspaceMonitorStore((state) => state.watchlistSignals);
@@ -49,6 +53,10 @@ export function useMonitorData({ active, withLoading, setError, setNotice }: Use
   const instrumentSyncStatus = useWorkspaceMonitorStore((state) => state.instrumentSyncStatus);
   const setPriorityBoard = useWorkspaceMonitorStore((state) => state.setPriorityBoard);
   const setMarketBreadth = useWorkspaceMonitorStore((state) => state.setMarketBreadth);
+  const setMarketPulse = useWorkspaceMonitorStore((state) => state.setMarketPulse);
+  const setHourlySnapshotHistory = useWorkspaceMonitorStore((state) => state.setHourlySnapshotHistory);
+  const setReviewStatus = useWorkspaceMonitorStore((state) => state.setReviewStatus);
+  const setReviewReports = useWorkspaceMonitorStore((state) => state.setReviewReports);
   const setSectorRelativeStrength = useWorkspaceMonitorStore((state) => state.setSectorRelativeStrength);
   const setKeyLevelAlerts = useWorkspaceMonitorStore((state) => state.setKeyLevelAlerts);
   const setWatchlistSignals = useWorkspaceMonitorStore((state) => state.setWatchlistSignals);
@@ -114,9 +122,10 @@ export function useMonitorData({ active, withLoading, setError, setNotice }: Use
       const shouldLoadRuntime = includeRuntime && Boolean(getAdminApiToken());
       const requests = [
         api.getMonitorWorkspaceBff(12),
+        api.getMarketHourlySnapshotsHistory(8),
         shouldLoadRuntime ? api.getRuntimeStatus() : Promise.resolve(null),
       ] as const;
-      const [workspaceResult, runtimeResult] = await Promise.allSettled(requests);
+      const [workspaceResult, hourlyHistoryResult, runtimeResult] = await Promise.allSettled(requests);
       if (workspaceResult.status === "fulfilled") {
         const monitorSnapshot = workspaceResult.value.monitor_snapshot;
         if (monitorSnapshot) {
@@ -127,6 +136,9 @@ export function useMonitorData({ active, withLoading, setError, setNotice }: Use
         if (workspaceResult.value.market_breadth) {
           setMarketBreadth(workspaceResult.value.market_breadth);
         }
+        setMarketPulse(workspaceResult.value.market_pulse ?? null);
+        setReviewStatus(workspaceResult.value.review_status ?? null);
+        setReviewReports(workspaceResult.value.review_reports ?? []);
         if (workspaceResult.value.sector_relative_strength) {
           setSectorRelativeStrength(workspaceResult.value.sector_relative_strength);
         }
@@ -134,10 +146,13 @@ export function useMonitorData({ active, withLoading, setError, setNotice }: Use
           setPairedHedge(workspaceResult.value.paired_hedge);
         }
       }
+      if (hourlyHistoryResult.status === "fulfilled") {
+        setHourlySnapshotHistory(hourlyHistoryResult.value.items ?? []);
+      }
       if (runtimeResult.status === "fulfilled" && runtimeResult.value) {
         setRuntime(runtimeResult.value);
       }
-      const rejected = [workspaceResult, runtimeResult].find(
+      const rejected = [workspaceResult, hourlyHistoryResult, runtimeResult].find(
         (item): item is PromiseRejectedResult => item.status === "rejected"
       );
       if (rejected) {
@@ -380,6 +395,10 @@ export function useMonitorData({ active, withLoading, setError, setNotice }: Use
     priorityBoard,
     setPriorityBoard,
     marketBreadth,
+    marketPulse,
+    hourlySnapshotHistory,
+    reviewStatus,
+    reviewReports,
     sectorRelativeStrength,
     keyLevelAlerts,
     sectorEtfT0,

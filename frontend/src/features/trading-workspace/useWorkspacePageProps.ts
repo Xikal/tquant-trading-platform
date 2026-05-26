@@ -46,6 +46,10 @@ export function useWorkspacePageProps({
   const monitorPageProps: MonitorPageProps = {
     priorityBoard: monitor.priorityBoard,
     marketBreadth: monitor.marketBreadth,
+    marketPulse: monitor.marketPulse,
+    hourlySnapshotHistory: monitor.hourlySnapshotHistory,
+    reviewStatus: monitor.reviewStatus,
+    reviewReports: monitor.reviewReports,
     sectorRelativeStrength: monitor.sectorRelativeStrength,
     keyLevelAlerts: monitor.keyLevelAlerts,
     sectorEtfT0: monitor.sectorEtfT0,
@@ -87,6 +91,7 @@ export function useWorkspacePageProps({
     autoTradingStatus: paper.autoTradingStatus,
     autoTradingRuns: paper.autoTradingRuns,
     ledgerRepairStatus: paper.ledgerRepairStatus,
+    performanceDashboard: paper.performanceDashboard,
     canManageReconcile: currentUser?.roles.some((role) => {
       const normalized = role.trim().toLowerCase();
       return normalized === "admin" || normalized === "administrator";

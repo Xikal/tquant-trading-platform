@@ -26,11 +26,11 @@ export function StrategyHubSummaryBar({
   return (
     <Card variant="borderless" styles={{ body: { display: "grid", gap: 8, padding: 12 } }}>
       <Flex gap={10} align="center" justify="space-between" wrap>
-        <Space orientation="vertical" size={1} style={{ minWidth: 0, flex: "1 1 280px" }}>
+        <Space direction="vertical" size={1} style={{ minWidth: 0, flex: "1 1 280px" }}>
           <Typography.Text style={{ fontSize: 11, fontWeight: 700, color: token.colorTextSecondary }}>
             策略健康中心
           </Typography.Text>
-          <Typography.Text strong style={{ fontSize: 16 }}>
+          <Typography.Text strong style={{ fontSize: 12 }}>
             {strategyHealthLabel(verdict.tone)} · {verdict.action}
           </Typography.Text>
           <Typography.Text type="secondary" style={{ fontSize: 12 }}>

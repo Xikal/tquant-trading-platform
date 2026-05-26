@@ -4,7 +4,8 @@ export function backtestResearchPanelStyle(focused: boolean): CSSProperties {
   return {
     gridArea: "research",
     display: "grid",
-    gap: focused ? 10 : 12,
+    gap: focused ? 8 : 10,
+    minWidth: 0,
     padding: focused ? 0 : undefined,
     border: focused ? 0 : undefined,
     background: focused ? "transparent" : "linear-gradient(180deg, #ffffff, #f8fafc)",
@@ -12,29 +13,31 @@ export function backtestResearchPanelStyle(focused: boolean): CSSProperties {
 }
 
 export const BACKTEST_RESEARCH_HERO_STYLE: CSSProperties = {
-  display: "flex",
-  alignItems: "end",
-  justifyContent: "space-between",
-  gap: 16,
-  padding: 14,
+  display: "grid",
+  gridTemplateColumns: "minmax(0, 1fr) auto",
+  alignItems: "center",
+  gap: 10,
+  minWidth: 0,
+  padding: 10,
   border: "1px solid rgba(214, 165, 92, 0.24)",
-  borderRadius: 16,
+  borderRadius: 8,
   background: "#0b1422",
   color: "#ecfeff",
 };
 
 export const BACKTEST_RESEARCH_GRID_STYLE: CSSProperties = {
   display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
-  gap: 12,
+  gridTemplateColumns: "repeat(auto-fit, minmax(min(360px, 100%), 1fr))",
+  gap: 10,
+  minWidth: 0,
 };
 
 export const BACKTEST_RESEARCH_CARD_STYLE: CSSProperties = {
   display: "grid",
   alignContent: "start",
-  gap: 12,
+  gap: 10,
   minWidth: 0,
-  padding: 12,
+  padding: 10,
   border: "1px solid #e3eaf3",
   borderRadius: 8,
   background: "rgba(255, 255, 255, 0.92)",
@@ -45,15 +48,19 @@ export const BACKTEST_RESEARCH_CARD_WIDE_STYLE: CSSProperties = {
 };
 
 export const BACKTEST_RESEARCH_TITLE_STYLE: CSSProperties = {
-  display: "flex",
+  display: "grid",
+  gridTemplateColumns: "minmax(0, 1fr) auto auto",
   alignItems: "center",
-  justifyContent: "space-between",
   gap: 10,
+  minWidth: 0,
 };
 
 export const BACKTEST_RESEARCH_TITLE_HEADING_STYLE: CSSProperties = {
   margin: 0,
-  fontSize: 15,
+  fontSize: 12,
+  overflow: "hidden",
+  textOverflow: "ellipsis",
+  whiteSpace: "nowrap",
 };
 
 export const BACKTEST_RESEARCH_TITLE_META_STYLE: CSSProperties = {
@@ -61,15 +68,18 @@ export const BACKTEST_RESEARCH_TITLE_META_STYLE: CSSProperties = {
   fontFamily: '"IBM Plex Mono", monospace',
   fontSize: 11,
   fontWeight: 900,
+  overflow: "hidden",
+  textOverflow: "ellipsis",
+  whiteSpace: "nowrap",
 };
 
 export const BACKTEST_RESEARCH_NOTE_STYLE: CSSProperties = {
-  padding: "10px 12px",
+  padding: "7px 8px",
   border: "1px solid rgba(31, 139, 76, 0.24)",
-  borderRadius: 12,
+  borderRadius: 8,
   background: "#f0fbf4",
   color: "#166534",
-  fontSize: 13,
+  fontSize: 11,
   fontWeight: 800,
 };
 
@@ -117,7 +127,7 @@ export function backtestToneTextStyle(tone: string): CSSProperties {
 export const BACKTEST_WINDOW_PRESETS_STYLE: CSSProperties = {
   display: "grid",
   gap: 6,
-  gridColumn: "span 2",
+  gridColumn: "1 / -1",
 };
 
 export const BACKTEST_WINDOW_PRESET_LABEL_STYLE: CSSProperties = {
@@ -128,7 +138,7 @@ export const BACKTEST_WINDOW_PRESET_LABEL_STYLE: CSSProperties = {
 
 export const BACKTEST_WINDOW_PRESET_GRID_STYLE: CSSProperties = {
   display: "grid",
-  gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+  gridTemplateColumns: "repeat(auto-fit, minmax(112px, 1fr))",
   gap: 6,
 };
 
@@ -204,9 +214,10 @@ export const BACKTEST_FRONTIER_SVG_STYLE: CSSProperties = {
 
 export const BACKTEST_RESEARCH_FORM_STYLE: CSSProperties = {
   display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))",
-  gap: 9,
+  gridTemplateColumns: "repeat(auto-fit, minmax(126px, 1fr))",
+  gap: 8,
   alignItems: "end",
+  minWidth: 0,
 };
 
 export const BACKTEST_RESULT_BLOCK_STYLE: CSSProperties = {
@@ -216,17 +227,18 @@ export const BACKTEST_RESULT_BLOCK_STYLE: CSSProperties = {
 
 export const BACKTEST_MINI_METRICS_STYLE: CSSProperties = {
   display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))",
-  gap: 8,
+  gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))",
+  gap: 6,
 };
 
 export const BACKTEST_MINI_METRIC_STYLE: CSSProperties = {
   display: "grid",
   gap: 4,
-  minHeight: 56,
+  minHeight: 50,
+  minWidth: 0,
   padding: 8,
   border: "1px solid #e8eef6",
-  borderRadius: 10,
+  borderRadius: 8,
   background: "#f8fafc",
 };
 
@@ -256,17 +268,21 @@ export const BACKTEST_MINI_METRIC_VALUE_STYLE: CSSProperties = {
 
 export const BACKTEST_TASK_LIST_STYLE: CSSProperties = {
   display: "grid",
-  gap: 7,
+  gap: 6,
+  maxHeight: 240,
+  overflowY: "auto",
+  paddingRight: 2,
 };
 
 export const BACKTEST_TASK_ROW_STYLE: CSSProperties = {
   display: "grid",
-  gridTemplateColumns: "minmax(0, 1fr) auto auto",
-  gap: 8,
+  gridTemplateColumns: "minmax(0, 1fr) 54px 44px",
+  gap: 6,
   alignItems: "center",
-  padding: 7,
+  minWidth: 0,
+  padding: 6,
   border: "1px solid #e8eef6",
-  borderRadius: 12,
+  borderRadius: 8,
   background: "#fff",
 };
 
@@ -278,6 +294,7 @@ export const BACKTEST_TASK_ROW_ACTIVE_STYLE: CSSProperties = {
 export const BACKTEST_TASK_BUTTON_STYLE: CSSProperties = {
   display: "grid",
   gap: 3,
+  minWidth: 0,
   border: 0,
   background: "transparent",
   color: "var(--text)",
@@ -288,10 +305,13 @@ export const BACKTEST_TASK_BUTTON_STYLE: CSSProperties = {
 export const BACKTEST_TASK_META_STYLE: CSSProperties = {
   color: "var(--muted)",
   fontSize: 12,
+  overflow: "hidden",
+  textOverflow: "ellipsis",
+  whiteSpace: "nowrap",
 };
 
 export const BACKTEST_WINDOW_GRID_STYLE: CSSProperties = {
   display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))",
-  gap: 9,
+  gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))",
+  gap: 8,
 };

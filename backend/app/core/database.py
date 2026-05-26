@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from app.core.config import get_settings
 from app.core.schema_compat import ensure_schema_compatibility, verify_schema_compatibility
 from app.models.base import Base
+import app.models.entities  # noqa: F401
 
 logger = logging.getLogger(__name__)
 

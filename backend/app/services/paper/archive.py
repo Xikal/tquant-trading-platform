@@ -46,7 +46,6 @@ class PaperArchiveService:
         strategy_count = self._archive_strategy_perf(account_id, archive_date)
         market_count = self._archive_market_perf(account_id, archive_date)
         report = self.generate_daily_report(account_id, target_date=archive_date) if include_report else None
-        review = self.generate_review_report(account_id, report_slot="close", target_date=archive_date) if include_report else None
         self.db.commit()
         return {
             "account_id": account_id,
@@ -54,7 +53,8 @@ class PaperArchiveService:
             "strategies_saved": strategy_count,
             "market_states_saved": market_count,
             "report_saved": report is not None,
-            "close_review_saved": review is not None,
+            "close_review_saved": False,
+            "review_scope": "market",
         }
 
     def archive_all_active(self, *, include_report: bool = True) -> list[dict[str, Any]]:

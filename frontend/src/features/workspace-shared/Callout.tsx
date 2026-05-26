@@ -11,10 +11,10 @@ const CALLOUT_TONE_STYLES: Record<Tone, CSSProperties> = {
 const CALLOUT_STYLE: CSSProperties = {
   display: "grid",
   gap: 4,
-  marginTop: 10,
-  padding: "12px 14px",
+  marginTop: 6,
+  padding: "8px 10px",
   border: "1px solid rgba(148, 163, 184, 0.24)",
-  borderRadius: 14,
+  borderRadius: 8,
 };
 
 const COMPACT_CALLOUT_STYLE: CSSProperties = {
@@ -26,15 +26,15 @@ const COMPACT_CALLOUT_STYLE: CSSProperties = {
 };
 
 const PRIMARY_CALLOUT_STYLE: CSSProperties = {
-  minHeight: 112,
-  padding: "16px 18px",
+  minHeight: 72,
+  padding: "10px 12px",
   borderWidth: 2,
-  boxShadow: "0 14px 32px rgba(15, 23, 42, 0.08)",
+  boxShadow: "0 8px 20px rgba(15, 23, 42, 0.06)",
 };
 
-const CALLOUT_LABEL_STYLE: CSSProperties = { color: "#64748b", fontSize: 12 };
-const CALLOUT_TITLE_STYLE: CSSProperties = { color: "#0f172a", fontSize: 18 };
-const PRIMARY_CALLOUT_TITLE_STYLE: CSSProperties = { color: "#0f172a", fontSize: 24 };
+const CALLOUT_LABEL_STYLE: CSSProperties = { color: "#64748b", fontSize: 11 };
+const CALLOUT_TITLE_STYLE: CSSProperties = { color: "#0f172a", fontSize: 12 };
+const PRIMARY_CALLOUT_TITLE_STYLE: CSSProperties = { color: "#0f172a", fontSize: 12 };
 const WARNING_CALLOUT_TITLE_STYLE: CSSProperties = { display: "block", marginBottom: 2 };
 
 const COMPACT_CALLOUT_TITLE_STYLE: CSSProperties = {
@@ -51,8 +51,8 @@ const COMPACT_CALLOUT_DETAIL_STYLE: CSSProperties = {
 
 const CALLOUT_DESCRIPTION_STYLE: CSSProperties = {
   color: "#334155",
-  fontSize: 13,
-  lineHeight: 1.5,
+  fontSize: 12,
+  lineHeight: 1.42,
 };
 
 export function Callout({

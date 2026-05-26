@@ -70,8 +70,26 @@ function splitVendorChunks(id: string): string | undefined {
   if (id.includes("zrender")) {
     return "zrender";
   }
-  if (normalized.includes("/echarts")) {
-    return "echarts";
+  if (normalized.includes("/echarts-for-react")) {
+    return "echarts-react";
+  }
+  if (normalized.includes("/echarts/core") || normalized.includes("/echarts/lib/core")) {
+    return "echarts-core";
+  }
+  if (normalized.includes("/echarts/charts") || normalized.includes("/echarts/lib/chart")) {
+    return "echarts-charts";
+  }
+  if (normalized.includes("/echarts/components") || normalized.includes("/echarts/lib/component")) {
+    return "echarts-components";
+  }
+  if (normalized.includes("/echarts/renderers") || normalized.includes("/echarts/lib/renderer")) {
+    return "echarts-renderers";
+  }
+  if (normalized.includes("/echarts/lib/coord")) {
+    return "echarts-coord";
+  }
+  if (normalized.includes("/echarts/")) {
+    return "echarts-core";
   }
   if (normalized.includes("/@capacitor")) {
     return "native";
@@ -79,61 +97,37 @@ function splitVendorChunks(id: string): string | undefined {
   if (normalized.includes("/@ant-design/icons")) {
     return "antd-icons";
   }
-  if (normalized.includes("/@ant-design") || normalized.includes("/@rc-component") || normalized.includes("/rc-")) {
-    return "antd-foundation";
+  if (matchesAntdComponent(normalized, ["button", "float-button"])) {
+    return "antd-button";
   }
-  if (normalized.includes("/antd/es/table") || normalized.includes("/antd/lib/table")) {
-    return "antd-table";
-  }
-  if (
-    normalized.includes("/antd/es/button") ||
-    normalized.includes("/antd/lib/button") ||
-    normalized.includes("/antd/es/checkbox") ||
-    normalized.includes("/antd/lib/checkbox") ||
-    normalized.includes("/antd/es/switch") ||
-    normalized.includes("/antd/lib/switch") ||
-    normalized.includes("/antd/es/slider") ||
-    normalized.includes("/antd/lib/slider")
-  ) {
+  if (matchesAntdComponent(normalized, ["checkbox", "switch", "slider", "radio"])) {
     return "antd-controls";
   }
   if (
-    normalized.includes("/antd/es/modal") ||
-    normalized.includes("/antd/lib/modal") ||
-    normalized.includes("/antd/es/result") ||
-    normalized.includes("/antd/lib/result") ||
-    normalized.includes("/antd/es/empty") ||
-    normalized.includes("/antd/lib/empty") ||
-    normalized.includes("/antd/es/skeleton") ||
-    normalized.includes("/antd/lib/skeleton") ||
-    normalized.includes("/antd/es/spin") ||
-    normalized.includes("/antd/lib/spin")
+    matchesAntdComponent(normalized, ["modal", "drawer", "popconfirm", "popover", "tooltip"]) ||
+    matchesAntdComponent(normalized, ["result", "empty", "skeleton", "spin", "alert", "message", "notification", "progress"])
   ) {
     return "antd-feedback";
   }
   if (
-    normalized.includes("/antd/es/tabs") ||
-    normalized.includes("/antd/lib/tabs") ||
-    normalized.includes("/antd/es/dropdown") ||
-    normalized.includes("/antd/lib/dropdown") ||
-    normalized.includes("/antd/es/badge") ||
-    normalized.includes("/antd/lib/badge") ||
-    normalized.includes("/antd/es/segmented") ||
-    normalized.includes("/antd/lib/segmented")
+    matchesAntdComponent(normalized, ["tabs", "dropdown", "menu", "breadcrumb", "pagination", "steps"]) ||
+    matchesAntdComponent(normalized, ["badge", "segmented"])
   ) {
     return "antd-navigation";
   }
   if (
-    normalized.includes("/antd/es/form") ||
-    normalized.includes("/antd/lib/form") ||
-    normalized.includes("/antd/es/input") ||
-    normalized.includes("/antd/lib/input") ||
-    normalized.includes("/antd/es/input-number") ||
-    normalized.includes("/antd/lib/input-number") ||
-    normalized.includes("/antd/es/select") ||
-    normalized.includes("/antd/lib/select")
+    matchesAntdComponent(normalized, ["form", "input", "input-number", "select", "date-picker", "time-picker", "tree-select"])
   ) {
     return "antd-form";
+  }
+  if (matchesAntdComponent(normalized, ["table", "list", "descriptions", "statistic", "tag", "timeline"])) {
+    return "antd-display";
+  }
+  if (matchesAntdComponent(normalized, ["row", "col", "grid", "layout", "card", "divider", "flex", "space"])) {
+    return "antd-layout";
+  }
+  if (normalized.includes("/@ant-design") || normalized.includes("/@rc-component") || normalized.includes("/rc-")) {
+    return "antd-foundation";
   }
   if (
     normalized.includes("/antd/es/config-provider") ||
@@ -164,4 +158,11 @@ function splitVendorChunks(id: string): string | undefined {
     return "react-vendor";
   }
   return "vendor";
+}
+
+function matchesAntdComponent(id: string, componentNames: string[]): boolean {
+  return componentNames.some((component) => (
+    id.includes(`/antd/es/${component}`) ||
+    id.includes(`/antd/lib/${component}`)
+  ));
 }

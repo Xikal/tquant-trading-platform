@@ -13,6 +13,7 @@ import type {
   LowBuyExecutionBacktestResult,
   LowBuyTradeLifecycle,
   MarketBreadth,
+  MarketHourlySnapshotHistoryResponse,
   MonitorWorkspaceBffResponse,
   MarketTradingSession,
   SectorRelativeStrengthResponse,
@@ -93,6 +94,8 @@ export const api = {
   getWatchlistSignals: () => requestCached<WatchlistSignal[]>("/watchlist/signals", 9000),
   getWatchlistQuotes: () => request<WatchlistQuoteItem[]>("/watchlist/quotes"),
   getMarketBreadth: () => requestCached<MarketBreadth>("/market/breadth", 10000),
+  getMarketHourlySnapshotsHistory: (limit = 8) =>
+    requestCached<MarketHourlySnapshotHistoryResponse>(`/market/hourly-snapshots/history?limit=${limit}`, 20000),
   getMarketTradingSession: () => requestCached<MarketTradingSession>("/market/trading-session", 60000),
   getSectorRelativeStrength: (limit = 8, perSectorLimit = 10) =>
     requestCached<SectorRelativeStrengthResponse>(

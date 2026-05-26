@@ -65,7 +65,7 @@ const STOCK_DIRECT_ACTION_STYLE: CSSProperties = {
 
 const STOCK_DIRECT_ACTION_TITLE_STYLE: CSSProperties = {
   color: "#0f172a",
-  fontSize: 16,
+  fontSize: 12,
 };
 
 const STOCK_SCORE_BADGE_STYLE: CSSProperties = {
@@ -120,7 +120,7 @@ const STOCK_IDENTITY_MAIN_STYLE: CSSProperties = {
 };
 
 const STOCK_IDENTITY_NAME_STYLE: CSSProperties = {
-  fontSize: 14,
+  fontSize: 12,
 };
 
 const STOCK_IDENTITY_META_STYLE: CSSProperties = {
@@ -253,7 +253,7 @@ export function StockCard({
       <StockIdentity name={stock.name} symbol={stock.symbol} note={stock.identityNote} tags={stock.identityTags} />
       <div style={STOCK_CARD_BODY_STYLE}>
         <div style={STOCK_DIRECT_ACTION_STYLE}>
-          <strong style={{ ...STOCK_DIRECT_ACTION_TITLE_STYLE, ...(compact ? { fontSize: 13 } : undefined) }}>{directActionTitle(stock.actionText)}</strong>
+          <strong style={{ ...STOCK_DIRECT_ACTION_TITLE_STYLE, ...(compact ? { fontSize: 11 } : undefined) }}>{directActionTitle(stock.actionText)}</strong>
           {stock.scoreText ? <span style={STOCK_SCORE_BADGE_STYLE} title={`质量分 ${stock.scoreText}`}>质量 {scoreStars(stock.scoreText)}</span> : null}
         </div>
         <div style={{ ...STOCK_META_STYLE, ...(compact ? { gap: 7, fontSize: 10 } : undefined) }}>
