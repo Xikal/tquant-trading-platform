@@ -12,6 +12,7 @@ from app.models.schemas import (
     LowBuyStrategyPerformanceOut,
 )
 from app.services.latest_data_status import expected_low_buy_trade_date, published_low_buy_trade_date
+from app.services.low_buy_materialization import enqueue_low_buy_materialization
 from app.services.low_buy.priority_scoring import LowBuyPriorityScoringMixin
 from app.services.low_buy.priority_cache import (
     get_priority_base_cache,
@@ -65,12 +66,37 @@ from app.services.market.board_exclusions import is_growth_board_stock
 
 
 class LowBuyPriorityBoardMixin(LowBuyPriorityScoringMixin):
-    def priority_board(self, db: Session, limit: int = 12) -> LowBuyPriorityBoardResponse:
+    def priority_board(
+        self,
+        db: Session,
+        limit: int = 12,
+        *,
+        refresh_mode: str = "cache",
+    ) -> LowBuyPriorityBoardResponse:
         target_trade_date = published_low_buy_trade_date(db) or expected_low_buy_trade_date(db)
         cache_key = f"date={target_trade_date}:limit={limit}"
-        cached_response = self._get_priority_response_cache(cache_key)
-        if cached_response is not None:
-            return cached_response
+        normalized_refresh = str(refresh_mode or "cache").strip().lower()
+        if normalized_refresh not in {"cache", "async", "sync"}:
+            normalized_refresh = "cache"
+
+        if normalized_refresh != "sync":
+            cached_response = self._get_priority_response_cache(cache_key)
+            if cached_response is not None:
+                if normalized_refresh == "async":
+                    _enqueue_priority_refresh(db, reason="priority_board_refresh_requested")
+                    return _mark_priority_refresh_queued(cached_response, stale=False)
+                return cached_response
+
+            stale_response = self._get_priority_response_cache(cache_key, allow_stale=True)
+            if stale_response is not None:
+                _enqueue_priority_refresh(db, reason="priority_board_cache_miss")
+                return _mark_priority_refresh_queued(stale_response, stale=True)
+
+            _enqueue_priority_refresh(db, reason="priority_board_cache_empty")
+            return _empty_priority_board_response(
+                target_trade_date=target_trade_date,
+                warning="优先榜正在后台刷新，当前暂无最近可用榜单。",
+            )
 
         base_snapshot = self._load_priority_base_snapshot(db=db, limit=limit)
         refreshed_candidates = self._refresh_priority_candidates(base_snapshot.candidates)
@@ -155,8 +181,13 @@ class LowBuyPriorityBoardMixin(LowBuyPriorityScoringMixin):
     def _set_priority_base_cache(self, cache_key: str, payload: PriorityBaseSnapshot) -> None:
         set_priority_base_cache(self, cache_key, payload)
 
-    def _get_priority_response_cache(self, cache_key: str) -> LowBuyPriorityBoardResponse | None:
-        return get_priority_response_cache(self, cache_key)
+    def _get_priority_response_cache(
+        self,
+        cache_key: str,
+        *,
+        allow_stale: bool = False,
+    ) -> LowBuyPriorityBoardResponse | None:
+        return get_priority_response_cache(self, cache_key, allow_stale=allow_stale)
 
     def _set_priority_response_cache(self, cache_key: str, payload: LowBuyPriorityBoardResponse) -> None:
         set_priority_response_cache(self, cache_key, payload)
@@ -337,3 +368,53 @@ def filter_priority_candidates_for_recommendation(rows: list[PriorityCandidate])
     """Keep recommendation boards aligned with current stock-scope policy."""
 
     return [row for row in rows if not is_growth_board_stock(row.symbol)]
+
+
+def _enqueue_priority_refresh(db: Session, *, reason: str) -> None:
+    try:
+        enqueue_low_buy_materialization(db, reason=reason, commit=False)
+    except Exception:
+        pass
+
+
+def _mark_priority_refresh_queued(
+    payload: LowBuyPriorityBoardResponse,
+    *,
+    stale: bool,
+) -> LowBuyPriorityBoardResponse:
+    warning = "优先榜正在后台刷新，当前先展示最近一次可用结果。"
+    snapshot_warning = " ".join(part for part in [payload.snapshot_warning.strip(), warning] if part)
+    tags = list(dict.fromkeys([*(payload.data_quality_tags or []), "refresh_queued"]))
+    if stale:
+        tags = list(dict.fromkeys([*tags, "stale_cache"]))
+    return payload.model_copy(
+        update={
+            "snapshot_warning": snapshot_warning,
+            "data_quality": "stale" if stale else payload.data_quality,
+            "data_quality_text": "优先榜使用最近一次缓存，后台正在刷新。" if stale else payload.data_quality_text,
+            "data_quality_tags": tags,
+        }
+    )
+
+
+def _empty_priority_board_response(
+    *,
+    target_trade_date: str,
+    warning: str,
+) -> LowBuyPriorityBoardResponse:
+    from app.core.timezone import beijing_now_string
+
+    return LowBuyPriorityBoardResponse(
+        as_of_date=target_trade_date,
+        latest_trade_date="",
+        latest_available_trade_date=target_trade_date,
+        updated_at=beijing_now_string(),
+        total_candidates=0,
+        snapshot_warning=warning,
+        data_quality="unavailable",
+        data_quality_text="优先榜后台刷新中，暂无可用快照。",
+        data_quality_tags=["refresh_queued", "cache_empty"],
+        items=[],
+        family_sections=[],
+        simple_buckets=[],
+    )

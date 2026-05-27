@@ -94,7 +94,8 @@ jobs:
       - name: Run Rust finance benchmarks
         run: |
           mkdir -p docs/reports
-          (cd rust/tquant-rs && cargo bench --features extension-module --bench finance 2>&1) | tee docs/reports/rust-finance-bench.txt
+          (cd rust/tquant-rs && cargo bench --features extension-module --bench finance -- --output-format bencher 2>&1) | tee docs/reports/rust-finance-bench.txt
+          python scripts/check_rust_bench_baseline.py docs/reports/rust-bench-baseline.json docs/reports/rust-finance-bench.txt
       - name: Upload Rust benchmark artifact
         uses: actions/upload-artifact@v4
         with:

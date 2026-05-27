@@ -29,4 +29,10 @@ describe("webRoutes", () => {
       expect(useWorkspaceStore.getState().page).toBe(page);
     },
   );
+
+  it("wraps workspace routes with an error element for cold navigation failures", () => {
+    for (const route of webRoutes.filter((item) => item.path && item.path !== "*")) {
+      expect(route.errorElement).toBeDefined();
+    }
+  });
 });

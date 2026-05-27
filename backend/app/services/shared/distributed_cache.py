@@ -61,5 +61,32 @@ def set_json_cache(key: str, value: Any, ttl_seconds: int | float) -> None:
     set_text_cache(key, payload, ttl_seconds)
 
 
+def set_many_json_cache(values: dict[str, Any], ttl_seconds: int | float) -> int:
+    if not values:
+        return 0
+    client = get_distributed_cache_client()
+    if client is None:
+        return 0
+    ttl = max(int(ttl_seconds), 1)
+    try:
+        with client.pipeline(transaction=False) as pipe:
+            written = 0
+            for key, value in values.items():
+                try:
+                    payload = json.dumps(value, ensure_ascii=False, default=str)
+                except (TypeError, ValueError):
+                    logger.warning("redis cache json encode failed key=%s", key, exc_info=True)
+                    continue
+                pipe.setex(key, ttl, payload)
+                written += 1
+            if written:
+                pipe.execute()
+            return written
+    except RedisError:
+        mark_distributed_cache_unhealthy()
+        logger.warning("redis cache batch write failed keys=%s", len(values), exc_info=True)
+        return 0
+
+
 def clear_distributed_cache_client() -> None:
     clear_distributed_cache_client_state()

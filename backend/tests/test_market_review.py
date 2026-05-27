@@ -208,14 +208,14 @@ def test_market_review_history_exposes_autofill_audit_fields() -> None:
         db.add(
             MarketHourlySnapshotHistory(
                 trade_date="2026-05-26",
-                snapshot_bucket="202605261300",
+                snapshot_bucket="202605261130",
                 data_quality="fresh",
                 snapshot_count=3506,
                 market_strength_score=-34.23,
                 payload_json=json.dumps(
                     {
                         "ok": True,
-                        "updated_at": "2026-05-26 13:04:08",
+                        "updated_at": "2026-05-26 11:32:08",
                         "snapshot_count": 3506,
                         "stock_up_ratio": 0.2795,
                         "stock_down_ratio": 0.7091,
@@ -248,7 +248,7 @@ def test_market_review_history_exposes_autofill_audit_fields() -> None:
 def test_market_review_midday_ignores_late_session_snapshots() -> None:
     with _session() as db:
         for bucket, updated_at, count, up_ratio in (
-            ("202605261300", "2026-05-26 13:04:00", 3506, 0.2795),
+            ("202605261130", "2026-05-26 11:32:00", 3506, 0.2795),
             ("202605261500", "2026-05-26 15:02:00", 4992, 0.2432),
         ):
             db.add(
@@ -295,14 +295,14 @@ def test_market_review_autofills_emotion_and_leader_strength_when_possible() -> 
         db.add(
             MarketHourlySnapshotHistory(
                 trade_date="2026-05-26",
-                snapshot_bucket="202605261300",
+                snapshot_bucket="202605261130",
                 data_quality="fresh",
                 snapshot_count=3506,
                 market_strength_score=-34.23,
                 payload_json=json.dumps(
                     {
                         "ok": True,
-                        "updated_at": "2026-05-26 13:04:08",
+                        "updated_at": "2026-05-26 11:32:08",
                         "snapshot_count": 3506,
                         "stock_up_ratio": 0.2795,
                         "stock_down_ratio": 0.7091,
@@ -336,7 +336,7 @@ def test_market_review_autofills_emotion_and_leader_strength_when_possible() -> 
                         "leader_strength_summary": {"sector_count": 0, "top": []},
                         "hourly_snapshot_summary": {
                             "ok": True,
-                            "updated_at": "2026-05-26 13:04:08",
+                            "updated_at": "2026-05-26 11:32:08",
                             "snapshot_count": 3506,
                             "stock_up_ratio": 0.2795,
                             "stock_down_ratio": 0.7091,

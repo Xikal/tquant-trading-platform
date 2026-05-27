@@ -137,12 +137,25 @@ func parseQuoteCachePayload(symbol string, raw []byte) (map[string]any, error) {
 		quote["symbol"] = symbol
 	}
 	age := 0.0
-	quality := "fresh"
+	quality := strings.TrimSpace(stringField(quote, "data_quality"))
+	if quality == "" {
+		quality = strings.TrimSpace(stringField(quote, "source_quality"))
+	}
+	if quality == "" {
+		quality = "fresh"
+	}
 	if cachedAt > 0 {
 		age = time.Since(time.Unix(int64(cachedAt), 0)).Seconds()
-		if age > 15 {
+		if age > 15 && quality == "fresh" {
 			quality = "stale"
 		}
+	}
+	quote["data_quality"] = quality
+	if quote["source_quality"] == nil {
+		quote["source_quality"] = quality
+	}
+	if quality != "fresh" {
+		quote["is_stale"] = true
 	}
 	return map[string]any{
 		"symbol":       symbol,

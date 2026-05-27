@@ -1,0 +1,362 @@
+#!/usr/bin/env python3
+from __future__ import annotations
+
+import argparse
+import json
+import statistics
+import subprocess
+import tempfile
+import textwrap
+import time
+from pathlib import Path
+from typing import Any
+from urllib.parse import urljoin
+from urllib.request import Request, urlopen
+
+
+ROOT = Path(__file__).resolve().parents[1]
+
+
+def main() -> int:
+    args = parse_args()
+    report = run_remote_measurement(args)
+    report_path = ROOT / "docs" / "reports" / f"gupiao-cloud-performance-{time.strftime('%Y-%m-%d-%H%M%S')}.json"
+    report_path.parent.mkdir(parents=True, exist_ok=True)
+    report_path.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    print(report_path)
+    return 0 if report.get("ok") else 1
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Measure deployed Go/Rust production path performance.")
+    parser.add_argument("--host", default="43.143.243.97")
+    parser.add_argument("--user", default="ubuntu")
+    parser.add_argument("--key", default="/Users/j/Downloads/gupiao.pem")
+    parser.add_argument("--base-url", default="http://127.0.0.1:18090")
+    parser.add_argument("--project-dir", default="/home/ubuntu/gupiao-upload")
+    parser.add_argument("--samples", type=int, default=8)
+    return parser.parse_args()
+
+
+def run_remote_measurement(args: argparse.Namespace) -> dict[str, Any]:
+    script = textwrap.dedent(
+        r"""
+        import json, os, statistics, subprocess, time, urllib.error, urllib.request
+
+        BASE_URL = os.environ["BASE_URL"].rstrip("/")
+        PROJECT_DIR = os.environ.get("PROJECT_DIR", "/home/ubuntu/gupiao-upload")
+        SAMPLES = int(os.environ.get("SAMPLES", "8"))
+
+        def fetch(path, token="", timeout=10):
+            req = urllib.request.Request(BASE_URL + path)
+            if token:
+                req.add_header("Authorization", "Bearer " + token)
+            started = time.perf_counter()
+            try:
+                with urllib.request.urlopen(req, timeout=timeout) as response:
+                    body = response.read()
+                return (time.perf_counter() - started) * 1000, response.status, body
+            except urllib.error.HTTPError as exc:
+                body = exc.read()
+                return (time.perf_counter() - started) * 1000, exc.code, body
+
+        def login():
+            username = "perf_gate_" + time.strftime("%Y%m%d%H%M%S")
+            password = "PerfGate12345!"
+            payload = json.dumps({"username": username, "password": password, "display_name": "perf gate"}).encode()
+            req = urllib.request.Request(BASE_URL + "/api/auth/register", data=payload, headers={"Content-Type": "application/json"})
+            try:
+                urllib.request.urlopen(req, timeout=10).read()
+            except Exception:
+                pass
+            payload = json.dumps({"username": username, "password": password}).encode()
+            req = urllib.request.Request(BASE_URL + "/api/auth/login", data=payload, headers={"Content-Type": "application/json"})
+            with urllib.request.urlopen(req, timeout=10) as response:
+                data = json.loads(response.read().decode())
+            return data["access_token"]
+
+        def measure(name, path, token="", timeout=12):
+            samples = []
+            statuses = []
+            for _ in range(SAMPLES):
+                elapsed, status, body = fetch(path, token=token, timeout=timeout)
+                samples.append(elapsed)
+                statuses.append(status)
+                time.sleep(0.08)
+            ordered = sorted(samples)
+            p95_index = max(0, min(len(ordered) - 1, int(len(ordered) * 0.95) - 1))
+            return {
+                "name": name,
+                "path": path,
+                "statuses": sorted(set(statuses)),
+                "p50_ms": round(statistics.median(samples), 3),
+                "p95_ms": round(ordered[p95_index], 3),
+            }
+
+        def metrics(container, port):
+            try:
+                out = subprocess.check_output(["sudo", "docker", "exec", container, "wget", "-qO-", f"http://127.0.0.1:{port}/metrics"], text=True, timeout=10)
+            except Exception as exc:
+                return {"error": str(exc)}
+            parsed = {}
+            for line in out.splitlines():
+                if not line or line.startswith("#"):
+                    continue
+                parts = line.split()
+                if len(parts) == 2:
+                    try:
+                        parsed[parts[0]] = float(parts[1])
+                    except ValueError:
+                        pass
+            return parsed
+
+        def read_internal_token():
+            env_path = os.path.join(PROJECT_DIR, ".env")
+            try:
+                with open(env_path, encoding="utf-8") as handle:
+                    for line in handle:
+                        line = line.strip()
+                        if line.startswith("TQUANT_INTERNAL_SERVICE_TOKEN="):
+                            return line.split("=", 1)[1].strip().strip('"').strip("'")
+            except OSError:
+                return ""
+            return ""
+
+        def measure_scan_accept():
+            token = read_internal_token()
+            if not token:
+                return {
+                    "name": "scan_worker_accept",
+                    "path": "/api/scan-worker/v1/run",
+                    "statuses": ["missing_internal_token"],
+                    "p50_ms": 999999,
+                    "p95_ms": 999999,
+                }
+            samples = []
+            statuses = []
+            url = "http://127.0.0.1:8093/api/scan-worker/v1/run?strategies=first_board&scan_limit=12&limit=5&reason=perf_gate"
+            for _ in range(SAMPLES):
+                started = time.perf_counter()
+                try:
+                    out = subprocess.check_output([
+                        "sudo", "docker", "exec", "tquant-go-scan-worker", "wget", "-qO-",
+                        "--header", "X-Internal-Service-Token: " + token,
+                        url,
+                    ], text=True, timeout=10)
+                    payload = json.loads(out)
+                    statuses.append(202 if payload.get("accepted") else 200)
+                except Exception:
+                    statuses.append(500)
+                samples.append((time.perf_counter() - started) * 1000)
+            ordered = sorted(samples)
+            p95_index = max(0, min(len(ordered) - 1, int(len(ordered) * 0.95) - 1))
+            return {
+                "name": "scan_worker_accept",
+                "path": "/api/scan-worker/v1/run",
+                "statuses": sorted(set(statuses)),
+                "p50_ms": round(statistics.median(samples), 3),
+                "p95_ms": round(ordered[p95_index], 3),
+            }
+
+        def rust_smoke():
+            code = (
+                "import json\n"
+                "import tquant_rs\n"
+                "from app.services.finance.rust_math import rust_available, rust_atr_wilder, rust_max_drawdown, rust_rank_ic, rust_rolling_mean, rust_rsi_wilder, rust_vwap, rust_math_metrics_snapshot\n"
+                "payload = {\n"
+                "    'module': tquant_rs.__name__,\n"
+                "    'available': rust_available(),\n"
+                "    'max_drawdown': rust_max_drawdown([100, 110, 90, 120]),\n"
+                "    'rolling_mean': rust_rolling_mean([1, 2, 3, 4], 2),\n"
+                "    'atr_wilder': rust_atr_wilder([10, 11, 12], [9, 9.5, 10], [9.5, 10.5, 11], 2),\n"
+                "    'rsi_wilder': rust_rsi_wilder([1, 2, 3, 2, 4, 5], 3),\n"
+                "    'vwap': rust_vwap([10, 11, 12], [100, 200, 300]),\n"
+                "    'rank_ic': rust_rank_ic([3, 1, 2], [0.3, 0.1, 0.2]),\n"
+                "    'metrics': rust_math_metrics_snapshot(),\n"
+                "}\n"
+                "print(json.dumps(payload))\n"
+            )
+            try:
+                out = subprocess.check_output(
+                    ["sudo", "docker", "exec", "-i", "tquant-app-mysql", "python", "-"],
+                    input=code,
+                    text=True,
+                    timeout=20,
+                )
+                return json.loads(out.strip().splitlines()[-1])
+            except Exception as exc:
+                return {"available": False, "error": str(exc)}
+
+        def quote_cache_snapshot():
+            token = read_internal_token()
+            warm = quote_cache_warmup()
+            try:
+                redis_raw = subprocess.check_output(
+                    ["sudo", "docker", "exec", "tquant-redis", "redis-cli", "--scan", "--pattern", "tquant:market:quote:*"],
+                    text=True,
+                    timeout=20,
+                )
+                redis_count = len([line for line in redis_raw.splitlines() if line.strip()])
+            except Exception:
+                redis_count = -1
+            try:
+                code = (
+                    "from sqlalchemy import select\n"
+                    "from app.core.database import SessionLocal\n"
+                    "from app.models.entities import DailyBarSnapshot\n"
+                    "with SessionLocal() as db:\n"
+                    "    latest = db.execute(select(DailyBarSnapshot.trade_date).order_by(DailyBarSnapshot.trade_date.desc()).limit(1)).scalar()\n"
+                    "    rows = db.execute(select(DailyBarSnapshot.symbol).where(DailyBarSnapshot.trade_date == latest).order_by(DailyBarSnapshot.amount.desc()).limit(20)).scalars().all() if latest else []\n"
+                    "print(','.join(str(item) for item in rows if item))\n"
+                )
+                out = subprocess.check_output(
+                    ["sudo", "docker", "exec", "-i", "tquant-app-mysql", "python", "-"],
+                    input=code,
+                    text=True,
+                    timeout=20,
+                )
+                symbols = [item.strip() for item in out.strip().split(",") if item.strip()]
+            except Exception:
+                symbols = []
+            if not symbols or not token:
+                return {"warmup": warm, "redis_quote_keys": redis_count, "symbols_checked": len(symbols), "data_quality": "unavailable"}
+            try:
+                out = subprocess.check_output(
+                    [
+                        "sudo", "docker", "exec", "tquant-go-market-read-service", "wget", "-qO-",
+                        "--header", "X-Internal-Service-Token: " + token,
+                        "http://127.0.0.1:8092/api/market-read/v1/intraday-latest-batch?symbols=" + ",".join(symbols),
+                    ],
+                    text=True,
+                    timeout=20,
+                )
+                payload = json.loads(out)
+                items = payload.get("items") or []
+                return {
+                    "warmup": warm,
+                    "redis_quote_keys": redis_count,
+                    "symbols_checked": len(symbols),
+                    "items_returned": len(items),
+                    "missing_count": len(payload.get("missing") or []),
+                    "data_quality": payload.get("data_quality"),
+                }
+            except Exception as exc:
+                return {"warmup": warm, "redis_quote_keys": redis_count, "symbols_checked": len(symbols), "data_quality": "unavailable", "error": str(exc)}
+
+        def quote_cache_warmup():
+            code = (
+                "import json\n"
+                "from app.core.database import SessionLocal\n"
+                "from app.services.market_quote_cache_refresh import MarketQuoteCacheRefreshService\n"
+                "with SessionLocal() as db:\n"
+                "    result = MarketQuoteCacheRefreshService(db).refresh(limit=80)\n"
+                "print(json.dumps(result, ensure_ascii=False, default=str))\n"
+            )
+            try:
+                out = subprocess.check_output(
+                    ["sudo", "docker", "exec", "-i", "tquant-app-mysql", "python", "-"],
+                    input=code,
+                    text=True,
+                    timeout=90,
+                )
+                return json.loads(out.strip().splitlines()[-1])
+            except Exception as exc:
+                return {"ok": False, "error": str(exc)}
+
+        token = login()
+        api = [
+            measure("readyz", "/readyz"),
+            measure("monitor_bff", "/api/bff/v1/workspace/monitor?priority_limit=12&sector_limit=8&per_sector_limit=8&hedge_limit=4", token),
+            measure("market_pulse", "/api/market/pulse", token),
+            measure("priority_board", "/api/screeners/low-buy/priority-board?limit=12", token),
+            measure("watchlist_signals", "/api/watchlist/signals", token),
+        ]
+        go_scan = []
+        scan_accept = measure_scan_accept()
+        rust = rust_smoke()
+        quote_cache = quote_cache_snapshot()
+        try:
+            out = subprocess.check_output([
+                "sudo", "docker", "exec", "tquant-go-scan-worker", "wget", "-qO-",
+                "--header", "X-Internal-Service-Token: " + read_internal_token(),
+                "http://127.0.0.1:8093/api/scan-worker/v1/status",
+            ], text=True, timeout=10)
+            go_scan.append({"status": json.loads(out)})
+        except Exception as exc:
+            go_scan.append({"error": str(exc)})
+
+        thresholds = {
+            "readyz": 100,
+            "monitor_bff": 500,
+            "market_pulse": 500,
+            "priority_board": 500,
+            "watchlist_signals": 600,
+            "scan_worker_accept": 500,
+        }
+        failures = [
+            {"name": item["name"], "p95_ms": item["p95_ms"], "threshold_ms": thresholds[item["name"]]}
+            for item in api
+            if item["p95_ms"] > thresholds[item["name"]] or item["statuses"] != [200]
+        ]
+        if scan_accept["p95_ms"] > thresholds["scan_worker_accept"] or scan_accept["statuses"] != [202]:
+            failures.append({
+                "name": scan_accept["name"],
+                "p95_ms": scan_accept["p95_ms"],
+                "threshold_ms": thresholds["scan_worker_accept"],
+                "statuses": scan_accept["statuses"],
+            })
+        if not rust.get("available") or int(rust.get("metrics", {}).get("hits") or 0) < 6:
+            failures.append({
+                "name": "rust_finance_math",
+                "detail": rust.get("error") or "rust smoke did not hit all migrated functions",
+            })
+        if quote_cache.get("symbols_checked") and quote_cache.get("data_quality") == "unavailable":
+            failures.append({"name": "quote_cache_coverage", "detail": quote_cache})
+        report = {
+            "generated_at": time.strftime("%Y-%m-%d %H:%M:%S"),
+            "api": api,
+            "go_scan_accept": scan_accept,
+            "rust_finance_math": rust,
+            "quote_cache_coverage": quote_cache,
+            "go_bff_metrics": metrics("tquant-go-bff-gateway", 8091),
+            "go_market_metrics": metrics("tquant-go-market-read-service", 8092),
+            "go_scan": go_scan,
+            "app_metrics": fetch("/metrics")[2].decode(errors="replace")[-4000:],
+            "failures": failures,
+            "ok": not failures,
+        }
+        print(json.dumps(report, ensure_ascii=False))
+        """
+    )
+    with tempfile.NamedTemporaryFile("w", suffix=".py", delete=False) as handle:
+        handle.write(script)
+        remote_script = handle.name
+    command = [
+        "ssh",
+        "-i",
+        args.key,
+        "-o",
+        "StrictHostKeyChecking=no",
+        f"{args.user}@{args.host}",
+        f"BASE_URL={args.base_url!r} PROJECT_DIR={args.project_dir!r} SAMPLES={int(args.samples)} python3 -",
+    ]
+    completed = subprocess.run(
+        command,
+        input=Path(remote_script).read_text(encoding="utf-8"),
+        text=True,
+        capture_output=True,
+        check=False,
+        timeout=900,
+    )
+    if completed.returncode != 0:
+        return {
+            "ok": False,
+            "error": "remote measurement failed",
+            "stdout": completed.stdout[-4000:],
+            "stderr": completed.stderr[-4000:],
+        }
+    return json.loads(completed.stdout.strip().splitlines()[-1])
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

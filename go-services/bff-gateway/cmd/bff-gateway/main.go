@@ -1,7 +1,10 @@
 package main
 
 import (
+	crand "crypto/rand"
+	"encoding/hex"
 	"errors"
+	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -20,6 +23,7 @@ type config struct {
 	pythonAPIBase     string
 	internalToken     string
 	timeout           time.Duration
+	sourceTimeout     time.Duration
 	workspaceCacheTTL time.Duration
 }
 
@@ -73,6 +77,7 @@ func loadConfig() config {
 		pythonAPIBase:     strings.TrimRight(env("TQUANT_PYTHON_API_BASE", "http://127.0.0.1:8000"), "/"),
 		internalToken:     internalToken,
 		timeout:           durationSeconds("TQUANT_SERVICE_CALL_TIMEOUT_SECONDS", 5),
+		sourceTimeout:     durationSeconds("BFF_SOURCE_TIMEOUT_SECONDS", 1),
 		workspaceCacheTTL: durationSeconds("BFF_WORKSPACE_CACHE_TTL_SECONDS", 5),
 	}
 }
@@ -186,6 +191,7 @@ func proxyWorkspaceHandler(cfg config, client *http.Client, cache *workspaceCach
 		copyHeader(req.Header, r.Header, "Authorization")
 		copyHeader(req.Header, r.Header, "X-Admin-Token")
 		copyHeader(req.Header, r.Header, "X-Request-ID")
+		copyHeader(req.Header, r.Header, "traceparent")
 		req.Header.Set("X-TQuant-Bff-Hop", "1")
 		if cfg.internalToken != "" {
 			req.Header.Set("X-Internal-Service-Token", cfg.internalToken)
@@ -266,10 +272,27 @@ func requestIDMiddleware(next http.Handler) http.Handler {
 		if requestID == "" {
 			requestID = "go-" + time.Now().UTC().Format("20060102150405.000000000")
 		}
+		traceparent := r.Header.Get("traceparent")
+		if traceparent == "" {
+			traceparent = newTraceparent()
+			r.Header.Set("traceparent", traceparent)
+		}
 		r.Header.Set("X-Request-ID", requestID)
 		w.Header().Set("X-Request-ID", requestID)
+		w.Header().Set("traceparent", traceparent)
 		next.ServeHTTP(w, r)
 	})
+}
+
+func newTraceparent() string {
+	var buf [24]byte
+	if _, err := crand.Read(buf[:]); err == nil {
+		return "00-" + hex.EncodeToString(buf[:16]) + "-" + hex.EncodeToString(buf[16:]) + "-01"
+	}
+	now := uint64(time.Now().UTC().UnixNano())
+	traceID := fmt.Sprintf("%016x%016x", now, now^0x9e3779b97f4a7c15)
+	spanID := fmt.Sprintf("%016x", now^0x517cc1b727220a95)
+	return "00-" + traceID + "-" + spanID + "-01"
 }
 
 func copyHeader(dst http.Header, src http.Header, key string) {
@@ -282,6 +305,7 @@ func copyResponseHeaders(dst http.Header, src http.Header) {
 	keep := map[string]bool{
 		"content-type":     true,
 		"x-request-id":     true,
+		"traceparent":      true,
 		"cache-control":    true,
 		"etag":             true,
 		"last-modified":    true,

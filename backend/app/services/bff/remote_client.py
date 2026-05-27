@@ -14,7 +14,7 @@ from app.core.config import get_settings
 
 logger = logging.getLogger(__name__)
 
-_FORWARDED_HEADERS = {"authorization", "x-admin-token", "x-request-id"}
+_FORWARDED_HEADERS = {"authorization", "x-admin-token", "x-request-id", "traceparent"}
 _CIRCUIT_OPEN_UNTIL: dict[str, float] = {}
 _CIRCUIT_LOCK = Lock()
 _METRICS_LOCK = Lock()

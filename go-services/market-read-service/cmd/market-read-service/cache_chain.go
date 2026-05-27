@@ -32,6 +32,7 @@ func (cache chainedQuoteCache) MGet(ctx context.Context, keys []string) (map[str
 					result[key] = value
 				}
 			}
+			marketReadRedisHits.Add(int64(len(result)))
 		}
 	}
 	for _, key := range keys {
@@ -42,12 +43,18 @@ func (cache chainedQuoteCache) MGet(ctx context.Context, keys []string) (map[str
 	if len(remaining) == 0 {
 		return result, nil
 	}
+	marketReadCacheMisses.Add(int64(len(remaining)))
 	if batch, ok := cache.secondary.(quoteMultiCache); ok {
 		if values, err := batch.MGet(ctx, remaining); err == nil {
+			mysqlHits := 0
 			for key, value := range values {
 				if len(value) > 0 {
 					result[key] = value
+					mysqlHits++
 				}
+			}
+			if mysqlHits > 0 {
+				marketReadMySQLFallbacks.Add(int64(mysqlHits))
 			}
 		}
 	}

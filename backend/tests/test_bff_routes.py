@@ -397,12 +397,14 @@ def test_remote_client_forwards_request_id_to_trusted_target(monkeypatch) -> Non
         forward_headers={
             "Authorization": "Bearer user-token",
             "X-Request-ID": "req-test-123",
+            "traceparent": "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01",
         },
     )
 
     assert payload == {"ok": True}
     assert captured["headers"]["Authorization"] == "Bearer user-token"
     assert captured["headers"]["X-Request-ID"] == "req-test-123"
+    assert captured["headers"]["traceparent"] == "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01"
     assert captured["headers"]["X-Internal-Service-Token"] == "internal-secret"
     assert captured["headers"]["X-TQuant-Bff-Hop"] == "1"
     metrics = remote_client.remote_bff_metrics_snapshot()

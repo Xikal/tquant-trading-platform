@@ -1,0 +1,137 @@
+{
+  "generated_at": "2026-05-27 02:53:03",
+  "api": [
+    {
+      "name": "readyz",
+      "path": "/readyz",
+      "statuses": [
+        200
+      ],
+      "p50_ms": 4.167,
+      "p95_ms": 4.802
+    },
+    {
+      "name": "monitor_bff",
+      "path": "/api/bff/v1/workspace/monitor?priority_limit=12&sector_limit=8&per_sector_limit=8&hedge_limit=4",
+      "statuses": [
+        200
+      ],
+      "p50_ms": 9.8,
+      "p95_ms": 16.307
+    },
+    {
+      "name": "market_pulse",
+      "path": "/api/market/pulse",
+      "statuses": [
+        200
+      ],
+      "p50_ms": 13.673,
+      "p95_ms": 15.506
+    },
+    {
+      "name": "priority_board",
+      "path": "/api/screeners/low-buy/priority-board?limit=12",
+      "statuses": [
+        200
+      ],
+      "p50_ms": 24.634,
+      "p95_ms": 30.996
+    },
+    {
+      "name": "watchlist_signals",
+      "path": "/api/watchlist/signals",
+      "statuses": [
+        200
+      ],
+      "p50_ms": 11.277,
+      "p95_ms": 15.843
+    }
+  ],
+  "go_scan_accept": {
+    "name": "scan_worker_accept",
+    "path": "/api/scan-worker/v1/run",
+    "statuses": [
+      202
+    ],
+    "p50_ms": 126.846,
+    "p95_ms": 137.116
+  },
+  "rust_finance_math": {
+    "module": "tquant_rs",
+    "available": true,
+    "max_drawdown": 0.18181818181818182,
+    "rolling_mean": [
+      null,
+      1.5,
+      2.5,
+      3.5
+    ],
+    "atr_wilder": [
+      null,
+      null,
+      1.75
+    ],
+    "rsi_wilder": 87.87878787878788,
+    "vwap": 11.333333333333334,
+    "rank_ic": 0.9999999999999998,
+    "metrics": {
+      "hits": 6,
+      "fallbacks": 0,
+      "disabled": 0,
+      "errors": 0
+    }
+  },
+  "go_bff_metrics": {
+    "tquant_bff_gateway_up": 1.0,
+    "tquant_bff_gateway_aggregate_hits_total": 2.0,
+    "tquant_bff_gateway_proxy_fallbacks_total": 0.0,
+    "tquant_bff_gateway_cache_lookups_total": 16.0,
+    "tquant_bff_gateway_cache_hits_total": 14.0,
+    "tquant_bff_gateway_cache_hit_rate": 0.875,
+    "tquant_bff_gateway_cache_items": 0.0,
+    "tquant_bff_gateway_cache_ttl_seconds": 5.0,
+    "tquant_bff_gateway_partial_source_failures_total": 6.0,
+    "tquant_bff_gateway_workspace_aggregate_hits_total{workspace=\"monitor\"}": 2.0,
+    "tquant_bff_gateway_workspace_aggregate_hits_total{workspace=\"paper\"}": 0.0,
+    "tquant_bff_gateway_workspace_aggregate_hits_total{workspace=\"strategy\"}": 0.0,
+    "tquant_bff_gateway_workspace_aggregate_hits_total{workspace=\"settings\"}": 0.0,
+    "tquant_bff_gateway_workspace_aggregate_hits_total{workspace=\"factor\"}": 0.0,
+    "tquant_bff_gateway_workspace_proxy_fallbacks_total{workspace=\"monitor\"}": 0.0,
+    "tquant_bff_gateway_workspace_proxy_fallbacks_total{workspace=\"paper\"}": 0.0,
+    "tquant_bff_gateway_workspace_proxy_fallbacks_total{workspace=\"strategy\"}": 0.0,
+    "tquant_bff_gateway_workspace_proxy_fallbacks_total{workspace=\"settings\"}": 0.0,
+    "tquant_bff_gateway_workspace_proxy_fallbacks_total{workspace=\"factor\"}": 0.0
+  },
+  "go_market_metrics": {
+    "tquant_market_read_service_up": 1.0,
+    "tquant_market_read_hits_total": 4.0,
+    "tquant_market_read_fallbacks_total": 3.0,
+    "tquant_market_read_partials_total": 0.0
+  },
+  "go_scan": [
+    {
+      "status": {
+        "fallback_available": true,
+        "ok": true,
+        "production_readiness": "python_reference_orchestrator",
+        "production_scan_enabled": true,
+        "production_write_enabled": true,
+        "ranking_consistency": {
+          "checked": true,
+          "detail": "Go scan-worker invokes the Python reference strategy engine and only publishes when that reference write succeeds.",
+          "status": "python_reference_order"
+        },
+        "scan_accepted_total": 28,
+        "scan_failures_total": 0,
+        "scan_fallbacks_total": 0,
+        "scan_runs_total": 28,
+        "scan_worker_role": "go_orchestrated_reference",
+        "snapshot_writes_total": 0,
+        "strategy_engine": "python_reference"
+      }
+    }
+  ],
+  "app_metrics": "{\"detail\":\"管理接口需要有效的访问令牌。\"}",
+  "failures": [],
+  "ok": true
+}

@@ -384,7 +384,7 @@ def start_runtime_background_jobs() -> None:
             interval_seconds=300,
             initial_delay_seconds=45,
         )
-        if settings.paper_perf_archive_enabled:
+        if settings.market_review_enabled:
             task_manager.register_loop(
                 name="market_midday_review",
                 target=generate_midday_market_review_once,
@@ -397,6 +397,7 @@ def start_runtime_background_jobs() -> None:
                 interval_seconds=300,
                 initial_delay_seconds=90,
             )
+        if settings.paper_perf_archive_enabled:
             task_manager.register_loop(
                 name="paper_perf_archive",
                 target=lambda: archive_paper_performance_once(

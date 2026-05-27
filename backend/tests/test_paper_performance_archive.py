@@ -10,6 +10,7 @@ from sqlalchemy.orm import sessionmaker
 
 from app.models.base import Base
 from app.models.entities import (
+    MarketReviewReport,
     PaperAccount,
     PaperDailyReport,
     PaperMarketPerfDaily,
@@ -125,6 +126,43 @@ class PaperPerformanceArchiveTest(unittest.TestCase):
             self.assertIn("market_perf_heatmap", payload)
             self.assertIn("strategy_market_matrix", payload)
             self.assertIn("review_reports", payload)
+
+    def test_dashboard_review_reports_are_navigation_metadata_only(self) -> None:
+        with self.Session() as db:
+            account = PaperAccount(
+                name="测试账户",
+                initial_cash=Decimal("100000"),
+                cash_available=Decimal("100000"),
+                total_assets=Decimal("100000"),
+                status="active",
+            )
+            db.add(account)
+            db.add(
+                MarketReviewReport(
+                    report_date=date(2026, 5, 25),
+                    report_slot="close",
+                    overall_summary="收盘市场复盘正文只能在实时监控页展示",
+                    strategy_highlights='[{"content":"龙头转弱"}]',
+                    risk_alerts='[{"content":"控制仓位"}]',
+                    suggestion="明日先处理弱势仓位",
+                    raw_metrics_snapshot="{}",
+                    llm_model="market-rule",
+                )
+            )
+            db.commit()
+            db.refresh(account)
+
+            payload = PaperPerformanceDashboardService(db).build(account, days=30)
+
+            self.assertEqual(len(payload["review_reports"]), 1)
+            entry = payload["review_reports"][0]
+            self.assertEqual(entry["review_subject"], "全市场")
+            self.assertEqual(entry["source_scope"], "market")
+            self.assertEqual(entry["overall_summary"], "")
+            self.assertEqual(entry["strategy_highlights"], [])
+            self.assertEqual(entry["risk_alerts"], [])
+            self.assertEqual(entry["suggestion"], "")
+            self.assertEqual(entry["llm_model"], "")
 
     def test_dashboard_uses_live_metrics_without_archive_rows(self) -> None:
         with self.Session() as db:

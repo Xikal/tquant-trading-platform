@@ -23,6 +23,7 @@ type config struct {
 }
 
 var scanRuns atomic.Int64
+var scanAccepted atomic.Int64
 var scanFailures atomic.Int64
 var scanFallbacks atomic.Int64
 var scanWrites atomic.Int64
@@ -79,6 +80,7 @@ func metrics(w http.ResponseWriter, _ *http.Request) {
 	lines := []string{
 		"tquant_scan_worker_up 1",
 		fmt.Sprintf("tquant_scan_worker_runs_total %d", scanRuns.Load()),
+		fmt.Sprintf("tquant_scan_worker_accepted_total %d", scanAccepted.Load()),
 		fmt.Sprintf("tquant_scan_worker_failures_total %d", scanFailures.Load()),
 		fmt.Sprintf("tquant_scan_worker_fallbacks_total %d", scanFallbacks.Load()),
 		fmt.Sprintf("tquant_scan_worker_snapshot_writes_total %d", scanWrites.Load()),
@@ -101,6 +103,7 @@ func statusHandler(w http.ResponseWriter, _ *http.Request) {
 			"detail":  scanRankingStatusText,
 		},
 		"scan_runs_total":       scanRuns.Load(),
+		"scan_accepted_total":   scanAccepted.Load(),
 		"scan_failures_total":   scanFailures.Load(),
 		"scan_fallbacks_total":  scanFallbacks.Load(),
 		"snapshot_writes_total": scanWrites.Load(),
@@ -127,7 +130,10 @@ func runHandler(cfg config, client *http.Client) http.Handler {
 			})
 			return
 		}
-		if ok, _ := result["ok"].(bool); ok {
+		if status == http.StatusAccepted {
+			scanAccepted.Add(1)
+			result["accepted"] = true
+		} else if ok, _ := result["ok"].(bool); ok {
 			scanWrites.Add(1)
 		} else {
 			scanFailures.Add(1)

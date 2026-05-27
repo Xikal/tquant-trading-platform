@@ -87,8 +87,8 @@ class LowBuyScreeningComponent(LowBuyComponent):
 
 
 class LowBuyPriorityComponent(LowBuyComponent):
-    def priority_board(self, db: Session, limit: int = 12):
-        return self._runtime.priority_board(db=db, limit=limit)
+    def priority_board(self, db: Session, limit: int = 12, *, refresh_mode: str = "sync"):
+        return self._runtime.priority_board(db=db, limit=limit, refresh_mode=refresh_mode)
 
 
 class LowBuyMobileComponent(LowBuyComponent):

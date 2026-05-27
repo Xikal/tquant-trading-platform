@@ -84,6 +84,14 @@ def _execute_task(task_type: str, payload: dict[str, Any], db) -> dict[str, Any]
         return HourlyAllMarketSnapshotService(db).refresh(
             reason=str(payload.get("reason") or "runtime_hourly_market_pulse")
         )
+    if task_type == "market_pulse_refresh":
+        from app.api.routes.market import build_market_pulse_sync
+        from app.services.market.pulse_history import record_market_pulse_event
+
+        pulse = build_market_pulse_sync(db)
+        record_market_pulse_event(db, pulse)
+        db.commit()
+        return {"ok": True, "data_quality": str(pulse.data_quality), "pulse_level": pulse.pulse_level}
     if task_type == "instrument_sync":
         from app.services.instrument_sync_status import InstrumentSyncStatusService
         from app.services.market_data import MarketDataService
@@ -142,6 +150,7 @@ def _execute_task(task_type: str, payload: dict[str, Any], db) -> dict[str, Any]
         return refresh_latest_low_buy_materialization(
             limit=int(payload.get("limit") or 40),
             scan_limit=int(payload.get("scan_limit") or 480),
+            strategies=[str(item) for item in payload.get("strategies") or []] or None,
         )
     if task_type == "ml_signal_incremental_train":
         from app.models.schema_defs.phase4 import MLSignalIncrementalTrainRequest

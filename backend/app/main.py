@@ -82,7 +82,7 @@ app.add_middleware(
     allow_origins=settings.cors_origins,
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allow_headers=["Authorization", "Content-Type", "X-Admin-Token", "X-Request-ID", "X-Requested-With"],
+    allow_headers=["Authorization", "Content-Type", "X-Admin-Token", "X-Request-ID", "X-Requested-With", "traceparent"],
 )
 app.include_router(api_router, prefix=settings.api_prefix)
 app.include_router(strategy_ws_router)
@@ -102,7 +102,7 @@ async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONR
     response = JSONResponse(
         status_code=500,
         content={"detail": _INTERNAL_ERROR_MESSAGE, "request_id": trace_id},
-        headers={"X-Request-ID": trace_id},
+        headers={"X-Request-ID": trace_id, "traceparent": getattr(request.state, "traceparent", "") or _new_traceparent()},
     )
     _apply_security_headers(response, request)
     return response
@@ -138,7 +138,9 @@ async def enforce_request_body_limit(request, call_next):
 @app.middleware("http")
 async def record_http_timing(request, call_next):
     trace_id = request.headers.get("x-request-id") or f"req_{uuid4().hex}"
+    traceparent = request.headers.get("traceparent") or _new_traceparent()
     request.state.trace_id = trace_id
+    request.state.traceparent = traceparent
     started = time.perf_counter()
     status_code = 500
     audit_candidate = operation_audit_middleware.candidate(request)
@@ -146,6 +148,7 @@ async def record_http_timing(request, call_next):
         response = await call_next(request)
         status_code = response.status_code
         response.headers["X-Request-ID"] = trace_id
+        response.headers["traceparent"] = traceparent
         _apply_security_headers(response, request)
         return response
     finally:
@@ -159,8 +162,9 @@ async def record_http_timing(request, call_next):
         )
         if duration_ms >= 3000:
             logger.warning(
-                "slow_http_request trace_id=%s method=%s path=%s status=%s duration_ms=%s",
+                "slow_http_request trace_id=%s traceparent=%s method=%s path=%s status=%s duration_ms=%s",
                 trace_id,
+                traceparent,
                 request.method,
                 request.url.path,
                 status_code,
@@ -173,6 +177,11 @@ def _apply_security_headers(response: Response, request: Request) -> None:
         response.headers.setdefault(key, value)
     if _request_is_https(request):
         response.headers.setdefault("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
+
+
+def _new_traceparent() -> str:
+    value = uuid4().hex + uuid4().hex
+    return f"00-{value[:32]}-{value[32:48]}-01"
 
 
 def _request_is_https(request: Request) -> bool:

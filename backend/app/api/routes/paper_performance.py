@@ -166,7 +166,7 @@ def paper_performance_review_summary(
     db: Session = Depends(get_db),
 ) -> dict[str, MarketReviewStatusOut | list[MarketReviewReportOut]]:
     status, reports = build_monitor_review_summary(db, user_id=current_user.id)
-    return {"review_status": status, "review_reports": reports}
+    return {"review_status": status, "review_reports": [_review_entry_metadata(report) for report in reports]}
 
 
 @router.get("/performance/review-history")
@@ -176,7 +176,7 @@ def paper_performance_review_history(
     db: Session = Depends(get_db),
 ) -> dict[str, list[MarketReviewReportOut] | int]:
     reports = list_monitor_review_history(db, user_id=current_user.id, limit=limit)
-    return {"items": reports, "total": len(reports)}
+    return {"items": [_review_entry_metadata(report) for report in reports], "total": len(reports)}
 
 
 @router.post("/performance/archive")
@@ -187,6 +187,22 @@ def archive_paper_performance(
 ) -> dict:
     account = PaperAccountService(db).get_or_create_default(current_user.id)
     return PaperArchiveService(db).archive_all(account.id)
+
+
+def _review_entry_metadata(report: MarketReviewReportOut) -> MarketReviewReportOut:
+    """Paper routes expose navigation metadata; realtime monitor owns review content."""
+
+    return report.model_copy(
+        update={
+            "overall_summary": "",
+            "strategy_highlights": [],
+            "risk_alerts": [],
+            "suggestion": "",
+            "missing_data": [],
+            "autofill_details": [],
+            "llm_model": "",
+        }
+    )
 
 
 def _report_dict(report) -> dict:

@@ -42,17 +42,17 @@ const routeElement = (Route: typeof MonitorRoute) => (
 );
 
 export const webRoutes: RouteObject[] = [
-  { path: "/", element: <Navigate to="/monitor" replace /> },
-  { path: "/monitor", element: routeElement(MonitorRoute) },
-  { path: "/emotion", element: routeElement(EmotionRoute) },
-  { path: "/analysis", element: routeElement(AnalysisRoute) },
-  { path: "/playbook", element: routeElement(PlaybookRoute) },
-  { path: "/low-buy", element: <Navigate to="/playbook" replace /> },
-  { path: "/strategy", element: routeElement(StrategyRoute) },
-  { path: "/backtest", element: workspaceElement("backtest") },
-  { path: "/paper", element: routeElement(PaperRoute) },
-  { path: "/performance", element: <Navigate to="/paper" replace /> },
-  { path: "/settings", element: routeElement(SettingsRoute) },
+  { path: "/", element: <Navigate to="/monitor" replace />, errorElement: <TqErrorResult title="页面加载失败" description="请刷新页面，或返回实时监控。" /> },
+  { path: "/monitor", element: routeElement(MonitorRoute), errorElement: <TqErrorResult title="页面加载失败" description="请刷新页面，或返回实时监控。" /> },
+  { path: "/emotion", element: routeElement(EmotionRoute), errorElement: <TqErrorResult title="页面加载失败" description="请刷新页面，或返回实时监控。" /> },
+  { path: "/analysis", element: routeElement(AnalysisRoute), errorElement: <TqErrorResult title="页面加载失败" description="请刷新页面，或返回实时监控。" /> },
+  { path: "/playbook", element: routeElement(PlaybookRoute), errorElement: <TqErrorResult title="页面加载失败" description="请刷新页面，或返回实时监控。" /> },
+  { path: "/low-buy", element: <Navigate to="/playbook" replace />, errorElement: <TqErrorResult title="页面加载失败" description="请刷新页面，或返回实时监控。" /> },
+  { path: "/strategy", element: routeElement(StrategyRoute), errorElement: <TqErrorResult title="页面加载失败" description="请刷新页面，或返回实时监控。" /> },
+  { path: "/backtest", element: workspaceElement("backtest"), errorElement: <TqErrorResult title="页面加载失败" description="请刷新页面，或返回实时监控。" /> },
+  { path: "/paper", element: routeElement(PaperRoute), errorElement: <TqErrorResult title="页面加载失败" description="请刷新页面，或返回实时监控。" /> },
+  { path: "/performance", element: <Navigate to="/paper" replace />, errorElement: <TqErrorResult title="页面加载失败" description="请刷新页面，或返回实时监控。" /> },
+  { path: "/settings", element: routeElement(SettingsRoute), errorElement: <TqErrorResult title="页面加载失败" description="请刷新页面，或返回实时监控。" /> },
   {
     path: "*",
     element: (

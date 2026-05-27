@@ -40,6 +40,6 @@ describe("PlaybookPage", () => {
 
     expect(html).toContain("当前策略：量能低吸");
     expect(html).toContain("已加载：首板回调，正在切换数据");
-    expect(html).toContain("机器人");
+    expect(html).toContain("今日主看");
   });
 });

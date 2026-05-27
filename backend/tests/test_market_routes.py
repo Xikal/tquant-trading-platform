@@ -61,7 +61,7 @@ class MarketRouteTests(unittest.TestCase):
         self.assertEqual(body["hourly_all_market_snapshot"], {})
 
     def test_market_pulse_returns_partial_when_hourly_snapshot_missing(self) -> None:
-        response = self.client.get("/api/market/pulse")
+        response = self.client.get("/api/market/pulse?refresh=sync")
         self.assertEqual(response.status_code, 200)
         body = response.json()
         self.assertIn(body["data_quality"], {"partial", "fresh"})

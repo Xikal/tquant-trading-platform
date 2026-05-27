@@ -24,8 +24,10 @@ DEFAULT COLLATE utf8mb4_unicode_ci;
 推荐数据库连接串：
 
 ```text
-mysql+pymysql://root:你的密码@127.0.0.1:3306/t_quant?charset=utf8mb4
+mysql+pymysql://root:<DB_PASSWORD>@127.0.0.1:3306/t_quant?charset=utf8mb4
 ```
+
+`<DB_PASSWORD>` 是占位符。不要把真实密码写进脚本、提交到 Git，或粘贴到日志里。
 
 ## 3. 页面内完成切换
 
@@ -53,7 +55,7 @@ backend/data/runtime.env
 ```bash
 cd backend
 .venv/bin/python scripts/db_admin.py check \
-  --url 'mysql+pymysql://root:你的密码@127.0.0.1:3306/t_quant?charset=utf8mb4'
+  --url 'mysql+pymysql://root:<DB_PASSWORD>@127.0.0.1:3306/t_quant?charset=utf8mb4'
 ```
 
 ### 迁移 SQLite 到 MySQL
@@ -61,7 +63,7 @@ cd backend
 ```bash
 cd backend
 .venv/bin/python scripts/db_admin.py migrate \
-  --target-url 'mysql+pymysql://root:你的密码@127.0.0.1:3306/t_quant?charset=utf8mb4' \
+  --target-url 'mysql+pymysql://root:<DB_PASSWORD>@127.0.0.1:3306/t_quant?charset=utf8mb4' \
   --activate
 ```
 
@@ -312,9 +314,26 @@ APP_PORT=18090 docker compose -f docker-compose.mysql.yml up -d --build
 - `app` 容器默认关闭运行时后台任务，只负责 Web/API 响应
 - `runtime-worker` 容器运行 `python -m app.workers.runtime_worker`，消费 `runtime_tasks` 持久化任务队列
 - `backtest-worker` 容器独立消费回测任务
+- `go-bff-gateway`、`go-market-read-service`、`go-scan-worker` 是生产主路径组件，MySQL compose 默认启动；Python 保留 fallback，但 fallback 必须通过日志或 metrics 可观测
 - 默认数据库为 `t_quant`
 - 默认应用用户为 `tquant_app`
 - 示例应用端口为 `18090`
+
+Go 主路径健康检查：
+
+```bash
+docker compose -f docker-compose.mysql.yml exec go-bff-gateway wget -qO- http://127.0.0.1:8091/readyz
+docker compose -f docker-compose.mysql.yml exec go-market-read-service wget -qO- http://127.0.0.1:8092/readyz
+docker compose -f docker-compose.mysql.yml exec go-scan-worker wget -qO- http://127.0.0.1:8093/readyz
+```
+
+行情读缓存指标：
+
+```bash
+docker compose -f docker-compose.mysql.yml exec go-market-read-service wget -qO- http://127.0.0.1:8092/metrics
+```
+
+重点观察 `tquant_market_read_redis_hits_total`、`tquant_market_read_cache_miss_total`、`tquant_market_read_mysql_fallbacks_total`。
 
 停止：
 
@@ -487,6 +506,14 @@ curl -i http://127.0.0.1:18090/readyz
 ```
 
 2. 查看慢请求日志。后端会记录超过 3 秒的 `slow_http_request`。
+   MySQL compose 默认启用慢查询日志，可用下面命令确认：
+
+```bash
+docker compose -f docker-compose.mysql.yml exec mysql \
+  mysql -uroot -p"$MYSQL_ROOT_PASSWORD" -e "SHOW VARIABLES WHERE Variable_name IN ('slow_query_log','long_query_time','innodb_buffer_pool_size');"
+```
+
+   `MYSQL_INNODB_BUFFER_POOL_SIZE` 可按服务器内存设置，生产建议从 512M 起，根据机器内存和 MySQL 负载调到约 40%-60%。
 3. 检查低吸物化状态：
 
 ```bash
@@ -528,3 +555,10 @@ APPLY=1 KEEP_BACKUPS=1 ./scripts/cloud_server_cleanup.sh
 - `backend/data/runtime.env`
 - 当前数据库文件或 Docker volume
 - 当前云端运行目录
+
+## 12. 长期方向边界
+
+本轮只保留两个长期演进方向：
+
+- 自动止损实盘化：先在模拟盘记录触发原因、建议动作和误触发情况，连续验证 6 个月；完成动态止损回测和合规评估后，再评估实盘接口。
+- OpenTelemetry 链路：第一阶段只做 Go BFF 接收/生成并传播 `traceparent`，Python 记录并回传同一个 trace header；暂不强制引入 Jaeger/Tempo 存储，避免 trace 存储成本提前进入生产。

@@ -37,6 +37,7 @@ def test_runtime_background_jobs_start_and_shutdown_strategy_evolution_scheduler
     monkeypatch.setattr(
         "app.runtime.background_jobs.settings",
         SimpleNamespace(
+            market_review_enabled=True,
             paper_perf_archive_enabled=False,
             strategy_validation_monthly_enabled=False,
             notification_signal_scan_enabled=False,
@@ -49,6 +50,9 @@ def test_runtime_background_jobs_start_and_shutdown_strategy_evolution_scheduler
 
     assert "scheduler-start" in calls
     assert "scheduler-stop" in calls
+    assert "market_midday_review" in calls
+    assert "market_close_review" in calls
+    assert "paper_perf_archive" not in calls
     assert "ml_feature_drift_monitor_monthly" in calls
     assert "shutdown:9" in calls
 
@@ -75,6 +79,7 @@ def test_runtime_background_jobs_register_market_and_paper_loops_when_enabled(mo
     monkeypatch.setattr(
         "app.runtime.background_jobs.settings",
         SimpleNamespace(
+            market_review_enabled=True,
             paper_perf_archive_enabled=True,
             paper_perf_ai_report_enabled=True,
             strategy_validation_monthly_enabled=True,
@@ -95,3 +100,43 @@ def test_runtime_background_jobs_register_market_and_paper_loops_when_enabled(mo
     assert "scheduler-start" in calls
     assert "scheduler-stop" in calls
     assert "shutdown:7" in calls
+
+
+def test_runtime_background_jobs_can_disable_market_reviews_independently(monkeypatch) -> None:
+    calls: list[str] = []
+
+    class _DummyThread:
+        def __init__(self, *args, **kwargs) -> None:  # noqa: ANN002, ANN003
+            pass
+
+        def start(self) -> None:
+            calls.append("thread")
+
+    monkeypatch.setattr("app.runtime.background_jobs._background_jobs_enabled", lambda: True)
+    monkeypatch.setattr("app.runtime.background_jobs._acquire_background_leader_lock", lambda: True)
+    monkeypatch.setattr("app.runtime.background_jobs.start_strategy_evolution_scheduler", lambda: calls.append("scheduler-start"))
+    monkeypatch.setattr("app.runtime.background_jobs.shutdown_strategy_evolution_scheduler", lambda: calls.append("scheduler-stop"))
+    monkeypatch.setattr("app.runtime.background_jobs.threading.Thread", _DummyThread)
+    monkeypatch.setattr("app.runtime.background_jobs.task_manager.register_loop", lambda **kwargs: calls.append(kwargs["name"]))
+    monkeypatch.setattr("app.runtime.background_jobs.task_manager.shutdown", lambda timeout=30: calls.append(f"shutdown:{timeout}"))
+    monkeypatch.setattr("app.runtime.background_jobs.start_auto_trader", lambda config: calls.append("auto-trader-start"))
+    monkeypatch.setattr("app.runtime.background_jobs.stop_auto_trader", lambda: calls.append("auto-trader-stop"))
+    monkeypatch.setattr(
+        "app.runtime.background_jobs.settings",
+        SimpleNamespace(
+            market_review_enabled=False,
+            paper_perf_archive_enabled=True,
+            paper_perf_ai_report_enabled=True,
+            strategy_validation_monthly_enabled=False,
+            notification_signal_scan_enabled=False,
+            paper_auto_trading_enabled=False,
+            database_url="mysql+pymysql://user:pass@localhost/db",
+        ),
+    )
+
+    start_runtime_background_jobs()
+    shutdown_runtime_background_jobs(timeout=7)
+
+    assert "market_midday_review" not in calls
+    assert "market_close_review" not in calls
+    assert "paper_perf_archive" in calls

@@ -5,10 +5,12 @@ import time
 from typing import Any
 
 from app.models.schemas import QuoteSnapshot
-from app.services.shared.distributed_cache import get_json_cache, set_json_cache
+from app.services.shared.distributed_cache import get_json_cache, set_json_cache, set_many_json_cache
 
-_LOCAL_QUOTE_TTL_SECONDS = 45
-_FRESH_LOCAL_AGE_SECONDS = 15
+LOCAL_QUOTE_TTL_SECONDS = 45
+LOCAL_QUOTE_FRESH_AGE_SECONDS = 15
+_LOCAL_QUOTE_TTL_SECONDS = LOCAL_QUOTE_TTL_SECONDS
+_FRESH_LOCAL_AGE_SECONDS = LOCAL_QUOTE_FRESH_AGE_SECONDS
 _LOCK = threading.RLock()
 _METRICS = {
     "reads": 0,
@@ -63,12 +65,24 @@ def write_local_quote_snapshot(snapshot: QuoteSnapshot, ttl_seconds: int = _LOCA
     _increment("writes")
     set_json_cache(
         _cache_key(snapshot.symbol),
-        {
-            "cached_at": time.time(),
-            "payload": snapshot.model_dump(mode="json"),
-        },
+        _cache_payload(snapshot),
         ttl_seconds=ttl_seconds,
     )
+
+
+def write_local_quote_snapshots(snapshots: dict[str, QuoteSnapshot], ttl_seconds: int = _LOCAL_QUOTE_TTL_SECONDS) -> int:
+    payloads: dict[str, Any] = {}
+    for symbol, snapshot in snapshots.items():
+        target_symbol = str(symbol or snapshot.symbol or "").strip()
+        if not target_symbol:
+            continue
+        payloads[_cache_key(target_symbol)] = _cache_payload(snapshot)
+    if not payloads:
+        return 0
+    written = set_many_json_cache(payloads, ttl_seconds=ttl_seconds)
+    if written:
+        _increment_by("writes", written)
+    return written
 
 
 def local_quote_cache_key(symbol: str) -> str:
@@ -84,9 +98,20 @@ def _cache_key(symbol: str) -> str:
     return f"tquant:market:quote:{symbol.strip()}"
 
 
+def _cache_payload(snapshot: QuoteSnapshot) -> dict[str, Any]:
+    return {
+        "cached_at": time.time(),
+        "payload": snapshot.model_dump(mode="json"),
+    }
+
+
 def _increment(key: str) -> None:
+    _increment_by(key, 1)
+
+
+def _increment_by(key: str, count: int) -> None:
     with _LOCK:
-        _METRICS[key] = int(_METRICS.get(key) or 0) + 1
+        _METRICS[key] = int(_METRICS.get(key) or 0) + int(count)
 
 
 def _parse_payload(raw: Any) -> tuple[QuoteSnapshot | None, float]:

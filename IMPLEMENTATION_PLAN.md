@@ -148,7 +148,7 @@
 ### 执行约束
 
 - [x] 不修改任何策略公式、策略阈值、选股规则、自动交易规则。
-- [x] Go/Rust 新能力默认不启用，不影响现有 Python 生产路径。
+- [x] 历史阶段采用 Go/Rust 默认不启用；截至 2026-05-27，Go 已升级为非策略生产主路径，Rust 已升级为 Python 调用的指标加速生产路径。
 - [x] 先完成 Phase 0 基础加固，再补 Phase 1-4 的可插拔骨架。
 
 ### 已完成
@@ -172,7 +172,7 @@
 - [x] Python BFF 远端适配补齐 `X-Request-ID` 透传，跨服务调用可按 request_id 串联日志。
 - [x] Python BFF 远端适配指标接入 `/metrics`：calls/successes/failures/circuit_short_circuits/credentials_suppressed。
 - [x] Go BFF 生成缺失 `X-Request-ID` 时同步写入上游请求头和响应头，保证 Python 上游和客户端看到同一链路 ID。
-- [x] Docker Compose 增加可选 `go-bff`、`go-market`、`go-scan` profiles，默认不启动。
+- [x] 历史阶段 Docker Compose 曾使用可选 `go-bff`、`go-market`、`go-scan` profiles；当前 MySQL compose 已默认启动 Go 三服务。
 - [x] Docker Compose 为 app/worker 注入 `TQUANT_INTERNAL_SERVICE_TOKEN` 和远端服务 URL 开关，默认空值保持当前 Python 路径。
 - [x] Rust PyO3 `tquant-rs` 骨架：`max_drawdown`、`rolling_mean`、`atr_wilder`。
 - [x] Python Rust 可选入口：`rust_math.py` 默认关闭，包装 `max_drawdown`、`rolling_mean`、`atr_wilder`，失败自动回退，不影响现有计算。
@@ -183,14 +183,14 @@
 - [x] Go/Rust 骨架补测试源码并已本地执行：Go BFF/Market/Scan 与 Rust `tquant-rs` 基础单元测试均通过。
 - [x] 新增 `scripts/verify_backend_refactor_foundation.sh`，统一验证 Python、Compose、Go、Rust 基础骨架。
 - [x] 验证脚本无 Docker 时仍解析 `docker-compose.mysql.yml`，至少校验关键服务存在，避免本地完全跳过 Compose 结构检查。
-- [x] 新增运行手册：`docs/backend-refactor-runtime-runbook-2026-05-22.md`，明确 Go/Rust 默认禁用、启用条件、验证和回滚方式。
+- [x] 新增运行手册：`docs/backend-refactor-runtime-runbook-2026-05-22.md`；该手册已在 2026-05-27 更新为 Go 非策略生产主路径、Rust 指标加速生产路径口径。
 
-### 默认关闭 / 条件启用项
+### 历史阶段说明
 
-- [x] Go BFF 已具备影子比对接入点，默认关闭，不接管生产主路由；待 Go/Docker 构建与云端 shadow 验收后再决定是否扩大接入。
-- [x] Go market read service 已接 Redis 本地报价缓存读取、MySQL 最新日线兜底、板块相对强度和分时关键位计算；Python 批量报价已具备可选 Go 读服务 seam；当前不读取外部行情源。
-- [x] Go scan worker 已接入影子触发 seam：为保证策略稳定，生产扫描、候选排序和生产快照写入语义仍由 Python 负责；Go 只负责扫描编排、状态和观测，不接管策略结果。
-- [x] Rust PyO3 已接入可选指标 seam：`performance_math.sequence_max_drawdown_pct()` 可在 `RUST_FINANCE_MATH_ENABLED=true` 且模块可用时走 Rust，失败自动回退 Python；默认关闭。
+- [x] 2026-05-22 的默认关闭 / shadow 口径已被 2026-05-27 方案取代，不再作为当前生产目标。
+- [x] Go BFF、Go market-read-service、Go scan-worker 在 MySQL compose 中默认启动；Python 保留可观测 fallback。
+- [x] Go scan-worker 只编排 Python reference，不实现独立策略公式；策略计算、候选排序和 snapshot 写入语义仍由 Python reference 负责。
+- [x] Rust `tquant_rs` 在生产镜像中作为 wheel 产物安装，`RUST_FINANCE_MATH_ENABLED=true` 默认启用；导入或计算失败时回退 Python 并暴露 metrics。
 - [x] MinuteBar 时序库升级不在本轮执行：文档定义为条件触发，当前不做破坏性数据迁移；后续只有分钟数据规模真实触发阈值后再进维护窗口。
 
 ### 本轮验证
@@ -584,6 +584,102 @@
 
 ### 验证计划
 
-- [ ] `backend/.venv/bin/python -m pytest backend/tests/test_market_review.py backend/tests/test_market_hourly_snapshot.py backend/tests/test_market_routes.py backend/tests/test_backend_refactor_foundation.py -q`
-- [ ] `scripts/quick_cloud_deploy.sh --key /Users/j/Downloads/gupiao.pem`
-- [ ] 云端重新生成当日午盘/收盘复盘并检查缺失/补齐清单。
+- [x] `PYTHONPATH=backend:. backend/.venv/bin/python -m pytest backend/tests/test_market_review.py backend/tests/test_market_hourly_snapshot.py backend/tests/test_market_routes.py backend/tests/test_market_pulse_cache_fast_path.py backend/tests/test_bff_routes.py -q`
+- [x] `PYTHONPATH=backend:. backend/.venv/bin/python -m pytest backend/tests -q`
+- [x] 本轮不执行生产发布；云端重新生成当日午盘/收盘复盘保留为发布后运营验收项。
+
+## 2026-05-27 六大整改包审查采纳开发
+
+来源：Claude 审查报告 `TQuant_六大整改包审查报告_2026-05-27.md` 与用户指定的长期方向收敛。
+
+### 本轮目标
+
+- [x] 市场午盘/收盘复盘从模拟盘归档开关中解耦。
+- [x] Go BFF / market-read / scan-worker 在 MySQL 生产 compose 中作为主路径默认启动，并保留可观测 fallback。
+- [x] Go BFF 先接入 `traceparent` 透传，不引入高成本 trace 存储。
+- [x] Redis/MySQL 行情缓存覆盖率、TTL 和 fallback 指标可观测。
+- [x] Rust finance benchmark 增加基线和 CI 退化门禁。
+- [x] 生产手册密码占位符、结构化日志、MySQL 慢查询验收补齐。
+- [x] 前端路由错误边界补齐，实时监控复盘继续作为全市场午盘/收盘主入口。
+- [x] 模拟盘 dashboard 只保留全市场复盘历史入口元信息，不再携带复盘正文、建议或风险提示。
+
+### 非目标
+
+- 不做生产发布、不触碰真实生产数据。
+- 不做大范围 `trade_date` 真实迁移。
+- 不做 CSS 重构、CSS Split、页面级样式清理或 inline style 收口。
+- 长期演进只保留“自动止损实盘化”和“OpenTelemetry 链路”，其余报告中的中长期方向本轮不采纳。
+
+### 验证计划
+
+- [x] `backend/.venv/bin/python -m pytest backend/tests/test_ml_online_learning_schedule.py backend/tests/test_bff_routes.py backend/tests/test_market_quote_cache_coverage.py backend/tests/test_logging_config.py -q`
+- [x] `cd go-services/bff-gateway && go test ./...`
+- [x] `cd go-services/market-read-service && go test ./...`
+- [x] `cd go-services/scan-worker && go test ./...`
+- [x] `cd rust/tquant-rs && cargo test`
+- [x] `BACKEND_PYTHON=backend/.venv/bin/python PYTHONPATH=backend:. backend/.venv/bin/python scripts/verify_go_rust_performance_acceptance.py`
+- [x] `PYTHONPATH=backend:. backend/.venv/bin/python -m pytest backend/tests/test_market_review.py backend/tests/test_market_hourly_snapshot.py backend/tests/test_market_routes.py backend/tests/test_market_pulse_cache_fast_path.py backend/tests/test_bff_routes.py -q`
+- [x] `PYTHONPATH=backend:. backend/.venv/bin/python -m pytest backend/tests/test_paper_performance_archive.py -q`
+- [x] `PYTHONPATH=backend:. backend/.venv/bin/python -m pytest backend/tests/test_paper_routes.py backend/tests/test_paper_performance_archive.py backend/tests/test_market_routes.py -q`
+- [x] `cd frontend && npm test -- --run PaperTradingPage MonitorPage`
+- [x] `python scripts/check_rust_bench_baseline.py docs/reports/rust-bench-baseline.json /tmp/tquant_bench_sample.txt`
+- [x] `cd frontend && npm test -- webRoutes`
+- [x] `PYTHONPATH=backend:. backend/.venv/bin/python -m pytest backend/tests -q` 通过，709 passed / 47 warnings。
+- [x] `cd frontend && npm run lint && npm test -- --run && npm run build` 通过，14 files / 48 tests。
+- [x] `git diff --check` 通过。
+
+### 结果
+
+- 市场复盘开关已独立为 `MARKET_REVIEW_ENABLED`，模拟盘归档关闭时不再影响全市场午盘/收盘复盘。
+- Go 三服务在 MySQL compose 中默认进入生产主路径；生产部署 smoke 会校验 Go readyz、MySQL 慢查询和结构化日志配置。
+- Go BFF / Python remote BFF 已透传 `traceparent`，Go BFF 缺失时会生成 W3C traceparent。
+- Go market-read 增加 Redis hit、cache miss、MySQL fallback 指标；Python 本地行情缓存暴露 TTL 常量并补测试。
+- Rust bench 增加 `docs/reports/rust-bench-baseline.json` 与 `scripts/check_rust_bench_baseline.py`，CI 退化超阈值失败。
+- Go/Rust 接受度报告已刷新：Go quote benchmark `8199 ns/op`、`11239 B/op`、`212 allocs/op`，Rust speedup `max_drawdown=7.056`、`rolling_mean=12.844`、`atr_wilder=9.636`。
+- 前端路由增加错误边界；实时监控页继续作为全市场午盘/收盘复盘主展示入口，模拟盘只保留入口元信息。
+- 纸面交易 dashboard、`/api/paper/performance/review-summary`、`/api/paper/performance/review-history` 均只返回全市场复盘入口元信息；复盘正文、建议、风险提示只由实时监控/market review 接口承载。
+
+## 2026-05-27 全平台稳定性与可用性治理
+
+需求来源：Codex Goal `全平台稳定性与可用性治理`。
+
+### 硬性边界
+
+- 不删除已有功能，不改变策略、筛选、风控、回测、模拟盘既有业务口径。
+- 策略相关决策继续以 Python reference 为准；Go 只承担 BFF 聚合、行情读取、scan-worker 编排。
+- Rust 只承担 Python 调用的金融指标加速，不作为策略结果真源。
+- 不做无关大重构，不做 CSS 重构，不做视觉风格重写。
+
+### 本轮检查项
+
+- [x] 登录、权限、Cookie/Token、持久化登录、失效处理。
+- [x] 前端核心页面入口、路由、移动端和关键交互可用性。
+- [x] 实时监控、行情、market pulse、复盘、缓存降级和调度任务。
+- [x] 模拟盘订单、持仓、成交、盈亏、自动交易、风险、对账和标签。
+- [x] 回测、参数优化、walk-forward、归因、ML 容量和策略结果一致性。
+- [x] Provider、缓存、并发、数据库会话、N+1、慢查询、重复请求、锁竞争。
+- [x] 部署、健康检查、日志、metrics、限流、异常降级、迁移、备份恢复、settings 持久化。
+
+### 验证计划
+
+- [x] `PYTHONPATH=backend:. backend/.venv/bin/python -m pytest backend/tests -q` 通过，709 passed / 47 warnings。
+- [x] `cd frontend && npm run lint` 通过。
+- [x] `cd frontend && npm test -- --run` 通过，15 files / 50 tests。
+- [x] `cd frontend && npm run build` 通过。
+- [x] `cd go-services/bff-gateway && go test ./...` 通过。
+- [x] `cd go-services/market-read-service && go test ./...` 通过。
+- [x] `cd go-services/scan-worker && go test ./...` 通过。
+- [x] `cd rust/tquant-rs && cargo test` 通过，7 tests。
+- [x] `BACKEND_PYTHON=backend/.venv/bin/python PYTHONPATH=backend:. backend/.venv/bin/python scripts/verify_go_rust_performance_acceptance.py` 通过，报告写入 `docs/reports/go-rust-performance-acceptance-2026-05-27.json`。
+- [x] `git diff --check` 通过。
+
+### 当前发现
+
+- [x] 已修复午盘复盘 cutoff 过宽问题：午盘复盘现在只取 12:00 及以前的快照/盘中 pulse，避免延迟补跑时混入下午 13:00 以后数据。
+- [x] 已补 `test_market_review_midday_ignores_late_session_snapshots` 等复盘回归，确认午盘与收盘复盘分别使用午盘/全天口径。
+- [x] 已修复 native HTTP bridge 错误状态丢失问题：移动端 401/403/5xx 错误保留 `status`，避免登录失效被误判为可离线降级的普通异常。
+- [x] 已补 `frontend/src/api/nativeHttp.test.ts`，覆盖 native JSON/plain text 错误状态。
+- [x] 静态审计确认实时监控仍是全市场午盘/收盘复盘主展示入口；模拟盘只保留入口元信息。
+- [x] 静态审计确认 Go BFF、Go market-read-service、Go scan-worker 已进入非策略生产主路径；Python reference 仍是策略真源和 fallback。
+- [x] 静态审计确认 Rust `tquant_rs` 已接入 RSI、ATR、VWAP、RankIC、max drawdown 等 Python 调用路径，并保留 Python fallback。
+- [x] 剩余风险：本轮为本地全量验收，未执行真实云端发布和真实交易日盘中数据拉取；生产上线前仍需按 runbook 做云端 smoke、日志/metrics 观测和当日复盘人工抽检。

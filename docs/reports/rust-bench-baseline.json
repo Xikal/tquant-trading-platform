@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-05-27",
+  "notes": "Thresholds are conservative CI gates for the 20k-element finance benchmark. Update deliberately during release hardening when hardware or benchmark logic changes.",
+  "benchmarks": {
+    "finance/max_drawdown/20000": {
+      "max_ns_per_iter": 100000
+    },
+    "finance/rolling_mean_20/20000": {
+      "max_ns_per_iter": 200000
+    },
+    "finance/atr_wilder_14/20000": {
+      "max_ns_per_iter": 500000
+    },
+    "finance/rsi_wilder_14/20000": {
+      "max_ns_per_iter": 500000
+    },
+    "finance/vwap/20000": {
+      "max_ns_per_iter": 100000
+    },
+    "finance/rank_ic/20000": {
+      "max_ns_per_iter": 3000000
+    }
+  }
+}

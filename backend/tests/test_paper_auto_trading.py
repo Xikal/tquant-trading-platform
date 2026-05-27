@@ -436,7 +436,7 @@ class PaperAutoTradingTest(unittest.TestCase):
         from sqlalchemy.pool import StaticPool
 
         from app.models.base import Base
-        from app.models.entities import PaperAccount, PaperAgentRun
+        from app.models.entities import PaperAccount, PaperAgentRun, RiskEvent
         from app.services.paper.scheduler import PaperAutoTrader
 
         engine = create_engine(
@@ -468,6 +468,96 @@ class PaperAutoTradingTest(unittest.TestCase):
             trader = PaperAutoTrader({})
             self.assertFalse(trader._should_persist_blocked_run(db, account_id=account.id, blocking_reason=reason))
             self.assertTrue(trader._should_persist_blocked_run(db, account_id=account.id, blocking_reason="另一条风控原因"))
+
+            db.add_all(
+                [
+                    RiskEvent(
+                        account_id=account.id,
+                        event_type="regime_jump_position_review",
+                        severity="high",
+                        status="open",
+                        message="旧风险提示",
+                    ),
+                    RiskEvent(
+                        account_id=account.id,
+                        event_type="regime_jump_position_review",
+                        severity="high",
+                        status="open",
+                        message="最新风险提示",
+                    ),
+                ]
+            )
+            db.commit()
+
+            self.assertEqual(trader._blocking_reason(db, account.id), "最新风险提示")
+
+    def test_blocked_account_still_executes_auto_exit_orders(self):
+        from app.services.paper.scheduler import PaperAutoTrader
+
+        Account = namedtuple("Account", ["id"])
+        trader = PaperAutoTrader({"dry_run": False})
+        exit_orders = [
+            {
+                "symbol": "600000",
+                "name": "测试",
+                "side": "sell",
+                "order_type": "market",
+                "quantity": 100,
+                "price": 10.5,
+                "current_price": 10.5,
+                "source": "auto_exit",
+                "strategy_key": "first_board",
+                "reason": "动态止损",
+                "signal_snapshot": {"exit_code": "hard_stop_loss"},
+            }
+        ]
+        captured = {}
+
+        def fake_build_exit_order_plan(_db, _account):
+            return exit_orders, ""
+
+        def fake_execute_orders(*, db, account_id, orders):
+            captured["account_id"] = account_id
+            captured["orders"] = orders
+            return {"executed": [{"order_id": 1, "symbol": "600000", "status": "filled"}], "skipped": []}
+
+        trader._build_exit_order_plan = fake_build_exit_order_plan
+        trader._execute_orders = fake_execute_orders
+
+        result = trader._build_and_execute_blocked_exit_plan(
+            db=object(),
+            account=Account(id=7),
+            blocking_reason="账户存在高风险事件",
+        )
+
+        self.assertEqual(captured["account_id"], 7)
+        self.assertEqual(captured["orders"], exit_orders)
+        self.assertEqual(result["exit_order_count"], 1)
+        self.assertEqual(result["buy_order_count"], 0)
+        self.assertEqual(result["executed"][0]["symbol"], "600000")
+        self.assertIn("已优先执行自动退出", result["summary"])
+
+    def test_blocked_account_reports_auto_exit_quote_skip_reason(self):
+        from app.services.paper.scheduler import PaperAutoTrader
+
+        Account = namedtuple("Account", ["id"])
+        trader = PaperAutoTrader({"dry_run": False})
+
+        def fake_build_exit_order_plan(_db, _account):
+            return [], "自动退出暂停：行情数据不可用，等待下轮刷新。"
+
+        trader._build_exit_order_plan = fake_build_exit_order_plan
+
+        result = trader._build_and_execute_blocked_exit_plan(
+            db=object(),
+            account=Account(id=7),
+            blocking_reason="账户存在高风险事件",
+        )
+
+        self.assertEqual(result["executed"], [])
+        self.assertEqual(result["exit_order_count"], 0)
+        self.assertEqual(result["skipped"][0]["source"], "auto_exit")
+        self.assertIn("行情数据不可用", result["skipped"][0]["reason"])
 
     def test_auto_exit_orders_skip_when_quotes_unavailable(self):
         from app.services.paper import scheduler_exit

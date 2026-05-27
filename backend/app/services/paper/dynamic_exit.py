@@ -124,19 +124,6 @@ def _evaluate_stock_exit(
     hard_stop = _float_param(params, "hard_stop_loss_pct", -3.0)
     fee_drag_pct = _fee_drag_pct(symbol=row.symbol, price=price, quantity=available)
     net_profit_pct = pnl_pct - fee_drag_pct
-    if _is_wash_pullback(pnl_pct=pnl_pct, context=context, params=params):
-        return _no_exit(
-            strategy_key=strategy_key,
-            pnl_pct=pnl_pct,
-            hold_days=hold_days,
-            action_text="疑似洗盘，暂不止损",
-            action_signal="washout",
-            why=f"{_context_reason(context)}缩量回踩未破结构，等待重新站回分时均价线。",
-            invalid_condition="放量跌破分时均价线或关键支撑时减仓。",
-            failure_action="若重新站回分时均价线，可等系统小仓加仓；反抽后优先卖出可卖底仓做T。",
-            fee_drag_pct=fee_drag_pct,
-            net_profit_pct=net_profit_pct,
-        )
     if pnl_pct <= hard_stop:
         return _decision(
             available,
@@ -150,6 +137,37 @@ def _evaluate_stock_exit(
             action_text="硬止损退出",
             why="浮亏已超过硬止损线，不能继续用补仓摊低风险。",
             invalid_condition="重新站回成本和分时均价线前不再加仓。",
+            fee_drag_pct=fee_drag_pct,
+            net_profit_pct=net_profit_pct,
+        )
+    strong_pct = _float_param(params, "strong_take_profit_pct", 8.0)
+    if pnl_pct >= strong_pct:
+        ratio = _float_param(params, "strong_take_profit_sell_ratio", 1.0)
+        return _decision(
+            available,
+            ratio=ratio,
+            pnl_pct=pnl_pct,
+            hold_days=hold_days,
+            strategy_key=strategy_key,
+            code="strong_take_profit",
+            reason=f"动态止盈：浮盈{pnl_pct:.2f}%，进入高收益区，优先锁定利润",
+            action_signal="profit_take",
+            action_text="强势大部分止盈",
+            why="浮盈进入高收益区，先锁定利润，避免单日回吐。",
+            invalid_condition="若继续放量创新高，剩余仓位跟随；跌破分时均价线则退出。",
+            fee_drag_pct=fee_drag_pct,
+            net_profit_pct=net_profit_pct,
+        )
+    if _is_wash_pullback(pnl_pct=pnl_pct, context=context, params=params):
+        return _no_exit(
+            strategy_key=strategy_key,
+            pnl_pct=pnl_pct,
+            hold_days=hold_days,
+            action_text="疑似洗盘，暂不止损",
+            action_signal="washout",
+            why=f"{_context_reason(context)}缩量回踩未破结构，等待重新站回分时均价线。",
+            invalid_condition="放量跌破分时均价线或关键支撑时减仓。",
+            failure_action="若重新站回分时均价线，可等系统小仓加仓；反抽后优先卖出可卖底仓做T。",
             fee_drag_pct=fee_drag_pct,
             net_profit_pct=net_profit_pct,
         )
@@ -185,24 +203,6 @@ def _evaluate_stock_exit(
             action_text="弱势退出",
             why="持仓多日未转强，且收益没有覆盖等待成本。",
             invalid_condition="重新放量站回分时均价线和策略关键位前不补仓。",
-            fee_drag_pct=fee_drag_pct,
-            net_profit_pct=net_profit_pct,
-        )
-    strong_pct = _float_param(params, "strong_take_profit_pct", 8.0)
-    if pnl_pct >= strong_pct:
-        ratio = _float_param(params, "strong_take_profit_sell_ratio", 1.0)
-        return _decision(
-            available,
-            ratio=ratio,
-            pnl_pct=pnl_pct,
-            hold_days=hold_days,
-            strategy_key=strategy_key,
-            code="strong_take_profit",
-            reason=f"动态止盈：浮盈{pnl_pct:.2f}%，进入高收益区，优先锁定利润",
-            action_signal="profit_take",
-            action_text="强势大部分止盈",
-            why="浮盈进入高收益区，先锁定利润，避免单日回吐。",
-            invalid_condition="若继续放量创新高，剩余仓位跟随；跌破分时均价线则退出。",
             fee_drag_pct=fee_drag_pct,
             net_profit_pct=net_profit_pct,
         )

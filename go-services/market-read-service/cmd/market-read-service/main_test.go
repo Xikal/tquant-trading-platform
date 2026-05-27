@@ -113,6 +113,33 @@ func TestIntradayLatestMarksExpiredCacheStale(t *testing.T) {
 	}
 }
 
+func TestIntradayLatestPreservesStaleQualityEvenWhenRecentlyCached(t *testing.T) {
+	cache := mapQuoteCache{
+		"tquant:market:quote:000001": []byte(`{"cached_at":4102444800,"payload":{"symbol":"000001","last_price":10.12,"data_quality":"stale","source_quality":"stale","is_stale":true}}`),
+	}
+	recorder := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/api/market-read/v1/intraday-latest-batch?symbols=000001", nil)
+
+	intradayLatestBatchHandler(cache).ServeHTTP(recorder, req)
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("status mismatch want=%d got=%d", http.StatusOK, recorder.Code)
+	}
+	var payload map[string]any
+	if err := json.Unmarshal(recorder.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("invalid json response: %v", err)
+	}
+	items := payload["items"].([]any)
+	first := items[0].(map[string]any)
+	if first["data_quality"] != "stale" {
+		t.Fatalf("expected stale quality, got %v", first["data_quality"])
+	}
+	latest := first["latest"].(map[string]any)
+	if latest["data_quality"] != "stale" || latest["is_stale"] != true {
+		t.Fatalf("expected stale latest payload, got %#v", latest)
+	}
+}
+
 func TestMySQLDSNParsesSQLAlchemyURL(t *testing.T) {
 	dsn := mysqlDSN("mysql+pymysql://user:pass@mysql:3306/tquant")
 
@@ -193,5 +220,61 @@ func TestIntradayLatestBatchHandlerReturnsPartialPayload(t *testing.T) {
 	}
 	if !bytes.Contains(recorder.Body.Bytes(), []byte(`"latest"`)) {
 		t.Fatalf("expected latest payload body=%s", recorder.Body.String())
+	}
+}
+
+func TestChainedQuoteCacheRecordsRedisMissAndMySQLFallbackMetrics(t *testing.T) {
+	redis := mapQuoteCache{
+		"tquant:market:quote:000001": []byte(`{"cached_at":4102444800,"payload":{"symbol":"000001","last_price":10.1}}`),
+	}
+	mysql := mapQuoteCache{
+		"tquant:market:quote:000002": []byte(`{"cached_at":4102444800,"payload":{"symbol":"000002","last_price":9.8,"data_source":"mysql_daily_bar_snapshot"}}`),
+	}
+	cache := chainedQuoteCache{primary: redis, secondary: mysql}
+	beforeRedis := marketReadRedisHits.Load()
+	beforeMisses := marketReadCacheMisses.Load()
+	beforeMySQL := marketReadMySQLFallbacks.Load()
+
+	values, err := cache.MGet(
+		nil,
+		[]string{
+			"tquant:market:quote:000001",
+			"tquant:market:quote:000002",
+			"tquant:market:quote:000003",
+		},
+	)
+
+	if err != nil {
+		t.Fatalf("MGet returned error: %v", err)
+	}
+	if len(values["tquant:market:quote:000001"]) == 0 || len(values["tquant:market:quote:000002"]) == 0 {
+		t.Fatalf("expected redis and mysql payloads, got %#v", values)
+	}
+	if marketReadRedisHits.Load()-beforeRedis != 1 {
+		t.Fatalf("expected one redis hit")
+	}
+	if marketReadCacheMisses.Load()-beforeMisses != 2 {
+		t.Fatalf("expected two primary cache misses")
+	}
+	if marketReadMySQLFallbacks.Load()-beforeMySQL != 1 {
+		t.Fatalf("expected one mysql fallback hit")
+	}
+}
+
+func TestMetricsExposeCacheCoverageCounters(t *testing.T) {
+	recorder := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/metrics", nil)
+
+	metrics(recorder, req)
+
+	body := recorder.Body.String()
+	for _, metricName := range []string{
+		"tquant_market_read_redis_hits_total",
+		"tquant_market_read_cache_miss_total",
+		"tquant_market_read_mysql_fallbacks_total",
+	} {
+		if !bytes.Contains([]byte(body), []byte(metricName)) {
+			t.Fatalf("metrics should expose %s, body=%s", metricName, body)
+		}
 	}
 }

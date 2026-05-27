@@ -101,6 +101,36 @@ func TestRunCallsPythonReferenceAndReturnsWriteEnabledPayload(t *testing.T) {
 	}
 }
 
+func TestRunAcceptsAsyncPythonReference(t *testing.T) {
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/api/internal/scan-worker/v1/run" {
+			t.Fatalf("unexpected path %s", r.URL.Path)
+		}
+		w.WriteHeader(http.StatusAccepted)
+		_, _ = w.Write([]byte(`{"ok":true,"accepted":true,"job_id":"42"}`))
+	}))
+	defer upstream.Close()
+	cfg := config{pythonAPIBase: upstream.URL, internalToken: "internal-secret", timeout: time.Second}
+	recorder := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/api/scan-worker/v1/run?strategies=demo", nil)
+
+	runHandler(cfg, upstream.Client()).ServeHTTP(recorder, req)
+
+	if recorder.Code != http.StatusAccepted {
+		t.Fatalf("status mismatch want=%d got=%d body=%s", http.StatusAccepted, recorder.Code, recorder.Body.String())
+	}
+	body := recorder.Body.String()
+	if !strings.Contains(body, `"accepted":true`) {
+		t.Fatalf("expected accepted payload: %s", body)
+	}
+	if !strings.Contains(body, `"production_write_enabled":true`) {
+		t.Fatalf("expected production write enabled in accepted body: %s", body)
+	}
+	if !strings.Contains(body, `"strategy_engine":"python_reference"`) {
+		t.Fatalf("expected strategy engine in body: %s", body)
+	}
+}
+
 func TestRunReportsFallbackOnPythonFailure(t *testing.T) {
 	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		http.Error(w, "boom", http.StatusInternalServerError)

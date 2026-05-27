@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect } from "react";
 import { TradingWorkspace } from "../../features/trading-workspace/TradingWorkspace";
 import { useWorkspaceStore } from "../../stores/workspaceStore";
 import type { Page } from "../../features/workspace-shared/workspaceTypes";
+import { WorkspaceRouteErrorBoundary } from "./WorkspaceRouteErrorBoundary";
 
 interface WorkspaceRouteProps {
   page: Page;
@@ -21,5 +22,9 @@ export function WorkspaceRoute({ page }: WorkspaceRouteProps) {
     }
   }, [currentPage, page]);
 
-  return <TradingWorkspace />;
+  return (
+    <WorkspaceRouteErrorBoundary>
+      <TradingWorkspace />
+    </WorkspaceRouteErrorBoundary>
+  );
 }

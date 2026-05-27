@@ -16,6 +16,9 @@ var errMissingProductionInternalToken = errors.New("TQUANT_INTERNAL_SERVICE_TOKE
 var marketReadHits atomic.Int64
 var marketReadFallbacks atomic.Int64
 var marketReadPartials atomic.Int64
+var marketReadRedisHits atomic.Int64
+var marketReadCacheMisses atomic.Int64
+var marketReadMySQLFallbacks atomic.Int64
 
 func main() {
 	token := strings.TrimSpace(os.Getenv("TQUANT_INTERNAL_SERVICE_TOKEN"))
@@ -54,6 +57,9 @@ func metrics(w http.ResponseWriter, _ *http.Request) {
 		"tquant_market_read_hits_total " + strconv.FormatInt(marketReadHits.Load(), 10),
 		"tquant_market_read_fallbacks_total " + strconv.FormatInt(marketReadFallbacks.Load(), 10),
 		"tquant_market_read_partials_total " + strconv.FormatInt(marketReadPartials.Load(), 10),
+		"tquant_market_read_redis_hits_total " + strconv.FormatInt(marketReadRedisHits.Load(), 10),
+		"tquant_market_read_cache_miss_total " + strconv.FormatInt(marketReadCacheMisses.Load(), 10),
+		"tquant_market_read_mysql_fallbacks_total " + strconv.FormatInt(marketReadMySQLFallbacks.Load(), 10),
 	}
 	_, _ = w.Write([]byte(strings.Join(lines, "\n") + "\n"))
 }

@@ -31,7 +31,7 @@ class PaperPerformanceDashboardService:
         strategies = self._strategies(account.id, start_date)
         markets = self._markets(account.id, start_date)
         report = self._latest_report(account.id)
-        review_reports = self._review_reports(account.id)
+        review_reports = self._review_report_entries()
         performance = performance_service.compute_overall(account.id)
         strategy_trend = _strategy_trend(strategies)
         market_heatmap = _market_heatmap(markets)
@@ -101,8 +101,7 @@ class PaperPerformanceDashboardService:
             .limit(1)
         ).scalar_one_or_none()
 
-    def _review_reports(self, account_id: int) -> list[MarketReviewReport]:
-        _ = account_id
+    def _review_report_entries(self) -> list[MarketReviewReport]:
         return self.db.execute(
             select(MarketReviewReport)
             .order_by(MarketReviewReport.report_date.desc(), MarketReviewReport.report_slot.asc())
@@ -255,12 +254,12 @@ def _review_report(row: MarketReviewReport) -> dict:
         "report_slot": row.report_slot,
         "review_subject": "全市场",
         "source_scope": "market",
-        "overall_summary": row.overall_summary,
-        "strategy_highlights": _json_dict_list(row.strategy_highlights),
-        "risk_alerts": _json_dict_list(row.risk_alerts),
-        "suggestion": row.suggestion,
+        "overall_summary": "",
+        "strategy_highlights": [],
+        "risk_alerts": [],
+        "suggestion": "",
         "generated_at": row.generated_at.isoformat() if row.generated_at else "",
-        "llm_model": row.llm_model,
+        "llm_model": "",
     }
 
 

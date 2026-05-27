@@ -168,6 +168,7 @@ class AppSettings(BaseSettings):
     paper_auto_trading_max_orders: int = 5
     paper_auto_trading_dry_run: bool = False
     paper_auto_trading_min_score: int = 75
+    market_review_enabled: bool = True
     paper_perf_archive_enabled: bool = True
     paper_perf_archive_time: str = "15:05"
     paper_perf_ai_report_enabled: bool = True

@@ -12,8 +12,13 @@ import textwrap
 import time
 from pathlib import Path
 
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
-REPORT_PATH = PROJECT_ROOT / "docs" / "reports" / "go-rust-performance-acceptance-2026-05-25.json"
+PROJECT_ROOT = Path(os.environ.get("TQUANT_ACCEPTANCE_PROJECT_ROOT", Path(__file__).resolve().parents[1])).resolve()
+REPORT_PATH = Path(
+    os.environ.get(
+        "TQUANT_ACCEPTANCE_REPORT_PATH",
+        PROJECT_ROOT / "docs" / "reports" / "go-rust-performance-acceptance-2026-05-27.json",
+    )
+).resolve()
 BACKEND_PYTHON = Path(
     os.environ.get("BACKEND_PYTHON", "")
 ).expanduser() if os.environ.get("BACKEND_PYTHON") else Path(shutil.which("python3") or shutil.which("python") or "")
@@ -71,7 +76,10 @@ def _go_checks() -> dict:
         ("bff-gateway", ["go", "test", "./..."], PROJECT_ROOT / "go-services" / "bff-gateway", GO_CHECK_TIMEOUT_SECONDS),
         ("scan-worker", ["go", "test", "./..."], PROJECT_ROOT / "go-services" / "scan-worker", GO_CHECK_TIMEOUT_SECONDS),
     ]
-    results = [_run(name, cmd, cwd, timeout=timeout) for name, cmd, cwd, timeout in commands]
+    results = [
+        _missing_source_result(name, cwd) if not cwd.exists() else _run(name, cmd, cwd, timeout=timeout)
+        for name, cmd, cwd, timeout in commands
+    ]
     benchmark = _go_quote_benchmark()
     return {
         "ok": all(item["ok"] for item in results) and benchmark["ok"],
@@ -338,6 +346,8 @@ def _run_rust_module_script(python: Path, script: str, metric: str, *, target_di
 
 def _go_quote_benchmark() -> dict:
     cwd = PROJECT_ROOT / "go-services" / "market-read-service"
+    if not cwd.exists():
+        return _missing_source_result("market-read-service benchmark", cwd)
     if shutil.which("go") is None:
         return {"ok": False, "name": "market-read-service benchmark", "notes": "go executable not found"}
     try:
@@ -412,7 +422,15 @@ def _parse_go_quote_benchmark(output: str) -> dict[str, float] | None:
 
 def _go_env() -> dict[str, str]:
     env = {"GOTELEMETRY": "off"}
-    if os.environ.get("CI", "").lower() not in {"1", "true", "yes"}:
+    if os.environ.get("GOPROXY"):
+        env["GOPROXY"] = os.environ["GOPROXY"]
+    if os.environ.get("GOMODCACHE"):
+        env["GOMODCACHE"] = os.environ["GOMODCACHE"]
+    if os.environ.get("GOSUMDB"):
+        env["GOSUMDB"] = os.environ["GOSUMDB"]
+    if os.environ.get("GOTOOLCHAIN"):
+        env["GOTOOLCHAIN"] = os.environ["GOTOOLCHAIN"]
+    if os.environ.get("CI", "").lower() not in {"1", "true", "yes"} and "GOPROXY" not in env:
         env.update(
             {
                 "GOTOOLCHAIN": "local",
@@ -444,6 +462,8 @@ def _target_extension_suffixes(python: Path) -> list[str]:
 
 
 def _run(name: str, command: list[str], cwd: Path, extra_env: dict[str, str] | None = None, timeout: int | None = None) -> dict:
+    if not cwd.exists():
+        return _missing_source_result(name, cwd)
     started = time.perf_counter()
     env = os.environ.copy()
     env.update(_go_env())
@@ -472,6 +492,15 @@ def _run(name: str, command: list[str], cwd: Path, extra_env: dict[str, str] | N
         "elapsed_ms": round(elapsed_ms, 3),
         "stdout_tail": completed.stdout[-1000:],
         "stderr_tail": completed.stderr[-1000:],
+    }
+
+
+def _missing_source_result(name: str, cwd: Path) -> dict:
+    return {
+        "name": name,
+        "ok": False,
+        "cwd": str(cwd),
+        "notes": f"missing source path: {cwd}",
     }
 
 

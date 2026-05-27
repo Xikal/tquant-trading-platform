@@ -187,16 +187,20 @@ class PaperAutoTrader:
         try:
             blocking_reason = self._blocking_reason(db, account.id)
             if blocking_reason:
-                result = {
-                    "passed": 0,
-                    "filtered": 0,
-                    "executed": [],
-                    "skipped": [{"account_id": account.id, "reason": blocking_reason}],
-                    "summary": f"账户风控阻断：{blocking_reason}",
-                }
-                if self._should_persist_blocked_run(db, account_id=account.id, blocking_reason=blocking_reason):
+                result = self._build_and_execute_blocked_exit_plan(
+                    db=db,
+                    account=account,
+                    blocking_reason=blocking_reason,
+                )
+                should_persist = bool(result.get("executed")) or self._should_persist_blocked_run(
+                    db,
+                    account_id=account.id,
+                    blocking_reason=blocking_reason,
+                )
+                if should_persist:
                     run = self._start_run(db, account_id=account.id, board=board)
-                    self._finish_run(db, run, status="skipped", response=result)
+                    status = "succeeded" if result.get("executed") else "skipped"
+                    self._finish_run(db, run, status=status, response=result)
                 return result
             run = self._start_run(db, account_id=account.id, board=board)
             result = self._build_and_execute_account_plan(db=db, account=account, board=board)
@@ -279,14 +283,55 @@ class PaperAutoTrader:
                 ],
             }
         result = self._execute_orders(db=db, account_id=account.id, orders=planned_orders)
+        skipped = list(result.get("skipped") or [])
+        if exit_skip_reason:
+            skipped.append({"account_id": account.id, "source": "auto_exit", "reason": exit_skip_reason})
         return {
             **result,
+            "skipped": skipped,
             "passed": len(phase_passed),
             "filtered": len(filtered_candidates),
             "exit_order_count": len(exit_orders),
             "smart_t_order_count": len(smart_t_orders),
             "buy_order_count": len(orders),
             "sector_etf_t0_order_count": len(etf_orders),
+        }
+
+    def _build_and_execute_blocked_exit_plan(
+        self,
+        *,
+        db: Session,
+        account: PaperAccount,
+        blocking_reason: str,
+    ) -> dict[str, Any]:
+        exit_orders, exit_skip_reason = self._build_exit_order_plan(db, account)
+        if not exit_orders:
+            skipped_reason = exit_skip_reason or blocking_reason
+            return {
+                "passed": 0,
+                "filtered": 0,
+                "executed": [],
+                "skipped": [{"account_id": account.id, "source": "auto_exit", "reason": skipped_reason}],
+                "summary": f"账户风控阻断新增买入；自动退出未执行：{skipped_reason}",
+                "risk_blocking_reason": blocking_reason,
+                "exit_order_count": 0,
+                "smart_t_order_count": 0,
+                "buy_order_count": 0,
+                "sector_etf_t0_order_count": 0,
+            }
+        result = self._execute_orders(db=db, account_id=account.id, orders=exit_orders)
+        skipped = list(result.get("skipped") or [])
+        return {
+            **result,
+            "skipped": skipped,
+            "passed": 0,
+            "filtered": 0,
+            "summary": f"账户风控阻断新增买入；已优先执行自动退出 {len(result.get('executed') or [])} 条，跳过 {len(skipped)} 条。",
+            "risk_blocking_reason": blocking_reason,
+            "exit_order_count": len(exit_orders),
+            "smart_t_order_count": 0,
+            "buy_order_count": 0,
+            "sector_etf_t0_order_count": 0,
         }
 
     def _run_one_cycle_with_retry(self) -> None:

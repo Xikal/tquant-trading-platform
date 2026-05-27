@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from app.services.market.local_quote_cache import read_local_quote_snapshot, write_local_quote_snapshot
+from app.services.market.local_quote_cache import read_local_quote_snapshot, write_local_quote_snapshot, write_local_quote_snapshots
 from app.services.market.go_read_client import load_go_intraday_latest, load_go_market_read_quotes
 from app.services.market.spot_snapshot import fetch_eastmoney_stock_spot_snapshot_map
 from app.services.market.shared import (
@@ -145,6 +145,7 @@ class MarketQuoteMixin:
         snapshot_map = fetch_eastmoney_stock_spot_snapshot_map(self)
         if snapshot_map:
             self._set_spot_snapshot_cache("stock", snapshot_map)
+            write_local_quote_snapshots(snapshot_map)
         return snapshot_map
 
     def _fetch_quote_from_spot_snapshot(self, symbol: str) -> QuoteSnapshot:

@@ -24,6 +24,7 @@ from app.models.schema_defs.market import (
     SectorEtfT0Response,
 )
 from app.models.entities import User
+from app.models.schema_defs.phase4 import RuntimeTaskCreate
 from app.services.intraday_anomaly import IntradayAnomalyService
 from app.services.intraday_key_levels import IntradayKeyLevelService
 from app.services.alternative_data import AlternativeDataSentimentService
@@ -33,14 +34,17 @@ from app.services.market.regime_quality import market_regime_quality_text
 from app.services.market.autofill import MarketDataAutofillService
 from app.services.market.hourly_snapshot import latest_hourly_all_market_snapshot
 from app.services.market.pulse import build_intraday_market_pulse
+from app.services.market.pulse_cache import latest_pulse_or_placeholder
 from app.services.market.pulse_history import (
     list_hourly_snapshot_history,
     list_market_pulse_events,
+    record_market_pulse_event,
 )
 from app.services.market.review import build_market_review_summary, list_market_review_history
 from app.services.market.trading_session import current_a_share_trading_session
 from app.services.paired_hedge_research import PairedHedgeResearchService
 from app.services.sector_etf_t0 import SectorEtfT0Service
+from app.services.tasks import RuntimeTaskQueue
 from app.services.user_sector_preferences import UserSectorPreferenceService, filter_monitor_snapshot_payload
 from app.core.database import get_db
 from sqlalchemy.orm import Session
@@ -77,18 +81,46 @@ def market_breadth(
 
 @router.get("/pulse", response_model=IntradayMarketPulse)
 def market_pulse(
+    refresh: Annotated[str, Query(pattern="^(cache|async|sync)$")] = "cache",
     db: Session = Depends(get_db),
 ) -> IntradayMarketPulse:
+    if refresh != "sync":
+        pulse, needs_refresh = latest_pulse_or_placeholder(db, trade_date=beijing_today().isoformat())
+        if needs_refresh or refresh == "async":
+            _enqueue_market_pulse_refresh(db, reason=f"market_pulse_{refresh}")
+        return pulse
+    pulse = build_market_pulse_sync(db)
+    if hasattr(db, "add") and hasattr(db, "commit"):
+        record_market_pulse_event(db, pulse)
+        db.commit()
+    return pulse
+
+
+def build_market_pulse_sync(db: Session) -> IntradayMarketPulse:
     breadth = market_breadth(realtime=False, db=db)
     sector_strength = market_data.sector_relative_strength_rank(db, limit=8, per_sector_limit=8)
     autofill_service = MarketDataAutofillService(db) if hasattr(db, "commit") and hasattr(db, "flush") and hasattr(db, "execute") else None
-    pulse = build_intraday_market_pulse(
+    return build_intraday_market_pulse(
         market_breadth=breadth,
         sector_relative_strength=sector_strength,
         autofill_service=autofill_service,
         trade_date=beijing_today().isoformat(),
     )
-    return pulse
+
+
+def _enqueue_market_pulse_refresh(db: Session, *, reason: str) -> None:
+    try:
+        RuntimeTaskQueue(db).enqueue(
+            RuntimeTaskCreate(
+                task_type="market_pulse_refresh",
+                payload={"trade_date": beijing_today().isoformat(), "reason": reason},
+                priority=55,
+                idempotency_key=f"market_pulse_refresh:{beijing_today().isoformat()}",
+                max_attempts=2,
+            )
+        )
+    except Exception:
+        pass
 
 
 @router.get("/pulse/history", response_model=MarketPulseHistoryResponse)

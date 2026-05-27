@@ -110,6 +110,9 @@ services:
       PLATFORM_AUTOPILOT_FAILED_TASK_WINDOW_HOURS: ${PLATFORM_AUTOPILOT_FAILED_TASK_WINDOW_HOURS:-24}
       SCHEMA_COMPAT_REPAIR_ENABLED: ${SCHEMA_COMPAT_REPAIR_ENABLED:-false}
       GLOBAL_RATE_LIMIT_BACKEND: ${GLOBAL_RATE_LIMIT_BACKEND:-redis}
+      GLOBAL_RATE_LIMIT_MAX_CALLS: ${GLOBAL_RATE_LIMIT_MAX_CALLS:-120}
+      GLOBAL_RATE_LIMIT_WINDOW_SECONDS: ${GLOBAL_RATE_LIMIT_WINDOW_SECONDS:-1}
+      STRUCTURED_LOGS: ${STRUCTURED_LOGS:-true}
       APP_WORKERS: ${APP_WORKERS:-4}
       TQUANT_INTERNAL_SERVICE_TOKEN: ${TQUANT_INTERNAL_SERVICE_TOKEN:-}
       TQUANT_BFF_GATEWAY_URL: ${TQUANT_BFF_GATEWAY_URL:-http://go-bff-gateway:8091}
@@ -188,6 +191,9 @@ services:
       RUNTIME_EVENT_PUBSUB_BACKEND: ${RUNTIME_EVENT_PUBSUB_BACKEND:-redis}
       SCHEMA_COMPAT_REPAIR_ENABLED: ${SCHEMA_COMPAT_REPAIR_ENABLED:-false}
       GLOBAL_RATE_LIMIT_BACKEND: ${GLOBAL_RATE_LIMIT_BACKEND:-redis}
+      GLOBAL_RATE_LIMIT_MAX_CALLS: ${GLOBAL_RATE_LIMIT_MAX_CALLS:-120}
+      GLOBAL_RATE_LIMIT_WINDOW_SECONDS: ${GLOBAL_RATE_LIMIT_WINDOW_SECONDS:-1}
+      STRUCTURED_LOGS: ${STRUCTURED_LOGS:-true}
       TQUANT_INTERNAL_SERVICE_TOKEN: ${TQUANT_INTERNAL_SERVICE_TOKEN:-}
       TQUANT_BFF_GATEWAY_URL: ${TQUANT_BFF_GATEWAY_URL:-http://go-bff-gateway:8091}
       TQUANT_MARKET_SERVICE_URL: ${TQUANT_MARKET_SERVICE_URL:-}
@@ -239,6 +245,7 @@ services:
       AUTH_COOKIE_SECURE: ${AUTH_COOKIE_SECURE:-true}
       SCHEMA_COMPAT_REPAIR_ENABLED: ${SCHEMA_COMPAT_REPAIR_ENABLED:-false}
       TQUANT_INTERNAL_SERVICE_TOKEN: ${TQUANT_INTERNAL_SERVICE_TOKEN:-}
+      STRUCTURED_LOGS: ${STRUCTURED_LOGS:-true}
       TQUANT_MARKET_SERVICE_URL: ${TQUANT_MARKET_SERVICE_URL:-}
       TQUANT_MARKET_READ_SERVICE_URL: ${TQUANT_MARKET_READ_SERVICE_URL:-http://go-market-read-service:8092}
       RUST_FINANCE_MATH_ENABLED: ${RUST_FINANCE_MATH_ENABLED:-true}
@@ -299,7 +306,6 @@ services:
     image: tquant-go-bff:mysql
     container_name: tquant-go-bff-gateway
     restart: unless-stopped
-    profiles: ["go-bff"]
     depends_on:
       app:
         condition: service_healthy
@@ -307,9 +313,11 @@ services:
         condition: service_healthy
     environment:
       PORT: 8091
+      APP_ENVIRONMENT: ${APP_ENVIRONMENT:-production}
       TQUANT_PYTHON_API_BASE: http://app:8000
       TQUANT_INTERNAL_SERVICE_TOKEN: ${TQUANT_INTERNAL_SERVICE_TOKEN:-}
       TQUANT_SERVICE_CALL_TIMEOUT_SECONDS: ${TQUANT_SERVICE_CALL_TIMEOUT_SECONDS:-5}
+      BFF_SOURCE_TIMEOUT_SECONDS: ${BFF_SOURCE_TIMEOUT_SECONDS:-0.8}
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8091/readyz"]
       interval: 20s
@@ -324,13 +332,17 @@ services:
     image: tquant-go-market-read:mysql
     container_name: tquant-go-market-read-service
     restart: unless-stopped
-    profiles: ["go-market"]
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     environment:
       APP_ENVIRONMENT: ${APP_ENVIRONMENT:-production}
       PORT: 8092
       TQUANT_INTERNAL_SERVICE_TOKEN: ${TQUANT_INTERNAL_SERVICE_TOKEN:-}
       REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
-      DATABASE_URL: ${DATABASE_URL:-}
+      DATABASE_URL: mysql+pymysql://${MYSQL_USER:-tquant_app}:${MYSQL_PASSWORD:?MYSQL_PASSWORD is required}@mysql:3306/${MYSQL_DATABASE:-t_quant}?charset=utf8mb4
       MYSQL_DSN: ${MYSQL_DSN:-}
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8092/readyz"]
@@ -346,7 +358,6 @@ services:
     image: tquant-go-scan-worker:mysql
     container_name: tquant-go-scan-worker
     restart: unless-stopped
-    profiles: ["go-scan"]
     depends_on:
       app:
         condition: service_healthy

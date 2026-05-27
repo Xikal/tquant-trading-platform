@@ -218,10 +218,16 @@ const MONITOR_SIDE_ROW_TEXT_STYLE: CSSProperties = {
   fontSize: 11,
   minWidth: 0,
 };
+const MONITOR_SIDE_ROW_TITLE_STYLE: CSSProperties = {
+  fontSize: 11,
+};
 const MONITOR_SIDE_ROW_META_STYLE: CSSProperties = {
   color: "#64748b",
   fontSize: 10.5,
   minWidth: 0,
+};
+const MONITOR_TREND_BAR_DYNAMIC_STYLE: CSSProperties = {
+  borderRadius: 4,
 };
 const MONITOR_EMBEDDED_HOLDING_STYLE: CSSProperties = {
   display: "grid",
@@ -586,12 +592,12 @@ function MiniMonitorList({
 }) {
   return (
     <div style={MONITOR_SIDE_LIST_STYLE}>
-      <Typography.Text strong style={{ fontSize: 11 }}>{title}</Typography.Text>
+      <Typography.Text strong style={MONITOR_SIDE_ROW_TITLE_STYLE}>{title}</Typography.Text>
       {items.length ? items.map((stock) => (
         <article key={`${title}-${stock.symbol}`} style={MONITOR_SIDE_ROW_STYLE}>
           <div style={MONITOR_SIDE_ROW_HEAD_STYLE}>
             <Typography.Text strong ellipsis style={MONITOR_SIDE_ROW_TEXT_STYLE}>{stock.name}</Typography.Text>
-            <Typography.Text style={{ ...MONITOR_SIDE_ROW_TEXT_STYLE, color: toneColor(stock.tone) }}>{stock.changeText}</Typography.Text>
+            <Typography.Text style={sideRowToneStyle(stock.tone)}>{stock.changeText}</Typography.Text>
           </div>
           <Typography.Text ellipsis={{ tooltip: stock.actionText }} style={MONITOR_SIDE_ROW_META_STYLE}>{stock.symbol} · {stock.actionText}</Typography.Text>
           <Flex gap={5} wrap>
@@ -829,18 +835,14 @@ function HourlyTrendStrip({ points }: { points: Array<{ label: string; score: nu
         <Typography.Text strong>日内强弱趋势</Typography.Text>
         <Typography.Text type="secondary">{points.length} 个快照</Typography.Text>
       </Flex>
-      <div style={{ ...MONITOR_TREND_BAR_GRID_STYLE, gridTemplateColumns: `repeat(${points.length}, minmax(0, 1fr))` }}>
+      <div style={trendBarGridStyle(points.length)}>
         {points.map((item) => {
           const height = Math.max(14, Math.round(((item.score - min) / span) * 54) + 10);
           return (
             <div key={item.label} style={MONITOR_TREND_BAR_ITEM_STYLE}>
               <div
                 title={`${item.label} 强弱分 ${item.score.toFixed(1)} · ${item.quality}`}
-                style={{
-                  height,
-                  borderRadius: 4,
-                  background: item.score >= 10 ? "#16a34a" : item.score <= -10 ? "#dc2626" : "#f59e0b",
-                }}
+                style={trendBarStyle(item.score, height)}
               />
               <Typography.Text type="secondary" style={MONITOR_TREND_LABEL_STYLE}>
                 {item.label}
@@ -851,6 +853,28 @@ function HourlyTrendStrip({ points }: { points: Array<{ label: string; score: nu
       </div>
     </div>
   );
+}
+
+function sideRowToneStyle(tone: string): CSSProperties {
+  return {
+    ...MONITOR_SIDE_ROW_TEXT_STYLE,
+    color: toneColor(tone),
+  };
+}
+
+function trendBarGridStyle(points: number): CSSProperties {
+  return {
+    ...MONITOR_TREND_BAR_GRID_STYLE,
+    gridTemplateColumns: `repeat(${points}, minmax(0, 1fr))`,
+  };
+}
+
+function trendBarStyle(score: number, height: number): CSSProperties {
+  return {
+    ...MONITOR_TREND_BAR_DYNAMIC_STYLE,
+    height,
+    background: score >= 10 ? "#16a34a" : score <= -10 ? "#dc2626" : "#f59e0b",
+  };
 }
 
 function buildHourlyTrendPoints(

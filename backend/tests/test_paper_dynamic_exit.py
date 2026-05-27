@@ -49,6 +49,28 @@ def test_dynamic_exit_strong_profit_locks_all() -> None:
     assert decision.code == "strong_take_profit"
 
 
+def test_dynamic_exit_strong_profit_overrides_wash_pullback_context() -> None:
+    context = PaperExitContext(
+        intraday_usable=True,
+        above_vwap=True,
+        vwap_hold=True,
+        low_rising=True,
+        volume_release_ratio=0.3,
+        volume_usable=True,
+        reason="价格在分时均价线上方，低点仍有承接。",
+    )
+    decision = evaluate_paper_exit(
+        _position(),
+        price=10.9,
+        now=datetime(2026, 5, 9, 10, 0, 0),
+        context=context,
+    )
+
+    assert decision.quantity == 1000
+    assert decision.code == "strong_take_profit"
+    assert decision.action_signal == "profit_take"
+
+
 def test_sector_etf_t0_uses_shorter_exit_threshold() -> None:
     row = _position(strategy_sources='["sector_etf_t0"]', opened_at=datetime(2026, 5, 9, 9, 40, 0))
     decision = evaluate_paper_exit(row, price=10.13, now=datetime(2026, 5, 9, 10, 0, 0))

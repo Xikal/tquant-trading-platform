@@ -22,6 +22,7 @@ RUN_LOCAL_CHECKS=0
 RUN_FULL_TESTS=0
 RUN_STRATEGY_TEST=0
 RUN_LATEST_DATA_ACCEPTANCE=0
+RUN_PERFORMANCE_VERIFY=0
 AUTO_INITIAL_GIT_COMMIT=0
 AUTO_INSTALL_BACKUP_CRON=0
 AUTO_CONFIGURE_HTTPS=0
@@ -45,6 +46,8 @@ Defaults:
 Options:
   --verify-only   Skip deploy and only verify the current remote state.
   --full          Run the slower local checks and latest-data acceptance.
+  --performance-verify
+                 Run online Go/Rust performance gates after deploy/verify.
   --host <host>   Override cloud host.
   --user <user>   Override cloud ssh user.
   --key <path>    Override ssh private key path.
@@ -66,6 +69,10 @@ while [[ $# -gt 0 ]]; do
       RUN_FULL_TESTS=1
       RUN_STRATEGY_TEST=1
       RUN_LATEST_DATA_ACCEPTANCE=1
+      shift
+      ;;
+    --performance-verify)
+      RUN_PERFORMANCE_VERIFY=1
       shift
       ;;
     --host)
@@ -159,6 +166,19 @@ echo protected_api:ok
 curl -sS -f -o /tmp/gupiao_home.html --max-time 10 "http://127.0.0.1:${CLOUD_APP_PORT}/"
 grep -q '<div id="root"></div>' /tmp/gupiao_home.html
 echo frontend:ok
+cd "$CLOUD_PROJECT_DIR"
+if test -f .env; then
+  set -a
+  . ./.env
+  set +a
+fi
+if test -n "${MYSQL_ROOT_PASSWORD:-}"; then
+  sudo docker compose -f docker-compose.mysql.yml exec -T mysql mysql -uroot -p"$MYSQL_ROOT_PASSWORD" -e "SHOW VARIABLES WHERE Variable_name IN ('slow_query_log','long_query_time','innodb_buffer_pool_size');" >/tmp/gupiao_mysql_tuning.txt
+  grep -q $'slow_query_log\tON' /tmp/gupiao_mysql_tuning.txt
+  echo mysql_tuning:ok
+else
+  echo mysql_tuning:skipped_missing_password
+fi
 sudo docker exec tquant-go-bff-gateway wget -qO- http://127.0.0.1:8091/readyz >/tmp/go_bff_readyz.json
 sudo docker exec tquant-go-market-read-service wget -qO- http://127.0.0.1:8092/readyz >/tmp/go_market_readyz.json
 sudo docker exec tquant-go-scan-worker wget -qO- http://127.0.0.1:8093/readyz >/tmp/go_scan_readyz.json
@@ -172,8 +192,22 @@ PY
 REMOTE
 }
 
+performance_verify() {
+  if [[ "$RUN_PERFORMANCE_VERIFY" != "1" ]]; then
+    return 0
+  fi
+  log "run online Go/Rust performance gates"
+  "$ROOT_DIR/scripts/measure_cloud_go_rust_performance.py" \
+    --host "$CLOUD_HOST" \
+    --user "$CLOUD_USER" \
+    --key "$CLOUD_SSH_KEY" \
+    --base-url "http://127.0.0.1:${CLOUD_APP_PORT}" \
+    --project-dir "$CLOUD_PROJECT_DIR"
+}
+
 if [[ "$VERIFY_ONLY" == "1" ]]; then
   verify_remote
+  performance_verify
   log "verification completed for http://${CLOUD_HOST}:${CLOUD_APP_PORT}"
   exit 0
 fi
@@ -203,4 +237,5 @@ CLOUD_SSH_SERVER_ALIVE_COUNT_MAX="$CLOUD_SSH_SERVER_ALIVE_COUNT_MAX" \
 "$ROOT_DIR/scripts/deploy_cloud_server.sh"
 
 verify_remote
+performance_verify
 log "done: http://${CLOUD_HOST}:${CLOUD_APP_PORT}"

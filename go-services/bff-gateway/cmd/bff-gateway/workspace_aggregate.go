@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -20,8 +21,9 @@ type aggregateResult struct {
 }
 
 type partialError struct {
-	Source string `json:"source"`
-	Detail string `json:"detail"`
+	Source    string `json:"source"`
+	Detail    string `json:"detail"`
+	ElapsedMs int64  `json:"elapsed_ms,omitempty"`
 }
 
 type rawSource struct {
@@ -235,12 +237,14 @@ func fetchSources(cfg config, client *http.Client, r *http.Request, sources []ra
 		wg.Add(1)
 		go func(source rawSource) {
 			defer wg.Done()
+			started := time.Now()
 			body, err := fetchRawSource(cfg, client, r, source)
+			elapsedMs := time.Since(started).Milliseconds()
 			mu.Lock()
 			defer mu.Unlock()
 			if err != nil {
 				bffPartialSourceFailures.Add(1)
-				errors = append(errors, partialError{Source: source.name, Detail: "数据暂时不可用"})
+				errors = append(errors, partialError{Source: source.name, Detail: partialDetail(err, resolvedSourceTimeout(cfg)), ElapsedMs: elapsedMs})
 				return
 			}
 			results[source.name] = body
@@ -256,13 +260,16 @@ func fetchRawSource(cfg config, client *http.Client, incoming *http.Request, sou
 		return nil, err
 	}
 	target.RawQuery = source.query.Encode()
-	req, err := http.NewRequestWithContext(incoming.Context(), http.MethodGet, target.String(), nil)
+	ctx, cancel := context.WithTimeout(incoming.Context(), resolvedSourceTimeout(cfg))
+	defer cancel()
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, target.String(), nil)
 	if err != nil {
 		return nil, err
 	}
 	copyHeader(req.Header, incoming.Header, "Authorization")
 	copyHeader(req.Header, incoming.Header, "X-Admin-Token")
 	copyHeader(req.Header, incoming.Header, "X-Request-ID")
+	copyHeader(req.Header, incoming.Header, "traceparent")
 	req.Header.Set("X-TQuant-Bff-Hop", "1")
 	if cfg.internalToken != "" {
 		req.Header.Set("X-Internal-Service-Token", cfg.internalToken)
@@ -280,6 +287,23 @@ func fetchRawSource(cfg config, client *http.Client, incoming *http.Request, sou
 		return nil, err
 	}
 	return raw, nil
+}
+
+func partialDetail(err error, timeout time.Duration) string {
+	if err == nil {
+		return "数据暂时不可用"
+	}
+	if strings.Contains(strings.ToLower(err.Error()), "deadline exceeded") {
+		return fmt.Sprintf("source timeout after %dms", timeout.Milliseconds())
+	}
+	return "数据暂时不可用"
+}
+
+func resolvedSourceTimeout(cfg config) time.Duration {
+	if cfg.sourceTimeout > 0 {
+		return cfg.sourceTimeout
+	}
+	return time.Second
 }
 
 func workspaceName(path string) string {

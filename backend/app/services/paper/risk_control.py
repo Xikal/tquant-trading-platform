@@ -45,6 +45,7 @@ class PaperRiskControlService:
         quantity: int,
         estimated_price: Decimal,
         current_order_counted: bool = False,
+        source: str = "",
     ) -> PaperRiskDecision:
         params = _risk_params()
         account = self._account(account_id)
@@ -61,13 +62,14 @@ class PaperRiskControlService:
         existing_order_count = max(0, daily_order_count - 1) if current_order_counted else daily_order_count
         reasons: list[str] = []
         warnings: list[str] = []
+        is_de_risk_sell = side == "sell"
 
-        if account.status != "active":
+        if account.status != "active" and not is_de_risk_sell:
             reasons.append("模拟账户已暂停，不能提交新委托。")
-        open_risk = self._blocking_risk_event(account_id)
+        open_risk = self._blocking_risk_event(account_id) if not is_de_risk_sell else ""
         if open_risk:
             reasons.append(open_risk)
-        if existing_order_count >= max_daily_order_count:
+        if existing_order_count >= max_daily_order_count and not is_de_risk_sell:
             reasons.append(f"今日委托次数已达到 {max_daily_order_count} 次上限。")
         if quantity <= 0 or quantity % 100 != 0:
             reasons.append("委托数量必须是 100 股整数倍。")
@@ -97,7 +99,7 @@ class PaperRiskControlService:
             reasons.append("委托方向只能是 buy 或 sell。")
 
         fee_pct = round_trip_fee_pct(symbol=symbol, side=side, price=estimated_price, quantity=quantity)
-        if fee_pct > fee_block_pct:
+        if fee_pct > fee_block_pct and not is_de_risk_sell:
             reasons.append(f"交易摩擦约 {fee_pct:.2f}%，超过 {fee_block_pct:.2f}%，小额委托已拒绝。")
         elif fee_pct > fee_warning_pct:
             warnings.append(f"交易摩擦约 {fee_pct:.2f}%，小额委托会明显吞噬收益。")
@@ -212,7 +214,9 @@ class PaperRiskControlService:
                 RiskEvent.status == "open",
                 RiskEvent.severity == "high",
             )
-        ).scalar_one_or_none()
+            .order_by(RiskEvent.triggered_at.desc(), RiskEvent.id.desc())
+            .limit(1)
+        ).scalars().first()
         if row is None:
             return ""
         return row.message or "账户存在高风险事件，已暂停新增委托。"

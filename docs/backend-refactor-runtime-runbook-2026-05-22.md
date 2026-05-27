@@ -8,7 +8,7 @@
 
 - Python FastAPI 仍是策略计算 reference 与业务写入真源。
 - 低吸策略、全策略优先榜、模拟盘自动交易、回测策略语义、候选排序、风控判断不迁移到 Go/Rust。
-- Go BFF、Go 行情读服务、Go 扫描 Worker 可按 profile 与服务 URL 受控启用；生产配置启用 Go 后默认优先命中非策略主路径，异常时保留 Python 回退且必须可观测。
+- Go BFF、Go 行情读服务、Go 扫描 Worker 是 MySQL 生产 compose 的默认主路径组件；异常时保留 Python 回退且必须可观测。
 - Go scan-worker 是扫描编排与观测入口，不是独立策略公式内核；策略计算来源必须标注为 `python_reference`。
 - Rust `tquant_rs` 是 Python 调用的指标加速层；导入失败或计算异常时保留 Python 回退，fallback/hit/error 必须通过 `/metrics` 观察。Rust 不作为策略结果真源。
 - 生产 compose 的 `app` 服务默认开启 `RUNTIME_BACKGROUND_JOBS_ENABLED=true`，由主应用进程在 leader lock 下执行小时全市场快照、午盘复盘和收盘复盘；`qa_smoke.sh` / `prod_preflight.sh` 仍显式关闭背景任务，避免重复调度。
@@ -69,7 +69,7 @@ TQUANT_MARKET_READ_SERVICE_URL=http://go-market-read-service:8092
 启动：
 
 ```bash
-docker compose -f docker-compose.mysql.yml --profile go-bff up -d go-bff-gateway
+docker compose -f docker-compose.mysql.yml up -d go-bff-gateway
 ```
 
 默认只代理 `/api/bff/v1/workspace/*` 和 `/bff/v1/workspace/*` 到 Python BFF。
@@ -80,6 +80,7 @@ Go BFF 会透传：
 - `Authorization`
 - `X-Admin-Token`
 - `X-Request-ID`
+- `traceparent`
 
 同时会向 Python BFF 添加：
 
@@ -100,7 +101,7 @@ Go BFF 会透传：
 启动：
 
 ```bash
-docker compose -f docker-compose.mysql.yml --profile go-market up -d go-market-read-service
+docker compose -f docker-compose.mysql.yml up -d go-market-read-service
 ```
 
 当前提供健康检查、metrics，以及三类 Redis 本地行情快照读接口：
@@ -109,7 +110,7 @@ docker compose -f docker-compose.mysql.yml --profile go-market up -d go-market-r
 - `/api/market-read/v1/sector-relative-strength`：按调用方传入的板块股票列表计算板块内相对强度。
 - `/api/market-read/v1/intraday-key-levels`：基于本地报价快照计算开盘价、昨收、整数关口、买点区等关键位。
 
-这些接口优先读取 Python 已写入 Redis 的本地行情缓存键 `tquant:market:quote:{symbol}`，批量报价使用 Redis `MGET`。Redis 未命中时，可只读 MySQL `daily_bar_snapshots + instruments` 最新日线快照作为 `stale` 兜底。该服务不访问外部行情源，不写 MySQL/Redis。
+这些接口优先读取 Python 已写入 Redis 的本地行情缓存键 `tquant:market:quote:{symbol}`，批量报价使用 Redis `MGET`。Redis 未命中时，可只读 MySQL `daily_bar_snapshots + instruments` 最新日线快照作为 `stale` 兜底。该服务不访问外部行情源，不写 MySQL/Redis。`/metrics` 输出 Redis 命中、主缓存 miss 和 MySQL fallback 计数，用于衡量行情缓存覆盖率。
 业务读接口受 `X-Internal-Service-Token` 保护；`/healthz`、`/readyz`、`/metrics` 不要求该 header，便于容器健康检查。
 
 调用示例：
@@ -152,7 +153,7 @@ curl -H "X-Internal-Service-Token: $TQUANT_INTERNAL_SERVICE_TOKEN" \
 启动：
 
 ```bash
-docker compose -f docker-compose.mysql.yml --profile go-scan up -d go-scan-worker
+docker compose -f docker-compose.mysql.yml up -d go-scan-worker
 ```
 
 当前支持生产状态查询与生产扫描触发。Go scan-worker 是生产扫描编排入口，不是独立策略公式内核；策略相关内容只依赖 Python reference。
@@ -240,6 +241,6 @@ make rust-bench
 
 ## 回滚方式
 
-- 不启用任何 `go-*` profile，即完全回到 Python 单体路径。
+- 紧急回滚时停止 Go 容器并清空对应微服务 URL，Python 会回到单体路径；生产默认不再依赖 `go-*` profile。
 - 紧急回滚时设置 `RUST_FINANCE_MATH_ENABLED=false`，禁用 Rust 指标加速；回滚期间必须关注 Rust fallback 指标，确认 Python 路径承压可接受。
 - 清空微服务 URL 环境变量，Python BFF 不会走远端适配器。

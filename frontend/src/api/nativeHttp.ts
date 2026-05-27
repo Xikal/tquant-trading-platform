@@ -1,5 +1,7 @@
 import { Capacitor, CapacitorHttp } from "@capacitor/core"
 
+type HttpStatusError = Error & { status?: number }
+
 function normalizeHeaders(headers?: HeadersInit): Record<string, string> {
   if (!headers) {
     return {}
@@ -63,13 +65,15 @@ export async function nativeRequest<T>(url: string, init?: RequestInit): Promise
 
   if (response.status < 200 || response.status >= 300) {
     const payload = resolvePayload(response.data, response.headers)
+    let message = `Request failed: ${response.status}`
     if (payload && typeof payload === "object" && "detail" in payload && typeof payload.detail === "string") {
-      throw new Error(payload.detail)
+      message = payload.detail
+    } else if (typeof payload === "string" && payload.trim()) {
+      message = payload
     }
-    if (typeof payload === "string" && payload.trim()) {
-      throw new Error(payload)
-    }
-    throw new Error(`Request failed: ${response.status}`)
+    const error = new Error(message) as HttpStatusError
+    error.status = response.status
+    throw error
   }
 
   return resolvePayload(response.data, response.headers) as T

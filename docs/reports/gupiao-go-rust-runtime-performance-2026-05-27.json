@@ -1,0 +1,511 @@
+{
+  "generated_at": "2026-05-27 00:29:43 +0800",
+  "base": "http://127.0.0.1:18090",
+  "perf_user": "perf_go_rust_20260527001954",
+  "containers": {
+    "tquant-app-mysql": "healthy",
+    "tquant-runtime-worker-mysql": "healthy",
+    "tquant-backtest-worker-mysql": "running",
+    "tquant-go-bff-gateway": "healthy",
+    "tquant-go-market-read-service": "healthy",
+    "tquant-go-scan-worker": "healthy"
+  },
+  "health": {
+    "readyz": {
+      "status": "ok",
+      "app": "维斯量化交易平台",
+      "checks": {
+        "database": true,
+        "frontend_dist": true
+      },
+      "errors": []
+    },
+    "go_bff_readyz": {
+      "ok": true
+    },
+    "go_market_readyz": {
+      "ok": true,
+      "production_readiness": "mainline_ready",
+      "service": "market-read-service",
+      "source": "redis_local_quote_cache"
+    },
+    "go_scan_readyz": {
+      "ok": true,
+      "production_readiness": "python_reference_orchestrator",
+      "scan_worker_role": "go_orchestrated_reference",
+      "service": "scan-worker",
+      "strategy_engine": "python_reference"
+    }
+  },
+  "api_latency": [
+    {
+      "name": "readyz",
+      "path": "/readyz",
+      "count": 20,
+      "statuses": [
+        200
+      ],
+      "ok": true,
+      "p50_ms": 4.08,
+      "p95_ms": 5.21,
+      "max_ms": 6.36,
+      "min_ms": 3.78,
+      "avg_bytes": 108,
+      "cache_hits_header": 0,
+      "partial_errors_max": null
+    },
+    {
+      "name": "monitor_bff",
+      "path": "/api/bff/v1/workspace/monitor?priority_limit=12&sector_limit=8&per_sector_limit=8&hedge_limit=4",
+      "count": 10,
+      "statuses": [
+        200
+      ],
+      "ok": true,
+      "p50_ms": 12.13,
+      "p95_ms": 13.05,
+      "max_ms": 13.05,
+      "min_ms": 11.76,
+      "avg_bytes": 120295,
+      "cache_hits_header": 0,
+      "partial_errors_max": 1
+    },
+    {
+      "name": "paper_bff",
+      "path": "/api/bff/v1/workspace/paper?order_limit=40&trade_limit=120&run_limit=10",
+      "count": 10,
+      "statuses": [
+        200
+      ],
+      "ok": true,
+      "p50_ms": 7.36,
+      "p95_ms": 8.99,
+      "max_ms": 8.99,
+      "min_ms": 6.9,
+      "avg_bytes": 2208,
+      "cache_hits_header": 0,
+      "partial_errors_max": 0
+    },
+    {
+      "name": "strategy_bff",
+      "path": "/api/bff/v1/workspace/strategy?run_limit=8",
+      "count": 10,
+      "statuses": [
+        200
+      ],
+      "ok": true,
+      "p50_ms": 7.97,
+      "p95_ms": 13.28,
+      "max_ms": 13.28,
+      "min_ms": 7.14,
+      "avg_bytes": 8214,
+      "cache_hits_header": 0,
+      "partial_errors_max": 0
+    },
+    {
+      "name": "market_pulse",
+      "path": "/api/market/pulse",
+      "count": 8,
+      "statuses": [
+        200
+      ],
+      "ok": true,
+      "p50_ms": 766.18,
+      "p95_ms": 4189.81,
+      "max_ms": 4189.81,
+      "min_ms": 269.77,
+      "avg_bytes": 1937.4,
+      "cache_hits_header": 0,
+      "partial_errors_max": 0
+    },
+    {
+      "name": "priority_board",
+      "path": "/api/screeners/low-buy/priority-board?limit=12",
+      "count": 6,
+      "statuses": [
+        200
+      ],
+      "ok": true,
+      "p50_ms": 79.42,
+      "p95_ms": 3482.61,
+      "max_ms": 3482.61,
+      "min_ms": 23.42,
+      "avg_bytes": 87366.3,
+      "cache_hits_header": 0,
+      "partial_errors_max": null
+    },
+    {
+      "name": "watchlist_signals",
+      "path": "/api/watchlist/signals",
+      "count": 6,
+      "statuses": [
+        200
+      ],
+      "ok": true,
+      "p50_ms": 8.96,
+      "p95_ms": 14.07,
+      "max_ms": 14.07,
+      "min_ms": 8.78,
+      "avg_bytes": 2,
+      "cache_hits_header": 0,
+      "partial_errors_max": null
+    }
+  ],
+  "go_bff_direct_latency": [
+    {
+      "path": "/api/bff/v1/workspace/monitor?priority_limit=12&sector_limit=8&per_sector_limit=8&hedge_limit=4",
+      "ok": true,
+      "p50_ms": 97.9,
+      "p95_ms": 2019.53,
+      "max_ms": 2019.53,
+      "cache_hits_header": 9,
+      "avg_bytes": 89778,
+      "partial_errors_max": 1
+    },
+    {
+      "path": "/api/bff/v1/workspace/strategy?run_limit=8",
+      "ok": true,
+      "p50_ms": 79.96,
+      "p95_ms": 155.65,
+      "max_ms": 155.65,
+      "cache_hits_header": 9,
+      "avg_bytes": 7324,
+      "partial_errors_max": 1
+    }
+  ],
+  "go_market_direct_latency": [
+    {
+      "path": "/api/market-read/v1/quote-batch?symbols=000001,600000,510300,300059,002594",
+      "ok": true,
+      "p50_ms": 84.99,
+      "p95_ms": 96.48,
+      "data_quality": "fresh",
+      "item_count": 5,
+      "sample_keys": [
+        "data_quality",
+        "items",
+        "missing",
+        "source"
+      ]
+    },
+    {
+      "path": "/api/market-read/v1/intraday-latest-batch?symbols=000001,600000,510300,300059,002594",
+      "ok": true,
+      "p50_ms": 76.61,
+      "p95_ms": 90.77,
+      "data_quality": "fresh",
+      "item_count": 5,
+      "sample_keys": [
+        "data_quality",
+        "items",
+        "missing",
+        "source"
+      ]
+    },
+    {
+      "path": "/api/market-read/v1/intraday-key-levels?symbol=510300&threshold_pct=0.3",
+      "ok": true,
+      "p50_ms": 77.16,
+      "p95_ms": 86.61,
+      "data_quality": "partial",
+      "item_count": 0,
+      "sample_keys": [
+        "alert_text",
+        "alert_threshold_pct",
+        "alert_triggered",
+        "data_quality",
+        "data_quality_text",
+        "entry_zone_high",
+        "entry_zone_low",
+        "latest_price",
+        "levels",
+        "name"
+      ]
+    }
+  ],
+  "go_scan_status": {
+    "fallback_available": true,
+    "ok": true,
+    "production_readiness": "python_reference_orchestrator",
+    "production_scan_enabled": true,
+    "production_write_enabled": true,
+    "ranking_consistency": {
+      "checked": true,
+      "detail": "Go scan-worker invokes the Python reference strategy engine and only publishes when that reference write succeeds.",
+      "status": "python_reference_order"
+    },
+    "scan_failures_total": 4,
+    "scan_fallbacks_total": 4,
+    "scan_runs_total": 6,
+    "scan_worker_role": "go_orchestrated_reference",
+    "snapshot_writes_total": 2,
+    "strategy_engine": "python_reference"
+  },
+  "go_scan_run_samples": [
+    {
+      "ok": false,
+      "elapsed_ms": 30104.14,
+      "production_write_enabled": null,
+      "source": null,
+      "triggered": null,
+      "failed": null,
+      "fallback_reason": null,
+      "data_quality": null
+    },
+    {
+      "ok": false,
+      "elapsed_ms": 30229.07,
+      "production_write_enabled": null,
+      "source": null,
+      "triggered": null,
+      "failed": null,
+      "fallback_reason": null,
+      "data_quality": null
+    }
+  ],
+  "rust_app_smoke": {
+    "returncode": 0,
+    "stdout": "{\"results\": {\"available\": true, \"max_drawdown\": 0.25, \"rolling_tail\": [110.0, 127.5], \"atr_len\": 5, \"rsi\": 62.365591397849464, \"vwap\": 10.5, \"rank_ic\": -0.9999999999999998}, \"metrics_delta\": {\"errors\": 0, \"fallbacks\": 0, \"disabled\": 0, \"hits\": 6}, \"bench_ms\": {\"python_max_drawdown\": 22.392937913537025, \"rust_max_drawdown\": 10.875875130295753, \"speedup\": 2.0589550399635823}}\n",
+    "stderr": "",
+    "json": {
+      "results": {
+        "available": true,
+        "max_drawdown": 0.25,
+        "rolling_tail": [
+          110.0,
+          127.5
+        ],
+        "atr_len": 5,
+        "rsi": 62.365591397849464,
+        "vwap": 10.5,
+        "rank_ic": -0.9999999999999998
+      },
+      "metrics_delta": {
+        "errors": 0,
+        "fallbacks": 0,
+        "disabled": 0,
+        "hits": 6
+      },
+      "bench_ms": {
+        "python_max_drawdown": 22.392937913537025,
+        "rust_max_drawdown": 10.875875130295753,
+        "speedup": 2.0589550399635823
+      }
+    }
+  },
+  "metrics_before": {
+    "app": {
+      "tquant_http_timing_samples": 72.0,
+      "tquant_http_p95_ms": 3608.0,
+      "tquant_http_slow_requests": 5.0,
+      "tquant_agent_tool_calls_total": 0.0,
+      "tquant_agent_tool_success_total": 0.0,
+      "tquant_agent_tool_failure_total": 0.0,
+      "tquant_runtime_tasks_queued": 0.0,
+      "tquant_runtime_tasks_running": 0.0,
+      "tquant_runtime_tasks_failed": 584.0,
+      "tquant_agent_quality_blocked_total": 0.0,
+      "tquant_bff_workspace_cache_reads_total": 8.0,
+      "tquant_bff_workspace_cache_hits_total": 7.0,
+      "tquant_bff_workspace_cache_writes_total": 1.0,
+      "tquant_bff_workspace_cache_skips_total": 0.0,
+      "tquant_bff_workspace_cache_schema_misses_total": 0.0,
+      "tquant_bff_remote_calls_total": 86.0,
+      "tquant_bff_remote_success_total": 41.0,
+      "tquant_bff_remote_failures_total": 9.0,
+      "tquant_bff_remote_circuit_short_circuits_total": 36.0,
+      "tquant_bff_remote_credentials_suppressed_total": 0.0,
+      "tquant_rust_math_hits_total": 0.0,
+      "tquant_rust_math_fallbacks_total": 0.0,
+      "tquant_rust_math_errors_total": 0.0,
+      "tquant_rust_math_disabled_total": 0.0,
+      "tquant_provider_calls_total": 240.0,
+      "tquant_provider_failures_total": 200.0,
+      "tquant_provider_slow_calls_total": 36.0,
+      "tquant_local_quote_cache_reads_total": 4028.0,
+      "tquant_local_quote_cache_hits_total": 2071.0,
+      "tquant_local_quote_cache_writes_total": 1933.0,
+      "tquant_local_quote_cache_misses_total": 1957.0,
+      "tquant_local_quote_cache_fresh_hits_total": 470.0,
+      "tquant_local_quote_cache_stale_hits_total": 1601.0,
+      "tquant_local_quote_cache_estimated_hits_total": 0.0
+    },
+    "bff": {
+      "tquant_bff_gateway_up": 1.0,
+      "tquant_bff_gateway_aggregate_hits_total": 2.0,
+      "tquant_bff_gateway_proxy_fallbacks_total": 0.0,
+      "tquant_bff_gateway_cache_lookups_total": 24.0,
+      "tquant_bff_gateway_cache_hits_total": 22.0,
+      "tquant_bff_gateway_cache_hit_rate": 0.916667,
+      "tquant_bff_gateway_cache_items": 0.0,
+      "tquant_bff_gateway_cache_ttl_seconds": 5.0,
+      "tquant_bff_gateway_partial_source_failures_total": 3.0,
+      "tquant_bff_gateway_workspace_aggregate_hits_total{workspace=\"monitor\"}": 2.0,
+      "tquant_bff_gateway_workspace_aggregate_hits_total{workspace=\"paper\"}": 0.0,
+      "tquant_bff_gateway_workspace_aggregate_hits_total{workspace=\"strategy\"}": 0.0,
+      "tquant_bff_gateway_workspace_aggregate_hits_total{workspace=\"settings\"}": 0.0,
+      "tquant_bff_gateway_workspace_aggregate_hits_total{workspace=\"factor\"}": 0.0,
+      "tquant_bff_gateway_workspace_proxy_fallbacks_total{workspace=\"monitor\"}": 0.0,
+      "tquant_bff_gateway_workspace_proxy_fallbacks_total{workspace=\"paper\"}": 0.0,
+      "tquant_bff_gateway_workspace_proxy_fallbacks_total{workspace=\"strategy\"}": 0.0,
+      "tquant_bff_gateway_workspace_proxy_fallbacks_total{workspace=\"settings\"}": 0.0,
+      "tquant_bff_gateway_workspace_proxy_fallbacks_total{workspace=\"factor\"}": 0.0
+    },
+    "market": {
+      "tquant_market_read_service_up": 1.0,
+      "tquant_market_read_hits_total": 330.0,
+      "tquant_market_read_fallbacks_total": 31.0,
+      "tquant_market_read_partials_total": 22.0
+    },
+    "scan": {
+      "tquant_scan_worker_up": 1.0,
+      "tquant_scan_worker_runs_total": 5.0,
+      "tquant_scan_worker_failures_total": 3.0,
+      "tquant_scan_worker_fallbacks_total": 3.0,
+      "tquant_scan_worker_snapshot_writes_total": 2.0
+    }
+  },
+  "metrics_after": {
+    "app": {
+      "tquant_http_timing_samples": 37.0,
+      "tquant_http_p95_ms": 6090.0,
+      "tquant_http_slow_requests": 6.0,
+      "tquant_agent_tool_calls_total": 0.0,
+      "tquant_agent_tool_success_total": 0.0,
+      "tquant_agent_tool_failure_total": 0.0,
+      "tquant_runtime_tasks_queued": 2.0,
+      "tquant_runtime_tasks_running": 1.0,
+      "tquant_runtime_tasks_failed": 584.0,
+      "tquant_agent_quality_blocked_total": 0.0,
+      "tquant_bff_workspace_cache_reads_total": 5.0,
+      "tquant_bff_workspace_cache_hits_total": 5.0,
+      "tquant_bff_workspace_cache_writes_total": 0.0,
+      "tquant_bff_workspace_cache_skips_total": 0.0,
+      "tquant_bff_workspace_cache_schema_misses_total": 0.0,
+      "tquant_bff_remote_calls_total": 3427.0,
+      "tquant_bff_remote_success_total": 322.0,
+      "tquant_bff_remote_failures_total": 17.0,
+      "tquant_bff_remote_circuit_short_circuits_total": 3088.0,
+      "tquant_bff_remote_credentials_suppressed_total": 0.0,
+      "tquant_rust_math_hits_total": 117.0,
+      "tquant_rust_math_fallbacks_total": 0.0,
+      "tquant_rust_math_errors_total": 0.0,
+      "tquant_rust_math_disabled_total": 0.0,
+      "tquant_provider_calls_total": 332.0,
+      "tquant_provider_failures_total": 258.0,
+      "tquant_provider_slow_calls_total": 30.0,
+      "tquant_local_quote_cache_reads_total": 9694.0,
+      "tquant_local_quote_cache_hits_total": 1657.0,
+      "tquant_local_quote_cache_writes_total": 7672.0,
+      "tquant_local_quote_cache_misses_total": 8037.0,
+      "tquant_local_quote_cache_fresh_hits_total": 1296.0,
+      "tquant_local_quote_cache_stale_hits_total": 361.0,
+      "tquant_local_quote_cache_estimated_hits_total": 0.0
+    },
+    "bff": {
+      "tquant_bff_gateway_up": 1.0,
+      "tquant_bff_gateway_aggregate_hits_total": 5.0,
+      "tquant_bff_gateway_proxy_fallbacks_total": 0.0,
+      "tquant_bff_gateway_cache_lookups_total": 55.0,
+      "tquant_bff_gateway_cache_hits_total": 50.0,
+      "tquant_bff_gateway_cache_hit_rate": 0.909091,
+      "tquant_bff_gateway_cache_items": 0.0,
+      "tquant_bff_gateway_cache_ttl_seconds": 5.0,
+      "tquant_bff_gateway_partial_source_failures_total": 6.0,
+      "tquant_bff_gateway_workspace_aggregate_hits_total{workspace=\"monitor\"}": 4.0,
+      "tquant_bff_gateway_workspace_aggregate_hits_total{workspace=\"paper\"}": 0.0,
+      "tquant_bff_gateway_workspace_aggregate_hits_total{workspace=\"strategy\"}": 1.0,
+      "tquant_bff_gateway_workspace_aggregate_hits_total{workspace=\"settings\"}": 0.0,
+      "tquant_bff_gateway_workspace_aggregate_hits_total{workspace=\"factor\"}": 0.0,
+      "tquant_bff_gateway_workspace_proxy_fallbacks_total{workspace=\"monitor\"}": 0.0,
+      "tquant_bff_gateway_workspace_proxy_fallbacks_total{workspace=\"paper\"}": 0.0,
+      "tquant_bff_gateway_workspace_proxy_fallbacks_total{workspace=\"strategy\"}": 0.0,
+      "tquant_bff_gateway_workspace_proxy_fallbacks_total{workspace=\"settings\"}": 0.0,
+      "tquant_bff_gateway_workspace_proxy_fallbacks_total{workspace=\"factor\"}": 0.0
+    },
+    "market": {
+      "tquant_market_read_service_up": 1.0,
+      "tquant_market_read_hits_total": 354.0,
+      "tquant_market_read_fallbacks_total": 37.0,
+      "tquant_market_read_partials_total": 24.0
+    },
+    "scan": {
+      "tquant_scan_worker_up": 1.0,
+      "tquant_scan_worker_runs_total": 8.0,
+      "tquant_scan_worker_failures_total": 6.0,
+      "tquant_scan_worker_fallbacks_total": 6.0,
+      "tquant_scan_worker_snapshot_writes_total": 2.0
+    }
+  },
+  "metrics_delta": {
+    "app": {
+      "tquant_bff_remote_calls_total": 3341.0,
+      "tquant_bff_remote_circuit_short_circuits_total": 3052.0,
+      "tquant_bff_remote_failures_total": 8.0,
+      "tquant_bff_remote_success_total": 281.0,
+      "tquant_bff_workspace_cache_hits_total": -2.0,
+      "tquant_bff_workspace_cache_reads_total": -3.0,
+      "tquant_bff_workspace_cache_writes_total": -1.0,
+      "tquant_http_p95_ms": 2482.0,
+      "tquant_http_slow_requests": 1.0,
+      "tquant_http_timing_samples": -35.0,
+      "tquant_local_quote_cache_fresh_hits_total": 826.0,
+      "tquant_local_quote_cache_hits_total": -414.0,
+      "tquant_local_quote_cache_misses_total": 6080.0,
+      "tquant_local_quote_cache_reads_total": 5666.0,
+      "tquant_local_quote_cache_stale_hits_total": -1240.0,
+      "tquant_local_quote_cache_writes_total": 5739.0,
+      "tquant_provider_calls_total": 92.0,
+      "tquant_provider_failures_total": 58.0,
+      "tquant_provider_slow_calls_total": -6.0,
+      "tquant_runtime_tasks_queued": 2.0,
+      "tquant_runtime_tasks_running": 1.0,
+      "tquant_rust_math_hits_total": 117.0
+    },
+    "bff": {
+      "tquant_bff_gateway_aggregate_hits_total": 3.0,
+      "tquant_bff_gateway_cache_hit_rate": -0.007576000000000027,
+      "tquant_bff_gateway_cache_hits_total": 28.0,
+      "tquant_bff_gateway_cache_lookups_total": 31.0,
+      "tquant_bff_gateway_partial_source_failures_total": 3.0,
+      "tquant_bff_gateway_workspace_aggregate_hits_total{workspace=\"monitor\"}": 2.0,
+      "tquant_bff_gateway_workspace_aggregate_hits_total{workspace=\"strategy\"}": 1.0
+    },
+    "market": {
+      "tquant_market_read_fallbacks_total": 6.0,
+      "tquant_market_read_hits_total": 24.0,
+      "tquant_market_read_partials_total": 2.0
+    },
+    "scan": {
+      "tquant_scan_worker_failures_total": 3.0,
+      "tquant_scan_worker_fallbacks_total": 3.0,
+      "tquant_scan_worker_runs_total": 3.0
+    }
+  },
+  "budget_judgement": [
+    {
+      "name": "readyz",
+      "p95_ms": 5.21,
+      "warm_p95_budget_ms": 100,
+      "ok": true
+    },
+    {
+      "name": "monitor_bff",
+      "p95_ms": 13.05,
+      "warm_p95_budget_ms": 500,
+      "ok": true
+    },
+    {
+      "name": "priority_board",
+      "p95_ms": 3482.61,
+      "warm_p95_budget_ms": 500,
+      "ok": false
+    },
+    {
+      "name": "watchlist_signals",
+      "p95_ms": 14.07,
+      "warm_p95_budget_ms": 600,
+      "ok": true
+    }
+  ]
+}

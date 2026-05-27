@@ -18,7 +18,17 @@ from app.core.config import get_settings
 from app.core.database import get_db
 from app.core.rate_limit import clear_rate_limit_events
 from app.models.base import Base
-from app.models.entities import PaperAccount, PaperAgentRun, PaperOrder, PaperPosition, PaperPositionLot, PaperTrade, RiskEvent, User
+from app.models.entities import (
+    MarketReviewReport,
+    PaperAccount,
+    PaperAgentRun,
+    PaperOrder,
+    PaperPosition,
+    PaperPositionLot,
+    PaperTrade,
+    RiskEvent,
+    User,
+)
 
 
 class PaperRouteTests(unittest.TestCase):
@@ -173,6 +183,66 @@ class PaperRouteTests(unittest.TestCase):
         self.assertEqual(buy.json()["status"], "filled")
 
         sell = self._paper_order(headers, symbol="510300", name="沪深300ETF", side="sell", quantity=100)
+        self.assertEqual(sell.status_code, 200)
+        self.assertEqual(sell.json()["status"], "filled")
+
+    def test_sell_order_ignores_open_high_risk_events(self) -> None:
+        headers = self._register("paper_sell_with_open_risk")
+        buy = self._paper_order(headers, symbol="510300", name="沪深300ETF", quantity=100)
+        self.assertEqual(buy.status_code, 200)
+        with self.Session() as db:
+            account = db.execute(select(PaperAccount)).scalar_one()
+            db.add_all(
+                [
+                    RiskEvent(
+                        account_id=account.id,
+                        event_type="regime_jump_position_review",
+                        severity="high",
+                        status="open",
+                        message="旧风险提示",
+                    ),
+                    RiskEvent(
+                        account_id=account.id,
+                        event_type="regime_jump_position_review",
+                        severity="high",
+                        status="open",
+                        message="新风险提示",
+                    ),
+                ]
+            )
+            db.commit()
+
+        sell = self._paper_order(headers, symbol="510300", name="沪深300ETF", side="sell", quantity=100)
+        self.assertEqual(sell.status_code, 200)
+        self.assertEqual(sell.json()["status"], "filled")
+
+    def test_auto_exit_sell_allowed_when_account_paused_by_risk(self) -> None:
+        headers = self._register("paper_auto_exit_paused")
+        buy = self._paper_order(headers, symbol="510300", name="沪深300ETF", quantity=100)
+        self.assertEqual(buy.status_code, 200)
+        with self.Session() as db:
+            account = db.execute(select(PaperAccount)).scalar_one()
+            account.status = "paused"
+            db.add(
+                RiskEvent(
+                    account_id=account.id,
+                    event_type="regime_jump_position_review",
+                    severity="high",
+                    status="open",
+                    message="市场跳变触发止损",
+                )
+            )
+            db.commit()
+
+        sell = self._paper_order(
+            headers,
+            symbol="510300",
+            name="沪深300ETF",
+            side="sell",
+            quantity=100,
+            source="auto_exit",
+            signal_snapshot={"exit_code": "hard_stop_loss"},
+        )
         self.assertEqual(sell.status_code, 200)
         self.assertEqual(sell.json()["status"], "filled")
 
@@ -419,6 +489,39 @@ class PaperRouteTests(unittest.TestCase):
         self.assertEqual(body["samples"][0]["symbol"], "600000")
         self.assertIn("日线代理验证", body["notes"][0])
 
+    def test_paper_review_routes_return_metadata_only(self) -> None:
+        headers = self._register("paper_review_metadata")
+        with self.Session() as db:
+            db.add(
+                MarketReviewReport(
+                    report_date=date.today(),
+                    report_slot="midday",
+                    overall_summary="午盘市场复盘正文只能在实时监控页展示",
+                    strategy_highlights='[{"content":"主线修复"}]',
+                    risk_alerts='[{"content":"不要追高"}]',
+                    suggestion="午后只看强趋势回踩",
+                    raw_metrics_snapshot="{}",
+                    llm_model="market-rule",
+                )
+            )
+            db.commit()
+
+        summary = self.client.get("/api/paper/performance/review-summary", headers=headers)
+        history = self.client.get("/api/paper/performance/review-history", headers=headers)
+
+        self.assertEqual(summary.status_code, 200)
+        self.assertEqual(history.status_code, 200)
+        report = summary.json()["review_reports"][0]
+        item = history.json()["items"][0]
+        self.assertEqual(report["review_subject"], "全市场")
+        self.assertEqual(report["source_scope"], "market")
+        self.assertEqual(report["overall_summary"], "")
+        self.assertEqual(report["strategy_highlights"], [])
+        self.assertEqual(report["risk_alerts"], [])
+        self.assertEqual(report["suggestion"], "")
+        self.assertEqual(item["overall_summary"], "")
+        self.assertEqual(item["suggestion"], "")
+
     def _register(self, username: str) -> dict[str, str]:
         response = self.client.post(
             "/api/auth/register",
@@ -438,6 +541,8 @@ class PaperRouteTests(unittest.TestCase):
         current_price: float = 4.0,
         reason: str = "测试委托",
         require_intraday_confirmation: bool | None = None,
+        source: str = "manual",
+        signal_snapshot: dict | None = None,
     ):
         payload = {
             "symbol": symbol,
@@ -447,7 +552,10 @@ class PaperRouteTests(unittest.TestCase):
             "quantity": quantity,
             "current_price": current_price,
             "reason": reason,
+            "source": source,
         }
+        if signal_snapshot is not None:
+            payload["signal_snapshot"] = signal_snapshot
         if require_intraday_confirmation is not None:
             payload["require_intraday_confirmation"] = require_intraday_confirmation
         return self.client.post(

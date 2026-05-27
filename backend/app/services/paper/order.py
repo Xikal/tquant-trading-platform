@@ -54,7 +54,7 @@ class PaperOrderService:
         self.accounts.get_account(account_id, for_update=True)
         self._idempotency_check(account_id, symbol, side, source, signal_snapshot)
         self._precheck(account_id, symbol, side, quantity, current_price)
-        self._risk_check(account_id, symbol, side, quantity, current_price)
+        self._risk_check(account_id, symbol, side, quantity, current_price, source=source)
         match = self.matching.match(
             symbol=symbol,
             side=OrderSide(side),
@@ -140,7 +140,16 @@ class PaperOrderService:
         if position is None or position.available_quantity < quantity:
             raise ValueError("可卖数量不足或当日买入未解锁，模拟卖出被拒绝。")
 
-    def _risk_check(self, account_id: int, symbol: str, side: str, quantity: int, current_price: Decimal) -> None:
+    def _risk_check(
+        self,
+        account_id: int,
+        symbol: str,
+        side: str,
+        quantity: int,
+        current_price: Decimal,
+        *,
+        source: str = "",
+    ) -> None:
         decision = self.risk.check_order(
             account_id=account_id,
             symbol=symbol,
@@ -148,6 +157,7 @@ class PaperOrderService:
             quantity=quantity,
             estimated_price=current_price,
             current_order_counted=False,
+            source=source,
         )
         if not decision.allowed:
             raise ValueError("；".join(decision.reasons))

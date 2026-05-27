@@ -439,7 +439,7 @@ def _combined_quality(values: list[str], latest_hourly: dict[str, Any]) -> str:
 
 def _slot_cutoff_time(slot: str) -> dt_time | None:
     if slot == "midday":
-        return dt_time(hour=13, minute=30)
+        return dt_time(hour=12, minute=0)
     return None
 
 

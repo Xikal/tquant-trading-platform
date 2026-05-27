@@ -218,8 +218,8 @@ if not dsn:
         path.write_text(text, encoding='utf-8')
         print('mysql_dsn:created')
 PY
-sudo docker compose -f "$CLOUD_COMPOSE_FILE" --profile go-bff --profile go-market --profile go-scan build go-bff-gateway go-market-read-service go-scan-worker
-sudo docker compose -f "$CLOUD_COMPOSE_FILE" --profile go-bff --profile go-market --profile go-scan up -d --no-build --force-recreate go-bff-gateway go-market-read-service go-scan-worker
+sudo docker compose -f "$CLOUD_COMPOSE_FILE" build go-bff-gateway go-market-read-service go-scan-worker
+sudo docker compose -f "$CLOUD_COMPOSE_FILE" up -d --no-build --force-recreate go-bff-gateway go-market-read-service go-scan-worker
 EXPECTED_WEB_IMAGE=$(sudo docker image inspect tquant-web:mysql --format '{{.Id}}')
 for container in tquant-app-mysql tquant-runtime-worker-mysql tquant-backtest-worker-mysql; do
   ACTUAL_WEB_IMAGE=$(sudo docker inspect "$container" --format '{{.Image}}')
@@ -289,6 +289,9 @@ echo protected_api:ok
 curl -sS -f -o /tmp/gupiao_home.html --max-time 10 "http://127.0.0.1:${CLOUD_APP_PORT}/"
 grep -q '<div id="root"></div>' /tmp/gupiao_home.html
 echo frontend:ok
+sudo docker compose -f docker-compose.mysql.yml exec -T mysql mysql -uroot -p"$MYSQL_ROOT_PASSWORD" -e "SHOW VARIABLES WHERE Variable_name IN ('slow_query_log','long_query_time','innodb_buffer_pool_size');" >/tmp/gupiao_mysql_tuning.txt
+grep -q $'slow_query_log\tON' /tmp/gupiao_mysql_tuning.txt
+echo mysql_tuning:ok
 REMOTE
 }
 

@@ -23,6 +23,42 @@ func TestWorkspaceTargetURLAddsApiPrefixForShortPath(t *testing.T) {
 	}
 }
 
+func TestMonitorAggregateReturnsPartialWhenPulseIsSlow(t *testing.T) {
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/api/monitor/snapshot":
+			_, _ = w.Write([]byte(`{"updated_at":"2026-05-27 10:00:00","watchlist_signals":[],"priority_board":{"items":[]}}`))
+		case "/api/market/pulse":
+			time.Sleep(250 * time.Millisecond)
+			_, _ = w.Write([]byte(`{"pulse_text":"late"}`))
+		default:
+			_, _ = w.Write([]byte(`{}`))
+		}
+	}))
+	defer upstream.Close()
+
+	cfg := config{
+		pythonAPIBase: upstream.URL,
+		internalToken: "token",
+		sourceTimeout: 50 * time.Millisecond,
+	}
+	req := httptest.NewRequest(http.MethodGet, "/api/bff/v1/workspace/monitor", nil)
+	result := aggregateMonitorWorkspace(cfg, upstream.Client(), req)
+
+	if result.status != http.StatusOK {
+		t.Fatalf("expected ok, got %d", result.status)
+	}
+	if !bytes.Contains(result.body, []byte(`"source":"market_pulse"`)) {
+		t.Fatalf("expected pulse partial error: %s", string(result.body))
+	}
+	if !bytes.Contains(result.body, []byte(`"monitor_snapshot"`)) {
+		t.Fatalf("expected snapshot to remain present: %s", string(result.body))
+	}
+	if !bytes.Contains(result.body, []byte(`source timeout after 50ms`)) {
+		t.Fatalf("expected timeout detail: %s", string(result.body))
+	}
+}
+
 func TestWorkspaceTargetURLKeepsApiPath(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/api/bff/v1/workspace/strategy?run_limit=3", nil)
 
@@ -97,8 +133,10 @@ func TestDurationSecondsAcceptsNumberAndDurationSyntax(t *testing.T) {
 
 func TestRequestIDMiddlewareWritesGeneratedIDToRequestAndResponse(t *testing.T) {
 	var seenRequestID string
+	var seenTraceparent string
 	handler := requestIDMiddleware(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
 		seenRequestID = r.Header.Get("X-Request-ID")
+		seenTraceparent = r.Header.Get("traceparent")
 	}))
 	recorder := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/healthz", nil)
@@ -110,6 +148,32 @@ func TestRequestIDMiddlewareWritesGeneratedIDToRequestAndResponse(t *testing.T) 
 	}
 	if recorder.Header().Get("X-Request-ID") != seenRequestID {
 		t.Fatalf("response request id mismatch got=%s want=%s", recorder.Header().Get("X-Request-ID"), seenRequestID)
+	}
+	if seenTraceparent == "" {
+		t.Fatal("expected generated traceparent on proxied request")
+	}
+	if recorder.Header().Get("traceparent") != seenTraceparent {
+		t.Fatalf("response traceparent mismatch got=%s want=%s", recorder.Header().Get("traceparent"), seenTraceparent)
+	}
+}
+
+func TestRequestIDMiddlewarePreservesIncomingTraceparent(t *testing.T) {
+	incomingTraceparent := "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01"
+	var seenTraceparent string
+	handler := requestIDMiddleware(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
+		seenTraceparent = r.Header.Get("traceparent")
+	}))
+	recorder := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/healthz", nil)
+	req.Header.Set("traceparent", incomingTraceparent)
+
+	handler.ServeHTTP(recorder, req)
+
+	if seenTraceparent != incomingTraceparent {
+		t.Fatalf("request traceparent mismatch got=%s want=%s", seenTraceparent, incomingTraceparent)
+	}
+	if recorder.Header().Get("traceparent") != incomingTraceparent {
+		t.Fatalf("response traceparent mismatch got=%s want=%s", recorder.Header().Get("traceparent"), incomingTraceparent)
 	}
 }
 

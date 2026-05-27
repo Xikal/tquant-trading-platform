@@ -2,6 +2,9 @@
 
 生成日期：2026-05-22
 适用范围：TQuant 后端、BFF、任务队列、行情读取、全市场扫描、回测与指标计算
+
+> 状态更新（2026-05-27）：本文记录 2026-05-22 的分阶段引入方案，其中 “shadow / 默认关闭” 是历史过渡口径。当前有效口径以 `APP_API_SPEC.md`、`PRODUCTION_RUNBOOK.md` 和 `docs/backend-refactor-runtime-runbook-2026-05-22.md` 为准：Go BFF / market-read-service / scan-worker 已作为非策略生产主路径组件治理；策略、筛选、风控、回测、模拟盘决策仍只依赖 Python reference；Rust `tquant_rs` 是 Python 调用的指标加速层，不作为策略真源。
+
 依据报告：
 
 - `/Users/j/Downloads/TQuant_后端重构技术选型全面审查报告.html`
