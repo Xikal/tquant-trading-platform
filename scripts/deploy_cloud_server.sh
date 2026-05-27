@@ -266,7 +266,7 @@ fi"
 
 verify_remote() {
   log "wait for container health"
-  cloud_ssh env CLOUD_APP_PORT="$CLOUD_APP_PORT" bash -s <<'REMOTE'
+  cloud_ssh env CLOUD_APP_PORT="$CLOUD_APP_PORT" CLOUD_PROJECT_DIR="$CLOUD_PROJECT_DIR" bash -s <<'REMOTE'
 set -euo pipefail
 for _ in $(seq 1 40); do
   STATUS=$(sudo docker inspect tquant-app-mysql --format '{{.State.Health.Status}}' 2>/dev/null || echo none)
@@ -289,9 +289,19 @@ echo protected_api:ok
 curl -sS -f -o /tmp/gupiao_home.html --max-time 10 "http://127.0.0.1:${CLOUD_APP_PORT}/"
 grep -q '<div id="root"></div>' /tmp/gupiao_home.html
 echo frontend:ok
-sudo docker compose -f docker-compose.mysql.yml exec -T mysql mysql -uroot -p"$MYSQL_ROOT_PASSWORD" -e "SHOW VARIABLES WHERE Variable_name IN ('slow_query_log','long_query_time','innodb_buffer_pool_size');" >/tmp/gupiao_mysql_tuning.txt
-grep -q $'slow_query_log\tON' /tmp/gupiao_mysql_tuning.txt
-echo mysql_tuning:ok
+cd "$CLOUD_PROJECT_DIR"
+if test -f .env; then
+  set -a
+  . ./.env
+  set +a
+fi
+if test -n "${MYSQL_ROOT_PASSWORD:-}"; then
+  sudo docker compose -f docker-compose.mysql.yml exec -T mysql mysql -uroot -p"$MYSQL_ROOT_PASSWORD" -e "SHOW VARIABLES WHERE Variable_name IN ('slow_query_log','long_query_time','innodb_buffer_pool_size');" >/tmp/gupiao_mysql_tuning.txt
+  grep -q $'slow_query_log\tON' /tmp/gupiao_mysql_tuning.txt
+  echo mysql_tuning:ok
+else
+  echo mysql_tuning:skipped_missing_password
+fi
 REMOTE
 }
 
