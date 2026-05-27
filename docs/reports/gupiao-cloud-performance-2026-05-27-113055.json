@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-05-27 11:28:21",
+  "generated_at": "2026-05-27 11:30:55",
   "api": [
     {
       "name": "readyz",
@@ -7,8 +7,8 @@
       "statuses": [
         200
       ],
-      "p50_ms": 4.306,
-      "p95_ms": 4.804
+      "p50_ms": 7.489,
+      "p95_ms": 38.551
     },
     {
       "name": "monitor_bff",
@@ -16,8 +16,8 @@
       "statuses": [
         200
       ],
-      "p50_ms": 13.15,
-      "p95_ms": 17.55
+      "p50_ms": 12.865,
+      "p95_ms": 26.965
     },
     {
       "name": "market_pulse",
@@ -25,8 +25,8 @@
       "statuses": [
         200
       ],
-      "p50_ms": 13.232,
-      "p95_ms": 23.106
+      "p50_ms": 12.67,
+      "p95_ms": 13.212
     },
     {
       "name": "priority_board",
@@ -34,8 +34,8 @@
       "statuses": [
         200
       ],
-      "p50_ms": 29.752,
-      "p95_ms": 34.964
+      "p50_ms": 20.748,
+      "p95_ms": 25.34
     },
     {
       "name": "watchlist_signals",
@@ -43,8 +43,8 @@
       "statuses": [
         200
       ],
-      "p50_ms": 8.351,
-      "p95_ms": 12.908
+      "p50_ms": 9.038,
+      "p95_ms": 10.434
     }
   ],
   "go_scan_accept": {
@@ -53,8 +53,8 @@
     "statuses": [
       202
     ],
-    "p50_ms": 112.355,
-    "p95_ms": 135.933
+    "p50_ms": 104.272,
+    "p95_ms": 126.668
   },
   "rust_finance_math": {
     "module": "tquant_rs",
@@ -111,7 +111,7 @@
       ],
       "message": "已刷新 80 只标的本地行情缓存，Redis 写入 80 条"
     },
-    "redis_quote_keys": 5049,
+    "redis_quote_keys": 5201,
     "symbols_checked": 20,
     "items_returned": 20,
     "missing_count": 0,
@@ -119,15 +119,15 @@
   },
   "go_bff_metrics": {
     "tquant_bff_gateway_up": 1.0,
-    "tquant_bff_gateway_aggregate_hits_total": 9.0,
+    "tquant_bff_gateway_aggregate_hits_total": 3.0,
     "tquant_bff_gateway_proxy_fallbacks_total": 0.0,
-    "tquant_bff_gateway_cache_lookups_total": 23.0,
-    "tquant_bff_gateway_cache_hits_total": 14.0,
-    "tquant_bff_gateway_cache_hit_rate": 0.608696,
-    "tquant_bff_gateway_cache_items": 0.0,
+    "tquant_bff_gateway_cache_lookups_total": 10.0,
+    "tquant_bff_gateway_cache_hits_total": 7.0,
+    "tquant_bff_gateway_cache_hit_rate": 0.7,
+    "tquant_bff_gateway_cache_items": 1.0,
     "tquant_bff_gateway_cache_ttl_seconds": 5.0,
-    "tquant_bff_gateway_partial_source_failures_total": 23.0,
-    "tquant_bff_gateway_workspace_aggregate_hits_total{workspace=\"monitor\"}": 9.0,
+    "tquant_bff_gateway_partial_source_failures_total": 8.0,
+    "tquant_bff_gateway_workspace_aggregate_hits_total{workspace=\"monitor\"}": 3.0,
     "tquant_bff_gateway_workspace_aggregate_hits_total{workspace=\"paper\"}": 0.0,
     "tquant_bff_gateway_workspace_aggregate_hits_total{workspace=\"strategy\"}": 0.0,
     "tquant_bff_gateway_workspace_aggregate_hits_total{workspace=\"settings\"}": 0.0,
@@ -140,12 +140,12 @@
   },
   "go_market_metrics": {
     "tquant_market_read_service_up": 1.0,
-    "tquant_market_read_hits_total": 3.0,
-    "tquant_market_read_fallbacks_total": 8.0,
+    "tquant_market_read_hits_total": 1.0,
+    "tquant_market_read_fallbacks_total": 1.0,
     "tquant_market_read_partials_total": 0.0,
-    "tquant_market_read_redis_hits_total": 16303.0,
-    "tquant_market_read_cache_miss_total": 125.0,
-    "tquant_market_read_mysql_fallbacks_total": 102.0
+    "tquant_market_read_redis_hits_total": 3053.0,
+    "tquant_market_read_cache_miss_total": 3.0,
+    "tquant_market_read_mysql_fallbacks_total": 0.0
   },
   "go_scan": [
     {
@@ -160,10 +160,10 @@
           "detail": "Go scan-worker invokes the Python reference strategy engine and only publishes when that reference write succeeds.",
           "status": "python_reference_order"
         },
-        "scan_accepted_total": 22,
+        "scan_accepted_total": 9,
         "scan_failures_total": 0,
         "scan_fallbacks_total": 0,
-        "scan_runs_total": 22,
+        "scan_runs_total": 9,
         "scan_worker_role": "go_orchestrated_reference",
         "snapshot_writes_total": 0,
         "strategy_engine": "python_reference"
