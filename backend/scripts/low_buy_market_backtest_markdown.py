@@ -58,8 +58,8 @@ def render_markdown_report(report: dict) -> str:
             "",
             "## 策略执行绩效",
             "",
-            "| 策略 | 成交 | 总收益 | 年化 | 最大回撤 | Sharpe | 胜率 | 盈亏比 | PF | 平均持仓 | 回撤恢复 |",
-            "|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---|",
+            "| 策略 | 成交 | 资金受限总收益 | 年化 | 最大回撤 | 均笔净收益 | 日均信号收益 | 诊断复利 | Sharpe | 胜率 | PF | 平均持仓 | 回撤恢复 |",
+            "|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---|",
         ]
     )
     for item in report["strategies"]:
@@ -121,26 +121,29 @@ def _render_signal_group_summary(label: str, item: dict) -> str:
 def _render_performance_summary(label: str, metrics: dict) -> str:
     metrics = _safe_performance(metrics)
     return (
-        f"- {label}：成交 {metrics['trade_count']}，总收益 {metrics['total_return_pct']}%，年化 {metrics['annualized_return_pct']}%，"
+        f"- {label}：成交 {metrics['trade_count']}，资金受限总收益 {metrics['total_return_pct']}%，年化 {metrics['annualized_return_pct']}%，"
         f"最大回撤 {metrics['max_drawdown_pct']}%，Sharpe {metrics['sharpe_ratio']}，胜率 {metrics['win_rate_pct']}%，"
+        f"均笔净收益 {metrics['avg_net_return_pct']}%，日均信号收益 {metrics['avg_daily_signal_return_pct']}%，"
         f"盈亏比 {metrics['profit_loss_ratio']}，PF {metrics['profit_factor']}，平均持仓 {metrics['avg_holding_days']} 天；"
-        f"{metrics['drawdown_recovery_status']}。"
+        f"{metrics['drawdown_recovery_status']}。原逐信号复利诊断值 {metrics['diagnostic_compound_return_pct']}%，不作为真实资金收益。"
     )
 
 
 def _render_strategy_performance_row(strategy: dict) -> str:
     metrics = _safe_performance(strategy.get("backtest_metrics", {}))
     return (
-        "| {title} | {trades} | {total}% | {annualized}% | {drawdown}% | {sharpe} | {win}% | {pl} | {pf} | {holding} | {recovery} |"
+        "| {title} | {trades} | {total}% | {annualized}% | {drawdown}% | {avg_net}% | {avg_daily}% | {diag}% | {sharpe} | {win}% | {pf} | {holding} | {recovery} |"
     ).format(
         title=strategy["strategy_title"],
         trades=metrics["trade_count"],
         total=metrics["total_return_pct"],
         annualized=metrics["annualized_return_pct"],
         drawdown=metrics["max_drawdown_pct"],
+        avg_net=metrics["avg_net_return_pct"],
+        avg_daily=metrics["avg_daily_signal_return_pct"],
+        diag=metrics["diagnostic_compound_return_pct"],
         sharpe=metrics["sharpe_ratio"],
         win=metrics["win_rate_pct"],
-        pl=metrics["profit_loss_ratio"],
         pf=metrics["profit_factor"],
         holding=metrics["avg_holding_days"],
         recovery=metrics["drawdown_recovery_status"],
@@ -305,5 +308,8 @@ def _safe_performance(item: dict | None) -> dict:
         "profit_loss_ratio": 0.0,
         "profit_factor": 0.0,
         "avg_holding_days": 0.0,
+        "avg_net_return_pct": 0.0,
+        "avg_daily_signal_return_pct": 0.0,
+        "diagnostic_compound_return_pct": 0.0,
     }
     return {**defaults, **(item or {})}

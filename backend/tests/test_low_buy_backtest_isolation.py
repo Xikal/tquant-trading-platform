@@ -3,6 +3,7 @@ from __future__ import annotations
 import unittest
 
 from app.repositories.low_buy import DailyBarRow
+from scripts.low_buy_market_backtest_reporting import TradeOutcome, backtest_performance_metrics
 from scripts.low_buy_market_backtest import _build_ranked_pools_from_daily_rows, _load_or_build_snapshot
 
 
@@ -113,6 +114,43 @@ class LowBuyBacktestIsolationTests(unittest.TestCase):
         self.assertEqual([item.symbol for item in pools["2026-04-22"]], ["000001"])
         self.assertEqual(pools["2026-04-22"][0].board_date, "2026-04-21")
         self.assertEqual(pools["2026-04-22"][0].board_count, 1)
+
+    def test_performance_metrics_use_capital_limited_daily_signal_curve(self) -> None:
+        outcomes = [
+            _trade_outcome("2026-04-20", 10.0),
+            _trade_outcome("2026-04-20", 10.0),
+            _trade_outcome("2026-04-21", 10.0),
+        ]
+
+        metrics = backtest_performance_metrics(outcomes)
+
+        self.assertEqual(metrics["trade_count"], 3)
+        self.assertEqual(metrics["total_return_pct"], 21.0)
+        self.assertEqual(metrics["diagnostic_compound_return_pct"], 33.1)
+        self.assertEqual(metrics["capital_model"], "one_unit_per_signal_day_equal_weight")
+
+
+def _trade_outcome(signal_date: str, net_return_pct: float) -> TradeOutcome:
+    return TradeOutcome(
+        symbol="000001",
+        name="测试",
+        signal_date=signal_date,
+        strategy_key="volume_shrink",
+        buy_signal_state="buy_now",
+        entry_price=10.0,
+        execution_status="filled",
+        net_return_pct=net_return_pct,
+        execution_exit_reason="触发首次止盈位。",
+        return_1d=net_return_pct,
+        return_2d=net_return_pct,
+        return_3d=net_return_pct,
+        return_4d=net_return_pct,
+        return_5d=net_return_pct,
+        max_gain_5d=net_return_pct,
+        max_drawdown_5d=0.0,
+        entry_trade_date=signal_date,
+        exit_trade_date=signal_date,
+    )
 
 def _daily_row(
     trade_date: str,

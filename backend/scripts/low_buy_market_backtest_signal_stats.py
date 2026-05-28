@@ -148,98 +148,12 @@ def profit_factor(wins: list[float], losses: list[float]) -> float:
 
 
 def _performance_metrics(outcomes: list[Any]) -> dict[str, Any]:
-    filled = [item for item in outcomes if item.execution_status == "filled"]
-    returns = [float(item.net_return_pct or 0.0) for item in filled]
-    equity_curve = _equity_curve(returns)
-    drawdown = _drawdown_stats(equity_curve)
-    holding_days = [_holding_days(item) for item in filled if _holding_days(item) > 0]
-    wins = [value for value in returns if value > 0]
-    losses = [abs(value) for value in returns if value < 0]
-    total_return = round((equity_curve[-1] - 1.0) * 100, 4) if equity_curve else 0.0
-    return {
-        "trade_count": len(filled),
-        "total_return_pct": total_return,
-        "annualized_return_pct": _annualized_return(total_return, filled),
-        "max_drawdown_pct": drawdown["max_drawdown_pct"],
-        "drawdown_recovery_trades": drawdown["drawdown_recovery_trades"],
-        "drawdown_recovery_status": drawdown["drawdown_recovery_status"],
-        "sharpe_ratio": _sharpe_ratio(returns),
-        "profit_loss_ratio": round((mean(wins) / mean(losses)), 4) if wins and losses else 0.0,
-        "avg_holding_days": round(mean(holding_days), 2) if holding_days else 0.0,
-        "median_holding_days": round(median(holding_days), 2) if holding_days else 0.0,
-    }
-
-
-def _equity_curve(returns_pct: list[float]) -> list[float]:
-    equity = 1.0
-    curve: list[float] = []
-    for value in returns_pct:
-        equity *= max(0.0, 1.0 + value / 100.0)
-        curve.append(equity)
-    return curve
-
-
-def _drawdown_stats(equity_curve: list[float]) -> dict[str, Any]:
-    if not equity_curve:
-        return {"max_drawdown_pct": 0.0, "drawdown_recovery_trades": 0, "drawdown_recovery_status": "无成交"}
-    peak = 1.0
-    max_drawdown = 0.0
-    trough_index = 0
-    recovered = True
-    recovery_trades = 0
-    for index, equity in enumerate(equity_curve):
-        if equity > peak:
-            peak = equity
-        drawdown = equity / max(peak, 0.000001) - 1.0
-        if drawdown < max_drawdown:
-            max_drawdown = drawdown
-            trough_index = index
-            recovered = False
-            recovery_trades = 0
-        elif not recovered and equity >= peak:
-            recovered = True
-            recovery_trades = index - trough_index
-    if max_drawdown == 0.0:
-        status = "未发生回撤"
-    elif recovered:
-        status = f"最大回撤后 {recovery_trades} 笔交易恢复"
-    else:
-        status = "截至回测结束尚未恢复最大回撤"
-        recovery_trades = len(equity_curve) - trough_index - 1
-    return {
-        "max_drawdown_pct": round(max_drawdown * 100.0, 4),
-        "drawdown_recovery_trades": recovery_trades,
-        "drawdown_recovery_status": status,
-    }
-
-
-def _annualized_return(total_return_pct: float, filled: list[Any]) -> float:
-    dates = sorted({str(item.signal_date) for item in filled if getattr(item, "signal_date", "")})
-    if len(dates) < 2:
-        return 0.0
     try:
-        from datetime import date
+        from .low_buy_market_backtest_reporting import backtest_performance_metrics
+    except ImportError:
+        from low_buy_market_backtest_reporting import backtest_performance_metrics
 
-        start = date.fromisoformat(dates[0])
-        end = date.fromisoformat(dates[-1])
-    except ValueError:
-        return 0.0
-    days = max((end - start).days, 1)
-    total_multiple = max(0.0, 1.0 + total_return_pct / 100.0)
-    if total_multiple <= 0:
-        return -100.0
-    return round((total_multiple ** (365.0 / days) - 1.0) * 100.0, 4)
-
-
-def _sharpe_ratio(returns_pct: list[float]) -> float:
-    if len(returns_pct) < 2:
-        return 0.0
-    avg_return = mean(returns_pct)
-    variance = sum((value - avg_return) ** 2 for value in returns_pct) / (len(returns_pct) - 1)
-    stddev = math.sqrt(variance)
-    if stddev <= 0:
-        return 0.0
-    return round((avg_return / stddev) * math.sqrt(252), 4)
+    return backtest_performance_metrics(outcomes)
 
 
 def _holding_days(item: Any) -> int:

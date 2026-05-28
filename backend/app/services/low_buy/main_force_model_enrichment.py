@@ -60,6 +60,7 @@ def enrich_candidates_with_main_force_model(
     market_state: str,
     sector_strength_by_symbol: dict[str, float] | None = None,
     market_strength: float = 0.0,
+    record_shadow: bool = True,
 ) -> list[LowBuyCandidateOut]:
     if not candidates:
         return []
@@ -72,6 +73,7 @@ def enrich_candidates_with_main_force_model(
             market_state=market_state,
             sector_strength=strengths.get(candidate.symbol, _candidate_sector_strength(candidate)),
             market_strength=market_strength,
+            record_shadow=record_shadow,
         )
         for candidate in candidates
     ]

@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import date
 import math
+from collections import defaultdict
 from typing import Any
 
 from app.services.low_buy.shared import PERFORMANCE_FORWARD_DAYS
@@ -299,6 +300,7 @@ def build_report(
             "股票池使用 A 股全市场清单计数，策略实际候选由全市场近期涨停/强势结构筛出。",
             "确定买入统计 buy_now / soft_buy_now；观察确认单独统计 observe_confirmed；接近买点单独统计 near_entry，均输出 1/2/3/4/5 日结果。",
             "真实执行指标按信号后 2 日触达买点、止损/止盈/移动防守退出，并扣除 16bps 成本计算。",
+            "总收益/年化按每日信号等权投入 1 单位资金估算；逐信号无资金约束复利仅保留为诊断字段，不作为真实收益。",
             f"冲高命中按买入后 {PERFORMANCE_FORWARD_DAYS} 个交易日内最高价达到 {target_profit_pct:.1f}% 计算，仅作为辅助观察。",
             "1/2/3/4/5 日收益按触发日参考入场价到后续收盘价计算，用于持股周期观察，并按平均收益给出最佳持股天数。",
             "接近买点样本按买点区参考价估算结果，用于观察信号质量，不等同已经触发买入。",
@@ -550,18 +552,21 @@ def backtest_performance_metrics(outcomes: list[TradeOutcome], states: set[str] 
     scoped = [item for item in outcomes if states is None or item.buy_signal_state in states]
     filled = [item for item in scoped if item.execution_status == "filled"]
     returns = [float(item.net_return_pct or 0.0) for item in filled]
-    equity_curve = _equity_curve(returns)
-    drawdown = _drawdown_stats(equity_curve)
+    diagnostic_curve = _equity_curve(returns)
+    capital_curve = _capital_limited_equity_curve(filled)
+    drawdown = _drawdown_stats(capital_curve)
     holding_days = [_holding_days(item) for item in filled if _holding_days(item) > 0]
     wins = [value for value in returns if value > 0]
     losses = [abs(value) for value in returns if value < 0]
-    total_return = round((equity_curve[-1] - 1.0) * 100, 4) if equity_curve else 0.0
-    annualized = _annualized_return(total_return, filled)
+    capital_return = round((capital_curve[-1] - 1.0) * 100, 4) if capital_curve else 0.0
+    diagnostic_compound_return = round((diagnostic_curve[-1] - 1.0) * 100, 4) if diagnostic_curve else 0.0
+    annualized = _annualized_return(capital_return, filled)
     sharpe = _sharpe_ratio(returns)
+    daily_returns = _daily_signal_return_stats(filled)
     return {
         "trade_count": len(filled),
         "evaluated_count": len(scoped),
-        "total_return_pct": total_return,
+        "total_return_pct": capital_return,
         "annualized_return_pct": annualized,
         "max_drawdown_pct": drawdown["max_drawdown_pct"],
         "drawdown_recovery_trades": drawdown["drawdown_recovery_trades"],
@@ -572,6 +577,16 @@ def backtest_performance_metrics(outcomes: list[TradeOutcome], states: set[str] 
         "profit_factor": profit_factor(wins, losses),
         "avg_holding_days": round(sum(holding_days) / len(holding_days), 2) if holding_days else 0.0,
         "median_holding_days": _median_float(holding_days),
+        "avg_net_return_pct": round(sum(returns) / len(returns), 4) if returns else 0.0,
+        "median_net_return_pct": _median_float(returns),
+        "avg_daily_signal_return_pct": daily_returns["avg_daily_signal_return_pct"],
+        "median_daily_signal_return_pct": daily_returns["median_daily_signal_return_pct"],
+        "signal_days": daily_returns["signal_days"],
+        "avg_trades_per_signal_day": daily_returns["avg_trades_per_signal_day"],
+        "capital_model": "one_unit_per_signal_day_equal_weight",
+        "capital_model_note": "总收益/年化按每日信号等权投入 1 单位资金估算，避免逐信号无资金约束复利夸大。",
+        "diagnostic_compound_return_pct": diagnostic_compound_return,
+        "diagnostic_compound_return_note": "诊断字段：逐成交信号连续复利，不代表真实资金曲线。",
     }
 
 
@@ -582,6 +597,42 @@ def _equity_curve(returns_pct: list[float]) -> list[float]:
         equity *= max(0.0, 1.0 + value / 100.0)
         curve.append(equity)
     return curve
+
+
+def _capital_limited_equity_curve(filled: list[TradeOutcome]) -> list[float]:
+    by_date: dict[str, list[float]] = defaultdict(list)
+    for item in filled:
+        trade_date = item.signal_date or item.entry_trade_date or item.exit_trade_date
+        if not trade_date:
+            continue
+        by_date[str(trade_date)].append(float(item.net_return_pct or 0.0))
+    equity = 1.0
+    curve: list[float] = []
+    for trade_date in sorted(by_date):
+        returns = by_date[trade_date]
+        if not returns:
+            continue
+        daily_return = sum(returns) / len(returns)
+        equity *= max(0.0, 1.0 + daily_return / 100.0)
+        curve.append(equity)
+    return curve
+
+
+def _daily_signal_return_stats(filled: list[TradeOutcome]) -> dict[str, Any]:
+    by_date: dict[str, list[float]] = defaultdict(list)
+    for item in filled:
+        trade_date = item.signal_date or item.entry_trade_date or item.exit_trade_date
+        if not trade_date:
+            continue
+        by_date[str(trade_date)].append(float(item.net_return_pct or 0.0))
+    daily_returns = [sum(values) / len(values) for _, values in sorted(by_date.items()) if values]
+    trade_counts = [len(values) for values in by_date.values() if values]
+    return {
+        "signal_days": len(daily_returns),
+        "avg_daily_signal_return_pct": round(sum(daily_returns) / len(daily_returns), 4) if daily_returns else 0.0,
+        "median_daily_signal_return_pct": _median_float(daily_returns),
+        "avg_trades_per_signal_day": round(sum(trade_counts) / len(trade_counts), 2) if trade_counts else 0.0,
+    }
 
 
 def _drawdown_stats(equity_curve: list[float]) -> dict[str, Any]:

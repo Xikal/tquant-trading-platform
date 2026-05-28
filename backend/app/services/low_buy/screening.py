@@ -132,6 +132,8 @@ class LowBuyScreeningMixin(LowBuyQuoteRefreshMixin):
         scan_mode: str = "quick",
         compute_performance: bool = True,
         history_wait_timeout_seconds: float | None = None,
+        bypass_cache: bool = False,
+        record_shadow: bool = True,
     ) -> LowBuyScreenerResponse:
         playbook = self._get_playbook(strategy)
         trade_dates = self._get_recent_trade_dates(14)
@@ -152,7 +154,7 @@ class LowBuyScreeningMixin(LowBuyQuoteRefreshMixin):
             scan_mode=scan_mode,
         )
         cached = self._get_screen_cache(cache_key)
-        if cached is not None:
+        if cached is not None and not bypass_cache:
             cached = self._normalize_response_candidate_policy_state(cached)
             return attach_response_recommendation_durations(db=db, payload=cached).model_copy(deep=True)
 
@@ -259,6 +261,7 @@ class LowBuyScreeningMixin(LowBuyQuoteRefreshMixin):
             histories=histories,
             market_state=market_regime.state,
             market_strength=market_regime.state_strength,
+            record_shadow=record_shadow,
         )
         evaluated = self._apply_live_quotes(evaluated, quote_map=batch_quotes)
         evaluated.sort(key=lambda item: (self._signal_rank(item.buy_signal_state), item.score), reverse=True)
