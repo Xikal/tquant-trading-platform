@@ -2,7 +2,9 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -56,6 +58,49 @@ func TestMonitorAggregateReturnsPartialWhenPulseIsSlow(t *testing.T) {
 	}
 	if !bytes.Contains(result.body, []byte(`source timeout after 50ms`)) {
 		t.Fatalf("expected timeout detail: %s", string(result.body))
+	}
+}
+
+func TestMonitorAggregateUsesShortDeadlineForHeavyOptionalSources(t *testing.T) {
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch r.URL.Path {
+		case "/api/monitor/snapshot":
+			_, _ = w.Write([]byte(`{"updated_at":"2026-05-27 10:00:00","watchlist_signals":[],"priority_board":{"items":[]}}`))
+		case "/api/market/breadth", "/api/market/sector-relative-strength", "/api/market/paired-hedge-research":
+			time.Sleep(700 * time.Millisecond)
+			_, _ = w.Write([]byte(`{"late":true}`))
+		default:
+			_, _ = w.Write([]byte(`{}`))
+		}
+	}))
+	defer upstream.Close()
+
+	cfg := config{
+		pythonAPIBase: upstream.URL,
+		internalToken: "token",
+		sourceTimeout: 900 * time.Millisecond,
+	}
+	req := httptest.NewRequest(http.MethodGet, "/api/bff/v1/workspace/monitor", nil)
+	started := time.Now()
+	result := aggregateMonitorWorkspace(cfg, upstream.Client(), req)
+
+	if result.status != http.StatusOK {
+		t.Fatalf("expected ok, got %d", result.status)
+	}
+	if elapsed := time.Since(started); elapsed >= 600*time.Millisecond {
+		t.Fatalf("expected heavy optional sources to short-timeout, elapsed=%s body=%s", elapsed, string(result.body))
+	}
+	for _, source := range []string{"market_breadth", "sector_relative_strength", "paired_hedge"} {
+		if !bytes.Contains(result.body, []byte(`"source":"`+source+`"`)) {
+			t.Fatalf("expected %s partial error: %s", source, string(result.body))
+		}
+	}
+	if !bytes.Contains(result.body, []byte(`source timeout after 250ms`)) {
+		t.Fatalf("expected short timeout detail: %s", string(result.body))
+	}
+	if !bytes.Contains(result.body, []byte(`"monitor_snapshot"`)) {
+		t.Fatalf("expected snapshot to remain present: %s", string(result.body))
 	}
 }
 
@@ -315,6 +360,11 @@ func TestMetricsExposeCacheAndWorkspaceDimensions(t *testing.T) {
 	if !bytes.Contains([]byte(body), []byte(`tquant_bff_gateway_workspace_proxy_fallbacks_total{workspace="settings"} 1`)) {
 		t.Fatalf("metrics missing settings proxy dimension: %s", body)
 	}
+	for _, reason := range []string{"timeout", "status", "decode", "other"} {
+		if !bytes.Contains([]byte(body), []byte(`tquant_bff_gateway_partial_source_failures_total{reason="`+reason+`"}`)) {
+			t.Fatalf("metrics missing partial reason %s: %s", reason, body)
+		}
+	}
 }
 
 func TestAggregateMonitorWorkspaceIncludesPulseAndReview(t *testing.T) {
@@ -465,6 +515,7 @@ func TestAggregateFactorWorkspaceBuildsPayload(t *testing.T) {
 
 func TestAggregateMonitorWorkspacePartialFailureIsObservable(t *testing.T) {
 	bffPartialSourceFailures.Store(0)
+	bffPartialStatusFailures.Store(0)
 	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
@@ -486,8 +537,26 @@ func TestAggregateMonitorWorkspacePartialFailureIsObservable(t *testing.T) {
 	if !bytes.Contains(result.body, []byte(`"source":"monitor_review"`)) {
 		t.Fatalf("monitor aggregate should report review partial error: %s", string(result.body))
 	}
+	if !bytes.Contains(result.body, []byte(`"reason":"status"`)) {
+		t.Fatalf("monitor aggregate should report partial reason: %s", string(result.body))
+	}
 	if bffPartialSourceFailures.Load() == 0 {
 		t.Fatal("expected partial source failure metric to increment")
+	}
+	if bffPartialStatusFailures.Load() == 0 {
+		t.Fatal("expected status partial source failure metric to increment")
+	}
+}
+
+func TestPartialReasonClassifiesTimeoutStatusAndDecode(t *testing.T) {
+	if got := partialReason(context.DeadlineExceeded); got != "timeout" {
+		t.Fatalf("timeout reason mismatch: %s", got)
+	}
+	if got := partialReason(errors.New("source market_pulse returned status 502")); got != "status" {
+		t.Fatalf("status reason mismatch: %s", got)
+	}
+	if got := partialReason(errors.New("invalid character '<' looking for beginning of value")); got != "decode" {
+		t.Fatalf("decode reason mismatch: %s", got)
 	}
 }
 

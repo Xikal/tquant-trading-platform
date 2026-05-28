@@ -168,6 +168,10 @@ class AppSettings(BaseSettings):
     paper_auto_trading_max_orders: int = 5
     paper_auto_trading_dry_run: bool = False
     paper_auto_trading_min_score: int = 75
+    paper_exit_model_enabled: bool = True
+    paper_exit_model_artifact_path: str = ""
+    paper_exit_model_min_confidence: float = 0.55
+    paper_exit_model_strong_confidence: float = 0.75
     market_review_enabled: bool = True
     paper_perf_archive_enabled: bool = True
     paper_perf_archive_time: str = "15:05"

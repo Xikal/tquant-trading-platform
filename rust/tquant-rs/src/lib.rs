@@ -3,7 +3,8 @@ use pyo3::prelude::*;
 mod finance_core;
 
 pub use finance_core::{
-    atr_wilder_values, max_drawdown_values, rank_ic_value, rolling_mean_values, rsi_wilder_value,
+    atr_wilder_values, beta_value, bollinger_bands_values, correlation_value, max_drawdown_values,
+    rank_ic_value, rolling_mean_values, rolling_std_values, rsi_wilder_value, volatility_value,
     vwap_value,
 };
 
@@ -15,6 +16,35 @@ fn max_drawdown(equity: Vec<f64>) -> PyResult<f64> {
 #[pyfunction]
 fn rolling_mean(values: Vec<f64>, window: usize) -> PyResult<Vec<Option<f64>>> {
     Ok(rolling_mean_values(&values, window))
+}
+
+#[pyfunction]
+fn rolling_std(values: Vec<f64>, window: usize) -> PyResult<Vec<Option<f64>>> {
+    Ok(rolling_std_values(&values, window))
+}
+
+#[pyfunction]
+fn volatility(returns: Vec<f64>, periods_per_year: f64) -> PyResult<Option<f64>> {
+    Ok(volatility_value(&returns, periods_per_year))
+}
+
+#[pyfunction]
+fn correlation(left: Vec<f64>, right: Vec<f64>) -> PyResult<Option<f64>> {
+    Ok(correlation_value(&left, &right))
+}
+
+#[pyfunction]
+fn beta(asset_returns: Vec<f64>, benchmark_returns: Vec<f64>) -> PyResult<Option<f64>> {
+    Ok(beta_value(&asset_returns, &benchmark_returns))
+}
+
+#[pyfunction]
+fn bollinger_bands(
+    values: Vec<f64>,
+    window: usize,
+    num_std: f64,
+) -> PyResult<Vec<Option<(f64, f64, f64)>>> {
+    Ok(bollinger_bands_values(&values, window, num_std))
 }
 
 #[pyfunction]
@@ -46,6 +76,11 @@ fn rank_ic(factor: Vec<f64>, returns: Vec<f64>) -> PyResult<Option<f64>> {
 fn tquant_rs(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(max_drawdown, m)?)?;
     m.add_function(wrap_pyfunction!(rolling_mean, m)?)?;
+    m.add_function(wrap_pyfunction!(rolling_std, m)?)?;
+    m.add_function(wrap_pyfunction!(volatility, m)?)?;
+    m.add_function(wrap_pyfunction!(correlation, m)?)?;
+    m.add_function(wrap_pyfunction!(beta, m)?)?;
+    m.add_function(wrap_pyfunction!(bollinger_bands, m)?)?;
     m.add_function(wrap_pyfunction!(atr_wilder, m)?)?;
     m.add_function(wrap_pyfunction!(rsi_wilder, m)?)?;
     m.add_function(wrap_pyfunction!(vwap, m)?)?;
@@ -69,6 +104,41 @@ mod tests {
         let values = rolling_mean(vec![1.0, 2.0, 3.0, 4.0], 3).unwrap();
 
         assert_eq!(values, vec![None, None, Some(2.0), Some(3.0)]);
+    }
+
+    #[test]
+    fn rolling_std_uses_sample_standard_deviation() {
+        let values = rolling_std(vec![1.0, 2.0, 3.0, 5.0], 3).unwrap();
+
+        assert!(values[0].is_none());
+        assert!(values[1].is_none());
+        assert!((values[2].unwrap() - 1.0).abs() < 1e-9);
+        assert!((values[3].unwrap() - 1.5275252316519468).abs() < 1e-9);
+    }
+
+    #[test]
+    fn correlation_and_beta_are_numeric_only() {
+        let corr = correlation(vec![0.01, 0.02, -0.01], vec![0.02, 0.04, -0.02])
+            .unwrap()
+            .unwrap();
+        let beta_value = beta(vec![0.01, 0.02, -0.01], vec![0.02, 0.04, -0.02])
+            .unwrap()
+            .unwrap();
+
+        assert!((corr - 1.0).abs() < 1e-9);
+        assert!((beta_value - 0.5).abs() < 1e-9);
+    }
+
+    #[test]
+    fn bollinger_bands_keep_warmup_empty() {
+        let values = bollinger_bands(vec![1.0, 2.0, 3.0], 3, 2.0).unwrap();
+
+        assert!(values[0].is_none());
+        assert!(values[1].is_none());
+        let (upper, middle, lower) = values[2].unwrap();
+        assert!((upper - 4.0).abs() < 1e-9);
+        assert!((middle - 2.0).abs() < 1e-9);
+        assert!((lower - 0.0).abs() < 1e-9);
     }
 
     #[test]

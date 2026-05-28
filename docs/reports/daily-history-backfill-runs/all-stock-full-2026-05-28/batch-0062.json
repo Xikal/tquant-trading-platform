@@ -1,0 +1,475 @@
+{
+  "generated_at": "2026-05-27T23:28:20",
+  "status": "completed",
+  "config": {
+    "scope": "symbols",
+    "symbols": 50,
+    "start_date": "2024-05-28",
+    "end_date": "2026-04-28",
+    "workers": 4,
+    "force": false
+  },
+  "totals": {
+    "ok": 0,
+    "skip": 50,
+    "empty": 0,
+    "error": 0
+  },
+  "results": [
+    {
+      "symbol": "600469",
+      "status": "skip",
+      "rows": 0,
+      "message": "coverage complete",
+      "source": "",
+      "adjusted_mode": "",
+      "data_quality": ""
+    },
+    {
+      "symbol": "600470",
+      "status": "skip",
+      "rows": 0,
+      "message": "coverage complete",
+      "source": "",
+      "adjusted_mode": "",
+      "data_quality": ""
+    },
+    {
+      "symbol": "600475",
+      "status": "skip",
+      "rows": 0,
+      "message": "coverage complete",
+      "source": "",
+      "adjusted_mode": "",
+      "data_quality": ""
+    },
+    {
+      "symbol": "600477",
+      "status": "skip",
+      "rows": 0,
+      "message": "coverage complete",
+      "source": "",
+      "adjusted_mode": "",
+      "data_quality": ""
+    },
+    {
+      "symbol": "600478",
+      "status": "skip",
+      "rows": 0,
+      "message": "coverage complete",
+      "source": "",
+      "adjusted_mode": "",
+      "data_quality": ""
+    },
+    {
+      "symbol": "600479",
+      "status": "skip",
+      "rows": 0,
+      "message": "coverage complete",
+      "source": "",
+      "adjusted_mode": "",
+      "data_quality": ""
+    },
+    {
+      "symbol": "600480",
+      "status": "skip",
+      "rows": 0,
+      "message": "coverage complete",
+      "source": "",
+      "adjusted_mode": "",
+      "data_quality": ""
+    },
+    {
+      "symbol": "600481",
+      "status": "skip",
+      "rows": 0,
+      "message": "coverage complete",
+      "source": "",
+      "adjusted_mode": "",
+      "data_quality": ""
+    },
+    {
+      "symbol": "600482",
+      "status": "skip",
+      "rows": 0,
+      "message": "coverage complete",
+      "source": "",
+      "adjusted_mode": "",
+      "data_quality": ""
+    },
+    {
+      "symbol": "600483",
+      "status": "skip",
+      "rows": 0,
+      "message": "coverage complete",
+      "source": "",
+      "adjusted_mode": "",
+      "data_quality": ""
+    },
+    {
+      "symbol": "600486",
+      "status": "skip",
+      "rows": 0,
+      "message": "coverage complete",
+      "source": "",
+      "adjusted_mode": "",
+      "data_quality": ""
+    },
+    {
+      "symbol": "600487",
+      "status": "skip",
+      "rows": 0,
+      "message": "coverage complete",
+      "source": "",
+      "adjusted_mode": "",
+      "data_quality": ""
+    },
+    {
+      "symbol": "600488",
+      "status": "skip",
+      "rows": 0,
+      "message": "coverage complete",
+      "source": "",
+      "adjusted_mode": "",
+      "data_quality": ""
+    },
+    {
+      "symbol": "600489",
+      "status": "skip",
+      "rows": 0,
+      "message": "coverage complete",
+      "source": "",
+      "adjusted_mode": "",
+      "data_quality": ""
+    },
+    {
+      "symbol": "600490",
+      "status": "skip",
+      "rows": 0,
+      "message": "coverage complete",
+      "source": "",
+      "adjusted_mode": "",
+      "data_quality": ""
+    },
+    {
+      "symbol": "600493",
+      "status": "skip",
+      "rows": 0,
+      "message": "coverage complete",
+      "source": "",
+      "adjusted_mode": "",
+      "data_quality": ""
+    },
+    {
+      "symbol": "600495",
+      "status": "skip",
+      "rows": 0,
+      "message": "coverage complete",
+      "source": "",
+      "adjusted_mode": "",
+      "data_quality": ""
+    },
+    {
+      "symbol": "600496",
+      "status": "skip",
+      "rows": 0,
+      "message": "coverage complete",
+      "source": "",
+      "adjusted_mode": "",
+      "data_quality": ""
+    },
+    {
+      "symbol": "600497",
+      "status": "skip",
+      "rows": 0,
+      "message": "coverage complete",
+      "source": "",
+      "adjusted_mode": "",
+      "data_quality": ""
+    },
+    {
+      "symbol": "600498",
+      "status": "skip",
+      "rows": 0,
+      "message": "coverage complete",
+      "source": "",
+      "adjusted_mode": "",
+      "data_quality": ""
+    },
+    {
+      "symbol": "600499",
+      "status": "skip",
+      "rows": 0,
+      "message": "coverage complete",
+      "source": "",
+      "adjusted_mode": "",
+      "data_quality": ""
+    },
+    {
+      "symbol": "600500",
+      "status": "skip",
+      "rows": 0,
+      "message": "coverage complete",
+      "source": "",
+      "adjusted_mode": "",
+      "data_quality": ""
+    },
+    {
+      "symbol": "600501",
+      "status": "skip",
+      "rows": 0,
+      "message": "coverage complete",
+      "source": "",
+      "adjusted_mode": "",
+      "data_quality": ""
+    },
+    {
+      "symbol": "600502",
+      "status": "skip",
+      "rows": 0,
+      "message": "coverage complete",
+      "source": "",
+      "adjusted_mode": "",
+      "data_quality": ""
+    },
+    {
+      "symbol": "600503",
+      "status": "skip",
+      "rows": 0,
+      "message": "coverage complete",
+      "source": "",
+      "adjusted_mode": "",
+      "data_quality": ""
+    },
+    {
+      "symbol": "600505",
+      "status": "skip",
+      "rows": 0,
+      "message": "coverage complete",
+      "source": "",
+      "adjusted_mode": "",
+      "data_quality": ""
+    },
+    {
+      "symbol": "600506",
+      "status": "skip",
+      "rows": 0,
+      "message": "coverage complete",
+      "source": "",
+      "adjusted_mode": "",
+      "data_quality": ""
+    },
+    {
+      "symbol": "600507",
+      "status": "skip",
+      "rows": 0,
+      "message": "coverage complete",
+      "source": "",
+      "adjusted_mode": "",
+      "data_quality": ""
+    },
+    {
+      "symbol": "600508",
+      "status": "skip",
+      "rows": 0,
+      "message": "coverage complete",
+      "source": "",
+      "adjusted_mode": "",
+      "data_quality": ""
+    },
+    {
+      "symbol": "600509",
+      "status": "skip",
+      "rows": 0,
+      "message": "coverage complete",
+      "source": "",
+      "adjusted_mode": "",
+      "data_quality": ""
+    },
+    {
+      "symbol": "600510",
+      "status": "skip",
+      "rows": 0,
+      "message": "coverage complete",
+      "source": "",
+      "adjusted_mode": "",
+      "data_quality": ""
+    },
+    {
+      "symbol": "600511",
+      "status": "skip",
+      "rows": 0,
+      "message": "coverage complete",
+      "source": "",
+      "adjusted_mode": "",
+      "data_quality": ""
+    },
+    {
+      "symbol": "600512",
+      "status": "skip",
+      "rows": 0,
+      "message": "coverage complete",
+      "source": "",
+      "adjusted_mode": "",
+      "data_quality": ""
+    },
+    {
+      "symbol": "600513",
+      "status": "skip",
+      "rows": 0,
+      "message": "coverage complete",
+      "source": "",
+      "adjusted_mode": "",
+      "data_quality": ""
+    },
+    {
+      "symbol": "600515",
+      "status": "skip",
+      "rows": 0,
+      "message": "coverage complete",
+      "source": "",
+      "adjusted_mode": "",
+      "data_quality": ""
+    },
+    {
+      "symbol": "600516",
+      "status": "skip",
+      "rows": 0,
+      "message": "coverage complete",
+      "source": "",
+      "adjusted_mode": "",
+      "data_quality": ""
+    },
+    {
+      "symbol": "600517",
+      "status": "skip",
+      "rows": 0,
+      "message": "coverage complete",
+      "source": "",
+      "adjusted_mode": "",
+      "data_quality": ""
+    },
+    {
+      "symbol": "600518",
+      "status": "skip",
+      "rows": 0,
+      "message": "coverage complete",
+      "source": "",
+      "adjusted_mode": "",
+      "data_quality": ""
+    },
+    {
+      "symbol": "600519",
+      "status": "skip",
+      "rows": 0,
+      "message": "coverage complete",
+      "source": "",
+      "adjusted_mode": "",
+      "data_quality": ""
+    },
+    {
+      "symbol": "600520",
+      "status": "skip",
+      "rows": 0,
+      "message": "coverage complete",
+      "source": "",
+      "adjusted_mode": "",
+      "data_quality": ""
+    },
+    {
+      "symbol": "600521",
+      "status": "skip",
+      "rows": 0,
+      "message": "coverage complete",
+      "source": "",
+      "adjusted_mode": "",
+      "data_quality": ""
+    },
+    {
+      "symbol": "600522",
+      "status": "skip",
+      "rows": 0,
+      "message": "coverage complete",
+      "source": "",
+      "adjusted_mode": "",
+      "data_quality": ""
+    },
+    {
+      "symbol": "600523",
+      "status": "skip",
+      "rows": 0,
+      "message": "coverage complete",
+      "source": "",
+      "adjusted_mode": "",
+      "data_quality": ""
+    },
+    {
+      "symbol": "600526",
+      "status": "skip",
+      "rows": 0,
+      "message": "coverage complete",
+      "source": "",
+      "adjusted_mode": "",
+      "data_quality": ""
+    },
+    {
+      "symbol": "600527",
+      "status": "skip",
+      "rows": 0,
+      "message": "coverage complete",
+      "source": "",
+      "adjusted_mode": "",
+      "data_quality": ""
+    },
+    {
+      "symbol": "600528",
+      "status": "skip",
+      "rows": 0,
+      "message": "coverage complete",
+      "source": "",
+      "adjusted_mode": "",
+      "data_quality": ""
+    },
+    {
+      "symbol": "600529",
+      "status": "skip",
+      "rows": 0,
+      "message": "coverage complete",
+      "source": "",
+      "adjusted_mode": "",
+      "data_quality": ""
+    },
+    {
+      "symbol": "600530",
+      "status": "skip",
+      "rows": 0,
+      "message": "coverage complete",
+      "source": "",
+      "adjusted_mode": "",
+      "data_quality": ""
+    },
+    {
+      "symbol": "600531",
+      "status": "skip",
+      "rows": 0,
+      "message": "coverage complete",
+      "source": "",
+      "adjusted_mode": "",
+      "data_quality": ""
+    },
+    {
+      "symbol": "600533",
+      "status": "skip",
+      "rows": 0,
+      "message": "coverage complete",
+      "source": "",
+      "adjusted_mode": "",
+      "data_quality": ""
+    }
+  ],
+  "failed_symbols": [],
+  "notes": [
+    "补数报告只记录远端抓取和落库状态，不代表全市场覆盖率已通过。",
+    "正式回测仍必须通过 strategy_improvement_closed_loop.py 的全市场完整交易日门禁。"
+  ]
+}

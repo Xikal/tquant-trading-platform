@@ -26,7 +26,7 @@ from app.services.paper.account import PaperAccountService
 from app.services.paper.ledger_replay import ReplayResult, ReplayTradeIssue, replay_trades
 from app.services.paper.money import ZERO, to_decimal
 from app.services.paper.position import PaperPositionService
-from app.services.paper.symbols import is_etf
+from app.services.paper.symbols import can_sell_same_day
 
 logger = logging.getLogger(__name__)
 
@@ -301,7 +301,7 @@ class PaperLedgerRepairService:
             available_quantity = sum(
                 lot.remaining
                 for lot in position.lots
-                if lot.remaining > 0 and (beijing_today() if is_etf(position.symbol) else sell_as_of) >= lot.available_date
+                if lot.remaining > 0 and (beijing_today() if can_sell_same_day(position.symbol) else sell_as_of) >= lot.available_date
             )
             row = PaperPosition(
                 account_id=account_id,
@@ -394,7 +394,7 @@ def _trade_date(trade: PaperTrade) -> date:
 
 
 def _available_date_for_trade(symbol: str, trade_date: date) -> date:
-    return trade_date if is_etf(symbol) else next_a_share_trading_day(trade_date)
+    return trade_date if can_sell_same_day(symbol) else next_a_share_trading_day(trade_date)
 
 
 def _strategy_sources_json(values: set[str]) -> str:

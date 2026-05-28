@@ -57,6 +57,102 @@ def rust_rolling_mean(values: Sequence[float], window: int) -> list[float | None
         return None
 
 
+def rust_rolling_std(values: Sequence[float], window: int) -> list[float | None] | None:
+    module = _load_rust_module()
+    if module is None:
+        return None
+    try:
+        cleaned = _float_list_or_none(values)
+        if cleaned is None:
+            return None
+        value = _optional_float_list(module.rolling_std(cleaned, int(window)))
+        _increment("hits")
+        return value
+    except Exception:
+        _increment("errors")
+        logger.warning("rust rolling_std failed; falling back to python", exc_info=True)
+        return None
+
+
+def rust_volatility(returns: Sequence[float], periods_per_year: float = 252.0) -> float | None:
+    module = _load_rust_module()
+    if module is None:
+        return None
+    try:
+        cleaned = _float_list_or_none(returns)
+        if cleaned is None:
+            return None
+        value = module.volatility(cleaned, float(periods_per_year))
+        _increment("hits")
+        return None if value is None else float(value)
+    except Exception:
+        _increment("errors")
+        logger.warning("rust volatility failed; falling back to python", exc_info=True)
+        return None
+
+
+def rust_correlation(left: Sequence[float], right: Sequence[float]) -> float | None:
+    module = _load_rust_module()
+    if module is None:
+        return None
+    try:
+        pairs = _finite_pairs(left, right)
+        if len(pairs) < 2:
+            return None
+        value = module.correlation([item[0] for item in pairs], [item[1] for item in pairs])
+        _increment("hits")
+        return None if value is None else float(value)
+    except Exception:
+        _increment("errors")
+        logger.warning("rust correlation failed; falling back to python", exc_info=True)
+        return None
+
+
+def rust_beta(asset_returns: Sequence[float], benchmark_returns: Sequence[float]) -> float | None:
+    module = _load_rust_module()
+    if module is None:
+        return None
+    try:
+        pairs = _finite_pairs(asset_returns, benchmark_returns)
+        if len(pairs) < 2:
+            return None
+        value = module.beta([item[0] for item in pairs], [item[1] for item in pairs])
+        _increment("hits")
+        return None if value is None else float(value)
+    except Exception:
+        _increment("errors")
+        logger.warning("rust beta failed; falling back to python", exc_info=True)
+        return None
+
+
+def rust_bollinger_bands(
+    values: Sequence[float],
+    window: int,
+    num_std: float = 2.0,
+) -> list[tuple[float, float, float] | None] | None:
+    module = _load_rust_module()
+    if module is None:
+        return None
+    try:
+        cleaned = _float_list_or_none(values)
+        if cleaned is None:
+            return None
+        raw_values = module.bollinger_bands(cleaned, int(window), float(num_std))
+        result: list[tuple[float, float, float] | None] = []
+        for item in raw_values:
+            if item is None:
+                result.append(None)
+                continue
+            upper, middle, lower = item
+            result.append((float(upper), float(middle), float(lower)))
+        _increment("hits")
+        return result
+    except Exception:
+        _increment("errors")
+        logger.warning("rust bollinger_bands failed; falling back to python", exc_info=True)
+        return None
+
+
 def rust_atr_wilder(
     highs: Sequence[float],
     lows: Sequence[float],

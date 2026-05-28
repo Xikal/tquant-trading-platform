@@ -1,0 +1,475 @@
+{
+  "generated_at": "2026-05-27T23:09:55",
+  "status": "completed",
+  "config": {
+    "scope": "symbols",
+    "symbols": 50,
+    "start_date": "2024-05-28",
+    "end_date": "2026-04-28",
+    "workers": 4,
+    "force": false
+  },
+  "totals": {
+    "ok": 50,
+    "skip": 0,
+    "empty": 0,
+    "error": 0
+  },
+  "results": [
+    {
+      "symbol": "300969",
+      "status": "ok",
+      "rows": 466,
+      "message": "",
+      "source": "akshare.stock_zh_a_daily",
+      "adjusted_mode": "qfq",
+      "data_quality": "partial_metadata:466"
+    },
+    {
+      "symbol": "300970",
+      "status": "ok",
+      "rows": 466,
+      "message": "",
+      "source": "akshare.stock_zh_a_daily",
+      "adjusted_mode": "qfq",
+      "data_quality": "partial_metadata:466"
+    },
+    {
+      "symbol": "300971",
+      "status": "ok",
+      "rows": 466,
+      "message": "",
+      "source": "akshare.stock_zh_a_daily",
+      "adjusted_mode": "qfq",
+      "data_quality": "partial_metadata:466"
+    },
+    {
+      "symbol": "300972",
+      "status": "ok",
+      "rows": 466,
+      "message": "",
+      "source": "akshare.stock_zh_a_daily",
+      "adjusted_mode": "qfq",
+      "data_quality": "partial_metadata:466"
+    },
+    {
+      "symbol": "300973",
+      "status": "ok",
+      "rows": 466,
+      "message": "",
+      "source": "akshare.stock_zh_a_daily",
+      "adjusted_mode": "qfq",
+      "data_quality": "partial_metadata:466"
+    },
+    {
+      "symbol": "300975",
+      "status": "ok",
+      "rows": 466,
+      "message": "",
+      "source": "akshare.stock_zh_a_daily",
+      "adjusted_mode": "qfq",
+      "data_quality": "partial_metadata:466"
+    },
+    {
+      "symbol": "300976",
+      "status": "ok",
+      "rows": 466,
+      "message": "",
+      "source": "akshare.stock_zh_a_daily",
+      "adjusted_mode": "qfq",
+      "data_quality": "partial_metadata:466"
+    },
+    {
+      "symbol": "300977",
+      "status": "ok",
+      "rows": 466,
+      "message": "",
+      "source": "akshare.stock_zh_a_daily",
+      "adjusted_mode": "qfq",
+      "data_quality": "partial_metadata:466"
+    },
+    {
+      "symbol": "300978",
+      "status": "ok",
+      "rows": 466,
+      "message": "",
+      "source": "akshare.stock_zh_a_daily",
+      "adjusted_mode": "qfq",
+      "data_quality": "partial_metadata:466"
+    },
+    {
+      "symbol": "300979",
+      "status": "ok",
+      "rows": 466,
+      "message": "",
+      "source": "akshare.stock_zh_a_daily",
+      "adjusted_mode": "qfq",
+      "data_quality": "partial_metadata:466"
+    },
+    {
+      "symbol": "300980",
+      "status": "ok",
+      "rows": 466,
+      "message": "",
+      "source": "akshare.stock_zh_a_daily",
+      "adjusted_mode": "qfq",
+      "data_quality": "partial_metadata:466"
+    },
+    {
+      "symbol": "300981",
+      "status": "ok",
+      "rows": 466,
+      "message": "",
+      "source": "akshare.stock_zh_a_daily",
+      "adjusted_mode": "qfq",
+      "data_quality": "partial_metadata:466"
+    },
+    {
+      "symbol": "300982",
+      "status": "ok",
+      "rows": 466,
+      "message": "",
+      "source": "akshare.stock_zh_a_daily",
+      "adjusted_mode": "qfq",
+      "data_quality": "partial_metadata:466"
+    },
+    {
+      "symbol": "300983",
+      "status": "ok",
+      "rows": 466,
+      "message": "",
+      "source": "akshare.stock_zh_a_daily",
+      "adjusted_mode": "qfq",
+      "data_quality": "partial_metadata:466"
+    },
+    {
+      "symbol": "300984",
+      "status": "ok",
+      "rows": 466,
+      "message": "",
+      "source": "akshare.stock_zh_a_daily",
+      "adjusted_mode": "qfq",
+      "data_quality": "partial_metadata:466"
+    },
+    {
+      "symbol": "300985",
+      "status": "ok",
+      "rows": 466,
+      "message": "",
+      "source": "akshare.stock_zh_a_daily",
+      "adjusted_mode": "qfq",
+      "data_quality": "partial_metadata:466"
+    },
+    {
+      "symbol": "300986",
+      "status": "ok",
+      "rows": 463,
+      "message": "",
+      "source": "akshare.stock_zh_a_daily",
+      "adjusted_mode": "qfq",
+      "data_quality": "partial_metadata:463"
+    },
+    {
+      "symbol": "300987",
+      "status": "ok",
+      "rows": 466,
+      "message": "",
+      "source": "akshare.stock_zh_a_daily",
+      "adjusted_mode": "qfq",
+      "data_quality": "partial_metadata:466"
+    },
+    {
+      "symbol": "300988",
+      "status": "ok",
+      "rows": 466,
+      "message": "",
+      "source": "akshare.stock_zh_a_daily",
+      "adjusted_mode": "qfq",
+      "data_quality": "partial_metadata:466"
+    },
+    {
+      "symbol": "300989",
+      "status": "ok",
+      "rows": 466,
+      "message": "",
+      "source": "akshare.stock_zh_a_daily",
+      "adjusted_mode": "qfq",
+      "data_quality": "partial_metadata:466"
+    },
+    {
+      "symbol": "300990",
+      "status": "ok",
+      "rows": 466,
+      "message": "",
+      "source": "akshare.stock_zh_a_daily",
+      "adjusted_mode": "qfq",
+      "data_quality": "partial_metadata:466"
+    },
+    {
+      "symbol": "300991",
+      "status": "ok",
+      "rows": 466,
+      "message": "",
+      "source": "akshare.stock_zh_a_daily",
+      "adjusted_mode": "qfq",
+      "data_quality": "partial_metadata:466"
+    },
+    {
+      "symbol": "300992",
+      "status": "ok",
+      "rows": 461,
+      "message": "",
+      "source": "akshare.stock_zh_a_daily",
+      "adjusted_mode": "qfq",
+      "data_quality": "partial_metadata:461"
+    },
+    {
+      "symbol": "300993",
+      "status": "ok",
+      "rows": 466,
+      "message": "",
+      "source": "akshare.stock_zh_a_daily",
+      "adjusted_mode": "qfq",
+      "data_quality": "partial_metadata:466"
+    },
+    {
+      "symbol": "300994",
+      "status": "ok",
+      "rows": 466,
+      "message": "",
+      "source": "akshare.stock_zh_a_daily",
+      "adjusted_mode": "qfq",
+      "data_quality": "partial_metadata:466"
+    },
+    {
+      "symbol": "300995",
+      "status": "ok",
+      "rows": 466,
+      "message": "",
+      "source": "akshare.stock_zh_a_daily",
+      "adjusted_mode": "qfq",
+      "data_quality": "partial_metadata:466"
+    },
+    {
+      "symbol": "300996",
+      "status": "ok",
+      "rows": 466,
+      "message": "",
+      "source": "akshare.stock_zh_a_daily",
+      "adjusted_mode": "qfq",
+      "data_quality": "partial_metadata:466"
+    },
+    {
+      "symbol": "300997",
+      "status": "ok",
+      "rows": 466,
+      "message": "",
+      "source": "akshare.stock_zh_a_daily",
+      "adjusted_mode": "qfq",
+      "data_quality": "partial_metadata:466"
+    },
+    {
+      "symbol": "300998",
+      "status": "ok",
+      "rows": 466,
+      "message": "",
+      "source": "akshare.stock_zh_a_daily",
+      "adjusted_mode": "qfq",
+      "data_quality": "partial_metadata:466"
+    },
+    {
+      "symbol": "300999",
+      "status": "ok",
+      "rows": 466,
+      "message": "",
+      "source": "akshare.stock_zh_a_daily",
+      "adjusted_mode": "qfq",
+      "data_quality": "partial_metadata:466"
+    },
+    {
+      "symbol": "301000",
+      "status": "ok",
+      "rows": 466,
+      "message": "",
+      "source": "akshare.stock_zh_a_daily",
+      "adjusted_mode": "qfq",
+      "data_quality": "partial_metadata:466"
+    },
+    {
+      "symbol": "301001",
+      "status": "ok",
+      "rows": 466,
+      "message": "",
+      "source": "akshare.stock_zh_a_daily",
+      "adjusted_mode": "qfq",
+      "data_quality": "partial_metadata:466"
+    },
+    {
+      "symbol": "301002",
+      "status": "ok",
+      "rows": 466,
+      "message": "",
+      "source": "akshare.stock_zh_a_daily",
+      "adjusted_mode": "qfq",
+      "data_quality": "partial_metadata:466"
+    },
+    {
+      "symbol": "301003",
+      "status": "ok",
+      "rows": 466,
+      "message": "",
+      "source": "akshare.stock_zh_a_daily",
+      "adjusted_mode": "qfq",
+      "data_quality": "partial_metadata:466"
+    },
+    {
+      "symbol": "301004",
+      "status": "ok",
+      "rows": 466,
+      "message": "",
+      "source": "akshare.stock_zh_a_daily",
+      "adjusted_mode": "qfq",
+      "data_quality": "partial_metadata:466"
+    },
+    {
+      "symbol": "301005",
+      "status": "ok",
+      "rows": 466,
+      "message": "",
+      "source": "akshare.stock_zh_a_daily",
+      "adjusted_mode": "qfq",
+      "data_quality": "partial_metadata:466"
+    },
+    {
+      "symbol": "301006",
+      "status": "ok",
+      "rows": 466,
+      "message": "",
+      "source": "akshare.stock_zh_a_daily",
+      "adjusted_mode": "qfq",
+      "data_quality": "partial_metadata:466"
+    },
+    {
+      "symbol": "301007",
+      "status": "ok",
+      "rows": 464,
+      "message": "",
+      "source": "akshare.stock_zh_a_daily",
+      "adjusted_mode": "qfq",
+      "data_quality": "partial_metadata:464"
+    },
+    {
+      "symbol": "301008",
+      "status": "ok",
+      "rows": 466,
+      "message": "",
+      "source": "akshare.stock_zh_a_daily",
+      "adjusted_mode": "qfq",
+      "data_quality": "partial_metadata:466"
+    },
+    {
+      "symbol": "301009",
+      "status": "ok",
+      "rows": 466,
+      "message": "",
+      "source": "akshare.stock_zh_a_daily",
+      "adjusted_mode": "qfq",
+      "data_quality": "partial_metadata:466"
+    },
+    {
+      "symbol": "301010",
+      "status": "ok",
+      "rows": 466,
+      "message": "",
+      "source": "akshare.stock_zh_a_daily",
+      "adjusted_mode": "qfq",
+      "data_quality": "partial_metadata:466"
+    },
+    {
+      "symbol": "301011",
+      "status": "ok",
+      "rows": 466,
+      "message": "",
+      "source": "akshare.stock_zh_a_daily",
+      "adjusted_mode": "qfq",
+      "data_quality": "partial_metadata:466"
+    },
+    {
+      "symbol": "301012",
+      "status": "ok",
+      "rows": 464,
+      "message": "",
+      "source": "akshare.stock_zh_a_daily",
+      "adjusted_mode": "qfq",
+      "data_quality": "partial_metadata:464"
+    },
+    {
+      "symbol": "301013",
+      "status": "ok",
+      "rows": 466,
+      "message": "",
+      "source": "akshare.stock_zh_a_daily",
+      "adjusted_mode": "qfq",
+      "data_quality": "partial_metadata:466"
+    },
+    {
+      "symbol": "301015",
+      "status": "ok",
+      "rows": 466,
+      "message": "",
+      "source": "akshare.stock_zh_a_daily",
+      "adjusted_mode": "qfq",
+      "data_quality": "partial_metadata:466"
+    },
+    {
+      "symbol": "301016",
+      "status": "ok",
+      "rows": 466,
+      "message": "",
+      "source": "akshare.stock_zh_a_daily",
+      "adjusted_mode": "qfq",
+      "data_quality": "partial_metadata:466"
+    },
+    {
+      "symbol": "301017",
+      "status": "ok",
+      "rows": 466,
+      "message": "",
+      "source": "akshare.stock_zh_a_daily",
+      "adjusted_mode": "qfq",
+      "data_quality": "partial_metadata:466"
+    },
+    {
+      "symbol": "301018",
+      "status": "ok",
+      "rows": 466,
+      "message": "",
+      "source": "akshare.stock_zh_a_daily",
+      "adjusted_mode": "qfq",
+      "data_quality": "partial_metadata:466"
+    },
+    {
+      "symbol": "301019",
+      "status": "ok",
+      "rows": 466,
+      "message": "",
+      "source": "akshare.stock_zh_a_daily",
+      "adjusted_mode": "qfq",
+      "data_quality": "partial_metadata:466"
+    },
+    {
+      "symbol": "301020",
+      "status": "ok",
+      "rows": 466,
+      "message": "",
+      "source": "akshare.stock_zh_a_daily",
+      "adjusted_mode": "qfq",
+      "data_quality": "partial_metadata:466"
+    }
+  ],
+  "failed_symbols": [],
+  "notes": [
+    "补数报告只记录远端抓取和落库状态，不代表全市场覆盖率已通过。",
+    "正式回测仍必须通过 strategy_improvement_closed_loop.py 的全市场完整交易日门禁。"
+  ]
+}

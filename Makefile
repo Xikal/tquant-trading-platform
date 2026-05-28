@@ -1,6 +1,6 @@
 SHELL := /bin/bash
 
-.PHONY: frontend-build native-build native-sync backend-compile version-sync version-check qa ui-smoke prod-preflight runtime-snapshot rust-bench go-rust-acceptance public-up public-down docker-sqlite-up docker-sqlite-down docker-mysql-up docker-mysql-down
+.PHONY: frontend-build native-build native-sync backend-compile version-sync version-check qa ui-smoke warning-budget full-regression full-regression-release full-regression-cloud prod-preflight runtime-snapshot rust-bench go-rust-acceptance public-up public-down docker-sqlite-up docker-sqlite-down docker-mysql-up docker-mysql-down
 
 frontend-build:
 	cd frontend && npm run build
@@ -25,6 +25,18 @@ qa:
 
 ui-smoke:
 	./scripts/ui_smoke.sh
+
+warning-budget:
+	python scripts/warning_budget.py backend/tests
+
+full-regression:
+	python scripts/full_regression_runner.py --profile full
+
+full-regression-release:
+	python scripts/full_regression_runner.py --profile release
+
+full-regression-cloud:
+	python scripts/full_regression_runner.py --profile release --only cloud_verify --cloud-verify
 
 prod-preflight:
 	./scripts/prod_preflight.sh

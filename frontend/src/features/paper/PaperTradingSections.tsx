@@ -46,6 +46,12 @@ export function PaperPositionsPanel({
 function PositionRow({ item }: { item: PaperPosition }) {
   const tone = item.latest_price == null ? "neutral" : toneFromChange(item.unrealized_pnl_pct);
   const actionText = item.smart_exit_text || item.smart_exit_action || "按计划持有";
+  const model = item.exit_model_shadow;
+  const modelText = model?.fallback_reason
+    ? `模型旁路：${model.fallback_reason}`
+    : model?.action && model.action !== "hold"
+      ? `模型旁路：${model.action} · ${(Number(model.confidence || 0) * 100).toFixed(0)}%`
+      : "模型旁路：只观察";
   return (
     <List.Item
       style={{
@@ -64,6 +70,7 @@ function PositionRow({ item }: { item: PaperPosition }) {
         <Typography.Text style={{ fontSize: 11 }}>持仓 {formatInteger(item.quantity)} / 可卖 {formatInteger(item.available_quantity)}</Typography.Text>
         <Typography.Text style={{ fontSize: 11 }}>成本 {formatPrice(item.cost_basis)} / 现价 {formatPrice(item.latest_price)}</Typography.Text>
         <Tag color="blue">{actionText}</Tag>
+        <Tag color={model?.safety_blocked ? "red" : model?.fallback_reason ? "default" : "purple"}>{modelText}</Tag>
         <Typography.Text strong style={{ color: toneColor(tone), fontSize: 11 }}>{formatPct(item.unrealized_pnl_pct)}</Typography.Text>
       </Space>
     </List.Item>

@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import hashlib
+import json
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, datetime
 
 from sqlalchemy import func, select, text
 from sqlalchemy.orm import Session
@@ -20,6 +22,16 @@ class DailyBarRow:
     amount: float
     pct_chg: float
     pre_close: float = 0.0
+    limit_up_price: float = 0.0
+    limit_down_price: float = 0.0
+    is_suspended: bool = False
+    is_st: bool = False
+    is_delisted: bool = False
+    source: str = "unknown"
+    fetch_time: str = ""
+    adjusted_mode: str = "unknown"
+    checksum: str = ""
+    data_quality: str = "unknown"
 
 
 def _daily_bar_row_columns():
@@ -33,6 +45,16 @@ def _daily_bar_row_columns():
         DailyBarSnapshot.amount,
         DailyBarSnapshot.pct_chg,
         DailyBarSnapshot.pre_close,
+        DailyBarSnapshot.limit_up_price,
+        DailyBarSnapshot.limit_down_price,
+        DailyBarSnapshot.is_suspended,
+        DailyBarSnapshot.is_st,
+        DailyBarSnapshot.is_delisted,
+        DailyBarSnapshot.source,
+        DailyBarSnapshot.fetch_time,
+        DailyBarSnapshot.adjusted_mode,
+        DailyBarSnapshot.checksum,
+        DailyBarSnapshot.data_quality,
     )
 
 
@@ -54,6 +76,16 @@ def _daily_bar_insert_payload(symbol: str, item: DailyBarRow) -> dict[str, objec
         "amount": item.amount,
         "pct_chg": item.pct_chg,
         "pre_close": item.pre_close,
+        "limit_up_price": item.limit_up_price,
+        "limit_down_price": item.limit_down_price,
+        "is_suspended": item.is_suspended,
+        "is_st": item.is_st,
+        "is_delisted": item.is_delisted,
+        "source": item.source,
+        "fetch_time": item.fetch_time or datetime.utcnow().isoformat(timespec="seconds"),
+        "adjusted_mode": item.adjusted_mode,
+        "checksum": item.checksum or daily_bar_checksum(symbol, item),
+        "data_quality": item.data_quality,
     }
 
 
@@ -63,12 +95,16 @@ def _daily_bar_insert_statement():
         INSERT INTO daily_bar_snapshots (
             symbol, market, instrument_type, trade_date,
             open_price, close_price, high_price, low_price,
-            volume, amount, pct_chg, pre_close
+            volume, amount, pct_chg, pre_close,
+            limit_up_price, limit_down_price, is_suspended, is_st, is_delisted
+            , source, fetch_time, adjusted_mode, checksum, data_quality
         )
         VALUES (
             :symbol, :market, :instrument_type, :trade_date,
             :open_price, :close_price, :high_price, :low_price,
-            :volume, :amount, :pct_chg, :pre_close
+            :volume, :amount, :pct_chg, :pre_close,
+            :limit_up_price, :limit_down_price, :is_suspended, :is_st, :is_delisted,
+            :source, :fetch_time, :adjusted_mode, :checksum, :data_quality
         )
         """
     )
@@ -164,6 +200,16 @@ class DailyHistoryRepository:
                 amount=row.amount,
                 pct_chg=row.pct_chg,
                 pre_close=row.pre_close,
+                limit_up_price=row.limit_up_price,
+                limit_down_price=row.limit_down_price,
+                is_suspended=bool(row.is_suspended),
+                is_st=bool(row.is_st),
+                is_delisted=bool(row.is_delisted),
+                source=row.source,
+                fetch_time=row.fetch_time,
+                adjusted_mode=row.adjusted_mode,
+                checksum=row.checksum,
+                data_quality=row.data_quality,
             )
             for row in rows
         ]
@@ -201,6 +247,16 @@ class DailyHistoryRepository:
                     amount=row.amount,
                     pct_chg=row.pct_chg,
                     pre_close=row.pre_close,
+                    limit_up_price=row.limit_up_price,
+                    limit_down_price=row.limit_down_price,
+                    is_suspended=bool(row.is_suspended),
+                    is_st=bool(row.is_st),
+                    is_delisted=bool(row.is_delisted),
+                    source=row.source,
+                    fetch_time=row.fetch_time,
+                    adjusted_mode=row.adjusted_mode,
+                    checksum=row.checksum,
+                    data_quality=row.data_quality,
                 )
             )
         return grouped
@@ -248,6 +304,16 @@ class DailyHistoryRepository:
                     "amount": item.amount,
                     "pct_chg": item.pct_chg,
                     "pre_close": item.pre_close,
+                    "limit_up_price": item.limit_up_price,
+                    "limit_down_price": item.limit_down_price,
+                    "is_suspended": item.is_suspended,
+                    "is_st": item.is_st,
+                    "is_delisted": item.is_delisted,
+                    "source": item.source,
+                    "fetch_time": item.fetch_time or datetime.utcnow().isoformat(timespec="seconds"),
+                    "adjusted_mode": item.adjusted_mode,
+                    "checksum": item.checksum or daily_bar_checksum(symbol, item),
+                    "data_quality": item.data_quality,
                 }
             )
         if new_rows:
@@ -260,3 +326,27 @@ def _as_iso_date(value: object) -> str:
     if isinstance(value, date):
         return value.isoformat()
     return str(value)[:10]
+
+
+def daily_bar_checksum(symbol: str, item: DailyBarRow) -> str:
+    payload = {
+        "symbol": symbol,
+        "trade_date": _as_iso_date(item.trade_date),
+        "open": round(float(item.open_price or 0.0), 6),
+        "close": round(float(item.close_price or 0.0), 6),
+        "high": round(float(item.high_price or 0.0), 6),
+        "low": round(float(item.low_price or 0.0), 6),
+        "volume": round(float(item.volume or 0.0), 3),
+        "amount": round(float(item.amount or 0.0), 3),
+        "pct_chg": round(float(item.pct_chg or 0.0), 6),
+        "pre_close": round(float(item.pre_close or 0.0), 6),
+        "limit_up_price": round(float(item.limit_up_price or 0.0), 6),
+        "limit_down_price": round(float(item.limit_down_price or 0.0), 6),
+        "is_suspended": bool(item.is_suspended),
+        "is_st": bool(item.is_st),
+        "is_delisted": bool(item.is_delisted),
+        "adjusted_mode": item.adjusted_mode,
+        "source": item.source,
+    }
+    raw = json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(raw.encode("utf-8")).hexdigest()

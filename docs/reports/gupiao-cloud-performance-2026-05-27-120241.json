@@ -1,0 +1,176 @@
+{
+  "generated_at": "2026-05-27 12:02:41",
+  "api": [
+    {
+      "name": "readyz",
+      "path": "/readyz",
+      "statuses": [
+        200
+      ],
+      "p50_ms": 4.467,
+      "p95_ms": 5.005
+    },
+    {
+      "name": "monitor_bff",
+      "path": "/api/bff/v1/workspace/monitor?priority_limit=12&sector_limit=8&per_sector_limit=8&hedge_limit=4",
+      "statuses": [
+        200
+      ],
+      "p50_ms": 13.029,
+      "p95_ms": 17.771
+    },
+    {
+      "name": "market_pulse",
+      "path": "/api/market/pulse",
+      "statuses": [
+        200
+      ],
+      "p50_ms": 15.355,
+      "p95_ms": 27.752
+    },
+    {
+      "name": "priority_board",
+      "path": "/api/screeners/low-buy/priority-board?limit=12",
+      "statuses": [
+        200
+      ],
+      "p50_ms": 20.966,
+      "p95_ms": 27.698
+    },
+    {
+      "name": "watchlist_signals",
+      "path": "/api/watchlist/signals",
+      "statuses": [
+        200
+      ],
+      "p50_ms": 8.184,
+      "p95_ms": 8.704
+    }
+  ],
+  "go_scan_accept": {
+    "name": "scan_worker_accept",
+    "path": "/api/scan-worker/v1/run",
+    "statuses": [
+      202
+    ],
+    "p50_ms": 112.512,
+    "p95_ms": 138.973
+  },
+  "rust_finance_math": {
+    "module": "tquant_rs",
+    "available": true,
+    "max_drawdown": 0.18181818181818182,
+    "rolling_mean": [
+      null,
+      1.5,
+      2.5,
+      3.5
+    ],
+    "atr_wilder": [
+      null,
+      null,
+      1.75
+    ],
+    "rsi_wilder": 87.87878787878788,
+    "vwap": 11.333333333333334,
+    "rank_ic": 0.9999999999999998,
+    "metrics": {
+      "hits": 6,
+      "fallbacks": 0,
+      "disabled": 0,
+      "errors": 0
+    }
+  },
+  "quote_cache_coverage": {
+    "warmup": {
+      "ok": true,
+      "count": 80,
+      "redis_written": 80,
+      "missing_count": 0,
+      "symbols": [
+        "000533",
+        "000039",
+        "603986",
+        "600584",
+        "000725",
+        "002156",
+        "000988",
+        "601138",
+        "002463",
+        "002384",
+        "601899",
+        "002281",
+        "002050",
+        "600522",
+        "002938",
+        "002475",
+        "002185",
+        "600487",
+        "000636",
+        "000021"
+      ],
+      "message": "已刷新 80 只标的本地行情缓存，Redis 写入 80 条"
+    },
+    "redis_quote_keys": 126,
+    "symbols_checked": 20,
+    "items_returned": 20,
+    "missing_count": 0,
+    "data_quality": "fresh"
+  },
+  "go_bff_metrics": {
+    "tquant_bff_gateway_up": 1.0,
+    "tquant_bff_gateway_aggregate_hits_total": 7.0,
+    "tquant_bff_gateway_proxy_fallbacks_total": 0.0,
+    "tquant_bff_gateway_cache_lookups_total": 14.0,
+    "tquant_bff_gateway_cache_hits_total": 7.0,
+    "tquant_bff_gateway_cache_hit_rate": 0.5,
+    "tquant_bff_gateway_cache_items": 1.0,
+    "tquant_bff_gateway_cache_ttl_seconds": 5.0,
+    "tquant_bff_gateway_partial_source_failures_total": 16.0,
+    "tquant_bff_gateway_workspace_aggregate_hits_total{workspace=\"monitor\"}": 7.0,
+    "tquant_bff_gateway_workspace_aggregate_hits_total{workspace=\"paper\"}": 0.0,
+    "tquant_bff_gateway_workspace_aggregate_hits_total{workspace=\"strategy\"}": 0.0,
+    "tquant_bff_gateway_workspace_aggregate_hits_total{workspace=\"settings\"}": 0.0,
+    "tquant_bff_gateway_workspace_aggregate_hits_total{workspace=\"factor\"}": 0.0,
+    "tquant_bff_gateway_workspace_proxy_fallbacks_total{workspace=\"monitor\"}": 0.0,
+    "tquant_bff_gateway_workspace_proxy_fallbacks_total{workspace=\"paper\"}": 0.0,
+    "tquant_bff_gateway_workspace_proxy_fallbacks_total{workspace=\"strategy\"}": 0.0,
+    "tquant_bff_gateway_workspace_proxy_fallbacks_total{workspace=\"settings\"}": 0.0,
+    "tquant_bff_gateway_workspace_proxy_fallbacks_total{workspace=\"factor\"}": 0.0
+  },
+  "go_market_metrics": {
+    "tquant_market_read_service_up": 1.0,
+    "tquant_market_read_hits_total": 175.0,
+    "tquant_market_read_fallbacks_total": 32.0,
+    "tquant_market_read_partials_total": 1.0,
+    "tquant_market_read_redis_hits_total": 4591.0,
+    "tquant_market_read_cache_miss_total": 8186.0,
+    "tquant_market_read_mysql_fallbacks_total": 8067.0
+  },
+  "go_scan": [
+    {
+      "status": {
+        "fallback_available": true,
+        "ok": true,
+        "production_readiness": "python_reference_orchestrator",
+        "production_scan_enabled": true,
+        "production_write_enabled": true,
+        "ranking_consistency": {
+          "checked": true,
+          "detail": "Go scan-worker invokes the Python reference strategy engine and only publishes when that reference write succeeds.",
+          "status": "python_reference_order"
+        },
+        "scan_accepted_total": 20,
+        "scan_failures_total": 0,
+        "scan_fallbacks_total": 0,
+        "scan_runs_total": 20,
+        "scan_worker_role": "go_orchestrated_reference",
+        "snapshot_writes_total": 0,
+        "strategy_engine": "python_reference"
+      }
+    }
+  ],
+  "app_metrics": "{\"detail\":\"管理接口需要有效的访问令牌。\"}",
+  "failures": [],
+  "ok": true
+}

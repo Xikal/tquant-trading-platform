@@ -15,6 +15,7 @@ from app.models.entities import DailyBarSnapshot, LowBuyResultSnapshot, LowBuySc
 from app.models.schemas import LowBuyCandidateOut, LowBuyExecutionBacktestItemOut, LowBuyStrategyPerformanceOut, SettingsUpdate
 from app.repositories.low_buy.lifecycle import LowBuyTradeLifecycleRepository
 from app.services.low_buy.candidate_rules import build_strategy_setup
+from app.services.low_buy.candidate_rule_params import prefilter_params, research_prefilter_overrides
 from app.services.low_buy.exit_plan import build_exit_plan
 from app.services.low_buy.hard_risk import build_hard_risk_assessment
 from app.services.low_buy.portfolio_risk import build_portfolio_risk
@@ -22,7 +23,17 @@ from app.services.low_buy.service import LowBuyScreenerService
 from app.services.low_buy.shared import LOW_BUY_RESULT_VERSION
 from app.services.low_buy.dynamic_adjustments import apply_performance_adjustment_to_candidate
 from app.services.low_buy.execution_backtest import _build_backtest_response
+from app.services.low_buy.execution_simulation import (
+    DailyExecutionBar,
+    ExecutionSimulationOverride,
+    simulate_candidate_execution,
+)
 from app.services.low_buy.strategy_policy import participates_in_priority_board
+from backend.scripts.low_buy_market_backtest_market_guard import MarketGuardOverride, apply_market_guard
+from backend.scripts.low_buy_market_backtest_outcomes import (
+    evaluate_candidate_outcome_from_bars,
+    evaluate_candidate_outcomes_from_bars,
+)
 from app.services.settings_service import SettingsService
 from backend.tests.test_divergence_consensus_strategy import _item, _metrics
 
@@ -71,6 +82,169 @@ class LowBuyTradeControlTests(unittest.TestCase):
         self.assertEqual(exit_plan.max_holding_days, 3)
         self.assertIn("3 个交易日", exit_plan.time_stop_text)
         self.assertTrue(any("3%-5%" in rule for rule in exit_plan.exit_rules))
+
+    def test_execution_override_can_apply_atr_stop_without_changing_candidate_plan(self) -> None:
+        candidate = _candidate().model_copy(update={"atr_pct": 2.0})
+        rows = _execution_rows()
+
+        default = simulate_candidate_execution(candidate=candidate, rows=rows)
+        atr_stop = simulate_candidate_execution(
+            candidate=candidate,
+            rows=rows,
+            override=ExecutionSimulationOverride(atr_stop_multiplier=1.0, first_take_profit_pct=8.0),
+        )
+
+        self.assertEqual(default.status, "filled")
+        self.assertIn("最长持有", default.exit_reason)
+        self.assertEqual(atr_stop.status, "filled")
+        self.assertIn("止损", atr_stop.exit_reason)
+        self.assertLess(atr_stop.net_return_pct, default.net_return_pct)
+
+    def test_execution_override_can_force_t1_exit_for_research_matrix(self) -> None:
+        candidate = _candidate().model_copy(update={"take_profit": 12.0})
+        rows = _execution_rows()
+
+        forced = simulate_candidate_execution(
+            candidate=candidate,
+            rows=rows,
+            override=ExecutionSimulationOverride(force_t1_exit=True, max_holding_days=3, first_take_profit_pct=8.0),
+        )
+
+        self.assertEqual(forced.status, "filled")
+        self.assertEqual(forced.exit_trade_date, "2026-04-22")
+        self.assertEqual(forced.exit_reason, "研究模型 T+1 收盘退出。")
+
+    def test_execution_override_can_enforce_a_share_t1_exit_rules(self) -> None:
+        candidate = _candidate().model_copy(update={"take_profit": 10.3})
+        rows = [
+            DailyExecutionBar("2026-04-20", 10.0, 10.1, 9.9, 10.0, 0.0),
+            DailyExecutionBar("2026-04-21", 10.0, 10.7, 9.95, 10.5, 5.0),
+            DailyExecutionBar("2026-04-22", 10.5, 10.8, 10.2, 10.7, 1.0),
+        ]
+
+        default = simulate_candidate_execution(candidate=candidate, rows=rows)
+        t1_enforced = simulate_candidate_execution(
+            candidate=candidate,
+            rows=rows,
+            override=ExecutionSimulationOverride(enforce_t1_exit_rules=True),
+        )
+
+        self.assertEqual(default.exit_trade_date, "2026-04-21")
+        self.assertEqual(default.exit_reason, "触发首次止盈位。")
+        self.assertEqual(t1_enforced.exit_trade_date, "2026-04-22")
+        self.assertNotEqual(t1_enforced.exit_trade_date, default.exit_trade_date)
+
+    def test_execution_override_can_force_t2_exit_without_manual_holding_days(self) -> None:
+        candidate = _candidate().model_copy(update={"take_profit": 12.0})
+        rows = _execution_rows()
+
+        forced = simulate_candidate_execution(
+            candidate=candidate,
+            rows=rows,
+            override=ExecutionSimulationOverride(force_t2_exit=True, first_take_profit_pct=8.0),
+        )
+
+        self.assertEqual(forced.status, "filled")
+        self.assertEqual(forced.exit_trade_date, "2026-04-23")
+        self.assertEqual(forced.exit_reason, "研究模型 T+2 收盘退出。")
+
+    def test_batched_backtest_outcomes_match_single_override_path(self) -> None:
+        candidate = _candidate().model_copy(update={"atr_pct": 2.0, "take_profit": 12.0})
+        rows = _execution_rows()
+        overrides = {
+            "default_exit": None,
+            "atr_stop": ExecutionSimulationOverride(atr_stop_multiplier=1.0, first_take_profit_pct=8.0),
+            "force_t1": ExecutionSimulationOverride(force_t1_exit=True, max_holding_days=3, first_take_profit_pct=8.0),
+        }
+
+        batched = evaluate_candidate_outcomes_from_bars(
+            candidate=candidate,
+            signal_date="2026-04-20",
+            bars=rows,
+            forward_days=3,
+            execution_overrides=overrides,
+        )
+
+        self.assertIsNotNone(batched)
+        assert batched is not None
+        for key, override in overrides.items():
+            single = evaluate_candidate_outcome_from_bars(
+                candidate=candidate,
+                signal_date="2026-04-20",
+                bars=rows,
+                forward_days=3,
+                execution_override=override,
+            )
+            self.assertIsNotNone(single)
+            assert single is not None
+            self.assertEqual(batched[key], single)
+
+    def test_market_guard_can_downgrade_retreat_confirmed_signal_for_research_ab(self) -> None:
+        candidate = _candidate().model_copy(
+            update={
+                "market_state": "high_flyer_retreat",
+                "market_state_text": "高位分化退潮",
+                "market_state_strength": 0.7,
+                "buy_signal_state": "buy_now",
+                "execution_ready": True,
+            }
+        )
+
+        guarded, reason = apply_market_guard(
+            candidate,
+            MarketGuardOverride(mode="degrade_retreat", states=("high_flyer_retreat",), degrade_to="near_entry"),
+        )
+
+        self.assertEqual(guarded.buy_signal_state, "near_entry")
+        self.assertFalse(guarded.execution_ready)
+        self.assertIn("high_flyer_retreat", reason)
+        self.assertIn("研究态市场保护", guarded.tags)
+        self.assertEqual(candidate.buy_signal_state, "buy_now")
+
+    def test_market_guard_can_block_risk_release_signal_for_research_ab(self) -> None:
+        candidate = _candidate().model_copy(
+            update={
+                "market_state": "risk_release",
+                "market_state_strength": 0.8,
+                "buy_signal_state": "soft_buy_now",
+            }
+        )
+
+        guarded, reason = apply_market_guard(
+            candidate,
+            MarketGuardOverride(mode="block_retreat", states=("risk_release",), degrade_to="near_entry"),
+        )
+
+        self.assertEqual(guarded.buy_signal_state, "avoid")
+        self.assertIn("soft_buy_now->avoid", reason)
+        self.assertIn("研究态退潮阻断", guarded.buy_signal_text)
+
+    def test_market_guard_leaves_non_retreat_and_non_actionable_signals_unchanged(self) -> None:
+        candidate = _candidate().model_copy(update={"market_state": "broad_rally", "buy_signal_state": "buy_now"})
+        guarded, reason = apply_market_guard(
+            candidate,
+            MarketGuardOverride(mode="degrade_retreat", states=("high_flyer_retreat",)),
+        )
+        self.assertIs(guarded, candidate)
+        self.assertEqual(reason, "")
+
+        watch_candidate = _candidate().model_copy(
+            update={"market_state": "high_flyer_retreat", "buy_signal_state": "near_entry"}
+        )
+        guarded_watch, watch_reason = apply_market_guard(
+            watch_candidate,
+            MarketGuardOverride(mode="block_retreat", states=("high_flyer_retreat",)),
+        )
+        self.assertIs(guarded_watch, watch_candidate)
+        self.assertEqual(watch_reason, "")
+
+    def test_research_prefilter_override_is_scoped_to_context(self) -> None:
+        default_value = prefilter_params("first_board")["max_distribution_risk_score"]
+
+        with research_prefilter_overrides({"first_board": {"max_distribution_risk_score": 5.2}}):
+            self.assertEqual(prefilter_params("first_board")["max_distribution_risk_score"], 5.2)
+
+        self.assertEqual(prefilter_params("first_board")["max_distribution_risk_score"], default_value)
 
     def test_unstable_strategies_are_demoted_from_strong_buy(self) -> None:
         screener = LowBuyScreenerService()
@@ -393,6 +567,15 @@ def _backtest_item(
         max_gain_pct=max_gain_pct,
         max_drawdown_pct=max_drawdown_pct,
     )
+
+
+def _execution_rows() -> list[DailyExecutionBar]:
+    return [
+        DailyExecutionBar("2026-04-20", 10.0, 10.1, 9.9, 10.0, 0.0),
+        DailyExecutionBar("2026-04-21", 10.0, 10.15, 9.95, 10.05, 0.5),
+        DailyExecutionBar("2026-04-22", 10.05, 10.2, 9.75, 10.1, 0.5),
+        DailyExecutionBar("2026-04-23", 10.1, 10.25, 9.8, 10.0, -1.0),
+    ]
 
 
 def _seed_scan(db, candidate: LowBuyCandidateOut) -> None:

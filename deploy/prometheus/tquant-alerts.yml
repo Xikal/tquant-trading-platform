@@ -54,3 +54,39 @@ groups:
         annotations:
           summary: "TQuant Agent tool failures increased"
           description: "Agent tool failures increased in the last 15 minutes."
+
+      - alert: TQuantBffPartialSourceTimeouts
+        expr: increase(tquant_bff_gateway_partial_source_failures_total{reason="timeout"}[5m]) > 3
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "TQuant BFF source timeouts increased"
+          description: "BFF source timeouts exceeded budget. Check slow Python source endpoints and BFF source timeout settings."
+
+      - alert: TQuantBffPartialSourceErrors
+        expr: increase(tquant_bff_gateway_partial_source_failures_total{reason=~"status|decode|other"}[5m]) > 0
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "TQuant BFF source errors observed"
+          description: "BFF source returned non-2xx, invalid JSON, or unclassified errors. Inspect partial_errors by source."
+
+      - alert: TQuantMarketReadUnresolvedMisses
+        expr: increase(tquant_market_read_unresolved_misses_total[5m]) > 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "TQuant market-read unresolved quote misses"
+          description: "Go market-read could not satisfy requested symbols from Redis or MySQL fallback."
+
+      - alert: TQuantMarketReadMysqlFallbackSpike
+        expr: increase(tquant_market_read_mysql_fallbacks_total[5m]) > 200
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "TQuant market-read MySQL fallback spike"
+          description: "Redis quote cache misses are being served by MySQL fallback at elevated volume. Check quote cache warmup and Redis health."

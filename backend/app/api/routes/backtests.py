@@ -27,6 +27,17 @@ from app.models.schema_defs.backtest import (
     BacktestValidationCreate,
     BacktestValidationDetail,
     BacktestValidationListResponse,
+    EtfT0BacktestRequest,
+    EtfT0BacktestResponse,
+    EtfT0OosDatasetListResponse,
+    EtfT0OosDatasetOut,
+    EtfT0OosLatestResponse,
+    EtfT0OosPromoteCheckRequest,
+    EtfT0OosPromoteCheckResponse,
+    EtfT0OosValidationRequest,
+    EtfT0OosValidationResponse,
+    EtfT0ResearchRequest,
+    EtfT0ResearchResponse,
 )
 from app.api.routes.backtest_route_helpers import (
     is_admin,
@@ -42,8 +53,19 @@ from app.services.backtest.regime_parameter_promotion import promote_regime_para
 from app.services.position_policy_research import run_position_policy_research
 from app.services.portfolio_heuristic_optimizer import optimize_strategy_portfolio
 from app.services.live_backtest_monitor import build_live_backtest_comparison
+from app.models.schemas import KlineBar
+from app.services.etf.oos_dataset import OOSDatasetError, dataset_response, list_oos_datasets, load_oos_dataset
+from app.services.etf.oos_validation import latest_oos_validation_summary, promote_check, run_oos_validation
+from app.services.etf.t0_backtest import EtfT0MarketRegimeSegment, run_etf_t0_backtest, run_etf_t0_research_report
+from app.services.strategy_improvement.report import build_closed_loop_report, default_args_namespace
+
+from pathlib import Path
+import json
 
 router = APIRouter(prefix="/backtests", dependencies=[Depends(get_current_user)])
+
+ROOT_DIR = Path(__file__).resolve().parents[4]
+DEFAULT_STRATEGY_24M_REPORT = ROOT_DIR / "docs" / "reports" / "strategy-24m-backtest-2026-05-28.json"
 
 
 @router.get("/verdict-thresholds", response_model=BacktestVerdictThresholdsResponse)
@@ -57,6 +79,16 @@ def get_backtest_verdict_thresholds_route() -> BacktestVerdictThresholdsResponse
     )
 
 
+@router.get("/strategy-improvement-report")
+def get_strategy_improvement_report(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    require_research_access(current_user)
+    existing_report = _load_json(DEFAULT_STRATEGY_24M_REPORT)
+    return build_closed_loop_report(db, args=default_args_namespace(), existing_report=existing_report)
+
+
 @router.get("/live-comparison")
 def get_live_backtest_comparison(
     account_id: int | None = Query(default=None, ge=1),
@@ -66,6 +98,175 @@ def get_live_backtest_comparison(
 ) -> dict:
     require_research_access(current_user)
     return build_live_backtest_comparison(db, user_id=current_user.id, account_id=account_id, days=days)
+
+
+@router.post("/etf-t0-minute", response_model=EtfT0BacktestResponse)
+def run_etf_t0_minute_backtest(
+    payload: EtfT0BacktestRequest,
+    current_user: User = Depends(get_current_user),
+) -> EtfT0BacktestResponse:
+    require_research_access(current_user)
+    bars = [
+        KlineBar(
+            timestamp=item.timestamp,
+            open=item.open,
+            high=item.high,
+            low=item.low,
+            close=item.close,
+            volume=item.volume,
+            amount=item.amount,
+        )
+        for item in payload.bars
+    ]
+    report = run_etf_t0_backtest(
+        symbol=payload.symbol,
+        name=payload.name,
+        bars=bars,
+        quantity=payload.quantity,
+        min_signal_bars=payload.min_signal_bars,
+        max_trades_per_day=payload.max_trades_per_day,
+        params=payload.params,
+    )
+    return EtfT0BacktestResponse(**report.to_dict())
+
+
+@router.post("/etf-t0-research", response_model=EtfT0ResearchResponse)
+def run_etf_t0_research(
+    payload: EtfT0ResearchRequest,
+    current_user: User = Depends(get_current_user),
+) -> EtfT0ResearchResponse:
+    require_research_access(current_user)
+    bars = [
+        KlineBar(
+            timestamp=item.timestamp,
+            open=item.open,
+            high=item.high,
+            low=item.low,
+            close=item.close,
+            volume=item.volume,
+            amount=item.amount,
+        )
+        for item in payload.bars
+    ]
+    segments = [
+        EtfT0MarketRegimeSegment(
+            regime=item.regime,
+            start_time=item.start_time,
+            end_time=item.end_time,
+        )
+        for item in payload.market_regime_segments
+    ]
+    report = run_etf_t0_research_report(
+        symbol=payload.symbol,
+        name=payload.name,
+        bars=bars,
+        quantity=payload.quantity,
+        min_signal_bars=payload.min_signal_bars,
+        max_trades_per_day=payload.max_trades_per_day,
+        params=payload.params,
+        vwap_deviation_values=payload.vwap_deviation_values,
+        oversold_rsi_values=payload.oversold_rsi_values,
+        market_regime_segments=segments or None,
+    )
+    return EtfT0ResearchResponse(**report.to_dict())
+
+
+def _etf_bars(items) -> list[KlineBar]:
+    return [
+        KlineBar(
+            timestamp=item.timestamp,
+            open=item.open,
+            high=item.high,
+            low=item.low,
+            close=item.close,
+            volume=item.volume,
+            amount=item.amount,
+        )
+        for item in items
+    ]
+
+
+@router.get("/etf-t0-oos/datasets", response_model=EtfT0OosDatasetListResponse)
+def list_etf_t0_oos_datasets(
+    current_user: User = Depends(get_current_user),
+) -> EtfT0OosDatasetListResponse:
+    require_research_access(current_user)
+    items = list_oos_datasets()
+    return EtfT0OosDatasetListResponse(items=[EtfT0OosDatasetOut(**item) for item in items], total=len(items))
+
+
+@router.get("/etf-t0-oos/datasets/{dataset_key}", response_model=EtfT0OosDatasetOut)
+def get_etf_t0_oos_dataset(
+    dataset_key: str,
+    current_user: User = Depends(get_current_user),
+) -> EtfT0OosDatasetOut:
+    require_research_access(current_user)
+    try:
+        return EtfT0OosDatasetOut(**dataset_response(load_oos_dataset(dataset_key)))
+    except OOSDatasetError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+
+
+@router.post("/etf-t0-oos/validate", response_model=EtfT0OosValidationResponse)
+def validate_etf_t0_oos(
+    payload: EtfT0OosValidationRequest,
+    current_user: User = Depends(get_current_user),
+) -> EtfT0OosValidationResponse:
+    require_research_access(current_user)
+    try:
+        result = run_oos_validation(
+            dataset_key=payload.dataset_key,
+            symbol=payload.symbol,
+            name=payload.name,
+            bars=_etf_bars(payload.bars),
+            quantity=payload.quantity,
+            min_signal_bars=payload.min_signal_bars,
+            max_trades_per_day=payload.max_trades_per_day,
+            params=payload.params,
+            vwap_deviation_values=payload.vwap_deviation_values,
+            oversold_rsi_values=payload.oversold_rsi_values,
+        )
+    except OOSDatasetError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    return EtfT0OosValidationResponse(**result)
+
+
+@router.post("/etf-t0-oos/promote-check", response_model=EtfT0OosPromoteCheckResponse)
+def etf_t0_oos_promote_check(
+    payload: EtfT0OosPromoteCheckRequest,
+    current_user: User = Depends(get_current_user),
+) -> EtfT0OosPromoteCheckResponse:
+    require_research_access(current_user)
+    try:
+        result = promote_check(
+            dataset_key=payload.dataset_key,
+            symbol=payload.symbol,
+            name=payload.name,
+            bars=_etf_bars(payload.bars),
+            quantity=payload.quantity,
+            min_signal_bars=payload.min_signal_bars,
+            max_trades_per_day=payload.max_trades_per_day,
+            params=payload.params,
+            vwap_deviation_values=payload.vwap_deviation_values,
+            oversold_rsi_values=payload.oversold_rsi_values,
+        )
+    except OOSDatasetError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    return EtfT0OosPromoteCheckResponse(**result)
+
+
+@router.get("/etf-t0-oos/latest", response_model=EtfT0OosLatestResponse)
+def latest_etf_t0_oos_validation(
+    current_user: User = Depends(get_current_user),
+) -> EtfT0OosLatestResponse:
+    require_research_access(current_user)
+    return EtfT0OosLatestResponse(**latest_oos_validation_summary())
+
+
+def _load_json(path: Path) -> dict:
+    if not path.exists():
+        return {}
+    return json.loads(path.read_text(encoding="utf-8"))
 
 
 @router.post("", response_model=BacktestRunDetail)

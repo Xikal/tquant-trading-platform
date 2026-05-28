@@ -1,0 +1,16 @@
+{
+  "generated_at": "2026-05-27T23:45:38",
+  "status": "completed",
+  "window": {
+    "start_date": "2024-05-28",
+    "end_date": "2026-04-28"
+  },
+  "deleted_rows": 0,
+  "matched_rows": 0,
+  "sample": [],
+  "notes": [
+    "仅删除 open/close/high/low 非法或负成交量/成交额的本地日线行。",
+    "不使用插值、前收盘、后复权或任何替代价格修补 K 线。",
+    "删除后正式覆盖率必须由闭环报告重新计算，不能假定仍达标。"
+  ]
+}

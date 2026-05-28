@@ -18,7 +18,7 @@ def evaluate_multi_timeframe_resonance(history: pd.DataFrame, latest_close: floa
     if history is None or history.empty or latest_close <= 0:
         return MultiTimeframeResonance()
     weekly = _aggregate_ohlcv(history, "W-FRI")
-    monthly = _aggregate_ohlcv(history, "M")
+    monthly = _aggregate_ohlcv(history, "ME")
     weekly_support = _weekly_ma10_support(weekly, latest_close)
     monthly_intact = _monthly_ma20_intact(monthly, latest_close)
     score = 0.0

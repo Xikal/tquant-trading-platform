@@ -4,12 +4,14 @@ import type { BacktestRunSummary } from "../../api/backtests";
 import type { AuthUser } from "../../types";
 import { SkeletonBlock } from "../../components/shared/Feedback";
 import type { StrategyHubTab } from "./useStrategyHub";
+import { EtfT0StrategyStatusPanel } from "./EtfT0StrategyStatusPanel";
 import { PanelTitle, RecentRuns, StrategyBridge, StrategyHistoryPanel, visibleTabsForUser } from "./StrategyHubPanels";
 import { QuickBacktestForm } from "./StrategyQuickCheckPanel";
+import { StrategyGovernanceSummaryPanel } from "../backtest/StrategyImprovementSummary";
 import type { useStrategyHub } from "./useStrategyHub";
 
 type HubState = ReturnType<typeof useStrategyHub>;
-type DetailTabKey = "quick" | "history" | "signals" | "expert";
+type DetailTabKey = "quick" | "history" | "signals" | "etf-t0" | "expert";
 type ExpertTabKey = Extract<StrategyHubTab, "optimize" | "validate" | "compare" | "capacity" | "factor">;
 type ResearchExpertTabKey = Exclude<ExpertTabKey, "factor">;
 
@@ -40,6 +42,7 @@ export function StrategyHubDetailTabs({
     { key: "quick", label: "快速体检", hint: "新用户从这里开始" },
     { key: "history", label: "最近结果", hint: "看最近任务和历史变化" },
     { key: "signals", label: "信号复盘", hint: "看有效和失效案例" },
+    { key: "etf-t0", label: "ETF T0", hint: "研究/生产门槛" },
   ];
   if (expertTabs.length) {
     detailTabs.push({ key: "expert", label: "专家工具", hint: "调参、验证、对比、因子" });
@@ -95,6 +98,10 @@ export function StrategyHubDetailTabs({
                 </Space>
               </Card>
               <Card size="small">
+                <PanelTitle title="治理分层" />
+                <StrategyGovernanceSummaryPanel />
+              </Card>
+              <Card size="small">
                 <PanelTitle title="最近任务" />
                 <RecentRuns runs={hub.runs.slice(0, 3)} onRerun={onRerun} />
               </Card>
@@ -110,6 +117,11 @@ export function StrategyHubDetailTabs({
       {hub.loading !== "tab-switch" && detailTab === "signals" ? (
         <div style={{ minHeight: 280 }}>
           <StrategyBridge tab="signals" />
+        </div>
+      ) : null}
+      {hub.loading !== "tab-switch" && detailTab === "etf-t0" ? (
+        <div style={{ minHeight: 280 }}>
+          <EtfT0StrategyStatusPanel />
         </div>
       ) : null}
       {hub.loading !== "tab-switch" && detailTab === "expert" ? (
@@ -146,6 +158,7 @@ function currentDetailTab(tab: StrategyHubTab, hasExpertTabs: boolean): DetailTa
   if (tab === "quick") return "quick";
   if (tab === "history") return "history";
   if (tab === "signals") return "signals";
+  if (tab === "etf-t0") return "etf-t0";
   if (!hasExpertTabs) return "quick";
   return "expert";
 }

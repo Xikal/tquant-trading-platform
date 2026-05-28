@@ -32,6 +32,7 @@ import { EmptyState } from "../workspace-shared/WorkspaceComponents";
 import { formatInteger, formatPrice } from "../workspace-shared/workspaceFormatters";
 import { DataTable } from "../../ui/table/DataTable";
 import { usePaperUiStore, type PaperDetailTabKey } from "../../stores/paperUiStore";
+import { PaperExitModelShadowSummaryPanel } from "../backtest/StrategyImprovementSummary";
 
 export function PaperDetailTabs(props: PaperDetailTabsProps) {
   const tab = usePaperUiStore((state) => state.detailTab);
@@ -284,6 +285,9 @@ function StrategyTab({
 }) {
   return (
     <TabScroll>
+      <Card size="small" title="止盈止损模型 Shadow" extra={<Typography.Text type="secondary">只读对比，不改规则动作。</Typography.Text>}>
+        <PaperExitModelShadowSummaryPanel />
+      </Card>
       <Card size="small" title="按策略" extra={<Typography.Text type="secondary">看哪个策略赚钱，哪个策略拖后腿。</Typography.Text>}>
         <GroupedPerformanceTable items={strategyPerformance} emptyText="暂无策略绩效" />
       </Card>

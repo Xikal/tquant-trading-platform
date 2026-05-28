@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/url"
+	"sort"
 	"strings"
 	"time"
 
@@ -68,6 +69,47 @@ func (cache mysqlQuoteCache) MGet(ctx context.Context, keys []string) (map[strin
 	return result, rows.Err()
 }
 
+func (cache mysqlQuoteCache) MinuteBars(ctx context.Context, symbols []string, period string, limit int) (map[string][]map[string]any, error) {
+	cleaned := dedupeSymbols(symbols)
+	if len(cleaned) == 0 {
+		return map[string][]map[string]any{}, nil
+	}
+	query, args := latestMinuteBarsQuery(cleaned, period, limit)
+	rows, err := cache.db.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	result := make(map[string][]map[string]any, len(cleaned))
+	for rows.Next() {
+		var symbol, timestamp string
+		var openPrice, closePrice, highPrice, lowPrice, volume, amount float64
+		if err := rows.Scan(&symbol, &timestamp, &openPrice, &closePrice, &highPrice, &lowPrice, &volume, &amount); err != nil {
+			continue
+		}
+		if symbol == "" || timestamp == "" || closePrice <= 0 {
+			continue
+		}
+		result[symbol] = append(result[symbol], map[string]any{
+			"timestamp": timestamp,
+			"open":      openPrice,
+			"close":     closePrice,
+			"high":      highPrice,
+			"low":       lowPrice,
+			"volume":    volume,
+			"amount":    amount,
+			"source":    "mysql_minute_bar_snapshot",
+		})
+	}
+	for symbol, bars := range result {
+		sort.SliceStable(bars, func(i, j int) bool {
+			return stringField(bars[i], "timestamp") < stringField(bars[j], "timestamp")
+		})
+		result[symbol] = tailMinuteBars(bars, limit)
+	}
+	return result, rows.Err()
+}
+
 func mysqlDSN(rawURL string) string {
 	value := strings.TrimSpace(rawURL)
 	if value == "" {
@@ -114,6 +156,29 @@ FROM daily_bar_snapshots d
 LEFT JOIN instruments i ON i.symbol = d.symbol
 WHERE d.symbol IN (` + strings.Join(placeholders, ",") + `)
   AND d.trade_date = (SELECT MAX(trade_date) FROM daily_bar_snapshots)
+`
+	return query, args
+}
+
+func latestMinuteBarsQuery(symbols []string, period string, limit int) (string, []any) {
+	placeholders := make([]string, 0, len(symbols))
+	args := make([]any, 0, len(symbols)+2)
+	for _, symbol := range symbols {
+		placeholders = append(placeholders, "?")
+		args = append(args, symbol)
+	}
+	args = append(args, period, limit)
+	query := `
+SELECT symbol, bar_timestamp, open_price, close_price, high_price, low_price, volume, amount
+FROM (
+  SELECT symbol, bar_timestamp, open_price, close_price, high_price, low_price, volume, amount,
+         ROW_NUMBER() OVER (PARTITION BY symbol ORDER BY bar_timestamp DESC) AS rn
+  FROM minute_bar_snapshots
+  WHERE symbol IN (` + strings.Join(placeholders, ",") + `)
+    AND bar_period = ?
+) ranked
+WHERE rn <= ?
+ORDER BY symbol, bar_timestamp ASC
 `
 	return query, args
 }

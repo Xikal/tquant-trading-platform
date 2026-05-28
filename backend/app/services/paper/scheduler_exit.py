@@ -9,6 +9,10 @@ from sqlalchemy.orm import Session
 from app.models.entities import PaperAccount
 from app.services.market_data import MarketDataService
 from app.services.paper.dynamic_exit import evaluate_paper_exit
+from app.services.paper.exit_model_advisor import ExitModelAdvisor
+from app.services.paper.exit_model_features import build_exit_model_features
+from app.services.paper.exit_model_schema import ExitModelShadowRecord
+from app.services.paper.exit_model_shadow import record_exit_model_shadow
 from app.services.paper.position import PaperPositionService
 from app.services.paper.quote_quality import PaperQuotePrice
 from app.services.paper.scheduler_helpers import (
@@ -65,6 +69,17 @@ def build_exit_order_plan(*, db: Session, account: PaperAccount) -> tuple[list[d
             context=context,
         )
         decision = evaluate_paper_exit(row, price=price, now=now, context=context)
+        exit_model = _exit_model_shadow_payload(
+            db=db,
+            account=account,
+            row=row,
+            decision=decision,
+            price=price,
+            now=now,
+            quote=quote,
+            context=context,
+            intraday_bars=intraday_bars.get(row.symbol),
+        )
         if decision.quantity <= 0:
             continue
         reason = decision.reason
@@ -103,11 +118,59 @@ def build_exit_order_plan(*, db: Session, account: PaperAccount) -> tuple[list[d
                     "trailing_high_price": context.trailing_high_price,
                     "trailing_stop_price": context.trailing_stop_price,
                     "dynamic_exit": True,
+                    "exit_model_shadow": exit_model,
                 },
             }
         )
     reason = EXIT_QUOTES_UNAVAILABLE_REASON if skipped_symbols and not orders else ""
     return orders, reason
+
+
+def _exit_model_shadow_payload(
+    *,
+    db: Session,
+    account: PaperAccount,
+    row,
+    decision,
+    price: float,
+    now,
+    quote,
+    context,
+    intraday_bars,
+) -> dict[str, Any]:
+    features = build_exit_model_features(
+        position=row,
+        decision=decision,
+        price=price,
+        now=now,
+        quote=quote,
+        context=context,
+        intraday_bars=intraday_bars or [],
+        account_total_assets=float(getattr(account, "total_assets", 0.0) or 0.0),
+    )
+    suggestion = ExitModelAdvisor().suggest(features)
+    payload = suggestion.to_dict()
+    record_exit_model_shadow(
+        db,
+        ExitModelShadowRecord(
+            account_id=int(getattr(account, "id", 0) or 0),
+            position_id=int(getattr(row, "id", 0) or 0),
+            symbol=str(getattr(row, "symbol", "") or ""),
+            name=str(getattr(row, "name", "") or ""),
+            strategy_key=features.strategy_key,
+            as_of=features.as_of,
+            rule_action=features.rule_action,
+            rule_reason=str(decision.why or decision.reason or ""),
+            rule_sell_ratio=features.rule_sell_ratio,
+            model_action=suggestion.action,
+            model_confidence=suggestion.confidence,
+            model_reason=list(suggestion.reasons),
+            model_version=suggestion.model_version,
+            fallback_reason=suggestion.fallback_reason,
+            feature_snapshot=features.to_dict(),
+        ),
+    )
+    return payload
 
 
 def build_smart_t_order_plan(

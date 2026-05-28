@@ -1,8 +1,10 @@
 import { create } from "zustand";
 import type { BacktestExecutionModel, BacktestRunSummary } from "../api/backtests";
 import type { StrategyMeta, StrategyPreset } from "../api/strategies";
+import type { EtfMinuteSnapshotBatchResponse, EtfUniverseResponse } from "../types";
+import type { EtfT0OosLatestResponse } from "../types/etfT0Oos";
 
-export type StrategyHubTab = "quick" | "signals" | "optimize" | "validate" | "compare" | "capacity" | "factor" | "history";
+export type StrategyHubTab = "quick" | "signals" | "etf-t0" | "optimize" | "validate" | "compare" | "capacity" | "factor" | "history";
 
 export interface StrategyQuickForm {
   name: string;
@@ -17,6 +19,14 @@ export interface StrategyQuickForm {
   min_cash_reserve: string;
   benchmark: string;
   strategies: string[];
+}
+
+interface StrategyEtfT0State {
+  universe: EtfUniverseResponse | null;
+  snapshots: EtfMinuteSnapshotBatchResponse | null;
+  oosLatest: EtfT0OosLatestResponse | null;
+  loading: boolean;
+  error: string;
 }
 
 export const DEFAULT_STRATEGY_FORM: StrategyQuickForm = {
@@ -44,6 +54,7 @@ interface StrategyHubUiStore {
   loading: string;
   error: string;
   notice: string;
+  etfT0: StrategyEtfT0State;
   setTab: (tab: StrategyHubTab) => void;
   setConfirmOpen: (open: boolean) => void;
   setStrategies: (strategies: StrategyMeta[]) => void;
@@ -53,6 +64,7 @@ interface StrategyHubUiStore {
   setLoading: (loading: string | ((current: string) => string)) => void;
   setError: (error: string) => void;
   setNotice: (notice: string) => void;
+  setEtfT0: (patch: Partial<StrategyEtfT0State>) => void;
 }
 
 export const useStrategyHubUiStore = create<StrategyHubUiStore>((set) => ({
@@ -65,6 +77,13 @@ export const useStrategyHubUiStore = create<StrategyHubUiStore>((set) => ({
   loading: "",
   error: "",
   notice: "",
+  etfT0: {
+    universe: null,
+    snapshots: null,
+    oosLatest: null,
+    loading: false,
+    error: "",
+  },
   setTab: (tab) => set({ tab }),
   setConfirmOpen: (confirmOpen) => set({ confirmOpen }),
   setStrategies: (strategies) => set({ strategies }),
@@ -74,12 +93,14 @@ export const useStrategyHubUiStore = create<StrategyHubUiStore>((set) => ({
   setLoading: (loading) => set((state) => ({ loading: typeof loading === "function" ? loading(state.loading) : loading })),
   setError: (error) => set({ error }),
   setNotice: (notice) => set({ notice }),
+  setEtfT0: (patch) => set((state) => ({ etfT0: { ...state.etfT0, ...patch } })),
 }));
 
 function initialStrategyHubTab(): StrategyHubTab {
   if (typeof window === "undefined") return "quick";
   const raw = new URLSearchParams(window.location.search).get("tab") || "";
   if (raw === "replay" || raw === "signals") return "signals";
+  if (raw === "etf-t0" || raw === "etf") return "etf-t0";
   if (raw === "optimize") return "optimize";
   if (raw === "validate") return "validate";
   if (raw === "compare") return "compare";

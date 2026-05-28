@@ -1,0 +1,45 @@
+{
+  "generated_at": "2026-05-27T19:27:57",
+  "status": "completed",
+  "config": {
+    "scope": "symbols",
+    "symbol_count": 1,
+    "start_date": "2026-05-27",
+    "end_date": "2026-05-27",
+    "period": "1m",
+    "workers": 1,
+    "force": true,
+    "allow_partial": true
+  },
+  "totals": {
+    "ok": 1,
+    "skip": 0,
+    "empty": 0,
+    "error": 0
+  },
+  "results": [
+    {
+      "symbol": "510300",
+      "name": "沪深300ETF",
+      "category": "broad_base",
+      "status": "ok",
+      "rows": 242,
+      "period": "1m",
+      "source": "tencent.minute",
+      "data_quality": "fresh:242",
+      "message": "",
+      "provider_errors": [
+        {
+          "source": "eastmoney.etf_minute",
+          "message": "Remote end closed connection without response"
+        }
+      ]
+    }
+  ],
+  "failed_symbols": [],
+  "notes": [
+    "仅补 ETF universe 中 same_day_sell_allowed=true 的标的，避免把所有 ETF 错当 T+0。",
+    "5m/15m/30m/60m 优先 Eastmoney 历史分钟线；1m 可 fallback 到 Tencent/Eastmoney 近端趋势源。",
+    "未取到远端数据时只写 partial_data/error/empty，不生成伪分钟线。"
+  ]
+}

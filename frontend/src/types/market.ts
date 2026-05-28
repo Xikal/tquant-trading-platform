@@ -277,10 +277,72 @@ export interface IntradayKeyLevelResponse {
   data_quality_text?: string;
 }
 
+export interface EtfUniverseProfile {
+  symbol: string;
+  name: string;
+  category: string;
+  t0_eligible: boolean;
+  settlement_rule: string;
+  tracking_index: string;
+  min_amount: number;
+  max_spread_bps: number;
+  slippage_bps: number;
+  premium_discount_available: boolean;
+  enabled_for_t0: boolean;
+  same_day_sell_allowed: boolean;
+  notes: string;
+}
+
+export interface EtfUniverseResponse {
+  version: string;
+  updated_at: string;
+  total: number;
+  t0_enabled_count: number;
+  source: string;
+  audit_scope: string;
+  items: EtfUniverseProfile[];
+  notes: string[];
+}
+
+export interface EtfMinuteSnapshotItem {
+  symbol: string;
+  period: string;
+  bar_count: number;
+  latest_timestamp: string;
+  latest_price: number;
+  latest_amount: number;
+  total_amount: number;
+  high_price: number;
+  low_price: number;
+  age_seconds: number;
+  data_quality: string;
+  bars: KlineBar[];
+  strategy_decision: string;
+  note: string;
+}
+
+export interface EtfMinuteSnapshotBatchResponse {
+  source: string;
+  period: string;
+  data_quality: string;
+  items: EtfMinuteSnapshotItem[];
+  missing: string[];
+  notes: string[];
+}
+
 export interface SectorEtfT0Opportunity {
   sector_name: string;
   etf_symbol: string;
   etf_name: string;
+  etf_category?: string;
+  t0_eligible?: boolean;
+  settlement_rule?: string;
+  tracking_index?: string;
+  min_amount?: number;
+  max_spread_bps?: number;
+  slippage_bps?: number;
+  premium_discount_available?: boolean;
+  t0_eligibility_text?: string;
   source_signal_symbol: string;
   source_signal_name: string;
   source_signal_state?: string;
@@ -295,6 +357,11 @@ export interface SectorEtfT0Opportunity {
   sell_zone: string;
   stop_loss?: number | null;
   expected_edge_pct: number;
+  intraday_signal_action?: string;
+  intraday_signal_text?: string;
+  intraday_signal_confidence?: number;
+  intraday_signal_snapshot?: Record<string, unknown>;
+  intraday_risk_flags?: string[];
   reason: string;
   risk: string;
   data_quality_text?: string;

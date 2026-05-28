@@ -16,12 +16,16 @@ _CACHE_LOCK = threading.RLock()
 
 
 def current_quant_parameters(market_state_scope: str = "") -> dict[str, Any]:
+    return deepcopy(_current_quant_parameters_cached(market_state_scope))
+
+
+def _current_quant_parameters_cached(market_state_scope: str = "") -> dict[str, Any]:
     now = time.monotonic()
     resolved_scope = market_state_scope.strip() or current_market_state_scope()
     cache_key = resolved_scope or "__default__"
     with _CACHE_LOCK:
         if cache_key in _CACHE_PARAMS and now < _CACHE_EXPIRES_AT.get(cache_key, 0.0):
-            return deepcopy(_CACHE_PARAMS[cache_key])
+            return _CACHE_PARAMS[cache_key]
         try:
             with SessionLocal() as db:
                 current = QuantParameterVersionService(db).current(
@@ -33,7 +37,16 @@ def current_quant_parameters(market_state_scope: str = "") -> dict[str, Any]:
             params = default_quant_parameters()
         _CACHE_PARAMS[cache_key] = params
         _CACHE_EXPIRES_AT[cache_key] = now + _CACHE_TTL_SECONDS
-        return deepcopy(params)
+        return params
+
+
+def _parameter_section(*path: str) -> dict[str, Any]:
+    values: Any = _current_quant_parameters_cached()
+    for key in path:
+        if not isinstance(values, dict):
+            return {}
+        values = values.get(key, {})
+    return deepcopy(values) if isinstance(values, dict) else {}
 
 
 def clear_quant_parameter_cache() -> None:
@@ -51,57 +64,40 @@ def get_low_buy_strategy_execution(strategy: str, fallback: dict[str, Any]) -> d
 
 
 def get_low_buy_scoring() -> dict[str, Any]:
-    values = current_quant_parameters().get("low_buy", {}).get("scoring", {})
-    return deepcopy(values) if isinstance(values, dict) else {}
+    return _parameter_section("low_buy", "scoring")
 
 
 def get_low_buy_thresholds() -> dict[str, Any]:
-    values = current_quant_parameters().get("low_buy", {}).get("thresholds", {})
-    return deepcopy(values) if isinstance(values, dict) else {}
+    return _parameter_section("low_buy", "thresholds")
 
 
 def get_low_buy_auto_governance() -> dict[str, Any]:
-    values = current_quant_parameters().get("low_buy", {}).get("auto_governance", {})
-    return deepcopy(values) if isinstance(values, dict) else {}
+    return _parameter_section("low_buy", "auto_governance")
 
 
 def get_low_buy_research_layers() -> dict[str, Any]:
-    values = current_quant_parameters().get("low_buy", {}).get("research_layers", {})
-    return deepcopy(values) if isinstance(values, dict) else {}
+    return _parameter_section("low_buy", "research_layers")
 
 
 def get_low_buy_hard_risk() -> dict[str, Any]:
-    values = current_quant_parameters().get("low_buy", {}).get("hard_risk", {})
-    return deepcopy(values) if isinstance(values, dict) else {}
+    return _parameter_section("low_buy", "hard_risk")
 
 
 def get_low_buy_dynamic_adjustment() -> dict[str, Any]:
-    values = current_quant_parameters().get("low_buy", {}).get("dynamic_adjustment", {})
-    return deepcopy(values) if isinstance(values, dict) else {}
+    return _parameter_section("low_buy", "dynamic_adjustment")
 
 
 def get_low_buy_market_state_rules() -> dict[str, Any]:
-    values = current_quant_parameters().get("low_buy", {}).get("market_state_rules", {})
-    return deepcopy(values) if isinstance(values, dict) else {}
+    return _parameter_section("low_buy", "market_state_rules")
 
 
 def get_low_buy_hard_buy_min_scores() -> dict[str, float]:
-    values = (
-        current_quant_parameters()
-        .get("low_buy", {})
-        .get("signal_thresholds", {})
-        .get("hard_buy_min_scores", {})
-    )
+    values = _parameter_section("low_buy", "signal_thresholds", "hard_buy_min_scores")
     return {str(key): float(value) for key, value in values.items()} if isinstance(values, dict) else {}
 
 
 def get_low_buy_soft_buy_min_scores() -> dict[str, dict[str, float]]:
-    values = (
-        current_quant_parameters()
-        .get("low_buy", {})
-        .get("signal_thresholds", {})
-        .get("soft_buy_min_scores", {})
-    )
+    values = _parameter_section("low_buy", "signal_thresholds", "soft_buy_min_scores")
     if not isinstance(values, dict):
         return {}
     result: dict[str, dict[str, float]] = {}
@@ -112,79 +108,63 @@ def get_low_buy_soft_buy_min_scores() -> dict[str, dict[str, float]]:
 
 
 def get_position_t_scoring() -> dict[str, Any]:
-    values = current_quant_parameters().get("position_t", {}).get("scoring", {})
-    return deepcopy(values) if isinstance(values, dict) else {}
+    return _parameter_section("position_t", "scoring")
 
 
 def get_position_t_decision() -> dict[str, Any]:
-    values = current_quant_parameters().get("position_t", {}).get("decision", {})
-    return deepcopy(values) if isinstance(values, dict) else {}
+    return _parameter_section("position_t", "decision")
 
 
 def get_position_t_intraday_structure() -> dict[str, Any]:
-    values = current_quant_parameters().get("position_t", {}).get("intraday_structure", {})
-    return deepcopy(values) if isinstance(values, dict) else {}
+    return _parameter_section("position_t", "intraday_structure")
 
 
 def get_market_regime_scoring() -> dict[str, Any]:
-    values = current_quant_parameters().get("market", {}).get("regime_scoring", {})
-    return deepcopy(values) if isinstance(values, dict) else {}
+    return _parameter_section("market", "regime_scoring")
 
 
 def get_market_sector_etf_t0() -> dict[str, Any]:
-    values = current_quant_parameters().get("market", {}).get("sector_etf_t0", {})
-    return deepcopy(values) if isinstance(values, dict) else {}
+    return _parameter_section("market", "sector_etf_t0")
 
 
 def get_market_intraday_anomaly() -> dict[str, Any]:
-    values = current_quant_parameters().get("market", {}).get("intraday_anomaly", {})
-    return deepcopy(values) if isinstance(values, dict) else {}
+    return _parameter_section("market", "intraday_anomaly")
 
 
 def get_market_distribution_signals() -> dict[str, Any]:
-    values = current_quant_parameters().get("market", {}).get("distribution_signals", {})
-    return deepcopy(values) if isinstance(values, dict) else {}
+    return _parameter_section("market", "distribution_signals")
 
 
 def get_ml_signal_training() -> dict[str, Any]:
-    values = current_quant_parameters().get("ml", {}).get("training", {})
-    return deepcopy(values) if isinstance(values, dict) else {}
+    return _parameter_section("ml", "training")
 
 
 def get_backtest_execution() -> dict[str, Any]:
-    values = current_quant_parameters().get("backtest", {}).get("execution", {})
-    return deepcopy(values) if isinstance(values, dict) else {}
+    return _parameter_section("backtest", "execution")
 
 
 def get_backtest_verdict_thresholds() -> dict[str, Any]:
-    values = get_backtest_execution().get("verdict_thresholds", {})
-    return deepcopy(values) if isinstance(values, dict) else {}
+    return _parameter_section("backtest", "execution", "verdict_thresholds")
 
 
 def get_capacity_analysis() -> dict[str, Any]:
-    values = current_quant_parameters().get("capacity", {})
-    return deepcopy(values) if isinstance(values, dict) else {}
+    return _parameter_section("capacity")
 
 
 def get_risk_volatility_sizing() -> dict[str, Any]:
-    values = current_quant_parameters().get("risk", {}).get("volatility_sizing", {})
-    return deepcopy(values) if isinstance(values, dict) else {}
+    return _parameter_section("risk", "volatility_sizing")
 
 
 def get_paper_dynamic_exit() -> dict[str, Any]:
-    values = current_quant_parameters().get("paper", {}).get("dynamic_exit", {})
-    return deepcopy(values) if isinstance(values, dict) else {}
+    return _parameter_section("paper", "dynamic_exit")
 
 
 def get_paper_risk_control() -> dict[str, Any]:
-    values = current_quant_parameters().get("paper", {}).get("risk_control", {})
-    return deepcopy(values) if isinstance(values, dict) else {}
+    return _parameter_section("paper", "risk_control")
 
 
 def _strategy_config(section: str, strategy: str, fallback: dict[str, Any]) -> dict[str, Any]:
-    values = current_quant_parameters().get("low_buy", {}).get(section, {}).get(strategy, {})
-    if not isinstance(values, dict):
-        values = {}
+    values = _parameter_section("low_buy", section, strategy)
     return _deep_merge(fallback, values)
 
 

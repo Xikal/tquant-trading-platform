@@ -10,7 +10,7 @@ const viewports = [
   { name: "tablet", width: 768, height: 1024 },
   { name: "desktop", width: 1440, height: 960 },
 ];
-const paths = ["/monitor", "/emotion", "/paper", "/backtest", "/settings"];
+const paths = ["/monitor", "/emotion", "/analysis", "/playbook", "/strategy", "/backtest", "/paper", "/settings"];
 const reportPath = resolve("dist", "responsive-smoke-report.json");
 
 const mockUser = {
@@ -24,6 +24,231 @@ const mockUser = {
 
 const emptyList = { items: [], total: 0 };
 const now = "2026-05-26T10:30:00+08:00";
+const mockStrategyMeta = [
+  {
+    key: "first_board",
+    name: "首板低吸",
+    display_name: "首板低吸",
+    description: "首板回踩确认",
+    tier: "core",
+    category_key: "core",
+    category: "核心",
+    display_category: "核心策略",
+    risk_level: "medium",
+    typical_holding_days: "1-3",
+    sort_order: 1,
+    enabled: true,
+    visibility: "full",
+  },
+  {
+    key: "volume_shrink",
+    name: "缩量回踩",
+    display_name: "缩量回踩",
+    description: "缩量回踩确认",
+    tier: "auxiliary",
+    category_key: "auxiliary",
+    category: "辅助",
+    display_category: "辅助策略",
+    risk_level: "medium",
+    typical_holding_days: "2-5",
+    sort_order: 2,
+    enabled: true,
+    visibility: "full",
+  },
+];
+const mockLowBuyCandidate = {
+  strategy_key: "first_board",
+  strategy_title: "首板低吸",
+  symbol: "510300",
+  name: "沪深300ETF",
+  market: "SH",
+  instrument_type: "etf",
+  sector_name: "ETF",
+  latest_price: 3.45,
+  change_pct: 0.6,
+  quote_timestamp: now,
+  data_quality: "fresh",
+  data_quality_text: "fresh",
+  board_date: "2026-05-25",
+  board_count: 1,
+  retracement_days: 2,
+  score: 82,
+  entry_zone_low: 3.38,
+  entry_zone_high: 3.48,
+  stop_loss: 3.31,
+  take_profit: 3.62,
+  ma5: 3.42,
+  ma10: 3.39,
+  ma20: 3.36,
+  volume_burst_ratio: 1.5,
+  volume_shrink_ratio: 0.72,
+  support_distance_pct: 1.2,
+  distribution_risk_score: 18,
+  false_breakout_flag: false,
+  stall_after_volume_flag: false,
+  intraday_reversal_flag: false,
+  execution_ready: true,
+  execution_note: "回踩承接确认",
+  entry_distance_pct: -0.4,
+  suggested_position_pct: 0.12,
+  suggested_position_text: "12%",
+  market_state: "repair",
+  market_state_text: "震荡修复",
+  market_state_strength: 58,
+  market_position_multiplier: 0.8,
+  confirmed_trade_date: "2026-05-26",
+  summary_reason: "主线 ETF 回踩承接",
+  buy_signal_state: "near_entry",
+  buy_signal_text: "接近买点",
+  buy_signal_hint: "等待价格进入买点区",
+  recommendation_days: 1,
+};
+const mockLowBuyPerformance = {
+  lookback_days: 60,
+  signal_count: 24,
+  evaluated_signals: 18,
+  filled_signals: 12,
+  pending_signals: 2,
+  hit_count: 9,
+  hit_rate: 0.5,
+  win_rate_1d: 0.52,
+  win_rate_3d: 0.58,
+  win_rate_5d: 0.61,
+  avg_return_1d: 0.6,
+  avg_return_3d: 1.4,
+  avg_return_5d: 2.1,
+  avg_max_gain_5d: 4.2,
+  avg_max_drawdown_5d: -1.3,
+  target_profit_pct: 3,
+  updated_at: now,
+  attribution_notes: [],
+  sector_attribution: [],
+  retracement_attribution: [],
+  market_state_attribution: [],
+  industry_tier_attribution: [],
+};
+const mockLowBuy = {
+  strategy_key: "first_board",
+  strategy_title: "首板低吸",
+  strategy_subtitle: "回踩承接",
+  strategy_logic: "首板后回踩确认",
+  requested_mode: "quick",
+  response_mode: "quick",
+  as_of_date: "2026-05-26",
+  latest_trade_date: "2026-05-26",
+  pool_size: 120,
+  scanned_count: 48,
+  matched_count: 1,
+  requested_scan_limit: 48,
+  active_scan_limit: 48,
+  full_scan_ready: true,
+  full_scan_in_progress: false,
+  market_state: "repair",
+  market_state_text: "震荡修复",
+  market_state_category: "neutral",
+  market_state_category_text: "中性偏暖",
+  data_quality: "fresh",
+  data_quality_text: "fresh",
+  market_bonus: 0.2,
+  market_state_strength: 58,
+  regime_confidence: 0.72,
+  state_persistence_days: 2,
+  transition_risk: 0.2,
+  breadth_ready: true,
+  emotion_ready: true,
+  stock_up_ratio: 0.56,
+  stock_median_change: 0.42,
+  style_divergence: 0.1,
+  hot_turnover: 0.22,
+  hot_overlap_ratio: 0.35,
+  limit_down_count: 5,
+  limit_up_count: 48,
+  board_height: 4,
+  previous_board_height: 3,
+  promotion_ratio: 0.32,
+  broken_board_ratio: 0.18,
+  promotion_break_gap: 0.14,
+  promotion_break_pressure: 0.2,
+  high_flyer_retreat_ratio: 0.12,
+  high_flyer_gap_speed: 0.1,
+  distribution_pressure: 0.22,
+  hot_industries: ["机器人", "半导体"],
+  hot_industry_source: "market",
+  hot_industry_source_text: "行情",
+  retracement_distribution: { "2天": 8, "3天": 5 },
+  filters: { scan_mode: "quick" },
+  strategy_notes: ["smoke"],
+  performance: mockLowBuyPerformance,
+  close_review_trade_date: "2026-05-26",
+  close_review_items: [],
+  confirmed_candidates: [mockLowBuyCandidate],
+  history_sections: [],
+  candidates: [],
+};
+const mockAnalysis = {
+  symbol: "510300",
+  instrument: { symbol: "510300", name: "沪深300ETF", market: "SH", instrument_type: "etf", sector_name: "ETF" },
+  quote: {
+    symbol: "510300",
+    name: "沪深300ETF",
+    market: "SH",
+    instrument_type: "etf",
+    last_price: 3.45,
+    change_pct: 0.6,
+    change_amount: 0.02,
+    open_price: 3.42,
+    high_price: 3.48,
+    low_price: 3.4,
+    prev_close: 3.43,
+    volume: 1200000,
+    amount: 4140000,
+    timestamp: now,
+  },
+  rules: {
+    symbol: "510300",
+    turnaround_mode: "t0",
+    supports_positive_t: true,
+    supports_negative_t: true,
+    same_day_sell_allowed: true,
+    requires_base_position: false,
+    notes: "ETF 可做 T",
+  },
+  sector: { sector_name: "ETF", sector_strength: 60, market_strength: 58, alignment_score: 65, notes: "smoke" },
+  events: [],
+  microstructure: { available: true, buy_pressure: 0.6, sell_pressure: 0.4, large_order_flow: 0.1, notes: "smoke" },
+  bars: [
+    { timestamp: now, open: 3.42, close: 3.45, high: 3.48, low: 3.4, volume: 1000, amount: 3450 },
+    { timestamp: now, open: 3.45, close: 3.46, high: 3.47, low: 3.44, volume: 900, amount: 3114 },
+  ],
+  metrics: { signal_score: 72, expected_profit_pct: 1.8, min_profit_pct: 1.2, slippage_bps: 3 },
+  suggestion: {
+    action: "positive_t",
+    entry_price: 3.44,
+    exit_price: 3.58,
+    position_pct: 0.12,
+    stop_loss: 3.31,
+    risk_level: "medium",
+    signal_score: 72,
+    tradability_score: 76,
+    confidence: 0.68,
+    expected_profit_pct: 1.8,
+    scenario: "pullback",
+    signal_layer: "light_execute",
+    signal_layer_text: "轻仓执行",
+    reasons: ["回踩承接"],
+    blocking_rules: [],
+    take_profit: 3.62,
+    strategy_notes: "smoke",
+    plain_action_text: "轻仓正T",
+    plain_action_reason: "ETF 回踩承接",
+    plain_execution_text: "低吸后高抛",
+    plain_invalid_condition: "跌破 3.31 放弃",
+    is_actionable: true,
+  },
+  ai: { enabled: false, summary: "未启用", confidence: 0, suggestions: [], warnings: [] },
+  compliance_notes: [],
+  assumptions: [],
+};
 const mockPaperAccount = {
   id: 1,
   name: "Smoke 模拟盘",
@@ -221,10 +446,120 @@ async function installMockAuth(page) {
         partial_errors: [],
       });
     }
-    if (path === "/strategies/meta") return response({ strategies: [] });
+    if (path === "/market/hourly-snapshots/history") return response({ items: [], total: 0 });
+    if (path === "/market/trading-session") return response({ updated_at: now, is_trading_day: true, is_trading_now: true, current_time: now, timezone: "Asia/Shanghai", data_quality_text: "fresh" });
+    if (path.startsWith("/market/intraday-anomaly/")) return response({ symbol: "510300", anomaly_level: "low", anomaly_text: "正常", score: 12, reasons: [], updated_at: now });
+    if (path === "/strategies/meta") return response({ strategies: mockStrategyMeta });
+    if (path === "/strategy/presets") return response({ presets: [] });
+    if (path === "/bff/v1/workspace/strategy") return response({
+      api_version: "v1",
+      schema_version: "smoke",
+      generated_at: now,
+      strategy_meta: { strategies: mockStrategyMeta },
+      presets: { presets: [] },
+      recent_runs: { items: [], total: 0, limit: 20, offset: 0 },
+      verdict_thresholds: { thresholds: {} },
+      partial_errors: [],
+    });
+    if (path.startsWith("/strategy/signals/replay")) return response({ items: [], total: 0 });
+    if (path === "/screeners/low-buy/strategies") {
+      return response({
+        default_strategy: "first_board",
+        production_strategies: ["first_board"],
+        items: mockStrategyMeta.map((item) => ({
+          strategy_key: item.key,
+          strategy_title: item.display_name,
+          subtitle: item.description,
+          tier: item.tier,
+          layer: "production",
+          status: "active",
+          status_text: "启用",
+          enabled: true,
+          participates_priority_board: true,
+          strong_buy_paused: false,
+          requires_mainline_industry: false,
+          pool_key: "default",
+          pool_title: "默认池",
+          pool_source: "smoke",
+          pool_max_size: 100,
+          uses_daily_scan_pool: true,
+          max_holding_days: 5,
+        })),
+      });
+    }
+    if (path === "/screeners/low-buy/priority-board") return response({ strategy: "first_board", trade_date: "2026-05-26", items: [mockLowBuyCandidate], total: 1 });
+    if (path === "/screeners/low-buy") return response(mockLowBuy);
+    if (path === "/screeners/low-buy/quotes") return response({ items: { "510300": { latest_price: 3.45, change_pct: 0.6, quote_timestamp: now, in_entry_zone: true, distance_to_entry_pct: -0.2, stop_confirmed: false, buy_signal_state: "near_entry", buy_signal_text: "接近买点", buy_signal_hint: "等待确认" } } });
+    if (path === "/analyze") return response(mockAnalysis);
+    if (path === "/analyze/batch") return response([mockAnalysis]);
+    if (path === "/ai/decision-support") return response({ enabled: false, summary: "smoke", suggestions: [], warnings: [] });
+    if (path === "/bff/v1/workspace/settings") return response({
+      api_version: "v1",
+      schema_version: "smoke",
+      generated_at: now,
+      settings: {
+        llm_provider: "openai",
+        llm_api_key: "********",
+        llm_base_url: "https://api.example.invalid/v1",
+        llm_model: "smoke",
+        data_source: "local",
+        data_source_base_url: "",
+        database_url: "sqlite:///smoke.db",
+        risk_max_single_loss_pct: 2,
+        risk_max_daily_loss_pct: 5,
+        risk_pause_after_losses: 3,
+        walk_forward_window_size: 20,
+        event_risk_enabled: false,
+        microstructure_enabled: false,
+        strategy_min_amount_stock: 50000000,
+        strategy_min_amount_etf: 10000000,
+        strategy_min_amplitude_pct: 1,
+        strategy_max_amplitude_pct: 12,
+        strategy_max_atr_pct: 8,
+        strategy_open_phase_min_tradability: 60,
+        strategy_min_profit_pct: 1.2,
+        strategy_min_profit_stock_pct: 3,
+        strategy_min_profit_etf_pct: 1.2,
+        strategy_slippage_stock_bps: 8,
+        strategy_slippage_etf_bps: 3,
+        llm_api_key_configured: true,
+        database_url_configured: true,
+        admin_auth_required: false,
+      },
+      sector_exclusions: { available_sectors: ["机器人", "半导体"], excluded_sectors: [], excluded_count: 0, updated_at: now },
+      strategy_governance: { default_strategy: "first_board", production_strategies: ["first_board"], items: [] },
+      runtime: { app_name: "TQuant", api_prefix: "/api", database_backend: "sqlite", database_url_masked: "sqlite:///smoke.db", runtime_database_url_masked: "sqlite:///smoke.db", runtime_env_path: ".runtime", runtime_env_exists: true, runtime_database_override: false, runtime_database_matches_settings: true, runtime_llm_secret_persisted: true, settings_consistency_status: "ok", settings_consistency_text: "配置一致", frontend_dist_path: "dist", frontend_dist_ready: true, llm_configured: true, data_source: "local", data_source_base_url: "", cors_origins: [], ready_checks: { database: true, frontend_dist: true } },
+      factor_weights: { weights: {}, defaults: {}, factors: [] },
+      admin_tasks: { items: [] },
+      admin_metrics: {},
+      admin_enabled: true,
+      partial_errors: [],
+    });
+    if (path === "/settings/runtime") return response({ app_name: "TQuant", api_prefix: "/api", database_backend: "sqlite", database_url_masked: "sqlite:///smoke.db", runtime_database_url_masked: "sqlite:///smoke.db", runtime_env_path: ".runtime", runtime_env_exists: true, runtime_database_override: false, runtime_database_matches_settings: true, runtime_llm_secret_persisted: true, settings_consistency_status: "ok", settings_consistency_text: "配置一致", frontend_dist_path: "dist", frontend_dist_ready: true, llm_configured: true, data_source: "local", data_source_base_url: "", cors_origins: [], ready_checks: { database: true, frontend_dist: true } });
+    if (path === "/settings/sector-exclusions") return response({ available_sectors: ["机器人", "半导体"], excluded_sectors: [], excluded_count: 0, updated_at: now });
+    if (path === "/settings/factor-weights") return response({ weights: {}, defaults: {}, factors: [] });
+    if (path === "/admin/tasks") return response({ items: [] });
+    if (path === "/admin/metrics") return response({});
+    if (path === "/operation-audit") return response({ items: [], total: 0, limit: 20, offset: 0 });
+    if (path === "/quant/parameters/current") return response({ id: 1, version: "smoke", name: "Smoke", scope: "global", status: "active", params: {}, description: "smoke", created_by: "smoke", created_at: now, activated_at: now });
+    if (path === "/quant/parameters/schema") return response({});
     if (path === "/backtests") return response({ items: [], total: 0, limit: 20, offset: 0 });
+    if (path === "/backtests/verdict-thresholds") return response({ thresholds: {} });
+    if (path === "/backtests/compare") return response({ items: [] });
+    if (path.startsWith("/backtests/") && path.endsWith("/equity")) return response({ items: [] });
+    if (path.startsWith("/backtests/") && path.endsWith("/trades")) return response({ items: [], total: 0, limit: 50, offset: 0 });
+    if (path.startsWith("/backtests/") && path.endsWith("/monthly-returns")) return response({ items: [] });
+    if (path.startsWith("/backtests/") && path.endsWith("/attribution")) return response({});
+    if (path.startsWith("/backtests/") && path.endsWith("/strategy-correlation")) return response({ strategies: [], matrix: [] });
+    if (path.startsWith("/backtests/") && path.endsWith("/portfolio-optimization")) return response({ items: [] });
+    if (path.startsWith("/backtests/") && path.endsWith("/position-policy-research")) return response({ items: [] });
     if (path.startsWith("/backtests/")) return response(emptyList);
     if (path === "/backtests/optimize" || path === "/backtests/validate") return response({ items: [], total: 0, limit: 20, offset: 0 });
+    if (path === "/ml/signals/online-learning/status") return response({ generated_at: now, paper_sample_count: 0, closed_trade_sample_count: 0, positive_sample_count: 0, negative_sample_count: 0, ready_for_training: false, min_samples: 100, feature_names: [], sequence_feature_names: [], production_model_key: "smoke", latest_incremental_task_status: "idle", latest_incremental_task_progress_pct: 0, next_training_rule: "manual", warnings: [] });
+    if (path === "/ml/signals/capacity") return response({ generated_at: now, capital_levels: [], items: [], assumptions: {} });
+    if (path === "/factor-mining/health") return response({ total: 0, production: 0, validated: 0, items: [] });
+    if (path === "/factor-mining/factors") return response({ items: [], total: 0 });
+    if (path === "/factor-mining/hypotheses") return response({ provider: "smoke", items: [] });
     if (path === "/bff/v1/workspace/paper") return response(mockPaperWorkspace);
     if (path === "/paper/account") return response(mockPaperAccount);
     if (path === "/paper/positions" || path === "/paper/positions/refresh") {
@@ -286,7 +621,9 @@ for (const viewport of viewports) {
     } catch (error) {
       pageErrors.push(String(error?.message || error));
     }
-    const ok = status > 0 && status < 500 && overflowX <= 2 && pageErrors.length === 0 && (!requireAuth || !loginGate);
+    const visibleTextLength = await page.locator("body").innerText().then((value) => value.trim().length).catch(() => 0);
+    const mainRegionCount = await page.locator("main, section, .panel, [role='main']").count().catch(() => 0);
+    const ok = status > 0 && status < 500 && overflowX <= 2 && pageErrors.length === 0 && visibleTextLength >= 20 && mainRegionCount > 0 && (!requireAuth || !loginGate);
     if (!ok) {
       failed = true;
     }
@@ -301,6 +638,8 @@ for (const viewport of viewports) {
       mock_auth: mockAuth,
       overflow_x: overflowX,
       page_error_count: pageErrors.length,
+      visible_text_length: visibleTextLength,
+      main_region_count: mainRegionCount,
       title,
       elapsed_ms: Date.now() - started,
       errors: pageErrors.slice(0, 3),

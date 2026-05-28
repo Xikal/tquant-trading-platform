@@ -173,11 +173,49 @@ def predict_probability(estimator: Any, features: dict[str, Any]) -> float:
 
 
 def estimator_probabilities(estimator: Any, x_matrix: np.ndarray) -> np.ndarray:
+    logistic_probabilities = _pipeline_logistic_probabilities(estimator, x_matrix)
+    if logistic_probabilities is not None:
+        return logistic_probabilities
     if hasattr(estimator, "predict_proba"):
         values = estimator.predict_proba(x_matrix)
         return np.asarray(values[:, 1], dtype=float)
     values = estimator.predict(x_matrix)
     return np.asarray(values, dtype=float)
+
+
+def _pipeline_logistic_probabilities(estimator: Any, x_matrix: np.ndarray) -> np.ndarray | None:
+    named_steps = getattr(estimator, "named_steps", None)
+    if not isinstance(named_steps, dict):
+        return None
+    model = named_steps.get("model")
+    if model is None or model.__class__.__name__ != "LogisticRegression":
+        return None
+    if not (hasattr(model, "coef_") and hasattr(model, "intercept_") and hasattr(model, "classes_")):
+        return None
+    matrix = np.asarray(x_matrix, dtype=float)
+    scaler = named_steps.get("scaler")
+    if scaler is not None and hasattr(scaler, "transform"):
+        matrix = np.asarray(scaler.transform(matrix), dtype=float)
+    coef = np.asarray(model.coef_, dtype=float)
+    if coef.ndim != 2 or coef.shape[0] != 1 or coef.shape[1] != matrix.shape[1]:
+        return None
+    intercept = float(np.asarray(model.intercept_, dtype=float).reshape(-1)[0])
+    scores = np.sum(matrix * coef[0], axis=1) + intercept
+    probabilities = _sigmoid(scores)
+    classes = list(np.asarray(model.classes_).tolist())
+    if len(classes) >= 2 and classes[-1] != 1:
+        probabilities = 1.0 - probabilities
+    return np.asarray(probabilities, dtype=float)
+
+
+def _sigmoid(scores: np.ndarray) -> np.ndarray:
+    values = np.asarray(scores, dtype=float)
+    result = np.empty_like(values, dtype=float)
+    positive = values >= 0
+    result[positive] = 1.0 / (1.0 + np.exp(-values[positive]))
+    exp_values = np.exp(values[~positive])
+    result[~positive] = exp_values / (1.0 + exp_values)
+    return result
 
 
 def signal_label(probability: float) -> str:

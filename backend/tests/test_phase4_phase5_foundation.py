@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import json
+import warnings
+from copy import deepcopy
 from datetime import datetime, timedelta
 from decimal import Decimal
 
@@ -48,6 +50,7 @@ from app.services.ml_signal import MLSignalService
 from app.services.paired_hedge_research import PairedHedgeResearchService
 from app.services.paper.backtest_compare import PaperBacktestComparisonService
 from app.services.quant import QuantParameterVersionService
+from app.services.quant import runtime_parameters
 from app.services.quant_engine_intraday_structure import classify_intraday_structure
 from app.services.sector_etf_t0 import SectorEtfT0Service
 from app.services.strategy_capacity import StrategyCapacityService
@@ -209,6 +212,37 @@ def test_quant_parameter_version_default_and_create():
     assert "strategy_prefilters" in service.current().params["low_buy"]
 
 
+def test_runtime_parameter_section_getters_do_not_deepcopy_full_tree(monkeypatch):
+    runtime_parameters.clear_quant_parameter_cache()
+    large_unrelated_branch = {
+        f"k{i}": {"nested": list(range(100)), "value": i}
+        for i in range(60)
+    }
+    params = runtime_parameters.default_quant_parameters()
+    params["unrelated_large_branch"] = large_unrelated_branch
+    deepcopy_calls: list[set[str]] = []
+
+    def _tracked_deepcopy(value):  # noqa: ANN001
+        if isinstance(value, dict):
+            deepcopy_calls.append(set(value.keys()))
+        return deepcopy(value)
+
+    monkeypatch.setattr(runtime_parameters, "default_quant_parameters", lambda: deepcopy(params))
+    monkeypatch.setattr(runtime_parameters, "current_market_state_scope", lambda: "")
+    monkeypatch.setattr(runtime_parameters, "deepcopy", _tracked_deepcopy)
+
+    thresholds = runtime_parameters.get_low_buy_thresholds()
+    thresholds["mutation_probe"] = True
+    assert "mutation_probe" not in runtime_parameters.get_low_buy_thresholds()
+    assert not any("unrelated_large_branch" in keys for keys in deepcopy_calls)
+
+    deepcopy_calls.clear()
+    full_params = runtime_parameters.current_quant_parameters()
+    full_params["unrelated_large_branch"]["k0"]["nested"].append("mutated")
+    assert "mutated" not in runtime_parameters.current_quant_parameters()["unrelated_large_branch"]["k0"]["nested"]
+    assert any("unrelated_large_branch" in keys for keys in deepcopy_calls)
+
+
 def test_quant_parameter_current_prefers_exact_scope_over_newer_global():
     db = _db()
     service = QuantParameterVersionService(db)
@@ -319,17 +353,20 @@ def test_ml_signal_training_blocks_small_sample_production(tmp_path, monkeypatch
     db.commit()
 
     service = MLSignalService(db)
-    trained = service.train(
-        MLSignalTrainRequest(
-            model_key="test-logistic",
-            model_type="logistic",
-            source="backtest",
-            min_samples=100,
-            limit=120,
-            promote=True,
-            min_validation_accuracy=0.5,
+    with warnings.catch_warnings(record=True) as captured:
+        warnings.simplefilter("always", RuntimeWarning)
+        trained = service.train(
+            MLSignalTrainRequest(
+                model_key="test-logistic",
+                model_type="logistic",
+                source="backtest",
+                min_samples=100,
+                limit=120,
+                promote=True,
+                min_validation_accuracy=0.5,
+            )
         )
-    )
+    assert captured == []
     predicted = service.predict(
         MLSignalPredictionRequest(
             symbol="600000",
@@ -597,11 +634,14 @@ def test_runtime_worker_executes_ml_incremental_train_task(tmp_path, monkeypatch
         )
     db.commit()
 
-    result = runtime_worker._execute_task(
-        "ml_signal_incremental_train",
-        {"model_type": "logistic", "limit": 120, "min_samples": 100, "promote": False},
-        db,
-    )
+    with warnings.catch_warnings(record=True) as captured:
+        warnings.simplefilter("always", RuntimeWarning)
+        result = runtime_worker._execute_task(
+            "ml_signal_incremental_train",
+            {"model_type": "logistic", "limit": 120, "min_samples": 100, "promote": False},
+            db,
+        )
+    assert captured == []
 
     assert result["status"] in {"research", "failed"}
     assert result["sample_count"] >= 120

@@ -1,0 +1,43 @@
+{
+  "generated_at": "2026-05-27T18:56:49",
+  "status": "completed",
+  "config": {
+    "scope": "symbols",
+    "symbols": 2,
+    "start_date": "2024-06-11",
+    "end_date": "2024-06-14",
+    "workers": 1,
+    "force": true
+  },
+  "totals": {
+    "ok": 2,
+    "skip": 0,
+    "empty": 0,
+    "error": 0
+  },
+  "results": [
+    {
+      "symbol": "000001",
+      "status": "ok",
+      "rows": 4,
+      "message": "",
+      "source": "akshare.stock_zh_a_daily",
+      "adjusted_mode": "qfq",
+      "data_quality": "fresh:4"
+    },
+    {
+      "symbol": "600000",
+      "status": "ok",
+      "rows": 4,
+      "message": "",
+      "source": "akshare.stock_zh_a_daily",
+      "adjusted_mode": "qfq",
+      "data_quality": "fresh:4"
+    }
+  ],
+  "failed_symbols": [],
+  "notes": [
+    "补数报告只记录远端抓取和落库状态，不代表全市场覆盖率已通过。",
+    "正式回测仍必须通过 strategy_improvement_closed_loop.py 的全市场完整交易日门禁。"
+  ]
+}

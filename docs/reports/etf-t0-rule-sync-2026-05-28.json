@@ -1,0 +1,190 @@
+{
+  "generated_at": "2026-05-27T19:49:40",
+  "status": "completed",
+  "source": "app.services.etf.universe",
+  "t0_enabled_count": 22,
+  "updated_or_created_count": 22,
+  "items": [
+    {
+      "symbol": "159915",
+      "name": "创业板ETF",
+      "category": "broad_base",
+      "action": "created",
+      "same_day_sell_allowed": true,
+      "previous_same_day_sell_allowed": null
+    },
+    {
+      "symbol": "159930",
+      "name": "能源ETF",
+      "category": "sector",
+      "action": "created",
+      "same_day_sell_allowed": true,
+      "previous_same_day_sell_allowed": null
+    },
+    {
+      "symbol": "510300",
+      "name": "沪深300ETF",
+      "category": "broad_base",
+      "action": "updated",
+      "same_day_sell_allowed": true,
+      "previous_same_day_sell_allowed": true
+    },
+    {
+      "symbol": "510310",
+      "name": "消费ETF",
+      "category": "sector",
+      "action": "created",
+      "same_day_sell_allowed": true,
+      "previous_same_day_sell_allowed": null
+    },
+    {
+      "symbol": "510500",
+      "name": "中证500ETF",
+      "category": "broad_base",
+      "action": "created",
+      "same_day_sell_allowed": true,
+      "previous_same_day_sell_allowed": null
+    },
+    {
+      "symbol": "511880",
+      "name": "银华日利",
+      "category": "money",
+      "action": "created",
+      "same_day_sell_allowed": true,
+      "previous_same_day_sell_allowed": null
+    },
+    {
+      "symbol": "512170",
+      "name": "医疗ETF",
+      "category": "sector",
+      "action": "created",
+      "same_day_sell_allowed": true,
+      "previous_same_day_sell_allowed": null
+    },
+    {
+      "symbol": "512200",
+      "name": "房地产ETF",
+      "category": "sector",
+      "action": "created",
+      "same_day_sell_allowed": true,
+      "previous_same_day_sell_allowed": null
+    },
+    {
+      "symbol": "512400",
+      "name": "有色金属ETF",
+      "category": "sector",
+      "action": "created",
+      "same_day_sell_allowed": true,
+      "previous_same_day_sell_allowed": null
+    },
+    {
+      "symbol": "512480",
+      "name": "半导体ETF",
+      "category": "sector",
+      "action": "created",
+      "same_day_sell_allowed": true,
+      "previous_same_day_sell_allowed": null
+    },
+    {
+      "symbol": "512660",
+      "name": "军工ETF",
+      "category": "sector",
+      "action": "created",
+      "same_day_sell_allowed": true,
+      "previous_same_day_sell_allowed": null
+    },
+    {
+      "symbol": "512690",
+      "name": "酒ETF",
+      "category": "sector",
+      "action": "created",
+      "same_day_sell_allowed": true,
+      "previous_same_day_sell_allowed": null
+    },
+    {
+      "symbol": "512760",
+      "name": "芯片ETF",
+      "category": "sector",
+      "action": "created",
+      "same_day_sell_allowed": true,
+      "previous_same_day_sell_allowed": null
+    },
+    {
+      "symbol": "512800",
+      "name": "银行ETF",
+      "category": "sector",
+      "action": "created",
+      "same_day_sell_allowed": true,
+      "previous_same_day_sell_allowed": null
+    },
+    {
+      "symbol": "512880",
+      "name": "证券ETF",
+      "category": "sector",
+      "action": "created",
+      "same_day_sell_allowed": true,
+      "previous_same_day_sell_allowed": null
+    },
+    {
+      "symbol": "513100",
+      "name": "纳指ETF",
+      "category": "cross_border",
+      "action": "created",
+      "same_day_sell_allowed": true,
+      "previous_same_day_sell_allowed": null
+    },
+    {
+      "symbol": "515000",
+      "name": "科技ETF",
+      "category": "sector",
+      "action": "created",
+      "same_day_sell_allowed": true,
+      "previous_same_day_sell_allowed": null
+    },
+    {
+      "symbol": "515220",
+      "name": "煤炭ETF",
+      "category": "sector",
+      "action": "created",
+      "same_day_sell_allowed": true,
+      "previous_same_day_sell_allowed": null
+    },
+    {
+      "symbol": "515790",
+      "name": "光伏ETF",
+      "category": "sector",
+      "action": "created",
+      "same_day_sell_allowed": true,
+      "previous_same_day_sell_allowed": null
+    },
+    {
+      "symbol": "516780",
+      "name": "稀土ETF",
+      "category": "sector",
+      "action": "created",
+      "same_day_sell_allowed": true,
+      "previous_same_day_sell_allowed": null
+    },
+    {
+      "symbol": "518880",
+      "name": "黄金ETF",
+      "category": "gold",
+      "action": "created",
+      "same_day_sell_allowed": true,
+      "previous_same_day_sell_allowed": null
+    },
+    {
+      "symbol": "588000",
+      "name": "科创50ETF",
+      "category": "broad_base",
+      "action": "created",
+      "same_day_sell_allowed": true,
+      "previous_same_day_sell_allowed": null
+    }
+  ],
+  "notes": [
+    "仅同步 ETF universe 中 same_day_sell_allowed=true 的白名单。",
+    "股票规则和未放行 ETF 不会被提升为 T+0。",
+    "该脚本只持久化交易规则，不代表 ETF 分钟线和折溢价数据已满足验收。"
+  ]
+}

@@ -58,9 +58,9 @@ export function BacktestSubmitPanel({
       variant="borderless"
       styles={{ body: { padding: 10 } }}
     >
-      <Space direction="vertical" size={8} style={BACKTEST_FORM_STACK_STYLE}>
-        {notice ? <Alert type="info" showIcon message={notice} /> : null}
-        {error ? <Alert type="error" showIcon message="回测任务异常" description={error} /> : null}
+      <Space orientation="vertical" size={8} style={BACKTEST_FORM_STACK_STYLE}>
+        {notice ? <Alert type="info" showIcon title={notice} /> : null}
+        {error ? <Alert type="error" showIcon title="回测任务异常" description={error} /> : null}
         <Segmented
           block
           style={BACKTEST_SEGMENTED_STYLE}
@@ -98,7 +98,7 @@ export function BacktestSubmitPanel({
               </Space.Compact>
             </Form.Item>
             <Form.Item label={<Typography.Text style={BACKTEST_LABEL_STYLE}>策略多选</Typography.Text>} style={BACKTEST_FORM_FULL_ROW_STYLE}>
-              <Space direction="vertical" size={8} style={BACKTEST_STRATEGY_LIST_STYLE}>
+              <Space orientation="vertical" size={8} style={BACKTEST_STRATEGY_LIST_STYLE}>
                 {strategyOptions.map(([key, label]) => {
                   const checked = form.strategies.includes(key);
                   return (

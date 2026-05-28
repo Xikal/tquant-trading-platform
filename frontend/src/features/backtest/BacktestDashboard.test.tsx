@@ -3,6 +3,18 @@ import { describe, expect, it, vi } from "vitest";
 import { BacktestDashboard } from "./BacktestDashboard";
 import { resourceTierHint } from "./backtestDisplay";
 import type { BacktestRunDetail, BacktestTrade, EquityPoint } from "../../api/backtests";
+import { backtestsApi } from "../../api/backtests";
+
+vi.mock("../../api/backtests", async () => {
+  const actual = await vi.importActual<typeof import("../../api/backtests")>("../../api/backtests");
+  return {
+    ...actual,
+    backtestsApi: {
+      ...actual.backtestsApi,
+      getStrategyImprovementReport: vi.fn(),
+    },
+  };
+});
 
 const run: BacktestRunDetail = {
   id: 42,
@@ -112,6 +124,7 @@ const trades: BacktestTrade[] = [
 
 describe("BacktestDashboard", () => {
   it("renders phase3 submit form, statuses, and dense task list", () => {
+    vi.mocked(backtestsApi.getStrategyImprovementReport).mockResolvedValue(strategyImprovementReport);
     const html = renderToStaticMarkup(
       <BacktestDashboard
         form={{
@@ -354,9 +367,50 @@ describe("BacktestDashboard", () => {
     expect(html).toContain("deleted");
     expect(html).toContain("<svg");
     expect(html).toContain("first_board");
+    expect(html).toContain("ETF T0");
     expect(html).toContain("任务列表");
     expect(html).toContain("#42");
     expect(html).toContain("首板回调 / 量能低吸");
     expect(html).toContain("2025-01-02 → 2026-04-30");
   });
 });
+
+const strategyImprovementReport = {
+  summary: {
+    overall_status: "blocked_or_research_only",
+    formal_backtest_allowed: false,
+    walk_forward_allowed: false,
+    production_parameter_change_allowed: false,
+    reason: "两年数据覆盖、ETF 分钟线或质量门禁未达标，只允许研究/观察，不允许参数晋级。",
+  },
+  data_coverage: {
+    status: "partial",
+    coverage_pct: 0,
+    full_market_trade_day_coverage_pct: 0,
+    complete_trade_day_count: 0,
+    trade_day_count: 158,
+    symbol_count: 629,
+    missing_detail_sample: [{ trade_date: "2024-05-28", symbol_count: 2, threshold: 4500 }],
+  },
+  minute_coverage: {
+    status: "empty",
+    eligible_etf_count: 22,
+    eligible_etf_with_minutes: 0,
+    eligible_etf_with_sufficient_window_minutes: 0,
+    eligible_etf_any_minute_coverage_pct: 0,
+    eligible_etf_minute_coverage_pct: 0,
+    expected_trade_day_count: 466,
+    missing_etf_symbols: [{ symbol: "510300", name: "沪深300ETF", trade_day_coverage_pct: 0 }],
+  },
+  strategy_governance: {
+    state_counts: { weak_strategy: 1 },
+    ranking: [],
+  },
+  walk_forward: {
+    status: "blocked_by_data",
+    blocked_reasons: ["daily_24m_coverage_below_threshold"],
+    candidate_strategy_count: 8,
+  },
+  gates: [{ key: "daily_24m_coverage", status: "fail", message: "全 A 日线覆盖率必须达到阈值后才能正式回测和参数晋级。" }],
+  next_actions: [],
+};

@@ -71,6 +71,51 @@ def test_rust_wrappers_match_python_reference_for_migrated_metrics(monkeypatch) 
             ]
 
         @staticmethod
+        def rolling_std(values, window):
+            result = []
+            for index in range(len(values)):
+                if index + 1 < window:
+                    result.append(None)
+                    continue
+                sample = values[index + 1 - window : index + 1]
+                mean = sum(sample) / len(sample)
+                variance = sum((item - mean) ** 2 for item in sample) / (len(sample) - 1)
+                result.append(variance**0.5)
+            return result
+
+        @staticmethod
+        def volatility(values, periods_per_year):
+            mean = sum(values) / len(values)
+            variance = sum((item - mean) ** 2 for item in values) / (len(values) - 1)
+            return variance**0.5 * periods_per_year**0.5
+
+        @staticmethod
+        def correlation(left, right):
+            return _pearson(left, right)
+
+        @staticmethod
+        def beta(asset_returns, benchmark_returns):
+            benchmark_mean = sum(benchmark_returns) / len(benchmark_returns)
+            asset_mean = sum(asset_returns) / len(asset_returns)
+            covariance = sum((a - asset_mean) * (b - benchmark_mean) for a, b in zip(asset_returns, benchmark_returns))
+            variance = sum((b - benchmark_mean) ** 2 for b in benchmark_returns)
+            return covariance / variance
+
+        @staticmethod
+        def bollinger_bands(values, window, num_std):
+            result = []
+            for index in range(len(values)):
+                if index + 1 < window:
+                    result.append(None)
+                    continue
+                sample = values[index + 1 - window : index + 1]
+                mean = sum(sample) / len(sample)
+                variance = sum((item - mean) ** 2 for item in sample) / (len(sample) - 1)
+                std = variance**0.5
+                result.append((mean + num_std * std, mean, mean - num_std * std))
+            return result
+
+        @staticmethod
         def atr_wilder(highs, lows, closes, period):
             return _python_atr_wilder(highs, lows, closes, period)
 
@@ -97,6 +142,11 @@ def test_rust_wrappers_match_python_reference_for_migrated_metrics(monkeypatch) 
 
     assert rust_math.rust_max_drawdown(values) == pytest.approx(0.1964285714)
     assert rust_math.rust_rolling_mean(values, 3) == pytest.approx([None, None, 104.6666667, 108.6666667, 102.0, 99.0])
+    assert rust_math.rust_rolling_std([1.0, 2.0, 3.0, 5.0], 3) == pytest.approx([None, None, 1.0, 1.52752523])
+    assert rust_math.rust_volatility([0.01, 0.02, -0.01], 252.0) == pytest.approx(0.2424871131)
+    assert rust_math.rust_correlation([0.01, 0.02, -0.01], [0.02, 0.04, -0.02]) == pytest.approx(1.0)
+    assert rust_math.rust_beta([0.01, 0.02, -0.01], [0.02, 0.04, -0.02]) == pytest.approx(0.5)
+    assert rust_math.rust_bollinger_bands([1.0, 2.0, 3.0], 3, 2.0) == pytest.approx([None, None, (4.0, 2.0, 0.0)])
     assert rust_math.rust_atr_wilder(highs, lows, closes, 3) == pytest.approx(_python_atr_wilder(highs, lows, closes, 3))
     assert rust_math.rust_rsi_wilder(values, 3) == pytest.approx(_python_rsi_wilder(values, 3))
     assert rust_math.rust_vwap(prices, volumes) == pytest.approx(10.9333333333)
@@ -192,6 +242,15 @@ def _spearman(left: list[float], right: list[float]) -> float:
     covariance = sum((a - left_mean) * (b - right_mean) for a, b in zip(left_ranks, right_ranks))
     left_var = sum((a - left_mean) ** 2 for a in left_ranks)
     right_var = sum((b - right_mean) ** 2 for b in right_ranks)
+    return covariance / ((left_var * right_var) ** 0.5)
+
+
+def _pearson(left: list[float], right: list[float]) -> float:
+    left_mean = sum(left) / len(left)
+    right_mean = sum(right) / len(right)
+    covariance = sum((a - left_mean) * (b - right_mean) for a, b in zip(left, right))
+    left_var = sum((a - left_mean) ** 2 for a in left)
+    right_var = sum((b - right_mean) ** 2 for b in right)
     return covariance / ((left_var * right_var) ** 0.5)
 
 

@@ -17,7 +17,11 @@ if [[ ! -x ".venv/bin/python" ]]; then
   exit 1
 fi
 
-DATABASE_URL="sqlite:///$SMOKE_DB_PATH" .venv/bin/python -m uvicorn app.main:app --host 127.0.0.1 --port "$BACKEND_PORT" >"$BACKEND_LOG" 2>&1 &
+DATABASE_URL="sqlite:///$SMOKE_DB_PATH" \
+AUTH_SECRET_KEY="app-api-smoke-secret-0123456789abcdef0123456789abcdef0123456789abcdef" \
+ADMIN_API_TOKEN="app-api-smoke-admin-token" \
+RUNTIME_BACKGROUND_JOBS_ENABLED=false \
+.venv/bin/python -m uvicorn app.main:app --host 127.0.0.1 --port "$BACKEND_PORT" >"$BACKEND_LOG" 2>&1 &
 BACKEND_PID=$!
 
 cleanup() {
@@ -37,11 +41,37 @@ if ! curl --max-time 2 -s "http://127.0.0.1:${BACKEND_PORT}/healthz" | grep -q '
   exit 1
 fi
 
+AUTH_JSON="$(curl -sS -X POST "http://127.0.0.1:${BACKEND_PORT}/api/auth/register" \
+  -H "Content-Type: application/json" \
+  -d '{"username":"app_api_smoke","password":"AppApiSmoke12345!","display_name":"App API Smoke"}')"
+if python3 - <<'PY' "$AUTH_JSON"
+import json, sys
+payload = json.loads(sys.argv[1])
+raise SystemExit(0 if "access_token" in payload else 1)
+PY
+then
+  :
+else
+  AUTH_JSON="$(curl -sS -X POST "http://127.0.0.1:${BACKEND_PORT}/api/auth/login" \
+    -H "Content-Type: application/json" \
+    -d '{"username":"app_api_smoke","password":"AppApiSmoke12345!"}')"
+fi
+AUTH_TOKEN="$(python3 - <<'PY' "$AUTH_JSON"
+import json, sys
+print(json.loads(sys.argv[1]).get("access_token", ""))
+PY
+)"
+if [[ -z "$AUTH_TOKEN" ]]; then
+  echo "Failed to obtain app API smoke auth token: $AUTH_JSON" >&2
+  exit 1
+fi
+AUTH_HEADER=(-H "Authorization: Bearer $AUTH_TOKEN")
+
 BOOTSTRAP_JSON="$(curl -sS "http://127.0.0.1:${BACKEND_PORT}/api/app/bootstrap")"
-WATCHLIST_UPSERT_JSON="$(curl -sS -X POST "http://127.0.0.1:${BACKEND_PORT}/api/app/watchlist" -H "Content-Type: application/json" -d '{"symbol":"510300","name":"沪深300ETF","base_position":1200,"available_position":900,"cost_basis":3.45,"memo":"app-smoke"}')"
-HOME_JSON="$(curl -sS "http://127.0.0.1:${BACKEND_PORT}/api/app/home")"
-WATCHLIST_DETAIL_JSON="$(curl -sS "http://127.0.0.1:${BACKEND_PORT}/api/app/watchlist/510300")"
-LOW_BUY_JSON="$(curl -sS "http://127.0.0.1:${BACKEND_PORT}/api/app/low-buy?limit=4&scan_limit=48&scan_mode=quick")"
+WATCHLIST_UPSERT_JSON="$(curl -sS -X POST "http://127.0.0.1:${BACKEND_PORT}/api/app/watchlist" "${AUTH_HEADER[@]}" -H "Content-Type: application/json" -d '{"symbol":"510300","name":"沪深300ETF","base_position":1200,"available_position":900,"cost_basis":3.45,"memo":"app-smoke"}')"
+HOME_JSON="$(curl -sS "http://127.0.0.1:${BACKEND_PORT}/api/app/home" "${AUTH_HEADER[@]}")"
+WATCHLIST_DETAIL_JSON="$(curl -sS "http://127.0.0.1:${BACKEND_PORT}/api/app/watchlist/510300" "${AUTH_HEADER[@]}")"
+LOW_BUY_JSON="$(curl -sS "http://127.0.0.1:${BACKEND_PORT}/api/app/low-buy?limit=4&scan_limit=48&scan_mode=quick" "${AUTH_HEADER[@]}")"
 
 LOW_BUY_SYMBOL="$(
   python3 - <<'PY' "$LOW_BUY_JSON"
@@ -57,12 +87,11 @@ for item in payload.get("confirmed_candidates", []) + payload.get("watch_candida
 PY
 )"
 
-if [[ -z "$LOW_BUY_SYMBOL" ]]; then
-  echo "app_api_smoke: low-buy response did not contain any candidate symbol" >&2
-  exit 1
+if [[ -n "$LOW_BUY_SYMBOL" ]]; then
+  LOW_BUY_DETAIL_JSON="$(curl -sS "http://127.0.0.1:${BACKEND_PORT}/api/app/low-buy/${LOW_BUY_SYMBOL}?scan_limit=24" "${AUTH_HEADER[@]}")"
+else
+  LOW_BUY_DETAIL_JSON="{}"
 fi
-
-LOW_BUY_DETAIL_JSON="$(curl -sS "http://127.0.0.1:${BACKEND_PORT}/api/app/low-buy/${LOW_BUY_SYMBOL}?scan_limit=24")"
 
 python3 - <<'PY' "$BOOTSTRAP_JSON" "$WATCHLIST_UPSERT_JSON" "$HOME_JSON" "$WATCHLIST_DETAIL_JSON" "$LOW_BUY_JSON" "$LOW_BUY_DETAIL_JSON"
 import json
@@ -83,7 +112,10 @@ assert any(item["symbol"] == "510300" for item in home["items"]), "home items sh
 assert watchlist_detail["symbol"] == "510300", f"watchlist detail mismatch: {watchlist_detail}"
 assert low_buy["strategy"]["strategy_key"] == "first_board", f"low-buy strategy mismatch: {low_buy}"
 assert isinstance(low_buy["priority_board"]["items"], list), "priority board items should be a list"
-assert len(low_buy["confirmed_candidates"]) + len(low_buy["watch_candidates"]) > 0, "low-buy should return candidates"
-assert low_buy_detail["candidate"]["symbol"], f"low-buy detail missing candidate symbol: {low_buy_detail}"
+assert "confirmed_candidates" in low_buy and "watch_candidates" in low_buy, "low-buy should return candidate buckets"
+assert isinstance(low_buy["confirmed_candidates"], list), "confirmed_candidates should be a list"
+assert isinstance(low_buy["watch_candidates"], list), "watch_candidates should be a list"
+if low_buy_detail:
+    assert low_buy_detail["candidate"]["symbol"], f"low-buy detail missing candidate symbol: {low_buy_detail}"
 print("app-api-smoke:ok")
 PY

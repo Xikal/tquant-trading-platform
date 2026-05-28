@@ -5,7 +5,7 @@ from decimal import Decimal
 
 from app.services.paper.fees import FeeDetail
 from app.services.paper.money import to_decimal, to_money
-from app.services.paper.symbols import is_etf
+from app.services.paper.symbols import can_sell_same_day
 
 
 @dataclass(frozen=True)
@@ -147,7 +147,7 @@ class BacktestPortfolio:
                 remaining=quantity,
                 cost_price=price,
                 entry_fee=fee.total_fee,
-                available_date=trade_date if is_etf(symbol) else (next_trade_date or trade_date),
+                available_date=trade_date if can_sell_same_day(symbol) else (next_trade_date or trade_date),
                 entry_date=trade_date,
                 strategy_key=strategy_key,
             )

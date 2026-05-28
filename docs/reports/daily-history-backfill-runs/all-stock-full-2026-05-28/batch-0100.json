@@ -1,0 +1,872 @@
+{
+  "generated_at": "2026-05-27T23:39:27",
+  "status": "partial_data",
+  "config": {
+    "scope": "symbols",
+    "symbols": 50,
+    "start_date": "2024-05-28",
+    "end_date": "2026-04-28",
+    "workers": 4,
+    "force": false
+  },
+  "totals": {
+    "ok": 6,
+    "skip": 0,
+    "empty": 44,
+    "error": 0
+  },
+  "results": [
+    {
+      "symbol": "688813",
+      "status": "ok",
+      "rows": 20,
+      "message": "",
+      "source": "akshare.stock_zh_a_daily",
+      "adjusted_mode": "qfq",
+      "data_quality": "partial_metadata:20"
+    },
+    {
+      "symbol": "688816",
+      "status": "ok",
+      "rows": 48,
+      "message": "",
+      "source": "akshare.stock_zh_a_daily",
+      "adjusted_mode": "qfq",
+      "data_quality": "partial_metadata:48"
+    },
+    {
+      "symbol": "688818",
+      "status": "ok",
+      "rows": 49,
+      "message": "",
+      "source": "akshare.stock_zh_a_daily",
+      "adjusted_mode": "qfq",
+      "data_quality": "partial_metadata:49"
+    },
+    {
+      "symbol": "688819",
+      "status": "ok",
+      "rows": 466,
+      "message": "",
+      "source": "akshare.stock_zh_a_daily",
+      "adjusted_mode": "qfq",
+      "data_quality": "partial_metadata:466"
+    },
+    {
+      "symbol": "688820",
+      "status": "ok",
+      "rows": 6,
+      "message": "",
+      "source": "akshare.stock_zh_a_daily",
+      "adjusted_mode": "qfq",
+      "data_quality": "partial_metadata:6"
+    },
+    {
+      "symbol": "688981",
+      "status": "ok",
+      "rows": 460,
+      "message": "",
+      "source": "akshare.stock_zh_a_daily",
+      "adjusted_mode": "qfq",
+      "data_quality": "partial_metadata:460"
+    },
+    {
+      "symbol": "689009",
+      "status": "empty",
+      "rows": 0,
+      "message": "remote empty",
+      "source": "",
+      "adjusted_mode": "",
+      "data_quality": ""
+    },
+    {
+      "symbol": "920000",
+      "status": "empty",
+      "rows": 0,
+      "message": "remote empty",
+      "source": "",
+      "adjusted_mode": "",
+      "data_quality": ""
+    },
+    {
+      "symbol": "920001",
+      "status": "empty",
+      "rows": 0,
+      "message": "remote empty",
+      "source": "",
+      "adjusted_mode": "",
+      "data_quality": ""
+    },
+    {
+      "symbol": "920002",
+      "status": "empty",
+      "rows": 0,
+      "message": "remote empty",
+      "source": "",
+      "adjusted_mode": "",
+      "data_quality": ""
+    },
+    {
+      "symbol": "920003",
+      "status": "empty",
+      "rows": 0,
+      "message": "remote empty",
+      "source": "",
+      "adjusted_mode": "",
+      "data_quality": ""
+    },
+    {
+      "symbol": "920005",
+      "status": "empty",
+      "rows": 0,
+      "message": "remote empty",
+      "source": "",
+      "adjusted_mode": "",
+      "data_quality": ""
+    },
+    {
+      "symbol": "920006",
+      "status": "empty",
+      "rows": 0,
+      "message": "remote empty",
+      "source": "",
+      "adjusted_mode": "",
+      "data_quality": ""
+    },
+    {
+      "symbol": "920007",
+      "status": "empty",
+      "rows": 0,
+      "message": "remote empty",
+      "source": "",
+      "adjusted_mode": "",
+      "data_quality": ""
+    },
+    {
+      "symbol": "920008",
+      "status": "empty",
+      "rows": 0,
+      "message": "remote empty",
+      "source": "",
+      "adjusted_mode": "",
+      "data_quality": ""
+    },
+    {
+      "symbol": "920009",
+      "status": "empty",
+      "rows": 0,
+      "message": "remote empty",
+      "source": "",
+      "adjusted_mode": "",
+      "data_quality": ""
+    },
+    {
+      "symbol": "920010",
+      "status": "empty",
+      "rows": 0,
+      "message": "remote empty",
+      "source": "",
+      "adjusted_mode": "",
+      "data_quality": ""
+    },
+    {
+      "symbol": "920011",
+      "status": "empty",
+      "rows": 0,
+      "message": "remote empty",
+      "source": "",
+      "adjusted_mode": "",
+      "data_quality": ""
+    },
+    {
+      "symbol": "920012",
+      "status": "empty",
+      "rows": 0,
+      "message": "remote empty",
+      "source": "",
+      "adjusted_mode": "",
+      "data_quality": ""
+    },
+    {
+      "symbol": "920014",
+      "status": "empty",
+      "rows": 0,
+      "message": "remote empty",
+      "source": "",
+      "adjusted_mode": "",
+      "data_quality": ""
+    },
+    {
+      "symbol": "920015",
+      "status": "empty",
+      "rows": 0,
+      "message": "remote empty",
+      "source": "",
+      "adjusted_mode": "",
+      "data_quality": ""
+    },
+    {
+      "symbol": "920016",
+      "status": "empty",
+      "rows": 0,
+      "message": "remote empty",
+      "source": "",
+      "adjusted_mode": "",
+      "data_quality": ""
+    },
+    {
+      "symbol": "920017",
+      "status": "empty",
+      "rows": 0,
+      "message": "remote empty",
+      "source": "",
+      "adjusted_mode": "",
+      "data_quality": ""
+    },
+    {
+      "symbol": "920018",
+      "status": "empty",
+      "rows": 0,
+      "message": "remote empty",
+      "source": "",
+      "adjusted_mode": "",
+      "data_quality": ""
+    },
+    {
+      "symbol": "920019",
+      "status": "empty",
+      "rows": 0,
+      "message": "remote empty",
+      "source": "",
+      "adjusted_mode": "",
+      "data_quality": ""
+    },
+    {
+      "symbol": "920020",
+      "status": "empty",
+      "rows": 0,
+      "message": "remote empty",
+      "source": "",
+      "adjusted_mode": "",
+      "data_quality": ""
+    },
+    {
+      "symbol": "920021",
+      "status": "empty",
+      "rows": 0,
+      "message": "remote empty",
+      "source": "",
+      "adjusted_mode": "",
+      "data_quality": ""
+    },
+    {
+      "symbol": "920022",
+      "status": "empty",
+      "rows": 0,
+      "message": "remote empty",
+      "source": "",
+      "adjusted_mode": "",
+      "data_quality": ""
+    },
+    {
+      "symbol": "920026",
+      "status": "empty",
+      "rows": 0,
+      "message": "remote empty",
+      "source": "",
+      "adjusted_mode": "",
+      "data_quality": ""
+    },
+    {
+      "symbol": "920027",
+      "status": "empty",
+      "rows": 0,
+      "message": "remote empty",
+      "source": "",
+      "adjusted_mode": "",
+      "data_quality": ""
+    },
+    {
+      "symbol": "920028",
+      "status": "empty",
+      "rows": 0,
+      "message": "remote empty",
+      "source": "",
+      "adjusted_mode": "",
+      "data_quality": ""
+    },
+    {
+      "symbol": "920029",
+      "status": "empty",
+      "rows": 0,
+      "message": "remote empty",
+      "source": "",
+      "adjusted_mode": "",
+      "data_quality": ""
+    },
+    {
+      "symbol": "920030",
+      "status": "empty",
+      "rows": 0,
+      "message": "remote empty",
+      "source": "",
+      "adjusted_mode": "",
+      "data_quality": ""
+    },
+    {
+      "symbol": "920033",
+      "status": "empty",
+      "rows": 0,
+      "message": "remote empty",
+      "source": "",
+      "adjusted_mode": "",
+      "data_quality": ""
+    },
+    {
+      "symbol": "920035",
+      "status": "empty",
+      "rows": 0,
+      "message": "remote empty",
+      "source": "",
+      "adjusted_mode": "",
+      "data_quality": ""
+    },
+    {
+      "symbol": "920036",
+      "status": "empty",
+      "rows": 0,
+      "message": "remote empty",
+      "source": "",
+      "adjusted_mode": "",
+      "data_quality": ""
+    },
+    {
+      "symbol": "920037",
+      "status": "empty",
+      "rows": 0,
+      "message": "remote empty",
+      "source": "",
+      "adjusted_mode": "",
+      "data_quality": ""
+    },
+    {
+      "symbol": "920039",
+      "status": "empty",
+      "rows": 0,
+      "message": "remote empty",
+      "source": "",
+      "adjusted_mode": "",
+      "data_quality": ""
+    },
+    {
+      "symbol": "920045",
+      "status": "empty",
+      "rows": 0,
+      "message": "remote empty",
+      "source": "",
+      "adjusted_mode": "",
+      "data_quality": ""
+    },
+    {
+      "symbol": "920046",
+      "status": "empty",
+      "rows": 0,
+      "message": "remote empty",
+      "source": "",
+      "adjusted_mode": "",
+      "data_quality": ""
+    },
+    {
+      "symbol": "920047",
+      "status": "empty",
+      "rows": 0,
+      "message": "remote empty",
+      "source": "",
+      "adjusted_mode": "",
+      "data_quality": ""
+    },
+    {
+      "symbol": "920050",
+      "status": "empty",
+      "rows": 0,
+      "message": "remote empty",
+      "source": "",
+      "adjusted_mode": "",
+      "data_quality": ""
+    },
+    {
+      "symbol": "920055",
+      "status": "empty",
+      "rows": 0,
+      "message": "remote empty",
+      "source": "",
+      "adjusted_mode": "",
+      "data_quality": ""
+    },
+    {
+      "symbol": "920056",
+      "status": "empty",
+      "rows": 0,
+      "message": "remote empty",
+      "source": "",
+      "adjusted_mode": "",
+      "data_quality": ""
+    },
+    {
+      "symbol": "920057",
+      "status": "empty",
+      "rows": 0,
+      "message": "remote empty",
+      "source": "",
+      "adjusted_mode": "",
+      "data_quality": ""
+    },
+    {
+      "symbol": "920058",
+      "status": "empty",
+      "rows": 0,
+      "message": "remote empty",
+      "source": "",
+      "adjusted_mode": "",
+      "data_quality": ""
+    },
+    {
+      "symbol": "920060",
+      "status": "empty",
+      "rows": 0,
+      "message": "remote empty",
+      "source": "",
+      "adjusted_mode": "",
+      "data_quality": ""
+    },
+    {
+      "symbol": "920061",
+      "status": "empty",
+      "rows": 0,
+      "message": "remote empty",
+      "source": "",
+      "adjusted_mode": "",
+      "data_quality": ""
+    },
+    {
+      "symbol": "920062",
+      "status": "empty",
+      "rows": 0,
+      "message": "remote empty",
+      "source": "",
+      "adjusted_mode": "",
+      "data_quality": ""
+    },
+    {
+      "symbol": "920066",
+      "status": "empty",
+      "rows": 0,
+      "message": "remote empty",
+      "source": "",
+      "adjusted_mode": "",
+      "data_quality": ""
+    }
+  ],
+  "failed_symbols": [
+    {
+      "symbol": "689009",
+      "status": "empty",
+      "rows": 0,
+      "message": "remote empty",
+      "source": "",
+      "adjusted_mode": "",
+      "data_quality": ""
+    },
+    {
+      "symbol": "920000",
+      "status": "empty",
+      "rows": 0,
+      "message": "remote empty",
+      "source": "",
+      "adjusted_mode": "",
+      "data_quality": ""
+    },
+    {
+      "symbol": "920001",
+      "status": "empty",
+      "rows": 0,
+      "message": "remote empty",
+      "source": "",
+      "adjusted_mode": "",
+      "data_quality": ""
+    },
+    {
+      "symbol": "920002",
+      "status": "empty",
+      "rows": 0,
+      "message": "remote empty",
+      "source": "",
+      "adjusted_mode": "",
+      "data_quality": ""
+    },
+    {
+      "symbol": "920003",
+      "status": "empty",
+      "rows": 0,
+      "message": "remote empty",
+      "source": "",
+      "adjusted_mode": "",
+      "data_quality": ""
+    },
+    {
+      "symbol": "920005",
+      "status": "empty",
+      "rows": 0,
+      "message": "remote empty",
+      "source": "",
+      "adjusted_mode": "",
+      "data_quality": ""
+    },
+    {
+      "symbol": "920006",
+      "status": "empty",
+      "rows": 0,
+      "message": "remote empty",
+      "source": "",
+      "adjusted_mode": "",
+      "data_quality": ""
+    },
+    {
+      "symbol": "920007",
+      "status": "empty",
+      "rows": 0,
+      "message": "remote empty",
+      "source": "",
+      "adjusted_mode": "",
+      "data_quality": ""
+    },
+    {
+      "symbol": "920008",
+      "status": "empty",
+      "rows": 0,
+      "message": "remote empty",
+      "source": "",
+      "adjusted_mode": "",
+      "data_quality": ""
+    },
+    {
+      "symbol": "920009",
+      "status": "empty",
+      "rows": 0,
+      "message": "remote empty",
+      "source": "",
+      "adjusted_mode": "",
+      "data_quality": ""
+    },
+    {
+      "symbol": "920010",
+      "status": "empty",
+      "rows": 0,
+      "message": "remote empty",
+      "source": "",
+      "adjusted_mode": "",
+      "data_quality": ""
+    },
+    {
+      "symbol": "920011",
+      "status": "empty",
+      "rows": 0,
+      "message": "remote empty",
+      "source": "",
+      "adjusted_mode": "",
+      "data_quality": ""
+    },
+    {
+      "symbol": "920012",
+      "status": "empty",
+      "rows": 0,
+      "message": "remote empty",
+      "source": "",
+      "adjusted_mode": "",
+      "data_quality": ""
+    },
+    {
+      "symbol": "920014",
+      "status": "empty",
+      "rows": 0,
+      "message": "remote empty",
+      "source": "",
+      "adjusted_mode": "",
+      "data_quality": ""
+    },
+    {
+      "symbol": "920015",
+      "status": "empty",
+      "rows": 0,
+      "message": "remote empty",
+      "source": "",
+      "adjusted_mode": "",
+      "data_quality": ""
+    },
+    {
+      "symbol": "920016",
+      "status": "empty",
+      "rows": 0,
+      "message": "remote empty",
+      "source": "",
+      "adjusted_mode": "",
+      "data_quality": ""
+    },
+    {
+      "symbol": "920017",
+      "status": "empty",
+      "rows": 0,
+      "message": "remote empty",
+      "source": "",
+      "adjusted_mode": "",
+      "data_quality": ""
+    },
+    {
+      "symbol": "920018",
+      "status": "empty",
+      "rows": 0,
+      "message": "remote empty",
+      "source": "",
+      "adjusted_mode": "",
+      "data_quality": ""
+    },
+    {
+      "symbol": "920019",
+      "status": "empty",
+      "rows": 0,
+      "message": "remote empty",
+      "source": "",
+      "adjusted_mode": "",
+      "data_quality": ""
+    },
+    {
+      "symbol": "920020",
+      "status": "empty",
+      "rows": 0,
+      "message": "remote empty",
+      "source": "",
+      "adjusted_mode": "",
+      "data_quality": ""
+    },
+    {
+      "symbol": "920021",
+      "status": "empty",
+      "rows": 0,
+      "message": "remote empty",
+      "source": "",
+      "adjusted_mode": "",
+      "data_quality": ""
+    },
+    {
+      "symbol": "920022",
+      "status": "empty",
+      "rows": 0,
+      "message": "remote empty",
+      "source": "",
+      "adjusted_mode": "",
+      "data_quality": ""
+    },
+    {
+      "symbol": "920026",
+      "status": "empty",
+      "rows": 0,
+      "message": "remote empty",
+      "source": "",
+      "adjusted_mode": "",
+      "data_quality": ""
+    },
+    {
+      "symbol": "920027",
+      "status": "empty",
+      "rows": 0,
+      "message": "remote empty",
+      "source": "",
+      "adjusted_mode": "",
+      "data_quality": ""
+    },
+    {
+      "symbol": "920028",
+      "status": "empty",
+      "rows": 0,
+      "message": "remote empty",
+      "source": "",
+      "adjusted_mode": "",
+      "data_quality": ""
+    },
+    {
+      "symbol": "920029",
+      "status": "empty",
+      "rows": 0,
+      "message": "remote empty",
+      "source": "",
+      "adjusted_mode": "",
+      "data_quality": ""
+    },
+    {
+      "symbol": "920030",
+      "status": "empty",
+      "rows": 0,
+      "message": "remote empty",
+      "source": "",
+      "adjusted_mode": "",
+      "data_quality": ""
+    },
+    {
+      "symbol": "920033",
+      "status": "empty",
+      "rows": 0,
+      "message": "remote empty",
+      "source": "",
+      "adjusted_mode": "",
+      "data_quality": ""
+    },
+    {
+      "symbol": "920035",
+      "status": "empty",
+      "rows": 0,
+      "message": "remote empty",
+      "source": "",
+      "adjusted_mode": "",
+      "data_quality": ""
+    },
+    {
+      "symbol": "920036",
+      "status": "empty",
+      "rows": 0,
+      "message": "remote empty",
+      "source": "",
+      "adjusted_mode": "",
+      "data_quality": ""
+    },
+    {
+      "symbol": "920037",
+      "status": "empty",
+      "rows": 0,
+      "message": "remote empty",
+      "source": "",
+      "adjusted_mode": "",
+      "data_quality": ""
+    },
+    {
+      "symbol": "920039",
+      "status": "empty",
+      "rows": 0,
+      "message": "remote empty",
+      "source": "",
+      "adjusted_mode": "",
+      "data_quality": ""
+    },
+    {
+      "symbol": "920045",
+      "status": "empty",
+      "rows": 0,
+      "message": "remote empty",
+      "source": "",
+      "adjusted_mode": "",
+      "data_quality": ""
+    },
+    {
+      "symbol": "920046",
+      "status": "empty",
+      "rows": 0,
+      "message": "remote empty",
+      "source": "",
+      "adjusted_mode": "",
+      "data_quality": ""
+    },
+    {
+      "symbol": "920047",
+      "status": "empty",
+      "rows": 0,
+      "message": "remote empty",
+      "source": "",
+      "adjusted_mode": "",
+      "data_quality": ""
+    },
+    {
+      "symbol": "920050",
+      "status": "empty",
+      "rows": 0,
+      "message": "remote empty",
+      "source": "",
+      "adjusted_mode": "",
+      "data_quality": ""
+    },
+    {
+      "symbol": "920055",
+      "status": "empty",
+      "rows": 0,
+      "message": "remote empty",
+      "source": "",
+      "adjusted_mode": "",
+      "data_quality": ""
+    },
+    {
+      "symbol": "920056",
+      "status": "empty",
+      "rows": 0,
+      "message": "remote empty",
+      "source": "",
+      "adjusted_mode": "",
+      "data_quality": ""
+    },
+    {
+      "symbol": "920057",
+      "status": "empty",
+      "rows": 0,
+      "message": "remote empty",
+      "source": "",
+      "adjusted_mode": "",
+      "data_quality": ""
+    },
+    {
+      "symbol": "920058",
+      "status": "empty",
+      "rows": 0,
+      "message": "remote empty",
+      "source": "",
+      "adjusted_mode": "",
+      "data_quality": ""
+    },
+    {
+      "symbol": "920060",
+      "status": "empty",
+      "rows": 0,
+      "message": "remote empty",
+      "source": "",
+      "adjusted_mode": "",
+      "data_quality": ""
+    },
+    {
+      "symbol": "920061",
+      "status": "empty",
+      "rows": 0,
+      "message": "remote empty",
+      "source": "",
+      "adjusted_mode": "",
+      "data_quality": ""
+    },
+    {
+      "symbol": "920062",
+      "status": "empty",
+      "rows": 0,
+      "message": "remote empty",
+      "source": "",
+      "adjusted_mode": "",
+      "data_quality": ""
+    },
+    {
+      "symbol": "920066",
+      "status": "empty",
+      "rows": 0,
+      "message": "remote empty",
+      "source": "",
+      "adjusted_mode": "",
+      "data_quality": ""
+    }
+  ],
+  "notes": [
+    "补数报告只记录远端抓取和落库状态，不代表全市场覆盖率已通过。",
+    "正式回测仍必须通过 strategy_improvement_closed_loop.py 的全市场完整交易日门禁。"
+  ]
+}

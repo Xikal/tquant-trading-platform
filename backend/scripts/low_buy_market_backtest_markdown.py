@@ -3,6 +3,8 @@ from __future__ import annotations
 
 def render_markdown_report(report: dict) -> str:
     summary = report["summary"]
+    coverage = summary.get("data_coverage", {})
+    coverage_warning = str(coverage.get("warning") or "")
     lines = [
         f"# {report['title']}",
         "",
@@ -11,13 +13,24 @@ def render_markdown_report(report: dict) -> str:
         f"- 总体判断：{summary['conclusion']}",
         f"- A 股股票数：{summary['universe_count']}",
         f"- 目标回测区间：{summary['evaluation_start']} 至 {summary['evaluation_end']}，共 {summary['evaluation_trade_days']} 个评估交易日",
+        f"- 数据覆盖：请求 {coverage.get('requested_months', summary.get('backtest_window_months', 0))} 个月，实际约 {coverage.get('actual_months_estimate', 0.0)} 个月，覆盖率 {coverage.get('coverage_pct', 0.0)}%，状态 {coverage.get('status', 'unknown')}",
+        *( [f"- 数据覆盖警告：{coverage_warning}"] if coverage_warning else [] ),
         f"- 实际快照区间：{summary['snapshot_start']} 至 {summary['snapshot_end']}，共 {summary['snapshot_trade_days']} 个有数据交易日",
         f"- 快照模式：{_materialization_mode_text(summary.get('materialization_mode', ''))}",
+        f"- 执行模型：{summary.get('execution_model', 'candidate_exit_plan')}",
+        f"- 市场保护研究模型：{summary.get('market_guard', 'none')}",
+        f"- 预筛参数研究覆盖：{summary.get('prefilter_overrides', 'none')}",
         f"- 实际读取/计算快照：{summary['completed_snapshot_count']} / {summary['expected_snapshot_count']}，覆盖率 {summary['completed_snapshot_coverage_pct']}%",
         f"- 回放失败快照：{summary['failed_snapshot_count']}",
+        f"- 本次评估信号状态：{', '.join(summary.get('selected_signal_states', [])) or '未指定'}",
         f"- 扫描样本：{summary['scanned_count']}，候选命中：{summary['matched_count']}，确定买入：{summary['confirmed_count']}，观察确认：{summary.get('observe_confirmed_count', 0)}，接近买点：{summary['near_entry_count']}",
+        f"- 市场保护触发：{summary.get('market_guard_count', 0)}，分布：{_render_counts(summary.get('market_guard_counts', {}))}",
+        f"- 状态过滤跳过：{summary.get('skipped_by_state_count', 0)}，分布：{_render_counts(summary.get('skipped_by_state_counts', {}))}",
+        f"- 未成交原因：{_render_counts(summary.get('not_filled_reason_counts', {}))}",
+        f"- 退出原因：{_render_counts(summary.get('filled_exit_reason_counts', {}))}",
         f"- 已完成评估：{summary['evaluated_count']}，待完成：{summary['pending_count']}，样本质量：{summary['sample_quality']}",
         f"- 确定买入真实执行：成交 {summary['filled_count']}，净胜率 {summary['net_win_rate']}%，均净收益 {summary['avg_net_return_pct']}%，未成交率 {summary['not_filled_rate']}%，止损率 {summary['stop_loss_rate']}%",
+        _render_performance_summary("全信号执行绩效", summary.get("backtest_metrics", {})),
         f"- 次日事件验证：T+1 冲高3%命中 {summary['t1_high_3_hit_rate']}%，冲高5%命中 {summary['t1_high_5_hit_rate']}%，冲高回落到买点率 {summary['t1_fade_to_entry_rate']}%，T+1最高均收 {summary['avg_t1_high_return_pct']}%，T+1收盘均收 {summary['avg_t1_close_return_pct']}%，T+2收盘均收 {summary['avg_t2_close_return_pct']}%",
         _render_signal_group_summary("确定买入", summary["confirmed_result"]),
         _render_signal_group_summary("观察确认", summary.get("observe_confirmed_result", {})),
@@ -40,6 +53,28 @@ def render_markdown_report(report: dict) -> str:
         lines.append(_render_family_group_row(item, "确定买入", item["confirmed_result"]))
         lines.append(_render_family_group_row(item, "观察确认", item.get("observe_confirmed_result", {})))
         lines.append(_render_family_group_row(item, "接近买点", item["near_entry_result"]))
+    lines.extend(
+        [
+            "",
+            "## 策略执行绩效",
+            "",
+            "| 策略 | 成交 | 总收益 | 年化 | 最大回撤 | Sharpe | 胜率 | 盈亏比 | PF | 平均持仓 | 回撤恢复 |",
+            "|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---|",
+        ]
+    )
+    for item in report["strategies"]:
+        lines.append(_render_strategy_performance_row(item))
+    lines.extend(
+        [
+            "",
+            "## 策略诊断",
+            "",
+            "| 策略 | 评估状态 | 信号分布 | 市场保护 | 状态过滤跳过 | 未成交原因 | 退出原因 | 待评估原因 |",
+            "|---|---|---|---|---:|---|---|---|",
+        ]
+    )
+    for item in report["strategies"]:
+        lines.append(_render_strategy_diagnostics_row(item))
     lines.extend(
         [
             "",
@@ -81,6 +116,59 @@ def _render_signal_group_summary(label: str, item: dict) -> str:
         f"胜率 1日 {item['win_rate_1d']}% / 2日 {item['win_rate_2d']}% / 3日 {item['win_rate_3d']}% / 4日 {item['win_rate_4d']}% / 5日 {item['win_rate_5d']}%；"
         f"平均收益 1日 {item['avg_return_1d']}% / 2日 {item['avg_return_2d']}% / 3日 {item['avg_return_3d']}% / 4日 {item['avg_return_4d']}% / 5日 {item['avg_return_5d']}%；{best_text}。"
     )
+
+
+def _render_performance_summary(label: str, metrics: dict) -> str:
+    metrics = _safe_performance(metrics)
+    return (
+        f"- {label}：成交 {metrics['trade_count']}，总收益 {metrics['total_return_pct']}%，年化 {metrics['annualized_return_pct']}%，"
+        f"最大回撤 {metrics['max_drawdown_pct']}%，Sharpe {metrics['sharpe_ratio']}，胜率 {metrics['win_rate_pct']}%，"
+        f"盈亏比 {metrics['profit_loss_ratio']}，PF {metrics['profit_factor']}，平均持仓 {metrics['avg_holding_days']} 天；"
+        f"{metrics['drawdown_recovery_status']}。"
+    )
+
+
+def _render_strategy_performance_row(strategy: dict) -> str:
+    metrics = _safe_performance(strategy.get("backtest_metrics", {}))
+    return (
+        "| {title} | {trades} | {total}% | {annualized}% | {drawdown}% | {sharpe} | {win}% | {pl} | {pf} | {holding} | {recovery} |"
+    ).format(
+        title=strategy["strategy_title"],
+        trades=metrics["trade_count"],
+        total=metrics["total_return_pct"],
+        annualized=metrics["annualized_return_pct"],
+        drawdown=metrics["max_drawdown_pct"],
+        sharpe=metrics["sharpe_ratio"],
+        win=metrics["win_rate_pct"],
+        pl=metrics["profit_loss_ratio"],
+        pf=metrics["profit_factor"],
+        holding=metrics["avg_holding_days"],
+        recovery=metrics["drawdown_recovery_status"],
+    )
+
+
+def _render_strategy_diagnostics_row(strategy: dict) -> str:
+    diagnostics = strategy.get("evaluation_diagnostics", {}) or {}
+    return "| {title} | {states} | {state_counts} | {guard} | {skipped} | {not_filled} | {exits} | {pending} |".format(
+        title=strategy["strategy_title"],
+        states=", ".join(diagnostics.get("selected_signal_states", []) or []),
+        state_counts=_render_counts(strategy.get("signal_state_counts", {})),
+        guard=_render_counts(diagnostics.get("market_guard_counts", {})),
+        skipped=diagnostics.get("skipped_by_state_count", 0),
+        not_filled=_render_counts(diagnostics.get("not_filled_reason_counts", {})),
+        exits=_render_counts(diagnostics.get("filled_exit_reason_counts", {})),
+        pending=_render_counts(diagnostics.get("pending_reason_counts", {})),
+    )
+
+
+def _render_counts(values: dict | None, *, limit: int = 4) -> str:
+    rows = list((values or {}).items())
+    if not rows:
+        return "-"
+    head = [f"{key}: {value}" for key, value in rows[:limit]]
+    if len(rows) > limit:
+        head.append(f"其余 {len(rows) - limit} 项")
+    return "；".join(head)
 
 
 def _render_strategy_group_row(
@@ -201,5 +289,21 @@ def _safe_result(item: dict | None) -> dict:
         "avg_max_gain_5d": 0.0,
         "avg_max_drawdown_5d": 0.0,
         "best_holding_day": {"day": 0, "avg_return": 0.0, "win_rate": 0.0},
+    }
+    return {**defaults, **(item or {})}
+
+
+def _safe_performance(item: dict | None) -> dict:
+    defaults = {
+        "trade_count": 0,
+        "total_return_pct": 0.0,
+        "annualized_return_pct": 0.0,
+        "max_drawdown_pct": 0.0,
+        "drawdown_recovery_status": "无成交",
+        "sharpe_ratio": 0.0,
+        "win_rate_pct": 0.0,
+        "profit_loss_ratio": 0.0,
+        "profit_factor": 0.0,
+        "avg_holding_days": 0.0,
     }
     return {**defaults, **(item or {})}

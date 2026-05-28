@@ -6,8 +6,11 @@ import pandas as pd
 
 from app.models.schemas import LowBuyCandidateOut
 from app.services.low_buy.execution_simulation import (
+    DailyExecutionBar,
+    ExecutionSimulationOverride,
     bars_from_history_frame,
     simulate_candidate_execution,
+    simulate_candidate_execution_from_future_rows,
 )
 
 try:
@@ -70,21 +73,103 @@ def evaluate_candidate_outcome_from_bars(
     signal_date: str,
     bars: list,
     forward_days: int,
+    execution_override: ExecutionSimulationOverride | None = None,
 ) -> TradeOutcome | None:
     signal_index = _bar_index(bars, signal_date)
     if signal_index is None:
         return None
-    forward = bars[signal_index + 1 : signal_index + 1 + forward_days]
+    future = bars[signal_index + 1 :]
+    forward = future[:forward_days]
+    if len(forward) < forward_days:
+        return None
+    return _evaluate_candidate_outcome_from_future_rows(
+        candidate=candidate,
+        signal_date=signal_date,
+        future=future,
+        forward=forward,
+        forward_days=forward_days,
+        execution_override=execution_override,
+    )
+
+
+def _evaluate_candidate_outcome_from_future_rows(
+    *,
+    candidate: LowBuyCandidateOut,
+    signal_date: str,
+    future: list[DailyExecutionBar],
+    forward: list[DailyExecutionBar],
+    forward_days: int,
+    execution_override: ExecutionSimulationOverride | None = None,
+) -> TradeOutcome | None:
+    entry = max(candidate.entry_zone_low, min(candidate.latest_price, candidate.entry_zone_high))
+    if entry <= 0:
+        return None
+    execution = simulate_candidate_execution_from_future_rows(
+        candidate=candidate,
+        signal_trade_date=signal_date,
+        future_rows=future,
+        override=execution_override,
+    )
+    event_metrics = _next_day_event_metrics_from_bars(forward=forward, entry=entry)
+    return _trade_outcome_from_execution(
+        candidate=candidate,
+        signal_date=signal_date,
+        entry=entry,
+        forward=forward,
+        forward_days=forward_days,
+        execution=execution,
+        event_metrics=event_metrics,
+    )
+
+
+def evaluate_candidate_outcomes_from_bars(
+    *,
+    candidate: LowBuyCandidateOut,
+    signal_date: str,
+    bars: list[DailyExecutionBar],
+    forward_days: int,
+    execution_overrides: dict[str, ExecutionSimulationOverride | None],
+) -> dict[str, TradeOutcome] | None:
+    signal_index = _bar_index(bars, signal_date)
+    if signal_index is None:
+        return None
+    future = bars[signal_index + 1 :]
+    forward = future[:forward_days]
     if len(forward) < forward_days:
         return None
     entry = max(candidate.entry_zone_low, min(candidate.latest_price, candidate.entry_zone_high))
     if entry <= 0:
         return None
-    execution = simulate_candidate_execution(
-        candidate=candidate.model_copy(update={"confirmed_trade_date": signal_date}),
-        rows=bars,
-    )
     event_metrics = _next_day_event_metrics_from_bars(forward=forward, entry=entry)
+    return {
+        key: _trade_outcome_from_execution(
+            candidate=candidate,
+            signal_date=signal_date,
+            entry=entry,
+            forward=forward,
+            forward_days=forward_days,
+            execution=simulate_candidate_execution_from_future_rows(
+                candidate=candidate,
+                signal_trade_date=signal_date,
+                future_rows=future,
+                override=override,
+            ),
+            event_metrics=event_metrics,
+        )
+        for key, override in execution_overrides.items()
+    }
+
+
+def _trade_outcome_from_execution(
+    *,
+    candidate: LowBuyCandidateOut,
+    signal_date: str,
+    entry: float,
+    forward: list[DailyExecutionBar],
+    forward_days: int,
+    execution,
+    event_metrics: dict[str, Any],
+) -> TradeOutcome:
     return TradeOutcome(
         symbol=candidate.symbol,
         name=candidate.name,
@@ -107,6 +192,9 @@ def evaluate_candidate_outcome_from_bars(
         spike_return_3d=_spike_return(forward, entry, 3),
         spike_return_4d=_spike_return(forward, entry, 4),
         spike_return_5d=_spike_return(forward, entry, 5),
+        entry_trade_date=execution.entry_trade_date or "",
+        exit_trade_date=execution.exit_trade_date or "",
+        **_candidate_market_state_fields(candidate),
         **event_metrics,
     )
 
@@ -119,6 +207,7 @@ def evaluate_candidate_outcome(
     latest_completed: str,
     forward_days: int,
     history_window_days: int,
+    execution_override: ExecutionSimulationOverride | None = None,
 ) -> TradeOutcome | None:
     history = service._load_daily_history(
         symbol=candidate.symbol,
@@ -140,6 +229,7 @@ def evaluate_candidate_outcome(
     execution = simulate_candidate_execution(
         candidate=candidate.model_copy(update={"confirmed_trade_date": signal_date}),
         rows=bars_from_history_frame(history),
+        override=execution_override,
     )
     event_metrics = _next_day_event_metrics_from_frame(forward=forward, entry=entry)
     return TradeOutcome(
@@ -164,6 +254,9 @@ def evaluate_candidate_outcome(
         spike_return_3d=_spike_return_from_frame(forward, entry, 3),
         spike_return_4d=_spike_return_from_frame(forward, entry, 4),
         spike_return_5d=_spike_return_from_frame(forward, entry, 5),
+        entry_trade_date=execution.entry_trade_date or "",
+        exit_trade_date=execution.exit_trade_date or "",
+        **_candidate_market_state_fields(candidate),
         **event_metrics,
     )
 
@@ -247,3 +340,19 @@ def _next_day_event_metrics(
 
 def _empty_next_day_event_metrics() -> dict[str, Any]:
     return _next_day_event_metrics(t1_high=0.0, t1_close=0.0, t2_high=0.0, t2_close=0.0)
+
+
+def _candidate_market_state_fields(candidate: LowBuyCandidateOut) -> dict[str, Any]:
+    return {
+        "market_state": str(getattr(candidate, "market_state", "") or ""),
+        "market_state_text": str(getattr(candidate, "market_state_text", "") or ""),
+        "market_state_category": str(getattr(candidate, "market_state_category", "") or ""),
+        "market_state_strength": _safe_float(getattr(candidate, "market_state_strength", 0.0)),
+    }
+
+
+def _safe_float(value: Any) -> float:
+    try:
+        return float(value or 0.0)
+    except (TypeError, ValueError):
+        return 0.0

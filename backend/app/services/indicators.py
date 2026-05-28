@@ -5,7 +5,7 @@ from numbers import Real
 from typing import Any
 
 from app.models.schemas import KlineBar
-from app.services.finance.rust_math import rust_atr_wilder, rust_rsi_wilder, rust_vwap
+from app.services.finance.rust_math import rust_atr_wilder, rust_bollinger_bands, rust_rsi_wilder, rust_vwap
 
 
 def closes_from_bars(bars: list[KlineBar]) -> list[float]:
@@ -171,6 +171,12 @@ def bollinger_bands(values: list[float], window: int = 20, num_std: float = 2.0)
     if not clean:
         return (0.0, 0.0, 0.0)
     window = max(1, int(window or 1))
+    rust_values = rust_bollinger_bands(clean, window=window, num_std=num_std)
+    if rust_values:
+        latest = rust_values[-1]
+        if latest is not None:
+            upper, middle, lower = latest
+            return round(upper, 4), round(middle, 4), round(lower, 4)
     sample = clean[-window:]
     middle = sum(sample) / len(sample)
     if len(sample) < 2:

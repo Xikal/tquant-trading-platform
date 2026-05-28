@@ -5,48 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.models.entities import Instrument, InstrumentRule
 from app.models.schemas import TradingRuleOut
-
-ETF_PREFIXES = (
-    "159",
-    "16",
-    "50",
-    "51",
-    "56",
-    "58",
-    "588",
-)
-
-T0_KEYWORDS = tuple(
-    dict.fromkeys(
-        (
-            "货币",
-            "黄金",
-            "国债",
-            "债券",
-            "政金债",
-            "信用债",
-            "可转债",
-            "跨境",
-            "纳指",
-            "纳斯达克",
-            "恒生",
-            "日经",
-            "标普",
-            "德国",
-            "法国",
-            "印度",
-            "沙特",
-            "港股",
-            "美股",
-            "海外",
-            "东南亚",
-            "日本",
-            "全球",
-        )
-    )
-)
-
-T0_PREFIXES = ("1596", "1598", "1599", "511", "513", "518")
+from app.services.etf.universe import T0_KEYWORDS, etf_profile_for, is_known_etf
 
 ETF_THEME_KEYWORDS = {
     "证券": "券商/证券",
@@ -111,16 +70,17 @@ class MarketRuleService:
         return notes
 
     def _derive_rule(self, symbol: str, name: str, instrument_type: str) -> dict:
-        if instrument_type == "etf":
-            theme = self.infer_etf_theme(name)
-            if symbol.startswith(T0_PREFIXES) or any(keyword in name for keyword in T0_KEYWORDS):
+        profile = etf_profile_for(symbol, name=name, instrument_type=instrument_type)
+        if profile is not None:
+            theme = self.infer_etf_theme(name) if profile.category.value == "sector" else profile.category.value
+            if profile.same_day_sell_allowed:
                 return {
                     "turnaround_mode": "t0",
                     "supports_positive_t": True,
                     "supports_negative_t": True,
                     "same_day_sell_allowed": True,
                     "requires_base_position": False,
-                    "notes": f"根据 ETF 名称/代码规则推断为可回转 ETF；主题推断为 {theme}。",
+                    "notes": f"ETF universe 判定为可回转 ETF；分类 {theme}；{profile.notes}",
                 }
             return {
                 "turnaround_mode": "t1",
@@ -128,7 +88,7 @@ class MarketRuleService:
                 "supports_negative_t": True,
                 "same_day_sell_allowed": False,
                 "requires_base_position": True,
-                "notes": f"默认按股票型 ETF 的底仓做T模式处理；主题推断为 {theme}。",
+                "notes": f"ETF universe 未放行 T+0，默认按底仓做T模式处理；分类 {theme}；{profile.notes}",
             }
 
         return {
@@ -142,7 +102,7 @@ class MarketRuleService:
 
     @staticmethod
     def looks_like_etf(symbol: str, name: str = "") -> bool:
-        return symbol.startswith(ETF_PREFIXES) or "ETF" in name.upper()
+        return is_known_etf(symbol, name=name)
 
     @staticmethod
     def infer_etf_theme(name: str) -> str:

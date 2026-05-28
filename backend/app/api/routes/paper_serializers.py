@@ -12,6 +12,8 @@ from app.models.schemas import (
     PaperTradeTagOut,
 )
 from app.services.paper.dynamic_exit import evaluate_paper_exit
+from app.services.paper.exit_model_advisor import ExitModelAdvisor
+from app.services.paper.exit_model_features import build_exit_model_features
 from app.services.paper.fees import commission_warning_text
 from app.services.paper.reasons import normalize_entry_reason, normalize_exit_reason
 
@@ -48,10 +50,19 @@ def positions_response(rows) -> PaperPositionsResponse:
 
 
 def position_out(row) -> PaperPositionOut:
+    now = datetime.now()
     decision = evaluate_paper_exit(
         row,
         price=float(row.latest_price or 0),
-        now=datetime.now(),
+        now=now,
+    )
+    exit_model = ExitModelAdvisor().suggest(
+        build_exit_model_features(
+            position=row,
+            decision=decision,
+            price=float(row.latest_price or 0),
+            now=now,
+        )
     )
     return PaperPositionOut(
         id=row.id,
@@ -75,6 +86,7 @@ def position_out(row) -> PaperPositionOut:
         smart_exit_quantity=decision.quantity,
         smart_exit_net_profit_pct=decision.net_profit_pct,
         smart_exit_fee_drag_pct=decision.fee_drag_pct,
+        exit_model_shadow=exit_model.to_dict(),
     )
 
 

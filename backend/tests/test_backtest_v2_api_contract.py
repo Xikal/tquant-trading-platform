@@ -420,6 +420,55 @@ def test_analysis_endpoints_return_typed_shapes(client: TestClient) -> None:
     assert comparison.json()["items"][0]["metrics"]["sharpe_ratio"] == 1.35
 
 
+def test_strategy_improvement_report_requires_research_permission(service_stub: _BacktestServiceStub) -> None:  # noqa: ARG001
+    app = FastAPI()
+    app.include_router(backtests_route.router, prefix="/api")
+    app.dependency_overrides[get_db] = lambda: object()
+    app.dependency_overrides[get_current_user] = lambda: SimpleNamespace(
+        id=1,
+        username="owner",
+        roles="",
+        is_active=True,
+    )
+
+    response = TestClient(app).get("/api/backtests/strategy-improvement-report")
+
+    assert response.status_code == 403
+
+
+def test_strategy_improvement_report_returns_gate_summary_for_research_user(
+    monkeypatch: pytest.MonkeyPatch,
+    service_stub: _BacktestServiceStub,  # noqa: ARG001
+) -> None:
+    def fake_report(db, *, args, existing_report):  # noqa: ANN001, ARG001
+        return {
+            "summary": {"overall_status": "blocked_or_research_only", "formal_backtest_allowed": False},
+            "data_coverage": {"coverage_pct": 0.0, "missing_detail_sample": [{"trade_date": "2024-05-28"}]},
+            "minute_coverage": {"eligible_etf_minute_coverage_pct": 0.0, "missing_etf_symbols": [{"symbol": "510300"}]},
+            "strategy_governance": {"state_counts": {"weak_strategy": 1}},
+            "gates": [{"key": "daily_24m_coverage", "status": "fail"}],
+        }
+
+    monkeypatch.setattr(backtests_route, "build_closed_loop_report", fake_report)
+    app = FastAPI()
+    app.include_router(backtests_route.router, prefix="/api")
+    app.dependency_overrides[get_db] = lambda: object()
+    app.dependency_overrides[get_current_user] = lambda: SimpleNamespace(
+        id=1,
+        username="researcher",
+        roles="backtest_research",
+        is_active=True,
+    )
+
+    response = TestClient(app).get("/api/backtests/strategy-improvement-report")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["summary"]["overall_status"] == "blocked_or_research_only"
+    assert payload["gates"][0]["status"] == "fail"
+    assert payload["minute_coverage"]["missing_etf_symbols"][0]["symbol"] == "510300"
+
+
 def test_job_service_create_run_only_queues_without_starting_daemon_thread(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

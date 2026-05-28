@@ -1,0 +1,113 @@
+{
+  "generated_at": "2026-05-27T20:32:02",
+  "status": "completed",
+  "source": "akshare.stock_zh_a_spot_em|eastmoney.clist",
+  "totals": {
+    "seen": 5843,
+    "created": 0,
+    "updated": 5843,
+    "sector": 5843,
+    "listing": 5524
+  },
+  "coverage": {
+    "stock_count": 5843,
+    "sector_filled_count": 5843,
+    "listing_date_count": 5524,
+    "status_count": 5843,
+    "sector_coverage_pct": 100.0,
+    "listing_date_coverage_pct": 94.54
+  },
+  "provider_errors": [
+    {
+      "source": "akshare.stock_info_sh_name_code:沪市B股",
+      "message": "'沪市B股'"
+    }
+  ],
+  "sample": [
+    {
+      "symbol": "000001",
+      "name": "平安银行",
+      "sector_name": "股份制银行Ⅱ",
+      "listing_date": "1991-04-03",
+      "status": "active",
+      "is_st": false
+    },
+    {
+      "symbol": "000002",
+      "name": "万  科Ａ",
+      "sector_name": "房地产开发",
+      "listing_date": "1991-01-29",
+      "status": "active",
+      "is_st": false
+    },
+    {
+      "symbol": "000004",
+      "name": "*ST国华",
+      "sector_name": "软件开发",
+      "listing_date": "1990-12-01",
+      "status": "active",
+      "is_st": true
+    },
+    {
+      "symbol": "000006",
+      "name": "深振业Ａ",
+      "sector_name": "房地产开发",
+      "listing_date": "1992-04-27",
+      "status": "active",
+      "is_st": false
+    },
+    {
+      "symbol": "000007",
+      "name": "全新好",
+      "sector_name": "一般零售",
+      "listing_date": "1992-04-13",
+      "status": "active",
+      "is_st": false
+    },
+    {
+      "symbol": "000008",
+      "name": "神州高铁",
+      "sector_name": "轨交设备Ⅱ",
+      "listing_date": "1992-05-07",
+      "status": "active",
+      "is_st": false
+    },
+    {
+      "symbol": "000009",
+      "name": "中国宝安",
+      "sector_name": "电池",
+      "listing_date": "1991-06-25",
+      "status": "active",
+      "is_st": false
+    },
+    {
+      "symbol": "000010",
+      "name": "*ST美丽",
+      "sector_name": "基础建设",
+      "listing_date": "1995-10-27",
+      "status": "active",
+      "is_st": true
+    },
+    {
+      "symbol": "000011",
+      "name": "深物业A",
+      "sector_name": "房地产开发",
+      "listing_date": "1992-03-30",
+      "status": "active",
+      "is_st": false
+    },
+    {
+      "symbol": "000012",
+      "name": "南  玻Ａ",
+      "sector_name": "玻璃玻纤",
+      "listing_date": "1992-02-28",
+      "status": "active",
+      "is_st": false
+    }
+  ],
+  "notes": [
+    "仅写入真实返回的行业、上市日期和状态字段，缺失字段不会硬填。",
+    "ST/退市状态按名称和远端状态字段保守识别，正式回测仍需独立校验。",
+    "脚本成功不代表 24 个月回测验收通过，仍需闭环门禁确认。"
+  ]
+}

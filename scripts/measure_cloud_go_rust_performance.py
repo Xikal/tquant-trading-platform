@@ -110,6 +110,101 @@ def run_remote_measurement(args: argparse.Namespace) -> dict[str, Any]:
                         pass
             return parsed
 
+        def observability_assessment(go_bff_metrics, go_market_metrics, quote_cache_coverage):
+            def metric_value(metrics_map, name):
+                try:
+                    return float(metrics_map.get(name) or 0)
+                except Exception:
+                    return 0.0
+
+            bff_total = metric_value(go_bff_metrics, "tquant_bff_gateway_partial_source_failures_total")
+            bff_timeout = metric_value(go_bff_metrics, 'tquant_bff_gateway_partial_source_failures_total{reason="timeout"}')
+            bff_status = metric_value(go_bff_metrics, 'tquant_bff_gateway_partial_source_failures_total{reason="status"}')
+            bff_decode = metric_value(go_bff_metrics, 'tquant_bff_gateway_partial_source_failures_total{reason="decode"}')
+            bff_other = metric_value(go_bff_metrics, 'tquant_bff_gateway_partial_source_failures_total{reason="other"}')
+            bff_classified = bff_timeout + bff_status + bff_decode + bff_other
+            market_misses = metric_value(go_market_metrics, "tquant_market_read_cache_miss_total")
+            market_mysql = metric_value(go_market_metrics, "tquant_market_read_mysql_fallbacks_total")
+            market_unresolved = metric_value(go_market_metrics, "tquant_market_read_unresolved_misses_total")
+            market_partials = metric_value(go_market_metrics, "tquant_market_read_partials_total")
+            market_fallbacks = metric_value(go_market_metrics, "tquant_market_read_fallbacks_total")
+            quote_missing = int(quote_cache_coverage.get("missing_count") or 0) if isinstance(quote_cache_coverage, dict) else 0
+            alerts = []
+            if bff_total > 0 and bff_classified < bff_total:
+                alerts.append({
+                    "severity": "warning",
+                    "code": "bff_partial_unclassified",
+                    "message": "BFF partial source failures are not fully classified by reason.",
+                    "value": bff_total,
+                    "classified": bff_classified,
+                })
+            if bff_timeout > 0:
+                alerts.append({
+                    "severity": "warning",
+                    "code": "bff_partial_timeout",
+                    "message": "BFF source timeouts occurred; inspect slow Python source endpoints.",
+                    "value": bff_timeout,
+                })
+            if bff_status > 0 or bff_decode > 0:
+                alerts.append({
+                    "severity": "warning",
+                    "code": "bff_partial_source_error",
+                    "message": "BFF source returned non-2xx or invalid JSON; inspect partial_errors by source.",
+                    "status_failures": bff_status,
+                    "decode_failures": bff_decode,
+                })
+            if market_unresolved > 0 or quote_missing > 0:
+                alerts.append({
+                    "severity": "critical" if quote_missing > 0 else "warning",
+                    "code": "market_read_unresolved_miss",
+                    "message": "Go market-read service has symbols missing after Redis and MySQL fallback.",
+                    "unresolved_misses": market_unresolved,
+                    "quote_missing": quote_missing,
+                })
+            elif market_misses > 0 and market_mysql > 0:
+                alerts.append({
+                    "severity": "info",
+                    "code": "market_read_mysql_fallback",
+                    "message": "Redis misses were served by MySQL fallback; monitor cache warmup but do not page.",
+                    "cache_misses": market_misses,
+                    "mysql_fallbacks": market_mysql,
+                })
+            if market_fallbacks > 0 or market_partials > 0:
+                alerts.append({
+                    "severity": "warning" if market_fallbacks > 0 else "info",
+                    "code": "market_read_partial_response",
+                    "message": "Market-read returned partial or unavailable responses during the measurement window.",
+                    "partials": market_partials,
+                    "fallbacks": market_fallbacks,
+                })
+            severity_order = {"critical": 3, "warning": 2, "info": 1}
+            max_severity = "none"
+            for alert in alerts:
+                severity = str(alert.get("severity") or "info")
+                if severity_order.get(severity, 0) > severity_order.get(max_severity, 0):
+                    max_severity = severity
+            return {
+                "ok": not any(item.get("severity") == "critical" for item in alerts),
+                "max_severity": max_severity,
+                "alerts": alerts,
+                "bff_partial": {
+                    "total": bff_total,
+                    "classified": bff_classified,
+                    "timeout": bff_timeout,
+                    "status": bff_status,
+                    "decode": bff_decode,
+                    "other": bff_other,
+                },
+                "market_read": {
+                    "cache_misses": market_misses,
+                    "mysql_fallbacks": market_mysql,
+                    "unresolved_misses": market_unresolved,
+                    "partials": market_partials,
+                    "fallbacks": market_fallbacks,
+                    "quote_missing": quote_missing,
+                },
+            }
+
         def read_internal_token():
             env_path = os.path.join(PROJECT_DIR, ".env")
             try:
@@ -312,14 +407,20 @@ def run_remote_measurement(args: argparse.Namespace) -> dict[str, Any]:
             })
         if quote_cache.get("symbols_checked") and quote_cache.get("data_quality") == "unavailable":
             failures.append({"name": "quote_cache_coverage", "detail": quote_cache})
+        go_bff_metrics = metrics("tquant-go-bff-gateway", 8091)
+        go_market_metrics = metrics("tquant-go-market-read-service", 8092)
+        observability = observability_assessment(go_bff_metrics, go_market_metrics, quote_cache)
+        if not observability.get("ok"):
+            failures.append({"name": "observability_alerts", "detail": observability})
         report = {
             "generated_at": time.strftime("%Y-%m-%d %H:%M:%S"),
             "api": api,
             "go_scan_accept": scan_accept,
             "rust_finance_math": rust,
             "quote_cache_coverage": quote_cache,
-            "go_bff_metrics": metrics("tquant-go-bff-gateway", 8091),
-            "go_market_metrics": metrics("tquant-go-market-read-service", 8092),
+            "go_bff_metrics": go_bff_metrics,
+            "go_market_metrics": go_market_metrics,
+            "observability": observability,
             "go_scan": go_scan,
             "app_metrics": fetch("/metrics")[2].decode(errors="replace")[-4000:],
             "failures": failures,

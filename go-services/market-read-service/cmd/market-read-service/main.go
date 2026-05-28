@@ -19,6 +19,7 @@ var marketReadPartials atomic.Int64
 var marketReadRedisHits atomic.Int64
 var marketReadCacheMisses atomic.Int64
 var marketReadMySQLFallbacks atomic.Int64
+var marketReadUnresolvedMisses atomic.Int64
 
 func main() {
 	token := strings.TrimSpace(os.Getenv("TQUANT_INTERNAL_SERVICE_TOKEN"))
@@ -35,6 +36,7 @@ func main() {
 	mux.HandleFunc("/metrics", metrics)
 	mux.Handle("/api/market-read/v1/quote-batch", internalOnly(token, quoteBatchHandler(cache)))
 	mux.Handle("/api/market-read/v1/intraday-latest-batch", internalOnly(token, intradayLatestBatchHandler(cache)))
+	mux.Handle("/api/market-read/v1/etf-minute-snapshot-batch", internalOnly(token, etfMinuteSnapshotBatchHandler(cache)))
 	mux.Handle("/api/market-read/v1/sector-relative-strength", internalOnly(token, sectorStrengthHandler(cache)))
 	mux.Handle("/api/market-read/v1/intraday-key-levels", internalOnly(token, intradayKeyLevelsHandler(cache)))
 	server := withTimeout(mux)
@@ -60,6 +62,7 @@ func metrics(w http.ResponseWriter, _ *http.Request) {
 		"tquant_market_read_redis_hits_total " + strconv.FormatInt(marketReadRedisHits.Load(), 10),
 		"tquant_market_read_cache_miss_total " + strconv.FormatInt(marketReadCacheMisses.Load(), 10),
 		"tquant_market_read_mysql_fallbacks_total " + strconv.FormatInt(marketReadMySQLFallbacks.Load(), 10),
+		"tquant_market_read_unresolved_misses_total " + strconv.FormatInt(marketReadUnresolvedMisses.Load(), 10),
 	}
 	_, _ = w.Write([]byte(strings.Join(lines, "\n") + "\n"))
 }

@@ -11,6 +11,8 @@ if str(SCRIPTS_DIR) not in sys.path:
 from app.models.schemas import LowBuyHardRiskOut
 from app.services.low_buy.candidate_observation_confirmation import observation_confirmation_ready
 from app.services.low_buy.candidate_types import CandidateContextAdjustment, CandidateMetrics
+from low_buy_market_backtest import _resolve_evaluated_states, _states_stem
+from low_buy_market_backtest_reporting import StrategyBacktestStats
 from low_buy_market_backtest_signal_stats import signal_group_stats
 
 
@@ -74,6 +76,71 @@ def test_signal_group_stats_reports_best_holding_day() -> None:
     assert result["spike_win_rate_5d"] == 100.0
     assert result["avg_spike_return_5d"] == 2.0
     assert result["best_holding_day"]["day"] == 3
+
+
+def test_signal_group_stats_reports_execution_performance_metrics() -> None:
+    outcomes = [
+        _outcome_with_execution("2026-01-02", "2026-01-03", "2026-01-06", 2.0),
+        _outcome_with_execution("2026-01-07", "2026-01-08", "2026-01-10", -1.0),
+        _outcome_with_execution("2026-01-13", "2026-01-14", "2026-01-15", 3.0),
+    ]
+
+    result = signal_group_stats(
+        outcomes=outcomes,
+        states={"observe_confirmed"},
+        target_profit_pct=3.0,
+    )
+
+    assert result["trade_count"] == 3
+    assert result["total_return_pct"] > 0
+    assert result["max_drawdown_pct"] < 0
+    assert result["sharpe_ratio"] != 0
+    assert result["profit_loss_ratio"] == 2.5
+    assert result["avg_holding_days"] == 2.0
+    assert "回撤" in result["drawdown_recovery_status"]
+
+
+def test_backtest_state_filter_parser_supports_confirmed_alias() -> None:
+    states = _resolve_evaluated_states("confirmed")
+
+    assert states == {"buy_now", "soft_buy_now"}
+    assert _states_stem(states) == "confirmed"
+
+
+def test_strategy_backtest_stats_reports_state_filter_diagnostics() -> None:
+    stat = StrategyBacktestStats(
+        strategy_key="first_board",
+        strategy_title="首板回调",
+        strategy_family="event",
+        strategy_family_text="事件策略",
+    )
+    stat.record_signal_state("buy_now")
+    stat.record_signal_state("near_entry")
+    stat.record_skipped_state("near_entry")
+    stat.record_pending_reason("forward_window_incomplete_or_missing_bars")
+    stat.outcomes = [
+        _outcome_with_execution("2026-01-02", "2026-01-03", "2026-01-06", 2.0),
+        _outcome_with_execution(
+            "2026-01-07",
+            "",
+            "",
+            0.0,
+            execution_status="not_filled",
+            execution_exit_reason="信号后 2 日未出现可成交买点。",
+        ),
+    ]
+    stat.evaluated_count = len(stat.outcomes)
+    stat.pending_count = 1
+
+    payload = stat.as_dict(target_profit_pct=3.0, selected_states={"buy_now", "soft_buy_now"})
+
+    assert payload["selected_signal_states"] == ["buy_now", "soft_buy_now"]
+    assert payload["signal_state_counts"] == {"buy_now": 1, "near_entry": 1}
+    diagnostics = payload["evaluation_diagnostics"]
+    assert diagnostics["skipped_by_state_count"] == 1
+    assert diagnostics["skipped_by_state_counts"] == {"near_entry": 1}
+    assert diagnostics["pending_reason_counts"] == {"forward_window_incomplete_or_missing_bars": 1}
+    assert diagnostics["not_filled_reason_counts"] == {"信号后 2 日未出现可成交买点。": 1}
 
 
 def _metrics() -> CandidateMetrics:
@@ -200,7 +267,34 @@ class _Outcome:
     t1_hit_3_pct: bool = False
     t1_hit_5_pct: bool = False
     t1_fade_to_entry: bool = False
+    signal_date: str = "2026-01-02"
+    entry_trade_date: str = "2026-01-03"
+    exit_trade_date: str = "2026-01-06"
 
 
 def _outcome(return_1d: float, return_2d: float, return_3d: float, return_4d: float, return_5d: float) -> _Outcome:
     return _Outcome(return_1d, return_2d, return_3d, return_4d, return_5d)
+
+
+def _outcome_with_execution(
+    signal_date: str,
+    entry_date: str,
+    exit_date: str,
+    net_return_pct: float,
+    *,
+    execution_status: str = "filled",
+    execution_exit_reason: str = "止盈",
+) -> _Outcome:
+    return _Outcome(
+        return_1d=net_return_pct,
+        return_2d=net_return_pct,
+        return_3d=net_return_pct,
+        return_4d=net_return_pct,
+        return_5d=net_return_pct,
+        net_return_pct=net_return_pct,
+        execution_status=execution_status,
+        execution_exit_reason=execution_exit_reason,
+        signal_date=signal_date,
+        entry_trade_date=entry_date,
+        exit_trade_date=exit_date,
+    )

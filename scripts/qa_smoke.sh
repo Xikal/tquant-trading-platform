@@ -96,8 +96,8 @@ LOW_BUY_JSON="$(curl -sS "http://127.0.0.1:${BACKEND_PORT}/api/screeners/low-buy
 LOW_BUY_BREAKOUT_JSON="$(curl -sS "http://127.0.0.1:${BACKEND_PORT}/api/screeners/low-buy?strategy=limit_up_breakout_retrace&limit=12&scan_limit=24" "${AUTH_HEADER[@]}")"
 LOW_BUY_QUOTES_JSON="$(curl -sS "http://127.0.0.1:${BACKEND_PORT}/api/screeners/low-buy/quotes?symbols=510300" "${AUTH_HEADER[@]}")"
 if [[ "$QA_DEEP" == "1" ]]; then
-  BACKTEST_JSON="$(curl --max-time 90 -sS -X POST "http://127.0.0.1:${BACKEND_PORT}/api/backtests" -H "Content-Type: application/json" -d '{"symbol":"510300","lookback_bars":180,"bar_period":"5m","initial_position":1000,"walk_forward_windows":3}')"
-  REPLAYS_JSON="$(curl --max-time 20 -sS "http://127.0.0.1:${BACKEND_PORT}/api/replays")"
+  BACKTEST_JSON="$(curl --max-time 90 -sS -X POST "http://127.0.0.1:${BACKEND_PORT}/api/backtests" "${AUTH_HEADER[@]}" -H "Content-Type: application/json" -d '{"name":"QA Smoke 回测","start_date":"2025-01-02","end_date":"2026-04-30","initial_capital":100000,"strategies":["first_board"],"execution_model":"conservative_slippage","risk_limits":{"max_position_pct":0.3,"max_positions":8},"resource_tier":"light","benchmark":"000300"}')"
+  REPLAYS_JSON="$(curl --max-time 20 -sS "http://127.0.0.1:${BACKEND_PORT}/api/replays" "${AUTH_HEADER[@]}")"
 else
   BACKTEST_JSON="{}"
   REPLAYS_JSON="[]"
@@ -193,10 +193,17 @@ distribution_keys = set(low_buy["retracement_distribution"].keys())
 if low_buy.get("full_scan_ready"):
     assert any(key in distribution_keys for key in ("2天", "3天", "4天")), "low_buy retracement distribution should include 2/3/4-day samples"
 if backtest:
-    for key in ("symbol", "total_trades", "win_rate", "profit_factor", "walk_forward_score", "trades"):
-        assert key in backtest, f"backtest missing {key}"
-    assert backtest["symbol"] == "510300", "backtest symbol mismatch"
-    assert isinstance(backtest["trades"], list), "backtest trades should be list"
+    if "symbol" in backtest:
+        for key in ("symbol", "total_trades", "win_rate", "profit_factor", "walk_forward_score", "trades"):
+            assert key in backtest, f"backtest missing {key}"
+        assert backtest["symbol"] == "510300", "backtest symbol mismatch"
+        assert isinstance(backtest["trades"], list), "backtest trades should be list"
+    else:
+        for key in ("id", "name", "status", "strategy_keys", "start_date", "end_date"):
+            assert key in backtest, f"backtest task response missing {key}"
+        assert backtest["name"] == "QA Smoke 回测", "backtest task name mismatch"
+        assert "first_board" in backtest["strategy_keys"], "backtest task strategy mismatch"
+        assert backtest["status"] in {"queued", "running", "succeeded", "failed", "timeout", "cancelled"}, "invalid backtest task status"
 assert isinstance(replays, list), "replays should be list"
 print("qa-smoke:ok")
 PY

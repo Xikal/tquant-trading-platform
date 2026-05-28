@@ -428,6 +428,23 @@ def test_portfolio_applies_stock_t1_unlock_and_etf_same_day_availability() -> No
 
     assert portfolio.positions["510300"].available_quantity("2025-01-03") == 1000
 
+    portfolio.buy(
+        symbol="512999",
+        name="Unknown Sector ETF",
+        quantity=1000,
+        price=Decimal("4.00"),
+        fee=calculate_fee(symbol="512999", side="buy", price=Decimal("4.00"), quantity=1000),
+        trade_date="2025-01-03",
+        next_trade_date="2025-01-06",
+        strategy_key="etf_rotation",
+        stop_loss=None,
+        take_profit=None,
+        max_holding_days=1,
+    )
+
+    assert portfolio.positions["512999"].available_quantity("2025-01-03") == 0
+    assert portfolio.positions["512999"].available_quantity("2025-01-06") == 1000
+
 
 def test_engine_is_reproducible_and_outputs_trades_and_equity_curve() -> None:
     config = _config()

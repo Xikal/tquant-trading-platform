@@ -58,5 +58,48 @@ func (cache chainedQuoteCache) MGet(ctx context.Context, keys []string) (map[str
 			}
 		}
 	}
+	unresolved := 0
+	for _, key := range remaining {
+		if len(result[key]) == 0 {
+			unresolved++
+		}
+	}
+	if unresolved > 0 {
+		marketReadUnresolvedMisses.Add(int64(unresolved))
+	}
+	return result, nil
+}
+
+func (cache chainedQuoteCache) MinuteBars(ctx context.Context, symbols []string, period string, limit int) (map[string][]map[string]any, error) {
+	result := make(map[string][]map[string]any)
+	if primary, ok := cache.primary.(minuteBarCache); ok {
+		if values, err := primary.MinuteBars(ctx, symbols, period, limit); err == nil {
+			for symbol, bars := range values {
+				if len(bars) > 0 {
+					result[symbol] = bars
+				}
+			}
+		}
+	}
+	remaining := make([]string, 0, len(symbols))
+	for _, symbol := range symbols {
+		if len(result[symbol]) == 0 {
+			remaining = append(remaining, symbol)
+		}
+	}
+	if len(remaining) == 0 {
+		return result, nil
+	}
+	if secondary, ok := cache.secondary.(minuteBarCache); ok {
+		values, err := secondary.MinuteBars(ctx, remaining, period, limit)
+		if err != nil {
+			return result, nil
+		}
+		for symbol, bars := range values {
+			if len(bars) > 0 {
+				result[symbol] = bars
+			}
+		}
+	}
 	return result, nil
 }

@@ -252,6 +252,7 @@ const TABS: Array<{ key: StrategyHubTab; label: string; hint: string }> = [
   { key: "quick", label: "策略体检", hint: "一键判断能不能用" },
   { key: "history", label: "任务记录", hint: "看进度和结果" },
   { key: "signals", label: "最近信号", hint: "看入选股票和原因" },
+  { key: "etf-t0", label: "ETF T0", hint: "研究/生产门槛" },
   { key: "optimize", label: "专家：参数", hint: "研究员调参" },
   { key: "validate", label: "专家：验证", hint: "防过拟合" },
   { key: "compare", label: "策略对比", hint: "选更稳的策略" },

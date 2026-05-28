@@ -4,6 +4,8 @@ from typing import Any, Literal, Optional
 
 from pydantic import BaseModel, Field
 
+from app.models.schema_defs.common import KlineBar
+
 DataQualityState = Literal["fresh", "stale", "partial", "unavailable"]
 
 
@@ -181,10 +183,159 @@ class IntradayKeyLevelResponse(BaseModel):
     data_quality_text: str = ""
 
 
+class EtfUniverseProfileOut(BaseModel):
+    symbol: str
+    name: str
+    category: str
+    t0_eligible: bool = False
+    settlement_rule: str = "t1"
+    tracking_index: str = ""
+    min_amount: float = 0.0
+    max_spread_bps: float = 0.0
+    slippage_bps: float = 0.0
+    premium_discount_available: bool = False
+    enabled_for_t0: bool = False
+    same_day_sell_allowed: bool = False
+    notes: str = ""
+
+
+class EtfUniverseResponse(BaseModel):
+    version: str
+    updated_at: str
+    total: int = 0
+    t0_enabled_count: int = 0
+    source: str = "runtime_quant_parameters"
+    audit_scope: str = "market.sector_etf_t0.universe_overrides"
+    items: list[EtfUniverseProfileOut] = Field(default_factory=list)
+    notes: list[str] = Field(default_factory=list)
+
+
+class EtfUniverseAdminProfileOut(EtfUniverseProfileOut):
+    source: Literal["baseline", "override"] = "baseline"
+    validation_severity: Literal["ok", "info", "warning", "error"] = "ok"
+
+
+class EtfUniverseValidationIssueOut(BaseModel):
+    symbol: str = ""
+    severity: Literal["info", "warning", "error"] = "warning"
+    field: str = ""
+    message: str = ""
+    suggested_value: Any | None = None
+
+
+class EtfUniverseValidationSummaryOut(BaseModel):
+    error_count: int = 0
+    warning_count: int = 0
+    info_count: int = 0
+    issues: list[EtfUniverseValidationIssueOut] = Field(default_factory=list)
+
+
+class EtfUniverseDiffItemOut(BaseModel):
+    symbol: str
+    field: str
+    baseline_value: Any = None
+    current_value: Any = None
+    draft_value: Any = None
+    risk_level: Literal["low", "medium", "high"] = "low"
+    message: str = ""
+
+
+class EtfUniverseVersionSummaryOut(BaseModel):
+    version: str = ""
+    status: str = ""
+    scope: str = ""
+    description: str = ""
+    created_by: str = ""
+    created_at: str = ""
+    activated_at: str = ""
+
+
+class EtfUniverseAdminResponse(BaseModel):
+    version: str = ""
+    updated_at: str = ""
+    audit_scope: str = "market.sector_etf_t0.universe_overrides"
+    baseline_count: int = 0
+    current_count: int = 0
+    override_count: int = 0
+    t0_enabled_count: int = 0
+    items: list[EtfUniverseAdminProfileOut] = Field(default_factory=list)
+    overrides: dict[str, dict[str, Any]] = Field(default_factory=dict)
+    normalized_overrides: dict[str, dict[str, Any]] = Field(default_factory=dict)
+    validation: EtfUniverseValidationSummaryOut = Field(default_factory=EtfUniverseValidationSummaryOut)
+    diff: list[EtfUniverseDiffItemOut] = Field(default_factory=list)
+    recent_versions: list[EtfUniverseVersionSummaryOut] = Field(default_factory=list)
+    notes: list[str] = Field(default_factory=list)
+
+
+class EtfUniverseValidateRequest(BaseModel):
+    draft_overrides: dict[str, dict[str, Any]] = Field(default_factory=dict)
+
+
+class EtfUniverseRepairDraftRequest(BaseModel):
+    symbol: str = Field(min_length=1, max_length=16)
+    name: str = Field(default="", max_length=80)
+    category: str = Field(default="", max_length=32)
+
+
+class EtfUniverseApplyRequest(BaseModel):
+    draft_overrides: dict[str, dict[str, Any]] = Field(default_factory=dict)
+    version: str = Field(min_length=1, max_length=80)
+    description: str = Field(min_length=1, max_length=500)
+    activate: bool = False
+    confirm_high_risk: bool = False
+
+
+class EtfUniverseRollbackRequest(BaseModel):
+    version: str = Field(min_length=1, max_length=80)
+    confirm: bool = False
+
+
+class EtfUniverseMutationResponse(BaseModel):
+    ok: bool = True
+    message: str = ""
+    version: str = ""
+    admin: EtfUniverseAdminResponse
+
+
+class EtfMinuteSnapshotItem(BaseModel):
+    symbol: str
+    period: str = "1m"
+    bar_count: int = 0
+    latest_timestamp: str = ""
+    latest_price: float = 0.0
+    latest_amount: float = 0.0
+    total_amount: float = 0.0
+    high_price: float = 0.0
+    low_price: float = 0.0
+    age_seconds: float = 0.0
+    data_quality: str = "unknown"
+    bars: list[KlineBar] = Field(default_factory=list)
+    strategy_decision: str = "none"
+    note: str = ""
+
+
+class EtfMinuteSnapshotBatchResponse(BaseModel):
+    source: str = "go_market_read_service"
+    period: str = "1m"
+    data_quality: str = "unavailable"
+    items: list[EtfMinuteSnapshotItem] = Field(default_factory=list)
+    missing: list[str] = Field(default_factory=list)
+    notes: list[str] = Field(default_factory=list)
+
+
 class SectorEtfT0Opportunity(BaseModel):
     sector_name: str
     etf_symbol: str
     etf_name: str
+    etf_category: str = ""
+    t0_eligible: bool = False
+    settlement_rule: str = "t1"
+    tracking_index: str = ""
+    min_amount: float = 0.0
+    max_spread_bps: float = 0.0
+    slippage_bps: float = 0.0
+    premium_discount_available: bool = False
+    t0_eligibility_text: str = ""
     source_signal_symbol: str = ""
     source_signal_name: str = ""
     source_signal_state: str = ""
@@ -199,6 +350,11 @@ class SectorEtfT0Opportunity(BaseModel):
     sell_zone: str = ""
     stop_loss: float = 0.0
     expected_edge_pct: float = 0.0
+    intraday_signal_action: str = "unavailable"
+    intraday_signal_text: str = "分钟信号待刷新"
+    intraday_signal_confidence: float = 0.0
+    intraday_signal_snapshot: dict[str, Any] = Field(default_factory=dict)
+    intraday_risk_flags: list[str] = Field(default_factory=list)
     reason: str = ""
     risk: str = ""
     data_quality_text: str = ""

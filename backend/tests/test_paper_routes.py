@@ -186,6 +186,16 @@ class PaperRouteTests(unittest.TestCase):
         self.assertEqual(sell.status_code, 200)
         self.assertEqual(sell.json()["status"], "filled")
 
+    def test_unknown_etf_same_day_sell_is_rejected_until_universe_allows_t0(self) -> None:
+        headers = self._register("paper_unknown_etf_t1")
+        buy = self._paper_order(headers, symbol="512999", name="测试行业ETF", quantity=100)
+        self.assertEqual(buy.status_code, 200)
+        self.assertEqual(buy.json()["status"], "filled")
+
+        sell = self._paper_order(headers, symbol="512999", name="测试行业ETF", side="sell", quantity=100)
+        self.assertEqual(sell.status_code, 400)
+        self.assertIn("当日买入未解锁", sell.json()["detail"])
+
     def test_sell_order_ignores_open_high_risk_events(self) -> None:
         headers = self._register("paper_sell_with_open_risk")
         buy = self._paper_order(headers, symbol="510300", name="沪深300ETF", quantity=100)
@@ -327,6 +337,36 @@ class PaperRouteTests(unittest.TestCase):
         self.assertAlmostEqual(item["realized_pnl"], round(expected, 2), places=2)
         self.assertAlmostEqual(body["summary"]["account_total_pnl"], body["summary"]["stock_total_pnl"], places=2)
         self.assertAlmostEqual(body["summary"]["reconciliation_gap"], 0.0, places=2)
+
+    def test_sector_etf_t0_performance_includes_trade_review_attribution(self) -> None:
+        headers = self._register("paper_sector_etf_t0_review")
+        buy = self._paper_order(
+            headers,
+            symbol="510300",
+            name="沪深300ETF",
+            quantity=100,
+            current_price=4.0,
+            reason="分钟信号 positive_t_buy 触发",
+            source="auto_sector_etf_t0",
+        )
+        self.assertEqual(buy.status_code, 200)
+        with self.Session() as db:
+            order = db.execute(select(PaperOrder)).scalar_one()
+            order.strategy_key = "sector_etf_t0"
+            trade = db.execute(select(PaperTrade)).scalar_one()
+            trade.strategy_key = "sector_etf_t0"
+            trade.market_state = "震荡"
+            trade.entry_reason = "分钟信号 positive_t_buy 触发"
+            db.commit()
+
+        response = self.client.get("/api/paper/performance/sector-etf-t0", headers=headers)
+
+        self.assertEqual(response.status_code, 200)
+        body = response.json()
+        self.assertEqual(body["simulated_trades"], 1)
+        self.assertEqual(body["review_trades"][0]["symbol"], "510300")
+        self.assertIn("positive_t_buy", body["review_trades"][0]["attribution"])
+        self.assertEqual(body["review_trades"][0]["market_state"], "震荡")
 
     def test_stock_buy_keeps_position_unsellable_until_t1_unlock(self) -> None:
         headers = self._register("paper_stock_t1_available")

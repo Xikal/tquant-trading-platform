@@ -184,3 +184,15 @@ func (cache mapQuoteCache) MGet(_ context.Context, keys []string) (map[string][]
 	}
 	return result, nil
 }
+
+func (cache mapQuoteCache) MinuteBars(_ context.Context, symbols []string, period string, limit int) (map[string][]map[string]any, error) {
+	result := make(map[string][]map[string]any, len(symbols))
+	for _, symbol := range dedupeSymbols(symbols) {
+		raw := cache[minuteCachePrefix+period+":"+symbol]
+		bars := parseMinuteBarPayload(raw, limit)
+		if len(bars) > 0 {
+			result[symbol] = bars
+		}
+	}
+	return result, nil
+}

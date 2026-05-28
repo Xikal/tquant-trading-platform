@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from app.core.config import get_settings
 from app.core.timezone import beijing_now_string
 from app.models.schema_defs.market import (
+    EtfMinuteSnapshotBatchResponse,
     IntradayKeyLevelResponse,
     SectorRelativeStrengthItem,
     SectorRelativeStrengthResponse,
@@ -95,6 +96,29 @@ def load_go_intraday_latest(symbols: list[str]) -> dict[str, QuoteSnapshot]:
             }
         )
     return result
+
+
+def load_go_etf_minute_snapshots(symbols: list[str], *, period: str = "1m", limit: int = 30) -> EtfMinuteSnapshotBatchResponse | None:
+    base_url = _base_url()
+    cleaned_symbols = list(dict.fromkeys(symbol.strip() for symbol in symbols if symbol and symbol.strip()))
+    if not base_url or not cleaned_symbols:
+        return None
+    try:
+        payload = remote_bff_get(
+            base_url,
+            "/api/market-read/v1/etf-minute-snapshot-batch",
+            params={"symbols": ",".join(cleaned_symbols), "period": period, "limit": max(1, min(limit, 240))},
+        )
+    except RemoteBffError:
+        return None
+    try:
+        response = EtfMinuteSnapshotBatchResponse.model_validate(payload)
+    except ValidationError:
+        logger.warning("go etf minute snapshot schema mismatch", exc_info=True)
+        return None
+    notes = list(response.notes or [])
+    notes.append("Go market-read-service 只返回 ETF 分钟快照和数据质量，不生成做T信号。")
+    return response.model_copy(update={"notes": notes})
 
 
 def load_go_intraday_key_levels(

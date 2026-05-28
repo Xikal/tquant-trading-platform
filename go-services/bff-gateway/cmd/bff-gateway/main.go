@@ -32,6 +32,10 @@ var bffProxyFallbacks atomic.Int64
 var bffCacheHits atomic.Int64
 var bffCacheLookups atomic.Int64
 var bffPartialSourceFailures atomic.Int64
+var bffPartialTimeoutFailures atomic.Int64
+var bffPartialStatusFailures atomic.Int64
+var bffPartialDecodeFailures atomic.Int64
+var bffPartialOtherFailures atomic.Int64
 var bffWorkspaceAggregateMonitorHits atomic.Int64
 var bffWorkspaceAggregatePaperHits atomic.Int64
 var bffWorkspaceAggregateStrategyHits atomic.Int64
@@ -117,6 +121,10 @@ func metricsHandler(cache *workspaceCache) http.HandlerFunc {
 			"tquant_bff_gateway_cache_items " + strconv.Itoa(cache.size()),
 			"tquant_bff_gateway_cache_ttl_seconds " + strconv.FormatFloat(cache.ttlSeconds(), 'f', 3, 64),
 			"tquant_bff_gateway_partial_source_failures_total " + strconv.FormatInt(bffPartialSourceFailures.Load(), 10),
+			"tquant_bff_gateway_partial_source_failures_total{reason=\"timeout\"} " + strconv.FormatInt(bffPartialTimeoutFailures.Load(), 10),
+			"tquant_bff_gateway_partial_source_failures_total{reason=\"status\"} " + strconv.FormatInt(bffPartialStatusFailures.Load(), 10),
+			"tquant_bff_gateway_partial_source_failures_total{reason=\"decode\"} " + strconv.FormatInt(bffPartialDecodeFailures.Load(), 10),
+			"tquant_bff_gateway_partial_source_failures_total{reason=\"other\"} " + strconv.FormatInt(bffPartialOtherFailures.Load(), 10),
 			"tquant_bff_gateway_workspace_aggregate_hits_total{workspace=\"monitor\"} " + strconv.FormatInt(bffWorkspaceAggregateMonitorHits.Load(), 10),
 			"tquant_bff_gateway_workspace_aggregate_hits_total{workspace=\"paper\"} " + strconv.FormatInt(bffWorkspaceAggregatePaperHits.Load(), 10),
 			"tquant_bff_gateway_workspace_aggregate_hits_total{workspace=\"strategy\"} " + strconv.FormatInt(bffWorkspaceAggregateStrategyHits.Load(), 10),

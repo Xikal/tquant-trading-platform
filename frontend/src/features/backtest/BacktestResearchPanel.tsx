@@ -16,8 +16,10 @@ import { useBacktestStrategyOptions } from "./useBacktestStrategyOptions";
 import { AttributionPanel } from "./AttributionPanel";
 import { ComparePanel } from "./ComparePanel";
 import { MLCapacityPanel } from "./MLCapacityPanel";
+import { EtfT0BacktestPanel } from "./EtfT0BacktestPanel";
 import { OptimizationPanel } from "./OptimizationPanel";
 import { ValidationPanel } from "./ValidationPanel";
+import { StrategyImprovementGatePanel } from "./StrategyImprovementGatePanel";
 import type { OptimizationFormState, ValidationFormState } from "./backtestForms";
 import {
   BACKTEST_HERO_TEXT_STYLE,
@@ -70,7 +72,7 @@ export interface BacktestResearchActions {
   onRefreshResearch: () => void;
 }
 
-export type BacktestResearchSection = "optimization" | "validation" | "compare" | "attribution" | "capacity";
+export type BacktestResearchSection = "optimization" | "validation" | "compare" | "attribution" | "capacity" | "etf-t0";
 
 export function BacktestResearchPanel({
   state,
@@ -85,9 +87,10 @@ export function BacktestResearchPanel({
 }) {
   const strategyOptions = useBacktestStrategyOptions();
   const visibleSections = new Set<BacktestResearchSection>(
-    sections ?? ["optimization", "validation", "compare", "attribution", "capacity"]
+    sections ?? ["optimization", "validation", "compare", "attribution", "capacity", "etf-t0"]
   );
   const focused = Boolean(sections?.length === 1);
+  const showGatePanel = !focused || visibleSections.has("optimization") || visibleSections.has("validation");
   return (
     <section className="panel" style={backtestResearchPanelStyle(focused)}>
       <div style={BACKTEST_RESEARCH_HERO_STYLE}>
@@ -104,12 +107,15 @@ export function BacktestResearchPanel({
       {state.notice ? <div style={BACKTEST_NOTICE_STYLE}>{state.notice}</div> : null}
       {state.error ? <ErrorBanner message={state.error} onRetry={actions.onRefreshResearch} /> : null}
 
+      {showGatePanel ? <StrategyImprovementGatePanel /> : null}
+
       <div style={BACKTEST_RESEARCH_GRID_STYLE}>
         {visibleSections.has("optimization") ? <OptimizationPanel state={state} actions={actions} strategyOptions={strategyOptions} /> : null}
         {visibleSections.has("validation") ? <ValidationPanel state={state} actions={actions} strategyOptions={strategyOptions} /> : null}
         {visibleSections.has("compare") ? <ComparePanel state={state} actions={actions} /> : null}
         {visibleSections.has("attribution") ? <AttributionPanel state={state} equity={equity ?? []} /> : null}
         {visibleSections.has("capacity") ? <MLCapacityPanel strategyOptions={strategyOptions} /> : null}
+        {visibleSections.has("etf-t0") ? <EtfT0BacktestPanel /> : null}
       </div>
     </section>
   );

@@ -19,6 +19,44 @@ class Instrument(Base):
     market: Mapped[str] = mapped_column(String(16), default="CN")
     instrument_type: Mapped[str] = mapped_column(String(16), default="stock", index=True)
     sector_name: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    listing_date: Mapped[Optional[date]] = mapped_column(FlexibleDate(), nullable=True, index=True)
+    delisting_date: Mapped[Optional[date]] = mapped_column(FlexibleDate(), nullable=True, index=True)
+    is_st: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
+    status: Mapped[str] = mapped_column(String(24), default="active", index=True)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, server_default=func.now(), onupdate=func.now()
+    )
+
+
+class InstrumentIndustryHistory(Base):
+    __tablename__ = "instrument_industry_history"
+    __table_args__ = (
+        UniqueConstraint("symbol", "trade_date", "industry_name", name="uq_instrument_industry_history_day"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    symbol: Mapped[str] = mapped_column(String(16), index=True)
+    trade_date: Mapped[date] = mapped_column(FlexibleDate(), index=True)
+    industry_name: Mapped[str] = mapped_column(String(80), default="", index=True)
+    source: Mapped[str] = mapped_column(String(48), default="unknown", index=True)
+    data_quality: Mapped[str] = mapped_column(String(24), default="unknown", index=True)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, server_default=func.now(), onupdate=func.now()
+    )
+
+
+class InstrumentConceptHistory(Base):
+    __tablename__ = "instrument_concept_history"
+    __table_args__ = (
+        UniqueConstraint("symbol", "trade_date", "concept_name", name="uq_instrument_concept_history_day"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    symbol: Mapped[str] = mapped_column(String(16), index=True)
+    trade_date: Mapped[date] = mapped_column(FlexibleDate(), index=True)
+    concept_name: Mapped[str] = mapped_column(String(80), default="", index=True)
+    source: Mapped[str] = mapped_column(String(48), default="unknown", index=True)
+    data_quality: Mapped[str] = mapped_column(String(24), default="unknown", index=True)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime, server_default=func.now(), onupdate=func.now()
     )
@@ -317,6 +355,14 @@ class MinuteBarSnapshot(Base):
     low_price: Mapped[float] = mapped_column(Float, default=0.0)
     volume: Mapped[float] = mapped_column(Float, default=0.0)
     amount: Mapped[float] = mapped_column(Float, default=0.0)
+    bid_ask_spread: Mapped[float] = mapped_column(Float, default=0.0)
+    premium_discount_pct: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    tracking_index_symbol: Mapped[str] = mapped_column(String(32), default="", index=True)
+    liquidity_tier: Mapped[str] = mapped_column(String(24), default="unknown", index=True)
+    source: Mapped[str] = mapped_column(String(48), default="unknown", index=True)
+    fetch_time: Mapped[str] = mapped_column(String(32), default="", index=True)
+    checksum: Mapped[str] = mapped_column(String(64), default="", index=True)
+    data_quality: Mapped[str] = mapped_column(String(24), default="unknown", index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
 class DailyBarSnapshot(Base):
@@ -338,6 +384,16 @@ class DailyBarSnapshot(Base):
     amount: Mapped[float] = mapped_column(Numeric(20, 2, asdecimal=False), default=0.0)
     pct_chg: Mapped[float] = mapped_column(Float, default=0.0)
     pre_close: Mapped[float] = mapped_column(Float, default=0.0)
+    limit_up_price: Mapped[float] = mapped_column(Float, default=0.0, nullable=True)
+    limit_down_price: Mapped[float] = mapped_column(Float, default=0.0, nullable=True)
+    is_suspended: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
+    is_st: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
+    is_delisted: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
+    source: Mapped[str] = mapped_column(String(48), default="unknown", index=True)
+    fetch_time: Mapped[str] = mapped_column(String(32), default="", index=True)
+    adjusted_mode: Mapped[str] = mapped_column(String(16), default="unknown", index=True)
+    checksum: Mapped[str] = mapped_column(String(64), default="", index=True)
+    data_quality: Mapped[str] = mapped_column(String(24), default="unknown", index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime, server_default=func.now(), onupdate=func.now()

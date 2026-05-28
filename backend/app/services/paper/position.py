@@ -11,7 +11,7 @@ from app.models.entities import PaperPosition, PaperPositionLot
 from app.core.timezone import beijing_today
 from app.services.market.trading_calendar import last_a_share_trading_day, next_a_share_trading_day
 from app.services.paper.money import CENT, to_decimal
-from app.services.paper.symbols import is_etf
+from app.services.paper.symbols import can_sell_same_day
 
 
 class PaperPositionService:
@@ -181,12 +181,12 @@ def _next_business_day(value: date) -> date:
 
 
 def _available_date_for_buy(symbol: str, trade_date: date) -> date:
-    # A 股普通股票 T+1；ETF 在模拟盘按 T+0 可回转处理。
-    return trade_date if is_etf(symbol) else _next_business_day(trade_date)
+    # A 股普通股票 T+1；只有 ETF universe 放行的标的才按 T+0 可回转处理。
+    return trade_date if can_sell_same_day(symbol) else _next_business_day(trade_date)
 
 
 def _available_as_of_for_sell(symbol: str) -> date:
-    return beijing_today() if is_etf(symbol) else last_a_share_trading_day(beijing_today())
+    return beijing_today() if can_sell_same_day(symbol) else last_a_share_trading_day(beijing_today())
 
 
 def _merge_strategy_source(raw: str, strategy_key: str) -> str:

@@ -13,6 +13,8 @@ from app.models.schema_defs.market import (
     SectorEtfT0Opportunity,
     SectorEtfT0Response,
 )
+from app.services.etf.universe import etf_profile_for
+from app.services.etf.t0_signal import evaluate_etf_t0_signal
 from app.services.low_buy.service import LowBuyScreenerService
 from app.services.market.parameter_defaults import MARKET_SECTOR_ETF_T0_DEFAULTS
 from app.services.market_data import MarketDataService
@@ -116,6 +118,11 @@ class SectorEtfT0Service:
                 continue
             if quote.last_price <= 0:
                 continue
+            profile = etf_profile_for(proxy.symbol, name=proxy.name, instrument_type="fund")
+            t0_eligible = bool(profile and profile.same_day_sell_allowed)
+            intraday_signal = None
+            if t0_eligible:
+                intraday_signal = self._intraday_signal(proxy, quote, params=params)
             confidence = _confidence(
                 _float_value(_field(candidate, "priority_score")),
                 regime.state,
@@ -128,11 +135,25 @@ class SectorEtfT0Service:
             sell_high = round(quote.last_price * _float_param(params, "sell_high_multiplier"), 3)
             expected_edge = round((sell_low / max(entry_high, 0.01) - 1.0) * 100, 2)
             positive_confidence_min = _float_param(params, "positive_confidence_min")
+            positive_t_candidate = t0_eligible and confidence >= positive_confidence_min
+            if t0_eligible:
+                eligibility_text = "ETF universe 已放行 T+0，执行前仍需检查流动性、价差和数据 freshness。"
+            else:
+                eligibility_text = "ETF universe 未放行 T+0，只展示替代观察，不进入自动做T执行。"
             items.append(
                 SectorEtfT0Opportunity(
                     sector_name=sector_name or "行业代理",
                     etf_symbol=proxy.symbol,
                     etf_name=proxy.name,
+                    etf_category=profile.category.value if profile is not None else "unknown",
+                    t0_eligible=t0_eligible,
+                    settlement_rule=profile.settlement_rule if profile is not None else "t1",
+                    tracking_index=profile.tracking_index if profile is not None else "",
+                    min_amount=profile.min_amount if profile is not None else 0.0,
+                    max_spread_bps=profile.max_spread_bps if profile is not None else 0.0,
+                    slippage_bps=profile.slippage_bps if profile is not None else 0.0,
+                    premium_discount_available=profile.premium_discount_available if profile is not None else False,
+                    t0_eligibility_text=eligibility_text,
                     source_signal_symbol=_string_value(_field(candidate, "symbol")),
                     source_signal_name=_string_value(_field(candidate, "name")),
                     source_signal_state=buy_signal_state,
@@ -140,15 +161,20 @@ class SectorEtfT0Service:
                     source_signal_text=_string_value(_field(candidate, "buy_signal_text")),
                     last_price=quote.last_price,
                     change_pct=quote.change_pct,
-                    bias="positive_t" if confidence >= positive_confidence_min else "hold",
-                    bias_text="ETF 正T候选" if confidence >= positive_confidence_min else "只观察",
+                    bias="positive_t" if positive_t_candidate else "hold",
+                    bias_text="ETF 正T候选" if positive_t_candidate else "T+0未放行" if not t0_eligible else "只观察",
                     confidence=confidence,
                     entry_zone=f"{entry_low:.3f}-{entry_high:.3f}",
                     sell_zone=f"{sell_low:.3f}-{sell_high:.3f}",
                     stop_loss=round(quote.last_price * _float_param(params, "stop_loss_multiplier"), 3),
                     expected_edge_pct=expected_edge,
+                    intraday_signal_action=_field(intraday_signal, "action", "unavailable"),
+                    intraday_signal_text=_field(intraday_signal, "action_text", "分钟信号待刷新"),
+                    intraday_signal_confidence=_float_value(_field(intraday_signal, "confidence", 0.0)),
+                    intraday_signal_snapshot=_field(intraday_signal, "to_dict", lambda: {})(),
+                    intraday_risk_flags=list(_field(intraday_signal, "risk_flags", []) or []),
                     reason=f"{_string_value(_field(candidate, 'name'))} 属于该方向强信号，优先用 ETF 降低个股波动和 T+1 风险。",
-                    risk=f"ETF 仍受板块回落影响；价差低于 {_float_param(params, 'fee_edge_buffer_pct'):.1f}% 时不做，避免手续费和滑点吞噬收益。",
+                    risk=f"{eligibility_text} ETF 仍受板块回落影响；价差低于 {_float_param(params, 'fee_edge_buffer_pct'):.1f}% 时不做，避免手续费和滑点吞噬收益。",
                     data_quality_text=getattr(quote, "data_quality_message", "") or getattr(quote, "source_quality", "") or "行情正常",
                 )
             )
@@ -166,6 +192,33 @@ class SectorEtfT0Service:
             total=len(items),
             opportunities=items,
             notes=notes,
+        )
+
+    def _intraday_signal(self, proxy: SectorEtfProxy, quote: Any, *, params: dict[str, Any]):
+        try:
+            bars = self.market_data.get_intraday_bars(
+                proxy.symbol,
+                period="1m",
+                limit=_int_param(params, "signal_bar_limit"),
+                allow_slow_fallback=False,
+            )
+        except TypeError:
+            try:
+                bars = self.market_data.get_intraday_bars(proxy.symbol, period="1m", limit=_int_param(params, "signal_bar_limit"))
+            except Exception:
+                return None
+        except Exception:
+            return None
+        if not bars:
+            return None
+        spread_bps = _quote_spread_bps(quote)
+        return evaluate_etf_t0_signal(
+            symbol=proxy.symbol,
+            name=proxy.name,
+            bars=bars,
+            spread_bps=spread_bps,
+            data_quality=getattr(quote, "data_quality", "fresh") or "fresh",
+            params=params,
         )
 
     def validation_report(self, db: Session, *, limit: int = 8) -> MarketModelValidationResponse:
@@ -364,6 +417,18 @@ def _float_param(params: dict[str, Any], key: str) -> float:
 
 def _int_param(params: dict[str, Any], key: str) -> int:
     return int(round(_float_param(params, key)))
+
+
+def _quote_spread_bps(quote: Any) -> float:
+    raw = _field(quote, "spread_bps")
+    if raw is not None:
+        return _float_value(raw)
+    price = _float_value(_field(quote, "last_price"))
+    bid = _float_value(_field(quote, "best_bid"))
+    ask = _float_value(_field(quote, "best_ask"))
+    if price > 0 and ask > bid > 0:
+        return round((ask - bid) / price * 10000, 4)
+    return 0.0
 
 
 def _binomial_one_sided_p_value(success_count: int, sample_count: int, *, baseline: float) -> float:

@@ -198,7 +198,51 @@ class PaperPerformanceService:
                 "模拟成交绩效只统计 strategy_key=sector_etf_t0 的已闭合卖出收益。",
                 "影子跟踪绩效来自 ETF T+0 机会池观察样本，用于和真实模拟成交对账。",
             ],
+            "execution_gate_notes": [
+                "自动执行门禁：ETF universe T+0 eligibility + 分钟信号 positive_t_buy + 无风险 flags + 置信度达标。",
+                "Go/Rust 只参与读链路和指标加速，ETF 做T 信号和交易约束仍由 Python 主路径判断。",
+                "反T卖出当前只展示研究信号，不自动卖出底仓。",
+            ],
+            "review_trades": self.sector_etf_t0_review_trades(account_id),
         }
+
+    def sector_etf_t0_review_trades(self, account_id: int, limit: int = 20) -> list[dict]:
+        trades = [
+            item
+            for item in reversed(self._trades(account_id))
+            if item.strategy_key == "sector_etf_t0"
+        ]
+        result: list[dict] = []
+        for trade in trades[: max(1, min(limit, 100))]:
+            price = float(trade.price or 0)
+            quantity = int(trade.quantity or 0)
+            entry_reason = str(trade.entry_reason or "").strip()
+            exit_reason = str(trade.exit_reason or "").strip()
+            risk_notes: list[str] = []
+            if not entry_reason and trade.side == "buy":
+                risk_notes.append("缺少入场原因，无法完整复盘分钟信号与执行门禁。")
+            if not exit_reason and trade.side == "sell":
+                risk_notes.append("缺少退出原因，无法完整复盘止盈止损或回补原因。")
+            if price <= 0 or quantity <= 0:
+                risk_notes.append("成交价格或数量异常，需检查模拟盘账本。")
+            result.append(
+                {
+                    "id": int(trade.id),
+                    "order_id": int(trade.order_id),
+                    "symbol": trade.symbol,
+                    "side": trade.side,
+                    "price": price,
+                    "quantity": quantity,
+                    "trade_time": trade.trade_time,
+                    "entry_reason": entry_reason,
+                    "exit_reason": exit_reason,
+                    "market_state": trade.market_state or "",
+                    "attribution": _sector_etf_t0_attribution(trade),
+                    "execution_summary": f"{trade.side} {quantity} @ {price:.4f}",
+                    "risk_notes": risk_notes,
+                }
+            )
+        return result
 
     def sell_return_records(self, account_id: int) -> list[SellReturnRecord]:
         return self._paired_sell_return_records(account_id)
@@ -388,6 +432,16 @@ class PaperPerformanceService:
 
 def _rate(part: int, total: int) -> float:
     return round(part / total * 100, 3) if total > 0 else 0.0
+
+
+def _sector_etf_t0_attribution(trade: PaperTrade) -> str:
+    if trade.side == "buy":
+        reason = str(trade.entry_reason or "").strip()
+        return reason or "正T买入成交：需回看订单 signal_snapshot 确认分钟信号、ETF eligibility 和风控门禁。"
+    if trade.side == "sell":
+        reason = str(trade.exit_reason or "").strip()
+        return reason or "ETF T0 卖出/回补成交：需回看退出原因确认止盈、止损或时间退出。"
+    return "ETF T0 成交：需结合订单和持仓批次复盘。"
 
 
 def _sharpe_ratio(returns: list[float], risk_free_rate_annual_pct: float) -> float:

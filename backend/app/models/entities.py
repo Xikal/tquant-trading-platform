@@ -38,6 +38,8 @@ from app.models.market_entities import (
     AnalysisLog,
     BacktestRun,
     DailyBarSnapshot,
+    InstrumentConceptHistory,
+    InstrumentIndustryHistory,
     Instrument,
     InstrumentRule,
     IntradayConfirmationSnapshot,
@@ -91,6 +93,8 @@ from app.models.factor_mining_entities import (
 
 __all__ = [
     "Instrument",
+    "InstrumentIndustryHistory",
+    "InstrumentConceptHistory",
     "InstrumentRule",
     "StrategyMetadata",
     "StrategyPreset",

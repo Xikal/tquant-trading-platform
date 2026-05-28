@@ -13,6 +13,8 @@ import type {
   LowBuyExecutionBacktestResult,
   LowBuyTradeLifecycle,
   MarketBreadth,
+  EtfMinuteSnapshotBatchResponse,
+  EtfUniverseResponse,
   MarketHourlySnapshotHistoryResponse,
   MonitorWorkspaceBffResponse,
   MarketTradingSession,
@@ -105,6 +107,16 @@ export const api = {
   getIntradayKeyLevels: (symbol: string) =>
     requestCached<IntradayKeyLevelResponse>(`/market/intraday-key-levels/${encodeURIComponent(symbol)}`, 10000),
   getSectorEtfT0: (limit = 8) => requestCached<SectorEtfT0Response>(`/market/sector-etf-t0?limit=${limit}`, 20000),
+  getEtfUniverse: (category = "", t0Only = false) =>
+    requestCached<EtfUniverseResponse>(
+      `/market/etf-universe?category=${encodeURIComponent(category)}&t0_only=${t0Only ? "true" : "false"}`,
+      60000,
+    ),
+  getEtfMinuteSnapshots: (symbols: string[], period: "1m" | "5m" | "15m" = "1m", limit = 30) =>
+    requestCached<EtfMinuteSnapshotBatchResponse>(
+      `/market/etf-minute-snapshots?symbols=${encodeURIComponent(symbols.join(","))}&period=${period}&limit=${limit}`,
+      15000,
+    ),
   getPairedHedgeResearch: (limit = 8) =>
     requestCached<PairedHedgeResearchResponse>(`/market/paired-hedge-research?limit=${limit}`, 30000),
   getAlternativeSentiment: (symbols: string[] = [], limit = 80) =>

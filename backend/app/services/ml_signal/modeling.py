@@ -122,10 +122,20 @@ def _make_estimator(model_type: str):
     from sklearn.pipeline import Pipeline
     from sklearn.preprocessing import StandardScaler
 
+    params = model_training_params("logistic")
     return Pipeline(
         [
             ("scaler", StandardScaler()),
-            ("model", LogisticRegression(max_iter=500, random_state=42)),
+            (
+                "model",
+                LogisticRegression(
+                    max_iter=_int_param(params, "max_iter", 500),
+                    random_state=42,
+                    solver="liblinear",
+                    C=_float_param(params, "c", 0.2),
+                    class_weight="balanced",
+                ),
+            ),
         ]
     )
 

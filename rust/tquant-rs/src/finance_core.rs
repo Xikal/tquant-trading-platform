@@ -38,6 +38,90 @@ pub fn rolling_mean_values(values: &[f64], window: usize) -> Vec<Option<f64>> {
     result
 }
 
+pub fn rolling_std_values(values: &[f64], window: usize) -> Vec<Option<f64>> {
+    if window == 0 {
+        return vec![None; values.len()];
+    }
+    let mut result = Vec::with_capacity(values.len());
+    let mut sum = 0.0_f64;
+    let mut sum_sq = 0.0_f64;
+    for idx in 0..values.len() {
+        let value = values[idx];
+        sum += value;
+        sum_sq += value * value;
+        if idx >= window {
+            let old = values[idx - window];
+            sum -= old;
+            sum_sq -= old * old;
+        }
+        if idx + 1 >= window {
+            result.push(Some(sample_std_from_sums(sum, sum_sq, window)));
+        } else {
+            result.push(None);
+        }
+    }
+    result
+}
+
+pub fn volatility_value(returns: &[f64], periods_per_year: f64) -> Option<f64> {
+    if returns.len() < 2 {
+        return None;
+    }
+    let std = sample_std(returns)?;
+    Some(std * periods_per_year.max(1.0).sqrt())
+}
+
+pub fn correlation_value(left: &[f64], right: &[f64]) -> Option<f64> {
+    pearson(left, right)
+}
+
+pub fn beta_value(asset_returns: &[f64], benchmark_returns: &[f64]) -> Option<f64> {
+    let len = asset_returns.len().min(benchmark_returns.len());
+    if len < 2 {
+        return None;
+    }
+    let asset = &asset_returns[..len];
+    let benchmark = &benchmark_returns[..len];
+    let asset_mean = asset.iter().sum::<f64>() / len as f64;
+    let benchmark_mean = benchmark.iter().sum::<f64>() / len as f64;
+    let mut covariance = 0.0_f64;
+    let mut benchmark_var = 0.0_f64;
+    for idx in 0..len {
+        let a = asset[idx] - asset_mean;
+        let b = benchmark[idx] - benchmark_mean;
+        covariance += a * b;
+        benchmark_var += b * b;
+    }
+    if benchmark_var <= 0.0 {
+        return None;
+    }
+    Some(covariance / benchmark_var)
+}
+
+pub fn bollinger_bands_values(
+    values: &[f64],
+    window: usize,
+    num_std: f64,
+) -> Vec<Option<(f64, f64, f64)>> {
+    if window == 0 {
+        return vec![None; values.len()];
+    }
+    let means = rolling_mean_values(values, window);
+    let stds = rolling_std_values(values, window);
+    means
+        .into_iter()
+        .zip(stds)
+        .map(|(mean, std)| match (mean, std) {
+            (Some(middle), Some(std_value)) => {
+                let upper = middle + num_std * std_value;
+                let lower = middle - num_std * std_value;
+                Some((upper, middle, lower))
+            }
+            _ => None,
+        })
+        .collect()
+}
+
 pub fn atr_wilder_values(
     highs: &[f64],
     lows: &[f64],
@@ -167,4 +251,22 @@ fn pearson(left: &[f64], right: &[f64]) -> Option<f64> {
         return None;
     }
     Some(covariance / (left_var.sqrt() * right_var.sqrt()))
+}
+
+fn sample_std(values: &[f64]) -> Option<f64> {
+    if values.len() < 2 {
+        return None;
+    }
+    let sum = values.iter().sum::<f64>();
+    let sum_sq = values.iter().map(|value| value * value).sum::<f64>();
+    Some(sample_std_from_sums(sum, sum_sq, values.len()))
+}
+
+fn sample_std_from_sums(sum: f64, sum_sq: f64, len: usize) -> f64 {
+    if len < 2 {
+        return 0.0;
+    }
+    let n = len as f64;
+    let variance = ((sum_sq - (sum * sum / n)) / (n - 1.0)).max(0.0);
+    variance.sqrt()
 }

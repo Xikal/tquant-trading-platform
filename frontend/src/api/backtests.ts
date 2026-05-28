@@ -51,6 +51,11 @@ import type {
   BacktestListParams,
   BacktestTradesParams,
   BacktestVerdictThresholdsResponse,
+  StrategyImprovementReportResponse,
+  EtfT0BacktestRequest,
+  EtfT0BacktestResponse,
+  EtfT0ResearchRequest,
+  EtfT0ResearchResponse,
   ResearchListParams
 } from "./backtestTypes";
 
@@ -216,4 +221,19 @@ export const backtestsApi = {
 
   getVerdictThresholds: () =>
     request<BacktestVerdictThresholdsResponse>("/backtests/verdict-thresholds"),
+
+  getStrategyImprovementReport: () =>
+    request<StrategyImprovementReportResponse>("/backtests/strategy-improvement-report"),
+
+  runEtfT0MinuteBacktest: (payload: EtfT0BacktestRequest) =>
+    request<EtfT0BacktestResponse>("/backtests/etf-t0-minute", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+
+  runEtfT0Research: (payload: EtfT0ResearchRequest) =>
+    request<EtfT0ResearchResponse>("/backtests/etf-t0-research", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
 };

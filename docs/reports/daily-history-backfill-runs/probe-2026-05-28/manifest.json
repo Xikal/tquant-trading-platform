@@ -1,0 +1,74 @@
+{
+  "run_id": "probe-2026-05-28",
+  "status": "completed",
+  "config": {
+    "start_date": "2024-06-17",
+    "end_date": "2024-06-21",
+    "batch_size": 1,
+    "workers": 1,
+    "resume": false,
+    "force": true
+  },
+  "batch_count": 2,
+  "completed_batch_count": 2,
+  "totals": {
+    "ok": 2,
+    "skip": 0,
+    "empty": 0,
+    "error": 0
+  },
+  "batches": [
+    {
+      "batch_id": "batch-0001",
+      "symbols": [
+        "000001"
+      ],
+      "report_path": "docs/reports/daily-history-backfill-runs/probe-2026-05-28/batch-0001.json"
+    },
+    {
+      "batch_id": "batch-0002",
+      "symbols": [
+        "600000"
+      ],
+      "report_path": "docs/reports/daily-history-backfill-runs/probe-2026-05-28/batch-0002.json"
+    }
+  ],
+  "results": [
+    {
+      "batch_id": "batch-0001",
+      "symbols": [
+        "000001"
+      ],
+      "status": "completed",
+      "exit_code": 0,
+      "report_path": "docs/reports/daily-history-backfill-runs/probe-2026-05-28/batch-0001.json",
+      "totals": {
+        "ok": 1,
+        "skip": 0,
+        "empty": 0,
+        "error": 0
+      },
+      "failed_symbols": [],
+      "stdout_tail": "{'scope': 'symbols', 'symbols': 1, 'start_date': '2024-06-17', 'end_date': '2024-06-21', 'workers': 1, 'force': True}\n[daily-backfill] ok 000001 rows=5 \n{'batch': 1, 'processed': 1, 'total_symbols': 1, 'totals': {'ok': 1, 'skip': 0, 'empty': 0, 'error': 0}}\n{'done': True, 'totals': {'ok': 1, 'skip': 0, 'empty': 0, 'error': 0}}\n",
+      "stderr_tail": "/Users/j/Documents/gupiao/backend/.venv/lib/python3.9/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020\n  warnings.warn(\n"
+    },
+    {
+      "batch_id": "batch-0002",
+      "symbols": [
+        "600000"
+      ],
+      "status": "completed",
+      "exit_code": 0,
+      "report_path": "docs/reports/daily-history-backfill-runs/probe-2026-05-28/batch-0002.json",
+      "totals": {
+        "ok": 1,
+        "skip": 0,
+        "empty": 0,
+        "error": 0
+      },
+      "failed_symbols": [],
+      "stdout_tail": "{'scope': 'symbols', 'symbols': 1, 'start_date': '2024-06-17', 'end_date': '2024-06-21', 'workers': 1, 'force': True}\n[daily-backfill] ok 600000 rows=5 \n{'batch': 1, 'processed': 1, 'total_symbols': 1, 'totals': {'ok': 1, 'skip': 0, 'empty': 0, 'error': 0}}\n{'done': True, 'totals': {'ok': 1, 'skip': 0, 'empty': 0, 'error': 0}}\n",
+      "stderr_tail": "/Users/j/Documents/gupiao/backend/.venv/lib/python3.9/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020\n  warnings.warn(\n"
+    }
+  ]
+}

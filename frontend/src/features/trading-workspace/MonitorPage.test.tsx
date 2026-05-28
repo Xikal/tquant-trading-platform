@@ -272,4 +272,82 @@ describe("MonitorPage", () => {
     expect(html).toContain("明细");
     expect(html).toContain("自动补全明细");
   });
+
+  it("renders ETF T0 intraday signal details on monitor page", () => {
+    const html = renderToStaticMarkup(
+      <MonitorPage
+        priorityBoard={null}
+        marketBreadth={null}
+        marketPulse={null}
+        hourlySnapshotHistory={[]}
+        reviewStatus={null}
+        reviewReports={[]}
+        keyLevelAlerts={[]}
+        sectorEtfT0={{
+          updated_at: "2026-05-27 10:30:00",
+          market_state: "repair",
+          market_state_text: "震荡修复",
+          total: 1,
+          notes: ["只在价差覆盖成本时执行。"],
+          opportunities: [{
+            sector_name: "半导体",
+            etf_symbol: "512480",
+            etf_name: "半导体ETF",
+            etf_category: "sector",
+            t0_eligible: true,
+            settlement_rule: "t0",
+            min_amount: 50000000,
+            source_signal_symbol: "000001",
+            source_signal_name: "测试股票",
+            source_strategy: "低吸",
+            source_signal_text: "回踩确认",
+            last_price: 1.234,
+            change_pct: 0.56,
+            bias: "positive_t",
+            bias_text: "ETF 正T候选",
+            confidence: 72,
+            entry_zone: "1.230-1.240",
+            sell_zone: "1.250-1.260",
+            expected_edge_pct: 0.9,
+            intraday_signal_action: "positive_t_buy",
+            intraday_signal_text: "ETF 正T买入候选",
+            intraday_signal_confidence: 78,
+            intraday_signal_snapshot: {
+              current_price: 1.234,
+              vwap: 1.245,
+              rsi: 32.4,
+              expected_edge_pct: 0.44,
+            },
+            intraday_risk_flags: [],
+            reason: "测试股票 属于该方向强信号。",
+            risk: "执行前检查价差和数据 freshness。",
+          }],
+        }}
+        pairedHedge={null}
+        priorityCards={[]}
+        watchCards={[]}
+        runtime={null}
+        instrumentSyncStatus={null}
+        watchDraft={{ symbol: "", name: "", base_position: "", available_position: "", cost_basis: "", memo: "" }}
+        setWatchDraft={vi.fn()}
+        editingWatchSymbol=""
+        loading=""
+        onRefresh={vi.fn()}
+        onSync={vi.fn()}
+        onAi={vi.fn()}
+        onGoPlaybook={vi.fn()}
+        onSelect={vi.fn()}
+        onAnalyze={vi.fn()}
+        onEdit={vi.fn()}
+        onRemove={vi.fn()}
+        onAddWatchlist={vi.fn()}
+        onCancelEdit={vi.fn()}
+      />
+    );
+
+    expect(html).toContain("ETF 正T买入候选");
+    expect(html).toContain("分钟信心");
+    expect(html).toContain("VWAP");
+    expect(html).toContain("净边际");
+  });
 });

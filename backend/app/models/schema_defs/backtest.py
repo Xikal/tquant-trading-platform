@@ -244,6 +244,210 @@ class BacktestCompareResponse(BaseModel):
     equity_curves: list[BacktestCompareEquityCurve] = Field(default_factory=list)
 
 
+class EtfT0MinuteBarIn(BaseModel):
+    timestamp: str
+    open: float = Field(gt=0)
+    high: float = Field(gt=0)
+    low: float = Field(gt=0)
+    close: float = Field(gt=0)
+    volume: float = Field(default=0.0, ge=0)
+    amount: float = Field(default=0.0, ge=0)
+
+
+class EtfT0BacktestRequest(BaseModel):
+    symbol: str = Field(min_length=1, max_length=16)
+    name: str = Field(default="", max_length=64)
+    quantity: int = Field(default=10000, ge=100, le=10_000_000)
+    max_trades_per_day: int = Field(default=3, ge=0, le=20)
+    min_signal_bars: int = Field(default=20, ge=5, le=240)
+    params: dict[str, Any] = Field(default_factory=dict)
+    bars: list[EtfT0MinuteBarIn] = Field(default_factory=list)
+
+
+class EtfT0BacktestTradeOut(BaseModel):
+    symbol: str
+    side: str
+    entry_time: str
+    exit_time: str
+    entry_price: float
+    exit_price: float
+    quantity: int
+    gross_pnl: float
+    total_fee: float
+    net_pnl: float
+    net_return_pct: float
+    exit_reason: str
+    signal_snapshot: dict[str, Any] = Field(default_factory=dict)
+
+
+class EtfT0BacktestResponse(BaseModel):
+    symbol: str
+    name: str
+    version: str
+    bar_count: int
+    trade_count: int
+    win_rate_pct: float
+    gross_pnl: float
+    net_pnl: float
+    avg_net_return_pct: float
+    profit_factor: float | None = None
+    max_drawdown_pct: float
+    baseline_hold_return_pct: float
+    baseline_no_trade_return_pct: float
+    turnover: float
+    rejected_signal_count: int
+    trades: list[EtfT0BacktestTradeOut] = Field(default_factory=list)
+    notes: list[str] = Field(default_factory=list)
+
+
+class EtfT0MarketRegimeSegmentIn(BaseModel):
+    regime: str = Field(min_length=1, max_length=32)
+    start_time: str = Field(min_length=1, max_length=32)
+    end_time: str = Field(min_length=1, max_length=32)
+
+
+class EtfT0ResearchRequest(EtfT0BacktestRequest):
+    vwap_deviation_values: list[float] = Field(default_factory=list, max_length=8)
+    oversold_rsi_values: list[float] = Field(default_factory=list, max_length=8)
+    market_regime_segments: list[EtfT0MarketRegimeSegmentIn] = Field(default_factory=list, max_length=12)
+
+
+class EtfT0HeatmapCellOut(BaseModel):
+    buy_vwap_deviation_pct: float
+    sell_vwap_deviation_pct: float
+    oversold_rsi: float
+    overbought_rsi: float
+    trade_count: int = 0
+    win_rate_pct: float = 0.0
+    net_pnl: float = 0.0
+    profit_factor: float | None = None
+    max_drawdown_pct: float = 0.0
+    baseline_hold_return_pct: float = 0.0
+    score: float = 0.0
+    pass_gate: bool = False
+    notes: list[str] = Field(default_factory=list)
+
+
+class EtfT0RegimeValidationOut(BaseModel):
+    regime: str
+    start_time: str
+    end_time: str
+    bar_count: int = 0
+    trade_count: int = 0
+    win_rate_pct: float = 0.0
+    net_pnl: float = 0.0
+    profit_factor: float | None = None
+    max_drawdown_pct: float = 0.0
+    baseline_hold_return_pct: float = 0.0
+    verdict: str = "observe"
+    notes: list[str] = Field(default_factory=list)
+
+
+class EtfT0ResearchResponse(BaseModel):
+    symbol: str
+    name: str
+    version: str
+    research_only: bool = True
+    base_report: EtfT0BacktestResponse
+    heatmap: list[EtfT0HeatmapCellOut] = Field(default_factory=list)
+    regime_validations: list[EtfT0RegimeValidationOut] = Field(default_factory=list)
+    notes: list[str] = Field(default_factory=list)
+
+
+class EtfT0OosQualityOut(BaseModel):
+    bar_count: int = 0
+    missing_bar_ratio: float = 1.0
+    stale_ratio: float = 0.0
+    symbol_coverage_ratio: float = 0.0
+
+
+class EtfT0OosValidationIssueOut(BaseModel):
+    severity: Literal["info", "warning", "error"] = "warning"
+    field: str = ""
+    message: str = ""
+
+
+class EtfT0OosRegimeSegmentOut(BaseModel):
+    regime: str
+    label: str = ""
+    start_time: str = ""
+    end_time: str = ""
+    confidence: float = 0.0
+    source: str = ""
+    source_version: str = ""
+    notes: str = ""
+
+
+class EtfT0OosDatasetOut(BaseModel):
+    dataset_key: str
+    version: str = ""
+    created_at: str = ""
+    symbols: list[str] = Field(default_factory=list)
+    period: str = "1m"
+    start_time: str = ""
+    end_time: str = ""
+    checksum: str = ""
+    quality: EtfT0OosQualityOut = Field(default_factory=EtfT0OosQualityOut)
+    regime_segments: list[EtfT0OosRegimeSegmentOut] = Field(default_factory=list)
+    covered_regimes: list[str] = Field(default_factory=list)
+    missing_regimes: list[str] = Field(default_factory=list)
+    validation_issues: list[EtfT0OosValidationIssueOut] = Field(default_factory=list)
+    quality_ok: bool = False
+    notes: list[str] = Field(default_factory=list)
+
+
+class EtfT0OosDatasetListResponse(BaseModel):
+    items: list[EtfT0OosDatasetOut] = Field(default_factory=list)
+    total: int = 0
+
+
+class EtfT0OosValidationRequest(EtfT0ResearchRequest):
+    dataset_key: str = Field(min_length=1, max_length=120)
+
+
+class EtfT0OosValidationResponse(BaseModel):
+    run_id: str = ""
+    dataset: EtfT0OosDatasetOut
+    research_report: EtfT0ResearchResponse
+    verdict: Literal["pass", "observe", "blocked"] = "blocked"
+    stage: Literal["research_only", "paper_small", "candidate_production"] = "research_only"
+    passed: bool = False
+    gate_reasons: list[str] = Field(default_factory=list)
+    missing_regimes: list[str] = Field(default_factory=list)
+    notes: list[str] = Field(default_factory=list)
+
+
+class EtfT0OosPromoteCheckRequest(EtfT0OosValidationRequest):
+    pass
+
+
+class EtfT0OosPromoteCheckResponse(BaseModel):
+    dataset_key: str = ""
+    symbol: str = ""
+    stage: Literal["research_only", "paper_small", "candidate_production"] = "research_only"
+    allowed: bool = False
+    verdict: str = "blocked"
+    gate_reasons: list[str] = Field(default_factory=list)
+    notes: list[str] = Field(default_factory=list)
+
+
+class EtfT0OosLatestResponse(BaseModel):
+    available: bool = False
+    run_id: str = ""
+    created_at: str = ""
+    dataset_key: str = ""
+    dataset_version: str = ""
+    checksum: str = ""
+    symbol: str = ""
+    name: str = ""
+    stage: Literal["research_only", "paper_small", "candidate_production"] = "research_only"
+    verdict: str = "needs_validation"
+    passed: bool = False
+    gate_reasons: list[str] = Field(default_factory=list)
+    missing_regimes: list[str] = Field(default_factory=list)
+    quality: dict[str, Any] = Field(default_factory=dict)
+
+
 class BacktestStrategyAttributionItem(BaseModel):
     strategy_key: str
     trade_count: int = 0

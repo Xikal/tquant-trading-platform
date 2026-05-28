@@ -76,6 +76,10 @@ class KlineBar(BaseModel):
     amplitude: Optional[float] = None
     change_pct: Optional[float] = None
     turnover: Optional[float] = None
+    bid_ask_spread: Optional[float] = None
+    premium_discount_pct: Optional[float] = None
+    tracking_index_symbol: str = ""
+    liquidity_tier: str = "unknown"
 
 
 class SectorSnapshot(BaseModel):

@@ -22,14 +22,16 @@ type aggregateResult struct {
 
 type partialError struct {
 	Source    string `json:"source"`
+	Reason    string `json:"reason"`
 	Detail    string `json:"detail"`
 	ElapsedMs int64  `json:"elapsed_ms,omitempty"`
 }
 
 type rawSource struct {
-	name  string
-	path  string
-	query url.Values
+	name    string
+	path    string
+	query   url.Values
+	timeout time.Duration
 }
 
 func aggregateWorkspace(cfg config, client *http.Client, r *http.Request) aggregateResult {
@@ -84,14 +86,14 @@ func aggregateMonitorWorkspace(cfg config, client *http.Client, r *http.Request)
 	q := r.URL.Query()
 	sources := []rawSource{
 		{name: "monitor_snapshot", path: "/api/monitor/snapshot", query: values("priority_limit", queryDefault(q, "priority_limit", "12"))},
-		{name: "market_breadth", path: "/api/market/breadth", query: values("realtime", "true")},
+		{name: "market_breadth", path: "/api/market/breadth", query: values("realtime", "true"), timeout: 250 * time.Millisecond},
 		{name: "market_pulse", path: "/api/market/pulse"},
 		{name: "monitor_review", path: "/api/market/review-summary"},
 		{name: "sector_relative_strength", path: "/api/market/sector-relative-strength", query: values(
 			"limit", queryDefault(q, "sector_limit", "8"),
 			"per_sector_limit", queryDefault(q, "per_sector_limit", "8"),
-		)},
-		{name: "paired_hedge", path: "/api/market/paired-hedge-research", query: values("limit", queryDefault(q, "hedge_limit", "4"))},
+		), timeout: 250 * time.Millisecond},
+		{name: "paired_hedge", path: "/api/market/paired-hedge-research", query: values("limit", queryDefault(q, "hedge_limit", "4")), timeout: 250 * time.Millisecond},
 	}
 	results, errors := fetchSources(cfg, client, r, sources)
 	payload := map[string]any{
@@ -244,7 +246,9 @@ func fetchSources(cfg config, client *http.Client, r *http.Request, sources []ra
 			defer mu.Unlock()
 			if err != nil {
 				bffPartialSourceFailures.Add(1)
-				errors = append(errors, partialError{Source: source.name, Detail: partialDetail(err, resolvedSourceTimeout(cfg)), ElapsedMs: elapsedMs})
+				reason := partialReason(err)
+				incrementPartialReason(reason)
+				errors = append(errors, partialError{Source: source.name, Reason: reason, Detail: partialDetail(err, resolvedSourceTimeout(cfg, source)), ElapsedMs: elapsedMs})
 				return
 			}
 			results[source.name] = body
@@ -260,7 +264,7 @@ func fetchRawSource(cfg config, client *http.Client, incoming *http.Request, sou
 		return nil, err
 	}
 	target.RawQuery = source.query.Encode()
-	ctx, cancel := context.WithTimeout(incoming.Context(), resolvedSourceTimeout(cfg))
+	ctx, cancel := context.WithTimeout(incoming.Context(), resolvedSourceTimeout(cfg, source))
 	defer cancel()
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, target.String(), nil)
 	if err != nil {
@@ -289,6 +293,36 @@ func fetchRawSource(cfg config, client *http.Client, incoming *http.Request, sou
 	return raw, nil
 }
 
+func partialReason(err error) string {
+	if err == nil {
+		return "other"
+	}
+	text := strings.ToLower(err.Error())
+	switch {
+	case strings.Contains(text, "deadline exceeded"):
+		return "timeout"
+	case strings.Contains(text, "returned status"):
+		return "status"
+	case strings.Contains(text, "invalid character") || strings.Contains(text, "json"):
+		return "decode"
+	default:
+		return "other"
+	}
+}
+
+func incrementPartialReason(reason string) {
+	switch reason {
+	case "timeout":
+		bffPartialTimeoutFailures.Add(1)
+	case "status":
+		bffPartialStatusFailures.Add(1)
+	case "decode":
+		bffPartialDecodeFailures.Add(1)
+	default:
+		bffPartialOtherFailures.Add(1)
+	}
+}
+
 func partialDetail(err error, timeout time.Duration) string {
 	if err == nil {
 		return "数据暂时不可用"
@@ -299,7 +333,10 @@ func partialDetail(err error, timeout time.Duration) string {
 	return "数据暂时不可用"
 }
 
-func resolvedSourceTimeout(cfg config) time.Duration {
+func resolvedSourceTimeout(cfg config, source rawSource) time.Duration {
+	if source.timeout > 0 {
+		return source.timeout
+	}
 	if cfg.sourceTimeout > 0 {
 		return cfg.sourceTimeout
 	}

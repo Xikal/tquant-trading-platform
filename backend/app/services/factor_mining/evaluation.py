@@ -143,10 +143,37 @@ def _daily_rank_ic(samples: pd.DataFrame, *, min_cross_section: int) -> pd.Serie
             continue
         corr = rust_rank_ic(group["factor_value"].tolist(), group["future_return"].tolist())
         if corr is None:
-            corr = group["factor_value"].rank().corr(group["future_return"].rank())
+            corr = _safe_rank_corr(group["factor_value"], group["future_return"])
         if pd.notna(corr):
             values[str(trade_date)] = float(corr)
     return pd.Series(values).sort_index()
+
+
+def _safe_rank_corr(factors: pd.Series, returns: pd.Series) -> float | None:
+    factor_ranks = pd.to_numeric(factors, errors="coerce").rank()
+    return_ranks = pd.to_numeric(returns, errors="coerce").rank()
+    valid = factor_ranks.notna() & return_ranks.notna()
+    if int(valid.sum()) < 3:
+        return None
+    return _safe_pearson(factor_ranks[valid].to_numpy(dtype=float), return_ranks[valid].to_numpy(dtype=float))
+
+
+def _safe_pearson(left: np.ndarray, right: np.ndarray) -> float | None:
+    if len(left) != len(right) or len(left) < 3:
+        return None
+    valid = np.isfinite(left) & np.isfinite(right)
+    if int(valid.sum()) < 3:
+        return None
+    left = left[valid]
+    right = right[valid]
+    if float(np.std(left)) <= 1e-12 or float(np.std(right)) <= 1e-12:
+        return None
+    left_centered = left - float(np.mean(left))
+    right_centered = right - float(np.mean(right))
+    denominator = float(np.sqrt(np.sum(left_centered * left_centered) * np.sum(right_centered * right_centered)))
+    if denominator <= 1e-12:
+        return None
+    return float(np.sum(left_centered * right_centered) / denominator)
 
 
 def _walk_forward_ic(
@@ -223,10 +250,18 @@ def _half_life_days(daily_ic: pd.Series) -> int:
     if base <= 1e-12 or len(daily_ic) < 4:
         return 0
     for lag in range(1, min(10, len(daily_ic) - 1) + 1):
-        corr = daily_ic.autocorr(lag=lag)
-        if pd.notna(corr) and abs(corr) <= 0.5:
+        corr = _safe_autocorr(daily_ic, lag)
+        if corr is not None and abs(corr) <= 0.5:
             return lag
     return min(10, len(daily_ic))
+
+
+def _safe_autocorr(series: pd.Series, lag: int) -> float | None:
+    values = pd.to_numeric(series, errors="coerce").to_numpy(dtype=float)
+    lag = max(int(lag), 1)
+    if len(values) <= lag:
+        return None
+    return _safe_pearson(values[:-lag], values[lag:])
 
 
 def _candidate_gate(ic: float, t: float, icir: float, half_life: int, top: float, consistent: bool, ci: float, corr: float) -> bool:
@@ -305,7 +340,7 @@ def _factor_orthogonality_check(bars: pd.DataFrame, factor_values: pd.DataFrame)
         for _, group in merged.groupby("trade_date"):
             if len(group) < 20 or group["factor_value"].nunique() < 5 or group[key].nunique() < 5:
                 continue
-            corr = group["factor_value"].rank().corr(group[key].rank())
+            corr = _safe_rank_corr(group["factor_value"], group[key])
             if pd.notna(corr):
                 daily.append(abs(float(corr)))
         avg_corr = _mean(daily)

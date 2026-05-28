@@ -1,6 +1,0 @@
-{
-  "ok": false,
-  "error": "remote measurement failed",
-  "stdout": "",
-  "stderr": "  File \"<stdin>\", line 2\n    import json, os, statistics, subprocess, time, urllib.error, urllib.request\nIndentationError: unexpected indent\n"
-}

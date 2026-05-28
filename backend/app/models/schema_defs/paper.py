@@ -54,6 +54,7 @@ class PaperPositionOut(BaseModel):
     smart_exit_quantity: int = 0
     smart_exit_net_profit_pct: float = 0.0
     smart_exit_fee_drag_pct: float = 0.0
+    exit_model_shadow: dict[str, Any] = Field(default_factory=dict)
 
 
 class PaperPositionsResponse(BaseModel):
@@ -290,6 +291,22 @@ class PaperStrategyCorrelationResponse(BaseModel):
     notes: list[str] = Field(default_factory=list)
 
 
+class PaperSectorEtfT0ReviewTradeOut(BaseModel):
+    id: int
+    order_id: int
+    symbol: str
+    side: str
+    price: float = 0.0
+    quantity: int = 0
+    trade_time: datetime
+    entry_reason: str = ""
+    exit_reason: str = ""
+    market_state: str = ""
+    attribution: str = ""
+    execution_summary: str = ""
+    risk_notes: list[str] = Field(default_factory=list)
+
+
 class PaperSectorEtfT0PerformanceOut(BaseModel):
     simulated_trades: int = 0
     simulated_closed_trades: int = 0
@@ -304,6 +321,8 @@ class PaperSectorEtfT0PerformanceOut(BaseModel):
     shadow_avg_return_1d_pct: float = 0.0
     shadow_avg_return_3d_pct: float = 0.0
     notes: list[str] = Field(default_factory=list)
+    execution_gate_notes: list[str] = Field(default_factory=list)
+    review_trades: list[PaperSectorEtfT0ReviewTradeOut] = Field(default_factory=list)
 
 
 class PaperSmartTBacktestSampleOut(BaseModel):

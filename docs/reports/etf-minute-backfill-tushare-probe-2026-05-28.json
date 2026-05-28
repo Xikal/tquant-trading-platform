@@ -1,0 +1,87 @@
+{
+  "generated_at": "2026-05-28T01:56:48",
+  "status": "partial_data",
+  "config": {
+    "scope": "symbols",
+    "symbol_count": 1,
+    "start_date": "2024-05-28",
+    "end_date": "2024-05-29",
+    "period": "5m",
+    "workers": 1,
+    "force": true,
+    "allow_partial": true
+  },
+  "totals": {
+    "ok": 0,
+    "skip": 0,
+    "empty": 1,
+    "error": 0
+  },
+  "results": [
+    {
+      "symbol": "510300",
+      "name": "沪深300ETF",
+      "category": "broad_base",
+      "status": "empty",
+      "rows": 0,
+      "period": "5m",
+      "source": "",
+      "data_quality": "",
+      "message": "remote empty",
+      "provider_errors": [
+        {
+          "source": "tushare.stk_mins",
+          "message": "tushare token not configured"
+        },
+        {
+          "source": "eastmoney.etf_minute",
+          "message": "Remote end closed connection without response"
+        },
+        {
+          "source": "akshare.fund_etf_hist_min_em",
+          "message": "HTTPSConnectionPool(host='push2his.eastmoney.com', port=443): Max retries exceeded with url: /api/qt/stock/kline/get?fields1=f1%2Cf2%2Cf3%2Cf4%2Cf5%2Cf6&fields2=f51%2Cf52%2Cf53%2Cf"
+        },
+        {
+          "source": "sina.kline",
+          "message": "empty"
+        }
+      ]
+    }
+  ],
+  "failed_symbols": [
+    {
+      "symbol": "510300",
+      "name": "沪深300ETF",
+      "category": "broad_base",
+      "status": "empty",
+      "rows": 0,
+      "period": "5m",
+      "source": "",
+      "data_quality": "",
+      "message": "remote empty",
+      "provider_errors": [
+        {
+          "source": "tushare.stk_mins",
+          "message": "tushare token not configured"
+        },
+        {
+          "source": "eastmoney.etf_minute",
+          "message": "Remote end closed connection without response"
+        },
+        {
+          "source": "akshare.fund_etf_hist_min_em",
+          "message": "HTTPSConnectionPool(host='push2his.eastmoney.com', port=443): Max retries exceeded with url: /api/qt/stock/kline/get?fields1=f1%2Cf2%2Cf3%2Cf4%2Cf5%2Cf6&fields2=f51%2Cf52%2Cf53%2Cf"
+        },
+        {
+          "source": "sina.kline",
+          "message": "empty"
+        }
+      ]
+    }
+  ],
+  "notes": [
+    "仅补 ETF universe 中 same_day_sell_allowed=true 的标的，避免把所有 ETF 错当 T+0。",
+    "5m/15m/30m/60m 优先 Tushare/Eastmoney/AkShare 历史分钟线，可 fallback 到 Sina 近端 K 线；1m 可额外 fallback 到 Tencent/Eastmoney 近端趋势源。",
+    "未取到远端数据时只写 partial_data/error/empty，不生成伪分钟线。"
+  ]
+}

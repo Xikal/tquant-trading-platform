@@ -36,6 +36,22 @@ export interface PaperPosition {
   smart_exit_quantity?: number
   smart_exit_net_profit_pct?: number
   smart_exit_fee_drag_pct?: number
+  exit_model_shadow?: {
+    action?: string
+    confidence?: number
+    pullback_risk?: number
+    expected_return_next?: number
+    suggested_trailing_stop_pct?: number
+    reasons?: string[]
+    model_version?: string
+    fallback_reason?: string | null
+    shadow_only?: boolean
+    data_quality?: string
+    rule_action?: string
+    rule_sell_ratio?: number
+    effective_action?: string
+    safety_blocked?: boolean
+  }
 }
 
 export interface PaperPositionsResponse {
@@ -210,6 +226,24 @@ export interface PaperSectorEtfT0Performance {
   shadow_avg_return_1d_pct: number
   shadow_avg_return_3d_pct: number
   notes: string[]
+  execution_gate_notes?: string[]
+  review_trades?: PaperSectorEtfT0ReviewTrade[]
+}
+
+export interface PaperSectorEtfT0ReviewTrade {
+  id: number
+  order_id: number
+  symbol: string
+  side: string
+  price: number
+  quantity: number
+  trade_time: string
+  entry_reason?: string
+  exit_reason?: string
+  market_state?: string
+  attribution: string
+  execution_summary: string
+  risk_notes: string[]
 }
 
 export interface PaperGroupedPerformance {

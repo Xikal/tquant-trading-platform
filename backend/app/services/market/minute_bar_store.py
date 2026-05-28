@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import hashlib
+import json
 from datetime import date, datetime
 from typing import Iterable
 
@@ -31,17 +33,25 @@ class MinuteBarSnapshotStore:
     def __init__(self, db: Session):
         self.db = db
 
-    def persist(self, quote: QuoteSnapshot, bars: Iterable[KlineBar], *, bar_period: str = "1m") -> int:
+    def persist(
+        self,
+        quote: QuoteSnapshot,
+        bars: Iterable[KlineBar],
+        *,
+        bar_period: str = "1m",
+        skip_older_than_latest: bool = True,
+    ) -> int:
         candidate_bars = list(bars)
         if not candidate_bars:
             return 0
-        latest_stored = self.db.execute(
-            select(func.max(MinuteBarSnapshot.bar_timestamp)).where(
-                MinuteBarSnapshot.symbol == quote.symbol,
-                MinuteBarSnapshot.bar_period == bar_period,
-            )
-        ).scalar_one()
-        candidate_bars = [bar for bar in candidate_bars if not latest_stored or bar.timestamp >= str(latest_stored)]
+        if skip_older_than_latest:
+            latest_stored = self.db.execute(
+                select(func.max(MinuteBarSnapshot.bar_timestamp)).where(
+                    MinuteBarSnapshot.symbol == quote.symbol,
+                    MinuteBarSnapshot.bar_period == bar_period,
+                )
+            ).scalar_one()
+            candidate_bars = [bar for bar in candidate_bars if not latest_stored or bar.timestamp >= str(latest_stored)]
         if not candidate_bars:
             return 0
         existing_rows = self.db.execute(
@@ -75,6 +85,14 @@ class MinuteBarSnapshotStore:
             row.low_price = bar.low
             row.volume = bar.volume
             row.amount = bar.amount
+            row.bid_ask_spread = float(bar.bid_ask_spread or 0.0)
+            row.premium_discount_pct = bar.premium_discount_pct
+            row.tracking_index_symbol = bar.tracking_index_symbol or ""
+            row.liquidity_tier = bar.liquidity_tier or "unknown"
+            row.source = quote.data_source or "unknown"
+            row.fetch_time = datetime.utcnow().isoformat(timespec="seconds")
+            row.data_quality = quote.data_quality or quote.source_quality or "unknown"
+            row.checksum = minute_bar_checksum(quote.symbol, bar, source=row.source, data_quality=row.data_quality)
         if persisted or existing_rows:
             self.db.commit()
         return len(candidate_bars)
@@ -101,3 +119,24 @@ class MinuteBarSnapshotStore:
             .scalars()
             .all()
         )
+
+
+def minute_bar_checksum(symbol: str, bar: KlineBar, *, source: str, data_quality: str) -> str:
+    payload = {
+        "symbol": symbol,
+        "timestamp": bar.timestamp,
+        "open": round(float(bar.open or 0.0), 6),
+        "close": round(float(bar.close or 0.0), 6),
+        "high": round(float(bar.high or 0.0), 6),
+        "low": round(float(bar.low or 0.0), 6),
+        "volume": round(float(bar.volume or 0.0), 3),
+        "amount": round(float(bar.amount or 0.0), 3),
+        "bid_ask_spread": round(float(bar.bid_ask_spread or 0.0), 6),
+        "premium_discount_pct": None if bar.premium_discount_pct is None else round(float(bar.premium_discount_pct), 6),
+        "tracking_index_symbol": bar.tracking_index_symbol or "",
+        "liquidity_tier": bar.liquidity_tier or "unknown",
+        "source": source,
+        "data_quality": data_quality,
+    }
+    raw = json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(raw.encode("utf-8")).hexdigest()

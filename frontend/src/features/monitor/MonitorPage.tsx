@@ -11,6 +11,7 @@ import type {
   MarketReviewStatus,
   PairedHedgeResearchResponse,
   RuntimeStatus,
+  SectorEtfT0Opportunity,
   SectorEtfT0Response,
 } from "../../types";
 import type { InstrumentSyncStatus } from "../../types";
@@ -26,7 +27,7 @@ import {
 import { MonitorHoldingWizard } from "./MonitorHoldingWizard";
 import { Callout, ContextRow, EmptyState, FamilyStrip, InfoPill, MetricGrid, PanelTitle, StockCard, StockCardList } from "../workspace-shared/WorkspaceComponents";
 import { WorkspacePageIntro } from "../workspace-shared/WorkspacePageIntro";
-import { formatPct, formatPrice, riskLevelText, shortTime } from "../workspace-shared/workspaceFormatters";
+import { formatAmount, formatPct, formatPrice, riskLevelText, shortTime } from "../workspace-shared/workspaceFormatters";
 import type { MetricItem, StockCardView, WatchDraft } from "../workspace-shared/workspaceTypes";
 import {
   MONITOR_ETF_STYLE,
@@ -483,12 +484,17 @@ export const MonitorPage = memo(function MonitorPage({
               </div>
               <div style={MONITOR_ETF_CARD_META_STYLE}>
                 <span>板块：{item.sector_name || "未分类"}</span>
+                <span>分类：{etfCategoryText(item.etf_category)}</span>
+                <span>T+0：{item.t0_eligible ? "已放行" : "未放行"}</span>
                 <span>信心：{formatPct(item.confidence, 0)}</span>
+                <span>分钟：{item.intraday_signal_text || "待刷新"}</span>
+                <span>分钟信心：{formatPct(item.intraday_signal_confidence || 0, 0)}</span>
                 <span>ETF价：{formatPrice(item.last_price)}</span>
                 <span>ETF涨跌：{formatPct(item.change_pct)}</span>
               </div>
               <p style={MONITOR_ETF_CARD_HINT_STYLE}>{item.reason}</p>
-              <p style={MONITOR_ETF_CARD_HINT_STYLE}>买点 {item.entry_zone || "--"}；卖点 {item.sell_zone || "--"}；风险：{item.risk}</p>
+              <p style={MONITOR_ETF_CARD_HINT_STYLE}>{formatEtfSignalSnapshot(item)}</p>
+              <p style={MONITOR_ETF_CARD_HINT_STYLE}>买点 {item.entry_zone || "--"}；卖点 {item.sell_zone || "--"}；流动性门槛 {formatLargeAmount(item.min_amount)}；风险：{item.risk}</p>
             </article>
           )) : <EmptyState text="暂无 ETF 做T替代信号。只有板块低吸/热点信号明确时才展示。" />}
         </StockCardList>
@@ -860,6 +866,36 @@ function sideRowToneStyle(tone: string): CSSProperties {
     ...MONITOR_SIDE_ROW_TEXT_STYLE,
     color: toneColor(tone),
   };
+}
+
+function etfCategoryText(category?: string): string {
+  const mapping: Record<string, string> = {
+    broad_base: "宽基",
+    sector: "行业",
+    cross_border: "跨境",
+    bond: "债券",
+    gold: "黄金",
+    money: "货币",
+    commodity: "商品",
+  };
+  return mapping[String(category || "")] || "未分类";
+}
+
+function formatLargeAmount(value?: number | null): string {
+  return formatAmount(value);
+}
+
+function formatEtfSignalSnapshot(item: SectorEtfT0Opportunity): string {
+  const snapshot = item.intraday_signal_snapshot || {};
+  const current = Number(snapshot.current_price || 0);
+  const vwap = Number(snapshot.vwap || 0);
+  const rsi = Number(snapshot.rsi || 0);
+  const edge = Number(snapshot.expected_edge_pct || 0);
+  const riskFlags = item.intraday_risk_flags?.length ? `；阻断：${item.intraday_risk_flags.join("/")}` : "";
+  if (!current && !vwap && !rsi) {
+    return `分钟信号 ${item.intraday_signal_text || "待刷新"}${riskFlags}`;
+  }
+  return `分钟价 ${formatPrice(current)}；VWAP ${formatPrice(vwap)}；RSI ${rsi.toFixed(1)}；净边际 ${formatPct(edge)}${riskFlags}`;
 }
 
 function trendBarGridStyle(points: number): CSSProperties {

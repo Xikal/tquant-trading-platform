@@ -1,0 +1,136 @@
+{
+  "generated_at": "2026-05-27T23:40:55",
+  "status": "completed",
+  "source": "limit_rules_v1",
+  "window": {
+    "start_date": "2024-05-28",
+    "end_date": "2026-04-28"
+  },
+  "force": false,
+  "derive_pre_close": true,
+  "dry_run": false,
+  "scanned_rows": 2266169,
+  "eligible_rows": 679746,
+  "updated_rows": 679746,
+  "skipped_no_pre_close": 4967,
+  "skipped_no_previous_close": 4967,
+  "derived_pre_close_rows": 0,
+  "skipped_listing_exempt": 738,
+  "skipped_non_stock": 0,
+  "skipped_rule_unavailable": 0,
+  "metadata_missing": 0,
+  "missing_listing_date": 0,
+  "st_current_only_rows": 0,
+  "ratio_counts": {
+    "10.0%": 395362,
+    "20.0%": 284384
+  },
+  "skip_samples": [
+    {
+      "symbol": "000001",
+      "trade_date": "2024-05-28",
+      "reason": "missing_previous_close"
+    },
+    {
+      "symbol": "000002",
+      "trade_date": "2024-05-28",
+      "reason": "missing_previous_close"
+    },
+    {
+      "symbol": "000006",
+      "trade_date": "2024-05-28",
+      "reason": "missing_previous_close"
+    },
+    {
+      "symbol": "000007",
+      "trade_date": "2024-05-28",
+      "reason": "missing_previous_close"
+    },
+    {
+      "symbol": "000008",
+      "trade_date": "2024-05-28",
+      "reason": "missing_previous_close"
+    },
+    {
+      "symbol": "000009",
+      "trade_date": "2024-05-28",
+      "reason": "missing_previous_close"
+    },
+    {
+      "symbol": "000010",
+      "trade_date": "2025-10-24",
+      "reason": "missing_previous_close"
+    },
+    {
+      "symbol": "000011",
+      "trade_date": "2024-05-28",
+      "reason": "missing_previous_close"
+    },
+    {
+      "symbol": "000012",
+      "trade_date": "2024-05-28",
+      "reason": "missing_previous_close"
+    },
+    {
+      "symbol": "000014",
+      "trade_date": "2024-05-28",
+      "reason": "missing_previous_close"
+    },
+    {
+      "symbol": "000017",
+      "trade_date": "2024-05-28",
+      "reason": "missing_previous_close"
+    },
+    {
+      "symbol": "000019",
+      "trade_date": "2024-05-28",
+      "reason": "missing_previous_close"
+    },
+    {
+      "symbol": "000020",
+      "trade_date": "2024-05-28",
+      "reason": "missing_previous_close"
+    },
+    {
+      "symbol": "000021",
+      "trade_date": "2024-05-28",
+      "reason": "missing_previous_close"
+    },
+    {
+      "symbol": "000025",
+      "trade_date": "2024-05-28",
+      "reason": "missing_previous_close"
+    },
+    {
+      "symbol": "000026",
+      "trade_date": "2024-05-28",
+      "reason": "missing_previous_close"
+    },
+    {
+      "symbol": "000027",
+      "trade_date": "2024-05-28",
+      "reason": "missing_previous_close"
+    },
+    {
+      "symbol": "000028",
+      "trade_date": "2024-05-28",
+      "reason": "missing_previous_close"
+    },
+    {
+      "symbol": "000029",
+      "trade_date": "2024-05-28",
+      "reason": "missing_previous_close"
+    },
+    {
+      "symbol": "000030",
+      "trade_date": "2024-05-28",
+      "reason": "missing_previous_close"
+    }
+  ],
+  "warnings": [
+    "涨跌停价由 pre_close、板块代码、ST 标记和上市日期按交易所规则推导；不生成或插值任何 OHLCV 价格。",
+    "启用 derive_pre_close 时，pre_close 只来自同一标的上一条已落库真实 close_price；无上一条收盘价的记录继续跳过。",
+    "上市后 7 个自然日内按首发无涨跌幅限制保守跳过，避免把常规涨跌停误写到新股豁免日。",
+    "若只有 instruments.is_st 当前状态而无历史 ST 快照，报告 st_current_only_rows；正式验收仍应补历史 ST 状态源。"
+  ]
+}

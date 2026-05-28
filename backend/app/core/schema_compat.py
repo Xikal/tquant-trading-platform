@@ -31,12 +31,24 @@ def ensure_schema_compatibility(engine: Engine) -> None:
             _add_nullable_column(engine, table.name, column)
         _widen_strategy_key_column(engine, table.name, existing_column_info)
         _widen_string_column(engine, table.name, existing_column_info, "mfa_totp_secret")
+    _create_additive_market_metadata_tables(engine, existing_tables)
     _backfill_user_permission_columns(engine, existing_tables)
     _backfill_strategy_metadata_columns(engine, existing_tables)
     _backfill_backtest_owner_columns(engine, existing_tables)
     # Query/index changes are intentionally not repaired here.  Production
     # deployments must apply Alembic migrations so versioning, downgrade paths,
     # and MySQL validation stay explicit.
+
+
+def _create_additive_market_metadata_tables(engine: Engine, existing_tables: set[str]) -> None:
+    for table_name in ("instrument_industry_history", "instrument_concept_history"):
+        table = Base.metadata.tables.get(table_name)
+        if table is None or table_name in existing_tables:
+            continue
+        try:
+            table.create(bind=engine, checkfirst=True)
+        except Exception:
+            logger.exception("schema compatibility patch failed to create %s", table_name)
 
 
 def verify_schema_compatibility(engine: Engine) -> None:

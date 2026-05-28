@@ -223,6 +223,55 @@ func TestIntradayLatestBatchHandlerReturnsPartialPayload(t *testing.T) {
 	}
 }
 
+func TestEtfMinuteSnapshotBatchReadsRedisMinuteBars(t *testing.T) {
+	cache := mapQuoteCache{
+		"tquant:market:minute:1m:510300": []byte(`{"bars":[{"timestamp":"2099-01-01 09:30","open":10,"high":10.1,"low":9.9,"close":10.02,"volume":1000,"amount":10020},{"timestamp":"2099-01-01 09:31","open":10.02,"high":10.05,"low":10.0,"close":10.03,"volume":1200,"amount":12036}]}`),
+	}
+	recorder := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/api/market-read/v1/etf-minute-snapshot-batch?symbols=510300&limit=2", nil)
+
+	etfMinuteSnapshotBatchHandler(cache).ServeHTTP(recorder, req)
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("status mismatch want=%d got=%d body=%s", http.StatusOK, recorder.Code, recorder.Body.String())
+	}
+	var payload map[string]any
+	if err := json.Unmarshal(recorder.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("invalid json response: %v", err)
+	}
+	if payload["data_quality"] != "fresh" {
+		t.Fatalf("expected fresh quality, got %v body=%s", payload["data_quality"], recorder.Body.String())
+	}
+	items := payload["items"].([]any)
+	first := items[0].(map[string]any)
+	if first["strategy_decision"] != "none" {
+		t.Fatalf("Go read service must not emit strategy decision: %#v", first)
+	}
+	if first["bar_count"] != float64(2) {
+		t.Fatalf("bar_count mismatch: %#v", first["bar_count"])
+	}
+}
+
+func TestEtfMinuteSnapshotBatchReturnsPartialForMissingSymbols(t *testing.T) {
+	cache := mapQuoteCache{
+		"tquant:market:minute:1m:510300": []byte(`[{"timestamp":"2099-01-01 09:30","open":10,"high":10.1,"low":9.9,"close":10.02,"volume":1000,"amount":10020}]`),
+	}
+	recorder := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/api/market-read/v1/etf-minute-snapshot-batch?symbols=510300,512999", nil)
+
+	etfMinuteSnapshotBatchHandler(cache).ServeHTTP(recorder, req)
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("status mismatch want=%d got=%d body=%s", http.StatusOK, recorder.Code, recorder.Body.String())
+	}
+	if !bytes.Contains(recorder.Body.Bytes(), []byte(`"data_quality":"partial"`)) {
+		t.Fatalf("expected partial payload body=%s", recorder.Body.String())
+	}
+	if !bytes.Contains(recorder.Body.Bytes(), []byte(`"512999"`)) {
+		t.Fatalf("expected missing symbol body=%s", recorder.Body.String())
+	}
+}
+
 func TestChainedQuoteCacheRecordsRedisMissAndMySQLFallbackMetrics(t *testing.T) {
 	redis := mapQuoteCache{
 		"tquant:market:quote:000001": []byte(`{"cached_at":4102444800,"payload":{"symbol":"000001","last_price":10.1}}`),
@@ -234,6 +283,7 @@ func TestChainedQuoteCacheRecordsRedisMissAndMySQLFallbackMetrics(t *testing.T) 
 	beforeRedis := marketReadRedisHits.Load()
 	beforeMisses := marketReadCacheMisses.Load()
 	beforeMySQL := marketReadMySQLFallbacks.Load()
+	beforeUnresolved := marketReadUnresolvedMisses.Load()
 
 	values, err := cache.MGet(
 		nil,
@@ -259,6 +309,9 @@ func TestChainedQuoteCacheRecordsRedisMissAndMySQLFallbackMetrics(t *testing.T) 
 	if marketReadMySQLFallbacks.Load()-beforeMySQL != 1 {
 		t.Fatalf("expected one mysql fallback hit")
 	}
+	if marketReadUnresolvedMisses.Load()-beforeUnresolved != 1 {
+		t.Fatalf("expected one unresolved miss")
+	}
 }
 
 func TestMetricsExposeCacheCoverageCounters(t *testing.T) {
@@ -272,6 +325,7 @@ func TestMetricsExposeCacheCoverageCounters(t *testing.T) {
 		"tquant_market_read_redis_hits_total",
 		"tquant_market_read_cache_miss_total",
 		"tquant_market_read_mysql_fallbacks_total",
+		"tquant_market_read_unresolved_misses_total",
 	} {
 		if !bytes.Contains([]byte(body), []byte(metricName)) {
 			t.Fatalf("metrics should expose %s, body=%s", metricName, body)

@@ -172,6 +172,60 @@ class MarketRouteTests(unittest.TestCase):
         self.assertIn("is_trading_now", body)
         self.assertEqual(body["timezone"], "Asia/Shanghai")
 
+    def test_etf_universe_requires_research_role(self) -> None:
+        response = self.client.get("/api/market/etf-universe")
+
+        self.assertEqual(response.status_code, 403)
+
+    def test_etf_universe_returns_auditable_t0_profiles_for_research_user(self) -> None:
+        app = FastAPI()
+        app.include_router(market.router, prefix="/api")
+        app.dependency_overrides[get_current_user] = lambda: SimpleNamespace(
+            id=1,
+            username="researcher",
+            roles="backtest_research",
+            is_active=True,
+        )
+        app.dependency_overrides[get_db] = lambda: SimpleNamespace()
+        client = TestClient(app)
+
+        response = client.get("/api/market/etf-universe?t0_only=true")
+
+        self.assertEqual(response.status_code, 200)
+        body = response.json()
+        self.assertEqual(body["version"], "etf-universe-v1")
+        self.assertEqual(body["source"], "runtime_quant_parameters")
+        self.assertIn("market.sector_etf_t0.universe_overrides", body["audit_scope"])
+        self.assertGreater(body["t0_enabled_count"], 0)
+        symbols = {item["symbol"] for item in body["items"]}
+        self.assertIn("510300", symbols)
+        self.assertTrue(all(item["same_day_sell_allowed"] for item in body["items"]))
+
+    def test_etf_minute_snapshots_requires_research_role(self) -> None:
+        response = self.client.get("/api/market/etf-minute-snapshots?symbols=510300")
+
+        self.assertEqual(response.status_code, 403)
+
+    def test_etf_minute_snapshots_falls_back_when_go_unavailable(self) -> None:
+        app = FastAPI()
+        app.include_router(market.router, prefix="/api")
+        app.dependency_overrides[get_current_user] = lambda: SimpleNamespace(
+            id=1,
+            username="researcher",
+            roles="backtest_research",
+            is_active=True,
+        )
+        app.dependency_overrides[get_db] = lambda: SimpleNamespace()
+        client = TestClient(app)
+
+        response = client.get("/api/market/etf-minute-snapshots?symbols=510300&period=1m&limit=20")
+
+        self.assertEqual(response.status_code, 200)
+        body = response.json()
+        self.assertEqual(body["data_quality"], "unavailable")
+        self.assertEqual(body["missing"], ["510300"])
+        self.assertIn("Go market-read-service", body["notes"][0])
+
     @staticmethod
     def _regime():
         return SimpleNamespace(

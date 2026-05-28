@@ -40,6 +40,10 @@ jobs:
         env:
           PYTHONPATH: ${{ github.workspace }}/backend
         run: pytest backend/tests
+      - name: Enforce backend warning budget
+        env:
+          PYTHONPATH: ${{ github.workspace }}/backend
+        run: python scripts/warning_budget.py backend/tests
 
   frontend:
     runs-on: ubuntu-latest

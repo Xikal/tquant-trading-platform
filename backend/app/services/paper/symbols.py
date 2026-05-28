@@ -1,8 +1,15 @@
 from __future__ import annotations
 
 
+from app.services.etf.universe import (
+    is_known_etf,
+    is_t0_eligible_etf,
+    same_day_sell_allowed,
+)
+
+
 def is_etf(symbol: str) -> bool:
-    return str(symbol).startswith(("15", "16", "51", "58"))
+    return is_known_etf(symbol)
 
 
 def is_fund_like(symbol: str, instrument_type: str = "") -> bool:
@@ -10,6 +17,14 @@ def is_fund_like(symbol: str, instrument_type: str = "") -> bool:
     if normalized_type in {"etf", "fund", "lof", "index_fund", "money_fund"}:
         return True
     return is_etf(symbol)
+
+
+def is_t0_etf(symbol: str, name: str = "", instrument_type: str = "") -> bool:
+    return is_t0_eligible_etf(symbol, name=name, instrument_type=instrument_type)
+
+
+def can_sell_same_day(symbol: str, name: str = "", instrument_type: str = "") -> bool:
+    return same_day_sell_allowed(symbol, name=name, instrument_type=instrument_type)
 
 
 def price_tick(symbol: str, instrument_type: str = "") -> str:

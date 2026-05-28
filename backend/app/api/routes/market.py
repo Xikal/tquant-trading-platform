@@ -2,13 +2,23 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 
+from app.core.admin_auth import require_admin_auth
 from app.core.auth import get_current_user
 from app.core.timezone import beijing_today
 from app.core.timezone import beijing_now_string
 from app.core.role_permissions import require_research_access
 from app.models.schema_defs.market import (
+    EtfMinuteSnapshotBatchResponse,
+    EtfUniverseAdminResponse,
+    EtfUniverseApplyRequest,
+    EtfUniverseMutationResponse,
+    EtfUniverseProfileOut,
+    EtfUniverseRepairDraftRequest,
+    EtfUniverseRollbackRequest,
+    EtfUniverseResponse,
+    EtfUniverseValidateRequest,
     IntradayKeyLevelResponse,
     IntradayAnomalyResponse,
     IntradayMarketPulse,
@@ -42,6 +52,9 @@ from app.services.market.pulse_history import (
 )
 from app.services.market.review import build_market_review_summary, list_market_review_history
 from app.services.market.trading_session import current_a_share_trading_session
+from app.services.market.go_read_client import load_go_etf_minute_snapshots
+from app.services.etf.universe import ETF_UNIVERSE_VERSION, EtfCategory, list_etf_profiles
+from app.services.etf.universe_admin import EtfUniverseAdminService
 from app.services.paired_hedge_research import PairedHedgeResearchService
 from app.services.sector_etf_t0 import SectorEtfT0Service
 from app.services.tasks import RuntimeTaskQueue
@@ -218,6 +231,150 @@ def sector_etf_t0(
     return SectorEtfT0Response.model_validate(payload["sector_etf_t0"])
 
 
+@router.get("/etf-universe", response_model=EtfUniverseResponse)
+def etf_universe(
+    category: str = Query(default="", max_length=32),
+    t0_only: bool = False,
+    current_user: User = Depends(get_current_user),
+) -> EtfUniverseResponse:
+    require_research_access(current_user)
+    category_filter = _etf_category_filter(category)
+    profiles = list_etf_profiles()
+    if category_filter:
+        profiles = [item for item in profiles if item.category == category_filter]
+    if t0_only:
+        profiles = [item for item in profiles if item.same_day_sell_allowed]
+    items = [
+        EtfUniverseProfileOut(
+            symbol=item.symbol,
+            name=item.name,
+            category=item.category.value,
+            t0_eligible=item.t0_eligible,
+            settlement_rule=item.settlement_rule,
+            tracking_index=item.tracking_index,
+            min_amount=item.min_amount,
+            max_spread_bps=item.max_spread_bps,
+            slippage_bps=item.slippage_bps,
+            premium_discount_available=item.premium_discount_available,
+            enabled_for_t0=item.enabled_for_t0,
+            same_day_sell_allowed=item.same_day_sell_allowed,
+            notes=item.notes,
+        )
+        for item in profiles
+    ]
+    return EtfUniverseResponse(
+        version=ETF_UNIVERSE_VERSION,
+        updated_at=beijing_now_string(),
+        total=len(items),
+        t0_enabled_count=sum(1 for item in items if item.same_day_sell_allowed),
+        items=items,
+        notes=[
+            "ETF universe 由代码内置基线与 market.sector_etf_t0.universe_overrides 运行时参数合并生成。",
+            "该接口只暴露 T+0 eligibility 与交易约束，不生成策略信号；策略真源仍在 Python 服务层。",
+            "未知行业 ETF 默认不自动提升为 T+0，必须显式写入 universe 覆盖并通过流动性、价差和数据质量检查。",
+        ],
+    )
+
+
+@router.get("/etf-universe/admin", response_model=EtfUniverseAdminResponse)
+def etf_universe_admin(
+    _admin: None = Depends(require_admin_auth),
+    db: Session = Depends(get_db),
+) -> EtfUniverseAdminResponse:
+    return EtfUniverseAdminResponse(**EtfUniverseAdminService(db).admin_payload())
+
+
+@router.post("/etf-universe/validate", response_model=EtfUniverseAdminResponse)
+def validate_etf_universe(
+    payload: EtfUniverseValidateRequest,
+    _admin: None = Depends(require_admin_auth),
+    db: Session = Depends(get_db),
+) -> EtfUniverseAdminResponse:
+    return EtfUniverseAdminResponse(**EtfUniverseAdminService(db).admin_payload(payload.draft_overrides))
+
+
+@router.post("/etf-universe/repair-draft")
+def etf_universe_repair_draft(
+    payload: EtfUniverseRepairDraftRequest,
+    _admin: None = Depends(require_admin_auth),
+    db: Session = Depends(get_db),
+) -> dict:
+    return EtfUniverseAdminService(db).repair_draft(symbol=payload.symbol, name=payload.name, category=payload.category)
+
+
+@router.post("/etf-universe/apply", response_model=EtfUniverseMutationResponse)
+def apply_etf_universe(
+    payload: EtfUniverseApplyRequest,
+    request: Request,
+    current_user: User = Depends(get_current_user),
+    _admin: None = Depends(require_admin_auth),
+    db: Session = Depends(get_db),
+) -> EtfUniverseMutationResponse:
+    try:
+        result = EtfUniverseAdminService(db).apply(
+            draft_overrides=payload.draft_overrides,
+            version=payload.version,
+            description=payload.description,
+            activate=payload.activate,
+            confirm_high_risk=payload.confirm_high_risk,
+            user=current_user,
+            operator_ip=request.client.host if request.client else "",
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    return EtfUniverseMutationResponse(**result)
+
+
+@router.post("/etf-universe/rollback", response_model=EtfUniverseMutationResponse)
+def rollback_etf_universe(
+    payload: EtfUniverseRollbackRequest,
+    request: Request,
+    current_user: User = Depends(get_current_user),
+    _admin: None = Depends(require_admin_auth),
+    db: Session = Depends(get_db),
+) -> EtfUniverseMutationResponse:
+    try:
+        result = EtfUniverseAdminService(db).rollback(
+            version=payload.version,
+            confirm=payload.confirm,
+            user=current_user,
+            operator_ip=request.client.host if request.client else "",
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    return EtfUniverseMutationResponse(**result)
+
+
+@router.get("/etf-minute-snapshots", response_model=EtfMinuteSnapshotBatchResponse)
+def etf_minute_snapshots(
+    symbols: str = Query(default="", max_length=1000),
+    period: str = Query(default="1m", pattern="^(1m|5m|15m)$"),
+    limit: int = Query(default=30, ge=1, le=240),
+    current_user: User = Depends(get_current_user),
+) -> EtfMinuteSnapshotBatchResponse:
+    require_research_access(current_user)
+    cleaned = [item.strip() for item in symbols.split(",") if item.strip()]
+    if not cleaned:
+        return EtfMinuteSnapshotBatchResponse(
+            period=period,
+            data_quality="unavailable",
+            missing=[],
+            notes=["symbols 为空，未查询 ETF 分钟快照。"],
+        )
+    response = load_go_etf_minute_snapshots(cleaned, period=period, limit=limit)
+    if response is not None:
+        return response
+    return EtfMinuteSnapshotBatchResponse(
+        period=period,
+        data_quality="unavailable",
+        missing=cleaned,
+        notes=[
+            "Go market-read-service 未配置或暂不可用，Python 策略信号仍会按原有行情服务回退。",
+            "该接口只用于研究/诊断 ETF 分钟快照质量，不参与策略决策。",
+        ],
+    )
+
+
 @router.get("/sector-relative-strength", response_model=SectorRelativeStrengthResponse)
 def sector_relative_strength(
     limit: int = 8,
@@ -229,6 +386,16 @@ def sector_relative_strength(
         limit=max(1, min(limit, 20)),
         per_sector_limit=max(1, min(per_sector_limit, 30)),
     )
+
+
+def _etf_category_filter(value: str) -> EtfCategory | None:
+    normalized = (value or "").strip()
+    if not normalized:
+        return None
+    try:
+        return EtfCategory(normalized)
+    except ValueError:
+        return None
 
 
 @router.get("/sector-etf-t0/validation", response_model=MarketModelValidationResponse)

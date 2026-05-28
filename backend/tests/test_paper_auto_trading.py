@@ -343,6 +343,9 @@ class PaperAutoTradingTest(unittest.TestCase):
                     last_price=1.0,
                     bias="positive_t",
                     bias_text="ETF 正T候选",
+                    t0_eligible=True,
+                    intraday_signal_action="positive_t_buy",
+                    intraday_signal_confidence=78,
                     confidence=80,
                     expected_edge_pct=1.2,
                     reason="板块低吸信号明确",
@@ -372,6 +375,105 @@ class PaperAutoTradingTest(unittest.TestCase):
         self.assertEqual(orders[0]["strategy_key"], "sector_etf_t0")
         self.assertEqual(orders[0]["source"], "auto_sector_etf_t0")
         self.assertEqual(orders[0]["quantity"], 12000)
+
+    def test_auto_trader_skips_sector_etf_without_intraday_positive_t_signal(self):
+        from app.models.schema_defs.market import SectorEtfT0Opportunity, SectorEtfT0Response
+        from app.services.paper.scheduler import PaperAutoTrader
+
+        Account = namedtuple("Account", ["id", "cash_available"])
+        fake_response = SectorEtfT0Response(
+            updated_at="2026-05-08 10:00:00",
+            market_state="repair",
+            market_state_text="震荡修复",
+            total=1,
+            opportunities=[
+                SectorEtfT0Opportunity(
+                    sector_name="半导体",
+                    etf_symbol="512480",
+                    etf_name="半导体ETF",
+                    source_signal_symbol="600000",
+                    source_signal_name="测试强信号",
+                    source_signal_text="确定买入",
+                    last_price=1.0,
+                    bias="positive_t",
+                    bias_text="ETF 正T候选",
+                    t0_eligible=True,
+                    intraday_signal_action="hold",
+                    intraday_signal_confidence=80,
+                    intraday_risk_flags=["edge_too_small"],
+                    confidence=80,
+                    expected_edge_pct=1.2,
+                    reason="板块低吸信号明确",
+                )
+            ],
+        )
+
+        class FakeSectorEtfT0Service:
+            def __init__(self, **_kwargs):
+                pass
+
+            def build_from_priority_board(self, _board, *, limit: int = 8):
+                return fake_response
+
+        trader = PaperAutoTrader({"max_orders_per_cycle": 3})
+        with patch("app.services.paper.scheduler.SectorEtfT0Service", FakeSectorEtfT0Service):
+            orders = trader._build_sector_etf_t0_orders(
+                db=None,
+                account=Account(id=1, cash_available=Decimal("100000")),
+                board={"market_state": "repair", "items": []},
+                today_orders=[],
+                used_order_count=0,
+            )
+
+        self.assertEqual(orders, [])
+
+    def test_auto_trader_skips_sector_etf_without_t0_eligibility(self):
+        from app.models.schema_defs.market import SectorEtfT0Opportunity, SectorEtfT0Response
+        from app.services.paper.scheduler import PaperAutoTrader
+
+        Account = namedtuple("Account", ["id", "cash_available"])
+        fake_response = SectorEtfT0Response(
+            updated_at="2026-05-08 10:00:00",
+            market_state="repair",
+            market_state_text="震荡修复",
+            total=1,
+            opportunities=[
+                SectorEtfT0Opportunity(
+                    sector_name="测试行业",
+                    etf_symbol="512999",
+                    etf_name="测试行业ETF",
+                    source_signal_symbol="600000",
+                    source_signal_name="测试强信号",
+                    source_signal_text="确定买入",
+                    last_price=1.0,
+                    bias="positive_t",
+                    bias_text="ETF 正T候选",
+                    t0_eligible=False,
+                    confidence=80,
+                    expected_edge_pct=1.2,
+                    reason="板块低吸信号明确",
+                )
+            ],
+        )
+
+        class FakeSectorEtfT0Service:
+            def __init__(self, **_kwargs):
+                pass
+
+            def build_from_priority_board(self, _board, *, limit: int = 8):
+                return fake_response
+
+        trader = PaperAutoTrader({"max_orders_per_cycle": 3})
+        with patch("app.services.paper.scheduler.SectorEtfT0Service", FakeSectorEtfT0Service):
+            orders = trader._build_sector_etf_t0_orders(
+                db=None,
+                account=Account(id=1, cash_available=Decimal("100000")),
+                board={"market_state": "repair", "items": []},
+                today_orders=[],
+                used_order_count=0,
+            )
+
+        self.assertEqual(orders, [])
 
     def test_auto_trader_trading_time(self):
         from app.services.paper.scheduler import PaperAutoTrader

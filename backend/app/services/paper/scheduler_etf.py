@@ -60,6 +60,8 @@ def build_sector_etf_t0_orders(
     cash_budget = float(account.cash_available or 0) * _float_param(params, "paper_auto_cash_pct", 0.12)
     min_confidence = _float_param(params, "paper_auto_min_confidence", 68.0)
     min_edge = _float_param(params, "paper_auto_min_edge_pct", 0.9)
+    require_intraday_signal = bool(params.get("paper_auto_require_intraday_signal", True))
+    min_intraday_confidence = _float_param(params, "paper_auto_min_intraday_confidence", 62.0)
     now = _beijing_now_naive()
     for item in response.opportunities:
         if len(orders) >= remaining_slots:
@@ -67,6 +69,10 @@ def build_sector_etf_t0_orders(
         if not _is_buy_signal(item):
             continue
         if item.etf_symbol in today_symbols or item.bias != "positive_t":
+            continue
+        if not bool(getattr(item, "t0_eligible", False)):
+            continue
+        if require_intraday_signal and not _intraday_signal_allows_order(item, min_intraday_confidence=min_intraday_confidence):
             continue
         if item.confidence < min_confidence or item.expected_edge_pct < min_edge or item.last_price <= 0:
             continue
@@ -104,3 +110,13 @@ def _is_buy_signal(item: Any) -> bool:
         return True
     text = str(getattr(item, "source_signal_text", "") or "")
     return any(marker in text for marker in ("确定买入", "确认买入", "小仓试买"))
+
+
+def _intraday_signal_allows_order(item: Any, *, min_intraday_confidence: float) -> bool:
+    action = str(getattr(item, "intraday_signal_action", "") or "")
+    if action != "positive_t_buy":
+        return False
+    risk_flags = getattr(item, "intraday_risk_flags", []) or []
+    if risk_flags:
+        return False
+    return _float_param({"value": getattr(item, "intraday_signal_confidence", 0.0)}, "value", 0.0) >= min_intraday_confidence

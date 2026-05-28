@@ -4,7 +4,8 @@ use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criteri
 mod finance_core;
 
 use finance_core::{
-    atr_wilder_values, max_drawdown_values, rank_ic_value, rolling_mean_values, rsi_wilder_value,
+    atr_wilder_values, beta_value, bollinger_bands_values, correlation_value, max_drawdown_values,
+    rank_ic_value, rolling_mean_values, rolling_std_values, rsi_wilder_value, volatility_value,
     vwap_value,
 };
 
@@ -56,6 +57,16 @@ fn bench_finance(c: &mut Criterion) {
         |b, values| b.iter(|| rolling_mean_values(black_box(values), 20)),
     );
     group.bench_with_input(
+        BenchmarkId::new("rolling_std_20", len),
+        &values,
+        |b, values| b.iter(|| rolling_std_values(black_box(values), 20)),
+    );
+    group.bench_with_input(
+        BenchmarkId::new("bollinger_bands_20", len),
+        &values,
+        |b, values| b.iter(|| bollinger_bands_values(black_box(values), 20, 2.0)),
+    );
+    group.bench_with_input(
         BenchmarkId::new("atr_wilder_14", len),
         &values,
         |b, values| {
@@ -72,6 +83,15 @@ fn bench_finance(c: &mut Criterion) {
     });
     group.bench_with_input(BenchmarkId::new("rank_ic", len), &values, |b, values| {
         b.iter(|| rank_ic_value(black_box(values), black_box(&returns)))
+    });
+    group.bench_with_input(BenchmarkId::new("volatility", len), &values, |b, values| {
+        b.iter(|| volatility_value(black_box(values), 252.0))
+    });
+    group.bench_with_input(BenchmarkId::new("correlation", len), &values, |b, values| {
+        b.iter(|| correlation_value(black_box(values), black_box(&returns)))
+    });
+    group.bench_with_input(BenchmarkId::new("beta", len), &values, |b, values| {
+        b.iter(|| beta_value(black_box(values), black_box(&returns)))
     });
     group.finish();
 }

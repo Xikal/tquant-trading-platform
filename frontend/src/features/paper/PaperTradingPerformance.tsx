@@ -1,6 +1,9 @@
 import type { CSSProperties } from "react";
+import { useEffect } from "react";
 import { Col, List, Row, Space, Typography } from "antd";
-import type { PaperAgentRun, PaperGroupedPerformance, PaperPerformance, PaperSectorEtfT0Performance, PaperTagPerformance, RiskEventItem } from "../../types";
+import type { PaperAgentRun, PaperGroupedPerformance, PaperPerformance, PaperSectorEtfT0Performance, PaperSectorEtfT0ReviewTrade, PaperTagPerformance, RiskEventItem } from "../../types";
+import { etfT0OosApi } from "../../api/etfT0Oos";
+import { useEtfT0OosStore } from "../../stores/etfT0OosStore";
 import { EmptyState, InfoPill, toneTextStyle } from "../workspace-shared/WorkspaceComponents";
 import { formatPaperDateTime } from "./paperTradingFormatters";
 import { formatInteger, formatNumber, formatPct, toneFromChange } from "../workspace-shared/workspaceFormatters";
@@ -92,7 +95,19 @@ export function TagPerformanceStrip({ items }: { items: PaperTagPerformance[] })
 }
 
 export function SectorEtfT0PerformancePanel({ item }: { item: PaperSectorEtfT0Performance | null }) {
+  const latest = useEtfT0OosStore((state) => state.latest);
+  const setLatest = useEtfT0OosStore((state) => state.setLatest);
+  const setError = useEtfT0OosStore((state) => state.setError);
+  useEffect(() => {
+    etfT0OosApi.latest()
+      .then(setLatest)
+      .catch((error: unknown) => setError(error instanceof Error ? error.message : "ETF T0 OOS 阶段加载失败"));
+  }, [setError, setLatest]);
   if (!item) return <EmptyState text="暂无 ETF T+0 自动交易绩效" />;
+  const gateNotes = item.execution_gate_notes?.length ? item.execution_gate_notes : [
+    "自动执行门禁：必须同时满足 ETF universe T+0 eligibility、分钟信号 positive_t_buy、无风险 flags、置信度达标。",
+    "反T卖出仍处于展示/研究状态，不自动卖出底仓。",
+  ];
   return (
     <Space direction="vertical" size={6} style={FULL_WIDTH_STYLE}>
       <Row gutter={[8, 8]}>
@@ -107,6 +122,12 @@ export function SectorEtfT0PerformancePanel({ item }: { item: PaperSectorEtfT0Pe
         </Col>
         <Col xs={24} sm={12} xl={6}>
           <InfoPill compact label="平均收益" value={formatPct(item.simulated_avg_return_pct)} tone={toneFromChange(item.simulated_avg_return_pct)} />
+        </Col>
+        <Col xs={24} sm={12} xl={6}>
+          <InfoPill compact label="OOS阶段" value={latest?.available ? oosStageText(latest.stage) : "未验证"} tone={latest?.stage === "candidate_production" ? "up" : latest?.stage === "paper_small" ? "warn" : "neutral"} />
+        </Col>
+        <Col xs={24} sm={12} xl={6}>
+          <InfoPill compact label="OOS结论" value={latest?.verdict || "needs_validation"} />
         </Col>
       </Row>
       <DataTable<PaperSectorEtfT0Performance>
@@ -125,8 +146,38 @@ export function SectorEtfT0PerformancePanel({ item }: { item: PaperSectorEtfT0Pe
       <Typography.Text type="secondary" style={{ fontSize: 11 }}>
         {item.notes?.[0] || "只统计 strategy_key=sector_etf_t0 的模拟成交，并和 ETF 机会池影子跟踪对账。"}
       </Typography.Text>
+      <Typography.Text type="secondary" style={{ fontSize: 11 }}>
+        {latest?.available ? `真实 OOS ${latest.dataset_version || latest.dataset_key}：${latest.gate_reasons[0] || "无阻断原因"}。通过也只作为阶段建议，不绕过自动交易风控。` : "真实 OOS 尚未验证，ETF T0 自动交易保持研究/小仓观察边界。"}
+      </Typography.Text>
+      <Space wrap size={[5, 5]}>
+        {gateNotes.map((note) => (
+          <InfoPill key={note} compact label="执行门禁" value={note} />
+        ))}
+      </Space>
+      <Typography.Text strong style={{ fontSize: 12 }}>逐笔复盘归因</Typography.Text>
+      <DataTable<PaperSectorEtfT0ReviewTrade>
+        rowKey={(trade) => String(trade.id)}
+        dataSource={item.review_trades ?? []}
+        locale={{ emptyText: <EmptyState text="暂无 ETF T0 成交复盘记录" /> }}
+        scroll={{ x: 980 }}
+        columns={[
+          { title: "标的", dataIndex: "symbol", render: (value) => <strong>{value}</strong> },
+          { title: "方向", dataIndex: "side", render: (value) => value === "buy" ? "买入" : value === "sell" ? "卖出" : value },
+          { title: "执行", dataIndex: "execution_summary" },
+          { title: "时间", dataIndex: "trade_time", render: (value) => formatPaperDateTime(value) },
+          { title: "市场", dataIndex: "market_state", render: (value) => value || "--" },
+          { title: "原因/归因", dataIndex: "attribution", render: (value) => <span style={TRUNCATED_TEXT_STYLE} title={value}>{value}</span> },
+          { title: "风险提示", dataIndex: "risk_notes", render: (value) => Array.isArray(value) && value.length ? value[0] : "完整" },
+        ]}
+      />
     </Space>
   );
+}
+
+function oosStageText(stage: string): string {
+  if (stage === "paper_small") return "小仓模拟";
+  if (stage === "candidate_production") return "生产候选";
+  return "研究观察";
 }
 
 export function GroupedPerformanceTable({ items, emptyText }: { items: PaperGroupedPerformance[]; emptyText: string }) {

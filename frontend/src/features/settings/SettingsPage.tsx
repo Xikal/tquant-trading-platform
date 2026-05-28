@@ -32,6 +32,7 @@ import { LatestDataStatusCard } from "./LatestDataStatusCard";
 import { QuantParameterMlCard } from "./QuantParameterMlCard";
 import { QuantParameterPaperExitCard } from "./QuantParameterPaperExitCard";
 import { QuantParameterSectorEtfCard } from "./QuantParameterSectorEtfCard";
+import { EtfUniverseAdminCard } from "./EtfUniverseAdminCard";
 import { useSettingsUiStore } from "../../stores/settingsUiStore";
 import {
   buildSettingsDirtyState,
@@ -389,6 +390,7 @@ export function SettingsPage({
           />
           <QuantParameterPaperExitCard adminTokenError={adminTokenError} />
           <QuantParameterSectorEtfCard adminTokenError={adminTokenError} />
+          {isAdmin ? <EtfUniverseAdminCard /> : null}
         </SettingsSection>
         ) : null}
 
