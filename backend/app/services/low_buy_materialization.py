@@ -262,11 +262,7 @@ def _warm_shadow_from_materialized_candidates(
                 candidates.append(LowBuyCandidateOut.model_validate_json(row.payload_json))
             except Exception:
                 continue
-        candidates = [
-            candidate
-            for candidate in candidates
-            if candidate.buy_signal_state in {"buy_now", "soft_buy_now", "observe_confirmed", "near_entry"}
-        ][: max(1, limit)]
+        candidates = candidates[: max(1, limit)]
         if not candidates:
             continue
         try:
