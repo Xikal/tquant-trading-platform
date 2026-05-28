@@ -172,6 +172,26 @@ class AppSettings(BaseSettings):
     paper_exit_model_artifact_path: str = ""
     paper_exit_model_min_confidence: float = 0.55
     paper_exit_model_strong_confidence: float = 0.75
+    main_force_model_enabled: bool = True
+    main_force_model_shadow_enabled: bool = True
+    main_force_model_display_enabled: bool = True
+    main_force_model_ranking_enabled: bool = False
+    main_force_model_paper_display_enabled: bool = True
+    main_force_model_paper_shadow_enabled: bool = True
+    main_force_model_paper_suggestion_enabled: bool = False
+    main_force_model_max_rank_bonus: float = 4.0
+    main_force_model_min_confidence: float = 0.58
+    main_force_model_min_score: float = 55.0
+    main_force_model_paper_max_position_pct: float = 3.0
+    main_force_model_paper_min_confidence: float = 0.62
+    main_force_model_shadow_sample_min: int = 300
+    main_force_model_shadow_settled_min: int = 120
+    main_force_model_min_success_rate_pct: float = 52.0
+    main_force_model_min_profit_factor: float = 1.35
+    main_force_model_allowed_strategies: str = (
+        "leader_pullback_band,volume_shrink,breakout_support,n_pattern_long_wash,"
+        "core_midcap_vwap_ma5_retrace"
+    )
     market_review_enabled: bool = True
     paper_perf_archive_enabled: bool = True
     paper_perf_archive_time: str = "15:05"

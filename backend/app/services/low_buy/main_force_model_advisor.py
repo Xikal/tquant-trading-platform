@@ -3,7 +3,13 @@ from __future__ import annotations
 from copy import deepcopy
 from typing import Any
 
-from app.services.low_buy.main_force_model_schema import MainForceAdvice, MainForceFeatureSnapshot
+from app.core.config import get_settings
+from app.services.low_buy.main_force_model_schema import (
+    ACTION_TEXT,
+    STAGE_TEXT,
+    MainForceAdvice,
+    MainForceFeatureSnapshot,
+)
 
 
 class MainForceAdvisor:
@@ -18,9 +24,13 @@ class MainForceAdvisor:
         action = _action_for(stage, score)
         buy_zone = _buy_zone(features, stage)
         stop_loss = _stop_loss(features, stage)
+        settings = get_settings()
+        production_effect = "readonly_shadow" if settings.main_force_model_display_enabled else "none"
         return MainForceAdvice(
             stage=stage,
+            stage_text=STAGE_TEXT.get(stage, "不可用"),
             action=action,
+            action_text=ACTION_TEXT.get(action, "观察"),
             score=round(score, 2),
             confidence=round(min(max(score / 100.0, 0.0), 0.95), 4),
             buy_zone=buy_zone,
@@ -30,7 +40,7 @@ class MainForceAdvisor:
             risk_flags=[],
             feature_snapshot=features.to_dict(),
             shadow_only=True,
-            production_effect="none",
+            production_effect=production_effect,
         )
 
     def annotate_candidate(self, candidate: Any, features: MainForceFeatureSnapshot) -> Any:
@@ -48,9 +58,13 @@ class MainForceAdvisor:
         return annotated
 
     def _blocked(self, features: MainForceFeatureSnapshot, reasons: list[str], fallback_reason: str | None = None) -> MainForceAdvice:
+        settings = get_settings()
+        production_effect = "readonly_shadow" if settings.main_force_model_display_enabled else "none"
         return MainForceAdvice(
             stage="distribution_risk",
+            stage_text=STAGE_TEXT["distribution_risk"],
             action="blocked",
+            action_text=ACTION_TEXT["blocked"],
             score=0.0,
             confidence=0.0,
             buy_zone=(0.0, 0.0),
@@ -59,7 +73,7 @@ class MainForceAdvisor:
             risk_flags=list(reasons),
             feature_snapshot=features.to_dict(),
             shadow_only=True,
-            production_effect="none",
+            production_effect=production_effect,
             fallback_reason=fallback_reason,
         )
 

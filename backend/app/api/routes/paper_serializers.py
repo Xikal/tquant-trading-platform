@@ -3,6 +3,8 @@ from __future__ import annotations
 import json
 from datetime import datetime
 
+from sqlalchemy.orm import Session
+
 from app.models.schemas import (
     PaperAccountOut,
     PaperOrderOut,
@@ -15,6 +17,7 @@ from app.services.paper.dynamic_exit import evaluate_paper_exit
 from app.services.paper.exit_model_advisor import ExitModelAdvisor
 from app.services.paper.exit_model_features import build_exit_model_features
 from app.services.paper.fees import commission_warning_text
+from app.services.paper.main_force_paper_advisor import build_main_force_paper_advice, latest_main_force_advice_for_symbol
 from app.services.paper.reasons import normalize_entry_reason, normalize_exit_reason
 
 
@@ -40,8 +43,8 @@ def account_out(row) -> PaperAccountOut:
     )
 
 
-def positions_response(rows) -> PaperPositionsResponse:
-    items = [position_out(row) for row in rows]
+def positions_response(rows, *, db: Session | None = None) -> PaperPositionsResponse:
+    items = [position_out(row, db=db) for row in rows]
     return PaperPositionsResponse(
         positions=items,
         total_market_value=round(sum(item.market_value for item in items), 2),
@@ -49,7 +52,7 @@ def positions_response(rows) -> PaperPositionsResponse:
     )
 
 
-def position_out(row) -> PaperPositionOut:
+def position_out(row, *, db: Session | None = None) -> PaperPositionOut:
     now = datetime.now()
     decision = evaluate_paper_exit(
         row,
@@ -64,6 +67,9 @@ def position_out(row) -> PaperPositionOut:
             now=now,
         )
     )
+    main_force_advice = _json_dict(getattr(row, "main_force_advice_json", "") or "")
+    if not main_force_advice and db is not None:
+        main_force_advice = latest_main_force_advice_for_symbol(db, str(row.symbol or ""))
     return PaperPositionOut(
         id=row.id,
         symbol=row.symbol,
@@ -87,6 +93,13 @@ def position_out(row) -> PaperPositionOut:
         smart_exit_net_profit_pct=decision.net_profit_pct,
         smart_exit_fee_drag_pct=decision.fee_drag_pct,
         exit_model_shadow=exit_model.to_dict(),
+        main_force_advice=main_force_advice,
+        main_force_paper_advice=build_main_force_paper_advice(
+            candidate=None,
+            main_force_advice=main_force_advice,
+            risk_allowed=False,
+            current_position_pct=0.0,
+        ),
     )
 
 
@@ -156,3 +169,11 @@ def _json_list(raw: str) -> list[str]:
         return [str(item) for item in values if item]
     except Exception:
         return []
+
+
+def _json_dict(raw: str) -> dict:
+    try:
+        value = json.loads(raw or "{}")
+        return value if isinstance(value, dict) else {}
+    except Exception:
+        return {}

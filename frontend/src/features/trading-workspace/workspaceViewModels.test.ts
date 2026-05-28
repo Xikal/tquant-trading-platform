@@ -56,6 +56,37 @@ describe("workspaceViewModels", () => {
     expect(card.details).toContain("连续推荐 2天");
   });
 
+  it("renders main force advice in low-buy card details", () => {
+    const card = candidateToCard({
+      name: "测试股份",
+      symbol: "600000",
+      strategy_key: "volume_shrink",
+      strategy_title: "缩量回踩",
+      latest_price: 10.12,
+      change_pct: 1.23,
+      score: 88,
+      risk_tier: "note",
+      suggested_position_text: "15%",
+      buy_signal_text: "接近买点",
+      entry_zone_low: 9.8,
+      entry_zone_high: 10.2,
+      stop_loss: 9.5,
+      summary_reason: "价格接近支撑",
+      main_force_advice: {
+        stage_text: "洗盘确认",
+        action_text: "小仓试买",
+        score: 68.5,
+        production_effect: "readonly_shadow",
+        reasons: ["回撤适中"],
+        risk_flags: [],
+      },
+    } as never);
+
+    expect(card.details).toContain("主力：洗盘确认 · 小仓试买 · 68.5");
+    expect(card.details).toContain("旁路观察");
+    expect(card.badges).toContain("主力洗盘确认");
+  });
+
   it("renders watchlist signal with plain-language action", () => {
     const card = watchSignalToCard({
       symbol: "510300",

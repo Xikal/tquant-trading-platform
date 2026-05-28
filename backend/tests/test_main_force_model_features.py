@@ -50,7 +50,7 @@ def test_main_force_advisor_returns_shadow_buy_probe_for_quality_washout() -> No
     assert advice.action in {"buy_probe", "buy_confirmed"}
     assert advice.stage in {"washout", "markup_confirm"}
     assert advice.score >= 55
-    assert advice.production_effect == "none"
+    assert advice.production_effect == "readonly_shadow"
     assert advice.feature_snapshot["max_source_date"] == "2026-04-24"
     assert advice.buy_zone[0] < advice.buy_zone[1]
     assert advice.stop_loss > 0
@@ -71,7 +71,7 @@ def test_main_force_advisor_blocks_distribution_risk_without_touching_candidate(
 
     assert advice.shadow_only is True
     assert advice.action == "blocked"
-    assert advice.production_effect == "none"
+    assert advice.production_effect == "readonly_shadow"
     assert advice.risk_flags
     assert any("退潮" in reason or "出货" in reason or "放量滞涨" in reason for reason in advice.risk_flags)
 
@@ -101,7 +101,7 @@ def test_main_force_advisor_can_annotate_plain_candidate_without_mutating_it() -
     assert annotated["symbol"] == candidate["symbol"]
     assert annotated["score"] == candidate["score"]
     assert annotated["main_force_advice"]["shadow_only"] is True
-    assert annotated["main_force_advice"]["production_effect"] == "none"
+    assert annotated["main_force_advice"]["production_effect"] == "readonly_shadow"
 
 
 def _history_with_washout() -> list[dict[str, float | str]]:

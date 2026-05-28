@@ -51,7 +51,7 @@ class AppMobilePaperMixin:
 
         return {
             "account": account_out(account),
-            "positions": [position_out(row) for row in position_rows],
+            "positions": [position_out(row, db=db) for row in position_rows],
             "orders": [order_out(row) for row in order_rows],
             "trades": [trade_out(row) for row in trade_rows],
             "performance": PaperPerformanceOut(**performance_service.compute_overall(account.id)),

@@ -122,7 +122,7 @@ def list_paper_positions(
 ) -> PaperPositionsResponse:
     account = PaperAccountService(db).get_or_create_default(current_user.id)
     rows = PaperPositionService(db).get_positions(account.id)
-    items = [position_out(row) for row in rows]
+    items = [position_out(row, db=db) for row in rows]
     return PaperPositionsResponse(
         positions=items,
         total_market_value=round(sum(item.market_value for item in items), 2),
@@ -140,7 +140,7 @@ def get_paper_position(
     row = PaperPositionService(db).get_position(account.id, symbol)
     if row is None:
         raise HTTPException(status_code=404, detail="模拟持仓不存在")
-    return position_out(row)
+    return position_out(row, db=db)
 
 
 @router.post("/positions/refresh", response_model=PaperPositionsResponse)
@@ -164,7 +164,7 @@ def refresh_paper_positions(current_user: User = Depends(require_paper_trading),
     position_service.refresh_quotes(account.id, prices)
     PaperAccountService(db).update_market_value(account.id)
     db.commit()
-    return positions_response(position_service.get_positions(account.id))
+    return positions_response(position_service.get_positions(account.id), db=db)
 
 
 @router.get("/risk", response_model=PaperRiskStatusOut)

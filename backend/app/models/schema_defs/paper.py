@@ -55,6 +55,8 @@ class PaperPositionOut(BaseModel):
     smart_exit_net_profit_pct: float = 0.0
     smart_exit_fee_drag_pct: float = 0.0
     exit_model_shadow: dict[str, Any] = Field(default_factory=dict)
+    main_force_advice: dict[str, Any] = Field(default_factory=dict)
+    main_force_paper_advice: dict[str, Any] = Field(default_factory=dict)
 
 
 class PaperPositionsResponse(BaseModel):

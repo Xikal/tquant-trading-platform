@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Protocol
 
 from app.models.schemas import LowBuyCandidateOut, LowBuyPriorityBoardItemOut
+from app.services.low_buy.main_force_model_ranking import main_force_rank_bonus
 from app.services.low_buy.priority_family import (
     priority_recommendation_duration_text,
     recommendation_days_by_title,
@@ -161,6 +162,11 @@ def _build_priority_item(
         recommendation_duration_text=priority_recommendation_duration_text(
             candidate=candidate,
             recommendation_days_by_title=recommendation_days_by_title_map,
+        ),
+        main_force_advice=candidate.main_force_advice,
+        main_force_rank_bonus=main_force_rank_bonus(
+            candidate,
+            shadow_status=getattr(builder, "_main_force_shadow_status", lambda: {})(),
         ),
     )
 

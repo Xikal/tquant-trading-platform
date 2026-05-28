@@ -52,6 +52,10 @@ function PositionRow({ item }: { item: PaperPosition }) {
     : model?.action && model.action !== "hold"
       ? `模型旁路：${model.action} · ${(Number(model.confidence || 0) * 100).toFixed(0)}%`
       : "模型旁路：只观察";
+  const mainForce = item.main_force_paper_advice;
+  const mainForceText = mainForce?.visible
+    ? `主力：${[mainForce.stage_text, mainForce.model_action_text, mainForce.action_text].filter(Boolean).join(" · ")}`
+    : "主力：旁路观察";
   return (
     <List.Item
       style={{
@@ -71,6 +75,9 @@ function PositionRow({ item }: { item: PaperPosition }) {
         <Typography.Text style={{ fontSize: 11 }}>成本 {formatPrice(item.cost_basis)} / 现价 {formatPrice(item.latest_price)}</Typography.Text>
         <Tag color="blue">{actionText}</Tag>
         <Tag color={model?.safety_blocked ? "red" : model?.fallback_reason ? "default" : "purple"}>{modelText}</Tag>
+        <Tag color={mainForce?.suggestion_enabled ? "gold" : mainForce?.risk_flags?.length ? "default" : "cyan"}>
+          {mainForceText}
+        </Tag>
         <Typography.Text strong style={{ color: toneColor(tone), fontSize: 11 }}>{formatPct(item.unrealized_pnl_pct)}</Typography.Text>
       </Space>
     </List.Item>

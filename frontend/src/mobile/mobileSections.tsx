@@ -172,6 +172,11 @@ export function LowBuyDetailSheet({
               tone="neutral"
             />
             <MetricLine
+              label="主力模型"
+              value={mainForceMobileText(detail.candidate.main_force_advice)}
+              tone={detail.candidate.main_force_advice?.risk_flags?.length ? "negative" : "neutral"}
+            />
+            <MetricLine
               label="预期价差"
               value={formatPercent(detail.candidate.entry_distance_pct)}
               tone={detail.candidate.entry_distance_pct >= 0 ? "positive" : "negative"}
@@ -191,6 +196,16 @@ export function LowBuyDetailSheet({
             {detail.candidate.exit_plan?.invalid_condition ? ` ${detail.candidate.exit_plan.invalid_condition}` : ""}
           </span>
         </div>
+
+        {detail.candidate.main_force_advice ? (
+          <div className="mobile-app-callout mobile-app-callout-detail">
+            <strong>主力结构</strong>
+            <span>
+              {mainForceMobileText(detail.candidate.main_force_advice)}，
+              {detail.candidate.main_force_advice.production_effect === "ranking_bonus" ? "已参与排序" : "旁路观察，不自动下单"}
+            </span>
+          </div>
+        ) : null}
 
         <section className="mobile-app-detail-section">
           <h3>触发理由</h3>
@@ -230,4 +245,13 @@ export function LowBuyDetailSheet({
 
 function recommendationDaysText(days?: number) {
   return days && days > 0 ? `${days} 个交易日` : "--";
+}
+
+function mainForceMobileText(advice?: AppLowBuyDetailResponse["candidate"]["main_force_advice"]) {
+  if (!advice) {
+    return "--";
+  }
+  return [advice.stage_text, advice.action_text, typeof advice.score === "number" ? advice.score.toFixed(1) : ""]
+    .filter(Boolean)
+    .join(" · ") || "--";
 }

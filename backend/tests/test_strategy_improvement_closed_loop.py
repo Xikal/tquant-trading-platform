@@ -89,6 +89,7 @@ def test_closed_loop_markdown_exposes_data_and_shadow_boundaries() -> None:
     assert "稳定性与过拟合检查" in markdown
     assert "防未来函数门禁" in markdown
     assert "约束增强审计" in markdown
+    assert "主力模型 Shadow" in markdown
 
 
 def test_closed_loop_does_not_count_out_of_window_etf_minutes_as_acceptance() -> None:
@@ -329,6 +330,30 @@ def test_exit_model_shadow_status_reports_action_diff_and_blockers() -> None:
     assert shadow["action_diff"]["hard_stop_override_risk_count"] == 1
     assert shadow["outcome_summary"]["settled_or_labeled_count"] == 2
     assert "hard_stop_override_risk_detected" in shadow["promotion_blockers"]
+
+
+def test_closed_loop_includes_main_force_shadow_status() -> None:
+    db = _session()
+    db.add(_daily("2026-04-28", "000001"))
+    db.add(
+        MarketModelObservation(
+            model_key="main_force_accumulation_washout_markup_v1",
+            symbol="000001",
+            trade_date="2026-04-28",
+            signal_state="buy_probe",
+            confidence=0.7,
+            score=68.0,
+            payload_json='{"model_advice":{"stage":"washout","action":"buy_probe","score":68.0,"confidence":0.7},"fallback_reason":null}',
+            outcome_status="pending",
+        )
+    )
+    db.commit()
+
+    report = build_closed_loop_report(db, args=_args(), existing_report=_existing_report())
+
+    assert report["main_force_model_shadow"]["model_key"] == "main_force_accumulation_washout_markup_v1"
+    assert report["main_force_model_shadow"]["record_count"] == 1
+    assert any("主力模型 Shadow" in item for item in report["next_actions"])
 
 
 def test_constraint_policy_blocks_missing_constraints_and_bad_weak_action() -> None:

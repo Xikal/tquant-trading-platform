@@ -8,6 +8,7 @@ from app.services.strategy_improvement.coverage import daily_coverage, latest_da
 from app.services.strategy_improvement.constraint_policy import constraint_policy_audit
 from app.services.strategy_improvement.gates import build_gates
 from app.services.strategy_improvement.governance import strategy_governance, strategy_inventory
+from app.services.low_buy.main_force_model_shadow import summarize_main_force_shadow
 from app.services.strategy_improvement.model_shadow import exit_model_shadow_status
 from app.services.strategy_improvement.plans import data_backfill_plan, invariants, next_actions
 from app.services.strategy_improvement.quality import data_quality_checks
@@ -30,6 +31,7 @@ def build_closed_loop_report(db, *, args: argparse.Namespace, existing_report: d
         min_daily_coverage_pct=args.min_daily_coverage_pct,
     )
     model_shadow = exit_model_shadow_status(db)
+    main_force_shadow = summarize_main_force_shadow(db)
     temporal_guard = temporal_guard_checks(db, walk_forward=walk_forward)
     gates = build_gates(
         daily=daily,
@@ -57,11 +59,17 @@ def build_closed_loop_report(db, *, args: argparse.Namespace, existing_report: d
         "constraint_policy": constraints,
         "walk_forward": walk_forward,
         "auxiliary_model_shadow": model_shadow,
+        "main_force_model_shadow": main_force_shadow,
         "temporal_guard": temporal_guard,
         "gates": [item.to_dict() for item in gates],
         "data_backfill_plan": data_backfill_plan(args=args, daily=daily, minute=minute),
         "controlled_parameter_policy": controlled_parameter_policy(),
-        "next_actions": next_actions(gates=gates, walk_forward=walk_forward, model_shadow=model_shadow),
+        "next_actions": next_actions(
+            gates=gates,
+            walk_forward=walk_forward,
+            model_shadow=model_shadow,
+            main_force_shadow=main_force_shadow,
+        ),
         "invariants": invariants(),
     }
 
@@ -75,6 +83,7 @@ def render_markdown(report: dict[str, Any]) -> str:
     lines.extend(_walkforward_lines(report))
     lines.extend(_temporal_guard_lines(report))
     lines.extend(_shadow_lines(report))
+    lines.extend(_main_force_shadow_lines(report))
     lines.extend(_plan_lines(report))
     return "\n".join(lines) + "\n"
 
@@ -264,6 +273,20 @@ def _shadow_lines(report: dict[str, Any]) -> list[str]:
         f"- Shadow-only：{'是' if shadow.get('shadow_only') else '否'}；可晋级：{'是' if shadow.get('promotion_ready') else '否'}。",
         f"- 动作差异：一致 {diff.get('same_as_rule', 0)}，更激进 {diff.get('more_aggressive_than_rule', 0)}，更保守 {diff.get('less_aggressive_than_rule', 0)}，fallback {diff.get('fallback', 0)}，硬止损覆盖风险 {diff.get('hard_stop_override_risk_count', 0)}。",
         f"- 后验摘要：已标注 {outcome.get('settled_or_labeled_count', 0)}，5日均收益 {outcome.get('avg_return_5d_pct', 0.0)}%，5日平均最大不利 {outcome.get('avg_max_adverse_5d_pct', 0.0)}%，卖飞率 {outcome.get('sell_flying_rate_pct', 0.0)}%。",
+    ]
+    if shadow.get("promotion_blockers"):
+        lines.append(f"- 晋级阻断：{', '.join(shadow['promotion_blockers'])}")
+    return lines
+
+
+def _main_force_shadow_lines(report: dict[str, Any]) -> list[str]:
+    shadow = report.get("main_force_model_shadow") or {}
+    lines = [
+        "",
+        "## 主力模型 Shadow",
+        f"- 状态：{shadow.get('status', 'unknown')}，记录 {shadow.get('record_count', 0)}，已结算 {shadow.get('settled_count', 0)}。",
+        f"- 胜率：{shadow.get('success_rate_pct', 0.0)}%，PF {shadow.get('profit_factor', 0.0)}，20日均收益 {shadow.get('avg_return_20d_pct', 0.0)}%。",
+        f"- 生产影响：{shadow.get('production_effect', 'readonly_shadow')}；Shadow-only：{'是' if shadow.get('shadow_only', True) else '否'}；可晋级：{'是' if shadow.get('promotion_ready') else '否'}。",
     ]
     if shadow.get("promotion_blockers"):
         lines.append(f"- 晋级阻断：{', '.join(shadow['promotion_blockers'])}")

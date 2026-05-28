@@ -12,6 +12,7 @@ from app.models.schemas import (
     LowBuyStrategyPerformanceOut,
 )
 from app.services.latest_data_status import expected_low_buy_trade_date, published_low_buy_trade_date
+from app.services.low_buy.main_force_model_shadow import summarize_main_force_shadow
 from app.services.low_buy_materialization import enqueue_low_buy_materialization
 from app.services.low_buy.priority_scoring import LowBuyPriorityScoringMixin
 from app.services.low_buy.priority_cache import (
@@ -66,6 +67,8 @@ from app.services.market.board_exclusions import is_growth_board_stock
 
 
 class LowBuyPriorityBoardMixin(LowBuyPriorityScoringMixin):
+    _main_force_shadow_summary_cache: dict | None = None
+
     def priority_board(
         self,
         db: Session,
@@ -99,46 +102,53 @@ class LowBuyPriorityBoardMixin(LowBuyPriorityScoringMixin):
             )
 
         base_snapshot = self._load_priority_base_snapshot(db=db, limit=limit)
-        refreshed_candidates = self._refresh_priority_candidates(base_snapshot.candidates)
-        refreshed_candidates = self._attach_priority_recommendation_durations(
-            db=db,
-            rows=refreshed_candidates,
-            latest_trade_date=base_snapshot.latest_trade_date,
-        )
-        refreshed_candidates = enrich_priority_candidates_with_leader_strength(db=db, rows=refreshed_candidates)
-        pre_policy_candidate_count = len(refreshed_candidates)
-        refreshed_candidates = filter_priority_candidates_for_recommendation(refreshed_candidates)
-        items = self._build_priority_items(
-            refreshed_candidates,
-            market_context=base_snapshot.market_context,
-        )
-        items.sort(key=lambda item: item.priority_score, reverse=True)
-        family_performance = build_family_performance(refreshed_candidates)
-        family_sections = build_priority_family_sections(
-            items=items,
-            family_performance=family_performance,
-        )
-        snapshot_warning = self._priority_snapshot_warning(base_snapshot)
-        if pre_policy_candidate_count > 0 and not items:
-            policy_warning = "当前候选均已被主板范围、风险或交易规则过滤，暂无可推荐股票。"
-            snapshot_warning = f"{snapshot_warning} {policy_warning}".strip()
-        portfolio_risk = build_priority_portfolio_risk(
-            db=db,
-            rows=refreshed_candidates,
-            market_context=base_snapshot.market_context,
-            selector=self,
-        )
-        response = build_priority_board_response(
-            base_snapshot=base_snapshot,
-            items=items,
-            item_limit=limit,
-            family_sections=family_sections,
-            portfolio_risk=portfolio_risk,
-            snapshot_warning=snapshot_warning,
-            market_state_text=self._market_state_text(base_snapshot.market_context),
-        )
-        self._set_priority_response_cache(cache_key, response)
-        return response
+        self._main_force_shadow_summary_cache = summarize_main_force_shadow(db)
+        try:
+            refreshed_candidates = self._refresh_priority_candidates(base_snapshot.candidates)
+            refreshed_candidates = self._attach_priority_recommendation_durations(
+                db=db,
+                rows=refreshed_candidates,
+                latest_trade_date=base_snapshot.latest_trade_date,
+            )
+            refreshed_candidates = enrich_priority_candidates_with_leader_strength(db=db, rows=refreshed_candidates)
+            pre_policy_candidate_count = len(refreshed_candidates)
+            refreshed_candidates = filter_priority_candidates_for_recommendation(refreshed_candidates)
+            items = self._build_priority_items(
+                refreshed_candidates,
+                market_context=base_snapshot.market_context,
+            )
+            items.sort(key=lambda item: item.priority_score, reverse=True)
+            family_performance = build_family_performance(refreshed_candidates)
+            family_sections = build_priority_family_sections(
+                items=items,
+                family_performance=family_performance,
+            )
+            snapshot_warning = self._priority_snapshot_warning(base_snapshot)
+            if pre_policy_candidate_count > 0 and not items:
+                policy_warning = "当前候选均已被主板范围、风险或交易规则过滤，暂无可推荐股票。"
+                snapshot_warning = f"{snapshot_warning} {policy_warning}".strip()
+            portfolio_risk = build_priority_portfolio_risk(
+                db=db,
+                rows=refreshed_candidates,
+                market_context=base_snapshot.market_context,
+                selector=self,
+            )
+            response = build_priority_board_response(
+                base_snapshot=base_snapshot,
+                items=items,
+                item_limit=limit,
+                family_sections=family_sections,
+                portfolio_risk=portfolio_risk,
+                snapshot_warning=snapshot_warning,
+                market_state_text=self._market_state_text(base_snapshot.market_context),
+            )
+            self._set_priority_response_cache(cache_key, response)
+            return response
+        finally:
+            self._main_force_shadow_summary_cache = None
+
+    def _main_force_shadow_status(self) -> dict:
+        return self._main_force_shadow_summary_cache or {}
 
     def _load_priority_base_snapshot(self, db: Session, limit: int) -> PriorityBaseSnapshot:
         target_trade_date = published_low_buy_trade_date(db) or expected_low_buy_trade_date(db)

@@ -133,6 +133,25 @@ export interface LowBuyTradeLifecycle {
   updated_at: string;
 }
 
+export interface MainForceAdvice {
+  model?: string;
+  stage?: "accumulation" | "washout" | "markup_confirm" | "distribution_risk" | "unavailable" | string;
+  stage_text?: string;
+  action?: "observe" | "wait_confirm" | "buy_probe" | "buy_confirmed" | "blocked" | string;
+  action_text?: string;
+  score?: number;
+  confidence?: number;
+  buy_zone?: [number, number] | number[];
+  stop_loss?: number;
+  take_profit_plan?: Array<{ level?: string; price?: number; action?: string }>;
+  reasons?: string[];
+  risk_flags?: string[];
+  shadow_only?: boolean;
+  production_effect?: string;
+  rank_bonus?: number;
+  fallback_reason?: string | null;
+}
+
 export interface LowBuyCandidate {
   strategy_key: string;
   strategy_title: string;
@@ -220,6 +239,7 @@ export interface LowBuyCandidate {
   recommendation_days?: number;
   strategy_recommendation_days?: Record<string, number>;
   recommendation_duration_text?: string;
+  main_force_advice?: MainForceAdvice;
   reasons: string[];
   risks: string[];
   tags: string[];

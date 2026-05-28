@@ -341,7 +341,9 @@ function DenseCandidateList({
             <strong style={PLAYBOOK_DENSE_TEXT_STYLE}>{stock.name}</strong>
             <span style={PLAYBOOK_DENSE_META_STYLE}>{stock.symbol}</span>
           </div>
-          <span style={PLAYBOOK_DENSE_TEXT_STYLE} title={stock.details}>{stock.actionText} · {stock.details}</span>
+          <span style={PLAYBOOK_DENSE_TEXT_STYLE} title={stock.details}>
+            {stock.actionText} · {stock.details}
+          </span>
           <span style={PLAYBOOK_DENSE_META_STYLE}>{stock.scoreText ? `质量 ${stock.scoreText}` : stock.riskText}</span>
           <Flex gap={4} justify="flex-end">
             <Button size="small" onClick={() => onSelect(stock)}>详情</Button>

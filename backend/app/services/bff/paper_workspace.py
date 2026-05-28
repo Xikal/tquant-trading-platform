@@ -70,7 +70,7 @@ def _account(db: Session, current_user: User):
 def _positions(db: Session, account_id: int | None):
     if account_id is None:
         return []
-    return [position_out(row) for row in PaperPositionService(db).get_positions(account_id)]
+    return [position_out(row, db=db) for row in PaperPositionService(db).get_positions(account_id)]
 
 
 def _orders(db: Session, account_id: int | None, limit: int):

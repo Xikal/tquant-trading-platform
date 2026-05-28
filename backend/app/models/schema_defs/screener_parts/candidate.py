@@ -100,6 +100,7 @@ class LowBuyCandidateOut(BaseModel):
     research_failed_rules: list[str] = Field(default_factory=list)
     research_near_miss_rules: list[str] = Field(default_factory=list)
     research_blocked_reason: str = ""
+    main_force_advice: dict[str, Any] = Field(default_factory=dict)
     reasons: list[str]
     risks: list[str]
     tags: list[str]

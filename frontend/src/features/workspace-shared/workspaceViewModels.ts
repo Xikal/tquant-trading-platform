@@ -25,6 +25,7 @@ export function priorityToCard(item: LowBuyPriorityBoardItem): StockCardView {
     operationAmountText: item.suggested_position_text,
     primaryReason: item.next_action_text || item.action_summary,
     details: [
+      mainForceSummary(item.main_force_advice),
       nextDayPlanText(item.next_day_event_plan),
       strategyNames.slice(0, 3).join(" + ") || item.strategy_title,
       item.leader_strength_text,
@@ -40,6 +41,7 @@ export function priorityToCard(item: LowBuyPriorityBoardItem): StockCardView {
     tone: toneFromChange(item.change_pct),
     badges: [
       (item.strategy_count ?? 0) > 1 ? `${item.strategy_count}策略命中` : "",
+      mainForceBadge(item.main_force_advice),
       item.family_count && item.family_count > 1 ? `${item.family_count}类逻辑共振` : "",
       item.leader_strength_rank ? `板块龙头#${item.leader_strength_rank}` : "",
       item.multi_timeframe_resonance_score ? "多周期共振" : "",
@@ -104,6 +106,7 @@ export function candidateToCard(item: LowBuyCandidate): StockCardView {
     operationAmountText: item.suggested_position_text,
     primaryReason: item.summary_reason,
     details: [
+      mainForceSummary(item.main_force_advice),
       nextDayPlanText(item.next_day_event_plan),
       exitPlanSummary(item.exit_plan),
       item.leader_strength_text,
@@ -119,6 +122,7 @@ export function candidateToCard(item: LowBuyCandidate): StockCardView {
     tone: toneFromChange(item.change_pct),
     badges: [
       item.strategy_title,
+      mainForceBadge(item.main_force_advice),
       item.leader_strength_rank ? `板块龙头#${item.leader_strength_rank}` : "",
       item.multi_timeframe_resonance_score ? "多周期共振" : "",
       item.mainline_tier_text || "",
@@ -127,6 +131,29 @@ export function candidateToCard(item: LowBuyCandidate): StockCardView {
     ].filter(Boolean),
     highlight: item.strategy_key === "limit_up_breakout_retrace",
   };
+}
+
+function mainForceSummary(advice?: LowBuyCandidate["main_force_advice"]): string {
+  if (!advice || (!advice.stage_text && !advice.action_text)) {
+    return "";
+  }
+  const score = typeof advice.score === "number" && Number.isFinite(advice.score) ? advice.score.toFixed(1) : "";
+  const status = advice.production_effect === "ranking_bonus"
+    ? `已参与排序${advice.rank_bonus ? ` +${advice.rank_bonus.toFixed(1)}` : ""}`
+    : "旁路观察";
+  const evidence = (advice.reasons ?? []).slice(0, 2).join("；");
+  const risk = advice.risk_flags?.length ? `风险：${advice.risk_flags.slice(0, 2).join("；")}` : "";
+  return [`主力：${[advice.stage_text, advice.action_text, score].filter(Boolean).join(" · ")}`, status, evidence, risk].filter(Boolean).join(" / ");
+}
+
+function mainForceBadge(advice?: LowBuyCandidate["main_force_advice"]): string {
+  if (!advice || !advice.stage_text) {
+    return "";
+  }
+  if (advice.production_effect === "ranking_bonus") {
+    return "主力已加权";
+  }
+  return `主力${advice.stage_text}`;
 }
 
 function quoteQualityText(item: Pick<LowBuyCandidate, "data_source" | "source_quality" | "is_stale">): string {

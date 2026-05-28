@@ -47,6 +47,68 @@ describe("PaperTradingPage", () => {
     expect(html).toContain("对账诊断");
   });
 
+  it("shows main force paper advice on positions", () => {
+    const html = renderToStaticMarkup(
+      <PaperTradingPage
+        account={null}
+        positions={[{
+          id: 1,
+          symbol: "600000",
+          name: "测试股份",
+          quantity: 1000,
+          available_quantity: 1000,
+          frozen_quantity: 0,
+          cost_basis: 10,
+          latest_price: 10.5,
+          market_value: 10500,
+          unrealized_pnl: 500,
+          unrealized_pnl_pct: 5,
+          strategy_sources: ["volume_shrink"],
+          opened_at: "2026-05-28T10:00:00",
+          main_force_paper_advice: {
+            visible: true,
+            mode: "readonly_shadow",
+            suggestion_enabled: false,
+            stage_text: "洗盘确认",
+            model_action_text: "小仓试买",
+            action_text: "旁路观察，不自动下单",
+            production_effect: "paper_readonly_shadow",
+          },
+        } as any]}
+        orders={[]}
+        trades={[]}
+        performance={null}
+        strategyPerformance={[]}
+        marketPerformance={[]}
+        tagPerformance={[]}
+        tradeTags={{}}
+        riskEvents={[]}
+        autoTradingStatus={{ running: false }}
+        autoTradingRuns={[]}
+        draft={{
+          symbol: "",
+          name: "",
+          side: "buy",
+          order_type: "market",
+          quantity: "100",
+          price: "",
+          current_price: "",
+          strategy_key: "",
+          reason: "",
+          require_intraday_confirmation: false,
+        }}
+        setDraft={vi.fn()}
+        loading=""
+        onSubmitOrder={vi.fn()}
+        onTogglePause={vi.fn()}
+        onAddTradeTag={vi.fn()}
+        onDeleteTradeTag={vi.fn()}
+      />
+    );
+
+    expect(html).toContain("主力：洗盘确认 · 小仓试买 · 旁路观察，不自动下单");
+  });
+
   it("uses account-level total return for the top paper metric", () => {
     const html = renderToStaticMarkup(
       <PaperTradingPage

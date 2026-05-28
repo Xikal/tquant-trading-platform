@@ -246,6 +246,11 @@ export function OrderEntryModal({
                 <Typography.Text type="secondary" style={{ fontSize: 12 }}>
                   买入区间 {formatRange(item.entry_zone_low, item.entry_zone_high)}，止损 {formatPrice(item.stop_loss)}
                 </Typography.Text>
+                {item.main_force_advice ? (
+                  <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                    主力：{mainForceText(item.main_force_advice)}；模拟盘：旁路观察，不自动下单
+                  </Typography.Text>
+                ) : null}
               </Button>
             ))}
           </div>
@@ -405,6 +410,15 @@ function formatRange(low?: number | null, high?: number | null): string {
 
 function formatPrice(value?: number | null): string {
   return typeof value === "number" && Number.isFinite(value) ? `¥${value.toFixed(3)}` : "--";
+}
+
+function mainForceText(advice: LowBuyPriorityBoardItem["main_force_advice"]): string {
+  if (!advice) {
+    return "--";
+  }
+  return [advice.stage_text, advice.action_text, typeof advice.score === "number" ? `分数 ${advice.score.toFixed(1)}` : ""]
+    .filter(Boolean)
+    .join(" · ") || "--";
 }
 
 function resolveQuickQuantity(side: "buy" | "sell", position: PaperPosition | null): number {

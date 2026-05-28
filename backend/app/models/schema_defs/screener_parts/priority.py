@@ -76,6 +76,8 @@ class LowBuyPriorityBoardItemOut(BaseModel):
     simple_bucket_text: str = "放弃观察"
     next_action_text: str = ""
     exit_plan_text: str = ""
+    main_force_advice: dict[str, Any] = Field(default_factory=dict)
+    main_force_rank_bonus: float = 0.0
 
 class LowBuyPriorityFamilyPerformanceOut(BaseModel):
     family_key: str

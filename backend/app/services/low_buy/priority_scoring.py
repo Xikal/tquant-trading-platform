@@ -4,6 +4,7 @@ from math import sqrt
 
 from app.models.schemas import LowBuyCandidateOut, LowBuyPerformanceBucketOut, LowBuyStrategyPerformanceOut
 from app.services.low_buy.market_state_rules import resolve_strategy_market_profile
+from app.services.low_buy.main_force_model_ranking import main_force_rank_bonus
 from app.services.low_buy.performance_stats import retracement_bucket as resolve_retracement_bucket
 from app.services.low_buy.priority_types import PriorityMarketContext, StrategyHit
 from app.services.low_buy.strategy_families import family_overlap_multiplier
@@ -54,10 +55,16 @@ class LowBuyPriorityScoringMixin:
         score = self._base_priority_score(candidate)
         score += strategy_weight * 0.30 + aggregate_weight * 0.15 + multi_bonus
         score += self._environment_rank_bonus(candidate, market_context)
+        score += main_force_rank_bonus(candidate, shadow_status=self._main_force_shadow_status())
         return round(score, 2)
 
     def _single_strategy_rank(self, candidate: LowBuyCandidateOut, strategy_weight: float) -> float:
-        return round(self._base_priority_score(candidate) + strategy_weight * 0.35, 2)
+        score = self._base_priority_score(candidate) + strategy_weight * 0.35
+        score += main_force_rank_bonus(candidate, shadow_status=self._main_force_shadow_status())
+        return round(score, 2)
+
+    def _main_force_shadow_status(self) -> dict:
+        return {}
 
     def _aggregate_strategy_weight(self, hits: list[StrategyHit]) -> float:
         ordered_hits = self._ordered_hits_for_aggregation(hits)

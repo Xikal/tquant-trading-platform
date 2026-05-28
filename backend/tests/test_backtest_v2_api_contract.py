@@ -469,6 +469,50 @@ def test_strategy_improvement_report_returns_gate_summary_for_research_user(
     assert payload["minute_coverage"]["missing_etf_symbols"][0]["symbol"] == "510300"
 
 
+def test_main_force_model_readiness_requires_research_permission(service_stub: _BacktestServiceStub) -> None:  # noqa: ARG001
+    app = FastAPI()
+    app.include_router(backtests_route.router, prefix="/api")
+    app.dependency_overrides[get_db] = lambda: object()
+    app.dependency_overrides[get_current_user] = lambda: SimpleNamespace(
+        id=1,
+        username="owner",
+        roles="",
+        is_active=True,
+    )
+
+    response = TestClient(app).get("/api/backtests/main-force-model/readiness")
+
+    assert response.status_code == 403
+
+
+def test_main_force_model_readiness_returns_shadow_and_policy(
+    monkeypatch: pytest.MonkeyPatch,
+    service_stub: _BacktestServiceStub,  # noqa: ARG001
+) -> None:
+    monkeypatch.setattr(
+        backtests_route,
+        "summarize_main_force_shadow",
+        lambda db: {"model_key": "main_force_accumulation_washout_markup_v1", "promotion_ready": False},  # noqa: ARG005
+    )
+    app = FastAPI()
+    app.include_router(backtests_route.router, prefix="/api")
+    app.dependency_overrides[get_db] = lambda: object()
+    app.dependency_overrides[get_current_user] = lambda: SimpleNamespace(
+        id=1,
+        username="researcher",
+        roles="backtest_research",
+        is_active=True,
+    )
+
+    response = TestClient(app).get("/api/backtests/main-force-model/readiness")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["shadow"]["model_key"] == "main_force_accumulation_washout_markup_v1"
+    assert payload["production_policy"]["ranking_default"] == "disabled"
+    assert payload["production_policy"]["auto_order_allowed"] is False
+
+
 def test_job_service_create_run_only_queues_without_starting_daemon_thread(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

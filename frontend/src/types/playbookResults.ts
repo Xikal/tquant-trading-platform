@@ -1,4 +1,4 @@
-import type { LowBuyCandidate, LowBuyNextDayEventPlan, LowBuyPortfolioRisk } from "./playbookCore";
+import type { LowBuyCandidate, LowBuyNextDayEventPlan, LowBuyPortfolioRisk, MainForceAdvice } from "./playbookCore";
 
 export interface LowBuyHistorySection {
   title: string;
@@ -239,6 +239,8 @@ export interface LowBuyPriorityBoardItem {
   simple_bucket_text?: string;
   next_action_text?: string;
   exit_plan_text?: string;
+  main_force_advice?: MainForceAdvice;
+  main_force_rank_bonus?: number;
 }
 
 export interface LowBuyDailyDecision {

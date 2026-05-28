@@ -47,7 +47,13 @@ def data_backfill_plan(*, args: argparse.Namespace, daily: dict[str, Any], minut
     }
 
 
-def next_actions(*, gates: list[Gate], walk_forward: dict[str, Any], model_shadow: dict[str, Any]) -> list[str]:
+def next_actions(
+    *,
+    gates: list[Gate],
+    walk_forward: dict[str, Any],
+    model_shadow: dict[str, Any],
+    main_force_shadow: dict[str, Any] | None = None,
+) -> list[str]:
     actions = []
     failed = {gate.key for gate in gates if gate.status == "fail"}
     if "daily_24m_coverage" in failed:
@@ -60,6 +66,8 @@ def next_actions(*, gates: list[Gate], walk_forward: dict[str, Any], model_shado
         actions.append("数据门禁通过后，对正期望候选和高回撤策略执行 12m/3m/3m monthly rolling Walk-forward。")
     if model_shadow["status"] != "shadow_ready":
         actions.append("继续积累退出模型 Shadow 样本；只记录规则动作和模型建议差异，不改变订单和账本。")
+    if main_force_shadow and main_force_shadow.get("status") != "shadow_ready":
+        actions.append("继续积累主力模型 Shadow 样本；排序加权和模拟盘小仓建议保持关闭，直到样本外与 Shadow 门禁达标。")
     actions.append("将治理结果接入回测页/策略工作台/模拟盘展示，但保持生产参数只读。")
     return actions
 

@@ -1,3 +1,21 @@
+import type { MainForceAdvice } from "./playbookCore"
+
+export interface MainForcePaperAdvice {
+  visible?: boolean
+  mode?: "readonly_shadow" | "paper_small_position_suggestion" | "unavailable" | string
+  suggestion_enabled?: boolean
+  action_text?: string
+  position_cap_pct?: number
+  order_intent?: "none" | "manual_import_only" | string
+  stage_text?: string
+  model_action_text?: string
+  score?: number
+  confidence?: number
+  reasons?: string[]
+  risk_flags?: string[]
+  production_effect?: string
+}
+
 export interface PaperAccount {
   id: number
   name: string
@@ -52,6 +70,8 @@ export interface PaperPosition {
     effective_action?: string
     safety_blocked?: boolean
   }
+  main_force_advice?: MainForceAdvice
+  main_force_paper_advice?: MainForcePaperAdvice
 }
 
 export interface PaperPositionsResponse {

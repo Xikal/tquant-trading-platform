@@ -5,10 +5,28 @@ from typing import Any, Literal
 
 
 MAIN_FORCE_MODEL_VERSION = "main-force-accumulation-washout-markup-v1"
+MAIN_FORCE_MODEL_OBSERVATION_KEY = "main_force_accumulation_washout_markup_v1"
 MAIN_FORCE_FEATURE_VERSION = "main-force-features-v1"
 
 MainForceStage = Literal["accumulation", "washout", "markup_confirm", "distribution_risk", "unavailable"]
 MainForceAction = Literal["observe", "wait_confirm", "buy_probe", "buy_confirmed", "blocked"]
+MainForceProductionEffect = Literal["none", "readonly_shadow", "ranking_bonus", "paper_readonly_shadow", "paper_small_position_suggestion"]
+
+STAGE_TEXT: dict[str, str] = {
+    "accumulation": "建仓观察",
+    "washout": "洗盘确认",
+    "markup_confirm": "拉升确认",
+    "distribution_risk": "出货风险",
+    "unavailable": "不可用",
+}
+
+ACTION_TEXT: dict[str, str] = {
+    "observe": "观察",
+    "wait_confirm": "等确认",
+    "buy_probe": "小仓试买",
+    "buy_confirmed": "确认买点",
+    "blocked": "阻断",
+}
 
 
 @dataclass(frozen=True)
@@ -53,7 +71,9 @@ class MainForceFeatureSnapshot:
 class MainForceAdvice:
     model: str = MAIN_FORCE_MODEL_VERSION
     stage: MainForceStage = "unavailable"
+    stage_text: str = "不可用"
     action: MainForceAction = "observe"
+    action_text: str = "观察"
     score: float = 0.0
     confidence: float = 0.0
     buy_zone: tuple[float, float] = (0.0, 0.0)
@@ -63,7 +83,8 @@ class MainForceAdvice:
     risk_flags: list[str] = field(default_factory=list)
     feature_snapshot: dict[str, Any] = field(default_factory=dict)
     shadow_only: bool = True
-    production_effect: str = "none"
+    production_effect: MainForceProductionEffect = "none"
+    rank_bonus: float = 0.0
     fallback_reason: str | None = None
 
     def to_dict(self) -> dict[str, Any]:

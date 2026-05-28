@@ -42,4 +42,58 @@ describe("PlaybookPage", () => {
     expect(html).toContain("已加载：首板回调，正在切换数据");
     expect(html).toContain("今日主看");
   });
+
+  it("shows main force readonly advice in candidate list", () => {
+    const html = renderToStaticMarkup(
+      <PlaybookPage
+        strategy="volume_shrink"
+        setStrategy={vi.fn()}
+        playbook={{
+          strategy_key: "volume_shrink",
+          strategy_title: "缩量回踩",
+          scanned_count: 1,
+          candidates: [],
+          confirmed_candidates: [{
+            name: "测试股份",
+            symbol: "600000",
+            strategy_key: "volume_shrink",
+            strategy_title: "缩量回踩",
+            latest_price: 10.12,
+            change_pct: 1.23,
+            score: 88,
+            risk_tier: "note",
+            suggested_position_text: "15%",
+            buy_signal_state: "buy_now",
+            buy_signal_text: "确定买入",
+            entry_zone_low: 9.8,
+            entry_zone_high: 10.2,
+            stop_loss: 9.5,
+            summary_reason: "价格接近支撑",
+            reasons: [],
+            risks: [],
+            tags: [],
+            main_force_advice: {
+              stage_text: "洗盘确认",
+              action_text: "小仓试买",
+              score: 68.5,
+              production_effect: "readonly_shadow",
+              reasons: ["回撤适中"],
+              risk_flags: [],
+            },
+          }],
+          hot_industries: ["机器人"],
+          latest_trade_date: "2026-05-04",
+          full_scan_ready: true,
+          performance: null,
+        } as any}
+        loading=""
+        onRefresh={vi.fn()}
+        onAnalyze={vi.fn()}
+        onSelect={vi.fn()}
+      />
+    );
+
+    expect(html).toContain("主力：洗盘确认 · 小仓试买 · 68.5");
+    expect(html).toContain("旁路观察");
+  });
 });

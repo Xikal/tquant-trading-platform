@@ -40,7 +40,18 @@ def main() -> int:
                 )
                 advice = MainForceAdvisor().advise(features)
                 labels = build_main_force_labels(history, as_of_date=str(current["trade_date"]), window_40=args.label_window)
-                file.write(json.dumps({"features": features.to_dict(), "advice": advice.to_dict(), "labels": labels.to_dict()}, ensure_ascii=False) + "\n")
+                file.write(
+                    json.dumps(
+                        {
+                            "features": features.to_dict(),
+                            "advice": advice.to_dict(),
+                            "labels": labels.to_dict(),
+                            "temporal_guard": _temporal_guard(features.to_dict(), labels.to_dict()),
+                        },
+                        ensure_ascii=False,
+                    )
+                    + "\n"
+                )
                 count += 1
                 if args.max_samples and count >= args.max_samples:
                     print(json.dumps({"ok": True, "samples": count, "output": str(output)}, ensure_ascii=False))
@@ -104,6 +115,20 @@ def _load_rows(database: str, *, limit_symbols: int) -> list[dict[str, Any]]:
 def _mean_amount(rows: list[dict[str, Any]]) -> float:
     values = [float(row.get("amount") or 0.0) for row in rows]
     return sum(values) / len(values) if values else 0.0
+
+
+def _temporal_guard(features: dict[str, Any], labels: dict[str, Any]) -> dict[str, Any]:
+    as_of = str(features.get("as_of_date") or labels.get("as_of_date") or "")
+    max_source = str(features.get("max_source_date") or "")
+    label_start = str(labels.get("label_start_date") or "")
+    feature_values = features.get("feature_values") if isinstance(features.get("feature_values"), dict) else {}
+    forbidden_keys = [key for key in feature_values if "future" in str(key).lower()]
+    return {
+        "max_source_date_lte_as_of_date": bool(max_source and as_of and max_source <= as_of),
+        "label_start_date_gt_as_of_date": bool(label_start and as_of and label_start > as_of),
+        "forbidden_future_feature_keys": forbidden_keys,
+        "status": "pass" if max_source <= as_of < label_start and not forbidden_keys else "fail",
+    }
 
 
 if __name__ == "__main__":

@@ -60,6 +60,21 @@ def test_backend_refactor_settings_expose_pool_and_bff_cache_controls() -> None:
     assert settings.rust_finance_math_enabled is True
 
 
+def test_main_force_model_defaults_are_safe() -> None:
+    settings = AppSettings(
+        auth_secret_key="x" * 64,
+        tquant_settings_encryption_key="y" * 64,
+    )
+
+    assert settings.main_force_model_enabled is True
+    assert settings.main_force_model_shadow_enabled is True
+    assert settings.main_force_model_display_enabled is True
+    assert settings.main_force_model_ranking_enabled is False
+    assert settings.main_force_model_paper_display_enabled is True
+    assert settings.main_force_model_paper_suggestion_enabled is False
+    assert settings.main_force_model_max_rank_bonus <= 4.0
+
+
 def test_daily_bar_snapshot_uses_date_and_numeric_ohlcv_types() -> None:
     columns = DailyBarSnapshot.__table__.c
 

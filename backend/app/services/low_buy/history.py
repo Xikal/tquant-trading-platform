@@ -16,6 +16,7 @@ from app.services.low_buy.shared import (
 )
 from app.services.low_buy.factor_types import FactorContext
 from app.services.low_buy.history_daily_loader import LowBuyDailyHistoryMixin
+from app.services.low_buy.main_force_model_enrichment import enrich_candidates_with_main_force_model
 from app.services.low_buy.strategy_policy import requires_mainline_industry
 
 
@@ -223,6 +224,15 @@ class LowBuyHistoryMixin(LowBuyDailyHistoryMixin):
                 evaluated.append(self._refresh_historical_buy_signal(candidate, history.iloc[latest_rows[-1]]))
 
         evaluated = self._dedupe_candidates(evaluated)
+        evaluated = enrich_candidates_with_main_force_model(
+            db,
+            candidates=evaluated,
+            histories=histories,
+            market_state=market_regime.state,
+            market_strength=market_regime.state_strength,
+            sector_strength_by_symbol={item.symbol: 0.5 for item in evaluated},
+            record_shadow=False,
+        )
         evaluated.sort(key=lambda item: (self._signal_rank(item.buy_signal_state), item.score), reverse=True)
         confirmed_candidates = [
             item for item in evaluated if item.buy_signal_state in self._confirmed_signal_states

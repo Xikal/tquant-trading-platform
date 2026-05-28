@@ -1,5 +1,43 @@
 # TQuant 实施计划
 
+## 2026-05-28 主力模型生产化 P0/P1/P2
+
+需求来源：
+
+- `docs/main-force-model-production-development-plan-2026-05-28.md`
+- 当前目标：将“主力结构识别 + 买点分级 + 风险解释”从旁路组件升级为生产只读展示、Shadow 自动记录、受控排序加权和模拟盘只读/小仓建议灰度路径。
+
+### 执行边界
+
+- [x] 排序加权默认关闭，小仓建议默认关闭；首阶段不自动下单。
+- [x] 复用 `MarketModelObservation`、低吸候选主路径、模拟盘风控和现有前端组件。
+- [x] 不覆盖低吸原始分数、止损、止盈、硬风险或模拟盘准入。
+- [x] fallback、blocked、data_quality 必须进入 advice/payload，可观测。
+- [x] 单个新增或重构文件保持小于 500 行。
+
+### TODO
+
+- [x] Task 1：配置、schema、前端类型。
+- [x] Task 2：候选 enrichment，只读接入并自动 fallback。
+- [x] Task 3：Shadow upsert、summary、settle 和闭环报告状态。
+- [x] Task 4：排序 bonus 受控接入，默认关闭且未达标不加权。
+- [x] Task 5：选股宝典/策略工作台/移动端只读展示。
+- [x] Task 6：防未来函数测试与 walk-forward 样本外脚本。
+- [x] Task 7：管理/设置/监控状态入口。
+- [x] Task 8：模拟盘只读展示、Shadow 对账和小仓建议灰度。
+- [x] Task 9：本地验证、runbook、上线 smoke 准备。
+
+### 当前结果
+
+- [x] P0 已落地：低吸候选生产只读展示，`main_force_advice` 可见，`MarketModelObservation` 自动 Shadow 记录。
+- [x] P1 路径已落地但默认关闭：`main_force_model_ranking_enabled=False`；即使打开，也要求 Shadow 达标、策略白名单、数据质量和 advice 条件全部通过才会加分。
+- [x] P2 路径已落地但小仓建议默认关闭：模拟盘持仓/导入界面只读展示，建议只输出 `manual_import_only`，不创建订单。
+- [x] Readiness 当前结论：OOS 小样本研究指标通过，但 Shadow 观察样本 0/300、已结算 0/120，最终 `promotion_ready=false`。
+- [x] 报告：
+  - `docs/reports/main-force-model-production-readiness-2026-05-28.json`
+  - `docs/reports/main-force-model-production-readiness-2026-05-28.md`
+  - `docs/main-force-model-production-runbook-2026-05-28.md`
+
 ## 2026-05-28 主力建仓-洗盘-拉升旁路模型
 
 需求来源：

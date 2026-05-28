@@ -53,6 +53,7 @@ from app.services.backtest.regime_parameter_promotion import promote_regime_para
 from app.services.position_policy_research import run_position_policy_research
 from app.services.portfolio_heuristic_optimizer import optimize_strategy_portfolio
 from app.services.live_backtest_monitor import build_live_backtest_comparison
+from app.services.low_buy.main_force_model_shadow import summarize_main_force_shadow
 from app.models.schemas import KlineBar
 from app.services.etf.oos_dataset import OOSDatasetError, dataset_response, list_oos_datasets, load_oos_dataset
 from app.services.etf.oos_validation import latest_oos_validation_summary, promote_check, run_oos_validation
@@ -66,6 +67,7 @@ router = APIRouter(prefix="/backtests", dependencies=[Depends(get_current_user)]
 
 ROOT_DIR = Path(__file__).resolve().parents[4]
 DEFAULT_STRATEGY_24M_REPORT = ROOT_DIR / "docs" / "reports" / "strategy-24m-backtest-2026-05-28.json"
+DEFAULT_MAIN_FORCE_READINESS_REPORT = ROOT_DIR / "docs" / "reports" / "main-force-model-production-readiness-2026-05-28.json"
 
 
 @router.get("/verdict-thresholds", response_model=BacktestVerdictThresholdsResponse)
@@ -87,6 +89,24 @@ def get_strategy_improvement_report(
     require_research_access(current_user)
     existing_report = _load_json(DEFAULT_STRATEGY_24M_REPORT)
     return build_closed_loop_report(db, args=default_args_namespace(), existing_report=existing_report)
+
+
+@router.get("/main-force-model/readiness")
+def get_main_force_model_readiness(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    require_research_access(current_user)
+    return {
+        "shadow": summarize_main_force_shadow(db),
+        "latest_oos_report": _load_json(DEFAULT_MAIN_FORCE_READINESS_REPORT),
+        "production_policy": {
+            "display": "readonly_shadow",
+            "ranking_default": "disabled",
+            "paper_suggestion_default": "disabled",
+            "auto_order_allowed": False,
+        },
+    }
 
 
 @router.get("/live-comparison")
