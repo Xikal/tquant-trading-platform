@@ -16,10 +16,12 @@ WORKDIR /app/rust/tquant-rs
 RUN apt-get update \
     && apt-get install -y --no-install-recommends python3-dev python3-pip \
     && pip3 install --break-system-packages --no-cache-dir --retries 20 --timeout 600 --progress-bar off -i https://pypi.tuna.tsinghua.edu.cn/simple maturin \
+    && mkdir -p /usr/local/cargo \
+    && printf '[source.crates-io]\nreplace-with = "rsproxy-sparse"\n\n[source.rsproxy-sparse]\nregistry = "sparse+https://rsproxy.cn/index/"\n' > /usr/local/cargo/config.toml \
     && rm -rf /var/lib/apt/lists/*
 
 COPY rust/tquant-rs/ ./
-RUN PYO3_USE_ABI3_FORWARD_COMPATIBILITY=1 maturin build --release --strip --features extension-module -o /tmp/wheels
+RUN PYO3_USE_ABI3_FORWARD_COMPATIBILITY=1 maturin build --release --locked --strip --features extension-module -o /tmp/wheels
 
 
 FROM docker.m.daocloud.io/library/python:3.11-slim AS runtime
