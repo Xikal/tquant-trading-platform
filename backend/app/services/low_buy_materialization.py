@@ -232,18 +232,18 @@ def _warm_shadow_from_materialized_candidates(
     from app.services.low_buy.main_force_model_enrichment import enrich_candidates_with_main_force_model
 
     repository = LowBuyResultRepository(db)
-    try:
-        latest_trade_date = repository.fetch_latest_trade_date()
-    except Exception:
-        return {"strategies": [], "refreshed": [], "skipped": []}
-    if not latest_trade_date:
-        return {"strategies": [], "refreshed": [], "skipped": []}
-
     histories: dict[str, Any] = {}
     refreshed: list[str] = []
     skipped: list[dict[str, str]] = []
     completed: list[str] = []
     for strategy in strategies:
+        try:
+            latest_trade_date = repository.fetch_latest_trade_date(strategy)
+        except Exception as exc:
+            skipped.append({"strategy": strategy, "reason": str(exc)})
+            continue
+        if not latest_trade_date:
+            continue
         summary = repository.fetch_scan_summary(latest_trade_date=latest_trade_date, strategy_key=strategy)
         if summary is None:
             continue
