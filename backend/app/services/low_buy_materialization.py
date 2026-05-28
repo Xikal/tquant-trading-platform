@@ -228,8 +228,10 @@ def _warm_shadow_from_materialized_candidates(
     limit: int,
 ) -> dict[str, Any]:
     from app.repositories.low_buy import DailyHistoryRepository, LowBuyResultRepository
+    from app.models.entities import LowBuyResultSnapshot
     from app.models.schemas import LowBuyCandidateOut
     from app.services.low_buy.main_force_model_enrichment import enrich_candidates_with_main_force_model
+    from sqlalchemy import func, select
 
     repository = LowBuyResultRepository(db)
     histories: dict[str, Any] = {}
@@ -238,15 +240,17 @@ def _warm_shadow_from_materialized_candidates(
     completed: list[str] = []
     for strategy in strategies:
         try:
-            latest_trade_date = repository.fetch_latest_trade_date(strategy)
+            latest_trade_date = db.execute(
+                select(func.max(LowBuyResultSnapshot.latest_trade_date)).where(
+                    LowBuyResultSnapshot.strategy_key == strategy
+                )
+            ).scalar()
         except Exception as exc:
             skipped.append({"strategy": strategy, "reason": str(exc)})
             continue
         if not latest_trade_date:
             continue
         summary = repository.fetch_scan_summary(latest_trade_date=latest_trade_date, strategy_key=strategy)
-        if summary is None:
-            continue
         rows = repository.fetch_results(
             latest_trade_date=latest_trade_date,
             strategy_key=strategy,
@@ -276,7 +280,7 @@ def _warm_shadow_from_materialized_candidates(
                     ),
                     latest_trade_date,
                 )
-            filters = _safe_json_object(summary.filters_json)
+            filters = _safe_json_object(summary.filters_json if summary is not None else "{}")
             enrich_candidates_with_main_force_model(
                 db,
                 candidates=candidates,
