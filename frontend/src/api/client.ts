@@ -67,6 +67,7 @@ import type {
   StrategyTrackingParams,
   StrategyTrackingReport,
   StrategyTrackingReviewResponse,
+  StrategyTrackingSnapshotResponse,
   WatchlistItem,
   WatchlistQuoteItem,
   WatchlistSignal
@@ -316,6 +317,8 @@ export const api = {
     ),
   getStrategyTrackingItems: (params: StrategyTrackingParams = {}) =>
     requestCached<StrategyTrackingListResponse>(`/strategy-tracking/items?${strategyTrackingQuery(params)}`, 12000),
+  getStrategyTrackingSnapshot: (params: StrategyTrackingParams = {}) =>
+    requestCached<StrategyTrackingSnapshotResponse>(`/strategy-tracking/snapshot?${strategyTrackingQuery(params)}`, 12000),
   getStrategyTrackingDetail: (itemId: string) =>
     requestCached<StrategyTrackingDetailResponse>(`/strategy-tracking/items/${encodeURIComponent(itemId)}`, 12000),
   getStrategyTrackingReview: (params: StrategyTrackingParams = {}) =>

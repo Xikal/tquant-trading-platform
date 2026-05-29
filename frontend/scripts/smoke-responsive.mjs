@@ -183,6 +183,11 @@ const mockStrategyTrackingPerformance = {
   profit_loss_ratio: 1.4,
   stop_loss_rate: 0,
   active_count: 1,
+  health_score: 78,
+  health_grade: "B",
+  sample_quality: "thin",
+  health_reasons: ["买点触达正常"],
+  health_risks: [],
 };
 const mockStrategyTrackingSummary = {
   tracking_count: 1,
@@ -190,6 +195,9 @@ const mockStrategyTrackingSummary = {
   today_new_count: 0,
   in_entry_zone_count: 1,
   stopped_count: 0,
+  needs_review_count: 0,
+  abnormal_return_count: 0,
+  shadow_observation_count: 0,
   avg_current_return_pct: 0.88,
   median_max_gain_pct: 1.75,
   data_quality: "ok",
@@ -204,10 +212,45 @@ const mockStrategyTrackingList = {
   sort: "max_gain_desc",
   summary: mockStrategyTrackingSummary,
   performance: [mockStrategyTrackingPerformance],
+  market_segments: [],
+  shadow_observations: [],
   partial_errors: [],
   production_writeable: false,
   read_path: "smoke",
   rust_math_used: true,
+  notes: [],
+};
+const mockStrategyTrackingSnapshot = {
+  status: "fresh",
+  stale: false,
+  generated_at: now,
+  source_data_cutoff: now,
+  data_version: "smoke",
+  snapshot_key: "strategy-tracking:smoke",
+  as_of_date: "2026-05-26",
+  payload: {
+    summary: mockStrategyTrackingSummary,
+    items: [mockStrategyTrackingItem],
+    performance: [mockStrategyTrackingPerformance],
+    market_segments: [],
+    holding_summary: { items: [], generated_at: now, data_quality: "ok", production_writeable: false },
+    shadow_observations: [],
+    audit: {
+      future_leak_check: "passed",
+      checked_count: 1,
+      violation_count: 0,
+      abnormal_return_count: 0,
+      needs_review_count: 0,
+      audit_flags: [],
+    },
+  },
+  total: 1,
+  limit: 30,
+  offset: 0,
+  sort: "max_gain_desc",
+  partial_errors: [],
+  production_writeable: false,
+  read_path: "strategy_tracking_snapshot",
   notes: [],
 };
 const mockLowBuy = {
@@ -534,6 +577,7 @@ async function installMockAuth(page) {
     if (path.startsWith("/market/intraday-anomaly/")) return response({ symbol: "510300", anomaly_level: "low", anomaly_text: "正常", score: 12, reasons: [], updated_at: now });
     if (path === "/strategies/meta") return response({ strategies: mockStrategyMeta });
     if (path === "/strategy/presets") return response({ presets: [] });
+    if (path === "/strategy-tracking/snapshot") return response(mockStrategyTrackingSnapshot);
     if (path === "/strategy-tracking/summary") return response(mockStrategyTrackingSummary);
     if (path === "/strategy-tracking/items") return response(mockStrategyTrackingList);
     if (path === "/strategy-tracking/performance") return response([mockStrategyTrackingPerformance]);

@@ -186,8 +186,7 @@ func aggregateStrategyWorkspace(cfg config, client *http.Client, r *http.Request
 func aggregateStrategyTrackingWorkspace(cfg config, client *http.Client, r *http.Request) aggregateResult {
 	q := r.URL.Query()
 	rangeDays := queryDefault(q, "range", "30")
-	summaryQuery := forwardQuery(q, []string{"strategy_key", "strategy_family", "status"}, values("range", rangeDays))
-	itemsQuery := forwardQuery(
+	snapshotQuery := forwardQuery(
 		q,
 		[]string{"strategy_key", "strategy_family", "status", "signal_state", "data_quality", "hit_entry", "stopped", "exclude_chinext", "exclude_star", "board_filter", "user_status"},
 		values(
@@ -197,16 +196,8 @@ func aggregateStrategyTrackingWorkspace(cfg config, client *http.Client, r *http
 			"offset", queryDefault(q, "offset", "0"),
 		),
 	)
-	performanceQuery := forwardQuery(q, []string{"strategy_family"}, values("range", rangeDays))
-	holdingQuery := forwardQuery(q, []string{"strategy_family", "exclude_chinext", "exclude_star", "board_filter"}, values("range", rangeDays))
-	shadowQuery := forwardQuery(q, []string{"strategy_key"}, values("range", rangeDays))
 	sources := []rawSource{
-		{name: "strategy_tracking_summary", path: "/api/strategy-tracking/summary", query: summaryQuery},
-		{name: "strategy_tracking_items", path: "/api/strategy-tracking/items", query: itemsQuery},
-		{name: "strategy_tracking_performance", path: "/api/strategy-tracking/performance", query: performanceQuery},
-		{name: "strategy_tracking_holding_analysis", path: "/api/strategy-tracking/holding-analysis", query: holdingQuery},
-		{name: "strategy_tracking_market_segments", path: "/api/strategy-tracking/market-segments", query: performanceQuery},
-		{name: "strategy_tracking_shadow", path: "/api/strategy-tracking/shadow-observations", query: shadowQuery},
+		{name: "strategy_tracking_snapshot", path: "/api/strategy-tracking/snapshot", query: snapshotQuery},
 	}
 	detailID := strings.TrimSpace(q.Get("detail_id"))
 	if detailID != "" {
@@ -216,25 +207,31 @@ func aggregateStrategyTrackingWorkspace(cfg config, client *http.Client, r *http
 		})
 	}
 	results, errors := fetchSources(cfg, client, r, sources)
+	snapshot := results["strategy_tracking_snapshot"]
 	payload := map[string]any{
-		"api_version":          "v1",
-		"schema_version":       schemaVersion,
-		"generated_at":         beijingNowString(),
-		"summary":              jsonObject(results["strategy_tracking_summary"]),
-		"items":                jsonArrayField(results["strategy_tracking_items"], "items"),
-		"total":                jsonObjectField(results["strategy_tracking_items"], "total"),
-		"limit":                jsonObjectField(results["strategy_tracking_items"], "limit"),
-		"offset":               jsonObjectField(results["strategy_tracking_items"], "offset"),
-		"sort":                 jsonObjectField(results["strategy_tracking_items"], "sort"),
-		"performance":          jsonArray(results["strategy_tracking_performance"]),
-		"holding_analysis":     nullableJSON(results["strategy_tracking_holding_analysis"]),
-		"market_segments":      jsonArray(results["strategy_tracking_market_segments"]),
-		"shadow_observations":  jsonArray(results["strategy_tracking_shadow"]),
-		"detail":               nullableJSON(results["strategy_tracking_detail"]),
-		"detail_requested":     detailID != "",
-		"partial_errors":       errors,
-		"production_writeable": false,
-		"read_path":            "go_bff_strategy_tracking_read_aggregation",
+		"api_version":           "v1",
+		"schema_version":        schemaVersion,
+		"generated_at":          beijingNowString(),
+		"snapshot_status":       jsonObjectField(snapshot, "status"),
+		"snapshot_stale":        jsonObjectField(snapshot, "stale"),
+		"snapshot_generated_at": jsonObjectField(snapshot, "generated_at"),
+		"source_data_cutoff":    jsonObjectField(snapshot, "source_data_cutoff"),
+		"data_version":          jsonObjectField(snapshot, "data_version"),
+		"summary":               jsonNestedField(snapshot, "payload", "summary"),
+		"items":                 jsonNestedArrayField(snapshot, "payload", "items"),
+		"total":                 jsonObjectField(snapshot, "total"),
+		"limit":                 jsonObjectField(snapshot, "limit"),
+		"offset":                jsonObjectField(snapshot, "offset"),
+		"sort":                  jsonObjectField(snapshot, "sort"),
+		"performance":           jsonNestedArrayField(snapshot, "payload", "performance"),
+		"holding_analysis":      jsonNestedField(snapshot, "payload", "holding_summary"),
+		"market_segments":       jsonNestedArrayField(snapshot, "payload", "market_segments"),
+		"shadow_observations":   jsonNestedArrayField(snapshot, "payload", "shadow_observations"),
+		"detail":                nullableJSON(results["strategy_tracking_detail"]),
+		"detail_requested":      detailID != "",
+		"partial_errors":        mergePartialErrors(errors, jsonArrayField(snapshot, "partial_errors")),
+		"production_writeable":  false,
+		"read_path":             "go_bff_strategy_tracking_snapshot_aggregation",
 	}
 	return jsonPayload(http.StatusOK, payload)
 }
@@ -498,6 +495,53 @@ func jsonArrayField(raw json.RawMessage, field string) any {
 		return value
 	}
 	return []any{}
+}
+
+func jsonNestedField(raw json.RawMessage, fields ...string) any {
+	value := nestedRaw(raw, fields...)
+	if len(value) == 0 {
+		return map[string]any{}
+	}
+	return value
+}
+
+func jsonNestedArrayField(raw json.RawMessage, fields ...string) any {
+	value := nestedRaw(raw, fields...)
+	if len(value) == 0 {
+		return []any{}
+	}
+	return value
+}
+
+func nestedRaw(raw json.RawMessage, fields ...string) json.RawMessage {
+	current := raw
+	for _, field := range fields {
+		if len(current) == 0 {
+			return nil
+		}
+		var object map[string]json.RawMessage
+		if err := json.Unmarshal(current, &object); err != nil {
+			return nil
+		}
+		current = object[field]
+	}
+	return current
+}
+
+func mergePartialErrors(errors []partialError, upstream any) []any {
+	merged := make([]any, 0, len(errors)+4)
+	for _, item := range errors {
+		merged = append(merged, item)
+	}
+	raw, ok := upstream.(json.RawMessage)
+	if !ok || len(raw) == 0 {
+		return merged
+	}
+	var upstreamItems []any
+	if err := json.Unmarshal(raw, &upstreamItems); err != nil {
+		return merged
+	}
+	return append(merged, upstreamItems...)
 }
 
 func beijingNowString() string {

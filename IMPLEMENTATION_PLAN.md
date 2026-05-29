@@ -1,5 +1,41 @@
 # TQuant 实施计划
 
+## 2026-05-29 策略跟踪快照化性能优化
+
+需求来源：
+
+- 用户目标：按 `docs/strategy-tracking-performance-snapshot-plan-2026-05-29.md` 落地“后台预计算快照 + 首页读取单一快照接口 + 详情懒加载”，完成后自动部署。
+
+### 执行边界
+
+- [x] 不新增复杂 Go 读服务。
+- [x] 不改变策略买卖逻辑、排序逻辑、回测逻辑或交易账本。
+- [x] 不降低防未来函数、异常收益审计和风控要求。
+- [x] 首页读取快照，详情、持有分析、走势图继续懒加载。
+- [x] 快照生成失败时保留旧快照，不阻断页面打开。
+
+### TODO
+
+- [x] 新增 `strategy_tracking_snapshots` 实体和 Alembic 迁移。
+- [x] 新增 `StrategyTrackingSnapshotBuilder`，复用现有 `StrategyTrackingService` 读模型生成快照。
+- [x] 新增 `GET /strategy-tracking/snapshot` 和 `POST /strategy-tracking/snapshot/rebuild`。
+- [x] 快照包含 `generated_at`、`source_data_cutoff`、`data_version`、`stale`、`payload`。
+- [x] 防未来函数校验覆盖 `data_cutoff_at <= signal_generated_at`、`posterior_start_date > first_signal_date` 与 `lookback_end_date <= first_signal_date`。
+- [x] 前端策略跟踪首页改为一个快照主请求，显示更新时间与刷新中状态。
+- [x] 补充后端、前端与 Go BFF 测试。
+- [x] 运行后端测试、前端测试、TypeScript/lint/build、部署脚本和线上 `/readyz` 验证。
+
+### 验证
+
+- [x] `PYTHONPATH=backend:. backend/.venv/bin/python -m pytest -q backend/tests/test_strategy_tracking.py backend/tests/test_latest_data_close_refresh.py` 通过，22 passed / 1 warning。
+- [x] `PYTHONPATH=backend:. backend/.venv/bin/python -m pytest -q backend/tests` 通过，915 passed / 1 warning。
+- [x] `cd frontend && npm test -- --run` 通过，23 files / 72 tests。
+- [x] `cd frontend && npm run build:web` 通过，包含 lint、TypeScript 与 Vite build。
+- [x] `cd go-services/bff-gateway && go test ./...` 通过。
+- [x] `DATABASE_URL=sqlite:////tmp/tquant_strategy_tracking_snapshot_migration.sqlite PYTHONPATH=backend:. backend/.venv/bin/alembic -c backend/alembic.ini upgrade head` 通过。
+- [x] `git diff --check` 通过。
+- [ ] 云端部署与 `/readyz` 验证待提交后执行。
+
 ## 2026-05-29 策略跟踪易用性增强
 
 需求来源：

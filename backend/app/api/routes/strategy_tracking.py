@@ -19,12 +19,88 @@ from app.models.schema_defs.strategy_tracking import (
     StrategyTrackingRefreshResponse,
     StrategyTrackingSegmentOut,
     StrategyTrackingShadowObservationOut,
+    StrategyTrackingSnapshotRebuildResponse,
+    StrategyTrackingSnapshotResponse,
     StrategyTrackingSummaryOut,
 )
 from app.services.strategy_tracking import DEFAULT_LIMIT, DEFAULT_RANGE_DAYS, StrategyTrackingService
+from app.services.strategy_tracking_snapshot import StrategyTrackingSnapshotBuilder
 
 router = APIRouter(prefix="/strategy-tracking", dependencies=[Depends(get_current_user)])
 logger = logging.getLogger(__name__)
+
+
+@router.get("/snapshot", response_model=StrategyTrackingSnapshotResponse)
+def strategy_tracking_snapshot_view(
+    range_days: int = Query(DEFAULT_RANGE_DAYS, ge=1, le=260, alias="range"),
+    status: str | None = Query(None),
+    signal_state: str | None = Query(None),
+    strategy_key: str | None = Query(None),
+    strategy_family: str | None = Query(None),
+    data_quality: str | None = Query(None),
+    hit_entry: bool | None = Query(None),
+    stopped: bool | None = Query(None),
+    exclude_chinext: bool = Query(False),
+    exclude_star: bool = Query(False),
+    board_filter: str | None = Query(None),
+    user_status: str | None = Query(None),
+    sort: str = Query("max_gain_desc"),
+    limit: int = Query(DEFAULT_LIMIT, ge=1, le=50),
+    offset: int = Query(0, ge=0),
+    db: Session = Depends(get_db),
+):
+    started_at = monotonic_start()
+    try:
+        return StrategyTrackingSnapshotBuilder(db).get_snapshot(
+            range_days=range_days,
+            strategy_key=strategy_key,
+            strategy_family=strategy_family,
+            lifecycle_status=status,
+            signal_state=signal_state,
+            data_quality=data_quality,
+            hit_entry=hit_entry,
+            stopped=stopped,
+            exclude_chinext=exclude_chinext,
+            exclude_star=exclude_star,
+            board_filter=board_filter,
+            user_status=user_status,
+            sort=sort,
+            limit=limit,
+            offset=offset,
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"策略跟踪快照加载失败: {exc}") from exc
+    finally:
+        log_slow_call(
+            logger,
+            "strategy_tracking.snapshot",
+            started_at,
+            range_days=range_days,
+            strategy_key=strategy_key,
+            limit=limit,
+            offset=offset,
+        )
+
+
+@router.post("/snapshot/rebuild", response_model=StrategyTrackingSnapshotRebuildResponse)
+def strategy_tracking_snapshot_rebuild_view(
+    range_days: int = Query(DEFAULT_RANGE_DAYS, ge=1, le=260, alias="range"),
+    strategy_key: str | None = Query(None),
+    strategy_family: str | None = Query(None),
+    _: None = Depends(require_admin_auth),
+    db: Session = Depends(get_db),
+):
+    started_at = monotonic_start()
+    try:
+        return StrategyTrackingSnapshotBuilder(db).rebuild_snapshot(
+            range_days=range_days,
+            strategy_key=strategy_key,
+            strategy_family=strategy_family,
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"策略跟踪快照重建失败: {exc}") from exc
+    finally:
+        log_slow_call(logger, "strategy_tracking.snapshot_rebuild", started_at, range_days=range_days, strategy_key=strategy_key)
 
 
 @router.get("/summary", response_model=StrategyTrackingSummaryOut)

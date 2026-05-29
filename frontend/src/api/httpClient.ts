@@ -16,10 +16,15 @@ class DefaultApiClient implements IApiClient {
   }
 }
 
-let currentClient: IApiClient = new DefaultApiClient();
+const defaultClient: IApiClient = new DefaultApiClient();
+let currentClient: IApiClient = defaultClient;
 
 export function configureApiClient(client: IApiClient) {
   currentClient = client;
+}
+
+export function resetApiClient() {
+  currentClient = defaultClient;
 }
 
 export const apiClient: IApiClient = {

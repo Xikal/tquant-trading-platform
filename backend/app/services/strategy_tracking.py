@@ -347,10 +347,13 @@ class StrategyTrackingService:
         )
 
     def refresh(self, *, range_days: int = DEFAULT_RANGE_DAYS) -> StrategyTrackingRefreshResponse:
+        from app.services.strategy_tracking_snapshot import StrategyTrackingSnapshotBuilder
+
+        snapshot = StrategyTrackingSnapshotBuilder(self.db).rebuild_snapshot(range_days=range_days)
         result = self.list_items(range_days=range_days, limit=1)
         return StrategyTrackingRefreshResponse(
-            storage_mode="read_through_view_no_strategy_write",
-            refreshed_count=result.summary.tracking_count,
+            storage_mode="snapshot_read_model_no_strategy_write",
+            refreshed_count=snapshot.item_count or result.summary.tracking_count,
             changed_strategy_results=False,
             changed_paper_ledger=False,
             summary=result.summary,

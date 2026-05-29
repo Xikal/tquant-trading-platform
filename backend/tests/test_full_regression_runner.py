@@ -163,6 +163,7 @@ def test_responsive_smoke_covers_all_workspace_routes() -> None:
         "/emotion",
         "/analysis",
         "/playbook",
+        "/strategy-tracking",
         "/strategy",
         "/backtest",
         "/paper",

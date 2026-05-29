@@ -125,6 +125,34 @@ class LowBuyResultSnapshot(Base):
         DateTime, server_default=func.now(), onupdate=func.now()
     )
 
+
+class StrategyTrackingSnapshot(Base):
+    __tablename__ = "strategy_tracking_snapshots"
+    __table_args__ = (
+        UniqueConstraint("snapshot_key", name="uq_strategy_tracking_snapshot_key"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    snapshot_key: Mapped[str] = mapped_column(String(180), index=True)
+    as_of_date: Mapped[str] = mapped_column(String(16), default="", index=True)
+    range_days: Mapped[int] = mapped_column(Integer, default=30, index=True)
+    strategy_key: Mapped[str] = mapped_column(String(80), default="", index=True)
+    strategy_family: Mapped[str] = mapped_column(String(40), default="", index=True)
+    market_scope: Mapped[str] = mapped_column(String(80), default="all", index=True)
+    filter_hash: Mapped[str] = mapped_column(String(80), default="")
+    data_version: Mapped[str] = mapped_column(String(160), default="", index=True)
+    status: Mapped[str] = mapped_column(String(24), default="fresh", index=True)
+    generated_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), index=True)
+    source_data_cutoff: Mapped[str] = mapped_column(String(40), default="")
+    payload_json: Mapped[str] = mapped_column(Text, default="{}")
+    metrics_json: Mapped[str] = mapped_column(Text, default="{}")
+    error_message: Mapped[str] = mapped_column(Text, default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, server_default=func.now(), onupdate=func.now()
+    )
+
+
 class LowBuyStrategyPerformanceSnapshot(Base):
     __tablename__ = "low_buy_strategy_performance_snapshots"
     __table_args__ = (

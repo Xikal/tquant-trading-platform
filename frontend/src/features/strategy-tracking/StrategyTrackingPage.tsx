@@ -2,7 +2,7 @@ import { Alert, Tabs } from "antd";
 import type { StrategyMeta } from "../../api/strategies";
 import { useStrategyTrackingStore } from "../../stores/strategyTrackingStore";
 import { TqEmpty, TqErrorResult } from "../../ui/feedback/StateViews";
-import type { StrategyTrackingParams } from "../../types";
+import type { StrategyTrackingListResponse, StrategyTrackingParams, StrategyTrackingSnapshotResponse } from "../../types";
 import { useStrategyTrackingDetail, useStrategyTrackingHoldingAnalysis, useStrategyTrackingItems, useStrategyTrackingReport } from "./queries";
 import { StrategyTrackingDetailDrawer } from "./StrategyTrackingDetailDrawer";
 import { StrategyTrackingDiagnosticsPanel } from "./StrategyTrackingDiagnosticsPanel";
@@ -26,7 +26,8 @@ export function StrategyTrackingPage({ strategyMeta }: { strategyMeta: StrategyM
   const detailQuery = useStrategyTrackingDetail(store.selectedItemId);
   const weeklyReportQuery = useStrategyTrackingReport("weekly", { range: store.range }, store.tab === "diagnostics");
   const holdingQuery = useStrategyTrackingHoldingAnalysis(holdingParams(store), store.tab === "holding");
-  const result = query.data;
+  const snapshot = query.data;
+  const result = snapshot ? snapshotToListResponse(snapshot) : undefined;
   const errorText = query.error instanceof Error ? query.error.message : "";
 
   return (
@@ -39,6 +40,7 @@ export function StrategyTrackingPage({ strategyMeta }: { strategyMeta: StrategyM
         <div className="strategy-tracking-hero-meta">
           <span>区间 {store.range === 1 ? "今日" : `${store.range}日`}</span>
           <span>样本 {result?.total ?? "--"}</span>
+          <span>{snapshotMetaText(snapshot)}</span>
           <span>只读观察</span>
         </div>
       </div>
@@ -73,6 +75,8 @@ export function StrategyTrackingPage({ strategyMeta }: { strategyMeta: StrategyM
         />
       </div>
       {result ? <StrategyTrackingFriendlySummary result={result} range={store.range} /> : null}
+      {snapshot?.stale ? <Alert type="warning" showIcon title="策略跟踪快照数据刷新中" description="当前先展示上一版快照，后台会在策略任务完成后重建。" /> : null}
+      {snapshot?.status === "missing" ? <Alert type="info" showIcon title="策略跟踪快照尚未生成" description="请先等待后台快照任务或由管理员手动刷新。" /> : null}
       {store.excludeChinext || store.excludeStar || store.boardFilter === "main_only" ? (
         <Alert type="info" showIcon title={filterNotice(store)} />
       ) : null}
@@ -154,7 +158,7 @@ export function StrategyTrackingPage({ strategyMeta }: { strategyMeta: StrategyM
   );
 }
 
-function tableContent(result: ReturnType<typeof useStrategyTrackingItems>["data"], loading: boolean, store: StrategyTrackingStoreState) {
+function tableContent(result: StrategyTrackingListResponse | undefined, loading: boolean, store: StrategyTrackingStoreState) {
   if (!result?.items.length && !loading) {
     return <TqEmpty title="今天还没有生产策略给出可跟踪买点" description="当前筛选条件下没有有效策略跟踪记录。" />;
   }
@@ -170,6 +174,33 @@ function tableContent(result: ReturnType<typeof useStrategyTrackingItems>["data"
       onOpenDetail={store.setSelectedItemId}
     />
   );
+}
+
+function snapshotToListResponse(snapshot: StrategyTrackingSnapshotResponse): StrategyTrackingListResponse {
+  return {
+    items: snapshot.payload.items,
+    total: snapshot.total,
+    limit: snapshot.limit,
+    offset: snapshot.offset,
+    sort: snapshot.sort,
+    summary: snapshot.payload.summary,
+    performance: snapshot.payload.performance,
+    market_segments: snapshot.payload.market_segments,
+    shadow_observations: snapshot.payload.shadow_observations,
+    partial_errors: snapshot.partial_errors,
+    production_writeable: snapshot.production_writeable,
+    read_path: snapshot.read_path,
+    rust_math_used: true,
+    notes: snapshot.notes,
+  };
+}
+
+function snapshotMetaText(snapshot?: StrategyTrackingSnapshotResponse): string {
+  if (!snapshot) return "快照加载中";
+  if (snapshot.status === "missing") return "快照未生成";
+  const generated = snapshot.generated_at || snapshot.payload.summary.generated_at || "--";
+  const cutoff = snapshot.source_data_cutoff ? ` / 截止 ${snapshot.source_data_cutoff}` : "";
+  return `${snapshot.stale ? "刷新中" : "已生成"} ${generated}${cutoff}`;
 }
 
 export function buildParams(store: StrategyTrackingStoreState): StrategyTrackingParams {

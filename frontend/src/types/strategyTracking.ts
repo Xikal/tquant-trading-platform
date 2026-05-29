@@ -220,6 +220,44 @@ export interface StrategyTrackingListResponse {
   notes: string[];
 }
 
+export interface StrategyTrackingSnapshotAudit {
+  future_leak_check: string;
+  checked_count: number;
+  violation_count: number;
+  abnormal_return_count: number;
+  needs_review_count: number;
+  audit_flags: string[];
+}
+
+export interface StrategyTrackingSnapshotPayload {
+  summary: StrategyTrackingSummary;
+  items: StrategyTrackingItem[];
+  performance: StrategyTrackingPerformance[];
+  market_segments: StrategyTrackingSegment[];
+  holding_summary: StrategyTrackingHoldingAnalysisResponse;
+  shadow_observations: StrategyTrackingShadowObservation[];
+  audit: StrategyTrackingSnapshotAudit;
+}
+
+export interface StrategyTrackingSnapshotResponse {
+  status: "fresh" | "stale" | "building" | "missing" | "failed" | string;
+  stale: boolean;
+  generated_at: string;
+  source_data_cutoff: string;
+  data_version: string;
+  snapshot_key: string;
+  as_of_date: string;
+  payload: StrategyTrackingSnapshotPayload;
+  total: number;
+  limit: number;
+  offset: number;
+  sort: string;
+  partial_errors: string[];
+  production_writeable: boolean;
+  read_path: string;
+  notes: string[];
+}
+
 export interface StrategyTrackingDetailResponse {
   item: StrategyTrackingItem;
   timeline: StrategyTrackingTimelinePoint[];

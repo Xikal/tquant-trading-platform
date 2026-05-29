@@ -23,6 +23,7 @@ from app.models.entities import (
     MarketModelObservation,
     PaperOrder,
     StrategyMetadata,
+    StrategyTrackingSnapshot,
 )
 
 
@@ -222,6 +223,83 @@ class StrategyTrackingTests(unittest.TestCase):
         self.assertTrue(holding.items)
         self.assertEqual(calls, 0)
 
+    def test_snapshot_missing_does_not_recompute_on_public_read(self) -> None:
+        self._seed_board_fixture()
+        from app.services.strategy_tracking_snapshot import StrategyTrackingSnapshotBuilder
+
+        with self.Session() as db:
+            builder = StrategyTrackingSnapshotBuilder(db)
+
+            def fail_load(*args, **kwargs):  # noqa: ANN002, ANN003
+                raise AssertionError("snapshot read must not rebuild synchronously")
+
+            builder._latest_snapshot = fail_load  # type: ignore[method-assign]
+            with self.assertRaises(AssertionError):
+                builder.get_snapshot(range_days=10)
+
+        response = self.client.get("/api/strategy-tracking/snapshot?range=10&limit=10")
+        self.assertEqual(response.status_code, 200)
+        body = response.json()
+        self.assertEqual(body["status"], "missing")
+        self.assertTrue(body["stale"])
+        self.assertEqual(body["payload"]["items"], [])
+        self.assertIn("strategy_tracking_snapshot_missing", body["partial_errors"])
+
+    def test_snapshot_rebuild_writes_read_model_and_snapshot_filters_from_it(self) -> None:
+        self._seed_board_fixture()
+
+        rebuild = self.client.post("/api/strategy-tracking/snapshot/rebuild?range=10", headers={"X-Admin-Token": "test-admin-token"})
+        self.assertEqual(rebuild.status_code, 200)
+        rebuild_body = rebuild.json()
+        self.assertTrue(rebuild_body["ok"])
+        self.assertGreaterEqual(rebuild_body["item_count"], 4)
+
+        response = self.client.get("/api/strategy-tracking/snapshot?range=10&limit=10&exclude_chinext=true&exclude_star=true")
+        self.assertEqual(response.status_code, 200)
+        body = response.json()
+        self.assertEqual(body["status"], "fresh")
+        self.assertFalse(body["production_writeable"])
+        self.assertEqual({item["symbol"] for item in body["payload"]["items"]}, {"600000", "600003"})
+        self.assertEqual(body["total"], 2)
+        self.assertEqual(body["payload"]["audit"]["future_leak_check"], "passed")
+        self.assertIn("generated_at", body)
+        self.assertIn("source_data_cutoff", body)
+        self.assertIn("data_version", body)
+
+    def test_snapshot_rebuild_failure_keeps_previous_fresh_snapshot(self) -> None:
+        self._seed_tracking_fixture()
+        from app.services import strategy_tracking_snapshot as snapshot_module
+
+        ok = self.client.post("/api/strategy-tracking/snapshot/rebuild?range=10", headers={"X-Admin-Token": "test-admin-token"})
+        self.assertEqual(ok.status_code, 200)
+        self.assertTrue(ok.json()["ok"])
+
+        original_audit = snapshot_module._audit_items
+
+        def failing_audit(items):  # noqa: ANN001
+            audit = original_audit(items)
+            audit.violation_count = 1
+            audit.audit_flags = ["forced_violation"]
+            return audit
+
+        snapshot_module._audit_items = failing_audit  # type: ignore[assignment]
+        try:
+            failed = self.client.post("/api/strategy-tracking/snapshot/rebuild?range=10", headers={"X-Admin-Token": "test-admin-token"})
+        finally:
+            snapshot_module._audit_items = original_audit  # type: ignore[assignment]
+
+        self.assertEqual(failed.status_code, 200)
+        self.assertFalse(failed.json()["ok"])
+        self.assertTrue(failed.json()["stale_snapshot_used"])
+
+        response = self.client.get("/api/strategy-tracking/snapshot?range=10&limit=10")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["status"], "fresh")
+        with self.Session() as db:
+            row = db.query(StrategyTrackingSnapshot).one()
+            self.assertEqual(row.status, "fresh")
+            self.assertIn("防未来函数校验失败", row.error_message)
+
     def test_shadow_zero_samples_report_reason(self) -> None:
         self._seed_tracking_fixture()
 
@@ -358,9 +436,11 @@ class StrategyTrackingTests(unittest.TestCase):
 
         self.assertEqual(response.status_code, 200)
         body = response.json()
-        self.assertEqual(body["storage_mode"], "read_through_view_no_strategy_write")
+        self.assertEqual(body["storage_mode"], "snapshot_read_model_no_strategy_write")
         self.assertFalse(body["changed_strategy_results"])
         self.assertFalse(body["changed_paper_ledger"])
+        with self.Session() as db:
+            self.assertEqual(db.query(StrategyTrackingSnapshot).count(), 1)
         with self.Session() as db:
             after = db.query(LowBuyResultSnapshot).count()
         self.assertEqual(after, before)

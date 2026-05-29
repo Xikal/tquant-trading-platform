@@ -22,6 +22,7 @@ from app.services.tasks import RuntimeTaskQueue
 
 CLOSE_REFRESH_AFTER = dt_time(hour=15, minute=1)
 DAILY_BAR_REFRESH_TASK = "daily_bar_refresh"
+STRATEGY_TRACKING_SNAPSHOT_TASK = "strategy_tracking_snapshot_refresh"
 
 
 def enqueue_latest_data_close_refresh(
@@ -62,12 +63,23 @@ def enqueue_latest_data_close_refresh(
     status = latest_data_status(db, strategies=required)
     missing = list(status.get("missing_strategies") or [])
     if status.get("published_trade_date") == expected and status.get("status") == "success":
+        tracking_task = RuntimeTaskQueue(db).enqueue(
+            RuntimeTaskCreate(
+                task_type=STRATEGY_TRACKING_SNAPSHOT_TASK,
+                payload={"range_days": 30, "reason": "after_close_latest_data_already_latest"},
+                priority=35,
+                idempotency_key=f"{STRATEGY_TRACKING_SNAPSHOT_TASK}:{expected}:30",
+                max_attempts=2,
+            )
+        )
         return {
             "ok": True,
             "action": "already_latest",
             "expected_trade_date": expected,
             "daily_bar_count": daily_count,
             "publish_status": status,
+            "strategy_tracking_snapshot_task_id": tracking_task.id,
+            "strategy_tracking_snapshot_task_status": tracking_task.status,
         }
     if missing:
         enqueue_low_buy_materialization(db, reason="after_close_latest_data", commit=True)
@@ -80,6 +92,15 @@ def enqueue_latest_data_close_refresh(
         }
 
     publish_status = publish_latest_trade_date_if_ready(db, strategies=required)
+    tracking_task = RuntimeTaskQueue(db).enqueue(
+        RuntimeTaskCreate(
+            task_type=STRATEGY_TRACKING_SNAPSHOT_TASK,
+            payload={"range_days": 30, "reason": "after_close_latest_data"},
+            priority=35,
+            idempotency_key=f"{STRATEGY_TRACKING_SNAPSHOT_TASK}:{expected}:30",
+            max_attempts=2,
+        )
+    )
     db.commit()
     return {
         "ok": publish_status.get("status") == "success",
@@ -87,4 +108,6 @@ def enqueue_latest_data_close_refresh(
         "expected_trade_date": expected,
         "daily_bar_count": daily_count,
         "publish_status": publish_status,
+        "strategy_tracking_snapshot_task_id": tracking_task.id,
+        "strategy_tracking_snapshot_task_status": tracking_task.status,
     }

@@ -9,7 +9,7 @@ const STRATEGY_TRACKING_DETAIL_STALE_TIME_MS = 30_000;
 export function useStrategyTrackingItems(params: StrategyTrackingParams) {
   return useQuery({
     queryKey: queryKeys.strategyTracking(params as Record<string, unknown>),
-    queryFn: () => api.getStrategyTrackingItems(params),
+    queryFn: () => api.getStrategyTrackingSnapshot(params),
     staleTime: STRATEGY_TRACKING_STALE_TIME_MS,
   });
 }

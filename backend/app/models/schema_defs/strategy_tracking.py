@@ -227,6 +227,66 @@ class StrategyTrackingListResponse(BaseModel):
     notes: list[str] = Field(default_factory=list)
 
 
+class StrategyTrackingHoldingAnalysisResponse(BaseModel):
+    items: list[StrategyTrackingHoldingAnalysisOut] = Field(default_factory=list)
+    generated_at: str = ""
+    data_quality: str = "unavailable"
+    production_writeable: bool = False
+
+
+class StrategyTrackingSnapshotAuditOut(BaseModel):
+    future_leak_check: str = "passed"
+    checked_count: int = 0
+    violation_count: int = 0
+    abnormal_return_count: int = 0
+    needs_review_count: int = 0
+    audit_flags: list[str] = Field(default_factory=list)
+
+
+class StrategyTrackingSnapshotPayloadOut(BaseModel):
+    summary: StrategyTrackingSummaryOut = Field(default_factory=StrategyTrackingSummaryOut)
+    items: list[StrategyTrackingItemOut] = Field(default_factory=list)
+    performance: list[StrategyTrackingPerformanceOut] = Field(default_factory=list)
+    market_segments: list[StrategyTrackingSegmentOut] = Field(default_factory=list)
+    holding_summary: StrategyTrackingHoldingAnalysisResponse = Field(default_factory=lambda: StrategyTrackingHoldingAnalysisResponse())
+    shadow_observations: list[StrategyTrackingShadowObservationOut] = Field(default_factory=list)
+    audit: StrategyTrackingSnapshotAuditOut = Field(default_factory=StrategyTrackingSnapshotAuditOut)
+
+
+class StrategyTrackingSnapshotResponse(BaseModel):
+    status: str = "missing"
+    stale: bool = False
+    generated_at: str = ""
+    source_data_cutoff: str = ""
+    data_version: str = ""
+    snapshot_key: str = ""
+    as_of_date: str = ""
+    payload: StrategyTrackingSnapshotPayloadOut = Field(default_factory=StrategyTrackingSnapshotPayloadOut)
+    total: int = 0
+    limit: int = 30
+    offset: int = 0
+    sort: str = "max_gain_desc"
+    partial_errors: list[str] = Field(default_factory=list)
+    production_writeable: bool = False
+    read_path: str = "strategy_tracking_snapshot"
+    notes: list[str] = Field(default_factory=list)
+
+
+class StrategyTrackingSnapshotRebuildResponse(BaseModel):
+    ok: bool = True
+    status: str = "fresh"
+    snapshot_key: str = ""
+    generated_at: str = ""
+    source_data_cutoff: str = ""
+    data_version: str = ""
+    item_count: int = 0
+    elapsed_ms: int = 0
+    stale_snapshot_used: bool = False
+    error_message: str = ""
+    changed_strategy_results: bool = False
+    changed_paper_ledger: bool = False
+
+
 class StrategyTrackingDetailResponse(BaseModel):
     item: StrategyTrackingItemOut
     timeline: list[StrategyTrackingTimelinePointOut] = Field(default_factory=list)
@@ -244,13 +304,6 @@ class StrategyTrackingReviewResponse(BaseModel):
     failure_tags: dict[str, int] = Field(default_factory=dict)
     needs_review_items: list[StrategyTrackingItemOut] = Field(default_factory=list)
     abnormal_return_items: list[StrategyTrackingItemOut] = Field(default_factory=list)
-
-
-class StrategyTrackingHoldingAnalysisResponse(BaseModel):
-    items: list[StrategyTrackingHoldingAnalysisOut] = Field(default_factory=list)
-    generated_at: str = ""
-    data_quality: str = "unavailable"
-    production_writeable: bool = False
 
 
 class StrategyTrackingReportOut(BaseModel):

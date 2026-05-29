@@ -152,6 +152,15 @@ def _execute_task(task_type: str, payload: dict[str, Any], db) -> dict[str, Any]
             scan_limit=int(payload.get("scan_limit") or 480),
             strategies=[str(item) for item in payload.get("strategies") or []] or None,
         )
+    if task_type == "strategy_tracking_snapshot_refresh":
+        from app.services.strategy_tracking_snapshot import StrategyTrackingSnapshotBuilder
+
+        response = StrategyTrackingSnapshotBuilder(db).rebuild_snapshot(
+            range_days=int(payload.get("range_days") or payload.get("range") or 30),
+            strategy_key=str(payload.get("strategy_key") or "") or None,
+            strategy_family=str(payload.get("strategy_family") or "") or None,
+        )
+        return response.model_dump(mode="json")
     if task_type == "ml_signal_incremental_train":
         from app.models.schema_defs.phase4 import MLSignalIncrementalTrainRequest
         from app.services.ml_signal import MLSignalService

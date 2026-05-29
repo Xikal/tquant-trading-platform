@@ -1,5 +1,7 @@
 import { renderToStaticMarkup } from "react-dom/server";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { api } from "../../api/client";
+import { configureApiClient, resetApiClient } from "../../api/httpClient";
 import type { StrategyTrackingDetailResponse, StrategyTrackingHoldingAnalysis, StrategyTrackingItem, StrategyTrackingPerformance, StrategyTrackingSummary } from "../../types";
 import { Topbar } from "../trading-workspace/Topbar";
 import { StrategyTrackingDetailContent } from "./StrategyTrackingDetailDrawer";
@@ -10,6 +12,10 @@ import { StrategyTrackingReviewPanel } from "./StrategyTrackingReviewPanel";
 import { StrategyTrackingSummaryBar } from "./StrategyTrackingSummaryBar";
 import { buildParams } from "./StrategyTrackingPage";
 import { StrategyTrackingTable } from "./StrategyTrackingTable";
+
+afterEach(() => {
+  resetApiClient();
+});
 
 describe("StrategyTracking UI", () => {
   it("changes top navigation from old pages to strategy tracking", () => {
@@ -130,6 +136,33 @@ describe("StrategyTracking UI", () => {
     expect(params.user_status).toBe("focus");
   });
 
+  it("loads the strategy tracking homepage through one snapshot endpoint", async () => {
+    const requestedPaths: string[] = [];
+    configureApiClient({
+      request: async <T,>() => ({} as T),
+      requestCached: async <T,>(path: string) => {
+        requestedPaths.push(path);
+        return snapshotFixture() as T;
+      },
+    });
+
+    await api.getStrategyTrackingSnapshot({
+      range: 20,
+      strategy_key: "first_board",
+      hit_entry: true,
+      exclude_chinext: true,
+      exclude_star: true,
+    });
+
+    expect(requestedPaths).toHaveLength(1);
+    expect(requestedPaths[0]).toContain("/strategy-tracking/snapshot?");
+    expect(requestedPaths[0]).toContain("range=20");
+    expect(requestedPaths[0]).toContain("strategy_key=first_board");
+    expect(requestedPaths[0]).toContain("exclude_chinext=true");
+    expect(requestedPaths[0]).not.toContain("/strategy-tracking/items?");
+    expect(requestedPaths[0]).not.toContain("/strategy-tracking/holding-analysis?");
+  });
+
   it("renders diagnostics for market segments and shadow zero reasons", () => {
     const html = renderToStaticMarkup(<StrategyTrackingDiagnosticsPanel result={listFixture()} viewMode="professional" />);
 
@@ -203,6 +236,47 @@ function listFixture() {
     production_writeable: false,
     read_path: "python_read_through_go_boundary_reserved",
     rust_math_used: true,
+    notes: [],
+  };
+}
+
+function snapshotFixture() {
+  return {
+    status: "fresh",
+    stale: false,
+    generated_at: "2026-05-29T10:00:00+08:00",
+    source_data_cutoff: "2026-05-29T09:30:00+08:00",
+    data_version: "2026-05-29:2026-05-29T09:30:00:1",
+    snapshot_key: "strategy-tracking:test",
+    as_of_date: "2026-05-29",
+    payload: {
+      summary: summaryFixture(),
+      items: [itemFixture()],
+      performance: [performanceFixture()],
+      market_segments: listFixture().market_segments,
+      holding_summary: {
+        items: [holdingFixture()],
+        generated_at: "2026-05-29T10:00:00+08:00",
+        data_quality: "ok",
+        production_writeable: false,
+      },
+      shadow_observations: listFixture().shadow_observations,
+      audit: {
+        future_leak_check: "passed",
+        checked_count: 1,
+        violation_count: 0,
+        abnormal_return_count: 0,
+        needs_review_count: 1,
+        audit_flags: [],
+      },
+    },
+    total: 1,
+    limit: 30,
+    offset: 0,
+    sort: "max_gain_desc",
+    partial_errors: [],
+    production_writeable: false,
+    read_path: "strategy_tracking_snapshot",
     notes: [],
   };
 }

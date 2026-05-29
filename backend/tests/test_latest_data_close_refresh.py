@@ -81,6 +81,7 @@ def test_after_close_enqueues_materialization_when_strategy_snapshots_missing(mo
 def test_after_close_publishes_when_latest_data_is_complete(monkeypatch) -> None:
     _patch_base(monkeypatch)
     _FakeRepo.count = close_refresh.MIN_STOCK_DAILY_BARS
+    _FakeQueue.last_payload = None
     monkeypatch.setattr(close_refresh, "latest_data_status", lambda _db, strategies: {"missing_strategies": []})
     monkeypatch.setattr(
         close_refresh,
@@ -97,12 +98,16 @@ def test_after_close_publishes_when_latest_data_is_complete(monkeypatch) -> None
 
     assert result["ok"] is True
     assert result["action"] == "publish_latest_trade_date"
+    assert result["strategy_tracking_snapshot_task_status"] == "queued"
+    assert _FakeQueue.last_payload.task_type == "strategy_tracking_snapshot_refresh"
+    assert _FakeQueue.last_payload.payload["range_days"] == 30
     assert db.committed is True
 
 
 def test_after_close_skips_when_already_published(monkeypatch) -> None:
     _patch_base(monkeypatch)
     _FakeRepo.count = close_refresh.MIN_STOCK_DAILY_BARS
+    _FakeQueue.last_payload = None
     monkeypatch.setattr(
         close_refresh,
         "latest_data_status",
@@ -126,6 +131,9 @@ def test_after_close_skips_when_already_published(monkeypatch) -> None:
 
     assert result["ok"] is True
     assert result["action"] == "already_latest"
+    assert result["strategy_tracking_snapshot_task_status"] == "queued"
+    assert _FakeQueue.last_payload.task_type == "strategy_tracking_snapshot_refresh"
+    assert _FakeQueue.last_payload.payload["reason"] == "after_close_latest_data_already_latest"
 
 
 def test_before_close_skips_without_touching_queue(monkeypatch) -> None:

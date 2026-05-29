@@ -12,7 +12,8 @@ if str(APP_DIR) not in sys.path:
     sys.path.insert(0, str(APP_DIR))
 
 from app.core.database import SessionLocal, init_db
-from app.services.strategy_tracking import DEFAULT_RANGE_DAYS, StrategyTrackingService
+from app.services.strategy_tracking import DEFAULT_RANGE_DAYS
+from app.services.strategy_tracking_snapshot import StrategyTrackingSnapshotBuilder
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -25,9 +26,9 @@ def main() -> int:
     args = build_parser().parse_args()
     init_db()
     with SessionLocal() as db:
-        result = StrategyTrackingService(db).refresh(range_days=args.range_days)
+        result = StrategyTrackingSnapshotBuilder(db).rebuild_snapshot(range_days=args.range_days)
     print(json.dumps(result.model_dump(), ensure_ascii=False, indent=2), flush=True)
-    return 0
+    return 0 if result.ok else 1
 
 
 if __name__ == "__main__":
