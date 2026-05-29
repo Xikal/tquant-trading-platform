@@ -4,6 +4,7 @@ from datetime import datetime
 from typing import Optional
 
 from sqlalchemy import DateTime, Float, Integer, String, Text, UniqueConstraint, func
+from sqlalchemy.dialects.mysql import LONGTEXT
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base
@@ -144,8 +145,8 @@ class StrategyTrackingSnapshot(Base):
     status: Mapped[str] = mapped_column(String(24), default="fresh", index=True)
     generated_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), index=True)
     source_data_cutoff: Mapped[str] = mapped_column(String(40), default="")
-    payload_json: Mapped[str] = mapped_column(Text, default="{}")
-    metrics_json: Mapped[str] = mapped_column(Text, default="{}")
+    payload_json: Mapped[str] = mapped_column(LONGTEXT().with_variant(Text(), "sqlite"), default="{}")
+    metrics_json: Mapped[str] = mapped_column(LONGTEXT().with_variant(Text(), "sqlite"), default="{}")
     error_message: Mapped[str] = mapped_column(Text, default="")
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(

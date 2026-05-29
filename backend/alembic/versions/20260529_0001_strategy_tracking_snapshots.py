@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import sqlalchemy as sa
 from alembic import op
+from sqlalchemy.dialects import mysql
 
 
 revision = "20260529_0001"
@@ -36,8 +37,8 @@ def upgrade() -> None:
         sa.Column("status", sa.String(length=24), nullable=False, server_default="fresh"),
         sa.Column("generated_at", sa.DateTime(), server_default=sa.func.now()),
         sa.Column("source_data_cutoff", sa.String(length=40), nullable=False, server_default=""),
-        sa.Column("payload_json", sa.Text(), nullable=False),
-        sa.Column("metrics_json", sa.Text(), nullable=False),
+        sa.Column("payload_json", mysql.LONGTEXT().with_variant(sa.Text(), "sqlite"), nullable=False),
+        sa.Column("metrics_json", mysql.LONGTEXT().with_variant(sa.Text(), "sqlite"), nullable=False),
         sa.Column("error_message", sa.Text(), nullable=False),
         sa.Column("created_at", sa.DateTime(), server_default=sa.func.now()),
         sa.Column("updated_at", sa.DateTime(), server_default=sa.func.now()),
@@ -77,4 +78,3 @@ def downgrade() -> None:
         if index_name in existing_indexes:
             op.drop_index(index_name, table_name="strategy_tracking_snapshots")
     op.drop_table("strategy_tracking_snapshots")
-
