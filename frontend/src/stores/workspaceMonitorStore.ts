@@ -29,6 +29,7 @@ interface WorkspaceMonitorStore {
   pairedHedge: PairedHedgeResearchResponse | null;
   runtime: RuntimeStatus | null;
   instrumentSyncStatus: InstrumentSyncStatus | null;
+  activeFamilyDetailKey: string;
   setPriorityBoard: (value: LowBuyPriorityBoardResult | null | ((current: LowBuyPriorityBoardResult | null) => LowBuyPriorityBoardResult | null)) => void;
   setMarketBreadth: (value: MarketBreadth | null) => void;
   setMarketPulse: (value: IntradayMarketPulse | null) => void;
@@ -42,6 +43,7 @@ interface WorkspaceMonitorStore {
   setPairedHedge: (value: PairedHedgeResearchResponse | null) => void;
   setRuntime: (value: RuntimeStatus | null) => void;
   setInstrumentSyncStatus: (value: InstrumentSyncStatus | null) => void;
+  setActiveFamilyDetailKey: (value: string) => void;
   resetMonitorData: () => void;
 }
 
@@ -59,6 +61,7 @@ export const useWorkspaceMonitorStore = create<WorkspaceMonitorStore>((set) => (
   pairedHedge: null,
   runtime: null,
   instrumentSyncStatus: null,
+  activeFamilyDetailKey: "",
   setPriorityBoard: (value) => set((state) => ({
     priorityBoard: typeof value === "function" ? value(state.priorityBoard) : value,
   })),
@@ -78,6 +81,7 @@ export const useWorkspaceMonitorStore = create<WorkspaceMonitorStore>((set) => (
   setPairedHedge: (pairedHedge) => set({ pairedHedge }),
   setRuntime: (runtime) => set({ runtime }),
   setInstrumentSyncStatus: (instrumentSyncStatus) => set({ instrumentSyncStatus }),
+  setActiveFamilyDetailKey: (activeFamilyDetailKey) => set({ activeFamilyDetailKey }),
   resetMonitorData: () => set({
     priorityBoard: null,
     marketBreadth: null,
@@ -90,5 +94,6 @@ export const useWorkspaceMonitorStore = create<WorkspaceMonitorStore>((set) => (
     watchlistSignals: [],
     sectorEtfT0: null,
     pairedHedge: null,
+    activeFamilyDetailKey: "",
   }),
 }));

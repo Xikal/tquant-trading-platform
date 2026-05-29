@@ -1,6 +1,7 @@
 import type { CSSProperties } from "react";
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { Button, Modal } from "antd";
+import { useWorkspaceMonitorStore } from "../../stores/workspaceMonitorStore";
 import type { LowBuyPriorityBoardResult, LowBuyPriorityFamilySection } from "../../types";
 import { familyStripQualityText } from "./workspaceFamilyQuality";
 import { formatPct, plainTradingText } from "./workspaceFormatters";
@@ -75,7 +76,8 @@ const DETAIL_ITEM_STYLE: CSSProperties = {
 
 export function FamilyStrip({ priorityBoard }: { priorityBoard: LowBuyPriorityBoardResult | null }) {
   const sections = priorityBoard?.family_sections ?? [];
-  const [activeKey, setActiveKey] = useState("");
+  const activeKey = useWorkspaceMonitorStore((state) => state.activeFamilyDetailKey);
+  const setActiveKey = useWorkspaceMonitorStore((state) => state.setActiveFamilyDetailKey);
   const activeSection = useMemo(
     () => sections.find((section) => section.family_key === activeKey) ?? null,
     [activeKey, sections],
