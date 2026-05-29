@@ -34,7 +34,9 @@
 - [x] `cd go-services/bff-gateway && go test ./...` 通过。
 - [x] `DATABASE_URL=sqlite:////tmp/tquant_strategy_tracking_snapshot_migration.sqlite PYTHONPATH=backend:. backend/.venv/bin/alembic -c backend/alembic.ini upgrade head` 通过。
 - [x] `git diff --check` 通过。
-- [ ] 云端部署与 `/readyz` 验证待提交后执行。
+- [x] `scripts/quick_cloud_deploy.sh` 通过，线上 MySQL 迁移执行到 `20260529_0002`，`/readyz`、前端、受保护 API、Go 服务健康检查通过。
+- [x] 线上快照预热通过：`strategy_tracking_daily_refresh.py --range 30` 生成 300 条快照，`elapsed_ms=1590`，`changed_strategy_results=false`，`changed_paper_ledger=false`。
+- [x] 线上快照读取验证通过：`status=fresh`、`stale=false`、`total=300`、首页返回 30 条、`future_leak_check=passed`、`violation_count=0`、读取耗时 `141ms`。
 
 ## 2026-05-29 策略跟踪易用性增强
 
