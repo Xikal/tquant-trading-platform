@@ -18,6 +18,7 @@ HTTPS_REQUIRED="${HTTPS_REQUIRED:-0}"
 CLOUD_DOMAIN="${CLOUD_DOMAIN:-}"
 CLOUD_CERT_EMAIL="${CLOUD_CERT_EMAIL:-}"
 CLOUD_AUTH_COOKIE_SECURE="${CLOUD_AUTH_COOKIE_SECURE:-}"
+CLOUD_AUTH_ALLOW_INSECURE_HTTP_COOKIE="${CLOUD_AUTH_ALLOW_INSECURE_HTTP_COOKIE:-}"
 BACKUP_TIME="${BACKUP_TIME:-02:20}"
 RUN_COMPILE="${RUN_COMPILE:-1}"
 RUN_FRONTEND_BUILD="${RUN_FRONTEND_BUILD:-1}"
@@ -122,6 +123,7 @@ remote_deploy() {
     CLOUD_USER="$CLOUD_USER" \
     CLOUD_KEEP_BACKUPS="$CLOUD_KEEP_BACKUPS" \
     CLOUD_AUTH_COOKIE_SECURE="${CLOUD_AUTH_COOKIE_SECURE:-}" \
+    CLOUD_AUTH_ALLOW_INSECURE_HTTP_COOKIE="${CLOUD_AUTH_ALLOW_INSECURE_HTTP_COOKIE:-}" \
     REMOTE_PACKAGE="$remote_package" \
     bash -s <<'REMOTE'
 set -euo pipefail
@@ -174,11 +176,15 @@ if test -z "$AUTH_COOKIE_SECURE_VALUE"; then
   AUTH_COOKIE_SECURE_VALUE=true
 fi
 if test "$(printf '%s' "$AUTH_COOKIE_SECURE_VALUE" | tr '[:upper:]' '[:lower:]')" != "true"; then
-  echo "warning: forcing AUTH_COOKIE_SECURE=true for production cloud deployment"
-  AUTH_COOKIE_SECURE_VALUE=true
+  if test "$(printf '%s' "$CLOUD_AUTH_ALLOW_INSECURE_HTTP_COOKIE" | tr '[:upper:]' '[:lower:]')" != "true"; then
+    echo "warning: forcing AUTH_COOKIE_SECURE=true for production cloud deployment"
+    AUTH_COOKIE_SECURE_VALUE=true
+  fi
 fi
 sed -i '/^AUTH_COOKIE_SECURE=/d' .env
 printf 'AUTH_COOKIE_SECURE=%s\n' "$AUTH_COOKIE_SECURE_VALUE" >> .env
+sed -i '/^AUTH_ALLOW_INSECURE_HTTP_COOKIE=/d' .env
+printf 'AUTH_ALLOW_INSECURE_HTTP_COOKIE=%s\n' "${CLOUD_AUTH_ALLOW_INSECURE_HTTP_COOKIE:-false}" >> .env
 sudo docker compose -f "$CLOUD_COMPOSE_FILE" build app
 sudo docker compose -f "$CLOUD_COMPOSE_FILE" up --no-build --force-recreate --abort-on-container-exit --exit-code-from migration migration
 sudo docker rm -f tquant-app-mysql tquant-runtime-worker-mysql tquant-backtest-worker-mysql 2>/dev/null || true

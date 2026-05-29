@@ -23,6 +23,20 @@ def test_production_requires_secure_refresh_cookie() -> None:
         validate_security_settings(settings)
 
 
+def test_production_allows_insecure_refresh_cookie_only_with_explicit_ip_access_override() -> None:
+    settings = AppSettings(
+        app_environment="production",
+        auth_cookie_secure=False,
+        auth_allow_insecure_http_cookie=True,
+        auth_cookie_samesite="strict",
+        auth_secret_key=STRONG_TEST_SECRET,
+        tquant_settings_encryption_key=STRONG_SETTINGS_SECRET,
+        global_rate_limit_backend="redis",
+    )
+
+    validate_security_settings(settings)
+
+
 def test_production_accepts_secure_strict_cookie() -> None:
     settings = AppSettings(
         app_environment="production",

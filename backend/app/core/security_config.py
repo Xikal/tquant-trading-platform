@@ -13,7 +13,7 @@ def validate_security_settings(settings: AppSettings) -> None:
         raise RuntimeError("多 worker 部署必须配置 GLOBAL_RATE_LIMIT_BACKEND=redis 或网关限流")
     if not _production_like(settings):
         return
-    if not settings.auth_cookie_secure:
+    if not settings.auth_cookie_secure and not settings.auth_allow_insecure_http_cookie:
         raise RuntimeError("生产环境必须启用 AUTH_COOKIE_SECURE=true")
     if settings.auth_cookie_samesite.strip().lower() != "strict":
         raise RuntimeError("生产环境必须启用 AUTH_COOKIE_SAMESITE=strict")

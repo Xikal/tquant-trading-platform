@@ -93,6 +93,7 @@ class AppSettings(BaseSettings):
     auth_secret_key: str = ""
     tquant_settings_encryption_key: str = ""
     auth_cookie_secure: bool = True
+    auth_allow_insecure_http_cookie: bool = False
     app_environment: str = "development"
     auth_cookie_samesite: str = "strict"
     auth_access_token_minutes: int = 15
