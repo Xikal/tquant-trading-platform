@@ -1,6 +1,7 @@
 import { Alert, Table, Tag } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import type { UseQueryResult } from "@tanstack/react-query";
+import type { StrategyTrackingViewMode } from "../../stores/strategyTrackingStore";
 import type {
   StrategyTrackingListResponse,
   StrategyTrackingReport,
@@ -12,15 +13,17 @@ import { formatPct } from "../workspace-shared/workspaceFormatters";
 export function StrategyTrackingDiagnosticsPanel({
   result,
   weeklyReport,
+  viewMode = "beginner",
 }: {
   result: StrategyTrackingListResponse;
   weeklyReport?: UseQueryResult<StrategyTrackingReport, Error>;
+  viewMode?: StrategyTrackingViewMode;
 }) {
   const failureTags = failureTagCounts(result);
   const zeroShadow = result.shadow_observations.filter((item) => item.observation_count === 0);
   return (
     <section className="strategy-tracking-diagnostics">
-      {zeroShadow.length ? (
+      {viewMode === "professional" && zeroShadow.length ? (
         <Alert
           type="warning"
           showIcon
@@ -33,7 +36,7 @@ export function StrategyTrackingDiagnosticsPanel({
         <Tag color={result.summary.abnormal_return_count ? "red" : "green"}>异常收益 {result.summary.abnormal_return_count}</Tag>
         {failureTags.map(([tag, count]) => <Tag key={tag}>{failureTagText(tag)} {count}</Tag>)}
       </div>
-      {weeklyReport?.data?.markdown ? (
+      {viewMode === "professional" && weeklyReport?.data?.markdown ? (
         <Alert type="info" showIcon title="策略跟踪周报" description={weeklyReport.data.markdown} />
       ) : null}
       <Table

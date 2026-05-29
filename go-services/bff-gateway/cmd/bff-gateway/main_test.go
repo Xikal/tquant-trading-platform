@@ -471,6 +471,12 @@ func TestAggregateStrategyTrackingWorkspaceBuildsReadOnlyPayload(t *testing.T) {
 			if got := r.URL.Query().Get("hit_entry"); got != "true" {
 				t.Fatalf("items hit_entry mismatch got=%s", got)
 			}
+			if got := r.URL.Query().Get("exclude_chinext"); got != "true" {
+				t.Fatalf("items exclude_chinext mismatch got=%s", got)
+			}
+			if got := r.URL.Query().Get("exclude_star"); got != "true" {
+				t.Fatalf("items exclude_star mismatch got=%s", got)
+			}
 			if got := r.URL.Query().Get("limit"); got != "30" {
 				t.Fatalf("items limit mismatch got=%s", got)
 			}
@@ -480,6 +486,14 @@ func TestAggregateStrategyTrackingWorkspaceBuildsReadOnlyPayload(t *testing.T) {
 				t.Fatalf("performance strategy_family mismatch got=%s", got)
 			}
 			_, _ = w.Write([]byte(`[{"strategy_key":"first_board_pullback","recommendation_count":2,"health_score":70}]`))
+		case "/api/strategy-tracking/holding-analysis":
+			if got := r.URL.Query().Get("exclude_chinext"); got != "true" {
+				t.Fatalf("holding exclude_chinext mismatch got=%s", got)
+			}
+			if got := r.URL.Query().Get("exclude_star"); got != "true" {
+				t.Fatalf("holding exclude_star mismatch got=%s", got)
+			}
+			_, _ = w.Write([]byte(`{"items":[{"strategy_key":"first_board_pullback","sample_count":2,"dominant_holding_bucket_text":"短线 1-3 天"}],"generated_at":"2026-05-29T10:00:00+08:00","data_quality":"ok","production_writeable":false}`))
 		case "/api/strategy-tracking/market-segments":
 			_, _ = w.Write([]byte(`[{"strategy_key":"first_board_pullback","market_state":"strong_market","recommendation_count":2}]`))
 		case "/api/strategy-tracking/shadow-observations":
@@ -492,7 +506,7 @@ func TestAggregateStrategyTrackingWorkspaceBuildsReadOnlyPayload(t *testing.T) {
 	}))
 	defer upstream.Close()
 	cfg := config{pythonAPIBase: upstream.URL, timeout: time.Second}
-	req := httptest.NewRequest(http.MethodGet, "/api/bff/v1/workspace/strategy-tracking?range=20&strategy_family=core&strategy_key=first_board_pullback&hit_entry=true&detail_id=first_board_pullback:600000:2026-05-28", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/bff/v1/workspace/strategy-tracking?range=20&strategy_family=core&strategy_key=first_board_pullback&hit_entry=true&exclude_chinext=true&exclude_star=true&detail_id=first_board_pullback:600000:2026-05-28", nil)
 
 	result := aggregateStrategyTrackingWorkspace(cfg, upstream.Client(), req)
 
@@ -509,6 +523,9 @@ func TestAggregateStrategyTrackingWorkspaceBuildsReadOnlyPayload(t *testing.T) {
 	if !bytes.Contains(result.body, []byte(`"performance":[{"strategy_key":"first_board_pullback"`)) {
 		t.Fatalf("strategy tracking aggregate missing performance: %s", string(result.body))
 	}
+	if !bytes.Contains(result.body, []byte(`"holding_analysis":{"items":[{"strategy_key":"first_board_pullback"`)) {
+		t.Fatalf("strategy tracking aggregate missing holding analysis: %s", string(result.body))
+	}
 	if !bytes.Contains(result.body, []byte(`"market_segments":[{"strategy_key":"first_board_pullback"`)) {
 		t.Fatalf("strategy tracking aggregate missing market segments: %s", string(result.body))
 	}
@@ -523,6 +540,43 @@ func TestAggregateStrategyTrackingWorkspaceBuildsReadOnlyPayload(t *testing.T) {
 	}
 	if !bytes.Contains(result.body, []byte(`"detail_requested":true`)) {
 		t.Fatalf("strategy tracking aggregate should mark detail request: %s", string(result.body))
+	}
+}
+
+func TestAggregateStrategyTrackingWorkspaceKeepsMainPayloadWhenHoldingAnalysisTimesOut(t *testing.T) {
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch r.URL.Path {
+		case "/api/strategy-tracking/holding-analysis":
+			time.Sleep(120 * time.Millisecond)
+			_, _ = w.Write([]byte(`{"items":[]}`))
+		case "/api/strategy-tracking/summary":
+			_, _ = w.Write([]byte(`{"tracking_count":1,"data_quality":"ok"}`))
+		case "/api/strategy-tracking/items":
+			_, _ = w.Write([]byte(`{"items":[{"id":"first_board:600000:2026-05-28"}],"total":1,"limit":30,"offset":0,"sort":"max_gain_desc"}`))
+		case "/api/strategy-tracking/performance", "/api/strategy-tracking/market-segments", "/api/strategy-tracking/shadow-observations":
+			_, _ = w.Write([]byte(`[]`))
+		default:
+			t.Fatalf("unexpected upstream path %s", r.URL.Path)
+		}
+	}))
+	defer upstream.Close()
+	cfg := config{pythonAPIBase: upstream.URL, sourceTimeout: 50 * time.Millisecond}
+	req := httptest.NewRequest(http.MethodGet, "/api/bff/v1/workspace/strategy-tracking?range=20", nil)
+
+	result := aggregateStrategyTrackingWorkspace(cfg, upstream.Client(), req)
+
+	if result.status != http.StatusOK {
+		t.Fatalf("expected ok, got %d", result.status)
+	}
+	if !bytes.Contains(result.body, []byte(`"items":[{"id":"first_board:600000:2026-05-28"`)) {
+		t.Fatalf("strategy tracking aggregate should keep main items when holding analysis times out: %s", string(result.body))
+	}
+	if !bytes.Contains(result.body, []byte(`"source":"strategy_tracking_holding_analysis"`)) {
+		t.Fatalf("strategy tracking aggregate should report holding partial error: %s", string(result.body))
+	}
+	if !bytes.Contains(result.body, []byte(`"holding_analysis":null`)) {
+		t.Fatalf("strategy tracking aggregate should null missing holding analysis: %s", string(result.body))
 	}
 }
 

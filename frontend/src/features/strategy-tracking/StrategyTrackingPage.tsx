@@ -3,12 +3,16 @@ import type { StrategyMeta } from "../../api/strategies";
 import { useStrategyTrackingStore } from "../../stores/strategyTrackingStore";
 import { TqEmpty, TqErrorResult } from "../../ui/feedback/StateViews";
 import type { StrategyTrackingParams } from "../../types";
-import { useStrategyTrackingDetail, useStrategyTrackingItems, useStrategyTrackingReport } from "./queries";
+import { useStrategyTrackingDetail, useStrategyTrackingHoldingAnalysis, useStrategyTrackingItems, useStrategyTrackingReport } from "./queries";
 import { StrategyTrackingDetailDrawer } from "./StrategyTrackingDetailDrawer";
 import { StrategyTrackingDiagnosticsPanel } from "./StrategyTrackingDiagnosticsPanel";
 import { StrategyTrackingFilters } from "./StrategyTrackingFilters";
+import { StrategyTrackingFriendlySummary } from "./StrategyTrackingFriendlySummary";
+import { StrategyTrackingHoldingAnalysisPanel } from "./StrategyTrackingHoldingAnalysisPanel";
+import { StrategyTrackingModeToggle } from "./StrategyTrackingModeToggle";
 import { StrategyTrackingPerformanceTable } from "./StrategyTrackingPerformanceTable";
 import { StrategyTrackingReviewPanel } from "./StrategyTrackingReviewPanel";
+import { StrategyTrackingStatusCards } from "./StrategyTrackingStatusCards";
 import { StrategyTrackingSummaryBar } from "./StrategyTrackingSummaryBar";
 import { StrategyTrackingTable } from "./StrategyTrackingTable";
 import { boolParam, tabParams } from "./strategyTrackingFormatters";
@@ -21,6 +25,7 @@ export function StrategyTrackingPage({ strategyMeta }: { strategyMeta: StrategyM
   const query = useStrategyTrackingItems(params);
   const detailQuery = useStrategyTrackingDetail(store.selectedItemId);
   const weeklyReportQuery = useStrategyTrackingReport("weekly", { range: store.range }, store.tab === "diagnostics");
+  const holdingQuery = useStrategyTrackingHoldingAnalysis(holdingParams(store), store.tab === "holding");
   const result = query.data;
   const errorText = query.error instanceof Error ? query.error.message : "";
 
@@ -38,6 +43,7 @@ export function StrategyTrackingPage({ strategyMeta }: { strategyMeta: StrategyM
         </div>
       </div>
       <div className="panel strategy-tracking-filter-panel">
+        <StrategyTrackingModeToggle viewMode={store.viewMode} onChange={store.setViewMode} />
         <StrategyTrackingFilters
           range={store.range}
           strategyKey={store.strategyKey}
@@ -47,6 +53,10 @@ export function StrategyTrackingPage({ strategyMeta }: { strategyMeta: StrategyM
           dataQuality={store.dataQuality}
           hitEntry={store.hitEntry}
           stopped={store.stopped}
+          userStatus={store.userStatus}
+          excludeChinext={store.excludeChinext}
+          excludeStar={store.excludeStar}
+          boardFilter={store.boardFilter}
           strategyMeta={strategyMeta}
           onRangeChange={store.setRange}
           onStrategyKeyChange={store.setStrategyKey}
@@ -56,13 +66,24 @@ export function StrategyTrackingPage({ strategyMeta }: { strategyMeta: StrategyM
           onDataQualityChange={store.setDataQuality}
           onHitEntryChange={store.setHitEntry}
           onStoppedChange={store.setStopped}
+          onUserStatusChange={store.setUserStatus}
+          onExcludeChinextChange={store.setExcludeChinext}
+          onExcludeStarChange={store.setExcludeStar}
+          onBoardFilterChange={store.setBoardFilter}
         />
       </div>
+      {result ? <StrategyTrackingFriendlySummary result={result} range={store.range} /> : null}
+      {store.excludeChinext || store.excludeStar || store.boardFilter === "main_only" ? (
+        <Alert type="info" showIcon title={filterNotice(store)} />
+      ) : null}
       {result ? (
         <div className="strategy-tracking-top-grid">
           <StrategyTrackingSummaryBar summary={result.summary} />
           <StrategyTrackingReviewPanel summary={result.summary} performance={result.performance} />
         </div>
+      ) : null}
+      {result ? (
+        <StrategyTrackingStatusCards items={result.items} activeStatus={store.userStatus} onSelectStatus={store.setUserStatus} />
       ) : null}
       {result?.partial_errors.length ? (
         <Alert type="warning" showIcon title={result.partial_errors.slice(0, 2).join("；")} />
@@ -76,7 +97,7 @@ export function StrategyTrackingPage({ strategyMeta }: { strategyMeta: StrategyM
             items={[
               {
                 key: "active",
-                label: "今日有效",
+                label: "重点跟踪",
                 children: tableContent(result, query.isFetching, store),
               },
               {
@@ -99,10 +120,20 @@ export function StrategyTrackingPage({ strategyMeta }: { strategyMeta: StrategyM
                 ),
               },
               {
+                key: "holding",
+                label: "持有分析",
+                children: (
+                  <StrategyTrackingHoldingAnalysisPanel
+                    items={holdingQuery.data?.items ?? []}
+                    loading={holdingQuery.isFetching}
+                  />
+                ),
+              },
+              {
                 key: "diagnostics",
                 label: "复盘诊断",
                 children: result ? (
-                  <StrategyTrackingDiagnosticsPanel result={result} weeklyReport={weeklyReportQuery} />
+                  <StrategyTrackingDiagnosticsPanel result={result} weeklyReport={weeklyReportQuery} viewMode={store.viewMode} />
                 ) : (
                   <TqEmpty title="暂无复盘诊断" description="当前筛选条件下没有可诊断样本。" />
                 ),
@@ -116,6 +147,7 @@ export function StrategyTrackingPage({ strategyMeta }: { strategyMeta: StrategyM
         loading={detailQuery.isFetching}
         detail={detailQuery.data}
         errorText={detailQuery.error instanceof Error ? detailQuery.error.message : ""}
+        viewMode={store.viewMode}
         onClose={() => store.setSelectedItemId(null)}
       />
     </section>
@@ -133,13 +165,14 @@ function tableContent(result: ReturnType<typeof useStrategyTrackingItems>["data"
       page={store.page}
       pageSize={store.pageSize}
       loading={loading}
+      viewMode={store.viewMode}
       onPageChange={store.setPagination}
       onOpenDetail={store.setSelectedItemId}
     />
   );
 }
 
-function buildParams(store: StrategyTrackingStoreState): StrategyTrackingParams {
+export function buildParams(store: StrategyTrackingStoreState): StrategyTrackingParams {
   const preset = tabParams(store.tab);
   return {
     range: store.range,
@@ -150,8 +183,28 @@ function buildParams(store: StrategyTrackingStoreState): StrategyTrackingParams 
     data_quality: store.dataQuality || undefined,
     hit_entry: boolParam(store.hitEntry),
     stopped: boolParam(store.stopped) ?? preset.stopped,
+    user_status: store.userStatus || undefined,
+    exclude_chinext: store.excludeChinext,
+    exclude_star: store.excludeStar,
+    board_filter: store.boardFilter === "main_only" ? "main_only" : undefined,
     sort: store.sort,
     limit: store.pageSize,
     offset: (store.page - 1) * store.pageSize,
   };
+}
+
+function holdingParams(store: StrategyTrackingStoreState): StrategyTrackingParams {
+  return {
+    range: store.range,
+    strategy_family: store.strategyFamily || undefined,
+    exclude_chinext: store.excludeChinext,
+    exclude_star: store.excludeStar,
+    board_filter: store.boardFilter === "main_only" ? "main_only" : undefined,
+  };
+}
+
+function filterNotice(store: StrategyTrackingStoreState): string {
+  if (store.boardFilter === "main_only") return "已隐藏创业板、科创板等非主板股票，仅展示主板样本。";
+  const hidden = [store.excludeChinext ? "创业板" : "", store.excludeStar ? "科创板" : ""].filter(Boolean).join("、");
+  return `已隐藏${hidden}股票，仅影响当前页面展示。`;
 }

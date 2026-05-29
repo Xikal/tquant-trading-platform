@@ -40,6 +40,14 @@ from app.services.strategy_tracking_helpers import (
     round_or_none,
     text,
 )
+from app.services.strategy_tracking_usability import (
+    board_type,
+    display_sectors,
+    friendly_status,
+    plain_language_summary,
+    sector_lists,
+    sector_detail,
+)
 
 
 def build_tracking_item(
@@ -90,10 +98,13 @@ def build_tracking_item(
         latest_trade_date=str(group.latest_row.latest_trade_date),
         audit_flags=attribution.audit_flags,
     )
+    board_value, board_text = board_type(group.symbol, group.payload)
+    industry_sectors, concept_sectors, _custom_sectors = sector_lists(group.payload)
+    sectors = display_sectors(group.payload, board_text)
     entry_distance = distance_to_entry(current_price, entry_low, entry_high)
     high_bar = max(posterior, key=lambda item: item.high_price) if posterior else None
     low_bar = min(posterior, key=lambda item: item.low_price) if posterior else None
-    return StrategyTrackingItemOut(
+    item = StrategyTrackingItemOut(
         id=item_id(group.strategy_key, group.symbol, first_signal_date),
         symbol=group.symbol,
         name=group.latest_row.name,
@@ -169,7 +180,27 @@ def build_tracking_item(
         review_text=review_text(group.payload, status, stats),
         data_quality=quality,
         data_quality_text=data_quality_text(quality),
+        board_type=board_value,
+        board_type_text=board_text,
+        industry_sectors=industry_sectors,
+        concept_sectors=concept_sectors,
+        display_sectors=sectors,
     )
+    status_value, status_text, status_reason = friendly_status(item)
+    item.user_friendly_status = status_value
+    item.user_friendly_status_text = status_text
+    item.user_friendly_reason = status_reason
+    item.plain_language_summary = plain_language_summary(item)
+    item.sector_detail = sector_detail(
+        board_value=board_value,
+        board_text=board_text,
+        industry_sectors=industry_sectors,
+        concept_sectors=concept_sectors,
+        display_sectors=sectors,
+        sector_state=item.sector_state,
+        sector_state_text=item.sector_state_text,
+    )
+    return item
 
 
 def lifecycle_status(

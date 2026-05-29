@@ -11,6 +11,7 @@ from app.core.database import get_db
 from app.core.timing import log_slow_call, monotonic_start
 from app.models.schema_defs.strategy_tracking import (
     StrategyTrackingDetailResponse,
+    StrategyTrackingHoldingAnalysisResponse,
     StrategyTrackingListResponse,
     StrategyTrackingPerformanceOut,
     StrategyTrackingReportOut,
@@ -58,6 +59,10 @@ def strategy_tracking_items_view(
     data_quality: str | None = Query(None),
     hit_entry: bool | None = Query(None),
     stopped: bool | None = Query(None),
+    exclude_chinext: bool = Query(False),
+    exclude_star: bool = Query(False),
+    board_filter: str | None = Query(None),
+    user_status: str | None = Query(None),
     sort: str = Query("max_gain_desc"),
     limit: int = Query(DEFAULT_LIMIT, ge=1, le=50),
     offset: int = Query(0, ge=0),
@@ -74,6 +79,10 @@ def strategy_tracking_items_view(
             data_quality=data_quality,
             hit_entry=hit_entry,
             stopped=stopped,
+            exclude_chinext=exclude_chinext,
+            exclude_star=exclude_star,
+            board_filter=board_filter,
+            user_status=user_status,
             sort=sort,
             limit=limit,
             offset=offset,
@@ -105,6 +114,30 @@ def strategy_tracking_performance_view(
         raise HTTPException(status_code=500, detail=f"策略跟踪表现加载失败: {exc}") from exc
     finally:
         log_slow_call(logger, "strategy_tracking.performance", started_at, range_days=range_days)
+
+
+@router.get("/holding-analysis", response_model=StrategyTrackingHoldingAnalysisResponse)
+def strategy_tracking_holding_analysis_view(
+    range_days: int = Query(DEFAULT_RANGE_DAYS, ge=1, le=260, alias="range"),
+    strategy_family: str | None = Query(None),
+    exclude_chinext: bool = Query(False),
+    exclude_star: bool = Query(False),
+    board_filter: str | None = Query(None),
+    db: Session = Depends(get_db),
+):
+    started_at = monotonic_start()
+    try:
+        return StrategyTrackingService(db).holding_analysis(
+            range_days=range_days,
+            strategy_family=strategy_family,
+            exclude_chinext=exclude_chinext,
+            exclude_star=exclude_star,
+            board_filter=board_filter,
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"策略持有分析加载失败: {exc}") from exc
+    finally:
+        log_slow_call(logger, "strategy_tracking.holding_analysis", started_at, range_days=range_days)
 
 
 @router.get("/review", response_model=StrategyTrackingReviewResponse)

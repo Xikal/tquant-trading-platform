@@ -1,5 +1,37 @@
 # TQuant 实施计划
 
+## 2026-05-29 策略跟踪易用性增强
+
+需求来源：
+
+- 用户目标：严格按 `docs/strategy-tracking-usability-enhancement-development-plan-2026-05-29.md` 落地，把 `/strategy-tracking` 优化为普通用户也能看懂的推荐结果追踪看板。
+
+### 执行边界
+
+- [x] 新增能力只做展示、筛选、复盘和只读聚合，不改变策略推荐、策略排序、回测、模拟盘或真实交易。
+- [x] 小白模式默认启用，默认屏蔽创业板和科创板；专业模式可展示完整审计字段。
+- [x] 最优持有天数只作为后验复盘统计；短线转波段/中长线资格判断只读取推荐日及以前可见行情。
+- [x] 列表继续后端分页，详情懒加载，持有分析后端聚合，前端不拉全量历史，不新增重型图表库。
+
+### TODO
+
+- [x] 后端列表新增 `board_type`、`board_type_text`、`industry_sectors`、`concept_sectors`、`display_sectors`、`user_friendly_status*`、`plain_language_summary`、`sector_detail`。
+- [x] 后端支持 `exclude_chinext`、`exclude_star`、`board_filter`、`user_status`，并新增只读 `GET /api/strategy-tracking/holding-analysis`。
+- [x] 板块来源按 payload 与 `Instrument.sector_name` 合并，缺失时降级为市场板标签或空板块提示，不阻塞列表。
+- [x] 前端新增小白/专业模式、板块标签、状态卡、普通语言总结、创业板/科创板过滤、持有分析 tab 和单票详情时间线。
+- [x] Go BFF 聚合接入 holding-analysis，并透传创业板/科创板过滤参数；partial response 仍由既有 `fetchSources` 降级逻辑处理。
+- [x] 测试覆盖后端板块识别/过滤/持有聚合/只读边界、前端模式/文案/板块/持有分析/参数、Go BFF 参数透传。
+
+### 验证
+
+- [x] `PYTHONPATH=backend:. backend/.venv/bin/python -m pytest backend/tests/test_strategy_tracking.py backend/tests/test_bff_routes.py -q` 通过，27 passed / 1 warning。
+- [x] `cd frontend && npm test -- StrategyTrackingPage --run` 通过，9 passed。
+- [x] `cd frontend && npm test -- webRoutes --run` 通过，10 passed。
+- [x] `cd frontend && npm run build:web` 通过，包含 lint、TypeScript 与 Vite build。
+- [x] `cd go-services/bff-gateway && go test ./...` 通过。
+- [x] `cd rust/tquant-rs && cargo test` 通过，10 passed。
+- [x] `git diff --check` 通过。
+
 ## 2026-05-29 平台瘦身与策略跟踪落地
 
 需求来源：

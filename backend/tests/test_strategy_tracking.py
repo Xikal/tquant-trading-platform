@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import unittest
+from decimal import Decimal
 
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
@@ -16,9 +17,11 @@ from app.core.database import get_db
 from app.models.base import Base
 from app.models.entities import (
     DailyBarSnapshot,
+    Instrument,
     LowBuyResultSnapshot,
     LowBuyTradeLifecycleSnapshot,
     MarketModelObservation,
+    PaperOrder,
     StrategyMetadata,
 )
 
@@ -111,6 +114,69 @@ class StrategyTrackingTests(unittest.TestCase):
         self.assertIsNotNone(item["best_exit_date"])
         self.assertIn("market_segments", body)
         self.assertIn("shadow_observations", body)
+        self.assertEqual(item["board_type"], "main")
+        self.assertEqual(item["board_type_text"], "主板")
+        self.assertIn("主板", item["display_sectors"])
+        self.assertIn("plain_language_summary", item)
+        self.assertEqual(item["sector_detail"]["board_type_text"], "主板")
+
+    def test_board_detection_filters_and_sector_degrade(self) -> None:
+        self._seed_board_fixture()
+
+        response = self.client.get("/api/strategy-tracking/items?range=10&limit=10")
+        self.assertEqual(response.status_code, 200)
+        items = {item["symbol"]: item for item in response.json()["items"]}
+        self.assertEqual(items["600000"]["board_type"], "main")
+        self.assertEqual(items["300001"]["board_type"], "chinext")
+        self.assertEqual(items["688001"]["board_type"], "star")
+        self.assertIn("银行", items["600000"]["industry_sectors"])
+        self.assertIn("金融科技", items["600000"]["concept_sectors"])
+        self.assertIn("新能源", items["300001"]["industry_sectors"])
+        self.assertIn("科创板", items["688001"]["display_sectors"])
+        self.assertEqual(items["600003"]["display_sectors"], ["主板"])
+        self.assertEqual(items["300001"]["user_friendly_status"], "take_profit_watch")
+
+        exclude_chinext = self.client.get("/api/strategy-tracking/items?range=10&limit=10&exclude_chinext=true")
+        self.assertEqual(exclude_chinext.status_code, 200)
+        self.assertNotIn("300001", {item["symbol"] for item in exclude_chinext.json()["items"]})
+
+        exclude_star = self.client.get("/api/strategy-tracking/items?range=10&limit=10&exclude_star=true")
+        self.assertEqual(exclude_star.status_code, 200)
+        self.assertNotIn("688001", {item["symbol"] for item in exclude_star.json()["items"]})
+
+        main_only = self.client.get("/api/strategy-tracking/items?range=10&limit=10&board_filter=main_only")
+        self.assertEqual(main_only.status_code, 200)
+        self.assertEqual({item["symbol"] for item in main_only.json()["items"]}, {"600000", "600003"})
+
+    def test_holding_analysis_aggregates_by_strategy_and_is_read_only(self) -> None:
+        self._seed_board_fixture()
+        with self.Session() as db:
+            strategy_before = db.query(LowBuyResultSnapshot).count()
+            orders_before = db.query(PaperOrder).count()
+
+        response = self.client.get("/api/strategy-tracking/holding-analysis?range=10")
+
+        self.assertEqual(response.status_code, 200)
+        body = response.json()
+        self.assertFalse(body["production_writeable"])
+        rows = {item["strategy_key"]: item for item in body["items"]}
+        self.assertIn("first_board", rows)
+        self.assertEqual(rows["first_board"]["sample_count"], 3)
+        self.assertGreater(rows["first_board"]["avg_best_holding_days"], 0)
+        self.assertIn(rows["first_board"]["dominant_holding_bucket"], {"short_1_3d", "swing_4_10d"})
+        self.assertIn("首板回调", rows["first_board"]["conclusion"])
+        self.assertGreaterEqual(rows["first_board"]["short_hold_ratio"], 0)
+        self.assertIn("volume_shrink", rows)
+        self.assertEqual(rows["volume_shrink"]["dominant_holding_bucket"], "unavailable")
+        self.assertEqual(rows["volume_shrink"]["dominant_holding_bucket_text"], "样本不足")
+
+        filtered = self.client.get("/api/strategy-tracking/holding-analysis?range=10&exclude_chinext=true&exclude_star=true")
+        self.assertEqual(filtered.status_code, 200)
+        first_board = next(item for item in filtered.json()["items"] if item["strategy_key"] == "first_board")
+        self.assertEqual(first_board["sample_count"], 1)
+        with self.Session() as db:
+            self.assertEqual(db.query(LowBuyResultSnapshot).count(), strategy_before)
+            self.assertEqual(db.query(PaperOrder).count(), orders_before)
 
     def test_shadow_zero_samples_report_reason(self) -> None:
         self._seed_tracking_fixture()
@@ -307,6 +373,77 @@ class StrategyTrackingTests(unittest.TestCase):
             )
             db.commit()
 
+    def _seed_board_fixture(self) -> None:
+        with self.Session() as db:
+            self._seed_metadata(db)
+            db.add_all(
+                [
+                    Instrument(symbol="600000", name="浦发银行", market="CN", instrument_type="stock", sector_name="银行"),
+                    Instrument(symbol="300001", name="创业成长", market="CN", instrument_type="stock", sector_name="新能源"),
+                    Instrument(symbol="688001", name="科创芯片", market="CN", instrument_type="stock", sector_name="半导体"),
+                    Instrument(symbol="600003", name="缺失板块", market="CN", instrument_type="stock", sector_name=""),
+                    LowBuyResultSnapshot(
+                        latest_trade_date="2026-04-20",
+                        strategy_key="first_board",
+                        symbol="600000",
+                        name="浦发银行",
+                        score=90,
+                        buy_signal_state="buy_now",
+                        payload_json=json.dumps(
+                            _payload(price=10.0, sector_name="银行", concept_sectors=["金融科技", "中特估"]),
+                            ensure_ascii=False,
+                        ),
+                    ),
+                    LowBuyResultSnapshot(
+                        latest_trade_date="2026-04-20",
+                        strategy_key="first_board",
+                        symbol="300001",
+                        name="创业成长",
+                        score=88,
+                        buy_signal_state="buy_now",
+                        payload_json=json.dumps(
+                            _payload(price=20.0, entry_low=19.0, entry_high=20.5, stop_loss=18.0, target_price=23.0),
+                            ensure_ascii=False,
+                        ),
+                    ),
+                    LowBuyResultSnapshot(
+                        latest_trade_date="2026-04-20",
+                        strategy_key="first_board",
+                        symbol="688001",
+                        name="科创芯片",
+                        score=87,
+                        buy_signal_state="buy_now",
+                        payload_json=json.dumps(
+                            _payload(price=30.0, entry_low=29.0, entry_high=31.0, stop_loss=27.0, target_price=34.0),
+                            ensure_ascii=False,
+                        ),
+                    ),
+                    LowBuyResultSnapshot(
+                        latest_trade_date="2026-04-20",
+                        strategy_key="volume_shrink",
+                        symbol="600003",
+                        name="缺失板块",
+                        score=80,
+                        buy_signal_state="buy_now",
+                        payload_json=json.dumps(_payload(price=12.0, without_sector=True), ensure_ascii=False),
+                    ),
+                    _paper_order("600000"),
+                    _bar("600000", "2026-04-19", high=10.3, low=9.8, close=10.0),
+                    _bar("600000", "2026-04-20", high=10.4, low=9.9, close=10.0),
+                    _bar("600000", "2026-04-21", high=11.1, low=9.7, close=10.8),
+                    _bar("600000", "2026-04-22", high=10.9, low=10.2, close=10.4),
+                    _bar("300001", "2026-04-19", high=20.4, low=19.8, close=20.0),
+                    _bar("300001", "2026-04-20", high=20.5, low=19.5, close=20.0),
+                    _bar("300001", "2026-04-21", high=22.0, low=19.2, close=21.5),
+                    _bar("300001", "2026-04-22", high=22.8, low=21.0, close=22.4),
+                    _bar("688001", "2026-04-19", high=30.4, low=29.8, close=30.0),
+                    _bar("688001", "2026-04-20", high=30.5, low=29.5, close=30.0),
+                    _bar("688001", "2026-04-21", high=33.0, low=29.3, close=31.5),
+                    _bar("688001", "2026-04-22", high=32.0, low=30.0, close=30.8),
+                ]
+            )
+            db.commit()
+
     def _seed_metadata(self, db) -> None:  # noqa: ANN001
         db.add_all(
             [
@@ -324,18 +461,35 @@ class StrategyTrackingTests(unittest.TestCase):
                     enabled=True,
                     visibility="full",
                 ),
+                StrategyMetadata(
+                    key="volume_shrink",
+                    display_name="缩量回踩",
+                    category="core",
+                    enabled=True,
+                    visibility="full",
+                ),
             ]
         )
 
 
-def _payload(price: float) -> dict[str, object]:
-    return {
+def _payload(
+    price: float,
+    *,
+    entry_low: float = 9.5,
+    entry_high: float = 10.5,
+    stop_loss: float = 9.0,
+    target_price: float = 11.0,
+    sector_name: str = "",
+    concept_sectors: list[str] | None = None,
+    without_sector: bool = False,
+) -> dict[str, object]:
+    payload: dict[str, object] = {
         "strategy_title": "首板回调",
         "latest_price": price,
-        "entry_zone_low": 9.5,
-        "entry_zone_high": 10.5,
-        "stop_loss": 9.0,
-        "take_profit": 11.0,
+        "entry_zone_low": entry_low,
+        "entry_zone_high": entry_high,
+        "stop_loss": stop_loss,
+        "take_profit": target_price,
         "summary_reason": "缩量回踩到支撑位",
         "reasons": ["回踩支撑"],
         "risks": ["跌破止损"],
@@ -349,6 +503,10 @@ def _payload(price: float) -> dict[str, object]:
         "lookback_end_date": "2026-04-20",
         "data_quality": "ok",
     }
+    if not without_sector:
+        payload["sector_name"] = sector_name or "银行"
+        payload["concept_sectors"] = concept_sectors or ["金融科技"]
+    return payload
 
 
 def _bar(symbol: str, trade_date: str, *, high: float, low: float, close: float) -> DailyBarSnapshot:
@@ -366,6 +524,22 @@ def _bar(symbol: str, trade_date: str, *, high: float, low: float, close: float)
         pct_chg=0.0,
         source="unit-test",
         data_quality="ok",
+    )
+
+
+def _paper_order(symbol: str) -> PaperOrder:
+    return PaperOrder(
+        account_id=1,
+        symbol=symbol,
+        name="只读检查",
+        side="buy",
+        order_type="market",
+        price=Decimal("10.0"),
+        quantity=100,
+        filled_quantity=0,
+        status="pending",
+        source="unit-test",
+        strategy_key="first_board",
     )
 
 

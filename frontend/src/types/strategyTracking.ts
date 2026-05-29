@@ -37,6 +37,26 @@ export interface StrategyTrackingPerformance {
   health_risks: string[];
 }
 
+export interface StrategyTrackingHoldingAnalysis {
+  strategy_key: string;
+  strategy_name: string;
+  strategy_family: string;
+  sample_count: number;
+  avg_best_holding_days: number;
+  median_best_holding_days: number;
+  dominant_holding_bucket: string;
+  dominant_holding_bucket_text: string;
+  short_hold_ratio: number;
+  swing_hold_ratio: number;
+  trend_hold_ratio: number;
+  midlong_hold_ratio: number;
+  avg_best_exit_return_pct: number;
+  avg_best_exit_drawdown_pct: number;
+  avg_giveback_from_peak_pct: number;
+  extension_qualified_ratio: number;
+  conclusion: string;
+}
+
 export interface StrategyTrackingSegment {
   strategy_key: string;
   strategy_name: string;
@@ -144,6 +164,16 @@ export interface StrategyTrackingItem {
   data_quality_text: string;
   source: string;
   detail_available: boolean;
+  board_type: string;
+  board_type_text: string;
+  industry_sectors: string[];
+  concept_sectors: string[];
+  display_sectors: string[];
+  user_friendly_status: string;
+  user_friendly_status_text: string;
+  user_friendly_reason: string;
+  plain_language_summary: string;
+  sector_detail: Record<string, unknown>;
 }
 
 export interface StrategyTrackingTimelinePoint {
@@ -209,6 +239,13 @@ export interface StrategyTrackingReviewResponse {
   abnormal_return_items: StrategyTrackingItem[];
 }
 
+export interface StrategyTrackingHoldingAnalysisResponse {
+  items: StrategyTrackingHoldingAnalysis[];
+  generated_at: string;
+  data_quality: string;
+  production_writeable: boolean;
+}
+
 export interface StrategyTrackingReport {
   report_type: string;
   generated_at: string;
@@ -234,6 +271,10 @@ export interface StrategyTrackingParams {
   data_quality?: string;
   hit_entry?: boolean | null;
   stopped?: boolean | null;
+  exclude_chinext?: boolean;
+  exclude_star?: boolean;
+  board_filter?: string;
+  user_status?: string;
   sort?: string;
   limit?: number;
   offset?: number;

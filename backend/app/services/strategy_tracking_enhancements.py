@@ -10,9 +10,7 @@ from app.services.strategy_tracking_helpers import pct, round_or_none, round_val
 
 ABNORMAL_GAIN_PCT = 35.0
 ABNORMAL_DRAWDOWN_PCT = 15.0
-EXTENSION_MIN_RETURN_PCT = 8.0
 EXTENSION_MAX_DRAWDOWN_PCT = -6.0
-GIVEBACK_WARN_RATIO = 0.35
 TREND_MIN_BARS = 10
 MIDLONG_MIN_BARS = 30
 
@@ -70,12 +68,8 @@ def analyze_holding(
     current_return = pct(posterior[-1].close_price, reference_price)
     giveback = max(0.0, peak_return - current_return)
     extension = _extension_state(
-        history=[bar for bar in ordered if bar.trade_date <= posterior[-1].trade_date],
-        posterior=posterior,
-        reference_price=reference_price,
+        history=[bar for bar in ordered if bar.trade_date <= first_signal_date],
         stop_loss=stop_loss,
-        peak_return_pct=peak_return,
-        current_return_pct=current_return,
     )
     return HoldingAnalysis(
         best_holding_days=best_days,
@@ -207,60 +201,66 @@ def _best_exit_index(posterior: list[DailyBarRow], reference_price: float) -> in
 def _extension_state(
     *,
     history: list[DailyBarRow],
-    posterior: list[DailyBarRow],
-    reference_price: float,
     stop_loss: float | None,
-    peak_return_pct: float,
-    current_return_pct: float,
 ) -> HoldingAnalysis:
-    latest = posterior[-1]
+    if not history:
+        return HoldingAnalysis(
+            hold_extension_state="unavailable",
+            hold_extension_text="推荐日前趋势样本不足",
+            hold_extension_score=0,
+            hold_extension_risks=["推荐日前可见行情不足"],
+            suggested_holding_plan="unavailable",
+        )
+    latest = history[-1]
     closes = [bar.close_price for bar in history]
-    drawdown = sequence_max_drawdown_pct([reference_price] + [bar.close_price for bar in posterior])
+    recent_closes = closes[-20:] if len(closes) >= 2 else closes
+    drawdown = sequence_max_drawdown_pct(recent_closes) if len(recent_closes) >= 2 else 0.0
     reasons: list[str] = []
     risks: list[str] = []
     score = 0
-    if current_return_pct >= EXTENSION_MIN_RETURN_PCT:
-        score += 25
-        reasons.append("已有足够利润垫")
+    if len(history) >= TREND_MIN_BARS:
+        score += 15
+        reasons.append("推荐日前趋势样本足够")
     else:
-        risks.append("利润垫不足")
+        risks.append("推荐日前趋势样本偏少")
     if drawdown >= EXTENSION_MAX_DRAWDOWN_PCT:
         score += 20
-        reasons.append("持有期回撤受控")
+        reasons.append("推荐日前回撤受控")
     else:
-        risks.append("持有期回撤过大")
+        risks.append("推荐日前回撤过大")
     ma20 = _moving_average(closes, 20)
     ma20_prev = _moving_average(closes[:-5], 20) if len(closes) >= 25 else None
     if ma20 is not None and latest.close_price >= ma20 and (ma20_prev is None or ma20 >= ma20_prev):
         score += 25
-        reasons.append("价格站上MA20且均线未走弱")
+        reasons.append("推荐日前价格站上MA20且均线未走弱")
     else:
-        risks.append("MA20趋势确认不足")
+        risks.append("推荐日前MA20趋势确认不足")
     ma60 = _moving_average(closes, 60)
     if ma60 is not None and latest.close_price >= ma60:
         score += 15
-        reasons.append("价格站上MA60")
-    giveback_ratio = ((peak_return_pct - current_return_pct) / peak_return_pct) if peak_return_pct > 0 else 0.0
-    if giveback_ratio >= GIVEBACK_WARN_RATIO:
-        risks.append("利润回吐过多")
-        score = min(score, 55)
+        reasons.append("推荐日前价格站上MA60")
+    if len(closes) >= 5 and latest.close_price >= closes[-5]:
+        score += 15
+        reasons.append("推荐日前短期收盘价未走弱")
+    else:
+        risks.append("推荐日前短期走势未确认")
     if stop_loss and latest.low_price <= stop_loss:
         return HoldingAnalysis(
             hold_extension_state="risk_off",
-            hold_extension_text="跌破止损，不适合延长持有",
+            hold_extension_text="推荐日已触及风险线，不适合延长持有",
             hold_extension_score=min(score, 30),
             hold_extension_reasons=reasons,
-            hold_extension_risks=[*risks, "已触及止损"],
+            hold_extension_risks=[*risks, "推荐日前已触及风险线"],
             suggested_holding_plan="exit_review",
         )
-    if len(posterior) >= MIDLONG_MIN_BARS and score >= 80:
+    if len(history) >= MIDLONG_MIN_BARS and score >= 80:
         state, text_value, plan = "qualified", "可转中长线观察", "midlong_hold"
-    elif len(posterior) >= TREND_MIN_BARS and score >= 65:
+    elif len(history) >= TREND_MIN_BARS and score >= 65:
         state, text_value, plan = "qualified", "可转波段趋势持有", "trend_hold"
     elif score >= 45:
         state, text_value, plan = "watch", "继续观察，暂不确认中长线", "swing_hold"
     else:
-        state, text_value, plan = "not_qualified", "不适合延长持有", "short_take_profit" if current_return_pct > 0 else "exit_review"
+        state, text_value, plan = "not_qualified", "不适合延长持有", "exit_review"
     return HoldingAnalysis(
         hold_extension_state=state,
         hold_extension_text=text_value,

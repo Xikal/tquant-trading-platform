@@ -62,6 +62,7 @@ import type {
   UserSectorExclusionsResponse,
   StrategyValidationReport,
   StrategyTrackingDetailResponse,
+  StrategyTrackingHoldingAnalysisResponse,
   StrategyTrackingListResponse,
   StrategyTrackingParams,
   StrategyTrackingReport,
@@ -321,6 +322,8 @@ export const api = {
     requestCached<StrategyTrackingReviewResponse>(`/strategy-tracking/review?${strategyTrackingQuery(params)}`, 12000),
   getStrategyTrackingAudit: (params: StrategyTrackingParams = {}) =>
     requestCached<StrategyTrackingReviewResponse>(`/strategy-tracking/leakage-audit?${strategyTrackingQuery(params)}`, 12000),
+  getStrategyTrackingHoldingAnalysis: (params: StrategyTrackingParams = {}) =>
+    requestCached<StrategyTrackingHoldingAnalysisResponse>(`/strategy-tracking/holding-analysis?${strategyTrackingQuery(params)}`, 12000),
   getStrategyTrackingReport: (type: "daily" | "weekly", params: StrategyTrackingParams = {}) =>
     requestCached<StrategyTrackingReport>(`/strategy-tracking/reports/${type}?${strategyTrackingQuery(params)}`, 12000),
   getPaperAccount: () => request<PaperAccount>("/paper/account"),

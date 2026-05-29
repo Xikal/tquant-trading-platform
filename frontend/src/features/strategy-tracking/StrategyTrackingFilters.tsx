@@ -1,4 +1,4 @@
-import { Select, Space } from "antd";
+import { Checkbox, Select, Space } from "antd";
 import type { StrategyMeta } from "../../api/strategies";
 
 interface StrategyTrackingFiltersProps {
@@ -10,6 +10,10 @@ interface StrategyTrackingFiltersProps {
   dataQuality: string;
   hitEntry: string;
   stopped: string;
+  userStatus: string;
+  excludeChinext: boolean;
+  excludeStar: boolean;
+  boardFilter: "include_all" | "main_only";
   onRangeChange: (value: number) => void;
   onStrategyKeyChange: (value: string) => void;
   onStrategyFamilyChange: (value: string) => void;
@@ -18,6 +22,10 @@ interface StrategyTrackingFiltersProps {
   onDataQualityChange: (value: string) => void;
   onHitEntryChange: (value: string) => void;
   onStoppedChange: (value: string) => void;
+  onUserStatusChange: (value: string) => void;
+  onExcludeChinextChange: (value: boolean) => void;
+  onExcludeStarChange: (value: boolean) => void;
+  onBoardFilterChange: (value: "include_all" | "main_only") => void;
   strategyMeta: StrategyMeta[];
 }
 
@@ -30,6 +38,10 @@ export function StrategyTrackingFilters({
   dataQuality,
   hitEntry,
   stopped,
+  userStatus,
+  excludeChinext,
+  excludeStar,
+  boardFilter,
   onRangeChange,
   onStrategyKeyChange,
   onStrategyFamilyChange,
@@ -38,6 +50,10 @@ export function StrategyTrackingFilters({
   onDataQualityChange,
   onHitEntryChange,
   onStoppedChange,
+  onUserStatusChange,
+  onExcludeChinextChange,
+  onExcludeStarChange,
+  onBoardFilterChange,
   strategyMeta,
 }: StrategyTrackingFiltersProps) {
   const strategyOptions = strategyMeta
@@ -59,6 +75,15 @@ export function StrategyTrackingFilters({
       <Select size="small" value={strategyKey} onChange={onStrategyKeyChange} style={{ width: 160 }} options={[
         { label: "全部策略", value: "" },
         ...strategyOptions,
+      ]} />
+      <Select size="small" value={userStatus} onChange={onUserStatusChange} style={{ width: 130 }} options={[
+        { label: "全部结论", value: "" },
+        { label: "可以重点看", value: "focus" },
+        { label: "等计划买点", value: "wait_entry" },
+        { label: "已经走弱", value: "weakening" },
+        { label: "冲高后观察", value: "take_profit_watch" },
+        { label: "需要复核", value: "review_needed" },
+        { label: "数据不足", value: "data_missing" },
       ]} />
       <Select size="small" value={signalState} onChange={onSignalStateChange} style={{ width: 120 }} options={[
         { label: "全部信号", value: "" },
@@ -91,6 +116,12 @@ export function StrategyTrackingFilters({
         { label: "已跌破止损", value: "true" },
         { label: "未跌破止损", value: "false" },
       ]} />
+      <Select size="small" value={boardFilter} onChange={onBoardFilterChange} style={{ width: 120 }} options={[
+        { label: "全部市场板", value: "include_all" },
+        { label: "只看主板", value: "main_only" },
+      ]} />
+      <Checkbox checked={excludeChinext} onChange={(event) => onExcludeChinextChange(event.target.checked)}>屏蔽创业板</Checkbox>
+      <Checkbox checked={excludeStar} onChange={(event) => onExcludeStarChange(event.target.checked)}>屏蔽科创板</Checkbox>
     </Space>
   );
 }

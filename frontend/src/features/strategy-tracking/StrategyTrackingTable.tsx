@@ -1,16 +1,15 @@
 import { Button, Table, Tag } from "antd";
 import type { ColumnsType, TablePaginationConfig } from "antd/es/table";
+import type { StrategyTrackingViewMode } from "../../stores/strategyTrackingStore";
 import type { StrategyTrackingItem } from "../../types";
 import { formatPct, formatPrice } from "../workspace-shared/workspaceFormatters";
 import {
   displayReturn,
   entryZoneText,
-  exitQualityTone,
   holdingBucketText,
   holdExtensionTone,
-  suggestedPlanText,
-  trackingTone,
 } from "./strategyTrackingFormatters";
+import { StrategyTrackingSectorTags } from "./StrategyTrackingSectorTags";
 
 interface StrategyTrackingTableProps {
   items: StrategyTrackingItem[];
@@ -18,6 +17,7 @@ interface StrategyTrackingTableProps {
   page: number;
   pageSize: number;
   loading: boolean;
+  viewMode?: StrategyTrackingViewMode;
   onPageChange: (page: number, pageSize: number) => void;
   onOpenDetail: (itemId: string) => void;
 }
@@ -28,6 +28,7 @@ export function StrategyTrackingTable({
   page,
   pageSize,
   loading,
+  viewMode = "beginner",
   onPageChange,
   onOpenDetail,
 }: StrategyTrackingTableProps) {
@@ -37,7 +38,7 @@ export function StrategyTrackingTable({
       size="small"
       loading={loading}
       dataSource={items}
-      columns={columns(onOpenDetail)}
+      columns={columns(onOpenDetail, viewMode)}
       scroll={{ x: 1360 }}
       pagination={{
         current: page,
@@ -51,109 +52,109 @@ export function StrategyTrackingTable({
   );
 }
 
-function columns(onOpenDetail: (itemId: string) => void): ColumnsType<StrategyTrackingItem> {
+function columns(onOpenDetail: (itemId: string) => void, viewMode: StrategyTrackingViewMode): ColumnsType<StrategyTrackingItem> {
   return [
     {
-      title: "股票",
+      title: "股票 / 板块",
       dataIndex: "symbol",
       fixed: "left",
-      width: 150,
+      width: 190,
       render: (_, item) => (
         <Button className="strategy-tracking-stock-link" type="link" size="small" onClick={() => onOpenDetail(item.id)}>
           <span>{item.name || item.symbol}</span>
           <small>{item.symbol}</small>
+          <StrategyTrackingSectorTags sectors={item.display_sectors} boardType={item.board_type} boardText={item.board_type_text} />
         </Button>
       ),
     },
     {
-      title: "策略/状态",
+      title: "当前结论",
       width: 170,
       render: (_, item) => (
         <div className="strategy-tracking-cell-stack">
-          <strong>{item.strategy_name}</strong>
-          <span>{item.lifecycle_status_text}</span>
+          <Tag color={friendlyTone(item.user_friendly_status)}>{item.user_friendly_status_text}</Tag>
+          <span>{item.user_friendly_reason}</span>
         </div>
       ),
     },
     {
-      title: "信号",
-      width: 110,
-      render: (_, item) => <Tag color={item.observe_only ? "default" : "blue"}>{item.signal_text}</Tag>,
-    },
-    {
-      title: "价格",
-      width: 170,
-      render: (_, item) => (
-        <div className="strategy-tracking-cell-stack">
-          <span>现价 {formatPrice(item.current_price)}</span>
-          <span>推荐 {formatPrice(item.first_signal_price)} · {item.first_signal_date}</span>
-        </div>
-      ),
-    },
-    {
-      title: "买点/止损",
-      width: 180,
-      render: (_, item) => (
-        <div className="strategy-tracking-cell-stack">
-          <span>{entryZoneText(item)}</span>
-          <span>距买点 {formatPct(item.distance_to_entry_pct)} · 止损 {formatPrice(item.stop_loss)}</span>
-        </div>
-      ),
-    },
-    {
-      title: "表现",
-      width: 180,
-      render: (_, item) => (
-        <div className="strategy-tracking-tag-row">
-          <Tag color={trackingTone(item.current_return_pct)}>现 {displayReturn(item.current_return_pct)}</Tag>
-          <Tag color={trackingTone(item.max_gain_pct)}>高 {displayReturn(item.max_gain_pct)}</Tag>
-          <Tag>撤 {formatPct(item.max_drawdown_pct)}</Tag>
-        </div>
-      ),
-    },
-    {
-      title: "持有优化",
+      title: "推荐计划",
       width: 190,
       render: (_, item) => (
         <div className="strategy-tracking-cell-stack">
-          <span>{item.best_holding_days ? `最优 ${item.best_holding_days}天` : "暂无持有窗口"}</span>
-          <div className="strategy-tracking-tag-row">
-            <Tag color={exitQualityTone(item.exit_quality)}>{displayReturn(item.best_exit_return_pct)}</Tag>
-            <Tag>{holdingBucketText(item.holding_bucket)}</Tag>
-          </div>
+          <strong>{item.strategy_name}</strong>
+          <span>计划买入区 {entryZoneText(item)}</span>
+          <span>风险线 {formatPrice(item.stop_loss)} · 目标 {formatPrice(item.target_price)}</span>
         </div>
       ),
     },
     {
-      title: "延长持有",
-      width: 180,
+      title: "推荐后表现",
+      width: 200,
       render: (_, item) => (
         <div className="strategy-tracking-cell-stack">
+          <span>推荐后最高涨过 {displayReturn(item.max_gain_pct)}</span>
+          <span>推荐后最多跌过 {formatPct(item.max_drawdown_pct)}</span>
+          <span>现在涨跌 {displayReturn(item.current_return_pct)}</span>
+        </div>
+      ),
+    },
+    {
+      title: "适合持有",
+      width: 190,
+      render: (_, item) => (
+        <div className="strategy-tracking-cell-stack">
+          <span>{item.best_holding_days ? `更适合：${holdingBucketText(item.holding_bucket)}` : "暂无持有窗口"}</span>
+          <span>{item.best_holding_days ? `最优：${item.best_holding_days} 天` : "样本不足"}</span>
           <Tag color={holdExtensionTone(item.hold_extension_state)}>{item.hold_extension_text}</Tag>
-          <span>{suggestedPlanText(item.suggested_holding_plan)} · {item.hold_extension_score}分</span>
         </div>
       ),
     },
     {
       title: "触发",
-      width: 120,
+      width: 150,
       render: (_, item) => (
         <div className="strategy-tracking-tag-row">
-          {item.entry_touched ? <Tag color="green">买点触达</Tag> : <Tag>未触达</Tag>}
-          {item.stop_triggered ? <Tag color="red">止损</Tag> : null}
+          {item.entry_touched ? <Tag color="green">已到计划买入区</Tag> : <Tag>还没到计划买入价</Tag>}
+          {item.stop_triggered ? <Tag color="red">已跌破风险线</Tag> : null}
+          {item.target_touched ? <Tag color="blue">已触达目标位</Tag> : null}
         </div>
       ),
     },
     {
-      title: "归因/审计",
-      width: 220,
+      title: "为什么",
+      width: 230,
       render: (_, item) => (
         <div className="strategy-tracking-cell-stack">
-          <strong>{item.conclusion}</strong>
-          <span>{item.failure_reason_text || item.data_quality_text}</span>
-          {item.needs_review ? <Tag color="orange">需复核</Tag> : null}
+          <strong>{item.failure_reason_text || item.plain_language_summary || item.data_quality_text}</strong>
+          <span>{item.first_signal_date} 推荐 · 现价 {formatPrice(item.current_price)}</span>
+          {viewMode === "professional" && item.needs_review ? <Tag color="orange">需复核</Tag> : null}
         </div>
       ),
     },
+    ...(viewMode === "professional" ? [professionalColumn()] : []),
   ];
+}
+
+function professionalColumn(): ColumnsType<StrategyTrackingItem>[number] {
+  return {
+    title: "专业审计",
+    width: 220,
+    render: (_, item) => (
+      <div className="strategy-tracking-cell-stack">
+        <span>数据截止 {item.data_cutoff_at || "--"}</span>
+        <span>后验起点 {item.posterior_start_date || "--"}</span>
+        <span>审计 {item.future_leak_check}</span>
+      </div>
+    ),
+  };
+}
+
+function friendlyTone(status: string): string {
+  if (status === "focus") return "green";
+  if (status === "wait_entry") return "gold";
+  if (status === "weakening") return "red";
+  if (status === "take_profit_watch") return "blue";
+  if (status === "review_needed") return "orange";
+  return "default";
 }

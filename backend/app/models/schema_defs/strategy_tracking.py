@@ -44,6 +44,26 @@ class StrategyTrackingPerformanceOut(BaseModel):
     health_risks: list[str] = Field(default_factory=list)
 
 
+class StrategyTrackingHoldingAnalysisOut(BaseModel):
+    strategy_key: str
+    strategy_name: str = ""
+    strategy_family: str = ""
+    sample_count: int = 0
+    avg_best_holding_days: float = 0.0
+    median_best_holding_days: float = 0.0
+    dominant_holding_bucket: str = "unavailable"
+    dominant_holding_bucket_text: str = "样本不足"
+    short_hold_ratio: float = 0.0
+    swing_hold_ratio: float = 0.0
+    trend_hold_ratio: float = 0.0
+    midlong_hold_ratio: float = 0.0
+    avg_best_exit_return_pct: float = 0.0
+    avg_best_exit_drawdown_pct: float = 0.0
+    avg_giveback_from_peak_pct: float = 0.0
+    extension_qualified_ratio: float = 0.0
+    conclusion: str = ""
+
+
 class StrategyTrackingSegmentOut(BaseModel):
     strategy_key: str = ""
     strategy_name: str = ""
@@ -151,6 +171,16 @@ class StrategyTrackingItemOut(BaseModel):
     data_quality_text: str = "行情数据不足"
     source: str = "low_buy_result_snapshot"
     detail_available: bool = True
+    board_type: str = "main"
+    board_type_text: str = "主板"
+    industry_sectors: list[str] = Field(default_factory=list)
+    concept_sectors: list[str] = Field(default_factory=list)
+    display_sectors: list[str] = Field(default_factory=list)
+    user_friendly_status: str = "data_missing"
+    user_friendly_status_text: str = "数据不足"
+    user_friendly_reason: str = "后续行情数据不足，暂时不能判断。"
+    plain_language_summary: str = ""
+    sector_detail: dict[str, Any] = Field(default_factory=dict)
 
 
 class StrategyTrackingTimelinePointOut(BaseModel):
@@ -214,6 +244,13 @@ class StrategyTrackingReviewResponse(BaseModel):
     failure_tags: dict[str, int] = Field(default_factory=dict)
     needs_review_items: list[StrategyTrackingItemOut] = Field(default_factory=list)
     abnormal_return_items: list[StrategyTrackingItemOut] = Field(default_factory=list)
+
+
+class StrategyTrackingHoldingAnalysisResponse(BaseModel):
+    items: list[StrategyTrackingHoldingAnalysisOut] = Field(default_factory=list)
+    generated_at: str = ""
+    data_quality: str = "unavailable"
+    production_writeable: bool = False
 
 
 class StrategyTrackingReportOut(BaseModel):

@@ -787,6 +787,8 @@ h5.ant-typography {
 }
 
 .strategy-tracking-filter-panel {
+  display: grid;
+  gap: 8px;
   padding: 8px;
 }
 
@@ -872,6 +874,78 @@ h5.ant-typography {
   align-items: center;
 }
 
+.strategy-tracking-mode-toggle {
+  justify-content: space-between;
+  width: 100%;
+}
+
+.strategy-tracking-friendly-summary {
+  display: grid;
+  gap: 4px;
+  color: #0f172a;
+  font-size: var(--font-body);
+}
+
+.strategy-tracking-friendly-summary span {
+  color: var(--muted);
+  font-size: var(--font-meta);
+}
+
+.strategy-tracking-status-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(120px, 1fr));
+  gap: 8px;
+}
+
+.strategy-tracking-status-card {
+  display: grid !important;
+  justify-items: start;
+  height: auto !important;
+  padding: 8px !important;
+  text-align: left;
+}
+
+.strategy-tracking-status-card strong {
+  font-size: 20px;
+  line-height: 1.1;
+}
+
+.strategy-tracking-status-card small,
+.strategy-tracking-sector-empty {
+  color: var(--muted);
+  font-size: var(--font-meta);
+}
+
+.strategy-tracking-sector-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  max-width: 160px;
+}
+
+.strategy-tracking-sector-tags .ant-tag {
+  margin-inline-end: 0;
+}
+
+.strategy-tracking-holding-bars {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.strategy-tracking-holding-bars span {
+  color: var(--muted);
+  font-size: var(--font-meta);
+}
+
+.strategy-tracking-detail-section {
+  display: grid;
+  gap: 8px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 8px;
+}
+
 .strategy-tracking-main-panel {
   padding-top: 4px;
 }
@@ -924,6 +998,10 @@ h5.ant-typography {
   .strategy-tracking-metric-grid {
     grid-template-columns: repeat(3, minmax(70px, 1fr));
   }
+
+  .strategy-tracking-status-grid {
+    grid-template-columns: repeat(2, minmax(120px, 1fr));
+  }
 }
 
 @media (max-width: 640px) {
@@ -940,5 +1018,9 @@ h5.ant-typography {
 
   .strategy-tracking-metric-grid {
     grid-template-columns: repeat(2, minmax(70px, 1fr));
+  }
+
+  .strategy-tracking-status-grid {
+    grid-template-columns: 1fr;
   }
 }

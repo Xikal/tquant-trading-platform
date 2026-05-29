@@ -28,3 +28,12 @@ export function useStrategyTrackingReport(type: "daily" | "weekly", params: Stra
     staleTime: 30_000,
   });
 }
+
+export function useStrategyTrackingHoldingAnalysis(params: StrategyTrackingParams, enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.strategyTrackingHoldingAnalysis(params as Record<string, unknown>),
+    queryFn: () => api.getStrategyTrackingHoldingAnalysis(params),
+    enabled,
+    staleTime: 30_000,
+  });
+}

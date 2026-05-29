@@ -8,9 +8,10 @@ from typing import Any, Iterable
 from sqlalchemy import desc, select
 from sqlalchemy.orm import Session
 
-from app.models.entities import LowBuyResultSnapshot, LowBuyTradeLifecycleSnapshot, MarketModelObservation
+from app.models.entities import Instrument, LowBuyResultSnapshot, LowBuyTradeLifecycleSnapshot, MarketModelObservation
 from app.models.schema_defs.strategy_tracking import (
     StrategyTrackingDetailResponse,
+    StrategyTrackingHoldingAnalysisResponse,
     StrategyTrackingItemOut,
     StrategyTrackingListResponse,
     StrategyTrackingPerformanceOut,
@@ -30,6 +31,7 @@ from app.services.strategy_tracking_constants import (
     TRACKED_SIGNAL_STATES,
 )
 from app.services.strategy_tracking_builders import build_markers, build_timeline, build_tracking_item
+from app.services.strategy_tracking_filters import filter_items, sort_items
 from app.services.strategy_tracking_helpers import (
     build_performance,
     build_market_segments,
@@ -45,6 +47,7 @@ from app.services.strategy_tracking_reports import (
     calendar_lookback,
     report_markdown,
 )
+from app.services.strategy_tracking_usability import build_holding_analysis
 
 logger = logging.getLogger(__name__)
 
@@ -75,6 +78,10 @@ class StrategyTrackingService:
         data_quality: str | None = None,
         hit_entry: bool | None = None,
         stopped: bool | None = None,
+        exclude_chinext: bool = False,
+        exclude_star: bool = False,
+        board_filter: str | None = None,
+        user_status: str | None = None,
         sort: str = "max_gain_desc",
         limit: int = DEFAULT_LIMIT,
         offset: int = 0,
@@ -88,19 +95,23 @@ class StrategyTrackingService:
             groups = [item for item in groups if item.latest_row.buy_signal_state == signal_state]
         latest_bar_date = self._latest_bar_date()
         all_items = self._build_summary_items(groups, latest_bar_date=latest_bar_date)
-        items = self._filter_items(
+        items = filter_items(
             all_items,
             lifecycle_status=lifecycle_status,
             data_quality=data_quality,
             hit_entry=hit_entry,
             stopped=stopped,
+            exclude_chinext=exclude_chinext,
+            exclude_star=exclude_star,
+            board_filter=board_filter,
+            user_status=user_status,
         )
-        items = self._sort_items(items, sort=sort)
+        items = sort_items(items, sort=sort)
         total = len(items)
         items = items[safe_offset : safe_offset + safe_limit]
-        summary = build_summary(all_items)
-        performance = build_performance(all_items)
-        market_segments = build_market_segments(all_items)
+        summary = build_summary(items)
+        performance = build_performance(items)
+        market_segments = build_market_segments(items)
         shadow = self.shadow_observations(range_days=range_days, items=all_items)
         summary.shadow_observation_count = sum(item.observation_count for item in shadow)
         return StrategyTrackingListResponse(
@@ -146,6 +157,30 @@ class StrategyTrackingService:
     ) -> list[StrategyTrackingPerformanceOut]:
         result = self.list_items(range_days=range_days, strategy_family=strategy_family, limit=1)
         return result.performance
+
+    def holding_analysis(
+        self,
+        *,
+        range_days: int = DEFAULT_RANGE_DAYS,
+        strategy_family: str | None = None,
+        exclude_chinext: bool = False,
+        exclude_star: bool = False,
+        board_filter: str | None = None,
+    ) -> StrategyTrackingHoldingAnalysisResponse:
+        result = self.list_items(
+            range_days=range_days,
+            strategy_family=strategy_family,
+            exclude_chinext=exclude_chinext,
+            exclude_star=exclude_star,
+            board_filter=board_filter,
+            limit=MAX_LIMIT,
+        )
+        return StrategyTrackingHoldingAnalysisResponse(
+            items=build_holding_analysis(result.items),
+            generated_at=result.summary.generated_at,
+            data_quality=result.summary.data_quality,
+            production_writeable=False,
+        )
 
     def review(
         self,
@@ -257,7 +292,8 @@ class StrategyTrackingService:
         latest_bar_date = self._latest_bar_date()
         bars = self._fetch_bars([group], latest_bar_date=latest_bar_date).get(symbol, [])
         lifecycle = self._load_lifecycles([group]).get(self._group_key(group))
-        item = self._build_item(group, bars, lifecycle, latest_bar_date)
+        instrument_payload = self._load_instrument_payloads([group]).get(symbol)
+        item = self._build_item(group, bars, lifecycle, latest_bar_date, instrument_payload=instrument_payload)
         timeline = build_timeline(bars=bars, item=item)
         markers = build_markers(item=item, timeline=timeline)
         return StrategyTrackingDetailResponse(
@@ -402,7 +438,11 @@ class StrategyTrackingService:
         preview = self._sort_groups(groups, sort="latest_desc")[:300]
         bars = self._fetch_bars(preview, latest_bar_date=latest_bar_date)
         lifecycles = self._load_lifecycles(preview)
-        return [self._build_item(group, bars.get(group.symbol, []), lifecycles.get(self._group_key(group)), latest_bar_date) for group in preview]
+        instruments = self._load_instrument_payloads(preview)
+        return [
+            self._build_item(group, bars.get(group.symbol, []), lifecycles.get(self._group_key(group)), latest_bar_date, instrument_payload=instruments.get(group.symbol))
+            for group in preview
+        ]
 
     def _build_item(
         self,
@@ -410,8 +450,20 @@ class StrategyTrackingService:
         bars: list[DailyBarRow],
         lifecycle: LowBuyTradeLifecycleSnapshot | None,
         latest_bar_date: str,
+        instrument_payload: dict[str, Any] | None = None,
     ) -> StrategyTrackingItemOut:
         first_date = self._first_signal_date(group)
+        if instrument_payload:
+            merged_payload = {**instrument_payload, **group.payload}
+            group = TrackingGroup(
+                strategy_key=group.strategy_key,
+                symbol=group.symbol,
+                rows=group.rows,
+                latest_row=group.latest_row,
+                first_row=group.first_row,
+                payload=merged_payload,
+                payload_error=group.payload_error,
+            )
         return build_tracking_item(
             group=group,
             bars=bars,
@@ -427,45 +479,20 @@ class StrategyTrackingService:
     def _group_key(self, group: TrackingGroup) -> tuple[str, str, str]:
         return group.strategy_key, group.symbol, self._first_signal_date(group)
 
-    def _filter_items(
-        self,
-        items: list[StrategyTrackingItemOut],
-        *,
-        lifecycle_status: str | None,
-        data_quality: str | None,
-        hit_entry: bool | None,
-        stopped: bool | None,
-    ) -> list[StrategyTrackingItemOut]:
-        result = items
-        if lifecycle_status:
-            result = [item for item in result if item.lifecycle_status == lifecycle_status]
-        if data_quality:
-            result = [item for item in result if item.data_quality == data_quality]
-        if hit_entry is not None:
-            result = [item for item in result if item.entry_touched == hit_entry]
-        if stopped is not None:
-            result = [item for item in result if item.stop_triggered == stopped]
-        return result
+    def _load_instrument_payloads(self, groups: list[TrackingGroup]) -> dict[str, dict[str, str]]:
+        symbols = sorted({item.symbol for item in groups})
+        if not symbols:
+            return {}
+        rows = self.db.execute(select(Instrument).where(Instrument.symbol.in_(symbols))).scalars().all()
+        return {
+            row.symbol: {"instrument_sector_name": row.sector_name or "", "instrument_market": row.market or "", "instrument_type": row.instrument_type or ""}
+            for row in rows
+        }
 
     def _sort_groups(self, groups: list[TrackingGroup], *, sort: str) -> list[TrackingGroup]:
         if sort == "latest_desc":
             return sorted(groups, key=lambda item: (item.latest_row.latest_trade_date, item.latest_row.score), reverse=True)
         return sorted(groups, key=lambda item: (item.latest_row.score, item.latest_row.latest_trade_date), reverse=True)
-
-    def _sort_items(self, items: list[StrategyTrackingItemOut], *, sort: str) -> list[StrategyTrackingItemOut]:
-        if sort == "best_holding_desc":
-            return sorted(items, key=lambda item: item.best_exit_return_pct or -999.0, reverse=True)
-        if sort == "needs_review_desc":
-            return sorted(items, key=lambda item: (item.needs_review, item.abnormal_return, item.max_gain_pct or 0.0), reverse=True)
-        if sort == "current_return_desc":
-            return sorted(items, key=lambda item: item.current_return_pct or -999.0, reverse=True)
-        if sort == "drawdown_asc":
-            return sorted(items, key=lambda item: item.max_drawdown_pct or 0.0)
-        if sort == "days_desc":
-            return sorted(items, key=lambda item: item.recommendation_days, reverse=True)
-        if sort == "risk_desc":
-            return sorted(items, key=lambda item: (item.stop_triggered, -(item.max_drawdown_pct or 0.0)), reverse=True)
-        return sorted(items, key=lambda item: item.max_gain_pct or -999.0, reverse=True)
 
     def _range_start_date(self, range_days: int) -> str:
         dates = self._recent_result_dates(range_days)

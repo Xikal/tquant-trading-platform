@@ -1,12 +1,14 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
-import type { StrategyTrackingDetailResponse, StrategyTrackingItem, StrategyTrackingPerformance, StrategyTrackingSummary } from "../../types";
+import type { StrategyTrackingDetailResponse, StrategyTrackingHoldingAnalysis, StrategyTrackingItem, StrategyTrackingPerformance, StrategyTrackingSummary } from "../../types";
 import { Topbar } from "../trading-workspace/Topbar";
 import { StrategyTrackingDetailContent } from "./StrategyTrackingDetailDrawer";
 import { StrategyTrackingDiagnosticsPanel } from "./StrategyTrackingDiagnosticsPanel";
+import { StrategyTrackingHoldingAnalysisPanel } from "./StrategyTrackingHoldingAnalysisPanel";
 import { StrategyTrackingPerformanceTable } from "./StrategyTrackingPerformanceTable";
 import { StrategyTrackingReviewPanel } from "./StrategyTrackingReviewPanel";
 import { StrategyTrackingSummaryBar } from "./StrategyTrackingSummaryBar";
+import { buildParams } from "./StrategyTrackingPage";
 import { StrategyTrackingTable } from "./StrategyTrackingTable";
 
 describe("StrategyTracking UI", () => {
@@ -53,6 +55,7 @@ describe("StrategyTracking UI", () => {
         page={1}
         pageSize={30}
         loading={false}
+        viewMode="professional"
         onOpenDetail={openDetail}
         onPageChange={onPageChange}
       />
@@ -60,23 +63,23 @@ describe("StrategyTracking UI", () => {
 
     expect(html).toContain("浦发银行");
     expect(html).toContain("首板回调");
-    expect(html).toContain("买点触达");
-    expect(html).toContain("止损");
-    expect(html).toContain("最优 2天");
+    expect(html).toContain("已到计划买入区");
+    expect(html).toContain("已跌破风险线");
+    expect(html).toContain("推荐后最高涨过");
     expect(html).toContain("短线1-3天");
     expect(html).toContain("需复核");
   });
 
   it("renders detail drawer timeline without needing list payload_json", () => {
     const html = renderToStaticMarkup(
-      <StrategyTrackingDetailContent detail={detailFixture()} />
+      <StrategyTrackingDetailContent detail={detailFixture()} viewMode="professional" />
     );
 
     expect(html).toContain("浦发银行");
     expect(html).toContain("首次推荐");
     expect(html).toContain("分钟K线");
     expect(html).toContain("2026-04-21");
-    expect(html).toContain("止损");
+    expect(html).toContain("跌破风险线");
     expect(html).toContain("最优持有");
     expect(html).toContain("延长持有评分");
     expect(html).toContain("失败归因");
@@ -102,8 +105,33 @@ describe("StrategyTracking UI", () => {
     expect(html).toContain("首板回调");
   });
 
+
+
+  it("renders holding analysis tab conclusions", () => {
+    const html = renderToStaticMarkup(<StrategyTrackingHoldingAnalysisPanel items={[holdingFixture()]} loading={false} />);
+
+    expect(html).toContain("推荐次数");
+    expect(html).toContain("首板回调更适合短线");
+    expect(html).toContain("短线 1-3 天");
+  });
+
+  it("builds board filter params from store state", () => {
+    const params = buildParams({
+      ...baseStoreState(),
+      excludeChinext: true,
+      excludeStar: true,
+      boardFilter: "main_only",
+      userStatus: "focus",
+    });
+
+    expect(params.exclude_chinext).toBe(true);
+    expect(params.exclude_star).toBe(true);
+    expect(params.board_filter).toBe("main_only");
+    expect(params.user_status).toBe("focus");
+  });
+
   it("renders diagnostics for market segments and shadow zero reasons", () => {
-    const html = renderToStaticMarkup(<StrategyTrackingDiagnosticsPanel result={listFixture()} />);
+    const html = renderToStaticMarkup(<StrategyTrackingDiagnosticsPanel result={listFixture()} viewMode="professional" />);
 
     expect(html).toContain("Shadow 观测样本为 0");
     expect(html).toContain("观测表里目前没有该模型观测记录");
@@ -258,6 +286,16 @@ function itemFixture(): StrategyTrackingItem {
     data_quality_text: "数据完整",
     source: "low_buy_result_snapshot",
     detail_available: true,
+    board_type: "main",
+    board_type_text: "主板",
+    industry_sectors: ["银行"],
+    concept_sectors: ["金融科技", "中特估"],
+    display_sectors: ["金融科技", "银行", "主板"],
+    user_friendly_status: "weakening",
+    user_friendly_status_text: "已经走弱",
+    user_friendly_reason: "已经跌破风险线，优先复盘失败原因。",
+    plain_language_summary: "推荐后最高涨过 +10.00%，最多跌过 -16.19%，现在涨跌 -12.00%，已经跌破风险线。",
+    sector_detail: { board_type_text: "主板" },
   };
 }
 
@@ -290,6 +328,69 @@ function detailFixture(): StrategyTrackingDetailResponse {
     review_text: "缩量回踩到支撑位；推荐后跌破止损，需复盘失败原因。",
     partial_errors: [],
     production_writeable: false,
+  };
+}
+
+
+function holdingFixture(): StrategyTrackingHoldingAnalysis {
+  return {
+    strategy_key: "first_board",
+    strategy_name: "首板回调",
+    strategy_family: "core",
+    sample_count: 24,
+    avg_best_holding_days: 2.4,
+    median_best_holding_days: 2,
+    dominant_holding_bucket: "short_1_3d",
+    dominant_holding_bucket_text: "短线 1-3 天",
+    short_hold_ratio: 66.7,
+    swing_hold_ratio: 20.8,
+    trend_hold_ratio: 8.3,
+    midlong_hold_ratio: 4.2,
+    avg_best_exit_return_pct: 6.8,
+    avg_best_exit_drawdown_pct: -2.1,
+    avg_giveback_from_peak_pct: 18.5,
+    extension_qualified_ratio: 16.7,
+    conclusion: "首板回调更适合短线 1-3 天，多数样本在 3 天内冲高。",
+  };
+}
+
+function baseStoreState() {
+  return {
+    tab: "active" as const,
+    viewMode: "beginner" as const,
+    range: 30,
+    strategyKey: "",
+    strategyFamily: "",
+    signalState: "",
+    lifecycleStatus: "",
+    dataQuality: "",
+    hitEntry: "",
+    stopped: "",
+    userStatus: "",
+    excludeChinext: true,
+    excludeStar: true,
+    boardFilter: "include_all" as const,
+    sort: "max_gain_desc",
+    page: 1,
+    pageSize: 30,
+    selectedItemId: null,
+    setTab: vi.fn(),
+    setViewMode: vi.fn(),
+    setRange: vi.fn(),
+    setStrategyKey: vi.fn(),
+    setStrategyFamily: vi.fn(),
+    setSignalState: vi.fn(),
+    setLifecycleStatus: vi.fn(),
+    setDataQuality: vi.fn(),
+    setHitEntry: vi.fn(),
+    setStopped: vi.fn(),
+    setUserStatus: vi.fn(),
+    setExcludeChinext: vi.fn(),
+    setExcludeStar: vi.fn(),
+    setBoardFilter: vi.fn(),
+    setSort: vi.fn(),
+    setPagination: vi.fn(),
+    setSelectedItemId: vi.fn(),
   };
 }
 
