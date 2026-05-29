@@ -1,4 +1,4 @@
-import { Space, Tag, Typography } from "antd";
+import { Tag } from "antd";
 import type { StrategyTrackingPerformance, StrategyTrackingSummary } from "../../types";
 import { formatPct } from "../workspace-shared/workspaceFormatters";
 
@@ -14,20 +14,17 @@ export function StrategyTrackingReviewPanel({
   const problemText = reviewProblem(summary, worst);
   const nextText = nextReviewFocus(summary, best, worst);
   return (
-    <section className="workspace-panel compact-panel">
-      <Space wrap size={8} style={{ marginBottom: 8 }}>
-        <Tag color="blue">一键复盘</Tag>
-        <Tag>样本 {summary.tracking_count}</Tag>
-        <Tag>有效 {summary.active_count}</Tag>
-      </Space>
-      <Typography.Paragraph style={{ marginBottom: 8 }}>
-        {problemText}
-      </Typography.Paragraph>
-      <Space wrap size={8}>
+    <section className="panel strategy-tracking-review">
+      <div className="strategy-tracking-review-head">
+        <strong>一键复盘</strong>
+        <span>样本 {summary.tracking_count} · 有效 {summary.active_count}</span>
+      </div>
+      <p>{problemText}</p>
+      <div className="strategy-tracking-review-tags">
         {best ? <Tag color="green">最佳 {best.strategy_name} {formatPct(best.avg_max_gain_pct)}</Tag> : null}
         {worst ? <Tag color="red">风险 {worst.strategy_name} 止损率 {formatPct(worst.stop_loss_rate)}</Tag> : null}
         <Tag>{nextText}</Tag>
-      </Space>
+      </div>
     </section>
   );
 }

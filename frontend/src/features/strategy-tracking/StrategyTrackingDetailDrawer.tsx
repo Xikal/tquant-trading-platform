@@ -23,7 +23,7 @@ export function StrategyTrackingDetailDrawer({
 }: StrategyTrackingDetailDrawerProps) {
   const item = detail?.item;
   return (
-    <Drawer title={item ? `${item.name || item.symbol} · ${item.strategy_name}` : "单票详情"} open={open} onClose={onClose} width={680}>
+    <Drawer title={item ? `${item.name || item.symbol} · ${item.strategy_name}` : "单票详情"} open={open} onClose={onClose} width={720}>
       {loading ? <TqPageLoading label="详情加载中" rows={3} /> : null}
       {errorText ? <Alert type="error" showIcon title={errorText} /> : null}
       {!loading && !errorText && !detail ? (
@@ -37,19 +37,23 @@ export function StrategyTrackingDetailDrawer({
 export function StrategyTrackingDetailContent({ detail }: { detail: StrategyTrackingDetailResponse }) {
   const item = detail.item;
   return (
-    <Space orientation="vertical" size={12} style={{ width: "100%" }}>
+    <Space className="strategy-tracking-detail" orientation="vertical" size={12}>
       {detail.partial_errors.length ? <Alert type="warning" showIcon title={detail.partial_errors.join("；")} /> : null}
-      <strong>{item.name || item.symbol} · {item.symbol}</strong>
-      <Space wrap size={8}>
-        <Tag color="blue">{item.signal_text}</Tag>
-        <Tag color={item.stop_triggered ? "red" : "green"}>{item.lifecycle_status_text}</Tag>
-        <Tag>{item.data_quality_text}</Tag>
-        <Tag>推荐价 {formatPrice(item.first_signal_price)}</Tag>
-        <Tag>首次推荐 {item.first_signal_date}</Tag>
-        <Tag>买点 {formatPrice(item.entry_zone_low)}~{formatPrice(item.entry_zone_high)}</Tag>
-        <Tag>止损 {formatPrice(item.stop_loss)}</Tag>
-      </Space>
-      <p>{detail.review_text}</p>
+      <div className="strategy-tracking-detail-head">
+        <strong>{item.name || item.symbol} · {item.symbol}</strong>
+        <div className="strategy-tracking-tag-row">
+          <Tag color="blue">{item.signal_text}</Tag>
+          <Tag color={item.stop_triggered ? "red" : "green"}>{item.lifecycle_status_text}</Tag>
+          <Tag>{item.data_quality_text}</Tag>
+        </div>
+      </div>
+      <div className="strategy-tracking-detail-metrics">
+        <span>推荐价 {formatPrice(item.first_signal_price)}</span>
+        <span>首次推荐 {item.first_signal_date}</span>
+        <span>买点 {formatPrice(item.entry_zone_low)}~{formatPrice(item.entry_zone_high)}</span>
+        <span>止损 {formatPrice(item.stop_loss)}</span>
+      </div>
+      <p className="strategy-tracking-review-text">{detail.review_text}</p>
       <MiniKline bars={timelineToKlineBars(detail.timeline)} />
       <Table
         rowKey="trade_date"

@@ -30,7 +30,7 @@ export function StrategyTrackingTable({
       loading={loading}
       dataSource={items}
       columns={columns(onOpenDetail)}
-      scroll={{ x: 1160 }}
+      scroll={{ x: 1040 }}
       pagination={{
         current: page,
         pageSize,
@@ -49,50 +49,79 @@ function columns(onOpenDetail: (itemId: string) => void): ColumnsType<StrategyTr
       title: "股票",
       dataIndex: "symbol",
       fixed: "left",
-      width: 130,
+      width: 150,
       render: (_, item) => (
-        <Button type="link" size="small" onClick={() => onOpenDetail(item.id)}>
-          {item.name || item.symbol} <small>{item.symbol}</small>
+        <Button className="strategy-tracking-stock-link" type="link" size="small" onClick={() => onOpenDetail(item.id)}>
+          <span>{item.name || item.symbol}</span>
+          <small>{item.symbol}</small>
         </Button>
       ),
     },
-    { title: "策略", dataIndex: "strategy_name", width: 130 },
     {
-      title: "信号",
-      dataIndex: "signal_text",
-      width: 100,
-      render: (_, item) => <Tag color={item.observe_only ? "default" : "blue"}>{item.signal_text}</Tag>,
-    },
-    { title: "状态", dataIndex: "lifecycle_status_text", width: 110 },
-    { title: "首次推荐", dataIndex: "first_signal_date", width: 110 },
-    { title: "推荐价", dataIndex: "first_signal_price", width: 90, render: formatPrice },
-    { title: "当前价", dataIndex: "current_price", width: 90, render: formatPrice },
-    { title: "买点区间", width: 130, render: (_, item) => entryZoneText(item) },
-    { title: "距买点", dataIndex: "distance_to_entry_pct", width: 90, render: (value) => formatPct(value) },
-    {
-      title: "当前涨幅",
-      dataIndex: "current_return_pct",
-      width: 100,
-      render: (value) => <Tag color={trackingTone(value)}>{displayReturn(value)}</Tag>,
-    },
-    {
-      title: "最高涨幅",
-      dataIndex: "max_gain_pct",
-      width: 100,
-      render: (value) => <Tag color={trackingTone(value)}>{displayReturn(value)}</Tag>,
-    },
-    { title: "最大回撤", dataIndex: "max_drawdown_pct", width: 100, render: (value) => formatPct(value) },
-    {
-      title: "触发",
-      width: 130,
+      title: "策略/状态",
+      width: 170,
       render: (_, item) => (
-        <>
-          {item.entry_touched ? <Tag color="green">买点触达</Tag> : <Tag>未给买点</Tag>}
-          {item.stop_triggered ? <Tag color="red">止损</Tag> : null}
-        </>
+        <div className="strategy-tracking-cell-stack">
+          <strong>{item.strategy_name}</strong>
+          <span>{item.lifecycle_status_text}</span>
+        </div>
       ),
     },
-    { title: "结论", dataIndex: "conclusion", width: 160 },
-    { title: "数据", dataIndex: "data_quality_text", width: 160 },
+    {
+      title: "信号",
+      width: 110,
+      render: (_, item) => <Tag color={item.observe_only ? "default" : "blue"}>{item.signal_text}</Tag>,
+    },
+    {
+      title: "价格",
+      width: 170,
+      render: (_, item) => (
+        <div className="strategy-tracking-cell-stack">
+          <span>现价 {formatPrice(item.current_price)}</span>
+          <span>推荐 {formatPrice(item.first_signal_price)} · {item.first_signal_date}</span>
+        </div>
+      ),
+    },
+    {
+      title: "买点/止损",
+      width: 180,
+      render: (_, item) => (
+        <div className="strategy-tracking-cell-stack">
+          <span>{entryZoneText(item)}</span>
+          <span>距买点 {formatPct(item.distance_to_entry_pct)} · 止损 {formatPrice(item.stop_loss)}</span>
+        </div>
+      ),
+    },
+    {
+      title: "表现",
+      width: 180,
+      render: (_, item) => (
+        <div className="strategy-tracking-tag-row">
+          <Tag color={trackingTone(item.current_return_pct)}>现 {displayReturn(item.current_return_pct)}</Tag>
+          <Tag color={trackingTone(item.max_gain_pct)}>高 {displayReturn(item.max_gain_pct)}</Tag>
+          <Tag>撤 {formatPct(item.max_drawdown_pct)}</Tag>
+        </div>
+      ),
+    },
+    {
+      title: "触发",
+      width: 120,
+      render: (_, item) => (
+        <div className="strategy-tracking-tag-row">
+          {item.entry_touched ? <Tag color="green">买点触达</Tag> : <Tag>未触达</Tag>}
+          {item.stop_triggered ? <Tag color="red">止损</Tag> : null}
+        </div>
+      ),
+    },
+    {
+      title: "结论",
+      width: 190,
+      render: (_, item) => (
+        <div className="strategy-tracking-cell-stack">
+          <strong>{item.conclusion}</strong>
+          <span>{item.data_quality_text}</span>
+        </div>
+      ),
+    },
   ];
 }

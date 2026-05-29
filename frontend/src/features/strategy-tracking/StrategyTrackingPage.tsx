@@ -23,69 +23,82 @@ export function StrategyTrackingPage({ strategyMeta }: { strategyMeta: StrategyM
   const errorText = query.error instanceof Error ? query.error.message : "";
 
   return (
-    <section className="workspace-page strategy-tracking-page">
-      <div className="workspace-page-heading">
-        <div>
+    <section className="strategy-tracking-page">
+      <div className="panel strategy-tracking-hero">
+        <div className="strategy-tracking-title">
           <h1>策略跟踪</h1>
           <p>生产策略推荐后的买点、涨幅、回撤和生命周期复盘。</p>
         </div>
+        <div className="strategy-tracking-hero-meta">
+          <span>区间 {store.range === 1 ? "今日" : `${store.range}日`}</span>
+          <span>样本 {result?.total ?? "--"}</span>
+          <span>只读观察</span>
+        </div>
       </div>
-      <StrategyTrackingFilters
-        range={store.range}
-        strategyKey={store.strategyKey}
-        strategyFamily={store.strategyFamily}
-        signalState={store.signalState}
-        lifecycleStatus={store.lifecycleStatus}
-        dataQuality={store.dataQuality}
-        hitEntry={store.hitEntry}
-        stopped={store.stopped}
-        strategyMeta={strategyMeta}
-        onRangeChange={store.setRange}
-        onStrategyKeyChange={store.setStrategyKey}
-        onStrategyFamilyChange={store.setStrategyFamily}
-        onSignalStateChange={store.setSignalState}
-        onLifecycleStatusChange={store.setLifecycleStatus}
-        onDataQualityChange={store.setDataQuality}
-        onHitEntryChange={store.setHitEntry}
-        onStoppedChange={store.setStopped}
-      />
-      {result ? <StrategyTrackingSummaryBar summary={result.summary} /> : null}
-      {result ? <StrategyTrackingReviewPanel summary={result.summary} performance={result.performance} /> : null}
+      <div className="panel strategy-tracking-filter-panel">
+        <StrategyTrackingFilters
+          range={store.range}
+          strategyKey={store.strategyKey}
+          strategyFamily={store.strategyFamily}
+          signalState={store.signalState}
+          lifecycleStatus={store.lifecycleStatus}
+          dataQuality={store.dataQuality}
+          hitEntry={store.hitEntry}
+          stopped={store.stopped}
+          strategyMeta={strategyMeta}
+          onRangeChange={store.setRange}
+          onStrategyKeyChange={store.setStrategyKey}
+          onStrategyFamilyChange={store.setStrategyFamily}
+          onSignalStateChange={store.setSignalState}
+          onLifecycleStatusChange={store.setLifecycleStatus}
+          onDataQualityChange={store.setDataQuality}
+          onHitEntryChange={store.setHitEntry}
+          onStoppedChange={store.setStopped}
+        />
+      </div>
+      {result ? (
+        <div className="strategy-tracking-top-grid">
+          <StrategyTrackingSummaryBar summary={result.summary} />
+          <StrategyTrackingReviewPanel summary={result.summary} performance={result.performance} />
+        </div>
+      ) : null}
       {result?.partial_errors.length ? (
         <Alert type="warning" showIcon title={result.partial_errors.slice(0, 2).join("；")} />
       ) : null}
       {errorText ? <TqErrorResult title="策略跟踪加载失败" description={errorText} onRetry={() => void query.refetch()} /> : null}
       {!errorText ? (
-        <Tabs
-          activeKey={store.tab}
-          onChange={(key) => store.setTab(key as typeof store.tab)}
-          items={[
-            {
-              key: "active",
-              label: "今日有效",
-              children: tableContent(result, query.isFetching, store),
-            },
-            {
-              key: "gain",
-              label: "涨幅榜",
-              children: tableContent(result, query.isFetching, store),
-            },
-            {
-              key: "risk",
-              label: "风险榜",
-              children: tableContent(result, query.isFetching, store),
-            },
-            {
-              key: "performance",
-              label: "策略表现",
-              children: result?.performance.length ? (
-                <StrategyTrackingPerformanceTable items={result.performance} />
-              ) : (
-                <TqEmpty title="暂无策略表现" description="当前筛选条件下还没有可聚合的推荐样本。" />
-              ),
-            },
-          ]}
-        />
+        <div className="panel strategy-tracking-main-panel">
+          <Tabs
+            activeKey={store.tab}
+            onChange={(key) => store.setTab(key as typeof store.tab)}
+            items={[
+              {
+                key: "active",
+                label: "今日有效",
+                children: tableContent(result, query.isFetching, store),
+              },
+              {
+                key: "gain",
+                label: "涨幅榜",
+                children: tableContent(result, query.isFetching, store),
+              },
+              {
+                key: "risk",
+                label: "风险榜",
+                children: tableContent(result, query.isFetching, store),
+              },
+              {
+                key: "performance",
+                label: "策略表现",
+                children: result?.performance.length ? (
+                  <StrategyTrackingPerformanceTable items={result.performance} />
+                ) : (
+                  <TqEmpty title="暂无策略表现" description="当前筛选条件下还没有可聚合的推荐样本。" />
+                ),
+              },
+            ]}
+          />
+        </div>
       ) : null}
       <StrategyTrackingDetailDrawer
         open={Boolean(store.selectedItemId)}
