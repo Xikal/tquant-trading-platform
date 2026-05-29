@@ -2,7 +2,15 @@ import { Button, Table, Tag } from "antd";
 import type { ColumnsType, TablePaginationConfig } from "antd/es/table";
 import type { StrategyTrackingItem } from "../../types";
 import { formatPct, formatPrice } from "../workspace-shared/workspaceFormatters";
-import { displayReturn, entryZoneText, trackingTone } from "./strategyTrackingFormatters";
+import {
+  displayReturn,
+  entryZoneText,
+  exitQualityTone,
+  holdingBucketText,
+  holdExtensionTone,
+  suggestedPlanText,
+  trackingTone,
+} from "./strategyTrackingFormatters";
 
 interface StrategyTrackingTableProps {
   items: StrategyTrackingItem[];
@@ -30,7 +38,7 @@ export function StrategyTrackingTable({
       loading={loading}
       dataSource={items}
       columns={columns(onOpenDetail)}
-      scroll={{ x: 1040 }}
+      scroll={{ x: 1360 }}
       pagination={{
         current: page,
         pageSize,
@@ -104,6 +112,29 @@ function columns(onOpenDetail: (itemId: string) => void): ColumnsType<StrategyTr
       ),
     },
     {
+      title: "持有优化",
+      width: 190,
+      render: (_, item) => (
+        <div className="strategy-tracking-cell-stack">
+          <span>{item.best_holding_days ? `最优 ${item.best_holding_days}天` : "暂无持有窗口"}</span>
+          <div className="strategy-tracking-tag-row">
+            <Tag color={exitQualityTone(item.exit_quality)}>{displayReturn(item.best_exit_return_pct)}</Tag>
+            <Tag>{holdingBucketText(item.holding_bucket)}</Tag>
+          </div>
+        </div>
+      ),
+    },
+    {
+      title: "延长持有",
+      width: 180,
+      render: (_, item) => (
+        <div className="strategy-tracking-cell-stack">
+          <Tag color={holdExtensionTone(item.hold_extension_state)}>{item.hold_extension_text}</Tag>
+          <span>{suggestedPlanText(item.suggested_holding_plan)} · {item.hold_extension_score}分</span>
+        </div>
+      ),
+    },
+    {
       title: "触发",
       width: 120,
       render: (_, item) => (
@@ -114,12 +145,13 @@ function columns(onOpenDetail: (itemId: string) => void): ColumnsType<StrategyTr
       ),
     },
     {
-      title: "结论",
-      width: 190,
+      title: "归因/审计",
+      width: 220,
       render: (_, item) => (
         <div className="strategy-tracking-cell-stack">
           <strong>{item.conclusion}</strong>
-          <span>{item.data_quality_text}</span>
+          <span>{item.failure_reason_text || item.data_quality_text}</span>
+          {item.needs_review ? <Tag color="orange">需复核</Tag> : null}
         </div>
       ),
     },

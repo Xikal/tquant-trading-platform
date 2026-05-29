@@ -1,6 +1,6 @@
 import { create } from "zustand";
 
-export type StrategyTrackingTab = "active" | "gain" | "risk" | "performance";
+export type StrategyTrackingTab = "active" | "gain" | "risk" | "performance" | "diagnostics";
 
 interface StrategyTrackingStore {
   tab: StrategyTrackingTab;

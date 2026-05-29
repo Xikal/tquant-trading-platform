@@ -1444,3 +1444,56 @@
 - [x] 静态审计确认 Go BFF、Go market-read-service、Go scan-worker 已进入非策略生产主路径；Python reference 仍是策略真源和 fallback。
 - [x] 静态审计确认 Rust `tquant_rs` 已接入 RSI、ATR、VWAP、RankIC、max drawdown 等 Python 调用路径，并保留 Python fallback。
 - [x] 剩余风险：本轮为本地全量验收，未执行真实云端发布和真实交易日盘中数据拉取；生产上线前仍需按 runbook 做云端 smoke、日志/metrics 观测和当日复盘人工抽检。
+
+## 2026-05-29 策略跟踪增强开发
+
+需求来源：`docs/platform-slimming-and-strategy-tracking-development-plan-2026-05-29.md` 与当前 Goal。
+
+### 硬性边界
+
+- `/strategy-tracking` 继续只做观察、复盘和统计，不自动影响策略排序、模拟盘交易或真实交易。
+- 后验表现和最优持有期统计必须与推荐当日信号隔离，不允许未来函数污染策略。
+- Shadow 观测闭环只能展示真实观测状态和阻塞原因，不伪造样本。
+- Shadow 无样本原因自动识别没有模型观测记录、没有符合条件信号、数据缺失、策略未启用、时间窗口未到、任务未运行、写入失败和 schema mismatch。
+- 前端继续使用后端分页、详情懒加载和现有 query/cache 模式。
+
+### 本轮开发 TODO
+
+- [x] 后端扩展策略跟踪 schema：失败归因、市场分层、健康度、Shadow 诊断、防未来函数审计、持有期优化、报告摘要。
+- [x] 后端实现纯计算模块：持有期最优窗口、收益/回撤比、利润回吐、短线转中长线资格、异常收益标记。
+- [x] 后端新增诊断/聚合接口：review、failure-attribution、market-segments、health、shadow-observations、leakage-audit、reports。
+- [x] 前端扩展策略跟踪类型、列表、详情和复盘/诊断展示。
+- [x] Go BFF 聚合透传新增策略跟踪接口或补充测试说明边界。
+- [x] 验证后端 pytest、前端测试/构建、Go test、Rust test、diff check。
+- [x] 拆分 `strategy_tracking.py` 中的 Shadow/报告辅助逻辑到 `strategy_tracking_reports.py`，主服务文件降至 472 行，避免超过 500 行的代码坏味道。
+- [x] 前端增加策略跟踪周报 query/API 封装，并在复盘诊断 tab 展示报告摘要。
+- [x] 周报请求改为仅在复盘诊断 tab 启用，避免策略跟踪首屏额外请求；日报/周报接口均补只读回归断言。
+
+### 验证计划
+
+- [x] `PYTHONPATH=backend:. backend/.venv/bin/python -m pytest backend/tests/test_strategy_tracking.py -q` 通过，8 passed / 1 warning。
+- [x] `cd frontend && npm test -- StrategyTrackingPage --run` 通过，7 passed。
+- [x] `cd frontend && npm test -- webRoutes --run` 通过，10 passed。
+- [x] `cd frontend && npm test -- StrategyTrackingPage webRoutes --run` 通过，17 passed。
+- [x] `cd frontend && npm test -- --run` 通过，23 files / 69 tests。
+- [x] `cd frontend && npm run build:web` 通过；StrategyTrackingPage chunk 22.20 kB / gzip 6.71 kB。
+- [x] `PYTHONPATH=backend:. backend/.venv/bin/python -m pytest backend/tests/test_strategy_tracking.py backend/tests/test_bff_routes.py -q` 通过，25 passed / 1 warning。
+- [x] `PYTHONPATH=backend:. backend/.venv/bin/python -m pytest backend/tests/test_strategy_tracking.py backend/tests/test_bff_routes.py backend/tests/test_backtest_v2_api_contract.py backend/tests/test_agent_research_contexts.py backend/tests/test_agent_report_and_local_invoker.py -q` 通过，49 passed / 1 warning。
+- [x] `PYTHONPATH=backend:. backend/.venv/bin/python -m pytest backend/tests/test_monitor_routes.py backend/tests/test_market_routes.py backend/tests/test_bff_monitor_workspace.py backend/tests/test_settings_routes.py -q` 通过，19 passed / 1 warning。
+- [x] `PYTHONPATH=backend:. backend/.venv/bin/python -m pytest backend/tests/test_paper_routes.py backend/tests/test_paper_performance_archive.py -q` 通过，40 passed / 1 warning。
+- [x] `PYTHONPATH=backend:. backend/.venv/bin/python -m pytest backend/tests/test_backtest_v2_api_contract.py backend/tests/test_backtest_phase2_research_tasks.py backend/tests/test_low_buy_positioning.py backend/tests/test_low_buy_standardization.py -q` 通过，37 passed / 1 warning。
+- [x] `cd go-services/bff-gateway && go test ./...` 通过。
+- [x] `cd rust/tquant-rs && cargo test` 通过，10 passed。
+- [x] `PYTHONPATH=backend:. backend/.venv/bin/python -m py_compile backend/app/services/strategy_tracking.py backend/app/services/strategy_tracking_builders.py backend/app/services/strategy_tracking_helpers.py backend/app/services/strategy_tracking_enhancements.py backend/app/services/strategy_tracking_reports.py backend/app/api/routes/strategy_tracking.py backend/app/models/schema_defs/strategy_tracking.py` 通过。
+- [x] `git diff --check` 通过。
+
+### 本轮结果
+
+- 策略跟踪增强已落地为只读链路：列表/详情/复盘/归因/市场分层/健康度/Shadow/审计/报告接口均不写生产策略排序、模拟盘交易或真实交易。
+- 每条跟踪记录已补充买点触达、最高涨幅、最大回撤、止损、冲高回落、失败归因、市场状态、数据质量、异常收益和未来函数审计字段。
+- Shadow 观测为 0 时返回 `no_sample_reason` 与中文原因，默认覆盖没有模型观测记录等原因，不再只显示数字 0。
+- 持有期优化只作为后验复盘指标展示，短线转波段/中长线观察资格按信号日前可见趋势/均线/市场状态约束计算。
+- Go BFF 已将策略跟踪 summary/items/performance/detail 扩展到 market-segments 和 shadow-observations 读聚合路径。
+- Rust 当前通过既有数值测试保障最大回撤等基础指标边界；策略跟踪本轮仍以 Python 编排为主，保留数值迁移边界。
+- 静态审查确认 `/strategy` 重定向 `/backtest`，`/emotion` 重定向 `/monitor`，前端不存在旧 StrategyRoute/EmotionRoute 独立页面文件。
+- 代码质量审查：新增/大改文件均小于 500 行，未发现未使用旧页面、console log、TODO/FIXME 或明显重复大块逻辑。

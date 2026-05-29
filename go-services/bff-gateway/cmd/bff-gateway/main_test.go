@@ -460,7 +460,7 @@ func TestAggregateStrategyTrackingWorkspaceBuildsReadOnlyPayload(t *testing.T) {
 			if got := r.URL.Query().Get("strategy_family"); got != "core" {
 				t.Fatalf("summary strategy_family mismatch got=%s", got)
 			}
-			_, _ = w.Write([]byte(`{"tracking_count":2,"active_count":1,"today_new_count":0,"in_entry_zone_count":1,"stopped_count":0,"avg_current_return_pct":1.2,"median_max_gain_pct":4.5,"data_quality":"ok","data_quality_text":"数据完整","generated_at":"2026-05-29T10:00:00+08:00"}`))
+			_, _ = w.Write([]byte(`{"tracking_count":2,"active_count":1,"today_new_count":0,"in_entry_zone_count":1,"stopped_count":0,"needs_review_count":1,"abnormal_return_count":0,"shadow_observation_count":0,"avg_current_return_pct":1.2,"median_max_gain_pct":4.5,"data_quality":"ok","data_quality_text":"数据完整","generated_at":"2026-05-29T10:00:00+08:00"}`))
 		case "/api/strategy-tracking/items":
 			if got := r.URL.Query().Get("range"); got != "20" {
 				t.Fatalf("items range mismatch got=%s", got)
@@ -474,12 +474,16 @@ func TestAggregateStrategyTrackingWorkspaceBuildsReadOnlyPayload(t *testing.T) {
 			if got := r.URL.Query().Get("limit"); got != "30" {
 				t.Fatalf("items limit mismatch got=%s", got)
 			}
-			_, _ = w.Write([]byte(`{"items":[{"id":"first_board_pullback:600000:2026-05-28","symbol":"600000"}],"total":1,"limit":30,"offset":0,"sort":"max_gain_desc","summary":{},"performance":[],"partial_errors":[],"production_writeable":false,"read_path":"python_strategy_tracking_read_through","rust_math_used":true,"notes":[]}`))
+			_, _ = w.Write([]byte(`{"items":[{"id":"first_board_pullback:600000:2026-05-28","symbol":"600000","best_holding_days":3,"needs_review":true}],"total":1,"limit":30,"offset":0,"sort":"max_gain_desc","summary":{},"performance":[],"market_segments":[],"shadow_observations":[],"partial_errors":[],"production_writeable":false,"read_path":"python_strategy_tracking_read_through","rust_math_used":true,"notes":[]}`))
 		case "/api/strategy-tracking/performance":
 			if got := r.URL.Query().Get("strategy_family"); got != "core" {
 				t.Fatalf("performance strategy_family mismatch got=%s", got)
 			}
-			_, _ = w.Write([]byte(`[{"strategy_key":"first_board_pullback","recommendation_count":2}]`))
+			_, _ = w.Write([]byte(`[{"strategy_key":"first_board_pullback","recommendation_count":2,"health_score":70}]`))
+		case "/api/strategy-tracking/market-segments":
+			_, _ = w.Write([]byte(`[{"strategy_key":"first_board_pullback","market_state":"strong_market","recommendation_count":2}]`))
+		case "/api/strategy-tracking/shadow-observations":
+			_, _ = w.Write([]byte(`[{"model_key":"main_force_model_observation","observation_count":0,"no_sample_reason":"no_model_observation"}]`))
 		case "/api/strategy-tracking/items/first_board_pullback:600000:2026-05-28":
 			_, _ = w.Write([]byte(`{"item":{"id":"first_board_pullback:600000:2026-05-28"},"timeline":[],"markers":[],"signal_snapshot":{},"review_text":"ok","partial_errors":[],"production_writeable":false}`))
 		default:
@@ -504,6 +508,12 @@ func TestAggregateStrategyTrackingWorkspaceBuildsReadOnlyPayload(t *testing.T) {
 	}
 	if !bytes.Contains(result.body, []byte(`"performance":[{"strategy_key":"first_board_pullback"`)) {
 		t.Fatalf("strategy tracking aggregate missing performance: %s", string(result.body))
+	}
+	if !bytes.Contains(result.body, []byte(`"market_segments":[{"strategy_key":"first_board_pullback"`)) {
+		t.Fatalf("strategy tracking aggregate missing market segments: %s", string(result.body))
+	}
+	if !bytes.Contains(result.body, []byte(`"shadow_observations":[{"model_key":"main_force_model_observation"`)) {
+		t.Fatalf("strategy tracking aggregate missing shadow observations: %s", string(result.body))
 	}
 	if !bytes.Contains(result.body, []byte(`"production_writeable":false`)) {
 		t.Fatalf("strategy tracking aggregate should remain read-only: %s", string(result.body))

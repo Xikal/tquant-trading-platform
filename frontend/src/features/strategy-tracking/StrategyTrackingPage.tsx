@@ -3,8 +3,9 @@ import type { StrategyMeta } from "../../api/strategies";
 import { useStrategyTrackingStore } from "../../stores/strategyTrackingStore";
 import { TqEmpty, TqErrorResult } from "../../ui/feedback/StateViews";
 import type { StrategyTrackingParams } from "../../types";
-import { useStrategyTrackingDetail, useStrategyTrackingItems } from "./queries";
+import { useStrategyTrackingDetail, useStrategyTrackingItems, useStrategyTrackingReport } from "./queries";
 import { StrategyTrackingDetailDrawer } from "./StrategyTrackingDetailDrawer";
+import { StrategyTrackingDiagnosticsPanel } from "./StrategyTrackingDiagnosticsPanel";
 import { StrategyTrackingFilters } from "./StrategyTrackingFilters";
 import { StrategyTrackingPerformanceTable } from "./StrategyTrackingPerformanceTable";
 import { StrategyTrackingReviewPanel } from "./StrategyTrackingReviewPanel";
@@ -19,6 +20,7 @@ export function StrategyTrackingPage({ strategyMeta }: { strategyMeta: StrategyM
   const params = buildParams(store);
   const query = useStrategyTrackingItems(params);
   const detailQuery = useStrategyTrackingDetail(store.selectedItemId);
+  const weeklyReportQuery = useStrategyTrackingReport("weekly", { range: store.range }, store.tab === "diagnostics");
   const result = query.data;
   const errorText = query.error instanceof Error ? query.error.message : "";
 
@@ -94,6 +96,15 @@ export function StrategyTrackingPage({ strategyMeta }: { strategyMeta: StrategyM
                   <StrategyTrackingPerformanceTable items={result.performance} />
                 ) : (
                   <TqEmpty title="暂无策略表现" description="当前筛选条件下还没有可聚合的推荐样本。" />
+                ),
+              },
+              {
+                key: "diagnostics",
+                label: "复盘诊断",
+                children: result ? (
+                  <StrategyTrackingDiagnosticsPanel result={result} weeklyReport={weeklyReportQuery} />
+                ) : (
+                  <TqEmpty title="暂无复盘诊断" description="当前筛选条件下没有可诊断样本。" />
                 ),
               },
             ]}

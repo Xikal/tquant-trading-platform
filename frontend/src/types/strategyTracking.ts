@@ -4,6 +4,9 @@ export interface StrategyTrackingSummary {
   today_new_count: number;
   in_entry_zone_count: number;
   stopped_count: number;
+  needs_review_count: number;
+  abnormal_return_count: number;
+  shadow_observation_count: number;
   avg_current_return_pct: number;
   median_max_gain_pct: number;
   data_quality: string;
@@ -27,6 +30,40 @@ export interface StrategyTrackingPerformance {
   profit_loss_ratio: number;
   stop_loss_rate: number;
   active_count: number;
+  health_score: number;
+  health_grade: string;
+  sample_quality: string;
+  health_reasons: string[];
+  health_risks: string[];
+}
+
+export interface StrategyTrackingSegment {
+  strategy_key: string;
+  strategy_name: string;
+  market_state: string;
+  market_state_text: string;
+  sector_state: string;
+  sector_state_text: string;
+  recommendation_count: number;
+  entry_touch_rate: number;
+  win_rate_5d: number;
+  avg_max_gain_pct: number;
+  avg_max_drawdown_pct: number;
+  stop_loss_rate: number;
+  return_drawdown_ratio: number;
+}
+
+export interface StrategyTrackingShadowObservation {
+  model_key: string;
+  model_version: string;
+  observation_count: number;
+  latest_observed_at: string | null;
+  linked_tracking_count: number;
+  no_sample_reason: string;
+  no_sample_reason_text: string;
+  actionable_count: number;
+  settled_count: number;
+  success_rate_pct: number;
 }
 
 export interface StrategyTrackingItem {
@@ -56,13 +93,52 @@ export interface StrategyTrackingItem {
   max_price_after_signal: number | null;
   max_gain_pct: number | null;
   max_drawdown_pct: number | null;
+  actual_low_price: number | null;
+  actual_low_date: string | null;
+  actual_high_date: string | null;
+  spike_retrace_pct: number | null;
+  best_holding_days: number;
+  best_exit_date: string | null;
+  best_exit_return_pct: number | null;
+  best_exit_drawdown_pct: number | null;
+  return_drawdown_ratio: number | null;
+  giveback_from_peak_pct: number | null;
+  holding_bucket: string;
+  exit_quality: string;
+  exit_reason: string;
+  hold_extension_state: string;
+  hold_extension_text: string;
+  hold_extension_score: number;
+  hold_extension_reasons: string[];
+  hold_extension_risks: string[];
+  suggested_holding_plan: string;
   entry_touched: boolean;
   stop_triggered: boolean;
   stop_triggered_date: string | null;
   target_touched: boolean;
   target_touched_date: string | null;
+  invalidated_date: string | null;
   conclusion: string;
   failure_reason: string;
+  failure_tags: string[];
+  failure_reason_text: string;
+  market_state: string;
+  market_state_text: string;
+  sector_state: string;
+  sector_state_text: string;
+  signal_generated_at: string;
+  data_cutoff_at: string;
+  lookback_start_date: string;
+  lookback_end_date: string;
+  posterior_start_date: string;
+  posterior_end_date: string;
+  market_data_source: string;
+  market_data_updated_at: string;
+  future_leak_check: string;
+  audit_flags: string[];
+  abnormal_return: boolean;
+  needs_review: boolean;
+  review_priority: string;
   review_text: string;
   data_quality: string;
   data_quality_text: string;
@@ -80,6 +156,9 @@ export interface StrategyTrackingTimelinePoint {
   current_return_pct: number | null;
   max_return_pct: number | null;
   max_drawdown_pct: number | null;
+  holding_day: number;
+  is_best_exit: boolean;
+  hold_extension_state: string;
   hit_entry_zone: boolean;
   hit_stop_loss: boolean;
   hit_target: boolean;
@@ -102,6 +181,8 @@ export interface StrategyTrackingListResponse {
   sort: string;
   summary: StrategyTrackingSummary;
   performance: StrategyTrackingPerformance[];
+  market_segments: StrategyTrackingSegment[];
+  shadow_observations: StrategyTrackingShadowObservation[];
   partial_errors: string[];
   production_writeable: boolean;
   read_path: string;
@@ -117,6 +198,31 @@ export interface StrategyTrackingDetailResponse {
   review_text: string;
   partial_errors: string[];
   production_writeable: boolean;
+}
+
+export interface StrategyTrackingReviewResponse {
+  summary: StrategyTrackingSummary;
+  performance: StrategyTrackingPerformance[];
+  market_segments: StrategyTrackingSegment[];
+  failure_tags: Record<string, number>;
+  needs_review_items: StrategyTrackingItem[];
+  abnormal_return_items: StrategyTrackingItem[];
+}
+
+export interface StrategyTrackingReport {
+  report_type: string;
+  generated_at: string;
+  window_start: string;
+  window_end: string;
+  data_quality: string;
+  summary: StrategyTrackingSummary;
+  new_signals: StrategyTrackingItem[];
+  entry_touched: StrategyTrackingItem[];
+  stopped: StrategyTrackingItem[];
+  spike_retraced: StrategyTrackingItem[];
+  abnormal_returns: StrategyTrackingItem[];
+  shadow_observations: StrategyTrackingShadowObservation[];
+  markdown: string;
 }
 
 export interface StrategyTrackingParams {

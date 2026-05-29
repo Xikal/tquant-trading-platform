@@ -198,10 +198,13 @@ func aggregateStrategyTrackingWorkspace(cfg config, client *http.Client, r *http
 		),
 	)
 	performanceQuery := forwardQuery(q, []string{"strategy_family"}, values("range", rangeDays))
+	shadowQuery := forwardQuery(q, []string{"strategy_key"}, values("range", rangeDays))
 	sources := []rawSource{
 		{name: "strategy_tracking_summary", path: "/api/strategy-tracking/summary", query: summaryQuery},
 		{name: "strategy_tracking_items", path: "/api/strategy-tracking/items", query: itemsQuery},
 		{name: "strategy_tracking_performance", path: "/api/strategy-tracking/performance", query: performanceQuery},
+		{name: "strategy_tracking_market_segments", path: "/api/strategy-tracking/market-segments", query: performanceQuery},
+		{name: "strategy_tracking_shadow", path: "/api/strategy-tracking/shadow-observations", query: shadowQuery},
 	}
 	detailID := strings.TrimSpace(q.Get("detail_id"))
 	if detailID != "" {
@@ -222,6 +225,8 @@ func aggregateStrategyTrackingWorkspace(cfg config, client *http.Client, r *http
 		"offset":               jsonObjectField(results["strategy_tracking_items"], "offset"),
 		"sort":                 jsonObjectField(results["strategy_tracking_items"], "sort"),
 		"performance":          jsonArray(results["strategy_tracking_performance"]),
+		"market_segments":      jsonArray(results["strategy_tracking_market_segments"]),
+		"shadow_observations":  jsonArray(results["strategy_tracking_shadow"]),
 		"detail":               nullableJSON(results["strategy_tracking_detail"]),
 		"detail_requested":     detailID != "",
 		"partial_errors":       errors,

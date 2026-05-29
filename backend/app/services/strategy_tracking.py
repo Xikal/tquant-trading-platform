@@ -8,13 +8,16 @@ from typing import Any, Iterable
 from sqlalchemy import desc, select
 from sqlalchemy.orm import Session
 
-from app.models.entities import LowBuyResultSnapshot, LowBuyTradeLifecycleSnapshot
+from app.models.entities import LowBuyResultSnapshot, LowBuyTradeLifecycleSnapshot, MarketModelObservation
 from app.models.schema_defs.strategy_tracking import (
     StrategyTrackingDetailResponse,
     StrategyTrackingItemOut,
     StrategyTrackingListResponse,
     StrategyTrackingPerformanceOut,
+    StrategyTrackingReportOut,
+    StrategyTrackingReviewResponse,
     StrategyTrackingRefreshResponse,
+    StrategyTrackingShadowObservationOut,
     StrategyTrackingSummaryOut,
 )
 from app.repositories.low_buy import DailyBarRow, DailyHistoryRepository
@@ -29,11 +32,18 @@ from app.services.strategy_tracking_constants import (
 from app.services.strategy_tracking_builders import build_markers, build_timeline, build_tracking_item
 from app.services.strategy_tracking_helpers import (
     build_performance,
+    build_market_segments,
     build_summary,
     compact_payload,
+    failure_tag_counts,
     load_payload,
     parse_item_id,
     text,
+)
+from app.services.strategy_tracking_reports import (
+    build_shadow_row,
+    calendar_lookback,
+    report_markdown,
 )
 
 logger = logging.getLogger(__name__)
@@ -90,6 +100,9 @@ class StrategyTrackingService:
         items = items[safe_offset : safe_offset + safe_limit]
         summary = build_summary(all_items)
         performance = build_performance(all_items)
+        market_segments = build_market_segments(all_items)
+        shadow = self.shadow_observations(range_days=range_days, items=all_items)
+        summary.shadow_observation_count = sum(item.observation_count for item in shadow)
         return StrategyTrackingListResponse(
             items=items,
             total=total,
@@ -98,6 +111,8 @@ class StrategyTrackingService:
             sort=sort,
             summary=summary,
             performance=performance,
+            market_segments=market_segments,
+            shadow_observations=shadow,
             partial_errors=partial_errors,
             notes=[
                 "后验表现仅使用首次推荐日之后的行情，不回写策略分数或交易账本。",
@@ -131,6 +146,100 @@ class StrategyTrackingService:
     ) -> list[StrategyTrackingPerformanceOut]:
         result = self.list_items(range_days=range_days, strategy_family=strategy_family, limit=1)
         return result.performance
+
+    def review(
+        self,
+        *,
+        range_days: int = DEFAULT_RANGE_DAYS,
+        strategy_key: str | None = None,
+        strategy_family: str | None = None,
+    ) -> StrategyTrackingReviewResponse:
+        result = self.list_items(
+            range_days=range_days,
+            strategy_key=strategy_key,
+            strategy_family=strategy_family,
+            limit=MAX_LIMIT,
+        )
+        return StrategyTrackingReviewResponse(
+            summary=result.summary,
+            performance=result.performance,
+            market_segments=result.market_segments,
+            failure_tags=failure_tag_counts(result.items),
+            needs_review_items=[item for item in result.items if item.needs_review][:20],
+            abnormal_return_items=[item for item in result.items if item.abnormal_return][:20],
+        )
+
+    def market_segments(self, *, range_days: int = DEFAULT_RANGE_DAYS, strategy_family: str | None = None):
+        result = self.list_items(range_days=range_days, strategy_family=strategy_family, limit=1)
+        return result.market_segments
+
+    def shadow_observations(
+        self,
+        *,
+        range_days: int = DEFAULT_RANGE_DAYS,
+        model_key: str | None = None,
+        strategy_key: str | None = None,
+        items: list[StrategyTrackingItemOut] | None = None,
+    ) -> list[StrategyTrackingShadowObservationOut]:
+        keys = [model_key] if model_key else ["main_force_model_observation", "sector_etf_t0", "paper_exit_model"]
+        tracking_items = items
+        if tracking_items is None:
+            tracking_items = self.list_items(range_days=range_days, strategy_key=strategy_key, limit=MAX_LIMIT).items
+        start_date = self._range_start_date(range_days)
+        rows: list[StrategyTrackingShadowObservationOut] = []
+        for key in keys:
+            statement = select(MarketModelObservation).where(MarketModelObservation.model_key == key)
+            if start_date:
+                statement = statement.where(MarketModelObservation.trade_date >= start_date)
+            observations = self.db.execute(statement.order_by(MarketModelObservation.observed_at.desc())).scalars().all()
+            rows.append(build_shadow_row(model_key=key, observations=observations, tracking_items=tracking_items))
+        return rows
+
+    def leakage_audit(
+        self,
+        *,
+        range_days: int = DEFAULT_RANGE_DAYS,
+        strategy_key: str | None = None,
+        needs_review: bool | None = None,
+        abnormal_return: bool | None = None,
+    ) -> StrategyTrackingReviewResponse:
+        result = self.list_items(range_days=range_days, strategy_key=strategy_key, limit=MAX_LIMIT)
+        items = result.items
+        if needs_review is not None:
+            items = [item for item in items if item.needs_review == needs_review]
+        if abnormal_return is not None:
+            items = [item for item in items if item.abnormal_return == abnormal_return]
+        return StrategyTrackingReviewResponse(
+            summary=build_summary(items),
+            performance=build_performance(items),
+            market_segments=build_market_segments(items),
+            failure_tags=failure_tag_counts(items),
+            needs_review_items=[item for item in items if item.needs_review][:50],
+            abnormal_return_items=[item for item in items if item.abnormal_return][:50],
+        )
+
+    def report(self, *, report_type: str = "daily", range_days: int = 7) -> StrategyTrackingReportOut:
+        result = self.list_items(range_days=range_days, limit=MAX_LIMIT)
+        items = result.items
+        window_start = min((item.first_signal_date for item in items), default="")
+        window_end = max((item.latest_trade_date or item.latest_signal_date for item in items), default="")
+        shadow = result.shadow_observations
+        markdown = report_markdown(report_type=report_type, summary=result.summary, items=items, shadow=shadow)
+        return StrategyTrackingReportOut(
+            report_type=report_type,
+            generated_at=result.summary.generated_at,
+            window_start=window_start,
+            window_end=window_end,
+            data_quality=result.summary.data_quality,
+            summary=result.summary,
+            new_signals=[item for item in items if item.first_signal_date == item.latest_signal_date][:20],
+            entry_touched=[item for item in items if item.entry_touched][:20],
+            stopped=[item for item in items if item.stop_triggered][:20],
+            spike_retraced=[item for item in items if "spike_without_take_profit" in item.failure_tags][:20],
+            abnormal_returns=[item for item in items if item.abnormal_return][:20],
+            shadow_observations=shadow,
+            markdown=markdown,
+        )
 
     def detail(self, item_id: str) -> StrategyTrackingDetailResponse:
         strategy_key, symbol, first_signal_date = parse_item_id(item_id)
@@ -262,7 +371,7 @@ class StrategyTrackingService:
         if not group_list or not latest_bar_date:
             return {}
         symbols = sorted({item.symbol for item in group_list})
-        start_date = min(self._first_signal_date(item) for item in group_list)
+        start_date = calendar_lookback(min(self._first_signal_date(item) for item in group_list), 140)
         return DailyHistoryRepository(self.db).fetch_rows_for_symbols(symbols, start_date, latest_bar_date)
 
     def _load_lifecycles(self, groups: Iterable[TrackingGroup]) -> dict[tuple[str, str, str], LowBuyTradeLifecycleSnapshot]:
@@ -344,6 +453,10 @@ class StrategyTrackingService:
         return sorted(groups, key=lambda item: (item.latest_row.score, item.latest_row.latest_trade_date), reverse=True)
 
     def _sort_items(self, items: list[StrategyTrackingItemOut], *, sort: str) -> list[StrategyTrackingItemOut]:
+        if sort == "best_holding_desc":
+            return sorted(items, key=lambda item: item.best_exit_return_pct or -999.0, reverse=True)
+        if sort == "needs_review_desc":
+            return sorted(items, key=lambda item: (item.needs_review, item.abnormal_return, item.max_gain_pct or 0.0), reverse=True)
         if sort == "current_return_desc":
             return sorted(items, key=lambda item: item.current_return_pct or -999.0, reverse=True)
         if sort == "drawdown_asc":
@@ -353,3 +466,7 @@ class StrategyTrackingService:
         if sort == "risk_desc":
             return sorted(items, key=lambda item: (item.stop_triggered, -(item.max_drawdown_pct or 0.0)), reverse=True)
         return sorted(items, key=lambda item: item.max_gain_pct or -999.0, reverse=True)
+
+    def _range_start_date(self, range_days: int) -> str:
+        dates = self._recent_result_dates(range_days)
+        return dates[0] if dates else ""

@@ -9,6 +9,7 @@ from app.models.entities import LowBuyResultSnapshot
 from app.models.schema_defs.strategy_tracking import (
     StrategyTrackingItemOut,
     StrategyTrackingPerformanceOut,
+    StrategyTrackingSegmentOut,
     StrategyTrackingSummaryOut,
 )
 from app.repositories.low_buy import DailyBarRow
@@ -246,6 +247,8 @@ def build_summary(items: list[StrategyTrackingItemOut]) -> StrategyTrackingSumma
         today_new_count=sum(1 for item in items if item.first_signal_date == today),
         in_entry_zone_count=sum(1 for item in items if item.entry_touched and item.lifecycle_status == "active"),
         stopped_count=sum(1 for item in items if item.stop_triggered),
+        needs_review_count=sum(1 for item in items if item.needs_review),
+        abnormal_return_count=sum(1 for item in items if item.abnormal_return),
         avg_current_return_pct=round_value(sum(returns) / len(returns)) if returns else 0.0,
         median_max_gain_pct=round_value(float(median(gains))) if gains else 0.0,
         data_quality=quality,
@@ -266,25 +269,126 @@ def build_performance(items: list[StrategyTrackingItemOut]) -> list[StrategyTrac
         wins = [value for value in returns if value > 0]
         losses = [abs(value) for value in returns if value < 0]
         rows.append(
-            StrategyTrackingPerformanceOut(
+            _performance_row(
                 strategy_key=strategy_key,
-                strategy_name=strategy_items[0].strategy_name,
-                strategy_family=strategy_items[0].strategy_family,
-                recommendation_count=len(strategy_items),
-                entry_touched_count=sum(1 for item in strategy_items if item.entry_touched),
-                entry_touch_rate=ratio(sum(1 for item in strategy_items if item.entry_touched), len(strategy_items)),
-                win_rate_3d=win_rate(strategy_items, 3),
-                win_rate_5d=win_rate(strategy_items, 5),
-                win_rate_10d=win_rate(strategy_items, 10),
-                avg_current_return_pct=avg(returns),
-                avg_max_gain_pct=avg(gains),
-                avg_max_drawdown_pct=avg(drawdowns),
-                profit_loss_ratio=round_value((sum(wins) / len(wins)) / (sum(losses) / len(losses))) if wins and losses else 0.0,
-                stop_loss_rate=ratio(sum(1 for item in strategy_items if item.stop_triggered), len(strategy_items)),
-                active_count=sum(1 for item in strategy_items if item.lifecycle_status == "active"),
+                strategy_items=strategy_items,
+                returns=returns,
+                gains=gains,
+                drawdowns=drawdowns,
+                wins=wins,
+                losses=losses,
             )
         )
     return sorted(rows, key=lambda item: (item.avg_max_gain_pct, item.recommendation_count), reverse=True)
+
+
+def build_market_segments(items: list[StrategyTrackingItemOut]) -> list[StrategyTrackingSegmentOut]:
+    grouped: dict[tuple[str, str, str], list[StrategyTrackingItemOut]] = {}
+    for item in items:
+        grouped.setdefault((item.strategy_key, item.market_state, item.sector_state), []).append(item)
+    rows: list[StrategyTrackingSegmentOut] = []
+    for (strategy_key, market_state, sector_state), segment_items in grouped.items():
+        gains = [item.max_gain_pct or 0.0 for item in segment_items]
+        drawdowns = [item.max_drawdown_pct or 0.0 for item in segment_items]
+        ratios = [item.return_drawdown_ratio or 0.0 for item in segment_items if item.return_drawdown_ratio is not None]
+        rows.append(
+            StrategyTrackingSegmentOut(
+                strategy_key=strategy_key,
+                strategy_name=segment_items[0].strategy_name,
+                market_state=market_state,
+                market_state_text=segment_items[0].market_state_text,
+                sector_state=sector_state,
+                sector_state_text=segment_items[0].sector_state_text,
+                recommendation_count=len(segment_items),
+                entry_touch_rate=ratio(sum(1 for item in segment_items if item.entry_touched), len(segment_items)),
+                win_rate_5d=win_rate(segment_items, 5),
+                avg_max_gain_pct=avg(gains),
+                avg_max_drawdown_pct=avg(drawdowns),
+                stop_loss_rate=ratio(sum(1 for item in segment_items if item.stop_triggered), len(segment_items)),
+                return_drawdown_ratio=avg(ratios),
+            )
+        )
+    return sorted(rows, key=lambda item: (item.recommendation_count, item.avg_max_gain_pct), reverse=True)
+
+
+def failure_tag_counts(items: list[StrategyTrackingItemOut]) -> dict[str, int]:
+    counts: dict[str, int] = {}
+    for item in items:
+        for tag in item.failure_tags:
+            counts[tag] = counts.get(tag, 0) + 1
+    return dict(sorted(counts.items(), key=lambda pair: pair[1], reverse=True))
+
+
+def _performance_row(
+    *,
+    strategy_key: str,
+    strategy_items: list[StrategyTrackingItemOut],
+    returns: list[float],
+    gains: list[float],
+    drawdowns: list[float],
+    wins: list[float],
+    losses: list[float],
+) -> StrategyTrackingPerformanceOut:
+    score, grade, sample_quality, reasons, risks = _health(strategy_items)
+    return StrategyTrackingPerformanceOut(
+        strategy_key=strategy_key,
+        strategy_name=strategy_items[0].strategy_name,
+        strategy_family=strategy_items[0].strategy_family,
+        recommendation_count=len(strategy_items),
+        entry_touched_count=sum(1 for item in strategy_items if item.entry_touched),
+        entry_touch_rate=ratio(sum(1 for item in strategy_items if item.entry_touched), len(strategy_items)),
+        win_rate_3d=win_rate(strategy_items, 3),
+        win_rate_5d=win_rate(strategy_items, 5),
+        win_rate_10d=win_rate(strategy_items, 10),
+        avg_current_return_pct=avg(returns),
+        avg_max_gain_pct=avg(gains),
+        avg_max_drawdown_pct=avg(drawdowns),
+        profit_loss_ratio=round_value((sum(wins) / len(wins)) / (sum(losses) / len(losses))) if wins and losses else 0.0,
+        stop_loss_rate=ratio(sum(1 for item in strategy_items if item.stop_triggered), len(strategy_items)),
+        active_count=sum(1 for item in strategy_items if item.lifecycle_status == "active"),
+        health_score=score,
+        health_grade=grade,
+        sample_quality=sample_quality,
+        health_reasons=reasons,
+        health_risks=risks,
+    )
+
+
+def _health(items: list[StrategyTrackingItemOut]) -> tuple[int, str, str, list[str], list[str]]:
+    sample_count = len(items)
+    reasons: list[str] = []
+    risks: list[str] = []
+    if sample_count < 3:
+        return 0, "insufficient_sample", "insufficient", [], ["样本数不足"]
+    entry_rate = ratio(sum(1 for item in items if item.entry_touched), sample_count)
+    stop_rate = ratio(sum(1 for item in items if item.stop_triggered), sample_count)
+    avg_gain = avg([item.max_gain_pct or 0.0 for item in items])
+    avg_drawdown = avg([item.max_drawdown_pct or 0.0 for item in items])
+    data_ok = ratio(sum(1 for item in items if item.data_quality == "ok"), sample_count)
+    score = 20
+    if entry_rate >= 50:
+        score += 20
+        reasons.append("买点触达率稳定")
+    else:
+        risks.append("买点触达率偏低")
+    if stop_rate <= 20:
+        score += 20
+        reasons.append("止损率受控")
+    else:
+        risks.append("止损率偏高")
+    if avg_gain > abs(avg_drawdown):
+        score += 20
+        reasons.append("平均最大涨幅优于回撤")
+    else:
+        risks.append("收益回撤不占优")
+    if data_ok >= 90:
+        score += 20
+        reasons.append("数据质量完整")
+    else:
+        risks.append("数据质量不足")
+    grade = "A" if score >= 85 else "B" if score >= 70 else "C" if score >= 55 else "D"
+    sample_quality = "enough" if sample_count >= 10 else "thin"
+    return min(score, 100), grade, sample_quality, reasons, risks
 
 
 def _date_to_ordinal(value: str) -> int:

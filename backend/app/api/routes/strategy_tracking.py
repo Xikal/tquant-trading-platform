@@ -13,7 +13,11 @@ from app.models.schema_defs.strategy_tracking import (
     StrategyTrackingDetailResponse,
     StrategyTrackingListResponse,
     StrategyTrackingPerformanceOut,
+    StrategyTrackingReportOut,
+    StrategyTrackingReviewResponse,
     StrategyTrackingRefreshResponse,
+    StrategyTrackingSegmentOut,
+    StrategyTrackingShadowObservationOut,
     StrategyTrackingSummaryOut,
 )
 from app.services.strategy_tracking import DEFAULT_LIMIT, DEFAULT_RANGE_DAYS, StrategyTrackingService
@@ -101,6 +105,141 @@ def strategy_tracking_performance_view(
         raise HTTPException(status_code=500, detail=f"策略跟踪表现加载失败: {exc}") from exc
     finally:
         log_slow_call(logger, "strategy_tracking.performance", started_at, range_days=range_days)
+
+
+@router.get("/review", response_model=StrategyTrackingReviewResponse)
+def strategy_tracking_review_view(
+    range_days: int = Query(DEFAULT_RANGE_DAYS, ge=1, le=260, alias="range"),
+    strategy_key: str | None = Query(None),
+    strategy_family: str | None = Query(None),
+    db: Session = Depends(get_db),
+):
+    started_at = monotonic_start()
+    try:
+        return StrategyTrackingService(db).review(
+            range_days=range_days,
+            strategy_key=strategy_key,
+            strategy_family=strategy_family,
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"策略复盘中心加载失败: {exc}") from exc
+    finally:
+        log_slow_call(logger, "strategy_tracking.review", started_at, range_days=range_days)
+
+
+@router.get("/failure-attribution", response_model=StrategyTrackingReviewResponse)
+def strategy_tracking_failure_view(
+    range_days: int = Query(DEFAULT_RANGE_DAYS, ge=1, le=260, alias="range"),
+    strategy_key: str | None = Query(None),
+    db: Session = Depends(get_db),
+):
+    started_at = monotonic_start()
+    try:
+        return StrategyTrackingService(db).review(range_days=range_days, strategy_key=strategy_key)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"策略失败归因加载失败: {exc}") from exc
+    finally:
+        log_slow_call(logger, "strategy_tracking.failure_attribution", started_at, range_days=range_days)
+
+
+@router.get("/market-segments", response_model=list[StrategyTrackingSegmentOut])
+def strategy_tracking_market_segments_view(
+    range_days: int = Query(DEFAULT_RANGE_DAYS, ge=1, le=260, alias="range"),
+    strategy_family: str | None = Query(None),
+    db: Session = Depends(get_db),
+):
+    started_at = monotonic_start()
+    try:
+        return StrategyTrackingService(db).market_segments(range_days=range_days, strategy_family=strategy_family)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"策略市场分层加载失败: {exc}") from exc
+    finally:
+        log_slow_call(logger, "strategy_tracking.market_segments", started_at, range_days=range_days)
+
+
+@router.get("/health", response_model=list[StrategyTrackingPerformanceOut])
+def strategy_tracking_health_view(
+    range_days: int = Query(DEFAULT_RANGE_DAYS, ge=1, le=260, alias="range"),
+    strategy_family: str | None = Query(None),
+    db: Session = Depends(get_db),
+):
+    started_at = monotonic_start()
+    try:
+        return StrategyTrackingService(db).performance(range_days=range_days, strategy_family=strategy_family)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"策略健康度加载失败: {exc}") from exc
+    finally:
+        log_slow_call(logger, "strategy_tracking.health", started_at, range_days=range_days)
+
+
+@router.get("/shadow-observations", response_model=list[StrategyTrackingShadowObservationOut])
+def strategy_tracking_shadow_view(
+    range_days: int = Query(DEFAULT_RANGE_DAYS, ge=1, le=260, alias="range"),
+    model_key: str | None = Query(None),
+    strategy_key: str | None = Query(None),
+    db: Session = Depends(get_db),
+):
+    started_at = monotonic_start()
+    try:
+        return StrategyTrackingService(db).shadow_observations(
+            range_days=range_days,
+            model_key=model_key,
+            strategy_key=strategy_key,
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Shadow 观测闭环加载失败: {exc}") from exc
+    finally:
+        log_slow_call(logger, "strategy_tracking.shadow_observations", started_at, range_days=range_days)
+
+
+@router.get("/leakage-audit", response_model=StrategyTrackingReviewResponse)
+def strategy_tracking_leakage_audit_view(
+    range_days: int = Query(DEFAULT_RANGE_DAYS, ge=1, le=260, alias="range"),
+    strategy_key: str | None = Query(None),
+    needs_review: bool | None = Query(None),
+    abnormal_return: bool | None = Query(None),
+    db: Session = Depends(get_db),
+):
+    started_at = monotonic_start()
+    try:
+        return StrategyTrackingService(db).leakage_audit(
+            range_days=range_days,
+            strategy_key=strategy_key,
+            needs_review=needs_review,
+            abnormal_return=abnormal_return,
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"防未来函数审计加载失败: {exc}") from exc
+    finally:
+        log_slow_call(logger, "strategy_tracking.leakage_audit", started_at, range_days=range_days)
+
+
+@router.get("/reports/daily", response_model=StrategyTrackingReportOut)
+def strategy_tracking_daily_report_view(
+    range_days: int = Query(1, ge=1, le=260, alias="range"),
+    db: Session = Depends(get_db),
+):
+    started_at = monotonic_start()
+    try:
+        return StrategyTrackingService(db).report(report_type="daily", range_days=range_days)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"策略跟踪日报生成失败: {exc}") from exc
+    finally:
+        log_slow_call(logger, "strategy_tracking.report_daily", started_at, range_days=range_days)
+
+
+@router.get("/reports/weekly", response_model=StrategyTrackingReportOut)
+def strategy_tracking_weekly_report_view(
+    range_days: int = Query(7, ge=1, le=260, alias="range"),
+    db: Session = Depends(get_db),
+):
+    started_at = monotonic_start()
+    try:
+        return StrategyTrackingService(db).report(report_type="weekly", range_days=range_days)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"策略跟踪周报生成失败: {exc}") from exc
+    finally:
+        log_slow_call(logger, "strategy_tracking.report_weekly", started_at, range_days=range_days)
 
 
 @router.get("/items/{item_id}", response_model=StrategyTrackingDetailResponse)

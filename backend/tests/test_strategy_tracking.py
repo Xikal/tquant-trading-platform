@@ -14,7 +14,13 @@ from app.core.admin_auth import require_admin_auth
 from app.core.auth import get_current_user
 from app.core.database import get_db
 from app.models.base import Base
-from app.models.entities import DailyBarSnapshot, LowBuyResultSnapshot, LowBuyTradeLifecycleSnapshot, StrategyMetadata
+from app.models.entities import (
+    DailyBarSnapshot,
+    LowBuyResultSnapshot,
+    LowBuyTradeLifecycleSnapshot,
+    MarketModelObservation,
+    StrategyMetadata,
+)
 
 
 def _override_user():
@@ -81,9 +87,127 @@ class StrategyTrackingTests(unittest.TestCase):
         body = response.json()
         self.assertEqual(body["item"]["id"], item_id)
         self.assertEqual([point["trade_date"] for point in body["timeline"]], ["2026-04-21", "2026-04-22"])
-        self.assertEqual({marker["kind"] for marker in body["markers"]}, {"first_signal", "target", "stop", "highest"})
+        self.assertEqual(
+            {marker["kind"] for marker in body["markers"]},
+            {"first_signal", "target", "stop", "highest", "lowest", "best_exit"},
+        )
         self.assertNotIn("payload_json", body["signal_snapshot"])
         self.assertIn("summary_reason", body["signal_snapshot"])
+
+    def test_items_include_attribution_audit_and_holding_fields(self) -> None:
+        self._seed_tracking_fixture()
+
+        response = self.client.get("/api/strategy-tracking/items?range=10&limit=10")
+
+        self.assertEqual(response.status_code, 200)
+        body = response.json()
+        item = body["items"][0]
+        self.assertIn("stop_loss_triggered", item["failure_tags"])
+        self.assertEqual(item["market_state"], "strong_market")
+        self.assertEqual(item["sector_state"], "sector_main_rise")
+        self.assertEqual(item["future_leak_check"], "needs_review")
+        self.assertTrue(item["needs_review"])
+        self.assertGreaterEqual(item["best_holding_days"], 1)
+        self.assertIsNotNone(item["best_exit_date"])
+        self.assertIn("market_segments", body)
+        self.assertIn("shadow_observations", body)
+
+    def test_shadow_zero_samples_report_reason(self) -> None:
+        self._seed_tracking_fixture()
+
+        response = self.client.get("/api/strategy-tracking/shadow-observations?range=10&model_key=main_force_model_observation")
+
+        self.assertEqual(response.status_code, 200)
+        body = response.json()
+        self.assertEqual(body[0]["observation_count"], 0)
+        self.assertEqual(body[0]["no_sample_reason"], "no_model_observation")
+        self.assertIn("没有该模型观测记录", body[0]["no_sample_reason_text"])
+
+    def test_shadow_no_sample_reason_diagnoses_observation_blockers(self) -> None:
+        self._seed_tracking_fixture()
+        cases = [
+            ("strategy_disabled", {"strategy_enabled": False}, "策略未启用"),
+            ("window_not_reached", {"shadow_status": "pending_window"}, "时间窗口尚未满足"),
+            ("shadow_job_not_run", {"job_status": "not_run"}, "Shadow 任务未运行"),
+            ("write_failed", {"write_failed": True}, "观测写入失败"),
+            ("schema_mismatch", "{bad-json", "字段或模型版本不匹配"),
+        ]
+        with self.Session() as db:
+            for reason, payload, _text in cases:
+                db.add(
+                    MarketModelObservation(
+                        model_key=reason,
+                        symbol="600009",
+                        name="Shadow 阻塞样本",
+                        trade_date="2026-04-21",
+                        signal_state="",
+                        payload_json=payload if isinstance(payload, str) else json.dumps(payload, ensure_ascii=False),
+                    )
+                )
+            db.commit()
+
+        for reason, _payload, text in cases:
+            response = self.client.get(f"/api/strategy-tracking/shadow-observations?range=10&model_key={reason}")
+            self.assertEqual(response.status_code, 200)
+            body = response.json()
+            self.assertEqual(body[0]["no_sample_reason"], reason)
+            self.assertIn(text, body[0]["no_sample_reason_text"])
+
+    def test_shadow_no_sample_reason_diagnoses_no_qualified_signal_and_data_missing(self) -> None:
+        with self.Session() as db:
+            db.add(
+                MarketModelObservation(
+                    model_key="no_signal_model",
+                    symbol="600010",
+                    name="无合格信号",
+                    trade_date="2026-04-21",
+                    signal_state="watch",
+                    payload_json="{}",
+                )
+            )
+            db.add(
+                MarketModelObservation(
+                    model_key="data_missing_model",
+                    symbol="",
+                    name="数据缺失",
+                    trade_date="",
+                    signal_state="watch",
+                    payload_json="{}",
+                )
+            )
+            db.commit()
+
+        no_signal = self.client.get("/api/strategy-tracking/shadow-observations?range=10&model_key=no_signal_model")
+        data_missing = self.client.get("/api/strategy-tracking/shadow-observations?range=10&model_key=data_missing_model")
+
+        self.assertEqual(no_signal.status_code, 200)
+        self.assertEqual(no_signal.json()[0]["no_sample_reason"], "no_qualified_signal")
+        self.assertIn("没有符合条件信号", no_signal.json()[0]["no_sample_reason_text"])
+        self.assertEqual(data_missing.status_code, 200)
+        self.assertEqual(data_missing.json()[0]["no_sample_reason"], "data_missing")
+        self.assertIn("缺少可关联标的", data_missing.json()[0]["no_sample_reason_text"])
+
+    def test_review_audit_and_report_endpoints_are_read_only(self) -> None:
+        self._seed_tracking_fixture()
+        with self.Session() as db:
+            before = db.query(LowBuyResultSnapshot).count()
+
+        review = self.client.get("/api/strategy-tracking/review?range=10")
+        audit = self.client.get("/api/strategy-tracking/leakage-audit?range=10&needs_review=true")
+        daily_report = self.client.get("/api/strategy-tracking/reports/daily?range=10")
+        report = self.client.get("/api/strategy-tracking/reports/weekly?range=10")
+
+        self.assertEqual(review.status_code, 200)
+        self.assertIn("stop_loss_triggered", review.json()["failure_tags"])
+        self.assertEqual(audit.status_code, 200)
+        self.assertGreaterEqual(len(audit.json()["needs_review_items"]), 1)
+        self.assertEqual(daily_report.status_code, 200)
+        self.assertIn("策略跟踪日报", daily_report.json()["markdown"])
+        self.assertEqual(report.status_code, 200)
+        self.assertIn("策略跟踪周报", report.json()["markdown"])
+        with self.Session() as db:
+            after = db.query(LowBuyResultSnapshot).count()
+        self.assertEqual(after, before)
 
     def test_bad_payload_and_missing_bars_degrade_without_blocking_other_items(self) -> None:
         with self.Session() as db:
@@ -215,6 +339,14 @@ def _payload(price: float) -> dict[str, object]:
         "summary_reason": "缩量回踩到支撑位",
         "reasons": ["回踩支撑"],
         "risks": ["跌破止损"],
+        "market_state": "strong_market",
+        "market_state_text": "强势行情",
+        "sector_state": "sector_main_rise",
+        "sector_state_text": "板块主升",
+        "signal_generated_at": "2026-04-20T14:50:00+08:00",
+        "data_cutoff_at": "2026-04-20T14:45:00+08:00",
+        "lookback_start_date": "2026-03-20",
+        "lookback_end_date": "2026-04-20",
         "data_quality": "ok",
     }
 

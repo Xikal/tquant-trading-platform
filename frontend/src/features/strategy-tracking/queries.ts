@@ -19,3 +19,12 @@ export function useStrategyTrackingDetail(itemId: string | null) {
     staleTime: 30_000,
   });
 }
+
+export function useStrategyTrackingReport(type: "daily" | "weekly", params: StrategyTrackingParams, enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.strategyTrackingReport(type, params as Record<string, unknown>),
+    queryFn: () => api.getStrategyTrackingReport(type, params),
+    enabled,
+    staleTime: 30_000,
+  });
+}
