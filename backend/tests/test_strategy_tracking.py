@@ -178,6 +178,50 @@ class StrategyTrackingTests(unittest.TestCase):
             self.assertEqual(db.query(LowBuyResultSnapshot).count(), strategy_before)
             self.assertEqual(db.query(PaperOrder).count(), orders_before)
 
+    def test_tracking_read_model_cache_reuses_bars_for_same_window(self) -> None:
+        self._seed_board_fixture()
+        from app.services.strategy_tracking import StrategyTrackingService, clear_strategy_tracking_read_cache
+
+        clear_strategy_tracking_read_cache()
+        with self.Session() as db:
+            service = StrategyTrackingService(db)
+            original_fetch = service._fetch_light_bars
+            calls = 0
+
+            def counting_fetch(*args, **kwargs):  # noqa: ANN002, ANN003
+                nonlocal calls
+                calls += 1
+                return original_fetch(*args, **kwargs)
+
+            service._fetch_light_bars = counting_fetch  # type: ignore[method-assign]
+            first = service.list_items(range_days=10, limit=10)
+            second = service.list_items(range_days=10, limit=10)
+
+        self.assertEqual(first.total, second.total)
+        self.assertEqual(calls, 1)
+
+    def test_holding_analysis_reuses_tracking_read_model_cache(self) -> None:
+        self._seed_board_fixture()
+        from app.services.strategy_tracking import StrategyTrackingService, clear_strategy_tracking_read_cache
+
+        clear_strategy_tracking_read_cache()
+        with self.Session() as db:
+            service = StrategyTrackingService(db)
+            service.list_items(range_days=10, limit=10)
+            original_fetch = service._fetch_light_bars
+            calls = 0
+
+            def counting_fetch(*args, **kwargs):  # noqa: ANN002, ANN003
+                nonlocal calls
+                calls += 1
+                return original_fetch(*args, **kwargs)
+
+            service._fetch_light_bars = counting_fetch  # type: ignore[method-assign]
+            holding = service.holding_analysis(range_days=10)
+
+        self.assertTrue(holding.items)
+        self.assertEqual(calls, 0)
+
     def test_shadow_zero_samples_report_reason(self) -> None:
         self._seed_tracking_fixture()
 

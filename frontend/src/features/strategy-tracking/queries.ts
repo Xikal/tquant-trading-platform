@@ -3,11 +3,14 @@ import { api } from "../../api/client";
 import { queryKeys } from "../../app/query/queryKeys";
 import type { StrategyTrackingParams } from "../../types";
 
+const STRATEGY_TRACKING_STALE_TIME_MS = 60_000;
+const STRATEGY_TRACKING_DETAIL_STALE_TIME_MS = 30_000;
+
 export function useStrategyTrackingItems(params: StrategyTrackingParams) {
   return useQuery({
     queryKey: queryKeys.strategyTracking(params as Record<string, unknown>),
     queryFn: () => api.getStrategyTrackingItems(params),
-    staleTime: 12_000,
+    staleTime: STRATEGY_TRACKING_STALE_TIME_MS,
   });
 }
 
@@ -16,7 +19,7 @@ export function useStrategyTrackingDetail(itemId: string | null) {
     queryKey: queryKeys.strategyTrackingDetail(itemId),
     queryFn: () => api.getStrategyTrackingDetail(itemId || ""),
     enabled: Boolean(itemId),
-    staleTime: 30_000,
+    staleTime: STRATEGY_TRACKING_DETAIL_STALE_TIME_MS,
   });
 }
 
@@ -25,7 +28,7 @@ export function useStrategyTrackingReport(type: "daily" | "weekly", params: Stra
     queryKey: queryKeys.strategyTrackingReport(type, params as Record<string, unknown>),
     queryFn: () => api.getStrategyTrackingReport(type, params),
     enabled,
-    staleTime: 30_000,
+    staleTime: STRATEGY_TRACKING_STALE_TIME_MS,
   });
 }
 
@@ -34,6 +37,6 @@ export function useStrategyTrackingHoldingAnalysis(params: StrategyTrackingParam
     queryKey: queryKeys.strategyTrackingHoldingAnalysis(params as Record<string, unknown>),
     queryFn: () => api.getStrategyTrackingHoldingAnalysis(params),
     enabled,
-    staleTime: 30_000,
+    staleTime: STRATEGY_TRACKING_STALE_TIME_MS,
   });
 }

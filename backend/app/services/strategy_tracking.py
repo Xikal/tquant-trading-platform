@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import logging
+import threading
+import time
 from collections import defaultdict
 from dataclasses import dataclass
 from typing import Any, Iterable
@@ -50,6 +52,45 @@ from app.services.strategy_tracking_reports import (
 from app.services.strategy_tracking_usability import build_holding_analysis
 
 logger = logging.getLogger(__name__)
+_READ_MODEL_CACHE_TTL_SECONDS = 20.0
+_READ_MODEL_CACHE_MAX_SIZE = 16
+_READ_MODEL_CACHE_LOCK = threading.Lock()
+_READ_MODEL_CACHE: dict[tuple[object, ...], tuple[float, list[StrategyTrackingItemOut], list[str]]] = {}
+
+
+def clear_strategy_tracking_read_cache() -> None:
+    with _READ_MODEL_CACHE_LOCK:
+        _READ_MODEL_CACHE.clear()
+
+
+def _get_read_model_cache(cache_key: tuple[object, ...]) -> tuple[list[StrategyTrackingItemOut], list[str]] | None:
+    now = time.monotonic()
+    with _READ_MODEL_CACHE_LOCK:
+        cached = _READ_MODEL_CACHE.get(cache_key)
+        if cached is None:
+            return None
+        expires_at, items, partial_errors = cached
+        if expires_at <= now:
+            _READ_MODEL_CACHE.pop(cache_key, None)
+            return None
+        return list(items), list(partial_errors)
+
+
+def _set_read_model_cache(
+    cache_key: tuple[object, ...],
+    payload: tuple[list[StrategyTrackingItemOut], list[str]],
+) -> None:
+    now = time.monotonic()
+    expires_at = now + _READ_MODEL_CACHE_TTL_SECONDS
+    with _READ_MODEL_CACHE_LOCK:
+        for key, (cached_expires_at, _items, _errors) in list(_READ_MODEL_CACHE.items()):
+            if cached_expires_at <= now:
+                _READ_MODEL_CACHE.pop(key, None)
+        while len(_READ_MODEL_CACHE) >= _READ_MODEL_CACHE_MAX_SIZE:
+            oldest_key = next(iter(_READ_MODEL_CACHE))
+            _READ_MODEL_CACHE.pop(oldest_key, None)
+        items, partial_errors = payload
+        _READ_MODEL_CACHE[cache_key] = (expires_at, list(items), list(partial_errors))
 
 
 @dataclass(frozen=True)
@@ -88,13 +129,13 @@ class StrategyTrackingService:
     ) -> StrategyTrackingListResponse:
         safe_limit = max(1, min(limit, MAX_LIMIT))
         safe_offset = max(0, offset)
-        groups, partial_errors = self._load_groups(range_days=range_days, strategy_key=strategy_key)
-        if strategy_family:
-            groups = [item for item in groups if get_strategy_tier(item.strategy_key).value == strategy_family]
+        all_items, partial_errors = self._load_read_model(
+            range_days=range_days,
+            strategy_key=strategy_key,
+            strategy_family=strategy_family,
+        )
         if signal_state:
-            groups = [item for item in groups if item.latest_row.buy_signal_state == signal_state]
-        latest_bar_date = self._latest_bar_date()
-        all_items = self._build_summary_items(groups, latest_bar_date=latest_bar_date)
+            all_items = [item for item in all_items if item.signal_state == signal_state]
         items = filter_items(
             all_items,
             lifecycle_status=lifecycle_status,
@@ -108,14 +149,14 @@ class StrategyTrackingService:
         )
         items = sort_items(items, sort=sort)
         total = len(items)
-        items = items[safe_offset : safe_offset + safe_limit]
+        page_items = items[safe_offset : safe_offset + safe_limit]
         summary = build_summary(items)
         performance = build_performance(items)
         market_segments = build_market_segments(items)
         shadow = self.shadow_observations(range_days=range_days, items=all_items)
         summary.shadow_observation_count = sum(item.observation_count for item in shadow)
         return StrategyTrackingListResponse(
-            items=items,
+            items=page_items,
             total=total,
             limit=safe_limit,
             offset=safe_offset,
@@ -322,52 +363,7 @@ class StrategyTrackingService:
         strategy_key: str | None,
     ) -> tuple[list[TrackingGroup], list[str]]:
         dates = self._recent_result_dates(range_days)
-        if not dates:
-            return [], []
-        statement = select(LowBuyResultSnapshot).where(
-            LowBuyResultSnapshot.latest_trade_date.in_(dates),
-            LowBuyResultSnapshot.buy_signal_state.in_(TRACKED_SIGNAL_STATES),
-        )
-        if strategy_key:
-            statement = statement.where(LowBuyResultSnapshot.strategy_key == strategy_key)
-        rows = list(
-            self.db.execute(
-                statement.order_by(
-                    LowBuyResultSnapshot.strategy_key.asc(),
-                    LowBuyResultSnapshot.symbol.asc(),
-                    LowBuyResultSnapshot.latest_trade_date.asc(),
-                )
-            )
-            .scalars()
-            .all()
-        )
-        allowed = self._production_strategy_keys()
-        grouped: dict[tuple[str, str], list[LowBuyResultSnapshot]] = defaultdict(list)
-        for row in rows:
-            if row.strategy_key not in allowed:
-                continue
-            grouped[(row.strategy_key, row.symbol)].append(row)
-        groups: list[TrackingGroup] = []
-        errors: list[str] = []
-        for (_strategy, _symbol), group_rows in grouped.items():
-            ordered = tuple(sorted(group_rows, key=lambda item: item.latest_trade_date))
-            first_row = ordered[0]
-            latest_row = ordered[-1]
-            payload, payload_error = load_payload(latest_row)
-            if payload_error:
-                errors.append(f"{latest_row.strategy_key}/{latest_row.symbol}: {payload_error}")
-            groups.append(
-                TrackingGroup(
-                    strategy_key=latest_row.strategy_key,
-                    symbol=latest_row.symbol,
-                    rows=ordered,
-                    latest_row=latest_row,
-                    first_row=first_row,
-                    payload=payload,
-                    payload_error=payload_error,
-                )
-            )
-        return self._sort_groups(groups, sort="latest_desc"), errors
+        return self._load_groups_for_dates(result_dates=dates, strategy_key=strategy_key)
 
     def _production_strategy_keys(self) -> set[str]:
         try:
@@ -410,6 +406,14 @@ class StrategyTrackingService:
         start_date = calendar_lookback(min(self._first_signal_date(item) for item in group_list), 140)
         return DailyHistoryRepository(self.db).fetch_rows_for_symbols(symbols, start_date, latest_bar_date)
 
+    def _fetch_light_bars(self, groups: Iterable[TrackingGroup], *, latest_bar_date: str) -> dict[str, list[DailyBarRow]]:
+        group_list = list(groups)
+        if not group_list or not latest_bar_date:
+            return {}
+        symbols = sorted({item.symbol for item in group_list})
+        start_date = calendar_lookback(min(self._first_signal_date(item) for item in group_list), 140)
+        return DailyHistoryRepository(self.db).fetch_light_rows_for_symbols(symbols, start_date, latest_bar_date)
+
     def _load_lifecycles(self, groups: Iterable[TrackingGroup]) -> dict[tuple[str, str, str], LowBuyTradeLifecycleSnapshot]:
         group_list = list(groups)
         if not group_list:
@@ -436,13 +440,43 @@ class StrategyTrackingService:
 
     def _build_summary_items(self, groups: list[TrackingGroup], *, latest_bar_date: str) -> list[StrategyTrackingItemOut]:
         preview = self._sort_groups(groups, sort="latest_desc")[:300]
-        bars = self._fetch_bars(preview, latest_bar_date=latest_bar_date)
+        bars = self._fetch_light_bars(preview, latest_bar_date=latest_bar_date)
         lifecycles = self._load_lifecycles(preview)
         instruments = self._load_instrument_payloads(preview)
         return [
             self._build_item(group, bars.get(group.symbol, []), lifecycles.get(self._group_key(group)), latest_bar_date, instrument_payload=instruments.get(group.symbol))
             for group in preview
         ]
+
+    def _load_read_model(
+        self,
+        *,
+        range_days: int,
+        strategy_key: str | None,
+        strategy_family: str | None,
+    ) -> tuple[list[StrategyTrackingItemOut], list[str]]:
+        result_dates = self._recent_result_dates(range_days)
+        if not result_dates:
+            return [], []
+        latest_bar_date = self._latest_bar_date()
+        cache_key = (
+            max(1, min(range_days, 260)),
+            strategy_key or "",
+            strategy_family or "",
+            result_dates[0],
+            result_dates[-1],
+            latest_bar_date,
+        )
+        cached = _get_read_model_cache(cache_key)
+        if cached is not None:
+            return cached
+
+        groups, partial_errors = self._load_groups_for_dates(result_dates=result_dates, strategy_key=strategy_key)
+        if strategy_family:
+            groups = [item for item in groups if get_strategy_tier(item.strategy_key).value == strategy_family]
+        items = self._build_summary_items(groups, latest_bar_date=latest_bar_date)
+        _set_read_model_cache(cache_key, (items, partial_errors))
+        return items, partial_errors
 
     def _build_item(
         self,
@@ -497,3 +531,59 @@ class StrategyTrackingService:
     def _range_start_date(self, range_days: int) -> str:
         dates = self._recent_result_dates(range_days)
         return dates[0] if dates else ""
+
+    def _load_groups_for_dates(
+        self,
+        *,
+        result_dates: list[str],
+        strategy_key: str | None,
+    ) -> tuple[list[TrackingGroup], list[str]]:
+        if not result_dates:
+            return [], []
+        statement = select(LowBuyResultSnapshot).where(
+            LowBuyResultSnapshot.latest_trade_date.in_(result_dates),
+            LowBuyResultSnapshot.buy_signal_state.in_(TRACKED_SIGNAL_STATES),
+        )
+        if strategy_key:
+            statement = statement.where(LowBuyResultSnapshot.strategy_key == strategy_key)
+        rows = list(
+            self.db.execute(
+                statement.order_by(
+                    LowBuyResultSnapshot.strategy_key.asc(),
+                    LowBuyResultSnapshot.symbol.asc(),
+                    LowBuyResultSnapshot.latest_trade_date.asc(),
+                )
+            )
+            .scalars()
+            .all()
+        )
+        return self._groups_from_rows(rows)
+
+    def _groups_from_rows(self, rows: list[LowBuyResultSnapshot]) -> tuple[list[TrackingGroup], list[str]]:
+        allowed = self._production_strategy_keys()
+        grouped: dict[tuple[str, str], list[LowBuyResultSnapshot]] = defaultdict(list)
+        for row in rows:
+            if row.strategy_key not in allowed:
+                continue
+            grouped[(row.strategy_key, row.symbol)].append(row)
+        groups: list[TrackingGroup] = []
+        errors: list[str] = []
+        for (_strategy, _symbol), group_rows in grouped.items():
+            ordered = tuple(sorted(group_rows, key=lambda item: item.latest_trade_date))
+            first_row = ordered[0]
+            latest_row = ordered[-1]
+            payload, payload_error = load_payload(latest_row)
+            if payload_error:
+                errors.append(f"{latest_row.strategy_key}/{latest_row.symbol}: {payload_error}")
+            groups.append(
+                TrackingGroup(
+                    strategy_key=latest_row.strategy_key,
+                    symbol=latest_row.symbol,
+                    rows=ordered,
+                    latest_row=latest_row,
+                    first_row=first_row,
+                    payload=payload,
+                    payload_error=payload_error,
+                )
+            )
+        return self._sort_groups(groups, sort="latest_desc"), errors

@@ -37,3 +37,9 @@ def _clear_known_runtime_caches() -> None:
         clear_strategy_tier_cache()
     except Exception:
         pass
+    try:
+        from app.services.strategy_tracking import clear_strategy_tracking_read_cache
+
+        clear_strategy_tracking_read_cache()
+    except Exception:
+        pass

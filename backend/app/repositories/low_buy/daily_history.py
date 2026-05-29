@@ -261,6 +261,59 @@ class DailyHistoryRepository:
             )
         return grouped
 
+    def fetch_light_rows_for_symbols(
+        self,
+        symbols: list[str],
+        start_date_iso: str,
+        latest_trade_date: str,
+    ) -> dict[str, list[DailyBarRow]]:
+        if not symbols:
+            return {}
+        rows = (
+            self.db.execute(
+                select(
+                    DailyBarSnapshot.symbol,
+                    DailyBarSnapshot.trade_date,
+                    DailyBarSnapshot.close_price,
+                    DailyBarSnapshot.high_price,
+                    DailyBarSnapshot.low_price,
+                    DailyBarSnapshot.is_suspended,
+                    DailyBarSnapshot.is_delisted,
+                    DailyBarSnapshot.source,
+                    DailyBarSnapshot.fetch_time,
+                    DailyBarSnapshot.data_quality,
+                )
+                .where(
+                    DailyBarSnapshot.symbol.in_(symbols),
+                    DailyBarSnapshot.trade_date >= start_date_iso,
+                    DailyBarSnapshot.trade_date <= latest_trade_date,
+                )
+                .order_by(DailyBarSnapshot.symbol.asc(), DailyBarSnapshot.trade_date.asc())
+            )
+            .all()
+        )
+        grouped: dict[str, list[DailyBarRow]] = {}
+        for row in rows:
+            close_price = float(row.close_price or 0.0)
+            grouped.setdefault(row.symbol, []).append(
+                DailyBarRow(
+                    trade_date=_as_iso_date(row.trade_date),
+                    open_price=close_price,
+                    close_price=close_price,
+                    high_price=float(row.high_price or close_price),
+                    low_price=float(row.low_price or close_price),
+                    volume=0.0,
+                    amount=0.0,
+                    pct_chg=0.0,
+                    is_suspended=bool(row.is_suspended),
+                    is_delisted=bool(row.is_delisted),
+                    source=row.source,
+                    fetch_time=row.fetch_time,
+                    data_quality=row.data_quality,
+                )
+            )
+        return grouped
+
     def latest_timestamp_for_period(self, symbol: str, bar_period: str):
         return (
             self.db.execute(
