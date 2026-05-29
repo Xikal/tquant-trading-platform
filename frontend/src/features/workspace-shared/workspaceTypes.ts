@@ -1,9 +1,8 @@
 export type Page =
   | "monitor"
-  | "emotion"
   | "analysis"
   | "playbook"
-  | "strategy"
+  | "strategy-tracking"
   | "backtest"
   | "paper"
   | "settings";

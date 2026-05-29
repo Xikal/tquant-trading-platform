@@ -60,7 +60,7 @@ export function TradingWorkspace() {
     onAuthRequired: handleAuthRequired,
   });
   const monitor = useMonitorData({
-    active: Boolean(currentUser) && (page === "monitor" || page === "emotion"),
+    active: Boolean(currentUser) && page === "monitor",
     withLoading,
     setError,
     setNotice,
@@ -462,7 +462,7 @@ function shortcutPage(key: string): Page | null {
   if (key === "1") return "monitor";
   if (key === "2") return "analysis";
   if (key === "3") return "playbook";
-  if (key === "4") return "strategy";
+  if (key === "4") return "strategy-tracking";
   if (key === "5") return "backtest";
   if (key === "6") return "paper";
   if (key === "7") return "settings";

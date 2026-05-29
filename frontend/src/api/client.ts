@@ -61,6 +61,9 @@ import type {
   SettingsPayload,
   UserSectorExclusionsResponse,
   StrategyValidationReport,
+  StrategyTrackingDetailResponse,
+  StrategyTrackingListResponse,
+  StrategyTrackingParams,
   WatchlistItem,
   WatchlistQuoteItem,
   WatchlistSignal
@@ -308,6 +311,10 @@ export const api = {
     request<LowBuyExecutionBacktestResult>(
       `/screeners/low-buy/execution-backtest?strategy=${encodeURIComponent(strategy)}&lookback_days=${lookbackDays}&limit=${limit}`
     ),
+  getStrategyTrackingItems: (params: StrategyTrackingParams = {}) =>
+    requestCached<StrategyTrackingListResponse>(`/strategy-tracking/items?${strategyTrackingQuery(params)}`, 12000),
+  getStrategyTrackingDetail: (itemId: string) =>
+    requestCached<StrategyTrackingDetailResponse>(`/strategy-tracking/items/${encodeURIComponent(itemId)}`, 12000),
   getPaperAccount: () => request<PaperAccount>("/paper/account"),
   getPaperWorkspaceBff: () =>
     request<PaperWorkspaceBffResponse>("/bff/v1/workspace/paper?order_limit=80&trade_limit=300&run_limit=20"),
@@ -361,3 +368,20 @@ export const api = {
       body: JSON.stringify(payload)
     }),
 };
+
+function strategyTrackingQuery(params: StrategyTrackingParams): string {
+  const query = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) {
+    if (value === undefined || value === null || value === "") {
+      continue;
+    }
+    query.set(key, String(value));
+  }
+  if (!query.has("limit")) {
+    query.set("limit", "30");
+  }
+  if (!query.has("offset")) {
+    query.set("offset", "0");
+  }
+  return query.toString();
+}

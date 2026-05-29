@@ -1,0 +1,198 @@
+from __future__ import annotations
+
+from app.models.entities import LowBuyTradeLifecycleSnapshot
+from app.models.schema_defs.strategy_tracking import (
+    StrategyTrackingItemOut,
+    StrategyTrackingMarkerOut,
+    StrategyTrackingTimelinePointOut,
+)
+from app.repositories.low_buy import DailyBarRow
+from app.services.finance.performance_math import sequence_max_drawdown_pct
+from app.services.low_buy.strategy_policy import get_strategy_tier
+from app.services.strategy_tracking_constants import (
+    MISSING_SIGNAL_GRACE_DAYS,
+    MAX_TRACKING_DAYS,
+    PROFIT_TARGET_PCT,
+    SIGNAL_LABELS,
+    STATUS_LABELS,
+)
+from app.services.strategy_tracking_helpers import (
+    attr_float,
+    conclusion,
+    data_quality_text,
+    distance_to_entry,
+    failure_reason,
+    hit_entry,
+    item_id,
+    load_payload,
+    missing_signal_days,
+    number,
+    pct,
+    posterior_stats,
+    resolve_data_quality,
+    review_text,
+    round_or_none,
+    text,
+)
+
+
+def build_tracking_item(
+    *,
+    group,
+    bars: list[DailyBarRow],
+    lifecycle: LowBuyTradeLifecycleSnapshot | None,
+    latest_bar_date: str,
+    first_signal_date: str,
+) -> StrategyTrackingItemOut:
+    strategy_name = text(group.payload, "strategy_title", "strategy_name") or group.latest_row.strategy_key
+    entry_low = number(group.payload, "entry_zone_low", "entry_low") or attr_float(lifecycle, "entry_plan_low")
+    entry_high = number(group.payload, "entry_zone_high", "entry_high") or attr_float(lifecycle, "entry_plan_high")
+    stop_loss = number(group.payload, "stop_loss") or attr_float(lifecycle, "stop_loss")
+    target_price = number(group.payload, "take_profit", "target_price") or attr_float(lifecycle, "take_profit")
+    first_payload, _ = load_payload(group.first_row)
+    first_price = number(first_payload, "latest_price", "signal_price") or number(group.payload, "latest_price", "signal_price")
+    posterior = [item for item in bars if item.trade_date > first_signal_date]
+    stats = posterior_stats(
+        posterior,
+        reference_price=first_price,
+        entry_low=entry_low,
+        entry_high=entry_high,
+        stop_loss=stop_loss,
+        target_price=target_price,
+    )
+    status = lifecycle_status(group=group, posterior=posterior, stats=stats, lifecycle=lifecycle)
+    current_price = stats["current_price"]
+    quality = resolve_data_quality(has_payload_error=bool(group.payload_error), bars=posterior, latest_bar_date=latest_bar_date)
+    entry_distance = distance_to_entry(current_price, entry_low, entry_high)
+    return StrategyTrackingItemOut(
+        id=item_id(group.strategy_key, group.symbol, first_signal_date),
+        symbol=group.symbol,
+        name=group.latest_row.name,
+        strategy_key=group.strategy_key,
+        strategy_name=strategy_name,
+        strategy_family=get_strategy_tier(group.strategy_key).value,
+        signal_state=group.latest_row.buy_signal_state,
+        signal_text=SIGNAL_LABELS.get(group.latest_row.buy_signal_state, group.latest_row.buy_signal_state),
+        observe_only=group.latest_row.buy_signal_state == "observe_confirmed",
+        lifecycle_status=status,
+        lifecycle_status_text=STATUS_LABELS.get(status, status),
+        first_signal_date=first_signal_date,
+        latest_signal_date=str(group.latest_row.latest_trade_date),
+        first_signal_price=round_or_none(first_price),
+        entry_zone_low=round_or_none(entry_low),
+        entry_zone_high=round_or_none(entry_high),
+        stop_loss=round_or_none(stop_loss),
+        target_price=round_or_none(target_price),
+        current_price=round_or_none(current_price),
+        latest_trade_date=posterior[-1].trade_date if posterior else "",
+        recommendation_days=len(posterior),
+        distance_to_entry_pct=round_or_none(entry_distance),
+        current_return_pct=round_or_none(stats["current_return_pct"]),
+        max_price_after_signal=round_or_none(stats["max_price"]),
+        max_gain_pct=round_or_none(stats["max_gain_pct"]),
+        max_drawdown_pct=round_or_none(stats["max_drawdown_pct"]),
+        entry_touched=bool(stats["entry_touched"]),
+        stop_triggered=bool(stats["stop_triggered"]),
+        stop_triggered_date=stats["stop_triggered_date"],
+        target_touched=bool(stats["target_touched"]),
+        target_touched_date=stats["target_touched_date"],
+        conclusion=conclusion(status, stats, entry_distance),
+        failure_reason=failure_reason(status, stats),
+        review_text=review_text(group.payload, status, stats),
+        data_quality=quality,
+        data_quality_text=data_quality_text(quality),
+    )
+
+
+def lifecycle_status(
+    *,
+    group,
+    posterior: list[DailyBarRow],
+    stats: dict,
+    lifecycle: LowBuyTradeLifecycleSnapshot | None,
+) -> str:
+    if lifecycle and lifecycle.status in {"stopped", "invalidated", "expired"}:
+        return lifecycle.status
+    if not posterior:
+        return "data_unavailable"
+    if stats["stop_triggered"]:
+        return "stopped"
+    if stats["target_touched"] or (stats["max_gain_pct"] is not None and stats["max_gain_pct"] >= PROFIT_TARGET_PCT):
+        return "completed_profit"
+    if len(posterior) >= MAX_TRACKING_DAYS:
+        return "expired"
+    latest_known_date = posterior[-1].trade_date if posterior else str(group.latest_row.latest_trade_date)
+    if missing_signal_days(group.rows, latest_known_date) >= MISSING_SIGNAL_GRACE_DAYS:
+        return "invalidated"
+    return "active"
+
+
+def build_timeline(
+    *,
+    bars: list[DailyBarRow],
+    item: StrategyTrackingItemOut,
+) -> list[StrategyTrackingTimelinePointOut]:
+    posterior = [bar for bar in bars if bar.trade_date > item.first_signal_date][:120]
+    reference_price = item.first_signal_price
+    timeline: list[StrategyTrackingTimelinePointOut] = []
+    running_high = reference_price or 0.0
+    closes = [reference_price] if reference_price else []
+    for bar in posterior:
+        if reference_price:
+            running_high = max(running_high, bar.high_price)
+            closes.append(bar.close_price)
+            current_return = pct(bar.close_price, reference_price)
+            max_return = pct(running_high, reference_price)
+            max_drawdown = sequence_max_drawdown_pct(closes)
+        else:
+            current_return = None
+            max_return = None
+            max_drawdown = None
+        timeline.append(
+            StrategyTrackingTimelinePointOut(
+                trade_date=bar.trade_date,
+                open=bar.open_price,
+                high=bar.high_price,
+                low=bar.low_price,
+                close=bar.close_price,
+                pct_chg=bar.pct_chg,
+                current_return_pct=round_or_none(current_return),
+                max_return_pct=round_or_none(max_return),
+                max_drawdown_pct=round_or_none(max_drawdown),
+                hit_entry_zone=hit_entry(bar, item.entry_zone_low, item.entry_zone_high),
+                hit_stop_loss=bool(item.stop_loss and bar.low_price <= item.stop_loss),
+                hit_target=bool(item.target_price and bar.high_price >= item.target_price),
+                lifecycle_status=item.lifecycle_status,
+                data_quality=bar.data_quality or "unknown",
+            )
+        )
+    return timeline
+
+
+def build_markers(
+    *,
+    item: StrategyTrackingItemOut,
+    timeline: list[StrategyTrackingTimelinePointOut],
+) -> list[StrategyTrackingMarkerOut]:
+    markers = [
+        StrategyTrackingMarkerOut(
+            kind="first_signal",
+            trade_date=item.first_signal_date,
+            price=item.first_signal_price,
+            label="首次推荐",
+        )
+    ]
+    if item.stop_triggered_date:
+        markers.append(
+            StrategyTrackingMarkerOut(kind="stop", trade_date=item.stop_triggered_date, price=item.stop_loss, label="跌破止损")
+        )
+    if item.target_touched_date:
+        markers.append(
+            StrategyTrackingMarkerOut(kind="target", trade_date=item.target_touched_date, price=item.target_price, label="达到止盈观察")
+        )
+    if timeline:
+        highest = max(timeline, key=lambda point: point.high)
+        markers.append(
+            StrategyTrackingMarkerOut(kind="highest", trade_date=highest.trade_date, price=highest.high, label="推荐后最高")
+        )
+    return markers

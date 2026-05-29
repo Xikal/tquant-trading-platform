@@ -25,7 +25,7 @@ const PAGE_COMMANDS: CommandItem[] = [
   { type: "page", label: "实时监控", hint: "打开持仓和全策略榜单", page: "monitor" },
   { type: "page", label: "量化分析", hint: "打开单票做T分析", page: "analysis" },
   { type: "page", label: "选股宝典", hint: "打开低吸策略候选", page: "playbook" },
-  { type: "page", label: "策略工作台", hint: "打开回测、复盘、优化和对比", page: "strategy" },
+  { type: "page", label: "策略跟踪", hint: "查看生产策略推荐后的表现", page: "strategy-tracking" },
   { type: "page", label: "回测页", hint: "打开完整回测看板", page: "backtest" },
   { type: "page", label: "模拟盘", hint: "打开模拟交易账户", page: "paper" },
   { type: "page", label: "系统配置", hint: "打开运行配置与治理", page: "settings" },

@@ -6,6 +6,7 @@ export const queryKeys = {
   paper: ["paper"] as const,
   paperWorkspace: ["paper", "workspace"] as const,
   settings: ["settings"] as const,
-  strategyWorkspace: ["strategy", "workspace"] as const,
+  strategyTracking: (params: Record<string, unknown>) => ["strategy-tracking", params] as const,
+  strategyTrackingDetail: (itemId: string | null) => ["strategy-tracking", "detail", itemId] as const,
   factorMining: ["factor-mining"] as const,
 };

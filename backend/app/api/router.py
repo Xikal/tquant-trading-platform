@@ -31,6 +31,7 @@ from app.api.routes import (
     settings,
     strategy_stream,
     strategy_meta,
+    strategy_tracking,
     v1,
     watchlist,
 )
@@ -56,6 +57,7 @@ api_router.include_router(screeners.router, tags=["screeners"])
 api_router.include_router(settings.router, tags=["settings"])
 api_router.include_router(strategy_meta.router, tags=["strategy-meta"])
 api_router.include_router(strategy_stream.router, tags=["strategy-stream"])
+api_router.include_router(strategy_tracking.router, tags=["strategy-tracking"])
 api_router.include_router(agent.router, tags=["agent"])
 api_router.include_router(agent_quality.router, tags=["agent"])
 api_router.include_router(paper.router, tags=["paper"])

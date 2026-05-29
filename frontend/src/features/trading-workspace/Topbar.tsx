@@ -48,10 +48,9 @@ export function Topbar({
   const stacked = !screens.lg;
   const nav: Array<[Page, string]> = useMemo(() => [
     ["monitor", "实时监控"],
-    ["emotion", "市场情绪"],
     ["analysis", "量化分析"],
     ["playbook", "选股宝典"],
-    ["strategy", "策略工作台"],
+    ["strategy-tracking", "策略跟踪"],
     ["backtest", "回测页"],
     ["paper", "模拟盘"],
   ], []);

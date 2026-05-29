@@ -2,7 +2,6 @@ import { Suspense, type ComponentProps, type ComponentType } from "react";
 import type { StrategyMeta } from "../../api/strategies";
 import type { AuthUser } from "../../types";
 import { PageErrorBoundary } from "./PageErrorBoundary";
-import type { MarketEmotionPageProps } from "../market-emotion/MarketEmotionPage";
 import type { MonitorPageProps } from "../monitor/MonitorPage";
 import type { PaperTradingPageProps } from "../paper/PaperTradingPage";
 import type { useAnalysisData } from "./useAnalysisData";
@@ -15,12 +14,11 @@ import type { Page, StockCardView } from "../workspace-shared/workspaceTypes";
 interface WorkspacePageContentProps {
   AnalysisPage: ComponentType<ComponentProps<any>>;
   BacktestPage: ComponentType<ComponentProps<any>>;
-  MarketEmotionPage: ComponentType<MarketEmotionPageProps>;
   MonitorPage: ComponentType<MonitorPageProps>;
   PaperTradingPage: ComponentType<PaperTradingPageProps>;
   PlaybookPage: ComponentType<ComponentProps<any>>;
   SettingsPage: ComponentType<ComponentProps<any>>;
-  StrategyHubPage: ComponentType<{ currentUser: AuthUser }>;
+  StrategyTrackingPage: ComponentType<{ strategyMeta: StrategyMeta[] }>;
   analysis: ReturnType<typeof useAnalysisData>;
   currentUser: AuthUser;
   loading: string;
@@ -39,12 +37,11 @@ interface WorkspacePageContentProps {
 export function WorkspacePageContent({
   AnalysisPage,
   BacktestPage,
-  MarketEmotionPage,
   MonitorPage,
   PaperTradingPage,
   PlaybookPage,
   SettingsPage,
-  StrategyHubPage,
+  StrategyTrackingPage,
   analysis,
   currentUser,
   loading,
@@ -69,7 +66,6 @@ export function WorkspacePageContent({
     <PageErrorBoundary resetKey={page}>
       <Suspense fallback={<div className="panel">页面模块加载中...</div>}>
         {page === "monitor" && <MonitorPage {...monitorPageProps} />}
-        {page === "emotion" && <MarketEmotionPage marketBreadth={monitor.marketBreadth} marketPulse={monitor.marketPulse} sectorRelativeStrength={monitor.sectorRelativeStrength} />}
         {page === "analysis" && (
           <AnalysisPage
             draft={analysis.draft}
@@ -97,7 +93,7 @@ export function WorkspacePageContent({
             strategyTabs={playbookStrategyTabs}
           />
         )}
-        {page === "strategy" && <StrategyHubPage currentUser={currentUser} />}
+        {page === "strategy-tracking" && <StrategyTrackingPage strategyMeta={strategyMeta} />}
         {page === "backtest" && <BacktestPage />}
         {page === "paper" && (
           currentUser.can_paper_trade ? (

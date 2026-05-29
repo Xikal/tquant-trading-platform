@@ -10,7 +10,7 @@ const viewports = [
   { name: "tablet", width: 768, height: 1024 },
   { name: "desktop", width: 1440, height: 960 },
 ];
-const paths = ["/monitor", "/emotion", "/analysis", "/playbook", "/strategy", "/backtest", "/paper", "/settings"];
+const paths = ["/monitor", "/emotion", "/analysis", "/playbook", "/strategy-tracking", "/strategy", "/backtest", "/paper", "/settings"];
 const reportPath = resolve("dist", "responsive-smoke-report.json");
 
 const mockUser = {
@@ -126,6 +126,89 @@ const mockLowBuyPerformance = {
   retracement_attribution: [],
   market_state_attribution: [],
   industry_tier_attribution: [],
+};
+const mockStrategyTrackingItem = {
+  id: "first_board:510300:2026-05-25",
+  symbol: "510300",
+  name: "沪深300ETF",
+  strategy_key: "first_board",
+  strategy_name: "首板低吸",
+  strategy_family: "core",
+  signal_state: "near_entry",
+  signal_text: "接近买点",
+  observe_only: false,
+  lifecycle_status: "active",
+  lifecycle_status_text: "仍在跟踪",
+  first_signal_date: "2026-05-25",
+  latest_signal_date: "2026-05-26",
+  first_signal_price: 3.42,
+  entry_zone_low: 3.38,
+  entry_zone_high: 3.48,
+  stop_loss: 3.31,
+  target_price: 3.62,
+  current_price: 3.45,
+  latest_trade_date: "2026-05-26",
+  recommendation_days: 1,
+  distance_to_entry_pct: 0,
+  current_return_pct: 0.88,
+  max_price_after_signal: 3.48,
+  max_gain_pct: 1.75,
+  max_drawdown_pct: -0.58,
+  entry_touched: true,
+  stop_triggered: false,
+  stop_triggered_date: null,
+  target_touched: false,
+  target_touched_date: null,
+  conclusion: "仍在买点区",
+  failure_reason: "",
+  review_text: "回踩承接仍有效，继续观察买点和止损线。",
+  data_quality: "ok",
+  data_quality_text: "数据完整",
+  source: "low_buy_result_snapshot",
+  detail_available: true,
+};
+const mockStrategyTrackingPerformance = {
+  strategy_key: "first_board",
+  strategy_name: "首板低吸",
+  strategy_family: "core",
+  recommendation_count: 1,
+  entry_touched_count: 1,
+  entry_touch_rate: 100,
+  win_rate_3d: 100,
+  win_rate_5d: 100,
+  win_rate_10d: 0,
+  avg_current_return_pct: 0.88,
+  avg_max_gain_pct: 1.75,
+  avg_max_drawdown_pct: -0.58,
+  profit_loss_ratio: 1.4,
+  stop_loss_rate: 0,
+  active_count: 1,
+};
+const mockStrategyTrackingSummary = {
+  tracking_count: 1,
+  active_count: 1,
+  today_new_count: 0,
+  in_entry_zone_count: 1,
+  stopped_count: 0,
+  avg_current_return_pct: 0.88,
+  median_max_gain_pct: 1.75,
+  data_quality: "ok",
+  data_quality_text: "数据完整",
+  generated_at: now,
+};
+const mockStrategyTrackingList = {
+  items: [mockStrategyTrackingItem],
+  total: 1,
+  limit: 30,
+  offset: 0,
+  sort: "max_gain_desc",
+  summary: mockStrategyTrackingSummary,
+  performance: [mockStrategyTrackingPerformance],
+  partial_errors: [],
+  production_writeable: false,
+  read_path: "smoke",
+  rust_math_used: true,
+  notes: [],
 };
 const mockLowBuy = {
   strategy_key: "first_board",
@@ -451,6 +534,20 @@ async function installMockAuth(page) {
     if (path.startsWith("/market/intraday-anomaly/")) return response({ symbol: "510300", anomaly_level: "low", anomaly_text: "正常", score: 12, reasons: [], updated_at: now });
     if (path === "/strategies/meta") return response({ strategies: mockStrategyMeta });
     if (path === "/strategy/presets") return response({ presets: [] });
+    if (path === "/strategy-tracking/summary") return response(mockStrategyTrackingSummary);
+    if (path === "/strategy-tracking/items") return response(mockStrategyTrackingList);
+    if (path === "/strategy-tracking/performance") return response([mockStrategyTrackingPerformance]);
+    if (path.startsWith("/strategy-tracking/items/")) return response({
+      item: mockStrategyTrackingItem,
+      timeline: [
+        { trade_date: "2026-05-26", open: 3.42, high: 3.48, low: 3.4, close: 3.45, pct_chg: 0.88, current_return_pct: 0.88, max_return_pct: 1.75, max_drawdown_pct: -0.58, hit_entry_zone: true, hit_stop_loss: false, hit_target: false, lifecycle_status: "active", data_quality: "ok" },
+      ],
+      markers: [{ kind: "first_signal", trade_date: "2026-05-25", price: 3.42, label: "首次推荐" }],
+      signal_snapshot: { summary_reason: "主线 ETF 回踩承接" },
+      review_text: mockStrategyTrackingItem.review_text,
+      partial_errors: [],
+      production_writeable: false,
+    });
     if (path === "/bff/v1/workspace/strategy") return response({
       api_version: "v1",
       schema_version: "smoke",

@@ -7,7 +7,7 @@ import {
 } from "../../api/factorMining";
 import type { AuthUser } from "../../types";
 import { EmptyPlaceholder, ErrorBanner, SkeletonBlock } from "../../components/shared/Feedback";
-import { isAdmin } from "../strategy/strategyPermissions";
+import { isAdmin } from "../shared/strategyPermissions";
 import { EvalResultCard } from "./EvalResultCard";
 import { FactorActivationToggle } from "./FactorActivationToggle";
 import { FactorHealthDashboard } from "./FactorHealthDashboard";

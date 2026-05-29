@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-const schemaVersion = "v14"
+const schemaVersion = "v15"
 
 type aggregateResult struct {
 	status      int
@@ -43,6 +43,8 @@ func aggregateWorkspace(cfg config, client *http.Client, r *http.Request) aggreg
 		return aggregatePaperWorkspace(cfg, client, r)
 	case "strategy":
 		return aggregateStrategyWorkspace(cfg, client, r)
+	case "strategy-tracking":
+		return aggregateStrategyTrackingWorkspace(cfg, client, r)
 	case "settings":
 		return aggregateSettingsWorkspace(cfg, client, r)
 	case "factor":
@@ -74,6 +76,11 @@ func aggregateManifest() aggregateResult {
 				"path":           "/api/bff/v1/workspace/strategy",
 				"schema_version": schemaVersion,
 				"model":          "StrategyWorkspaceBffResponse",
+			},
+			"strategy_tracking": map[string]any{
+				"path":           "/api/bff/v1/workspace/strategy-tracking",
+				"schema_version": schemaVersion,
+				"model":          "StrategyTrackingWorkspaceBffResponse",
 			},
 			"settings": map[string]any{"path": "/api/bff/v1/workspace/settings", "schema_version": schemaVersion, "model": "SettingsWorkspaceBffResponse"},
 			"factor":   map[string]any{"path": "/api/bff/v1/workspace/factor", "schema_version": schemaVersion, "model": "FactorWorkspaceBffResponse"},
@@ -172,6 +179,54 @@ func aggregateStrategyWorkspace(cfg config, client *http.Client, r *http.Request
 		"verdict_thresholds": nullableJSON(results["verdict_thresholds"]),
 		"factor_health":      nullableJSON(results["factor_health"]),
 		"partial_errors":     errors,
+	}
+	return jsonPayload(http.StatusOK, payload)
+}
+
+func aggregateStrategyTrackingWorkspace(cfg config, client *http.Client, r *http.Request) aggregateResult {
+	q := r.URL.Query()
+	rangeDays := queryDefault(q, "range", "30")
+	summaryQuery := forwardQuery(q, []string{"strategy_key", "strategy_family", "status"}, values("range", rangeDays))
+	itemsQuery := forwardQuery(
+		q,
+		[]string{"strategy_key", "strategy_family", "status", "signal_state", "data_quality", "hit_entry", "stopped"},
+		values(
+			"range", rangeDays,
+			"sort", queryDefault(q, "sort", "max_gain_desc"),
+			"limit", queryDefault(q, "limit", "30"),
+			"offset", queryDefault(q, "offset", "0"),
+		),
+	)
+	performanceQuery := forwardQuery(q, []string{"strategy_family"}, values("range", rangeDays))
+	sources := []rawSource{
+		{name: "strategy_tracking_summary", path: "/api/strategy-tracking/summary", query: summaryQuery},
+		{name: "strategy_tracking_items", path: "/api/strategy-tracking/items", query: itemsQuery},
+		{name: "strategy_tracking_performance", path: "/api/strategy-tracking/performance", query: performanceQuery},
+	}
+	detailID := strings.TrimSpace(q.Get("detail_id"))
+	if detailID != "" {
+		sources = append(sources, rawSource{
+			name: "strategy_tracking_detail",
+			path: "/api/strategy-tracking/items/" + url.PathEscape(detailID),
+		})
+	}
+	results, errors := fetchSources(cfg, client, r, sources)
+	payload := map[string]any{
+		"api_version":          "v1",
+		"schema_version":       schemaVersion,
+		"generated_at":         beijingNowString(),
+		"summary":              jsonObject(results["strategy_tracking_summary"]),
+		"items":                jsonArrayField(results["strategy_tracking_items"], "items"),
+		"total":                jsonObjectField(results["strategy_tracking_items"], "total"),
+		"limit":                jsonObjectField(results["strategy_tracking_items"], "limit"),
+		"offset":               jsonObjectField(results["strategy_tracking_items"], "offset"),
+		"sort":                 jsonObjectField(results["strategy_tracking_items"], "sort"),
+		"performance":          jsonArray(results["strategy_tracking_performance"]),
+		"detail":               nullableJSON(results["strategy_tracking_detail"]),
+		"detail_requested":     detailID != "",
+		"partial_errors":       errors,
+		"production_writeable": false,
+		"read_path":            "go_bff_strategy_tracking_read_aggregation",
 	}
 	return jsonPayload(http.StatusOK, payload)
 }
@@ -362,6 +417,15 @@ func values(items ...string) url.Values {
 	output := url.Values{}
 	for i := 0; i+1 < len(items); i += 2 {
 		output.Set(items[i], items[i+1])
+	}
+	return output
+}
+
+func forwardQuery(source url.Values, keys []string, output url.Values) url.Values {
+	for _, key := range keys {
+		if value := strings.TrimSpace(source.Get(key)); value != "" {
+			output.Set(key, value)
+		}
 	}
 	return output
 }

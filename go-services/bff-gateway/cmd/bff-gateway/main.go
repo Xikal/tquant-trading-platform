@@ -39,11 +39,13 @@ var bffPartialOtherFailures atomic.Int64
 var bffWorkspaceAggregateMonitorHits atomic.Int64
 var bffWorkspaceAggregatePaperHits atomic.Int64
 var bffWorkspaceAggregateStrategyHits atomic.Int64
+var bffWorkspaceAggregateStrategyTrackingHits atomic.Int64
 var bffWorkspaceAggregateSettingsHits atomic.Int64
 var bffWorkspaceAggregateFactorHits atomic.Int64
 var bffWorkspaceProxyMonitorFallbacks atomic.Int64
 var bffWorkspaceProxyPaperFallbacks atomic.Int64
 var bffWorkspaceProxyStrategyFallbacks atomic.Int64
+var bffWorkspaceProxyStrategyTrackingFallbacks atomic.Int64
 var bffWorkspaceProxySettingsFallbacks atomic.Int64
 var bffWorkspaceProxyFactorFallbacks atomic.Int64
 
@@ -128,11 +130,13 @@ func metricsHandler(cache *workspaceCache) http.HandlerFunc {
 			"tquant_bff_gateway_workspace_aggregate_hits_total{workspace=\"monitor\"} " + strconv.FormatInt(bffWorkspaceAggregateMonitorHits.Load(), 10),
 			"tquant_bff_gateway_workspace_aggregate_hits_total{workspace=\"paper\"} " + strconv.FormatInt(bffWorkspaceAggregatePaperHits.Load(), 10),
 			"tquant_bff_gateway_workspace_aggregate_hits_total{workspace=\"strategy\"} " + strconv.FormatInt(bffWorkspaceAggregateStrategyHits.Load(), 10),
+			"tquant_bff_gateway_workspace_aggregate_hits_total{workspace=\"strategy-tracking\"} " + strconv.FormatInt(bffWorkspaceAggregateStrategyTrackingHits.Load(), 10),
 			"tquant_bff_gateway_workspace_aggregate_hits_total{workspace=\"settings\"} " + strconv.FormatInt(bffWorkspaceAggregateSettingsHits.Load(), 10),
 			"tquant_bff_gateway_workspace_aggregate_hits_total{workspace=\"factor\"} " + strconv.FormatInt(bffWorkspaceAggregateFactorHits.Load(), 10),
 			"tquant_bff_gateway_workspace_proxy_fallbacks_total{workspace=\"monitor\"} " + strconv.FormatInt(bffWorkspaceProxyMonitorFallbacks.Load(), 10),
 			"tquant_bff_gateway_workspace_proxy_fallbacks_total{workspace=\"paper\"} " + strconv.FormatInt(bffWorkspaceProxyPaperFallbacks.Load(), 10),
 			"tquant_bff_gateway_workspace_proxy_fallbacks_total{workspace=\"strategy\"} " + strconv.FormatInt(bffWorkspaceProxyStrategyFallbacks.Load(), 10),
+			"tquant_bff_gateway_workspace_proxy_fallbacks_total{workspace=\"strategy-tracking\"} " + strconv.FormatInt(bffWorkspaceProxyStrategyTrackingFallbacks.Load(), 10),
 			"tquant_bff_gateway_workspace_proxy_fallbacks_total{workspace=\"settings\"} " + strconv.FormatInt(bffWorkspaceProxySettingsFallbacks.Load(), 10),
 			"tquant_bff_gateway_workspace_proxy_fallbacks_total{workspace=\"factor\"} " + strconv.FormatInt(bffWorkspaceProxyFactorFallbacks.Load(), 10),
 		}
@@ -230,6 +234,8 @@ func incrementWorkspaceAggregate(workspace string) {
 		bffWorkspaceAggregatePaperHits.Add(1)
 	case "strategy":
 		bffWorkspaceAggregateStrategyHits.Add(1)
+	case "strategy-tracking":
+		bffWorkspaceAggregateStrategyTrackingHits.Add(1)
 	case "settings":
 		bffWorkspaceAggregateSettingsHits.Add(1)
 	case "factor":
@@ -245,6 +251,8 @@ func incrementWorkspaceProxyFallback(workspace string) {
 		bffWorkspaceProxyPaperFallbacks.Add(1)
 	case "strategy":
 		bffWorkspaceProxyStrategyFallbacks.Add(1)
+	case "strategy-tracking":
+		bffWorkspaceProxyStrategyTrackingFallbacks.Add(1)
 	case "settings":
 		bffWorkspaceProxySettingsFallbacks.Add(1)
 	case "factor":

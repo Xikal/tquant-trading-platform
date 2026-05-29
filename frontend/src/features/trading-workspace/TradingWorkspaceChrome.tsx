@@ -10,12 +10,11 @@ import { WORKSPACE_APP_STYLE, WORKSPACE_MAIN_STYLE } from "./workspaceShellStyle
 
 const AnalysisPage = lazy(async () => ({ default: (await import("../analysis/AnalysisPage")).AnalysisPage }));
 const BacktestPage = lazy(async () => ({ default: (await import("../backtest/BacktestPage")).BacktestPage }));
-const MarketEmotionPage = lazy(async () => ({ default: (await import("../market-emotion/MarketEmotionPage")).MarketEmotionPage }));
 const MonitorPage = lazy(async () => ({ default: (await import("../monitor/MonitorPage")).MonitorPage }));
 const PaperTradingPage = lazy(async () => ({ default: (await import("../paper/PaperTradingPage")).PaperTradingPage }));
 const PlaybookPage = lazy(async () => ({ default: (await import("../playbook/PlaybookPage")).PlaybookPage }));
 const SettingsPage = lazy(async () => ({ default: (await import("../settings/SettingsPage")).SettingsPage }));
-const StrategyHubPage = lazy(async () => ({ default: (await import("../strategy/StrategyHubPage")).StrategyHubPage }));
+const StrategyTrackingPage = lazy(async () => ({ default: (await import("../strategy-tracking/StrategyTrackingPage")).StrategyTrackingPage }));
 
 type TradingWorkspaceChromeProps = {
   aiDialogOpen: boolean;
@@ -90,12 +89,11 @@ export function TradingWorkspaceChrome(props: TradingWorkspaceChromeProps) {
         <WorkspacePageContent
           AnalysisPage={AnalysisPage}
           BacktestPage={BacktestPage}
-          MarketEmotionPage={MarketEmotionPage}
           MonitorPage={MonitorPage}
           PaperTradingPage={PaperTradingPage}
           PlaybookPage={PlaybookPage}
           SettingsPage={SettingsPage}
-          StrategyHubPage={StrategyHubPage}
+          StrategyTrackingPage={StrategyTrackingPage}
           analysis={props.analysis}
           currentUser={props.currentUser}
           loading={props.loading}

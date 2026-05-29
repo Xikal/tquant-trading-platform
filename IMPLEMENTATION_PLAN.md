@@ -1,5 +1,43 @@
 # TQuant 实施计划
 
+## 2026-05-29 平台瘦身与策略跟踪落地
+
+需求来源：
+
+- 用户目标：严格按 `docs/platform-slimming-and-strategy-tracking-development-plan-2026-05-29.md` 完整开发。
+- 当前状态：指定开发文档已补齐并作为权威需求源；本轮已完成前端瘦身、策略跟踪页、Go 读聚合边界和验证闭环。
+
+### 执行边界
+
+- [x] 删除前端“策略工作台”真实入口和独立代码，保留后端策略、回测、选股宝典、模拟盘、设置页能力。
+- [x] 删除前端“市场情绪”独立页签和页面代码，保留实时监控页中的市场宽度、情绪温度、龙头强度、data_quality、pulse。
+- [x] 新增 `/strategy-tracking`，只做观察、复盘、统计，不影响生产策略排序、模拟盘交易或真实交易。
+- [x] `/strategy` 重定向 `/backtest`，`/emotion` 重定向 `/monitor`。
+- [x] 列表接口后端分页，默认 limit 不超过 50；前端详情走势懒加载。
+- [x] 后验统计与信号日隔离：信号特征读取截至推荐日，后验行情只用于 tracking/evaluation 展示。
+- [x] Go/Rust 按现有基础设施预留或接入：Go BFF 读聚合已接入，Rust wrapper/fallback 已用于最大回撤数值统计。
+
+### TODO
+
+- [x] 后端新增 strategy-tracking schema/service/routes，复用 `LowBuyResultSnapshot`、`LowBuyTradeLifecycleSnapshot`、`DailyBarSnapshot`。
+- [x] 后端测试覆盖生产策略过滤、首次推荐、生命周期结束、最大涨幅、最大回撤、买点触达、止损触发、数据缺失降级、分页、刷新只读约束和路由鉴权。
+- [x] 前端新增 strategy-tracking API/types/hooks/page/detail drawer，列表分页，详情懒加载和一键复盘摘要。
+- [x] 前端路由、导航、命令面板、快捷键改造；删除旧策略工作台和市场情绪页面引用。
+- [x] 删除确认未复用的旧前端页面代码和旧页面测试，保留共享策略元数据 API 与 monitor 情绪数据。
+- [x] Go/Rust 边界测试与说明：Go BFF 接入只读聚合并保持缓存/partial response，Rust wrapper 用于最大回撤并保留 Python fallback。
+- [x] 运行前端 lint/test/build、后端 pytest、Go test、Rust cargo test、diff 检查。
+
+### 验证
+
+- [x] `PYTHONPATH=backend:. backend/.venv/bin/python -m py_compile backend/scripts/strategy_tracking_daily_refresh.py backend/app/services/strategy_tracking.py backend/app/services/strategy_tracking_builders.py backend/app/services/strategy_tracking_helpers.py backend/app/api/routes/strategy_tracking.py backend/tests/test_strategy_tracking.py` 通过。
+- [x] `PYTHONPATH=backend:. backend/.venv/bin/python -m pytest -q backend/tests/test_strategy_tracking.py backend/tests/test_finance_performance_math.py` 通过，16 passed / 1 warning。
+- [x] `cd frontend && npm test -- StrategyTrackingPage webRoutes --run` 通过，2 files / 16 tests。
+- [x] `cd frontend && npm run build:web` 通过，包含 lint、TypeScript 与 Vite build；`StrategyTrackingPage` chunk 约 14.64 kB gzip 4.94 kB，`LazyKlineChart` 独立懒加载。
+- [x] `cd frontend && SMOKE_MOCK_AUTH=1 npm run smoke:responsive` 通过，27 个路径/视口组合均 ok；`/strategy-tracking` 在 375 / 768 / 1440 宽度下 `overflow_x=0`。
+- [x] `cd go-services/bff-gateway && go test ./...` 通过。
+- [x] `cd rust/tquant-rs && cargo test` 通过，10 passed。
+- [x] 旧页面引用审计通过：`features/strategy`、`features/market-emotion` 已删除，剩余 `strategy` 字符串均为业务字段、纸面绩效或命令类型。
+
 ## 2026-05-29 ETF T0 24 个月分钟级与执行元数据补齐
 
 需求来源：

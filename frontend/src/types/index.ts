@@ -8,4 +8,5 @@ export * from "./paper";
 export * from "./playbook";
 export * from "./research";
 export * from "./settings";
+export * from "./strategyTracking";
 export * from "./watchlist";

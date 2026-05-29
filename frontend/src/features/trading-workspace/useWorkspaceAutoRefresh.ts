@@ -22,7 +22,7 @@ export function useWorkspaceAutoRefresh({
   refreshPaperLiveSnapshotRef,
 }: UseWorkspaceAutoRefreshParams) {
   useEffect(() => {
-    if (!currentUser || !["monitor", "emotion"].includes(page)) {
+    if (!currentUser || page !== "monitor") {
       return undefined;
     }
     let inFlight = false;
