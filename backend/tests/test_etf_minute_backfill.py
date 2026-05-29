@@ -92,7 +92,32 @@ def test_etf_minute_backfill_falls_back_from_eastmoney_to_akshare(monkeypatch) -
 
     assert result.source == "akshare.fund_etf_hist_min_em"
     assert result.bars[0].timestamp == "2024-05-28 09:35"
-    assert [item["source"] for item in result.provider_errors] == ["tushare.stk_mins", "eastmoney.etf_minute"]
+    assert {"source": "akshare.fund_etf_hist_min_em", "message": "candidate:1 bars/1 trade_days"} in result.provider_errors
+
+
+def test_etf_minute_backfill_selects_provider_with_longest_trade_day_coverage(monkeypatch) -> None:
+    monkeypatch.setattr(script, "fetch_tushare_etf_hist_minute_bars", lambda *args, **kwargs: [])
+    monkeypatch.setattr(
+        script,
+        "fetch_eastmoney_etf_minute_bars",
+        lambda *args, **kwargs: [KlineBar(timestamp="2026-04-28 09:35", open=4, high=4.1, low=3.9, close=4.05, volume=100, amount=405)],
+    )
+    monkeypatch.setattr(script, "fetch_akshare_etf_hist_minute_bars", lambda *args, **kwargs: [])
+    monkeypatch.setattr(
+        script,
+        "fetch_sina_minute_bars",
+        lambda *args, **kwargs: [
+            KlineBar(timestamp="2026-04-27 09:35", open=4, high=4.1, low=3.9, close=4.01, volume=100, amount=401),
+            KlineBar(timestamp="2026-04-28 09:35", open=4, high=4.1, low=3.9, close=4.05, volume=100, amount=405),
+        ],
+    )
+
+    result = script.fetch_etf_minute_bars(symbol="510300", start_date="2026-04-27", end_date="2026-04-28", period="5m")
+
+    assert result.source == "sina.kline"
+    assert len(result.bars) == 2
+    assert {"source": "eastmoney.etf_minute", "message": "candidate:1 bars/1 trade_days"} in result.provider_errors
+    assert {"source": "sina.kline", "message": "candidate:2 bars/2 trade_days"} in result.provider_errors
 
 
 def test_etf_minute_backfill_parses_tencent_cumulative_rows() -> None:
@@ -173,3 +198,12 @@ def test_etf_minute_backfill_quality_summary_flags_bad_bars() -> None:
     ]
 
     assert script.quality_summary(bars) == "fresh:1,unavailable:1"
+
+
+def test_etf_minute_backfill_execution_quality_summary_flags_missing_metadata() -> None:
+    profile = script.resolve_profiles(scope="symbols", raw_symbols="510300")[0]
+    bars = [
+        KlineBar(timestamp="2026-04-28 09:35", open=4, high=4.1, low=3.9, close=4.05, volume=100, amount=405),
+    ]
+
+    assert script.execution_quality_summary(profile, bars) == "partial_metadata:1"

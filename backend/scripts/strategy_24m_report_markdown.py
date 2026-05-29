@@ -21,6 +21,7 @@ def render_markdown(report: dict[str, Any]) -> str:
     lines.extend(_inventory_lines(report))
     lines.extend(_strategy_summary_lines(report))
     lines.extend(_ranking_lines(report))
+    lines.extend(_strategy_family_summary_lines(report))
     lines.extend(_render_breakdown("市场状态分段结果", report["performance_by_market_state"]))
     lines.extend(_render_breakdown("季度分段结果", report["performance_by_quarter"]))
     lines.extend(_render_breakdown("策略族分段结果", report["performance_by_family"]))
@@ -58,6 +59,48 @@ def _strategy_summary_lines(report: dict[str, Any]) -> list[str]:
     for item in report["all_strategies"]:
         lines.append(
             "| {strategy_title} | {sample_count} | {filled_count} | {total_return_pct:.2f}% | {annualized_return_pct:.2f}% | {max_drawdown_pct:.2f}% | {sharpe_ratio:.2f} | {win_rate_pct:.2f}% | {profit_factor:.2f} | {avg_trade_return_pct:.3f}% | {stop_loss_rate_pct:.2f}% | {avg_holding_days:.2f} | {status} |".format(**item)
+        )
+    return lines
+
+
+def _strategy_family_summary_lines(report: dict[str, Any]) -> list[str]:
+    summary = report.get("strategy_family_summary") or {}
+    families = summary.get("families") or []
+    splits = summary.get("time_series_splits") or {}
+    lines = [
+        "",
+        "## 策略族回测闭环",
+        "",
+        f"- 状态：{summary.get('status', 'research_only')}，策略族 {summary.get('family_count', len(families))} 个，覆盖策略 {summary.get('strategy_count', 0)} 个。",
+        f"- 排序影响：{summary.get('sorting_effect', 'none')}；生产参数变更：{'允许' if summary.get('production_parameter_change_allowed') else '不允许'}。",
+        "- 防未来函数：信号日只允许使用当日及之前数据；随机切分禁用，生产晋级仍需真实 walk-forward 与 purged gap。",
+        "- 训练/验证/样本外：train={train}；validation={validation}；oos={oos}；证据={status}。".format(
+            train=", ".join(splits.get("train_quarters") or []) or "-",
+            validation=", ".join(splits.get("validation_quarters") or []) or "-",
+            oos=", ".join(splits.get("out_of_sample_quarters") or []) or "-",
+            status=splits.get("status", "missing_quarter_breakdown"),
+        ),
+        "",
+        "| 策略族 | 策略数 | 策略 | 成交 | 胜率 | PF | 总收益 | 最大回撤 | 参数建议 | 验证状态 |",
+        "|---|---:|---|---:|---:|---:|---:|---:|---:|---|",
+    ]
+    if not families:
+        lines.append("| 无 | 0 | - | 0 | 0.00% | 0.00 | 0.00% | 0.00% | 0 | no_sample |")
+        return lines
+    for item in families:
+        lines.append(
+            "| {title} | {strategy_count} | {strategies} | {filled_count} | {win_rate_pct:.2f}% | {profit_factor:.2f} | {total_return_pct:.2f}% | {max_drawdown_pct:.2f}% | {parameter_change_count} | {validation_status} |".format(
+                title=item.get("title"),
+                strategy_count=item.get("strategy_count", 0),
+                strategies=", ".join(item.get("strategy_keys") or []),
+                filled_count=item.get("filled_count", 0),
+                win_rate_pct=float(item.get("win_rate_pct") or 0.0),
+                profit_factor=float(item.get("profit_factor") or 0.0),
+                total_return_pct=float(item.get("total_return_pct") or 0.0),
+                max_drawdown_pct=float(item.get("max_drawdown_pct") or 0.0),
+                parameter_change_count=item.get("parameter_change_count", 0),
+                validation_status=item.get("validation_status", ""),
+            )
         )
     return lines
 

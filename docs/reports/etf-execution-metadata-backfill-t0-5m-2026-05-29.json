@@ -1,0 +1,271 @@
+{
+  "generated_at": "2026-05-29T01:43:33",
+  "status": "completed_with_blocking_metadata_gaps",
+  "config": {
+    "scope": "t0-etf",
+    "symbols": "",
+    "start_date": "2024-05-28",
+    "end_date": "2026-04-28",
+    "period": "5m",
+    "dry_run": false
+  },
+  "totals": {
+    "symbols": 22,
+    "scanned_rows": 24344,
+    "updated_rows": 1122,
+    "tracking_index_rows": 24344,
+    "liquidity_tier_rows": 24344,
+    "bid_ask_spread_positive_rows": 0,
+    "premium_discount_rows": 0,
+    "fresh_or_verified_rows": 0,
+    "partial_metadata_rows": 24344
+  },
+  "results": [
+    {
+      "symbol": "159915",
+      "scanned_rows": 1106,
+      "updated_rows": 51,
+      "tracking_index_rows": 1106,
+      "liquidity_tier_rows": 1106,
+      "bid_ask_spread_positive_rows": 0,
+      "premium_discount_rows": 0,
+      "fresh_or_verified_rows": 0,
+      "partial_metadata_rows": 1106
+    },
+    {
+      "symbol": "159930",
+      "scanned_rows": 1106,
+      "updated_rows": 51,
+      "tracking_index_rows": 1106,
+      "liquidity_tier_rows": 1106,
+      "bid_ask_spread_positive_rows": 0,
+      "premium_discount_rows": 0,
+      "fresh_or_verified_rows": 0,
+      "partial_metadata_rows": 1106
+    },
+    {
+      "symbol": "510300",
+      "scanned_rows": 1106,
+      "updated_rows": 51,
+      "tracking_index_rows": 1106,
+      "liquidity_tier_rows": 1106,
+      "bid_ask_spread_positive_rows": 0,
+      "premium_discount_rows": 0,
+      "fresh_or_verified_rows": 0,
+      "partial_metadata_rows": 1106
+    },
+    {
+      "symbol": "510310",
+      "scanned_rows": 1106,
+      "updated_rows": 51,
+      "tracking_index_rows": 1106,
+      "liquidity_tier_rows": 1106,
+      "bid_ask_spread_positive_rows": 0,
+      "premium_discount_rows": 0,
+      "fresh_or_verified_rows": 0,
+      "partial_metadata_rows": 1106
+    },
+    {
+      "symbol": "510500",
+      "scanned_rows": 1106,
+      "updated_rows": 51,
+      "tracking_index_rows": 1106,
+      "liquidity_tier_rows": 1106,
+      "bid_ask_spread_positive_rows": 0,
+      "premium_discount_rows": 0,
+      "fresh_or_verified_rows": 0,
+      "partial_metadata_rows": 1106
+    },
+    {
+      "symbol": "511880",
+      "scanned_rows": 1106,
+      "updated_rows": 51,
+      "tracking_index_rows": 1106,
+      "liquidity_tier_rows": 1106,
+      "bid_ask_spread_positive_rows": 0,
+      "premium_discount_rows": 0,
+      "fresh_or_verified_rows": 0,
+      "partial_metadata_rows": 1106
+    },
+    {
+      "symbol": "512170",
+      "scanned_rows": 1106,
+      "updated_rows": 51,
+      "tracking_index_rows": 1106,
+      "liquidity_tier_rows": 1106,
+      "bid_ask_spread_positive_rows": 0,
+      "premium_discount_rows": 0,
+      "fresh_or_verified_rows": 0,
+      "partial_metadata_rows": 1106
+    },
+    {
+      "symbol": "512200",
+      "scanned_rows": 1106,
+      "updated_rows": 51,
+      "tracking_index_rows": 1106,
+      "liquidity_tier_rows": 1106,
+      "bid_ask_spread_positive_rows": 0,
+      "premium_discount_rows": 0,
+      "fresh_or_verified_rows": 0,
+      "partial_metadata_rows": 1106
+    },
+    {
+      "symbol": "512400",
+      "scanned_rows": 1106,
+      "updated_rows": 51,
+      "tracking_index_rows": 1106,
+      "liquidity_tier_rows": 1106,
+      "bid_ask_spread_positive_rows": 0,
+      "premium_discount_rows": 0,
+      "fresh_or_verified_rows": 0,
+      "partial_metadata_rows": 1106
+    },
+    {
+      "symbol": "512480",
+      "scanned_rows": 1106,
+      "updated_rows": 51,
+      "tracking_index_rows": 1106,
+      "liquidity_tier_rows": 1106,
+      "bid_ask_spread_positive_rows": 0,
+      "premium_discount_rows": 0,
+      "fresh_or_verified_rows": 0,
+      "partial_metadata_rows": 1106
+    },
+    {
+      "symbol": "512660",
+      "scanned_rows": 1106,
+      "updated_rows": 51,
+      "tracking_index_rows": 1106,
+      "liquidity_tier_rows": 1106,
+      "bid_ask_spread_positive_rows": 0,
+      "premium_discount_rows": 0,
+      "fresh_or_verified_rows": 0,
+      "partial_metadata_rows": 1106
+    },
+    {
+      "symbol": "512690",
+      "scanned_rows": 1106,
+      "updated_rows": 51,
+      "tracking_index_rows": 1106,
+      "liquidity_tier_rows": 1106,
+      "bid_ask_spread_positive_rows": 0,
+      "premium_discount_rows": 0,
+      "fresh_or_verified_rows": 0,
+      "partial_metadata_rows": 1106
+    },
+    {
+      "symbol": "512760",
+      "scanned_rows": 1106,
+      "updated_rows": 51,
+      "tracking_index_rows": 1106,
+      "liquidity_tier_rows": 1106,
+      "bid_ask_spread_positive_rows": 0,
+      "premium_discount_rows": 0,
+      "fresh_or_verified_rows": 0,
+      "partial_metadata_rows": 1106
+    },
+    {
+      "symbol": "512800",
+      "scanned_rows": 1106,
+      "updated_rows": 51,
+      "tracking_index_rows": 1106,
+      "liquidity_tier_rows": 1106,
+      "bid_ask_spread_positive_rows": 0,
+      "premium_discount_rows": 0,
+      "fresh_or_verified_rows": 0,
+      "partial_metadata_rows": 1106
+    },
+    {
+      "symbol": "512880",
+      "scanned_rows": 1106,
+      "updated_rows": 51,
+      "tracking_index_rows": 1106,
+      "liquidity_tier_rows": 1106,
+      "bid_ask_spread_positive_rows": 0,
+      "premium_discount_rows": 0,
+      "fresh_or_verified_rows": 0,
+      "partial_metadata_rows": 1106
+    },
+    {
+      "symbol": "513100",
+      "scanned_rows": 1118,
+      "updated_rows": 51,
+      "tracking_index_rows": 1118,
+      "liquidity_tier_rows": 1118,
+      "bid_ask_spread_positive_rows": 0,
+      "premium_discount_rows": 0,
+      "fresh_or_verified_rows": 0,
+      "partial_metadata_rows": 1118
+    },
+    {
+      "symbol": "515000",
+      "scanned_rows": 1106,
+      "updated_rows": 51,
+      "tracking_index_rows": 1106,
+      "liquidity_tier_rows": 1106,
+      "bid_ask_spread_positive_rows": 0,
+      "premium_discount_rows": 0,
+      "fresh_or_verified_rows": 0,
+      "partial_metadata_rows": 1106
+    },
+    {
+      "symbol": "515220",
+      "scanned_rows": 1106,
+      "updated_rows": 51,
+      "tracking_index_rows": 1106,
+      "liquidity_tier_rows": 1106,
+      "bid_ask_spread_positive_rows": 0,
+      "premium_discount_rows": 0,
+      "fresh_or_verified_rows": 0,
+      "partial_metadata_rows": 1106
+    },
+    {
+      "symbol": "515790",
+      "scanned_rows": 1106,
+      "updated_rows": 51,
+      "tracking_index_rows": 1106,
+      "liquidity_tier_rows": 1106,
+      "bid_ask_spread_positive_rows": 0,
+      "premium_discount_rows": 0,
+      "fresh_or_verified_rows": 0,
+      "partial_metadata_rows": 1106
+    },
+    {
+      "symbol": "516780",
+      "scanned_rows": 1106,
+      "updated_rows": 51,
+      "tracking_index_rows": 1106,
+      "liquidity_tier_rows": 1106,
+      "bid_ask_spread_positive_rows": 0,
+      "premium_discount_rows": 0,
+      "fresh_or_verified_rows": 0,
+      "partial_metadata_rows": 1106
+    },
+    {
+      "symbol": "518880",
+      "scanned_rows": 1106,
+      "updated_rows": 51,
+      "tracking_index_rows": 1106,
+      "liquidity_tier_rows": 1106,
+      "bid_ask_spread_positive_rows": 0,
+      "premium_discount_rows": 0,
+      "fresh_or_verified_rows": 0,
+      "partial_metadata_rows": 1106
+    },
+    {
+      "symbol": "588000",
+      "scanned_rows": 1106,
+      "updated_rows": 51,
+      "tracking_index_rows": 1106,
+      "liquidity_tier_rows": 1106,
+      "bid_ask_spread_positive_rows": 0,
+      "premium_discount_rows": 0,
+      "fresh_or_verified_rows": 0,
+      "partial_metadata_rows": 1106
+    }
+  ],
+  "notes": [
+    "本脚本只补 ETF universe 跟踪指数与基于成交额的流动性等级。",
+    "不伪造 bid/ask spread、折溢价或 fresh/verified 状态；这些字段缺失时继续阻断生产门禁。"
+  ]
+}

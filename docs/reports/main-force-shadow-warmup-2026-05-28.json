@@ -1,0 +1,46 @@
+{
+  "ok": true,
+  "production_effect": "readonly_shadow",
+  "production_parameter_change": false,
+  "summary": {
+    "avg_return_20d_pct": 0.0,
+    "fallback_count": 1,
+    "max_adverse_20d_pct": 0.0,
+    "model_key": "main_force_accumulation_washout_markup_v1",
+    "production_effect": "readonly_shadow",
+    "profit_factor": 0.0,
+    "promotion_blockers": [
+      "shadow_record_count_lt_300",
+      "settled_shadow_count_lt_120",
+      "success_rate_below_threshold",
+      "profit_factor_below_threshold"
+    ],
+    "promotion_ready": false,
+    "record_count": 10,
+    "settled_count": 0,
+    "shadow_only": true,
+    "status": "insufficient_shadow_samples",
+    "success_rate_pct": 0.0
+  },
+  "warmup": {
+    "enabled": true,
+    "ok": true,
+    "reason": "main_force_shadow_cli_warmup",
+    "record_count_after": 10,
+    "record_count_before": 2,
+    "records_added": 8,
+    "refreshed": [
+      "materialized:core_midcap_vwap_ma5_retrace:2026-05-28:2",
+      "materialized:volume_shrink:2026-04-27:7",
+      "reference:leader_pullback_band:2026-04-28:0",
+      "reference:n_pattern_long_wash:2026-04-28:0"
+    ],
+    "skipped": [],
+    "strategies": [
+      "core_midcap_vwap_ma5_retrace",
+      "leader_pullback_band",
+      "n_pattern_long_wash",
+      "volume_shrink"
+    ]
+  }
+}

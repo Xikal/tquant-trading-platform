@@ -267,6 +267,7 @@ def factor_score_labels(factor_scores: dict[str, float]) -> list[tuple[str, floa
         "signal_freshness_factor": "信号新鲜",
         "absorption_quality_factor": "分时承接",
         "selection_quality_factor": "选股质量",
+        "old_duck_head_factor": "老鸭头结构",
     }
     return [
         (labels.get(key, key), value)

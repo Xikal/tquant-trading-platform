@@ -1,0 +1,667 @@
+{
+  "generated_at": "2026-05-29T01:39:33",
+  "status": "completed",
+  "config": {
+    "scope": "t0-etf",
+    "symbol_count": 22,
+    "start_date": "2024-05-28",
+    "end_date": "2026-04-28",
+    "period": "30m",
+    "workers": 3,
+    "force": true,
+    "allow_partial": true
+  },
+  "totals": {
+    "ok": 22,
+    "skip": 0,
+    "empty": 0,
+    "error": 0
+  },
+  "results": [
+    {
+      "symbol": "159915",
+      "name": "创业板ETF",
+      "category": "broad_base",
+      "status": "ok",
+      "rows": 1817,
+      "period": "30m",
+      "source": "sina.kline",
+      "data_quality": "partial_metadata:1817",
+      "message": "",
+      "provider_errors": [
+        {
+          "source": "tushare.stk_mins",
+          "message": "tushare token not configured"
+        },
+        {
+          "source": "eastmoney.etf_minute",
+          "message": "candidate:96 bars/12 trade_days"
+        },
+        {
+          "source": "akshare.fund_etf_hist_min_em",
+          "message": "HTTPSConnectionPool(host='push2his.eastmoney.com', port=443): Max retries exceeded with url: /api/qt/stock/kline/get?fields1=f1%2Cf2%2Cf3%2Cf4%2Cf5%2Cf6&fields2=f51%2Cf52%2Cf53%2Cf"
+        },
+        {
+          "source": "sina.kline",
+          "message": "candidate:1817 bars/228 trade_days"
+        }
+      ]
+    },
+    {
+      "symbol": "159930",
+      "name": "能源ETF",
+      "category": "sector",
+      "status": "ok",
+      "rows": 1817,
+      "period": "30m",
+      "source": "sina.kline",
+      "data_quality": "partial_metadata:1817",
+      "message": "",
+      "provider_errors": [
+        {
+          "source": "tushare.stk_mins",
+          "message": "tushare token not configured"
+        },
+        {
+          "source": "eastmoney.etf_minute",
+          "message": "Remote end closed connection without response"
+        },
+        {
+          "source": "akshare.fund_etf_hist_min_em",
+          "message": "HTTPSConnectionPool(host='push2his.eastmoney.com', port=443): Max retries exceeded with url: /api/qt/stock/kline/get?fields1=f1%2Cf2%2Cf3%2Cf4%2Cf5%2Cf6&fields2=f51%2Cf52%2Cf53%2Cf"
+        },
+        {
+          "source": "sina.kline",
+          "message": "candidate:1817 bars/228 trade_days"
+        }
+      ]
+    },
+    {
+      "symbol": "510300",
+      "name": "沪深300ETF",
+      "category": "broad_base",
+      "status": "ok",
+      "rows": 1817,
+      "period": "30m",
+      "source": "sina.kline",
+      "data_quality": "partial_metadata:1817",
+      "message": "",
+      "provider_errors": [
+        {
+          "source": "tushare.stk_mins",
+          "message": "tushare token not configured"
+        },
+        {
+          "source": "eastmoney.etf_minute",
+          "message": "candidate:96 bars/12 trade_days"
+        },
+        {
+          "source": "akshare.fund_etf_hist_min_em",
+          "message": "candidate:96 bars/12 trade_days"
+        },
+        {
+          "source": "sina.kline",
+          "message": "candidate:1817 bars/228 trade_days"
+        }
+      ]
+    },
+    {
+      "symbol": "510310",
+      "name": "消费ETF",
+      "category": "sector",
+      "status": "ok",
+      "rows": 1817,
+      "period": "30m",
+      "source": "sina.kline",
+      "data_quality": "partial_metadata:1817",
+      "message": "",
+      "provider_errors": [
+        {
+          "source": "tushare.stk_mins",
+          "message": "tushare token not configured"
+        },
+        {
+          "source": "eastmoney.etf_minute",
+          "message": "candidate:96 bars/12 trade_days"
+        },
+        {
+          "source": "akshare.fund_etf_hist_min_em",
+          "message": "candidate:96 bars/12 trade_days"
+        },
+        {
+          "source": "sina.kline",
+          "message": "candidate:1817 bars/228 trade_days"
+        }
+      ]
+    },
+    {
+      "symbol": "510500",
+      "name": "中证500ETF",
+      "category": "broad_base",
+      "status": "ok",
+      "rows": 1817,
+      "period": "30m",
+      "source": "sina.kline",
+      "data_quality": "partial_metadata:1817",
+      "message": "",
+      "provider_errors": [
+        {
+          "source": "tushare.stk_mins",
+          "message": "tushare token not configured"
+        },
+        {
+          "source": "eastmoney.etf_minute",
+          "message": "candidate:96 bars/12 trade_days"
+        },
+        {
+          "source": "akshare.fund_etf_hist_min_em",
+          "message": "candidate:96 bars/12 trade_days"
+        },
+        {
+          "source": "sina.kline",
+          "message": "candidate:1817 bars/228 trade_days"
+        }
+      ]
+    },
+    {
+      "symbol": "511880",
+      "name": "银华日利",
+      "category": "money",
+      "status": "ok",
+      "rows": 1817,
+      "period": "30m",
+      "source": "sina.kline",
+      "data_quality": "partial_metadata:1817",
+      "message": "",
+      "provider_errors": [
+        {
+          "source": "tushare.stk_mins",
+          "message": "tushare token not configured"
+        },
+        {
+          "source": "eastmoney.etf_minute",
+          "message": "candidate:96 bars/12 trade_days"
+        },
+        {
+          "source": "akshare.fund_etf_hist_min_em",
+          "message": "candidate:96 bars/12 trade_days"
+        },
+        {
+          "source": "sina.kline",
+          "message": "candidate:1817 bars/228 trade_days"
+        }
+      ]
+    },
+    {
+      "symbol": "512170",
+      "name": "医疗ETF",
+      "category": "sector",
+      "status": "ok",
+      "rows": 1817,
+      "period": "30m",
+      "source": "sina.kline",
+      "data_quality": "partial_metadata:1817",
+      "message": "",
+      "provider_errors": [
+        {
+          "source": "tushare.stk_mins",
+          "message": "tushare token not configured"
+        },
+        {
+          "source": "eastmoney.etf_minute",
+          "message": "candidate:96 bars/12 trade_days"
+        },
+        {
+          "source": "akshare.fund_etf_hist_min_em",
+          "message": "candidate:96 bars/12 trade_days"
+        },
+        {
+          "source": "sina.kline",
+          "message": "candidate:1817 bars/228 trade_days"
+        }
+      ]
+    },
+    {
+      "symbol": "512200",
+      "name": "房地产ETF",
+      "category": "sector",
+      "status": "ok",
+      "rows": 1817,
+      "period": "30m",
+      "source": "sina.kline",
+      "data_quality": "partial_metadata:1817",
+      "message": "",
+      "provider_errors": [
+        {
+          "source": "tushare.stk_mins",
+          "message": "tushare token not configured"
+        },
+        {
+          "source": "eastmoney.etf_minute",
+          "message": "candidate:96 bars/12 trade_days"
+        },
+        {
+          "source": "akshare.fund_etf_hist_min_em",
+          "message": "candidate:96 bars/12 trade_days"
+        },
+        {
+          "source": "sina.kline",
+          "message": "candidate:1817 bars/228 trade_days"
+        }
+      ]
+    },
+    {
+      "symbol": "512400",
+      "name": "有色金属ETF",
+      "category": "sector",
+      "status": "ok",
+      "rows": 1817,
+      "period": "30m",
+      "source": "sina.kline",
+      "data_quality": "partial_metadata:1817",
+      "message": "",
+      "provider_errors": [
+        {
+          "source": "tushare.stk_mins",
+          "message": "tushare token not configured"
+        },
+        {
+          "source": "eastmoney.etf_minute",
+          "message": "candidate:96 bars/12 trade_days"
+        },
+        {
+          "source": "akshare.fund_etf_hist_min_em",
+          "message": "candidate:96 bars/12 trade_days"
+        },
+        {
+          "source": "sina.kline",
+          "message": "candidate:1817 bars/228 trade_days"
+        }
+      ]
+    },
+    {
+      "symbol": "512480",
+      "name": "半导体ETF",
+      "category": "sector",
+      "status": "ok",
+      "rows": 1817,
+      "period": "30m",
+      "source": "sina.kline",
+      "data_quality": "partial_metadata:1817",
+      "message": "",
+      "provider_errors": [
+        {
+          "source": "tushare.stk_mins",
+          "message": "tushare token not configured"
+        },
+        {
+          "source": "eastmoney.etf_minute",
+          "message": "candidate:96 bars/12 trade_days"
+        },
+        {
+          "source": "akshare.fund_etf_hist_min_em",
+          "message": "candidate:96 bars/12 trade_days"
+        },
+        {
+          "source": "sina.kline",
+          "message": "candidate:1817 bars/228 trade_days"
+        }
+      ]
+    },
+    {
+      "symbol": "512660",
+      "name": "军工ETF",
+      "category": "sector",
+      "status": "ok",
+      "rows": 1817,
+      "period": "30m",
+      "source": "sina.kline",
+      "data_quality": "partial_metadata:1817",
+      "message": "",
+      "provider_errors": [
+        {
+          "source": "tushare.stk_mins",
+          "message": "tushare token not configured"
+        },
+        {
+          "source": "eastmoney.etf_minute",
+          "message": "candidate:96 bars/12 trade_days"
+        },
+        {
+          "source": "akshare.fund_etf_hist_min_em",
+          "message": "candidate:96 bars/12 trade_days"
+        },
+        {
+          "source": "sina.kline",
+          "message": "candidate:1817 bars/228 trade_days"
+        }
+      ]
+    },
+    {
+      "symbol": "512690",
+      "name": "酒ETF",
+      "category": "sector",
+      "status": "ok",
+      "rows": 1817,
+      "period": "30m",
+      "source": "sina.kline",
+      "data_quality": "partial_metadata:1817",
+      "message": "",
+      "provider_errors": [
+        {
+          "source": "tushare.stk_mins",
+          "message": "tushare token not configured"
+        },
+        {
+          "source": "eastmoney.etf_minute",
+          "message": "candidate:96 bars/12 trade_days"
+        },
+        {
+          "source": "akshare.fund_etf_hist_min_em",
+          "message": "candidate:96 bars/12 trade_days"
+        },
+        {
+          "source": "sina.kline",
+          "message": "candidate:1817 bars/228 trade_days"
+        }
+      ]
+    },
+    {
+      "symbol": "512760",
+      "name": "芯片ETF",
+      "category": "sector",
+      "status": "ok",
+      "rows": 1817,
+      "period": "30m",
+      "source": "sina.kline",
+      "data_quality": "partial_metadata:1817",
+      "message": "",
+      "provider_errors": [
+        {
+          "source": "tushare.stk_mins",
+          "message": "tushare token not configured"
+        },
+        {
+          "source": "eastmoney.etf_minute",
+          "message": "candidate:96 bars/12 trade_days"
+        },
+        {
+          "source": "akshare.fund_etf_hist_min_em",
+          "message": "candidate:96 bars/12 trade_days"
+        },
+        {
+          "source": "sina.kline",
+          "message": "candidate:1817 bars/228 trade_days"
+        }
+      ]
+    },
+    {
+      "symbol": "512800",
+      "name": "银行ETF",
+      "category": "sector",
+      "status": "ok",
+      "rows": 1817,
+      "period": "30m",
+      "source": "sina.kline",
+      "data_quality": "partial_metadata:1817",
+      "message": "",
+      "provider_errors": [
+        {
+          "source": "tushare.stk_mins",
+          "message": "tushare token not configured"
+        },
+        {
+          "source": "eastmoney.etf_minute",
+          "message": "candidate:96 bars/12 trade_days"
+        },
+        {
+          "source": "akshare.fund_etf_hist_min_em",
+          "message": "HTTPSConnectionPool(host='push2his.eastmoney.com', port=443): Max retries exceeded with url: /api/qt/stock/kline/get?fields1=f1%2Cf2%2Cf3%2Cf4%2Cf5%2Cf6&fields2=f51%2Cf52%2Cf53%2Cf"
+        },
+        {
+          "source": "sina.kline",
+          "message": "candidate:1817 bars/228 trade_days"
+        }
+      ]
+    },
+    {
+      "symbol": "512880",
+      "name": "证券ETF",
+      "category": "sector",
+      "status": "ok",
+      "rows": 1817,
+      "period": "30m",
+      "source": "sina.kline",
+      "data_quality": "partial_metadata:1817",
+      "message": "",
+      "provider_errors": [
+        {
+          "source": "tushare.stk_mins",
+          "message": "tushare token not configured"
+        },
+        {
+          "source": "eastmoney.etf_minute",
+          "message": "candidate:96 bars/12 trade_days"
+        },
+        {
+          "source": "akshare.fund_etf_hist_min_em",
+          "message": "candidate:96 bars/12 trade_days"
+        },
+        {
+          "source": "sina.kline",
+          "message": "candidate:1817 bars/228 trade_days"
+        }
+      ]
+    },
+    {
+      "symbol": "513100",
+      "name": "纳指ETF",
+      "category": "cross_border",
+      "status": "ok",
+      "rows": 1819,
+      "period": "30m",
+      "source": "sina.kline",
+      "data_quality": "partial_metadata:1819",
+      "message": "",
+      "provider_errors": [
+        {
+          "source": "tushare.stk_mins",
+          "message": "tushare token not configured"
+        },
+        {
+          "source": "eastmoney.etf_minute",
+          "message": "candidate:96 bars/12 trade_days"
+        },
+        {
+          "source": "akshare.fund_etf_hist_min_em",
+          "message": "candidate:96 bars/12 trade_days"
+        },
+        {
+          "source": "sina.kline",
+          "message": "candidate:1819 bars/228 trade_days"
+        }
+      ]
+    },
+    {
+      "symbol": "515000",
+      "name": "科技ETF",
+      "category": "sector",
+      "status": "ok",
+      "rows": 1817,
+      "period": "30m",
+      "source": "sina.kline",
+      "data_quality": "partial_metadata:1817",
+      "message": "",
+      "provider_errors": [
+        {
+          "source": "tushare.stk_mins",
+          "message": "tushare token not configured"
+        },
+        {
+          "source": "eastmoney.etf_minute",
+          "message": "candidate:96 bars/12 trade_days"
+        },
+        {
+          "source": "akshare.fund_etf_hist_min_em",
+          "message": "candidate:96 bars/12 trade_days"
+        },
+        {
+          "source": "sina.kline",
+          "message": "candidate:1817 bars/228 trade_days"
+        }
+      ]
+    },
+    {
+      "symbol": "515220",
+      "name": "煤炭ETF",
+      "category": "sector",
+      "status": "ok",
+      "rows": 1817,
+      "period": "30m",
+      "source": "sina.kline",
+      "data_quality": "partial_metadata:1817",
+      "message": "",
+      "provider_errors": [
+        {
+          "source": "tushare.stk_mins",
+          "message": "tushare token not configured"
+        },
+        {
+          "source": "eastmoney.etf_minute",
+          "message": "candidate:96 bars/12 trade_days"
+        },
+        {
+          "source": "akshare.fund_etf_hist_min_em",
+          "message": "candidate:96 bars/12 trade_days"
+        },
+        {
+          "source": "sina.kline",
+          "message": "candidate:1817 bars/228 trade_days"
+        }
+      ]
+    },
+    {
+      "symbol": "515790",
+      "name": "光伏ETF",
+      "category": "sector",
+      "status": "ok",
+      "rows": 1817,
+      "period": "30m",
+      "source": "sina.kline",
+      "data_quality": "partial_metadata:1817",
+      "message": "",
+      "provider_errors": [
+        {
+          "source": "tushare.stk_mins",
+          "message": "tushare token not configured"
+        },
+        {
+          "source": "eastmoney.etf_minute",
+          "message": "candidate:96 bars/12 trade_days"
+        },
+        {
+          "source": "akshare.fund_etf_hist_min_em",
+          "message": "candidate:96 bars/12 trade_days"
+        },
+        {
+          "source": "sina.kline",
+          "message": "candidate:1817 bars/228 trade_days"
+        }
+      ]
+    },
+    {
+      "symbol": "516780",
+      "name": "稀土ETF",
+      "category": "sector",
+      "status": "ok",
+      "rows": 1817,
+      "period": "30m",
+      "source": "sina.kline",
+      "data_quality": "partial_metadata:1817",
+      "message": "",
+      "provider_errors": [
+        {
+          "source": "tushare.stk_mins",
+          "message": "tushare token not configured"
+        },
+        {
+          "source": "eastmoney.etf_minute",
+          "message": "candidate:96 bars/12 trade_days"
+        },
+        {
+          "source": "akshare.fund_etf_hist_min_em",
+          "message": "candidate:96 bars/12 trade_days"
+        },
+        {
+          "source": "sina.kline",
+          "message": "candidate:1817 bars/228 trade_days"
+        }
+      ]
+    },
+    {
+      "symbol": "518880",
+      "name": "黄金ETF",
+      "category": "gold",
+      "status": "ok",
+      "rows": 1817,
+      "period": "30m",
+      "source": "sina.kline",
+      "data_quality": "partial_metadata:1817",
+      "message": "",
+      "provider_errors": [
+        {
+          "source": "tushare.stk_mins",
+          "message": "tushare token not configured"
+        },
+        {
+          "source": "eastmoney.etf_minute",
+          "message": "candidate:96 bars/12 trade_days"
+        },
+        {
+          "source": "akshare.fund_etf_hist_min_em",
+          "message": "candidate:96 bars/12 trade_days"
+        },
+        {
+          "source": "sina.kline",
+          "message": "candidate:1817 bars/228 trade_days"
+        }
+      ]
+    },
+    {
+      "symbol": "588000",
+      "name": "科创50ETF",
+      "category": "broad_base",
+      "status": "ok",
+      "rows": 1817,
+      "period": "30m",
+      "source": "sina.kline",
+      "data_quality": "partial_metadata:1817",
+      "message": "",
+      "provider_errors": [
+        {
+          "source": "tushare.stk_mins",
+          "message": "tushare token not configured"
+        },
+        {
+          "source": "eastmoney.etf_minute",
+          "message": "candidate:96 bars/12 trade_days"
+        },
+        {
+          "source": "akshare.fund_etf_hist_min_em",
+          "message": "candidate:96 bars/12 trade_days"
+        },
+        {
+          "source": "sina.kline",
+          "message": "candidate:1817 bars/228 trade_days"
+        }
+      ]
+    }
+  ],
+  "failed_symbols": [],
+  "notes": [
+    "仅补 ETF universe 中 same_day_sell_allowed=true 的标的，避免把所有 ETF 错当 T+0。",
+    "5m/15m/30m/60m 优先 Tushare/Eastmoney/AkShare 历史分钟线，可 fallback 到 Sina 近端 K 线；1m 可额外 fallback 到 Tencent/Eastmoney 近端趋势源。",
+    "未取到远端数据时只写 partial_data/error/empty，不生成伪分钟线。",
+    "盘口价差、折溢价等执行元数据只写真实字段；缺失时标记 partial_metadata，不能通过生产门禁。"
+  ]
+}

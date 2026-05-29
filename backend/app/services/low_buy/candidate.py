@@ -29,6 +29,12 @@ from app.services.low_buy.data_quality import (
 )
 from app.services.low_buy.factor_scoring import build_factor_scores, weighted_factor_bonus
 from app.services.low_buy.factor_types import FactorContext
+from app.services.low_buy.old_duck_head import (
+    OldDuckHeadAssessment,
+    assess_old_duck_head_structure,
+    enrich_old_duck_head_factor_scores,
+    enrich_old_duck_head_payload,
+)
 from app.services.low_buy.positioning import build_position_breakdown_text
 from app.services.low_buy.candidate_position_advice import position_advice_for_signal
 from app.services.low_buy.candidate_observation_confirmation import (
@@ -183,6 +189,8 @@ class LowBuyCandidateMixin:
             hot_industries=hot_industries,
         )
         factor_scores = self._factor_scores(metrics, factor_context)
+        old_duck_head = assess_old_duck_head_structure(strategy, item, metrics)
+        factor_scores = enrich_old_duck_head_factor_scores(factor_scores, old_duck_head)
         context_adjustment = self._build_context_adjustment(
             strategy=strategy,
             item=item,
@@ -214,6 +222,7 @@ class LowBuyCandidateMixin:
             context_adjustment=context_adjustment,
             signal_profile=signal_profile,
             factor_scores=factor_scores,
+            old_duck_head=old_duck_head,
             metrics_quality=metrics_quality,
         )
 
@@ -288,6 +297,7 @@ class LowBuyCandidateMixin:
         context_adjustment: CandidateContextAdjustment,
         signal_profile: SignalFamilyProfile,
         factor_scores: dict[str, float],
+        old_duck_head: OldDuckHeadAssessment | None = None,
         metrics_quality: DataQualitySnapshot | None = None,
     ) -> LowBuyCandidateOut:
         if strategy == "first_board":
@@ -338,6 +348,21 @@ class LowBuyCandidateMixin:
         quality_fields = data_quality_payload(combine_data_quality(quote_quality, metrics_quality))
         atr_pct = (metrics.atr14 / max(metrics.latest_close, 0.01) * 100) if metrics.latest_close > 0 else 0.0
         volatility_cap = build_volatility_position_cap(atr_pct)
+        reasons = build_candidate_reasons(setup.reasons, research_layer)
+        tags = build_candidate_tags(
+            strategy=strategy,
+            item=item,
+            metrics=metrics,
+            hot_industries=hot_industries,
+            context_adjustment=context_adjustment,
+            factor_scores=factor_scores,
+        )
+        factor_scores, reasons, tags = enrich_old_duck_head_payload(
+            factor_scores,
+            reasons,
+            tags,
+            old_duck_head or OldDuckHeadAssessment(False),
+        )
         candidate = LowBuyCandidateOut(
             strategy_key=strategy,
             strategy_title=self._get_playbook(strategy)["title"],
@@ -423,16 +448,9 @@ class LowBuyCandidateMixin:
             research_failed_rules=research_layer.failed_rules,
             research_near_miss_rules=research_layer.near_miss_rules,
             research_blocked_reason=research_layer.blocked_reason,
-            reasons=build_candidate_reasons(setup.reasons, research_layer),
+            reasons=reasons,
             risks=build_candidate_risks(strategy, metrics, context_adjustment),
-            tags=build_candidate_tags(
-                strategy=strategy,
-                item=item,
-                metrics=metrics,
-                hot_industries=hot_industries,
-                context_adjustment=context_adjustment,
-                factor_scores=factor_scores,
-            ),
+            tags=tags,
         )
         positioned = self._apply_candidate_positioning(candidate)
         execution_quality_score, execution_quality_text = self._execution_quality(positioned)

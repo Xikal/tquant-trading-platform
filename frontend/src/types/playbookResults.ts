@@ -278,6 +278,9 @@ export interface LowBuyPriorityFamilyPerformance {
 export interface LowBuyPriorityFamilySection {
   family_key: string;
   family_text: string;
+  data_quality?: string;
+  data_quality_text?: string;
+  data_quality_tags?: string[];
   total_candidates: number;
   immediate_count: number;
   focus_count: number;

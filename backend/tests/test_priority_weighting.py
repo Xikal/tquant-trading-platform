@@ -7,7 +7,12 @@ from app.services.low_buy.priority_board import LowBuyPriorityBoardMixin, filter
 from app.services.low_buy.priority_scoring import LowBuyPriorityScoringMixin
 from app.services.low_buy.priority_types import PriorityBaseSnapshot, PriorityCandidate, StrategyHit
 from app.services.low_buy.shared import LOW_BUY_RESULT_VERSION
-from app.services.low_buy.strategy_families import resolve_strategy_family
+from app.services.low_buy.strategy_families import (
+    LOW_BUY_STRATEGY_KEYS,
+    resolve_strategy_family,
+    resolve_strategy_family_label,
+    unclassified_low_buy_strategies,
+)
 
 
 class _ScoringService(LowBuyPriorityScoringMixin):
@@ -230,6 +235,14 @@ class PriorityWeightingTests(unittest.TestCase):
         ]
 
         self.assertEqual(self.service._effective_family_count(hits), 2)
+
+    def test_all_low_buy_strategies_have_explicit_family_metadata(self) -> None:
+        self.assertEqual(unclassified_low_buy_strategies(), [])
+        self.assertEqual(len(LOW_BUY_STRATEGY_KEYS), 17)
+        self.assertEqual(resolve_strategy_family("ma_channel_band"), "trend_support_band")
+        self.assertEqual(resolve_strategy_family_label("ma_channel_band"), "均线通道支撑")
+        self.assertEqual(resolve_strategy_family("leader_pullback_band"), "leader_pullback_band")
+        self.assertEqual(resolve_strategy_family_label("leader_pullback_band"), "龙头回踩波段")
 
     def test_effective_strategy_count_uses_raw_strategy_hits(self) -> None:
         hits = [

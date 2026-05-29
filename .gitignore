@@ -1,6 +1,7 @@
 .DS_Store
 .codex/
 .continue/
+.understand-anything/
 __pycache__/
 *.pyc
 .pytest_cache/

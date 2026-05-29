@@ -1,0 +1,952 @@
+{
+  "checks": [
+    {
+      "complete": true,
+      "evidence": {
+        "family_count": 13,
+        "sorting_effect": "none",
+        "strategy_count": 17,
+        "unclassified": []
+      },
+      "key": "strategy_family_classification",
+      "status": "pass",
+      "summary": "17 个低吸策略已归入 13 个策略族，旧 items 接口保持兼容。",
+      "title": "策略族归类"
+    },
+    {
+      "complete": true,
+      "evidence": {
+        "paper_suggestion_enabled_default": false,
+        "promotion_blockers": [
+          "shadow_record_count_lt_300",
+          "settled_shadow_count_lt_120",
+          "success_rate_below_threshold",
+          "profit_factor_below_threshold"
+        ],
+        "promotion_ready": false,
+        "ranking_enabled_default": false,
+        "record_count": 10,
+        "settled_count": 0
+      },
+      "key": "main_force_readonly_shadow",
+      "status": "pass",
+      "summary": "主力模型已只读/Shadow 接入候选与模拟盘展示，默认不加排序权重、不出自动小仓建议。",
+      "title": "主力观测模型旁路"
+    },
+    {
+      "complete": true,
+      "evidence": {
+        "applicable_strategy_count": 6,
+        "factor": "old_duck_head_factor",
+        "standalone_strategy_registered": false,
+        "weight": 0.7
+      },
+      "key": "old_duck_head_factorized",
+      "status": "pass",
+      "summary": "老鸭头保持结构因子，不新增独立策略入口，只给适用低吸/N 字策略加分。",
+      "title": "老鸭头结构因子"
+    },
+    {
+      "complete": true,
+      "evidence": {
+        "hard_stop_override_allowed": false,
+        "promotion_blockers": [
+          "shadow_record_count_lt_30",
+          "settled_shadow_count_lt_30"
+        ],
+        "promotion_ready": false,
+        "record_count": 0,
+        "settled_count": 0
+      },
+      "key": "paper_exit_model_readonly_shadow",
+      "status": "pass",
+      "summary": "退出模型已接入模拟盘 Shadow 记录与只读展示，不自动执行，不覆盖硬止损。",
+      "title": "止盈止损辅助模型"
+    },
+    {
+      "complete": true,
+      "evidence": {
+        "family_count": 13,
+        "metrics_present": true,
+        "production_parameter_change_allowed": false,
+        "strategy_count": 17
+      },
+      "key": "strategy_family_backtest_loop",
+      "status": "pass",
+      "summary": "策略族维度已输出参数建议、胜率、收益率、最大回撤和盈亏比，但只作为研究报告。",
+      "title": "策略族回测与调参闭环"
+    },
+    {
+      "complete": true,
+      "evidence": {
+        "out_of_sample_quarters": [
+          "2026Q2"
+        ],
+        "production_ready": false,
+        "split_status": "time_ordered_quarter_proxy",
+        "temporal_guard": "pass",
+        "train_quarters": [
+          "2024Q3",
+          "2024Q4",
+          "2025Q1",
+          "2025Q2",
+          "2025Q3",
+          "2025Q4"
+        ],
+        "validation_quarters": [
+          "2026Q1"
+        ]
+      },
+      "key": "anti_future_overfit_guard",
+      "status": "pass",
+      "summary": "报告已区分训练/验证/样本外季度代理，禁止随机切分；真实 walk-forward 仍未完成。",
+      "title": "防未来函数与过拟合门禁"
+    },
+    {
+      "complete": true,
+      "evidence": {
+        "missing_markers": [],
+        "path": "docs/strategy-system-consolidation-and-enhancement-development-plan.md"
+      },
+      "key": "requirements_source_document",
+      "status": "pass",
+      "summary": "需求文档已补齐，并明确最小只读/Shadow 闭环与真实交易生产放行门禁的边界。",
+      "title": "需求源与验收边界"
+    },
+    {
+      "complete": true,
+      "evidence": {
+        "exit_parameter": {
+          "pass_rate_pct": 100.0,
+          "passed_window_count": 7,
+          "production_eligible": false,
+          "promotion_blockers": [
+            "online_shadow_settled_sample_lt_required",
+            "full_strategy_parameter_grid_not_executed",
+            "hard_stop_must_not_be_removed_or_loosened"
+          ],
+          "shadow_candidate": true,
+          "window_count": 7
+        },
+        "family_evidence": {
+          "covered_family_count": 6,
+          "covered_strategy_count": 6,
+          "families": [
+            {
+              "evidence_sources": [
+                "focus_walk_forward_plan"
+              ],
+              "exit_parameter_shadow_candidate": true,
+              "exit_parameter_windows": 7,
+              "family_key": "core_midcap_retrace",
+              "family_text": "主线中军回踩",
+              "market_state_guard_pass_rate_pct": 28.5714,
+              "missing_for_production": [
+                "true_strategy_family_walk_forward_not_executed",
+                "purged_gap_not_executed",
+                "online_shadow_settled_sample_lt_required",
+                "strategy_parameter_windows_not_executed",
+                "strategy_specific_shadow_candidate_not_ready"
+              ],
+              "production_ready": false,
+              "research_only_or_retest": [],
+              "strategy_keys": [
+                "core_midcap_vwap_ma5_retrace"
+              ],
+              "strategy_pass_counts": {},
+              "strategy_specific_shadow_candidate": false
+            },
+            {
+              "evidence_sources": [
+                "focus_parameter_walk_forward",
+                "focus_walk_forward_plan"
+              ],
+              "exit_parameter_shadow_candidate": true,
+              "exit_parameter_windows": 7,
+              "family_key": "first_board_retest",
+              "family_text": "首板回踩",
+              "market_state_guard_pass_rate_pct": 28.5714,
+              "missing_for_production": [
+                "true_strategy_family_walk_forward_not_executed",
+                "purged_gap_not_executed",
+                "online_shadow_settled_sample_lt_required"
+              ],
+              "production_ready": false,
+              "research_only_or_retest": [],
+              "strategy_keys": [
+                "first_board"
+              ],
+              "strategy_pass_counts": {
+                "first_board": 7
+              },
+              "strategy_specific_shadow_candidate": true
+            },
+            {
+              "evidence_sources": [
+                "focus_walk_forward_plan"
+              ],
+              "exit_parameter_shadow_candidate": true,
+              "exit_parameter_windows": 7,
+              "family_key": "leader_pullback_band",
+              "family_text": "龙头回踩波段",
+              "market_state_guard_pass_rate_pct": 28.5714,
+              "missing_for_production": [
+                "true_strategy_family_walk_forward_not_executed",
+                "purged_gap_not_executed",
+                "online_shadow_settled_sample_lt_required",
+                "strategy_parameter_windows_not_executed",
+                "strategy_specific_shadow_candidate_not_ready"
+              ],
+              "production_ready": false,
+              "research_only_or_retest": [],
+              "strategy_keys": [
+                "leader_pullback_band"
+              ],
+              "strategy_pass_counts": {},
+              "strategy_specific_shadow_candidate": false
+            },
+            {
+              "evidence_sources": [
+                "focus_walk_forward_plan"
+              ],
+              "exit_parameter_shadow_candidate": true,
+              "exit_parameter_windows": 7,
+              "family_key": "next_day_event",
+              "family_text": "次日兑现模型",
+              "market_state_guard_pass_rate_pct": 28.5714,
+              "missing_for_production": [
+                "true_strategy_family_walk_forward_not_executed",
+                "purged_gap_not_executed",
+                "online_shadow_settled_sample_lt_required",
+                "strategy_parameter_windows_not_executed",
+                "strategy_specific_shadow_candidate_not_ready"
+              ],
+              "production_ready": false,
+              "research_only_or_retest": [],
+              "strategy_keys": [
+                "late_session_strong_support"
+              ],
+              "strategy_pass_counts": {},
+              "strategy_specific_shadow_candidate": false
+            },
+            {
+              "evidence_sources": [
+                "focus_parameter_walk_forward",
+                "focus_walk_forward_plan"
+              ],
+              "exit_parameter_shadow_candidate": true,
+              "exit_parameter_windows": 7,
+              "family_key": "trend_pullback",
+              "family_text": "趋势回调低吸",
+              "market_state_guard_pass_rate_pct": 28.5714,
+              "missing_for_production": [
+                "true_strategy_family_walk_forward_not_executed",
+                "purged_gap_not_executed",
+                "online_shadow_settled_sample_lt_required",
+                "strategy_specific_shadow_candidate_not_ready"
+              ],
+              "production_ready": false,
+              "research_only_or_retest": [
+                "volume_shrink"
+              ],
+              "strategy_keys": [
+                "volume_shrink"
+              ],
+              "strategy_pass_counts": {
+                "volume_shrink": 6
+              },
+              "strategy_specific_shadow_candidate": false
+            },
+            {
+              "evidence_sources": [
+                "focus_walk_forward_plan"
+              ],
+              "exit_parameter_shadow_candidate": true,
+              "exit_parameter_windows": 7,
+              "family_key": "trend_support_band",
+              "family_text": "均线通道支撑",
+              "market_state_guard_pass_rate_pct": 28.5714,
+              "missing_for_production": [
+                "true_strategy_family_walk_forward_not_executed",
+                "purged_gap_not_executed",
+                "online_shadow_settled_sample_lt_required",
+                "strategy_parameter_windows_not_executed",
+                "strategy_specific_shadow_candidate_not_ready"
+              ],
+              "production_ready": false,
+              "research_only_or_retest": [],
+              "strategy_keys": [
+                "ma_channel_band"
+              ],
+              "strategy_pass_counts": {},
+              "strategy_specific_shadow_candidate": false
+            }
+          ],
+          "production_ready": false,
+          "status": "partial_evidence_only"
+        },
+        "focus_parameter_findings": {
+          "combined_passed_all_windows": true,
+          "combined_result_masks_strategy_instability": true,
+          "production_eligible": false,
+          "profit_mechanism": "主要来自 3% 首次止盈与 1% 移动防守提升的冲高兑现，而非放宽持仓收益。",
+          "research_only_or_retest": [
+            "volume_shrink"
+          ],
+          "shadow_candidate": false,
+          "strategy_pass_counts": {
+            "first_board": 7,
+            "volume_shrink": 6
+          },
+          "strategy_specific_shadow_candidates": [
+            "first_board"
+          ]
+        },
+        "focus_parameter_scope": {
+          "baseline_variant": "default_exit",
+          "candidate_variant": "quick_tp3_trailing1",
+          "combined_window_count": 7,
+          "per_strategy_window_count": 14,
+          "strategy_keys": [
+            "first_board",
+            "volume_shrink"
+          ],
+          "total_matrix_window_count": 21
+        },
+        "focus_plan_scope": {
+          "evidence_reused": "market_state_guard_7_oos_windows",
+          "new_backtest_started": false,
+          "strategy_keys": [
+            "first_board",
+            "volume_shrink",
+            "late_session_strong_support",
+            "core_midcap_vwap_ma5_retrace",
+            "ma_channel_band",
+            "leader_pullback_band"
+          ],
+          "window_count": 7
+        },
+        "market_state_guard": {
+          "pass_rate_pct": 28.5714,
+          "passed_window_count": 2,
+          "production_eligible": false,
+          "promotion_blockers": [
+            "production_param_write_from_backtest_forbidden",
+            "market_state_guard_not_consistently_better_than_current"
+          ],
+          "window_count": 7
+        },
+        "purged_gap_audit": {
+          "daily_data_covered_window_count": 21,
+          "daily_data_first_trade_date": "2024-05-28",
+          "daily_data_last_trade_date": "2026-04-28",
+          "daily_data_manifest_window_count": 21,
+          "daily_data_max_window_trade_dates": 58,
+          "daily_data_min_window_trade_dates": 50,
+          "daily_data_status": "covered",
+          "daily_data_total_trade_dates": 466,
+          "explicit_purged_gap_encoded": true,
+          "explicit_train_validation_split_present": true,
+          "production_blockers": [
+            "execution_matrix_coverage_partial_only",
+            "online_shadow_settled_sample_lt_required"
+          ],
+          "proposed_split_plan_present": true,
+          "purged_gap_passed": false,
+          "purged_gap_plan_ready": true,
+          "rerun_command_count": 21,
+          "rerun_full_complete": true,
+          "rerun_full_failed_count": 0,
+          "rerun_full_matrix_count": 21,
+          "rerun_full_partial_coverage_only": true,
+          "rerun_full_status": "executed_complete",
+          "rerun_full_total_evaluated_count": 6336,
+          "rerun_full_total_filled_count": 5964,
+          "rerun_manifest_database_url": "sqlite:////Users/j/Documents/gupiao/backend/data/t_quant.db",
+          "rerun_manifest_status": "executed_complete",
+          "rerun_smoke_data_sample_available": true,
+          "rerun_smoke_matrix_count": 1,
+          "rerun_smoke_output_structure_passed": true,
+          "rerun_smoke_partial_coverage_only": true,
+          "rerun_smoke_status": "executed_with_samples",
+          "rerun_smoke_total_evaluated_count": 576,
+          "rerun_smoke_total_filled_count": 554,
+          "status": "partial_oos_evidence_purged_gap_not_proven",
+          "temporal_order_passed": true,
+          "total_matrix_window_count": 21
+        }
+      },
+      "key": "walk_forward_evidence_snapshot",
+      "status": "pass",
+      "summary": "已接入 P1 窄网格、退出参数和市场状态 guard 的 OOS 窗口证据；仍只允许 Shadow/研究观察。",
+      "title": "局部 walk-forward 证据"
+    },
+    {
+      "complete": true,
+      "evidence": {
+        "family_strip_component": "frontend/src/features/workspace-shared/FamilyStrip.tsx",
+        "modal_detail": true,
+        "quality_helper": "frontend/src/features/workspace-shared/workspaceFamilyQuality.ts"
+      },
+      "key": "frontend_family_dense_display",
+      "status": "pass",
+      "summary": "策略族概览保持高密度，详情进入只读弹窗，并展示 data_quality/fallback/缺失数据提示。",
+      "title": "前端策略族高密度展示"
+    },
+    {
+      "complete": true,
+      "evidence": {
+        "can_connect_to_production_chain": false,
+        "main_force_ranking_enabled_default": false,
+        "paper_suggestion_enabled_default": false,
+        "production_parameter_change_allowed": false
+      },
+      "key": "no_ranking_or_trade_execution_effect",
+      "status": "pass",
+      "summary": "默认不改变原有策略排序、不写生产参数、不触发真实交易执行。",
+      "title": "不影响排序与交易执行"
+    }
+  ],
+  "completion_pct": 100.0,
+  "final_status": {
+    "exit_model_connected_to_paper": true,
+    "main_force_side_channel_in_use": true,
+    "old_duck_head_factorized": true,
+    "original_ranking_or_trade_execution_affected": false,
+    "reason": "策略体系已形成只读/Shadow 最小闭环；真实交易生产放行仍被数据、walk-forward、purged-gap 与 Shadow settled 样本门禁阻断。",
+    "strategy_classified": true
+  },
+  "generated_at": "2026-05-29T09:46:32",
+  "minimal_readonly_loop_complete": true,
+  "overall_status": "readonly_shadow_loop_complete_production_blocked",
+  "production_blockers": [
+    {
+      "key": "market_metadata_coverage",
+      "reason": "涨跌停、停牌/ST/退市/上市日期、行业/概念历史、ETF 执行元数据必须通过门禁。",
+      "source": "optimization_gate"
+    },
+    {
+      "key": "etf_t0_minute_coverage",
+      "reason": "ETF T0 必须有分钟线覆盖率，不能用日线代理验收。",
+      "source": "optimization_gate"
+    },
+    {
+      "key": "true_walk_forward_not_executed",
+      "reason": "策略族仍未完成真实生产晋级验证。",
+      "source": "strategy_family_split"
+    },
+    {
+      "key": "purged_gap_not_executed",
+      "reason": "策略族仍未完成真实生产晋级验证。",
+      "source": "strategy_family_split"
+    },
+    {
+      "key": "settled_shadow_sample_gate_not_passed",
+      "reason": "策略族仍未完成真实生产晋级验证。",
+      "source": "strategy_family_split"
+    },
+    {
+      "key": "shadow_record_count_lt_300",
+      "reason": "主力模型 Shadow 样本或效果未达标。",
+      "source": "main_force_shadow"
+    },
+    {
+      "key": "settled_shadow_count_lt_120",
+      "reason": "主力模型 Shadow 样本或效果未达标。",
+      "source": "main_force_shadow"
+    },
+    {
+      "key": "success_rate_below_threshold",
+      "reason": "主力模型 Shadow 样本或效果未达标。",
+      "source": "main_force_shadow"
+    },
+    {
+      "key": "profit_factor_below_threshold",
+      "reason": "主力模型 Shadow 样本或效果未达标。",
+      "source": "main_force_shadow"
+    },
+    {
+      "key": "shadow_record_count_lt_30",
+      "reason": "止盈止损辅助模型 Shadow 样本未达标。",
+      "source": "exit_model_shadow"
+    },
+    {
+      "key": "settled_shadow_count_lt_30",
+      "reason": "止盈止损辅助模型 Shadow 样本未达标。",
+      "source": "exit_model_shadow"
+    },
+    {
+      "key": "production_param_write_from_backtest_forbidden",
+      "reason": "已有局部 OOS 证据，但仍未满足生产晋级门禁。",
+      "source": "focus_parameter_walk_forward"
+    },
+    {
+      "key": "purged_gap_candidate_grid_not_executed",
+      "reason": "已有局部 OOS 证据，但仍未满足生产晋级门禁。",
+      "source": "focus_parameter_walk_forward"
+    },
+    {
+      "key": "online_shadow_settled_sample_lt_required",
+      "reason": "已有局部 OOS 证据，但仍未满足生产晋级门禁。",
+      "source": "focus_parameter_walk_forward"
+    },
+    {
+      "key": "strategy_specific_window_not_all_passed",
+      "reason": "已有局部 OOS 证据，但仍未满足生产晋级门禁。",
+      "source": "focus_parameter_walk_forward"
+    },
+    {
+      "key": "production_param_write_from_backtest_forbidden",
+      "reason": "已有局部 OOS 证据，但仍未满足生产晋级门禁。",
+      "source": "market_state_guard_walk_forward"
+    },
+    {
+      "key": "market_state_guard_not_consistently_better_than_current",
+      "reason": "已有局部 OOS 证据，但仍未满足生产晋级门禁。",
+      "source": "market_state_guard_walk_forward"
+    },
+    {
+      "key": "online_shadow_settled_sample_lt_required",
+      "reason": "已有局部 OOS 证据，但仍未满足生产晋级门禁。",
+      "source": "exit_parameter_walk_forward"
+    },
+    {
+      "key": "full_strategy_parameter_grid_not_executed",
+      "reason": "已有局部 OOS 证据，但仍未满足生产晋级门禁。",
+      "source": "exit_parameter_walk_forward"
+    },
+    {
+      "key": "hard_stop_must_not_be_removed_or_loosened",
+      "reason": "已有局部 OOS 证据，但仍未满足生产晋级门禁。",
+      "source": "exit_parameter_walk_forward"
+    }
+  ],
+  "production_trade_ready": false,
+  "promotion_action_plan": {
+    "action_count": 6,
+    "actions": [
+      {
+        "acceptance_evidence": [
+          "etf_t0_minute_coverage.status=pass",
+          "market_metadata_coverage.status=pass",
+          "minute_bar_snapshots bid/ask spread, premium/discount, tracking index, liquidity tier fresh coverage >= threshold"
+        ],
+        "blockers": [
+          {
+            "key": "market_metadata_coverage",
+            "reason": "涨跌停、停牌/ST/退市/上市日期、行业/概念历史、ETF 执行元数据必须通过门禁。",
+            "source": "optimization_gate"
+          },
+          {
+            "key": "etf_t0_minute_coverage",
+            "reason": "ETF T0 必须有分钟线覆盖率，不能用日线代理验收。",
+            "source": "optimization_gate"
+          }
+        ],
+        "estimated_effort": "1-3 天，取决于 Tushare/交易所/供应商分钟线可用性",
+        "key": "data_gate",
+        "next_commands": [
+          "TUSHARE_TOKEN=... PYTHONPATH=backend:. backend/.venv/bin/python backend/scripts/backfill_etf_minute_history.py --scope t0-etf --period 5m --allow-partial",
+          "PYTHONPATH=backend:. backend/.venv/bin/python backend/scripts/backfill_instrument_metadata.py --scope all-stock",
+          "PYTHONPATH=backend:. backend/.venv/bin/python backend/scripts/backfill_daily_limit_prices.py --derive-pre-close"
+        ],
+        "requires_external_data": true,
+        "title": "补齐 ETF T0 分钟线与执行元数据"
+      },
+      {
+        "acceptance_evidence": [
+          "shadow_record_count >= 30",
+          "settled_shadow_count >= 30",
+          "hard_stop override remains forbidden"
+        ],
+        "blockers": [
+          {
+            "key": "shadow_record_count_lt_30",
+            "reason": "止盈止损辅助模型 Shadow 样本未达标。",
+            "source": "exit_model_shadow"
+          },
+          {
+            "key": "settled_shadow_count_lt_30",
+            "reason": "止盈止损辅助模型 Shadow 样本未达标。",
+            "source": "exit_model_shadow"
+          },
+          {
+            "key": "online_shadow_settled_sample_lt_required",
+            "reason": "已有局部 OOS 证据，但仍未满足生产晋级门禁。",
+            "source": "exit_parameter_walk_forward"
+          },
+          {
+            "key": "full_strategy_parameter_grid_not_executed",
+            "reason": "已有局部 OOS 证据，但仍未满足生产晋级门禁。",
+            "source": "exit_parameter_walk_forward"
+          },
+          {
+            "key": "hard_stop_must_not_be_removed_or_loosened",
+            "reason": "已有局部 OOS 证据，但仍未满足生产晋级门禁。",
+            "source": "exit_parameter_walk_forward"
+          }
+        ],
+        "estimated_effort": "至少 1-2 周模拟盘持仓观察",
+        "key": "exit_model_shadow",
+        "next_commands": [
+          "PYTHONPATH=backend:. backend/.venv/bin/python research/scripts/evaluate_exit_model_shadow.py",
+          "PYTHONPATH=backend:. backend/.venv/bin/python scripts/exit_parameter_walk_forward_summary.py --date 2026-05-28"
+        ],
+        "requires_external_data": false,
+        "title": "积累退出模型 Shadow settled 样本"
+      },
+      {
+        "acceptance_evidence": [
+          "purged_gap_candidate_grid_not_executed absent",
+          "strategy_specific_window_not_all_passed absent or documented as research-only",
+          "online_shadow_settled_sample_lt_required absent"
+        ],
+        "blockers": [
+          {
+            "key": "production_param_write_from_backtest_forbidden",
+            "reason": "已有局部 OOS 证据，但仍未满足生产晋级门禁。",
+            "source": "focus_parameter_walk_forward"
+          },
+          {
+            "key": "purged_gap_candidate_grid_not_executed",
+            "reason": "已有局部 OOS 证据，但仍未满足生产晋级门禁。",
+            "source": "focus_parameter_walk_forward"
+          },
+          {
+            "key": "online_shadow_settled_sample_lt_required",
+            "reason": "已有局部 OOS 证据，但仍未满足生产晋级门禁。",
+            "source": "focus_parameter_walk_forward"
+          },
+          {
+            "key": "strategy_specific_window_not_all_passed",
+            "reason": "已有局部 OOS 证据，但仍未满足生产晋级门禁。",
+            "source": "focus_parameter_walk_forward"
+          }
+        ],
+        "estimated_effort": "0.5-1 天，若只复用既有矩阵；更久取决于新增参数网格",
+        "key": "focus_parameter",
+        "next_commands": [
+          "PYTHONPATH=backend:. backend/.venv/bin/python scripts/focus_strategy_parameter_walk_forward_summary.py --date 2026-05-28",
+          "PYTHONPATH=backend:. backend/.venv/bin/python scripts/strategy_24m_parameter_plans.py --date 2026-05-28"
+        ],
+        "requires_external_data": false,
+        "title": "补全重点策略参数稳定性与 Shadow 验证"
+      },
+      {
+        "acceptance_evidence": [
+          "shadow_record_count >= 300",
+          "settled_shadow_count >= 120",
+          "success_rate and profit_factor pass configured thresholds"
+        ],
+        "blockers": [
+          {
+            "key": "shadow_record_count_lt_300",
+            "reason": "主力模型 Shadow 样本或效果未达标。",
+            "source": "main_force_shadow"
+          },
+          {
+            "key": "settled_shadow_count_lt_120",
+            "reason": "主力模型 Shadow 样本或效果未达标。",
+            "source": "main_force_shadow"
+          },
+          {
+            "key": "success_rate_below_threshold",
+            "reason": "主力模型 Shadow 样本或效果未达标。",
+            "source": "main_force_shadow"
+          },
+          {
+            "key": "profit_factor_below_threshold",
+            "reason": "主力模型 Shadow 样本或效果未达标。",
+            "source": "main_force_shadow"
+          }
+        ],
+        "estimated_effort": "至少 2-4 周自然交易日观察",
+        "key": "main_force_shadow",
+        "next_commands": [
+          "PYTHONPATH=backend:. backend/.venv/bin/python backend/scripts/main_force_shadow_warmup.py --date 2026-05-28",
+          "PYTHONPATH=backend:. backend/.venv/bin/python backend/scripts/main_force_model_backtest.py --date 2026-05-28"
+        ],
+        "requires_external_data": false,
+        "title": "积累主力模型线上 Shadow settled 样本"
+      },
+      {
+        "acceptance_evidence": [
+          "market_state_guard_not_consistently_better_than_current absent",
+          "pass rate stable across OOS windows"
+        ],
+        "blockers": [
+          {
+            "key": "production_param_write_from_backtest_forbidden",
+            "reason": "已有局部 OOS 证据，但仍未满足生产晋级门禁。",
+            "source": "market_state_guard_walk_forward"
+          },
+          {
+            "key": "market_state_guard_not_consistently_better_than_current",
+            "reason": "已有局部 OOS 证据，但仍未满足生产晋级门禁。",
+            "source": "market_state_guard_walk_forward"
+          }
+        ],
+        "estimated_effort": "0.5 天",
+        "key": "market_state_guard",
+        "next_commands": [
+          "PYTHONPATH=backend:. backend/.venv/bin/python scripts/market_state_guard_walk_forward_summary.py --date 2026-05-28"
+        ],
+        "requires_external_data": false,
+        "title": "重测市场状态保护参数稳定性"
+      },
+      {
+        "acceptance_evidence": [
+          "true_strategy_family_walk_forward_not_executed absent",
+          "purged_gap_not_executed absent",
+          "all candidate families have train/validation/OOS windows"
+        ],
+        "blockers": [
+          {
+            "key": "true_walk_forward_not_executed",
+            "reason": "策略族仍未完成真实生产晋级验证。",
+            "source": "strategy_family_split"
+          },
+          {
+            "key": "purged_gap_not_executed",
+            "reason": "策略族仍未完成真实生产晋级验证。",
+            "source": "strategy_family_split"
+          },
+          {
+            "key": "settled_shadow_sample_gate_not_passed",
+            "reason": "策略族仍未完成真实生产晋级验证。",
+            "source": "strategy_family_split"
+          }
+        ],
+        "estimated_effort": "0.5-1 天，基于现有 24M 日线与已落盘矩阵",
+        "key": "strategy_family_walk_forward",
+        "next_commands": [
+          "PYTHONPATH=backend:. backend/.venv/bin/python scripts/strategy_24m_walk_forward_matrix.py --date 2026-05-28 --purged-gap-days 10",
+          "PYTHONPATH=backend:. backend/.venv/bin/python scripts/focus_strategy_parameter_walk_forward_summary.py --date 2026-05-28"
+        ],
+        "requires_external_data": false,
+        "title": "补齐策略族真实 walk-forward 与 purged-gap"
+      }
+    ],
+    "requires_external_data_count": 1,
+    "status": "blocked_by_production_gates"
+  },
+  "report_date": "2026-05-28",
+  "requirement_audit": {
+    "complete_item_count": 17,
+    "incomplete_item_count": 1,
+    "items": [
+      {
+        "evidence_key": "strategy_family_classification",
+        "id": "P0-1",
+        "required_for_minimal_loop": true,
+        "requirement": "建立策略族元数据与归类能力",
+        "status": "complete"
+      },
+      {
+        "evidence_key": "frontend_family_dense_display",
+        "id": "P0-2",
+        "required_for_minimal_loop": true,
+        "requirement": "前端按策略族收敛展示并保持旧接口兼容",
+        "status": "complete"
+      },
+      {
+        "evidence_key": "main_force_readonly_shadow",
+        "id": "P1-1",
+        "required_for_minimal_loop": true,
+        "requirement": "主力结构识别模型旁路接入候选结果",
+        "status": "complete"
+      },
+      {
+        "evidence_key": "old_duck_head_factorized",
+        "id": "P1-2",
+        "required_for_minimal_loop": true,
+        "requirement": "老鸭头结构作为因子接入，不新增重复策略",
+        "status": "complete"
+      },
+      {
+        "evidence_key": "paper_exit_model_readonly_shadow",
+        "id": "P1-3",
+        "required_for_minimal_loop": true,
+        "requirement": "止盈止损建议接入模拟盘只读展示",
+        "status": "complete"
+      },
+      {
+        "evidence_key": "main_force_readonly_shadow,paper_exit_model_readonly_shadow",
+        "id": "P1-4",
+        "required_for_minimal_loop": true,
+        "requirement": "增加 Shadow 记录或可观测日志",
+        "status": "complete"
+      },
+      {
+        "evidence_key": "strategy_family_backtest_loop",
+        "id": "P2-1",
+        "required_for_minimal_loop": true,
+        "requirement": "补充策略族维度回测入口和简洁报告",
+        "status": "complete"
+      },
+      {
+        "evidence_key": "strategy_family_backtest_loop",
+        "id": "P2-2",
+        "required_for_minimal_loop": true,
+        "requirement": "输出参数变化、胜率、收益、回撤、盈亏比",
+        "status": "complete"
+      },
+      {
+        "evidence_key": "anti_future_overfit_guard",
+        "id": "P2-3",
+        "required_for_minimal_loop": true,
+        "requirement": "增加防未来函数和样本外验证检查",
+        "status": "complete"
+      },
+      {
+        "evidence_key": "frontend_family_dense_display",
+        "id": "P3-1",
+        "required_for_minimal_loop": true,
+        "requirement": "前端高密度展示，详情进入折叠或弹窗",
+        "status": "complete"
+      },
+      {
+        "evidence_key": "frontend_family_dense_display",
+        "id": "P3-2",
+        "required_for_minimal_loop": true,
+        "requirement": "补充 data_quality、fallback、缺失数据提示",
+        "status": "complete"
+      },
+      {
+        "evidence_key": "main_force_readonly_shadow,old_duck_head_factorized,paper_exit_model_readonly_shadow",
+        "id": "G-1",
+        "required_for_minimal_loop": true,
+        "requirement": "主力、老鸭头、止盈止损保持旁路/Shadow/只读",
+        "status": "complete"
+      },
+      {
+        "evidence_key": "no_ranking_or_trade_execution_effect",
+        "id": "G-2",
+        "required_for_minimal_loop": true,
+        "requirement": "默认不影响原有策略排序或交易执行",
+        "status": "complete"
+      },
+      {
+        "evidence_key": "walk_forward_evidence_snapshot",
+        "id": "G-3",
+        "required_for_minimal_loop": true,
+        "requirement": "回测调参使用已有数据并标记缺口",
+        "status": "complete"
+      },
+      {
+        "evidence_key": "wc -l targeted files",
+        "id": "G-4",
+        "required_for_minimal_loop": true,
+        "requirement": "单文件尽量不超过 500 行",
+        "status": "complete"
+      },
+      {
+        "evidence_key": "requirements_source_document",
+        "id": "G-5",
+        "required_for_minimal_loop": true,
+        "requirement": "需求源文档存在并纳入验收边界",
+        "status": "complete"
+      },
+      {
+        "evidence_key": "final_status",
+        "id": "D-1",
+        "required_for_minimal_loop": true,
+        "requirement": "最终交付字段已明确输出",
+        "status": "complete"
+      },
+      {
+        "evidence_key": "production_trade_ready",
+        "id": "D-2",
+        "required_for_minimal_loop": false,
+        "requirement": "真实交易生产放行",
+        "status": "blocked"
+      }
+    ],
+    "minimal_loop_completion_pct": 100.0,
+    "production_trade_ready": false,
+    "status": "minimal_readonly_loop_complete_production_blocked",
+    "total_item_count": 18
+  },
+  "source_files": {
+    "backtest": "docs/reports/strategy-24m-backtest-2026-05-28.json",
+    "closed_loop": "docs/reports/strategy-improvement-closed-loop-2026-05-28.json",
+    "exit_parameter_walk_forward": "docs/reports/exit-parameter-walk-forward-2026-05-28/summary.json",
+    "focus_parameter_walk_forward": "docs/reports/focus-strategy-parameter-walk-forward-2026-05-28/summary.json",
+    "focus_purged_gap_audit": "docs/reports/focus-strategy-purged-gap-audit-2026-05-28/summary.json",
+    "main_force": "docs/reports/main-force-model-production-readiness-2026-05-28.json",
+    "market_state_guard_walk_forward": "docs/reports/market-state-guard-walk-forward-2026-05-28/summary.json",
+    "optimization": "docs/reports/strategy-24m-optimization-report-2026-05-28.json",
+    "requirements_plan": "docs/strategy-system-consolidation-and-enhancement-development-plan.md"
+  },
+  "test_coverage_matrix": {
+    "covered_count": 6,
+    "required_count": 6,
+    "rows": [
+      {
+        "file": "backend/tests/test_priority_weighting.py",
+        "key": "strategy_family_classification",
+        "missing_tests": [],
+        "status": "covered",
+        "tests": [
+          "test_all_low_buy_strategies_have_explicit_family_metadata"
+        ],
+        "title": "策略归类"
+      },
+      {
+        "file": "backend/tests/test_main_force_model_enrichment.py",
+        "key": "main_force_readonly_side_channel",
+        "missing_tests": [],
+        "status": "covered",
+        "tests": [
+          "test_enrichment_adds_readonly_advice_without_mutating_candidate",
+          "test_enrichment_blocks_risk_candidate_but_keeps_original_signal"
+        ],
+        "title": "旁路信号"
+      },
+      {
+        "file": "backend/tests/test_paper_exit_model_advisor.py",
+        "key": "exit_model_readonly_advice",
+        "missing_tests": [],
+        "status": "covered",
+        "tests": [
+          "test_exit_model_advisor_never_overrides_hard_stop",
+          "test_exit_model_advisor_enforces_rule_floor"
+        ],
+        "title": "止盈止损建议"
+      },
+      {
+        "file": "backend/tests/test_paper_exit_model_shadow.py",
+        "key": "paper_shadow_snapshot",
+        "missing_tests": [],
+        "status": "covered",
+        "tests": [
+          "test_exit_model_shadow_records_are_upserted_by_as_of_trade_date",
+          "test_exit_model_shadow_latest_and_summary_include_fallback_and_sell_flying"
+        ],
+        "title": "模拟盘展示/快照"
+      },
+      {
+        "file": "backend/tests/test_strategy_24m_report_sections.py",
+        "key": "strategy_family_backtest_metrics",
+        "missing_tests": [],
+        "status": "covered",
+        "tests": [
+          "test_strategy_family_summary_is_research_only_and_contains_parameter_changes"
+        ],
+        "title": "回测指标输出"
+      },
+      {
+        "file": "frontend/src/features/workspace-shared/FamilyStrip.test.tsx",
+        "key": "frontend_family_display",
+        "missing_tests": [],
+        "status": "covered",
+        "tests": [
+          "renders compact family tiles with data quality hints"
+        ],
+        "title": "前端高密度展示"
+      }
+    ],
+    "status": "covered"
+  },
+  "title": "策略体系最小生产闭环验收报告"
+}

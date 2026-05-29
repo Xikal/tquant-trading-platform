@@ -28,8 +28,10 @@ from app.services.market.minute_bar_store import MinuteBarSnapshotStore
 from app.services.market.shared import guess_market, to_secid
 try:
     from .etf_minute_akshare_provider import fetch_akshare_etf_hist_minute_bars, fetch_tushare_etf_hist_minute_bars
+    from .etf_minute_backfill_helpers import ProviderCandidate, enrich_etf_bars, execution_quality_summary, minute_data_quality, select_best_candidate
 except ImportError:  # pragma: no cover
     from etf_minute_akshare_provider import fetch_akshare_etf_hist_minute_bars, fetch_tushare_etf_hist_minute_bars
+    from etf_minute_backfill_helpers import ProviderCandidate, enrich_etf_bars, execution_quality_summary, minute_data_quality, select_best_candidate
 
 
 @dataclass(frozen=True)
@@ -133,8 +135,8 @@ def backfill_profile(
     try:
         if not force and coverage_exists(symbol=profile.symbol, start_date=start_date, end_date=end_date, period=period):
             return result_for(profile, "skip", period=period, message="coverage exists")
-        fetched = fetch_etf_minute_bars(symbol=profile.symbol, start_date=start_date, end_date=end_date, period=period)
-        bars = fetched.bars
+        fetched = fetch_etf_minute_bars(profile=profile, start_date=start_date, end_date=end_date, period=period)
+        bars = enrich_etf_bars(profile, fetched.bars)
         if not bars:
             return result_for(profile, "empty", period=period, message="remote empty", provider_errors=fetched.provider_errors)
         quote = quote_for_profile(profile, bars[-1], source=fetched.source)
@@ -146,24 +148,29 @@ def backfill_profile(
                 skip_older_than_latest=False,
             )
         time.sleep(sleep_seconds)
-        quality = quality_summary(bars)
+        quality = execution_quality_summary(profile, bars)
         return result_for(profile, "ok", rows=count, period=period, source=fetched.source, data_quality=quality, provider_errors=fetched.provider_errors)
     except Exception as exc:
         return result_for(profile, "error", period=period, message=str(exc)[:220])
 
 
-def fetch_etf_minute_bars(*, symbol: str, start_date: str, end_date: str, period: str) -> FetchResult:
+def fetch_etf_minute_bars(*, symbol: str = "", profile: EtfProfile | None = None, start_date: str, end_date: str, period: str) -> FetchResult:
+    symbol_value = profile.symbol if profile else symbol
     provider_errors: list[dict[str, str]] = []
+    candidates: list[ProviderCandidate] = []
     for source, fetcher in minute_fetchers(period):
         try:
-            bars = fetcher(symbol=symbol, start_date=start_date, end_date=end_date, period=period)
+            bars = fetcher(symbol=symbol_value, start_date=start_date, end_date=end_date, period=period)
         except Exception as exc:
             provider_errors.append({"source": source, "message": str(exc)[:180]})
             continue
         if bars:
-            return FetchResult(source=source, bars=bars, provider_errors=provider_errors)
+            candidates.append(ProviderCandidate(source, enrich_etf_bars(profile, bars) if profile else bars))
+            provider_errors.append({"source": source, "message": f"candidate:{len(bars)} bars/{candidates[-1].trade_days} trade_days"})
+            continue
         provider_errors.append({"source": source, "message": "empty"})
-    return FetchResult(source="", bars=[], provider_errors=provider_errors)
+    best = select_best_candidate(candidates)
+    return FetchResult(source=best.source, bars=best.bars, provider_errors=provider_errors) if best else FetchResult(source="", bars=[], provider_errors=provider_errors)
 
 
 def minute_fetchers(period: str):
@@ -384,10 +391,7 @@ def coverage_exists(*, symbol: str, start_date: str, end_date: str, period: str)
 
 
 def quote_for_profile(profile: EtfProfile, bar: KlineBar, *, source: str) -> QuoteSnapshot:
-    bar.tracking_index_symbol = profile.tracking_index
-    bar.liquidity_tier = liquidity_tier(profile=profile, bar=bar)
-    if bar.bid_ask_spread is None:
-        bar.bid_ask_spread = 0.0
+    enrich_etf_bars(profile, [bar])
     return QuoteSnapshot(
         symbol=profile.symbol,
         name=profile.name,
@@ -406,26 +410,6 @@ def quote_for_profile(profile: EtfProfile, bar: KlineBar, *, source: str) -> Quo
         data_source=source,
         data_quality=minute_data_quality(profile=profile, bar=bar),
     )
-
-
-def liquidity_tier(*, profile: EtfProfile, bar: KlineBar) -> str:
-    amount = float(bar.amount or 0.0)
-    if amount >= float(profile.min_amount or 0.0):
-        return "sufficient"
-    if amount > 0:
-        return "thin"
-    return "unknown"
-
-
-def minute_data_quality(*, profile: EtfProfile, bar: KlineBar) -> str:
-    if bar.close <= 0:
-        return "unavailable"
-    if profile.premium_discount_available and bar.premium_discount_pct is None:
-        return "partial_metadata"
-    if float(bar.bid_ask_spread or 0.0) <= 0:
-        return "partial_metadata"
-    return "fresh"
-
 
 def result_for(
     profile: EtfProfile,
@@ -476,6 +460,7 @@ def build_report(*, args: argparse.Namespace, start_date: str, profiles: list[Et
             "仅补 ETF universe 中 same_day_sell_allowed=true 的标的，避免把所有 ETF 错当 T+0。",
             "5m/15m/30m/60m 优先 Tushare/Eastmoney/AkShare 历史分钟线，可 fallback 到 Sina 近端 K 线；1m 可额外 fallback 到 Tencent/Eastmoney 近端趋势源。",
             "未取到远端数据时只写 partial_data/error/empty，不生成伪分钟线。",
+            "盘口价差、折溢价等执行元数据只写真实字段；缺失时标记 partial_metadata，不能通过生产门禁。",
         ],
     }
 

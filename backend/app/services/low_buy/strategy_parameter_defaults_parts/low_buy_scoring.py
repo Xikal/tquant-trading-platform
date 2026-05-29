@@ -36,6 +36,26 @@ LOW_BUY_SCORING_DEFAULTS: dict[str, Any] = {
         "shrink_staircase": 2.8,
         "multi_timeframe_resonance": 5.0,
     },
+    "structure_factors": {
+        "old_duck_head": {
+            "max_factor_score": 3.0,
+            "min_volume_burst_ratio": 1.75,
+            "max_post_volume_ratio": 0.9,
+            "max_latest_volume_ratio": 1.15,
+            "max_support_distance_pct": 2.4,
+            "max_ma_reclaim_distance_pct": 1.2,
+            "ma5_reclaim_ratio": 0.995,
+            "min_close_position_ratio": 0.48,
+            "max_distribution_risk_score": 4.8,
+            "score": {
+                "startup": 0.65,
+                "shrink": 0.8,
+                "support": 0.55,
+                "reclaim": 0.55,
+                "risk_clean": 0.45,
+            },
+        },
+    },
     "strategy_bonuses": {
         "ma_support": {"support_distance_max_pct": 1.6, "bonus": 4.0},
         "first_board": {"max_retracement_days": 3, "bonus": 5.0},
@@ -185,6 +205,7 @@ LOW_BUY_THRESHOLD_DEFAULTS: dict[str, Any] = {
         "event_risk_factor": 0.6,
         "absorption_quality_factor": 0.5,
         "selection_quality_factor": 0.8,
+        "old_duck_head_factor": 0.7,
     },
 }
 

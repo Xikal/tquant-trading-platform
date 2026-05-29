@@ -1,0 +1,217 @@
+{
+  "aggregate_delta": {
+    "avg_delta_max_drawdown_pct": 15.0326,
+    "avg_delta_profit_factor": 0.9556
+  },
+  "baseline_variant": "default_exit",
+  "criteria": {
+    "pass_vs_default": "quick PF > default PF and quick max drawdown is less negative than default.",
+    "production": "Even if all windows pass, only Shadow is allowed until online settled samples pass gates."
+  },
+  "hard_stop_override_allowed": false,
+  "pass_rate_pct": 100.0,
+  "passed_window_count": 7,
+  "production_eligible": false,
+  "promotion_blockers": [
+    "online_shadow_settled_sample_lt_required",
+    "full_strategy_parameter_grid_not_executed",
+    "hard_stop_must_not_be_removed_or_loosened"
+  ],
+  "report_date": "2026-05-28",
+  "shadow_candidate": true,
+  "source_dir": "docs/reports/exit-parameter-walk-forward-2026-05-28/windows",
+  "title": "止盈止损辅助模型 walk-forward 实算摘要",
+  "variant_under_test": "quick_tp3_trailing1",
+  "window_count": 7,
+  "windows": [
+    {
+      "default_exit": {
+        "avg_trade_return_pct": 0.2299,
+        "max_drawdown_pct": -20.7841,
+        "profit_factor": 1.1596,
+        "stop_loss_rate_pct": 19.93,
+        "total_return_pct": 11.9186,
+        "trade_count": 848,
+        "win_rate_pct": 47.17
+      },
+      "oos_end": "2025-10-31",
+      "oos_start": "2025-08-01",
+      "quick_tp3_trailing1": {
+        "avg_trade_return_pct": 0.8232,
+        "delta_max_drawdown_pct": 9.6833,
+        "delta_profit_factor": 0.9299,
+        "max_drawdown_pct": -11.1008,
+        "pass_vs_default": true,
+        "profit_factor": 2.0895,
+        "stop_loss_rate_pct": 16.39,
+        "total_return_pct": 39.4039,
+        "trade_count": 848,
+        "win_rate_pct": 83.61
+      },
+      "source_path": "docs/reports/exit-parameter-walk-forward-2026-05-28/windows/low_buy_execution_matrix_24m_confirmed_all_2025-08-01_2025-10-31.json",
+      "window_id": 1
+    },
+    {
+      "default_exit": {
+        "avg_trade_return_pct": -0.2025,
+        "max_drawdown_pct": -20.2905,
+        "profit_factor": 0.8853,
+        "stop_loss_rate_pct": 25.37,
+        "total_return_pct": -9.4897,
+        "trade_count": 745,
+        "win_rate_pct": 43.49
+      },
+      "oos_end": "2025-11-28",
+      "oos_start": "2025-09-01",
+      "quick_tp3_trailing1": {
+        "avg_trade_return_pct": 0.5554,
+        "delta_max_drawdown_pct": 10.9725,
+        "delta_profit_factor": 0.7152,
+        "max_drawdown_pct": -9.318,
+        "pass_vs_default": true,
+        "profit_factor": 1.6005,
+        "stop_loss_rate_pct": 20.0,
+        "total_return_pct": 34.996,
+        "trade_count": 745,
+        "win_rate_pct": 80.0
+      },
+      "source_path": "docs/reports/exit-parameter-walk-forward-2026-05-28/windows/low_buy_execution_matrix_24m_confirmed_all_2025-09-01_2025-11-28.json",
+      "window_id": 2
+    },
+    {
+      "default_exit": {
+        "avg_trade_return_pct": 0.0467,
+        "max_drawdown_pct": -26.1532,
+        "profit_factor": 1.029,
+        "stop_loss_rate_pct": 22.64,
+        "total_return_pct": -2.344,
+        "trade_count": 711,
+        "win_rate_pct": 46.27
+      },
+      "oos_end": "2025-12-31",
+      "oos_start": "2025-10-09",
+      "quick_tp3_trailing1": {
+        "avg_trade_return_pct": 0.7198,
+        "delta_max_drawdown_pct": 21.0861,
+        "delta_profit_factor": 0.8523,
+        "max_drawdown_pct": -5.0671,
+        "pass_vs_default": true,
+        "profit_factor": 1.8813,
+        "stop_loss_rate_pct": 17.58,
+        "total_return_pct": 62.7283,
+        "trade_count": 711,
+        "win_rate_pct": 82.42
+      },
+      "source_path": "docs/reports/exit-parameter-walk-forward-2026-05-28/windows/low_buy_execution_matrix_24m_confirmed_all_2025-10-09_2025-12-31.json",
+      "window_id": 3
+    },
+    {
+      "default_exit": {
+        "avg_trade_return_pct": 0.5084,
+        "max_drawdown_pct": -26.7849,
+        "profit_factor": 1.3619,
+        "stop_loss_rate_pct": 18.43,
+        "total_return_pct": 8.5015,
+        "trade_count": 689,
+        "win_rate_pct": 49.78
+      },
+      "oos_end": "2026-01-30",
+      "oos_start": "2025-11-03",
+      "quick_tp3_trailing1": {
+        "avg_trade_return_pct": 1.0581,
+        "delta_max_drawdown_pct": 24.0966,
+        "delta_profit_factor": 1.404,
+        "max_drawdown_pct": -2.6883,
+        "pass_vs_default": true,
+        "profit_factor": 2.7659,
+        "stop_loss_rate_pct": 13.64,
+        "total_return_pct": 102.8538,
+        "trade_count": 689,
+        "win_rate_pct": 86.36
+      },
+      "source_path": "docs/reports/exit-parameter-walk-forward-2026-05-28/windows/low_buy_execution_matrix_24m_confirmed_all_2025-11-03_2026-01-30.json",
+      "window_id": 4
+    },
+    {
+      "default_exit": {
+        "avg_trade_return_pct": 0.2988,
+        "max_drawdown_pct": -18.6726,
+        "profit_factor": 1.1961,
+        "stop_loss_rate_pct": 19.83,
+        "total_return_pct": 4.4347,
+        "trade_count": 575,
+        "win_rate_pct": 45.74
+      },
+      "oos_end": "2026-02-27",
+      "oos_start": "2025-12-01",
+      "quick_tp3_trailing1": {
+        "avg_trade_return_pct": 0.8393,
+        "delta_max_drawdown_pct": 12.0476,
+        "delta_profit_factor": 0.9699,
+        "max_drawdown_pct": -6.625,
+        "pass_vs_default": true,
+        "profit_factor": 2.166,
+        "stop_loss_rate_pct": 15.83,
+        "total_return_pct": 59.9374,
+        "trade_count": 575,
+        "win_rate_pct": 84.17
+      },
+      "source_path": "docs/reports/exit-parameter-walk-forward-2026-05-28/windows/low_buy_execution_matrix_24m_confirmed_all_2025-12-01_2026-02-27.json",
+      "window_id": 5
+    },
+    {
+      "default_exit": {
+        "avg_trade_return_pct": 0.0085,
+        "max_drawdown_pct": -24.0983,
+        "profit_factor": 1.0053,
+        "stop_loss_rate_pct": 21.75,
+        "total_return_pct": 7.4,
+        "trade_count": 570,
+        "win_rate_pct": 45.09
+      },
+      "oos_end": "2026-03-31",
+      "oos_start": "2026-01-05",
+      "quick_tp3_trailing1": {
+        "avg_trade_return_pct": 0.7611,
+        "delta_max_drawdown_pct": 17.4733,
+        "delta_profit_factor": 0.9209,
+        "max_drawdown_pct": -6.625,
+        "pass_vs_default": true,
+        "profit_factor": 1.9262,
+        "stop_loss_rate_pct": 18.07,
+        "total_return_pct": 52.195,
+        "trade_count": 570,
+        "win_rate_pct": 81.93
+      },
+      "source_path": "docs/reports/exit-parameter-walk-forward-2026-05-28/windows/low_buy_execution_matrix_24m_confirmed_all_2026-01-05_2026-03-31.json",
+      "window_id": 6
+    },
+    {
+      "default_exit": {
+        "avg_trade_return_pct": -0.0451,
+        "max_drawdown_pct": -15.3582,
+        "profit_factor": 0.971,
+        "stop_loss_rate_pct": 21.28,
+        "total_return_pct": -10.4731,
+        "trade_count": 578,
+        "win_rate_pct": 44.98
+      },
+      "oos_end": "2026-04-28",
+      "oos_start": "2026-02-02",
+      "quick_tp3_trailing1": {
+        "avg_trade_return_pct": 0.7067,
+        "delta_max_drawdown_pct": 9.869,
+        "delta_profit_factor": 0.8972,
+        "max_drawdown_pct": -5.4892,
+        "pass_vs_default": true,
+        "profit_factor": 1.8682,
+        "stop_loss_rate_pct": 17.82,
+        "total_return_pct": 31.9451,
+        "trade_count": 578,
+        "win_rate_pct": 82.18
+      },
+      "source_path": "docs/reports/exit-parameter-walk-forward-2026-05-28/windows/low_buy_execution_matrix_24m_confirmed_all_2026-02-02_2026-04-28.json",
+      "window_id": 7
+    }
+  ]
+}

@@ -1,6 +1,6 @@
 import type { CSSProperties, ReactNode } from "react";
 import { Button, Input, Modal, Skeleton } from "antd";
-import type { AiDecisionSupportResponse, LowBuyPriorityBoardResult } from "../../types";
+import type { AiDecisionSupportResponse } from "../../types";
 import { formatPct, normalizeLines, plainTradingText } from "./workspaceFormatters";
 import type { MetricItem, StockCardView, Tone } from "./workspaceTypes";
 import {
@@ -70,13 +70,6 @@ const CONTEXT_ROW_STYLE: CSSProperties = {
   display: "grid",
   gap: 8,
   gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
-};
-
-const FAMILY_STRIP_STYLE: CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
-  gap: 8,
-  margin: "8px 0",
 };
 
 const PANEL_TITLE_STYLE: CSSProperties = {
@@ -292,6 +285,7 @@ export function EditableGrid({
 }
 
 export { StockCard, StockCardList, StockIdentity } from "./StockCard";
+export { FamilyStrip } from "./FamilyStrip";
 
 export function SettingCard({
   title,
@@ -399,24 +393,6 @@ export function StockDetailDialog({ stock, onClose, onAnalyze }: { stock: StockC
         </div>
       ) : null}
     </Modal>
-  );
-}
-
-export function FamilyStrip({ priorityBoard }: { priorityBoard: LowBuyPriorityBoardResult | null }) {
-  const sections = priorityBoard?.family_sections ?? [];
-  if (!sections.length) {
-    return null;
-  }
-  return (
-    <div style={FAMILY_STRIP_STYLE}>
-      {sections.slice(0, 4).map((section) => (
-        <InfoPill
-          key={section.family_key}
-          label={section.family_text}
-          value={`${section.total_candidates} 只 / 净胜优势 ${formatPct(section.performance?.net_win_rate, 0)}`}
-        />
-      ))}
-    </div>
   );
 }
 

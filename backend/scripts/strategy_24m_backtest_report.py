@@ -35,6 +35,7 @@ try:
         rank_strategies,
         signal_state_breakdown,
         strategy_detail,
+        strategy_family_summary,
     )
     from .strategy_24m_report_sections import (
         data_and_test_gaps,
@@ -43,6 +44,7 @@ try:
         sector_etf_t0_section,
         smart_t_section,
     )
+    from .strategy_24m_static_attribution import attach_static_sector_breakdowns, load_static_sector_map, static_sector_breakdown
 except ImportError:
     from low_buy_market_backtest import _count_signal_state, _load_a_share_universe_count
     from low_buy_market_backtest_reporting import EVALUATED_STATES, StrategyBacktestStats, build_report, history_window_days
@@ -56,6 +58,7 @@ except ImportError:
         rank_strategies,
         signal_state_breakdown,
         strategy_detail,
+        strategy_family_summary,
     )
     from strategy_24m_report_sections import (
         data_and_test_gaps,
@@ -64,6 +67,7 @@ except ImportError:
         sector_etf_t0_section,
         smart_t_section,
     )
+    from strategy_24m_static_attribution import attach_static_sector_breakdowns, load_static_sector_map, static_sector_breakdown
 
 
 DEFAULT_START = "2024-05-28"
@@ -184,6 +188,8 @@ def _build_enriched_report(
     coverage = _coverage(args.start, source.get("daily_min_trade_date", ""), source.get("daily_max_trade_date", ""))
     all_outcomes = [outcome for stat in stats.values() for outcome in stat.outcomes]
     strategies = [strategy_detail(key, stats[key]) for key in stats]
+    sector_by_symbol = load_static_sector_map(db)
+    strategies = attach_static_sector_breakdowns(strategies, stats, sector_by_symbol)
     return _assemble_report(
         db=db,
         args=args,
@@ -193,6 +199,7 @@ def _build_enriched_report(
         coverage=coverage,
         strategies=strategies,
         all_outcomes=all_outcomes,
+        sector_breakdown=static_sector_breakdown(all_outcomes, sector_by_symbol, limit=30),
         base_report=base_report,
     )
 
@@ -206,7 +213,7 @@ def _refresh_existing_report(db, args: argparse.Namespace) -> dict[str, Any]:
     evaluation_dates = _trade_dates_in_window(db, start=window.get("start", ""), end=window.get("end", ""))
     latest_completed = window.get("end") or report.get("summary", {}).get("actual_evaluation_end") or source.get("daily_max_trade_date", "")
     coverage = _coverage(args.start, source.get("daily_min_trade_date", ""), source.get("daily_max_trade_date", ""))
-    strategies = list(report.get("all_strategies") or [])
+    strategies = _refresh_strategy_family_metadata(list(report.get("all_strategies") or []))
     all_outcomes: list[Any] = []
     refreshed = _assemble_report(
         db=db,
@@ -217,9 +224,10 @@ def _refresh_existing_report(db, args: argparse.Namespace) -> dict[str, Any]:
         coverage=coverage,
         strategies=strategies,
         all_outcomes=all_outcomes,
+        sector_breakdown=report.get("performance_by_sector", {}),
         base_report={"summary": report.get("raw_low_buy_report_summary") or report.get("summary", {}), "methodology": report.get("methodology", {})},
     )
-    for key in ("performance_by_family", "performance_by_quarter", "performance_by_market_state", "performance_by_signal_state"):
+    for key in ("performance_by_family", "performance_by_quarter", "performance_by_market_state", "performance_by_signal_state", "performance_by_sector"):
         refreshed[key] = report.get(key, [])
     report.update(refreshed)
     report["generated_at"] = datetime.now().isoformat(timespec="seconds")
@@ -236,6 +244,7 @@ def _assemble_report(
     coverage: dict[str, Any],
     strategies: list[dict[str, Any]],
     all_outcomes: list[Any],
+    sector_breakdown: dict[str, Any] | list[dict[str, Any]],
     base_report: dict[str, Any],
 ) -> dict[str, Any]:
     end = source.get("daily_max_trade_date", "")
@@ -255,6 +264,12 @@ def _assemble_report(
         "coverage_warning": coverage["warning"],
         "execution_constraints": _execution_constraints(),
     }
+    parameter_changes = parameter_suggestions(strategies)
+    family_rows = group_breakdown(
+        all_outcomes,
+        lambda item: _strategy_family(item.strategy_key),
+        title_lookup=_strategy_family_label,
+    )
     return {
         "title": "全策略最近 24 个月回测报告",
         "generated_at": datetime.now().isoformat(timespec="seconds"),
@@ -272,15 +287,21 @@ def _assemble_report(
         "summary": summary,
         "all_strategies": strategies,
         "strategy_ranking": rank_strategies(strategies),
-        "performance_by_family": group_breakdown(all_outcomes, lambda item: _strategy_family(item.strategy_key), title_lookup=_strategy_family_label),
+        "strategy_family_summary": strategy_family_summary(
+            strategies,
+            family_rows,
+            parameter_changes,
+        ),
+        "performance_by_family": family_rows,
         "performance_by_quarter": group_breakdown(all_outcomes, lambda item: quarter(item.signal_date)),
         "performance_by_market_state": group_breakdown(all_outcomes, lambda item: item.market_state or "unknown"),
         "performance_by_signal_state": signal_state_breakdown(all_outcomes),
+        "performance_by_sector": sector_breakdown,
         "etf_t0": etf_t0,
         "sector_etf_t0": sector_etf_t0,
         "smart_t": smart_t,
         "abnormal_strategies": abnormal_strategies(strategies),
-        "parameter_adjustment_suggestions": parameter_suggestions(strategies),
+        "parameter_adjustment_suggestions": parameter_changes,
         "data_and_test_gaps": data_and_test_gaps(coverage, etf_t0, sector_etf_t0, smart_t, strategies),
         "production_observation_conclusion": production_conclusion(strategies, etf_t0, sector_etf_t0, smart_t, coverage),
         "raw_low_buy_report_summary": base_report["summary"],
@@ -303,6 +324,17 @@ def _data_source_summary(db) -> dict[str, Any]:
         "minute_min_trade_date": str(minute_min or ""),
         "minute_max_trade_date": str(minute_max or ""),
     }
+
+
+def _refresh_strategy_family_metadata(strategies: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    refreshed: list[dict[str, Any]] = []
+    for item in strategies:
+        strategy_key = str(item.get("strategy_key") or "")
+        updated = dict(item)
+        updated["strategy_family"] = _strategy_family(strategy_key)
+        updated["strategy_family_text"] = _strategy_family_label(strategy_key)
+        refreshed.append(updated)
+    return refreshed
 
 
 def _coverage(start: str, actual_start: str, actual_end: str) -> dict[str, Any]:

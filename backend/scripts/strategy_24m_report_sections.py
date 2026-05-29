@@ -41,12 +41,12 @@ def smart_t_section(db, *, args, source: dict[str, Any], latest_completed: str) 
     return {"status": status, "strategy_key": "smart_t", "strategy_title": "个股底仓 SmartT 洗盘加仓日线代理验证", "notes": notes, "report": payload}
 
 
-def etf_t0_section(db, *, start: str, end: str) -> dict[str, Any]:
+def etf_t0_section(db, *, start: str, end: str, bar_period: str = "5m") -> dict[str, Any]:
     profiles = [profile for profile in list_etf_profiles() if profile.same_day_sell_allowed]
     symbols = [profile.symbol for profile in profiles]
-    minute_count = int(db.execute(select(func.count(MinuteBarSnapshot.id))).scalar_one() or 0)
+    minute_count = int(db.execute(select(func.count(MinuteBarSnapshot.id)).where(MinuteBarSnapshot.bar_period == bar_period)).scalar_one() or 0)
     expected_days = _expected_trade_days(db, start=start, end=end)
-    ranges = _minute_ranges(db, symbols=symbols, start=start, end=end)
+    ranges = _minute_ranges(db, symbols=symbols, start=start, end=end, bar_period=bar_period)
     accepted = [symbol for symbol, row in ranges.items() if _trade_day_coverage_pct(row["trade_days"], expected_days) >= MIN_ETF_T0_TRADE_DAY_COVERAGE_PCT]
     reports = []
     for profile in profiles:
@@ -70,7 +70,7 @@ def etf_t0_section(db, *, start: str, end: str) -> dict[str, Any]:
                 }
             )
             continue
-        report = run_etf_t0_research_report(symbol=profile.symbol, name=profile.name, bars=_minute_bars_for_symbol(db, profile.symbol, start=start, end=end)).to_dict()
+        report = run_etf_t0_research_report(symbol=profile.symbol, name=profile.name, bars=_minute_bars_for_symbol(db, profile.symbol, start=start, end=end, bar_period=bar_period)).to_dict()
         report["trade_day_coverage_pct"] = coverage_pct
         reports.append(report)
     status = "completed" if len(accepted) == len(profiles) and profiles else ("partial_minute_coverage" if minute_count else "blocked_by_data")
@@ -85,6 +85,7 @@ def etf_t0_section(db, *, start: str, end: str) -> dict[str, Any]:
         "accepted_symbol_count": len(accepted),
         "expected_trade_day_count": expected_days,
         "min_trade_day_coverage_pct": MIN_ETF_T0_TRADE_DAY_COVERAGE_PCT,
+        "bar_period": bar_period,
         "reports": reports,
         "notes": [
             "ETF T0 必须用窗口内分钟线和 ETF 专用费用模型验收；近端短窗口分钟线只能作为数据探针。",
@@ -170,10 +171,10 @@ def _expected_trade_days(db, *, start: str, end: str) -> int:
     return int(db.execute(select(func.count(func.distinct(DailyBarSnapshot.trade_date))).where(DailyBarSnapshot.instrument_type == "stock", DailyBarSnapshot.trade_date >= start, DailyBarSnapshot.trade_date <= end)).scalar_one() or 0)
 
 
-def _minute_ranges(db, *, symbols: list[str], start: str, end: str) -> dict[str, dict[str, Any]]:
+def _minute_ranges(db, *, symbols: list[str], start: str, end: str, bar_period: str) -> dict[str, dict[str, Any]]:
     if not symbols:
         return {}
-    rows = db.execute(select(MinuteBarSnapshot.symbol, func.count(MinuteBarSnapshot.id), func.count(func.distinct(MinuteBarSnapshot.trade_date)), func.min(MinuteBarSnapshot.trade_date), func.max(MinuteBarSnapshot.trade_date)).where(MinuteBarSnapshot.symbol.in_(symbols), MinuteBarSnapshot.trade_date >= start, MinuteBarSnapshot.trade_date <= end).group_by(MinuteBarSnapshot.symbol)).all()
+    rows = db.execute(select(MinuteBarSnapshot.symbol, func.count(MinuteBarSnapshot.id), func.count(func.distinct(MinuteBarSnapshot.trade_date)), func.min(MinuteBarSnapshot.trade_date), func.max(MinuteBarSnapshot.trade_date)).where(MinuteBarSnapshot.symbol.in_(symbols), MinuteBarSnapshot.trade_date >= start, MinuteBarSnapshot.trade_date <= end, MinuteBarSnapshot.bar_period == bar_period).group_by(MinuteBarSnapshot.symbol)).all()
     return {str(row[0]): {"rows": int(row[1] or 0), "trade_days": int(row[2] or 0), "actual_start": str(row[3] or ""), "actual_end": str(row[4] or "")} for row in rows}
 
 
@@ -181,10 +182,10 @@ def _trade_day_coverage_pct(actual: int, expected: int) -> float:
     return round(float(actual) / float(expected) * 100.0, 2) if expected else 0.0
 
 
-def _minute_bars_for_symbol(db, symbol: str, *, start: str, end: str):
+def _minute_bars_for_symbol(db, symbol: str, *, start: str, end: str, bar_period: str):
     from app.models.schemas import KlineBar
 
-    rows = db.execute(select(MinuteBarSnapshot).where(MinuteBarSnapshot.symbol == symbol, MinuteBarSnapshot.trade_date >= start, MinuteBarSnapshot.trade_date <= end).order_by(MinuteBarSnapshot.bar_timestamp.asc())).scalars().all()
+    rows = db.execute(select(MinuteBarSnapshot).where(MinuteBarSnapshot.symbol == symbol, MinuteBarSnapshot.trade_date >= start, MinuteBarSnapshot.trade_date <= end, MinuteBarSnapshot.bar_period == bar_period).order_by(MinuteBarSnapshot.bar_timestamp.asc())).scalars().all()
     return [KlineBar(timestamp=row.bar_timestamp, open=float(row.open_price or 0.0), high=float(row.high_price or 0.0), low=float(row.low_price or 0.0), close=float(row.close_price or 0.0), volume=float(row.volume or 0.0), amount=float(row.amount or 0.0)) for row in rows]
 
 

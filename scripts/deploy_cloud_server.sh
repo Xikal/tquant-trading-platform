@@ -82,6 +82,7 @@ make_package() {
     --exclude='.git' \
     --exclude='.codex' \
     --exclude='.continue' \
+    --exclude='.understand-anything' \
     --exclude='.runtime' \
     --exclude='.mysql-dist' \
     --exclude='.mysql-local' \

@@ -149,6 +149,12 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--months", type=int, default=24)
     parser.add_argument("--start", default="")
     parser.add_argument("--end", default="")
+    parser.add_argument("--train-start", default="")
+    parser.add_argument("--train-end", default="")
+    parser.add_argument("--validation-start", default="")
+    parser.add_argument("--validation-end", default="")
+    parser.add_argument("--purged-gap-start", default="")
+    parser.add_argument("--purged-gap-end", default="")
     parser.add_argument("--strategies", default="all")
     parser.add_argument("--states", default="confirmed")
     parser.add_argument("--scan-limit", type=int, default=480)
@@ -182,6 +188,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main() -> int:
     args = build_parser().parse_args()
+    _validate_temporal_splits(args)
     selected = _resolve_variants(args.variants)
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -636,6 +643,15 @@ def _build_matrix_report(*, args: argparse.Namespace, rows: list[dict[str, Any]]
             "months": args.months,
             "start": args.start,
             "end": args.end,
+            "train_start": args.train_start,
+            "train_end": args.train_end,
+            "validation_start": args.validation_start,
+            "validation_end": args.validation_end,
+            "purged_gap_start": args.purged_gap_start,
+            "purged_gap_end": args.purged_gap_end,
+            "split_plan_encoded": _split_plan_encoded(args),
+            "purged_gap_days": _purged_gap_days(args),
+            "purged_gap_temporal_order_passed": _split_plan_temporal_order_passed(args),
             "strategies": args.strategies,
             "states": args.states,
             "scan_limit": args.scan_limit,
@@ -651,6 +667,64 @@ def _build_matrix_report(*, args: argparse.Namespace, rows: list[dict[str, Any]]
         "best_by_avg_net_return": _best_key(rows, "avg_net_return_pct"),
         "warning": _coverage_warning(rows),
     }
+
+
+def _validate_temporal_splits(args: argparse.Namespace) -> None:
+    fields = (
+        args.train_start,
+        args.train_end,
+        args.validation_start,
+        args.validation_end,
+        args.purged_gap_start,
+        args.purged_gap_end,
+        args.start,
+        args.end,
+    )
+    provided = [item for item in fields if item]
+    if not provided:
+        return
+    if len(provided) != len(fields):
+        raise SystemExit("train/validation/purged-gap/oos 边界必须同时提供。")
+    if not _split_plan_temporal_order_passed(args):
+        raise SystemExit("train/validation/purged-gap/oos 边界时间顺序不合法。")
+
+
+def _split_plan_encoded(args: argparse.Namespace) -> bool:
+    return all(
+        [
+            args.train_start,
+            args.train_end,
+            args.validation_start,
+            args.validation_end,
+            args.purged_gap_start,
+            args.purged_gap_end,
+            args.start,
+            args.end,
+        ]
+    )
+
+
+def _split_plan_temporal_order_passed(args: argparse.Namespace) -> bool:
+    if not _split_plan_encoded(args):
+        return False
+    values = [
+        args.train_start,
+        args.train_end,
+        args.validation_start,
+        args.validation_end,
+        args.purged_gap_start,
+        args.purged_gap_end,
+        args.start,
+        args.end,
+    ]
+    parsed = [date.fromisoformat(item) for item in values]
+    return all(parsed[index] <= parsed[index + 1] for index in range(len(parsed) - 1))
+
+
+def _purged_gap_days(args: argparse.Namespace) -> int:
+    if not args.purged_gap_start or not args.purged_gap_end:
+        return 0
+    return (date.fromisoformat(args.purged_gap_end) - date.fromisoformat(args.purged_gap_start)).days + 1
 
 
 def _best_key(rows: list[dict[str, Any]], field: str, *, reverse: bool = True) -> str:

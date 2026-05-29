@@ -2,7 +2,7 @@
   "title": "策略胜率/盈利率提升闭环报告",
   "version": "strategy-improvement-closed-loop-v1",
   "summary": {
-    "generated_at": "2026-05-28T10:21:55",
+    "generated_at": "2026-05-29T09:46:23",
     "requested_window": {
       "start": "2024-05-28",
       "end": "2026-04-28"
@@ -504,12 +504,13 @@
     "status": "blocked_by_data",
     "raw_data_status": "partial",
     "blocked_reason": "insufficient_window_trade_day_coverage",
-    "bar_count": 24586,
+    "bar_period": "5m",
+    "bar_count": 24344,
     "symbol_count": 22,
     "window_bar_count": 24344,
-    "out_of_window_bar_count": 242,
+    "out_of_window_bar_count": 0,
     "actual_start": "2026-03-25",
-    "actual_end": "2026-05-27",
+    "actual_end": "2026-04-28",
     "expected_trade_day_count": 466,
     "eligible_etf_count": 22,
     "eligible_etf_with_minutes": 22,
@@ -916,25 +917,58 @@
         "reason": "insufficient_window_trade_day_coverage"
       }
     ],
-    "out_of_window_symbol_sample": [
-      {
-        "symbol": "510300",
-        "rows": 242,
-        "actual_start": "2026-05-27",
-        "actual_end": "2026-05-27"
-      }
-    ],
+    "out_of_window_symbol_sample": [],
     "provider_diagnostics": {
-      "status": "partial_data",
-      "report_path": "docs/reports/etf-minute-backfill-tushare-probe-2026-05-28.json",
-      "generated_at": "2026-05-28T01:56:48",
+      "status": "completed",
+      "report_path": "docs/reports/etf-minute-backfill-t0-5m-refresh-2026-05-29.json",
+      "generated_at": "2026-05-29T01:40:57",
       "totals": {
-        "ok": 0,
+        "ok": 22,
         "skip": 0,
-        "empty": 1,
+        "empty": 0,
         "error": 0
       },
       "provider_errors_sample": [
+        {
+          "symbol": "159915",
+          "source": "tushare.stk_mins",
+          "message": "tushare token not configured"
+        },
+        {
+          "symbol": "159915",
+          "source": "eastmoney.etf_minute",
+          "message": "candidate:576 bars/12 trade_days"
+        },
+        {
+          "symbol": "159915",
+          "source": "akshare.fund_etf_hist_min_em",
+          "message": "candidate:576 bars/12 trade_days"
+        },
+        {
+          "symbol": "159915",
+          "source": "sina.kline",
+          "message": "candidate:1055 bars/22 trade_days"
+        },
+        {
+          "symbol": "159930",
+          "source": "tushare.stk_mins",
+          "message": "tushare token not configured"
+        },
+        {
+          "symbol": "159930",
+          "source": "eastmoney.etf_minute",
+          "message": "candidate:576 bars/12 trade_days"
+        },
+        {
+          "symbol": "159930",
+          "source": "akshare.fund_etf_hist_min_em",
+          "message": "candidate:576 bars/12 trade_days"
+        },
+        {
+          "symbol": "159930",
+          "source": "sina.kline",
+          "message": "candidate:1055 bars/22 trade_days"
+        },
         {
           "symbol": "510300",
           "source": "tushare.stk_mins",
@@ -943,20 +977,20 @@
         {
           "symbol": "510300",
           "source": "eastmoney.etf_minute",
-          "message": "Remote end closed connection without response"
+          "message": "candidate:576 bars/12 trade_days"
         },
         {
           "symbol": "510300",
           "source": "akshare.fund_etf_hist_min_em",
-          "message": "HTTPSConnectionPool(host='push2his.eastmoney.com', port=443): Max retries exceeded with url: /api/qt/stock/kline/get?fields1=f1%2Cf2%2Cf3%2Cf4%2Cf5%2Cf6&fields2=f51%2Cf52%2Cf53%2Cf"
+          "message": "candidate:576 bars/12 trade_days"
         },
         {
           "symbol": "510300",
           "source": "sina.kline",
-          "message": "empty"
+          "message": "candidate:1055 bars/22 trade_days"
         }
       ],
-      "write_effect": "no_bars_written",
+      "write_effect": "provider_bars_written",
       "fake_data_policy": "fake_minute_bars_forbidden"
     }
   },
@@ -969,12 +1003,10 @@
     "lineage_field_gaps": [],
     "metadata_coverage": {
       "status": "fail",
-      "blocking_gap_count": 5,
+      "blocking_gap_count": 3,
       "blocking_gaps": [
         "minute_bar_snapshots.bid_ask_spread_positive_coverage_lt_95pct",
         "minute_bar_snapshots.premium_discount_coverage_lt_95pct",
-        "minute_bar_snapshots.tracking_index_coverage_lt_95pct",
-        "minute_bar_snapshots.liquidity_tier_coverage_lt_95pct",
         "minute_bar_snapshots.data_quality_fresh_coverage_lt_95pct"
       ],
       "schema_checks": [
@@ -1112,16 +1144,15 @@
           "missing": [
             "minute_bar_snapshots.bid_ask_spread_positive_coverage_lt_95pct",
             "minute_bar_snapshots.premium_discount_coverage_lt_95pct",
-            "minute_bar_snapshots.tracking_index_coverage_lt_95pct",
-            "minute_bar_snapshots.liquidity_tier_coverage_lt_95pct",
             "minute_bar_snapshots.data_quality_fresh_coverage_lt_95pct"
           ],
           "evidence": {
+            "bar_period": "5m",
             "etf_minute_rows": 24344,
             "bid_ask_spread_positive_pct": 0.0,
             "premium_discount_pct": 0.0,
-            "tracking_index_symbol_pct": 0.09,
-            "liquidity_tier_pct": 0.09,
+            "tracking_index_symbol_pct": 100.0,
+            "liquidity_tier_pct": 100.0,
             "fresh_or_verified_pct": 0.0
           },
           "reason": "ETF T0 需要真实盘口价差、折溢价、跟踪指数、流动性和 fresh/verified 分钟执行元数据；默认 0 或 partial_metadata 不能正式验收。"
@@ -1244,9 +1275,10 @@
     "status": "available",
     "strategy_count": 17,
     "state_counts": {
-      "high_return_high_drawdown": 12,
+      "research_candidate": 7,
+      "positive_expectancy_candidate": 5,
       "weak_strategy": 4,
-      "positive_expectancy_candidate": 1
+      "high_return_high_drawdown": 1
     },
     "items": [
       {
@@ -1258,11 +1290,11 @@
         "win_rate_pct": 51.23,
         "profit_factor": 1.1889,
         "avg_trade_return_pct": 0.2496,
-        "max_drawdown_pct": -99.0843,
+        "max_drawdown_pct": -28.0354,
         "stop_loss_rate_pct": 33.29,
-        "governance_state": "high_return_high_drawdown",
-        "recommended_action": "add_market_state_position_exit_constraints",
-        "governance_score": 0.526,
+        "governance_state": "research_candidate",
+        "recommended_action": "second_backtest_with_constraints",
+        "governance_score": 2.6574,
         "constraints_to_test": [
           "data_quality_non_fresh_no_strong_buy",
           "st_stopped_delisted_no_entry",
@@ -1271,10 +1303,6 @@
           "sector_concentration_position_cap",
           "consecutive_stop_loss_strategy_pause",
           "last_20_trades_negative_net_win_rate_downgrade",
-          "weak_market_block_or_reduce",
-          "market_breadth_poor_reduce",
-          "sector_strength_floor",
-          "trailing_profit_pullback_limit",
           "entry_quality_score_raise"
         ],
         "parameter_grid_allowed": [
@@ -1352,11 +1380,11 @@
         "win_rate_pct": 38.47,
         "profit_factor": 1.1649,
         "avg_trade_return_pct": 0.2379,
-        "max_drawdown_pct": -99.9942,
+        "max_drawdown_pct": -24.6639,
         "stop_loss_rate_pct": 21.99,
-        "governance_state": "high_return_high_drawdown",
-        "recommended_action": "add_market_state_position_exit_constraints",
-        "governance_score": 0.2822,
+        "governance_state": "research_candidate",
+        "recommended_action": "second_backtest_with_constraints",
+        "governance_score": 2.5421,
         "constraints_to_test": [
           "data_quality_non_fresh_no_strong_buy",
           "st_stopped_delisted_no_entry",
@@ -1364,11 +1392,7 @@
           "liquidity_amount_floor",
           "sector_concentration_position_cap",
           "consecutive_stop_loss_strategy_pause",
-          "last_20_trades_negative_net_win_rate_downgrade",
-          "weak_market_block_or_reduce",
-          "market_breadth_poor_reduce",
-          "sector_strength_floor",
-          "trailing_profit_pullback_limit"
+          "last_20_trades_negative_net_win_rate_downgrade"
         ],
         "parameter_grid_allowed": [
           {
@@ -1445,11 +1469,11 @@
         "win_rate_pct": 49.31,
         "profit_factor": 2.0712,
         "avg_trade_return_pct": 0.9145,
-        "max_drawdown_pct": -81.0421,
+        "max_drawdown_pct": -14.1362,
         "stop_loss_rate_pct": 6.1,
-        "governance_state": "high_return_high_drawdown",
-        "recommended_action": "add_market_state_position_exit_constraints",
-        "governance_score": 3.9829,
+        "governance_state": "positive_expectancy_candidate",
+        "recommended_action": "walk_forward_then_paper_observe",
+        "governance_score": 5.9901,
         "constraints_to_test": [
           "data_quality_non_fresh_no_strong_buy",
           "st_stopped_delisted_no_entry",
@@ -1457,11 +1481,7 @@
           "liquidity_amount_floor",
           "sector_concentration_position_cap",
           "consecutive_stop_loss_strategy_pause",
-          "last_20_trades_negative_net_win_rate_downgrade",
-          "weak_market_block_or_reduce",
-          "market_breadth_poor_reduce",
-          "sector_strength_floor",
-          "trailing_profit_pullback_limit"
+          "last_20_trades_negative_net_win_rate_downgrade"
         ],
         "parameter_grid_allowed": [
           {
@@ -1538,11 +1558,11 @@
         "win_rate_pct": 55.19,
         "profit_factor": 1.4405,
         "avg_trade_return_pct": 0.445,
-        "max_drawdown_pct": -95.025,
+        "max_drawdown_pct": -33.901,
         "stop_loss_rate_pct": 22.1,
-        "governance_state": "high_return_high_drawdown",
-        "recommended_action": "add_market_state_position_exit_constraints",
-        "governance_score": 1.6889,
+        "governance_state": "positive_expectancy_candidate",
+        "recommended_action": "walk_forward_then_paper_observe",
+        "governance_score": 3.5227,
         "constraints_to_test": [
           "data_quality_non_fresh_no_strong_buy",
           "st_stopped_delisted_no_entry",
@@ -1550,11 +1570,7 @@
           "liquidity_amount_floor",
           "sector_concentration_position_cap",
           "consecutive_stop_loss_strategy_pause",
-          "last_20_trades_negative_net_win_rate_downgrade",
-          "weak_market_block_or_reduce",
-          "market_breadth_poor_reduce",
-          "sector_strength_floor",
-          "trailing_profit_pullback_limit"
+          "last_20_trades_negative_net_win_rate_downgrade"
         ],
         "parameter_grid_allowed": [
           {
@@ -1631,11 +1647,11 @@
         "win_rate_pct": 46.58,
         "profit_factor": 1.1715,
         "avg_trade_return_pct": 0.2301,
-        "max_drawdown_pct": -99.5139,
+        "max_drawdown_pct": -27.6311,
         "stop_loss_rate_pct": 15.18,
-        "governance_state": "high_return_high_drawdown",
-        "recommended_action": "add_market_state_position_exit_constraints",
-        "governance_score": 0.6815,
+        "governance_state": "research_candidate",
+        "recommended_action": "second_backtest_with_constraints",
+        "governance_score": 2.838,
         "constraints_to_test": [
           "data_quality_non_fresh_no_strong_buy",
           "st_stopped_delisted_no_entry",
@@ -1643,11 +1659,7 @@
           "liquidity_amount_floor",
           "sector_concentration_position_cap",
           "consecutive_stop_loss_strategy_pause",
-          "last_20_trades_negative_net_win_rate_downgrade",
-          "weak_market_block_or_reduce",
-          "market_breadth_poor_reduce",
-          "sector_strength_floor",
-          "trailing_profit_pullback_limit"
+          "last_20_trades_negative_net_win_rate_downgrade"
         ],
         "parameter_grid_allowed": [
           {
@@ -1724,11 +1736,11 @@
         "win_rate_pct": 36.04,
         "profit_factor": 1.1238,
         "avg_trade_return_pct": 0.1868,
-        "max_drawdown_pct": -99.7916,
+        "max_drawdown_pct": -26.1027,
         "stop_loss_rate_pct": 23.75,
-        "governance_state": "high_return_high_drawdown",
-        "recommended_action": "add_market_state_position_exit_constraints",
-        "governance_score": 0.0469,
+        "governance_state": "research_candidate",
+        "recommended_action": "second_backtest_with_constraints",
+        "governance_score": 2.2575,
         "constraints_to_test": [
           "data_quality_non_fresh_no_strong_buy",
           "st_stopped_delisted_no_entry",
@@ -1736,11 +1748,7 @@
           "liquidity_amount_floor",
           "sector_concentration_position_cap",
           "consecutive_stop_loss_strategy_pause",
-          "last_20_trades_negative_net_win_rate_downgrade",
-          "weak_market_block_or_reduce",
-          "market_breadth_poor_reduce",
-          "sector_strength_floor",
-          "trailing_profit_pullback_limit"
+          "last_20_trades_negative_net_win_rate_downgrade"
         ],
         "parameter_grid_allowed": [
           {
@@ -1817,11 +1825,11 @@
         "win_rate_pct": 33.07,
         "profit_factor": 0.8697,
         "avg_trade_return_pct": -0.1993,
-        "max_drawdown_pct": -92.1876,
+        "max_drawdown_pct": -33.9582,
         "stop_loss_rate_pct": 18.45,
         "governance_state": "weak_strategy",
         "recommended_action": "pause_or_downgrade_production_weight",
-        "governance_score": -0.6024,
+        "governance_score": 1.1445,
         "constraints_to_test": [
           "data_quality_non_fresh_no_strong_buy",
           "st_stopped_delisted_no_entry",
@@ -1910,11 +1918,11 @@
         "win_rate_pct": 25.57,
         "profit_factor": 0.7557,
         "avg_trade_return_pct": -0.38,
-        "max_drawdown_pct": -88.4646,
+        "max_drawdown_pct": -57.0856,
         "stop_loss_rate_pct": 14.43,
         "governance_state": "weak_strategy",
         "recommended_action": "pause_or_downgrade_production_weight",
-        "governance_score": -1.044,
+        "governance_score": -0.1027,
         "constraints_to_test": [
           "data_quality_non_fresh_no_strong_buy",
           "st_stopped_delisted_no_entry",
@@ -1997,17 +2005,17 @@
       {
         "strategy_key": "ma_channel_band",
         "strategy_title": "均线通道波段",
-        "strategy_family": "ma_channel_band",
+        "strategy_family": "trend_support_band",
         "sample_count": 4993,
         "filled_count": 4690,
         "win_rate_pct": 58.06,
         "profit_factor": 1.7248,
         "avg_trade_return_pct": 0.9279,
-        "max_drawdown_pct": -93.2824,
+        "max_drawdown_pct": -23.2026,
         "stop_loss_rate_pct": 30.85,
-        "governance_state": "high_return_high_drawdown",
-        "recommended_action": "add_market_state_position_exit_constraints",
-        "governance_score": 2.7038,
+        "governance_state": "positive_expectancy_candidate",
+        "recommended_action": "walk_forward_then_paper_observe",
+        "governance_score": 4.8062,
         "constraints_to_test": [
           "data_quality_non_fresh_no_strong_buy",
           "st_stopped_delisted_no_entry",
@@ -2016,10 +2024,6 @@
           "sector_concentration_position_cap",
           "consecutive_stop_loss_strategy_pause",
           "last_20_trades_negative_net_win_rate_downgrade",
-          "weak_market_block_or_reduce",
-          "market_breadth_poor_reduce",
-          "sector_strength_floor",
-          "trailing_profit_pullback_limit",
           "entry_quality_score_raise"
         ],
         "parameter_grid_allowed": [
@@ -2097,11 +2101,11 @@
         "win_rate_pct": 56.62,
         "profit_factor": 1.4279,
         "avg_trade_return_pct": 0.5008,
-        "max_drawdown_pct": -80.2758,
+        "max_drawdown_pct": -19.6466,
         "stop_loss_rate_pct": 31.64,
-        "governance_state": "high_return_high_drawdown",
-        "recommended_action": "add_market_state_position_exit_constraints",
-        "governance_score": 2.0141,
+        "governance_state": "positive_expectancy_candidate",
+        "recommended_action": "walk_forward_then_paper_observe",
+        "governance_score": 3.833,
         "constraints_to_test": [
           "data_quality_non_fresh_no_strong_buy",
           "st_stopped_delisted_no_entry",
@@ -2110,10 +2114,6 @@
           "sector_concentration_position_cap",
           "consecutive_stop_loss_strategy_pause",
           "last_20_trades_negative_net_win_rate_downgrade",
-          "weak_market_block_or_reduce",
-          "market_breadth_poor_reduce",
-          "sector_strength_floor",
-          "trailing_profit_pullback_limit",
           "entry_quality_score_raise"
         ],
         "parameter_grid_allowed": [
@@ -2191,11 +2191,11 @@
         "win_rate_pct": 48.31,
         "profit_factor": 1.1256,
         "avg_trade_return_pct": 0.2339,
-        "max_drawdown_pct": -98.1091,
+        "max_drawdown_pct": -54.1686,
         "stop_loss_rate_pct": 23.12,
         "governance_state": "high_return_high_drawdown",
         "recommended_action": "add_market_state_position_exit_constraints",
-        "governance_score": 0.5287,
+        "governance_score": 1.8469,
         "constraints_to_test": [
           "data_quality_non_fresh_no_strong_buy",
           "st_stopped_delisted_no_entry",
@@ -2284,11 +2284,11 @@
         "win_rate_pct": 42.29,
         "profit_factor": 0.7081,
         "avg_trade_return_pct": -0.5281,
-        "max_drawdown_pct": -99.9981,
+        "max_drawdown_pct": -88.9585,
         "stop_loss_rate_pct": 22.31,
         "governance_state": "weak_strategy",
         "recommended_action": "pause_or_downgrade_production_weight",
-        "governance_score": -1.2893,
+        "governance_score": -0.9582,
         "constraints_to_test": [
           "data_quality_non_fresh_no_strong_buy",
           "st_stopped_delisted_no_entry",
@@ -2377,11 +2377,11 @@
         "win_rate_pct": 47.12,
         "profit_factor": 1.038,
         "avg_trade_return_pct": 0.0593,
-        "max_drawdown_pct": -99.8381,
+        "max_drawdown_pct": -38.2043,
         "stop_loss_rate_pct": 21.2,
-        "governance_state": "high_return_high_drawdown",
-        "recommended_action": "add_market_state_position_exit_constraints",
-        "governance_score": 0.1298,
+        "governance_state": "research_candidate",
+        "recommended_action": "second_backtest_with_constraints",
+        "governance_score": 1.9788,
         "constraints_to_test": [
           "data_quality_non_fresh_no_strong_buy",
           "st_stopped_delisted_no_entry",
@@ -2389,11 +2389,7 @@
           "liquidity_amount_floor",
           "sector_concentration_position_cap",
           "consecutive_stop_loss_strategy_pause",
-          "last_20_trades_negative_net_win_rate_downgrade",
-          "weak_market_block_or_reduce",
-          "market_breadth_poor_reduce",
-          "sector_strength_floor",
-          "trailing_profit_pullback_limit"
+          "last_20_trades_negative_net_win_rate_downgrade"
         ],
         "parameter_grid_allowed": [
           {
@@ -2470,11 +2466,11 @@
         "win_rate_pct": 43.77,
         "profit_factor": 1.0132,
         "avg_trade_return_pct": 0.0171,
-        "max_drawdown_pct": -86.324,
+        "max_drawdown_pct": -30.2383,
         "stop_loss_rate_pct": 21.13,
-        "governance_state": "high_return_high_drawdown",
-        "recommended_action": "add_market_state_position_exit_constraints",
-        "governance_score": 0.3443,
+        "governance_state": "research_candidate",
+        "recommended_action": "second_backtest_with_constraints",
+        "governance_score": 2.0269,
         "constraints_to_test": [
           "data_quality_non_fresh_no_strong_buy",
           "st_stopped_delisted_no_entry",
@@ -2482,11 +2478,7 @@
           "liquidity_amount_floor",
           "sector_concentration_position_cap",
           "consecutive_stop_loss_strategy_pause",
-          "last_20_trades_negative_net_win_rate_downgrade",
-          "weak_market_block_or_reduce",
-          "market_breadth_poor_reduce",
-          "sector_strength_floor",
-          "trailing_profit_pullback_limit"
+          "last_20_trades_negative_net_win_rate_downgrade"
         ],
         "parameter_grid_allowed": [
           {
@@ -2563,11 +2555,11 @@
         "win_rate_pct": 41.29,
         "profit_factor": 0.9204,
         "avg_trade_return_pct": -0.1233,
-        "max_drawdown_pct": -58.7306,
+        "max_drawdown_pct": -50.9129,
         "stop_loss_rate_pct": 3.98,
         "governance_state": "weak_strategy",
         "recommended_action": "pause_or_downgrade_production_weight",
-        "governance_score": 1.1147,
+        "governance_score": 1.3492,
         "constraints_to_test": [
           "data_quality_non_fresh_no_strong_buy",
           "st_stopped_delisted_no_entry",
@@ -2656,11 +2648,11 @@
         "win_rate_pct": 67.1,
         "profit_factor": 1.9587,
         "avg_trade_return_pct": 0.7517,
-        "max_drawdown_pct": -22.6225,
+        "max_drawdown_pct": -21.588,
         "stop_loss_rate_pct": 22.58,
         "governance_state": "positive_expectancy_candidate",
         "recommended_action": "walk_forward_then_paper_observe",
-        "governance_score": 5.5518,
+        "governance_score": 5.5829,
         "constraints_to_test": [
           "data_quality_non_fresh_no_strong_buy",
           "st_stopped_delisted_no_entry",
@@ -2745,11 +2737,11 @@
         "win_rate_pct": 47.34,
         "profit_factor": 1.0656,
         "avg_trade_return_pct": 0.0967,
-        "max_drawdown_pct": -99.2297,
+        "max_drawdown_pct": -43.0342,
         "stop_loss_rate_pct": 28.25,
-        "governance_state": "high_return_high_drawdown",
-        "recommended_action": "add_market_state_position_exit_constraints",
-        "governance_score": 0.1062,
+        "governance_state": "research_candidate",
+        "recommended_action": "second_backtest_with_constraints",
+        "governance_score": 1.7921,
         "constraints_to_test": [
           "data_quality_non_fresh_no_strong_buy",
           "st_stopped_delisted_no_entry",
@@ -2758,10 +2750,6 @@
           "sector_concentration_position_cap",
           "consecutive_stop_loss_strategy_pause",
           "last_20_trades_negative_net_win_rate_downgrade",
-          "weak_market_block_or_reduce",
-          "market_breadth_poor_reduce",
-          "sector_strength_floor",
-          "trailing_profit_pullback_limit",
           "entry_quality_score_raise"
         ],
         "parameter_grid_allowed": [
@@ -2833,19 +2821,19 @@
     ],
     "ranking": [
       {
-        "strategy_key": "deep_pullback",
-        "strategy_title": "深度低吸",
-        "strategy_family": "deep_pullback",
-        "sample_count": 164,
-        "filled_count": 155,
-        "win_rate_pct": 67.1,
-        "profit_factor": 1.9587,
-        "avg_trade_return_pct": 0.7517,
-        "max_drawdown_pct": -22.6225,
-        "stop_loss_rate_pct": 22.58,
+        "strategy_key": "first_board",
+        "strategy_title": "首板回调",
+        "strategy_family": "first_board_retest",
+        "sample_count": 8778,
+        "filled_count": 7874,
+        "win_rate_pct": 49.31,
+        "profit_factor": 2.0712,
+        "avg_trade_return_pct": 0.9145,
+        "max_drawdown_pct": -14.1362,
+        "stop_loss_rate_pct": 6.1,
         "governance_state": "positive_expectancy_candidate",
         "recommended_action": "walk_forward_then_paper_observe",
-        "governance_score": 5.5518,
+        "governance_score": 5.9901,
         "constraints_to_test": [
           "data_quality_non_fresh_no_strong_buy",
           "st_stopped_delisted_no_entry",
@@ -2922,19 +2910,19 @@
         ]
       },
       {
-        "strategy_key": "first_board",
-        "strategy_title": "首板回调",
-        "strategy_family": "first_board_retest",
-        "sample_count": 8778,
-        "filled_count": 7874,
-        "win_rate_pct": 49.31,
-        "profit_factor": 2.0712,
-        "avg_trade_return_pct": 0.9145,
-        "max_drawdown_pct": -81.0421,
-        "stop_loss_rate_pct": 6.1,
-        "governance_state": "high_return_high_drawdown",
-        "recommended_action": "add_market_state_position_exit_constraints",
-        "governance_score": 3.9829,
+        "strategy_key": "deep_pullback",
+        "strategy_title": "深度低吸",
+        "strategy_family": "deep_pullback",
+        "sample_count": 164,
+        "filled_count": 155,
+        "win_rate_pct": 67.1,
+        "profit_factor": 1.9587,
+        "avg_trade_return_pct": 0.7517,
+        "max_drawdown_pct": -21.588,
+        "stop_loss_rate_pct": 22.58,
+        "governance_state": "positive_expectancy_candidate",
+        "recommended_action": "walk_forward_then_paper_observe",
+        "governance_score": 5.5829,
         "constraints_to_test": [
           "data_quality_non_fresh_no_strong_buy",
           "st_stopped_delisted_no_entry",
@@ -2942,11 +2930,7 @@
           "liquidity_amount_floor",
           "sector_concentration_position_cap",
           "consecutive_stop_loss_strategy_pause",
-          "last_20_trades_negative_net_win_rate_downgrade",
-          "weak_market_block_or_reduce",
-          "market_breadth_poor_reduce",
-          "sector_strength_floor",
-          "trailing_profit_pullback_limit"
+          "last_20_trades_negative_net_win_rate_downgrade"
         ],
         "parameter_grid_allowed": [
           {
@@ -3017,17 +3001,17 @@
       {
         "strategy_key": "ma_channel_band",
         "strategy_title": "均线通道波段",
-        "strategy_family": "ma_channel_band",
+        "strategy_family": "trend_support_band",
         "sample_count": 4993,
         "filled_count": 4690,
         "win_rate_pct": 58.06,
         "profit_factor": 1.7248,
         "avg_trade_return_pct": 0.9279,
-        "max_drawdown_pct": -93.2824,
+        "max_drawdown_pct": -23.2026,
         "stop_loss_rate_pct": 30.85,
-        "governance_state": "high_return_high_drawdown",
-        "recommended_action": "add_market_state_position_exit_constraints",
-        "governance_score": 2.7038,
+        "governance_state": "positive_expectancy_candidate",
+        "recommended_action": "walk_forward_then_paper_observe",
+        "governance_score": 4.8062,
         "constraints_to_test": [
           "data_quality_non_fresh_no_strong_buy",
           "st_stopped_delisted_no_entry",
@@ -3036,10 +3020,6 @@
           "sector_concentration_position_cap",
           "consecutive_stop_loss_strategy_pause",
           "last_20_trades_negative_net_win_rate_downgrade",
-          "weak_market_block_or_reduce",
-          "market_breadth_poor_reduce",
-          "sector_strength_floor",
-          "trailing_profit_pullback_limit",
           "entry_quality_score_raise"
         ],
         "parameter_grid_allowed": [
@@ -3117,11 +3097,11 @@
         "win_rate_pct": 56.62,
         "profit_factor": 1.4279,
         "avg_trade_return_pct": 0.5008,
-        "max_drawdown_pct": -80.2758,
+        "max_drawdown_pct": -19.6466,
         "stop_loss_rate_pct": 31.64,
-        "governance_state": "high_return_high_drawdown",
-        "recommended_action": "add_market_state_position_exit_constraints",
-        "governance_score": 2.0141,
+        "governance_state": "positive_expectancy_candidate",
+        "recommended_action": "walk_forward_then_paper_observe",
+        "governance_score": 3.833,
         "constraints_to_test": [
           "data_quality_non_fresh_no_strong_buy",
           "st_stopped_delisted_no_entry",
@@ -3130,10 +3110,6 @@
           "sector_concentration_position_cap",
           "consecutive_stop_loss_strategy_pause",
           "last_20_trades_negative_net_win_rate_downgrade",
-          "weak_market_block_or_reduce",
-          "market_breadth_poor_reduce",
-          "sector_strength_floor",
-          "trailing_profit_pullback_limit",
           "entry_quality_score_raise"
         ],
         "parameter_grid_allowed": [
@@ -3211,11 +3187,11 @@
         "win_rate_pct": 55.19,
         "profit_factor": 1.4405,
         "avg_trade_return_pct": 0.445,
-        "max_drawdown_pct": -95.025,
+        "max_drawdown_pct": -33.901,
         "stop_loss_rate_pct": 22.1,
-        "governance_state": "high_return_high_drawdown",
-        "recommended_action": "add_market_state_position_exit_constraints",
-        "governance_score": 1.6889,
+        "governance_state": "positive_expectancy_candidate",
+        "recommended_action": "walk_forward_then_paper_observe",
+        "governance_score": 3.5227,
         "constraints_to_test": [
           "data_quality_non_fresh_no_strong_buy",
           "st_stopped_delisted_no_entry",
@@ -3223,104 +3199,7 @@
           "liquidity_amount_floor",
           "sector_concentration_position_cap",
           "consecutive_stop_loss_strategy_pause",
-          "last_20_trades_negative_net_win_rate_downgrade",
-          "weak_market_block_or_reduce",
-          "market_breadth_poor_reduce",
-          "sector_strength_floor",
-          "trailing_profit_pullback_limit"
-        ],
-        "parameter_grid_allowed": [
-          {
-            "name": "min_score",
-            "values": [
-              "current",
-              "+3",
-              "+5"
-            ]
-          },
-          {
-            "name": "max_holding_days",
-            "values": [
-              "2",
-              "3",
-              "5"
-            ]
-          },
-          {
-            "name": "stop_loss_pct",
-            "values": [
-              "current",
-              "-2.5",
-              "ATR_1.0"
-            ]
-          },
-          {
-            "name": "first_take_profit_pct",
-            "values": [
-              "3.0",
-              "4.0",
-              "5.0"
-            ]
-          },
-          {
-            "name": "trailing_pullback_pct",
-            "values": [
-              "1.0",
-              "1.5",
-              "2.0"
-            ]
-          },
-          {
-            "name": "single_position_pct",
-            "values": [
-              "0.5x",
-              "current"
-            ]
-          },
-          {
-            "name": "market_state_switch",
-            "values": [
-              "block_retreat",
-              "reduce_weak",
-              "current"
-            ]
-          },
-          {
-            "name": "liquidity_amount_floor",
-            "values": [
-              "current",
-              "+20%",
-              "+50%"
-            ]
-          }
-        ]
-      },
-      {
-        "strategy_key": "divergence_consensus",
-        "strategy_title": "分歧转一致",
-        "strategy_family": "main_wave_confirmation",
-        "sample_count": 202,
-        "filled_count": 201,
-        "win_rate_pct": 41.29,
-        "profit_factor": 0.9204,
-        "avg_trade_return_pct": -0.1233,
-        "max_drawdown_pct": -58.7306,
-        "stop_loss_rate_pct": 3.98,
-        "governance_state": "weak_strategy",
-        "recommended_action": "pause_or_downgrade_production_weight",
-        "governance_score": 1.1147,
-        "constraints_to_test": [
-          "data_quality_non_fresh_no_strong_buy",
-          "st_stopped_delisted_no_entry",
-          "limit_up_down_nearby_no_entry_or_downgrade",
-          "liquidity_amount_floor",
-          "sector_concentration_position_cap",
-          "consecutive_stop_loss_strategy_pause",
-          "last_20_trades_negative_net_win_rate_downgrade",
-          "weak_market_block_or_reduce",
-          "market_breadth_poor_reduce",
-          "sector_strength_floor",
-          "trailing_profit_pullback_limit"
+          "last_20_trades_negative_net_win_rate_downgrade"
         ],
         "parameter_grid_allowed": [
           {
@@ -3397,11 +3276,11 @@
         "win_rate_pct": 46.58,
         "profit_factor": 1.1715,
         "avg_trade_return_pct": 0.2301,
-        "max_drawdown_pct": -99.5139,
+        "max_drawdown_pct": -27.6311,
         "stop_loss_rate_pct": 15.18,
-        "governance_state": "high_return_high_drawdown",
-        "recommended_action": "add_market_state_position_exit_constraints",
-        "governance_score": 0.6815,
+        "governance_state": "research_candidate",
+        "recommended_action": "second_backtest_with_constraints",
+        "governance_score": 2.838,
         "constraints_to_test": [
           "data_quality_non_fresh_no_strong_buy",
           "st_stopped_delisted_no_entry",
@@ -3409,104 +3288,7 @@
           "liquidity_amount_floor",
           "sector_concentration_position_cap",
           "consecutive_stop_loss_strategy_pause",
-          "last_20_trades_negative_net_win_rate_downgrade",
-          "weak_market_block_or_reduce",
-          "market_breadth_poor_reduce",
-          "sector_strength_floor",
-          "trailing_profit_pullback_limit"
-        ],
-        "parameter_grid_allowed": [
-          {
-            "name": "min_score",
-            "values": [
-              "current",
-              "+3",
-              "+5"
-            ]
-          },
-          {
-            "name": "max_holding_days",
-            "values": [
-              "2",
-              "3",
-              "5"
-            ]
-          },
-          {
-            "name": "stop_loss_pct",
-            "values": [
-              "current",
-              "-2.5",
-              "ATR_1.0"
-            ]
-          },
-          {
-            "name": "first_take_profit_pct",
-            "values": [
-              "3.0",
-              "4.0",
-              "5.0"
-            ]
-          },
-          {
-            "name": "trailing_pullback_pct",
-            "values": [
-              "1.0",
-              "1.5",
-              "2.0"
-            ]
-          },
-          {
-            "name": "single_position_pct",
-            "values": [
-              "0.5x",
-              "current"
-            ]
-          },
-          {
-            "name": "market_state_switch",
-            "values": [
-              "block_retreat",
-              "reduce_weak",
-              "current"
-            ]
-          },
-          {
-            "name": "liquidity_amount_floor",
-            "values": [
-              "current",
-              "+20%",
-              "+50%"
-            ]
-          }
-        ]
-      },
-      {
-        "strategy_key": "n_pattern_long_wash",
-        "strategy_title": "长洗N字冲高",
-        "strategy_family": "n_pattern_retrace",
-        "sample_count": 1785,
-        "filled_count": 1743,
-        "win_rate_pct": 48.31,
-        "profit_factor": 1.1256,
-        "avg_trade_return_pct": 0.2339,
-        "max_drawdown_pct": -98.1091,
-        "stop_loss_rate_pct": 23.12,
-        "governance_state": "high_return_high_drawdown",
-        "recommended_action": "add_market_state_position_exit_constraints",
-        "governance_score": 0.5287,
-        "constraints_to_test": [
-          "data_quality_non_fresh_no_strong_buy",
-          "st_stopped_delisted_no_entry",
-          "limit_up_down_nearby_no_entry_or_downgrade",
-          "liquidity_amount_floor",
-          "sector_concentration_position_cap",
-          "consecutive_stop_loss_strategy_pause",
-          "last_20_trades_negative_net_win_rate_downgrade",
-          "weak_market_block_or_reduce",
-          "market_breadth_poor_reduce",
-          "sector_strength_floor",
-          "trailing_profit_pullback_limit"
+          "last_20_trades_negative_net_win_rate_downgrade"
         ],
         "parameter_grid_allowed": [
           {
@@ -3583,11 +3365,11 @@
         "win_rate_pct": 51.23,
         "profit_factor": 1.1889,
         "avg_trade_return_pct": 0.2496,
-        "max_drawdown_pct": -99.0843,
+        "max_drawdown_pct": -28.0354,
         "stop_loss_rate_pct": 33.29,
-        "governance_state": "high_return_high_drawdown",
-        "recommended_action": "add_market_state_position_exit_constraints",
-        "governance_score": 0.526,
+        "governance_state": "research_candidate",
+        "recommended_action": "second_backtest_with_constraints",
+        "governance_score": 2.6574,
         "constraints_to_test": [
           "data_quality_non_fresh_no_strong_buy",
           "st_stopped_delisted_no_entry",
@@ -3596,104 +3378,7 @@
           "sector_concentration_position_cap",
           "consecutive_stop_loss_strategy_pause",
           "last_20_trades_negative_net_win_rate_downgrade",
-          "weak_market_block_or_reduce",
-          "market_breadth_poor_reduce",
-          "sector_strength_floor",
-          "trailing_profit_pullback_limit",
           "entry_quality_score_raise"
-        ],
-        "parameter_grid_allowed": [
-          {
-            "name": "min_score",
-            "values": [
-              "current",
-              "+3",
-              "+5"
-            ]
-          },
-          {
-            "name": "max_holding_days",
-            "values": [
-              "2",
-              "3",
-              "5"
-            ]
-          },
-          {
-            "name": "stop_loss_pct",
-            "values": [
-              "current",
-              "-2.5",
-              "ATR_1.0"
-            ]
-          },
-          {
-            "name": "first_take_profit_pct",
-            "values": [
-              "3.0",
-              "4.0",
-              "5.0"
-            ]
-          },
-          {
-            "name": "trailing_pullback_pct",
-            "values": [
-              "1.0",
-              "1.5",
-              "2.0"
-            ]
-          },
-          {
-            "name": "single_position_pct",
-            "values": [
-              "0.5x",
-              "current"
-            ]
-          },
-          {
-            "name": "market_state_switch",
-            "values": [
-              "block_retreat",
-              "reduce_weak",
-              "current"
-            ]
-          },
-          {
-            "name": "liquidity_amount_floor",
-            "values": [
-              "current",
-              "+20%",
-              "+50%"
-            ]
-          }
-        ]
-      },
-      {
-        "strategy_key": "limit_up_breakout_retrace",
-        "strategy_title": "涨停突破回踩",
-        "strategy_family": "breakout_retest",
-        "sample_count": 1978,
-        "filled_count": 1926,
-        "win_rate_pct": 43.77,
-        "profit_factor": 1.0132,
-        "avg_trade_return_pct": 0.0171,
-        "max_drawdown_pct": -86.324,
-        "stop_loss_rate_pct": 21.13,
-        "governance_state": "high_return_high_drawdown",
-        "recommended_action": "add_market_state_position_exit_constraints",
-        "governance_score": 0.3443,
-        "constraints_to_test": [
-          "data_quality_non_fresh_no_strong_buy",
-          "st_stopped_delisted_no_entry",
-          "limit_up_down_nearby_no_entry_or_downgrade",
-          "liquidity_amount_floor",
-          "sector_concentration_position_cap",
-          "consecutive_stop_loss_strategy_pause",
-          "last_20_trades_negative_net_win_rate_downgrade",
-          "weak_market_block_or_reduce",
-          "market_breadth_poor_reduce",
-          "sector_strength_floor",
-          "trailing_profit_pullback_limit"
         ],
         "parameter_grid_allowed": [
           {
@@ -3770,11 +3455,11 @@
         "win_rate_pct": 38.47,
         "profit_factor": 1.1649,
         "avg_trade_return_pct": 0.2379,
-        "max_drawdown_pct": -99.9942,
+        "max_drawdown_pct": -24.6639,
         "stop_loss_rate_pct": 21.99,
-        "governance_state": "high_return_high_drawdown",
-        "recommended_action": "add_market_state_position_exit_constraints",
-        "governance_score": 0.2822,
+        "governance_state": "research_candidate",
+        "recommended_action": "second_backtest_with_constraints",
+        "governance_score": 2.5421,
         "constraints_to_test": [
           "data_quality_non_fresh_no_strong_buy",
           "st_stopped_delisted_no_entry",
@@ -3782,11 +3467,185 @@
           "liquidity_amount_floor",
           "sector_concentration_position_cap",
           "consecutive_stop_loss_strategy_pause",
-          "last_20_trades_negative_net_win_rate_downgrade",
-          "weak_market_block_or_reduce",
-          "market_breadth_poor_reduce",
-          "sector_strength_floor",
-          "trailing_profit_pullback_limit"
+          "last_20_trades_negative_net_win_rate_downgrade"
+        ],
+        "parameter_grid_allowed": [
+          {
+            "name": "min_score",
+            "values": [
+              "current",
+              "+3",
+              "+5"
+            ]
+          },
+          {
+            "name": "max_holding_days",
+            "values": [
+              "2",
+              "3",
+              "5"
+            ]
+          },
+          {
+            "name": "stop_loss_pct",
+            "values": [
+              "current",
+              "-2.5",
+              "ATR_1.0"
+            ]
+          },
+          {
+            "name": "first_take_profit_pct",
+            "values": [
+              "3.0",
+              "4.0",
+              "5.0"
+            ]
+          },
+          {
+            "name": "trailing_pullback_pct",
+            "values": [
+              "1.0",
+              "1.5",
+              "2.0"
+            ]
+          },
+          {
+            "name": "single_position_pct",
+            "values": [
+              "0.5x",
+              "current"
+            ]
+          },
+          {
+            "name": "market_state_switch",
+            "values": [
+              "block_retreat",
+              "reduce_weak",
+              "current"
+            ]
+          },
+          {
+            "name": "liquidity_amount_floor",
+            "values": [
+              "current",
+              "+20%",
+              "+50%"
+            ]
+          }
+        ]
+      },
+      {
+        "strategy_key": "core_midcap_vwap_ma5_retrace",
+        "strategy_title": "中军VWAP/均线回踩",
+        "strategy_family": "core_midcap_retrace",
+        "sample_count": 5108,
+        "filled_count": 4576,
+        "win_rate_pct": 36.04,
+        "profit_factor": 1.1238,
+        "avg_trade_return_pct": 0.1868,
+        "max_drawdown_pct": -26.1027,
+        "stop_loss_rate_pct": 23.75,
+        "governance_state": "research_candidate",
+        "recommended_action": "second_backtest_with_constraints",
+        "governance_score": 2.2575,
+        "constraints_to_test": [
+          "data_quality_non_fresh_no_strong_buy",
+          "st_stopped_delisted_no_entry",
+          "limit_up_down_nearby_no_entry_or_downgrade",
+          "liquidity_amount_floor",
+          "sector_concentration_position_cap",
+          "consecutive_stop_loss_strategy_pause",
+          "last_20_trades_negative_net_win_rate_downgrade"
+        ],
+        "parameter_grid_allowed": [
+          {
+            "name": "min_score",
+            "values": [
+              "current",
+              "+3",
+              "+5"
+            ]
+          },
+          {
+            "name": "max_holding_days",
+            "values": [
+              "2",
+              "3",
+              "5"
+            ]
+          },
+          {
+            "name": "stop_loss_pct",
+            "values": [
+              "current",
+              "-2.5",
+              "ATR_1.0"
+            ]
+          },
+          {
+            "name": "first_take_profit_pct",
+            "values": [
+              "3.0",
+              "4.0",
+              "5.0"
+            ]
+          },
+          {
+            "name": "trailing_pullback_pct",
+            "values": [
+              "1.0",
+              "1.5",
+              "2.0"
+            ]
+          },
+          {
+            "name": "single_position_pct",
+            "values": [
+              "0.5x",
+              "current"
+            ]
+          },
+          {
+            "name": "market_state_switch",
+            "values": [
+              "block_retreat",
+              "reduce_weak",
+              "current"
+            ]
+          },
+          {
+            "name": "liquidity_amount_floor",
+            "values": [
+              "current",
+              "+20%",
+              "+50%"
+            ]
+          }
+        ]
+      },
+      {
+        "strategy_key": "limit_up_breakout_retrace",
+        "strategy_title": "涨停突破回踩",
+        "strategy_family": "breakout_retest",
+        "sample_count": 1978,
+        "filled_count": 1926,
+        "win_rate_pct": 43.77,
+        "profit_factor": 1.0132,
+        "avg_trade_return_pct": 0.0171,
+        "max_drawdown_pct": -30.2383,
+        "stop_loss_rate_pct": 21.13,
+        "governance_state": "research_candidate",
+        "recommended_action": "second_backtest_with_constraints",
+        "governance_score": 2.0269,
+        "constraints_to_test": [
+          "data_quality_non_fresh_no_strong_buy",
+          "st_stopped_delisted_no_entry",
+          "limit_up_down_nearby_no_entry_or_downgrade",
+          "liquidity_amount_floor",
+          "sector_concentration_position_cap",
+          "consecutive_stop_loss_strategy_pause",
+          "last_20_trades_negative_net_win_rate_downgrade"
         ],
         "parameter_grid_allowed": [
           {
@@ -3863,11 +3722,100 @@
         "win_rate_pct": 47.12,
         "profit_factor": 1.038,
         "avg_trade_return_pct": 0.0593,
-        "max_drawdown_pct": -99.8381,
+        "max_drawdown_pct": -38.2043,
         "stop_loss_rate_pct": 21.2,
+        "governance_state": "research_candidate",
+        "recommended_action": "second_backtest_with_constraints",
+        "governance_score": 1.9788,
+        "constraints_to_test": [
+          "data_quality_non_fresh_no_strong_buy",
+          "st_stopped_delisted_no_entry",
+          "limit_up_down_nearby_no_entry_or_downgrade",
+          "liquidity_amount_floor",
+          "sector_concentration_position_cap",
+          "consecutive_stop_loss_strategy_pause",
+          "last_20_trades_negative_net_win_rate_downgrade"
+        ],
+        "parameter_grid_allowed": [
+          {
+            "name": "min_score",
+            "values": [
+              "current",
+              "+3",
+              "+5"
+            ]
+          },
+          {
+            "name": "max_holding_days",
+            "values": [
+              "2",
+              "3",
+              "5"
+            ]
+          },
+          {
+            "name": "stop_loss_pct",
+            "values": [
+              "current",
+              "-2.5",
+              "ATR_1.0"
+            ]
+          },
+          {
+            "name": "first_take_profit_pct",
+            "values": [
+              "3.0",
+              "4.0",
+              "5.0"
+            ]
+          },
+          {
+            "name": "trailing_pullback_pct",
+            "values": [
+              "1.0",
+              "1.5",
+              "2.0"
+            ]
+          },
+          {
+            "name": "single_position_pct",
+            "values": [
+              "0.5x",
+              "current"
+            ]
+          },
+          {
+            "name": "market_state_switch",
+            "values": [
+              "block_retreat",
+              "reduce_weak",
+              "current"
+            ]
+          },
+          {
+            "name": "liquidity_amount_floor",
+            "values": [
+              "current",
+              "+20%",
+              "+50%"
+            ]
+          }
+        ]
+      },
+      {
+        "strategy_key": "n_pattern_long_wash",
+        "strategy_title": "长洗N字冲高",
+        "strategy_family": "n_pattern_retrace",
+        "sample_count": 1785,
+        "filled_count": 1743,
+        "win_rate_pct": 48.31,
+        "profit_factor": 1.1256,
+        "avg_trade_return_pct": 0.2339,
+        "max_drawdown_pct": -54.1686,
+        "stop_loss_rate_pct": 23.12,
         "governance_state": "high_return_high_drawdown",
         "recommended_action": "add_market_state_position_exit_constraints",
-        "governance_score": 0.1298,
+        "governance_score": 1.8469,
         "constraints_to_test": [
           "data_quality_non_fresh_no_strong_buy",
           "st_stopped_delisted_no_entry",
@@ -3956,11 +3904,11 @@
         "win_rate_pct": 47.34,
         "profit_factor": 1.0656,
         "avg_trade_return_pct": 0.0967,
-        "max_drawdown_pct": -99.2297,
+        "max_drawdown_pct": -43.0342,
         "stop_loss_rate_pct": 28.25,
-        "governance_state": "high_return_high_drawdown",
-        "recommended_action": "add_market_state_position_exit_constraints",
-        "governance_score": 0.1062,
+        "governance_state": "research_candidate",
+        "recommended_action": "second_backtest_with_constraints",
+        "governance_score": 1.7921,
         "constraints_to_test": [
           "data_quality_non_fresh_no_strong_buy",
           "st_stopped_delisted_no_entry",
@@ -3969,10 +3917,6 @@
           "sector_concentration_position_cap",
           "consecutive_stop_loss_strategy_pause",
           "last_20_trades_negative_net_win_rate_downgrade",
-          "weak_market_block_or_reduce",
-          "market_breadth_poor_reduce",
-          "sector_strength_floor",
-          "trailing_profit_pullback_limit",
           "entry_quality_score_raise"
         ],
         "parameter_grid_allowed": [
@@ -4042,19 +3986,19 @@
         ]
       },
       {
-        "strategy_key": "core_midcap_vwap_ma5_retrace",
-        "strategy_title": "中军VWAP/均线回踩",
-        "strategy_family": "core_midcap_retrace",
-        "sample_count": 5108,
-        "filled_count": 4576,
-        "win_rate_pct": 36.04,
-        "profit_factor": 1.1238,
-        "avg_trade_return_pct": 0.1868,
-        "max_drawdown_pct": -99.7916,
-        "stop_loss_rate_pct": 23.75,
-        "governance_state": "high_return_high_drawdown",
-        "recommended_action": "add_market_state_position_exit_constraints",
-        "governance_score": 0.0469,
+        "strategy_key": "divergence_consensus",
+        "strategy_title": "分歧转一致",
+        "strategy_family": "main_wave_confirmation",
+        "sample_count": 202,
+        "filled_count": 201,
+        "win_rate_pct": 41.29,
+        "profit_factor": 0.9204,
+        "avg_trade_return_pct": -0.1233,
+        "max_drawdown_pct": -50.9129,
+        "stop_loss_rate_pct": 3.98,
+        "governance_state": "weak_strategy",
+        "recommended_action": "pause_or_downgrade_production_weight",
+        "governance_score": 1.3492,
         "constraints_to_test": [
           "data_quality_non_fresh_no_strong_buy",
           "st_stopped_delisted_no_entry",
@@ -4143,11 +4087,11 @@
         "win_rate_pct": 33.07,
         "profit_factor": 0.8697,
         "avg_trade_return_pct": -0.1993,
-        "max_drawdown_pct": -92.1876,
+        "max_drawdown_pct": -33.9582,
         "stop_loss_rate_pct": 18.45,
         "governance_state": "weak_strategy",
         "recommended_action": "pause_or_downgrade_production_weight",
-        "governance_score": -0.6024,
+        "governance_score": 1.1445,
         "constraints_to_test": [
           "data_quality_non_fresh_no_strong_buy",
           "st_stopped_delisted_no_entry",
@@ -4236,11 +4180,11 @@
         "win_rate_pct": 25.57,
         "profit_factor": 0.7557,
         "avg_trade_return_pct": -0.38,
-        "max_drawdown_pct": -88.4646,
+        "max_drawdown_pct": -57.0856,
         "stop_loss_rate_pct": 14.43,
         "governance_state": "weak_strategy",
         "recommended_action": "pause_or_downgrade_production_weight",
-        "governance_score": -1.044,
+        "governance_score": -0.1027,
         "constraints_to_test": [
           "data_quality_non_fresh_no_strong_buy",
           "st_stopped_delisted_no_entry",
@@ -4329,11 +4273,11 @@
         "win_rate_pct": 42.29,
         "profit_factor": 0.7081,
         "avg_trade_return_pct": -0.5281,
-        "max_drawdown_pct": -99.9981,
+        "max_drawdown_pct": -88.9585,
         "stop_loss_rate_pct": 22.31,
         "governance_state": "weak_strategy",
         "recommended_action": "pause_or_downgrade_production_weight",
-        "governance_score": -1.2893,
+        "governance_score": -0.9582,
         "constraints_to_test": [
           "data_quality_non_fresh_no_strong_buy",
           "st_stopped_delisted_no_entry",
@@ -4446,12 +4390,12 @@
       "last_20_trades_negative_net_win_rate_downgrade": 17,
       "limit_up_down_nearby_no_entry_or_downgrade": 17,
       "liquidity_amount_floor": 17,
-      "market_breadth_poor_reduce": 16,
+      "market_breadth_poor_reduce": 5,
       "sector_concentration_position_cap": 17,
-      "sector_strength_floor": 16,
+      "sector_strength_floor": 5,
       "st_stopped_delisted_no_entry": 17,
-      "trailing_profit_pullback_limit": 16,
-      "weak_market_block_or_reduce": 16
+      "trailing_profit_pullback_limit": 5,
+      "weak_market_block_or_reduce": 5
     },
     "production_effect": "audit_only_no_parameter_write",
     "notes": [
@@ -4568,42 +4512,42 @@
       {
         "strategy_key": "classic_retrace",
         "strategy_title": "原始低吸法",
-        "state": "high_return_high_drawdown"
+        "state": "research_candidate"
       },
       {
         "strategy_key": "ma_support",
         "strategy_title": "均线支撑",
-        "state": "high_return_high_drawdown"
+        "state": "research_candidate"
       },
       {
         "strategy_key": "first_board",
         "strategy_title": "首板回调",
-        "state": "high_return_high_drawdown"
+        "state": "positive_expectancy_candidate"
       },
       {
         "strategy_key": "volume_shrink",
         "strategy_title": "量能低吸",
-        "state": "high_return_high_drawdown"
+        "state": "positive_expectancy_candidate"
       },
       {
         "strategy_key": "late_session_strong_support",
         "strategy_title": "收盘强势承接",
-        "state": "high_return_high_drawdown"
+        "state": "research_candidate"
       },
       {
         "strategy_key": "core_midcap_vwap_ma5_retrace",
         "strategy_title": "中军VWAP/均线回踩",
-        "state": "high_return_high_drawdown"
+        "state": "research_candidate"
       },
       {
         "strategy_key": "ma_channel_band",
         "strategy_title": "均线通道波段",
-        "state": "high_return_high_drawdown"
+        "state": "positive_expectancy_candidate"
       },
       {
         "strategy_key": "leader_pullback_band",
         "strategy_title": "龙头回踩波段",
-        "state": "high_return_high_drawdown"
+        "state": "positive_expectancy_candidate"
       },
       {
         "strategy_key": "n_pattern_long_wash",
@@ -4613,12 +4557,12 @@
       {
         "strategy_key": "breakout_support",
         "strategy_title": "位置支撑",
-        "state": "high_return_high_drawdown"
+        "state": "research_candidate"
       },
       {
         "strategy_key": "limit_up_breakout_retrace",
         "strategy_title": "涨停突破回踩",
-        "state": "high_return_high_drawdown"
+        "state": "research_candidate"
       },
       {
         "strategy_key": "deep_pullback",
@@ -4628,7 +4572,7 @@
       {
         "strategy_key": "trend_rebound",
         "strategy_title": "趋势龙回头",
-        "state": "high_return_high_drawdown"
+        "state": "research_candidate"
       }
     ],
     "blocked_reasons": [],
@@ -4776,6 +4720,26 @@
       "模型不得直接下单、不得取消或放宽硬止损、不得绕过风控或修改账本。"
     ]
   },
+  "main_force_model_shadow": {
+    "model_key": "main_force_accumulation_washout_markup_v1",
+    "status": "insufficient_shadow_samples",
+    "record_count": 10,
+    "settled_count": 0,
+    "success_rate_pct": 0.0,
+    "profit_factor": 0.0,
+    "avg_return_20d_pct": 0.0,
+    "max_adverse_20d_pct": 0.0,
+    "fallback_count": 1,
+    "promotion_ready": false,
+    "promotion_blockers": [
+      "shadow_record_count_lt_300",
+      "settled_shadow_count_lt_120",
+      "success_rate_below_threshold",
+      "profit_factor_below_threshold"
+    ],
+    "production_effect": "readonly_shadow",
+    "shadow_only": true
+  },
   "temporal_guard": {
     "status": "pass",
     "issues": [],
@@ -4825,12 +4789,10 @@
       "severity": "blocking",
       "message": "涨跌停、停牌/ST/退市/上市日期、行业/概念历史、ETF 执行元数据必须通过门禁。",
       "evidence": {
-        "gap_count": 5,
+        "gap_count": 3,
         "gaps": [
           "minute_bar_snapshots.bid_ask_spread_positive_coverage_lt_95pct",
           "minute_bar_snapshots.premium_discount_coverage_lt_95pct",
-          "minute_bar_snapshots.tracking_index_coverage_lt_95pct",
-          "minute_bar_snapshots.liquidity_tier_coverage_lt_95pct",
           "minute_bar_snapshots.data_quality_fresh_coverage_lt_95pct"
         ]
       }
@@ -4998,9 +4960,10 @@
       "evidence": {
         "strategy_count": 17,
         "state_counts": {
-          "high_return_high_drawdown": 12,
+          "research_candidate": 7,
+          "positive_expectancy_candidate": 5,
           "weak_strategy": 4,
-          "positive_expectancy_candidate": 1
+          "high_return_high_drawdown": 1
         }
       }
     },
@@ -5120,6 +5083,7 @@
     "补齐并持久化涨跌停、停牌/ST/退市/上市日期、行业/概念历史、ETF 折溢价/流动性/盘口价差元数据；OHLCV 通过不等于可验收。",
     "补齐 ETF 白名单分钟线、费用/滑点/溢折价/流动性/T+0 字段；分钟线不足时 ETF T0 继续 blocked_by_data。",
     "继续积累退出模型 Shadow 样本；只记录规则动作和模型建议差异，不改变订单和账本。",
+    "继续积累主力模型 Shadow 样本；排序加权和模拟盘小仓建议保持关闭，直到样本外与 Shadow 门禁达标。",
     "将治理结果接入回测页/策略工作台/模拟盘展示，但保持生产参数只读。"
   ],
   "invariants": [

@@ -68,14 +68,14 @@ def daily_coverage(db, *, start: str, end: str, min_stock_symbols: int) -> dict[
     }
 
 
-def minute_coverage(db, *, start: str, end: str) -> dict[str, Any]:
+def minute_coverage(db, *, start: str, end: str, bar_period: str = "5m") -> dict[str, Any]:
     count, min_date, max_date, symbol_count = db.execute(
         select(
             func.count(MinuteBarSnapshot.id),
             func.min(MinuteBarSnapshot.trade_date),
             func.max(MinuteBarSnapshot.trade_date),
             func.count(func.distinct(MinuteBarSnapshot.symbol)),
-        )
+        ).where(MinuteBarSnapshot.bar_period == bar_period)
     ).one()
     profiles = [item for item in list_etf_profiles() if item.same_day_sell_allowed]
     symbols = [item.symbol for item in profiles]
@@ -97,7 +97,12 @@ def minute_coverage(db, *, start: str, end: str) -> dict[str, Any]:
                 func.min(MinuteBarSnapshot.trade_date),
                 func.max(MinuteBarSnapshot.trade_date),
             )
-            .where(MinuteBarSnapshot.symbol.in_(symbols), MinuteBarSnapshot.trade_date >= start, MinuteBarSnapshot.trade_date <= end)
+            .where(
+                MinuteBarSnapshot.symbol.in_(symbols),
+                MinuteBarSnapshot.trade_date >= start,
+                MinuteBarSnapshot.trade_date <= end,
+                MinuteBarSnapshot.bar_period == bar_period,
+            )
             .group_by(MinuteBarSnapshot.symbol)
         ).all()
         out_of_window_rows = db.execute(
@@ -110,6 +115,7 @@ def minute_coverage(db, *, start: str, end: str) -> dict[str, Any]:
             .where(
                 MinuteBarSnapshot.symbol.in_(symbols),
                 ((MinuteBarSnapshot.trade_date < start) | (MinuteBarSnapshot.trade_date > end)),
+                MinuteBarSnapshot.bar_period == bar_period,
             )
             .group_by(MinuteBarSnapshot.symbol)
         ).all()
@@ -139,6 +145,7 @@ def minute_coverage(db, *, start: str, end: str) -> dict[str, Any]:
         "status": status,
         "raw_data_status": raw_status,
         "blocked_reason": blocked_reason,
+        "bar_period": bar_period,
         "bar_count": int(count or 0),
         "symbol_count": int(symbol_count or 0),
         "window_bar_count": sum(by_symbol.values()),

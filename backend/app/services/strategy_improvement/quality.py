@@ -41,7 +41,7 @@ def data_quality_checks(db, *, start: str, end: str, daily: dict[str, Any], minu
         )
     ).scalar_one()
     gaps = lineage_field_gaps(db)
-    metadata = metadata_coverage_checks(db, start=start, end=end)
+    metadata = metadata_coverage_checks(db, start=start, end=end, bar_period=str(minute.get("bar_period") or "5m"))
     issues = _issues(
         duplicate_daily=int(duplicate_daily or 0),
         invalid_ohlc=int(invalid_ohlc or 0),
@@ -86,7 +86,7 @@ def lineage_field_gaps(db) -> list[str]:
     return [item for item in required if item.split(".", 1)[1] not in existing_by_table.get(item.split(".", 1)[0], set())]
 
 
-def metadata_coverage_checks(db, *, start: str, end: str) -> dict[str, Any]:
+def metadata_coverage_checks(db, *, start: str, end: str, bar_period: str = "5m") -> dict[str, Any]:
     inspector = inspect(db.get_bind())
     table_names = set(inspector.get_table_names())
     columns_by_table = {
@@ -94,7 +94,7 @@ def metadata_coverage_checks(db, *, start: str, end: str) -> dict[str, Any]:
         for table in table_names
     }
     schema_checks = _metadata_schema_checks(table_names, columns_by_table)
-    data_checks = _metadata_data_checks(db, table_names=table_names, columns_by_table=columns_by_table, start=start, end=end)
+    data_checks = _metadata_data_checks(db, table_names=table_names, columns_by_table=columns_by_table, start=start, end=end, bar_period=bar_period)
     blocking_gaps = [
         gap
         for check in [*schema_checks, *data_checks]
@@ -176,7 +176,7 @@ def _metadata_schema_checks(table_names: set[str], columns_by_table: dict[str, s
     return checks
 
 
-def _metadata_data_checks(db, *, table_names: set[str], columns_by_table: dict[str, set[str]], start: str, end: str) -> list[dict[str, Any]]:
+def _metadata_data_checks(db, *, table_names: set[str], columns_by_table: dict[str, set[str]], start: str, end: str, bar_period: str) -> list[dict[str, Any]]:
     checks: list[dict[str, Any]] = []
     instrument_columns = columns_by_table.get("instruments", set())
     if "instruments" not in table_names or "sector_name" not in instrument_columns:
@@ -279,35 +279,36 @@ def _metadata_data_checks(db, *, table_names: set[str], columns_by_table: dict[s
     if "minute_bar_snapshots" in table_names and required_minute_exec.issubset(minute_columns):
         total_rows = _scalar_int(
             db,
-            "select count(*) from minute_bar_snapshots where trade_date >= :start and trade_date <= :end and instrument_type = 'etf'",
-            {"start": start, "end": end},
+            "select count(*) from minute_bar_snapshots where trade_date >= :start and trade_date <= :end and instrument_type = 'etf' and bar_period = :bar_period",
+            {"start": start, "end": end, "bar_period": bar_period},
         )
         spread_rows = _scalar_int(
             db,
-            "select count(*) from minute_bar_snapshots where trade_date >= :start and trade_date <= :end and instrument_type = 'etf' and bid_ask_spread > 0",
-            {"start": start, "end": end},
+            "select count(*) from minute_bar_snapshots where trade_date >= :start and trade_date <= :end and instrument_type = 'etf' and bar_period = :bar_period and bid_ask_spread > 0",
+            {"start": start, "end": end, "bar_period": bar_period},
         )
         premium_rows = _scalar_int(
             db,
-            "select count(*) from minute_bar_snapshots where trade_date >= :start and trade_date <= :end and instrument_type = 'etf' and premium_discount_pct is not null",
-            {"start": start, "end": end},
+            "select count(*) from minute_bar_snapshots where trade_date >= :start and trade_date <= :end and instrument_type = 'etf' and bar_period = :bar_period and premium_discount_pct is not null",
+            {"start": start, "end": end, "bar_period": bar_period},
         )
         tracking_rows = _scalar_int(
             db,
-            "select count(*) from minute_bar_snapshots where trade_date >= :start and trade_date <= :end and instrument_type = 'etf' and coalesce(tracking_index_symbol, '') <> ''",
-            {"start": start, "end": end},
+            "select count(*) from minute_bar_snapshots where trade_date >= :start and trade_date <= :end and instrument_type = 'etf' and bar_period = :bar_period and coalesce(tracking_index_symbol, '') <> ''",
+            {"start": start, "end": end, "bar_period": bar_period},
         )
         liquidity_rows = _scalar_int(
             db,
-            "select count(*) from minute_bar_snapshots where trade_date >= :start and trade_date <= :end and instrument_type = 'etf' and coalesce(liquidity_tier, '') not in ('', 'unknown')",
-            {"start": start, "end": end},
+            "select count(*) from minute_bar_snapshots where trade_date >= :start and trade_date <= :end and instrument_type = 'etf' and bar_period = :bar_period and coalesce(liquidity_tier, '') not in ('', 'unknown')",
+            {"start": start, "end": end, "bar_period": bar_period},
         )
         fresh_rows = _scalar_int(
             db,
-            "select count(*) from minute_bar_snapshots where trade_date >= :start and trade_date <= :end and instrument_type = 'etf' and coalesce(data_quality, '') in ('fresh', 'verified')",
-            {"start": start, "end": end},
+            "select count(*) from minute_bar_snapshots where trade_date >= :start and trade_date <= :end and instrument_type = 'etf' and bar_period = :bar_period and coalesce(data_quality, '') in ('fresh', 'verified')",
+            {"start": start, "end": end, "bar_period": bar_period},
         )
         evidence = {
+            "bar_period": bar_period,
             "etf_minute_rows": total_rows,
             "bid_ask_spread_positive_pct": _coverage_pct(spread_rows, total_rows),
             "premium_discount_pct": _coverage_pct(premium_rows, total_rows),

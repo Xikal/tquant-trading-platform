@@ -1,5 +1,135 @@
 # TQuant 实施计划
 
+## 2026-05-29 ETF T0 24 个月分钟级与执行元数据补齐
+
+需求来源：
+
+- 用户目标：补 ETF T0 24 个月分钟级与执行元数据。
+- 当前执行边界：只能写真实远端数据和可由 ETF universe / 成交额推导的元数据；禁止伪造分钟线、盘口价差、折溢价或 fresh/verified 状态；30m 只能作为探针，不能计入 5m 生产验收。
+
+### 本轮完成
+
+- [x] ETF 分钟线补数脚本改为遍历所有 provider 后选择交易日覆盖最宽的真实候选，避免 Eastmoney/AkShare 短窗口数据提前截断更长的 Sina 数据。
+- [x] 新增 `backend/scripts/etf_minute_backfill_helpers.py`，统一 provider candidate、ETF bar enrichment、流动性分层和执行元数据质量判断。
+- [x] 新增 `backend/scripts/backfill_etf_execution_metadata.py`，只回填跟踪指数和基于成交额的流动性等级；不伪造 `bid_ask_spread`、`premium_discount_pct` 或 `fresh/verified`。
+- [x] 重跑 T0 ETF 5m 真实近端补数：`docs/reports/etf-minute-backfill-t0-5m-refresh-2026-05-29.json`，22 个 T0 ETF 均返回 Sina 真实 5m 数据，单标的 1,055-1,067 条，窗口仍仅 24 个交易日。
+- [x] 重跑 T0 ETF 30m 覆盖探针：`docs/reports/etf-minute-backfill-t0-30m-best-provider-2026-05-29.json`，22 个 T0 ETF 均返回 Sina 真实 30m 数据，合计 39,976 条，228 个交易日，实际范围 2025-05-22 至 2026-04-28；该周期不计入 5m 生产验收。
+- [x] 执行元数据回填报告已落盘：`docs/reports/etf-execution-metadata-backfill-t0-5m-2026-05-29.json` 与 `docs/reports/etf-execution-metadata-backfill-t0-30m-2026-05-29.json`。5m 扫描 24,344 行，跟踪指数和流动性覆盖 100%，盘口价差、折溢价、fresh/verified 覆盖仍为 0。
+- [x] 生产门禁已锁定 5m 口径：`minute_coverage.bar_period=5m`，`etf_t0.bar_period=5m`，ETF 执行元数据门禁也跟随 5m；新增测试防止 30m 分钟线或 30m 元数据通过 5m 验收。
+- [x] 刷新闭环、24M、优化和总验收报告：整体仍为只读 / 研究态，生产交易未放行。
+
+### 当前仍阻断
+
+- [ ] 24 个月 5m 分钟线不足：闭环报告 `window_bar_count=24344`，22 个 ETF 均只有 24 个交易日，按 466 个验收交易日计算覆盖率 5.15%，达标 ETF 0 / 22。
+- [ ] 真实执行元数据不足：5m 盘口正价差覆盖 0.0%、折溢价覆盖 0.0%、fresh/verified 覆盖 0.0%；跟踪指数和流动性已 100%，但不足以生产放行。
+- [ ] 本地未配置 `TUSHARE_TOKEN` / `TUSHARE_API_TOKEN` / `TUSHARE_PRO_TOKEN`；免费公开源当前无法提供完整 24 个月 5m / 1m ETF 历史和真实盘口/折溢价。
+- [ ] 生产结论保持不变：`strategy-improvement-closed-loop-2026-05-28` 为 `blocked_or_research_only`，`formal_backtest_allowed=false`，`walk_forward_allowed=false`；`strategy-system-acceptance-report-2026-05-28` 为 `readonly_shadow_loop_complete_production_blocked`，`production_trade_ready=false`。
+
+### 验证
+
+- [x] `DATABASE_URL=sqlite:////Users/j/Documents/gupiao/backend/data/t_quant.db PYTHONPATH=backend:. backend/.venv/bin/python backend/scripts/backfill_etf_minute_history.py --start-date 2024-05-28 --end-date 2026-04-28 --period 30m --scope t0-etf --workers 3 --sleep 0.05 --force --allow-partial --report-output docs/reports/etf-minute-backfill-t0-30m-best-provider-2026-05-29.json` 通过，22/22 ok。
+- [x] `DATABASE_URL=sqlite:////Users/j/Documents/gupiao/backend/data/t_quant.db PYTHONPATH=backend:. backend/.venv/bin/python backend/scripts/backfill_etf_minute_history.py --start-date 2024-05-28 --end-date 2026-04-28 --period 5m --scope t0-etf --workers 3 --sleep 0.05 --force --allow-partial --report-output docs/reports/etf-minute-backfill-t0-5m-refresh-2026-05-29.json` 通过，22/22 ok。
+- [x] `DATABASE_URL=sqlite:////Users/j/Documents/gupiao/backend/data/t_quant.db PYTHONPATH=backend:. backend/.venv/bin/python backend/scripts/backfill_etf_execution_metadata.py --start-date 2024-05-28 --end-date 2026-04-28 --period 5m --scope t0-etf --report-output docs/reports/etf-execution-metadata-backfill-t0-5m-2026-05-29.json` 通过，跟踪指数和流动性回填到 100%，真实价差/折溢价仍阻断。
+- [x] `DATABASE_URL=sqlite:////Users/j/Documents/gupiao/backend/data/t_quant.db PYTHONPATH=backend:. backend/.venv/bin/python backend/scripts/strategy_improvement_closed_loop.py --start 2024-05-28 --end 2026-04-28 --existing-backtest docs/reports/strategy-24m-backtest-2026-05-28.json --json-output docs/reports/strategy-improvement-closed-loop-2026-05-28.json --markdown-output docs/reports/strategy-improvement-closed-loop-2026-05-28.md` 通过，ETF T0 仍 `blocked_by_data`。
+- [x] `DATABASE_URL=sqlite:////Users/j/Documents/gupiao/backend/data/t_quant.db PYTHONPATH=backend:. backend/.venv/bin/python backend/scripts/strategy_24m_backtest_report.py --start 2024-05-28 --end 2026-04-28 --refresh-sections-only --existing-report docs/reports/strategy-24m-backtest-2026-05-28.json --json-output docs/reports/strategy-24m-backtest-2026-05-28.json --markdown-output docs/reports/strategy-24m-backtest-2026-05-28.md` 通过，ETF T0 仍 `partial_minute_coverage`。
+- [x] `PYTHONPATH=backend:. backend/.venv/bin/python scripts/generate_strategy_24m_optimization_report.py --date 2026-05-28 --source-date 2026-05-28` 通过。
+- [x] `PYTHONPATH=backend:. backend/.venv/bin/python scripts/strategy_system_acceptance_report.py --date 2026-05-28` 通过，输出 `readonly_shadow_loop_complete_production_blocked` / `completion_pct=100.0`。
+- [x] `PYTHONPATH=backend:. backend/.venv/bin/python -m pytest -q backend/tests/test_strategy_improvement_closed_loop.py backend/tests/test_etf_execution_metadata_backfill.py backend/tests/test_strategy_24m_report_sections.py backend/tests/test_etf_minute_backfill.py` 通过，35 passed / 1 warning。
+- [x] `PYTHONPATH=backend:. backend/.venv/bin/python -m py_compile backend/scripts/backfill_etf_minute_history.py backend/scripts/etf_minute_backfill_helpers.py backend/scripts/backfill_etf_execution_metadata.py backend/app/services/strategy_improvement/coverage.py backend/app/services/strategy_improvement/quality.py backend/scripts/strategy_24m_report_sections.py backend/tests/test_etf_minute_backfill.py backend/tests/test_etf_execution_metadata_backfill.py backend/tests/test_strategy_24m_report_sections.py backend/tests/test_strategy_improvement_closed_loop.py` 通过。
+- [x] `PYTHONPATH=backend:. backend/.venv/bin/python -m pytest -q backend/tests/test_strategy_improvement_closed_loop.py backend/tests/test_etf_execution_metadata_backfill.py backend/tests/test_strategy_24m_report_sections.py backend/tests/test_etf_minute_backfill.py backend/tests/test_strategy_system_acceptance_report.py` 通过，37 passed / 1 warning。
+- [x] `git diff --check` 通过。
+- [x] 报告抽查通过：闭环 `minute_coverage.bar_period=5m`、`status=blocked_by_data`、`window_bar_count=24344`、`expected_trade_day_count=466`；执行元数据门禁 `bar_period=5m`、跟踪指数/流动性 100%、盘口价差/折溢价/fresh 0%；总验收 `production_trade_ready=false`。
+
+## 2026-05-29 策略体系归类与模型闭环最小收尾
+
+需求来源：
+
+- 用户目标：按 `docs/strategy-system-consolidation-and-enhancement-development-plan.md` 落地策略体系归类、主力观测模型、老鸭头结构因子、止盈止损辅助模型、模拟盘只读验证、回测与调参闭环。
+- 已补齐 `docs/strategy-system-consolidation-and-enhancement-development-plan.md`，本轮以该文档、用户目标正文和既有 `IMPLEMENTATION_PLAN.md` 为需求源继续执行。
+
+### 执行边界
+
+- [x] 不新增重复策略入口，不修改低吸原始买卖口径、回测成交语义、模拟盘账本、风控和自动交易约束。
+- [x] 主力观测、老鸭头、止盈止损辅助模型保持旁路 / Shadow / 只读建议。
+- [x] 排序影响默认 `none`；主力排序 bonus 仍由开关与 Shadow 晋级门槛控制，默认不污染原排序。
+- [x] 本轮不做无边界补数和长时间爬取，仅刷新已有 24M 报告结构。
+
+### 本轮完成
+
+- [x] P0：补齐 17 个低吸策略族元数据，`ma_channel_band` 归为 `trend_support_band` / 均线通道支撑，`leader_pullback_band` 显示为龙头回踩波段。
+- [x] P0：前端/接口继续使用 `family_sections`、`strategy_family`、`strategy_family_text`，旧 `items` 接口保留兼容。
+- [x] P1：复核主力观测模型已旁路接入候选并写 Shadow；`main_force_model_ranking_enabled=False`，未达 Shadow 门槛不加权。
+- [x] P1：老鸭头结构保持 `old_duck_head_factor` 因子化接入，不新增独立策略入口。
+- [x] P1：止盈止损辅助模型已接入模拟盘只读展示，`shadow_only=true`，不自动执行、不覆盖硬止损。
+- [x] P2：24M 报告新增 `strategy_family_summary`，输出策略族维度胜率、收益率、最大回撤、PF、参数建议数量、验证状态和防未来函数/OOS 策略。
+- [x] P2：总优化报告新增“策略族闭环”小节，明确覆盖 13 个策略族 / 17 个策略、排序影响 `none`、生产参数变更不允许。
+- [x] P2：策略族报告新增 `time_series_splits`，按季度时间顺序区分 train / validation / OOS；当前证据为 `time_ordered_quarter_proxy`，`production_ready=false`，禁止随机切分。
+- [x] P3：前端 `FamilyStrip` 新增策略族数据质量提示，聚合 `data_quality`、`missing_strategies`、`stale_strategies` 和主力模型 fallback，不改变候选排序或交易执行。
+- [x] P3：`FamilyStrip` 拆成独立小组件，策略族条保持高密度概览，候选、表现、质量、fallback、弱数据和高分候选明细进入只读弹窗。
+- [x] 验收：新增只读整体验收报告 `strategy-system-acceptance-report-2026-05-28`，统一证明 P0-P3 最小只读/Shadow 闭环已完成，同时明确真实交易生产仍被数据、walk-forward、purged-gap 和 Shadow settled 样本阻断。
+- [x] 验收：整体验收报告已接入既有局部 walk-forward 证据，包括 P1 窄网格 21 个矩阵窗口、退出参数 7/7 OOS 窗口和市场状态 guard 2/7 窗口；这些证据仍只允许 Shadow/研究观察，不放行生产参数。
+- [x] 验收：局部 walk-forward 证据已映射回 6 个策略族：`first_board_retest`、`trend_pullback`、`trend_support_band`、`leader_pullback_band`、`next_day_event`、`core_midcap_retrace`。其中 `first_board` / `volume_shrink` 有参数窄网格实跑证据，`ma_channel_band` / `leader_pullback_band` 仍只是计划级 OOS 证据，全部保持 `production_ready=false`。
+- [x] 验收：整体验收报告新增 `requirement_audit`，逐条对应 P0/P1/P2/P3、执行边界和最终交付字段；16 项最小只读闭环要求为 `complete`，真实交易生产放行单独标记为 `blocked` 且不计入最小闭环完成度。
+- [x] 验收：整体验收报告新增 `test_coverage_matrix`，把目标要求的测试覆盖显式固化为 6/6：策略归类、旁路信号、止盈止损建议、模拟盘展示/快照、回测指标输出、前端高密度展示。
+- [x] 验收：整体验收报告新增 `promotion_action_plan`，将 20 条生产阻断归并为 6 类可执行动作：ETF T0 分钟线/执行元数据、策略族真实 walk-forward/purged-gap、主力模型 Shadow settled、退出模型 Shadow settled、重点策略参数稳定性、市场状态保护参数稳定性。
+- [x] 验收：新增 `focus-strategy-purged-gap-audit-2026-05-28`，审计 P1 重点策略 21 个已落盘矩阵窗口；结论为时间顺序通过，并生成 365 天 train / 60 天 validation / 10 天 purged-gap / OOS 的建议切分计划和 21 条 `low_buy_execution_matrix.py` 复跑命令。
+- [x] 验收：已定位上一轮 `dates=0` 根因：命令未显式指定 `DATABASE_URL` 时会误走未启动的本地 MySQL；现已将 21 条复跑 manifest 钉定到 `sqlite:////Users/j/Documents/gupiao/backend/data/t_quant.db`。
+- [x] 验收：已执行 1 条 SQLite purged-gap 复跑 smoke 命令，确认复跑命令、`isolated` 输出目录和 `default_exit` / `quick_tp3_trailing1` 双变体结构可用；该窗口产出 576 个评估样本、554 笔成交，状态为 `executed_with_samples`，但覆盖率仍为 `partial`，不能替代全量 21 窗口 purged-gap 验收。
+- [x] 验收：`focus-strategy-purged-gap-audit-2026-05-28` 新增本地日线覆盖审计，SQLite 日线覆盖 2024-05-28 至 2026-04-28 共 466 个交易日；21 个 manifest OOS 窗口全部有本地交易日覆盖，单窗口 50 至 58 个交易日。
+- [x] 验收：21 条 SQLite purged-gap manifest 已全量复跑完成，正式矩阵目录落盘 21 个 JSON / 21 个 Markdown，`run-summary.json` 显示 `executed_or_existing_count=21`、`failed_count=0`；合计 6336 个评估样本、5964 笔成交，覆盖状态仍为 `partial`，因此只关闭“manifest 未执行”缺口，不关闭生产放行门禁。
+- [x] 验收：`low_buy_execution_matrix.py` 已支持显式 `train/validation/purged-gap/OOS` 时间边界参数；21 条 manifest 已强制复跑，21/21 矩阵均写入 `split_plan_encoded=true`、`purged_gap_temporal_order_passed=true`、`purged_gap_days=10`。
+- [x] 验收：刷新 `focus-strategy-purged-gap-audit-2026-05-28` 与 `strategy-system-acceptance-report-2026-05-28`，当前 purged-gap 阻断从“未编码/未执行”收敛为“执行矩阵覆盖仍为 partial、线上 Shadow settled 样本不足”。
+- [x] 文档：补齐 `docs/strategy-system-consolidation-and-enhancement-development-plan.md`，固化 P0-P3、执行边界、验收交付和真实交易生产放行门禁；验收报告已将该文档纳入 source/evidence。
+
+### 仍未完成 / 阻断
+
+- [ ] 策略族维度仍是研究报告与 Shadow 候选，不是生产晋级；P1 重点策略 21 条 SQLite manifest 已全量复跑且显式编码 train/validation/purged-gap/OOS 边界，但所有矩阵覆盖状态仍为 `partial`，仍需完整覆盖数据、参数稳定性和真实 Shadow settled 样本后才能生产晋级。
+- [ ] ETF T0 24 个月分钟线与执行元数据仍需要外部数据源或 Tushare token 才能推进；这是当前唯一明确依赖外部数据的生产放行动作。
+- [ ] 主力模型和退出模型仍需要自然交易日/模拟盘继续积累 settled Shadow 样本；不能用回填样本冒充线上结算表现。
+- [ ] P3：策略族局部高密度和弹窗已完成；全站级 UI 版式重排不属于本轮最小闭环，后续如需要可单独做视觉/信息架构优化。
+- [x] 指定需求文档路径已补齐，并已重新纳入整体验收报告与逐项审计。
+
+### 验证
+
+- [x] `DATABASE_URL=sqlite:////Users/j/Documents/gupiao/backend/data/t_quant.db PYTHONPATH=backend:. backend/.venv/bin/python backend/scripts/strategy_24m_backtest_report.py --start 2024-05-28 --end 2026-04-28 --refresh-sections-only --existing-report docs/reports/strategy-24m-backtest-2026-05-28.json --json-output docs/reports/strategy-24m-backtest-2026-05-28.json --markdown-output docs/reports/strategy-24m-backtest-2026-05-28.md` 通过，刷新策略族闭环报告。
+- [x] `PYTHONPATH=backend:. backend/.venv/bin/python scripts/generate_strategy_24m_optimization_report.py --date 2026-05-28 ...` 通过，刷新总优化报告。
+- [x] `PYTHONPATH=backend:. backend/.venv/bin/python -m pytest -q backend/tests/test_priority_weighting.py::PriorityWeightingTests::test_all_low_buy_strategies_have_explicit_family_metadata backend/tests/test_strategy_24m_report_sections.py::test_strategy_family_summary_is_research_only_and_contains_parameter_changes backend/tests/test_strategy_24m_optimization_report.py::test_build_report_keeps_candidates_out_of_production backend/tests/test_strategy_24m_optimization_report.py::test_render_markdown_contains_required_sections` 通过，4 passed / 1 warning。
+- [x] `PYTHONPATH=backend:. backend/.venv/bin/python -m pytest -q backend/tests/test_priority_weighting.py backend/tests/test_old_duck_head_factor.py backend/tests/test_main_force_model_enrichment.py backend/tests/test_main_force_model_ranking.py backend/tests/test_paper_exit_model_advisor.py backend/tests/test_paper_exit_model_shadow.py backend/tests/test_strategy_24m_report_sections.py backend/tests/test_strategy_24m_optimization_report.py` 通过，50 passed / 1 warning。
+- [x] `PYTHONPATH=backend:. backend/.venv/bin/python scripts/strategy_system_acceptance_report.py --date 2026-05-28` 通过，输出 `readonly_shadow_loop_complete_production_blocked` / `completion_pct=100.0`。
+- [x] `PYTHONPATH=backend:. backend/.venv/bin/python -m pytest -q backend/tests/test_strategy_system_acceptance_report.py` 通过，2 passed / 1 warning。
+- [x] `python3 ... docs/reports/strategy-system-acceptance-report-2026-05-28.json` 抽样核验通过：`family_evidence` 已覆盖 6 个策略族，`production_ready=false`，`ma_channel_band` / `leader_pullback_band` 标记为尚未实跑策略参数窗口。
+- [x] `python3 ... docs/reports/strategy-system-acceptance-report-2026-05-28.json` 抽样核验通过：`requirement_audit.status=minimal_readonly_loop_complete_production_blocked`，最小只读闭环完成度 100.0%，生产交易放行 `false`。
+- [x] `python3 ... docs/reports/strategy-system-acceptance-report-2026-05-28.json` 抽样核验通过：`test_coverage_matrix.status=covered`，覆盖项 6 / 6。
+- [x] `python3 ... docs/reports/strategy-system-acceptance-report-2026-05-28.json` 抽样核验通过：`promotion_action_plan.status=blocked_by_production_gates`，动作数 6，需要外部数据动作数 1。
+- [x] `PYTHONPATH=backend:. backend/.venv/bin/python scripts/focus_strategy_purged_gap_audit.py --date 2026-05-28` 通过，输出 `partial_oos_evidence_purged_gap_not_proven`。
+- [x] `python3 ... docs/reports/strategy-system-acceptance-report-2026-05-28.json` 抽样核验通过：`purged_gap_audit.total_matrix_window_count=21`、`temporal_order_passed=true`、`proposed_split_plan_present=true`、`purged_gap_plan_ready=true`、`purged_gap_passed=false`。
+- [x] `python3 ... docs/reports/focus-strategy-purged-gap-audit-2026-05-28/summary.json` 抽样核验通过：`rerun_manifest.status=ready_not_executed`、`command_count=21`、`variants=[default_exit, quick_tp3_trailing1]`。
+- [x] `DATABASE_URL=sqlite:////Users/j/Documents/gupiao/backend/data/t_quant.db PYTHONPATH=backend:. backend/.venv/bin/python backend/scripts/low_buy_execution_matrix.py --start 2025-08-01 --end 2025-10-24 --strategies first_board,volume_shrink --states confirmed --engine fast --materialization-mode isolated --variants default_exit,quick_tp3_trailing1 --matrix-output-dir docs/reports/focus-strategy-purged-gap-rerun-2026-05-28/smoke --output-dir docs/reports/focus-strategy-purged-gap-rerun-2026-05-28/smoke` 通过，真实执行 50 个评估交易日，输出 1 个 smoke 矩阵文件、2 个变体。
+- [x] `python3 ... docs/reports/focus-strategy-purged-gap-rerun-2026-05-28/smoke/low_buy_execution_matrix_24m_confirmed_first_board_volume_shrink_2025-08-01_2025-10-24.json` 抽样核验通过：`default_exit` 与 `quick_tp3_trailing1` 各 `evaluated_count=288`、`filled_count=277`；合计评估样本 576、成交 554，覆盖状态 `partial`。
+- [x] `PYTHONPATH=backend:. backend/.venv/bin/python scripts/focus_strategy_purged_gap_audit.py --date 2026-05-28` 通过，新增 `daily_data_coverage.status=covered`、`covered_window_count=21/21`、`min_window_trade_dates=50`，并将 `rerun_manifest.database_url` 钉定为 SQLite。
+- [x] `PYTHONPATH=backend:. backend/.venv/bin/python scripts/strategy_system_acceptance_report.py --date 2026-05-28` 通过，总验收继续输出 `readonly_shadow_loop_complete_production_blocked` / `completion_pct=100.0`，并接入 `daily_data_*` 与 `rerun_smoke_*` 证据字段。
+- [x] `python3 ... docs/reports/strategy-system-acceptance-report-2026-05-28.json` 抽样核验通过：`rerun_manifest_database_url=sqlite:////Users/j/Documents/gupiao/backend/data/t_quant.db`、`daily_data_status=covered`、`daily_data_total_trade_dates=466`、`daily_data_covered_window_count=21`、`rerun_smoke_status=executed_with_samples`、`rerun_smoke_total_evaluated_count=576`、`rerun_smoke_total_filled_count=554`、`rerun_smoke_partial_coverage_only=true`。
+- [x] `PYTHONPATH=backend:. backend/.venv/bin/python scripts/run_focus_strategy_purged_gap_rerun.py --date 2026-05-28 --keep-going` 通过，`complete=true`、`executed_or_existing_count=21`、`failed_count=0`、总耗时约 1901 秒。
+- [x] `python3 ... docs/reports/focus-strategy-purged-gap-rerun-2026-05-28/run-summary.json` 抽样核验通过：21 条 manifest 中 19 条本轮执行、2 条已有输出跳过，最后一条 `volume_shrink#7` 成功落盘。
+- [x] `python3 ... docs/reports/focus-strategy-purged-gap-rerun-2026-05-28/matrix-windows/*.json` 汇总核验通过：矩阵文件 21 个，合计 `evaluated_count=6336`、`filled_count=5964`，所有矩阵覆盖状态仍为 `partial`。
+- [x] `PYTHONPATH=backend:. backend/.venv/bin/python scripts/focus_strategy_purged_gap_audit.py --date 2026-05-28` 通过，`rerun_manifest.status=executed_complete`、`rerun_full.complete=true`、`rerun_full.matrix_count=21`、`rerun_full.failed_count=0`、`rerun_full.partial_coverage_only=true`、`purged_gap_passed=false`。
+- [x] `PYTHONPATH=backend:. backend/.venv/bin/python scripts/strategy_system_acceptance_report.py --date 2026-05-28` 通过，总验收继续输出 `readonly_shadow_loop_complete_production_blocked`，并接入 `rerun_full_*` 证据字段。
+- [x] `PYTHONPATH=backend:. backend/.venv/bin/python scripts/run_focus_strategy_purged_gap_rerun.py --date 2026-05-28 --force --keep-going` 通过，21/21 复跑完成，`complete=true`、`executed_or_existing_count=21`、`failed_count=0`、总耗时约 1993 秒。
+- [x] `python3 ... docs/reports/focus-strategy-purged-gap-rerun-2026-05-28/matrix-windows/*.json` 抽样核验通过：矩阵文件 21 个，21/21 `split_plan_encoded=true`，21/21 `purged_gap_temporal_order_passed=true`，`purged_gap_days=10`，合计 `evaluated_count=6336`、`filled_count=5964`，覆盖状态仍为 `partial`。
+- [x] `PYTHONPATH=backend:. backend/.venv/bin/python scripts/focus_strategy_purged_gap_audit.py --date 2026-05-28` 通过，`explicit_train_validation_split_present=true`、`explicit_purged_gap_encoded=true`、`production_blockers=[execution_matrix_coverage_partial_only, online_shadow_settled_sample_lt_required]`。
+- [x] `PYTHONPATH=backend:. backend/.venv/bin/python scripts/strategy_system_acceptance_report.py --date 2026-05-28` 通过，总验收继续输出 `readonly_shadow_loop_complete_production_blocked` / `production_trade_ready=false`。
+- [x] `PYTHONPATH=backend:. backend/.venv/bin/python -m py_compile backend/scripts/low_buy_execution_matrix.py scripts/focus_strategy_purged_gap_audit.py scripts/strategy_system_acceptance_walk_forward.py scripts/strategy_system_acceptance_report.py scripts/run_focus_strategy_purged_gap_rerun.py backend/tests/test_strategy_system_acceptance_report.py` 通过。
+- [x] `PYTHONPATH=backend:. backend/.venv/bin/python -m pytest -q backend/tests/test_priority_weighting.py backend/tests/test_old_duck_head_factor.py backend/tests/test_main_force_model_enrichment.py backend/tests/test_main_force_model_ranking.py backend/tests/test_paper_exit_model_advisor.py backend/tests/test_paper_exit_model_shadow.py backend/tests/test_strategy_24m_report_sections.py backend/tests/test_strategy_24m_optimization_report.py backend/tests/test_strategy_system_acceptance_report.py` 通过，52 passed / 1 warning。
+- [x] `PYTHONPATH=backend:. backend/.venv/bin/python -m pytest -q backend/tests/test_strategy_system_acceptance_report.py` 通过，2 passed / 1 warning。
+- [x] `PYTHONPATH=backend:. backend/.venv/bin/python -m py_compile scripts/focus_strategy_purged_gap_audit.py scripts/strategy_system_acceptance_walk_forward.py scripts/strategy_system_acceptance_report.py backend/tests/test_strategy_system_acceptance_report.py` 通过。
+- [x] `python3 ... docs/reports/strategy-system-acceptance-report-2026-05-28.json` 抽样核验通过：`walk_forward_evidence_snapshot` 已包含 P1 窄网格、退出参数和市场状态 guard，`production_trade_ready=false`。
+- [x] `cd frontend && npm test -- workspaceFamilyQuality PaperTradingPerformance StrategyImprovementSummary StrategyImprovementGatePanel --run` 通过，4 files / 6 tests。
+- [x] `cd frontend && npm test -- FamilyStrip workspaceFamilyQuality PaperTradingPerformance StrategyImprovementSummary StrategyImprovementGatePanel MonitorPage --run` 通过，6 files / 12 tests。
+- [x] `cd frontend && npx tsc -b --pretty false` 通过。
+- [x] `PYTHONPATH=backend:. backend/.venv/bin/python -m py_compile scripts/strategy_system_acceptance_report.py scripts/strategy_system_acceptance_walk_forward.py scripts/strategy_system_requirement_audit.py backend/tests/test_strategy_system_acceptance_report.py` 通过。
+- [x] `PYTHONPATH=backend:. backend/.venv/bin/python -m py_compile backend/app/services/low_buy/strategy_families.py backend/scripts/strategy_24m_report_metrics.py backend/scripts/strategy_24m_backtest_report.py backend/scripts/strategy_24m_report_markdown.py scripts/generate_strategy_24m_optimization_report.py scripts/strategy_24m_optimization_markdown.py backend/tests/test_priority_weighting.py backend/tests/test_strategy_24m_report_sections.py backend/tests/test_strategy_24m_optimization_report.py` 通过。
+- [x] `git diff --check` 通过。
+
 ## 2026-05-28 主力模型生产化 P0/P1/P2
 
 需求来源：
@@ -32,7 +162,7 @@
 - [x] P0 已落地：低吸候选生产只读展示，`main_force_advice` 可见，`MarketModelObservation` 自动 Shadow 记录。
 - [x] P1 路径已落地但默认关闭：`main_force_model_ranking_enabled=False`；即使打开，也要求 Shadow 达标、策略白名单、数据质量和 advice 条件全部通过才会加分。
 - [x] P2 路径已落地但小仓建议默认关闭：模拟盘持仓/导入界面只读展示，建议只输出 `manual_import_only`，不创建订单。
-- [x] Readiness 当前结论：OOS 小样本研究指标通过，但 Shadow 观察样本 0/300、已结算 0/120，最终 `promotion_ready=false`。
+- [x] Readiness 当前结论：OOS 小样本研究指标通过；本地已通过 `main_force_shadow_warmup.py` 将主力模型 Shadow 观察样本从 2 补到 10，但已结算仍为 0/120，最终 `promotion_ready=false`。
 - [x] 报告：
   - `docs/reports/main-force-model-production-readiness-2026-05-28.json`
   - `docs/reports/main-force-model-production-readiness-2026-05-28.md`
@@ -160,8 +290,9 @@
 
 - [ ] 涨跌停价覆盖门禁已通过，但 ST 使用当前 `instruments.is_st` 与名称识别，尚缺历史 ST 状态快照源；正式回测报告需继续把 `st_current_only_rows` 作为审计 caveat。
 - [ ] 尚未补齐 ETF T0 两年历史分钟线、折溢价和真实盘口/流动性字段；当前只有 Sina 近端 5m 真数据，ETF T0 为 `blocked_by_data` / `partial_minute_coverage`，不能作为 24 个月 T0 验收。
-- [ ] 尚未执行正式 Walk-forward 调参；已由 ETF T0 分钟线门禁阻断，避免在分钟线不完整时过拟合晋级。
-- [ ] 退出模型 Shadow 当前本地 `market_model_observations` 样本为 0，不能评估是否降低回吐/止损率。
+- [ ] P1 `first_board` / `volume_shrink` 参数窄网格已实跑 21 个矩阵窗口；`first_board` 7/7 通过、`volume_shrink` 6/7 通过，整体仍需补 purged-gap、稳定性和 Shadow settled 后才能生产晋级。
+- [ ] 主力模型 Shadow warmup 路径已补齐并验证，本地 `market_model_observations` 观察样本为 10；已结算仍为 0，不能评估真实成功率、PF 或生产晋级。
+- [ ] 退出模型 Shadow 当前本地 settled 样本不足，不能评估是否降低回吐/止损率；`quick_tp3_trailing1` 只能作为 Shadow 候选，不允许写生产参数。
 
 ### 验证
 
@@ -458,6 +589,9 @@
 
 ### 下一步
 
+- [x] 2026-05-28 收尾：新增主力模型 Shadow warmup 只读脚本并刷新报告，本地观察样本 2 -> 10，`production_effect=readonly_shadow`，`production_parameter_change=false`。
+- [x] 2026-05-28 收尾：P1 `first_board` / `volume_shrink` 参数窄网格已完成 21 个矩阵窗口，结论写入 `docs/reports/focus-strategy-parameter-walk-forward-2026-05-28/summary.md` 和总报告；收益主要来自 3% 首次止盈与 1% 移动防守的冲高兑现。
+- [x] 2026-05-28 收尾：夸张收益口径已在总报告中区分为研究指标、诊断复利和待补 Paper 账户曲线，禁止当作生产收益或参数晋级证据。
 - [ ] Q-002：继续补完整固定止损 3.5、ATR 0.8/1.2 矩阵，并在 24M 数据补齐后复跑；当前固定 -2.5% 和 ATR 1.0x 部分区间未通过。
 - [ ] Q-003：将 `3% 首次止盈 + 1% 移动防守 + 最多 3 天` 作为研究候选配置化，不直接上线；补 OOS、分市场状态和模拟盘观察。
 - [ ] Q-006：基于完整 24M 数据复跑退潮/高位分化保护 A/B，验证新开仓减少、回撤改善和非退潮样本不过度流失后，再决定是否进入可审计配置。

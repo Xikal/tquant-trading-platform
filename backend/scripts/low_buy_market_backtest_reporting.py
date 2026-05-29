@@ -583,6 +583,9 @@ def backtest_performance_metrics(outcomes: list[TradeOutcome], states: set[str] 
         "median_daily_signal_return_pct": daily_returns["median_daily_signal_return_pct"],
         "signal_days": daily_returns["signal_days"],
         "avg_trades_per_signal_day": daily_returns["avg_trades_per_signal_day"],
+        "max_consecutive_loss_count": _max_consecutive_losses(returns),
+        "max_single_loss_pct": round(min(returns), 4) if returns else 0.0,
+        "max_single_gain_pct": round(max(returns), 4) if returns else 0.0,
         "capital_model": "one_unit_per_signal_day_equal_weight",
         "capital_model_note": "总收益/年化按每日信号等权投入 1 单位资金估算，避免逐信号无资金约束复利夸大。",
         "diagnostic_compound_return_pct": diagnostic_compound_return,
@@ -633,6 +636,18 @@ def _daily_signal_return_stats(filled: list[TradeOutcome]) -> dict[str, Any]:
         "median_daily_signal_return_pct": _median_float(daily_returns),
         "avg_trades_per_signal_day": round(sum(trade_counts) / len(trade_counts), 2) if trade_counts else 0.0,
     }
+
+
+def _max_consecutive_losses(returns_pct: list[float]) -> int:
+    longest = 0
+    current = 0
+    for value in returns_pct:
+        if value < 0:
+            current += 1
+            longest = max(longest, current)
+        else:
+            current = 0
+    return longest
 
 
 def _drawdown_stats(equity_curve: list[float]) -> dict[str, Any]:

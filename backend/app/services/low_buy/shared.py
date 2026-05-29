@@ -96,6 +96,7 @@ class LowBuyThresholds:
             "event_risk_factor": 0.6,
             "absorption_quality_factor": 0.5,
             "selection_quality_factor": 0.8,
+            "old_duck_head_factor": 0.7,
         }
     )
 

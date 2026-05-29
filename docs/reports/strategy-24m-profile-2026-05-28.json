@@ -1,0 +1,81 @@
+{
+  "bottleneck_avg_ms": 4.829,
+  "bottleneck_step": "read_sources",
+  "data_refetch": false,
+  "existing_rust_parity": {
+    "covered_metrics": [
+      "max_drawdown",
+      "rolling_mean",
+      "rolling_std",
+      "volatility",
+      "correlation",
+      "beta",
+      "bollinger_bands",
+      "ATR Wilder",
+      "RSI Wilder",
+      "VWAP",
+      "RankIC"
+    ],
+    "status": "covered_by_tests",
+    "test_file": "backend/tests/test_finance_performance_math.py"
+  },
+  "full_backtest_profiled": false,
+  "go_rust_recommendation": {
+    "candidate_future_modules": [
+      "全市场多参数候选网格回测 worker",
+      "大规模分钟线 ETF T0 参数扫描"
+    ],
+    "reason": "本轮瓶颈在报告 JSON 聚合，平均耗时低于 1 秒，不值得迁移 Go/Rust。",
+    "use_go_or_rust_now": false
+  },
+  "iterations": 3,
+  "profile_scope": "report_generation_and_existing_json_aggregation_only",
+  "report_date": "2026-05-28",
+  "steps": [
+    {
+      "avg_ms": 4.829,
+      "iterations": 3,
+      "max_ms": 5.296,
+      "min_ms": 4.462,
+      "output_shape": {
+        "key_count": 7,
+        "type": "dict"
+      },
+      "step": "read_sources"
+    },
+    {
+      "avg_ms": 0.221,
+      "iterations": 3,
+      "max_ms": 0.278,
+      "min_ms": 0.176,
+      "output_shape": {
+        "item_count": 17,
+        "type": "list"
+      },
+      "step": "build_strategy_items"
+    },
+    {
+      "avg_ms": 0.017,
+      "iterations": 3,
+      "max_ms": 0.025,
+      "min_ms": 0.012,
+      "output_shape": {
+        "key_count": 6,
+        "type": "dict"
+      },
+      "step": "build_scope_coverage"
+    },
+    {
+      "avg_ms": 4.693,
+      "iterations": 3,
+      "max_ms": 4.92,
+      "min_ms": 4.542,
+      "output_shape": {
+        "key_count": 23,
+        "type": "dict"
+      },
+      "step": "build_full_report"
+    }
+  ],
+  "title": "策略优化报告轻量 profiling 摘要"
+}

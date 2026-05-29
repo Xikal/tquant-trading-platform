@@ -10,23 +10,28 @@
     "test_months": 3,
     "purged_gap_days": 10,
     "time_series_split": true,
-    "random_split_allowed": false
+    "random_split_allowed": false,
+    "evidence_status": "research_proxy_not_true_train_valid_test_split",
+    "production_eligible": false,
+    "note": "当前脚本只做全窗口启发式标签表现评估，尚未实现真实滚动 train/valid/test 切窗。"
   },
-  "record_count": 2390,
-  "eligible_count": 779,
-  "success_rate_pct": 74.198,
-  "profit_factor": 82.046,
-  "avg_return_20d_pct": 10.9145,
-  "avg_max_adverse_20d_pct": -6.273,
+  "record_count": 10980,
+  "eligible_count": 3415,
+  "success_rate_pct": 67.789,
+  "profit_factor": 38.1328,
+  "avg_return_20d_pct": 10.2148,
+  "avg_max_adverse_20d_pct": -7.6199,
   "fallback_rate_pct": 0.0,
-  "oos_promotion_ready": true,
-  "oos_promotion_blockers": [],
+  "oos_promotion_ready": false,
+  "oos_promotion_blockers": [
+    "true_walk_forward_train_valid_test_not_implemented"
+  ],
   "shadow_gate": {
-    "record_count": 0,
+    "record_count": 10,
     "settled_count": 0,
     "success_rate_pct": 0.0,
     "profit_factor": 0.0,
-    "fallback_rate_pct": 0.0,
+    "fallback_rate_pct": 10.0,
     "promotion_ready": false,
     "promotion_blockers": [
       "shadow_record_count_lt_300",
@@ -36,148 +41,148 @@
   "by_stage": [
     {
       "stage": "washout",
-      "sample_count": 784,
-      "success_rate_pct": 76.276,
-      "avg_return_20d_pct": 9.2284
+      "sample_count": 3660,
+      "success_rate_pct": 73.142,
+      "avg_return_20d_pct": 9.2429
     },
     {
       "stage": "distribution_risk",
-      "sample_count": 615,
-      "success_rate_pct": 79.024,
-      "avg_return_20d_pct": 9.8312
+      "sample_count": 3027,
+      "success_rate_pct": 81.962,
+      "avg_return_20d_pct": 11.9066
     },
     {
       "stage": "accumulation",
-      "sample_count": 533,
-      "success_rate_pct": 75.61,
-      "avg_return_20d_pct": 8.1315
+      "sample_count": 2250,
+      "success_rate_pct": 76.978,
+      "avg_return_20d_pct": 9.409
     },
     {
       "stage": "markup_confirm",
-      "sample_count": 458,
-      "success_rate_pct": 73.799,
-      "avg_return_20d_pct": 11.371
+      "sample_count": 2043,
+      "success_rate_pct": 67.303,
+      "avg_return_20d_pct": 11.1413
     }
   ],
   "by_strategy": [
     {
       "strategy_key": "main_force_research",
-      "sample_count": 2390,
-      "success_rate_pct": 76.36,
-      "avg_return_20d_pct": 9.5495
+      "sample_count": 10980,
+      "success_rate_pct": 75.273,
+      "avg_return_20d_pct": 10.3645
     }
   ],
   "by_sector": [
     {
       "sector_name": "房地产开发",
-      "sample_count": 341,
-      "success_rate_pct": 73.314,
-      "avg_return_20d_pct": 11.2347
-    },
-    {
-      "sector_name": "一般零售",
-      "sample_count": 155,
-      "success_rate_pct": 74.839,
-      "avg_return_20d_pct": 11.0662
-    },
-    {
-      "sector_name": "光学光电子",
-      "sample_count": 124,
-      "success_rate_pct": 74.194,
-      "avg_return_20d_pct": 9.6835
+      "sample_count": 776,
+      "success_rate_pct": 70.49,
+      "avg_return_20d_pct": 11.2898
     },
     {
       "sector_name": "电力",
-      "sample_count": 93,
-      "success_rate_pct": 80.645,
-      "avg_return_20d_pct": 7.6678
+      "sample_count": 628,
+      "success_rate_pct": 81.529,
+      "avg_return_20d_pct": 7.848
     },
     {
-      "sector_name": "IT服务Ⅱ",
-      "sample_count": 93,
-      "success_rate_pct": 55.914,
-      "avg_return_20d_pct": 14.8653
-    },
-    {
-      "sector_name": "炼化及贸易",
-      "sample_count": 93,
-      "success_rate_pct": 79.57,
-      "avg_return_20d_pct": 10.2227
-    },
-    {
-      "sector_name": "医药商业",
-      "sample_count": 64,
-      "success_rate_pct": 78.125,
-      "avg_return_20d_pct": 5.2697
-    },
-    {
-      "sector_name": "电池",
-      "sample_count": 62,
-      "success_rate_pct": 75.806,
-      "avg_return_20d_pct": 7.442
-    },
-    {
-      "sector_name": "饰品",
-      "sample_count": 62,
-      "success_rate_pct": 66.129,
-      "avg_return_20d_pct": 10.8716
+      "sector_name": "一般零售",
+      "sample_count": 407,
+      "success_rate_pct": 73.956,
+      "avg_return_20d_pct": 12.2731
     },
     {
       "sector_name": "汽车零部件",
-      "sample_count": 62,
-      "success_rate_pct": 85.484,
-      "avg_return_20d_pct": 7.5697
+      "sample_count": 370,
+      "success_rate_pct": 75.946,
+      "avg_return_20d_pct": 11.4653
     },
     {
-      "sector_name": "专业工程",
-      "sample_count": 62,
-      "success_rate_pct": 64.516,
-      "avg_return_20d_pct": 11.5015
+      "sector_name": "工业金属",
+      "sample_count": 368,
+      "success_rate_pct": 78.533,
+      "avg_return_20d_pct": 14.1269
+    },
+    {
+      "sector_name": "化学制药",
+      "sample_count": 333,
+      "success_rate_pct": 73.574,
+      "avg_return_20d_pct": 8.4895
+    },
+    {
+      "sector_name": "光学光电子",
+      "sample_count": 296,
+      "success_rate_pct": 76.689,
+      "avg_return_20d_pct": 10.1367
     },
     {
       "sector_name": "环境治理",
-      "sample_count": 62,
-      "success_rate_pct": 77.419,
-      "avg_return_20d_pct": 9.3045
+      "sample_count": 296,
+      "success_rate_pct": 79.054,
+      "avg_return_20d_pct": 9.3111
+    },
+    {
+      "sector_name": "化学原料",
+      "sample_count": 295,
+      "success_rate_pct": 70.508,
+      "avg_return_20d_pct": 11.7351
+    },
+    {
+      "sector_name": "炼化及贸易",
+      "sample_count": 259,
+      "success_rate_pct": 74.517,
+      "avg_return_20d_pct": 9.6156
+    },
+    {
+      "sector_name": "证券Ⅱ",
+      "sample_count": 259,
+      "success_rate_pct": 78.764,
+      "avg_return_20d_pct": 8.6858
+    },
+    {
+      "sector_name": "中药Ⅱ",
+      "sample_count": 222,
+      "success_rate_pct": 83.333,
+      "avg_return_20d_pct": 6.6996
     }
   ],
   "by_market_state": [
     {
       "market_state": "unknown",
-      "sample_count": 2390,
-      "success_rate_pct": 76.36,
-      "avg_return_20d_pct": 9.5495
+      "sample_count": 10980,
+      "success_rate_pct": 75.273,
+      "avg_return_20d_pct": 10.3645
     }
   ],
   "parameter_stability": {
     "score_thresholds": [
       {
         "min_score": 55,
-        "sample_count": 608,
-        "success_rate_pct": 74.178,
-        "profit_factor": 90.9582,
-        "avg_return_20d_pct": 10.7668
+        "sample_count": 2638,
+        "success_rate_pct": 67.475,
+        "profit_factor": 37.2217,
+        "avg_return_20d_pct": 9.4362
       },
       {
         "min_score": 60,
-        "sample_count": 463,
-        "success_rate_pct": 73.866,
-        "profit_factor": 82.5398,
-        "avg_return_20d_pct": 10.4205
+        "sample_count": 2020,
+        "success_rate_pct": 67.673,
+        "profit_factor": 40.9024,
+        "avg_return_20d_pct": 9.1849
       },
       {
         "min_score": 65,
-        "sample_count": 252,
-        "success_rate_pct": 73.81,
-        "profit_factor": 92.1621,
-        "avg_return_20d_pct": 11.9985
+        "sample_count": 988,
+        "success_rate_pct": 65.182,
+        "profit_factor": 45.1859,
+        "avg_return_20d_pct": 9.4662
       },
       {
         "min_score": 70,
-        "sample_count": 51,
-        "success_rate_pct": 74.51,
-        "profit_factor": 287.1372,
-        "avg_return_20d_pct": 12.8027
+        "sample_count": 178,
+        "success_rate_pct": 57.865,
+        "profit_factor": 35.1224,
+        "avg_return_20d_pct": 9.3296
       }
     ],
     "status": "stable_enough_for_shadow",
@@ -192,6 +197,7 @@
   },
   "promotion_ready": false,
   "promotion_blockers": [
+    "true_walk_forward_train_valid_test_not_implemented",
     "shadow_record_count_lt_300",
     "settled_shadow_count_lt_120"
   ]

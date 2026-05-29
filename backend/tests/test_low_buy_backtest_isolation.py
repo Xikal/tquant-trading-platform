@@ -129,6 +129,21 @@ class LowBuyBacktestIsolationTests(unittest.TestCase):
         self.assertEqual(metrics["diagnostic_compound_return_pct"], 33.1)
         self.assertEqual(metrics["capital_model"], "one_unit_per_signal_day_equal_weight")
 
+    def test_performance_metrics_include_trade_extremes_and_consecutive_losses(self) -> None:
+        outcomes = [
+            _trade_outcome("2026-04-20", 2.5),
+            _trade_outcome("2026-04-21", -1.0),
+            _trade_outcome("2026-04-22", -3.2),
+            _trade_outcome("2026-04-23", 1.1),
+            _trade_outcome("2026-04-24", -0.5),
+        ]
+
+        metrics = backtest_performance_metrics(outcomes)
+
+        self.assertEqual(metrics["max_consecutive_loss_count"], 2)
+        self.assertEqual(metrics["max_single_loss_pct"], -3.2)
+        self.assertEqual(metrics["max_single_gain_pct"], 2.5)
+
 
 def _trade_outcome(signal_date: str, net_return_pct: float) -> TradeOutcome:
     return TradeOutcome(

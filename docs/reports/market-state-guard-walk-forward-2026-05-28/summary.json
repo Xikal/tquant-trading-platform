@@ -1,0 +1,264 @@
+{
+  "aggregate_delta": {
+    "avg_delta_max_drawdown_pct": 1.0627,
+    "avg_delta_profit_factor": -0.0051,
+    "avg_delta_total_return_pct": -2.6517,
+    "total_market_guard_count": 33
+  },
+  "baseline_variant": "current",
+  "completed_window_count": 7,
+  "conclusion": "部分窗口有单项改善，但未稳定通过 PF/收益/回撤三项联合标准，不能写生产。",
+  "criteria": {
+    "pass_vs_current": "block_retreat PF >= current PF, total return >= current, and max drawdown is not worse.",
+    "production": "Must complete all 7 windows, pass stability checks, and remain Shadow-only before any production parameter change."
+  },
+  "parameter_under_test": "market_state_switch",
+  "partial_evidence": false,
+  "pass_rate_pct": 28.5714,
+  "passed_window_count": 2,
+  "planned_window_count": 7,
+  "production_eligible": false,
+  "promotion_blockers": [
+    "production_param_write_from_backtest_forbidden",
+    "market_state_guard_not_consistently_better_than_current"
+  ],
+  "report_date": "2026-05-28",
+  "shadow_candidate": false,
+  "source_dir": "docs/reports/market-state-guard-walk-forward-2026-05-28/windows",
+  "title": "市场状态保护参数 walk-forward 实算摘要",
+  "variant_under_test": "block_retreat",
+  "window_count": 7,
+  "windows": [
+    {
+      "block_retreat": {
+        "avg_net_return_pct": 0.4072,
+        "delta_max_drawdown_pct": 0.0,
+        "delta_profit_factor": -0.0142,
+        "delta_total_return_pct": -8.3365,
+        "evaluated_count": 618,
+        "market_guard_count": 3,
+        "max_drawdown_pct": -20.4539,
+        "pass_vs_current": false,
+        "profit_factor": 1.3043,
+        "source_path": "docs/reports/market-state-guard-walk-forward-2026-05-28/windows/block_retreat/low_buy_market_backtest_24m_confirmed_default_exit_guard_block_retreat_high_flyer_retreat-risk_release_to_avoid_min_0_no_prefilter_override_2025-08-01_2025-10-24.json",
+        "stop_loss_rate_pct": 17.11,
+        "total_return_pct": 11.7399,
+        "trade_count": 596,
+        "win_rate_pct": 47.15
+      },
+      "current": {
+        "avg_net_return_pct": 0.424,
+        "evaluated_count": 621,
+        "market_guard_count": 0,
+        "max_drawdown_pct": -20.4539,
+        "profit_factor": 1.3185,
+        "source_path": "docs/reports/market-state-guard-walk-forward-2026-05-28/windows/current/low_buy_market_backtest_24m_confirmed_default_exit_no_guard_no_prefilter_override_2025-08-01_2025-10-24.json",
+        "stop_loss_rate_pct": 17.03,
+        "total_return_pct": 20.0764,
+        "trade_count": 599,
+        "win_rate_pct": 47.41
+      },
+      "oos_end": "2025-10-24",
+      "oos_start": "2025-08-01",
+      "window_id": 1
+    },
+    {
+      "block_retreat": {
+        "avg_net_return_pct": -0.1785,
+        "delta_max_drawdown_pct": 0.0,
+        "delta_profit_factor": -0.0046,
+        "delta_total_return_pct": 0.8944,
+        "evaluated_count": 561,
+        "market_guard_count": 5,
+        "max_drawdown_pct": -23.6632,
+        "pass_vs_current": false,
+        "profit_factor": 0.8965,
+        "source_path": "docs/reports/market-state-guard-walk-forward-2026-05-28/windows/block_retreat/low_buy_market_backtest_24m_confirmed_default_exit_guard_block_retreat_high_flyer_retreat-risk_release_to_avoid_min_0_no_prefilter_override_2025-09-01_2025-11-21.json",
+        "stop_loss_rate_pct": 23.75,
+        "total_return_pct": -16.4779,
+        "trade_count": 539,
+        "win_rate_pct": 42.3
+      },
+      "current": {
+        "avg_net_return_pct": -0.1707,
+        "evaluated_count": 566,
+        "market_guard_count": 0,
+        "max_drawdown_pct": -23.6632,
+        "profit_factor": 0.9011,
+        "source_path": "docs/reports/market-state-guard-walk-forward-2026-05-28/windows/current/low_buy_market_backtest_24m_confirmed_default_exit_no_guard_no_prefilter_override_2025-09-01_2025-11-21.json",
+        "stop_loss_rate_pct": 23.9,
+        "total_return_pct": -17.3723,
+        "trade_count": 544,
+        "win_rate_pct": 42.46
+      },
+      "oos_end": "2025-11-21",
+      "oos_start": "2025-09-01",
+      "window_id": 2
+    },
+    {
+      "block_retreat": {
+        "avg_net_return_pct": 0.0489,
+        "delta_max_drawdown_pct": 1.4013,
+        "delta_profit_factor": -0.0022,
+        "delta_total_return_pct": -1.6072,
+        "evaluated_count": 567,
+        "market_guard_count": 5,
+        "max_drawdown_pct": -25.7469,
+        "pass_vs_current": false,
+        "profit_factor": 1.0307,
+        "source_path": "docs/reports/market-state-guard-walk-forward-2026-05-28/windows/block_retreat/low_buy_market_backtest_24m_confirmed_default_exit_guard_block_retreat_high_flyer_retreat-risk_release_to_avoid_min_0_no_prefilter_override_2025-10-09_2025-12-24.json",
+        "stop_loss_rate_pct": 21.02,
+        "total_return_pct": -8.105,
+        "trade_count": 547,
+        "win_rate_pct": 45.34
+      },
+      "current": {
+        "avg_net_return_pct": 0.0524,
+        "evaluated_count": 572,
+        "market_guard_count": 0,
+        "max_drawdown_pct": -27.1482,
+        "profit_factor": 1.0329,
+        "source_path": "docs/reports/market-state-guard-walk-forward-2026-05-28/windows/current/low_buy_market_backtest_24m_confirmed_default_exit_no_guard_no_prefilter_override_2025-10-09_2025-12-24.json",
+        "stop_loss_rate_pct": 21.2,
+        "total_return_pct": -6.4978,
+        "trade_count": 552,
+        "win_rate_pct": 45.47
+      },
+      "oos_end": "2025-12-24",
+      "oos_start": "2025-10-09",
+      "window_id": 3
+    },
+    {
+      "block_retreat": {
+        "avg_net_return_pct": 0.6259,
+        "delta_max_drawdown_pct": 1.252,
+        "delta_profit_factor": 0.0029,
+        "delta_total_return_pct": -1.8189,
+        "evaluated_count": 510,
+        "market_guard_count": 5,
+        "max_drawdown_pct": -26.833,
+        "pass_vs_current": false,
+        "profit_factor": 1.4443,
+        "source_path": "docs/reports/market-state-guard-walk-forward-2026-05-28/windows/block_retreat/low_buy_market_backtest_24m_confirmed_default_exit_guard_block_retreat_high_flyer_retreat-risk_release_to_avoid_min_0_no_prefilter_override_2025-11-03_2026-01-23.json",
+        "stop_loss_rate_pct": 18.35,
+        "total_return_pct": 4.009,
+        "trade_count": 496,
+        "win_rate_pct": 49.8
+      },
+      "current": {
+        "avg_net_return_pct": 0.624,
+        "evaluated_count": 515,
+        "market_guard_count": 0,
+        "max_drawdown_pct": -28.085,
+        "profit_factor": 1.4414,
+        "source_path": "docs/reports/market-state-guard-walk-forward-2026-05-28/windows/current/low_buy_market_backtest_24m_confirmed_default_exit_no_guard_no_prefilter_override_2025-11-03_2026-01-23.json",
+        "stop_loss_rate_pct": 18.56,
+        "total_return_pct": 5.8279,
+        "trade_count": 501,
+        "win_rate_pct": 49.9
+      },
+      "oos_end": "2026-01-23",
+      "oos_start": "2025-11-03",
+      "window_id": 4
+    },
+    {
+      "block_retreat": {
+        "avg_net_return_pct": 0.5921,
+        "delta_max_drawdown_pct": -0.2286,
+        "delta_profit_factor": -0.0212,
+        "delta_total_return_pct": -12.6403,
+        "evaluated_count": 399,
+        "market_guard_count": 3,
+        "max_drawdown_pct": -13.503,
+        "pass_vs_current": false,
+        "profit_factor": 1.4047,
+        "source_path": "docs/reports/market-state-guard-walk-forward-2026-05-28/windows/block_retreat/low_buy_market_backtest_24m_confirmed_default_exit_guard_block_retreat_high_flyer_retreat-risk_release_to_avoid_min_0_no_prefilter_override_2025-12-01_2026-02-12.json",
+        "stop_loss_rate_pct": 18.95,
+        "total_return_pct": 2.7314,
+        "trade_count": 380,
+        "win_rate_pct": 47.37
+      },
+      "current": {
+        "avg_net_return_pct": 0.6183,
+        "evaluated_count": 402,
+        "market_guard_count": 0,
+        "max_drawdown_pct": -13.2744,
+        "profit_factor": 1.4259,
+        "source_path": "docs/reports/market-state-guard-walk-forward-2026-05-28/windows/current/low_buy_market_backtest_24m_confirmed_default_exit_no_guard_no_prefilter_override_2025-12-01_2026-02-12.json",
+        "stop_loss_rate_pct": 18.8,
+        "total_return_pct": 15.3717,
+        "trade_count": 383,
+        "win_rate_pct": 47.78
+      },
+      "oos_end": "2026-02-12",
+      "oos_start": "2025-12-01",
+      "window_id": 5
+    },
+    {
+      "block_retreat": {
+        "avg_net_return_pct": 0.2518,
+        "delta_max_drawdown_pct": 3.3588,
+        "delta_profit_factor": 0.0011,
+        "delta_total_return_pct": 2.5592,
+        "evaluated_count": 372,
+        "market_guard_count": 4,
+        "max_drawdown_pct": -11.9588,
+        "pass_vs_current": true,
+        "profit_factor": 1.1694,
+        "source_path": "docs/reports/market-state-guard-walk-forward-2026-05-28/windows/block_retreat/low_buy_market_backtest_24m_confirmed_default_exit_guard_block_retreat_high_flyer_retreat-risk_release_to_avoid_min_0_no_prefilter_override_2026-01-05_2026-03-24.json",
+        "stop_loss_rate_pct": 19.44,
+        "total_return_pct": 9.9176,
+        "trade_count": 355,
+        "win_rate_pct": 46.48
+      },
+      "current": {
+        "avg_net_return_pct": 0.2502,
+        "evaluated_count": 376,
+        "market_guard_count": 0,
+        "max_drawdown_pct": -15.3176,
+        "profit_factor": 1.1683,
+        "source_path": "docs/reports/market-state-guard-walk-forward-2026-05-28/windows/current/low_buy_market_backtest_24m_confirmed_default_exit_no_guard_no_prefilter_override_2026-01-05_2026-03-24.json",
+        "stop_loss_rate_pct": 19.5,
+        "total_return_pct": 7.3584,
+        "trade_count": 359,
+        "win_rate_pct": 46.24
+      },
+      "oos_end": "2026-03-24",
+      "oos_start": "2026-01-05",
+      "window_id": 6
+    },
+    {
+      "block_retreat": {
+        "avg_net_return_pct": 0.1923,
+        "delta_max_drawdown_pct": 1.6553,
+        "delta_profit_factor": 0.0023,
+        "delta_total_return_pct": 2.3872,
+        "evaluated_count": 412,
+        "market_guard_count": 8,
+        "max_drawdown_pct": -5.9373,
+        "pass_vs_current": true,
+        "profit_factor": 1.1305,
+        "source_path": "docs/reports/market-state-guard-walk-forward-2026-05-28/windows/block_retreat/low_buy_market_backtest_24m_confirmed_default_exit_guard_block_retreat_high_flyer_retreat-risk_release_to_avoid_min_0_no_prefilter_override_2026-02-02_2026-04-21.json",
+        "stop_loss_rate_pct": 18.81,
+        "total_return_pct": 1.4275,
+        "trade_count": 388,
+        "win_rate_pct": 46.39
+      },
+      "current": {
+        "avg_net_return_pct": 0.1894,
+        "evaluated_count": 420,
+        "market_guard_count": 0,
+        "max_drawdown_pct": -7.5926,
+        "profit_factor": 1.1282,
+        "source_path": "docs/reports/market-state-guard-walk-forward-2026-05-28/windows/current/low_buy_market_backtest_24m_confirmed_default_exit_no_guard_no_prefilter_override_2026-02-02_2026-04-21.json",
+        "stop_loss_rate_pct": 18.69,
+        "total_return_pct": -0.9597,
+        "trade_count": 396,
+        "win_rate_pct": 46.21
+      },
+      "oos_end": "2026-04-21",
+      "oos_start": "2026-02-02",
+      "window_id": 7
+    }
+  ]
+}

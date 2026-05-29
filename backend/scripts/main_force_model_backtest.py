@@ -23,6 +23,8 @@ def main() -> int:
     output = Path(args.output)
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
+    markdown_output = output.with_suffix(".md")
+    markdown_output.write_text(_render_markdown(report, args), encoding="utf-8")
     print(json.dumps({"ok": True, "records": len(records), "output": str(output), "promotion_ready": report["promotion_ready"]}, ensure_ascii=False))
     return 0
 
@@ -127,6 +129,8 @@ def _build_report(records: list[dict[str, Any]], args: argparse.Namespace, *, sh
         oos_blockers.append("fallback_rate_gt_15pct")
     if not temporal_pass:
         oos_blockers.append("temporal_guard_failed")
+    if not _has_true_walk_forward_evidence(records):
+        oos_blockers.append("true_walk_forward_train_valid_test_not_implemented")
     shadow_blockers = list(shadow_gate["promotion_blockers"])
     blockers = [*oos_blockers, *shadow_blockers]
     return {
@@ -139,6 +143,9 @@ def _build_report(records: list[dict[str, Any]], args: argparse.Namespace, *, sh
             "purged_gap_days": args.purged_gap_days,
             "time_series_split": True,
             "random_split_allowed": False,
+            "evidence_status": "research_proxy_not_true_train_valid_test_split",
+            "production_eligible": False,
+            "note": "当前脚本只做全窗口启发式标签表现评估，尚未实现真实滚动 train/valid/test 切窗。",
         },
         "record_count": len(records),
         "eligible_count": len(eligible),
@@ -165,6 +172,68 @@ def _build_report(records: list[dict[str, Any]], args: argparse.Namespace, *, sh
         "promotion_ready": not blockers,
         "promotion_blockers": blockers,
     }
+
+
+def _has_true_walk_forward_evidence(records: list[dict[str, Any]]) -> bool:
+    return bool(records) and all(
+        row.get("split_role") in {"train", "validation", "oos"}
+        for row in records
+    )
+
+
+def _render_markdown(report: dict[str, Any], args: argparse.Namespace) -> str:
+    shadow = report["shadow_gate"]
+    wf = report["walk_forward"]
+    temporal = report["temporal_guard"]
+    shadow_sample_min = getattr(args, "shadow_sample_min", 300)
+    shadow_settled_min = getattr(args, "shadow_settled_min", 120)
+    lines = [
+        "# 主力模型生产验收报告",
+        "",
+        f"- 模型：`{report['model_key']}`",
+        f"- 验证窗口：{args.start} 至 {args.end}",
+        (
+            f"- 切分策略：{wf['train_months']}m train / {wf['valid_months']}m valid / "
+            f"{wf['test_months']}m test，purged gap {wf['purged_gap_days']} 天，随机切分禁止"
+        ),
+        f"- 当前结论：{'可晋级' if report['promotion_ready'] else '不可晋级'}",
+        f"- 证据状态：{wf['evidence_status']}，生产可用={'是' if wf['production_eligible'] else '否'}",
+        f"- 阻断原因：{', '.join(report['promotion_blockers']) or '无'}",
+        "",
+        "## 离线研究摘要",
+        "",
+        f"- 样本数：{report['record_count']}",
+        f"- 可买动作样本：{report['eligible_count']}",
+        f"- 研究标签胜率：{report['success_rate_pct']}%",
+        f"- Profit Factor：{report['profit_factor']}",
+        f"- 20 日平均标签收益：{report['avg_return_20d_pct']}%",
+        f"- fallback rate：{report['fallback_rate_pct']}%",
+        (
+            f"- 防未来函数：{temporal['status']}，`max_source_date <= as_of_date`，"
+            "`label_start_date > as_of_date`"
+        ),
+        f"- OOS 晋级：{'通过' if report['oos_promotion_ready'] else '阻断'}",
+        f"- OOS 阻断：{', '.join(report['oos_promotion_blockers']) or '无'}",
+        "- 注意：当前收益是未来标签研究指标，不是可成交账户收益。",
+        "",
+        "## Shadow 门禁",
+        "",
+        f"- Shadow 观察样本：{shadow['record_count']} / {shadow_sample_min}",
+        f"- Shadow 已结算样本：{shadow['settled_count']} / {shadow_settled_min}",
+        f"- Shadow 胜率：{shadow['success_rate_pct']}%",
+        f"- Shadow PF：{shadow['profit_factor']}",
+        f"- Shadow fallback rate：{shadow['fallback_rate_pct']}%",
+        f"- Shadow 晋级：{'是' if shadow['promotion_ready'] else '否'}",
+        f"- Shadow 阻断：{', '.join(shadow['promotion_blockers']) or '无'}",
+        "",
+        "## 生产边界",
+        "",
+        "- 排序加权仍保持默认关闭。",
+        "- 模拟盘小仓建议仍保持默认关闭。",
+        "- 只允许生产只读展示和 Shadow 记录。",
+        "- 不允许自动下单，不允许覆盖硬止损，不允许绕过仓位、现金、最大持仓数或日亏损暂停。",
+    ]
+    return "\n".join(lines) + "\n"
 
 
 def _shadow_gate(database: str, args: argparse.Namespace) -> dict[str, Any]:

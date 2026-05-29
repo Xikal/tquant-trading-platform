@@ -100,7 +100,7 @@ def test_closed_loop_does_not_count_out_of_window_etf_minutes_as_acceptance() ->
             symbol="510300",
             market="SH",
             instrument_type="etf",
-            bar_period="1m",
+            bar_period="5m",
             trade_date="2026-05-27",
             bar_timestamp="2026-05-27 09:31",
             close_price=4.0,
@@ -226,6 +226,38 @@ def test_metadata_gate_requires_real_etf_intraday_execution_metadata() -> None:
     assert "minute_bar_snapshots.data_quality_fresh_coverage_lt_95pct" in metadata["blocking_gaps"]
     assert check["evidence"]["tracking_index_symbol_pct"] == 100.0
     assert "etf_intraday_execution_metadata_coverage" in render_markdown(report)
+
+
+def test_metadata_gate_does_not_use_30m_metadata_for_5m_acceptance() -> None:
+    db = _session()
+    db.add(_daily("2026-04-28", "000001"))
+    db.add(
+        MinuteBarSnapshot(
+            symbol="510300",
+            market="SH",
+            instrument_type="etf",
+            bar_period="30m",
+            trade_date="2026-04-28",
+            bar_timestamp="2026-04-28 10:00",
+            close_price=4.0,
+            source="sina.kline",
+            data_quality="fresh",
+            bid_ask_spread=0.001,
+            premium_discount_pct=0.01,
+            tracking_index_symbol="000300",
+            liquidity_tier="sufficient",
+        )
+    )
+    db.commit()
+
+    report = build_closed_loop_report(db, args=_args(), existing_report=_existing_report())
+    metadata = report["data_quality"]["metadata_coverage"]
+    check = next(item for item in metadata["data_checks"] if item["key"] == "etf_intraday_execution_metadata_coverage")
+
+    assert report["minute_coverage"]["bar_period"] == "5m"
+    assert check["evidence"]["bar_period"] == "5m"
+    assert check["evidence"]["etf_minute_rows"] == 0
+    assert "minute_bar_snapshots.etf_execution_metadata_rows" in metadata["blocking_gaps"]
 
 
 def test_walk_forward_readiness_builds_time_ordered_12_3_3_monthly_windows() -> None:
