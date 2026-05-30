@@ -1033,7 +1033,7 @@ h5.ant-typography {
 
 .strategy-tracking-top-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1.25fr) minmax(260px, 0.75fr);
+  grid-template-columns: minmax(0, 1.1fr) minmax(240px, 0.72fr) minmax(240px, 0.72fr);
   gap: 8px;
   align-items: stretch;
 }

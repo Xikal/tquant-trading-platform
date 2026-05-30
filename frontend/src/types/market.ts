@@ -244,6 +244,11 @@ export interface SectorRelativeStrengthItem {
   leader_score: number;
   rank: number;
   data_quality_text?: string;
+  leader_status?: string;
+  leader_break_reason?: string;
+  same_sector_limit_up_count?: number;
+  diffusion_score?: number;
+  sector_leader_gate_decision?: string;
 }
 
 export interface SectorRelativeStrengthResponse {

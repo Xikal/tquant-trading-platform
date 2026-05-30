@@ -52,6 +52,7 @@ export function useWorkspacePageProps({
     reviewReports: monitor.reviewReports,
     keyLevelAlerts: monitor.keyLevelAlerts,
     sectorEtfT0: monitor.sectorEtfT0,
+    sectorRelativeStrength: monitor.sectorRelativeStrength,
     pairedHedge: monitor.pairedHedge,
     priorityCards: monitor.priorityCards,
     watchCards: monitor.watchCards,

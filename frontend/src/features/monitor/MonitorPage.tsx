@@ -10,6 +10,7 @@ import type {
   MarketReviewReport,
   MarketReviewStatus,
   PairedHedgeResearchResponse,
+  SectorRelativeStrengthResponse,
   RuntimeStatus,
   SectorEtfT0Opportunity,
   SectorEtfT0Response,
@@ -29,6 +30,7 @@ import {
 import { MarketStateGatePanel } from "./MarketStateGatePanel";
 import { MonitorHoldingWizard } from "./MonitorHoldingWizard";
 import { RiskFilterBadges } from "./RiskFilterBadges";
+import { SectorLeaderGatePanel } from "./SectorLeaderGatePanel";
 import { Callout, ContextRow, EmptyState, FamilyStrip, InfoPill, MetricGrid, PanelTitle, StockCard } from "../workspace-shared/WorkspaceComponents";
 import { WorkspacePageIntro } from "../workspace-shared/WorkspacePageIntro";
 import { RitualCloseBag, RitualFortuneStrip } from "../ritual-ui";
@@ -263,6 +265,7 @@ export interface MonitorPageProps {
   reviewReports: MarketReviewReport[];
   keyLevelAlerts: IntradayKeyLevelResponse[];
   sectorEtfT0: SectorEtfT0Response | null;
+  sectorRelativeStrength?: SectorRelativeStrengthResponse | null;
   pairedHedge: PairedHedgeResearchResponse | null;
   priorityCards: StockCardView[];
   watchCards: StockCardView[];
@@ -294,6 +297,7 @@ export const MonitorPage = memo(function MonitorPage({
   reviewReports,
   keyLevelAlerts,
   sectorEtfT0,
+  sectorRelativeStrength = null,
   pairedHedge,
   priorityCards,
   watchCards,
@@ -483,6 +487,7 @@ export const MonitorPage = memo(function MonitorPage({
           <InfoPill compact label="今日分层" value={`确认 ${priorityBoard?.immediate_count ?? 0} / 观察 ${(priorityBoard?.focus_count ?? 0) + (priorityBoard?.track_count ?? 0)} / 榜单 ${priorityBoard?.total_candidates ?? 0}`} tone={(priorityBoard?.immediate_count ?? 0) ? "up" : "warn"} />
         </ContextRow>
         <MarketStateGatePanel board={priorityBoard} />
+        <SectorLeaderGatePanel sectorRelativeStrength={sectorRelativeStrength} />
         <RiskFilterBadges board={priorityBoard} />
         {priorityNotice ? (
           <Callout title={priorityNotice.title} detail={priorityNotice.detail} tone={priorityNotice.tone === "danger" ? "down" : "warn"} compact />

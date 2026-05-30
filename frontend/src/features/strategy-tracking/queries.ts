@@ -40,3 +40,12 @@ export function useStrategyTrackingHoldingAnalysis(params: StrategyTrackingParam
     staleTime: STRATEGY_TRACKING_STALE_TIME_MS,
   });
 }
+
+export function useStrategyPromotionReview(strategyKey: string, enabled = true) {
+  return useQuery({
+    queryKey: ["strategy-promotion-review", strategyKey],
+    queryFn: () => api.getStrategyPromotionReview(strategyKey),
+    enabled,
+    staleTime: STRATEGY_TRACKING_STALE_TIME_MS,
+  });
+}

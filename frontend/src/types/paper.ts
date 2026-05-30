@@ -230,6 +230,39 @@ export interface PaperPerformance {
   total_trades: number
   avg_hold_days: number
   win_loss_ratio: number | null
+  portfolio_execution_preview?: PaperPortfolioExecutionPreview
+}
+
+export interface PaperPortfolioMetrics {
+  capital_model: string
+  capital_model_label: string
+  max_positions: number
+  candidate_count: number
+  trade_count: number
+  skipped_count: number
+  skipped_by_duplicate_symbol: number
+  skipped_by_max_positions: number
+  skipped_by_strategy_daily_limit: number
+  skipped_by_sector_limit: number
+  skipped_by_retreat_market: number
+  skipped_by_weak_market_position_cap: number
+  skip_reason_counts: Record<string, number>
+  portfolio_return_pct: number
+  annualized_return_pct: number
+  max_drawdown_pct: number
+  profit_factor: number
+  avg_trade_return_pct: number
+  avg_capital_utilization_pct: number
+}
+
+export interface PaperPortfolioExecutionPreview {
+  capital_model_label: string
+  source?: string
+  candidate_count?: number
+  max_5: PaperPortfolioMetrics
+  max_10: PaperPortfolioMetrics
+  skip_reason_counts: Record<string, number>
+  notes: string[]
 }
 
 export interface PaperSectorEtfT0Performance {

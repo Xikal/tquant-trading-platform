@@ -194,6 +194,10 @@ export interface LowBuyPriorityBoardItem extends StrategyLaneFields {
   market_gate_score?: number;
   market_gate_reasons?: string[];
   market_firepower_multiplier?: number;
+  sector_leader_gate_decision?: string;
+  sector_leader_gate_score?: number;
+  sector_leader_gate_reasons?: string[];
+  sector_leader_boost?: number;
   market_state_category?: string;
   market_state_category_text?: string;
   buy_signal_state: "buy_now" | "soft_buy_now" | "observe_confirmed" | "near_entry" | "watch" | "avoid";

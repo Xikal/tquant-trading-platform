@@ -20,6 +20,7 @@ import type { CSSProperties } from "react";
 import { memo, useEffect, useMemo } from "react";
 import { Card, Col, Collapse, Row, Space, Typography } from "antd";
 import { PixelTraderWorker } from "./PixelTraderWorker";
+import { PortfolioExecutionPanel } from "./PortfolioExecutionPanel";
 import { PaperDetailTabs } from "./PaperDetailTabs";
 import { PaperTradingSummaryBar } from "./PaperTradingSummaryBar";
 import {
@@ -171,6 +172,7 @@ export const PaperTradingPage = memo(function PaperTradingPage({
       />
       <RitualFortuneStrip marketTone={(account?.today_return_pct ?? performance?.total_return_pct ?? 0) > 0 ? "strong" : "neutral"} compact showCalendarHint />
       <PaperReviewOverview dashboard={performanceDashboard} />
+      <PortfolioExecutionPanel preview={performance?.portfolio_execution_preview} />
       {orderModalOpen ? (
         <OrderEntryModal
           draft={draft}

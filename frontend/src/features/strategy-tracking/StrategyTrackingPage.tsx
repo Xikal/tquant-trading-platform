@@ -3,7 +3,8 @@ import type { StrategyMeta } from "../../api/strategies";
 import { useStrategyTrackingStore } from "../../stores/strategyTrackingStore";
 import { TqEmpty, TqErrorResult } from "../../ui/feedback/StateViews";
 import type { StrategyTrackingListResponse, StrategyTrackingParams, StrategyTrackingSnapshotResponse } from "../../types";
-import { useStrategyTrackingDetail, useStrategyTrackingHoldingAnalysis, useStrategyTrackingItems, useStrategyTrackingReport } from "./queries";
+import { useStrategyPromotionReview, useStrategyTrackingDetail, useStrategyTrackingHoldingAnalysis, useStrategyTrackingItems, useStrategyTrackingReport } from "./queries";
+import { PromotionReviewPanel } from "./PromotionReviewPanel";
 import { StrategyTrackingDetailDrawer } from "./StrategyTrackingDetailDrawer";
 import { StrategyTrackingDiagnosticsPanel } from "./StrategyTrackingDiagnosticsPanel";
 import { StrategyTrackingFilters } from "./StrategyTrackingFilters";
@@ -27,6 +28,7 @@ export function StrategyTrackingPage({ strategyMeta }: { strategyMeta: StrategyM
   const detailQuery = useStrategyTrackingDetail(store.selectedItemId);
   const weeklyReportQuery = useStrategyTrackingReport("weekly", { range: store.range }, store.tab === "diagnostics");
   const holdingQuery = useStrategyTrackingHoldingAnalysis(holdingParams(store), store.tab === "holding");
+  const promotionReviewQuery = useStrategyPromotionReview(store.strategyKey || "n_pattern_long_wash", true);
   const snapshot = query.data;
   const result = snapshot ? snapshotToListResponse(snapshot) : undefined;
   const errorText = query.error instanceof Error ? query.error.message : "";
@@ -36,7 +38,7 @@ export function StrategyTrackingPage({ strategyMeta }: { strategyMeta: StrategyM
       <div className="panel strategy-tracking-hero">
         <div className="strategy-tracking-title">
           <h1>策略跟踪</h1>
-          <p>生产策略推荐后的买点、涨幅、回撤和生命周期复盘。</p>
+          <p>跟踪生产层信号触发后的买点、涨幅、回撤和生命周期；买入类和观察类分开看。</p>
         </div>
         <div className="strategy-tracking-hero-meta">
           <RitualFortuneStrip marketTone={(result?.summary.in_entry_zone_count ?? 0) > 0 ? "strong" : (result?.summary.stopped_count ?? 0) > 0 ? "weak" : "neutral"} compact />
@@ -89,6 +91,7 @@ export function StrategyTrackingPage({ strategyMeta }: { strategyMeta: StrategyM
         <div className="strategy-tracking-top-grid">
           <StrategyTrackingSummaryBar summary={result.summary} />
           <StrategyTrackingReviewPanel summary={result.summary} performance={result.performance} />
+          <PromotionReviewPanel review={promotionReviewQuery.data} loading={promotionReviewQuery.isFetching} />
         </div>
       ) : null}
       {result ? (
@@ -106,7 +109,7 @@ export function StrategyTrackingPage({ strategyMeta }: { strategyMeta: StrategyM
             items={[
               {
                 key: "active",
-                label: "重点跟踪",
+                label: "跟踪复盘",
                 children: tableContent(result, query.isFetching, store),
               },
               {
@@ -125,7 +128,7 @@ export function StrategyTrackingPage({ strategyMeta }: { strategyMeta: StrategyM
                 children: result?.performance.length ? (
                   <StrategyTrackingPerformanceTable items={result.performance} />
                 ) : (
-                  <TqEmpty title="暂无策略表现" description="当前筛选条件下还没有可聚合的推荐样本。" />
+                  <TqEmpty title="暂无策略表现" description="当前筛选条件下还没有可聚合的跟踪信号样本。" />
                 ),
               },
               {

@@ -4273,6 +4273,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/strategy/promotion-review": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Strategy Promotion Review */
+        get: operations["strategy_promotion_review_api_strategy_promotion_review_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/strategy/signals/replay": {
         parameters: {
             query?: never;
@@ -11325,6 +11342,23 @@ export interface components {
             score_components?: {
                 [key: string]: number;
             };
+            /**
+             * Sector Leader Boost
+             * @default 0
+             */
+            sector_leader_boost: number;
+            /**
+             * Sector Leader Gate Decision
+             * @default research_only
+             */
+            sector_leader_gate_decision: string;
+            /** Sector Leader Gate Reasons */
+            sector_leader_gate_reasons?: string[];
+            /**
+             * Sector Leader Gate Score
+             * @default 0
+             */
+            sector_leader_gate_score: number;
             /** Sector Name */
             sector_name?: string | null;
             /**
@@ -13296,6 +13330,10 @@ export interface components {
              * @default 0
              */
             net_win_rate_pct: number;
+            /** Portfolio Execution Preview */
+            portfolio_execution_preview?: {
+                [key: string]: unknown;
+            };
             /** Profit Factor */
             profit_factor?: number | null;
             /**
@@ -14749,15 +14787,30 @@ export interface components {
              */
             data_quality_text: string;
             /**
+             * Diffusion Score
+             * @default 0
+             */
+            diffusion_score: number;
+            /**
              * Latest Price
              * @default 0
              */
             latest_price: number;
             /**
+             * Leader Break Reason
+             * @default
+             */
+            leader_break_reason: string;
+            /**
              * Leader Score
              * @default 0
              */
             leader_score: number;
+            /**
+             * Leader Status
+             * @default unknown
+             */
+            leader_status: string;
             /**
              * Name
              * @default
@@ -14770,6 +14823,16 @@ export interface components {
             rank: number;
             /** Relative Strength Ratio */
             relative_strength_ratio?: number | null;
+            /**
+             * Same Sector Limit Up Count
+             * @default 0
+             */
+            same_sector_limit_up_count: number;
+            /**
+             * Sector Leader Gate Decision
+             * @default research_only
+             */
+            sector_leader_gate_decision: string;
             /**
              * Sector Median Change Pct
              * @default 0
@@ -15410,6 +15473,37 @@ export interface components {
         StrategyPresetResponse: {
             /** Presets */
             presets?: components["schemas"]["StrategyPresetOut"][];
+        };
+        /** StrategyPromotionReviewOut */
+        StrategyPromotionReviewOut: {
+            /** Blocking Reasons */
+            blocking_reasons?: string[];
+            /**
+             * Can Apply Override
+             * @default false
+             */
+            can_apply_override: boolean;
+            /**
+             * Current Tier
+             * @default research
+             */
+            current_tier: string;
+            /** Evidence */
+            evidence?: {
+                [key: string]: unknown;
+            };
+            /**
+             * Recommendation
+             * @default stay_research
+             */
+            recommendation: string;
+            /**
+             * Recommended Tier
+             * @default research
+             */
+            recommended_tier: string;
+            /** Strategy Key */
+            strategy_key: string;
         };
         /** StrategySignalReplayItem */
         StrategySignalReplayItem: {
@@ -25548,6 +25642,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["StrategyPresetResponse"];
+                };
+            };
+        };
+    };
+    strategy_promotion_review_api_strategy_promotion_review_get: {
+        parameters: {
+            query?: {
+                strategy?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StrategyPromotionReviewOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

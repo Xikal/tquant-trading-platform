@@ -11277,6 +11277,28 @@
             "title": "Score Components",
             "type": "object"
           },
+          "sector_leader_boost": {
+            "default": 0.0,
+            "title": "Sector Leader Boost",
+            "type": "number"
+          },
+          "sector_leader_gate_decision": {
+            "default": "research_only",
+            "title": "Sector Leader Gate Decision",
+            "type": "string"
+          },
+          "sector_leader_gate_reasons": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Sector Leader Gate Reasons",
+            "type": "array"
+          },
+          "sector_leader_gate_score": {
+            "default": 0.0,
+            "title": "Sector Leader Gate Score",
+            "type": "number"
+          },
           "sector_name": {
             "anyOf": [
               {
@@ -14376,6 +14398,11 @@
             "title": "Net Win Rate Pct",
             "type": "number"
           },
+          "portfolio_execution_preview": {
+            "additionalProperties": true,
+            "title": "Portfolio Execution Preview",
+            "type": "object"
+          },
           "profit_factor": {
             "anyOf": [
               {
@@ -16687,15 +16714,30 @@
             "title": "Data Quality Text",
             "type": "string"
           },
+          "diffusion_score": {
+            "default": 0.0,
+            "title": "Diffusion Score",
+            "type": "number"
+          },
           "latest_price": {
             "default": 0.0,
             "title": "Latest Price",
             "type": "number"
           },
+          "leader_break_reason": {
+            "default": "",
+            "title": "Leader Break Reason",
+            "type": "string"
+          },
           "leader_score": {
             "default": 0.0,
             "title": "Leader Score",
             "type": "number"
+          },
+          "leader_status": {
+            "default": "unknown",
+            "title": "Leader Status",
+            "type": "string"
           },
           "name": {
             "default": "",
@@ -16717,6 +16759,16 @@
               }
             ],
             "title": "Relative Strength Ratio"
+          },
+          "same_sector_limit_up_count": {
+            "default": 0,
+            "title": "Same Sector Limit Up Count",
+            "type": "integer"
+          },
+          "sector_leader_gate_decision": {
+            "default": "research_only",
+            "title": "Sector Leader Gate Decision",
+            "type": "string"
           },
           "sector_median_change_pct": {
             "default": 0.0,
@@ -17835,6 +17887,51 @@
           }
         },
         "title": "StrategyPresetResponse",
+        "type": "object"
+      },
+      "StrategyPromotionReviewOut": {
+        "properties": {
+          "blocking_reasons": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Blocking Reasons",
+            "type": "array"
+          },
+          "can_apply_override": {
+            "default": false,
+            "title": "Can Apply Override",
+            "type": "boolean"
+          },
+          "current_tier": {
+            "default": "research",
+            "title": "Current Tier",
+            "type": "string"
+          },
+          "evidence": {
+            "additionalProperties": true,
+            "title": "Evidence",
+            "type": "object"
+          },
+          "recommendation": {
+            "default": "stay_research",
+            "title": "Recommendation",
+            "type": "string"
+          },
+          "recommended_tier": {
+            "default": "research",
+            "title": "Recommended Tier",
+            "type": "string"
+          },
+          "strategy_key": {
+            "title": "Strategy Key",
+            "type": "string"
+          }
+        },
+        "required": [
+          "strategy_key"
+        ],
+        "title": "StrategyPromotionReviewOut",
         "type": "object"
       },
       "StrategySignalReplayItem": {
@@ -36095,6 +36192,56 @@
           }
         ],
         "summary": "List Strategy Presets",
+        "tags": [
+          "strategy-meta"
+        ]
+      }
+    },
+    "/api/strategy/promotion-review": {
+      "get": {
+        "operationId": "strategy_promotion_review_api_strategy_promotion_review_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "strategy",
+            "required": false,
+            "schema": {
+              "default": "n_pattern_long_wash",
+              "maxLength": 80,
+              "minLength": 1,
+              "title": "Strategy",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StrategyPromotionReviewOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Strategy Promotion Review",
         "tags": [
           "strategy-meta"
         ]

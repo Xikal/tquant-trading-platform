@@ -311,6 +311,16 @@ export interface StrategyTrackingReport {
   markdown: string;
 }
 
+export interface StrategyPromotionReview {
+  strategy_key: string;
+  current_tier: string;
+  recommended_tier: string;
+  recommendation: string;
+  evidence: Record<string, unknown>;
+  blocking_reasons: string[];
+  can_apply_override: boolean;
+}
+
 export interface StrategyTrackingParams {
   range?: number;
   status?: string;

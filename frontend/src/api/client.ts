@@ -66,6 +66,7 @@ import type {
   StrategyTrackingListResponse,
   StrategyTrackingParams,
   StrategyTrackingReport,
+  StrategyPromotionReview,
   StrategyTrackingReviewResponse,
   StrategyTrackingSnapshotResponse,
   WatchlistItem,
@@ -333,6 +334,8 @@ export const api = {
     requestCached<StrategyTrackingHoldingAnalysisResponse>(`/strategy-tracking/holding-analysis?${strategyTrackingQuery(params)}`, 12000),
   getStrategyTrackingReport: (type: "daily" | "weekly", params: StrategyTrackingParams = {}) =>
     requestCached<StrategyTrackingReport>(`/strategy-tracking/reports/${type}?${strategyTrackingQuery(params)}`, 12000),
+  getStrategyPromotionReview: (strategy = "n_pattern_long_wash") =>
+    requestCached<StrategyPromotionReview>(`/strategy/promotion-review?strategy=${encodeURIComponent(strategy)}`, 12000),
   getPaperAccount: () => request<PaperAccount>("/paper/account"),
   getPaperWorkspaceBff: () =>
     request<PaperWorkspaceBffResponse>("/bff/v1/workspace/paper?order_limit=80&trade_limit=300&run_limit=20"),
