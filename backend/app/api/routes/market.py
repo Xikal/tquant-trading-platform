@@ -55,6 +55,7 @@ from app.services.market.trading_session import current_a_share_trading_session
 from app.services.market.go_read_client import load_go_etf_minute_snapshots
 from app.services.etf.universe import ETF_UNIVERSE_VERSION, EtfCategory, list_etf_profiles
 from app.services.etf.universe_admin import EtfUniverseAdminService
+from app.services.decision_context.sector_leader_gate import enrich_sector_relative_strength_response
 from app.services.paired_hedge_research import PairedHedgeResearchService
 from app.services.sector_etf_t0 import SectorEtfT0Service
 from app.services.tasks import RuntimeTaskQueue
@@ -381,11 +382,12 @@ def sector_relative_strength(
     per_sector_limit: int = 10,
     db: Session = Depends(get_db),
 ) -> SectorRelativeStrengthResponse:
-    return market_data.sector_relative_strength_rank(
+    response = market_data.sector_relative_strength_rank(
         db,
         limit=max(1, min(limit, 20)),
         per_sector_limit=max(1, min(per_sector_limit, 30)),
     )
+    return enrich_sector_relative_strength_response(response)
 
 
 def _etf_category_filter(value: str) -> EtfCategory | None:

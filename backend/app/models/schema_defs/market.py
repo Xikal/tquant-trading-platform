@@ -150,6 +150,11 @@ class SectorRelativeStrengthItem(BaseModel):
     leader_score: float = 0.0
     rank: int = 0
     data_quality_text: str = ""
+    leader_status: str = "unknown"
+    leader_break_reason: str = ""
+    same_sector_limit_up_count: int = 0
+    diffusion_score: float = 0.0
+    sector_leader_gate_decision: str = "research_only"
 
 
 class SectorRelativeStrengthResponse(BaseModel):

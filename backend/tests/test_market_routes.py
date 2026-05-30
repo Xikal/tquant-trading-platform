@@ -15,6 +15,7 @@ from app.core.database import get_db
 from app.core.timezone import beijing_today
 from app.models.base import Base
 from app.models.entities import MarketPulseEvent, MarketReviewReport
+from app.models.schema_defs.market import SectorRelativeStrengthItem, SectorRelativeStrengthResponse
 
 
 def _override_user():
@@ -171,6 +172,38 @@ class MarketRouteTests(unittest.TestCase):
         self.assertIn("is_trading_day", body)
         self.assertIn("is_trading_now", body)
         self.assertEqual(body["timezone"], "Asia/Shanghai")
+
+    def test_sector_relative_strength_returns_sector_leader_gate_fields(self) -> None:
+        market.market_data = SimpleNamespace(
+            sector_relative_strength_rank=lambda *_args, **_kwargs: SectorRelativeStrengthResponse(
+                updated_at="2026-05-25 10:30:00",
+                trade_date="2026-05-25",
+                sector_count=1,
+                items=[
+                    SectorRelativeStrengthItem(
+                        sector_name="半导体",
+                        symbol="000001",
+                        name="测试股份",
+                        latest_price=10.0,
+                        change_pct=6.2,
+                        sector_median_change_pct=2.4,
+                        volume_ratio=2.2,
+                        turnover_proxy=2.0,
+                        leader_score=86.0,
+                        rank=1,
+                    )
+                ],
+            )
+        )
+
+        response = self.client.get("/api/market/sector-relative-strength")
+
+        self.assertEqual(response.status_code, 200)
+        item = response.json()["items"][0]
+        self.assertEqual(item["leader_status"], "healthy")
+        self.assertIn("same_sector_limit_up_count", item)
+        self.assertGreaterEqual(item["diffusion_score"], 70.0)
+        self.assertEqual(item["sector_leader_gate_decision"], "allow")
 
     def test_etf_universe_requires_research_role(self) -> None:
         response = self.client.get("/api/market/etf-universe")

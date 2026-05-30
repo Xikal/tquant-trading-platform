@@ -4,6 +4,10 @@ from typing import Protocol
 
 from app.models.schemas import LowBuyCandidateOut, LowBuyPriorityBoardItemOut
 from app.services.decision_context.market_gate import apply_market_gate_to_score, market_gate_from_context, market_gate_multiplier
+from app.services.decision_context.sector_leader_gate import (
+    apply_sector_leader_gate_to_score,
+    sector_leader_gate_from_candidate,
+)
 from app.services.low_buy.main_force_model_ranking import main_force_rank_bonus
 from app.services.low_buy.production_scoring import score_low_buy_candidate_for_production
 from app.services.low_buy.strategy_lanes import (
@@ -107,6 +111,15 @@ def _build_priority_item(
     production_score = original_production_score
     watch_score = production_scoring.watch_score
     production_score = apply_market_gate_to_score(production_score, market_gate)
+    sector_leader_gate = sector_leader_gate_from_candidate(candidate, market_context)
+    production_score, sector_leader_boost = apply_sector_leader_gate_to_score(
+        production_score,
+        sector_leader_gate,
+        candidate.strategy_key,
+    )
+    score_components = dict(production_scoring.score_components)
+    if sector_leader_boost:
+        score_components["sector_leader_gate"] = sector_leader_boost
     elite_watch_score = None
     if strategy_variant == FRONT_ROW_ONLY_VARIANT:
         elite_watch_score = watch_score
@@ -137,6 +150,10 @@ def _build_priority_item(
         market_gate_score=market_gate.score,
         market_gate_reasons=market_gate.reasons,
         market_firepower_multiplier=market_gate_multiplier(market_gate.decision),
+        sector_leader_gate_decision=sector_leader_gate.decision,
+        sector_leader_gate_score=sector_leader_gate.score,
+        sector_leader_gate_reasons=sector_leader_gate.reasons,
+        sector_leader_boost=sector_leader_boost,
         market_state_category=candidate.market_state_category,
         market_state_category_text=candidate.market_state_category_text,
         buy_signal_state=candidate.buy_signal_state,
@@ -203,12 +220,14 @@ def _build_priority_item(
         watch_score=watch_score,
         production_decision=(
             "market_gate_blocked"
-            if original_production_score is not None and production_score is None and market_gate.decision == "block"
+            if original_production_score is not None
+            and production_score is None
+            and (market_gate.decision == "block" or sector_leader_gate.decision == "block")
             else production_scoring.decision
         ),
         front_row_tier=production_scoring.front_row_tier,
         score_cap=production_scoring.score_cap,
-        score_components=production_scoring.score_components,
+        score_components=score_components,
         exclusion_reasons=production_scoring.exclusion_reasons,
         warning_tags=production_scoring.warning_tags,
         production_scoring_config_version=production_scoring.config_version,
