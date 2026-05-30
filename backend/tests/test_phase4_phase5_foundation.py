@@ -684,6 +684,63 @@ def test_runtime_worker_executes_batch_a_decision_context_tasks():
     }
 
 
+def test_runtime_worker_executes_batch_b_decision_context_tasks(monkeypatch):
+    db = _db()
+
+    class _MarketData:
+        def sector_relative_strength_rank(self, db_arg, *, limit: int, per_sector_limit: int):  # noqa: ANN001
+            from app.models.schema_defs.market import SectorRelativeStrengthResponse
+
+            assert db_arg is db
+            assert limit == 6
+            assert per_sector_limit == 4
+            return SectorRelativeStrengthResponse(updated_at="2026-05-30T09:30:00+08:00", items=[])
+
+    class _PaperPerformanceService:
+        def __init__(self, db_arg):  # noqa: ANN001
+            assert db_arg is db
+
+        def compute_portfolio_execution_preview(self, account_id: int):
+            return {"account_id": account_id, "max_5": {"portfolio_return_pct": 1.23}, "max_10": {"portfolio_return_pct": 2.34}}
+
+    monkeypatch.setattr("app.services.market_data.MarketDataService", lambda: _MarketData())
+    monkeypatch.setattr("app.services.paper.performance.PaperPerformanceService", _PaperPerformanceService)
+
+    sector_result = runtime_worker._execute_task(
+        "sector_leader_snapshot_refresh",
+        {"limit": 6, "per_sector_limit": 4},
+        db,
+    )
+    portfolio_result = runtime_worker._execute_task("paper_portfolio_execution_preview", {"account_id": 7}, db)
+    promotion_result = runtime_worker._execute_task(
+        "strategy_promotion_review",
+        {
+            "strategy_key": "n_pattern_long_wash",
+            "review_date": "2026-05-30",
+            "sample_count": 250,
+            "profit_factor": 1.1,
+            "average_trade_pct": 0.2,
+            "max_drawdown_pct": -8.0,
+            "max5_return_pct": 1.0,
+            "max10_return_pct": 1.0,
+            "quarterly_stability": 0.4,
+            "walk_forward_pass": False,
+            "oos_pass": False,
+        },
+        db,
+    )
+
+    assert sector_result["ok"] is True
+    assert sector_result["worker_scope"] == "runtime-worker"
+    assert sector_result["task_type"] == "sector_leader_snapshot_refresh"
+    assert sector_result["item_count"] == 0
+    assert portfolio_result["ok"] is True
+    assert portfolio_result["preview"]["max_5"]["portfolio_return_pct"] == 1.23
+    assert promotion_result["ok"] is True
+    assert promotion_result["review"]["can_apply_override"] is False
+    assert promotion_result["review"]["recommendation"] == "stay_research"
+
+
 def test_low_buy_runtime_uses_composition_adapter_seam():
     runtime = LowBuyScreenerService()._runtime
 

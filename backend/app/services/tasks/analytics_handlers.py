@@ -17,7 +17,7 @@ from app.services.tasks.handlers import TaskContext
 from app.services.tasks.registry import TaskHandlerRegistry
 
 
-DEFAULT_MD = PROJECT_ROOT / "docs" / "reports" / "strategy_24m_duckdb_report.md"
+DEFAULT_MD = PROJECT_ROOT / "backend" / "data" / "analytics" / "reports" / "strategy_24m_duckdb_report.md"
 DEFAULT_JSON = PROJECT_ROOT / "backend" / "data" / "analytics" / "reports" / "strategy_24m_duckdb_report.json"
 
 
@@ -26,6 +26,8 @@ def register_analytics_handlers(registry: TaskHandlerRegistry) -> None:
     registry.register("analytics_export_daily_bars", handle_analytics_export_daily_bars)
     registry.register("analytics_quality_check", handle_analytics_quality_check)
     registry.register("strategy_24m_duckdb_report", handle_strategy_24m_duckdb_report)
+    registry.register("decision_context_24m_report", handle_strategy_24m_duckdb_report)
+    registry.register("portfolio_execution_24m_report", handle_strategy_24m_duckdb_report)
     registry.register("backtest_all_strategies_24m", handle_backtest_all_strategies_24m)
 
 
@@ -109,8 +111,10 @@ def handle_strategy_24m_duckdb_report(context: TaskContext) -> dict[str, Any]:
     write_strategy_24m_report(report, output_md=output_md, output_json=output_json)
     context.add_artifact(str(output_md))
     context.add_artifact(str(output_json))
+    if report.get("status") != "ok":
+        raise RuntimeError(f"strategy_24m_duckdb_report blocked: {report.get('status')}")
     return {
-        "ok": report.get("status") == "ok",
+        "ok": True,
         "status": report.get("status"),
         "manifest": report.get("manifest"),
         "artifacts": [str(output_md), str(output_json)],

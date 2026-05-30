@@ -9,6 +9,7 @@ from sqlalchemy.pool import StaticPool
 from app.models.base import Base
 from app.models.schema_defs.phase4 import RuntimeTaskCreate
 from app.services.tasks import RuntimeTaskQueue
+from app.services.tasks.analytics_handlers import register_analytics_handlers
 from app.services.tasks.registry import TaskHandlerRegistry
 from app.services.tasks.worker import RuntimeTaskWorker
 import app.services.tasks.worker as worker_module
@@ -50,3 +51,12 @@ def test_worker_runs_registered_handler_with_progress_and_artifact(monkeypatch, 
     assert str(artifact) in finished.result["artifacts"]
     assert "progress" in [item.event_type for item in events]
     assert "artifact" in [item.event_type for item in events]
+
+
+def test_analytics_registry_exposes_decision_context_report_aliases():
+    registry = TaskHandlerRegistry()
+    register_analytics_handlers(registry)
+
+    task_types = set(registry.task_types())
+    assert "decision_context_24m_report" in task_types
+    assert "portfolio_execution_24m_report" in task_types

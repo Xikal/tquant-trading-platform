@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 import socket
 import time
+from datetime import date
 from typing import Any
 
 from app.core.config import get_settings
@@ -36,7 +37,10 @@ RUNTIME_WORKER_TASK_TYPES = (
     "paper_review_report",
     "low_buy_materialization_refresh",
     "market_state_gate_refresh",
+    "sector_leader_snapshot_refresh",
     "hard_risk_context_refresh",
+    "strategy_promotion_review",
+    "paper_portfolio_execution_preview",
     "strategy_tracking_snapshot_refresh",
     "ml_signal_incremental_train",
     "strategy_self_evolution",
@@ -197,6 +201,91 @@ def _execute_task(task_type: str, payload: dict[str, Any], db) -> dict[str, Any]
             "ok": True,
             "worker_scope": "runtime-worker",
             "message": "hard risk context refresh uses synchronous signal snapshots in Batch A",
+        }
+    if task_type == "sector_leader_snapshot_refresh":
+        from app.services.decision_context.sector_leader_gate import enrich_sector_relative_strength_response
+        from app.services.market_data import MarketDataService
+
+        response = MarketDataService().sector_relative_strength_rank(
+            db,
+            limit=max(1, min(int(payload.get("limit") or 8), 20)),
+            per_sector_limit=max(1, min(int(payload.get("per_sector_limit") or 10), 30)),
+        )
+        enriched = enrich_sector_relative_strength_response(response)
+        return {
+            "ok": True,
+            "worker_scope": "runtime-worker",
+            "task_type": task_type,
+            "gate_owner": "production-traceability",
+            "not_research_gated": True,
+            "item_count": len(enriched.items or []),
+            "snapshot": enriched.model_dump(mode="json"),
+        }
+    if task_type == "strategy_promotion_review":
+        from app.services.decision_context.promotion_engine import PromotionEvidence, review_strategy_promotion
+
+        strategy_key = str(payload.get("strategy_key") or "").strip()
+        required_fields = {
+            "sample_count",
+            "profit_factor",
+            "average_trade_pct",
+            "max_drawdown_pct",
+            "max5_return_pct",
+            "max10_return_pct",
+            "quarterly_stability",
+            "walk_forward_pass",
+            "oos_pass",
+        }
+        missing = sorted(field for field in required_fields if field not in payload)
+        if not strategy_key or missing:
+            return {
+                "ok": False,
+                "status": "blocked_by_data",
+                "worker_scope": "runtime-worker",
+                "reason": "strategy_promotion_review requires explicit promotion evidence payload",
+                "missing_fields": (["strategy_key"] if not strategy_key else []) + missing,
+            }
+        evidence = PromotionEvidence(
+            strategy_key=strategy_key,
+            review_date=date.fromisoformat(str(payload.get("review_date") or date.today().isoformat())[:10]),
+            window_days=int(payload.get("window_days") or 504),
+            sample_count=int(payload.get("sample_count") or 0),
+            profit_factor=float(payload.get("profit_factor") or 0.0),
+            average_trade_pct=float(payload.get("average_trade_pct") or 0.0),
+            max_drawdown_pct=float(payload.get("max_drawdown_pct") or 0.0),
+            max5_return_pct=float(payload.get("max5_return_pct") or 0.0),
+            max10_return_pct=float(payload.get("max10_return_pct") or 0.0),
+            quarterly_stability=float(payload.get("quarterly_stability") or 0.0),
+            walk_forward_pass=bool(payload.get("walk_forward_pass")),
+            oos_pass=bool(payload.get("oos_pass")),
+            recent_quarter_returns_pct=tuple(float(item) for item in payload.get("recent_quarter_returns_pct") or []),
+            source=str(payload.get("source") or "runtime_task_payload"),
+        )
+        result = review_strategy_promotion(db, evidence)
+        return {
+            "ok": True,
+            "worker_scope": "runtime-worker",
+            "task_type": task_type,
+            "gate_owner": "advisory-only",
+            "auto_apply_enabled": False,
+            "review": result.as_payload(),
+        }
+    if task_type == "paper_portfolio_execution_preview":
+        from app.services.paper.performance import PaperPerformanceService
+
+        account_id = int(payload.get("account_id") or 0)
+        if account_id <= 0:
+            return {
+                "ok": False,
+                "status": "blocked_by_data",
+                "worker_scope": "runtime-worker",
+                "reason": "paper_portfolio_execution_preview requires account_id",
+            }
+        return {
+            "ok": True,
+            "worker_scope": "runtime-worker",
+            "task_type": task_type,
+            "preview": PaperPerformanceService(db).compute_portfolio_execution_preview(account_id),
         }
     if task_type == "strategy_tracking_snapshot_refresh":
         from app.services.strategy_tracking_snapshot import StrategyTrackingSnapshotBuilder

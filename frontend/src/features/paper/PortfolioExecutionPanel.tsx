@@ -4,8 +4,14 @@ import { DataTable } from "../../ui/table/DataTable";
 import { EmptyState, InfoPill } from "../workspace-shared/WorkspaceComponents";
 import { formatInteger, formatPct, toneFromChange } from "../workspace-shared/workspaceFormatters";
 
+type SkipReasonRow = {
+  reason: string;
+  count: number;
+};
+
 export function PortfolioExecutionPanel({ preview }: { preview?: PaperPortfolioExecutionPreview }) {
   const rows = preview ? [preview.max_5, preview.max_10] : [];
+  const skipRows = Object.entries(preview?.skip_reason_counts ?? {}).map(([reason, count]) => ({ reason, count }));
   return (
     <Collapse
       size="small"
@@ -36,23 +42,21 @@ export function PortfolioExecutionPanel({ preview }: { preview?: PaperPortfolioE
               ]}
               scroll={{ x: 820 }}
             />
-            <SkipReasonText counts={preview?.skip_reason_counts ?? {}} />
+            <DataTable<SkipReasonRow>
+              rowKey={(item) => item.reason}
+              dataSource={skipRows}
+              defaultScrollY={180}
+              locale={{ emptyText: <EmptyState text="当前闭合样本未触发组合跳过约束" /> }}
+              columns={[
+                { title: "跳过原因", dataIndex: "reason", width: 220 },
+                { title: "次数", dataIndex: "count", width: 90, align: "right", render: (value) => formatInteger(value) },
+              ]}
+              scroll={{ x: 360 }}
+            />
             {preview?.notes?.[0] ? <Typography.Text type="secondary" style={{ fontSize: 11 }}>{preview.notes[0]}</Typography.Text> : null}
           </Space>
         ),
       }]}
     />
-  );
-}
-
-function SkipReasonText({ counts }: { counts: Record<string, number> }) {
-  const entries = Object.entries(counts);
-  if (!entries.length) {
-    return <Typography.Text type="secondary" style={{ fontSize: 11 }}>当前闭合样本未触发组合跳过约束。</Typography.Text>;
-  }
-  return (
-    <Typography.Text type="secondary" style={{ fontSize: 11 }}>
-      跳过原因：{entries.map(([key, value]) => `${key} ${value}`).join(" / ")}
-    </Typography.Text>
   );
 }
