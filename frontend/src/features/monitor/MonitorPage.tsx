@@ -20,13 +20,16 @@ import { NumberField, SearchField, TextField } from "../../components/shared/For
 import { InstrumentSyncProgress } from "./InstrumentSyncProgress";
 import {
   buildMonitorMetrics,
+  buildPriorityEmptyText,
   buildPriorityNotice,
   dataQualityTone,
   formatRatioPct,
   resolveTodayAction,
 } from "./MonitorPage.helpers";
+import { MarketStateGatePanel } from "./MarketStateGatePanel";
 import { MonitorHoldingWizard } from "./MonitorHoldingWizard";
-import { Callout, ContextRow, EmptyState, FamilyStrip, InfoPill, MetricGrid, PanelTitle, StockCard, StockCardList } from "../workspace-shared/WorkspaceComponents";
+import { RiskFilterBadges } from "./RiskFilterBadges";
+import { Callout, ContextRow, EmptyState, FamilyStrip, InfoPill, MetricGrid, PanelTitle, StockCard } from "../workspace-shared/WorkspaceComponents";
 import { WorkspacePageIntro } from "../workspace-shared/WorkspacePageIntro";
 import { RitualCloseBag, RitualFortuneStrip } from "../ritual-ui";
 import { formatAmount, formatPct, formatPrice, riskLevelText, shortTime } from "../workspace-shared/workspaceFormatters";
@@ -41,6 +44,7 @@ import {
 import { StrategyLaneStatusCard } from "../low-buy/StrategyLaneStatusCard";
 import { StrategyLaneTabs } from "../low-buy/StrategyLaneTabs";
 import { useWorkspaceMonitorStore } from "../../stores/workspaceMonitorStore";
+import { VirtualCardList } from "../../ui/list/VirtualCardList";
 
 const MONITOR_METRIC_DETAILS_STYLE: CSSProperties = {
   marginTop: 8,
@@ -242,6 +246,13 @@ const MONITOR_EMBEDDED_HOLDING_STYLE: CSSProperties = {
   paddingTop: 10,
   borderTop: "1px solid rgba(148, 163, 184, 0.18)",
 };
+const MONITOR_CARD_LIST_STYLE: CSSProperties = {
+  display: "grid",
+  gap: 6,
+};
+const MONITOR_VIRTUAL_CARD_INSET_STYLE: CSSProperties = {
+  paddingRight: 2,
+};
 
 export interface MonitorPageProps {
   priorityBoard: LowBuyPriorityBoardResult | null;
@@ -426,33 +437,29 @@ export const MonitorPage = memo(function MonitorPage({
         />
         <div style={MONITOR_EMBEDDED_HOLDING_STYLE}>
           <PanelTitle title="已录入底仓" actions={<span className="muted">{watchCards.length} 个自选 / {runtime?.database_backend ?? "runtime"} </span>} />
-          <StockCardList compact>
-            {watchCards.length ? watchCards.map((stock) => (
-              <StockCard
-                key={stock.symbol}
+          <VirtualCardList
+            items={watchCards}
+            empty={<EmptyState text="暂无自选持仓。录入底仓后会显示做T信号。" />}
+            estimateSize={170}
+            maxHeight={460}
+            style={MONITOR_VIRTUAL_CARD_INSET_STYLE}
+            getItemKey={(stock) => stock.symbol}
+            renderItem={(stock) => (
+              <MonitorWatchStockCard
                 stock={stock}
-                actions={["详情", "分析", "编辑", "移除"]}
-                compact
-                onAction={(action) => {
-                  if (action === "移除") {
-                    onRemove(stock.symbol);
-                  } else if (action === "编辑") {
-                    onEdit(stock);
-                  } else if (action === "分析") {
-                    onAnalyze(stock);
-                  } else {
-                    onSelect(stock);
-                  }
-                }}
+                onAnalyze={onAnalyze}
+                onEdit={onEdit}
+                onRemove={onRemove}
+                onSelect={onSelect}
               />
-            )) : <EmptyState text="暂无自选持仓。录入底仓后会显示做T信号。" />}
-          </StockCardList>
+            )}
+          />
         </div>
       </aside>
 
       <div className="panel" style={MONITOR_PRIORITY_STYLE}>
         <PanelTitle
-          title={priorityBoard?.display_lane_title || "全策略优先级榜"}
+          title={priorityBoard?.display_lane_title || "生产优先榜"}
           actions={
             <>
               <Button style={MONITOR_GOLD_ACTION_STYLE} onClick={onAi} loading={loading === "ai"}>{loading === "ai" ? "解读中..." : "解读榜单"}</Button>
@@ -472,58 +479,127 @@ export const MonitorPage = memo(function MonitorPage({
           <InfoPill compact label="组合风险" value={priorityBoard?.portfolio_risk?.risk_level ? riskLevelText(priorityBoard.portfolio_risk.risk_level) : "--"} />
           <InfoPill compact label="快照日期" value={`${priorityBoard?.latest_trade_date ?? "--"} / 更新 ${shortTime(priorityBoard?.updated_at) || "--"}`} />
           <InfoPill compact label="数据状态" value={priorityBoard?.data_quality_text ?? "--"} tone={dataQualityTone(priorityBoard?.data_quality)} />
+          <InfoPill compact label="市场总闸" value={`${priorityBoard?.market_gate_decision ?? "--"} / ${Math.round((priorityBoard?.market_firepower_multiplier ?? 1) * 100)}%`} tone={priorityBoard?.market_gate_decision === "block" ? "down" : priorityBoard?.market_gate_decision === "reduce" ? "warn" : "up"} />
           <InfoPill compact label="今日分层" value={`确认 ${priorityBoard?.immediate_count ?? 0} / 观察 ${(priorityBoard?.focus_count ?? 0) + (priorityBoard?.track_count ?? 0)} / 榜单 ${priorityBoard?.total_candidates ?? 0}`} tone={(priorityBoard?.immediate_count ?? 0) ? "up" : "warn"} />
         </ContextRow>
+        <MarketStateGatePanel board={priorityBoard} />
+        <RiskFilterBadges board={priorityBoard} />
         {priorityNotice ? (
           <Callout title={priorityNotice.title} detail={priorityNotice.detail} tone={priorityNotice.tone === "danger" ? "down" : "warn"} compact />
         ) : null}
         {priorityBoard?.snapshot_warning ? <Callout title={priorityBoard.snapshot_warning} tone="warn" compact /> : null}
         <FamilyStrip priorityBoard={priorityBoard} />
-        <StockCardList compact>
-          {priorityCards.length ? priorityCards.slice(0, 12).map((stock) => (
-            <StockCard
-              key={`${stock.symbol}-${stock.actionText}`}
-              stock={stock}
-              actions={["详情", "分析"]}
-              compact
-              onAction={(action) => (action === "分析" ? onAnalyze(stock) : onSelect(stock))}
-            />
-          )) : <EmptyState text="暂无优先级榜单结果，等待后台全量深筛缓存完成。" />}
-        </StockCardList>
+        <VirtualCardList
+          items={priorityCards}
+          empty={<EmptyState text={buildPriorityEmptyText(priorityBoard)} />}
+          estimateSize={164}
+          maxHeight={620}
+          style={MONITOR_VIRTUAL_CARD_INSET_STYLE}
+          getItemKey={(stock) => `${stock.symbol}-${stock.actionText}`}
+          renderItem={(stock) => (
+            <MonitorPriorityStockCard stock={stock} onAnalyze={onAnalyze} onSelect={onSelect} />
+          )}
+        />
       </div>
 
       <div className="panel" style={MONITOR_ETF_STYLE}>
         <PanelTitle title="行业 ETF 做T替代" actions={<span className="muted">利用 ETF T+0 特性，降低个股隔夜风险</span>} />
         {pairedHedge?.disclaimer ? <Callout title={pairedHedge.disclaimer} tone="down" compact /> : null}
-        <StockCardList compact>
-          {(sectorEtfT0?.opportunities ?? []).length ? sectorEtfT0!.opportunities.slice(0, 6).map((item) => (
-            <article style={MONITOR_ETF_CARD_STYLE} key={`${item.etf_symbol}-${item.source_signal_symbol}`}>
-              <div style={MONITOR_ETF_CARD_HEAD_STYLE}>
-                <div style={MONITOR_ETF_CARD_HEAD_TEXT_STYLE}>
-                  <strong>{item.etf_name}</strong>
-                  <span>{item.etf_symbol} · 来源 {item.source_signal_name}</span>
-                </div>
-                <span className={`pill ${item.bias === "positive_t" ? "up" : item.bias === "negative_t" ? "down" : "neutral"}`}>{item.bias_text}</span>
-              </div>
-              <div style={MONITOR_ETF_CARD_META_STYLE}>
-                <span>板块：{item.sector_name || "未分类"}</span>
-                <span>分类：{etfCategoryText(item.etf_category)}</span>
-                <span>T+0：{item.t0_eligible ? "已放行" : "未放行"}</span>
-                <span>信心：{formatPct(item.confidence, 0)}</span>
-                <span>分钟：{item.intraday_signal_text || "待刷新"}</span>
-                <span>分钟信心：{formatPct(item.intraday_signal_confidence || 0, 0)}</span>
-                <span>ETF价：{formatPrice(item.last_price)}</span>
-                <span>ETF涨跌：{formatPct(item.change_pct)}</span>
-              </div>
-              <p style={MONITOR_ETF_CARD_HINT_STYLE}>{item.reason}</p>
-              <p style={MONITOR_ETF_CARD_HINT_STYLE}>{formatEtfSignalSnapshot(item)}</p>
-              <p style={MONITOR_ETF_CARD_HINT_STYLE}>买点 {item.entry_zone || "--"}；卖点 {item.sell_zone || "--"}；流动性门槛 {formatLargeAmount(item.min_amount)}；风险：{item.risk}</p>
-            </article>
-          )) : <EmptyState text="暂无 ETF 做T替代信号。只有板块低吸/热点信号明确时才展示。" />}
-        </StockCardList>
+        <VirtualCardList
+          items={sectorEtfT0?.opportunities ?? []}
+          empty={<EmptyState text="暂无 ETF 做T替代信号。只有板块低吸/热点信号明确时才展示。" />}
+          estimateSize={155}
+          maxHeight={520}
+          style={MONITOR_VIRTUAL_CARD_INSET_STYLE}
+          getItemKey={(item) => `${item.etf_symbol}-${item.source_signal_symbol}`}
+          renderItem={(item) => <SectorEtfOpportunityCard item={item} />}
+        />
         {sectorEtfT0?.notes?.length ? <p className="hint">{sectorEtfT0.notes[0]}</p> : null}
       </div>
     </section>
+  );
+});
+
+const MonitorPriorityStockCard = memo(function MonitorPriorityStockCard({
+  stock,
+  onAnalyze,
+  onSelect,
+}: {
+  stock: StockCardView;
+  onAnalyze: (stock: StockCardView) => void;
+  onSelect: (stock: StockCardView) => void;
+}) {
+  return (
+    <div style={MONITOR_CARD_LIST_STYLE}>
+      <StockCard
+        stock={stock}
+        actions={["详情", "分析"]}
+        compact
+        onAction={(action) => (action === "分析" ? onAnalyze(stock) : onSelect(stock))}
+      />
+    </div>
+  );
+});
+
+const MonitorWatchStockCard = memo(function MonitorWatchStockCard({
+  stock,
+  onAnalyze,
+  onEdit,
+  onRemove,
+  onSelect,
+}: {
+  stock: StockCardView;
+  onAnalyze: (stock: StockCardView) => void;
+  onEdit: (stock: StockCardView) => void;
+  onRemove: (symbol: string) => void;
+  onSelect: (stock: StockCardView) => void;
+}) {
+  return (
+    <div style={MONITOR_CARD_LIST_STYLE}>
+      <StockCard
+        stock={stock}
+        actions={["详情", "分析", "编辑", "移除"]}
+        compact
+        onAction={(action) => {
+          if (action === "移除") {
+            onRemove(stock.symbol);
+          } else if (action === "编辑") {
+            onEdit(stock);
+          } else if (action === "分析") {
+            onAnalyze(stock);
+          } else {
+            onSelect(stock);
+          }
+        }}
+      />
+    </div>
+  );
+});
+
+const SectorEtfOpportunityCard = memo(function SectorEtfOpportunityCard({ item }: { item: SectorEtfT0Opportunity }) {
+  return (
+    <article style={MONITOR_ETF_CARD_STYLE}>
+      <div style={MONITOR_ETF_CARD_HEAD_STYLE}>
+        <div style={MONITOR_ETF_CARD_HEAD_TEXT_STYLE}>
+          <strong>{item.etf_name}</strong>
+          <span>{item.etf_symbol} · 来源 {item.source_signal_name}</span>
+        </div>
+        <span className={`pill ${item.bias === "positive_t" ? "up" : item.bias === "negative_t" ? "down" : "neutral"}`}>{item.bias_text}</span>
+      </div>
+      <div style={MONITOR_ETF_CARD_META_STYLE}>
+        <span>板块：{item.sector_name || "未分类"}</span>
+        <span>分类：{etfCategoryText(item.etf_category)}</span>
+        <span>T+0：{item.t0_eligible ? "已放行" : "未放行"}</span>
+        <span>信心：{formatPct(item.confidence, 0)}</span>
+        <span>分钟：{item.intraday_signal_text || "待刷新"}</span>
+        <span>分钟信心：{formatPct(item.intraday_signal_confidence || 0, 0)}</span>
+        <span>ETF价：{formatPrice(item.last_price)}</span>
+        <span>ETF涨跌：{formatPct(item.change_pct)}</span>
+      </div>
+      <p style={MONITOR_ETF_CARD_HINT_STYLE}>{item.reason}</p>
+      <p style={MONITOR_ETF_CARD_HINT_STYLE}>{formatEtfSignalSnapshot(item)}</p>
+      <p style={MONITOR_ETF_CARD_HINT_STYLE}>买点 {item.entry_zone || "--"}；卖点 {item.sell_zone || "--"}；流动性门槛 {formatLargeAmount(item.min_amount)}；风险：{item.risk}</p>
+    </article>
   );
 });
 

@@ -612,6 +612,8 @@ def test_strategy_capacity_outputs_capital_curve():
 def test_runtime_worker_executes_ml_incremental_train_task(tmp_path, monkeypatch):
     db = _db()
     monkeypatch.setenv("ML_SIGNAL_MODEL_DIR", str(tmp_path))
+    monkeypatch.setenv("TQUANT_RESEARCH_JOBS_ENABLED", "true")
+    monkeypatch.setenv("TQUANT_ML_JOBS_ENABLED", "true")
     from app.core.config import get_settings
 
     get_settings.cache_clear()
@@ -646,6 +648,40 @@ def test_runtime_worker_executes_ml_incremental_train_task(tmp_path, monkeypatch
     assert result["status"] in {"research", "failed"}
     assert result["sample_count"] >= 120
     get_settings.cache_clear()
+
+
+def test_runtime_worker_blocks_research_task_when_disabled(monkeypatch):
+    db = _db()
+    monkeypatch.setenv("TQUANT_RESEARCH_JOBS_ENABLED", "false")
+    monkeypatch.setenv("TQUANT_ML_JOBS_ENABLED", "false")
+    from app.core.config import get_settings
+
+    get_settings.cache_clear()
+    try:
+        try:
+            runtime_worker._execute_task("ml_signal_incremental_train", {}, db)
+        except RuntimeError as exc:
+            assert "TQUANT_RESEARCH_JOBS_ENABLED" in str(exc)
+        else:  # pragma: no cover
+            raise AssertionError("expected disabled research task")
+    finally:
+        get_settings.cache_clear()
+
+
+def test_runtime_worker_executes_batch_a_decision_context_tasks():
+    db = _db()
+
+    market_result = runtime_worker._execute_task("market_state_gate_refresh", {}, db)
+    hard_risk_result = runtime_worker._execute_task("hard_risk_context_refresh", {}, db)
+
+    assert market_result["ok"] is True
+    assert market_result["worker_scope"] == "runtime-worker"
+    assert market_result["gate"]["decision"] in {"allow", "reduce", "block", "wait", "research_only", "no_data"}
+    assert hard_risk_result == {
+        "ok": True,
+        "worker_scope": "runtime-worker",
+        "message": "hard risk context refresh uses synchronous signal snapshots in Batch A",
+    }
 
 
 def test_low_buy_runtime_uses_composition_adapter_seam():

@@ -35,6 +35,8 @@ RUNTIME_WORKER_TASK_TYPES = (
     "market_review_report",
     "paper_review_report",
     "low_buy_materialization_refresh",
+    "market_state_gate_refresh",
+    "hard_risk_context_refresh",
     "strategy_tracking_snapshot_refresh",
     "ml_signal_incremental_train",
     "strategy_self_evolution",
@@ -44,6 +46,15 @@ RUNTIME_WORKER_TASK_TYPES = (
     "factor_mining_evaluate",
     "factor_mining_monthly",
 )
+RESEARCH_TASK_TYPES = {
+    "ml_signal_incremental_train",
+    "strategy_self_evolution",
+    "ml_feature_drift_monitor",
+    "factor_mining_evaluate",
+    "factor_mining_monthly",
+}
+ML_TASK_TYPES = {"ml_signal_incremental_train", "strategy_self_evolution", "ml_feature_drift_monitor"}
+FACTOR_TASK_TYPES = {"factor_mining_evaluate", "factor_mining_monthly"}
 
 
 class RuntimeWorker:
@@ -84,6 +95,7 @@ class RuntimeWorker:
 
 
 def _execute_task(task_type: str, payload: dict[str, Any], db) -> dict[str, Any]:  # noqa: ANN001
+    _ensure_task_enabled(task_type)
     if task_type == "noop":
         return {"ok": True, "message": "noop completed"}
     if task_type == "agent_daily_report_push":
@@ -174,6 +186,18 @@ def _execute_task(task_type: str, payload: dict[str, Any], db) -> dict[str, Any]
             scan_limit=int(payload.get("scan_limit") or 480),
             strategies=[str(item) for item in payload.get("strategies") or []] or None,
         )
+    if task_type == "market_state_gate_refresh":
+        from app.services.decision_context.market_gate import market_gate_from_context
+        from app.services.low_buy.priority_market import empty_priority_market_context
+
+        gate = market_gate_from_context(empty_priority_market_context())
+        return {"ok": True, "gate": gate.model_dump(mode="json"), "worker_scope": "runtime-worker"}
+    if task_type == "hard_risk_context_refresh":
+        return {
+            "ok": True,
+            "worker_scope": "runtime-worker",
+            "message": "hard risk context refresh uses synchronous signal snapshots in Batch A",
+        }
     if task_type == "strategy_tracking_snapshot_refresh":
         from app.services.strategy_tracking_snapshot import StrategyTrackingSnapshotBuilder
 
@@ -250,6 +274,16 @@ def _execute_task(task_type: str, payload: dict[str, Any], db) -> dict[str, Any]
     raise ValueError(f"未知任务类型: {task_type}")
 
 
+def _ensure_task_enabled(task_type: str) -> None:
+    settings = get_settings()
+    if task_type in RESEARCH_TASK_TYPES and not settings.tquant_research_jobs_enabled:
+        raise RuntimeError(f"{task_type} is disabled: set TQUANT_RESEARCH_JOBS_ENABLED=true")
+    if task_type in ML_TASK_TYPES and not settings.tquant_ml_jobs_enabled:
+        raise RuntimeError(f"{task_type} is disabled: set TQUANT_ML_JOBS_ENABLED=true")
+    if task_type in FACTOR_TASK_TYPES and not settings.tquant_factor_jobs_enabled:
+        raise RuntimeError(f"{task_type} is disabled: set TQUANT_FACTOR_JOBS_ENABLED=true")
+
+
 def _json_payload(raw: str) -> dict[str, Any]:
     import json
 
@@ -262,12 +296,15 @@ def _json_payload(raw: str) -> dict[str, Any]:
 
 def main() -> None:
     logging.basicConfig(level=logging.INFO)
+    settings = get_settings()
     start_latest_data_close_scheduler()
-    start_platform_autopilot_scheduler()
+    if settings.platform_autopilot_enabled:
+        start_platform_autopilot_scheduler()
     try:
         RuntimeWorker().run_forever()
     finally:
-        stop_platform_autopilot_scheduler()
+        if settings.platform_autopilot_enabled:
+            stop_platform_autopilot_scheduler()
         stop_latest_data_close_scheduler()
 
 

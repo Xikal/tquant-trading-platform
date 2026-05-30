@@ -8,6 +8,7 @@
 - `docs/operations/phase4-phase5-rollout.md`
 - `docs/operations/schema-index-runbook.md`
 - `docs/operations/ui-regression-checklist.md`
+- `docs/high-roi-platform-expansion-runbook-2026-05-30.md`
 - `PRODUCTION_RUNBOOK.md`
 - `DEVELOPMENT_GUIDE.md`
 
@@ -50,11 +51,19 @@ These files are kept as historical decision records. Do not treat them as curren
 - `docs/reports/full-regression-2026-05-27.md`
 - `docs/reports/observability-warning-budget-2026-05-27.md`
 - `docs/reports/repository-cleanup-2026-05-27.md`
+- `docs/reports/strategy_24m_duckdb_report.md`
 - `docs/reports/go-rust-performance-acceptance-2026-05-27.json`
 - `docs/reports/gupiao-cloud-performance-2026-05-27-120241.json`
 - `docs/reports/gupiao-cloud-performance-2026-05-27-124403.json`
 - `docs/reports/gupiao-go-rust-runtime-performance-2026-05-27.json`
 - `docs/reports/rust-bench-baseline.json`
+
+## Artifact Governance
+
+- New large machine-readable analytics outputs must go under `backend/data/analytics/reports`, an external `artifacts/` directory, or object storage; do not add new large JSON files directly under `docs/reports`.
+- Human-readable Markdown summaries may stay in `docs/reports` when they are current evidence or release records.
+- The generated DuckDB strategy report has a tracked Markdown summary at `docs/reports/strategy_24m_duckdb_report.md`; its JSON companion belongs at `backend/data/analytics/reports/strategy_24m_duckdb_report.json`.
+- `docs/reports/*-backtest-*.json`, `docs/reports/*-performance-*.json`, report zips, and analytics parquet/report JSON are ignored by default to avoid accidental repository bloat.
 
 ## Cleanup Policy
 
@@ -62,3 +71,4 @@ These files are kept as historical decision records. Do not treat them as curren
 - `frontend/*.tsbuildinfo` is TypeScript incremental build cache and must not be tracked.
 - Keep only cloud performance reports that are referenced by a persistent report or represent the latest post-deploy verification.
 - Before deleting a document or report, check references with `rg` and confirm it is not used by code, CI, deployment, tests or audit records.
+- Reference audit used for this cleanup pass: `rg --fixed-strings <basename> .` for each candidate report; files with live references in docs, scripts, tests, CI, or page code must be kept.

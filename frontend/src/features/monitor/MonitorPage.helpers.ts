@@ -19,7 +19,7 @@ export function buildMonitorMetrics({
     { label: "今天可操作", value: String(executableCount), tone: executableCount ? "up" : "neutral" },
     { label: "需要避险", value: String(watchCards.filter((card) => card.riskText.includes("高")).length), tone: "down" },
     { label: "平均质量分", value: Number.isFinite(Number(avgScore)) ? avgScore : "--", tone: "warn" },
-    { label: "榜单 / 刷新", value: `${priorityBoard?.items.length ?? 0} / ${shortTime(priorityBoard?.updated_at) || "--"}`, tone: "neutral" },
+    { label: "生产榜 / 刷新", value: `${priorityBoard?.items.length ?? 0} / ${shortTime(priorityBoard?.updated_at) || "--"}`, tone: "neutral" },
   ];
 }
 
@@ -62,6 +62,14 @@ export function resolveTodayAction(
   const observeCount = (priorityBoard?.focus_count ?? 0) + (priorityBoard?.track_count ?? 0);
   if (priorityBoard && immediateCount <= 0) {
     const market = priorityBoard.market_state_text || priorityBoard.daily_decision?.market_plain_text || "当前市场";
+    if ((priorityBoard.total_candidates ?? 0) <= 0 && !isPriorityBoardRefreshing(priorityBoard)) {
+      return {
+        title: "今日无生产可推荐票",
+        detail: `${market}，生产层候选未同时满足买点、承接、风控和交易范围；研究观察池不能当作买入推荐。`,
+        tone: "warn",
+        source: "priority",
+      };
+    }
     return {
       title: "今日无确认买入",
       detail: observeCount > 0
@@ -93,6 +101,15 @@ export function buildPriorityNotice(
   const observeCount = (priorityBoard.focus_count ?? 0) + (priorityBoard.track_count ?? 0);
   const blockedMarket = priorityBoard.market_state === "risk_release" || priorityBoard.market_state === "high_flyer_retreat";
   const marketText = priorityBoard.market_state_text || priorityBoard.daily_decision?.market_plain_text || "当前市场";
+  if ((priorityBoard.total_candidates ?? 0) <= 0 && !isPriorityBoardRefreshing(priorityBoard)) {
+    return {
+      title: "今日无生产可推荐票",
+      detail: blockedMarket
+        ? `${marketText}，生产层候选已被买点、风险或交易范围过滤；这不是后台没刷新，研究观察池也不能当作买入推荐。`
+        : "生产层没有股票同时满足价格区间、承接确认、风控和交易范围；研究观察池只用于提醒，不进入生产推荐。",
+      tone: blockedMarket ? "danger" : "warn",
+    };
+  }
   if (blockedMarket) {
     return {
       title: "今日无确认买入：市场风控已收紧",
@@ -107,4 +124,23 @@ export function buildPriorityNotice(
       : "当前没有股票同时满足价格区间、承接确认和风控条件。",
     tone: "warn",
   };
+}
+
+export function buildPriorityEmptyText(priorityBoard: LowBuyPriorityBoardResult | null): string {
+  if (!priorityBoard || isPriorityBoardRefreshing(priorityBoard)) {
+    return "生产优先榜正在后台刷新，稍后自动更新。";
+  }
+  if ((priorityBoard.total_candidates ?? 0) <= 0) {
+    return "今日无生产可推荐票：候选未同时满足买点、承接、风控和交易范围；研究观察池只做提醒。";
+  }
+  return "当前视图暂无可展示股票，请切换策略线或手动刷新。";
+}
+
+function isPriorityBoardRefreshing(priorityBoard: LowBuyPriorityBoardResult): boolean {
+  const warning = priorityBoard.snapshot_warning || "";
+  return (
+    !priorityBoard.latest_trade_date
+    || warning.includes("后台刷新")
+    || warning.includes("刷新任务已排队")
+  );
 }

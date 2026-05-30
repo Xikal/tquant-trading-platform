@@ -314,6 +314,7 @@ APP_PORT=18090 docker compose -f docker-compose.mysql.yml up -d --build
 - `app` 容器默认关闭运行时后台任务，只负责 Web/API 响应
 - `runtime-worker` 容器运行 `python -m app.workers.runtime_worker`，消费 `runtime_tasks` 持久化任务队列
 - `backtest-worker` 容器独立消费回测任务
+- `analytics-worker` 容器独立消费 `strategy_24m_duckdb_report`、`analytics_export_daily_bars`、`analytics_quality_check` 等分析任务，并在镜像构建时通过 `INSTALL_ANALYTICS=1` 安装 `duckdb`、`pyarrow`
 - `go-bff-gateway`、`go-market-read-service`、`go-scan-worker` 是生产主路径组件，MySQL compose 默认启动；Python 保留 fallback，但 fallback 必须通过日志或 metrics 可观测
 - 默认数据库为 `t_quant`
 - 默认应用用户为 `tquant_app`
@@ -325,6 +326,7 @@ Go 主路径健康检查：
 docker compose -f docker-compose.mysql.yml exec go-bff-gateway wget -qO- http://127.0.0.1:8091/readyz
 docker compose -f docker-compose.mysql.yml exec go-market-read-service wget -qO- http://127.0.0.1:8092/readyz
 docker compose -f docker-compose.mysql.yml exec go-scan-worker wget -qO- http://127.0.0.1:8093/readyz
+docker compose -f docker-compose.mysql.yml exec analytics-worker python -c "import duckdb, pyarrow; from app.core.database import ping_database; ping_database(); print('analytics-ready')"
 ```
 
 行情读缓存指标：
@@ -358,14 +360,36 @@ cp .env.docker.example .env
 关键项：
 
 - `APP_PORT`
+- `APP_WORKERS`
+  Web/API Gunicorn worker 数。生产如 `APP_WORKERS>1`，`GLOBAL_RATE_LIMIT_BACKEND` 必须为 `redis` 或网关限流；否则应用启动即失败。
+- `WEB_RUNTIME_BACKGROUND_JOBS_ENABLED`
+  Web 容器默认 `false`，避免 Gunicorn worker 内重复跑扫描、研究和调度循环。
+- `RUNTIME_BACKGROUND_JOBS_ENABLED`
+  仅用于专门调度容器；MySQL Compose 中 `runtime-worker` 通过独立进程消费任务，Web 不应打开该开关。
+- `PAPER_AUTO_TRADING_ENABLED`
+  默认 `false`，只允许明确授权的模拟盘自动交易进程开启。
+- `TQUANT_RESEARCH_JOBS_ENABLED` / `TQUANT_ML_JOBS_ENABLED` / `TQUANT_FACTOR_JOBS_ENABLED` / `TQUANT_STRATEGY_EVOLUTION_ENABLED`
+  研究、ML、因子、策略自进化循环默认关闭；需要研究任务时只在 `runtime-worker`、`backtest-worker` 或专用调度容器开启，不在 Web 容器开启。
+- `WEB_TQUANT_ANALYTICS_ENABLED`
+  Web `/readyz` 的 Analytics 依赖检查开关，默认 `false`，避免未安装 `duckdb`/`pyarrow` 的 Web 镜像因为分析依赖缺失而降级。
+- `ANALYTICS_WORKER_TQUANT_ANALYTICS_ENABLED`
+  `analytics-worker` 的 Analytics 依赖检查开关，默认 `true`；该镜像通过 `INSTALL_ANALYTICS=1` 安装 `duckdb`/`pyarrow`，启动时 fail-fast。
+- `TQUANT_DUCKDB_THREADS`
+  DuckDB 查询线程数，容器默认 `2`。
 - `SCHEMA_COMPAT_REPAIR_ENABLED`
   默认 `false`。生产环境以 Alembic 迁移为准；只有自托管旧库应急修复时才临时设为 `true`。
 - `SCHEMA_COMPAT_VERIFY_ON_STARTUP`
   默认 `false`。如需要启动期只读漂移检查才临时设为 `true`，避免常规启动扫描全表结构。
 - `GLOBAL_RATE_LIMIT_BACKEND`
   MySQL/Gunicorn 生产部署不得使用 `memory`。`docker-compose.mysql.yml` 默认使用 `redis`；如改回 `memory`，应用会拒绝启动。
+- `AUTH_COOKIE_SECURE`
+  生产必须为 `true`。
+- `AUTH_ALLOW_INSECURE_HTTP_COOKIE`
+  生产必须为 `false`。公网或域名部署不得用不安全 Cookie 例外。
 - `TQUANT_SETTINGS_ENCRYPTION_KEY`
   必填，长度不少于 64 字符，且必须与 `AUTH_SECRET_KEY` 不同。用于加密系统配置中的 `llm_api_key`、`database_url` 等敏感字段。
+- `DECISION_CONTEXT_ENABLED` / `MARKET_GATE_PRODUCTION_ENABLED` / `HARD_RISK_FILTER_PRODUCTION_ENABLED`
+  Batch A 决策上下文、市场总闸和避坑过滤器开关，默认 `true`。回滚时先关闭 `DECISION_CONTEXT_ENABLED`；关闭后 priority board 回到既有生产评分路径，市场总闸不再乘权，paper order 不再消费 Batch A hard-risk snapshot 阻断。
 - `TQUANT_INTERNAL_SERVICE_TOKEN`
   配置 `TQUANT_*_SERVICE_URL` 微服务地址时必填。BFF 到远端服务请求必须携带该 token，远端服务会拒绝缺失或不匹配的内部请求。
 - `RUNTIME_WORKER_POLL_INTERVAL_SECONDS`
@@ -449,7 +473,7 @@ AUTO_CONFIGURE_HTTPS=1 \
 ./scripts/deploy_cloud_server.sh
 ```
 
-默认 `HTTPS_REQUIRED=0`：如果 DNS、80 端口或证书服务临时异常，部署会继续并输出告警。若希望证书签发失败时直接中断部署：
+生产默认要求 HTTPS。`HTTPS_REQUIRED=1` 时，如果 DNS、80 端口或证书服务异常，部署会直接中断，避免用不安全 Cookie 运行生产环境：
 
 ```bash
 HTTPS_REQUIRED=1 ./scripts/deploy_cloud_server.sh
@@ -527,7 +551,49 @@ PYTHONPATH=. .venv/bin/python scripts/low_buy_materialization_health.py
 docker compose -f docker-compose.mysql.yml logs --tail=200 app
 docker compose -f docker-compose.mysql.yml logs --tail=200 runtime-worker
 docker compose -f docker-compose.mysql.yml logs --tail=200 backtest-worker
+docker compose -f docker-compose.mysql.yml logs --tail=200 analytics-worker
 ```
+
+5. Analytics 报告任务验证：
+
+```bash
+docker compose -f docker-compose.mysql.yml exec app python - <<'PY'
+from app.core.database import SessionLocal
+from app.models.schema_defs.phase4 import RuntimeTaskCreate
+from app.services.tasks import RuntimeTaskQueue
+with SessionLocal() as db:
+    task = RuntimeTaskQueue(db).enqueue(RuntimeTaskCreate(task_type="strategy_24m_duckdb_report", payload={"manifest": "latest"}, max_attempts=1))
+    print(task.id, task.status)
+PY
+docker compose -f docker-compose.mysql.yml logs -f analytics-worker
+```
+
+任务成功后线上产物应包含 `backend/data/analytics/reports/strategy_24m_duckdb_report.md` 和 `backend/data/analytics/reports/strategy_24m_duckdb_report.json`；仓库跟踪的 Markdown 摘要仍由 `backend/scripts/run_duckdb_strategy_report.py` 写到 `docs/reports/strategy_24m_duckdb_report.md`。如果日线数据或验证输入缺失，任务会失败并在 `runtime_task_events` 中记录阻断原因。
+
+6. Batch A 决策上下文任务验证：
+
+```bash
+docker compose -f docker-compose.mysql.yml exec app python - <<'PY'
+from app.core.database import SessionLocal
+from app.models.schema_defs.phase4 import RuntimeTaskCreate
+from app.services.tasks import RuntimeTaskQueue
+with SessionLocal() as db:
+    queue = RuntimeTaskQueue(db)
+    for task_type in ("market_state_gate_refresh", "hard_risk_context_refresh"):
+        task = queue.enqueue(RuntimeTaskCreate(task_type=task_type, payload={}, max_attempts=1))
+        print(task.id, task.task_type, task.status)
+PY
+docker compose -f docker-compose.mysql.yml logs -f runtime-worker
+```
+
+`market_state_gate_refresh` 的缺数据结果应为 `reduce` + degraded 证据，不得清空生产榜；`hard_risk_context_refresh` 属 Batch A 同步快照链路提示任务，不应在 Web 容器新增后台循环。更多操作见 `docs/high-roi-platform-expansion-runbook-2026-05-30.md`。
+
+## 10.1 LONGTEXT 迁移排查
+
+- 先在 staging 执行并计时：`time docker compose -f docker-compose.mysql.yml run --rm migration`，记录开始/结束时间、表行数、MySQL 版本。
+- 只在低峰期执行生产迁移；迁移期间暂停写入型后台任务和研究类 worker。
+- 回滚预案：迁移前完成 `./scripts/backup_database.sh` 或 MySQL dump；失败时停止 `app`、`runtime-worker`、`backtest-worker`、`analytics-worker`，恢复备份后再启动旧镜像。
+- 截断排查：迁移后抽样检查大字段长度，例如 `SELECT id, CHAR_LENGTH(payload_json) FROM runtime_tasks ORDER BY id DESC LIMIT 20;`；如果发现截断，立即回滚并保留失败 SQL、行 id、字段长度证据。
 
 ## 11. 磁盘空间清理
 
