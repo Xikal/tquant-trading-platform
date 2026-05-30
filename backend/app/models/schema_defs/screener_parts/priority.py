@@ -24,6 +24,10 @@ class LowBuyPriorityBoardItemOut(BaseModel):
     data_quality: str = "ok"
     data_quality_text: str = "数据完整"
     data_quality_tags: list[str] = Field(default_factory=list)
+    market_gate_decision: str = "allow"
+    market_gate_score: float = 100.0
+    market_gate_reasons: list[str] = Field(default_factory=list)
+    market_firepower_multiplier: float = 1.0
     market_state_category: str = "low_volume_wait"
     market_state_category_text: str = "缩量无主线"
     buy_signal_state: BuySignalState = "watch"
@@ -168,6 +172,10 @@ class LowBuyPriorityBoardResponse(BaseModel):
     data_quality: str = "ok"
     data_quality_text: str = "数据完整"
     data_quality_tags: list[str] = Field(default_factory=list)
+    market_gate_decision: str = "allow"
+    market_gate_score: float = 100.0
+    market_gate_reasons: list[str] = Field(default_factory=list)
+    market_firepower_multiplier: float = 1.0
     directional_bias: str = "neutral"
     directional_bias_text: str = "观望"
     market_bonus: float = 0.0

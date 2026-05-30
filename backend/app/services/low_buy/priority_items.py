@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Protocol
 
 from app.models.schemas import LowBuyCandidateOut, LowBuyPriorityBoardItemOut
+from app.services.decision_context.market_gate import apply_market_gate_to_score, market_gate_from_context, market_gate_multiplier
 from app.services.low_buy.main_force_model_ranking import main_force_rank_bonus
 from app.services.low_buy.production_scoring import score_low_buy_candidate_for_production
 from app.services.low_buy.strategy_lanes import (
@@ -60,12 +61,14 @@ def build_priority_items(
 ) -> list[LowBuyPriorityBoardItemOut]:
     items: list[LowBuyPriorityBoardItemOut] = []
     variant = normalize_strategy_variant(strategy_variant)
+    market_gate = market_gate_from_context(market_context)
     for row in rows:
         if not row.hits:
             continue
         item = _build_priority_item(
             row=row,
             market_context=market_context,
+            market_gate=market_gate,
             builder=builder,
             strategy_variant=variant,
         )
@@ -77,6 +80,7 @@ def _build_priority_item(
     *,
     row: PriorityCandidate,
     market_context: PriorityMarketContext,
+    market_gate,
     builder: PriorityItemBuilder,
     strategy_variant: str = "baseline",
 ) -> LowBuyPriorityBoardItemOut:
@@ -99,8 +103,10 @@ def _build_priority_item(
         market_context=market_context,
         mode="shadow",
     )
-    production_score = production_scoring.production_score
+    original_production_score = production_scoring.production_score
+    production_score = original_production_score
     watch_score = production_scoring.watch_score
+    production_score = apply_market_gate_to_score(production_score, market_gate)
     elite_watch_score = None
     if strategy_variant == FRONT_ROW_ONLY_VARIANT:
         elite_watch_score = watch_score
@@ -127,6 +133,10 @@ def _build_priority_item(
         data_quality=candidate.data_quality,
         data_quality_text=candidate.data_quality_text,
         data_quality_tags=candidate.data_quality_tags,
+        market_gate_decision=market_gate.decision,
+        market_gate_score=market_gate.score,
+        market_gate_reasons=market_gate.reasons,
+        market_firepower_multiplier=market_gate_multiplier(market_gate.decision),
         market_state_category=candidate.market_state_category,
         market_state_category_text=candidate.market_state_category_text,
         buy_signal_state=candidate.buy_signal_state,
@@ -191,7 +201,11 @@ def _build_priority_item(
         ),
         production_score=production_score,
         watch_score=watch_score,
-        production_decision=production_scoring.decision,
+        production_decision=(
+            "market_gate_blocked"
+            if original_production_score is not None and production_score is None and market_gate.decision == "block"
+            else production_scoring.decision
+        ),
         front_row_tier=production_scoring.front_row_tier,
         score_cap=production_scoring.score_cap,
         score_components=production_scoring.score_components,

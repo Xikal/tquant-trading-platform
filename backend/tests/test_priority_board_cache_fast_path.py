@@ -91,7 +91,7 @@ def test_priority_board_async_empty_returns_placeholder_and_queues(monkeypatch):
 def test_priority_board_route_passes_refresh_mode(monkeypatch):
     calls = []
 
-    def fake_priority_board(*, db, limit, refresh_mode):  # noqa: ANN001
+    def fake_priority_board(*, db, limit, refresh_mode, **_kwargs):  # noqa: ANN001
         calls.append((limit, refresh_mode))
         return _board()
 

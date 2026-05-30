@@ -11084,6 +11084,28 @@
             "title": "Mainline Tier Text",
             "type": "string"
           },
+          "market_firepower_multiplier": {
+            "default": 1.0,
+            "title": "Market Firepower Multiplier",
+            "type": "number"
+          },
+          "market_gate_decision": {
+            "default": "allow",
+            "title": "Market Gate Decision",
+            "type": "string"
+          },
+          "market_gate_reasons": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Market Gate Reasons",
+            "type": "array"
+          },
+          "market_gate_score": {
+            "default": 100.0,
+            "title": "Market Gate Score",
+            "type": "number"
+          },
           "market_state_category": {
             "default": "low_volume_wait",
             "title": "Market State Category",
@@ -19897,7 +19919,7 @@
             "type": "string"
           },
           "data_quality_text": {
-            "default": "暂无可跟踪推荐",
+            "default": "暂无可跟踪信号",
             "title": "Data Quality Text",
             "type": "string"
           },

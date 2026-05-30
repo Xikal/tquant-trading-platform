@@ -190,6 +190,10 @@ export interface LowBuyPriorityBoardItem extends StrategyLaneFields {
   data_quality?: string;
   data_quality_text?: string;
   data_quality_tags?: string[];
+  market_gate_decision?: string;
+  market_gate_score?: number;
+  market_gate_reasons?: string[];
+  market_firepower_multiplier?: number;
   market_state_category?: string;
   market_state_category_text?: string;
   buy_signal_state: "buy_now" | "soft_buy_now" | "observe_confirmed" | "near_entry" | "watch" | "avoid";
@@ -326,6 +330,10 @@ export interface LowBuyPriorityBoardResult {
   data_quality?: string;
   data_quality_text?: string;
   data_quality_tags?: string[];
+  market_gate_decision?: string;
+  market_gate_score?: number;
+  market_gate_reasons?: string[];
+  market_firepower_multiplier?: number;
   directional_bias?: "positive_t" | "negative_t" | "neutral";
   directional_bias_text?: string;
   market_bonus: number;

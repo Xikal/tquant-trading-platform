@@ -697,8 +697,8 @@ def portfolio_backtest_metrics(
             _portfolio_entry_date_key(item),
             -_portfolio_priority_score(item) if sort_by_production_score else 0.0,
             str(item.signal_date or ""),
-            str(item.symbol or ""),
-            str(item.strategy_key or ""),
+            _portfolio_symbol(item),
+            _portfolio_strategy_key(item),
         ),
     )
     equity = 1.0
@@ -732,17 +732,18 @@ def portfolio_backtest_metrics(
             available_cash=available_cash,
             curve=curve,
         )
-        if any(position["symbol"] == item.symbol for position in open_positions):
+        symbol = _portfolio_symbol(item)
+        if any(position["symbol"] == symbol for position in open_positions):
             skipped_by_duplicate += 1
             _record_skip(skip_reason_counts, "duplicate_symbol_open")
             continue
-        market_state = str(item.market_state or item.market_state_category or "")
+        market_state = _portfolio_market_state(item)
         if block_retreat_new_positions and market_state in {"high_flyer_retreat", "risk_release"}:
             skipped_by_retreat_market += 1
             _record_skip(skip_reason_counts, "retreat_market_no_new_position")
             continue
         if max_daily_per_strategy is not None and max_daily_per_strategy > 0:
-            strategy_key = str(item.strategy_key or "unknown")
+            strategy_key = _portfolio_strategy_key(item)
             strategy_date_key = (entry, strategy_key)
             if accepted_by_entry_strategy[strategy_date_key] >= max_daily_per_strategy:
                 skipped_by_strategy_daily_limit += 1
@@ -774,7 +775,7 @@ def portfolio_backtest_metrics(
         available_cash -= allocated_capital
         open_positions.append(
             {
-                "symbol": item.symbol,
+                "symbol": symbol,
                 "exit_date": exit_date,
                 "return_pct": _portfolio_return_pct(item, extra_cost_bps=extra_cost_bps),
                 "allocated_capital": allocated_capital,
@@ -785,7 +786,7 @@ def portfolio_backtest_metrics(
         accepted.append(item)
         accepted_returns.append(_portfolio_return_pct(item, extra_cost_bps=extra_cost_bps))
         if max_daily_per_strategy is not None and max_daily_per_strategy > 0:
-            accepted_by_entry_strategy[(entry, str(item.strategy_key or "unknown"))] += 1
+            accepted_by_entry_strategy[(entry, _portfolio_strategy_key(item))] += 1
         max_concurrent_positions = max(max_concurrent_positions, len(open_positions))
 
     equity, available_cash = _close_all_portfolio_positions(
@@ -865,14 +866,14 @@ def _portfolio_concentration(accepted: list[TradeOutcome], returns_pct: list[flo
     symbol_profit: dict[str, float] = defaultdict(float)
     strategy_counts: dict[str, int] = defaultdict(int)
     for item, value in zip(accepted, positive_returns):
-        symbol_profit[str(item.symbol or "unknown")] += value
-        strategy_counts[str(item.strategy_key or "unknown")] += 1
+        symbol_profit[_portfolio_symbol(item)] += value
+        strategy_counts[_portfolio_strategy_key(item)] += 1
     top_10_profit = sum(sorted(positive_returns, reverse=True)[:10])
     max_symbol_profit = max(symbol_profit.values(), default=0.0)
     top_strategy_count = max(strategy_counts.values(), default=0)
     return {
         "accepted_trade_count": len(accepted),
-        "independent_symbol_count": len({str(item.symbol or "") for item in accepted}),
+        "independent_symbol_count": len({_portfolio_symbol(item) for item in accepted}),
         "strategy_count": len(strategy_counts),
         "top_strategy_trade_share_pct": pct(top_strategy_count, len(accepted)),
         "top_10_positive_trade_contribution_pct": pct(top_10_profit, total_positive),
@@ -906,13 +907,26 @@ def _bootstrap_mean_ci(values: list[float], *, iterations: int = 400) -> dict[st
 
 
 def _portfolio_priority_score(item: TradeOutcome) -> float:
-    if item.production_score is not None:
-        return float(item.production_score)
+    production_score = getattr(item, "production_score", None)
+    if production_score is not None:
+        return float(production_score)
     signal_bonus = {"soft_buy_now": 90.0, "buy_now": 80.0, "observe_confirmed": 60.0, "near_entry": 50.0}.get(
-        item.buy_signal_state,
+        str(getattr(item, "buy_signal_state", "") or ""),
         0.0,
     )
     return signal_bonus + float(item.net_return_pct or 0.0) / 1000.0
+
+
+def _portfolio_symbol(item: TradeOutcome) -> str:
+    return str(getattr(item, "symbol", "") or "unknown")
+
+
+def _portfolio_strategy_key(item: TradeOutcome) -> str:
+    return str(getattr(item, "strategy_key", "") or "unknown")
+
+
+def _portfolio_market_state(item: TradeOutcome) -> str:
+    return str(getattr(item, "market_state", "") or getattr(item, "market_state_category", "") or "")
 
 
 def _portfolio_sector_key(item: TradeOutcome) -> str:

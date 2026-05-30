@@ -11197,6 +11197,23 @@ export interface components {
              */
             mainline_tier_text: string;
             /**
+             * Market Firepower Multiplier
+             * @default 1
+             */
+            market_firepower_multiplier: number;
+            /**
+             * Market Gate Decision
+             * @default allow
+             */
+            market_gate_decision: string;
+            /** Market Gate Reasons */
+            market_gate_reasons?: string[];
+            /**
+             * Market Gate Score
+             * @default 100
+             */
+            market_gate_score: number;
+            /**
              * Market State Category
              * @default low_volume_wait
              */
@@ -16760,7 +16777,7 @@ export interface components {
             data_quality: string;
             /**
              * Data Quality Text
-             * @default 暂无可跟踪推荐
+             * @default 暂无可跟踪信号
              */
             data_quality_text: string;
             /**

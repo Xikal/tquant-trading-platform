@@ -6,6 +6,7 @@ from app.models.schemas import (
     LowBuyPriorityBoardResponse,
     LowBuyPriorityFamilySectionOut,
 )
+from app.services.decision_context.market_gate import market_gate_from_context, market_gate_multiplier
 from app.services.low_buy.data_quality import build_market_data_quality, data_quality_payload
 from app.services.low_buy.market_state_rules import compute_directional_bias, directional_bias_text
 from app.services.low_buy.priority_types import PriorityBaseSnapshot
@@ -39,6 +40,7 @@ def build_priority_board_response(
         mainline_strength={"strength": market_context.market_state_strength},
     )
     market_state_fields = standard_market_state_payload(market_context.market_state)
+    market_gate = market_gate_from_context(market_context)
     quality_fields = data_quality_payload(
         build_market_data_quality(
             breadth_ready=market_context.breadth_ready,
@@ -72,6 +74,10 @@ def build_priority_board_response(
         market_state_category=market_state_fields["market_state_category"],
         market_state_category_text=market_state_fields["market_state_category_text"],
         **quality_fields,
+        market_gate_decision=market_gate.decision,
+        market_gate_score=market_gate.score,
+        market_gate_reasons=market_gate.reasons,
+        market_firepower_multiplier=market_gate_multiplier(market_gate.decision),
         directional_bias=directional_bias,
         directional_bias_text=directional_bias_text(directional_bias),
         market_bonus=market_context.market_bonus,
