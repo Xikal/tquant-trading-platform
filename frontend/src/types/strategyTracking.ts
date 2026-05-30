@@ -308,6 +308,18 @@ export interface DecisionContextGate {
   evidence?: Record<string, unknown>;
 }
 
+export interface DecisionContextEventRisk {
+  decision?: string;
+  severity?: string;
+  data_quality?: string;
+  summary?: string;
+  risk_types?: string[];
+  impact_window?: string;
+  evidence_ids?: string[];
+  reasons?: string[];
+  production_blocked?: boolean;
+}
+
 export interface DecisionContextGateContribution {
   gate: string;
   decision: string;

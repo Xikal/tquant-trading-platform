@@ -11,6 +11,7 @@ import { exitQualityTone, holdingBucketText, holdExtensionTone, suggestedPlanTex
 import { signalStateHelpText, signalStateKindText, signalStateText } from "./signalStateCopy";
 import { StrategyTrackingSectorTags } from "./StrategyTrackingSectorTags";
 import { SignalAttributionPanel } from "./SignalAttributionPanel";
+import { EventRiskPanel } from "./EventRiskPanel";
 import { RitualSignalSeal } from "../ritual-ui";
 
 interface StrategyTrackingDetailDrawerProps {
@@ -107,6 +108,11 @@ export function StrategyTrackingDetailContent({ detail, viewMode = "beginner" }:
             label: decisionContextLabel(detail),
             children: <SignalAttributionPanel context={detail.decision_context} />,
           },
+          {
+            key: "event-risk",
+            label: eventRiskLabel(detail),
+            children: <EventRiskPanel context={detail.decision_context} />,
+          },
         ]}
       />
       {viewMode === "professional" ? (
@@ -154,6 +160,18 @@ function decisionContextLabel(detail: StrategyTrackingDetailResponse) {
     <span className="strategy-tracking-tag-row">
       <strong>决策上下文</strong>
       <Tag>{context.status === "ok" ? "信号归因" : "归因待生成"}</Tag>
+      {firstReason ? <Tag color="gold">{firstReason}</Tag> : null}
+    </span>
+  );
+}
+
+function eventRiskLabel(detail: StrategyTrackingDetailResponse) {
+  const gate = detail.decision_context?.gates?.event_risk_gate;
+  const firstReason = gate?.reasons?.find(Boolean) ?? "";
+  return (
+    <span className="strategy-tracking-tag-row">
+      <strong>事件风险</strong>
+      <Tag>{gate?.decision === "no_data" ? "数据缺失" : gate?.decision || "待生成"}</Tag>
       {firstReason ? <Tag color="gold">{firstReason}</Tag> : null}
     </span>
   );

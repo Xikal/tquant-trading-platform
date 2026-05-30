@@ -4,6 +4,7 @@ from typing import Protocol
 
 from app.models.schemas import LowBuyCandidateOut, LowBuyPriorityBoardItemOut
 from app.services.decision_context.market_gate import apply_market_gate_to_score, market_gate_from_context, market_gate_multiplier
+from app.services.decision_context.event_risk import apply_event_risk_gate_to_score, event_risk_gate_from_candidate
 from app.services.decision_context.sector_leader_gate import (
     apply_sector_leader_gate_to_score,
     sector_leader_gate_from_candidate,
@@ -118,8 +119,14 @@ def _build_priority_item(
         candidate.strategy_key,
     )
     score_components = dict(production_scoring.score_components)
+    warning_tags = list(production_scoring.warning_tags)
     if sector_leader_boost:
         score_components["sector_leader_gate"] = sector_leader_boost
+    event_risk_gate = event_risk_gate_from_candidate(candidate)
+    production_score, event_risk_penalty = apply_event_risk_gate_to_score(production_score, event_risk_gate)
+    if event_risk_penalty:
+        score_components["event_risk_gate"] = event_risk_penalty
+        warning_tags.append("event_risk_reduced")
     elite_watch_score = None
     if strategy_variant == FRONT_ROW_ONLY_VARIANT:
         elite_watch_score = watch_score
@@ -229,7 +236,7 @@ def _build_priority_item(
         score_cap=production_scoring.score_cap,
         score_components=score_components,
         exclusion_reasons=production_scoring.exclusion_reasons,
-        warning_tags=production_scoring.warning_tags,
+        warning_tags=warning_tags,
         production_scoring_config_version=production_scoring.config_version,
         elite_watch_score=elite_watch_score,
     )

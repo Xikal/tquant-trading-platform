@@ -2583,7 +2583,8 @@
               "stock_explain",
               "daily_review",
               "strategy_attribution",
-              "priority_board_summary"
+              "priority_board_summary",
+              "event_risk_summary"
             ],
             "title": "Task",
             "type": "string"
@@ -2629,7 +2630,8 @@
               "stock_explain",
               "daily_review",
               "strategy_attribution",
-              "priority_board_summary"
+              "priority_board_summary",
+              "event_risk_summary"
             ],
             "title": "Task",
             "type": "string"
@@ -9564,6 +9566,192 @@
           }
         },
         "title": "IntradayConfirmationRequest",
+        "type": "object"
+      },
+      "IntradayEntryDecisionOut": {
+        "properties": {
+          "confirmation_text": {
+            "default": "",
+            "title": "Confirmation Text",
+            "type": "string"
+          },
+          "data_quality": {
+            "anyOf": [
+              {
+                "enum": [
+                  "ok",
+                  "degraded",
+                  "missing",
+                  "blocked"
+                ],
+                "type": "string"
+              },
+              {
+                "enum": [
+                  "no_data",
+                  "missing"
+                ],
+                "type": "string"
+              }
+            ],
+            "title": "Data Quality"
+          },
+          "entry_zone_high": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Entry Zone High"
+          },
+          "entry_zone_low": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Entry Zone Low"
+          },
+          "intraday_entry_decision": {
+            "enum": [
+              "buy_now",
+              "wait",
+              "avoid",
+              "no_data"
+            ],
+            "title": "Intraday Entry Decision",
+            "type": "string"
+          },
+          "production_score_delta": {
+            "default": 0.0,
+            "title": "Production Score Delta",
+            "type": "number"
+          },
+          "reasons": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Reasons",
+            "type": "array"
+          },
+          "strategy_key": {
+            "title": "Strategy Key",
+            "type": "string"
+          },
+          "support_distance_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Support Distance Pct"
+          },
+          "symbol": {
+            "title": "Symbol",
+            "type": "string"
+          },
+          "trade_date": {
+            "format": "date",
+            "title": "Trade Date",
+            "type": "string"
+          },
+          "vwap_distance_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Vwap Distance Pct"
+          }
+        },
+        "required": [
+          "symbol",
+          "strategy_key",
+          "trade_date",
+          "intraday_entry_decision",
+          "data_quality"
+        ],
+        "title": "IntradayEntryDecisionOut",
+        "type": "object"
+      },
+      "IntradayEntryDecisionRequest": {
+        "properties": {
+          "entry_zone_high": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Entry Zone High"
+          },
+          "entry_zone_low": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Entry Zone Low"
+          },
+          "latest_price": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latest Price"
+          },
+          "strategy_key": {
+            "default": "unknown",
+            "title": "Strategy Key",
+            "type": "string"
+          },
+          "support_price": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Support Price"
+          },
+          "symbol": {
+            "title": "Symbol",
+            "type": "string"
+          },
+          "trade_date": {
+            "format": "date",
+            "title": "Trade Date",
+            "type": "string"
+          }
+        },
+        "required": [
+          "symbol",
+          "trade_date"
+        ],
+        "title": "IntradayEntryDecisionRequest",
         "type": "object"
       },
       "IntradayKeyLevelOut": {
@@ -18321,6 +18509,11 @@
       },
       "StrategyTrackingDetailResponse": {
         "properties": {
+          "decision_context": {
+            "additionalProperties": true,
+            "title": "Decision Context",
+            "type": "object"
+          },
           "item": {
             "$ref": "#/components/schemas/StrategyTrackingItemOut"
           },
@@ -27613,6 +27806,52 @@
           }
         ],
         "summary": "Build Intraday Confirmations",
+        "tags": [
+          "intraday"
+        ]
+      }
+    },
+    "/api/intraday/entry-decision": {
+      "post": {
+        "operationId": "build_intraday_entry_decision_api_intraday_entry_decision_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IntradayEntryDecisionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IntradayEntryDecisionOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Build Intraday Entry Decision",
         "tags": [
           "intraday"
         ]

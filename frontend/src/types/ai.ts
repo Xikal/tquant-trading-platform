@@ -4,7 +4,8 @@ export type AiDecisionTask =
   | "stock_explain"
   | "daily_review"
   | "strategy_attribution"
-  | "priority_board_summary";
+  | "priority_board_summary"
+  | "event_risk_summary";
 
 export interface AiDecisionSupportRequest {
   task: AiDecisionTask;

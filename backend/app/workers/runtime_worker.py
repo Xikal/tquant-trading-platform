@@ -41,6 +41,7 @@ RUNTIME_WORKER_TASK_TYPES = (
     "hard_risk_context_refresh",
     "signal_attribution_refresh",
     "intraday_entry_snapshot_refresh",
+    "event_risk_refresh",
     "strategy_promotion_review",
     "paper_portfolio_execution_preview",
     "strategy_tracking_snapshot_refresh",
@@ -308,6 +309,15 @@ def _execute_task(task_type: str, payload: dict[str, Any], db) -> dict[str, Any]
             entry_context=payload.get("entry_context") if isinstance(payload.get("entry_context"), dict) else {},
             bar_period=str(payload.get("bar_period") or "1m"),
             limit=max(5, min(int(payload.get("limit") or 120), 240)),
+        )
+    if task_type == "event_risk_refresh":
+        from app.services.decision_context.event_risk import refresh_event_risk
+
+        return refresh_event_risk(
+            db,
+            symbols=[str(item) for item in payload.get("symbols") or []],
+            trade_date=date.fromisoformat(str(payload.get("trade_date") or date.today().isoformat())[:10]),
+            limit_per_symbol=max(1, min(int(payload.get("limit_per_symbol") or 8), 20)),
         )
     if task_type == "strategy_tracking_snapshot_refresh":
         from app.services.strategy_tracking_snapshot import StrategyTrackingSnapshotBuilder

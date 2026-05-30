@@ -12,6 +12,7 @@ AiDecisionTask = Literal[
     "daily_review",
     "strategy_attribution",
     "priority_board_summary",
+    "event_risk_summary",
 ]
 
 

@@ -29,7 +29,7 @@ export function SignalAttributionPanel({ context }: { context?: DecisionContextA
           { title: "回撤", dataIndex: "max_drawdown_pct", width: 88, render: (value) => formatPct(value) },
           { title: "结果", dataIndex: "hit", width: 80, render: (value) => (value ? <Tag color="green">命中</Tag> : <Tag color="orange">未命中</Tag>) },
         ]}
-        emptyText="信号归因尚未生成"
+        locale={{ emptyText: "信号归因尚未生成" }}
         scroll={{ x: 480 }}
         defaultScrollY={220}
       />

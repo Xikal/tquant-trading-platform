@@ -180,6 +180,14 @@ def render_strategy_24m_markdown(report: dict[str, Any]) -> str:
             "- 数据质量：关键输入缺失时必须返回 blocked_by_data 或 blocked_by_validation_inputs，不用空分或假分继续验收。",
         ]
     )
+    lines.extend(["", "## Batch C 决策上下文", ""])
+    lines.extend(
+        [
+            "- 信号归因：从 DecisionContextSnapshot 与后续日线计算 1/3/5/10 日结果；缺少未来行情返回 no_data，不写假收益。",
+            "- 分钟入场质量：只输出 buy_now/wait/avoid/no_data 与 production_score_delta；当前 INTRADAY_ENTRY_PRODUCTION_BOOST_ENABLED=false，缺分钟数据不加分。",
+            "- 事件风险：仅当 C0 数据源通过且 EVENT_RISK_PRODUCTION_BLOCK_ENABLED=true 才允许高风险阻断；当前默认只做摘要，缺源或缓存陈旧标记 data_quality=missing。",
+        ]
+    )
     lines.extend(["", "## 策略调整建议", ""])
     for item in report.get("strategy_adjustment_recommendations") or []:
         evidence = item.get("evidence") or {}

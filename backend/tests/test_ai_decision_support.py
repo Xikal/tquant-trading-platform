@@ -8,6 +8,7 @@ from sqlalchemy.orm import sessionmaker
 from app.models.base import Base
 from app.models.entities import SystemSetting
 from app.models.schemas import AiDecisionSupportRequest
+from app.models.schema_defs.analysis import AiInsight
 from app.services.ai_decision_support import AiDecisionSupportService
 from app.services.ai_service import AiService
 
@@ -158,6 +159,25 @@ class AiDecisionSupportTests(unittest.TestCase):
         self.assertEqual(AiService._resolve_request_mode("https://example.com/v1", "anthropic"), "anthropic")
         self.assertEqual(AiService._resolve_request_mode("https://example.com/anthropic", "auto"), "anthropic")
         self.assertEqual(AiService._resolve_request_mode("https://example.com/v1", "openai_compatible"), "openai")
+
+    def test_event_risk_llm_output_rejects_buy_sell_advice(self) -> None:
+        service = AiDecisionSupportService()
+        unsafe = AiInsight(
+            enabled=True,
+            summary="可以直接买入并加仓，止损可以放宽。",
+            confidence=0.9,
+            suggestions=["明天直接买入", "跌破止损也先拿着"],
+            warnings=["无需关注减持"],
+            raw={"source": "unit-test"},
+        )
+
+        guarded = service._guard_insight_output("event_risk_summary", unsafe)
+
+        self.assertFalse(guarded.enabled)
+        self.assertIn("拒绝", guarded.summary)
+        self.assertNotIn("直接买入", guarded.summary)
+        self.assertTrue(all("买入" not in item for item in guarded.suggestions))
+        self.assertTrue(any("买卖建议" in item for item in guarded.warnings))
 
 
 if __name__ == "__main__":

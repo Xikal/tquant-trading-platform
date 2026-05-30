@@ -104,6 +104,10 @@ def test_strategy_report_uses_daily_equal_return_and_portfolio_columns(tmp_path)
     assert report["status"] == "ok"
     assert "| 策略 | 层级 | 样本 | 成交 | 每日信号等权复利收益 | 真实组合 max5 | 真实组合 max10 |" in markdown
     assert "## Batch B 决策上下文" in markdown
+    assert "## Batch C 决策上下文" in markdown
+    assert "信号归因" in markdown
+    assert "分钟入场质量" in markdown
+    assert "事件风险" in markdown
     assert "策略晋级" in markdown
     assert "总收益 |" not in markdown
     assert "strategy_24m" not in markdown

@@ -2054,6 +2054,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/intraday/entry-decision": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Build Intraday Entry Decision */
+        post: operations["build_intraday_entry_decision_api_intraday_entry_decision_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/intraday/key-levels/stream": {
         parameters: {
             query?: never;
@@ -6140,7 +6157,7 @@ export interface components {
              * Task
              * @enum {string}
              */
-            task: "stock_explain" | "daily_review" | "strategy_attribution" | "priority_board_summary";
+            task: "stock_explain" | "daily_review" | "strategy_attribution" | "priority_board_summary" | "event_risk_summary";
             /**
              * Title
              * @default
@@ -6173,7 +6190,7 @@ export interface components {
              * Task
              * @enum {string}
              */
-            task: "stock_explain" | "daily_review" | "strategy_attribution" | "priority_board_summary";
+            task: "stock_explain" | "daily_review" | "strategy_attribution" | "priority_board_summary" | "event_risk_summary";
             /** Title */
             title: string;
         };
@@ -10190,6 +10207,68 @@ export interface components {
             period: "1m" | "5m";
             /** Symbols */
             symbols?: string[];
+        };
+        /** IntradayEntryDecisionOut */
+        IntradayEntryDecisionOut: {
+            /**
+             * Confirmation Text
+             * @default
+             */
+            confirmation_text: string;
+            /** Data Quality */
+            data_quality: ("ok" | "degraded" | "missing" | "blocked") | ("no_data" | "missing");
+            /** Entry Zone High */
+            entry_zone_high?: number | null;
+            /** Entry Zone Low */
+            entry_zone_low?: number | null;
+            /**
+             * Intraday Entry Decision
+             * @enum {string}
+             */
+            intraday_entry_decision: "buy_now" | "wait" | "avoid" | "no_data";
+            /**
+             * Production Score Delta
+             * @default 0
+             */
+            production_score_delta: number;
+            /** Reasons */
+            reasons?: string[];
+            /** Strategy Key */
+            strategy_key: string;
+            /** Support Distance Pct */
+            support_distance_pct?: number | null;
+            /** Symbol */
+            symbol: string;
+            /**
+             * Trade Date
+             * Format: date
+             */
+            trade_date: string;
+            /** Vwap Distance Pct */
+            vwap_distance_pct?: number | null;
+        };
+        /** IntradayEntryDecisionRequest */
+        IntradayEntryDecisionRequest: {
+            /** Entry Zone High */
+            entry_zone_high?: number | null;
+            /** Entry Zone Low */
+            entry_zone_low?: number | null;
+            /** Latest Price */
+            latest_price?: number | null;
+            /**
+             * Strategy Key
+             * @default unknown
+             */
+            strategy_key: string;
+            /** Support Price */
+            support_price?: number | null;
+            /** Symbol */
+            symbol: string;
+            /**
+             * Trade Date
+             * Format: date
+             */
+            trade_date: string;
         };
         /** IntradayKeyLevelOut */
         IntradayKeyLevelOut: {
@@ -15747,6 +15826,10 @@ export interface components {
         };
         /** StrategyTrackingDetailResponse */
         StrategyTrackingDetailResponse: {
+            /** Decision Context */
+            decision_context?: {
+                [key: string]: unknown;
+            };
             item: components["schemas"]["StrategyTrackingItemOut"];
             /** Markers */
             markers?: components["schemas"]["StrategyTrackingMarkerOut"][];
@@ -21359,6 +21442,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["IntradayConfirmationOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    build_intraday_entry_decision_api_intraday_entry_decision_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["IntradayEntryDecisionRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IntradayEntryDecisionOut"];
                 };
             };
             /** @description Validation Error */

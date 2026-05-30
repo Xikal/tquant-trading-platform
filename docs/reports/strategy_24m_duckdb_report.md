@@ -1,9 +1,9 @@
 # DuckDB 24个月策略分析报告
 
-- 生成时间：2026-05-30T10:02:35Z
+- 生成时间：2026-05-30T23:38:39Z
 - 状态：ok
-- Manifest：daily_bars_20260530100224
-- 数据窗口：2024-05-30 至 2026-05-30
+- Manifest：daily_bars_20260530233830
+- 数据窗口：2024-05-31 至 2026-05-31
 - 数据完整性：ok
 - 结论：24个月日线数据完整性通过，可以基于该 Manifest 继续报告。
 
@@ -11,13 +11,13 @@
 
 | 指标 | 数值 |
 |---|---:|
-| row_count | 2355541 |
+| row_count | 2350759 |
 | symbol_count | 4976 |
-| trade_day_count | 484 |
-| min_trade_date | 2024-05-30 |
+| trade_day_count | 483 |
+| min_trade_date | 2024-05-31 |
 | max_trade_date | 2026-05-29 |
-| avg_pct_chg | 0.12567372420310643 |
-| total_amount | 813538331739208.0 |
+| avg_pct_chg | 0.12661428894186721 |
+| total_amount | 812837220384751.0 |
 
 ## 24M 报告口径
 
@@ -53,6 +53,12 @@
 - 真实组合执行：Paper 组合预览与本报告 max5/max10 复用同一个 portfolio_backtest_metrics 口径。
 - 策略晋级：只产出 promotion review 建议，can_apply_override=false，不自动修改 strategy_policy.py 或 StrategyTierOverride。
 - 数据质量：关键输入缺失时必须返回 blocked_by_data 或 blocked_by_validation_inputs，不用空分或假分继续验收。
+
+## Batch C 决策上下文
+
+- 信号归因：从 DecisionContextSnapshot 与后续日线计算 1/3/5/10 日结果；缺少未来行情返回 no_data，不写假收益。
+- 分钟入场质量：只输出 buy_now/wait/avoid/no_data 与 production_score_delta；当前 INTRADAY_ENTRY_PRODUCTION_BOOST_ENABLED=false，缺分钟数据不加分。
+- 事件风险：仅当 C0 数据源通过且 EVENT_RISK_PRODUCTION_BLOCK_ENABLED=true 才允许高风险阻断；当前默认只做摘要，缺源或缓存陈旧标记 data_quality=missing。
 
 ## 策略调整建议
 

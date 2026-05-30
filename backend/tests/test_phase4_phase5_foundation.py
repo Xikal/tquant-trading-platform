@@ -787,6 +787,33 @@ def test_runtime_worker_executes_intraday_entry_snapshot_refresh(monkeypatch):
     assert calls == [(db, ["600000"], "2026-05-31", {"600000": {"entry_zone_low": 9.6, "entry_zone_high": 10.0}}, "1m", 80)]
 
 
+def test_runtime_worker_executes_event_risk_refresh(monkeypatch):
+    db = _db()
+    calls = []
+
+    def _refresh_stub(db_arg, *, symbols, trade_date, limit_per_symbol):  # noqa: ANN001
+        calls.append((db_arg, symbols, trade_date.isoformat(), limit_per_symbol))
+        return {
+            "ok": True,
+            "status": "no_data",
+            "worker_scope": "runtime-worker",
+            "gate_owner": "production-traceability-no-research-gate",
+        }
+
+    monkeypatch.setattr("app.services.decision_context.event_risk.refresh_event_risk", _refresh_stub)
+
+    result = runtime_worker._execute_task(
+        "event_risk_refresh",
+        {"symbols": ["600000"], "trade_date": "2026-05-31", "limit_per_symbol": 6},
+        db,
+    )
+
+    assert result["ok"] is True
+    assert result["worker_scope"] == "runtime-worker"
+    assert result["gate_owner"] == "production-traceability-no-research-gate"
+    assert calls == [(db, ["600000"], "2026-05-31", 6)]
+
+
 def test_low_buy_runtime_uses_composition_adapter_seam():
     runtime = LowBuyScreenerService()._runtime
 

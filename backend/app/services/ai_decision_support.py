@@ -74,6 +74,10 @@ TASK_PROMPTS = {
         "summary 不超过180字；suggestions 最多5条，按优先处理、重点观察、暂不处理三个层次组织；"
         "warnings 最多3条。每条必须短、明确、可执行，不能写长篇复盘。"
     ),
+    "event_risk_summary": (
+        "你是A股公告/事件风险摘要助手。只根据输入事件输出 summary, confidence, suggestions, warnings。"
+        "只能说明摘要、风险类型、严重度、影响周期和证据引用 id；严禁输出买入、卖出、加仓、减仓、持有或放宽止损建议。"
+    ),
 }
 
 
@@ -92,6 +96,7 @@ class AiDecisionSupportService:
             include_ai=request.include_ai,
             max_tokens=700 if request.task == "priority_board_summary" else 1600,
         )
+        insight = self._guard_insight_output(request.task, insight)
         if request.task == "priority_board_summary" and not insight.enabled:
             insight = self._build_priority_board_quant_fallback(payload.get("context"))
         return AiDecisionSupportResponse(
@@ -107,6 +112,8 @@ class AiDecisionSupportService:
         context = self._sanitize(request.payload)
         if request.task == "priority_board_summary":
             context = self._compact_priority_board_context(context)
+        if request.task == "event_risk_summary":
+            context = self._compact_event_risk_context(context)
         payload = {
             "task": request.task,
             "title": request.title,
@@ -115,9 +122,31 @@ class AiDecisionSupportService:
                 "AI 只解释量化和策略结果，不替代买入、卖出、仓位和止损规则。",
                 "如果输入数据不足，必须明确提示数据不足。",
                 "不得编造实时价格、行业热点、胜率或收益率。",
+                "事件风险摘要不得包含买入、卖出、加仓、减仓、持有或放宽止损建议。",
             ],
         }
         return self._fit_context(payload)
+
+    def _guard_insight_output(self, task: str, insight: AiInsight) -> AiInsight:
+        if task != "event_risk_summary":
+            return insight
+        text = " ".join(
+            [
+                str(insight.summary or ""),
+                *[str(item or "") for item in insight.suggestions],
+                *[str(item or "") for item in insight.warnings],
+            ]
+        )
+        if not _contains_trade_advice(text):
+            return insight
+        return AiInsight(
+            enabled=False,
+            summary="已拒绝包含买卖建议的事件风险输出；本模块仅保留风险摘要和证据引用。",
+            confidence=0.0,
+            suggestions=["仅查看事件类型、严重度、影响周期和证据 id。"],
+            warnings=["LLM 输出包含买卖建议，已由后端 guard 拦截。"],
+            raw={"guarded": "event_risk_trade_advice_rejected", "original": insight.raw},
+        )
 
     def _build_priority_board_quant_fallback(self, context: Any) -> AiInsight:
         if not isinstance(context, dict):
@@ -211,6 +240,27 @@ class AiDecisionSupportService:
             compact["items_count_sent_to_ai"] = min(len(items), MAX_PRIORITY_BOARD_ITEMS)
             compact["items_truncated"] = len(items) > MAX_PRIORITY_BOARD_ITEMS
         return compact
+
+    def _compact_event_risk_context(self, context: Any) -> Any:
+        if not isinstance(context, dict):
+            return context
+        result = {
+            key: self._trim_value(context[key])
+            for key in ("symbol", "trade_date", "severity", "risk_types", "impact_window", "evidence_ids", "summary", "data_quality")
+            if key in context
+        }
+        events = context.get("events")
+        if isinstance(events, list):
+            result["events"] = [
+                {
+                    key: self._trim_value(event[key])
+                    for key in ("id", "title", "source", "event_time", "risk_level", "description")
+                    if isinstance(event, dict) and key in event
+                }
+                for event in events[:5]
+                if isinstance(event, dict)
+            ]
+        return result
 
     def _compact_priority_item(self, item: Any) -> Any:
         if not isinstance(item, dict):
@@ -320,6 +370,7 @@ class AiDecisionSupportService:
             "daily_review": "收盘后复盘",
             "strategy_attribution": "策略归因解读",
             "priority_board_summary": "优先级榜解读",
+            "event_risk_summary": "事件风险摘要",
         }.get(task, "AI 决策辅助")
 
     def _build_fixed_sections(self, task: str, context: Any, insight: AiInsight) -> AiDecisionFixedSections:
@@ -360,3 +411,21 @@ class AiDecisionSupportService:
             if text:
                 return text
         return fallback
+
+
+def _contains_trade_advice(text: str) -> bool:
+    normalized = str(text or "")
+    trade_tokens = (
+        "直接买入",
+        "买入",
+        "卖出",
+        "加仓",
+        "减仓",
+        "满仓",
+        "清仓",
+        "持有",
+        "拿着",
+        "放宽止损",
+        "不用止损",
+    )
+    return any(token in normalized for token in trade_tokens)

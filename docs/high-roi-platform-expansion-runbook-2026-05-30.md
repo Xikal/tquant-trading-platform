@@ -216,7 +216,7 @@ docker compose -f docker-compose.mysql.yml exec mysql \
 Regenerate the tracked Markdown summary:
 
 ```bash
-PYTHONPATH=backend backend/.venv/bin/python backend/scripts/run_duckdb_strategy_report.py --output docs/reports/strategy_24m_duckdb_report.md
+DATABASE_URL=sqlite:///backend/data/t_quant.db PYTHONPATH=backend backend/.venv/bin/python backend/scripts/run_duckdb_strategy_report.py --output-md docs/reports/strategy_24m_duckdb_report.md
 ```
 
 Online analytics task:
@@ -242,8 +242,9 @@ If critical inputs fail quality checks, the task must record `blocked_by_data` a
 - Priority board fields include `market_gate_decision`, `market_gate_score`, `market_gate_reasons`, and `market_firepower_multiplier`.
 - N-pattern research strategies still have no production score and do not enter the priority board.
 
-## Deferred Scope
+## Batch C Completion Notes
 
-Batch C remains out of this run:
-
-- Batch C: signal attribution, intraday entry boost, event risk production blocking, decision context drawer.
+- Signal attribution, intraday entry decision badges, event risk summary, and the decision-context drawer are delivered in Batch C.
+- Intraday production score boost remains disabled because C0 minute/Tick coverage is 0.00%.
+- Event risk production blocking remains disabled because C0 event cache coverage is sparse and stale; event risk can summarize fresh cached evidence and marks missing/stale sources explicitly.
+- Later production enablement requires rerunning C0 against the target production database and changing the two flags only after coverage is materially complete.
