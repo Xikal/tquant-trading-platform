@@ -48,6 +48,17 @@ class AppSettings(BaseSettings):
     runtime_background_jobs_enabled: bool = False
     runtime_background_jobs_on_sqlite: bool = True
     runtime_worker_poll_interval_seconds: float = 5.0
+    decision_context_enabled: bool = True
+    market_gate_production_enabled: bool = True
+    sector_leader_gate_production_enabled: bool = True
+    hard_risk_filter_production_enabled: bool = True
+    intraday_entry_production_boost_enabled: bool = False
+    event_risk_production_block_enabled: bool = False
+    promotion_engine_auto_apply_enabled: bool = False
+    tquant_research_jobs_enabled: bool = False
+    tquant_ml_jobs_enabled: bool = False
+    tquant_factor_jobs_enabled: bool = False
+    tquant_strategy_evolution_enabled: bool = False
     platform_autopilot_enabled: bool = True
     platform_autopilot_notify_enabled: bool = False
     platform_autopilot_interval_seconds: int = 300
@@ -164,7 +175,7 @@ class AppSettings(BaseSettings):
     ml_signal_max_cv_auc_std: float = 0.06
     enable_deep_rl: bool = False
     enable_deep_rl_training: bool = False
-    paper_auto_trading_enabled: bool = True
+    paper_auto_trading_enabled: bool = False
     paper_auto_trading_interval: int = 120
     paper_auto_trading_max_orders: int = 5
     paper_auto_trading_dry_run: bool = False

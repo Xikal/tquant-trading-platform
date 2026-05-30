@@ -23,6 +23,11 @@ from app.models.backtest_entities import (
     BacktestTrade,
     BacktestValidation,
 )
+from app.models.decision_context_entities import (
+    DecisionContextSnapshot,
+    SignalOutcomeAttribution,
+    StrategyPromotionReview,
+)
 from app.models.low_buy_entities import (
     LowBuyCloseReviewSnapshot,
     LowBuyHotIndustrySnapshot,
@@ -122,6 +127,9 @@ __all__ = [
     "BacktestTrade",
     "BacktestOptimization",
     "BacktestValidation",
+    "DecisionContextSnapshot",
+    "SignalOutcomeAttribution",
+    "StrategyPromotionReview",
     "MarketEventCache",
     "MarketHourlySnapshotHistory",
     "MarketModelObservation",

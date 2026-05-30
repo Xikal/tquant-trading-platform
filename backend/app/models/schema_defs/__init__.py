@@ -81,6 +81,7 @@ from app.models.schema_defs.backtest import (
     EtfT0ResearchRequest,
     EtfT0ResearchResponse,
 )
+from app.models.schema_defs.decision_context import DecisionContextOut, GateDecisionOut
 from app.models.schema_defs.feishu import FeishuBindingRequest, FeishuBindingResponse, FeishuEventResponse
 from app.models.schema_defs.market import MarketBreadthResponse
 from app.models.schema_defs.paper import (
