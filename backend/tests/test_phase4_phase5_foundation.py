@@ -741,6 +741,26 @@ def test_runtime_worker_executes_batch_b_decision_context_tasks(monkeypatch):
     assert promotion_result["review"]["recommendation"] == "stay_research"
 
 
+def test_runtime_worker_executes_signal_attribution_refresh(monkeypatch):
+    db = _db()
+    calls = []
+
+    def _refresh_stub(db_arg, *, as_of_date, horizons, limit):  # noqa: ANN001
+        calls.append((db_arg, as_of_date.isoformat(), horizons, limit))
+        return {"ok": True, "status": "no_data", "worker_scope": "runtime-worker"}
+
+    monkeypatch.setattr("app.services.decision_context.signal_attribution.refresh_signal_attributions", _refresh_stub)
+
+    result = runtime_worker._execute_task(
+        "signal_attribution_refresh",
+        {"as_of_date": "2026-05-31", "horizons": [1, 3], "limit": 25},
+        db,
+    )
+
+    assert result == {"ok": True, "status": "no_data", "worker_scope": "runtime-worker"}
+    assert calls == [(db, "2026-05-31", [1, 3], 25)]
+
+
 def test_low_buy_runtime_uses_composition_adapter_seam():
     runtime = LowBuyScreenerService()._runtime
 

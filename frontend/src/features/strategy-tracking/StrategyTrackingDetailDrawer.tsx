@@ -1,13 +1,16 @@
-import { Alert, Collapse, Drawer, Space, Table, Tag, Timeline } from "antd";
+import { Alert, Collapse, Drawer, Space, Tag, Timeline } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import type { StrategyTrackingViewMode } from "../../stores/strategyTrackingStore";
 import type { AnalysisResponse } from "../../types";
 import type { StrategyTrackingDetailResponse, StrategyTrackingTimelinePoint } from "../../types";
 import { TqEmpty, TqPageLoading } from "../../ui/feedback/StateViews";
+import { DataTable } from "../../ui/table/DataTable";
 import { MiniKline } from "../workspace-shared/MiniKlineChart";
 import { formatPct, formatPrice } from "../workspace-shared/workspaceFormatters";
 import { exitQualityTone, holdingBucketText, holdExtensionTone, suggestedPlanText } from "./strategyTrackingFormatters";
+import { signalStateHelpText, signalStateKindText, signalStateText } from "./signalStateCopy";
 import { StrategyTrackingSectorTags } from "./StrategyTrackingSectorTags";
+import { SignalAttributionPanel } from "./SignalAttributionPanel";
 import { RitualSignalSeal } from "../ritual-ui";
 
 interface StrategyTrackingDetailDrawerProps {
@@ -33,7 +36,7 @@ export function StrategyTrackingDetailDrawer({
       {loading ? <TqPageLoading label="详情加载中" rows={3} /> : null}
       {errorText ? <Alert type="error" showIcon title={errorText} /> : null}
       {!loading && !errorText && !detail ? (
-        <TqEmpty title="这只股票后续行情数据不足" description="暂时不能判断推荐后的表现。" />
+        <TqEmpty title="这只股票后续行情数据不足" description="暂时不能判断信号后的表现。" />
       ) : null}
       {detail ? <StrategyTrackingDetailContent detail={detail} viewMode={viewMode} /> : null}
     </Drawer>
@@ -49,19 +52,21 @@ export function StrategyTrackingDetailContent({ detail, viewMode = "beginner" }:
       <div className="strategy-tracking-detail-head">
         <strong>{item.name || item.symbol} · {item.symbol}</strong>
         <div className="strategy-tracking-tag-row">
-          <Tag color="blue">{item.signal_text}</Tag>
+          <Tag color={item.signal_state === "buy_now" || item.signal_state === "soft_buy_now" ? "green" : "gold"}>{signalStateText(item)}</Tag>
           <RitualSignalSeal signalState={item.signal_state} riskLevel={item.stop_triggered ? "stop" : item.user_friendly_status} compact />
+          <Tag>{signalStateKindText(item.signal_state)}</Tag>
           <Tag color={item.stop_triggered ? "red" : "green"}>{item.lifecycle_status_text}</Tag>
           <Tag>{item.data_quality_text}</Tag>
         </div>
       </div>
+      <Alert type="info" showIcon title={signalStateKindText(item.signal_state)} description={signalStateHelpText(item.signal_state)} />
       <div className="strategy-tracking-cell-stack">
         <span>所属板块</span>
         <StrategyTrackingSectorTags sectors={fullSectors(item)} boardType={item.board_type} boardText={item.board_type_text} max={8} />
       </div>
       <div className="strategy-tracking-detail-metrics">
-        <span>推荐价 {formatPrice(item.first_signal_price)}</span>
-        <span>首次推荐 {item.first_signal_date}</span>
+        <span>信号价 {formatPrice(item.first_signal_price)}</span>
+        <span>首次信号 {item.first_signal_date}</span>
         <span>买点 {formatPrice(item.entry_zone_low)}~{formatPrice(item.entry_zone_high)}</span>
         <span>风险线 {formatPrice(item.stop_loss)}</span>
         <span>目标 {formatPrice(item.target_price)}</span>
@@ -90,9 +95,19 @@ export function StrategyTrackingDetailContent({ detail, viewMode = "beginner" }:
       ) : null}
       <p className="strategy-tracking-review-text">{detail.review_text}</p>
       <section className="strategy-tracking-detail-section">
-        <strong>推荐后发生了什么</strong>
+        <strong>信号后发生了什么</strong>
         <Timeline items={timelineItems(detail)} />
       </section>
+      <Collapse
+        size="small"
+        items={[
+          {
+            key: "decision-context",
+            label: decisionContextLabel(detail),
+            children: <SignalAttributionPanel context={detail.decision_context} />,
+          },
+        ]}
+      />
       {viewMode === "professional" ? (
         <Collapse
           size="small"
@@ -114,14 +129,32 @@ export function StrategyTrackingDetailContent({ detail, viewMode = "beginner" }:
         />
       ) : null}
       <MiniKline bars={timelineToKlineBars(detail.timeline)} />
-      <Table
+      <DataTable<StrategyTrackingTimelinePoint>
         rowKey="trade_date"
-        size="small"
         dataSource={detail.timeline}
+        paginated
         pagination={{ pageSize: 12 }}
         columns={timelineColumns}
+        scroll={{ x: 860 }}
+        defaultScrollY={420}
       />
     </Space>
+  );
+}
+
+function decisionContextLabel(detail: StrategyTrackingDetailResponse) {
+  const context = detail.decision_context ?? {};
+  const firstReason =
+    (context.gate_contributions ?? []).flatMap((item) => item.reasons ?? []).find((item) => /缺失|缺少|阻断|等待|不足/.test(item)) ||
+    (context.gate_contributions ?? []).flatMap((item) => item.reasons ?? []).find(Boolean) ||
+    (context.reasons ?? []).find(Boolean) ||
+    "";
+  return (
+    <span className="strategy-tracking-tag-row">
+      <strong>决策上下文</strong>
+      <Tag>{context.status === "ok" ? "信号归因" : "归因待生成"}</Tag>
+      {firstReason ? <Tag color="gold">{firstReason}</Tag> : null}
+    </span>
   );
 }
 
@@ -137,10 +170,10 @@ function fullSectors(item: StrategyTrackingDetailResponse["item"]): string[] {
 function timelineItems(detail: StrategyTrackingDetailResponse) {
   const item = detail.item;
   const rows = [
-    { key: "signal", children: `推荐日 ${item.first_signal_date}，推荐价 ${formatPrice(item.first_signal_price)}` },
+    { key: "signal", children: `信号日 ${item.first_signal_date}，信号价 ${formatPrice(item.first_signal_price)}` },
   ];
   if (item.entry_touched) rows.push({ key: "entry", children: "已到计划买入区" });
-  if (item.actual_high_date) rows.push({ key: "high", children: `实际最高点 ${item.actual_high_date}，推荐后最高涨过 ${formatPct(item.max_gain_pct)}` });
+  if (item.actual_high_date) rows.push({ key: "high", children: `实际最高点 ${item.actual_high_date}，信号后最高涨过 ${formatPct(item.max_gain_pct)}` });
   if ((item.spike_retrace_pct || 0) >= 4) rows.push({ key: "retrace", children: `曾经涨过，但后来回落 ${formatPct(item.spike_retrace_pct)}` });
   if (item.stop_triggered_date) rows.push({ key: "stop", children: `已跌破风险线 ${item.stop_triggered_date}` });
   if (item.invalidated_date) rows.push({ key: "invalid", children: `信号已失效 ${item.invalidated_date}` });

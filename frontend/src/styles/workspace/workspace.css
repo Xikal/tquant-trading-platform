@@ -1175,6 +1175,12 @@ h5.ant-typography {
   padding: 8px;
 }
 
+.strategy-tracking-context-gates {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
 .strategy-tracking-main-panel {
   padding-top: 4px;
 }

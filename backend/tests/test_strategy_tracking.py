@@ -98,6 +98,43 @@ class StrategyTrackingTests(unittest.TestCase):
         self.assertNotIn("payload_json", body["signal_snapshot"])
         self.assertIn("summary_reason", body["signal_snapshot"])
 
+    def test_detail_includes_decision_context_attribution_without_recompute(self) -> None:
+        self._seed_tracking_fixture()
+        from datetime import date
+
+        from app.models.schema_defs.decision_context import DecisionContextOut, GateDecisionOut
+        from app.services.decision_context.signal_attribution import refresh_signal_attributions
+        from app.services.decision_context.snapshot_writer import DecisionContextSnapshotWriter
+
+        with self.Session() as db:
+            context = DecisionContextOut(
+                symbol="600000",
+                trade_date=date(2026, 4, 20),
+                strategy_key="first_board",
+                strategy_tier="core",
+                production_eligible=True,
+                market_gate=GateDecisionOut(decision="allow", score=90.0, reasons=["市场修复"]),
+                sector_leader_gate=GateDecisionOut(decision="reduce", score=62.0, reasons=["板块扩散不足"]),
+                hard_risk_gate=GateDecisionOut(decision="allow", score=100.0, reasons=[]),
+                event_risk_gate=GateDecisionOut(decision="no_data", score=0.0, reasons=["事件源缺失"]),
+                intraday_entry_gate=GateDecisionOut(decision="no_data", score=0.0, reasons=["分钟数据缺失"]),
+                final_decision="front_row",
+                final_score=82.5,
+                data_quality="ok",
+            )
+            DecisionContextSnapshotWriter(db).upsert_context(context, source_snapshot={"entry_price": 10.0, "production_score": 82.5})
+            refresh_signal_attributions(db, as_of_date=date(2026, 4, 22), horizons=[1], limit=10)
+
+        response = self.client.get("/api/strategy-tracking/items/first_board:600000:2026-04-20")
+
+        self.assertEqual(response.status_code, 200)
+        context_payload = response.json()["decision_context"]
+        self.assertEqual(context_payload["strategy_tier"], "core")
+        self.assertTrue(context_payload["production_eligible"])
+        self.assertEqual(context_payload["gates"]["intraday_entry_gate"]["decision"], "no_data")
+        self.assertEqual(context_payload["outcomes"][0]["horizon_days"], 1)
+        self.assertEqual(context_payload["outcomes"][0]["return_pct"], 5.0)
+
     def test_items_include_attribution_audit_and_holding_fields(self) -> None:
         self._seed_tracking_fixture()
 

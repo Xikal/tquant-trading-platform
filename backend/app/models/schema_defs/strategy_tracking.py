@@ -17,7 +17,7 @@ class StrategyTrackingSummaryOut(BaseModel):
     avg_current_return_pct: float = 0.0
     median_max_gain_pct: float = 0.0
     data_quality: str = "unavailable"
-    data_quality_text: str = "暂无可跟踪推荐"
+    data_quality_text: str = "暂无可跟踪信号"
     generated_at: str = ""
 
 
@@ -315,6 +315,7 @@ class StrategyTrackingDetailResponse(BaseModel):
     timeline: list[StrategyTrackingTimelinePointOut] = Field(default_factory=list)
     markers: list[StrategyTrackingMarkerOut] = Field(default_factory=list)
     signal_snapshot: dict[str, Any] = Field(default_factory=dict)
+    decision_context: dict[str, Any] = Field(default_factory=dict)
     review_text: str = ""
     partial_errors: list[str] = Field(default_factory=list)
     production_writeable: bool = False

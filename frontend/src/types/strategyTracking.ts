@@ -274,9 +274,55 @@ export interface StrategyTrackingDetailResponse {
   timeline: StrategyTrackingTimelinePoint[];
   markers: StrategyTrackingMarker[];
   signal_snapshot: Record<string, unknown>;
+  decision_context: DecisionContextAttribution;
   review_text: string;
   partial_errors: string[];
   production_writeable: boolean;
+}
+
+export interface DecisionContextAttribution {
+  status?: string;
+  context_snapshot_id?: number;
+  symbol?: string;
+  strategy_key?: string;
+  trade_date?: string;
+  strategy_tier?: string;
+  production_eligible?: boolean;
+  production_score?: number | null;
+  final_decision?: string;
+  final_score?: number;
+  data_quality?: string;
+  gates?: Record<string, DecisionContextGate>;
+  gate_contributions?: DecisionContextGateContribution[];
+  source_versions?: Record<string, unknown>;
+  entry?: Record<string, unknown>;
+  outcomes?: DecisionContextOutcome[];
+  similar_history_sample_count?: number;
+  reasons?: string[];
+}
+
+export interface DecisionContextGate {
+  decision: string;
+  score: number;
+  reasons: string[];
+  evidence?: Record<string, unknown>;
+}
+
+export interface DecisionContextGateContribution {
+  gate: string;
+  decision: string;
+  score: number | null;
+  effect: string;
+  reasons: string[];
+}
+
+export interface DecisionContextOutcome {
+  horizon_days: number;
+  return_pct: number;
+  max_gain_pct: number;
+  max_drawdown_pct: number;
+  hit: boolean;
+  exit_reason: string;
 }
 
 export interface StrategyTrackingReviewResponse {

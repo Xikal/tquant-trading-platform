@@ -74,7 +74,9 @@ describe("StrategyTracking UI", () => {
     expect(html).toContain("过火勿追");
     expect(html).toContain("已到计划买入区");
     expect(html).toContain("已跌破风险线");
-    expect(html).toContain("推荐后最高涨过");
+    expect(html).toContain("信号性质");
+    expect(html).toContain("买入类：确定买入");
+    expect(html).toContain("信号后最高涨过");
     expect(html).toContain("短线1-3天");
     expect(html).toContain("需复核");
   });
@@ -86,7 +88,7 @@ describe("StrategyTracking UI", () => {
 
     expect(html).toContain("浦发银行");
     expect(html).toContain("过火勿追");
-    expect(html).toContain("首次推荐");
+    expect(html).toContain("首次信号");
     expect(html).toContain("分钟K线");
     expect(html).toContain("2026-04-21");
     expect(html).toContain("跌破风险线");
@@ -94,6 +96,9 @@ describe("StrategyTracking UI", () => {
     expect(html).toContain("延长持有评分");
     expect(html).toContain("失败归因");
     expect(html).toContain("最优退出");
+    expect(html).toContain("决策上下文");
+    expect(html).toContain("信号归因");
+    expect(html).toContain("事件源缺失");
     expect(html).not.toContain("payload_json");
   });
 
@@ -110,7 +115,7 @@ describe("StrategyTracking UI", () => {
   it("renders performance aggregation table", () => {
     const html = renderToStaticMarkup(<StrategyTrackingPerformanceTable items={[performanceFixture()]} />);
 
-    expect(html).toContain("推荐次数");
+    expect(html).toContain("信号次数");
     expect(html).toContain("买点触达率");
     expect(html).toContain("首板回调");
   });
@@ -120,7 +125,7 @@ describe("StrategyTracking UI", () => {
   it("renders holding analysis tab conclusions", () => {
     const html = renderToStaticMarkup(<StrategyTrackingHoldingAnalysisPanel items={[holdingFixture()]} loading={false} />);
 
-    expect(html).toContain("推荐次数");
+    expect(html).toContain("信号次数");
     expect(html).toContain("首板回调更适合短线");
     expect(html).toContain("短线 1-3 天");
   });
@@ -305,7 +310,7 @@ function itemFixture(): StrategyTrackingItem {
     strategy_name: "首板回调",
     strategy_family: "core",
     signal_state: "buy_now",
-    signal_text: "可买入",
+    signal_text: "确定可买",
     observe_only: false,
     lifecycle_status: "stopped",
     lifecycle_status_text: "跌破止损",
@@ -370,7 +375,7 @@ function itemFixture(): StrategyTrackingItem {
     abnormal_return: false,
     needs_review: true,
     review_priority: "normal",
-    review_text: "缩量回踩到支撑位；推荐后跌破止损，需复盘失败原因。",
+    review_text: "缩量回踩到支撑位；信号后跌破止损，需复盘失败原因。",
     data_quality: "ok",
     data_quality_text: "数据完整",
     source: "low_buy_result_snapshot",
@@ -383,7 +388,7 @@ function itemFixture(): StrategyTrackingItem {
     user_friendly_status: "weakening",
     user_friendly_status_text: "已经走弱",
     user_friendly_reason: "已经跌破风险线，优先复盘失败原因。",
-    plain_language_summary: "推荐后最高涨过 +10.00%，最多跌过 -16.19%，现在涨跌 -12.00%，已经跌破风险线。",
+    plain_language_summary: "信号后最高涨过 +10.00%，最多跌过 -16.19%，现在涨跌 -12.00%，已经跌破风险线。",
     sector_detail: { board_type_text: "主板" },
   };
 }
@@ -412,9 +417,38 @@ function detailFixture(): StrategyTrackingDetailResponse {
         data_quality: "ok",
       },
     ],
-    markers: [{ kind: "first_signal", trade_date: "2026-04-20", price: 10, label: "首次推荐" }],
+    markers: [{ kind: "first_signal", trade_date: "2026-04-20", price: 10, label: "首次信号" }],
     signal_snapshot: { summary_reason: "缩量回踩到支撑位" },
-    review_text: "缩量回踩到支撑位；推荐后跌破止损，需复盘失败原因。",
+    decision_context: {
+      status: "ok",
+      context_snapshot_id: 1,
+      symbol: "600000",
+      strategy_key: "first_board",
+      trade_date: "2026-04-20",
+      strategy_tier: "core",
+      production_eligible: true,
+      production_score: 82.5,
+      final_decision: "front_row",
+      final_score: 82.5,
+      data_quality: "ok",
+      gates: {
+        market_gate: { decision: "allow", score: 90, reasons: ["市场修复"] },
+        sector_leader_gate: { decision: "reduce", score: 62, reasons: ["板块扩散不足"] },
+        hard_risk_gate: { decision: "allow", score: 100, reasons: [] },
+        event_risk_gate: { decision: "no_data", score: 0, reasons: ["事件源缺失"] },
+        intraday_entry_gate: { decision: "no_data", score: 0, reasons: ["分钟数据缺失"] },
+      },
+      gate_contributions: [
+        { gate: "market_gate", decision: "allow", score: 90, effect: "positive", reasons: ["市场修复"] },
+        { gate: "event_risk_gate", decision: "no_data", score: 0, effect: "blocked", reasons: ["事件源缺失"] },
+      ],
+      outcomes: [
+        { horizon_days: 1, return_pct: 5, max_gain_pct: 10, max_drawdown_pct: -4, hit: true, exit_reason: "horizon_1d_close" },
+      ],
+      similar_history_sample_count: 12,
+      reasons: [],
+    },
+    review_text: "缩量回踩到支撑位；信号后跌破止损，需复盘失败原因。",
     partial_errors: [],
     production_writeable: false,
   };

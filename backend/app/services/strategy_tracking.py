@@ -347,6 +347,7 @@ class StrategyTrackingService:
             timeline=timeline,
             markers=markers,
             signal_snapshot=compact_payload(group.payload),
+            decision_context=self._decision_context_payload(item),
             review_text=item.review_text,
             partial_errors=[item for item in partial_errors if item],
         )
@@ -520,6 +521,29 @@ class StrategyTrackingService:
 
     def _group_key(self, group: TrackingGroup) -> tuple[str, str, str]:
         return group.strategy_key, group.symbol, self._first_signal_date(group)
+
+    def _decision_context_payload(self, item: StrategyTrackingItemOut) -> dict[str, Any]:
+        try:
+            from datetime import date
+
+            from app.services.decision_context.signal_attribution import decision_context_attribution_payload
+
+            trade_date = date.fromisoformat(item.first_signal_date[:10]) if item.first_signal_date else None
+            return decision_context_attribution_payload(
+                self.db,
+                symbol=item.symbol,
+                strategy_key=item.strategy_key,
+                trade_date=trade_date,
+            )
+        except Exception as exc:
+            logger.warning("strategy tracking decision context payload failed for %s", item.id, exc_info=True)
+            return {
+                "status": "no_data",
+                "data_quality": "missing",
+                "reasons": [f"决策上下文暂不可用：{exc}"],
+                "outcomes": [],
+                "gates": {},
+            }
 
     def _load_instrument_payloads(self, groups: list[TrackingGroup]) -> dict[str, dict[str, str]]:
         symbols = sorted({item.symbol for item in groups})
