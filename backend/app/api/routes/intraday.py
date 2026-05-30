@@ -15,8 +15,11 @@ from app.core.database import SessionLocal, get_db
 from app.core.auth import get_current_user
 from app.models.entities import SseSubscription, UserWatchlist
 from app.models.entities import User
+from app.models.entities import MinuteBarSnapshot
+from app.models.schema_defs.decision_context import IntradayEntryDecisionOut, IntradayEntryDecisionRequest
 from app.models.schemas import IntradayConfirmationOut, IntradayConfirmationRequest
 from app.services.intraday_confirmation_service import IntradayConfirmationService
+from app.services.decision_context.intraday_entry import IntradayEntryInput, evaluate_intraday_entry
 from app.models.schema_defs.agent import AgentNotificationTestRequest
 from app.services.agent_notification_service import AgentNotificationService
 from app.services.intraday_key_levels import IntradayKeyLevelService
@@ -47,6 +50,52 @@ def list_intraday_confirmations(
     db: Session = Depends(get_db),
 ) -> list[IntradayConfirmationOut]:
     return IntradayConfirmationService(db).list_recent(limit=limit)
+
+
+@router.post("/entry-decision", response_model=IntradayEntryDecisionOut)
+def build_intraday_entry_decision(
+    payload: IntradayEntryDecisionRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> IntradayEntryDecisionOut:
+    bars = (
+        db.execute(
+            select(MinuteBarSnapshot)
+            .where(MinuteBarSnapshot.symbol == payload.symbol)
+            .where(MinuteBarSnapshot.trade_date == payload.trade_date)
+            .where(MinuteBarSnapshot.bar_period == "1m")
+            .order_by(MinuteBarSnapshot.bar_timestamp.asc())
+            .limit(120)
+        )
+        .scalars()
+        .all()
+    )
+    decision = evaluate_intraday_entry(
+        IntradayEntryInput(
+            symbol=payload.symbol,
+            strategy_key=payload.strategy_key,
+            trade_date=payload.trade_date,
+            entry_zone_low=payload.entry_zone_low,
+            entry_zone_high=payload.entry_zone_high,
+            support_price=payload.support_price,
+            latest_price=payload.latest_price,
+            minute_bars=bars,
+        )
+    )
+    return IntradayEntryDecisionOut(
+        symbol=decision.symbol,
+        strategy_key=decision.strategy_key,
+        trade_date=decision.trade_date,
+        intraday_entry_decision=decision.decision,  # type: ignore[arg-type]
+        data_quality=decision.data_quality,  # type: ignore[arg-type]
+        reasons=decision.reasons,
+        entry_zone_low=decision.entry_zone_low,
+        entry_zone_high=decision.entry_zone_high,
+        vwap_distance_pct=decision.vwap_distance_pct,
+        support_distance_pct=decision.support_distance_pct,
+        confirmation_text=decision.confirmation_text or "分钟入场决策已生成",
+        production_score_delta=decision.production_score_delta,
+    )
 
 
 @router.post("/subscribe")

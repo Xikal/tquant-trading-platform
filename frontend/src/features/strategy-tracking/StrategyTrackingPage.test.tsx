@@ -99,6 +99,8 @@ describe("StrategyTracking UI", () => {
     expect(html).toContain("决策上下文");
     expect(html).toContain("信号归因");
     expect(html).toContain("事件源缺失");
+    expect(html).toContain("分钟入场");
+    expect(html).toContain("数据缺失");
     expect(html).not.toContain("payload_json");
   });
 

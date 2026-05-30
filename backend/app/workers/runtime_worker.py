@@ -40,6 +40,7 @@ RUNTIME_WORKER_TASK_TYPES = (
     "sector_leader_snapshot_refresh",
     "hard_risk_context_refresh",
     "signal_attribution_refresh",
+    "intraday_entry_snapshot_refresh",
     "strategy_promotion_review",
     "paper_portfolio_execution_preview",
     "strategy_tracking_snapshot_refresh",
@@ -296,6 +297,17 @@ def _execute_task(task_type: str, payload: dict[str, Any], db) -> dict[str, Any]
             as_of_date=date.fromisoformat(str(payload.get("as_of_date") or date.today().isoformat())[:10]),
             horizons=[int(item) for item in payload.get("horizons") or [1, 3, 5, 10]],
             limit=max(1, min(int(payload.get("limit") or 200), 1000)),
+        )
+    if task_type == "intraday_entry_snapshot_refresh":
+        from app.services.decision_context.intraday_entry import refresh_intraday_entry_snapshots
+
+        return refresh_intraday_entry_snapshots(
+            db,
+            symbols=[str(item) for item in payload.get("symbols") or []],
+            trade_date=date.fromisoformat(str(payload.get("trade_date") or date.today().isoformat())[:10]),
+            entry_context=payload.get("entry_context") if isinstance(payload.get("entry_context"), dict) else {},
+            bar_period=str(payload.get("bar_period") or "1m"),
+            limit=max(5, min(int(payload.get("limit") or 120), 240)),
         )
     if task_type == "strategy_tracking_snapshot_refresh":
         from app.services.strategy_tracking_snapshot import StrategyTrackingSnapshotBuilder

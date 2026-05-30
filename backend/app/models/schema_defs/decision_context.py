@@ -33,3 +33,28 @@ class DecisionContextOut(BaseModel):
     final_decision: FinalDecision
     final_score: float
     data_quality: DataQuality
+
+
+class IntradayEntryDecisionRequest(BaseModel):
+    symbol: str
+    strategy_key: str = "unknown"
+    trade_date: date
+    entry_zone_low: float | None = None
+    entry_zone_high: float | None = None
+    support_price: float | None = None
+    latest_price: float | None = None
+
+
+class IntradayEntryDecisionOut(BaseModel):
+    symbol: str
+    strategy_key: str
+    trade_date: date
+    intraday_entry_decision: Literal["buy_now", "wait", "avoid", "no_data"]
+    data_quality: DataQuality | Literal["no_data", "missing"]
+    reasons: list[str] = Field(default_factory=list)
+    entry_zone_low: float | None = None
+    entry_zone_high: float | None = None
+    vwap_distance_pct: float | None = None
+    support_distance_pct: float | None = None
+    confirmation_text: str = ""
+    production_score_delta: float = 0.0

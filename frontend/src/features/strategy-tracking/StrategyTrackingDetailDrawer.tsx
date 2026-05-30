@@ -82,6 +82,7 @@ export function StrategyTrackingDetailContent({ detail, viewMode = "beginner" }:
         <Tag>{holdingBucketText(item.holding_bucket)}</Tag>
         <Tag color={holdExtensionTone(item.hold_extension_state)}>{item.hold_extension_text}</Tag>
         <Tag>{suggestedPlanText(item.suggested_holding_plan)}</Tag>
+        <IntradayEntryBadge context={detail.decision_context} />
         {item.needs_review ? <Tag color="orange">需复核</Tag> : null}
       </div>
       {item.failure_reason_text ? <Alert type="warning" showIcon title="失败归因" description={item.failure_reason_text} /> : null}
@@ -156,6 +157,30 @@ function decisionContextLabel(detail: StrategyTrackingDetailResponse) {
       {firstReason ? <Tag color="gold">{firstReason}</Tag> : null}
     </span>
   );
+}
+
+function IntradayEntryBadge({ context }: { context: StrategyTrackingDetailResponse["decision_context"] }) {
+  const gate = context?.gates?.intraday_entry_gate;
+  if (!gate) {
+    return <Tag>分钟入场 · 数据缺失</Tag>;
+  }
+  return <Tag color={intradayTone(gate.decision)}>分钟入场 · {intradayText(gate.decision)}</Tag>;
+}
+
+function intradayText(decision: string): string {
+  if (decision === "buy_now") return "可接近";
+  if (decision === "wait") return "等回踩";
+  if (decision === "avoid") return "先观察";
+  if (decision === "no_data") return "数据缺失";
+  if (decision === "research_only") return "研究态";
+  return decision || "数据缺失";
+}
+
+function intradayTone(decision: string): string {
+  if (decision === "buy_now") return "green";
+  if (decision === "wait") return "gold";
+  if (decision === "avoid") return "red";
+  return "default";
 }
 
 function fullSectors(item: StrategyTrackingDetailResponse["item"]): string[] {
