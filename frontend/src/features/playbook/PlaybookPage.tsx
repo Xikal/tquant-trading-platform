@@ -4,6 +4,7 @@ import { Button, Collapse, Flex, Tabs, Typography } from "antd";
 import { playbookActionLabel } from "../../utils/uxClarity";
 import { Callout, EmptyState, InfoPill, MetricGrid, PanelTitle } from "../workspace-shared/WorkspaceComponents";
 import { WorkspacePageIntro } from "../workspace-shared/WorkspacePageIntro";
+import { RitualFortuneStrip, RitualLuckyDraw, RitualSignalSeal } from "../ritual-ui";
 import { WEB_PLAYBOOK_TABS } from "../workspace-shared/workspaceConstants";
 import { candidateToCard } from "../workspace-shared/workspaceViewModels";
 import { formatNumber, formatPct, strategyLabel } from "../workspace-shared/workspaceFormatters";
@@ -40,7 +41,7 @@ const PLAYBOOK_DENSE_LIST_STYLE: CSSProperties = {
 };
 const PLAYBOOK_DENSE_ROW_STYLE: CSSProperties = {
   display: "grid",
-  gridTemplateColumns: "minmax(94px, 0.9fr) minmax(0, 1.8fr) minmax(76px, 0.6fr) auto",
+  gridTemplateColumns: "minmax(78px, 0.85fr) minmax(0, 1.7fr) minmax(54px, 0.45fr) auto auto",
   gap: 6,
   alignItems: "center",
   border: "1px solid rgba(148, 163, 184, 0.2)",
@@ -130,6 +131,10 @@ export function PlaybookPage({
             { label: "交易日", value: playbook?.latest_trade_date ?? "--" },
           ]}
         />
+        <Flex wrap gap={6} align="center" style={{ marginTop: 6 }}>
+          <RitualFortuneStrip marketTone={buyNow.length ? "strong" : executableCount ? "neutral" : "unknown"} compact />
+          <RitualLuckyDraw compact />
+        </Flex>
         <Flex wrap gap={6} style={{ marginTop: 8 }}>
           {tabs.map((tab) => (
             <Button
@@ -194,6 +199,7 @@ export function PlaybookPage({
               />
             ) : null}
             <p>{executableCount > 0 ? "主看" : "观察"}：{focus.name} {focus.symbol}，{focus.actionText}，{focus.details}</p>
+            <RitualSignalSeal signalState={ritualStateFromAction(focus.actionText)} riskLevel={focus.riskText} />
             <InfoPill label="主线轮动" value={playbook?.hot_industries?.slice(0, 4).join(" / ") || "--"} />
           </>
         ) : avoid.length ? (
@@ -345,6 +351,7 @@ function DenseCandidateList({
             {stock.actionText} · {stock.details}
           </span>
           <span style={PLAYBOOK_DENSE_META_STYLE}>{stock.scoreText ? `质量 ${stock.scoreText}` : stock.riskText}</span>
+          <RitualSignalSeal signalState={ritualStateFromAction(stock.actionText)} riskLevel={stock.riskText} compact />
           <Flex gap={4} justify="flex-end">
             <Button size="small" onClick={() => onSelect(stock)}>详情</Button>
             <Button size="small" type="primary" onClick={() => onAnalyze(stock)}>分析</Button>
@@ -353,4 +360,13 @@ function DenseCandidateList({
       ))}
     </div>
   );
+}
+
+function ritualStateFromAction(actionText: string): string {
+  if (actionText.includes("确定") || actionText.includes("可买")) return "buy_now";
+  if (actionText.includes("小仓")) return "soft_buy_now";
+  if (actionText.includes("接近") || actionText.includes("等确认")) return "near_entry";
+  if (actionText.includes("观察")) return "observe_confirmed";
+  if (actionText.includes("放弃") || actionText.includes("风险")) return "avoid";
+  return "watch";
 }

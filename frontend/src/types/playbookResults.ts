@@ -1,4 +1,5 @@
 import type { LowBuyCandidate, LowBuyNextDayEventPlan, LowBuyPortfolioRisk, MainForceAdvice } from "./playbookCore";
+import type { StrategyLaneFields, StrategyLaneMeta, StrategyLaneReadinessSummary } from "./strategyLanes";
 
 export interface LowBuyHistorySection {
   title: string;
@@ -172,7 +173,7 @@ export interface LowBuyQuoteRefreshItem {
   next_watch_price?: number | null;
 }
 
-export interface LowBuyPriorityBoardItem {
+export interface LowBuyPriorityBoardItem extends StrategyLaneFields {
   symbol: string;
   name: string;
   sector_name?: string | null;
@@ -241,6 +242,15 @@ export interface LowBuyPriorityBoardItem {
   exit_plan_text?: string;
   main_force_advice?: MainForceAdvice;
   main_force_rank_bonus?: number;
+  production_score?: number | null;
+  watch_score?: number | null;
+  production_decision?: string;
+  front_row_tier?: string;
+  score_cap?: number | null;
+  score_components?: Record<string, number>;
+  exclusion_reasons?: string[];
+  warning_tags?: string[];
+  production_scoring_config_version?: string;
 }
 
 export interface LowBuyDailyDecision {
@@ -292,6 +302,14 @@ export interface LowBuyPriorityFamilySection {
 }
 
 export interface LowBuyPriorityBoardResult {
+  strategy_variant?: "baseline" | "front_row_weighted" | "front_row_only";
+  display_lane?: "baseline" | "front_row_weighted" | "front_row_only";
+  display_lane_title?: string;
+  display_lane_subtitle?: string;
+  production_sort_replaced?: boolean;
+  lane_summary?: Record<string, unknown>;
+  available_lanes?: StrategyLaneMeta[];
+  readiness_summary?: StrategyLaneReadinessSummary;
   as_of_date: string;
   latest_trade_date: string;
   latest_available_trade_date?: string;

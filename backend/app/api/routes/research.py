@@ -9,7 +9,7 @@ from app.core.database import get_db
 from app.core.role_permissions import is_admin_user
 from app.models.entities import BacktestRun, User
 from app.models.schemas import (
-    BacktestRequest,
+    LegacyResearchBacktestRequest,
     BacktestRunListResponse,
     BacktestRunOut,
     StrategyComparisonRequest,
@@ -31,9 +31,9 @@ def get_replays(db: Session = Depends(get_db), limit: int = 100):
     return [item.model_dump() for item in items]
 
 
-@router.post("/backtests")
+@router.post("/backtests", include_in_schema=False)
 def run_backtest(
-    payload: BacktestRequest,
+    payload: LegacyResearchBacktestRequest,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):

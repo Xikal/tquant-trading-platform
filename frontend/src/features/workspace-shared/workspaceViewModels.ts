@@ -11,12 +11,12 @@ export function priorityToCard(item: LowBuyPriorityBoardItem): StockCardView {
   return {
     name: item.name,
     symbol: item.symbol,
-    identityNote: item.strategy_title,
+    identityNote: laneIdentityText(item),
     identityTags: [sectorText, item.mainline_tier_text || item.industry_tier_text || ""].filter(Boolean),
     sectorText,
     priceText: formatPrice(item.latest_price),
     changeText: formatPct(item.change_pct),
-    scoreText: fixedNumberText(item.priority_score, 0),
+    scoreText: priorityScoreText(item),
     riskText: riskTierText(item.risk_tier),
     expectedText: item.suggested_position_text,
     actionText: item.buy_signal_text || item.action_summary,
@@ -34,6 +34,7 @@ export function priorityToCard(item: LowBuyPriorityBoardItem): StockCardView {
       recommendationSummary(item.recommendation_days, item.recommendation_start_date),
       item.exit_plan_text,
       item.position_breakdown_text || item.suggested_position_text,
+      item.primary_lane_reason,
       `止损 ${formatPrice(item.stop_loss)}`,
     ].filter(Boolean).join(" / "),
     executionHint: [nextDayPlanHint(item.next_day_event_plan), priorityExecutionHint(item), item.exit_plan_text, item.recommendation_duration_text].filter(Boolean).join(" "),
@@ -45,9 +46,39 @@ export function priorityToCard(item: LowBuyPriorityBoardItem): StockCardView {
       item.family_count && item.family_count > 1 ? `${item.family_count}类逻辑共振` : "",
       item.leader_strength_rank ? `板块龙头#${item.leader_strength_rank}` : "",
       item.multi_timeframe_resonance_score ? "多周期共振" : "",
+      matchedLaneBadge(item),
     ].filter(Boolean),
     highlight,
   };
+}
+
+function laneIdentityText(item: LowBuyPriorityBoardItem): string {
+  if (item.display_lane === "front_row_weighted") {
+    return "前排加权 · Paper验证";
+  }
+  if (item.display_lane === "front_row_only") {
+    return "前排极精选 · 仅观察";
+  }
+  return item.strategy_title;
+}
+
+function priorityScoreText(item: LowBuyPriorityBoardItem): string {
+  if (item.display_lane === "front_row_weighted" && item.production_score != null) {
+    return `Shadow ${fixedNumberText(item.production_score, 0)}`;
+  }
+  if (item.display_lane === "front_row_only") {
+    const score = item.elite_watch_score ?? item.watch_score ?? item.priority_score;
+    return `观察 ${fixedNumberText(score, 0)}`;
+  }
+  return fixedNumberText(item.priority_score, 0);
+}
+
+function matchedLaneBadge(item: LowBuyPriorityBoardItem): string {
+  const matched = item.matched_strategy_variants ?? [];
+  if (matched.length <= 1) {
+    return "";
+  }
+  return `同时命中${matched.length}线`;
 }
 
 function priorityExecutionHint(item: LowBuyPriorityBoardItem): string {

@@ -114,6 +114,7 @@ class StrategyTrackingService:
         range_days: int = DEFAULT_RANGE_DAYS,
         strategy_key: str | None = None,
         strategy_family: str | None = None,
+        strategy_variant: str | None = None,
         lifecycle_status: str | None = None,
         signal_state: str | None = None,
         data_quality: str | None = None,
@@ -146,6 +147,7 @@ class StrategyTrackingService:
             exclude_star=exclude_star,
             board_filter=board_filter,
             user_status=user_status,
+            strategy_variant=strategy_variant,
         )
         items = sort_items(items, sort=sort)
         total = len(items)
@@ -179,12 +181,14 @@ class StrategyTrackingService:
         range_days: int = DEFAULT_RANGE_DAYS,
         strategy_key: str | None = None,
         strategy_family: str | None = None,
+        strategy_variant: str | None = None,
         lifecycle_status: str | None = None,
     ) -> StrategyTrackingSummaryOut:
         result = self.list_items(
             range_days=range_days,
             strategy_key=strategy_key,
             strategy_family=strategy_family,
+            strategy_variant=strategy_variant,
             lifecycle_status=lifecycle_status,
             limit=1,
         )
@@ -195,8 +199,9 @@ class StrategyTrackingService:
         *,
         range_days: int = DEFAULT_RANGE_DAYS,
         strategy_family: str | None = None,
+        strategy_variant: str | None = None,
     ) -> list[StrategyTrackingPerformanceOut]:
-        result = self.list_items(range_days=range_days, strategy_family=strategy_family, limit=1)
+        result = self.list_items(range_days=range_days, strategy_family=strategy_family, strategy_variant=strategy_variant, limit=1)
         return result.performance
 
     def holding_analysis(

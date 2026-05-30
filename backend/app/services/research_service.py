@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 from app.models.entities import AnalysisLog, BacktestRun, SignalReplay
 from app.models.schemas import (
     AnalysisResponse,
-    BacktestRequest,
+    LegacyResearchBacktestRequest,
     BacktestResponse,
     BacktestTrade,
     KlineBar,
@@ -66,7 +66,7 @@ class ResearchService:
     def run_backtest(
         self,
         db: Session,
-        request: BacktestRequest,
+        request: LegacyResearchBacktestRequest,
         bars: list[KlineBar],
         quote_factory,
         runtime_context_factory,

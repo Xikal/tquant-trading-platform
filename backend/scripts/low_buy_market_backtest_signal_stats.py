@@ -10,6 +10,8 @@ NEAR_ENTRY_STATE = "near_entry"
 EVALUATED_STATES = CONFIRMED_STATES | {OBSERVE_CONFIRMED_STATE, NEAR_ENTRY_STATE}
 SIGNAL_GROUPS = {
     "confirmed": ("确定买入", CONFIRMED_STATES),
+    "buy_now": ("立即买入", {"buy_now"}),
+    "soft_buy_now": ("轻仓买入", {"soft_buy_now"}),
     "observe_confirmed": ("观察确认", {OBSERVE_CONFIRMED_STATE}),
     "near_entry": ("接近买点", {NEAR_ENTRY_STATE}),
 }
@@ -103,7 +105,9 @@ def signal_group_stats(
         "performance": performance,
         "trade_count": performance["trade_count"],
         "total_return_pct": performance["total_return_pct"],
+        "daily_signal_equal_weight_compound_return_pct": performance["daily_signal_equal_weight_compound_return_pct"],
         "annualized_return_pct": performance["annualized_return_pct"],
+        "daily_signal_equal_weight_annualized_return_pct": performance["daily_signal_equal_weight_annualized_return_pct"],
         "max_drawdown_pct": performance["max_drawdown_pct"],
         "drawdown_recovery_status": performance["drawdown_recovery_status"],
         "drawdown_recovery_trades": performance["drawdown_recovery_trades"],

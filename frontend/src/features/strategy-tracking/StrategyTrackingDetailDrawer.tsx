@@ -8,6 +8,7 @@ import { MiniKline } from "../workspace-shared/MiniKlineChart";
 import { formatPct, formatPrice } from "../workspace-shared/workspaceFormatters";
 import { exitQualityTone, holdingBucketText, holdExtensionTone, suggestedPlanText } from "./strategyTrackingFormatters";
 import { StrategyTrackingSectorTags } from "./StrategyTrackingSectorTags";
+import { RitualSignalSeal } from "../ritual-ui";
 
 interface StrategyTrackingDetailDrawerProps {
   open: boolean;
@@ -49,6 +50,7 @@ export function StrategyTrackingDetailContent({ detail, viewMode = "beginner" }:
         <strong>{item.name || item.symbol} · {item.symbol}</strong>
         <div className="strategy-tracking-tag-row">
           <Tag color="blue">{item.signal_text}</Tag>
+          <RitualSignalSeal signalState={item.signal_state} riskLevel={item.stop_triggered ? "stop" : item.user_friendly_status} compact />
           <Tag color={item.stop_triggered ? "red" : "green"}>{item.lifecycle_status_text}</Tag>
           <Tag>{item.data_quality_text}</Tag>
         </div>

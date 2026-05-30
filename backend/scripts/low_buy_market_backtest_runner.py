@@ -9,6 +9,13 @@ import pandas as pd
 
 from app.services.low_buy.execution_simulation import bars_from_repository_rows
 from app.services.low_buy.execution_simulation import ExecutionSimulationOverride
+from app.services.low_buy.front_row_filter import (
+    FRONT_ROW_KEEP_REASONS,
+    FrontRowFilterConfig,
+    filter_front_row_candidates,
+)
+from app.services.low_buy.production_scoring import score_low_buy_candidate_for_production
+from app.services.low_buy.production_scoring_config import SHADOW_CONFIRM_SCORE_THRESHOLD
 from app.services.low_buy_screener import LowBuyScreenerService
 
 try:
@@ -82,6 +89,7 @@ def run_legacy_backtest(
     materialization_mode: str,
     load_or_build_snapshot,
     count_signal_state,
+    front_row_filter: FrontRowFilterConfig | None = None,
 ) -> None:
     for strategy in strategy_keys:
         for trade_date in evaluation_dates:
@@ -107,8 +115,14 @@ def run_legacy_backtest(
             stat.snapshot_count += 1
             stat.snapshot_dates.add(trade_date)
             stat.scanned_count += payload.scanned_count
-            stat.matched_count += payload.matched_count
-            for candidate in iter_snapshot_candidates(payload):
+            candidates = list(iter_snapshot_candidates(payload))
+            kept_candidates, filter_stats = filter_front_row_candidates(candidates, front_row_filter)
+            for reason, count in filter_stats.reason_counts.items():
+                if _front_row_keep_reason(reason):
+                    continue
+                stat.record_front_row_filter(reason, count)
+            stat.matched_count += len(kept_candidates)
+            for candidate in kept_candidates:
                 candidate, guard_reason = apply_market_guard(candidate, market_guard)
                 if guard_reason:
                     stat.record_market_guard(guard_reason)
@@ -151,6 +165,7 @@ def run_fast_isolated_backtest(
     forward_days: int,
     history_window_days_value: int,
     count_signal_state,
+    front_row_filter: FrontRowFilterConfig | None = None,
 ) -> None:
     if not evaluation_dates:
         return
@@ -264,6 +279,7 @@ def run_fast_isolated_backtest(
                     evaluated_states=evaluated_states,
                     execution_override=execution_override,
                     market_guard=market_guard,
+                    front_row_filter=front_row_filter,
                     count_signal_state=count_signal_state,
                 )
             except Exception as exc:
@@ -288,6 +304,8 @@ def run_fast_isolated_execution_matrix_backtest(
     forward_days: int,
     history_window_days_value: int,
     count_signal_state: CountSignalStateFn,
+    front_row_filters: dict[str, FrontRowFilterConfig | None] | None = None,
+    production_score_sort_variants: set[str] | None = None,
 ) -> None:
     if not evaluation_dates:
         return
@@ -392,7 +410,7 @@ def run_fast_isolated_execution_matrix_backtest(
         hot_industries, market_regime = hot_context_by_date.get(trade_date, ([], None))
         for strategy in strategy_keys:
             try:
-                base = _evaluate_fast_strategy_date_candidates(
+                candidate_pool = _evaluate_fast_strategy_date_candidate_pool(
                     service=service,
                     strategy=strategy,
                     trade_date=trade_date,
@@ -401,21 +419,24 @@ def run_fast_isolated_execution_matrix_backtest(
                     metrics_by_symbol=metrics_by_symbol,
                     hot_industries=hot_industries,
                     market_regime=market_regime,
-                    limit=limit,
                     market_guard=market_guard,
                 )
                 _record_fast_strategy_candidates_for_matrix(
+                    service=service,
                     stats_by_variant=stats_by_variant,
                     variant_keys=variant_keys,
                     execution_overrides=execution_overrides,
                     strategy=strategy,
                     trade_date=trade_date,
                     scan_targets_count=len(scan_targets_by_strategy[strategy]),
-                    candidates=base,
+                    candidates=candidate_pool,
+                    limit=limit,
+                    front_row_filters=front_row_filters,
                     evaluated_states=evaluated_states,
                     bars_for_symbol=_bars_for_symbol,
                     forward_days=forward_days,
                     count_signal_state=count_signal_state,
+                    production_score_sort_variants=production_score_sort_variants or set(),
                 )
             except Exception as exc:
                 for stats in stats_by_variant.values():
@@ -440,9 +461,10 @@ def _evaluate_fast_strategy_date(
     evaluated_states: set[str],
     execution_override: ExecutionSimulationOverride | None,
     market_guard: MarketGuardOverride | None,
+    front_row_filter: FrontRowFilterConfig | None,
     count_signal_state,
 ) -> None:
-    evaluated = _evaluate_fast_strategy_date_candidates(
+    evaluated_pool = _evaluate_fast_strategy_date_candidate_pool(
         service=service,
         strategy=strategy,
         trade_date=trade_date,
@@ -451,13 +473,18 @@ def _evaluate_fast_strategy_date(
         metrics_by_symbol=metrics_by_symbol,
         hot_industries=hot_industries,
         market_regime=market_regime,
-        limit=limit,
         market_guard=market_guard,
     )
 
     stat.snapshot_count += 1
     stat.snapshot_dates.add(trade_date)
     stat.scanned_count += len(scan_targets)
+    filtered_pool = _apply_front_row_filter_to_fast_candidates(
+        stat=stat,
+        candidates=evaluated_pool,
+        front_row_filter=front_row_filter,
+    )
+    evaluated = _select_fast_backtest_candidates(service=service, candidates=filtered_pool, limit=limit)
     stat.matched_count += len(evaluated)
     for item in evaluated:
         candidate = item.candidate
@@ -495,6 +522,35 @@ def _evaluate_fast_strategy_date_candidates(
     limit: int,
     market_guard: MarketGuardOverride | None,
 ) -> list[FastBacktestCandidate]:
+    return _select_fast_backtest_candidates(
+        service=service,
+        candidates=_evaluate_fast_strategy_date_candidate_pool(
+            service=service,
+            strategy=strategy,
+            trade_date=trade_date,
+            scan_targets=scan_targets,
+            histories=histories,
+            metrics_by_symbol=metrics_by_symbol,
+            hot_industries=hot_industries,
+            market_regime=market_regime,
+            market_guard=market_guard,
+        ),
+        limit=limit,
+    )
+
+
+def _evaluate_fast_strategy_date_candidate_pool(
+    *,
+    service: LowBuyScreenerService,
+    strategy: str,
+    trade_date: str,
+    scan_targets: list,
+    histories: dict[str, pd.DataFrame | None],
+    metrics_by_symbol: dict[str, object],
+    hot_industries: list[str],
+    market_regime,
+    market_guard: MarketGuardOverride | None,
+) -> list[FastBacktestCandidate]:
     evaluated = []
     for item in scan_targets:
         history = histories.get(item.symbol)
@@ -516,20 +572,54 @@ def _evaluate_fast_strategy_date_candidates(
         if latest_rows:
             refreshed = service._refresh_historical_buy_signal(candidate, history.iloc[latest_rows[-1]])
             refreshed, guard_reason = apply_market_guard(refreshed, market_guard)
+            refreshed = _attach_production_scoring(refreshed)
             evaluated.append(FastBacktestCandidate(candidate=refreshed, market_guard_reason=guard_reason))
     deduped = _dedupe_fast_backtest_candidates(service, evaluated)
     deduped.sort(key=lambda item: (service._signal_rank(item.candidate.buy_signal_state), item.candidate.score), reverse=True)
+    return deduped
+
+
+def _select_fast_backtest_candidates(
+    *,
+    service: LowBuyScreenerService,
+    candidates: list[FastBacktestCandidate],
+    limit: int,
+) -> list[FastBacktestCandidate]:
     confirmed_candidates = [
-        item for item in deduped if item.candidate.buy_signal_state in service._confirmed_signal_states
+        item for item in candidates if item.candidate.buy_signal_state in service._confirmed_signal_states
     ][:12]
-    candidates = [
-        item for item in deduped if item.candidate.buy_signal_state not in service._confirmed_signal_states
+    other_candidates = [
+        item for item in candidates if item.candidate.buy_signal_state not in service._confirmed_signal_states
     ][:limit]
-    return confirmed_candidates + candidates
+    return confirmed_candidates + other_candidates
+
+
+def _select_production_scored_backtest_candidates(
+    *,
+    candidates: list[FastBacktestCandidate],
+    limit: int,
+) -> list[FastBacktestCandidate]:
+    production_candidates = [
+        item
+        for item in candidates
+        if item.candidate.buy_signal_state in {"buy_now", "soft_buy_now"}
+        and getattr(item.candidate, "production_score", None) is not None
+        and float(getattr(item.candidate, "production_score", 0.0) or 0.0) >= SHADOW_CONFIRM_SCORE_THRESHOLD
+    ]
+    production_candidates.sort(
+        key=lambda item: (
+            float(getattr(item.candidate, "production_score", 0.0) or 0.0),
+            1 if item.candidate.buy_signal_state == "soft_buy_now" else 0,
+            float(getattr(item.candidate, "score", 0.0) or 0.0),
+        ),
+        reverse=True,
+    )
+    return production_candidates[: max(limit, 1)]
 
 
 def _record_fast_strategy_candidates_for_matrix(
     *,
+    service: LowBuyScreenerService,
     stats_by_variant: dict[str, dict[str, StrategyBacktestStats]],
     variant_keys: list[str],
     execution_overrides: dict[str, ExecutionSimulationOverride | None],
@@ -537,25 +627,43 @@ def _record_fast_strategy_candidates_for_matrix(
     trade_date: str,
     scan_targets_count: int,
     candidates: list[FastBacktestCandidate],
+    limit: int,
+    front_row_filters: dict[str, FrontRowFilterConfig | None] | None,
     evaluated_states: set[str],
     bars_for_symbol,
     forward_days: int,
     count_signal_state: CountSignalStateFn,
+    production_score_sort_variants: set[str],
 ) -> None:
     for variant_key in variant_keys:
         stat = stats_by_variant[variant_key][strategy]
         stat.snapshot_count += 1
         stat.snapshot_dates.add(trade_date)
         stat.scanned_count += scan_targets_count
-        stat.matched_count += len(candidates)
 
     candidate_outcome_cache: dict[tuple[str, str], dict[str, object] | None] = {}
-    for item in candidates:
-        candidate = item.candidate
-        guard_reason = item.market_guard_reason
-        outcome_map: dict[str, object] | None = None
-        for variant_key in variant_keys:
-            stat = stats_by_variant[variant_key][strategy]
+    filtered_by_variant: dict[str, list[FastBacktestCandidate]] = {}
+    for variant_key in variant_keys:
+        stat = stats_by_variant[variant_key][strategy]
+        filtered = _apply_front_row_filter_to_fast_candidates(
+            stat=stat,
+            candidates=candidates,
+            front_row_filter=(front_row_filters or {}).get(variant_key),
+        )
+        selected = (
+            _select_production_scored_backtest_candidates(candidates=filtered, limit=limit)
+            if variant_key in production_score_sort_variants
+            else _select_fast_backtest_candidates(service=service, candidates=filtered, limit=limit)
+        )
+        filtered_by_variant[variant_key] = selected
+        stat.matched_count += len(selected)
+
+    for variant_key in variant_keys:
+        stat = stats_by_variant[variant_key][strategy]
+        for item in filtered_by_variant[variant_key]:
+            candidate = item.candidate
+            guard_reason = item.market_guard_reason
+            outcome_map: dict[str, object] | None = None
             if guard_reason:
                 stat.record_market_guard(guard_reason)
             count_signal_state(stat, candidate.buy_signal_state)
@@ -581,6 +689,28 @@ def _record_fast_strategy_candidates_for_matrix(
             stat.outcomes.append(outcome)
 
 
+def _apply_front_row_filter_to_fast_candidates(
+    *,
+    stat: StrategyBacktestStats,
+    candidates: list[FastBacktestCandidate],
+    front_row_filter: FrontRowFilterConfig | None,
+) -> list[FastBacktestCandidate]:
+    if front_row_filter is None or not front_row_filter.enabled:
+        return candidates
+    candidate_values = [item.candidate for item in candidates]
+    kept_candidates, filter_stats = filter_front_row_candidates(candidate_values, front_row_filter)
+    for reason, count in filter_stats.reason_counts.items():
+        if _front_row_keep_reason(reason):
+            continue
+        stat.record_front_row_filter(reason, count)
+    kept_ids = {id(candidate) for candidate in kept_candidates}
+    return [item for item in candidates if id(item.candidate) in kept_ids]
+
+
+def _front_row_keep_reason(reason: str) -> bool:
+    return reason in FRONT_ROW_KEEP_REASONS
+
+
 def _dedupe_fast_backtest_candidates(
     service: LowBuyScreenerService,
     candidates: list[FastBacktestCandidate],
@@ -601,6 +731,11 @@ def _dedupe_fast_backtest_candidates(
         ):
             best_by_key[key] = item
     return list(best_by_key.values())
+
+
+def _attach_production_scoring(candidate):
+    result = score_low_buy_candidate_for_production(candidate, mode="shadow")
+    return candidate.model_copy(update=result.as_payload())
 
 
 def _scan_targets_for_strategy(

@@ -16,47 +16,68 @@ except ImportError:
 def strategy_detail(strategy_key: str, stat: StrategyBacktestStats) -> dict[str, Any]:
     outcomes = stat.outcomes
     filled = [item for item in outcomes if item.execution_status == "filled"]
-    metrics = backtest_performance_metrics(outcomes, states=None)
+    metrics = backtest_performance_metrics(outcomes, states=set(CONFIRMED_STATES))
+    all_signal_metrics = backtest_performance_metrics(outcomes, states=None)
     confirmed_metrics = backtest_performance_metrics(outcomes, states=set(CONFIRMED_STATES))
+    confirmed_outcomes = [item for item in outcomes if item.buy_signal_state in CONFIRMED_STATES]
+    confirmed_filled = [item for item in confirmed_outcomes if item.execution_status == "filled"]
     return {
         "strategy_key": strategy_key,
         "strategy_title": stat.strategy_title,
         "strategy_family": stat.strategy_family,
         "strategy_family_text": stat.strategy_family_text,
-        "sample_count": len(outcomes),
-        "filled_count": len(filled),
-        "unfilled_count": len(outcomes) - len(filled),
-        "unfilled_rate_pct": pct(len(outcomes) - len(filled), len(outcomes)),
+        "sample_count": len(confirmed_outcomes),
+        "filled_count": len(confirmed_filled),
+        "unfilled_count": len(confirmed_outcomes) - len(confirmed_filled),
+        "unfilled_rate_pct": pct(len(confirmed_outcomes) - len(confirmed_filled), len(confirmed_outcomes)),
+        "all_signal_sample_count": len(outcomes),
+        "all_signal_filled_count": len(filled),
+        "all_signal_metrics": all_signal_metrics,
+        "production_ranking_signal_states": sorted(CONFIRMED_STATES),
+        "production_ranking_excludes_signal_states": ["near_entry"],
         "total_return_pct": metrics["total_return_pct"],
+        "daily_signal_equal_weight_compound_return_pct": metrics["daily_signal_equal_weight_compound_return_pct"],
         "annualized_return_pct": metrics["annualized_return_pct"],
+        "daily_signal_equal_weight_annualized_return_pct": metrics["daily_signal_equal_weight_annualized_return_pct"],
         "max_drawdown_pct": metrics["max_drawdown_pct"],
         "sharpe_ratio": metrics["sharpe_ratio"],
         "win_rate_pct": metrics["win_rate_pct"],
         "profit_loss_ratio": metrics["profit_loss_ratio"],
         "profit_factor": metrics["profit_factor"],
-        "avg_trade_return_pct": avg([item.net_return_pct for item in filled]),
-        "stop_loss_rate_pct": stop_loss_rate(filled),
+        "avg_trade_return_pct": avg([item.net_return_pct for item in confirmed_filled]),
+        "stop_loss_rate_pct": stop_loss_rate(confirmed_filled),
         "consecutive_loss_count": metrics["max_consecutive_loss_count"],
         "max_single_loss_pct": metrics["max_single_loss_pct"],
         "max_single_gain_pct": metrics["max_single_gain_pct"],
         "avg_holding_days": metrics["avg_holding_days"],
         "median_holding_days": metrics["median_holding_days"],
-        "exit_reason_distribution": reason_counts(filled),
-        "unfilled_reason_distribution": reason_counts([item for item in outcomes if item.execution_status != "filled"]),
+        "portfolio_backtests": metrics.get("portfolio_backtests", {}),
+        "exit_reason_distribution": reason_counts(confirmed_filled),
+        "unfilled_reason_distribution": reason_counts([item for item in confirmed_outcomes if item.execution_status != "filled"]),
         "pending_reason_distribution": dict(stat.pending_reason_counts),
         "signal_state_counts": dict(stat.signal_state_counts),
         "state_breakdown": signal_state_breakdown(outcomes),
-        "quarter_breakdown": group_breakdown(outcomes, lambda item: quarter(item.signal_date)),
-        "market_state_breakdown": group_breakdown(outcomes, lambda item: item.market_state or "unknown"),
+        "quarter_breakdown": group_breakdown(outcomes, lambda item: quarter(item.signal_date), states=set(CONFIRMED_STATES)),
+        "market_state_breakdown": group_breakdown(outcomes, lambda item: item.market_state or "unknown", states=set(CONFIRMED_STATES)),
+        "all_signal_quarter_breakdown": group_breakdown(outcomes, lambda item: quarter(item.signal_date)),
+        "all_signal_market_state_breakdown": group_breakdown(outcomes, lambda item: item.market_state or "unknown"),
         "confirmed_only_metrics": confirmed_metrics,
-        "status": strategy_status(len(outcomes), len(filled), metrics),
+        "status": strategy_status(len(confirmed_outcomes), len(confirmed_filled), metrics),
         "notes": strategy_notes(stat, metrics),
     }
 
 
-def group_breakdown(outcomes: list[Any], key_fn, title_lookup=None) -> list[dict[str, Any]]:
+def group_breakdown(
+    outcomes: list[Any],
+    key_fn,
+    title_lookup=None,
+    *,
+    states: set[str] | None = None,
+) -> list[dict[str, Any]]:
     grouped: dict[str, list[Any]] = defaultdict(list)
     for outcome in outcomes:
+        if states is not None and getattr(outcome, "buy_signal_state", "") not in states:
+            continue
         grouped[str(key_fn(outcome) or "unknown")].append(outcome)
     rows = []
     for key, items in sorted(grouped.items()):
@@ -70,7 +91,9 @@ def group_breakdown(outcomes: list[Any], key_fn, title_lookup=None) -> list[dict
                 "filled_count": len(filled),
                 "unfilled_rate_pct": pct(len(items) - len(filled), len(items)),
                 "total_return_pct": metrics["total_return_pct"],
+                "daily_signal_equal_weight_compound_return_pct": metrics["daily_signal_equal_weight_compound_return_pct"],
                 "annualized_return_pct": metrics["annualized_return_pct"],
+                "daily_signal_equal_weight_annualized_return_pct": metrics["daily_signal_equal_weight_annualized_return_pct"],
                 "max_drawdown_pct": metrics["max_drawdown_pct"],
                 "sharpe_ratio": metrics["sharpe_ratio"],
                 "win_rate_pct": metrics["win_rate_pct"],
@@ -80,6 +103,8 @@ def group_breakdown(outcomes: list[Any], key_fn, title_lookup=None) -> list[dict
                 "avg_holding_days": metrics["avg_holding_days"],
                 "exit_reason_distribution": reason_counts(filled),
                 "unfilled_reason_distribution": reason_counts([item for item in items if item.execution_status != "filled"]),
+                "metric_basis": "production_confirmed_only" if states == CONFIRMED_STATES else "selected_signal_states",
+                "included_signal_states": sorted(states) if states is not None else "all",
             }
         )
     return rows
@@ -281,6 +306,9 @@ def rank_strategies(strategies: list[dict[str, Any]]) -> list[dict[str, Any]]:
                 "avg_trade_return_pct": item["avg_trade_return_pct"],
                 "max_drawdown_pct": item["max_drawdown_pct"],
                 "status": item["status"],
+                "ranking_basis": "production_confirmed_only_buy_now_soft_buy_now",
+                "excluded_signal_states": ["near_entry"],
+                "production_ranking_eligible": int(item.get("filled_count") or 0) > 0,
             }
         )
     rows.sort(key=lambda row: (row["score"], row["filled_count"], row["profit_factor"]), reverse=True)

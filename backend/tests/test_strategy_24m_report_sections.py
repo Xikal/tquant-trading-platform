@@ -7,7 +7,8 @@ from sqlalchemy.pool import StaticPool
 from app.models.base import Base
 from app.models.entities import DailyBarSnapshot, MinuteBarSnapshot
 from scripts.strategy_24m_report_sections import etf_t0_section, production_conclusion
-from scripts.strategy_24m_report_metrics import strategy_family_summary
+from scripts.strategy_24m_report_metrics import rank_strategies, strategy_detail, strategy_family_summary
+from scripts.low_buy_market_backtest_reporting import StrategyBacktestStats, TradeOutcome
 
 
 def test_etf_t0_section_rejects_short_near_end_minute_window() -> None:
@@ -132,6 +133,32 @@ def test_strategy_family_summary_is_research_only_and_contains_parameter_changes
     assert by_key["leader_pullback_band"]["title"] == "龙头回踩波段"
 
 
+def test_strategy_detail_and_ranking_exclude_near_entry_from_production_metrics() -> None:
+    stat = StrategyBacktestStats(
+        strategy_key="first_board",
+        strategy_title="首板回调",
+        strategy_family="event",
+        strategy_family_text="事件策略",
+        outcomes=[
+            _outcome("buy_now", -2.0),
+            _outcome("soft_buy_now", 1.0, symbol="000002"),
+            _outcome("near_entry", 50.0, symbol="000003"),
+        ],
+    )
+
+    detail = strategy_detail("first_board", stat)
+    ranking = rank_strategies([detail])[0]
+
+    assert detail["sample_count"] == 2
+    assert detail["filled_count"] == 2
+    assert detail["all_signal_sample_count"] == 3
+    assert detail["daily_signal_equal_weight_compound_return_pct"] < detail["all_signal_metrics"]["daily_signal_equal_weight_compound_return_pct"]
+    assert detail["production_ranking_signal_states"] == ["buy_now", "soft_buy_now"]
+    assert "near_entry" in detail["production_ranking_excludes_signal_states"]
+    assert ranking["ranking_basis"] == "production_confirmed_only_buy_now_soft_buy_now"
+    assert ranking["excluded_signal_states"] == ["near_entry"]
+
+
 def _session():
     engine = create_engine(
         "sqlite+pysqlite:///:memory:",
@@ -175,4 +202,27 @@ def _minute(symbol: str, trade_date: str) -> MinuteBarSnapshot:
         amount=4000,
         source="sina.kline",
         data_quality="fresh",
+    )
+
+
+def _outcome(signal_state: str, net_return_pct: float, *, symbol: str = "000001") -> TradeOutcome:
+    return TradeOutcome(
+        symbol=symbol,
+        name="测试",
+        signal_date="2026-04-20",
+        strategy_key="first_board",
+        buy_signal_state=signal_state,
+        entry_price=10.0,
+        execution_status="filled",
+        net_return_pct=net_return_pct,
+        execution_exit_reason="测试退出",
+        return_1d=net_return_pct,
+        return_2d=net_return_pct,
+        return_3d=net_return_pct,
+        return_4d=net_return_pct,
+        return_5d=net_return_pct,
+        max_gain_5d=max(net_return_pct, 0.0),
+        max_drawdown_5d=min(net_return_pct, 0.0),
+        entry_trade_date="2026-04-20",
+        exit_trade_date="2026-04-21",
     )

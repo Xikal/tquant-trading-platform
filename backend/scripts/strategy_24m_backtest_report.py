@@ -20,12 +20,14 @@ from app.core.database import SessionLocal, init_db
 from app.models.entities import DailyBarSnapshot, MinuteBarSnapshot
 from app.services.etf.universe import list_etf_profiles
 from app.services.low_buy.execution_simulation import ExecutionSimulationOverride
+from app.services.low_buy.front_row_filter import FrontRowFilterConfig
 from app.services.low_buy_screener import PLAYBOOKS, LowBuyScreenerService
 
 try:
     from .low_buy_market_backtest import _count_signal_state, _load_a_share_universe_count
-    from .low_buy_market_backtest_reporting import EVALUATED_STATES, StrategyBacktestStats, build_report, history_window_days
-    from .low_buy_market_backtest_runner import run_fast_isolated_backtest
+    from .low_buy_market_backtest_reporting import CONFIRMED_STATES, EVALUATED_STATES, StrategyBacktestStats, build_report, history_window_days
+    from .low_buy_market_backtest_runner import run_fast_isolated_execution_matrix_backtest
+    from .strategy_24m_front_row_filter import front_row_filter_ab_summary
     from .strategy_24m_report_markdown import render_markdown
     from .strategy_24m_report_metrics import (
         abnormal_strategies,
@@ -47,8 +49,9 @@ try:
     from .strategy_24m_static_attribution import attach_static_sector_breakdowns, load_static_sector_map, static_sector_breakdown
 except ImportError:
     from low_buy_market_backtest import _count_signal_state, _load_a_share_universe_count
-    from low_buy_market_backtest_reporting import EVALUATED_STATES, StrategyBacktestStats, build_report, history_window_days
-    from low_buy_market_backtest_runner import run_fast_isolated_backtest
+    from low_buy_market_backtest_reporting import CONFIRMED_STATES, EVALUATED_STATES, StrategyBacktestStats, build_report, history_window_days
+    from low_buy_market_backtest_runner import run_fast_isolated_execution_matrix_backtest
+    from strategy_24m_front_row_filter import front_row_filter_ab_summary
     from strategy_24m_report_markdown import render_markdown
     from strategy_24m_report_metrics import (
         abnormal_strategies,
@@ -127,22 +130,34 @@ def _run_backtest_report(db, args: argparse.Namespace) -> dict[str, Any]:
     )
     strategy_keys = list(PLAYBOOKS.keys())
     stats = _initial_stats(strategy_keys)
-    run_fast_isolated_backtest(
+    front_row_stats = _initial_stats(strategy_keys)
+    execution_override = ExecutionSimulationOverride(enforce_t1_exit_rules=True)
+    front_row_config = FrontRowFilterConfig(enabled=True)
+    run_fast_isolated_execution_matrix_backtest(
         db=db,
         service=service,
-        stats=stats,
+        stats_by_variant={
+            "baseline": stats,
+            "front_row_only": front_row_stats,
+        },
         trade_dates=trade_dates,
         evaluation_dates=evaluation_dates,
         latest_completed=latest_completed,
         strategy_keys=strategy_keys,
         evaluated_states=set(EVALUATED_STATES),
-        execution_override=ExecutionSimulationOverride(enforce_t1_exit_rules=True),
+        execution_overrides={
+            "baseline": execution_override,
+            "front_row_only": execution_override,
+        },
         market_guard=None,
         scan_limit=args.scan_limit,
         limit=args.limit,
         forward_days=args.forward_days,
         history_window_days_value=history_window_days(args.months, args.forward_days),
         count_signal_state=_count_signal_state,
+        front_row_filters={
+            "front_row_only": front_row_config,
+        },
     )
     base_report = build_report(
         universe_count=_load_a_share_universe_count(db, service),
@@ -151,7 +166,7 @@ def _run_backtest_report(db, args: argparse.Namespace) -> dict[str, Any]:
         target_profit_pct=args.target_profit_pct,
         scan_limit=args.scan_limit,
         months=args.months,
-        materialization_mode="isolated/fast",
+        materialization_mode="isolated/fast,matrix=baseline+front_row_only",
         stats=list(stats.values()),
         requested_start=args.start,
         requested_end=requested_end,
@@ -160,7 +175,21 @@ def _run_backtest_report(db, args: argparse.Namespace) -> dict[str, Any]:
         market_guard_label="none",
         prefilter_override_label="none",
     )
-    return _build_enriched_report(db=db, args=args, source=source, latest_completed=latest_completed, evaluation_dates=evaluation_dates, stats=stats, base_report=base_report)
+    front_row_filter = front_row_filter_ab_summary(
+        baseline_stats=stats,
+        front_row_stats=front_row_stats,
+        config=front_row_config,
+    )
+    return _build_enriched_report(
+        db=db,
+        args=args,
+        source=source,
+        latest_completed=latest_completed,
+        evaluation_dates=evaluation_dates,
+        stats=stats,
+        base_report=base_report,
+        front_row_filter=front_row_filter,
+    )
 
 
 def _initial_stats(strategy_keys: list[str]) -> dict[str, StrategyBacktestStats]:
@@ -184,6 +213,7 @@ def _build_enriched_report(
     evaluation_dates: list[str],
     stats: dict[str, StrategyBacktestStats],
     base_report: dict[str, Any],
+    front_row_filter: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     coverage = _coverage(args.start, source.get("daily_min_trade_date", ""), source.get("daily_max_trade_date", ""))
     all_outcomes = [outcome for stat in stats.values() for outcome in stat.outcomes]
@@ -201,6 +231,7 @@ def _build_enriched_report(
         all_outcomes=all_outcomes,
         sector_breakdown=static_sector_breakdown(all_outcomes, sector_by_symbol, limit=30),
         base_report=base_report,
+        front_row_filter=front_row_filter,
     )
 
 
@@ -226,6 +257,7 @@ def _refresh_existing_report(db, args: argparse.Namespace) -> dict[str, Any]:
         all_outcomes=all_outcomes,
         sector_breakdown=report.get("performance_by_sector", {}),
         base_report={"summary": report.get("raw_low_buy_report_summary") or report.get("summary", {}), "methodology": report.get("methodology", {})},
+        front_row_filter=report.get("front_row_filter"),
     )
     for key in ("performance_by_family", "performance_by_quarter", "performance_by_market_state", "performance_by_signal_state", "performance_by_sector"):
         refreshed[key] = report.get(key, [])
@@ -246,6 +278,7 @@ def _assemble_report(
     all_outcomes: list[Any],
     sector_breakdown: dict[str, Any] | list[dict[str, Any]],
     base_report: dict[str, Any],
+    front_row_filter: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     end = source.get("daily_max_trade_date", "")
     etf_t0 = etf_t0_section(db, start=args.start, end=end)
@@ -269,12 +302,13 @@ def _assemble_report(
         all_outcomes,
         lambda item: _strategy_family(item.strategy_key),
         title_lookup=_strategy_family_label,
+        states=set(CONFIRMED_STATES),
     )
     return {
         "title": "全策略最近 24 个月回测报告",
         "generated_at": datetime.now().isoformat(timespec="seconds"),
         "scope": {
-            "current_date": "2026-05-28",
+            "current_date": "2026-05-29",
             "requested_window": {"start": args.start, "end": end},
             "actual_evaluation_window": {"start": evaluation_dates[0] if evaluation_dates else "", "end": evaluation_dates[-1] if evaluation_dates else "", "trade_days": len(evaluation_dates)},
             "strategy_count": len(strategies),
@@ -285,6 +319,8 @@ def _assemble_report(
         "coverage": coverage,
         "methodology": base_report.get("methodology", {}),
         "summary": summary,
+        "front_row_filter_summary": _front_row_filter_summary(front_row_filter),
+        "front_row_filter": front_row_filter or _empty_front_row_filter_payload(),
         "all_strategies": strategies,
         "strategy_ranking": rank_strategies(strategies),
         "strategy_family_summary": strategy_family_summary(
@@ -293,8 +329,8 @@ def _assemble_report(
             parameter_changes,
         ),
         "performance_by_family": family_rows,
-        "performance_by_quarter": group_breakdown(all_outcomes, lambda item: quarter(item.signal_date)),
-        "performance_by_market_state": group_breakdown(all_outcomes, lambda item: item.market_state or "unknown"),
+        "performance_by_quarter": group_breakdown(all_outcomes, lambda item: quarter(item.signal_date), states=set(CONFIRMED_STATES)),
+        "performance_by_market_state": group_breakdown(all_outcomes, lambda item: item.market_state or "unknown", states=set(CONFIRMED_STATES)),
         "performance_by_signal_state": signal_state_breakdown(all_outcomes),
         "performance_by_sector": sector_breakdown,
         "etf_t0": etf_t0,
@@ -381,12 +417,72 @@ def _inventory_section() -> dict[str, Any]:
     }
 
 
+def _front_row_filter_summary(payload: dict[str, Any] | None) -> dict[str, Any]:
+    if not payload:
+        return {
+            "status": "not_run",
+            "decision": "not_run",
+            "sample_retention_rate_pct": 0.0,
+            "filled_retention_rate_pct": 0.0,
+            "signal_day_retention_rate_pct": 0.0,
+            "avg_trade_return_pct_delta": 0.0,
+            "profit_factor_delta": 0.0,
+            "total_return_pct_delta": 0.0,
+            "daily_signal_equal_weight_compound_return_pct_delta": 0.0,
+            "max_drawdown_reduction_pct": 0.0,
+            "notes": ["本次未执行前排过滤 A/B 回测。"],
+        }
+    delta = payload.get("delta") or {}
+    return {
+        "status": payload.get("status", "research_only"),
+        "decision": payload.get("decision", "research_only"),
+        "sample_retention_rate_pct": delta.get("sample_retention_rate_pct", 0.0),
+        "filled_retention_rate_pct": delta.get("filled_retention_rate_pct", 0.0),
+        "signal_day_retention_rate_pct": delta.get("signal_day_retention_rate_pct", 0.0),
+        "avg_trade_return_pct_delta": delta.get("avg_trade_return_pct_delta", 0.0),
+        "profit_factor_delta": delta.get("profit_factor_delta", 0.0),
+        "total_return_pct_delta": delta.get("total_return_pct_delta", 0.0),
+        "daily_signal_equal_weight_compound_return_pct_delta": delta.get("daily_signal_equal_weight_compound_return_pct_delta", delta.get("total_return_pct_delta", 0.0)),
+        "max_drawdown_reduction_pct": delta.get("max_drawdown_reduction_pct", 0.0),
+        "notes": list(payload.get("notes") or []),
+    }
+
+
+def _empty_front_row_filter_payload() -> dict[str, Any]:
+    return {
+        "status": "not_run",
+        "enabled_variant": "front_row_only",
+        "production_parameter_change_allowed": False,
+        "sorting_effect": "none",
+        "metric_basis": "not_run",
+        "config": {},
+        "anti_future_function_policy": {
+            "signal_uses_future_data": False,
+            "baseline_and_variant_share_signal_time": True,
+            "post_signal_return_starts_after_signal": True,
+            "random_split_allowed": False,
+            "production_gate": "not_run",
+        },
+        "baseline": {},
+        "front_row_only": {},
+        "delta": {},
+        "by_strategy": [],
+        "by_market_state": [],
+        "by_quarter": [],
+        "notes": ["本次未执行前排过滤 A/B 回测。"],
+        "decision": "not_run",
+    }
+
+
 def _execution_constraints() -> list[str]:
     return [
         "低吸个股回测启用 A 股 T+1 退出约束：入场当日不触发卖出型止盈/止损，开盘低于止损视为不可安全持有的风险退出。",
         "低吸回测按 ROUND_TRIP_COST_BPS=16bps 扣除往返成本。",
         "ETF T0 回测必须用窗口内分钟线、ETF 专用费用模型、滑点和同日回转约束；短窗口分钟线不能视为 24 个月验收。",
         "行业 ETF 替代做T sector_etf_t0 单独检查影子观察与模拟盘成交；本地分钟线不足时不能完成 T0 主策略验收。",
+        "前排票过滤仅作为研究/影子观察变体，默认不改变生产优先榜；所有对比使用相同信号日候选，避免后验选股。",
+        "生产收益排行仅使用 buy_now / soft_buy_now；near_entry 单独展示为观察提前量，不进入生产排行。",
+        "真实组合回测新增最大持仓 5/10 两档，持仓期间占用资金，同票持有中禁止重复买入。",
         "回测只读，不修改生产策略参数。",
     ]
 

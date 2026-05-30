@@ -1,0 +1,110 @@
+{
+  "title": "前排加权生产评分综合 readiness 报告",
+  "paths": {
+    "base_report": "docs/reports/front-row-weighted-production-scoring-backtest-2026-05-29.json",
+    "freeze_manifest": "docs/reports/front-row-weighted-validation-freeze-2026-05-30.json",
+    "walk_forward_report": "docs/reports/front-row-weighted-walk-forward-validation-2026-05-30.json",
+    "tradability_report": "docs/reports/front-row-weighted-minute-tick-tradability-2026-05-30.json",
+    "weak_market_report": "docs/reports/front-row-weighted-weak-market-compression-2026-05-30.json"
+  },
+  "production_sort_replaced": false,
+  "deployed": false,
+  "base_decision": {
+    "recommend_small_traffic_observation": false,
+    "status": "shadow_paper_not_ready",
+    "blockers": [
+      "oos_window_below_60_trade_days",
+      "oos_filled_count_below_150"
+    ],
+    "warnings": [
+      "signal_day_retention_below_75pct_precision_mode_warning_only"
+    ],
+    "decision_policy": "precision_first_market_adaptive_density",
+    "deprecated_blockers": [
+      "signal_day_retention_below_75pct"
+    ],
+    "notes": [
+      "本次未部署上线，未替换生产排序。",
+      "front_row_only 只保留为对照，不建议生产硬过滤。",
+      "near_entry 只用于观察池，不进入生产收益排行。",
+      "信号日留存低在精准优先准则下不再作为独立阻断项，需用成本后精准度、行情自适应密度、OOS 与可成交性替代验收。"
+    ],
+    "oos_gate": {
+      "sample_count": 6,
+      "filled_count": 6,
+      "signal_days": 2,
+      "quarters_present": [
+        "2026Q2"
+      ],
+      "profit_factor_avg": 2.034,
+      "avg_trade_return_pct_avg": 0.7965,
+      "oos_window_trade_days": 14,
+      "oos_signal_days": 2,
+      "oos_sample_count": 6,
+      "oos_filled_count": 6,
+      "oos_signal_density_pct": 14.29,
+      "minimum_oos_trade_days_required": 60,
+      "minimum_oos_filled_count_required": 150,
+      "status": "insufficient_oos_window",
+      "note": "OOS trading days count all completed trade dates in the OOS window; signal days count only dates with candidates."
+    }
+  },
+  "formal_oos": {
+    "status": "awaiting_post_freeze_trade_dates",
+    "formal_oos_start": "",
+    "formal_oos_end": "",
+    "oos_window_trade_days": 0,
+    "oos_signal_days": 0,
+    "oos_sample_count": 0,
+    "oos_filled_count": 0,
+    "minimum_oos_trade_days": 60,
+    "minimum_oos_filled_count": 150
+  },
+  "walk_forward": {
+    "window_count": 5,
+    "passed_window_count": 2,
+    "passed_window_rate_pct": 40.0,
+    "no_two_consecutive_failed_windows": false,
+    "passed": false,
+    "blockers": [
+      "walk_forward_window_count_below_6",
+      "walk_forward_pass_rate_below_70pct",
+      "walk_forward_two_consecutive_failed_windows"
+    ]
+  },
+  "tradability": {
+    "status": "blocked",
+    "minute_coverage_pct": 0.0,
+    "tick_rows": 0,
+    "fill_retention_pct": 0.0
+  },
+  "weak_market": {
+    "passed": false,
+    "blockers": [
+      "weak_market_sample_insufficient_keep_watch_only"
+    ],
+    "status": "weak_market_blocked"
+  },
+  "decision": {
+    "status": "shadow_paper_extend_oos",
+    "recommend_small_traffic_observation": false,
+    "blockers": [
+      "formal_oos_start_unavailable",
+      "minute_coverage_below_95pct",
+      "oos_filled_count_below_150",
+      "oos_window_below_60_trade_days",
+      "tick_data_insufficient_for_real_money_production",
+      "tradability_fill_retention_below_70pct",
+      "walk_forward_pass_rate_below_70pct",
+      "walk_forward_two_consecutive_failed_windows",
+      "walk_forward_window_count_below_6",
+      "weak_market_sample_insufficient_keep_watch_only"
+    ],
+    "warnings": [
+      "historical_replay_not_formal_prospective_oos",
+      "quote_estimate_depth_cannot_pass_real_money_gate",
+      "signal_day_retention_below_75pct_precision_mode_warning_only"
+    ],
+    "next_action": "continue_shadow_paper_validation"
+  }
+}

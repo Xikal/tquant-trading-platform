@@ -16,6 +16,7 @@ import {
   normalizeValidation,
 } from "./backtests.normalizers";
 import { apiClient } from "./httpClient";
+import type { paths } from "../generated/api-types";
 
 import type {
   BacktestStatus,
@@ -63,14 +64,52 @@ export type * from "./backtestTypes";
 
 const request = apiClient.request;
 
+type ApiOperation<Path extends keyof paths, Method extends keyof paths[Path]> =
+  paths[Path][Method] extends infer Operation ? Operation : never;
+
+type ApiJson<Path extends keyof paths, Method extends keyof paths[Path]> =
+  ApiOperation<Path, Method> extends { responses: { 200: { content: { "application/json": infer Payload } } } } ? Payload : never;
+
+type ApiRequestBody<Path extends keyof paths, Method extends keyof paths[Path]> =
+  paths[Path][Method] extends { requestBody: { content: { "application/json": infer Payload } } } ? Payload : never;
+
+type BacktestRunCreateDto = ApiRequestBody<"/api/backtests", "post">;
+type BacktestRunDetailDto = ApiJson<"/api/backtests", "post">;
+type BacktestRunListDto = ApiJson<"/api/backtests", "get">;
+type BacktestEquityDto = ApiJson<"/api/backtests/{run_id}/equity", "get">;
+type BacktestTradesDto = ApiJson<"/api/backtests/{run_id}/trades", "get">;
+
+function toBacktestRunCreateDto(payload: BacktestCreateRequest): BacktestRunCreateDto {
+  return {
+    benchmark: payload.benchmark ?? "000300",
+    data_version: "",
+    end_date: payload.end_date,
+    engine_version: "backtest-v2",
+    fee_model_version: "",
+    initial_capital: payload.initial_capital,
+    max_duration_seconds: 1800,
+    name: payload.name,
+    params: {
+      execution_model: payload.execution_model,
+      risk_limits: payload.risk_limits,
+      param_overrides: payload.param_overrides ?? {},
+    },
+    resource_tier: payload.resource_tier ?? "full",
+    slippage_bps: 8,
+    start_date: payload.start_date,
+    strategies: payload.strategies,
+    strategy_version: "",
+  };
+}
+
 export const backtestsApi = {
   createBacktest: (payload: BacktestCreateRequest) =>
-    request<BacktestSubmitResponse>("/backtests", {
+    request<BacktestRunDetailDto>("/backtests", {
       method: "POST",
-      body: JSON.stringify(payload),
+      body: JSON.stringify(toBacktestRunCreateDto(payload)),
     }).then((result) => {
       invalidateCache(["/backtests"]);
-      return result;
+      return result as BacktestSubmitResponse;
     }),
 
   listBacktests: ({ page, pageSize, limit, offset, status }: BacktestListParams = {}) => {
@@ -82,13 +121,15 @@ export const backtestsApi = {
     if (status && status !== "all") {
       params.set("status", toBackendStatus(status));
     }
-    return request<BacktestListResponse>(`/backtests?${params.toString()}`).then(normalizeBacktestListResponse);
+    return request<BacktestRunListDto>(`/backtests?${params.toString()}`).then((payload) =>
+      normalizeBacktestListResponse(payload as BacktestListResponse)
+    );
   },
 
-  getBacktest: (runId: number) => request<BacktestRunDetail>(`/backtests/${runId}`).then(normalizeBacktestRun),
+  getBacktest: (runId: number) => request<BacktestRunDetailDto>(`/backtests/${runId}`).then((payload) => normalizeBacktestRun(payload as BacktestRunDetail)),
 
   getBacktestEquity: (runId: number) =>
-    request<BacktestEquityResponse>(`/backtests/${runId}/equity`).then(normalizeEquityPoints),
+    request<BacktestEquityDto>(`/backtests/${runId}/equity`).then((payload) => normalizeEquityPoints(payload as BacktestEquityResponse)),
 
   getBacktestTrades: (
     runId: number,
@@ -99,7 +140,7 @@ export const backtestsApi = {
     const resolvedOffset = offset ?? ((page ?? 1) - 1) * resolvedLimit;
     params.set("limit", String(resolvedLimit));
     params.set("offset", String(Math.max(0, resolvedOffset)));
-    return request<BacktestTradesResponse>(`/backtests/${runId}/trades?${params.toString()}`).then(normalizeTradesResponse);
+    return request<BacktestTradesDto>(`/backtests/${runId}/trades?${params.toString()}`).then((payload) => normalizeTradesResponse(payload as unknown as BacktestTradesResponse));
   },
 
   cancelBacktest: (runId: number) =>

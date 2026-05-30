@@ -11,6 +11,7 @@ from app.services.low_buy.market_state_rules import compute_directional_bias, di
 from app.services.low_buy.priority_types import PriorityBaseSnapshot
 from app.services.low_buy.shared import datetime
 from app.services.low_buy.simple_decision import build_daily_decision, build_simple_buckets, enrich_priority_items
+from app.services.low_buy.strategy_lanes import available_lane_payloads, lane_summary, resolve_strategy_lane
 from app.services.market.state_categories import standard_market_state_payload
 
 
@@ -23,6 +24,8 @@ def build_priority_board_response(
     portfolio_risk: LowBuyPortfolioRiskOut,
     snapshot_warning: str,
     market_state_text: str,
+    strategy_variant: str = "baseline",
+    readiness_summary: dict[str, object] | None = None,
 ) -> LowBuyPriorityBoardResponse:
     market_context = base_snapshot.market_context
     directional_bias = compute_directional_bias(
@@ -45,7 +48,16 @@ def build_priority_board_response(
         )
     )
 
+    lane = resolve_strategy_lane(strategy_variant)
     response = LowBuyPriorityBoardResponse(
+        strategy_variant=lane.variant,
+        display_lane=lane.display_lane,
+        display_lane_title=lane.title,
+        display_lane_subtitle=lane.subtitle,
+        production_sort_replaced=lane.production_sort_replaced,
+        lane_summary=lane_summary(lane.variant, items),
+        available_lanes=available_lane_payloads(),
+        readiness_summary=readiness_summary or {},
         as_of_date=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         latest_trade_date=base_snapshot.latest_trade_date,
         latest_available_trade_date=base_snapshot.latest_available_trade_date,

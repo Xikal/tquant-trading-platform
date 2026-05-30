@@ -20,6 +20,8 @@ describe("LoginPage", () => {
     expect(html).toContain("开户注册");
     expect(html).toContain("login-finance-scene");
     expect(html).toContain("MARKET PULSE");
+    expect(html).toContain("login-ritual-seal");
+    expect(html).toContain("今日红运");
     expect(html).not.toContain("动态验证码");
   });
 });

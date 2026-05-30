@@ -42,6 +42,7 @@ class StrategyTrackingSnapshotBuilder:
         range_days: int = DEFAULT_RANGE_DAYS,
         strategy_key: str | None = None,
         strategy_family: str | None = None,
+        strategy_variant: str | None = None,
         lifecycle_status: str | None = None,
         signal_state: str | None = None,
         data_quality: str | None = None,
@@ -87,6 +88,7 @@ class StrategyTrackingSnapshotBuilder:
             exclude_star=exclude_star,
             board_filter=board_filter,
             user_status=user_status,
+            strategy_variant=strategy_variant,
         )
         sorted_items = sort_items(items, sort=sort)
         safe_limit = max(1, min(limit, MAX_LIMIT))

@@ -314,8 +314,22 @@ class LowBuyScreenerService:
     def refresh_candidate_quotes(self, db: Session, strategy: str, symbols: list[str]):
         return self._screening.refresh_candidate_quotes(db=db, strategy=strategy, symbols=symbols)
 
-    def priority_board(self, db: Session, limit: int = 12, *, refresh_mode: str = "sync"):
-        return self._priority.priority_board(db=db, limit=limit, refresh_mode=refresh_mode)
+    def priority_board(
+        self,
+        db: Session,
+        limit: int = 12,
+        *,
+        refresh_mode: str = "sync",
+        front_row_only: bool = False,
+        strategy_variant: str = "baseline",
+    ):
+        return self._priority.priority_board(
+            db=db,
+            limit=limit,
+            refresh_mode=refresh_mode,
+            front_row_only=front_row_only,
+            strategy_variant=strategy_variant,
+        )
 
     def mobile_snapshot(
         self,

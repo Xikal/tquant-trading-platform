@@ -1,0 +1,31 @@
+{
+  "model_key": "front_row_weighted",
+  "scoring_config_version": "front_row_weighted_v1_2026-05-30_validation",
+  "freeze_date": "2026-05-30",
+  "freeze_git_commit": "96b6aad30bb2b89b46090b828114e4232355b493",
+  "source_report_json": "docs/reports/front-row-weighted-production-scoring-backtest-2026-05-29.json",
+  "formal_oos_start": "",
+  "formal_oos_end": "",
+  "oos_window_trade_days": 0,
+  "oos_signal_days": 0,
+  "oos_sample_count": 0,
+  "oos_filled_count": 0,
+  "minimum_oos_trade_days": 60,
+  "minimum_oos_filled_count": 150,
+  "random_split_allowed": false,
+  "production_sort_replaced": false,
+  "near_entry_production_score_allowed": false,
+  "status": "awaiting_post_freeze_trade_dates",
+  "blockers": [
+    "formal_oos_start_unavailable"
+  ],
+  "warnings": [],
+  "validation": {
+    "passed": true,
+    "blockers": [],
+    "warnings": [
+      "formal_oos_start_unavailable",
+      "oos_window_below_60_trade_days"
+    ]
+  }
+}

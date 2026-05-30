@@ -23,6 +23,28 @@ from app.workers.platform_autopilot_scheduler import (
 
 logger = logging.getLogger(__name__)
 
+RUNTIME_WORKER_TASK_TYPES = (
+    "noop",
+    "agent_daily_report_push",
+    "monitor_snapshot_refresh",
+    "market_quote_cache_refresh",
+    "market_hourly_all_a_snapshot",
+    "market_pulse_refresh",
+    "instrument_sync",
+    "daily_bar_refresh",
+    "market_review_report",
+    "paper_review_report",
+    "low_buy_materialization_refresh",
+    "strategy_tracking_snapshot_refresh",
+    "ml_signal_incremental_train",
+    "strategy_self_evolution",
+    "ml_feature_drift_monitor",
+    "paper_ledger_reconcile_preview",
+    "hermes_platform_autopilot",
+    "factor_mining_evaluate",
+    "factor_mining_monthly",
+)
+
 
 class RuntimeWorker:
     """Standalone runtime worker for non-request tasks."""
@@ -39,7 +61,7 @@ class RuntimeWorker:
     def run_once(self) -> bool:
         with SessionLocal() as db:
             queue = RuntimeTaskQueue(db)
-            task = queue.claim_next(worker_id=self.worker_id)
+            task = queue.claim_next(worker_id=self.worker_id, task_types=RUNTIME_WORKER_TASK_TYPES)
             if task is None:
                 return False
             task_id = int(task.id)

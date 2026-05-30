@@ -120,6 +120,86 @@ class MinuteBarSnapshotStore:
             .all()
         )
 
+    def list_bars_for_range(
+        self,
+        *,
+        symbol: str,
+        start: date,
+        end: date,
+        bar_period: str = "1m",
+    ) -> list[MinuteBarSnapshot]:
+        return list(
+            self.db.execute(
+                select(MinuteBarSnapshot)
+                .where(
+                    MinuteBarSnapshot.symbol == symbol,
+                    MinuteBarSnapshot.trade_date >= start,
+                    MinuteBarSnapshot.trade_date <= end,
+                    MinuteBarSnapshot.bar_period == bar_period,
+                )
+                .order_by(MinuteBarSnapshot.trade_date.asc(), MinuteBarSnapshot.bar_timestamp.asc())
+            )
+            .scalars()
+            .all()
+        )
+
+    def coverage_summary(
+        self,
+        *,
+        symbols: list[str],
+        start: date,
+        end: date,
+        bar_period: str = "1m",
+    ) -> dict[str, object]:
+        clean_symbols = sorted({str(symbol) for symbol in symbols if str(symbol or "").strip()})
+        if not clean_symbols:
+            return {
+                "symbol_count": 0,
+                "covered_symbol_count": 0,
+                "coverage_pct": 0.0,
+                "rows": 0,
+                "bar_period": bar_period,
+                "missing_symbols": [],
+            }
+        rows = self.db.execute(
+            select(
+                MinuteBarSnapshot.symbol,
+                func.count(MinuteBarSnapshot.id),
+                func.count(func.distinct(MinuteBarSnapshot.trade_date)),
+                func.min(MinuteBarSnapshot.trade_date),
+                func.max(MinuteBarSnapshot.trade_date),
+            )
+            .where(
+                MinuteBarSnapshot.symbol.in_(clean_symbols),
+                MinuteBarSnapshot.trade_date >= start,
+                MinuteBarSnapshot.trade_date <= end,
+                MinuteBarSnapshot.bar_period == bar_period,
+            )
+            .group_by(MinuteBarSnapshot.symbol)
+        ).all()
+        by_symbol = {
+            str(symbol): {
+                "rows": int(row_count or 0),
+                "trade_days": int(day_count or 0),
+                "start": str(min_date or ""),
+                "end": str(max_date or ""),
+            }
+            for symbol, row_count, day_count, min_date, max_date in rows
+        }
+        covered = [symbol for symbol, item in by_symbol.items() if int(item["rows"] or 0) > 0]
+        missing = [symbol for symbol in clean_symbols if symbol not in by_symbol]
+        return {
+            "symbol_count": len(clean_symbols),
+            "covered_symbol_count": len(covered),
+            "coverage_pct": round(len(covered) / max(len(clean_symbols), 1) * 100.0, 4),
+            "rows": sum(int(item["rows"] or 0) for item in by_symbol.values()),
+            "bar_period": bar_period,
+            "start": start.isoformat(),
+            "end": end.isoformat(),
+            "by_symbol": by_symbol,
+            "missing_symbols": missing[:100],
+        }
+
 
 def minute_bar_checksum(symbol: str, bar: KlineBar, *, source: str, data_quality: str) -> str:
     payload = {

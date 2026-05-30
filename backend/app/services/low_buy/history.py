@@ -215,6 +215,7 @@ class LowBuyHistoryMixin(LowBuyDailyHistoryMixin):
                     confirmed_trade_date=latest_trade_date,
                     current_date=latest_trade_date,
                     total_strategies=1,
+                    allow_realtime_external_factors=False,
                 ),
             )
             if candidate is None or history is None or history.empty:

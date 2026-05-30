@@ -119,7 +119,7 @@ class OpenBBMarketProvider:
     def fetch_northbound_fund_flow_summary(self) -> ProviderResult:
         return self._unavailable("northbound fund flow not enabled for OpenBB adapter")
 
-    def fetch_limit_up_snapshot(self) -> ProviderResult:
+    def fetch_limit_up_snapshot(self, trade_date: str = "") -> ProviderResult:
         return self._unavailable("limit-up snapshot not enabled for OpenBB adapter")
 
     def fetch_lhb_stock_statistic(self) -> ProviderResult:

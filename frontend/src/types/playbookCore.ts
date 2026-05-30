@@ -1,3 +1,5 @@
+import type { StrategyLaneFields } from "./strategyLanes";
+
 export interface LowBuyExitPlan {
   stop_loss: number;
   first_take_profit: number;
@@ -152,7 +154,7 @@ export interface MainForceAdvice {
   fallback_reason?: string | null;
 }
 
-export interface LowBuyCandidate {
+export interface LowBuyCandidate extends StrategyLaneFields {
   strategy_key: string;
   strategy_title: string;
   symbol: string;
@@ -240,6 +242,15 @@ export interface LowBuyCandidate {
   strategy_recommendation_days?: Record<string, number>;
   recommendation_duration_text?: string;
   main_force_advice?: MainForceAdvice;
+  production_score?: number | null;
+  watch_score?: number | null;
+  production_decision?: string;
+  front_row_tier?: string;
+  score_cap?: number | null;
+  score_components?: Record<string, number>;
+  exclusion_reasons?: string[];
+  warning_tags?: string[];
+  production_scoring_config_version?: string;
   reasons: string[];
   risks: string[];
   tags: string[];

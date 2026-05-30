@@ -16,6 +16,7 @@ import { StrategyTrackingStatusCards } from "./StrategyTrackingStatusCards";
 import { StrategyTrackingSummaryBar } from "./StrategyTrackingSummaryBar";
 import { StrategyTrackingTable } from "./StrategyTrackingTable";
 import { boolParam, tabParams } from "./strategyTrackingFormatters";
+import { RitualFortuneStrip, RitualLuckyDraw } from "../ritual-ui";
 
 type StrategyTrackingStoreState = ReturnType<typeof useStrategyTrackingStore.getState>;
 
@@ -38,6 +39,8 @@ export function StrategyTrackingPage({ strategyMeta }: { strategyMeta: StrategyM
           <p>生产策略推荐后的买点、涨幅、回撤和生命周期复盘。</p>
         </div>
         <div className="strategy-tracking-hero-meta">
+          <RitualFortuneStrip marketTone={(result?.summary.in_entry_zone_count ?? 0) > 0 ? "strong" : (result?.summary.stopped_count ?? 0) > 0 ? "weak" : "neutral"} compact />
+          <RitualLuckyDraw compact />
           <span>区间 {store.range === 1 ? "今日" : `${store.range}日`}</span>
           <span>样本 {result?.total ?? "--"}</span>
           <span>{snapshotMetaText(snapshot)}</span>
@@ -49,6 +52,7 @@ export function StrategyTrackingPage({ strategyMeta }: { strategyMeta: StrategyM
         <StrategyTrackingFilters
           range={store.range}
           strategyKey={store.strategyKey}
+          strategyVariant={store.strategyVariant}
           strategyFamily={store.strategyFamily}
           signalState={store.signalState}
           lifecycleStatus={store.lifecycleStatus}
@@ -62,6 +66,7 @@ export function StrategyTrackingPage({ strategyMeta }: { strategyMeta: StrategyM
           strategyMeta={strategyMeta}
           onRangeChange={store.setRange}
           onStrategyKeyChange={store.setStrategyKey}
+          onStrategyVariantChange={store.setStrategyVariant}
           onStrategyFamilyChange={store.setStrategyFamily}
           onSignalStateChange={store.setSignalState}
           onLifecycleStatusChange={store.setLifecycleStatus}
@@ -208,6 +213,7 @@ export function buildParams(store: StrategyTrackingStoreState): StrategyTracking
   return {
     range: store.range,
     strategy_key: store.strategyKey || undefined,
+    strategy_variant: store.strategyVariant || undefined,
     strategy_family: store.strategyFamily || undefined,
     signal_state: store.signalState || undefined,
     status: store.lifecycleStatus || preset.status,
@@ -227,6 +233,7 @@ export function buildParams(store: StrategyTrackingStoreState): StrategyTracking
 function holdingParams(store: StrategyTrackingStoreState): StrategyTrackingParams {
   return {
     range: store.range,
+    strategy_variant: store.strategyVariant || undefined,
     strategy_family: store.strategyFamily || undefined,
     exclude_chinext: store.excludeChinext,
     exclude_star: store.excludeStar,

@@ -1,5 +1,6 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
+import type { LowBuyPriorityBoardResult } from "../../types";
 import { MonitorPage } from "../monitor/MonitorPage";
 
 describe("MonitorPage", () => {
@@ -47,8 +48,49 @@ describe("MonitorPage", () => {
     );
 
     expect(html).toContain("今天最重要的 1 件事");
+    expect(html).toContain("今日红运");
     expect(html).toContain("农业银行");
     expect(html).toContain("盘面细节、小时快照与维护状态");
+  });
+
+  it("renders independent low-buy strategy lanes with plain status copy", () => {
+    const html = renderToStaticMarkup(
+      <MonitorPage
+        priorityBoard={priorityBoardFixture()}
+        marketBreadth={null}
+        marketPulse={null}
+        hourlySnapshotHistory={[]}
+        reviewStatus={null}
+        reviewReports={[]}
+        keyLevelAlerts={[]}
+        sectorEtfT0={null}
+        pairedHedge={null}
+        priorityCards={[]}
+        watchCards={[]}
+        runtime={null}
+        instrumentSyncStatus={null}
+        watchDraft={{ symbol: "", name: "", base_position: "", available_position: "", cost_basis: "", memo: "" }}
+        setWatchDraft={vi.fn()}
+        editingWatchSymbol=""
+        loading=""
+        onRefresh={vi.fn()}
+        onSync={vi.fn()}
+        onAi={vi.fn()}
+        onGoPlaybook={vi.fn()}
+        onLaneChange={vi.fn()}
+        onSelect={vi.fn()}
+        onAnalyze={vi.fn()}
+        onEdit={vi.fn()}
+        onRemove={vi.fn()}
+        onAddWatchlist={vi.fn()}
+        onCancelEdit={vi.fn()}
+      />
+    );
+
+    expect(html).toContain("原低吸策略");
+    expect(html).toContain("前排加权");
+    expect(html).toContain("前排极精选");
+    expect(html).toContain("只做验证，暂不影响真实排序");
   });
 
   it("renders hourly all-market snapshot feedback", () => {
@@ -271,6 +313,7 @@ describe("MonitorPage", () => {
     expect(html).toContain("午后控制追高");
     expect(html).toContain("明细");
     expect(html).toContain("自动补全明细");
+    expect(html).toContain("今日红运");
   });
 
   it("renders ETF T0 intraday signal details on monitor page", () => {
@@ -351,3 +394,56 @@ describe("MonitorPage", () => {
     expect(html).toContain("净边际");
   });
 });
+
+function priorityBoardFixture(): LowBuyPriorityBoardResult {
+  return {
+    strategy_variant: "front_row_weighted",
+    display_lane: "front_row_weighted",
+    display_lane_title: "前排加权",
+    display_lane_subtitle: "只做验证，暂不影响真实排序",
+    production_sort_replaced: false,
+    readiness_summary: {
+      plain_status: {
+        conclusion: "只做验证，暂不影响真实排序",
+        reason: "样本外验证不足、滚动验证不稳定、成交数据不足",
+        next_step: "继续影子验证和模拟盘观察",
+      },
+      blockers: ["oos_window_below_60_trade_days"],
+    },
+    as_of_date: "2026-05-30",
+    latest_trade_date: "2026-05-29",
+    updated_at: "2026-05-30 10:00:00",
+    total_candidates: 0,
+    immediate_count: 0,
+    focus_count: 0,
+    track_count: 0,
+    market_state: "repair",
+    market_state_text: "修复",
+    market_bonus: 0,
+    market_state_strength: 0,
+    regime_confidence: 0,
+    state_persistence_days: 1,
+    transition_risk: 0,
+    breadth_ready: true,
+    emotion_ready: true,
+    stock_up_ratio: 0.5,
+    stock_median_change: 0,
+    style_divergence: 0,
+    hot_turnover: 0,
+    hot_overlap_ratio: 0,
+    limit_up_count: 0,
+    board_height: 0,
+    previous_board_height: 0,
+    promotion_ratio: 0,
+    broken_board_ratio: 0,
+    promotion_break_gap: 0,
+    promotion_break_pressure: 0,
+    high_flyer_retreat_ratio: 0,
+    high_flyer_gap_speed: 0,
+    distribution_pressure: 0,
+    hot_industries: [],
+    hot_industry_source: "",
+    hot_industry_source_text: "",
+    items: [],
+  };
+}

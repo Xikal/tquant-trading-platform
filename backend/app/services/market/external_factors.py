@@ -19,8 +19,8 @@ def stock_hsgt_fund_flow_summary_em() -> Any:
     return _router_data("fetch_northbound_fund_flow_summary")
 
 
-def stock_zt_pool_em() -> Any:
-    return _router_data("fetch_limit_up_snapshot")
+def stock_zt_pool_em(trade_date: str = "") -> Any:
+    return _router_data("fetch_limit_up_snapshot", trade_date)
 
 
 def stock_lhb_stock_statistic_em() -> Any:

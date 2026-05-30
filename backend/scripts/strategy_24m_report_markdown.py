@@ -22,6 +22,7 @@ def render_markdown(report: dict[str, Any]) -> str:
     lines.extend(_strategy_summary_lines(report))
     lines.extend(_ranking_lines(report))
     lines.extend(_strategy_family_summary_lines(report))
+    lines.extend(_front_row_filter_lines(report))
     lines.extend(_render_breakdown("市场状态分段结果", report["performance_by_market_state"]))
     lines.extend(_render_breakdown("季度分段结果", report["performance_by_quarter"]))
     lines.extend(_render_breakdown("策略族分段结果", report["performance_by_family"]))
@@ -53,12 +54,20 @@ def _strategy_summary_lines(report: dict[str, Any]) -> list[str]:
         "",
         "## 全策略汇总表",
         "",
-        "| 策略 | 样本 | 成交 | 总收益率 | 年化 | 最大回撤 | Sharpe | 胜率 | PF | 平均单笔 | 止损率 | 平均持仓 | 状态 |",
-        "|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---|",
+        "| 策略 | 样本 | 成交 | 每日信号等权复利收益 | 年化 | 真实组合max5 | 真实组合max10 | 最大回撤 | Sharpe | 胜率 | PF | 平均单笔 | 止损率 | 平均持仓 | 状态 |",
+        "|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---|",
     ]
     for item in report["all_strategies"]:
+        portfolio = item.get("portfolio_backtests") or {}
+        max5 = (portfolio.get("max_5") or {}).get("portfolio_return_pct", 0.0)
+        max10 = (portfolio.get("max_10") or {}).get("portfolio_return_pct", 0.0)
         lines.append(
-            "| {strategy_title} | {sample_count} | {filled_count} | {total_return_pct:.2f}% | {annualized_return_pct:.2f}% | {max_drawdown_pct:.2f}% | {sharpe_ratio:.2f} | {win_rate_pct:.2f}% | {profit_factor:.2f} | {avg_trade_return_pct:.3f}% | {stop_loss_rate_pct:.2f}% | {avg_holding_days:.2f} | {status} |".format(**item)
+            "| {strategy_title} | {sample_count} | {filled_count} | {return_pct:.2f}% | {annualized_return_pct:.2f}% | {max5:.2f}% | {max10:.2f}% | {max_drawdown_pct:.2f}% | {sharpe_ratio:.2f} | {win_rate_pct:.2f}% | {profit_factor:.2f} | {avg_trade_return_pct:.3f}% | {stop_loss_rate_pct:.2f}% | {avg_holding_days:.2f} | {status} |".format(
+                **item,
+                return_pct=float(item.get("daily_signal_equal_weight_compound_return_pct", item.get("total_return_pct", 0.0)) or 0.0),
+                max5=float(max5 or 0.0),
+                max10=float(max10 or 0.0),
+            )
         )
     return lines
 
@@ -81,13 +90,14 @@ def _strategy_family_summary_lines(report: dict[str, Any]) -> list[str]:
             status=splits.get("status", "missing_quarter_breakdown"),
         ),
         "",
-        "| 策略族 | 策略数 | 策略 | 成交 | 胜率 | PF | 总收益 | 最大回撤 | 参数建议 | 验证状态 |",
+        "| 策略族 | 策略数 | 策略 | 成交 | 胜率 | PF | 每日信号等权复利收益 | 最大回撤 | 参数建议 | 验证状态 |",
         "|---|---:|---|---:|---:|---:|---:|---:|---:|---|",
     ]
     if not families:
         lines.append("| 无 | 0 | - | 0 | 0.00% | 0.00 | 0.00% | 0.00% | 0 | no_sample |")
         return lines
     for item in families:
+        return_pct = float(item.get("daily_signal_equal_weight_compound_return_pct", item.get("total_return_pct") or 0.0) or 0.0)
         lines.append(
             "| {title} | {strategy_count} | {strategies} | {filled_count} | {win_rate_pct:.2f}% | {profit_factor:.2f} | {total_return_pct:.2f}% | {max_drawdown_pct:.2f}% | {parameter_change_count} | {validation_status} |".format(
                 title=item.get("title"),
@@ -96,7 +106,7 @@ def _strategy_family_summary_lines(report: dict[str, Any]) -> list[str]:
                 filled_count=item.get("filled_count", 0),
                 win_rate_pct=float(item.get("win_rate_pct") or 0.0),
                 profit_factor=float(item.get("profit_factor") or 0.0),
-                total_return_pct=float(item.get("total_return_pct") or 0.0),
+                total_return_pct=return_pct,
                 max_drawdown_pct=float(item.get("max_drawdown_pct") or 0.0),
                 parameter_change_count=item.get("parameter_change_count", 0),
                 validation_status=item.get("validation_status", ""),
@@ -105,10 +115,87 @@ def _strategy_family_summary_lines(report: dict[str, Any]) -> list[str]:
     return lines
 
 
+def _front_row_filter_lines(report: dict[str, Any]) -> list[str]:
+    payload = report.get("front_row_filter") or {}
+    baseline = payload.get("baseline") or {}
+    front_row = payload.get("front_row_only") or {}
+    delta = payload.get("delta") or {}
+    lines = [
+        "",
+        "## 前排票过滤 A/B 回测",
+        "",
+        f"- 状态：{payload.get('status', 'not_run')}；决策：{payload.get('decision', 'not_run')}。",
+        "- 生产影响：只读研究结论，不改变默认生产排序或放行参数。",
+        "- 防未来函数：baseline 与 front_row_only 使用同一信号日候选，收益从信号后计算，禁止随机切分。",
+        "",
+        "| 变体 | 样本 | 成交 | 信号日 | 每日信号等权复利收益 | 最大回撤 | 胜率 | PF | 平均单笔 |",
+        "|---|---:|---:|---:|---:|---:|---:|---:|---:|",
+        "| baseline | {sample_count} | {filled_count} | {signal_days} | {total_return_pct:.2f}% | {max_drawdown_pct:.2f}% | {win_rate_pct:.2f}% | {profit_factor:.2f} | {avg_trade_return_pct:.3f}% |".format(
+            **_front_row_metrics_defaults(baseline)
+        ),
+        "| front_row_only | {sample_count} | {filled_count} | {signal_days} | {total_return_pct:.2f}% | {max_drawdown_pct:.2f}% | {win_rate_pct:.2f}% | {profit_factor:.2f} | {avg_trade_return_pct:.3f}% |".format(
+            **_front_row_metrics_defaults(front_row)
+        ),
+        "",
+        "- 留存/变化：样本 {sample_retention_rate_pct:.2f}%，成交 {filled_retention_rate_pct:.2f}%，信号日 {signal_day_retention_rate_pct:.2f}%；平均单笔 {avg_trade_return_pct_delta:+.3f}%，PF {profit_factor_delta:+.3f}，每日信号等权复利收益 {total_return_pct_delta:+.2f}%，最大回撤改善值 {max_drawdown_reduction_pct:+.2f}%。".format(
+            **_front_row_delta_defaults(delta)
+        ),
+    ]
+    notes = payload.get("notes") or []
+    lines.extend(f"- {item}" for item in notes)
+    strategy_rows = list(payload.get("by_strategy") or [])[:8]
+    if strategy_rows:
+        lines.extend([
+            "",
+            "| 策略 | 前排成交 | 成交留存 | 平均单笔变化 | PF变化 |",
+            "|---|---:|---:|---:|---:|",
+        ])
+        for row in strategy_rows:
+            item_delta = row.get("delta") or {}
+            front = row.get("front_row_only") or {}
+            lines.append(
+                "| {title} | {filled} | {retention:.2f}% | {avg_delta:+.3f}% | {pf_delta:+.3f} |".format(
+                    title=row.get("strategy_title") or row.get("strategy_key") or "",
+                    filled=int(front.get("filled_count") or 0),
+                    retention=float(item_delta.get("filled_retention_rate_pct") or 0.0),
+                    avg_delta=float(item_delta.get("avg_trade_return_pct_delta") or 0.0),
+                    pf_delta=float(item_delta.get("profit_factor_delta") or 0.0),
+                )
+            )
+    return lines
+
+
+def _front_row_metrics_defaults(item: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "sample_count": int(item.get("sample_count") or 0),
+        "filled_count": int(item.get("filled_count") or 0),
+        "signal_days": int(item.get("signal_days") or 0),
+        "total_return_pct": float(item.get("total_return_pct") or 0.0),
+        "max_drawdown_pct": float(item.get("max_drawdown_pct") or 0.0),
+        "win_rate_pct": float(item.get("win_rate_pct") or 0.0),
+        "profit_factor": float(item.get("profit_factor") or 0.0),
+        "avg_trade_return_pct": float(item.get("avg_trade_return_pct") or 0.0),
+    }
+
+
+def _front_row_delta_defaults(item: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "sample_retention_rate_pct": float(item.get("sample_retention_rate_pct") or 0.0),
+        "filled_retention_rate_pct": float(item.get("filled_retention_rate_pct") or 0.0),
+        "signal_day_retention_rate_pct": float(item.get("signal_day_retention_rate_pct") or 0.0),
+        "avg_trade_return_pct_delta": float(item.get("avg_trade_return_pct_delta") or 0.0),
+        "profit_factor_delta": float(item.get("profit_factor_delta") or 0.0),
+        "total_return_pct_delta": float(item.get("daily_signal_equal_weight_compound_return_pct_delta", item.get("total_return_pct_delta")) or 0.0),
+        "max_drawdown_reduction_pct": float(item.get("max_drawdown_reduction_pct") or 0.0),
+    }
+
+
 def _ranking_lines(report: dict[str, Any]) -> list[str]:
     lines = [
         "",
         "## 策略优先级排名",
+        "",
+        "- 排名口径：仅使用 buy_now / soft_buy_now 的生产确定买入样本；near_entry 单独展示，不进入生产收益排行。",
         "",
         "| 排名 | 策略 | 分数 | 样本 | 成交 | 胜率 | PF | 平均单笔 | 最大回撤 | 状态 |",
         "|---:|---|---:|---:|---:|---:|---:|---:|---:|---|",
@@ -197,7 +284,8 @@ def _strategy_detail_lines(report: dict[str, Any]) -> list[str]:
             f"### {item['strategy_title']}（{item['strategy_key']}）",
             "",
             f"- 样本/成交：{item['sample_count']} / {item['filled_count']}，未成交率 {item['unfilled_rate_pct']}%。",
-            f"- 收益/风险：总收益 {item['total_return_pct']}%，年化 {item['annualized_return_pct']}%，最大回撤 {item['max_drawdown_pct']}%，Sharpe {item['sharpe_ratio']}。",
+            f"- 收益/风险：每日信号等权复利收益 {item.get('daily_signal_equal_weight_compound_return_pct', item['total_return_pct'])}%，年化 {item['annualized_return_pct']}%，最大回撤 {item['max_drawdown_pct']}%，Sharpe {item['sharpe_ratio']}。",
+            f"- 真实组合：max5 收益 {_portfolio_return(item, 'max_5')}%，max10 收益 {_portfolio_return(item, 'max_10')}%，持仓占用资金，同票持有中不重复买。",
             f"- 胜率/PF/平均单笔：{item['win_rate_pct']}% / {item['profit_factor']} / {item['avg_trade_return_pct']}%。",
             f"- 止损率/平均持仓：{item['stop_loss_rate_pct']}% / {item['avg_holding_days']} 天。",
             f"- 退出原因：{_format_counts(item['exit_reason_distribution'])}",
@@ -227,14 +315,20 @@ def _gap_lines(report: dict[str, Any]) -> list[str]:
 
 
 def _render_breakdown(title: str, rows: list[dict[str, Any]]) -> list[str]:
-    lines = ["", f"## {title}", "", "| 分组 | 样本 | 成交 | 总收益率 | 最大回撤 | Sharpe | 胜率 | PF | 平均单笔 | 止损率 |", "|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|"]
+    lines = ["", f"## {title}", "", "| 分组 | 样本 | 成交 | 每日信号等权复利收益 | 最大回撤 | Sharpe | 胜率 | PF | 平均单笔 | 止损率 |", "|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|"]
     if not rows:
         lines.append("| 无 | 0 | 0 | 0.00% | 0.00% | 0.00 | 0.00% | 0.00 | 0.000% | 0.00% |")
         return lines
     for item in rows:
-        lines.append("| {title} | {sample_count} | {filled_count} | {total_return_pct:.2f}% | {max_drawdown_pct:.2f}% | {sharpe_ratio:.2f} | {win_rate_pct:.2f}% | {profit_factor:.2f} | {avg_trade_return_pct:.3f}% | {stop_loss_rate_pct:.2f}% |".format(**item))
+        row = dict(item)
+        row["return_pct"] = float(row.get("daily_signal_equal_weight_compound_return_pct", row.get("total_return_pct", 0.0)) or 0.0)
+        lines.append("| {title} | {sample_count} | {filled_count} | {return_pct:.2f}% | {max_drawdown_pct:.2f}% | {sharpe_ratio:.2f} | {win_rate_pct:.2f}% | {profit_factor:.2f} | {avg_trade_return_pct:.3f}% | {stop_loss_rate_pct:.2f}% |".format(**row))
     return lines
 
 
 def _format_counts(values: dict[str, int]) -> str:
     return "；".join(f"{key} {value}" for key, value in values.items())
+
+
+def _portfolio_return(item: dict[str, Any], key: str) -> float:
+    return float(((item.get("portfolio_backtests") or {}).get(key) or {}).get("portfolio_return_pct") or 0.0)

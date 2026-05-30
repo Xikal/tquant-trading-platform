@@ -365,6 +365,36 @@ class MinuteBarSnapshot(Base):
     data_quality: Mapped[str] = mapped_column(String(24), default="unknown", index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
+
+class TickTradeSnapshot(Base):
+    __tablename__ = "tick_trade_snapshots"
+    __table_args__ = (
+        UniqueConstraint(
+            "symbol",
+            "source",
+            "trade_timestamp",
+            "price",
+            "volume",
+            name="uq_tick_trade_snapshot",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    symbol: Mapped[str] = mapped_column(String(16), index=True)
+    market: Mapped[str] = mapped_column(String(16), default="CN")
+    instrument_type: Mapped[str] = mapped_column(String(16), default="stock", index=True)
+    trade_date: Mapped[Optional[date]] = mapped_column(FlexibleDate(), nullable=True, index=True)
+    trade_timestamp: Mapped[str] = mapped_column(String(32), index=True)
+    price: Mapped[float] = mapped_column(Float, default=0.0)
+    volume: Mapped[float] = mapped_column(Float, default=0.0)
+    amount: Mapped[float] = mapped_column(Float, default=0.0)
+    side: Mapped[str] = mapped_column(String(12), default="")
+    source: Mapped[str] = mapped_column(String(48), default="unknown", index=True)
+    fetch_time: Mapped[str] = mapped_column(String(32), default="", index=True)
+    data_quality: Mapped[str] = mapped_column(String(24), default="unknown", index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+
+
 class DailyBarSnapshot(Base):
     __tablename__ = "daily_bar_snapshots"
     __table_args__ = (

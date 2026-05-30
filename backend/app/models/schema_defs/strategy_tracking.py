@@ -181,6 +181,29 @@ class StrategyTrackingItemOut(BaseModel):
     user_friendly_reason: str = "后续行情数据不足，暂时不能判断。"
     plain_language_summary: str = ""
     sector_detail: dict[str, Any] = Field(default_factory=dict)
+    production_score: float | None = None
+    watch_score: float | None = None
+    production_decision: str = ""
+    front_row_tier: str = "unknown"
+    score_cap: float | None = None
+    score_components: dict[str, float] = Field(default_factory=dict)
+    exclusion_reasons: list[str] = Field(default_factory=list)
+    warning_tags: list[str] = Field(default_factory=list)
+    production_scoring_config_version: str = ""
+    strategy_variant: str = "baseline"
+    strategy_role: str = "production_baseline"
+    display_lane: str = "baseline"
+    display_lane_title: str = "原低吸策略"
+    display_lane_subtitle: str = ""
+    production_sort_replaced: bool = False
+    production_enabled: bool = True
+    paper_enabled: bool = False
+    watch_only: bool = False
+    matched_strategy_variants: list[str] = Field(default_factory=list)
+    primary_lane_reason: str = ""
+    elite_watch_score: float | None = None
+    readiness_status: str = ""
+    readiness_blockers: list[str] = Field(default_factory=list)
 
 
 class StrategyTrackingTimelinePointOut(BaseModel):

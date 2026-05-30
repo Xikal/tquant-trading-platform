@@ -4,6 +4,12 @@ from typing import Protocol
 
 from app.models.schemas import LowBuyCandidateOut, LowBuyPriorityBoardItemOut
 from app.services.low_buy.main_force_model_ranking import main_force_rank_bonus
+from app.services.low_buy.production_scoring import score_low_buy_candidate_for_production
+from app.services.low_buy.strategy_lanes import (
+    FRONT_ROW_ONLY_VARIANT,
+    lane_item_update,
+    normalize_strategy_variant,
+)
 from app.services.low_buy.priority_family import (
     priority_recommendation_duration_text,
     recommendation_days_by_title,
@@ -50,8 +56,10 @@ def build_priority_items(
     rows: list[PriorityCandidate],
     market_context: PriorityMarketContext,
     builder: PriorityItemBuilder,
+    strategy_variant: str = "baseline",
 ) -> list[LowBuyPriorityBoardItemOut]:
     items: list[LowBuyPriorityBoardItemOut] = []
+    variant = normalize_strategy_variant(strategy_variant)
     for row in rows:
         if not row.hits:
             continue
@@ -59,6 +67,7 @@ def build_priority_items(
             row=row,
             market_context=market_context,
             builder=builder,
+            strategy_variant=variant,
         )
         items.append(item)
     return items
@@ -69,6 +78,7 @@ def _build_priority_item(
     row: PriorityCandidate,
     market_context: PriorityMarketContext,
     builder: PriorityItemBuilder,
+    strategy_variant: str = "baseline",
 ) -> LowBuyPriorityBoardItemOut:
     aggregate_weight = builder._aggregate_strategy_weight(row.hits)
     strategy_count = builder._effective_strategy_count(row.hits)
@@ -84,12 +94,23 @@ def _build_priority_item(
         ),
     )
     candidate = primary_hit.candidate
+    production_scoring = score_low_buy_candidate_for_production(
+        candidate,
+        market_context=market_context,
+        mode="shadow",
+    )
+    production_score = production_scoring.production_score
+    watch_score = production_scoring.watch_score
+    elite_watch_score = None
+    if strategy_variant == FRONT_ROW_ONLY_VARIANT:
+        elite_watch_score = watch_score
+        production_score = None
     strategy_titles = builder._display_strategy_titles(row.hits)
     recommendation_days_by_title_map = recommendation_days_by_title(row.hits)
     recommendation_days = max(recommendation_days_by_title_map.values(), default=candidate.recommendation_days)
     industry_rotation_bonus = builder._sector_rotation_bonus(candidate, market_context)
     kelly_half_position_pct = round(float(getattr(primary_hit.performance, "kelly_half_position_pct", 0.0) or 0.0), 2)
-    return LowBuyPriorityBoardItemOut(
+    item = LowBuyPriorityBoardItemOut(
         symbol=candidate.symbol,
         name=candidate.name,
         sector_name=candidate.sector_name,
@@ -168,7 +189,18 @@ def _build_priority_item(
             candidate,
             shadow_status=getattr(builder, "_main_force_shadow_status", lambda: {})(),
         ),
+        production_score=production_score,
+        watch_score=watch_score,
+        production_decision=production_scoring.decision,
+        front_row_tier=production_scoring.front_row_tier,
+        score_cap=production_scoring.score_cap,
+        score_components=production_scoring.score_components,
+        exclusion_reasons=production_scoring.exclusion_reasons,
+        warning_tags=production_scoring.warning_tags,
+        production_scoring_config_version=production_scoring.config_version,
+        elite_watch_score=elite_watch_score,
     )
+    return item.model_copy(update=lane_item_update(item, strategy_variant))
 
 
 def _kelly_position_text(kelly_half_position_pct: float) -> str:

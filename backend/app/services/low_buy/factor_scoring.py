@@ -42,7 +42,7 @@ def build_factor_scores(metrics: CandidateMetrics, context: FactorContext | None
         "absorption_quality_factor": evaluate_absorption_quality_factor(),
         "selection_quality_factor": evaluate_selection_quality_factor(metrics),
     }
-    if context is not None and context.current_symbol:
+    if context is not None and context.current_symbol and context.allow_realtime_external_factors:
         scores["big_order_flow_factor"] = evaluate_big_order_flow_factor(
             symbol=context.current_symbol,
             retracement_days=context.retracement_days,
@@ -63,7 +63,7 @@ def weighted_factor_bonus(factor_scores: dict[str, float]) -> float:
 
 def _visible_scores(scores: dict[str, float], context: FactorContext | None) -> dict[str, float]:
     filtered = {key: value for key, value in scores.items() if value > 0}
-    if context is not None and context.current_symbol:
+    if context is not None and context.current_symbol and context.allow_realtime_external_factors:
         filtered.setdefault("big_order_flow_factor", scores.get("big_order_flow_factor", 0.0))
         filtered.setdefault("event_risk_factor", scores.get("event_risk_factor", 0.0))
     return filtered

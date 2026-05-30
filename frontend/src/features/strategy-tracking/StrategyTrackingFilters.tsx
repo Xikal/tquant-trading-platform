@@ -4,6 +4,7 @@ import type { StrategyMeta } from "../../api/strategies";
 interface StrategyTrackingFiltersProps {
   range: number;
   strategyKey: string;
+  strategyVariant: string;
   strategyFamily: string;
   signalState: string;
   lifecycleStatus: string;
@@ -16,6 +17,7 @@ interface StrategyTrackingFiltersProps {
   boardFilter: "include_all" | "main_only";
   onRangeChange: (value: number) => void;
   onStrategyKeyChange: (value: string) => void;
+  onStrategyVariantChange: (value: "" | "baseline" | "front_row_weighted" | "front_row_only") => void;
   onStrategyFamilyChange: (value: string) => void;
   onSignalStateChange: (value: string) => void;
   onLifecycleStatusChange: (value: string) => void;
@@ -32,6 +34,7 @@ interface StrategyTrackingFiltersProps {
 export function StrategyTrackingFilters({
   range,
   strategyKey,
+  strategyVariant,
   strategyFamily,
   signalState,
   lifecycleStatus,
@@ -44,6 +47,7 @@ export function StrategyTrackingFilters({
   boardFilter,
   onRangeChange,
   onStrategyKeyChange,
+  onStrategyVariantChange,
   onStrategyFamilyChange,
   onSignalStateChange,
   onLifecycleStatusChange,
@@ -66,6 +70,17 @@ export function StrategyTrackingFilters({
         { label: "近 7 日", value: 7 },
         { label: "近 30 日", value: 30 },
         { label: "近 60 日", value: 60 },
+      ]} />
+      <Select
+        size="small"
+        value={strategyVariant}
+        onChange={(value) => onStrategyVariantChange(value as "" | "baseline" | "front_row_weighted" | "front_row_only")}
+        style={{ width: 140 }}
+        options={[
+        { label: "全部策略线", value: "" },
+        { label: "原低吸", value: "baseline" },
+        { label: "前排加权", value: "front_row_weighted" },
+        { label: "前排极精选", value: "front_row_only" },
       ]} />
       <Select size="small" value={strategyFamily} onChange={onStrategyFamilyChange} style={{ width: 120 }} options={[
         { label: "全部策略族", value: "" },

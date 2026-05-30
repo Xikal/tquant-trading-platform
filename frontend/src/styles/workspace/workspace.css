@@ -529,6 +529,57 @@ h5.ant-typography {
   animation: login-card-aura 4.8s ease-in-out infinite;
 }
 
+.login-ritual-seal {
+  position: absolute;
+  right: clamp(18px, 6vw, 96px);
+  top: clamp(70px, 14vh, 150px);
+  display: grid;
+  place-items: center;
+  width: 86px;
+  aspect-ratio: 1;
+  border: 1px solid rgba(243, 213, 138, 0.42);
+  border-radius: 50%;
+  color: rgba(253, 224, 154, 0.88);
+  font-size: 18px;
+  font-weight: 900;
+  text-shadow: 0 0 18px rgba(217, 45, 32, 0.62);
+  box-shadow: inset 0 0 28px rgba(217, 45, 32, 0.22), 0 0 34px rgba(214, 168, 79, 0.16);
+  transform: rotate(-9deg);
+  animation: login-ritual-breathe 4.8s ease-in-out infinite;
+}
+
+.login-ritual-seal::before,
+.login-ritual-seal::after {
+  content: "";
+  position: absolute;
+  inset: 9px;
+  border: 1px solid rgba(217, 45, 32, 0.42);
+  border-radius: inherit;
+}
+
+.login-ritual-seal::after {
+  inset: 18px;
+  border-color: rgba(243, 213, 138, 0.34);
+}
+
+.login-ritual-motto {
+  position: absolute;
+  left: clamp(16px, 4vw, 72px);
+  bottom: clamp(64px, 12vh, 124px);
+  display: inline-flex;
+  align-items: center;
+  max-width: min(360px, calc(100vw - 32px));
+  gap: 8px;
+  border: 1px solid rgba(243, 213, 138, 0.26);
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.48);
+  color: rgba(255, 247, 237, 0.9);
+  padding: 6px 10px;
+  font-size: 11px;
+  font-weight: 800;
+  box-shadow: 0 12px 34px rgba(0, 0, 0, 0.22);
+}
+
 @keyframes login-grid-drift {
   from {
     background-position: 0 0, 0 0, center;
@@ -686,11 +737,24 @@ h5.ant-typography {
   }
 }
 
+@keyframes login-ritual-breathe {
+  0%,
+  100% {
+    opacity: 0.58;
+    transform: rotate(-9deg) scale(0.98);
+  }
+  50% {
+    opacity: 0.88;
+    transform: rotate(-9deg) scale(1.03);
+  }
+}
+
 @media (max-width: 720px) {
   .login-depth-panel,
   .login-candle-field,
   .login-hud-panel,
-  .login-heat-strip {
+  .login-heat-strip,
+  .login-ritual-seal {
     opacity: 0.28;
   }
 
@@ -714,6 +778,11 @@ h5.ant-typography {
     width: 132px;
   }
 
+  .login-ritual-motto {
+    bottom: 18px;
+    font-size: 10px;
+  }
+
   .login-market-lines {
     opacity: 0.34;
   }
@@ -731,8 +800,168 @@ h5.ant-typography {
   .login-depth-panel span::before,
   .login-hud-panel,
   .login-heat-strip span,
-  .login-core-card::before {
+  .login-core-card::before,
+  .login-ritual-seal,
+  .ritual-fortune-strip::after,
+  .ritual-signal-seal,
+  .ritual-close-bag::after {
     animation: none;
+  }
+}
+
+.ritual-fortune-strip {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  min-width: 0;
+  gap: 6px;
+  overflow: hidden;
+  border: 1px solid rgba(217, 45, 32, 0.18);
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(217, 45, 32, 0.08), rgba(214, 168, 79, 0.12));
+  color: #7a241b;
+  padding: 4px 8px;
+  font-size: var(--font-meta);
+  font-weight: 900;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.ritual-fortune-strip::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.36), transparent);
+  transform: translateX(-110%);
+  animation: ritual-shimmer 5.8s ease-in-out infinite;
+}
+
+.ritual-fortune-strip > * {
+  position: relative;
+  z-index: 1;
+}
+
+.ritual-fortune-strip.is-compact {
+  padding: 3px 7px;
+  font-size: 10.5px;
+}
+
+.ritual-fortune-strip.tone-weak {
+  border-color: rgba(180, 83, 9, 0.2);
+  background: linear-gradient(90deg, rgba(180, 83, 9, 0.08), rgba(214, 168, 79, 0.1));
+}
+
+.ritual-fortune-mark {
+  display: inline-grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border: 1px solid rgba(217, 45, 32, 0.34);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.48);
+  color: #b42318;
+  font-size: 10px;
+  font-weight: 900;
+}
+
+.ritual-signal-seal {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  max-width: 100%;
+  border: 1px solid rgba(217, 45, 32, 0.3);
+  border-radius: 6px;
+  background: rgba(217, 45, 32, 0.06);
+  color: #b42318;
+  padding: 2px 5px;
+  font-size: 10.5px;
+  font-weight: 900;
+  line-height: 1.25;
+  white-space: nowrap;
+  transform: rotate(-2deg);
+}
+
+.ritual-signal-seal.tone-danger {
+  border-color: rgba(180, 83, 9, 0.28);
+  background: rgba(180, 83, 9, 0.06);
+  color: #92400e;
+}
+
+.ritual-signal-seal.is-compact {
+  padding: 1px 4px;
+  font-size: 10px;
+}
+
+.ritual-lucky-draw {
+  border-color: rgba(214, 168, 79, 0.34) !important;
+  color: #9f1f18 !important;
+  font-weight: 900;
+}
+
+.ritual-close-bag {
+  position: relative;
+  display: grid;
+  gap: 2px;
+  overflow: hidden;
+  border: 1px solid rgba(214, 168, 79, 0.24);
+  border-radius: 8px;
+  background: linear-gradient(135deg, rgba(217, 45, 32, 0.06), rgba(214, 168, 79, 0.12));
+  color: #7a241b;
+  padding: 7px 9px;
+  font-size: var(--font-meta);
+  line-height: 1.35;
+}
+
+.ritual-close-bag::after {
+  content: "";
+  position: absolute;
+  right: 8px;
+  top: 8px;
+  width: 30px;
+  aspect-ratio: 1;
+  border: 1px solid rgba(217, 45, 32, 0.16);
+  border-radius: 50%;
+  opacity: 0.5;
+  animation: login-ritual-breathe 5.2s ease-in-out infinite;
+}
+
+.ritual-close-bag-label {
+  color: #b42318;
+  font-size: 10px;
+  font-weight: 900;
+}
+
+.ritual-close-bag strong {
+  font-size: 12px;
+}
+
+.ritual-close-bag span:last-child {
+  color: var(--muted);
+}
+
+.ritual-settings-card {
+  display: grid;
+  gap: 8px;
+}
+
+.ritual-settings-card label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
+  font-size: var(--font-meta);
+  font-weight: 900;
+}
+
+@keyframes ritual-shimmer {
+  0%,
+  72% {
+    transform: translateX(-110%);
+  }
+  100% {
+    transform: translateX(110%);
   }
 }
 

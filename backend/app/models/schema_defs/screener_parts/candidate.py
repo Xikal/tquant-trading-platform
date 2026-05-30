@@ -101,6 +101,29 @@ class LowBuyCandidateOut(BaseModel):
     research_near_miss_rules: list[str] = Field(default_factory=list)
     research_blocked_reason: str = ""
     main_force_advice: dict[str, Any] = Field(default_factory=dict)
+    production_score: Optional[float] = None
+    watch_score: Optional[float] = None
+    production_decision: str = ""
+    front_row_tier: str = "unknown"
+    score_cap: Optional[float] = None
+    score_components: dict[str, float] = Field(default_factory=dict)
+    exclusion_reasons: list[str] = Field(default_factory=list)
+    warning_tags: list[str] = Field(default_factory=list)
+    production_scoring_config_version: str = ""
+    strategy_variant: str = "baseline"
+    strategy_role: str = "production_baseline"
+    display_lane: str = "baseline"
+    display_lane_title: str = "原低吸策略"
+    display_lane_subtitle: str = ""
+    production_sort_replaced: bool = False
+    production_enabled: bool = True
+    paper_enabled: bool = False
+    watch_only: bool = False
+    matched_strategy_variants: list[str] = Field(default_factory=list)
+    primary_lane_reason: str = ""
+    elite_watch_score: Optional[float] = None
+    readiness_status: str = ""
+    readiness_blockers: list[str] = Field(default_factory=list)
     reasons: list[str]
     risks: list[str]
     tags: list[str]

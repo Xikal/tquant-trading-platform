@@ -1,3 +1,5 @@
+import type { StrategyLaneFields, StrategyVariant } from "./strategyLanes";
+
 export interface StrategyTrackingSummary {
   tracking_count: number;
   active_count: number;
@@ -86,7 +88,7 @@ export interface StrategyTrackingShadowObservation {
   success_rate_pct: number;
 }
 
-export interface StrategyTrackingItem {
+export interface StrategyTrackingItem extends StrategyLaneFields {
   id: string;
   symbol: string;
   name: string;
@@ -174,6 +176,15 @@ export interface StrategyTrackingItem {
   user_friendly_reason: string;
   plain_language_summary: string;
   sector_detail: Record<string, unknown>;
+  production_score?: number | null;
+  watch_score?: number | null;
+  production_decision?: string;
+  front_row_tier?: string;
+  score_cap?: number | null;
+  score_components?: Record<string, number>;
+  exclusion_reasons?: string[];
+  warning_tags?: string[];
+  production_scoring_config_version?: string;
 }
 
 export interface StrategyTrackingTimelinePoint {
@@ -306,6 +317,7 @@ export interface StrategyTrackingParams {
   signal_state?: string;
   strategy_key?: string;
   strategy_family?: string;
+  strategy_variant?: StrategyVariant;
   data_quality?: string;
   hit_entry?: boolean | null;
   stopped?: boolean | null;

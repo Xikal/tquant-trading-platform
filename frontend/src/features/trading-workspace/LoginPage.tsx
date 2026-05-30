@@ -13,6 +13,7 @@ import {
   Typography,
 } from "antd";
 import { AppForm } from "../../ui/forms/AppForm";
+import { ritualFortuneText } from "../ritual-ui";
 
 const LOGIN_MAIN_STYLE: CSSProperties = {
   alignItems: "center",
@@ -119,6 +120,7 @@ export function LoginPage({
               <Tag color="green" style={LOGIN_TAG_STYLE}>行情在线</Tag>
               <Tag color="gold" style={LOGIN_TAG_STYLE}>安全接入</Tag>
               <Tag color="blue" style={LOGIN_TAG_STYLE}>实时监控</Tag>
+              <Tag color="red" style={LOGIN_TAG_STYLE}>今日红运</Tag>
             </Flex>
             <Form.Item
               name="username"
@@ -253,6 +255,8 @@ function FinancialLoginBackdrop() {
           />
         ))}
       </div>
+      <div className="login-ritual-seal">红运</div>
+      <div className="login-ritual-motto">今日红运：{ritualFortuneText("neutral")}，纪律先行。</div>
     </div>
   );
 }

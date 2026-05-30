@@ -86,15 +86,15 @@ def list_factor_specs() -> list[FactorSpec]:
             activation_condition="strong_startup_shrink_wash_reclaim",
             status_text="已启用",
         ),
-        FactorSpec("north_flow_factor", 1.0, ("north_flow",), ("first_board", "ma_support", "classic_retrace"), status="stub", status_text="未启用，数据源未接入"),
-        FactorSpec("dragon_board_factor", 0.8, ("dragon_board",), ("classic_retrace", "volume_shrink", "first_board"), status="stub", status_text="未启用，数据源未接入"),
-        FactorSpec("limit_up_quality_factor", 0.9, ("limit_up_board",), ("first_board", "divergence_consensus"), status="stub", status_text="未启用，数据源未接入"),
-        FactorSpec("pre_market_auction_factor", 0.6, ("auction_snapshot",), ("late_session_strong_support", "first_board"), status="stub", status_text="未启用，数据源未接入"),
-        FactorSpec("margin_balance_factor", 0.5, ("margin_balance",), ("deep_pullback", "trend_rebound"), status="stub", status_text="未启用，数据源未接入"),
-        FactorSpec("block_trade_premium_factor", 0.4, ("block_trade",), ("breakout_support", "ma_support"), status="stub", status_text="未启用，数据源未接入"),
-        FactorSpec("earnings_surprise_factor", 0.3, ("earnings_calendar",), (), status="stub", status_text="未启用，数据源未接入"),
-        FactorSpec("insider_trade_factor", 0.5, ("announcements",), (), status="stub", status_text="未启用，数据源未接入"),
-        FactorSpec("short_balance_factor", 0.7, ("short_balance",), (), status="stub", status_text="未启用，数据源未接入"),
+        FactorSpec("north_flow_factor", 1.0, ("north_flow",), ("first_board", "ma_support", "classic_retrace"), activation_condition="realtime_only_no_backtest", status="experimental", status_text="研究中，仅实时观察"),
+        FactorSpec("dragon_board_factor", 0.8, ("dragon_board",), ("classic_retrace", "volume_shrink", "first_board"), activation_condition="realtime_only_no_backtest", status="experimental", status_text="研究中，仅实时观察"),
+        FactorSpec("limit_up_quality_factor", 0.9, ("limit_up_board",), ("first_board", "divergence_consensus"), activation_condition="realtime_only_no_backtest", status="experimental", status_text="研究中，仅实时观察"),
+        FactorSpec("pre_market_auction_factor", 0.0, ("auction_snapshot",), ("late_session_strong_support", "first_board"), status="stub", status_text="未启用，缺逐股集合竞价快照"),
+        FactorSpec("margin_balance_factor", 0.0, ("margin_balance",), ("deep_pullback", "trend_rebound"), status="stub", status_text="未启用，缺历史融资融券快照"),
+        FactorSpec("block_trade_premium_factor", 0.0, ("block_trade",), ("breakout_support", "ma_support"), status="stub", status_text="未启用，缺历史大宗交易溢价数据"),
+        FactorSpec("earnings_surprise_factor", 0.0, ("earnings_calendar",), (), status="stub", status_text="未启用，缺逐股财报预期差数据"),
+        FactorSpec("insider_trade_factor", 0.0, ("announcements",), (), status="stub", status_text="未启用，缺逐股董监高交易解析"),
+        FactorSpec("short_balance_factor", 0.0, ("short_balance",), (), status="stub", status_text="未启用，A股现货缺稳定融券余额源"),
     ]
     return specs + _dynamic_factor_specs()
 
@@ -150,17 +150,24 @@ def evaluate_registered_external_factors(
     """
 
     symbol = context.current_symbol if context else ""
-    return {
-        "north_flow_factor": evaluate_north_flow_factor(),
-        "dragon_board_factor": evaluate_dragon_board_factor(symbol) if symbol else 0.0,
-        "limit_up_quality_factor": evaluate_limit_up_quality_factor(symbol) if symbol else 0.0,
+    scores = {
         "pre_market_auction_factor": evaluate_pre_market_auction_factor(symbol) if symbol else 0.0,
         "margin_balance_factor": evaluate_margin_balance_factor(symbol) if symbol else 0.0,
         "block_trade_premium_factor": evaluate_block_trade_premium_factor(symbol) if symbol else 0.0,
-        "earnings_surprise_factor": evaluate_earnings_surprise_factor(symbol) if symbol else 0.0,
-        "insider_trade_factor": evaluate_insider_trade_factor(symbol) if symbol else 0.0,
         "short_balance_factor": evaluate_short_balance_factor(symbol) if symbol else 0.0,
     }
+    if not context or not context.allow_realtime_external_factors:
+        return scores
+    scores.update(
+        {
+            "north_flow_factor": evaluate_north_flow_factor(metrics.latest_trade_date),
+            "dragon_board_factor": evaluate_dragon_board_factor(symbol) if symbol else 0.0,
+            "limit_up_quality_factor": evaluate_limit_up_quality_factor(symbol, metrics.latest_trade_date) if symbol else 0.0,
+            "earnings_surprise_factor": evaluate_earnings_surprise_factor(symbol) if symbol else 0.0,
+            "insider_trade_factor": evaluate_insider_trade_factor(symbol) if symbol else 0.0,
+        }
+    )
+    return scores
 
 
 def _load_factor_weight_overrides() -> dict[str, float]:

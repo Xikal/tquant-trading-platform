@@ -40,6 +40,7 @@ describe("PaperTradingPage", () => {
     );
 
     expect(html).not.toContain("模拟交易");
+    expect(html).toContain("今日红运");
     expect(html).toContain("机甲指挥舱");
     expect(html).toContain("+委托");
     expect(html).toContain("详情信息");
@@ -385,6 +386,7 @@ describe("PaperTradingPage", () => {
     );
 
     expect(html).toContain("复盘历史入口 · 2 条");
+    expect(html).toContain("今日收盘福袋");
     expect(html).not.toContain("明日优先处理弱势仓位");
   });
 });

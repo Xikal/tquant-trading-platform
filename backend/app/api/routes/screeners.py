@@ -146,12 +146,20 @@ def low_buy_history_view(
 def low_buy_priority_board_view(
     limit: int = Query(12, ge=3, le=30),
     refresh: str = Query("cache", pattern="^(cache|async|sync)$"),
+    strategy_variant: str = Query("baseline", pattern="^(baseline|front_row_weighted|front_row_only)$"),
+    front_row_only: bool = Query(False),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     started_at = monotonic_start()
     try:
-        result = low_buy_screener.priority_board(db=db, limit=limit, refresh_mode=refresh)
+        result = low_buy_screener.priority_board(
+            db=db,
+            limit=limit,
+            refresh_mode=refresh,
+            front_row_only=front_row_only,
+            strategy_variant=strategy_variant,
+        )
         excluded = UserSectorPreferenceService(db).get_excluded_sector_set(current_user.id)
         result = filter_priority_board_response(result, excluded)
     except DataSourceError as exc:
@@ -159,7 +167,15 @@ def low_buy_priority_board_view(
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"优先级榜加载失败: {exc}") from exc
     finally:
-        log_slow_call(logger, "screeners.low_buy_priority_board", started_at, limit=limit, refresh=refresh)
+        log_slow_call(
+            logger,
+            "screeners.low_buy_priority_board",
+            started_at,
+            limit=limit,
+            refresh=refresh,
+            front_row_only=front_row_only,
+            strategy_variant=strategy_variant,
+        )
     return result.model_dump()
 
 

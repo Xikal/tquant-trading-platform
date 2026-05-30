@@ -30,9 +30,12 @@ def render_markdown_report(report: dict) -> str:
         f"- 退出原因：{_render_counts(summary.get('filled_exit_reason_counts', {}))}",
         f"- 已完成评估：{summary['evaluated_count']}，待完成：{summary['pending_count']}，样本质量：{summary['sample_quality']}",
         f"- 确定买入真实执行：成交 {summary['filled_count']}，净胜率 {summary['net_win_rate']}%，均净收益 {summary['avg_net_return_pct']}%，未成交率 {summary['not_filled_rate']}%，止损率 {summary['stop_loss_rate']}%",
-        _render_performance_summary("全信号执行绩效", summary.get("backtest_metrics", {})),
+        _render_performance_summary("生产信号执行绩效（buy_now/soft_buy_now）", summary.get("backtest_metrics", {})),
+        _render_performance_summary("全观察信号诊断绩效", summary.get("all_evaluated_backtest_metrics", {})),
         f"- 次日事件验证：T+1 冲高3%命中 {summary['t1_high_3_hit_rate']}%，冲高5%命中 {summary['t1_high_5_hit_rate']}%，冲高回落到买点率 {summary['t1_fade_to_entry_rate']}%，T+1最高均收 {summary['avg_t1_high_return_pct']}%，T+1收盘均收 {summary['avg_t1_close_return_pct']}%，T+2收盘均收 {summary['avg_t2_close_return_pct']}%",
         _render_signal_group_summary("确定买入", summary["confirmed_result"]),
+        _render_signal_group_summary("立即买入 buy_now", summary.get("buy_now_result", {})),
+        _render_signal_group_summary("轻仓买入 soft_buy_now", summary.get("soft_buy_now_result", {})),
         _render_signal_group_summary("观察确认", summary.get("observe_confirmed_result", {})),
         _render_signal_group_summary("接近买点", summary["near_entry_result"]),
         "",
@@ -51,6 +54,8 @@ def render_markdown_report(report: dict) -> str:
     )
     for item in report.get("families", []):
         lines.append(_render_family_group_row(item, "确定买入", item["confirmed_result"]))
+        lines.append(_render_family_group_row(item, "立即买入 buy_now", item.get("buy_now_result", {})))
+        lines.append(_render_family_group_row(item, "轻仓买入 soft_buy_now", item.get("soft_buy_now_result", {})))
         lines.append(_render_family_group_row(item, "观察确认", item.get("observe_confirmed_result", {})))
         lines.append(_render_family_group_row(item, "接近买点", item["near_entry_result"]))
     lines.extend(
@@ -58,8 +63,8 @@ def render_markdown_report(report: dict) -> str:
             "",
             "## 策略执行绩效",
             "",
-            "| 策略 | 成交 | 资金受限总收益 | 年化 | 最大回撤 | 均笔净收益 | 日均信号收益 | 诊断复利 | Sharpe | 胜率 | PF | 平均持仓 | 回撤恢复 |",
-            "|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---|",
+            "| 策略 | 成交 | 每日信号等权复利收益 | 年化 | 真实组合max5 | 真实组合max10 | 最大回撤 | 均笔净收益 | 日均信号收益 | 诊断复利 | Sharpe | 胜率 | PF | 平均持仓 | 回撤恢复 |",
+            "|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---|",
         ]
     )
     for item in report["strategies"]:
@@ -86,6 +91,8 @@ def render_markdown_report(report: dict) -> str:
     )
     for item in report["strategies"]:
         lines.append(_render_strategy_group_row(item, "确定买入", item["confirmed_result"]))
+        lines.append(_render_strategy_group_row(item, "立即买入 buy_now", item.get("buy_now_result", {})))
+        lines.append(_render_strategy_group_row(item, "轻仓买入 soft_buy_now", item.get("soft_buy_now_result", {})))
         lines.append(_render_strategy_group_row(item, "观察确认", item.get("observe_confirmed_result", {})))
         lines.append(_render_strategy_group_row(item, "接近买点", item["near_entry_result"]))
     return "\n".join(lines) + "\n"
@@ -121,7 +128,8 @@ def _render_signal_group_summary(label: str, item: dict) -> str:
 def _render_performance_summary(label: str, metrics: dict) -> str:
     metrics = _safe_performance(metrics)
     return (
-        f"- {label}：成交 {metrics['trade_count']}，资金受限总收益 {metrics['total_return_pct']}%，年化 {metrics['annualized_return_pct']}%，"
+        f"- {label}：成交 {metrics['trade_count']}，每日信号等权复利收益 {metrics['daily_signal_equal_weight_compound_return_pct']}%，年化 {metrics['daily_signal_equal_weight_annualized_return_pct']}%，"
+        f"真实组合max5收益 {metrics['portfolio_max_5_return_pct']}%，真实组合max10收益 {metrics['portfolio_max_10_return_pct']}%，"
         f"最大回撤 {metrics['max_drawdown_pct']}%，Sharpe {metrics['sharpe_ratio']}，胜率 {metrics['win_rate_pct']}%，"
         f"均笔净收益 {metrics['avg_net_return_pct']}%，日均信号收益 {metrics['avg_daily_signal_return_pct']}%，"
         f"盈亏比 {metrics['profit_loss_ratio']}，PF {metrics['profit_factor']}，平均持仓 {metrics['avg_holding_days']} 天；"
@@ -132,12 +140,14 @@ def _render_performance_summary(label: str, metrics: dict) -> str:
 def _render_strategy_performance_row(strategy: dict) -> str:
     metrics = _safe_performance(strategy.get("backtest_metrics", {}))
     return (
-        "| {title} | {trades} | {total}% | {annualized}% | {drawdown}% | {avg_net}% | {avg_daily}% | {diag}% | {sharpe} | {win}% | {pf} | {holding} | {recovery} |"
+        "| {title} | {trades} | {total}% | {annualized}% | {portfolio5}% | {portfolio10}% | {drawdown}% | {avg_net}% | {avg_daily}% | {diag}% | {sharpe} | {win}% | {pf} | {holding} | {recovery} |"
     ).format(
         title=strategy["strategy_title"],
         trades=metrics["trade_count"],
-        total=metrics["total_return_pct"],
-        annualized=metrics["annualized_return_pct"],
+        total=metrics["daily_signal_equal_weight_compound_return_pct"],
+        annualized=metrics["daily_signal_equal_weight_annualized_return_pct"],
+        portfolio5=metrics["portfolio_max_5_return_pct"],
+        portfolio10=metrics["portfolio_max_10_return_pct"],
         drawdown=metrics["max_drawdown_pct"],
         avg_net=metrics["avg_net_return_pct"],
         avg_daily=metrics["avg_daily_signal_return_pct"],
@@ -209,7 +219,7 @@ def _render_strategy_group_row(
         best=_best_holding_text(result),
         gain=result["avg_max_gain_5d"],
         dd=result["avg_max_drawdown_5d"],
-        conclusion=strategy["conclusion"] if label == "确定买入" else "观察信号，只用于判断提前量。",
+        conclusion=strategy["conclusion"] if label in {"确定买入", "立即买入 buy_now", "轻仓买入 soft_buy_now"} else "观察信号，只用于判断提前量。",
     )
 
 
@@ -219,7 +229,7 @@ def _render_family_group_row(
     result: dict,
 ) -> str:
     result = _safe_result(result)
-    conclusion = family["conclusion"] if label == "确定买入" else "观察信号，只用于判断提前量。"
+    conclusion = family["conclusion"] if label in {"确定买入", "立即买入 buy_now", "轻仓买入 soft_buy_now"} else "观察信号，只用于判断提前量。"
     return (
         "| {family} | {strategy_count} | {label} | {evaluated} | {filled} | {net_win}% | {net_avg}% | {not_filled}% | {stop_loss}% | {hit}% | "
         "{win1}% | {win2}% | {win3}% | {win4}% | {win5}% | {best} | {conclusion} |"
@@ -297,10 +307,13 @@ def _safe_result(item: dict | None) -> dict:
 
 
 def _safe_performance(item: dict | None) -> dict:
+    raw = item or {}
     defaults = {
         "trade_count": 0,
         "total_return_pct": 0.0,
+        "daily_signal_equal_weight_compound_return_pct": 0.0,
         "annualized_return_pct": 0.0,
+        "daily_signal_equal_weight_annualized_return_pct": 0.0,
         "max_drawdown_pct": 0.0,
         "drawdown_recovery_status": "无成交",
         "sharpe_ratio": 0.0,
@@ -311,5 +324,14 @@ def _safe_performance(item: dict | None) -> dict:
         "avg_net_return_pct": 0.0,
         "avg_daily_signal_return_pct": 0.0,
         "diagnostic_compound_return_pct": 0.0,
+        "portfolio_backtests": {},
     }
-    return {**defaults, **(item or {})}
+    merged = {**defaults, **raw}
+    if "daily_signal_equal_weight_compound_return_pct" not in raw:
+        merged["daily_signal_equal_weight_compound_return_pct"] = merged.get("total_return_pct", 0.0)
+    if "daily_signal_equal_weight_annualized_return_pct" not in raw:
+        merged["daily_signal_equal_weight_annualized_return_pct"] = merged.get("annualized_return_pct", 0.0)
+    portfolios = merged.get("portfolio_backtests") or {}
+    merged["portfolio_max_5_return_pct"] = float((portfolios.get("max_5") or {}).get("portfolio_return_pct") or 0.0)
+    merged["portfolio_max_10_return_pct"] = float((portfolios.get("max_10") or {}).get("portfolio_return_pct") or 0.0)
+    return merged

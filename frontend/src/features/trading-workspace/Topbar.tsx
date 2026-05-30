@@ -3,6 +3,7 @@ import { Badge, Button, Dropdown, Grid, Space, Typography } from "antd";
 import { useEffect, useMemo } from "react";
 import { useWorkspaceStore } from "../../stores/workspaceStore";
 import type { AuthUser, LowBuyPriorityBoardResult } from "../../types";
+import { RitualFortuneStrip, RitualLuckyDraw, useRitualPreference } from "../ritual-ui";
 import type { Page, StockCardView } from "../workspace-shared/workspaceTypes";
 import {
   TOPBAR_BRAND_STYLE,
@@ -45,6 +46,7 @@ export function Topbar({
   const pulse = useWorkspaceStore((state) => state.topbarPulse);
   const setTopbarPulse = useWorkspaceStore((state) => state.setTopbarPulse);
   const screens = useBreakpoint();
+  const ritual = useRitualPreference();
   const stacked = !screens.lg;
   const nav: Array<[Page, string]> = useMemo(() => [
     ["monitor", "实时监控"],
@@ -56,6 +58,7 @@ export function Topbar({
   ], []);
   const riskCount = watchCards.filter((item) => item.riskText.includes("高")).length;
   const userName = currentUser.display_name || currentUser.username;
+  const ritualTone = riskCount > 0 ? "weak" : (priorityBoard?.immediate_count ?? 0) > 0 ? "strong" : "neutral";
   const menuItems = nav.map(([key, label]) => {
     const paperDisabled = key === "paper" && !currentUser.can_paper_trade;
     return {
@@ -104,14 +107,27 @@ export function Topbar({
         <Badge count={riskCount} showZero color="#b42318">
           <span style={TOPBAR_RISK_CHIP_STYLE}><small style={TOPBAR_CHIP_LABEL_STYLE}>风险</small></span>
         </Badge>
+        {screens.xl ? <RitualFortuneStrip enabled={ritual.enabled} marketTone={ritualTone} compact /> : null}
+        <RitualLuckyDraw enabled={ritual.enabled} compact />
         <span style={TOPBAR_PULSE_CHIP_STYLE}><small style={TOPBAR_CHIP_LABEL_STYLE}>脉冲</small><strong style={TOPBAR_PULSE_VALUE_STYLE}>{pulse}</strong></span>
         <Dropdown
           menu={{
             items: [
+              { key: "ritual-toggle", label: ritual.enabled ? "关闭红运仪式" : "开启红运仪式" },
               { key: "settings", label: "系统配置" },
               { key: "logout", label: "退出登录", danger: true },
             ],
-            onClick: ({ key }) => (key === "logout" ? onLogout() : setPage("settings")),
+            onClick: ({ key }) => {
+              if (key === "logout") {
+                onLogout();
+                return;
+              }
+              if (key === "ritual-toggle") {
+                ritual.setEnabled(!ritual.enabled);
+                return;
+              }
+              setPage("settings");
+            },
           }}
           trigger={["click"]}
         >

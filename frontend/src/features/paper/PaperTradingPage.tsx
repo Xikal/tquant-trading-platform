@@ -29,6 +29,7 @@ import {
 } from "./PaperTradingSections";
 import type { PaperOrderDraft } from "../workspace-shared/workspaceTypes";
 import { usePaperUiStore } from "../../stores/paperUiStore";
+import { RitualCloseBag, RitualFortuneStrip } from "../ritual-ui";
 
 const PAPER_PAGE_STACK_STYLE: CSSProperties = {
   display: "flex",
@@ -168,6 +169,7 @@ export const PaperTradingPage = memo(function PaperTradingPage({
         onOpenOrderEntry={() => setOrderModalOpen(true)}
         onTogglePause={onTogglePause}
       />
+      <RitualFortuneStrip marketTone={(account?.today_return_pct ?? performance?.total_return_pct ?? 0) > 0 ? "strong" : "neutral"} compact showCalendarHint />
       <PaperReviewOverview dashboard={performanceDashboard} />
       {orderModalOpen ? (
         <OrderEntryModal
@@ -237,6 +239,7 @@ function PaperReviewOverview({ dashboard }: { dashboard: PaperPerformanceDashboa
   return (
     <Row gutter={[12, 12]} align="stretch" style={PAPER_ROW_STYLE}>
       <Col xs={24}>
+        <RitualCloseBag compact visible={reports.some((item) => item.report_slot === "close")} />
         <Collapse
           size="small"
           items={[{

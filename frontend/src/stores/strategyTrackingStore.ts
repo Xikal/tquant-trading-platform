@@ -2,12 +2,14 @@ import { create } from "zustand";
 
 export type StrategyTrackingTab = "active" | "gain" | "risk" | "performance" | "holding" | "diagnostics";
 export type StrategyTrackingViewMode = "beginner" | "professional";
+export type StrategyTrackingLane = "" | "baseline" | "front_row_weighted" | "front_row_only";
 
 interface StrategyTrackingStore {
   tab: StrategyTrackingTab;
   viewMode: StrategyTrackingViewMode;
   range: number;
   strategyKey: string;
+  strategyVariant: StrategyTrackingLane;
   strategyFamily: string;
   signalState: string;
   lifecycleStatus: string;
@@ -26,6 +28,7 @@ interface StrategyTrackingStore {
   setViewMode: (viewMode: StrategyTrackingViewMode) => void;
   setRange: (range: number) => void;
   setStrategyKey: (strategyKey: string) => void;
+  setStrategyVariant: (strategyVariant: StrategyTrackingLane) => void;
   setStrategyFamily: (strategyFamily: string) => void;
   setSignalState: (signalState: string) => void;
   setLifecycleStatus: (lifecycleStatus: string) => void;
@@ -48,6 +51,7 @@ export const useStrategyTrackingStore = create<StrategyTrackingStore>((set) => (
   viewMode: "beginner",
   range: 30,
   strategyKey: "",
+  strategyVariant: "",
   strategyFamily: "",
   signalState: "",
   lifecycleStatus: "",
@@ -72,6 +76,7 @@ export const useStrategyTrackingStore = create<StrategyTrackingStore>((set) => (
     }),
   setRange: (range) => set({ range, ...resetPage }),
   setStrategyKey: (strategyKey) => set({ strategyKey, ...resetPage }),
+  setStrategyVariant: (strategyVariant) => set({ strategyVariant, ...resetPage }),
   setStrategyFamily: (strategyFamily) => set({ strategyFamily, ...resetPage }),
   setSignalState: (signalState) => set({ signalState, ...resetPage }),
   setLifecycleStatus: (lifecycleStatus) => set({ lifecycleStatus, ...resetPage }),

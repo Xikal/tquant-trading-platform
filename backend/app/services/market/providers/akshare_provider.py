@@ -314,11 +314,12 @@ class AkshareMarketProvider:
             return self._unavailable(str(exc))
         return self._frame_result(frame)
 
-    def fetch_limit_up_snapshot(self) -> ProviderResult:
+    def fetch_limit_up_snapshot(self, trade_date: str = "") -> ProviderResult:
         if ak is None:
             return self._ak_unavailable()
         try:
-            frame = self._raw_call(ak.stock_zt_pool_em, purpose="limit_pool")
+            kwargs = {"date": trade_date.replace("-", "")} if trade_date else {}
+            frame = self._raw_call(ak.stock_zt_pool_em, purpose="limit_pool", **kwargs)
         except Exception as exc:
             return self._unavailable(str(exc))
         return self._frame_result(frame)

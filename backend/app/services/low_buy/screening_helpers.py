@@ -95,6 +95,8 @@ def build_factor_context(
     item,
     sector_counts: dict[str, int],
     latest_trade_date: str,
+    latest_completed_trade_date: str = "",
+    allow_realtime_external_factors: bool = False,
     sector_flow_ranks: dict[str, float] | None = None,
 ) -> FactorContext:
     return FactorContext(
@@ -106,6 +108,7 @@ def build_factor_context(
         confirmed_trade_date=latest_trade_date,
         current_date=latest_trade_date,
         total_strategies=1,
+        allow_realtime_external_factors=allow_realtime_external_factors,
     )
 
 
@@ -290,6 +293,8 @@ def evaluate_scan_targets(
     histories: dict,
     strategy: str,
     latest_trade_date: str,
+    latest_completed_trade_date: str = "",
+    allow_realtime_external_factors: bool = False,
     hot_industries: list[str],
     market_regime,
     factor_sector_counts: dict[str, int],
@@ -309,6 +314,8 @@ def evaluate_scan_targets(
                 item=item,
                 sector_counts=factor_sector_counts,
                 latest_trade_date=latest_trade_date,
+                latest_completed_trade_date=latest_completed_trade_date,
+                allow_realtime_external_factors=allow_realtime_external_factors,
                 sector_flow_ranks=sector_flow_ranks,
             ),
         )

@@ -89,7 +89,7 @@ class RuntimeTaskQueue:
         ).scalars().all()
         return [_event_out(row) for row in rows]
 
-    def claim_next(self, *, worker_id: str) -> RuntimeTask | None:
+    def claim_next(self, *, worker_id: str, task_types: list[str] | tuple[str, ...] | None = None) -> RuntimeTask | None:
         self._recover_stale_running_tasks()
         statement = (
             select(RuntimeTask)
@@ -98,6 +98,8 @@ class RuntimeTaskQueue:
             .order_by(RuntimeTask.priority.asc(), RuntimeTask.id.asc())
             .limit(1)
         )
+        if task_types:
+            statement = statement.where(RuntimeTask.task_type.in_([str(item) for item in task_types]))
         if _supports_skip_locked(self.db):
             statement = statement.with_for_update(skip_locked=True)
         row = self.db.execute(statement).scalar_one_or_none()
@@ -113,6 +115,32 @@ class RuntimeTaskQueue:
         publish_runtime_task_event(event)
         self.db.refresh(row)
         return row
+
+    def heartbeat(self, task_id: int, *, worker_id: str = "") -> RuntimeTaskOut:
+        row = self._get_row(task_id)
+        row.locked_at = datetime.utcnow()
+        if worker_id:
+            row.locked_by = worker_id
+        self.db.commit()
+        self.db.refresh(row)
+        return _task_out(row)
+
+    def update_progress(
+        self,
+        task_id: int,
+        *,
+        progress_pct: float,
+        message: str = "",
+        payload: dict[str, Any] | None = None,
+    ) -> RuntimeTaskOut:
+        row = self._get_row(task_id)
+        row.progress_pct = max(0.0, min(float(progress_pct), 99.0))
+        row.locked_at = datetime.utcnow()
+        event = self.add_event(task_id, "progress", message or "任务进度更新", payload or {})
+        self.db.commit()
+        publish_runtime_task_event(event)
+        self.db.refresh(row)
+        return _task_out(row)
 
     def mark_succeeded(self, task_id: int, result: dict[str, Any] | None = None) -> RuntimeTaskOut:
         row = self._get_row(task_id)

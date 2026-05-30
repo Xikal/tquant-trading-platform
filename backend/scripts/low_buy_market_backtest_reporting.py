@@ -7,6 +7,7 @@ from collections import defaultdict
 from typing import Any
 
 from app.services.low_buy.shared import PERFORMANCE_FORWARD_DAYS
+from app.services.low_buy.execution_simulation import ROUND_TRIP_COST_BPS
 from app.services.low_buy.strategy_families import resolve_strategy_family_label
 
 try:
@@ -51,6 +52,8 @@ class TradeOutcome:
     return_5d: float
     max_gain_5d: float
     max_drawdown_5d: float
+    entry_zone_low: float = 0.0
+    entry_zone_high: float = 0.0
     spike_return_1d: float = 0.0
     spike_return_2d: float = 0.0
     spike_return_3d: float = 0.0
@@ -70,6 +73,22 @@ class TradeOutcome:
     market_state_text: str = ""
     market_state_category: str = ""
     market_state_strength: float = 0.0
+    sector_name: str = ""
+    production_score: float | None = None
+    watch_score: float | None = None
+    production_decision: str = ""
+    front_row_tier: str = "unknown"
+    score_cap: float | None = None
+    score_components: dict[str, float] = field(default_factory=dict)
+    exclusion_reasons: list[str] = field(default_factory=list)
+    warning_tags: list[str] = field(default_factory=list)
+    production_scoring_config_version: str = ""
+    signal_generated_at: str = ""
+    data_cutoff_time: str = ""
+    return_start_time: str = ""
+    t1_open_return_pct: float = 0.0
+    t1_pct_chg: float = 0.0
+    t1_locked_limit_up: bool = False
 
 
 @dataclass
@@ -97,6 +116,8 @@ class StrategyBacktestStats:
     pending_reason_counts: dict[str, int] = field(default_factory=dict)
     market_guard_count: int = 0
     market_guard_counts: dict[str, int] = field(default_factory=dict)
+    front_row_filter_count: int = 0
+    front_row_filter_counts: dict[str, int] = field(default_factory=dict)
 
     def record_signal_state(self, state: str) -> None:
         key = str(state or "unknown")
@@ -116,6 +137,12 @@ class StrategyBacktestStats:
         self.market_guard_count += 1
         self.market_guard_counts[key] = self.market_guard_counts.get(key, 0) + 1
 
+    def record_front_row_filter(self, reason: str, count: int = 1) -> None:
+        key = str(reason or "unknown")
+        amount = max(int(count or 0), 0)
+        self.front_row_filter_count += amount
+        self.front_row_filter_counts[key] = self.front_row_filter_counts.get(key, 0) + amount
+
     def as_dict(self, target_profit_pct: float, selected_states: set[str] | None = None) -> dict[str, Any]:
         confirmed_result = signal_group_stats(
             outcomes=self.outcomes,
@@ -127,12 +154,23 @@ class StrategyBacktestStats:
             states={NEAR_ENTRY_STATE},
             target_profit_pct=target_profit_pct,
         )
+        buy_now_result = signal_group_stats(
+            outcomes=self.outcomes,
+            states={"buy_now"},
+            target_profit_pct=target_profit_pct,
+        )
+        soft_buy_now_result = signal_group_stats(
+            outcomes=self.outcomes,
+            states={"soft_buy_now"},
+            target_profit_pct=target_profit_pct,
+        )
         observe_confirmed_result = signal_group_stats(
             outcomes=self.outcomes,
             states={OBSERVE_CONFIRMED_STATE},
             target_profit_pct=target_profit_pct,
         )
-        backtest_metrics = backtest_performance_metrics(self.outcomes)
+        backtest_metrics = backtest_performance_metrics(self.outcomes, states=CONFIRMED_STATES)
+        all_evaluated_backtest_metrics = backtest_performance_metrics(self.outcomes, states=EVALUATED_STATES)
         conclusion_result = conclusion_source(confirmed_result, observe_confirmed_result, near_entry_result)
         selected = selected_states or EVALUATED_STATES
         total_result = signal_group_stats(
@@ -167,6 +205,8 @@ class StrategyBacktestStats:
                 "pending_reason_counts": _sorted_counts(self.pending_reason_counts),
                 "market_guard_count": self.market_guard_count,
                 "market_guard_counts": _sorted_counts(self.market_guard_counts),
+                "front_row_filter_count": self.front_row_filter_count,
+                "front_row_filter_counts": _sorted_counts(self.front_row_filter_counts),
                 "not_filled_reason_counts": _reason_counts(
                     self.outcomes,
                     status="not_filled",
@@ -179,10 +219,14 @@ class StrategyBacktestStats:
                 ),
             },
             "confirmed_result": confirmed_result,
+            "buy_now_result": buy_now_result,
+            "soft_buy_now_result": soft_buy_now_result,
             "observe_confirmed_result": observe_confirmed_result,
             "near_entry_result": near_entry_result,
             "total_evaluated_result": total_result,
             "backtest_metrics": backtest_metrics,
+            "production_backtest_metrics": backtest_metrics,
+            "all_evaluated_backtest_metrics": all_evaluated_backtest_metrics,
             "hit_count": confirmed_result["hit_count"],
             "hit_rate": confirmed_result["hit_rate"],
             "win_rate_1d": confirmed_result["win_rate_1d"],
@@ -244,7 +288,9 @@ def build_report(
         near_entry_count=sum(item.near_entry_count for item in stats),
         pending_count=sum(item.pending_count for item in stats),
     )
-    summary["backtest_metrics"] = backtest_performance_metrics(all_outcomes)
+    summary["backtest_metrics"] = backtest_performance_metrics(all_outcomes, states=CONFIRMED_STATES)
+    summary["production_backtest_metrics"] = summary["backtest_metrics"]
+    summary["all_evaluated_backtest_metrics"] = backtest_performance_metrics(all_outcomes, states=selected)
     summary.update(
         {
             "universe_count": universe_count,
@@ -269,6 +315,8 @@ def build_report(
             "pending_reason_counts": _merge_count_dicts(item.pending_reason_counts for item in stats),
             "market_guard_count": sum(item.market_guard_count for item in stats),
             "market_guard_counts": _merge_count_dicts(item.market_guard_counts for item in stats),
+            "front_row_filter_count": sum(item.front_row_filter_count for item in stats),
+            "front_row_filter_counts": _merge_count_dicts(item.front_row_filter_counts for item in stats),
             "not_filled_reason_counts": _reason_counts(
                 all_outcomes,
                 status="not_filled",
@@ -299,8 +347,10 @@ def build_report(
         "methodology": [
             "股票池使用 A 股全市场清单计数，策略实际候选由全市场近期涨停/强势结构筛出。",
             "确定买入统计 buy_now / soft_buy_now；观察确认单独统计 observe_confirmed；接近买点单独统计 near_entry，均输出 1/2/3/4/5 日结果。",
+            "生产收益、生产排行和真实组合回测只使用 buy_now / soft_buy_now；near_entry 只作为观察提前量，不进入生产收益排行。",
             "真实执行指标按信号后 2 日触达买点、止损/止盈/移动防守退出，并扣除 16bps 成本计算。",
-            "总收益/年化按每日信号等权投入 1 单位资金估算；逐信号无资金约束复利仅保留为诊断字段，不作为真实收益。",
+            "每日信号等权复利收益/年化按每日信号等权投入 1 单位资金估算；逐信号无资金约束复利仅保留为诊断字段，不作为真实收益。",
+            "真实组合回测新增最大持仓 5/10 两档：持仓期间占用资金，同票持有中禁止重复买入，满仓信号跳过。",
             f"冲高命中按买入后 {PERFORMANCE_FORWARD_DAYS} 个交易日内最高价达到 {target_profit_pct:.1f}% 计算，仅作为辅助观察。",
             "1/2/3/4/5 日收益按触发日参考入场价到后续收盘价计算，用于持股周期观察，并按平均收益给出最佳持股天数。",
             "接近买点样本按买点区参考价估算结果，用于观察信号质量，不等同已经触发买入。",
@@ -383,6 +433,16 @@ def _build_family_rows(
             states={NEAR_ENTRY_STATE},
             target_profit_pct=target_profit_pct,
         )
+        buy_now_result = signal_group_stats(
+            outcomes=outcomes,
+            states={"buy_now"},
+            target_profit_pct=target_profit_pct,
+        )
+        soft_buy_now_result = signal_group_stats(
+            outcomes=outcomes,
+            states={"soft_buy_now"},
+            target_profit_pct=target_profit_pct,
+        )
         observe_confirmed_result = signal_group_stats(
             outcomes=outcomes,
             states={OBSERVE_CONFIRMED_STATE},
@@ -411,6 +471,8 @@ def _build_family_rows(
                 "evaluated_count": sum(item.evaluated_count for item in family_stats),
                 "pending_count": sum(item.pending_count for item in family_stats),
                 "confirmed_result": confirmed_result,
+                "buy_now_result": buy_now_result,
+                "soft_buy_now_result": soft_buy_now_result,
                 "observe_confirmed_result": observe_confirmed_result,
                 "near_entry_result": near_entry_result,
                 "total_evaluated_result": total_result,
@@ -456,6 +518,16 @@ def _summary_stats(
         states={NEAR_ENTRY_STATE},
         target_profit_pct=target_profit_pct,
     )
+    buy_now_result = signal_group_stats(
+        outcomes=outcomes,
+        states={"buy_now"},
+        target_profit_pct=target_profit_pct,
+    )
+    soft_buy_now_result = signal_group_stats(
+        outcomes=outcomes,
+        states={"soft_buy_now"},
+        target_profit_pct=target_profit_pct,
+    )
     observe_confirmed_result = signal_group_stats(
         outcomes=outcomes,
         states={OBSERVE_CONFIRMED_STATE},
@@ -476,6 +548,8 @@ def _summary_stats(
         "evaluated_count": evaluated,
         "pending_count": pending_count,
         "confirmed_result": confirmed_result,
+        "buy_now_result": buy_now_result,
+        "soft_buy_now_result": soft_buy_now_result,
         "observe_confirmed_result": observe_confirmed_result,
         "near_entry_result": near_entry_result,
         "total_evaluated_result": total_result,
@@ -563,11 +637,15 @@ def backtest_performance_metrics(outcomes: list[TradeOutcome], states: set[str] 
     annualized = _annualized_return(capital_return, filled)
     sharpe = _sharpe_ratio(returns)
     daily_returns = _daily_signal_return_stats(filled)
+    portfolio_max_5 = portfolio_backtest_metrics(scoped, states=None, max_positions=5)
+    portfolio_max_10 = portfolio_backtest_metrics(scoped, states=None, max_positions=10)
     return {
         "trade_count": len(filled),
         "evaluated_count": len(scoped),
         "total_return_pct": capital_return,
+        "daily_signal_equal_weight_compound_return_pct": capital_return,
         "annualized_return_pct": annualized,
+        "daily_signal_equal_weight_annualized_return_pct": annualized,
         "max_drawdown_pct": drawdown["max_drawdown_pct"],
         "drawdown_recovery_trades": drawdown["drawdown_recovery_trades"],
         "drawdown_recovery_status": drawdown["drawdown_recovery_status"],
@@ -587,10 +665,321 @@ def backtest_performance_metrics(outcomes: list[TradeOutcome], states: set[str] 
         "max_single_loss_pct": round(min(returns), 4) if returns else 0.0,
         "max_single_gain_pct": round(max(returns), 4) if returns else 0.0,
         "capital_model": "one_unit_per_signal_day_equal_weight",
-        "capital_model_note": "总收益/年化按每日信号等权投入 1 单位资金估算，避免逐信号无资金约束复利夸大。",
+        "capital_model_label": "每日信号等权复利收益",
+        "capital_model_note": "每日信号等权复利收益/年化按每日信号等权投入 1 单位资金估算，避免逐信号无资金约束复利夸大。",
+        "portfolio_backtests": {
+            "max_5": portfolio_max_5,
+            "max_10": portfolio_max_10,
+        },
         "diagnostic_compound_return_pct": diagnostic_compound_return,
         "diagnostic_compound_return_note": "诊断字段：逐成交信号连续复利，不代表真实资金曲线。",
     }
+
+
+def portfolio_backtest_metrics(
+    outcomes: list[TradeOutcome],
+    *,
+    states: set[str] | None = None,
+    max_positions: int = 5,
+    sort_by_production_score: bool = False,
+    max_daily_per_strategy: int | None = 2,
+    max_per_sector: int | None = 2,
+    weak_market_position_cap_pct: float | None = 40.0,
+    block_retreat_new_positions: bool = True,
+    extra_cost_bps: float = 0.0,
+) -> dict[str, Any]:
+    scoped = [item for item in outcomes if states is None or item.buy_signal_state in states]
+    filled = [item for item in scoped if item.execution_status == "filled"]
+    max_slots = max(int(max_positions or 0), 1)
+    candidates = sorted(
+        filled,
+        key=lambda item: (
+            _portfolio_entry_date_key(item),
+            -_portfolio_priority_score(item) if sort_by_production_score else 0.0,
+            str(item.signal_date or ""),
+            str(item.symbol or ""),
+            str(item.strategy_key or ""),
+        ),
+    )
+    equity = 1.0
+    available_cash = 1.0
+    curve: list[float] = []
+    open_positions: list[dict[str, Any]] = []
+    accepted: list[TradeOutcome] = []
+    accepted_returns: list[float] = []
+    skipped_by_duplicate = 0
+    skipped_by_max_positions = 0
+    skipped_by_missing_dates = 0
+    skipped_by_strategy_daily_limit = 0
+    skipped_by_sector_limit = 0
+    skipped_by_retreat_market = 0
+    skipped_by_weak_market_position_cap = 0
+    skip_reason_counts: dict[str, int] = {}
+    max_concurrent_positions = 0
+    accepted_by_entry_strategy: dict[tuple[date, str], int] = defaultdict(int)
+
+    for item in candidates:
+        entry = _portfolio_entry_date(item)
+        exit_date = _portfolio_exit_date(item)
+        if entry is None or exit_date is None:
+            skipped_by_missing_dates += 1
+            _record_skip(skip_reason_counts, "missing_entry_or_exit_date")
+            continue
+        equity, available_cash = _close_portfolio_positions_before(
+            open_positions=open_positions,
+            before_date=entry,
+            equity=equity,
+            available_cash=available_cash,
+            curve=curve,
+        )
+        if any(position["symbol"] == item.symbol for position in open_positions):
+            skipped_by_duplicate += 1
+            _record_skip(skip_reason_counts, "duplicate_symbol_open")
+            continue
+        market_state = str(item.market_state or item.market_state_category or "")
+        if block_retreat_new_positions and market_state in {"high_flyer_retreat", "risk_release"}:
+            skipped_by_retreat_market += 1
+            _record_skip(skip_reason_counts, "retreat_market_no_new_position")
+            continue
+        if max_daily_per_strategy is not None and max_daily_per_strategy > 0:
+            strategy_key = str(item.strategy_key or "unknown")
+            strategy_date_key = (entry, strategy_key)
+            if accepted_by_entry_strategy[strategy_date_key] >= max_daily_per_strategy:
+                skipped_by_strategy_daily_limit += 1
+                _record_skip(skip_reason_counts, "strategy_daily_limit")
+                continue
+        sector = _portfolio_sector_key(item)
+        if max_per_sector is not None and max_per_sector > 0 and sector:
+            open_sector_count = sum(1 for position in open_positions if position.get("sector") == sector)
+            if open_sector_count >= max_per_sector:
+                skipped_by_sector_limit += 1
+                _record_skip(skip_reason_counts, "sector_position_limit")
+                continue
+        if len(open_positions) >= max_slots:
+            skipped_by_max_positions += 1
+            _record_skip(skip_reason_counts, "max_positions")
+            continue
+        if weak_market_position_cap_pct is not None and market_state in {"low_volume_wait", "fast_rotation"}:
+            weak_cap_slots = max(1, int(max_slots * max(float(weak_market_position_cap_pct), 0.0) / 100.0))
+            if len(open_positions) >= weak_cap_slots:
+                skipped_by_weak_market_position_cap += 1
+                _record_skip(skip_reason_counts, "weak_market_position_cap")
+                continue
+        slot_capital = equity / max_slots
+        if available_cash + 0.0000001 < slot_capital:
+            skipped_by_max_positions += 1
+            _record_skip(skip_reason_counts, "max_positions_cash_occupied")
+            continue
+        allocated_capital = slot_capital
+        available_cash -= allocated_capital
+        open_positions.append(
+            {
+                "symbol": item.symbol,
+                "exit_date": exit_date,
+                "return_pct": _portfolio_return_pct(item, extra_cost_bps=extra_cost_bps),
+                "allocated_capital": allocated_capital,
+                "outcome": item,
+                "sector": sector,
+            }
+        )
+        accepted.append(item)
+        accepted_returns.append(_portfolio_return_pct(item, extra_cost_bps=extra_cost_bps))
+        if max_daily_per_strategy is not None and max_daily_per_strategy > 0:
+            accepted_by_entry_strategy[(entry, str(item.strategy_key or "unknown"))] += 1
+        max_concurrent_positions = max(max_concurrent_positions, len(open_positions))
+
+    equity, available_cash = _close_all_portfolio_positions(
+        open_positions=open_positions,
+        equity=equity,
+        available_cash=available_cash,
+        curve=curve,
+    )
+    total_return = round((equity - 1.0) * 100.0, 4)
+    drawdown = _drawdown_stats(curve)
+    wins = [value for value in accepted_returns if value > 0]
+    losses = [abs(value) for value in accepted_returns if value < 0]
+    holding_days = [_holding_days(item) for item in accepted if _holding_days(item) > 0]
+    first_entry = min((_portfolio_entry_date(item) for item in accepted), default=None)
+    last_exit = max((_portfolio_exit_date(item) for item in accepted), default=None)
+    calendar_days = max((last_exit - first_entry).days + 1, 1) if first_entry and last_exit else 0
+    occupied_days = sum(max(_holding_days(item) + 1, 1) for item in accepted)
+    utilization = round(occupied_days / max(calendar_days * max_slots, 1) * 100.0, 4) if calendar_days else 0.0
+    return {
+        "capital_model": f"real_portfolio_max_{max_slots}_equal_slot_no_overlap",
+        "capital_model_label": f"真实组合回测 max{max_slots}",
+        "max_positions": max_slots,
+        "capital_occupied_during_holding": True,
+        "available_cash_released_on_exit": True,
+        "same_symbol_reentry_blocked": True,
+        "strategy_daily_limit": max_daily_per_strategy or 0,
+        "sector_daily_limit": max_per_sector or 0,
+        "weak_market_position_cap_pct": weak_market_position_cap_pct or 0.0,
+        "retreat_market_new_position_blocked": bool(block_retreat_new_positions),
+        "production_score_sort_enabled": bool(sort_by_production_score),
+        "base_round_trip_cost_bps": ROUND_TRIP_COST_BPS,
+        "extra_cost_bps": round(float(extra_cost_bps or 0.0), 4),
+        "total_cost_bps_assumption": round(ROUND_TRIP_COST_BPS + float(extra_cost_bps or 0.0), 4),
+        "candidate_count": len(filled),
+        "trade_count": len(accepted),
+        "skipped_count": (
+            skipped_by_duplicate
+            + skipped_by_max_positions
+            + skipped_by_missing_dates
+            + skipped_by_strategy_daily_limit
+            + skipped_by_sector_limit
+            + skipped_by_retreat_market
+            + skipped_by_weak_market_position_cap
+        ),
+        "skipped_by_duplicate_symbol": skipped_by_duplicate,
+        "skipped_by_max_positions": skipped_by_max_positions,
+        "skipped_by_missing_dates": skipped_by_missing_dates,
+        "skipped_by_strategy_daily_limit": skipped_by_strategy_daily_limit,
+        "skipped_by_sector_limit": skipped_by_sector_limit,
+        "skipped_by_retreat_market": skipped_by_retreat_market,
+        "skipped_by_weak_market_position_cap": skipped_by_weak_market_position_cap,
+        "skip_reason_counts": _sorted_counts(skip_reason_counts),
+        "max_concurrent_positions": max_concurrent_positions,
+        "slot_occupancy_days": occupied_days,
+        "avg_capital_utilization_pct": utilization,
+        "total_return_pct": total_return,
+        "portfolio_return_pct": total_return,
+        "annualized_return_pct": _annualized_return(total_return, accepted),
+        "max_drawdown_pct": drawdown["max_drawdown_pct"],
+        "drawdown_recovery_trades": drawdown["drawdown_recovery_trades"],
+        "drawdown_recovery_status": drawdown["drawdown_recovery_status"],
+        "win_rate_pct": pct(len(wins), len(accepted)),
+        "profit_factor": profit_factor(wins, losses),
+        "avg_trade_return_pct": round(sum(accepted_returns) / len(accepted_returns), 4) if accepted_returns else 0.0,
+        "avg_holding_days": round(sum(holding_days) / len(holding_days), 2) if holding_days else 0.0,
+        "concentration": _portfolio_concentration(accepted, accepted_returns),
+    }
+
+
+def _portfolio_return_pct(item: TradeOutcome, *, extra_cost_bps: float = 0.0) -> float:
+    return round(float(item.net_return_pct or 0.0) - float(extra_cost_bps or 0.0) / 100.0, 4)
+
+
+def _portfolio_concentration(accepted: list[TradeOutcome], returns_pct: list[float]) -> dict[str, Any]:
+    positive_returns = [max(0.0, value) for value in returns_pct]
+    total_positive = sum(positive_returns)
+    symbol_profit: dict[str, float] = defaultdict(float)
+    strategy_counts: dict[str, int] = defaultdict(int)
+    for item, value in zip(accepted, positive_returns):
+        symbol_profit[str(item.symbol or "unknown")] += value
+        strategy_counts[str(item.strategy_key or "unknown")] += 1
+    top_10_profit = sum(sorted(positive_returns, reverse=True)[:10])
+    max_symbol_profit = max(symbol_profit.values(), default=0.0)
+    top_strategy_count = max(strategy_counts.values(), default=0)
+    return {
+        "accepted_trade_count": len(accepted),
+        "independent_symbol_count": len({str(item.symbol or "") for item in accepted}),
+        "strategy_count": len(strategy_counts),
+        "top_strategy_trade_share_pct": pct(top_strategy_count, len(accepted)),
+        "top_10_positive_trade_contribution_pct": pct(top_10_profit, total_positive),
+        "max_symbol_positive_contribution_pct": pct(max_symbol_profit, total_positive),
+        "bootstrap_avg_trade_return_ci95_pct": _bootstrap_mean_ci(returns_pct),
+    }
+
+
+def _bootstrap_mean_ci(values: list[float], *, iterations: int = 400) -> dict[str, float]:
+    if not values:
+        return {"low": 0.0, "mid": 0.0, "high": 0.0}
+    if len(values) == 1:
+        value = round(float(values[0]), 4)
+        return {"low": value, "mid": value, "high": value}
+    import random
+
+    rng = random.Random(20260530)
+    means: list[float] = []
+    count = len(values)
+    for _ in range(max(iterations, 1)):
+        sample = [values[rng.randrange(count)] for _ in range(count)]
+        means.append(sum(sample) / count)
+    means.sort()
+    low_index = int(0.025 * (len(means) - 1))
+    high_index = int(0.975 * (len(means) - 1))
+    return {
+        "low": round(means[low_index], 4),
+        "mid": round(sum(values) / len(values), 4),
+        "high": round(means[high_index], 4),
+    }
+
+
+def _portfolio_priority_score(item: TradeOutcome) -> float:
+    if item.production_score is not None:
+        return float(item.production_score)
+    signal_bonus = {"soft_buy_now": 90.0, "buy_now": 80.0, "observe_confirmed": 60.0, "near_entry": 50.0}.get(
+        item.buy_signal_state,
+        0.0,
+    )
+    return signal_bonus + float(item.net_return_pct or 0.0) / 1000.0
+
+
+def _portfolio_sector_key(item: TradeOutcome) -> str:
+    sector = str(getattr(item, "sector_name", "") or "").strip()
+    if not sector or sector.lower() in {"unknown", "none", "null"}:
+        return ""
+    return sector
+
+
+def _record_skip(counts: dict[str, int], reason: str) -> None:
+    counts[reason] = counts.get(reason, 0) + 1
+
+
+def _portfolio_entry_date_key(item: TradeOutcome) -> str:
+    entry = _portfolio_entry_date(item)
+    return entry.isoformat() if entry is not None else "9999-12-31"
+
+
+def _portfolio_entry_date(item: TradeOutcome) -> date | None:
+    return _parse_trade_date(item.entry_trade_date or item.signal_date)
+
+
+def _portfolio_exit_date(item: TradeOutcome) -> date | None:
+    return _parse_trade_date(item.exit_trade_date or item.entry_trade_date or item.signal_date)
+
+
+def _parse_trade_date(value: str) -> date | None:
+    if not value:
+        return None
+    try:
+        return date.fromisoformat(str(value))
+    except ValueError:
+        return None
+
+
+def _close_portfolio_positions_before(
+    *,
+    open_positions: list[dict[str, Any]],
+    before_date: date,
+    equity: float,
+    available_cash: float,
+    curve: list[float],
+) -> tuple[float, float]:
+    closable = [item for item in open_positions if item["exit_date"] < before_date]
+    for position in sorted(closable, key=lambda item: (item["exit_date"], item["symbol"])):
+        exit_value = float(position["allocated_capital"]) * max(0.0, 1.0 + float(position["return_pct"]) / 100.0)
+        equity += exit_value - float(position["allocated_capital"])
+        available_cash += exit_value
+        curve.append(equity)
+        open_positions.remove(position)
+    return equity, available_cash
+
+
+def _close_all_portfolio_positions(
+    *,
+    open_positions: list[dict[str, Any]],
+    equity: float,
+    available_cash: float,
+    curve: list[float],
+) -> tuple[float, float]:
+    for position in sorted(list(open_positions), key=lambda item: (item["exit_date"], item["symbol"])):
+        exit_value = float(position["allocated_capital"]) * max(0.0, 1.0 + float(position["return_pct"]) / 100.0)
+        equity += exit_value - float(position["allocated_capital"])
+        available_cash += exit_value
+        curve.append(equity)
+        open_positions.remove(position)
+    return equity, available_cash
 
 
 def _equity_curve(returns_pct: list[float]) -> list[float]:

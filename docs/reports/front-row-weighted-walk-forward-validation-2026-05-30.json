@@ -1,0 +1,387 @@
+{
+  "title": "前排加权生产评分 walk-forward 滚动回放验证",
+  "source_report": "docs/reports/front-row-weighted-production-scoring-backtest-2026-05-29.json",
+  "method": "frozen_policy_historical_replay_no_random_split",
+  "random_split_allowed": false,
+  "train_months": 12,
+  "validation_months": 3,
+  "purged_gap_days": 10,
+  "oos_trade_days": 60,
+  "step_trade_days": 20,
+  "minimum_windows": 6,
+  "minimum_pass_rate_pct": 70.0,
+  "overall": {
+    "window_count": 5,
+    "passed_window_count": 2,
+    "passed_window_rate_pct": 40.0,
+    "no_two_consecutive_failed_windows": false,
+    "passed": false,
+    "blockers": [
+      "walk_forward_window_count_below_6",
+      "walk_forward_pass_rate_below_70pct",
+      "walk_forward_two_consecutive_failed_windows"
+    ]
+  },
+  "windows": [
+    {
+      "window_id": 1,
+      "train_start": "2024-05-28",
+      "train_end": "2025-05-27",
+      "validation_start": "2025-05-28",
+      "validation_end": "2025-08-27",
+      "purged_gap_start": "2025-08-28",
+      "purged_gap_end": "2025-09-10",
+      "oos_start": "2025-09-11",
+      "oos_end": "2025-12-11",
+      "oos_trade_days": 60,
+      "split_order": "train_validation_purged_gap_oos",
+      "sample_count": 212,
+      "filled_count": 200,
+      "signal_days": 32,
+      "max5": {
+        "return_pct": 7.5513,
+        "max_drawdown_pct": -4.0449,
+        "profit_factor": 1.4858,
+        "avg_trade_return_pct": 0.5774,
+        "trade_count": 65,
+        "skipped_count": 135
+      },
+      "max10": {
+        "return_pct": 3.3052,
+        "max_drawdown_pct": -2.464,
+        "profit_factor": 1.2707,
+        "avg_trade_return_pct": 0.3752,
+        "trade_count": 89,
+        "skipped_count": 111
+      },
+      "stress_extra_cost_bps": 30.0,
+      "stress_max5": {
+        "return_pct": 3.5152,
+        "max_drawdown_pct": -4.5148,
+        "profit_factor": 1.2121,
+        "avg_trade_return_pct": 0.286,
+        "trade_count": 64,
+        "skipped_count": 136
+      },
+      "stress_max10": {
+        "return_pct": 0.5889,
+        "max_drawdown_pct": -3.1852,
+        "profit_factor": 1.0489,
+        "avg_trade_return_pct": 0.0752,
+        "trade_count": 89,
+        "skipped_count": 111
+      },
+      "baseline_max5": {
+        "return_pct": -8.1061,
+        "max_drawdown_pct": -9.8784,
+        "profit_factor": 0.7563,
+        "avg_trade_return_pct": -0.433,
+        "trade_count": 93,
+        "skipped_count": 628
+      },
+      "weak_market": {
+        "sample_count": 16,
+        "filled_count": 16,
+        "avg_trade_return_pct": 1.058,
+        "profit_factor": 1.7557
+      },
+      "retreat_new_position_count": 0,
+      "future_leak_violation_count": 0,
+      "near_entry_production_score_count": 0,
+      "blockers": [
+        "max5_extra_30bps_pf_below_1_30",
+        "max10_extra_30bps_pf_below_1_20"
+      ],
+      "passed": false
+    },
+    {
+      "window_id": 2,
+      "train_start": "2024-06-26",
+      "train_end": "2025-06-25",
+      "validation_start": "2025-06-26",
+      "validation_end": "2025-09-25",
+      "purged_gap_start": "2025-09-26",
+      "purged_gap_end": "2025-10-17",
+      "oos_start": "2025-10-20",
+      "oos_end": "2026-01-13",
+      "oos_trade_days": 60,
+      "split_order": "train_validation_purged_gap_oos",
+      "sample_count": 210,
+      "filled_count": 196,
+      "signal_days": 33,
+      "max5": {
+        "return_pct": 8.7308,
+        "max_drawdown_pct": -4.7213,
+        "profit_factor": 1.6873,
+        "avg_trade_return_pct": 0.6494,
+        "trade_count": 66,
+        "skipped_count": 130
+      },
+      "max10": {
+        "return_pct": 7.7181,
+        "max_drawdown_pct": -2.6929,
+        "profit_factor": 1.8783,
+        "avg_trade_return_pct": 0.8657,
+        "trade_count": 87,
+        "skipped_count": 109
+      },
+      "stress_extra_cost_bps": 30.0,
+      "stress_max5": {
+        "return_pct": 4.587,
+        "max_drawdown_pct": -5.6449,
+        "profit_factor": 1.3291,
+        "avg_trade_return_pct": 0.359,
+        "trade_count": 65,
+        "skipped_count": 131
+      },
+      "stress_max10": {
+        "return_pct": 4.9634,
+        "max_drawdown_pct": -3.1035,
+        "profit_factor": 1.5047,
+        "avg_trade_return_pct": 0.5657,
+        "trade_count": 87,
+        "skipped_count": 109
+      },
+      "baseline_max5": {
+        "return_pct": -2.9551,
+        "max_drawdown_pct": -12.9898,
+        "profit_factor": 0.9137,
+        "avg_trade_return_pct": -0.1354,
+        "trade_count": 93,
+        "skipped_count": 653
+      },
+      "weak_market": {
+        "sample_count": 11,
+        "filled_count": 11,
+        "avg_trade_return_pct": 1.5913,
+        "profit_factor": 2.6601
+      },
+      "retreat_new_position_count": 0,
+      "future_leak_violation_count": 0,
+      "near_entry_production_score_count": 0,
+      "blockers": [],
+      "passed": true
+    },
+    {
+      "window_id": 3,
+      "train_start": "2024-07-24",
+      "train_end": "2025-07-23",
+      "validation_start": "2025-07-24",
+      "validation_end": "2025-10-23",
+      "purged_gap_start": "2025-10-24",
+      "purged_gap_end": "2025-11-06",
+      "oos_start": "2025-11-07",
+      "oos_end": "2026-02-02",
+      "oos_trade_days": 60,
+      "split_order": "train_validation_purged_gap_oos",
+      "sample_count": 169,
+      "filled_count": 161,
+      "signal_days": 28,
+      "max5": {
+        "return_pct": 9.0839,
+        "max_drawdown_pct": -4.7213,
+        "profit_factor": 1.7583,
+        "avg_trade_return_pct": 0.8004,
+        "trade_count": 56,
+        "skipped_count": 105
+      },
+      "max10": {
+        "return_pct": 5.5056,
+        "max_drawdown_pct": -2.6929,
+        "profit_factor": 1.718,
+        "avg_trade_return_pct": 0.8005,
+        "trade_count": 68,
+        "skipped_count": 93
+      },
+      "stress_extra_cost_bps": 30.0,
+      "stress_max5": {
+        "return_pct": 5.4969,
+        "max_drawdown_pct": -5.6449,
+        "profit_factor": 1.4207,
+        "avg_trade_return_pct": 0.5004,
+        "trade_count": 56,
+        "skipped_count": 105
+      },
+      "stress_max10": {
+        "return_pct": 3.3862,
+        "max_drawdown_pct": -3.1035,
+        "profit_factor": 1.3988,
+        "avg_trade_return_pct": 0.5005,
+        "trade_count": 68,
+        "skipped_count": 93
+      },
+      "baseline_max5": {
+        "return_pct": -2.7852,
+        "max_drawdown_pct": -12.6596,
+        "profit_factor": 0.9277,
+        "avg_trade_return_pct": -0.1157,
+        "trade_count": 94,
+        "skipped_count": 543
+      },
+      "weak_market": {
+        "sample_count": 11,
+        "filled_count": 11,
+        "avg_trade_return_pct": 1.5913,
+        "profit_factor": 2.6601
+      },
+      "retreat_new_position_count": 0,
+      "future_leak_violation_count": 0,
+      "near_entry_production_score_count": 0,
+      "blockers": [],
+      "passed": true
+    },
+    {
+      "window_id": 4,
+      "train_start": "2024-08-21",
+      "train_end": "2025-08-20",
+      "validation_start": "2025-08-21",
+      "validation_end": "2025-11-20",
+      "purged_gap_start": "2025-11-21",
+      "purged_gap_end": "2025-12-04",
+      "oos_start": "2025-12-05",
+      "oos_end": "2026-03-10",
+      "oos_trade_days": 60,
+      "split_order": "train_validation_purged_gap_oos",
+      "sample_count": 225,
+      "filled_count": 210,
+      "signal_days": 28,
+      "max5": {
+        "return_pct": 0.388,
+        "max_drawdown_pct": -6.9737,
+        "profit_factor": 1.0373,
+        "avg_trade_return_pct": 0.0578,
+        "trade_count": 61,
+        "skipped_count": 149
+      },
+      "max10": {
+        "return_pct": 0.787,
+        "max_drawdown_pct": -4.3352,
+        "profit_factor": 1.0616,
+        "avg_trade_return_pct": 0.1006,
+        "trade_count": 87,
+        "skipped_count": 123
+      },
+      "stress_extra_cost_bps": 30.0,
+      "stress_max5": {
+        "return_pct": -3.2273,
+        "max_drawdown_pct": -8.1102,
+        "profit_factor": 0.8599,
+        "avg_trade_return_pct": -0.2422,
+        "trade_count": 61,
+        "skipped_count": 149
+      },
+      "stress_max10": {
+        "return_pct": -2.057,
+        "max_drawdown_pct": -5.6669,
+        "profit_factor": 0.8737,
+        "avg_trade_return_pct": -0.231,
+        "trade_count": 86,
+        "skipped_count": 124
+      },
+      "baseline_max5": {
+        "return_pct": 5.5016,
+        "max_drawdown_pct": -7.8872,
+        "profit_factor": 1.2026,
+        "avg_trade_return_pct": 0.2986,
+        "trade_count": 100,
+        "skipped_count": 592
+      },
+      "weak_market": {
+        "sample_count": 0,
+        "filled_count": 0,
+        "avg_trade_return_pct": 0.0,
+        "profit_factor": 0.0
+      },
+      "retreat_new_position_count": 0,
+      "future_leak_violation_count": 0,
+      "near_entry_production_score_count": 0,
+      "blockers": [
+        "max5_extra_30bps_pf_below_1_30",
+        "max5_extra_30bps_avg_trade_not_positive",
+        "max10_extra_30bps_pf_below_1_20",
+        "max10_extra_30bps_avg_trade_not_positive"
+      ],
+      "passed": false
+    },
+    {
+      "window_id": 5,
+      "train_start": "2024-09-20",
+      "train_end": "2025-09-19",
+      "validation_start": "2025-09-22",
+      "validation_end": "2025-12-19",
+      "purged_gap_start": "2025-12-22",
+      "purged_gap_end": "2026-01-06",
+      "oos_start": "2026-01-07",
+      "oos_end": "2026-04-09",
+      "oos_trade_days": 60,
+      "split_order": "train_validation_purged_gap_oos",
+      "sample_count": 196,
+      "filled_count": 183,
+      "signal_days": 21,
+      "max5": {
+        "return_pct": 7.0128,
+        "max_drawdown_pct": -6.9737,
+        "profit_factor": 1.4333,
+        "avg_trade_return_pct": 0.6698,
+        "trade_count": 53,
+        "skipped_count": 130
+      },
+      "max10": {
+        "return_pct": 2.4135,
+        "max_drawdown_pct": -4.3352,
+        "profit_factor": 1.1954,
+        "avg_trade_return_pct": 0.3316,
+        "trade_count": 74,
+        "skipped_count": 109
+      },
+      "stress_extra_cost_bps": 30.0,
+      "stress_max5": {
+        "return_pct": 3.6779,
+        "max_drawdown_pct": -8.1102,
+        "profit_factor": 1.2163,
+        "avg_trade_return_pct": 0.3698,
+        "trade_count": 53,
+        "skipped_count": 130
+      },
+      "stress_max10": {
+        "return_pct": -0.0879,
+        "max_drawdown_pct": -5.6669,
+        "profit_factor": 0.9987,
+        "avg_trade_return_pct": -0.0025,
+        "trade_count": 73,
+        "skipped_count": 110
+      },
+      "baseline_max5": {
+        "return_pct": 11.2552,
+        "max_drawdown_pct": -7.8872,
+        "profit_factor": 1.4305,
+        "avg_trade_return_pct": 0.5883,
+        "trade_count": 96,
+        "skipped_count": 530
+      },
+      "weak_market": {
+        "sample_count": 0,
+        "filled_count": 0,
+        "avg_trade_return_pct": 0.0,
+        "profit_factor": 0.0
+      },
+      "retreat_new_position_count": 0,
+      "future_leak_violation_count": 0,
+      "near_entry_production_score_count": 0,
+      "blockers": [
+        "max5_extra_30bps_pf_below_1_30",
+        "max10_extra_30bps_pf_below_1_20",
+        "max10_extra_30bps_avg_trade_not_positive"
+      ],
+      "passed": false
+    }
+  ],
+  "blockers": [
+    "walk_forward_window_count_below_6",
+    "walk_forward_pass_rate_below_70pct",
+    "walk_forward_two_consecutive_failed_windows"
+  ],
+  "warnings": [
+    "historical_replay_not_formal_prospective_oos"
+  ]
+}

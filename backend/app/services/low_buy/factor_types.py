@@ -15,3 +15,4 @@ class FactorContext:
     confirmed_trade_date: str = ""
     current_date: str = ""
     total_strategies: int = 0
+    allow_realtime_external_factors: bool = False

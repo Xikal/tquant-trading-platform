@@ -4,6 +4,7 @@ import type { StrategyMeta } from "../../api/strategies";
 import { CommandPalette } from "./CommandPalette";
 import { Topbar } from "./Topbar";
 import { AiInsightDialog, ErrorDialog, StatusStrip, StockDetailDialog } from "../workspace-shared/WorkspaceComponents";
+import { RitualBlessingModal } from "../ritual-ui";
 import type { Page, StockCardView } from "../workspace-shared/workspaceTypes";
 import { WorkspacePageContent } from "./WorkspacePageContent";
 import { WORKSPACE_APP_STYLE, WORKSPACE_MAIN_STYLE } from "./workspaceShellStyles";
@@ -86,6 +87,7 @@ export function TradingWorkspaceChrome(props: TradingWorkspaceChromeProps) {
           onAnalyzeSymbol={props.onAnalyzeSymbol}
           onOpenStrategy={props.onOpenStrategy}
         />
+        <RitualBlessingModal userId={props.currentUser.id} />
         <WorkspacePageContent
           AnalysisPage={AnalysisPage}
           BacktestPage={BacktestPage}

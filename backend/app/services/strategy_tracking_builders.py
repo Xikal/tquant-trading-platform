@@ -8,6 +8,8 @@ from app.models.schema_defs.strategy_tracking import (
 )
 from app.repositories.low_buy import DailyBarRow
 from app.services.finance.performance_math import sequence_max_drawdown_pct
+from app.services.low_buy.production_scoring import production_score_payload
+from app.services.low_buy.strategy_lanes import lane_item_update
 from app.services.low_buy.strategy_policy import get_strategy_tier
 from app.services.strategy_tracking_constants import (
     MISSING_SIGNAL_GRACE_DAYS,
@@ -200,7 +202,74 @@ def build_tracking_item(
         sector_state=item.sector_state,
         sector_state_text=item.sector_state_text,
     )
+    _attach_production_scoring_fields(item, group.payload)
     return item
+
+
+def _attach_production_scoring_fields(item: StrategyTrackingItemOut, payload: dict) -> None:
+    shadow_payload = production_score_payload(_PayloadCandidate(item=item, payload=payload))
+    item.production_score = shadow_payload["production_score"]
+    item.watch_score = shadow_payload["watch_score"]
+    item.production_decision = shadow_payload["production_decision"]
+    item.front_row_tier = shadow_payload["front_row_tier"]
+    item.score_cap = shadow_payload["score_cap"]
+    item.score_components = shadow_payload["score_components"]
+    item.exclusion_reasons = shadow_payload["exclusion_reasons"]
+    item.warning_tags = shadow_payload["warning_tags"]
+    item.production_scoring_config_version = shadow_payload["production_scoring_config_version"]
+    for key, value in lane_item_update(item, payload.get("strategy_variant") or "baseline").items():
+        setattr(item, key, value)
+
+
+class _PayloadCandidate:
+    def __init__(self, *, item: StrategyTrackingItemOut, payload: dict) -> None:
+        self.strategy_key = item.strategy_key
+        self.strategy_title = item.strategy_name
+        self.symbol = item.symbol
+        self.name = item.name
+        self.sector_name = item.display_sectors[0] if item.display_sectors else ""
+        self.latest_price = item.current_price or item.first_signal_price or 0.0
+        self.data_quality = item.data_quality
+        self.buy_signal_state = item.signal_state or str(payload.get("buy_signal_state") or "")
+        self.risk_tier = str(payload.get("risk_tier") or "note")
+        self.leader_rank = str(payload.get("leader_rank") or "unknown")
+        self.leader_strength_score = _payload_float(payload, "leader_strength_score")
+        self.leader_strength_rank = _payload_int(payload, "leader_strength_rank")
+        self.mainline_tier = str(payload.get("mainline_tier") or "unknown")
+        self.industry_tier = str(payload.get("industry_tier") or "neutral")
+        self.market_state = item.market_state or str(payload.get("market_state") or "")
+        self.market_state_category = str(payload.get("market_state_category") or self.market_state or "unknown")
+        self.entry_distance_pct = item.distance_to_entry_pct or _payload_float(payload, "entry_distance_pct")
+        self.execution_ready = bool(payload.get("execution_ready") or item.entry_touched)
+        self.distribution_risk_score = _payload_float(payload, "distribution_risk_score")
+        self.stop_loss = item.stop_loss or _payload_float(payload, "stop_loss")
+        self.multi_timeframe_resonance_score = _payload_float(payload, "multi_timeframe_resonance_score")
+        self.main_force_advice = payload.get("main_force_advice") if isinstance(payload.get("main_force_advice"), dict) else {}
+        self.false_breakout_flag = bool(payload.get("false_breakout_flag"))
+        self.intraday_reversal_flag = bool(payload.get("intraday_reversal_flag"))
+        self.stall_after_volume_flag = bool(payload.get("stall_after_volume_flag"))
+        self.hard_risk = _HardRiskPayload(payload.get("hard_risk") or {})
+
+
+class _HardRiskPayload:
+    def __init__(self, payload: object) -> None:
+        values = payload if isinstance(payload, dict) else {}
+        self.execution_blocked = bool(values.get("execution_blocked"))
+        self.reasons = values.get("reasons") if isinstance(values.get("reasons"), list) else []
+
+
+def _payload_float(payload: dict, key: str) -> float:
+    try:
+        return float(payload.get(key) or 0.0)
+    except (TypeError, ValueError):
+        return 0.0
+
+
+def _payload_int(payload: dict, key: str) -> int:
+    try:
+        return int(payload.get(key) or 0)
+    except (TypeError, ValueError):
+        return 0
 
 
 def lifecycle_status(

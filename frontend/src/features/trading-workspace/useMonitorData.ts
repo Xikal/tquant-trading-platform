@@ -12,6 +12,7 @@ import type {
   RuntimeStatus,
   SectorEtfT0Response,
   SectorRelativeStrengthResponse,
+  StrategyVariant,
   WatchlistSignal,
 } from "../../types";
 import { DEFAULT_PLAYBOOK_STRATEGY } from "../workspace-shared/workspaceConstants";
@@ -73,6 +74,7 @@ export function useMonitorData({ active, withLoading, setError, setNotice }: Use
   const pendingRetryCountRef = useRef(0);
   const keyLevelStreamOpenedRef = useRef(false);
   const priorityBoardRef = useRef<LowBuyPriorityBoardResult | null>(null);
+  const laneBoardsRef = useRef<Partial<Record<StrategyVariant, LowBuyPriorityBoardResult>>>({});
   const watchlistSignalsRef = useRef<WatchlistSignal[]>([]);
   const sectorEtfT0Ref = useRef<SectorEtfT0Response | null>(null);
 
@@ -131,6 +133,7 @@ export function useMonitorData({ active, withLoading, setError, setNotice }: Use
         const monitorSnapshot = workspaceResult.value.monitor_snapshot;
         if (monitorSnapshot) {
           setPriorityBoard(monitorSnapshot.priority_board);
+          laneBoardsRef.current.baseline = monitorSnapshot.priority_board;
           setWatchlistSignals(monitorSnapshot.watchlist_signals);
           setSectorEtfT0(monitorSnapshot.sector_etf_t0 ?? null);
         }
@@ -167,6 +170,23 @@ export function useMonitorData({ active, withLoading, setError, setNotice }: Use
   const refreshMonitor = useCallback(async () => {
     await withLoading("monitor", () => fetchMonitorData(true));
   }, [fetchMonitorData, withLoading]);
+
+  const loadPriorityLane = useCallback(async (strategyVariant: StrategyVariant) => {
+    if (strategyVariant === "baseline") {
+      const cached = laneBoardsRef.current.baseline;
+      if (cached) {
+        setPriorityBoard(cached);
+        return;
+      }
+      await refreshMonitor();
+      return;
+    }
+    await withLoading("priority-lane", async () => {
+      const payload = await api.getLowBuyPriorityBoard(12, strategyVariant);
+      laneBoardsRef.current[strategyVariant] = payload;
+      setPriorityBoard(payload);
+    });
+  }, [refreshMonitor, setPriorityBoard, withLoading]);
 
   const stopInstrumentSyncPolling = useCallback(() => {
     if (instrumentSyncPollRef.current != null) {
@@ -426,6 +446,7 @@ export function useMonitorData({ active, withLoading, setError, setNotice }: Use
     watchCards,
     fetchMonitorData,
     refreshMonitor,
+    loadPriorityLane,
     syncInstruments,
     resetMonitorData,
   };

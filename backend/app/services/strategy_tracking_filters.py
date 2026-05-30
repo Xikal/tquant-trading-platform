@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from app.models.schema_defs.strategy_tracking import StrategyTrackingItemOut
+from app.services.low_buy.strategy_lanes import project_items_to_lane
 
 
 def filter_items(
@@ -14,8 +15,11 @@ def filter_items(
     exclude_star: bool,
     board_filter: str | None,
     user_status: str | None,
+    strategy_variant: str | None = None,
 ) -> list[StrategyTrackingItemOut]:
     result = items
+    if strategy_variant:
+        result = project_items_to_lane(result, strategy_variant)
     if lifecycle_status:
         result = [item for item in result if item.lifecycle_status == lifecycle_status]
     if data_quality:

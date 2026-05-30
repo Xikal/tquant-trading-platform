@@ -69,6 +69,9 @@ describe("StrategyTracking UI", () => {
 
     expect(html).toContain("浦发银行");
     expect(html).toContain("首板回调");
+    expect(html).toContain("策略线");
+    expect(html).toContain("旧策略排序");
+    expect(html).toContain("过火勿追");
     expect(html).toContain("已到计划买入区");
     expect(html).toContain("已跌破风险线");
     expect(html).toContain("推荐后最高涨过");
@@ -82,6 +85,7 @@ describe("StrategyTracking UI", () => {
     );
 
     expect(html).toContain("浦发银行");
+    expect(html).toContain("过火勿追");
     expect(html).toContain("首次推荐");
     expect(html).toContain("分钟K线");
     expect(html).toContain("2026-04-21");
@@ -136,6 +140,15 @@ describe("StrategyTracking UI", () => {
     expect(params.user_status).toBe("focus");
   });
 
+  it("builds strategy lane params from store state", () => {
+    const params = buildParams({
+      ...baseStoreState(),
+      strategyVariant: "front_row_weighted",
+    });
+
+    expect(params.strategy_variant).toBe("front_row_weighted");
+  });
+
   it("loads the strategy tracking homepage through one snapshot endpoint", async () => {
     const requestedPaths: string[] = [];
     configureApiClient({
@@ -149,6 +162,7 @@ describe("StrategyTracking UI", () => {
     await api.getStrategyTrackingSnapshot({
       range: 20,
       strategy_key: "first_board",
+      strategy_variant: "front_row_weighted",
       hit_entry: true,
       exclude_chinext: true,
       exclude_star: true,
@@ -158,6 +172,7 @@ describe("StrategyTracking UI", () => {
     expect(requestedPaths[0]).toContain("/strategy-tracking/snapshot?");
     expect(requestedPaths[0]).toContain("range=20");
     expect(requestedPaths[0]).toContain("strategy_key=first_board");
+    expect(requestedPaths[0]).toContain("strategy_variant=front_row_weighted");
     expect(requestedPaths[0]).toContain("exclude_chinext=true");
     expect(requestedPaths[0]).not.toContain("/strategy-tracking/items?");
     expect(requestedPaths[0]).not.toContain("/strategy-tracking/holding-analysis?");
@@ -434,6 +449,7 @@ function baseStoreState() {
     viewMode: "beginner" as const,
     range: 30,
     strategyKey: "",
+    strategyVariant: "" as const,
     strategyFamily: "",
     signalState: "",
     lifecycleStatus: "",
@@ -452,6 +468,7 @@ function baseStoreState() {
     setViewMode: vi.fn(),
     setRange: vi.fn(),
     setStrategyKey: vi.fn(),
+    setStrategyVariant: vi.fn(),
     setStrategyFamily: vi.fn(),
     setSignalState: vi.fn(),
     setLifecycleStatus: vi.fn(),

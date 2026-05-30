@@ -40,6 +40,12 @@ from app.services.low_buy.priority_holdings import (
 )
 from app.services.low_buy.priority_items import build_priority_items
 from app.services.low_buy.leader_strength_enrichment import enrich_priority_candidates_with_leader_strength
+from app.services.low_buy.front_row_filter import (
+    FrontRowFilterConfig,
+    filter_priority_front_row_candidates,
+    front_row_filter_warning,
+)
+from app.services.low_buy.front_row_readiness import front_row_readiness_summary
 from app.services.low_buy.priority_market import build_market_context
 from app.services.low_buy.priority_merging import (
     attach_priority_recommendation_durations,
@@ -57,6 +63,12 @@ from app.services.low_buy.priority_refresh import (
 )
 from app.services.low_buy.priority_response import build_priority_board_response
 from app.services.low_buy.priority_snapshot import build_priority_base_snapshot
+from app.services.low_buy.strategy_lanes import (
+    FRONT_ROW_ONLY_VARIANT,
+    FRONT_ROW_WEIGHTED_VARIANT,
+    normalize_strategy_variant,
+    project_items_to_lane,
+)
 from app.services.low_buy.shared import (
     LOW_BUY_THRESHOLDS,
     PERFORMANCE_LOOKBACK_DAYS,
@@ -75,9 +87,12 @@ class LowBuyPriorityBoardMixin(LowBuyPriorityScoringMixin):
         limit: int = 12,
         *,
         refresh_mode: str = "cache",
+        front_row_only: bool = False,
+        strategy_variant: str = "baseline",
     ) -> LowBuyPriorityBoardResponse:
+        variant = normalize_strategy_variant(strategy_variant, front_row_only=front_row_only)
         target_trade_date = published_low_buy_trade_date(db) or expected_low_buy_trade_date(db)
-        cache_key = f"date={target_trade_date}:limit={limit}"
+        cache_key = f"date={target_trade_date}:limit={limit}:variant={variant}"
         normalized_refresh = str(refresh_mode or "cache").strip().lower()
         if normalized_refresh not in {"cache", "async", "sync"}:
             normalized_refresh = "cache"
@@ -99,6 +114,7 @@ class LowBuyPriorityBoardMixin(LowBuyPriorityScoringMixin):
             return _empty_priority_board_response(
                 target_trade_date=target_trade_date,
                 warning="优先榜正在后台刷新，当前暂无最近可用榜单。",
+                strategy_variant=variant,
             )
 
         base_snapshot = self._load_priority_base_snapshot(db=db, limit=limit)
@@ -111,19 +127,35 @@ class LowBuyPriorityBoardMixin(LowBuyPriorityScoringMixin):
                 latest_trade_date=base_snapshot.latest_trade_date,
             )
             refreshed_candidates = enrich_priority_candidates_with_leader_strength(db=db, rows=refreshed_candidates)
+            front_row_warning = ""
+            if variant == FRONT_ROW_ONLY_VARIANT:
+                refreshed_candidates, front_row_stats = filter_priority_front_row_candidates(
+                    refreshed_candidates,
+                    FrontRowFilterConfig(enabled=True),
+                )
+                front_row_warning = front_row_filter_warning(front_row_stats)
             pre_policy_candidate_count = len(refreshed_candidates)
             refreshed_candidates = filter_priority_candidates_for_recommendation(refreshed_candidates)
             items = self._build_priority_items(
                 refreshed_candidates,
                 market_context=base_snapshot.market_context,
+                strategy_variant=variant,
             )
-            items.sort(key=lambda item: item.priority_score, reverse=True)
+            items = project_items_to_lane(items, variant)
+            if variant == FRONT_ROW_WEIGHTED_VARIANT:
+                items.sort(key=lambda item: (item.production_score or -1.0, item.priority_score), reverse=True)
+            elif variant == FRONT_ROW_ONLY_VARIANT:
+                items.sort(key=lambda item: (item.elite_watch_score or item.watch_score or -1.0, item.priority_score), reverse=True)
+            else:
+                items.sort(key=lambda item: item.priority_score, reverse=True)
             family_performance = build_family_performance(refreshed_candidates)
             family_sections = build_priority_family_sections(
                 items=items,
                 family_performance=family_performance,
             )
             snapshot_warning = self._priority_snapshot_warning(base_snapshot)
+            if front_row_warning:
+                snapshot_warning = f"{snapshot_warning} {front_row_warning}".strip()
             if pre_policy_candidate_count > 0 and not items:
                 policy_warning = "当前候选均已被主板范围、风险或交易规则过滤，暂无可推荐股票。"
                 snapshot_warning = f"{snapshot_warning} {policy_warning}".strip()
@@ -141,6 +173,8 @@ class LowBuyPriorityBoardMixin(LowBuyPriorityScoringMixin):
                 portfolio_risk=portfolio_risk,
                 snapshot_warning=snapshot_warning,
                 market_state_text=self._market_state_text(base_snapshot.market_context),
+                strategy_variant=variant,
+                readiness_summary=front_row_readiness_summary(variant),
             )
             self._set_priority_response_cache(cache_key, response)
             return response
@@ -316,11 +350,13 @@ class LowBuyPriorityBoardMixin(LowBuyPriorityScoringMixin):
         self,
         rows: list[PriorityCandidate],
         market_context: PriorityMarketContext,
+        strategy_variant: str = "baseline",
     ) -> list[LowBuyPriorityBoardItemOut]:
         return build_priority_items(
             rows=rows,
             market_context=market_context,
             builder=self,
+            strategy_variant=strategy_variant,
         )
 
     def _attach_priority_recommendation_durations(
@@ -411,10 +447,22 @@ def _empty_priority_board_response(
     *,
     target_trade_date: str,
     warning: str,
+    strategy_variant: str = "baseline",
 ) -> LowBuyPriorityBoardResponse:
     from app.core.timezone import beijing_now_string
+    from app.services.low_buy.front_row_readiness import front_row_readiness_summary
+    from app.services.low_buy.strategy_lanes import available_lane_payloads, lane_summary, resolve_strategy_lane
 
+    lane = resolve_strategy_lane(strategy_variant)
     return LowBuyPriorityBoardResponse(
+        strategy_variant=lane.variant,
+        display_lane=lane.display_lane,
+        display_lane_title=lane.title,
+        display_lane_subtitle=lane.subtitle,
+        production_sort_replaced=lane.production_sort_replaced,
+        lane_summary=lane_summary(lane.variant, []),
+        available_lanes=available_lane_payloads(),
+        readiness_summary=front_row_readiness_summary(lane.variant),
         as_of_date=target_trade_date,
         latest_trade_date="",
         latest_available_trade_date=target_trade_date,

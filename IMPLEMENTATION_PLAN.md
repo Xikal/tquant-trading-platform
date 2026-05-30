@@ -1,5 +1,107 @@
 # TQuant 实施计划
 
+## 2026-05-30 前排加权严厉审查整改
+
+需求来源：
+
+- 用户要求：按照 Claude 严厉审查报告修改，审查报告来源为 `/Users/j/.codex/attachments/45eb82df-7279-4f82-8b04-cc17dba9052b/pasted-text.txt`。
+
+### 执行边界
+
+- [x] 不部署上线。
+- [x] 不替换生产排序。
+- [x] 保持 `front_row_only` 仅作为对照，不进入生产硬过滤。
+- [x] 保持 `near_entry` 不进入生产收益排行。
+- [x] 本次聚焦回测报告、审查证据和验收门槛整改，不改生产买卖逻辑。
+
+### TODO
+
+- [x] 废弃 `signal_day_retention_below_75pct` 作为独立阻断项，改为精准优先 + 行情自适应密度验收口径。
+- [x] 将信号质量口径和真实组合口径分表展示，避免把每日信号等权复利收益误读成真实账户收益。
+- [x] 合并 `front_row_weighted_max5/max10` 展示为一个 `front_row_weighted` 候选池，max5/max10 只作为真实组合列。
+- [x] 新增成本压力测试：基础 16bps 外，额外 +10bps / +30bps / +50bps。
+- [x] 新增行情自适应密度：强势/修复、弱市、退潮分层。
+- [x] 新增可成交性代理：T+1 锁涨停率、T+1 开盘高于入场区代理。
+- [x] 新增集中度审计：前 10 笔正收益贡献、单票最大正收益贡献、bootstrap 平均单笔 CI95。
+- [x] 新增字段级 asof 审计：`data_cutoff_time <= signal_generated_at < return_start_time`。
+- [x] 刷新 Claude 审查材料和审查压缩包。
+
+### 验证
+
+- [x] `DATABASE_URL=sqlite:////Users/j/Documents/gupiao/backend/data/t_quant.db PYTHONPATH=backend:. backend/.venv/bin/python backend/scripts/front_row_weighted_production_scoring_backtest.py --start 2024-05-28 --end 2026-04-28 --json-output docs/reports/front-row-weighted-production-scoring-backtest-2026-05-29.json --markdown-output docs/reports/front-row-weighted-production-scoring-backtest-2026-05-29.md` 通过，实际评估 2024-05-28 至 2026-04-21，共 461 个交易日。
+- [x] 新决策：`decision_policy=precision_first_market_adaptive_density`，硬阻断项为 `oos_window_below_60_trade_days`；`signal_day_retention_below_75pct` 已降级为警告与废弃阻断项。
+- [x] 成本后结果：额外 +30bps 后 max5 收益 `68.66%`、PF `1.56`、平均单笔 `0.684%`；max10 收益 `42.39%`、PF `1.53`、平均单笔 `0.677%`，通过当前成本后精准门槛。
+- [x] 行情自适应：`front_row_weighted` 强势/修复信号日 `177`、弱市 `14`、退潮 `0`，强弱退密度比 `12.64`；弱市平均单笔 `-0.215%`，仍需继续压缩弱市候选。
+- [x] 可成交性代理：T+1 锁涨停率 `0.00%`，T+1 开盘高于入场区代理 `11.41%`，仍需分钟级/逐笔验证。
+- [x] 集中度审计：max5 前 10 笔正收益贡献 `17.28%`，单票最大正收益贡献 `2.35%`，bootstrap 平均单笔 CI95 `0.514%~1.394%`。
+- [x] 字段级 asof 审计：审计样本 `1544`，违规数 `0`。
+- [x] 审查包刷新：`docs/reports/front-row-weighted-production-scoring-review-package-2026-05-30.zip`。
+
+## 2026-05-29 前排加权生产排序 Shadow 与真实组合回测
+
+需求来源：
+
+- 用户目标：严格按 `docs/front-row-weighted-production-scoring-development-plan-2026-05-29.md` 落地“前排加权、后排降权、极端后排剔除”的生产排序模型；首轮只接入 Shadow 和 Paper 回测，不部署、不替换生产排序。
+
+### 执行边界
+
+- [x] 不做 `front_row_only` 硬过滤生产方案；仅作为对照报告保留。
+- [x] `production_score` 只允许 `buy_now` / `soft_buy_now` 生成，`near_entry` 必须为 `null`。
+- [x] `near_entry` 只能生成 `watch_score`，用于观察池、提醒和后续触发买点。
+- [x] Shadow 阶段返回新字段但不改变旧优先榜排序、策略原始 `score`、买卖信号生成。
+- [x] 旧“总收益率”在报告中统一标注为“每日信号等权复利收益”，真实组合收益单独展示。
+- [x] 回测必须支持 `front_row_weighted_shadow`、`front_row_weighted_max5`、`front_row_weighted_max10`，并保持时间顺序 train / validation / oos 切分说明。
+- [x] 不部署上线。
+
+### TODO
+
+- [x] 新增 `backend/app/services/low_buy/production_scoring_config.py` 集中配置权重、cap、暂停生产策略和版本。
+- [x] 新增 `backend/app/services/low_buy/production_scoring.py` 输出 `production_score` / `watch_score` / `score_components` / `exclusion_reasons` / `warning_tags`。
+- [x] 优先榜和策略跟踪返回 Shadow 字段，旧排序不变。
+- [x] 回测脚本新增前排加权报告输出，包含 baseline、front_row_only、front_row_weighted_shadow、front_row_weighted_max5、front_row_weighted_max10。
+- [x] 真实组合口径补充同策略单日最多 2 只、同板块最多 2 只、弱市场总仓位 <= 40%、退潮市场不新开仓、跳过原因统计。
+- [x] 新增/更新单元测试并运行相关后端测试。
+- [x] 运行 24 个月回测并输出 Markdown / JSON 报告。
+
+### 验证
+
+- [x] `PYTHONPATH=backend:. backend/.venv/bin/python -m py_compile backend/app/services/low_buy/production_scoring_config.py backend/app/services/low_buy/production_scoring.py backend/app/services/low_buy/priority_items.py backend/app/services/strategy_tracking_builders.py backend/scripts/low_buy_market_backtest_reporting.py backend/scripts/low_buy_market_backtest_outcomes.py backend/scripts/low_buy_market_backtest_runner.py backend/scripts/front_row_weighted_production_scoring_backtest.py` 通过。
+- [x] `PYTHONPATH=backend:. backend/.venv/bin/python -m pytest -q backend/tests/test_low_buy_production_scoring.py backend/tests/test_low_buy_backtest_isolation.py backend/tests/test_low_buy_front_row_filter_backtest.py backend/tests/test_priority_weighting.py backend/tests/test_strategy_tracking.py backend/tests/test_strategy_24m_report_sections.py` 通过，57 passed / 1 warning。
+- [x] `DATABASE_URL=sqlite:////Users/j/Documents/gupiao/backend/data/t_quant.db PYTHONPATH=backend:. backend/.venv/bin/python backend/scripts/front_row_weighted_production_scoring_backtest.py --start 2024-05-28 --end 2026-04-28 --json-output docs/reports/front-row-weighted-production-scoring-backtest-2026-05-29.json --markdown-output docs/reports/front-row-weighted-production-scoring-backtest-2026-05-29.md` 通过，实际评估 2024-05-28 至 2026-04-21，共 461 个交易日。
+- [x] 回测结论：baseline 每日信号等权复利收益 `-6.2306%`；baseline 真实组合 max5/max10 为 `22.1681%` / `29.2075%`；front_row_weighted max5/max10 真实组合为 `111.7314%` / `67.9947%`；`near_entry_production_score_count=0`；`production_sort_replaced=false`。
+- [x] 风险结论：front_row_weighted 样本留存 `32.22%`、成交留存 `31.83%`、信号日留存 `52.47%`，阻断项为 `signal_day_retention_below_75pct`，决策 `shadow_paper_not_ready`，暂不建议小流量生产观察。
+- [x] 防未来函数审计 `passed`；时间切分为 train=2024Q3-2025Q4、validation=2026Q1、oos=2026Q2，禁止随机切分且不按 OOS 反向调权。
+- [x] `git diff --check` 通过。
+
+## 2026-05-29 前排票过滤与 A/B 回测验证
+
+需求来源：
+
+- 用户目标：所有推荐票优先只做前排票、杜绝后排票；落地后做 A/B 回测，重点验证盈利是否有效提高、样本数是否显著减少，并避免长期无推荐票。
+
+### 执行边界
+
+- [x] 前排过滤先作为推荐层/研究层能力落地，默认不改变现有生产策略、排序和参数。
+- [x] 前排判断只能使用信号日可见字段：`leader_rank`、`mainline_tier`、`industry_tier`、`leader_strength_rank/score`、市场状态和风险字段。
+- [x] 回测输出 baseline vs front-row-filter A/B 对比，包含收益、胜率、PF、最大回撤、样本留存率、成交留存率和信号日留存率。
+- [x] 若样本留存过低或信号日过少，报告必须标注“长期无推荐风险”，不能因为收益提升就直接建议生产放行。
+
+### TODO
+
+- [x] 新增前排过滤纯规则模块，支持单候选和优先榜候选过滤。
+- [x] 优先榜增加可选 `front_row_only` 参数，默认关闭。
+- [x] 快速回测引擎支持候选池级前排过滤与变体重新取 Top N。
+- [x] 24 个月回测报告增加 `front_row_filter` A/B 研究段与 Markdown 表格。
+- [x] 补充后端测试并运行相关回测。
+
+### 验证
+
+- [x] `python -m py_compile backend/app/services/low_buy/front_row_filter.py backend/app/services/low_buy/priority_board.py backend/app/services/low_buy/service.py backend/app/services/low_buy/service_components.py backend/app/api/routes/screeners.py backend/scripts/low_buy_market_backtest.py backend/scripts/low_buy_market_backtest_reporting.py backend/scripts/low_buy_market_backtest_runner.py backend/scripts/strategy_24m_front_row_filter.py backend/scripts/strategy_24m_backtest_report.py backend/scripts/strategy_24m_report_markdown.py` 通过。
+- [x] `PYTHONPATH=backend:. backend/.venv/bin/python -m pytest -q backend/tests/test_low_buy_front_row_filter_backtest.py backend/tests/test_priority_weighting.py backend/tests/test_low_buy_backtest_isolation.py backend/tests/test_strategy_24m_report_sections.py` 通过，26 passed / 1 warning。
+- [x] `DATABASE_URL=sqlite:////Users/j/Documents/gupiao/backend/data/t_quant.db PYTHONPATH=backend:. backend/.venv/bin/python backend/scripts/strategy_24m_backtest_report.py --start 2024-05-28 --json-output docs/reports/strategy-24m-front-row-filter-backtest-2026-05-29.json --markdown-output docs/reports/strategy-24m-front-row-filter-backtest-2026-05-29.md` 通过。
+- [x] 24 个月候选池级 A/B 结论：front_row_only 平均单笔 `+0.0493%`、PF `+0.0482`、胜率 `+2.76%`，但样本留存仅 `2.01%`、成交留存 `2.03%`、信号日留存 `54.75%`、总收益 `-310.515%`、最大回撤改善值 `-9.3761%`，决策为 `reject_for_sample_loss`。
+- [x] `git diff --check` 通过。
+
 ## 2026-05-29 策略跟踪快照化性能优化
 
 需求来源：
@@ -1567,3 +1669,27 @@
 - Rust 当前通过既有数值测试保障最大回撤等基础指标边界；策略跟踪本轮仍以 Python 编排为主，保留数值迁移边界。
 - 静态审查确认 `/strategy` 重定向 `/backtest`，`/emotion` 重定向 `/monitor`，前端不存在旧 StrategyRoute/EmotionRoute 独立页面文件。
 - 代码质量审查：新增/大改文件均小于 500 行，未发现未使用旧页面、console log、TODO/FIXME 或明显重复大块逻辑。
+
+## 2026-05-29 回测报告收益口径与生产排行收口
+
+需求来源：用户要求“把报告里的 总收益率 改名为每日信号等权复利收益；新增真实组合回测口径；near_entry 与 buy_now/soft_buy_now 分开展示，禁止 near_entry 进入生产收益排行”。本轮按最新要求只改代码，不执行正式回测、不生成 24M 报告。
+
+### 本轮开发 TODO
+
+- [x] 报告展示层将“总收益率 / 资金受限总收益”统一改为“每日信号等权复利收益”，JSON 保留 `total_return_pct` 兼容旧消费方，并新增 `daily_signal_equal_weight_compound_return_pct`。
+- [x] 新增真实组合回测口径 `portfolio_backtest_metrics`，输出 max5 / max10 两档；持仓期间扣减可用现金，平仓释放资金，同票持有中禁止重复买，满仓或现金不足信号跳过。
+- [x] `backtest_performance_metrics` 内嵌 `portfolio_backtests.max_5/max_10`，并保留逐信号复利为诊断字段。
+- [x] 低吸报告新增 buy_now、soft_buy_now、observe_confirmed、near_entry 分开展示；生产执行绩效只读 buy_now / soft_buy_now，全观察信号另列诊断。
+- [x] 24M 策略详情、策略族分段、市场/季度分段和策略排名默认使用 buy_now / soft_buy_now 生产确定买入口径；`near_entry` 保留在信号状态分段和 all_signal 诊断中，不进入生产收益排行。
+- [x] 前排过滤 A/B 报告字段保留兼容，文案和 delta 别名切到“每日信号等权复利收益”。
+
+### 验证记录
+
+- [x] `python -m py_compile backend/scripts/low_buy_market_backtest_reporting.py backend/scripts/low_buy_market_backtest_signal_stats.py backend/scripts/low_buy_market_backtest_markdown.py backend/scripts/strategy_24m_front_row_filter.py backend/scripts/strategy_24m_report_metrics.py backend/scripts/strategy_24m_report_markdown.py backend/scripts/strategy_24m_backtest_report.py backend/tests/test_low_buy_backtest_isolation.py backend/tests/test_strategy_24m_report_sections.py` 通过。
+- [x] `PYTHONPATH=backend:. backend/.venv/bin/python -m pytest backend/tests/test_low_buy_backtest_isolation.py backend/tests/test_strategy_24m_report_sections.py -q` 通过，11 passed / 1 warning。
+- [x] `rg -n "总收益率|资金受限总收益|\\| 总收益 \\||收益/风险：总收益|总收益/年化|总收益下降" backend/scripts/low_buy_market_backtest_markdown.py backend/scripts/strategy_24m_report_markdown.py backend/scripts/low_buy_market_backtest_reporting.py backend/scripts/strategy_24m_backtest_report.py backend/scripts/strategy_24m_front_row_filter.py` 无命中。
+- [x] `git diff --check` 通过。
+
+### 未执行项
+
+- [ ] 按用户要求，本轮未执行正式回测、未刷新 24M JSON/Markdown 报告产物。

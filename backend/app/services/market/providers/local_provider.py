@@ -112,9 +112,9 @@ class LocalMarketProvider:
         """Local provider does not support multi-period fund flow; delegate to rank."""
         return self.fetch_sector_fund_flow_rank()
 
-    def fetch_limit_up_snapshot(self) -> ProviderResult[pd.DataFrame]:
+    def fetch_limit_up_snapshot(self, trade_date: str = "") -> ProviderResult[pd.DataFrame]:
         with SessionLocal() as db:
-            latest = _latest_daily_trade_date(db)
+            latest = trade_date or _latest_daily_trade_date(db)
             if not latest:
                 return _unavailable("local limit-up snapshot unavailable: no daily bars")
             rows = (

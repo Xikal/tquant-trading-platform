@@ -33,6 +33,7 @@ import { QuantParameterMlCard } from "./QuantParameterMlCard";
 import { QuantParameterPaperExitCard } from "./QuantParameterPaperExitCard";
 import { QuantParameterSectorEtfCard } from "./QuantParameterSectorEtfCard";
 import { EtfUniverseAdminCard } from "./EtfUniverseAdminCard";
+import { RitualSettingsCard } from "../ritual-ui";
 import { useSettingsUiStore } from "../../stores/settingsUiStore";
 import {
   buildSettingsDirtyState,
@@ -361,6 +362,7 @@ export function SettingsPage({
         {activeTab === "account" ? (
           <SettingsSection title="我的账户" description="安全 / 权限">
             <AuthSecurityCard currentUser={currentUser} onUserUpdate={onUserUpdate} />
+            <RitualSettingsCard />
           </SettingsSection>
         ) : null}
 

@@ -41,6 +41,7 @@ describe("PlaybookPage", () => {
     expect(html).toContain("当前策略：量能低吸");
     expect(html).toContain("已加载：首板回调，正在切换数据");
     expect(html).toContain("今日主看");
+    expect(html).toContain("今日红运");
   });
 
   it("shows main force readonly advice in candidate list", () => {
@@ -95,5 +96,6 @@ describe("PlaybookPage", () => {
 
     expect(html).toContain("主力：洗盘确认 · 小仓试买 · 68.5");
     expect(html).toContain("旁路观察");
+    expect(html).toContain("买点已至");
   });
 });

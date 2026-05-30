@@ -142,7 +142,7 @@ class EastmoneyMarketProvider:
     def fetch_northbound_fund_flow_summary(self) -> ProviderResult:
         return self._unavailable("northbound fund flow not provided by this adapter")
 
-    def fetch_limit_up_snapshot(self) -> ProviderResult:
+    def fetch_limit_up_snapshot(self, trade_date: str = "") -> ProviderResult:
         return self._unavailable("limit-up snapshot not provided by this adapter")
 
     def fetch_lhb_stock_statistic(self) -> ProviderResult:

@@ -165,7 +165,7 @@ from app.models.schema_defs.common import (
     TradingRuleOut,
 )
 from app.models.schema_defs.research import (
-    BacktestRequest,
+    BacktestRequest as LegacyResearchBacktestRequest,
     BacktestResponse,
     BacktestRunListResponse,
     BacktestRunOut,
@@ -179,6 +179,8 @@ from app.models.schema_defs.research import (
     StrategyValidationReport,
     StrategyValidationRequest,
 )
+
+BacktestRequest = LegacyResearchBacktestRequest
 from app.models.schema_defs.screener import (
     LowBuyCandidateOut,
     LowBuyCloseReviewItemOut,
@@ -303,6 +305,7 @@ __all__ = [
     "AnalysisRequest",
     "AnalysisResponse",
     "BacktestRequest",
+    "LegacyResearchBacktestRequest",
     "BacktestResponse",
     "BacktestEquityPoint",
     "BacktestEquityResponse",

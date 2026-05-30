@@ -65,6 +65,7 @@ export function useWorkspacePageProps({
     onSync: () => void monitor.syncInstruments(),
     onAi: onRunPriorityAi,
     onGoPlaybook: () => onNavigatePage("playbook"),
+    onLaneChange: (strategyVariant) => void monitor.loadPriorityLane(strategyVariant),
     onSelect: onSelectStock,
     onAnalyze: analysis.analyzeFromCard,
     onEdit: onEditWatchlist,

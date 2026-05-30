@@ -12,6 +12,7 @@ import type {
   RuntimeStatus,
   SectorEtfT0Response,
   SectorRelativeStrengthResponse,
+  StrategyVariant,
   WatchlistSignal,
 } from "../types";
 
@@ -29,6 +30,7 @@ interface WorkspaceMonitorStore {
   pairedHedge: PairedHedgeResearchResponse | null;
   runtime: RuntimeStatus | null;
   instrumentSyncStatus: InstrumentSyncStatus | null;
+  activeStrategyLane: StrategyVariant;
   activeFamilyDetailKey: string;
   setPriorityBoard: (value: LowBuyPriorityBoardResult | null | ((current: LowBuyPriorityBoardResult | null) => LowBuyPriorityBoardResult | null)) => void;
   setMarketBreadth: (value: MarketBreadth | null) => void;
@@ -43,6 +45,7 @@ interface WorkspaceMonitorStore {
   setPairedHedge: (value: PairedHedgeResearchResponse | null) => void;
   setRuntime: (value: RuntimeStatus | null) => void;
   setInstrumentSyncStatus: (value: InstrumentSyncStatus | null) => void;
+  setActiveStrategyLane: (value: StrategyVariant) => void;
   setActiveFamilyDetailKey: (value: string) => void;
   resetMonitorData: () => void;
 }
@@ -61,6 +64,7 @@ export const useWorkspaceMonitorStore = create<WorkspaceMonitorStore>((set) => (
   pairedHedge: null,
   runtime: null,
   instrumentSyncStatus: null,
+  activeStrategyLane: "baseline",
   activeFamilyDetailKey: "",
   setPriorityBoard: (value) => set((state) => ({
     priorityBoard: typeof value === "function" ? value(state.priorityBoard) : value,
@@ -81,6 +85,7 @@ export const useWorkspaceMonitorStore = create<WorkspaceMonitorStore>((set) => (
   setPairedHedge: (pairedHedge) => set({ pairedHedge }),
   setRuntime: (runtime) => set({ runtime }),
   setInstrumentSyncStatus: (instrumentSyncStatus) => set({ instrumentSyncStatus }),
+  setActiveStrategyLane: (activeStrategyLane) => set({ activeStrategyLane }),
   setActiveFamilyDetailKey: (activeFamilyDetailKey) => set({ activeFamilyDetailKey }),
   resetMonitorData: () => set({
     priorityBoard: null,
@@ -94,6 +99,7 @@ export const useWorkspaceMonitorStore = create<WorkspaceMonitorStore>((set) => (
     watchlistSignals: [],
     sectorEtfT0: null,
     pairedHedge: null,
+    activeStrategyLane: "baseline",
     activeFamilyDetailKey: "",
   }),
 }));

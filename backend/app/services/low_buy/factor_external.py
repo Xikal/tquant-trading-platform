@@ -171,14 +171,14 @@ def evaluate_event_risk_factor(symbol: str) -> float:
     return 0.0 if resolve_stock_notice_risk(symbol) else 1.0
 
 
-def evaluate_north_flow_factor() -> float:
+def evaluate_north_flow_factor(trade_date: str = "") -> float:
     """北向资金环境因子。
 
     免费数据只能作为市场环境辅助，不直接改变买点。返回值为正向加分，
     北向大幅净流出时返回 0，避免制造虚假信心。
     """
 
-    net_inflow = resolve_north_flow_net_inflow()
+    net_inflow = resolve_north_flow_net_inflow(trade_date)
     if net_inflow >= 80:
         return 2.0
     if net_inflow >= 30:
@@ -188,8 +188,8 @@ def evaluate_north_flow_factor() -> float:
     return 0.0
 
 
-def evaluate_limit_up_quality_factor(symbol: str) -> float:
-    pool = resolve_limit_up_pool_quality()
+def evaluate_limit_up_quality_factor(symbol: str, trade_date: str = "") -> float:
+    pool = resolve_limit_up_pool_quality(trade_date)
     return pool.get(symbol, 0.0)
 
 
@@ -217,25 +217,25 @@ def evaluate_block_trade_premium_factor(_symbol: str) -> float:
 
 
 def evaluate_earnings_surprise_factor(symbol: str) -> float:
-    return 0.0 if resolve_stock_notice_risk(symbol) else 0.2
+    return 0.0
 
 
 def evaluate_insider_trade_factor(symbol: str) -> float:
-    return 0.0 if resolve_stock_notice_risk(symbol) else 0.2
+    return 0.0
 
 
 def evaluate_short_balance_factor(_symbol: str) -> float:
     return 0.0
 
 
-def resolve_north_flow_net_inflow() -> float:
+def resolve_north_flow_net_inflow(trade_date: str = "") -> float:
     try:
         return float(get_or_load_ttl_cache(
             _NORTH_FLOW_CACHE,
             _CACHE_LOCK,
             namespace="north_flow",
-            key="north",
-            loader=_load_north_flow_net_inflow,
+            key=trade_date or "latest",
+            loader=lambda: _load_north_flow_net_inflow(trade_date),
             ttl_seconds=_NORTH_FLOW_TTL_SECONDS,
             failure_value=0.0,
         ))
@@ -244,7 +244,7 @@ def resolve_north_flow_net_inflow() -> float:
         return 0.0
 
 
-def _load_north_flow_net_inflow() -> float:
+def _load_north_flow_net_inflow(trade_date: str = "") -> float:
     try:
         frame = external_factors.stock_hsgt_fund_flow_summary_em()
     except Exception as exc:  # pragma: no cover - external source
@@ -253,20 +253,22 @@ def _load_north_flow_net_inflow() -> float:
         return 0.0
     try:
         north_rows = frame[frame["资金方向"].astype(str).str.contains("北向", na=False)]
+        if trade_date and "交易日" in north_rows.columns:
+            north_rows = north_rows[north_rows["交易日"].astype(str) == trade_date]
         value = float(north_rows["成交净买额"].astype(float).sum())
     except Exception:
         value = 0.0
     return round(value, 2)
 
 
-def resolve_limit_up_pool_quality() -> dict[str, float]:
+def resolve_limit_up_pool_quality(trade_date: str = "") -> dict[str, float]:
     try:
         return get_or_load_ttl_cache(
             _LIMIT_UP_POOL_CACHE,
             _CACHE_LOCK,
             namespace="limit_up_pool",
-            key="latest",
-            loader=_load_limit_up_pool_quality,
+            key=trade_date or "latest",
+            loader=lambda: _load_limit_up_pool_quality(trade_date),
             ttl_seconds=_LIMIT_UP_POOL_TTL_SECONDS,
             failure_value={},
         )
@@ -275,9 +277,9 @@ def resolve_limit_up_pool_quality() -> dict[str, float]:
         return {}
 
 
-def _load_limit_up_pool_quality() -> dict[str, float]:
+def _load_limit_up_pool_quality(trade_date: str = "") -> dict[str, float]:
     try:
-        frame = external_factors.stock_zt_pool_em()
+        frame = external_factors.stock_zt_pool_em(trade_date)
     except Exception as exc:  # pragma: no cover - external source
         raise RuntimeError(str(exc)) from exc
     if frame is None or frame.empty:
@@ -353,11 +355,11 @@ def resolve_stock_notice_risk(symbol: str) -> bool:
     try:
         frame = external_factors.stock_notice_report(symbol=symbol)
     except Exception:  # pragma: no cover - external source
-        _write_cache(_STOCK_NOTICE_CACHE, symbol, False, _STOCK_NOTICE_TTL_SECONDS)
-        return False
+        _write_cache(_STOCK_NOTICE_CACHE, symbol, True, _STOCK_NOTICE_TTL_SECONDS)
+        return True
     if frame is None or frame.empty:
-        _write_cache(_STOCK_NOTICE_CACHE, symbol, False, _STOCK_NOTICE_TTL_SECONDS)
-        return False
+        _write_cache(_STOCK_NOTICE_CACHE, symbol, True, _STOCK_NOTICE_TTL_SECONDS)
+        return True
     title_column = next((column for column in frame.columns if "标题" in str(column) or "title" in str(column).lower()), None)
     has_risk = False
     if title_column:

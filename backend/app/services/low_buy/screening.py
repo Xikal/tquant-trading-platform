@@ -243,6 +243,8 @@ class LowBuyScreeningMixin(LowBuyQuoteRefreshMixin):
             histories=histories,
             strategy=strategy,
             latest_trade_date=latest_trade_date,
+            latest_completed_trade_date=latest_completed_trade_date,
+            allow_realtime_external_factors=True,
             hot_industries=hot_industries,
             market_regime=market_regime,
             factor_sector_counts=factor_sector_counts,

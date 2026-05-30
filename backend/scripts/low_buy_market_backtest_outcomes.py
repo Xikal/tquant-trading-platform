@@ -187,6 +187,8 @@ def _trade_outcome_from_execution(
         return_5d=_close_return(forward, entry, 5),
         max_gain_5d=round((max(row.high_price for row in forward) / entry - 1) * 100, 4),
         max_drawdown_5d=round((min(row.low_price for row in forward) / entry - 1) * 100, 4),
+        entry_zone_low=_safe_float(getattr(candidate, "entry_zone_low", 0.0)),
+        entry_zone_high=_safe_float(getattr(candidate, "entry_zone_high", 0.0)),
         spike_return_1d=_spike_return(forward, entry, 1),
         spike_return_2d=_spike_return(forward, entry, 2),
         spike_return_3d=_spike_return(forward, entry, 3),
@@ -194,6 +196,7 @@ def _trade_outcome_from_execution(
         spike_return_5d=_spike_return(forward, entry, 5),
         entry_trade_date=execution.entry_trade_date or "",
         exit_trade_date=execution.exit_trade_date or "",
+        **_candidate_production_scoring_fields(candidate, signal_date=signal_date, forward=forward),
         **_candidate_market_state_fields(candidate),
         **event_metrics,
     )
@@ -249,6 +252,8 @@ def evaluate_candidate_outcome(
         return_5d=round((float(forward.iloc[forward_days - 1]["close"]) / entry - 1) * 100, 4),
         max_gain_5d=round((float(forward["high"].max()) / entry - 1) * 100, 4),
         max_drawdown_5d=round((float(forward["low"].min()) / entry - 1) * 100, 4),
+        entry_zone_low=_safe_float(getattr(candidate, "entry_zone_low", 0.0)),
+        entry_zone_high=_safe_float(getattr(candidate, "entry_zone_high", 0.0)),
         spike_return_1d=_spike_return_from_frame(forward, entry, 1),
         spike_return_2d=_spike_return_from_frame(forward, entry, 2),
         spike_return_3d=_spike_return_from_frame(forward, entry, 3),
@@ -256,6 +261,7 @@ def evaluate_candidate_outcome(
         spike_return_5d=_spike_return_from_frame(forward, entry, 5),
         entry_trade_date=execution.entry_trade_date or "",
         exit_trade_date=execution.exit_trade_date or "",
+        **_candidate_production_scoring_fields(candidate, signal_date=signal_date, forward=forward),
         **_candidate_market_state_fields(candidate),
         **event_metrics,
     )
@@ -295,10 +301,15 @@ def _next_day_event_metrics_from_bars(*, forward: list, entry: float) -> dict[st
     t2_high = round((float(t2.high_price) / entry - 1) * 100, 4)
     t2_close = round((float(t2.close_price) / entry - 1) * 100, 4)
     return _next_day_event_metrics(
+        t1_open=float(t1.open_price),
+        t1_pct_chg=float(getattr(t1, "pct_chg", 0.0) or 0.0),
+        t1_high_price=float(t1.high_price),
+        t1_low_price=float(t1.low_price),
         t1_high=t1_high,
         t1_close=t1_close,
         t2_high=t2_high,
         t2_close=t2_close,
+        entry=entry,
     )
 
 
@@ -312,21 +323,34 @@ def _next_day_event_metrics_from_frame(*, forward: pd.DataFrame, entry: float) -
     t2_high = (float(t2["high"]) / entry - 1) * 100
     t2_close = (float(t2["close"]) / entry - 1) * 100
     return _next_day_event_metrics(
+        t1_open=float(t1["open"]),
+        t1_pct_chg=float(t1.get("pct_chg", 0.0) or 0.0),
+        t1_high_price=float(t1["high"]),
+        t1_low_price=float(t1["low"]),
         t1_high=t1_high,
         t1_close=t1_close,
         t2_high=t2_high,
         t2_close=t2_close,
+        entry=entry,
     )
 
 
 def _next_day_event_metrics(
     *,
+    t1_open: float,
+    t1_pct_chg: float,
+    t1_high_price: float,
+    t1_low_price: float,
     t1_high: float,
     t1_close: float,
     t2_high: float,
     t2_close: float,
+    entry: float,
 ) -> dict[str, Any]:
     return {
+        "t1_open_return_pct": round((float(t1_open) / max(float(entry), 0.01) - 1) * 100.0, 4),
+        "t1_pct_chg": round(float(t1_pct_chg), 4),
+        "t1_locked_limit_up": bool(float(t1_pct_chg) >= 9.7 and abs(float(t1_high_price) - float(t1_low_price)) <= 0.001),
         "t1_high_return_pct": round(t1_high, 4),
         "t1_close_return_pct": round(t1_close, 4),
         "t1_spike_fade_pct": round(max(0.0, t1_high - t1_close), 4),
@@ -339,7 +363,17 @@ def _next_day_event_metrics(
 
 
 def _empty_next_day_event_metrics() -> dict[str, Any]:
-    return _next_day_event_metrics(t1_high=0.0, t1_close=0.0, t2_high=0.0, t2_close=0.0)
+    return _next_day_event_metrics(
+        t1_open=0.0,
+        t1_pct_chg=0.0,
+        t1_high_price=0.0,
+        t1_low_price=0.0,
+        t1_high=0.0,
+        t1_close=0.0,
+        t2_high=0.0,
+        t2_close=0.0,
+        entry=1.0,
+    )
 
 
 def _candidate_market_state_fields(candidate: LowBuyCandidateOut) -> dict[str, Any]:
@@ -349,6 +383,45 @@ def _candidate_market_state_fields(candidate: LowBuyCandidateOut) -> dict[str, A
         "market_state_category": str(getattr(candidate, "market_state_category", "") or ""),
         "market_state_strength": _safe_float(getattr(candidate, "market_state_strength", 0.0)),
     }
+
+
+def _candidate_production_scoring_fields(
+    candidate: LowBuyCandidateOut,
+    *,
+    signal_date: str,
+    forward: list,
+) -> dict[str, Any]:
+    return_start_time = _forward_start_date(forward)
+    return {
+        "sector_name": str(getattr(candidate, "sector_name", "") or ""),
+        "production_score": getattr(candidate, "production_score", None),
+        "watch_score": getattr(candidate, "watch_score", None),
+        "production_decision": str(getattr(candidate, "production_decision", "") or ""),
+        "front_row_tier": str(getattr(candidate, "front_row_tier", "unknown") or "unknown"),
+        "score_cap": getattr(candidate, "score_cap", None),
+        "score_components": dict(getattr(candidate, "score_components", {}) or {}),
+        "exclusion_reasons": list(getattr(candidate, "exclusion_reasons", []) or []),
+        "warning_tags": list(getattr(candidate, "warning_tags", []) or []),
+        "production_scoring_config_version": str(getattr(candidate, "production_scoring_config_version", "") or ""),
+        "signal_generated_at": signal_date,
+        "data_cutoff_time": signal_date,
+        "return_start_time": return_start_time,
+    }
+
+
+def _forward_start_date(forward: Any) -> str:
+    if forward is None:
+        return ""
+    if isinstance(forward, pd.DataFrame):
+        if forward.empty:
+            return ""
+        return str(forward.iloc[0].get("date", "") or "")
+    try:
+        if len(forward) <= 0:
+            return ""
+        return str(getattr(forward[0], "trade_date", "") or "")
+    except (TypeError, KeyError, IndexError):
+        return ""
 
 
 def _safe_float(value: Any) -> float:

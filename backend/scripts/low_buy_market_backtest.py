@@ -18,6 +18,7 @@ from app.core.database import SessionLocal, init_db
 from app.models.entities import DailyBarSnapshot
 from app.services.low_buy.candidate_rule_params import research_prefilter_overrides
 from app.services.low_buy.execution_simulation import ExecutionSimulationOverride
+from app.services.low_buy.front_row_filter import FrontRowFilterConfig
 from app.services.low_buy_screener import PLAYBOOKS, LowBuyScreenerService
 from app.services.low_buy.shared import PERFORMANCE_FORWARD_DAYS
 from app.services.low_buy.strategy_families import resolve_strategy_family, resolve_strategy_family_label
@@ -127,6 +128,11 @@ def build_parser() -> argparse.ArgumentParser:
         default=[],
         help="研究回测覆盖：策略预筛参数覆盖，格式 strategy.param=value，可重复。例如 first_board.max_distribution_risk_score=5.2。",
     )
+    parser.add_argument(
+        "--front-row-only",
+        action="store_true",
+        help="研究回测覆盖：只保留龙头/强跟随/核心热点/核心主线候选，默认关闭。",
+    )
     parser.add_argument("--max-dates", type=int, default=0, help="调试用，只跑最近 N 个评估交易日")
     parser.add_argument(
         "--engine",
@@ -173,6 +179,7 @@ def main() -> int:
         execution_override = _execution_override_from_args(args)
         market_guard = _market_guard_from_args(args)
         prefilter_overrides = _prefilter_overrides_from_args(args.prefilter_override)
+        front_row_filter = FrontRowFilterConfig(enabled=True) if args.front_row_only else None
         universe_count = _load_a_share_universe_count(db, service)
         stats = {
             strategy: StrategyBacktestStats(
@@ -202,6 +209,7 @@ def main() -> int:
                     forward_days=args.forward_days,
                     history_window_days_value=history_window_days(args.months, args.forward_days),
                     count_signal_state=_count_signal_state,
+                    front_row_filter=front_row_filter,
                 )
             else:
                 run_legacy_backtest(
@@ -221,6 +229,7 @@ def main() -> int:
                     materialization_mode=materialization_mode,
                     load_or_build_snapshot=_load_or_build_snapshot,
                     count_signal_state=_count_signal_state,
+                    front_row_filter=front_row_filter,
                 )
 
         report = build_report(
@@ -237,15 +246,16 @@ def main() -> int:
             selected_states=evaluated_states,
             execution_model_label=_execution_model_label(execution_override),
             market_guard_label=market_guard_label(market_guard),
-            prefilter_override_label=_prefilter_override_label(prefilter_overrides),
+            prefilter_override_label=_prefilter_override_label(prefilter_overrides, front_row_only=args.front_row_only),
         )
 
     guard_stem = market_guard_stem(market_guard)
     prefilter_stem = _prefilter_override_stem(prefilter_overrides)
+    front_row_stem = "front_row" if args.front_row_only else "all_rows"
     stem = (
-        f"low_buy_market_backtest_{args.months}m_{_states_stem(evaluated_states)}_{_execution_model_stem(execution_override)}_{guard_stem}_{prefilter_stem}_{evaluation_dates[0]}_{evaluation_dates[-1]}"
+        f"low_buy_market_backtest_{args.months}m_{_states_stem(evaluated_states)}_{_execution_model_stem(execution_override)}_{guard_stem}_{prefilter_stem}_{front_row_stem}_{evaluation_dates[0]}_{evaluation_dates[-1]}"
         if evaluation_dates
-        else f"low_buy_market_backtest_{args.months}m_{_states_stem(evaluated_states)}_{_execution_model_stem(execution_override)}_{guard_stem}_{prefilter_stem}_empty"
+        else f"low_buy_market_backtest_{args.months}m_{_states_stem(evaluated_states)}_{_execution_model_stem(execution_override)}_{guard_stem}_{prefilter_stem}_{front_row_stem}_empty"
     )
     json_path = output_dir / f"{stem}.json"
     md_path = output_dir / f"{stem}.md"
@@ -364,13 +374,15 @@ def _parse_override_value(raw: str) -> object:
         return text
 
 
-def _prefilter_override_label(overrides: dict[str, dict[str, object]]) -> str:
-    if not overrides:
+def _prefilter_override_label(overrides: dict[str, dict[str, object]], *, front_row_only: bool = False) -> str:
+    if not overrides and not front_row_only:
         return "none"
     parts: list[str] = []
     for strategy in sorted(overrides):
         for key in sorted(overrides[strategy]):
             parts.append(f"{strategy}.{key}={overrides[strategy][key]}")
+    if front_row_only:
+        parts.append("front_row_only=true")
     return ",".join(parts)
 
 

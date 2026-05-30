@@ -10,6 +10,7 @@ import {
   holdExtensionTone,
 } from "./strategyTrackingFormatters";
 import { StrategyTrackingSectorTags } from "./StrategyTrackingSectorTags";
+import { RitualSignalSeal } from "../ritual-ui";
 
 interface StrategyTrackingTableProps {
   items: StrategyTrackingItem[];
@@ -73,6 +74,7 @@ function columns(onOpenDetail: (itemId: string) => void, viewMode: StrategyTrack
       render: (_, item) => (
         <div className="strategy-tracking-cell-stack">
           <Tag color={friendlyTone(item.user_friendly_status)}>{item.user_friendly_status_text}</Tag>
+          <RitualSignalSeal signalState={item.signal_state} riskLevel={item.stop_triggered ? "stop" : item.user_friendly_status} compact />
           <span>{item.user_friendly_reason}</span>
         </div>
       ),
@@ -85,6 +87,19 @@ function columns(onOpenDetail: (itemId: string) => void, viewMode: StrategyTrack
           <strong>{item.strategy_name}</strong>
           <span>计划买入区 {entryZoneText(item)}</span>
           <span>风险线 {formatPrice(item.stop_loss)} · 目标 {formatPrice(item.target_price)}</span>
+        </div>
+      ),
+    },
+    {
+      title: "策略线",
+      width: 150,
+      render: (_, item) => (
+        <div className="strategy-tracking-cell-stack">
+          <Tag color={laneTone(item.display_lane)}>{item.display_lane_title || "原低吸策略"}</Tag>
+          <span>{laneRoleText(item)}</span>
+          {item.matched_strategy_variants?.length && item.matched_strategy_variants.length > 1 ? (
+            <small>同时命中：{item.matched_strategy_variants.map(laneName).join(" / ")}</small>
+          ) : null}
         </div>
       ),
     },
@@ -157,4 +172,22 @@ function friendlyTone(status: string): string {
   if (status === "take_profit_watch") return "blue";
   if (status === "review_needed") return "orange";
   return "default";
+}
+
+function laneTone(lane?: string): string {
+  if (lane === "front_row_weighted") return "gold";
+  if (lane === "front_row_only") return "blue";
+  return "default";
+}
+
+function laneRoleText(item: StrategyTrackingItem): string {
+  if (item.display_lane === "front_row_weighted") return "Paper验证 · 未接生产";
+  if (item.display_lane === "front_row_only") return "仅观察 · 不参与生产排序";
+  return "旧策略排序 · 保留具体策略名";
+}
+
+function laneName(lane: string): string {
+  if (lane === "front_row_weighted") return "前排加权";
+  if (lane === "front_row_only") return "前排极精选";
+  return "原低吸";
 }

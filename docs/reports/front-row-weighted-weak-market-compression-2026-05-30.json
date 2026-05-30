@@ -1,0 +1,225 @@
+{
+  "title": "前排加权弱市候选压缩 A/B",
+  "source_report": "docs/reports/front-row-weighted-production-scoring-backtest-2026-05-29.json",
+  "production_sort_replaced": false,
+  "weak_market_policy_applied_to": "shadow_paper_backtest_only",
+  "recommended_policy": "weak_soft_score86_cap20",
+  "results": {
+    "weighted_current": {
+      "policy": {
+        "name": "weighted_current",
+        "allow_weak_market": true,
+        "soft_buy_only": false,
+        "min_production_score": 72.0,
+        "weak_market_position_cap_pct": 40.0
+      },
+      "sample_count": 1544,
+      "filled_count": 1481,
+      "signal_days": 191,
+      "portfolio_max5": {
+        "return_pct": 111.7314,
+        "max_drawdown_pct": -6.9737,
+        "profit_factor": 1.9073,
+        "avg_trade_return_pct": 0.9674,
+        "trade_count": 398,
+        "skipped_count": 1083,
+        "skip_reason_counts": {
+          "strategy_daily_limit": 646,
+          "max_positions": 307,
+          "duplicate_symbol_open": 59,
+          "max_positions_cash_occupied": 52,
+          "weak_market_position_cap": 19
+        }
+      },
+      "portfolio_max10": {
+        "return_pct": 67.9947,
+        "max_drawdown_pct": -4.3352,
+        "profit_factor": 1.8683,
+        "avg_trade_return_pct": 0.9868,
+        "trade_count": 534,
+        "skipped_count": 947,
+        "skip_reason_counts": {
+          "strategy_daily_limit": 808,
+          "duplicate_symbol_open": 65,
+          "max_positions": 45,
+          "weak_market_position_cap": 25,
+          "max_positions_cash_occupied": 2,
+          "sector_position_limit": 2
+        }
+      },
+      "weak_market": {
+        "sample_count": 38,
+        "filled_count": 37,
+        "signal_days": 14,
+        "avg_trade_return_pct": 0.4157,
+        "profit_factor": 1.2331
+      },
+      "demotion_reasons": {}
+    },
+    "weak_soft_only_cap30": {
+      "policy": {
+        "name": "weak_soft_only_cap30",
+        "allow_weak_market": true,
+        "soft_buy_only": true,
+        "min_production_score": 72.0,
+        "weak_market_position_cap_pct": 30.0
+      },
+      "sample_count": 1528,
+      "filled_count": 1465,
+      "signal_days": 181,
+      "portfolio_max5": {
+        "return_pct": 111.7421,
+        "max_drawdown_pct": -6.9737,
+        "profit_factor": 1.9326,
+        "avg_trade_return_pct": 0.9794,
+        "trade_count": 393,
+        "skipped_count": 1072,
+        "skip_reason_counts": {
+          "strategy_daily_limit": 646,
+          "max_positions": 305,
+          "duplicate_symbol_open": 57,
+          "max_positions_cash_occupied": 52,
+          "weak_market_position_cap": 12
+        }
+      },
+      "portfolio_max10": {
+        "return_pct": 69.586,
+        "max_drawdown_pct": -4.3352,
+        "profit_factor": 1.9157,
+        "avg_trade_return_pct": 1.0199,
+        "trade_count": 526,
+        "skipped_count": 939,
+        "skip_reason_counts": {
+          "strategy_daily_limit": 808,
+          "duplicate_symbol_open": 63,
+          "max_positions": 45,
+          "weak_market_position_cap": 19,
+          "max_positions_cash_occupied": 2,
+          "sector_position_limit": 2
+        }
+      },
+      "weak_market": {
+        "sample_count": 22,
+        "filled_count": 21,
+        "signal_days": 4,
+        "avg_trade_return_pct": 2.3731,
+        "profit_factor": 4.8864
+      },
+      "demotion_reasons": {
+        "weak_market_buy_now_demoted": 16
+      }
+    },
+    "weak_soft_score86_cap20": {
+      "policy": {
+        "name": "weak_soft_score86_cap20",
+        "allow_weak_market": true,
+        "soft_buy_only": true,
+        "min_production_score": 86.0,
+        "weak_market_position_cap_pct": 20.0
+      },
+      "sample_count": 1522,
+      "filled_count": 1459,
+      "signal_days": 181,
+      "portfolio_max5": {
+        "return_pct": 111.7421,
+        "max_drawdown_pct": -6.9737,
+        "profit_factor": 1.9326,
+        "avg_trade_return_pct": 0.9794,
+        "trade_count": 393,
+        "skipped_count": 1066,
+        "skip_reason_counts": {
+          "strategy_daily_limit": 646,
+          "max_positions": 304,
+          "duplicate_symbol_open": 57,
+          "max_positions_cash_occupied": 52,
+          "weak_market_position_cap": 7
+        }
+      },
+      "portfolio_max10": {
+        "return_pct": 68.4898,
+        "max_drawdown_pct": -4.3352,
+        "profit_factor": 1.9046,
+        "avg_trade_return_pct": 1.0094,
+        "trade_count": 525,
+        "skipped_count": 934,
+        "skip_reason_counts": {
+          "strategy_daily_limit": 808,
+          "duplicate_symbol_open": 63,
+          "max_positions": 45,
+          "weak_market_position_cap": 14,
+          "max_positions_cash_occupied": 2,
+          "sector_position_limit": 2
+        }
+      },
+      "weak_market": {
+        "sample_count": 16,
+        "filled_count": 15,
+        "signal_days": 4,
+        "avg_trade_return_pct": 3.1619,
+        "profit_factor": 32.5983
+      },
+      "demotion_reasons": {
+        "weak_market_buy_now_demoted": 16,
+        "weak_market_score_below_policy": 6
+      }
+    },
+    "weak_watch_only": {
+      "policy": {
+        "name": "weak_watch_only",
+        "allow_weak_market": false,
+        "soft_buy_only": true,
+        "min_production_score": 101.0,
+        "weak_market_position_cap_pct": 0.0
+      },
+      "sample_count": 1506,
+      "filled_count": 1444,
+      "signal_days": 177,
+      "portfolio_max5": {
+        "return_pct": 111.7421,
+        "max_drawdown_pct": -6.9737,
+        "profit_factor": 1.9326,
+        "avg_trade_return_pct": 0.9794,
+        "trade_count": 393,
+        "skipped_count": 1051,
+        "skip_reason_counts": {
+          "strategy_daily_limit": 646,
+          "max_positions": 297,
+          "duplicate_symbol_open": 56,
+          "max_positions_cash_occupied": 52
+        }
+      },
+      "portfolio_max10": {
+        "return_pct": 68.4898,
+        "max_drawdown_pct": -4.3352,
+        "profit_factor": 1.9046,
+        "avg_trade_return_pct": 1.0094,
+        "trade_count": 525,
+        "skipped_count": 919,
+        "skip_reason_counts": {
+          "strategy_daily_limit": 808,
+          "duplicate_symbol_open": 62,
+          "max_positions": 45,
+          "max_positions_cash_occupied": 2,
+          "sector_position_limit": 2
+        }
+      },
+      "weak_market": {
+        "sample_count": 0,
+        "filled_count": 0,
+        "signal_days": 0,
+        "avg_trade_return_pct": 0.0,
+        "profit_factor": 0.0
+      },
+      "demotion_reasons": {
+        "weak_market_watch_only": 38
+      }
+    }
+  },
+  "decision": {
+    "passed": false,
+    "blockers": [
+      "weak_market_sample_insufficient_keep_watch_only"
+    ],
+    "status": "weak_market_blocked"
+  }
+}

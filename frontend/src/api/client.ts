@@ -70,7 +70,8 @@ import type {
   StrategyTrackingSnapshotResponse,
   WatchlistItem,
   WatchlistQuoteItem,
-  WatchlistSignal
+  WatchlistSignal,
+  StrategyVariant
 } from "../types";
 import { invalidateCache } from "./base";
 import { apiClient } from "./httpClient";
@@ -305,8 +306,11 @@ export const api = {
     request<{ items: Record<string, LowBuyQuoteRefreshItem> }>(
       `/screeners/low-buy/quotes?strategy=${encodeURIComponent(strategy)}&symbols=${encodeURIComponent(symbols.join(","))}`
     ),
-  getLowBuyPriorityBoard: (limit = 12) =>
-    requestCached<LowBuyPriorityBoardResult>(`/screeners/low-buy/priority-board?limit=${limit}`, 15000),
+  getLowBuyPriorityBoard: (limit = 12, strategyVariant: StrategyVariant = "baseline", refresh: "cache" | "async" | "sync" = "cache") =>
+    requestCached<LowBuyPriorityBoardResult>(
+      `/screeners/low-buy/priority-board?limit=${limit}&refresh=${refresh}&strategy_variant=${strategyVariant}`,
+      15000
+    ),
   getLowBuyLifecycle: (strategy?: string, sync = false, limit = 100) =>
     request<{ items: LowBuyTradeLifecycle[] }>(
       `/screeners/low-buy/lifecycle?limit=${limit}&sync=${sync ? "true" : "false"}${strategy ? `&strategy=${encodeURIComponent(strategy)}` : ""}`

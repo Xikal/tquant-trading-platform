@@ -44,7 +44,7 @@ class MarketProvider(Protocol):
 
     def fetch_northbound_fund_flow_summary(self): ...
 
-    def fetch_limit_up_snapshot(self): ...
+    def fetch_limit_up_snapshot(self, trade_date: str = ""): ...
 
     def fetch_lhb_stock_statistic(self): ...
 
@@ -125,8 +125,11 @@ class MarketProviderRouter:
     def fetch_northbound_fund_flow_summary(self) -> ProviderResult:
         return self._first_usable("fetch_northbound_fund_flow_summary", lambda provider: provider.fetch_northbound_fund_flow_summary())
 
-    def fetch_limit_up_snapshot(self) -> ProviderResult:
-        return self._first_usable("fetch_limit_up_snapshot", lambda provider: provider.fetch_limit_up_snapshot())
+    def fetch_limit_up_snapshot(self, trade_date: str = "") -> ProviderResult:
+        return self._first_usable(
+            "fetch_limit_up_snapshot",
+            lambda provider: provider.fetch_limit_up_snapshot(trade_date),
+        )
 
     def fetch_lhb_stock_statistic(self) -> ProviderResult:
         return self._first_usable("fetch_lhb_stock_statistic", lambda provider: provider.fetch_lhb_stock_statistic())

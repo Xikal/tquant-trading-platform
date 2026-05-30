@@ -13,6 +13,7 @@ import type {
   RuntimeStatus,
   SectorEtfT0Opportunity,
   SectorEtfT0Response,
+  StrategyVariant,
 } from "../../types";
 import type { InstrumentSyncStatus } from "../../types";
 import { NumberField, SearchField, TextField } from "../../components/shared/FormFields";
@@ -27,6 +28,7 @@ import {
 import { MonitorHoldingWizard } from "./MonitorHoldingWizard";
 import { Callout, ContextRow, EmptyState, FamilyStrip, InfoPill, MetricGrid, PanelTitle, StockCard, StockCardList } from "../workspace-shared/WorkspaceComponents";
 import { WorkspacePageIntro } from "../workspace-shared/WorkspacePageIntro";
+import { RitualCloseBag, RitualFortuneStrip } from "../ritual-ui";
 import { formatAmount, formatPct, formatPrice, riskLevelText, shortTime } from "../workspace-shared/workspaceFormatters";
 import type { MetricItem, StockCardView, WatchDraft } from "../workspace-shared/workspaceTypes";
 import {
@@ -36,6 +38,9 @@ import {
   MONITOR_SUMMARY_STYLE,
   monitorGridStyle,
 } from "../trading-workspace/workspaceShellStyles";
+import { StrategyLaneStatusCard } from "../low-buy/StrategyLaneStatusCard";
+import { StrategyLaneTabs } from "../low-buy/StrategyLaneTabs";
+import { useWorkspaceMonitorStore } from "../../stores/workspaceMonitorStore";
 
 const MONITOR_METRIC_DETAILS_STYLE: CSSProperties = {
   marginTop: 8,
@@ -260,6 +265,7 @@ export interface MonitorPageProps {
   onSync: () => void;
   onAi: () => void;
   onGoPlaybook: () => void;
+  onLaneChange?: (strategyVariant: StrategyVariant) => void;
   onSelect: (stock: StockCardView) => void;
   onAnalyze: (stock: StockCardView) => void;
   onEdit: (stock: StockCardView) => void;
@@ -290,6 +296,7 @@ export const MonitorPage = memo(function MonitorPage({
   onSync,
   onAi,
   onGoPlaybook,
+  onLaneChange,
   onSelect,
   onAnalyze,
   onEdit,
@@ -297,6 +304,8 @@ export const MonitorPage = memo(function MonitorPage({
   onAddWatchlist,
   onCancelEdit,
 }: MonitorPageProps) {
+  const activeLane = useWorkspaceMonitorStore((state) => state.activeStrategyLane);
+  const setActiveLane = useWorkspaceMonitorStore((state) => state.setActiveStrategyLane);
   const screens = Grid.useBreakpoint();
   const isEditing = Boolean(editingWatchSymbol);
   const primaryAction = useMemo(() => resolveTodayAction(watchCards, priorityCards, priorityBoard), [watchCards, priorityCards, priorityBoard]);
@@ -305,9 +314,18 @@ export const MonitorPage = memo(function MonitorPage({
     () => buildMonitorMetrics({ priorityBoard, priorityCards, watchCards }),
     [priorityBoard, priorityCards, watchCards]
   );
+  const ritualTone = marketPulse?.pulse_level === "weak" || marketPulse?.pulse_level === "defensive" || marketPulse?.pulse_level === "risk_off"
+    ? "weak"
+    : marketPulse?.pulse_level === "strong" || marketPulse?.pulse_level === "repair" || marketPulse?.pulse_level === "risk_on"
+      ? "strong"
+      : "neutral";
   const instrumentSyncActive =
     loading === "sync" || instrumentSyncStatus?.status === "queued" || instrumentSyncStatus?.status === "running";
   const wideLayout = screens.xl ?? true;
+  const handleLaneChange = (next: StrategyVariant) => {
+    setActiveLane(next);
+    onLaneChange?.(next);
+  };
   return (
     <section style={monitorGridStyle(!wideLayout)}>
       <div className="panel" style={MONITOR_SUMMARY_STYLE}>
@@ -329,6 +347,7 @@ export const MonitorPage = memo(function MonitorPage({
           }
           style={MONITOR_REVIEW_DRAFT_STYLE}
         />
+        <RitualFortuneStrip marketTone={ritualTone} showCalendarHint />
         <Callout
           label="今天最重要的 1 件事"
           title={primaryAction.title}
@@ -433,7 +452,7 @@ export const MonitorPage = memo(function MonitorPage({
 
       <div className="panel" style={MONITOR_PRIORITY_STYLE}>
         <PanelTitle
-          title="全策略优先级榜"
+          title={priorityBoard?.display_lane_title || "全策略优先级榜"}
           actions={
             <>
               <Button style={MONITOR_GOLD_ACTION_STYLE} onClick={onAi} loading={loading === "ai"}>{loading === "ai" ? "解读中..." : "解读榜单"}</Button>
@@ -441,6 +460,10 @@ export const MonitorPage = memo(function MonitorPage({
             </>
           }
         />
+        <Space direction="vertical" size={8} style={MONITOR_FULL_ACTION_STYLE}>
+          <StrategyLaneTabs value={activeLane} onChange={handleLaneChange} />
+          <StrategyLaneStatusCard board={priorityBoard} activeLane={activeLane} />
+        </Space>
         <ContextRow>
           <InfoPill compact label="今日方向" value={priorityBoard?.directional_bias_text ?? "--"} />
           <InfoPill compact label="市场状态" value={priorityBoard?.market_state_text ?? "--"} />
@@ -702,6 +725,7 @@ function MonitorReviewPanel({
             <ReviewSnippet title="全市场收盘复盘" report={close} />
           </Col>
         </Row>
+        <RitualCloseBag visible={Boolean(close)} />
         {marketPulse?.autofill_details?.length ? (
           <Collapse
             ghost
