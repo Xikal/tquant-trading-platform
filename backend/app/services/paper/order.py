@@ -9,6 +9,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models.entities import PaperOrder, PaperTrade
+from app.services.decision_context.hard_risk_filter import hard_risk_gate_from_snapshot, mark_manual_hard_risk_override
 from app.services.market.board_exclusions import GROWTH_BOARD_REJECT_REASON, is_growth_board_stock
 from app.services.paper.account import PaperAccountService
 from app.services.paper.matching import MatchResult, OrderSide, OrderType, PaperMatchingEngine
@@ -52,6 +53,7 @@ class PaperOrderService:
         commit: bool = True,
     ) -> PaperOrder:
         self.accounts.get_account(account_id, for_update=True)
+        signal_snapshot = self._apply_hard_risk_gate(signal_snapshot or {}, source=source)
         self._idempotency_check(account_id, symbol, side, source, signal_snapshot)
         self._precheck(account_id, symbol, side, quantity, current_price)
         self._risk_check(account_id, symbol, side, quantity, current_price, source=source)
@@ -95,6 +97,16 @@ class PaperOrderService:
         else:
             self.db.flush()
         return order
+
+    @staticmethod
+    def _apply_hard_risk_gate(signal_snapshot: dict, *, source: str) -> dict:
+        gate = hard_risk_gate_from_snapshot(signal_snapshot)
+        if gate.decision != "block":
+            return signal_snapshot
+        if source == "manual":
+            return mark_manual_hard_risk_override(signal_snapshot, gate)
+        reason = "；".join(gate.reasons) or "硬风控阻断，自动/生产委托被拒绝。"
+        raise ValueError(reason)
 
     def get_orders(
         self,

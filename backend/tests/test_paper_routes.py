@@ -176,6 +176,34 @@ class PaperRouteTests(unittest.TestCase):
         self.assertEqual(response.status_code, 400)
         self.assertIn("创业板/科创板", response.json()["detail"])
 
+    def test_auto_buy_order_rejected_by_hard_risk_snapshot(self) -> None:
+        headers = self._register("paper_auto_hard_risk")
+        response = self._paper_order(
+            headers,
+            symbol="600001",
+            name="*ST测试",
+            quantity=100,
+            source="auto",
+            signal_snapshot={"hard_risk": {"decision": "block", "reasons": ["ST 风险"]}},
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("ST 风险", response.json()["detail"])
+
+    def test_manual_buy_order_records_hard_risk_override_required(self) -> None:
+        headers = self._register("paper_manual_hard_risk")
+        response = self._paper_order(
+            headers,
+            symbol="510300",
+            name="沪深300ETF",
+            quantity=100,
+            source="manual",
+            signal_snapshot={"hard_risk": {"decision": "block", "reasons": ["手动复核风险"]}},
+        )
+        self.assertEqual(response.status_code, 200)
+        with self.Session() as db:
+            order = db.execute(select(PaperOrder)).scalar_one()
+            self.assertIn("risk_override_required", order.signal_snapshot)
+
     def test_etf_same_day_sell_allowed_by_t0_rule(self) -> None:
         headers = self._register("paper_etf_t0")
         buy = self._paper_order(headers, symbol="510300", name="沪深300ETF", quantity=100)
