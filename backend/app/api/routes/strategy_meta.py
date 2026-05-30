@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import math
+from datetime import date
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import desc, func, or_, select
@@ -15,10 +16,22 @@ from app.models.schema_defs.strategy_meta import (
     StrategyGovernanceMutationResponse,
     StrategyMetaResponse,
     StrategyPresetResponse,
+    StrategyPromotionReviewOut,
     StrategySignalReplayItem,
     StrategySignalReplayResponse,
     SymbolSearchResponse,
 )
+from app.services.analytics.report_queries import (
+    DEFAULT_STRATEGY_REPORT,
+    FOCUS_WALK_FORWARD_REPORT,
+    PARAMETER_WALK_FORWARD_REPORT,
+    _load_json,
+    _oos_summary,
+    _portfolio_metric,
+    _quarter_stability,
+    _walk_forward_evidence,
+)
+from app.services.decision_context.promotion_engine import PromotionEvidence, review_strategy_promotion
 from app.services.strategy_metadata_service import StrategyMetadataService
 
 router = APIRouter(dependencies=[Depends(get_current_user)])
@@ -122,6 +135,50 @@ def list_strategy_signal_replay(
         .all()
     )
     return StrategySignalReplayResponse(items=[_signal_replay_item(row) for row in rows], total=total)
+
+
+@router.get("/strategy/promotion-review", response_model=StrategyPromotionReviewOut)
+def strategy_promotion_review(
+    strategy: str = Query(default="n_pattern_long_wash", min_length=1, max_length=80),
+    db: Session = Depends(get_db),
+) -> StrategyPromotionReviewOut:
+    evidence = _promotion_evidence_from_latest_report(strategy)
+    result = review_strategy_promotion(db, evidence)
+    return StrategyPromotionReviewOut(**result.as_payload())
+
+
+def _promotion_evidence_from_latest_report(strategy_key: str) -> PromotionEvidence:
+    source = _load_json(DEFAULT_STRATEGY_REPORT)
+    item = next(
+        (dict(row) for row in source.get("all_strategies") or [] if str(row.get("strategy_key") or "") == strategy_key),
+        {},
+    )
+    walk_forward = _walk_forward_evidence(FOCUS_WALK_FORWARD_REPORT, PARAMETER_WALK_FORWARD_REPORT).get(strategy_key, {})
+    quarter_stability = _quarter_stability(item) if item else {}
+    oos = _oos_summary(item, source) if item else {}
+    return PromotionEvidence(
+        strategy_key=strategy_key,
+        review_date=date.today(),
+        sample_count=int(item.get("sample_count") or item.get("all_signal_sample_count") or 0),
+        profit_factor=float(item.get("profit_factor") or 0.0),
+        average_trade_pct=float(item.get("avg_trade_return_pct") or item.get("avg_net_return_pct") or 0.0),
+        max_drawdown_pct=float(item.get("max_drawdown_pct") or 0.0),
+        max5_return_pct=float(_portfolio_metric(item, "max_5", "portfolio_return_pct") or 0.0),
+        max10_return_pct=float(_portfolio_metric(item, "max_10", "portfolio_return_pct") or 0.0),
+        quarterly_stability=float((quarter_stability.get("positive_rate_pct") or 0.0) / 100.0),
+        walk_forward_pass=walk_forward.get("status") == "complete" and bool(walk_forward.get("production_eligible", True)),
+        oos_pass=oos.get("status") in {"complete", "quarter_proxy"},
+        recent_quarter_returns_pct=tuple(_recent_quarter_returns(item)),
+        source=str(DEFAULT_STRATEGY_REPORT),
+    )
+
+
+def _recent_quarter_returns(item: dict) -> list[float]:
+    quarters = [dict(row) for row in item.get("quarter_breakdown") or [] if int(row.get("filled_count") or 0) > 0]
+    result: list[float] = []
+    for row in quarters[-2:]:
+        result.append(float(row.get("daily_signal_equal_weight_compound_return_pct") or row.get("total_return_pct") or 0.0))
+    return result
 
 
 def _recent_result_dates(db: Session, *, strategy: str, lookback_days: int) -> list[str]:

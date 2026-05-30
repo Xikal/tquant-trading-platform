@@ -96,3 +96,13 @@ class StrategySignalReplayItem(BaseModel):
 class StrategySignalReplayResponse(BaseModel):
     items: list[StrategySignalReplayItem] = Field(default_factory=list)
     total: int = 0
+
+
+class StrategyPromotionReviewOut(BaseModel):
+    strategy_key: str
+    current_tier: str = "research"
+    recommended_tier: str = "research"
+    recommendation: str = "stay_research"
+    evidence: dict[str, Any] = Field(default_factory=dict)
+    blocking_reasons: list[str] = Field(default_factory=list)
+    can_apply_override: bool = False
