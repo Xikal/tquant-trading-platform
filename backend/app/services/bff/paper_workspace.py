@@ -102,7 +102,10 @@ def _stock_pnl(db: Session, account_id: int | None):
 def _performance(db: Session, account_id: int | None):
     if account_id is None:
         return None
-    return PaperPerformanceOut(**PaperPerformanceService(db).compute_overall(account_id))
+    service = PaperPerformanceService(db)
+    payload = service.compute_overall(account_id)
+    payload["portfolio_execution_preview"] = service.compute_portfolio_execution_preview(account_id)
+    return PaperPerformanceOut(**payload)
 
 
 def _sector_etf_t0(db: Session, account_id: int | None):

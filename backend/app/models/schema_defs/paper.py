@@ -236,6 +236,7 @@ class PaperPerformanceOut(BaseModel):
     total_trades: int = 0
     avg_hold_days: float = 0.0
     win_loss_ratio: Optional[float] = None
+    portfolio_execution_preview: dict[str, Any] = Field(default_factory=dict)
 
 
 class PaperReviewReportOut(BaseModel):

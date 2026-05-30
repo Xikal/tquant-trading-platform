@@ -194,6 +194,37 @@ class PaperPerformanceArchiveTest(unittest.TestCase):
             self.assertEqual(payload["strategy_trend"][0]["strategy_key"], "first_board")
             self.assertEqual(payload["market_perf_heatmap"][0]["market_state"], "repair")
 
+    def test_paper_portfolio_execution_preview_reuses_real_portfolio_metrics(self) -> None:
+        with self.Session() as db:
+            account = PaperAccount(
+                name="测试账户",
+                initial_cash=Decimal("100000"),
+                cash_available=Decimal("100000"),
+                total_assets=Decimal("100000"),
+                status="active",
+            )
+            db.add(account)
+            db.commit()
+            db.refresh(account)
+
+            _add_round_trip(
+                db,
+                account.id,
+                symbol="510300",
+                strategy_key="first_board",
+                market_state="repair",
+                buy_price=Decimal("10"),
+                sell_price=Decimal("11"),
+                traded_at=datetime(2026, 5, 1, 10, 0),
+            )
+
+            preview = PaperArchiveService(db).performance.compute_portfolio_execution_preview(account.id)
+
+            self.assertEqual(preview["source"], "paper_trades")
+            self.assertEqual(preview["max_5"]["capital_model"], "real_portfolio_max_5_equal_slot_no_overlap")
+            self.assertEqual(preview["max_10"]["capital_model"], "real_portfolio_max_10_equal_slot_no_overlap")
+            self.assertIn("portfolio_backtest_metrics", " ".join(preview["notes"]))
+
     def test_daily_report_and_snapshot_use_target_date_scope(self) -> None:
         with self.Session() as db:
             account = PaperAccount(

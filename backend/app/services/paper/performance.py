@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 
 from app.core.timezone import beijing_today
 from app.models.entities import PaperAccount, PaperPerformanceSnapshot, PaperTrade, PaperTradeTag
+from app.services.decision_context.portfolio_executor import run_portfolio_execution_preview
 from app.services.finance.performance_math import (
     annualized_sharpe_ratio,
     annualized_sortino_ratio,
@@ -122,6 +123,13 @@ class PaperPerformanceService:
                 }
             )
         return result
+
+    def compute_portfolio_execution_preview(self, account_id: int, target_date: date | None = None) -> dict:
+        outcomes = self._paper_trade_outcomes(account_id, target_date)
+        preview = run_portfolio_execution_preview(outcomes)
+        preview["source"] = "paper_trades"
+        preview["candidate_count"] = len(outcomes)
+        return preview
 
     def compute_strategy_correlation(
         self,
@@ -246,6 +254,40 @@ class PaperPerformanceService:
 
     def sell_return_records(self, account_id: int) -> list[SellReturnRecord]:
         return self._paired_sell_return_records(account_id)
+
+    def _paper_trade_outcomes(self, account_id: int, target_date: date | None = None) -> list:
+        from scripts.low_buy_market_backtest_reporting import TradeOutcome
+
+        outcomes = []
+        for record in self._filtered_return_records(account_id, target_date):
+            if record.trade_time is None:
+                continue
+            signal_date = record.trade_time.date().isoformat()
+            outcomes.append(
+                TradeOutcome(
+                    symbol=str(record.symbol or ""),
+                    name=str(record.symbol or ""),
+                    signal_date=signal_date,
+                    strategy_key=record.strategy_key or "未分类",
+                    buy_signal_state="buy_now",
+                    entry_price=1.0,
+                    execution_status="filled",
+                    net_return_pct=float(record.return_pct or 0.0),
+                    execution_exit_reason="paper_trade_closed",
+                    return_1d=float(record.return_pct or 0.0),
+                    return_2d=float(record.return_pct or 0.0),
+                    return_3d=float(record.return_pct or 0.0),
+                    return_4d=float(record.return_pct or 0.0),
+                    return_5d=float(record.return_pct or 0.0),
+                    max_gain_5d=max(float(record.return_pct or 0.0), 0.0),
+                    max_drawdown_5d=min(float(record.return_pct or 0.0), 0.0),
+                    entry_trade_date=signal_date,
+                    exit_trade_date=signal_date,
+                    market_state=record.market_state or "未分类",
+                    sector_name=record.sector_name or "",
+                )
+            )
+        return outcomes
 
     def create_daily_snapshot(
         self,
@@ -383,6 +425,7 @@ class PaperPerformanceService:
                         strategy_key=trade.strategy_key or "未分类",
                         market_state=trade.market_state or "未分类",
                         trade_time=trade.trade_time,
+                        symbol=trade.symbol,
                         direction="long",
                     )
                 )
@@ -513,6 +556,8 @@ class SellReturnRecord:
     strategy_key: str
     market_state: str
     trade_time: datetime
+    symbol: str = ""
+    sector_name: str = ""
     direction: str = "long"
 
     def group_key(self, field: str) -> str:

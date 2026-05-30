@@ -38,7 +38,10 @@ def paper_performance(
     account_service = PaperAccountService(db)
     account = account_service.get_or_create_default(current_user.id)
     account_service.update_market_value(account.id)
-    return PaperPerformanceOut(**PaperPerformanceService(db).compute_overall(account.id))
+    service = PaperPerformanceService(db)
+    payload = service.compute_overall(account.id)
+    payload["portfolio_execution_preview"] = service.compute_portfolio_execution_preview(account.id)
+    return PaperPerformanceOut(**payload)
 
 
 @router.get("/performance/by-strategy", response_model=list[PaperGroupedPerformanceOut])
