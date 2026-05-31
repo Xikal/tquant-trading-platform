@@ -6,17 +6,10 @@ export interface IApiClient {
   requestCached<T>(path: string, ttlMs: number, init?: ApiRequestInit): Promise<T>;
 }
 
-class DefaultApiClient implements IApiClient {
-  request<T>(path: string, init?: ApiRequestInit): Promise<T> {
-    return baseRequest<T>(path, init);
-  }
-
-  requestCached<T>(path: string, ttlMs: number, init?: ApiRequestInit): Promise<T> {
-    return baseRequestCached<T>(path, ttlMs, init);
-  }
-}
-
-const defaultClient: IApiClient = new DefaultApiClient();
+const defaultClient: IApiClient = {
+  request: baseRequest,
+  requestCached: baseRequestCached,
+};
 let currentClient: IApiClient = defaultClient;
 
 export function configureApiClient(client: IApiClient) {
