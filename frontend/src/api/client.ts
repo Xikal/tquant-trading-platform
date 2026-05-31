@@ -66,6 +66,7 @@ import type {
   StrategyTrackingListResponse,
   StrategyTrackingParams,
   StrategyTrackingReport,
+  TrackRecordDriftResponse,
   StrategyPromotionReview,
   StrategyTrackingReviewResponse,
   StrategyTrackingSnapshotResponse,
@@ -334,6 +335,8 @@ export const api = {
     requestCached<StrategyTrackingHoldingAnalysisResponse>(`/strategy-tracking/holding-analysis?${strategyTrackingQuery(params)}`, 12000),
   getStrategyTrackingReport: (type: "daily" | "weekly", params: StrategyTrackingParams = {}) =>
     requestCached<StrategyTrackingReport>(`/strategy-tracking/reports/${type}?${strategyTrackingQuery(params)}`, 12000),
+  getTrackRecordDrift: (windowDays = 60) =>
+    requestCached<TrackRecordDriftResponse>(`/track-record/drift?window_days=${windowDays}&limit=80`, 12000),
   getStrategyPromotionReview: (strategy = "n_pattern_long_wash") =>
     requestCached<StrategyPromotionReview>(`/strategy/promotion-review?strategy=${encodeURIComponent(strategy)}`, 12000),
   getPaperAccount: () => request<PaperAccount>("/paper/account"),

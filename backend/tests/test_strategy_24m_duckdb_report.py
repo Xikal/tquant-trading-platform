@@ -228,6 +228,81 @@ def test_strategy_report_includes_data_quality_sla_and_blocks_on_fail(tmp_path):
     assert "98.70%" in markdown
 
 
+def test_strategy_report_includes_live_vs_backtest_track_record_segment(tmp_path):
+    source = tmp_path / "strategy.json"
+    source.write_text(
+        _json(
+            {
+                "all_strategies": [_strategy("first_board")],
+                "strategy_family_summary": {
+                    "time_series_splits": {
+                        "evidence_level": "quarter_breakdown_proxy_not_true_walk_forward",
+                        "out_of_sample_quarters": ["2026Q2"],
+                        "roles": {},
+                    }
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+    walk = tmp_path / "walk.json"
+    walk.write_text(
+        _json(
+            {
+                "strategies": [
+                    {
+                        "strategy_key": "first_board",
+                        "window_count": 7,
+                        "passed_window_count": 7,
+                        "pass_rate_pct": 100,
+                        "windows": [{"current": {"profit_factor": 1.2, "total_return_pct": 3.0, "max_drawdown_pct": -2}}],
+                    }
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+    params = tmp_path / "params.json"
+    params.write_text(_json({"strategies": []}), encoding="utf-8")
+
+    report = build_strategy_24m_duckdb_report(
+        _manifest(),
+        output_root=tmp_path / "analytics",
+        legacy_strategy_report=source,
+        focus_walk_forward_report=walk,
+        parameter_walk_forward_report=params,
+        track_record_drift={
+            "items": [
+                {
+                    "strategy_key": "first_board",
+                    "as_of_date": "2026-06-30",
+                    "window_days": 60,
+                    "sample_settled": 30,
+                    "realized_pf": 1.2,
+                    "expected_pf": 1.8,
+                    "realized_avg": 0.4,
+                    "expected_avg": 0.8,
+                    "realized_max5": 2.1,
+                    "backtest_max5": 4.0,
+                    "realized_max10": 3.0,
+                    "backtest_max10": 5.0,
+                    "tracking_error": -0.4,
+                    "decay_pct": -50.0,
+                    "drift_flag": "decay_advisory",
+                }
+            ]
+        },
+    )
+    markdown = render_strategy_24m_markdown(report)
+
+    assert report["status"] == "ok"
+    assert "## 真实战绩 vs 回测" in markdown
+    assert "decay_advisory" in markdown
+    assert "30" in markdown
+    assert "真实战绩 vs 回测" in report["live_vs_backtest"]["conclusion"]
+    assert "总收益 |" not in markdown
+
+
 def test_strategy_report_serializes_duckdb_dates(tmp_path):
     source = tmp_path / "strategy.json"
     source.write_text(

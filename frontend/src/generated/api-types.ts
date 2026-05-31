@@ -4399,6 +4399,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/track-record/drift": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Track Record Drift View */
+        get: operations["track_record_drift_view_api_track_record_drift_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/track-record/ledger": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Track Record Ledger View */
+        get: operations["track_record_ledger_view_api_track_record_ledger_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/agent/tools": {
         parameters: {
             query?: never;
@@ -11336,6 +11370,25 @@ export interface components {
              */
             exit_plan_text: string;
             /**
+             * Expected Avg Return Pct
+             * @default 0
+             */
+            expected_avg_return_pct: number;
+            /** Expected Horizon Returns */
+            expected_horizon_returns?: {
+                [key: string]: number;
+            };
+            /**
+             * Expected Profit Factor
+             * @default 0
+             */
+            expected_profit_factor: number;
+            /**
+             * Expected Sample Settled
+             * @default 0
+             */
+            expected_sample_settled: number;
+            /**
              * Family Count
              * @default 1
              */
@@ -17400,6 +17453,172 @@ export interface components {
         SymbolSearchResponse: {
             /** Items */
             items?: components["schemas"]["SymbolSearchItem"][];
+            /**
+             * Total
+             * @default 0
+             */
+            total: number;
+        };
+        /** TrackRecordDriftItemOut */
+        TrackRecordDriftItemOut: {
+            /**
+             * As Of Date
+             * Format: date
+             */
+            as_of_date: string;
+            /**
+             * Backtest Max10
+             * @default 0
+             */
+            backtest_max10: number;
+            /**
+             * Backtest Max5
+             * @default 0
+             */
+            backtest_max5: number;
+            /** Created At */
+            created_at?: string | null;
+            /**
+             * Decay Pct
+             * @default 0
+             */
+            decay_pct: number;
+            /**
+             * Drift Flag
+             * @default insufficient_sample
+             */
+            drift_flag: string;
+            /**
+             * Expected Avg
+             * @default 0
+             */
+            expected_avg: number;
+            /** Expected Pf */
+            expected_pf?: number | null;
+            /**
+             * Expected Winrate
+             * @default 0
+             */
+            expected_winrate: number;
+            /**
+             * Realized Avg
+             * @default 0
+             */
+            realized_avg: number;
+            /**
+             * Realized Max10
+             * @default 0
+             */
+            realized_max10: number;
+            /**
+             * Realized Max5
+             * @default 0
+             */
+            realized_max5: number;
+            /** Realized Pf */
+            realized_pf?: number | null;
+            /**
+             * Realized Winrate
+             * @default 0
+             */
+            realized_winrate: number;
+            /**
+             * Sample Settled
+             * @default 0
+             */
+            sample_settled: number;
+            /** Strategy Key */
+            strategy_key: string;
+            /**
+             * Tracking Error
+             * @default 0
+             */
+            tracking_error: number;
+            /** Window Days */
+            window_days: number;
+        };
+        /** TrackRecordDriftResponse */
+        TrackRecordDriftResponse: {
+            /**
+             * Data Quality
+             * @default ok
+             */
+            data_quality: string;
+            /** Items */
+            items?: components["schemas"]["TrackRecordDriftItemOut"][];
+            /**
+             * Total
+             * @default 0
+             */
+            total: number;
+        };
+        /** TrackRecordLedgerItemOut */
+        TrackRecordLedgerItemOut: {
+            /**
+             * Data Cutoff Time
+             * Format: date-time
+             */
+            data_cutoff_time: string;
+            /**
+             * Data Quality
+             * @default unknown
+             */
+            data_quality: string;
+            /** Id */
+            id: number;
+            /**
+             * Name
+             * @default
+             */
+            name: string;
+            /**
+             * Priority Score
+             * @default 0
+             */
+            priority_score: number;
+            /** Production Score */
+            production_score?: number | null;
+            /**
+             * Return Start Time
+             * Format: date-time
+             */
+            return_start_time: string;
+            /**
+             * Signal Date
+             * Format: date
+             */
+            signal_date: string;
+            /** Signal State */
+            signal_state: string;
+            /**
+             * Signal Time
+             * Format: date-time
+             */
+            signal_time: string;
+            /**
+             * Source Version
+             * @default
+             */
+            source_version: string;
+            /** Strategy Key */
+            strategy_key: string;
+            /** Symbol */
+            symbol: string;
+        };
+        /** TrackRecordLedgerResponse */
+        TrackRecordLedgerResponse: {
+            /** Items */
+            items?: components["schemas"]["TrackRecordLedgerItemOut"][];
+            /**
+             * Limit
+             * @default 50
+             */
+            limit: number;
+            /**
+             * Offset
+             * @default 0
+             */
+            offset: number;
             /**
              * Total
              * @default 0
@@ -26081,6 +26300,73 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SymbolSearchResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    track_record_drift_view_api_track_record_drift_get: {
+        parameters: {
+            query?: {
+                strategy_key?: string | null;
+                window_days?: number | null;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TrackRecordDriftResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    track_record_ledger_view_api_track_record_ledger_get: {
+        parameters: {
+            query?: {
+                strategy_key?: string | null;
+                symbol?: string | null;
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TrackRecordLedgerResponse"];
                 };
             };
             /** @description Validation Error */

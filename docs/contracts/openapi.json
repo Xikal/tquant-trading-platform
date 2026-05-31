@@ -11372,6 +11372,28 @@
             "title": "Exit Plan Text",
             "type": "string"
           },
+          "expected_avg_return_pct": {
+            "default": 0.0,
+            "title": "Expected Avg Return Pct",
+            "type": "number"
+          },
+          "expected_horizon_returns": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "title": "Expected Horizon Returns",
+            "type": "object"
+          },
+          "expected_profit_factor": {
+            "default": 0.0,
+            "title": "Expected Profit Factor",
+            "type": "number"
+          },
+          "expected_sample_settled": {
+            "default": 0,
+            "title": "Expected Sample Settled",
+            "type": "integer"
+          },
           "family_count": {
             "default": 1,
             "title": "Family Count",
@@ -20921,6 +20943,258 @@
           }
         },
         "title": "SymbolSearchResponse",
+        "type": "object"
+      },
+      "TrackRecordDriftItemOut": {
+        "properties": {
+          "as_of_date": {
+            "format": "date",
+            "title": "As Of Date",
+            "type": "string"
+          },
+          "backtest_max10": {
+            "default": 0.0,
+            "title": "Backtest Max10",
+            "type": "number"
+          },
+          "backtest_max5": {
+            "default": 0.0,
+            "title": "Backtest Max5",
+            "type": "number"
+          },
+          "created_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created At"
+          },
+          "decay_pct": {
+            "default": 0.0,
+            "title": "Decay Pct",
+            "type": "number"
+          },
+          "drift_flag": {
+            "default": "insufficient_sample",
+            "title": "Drift Flag",
+            "type": "string"
+          },
+          "expected_avg": {
+            "default": 0.0,
+            "title": "Expected Avg",
+            "type": "number"
+          },
+          "expected_pf": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected Pf"
+          },
+          "expected_winrate": {
+            "default": 0.0,
+            "title": "Expected Winrate",
+            "type": "number"
+          },
+          "realized_avg": {
+            "default": 0.0,
+            "title": "Realized Avg",
+            "type": "number"
+          },
+          "realized_max10": {
+            "default": 0.0,
+            "title": "Realized Max10",
+            "type": "number"
+          },
+          "realized_max5": {
+            "default": 0.0,
+            "title": "Realized Max5",
+            "type": "number"
+          },
+          "realized_pf": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Realized Pf"
+          },
+          "realized_winrate": {
+            "default": 0.0,
+            "title": "Realized Winrate",
+            "type": "number"
+          },
+          "sample_settled": {
+            "default": 0,
+            "title": "Sample Settled",
+            "type": "integer"
+          },
+          "strategy_key": {
+            "title": "Strategy Key",
+            "type": "string"
+          },
+          "tracking_error": {
+            "default": 0.0,
+            "title": "Tracking Error",
+            "type": "number"
+          },
+          "window_days": {
+            "title": "Window Days",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "strategy_key",
+          "as_of_date",
+          "window_days"
+        ],
+        "title": "TrackRecordDriftItemOut",
+        "type": "object"
+      },
+      "TrackRecordDriftResponse": {
+        "properties": {
+          "data_quality": {
+            "default": "ok",
+            "title": "Data Quality",
+            "type": "string"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/TrackRecordDriftItemOut"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "total": {
+            "default": 0,
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "title": "TrackRecordDriftResponse",
+        "type": "object"
+      },
+      "TrackRecordLedgerItemOut": {
+        "properties": {
+          "data_cutoff_time": {
+            "format": "date-time",
+            "title": "Data Cutoff Time",
+            "type": "string"
+          },
+          "data_quality": {
+            "default": "unknown",
+            "title": "Data Quality",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "name": {
+            "default": "",
+            "title": "Name",
+            "type": "string"
+          },
+          "priority_score": {
+            "default": 0.0,
+            "title": "Priority Score",
+            "type": "number"
+          },
+          "production_score": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Production Score"
+          },
+          "return_start_time": {
+            "format": "date-time",
+            "title": "Return Start Time",
+            "type": "string"
+          },
+          "signal_date": {
+            "format": "date",
+            "title": "Signal Date",
+            "type": "string"
+          },
+          "signal_state": {
+            "title": "Signal State",
+            "type": "string"
+          },
+          "signal_time": {
+            "format": "date-time",
+            "title": "Signal Time",
+            "type": "string"
+          },
+          "source_version": {
+            "default": "",
+            "title": "Source Version",
+            "type": "string"
+          },
+          "strategy_key": {
+            "title": "Strategy Key",
+            "type": "string"
+          },
+          "symbol": {
+            "title": "Symbol",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "signal_date",
+          "strategy_key",
+          "symbol",
+          "signal_state",
+          "signal_time",
+          "data_cutoff_time",
+          "return_start_time"
+        ],
+        "title": "TrackRecordLedgerItemOut",
+        "type": "object"
+      },
+      "TrackRecordLedgerResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/TrackRecordLedgerItemOut"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "limit": {
+            "default": 50,
+            "title": "Limit",
+            "type": "integer"
+          },
+          "offset": {
+            "default": 0,
+            "title": "Offset",
+            "type": "integer"
+          },
+          "total": {
+            "default": 0,
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "title": "TrackRecordLedgerResponse",
         "type": "object"
       },
       "TradingRuleOut": {
@@ -37027,6 +37301,186 @@
         "summary": "Search Symbols",
         "tags": [
           "strategy-meta"
+        ]
+      }
+    },
+    "/api/track-record/drift": {
+      "get": {
+        "operationId": "track_record_drift_view_api_track_record_drift_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "strategy_key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 80,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Strategy Key"
+            }
+          },
+          {
+            "in": "query",
+            "name": "window_days",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maximum": 520,
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Window Days"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrackRecordDriftResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Track Record Drift View",
+        "tags": [
+          "track-record"
+        ]
+      }
+    },
+    "/api/track-record/ledger": {
+      "get": {
+        "operationId": "track_record_ledger_view_api_track_record_ledger_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "strategy_key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 80,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Strategy Key"
+            }
+          },
+          {
+            "in": "query",
+            "name": "symbol",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 16,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Symbol"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrackRecordLedgerResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Track Record Ledger View",
+        "tags": [
+          "track-record"
         ]
       }
     },

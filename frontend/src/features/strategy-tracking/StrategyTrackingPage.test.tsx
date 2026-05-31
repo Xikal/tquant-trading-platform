@@ -6,6 +6,7 @@ import type { StrategyTrackingDetailResponse, StrategyTrackingHoldingAnalysis, S
 import { Topbar } from "../trading-workspace/Topbar";
 import { StrategyTrackingDetailContent } from "./StrategyTrackingDetailDrawer";
 import { StrategyTrackingDiagnosticsPanel } from "./StrategyTrackingDiagnosticsPanel";
+import { DriftMonitorPanel } from "./DriftMonitorPanel";
 import { StrategyTrackingHoldingAnalysisPanel } from "./StrategyTrackingHoldingAnalysisPanel";
 import { StrategyTrackingPerformanceTable } from "./StrategyTrackingPerformanceTable";
 import { StrategyTrackingReviewPanel } from "./StrategyTrackingReviewPanel";
@@ -193,6 +194,40 @@ describe("StrategyTracking UI", () => {
     expect(html).toContain("观测表里目前没有该模型观测记录");
     expect(html).toContain("强势行情");
     expect(html).toContain("冲高回落");
+  });
+
+  it("renders drift monitor with realized vs expected evidence", () => {
+    const html = renderToStaticMarkup(
+      <DriftMonitorPanel
+        loading={false}
+        defaultOpen
+        total={1}
+        items={[{
+          strategy_key: "first_board",
+          as_of_date: "2026-06-30",
+          window_days: 60,
+          realized_pf: 1.2,
+          expected_pf: 1.8,
+          realized_avg: 0.4,
+          expected_avg: 0.8,
+          realized_winrate: 52,
+          expected_winrate: 60,
+          realized_max5: 2.1,
+          backtest_max5: 4.0,
+          realized_max10: 3.0,
+          backtest_max10: 5.0,
+          tracking_error: -0.4,
+          decay_pct: -50,
+          drift_flag: "decay_advisory",
+          sample_settled: 30,
+        }]}
+      />
+    );
+
+    expect(html).toContain("真实战绩漂移");
+    expect(html).toContain("decay_advisory");
+    expect(html).toContain("first_board");
+    expect(html).toContain("PF");
   });
 });
 

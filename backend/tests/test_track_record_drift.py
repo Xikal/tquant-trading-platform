@@ -4,10 +4,15 @@ import json
 from datetime import date, datetime
 from types import SimpleNamespace
 
+from fastapi import FastAPI
+from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, select
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
+from app.api.routes import track_record
+from app.core.auth import get_current_user
+from app.core.database import get_db
 from app.models.base import Base
 from app.models.schema_defs.phase4 import RuntimeTaskCreate
 from app.models.entities import ProductionSignalLedger, SignalRealizedOutcome, StrategyDriftSnapshot
@@ -146,6 +151,57 @@ def test_analytics_worker_consumes_strategy_drift_refresh(monkeypatch) -> None:
     assert calls[0]["min_sample"] == 5
 
 
+def test_track_record_drift_route_returns_latest_snapshots() -> None:
+    client, Session = _track_record_client()
+    with Session() as db:
+        db.add(
+            StrategyDriftSnapshot(
+                strategy_key="first_board",
+                as_of_date=date(2026, 6, 30),
+                window_days=60,
+                realized_pf=1.2,
+                expected_pf=1.8,
+                realized_avg=0.4,
+                expected_avg=1.0,
+                realized_winrate=52.0,
+                expected_winrate=60.0,
+                realized_max5=2.0,
+                backtest_max5=4.0,
+                realized_max10=3.0,
+                backtest_max10=5.0,
+                tracking_error=-0.6,
+                decay_pct=-60.0,
+                drift_flag="decay_advisory",
+                sample_settled=30,
+            )
+        )
+        db.commit()
+
+    response = client.get("/api/track-record/drift")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["total"] == 1
+    assert payload["items"][0]["strategy_key"] == "first_board"
+    assert payload["items"][0]["drift_flag"] == "decay_advisory"
+    assert payload["items"][0]["sample_settled"] == 30
+
+
+def test_track_record_ledger_route_is_read_only_paginated() -> None:
+    client, Session = _track_record_client()
+    with Session() as db:
+        db.add(_ledger(1, expected_pf=1.5, expected_avg=1.0))
+        db.commit()
+
+    response = client.get("/api/track-record/ledger?limit=10")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["total"] == 1
+    assert payload["items"][0]["symbol"] == "600001"
+    assert payload["items"][0]["signal_state"] == "buy_now"
+
+
 def _session_factory():
     engine = create_engine(
         "sqlite+pysqlite:///:memory:",
@@ -155,6 +211,23 @@ def _session_factory():
     )
     Base.metadata.create_all(engine)
     return sessionmaker(bind=engine, future=True)
+
+
+def _track_record_client() -> tuple[TestClient, sessionmaker]:
+    Session = _session_factory()
+    app = FastAPI()
+    app.include_router(track_record.router, prefix="/api")
+
+    def override_db():
+        db = Session()
+        try:
+            yield db
+        finally:
+            db.close()
+
+    app.dependency_overrides[get_db] = override_db
+    app.dependency_overrides[get_current_user] = lambda: SimpleNamespace(id=1)
+    return TestClient(app), Session
 
 
 def _ledger(

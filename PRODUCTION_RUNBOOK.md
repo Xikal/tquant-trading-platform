@@ -394,6 +394,10 @@ cp .env.docker.example .env
   数据质量 SLA 开关，默认 `true`。SLA 失败必须进入 `blocked_by_data` 或显式 `unavailable`，不得静默通过。
 - `DATA_REPAIR_AUTO_ENABLED`
   数据修复自动执行开关，默认且建议永久保持 `false`。线上修复默认只 dry-run；删除必须由管理员显式提交 apply，并要求 DB 备份和行级 JSON 备份已生成。
+- `TRACK_RECORD_ENABLED`
+  真实战绩账本开关，默认 `true`。关闭后停止生产信号落账与 realized/outcome 刷新，既有 priority board 和回测报告基础口径不变。
+- `DRIFT_ALERT_ENABLED`
+  漂移告警开关，默认 `false`。关闭时 `strategy_drift_refresh` 仍写入 advisory 证据，但不会推送飞书/Agent 通知；只有线上阈值稳定后才放开。
 - `TQUANT_INTERNAL_SERVICE_TOKEN`
   配置 `TQUANT_*_SERVICE_URL` 微服务地址时必填。BFF 到远端服务请求必须携带该 token，远端服务会拒绝缺失或不匹配的内部请求。
 - `RUNTIME_WORKER_POLL_INTERVAL_SECONDS`
@@ -611,6 +615,29 @@ docker compose -f docker-compose.mysql.yml logs -f runtime-worker
 ```
 
 `market_state_gate_refresh` 的缺数据结果应为 `reduce` + degraded 证据，不得清空生产榜；`hard_risk_context_refresh` 属 Batch A 同步快照链路提示任务，不应在 Web 容器新增后台循环。更多操作见 `docs/high-roi-platform-expansion-runbook-2026-05-30.md`。
+
+8. 真实战绩漂移验证：
+
+```bash
+docker compose -f docker-compose.mysql.yml exec app python - <<'PY'
+from app.core.database import SessionLocal
+from app.models.schema_defs.phase4 import RuntimeTaskCreate
+from app.services.tasks import RuntimeTaskQueue
+with SessionLocal() as db:
+    queue = RuntimeTaskQueue(db)
+    capture = queue.enqueue(RuntimeTaskCreate(task_type="signal_ledger_capture", payload={"limit": 30}, max_attempts=1))
+    realized = queue.enqueue(RuntimeTaskCreate(task_type="realized_outcome_refresh", payload={"horizons": [1, 3, 5, 10]}, max_attempts=1))
+    drift = queue.enqueue(RuntimeTaskCreate(task_type="strategy_drift_refresh", payload={"window_days": 60, "min_sample": 20}, max_attempts=1))
+    print(capture.id, capture.task_type, capture.status)
+    print(realized.id, realized.task_type, realized.status)
+    print(drift.id, drift.task_type, drift.status)
+PY
+docker compose -f docker-compose.mysql.yml logs -f runtime-worker
+docker compose -f docker-compose.mysql.yml logs -f analytics-worker
+curl -sS -H "Authorization: Bearer <TOKEN>" https://<domain>/api/track-record/drift
+```
+
+`signal_ledger_capture` 只落 `buy_now`/`soft_buy_now` 的生产信号，`realized_outcome_refresh` 缺未来行情时必须保持 `unsettled`，`strategy_drift_refresh` 只写 advisory 证据，不自动修改 `strategy_policy.py`。24M 报告应包含“真实战绩 vs 回测”段；若还没有 `strategy_drift_snapshots`，报告必须显示 `no_data`，不得造分。
 
 ## 10.1 LONGTEXT 迁移排查
 

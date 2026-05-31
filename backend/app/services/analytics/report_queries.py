@@ -31,10 +31,12 @@ def build_strategy_24m_duckdb_report(
     focus_walk_forward_report: str | Path | None = None,
     parameter_walk_forward_report: str | Path | None = None,
     data_quality_sla: dict[str, Any] | None = None,
+    track_record_drift: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     config = analytics_config(output_root)
     quality = dict(manifest.get("quality") or {})
     sla_payload = _normalize_data_quality_sla(data_quality_sla)
+    live_vs_backtest = _normalize_live_vs_backtest(track_record_drift)
     files = list(manifest.get("files") or [])
     parquet_glob = str(config.parquet_dir / "daily_bars" / "**" / "*.parquet")
     data_blocked = quality.get("status") != "ok" or _sla_blocks_report(sla_payload)
@@ -103,6 +105,7 @@ def build_strategy_24m_duckdb_report(
             "data_quality_conclusion": _quality_conclusion(quality),
             "data_quality_sla": sla_payload,
             "data_quality_sla_conclusion": _data_quality_sla_conclusion(sla_payload),
+            "live_vs_backtest": live_vs_backtest,
             "duckdb_daily_bar_summary": duckdb_summary,
             "duckdb_monthly_market_summary": monthly_market,
             "strategy_summary_source": str(strategy_source),
@@ -169,6 +172,37 @@ def render_strategy_24m_markdown(report: dict[str, Any]) -> str:
             )
     else:
         lines.extend(["", "最近修复审计：无。"])
+    lines.extend(["", "## 真实战绩 vs 回测", "", report.get("live_vs_backtest", {}).get("conclusion", "")])
+    drift_items = list((report.get("live_vs_backtest") or {}).get("items") or [])
+    if drift_items:
+        lines.extend(
+            [
+                "",
+                "| 策略 | 窗口 | 已结算样本 | realized PF | expected PF | realized avg | expected avg | realized max5 | backtest max5 | realized max10 | backtest max10 | tracking error | decay | 标记 |",
+                "|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---|",
+            ]
+        )
+        for item in drift_items:
+            lines.append(
+                "| {strategy} | {window} | {sample} | {rpf} | {epf} | {ravg} | {eavg} | {rmax5} | {bmax5} | {rmax10} | {bmax10} | {te} | {decay} | {flag} |".format(
+                    strategy=item.get("strategy_key", ""),
+                    window=int(item.get("window_days") or 0),
+                    sample=int(item.get("sample_settled") or 0),
+                    rpf=_fmt_num(item.get("realized_pf"), 2),
+                    epf=_fmt_num(item.get("expected_pf"), 2),
+                    ravg=_fmt_pct(item.get("realized_avg")),
+                    eavg=_fmt_pct(item.get("expected_avg")),
+                    rmax5=_fmt_pct(item.get("realized_max5")),
+                    bmax5=_fmt_pct(item.get("backtest_max5")),
+                    rmax10=_fmt_pct(item.get("realized_max10")),
+                    bmax10=_fmt_pct(item.get("backtest_max10")),
+                    te=_fmt_pct(item.get("tracking_error")),
+                    decay=_fmt_pct(item.get("decay_pct")),
+                    flag=item.get("drift_flag", ""),
+                )
+            )
+    else:
+        lines.append("- no_data：尚未生成 strategy_drift_snapshots，不能对真实战绩漂移下结论。")
     lines.extend([
         "",
         "## DuckDB 日线扫描摘要",
@@ -516,6 +550,21 @@ def _normalize_data_quality_sla(payload: dict[str, Any] | None) -> dict[str, Any
         "latest_repair_audits": [
             dict(item) for item in raw.get("latest_repair_audits") or [] if isinstance(item, dict)
         ],
+    }
+
+
+def _normalize_live_vs_backtest(payload: dict[str, Any] | None) -> dict[str, Any]:
+    items = [dict(item) for item in (payload or {}).get("items") or [] if isinstance(item, dict)]
+    if not items:
+        return {
+            "status": "no_data",
+            "conclusion": "真实战绩 vs 回测：no_data，尚未生成 strategy_drift_snapshots；漂移监控不造分、不替代回测结论。",
+            "items": [],
+        }
+    return {
+        "status": "ok",
+        "conclusion": "真实战绩 vs 回测：按 production_signal_ledger 已结算样本对比回测预期，只产出 advisory 证据，不自动改策略分层。",
+        "items": items,
     }
 
 

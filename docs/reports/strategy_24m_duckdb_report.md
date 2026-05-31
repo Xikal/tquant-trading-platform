@@ -1,11 +1,26 @@
 # DuckDB 24个月策略分析报告
 
-- 生成时间：2026-05-31T04:36:18Z
+- 生成时间：2026-05-31T07:51:15Z
 - 状态：ok
-- Manifest：daily_bars_20260531043608
+- Manifest：daily_bars_20260531075105
 - 数据窗口：2024-05-31 至 2026-05-31
 - 数据完整性：ok
 - 结论：24个月日线数据完整性通过，可以基于该 Manifest 继续报告。
+
+## 数据质量 SLA
+
+- 结论：未找到 data_quality_snapshots；当前报告仅能依赖 Manifest 完整性门禁。
+
+| dataset | scope | 状态 | 覆盖率 | 缺失交易日 | invalid OHLC | 重复行 | blockers |
+|---|---|---|---:|---:|---:|---:|---|
+| -- | -- | no_data | 缺失 | 0 | 0 | 0 | 未找到 data_quality_snapshots |
+
+最近修复审计：无。
+
+## 真实战绩 vs 回测
+
+真实战绩 vs 回测：no_data，尚未生成 strategy_drift_snapshots；漂移监控不造分、不替代回测结论。
+- no_data：尚未生成 strategy_drift_snapshots，不能对真实战绩漂移下结论。
 
 ## DuckDB 日线扫描摘要
 
@@ -16,7 +31,7 @@
 | trade_day_count | 483 |
 | min_trade_date | 2024-05-31 |
 | max_trade_date | 2026-05-29 |
-| avg_pct_chg | 0.126614288941867 |
+| avg_pct_chg | 0.12661428894186624 |
 | total_amount | 812837220384751.0 |
 
 ## 24M 报告口径

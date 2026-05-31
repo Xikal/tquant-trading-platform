@@ -3,7 +3,8 @@ import type { StrategyMeta } from "../../api/strategies";
 import { useStrategyTrackingStore } from "../../stores/strategyTrackingStore";
 import { TqEmpty, TqErrorResult } from "../../ui/feedback/StateViews";
 import type { StrategyTrackingListResponse, StrategyTrackingParams, StrategyTrackingSnapshotResponse } from "../../types";
-import { useStrategyPromotionReview, useStrategyTrackingDetail, useStrategyTrackingHoldingAnalysis, useStrategyTrackingItems, useStrategyTrackingReport } from "./queries";
+import { useStrategyPromotionReview, useStrategyTrackingDetail, useStrategyTrackingHoldingAnalysis, useStrategyTrackingItems, useStrategyTrackingReport, useTrackRecordDrift } from "./queries";
+import { DriftMonitorPanel } from "./DriftMonitorPanel";
 import { PromotionReviewPanel } from "./PromotionReviewPanel";
 import { StrategyTrackingDetailDrawer } from "./StrategyTrackingDetailDrawer";
 import { StrategyTrackingDiagnosticsPanel } from "./StrategyTrackingDiagnosticsPanel";
@@ -28,6 +29,7 @@ export function StrategyTrackingPage({ strategyMeta }: { strategyMeta: StrategyM
   const detailQuery = useStrategyTrackingDetail(store.selectedItemId);
   const weeklyReportQuery = useStrategyTrackingReport("weekly", { range: store.range }, store.tab === "diagnostics");
   const holdingQuery = useStrategyTrackingHoldingAnalysis(holdingParams(store), store.tab === "holding");
+  const driftQuery = useTrackRecordDrift(60, store.tab === "drift");
   const promotionReviewQuery = useStrategyPromotionReview(store.strategyKey || "n_pattern_long_wash", true);
   const snapshot = query.data;
   const result = snapshot ? snapshotToListResponse(snapshot) : undefined;
@@ -138,6 +140,17 @@ export function StrategyTrackingPage({ strategyMeta }: { strategyMeta: StrategyM
                   <StrategyTrackingHoldingAnalysisPanel
                     items={holdingQuery.data?.items ?? []}
                     loading={holdingQuery.isFetching}
+                  />
+                ),
+              },
+              {
+                key: "drift",
+                label: "战绩漂移",
+                children: (
+                  <DriftMonitorPanel
+                    items={driftQuery.data?.items ?? []}
+                    total={driftQuery.data?.total ?? 0}
+                    loading={driftQuery.isFetching}
                   />
                 ),
               },

@@ -379,6 +379,33 @@ export interface StrategyPromotionReview {
   can_apply_override: boolean;
 }
 
+export interface TrackRecordDriftItem {
+  strategy_key: string;
+  as_of_date: string;
+  window_days: number;
+  realized_pf: number | null;
+  expected_pf: number | null;
+  realized_avg: number;
+  expected_avg: number;
+  realized_winrate: number;
+  expected_winrate: number;
+  realized_max5: number;
+  backtest_max5: number;
+  realized_max10: number;
+  backtest_max10: number;
+  tracking_error: number;
+  decay_pct: number;
+  drift_flag: string;
+  sample_settled: number;
+  created_at?: string | null;
+}
+
+export interface TrackRecordDriftResponse {
+  items: TrackRecordDriftItem[];
+  total: number;
+  data_quality: string;
+}
+
 export interface StrategyTrackingParams {
   range?: number;
   status?: string;

@@ -15,6 +15,7 @@ from app.services.analytics.report_queries import build_strategy_24m_duckdb_repo
 from app.services.data_quality.repair import repair_invalid_ohlc
 from app.services.data_quality.sla import SUPPORTED_DATASETS, compute_dataset_sla
 from app.services.data_quality.snapshots import data_quality_sla_payload
+from app.services.track_record.reporting import track_record_drift_payload
 from app.services.backtest_job_service import BacktestJobService
 from app.services.tasks.handlers import TaskContext
 from app.services.tasks.registry import TaskHandlerRegistry
@@ -113,6 +114,7 @@ def handle_strategy_24m_duckdb_report(context: TaskContext) -> dict[str, Any]:
         output_root=context.payload.get("output_root"),
         legacy_strategy_report=context.payload.get("strategy_report_json") or None,
         data_quality_sla=data_quality_sla_payload(context.db),
+        track_record_drift=track_record_drift_payload(context.db),
     )
     output_md = Path(context.payload.get("output_md") or DEFAULT_MD)
     output_json = Path(context.payload.get("output_json") or DEFAULT_JSON)

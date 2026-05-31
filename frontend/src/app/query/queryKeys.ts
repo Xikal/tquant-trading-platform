@@ -10,5 +10,6 @@ export const queryKeys = {
   strategyTrackingDetail: (itemId: string | null) => ["strategy-tracking", "detail", itemId] as const,
   strategyTrackingHoldingAnalysis: (params: Record<string, unknown>) => ["strategy-tracking", "holding-analysis", params] as const,
   strategyTrackingReport: (type: string, params: Record<string, unknown>) => ["strategy-tracking", "report", type, params] as const,
+  trackRecordDrift: (windowDays: number) => ["track-record", "drift", windowDays] as const,
   factorMining: ["factor-mining"] as const,
 };

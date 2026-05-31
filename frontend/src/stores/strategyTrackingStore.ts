@@ -1,6 +1,6 @@
 import { create } from "zustand";
 
-export type StrategyTrackingTab = "active" | "gain" | "risk" | "performance" | "holding" | "diagnostics";
+export type StrategyTrackingTab = "active" | "gain" | "risk" | "performance" | "holding" | "drift" | "diagnostics";
 export type StrategyTrackingViewMode = "beginner" | "professional";
 export type StrategyTrackingLane = "" | "baseline" | "front_row_weighted" | "front_row_only";
 
@@ -96,6 +96,7 @@ function sortForTab(tab: StrategyTrackingTab): string {
   if (tab === "risk") return "risk_desc";
   if (tab === "active") return "latest_desc";
   if (tab === "holding") return "best_holding_desc";
+  if (tab === "drift") return "max_gain_desc";
   if (tab === "performance") return "max_gain_desc";
   return "max_gain_desc";
 }

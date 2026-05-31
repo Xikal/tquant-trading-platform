@@ -49,3 +49,12 @@ export function useStrategyPromotionReview(strategyKey: string, enabled = true) 
     staleTime: STRATEGY_TRACKING_STALE_TIME_MS,
   });
 }
+
+export function useTrackRecordDrift(windowDays = 60, enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.trackRecordDrift(windowDays),
+    queryFn: () => api.getTrackRecordDrift(windowDays),
+    enabled,
+    staleTime: STRATEGY_TRACKING_STALE_TIME_MS,
+  });
+}
