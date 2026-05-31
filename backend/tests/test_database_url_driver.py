@@ -56,3 +56,14 @@ def test_mysql_deployment_templates_enable_200ms_slow_query_log() -> None:
     assert "--slow-query-log=${MYSQL_SLOW_QUERY_LOG:-ON}" in compose
     assert "--long-query-time=${MYSQL_LONG_QUERY_TIME:-0.2}" in compose
     assert "MYSQL_LONG_QUERY_TIME=0.2" in env_example
+
+
+def test_mysql_compose_pool_defaults_match_worker_roles() -> None:
+    compose = (ROOT_DIR / "docker-compose.mysql.yml").read_text(encoding="utf-8")
+
+    assert "DB_POOL_SIZE: ${WEB_DB_POOL_SIZE:-4}" in compose
+    assert "DB_MAX_OVERFLOW: ${WEB_DB_MAX_OVERFLOW:-4}" in compose
+    assert "DB_POOL_SIZE: ${WORKER_DB_POOL_SIZE:-2}" in compose
+    assert "DB_MAX_OVERFLOW: ${WORKER_DB_MAX_OVERFLOW:-2}" in compose
+    assert "DB_POOL_SIZE: ${ANALYTICS_DB_POOL_SIZE:-4}" in compose
+    assert "DB_MAX_OVERFLOW: ${ANALYTICS_DB_MAX_OVERFLOW:-4}" in compose

@@ -82,8 +82,8 @@ services:
       APP_ENVIRONMENT: ${APP_ENVIRONMENT:-production}
       API_PREFIX: ${API_PREFIX:-/api}
       DATABASE_URL: mysql+mysqldb://${MYSQL_USER:-tquant_app}:${MYSQL_PASSWORD:?MYSQL_PASSWORD is required}@mysql:3306/${MYSQL_DATABASE:-t_quant}?charset=utf8mb4
-      DB_POOL_SIZE: ${DB_POOL_SIZE:-12}
-      DB_MAX_OVERFLOW: ${DB_MAX_OVERFLOW:-24}
+      DB_POOL_SIZE: ${WEB_DB_POOL_SIZE:-4}
+      DB_MAX_OVERFLOW: ${WEB_DB_MAX_OVERFLOW:-4}
       DB_POOL_TIMEOUT: ${DB_POOL_TIMEOUT:-30}
       DB_POOL_RECYCLE: ${DB_POOL_RECYCLE:-1800}
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:8000,http://127.0.0.1:8000,http://localhost:18080,http://127.0.0.1:18080,http://localhost:18090,http://127.0.0.1:18090}
@@ -171,8 +171,8 @@ services:
       APP_ENVIRONMENT: ${APP_ENVIRONMENT:-production}
       API_PREFIX: ${API_PREFIX:-/api}
       DATABASE_URL: mysql+mysqldb://${MYSQL_USER:-tquant_app}:${MYSQL_PASSWORD:?MYSQL_PASSWORD is required}@mysql:3306/${MYSQL_DATABASE:-t_quant}?charset=utf8mb4
-      DB_POOL_SIZE: ${DB_POOL_SIZE:-12}
-      DB_MAX_OVERFLOW: ${DB_MAX_OVERFLOW:-24}
+      DB_POOL_SIZE: ${WORKER_DB_POOL_SIZE:-2}
+      DB_MAX_OVERFLOW: ${WORKER_DB_MAX_OVERFLOW:-2}
       DB_POOL_TIMEOUT: ${DB_POOL_TIMEOUT:-30}
       DB_POOL_RECYCLE: ${DB_POOL_RECYCLE:-1800}
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:8000,http://127.0.0.1:8000,http://localhost:18080,http://127.0.0.1:18080,http://localhost:18090,http://127.0.0.1:18090}
@@ -253,8 +253,8 @@ services:
       APP_ENVIRONMENT: ${APP_ENVIRONMENT:-production}
       API_PREFIX: ${API_PREFIX:-/api}
       DATABASE_URL: mysql+mysqldb://${MYSQL_USER:-tquant_app}:${MYSQL_PASSWORD:?MYSQL_PASSWORD is required}@mysql:3306/${MYSQL_DATABASE:-t_quant}?charset=utf8mb4
-      DB_POOL_SIZE: ${DB_POOL_SIZE:-12}
-      DB_MAX_OVERFLOW: ${DB_MAX_OVERFLOW:-24}
+      DB_POOL_SIZE: ${WORKER_DB_POOL_SIZE:-2}
+      DB_MAX_OVERFLOW: ${WORKER_DB_MAX_OVERFLOW:-2}
       DB_POOL_TIMEOUT: ${DB_POOL_TIMEOUT:-30}
       DB_POOL_RECYCLE: ${DB_POOL_RECYCLE:-1800}
       DEFAULT_DATA_SOURCE: ${DEFAULT_DATA_SOURCE:-akshare_eastmoney}
@@ -332,8 +332,8 @@ services:
     command: ["alembic", "-c", "alembic.ini", "upgrade", "head"]
     environment:
       DATABASE_URL: mysql+mysqldb://${MYSQL_USER:-tquant_app}:${MYSQL_PASSWORD:?MYSQL_PASSWORD is required}@mysql:3306/${MYSQL_DATABASE:-t_quant}?charset=utf8mb4
-      DB_POOL_SIZE: ${DB_POOL_SIZE:-12}
-      DB_MAX_OVERFLOW: ${DB_MAX_OVERFLOW:-24}
+      DB_POOL_SIZE: ${WORKER_DB_POOL_SIZE:-2}
+      DB_MAX_OVERFLOW: ${WORKER_DB_MAX_OVERFLOW:-2}
       DB_POOL_TIMEOUT: ${DB_POOL_TIMEOUT:-30}
       DB_POOL_RECYCLE: ${DB_POOL_RECYCLE:-1800}
       AUTH_SECRET_KEY: ${AUTH_SECRET_KEY:?AUTH_SECRET_KEY is required}
