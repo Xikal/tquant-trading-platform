@@ -20,6 +20,11 @@ _METRICS = {
     "stale_hits": 0,
     "estimated_hits": 0,
     "misses": 0,
+    "coverage_checks": 0,
+    "coverage_demand_total": 0,
+    "coverage_demand_miss_total": 0,
+    "coverage_below_target_total": 0,
+    "coverage_ratio_bps": 0,
 }
 
 
@@ -94,6 +99,45 @@ def local_quote_cache_metrics_snapshot() -> dict[str, int]:
         return dict(_METRICS)
 
 
+def record_quote_cache_demand_coverage(
+    *,
+    requested_symbols: list[str],
+    cached_symbols: list[str] | set[str],
+    target_ratio: float = 0.9,
+) -> dict[str, Any]:
+    requested = _clean_symbol_set(requested_symbols)
+    cached = _clean_symbol_set(list(cached_symbols))
+    covered = requested & cached
+    missing = requested - cached
+    demand_count = len(requested)
+    covered_count = len(covered)
+    ratio = (covered_count / demand_count) if demand_count else 1.0
+    below_target = ratio < max(min(float(target_ratio or 0.9), 1.0), 0.0)
+    with _LOCK:
+        _METRICS["coverage_checks"] = int(_METRICS.get("coverage_checks") or 0) + 1
+        _METRICS["coverage_demand_total"] = int(_METRICS.get("coverage_demand_total") or 0) + demand_count
+        _METRICS["coverage_demand_miss_total"] = int(_METRICS.get("coverage_demand_miss_total") or 0) + len(missing)
+        if below_target:
+            _METRICS["coverage_below_target_total"] = int(_METRICS.get("coverage_below_target_total") or 0) + 1
+        _METRICS["coverage_ratio_bps"] = int(round(ratio * 10_000))
+    return {
+        "demand_count": demand_count,
+        "covered_count": covered_count,
+        "demand_miss_count": len(missing),
+        "coverage_ratio": round(ratio, 6),
+        "coverage_ratio_bps": int(round(ratio * 10_000)),
+        "coverage_below_target": below_target,
+        "alert_code": "quote_cache_coverage_below_target" if below_target else "",
+        "missing_symbols_sample": sorted(missing)[:20],
+    }
+
+
+def reset_local_quote_cache_metrics() -> None:
+    with _LOCK:
+        for key in list(_METRICS):
+            _METRICS[key] = 0
+
+
 def _cache_key(symbol: str) -> str:
     return f"tquant:market:quote:{symbol.strip()}"
 
@@ -112,6 +156,10 @@ def _increment(key: str) -> None:
 def _increment_by(key: str, count: int) -> None:
     with _LOCK:
         _METRICS[key] = int(_METRICS.get(key) or 0) + int(count)
+
+
+def _clean_symbol_set(symbols: list[str]) -> set[str]:
+    return {clean for item in symbols if len(clean := str(item or "").strip()) == 6}
 
 
 def _parse_payload(raw: Any) -> tuple[QuoteSnapshot | None, float]:

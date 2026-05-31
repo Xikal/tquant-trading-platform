@@ -7,8 +7,10 @@ from sqlalchemy.orm import Session
 
 from app.core.timezone import beijing_now
 from app.models.entities import DailyBarSnapshot, Instrument, LowBuyResultSnapshot, PaperPosition, UserWatchlist
+from app.models.schema_defs.agent import AgentNotificationTestRequest
 from app.models.schemas import QuoteSnapshot
-from app.services.market.local_quote_cache import write_local_quote_snapshots
+from app.services.agent_notification_service import AgentNotificationService
+from app.services.market.local_quote_cache import record_quote_cache_demand_coverage, write_local_quote_snapshots
 from app.services.market_data import MarketDataService
 
 DEFAULT_LIMIT = 1200
@@ -17,6 +19,7 @@ PRIORITY_CORE_LIMIT = 600
 HOLDING_CORE_LIMIT = 300
 MONITOR_SECTOR_LIMIT = 8
 MONITOR_SECTOR_MEMBER_LIMIT = 30
+QUOTE_CACHE_COVERAGE_TARGET = 0.9
 
 
 class MarketQuoteCacheRefreshService:
@@ -32,10 +35,18 @@ class MarketQuoteCacheRefreshService:
         if len(quotes) < len(symbols):
             quotes.update({symbol: quote for symbol, quote in self._daily_fallback_quotes(symbols).items() if symbol not in quotes})
         redis_written = write_local_quote_snapshots(quotes)
+        coverage = record_quote_cache_demand_coverage(
+            requested_symbols=symbols,
+            cached_symbols=list(quotes),
+            target_ratio=QUOTE_CACHE_COVERAGE_TARGET,
+        )
+        alert = maybe_send_quote_cache_coverage_alert(coverage)
         return {
             "ok": True,
             "count": len(quotes),
             "redis_written": redis_written,
+            "coverage": coverage,
+            "coverage_alert": alert,
             "missing_count": max(len(symbols) - len(quotes), 0),
             "symbols": symbols[:20],
             "message": f"已刷新 {len(quotes)} 只标的本地行情缓存，Redis 写入 {redis_written} 条",
@@ -208,3 +219,24 @@ def quote_cache_refresh_bucket(now: datetime | None = None) -> str:
     current = now or beijing_now()
     bucket_minute = (current.minute // 1)
     return current.strftime(f"%Y%m%d%H{bucket_minute:02d}")
+
+
+def maybe_send_quote_cache_coverage_alert(coverage: dict[str, object]) -> dict[str, object]:
+    if not coverage.get("coverage_below_target"):
+        return {"ok": True, "sent": False, "reason": "coverage_ok"}
+    service = AgentNotificationService()
+    if not service.supports_channel("feishu"):
+        return {"ok": True, "sent": False, "reason": "notification_channel_not_configured"}
+    response = service.send_test(
+        AgentNotificationTestRequest(
+            channel="feishu",
+            message=(
+                "quote_cache_coverage_below_target: "
+                f"coverage={coverage.get('coverage_ratio')} "
+                f"demand={coverage.get('demand_count')} "
+                f"missing={coverage.get('demand_miss_count')} "
+                f"sample={coverage.get('missing_symbols_sample')}"
+            ),
+        )
+    )
+    return {"ok": bool(response.ok), "sent": bool(response.ok), "reason": response.message, "code": response.code}

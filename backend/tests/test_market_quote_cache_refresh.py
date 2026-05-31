@@ -17,6 +17,12 @@ from app.models.entities import (
     UserWatchlist,
 )
 from app.services.market_quote_cache_refresh import MarketQuoteCacheRefreshService
+from app.services.market.local_quote_cache import (
+    local_quote_cache_metrics_snapshot,
+    record_quote_cache_demand_coverage,
+    reset_local_quote_cache_metrics,
+)
+from app.services.market_quote_cache_refresh import maybe_send_quote_cache_coverage_alert
 
 
 def test_target_symbols_keeps_core_hot_read_demand_before_liquidity_tail() -> None:
@@ -88,3 +94,46 @@ def test_target_symbols_keeps_core_hot_read_demand_before_liquidity_tail() -> No
     assert {"000001", "000002", "000003", "000004", "000005", "000006", "000007", "000008", "000009"}.issubset(
         set(symbols)
     )
+
+
+def test_quote_cache_demand_coverage_marks_below_target_alert() -> None:
+    reset_local_quote_cache_metrics()
+
+    coverage = record_quote_cache_demand_coverage(
+        requested_symbols=["000001", "000002", "000003", "000004"],
+        cached_symbols=["000001"],
+        target_ratio=0.9,
+    )
+
+    assert coverage["demand_count"] == 4
+    assert coverage["covered_count"] == 1
+    assert coverage["demand_miss_count"] == 3
+    assert coverage["coverage_below_target"] is True
+    assert coverage["alert_code"] == "quote_cache_coverage_below_target"
+    metrics = local_quote_cache_metrics_snapshot()
+    assert metrics["coverage_demand_total"] == 4
+    assert metrics["coverage_demand_miss_total"] == 3
+    assert metrics["coverage_ratio_bps"] == 2500
+
+
+def test_quote_cache_coverage_alert_skips_without_notification_channel(monkeypatch) -> None:
+    class StubNotificationService:
+        def supports_channel(self, channel: str = "feishu") -> bool:
+            return False
+
+    monkeypatch.setattr(
+        "app.services.market_quote_cache_refresh.AgentNotificationService",
+        StubNotificationService,
+    )
+
+    result = maybe_send_quote_cache_coverage_alert(
+        {
+            "coverage_below_target": True,
+            "coverage_ratio": 0.25,
+            "demand_count": 4,
+            "demand_miss_count": 3,
+            "missing_symbols_sample": ["000002", "000003", "000004"],
+        }
+    )
+
+    assert result == {"ok": True, "sent": False, "reason": "notification_channel_not_configured"}

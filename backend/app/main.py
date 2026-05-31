@@ -258,6 +258,11 @@ def _provider_metrics_snapshot() -> dict[str, int]:
         "local_quote_cache_fresh_hits_total": int(quote_cache.get("fresh_hits") or 0),
         "local_quote_cache_stale_hits_total": int(quote_cache.get("stale_hits") or 0),
         "local_quote_cache_estimated_hits_total": int(quote_cache.get("estimated_hits") or 0),
+        "local_quote_cache_coverage_checks_total": int(quote_cache.get("coverage_checks") or 0),
+        "local_quote_cache_coverage_demand_total": int(quote_cache.get("coverage_demand_total") or 0),
+        "local_quote_cache_coverage_demand_miss_total": int(quote_cache.get("coverage_demand_miss_total") or 0),
+        "local_quote_cache_coverage_below_target_total": int(quote_cache.get("coverage_below_target_total") or 0),
+        "local_quote_cache_coverage_ratio_bps": int(quote_cache.get("coverage_ratio_bps") or 0),
     }
 
 
@@ -441,6 +446,21 @@ def prometheus_metrics(_: None = Depends(require_admin_auth)) -> PlainTextRespon
         "# HELP tquant_local_quote_cache_estimated_hits_total Estimated local quote cache hits.",
         "# TYPE tquant_local_quote_cache_estimated_hits_total counter",
         f"tquant_local_quote_cache_estimated_hits_total {provider_snapshot.get('local_quote_cache_estimated_hits_total', 0)}",
+        "# HELP tquant_local_quote_cache_coverage_checks_total Local quote cache hot-demand coverage checks.",
+        "# TYPE tquant_local_quote_cache_coverage_checks_total counter",
+        f"tquant_local_quote_cache_coverage_checks_total {provider_snapshot.get('local_quote_cache_coverage_checks_total', 0)}",
+        "# HELP tquant_local_quote_cache_coverage_demand_total Symbols included in quote cache hot-demand coverage checks.",
+        "# TYPE tquant_local_quote_cache_coverage_demand_total counter",
+        f"tquant_local_quote_cache_coverage_demand_total {provider_snapshot.get('local_quote_cache_coverage_demand_total', 0)}",
+        "# HELP tquant_local_quote_cache_coverage_demand_miss_total Symbols missing from quote cache hot-demand coverage checks.",
+        "# TYPE tquant_local_quote_cache_coverage_demand_miss_total counter",
+        f"tquant_local_quote_cache_coverage_demand_miss_total {provider_snapshot.get('local_quote_cache_coverage_demand_miss_total', 0)}",
+        "# HELP tquant_local_quote_cache_coverage_below_target_total Quote cache coverage checks below target.",
+        "# TYPE tquant_local_quote_cache_coverage_below_target_total counter",
+        f"tquant_local_quote_cache_coverage_below_target_total {provider_snapshot.get('local_quote_cache_coverage_below_target_total', 0)}",
+        "# HELP tquant_local_quote_cache_coverage_ratio_bps Last hot-demand quote cache coverage ratio in basis points.",
+        "# TYPE tquant_local_quote_cache_coverage_ratio_bps gauge",
+        f"tquant_local_quote_cache_coverage_ratio_bps {provider_snapshot.get('local_quote_cache_coverage_ratio_bps', 0)}",
     ]
     return PlainTextResponse("\n".join(lines) + "\n", media_type="text/plain; version=0.0.4")
 
