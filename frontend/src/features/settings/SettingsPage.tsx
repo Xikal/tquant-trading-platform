@@ -9,7 +9,7 @@ import type {
   SettingsPayload,
   UserSectorExclusionsResponse,
 } from "../../types";
-import { useEffect, useMemo, useRef } from "react";
+import { lazy, Suspense, useEffect, useMemo, useRef } from "react";
 import { Button } from "antd";
 import { featureFlagsApi, type FeatureFlagItem } from "../../api/featureFlags";
 import { operationAuditApi } from "../../api/operationAudit";
@@ -86,6 +86,8 @@ const SETTINGS_UNSAVED_BANNER_STYLE: CSSProperties = {
   fontSize: 12,
   fontWeight: 800,
 };
+
+const DataQualityPanel = lazy(() => import("./DataQualityPanel").then((module) => ({ default: module.DataQualityPanel })));
 
 export function SettingsPage({
   settings,
@@ -437,6 +439,9 @@ export function SettingsPage({
               adminTokenError={adminTokenError}
               onRefresh={onRefreshLatestData}
             />
+            <Suspense fallback={<p className="hint">数据质量面板加载中...</p>}>
+              <DataQualityPanel />
+            </Suspense>
             <RuntimeDiagnosticsCard runtime={runtime} adminTasks={adminTasks} adminMetrics={adminMetrics} loading={loading} onRefresh={onRefresh} />
             <RuntimeSnapshotPanel settings={settings} runtime={runtime} />
           </SettingsSection>

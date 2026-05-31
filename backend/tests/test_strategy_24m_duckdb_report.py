@@ -178,6 +178,56 @@ def test_strategy_report_keeps_n_pattern_research_without_production_gap(tmp_pat
     assert report["strategy_adjustment_recommendations"][0]["recommended_action"] == "delete_candidate"
 
 
+def test_strategy_report_includes_data_quality_sla_and_blocks_on_fail(tmp_path):
+    source = tmp_path / "strategy.json"
+    source.write_text(
+        _json(
+            {
+                "all_strategies": [_strategy("first_board")],
+                "strategy_family_summary": {
+                    "time_series_splits": {
+                        "evidence_level": "quarter_breakdown_proxy_not_true_walk_forward",
+                        "out_of_sample_quarters": ["2026Q2"],
+                    }
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+    empty = tmp_path / "empty.json"
+    empty.write_text(_json({"strategies": []}), encoding="utf-8")
+
+    report = build_strategy_24m_duckdb_report(
+        _manifest(),
+        output_root=tmp_path / "analytics",
+        legacy_strategy_report=source,
+        focus_walk_forward_report=empty,
+        parameter_walk_forward_report=empty,
+        data_quality_sla={
+            "items": [
+                {
+                    "dataset_key": "daily_bars",
+                    "scope": "production_universe",
+                    "status": "fail",
+                    "coverage_pct": 98.7,
+                    "missing_days": 3,
+                    "invalid_rows": 1,
+                    "duplicate_rows": 0,
+                    "blockers": ["daily_bars_invalid_ohlc"],
+                    "checked_at": "2026-05-30T10:00:00",
+                }
+            ],
+            "latest_repair_audits": [],
+        },
+    )
+    markdown = render_strategy_24m_markdown(report)
+
+    assert report["status"] == "blocked_by_data"
+    assert "## 数据质量 SLA" in markdown
+    assert "daily_bars_invalid_ohlc" in markdown
+    assert "98.70%" in markdown
+
+
 def test_strategy_report_serializes_duckdb_dates(tmp_path):
     source = tmp_path / "strategy.json"
     source.write_text(

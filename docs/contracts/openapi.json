@@ -6485,6 +6485,210 @@
         "title": "BffWorkspaceManifest",
         "type": "object"
       },
+      "DataQualitySlaResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/DataQualitySnapshotOut"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "latest_repair_audits": {
+            "items": {
+              "$ref": "#/components/schemas/DataRepairAuditOut"
+            },
+            "title": "Latest Repair Audits",
+            "type": "array"
+          },
+          "total": {
+            "default": 0,
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "title": "DataQualitySlaResponse",
+        "type": "object"
+      },
+      "DataQualitySnapshotOut": {
+        "properties": {
+          "actual_days": {
+            "title": "Actual Days",
+            "type": "integer"
+          },
+          "as_of_date": {
+            "format": "date",
+            "title": "As Of Date",
+            "type": "string"
+          },
+          "blockers": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Blockers",
+            "type": "array"
+          },
+          "checked_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Checked At"
+          },
+          "coverage_pct": {
+            "title": "Coverage Pct",
+            "type": "number"
+          },
+          "dataset_key": {
+            "title": "Dataset Key",
+            "type": "string"
+          },
+          "duplicate_rows": {
+            "title": "Duplicate Rows",
+            "type": "integer"
+          },
+          "expected_days": {
+            "title": "Expected Days",
+            "type": "integer"
+          },
+          "invalid_rows": {
+            "title": "Invalid Rows",
+            "type": "integer"
+          },
+          "missing_days": {
+            "title": "Missing Days",
+            "type": "integer"
+          },
+          "scope": {
+            "title": "Scope",
+            "type": "string"
+          },
+          "stale": {
+            "title": "Stale",
+            "type": "boolean"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "dataset_key",
+          "as_of_date",
+          "scope",
+          "expected_days",
+          "actual_days",
+          "missing_days",
+          "invalid_rows",
+          "duplicate_rows",
+          "stale",
+          "coverage_pct",
+          "status"
+        ],
+        "title": "DataQualitySnapshotOut",
+        "type": "object"
+      },
+      "DataRepairAuditOut": {
+        "properties": {
+          "backup_path": {
+            "default": "",
+            "title": "Backup Path",
+            "type": "string"
+          },
+          "created_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created At"
+          },
+          "dataset_key": {
+            "title": "Dataset Key",
+            "type": "string"
+          },
+          "deleted_rows_count": {
+            "default": 0,
+            "title": "Deleted Rows Count",
+            "type": "integer"
+          },
+          "fabricated": {
+            "default": false,
+            "title": "Fabricated",
+            "type": "boolean"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "operator": {
+            "default": "",
+            "title": "Operator",
+            "type": "string"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          },
+          "refetch_result": {
+            "default": "",
+            "title": "Refetch Result",
+            "type": "string"
+          },
+          "repair_id": {
+            "title": "Repair Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "repair_id",
+          "dataset_key",
+          "reason"
+        ],
+        "title": "DataRepairAuditOut",
+        "type": "object"
+      },
+      "DataRepairRunRequest": {
+        "properties": {
+          "backup_dir": {
+            "default": "",
+            "title": "Backup Dir",
+            "type": "string"
+          },
+          "dataset_key": {
+            "default": "daily_bars",
+            "title": "Dataset Key",
+            "type": "string"
+          },
+          "dry_run": {
+            "default": true,
+            "title": "Dry Run",
+            "type": "boolean"
+          },
+          "output_path": {
+            "default": "",
+            "title": "Output Path",
+            "type": "string"
+          },
+          "refetch": {
+            "default": true,
+            "title": "Refetch",
+            "type": "boolean"
+          }
+        },
+        "title": "DataRepairRunRequest",
+        "type": "object"
+      },
       "DataSourceProbeResponse": {
         "properties": {
           "items": {
@@ -26429,6 +26633,170 @@
         "summary": "Strategy Workspace Bff",
         "tags": [
           "bff"
+        ]
+      }
+    },
+    "/api/data-quality/repair": {
+      "post": {
+        "operationId": "enqueue_data_repair_api_data_quality_repair_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-Admin-Token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Admin-Token"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DataRepairRunRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RuntimeTaskOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Enqueue Data Repair",
+        "tags": [
+          "data-quality"
+        ]
+      }
+    },
+    "/api/data-quality/sla": {
+      "get": {
+        "operationId": "list_data_quality_sla_api_data_quality_sla_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "dataset_key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 40,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Dataset Key"
+            }
+          },
+          {
+            "in": "query",
+            "name": "scope",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 40,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Scope"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DataQualitySlaResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Data Quality Sla",
+        "tags": [
+          "data-quality"
         ]
       }
     },

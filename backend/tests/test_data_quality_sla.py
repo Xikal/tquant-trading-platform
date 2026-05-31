@@ -1,17 +1,26 @@
 from __future__ import annotations
 
 import json
+from types import SimpleNamespace
 from datetime import date, timedelta
 
+from fastapi import FastAPI
+from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, select
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
+from app.api.routes import data_quality
+from app.core.admin_auth import require_admin_auth
 from app.core.config import AppSettings
+from app.core.auth import get_current_user
+from app.core.database import get_db
 from app.models.base import Base
 from app.models.data_quality_entities import DataQualitySnapshot, DataRepairAudit
+from app.models.schema_defs.phase4 import RuntimeTaskCreate
 from app.models.entities import DailyBarSnapshot, Instrument, MinuteBarSnapshot, TickTradeSnapshot
 from app.services.data_quality.sla import compute_dataset_sla
+from app.services.tasks import RuntimeTaskQueue
 
 
 def test_schema_roundtrip() -> None:
@@ -194,6 +203,51 @@ def test_minute_and_tick_sla_mark_unavailable_without_fake_scores() -> None:
         db.close()
 
 
+def test_data_quality_sla_route_returns_latest_snapshots() -> None:
+    client, Session = _data_quality_client()
+    with Session() as db:
+        db.add(
+            DataQualitySnapshot(
+                dataset_key="daily_bars",
+                as_of_date=date(2026, 5, 29),
+                scope="production_universe",
+                expected_days=480,
+                actual_days=477,
+                missing_days=3,
+                invalid_rows=1,
+                duplicate_rows=0,
+                stale=False,
+                coverage_pct=99.37,
+                status="fail",
+                blockers_json=json.dumps(["daily_bars_invalid_ohlc"], ensure_ascii=False),
+            )
+        )
+        db.commit()
+
+    response = client.get("/api/data-quality/sla")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["total"] == 1
+    assert payload["items"][0]["status"] == "fail"
+    assert payload["items"][0]["blockers"] == ["daily_bars_invalid_ohlc"]
+
+
+def test_data_quality_repair_route_enqueues_dry_run_runtime_task() -> None:
+    client, Session = _data_quality_client()
+
+    response = client.post("/api/data-quality/repair", json={"dataset_key": "daily_bars"})
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["task_type"] == "data_repair_run"
+    assert payload["payload"]["dry_run"] is True
+    with Session() as db:
+        rows = RuntimeTaskQueue(db).list(limit=10).items
+    assert rows[0].task_type == "data_repair_run"
+    assert rows[0].payload["dry_run"] is True
+
+
 def _session():
     engine = create_engine(
         "sqlite+pysqlite:///:memory:",
@@ -204,6 +258,31 @@ def _session():
     Base.metadata.create_all(engine)
     Session = sessionmaker(bind=engine, future=True)
     return Session()
+
+
+def _data_quality_client():
+    engine = create_engine(
+        "sqlite+pysqlite:///:memory:",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+        future=True,
+    )
+    Base.metadata.create_all(engine)
+    Session = sessionmaker(bind=engine, future=True)
+    app = FastAPI()
+    app.include_router(data_quality.router, prefix="/api")
+    app.dependency_overrides[get_current_user] = lambda: SimpleNamespace(id=1, username="tester", is_active=True)
+    app.dependency_overrides[require_admin_auth] = lambda: None
+
+    def override_db():
+        db = Session()
+        try:
+            yield db
+        finally:
+            db.close()
+
+    app.dependency_overrides[get_db] = override_db
+    return TestClient(app), Session
 
 
 def _daily_bar(

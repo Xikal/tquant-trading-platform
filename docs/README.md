@@ -9,6 +9,7 @@
 - `docs/operations/schema-index-runbook.md`
 - `docs/operations/ui-regression-checklist.md`
 - `docs/high-roi-platform-expansion-runbook-2026-05-30.md`
+- `docs/superpowers/plans/2026-05-30-trust-and-data-quality-expansion.md`
 - `PRODUCTION_RUNBOOK.md`
 - `DEVELOPMENT_GUIDE.md`
 
@@ -63,6 +64,7 @@ These files are kept as historical decision records. Do not treat them as curren
 - New large machine-readable analytics outputs must go under `backend/data/analytics/reports`, an external `artifacts/` directory, or object storage; do not add new large JSON files directly under `docs/reports`.
 - Human-readable Markdown summaries may stay in `docs/reports` when they are current evidence or release records.
 - The generated DuckDB strategy report has a tracked Markdown summary at `docs/reports/strategy_24m_duckdb_report.md`; its JSON companion belongs at `backend/data/analytics/reports/strategy_24m_duckdb_report.json`.
+- Data quality repair dry-run/apply JSON, SLA exports and large machine-readable repair evidence belong under `backend/data/analytics/reports`, `backups/data_quality`, an external `artifacts/` directory, or object storage; do not place them directly under `docs/reports`.
 - `docs/reports/*-backtest-*.json`, `docs/reports/*-performance-*.json`, report zips, and analytics parquet/report JSON are ignored by default to avoid accidental repository bloat.
 
 ## Cleanup Policy

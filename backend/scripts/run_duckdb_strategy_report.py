@@ -15,6 +15,7 @@ from app.core.database import SessionLocal, init_db
 from app.services.analytics.exporters import export_daily_bars_parquet
 from app.services.analytics.manifest import load_manifest
 from app.services.analytics.report_queries import build_strategy_24m_duckdb_report, write_strategy_24m_report
+from app.services.data_quality.snapshots import data_quality_sla_payload
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -43,10 +44,13 @@ def main() -> int:
             )
     else:
         manifest = load_manifest(args.manifest, output_root=args.output_root)
+    with SessionLocal() as db:
+        sla_payload = data_quality_sla_payload(db)
     report = build_strategy_24m_duckdb_report(
         manifest,
         output_root=args.output_root,
         legacy_strategy_report=args.strategy_report_json or None,
+        data_quality_sla=sla_payload,
     )
     write_strategy_24m_report(report, output_md=args.output_md, output_json=args.output_json)
     print(json.dumps({"status": report["status"], "output_md": args.output_md, "output_json": args.output_json}, ensure_ascii=False))

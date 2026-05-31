@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import type { FeatureFlagAuditItem, FeatureFlagItem } from "../api/featureFlags";
+import type { DataQualitySlaResponse } from "../api/dataQuality";
 import { getAdminApiToken } from "../api/base";
 import type { OperationAuditItem } from "../api/operationAudit";
 import type { QuantParameterSet } from "../api/quantParameters";
@@ -62,6 +63,10 @@ interface SettingsUiStore {
   operationAudits: OperationAuditItem[];
   operationAuditError: string;
   operationAuditLoading: boolean;
+  dataQuality: DataQualitySlaResponse | null;
+  dataQualityError: string;
+  dataQualityLoading: boolean;
+  dataQualityRepairLoading: boolean;
   quantCards: Record<SettingsQuantCardKey, SettingsQuantCardState>;
   mfa: SettingsMfaState;
   setActiveTab: (tab: SettingsTabKey) => void;
@@ -82,6 +87,10 @@ interface SettingsUiStore {
   setOperationAudits: (operationAudits: OperationAuditItem[]) => void;
   setOperationAuditError: (operationAuditError: string) => void;
   setOperationAuditLoading: (operationAuditLoading: boolean) => void;
+  setDataQuality: (dataQuality: DataQualitySlaResponse | null) => void;
+  setDataQualityError: (dataQualityError: string) => void;
+  setDataQualityLoading: (dataQualityLoading: boolean) => void;
+  setDataQualityRepairLoading: (dataQualityRepairLoading: boolean) => void;
   setQuantCard: (key: SettingsQuantCardKey, patch: Partial<SettingsQuantCardState>) => void;
   setMfa: (patch: Partial<SettingsMfaState>) => void;
 }
@@ -117,6 +126,10 @@ export const useSettingsUiStore = create<SettingsUiStore>((set) => ({
   operationAudits: [],
   operationAuditError: "",
   operationAuditLoading: false,
+  dataQuality: null,
+  dataQualityError: "",
+  dataQualityLoading: false,
+  dataQualityRepairLoading: false,
   quantCards: {
     ml: { ...EMPTY_QUANT_CARD },
     paperExit: { ...EMPTY_QUANT_CARD },
@@ -155,6 +168,10 @@ export const useSettingsUiStore = create<SettingsUiStore>((set) => ({
   setOperationAudits: (operationAudits) => set({ operationAudits }),
   setOperationAuditError: (operationAuditError) => set({ operationAuditError }),
   setOperationAuditLoading: (operationAuditLoading) => set({ operationAuditLoading }),
+  setDataQuality: (dataQuality) => set({ dataQuality }),
+  setDataQualityError: (dataQualityError) => set({ dataQualityError }),
+  setDataQualityLoading: (dataQualityLoading) => set({ dataQualityLoading }),
+  setDataQualityRepairLoading: (dataQualityRepairLoading) => set({ dataQualityRepairLoading }),
   setQuantCard: (key, patch) => set((state) => ({
     quantCards: {
       ...state.quantCards,

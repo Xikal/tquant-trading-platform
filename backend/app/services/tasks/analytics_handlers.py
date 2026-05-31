@@ -12,6 +12,9 @@ from app.services.analytics import export_daily_bars_parquet, load_manifest
 from app.services.analytics.config import PROJECT_ROOT
 from app.services.analytics.quality import check_daily_bars_24m_quality
 from app.services.analytics.report_queries import build_strategy_24m_duckdb_report, write_strategy_24m_report
+from app.services.data_quality.repair import repair_invalid_ohlc
+from app.services.data_quality.sla import SUPPORTED_DATASETS, compute_dataset_sla
+from app.services.data_quality.snapshots import data_quality_sla_payload
 from app.services.backtest_job_service import BacktestJobService
 from app.services.tasks.handlers import TaskContext
 from app.services.tasks.registry import TaskHandlerRegistry
@@ -29,6 +32,8 @@ def register_analytics_handlers(registry: TaskHandlerRegistry) -> None:
     registry.register("decision_context_24m_report", handle_strategy_24m_duckdb_report)
     registry.register("portfolio_execution_24m_report", handle_strategy_24m_duckdb_report)
     registry.register("backtest_all_strategies_24m", handle_backtest_all_strategies_24m)
+    registry.register("data_quality_sla_refresh", handle_data_quality_sla_refresh)
+    registry.register("data_repair_run", handle_data_repair_run)
 
 
 def handle_data_backfill_24m(context: TaskContext) -> dict[str, Any]:
@@ -105,6 +110,7 @@ def handle_strategy_24m_duckdb_report(context: TaskContext) -> dict[str, Any]:
         manifest,
         output_root=context.payload.get("output_root"),
         legacy_strategy_report=context.payload.get("strategy_report_json") or None,
+        data_quality_sla=data_quality_sla_payload(context.db),
     )
     output_md = Path(context.payload.get("output_md") or DEFAULT_MD)
     output_json = Path(context.payload.get("output_json") or DEFAULT_JSON)
@@ -146,6 +152,86 @@ def handle_backtest_all_strategies_24m(context: TaskContext) -> dict[str, Any]:
     return {"ok": True, "status": "queued_backtest_run", "run_id": run.id, "quality": quality.as_dict()}
 
 
+def handle_data_quality_sla_refresh(context: TaskContext) -> dict[str, Any]:
+    payload = context.payload
+    datasets = [str(item) for item in (payload.get("datasets") or ["daily_bars", "minute_bars", "tick_trades"])]
+    scope = str(payload.get("scope") or "production_universe")
+    end = _payload_end_date(payload)
+    start = date.fromisoformat(str(payload["start_date"])[:10]) if payload.get("start_date") else None
+    expected_days = int(payload["expected_days"]) if payload.get("expected_days") is not None else None
+    snapshots = []
+    for index, dataset_key in enumerate(datasets, start=1):
+        if dataset_key not in SUPPORTED_DATASETS:
+            raise ValueError(f"unsupported SLA dataset: {dataset_key}")
+        context.progress(10.0 + index * 20.0, f"刷新 {dataset_key} 数据质量 SLA")
+        snapshot = compute_dataset_sla(
+            context.db,
+            dataset_key=dataset_key,
+            scope=scope,
+            as_of=end,
+            start_date=start,
+            expected_days=expected_days,
+        )
+        snapshots.append(
+            {
+                "dataset_key": snapshot.dataset_key,
+                "scope": snapshot.scope,
+                "status": snapshot.status,
+                "coverage_pct": float(snapshot.coverage_pct or 0.0),
+                "missing_days": int(snapshot.missing_days or 0),
+                "invalid_rows": int(snapshot.invalid_rows or 0),
+                "duplicate_rows": int(snapshot.duplicate_rows or 0),
+                "blockers_json": snapshot.blockers_json,
+            }
+        )
+    payload_out = data_quality_sla_payload(context.db)
+    _notify_data_quality_failures(payload_out)
+    return {"ok": True, "status": "completed", "snapshots": snapshots, "data_quality_sla": payload_out}
+
+
+def handle_data_repair_run(context: TaskContext) -> dict[str, Any]:
+    payload = context.payload
+    dataset_key = str(payload.get("dataset_key") or "daily_bars")
+    dry_run = bool(payload.get("dry_run", True))
+    context.progress(10.0, "开始数据修复 dry-run" if dry_run else "开始数据修复 apply")
+    result = repair_invalid_ohlc(
+        context.db,
+        dataset_key=dataset_key,
+        dry_run=dry_run,
+        backup_dir=payload.get("backup_dir") or None,
+        output_path=payload.get("output_path") or None,
+        refetch=bool(payload.get("refetch", True)),
+        operator=str(payload.get("operator") or f"analytics-worker:{context.worker_id}"),
+    )
+    if result.audit_path:
+        context.add_artifact(result.audit_path)
+    if result.row_backup_path:
+        context.add_artifact(result.row_backup_path)
+    if result.backup_path:
+        context.add_artifact(result.backup_path)
+    return {"ok": True, "repair": result.as_dict()}
+
+
 def _payload_end_date(payload: dict[str, Any]) -> date:
     raw = str(payload.get("end_date") or date.today().isoformat())
     return date.fromisoformat(raw[:10])
+
+
+def _notify_data_quality_failures(payload: dict[str, Any]) -> None:
+    failed = [item for item in payload.get("items") or [] if item.get("status") in {"fail", "unavailable"}]
+    if not failed:
+        return
+    try:
+        from app.models.schema_defs.agent import AgentNotificationTestRequest
+        from app.services.agent_notification_service import AgentNotificationService
+
+        service = AgentNotificationService()
+        if not service.supports_channel("feishu"):
+            return
+        lines = ["数据质量 SLA 未通过："]
+        for item in failed[:8]:
+            blockers = "、".join(item.get("blockers") or []) or item.get("status", "")
+            lines.append(f"- {item.get('dataset_key')}[{item.get('scope')}] {blockers}")
+        service.send_test(AgentNotificationTestRequest(channel="feishu", message="\n".join(lines)))
+    except Exception:
+        return

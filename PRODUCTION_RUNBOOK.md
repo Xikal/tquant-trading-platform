@@ -314,7 +314,7 @@ APP_PORT=18090 docker compose -f docker-compose.mysql.yml up -d --build
 - `app` 容器默认关闭运行时后台任务，只负责 Web/API 响应
 - `runtime-worker` 容器运行 `python -m app.workers.runtime_worker`，消费 `runtime_tasks` 持久化任务队列
 - `backtest-worker` 容器独立消费回测任务
-- `analytics-worker` 容器独立消费 `strategy_24m_duckdb_report`、`analytics_export_daily_bars`、`analytics_quality_check` 等分析任务，并在镜像构建时通过 `INSTALL_ANALYTICS=1` 安装 `duckdb`、`pyarrow`
+- `analytics-worker` 容器独立消费 `strategy_24m_duckdb_report`、`analytics_export_daily_bars`、`analytics_quality_check`、`data_quality_sla_refresh`、`data_repair_run` 等分析与数据质量任务，并在镜像构建时通过 `INSTALL_ANALYTICS=1` 安装 `duckdb`、`pyarrow`
 - `go-bff-gateway`、`go-market-read-service`、`go-scan-worker` 是生产主路径组件，MySQL compose 默认启动；Python 保留 fallback，但 fallback 必须通过日志或 metrics 可观测
 - 默认数据库为 `t_quant`
 - 默认应用用户为 `tquant_app`
@@ -390,6 +390,10 @@ cp .env.docker.example .env
   必填，长度不少于 64 字符，且必须与 `AUTH_SECRET_KEY` 不同。用于加密系统配置中的 `llm_api_key`、`database_url` 等敏感字段。
 - `DECISION_CONTEXT_ENABLED` / `MARKET_GATE_PRODUCTION_ENABLED` / `HARD_RISK_FILTER_PRODUCTION_ENABLED`
   Batch A 决策上下文、市场总闸和避坑过滤器开关，默认 `true`。回滚时先关闭 `DECISION_CONTEXT_ENABLED`；关闭后 priority board 回到既有生产评分路径，市场总闸不再乘权，paper order 不再消费 Batch A hard-risk snapshot 阻断。
+- `DATA_QUALITY_SLA_ENABLED`
+  数据质量 SLA 开关，默认 `true`。SLA 失败必须进入 `blocked_by_data` 或显式 `unavailable`，不得静默通过。
+- `DATA_REPAIR_AUTO_ENABLED`
+  数据修复自动执行开关，默认且建议永久保持 `false`。线上修复默认只 dry-run；删除必须由管理员显式提交 apply，并要求 DB 备份和行级 JSON 备份已生成。
 - `TQUANT_INTERNAL_SERVICE_TOKEN`
   配置 `TQUANT_*_SERVICE_URL` 微服务地址时必填。BFF 到远端服务请求必须携带该 token，远端服务会拒绝缺失或不匹配的内部请求。
 - `RUNTIME_WORKER_POLL_INTERVAL_SECONDS`
@@ -570,7 +574,27 @@ docker compose -f docker-compose.mysql.yml logs -f analytics-worker
 
 任务成功后线上产物应包含 `backend/data/analytics/reports/strategy_24m_duckdb_report.md` 和 `backend/data/analytics/reports/strategy_24m_duckdb_report.json`；仓库跟踪的 Markdown 摘要仍由 `backend/scripts/run_duckdb_strategy_report.py` 写到 `docs/reports/strategy_24m_duckdb_report.md`。如果日线数据或验证输入缺失，任务会失败并在 `runtime_task_events` 中记录阻断原因。
 
-6. Batch A 决策上下文任务验证：
+6. 数据质量 SLA 与 OHLC 修复验证：
+
+```bash
+docker compose -f docker-compose.mysql.yml exec app python - <<'PY'
+from app.core.database import SessionLocal
+from app.models.schema_defs.phase4 import RuntimeTaskCreate
+from app.services.tasks import RuntimeTaskQueue
+with SessionLocal() as db:
+    queue = RuntimeTaskQueue(db)
+    task = queue.enqueue(RuntimeTaskCreate(task_type="data_quality_sla_refresh", payload={"scope": "production_universe"}, max_attempts=1))
+    dry = queue.enqueue(RuntimeTaskCreate(task_type="data_repair_run", payload={"dataset_key": "daily_bars", "dry_run": True}, max_attempts=1))
+    print(task.id, task.task_type, task.status)
+    print(dry.id, dry.task_type, dry.status)
+PY
+docker compose -f docker-compose.mysql.yml logs -f analytics-worker
+curl -sS -H "Authorization: Bearer <TOKEN>" https://<domain>/api/data-quality/sla
+```
+
+`data_quality_sla_refresh` 必须写入 `data_quality_snapshots`，`/api/data-quality/sla` 必须可读。`data_repair_run` 默认 dry-run，不修改数据；apply 只允许管理员显式触发。若出现 `daily_bars_invalid_ohlc`，先执行 dry-run 核对待修复行数，再确认备份目录中已有 DB 备份和行级 JSON 备份，最后低峰执行 apply。`data_repair_audits.fabricated` 必须恒为 `false`。
+
+7. Batch A 决策上下文任务验证：
 
 ```bash
 docker compose -f docker-compose.mysql.yml exec app python - <<'PY'

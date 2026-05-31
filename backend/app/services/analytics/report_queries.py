@@ -30,12 +30,14 @@ def build_strategy_24m_duckdb_report(
     legacy_strategy_report: str | Path | None = None,
     focus_walk_forward_report: str | Path | None = None,
     parameter_walk_forward_report: str | Path | None = None,
+    data_quality_sla: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     config = analytics_config(output_root)
     quality = dict(manifest.get("quality") or {})
+    sla_payload = _normalize_data_quality_sla(data_quality_sla)
     files = list(manifest.get("files") or [])
     parquet_glob = str(config.parquet_dir / "daily_bars" / "**" / "*.parquet")
-    data_blocked = quality.get("status") != "ok"
+    data_blocked = quality.get("status") != "ok" or _sla_blocks_report(sla_payload)
     duckdb_summary: dict[str, Any] = {}
     monthly_market: list[dict[str, Any]] = []
     if files:
@@ -99,6 +101,8 @@ def build_strategy_24m_duckdb_report(
                 "quality": quality,
             },
             "data_quality_conclusion": _quality_conclusion(quality),
+            "data_quality_sla": sla_payload,
+            "data_quality_sla_conclusion": _data_quality_sla_conclusion(sla_payload),
             "duckdb_daily_bar_summary": duckdb_summary,
             "duckdb_monthly_market_summary": monthly_market,
             "strategy_summary_source": str(strategy_source),
@@ -114,6 +118,7 @@ def build_strategy_24m_duckdb_report(
 
 def render_strategy_24m_markdown(report: dict[str, Any]) -> str:
     quality = report.get("manifest", {}).get("quality", {})
+    sla_payload = report.get("data_quality_sla") or {}
     lines = [
         "# DuckDB 24个月策略分析报告",
         "",
@@ -124,11 +129,53 @@ def render_strategy_24m_markdown(report: dict[str, Any]) -> str:
         f"- 数据完整性：{quality.get('status', '')}",
         f"- 结论：{report.get('data_quality_conclusion', '')}",
         "",
+        "## 数据质量 SLA",
+        "",
+        f"- 结论：{report.get('data_quality_sla_conclusion', '')}",
+        "",
+        "| dataset | scope | 状态 | 覆盖率 | 缺失交易日 | invalid OHLC | 重复行 | blockers |",
+        "|---|---|---|---:|---:|---:|---:|---|",
+    ]
+    sla_items = list(sla_payload.get("items") or [])
+    if sla_items:
+        for item in sla_items:
+            lines.append(
+                "| {dataset} | {scope} | {status} | {coverage} | {missing} | {invalid} | {duplicate} | {blockers} |".format(
+                    dataset=item.get("dataset_key", ""),
+                    scope=item.get("scope", ""),
+                    status=item.get("status", ""),
+                    coverage=_fmt_pct(item.get("coverage_pct")),
+                    missing=int(item.get("missing_days") or 0),
+                    invalid=int(item.get("invalid_rows") or 0),
+                    duplicate=int(item.get("duplicate_rows") or 0),
+                    blockers="、".join(item.get("blockers") or []) or "--",
+                )
+            )
+    else:
+        lines.append("| -- | -- | no_data | 缺失 | 0 | 0 | 0 | 未找到 data_quality_snapshots |")
+    audits = list(sla_payload.get("latest_repair_audits") or [])
+    if audits:
+        lines.extend(["", "最近修复审计："])
+        for audit in audits[:5]:
+            lines.append(
+                "- {repair_id}：{dataset} / {reason} / deleted={deleted} / fabricated={fabricated} / backup={backup}".format(
+                    repair_id=audit.get("repair_id", ""),
+                    dataset=audit.get("dataset_key", ""),
+                    reason=audit.get("reason", ""),
+                    deleted=int(audit.get("deleted_rows_count") or 0),
+                    fabricated=str(bool(audit.get("fabricated"))).lower(),
+                    backup=audit.get("backup_path", "") or "--",
+                )
+            )
+    else:
+        lines.extend(["", "最近修复审计：无。"])
+    lines.extend([
+        "",
         "## DuckDB 日线扫描摘要",
         "",
         "| 指标 | 数值 |",
         "|---|---:|",
-    ]
+    ])
     summary = report.get("duckdb_daily_bar_summary") or {}
     for key in ("row_count", "symbol_count", "trade_day_count", "min_trade_date", "max_trade_date", "avg_pct_chg", "total_amount"):
         lines.append(f"| {key} | {summary.get(key, '')} |")
@@ -460,6 +507,36 @@ def _quality_conclusion(quality: dict[str, Any]) -> str:
     suffix = f"，已创建 data_backfill_24m 任务 #{task_id}" if task_id else "，需要先创建并完成 data_backfill_24m 任务"
     blockers = "、".join(quality.get("blockers") or ["数据覆盖不足"])
     return f"数据完整性未通过：{blockers}{suffix}；本次不得作为完整24个月回测验收。"
+
+
+def _normalize_data_quality_sla(payload: dict[str, Any] | None) -> dict[str, Any]:
+    raw = payload or {}
+    return {
+        "items": [dict(item) for item in raw.get("items") or [] if isinstance(item, dict)],
+        "latest_repair_audits": [
+            dict(item) for item in raw.get("latest_repair_audits") or [] if isinstance(item, dict)
+        ],
+    }
+
+
+def _sla_blocks_report(payload: dict[str, Any]) -> bool:
+    items = payload.get("items") or []
+    if not items:
+        return False
+    return any(str(item.get("status") or "") in {"fail", "unavailable", "blocked_by_data"} for item in items)
+
+
+def _data_quality_sla_conclusion(payload: dict[str, Any]) -> str:
+    items = payload.get("items") or []
+    if not items:
+        return "未找到 data_quality_snapshots；当前报告仅能依赖 Manifest 完整性门禁。"
+    blockers: list[str] = []
+    for item in items:
+        if str(item.get("status") or "") in {"fail", "unavailable", "blocked_by_data"}:
+            blockers.extend(str(value) for value in item.get("blockers") or [])
+    if blockers:
+        return f"SLA 未通过：{'、'.join(sorted(set(blockers)))}；本报告状态必须为 blocked_by_data。"
+    return "SLA 通过；生产、报告和漂移门禁可复用同一 data_quality_snapshots 事实源。"
 
 
 def _strategy_summary_note(data_blocked: bool, validation_blocked: bool) -> str:

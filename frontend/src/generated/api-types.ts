@@ -1694,6 +1694,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/data-quality/repair": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Enqueue Data Repair */
+        post: operations["enqueue_data_repair_api_data_quality_repair_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/data-quality/sla": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Data Quality Sla */
+        get: operations["list_data_quality_sla_api_data_quality_sla_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/factor-mining/code-synth": {
         parameters: {
             query?: never;
@@ -8355,6 +8389,116 @@ export interface components {
              * @default v14
              */
             schema_version: string;
+        };
+        /** DataQualitySlaResponse */
+        DataQualitySlaResponse: {
+            /** Items */
+            items?: components["schemas"]["DataQualitySnapshotOut"][];
+            /** Latest Repair Audits */
+            latest_repair_audits?: components["schemas"]["DataRepairAuditOut"][];
+            /**
+             * Total
+             * @default 0
+             */
+            total: number;
+        };
+        /** DataQualitySnapshotOut */
+        DataQualitySnapshotOut: {
+            /** Actual Days */
+            actual_days: number;
+            /**
+             * As Of Date
+             * Format: date
+             */
+            as_of_date: string;
+            /** Blockers */
+            blockers?: string[];
+            /** Checked At */
+            checked_at?: string | null;
+            /** Coverage Pct */
+            coverage_pct: number;
+            /** Dataset Key */
+            dataset_key: string;
+            /** Duplicate Rows */
+            duplicate_rows: number;
+            /** Expected Days */
+            expected_days: number;
+            /** Invalid Rows */
+            invalid_rows: number;
+            /** Missing Days */
+            missing_days: number;
+            /** Scope */
+            scope: string;
+            /** Stale */
+            stale: boolean;
+            /** Status */
+            status: string;
+        };
+        /** DataRepairAuditOut */
+        DataRepairAuditOut: {
+            /**
+             * Backup Path
+             * @default
+             */
+            backup_path: string;
+            /** Created At */
+            created_at?: string | null;
+            /** Dataset Key */
+            dataset_key: string;
+            /**
+             * Deleted Rows Count
+             * @default 0
+             */
+            deleted_rows_count: number;
+            /**
+             * Fabricated
+             * @default false
+             */
+            fabricated: boolean;
+            /** Id */
+            id: number;
+            /**
+             * Operator
+             * @default
+             */
+            operator: string;
+            /** Reason */
+            reason: string;
+            /**
+             * Refetch Result
+             * @default
+             */
+            refetch_result: string;
+            /** Repair Id */
+            repair_id: string;
+        };
+        /** DataRepairRunRequest */
+        DataRepairRunRequest: {
+            /**
+             * Backup Dir
+             * @default
+             */
+            backup_dir: string;
+            /**
+             * Dataset Key
+             * @default daily_bars
+             */
+            dataset_key: string;
+            /**
+             * Dry Run
+             * @default true
+             */
+            dry_run: boolean;
+            /**
+             * Output Path
+             * @default
+             */
+            output_path: string;
+            /**
+             * Refetch
+             * @default true
+             */
+            refetch: boolean;
         };
         /** DataSourceProbeResponse */
         DataSourceProbeResponse: {
@@ -20630,6 +20774,75 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["StrategyWorkspaceBffResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    enqueue_data_repair_api_data_quality_repair_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Admin-Token"?: string | null;
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DataRepairRunRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RuntimeTaskOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_data_quality_sla_api_data_quality_sla_get: {
+        parameters: {
+            query?: {
+                dataset_key?: string | null;
+                scope?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DataQualitySlaResponse"];
                 };
             };
             /** @description Validation Error */

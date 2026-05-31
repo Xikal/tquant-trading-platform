@@ -11,6 +11,7 @@ from app.api.routes import (
     auth,
     backtests,
     bff,
+    data_quality,
     feishu,
     factor_mining,
     feature_flags,
@@ -55,6 +56,7 @@ api_router.include_router(ai.router, tags=["ai"])
 api_router.include_router(research.router, tags=["research"])
 api_router.include_router(screeners.router, tags=["screeners"])
 api_router.include_router(settings.router, tags=["settings"])
+api_router.include_router(data_quality.router, tags=["data-quality"])
 api_router.include_router(strategy_meta.router, tags=["strategy-meta"])
 api_router.include_router(strategy_stream.router, tags=["strategy-stream"])
 api_router.include_router(strategy_tracking.router, tags=["strategy-tracking"])
