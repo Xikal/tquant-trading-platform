@@ -1,7 +1,7 @@
 # 工程结构、命名与文件规模规范
 
-状态：默认生效  
-适用范围：后续所有文档、后端、前端、脚本、测试与生成产物  
+状态：默认生效
+适用范围：后续所有文档、后端、前端、脚本、测试与生成产物
 最后核验日期：2026-05-31
 
 ## 1. 生效规则
@@ -39,9 +39,9 @@
 | `docs/contracts/` | OpenAPI、接口契约、生成契约 | 手写说明长文 |
 | `docs/archive/` | 明确不再作为当前依据的历史材料 | 当前 Runbook 或准入门槛 |
 
-策略机制文档使用 `docs/strategy-<strategy-key>.md`。  
-执行计划使用 `docs/<topic>-execution-plan-YYYY-MM-DD.md`。  
-复盘报告使用 `docs/reports/<topic>-review-YYYY-MM-DD.md` 或 `docs/reports/<topic>-backtest-YYYY-MM-DD.md`。  
+策略机制文档使用 `docs/strategy-<strategy-key>.md`。
+执行计划使用 `docs/<topic>-execution-plan-YYYY-MM-DD.md`。
+复盘报告使用 `docs/reports/<topic>-review-YYYY-MM-DD.md` 或 `docs/reports/<topic>-backtest-YYYY-MM-DD.md`。
 Runbook 使用 `docs/operations/<topic>-runbook.md`。
 
 ## 3. 文件命名
