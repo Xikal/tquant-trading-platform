@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useMemo } from "react";
 import { LineChart } from "echarts/charts";
 import { DataZoomComponent, GridComponent, LegendComponent, TooltipComponent } from "echarts/components";
 import * as echarts from "echarts/core";
 import { CanvasRenderer } from "echarts/renderers";
 import type { BacktestCompareResponse } from "../../api/backtests";
+import { ChartIsland } from "../../ui/charts/ChartIsland";
 import {
   BACKTEST_ECHARTS_COMPACT_STYLE,
   BACKTEST_ECHARTS_STYLE,
@@ -13,27 +14,8 @@ import {
 echarts.use([CanvasRenderer, DataZoomComponent, GridComponent, LegendComponent, LineChart, TooltipComponent]);
 
 export default function LazyBacktestCompareChart({ result }: { result: BacktestCompareResponse | null }) {
-  const elementRef = useRef<HTMLDivElement | null>(null);
-  const chartRef = useRef<echarts.EChartsType | null>(null);
   const option = useMemo(() => buildOption(result), [result]);
-
-  useEffect(() => {
-    if (!elementRef.current) return undefined;
-    chartRef.current = echarts.init(elementRef.current, undefined, { renderer: "canvas" });
-    const handleResize = () => chartRef.current?.resize();
-    window.addEventListener("resize", handleResize);
-    return () => {
-      window.removeEventListener("resize", handleResize);
-      chartRef.current?.dispose();
-      chartRef.current = null;
-    };
-  }, []);
-
-  useEffect(() => {
-    chartRef.current?.setOption(option, true, true);
-  }, [option]);
-
-  return <div ref={elementRef} style={combineBacktestStyles(BACKTEST_ECHARTS_STYLE, BACKTEST_ECHARTS_COMPACT_STYLE)} />;
+  return <ChartIsland option={option} style={combineBacktestStyles(BACKTEST_ECHARTS_STYLE, BACKTEST_ECHARTS_COMPACT_STYLE)} />;
 }
 
 function buildOption(result: BacktestCompareResponse | null): echarts.EChartsCoreOption {

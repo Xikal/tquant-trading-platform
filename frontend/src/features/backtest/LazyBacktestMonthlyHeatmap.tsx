@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useMemo } from "react";
 import { HeatmapChart } from "echarts/charts";
 import { CalendarComponent, TooltipComponent, VisualMapComponent } from "echarts/components";
 import * as echarts from "echarts/core";
 import { CanvasRenderer } from "echarts/renderers";
 import type { BacktestMonthlyReturn } from "../../api/backtests";
+import { ChartIsland } from "../../ui/charts/ChartIsland";
 import {
   BACKTEST_ECHARTS_ALT_STYLE,
   BACKTEST_ECHARTS_STYLE,
@@ -13,27 +14,8 @@ import {
 echarts.use([CalendarComponent, CanvasRenderer, HeatmapChart, TooltipComponent, VisualMapComponent]);
 
 export default function LazyBacktestMonthlyHeatmap({ items }: { items: BacktestMonthlyReturn[] }) {
-  const elementRef = useRef<HTMLDivElement | null>(null);
-  const chartRef = useRef<echarts.EChartsType | null>(null);
   const option = useMemo(() => buildOption(items), [items]);
-
-  useEffect(() => {
-    if (!elementRef.current) return undefined;
-    chartRef.current = echarts.init(elementRef.current, undefined, { renderer: "canvas" });
-    const handleResize = () => chartRef.current?.resize();
-    window.addEventListener("resize", handleResize);
-    return () => {
-      window.removeEventListener("resize", handleResize);
-      chartRef.current?.dispose();
-      chartRef.current = null;
-    };
-  }, []);
-
-  useEffect(() => {
-    chartRef.current?.setOption(option, true, true);
-  }, [option]);
-
-  return <div ref={elementRef} style={combineBacktestStyles(BACKTEST_ECHARTS_STYLE, BACKTEST_ECHARTS_ALT_STYLE)} />;
+  return <ChartIsland option={option} style={combineBacktestStyles(BACKTEST_ECHARTS_STYLE, BACKTEST_ECHARTS_ALT_STYLE)} />;
 }
 
 function buildOption(items: BacktestMonthlyReturn[]): echarts.EChartsCoreOption {

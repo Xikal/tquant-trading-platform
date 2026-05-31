@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useMemo } from "react";
 import { BarChart, LineChart } from "echarts/charts";
 import { GridComponent, LegendComponent, TooltipComponent } from "echarts/components";
 import * as echarts from "echarts/core";
 import { CanvasRenderer } from "echarts/renderers";
 import type { EquityPoint } from "../../api/backtests";
+import { ChartIsland } from "../../ui/charts/ChartIsland";
 import {
   BACKTEST_ECHARTS_ALT_STYLE,
   BACKTEST_ECHARTS_STYLE,
@@ -13,27 +14,8 @@ import {
 echarts.use([BarChart, CanvasRenderer, GridComponent, LegendComponent, LineChart, TooltipComponent]);
 
 export default function LazyBacktestReturnDistribution({ points }: { points: EquityPoint[] }) {
-  const elementRef = useRef<HTMLDivElement | null>(null);
-  const chartRef = useRef<echarts.EChartsType | null>(null);
   const option = useMemo(() => buildOption(points), [points]);
-
-  useEffect(() => {
-    if (!elementRef.current) return undefined;
-    chartRef.current = echarts.init(elementRef.current, undefined, { renderer: "canvas" });
-    const handleResize = () => chartRef.current?.resize();
-    window.addEventListener("resize", handleResize);
-    return () => {
-      window.removeEventListener("resize", handleResize);
-      chartRef.current?.dispose();
-      chartRef.current = null;
-    };
-  }, []);
-
-  useEffect(() => {
-    chartRef.current?.setOption(option, true, true);
-  }, [option]);
-
-  return <div ref={elementRef} style={combineBacktestStyles(BACKTEST_ECHARTS_STYLE, BACKTEST_ECHARTS_ALT_STYLE)} />;
+  return <ChartIsland option={option} style={combineBacktestStyles(BACKTEST_ECHARTS_STYLE, BACKTEST_ECHARTS_ALT_STYLE)} />;
 }
 
 function buildOption(points: EquityPoint[]): echarts.EChartsCoreOption {

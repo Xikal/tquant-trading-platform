@@ -9,7 +9,9 @@ const statePatterns = [
 ];
 const tsxPatterns = [
   { label: "raw AntD Table import", regex: /import\s+\{[^}]*\bTable\b[^}]*\}\s+from\s+["']antd["']/ },
+  { label: "echarts-for-react import", regex: /from\s+["']echarts-for-react["']/ },
   { label: "raw AntD Table JSX", regex: /<Table\b/ },
+  { label: "ReactECharts JSX", regex: /<ReactECharts\b/ },
   { label: "dataSource slice", regex: /dataSource=\{[^}]*\.slice\(\s*0\s*,/ },
   { label: "MonitorPage priorityCards non-business slice", regex: /priorityCards\.slice\(\s*0\s*,(?!\s*3[),])/ },
   { label: "MonitorPage opportunities slice", regex: /opportunities\.slice\(\s*0\s*,/ },

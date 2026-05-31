@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useMemo } from "react";
 import { LineChart } from "echarts/charts";
 import {
   DataZoomComponent,
@@ -10,6 +10,7 @@ import {
 import * as echarts from "echarts/core";
 import { CanvasRenderer } from "echarts/renderers";
 import type { EquityPoint } from "../../api/backtests";
+import { ChartIsland } from "../../ui/charts/ChartIsland";
 import { BACKTEST_ECHARTS_STYLE } from "./backtestStyles";
 
 echarts.use([
@@ -23,29 +24,8 @@ echarts.use([
 ]);
 
 export default function LazyBacktestEquityChart({ points }: { points: EquityPoint[] }) {
-  const elementRef = useRef<HTMLDivElement | null>(null);
-  const chartRef = useRef<echarts.EChartsType | null>(null);
   const option = useMemo(() => buildOption(points), [points]);
-
-  useEffect(() => {
-    if (!elementRef.current) {
-      return undefined;
-    }
-    chartRef.current = echarts.init(elementRef.current, undefined, { renderer: "canvas" });
-    const handleResize = () => chartRef.current?.resize();
-    window.addEventListener("resize", handleResize);
-    return () => {
-      window.removeEventListener("resize", handleResize);
-      chartRef.current?.dispose();
-      chartRef.current = null;
-    };
-  }, []);
-
-  useEffect(() => {
-    chartRef.current?.setOption(option, true, true);
-  }, [option]);
-
-  return <div ref={elementRef} style={BACKTEST_ECHARTS_STYLE} />;
+  return <ChartIsland option={option} style={BACKTEST_ECHARTS_STYLE} />;
 }
 
 function buildOption(points: EquityPoint[]): echarts.EChartsCoreOption {
