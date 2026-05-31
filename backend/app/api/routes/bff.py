@@ -7,14 +7,14 @@ from fastapi import APIRouter, BackgroundTasks, Depends, Header, HTTPException, 
 from sqlalchemy import inspect as sa_inspect, select
 from sqlalchemy.orm import Session
 
-from app.api.routes.market import market_breadth, paired_hedge_research, sector_relative_strength
+from app.api.routes.market import _enqueue_market_pulse_refresh, market_breadth, paired_hedge_research, sector_relative_strength
 from app.core.auth import get_current_user
 from app.core.config import get_settings
 from app.core.database import get_db
 from app.core.paper_auth import require_paper_trading
 from app.core.admin_auth import require_admin_auth
 from app.core.role_permissions import is_admin_user
-from app.core.timezone import beijing_now_string
+from app.core.timezone import beijing_now_string, beijing_today
 from app.models.entities import User
 from app.models.schema_defs.bff import (
     BFF_SCHEMA_VERSION,
@@ -39,7 +39,7 @@ from app.services.bff.settings_workspace import build_settings_workspace
 from app.services.bff.strategy_workspace import build_strategy_workspace
 from app.services.bff.timeout import run_workspace_with_timeout
 from app.services.bff.workspace_cache import load_cached_workspace
-from app.services.market.pulse import build_intraday_market_pulse
+from app.services.market.pulse_cache import latest_pulse_or_placeholder
 from app.services.monitor_snapshot_service import build_monitor_snapshot
 from app.services.market.review import build_market_review_summary
 
@@ -152,6 +152,7 @@ def monitor_workspace_bff(
             sector_limit=sector_limit,
             per_sector_limit=per_sector_limit,
             hedge_limit=hedge_limit,
+            allow_live_sources=False,
         ),
     )
     if not remote_used:
@@ -369,6 +370,7 @@ def _build_monitor_workspace(
     sector_limit: int,
     per_sector_limit: int,
     hedge_limit: int,
+    allow_live_sources: bool = True,
 ) -> MonitorWorkspaceBffResponse:
     errors: list[BffPartialError] = []
     monitor_snapshot_payload = _safe(
@@ -376,38 +378,51 @@ def _build_monitor_workspace(
         errors,
         lambda: build_monitor_snapshot(db, current_user=current_user, priority_limit=priority_limit),
     )
-    market_breadth_payload = _safe("market_breadth", errors, lambda: market_breadth(realtime=False, db=db))
-    sector_payload = _safe(
-        "sector_relative_strength",
-        errors,
-        lambda: sector_relative_strength(sector_limit, per_sector_limit, db),
-    )
-    paired_payload = _safe(
-        "paired_hedge",
-        errors,
-        lambda: paired_hedge_research(hedge_limit, _attached_user(db, current_user), db),
-        ignore_forbidden=True,
-    )
+    market_breadth_payload = None
+    sector_payload = None
+    paired_payload = None
+    if allow_live_sources:
+        market_breadth_payload = _safe("market_breadth", errors, lambda: market_breadth(realtime=False, db=db))
+        sector_payload = _safe(
+            "sector_relative_strength",
+            errors,
+            lambda: sector_relative_strength(sector_limit, per_sector_limit, db),
+        )
+        paired_payload = _safe(
+            "paired_hedge",
+            errors,
+            lambda: paired_hedge_research(hedge_limit, _attached_user(db, current_user), db),
+            ignore_forbidden=True,
+        )
     review_status, review_reports = _safe(
         "monitor_review",
         errors,
         lambda: build_market_review_summary(db),
     ) or (None, [])
+    pulse = _safe_market_pulse_snapshot(db, errors)
     return MonitorWorkspaceBffResponse(
         generated_at=beijing_now_string(),
         monitor_snapshot=monitor_snapshot_payload,
         market_breadth=market_breadth_payload,
         sector_relative_strength=sector_payload,
-        market_pulse=build_intraday_market_pulse(
-            market_breadth=market_breadth_payload,
-            sector_relative_strength=sector_payload,
-            partial_errors=[item.model_dump() for item in errors],
-        ),
+        market_pulse=pulse,
         review_status=review_status,
         review_reports=review_reports,
         paired_hedge=paired_payload,
         partial_errors=errors,
     )
+
+
+def _safe_market_pulse_snapshot(db: Session, errors: list[BffPartialError]):
+    try:
+        pulse, pulse_needs_refresh = latest_pulse_or_placeholder(db, trade_date=beijing_today().isoformat())
+    except Exception as exc:
+        logger.warning("bff source failed source=market_pulse", exc_info=(type(exc), exc, exc.__traceback__))
+        errors.append(BffPartialError(source="market_pulse", detail="盘中 pulse 快照暂时不可用"))
+        return None
+    if pulse_needs_refresh:
+        _enqueue_market_pulse_refresh(db, reason="bff_monitor_workspace")
+    return pulse
 
 
 def _safe(

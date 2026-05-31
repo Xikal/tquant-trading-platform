@@ -34,6 +34,7 @@ from app.models.schema_defs.phase4 import (
     RuntimeTaskCreate,
 )
 from app.models.schema_defs.market import (
+    IntradayMarketPulse,
     IntradayAnomalyResponse,
     PairedHedgeResearchResponse,
     SectorEtfT0Opportunity,
@@ -165,6 +166,34 @@ def test_runtime_worker_executes_monitor_snapshot_refresh(monkeypatch):
 
     assert result == {"ok": True, "user_id": 3, "priority_limit": 30}
     assert calls == [(db, 3, 30)]
+
+
+def test_runtime_worker_executes_market_pulse_refresh(monkeypatch):
+    db = _db()
+    calls = []
+
+    def _refresh_stub(db_arg):  # noqa: ANN001
+        calls.append(db_arg)
+        return IntradayMarketPulse(
+            updated_at="2026-05-31 10:30:00",
+            data_quality="fresh",
+            pulse_level="repair",
+            pulse_text="worker refreshed",
+        )
+
+    recorded = []
+    monkeypatch.setattr("app.api.routes.market.refresh_market_pulse_snapshot", _refresh_stub)
+    monkeypatch.setattr("app.services.market.pulse_history.record_market_pulse_event", lambda db_arg, pulse: recorded.append((db_arg, pulse.pulse_level)))
+
+    result = runtime_worker._execute_task(
+        "market_pulse_refresh",
+        {"reason": "test"},
+        db,
+    )
+
+    assert result == {"ok": True, "data_quality": "fresh", "pulse_level": "repair"}
+    assert calls == [db]
+    assert recorded == [(db, "repair")]
 
 
 def test_low_buy_runtime_cache_methods_use_runtime_state():

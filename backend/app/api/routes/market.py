@@ -98,19 +98,18 @@ def market_pulse(
     refresh: Annotated[str, Query(pattern="^(cache|async|sync)$")] = "cache",
     db: Session = Depends(get_db),
 ) -> IntradayMarketPulse:
-    if refresh != "sync":
-        pulse, needs_refresh = latest_pulse_or_placeholder(db, trade_date=beijing_today().isoformat())
-        if needs_refresh or refresh == "async":
-            _enqueue_market_pulse_refresh(db, reason=f"market_pulse_{refresh}")
-        return pulse
-    pulse = build_market_pulse_sync(db)
-    if hasattr(db, "add") and hasattr(db, "commit"):
-        record_market_pulse_event(db, pulse)
-        db.commit()
+    pulse, needs_refresh = latest_pulse_or_placeholder(db, trade_date=beijing_today().isoformat())
+    if needs_refresh or refresh in {"async", "sync"}:
+        _enqueue_market_pulse_refresh(db, reason=f"market_pulse_{refresh}")
     return pulse
 
 
 def build_market_pulse_sync(db: Session) -> IntradayMarketPulse:
+    pulse, _needs_refresh = latest_pulse_or_placeholder(db, trade_date=beijing_today().isoformat())
+    return pulse
+
+
+def refresh_market_pulse_snapshot(db: Session) -> IntradayMarketPulse:
     breadth = market_breadth(realtime=False, db=db)
     sector_strength = market_data.sector_relative_strength_rank(db, limit=8, per_sector_limit=8)
     autofill_service = MarketDataAutofillService(db) if hasattr(db, "commit") and hasattr(db, "flush") and hasattr(db, "execute") else None

@@ -61,13 +61,19 @@ class MarketRouteTests(unittest.TestCase):
         self.assertEqual(body["data_quality"], "fresh")
         self.assertEqual(body["hourly_all_market_snapshot"], {})
 
-    def test_market_pulse_returns_partial_when_hourly_snapshot_missing(self) -> None:
+    def test_market_pulse_sync_returns_placeholder_and_queues_refresh_when_snapshot_missing(self) -> None:
+        enqueued: list[str] = []
+        original_enqueue = market._enqueue_market_pulse_refresh
+        market._enqueue_market_pulse_refresh = lambda _db, *, reason: enqueued.append(reason)
+        self.addCleanup(lambda: setattr(market, "_enqueue_market_pulse_refresh", original_enqueue))
+
         response = self.client.get("/api/market/pulse?refresh=sync")
+
         self.assertEqual(response.status_code, 200)
         body = response.json()
-        self.assertIn(body["data_quality"], {"partial", "fresh"})
-        self.assertIn("龙头", body["leader_strength_text"])
-        self.assertIn("hourly_all_market_snapshot", [item["source"] for item in body["partial_errors"]])
+        self.assertEqual(body["data_quality"], "unavailable")
+        self.assertIn("pulse_snapshot", [item["source"] for item in body["partial_errors"]])
+        self.assertEqual(enqueued, ["market_pulse_sync"])
 
     def test_market_pulse_read_does_not_write_history(self) -> None:
         engine = create_engine("sqlite://", future=True, connect_args={"check_same_thread": False}, poolclass=StaticPool)

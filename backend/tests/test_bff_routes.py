@@ -18,6 +18,7 @@ from app.models.schema_defs.bff import (
     StrategyWorkspaceBffResponse,
 )
 from app.models.schema_defs.market import MarketBreadthResponse, SectorRelativeStrengthResponse
+from app.models.schema_defs.market import IntradayMarketPulse
 from app.services.bff import remote_adapters, remote_client
 from app.services.bff import workspace_cache
 
@@ -122,6 +123,19 @@ def test_monitor_workspace_builder_errors_return_partial_payload(monkeypatch) ->
     monkeypatch.setattr(bff, "build_monitor_snapshot", lambda *args, **kwargs: (_ for _ in ()).throw(RuntimeError("offline")))
     monkeypatch.setattr(bff, "market_breadth", lambda *args, **kwargs: MarketBreadthResponse(updated_at="2026-05-25 10:00:00"))
     monkeypatch.setattr(bff, "sector_relative_strength", lambda *args: SectorRelativeStrengthResponse(updated_at="2026-05-25 10:00:00"))
+    monkeypatch.setattr(
+        bff,
+        "latest_pulse_or_placeholder",
+        lambda *_args, **_kwargs: (
+            IntradayMarketPulse(
+                updated_at="2026-05-25 10:00:00",
+                data_quality="fresh",
+                pulse_level="repair",
+                pulse_text="读取物化 pulse。",
+            ),
+            False,
+        ),
+    )
     monkeypatch.setattr(bff, "build_market_review_summary", lambda *args, **kwargs: (None, []))
     monkeypatch.setattr(bff, "paired_hedge_research", lambda *args: {"updated_at": "2026-05-25 10:00:00", "ideas": []})
 
@@ -130,8 +144,62 @@ def test_monitor_workspace_builder_errors_return_partial_payload(monkeypatch) ->
     assert response.status_code == 200
     payload = response.json()
     assert payload["monitor_snapshot"] is None
-    assert payload["market_breadth"] is not None
+    assert payload["market_breadth"] is None
+    assert payload["market_pulse"]["pulse_text"] == "读取物化 pulse。"
     assert payload["partial_errors"][0]["source"] == "monitor_snapshot"
+
+
+def test_monitor_workspace_request_path_uses_cached_snapshot_when_sources_unreachable(monkeypatch) -> None:
+    app = FastAPI()
+    app.include_router(bff.router, prefix="/api")
+    user = SimpleNamespace(id=1, username="tester", is_active=True, roles="")
+    app.dependency_overrides[get_current_user] = lambda: user
+    app.dependency_overrides[get_db] = lambda: object()
+    monkeypatch.setattr(bff, "get_settings", lambda: SimpleNamespace(tquant_internal_service_token=""))
+    monkeypatch.setattr(
+        workspace_cache,
+        "get_settings",
+        lambda: SimpleNamespace(
+            bff_workspace_cache_enabled=True,
+            bff_monitor_cache_ttl_seconds=30,
+            bff_paper_cache_ttl_seconds=0,
+            bff_strategy_cache_ttl_seconds=0,
+            bff_settings_cache_ttl_seconds=0,
+        ),
+    )
+
+    def forbidden_source(*_args, **_kwargs):
+        raise AssertionError("monitor workspace request path must use cached/materialized data")
+
+    monkeypatch.setattr(bff, "load_remote_monitor_workspace", lambda *args, **kwargs: None)
+    monkeypatch.setattr(bff, "build_monitor_snapshot", lambda *args, **kwargs: {"updated_at": "2026-05-25 10:00:00"})
+    monkeypatch.setattr(bff, "market_breadth", forbidden_source)
+    monkeypatch.setattr(bff, "sector_relative_strength", forbidden_source)
+    monkeypatch.setattr(
+        bff,
+        "latest_pulse_or_placeholder",
+        lambda *_args, **_kwargs: (
+            IntradayMarketPulse(
+                updated_at="2026-05-25 10:00:00",
+                data_quality="fresh",
+                pulse_level="repair",
+                pulse_text="读取物化 pulse。",
+                suggested_action="只读观察。",
+                partial_errors=[],
+            ),
+            False,
+        ),
+        raising=False,
+    )
+    monkeypatch.setattr(bff, "build_market_review_summary", lambda *args, **kwargs: (None, []))
+    monkeypatch.setattr(bff, "paired_hedge_research", forbidden_source)
+
+    response = TestClient(app).get("/api/bff/v1/workspace/monitor")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["market_pulse"]["pulse_text"] == "读取物化 pulse。"
+    assert payload["partial_errors"] == []
 
 
 def test_monitor_workspace_uses_fast_breadth_without_workspace_timeout(monkeypatch) -> None:
@@ -177,6 +245,19 @@ def test_monitor_workspace_uses_fast_breadth_without_workspace_timeout(monkeypat
         "sector_relative_strength",
         lambda *args: SectorRelativeStrengthResponse(updated_at="2026-05-25 10:00:00"),
     )
+    monkeypatch.setattr(
+        bff,
+        "latest_pulse_or_placeholder",
+        lambda *_args, **_kwargs: (
+            IntradayMarketPulse(
+                updated_at="2026-05-25 10:00:00",
+                data_quality="fresh",
+                pulse_level="repair",
+                pulse_text="读取物化 pulse。",
+            ),
+            False,
+        ),
+    )
     monkeypatch.setattr(bff, "build_market_review_summary", lambda *args, **kwargs: (None, []))
     monkeypatch.setattr(bff, "paired_hedge_research", lambda *args: {"updated_at": "2026-05-25 10:00:00", "ideas": []})
 
@@ -185,9 +266,10 @@ def test_monitor_workspace_uses_fast_breadth_without_workspace_timeout(monkeypat
     assert response.status_code == 200
     payload = response.json()
     assert payload["monitor_snapshot"]["updated_at"] == "2026-05-25 10:00:00"
-    assert payload["market_breadth"]["state"] == "neutral"
+    assert payload["market_breadth"] is None
+    assert payload["market_pulse"]["pulse_text"] == "读取物化 pulse。"
     assert payload["partial_errors"] == []
-    assert calls["realtime"] is False
+    assert calls == {}
 
 
 def test_paper_workspace_can_use_remote_adapter(monkeypatch) -> None:

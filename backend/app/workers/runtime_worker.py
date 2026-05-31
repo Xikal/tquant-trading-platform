@@ -127,10 +127,10 @@ def _execute_task(task_type: str, payload: dict[str, Any], db) -> dict[str, Any]
             reason=str(payload.get("reason") or "runtime_hourly_market_pulse")
         )
     if task_type == "market_pulse_refresh":
-        from app.api.routes.market import build_market_pulse_sync
+        from app.api.routes.market import refresh_market_pulse_snapshot
         from app.services.market.pulse_history import record_market_pulse_event
 
-        pulse = build_market_pulse_sync(db)
+        pulse = refresh_market_pulse_snapshot(db)
         record_market_pulse_event(db, pulse)
         db.commit()
         return {"ok": True, "data_quality": str(pulse.data_quality), "pulse_level": pulse.pulse_level}
