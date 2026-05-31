@@ -1,17 +1,16 @@
-import { Table } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import type { StrategyTrackingPerformance } from "../../types";
+import { DataTable } from "../../ui/table/DataTable";
 import { formatPct } from "../workspace-shared/workspaceFormatters";
 
 export function StrategyTrackingPerformanceTable({ items }: { items: StrategyTrackingPerformance[] }) {
   return (
-    <Table
+    <DataTable<StrategyTrackingPerformance>
       rowKey="strategy_key"
-      size="small"
       dataSource={items}
       columns={columns}
-      pagination={false}
       scroll={{ x: 820 }}
+      defaultScrollY={360}
     />
   );
 }
@@ -28,11 +27,11 @@ const columns: ColumnsType<StrategyTrackingPerformance> = [
     ),
   },
   {
-    title: "推荐/买点",
+    title: "信号/买点",
     width: 150,
     render: (_, item) => (
       <div className="strategy-tracking-cell-stack">
-        <span>推荐次数 {item.recommendation_count} · 买点 {item.entry_touched_count}</span>
+        <span>信号次数 {item.recommendation_count} · 买点 {item.entry_touched_count}</span>
         <span>买点触达率 {formatPct(item.entry_touch_rate)}</span>
       </div>
     ),

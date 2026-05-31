@@ -1,14 +1,26 @@
-import { Progress, Table, Tag } from "antd";
+import { Progress, Tag } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import type { StrategyTrackingHoldingAnalysis } from "../../types";
 import { TqEmpty } from "../../ui/feedback/StateViews";
+import { DataTable } from "../../ui/table/DataTable";
 import { formatPct } from "../workspace-shared/workspaceFormatters";
 
 export function StrategyTrackingHoldingAnalysisPanel({ items, loading }: { items: StrategyTrackingHoldingAnalysis[]; loading: boolean }) {
   if (!items.length && !loading) {
     return <TqEmpty title="暂无持有分析" description="当前筛选条件下还没有足够样本生成策略持有结论。" />;
   }
-  return <Table rowKey="strategy_key" size="small" loading={loading} dataSource={items} columns={columns} pagination={{ pageSize: 10 }} />;
+  return (
+    <DataTable<StrategyTrackingHoldingAnalysis>
+      rowKey="strategy_key"
+      loading={loading}
+      dataSource={items}
+      columns={columns}
+      paginated
+      pagination={{ pageSize: 10 }}
+      scroll={{ x: 900 }}
+      defaultScrollY={420}
+    />
+  );
 }
 
 const columns: ColumnsType<StrategyTrackingHoldingAnalysis> = [
@@ -23,7 +35,7 @@ const columns: ColumnsType<StrategyTrackingHoldingAnalysis> = [
     ),
   },
   {
-    title: "推荐次数",
+    title: "信号次数",
     dataIndex: "sample_count",
     width: 90,
   },

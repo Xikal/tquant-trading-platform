@@ -1,7 +1,8 @@
-import { Button, Table, Tag } from "antd";
+import { Button, Tag } from "antd";
 import type { ColumnsType, TablePaginationConfig } from "antd/es/table";
 import type { StrategyTrackingViewMode } from "../../stores/strategyTrackingStore";
 import type { StrategyTrackingItem } from "../../types";
+import { DataTable } from "../../ui/table/DataTable";
 import { formatPct, formatPrice } from "../workspace-shared/workspaceFormatters";
 import {
   displayReturn,
@@ -9,6 +10,7 @@ import {
   holdingBucketText,
   holdExtensionTone,
 } from "./strategyTrackingFormatters";
+import { signalStateHelpText, signalStateKindText, signalStateText } from "./signalStateCopy";
 import { StrategyTrackingSectorTags } from "./StrategyTrackingSectorTags";
 import { RitualSignalSeal } from "../ritual-ui";
 
@@ -34,13 +36,14 @@ export function StrategyTrackingTable({
   onOpenDetail,
 }: StrategyTrackingTableProps) {
   return (
-    <Table
+    <DataTable<StrategyTrackingItem>
       rowKey="id"
-      size="small"
       loading={loading}
       dataSource={items}
       columns={columns(onOpenDetail, viewMode)}
       scroll={{ x: 1360 }}
+      defaultScrollY={560}
+      paginated
       pagination={{
         current: page,
         pageSize,
@@ -80,7 +83,18 @@ function columns(onOpenDetail: (itemId: string) => void, viewMode: StrategyTrack
       ),
     },
     {
-      title: "推荐计划",
+      title: "信号性质",
+      width: 210,
+      render: (_, item) => (
+        <div className="strategy-tracking-cell-stack">
+          <Tag color={signalTone(item.signal_state)}>{signalStateText(item)}</Tag>
+          <strong>{signalStateKindText(item.signal_state)}</strong>
+          <span>{signalStateHelpText(item.signal_state)}</span>
+        </div>
+      ),
+    },
+    {
+      title: "跟踪计划",
       width: 190,
       render: (_, item) => (
         <div className="strategy-tracking-cell-stack">
@@ -104,12 +118,12 @@ function columns(onOpenDetail: (itemId: string) => void, viewMode: StrategyTrack
       ),
     },
     {
-      title: "推荐后表现",
+      title: "信号后表现",
       width: 200,
       render: (_, item) => (
         <div className="strategy-tracking-cell-stack">
-          <span>推荐后最高涨过 {displayReturn(item.max_gain_pct)}</span>
-          <span>推荐后最多跌过 {formatPct(item.max_drawdown_pct)}</span>
+          <span>信号后最高涨过 {displayReturn(item.max_gain_pct)}</span>
+          <span>信号后最多跌过 {formatPct(item.max_drawdown_pct)}</span>
           <span>现在涨跌 {displayReturn(item.current_return_pct)}</span>
         </div>
       ),
@@ -142,7 +156,7 @@ function columns(onOpenDetail: (itemId: string) => void, viewMode: StrategyTrack
       render: (_, item) => (
         <div className="strategy-tracking-cell-stack">
           <strong>{item.failure_reason_text || item.plain_language_summary || item.data_quality_text}</strong>
-          <span>{item.first_signal_date} 推荐 · 现价 {formatPrice(item.current_price)}</span>
+          <span>{item.first_signal_date} 信号 · 现价 {formatPrice(item.current_price)}</span>
           {viewMode === "professional" && item.needs_review ? <Tag color="orange">需复核</Tag> : null}
         </div>
       ),
@@ -171,6 +185,12 @@ function friendlyTone(status: string): string {
   if (status === "weakening") return "red";
   if (status === "take_profit_watch") return "blue";
   if (status === "review_needed") return "orange";
+  return "default";
+}
+
+function signalTone(signalState: string): string {
+  if (signalState === "buy_now" || signalState === "soft_buy_now") return "green";
+  if (signalState === "near_entry" || signalState === "observe_confirmed") return "gold";
   return "default";
 }
 
