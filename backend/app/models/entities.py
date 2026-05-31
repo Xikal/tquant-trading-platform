@@ -32,6 +32,11 @@ from app.models.data_quality_entities import (
     DataQualitySnapshot,
     DataRepairAudit,
 )
+from app.models.track_record_entities import (
+    ProductionSignalLedger,
+    SignalRealizedOutcome,
+    StrategyDriftSnapshot,
+)
 from app.models.low_buy_entities import (
     LowBuyCloseReviewSnapshot,
     LowBuyHotIndustrySnapshot,
@@ -136,6 +141,9 @@ __all__ = [
     "StrategyPromotionReview",
     "DataQualitySnapshot",
     "DataRepairAudit",
+    "ProductionSignalLedger",
+    "SignalRealizedOutcome",
+    "StrategyDriftSnapshot",
     "MarketEventCache",
     "MarketHourlySnapshotHistory",
     "MarketModelObservation",

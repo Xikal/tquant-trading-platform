@@ -57,6 +57,8 @@ class AppSettings(BaseSettings):
     promotion_engine_auto_apply_enabled: bool = False
     data_quality_sla_enabled: bool = True
     data_repair_auto_enabled: bool = False
+    track_record_enabled: bool = True
+    drift_alert_enabled: bool = False
     tquant_research_jobs_enabled: bool = False
     tquant_ml_jobs_enabled: bool = False
     tquant_factor_jobs_enabled: bool = False
