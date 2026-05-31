@@ -22,6 +22,7 @@ export interface StockCardView {
   sectorText?: string;
   priceText: string;
   changeText: string;
+  livePrice?: boolean;
   scoreText?: string;
   riskText: string;
   expectedText?: string;

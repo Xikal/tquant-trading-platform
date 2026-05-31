@@ -1,6 +1,7 @@
 import type { CSSProperties, ReactNode } from "react";
 import { Button, Grid } from "antd";
 import { directActionTitle, scoreStars } from "../../utils/uxClarity";
+import { LiveCell } from "../../ui/realtime/LiveCell";
 import type { StockCardView, Tone } from "./workspaceTypes";
 
 const { useBreakpoint } = Grid;
@@ -257,8 +258,8 @@ export function StockCard({
           {stock.scoreText ? <span style={STOCK_SCORE_BADGE_STYLE} title={`质量分 ${stock.scoreText}`}>质量 {scoreStars(stock.scoreText)}</span> : null}
         </div>
         <div style={{ ...STOCK_META_STYLE, ...(compact ? { gap: 7, fontSize: 10 } : undefined) }}>
-          <span>当前价 {stock.priceText}</span>
-          <span style={STOCK_TONE_TEXT_STYLES[stock.tone]}>涨跌 {stock.changeText}</span>
+          <span>当前价 {stock.livePrice ? <LiveCell symbol={stock.symbol} field="price" fallback={stock.priceText} /> : stock.priceText}</span>
+          <span style={STOCK_TONE_TEXT_STYLES[stock.tone]}>涨跌 {stock.livePrice ? <LiveCell symbol={stock.symbol} field="changePct" fallback={stock.changeText} /> : stock.changeText}</span>
           {stock.scoreText ? <span>质量分 {stock.scoreText}</span> : null}
           <span style={{ ...STOCK_META_TAG_STYLE, ...riskToneStyle(stock.riskText) }}>风险 {stock.riskText}</span>
           {stock.expectedText ? <span>预期 {stock.expectedText}</span> : null}
