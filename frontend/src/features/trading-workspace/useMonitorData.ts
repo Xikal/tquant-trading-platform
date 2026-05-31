@@ -5,6 +5,7 @@ import { useWorkspaceMonitorStore } from "../../stores/workspaceMonitorStore";
 import { useServerState } from "../../state/serverState";
 import type {
   LowBuyPriorityBoardResult,
+  LowBuyPriorityBoardItem,
   LowBuyQuoteRefreshItem,
   InstrumentSyncStatus,
   IntradayMarketPulse,
@@ -33,6 +34,7 @@ import {
   refreshTradingSessionStatus,
   shouldRefreshRealtimePrices,
 } from "./realtimePriceRefresh";
+import { createStableCardListMapper } from "./stableMonitorCards";
 
 const MONITOR_SERVER_KEYS = {
   priorityBoard: ["monitor", "priority-board"] as const,
@@ -85,13 +87,23 @@ export function useMonitorData({ active, withLoading, setError, setNotice }: Use
   const laneBoardsRef = useRef<Partial<Record<StrategyVariant, LowBuyPriorityBoardResult>>>({});
   const watchlistSignalsRef = useRef<WatchlistSignal[]>([]);
   const sectorEtfT0Ref = useRef<SectorEtfT0Response | null>(null);
+  const priorityCardMapperRef = useRef(createStableCardListMapper<LowBuyPriorityBoardItem>({
+    keyOf: priorityCardKey,
+    signatureOf: monitorCardSignature,
+    mapItem: priorityToCard,
+  }));
+  const watchCardMapperRef = useRef(createStableCardListMapper<WatchlistSignal>({
+    keyOf: (item) => item.symbol,
+    signatureOf: monitorCardSignature,
+    mapItem: watchSignalToCard,
+  }));
 
   const priorityCards: StockCardView[] = useMemo(
-    () => (priorityBoard?.items ?? []).map(priorityToCard),
-    [priorityBoard]
+    () => priorityCardMapperRef.current(priorityBoard?.items ?? []),
+    [priorityBoard?.items]
   );
   const watchCards: StockCardView[] = useMemo(
-    () => watchlistSignals.map(watchSignalToCard),
+    () => watchCardMapperRef.current(watchlistSignals),
     [watchlistSignals]
   );
   const keyLevelSymbols = useMemo(() => [...new Set([
@@ -495,4 +507,17 @@ function isPendingMonitorSnapshot(priorityBoard: LowBuyPriorityBoardResult | nul
   }
   const warning = `${priorityBoard.snapshot_warning ?? ""} ${priorityBoard.data_quality_text ?? ""}`;
   return warning.includes("已排队") || warning.includes("后台刷新中");
+}
+
+function priorityCardKey(item: LowBuyPriorityBoardItem): string {
+  return [
+    item.symbol,
+    item.strategy_key,
+    item.display_lane ?? "",
+    item.buy_signal_state ?? "",
+  ].join(":");
+}
+
+function monitorCardSignature(item: unknown): string {
+  return JSON.stringify(item);
 }
