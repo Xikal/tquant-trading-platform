@@ -28,6 +28,10 @@ from app.models.decision_context_entities import (
     SignalOutcomeAttribution,
     StrategyPromotionReview,
 )
+from app.models.data_quality_entities import (
+    DataQualitySnapshot,
+    DataRepairAudit,
+)
 from app.models.low_buy_entities import (
     LowBuyCloseReviewSnapshot,
     LowBuyHotIndustrySnapshot,
@@ -130,6 +134,8 @@ __all__ = [
     "DecisionContextSnapshot",
     "SignalOutcomeAttribution",
     "StrategyPromotionReview",
+    "DataQualitySnapshot",
+    "DataRepairAudit",
     "MarketEventCache",
     "MarketHourlySnapshotHistory",
     "MarketModelObservation",
