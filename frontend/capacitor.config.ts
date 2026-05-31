@@ -3,7 +3,7 @@ import type { CapacitorConfig } from "@capacitor/cli"
 const config: CapacitorConfig = {
   appId: "com.weis.tquant",
   appName: "维斯量化交易",
-  webDir: "dist-native",
+  webDir: "dist",
   bundledWebRuntime: false,
   server: {
     androidScheme: "https",

@@ -42,7 +42,7 @@ async function main() {
 
 function classifyAsset(file) {
   if (!file.endsWith(".js")) return "style-or-static";
-  if (file.startsWith("echarts-") || file.startsWith("antd-") || file.startsWith("antd-mobile-")) {
+  if (file.startsWith("echarts-") || file.startsWith("antd-")) {
     return "heavy-vendor";
   }
   if (file.startsWith("react-vendor-") || file.startsWith("tanstack-") || file.startsWith("vendor-")) {

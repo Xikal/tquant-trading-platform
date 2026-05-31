@@ -581,6 +581,23 @@ async function installMockAuth(page) {
     if (path === "/strategy-tracking/summary") return response(mockStrategyTrackingSummary);
     if (path === "/strategy-tracking/items") return response(mockStrategyTrackingList);
     if (path === "/strategy-tracking/performance") return response([mockStrategyTrackingPerformance]);
+    if (path === "/strategy/promotion-review") return response({
+      strategy_key: url.searchParams.get("strategy") || "n_pattern_long_wash",
+      current_tier: "research",
+      recommended_tier: "research",
+      recommendation: "stay_research",
+      evidence: {
+        sample_count: 0,
+        profit_factor: null,
+        average_trade_pct: 0,
+        max_drawdown_pct: 0,
+        max5_return_pct: 0,
+        max10_return_pct: 0,
+        quarterly_stability: 0,
+      },
+      blocking_reasons: ["research_only"],
+      can_apply_override: false,
+    });
     if (path.startsWith("/strategy-tracking/items/")) return response({
       item: mockStrategyTrackingItem,
       timeline: [

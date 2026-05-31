@@ -2,7 +2,7 @@ import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
 
 const ROOT = new URL("../src", import.meta.url).pathname;
-const allowed = new Set(["test/antdMobileMock.tsx", "ui/grid/VirtualGrid.tsx"]);
+const allowed = new Set(["ui/grid/VirtualGrid.tsx"]);
 const statePatterns = [
   { label: "useState", regex: /\buseState\b/ },
   { label: "useReducer", regex: /\buseReducer\b/ },
@@ -30,9 +30,7 @@ function walk(dir) {
       const rel = relative(ROOT, path);
       if (
         name === "node_modules" ||
-        name === "dist" ||
-        name === "dist-native" ||
-        rel === "mobile"
+        name === "dist"
       ) {
         return [];
       }
@@ -44,7 +42,7 @@ const violations = [];
 for (const file of walk(ROOT)) {
   if (!/\.(ts|tsx)$/.test(file)) continue;
   const rel = relative(ROOT, file);
-  if (allowed.has(rel) || rel === "main-native.tsx") continue;
+  if (allowed.has(rel)) continue;
   const text = readFileSync(file, "utf8");
   const lines = text.split(/\r?\n/);
   const patterns = /\.tsx$/.test(file) ? [...statePatterns, ...tsxPatterns] : statePatterns;

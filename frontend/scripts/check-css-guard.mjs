@@ -15,7 +15,7 @@ const violations = walk(root)
   .map((file) => relative(root, file));
 
 if (violations.length) {
-  console.error("CSS guard failed. Do not use .part-N.css files; use semantic files, tokens, CSS modules, or antd-mobile variables instead:");
+  console.error("CSS guard failed. Do not use .part-N.css files; use semantic files, tokens, CSS modules, or AntD theme tokens instead:");
   console.error(violations.join("\n"));
   process.exit(1);
 }

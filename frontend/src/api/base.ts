@@ -1,13 +1,11 @@
-import { isNativeHttpRuntime, nativeRequest } from "./nativeHttp"
 import { clearOfflineCache, readOfflineCache, writeOfflineCache } from "./offlineCache"
 import { fetchWithTimeout } from "./fetchWithTimeout"
 import type { ApiRequestInit } from "./requestTypes"
 import { queryClient } from "../app/query/queryClient"
 
-const isNativeTarget = import.meta.env.VITE_APP_TARGET === "native"
 const configuredApiBase = import.meta.env.VITE_API_BASE_URL
 
-export const API_BASE = configuredApiBase ?? (isNativeTarget ? "__NATIVE_API_BASE_REQUIRED__" : "/api")
+export const API_BASE = configuredApiBase ?? "/api"
 
 let adminApiToken = ""
 type AuthPersistenceMode = "local" | "session" | "memory"
@@ -20,31 +18,11 @@ let authPersistenceMode: AuthPersistenceMode = hydratedAuth.mode
 const MAX_IDEMPOTENT_RETRIES = 2
 
 export async function request<T>(path: string, init?: ApiRequestInit): Promise<T> {
-  if (API_BASE === "__NATIVE_API_BASE_REQUIRED__") {
-    throw new Error("Native build requires VITE_API_BASE_URL to point at the backend /api endpoint.")
-  }
-
   const { timeoutMs, fetchInit } = splitApiRequestInit(init)
   const headers = buildRequestHeaders(fetchInit)
 
   const method = (fetchInit?.method ?? "GET").toUpperCase()
   const canRetry = method === "GET" || method === "HEAD"
-
-  if (isNativeHttpRuntime(isNativeTarget)) {
-    return requestWithOfflineFallback(
-      path,
-      () =>
-        retryRequest(
-          () =>
-            nativeRequest<T>(`${API_BASE}${path}`, {
-              ...fetchInit,
-              headers
-            }),
-          canRetry
-        ),
-      canRetry
-    )
-  }
 
   return requestWithOfflineFallback(
     path,
@@ -113,9 +91,6 @@ function canRefreshForPath(path: string): boolean {
 let refreshAccessPromise: Promise<boolean> | null = null
 
 async function refreshAccessToken(): Promise<boolean> {
-  if (isNativeTarget) {
-    return false
-  }
   if (!refreshAccessPromise) {
     refreshAccessPromise = fetchWithTimeout(`${API_BASE}/auth/refresh`, {
       method: "POST",

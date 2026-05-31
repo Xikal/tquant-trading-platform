@@ -6,11 +6,7 @@ export default tseslint.config(
   {
     ignores: [
       "dist/**",
-      "dist-native/**",
       "node_modules/**",
-      "src/test/**",
-      "src/mobile/**",
-      "src/main-native.tsx",
       "*.config.js",
       "*.config.ts",
     ],

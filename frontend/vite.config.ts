@@ -1,53 +1,24 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
-import { resolve } from "node:path";
-
 export default defineConfig(({ mode }) => {
   const isNativeMode = mode === "native";
-  const isTestMode = mode === "test";
 
   return {
     plugins: [react()],
-    resolve: {
-      alias: isTestMode
-        ? {
-            "antd-mobile/es/global": resolve(__dirname, "src/test/emptyModule.ts"),
-            "antd-mobile": resolve(__dirname, "src/test/antdMobileMock.tsx"),
-          }
-        : undefined,
-    },
     base: isNativeMode ? "./" : "/",
     build: {
       chunkSizeWarningLimit: 700,
-      outDir: isNativeMode ? "dist-native" : "dist",
-      rolldownOptions: isNativeMode
-        ? {
-            input: {
-              index: resolve(__dirname, "index.native.html")
-            },
-            output: {
-              manualChunks: splitVendorChunks
-            }
-          }
-        : {
-            output: {
-              manualChunks: splitVendorChunks
-            }
-          },
-      rollupOptions: isNativeMode
-        ? {
-            input: {
-              index: resolve(__dirname, "index.native.html")
-            },
-            output: {
-              manualChunks: splitVendorChunks
-            }
-          }
-        : {
-            output: {
-              manualChunks: splitVendorChunks
-            }
-          }
+      outDir: "dist",
+      rolldownOptions: {
+        output: {
+          manualChunks: splitVendorChunks
+        }
+      },
+      rollupOptions: {
+        output: {
+          manualChunks: splitVendorChunks
+        }
+      }
     },
     server: {
       port: 5173,
@@ -90,9 +61,6 @@ function splitVendorChunks(id: string): string | undefined {
   }
   if (normalized.includes("/echarts/")) {
     return "echarts-core";
-  }
-  if (normalized.includes("/@capacitor")) {
-    return "native";
   }
   if (normalized.includes("/@ant-design/icons")) {
     return "antd-icons";
@@ -147,9 +115,6 @@ function splitVendorChunks(id: string): string | undefined {
   }
   if (normalized.includes("/antd/")) {
     return "antd";
-  }
-  if (normalized.includes("/antd-mobile")) {
-    return "antd-mobile";
   }
   if (normalized.includes("/@tanstack")) {
     return "tanstack";
