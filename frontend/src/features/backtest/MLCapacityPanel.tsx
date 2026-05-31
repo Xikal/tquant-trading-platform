@@ -33,27 +33,34 @@ import {
 } from "./BacktestResearchShared";
 import { DataTable } from "../../ui/table/DataTable";
 import { useBacktestResearchUiStore } from "../../stores/backtestResearchUiStore";
+import { useServerState } from "../../state/serverState";
 import { BACKTEST_ERROR_STYLE } from "./backtestPageLayoutStyles";
 import { combineBacktestStyles } from "./backtestStyles";
+
+const ML_CAPACITY_SERVER_KEYS = {
+  status: ["backtest", "research", "ml-status"] as const,
+  capacity: ["backtest", "research", "capacity"] as const,
+  markowitz: ["backtest", "research", "markowitz"] as const,
+  blackLitterman: ["backtest", "research", "black-litterman"] as const,
+  policy: ["backtest", "research", "position-policy"] as const,
+};
 
 export function MLCapacityPanel({ strategyOptions }: { strategyOptions: BacktestStrategyOption[] }) {
   const defaultStrategies = strategyOptions.slice(0, 2).map(([key]) => key).join(",");
   const strategies = useBacktestResearchUiStore((ui) => ui.capacityStrategies) || defaultStrategies || "first_board,volume_shrink";
   const runId = useBacktestResearchUiStore((ui) => ui.capacityRunId);
-  const status = useBacktestResearchUiStore((ui) => ui.mlStatus);
-  const capacity = useBacktestResearchUiStore((ui) => ui.capacity);
-  const markowitz = useBacktestResearchUiStore((ui) => ui.markowitz);
-  const blackLitterman = useBacktestResearchUiStore((ui) => ui.blackLitterman);
-  const policy = useBacktestResearchUiStore((ui) => ui.policy);
+  const [status, setStatus] = useServerState<MLSignalOnlineLearningStatus | null>(ML_CAPACITY_SERVER_KEYS.status, null);
+  const [capacity, setCapacity] = useServerState<StrategyCapacityResponse | null>(ML_CAPACITY_SERVER_KEYS.capacity, null);
+  const [markowitz, setMarkowitz] = useServerState<PortfolioOptimizationResponse | null>(ML_CAPACITY_SERVER_KEYS.markowitz, null);
+  const [blackLitterman, setBlackLitterman] = useServerState<PortfolioOptimizationResponse | null>(
+    ML_CAPACITY_SERVER_KEYS.blackLitterman,
+    null,
+  );
+  const [policy, setPolicy] = useServerState<PositionPolicyResearchResponse | null>(ML_CAPACITY_SERVER_KEYS.policy, null);
   const loading = useBacktestResearchUiStore((ui) => ui.capacityLoading);
   const error = useBacktestResearchUiStore((ui) => ui.capacityError);
   const setStrategies = useBacktestResearchUiStore((ui) => ui.setCapacityStrategies);
   const setRunId = useBacktestResearchUiStore((ui) => ui.setCapacityRunId);
-  const setStatus = useBacktestResearchUiStore((ui) => ui.setMlStatus);
-  const setCapacity = useBacktestResearchUiStore((ui) => ui.setCapacity);
-  const setMarkowitz = useBacktestResearchUiStore((ui) => ui.setMarkowitz);
-  const setBlackLitterman = useBacktestResearchUiStore((ui) => ui.setBlackLitterman);
-  const setPolicy = useBacktestResearchUiStore((ui) => ui.setPolicy);
   const setLoading = useBacktestResearchUiStore((ui) => ui.setCapacityLoading);
   const setError = useBacktestResearchUiStore((ui) => ui.setCapacityError);
 

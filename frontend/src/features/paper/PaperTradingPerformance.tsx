@@ -4,10 +4,16 @@ import { Col, List, Row, Space, Typography } from "antd";
 import type { PaperAgentRun, PaperGroupedPerformance, PaperPerformance, PaperSectorEtfT0Performance, PaperSectorEtfT0ReviewTrade, PaperTagPerformance, RiskEventItem } from "../../types";
 import { etfT0OosApi } from "../../api/etfT0Oos";
 import { useEtfT0OosStore } from "../../stores/etfT0OosStore";
+import { useServerState } from "../../state/serverState";
+import type { EtfT0OosLatestResponse } from "../../types/etfT0Oos";
 import { EmptyState, InfoPill, toneTextStyle } from "../workspace-shared/WorkspaceComponents";
 import { formatPaperDateTime } from "./paperTradingFormatters";
 import { formatInteger, formatNumber, formatPct, toneFromChange } from "../workspace-shared/workspaceFormatters";
 import { DataTable } from "../../ui/table/DataTable";
+
+const PAPER_PERFORMANCE_SERVER_KEYS = {
+  etfT0OosLatest: ["paper", "etf-t0-oos", "latest"] as const,
+};
 
 const FULL_WIDTH_STYLE: CSSProperties = { width: "100%" };
 const PERFORMANCE_PILL_ROW_STYLE: CSSProperties = { marginBottom: 6 };
@@ -95,8 +101,7 @@ export function TagPerformanceStrip({ items }: { items: PaperTagPerformance[] })
 }
 
 export function SectorEtfT0PerformancePanel({ item }: { item: PaperSectorEtfT0Performance | null }) {
-  const latest = useEtfT0OosStore((state) => state.latest);
-  const setLatest = useEtfT0OosStore((state) => state.setLatest);
+  const [latest, setLatest] = useServerState<EtfT0OosLatestResponse | null>(PAPER_PERFORMANCE_SERVER_KEYS.etfT0OosLatest, null);
   const setError = useEtfT0OosStore((state) => state.setError);
   useEffect(() => {
     etfT0OosApi.latest()

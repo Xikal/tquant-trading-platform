@@ -1,6 +1,16 @@
 import { useCallback, useEffect } from "react";
-import { backtestsApi } from "../../api/backtests";
+import {
+  backtestsApi,
+  type BacktestAttributionResponse,
+  type BacktestMonthlyReturnsResponse,
+  type BacktestRunDetail,
+  type BacktestRunSummary,
+  type BacktestStrategyCorrelationResponse,
+  type BacktestTrade,
+  type EquityPoint,
+} from "../../api/backtests";
 import { useBacktestUiStore } from "../../stores/backtestUiStore";
+import { useServerState } from "../../state/serverState";
 import type { BacktestFormState } from "./backtestForms";
 import {
   compactProgressPatch,
@@ -24,29 +34,38 @@ export type BacktestDashboardActiveSection =
   | "compare"
   | "none";
 
+const BACKTEST_SERVER_KEYS = {
+  runs: ["backtest", "runs"] as const,
+  selectedRun: ["backtest", "selected-run"] as const,
+  equity: ["backtest", "equity"] as const,
+  trades: ["backtest", "trades"] as const,
+  monthlyReturns: ["backtest", "monthly-returns"] as const,
+  attribution: ["backtest", "attribution"] as const,
+  correlation: ["backtest", "correlation"] as const,
+};
+
 export function useBacktestDashboard(activeSection: BacktestDashboardActiveSection = "all") {
   const form = useBacktestUiStore((state) => state.form);
-  const runs = useBacktestUiStore((state) => state.runs);
-  const selectedRun = useBacktestUiStore((state) => state.selectedRun);
-  const equity = useBacktestUiStore((state) => state.equity);
-  const trades = useBacktestUiStore((state) => state.trades);
+  const [runs, setRuns] = useServerState<BacktestRunSummary[]>(BACKTEST_SERVER_KEYS.runs, []);
+  const [selectedRun, setSelectedRun] = useServerState<BacktestRunDetail | null>(BACKTEST_SERVER_KEYS.selectedRun, null);
+  const [equity, setEquity] = useServerState<EquityPoint[]>(BACKTEST_SERVER_KEYS.equity, []);
+  const [trades, setTrades] = useServerState<BacktestTrade[]>(BACKTEST_SERVER_KEYS.trades, []);
   const loading = useBacktestUiStore((state) => state.loading);
   const error = useBacktestUiStore((state) => state.error);
   const notice = useBacktestUiStore((state) => state.notice);
-  const monthlyReturns = useBacktestUiStore((state) => state.monthlyReturns);
-  const attribution = useBacktestUiStore((state) => state.attribution);
-  const correlation = useBacktestUiStore((state) => state.correlation);
+  const [monthlyReturns, setMonthlyReturns] = useServerState<BacktestMonthlyReturnsResponse | null>(
+    BACKTEST_SERVER_KEYS.monthlyReturns,
+    null,
+  );
+  const [attribution, setAttribution] = useServerState<BacktestAttributionResponse | null>(BACKTEST_SERVER_KEYS.attribution, null);
+  const [correlation, setCorrelation] = useServerState<BacktestStrategyCorrelationResponse | null>(
+    BACKTEST_SERVER_KEYS.correlation,
+    null,
+  );
   const setForm = useBacktestUiStore((state) => state.setForm);
-  const setRuns = useBacktestUiStore((state) => state.setRuns);
-  const setSelectedRun = useBacktestUiStore((state) => state.setSelectedRun);
-  const setEquity = useBacktestUiStore((state) => state.setEquity);
-  const setTrades = useBacktestUiStore((state) => state.setTrades);
   const setLoading = useBacktestUiStore((state) => state.setLoading);
   const setError = useBacktestUiStore((state) => state.setError);
   const setNotice = useBacktestUiStore((state) => state.setNotice);
-  const setMonthlyReturns = useBacktestUiStore((state) => state.setMonthlyReturns);
-  const setAttribution = useBacktestUiStore((state) => state.setAttribution);
-  const setCorrelation = useBacktestUiStore((state) => state.setCorrelation);
 
   const loadDetail = useCallback(async (runId: number) => {
     setLoading("detail");

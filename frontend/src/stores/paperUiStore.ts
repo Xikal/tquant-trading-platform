@@ -1,6 +1,4 @@
 import { create } from "zustand";
-import type { StrategyMeta } from "../api/strategies";
-import type { LowBuyPriorityBoardItem } from "../types";
 import type { PixelTraderAnimationState } from "../features/paper/pixelTrader/types";
 
 export type PaperDetailTabKey = "today" | "orders" | "trades" | "pnl" | "strategy" | "risk" | "diagnostic";
@@ -10,8 +8,6 @@ interface PaperUiStore {
   orderModalOpen: boolean;
   dismissedConfirmationKey: string;
   selectedPositionSymbol: string;
-  orderStrategies: StrategyMeta[];
-  recommendedOrders: LowBuyPriorityBoardItem[];
   recommendedOrdersOpen: boolean;
   recommendedOrdersLoading: boolean;
   recommendedOrdersError: string;
@@ -21,8 +17,6 @@ interface PaperUiStore {
   setOrderModalOpen: (open: boolean) => void;
   setDismissedConfirmationKey: (key: string) => void;
   setSelectedPositionSymbol: (symbol: string) => void;
-  setOrderStrategies: (strategies: StrategyMeta[]) => void;
-  setRecommendedOrders: (orders: LowBuyPriorityBoardItem[]) => void;
   setRecommendedOrdersOpen: (open: boolean) => void;
   setRecommendedOrdersLoading: (loading: boolean) => void;
   setRecommendedOrdersError: (error: string) => void;
@@ -35,8 +29,6 @@ export const usePaperUiStore = create<PaperUiStore>((set) => ({
   orderModalOpen: false,
   dismissedConfirmationKey: "",
   selectedPositionSymbol: "",
-  orderStrategies: [],
-  recommendedOrders: [],
   recommendedOrdersOpen: false,
   recommendedOrdersLoading: false,
   recommendedOrdersError: "",
@@ -46,8 +38,6 @@ export const usePaperUiStore = create<PaperUiStore>((set) => ({
   setOrderModalOpen: (orderModalOpen) => set({ orderModalOpen }),
   setDismissedConfirmationKey: (dismissedConfirmationKey) => set({ dismissedConfirmationKey }),
   setSelectedPositionSymbol: (selectedPositionSymbol) => set({ selectedPositionSymbol }),
-  setOrderStrategies: (orderStrategies) => set({ orderStrategies }),
-  setRecommendedOrders: (recommendedOrders) => set({ recommendedOrders }),
   setRecommendedOrdersOpen: (recommendedOrdersOpen) => set({ recommendedOrdersOpen }),
   setRecommendedOrdersLoading: (recommendedOrdersLoading) => set({ recommendedOrdersLoading }),
   setRecommendedOrdersError: (recommendedOrdersError) => set({ recommendedOrdersError }),

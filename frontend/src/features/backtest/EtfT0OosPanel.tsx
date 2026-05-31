@@ -4,7 +4,13 @@ import { useEffect } from "react";
 import { etfT0OosApi } from "../../api/etfT0Oos";
 import { SelectField } from "../../components/shared/FormFields";
 import { useEtfT0OosStore } from "../../stores/etfT0OosStore";
-import type { EtfT0OosRegimeSegment } from "../../types/etfT0Oos";
+import { useServerState } from "../../state/serverState";
+import type {
+  EtfT0OosDataset,
+  EtfT0OosLatestResponse,
+  EtfT0OosRegimeSegment,
+  EtfT0OosValidationResponse,
+} from "../../types/etfT0Oos";
 import { DataTable } from "../../ui/table/DataTable";
 import { formatInteger, formatNumber, formatPct } from "./backtestDisplay";
 import { Empty, Metric, PanelTitle } from "./BacktestResearchShared";
@@ -25,6 +31,12 @@ interface EtfT0OosPanelProps {
   bars: Array<{ timestamp: string; open: number; high: number; low: number; close: number; volume: number; amount: number }>;
 }
 
+const ETF_T0_OOS_SERVER_KEYS = {
+  datasets: ["backtest", "etf-t0-oos", "datasets"] as const,
+  latest: ["backtest", "etf-t0-oos", "latest"] as const,
+  validation: ["backtest", "etf-t0-oos", "validation"] as const,
+};
+
 export function EtfT0OosPanel({
   symbol,
   name,
@@ -33,16 +45,13 @@ export function EtfT0OosPanel({
   minSignalBars,
   bars,
 }: EtfT0OosPanelProps) {
-  const datasets = useEtfT0OosStore((state) => state.datasets);
+  const [datasets, setDatasets] = useServerState<EtfT0OosDataset[]>(ETF_T0_OOS_SERVER_KEYS.datasets, []);
   const selectedDatasetKey = useEtfT0OosStore((state) => state.selectedDatasetKey);
-  const latest = useEtfT0OosStore((state) => state.latest);
-  const validation = useEtfT0OosStore((state) => state.validation);
+  const [latest, setLatest] = useServerState<EtfT0OosLatestResponse | null>(ETF_T0_OOS_SERVER_KEYS.latest, null);
+  const [validation, setValidation] = useServerState<EtfT0OosValidationResponse | null>(ETF_T0_OOS_SERVER_KEYS.validation, null);
   const loading = useEtfT0OosStore((state) => state.loading);
   const error = useEtfT0OosStore((state) => state.error);
-  const setDatasets = useEtfT0OosStore((state) => state.setDatasets);
   const setSelectedDatasetKey = useEtfT0OosStore((state) => state.setSelectedDatasetKey);
-  const setLatest = useEtfT0OosStore((state) => state.setLatest);
-  const setValidation = useEtfT0OosStore((state) => state.setValidation);
   const setLoading = useEtfT0OosStore((state) => state.setLoading);
   const setError = useEtfT0OosStore((state) => state.setError);
   const selectedDataset = datasets.find((item) => item.dataset_key === selectedDatasetKey) ?? datasets[0] ?? null;
@@ -59,7 +68,11 @@ export function EtfT0OosPanel({
         etfT0OosApi.listDatasets(),
         etfT0OosApi.latest(),
       ]);
-      setDatasets(datasetResponse.items ?? []);
+      const nextDatasets = datasetResponse.items ?? [];
+      setDatasets(nextDatasets);
+      if (!selectedDatasetKey && nextDatasets[0]?.dataset_key) {
+        setSelectedDatasetKey(nextDatasets[0].dataset_key);
+      }
       setLatest(latestResponse);
     } catch (exc: unknown) {
       setError(exc instanceof Error ? exc.message : "OOS 数据集加载失败。");

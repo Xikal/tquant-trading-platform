@@ -1,5 +1,4 @@
 import { create } from "zustand";
-import type { AppAndroidUpdateResponse, AuthUser, LowBuyPriorityBoardItem, LowBuyScreenerResult } from "../types";
 import type { HoldingEditorSeed } from "../features/app-preview/holdingEditor";
 import type { MobileStrategyTabKey, MobileStrategyTabOption } from "../mobile/MobileDesignCards";
 import type { MobileTab } from "../mobile/mobileTypes";
@@ -27,7 +26,6 @@ interface MobileHoldingForm {
 interface MobileUiState {
   activeTab: MobileTab;
   holdingEditor: HoldingEditorState | null;
-  priorityActionItem: LowBuyPriorityBoardItem | null;
   aiOpen: boolean;
   accountMenuOpen: boolean;
   offline: boolean;
@@ -38,14 +36,10 @@ interface MobileUiState {
   signalToastVisible: boolean;
   strategyFilter: MobileStrategyTabKey;
   strategyTabs: MobileStrategyTabOption[];
-  playbook: LowBuyScreenerResult | null;
-  playbookCache: Record<string, LowBuyScreenerResult>;
   playbookLoading: boolean;
   playbookError: string;
-  authUser: AuthUser | null;
   authLoading: boolean;
   authError: string;
-  updateInfo: AppAndroidUpdateResponse | null;
   updateChecking: boolean;
   updateVerifying: boolean;
   updateError: string;
@@ -55,7 +49,6 @@ interface MobileUiState {
   sectorSelection: string[];
   setActiveTab: (activeTab: MobileTab) => void;
   setHoldingEditor: (holdingEditor: HoldingEditorState | null) => void;
-  setPriorityActionItem: (priorityActionItem: LowBuyPriorityBoardItem | null) => void;
   setAiOpen: (aiOpen: boolean) => void;
   setAccountMenuOpen: (accountMenuOpen: boolean | ((current: boolean) => boolean)) => void;
   setOffline: (offline: boolean) => void;
@@ -66,14 +59,10 @@ interface MobileUiState {
   setSignalToastVisible: (signalToastVisible: boolean) => void;
   setStrategyFilter: (strategyFilter: MobileStrategyTabKey | ((current: MobileStrategyTabKey) => MobileStrategyTabKey)) => void;
   setStrategyTabs: (strategyTabs: MobileStrategyTabOption[]) => void;
-  setPlaybook: (playbook: LowBuyScreenerResult | null) => void;
-  cachePlaybook: (strategy: string, playbook: LowBuyScreenerResult) => void;
   setPlaybookLoading: (playbookLoading: boolean) => void;
   setPlaybookError: (playbookError: string) => void;
-  setAuthUser: (authUser: AuthUser | null) => void;
   setAuthLoading: (authLoading: boolean) => void;
   setAuthError: (authError: string) => void;
-  setUpdateInfo: (updateInfo: AppAndroidUpdateResponse | null) => void;
   setUpdateChecking: (updateChecking: boolean) => void;
   setUpdateVerifying: (updateVerifying: boolean) => void;
   setUpdateError: (updateError: string) => void;
@@ -87,7 +76,6 @@ interface MobileUiState {
 export const useMobileUiStore = create<MobileUiState>((set) => ({
   activeTab: "home",
   holdingEditor: null,
-  priorityActionItem: null,
   aiOpen: false,
   accountMenuOpen: false,
   offline: typeof navigator === "undefined" ? false : !navigator.onLine,
@@ -98,14 +86,10 @@ export const useMobileUiStore = create<MobileUiState>((set) => ({
   signalToastVisible: false,
   strategyFilter: "first_board",
   strategyTabs: [],
-  playbook: null,
-  playbookCache: {},
   playbookLoading: false,
   playbookError: "",
-  authUser: null,
   authLoading: true,
   authError: "",
-  updateInfo: null,
   updateChecking: false,
   updateVerifying: false,
   updateError: "",
@@ -126,7 +110,6 @@ export const useMobileUiStore = create<MobileUiState>((set) => ({
   sectorSelection: [],
   setActiveTab: (activeTab) => set({ activeTab }),
   setHoldingEditor: (holdingEditor) => set({ holdingEditor }),
-  setPriorityActionItem: (priorityActionItem) => set({ priorityActionItem }),
   setAiOpen: (aiOpen) => set({ aiOpen }),
   setAccountMenuOpen: (accountMenuOpen) => set((state) => ({
     accountMenuOpen: typeof accountMenuOpen === "function" ? accountMenuOpen(state.accountMenuOpen) : accountMenuOpen,
@@ -141,16 +124,10 @@ export const useMobileUiStore = create<MobileUiState>((set) => ({
     strategyFilter: typeof strategyFilter === "function" ? strategyFilter(state.strategyFilter) : strategyFilter,
   })),
   setStrategyTabs: (strategyTabs) => set({ strategyTabs }),
-  setPlaybook: (playbook) => set({ playbook }),
-  cachePlaybook: (strategy, playbook) => set((state) => ({
-    playbookCache: { ...state.playbookCache, [strategy]: playbook },
-  })),
   setPlaybookLoading: (playbookLoading) => set({ playbookLoading }),
   setPlaybookError: (playbookError) => set({ playbookError }),
-  setAuthUser: (authUser) => set({ authUser }),
   setAuthLoading: (authLoading) => set({ authLoading }),
   setAuthError: (authError) => set({ authError }),
-  setUpdateInfo: (updateInfo) => set({ updateInfo }),
   setUpdateChecking: (updateChecking) => set({ updateChecking }),
   setUpdateVerifying: (updateVerifying) => set({ updateVerifying }),
   setUpdateError: (updateError) => set({ updateError }),

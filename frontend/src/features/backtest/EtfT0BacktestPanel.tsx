@@ -1,7 +1,15 @@
 import { Button, Input } from "antd";
 import { useMemo } from "react";
-import { backtestsApi, type EtfT0BacktestTrade, type EtfT0HeatmapCell, type EtfT0RegimeValidation } from "../../api/backtests";
+import {
+  backtestsApi,
+  type EtfT0BacktestResponse,
+  type EtfT0BacktestTrade,
+  type EtfT0HeatmapCell,
+  type EtfT0RegimeValidation,
+  type EtfT0ResearchResponse,
+} from "../../api/backtests";
 import { useBacktestResearchUiStore } from "../../stores/backtestResearchUiStore";
+import { useServerState } from "../../state/serverState";
 import { DataTable } from "../../ui/table/DataTable";
 import { formatInteger, formatMoney, formatNumber, formatPct, formatPrice, toneFromNumber } from "./backtestDisplay";
 import { Empty, Metric, PanelTitle, TextField } from "./BacktestResearchShared";
@@ -39,9 +47,16 @@ const REGIME_VALIDATION_ROWS = [
   ["强反弹", "避免在急反弹里过早做反T，需跟踪指数联动确认。"],
 ] as const;
 
+const ETF_T0_SERVER_KEYS = {
+  result: ["backtest", "research", "etf-t0-result"] as const,
+  researchResult: ["backtest", "research", "etf-t0-research-result"] as const,
+};
+
 export function EtfT0BacktestPanel() {
   const state = useBacktestResearchUiStore((store) => store.etfT0);
   const setState = useBacktestResearchUiStore((store) => store.setEtfT0);
+  const [result, setResult] = useServerState<EtfT0BacktestResponse | null>(ETF_T0_SERVER_KEYS.result, null);
+  const [research, setResearch] = useServerState<EtfT0ResearchResponse | null>(ETF_T0_SERVER_KEYS.researchResult, null);
   const barsText = state.barsText || SAMPLE_BARS;
   const bars = useMemo(() => parseBars(barsText), [barsText]);
 
@@ -65,7 +80,7 @@ export function EtfT0BacktestPanel() {
         },
         bars,
       });
-      setState({ result: response });
+      setResult(response);
     } catch (err) {
       setState({ error: err instanceof Error ? err.message : "ETF T0 回测请求失败。" });
     } finally {
@@ -95,7 +110,8 @@ export function EtfT0BacktestPanel() {
         oversold_rsi_values: [34, 38, 42],
         bars,
       });
-      setState({ researchResult: response, result: response.base_report });
+      setResearch(response);
+      setResult(response.base_report);
     } catch (err) {
       setState({ error: err instanceof Error ? err.message : "ETF T0 参数热力图请求失败。" });
     } finally {
@@ -103,8 +119,6 @@ export function EtfT0BacktestPanel() {
     }
   }
 
-  const result = state.result;
-  const research = state.researchResult;
   const hasRegimeValidation = Boolean(research?.regime_validations?.length);
   return (
     <section style={combineBacktestStyles(BACKTEST_RESEARCH_CARD_STYLE, BACKTEST_RESEARCH_CARD_WIDE_STYLE)}>

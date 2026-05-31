@@ -12,7 +12,7 @@ import type {
 import { lazy, Suspense, useEffect, useMemo, useRef } from "react";
 import { Button } from "antd";
 import { featureFlagsApi, type FeatureFlagItem } from "../../api/featureFlags";
-import { operationAuditApi } from "../../api/operationAudit";
+import { operationAuditApi, type OperationAuditItem } from "../../api/operationAudit";
 import { NumberField, TextField } from "../../components/shared/FormFields";
 import { AuthSecurityCard } from "./AuthSecurityCard";
 import { InfoPill, PanelTitle, SettingCard } from "../workspace-shared/WorkspaceComponents";
@@ -35,6 +35,7 @@ import { QuantParameterSectorEtfCard } from "./QuantParameterSectorEtfCard";
 import { EtfUniverseAdminCard } from "./EtfUniverseAdminCard";
 import { RitualSettingsCard } from "../ritual-ui";
 import { useSettingsUiStore } from "../../stores/settingsUiStore";
+import { useServerState } from "../../state/serverState";
 import {
   buildSettingsDirtyState,
   integerFieldError,
@@ -45,6 +46,12 @@ import {
   urlFieldError,
 } from "./SettingsPage.helpers";
 import type { SettingsDraft } from "../workspace-shared/workspaceTypes";
+
+const SETTINGS_PAGE_SERVER_KEYS = {
+  featureFlags: ["settings-page", "feature-flags"] as const,
+  featureFlagAudits: ["settings-page", "feature-flag-audits"] as const,
+  operationAudits: ["settings-page", "operation-audits"] as const,
+};
 
 const SETTINGS_PAGE_STYLE: CSSProperties = {
   display: "grid",
@@ -136,20 +143,20 @@ export function SettingsPage({
   const activeTab = useSettingsUiStore((state) => state.activeTab);
   const savedSection = useSettingsUiStore((state) => state.savedSection);
   const sectorDraft = useSettingsUiStore((state) => state.sectorDraft);
-  const featureFlags = useSettingsUiStore((state) => state.featureFlags);
-  const featureFlagAudits = useSettingsUiStore((state) => state.featureFlagAudits);
+  const [featureFlags, setFeatureFlags] = useServerState<FeatureFlagItem[]>(SETTINGS_PAGE_SERVER_KEYS.featureFlags, []);
+  const [featureFlagAudits, setFeatureFlagAudits] = useServerState<Awaited<ReturnType<typeof featureFlagsApi.audit>>["items"]>(
+    SETTINGS_PAGE_SERVER_KEYS.featureFlagAudits,
+    [],
+  );
   const featureFlagError = useSettingsUiStore((state) => state.featureFlagError);
-  const operationAudits = useSettingsUiStore((state) => state.operationAudits);
+  const [operationAudits, setOperationAudits] = useServerState<OperationAuditItem[]>(SETTINGS_PAGE_SERVER_KEYS.operationAudits, []);
   const operationAuditError = useSettingsUiStore((state) => state.operationAuditError);
   const operationAuditLoading = useSettingsUiStore((state) => state.operationAuditLoading);
   const setSectorQuery = useSettingsUiStore((state) => state.setSectorQuery);
   const setActiveTab = useSettingsUiStore((state) => state.setActiveTab);
   const setSavedSection = useSettingsUiStore((state) => state.setSavedSection);
   const setSectorDraft = useSettingsUiStore((state) => state.setSectorDraft);
-  const setFeatureFlags = useSettingsUiStore((state) => state.setFeatureFlags);
-  const setFeatureFlagAudits = useSettingsUiStore((state) => state.setFeatureFlagAudits);
   const setFeatureFlagError = useSettingsUiStore((state) => state.setFeatureFlagError);
-  const setOperationAudits = useSettingsUiStore((state) => state.setOperationAudits);
   const setOperationAuditError = useSettingsUiStore((state) => state.setOperationAuditError);
   const setOperationAuditLoading = useSettingsUiStore((state) => state.setOperationAuditLoading);
   const savedTimerRef = useRef<number | null>(null);

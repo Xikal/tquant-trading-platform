@@ -6,7 +6,8 @@ import {
 } from "../features/app-preview/holdingEditor"
 import { appApi } from "../api/appClient"
 import { useAppPreviewData } from "../features/app-preview/hooks"
-import type { WatchlistItem } from "../types"
+import type { LowBuyPriorityBoardItem, WatchlistItem } from "../types"
+import { useServerState } from "../state/serverState"
 import { MobileAppHeader, MobileStatusBanners, MobileTabBar } from "./MobileAppLayout"
 import { MobileAuthScreen } from "./MobileAuthScreen"
 import type { MobileLowBuyCardItem } from "./MobileDesignCards"
@@ -38,6 +39,8 @@ const EMPTY_HOLDING_SEED: HoldingEditorSeed = {
   memo: ""
 }
 
+const MOBILE_PRIORITY_ACTION_ITEM_KEY = ["mobile", "priority-action-item"] as const
+
 export default function MobileApp() {
   const {
     authUser,
@@ -48,13 +51,15 @@ export default function MobileApp() {
   } = useMobileAuth()
   const activeTab = useMobileUiStore((state) => state.activeTab)
   const holdingEditor = useMobileUiStore((state) => state.holdingEditor)
-  const priorityActionItem = useMobileUiStore((state) => state.priorityActionItem)
+  const [priorityActionItem, setPriorityActionItem] = useServerState<LowBuyPriorityBoardItem | null>(
+    MOBILE_PRIORITY_ACTION_ITEM_KEY,
+    null
+  )
   const aiOpen = useMobileUiStore((state) => state.aiOpen)
   const accountMenuOpen = useMobileUiStore((state) => state.accountMenuOpen)
   const offline = useMobileUiStore((state) => state.offline)
   const setActiveTab = useMobileUiStore((state) => state.setActiveTab)
   const setHoldingEditor = useMobileUiStore((state) => state.setHoldingEditor)
-  const setPriorityActionItem = useMobileUiStore((state) => state.setPriorityActionItem)
   const setAiOpen = useMobileUiStore((state) => state.setAiOpen)
   const setAccountMenuOpen = useMobileUiStore((state) => state.setAccountMenuOpen)
   const setOffline = useMobileUiStore((state) => state.setOffline)

@@ -3,7 +3,9 @@ import { Button, Card, Col, Flex, Form, Input, Row, Space, Tag, Typography } fro
 import {
   factorMiningApi,
   type FactorDefinition,
+  type FactorEvalResult,
   type FactorHypothesis,
+  type FactorHealthItem,
 } from "../../api/factorMining";
 import type { AuthUser } from "../../types";
 import { EmptyPlaceholder, ErrorBanner, SkeletonBlock } from "../../components/shared/Feedback";
@@ -15,25 +17,28 @@ import { HypothesisPanel } from "./HypothesisPanel";
 import { DataTable } from "../../ui/table/DataTable";
 import { AppForm, SubmitBar } from "../../ui/forms/AppForm";
 import { useFactorMiningUiStore, type FactorDraft } from "../../stores/factorMiningUiStore";
+import { useServerState } from "../../state/serverState";
 
 const { TextArea } = Input;
+const FACTOR_MINING_SERVER_KEYS = {
+  factors: ["factor-mining", "factors"] as const,
+  healthItems: ["factor-mining", "health-items"] as const,
+  result: ["factor-mining", "result"] as const,
+};
 
 export function FactorMiningTab({ currentUser }: { currentUser: AuthUser }) {
   const admin = isAdmin(currentUser);
   const selectedKey = useFactorMiningUiStore((state) => state.selectedKey);
   const draft = useFactorMiningUiStore((state) => state.draft);
-  const factors = useFactorMiningUiStore((state) => state.factors);
-  const healthItems = useFactorMiningUiStore((state) => state.healthItems);
+  const [factors, setFactors] = useServerState<FactorDefinition[]>(FACTOR_MINING_SERVER_KEYS.factors, []);
+  const [healthItems, setHealthItems] = useServerState<FactorHealthItem[]>(FACTOR_MINING_SERVER_KEYS.healthItems, []);
   const activation = useFactorMiningUiStore((state) => state.activation);
-  const result = useFactorMiningUiStore((state) => state.result);
+  const [result, setResult] = useServerState<FactorEvalResult | null>(FACTOR_MINING_SERVER_KEYS.result, null);
   const loading = useFactorMiningUiStore((state) => state.loading);
   const error = useFactorMiningUiStore((state) => state.error);
   const setSelectedKey = useFactorMiningUiStore((state) => state.setSelectedKey);
   const setDraft = useFactorMiningUiStore((state) => state.setDraft);
-  const setFactors = useFactorMiningUiStore((state) => state.setFactors);
-  const setHealthItems = useFactorMiningUiStore((state) => state.setHealthItems);
   const setActivation = useFactorMiningUiStore((state) => state.setActivation);
-  const setResult = useFactorMiningUiStore((state) => state.setResult);
   const setLoading = useFactorMiningUiStore((state) => state.setLoading);
   const setError = useFactorMiningUiStore((state) => state.setError);
   const selected = useMemo(() => factors.find((item) => item.factor_key === selectedKey), [factors, selectedKey]);

@@ -2,10 +2,17 @@ import { useCallback } from "react";
 import { api } from "../../api/client";
 import type { AnalysisResponse, IntradayAnomalyResponse } from "../../types";
 import { useWorkspaceAnalysisStore } from "../../stores/workspaceAnalysisStore";
+import { useServerState } from "../../state/serverState";
 import { nullableNumber, parseNumber } from "../workspace-shared/workspaceFormatters";
 import type { Page, StockCardView } from "../workspace-shared/workspaceTypes";
 
 type WorkspaceLoader = <T>(key: string, action: () => Promise<T>) => Promise<T | undefined>;
+
+const ANALYSIS_SERVER_KEYS = {
+  result: ["workspace-analysis", "result"] as const,
+  anomaly: ["workspace-analysis", "anomaly"] as const,
+  batchResults: ["workspace-analysis", "batch-results"] as const,
+};
 
 export function useAnalysisData({
   withLoading,
@@ -19,15 +26,12 @@ export function useAnalysisData({
   navigatePage: (page: Page) => void;
 }) {
   const draft = useWorkspaceAnalysisStore((state) => state.draft);
-  const result = useWorkspaceAnalysisStore((state) => state.result);
-  const anomaly = useWorkspaceAnalysisStore((state) => state.anomaly);
   const batchSymbols = useWorkspaceAnalysisStore((state) => state.batchSymbols);
-  const batchResults = useWorkspaceAnalysisStore((state) => state.batchResults);
   const setDraft = useWorkspaceAnalysisStore((state) => state.setDraft);
-  const setResult = useWorkspaceAnalysisStore((state) => state.setResult);
-  const setAnomaly = useWorkspaceAnalysisStore((state) => state.setAnomaly);
   const setBatchSymbols = useWorkspaceAnalysisStore((state) => state.setBatchSymbols);
-  const setBatchResults = useWorkspaceAnalysisStore((state) => state.setBatchResults);
+  const [result, setResult] = useServerState<AnalysisResponse | null>(ANALYSIS_SERVER_KEYS.result, null);
+  const [anomaly, setAnomaly] = useServerState<IntradayAnomalyResponse | null>(ANALYSIS_SERVER_KEYS.anomaly, null);
+  const [batchResults, setBatchResults] = useServerState<AnalysisResponse[]>(ANALYSIS_SERVER_KEYS.batchResults, []);
 
   const runAnalysis = useCallback(
     async (symbolOverride?: string) => {

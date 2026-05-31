@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef } from "react"
 import { appApi } from "../../api/appClient"
 import { deriveDailyDecision, deriveSimpleBuckets } from "../../mobile/simpleDecision"
 import { useAppPreviewStore, type AppPreviewTab } from "../../stores/appPreviewStore"
+import { useServerState } from "../../state/serverState"
 import {
   addExchangeSuffix,
   normalizeSymbol,
@@ -22,6 +23,13 @@ import type {
 export type { AppPreviewTab } from "../../stores/appPreviewStore"
 
 const PRIORITY_BOARD_LIMIT = 200
+const APP_PREVIEW_SERVER_KEYS = {
+  bootstrap: ["app-preview", "bootstrap"] as const,
+  home: ["app-preview", "home"] as const,
+  watchlist: ["app-preview", "watchlist"] as const,
+  priorityBoard: ["app-preview", "priority-board"] as const,
+  detail: ["app-preview", "detail"] as const,
+}
 
 function formatPulseTime() {
   return new Intl.DateTimeFormat("zh-CN", {
@@ -34,30 +42,28 @@ function formatPulseTime() {
 
 export function useAppPreviewData(strategy = "first_board", enabled = true) {
   const locallyRemovedSymbolKeysRef = useRef<Set<string>>(new Set())
-  const bootstrap = useAppPreviewStore((state) => state.bootstrap)
-  const home = useAppPreviewStore((state) => state.home)
-  const watchlist = useAppPreviewStore((state) => state.watchlist)
-  const priorityBoard = useAppPreviewStore((state) => state.priorityBoard)
+  const [bootstrap, setBootstrap] = useServerState<AppBootstrapResponse | null>(APP_PREVIEW_SERVER_KEYS.bootstrap, null)
+  const [home, setHome] = useServerState<AppHomeResponse | null>(APP_PREVIEW_SERVER_KEYS.home, null)
+  const [watchlist, setWatchlist] = useServerState<AppWatchlistResponse | null>(APP_PREVIEW_SERVER_KEYS.watchlist, null)
+  const [priorityBoard, setPriorityBoard] = useServerState<LowBuyPriorityBoardResult | null>(
+    APP_PREVIEW_SERVER_KEYS.priorityBoard,
+    null
+  )
+  const [detail, setDetail] = useServerState<AppLowBuyDetailResponse | null>(APP_PREVIEW_SERVER_KEYS.detail, null)
   const activeTab = useAppPreviewStore((state) => state.activeTab)
   const loading = useAppPreviewStore((state) => state.loading)
   const tabLoading = useAppPreviewStore((state) => state.tabLoading)
   const detailLoading = useAppPreviewStore((state) => state.detailLoading)
   const actionLoading = useAppPreviewStore((state) => state.actionLoading)
-  const detail = useAppPreviewStore((state) => state.detail)
   const error = useAppPreviewStore((state) => state.error)
   const message = useAppPreviewStore((state) => state.message)
   const pulseTime = useAppPreviewStore((state) => state.pulseTime)
   const priorityPulseTime = useAppPreviewStore((state) => state.priorityPulseTime)
-  const setBootstrap = useAppPreviewStore((state) => state.setBootstrap)
-  const setHome = useAppPreviewStore((state) => state.setHome)
-  const setWatchlist = useAppPreviewStore((state) => state.setWatchlist)
-  const setPriorityBoard = useAppPreviewStore((state) => state.setPriorityBoard)
   const setActiveTab = useAppPreviewStore((state) => state.setActiveTab)
   const setLoading = useAppPreviewStore((state) => state.setLoading)
   const setTabLoading = useAppPreviewStore((state) => state.setTabLoading)
   const setDetailLoading = useAppPreviewStore((state) => state.setDetailLoading)
   const setActionLoading = useAppPreviewStore((state) => state.setActionLoading)
-  const setDetail = useAppPreviewStore((state) => state.setDetail)
   const setError = useAppPreviewStore((state) => state.setError)
   const setMessage = useAppPreviewStore((state) => state.setMessage)
   const setPulseTime = useAppPreviewStore((state) => state.setPulseTime)

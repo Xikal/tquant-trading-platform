@@ -3,28 +3,25 @@ import { appApi } from "../api/appClient"
 import { strategiesApi } from "../api/strategies"
 import type { AppLowBuyResponse, LowBuyScreenerResult } from "../types"
 import { useMobileUiStore } from "../stores/mobileUiStore"
+import { useServerState } from "../state/serverState"
 import type { MobileStrategyTabKey, MobileStrategyTabOption } from "./MobileDesignCards"
 
 const APP_LOW_BUY_TIERS = new Set(["core", "auxiliary"])
+const mobilePlaybookKey = (strategy: MobileStrategyTabKey) => ["mobile", "playbook", strategy] as const
 
 export function useMobilePlaybook(enabled: boolean) {
   const strategyFilter = useMobileUiStore((state) => state.strategyFilter)
   const strategyTabs = useMobileUiStore((state) => state.strategyTabs)
-  const playbook = useMobileUiStore((state) => state.playbook)
-  const playbookCache = useMobileUiStore((state) => state.playbookCache)
+  const [playbook, setPlaybook] = useServerState<LowBuyScreenerResult | null>(mobilePlaybookKey(strategyFilter), null)
   const playbookLoading = useMobileUiStore((state) => state.playbookLoading)
   const playbookError = useMobileUiStore((state) => state.playbookError)
   const setStrategyFilter = useMobileUiStore((state) => state.setStrategyFilter)
   const setStrategyTabs = useMobileUiStore((state) => state.setStrategyTabs)
-  const setPlaybook = useMobileUiStore((state) => state.setPlaybook)
-  const cachePlaybook = useMobileUiStore((state) => state.cachePlaybook)
   const setPlaybookLoading = useMobileUiStore((state) => state.setPlaybookLoading)
   const setPlaybookError = useMobileUiStore((state) => state.setPlaybookError)
 
   async function loadMobilePlaybook(strategy: MobileStrategyTabKey = strategyFilter, force = false) {
-    const cached = playbookCache[strategy]
-    if (cached && !force) {
-      setPlaybook(cached)
+    if (playbook && strategy === strategyFilter && !force) {
       return
     }
     try {
@@ -32,7 +29,6 @@ export function useMobilePlaybook(enabled: boolean) {
       setPlaybookError("")
       const result = toMobileScreenerResult(await appApi.getLowBuy(strategy, 18))
       setPlaybook(result)
-      cachePlaybook(strategy, result)
     } catch (err) {
       setPlaybookError(err instanceof Error ? err.message : "选股宝典加载失败")
     } finally {

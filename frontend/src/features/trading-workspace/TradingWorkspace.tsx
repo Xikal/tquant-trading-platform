@@ -2,8 +2,9 @@ import { useEffect, useRef } from "react";
 import { appApi } from "../../api/appClient";
 import { clearAuthTokens, getAuthAccessToken, shouldAttemptAuthRefresh } from "../../api/base";
 import { api } from "../../api/client";
-import { strategiesApi } from "../../api/strategies";
+import { strategiesApi, type StrategyMeta } from "../../api/strategies";
 import { useWorkspaceStore } from "../../stores/workspaceStore";
+import { useServerState } from "../../state/serverState";
 import { LoginPage } from "./LoginPage";
 import { TradingWorkspaceChrome } from "./TradingWorkspaceChrome";
 import { nullableNumber, parseNumber } from "../workspace-shared/workspaceFormatters";
@@ -20,10 +21,19 @@ import { useWorkspaceNavigation } from "./useWorkspaceNavigation";
 import { useWorkspacePageProps } from "./useWorkspacePageProps";
 import { useWorkspaceAutoRefresh } from "./useWorkspaceAutoRefresh";
 import { WORKSPACE_AUTH_LOADING_STYLE } from "./workspaceShellStyles";
+import type { AiDecisionSupportResponse, AuthUser } from "../../types";
+
+const WORKSPACE_SERVER_KEYS = {
+  currentUser: ["workspace", "current-user"] as const,
+  aiResult: ["workspace", "ai-result"] as const,
+  commandStrategies: ["workspace", "command-strategies"] as const,
+  strategyMeta: ["workspace", "strategy-meta"] as const,
+};
+
 export function TradingWorkspace() {
   const { page, navigatePage } = useWorkspaceNavigation();
   const authReady = useWorkspaceStore((state) => state.authReady);
-  const currentUser = useWorkspaceStore((state) => state.currentUser);
+  const [currentUser, setCurrentUser] = useServerState<AuthUser | null>(WORKSPACE_SERVER_KEYS.currentUser, null);
   const notice = useWorkspaceStore((state) => state.notice);
   const error = useWorkspaceStore((state) => state.error);
   const commandOpen = useWorkspaceStore((state) => state.commandOpen);
@@ -32,22 +42,18 @@ export function TradingWorkspace() {
   const authDraft = useWorkspaceStore((state) => state.authDraft);
   const watchDraft = useWorkspaceStore((state) => state.watchDraft);
   const editingWatchSymbol = useWorkspaceStore((state) => state.editingWatchSymbol);
-  const aiResult = useWorkspaceStore((state) => state.aiResult);
-  const commandStrategies = useWorkspaceStore((state) => state.commandStrategies);
-  const strategyMeta = useWorkspaceStore((state) => state.strategyMeta);
+  const [aiResult, setAiResult] = useServerState<AiDecisionSupportResponse | null>(WORKSPACE_SERVER_KEYS.aiResult, null);
+  const [commandStrategies, setCommandStrategies] = useServerState<StrategyMeta[]>(WORKSPACE_SERVER_KEYS.commandStrategies, []);
+  const [strategyMeta, setStrategyMeta] = useServerState<StrategyMeta[]>(WORKSPACE_SERVER_KEYS.strategyMeta, []);
   const setAuthReady = useWorkspaceStore((state) => state.setAuthReady);
   const setAuthDraft = useWorkspaceStore((state) => state.setAuthDraft);
   const setWatchDraft = useWorkspaceStore((state) => state.setWatchDraft);
   const setEditingWatchSymbol = useWorkspaceStore((state) => state.setEditingWatchSymbol);
-  const setCurrentUser = useWorkspaceStore((state) => state.setCurrentUser);
   const setNotice = useWorkspaceStore((state) => state.setNotice);
   const setError = useWorkspaceStore((state) => state.setError);
   const setCommandOpen = useWorkspaceStore((state) => state.setCommandOpen);
   const setAiDialogOpen = useWorkspaceStore((state) => state.setAiDialogOpen);
   const setSelectedStock = useWorkspaceStore((state) => state.setSelectedStock);
-  const setAiResult = useWorkspaceStore((state) => state.setAiResult);
-  const setCommandStrategies = useWorkspaceStore((state) => state.setCommandStrategies);
-  const setStrategyMeta = useWorkspaceStore((state) => state.setStrategyMeta);
   const clearTransientUi = useWorkspaceStore((state) => state.clearTransientUi);
   const {
     loading,

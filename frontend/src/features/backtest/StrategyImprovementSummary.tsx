@@ -2,6 +2,8 @@ import { useEffect } from "react";
 import { Alert, Col, Row, Space, Tag, Typography } from "antd";
 import { backtestsApi, type StrategyImprovementReportResponse } from "../../api/backtests";
 import { useBacktestResearchUiStore } from "../../stores/backtestResearchUiStore";
+import { useServerState } from "../../state/serverState";
+import { STRATEGY_IMPROVEMENT_REPORT_KEY } from "./StrategyImprovementGatePanel";
 import { Metric } from "./BacktestDashboard.components";
 import { formatInteger, formatNumber } from "./backtestDisplay";
 import { BACKTEST_METRIC_GRID_STYLE } from "./backtestStyles";
@@ -83,14 +85,14 @@ export function PaperExitModelShadowSummaryContent({ report }: { report: Strateg
 }
 
 function useStrategyImprovementReport() {
-  const report = useBacktestResearchUiStore((state) => state.strategyImprovementReport);
+  const [report, setReport] = useServerState<StrategyImprovementReportResponse | null>(STRATEGY_IMPROVEMENT_REPORT_KEY, null);
   const loading = useBacktestResearchUiStore((state) => state.strategyImprovementLoading);
   const setStrategyImprovement = useBacktestResearchUiStore((state) => state.setStrategyImprovement);
   useEffect(() => {
     if (report || loading) return;
     setStrategyImprovement({ strategyImprovementLoading: true, strategyImprovementError: "" });
     backtestsApi.getStrategyImprovementReport()
-      .then((strategyImprovementReport) => setStrategyImprovement({ strategyImprovementReport }))
+      .then(setReport)
       .catch((err) => setStrategyImprovement({ strategyImprovementError: err instanceof Error ? err.message : "策略闭环报告加载失败" }))
       .finally(() => setStrategyImprovement({ strategyImprovementLoading: false }));
   }, [loading, report, setStrategyImprovement]);

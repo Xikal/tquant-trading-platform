@@ -3,10 +3,12 @@ import type { CSSProperties } from "react";
 import { Checkbox } from "antd";
 
 import { quantParametersApi } from "../../api/quantParameters";
+import type { QuantParameterSet } from "../../api/quantParameters";
 import { NumberField } from "../../components/shared/FormFields";
 import { SettingCard } from "../workspace-shared/WorkspaceComponents";
 import { getNested, setNested, structuredCloneSafe, type QuantFieldSpec } from "./quantParameterCardUtils";
 import { useSettingsUiStore } from "../../stores/settingsUiStore";
+import { useServerState } from "../../state/serverState";
 
 const ETF_FIELD_SPECS: QuantFieldSpec[] = [
   { path: "market.sector_etf_t0.paper_auto_max_orders", label: "每轮最多委托", min: 0, max: 10 },
@@ -35,16 +37,19 @@ const INLINE_FIELD_ERROR_STYLE: CSSProperties = {
   fontSize: 12,
 };
 
+const SECTOR_ETF_QUANT_PARAM_KEY = ["settings", "quant-parameters", "sector-etf"] as const;
+
 export function QuantParameterSectorEtfCard({ adminTokenError }: { adminTokenError: string }) {
   const card = useSettingsUiStore((state) => state.quantCards.sectorEtf);
   const setCard = useSettingsUiStore((state) => state.setQuantCard);
-  const { current, draft, enabled, loading, saved, error } = card;
+  const [current, setCurrent] = useServerState<QuantParameterSet | null>(SECTOR_ETF_QUANT_PARAM_KEY, null);
+  const { draft, enabled, loading, saved, error } = card;
 
   const load = useCallback(async () => {
     setCard("sectorEtf", { error: "" });
     const response = await quantParametersApi.current("low_buy");
+    setCurrent(response);
     setCard("sectorEtf", {
-      current: response,
       enabled: Boolean(getNested(response.params, "market.sector_etf_t0.paper_auto_enabled") ?? true),
       draft: Object.fromEntries(ETF_FIELD_SPECS.map((field) => [field.path, String(getNested(response.params, field.path) ?? "")])),
     });

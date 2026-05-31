@@ -2,7 +2,25 @@ import { useCallback, useRef } from "react";
 import { appApi } from "../../api/appClient";
 import { api } from "../../api/client";
 import { usePaperTradingStore } from "../../stores/paperTradingStore";
-import type { PaperTrade, PaperTradeTag } from "../../types";
+import { useServerState } from "../../state/serverState";
+import type {
+  PaperAccount,
+  PaperAgentRun,
+  PaperAutoTradingStatus,
+  PaperGroupedPerformance,
+  PaperLedgerRepairResponse,
+  PaperOrder,
+  PaperPerformance,
+  PaperPerformanceDashboard,
+  PaperPosition,
+  PaperSectorEtfT0Performance,
+  PaperStockPnlItem,
+  PaperStockPnlSummary,
+  PaperTagPerformance,
+  PaperTrade,
+  PaperTradeTag,
+  RiskEventItem,
+} from "../../types";
 import { errorMessage, nullableNumber, parseNumber } from "../workspace-shared/workspaceFormatters";
 
 interface PaperLiveRefreshOptions {
@@ -19,45 +37,95 @@ interface UsePaperTradingParams {
 
 const PAPER_TRADE_TAG_LIMIT = 12;
 const PAPER_TRADE_TAG_FETCH_CONCURRENCY = 3;
+const PAPER_SERVER_KEYS = {
+  account: ["paper", "account"] as const,
+  positions: ["paper", "positions"] as const,
+  orders: ["paper", "orders"] as const,
+  trades: ["paper", "trades"] as const,
+  stockPnl: ["paper", "stock-pnl"] as const,
+  stockPnlSummary: ["paper", "stock-pnl-summary"] as const,
+  performance: ["paper", "performance"] as const,
+  sectorEtfT0Performance: ["paper", "sector-etf-t0-performance"] as const,
+  strategyPerformance: ["paper", "strategy-performance"] as const,
+  marketPerformance: ["paper", "market-performance"] as const,
+  tagPerformance: ["paper", "tag-performance"] as const,
+  tradeTags: ["paper", "trade-tags"] as const,
+  riskEvents: ["paper", "risk-events"] as const,
+  autoTradingStatus: ["paper", "auto-trading-status"] as const,
+  autoTradingRuns: ["paper", "auto-trading-runs"] as const,
+  ledgerRepairStatus: ["paper", "ledger-repair-status"] as const,
+  performanceDashboard: ["paper", "performance-dashboard"] as const,
+};
 
 export function usePaperTrading({ canManageReconcile = false, setError, setLoading, setNotice, onAuthRequired }: UsePaperTradingParams) {
-  const account = usePaperTradingStore((state) => state.account);
-  const positions = usePaperTradingStore((state) => state.positions);
-  const orders = usePaperTradingStore((state) => state.orders);
-  const trades = usePaperTradingStore((state) => state.trades);
-  const stockPnl = usePaperTradingStore((state) => state.stockPnl);
-  const stockPnlSummary = usePaperTradingStore((state) => state.stockPnlSummary);
-  const performance = usePaperTradingStore((state) => state.performance);
-  const sectorEtfT0Performance = usePaperTradingStore((state) => state.sectorEtfT0Performance);
-  const strategyPerformance = usePaperTradingStore((state) => state.strategyPerformance);
-  const marketPerformance = usePaperTradingStore((state) => state.marketPerformance);
-  const tagPerformance = usePaperTradingStore((state) => state.tagPerformance);
-  const tradeTags = usePaperTradingStore((state) => state.tradeTags);
-  const riskEvents = usePaperTradingStore((state) => state.riskEvents);
-  const autoTradingStatus = usePaperTradingStore((state) => state.autoTradingStatus);
-  const autoTradingRuns = usePaperTradingStore((state) => state.autoTradingRuns);
-  const ledgerRepairStatus = usePaperTradingStore((state) => state.ledgerRepairStatus);
-  const performanceDashboard = usePaperTradingStore((state) => state.performanceDashboard);
+  const [account, setAccount, resetAccount] = useServerState<PaperAccount | null>(PAPER_SERVER_KEYS.account, null);
+  const [positions, setPositions, resetPositions] = useServerState<PaperPosition[]>(PAPER_SERVER_KEYS.positions, []);
+  const [orders, setOrders, resetOrders] = useServerState<PaperOrder[]>(PAPER_SERVER_KEYS.orders, []);
+  const [trades, setTrades, resetTrades] = useServerState<PaperTrade[]>(PAPER_SERVER_KEYS.trades, []);
+  const [stockPnl, setStockPnl, resetStockPnl] = useServerState<PaperStockPnlItem[]>(PAPER_SERVER_KEYS.stockPnl, []);
+  const [stockPnlSummary, setStockPnlSummary, resetStockPnlSummary] = useServerState<PaperStockPnlSummary | null>(
+    PAPER_SERVER_KEYS.stockPnlSummary,
+    null,
+  );
+  const [performance, setPerformance, resetPerformance] = useServerState<PaperPerformance | null>(PAPER_SERVER_KEYS.performance, null);
+  const [sectorEtfT0Performance, setSectorEtfT0Performance, resetSectorEtfT0Performance] =
+    useServerState<PaperSectorEtfT0Performance | null>(PAPER_SERVER_KEYS.sectorEtfT0Performance, null);
+  const [strategyPerformance, setStrategyPerformance, resetStrategyPerformance] =
+    useServerState<PaperGroupedPerformance[]>(PAPER_SERVER_KEYS.strategyPerformance, []);
+  const [marketPerformance, setMarketPerformance, resetMarketPerformance] =
+    useServerState<PaperGroupedPerformance[]>(PAPER_SERVER_KEYS.marketPerformance, []);
+  const [tagPerformance, setTagPerformance, resetTagPerformance] =
+    useServerState<PaperTagPerformance[]>(PAPER_SERVER_KEYS.tagPerformance, []);
+  const [tradeTags, setTradeTags, resetTradeTags] =
+    useServerState<Record<number, PaperTradeTag[]>>(PAPER_SERVER_KEYS.tradeTags, {});
+  const [riskEvents, setRiskEvents, resetRiskEvents] = useServerState<RiskEventItem[]>(PAPER_SERVER_KEYS.riskEvents, []);
+  const [autoTradingStatus, setAutoTradingStatus, resetAutoTradingStatus] =
+    useServerState<PaperAutoTradingStatus | null>(PAPER_SERVER_KEYS.autoTradingStatus, null);
+  const [autoTradingRuns, setAutoTradingRuns, resetAutoTradingRuns] =
+    useServerState<PaperAgentRun[]>(PAPER_SERVER_KEYS.autoTradingRuns, []);
+  const [ledgerRepairStatus, setLedgerRepairStatus, resetLedgerRepairStatus] =
+    useServerState<PaperLedgerRepairResponse | null>(PAPER_SERVER_KEYS.ledgerRepairStatus, null);
+  const [performanceDashboard, setPerformanceDashboard, resetPerformanceDashboard] =
+    useServerState<PaperPerformanceDashboard | null>(PAPER_SERVER_KEYS.performanceDashboard, null);
   const draft = usePaperTradingStore((state) => state.draft);
-  const setAccount = usePaperTradingStore((state) => state.setAccount);
-  const setPositions = usePaperTradingStore((state) => state.setPositions);
-  const setOrders = usePaperTradingStore((state) => state.setOrders);
-  const setTrades = usePaperTradingStore((state) => state.setTrades);
-  const setStockPnl = usePaperTradingStore((state) => state.setStockPnl);
-  const setStockPnlSummary = usePaperTradingStore((state) => state.setStockPnlSummary);
-  const setPerformance = usePaperTradingStore((state) => state.setPerformance);
-  const setSectorEtfT0Performance = usePaperTradingStore((state) => state.setSectorEtfT0Performance);
-  const setStrategyPerformance = usePaperTradingStore((state) => state.setStrategyPerformance);
-  const setMarketPerformance = usePaperTradingStore((state) => state.setMarketPerformance);
-  const setTagPerformance = usePaperTradingStore((state) => state.setTagPerformance);
-  const setTradeTags = usePaperTradingStore((state) => state.setTradeTags);
-  const setRiskEvents = usePaperTradingStore((state) => state.setRiskEvents);
-  const setAutoTradingStatus = usePaperTradingStore((state) => state.setAutoTradingStatus);
-  const setAutoTradingRuns = usePaperTradingStore((state) => state.setAutoTradingRuns);
-  const setLedgerRepairStatus = usePaperTradingStore((state) => state.setLedgerRepairStatus);
-  const setPerformanceDashboard = usePaperTradingStore((state) => state.setPerformanceDashboard);
   const setDraft = usePaperTradingStore((state) => state.setDraft);
-  const clearPaperData = usePaperTradingStore((state) => state.clearPaperData);
+  const clearPaperData = useCallback(() => {
+    resetAccount();
+    resetPositions();
+    resetOrders();
+    resetTrades();
+    resetStockPnl();
+    resetStockPnlSummary();
+    resetPerformance();
+    resetSectorEtfT0Performance();
+    resetStrategyPerformance();
+    resetMarketPerformance();
+    resetTagPerformance();
+    resetTradeTags();
+    resetRiskEvents();
+    resetAutoTradingStatus();
+    resetAutoTradingRuns();
+    resetLedgerRepairStatus();
+    resetPerformanceDashboard();
+  }, [
+    resetAccount,
+    resetAutoTradingRuns,
+    resetAutoTradingStatus,
+    resetLedgerRepairStatus,
+    resetMarketPerformance,
+    resetOrders,
+    resetPerformance,
+    resetPerformanceDashboard,
+    resetPositions,
+    resetRiskEvents,
+    resetSectorEtfT0Performance,
+    resetStockPnl,
+    resetStockPnlSummary,
+    resetStrategyPerformance,
+    resetTagPerformance,
+    resetTradeTags,
+    resetTrades,
+  ]);
 
   async function load(allowRefresh = true, manageLoading = true) {
     try {

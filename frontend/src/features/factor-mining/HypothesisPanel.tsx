@@ -1,6 +1,9 @@
 import { Alert, Button, Card, Checkbox, Flex, Input, Space, Typography } from "antd";
 import { factorMiningApi, type FactorHypothesis } from "../../api/factorMining";
 import { useFactorMiningUiStore } from "../../stores/factorMiningUiStore";
+import { useServerState } from "../../state/serverState";
+
+const FACTOR_HYPOTHESIS_SERVER_KEY = ["factor-mining", "hypotheses"] as const;
 
 export function HypothesisPanel({
   onCodeReady,
@@ -9,12 +12,11 @@ export function HypothesisPanel({
 }) {
   const topic = useFactorMiningUiStore((state) => state.hypothesisTopic);
   const useLlm = useFactorMiningUiStore((state) => state.useLlm);
-  const items = useFactorMiningUiStore((state) => state.hypothesisItems);
+  const [items, setItems] = useServerState<FactorHypothesis[]>(FACTOR_HYPOTHESIS_SERVER_KEY, []);
   const loading = useFactorMiningUiStore((state) => state.hypothesisLoading);
   const error = useFactorMiningUiStore((state) => state.hypothesisError);
   const setTopic = useFactorMiningUiStore((state) => state.setHypothesisTopic);
   const setUseLlm = useFactorMiningUiStore((state) => state.setUseLlm);
-  const setItems = useFactorMiningUiStore((state) => state.setHypothesisItems);
   const setLoading = useFactorMiningUiStore((state) => state.setHypothesisLoading);
   const setError = useFactorMiningUiStore((state) => state.setHypothesisError);
 

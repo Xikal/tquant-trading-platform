@@ -2,11 +2,16 @@ import { useCallback, useEffect, useMemo, useRef } from "react";
 import { API_BASE, getAuthAccessToken, getAdminApiToken, invalidateCache, request } from "../../api/base";
 import { api } from "../../api/client";
 import { useWorkspaceMonitorStore } from "../../stores/workspaceMonitorStore";
+import { useServerState } from "../../state/serverState";
 import type {
   LowBuyPriorityBoardResult,
   LowBuyQuoteRefreshItem,
   InstrumentSyncStatus,
+  IntradayMarketPulse,
   MarketBreadth,
+  MarketHourlySnapshotHistoryItem,
+  MarketReviewReport,
+  MarketReviewStatus,
   IntradayKeyLevelResponse,
   PairedHedgeResearchResponse,
   RuntimeStatus,
@@ -29,6 +34,22 @@ import {
   shouldRefreshRealtimePrices,
 } from "./realtimePriceRefresh";
 
+const MONITOR_SERVER_KEYS = {
+  priorityBoard: ["monitor", "priority-board"] as const,
+  marketBreadth: ["monitor", "market-breadth"] as const,
+  marketPulse: ["monitor", "market-pulse"] as const,
+  hourlySnapshotHistory: ["monitor", "hourly-snapshot-history"] as const,
+  reviewStatus: ["monitor", "review-status"] as const,
+  reviewReports: ["monitor", "review-reports"] as const,
+  sectorRelativeStrength: ["monitor", "sector-relative-strength"] as const,
+  keyLevelAlerts: ["monitor", "key-level-alerts"] as const,
+  watchlistSignals: ["monitor", "watchlist-signals"] as const,
+  sectorEtfT0: ["monitor", "sector-etf-t0"] as const,
+  pairedHedge: ["monitor", "paired-hedge"] as const,
+  runtime: ["monitor", "runtime"] as const,
+  instrumentSyncStatus: ["monitor", "instrument-sync-status"] as const,
+};
+
 type WithLoading = <T>(key: string, action: () => Promise<T>) => Promise<T | undefined>;
 
 interface UseMonitorDataOptions {
@@ -39,32 +60,19 @@ interface UseMonitorDataOptions {
 }
 
 export function useMonitorData({ active, withLoading, setError, setNotice }: UseMonitorDataOptions) {
-  const priorityBoard = useWorkspaceMonitorStore((state) => state.priorityBoard);
-  const marketBreadth = useWorkspaceMonitorStore((state) => state.marketBreadth);
-  const marketPulse = useWorkspaceMonitorStore((state) => state.marketPulse);
-  const hourlySnapshotHistory = useWorkspaceMonitorStore((state) => state.hourlySnapshotHistory);
-  const reviewStatus = useWorkspaceMonitorStore((state) => state.reviewStatus);
-  const reviewReports = useWorkspaceMonitorStore((state) => state.reviewReports);
-  const sectorRelativeStrength = useWorkspaceMonitorStore((state) => state.sectorRelativeStrength);
-  const keyLevelAlerts = useWorkspaceMonitorStore((state) => state.keyLevelAlerts);
-  const watchlistSignals = useWorkspaceMonitorStore((state) => state.watchlistSignals);
-  const sectorEtfT0 = useWorkspaceMonitorStore((state) => state.sectorEtfT0);
-  const pairedHedge = useWorkspaceMonitorStore((state) => state.pairedHedge);
-  const runtime = useWorkspaceMonitorStore((state) => state.runtime);
-  const instrumentSyncStatus = useWorkspaceMonitorStore((state) => state.instrumentSyncStatus);
-  const setPriorityBoard = useWorkspaceMonitorStore((state) => state.setPriorityBoard);
-  const setMarketBreadth = useWorkspaceMonitorStore((state) => state.setMarketBreadth);
-  const setMarketPulse = useWorkspaceMonitorStore((state) => state.setMarketPulse);
-  const setHourlySnapshotHistory = useWorkspaceMonitorStore((state) => state.setHourlySnapshotHistory);
-  const setReviewStatus = useWorkspaceMonitorStore((state) => state.setReviewStatus);
-  const setReviewReports = useWorkspaceMonitorStore((state) => state.setReviewReports);
-  const setSectorRelativeStrength = useWorkspaceMonitorStore((state) => state.setSectorRelativeStrength);
-  const setKeyLevelAlerts = useWorkspaceMonitorStore((state) => state.setKeyLevelAlerts);
-  const setWatchlistSignals = useWorkspaceMonitorStore((state) => state.setWatchlistSignals);
-  const setSectorEtfT0 = useWorkspaceMonitorStore((state) => state.setSectorEtfT0);
-  const setPairedHedge = useWorkspaceMonitorStore((state) => state.setPairedHedge);
-  const setRuntime = useWorkspaceMonitorStore((state) => state.setRuntime);
-  const setInstrumentSyncStatus = useWorkspaceMonitorStore((state) => state.setInstrumentSyncStatus);
+  const [priorityBoard, setPriorityBoard, resetPriorityBoard] = useServerState<LowBuyPriorityBoardResult | null>(MONITOR_SERVER_KEYS.priorityBoard, null);
+  const [marketBreadth, setMarketBreadth, resetMarketBreadth] = useServerState<MarketBreadth | null>(MONITOR_SERVER_KEYS.marketBreadth, null);
+  const [marketPulse, setMarketPulse, resetMarketPulse] = useServerState<IntradayMarketPulse | null>(MONITOR_SERVER_KEYS.marketPulse, null);
+  const [hourlySnapshotHistory, setHourlySnapshotHistory, resetHourlySnapshotHistory] = useServerState<MarketHourlySnapshotHistoryItem[]>(MONITOR_SERVER_KEYS.hourlySnapshotHistory, []);
+  const [reviewStatus, setReviewStatus, resetReviewStatus] = useServerState<MarketReviewStatus | null>(MONITOR_SERVER_KEYS.reviewStatus, null);
+  const [reviewReports, setReviewReports, resetReviewReports] = useServerState<MarketReviewReport[]>(MONITOR_SERVER_KEYS.reviewReports, []);
+  const [sectorRelativeStrength, setSectorRelativeStrength, resetSectorRelativeStrength] = useServerState<SectorRelativeStrengthResponse | null>(MONITOR_SERVER_KEYS.sectorRelativeStrength, null);
+  const [keyLevelAlerts, setKeyLevelAlerts, resetKeyLevelAlerts] = useServerState<IntradayKeyLevelResponse[]>(MONITOR_SERVER_KEYS.keyLevelAlerts, []);
+  const [watchlistSignals, setWatchlistSignals, resetWatchlistSignals] = useServerState<WatchlistSignal[]>(MONITOR_SERVER_KEYS.watchlistSignals, []);
+  const [sectorEtfT0, setSectorEtfT0, resetSectorEtfT0] = useServerState<SectorEtfT0Response | null>(MONITOR_SERVER_KEYS.sectorEtfT0, null);
+  const [pairedHedge, setPairedHedge, resetPairedHedge] = useServerState<PairedHedgeResearchResponse | null>(MONITOR_SERVER_KEYS.pairedHedge, null);
+  const [runtime, setRuntime, resetRuntime] = useServerState<RuntimeStatus | null>(MONITOR_SERVER_KEYS.runtime, null);
+  const [instrumentSyncStatus, setInstrumentSyncStatus, resetInstrumentSyncStatus] = useServerState<InstrumentSyncStatus | null>(MONITOR_SERVER_KEYS.instrumentSyncStatus, null);
   const resetMonitorState = useWorkspaceMonitorStore((state) => state.resetMonitorData);
   const monitorRefreshRef = useRef(false);
   const quoteRefreshRef = useRef(false);
@@ -255,8 +263,37 @@ export function useMonitorData({ active, withLoading, setError, setNotice }: Use
   const resetMonitorData = useCallback(() => {
     clearPendingRetry();
     pendingRetryCountRef.current = 0;
+    resetPriorityBoard();
+    resetMarketBreadth();
+    resetMarketPulse();
+    resetHourlySnapshotHistory();
+    resetReviewStatus();
+    resetReviewReports();
+    resetSectorRelativeStrength();
+    resetKeyLevelAlerts();
+    resetWatchlistSignals();
+    resetSectorEtfT0();
+    resetPairedHedge();
+    resetRuntime();
+    resetInstrumentSyncStatus();
     resetMonitorState();
-  }, [clearPendingRetry, resetMonitorState]);
+  }, [
+    clearPendingRetry,
+    resetHourlySnapshotHistory,
+    resetInstrumentSyncStatus,
+    resetKeyLevelAlerts,
+    resetMarketBreadth,
+    resetMarketPulse,
+    resetMonitorState,
+    resetPairedHedge,
+    resetPriorityBoard,
+    resetReviewReports,
+    resetReviewStatus,
+    resetRuntime,
+    resetSectorEtfT0,
+    resetSectorRelativeStrength,
+    resetWatchlistSignals,
+  ]);
 
   useEffect(() => {
     if (!active) {

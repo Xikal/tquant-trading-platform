@@ -1,8 +1,9 @@
 import type { CSSProperties } from "react";
 import { Button, Collapse, Space, Tag } from "antd";
 import { dataQualityApi } from "../../api/dataQuality";
-import type { DataQualitySnapshotItem, DataRepairAuditItem } from "../../api/dataQuality";
+import type { DataQualitySlaResponse, DataQualitySnapshotItem, DataRepairAuditItem } from "../../api/dataQuality";
 import { useSettingsUiStore } from "../../stores/settingsUiStore";
+import { useServerState } from "../../state/serverState";
 import { DataTable } from "../../ui/table/DataTable";
 import { InfoPill, SettingCard } from "../workspace-shared/WorkspaceComponents";
 
@@ -12,12 +13,13 @@ const SUMMARY_STYLE: CSSProperties = {
   gap: 8,
 };
 
+const DATA_QUALITY_SERVER_KEY = ["settings", "data-quality-sla"] as const;
+
 export function DataQualityPanel() {
-  const dataQuality = useSettingsUiStore((state) => state.dataQuality);
+  const [dataQuality, setDataQuality] = useServerState<DataQualitySlaResponse | null>(DATA_QUALITY_SERVER_KEY, null);
   const error = useSettingsUiStore((state) => state.dataQualityError);
   const loading = useSettingsUiStore((state) => state.dataQualityLoading);
   const repairLoading = useSettingsUiStore((state) => state.dataQualityRepairLoading);
-  const setDataQuality = useSettingsUiStore((state) => state.setDataQuality);
   const setError = useSettingsUiStore((state) => state.setDataQualityError);
   const setLoading = useSettingsUiStore((state) => state.setDataQualityLoading);
   const setRepairLoading = useSettingsUiStore((state) => state.setDataQualityRepairLoading);

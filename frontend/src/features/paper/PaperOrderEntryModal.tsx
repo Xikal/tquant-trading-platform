@@ -8,6 +8,8 @@ import type { LowBuyPriorityBoardItem, PaperPosition } from "../../types";
 import { estimateOrderFeeWarning } from "../../utils/orderFeePreview";
 import type { PaperOrderDraft } from "../workspace-shared/workspaceTypes";
 import { usePaperUiStore } from "../../stores/paperUiStore";
+import { useServerState } from "../../state/serverState";
+import type { StrategyMeta } from "../../api/strategies";
 
 const MODAL_BODY_STYLE: CSSProperties = {
   padding: 16,
@@ -40,6 +42,11 @@ const RECOMMEND_LIST_STYLE: CSSProperties = {
   border: "1px solid rgba(214, 165, 92, 0.22)",
   borderRadius: 12,
   background: "#f8fafc",
+};
+
+const PAPER_ORDER_SERVER_KEYS = {
+  strategies: ["paper", "order-entry", "strategies"] as const,
+  recommendedOrders: ["paper", "order-entry", "recommended-orders"] as const,
 };
 
 const RECOMMEND_ITEM_STYLE: CSSProperties = {
@@ -104,13 +111,14 @@ export function OrderEntryModal({
   onSubmitOrder: () => void | Promise<void>;
 }) {
   const locked = autoTradingRunning || paused;
-  const strategies = usePaperUiStore((state) => state.orderStrategies);
-  const recommended = usePaperUiStore((state) => state.recommendedOrders);
+  const [strategies, setStrategies] = useServerState<StrategyMeta[]>(PAPER_ORDER_SERVER_KEYS.strategies, []);
+  const [recommended, setRecommended] = useServerState<LowBuyPriorityBoardItem[]>(
+    PAPER_ORDER_SERVER_KEYS.recommendedOrders,
+    [],
+  );
   const recommendedOpen = usePaperUiStore((state) => state.recommendedOrdersOpen);
   const recommendedLoading = usePaperUiStore((state) => state.recommendedOrdersLoading);
   const recommendedError = usePaperUiStore((state) => state.recommendedOrdersError);
-  const setStrategies = usePaperUiStore((state) => state.setOrderStrategies);
-  const setRecommended = usePaperUiStore((state) => state.setRecommendedOrders);
   const setRecommendedOpen = usePaperUiStore((state) => state.setRecommendedOrdersOpen);
   const setRecommendedLoading = usePaperUiStore((state) => state.setRecommendedOrdersLoading);
   const setRecommendedError = usePaperUiStore((state) => state.setRecommendedOrdersError);

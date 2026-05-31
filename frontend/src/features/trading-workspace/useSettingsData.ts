@@ -2,12 +2,17 @@ import { useCallback } from "react";
 import { api } from "../../api/client";
 import { getAdminApiToken, setAdminApiToken } from "../../api/base";
 import { useSettingsUiStore } from "../../stores/settingsUiStore";
+import { useServerState } from "../../state/serverState";
 import type {
   AdminLatestDataRefreshResponse,
+  AdminMetricsResponse,
+  AdminTaskStatus,
   FactorWeightsResponse,
+  LowBuyStrategyGovernanceResponse,
   RuntimeStatus,
   SettingsPayload,
   SettingsWorkspaceBffResponse,
+  UserSectorExclusionsResponse,
 } from "../../types";
 import { errorMessage } from "../workspace-shared/workspaceFormatters";
 import { settingsPayload, settingsToDraft } from "../workspace-shared/workspaceViewModels";
@@ -19,21 +24,30 @@ interface UseSettingsDataParams {
   setRuntime: (value: RuntimeStatus | null) => void;
 }
 
+const SETTINGS_SERVER_KEYS = {
+  settings: ["settings", "payload"] as const,
+  factorWeights: ["settings", "factor-weights"] as const,
+  adminTasks: ["settings", "admin-tasks"] as const,
+  strategyGovernance: ["settings", "strategy-governance"] as const,
+  sectorExclusions: ["settings", "sector-exclusions"] as const,
+  adminMetrics: ["settings", "admin-metrics"] as const,
+};
+
 export function useSettingsData({ withLoading, setError, setNotice, setRuntime }: UseSettingsDataParams) {
-  const settings = useSettingsUiStore((state) => state.settings);
-  const factorWeights = useSettingsUiStore((state) => state.factorWeights);
-  const adminTasks = useSettingsUiStore((state) => state.adminTasks);
-  const strategyGovernance = useSettingsUiStore((state) => state.strategyGovernance);
-  const sectorExclusions = useSettingsUiStore((state) => state.sectorExclusions);
-  const adminMetrics = useSettingsUiStore((state) => state.adminMetrics);
+  const [settings, setSettings] = useServerState<SettingsPayload | null>(SETTINGS_SERVER_KEYS.settings, null);
+  const [factorWeights, setFactorWeights] = useServerState<FactorWeightsResponse | null>(SETTINGS_SERVER_KEYS.factorWeights, null);
+  const [adminTasks, setAdminTasks] = useServerState<AdminTaskStatus[]>(SETTINGS_SERVER_KEYS.adminTasks, []);
+  const [strategyGovernance, setStrategyGovernance] = useServerState<LowBuyStrategyGovernanceResponse | null>(
+    SETTINGS_SERVER_KEYS.strategyGovernance,
+    null,
+  );
+  const [sectorExclusions, setSectorExclusions] = useServerState<UserSectorExclusionsResponse | null>(
+    SETTINGS_SERVER_KEYS.sectorExclusions,
+    null,
+  );
+  const [adminMetrics, setAdminMetrics] = useServerState<AdminMetricsResponse | null>(SETTINGS_SERVER_KEYS.adminMetrics, null);
   const factorDraft = useSettingsUiStore((state) => state.factorDraft);
   const settingsDraft = useSettingsUiStore((state) => state.settingsDraft);
-  const setSettings = useSettingsUiStore((state) => state.setSettings);
-  const setFactorWeights = useSettingsUiStore((state) => state.setFactorWeights);
-  const setAdminTasks = useSettingsUiStore((state) => state.setAdminTasks);
-  const setStrategyGovernance = useSettingsUiStore((state) => state.setStrategyGovernance);
-  const setSectorExclusions = useSettingsUiStore((state) => state.setSectorExclusions);
-  const setAdminMetrics = useSettingsUiStore((state) => state.setAdminMetrics);
   const setFactorDraft = useSettingsUiStore((state) => state.setFactorDraft);
   const setSettingsDraft = useSettingsUiStore((state) => state.setSettingsDraft);
 

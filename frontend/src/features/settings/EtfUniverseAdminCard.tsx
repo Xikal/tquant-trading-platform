@@ -5,7 +5,14 @@ import { Alert, Button, Checkbox, Space, Tag } from "antd";
 import { etfUniverseAdminApi } from "../../api/etfUniverseAdmin";
 import { NumberField, TextField } from "../../components/shared/FormFields";
 import { useEtfUniverseAdminStore } from "../../stores/etfUniverseAdminStore";
-import type { EtfUniverseAdminProfile, EtfUniverseOverride, EtfUniverseOverrideMap } from "../../types/etfUniverseAdmin";
+import { useServerState } from "../../state/serverState";
+import type {
+  EtfUniverseAdminProfile,
+  EtfUniverseAdminResponse,
+  EtfUniverseOverride,
+  EtfUniverseOverrideMap,
+  EtfUniverseRepairDraftResponse,
+} from "../../types/etfUniverseAdmin";
 import { DataTable } from "../../ui/table/DataTable";
 import { InfoPill, SettingCard } from "../workspace-shared/WorkspaceComponents";
 
@@ -28,10 +35,18 @@ const INLINE_STYLE: CSSProperties = {
   gap: 8,
 };
 
+export const ETF_UNIVERSE_ADMIN_SERVER_KEYS = {
+  payload: ["settings", "etf-universe-admin", "payload"] as const,
+  repairDraft: ["settings", "etf-universe-admin", "repair-draft"] as const,
+};
+
 export function EtfUniverseAdminCard() {
-  const payload = useEtfUniverseAdminStore((state) => state.payload);
+  const [payload, setPayload] = useServerState<EtfUniverseAdminResponse | null>(ETF_UNIVERSE_ADMIN_SERVER_KEYS.payload, null);
+  const [repairDraft, setRepairDraft] = useServerState<EtfUniverseRepairDraftResponse | null>(
+    ETF_UNIVERSE_ADMIN_SERVER_KEYS.repairDraft,
+    null,
+  );
   const draftOverrides = useEtfUniverseAdminStore((state) => state.draftOverrides);
-  const repairDraft = useEtfUniverseAdminStore((state) => state.repairDraft);
   const filter = useEtfUniverseAdminStore((state) => state.filter);
   const repairSymbol = useEtfUniverseAdminStore((state) => state.repairSymbol);
   const repairName = useEtfUniverseAdminStore((state) => state.repairName);
@@ -44,9 +59,7 @@ export function EtfUniverseAdminCard() {
   const loading = useEtfUniverseAdminStore((state) => state.loading);
   const error = useEtfUniverseAdminStore((state) => state.error);
   const message = useEtfUniverseAdminStore((state) => state.message);
-  const setPayload = useEtfUniverseAdminStore((state) => state.setPayload);
   const setDraftOverrides = useEtfUniverseAdminStore((state) => state.setDraftOverrides);
-  const setRepairDraft = useEtfUniverseAdminStore((state) => state.setRepairDraft);
   const setField = useEtfUniverseAdminStore((state) => state.setField);
   const mergeDraftOverrides = useEtfUniverseAdminStore((state) => state.mergeDraftOverrides);
 
@@ -56,6 +69,8 @@ export function EtfUniverseAdminCard() {
     try {
       const response = await etfUniverseAdminApi.getAdmin();
       setPayload(response);
+      setDraftOverrides(response.normalized_overrides ?? {});
+      setField("rollbackVersion", response.recent_versions?.[0]?.version ?? "");
       setField("message", "");
     } catch (exc: unknown) {
       setField("error", exc instanceof Error ? exc.message : "ETF Universe 加载失败");
@@ -86,6 +101,7 @@ export function EtfUniverseAdminCard() {
     try {
       const response = await etfUniverseAdminApi.validate(draftOverrides);
       setPayload(response);
+      setDraftOverrides(response.normalized_overrides ?? draftOverrides);
       setField("message", "草稿校验完成。");
     } catch (exc: unknown) {
       setField("error", exc instanceof Error ? exc.message : "草稿校验失败");
@@ -125,6 +141,8 @@ export function EtfUniverseAdminCard() {
         confirm_high_risk: confirmHighRisk,
       });
       setPayload(response.admin);
+      setDraftOverrides(response.admin.normalized_overrides ?? {});
+      setField("rollbackVersion", response.admin.recent_versions?.[0]?.version ?? "");
       setField("message", response.message);
       setField("version", `etf-universe-${Date.now()}`);
       setField("description", "");
@@ -142,6 +160,8 @@ export function EtfUniverseAdminCard() {
     try {
       const response = await etfUniverseAdminApi.rollback({ version: rollbackVersion, confirm: true });
       setPayload(response.admin);
+      setDraftOverrides(response.admin.normalized_overrides ?? {});
+      setField("rollbackVersion", response.admin.recent_versions?.[0]?.version ?? "");
       setField("message", response.message);
     } catch (exc: unknown) {
       setField("error", exc instanceof Error ? exc.message : "ETF Universe 回滚失败");

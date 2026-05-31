@@ -2,10 +2,12 @@ import { useCallback, useEffect, useMemo } from "react";
 import type { CSSProperties } from "react";
 
 import { quantParametersApi } from "../../api/quantParameters";
+import type { QuantParameterSet } from "../../api/quantParameters";
 import { NumberField } from "../../components/shared/FormFields";
 import { SettingCard } from "../workspace-shared/WorkspaceComponents";
 import { getNested, setNested, structuredCloneSafe, type QuantFieldSpec } from "./quantParameterCardUtils";
 import { useSettingsUiStore } from "../../stores/settingsUiStore";
+import { useServerState } from "../../state/serverState";
 
 const PAPER_EXIT_FIELDS: QuantFieldSpec[] = [
   { path: "paper.dynamic_exit.hard_stop_loss_pct", label: "硬止损线", min: -20, max: 0, step: "0.1", suffix: "%" },
@@ -40,16 +42,19 @@ const INLINE_FIELD_ERROR_STYLE: CSSProperties = {
   fontSize: 12,
 };
 
+const PAPER_EXIT_QUANT_PARAM_KEY = ["settings", "quant-parameters", "paper-exit"] as const;
+
 export function QuantParameterPaperExitCard({ adminTokenError }: { adminTokenError: string }) {
   const card = useSettingsUiStore((state) => state.quantCards.paperExit);
   const setCard = useSettingsUiStore((state) => state.setQuantCard);
-  const { current, draft, loading, saved, error } = card;
+  const [current, setCurrent] = useServerState<QuantParameterSet | null>(PAPER_EXIT_QUANT_PARAM_KEY, null);
+  const { draft, loading, saved, error } = card;
 
   const load = useCallback(async () => {
     setCard("paperExit", { error: "" });
     const response = await quantParametersApi.current("low_buy");
+    setCurrent(response);
     setCard("paperExit", {
-      current: response,
       draft: Object.fromEntries(PAPER_EXIT_FIELDS.map((field) => [field.path, String(getNested(response.params, field.path) ?? "")])),
     });
   }, [setCard]);

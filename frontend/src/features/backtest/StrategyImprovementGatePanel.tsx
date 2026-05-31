@@ -3,13 +3,16 @@ import { Alert, Button, Space, Tag, Typography } from "antd";
 import { backtestsApi, type StrategyImprovementReportResponse } from "../../api/backtests";
 import { DataTable } from "../../ui/table/DataTable";
 import { useBacktestResearchUiStore } from "../../stores/backtestResearchUiStore";
+import { useServerState } from "../../state/serverState";
 import { Metric, PanelHeader } from "./BacktestDashboard.components";
 import { formatInteger, formatNumber } from "./backtestDisplay";
 import { BACKTEST_METRIC_GRID_STYLE } from "./backtestStyles";
 import { BACKTEST_PANEL_SURFACE_STYLE, BACKTEST_SECTION_META_STYLE } from "./backtestPageLayoutStyles";
 
+export const STRATEGY_IMPROVEMENT_REPORT_KEY = ["backtest", "research", "strategy-improvement-report"] as const;
+
 export function StrategyImprovementGatePanel() {
-  const report = useBacktestResearchUiStore((state) => state.strategyImprovementReport);
+  const [report, setReport] = useServerState<StrategyImprovementReportResponse | null>(STRATEGY_IMPROVEMENT_REPORT_KEY, null);
   const loading = useBacktestResearchUiStore((state) => state.strategyImprovementLoading);
   const error = useBacktestResearchUiStore((state) => state.strategyImprovementError);
   const setStrategyImprovement = useBacktestResearchUiStore((state) => state.setStrategyImprovement);
@@ -17,7 +20,7 @@ export function StrategyImprovementGatePanel() {
   const load = () => {
     setStrategyImprovement({ strategyImprovementLoading: true, strategyImprovementError: "" });
     backtestsApi.getStrategyImprovementReport()
-      .then((strategyImprovementReport) => setStrategyImprovement({ strategyImprovementReport }))
+      .then(setReport)
       .catch((err) => setStrategyImprovement({ strategyImprovementError: err instanceof Error ? err.message : "策略闭环报告加载失败" }))
       .finally(() => setStrategyImprovement({ strategyImprovementLoading: false }));
   };

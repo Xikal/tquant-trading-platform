@@ -2,10 +2,13 @@ import { Browser } from "@capacitor/browser"
 import { Capacitor } from "@capacitor/core"
 import { useCallback, useEffect } from "react"
 import { appApi } from "../api/appClient"
+import type { AppAndroidUpdateResponse } from "../types"
 import { useMobileUiStore } from "../stores/mobileUiStore"
+import { useServerState } from "../state/serverState"
 
 const CURRENT_ANDROID_VERSION_CODE = Number(import.meta.env.VITE_NATIVE_VERSION_CODE ?? "1")
 const DISMISSED_UPDATE_KEY = "tquant.dismissed_android_update"
+const MOBILE_UPDATE_INFO_KEY = ["mobile", "android-update-info"] as const
 
 function isAndroidNativeApp() {
   return Capacitor.isNativePlatform() && Capacitor.getPlatform() === "android"
@@ -26,11 +29,10 @@ function rememberDismissedVersion(versionCode: number) {
 }
 
 export function useAppUpdate() {
-  const updateInfo = useMobileUiStore((state) => state.updateInfo)
+  const [updateInfo, setUpdateInfo] = useServerState<AppAndroidUpdateResponse | null>(MOBILE_UPDATE_INFO_KEY, null)
   const checking = useMobileUiStore((state) => state.updateChecking)
   const verifying = useMobileUiStore((state) => state.updateVerifying)
   const updateError = useMobileUiStore((state) => state.updateError)
-  const setUpdateInfo = useMobileUiStore((state) => state.setUpdateInfo)
   const setChecking = useMobileUiStore((state) => state.setUpdateChecking)
   const setVerifying = useMobileUiStore((state) => state.setUpdateVerifying)
   const setUpdateError = useMobileUiStore((state) => state.setUpdateError)

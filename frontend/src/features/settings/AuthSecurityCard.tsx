@@ -1,9 +1,10 @@
 import type { CSSProperties } from "react";
 import { Input } from "antd";
 import { appApi } from "../../api/appClient";
-import type { AuthUser } from "../../types";
+import type { AuthMfaSetupResponse, AuthUser } from "../../types";
 import { SettingCard } from "../workspace-shared/WorkspaceComponents";
 import { useSettingsUiStore } from "../../stores/settingsUiStore";
+import { useServerState } from "../../state/serverState";
 
 type AuthSecurityCardProps = {
   currentUser: AuthUser;
@@ -68,15 +69,19 @@ const SECURITY_CODE_LABEL_STYLE: CSSProperties = {
   fontWeight: 700,
 };
 
+const MFA_SETUP_SERVER_KEY = ["settings", "mfa", "setup"] as const;
+
 export function AuthSecurityCard({ currentUser, onUserUpdate }: AuthSecurityCardProps) {
+  const [setup, setSetup] = useServerState<AuthMfaSetupResponse | null>(MFA_SETUP_SERVER_KEY, null);
   const mfa = useSettingsUiStore((state) => state.mfa);
   const setMfa = useSettingsUiStore((state) => state.setMfa);
-  const { setup, code, loading, message, error } = mfa;
+  const { code, loading, message, error } = mfa;
 
   async function startSetup() {
     await run(async () => {
       const payload = await appApi.setupTotp();
-      setMfa({ setup: payload, message: "请把密钥加入认证器，然后输入 6 位验证码启用。" });
+      setSetup(payload);
+      setMfa({ message: "请把密钥加入认证器，然后输入 6 位验证码启用。" });
     });
   }
 
@@ -88,7 +93,8 @@ export function AuthSecurityCard({ currentUser, onUserUpdate }: AuthSecurityCard
     await run(async () => {
       const payload = await appApi.enableTotp(code.trim());
       onUserUpdate(payload.user);
-      setMfa({ setup: null, code: "", message: "二次验证已启用，下次登录需要输入动态验证码。" });
+      setSetup(null);
+      setMfa({ code: "", message: "二次验证已启用，下次登录需要输入动态验证码。" });
     });
   }
 
@@ -100,7 +106,8 @@ export function AuthSecurityCard({ currentUser, onUserUpdate }: AuthSecurityCard
     await run(async () => {
       const payload = await appApi.disableTotp(code.trim());
       onUserUpdate(payload.user);
-      setMfa({ setup: null, code: "", message: "二次验证已关闭。" });
+      setSetup(null);
+      setMfa({ code: "", message: "二次验证已关闭。" });
     });
   }
 

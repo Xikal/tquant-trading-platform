@@ -2,10 +2,12 @@ import { useCallback, useEffect, useMemo } from "react";
 import type { CSSProperties } from "react";
 
 import { quantParametersApi } from "../../api/quantParameters";
+import type { QuantParameterSet } from "../../api/quantParameters";
 import { NumberField } from "../../components/shared/FormFields";
 import { SettingCard } from "../workspace-shared/WorkspaceComponents";
 import { getNested, setNested, structuredCloneSafe } from "./quantParameterCardUtils";
 import { useSettingsUiStore } from "../../stores/settingsUiStore";
+import { useServerState } from "../../state/serverState";
 
 type FieldSpec = {
   path: string;
@@ -31,16 +33,19 @@ const INLINE_FIELD_ERROR_STYLE: CSSProperties = {
   fontSize: 12,
 };
 
+const ML_QUANT_PARAM_KEY = ["settings", "quant-parameters", "ml"] as const;
+
 export function QuantParameterMlCard({ adminTokenError }: { adminTokenError: string }) {
   const card = useSettingsUiStore((state) => state.quantCards.ml);
   const setCard = useSettingsUiStore((state) => state.setQuantCard);
-  const { current, draft, loading, saved, error } = card;
+  const [current, setCurrent] = useServerState<QuantParameterSet | null>(ML_QUANT_PARAM_KEY, null);
+  const { draft, loading, saved, error } = card;
 
   const load = useCallback(async () => {
     setCard("ml", { error: "" });
     const response = await quantParametersApi.current("low_buy");
+    setCurrent(response);
     setCard("ml", {
-      current: response,
       draft: Object.fromEntries(FIELD_SPECS.map((field) => [field.path, String(getNested(response.params, field.path) ?? "")])),
     });
   }, [setCard]);
