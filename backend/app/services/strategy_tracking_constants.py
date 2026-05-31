@@ -20,8 +20,8 @@ STATUS_LABELS = {
 }
 
 SIGNAL_LABELS = {
-    "buy_now": "可买入",
+    "buy_now": "确定可买",
     "soft_buy_now": "小仓试买",
-    "near_entry": "接近买点",
-    "observe_confirmed": "观察确认",
+    "near_entry": "接近买点（观察）",
+    "observe_confirmed": "观察确认（非买入）",
 }

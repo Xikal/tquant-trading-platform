@@ -242,7 +242,7 @@ def _workflow_prompt(*, symbols: list[str], orchestration: dict[str, Any]) -> st
         "\"final_markdown\": string,"
         "\"errors\": [string]"
         "}。"
-        f"标的参考：{', '.join(symbols) if symbols else '全策略榜 TOP 10'}。"
+        f"标的参考：{', '.join(symbols) if symbols else '生产优先榜 TOP 10'}。"
         f"orchestration_contract={json.dumps(contract, ensure_ascii=False)}"
     )
 

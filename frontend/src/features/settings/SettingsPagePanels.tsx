@@ -96,7 +96,7 @@ export function SectorFilterCard({
       saved={saved}
       disabled={!sectorExclusions || !sectorDirty}
     >
-      <p className="hint">选择不想参与的板块后，全策略榜单、选股宝典、App 选股和模拟盘自动买入都会过滤这些板块。已有持仓仍会保留风控监控。</p>
+      <p className="hint">选择不想参与的板块后，生产优先榜、选股宝典、App 选股和模拟盘自动买入都会过滤这些板块。已有持仓仍会保留风控监控。</p>
       <div style={SECTOR_FILTER_SUMMARY_STYLE}>
         <InfoPill label="可选板块" value={sectorExclusions ? `${sectorExclusions.available_sectors.length} 个` : "--"} />
         <InfoPill label="已排除" value={`${sectorDraft.length} 个`} />
@@ -151,7 +151,7 @@ export function StrategyGovernanceCard({
       {strategyGovernance ? (
         <DataTable
           rowKey="strategy_key"
-          dataSource={strategyGovernance.items.slice(0, 8)}
+          dataSource={strategyGovernance.items}
           columns={[
             {
               title: "策略",
@@ -257,7 +257,7 @@ export function FeatureFlagsCard({
       {featureFlagAudits.length ? (
         <DataTable
           rowKey="id"
-          dataSource={featureFlagAudits.slice(0, 6)}
+          dataSource={featureFlagAudits}
           columns={[
             {
               title: "最近审计",
@@ -315,7 +315,7 @@ export function RuntimeDiagnosticsCard({
       {adminTasks.length > 0 ? (
         <DataTable
           rowKey="name"
-          dataSource={adminTasks.slice(0, 4)}
+          dataSource={adminTasks}
           columns={[
             { title: "后台任务", dataIndex: "name" },
             {
@@ -374,7 +374,7 @@ export function OperationAuditCard({
       {error ? <p className="form-error">{error}</p> : null}
       <DataTable
         rowKey="id"
-        dataSource={items.slice(0, 8)}
+        dataSource={items}
         locale={{ emptyText: "暂无审计记录，只有管理员可查看" }}
         columns={[
           {

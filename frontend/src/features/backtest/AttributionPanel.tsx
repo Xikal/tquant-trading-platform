@@ -89,7 +89,7 @@ function AttributionTable({ title, items }: { title: string; items: NonNullable<
       className="backtest-data-table narrow"
       rowKey={(item) => `${title}-${item.bucket}`}
       title={() => title}
-      dataSource={items.slice(0, 6)}
+      dataSource={items}
       locale={{ emptyText: <Empty text={`${title} 等待接口返回。`} /> }}
       columns={[
         { title: "分桶", render: (_value, item) => item.label || item.bucket },

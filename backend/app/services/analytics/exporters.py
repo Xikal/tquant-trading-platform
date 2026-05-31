@@ -11,6 +11,7 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app.services.analytics.config import analytics_config
+from app.services.analytics.dependencies import require_analytics_dependencies
 from app.services.analytics.manifest import dataset_version, file_sha256, write_manifest
 from app.services.analytics.quality import check_daily_bars_24m_quality, period_for_months
 from app.services.analytics.schemas import DAILY_BARS_SCHEMA
@@ -24,6 +25,7 @@ def export_daily_bars_parquet(
     output_root: str | Path | None = None,
     create_backfill_task: bool = True,
 ) -> dict[str, Any]:
+    require_analytics_dependencies()
     config = analytics_config(output_root)
     config.ensure_dirs()
     resolved_end = end_date or date.today()

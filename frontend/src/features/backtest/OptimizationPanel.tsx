@@ -104,7 +104,7 @@ export function OptimizationPanel({
             <DataTable<BacktestOptimizationCandidate>
               className="backtest-data-table"
               rowKey={(item, index) => `${item.rank ?? index}-${formatParams(item.params)}`}
-              dataSource={(detail.candidates ?? []).slice(0, 8)}
+              dataSource={detail.candidates ?? []}
               locale={{ emptyText: <Empty text="优化完成后显示参数组合排名。" /> }}
               scroll={{ x: 980 }}
               columns={[

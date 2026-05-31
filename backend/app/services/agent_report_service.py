@@ -33,7 +33,7 @@ class AgentReportService:
         )
         headline = (
             f"今日可执行信号 {watchlist.actionable_count} 个，"
-            f"全策略优先候选 {board.immediate_count} 个。"
+            f"生产优先候选 {board.immediate_count} 个。"
         )
         holding_t_signals = self._holding_t_signals(watchlist)
         operation_checklist = [
@@ -99,7 +99,7 @@ class AgentReportService:
         if actionable_count:
             actions.append("先复核持仓做T信号，确认可卖数量和价差是否满足。")
         if immediate_count:
-            actions.append("全策略榜只看生产层和确定买入，观察层不提前买。")
+            actions.append("生产优先榜只看生产层和确定买入，观察层不提前买。")
         return actions
 
     @staticmethod

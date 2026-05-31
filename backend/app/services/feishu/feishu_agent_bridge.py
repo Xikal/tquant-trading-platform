@@ -51,7 +51,7 @@ class FeishuAgentBridge:
             top_signal = board.items[0] if board.items else None
             if top_signal:
                 return signal_card(
-                    title="全策略优先榜",
+                    title="生产优先榜",
                     signal_title=f"{top_signal.rank}. {top_signal.name} {top_signal.symbol}",
                     summary=top_signal.summary or top_signal.buy_signal_text,
                     fields=[
@@ -61,7 +61,7 @@ class FeishuAgentBridge:
                         ("候选数", str(board.total_candidates)),
                     ],
                 )
-            return interactive_card("全策略优先榜", [("市场状态", board.market_state_text), ("候选数", "0")])
+            return interactive_card("生产优先榜", [("市场状态", board.market_state_text), ("候选数", "0")])
         if command == "自选":
             watchlist = self.context.watchlist_context(db)
             return text_card(
@@ -141,7 +141,7 @@ def _workflow_job_card(title: str, job: WorkflowJobView) -> dict:
         ("工作流", job.workflow_name),
         ("状态", _workflow_status_text(job.status)),
         ("任务", job.job_id or "--"),
-        ("标的", "、".join(job.symbols) if job.symbols else "全策略榜 TOP 10"),
+        ("标的", "、".join(job.symbols) if job.symbols else "生产优先榜 TOP 10"),
     ]
     if job.notification_sent:
         fields.append(("推送", "已推送飞书"))

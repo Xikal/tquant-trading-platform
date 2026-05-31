@@ -102,10 +102,10 @@ export function StrategyTrackingFilters({
       ]} />
       <Select size="small" value={signalState} onChange={onSignalStateChange} style={{ width: 120 }} options={[
         { label: "全部信号", value: "" },
-        { label: "可买入", value: "buy_now" },
+        { label: "确定可买", value: "buy_now" },
         { label: "小仓试买", value: "soft_buy_now" },
-        { label: "接近买点", value: "near_entry" },
-        { label: "观察确认", value: "observe_confirmed" },
+        { label: "接近买点（观察）", value: "near_entry" },
+        { label: "观察确认（非买入）", value: "observe_confirmed" },
       ]} />
       <Select size="small" value={lifecycleStatus} onChange={onLifecycleStatusChange} style={{ width: 130 }} options={[
         { label: "全部状态", value: "" },

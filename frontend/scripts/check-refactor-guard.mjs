@@ -2,12 +2,17 @@ import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
 
 const ROOT = new URL("../src", import.meta.url).pathname;
-const allowed = new Set(["test/antdMobileMock.tsx"]);
+const allowed = new Set(["test/antdMobileMock.tsx", "ui/table/DataTable.tsx"]);
 const statePatterns = [
   { label: "useState", regex: /\buseState\b/ },
   { label: "useReducer", regex: /\buseReducer\b/ },
 ];
 const tsxPatterns = [
+  { label: "raw AntD Table import", regex: /import\s+\{[^}]*\bTable\b[^}]*\}\s+from\s+["']antd["']/ },
+  { label: "raw AntD Table JSX", regex: /<Table\b/ },
+  { label: "dataSource slice", regex: /dataSource=\{[^}]*\.slice\(\s*0\s*,/ },
+  { label: "MonitorPage priorityCards non-business slice", regex: /priorityCards\.slice\(\s*0\s*,(?!\s*3[),])/ },
+  { label: "MonitorPage opportunities slice", regex: /opportunities\.slice\(\s*0\s*,/ },
   { label: "native input", regex: /<input\b/ },
   { label: "native select", regex: /<select\b/ },
   { label: "native textarea", regex: /<textarea\b/ },

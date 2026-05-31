@@ -14,7 +14,7 @@ CLOUD_KEEP_BACKUPS="${CLOUD_KEEP_BACKUPS:-3}"
 AUTO_INITIAL_GIT_COMMIT="${AUTO_INITIAL_GIT_COMMIT:-1}"
 AUTO_INSTALL_BACKUP_CRON="${AUTO_INSTALL_BACKUP_CRON:-1}"
 AUTO_CONFIGURE_HTTPS="${AUTO_CONFIGURE_HTTPS:-1}"
-HTTPS_REQUIRED="${HTTPS_REQUIRED:-0}"
+HTTPS_REQUIRED="${HTTPS_REQUIRED:-1}"
 CLOUD_DOMAIN="${CLOUD_DOMAIN:-}"
 CLOUD_CERT_EMAIL="${CLOUD_CERT_EMAIL:-}"
 CLOUD_AUTH_COOKIE_SECURE="${CLOUD_AUTH_COOKIE_SECURE:-}"
@@ -124,7 +124,8 @@ remote_deploy() {
     CLOUD_KEEP_BACKUPS="$CLOUD_KEEP_BACKUPS" \
     CLOUD_AUTH_COOKIE_SECURE="${CLOUD_AUTH_COOKIE_SECURE:-}" \
     CLOUD_AUTH_ALLOW_INSECURE_HTTP_COOKIE="${CLOUD_AUTH_ALLOW_INSECURE_HTTP_COOKIE:-}" \
-    REMOTE_PACKAGE="$remote_package" \
+REMOTE_PACKAGE="$remote_package" \
+    HTTPS_REQUIRED="$HTTPS_REQUIRED" \
     bash -s <<'REMOTE'
 set -euo pipefail
 TS=$(date +%Y%m%d%H%M%S)
@@ -176,19 +177,27 @@ if test -z "$AUTH_COOKIE_SECURE_VALUE"; then
   AUTH_COOKIE_SECURE_VALUE=true
 fi
 if test "$(printf '%s' "$AUTH_COOKIE_SECURE_VALUE" | tr '[:upper:]' '[:lower:]')" != "true"; then
-  if test "$(printf '%s' "$CLOUD_AUTH_ALLOW_INSECURE_HTTP_COOKIE" | tr '[:upper:]' '[:lower:]')" != "true"; then
-    echo "warning: forcing AUTH_COOKIE_SECURE=true for production cloud deployment"
-    AUTH_COOKIE_SECURE_VALUE=true
-  fi
+  echo "production cloud deployment requires AUTH_COOKIE_SECURE=true" >&2
+  exit 2
+fi
+if test -n "$CLOUD_AUTH_ALLOW_INSECURE_HTTP_COOKIE" && test "$(printf '%s' "$CLOUD_AUTH_ALLOW_INSECURE_HTTP_COOKIE" | tr '[:upper:]' '[:lower:]')" != "false"; then
+  echo "production cloud deployment requires AUTH_ALLOW_INSECURE_HTTP_COOKIE=false" >&2
+  exit 2
 fi
 sed -i '/^AUTH_COOKIE_SECURE=/d' .env
 printf 'AUTH_COOKIE_SECURE=%s\n' "$AUTH_COOKIE_SECURE_VALUE" >> .env
 sed -i '/^AUTH_ALLOW_INSECURE_HTTP_COOKIE=/d' .env
-printf 'AUTH_ALLOW_INSECURE_HTTP_COOKIE=%s\n' "${CLOUD_AUTH_ALLOW_INSECURE_HTTP_COOKIE:-false}" >> .env
-sudo docker compose -f "$CLOUD_COMPOSE_FILE" build app
+printf 'AUTH_ALLOW_INSECURE_HTTP_COOKIE=false\n' >> .env
+sed -i '/^HTTPS_REQUIRED=/d' .env
+printf 'HTTPS_REQUIRED=%s\n' "$HTTPS_REQUIRED" >> .env
+sed -i '/^WEB_RUNTIME_BACKGROUND_JOBS_ENABLED=/d' .env
+printf 'WEB_RUNTIME_BACKGROUND_JOBS_ENABLED=false\n' >> .env
+sed -i '/^PAPER_AUTO_TRADING_ENABLED=/d' .env
+printf 'PAPER_AUTO_TRADING_ENABLED=%s\n' "${PAPER_AUTO_TRADING_ENABLED:-false}" >> .env
+sudo docker compose -f "$CLOUD_COMPOSE_FILE" build app analytics-worker
 sudo docker compose -f "$CLOUD_COMPOSE_FILE" up --no-build --force-recreate --abort-on-container-exit --exit-code-from migration migration
-sudo docker rm -f tquant-app-mysql tquant-runtime-worker-mysql tquant-backtest-worker-mysql 2>/dev/null || true
-sudo docker compose -f "$CLOUD_COMPOSE_FILE" up -d --no-build --force-recreate app runtime-worker backtest-worker
+sudo docker rm -f tquant-app-mysql tquant-runtime-worker-mysql tquant-backtest-worker-mysql tquant-analytics-worker-mysql 2>/dev/null || true
+sudo docker compose -f "$CLOUD_COMPOSE_FILE" up -d --no-build --force-recreate app runtime-worker backtest-worker analytics-worker
 EXPECTED_WEB_IMAGE=$(sudo docker image inspect tquant-web:mysql --format '{{.Id}}')
 for container in tquant-app-mysql tquant-runtime-worker-mysql tquant-backtest-worker-mysql; do
   ACTUAL_WEB_IMAGE=$(sudo docker inspect "$container" --format '{{.Image}}')
@@ -198,6 +207,13 @@ for container in tquant-app-mysql tquant-runtime-worker-mysql tquant-backtest-wo
   fi
 done
 echo "web_image:updated"
+EXPECTED_ANALYTICS_IMAGE=$(sudo docker image inspect tquant-analytics:mysql --format '{{.Id}}')
+ACTUAL_ANALYTICS_IMAGE=$(sudo docker inspect tquant-analytics-worker-mysql --format '{{.Image}}')
+if test "$ACTUAL_ANALYTICS_IMAGE" != "$EXPECTED_ANALYTICS_IMAGE"; then
+  echo "tquant-analytics-worker-mysql is still running $ACTUAL_ANALYTICS_IMAGE; expected $EXPECTED_ANALYTICS_IMAGE" >&2
+  exit 1
+fi
+sudo docker exec tquant-analytics-worker-mysql python -c 'import duckdb, pyarrow'
 sudo docker exec -u root tquant-app-mysql sh -c 'mkdir -p /app/backend/data && chown -R tquant:tquant /app/backend/data' || true
 python3 - <<'PY'
 from pathlib import Path

@@ -1,5 +1,38 @@
 # TQuant 实施计划
 
+## 2026-05-30 可接受整改 P0-A~P2-I 一次性交付
+
+需求来源：
+
+- 用户目标：按 `docs/维斯量化平台-可接受整改开发文档-2026-05-30.md` 一次性交付 P0-A~P2-I；不做临时过渡方案，不用 TODO 代替验收，不扩大到无关重写，不删除仍被脚本、测试、页面或文档引用的模块。
+
+### 完成范围
+
+- [x] P0-A 策略分层收口：`strategy_policy` 成为唯一事实源；CORE=`first_board`、`volume_shrink`；AUX=`late_session_strong_support` 且低样本限权；N 字和其他低样本策略降为 RESEARCH；`production_scoring` 复用 `participates_in_priority_board`，N 字不加 production prior、不进优先榜生产分。
+- [x] P1-B / P2-G DuckDB 24M 报告：收益口径改为“每日信号等权复利收益”；新增真实组合 max5/max10；策略建议包含样本数、PF、平均单笔、最大回撤、max5/max10、季度稳定性、walk-forward、OOS；缺失关键输入时阻断生产建议。
+- [x] P1-C Analytics worker：`Dockerfile` 支持 `INSTALL_ANALYTICS`；`docker-compose.mysql.yml` 新增 `analytics-worker`；analytics 依赖探测接入 `/readyz` 与 worker 启动；`strategy_24m_duckdb_report` 进入 RuntimeTask 消费链路；Web 与 analytics-worker 的 analytics readiness 开关已拆分，避免默认 Web 镜像未安装 `duckdb`/`pyarrow` 时误降级；runbook 已补启动、补跑、排错和回滚。
+- [x] P1-D CI/HTTPS：CI 前端 job 增加 `npm run api:check` 和 generated fallback diff 检查；保留 lint/build/test；生产部署默认要求 `HTTPS_REQUIRED=1`、`AUTH_COOKIE_SECURE=true`、`AUTH_ALLOW_INSECURE_HTTP_COOKIE=false`。
+- [x] P2-E 后台隔离：Web 默认 `WEB_RUNTIME_BACKGROUND_JOBS_ENABLED=false`；研究、ML、因子、策略进化 loop 默认关闭；调度和消费归 runtime/backtest/analytics worker 或唯一调度容器；补充 runtime task 守卫测试。
+- [x] P2-F 产物治理：`.gitignore` 与 `docs/README.md` 明确大 JSON 放 `backend/data/analytics/reports`、artifact 或对象存储；经引用审计，恢复了仍被文档引用或不属于本轮范围的历史报告删除项，本轮不物理删除仍有引用的文档/报告。
+- [x] P2-H 迁移/限流：Gunicorn worker 数由 `APP_WORKERS` 控制；`security_config` 按真实 worker 校验；production-like 下多 worker + memory limiter 启动失败；runbook 补 LONGTEXT staging 计时、低峰、回滚和截断排查。
+- [x] P2-I 前端性能：`DataTable` 默认 AntD virtual + `scroll.y`；新增 `VirtualCardList`；扫描型表格、监控/纸面/预览卡片迁移到虚拟列表或 DataTable；移除非业务 slice 截断；补 memo、窄 selector 和 lint/check 护栏。
+
+### 验证结果
+
+- [x] 后端覆盖：`backend/.venv/bin/python -m pytest backend/tests/test_low_buy_production_scoring.py backend/tests/test_low_buy_strategy_replacement.py backend/tests/test_low_buy_recommendation_duration.py backend/tests/test_low_buy_trade_controls.py backend/tests/test_analytics_worker.py backend/tests/test_strategy_24m_duckdb_report.py backend/tests/test_phase4_phase5_foundation.py::test_runtime_worker_blocks_research_task_when_disabled backend/tests/test_phase4_phase5_foundation.py::test_runtime_worker_executes_ml_incremental_train_task backend/tests/test_strategy_self_evolution.py::test_strategy_self_evolution_runtime_task backend/tests/test_auth_cookie_security.py backend/tests/test_ml_online_learning_schedule.py` 通过，76 passed / 1 LibreSSL warning。
+- [x] 前端覆盖：`npm run api:check`、`npm run lint`、`npm run build`、`npm test -- --run`、`npm run analyze` 全部通过；Vitest 25 files / 82 tests。
+- [x] Analytics 本地验收：`duckdb 1.4.4`、`pyarrow 17.0.0` 可导入；提交 RuntimeTask `strategy_24m_duckdb_report` id=11，`analytics_worker.py --once` 成功消费，状态 `succeeded`，产物为 `docs/reports/strategy_24m_duckdb_report.md` 与 `backend/data/analytics/reports/strategy_24m_duckdb_report.json`。
+- [x] Analytics 线上验收：已部署到 `43.143.243.97`；`app`、`runtime-worker`、`backtest-worker`、`analytics-worker` 启动，`/readyz` 返回 ok，`analytics-worker` 容器内 `duckdb 1.5.3`、`pyarrow 22.0.0` 可导入，镜像内包含 24M 策略摘要、walk-forward、参数 walk-forward 三份报告输入。提交 RuntimeTask `strategy_24m_duckdb_report` id=20643 后由 `analytics-worker` 消费并生成持久化产物 `backend/data/analytics/reports/strategy_24m_duckdb_report.md/json`；任务按线上数据质量门禁失败为 `blocked_by_data`，blocker=`daily_bars_invalid_ohlc`，报告 `strategy_count=17`、`row_count=2448811`、无裸“总收益”、包含“每日信号等权复利收益”和 max5/max10。
+- [x] 报告守卫：`docs/reports/strategy_24m_duckdb_report.md` 无裸“总收益”，包含“每日信号等权复利收益”、真实组合 max5/max10、费用、滑点、冲击、涨跌停、停牌、T+1、同票不重复买、敏感性、walk-forward 与 OOS。
+- [x] 策略分层守卫：`first_board` / `volume_shrink` 产生生产分；`late_session_strong_support` 生产分被低样本 cap 到 74；`n_pattern_long_wash` / `n_pattern_short_wash` 为 `research_watch_only` 且 `production_score=None`。
+- [x] 前端性能验收：`frontend/dist/render-performance-profile.json` 为 `ok=true`；监控刷新虚拟卡片 max/avg `34.2ms/31.8ms`，策略表滚动 `33.9ms/32ms`，纸面成交表滚动 `33.9ms/31.3ms`，三项 longtask 均为 0；`frontend/dist/bundle-report.json` 总 gzip `753.38KB`、首屏 JS gzip `8.88KB`。
+- [x] 浏览器验收：内置 Browser 打开 `http://127.0.0.1:4173/monitor` 成功，页面标题为“维斯量化交易平台”，本地 preview 可渲染；登录态页面的深度性能验证由 mock API 性能脚本完成。
+- [x] 配置格式与静态检查：`ruby` 解析 `docker-compose.mysql.yml` 与 `.github/workflows/ci.yml` 通过；`npm run check:strategy-meta` 通过；`git diff --check` 通过。
+
+### 线上数据门禁
+
+- 本机仍无可用 Docker runtime，但线上 Docker 构建和四容器启动已完成。当前未通过的是线上业务数据质量门禁：`strategy_24m_duckdb_report` 任务显式失败为 `blocked_by_data`，原因是 `daily_bars_invalid_ohlc`。这不是程序崩溃；按整改要求，关键输入缺失或异常时不得伪造通过报告。
+
 ## 2026-05-30 前排加权严厉审查整改
 
 需求来源：

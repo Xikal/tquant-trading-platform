@@ -1,4 +1,4 @@
-import { Children, useMemo } from "react";
+import { memo, useMemo } from "react";
 import type { ReactNode } from "react";
 import { Button, Card, Col, Flex, Row, Skeleton, Space, Statistic, Tag, Typography } from "antd";
 
@@ -14,6 +14,7 @@ import {
   toneFromChange,
 } from "../workspace-shared/workspaceFormatters";
 import { usePaperUiStore } from "../../stores/paperUiStore";
+import { VirtualCardList } from "../../ui/list/VirtualCardList";
 
 interface PaperPositionDetailsPanelProps {
   positions: PaperPosition[];
@@ -93,16 +94,20 @@ export function PaperPositionDetailsPanel({
               title="最近成交"
               hint={selected.trades.length ? `共 ${selected.trades.length} 笔` : "暂无成交"}
               emptyText="这只股票暂无成交记录"
-            >
-              {selected.trades.slice(0, 10).map((item) => <TradeDetailRow item={item} key={item.id} />)}
-            </DetailList>
+              items={selected.trades}
+              estimateSize={92}
+              getItemKey={(item) => item.id}
+              renderItem={(item) => <TradeDetailRow item={item} />}
+            />
             <DetailList
               title="最近委托"
               hint={selected.orders.length ? `共 ${selected.orders.length} 条` : "暂无委托"}
               emptyText="这只股票暂无委托记录"
-            >
-              {selected.orders.slice(0, 10).map((item) => <OrderDetailRow item={item} key={item.id} />)}
-            </DetailList>
+              items={selected.orders}
+              estimateSize={88}
+              getItemKey={(item) => item.id}
+              renderItem={(item) => <OrderDetailRow item={item} />}
+            />
           </Row>
           <Typography.Text type="secondary" style={{ fontSize: 11 }}>
             已实现盈亏由后台按全量成交顺序回放，当前持仓盈亏以后台持仓价和最新行情为准。
@@ -223,29 +228,40 @@ function SummaryMetric({ label, value, tone }: { label: string; value: string; t
   );
 }
 
-function DetailList({
+function DetailList<T>({
   title,
   hint,
   emptyText,
-  children,
+  estimateSize,
+  getItemKey,
+  items,
+  renderItem,
 }: {
   title: string;
   hint: string;
   emptyText: string;
-  children: ReactNode;
+  estimateSize: number;
+  getItemKey: (item: T, index: number) => string | number;
+  items: T[];
+  renderItem: (item: T, index: number) => ReactNode;
 }) {
   return (
     <Col xs={24} lg={12}>
       <Card size="small" title={title} extra={<Typography.Text type="secondary" style={{ fontSize: 11 }}>{hint}</Typography.Text>} styles={{ body: { padding: 6 } }}>
-        <Space direction="vertical" size={6} style={{ display: "flex", maxHeight: 260, overflowY: "auto" }}>
-          {Children.count(children) ? children : <EmptyState text={emptyText} />}
-        </Space>
+        <VirtualCardList
+          items={items}
+          empty={<EmptyState text={emptyText} />}
+          estimateSize={estimateSize}
+          maxHeight={260}
+          getItemKey={getItemKey}
+          renderItem={renderItem}
+        />
       </Card>
     </Col>
   );
 }
 
-function TradeDetailRow({ item }: { item: PaperTrade }) {
+const TradeDetailRow = memo(function TradeDetailRow({ item }: { item: PaperTrade }) {
   const sideText = item.side === "buy" ? "买入" : "卖出";
   const reason = plainTradingText(item.side === "buy" ? item.entry_reason : item.exit_reason);
   return (
@@ -264,9 +280,9 @@ function TradeDetailRow({ item }: { item: PaperTrade }) {
       </Space>
     </Card>
   );
-}
+});
 
-function OrderDetailRow({ item }: { item: PaperOrder }) {
+const OrderDetailRow = memo(function OrderDetailRow({ item }: { item: PaperOrder }) {
   const sideText = item.side === "buy" ? "买入" : "卖出";
   const statusText = orderStatusText(item.status);
   return (
@@ -285,7 +301,7 @@ function OrderDetailRow({ item }: { item: PaperOrder }) {
       </Space>
     </Card>
   );
-}
+});
 
 function DetailSkeleton() {
   return (

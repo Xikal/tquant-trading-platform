@@ -209,7 +209,7 @@ export function AgentRunList({ items }: { items: PaperAgentRun[] }) {
   return (
     <List
       size="small"
-      dataSource={items.slice(0, 5)}
+      dataSource={items}
       renderItem={(item) => {
         const response = item.response || {};
         const executed = Number(response.executed_count ?? (Array.isArray(response.executed) ? response.executed.length : 0));

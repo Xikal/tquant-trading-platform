@@ -11,6 +11,7 @@ if str(BACKEND_DIR) not in sys.path:
     sys.path.insert(0, str(BACKEND_DIR))
 
 from app.core.database import init_db
+from app.services.analytics.dependencies import require_analytics_dependencies
 from app.services.tasks.registry import analytics_task_registry
 from app.services.tasks.worker import RuntimeTaskWorker
 
@@ -27,6 +28,7 @@ def build_parser() -> argparse.ArgumentParser:
 def main() -> int:
     args = build_parser().parse_args()
     logging.basicConfig(level=logging.INFO)
+    require_analytics_dependencies()
     init_db()
     worker = RuntimeTaskWorker(
         registry=analytics_task_registry(),

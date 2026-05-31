@@ -89,7 +89,7 @@ def friendly_status(item: StrategyTrackingItemOut) -> tuple[str, str, str]:
     if item.stop_triggered or item.lifecycle_status == "stopped":
         return "weakening", "已经走弱", "已经跌破风险线，优先复盘失败原因。"
     if item.target_touched or item.lifecycle_status == "completed_profit":
-        return "take_profit_watch", "冲高后观察", "推荐后已经出现冲高，重点看是否回落。"
+        return "take_profit_watch", "冲高后观察", "信号后已经出现冲高，重点看是否回落。"
     if not item.entry_touched:
         return "wait_entry", "等计划买点", "还没到计划买入区，暂时只观察。"
     return "focus", "值得重点看", "已经到达计划买入区，且暂未触发风险线。"
@@ -101,14 +101,14 @@ def plain_language_summary(item: StrategyTrackingItemOut) -> str:
     current = _pct_text(item.current_return_pct)
     stop_text = "已经跌破风险线" if item.stop_triggered else "没有跌破风险线"
     if item.data_quality in {"partial", "unavailable"}:
-        return f"数据不足：推荐后最高涨过 {gain}，最多跌过 {drawdown}，暂时不能完整判断。"
+        return f"数据不足：信号后最高涨过 {gain}，最多跌过 {drawdown}，暂时不能完整判断。"
     if item.hold_extension_state in {"qualified", "watch"}:
         hold_text = item.hold_extension_text
     elif item.best_holding_days:
         hold_text = f"更像 {holding_bucket_text(item.holding_bucket)} 的复盘样本"
     else:
         hold_text = "持有建议不足"
-    return f"推荐后最高涨过 {gain}，最多跌过 {drawdown}，现在涨跌 {current}，{stop_text}，{hold_text}。"
+    return f"信号后最高涨过 {gain}，最多跌过 {drawdown}，现在涨跌 {current}，{stop_text}，{hold_text}。"
 
 
 def holding_bucket_text(value: str) -> str:

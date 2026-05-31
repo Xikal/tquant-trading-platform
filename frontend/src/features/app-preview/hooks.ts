@@ -21,7 +21,7 @@ import type {
 
 export type { AppPreviewTab } from "../../stores/appPreviewStore"
 
-const PRIORITY_BOARD_LIMIT = 12
+const PRIORITY_BOARD_LIMIT = 200
 
 function formatPulseTime() {
   return new Intl.DateTimeFormat("zh-CN", {

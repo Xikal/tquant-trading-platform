@@ -351,7 +351,7 @@ def build_markers(
             kind="first_signal",
             trade_date=item.first_signal_date,
             price=item.first_signal_price,
-            label="首次推荐",
+            label="首次信号",
         )
     ]
     if item.stop_triggered_date:
@@ -365,11 +365,11 @@ def build_markers(
     if timeline:
         highest = max(timeline, key=lambda point: point.high)
         markers.append(
-            StrategyTrackingMarkerOut(kind="highest", trade_date=highest.trade_date, price=highest.high, label="推荐后最高")
+            StrategyTrackingMarkerOut(kind="highest", trade_date=highest.trade_date, price=highest.high, label="信号后最高")
         )
         lowest = min(timeline, key=lambda point: point.low)
         markers.append(
-            StrategyTrackingMarkerOut(kind="lowest", trade_date=lowest.trade_date, price=lowest.low, label="推荐后最低")
+            StrategyTrackingMarkerOut(kind="lowest", trade_date=lowest.trade_date, price=lowest.low, label="信号后最低")
         )
     if item.best_exit_date:
         markers.append(

@@ -171,7 +171,7 @@ export function MLCapacityPanel({ strategyOptions }: { strategyOptions: Backtest
         <DataTable<PortfolioOptimizationWeight>
           className="backtest-data-table compact"
           rowKey="strategy_key"
-          dataSource={markowitz.weights.slice(0, 8)}
+          dataSource={markowitz.weights}
           columns={[
             { title: "策略", dataIndex: "strategy_key", render: (value) => formatBacktestStrategy(value) },
             { title: "权重", dataIndex: "weight_pct", align: "right", render: (value) => formatPct(value) },

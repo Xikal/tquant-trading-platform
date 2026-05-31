@@ -31,16 +31,16 @@ export function StrategyTrackingReviewPanel({
 
 function reviewProblem(summary: StrategyTrackingSummary, worst?: StrategyTrackingPerformance): string {
   if (!summary.tracking_count) {
-    return "当前区间没有生产策略推荐样本，复盘结论暂缓。";
+    return "当前区间没有生产策略跟踪信号，复盘结论暂缓。";
   }
   if (summary.stopped_count > 0) {
-    return `当前区间已有 ${summary.stopped_count} 条推荐跌破止损，优先核对失败原因和入场过滤。`;
+    return `当前区间已有 ${summary.stopped_count} 条信号跌破止损，优先核对失败原因和入场过滤。`;
   }
   if (worst && worst.stop_loss_rate >= 20) {
     return `${worst.strategy_name} 的止损率偏高，需检查支撑确认和回踩深度阈值。`;
   }
   if (summary.avg_current_return_pct < 0) {
-    return "当前区间推荐后的平均收益为负，需降低弱市场状态下的信号权重。";
+    return "当前区间信号后的平均收益为负，需降低弱市场状态下的信号权重。";
   }
   return "当前区间生产策略跟踪状态正常，继续观察买点触达和回撤变化。";
 }

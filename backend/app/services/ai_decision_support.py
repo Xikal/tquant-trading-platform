@@ -154,7 +154,7 @@ class AiDecisionSupportService:
                 enabled=False,
                 summary="AI 未返回有效内容，本次使用量化规则自动摘要。",
                 confidence=0.0,
-                suggestions=["优先查看全策略榜单前排，按确定买入、接近买点、继续观察分层处理。"],
+                suggestions=["优先查看生产优先榜前排，按确定买入、接近买点、继续观察分层处理。"],
                 warnings=["AI 解读未生效，不影响硬规则和榜单排序。"],
                 raw=None,
             )
@@ -189,7 +189,7 @@ class AiDecisionSupportService:
         market_text = str(context.get("market_state_text") or "市场状态待确认").split("。", 1)[0]
         hot_text = " / ".join(str(item) for item in hot_industries[:3]) or "暂无明确热点"
         leader_text = "；前排：" + "、".join(top_items[:2]) if top_items else ""
-        return f"{market_text}。全策略共 {total} 只，确定买入 {immediate} 只，接近买点 {focus} 只；热点：{hot_text}{leader_text}。"
+        return f"{market_text}。生产优先榜共 {total} 只，确定买入 {immediate} 只，接近买点 {focus} 只；热点：{hot_text}{leader_text}。"
 
     def _build_priority_suggestions(self, items: list[Any], top_items: list[str]) -> list[str]:
         buy_items = [
@@ -199,7 +199,7 @@ class AiDecisionSupportService:
         ][:3]
         suggestions = [
             f"优先处理：{self._join_or_empty(buy_items, '暂无确定买入，先等价格和止跌确认。')}",
-            f"重点观察：{self._join_or_empty(top_items, '暂无前排样本，等待榜单缓存刷新。')}",
+            f"重点观察：{self._join_or_empty(top_items, '暂无生产候选，说明买点、承接、风控或交易范围未同时满足。')}",
             "暂不处理：非主线、风险阻断或未到买点的票，不用因为 AI 解读而放宽规则。",
         ]
         return suggestions

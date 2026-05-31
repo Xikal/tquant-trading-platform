@@ -1,4 +1,4 @@
-import { Alert, Table, Tag } from "antd";
+import { Alert, Tag } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import type { UseQueryResult } from "@tanstack/react-query";
 import type { StrategyTrackingViewMode } from "../../stores/strategyTrackingStore";
@@ -8,6 +8,7 @@ import type {
   StrategyTrackingSegment,
   StrategyTrackingShadowObservation,
 } from "../../types";
+import { DataTable } from "../../ui/table/DataTable";
 import { formatPct } from "../workspace-shared/workspaceFormatters";
 
 export function StrategyTrackingDiagnosticsPanel({
@@ -39,12 +40,14 @@ export function StrategyTrackingDiagnosticsPanel({
       {viewMode === "professional" && weeklyReport?.data?.markdown ? (
         <Alert type="info" showIcon title="策略跟踪周报" description={weeklyReport.data.markdown} />
       ) : null}
-      <Table
+      <DataTable<StrategyTrackingSegment>
         rowKey={(item) => `${item.strategy_key}:${item.market_state}:${item.sector_state}`}
-        size="small"
         dataSource={result.market_segments}
         columns={segmentColumns}
+        paginated
         pagination={{ pageSize: 8 }}
+        scroll={{ x: 820 }}
+        defaultScrollY={360}
       />
     </section>
   );

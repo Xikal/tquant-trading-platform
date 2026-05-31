@@ -175,7 +175,7 @@ export function EtfUniverseAdminCard() {
       <div style={PANEL_GRID_STYLE}>
         <DataTable<EtfUniverseAdminProfile>
           rowKey="symbol"
-          dataSource={filteredItems.slice(0, 80)}
+          dataSource={filteredItems}
           scroll={{ x: 940 }}
           columns={[
             { title: "代码", dataIndex: "symbol", width: 90, render: (value, item) => <span><strong>{value}</strong><small className="hint">{item.name}</small></span> },
@@ -216,7 +216,7 @@ export function EtfUniverseAdminCard() {
 
       <DataTable
         rowKey={(item) => `${item.symbol}-${item.field}`}
-        dataSource={payload?.diff.slice(0, 20) ?? []}
+        dataSource={payload?.diff ?? []}
         locale={{ emptyText: "当前草稿与运行时无差异" }}
         columns={[
           { title: "风险", dataIndex: "risk_level", width: 90, render: (value) => <Tag color={riskColor(value)}>{value}</Tag> },

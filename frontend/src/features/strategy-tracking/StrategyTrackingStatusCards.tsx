@@ -9,7 +9,7 @@ interface StrategyTrackingStatusCardsProps {
 
 const STATUS_META = [
   { key: "focus", label: "可以重点看", text: "已到买点且风险线未破" },
-  { key: "wait_entry", label: "还没到价", text: "推荐后还没到计划买入区" },
+  { key: "wait_entry", label: "还没到价", text: "信号后还没到计划买入区" },
   { key: "weakening", label: "已经走弱", text: "已跌破风险线或支撑" },
   { key: "review_needed", label: "需要复核", text: "数据异常、收益异常或样本不足" },
 ];

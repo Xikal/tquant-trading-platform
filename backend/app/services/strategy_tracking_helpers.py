@@ -190,7 +190,7 @@ def data_quality_text(data_quality: str) -> str:
     return {
         "ok": "数据完整",
         "partial": "部分行情或 payload 缺失，已降级展示",
-        "unavailable": "后续行情数据不足，暂时不能判断推荐后的表现",
+        "unavailable": "后续行情数据不足，暂时不能判断信号后的表现",
     }.get(data_quality, "数据状态未知")
 
 
@@ -217,20 +217,20 @@ def conclusion(lifecycle_status: str, stats: dict[str, Any], entry_distance: flo
 
 def failure_reason(lifecycle_status: str, stats: dict[str, Any]) -> str:
     if lifecycle_status == "stopped" and not stats["entry_touched"]:
-        return "推荐后未触达买点直接下跌"
+        return "信号后未触达买点直接下跌"
     if lifecycle_status == "stopped":
         return "跌破止损"
     if stats["max_drawdown_pct"] is not None and stats["max_drawdown_pct"] <= -8:
-        return "推荐后回撤扩大"
+        return "信号后回撤扩大"
     return ""
 
 
 def review_text(payload: dict[str, Any], lifecycle_status: str, stats: dict[str, Any]) -> str:
-    reason = text(payload, "summary_reason", "execution_note") or "生产策略推荐跟踪"
+    reason = text(payload, "summary_reason", "execution_note") or "生产策略信号跟踪"
     if lifecycle_status == "completed_profit":
-        return f"{reason}；推荐后出现冲高，进入止盈观察。"
+        return f"{reason}；信号后出现冲高，进入止盈观察。"
     if lifecycle_status == "stopped":
-        return f"{reason}；推荐后跌破止损，需复盘失败原因。"
+        return f"{reason}；信号后跌破止损，需复盘失败原因。"
     if not stats["entry_touched"]:
         return f"{reason}；尚未明确给到买点。"
     return f"{reason}；买点触达后继续观察强弱。"

@@ -19,6 +19,7 @@ import {
 } from "./MobileDesignCards"
 import type { LowBuyPriorityBoardResult } from "../types"
 import { useMobileUiStore } from "../stores/mobileUiStore"
+import { VirtualCardList } from "../ui/list/VirtualCardList"
 
 type Tone = "positive" | "negative" | "neutral" | "warning"
 type LowBuyGroups = ReturnType<typeof splitPriorityItems<MobileLowBuyCardItem>>
@@ -66,20 +67,22 @@ export function MobileHomeSection({
           </Button>
         }
       />
-      <section className="mobile-design-priority-scroll">
-        {priorityBoardItems.slice(0, 5).map((item, index) => (
+      <VirtualCardList
+        className="mobile-design-priority-scroll"
+        items={priorityBoardItems}
+        empty={!loading ? <div className="mobile-app-empty">当前没有榜单数据</div> : null}
+        estimateSize={178}
+        maxHeight={466}
+        getItemKey={(item) => item.symbol}
+        renderItem={(item, index) => (
           <MobilePriorityStockCard
-            key={item.symbol}
             item={item}
             highlight={index === 0}
             inWatchlist={watchlistMap.has(item.symbol)}
             onOpen={onOpenCandidate}
           />
-        ))}
-        {!loading && !priorityBoardItems.length ? (
-          <div className="mobile-app-empty">当前没有榜单数据</div>
-        ) : null}
-      </section>
+        )}
+      />
     </>
   )
 }
@@ -152,20 +155,22 @@ export function MobileHoldingsSection({
           搜索
         </Button>
       </div>
-      <section className="mobile-design-list">
-        {filteredRows.map((row) => (
+      <VirtualCardList
+        className="mobile-design-list"
+        items={filteredRows}
+        empty={!loading ? <div className="mobile-app-empty">暂无持仓，点击右上角添加</div> : null}
+        estimateSize={176}
+        maxHeight={520}
+        getItemKey={(row) => row.record.symbol}
+        renderItem={(row) => (
           <MobileHoldingStockCard
-            key={row.record.symbol}
             row={row}
             signalActive={activeHoldingSignalSymbols.has(row.record.symbol)}
             onEdit={onEditHolding}
             onRemove={onRemoveHolding}
           />
-        ))}
-        {!loading && !filteredRows.length ? (
-          <div className="mobile-app-empty">暂无持仓，点击右上角添加</div>
-        ) : null}
-      </section>
+        )}
+      />
     </>
   )
 }
@@ -212,53 +217,59 @@ export function MobileLowBuySection({
           </Button>
         }
       />
-      <section className="mobile-design-list">
-        {playbookGroups.buyNow.slice(0, 4).map((item, index) => (
+      <VirtualCardList
+        className="mobile-design-list"
+        items={playbookGroups.buyNow}
+        empty={!loading && !playbookLoading ? <div className="mobile-app-empty">当前策略暂无现在可买的候选</div> : null}
+        estimateSize={176}
+        maxHeight={520}
+        getItemKey={(item) => item.symbol}
+        renderItem={(item, index) => (
           <MobilePriorityStockCard
-            key={item.symbol}
             item={item}
             highlight={index === 0}
             inWatchlist={watchlistMap.has(item.symbol)}
             onOpen={(symbol) => void onOpenCandidate(symbol, strategyFilter)}
             onBought={onBought}
           />
-        ))}
-        {!loading && !playbookLoading && !playbookGroups.buyNow.length ? (
-          <div className="mobile-app-empty">当前策略暂无现在可买的候选</div>
-        ) : null}
-      </section>
+        )}
+      />
 
       <MobileSectionTitle title="等确认" hint="到价但还缺承接" />
-      <section className="mobile-design-list">
-        {playbookGroups.nearEntry.slice(0, 4).map((item) => (
+      <VirtualCardList
+        className="mobile-design-list"
+        items={playbookGroups.nearEntry}
+        empty={!loading && !playbookLoading ? <div className="mobile-app-empty">当前策略暂无接近买点</div> : null}
+        estimateSize={176}
+        maxHeight={520}
+        getItemKey={(item) => item.symbol}
+        renderItem={(item) => (
           <MobilePriorityStockCard
-            key={item.symbol}
             item={item}
             inWatchlist={watchlistMap.has(item.symbol)}
             onOpen={(symbol) => void onOpenCandidate(symbol, strategyFilter)}
             onBought={onBought}
           />
-        ))}
-        {!loading && !playbookLoading && !playbookGroups.nearEntry.length ? (
-          <div className="mobile-app-empty">当前策略暂无接近买点</div>
-        ) : null}
-      </section>
+        )}
+      />
 
       <MobileSectionTitle title="更多观察" hint="不急执行，展开后再看" />
-      <section className="mobile-design-list">
-        {playbookGroups.watch.slice(0, 4).map((item) => (
+      <VirtualCardList
+        className="mobile-design-list"
+        items={playbookGroups.watch}
+        empty={!loading && !playbookLoading ? <div className="mobile-app-empty">当前策略暂无观察票</div> : null}
+        estimateSize={176}
+        maxHeight={520}
+        getItemKey={(item) => item.symbol}
+        renderItem={(item) => (
           <MobilePriorityStockCard
-            key={item.symbol}
             item={item}
             inWatchlist={watchlistMap.has(item.symbol)}
             onOpen={(symbol) => void onOpenCandidate(symbol, strategyFilter)}
             onBought={onBought}
           />
-        ))}
-        {!loading && !playbookLoading && !playbookGroups.watch.length ? (
-          <div className="mobile-app-empty">当前策略暂无观察票</div>
-        ) : null}
-      </section>
+        )}
+      />
     </>
   )
 }

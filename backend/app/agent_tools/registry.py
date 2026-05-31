@@ -44,7 +44,7 @@ def _tool_registry() -> dict[str, ToolDefinition]:
         ),
         ToolDefinition(
             name="get_priority_board",
-            description="获取全策略优先级榜摘要",
+            description="获取生产优先榜摘要",
             method="GET",
             path="/api/agent/context/priority-board",
             input_schema={
@@ -193,7 +193,7 @@ def _tool_registry() -> dict[str, ToolDefinition]:
         ),
         ToolDefinition(
             name="scan_priority_board_notifications",
-            description="扫描优先级榜并按通知账本发送新增或升级信号",
+            description="扫描生产优先榜并按通知账本发送新增或升级信号",
             method="POST",
             path="/api/agent/notify/scan-priority-board",
             input_schema={

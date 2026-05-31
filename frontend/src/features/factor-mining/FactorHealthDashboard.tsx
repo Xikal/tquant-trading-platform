@@ -13,7 +13,7 @@ export function FactorHealthDashboard({ items }: { items: FactorHealthItem[] }) 
           <Col xs={8}><Statistic title="最近评估" value={items.reduce((sum, item) => sum + (item.run_count || 0), 0)} /></Col>
         </Row>
         <Space direction="vertical" size={8} style={{ width: "100%", maxHeight: 360, overflowY: "auto" }}>
-        {items.slice(0, 8).map((item) => (
+        {items.map((item) => (
           <Card key={item.factor_key} size="small">
             <Space direction="vertical" size={3} style={{ width: "100%" }}>
               <Space style={{ display: "flex", justifyContent: "space-between" }}>

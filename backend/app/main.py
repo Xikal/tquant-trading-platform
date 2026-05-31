@@ -26,6 +26,7 @@ from app.core.timezone import beijing_now
 from app.models.schemas import HealthResponse, ReadinessResponse
 from app.runtime.background_jobs import shutdown_runtime_background_jobs, start_runtime_background_jobs
 from app.services.auth_service import ensure_auth_secret_configured
+from app.services.analytics.dependencies import analytics_dependency_status
 from app.services.market.providers.circuit import provider_metrics_snapshot
 from app.services.market.local_quote_cache import local_quote_cache_metrics_snapshot
 from app.services.bff.workspace_cache import bff_workspace_cache_metrics_snapshot
@@ -299,6 +300,7 @@ def readyz(response: Response):
     checks = {
         "database": False,
         "frontend_dist": FRONTEND_INDEX_FILE.exists(),
+        "analytics_dependencies": False,
     }
     errors: list[str] = []
 
@@ -310,6 +312,10 @@ def readyz(response: Response):
 
     if not checks["frontend_dist"]:
         errors.append("frontend_dist: missing frontend/dist/index.html")
+    analytics = analytics_dependency_status()
+    checks["analytics_dependencies"] = bool(analytics.ready or not analytics.enabled)
+    if not checks["analytics_dependencies"]:
+        errors.append(f"analytics_dependencies: {analytics.error}")
 
     if not all(checks.values()):
         response.status_code = 503
