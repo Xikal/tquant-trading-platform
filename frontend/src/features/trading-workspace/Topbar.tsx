@@ -1,45 +1,42 @@
-import type { CSSProperties } from "react";
 import { Badge, Button, Dropdown, Grid, Space, Typography } from "antd";
-import { useEffect, useMemo } from "react";
+import { MenuOutlined } from "@ant-design/icons";
+import { useEffect } from "react";
 import { useWorkspaceStore } from "../../stores/workspaceStore";
+import { useThemeStore } from "../../stores/themeStore";
 import type { AuthUser, LowBuyPriorityBoardResult } from "../../types";
-import { RitualFortuneStrip, RitualLuckyDraw, useRitualPreference } from "../ritual-ui";
+import { RitualLuckyDraw, useRitualPreference } from "../ritual-ui";
 import type { Page, StockCardView } from "../workspace-shared/workspaceTypes";
+import { pageTitle } from "./navConfig";
 import {
-  TOPBAR_BRAND_STYLE,
-  TOPBAR_BRAND_TEXT_STYLE,
-  TOPBAR_CHIP_LABEL_STYLE,
-  TOPBAR_CHIPS_STYLE,
-  TOPBAR_NAV_ACTIVE_STYLE,
-  TOPBAR_NAV_BUTTON_STYLE,
-  TOPBAR_NAV_SECTION_ACTIVE_STYLE,
-  TOPBAR_NAV_STACKED_STYLE,
-  TOPBAR_NAV_STYLE,
-  TOPBAR_OPPORTUNITY_CHIP_STYLE,
-  TOPBAR_PULSE_CHIP_STYLE,
-  TOPBAR_PULSE_VALUE_STYLE,
-  TOPBAR_RISK_CHIP_STYLE,
-  topbarStyle,
+  TOPBAR_CHIP_STYLE,
+  TOPBAR_CHIP_VALUE_STYLE,
+  TOPBAR_ICON_BTN_STYLE,
+  TOPBAR_LEFT_STYLE,
+  TOPBAR_RIGHT_STYLE,
+  TOPBAR_STYLE,
+  TOPBAR_TITLE_STYLE,
 } from "./workspaceShellStyles";
 
 const { useBreakpoint } = Grid;
 
 export function Topbar({
   page,
-  setPage,
+  currentUser,
   priorityBoard,
   watchCards,
-  currentUser,
   onLogout,
+  onNavigate,
+  onOpenNav,
   onPaperRefresh,
   paperRefreshLoading = false,
 }: {
   page: Page;
-  setPage: (page: Page) => void;
+  currentUser: AuthUser;
   priorityBoard: LowBuyPriorityBoardResult | null;
   watchCards: StockCardView[];
-  currentUser: AuthUser;
   onLogout: () => void;
+  onNavigate: (page: Page) => void;
+  onOpenNav: () => void;
   onPaperRefresh?: () => void;
   paperRefreshLoading?: boolean;
 }) {
@@ -47,27 +44,11 @@ export function Topbar({
   const setTopbarPulse = useWorkspaceStore((state) => state.setTopbarPulse);
   const screens = useBreakpoint();
   const ritual = useRitualPreference();
-  const stacked = !screens.lg;
-  const nav: Array<[Page, string]> = useMemo(() => [
-    ["monitor", "实时监控"],
-    ["analysis", "量化分析"],
-    ["playbook", "选股宝典"],
-    ["strategy-tracking", "策略跟踪"],
-    ["backtest", "回测页"],
-    ["paper", "模拟盘"],
-  ], []);
+  const themeMode = useThemeStore((state) => state.mode);
+  const toggleTheme = useThemeStore((state) => state.toggleMode);
+  const isMobile = !screens.lg;
   const riskCount = watchCards.filter((item) => item.riskText.includes("高")).length;
   const userName = currentUser.display_name || currentUser.username;
-  const ritualTone = riskCount > 0 ? "weak" : (priorityBoard?.immediate_count ?? 0) > 0 ? "strong" : "neutral";
-  const menuItems = nav.map(([key, label]) => {
-    const paperDisabled = key === "paper" && !currentUser.can_paper_trade;
-    return {
-      key,
-      label: paperDisabled ? "模拟盘需申请" : label,
-      disabled: paperDisabled,
-      title: paperDisabled ? "模拟盘需申请白名单权限" : "",
-    };
-  });
 
   useEffect(() => {
     const timer = window.setInterval(() => setTopbarPulse(realTimePulse()), 1000);
@@ -75,44 +56,39 @@ export function Topbar({
   }, [setTopbarPulse]);
 
   return (
-    <header style={topbarStyle(stacked)}>
-      <div style={TOPBAR_BRAND_STYLE}>
-        <Typography.Text strong style={TOPBAR_BRAND_TEXT_STYLE}>维斯量化交易平台</Typography.Text>
-      </div>
-      <nav style={{ ...TOPBAR_NAV_STYLE, ...(stacked ? TOPBAR_NAV_STACKED_STYLE : undefined) }} aria-label="主导航">
-        {menuItems.map((item) => (
+    <header style={TOPBAR_STYLE}>
+      <div style={TOPBAR_LEFT_STYLE}>
+        {isMobile ? (
           <Button
-            key={item.key}
-            htmlType="button"
-            size="small"
-            style={navButtonStyle(page, item.key)}
-            disabled={item.disabled}
-            title={item.title}
-            aria-current={page === item.key ? "page" : undefined}
-            onClick={() => setPage(item.key)}
-          >
-            {item.label}
-          </Button>
-        ))}
-      </nav>
-      <Space style={TOPBAR_CHIPS_STYLE} size={10}>
+            type="text"
+            icon={<MenuOutlined />}
+            onClick={onOpenNav}
+            aria-label="打开导航菜单"
+            style={TOPBAR_ICON_BTN_STYLE}
+          />
+        ) : null}
+        <Typography.Text strong style={TOPBAR_TITLE_STYLE}>{pageTitle(page)}</Typography.Text>
+      </div>
+      <Space style={TOPBAR_RIGHT_STYLE} size={8}>
         {page === "paper" && onPaperRefresh ? (
           <Button type="primary" size="small" onClick={onPaperRefresh} loading={paperRefreshLoading}>
             {paperRefreshLoading ? "刷新中" : "刷新"}
           </Button>
         ) : null}
-        <Badge count={priorityBoard?.total_candidates ?? 0} showZero color="#d92d20">
-          <span style={TOPBAR_OPPORTUNITY_CHIP_STYLE}><small style={TOPBAR_CHIP_LABEL_STYLE}>机会</small></span>
+        <Badge count={priorityBoard?.total_candidates ?? 0} showZero color="var(--mkt-up)">
+          <span style={TOPBAR_CHIP_STYLE}>机会</span>
         </Badge>
-        <Badge count={riskCount} showZero color="#b42318">
-          <span style={TOPBAR_RISK_CHIP_STYLE}><small style={TOPBAR_CHIP_LABEL_STYLE}>风险</small></span>
+        <Badge count={riskCount} showZero color="var(--error)">
+          <span style={TOPBAR_CHIP_STYLE}>风险</span>
         </Badge>
-        {screens.xl ? <RitualFortuneStrip enabled={ritual.enabled} marketTone={ritualTone} compact /> : null}
+        {screens.xl ? (
+          <span style={TOPBAR_CHIP_STYLE}>脉冲<strong style={TOPBAR_CHIP_VALUE_STYLE}>{pulse}</strong></span>
+        ) : null}
         <RitualLuckyDraw enabled={ritual.enabled} compact />
-        <span style={TOPBAR_PULSE_CHIP_STYLE}><small style={TOPBAR_CHIP_LABEL_STYLE}>脉冲</small><strong style={TOPBAR_PULSE_VALUE_STYLE}>{pulse}</strong></span>
         <Dropdown
           menu={{
             items: [
+              { key: "theme-toggle", label: themeMode === "dark" ? "切换浅色模式" : "切换深色模式" },
               { key: "ritual-toggle", label: ritual.enabled ? "关闭红运仪式" : "开启红运仪式" },
               { key: "settings", label: "系统配置" },
               { key: "logout", label: "退出登录", danger: true },
@@ -122,32 +98,24 @@ export function Topbar({
                 onLogout();
                 return;
               }
+              if (key === "theme-toggle") {
+                toggleTheme();
+                return;
+              }
               if (key === "ritual-toggle") {
                 ritual.setEnabled(!ritual.enabled);
                 return;
               }
-              setPage("settings");
+              onNavigate("settings");
             },
           }}
           trigger={["click"]}
         >
-          <Button type={page === "settings" ? "primary" : "default"}>
-            {userName}
-          </Button>
+          <Button type={page === "settings" ? "primary" : "default"}>{userName}</Button>
         </Dropdown>
       </Space>
     </header>
   );
-}
-
-function navButtonStyle(currentPage: Page, itemKey: string): CSSProperties {
-  if (currentPage !== itemKey) {
-    return TOPBAR_NAV_BUTTON_STYLE;
-  }
-  return {
-    ...TOPBAR_NAV_BUTTON_STYLE,
-    ...(currentPage === "monitor" ? TOPBAR_NAV_ACTIVE_STYLE : TOPBAR_NAV_SECTION_ACTIVE_STYLE),
-  };
 }
 
 function realTimePulse(): string {

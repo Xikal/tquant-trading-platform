@@ -70,7 +70,7 @@ export function MiniKline({ bars }: { bars: AnalysisResponse["bars"] }) {
     legend: {
       top: 2,
       right: 8,
-      textStyle: { color: "#aeb8c7", fontSize: 10 },
+      textStyle: { color: "#aeb8c7", fontSize: 12 },
       itemWidth: 10,
       itemHeight: 6,
     },
@@ -84,7 +84,7 @@ export function MiniKline({ bars }: { bars: AnalysisResponse["bars"] }) {
         data: labels,
         boundaryGap: true,
         axisLine: { lineStyle: { color: "#26354a" } },
-        axisLabel: { color: "#8f9caf", fontSize: 10, hideOverlap: true },
+        axisLabel: { color: "#8f9caf", fontSize: 12, hideOverlap: true },
         axisTick: { show: false },
       },
       {
@@ -103,7 +103,7 @@ export function MiniKline({ bars }: { bars: AnalysisResponse["bars"] }) {
         splitNumber: 4,
         axisLine: { show: false },
         axisTick: { show: false },
-        axisLabel: { color: "#8f9caf", fontSize: 10 },
+        axisLabel: { color: "#8f9caf", fontSize: 12 },
         splitLine: { lineStyle: { color: "rgba(255,255,255,0.08)" } },
       },
       {
@@ -112,7 +112,7 @@ export function MiniKline({ bars }: { bars: AnalysisResponse["bars"] }) {
         splitNumber: 2,
         axisLine: { show: false },
         axisTick: { show: false },
-        axisLabel: { color: "#778395", fontSize: 9, formatter: formatKlineVolume },
+        axisLabel: { color: "#778395", fontSize: 12, formatter: formatKlineVolume },
         splitLine: { show: false },
       },
     ],

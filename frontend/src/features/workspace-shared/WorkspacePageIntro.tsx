@@ -29,7 +29,7 @@ const INTRO_TITLE_BASE_STYLE: CSSProperties = {
   lineHeight: 1.15,
   letterSpacing: 0,
   fontSize: 13,
-  fontWeight: 800,
+  fontWeight: 700,
 };
 
 const INTRO_SUMMARY_BASE_STYLE: CSSProperties = {
@@ -39,12 +39,12 @@ const INTRO_SUMMARY_BASE_STYLE: CSSProperties = {
 };
 
 const INTRO_DETAIL_BASE_STYLE: CSSProperties = {
-  fontSize: 11,
+  fontSize: 12,
   lineHeight: 1.45,
 };
 
 const INTRO_NOTE_BASE_STYLE: CSSProperties = {
-  fontSize: 11,
+  fontSize: 12,
   lineHeight: 1.45,
 };
 
@@ -66,7 +66,7 @@ const DARK_STYLE: CSSProperties = {
 
 const INTRO_COLLAPSE_STYLE: CSSProperties = {
   background: "transparent",
-  fontSize: 11,
+  fontSize: 12,
 };
 
 const INTRO_COLLAPSE_BODY_STYLE: CSSProperties = {

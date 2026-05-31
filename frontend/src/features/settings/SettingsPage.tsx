@@ -91,7 +91,7 @@ const SETTINGS_UNSAVED_BANNER_STYLE: CSSProperties = {
   background: "#fff8e6",
   color: "#7c4a03",
   fontSize: 12,
-  fontWeight: 800,
+  fontWeight: 700,
 };
 
 const DataQualityPanel = lazy(() => import("./DataQualityPanel").then((module) => ({ default: module.DataQualityPanel })));

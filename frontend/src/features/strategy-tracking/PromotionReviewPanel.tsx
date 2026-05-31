@@ -42,9 +42,9 @@ export function PromotionReviewPanel({
                   scroll={{ x: 360 }}
                 />
                 {review.blocking_reasons.length ? (
-                  <Typography.Text type="secondary" style={{ fontSize: 11 }}>阻断：{review.blocking_reasons.join(" / ")}</Typography.Text>
+                  <Typography.Text type="secondary" style={{ fontSize: 12 }}>阻断：{review.blocking_reasons.join(" / ")}</Typography.Text>
                 ) : (
-                  <Typography.Text type="secondary" style={{ fontSize: 11 }}>仅生成晋级建议，层级变更仍需人工修改策略分层常量并通过守卫测试。</Typography.Text>
+                  <Typography.Text type="secondary" style={{ fontSize: 12 }}>仅生成晋级建议，层级变更仍需人工修改策略分层常量并通过守卫测试。</Typography.Text>
                 )}
               </>
             ) : (

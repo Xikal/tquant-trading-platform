@@ -79,8 +79,8 @@ const KICKER_STYLE: CSSProperties = {
   display: "block",
   marginBottom: 3,
   fontFamily: '"IBM Plex Mono", "SFMono-Regular", monospace',
-  fontSize: 10,
-  fontWeight: 800,
+  fontSize: 12,
+  fontWeight: 700,
   letterSpacing: "0.16em",
 };
 
@@ -102,8 +102,8 @@ const MINI_BUTTON_STYLE: CSSProperties = {
   minHeight: 24,
   padding: "3px 8px",
   borderRadius: 8,
-  fontWeight: 900,
-  fontSize: 11,
+  fontWeight: 700,
+  fontSize: 12,
 };
 
 const BADGE_STYLE: CSSProperties = {
@@ -113,8 +113,8 @@ const BADGE_STYLE: CSSProperties = {
   justifyContent: "center",
   padding: "0 8px",
   borderRadius: 999,
-  fontSize: 10,
-  fontWeight: 900,
+  fontSize: 12,
+  fontWeight: 700,
   margin: 0,
 };
 
@@ -148,7 +148,7 @@ const STATUS_BAR_STYLE: CSSProperties = {
   padding: "6px 8px",
   borderRadius: 8,
   fontFamily: '"IBM Plex Mono", "SFMono-Regular", monospace',
-  fontSize: 10,
+  fontSize: 12,
   flexWrap: "wrap",
 };
 

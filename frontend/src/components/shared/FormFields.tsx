@@ -24,7 +24,7 @@ const FIELD_LABEL_STYLE: CSSProperties = {
 
 const FIELD_EXTRA_STYLE: CSSProperties = {
   color: "#7b879d",
-  fontSize: 11,
+  fontSize: 12,
 };
 
 const FIELD_CONTROL_STYLE: CSSProperties = {

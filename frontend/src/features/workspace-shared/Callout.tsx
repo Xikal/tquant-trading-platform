@@ -32,7 +32,7 @@ const PRIMARY_CALLOUT_STYLE: CSSProperties = {
   boxShadow: "0 8px 20px rgba(15, 23, 42, 0.06)",
 };
 
-const CALLOUT_LABEL_STYLE: CSSProperties = { color: "#64748b", fontSize: 11 };
+const CALLOUT_LABEL_STYLE: CSSProperties = { color: "#64748b", fontSize: 12 };
 const CALLOUT_TITLE_STYLE: CSSProperties = { color: "#0f172a", fontSize: 12 };
 const PRIMARY_CALLOUT_TITLE_STYLE: CSSProperties = { color: "#0f172a", fontSize: 12 };
 const WARNING_CALLOUT_TITLE_STYLE: CSSProperties = { display: "block", marginBottom: 2 };

@@ -34,7 +34,7 @@ import { RitualCloseBag, RitualFortuneStrip } from "../ritual-ui";
 
 const PAPER_PAGE_STACK_STYLE: CSSProperties = {
   display: "flex",
-  fontSize: 11,
+  fontSize: 12,
   lineHeight: 1.32,
   maxWidth: "100%",
   minWidth: 0,
@@ -51,7 +51,7 @@ const PAPER_ROW_STYLE: CSSProperties = {
 };
 const PAPER_SIDE_STACK_STYLE: CSSProperties = {
   display: "flex",
-  fontSize: 11,
+  fontSize: 12,
 };
 const PAPER_REVIEW_SUMMARY_BODY_STYLE: CSSProperties = {
   display: "grid",

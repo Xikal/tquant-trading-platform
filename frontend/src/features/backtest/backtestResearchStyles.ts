@@ -66,8 +66,8 @@ export const BACKTEST_RESEARCH_TITLE_HEADING_STYLE: CSSProperties = {
 export const BACKTEST_RESEARCH_TITLE_META_STYLE: CSSProperties = {
   color: "var(--muted)",
   fontFamily: '"IBM Plex Mono", monospace',
-  fontSize: 11,
-  fontWeight: 900,
+  fontSize: 12,
+  fontWeight: 700,
   overflow: "hidden",
   textOverflow: "ellipsis",
   whiteSpace: "nowrap",
@@ -79,8 +79,8 @@ export const BACKTEST_RESEARCH_NOTE_STYLE: CSSProperties = {
   borderRadius: 8,
   background: "#f0fbf4",
   color: "#166534",
-  fontSize: 11,
-  fontWeight: 800,
+  fontSize: 12,
+  fontWeight: 700,
 };
 
 export const BACKTEST_RUN_PICKER_STYLE: CSSProperties = {
@@ -105,17 +105,17 @@ export const BACKTEST_COMPARE_ACTIONS_STYLE: CSSProperties = {
 export const BACKTEST_COMPARE_ACTIONS_META_STYLE: CSSProperties = {
   color: "#64748b",
   fontSize: 12,
-  fontWeight: 800,
+  fontWeight: 700,
 };
 
 export const BACKTEST_TONE_UP_STYLE: CSSProperties = {
   color: "var(--up)",
-  fontWeight: 900,
+  fontWeight: 700,
 };
 
 export const BACKTEST_TONE_DOWN_STYLE: CSSProperties = {
   color: "var(--down)",
-  fontWeight: 900,
+  fontWeight: 700,
 };
 
 export function backtestToneTextStyle(tone: string): CSSProperties {
@@ -132,8 +132,8 @@ export const BACKTEST_WINDOW_PRESETS_STYLE: CSSProperties = {
 
 export const BACKTEST_WINDOW_PRESET_LABEL_STYLE: CSSProperties = {
   color: "var(--muted)",
-  fontSize: 11,
-  fontWeight: 900,
+  fontSize: 12,
+  fontWeight: 700,
 };
 
 export const BACKTEST_WINDOW_PRESET_GRID_STYLE: CSSProperties = {
@@ -156,7 +156,7 @@ export const BACKTEST_WINDOW_PRESET_HINT_STYLE: CSSProperties = {
   display: "block",
   marginTop: 3,
   color: "var(--muted)",
-  fontSize: 11,
+  fontSize: 12,
 };
 
 export const BACKTEST_WINDOW_CARD_STYLE: CSSProperties = {
@@ -256,8 +256,8 @@ export const BACKTEST_MINI_METRIC_MEDIUM_STYLE: CSSProperties = {
 
 export const BACKTEST_MINI_METRIC_LABEL_STYLE: CSSProperties = {
   color: "var(--muted)",
-  fontSize: 11,
-  fontWeight: 800,
+  fontSize: 12,
+  fontWeight: 700,
 };
 
 export const BACKTEST_MINI_METRIC_VALUE_STYLE: CSSProperties = {

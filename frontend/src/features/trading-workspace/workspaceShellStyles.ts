@@ -1,5 +1,14 @@
 import type { CSSProperties } from "react";
 
+/* ===== 应用外壳：固定左侧栏 + 内容列 ===== */
+export const SIDEBAR_WIDTH = 220;
+export const SIDEBAR_COLLAPSED_WIDTH = 64;
+
+export const WORKSPACE_SHELL_STYLE: CSSProperties = {
+  minHeight: "100vh",
+  background: "var(--bg-base)",
+};
+
 export const WORKSPACE_APP_STYLE: CSSProperties = {
   minHeight: "100vh",
   maxWidth: "100vw",
@@ -14,150 +23,158 @@ export const WORKSPACE_AUTH_LOADING_STYLE: CSSProperties = {
   placeItems: "center",
 };
 
-export const WORKSPACE_MAIN_STYLE: CSSProperties = {
-  maxWidth: "100%",
-  minWidth: 0,
-  overflowX: "hidden",
-  width: "min(1440px, calc(100vw - 16px))",
-  margin: "0 auto",
-  paddingTop: 10,
-};
-
-export function topbarStyle(stacked: boolean): CSSProperties {
+export function sidebarStyle(collapsed: boolean): CSSProperties {
   return {
-    position: "sticky",
+    position: "fixed",
     top: 0,
-    zIndex: 10,
-    display: "grid",
-    gridTemplateColumns: stacked ? "1fr" : "minmax(180px, 260px) minmax(360px, 1fr) auto",
-    gap: 12,
-    alignItems: "center",
-    minHeight: 60,
-    borderRadius: 10,
-    border: "1px solid rgba(148, 163, 184, 0.18)",
-    background: "linear-gradient(135deg, #07111f 0%, #101827 58%, #16233a 100%)",
-    color: "#fff",
-    padding: "10px 14px",
-    boxShadow: "0 12px 28px rgba(15, 23, 42, 0.14)",
+    left: 0,
+    bottom: 0,
+    width: collapsed ? SIDEBAR_COLLAPSED_WIDTH : SIDEBAR_WIDTH,
+    display: "flex",
+    flexDirection: "column",
+    background: "var(--brand-ink)",
+    zIndex: 101,
+    overflow: "hidden",
+    transition: "width var(--dur-base) var(--ease)",
   };
 }
 
-export const TOPBAR_BRAND_STYLE: CSSProperties = {
-  display: "grid",
-  gap: 2,
-};
-
-export const TOPBAR_BRAND_TEXT_STYLE: CSSProperties = {
-  color: "#f8fafc",
-  fontSize: 13,
-};
-
-export const TOPBAR_NAV_STYLE: CSSProperties = {
+export const SIDEBAR_INNER_STYLE: CSSProperties = {
   display: "flex",
-  minWidth: 0,
-  justifyContent: "flex-start",
-  gap: 6,
-  overflowX: "auto",
-  scrollbarWidth: "thin",
+  flexDirection: "column",
+  height: "100%",
+  minHeight: 0,
 };
 
-export const TOPBAR_NAV_STACKED_STYLE: CSSProperties = {
-  width: "100%",
-  flexWrap: "wrap",
-};
+export function sidebarBrandStyle(collapsed: boolean): CSSProperties {
+  return {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: collapsed ? "center" : "flex-start",
+    height: 56,
+    flexShrink: 0,
+    padding: collapsed ? "0" : "0 18px",
+    color: "rgba(255, 255, 255, 0.95)",
+    fontSize: "var(--fs-md)",
+    fontWeight: 700,
+    letterSpacing: "0.02em",
+    whiteSpace: "nowrap",
+    overflow: "hidden",
+    borderBottom: "1px solid rgba(255, 255, 255, 0.08)",
+  };
+}
 
-export const TOPBAR_NAV_BUTTON_STYLE: CSSProperties = {
-  minHeight: 34,
-  borderColor: "transparent",
+export const SIDEBAR_MENU_STYLE: CSSProperties = {
+  flex: 1,
+  minHeight: 0,
+  overflowY: "auto",
+  overflowX: "hidden",
   background: "transparent",
-  color: "#aeb8c7",
-  fontSize: 11,
+  borderInlineEnd: "none",
+  paddingTop: "var(--sp-2)",
+};
+
+export const SIDEBAR_FOOTER_STYLE: CSSProperties = {
+  flexShrink: 0,
+  padding: "var(--sp-2)",
+  borderTop: "1px solid rgba(255, 255, 255, 0.08)",
+};
+
+export const SIDEBAR_COLLAPSE_BTN_STYLE: CSSProperties = {
+  width: "100%",
+  color: "rgba(255, 255, 255, 0.72)",
+};
+
+export const DRAWER_BODY_STYLE: CSSProperties = {
+  padding: 0,
+  background: "var(--brand-ink)",
+};
+
+export function contentColStyle(marginLeft: number): CSSProperties {
+  return {
+    marginLeft,
+    minHeight: "100vh",
+    display: "flex",
+    flexDirection: "column",
+    transition: "margin-left var(--dur-base) var(--ease)",
+  };
+}
+
+export const CONTENT_MAIN_STYLE: CSSProperties = {
+  flex: 1,
+  minWidth: 0,
+  overflowX: "hidden",
+  padding: "var(--sp-5)",
+};
+
+export const CONTENT_INNER_STYLE: CSSProperties = {
+  width: "100%",
+  maxWidth: 1440,
+  margin: "0 auto",
+};
+
+/* ===== 顶栏：瘦身浅色上下文条 ===== */
+export const TOPBAR_STYLE: CSSProperties = {
+  position: "sticky",
+  top: 0,
+  zIndex: 100,
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+  gap: 12,
+  height: 56,
+  flexShrink: 0,
+  padding: "0 var(--sp-4)",
+  background: "var(--bg-elevated)",
+  borderBottom: "1px solid var(--line)",
+  boxShadow: "var(--shadow-1)",
+};
+
+export const TOPBAR_LEFT_STYLE: CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  gap: 10,
+  minWidth: 0,
+};
+
+export const TOPBAR_TITLE_STYLE: CSSProperties = {
+  color: "var(--text-1)",
+  fontSize: "var(--fs-md)",
+  fontWeight: 600,
   whiteSpace: "nowrap",
 };
 
-export const TOPBAR_NAV_ACTIVE_STYLE: CSSProperties = {
-  borderColor: "rgba(214, 165, 92, 0.72)",
-  background: "var(--accent)",
-  color: "var(--deep)",
+export const TOPBAR_ICON_BTN_STYLE: CSSProperties = {
+  color: "var(--text-1)",
 };
 
-export const TOPBAR_NAV_SECTION_ACTIVE_STYLE: CSSProperties = {
-  borderColor: "transparent",
-  background: "transparent",
-  color: "#fff",
-};
-
-export const TOPBAR_CHIPS_STYLE: CSSProperties = {
-  width: "100%",
+export const TOPBAR_RIGHT_STYLE: CSSProperties = {
   display: "flex",
   alignItems: "center",
-  flexWrap: "wrap",
-  gap: 8,
-  color: "#aeb8c7",
-  fontFamily: '"IBM Plex Mono", monospace',
-  fontSize: 11,
 };
 
 export const TOPBAR_CHIP_STYLE: CSSProperties = {
-  display: "inline-grid",
-  gridTemplateColumns: "auto auto",
+  display: "inline-flex",
   alignItems: "center",
-  minHeight: 34,
   gap: 6,
-  border: "1px solid rgba(148, 163, 184, 0.2)",
-  borderRadius: 9,
-  background: "rgba(255, 255, 255, 0.06)",
-  color: "#cbd5e1",
-  fontWeight: 800,
+  height: 30,
+  padding: "0 10px",
+  border: "1px solid var(--line)",
+  borderRadius: "var(--radius-pill)",
+  background: "var(--bg-subtle)",
+  color: "var(--text-2)",
+  fontWeight: 600,
+  fontSize: "var(--fs-micro)",
   lineHeight: 1,
-  padding: "5px 9px",
-  boxShadow: "inset 0 1px 0 rgba(255, 255, 255, 0.05)",
-};
-
-export const TOPBAR_CHIP_LABEL_STYLE: CSSProperties = {
-  color: "#7f8fa3",
-  fontSize: 10,
-  fontWeight: 900,
 };
 
 export const TOPBAR_CHIP_VALUE_STYLE: CSSProperties = {
-  color: "#f8fafc",
-  fontSize: 13,
+  color: "var(--text-1)",
+  fontWeight: 700,
+  fontVariantNumeric: "tabular-nums",
 };
 
-export const TOPBAR_OPPORTUNITY_CHIP_STYLE: CSSProperties = {
-  ...TOPBAR_CHIP_STYLE,
-  borderColor: "rgba(214, 165, 92, 0.42)",
-  background: "linear-gradient(135deg, rgba(214, 165, 92, 0.16), rgba(214, 165, 92, 0.05))",
-};
-
-export const TOPBAR_RISK_CHIP_STYLE: CSSProperties = {
-  ...TOPBAR_CHIP_STYLE,
-  borderColor: "rgba(198, 40, 40, 0.4)",
-  background: "linear-gradient(135deg, rgba(198, 40, 40, 0.12), rgba(15, 23, 42, 0.1))",
-};
-
-export const TOPBAR_PULSE_CHIP_STYLE: CSSProperties = {
-  ...TOPBAR_CHIP_STYLE,
-  borderColor: "rgba(59, 130, 246, 0.42)",
-  background: "linear-gradient(135deg, rgba(59, 130, 246, 0.13), rgba(6, 182, 212, 0.08))",
-};
-
-export const TOPBAR_OPPORTUNITY_VALUE_STYLE: CSSProperties = {
-  ...TOPBAR_CHIP_VALUE_STYLE,
-  color: "#f4d08a",
-};
-
-export const TOPBAR_RISK_VALUE_STYLE: CSSProperties = {
-  ...TOPBAR_CHIP_VALUE_STYLE,
-  color: "#ff6b6b",
-};
-
-export const TOPBAR_PULSE_VALUE_STYLE: CSSProperties = {
-  ...TOPBAR_CHIP_VALUE_STYLE,
-  color: "#67e8f9",
-};
-
+/* ===== 监控页栅格（沿用，未改动） ===== */
 export function monitorGridStyle(stacked: boolean): CSSProperties {
   return {
     display: "grid",

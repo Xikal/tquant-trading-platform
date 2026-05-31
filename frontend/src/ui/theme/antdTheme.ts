@@ -1,42 +1,46 @@
 import type { ThemeConfig } from "antd";
+import { color, font, radius } from "./tokens";
 
 export const antdTheme: ThemeConfig = {
+  // 输出 --ant-* CSS 变量，使手写 CSS 与 antd 组件同源；本项目仅一个 antd 版本，关闭 hash 减小样式体积。
+  cssVar: { prefix: "ant" },
+  hashed: false,
   token: {
-    colorPrimary: "#0B1F3A",
-    colorInfo: "#2563EB",
-    colorSuccess: "#08875D",
-    colorWarning: "#B7791F",
-    colorError: "#B42318",
-    colorText: "#102033",
-    colorTextSecondary: "#64748B",
-    colorBgLayout: "#F4F6FA",
-    colorBgContainer: "#FFFFFF",
-    colorBorder: "#E2E8F0",
-    borderRadius: 12,
-    fontFamily: '"PingFang SC", "Microsoft YaHei", "Noto Sans SC", sans-serif',
+    colorPrimary: color.brand,
+    colorInfo: color.info,
+    colorSuccess: color.success,
+    colorWarning: color.warning,
+    colorError: color.error,
+    colorText: color.text1,
+    colorTextSecondary: color.text2,
+    colorBgLayout: color.bgBase,
+    colorBgContainer: color.bgElevated,
+    colorBorder: color.border,
+    borderRadius: radius.sm,
+    fontFamily: font.family,
   },
   components: {
     Button: {
       controlHeight: 36,
-      borderRadius: 8,
+      borderRadius: radius.sm,
       defaultShadow: "none",
       dangerShadow: "none",
       primaryShadow: "none",
     },
     Card: {
-      borderRadiusLG: 12,
+      borderRadiusLG: radius.md,
     },
     Form: {
       itemMarginBottom: 14,
     },
     Input: {
-      borderRadius: 8,
+      borderRadius: radius.sm,
     },
     InputNumber: {
-      borderRadius: 8,
+      borderRadius: radius.sm,
     },
     Select: {
-      borderRadius: 8,
+      borderRadius: radius.sm,
     },
     Table: {
       fontSize: 13,

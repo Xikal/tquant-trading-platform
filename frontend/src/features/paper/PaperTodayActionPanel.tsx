@@ -15,7 +15,7 @@ export function PaperTodayActionPanel({
   const actions = buildActionTimeline(autoTradingStatus, autoTradingRuns);
 
   return (
-    <Space direction="vertical" size={6} style={{ width: "100%", fontSize: 11 }}>
+    <Space direction="vertical" size={6} style={{ width: "100%", fontSize: 12 }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
         <Typography.Text strong style={{ fontSize: 12 }}>今日动作</Typography.Text>
         <Tag color={autoTradingStatus?.running ? "green" : "default"}>
@@ -46,14 +46,14 @@ export function PaperTodayActionPanel({
             key: `${item.time}-${index}`,
             children: (
               <Space direction="vertical" size={1}>
-                <Typography.Text strong style={{ fontSize: 11 }}>{item.time} {item.title}</Typography.Text>
-                <Typography.Text type="secondary" style={{ fontSize: 11 }}>{item.detail}</Typography.Text>
+                <Typography.Text strong style={{ fontSize: 12 }}>{item.time} {item.title}</Typography.Text>
+                <Typography.Text type="secondary" style={{ fontSize: 12 }}>{item.detail}</Typography.Text>
               </Space>
             ),
           }))}
-          style={{ fontSize: 11 }}
+          style={{ fontSize: 12 }}
         />
-      ) : <Typography.Text type="secondary" style={{ fontSize: 11 }}>今日暂无执行记录。</Typography.Text>}
+      ) : <Typography.Text type="secondary" style={{ fontSize: 12 }}>今日暂无执行记录。</Typography.Text>}
     </Space>
   );
 }
@@ -80,7 +80,7 @@ function StatusItem({
       }}>
         <Space direction="vertical" size={3}>
           <Statistic title={label} value={value} styles={{ content: { fontSize: 12, lineHeight: 1.1 } }} />
-          <Typography.Text type="secondary" style={{ fontSize: 11, lineHeight: 1.32 }}>{detail}</Typography.Text>
+          <Typography.Text type="secondary" style={{ fontSize: 12, lineHeight: 1.32 }}>{detail}</Typography.Text>
         </Space>
       </div>
     </Col>

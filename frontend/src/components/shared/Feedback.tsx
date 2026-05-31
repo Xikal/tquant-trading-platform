@@ -39,7 +39,7 @@ const FEEDBACK_ERROR_BUTTON_STYLE: CSSProperties = {
 
 const INLINE_VALIDATION_STYLE: CSSProperties = {
   color: "#d62f2f",
-  fontSize: 11,
+  fontSize: 12,
 };
 
 const SKELETON_TITLE_STYLE: CSSProperties = { gridColumn: "1 / -1" };

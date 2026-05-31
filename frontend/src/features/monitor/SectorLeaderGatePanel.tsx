@@ -50,7 +50,7 @@ export function SectorLeaderGatePanel({ sectorRelativeStrength }: { sectorRelati
               scroll={{ x: 760 }}
             />
             {sectorRelativeStrength?.notes?.[0] ? (
-              <Typography.Text type="secondary" style={{ fontSize: 11 }}>{sectorRelativeStrength.notes[0]}</Typography.Text>
+              <Typography.Text type="secondary" style={{ fontSize: 12 }}>{sectorRelativeStrength.notes[0]}</Typography.Text>
             ) : null}
           </Space>
         ),

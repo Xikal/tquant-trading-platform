@@ -60,7 +60,7 @@ const MONITOR_METRIC_SUMMARY_STYLE: CSSProperties = {
   cursor: "pointer",
   color: "#475569",
   fontSize: 12,
-  fontWeight: 900,
+  fontWeight: 700,
 };
 
 const MONITOR_METRIC_GRID_STYLE: CSSProperties = {
@@ -127,12 +127,12 @@ const MONITOR_ETF_CARD_META_STYLE: CSSProperties = {
   flexWrap: "wrap",
   gap: 8,
   color: "#64748b",
-  fontSize: 11,
+  fontSize: 12,
 };
 
 const MONITOR_ETF_CARD_HINT_STYLE: CSSProperties = {
   color: "#64748b",
-  fontSize: 11,
+  fontSize: 12,
   lineHeight: 1.4,
 };
 const MONITOR_BREADTH_ROW_STYLE: CSSProperties = {
@@ -173,7 +173,7 @@ const MONITOR_TREND_BAR_ITEM_STYLE: CSSProperties = {
   minWidth: 0,
 };
 const MONITOR_TREND_LABEL_STYLE: CSSProperties = {
-  fontSize: 10,
+  fontSize: 12,
   textAlign: "center",
 };
 const MONITOR_KEY_ALERT_WRAP_STYLE: CSSProperties = {
@@ -190,7 +190,7 @@ const MONITOR_KEY_ALERT_TITLE_STYLE: CSSProperties = {
   fontSize: 12,
 };
 const MONITOR_KEY_ALERT_DESC_STYLE: CSSProperties = {
-  fontSize: 11,
+  fontSize: 12,
 };
 const MONITOR_REVIEW_DRAFT_STYLE: CSSProperties = {
   borderColor: "rgba(59, 130, 246, 0.24)",
@@ -227,15 +227,15 @@ const MONITOR_SIDE_ROW_HEAD_STYLE: CSSProperties = {
   minWidth: 0,
 };
 const MONITOR_SIDE_ROW_TEXT_STYLE: CSSProperties = {
-  fontSize: 11,
+  fontSize: 12,
   minWidth: 0,
 };
 const MONITOR_SIDE_ROW_TITLE_STYLE: CSSProperties = {
-  fontSize: 11,
+  fontSize: 12,
 };
 const MONITOR_SIDE_ROW_META_STYLE: CSSProperties = {
   color: "#64748b",
-  fontSize: 10.5,
+  fontSize: 12.5,
   minWidth: 0,
 };
 const MONITOR_TREND_BAR_DYNAMIC_STYLE: CSSProperties = {

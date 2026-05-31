@@ -53,7 +53,7 @@ export function PortfolioExecutionPanel({ preview }: { preview?: PaperPortfolioE
               ]}
               scroll={{ x: 360 }}
             />
-            {preview?.notes?.[0] ? <Typography.Text type="secondary" style={{ fontSize: 11 }}>{preview.notes[0]}</Typography.Text> : null}
+            {preview?.notes?.[0] ? <Typography.Text type="secondary" style={{ fontSize: 12 }}>{preview.notes[0]}</Typography.Text> : null}
           </Space>
         ),
       }]}

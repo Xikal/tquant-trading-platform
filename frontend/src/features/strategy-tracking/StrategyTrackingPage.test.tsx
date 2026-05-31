@@ -23,7 +23,8 @@ describe("StrategyTracking UI", () => {
     const html = renderToStaticMarkup(
       <Topbar
         page="strategy-tracking"
-        setPage={vi.fn()}
+        onNavigate={vi.fn()}
+        onOpenNav={vi.fn()}
         priorityBoard={null}
         watchCards={[]}
         currentUser={{ id: 1, username: "tester", display_name: "tester", roles: [], can_paper_trade: true, created_at: "2026-05-29T10:00:00+08:00" }}

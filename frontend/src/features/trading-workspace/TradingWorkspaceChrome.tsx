@@ -1,13 +1,27 @@
 import { lazy } from "react";
+import { Drawer, Grid } from "antd";
 import type { AiDecisionSupportResponse, AuthUser } from "../../types";
 import type { StrategyMeta } from "../../api/strategies";
+import { useWorkspaceStore } from "../../stores/workspaceStore";
+import { AppSidebar } from "./AppSidebar";
 import { CommandPalette } from "./CommandPalette";
 import { Topbar } from "./Topbar";
 import { AiInsightDialog, ErrorDialog, StatusStrip, StockDetailDialog } from "../workspace-shared/WorkspaceComponents";
 import { RitualBlessingModal } from "../ritual-ui";
 import type { Page, StockCardView } from "../workspace-shared/workspaceTypes";
 import { WorkspacePageContent } from "./WorkspacePageContent";
-import { WORKSPACE_APP_STYLE, WORKSPACE_MAIN_STYLE } from "./workspaceShellStyles";
+import {
+  CONTENT_INNER_STYLE,
+  CONTENT_MAIN_STYLE,
+  DRAWER_BODY_STYLE,
+  SIDEBAR_COLLAPSED_WIDTH,
+  SIDEBAR_WIDTH,
+  WORKSPACE_SHELL_STYLE,
+  contentColStyle,
+  sidebarStyle,
+} from "./workspaceShellStyles";
+
+const { useBreakpoint } = Grid;
 
 const AnalysisPage = lazy(async () => ({ default: (await import("../analysis/AnalysisPage")).AnalysisPage }));
 const BacktestPage = lazy(async () => ({ default: (await import("../backtest/BacktestPage")).BacktestPage }));
@@ -52,65 +66,106 @@ type TradingWorkspaceChromeProps = {
 };
 
 export function TradingWorkspaceChrome(props: TradingWorkspaceChromeProps) {
+  const screens = useBreakpoint();
+  const isDesktop = screens.lg ?? true;
+  const collapsed = useWorkspaceStore((state) => state.sidebarCollapsed);
+  const toggleCollapsed = useWorkspaceStore((state) => state.toggleSidebarCollapsed);
+  const mobileNavOpen = useWorkspaceStore((state) => state.mobileNavOpen);
+  const setMobileNavOpen = useWorkspaceStore((state) => state.setMobileNavOpen);
+  const marginLeft = isDesktop ? (collapsed ? SIDEBAR_COLLAPSED_WIDTH : SIDEBAR_WIDTH) : 0;
+
   return (
-    <div style={WORKSPACE_APP_STYLE}>
-      <Topbar
-        page={props.page}
-        setPage={props.onNavigate}
-        priorityBoard={props.monitor.priorityBoard}
-        watchCards={props.monitor.watchCards}
-        currentUser={props.currentUser}
-        onLogout={props.onLogout}
-        onPaperRefresh={props.onPaperRefresh}
-        paperRefreshLoading={props.paperRefreshLoading}
-      />
-      <main style={WORKSPACE_MAIN_STYLE}>
-        <StatusStrip loading={props.loading} notice={props.notice} />
-        <ErrorDialog message={props.error} onClose={props.onCloseError} />
-        <StockDetailDialog
-          stock={props.selectedStock}
-          onClose={props.onCloseStock}
-          onAnalyze={props.analysis.analyzeFromCard}
-        />
-        {props.aiDialogOpen ? (
-          <AiInsightDialog
-            response={props.aiResult}
-            loading={props.aiLoading}
-            onClose={props.onCloseAi}
+    <div style={WORKSPACE_SHELL_STYLE}>
+      {isDesktop ? (
+        <aside style={sidebarStyle(collapsed)}>
+          <AppSidebar
+            page={props.page}
+            currentUser={props.currentUser}
+            collapsed={collapsed}
+            onNavigate={props.onNavigate}
+            onToggleCollapse={toggleCollapsed}
           />
-        ) : null}
-        <CommandPalette
-          open={props.commandOpen}
-          strategies={props.commandStrategies}
-          onClose={props.onCloseCommand}
-          onNavigate={props.onNavigate}
-          onAnalyzeSymbol={props.onAnalyzeSymbol}
-          onOpenStrategy={props.onOpenStrategy}
-        />
-        <RitualBlessingModal userId={props.currentUser.id} />
-        <WorkspacePageContent
-          AnalysisPage={AnalysisPage}
-          BacktestPage={BacktestPage}
-          MonitorPage={MonitorPage}
-          PaperTradingPage={PaperTradingPage}
-          PlaybookPage={PlaybookPage}
-          SettingsPage={SettingsPage}
-          StrategyTrackingPage={StrategyTrackingPage}
-          analysis={props.analysis}
-          currentUser={props.currentUser}
-          loading={props.loading}
-          monitor={props.monitor}
-          monitorPageProps={props.monitorPageProps}
+        </aside>
+      ) : (
+        <Drawer
+          placement="left"
+          width={SIDEBAR_WIDTH}
+          open={mobileNavOpen}
+          closable={false}
+          styles={{ body: DRAWER_BODY_STYLE }}
+          onClose={() => setMobileNavOpen(false)}
+        >
+          <AppSidebar
+            page={props.page}
+            currentUser={props.currentUser}
+            collapsed={false}
+            onNavigate={props.onNavigate}
+            onItemClick={() => setMobileNavOpen(false)}
+          />
+        </Drawer>
+      )}
+      <div style={contentColStyle(marginLeft)}>
+        <Topbar
           page={props.page}
-          paperPageProps={props.paperPageProps}
-          playbookData={props.playbookData}
-          settingsData={props.settingsData}
-          strategyMeta={props.strategyMeta}
-          onSelectStock={props.onSelectStock}
-          onPreparePaperOrder={props.onPreparePaperOrder}
-          onUserUpdate={props.onUserUpdate}
+          currentUser={props.currentUser}
+          priorityBoard={props.monitor.priorityBoard}
+          watchCards={props.monitor.watchCards}
+          onLogout={props.onLogout}
+          onNavigate={props.onNavigate}
+          onOpenNav={() => setMobileNavOpen(true)}
+          onPaperRefresh={props.onPaperRefresh}
+          paperRefreshLoading={props.paperRefreshLoading}
         />
-      </main>
+        <main style={CONTENT_MAIN_STYLE}>
+          <div style={CONTENT_INNER_STYLE}>
+            <StatusStrip loading={props.loading} notice={props.notice} />
+            <ErrorDialog message={props.error} onClose={props.onCloseError} />
+            <StockDetailDialog
+              stock={props.selectedStock}
+              onClose={props.onCloseStock}
+              onAnalyze={props.analysis.analyzeFromCard}
+            />
+            {props.aiDialogOpen ? (
+              <AiInsightDialog
+                response={props.aiResult}
+                loading={props.aiLoading}
+                onClose={props.onCloseAi}
+              />
+            ) : null}
+            <CommandPalette
+              open={props.commandOpen}
+              strategies={props.commandStrategies}
+              onClose={props.onCloseCommand}
+              onNavigate={props.onNavigate}
+              onAnalyzeSymbol={props.onAnalyzeSymbol}
+              onOpenStrategy={props.onOpenStrategy}
+            />
+            <RitualBlessingModal userId={props.currentUser.id} />
+            <WorkspacePageContent
+              AnalysisPage={AnalysisPage}
+              BacktestPage={BacktestPage}
+              MonitorPage={MonitorPage}
+              PaperTradingPage={PaperTradingPage}
+              PlaybookPage={PlaybookPage}
+              SettingsPage={SettingsPage}
+              StrategyTrackingPage={StrategyTrackingPage}
+              analysis={props.analysis}
+              currentUser={props.currentUser}
+              loading={props.loading}
+              monitor={props.monitor}
+              monitorPageProps={props.monitorPageProps}
+              page={props.page}
+              paperPageProps={props.paperPageProps}
+              playbookData={props.playbookData}
+              settingsData={props.settingsData}
+              strategyMeta={props.strategyMeta}
+              onSelectStock={props.onSelectStock}
+              onPreparePaperOrder={props.onPreparePaperOrder}
+              onUserUpdate={props.onUserUpdate}
+            />
+          </div>
+        </main>
+      </div>
     </div>
   );
 }

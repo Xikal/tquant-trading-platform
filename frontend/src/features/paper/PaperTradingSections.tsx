@@ -22,7 +22,7 @@ export function PaperPositionsPanel({
       title="当前持仓"
       extra={<Typography.Text type="secondary">{positions.length ? `共 ${positions.length} 只，首屏直接处理` : "暂无持仓"}</Typography.Text>}
       variant="borderless"
-      styles={{ body: { padding: 6, minHeight: 0, fontSize: 11 } }}
+      styles={{ body: { padding: 6, minHeight: 0, fontSize: 12 } }}
     >
       {loading ? (
         <Skeleton active paragraph={{ rows: 4 }} />
@@ -67,18 +67,18 @@ function PositionRow({ item }: { item: PaperPosition }) {
       }}
     >
       <List.Item.Meta
-        title={<Typography.Text strong style={{ fontSize: 11 }}>{item.name || item.symbol}</Typography.Text>}
-        description={<Typography.Text type="secondary" style={{ fontSize: 10 }}>{item.symbol}</Typography.Text>}
+        title={<Typography.Text strong style={{ fontSize: 12 }}>{item.name || item.symbol}</Typography.Text>}
+        description={<Typography.Text type="secondary" style={{ fontSize: 12 }}>{item.symbol}</Typography.Text>}
       />
-      <Space size={6} wrap style={{ fontSize: 11 }}>
-        <Typography.Text style={{ fontSize: 11 }}>持仓 {formatInteger(item.quantity)} / 可卖 {formatInteger(item.available_quantity)}</Typography.Text>
-        <Typography.Text style={{ fontSize: 11 }}>成本 {formatPrice(item.cost_basis)} / 现价 {formatPrice(item.latest_price)}</Typography.Text>
+      <Space size={6} wrap style={{ fontSize: 12 }}>
+        <Typography.Text style={{ fontSize: 12 }}>持仓 {formatInteger(item.quantity)} / 可卖 {formatInteger(item.available_quantity)}</Typography.Text>
+        <Typography.Text style={{ fontSize: 12 }}>成本 {formatPrice(item.cost_basis)} / 现价 {formatPrice(item.latest_price)}</Typography.Text>
         <Tag color="blue">{actionText}</Tag>
         <Tag color={model?.safety_blocked ? "red" : model?.fallback_reason ? "default" : "purple"}>{modelText}</Tag>
         <Tag color={mainForce?.suggestion_enabled ? "gold" : mainForce?.risk_flags?.length ? "default" : "cyan"}>
           {mainForceText}
         </Tag>
-        <Typography.Text strong style={{ color: toneColor(tone), fontSize: 11 }}>{formatPct(item.unrealized_pnl_pct)}</Typography.Text>
+        <Typography.Text strong style={{ color: toneColor(tone), fontSize: 12 }}>{formatPct(item.unrealized_pnl_pct)}</Typography.Text>
       </Space>
     </List.Item>
   );

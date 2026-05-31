@@ -72,7 +72,7 @@ const STOCK_DIRECT_ACTION_TITLE_STYLE: CSSProperties = {
 const STOCK_SCORE_BADGE_STYLE: CSSProperties = {
   color: "#b7791f",
   fontSize: 12,
-  fontWeight: 800,
+  fontWeight: 700,
   whiteSpace: "nowrap",
 };
 
@@ -95,7 +95,7 @@ const STOCK_OPERATION_ITEM_STYLE: CSSProperties = {
 
 const STOCK_OPERATION_HELP_STYLE: CSSProperties = {
   color: "#64748b",
-  fontSize: 10,
+  fontSize: 12,
   lineHeight: 1.2,
   whiteSpace: "nowrap",
 };
@@ -127,7 +127,7 @@ const STOCK_IDENTITY_NAME_STYLE: CSSProperties = {
 const STOCK_IDENTITY_META_STYLE: CSSProperties = {
   color: "#66758a",
   fontFamily: "IBM Plex Mono, monospace",
-  fontSize: 11,
+  fontSize: 12,
 };
 
 const STOCK_IDENTITY_TAGS_STYLE: CSSProperties = {
@@ -140,7 +140,7 @@ const STOCK_IDENTITY_TAG_STYLE: CSSProperties = {
   borderRadius: 999,
   background: "#eef2f7",
   color: "#435168",
-  fontSize: 10,
+  fontSize: 12,
   fontWeight: 700,
   padding: "1px 5px",
 };
@@ -151,14 +151,14 @@ const STOCK_META_STYLE: CSSProperties = {
   gap: 10,
   color: "#66758a",
   fontFamily: "IBM Plex Mono, monospace",
-  fontSize: 11,
+  fontSize: 12,
 };
 
 const STOCK_META_TAG_STYLE: CSSProperties = {
   borderRadius: 999,
   background: "#eef2f7",
   color: "#435168",
-  fontSize: 11,
+  fontSize: 12,
   fontWeight: 700,
   padding: "3px 7px",
 };
@@ -254,10 +254,10 @@ export function StockCard({
       <StockIdentity name={stock.name} symbol={stock.symbol} note={stock.identityNote} tags={stock.identityTags} />
       <div style={STOCK_CARD_BODY_STYLE}>
         <div style={STOCK_DIRECT_ACTION_STYLE}>
-          <strong style={{ ...STOCK_DIRECT_ACTION_TITLE_STYLE, ...(compact ? { fontSize: 11 } : undefined) }}>{directActionTitle(stock.actionText)}</strong>
+          <strong style={{ ...STOCK_DIRECT_ACTION_TITLE_STYLE, ...(compact ? { fontSize: 12 } : undefined) }}>{directActionTitle(stock.actionText)}</strong>
           {stock.scoreText ? <span style={STOCK_SCORE_BADGE_STYLE} title={`质量分 ${stock.scoreText}`}>质量 {scoreStars(stock.scoreText)}</span> : null}
         </div>
-        <div style={{ ...STOCK_META_STYLE, ...(compact ? { gap: 7, fontSize: 10 } : undefined) }}>
+        <div style={{ ...STOCK_META_STYLE, ...(compact ? { gap: 7, fontSize: 12 } : undefined) }}>
           <span>当前价 {stock.livePrice ? <LiveCell symbol={stock.symbol} field="price" fallback={stock.priceText} /> : stock.priceText}</span>
           <span style={STOCK_TONE_TEXT_STYLES[stock.tone]}>涨跌 {stock.livePrice ? <LiveCell symbol={stock.symbol} field="changePct" fallback={stock.changeText} /> : stock.changeText}</span>
           {stock.scoreText ? <span>质量分 {stock.scoreText}</span> : null}

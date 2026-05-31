@@ -51,7 +51,7 @@ function buildOption(items: BacktestMonthlyReturn[]): echarts.EChartsCoreOption 
       cellSize: ["auto", 18],
       range: [`${minYear}-01-01`, `${maxYear}-12-31`],
       itemStyle: { borderColor: "#e2e8f0" },
-      monthLabel: { color: "#475569", fontSize: 10 },
+      monthLabel: { color: "#475569", fontSize: 12 },
       dayLabel: { show: false },
       yearLabel: { color: "#0f172a" },
     },

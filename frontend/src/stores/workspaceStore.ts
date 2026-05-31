@@ -14,6 +14,8 @@ interface WorkspaceStore {
   aiDialogOpen: boolean;
   selectedStock: StockCardView | null;
   topbarPulse: string;
+  sidebarCollapsed: boolean;
+  mobileNavOpen: boolean;
   setPage: (page: Page) => void;
   setAuthDraft: (draft: AuthDraft | ((current: AuthDraft) => AuthDraft)) => void;
   setWatchDraft: (draft: WatchDraft | ((current: WatchDraft) => WatchDraft)) => void;
@@ -26,6 +28,8 @@ interface WorkspaceStore {
   setAiDialogOpen: (open: boolean) => void;
   setSelectedStock: (stock: StockCardView | null) => void;
   setTopbarPulse: (pulse: string) => void;
+  toggleSidebarCollapsed: () => void;
+  setMobileNavOpen: (open: boolean) => void;
   clearTransientUi: () => void;
 }
 
@@ -53,6 +57,8 @@ export const useWorkspaceStore = create<WorkspaceStore>((set) => ({
   aiDialogOpen: false,
   selectedStock: null,
   topbarPulse: new Date().toLocaleTimeString("zh-CN", { hour12: false, timeZone: "Asia/Shanghai" }),
+  sidebarCollapsed: false,
+  mobileNavOpen: false,
   setPage: (page) => set({ page }),
   setAuthDraft: (draft) => set((state) => ({
     authDraft: typeof draft === "function" ? draft(state.authDraft) : draft,
@@ -69,5 +75,7 @@ export const useWorkspaceStore = create<WorkspaceStore>((set) => ({
   setAiDialogOpen: (aiDialogOpen) => set({ aiDialogOpen }),
   setSelectedStock: (selectedStock) => set({ selectedStock }),
   setTopbarPulse: (topbarPulse) => set({ topbarPulse }),
-  clearTransientUi: () => set({ aiDialogOpen: false, commandOpen: false, selectedStock: null, error: "" }),
+  toggleSidebarCollapsed: () => set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
+  setMobileNavOpen: (mobileNavOpen) => set({ mobileNavOpen }),
+  clearTransientUi: () => set({ aiDialogOpen: false, commandOpen: false, selectedStock: null, error: "", mobileNavOpen: false }),
 }));

@@ -33,7 +33,7 @@ const INFO_PILL_COMPACT_STYLE: CSSProperties = {
 
 const INFO_LABEL_STYLE: CSSProperties = {
   color: "var(--muted)",
-  fontSize: 11,
+  fontSize: 12,
 };
 
 const INFO_VALUE_STYLE: CSSProperties = {

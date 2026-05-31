@@ -16,7 +16,7 @@ const PLAYBOOK_PAGE_STYLE: CSSProperties = {
   gap: 6,
   gridTemplateColumns: "minmax(300px, 380px) minmax(0, 1fr)",
   gridTemplateAreas: '"hero hero" "performance candidates" "focus candidates"',
-  fontSize: 11,
+  fontSize: 12,
   lineHeight: 1.32,
 };
 
@@ -61,18 +61,18 @@ const PLAYBOOK_DENSE_TEXT_STYLE: CSSProperties = {
   overflow: "hidden",
   textOverflow: "ellipsis",
   whiteSpace: "nowrap",
-  fontSize: 11,
+  fontSize: 12,
 };
 const PLAYBOOK_DENSE_META_STYLE: CSSProperties = {
   color: "#64748b",
-  fontSize: 10,
+  fontSize: 12,
 };
 const PLAYBOOK_TAB_LABEL_STYLE: CSSProperties = {
   display: "inline-flex",
   alignItems: "center",
   gap: 4,
-  fontSize: 11,
-  fontWeight: 800,
+  fontSize: 12,
+  fontWeight: 700,
 };
 
 export function PlaybookPage({
@@ -313,7 +313,7 @@ function CandidateTabs({
         tabBarStyle={{ marginBottom: 6 }}
         items={sections.map((section) => ({
           key: section.key,
-          label: <span style={PLAYBOOK_TAB_LABEL_STYLE}>{section.short}<Typography.Text type="secondary" style={{ fontSize: 10 }}>{section.items.length}</Typography.Text></span>,
+          label: <span style={PLAYBOOK_TAB_LABEL_STYLE}>{section.short}<Typography.Text type="secondary" style={{ fontSize: 12 }}>{section.items.length}</Typography.Text></span>,
           children: (
             <div style={PLAYBOOK_TAB_BODY_STYLE}>
               <PanelTitle title={section.title} />

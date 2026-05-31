@@ -119,7 +119,7 @@ function StrategyList({
           <Space size={4} wrap>
             <Tag color={tone}>PF {formatNumber(item.profit_factor ?? null)}</Tag>
             <Tag color={tone}>胜率 {formatNumber(item.win_rate_pct ?? null)}%</Tag>
-            <Typography.Text type="secondary" style={{ fontSize: 11 }}>{actionText(item.recommended_action)}</Typography.Text>
+            <Typography.Text type="secondary" style={{ fontSize: 12 }}>{actionText(item.recommended_action)}</Typography.Text>
           </Space>
         </Space>
       )) : <Typography.Text type="secondary">{emptyText}</Typography.Text>}

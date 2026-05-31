@@ -24,7 +24,7 @@ const TAG_PERFORMANCE_STYLE: CSSProperties = {
   borderRadius: 8,
   background: "#fffaf0",
   color: "#6b5a3a",
-  fontSize: 11,
+  fontSize: 12,
 };
 const TRUNCATED_TEXT_STYLE: CSSProperties = {
   display: "block",
@@ -42,7 +42,7 @@ const RISK_TODO_ITEM_STYLE: CSSProperties = {
   gap: 3,
   borderRadius: 8,
   padding: 7,
-  fontSize: 11,
+  fontSize: 12,
 };
 const RISK_TODO_ITEM_HIGH_STYLE: CSSProperties = {
   background: "#fef2f2",
@@ -92,7 +92,7 @@ export function TagPerformanceStrip({ items }: { items: PaperTagPerformance[] })
   return (
     <Space wrap size={[5, 5]} style={TAG_PERFORMANCE_STYLE}>
       {items.slice(0, 4).map((item) => (
-        <Typography.Text key={item.tag} style={{ color: "#6b5a3a", fontSize: 11 }}>
+        <Typography.Text key={item.tag} style={{ color: "#6b5a3a", fontSize: 12 }}>
           {item.tag} {item.trades} 笔 · 均收 <Typography.Text strong style={toneTextStyle(toneFromChange(item.avg_return_pct))}>{formatPct(item.avg_return_pct)}</Typography.Text>
         </Typography.Text>
       ))}
@@ -148,10 +148,10 @@ export function SectorEtfT0PerformancePanel({ item }: { item: PaperSectorEtfT0Pe
           { title: "3日均收", dataIndex: "shadow_avg_return_3d_pct", render: (value) => <span className={toneFromChange(value)}>{formatPct(value)}</span> },
         ]}
       />
-      <Typography.Text type="secondary" style={{ fontSize: 11 }}>
+      <Typography.Text type="secondary" style={{ fontSize: 12 }}>
         {item.notes?.[0] || "只统计 strategy_key=sector_etf_t0 的模拟成交，并和 ETF 机会池影子跟踪对账。"}
       </Typography.Text>
-      <Typography.Text type="secondary" style={{ fontSize: 11 }}>
+      <Typography.Text type="secondary" style={{ fontSize: 12 }}>
         {latest?.available ? `真实 OOS ${latest.dataset_version || latest.dataset_key}：${latest.gate_reasons[0] || "无阻断原因"}。通过也只作为阶段建议，不绕过自动交易风控。` : "真实 OOS 尚未验证，ETF T0 自动交易保持研究/小仓观察边界。"}
       </Typography.Text>
       <Space wrap size={[5, 5]}>
@@ -227,21 +227,21 @@ export function AgentRunList({ items }: { items: PaperAgentRun[] }) {
             <Row gutter={[8, 4]} align="middle" style={FULL_WIDTH_STYLE}>
               <Col xs={24} md={6}>
                 <Space direction="vertical" size={0}>
-                  <Typography.Text strong style={{ fontSize: 11 }}>{runStatusText(item.status)}</Typography.Text>
-                  <Typography.Text type="secondary" style={{ fontSize: 11 }}>{formatPaperDateTime(item.created_at)}</Typography.Text>
+                  <Typography.Text strong style={{ fontSize: 12 }}>{runStatusText(item.status)}</Typography.Text>
+                  <Typography.Text type="secondary" style={{ fontSize: 12 }}>{formatPaperDateTime(item.created_at)}</Typography.Text>
                 </Space>
               </Col>
               <Col xs={24} md={5}>
-                <Typography.Text type="secondary" style={{ fontSize: 11 }}>
+                <Typography.Text type="secondary" style={{ fontSize: 12 }}>
                   执行 {executed} / 跳过 {skipped}{etfOrders ? ` / ETF ${etfOrders}` : ""}
                 </Typography.Text>
               </Col>
               <Col xs={24} md={skipReason ? 8 : 13}>
-                <Typography.Text type="secondary" style={{ ...TRUNCATED_TEXT_STYLE, fontSize: 11 }} title={summary}>{summary}</Typography.Text>
+                <Typography.Text type="secondary" style={{ ...TRUNCATED_TEXT_STYLE, fontSize: 12 }} title={summary}>{summary}</Typography.Text>
               </Col>
               {skipReason ? (
                 <Col xs={24} md={5}>
-                  <Typography.Text type="secondary" style={{ ...TRUNCATED_TEXT_STYLE, fontSize: 11 }} title={skipReason}>未买原因：{skipReason}</Typography.Text>
+                  <Typography.Text type="secondary" style={{ ...TRUNCATED_TEXT_STYLE, fontSize: 12 }} title={skipReason}>未买原因：{skipReason}</Typography.Text>
                 </Col>
               ) : null}
             </Row>

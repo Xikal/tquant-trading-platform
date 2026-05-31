@@ -32,7 +32,7 @@ export const BACKTEST_CHART_LEGEND_STYLE: CSSProperties = {
   gap: 10,
   color: "#aeb8c7",
   fontFamily: '"IBM Plex Mono", monospace',
-  fontSize: 11,
+  fontSize: 12,
 };
 
 export const BACKTEST_CHART_LEGEND_ITEM_STYLE: CSSProperties = {

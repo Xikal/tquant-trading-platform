@@ -6,7 +6,7 @@ export function backtestDashboardGridStyle(_isWide: boolean): CSSProperties {
     gap: 8,
     alignItems: "start",
     minWidth: 0,
-    fontSize: 11,
+    fontSize: 12,
     lineHeight: 1.32,
   };
 }
@@ -37,13 +37,13 @@ export const BACKTEST_HEADER_TITLE_WRAP_STYLE: CSSProperties = {
 export const BACKTEST_HEADER_TITLE_STYLE: CSSProperties = {
   color: "#f8fafc",
   fontSize: 13,
-  fontWeight: 900,
+  fontWeight: 700,
   lineHeight: 1.2,
 };
 
 export const BACKTEST_HEADER_SUMMARY_STYLE: CSSProperties = {
   color: "#aeb8c7",
-  fontSize: 11,
+  fontSize: 12,
   lineHeight: 1.32,
 };
 
@@ -67,14 +67,14 @@ export const BACKTEST_HEADER_PILL_STYLE: CSSProperties = {
 
 export const BACKTEST_HEADER_PILL_LABEL_STYLE: CSSProperties = {
   color: "#94a3b8",
-  fontSize: 10,
-  fontWeight: 800,
+  fontSize: 12,
+  fontWeight: 700,
 };
 
 export const BACKTEST_HEADER_PILL_VALUE_STYLE: CSSProperties = {
   color: "#f8fafc",
   fontSize: 12,
-  fontWeight: 900,
+  fontWeight: 700,
   overflow: "hidden",
   textOverflow: "ellipsis",
   whiteSpace: "nowrap",
@@ -119,8 +119,8 @@ export const BACKTEST_KICKER_STYLE: CSSProperties = {
   marginBottom: 8,
   color: "#f4d08a",
   fontFamily: '"IBM Plex Mono", monospace',
-  fontSize: 11,
-  fontWeight: 900,
+  fontSize: 12,
+  fontWeight: 700,
   letterSpacing: 0,
   textTransform: "uppercase",
 };
@@ -151,8 +151,8 @@ export const BACKTEST_STATUS_RAIL_STYLE: CSSProperties = {
 
 export const BACKTEST_STATUS_RAIL_SUMMARY_STYLE: CSSProperties = {
   cursor: "pointer",
-  fontSize: 11,
-  fontWeight: 800,
+  fontSize: 12,
+  fontWeight: 700,
   color: "#dbeafe",
 };
 
@@ -166,7 +166,7 @@ export const BACKTEST_STATUS_RAIL_GRID_STYLE: CSSProperties = {
 export const BACKTEST_SECTION_META_STYLE: CSSProperties = {
   color: "var(--muted)",
   fontSize: 12,
-  fontWeight: 800,
+  fontWeight: 700,
 };
 
 export const BACKTEST_NOTICE_STYLE: CSSProperties = {
@@ -218,7 +218,7 @@ export const BACKTEST_ADVANCED_FIELDS_STYLE: CSSProperties = {
 export const BACKTEST_ADVANCED_FIELDS_SUMMARY_STYLE: CSSProperties = {
   cursor: "pointer",
   fontSize: 12,
-  fontWeight: 800,
+  fontWeight: 700,
   listStylePosition: "inside",
 };
 

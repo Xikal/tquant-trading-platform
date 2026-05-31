@@ -29,7 +29,7 @@ const SECURITY_STEP_STYLE: CSSProperties = {
   color: "#334155",
   padding: 8,
   fontSize: 12,
-  fontWeight: 800,
+  fontWeight: 700,
 };
 
 const SECURITY_SECRET_BOX_STYLE: CSSProperties = {

@@ -44,8 +44,8 @@ const SECTOR_FILTER_OPTION_STYLE: CSSProperties = {
   border: "1px solid transparent",
   borderRadius: 8,
   color: "var(--text)",
-  fontSize: 11,
-  fontWeight: 800,
+  fontSize: 12,
+  fontWeight: 700,
   cursor: "pointer",
 };
 

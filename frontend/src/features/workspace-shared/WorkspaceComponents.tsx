@@ -49,7 +49,7 @@ const LINE_LIST_STYLE: CSSProperties = {
 
 const LINE_LIST_TITLE_STYLE: CSSProperties = {
   color: "var(--muted)",
-  fontSize: 11,
+  fontSize: 12,
   fontWeight: 700,
 };
 
@@ -62,7 +62,7 @@ const LINE_LIST_BODY_STYLE: CSSProperties = {
 
 const LINE_LIST_ITEM_STYLE: CSSProperties = {
   color: "var(--text)",
-  fontSize: 11,
+  fontSize: 12,
   lineHeight: 1.45,
 };
 
@@ -121,7 +121,7 @@ const EMPTY_STATE_STYLE: CSSProperties = {
   background: "var(--muted-bg)",
   color: "var(--muted)",
   padding: 6,
-  fontSize: 11,
+  fontSize: 12,
 };
 
 const MODAL_METRICS_STYLE: CSSProperties = {
@@ -151,7 +151,7 @@ const REPORT_PILL_STYLE: CSSProperties = {
   borderRadius: 999,
   background: "#eef2f7",
   color: "#435168",
-  fontSize: 11,
+  fontSize: 12,
   fontWeight: 700,
   padding: "3px 7px",
 };
@@ -165,7 +165,7 @@ const STATUS_STRIP_STYLE: CSSProperties = {
   background: "var(--muted-bg)",
   color: "var(--muted)",
   padding: "6px 8px",
-  fontSize: 11,
+  fontSize: 12,
 };
 
 const STOCK_DETAIL_BADGE_ROW_STYLE: CSSProperties = {
@@ -178,7 +178,7 @@ const STOCK_DETAIL_BADGE_STYLE: CSSProperties = {
   borderRadius: 999,
   background: "#eef2f7",
   color: "#435168",
-  fontSize: 11,
+  fontSize: 12,
   fontWeight: 700,
   padding: "3px 7px",
 };

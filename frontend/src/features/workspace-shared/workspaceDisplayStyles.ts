@@ -44,11 +44,11 @@ export const METRIC_TONE_STYLES: Partial<Record<Tone, CSSProperties>> = {
 
 export const METRIC_TEXT_STYLE: CSSProperties = {
   fontFamily: '"IBM Plex Mono", monospace',
-  fontSize: 11,
+  fontSize: 12,
 };
 
 export const METRIC_TEXT_COMPACT_STYLE: CSSProperties = {
-  fontSize: 10,
+  fontSize: 12,
 };
 
 export const METRIC_VALUE_STYLE: CSSProperties = {
@@ -77,9 +77,9 @@ export const INFO_PILL_COMPACT_STYLE: CSSProperties = {
 
 export const INFO_PILL_TEXT_STYLE: CSSProperties = {
   fontFamily: '"IBM Plex Mono", monospace',
-  fontSize: 11,
+  fontSize: 12,
 };
 
 export const INFO_PILL_TEXT_COMPACT_STYLE: CSSProperties = {
-  fontSize: 10,
+  fontSize: 12,
 };

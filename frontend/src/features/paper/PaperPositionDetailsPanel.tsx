@@ -54,7 +54,7 @@ export function PaperPositionDetailsPanel({
   const setSelectedSymbol = usePaperUiStore((state) => state.setSelectedPositionSymbol);
   const selected = details.find((item) => item.symbol === selectedSymbol) ?? details[0] ?? null;
   const content = (
-    <Space direction="vertical" size={8} style={{ display: "flex", width: "100%", fontSize: 11 }}>
+    <Space direction="vertical" size={8} style={{ display: "flex", width: "100%", fontSize: 12 }}>
       {loading ? <DetailSkeleton /> : null}
       {!loading && !details.length ? <EmptyState text="暂无持仓或成交明细" /> : null}
       {!loading && selected ? (
@@ -74,13 +74,13 @@ export function PaperPositionDetailsPanel({
                   style={{ flex: "0 0 132px", height: "auto", padding: "6px 8px", textAlign: "left" }}
                 >
                   <Space direction="vertical" size={1} style={{ width: "100%" }}>
-                    <Typography.Text strong ellipsis style={active ? { color: "#fff", fontSize: 11 } : { fontSize: 11 }}>
+                    <Typography.Text strong ellipsis style={active ? { color: "#fff", fontSize: 12 } : { fontSize: 12 }}>
                       {item.name}
                     </Typography.Text>
-                    <Typography.Text style={active ? { color: "rgba(255,255,255,0.8)", fontSize: 10 } : { fontSize: 10 }} type={active ? undefined : "secondary"}>
+                    <Typography.Text style={active ? { color: "rgba(255,255,255,0.8)", fontSize: 12 } : { fontSize: 12 }} type={active ? undefined : "secondary"}>
                       {item.symbol}
                     </Typography.Text>
-                    <Typography.Text style={{ color: active ? "#fff" : amountColor(item.totalPnl, tone), fontSize: 11 }}>
+                    <Typography.Text style={{ color: active ? "#fff" : amountColor(item.totalPnl, tone), fontSize: 12 }}>
                       {formatSignedMoney(item.totalPnl)}
                     </Typography.Text>
                   </Space>
@@ -109,7 +109,7 @@ export function PaperPositionDetailsPanel({
               renderItem={(item) => <OrderDetailRow item={item} />}
             />
           </Row>
-          <Typography.Text type="secondary" style={{ fontSize: 11 }}>
+          <Typography.Text type="secondary" style={{ fontSize: 12 }}>
             已实现盈亏由后台按全量成交顺序回放，当前持仓盈亏以后台持仓价和最新行情为准。
           </Typography.Text>
         </>
@@ -247,7 +247,7 @@ function DetailList<T>({
 }) {
   return (
     <Col xs={24} lg={12}>
-      <Card size="small" title={title} extra={<Typography.Text type="secondary" style={{ fontSize: 11 }}>{hint}</Typography.Text>} styles={{ body: { padding: 6 } }}>
+      <Card size="small" title={title} extra={<Typography.Text type="secondary" style={{ fontSize: 12 }}>{hint}</Typography.Text>} styles={{ body: { padding: 6 } }}>
         <VirtualCardList
           items={items}
           empty={<EmptyState text={emptyText} />}
@@ -266,17 +266,17 @@ const TradeDetailRow = memo(function TradeDetailRow({ item }: { item: PaperTrade
   const reason = plainTradingText(item.side === "buy" ? item.entry_reason : item.exit_reason);
   return (
     <Card size="small" styles={{ body: { padding: 6 } }}>
-      <Space direction="vertical" size={5} style={{ width: "100%", fontSize: 11 }}>
+      <Space direction="vertical" size={5} style={{ width: "100%", fontSize: 12 }}>
         <Flex justify="space-between" wrap gap={8}>
           <Tag color={item.side === "buy" ? "red" : "green"}>{sideText} {formatInteger(item.quantity)} 股</Tag>
-          <Typography.Text type="secondary" style={{ fontSize: 11 }}>{formatPaperDateTime(item.trade_time)}</Typography.Text>
+          <Typography.Text type="secondary" style={{ fontSize: 12 }}>{formatPaperDateTime(item.trade_time)}</Typography.Text>
         </Flex>
         <Flex wrap gap={12}>
           <Typography.Text>价格 {formatPriceWithYuan(item.price)}</Typography.Text>
           <Typography.Text>成交额 {formatMoneyWithYuan(item.gross_amount)}</Typography.Text>
           <Typography.Text>费用 {formatMoneyWithYuan(tradeFees(item))}</Typography.Text>
         </Flex>
-        {reason ? <Typography.Text type="secondary" style={{ fontSize: 11 }}>{reason}</Typography.Text> : null}
+        {reason ? <Typography.Text type="secondary" style={{ fontSize: 12 }}>{reason}</Typography.Text> : null}
       </Space>
     </Card>
   );
@@ -287,17 +287,17 @@ const OrderDetailRow = memo(function OrderDetailRow({ item }: { item: PaperOrder
   const statusText = orderStatusText(item.status);
   return (
     <Card size="small" styles={{ body: { padding: 6 } }}>
-      <Space direction="vertical" size={5} style={{ width: "100%", fontSize: 11 }}>
+      <Space direction="vertical" size={5} style={{ width: "100%", fontSize: 12 }}>
         <Flex justify="space-between" wrap gap={8}>
           <Tag color={item.side === "buy" ? "red" : "green"}>{sideText} {formatInteger(item.quantity)} 股</Tag>
-          <Typography.Text type="secondary" style={{ fontSize: 11 }}>{formatPaperDateTime(item.created_at)}</Typography.Text>
+          <Typography.Text type="secondary" style={{ fontSize: 12 }}>{formatPaperDateTime(item.created_at)}</Typography.Text>
         </Flex>
         <Flex wrap gap={12}>
           <Typography.Text>{item.order_type === "market" ? "市价" : "限价"} {formatPriceWithYuan(item.price ?? item.avg_fill_price)}</Typography.Text>
           <Typography.Text>已成 {formatInteger(item.filled_quantity)} 股</Typography.Text>
           <Typography.Text>{statusText}</Typography.Text>
         </Flex>
-        {item.reject_reason ? <Typography.Text type="warning" style={{ fontSize: 11 }}>{plainTradingText(item.reject_reason)}</Typography.Text> : null}
+        {item.reject_reason ? <Typography.Text type="warning" style={{ fontSize: 12 }}>{plainTradingText(item.reject_reason)}</Typography.Text> : null}
       </Space>
     </Card>
   );

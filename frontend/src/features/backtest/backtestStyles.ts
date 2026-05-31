@@ -40,7 +40,7 @@ export const BACKTEST_HELP_STYLE: CSSProperties = {
 export const BACKTEST_LABEL_STYLE: CSSProperties = {
   color: "#475569",
   fontSize: 12,
-  fontWeight: 800,
+  fontWeight: 700,
 };
 
 export const BACKTEST_STRATEGY_LIST_STYLE: CSSProperties = {
@@ -73,7 +73,7 @@ export const BACKTEST_STRATEGY_ITEM_ACTIVE_STYLE: CSSProperties = {
 export const BACKTEST_STRATEGY_TITLE_STYLE: CSSProperties = {
   color: "var(--text)",
   fontSize: 12,
-  fontWeight: 800,
+  fontWeight: 700,
   overflow: "hidden",
   textOverflow: "ellipsis",
   whiteSpace: "nowrap",
@@ -82,7 +82,7 @@ export const BACKTEST_STRATEGY_TITLE_STYLE: CSSProperties = {
 export const BACKTEST_STRATEGY_KEY_STYLE: CSSProperties = {
   color: "var(--muted)",
   fontFamily: '"IBM Plex Mono", monospace',
-  fontSize: 10,
+  fontSize: 12,
 };
 
 export const BACKTEST_EXPERT_FIELDS_STYLE: CSSProperties = {
@@ -108,7 +108,7 @@ export const BACKTEST_WARNING_ITEM_STYLE: CSSProperties = {
   background: "#fff7e6",
   color: "#9a5b00",
   fontSize: 12,
-  fontWeight: 800,
+  fontWeight: 700,
 };
 
 export const BACKTEST_CAPACITY_CONTROLS_STYLE: CSSProperties = {
@@ -146,15 +146,15 @@ export const BACKTEST_STATUS_BASE_STYLE: CSSProperties = {
   background: "#f8fafc",
   color: "#475569",
   fontFamily: '"IBM Plex Mono", monospace',
-  fontSize: 11,
-  fontWeight: 900,
+  fontSize: 12,
+  fontWeight: 700,
   textAlign: "left",
 };
 
 export const BACKTEST_STATUS_LABEL_STYLE: CSSProperties = {
   color: "inherit",
   fontFamily: '"IBM Plex Sans", "PingFang SC", sans-serif',
-  fontSize: 10,
+  fontSize: 12,
   opacity: 0.76,
 };
 
@@ -233,7 +233,7 @@ export const BACKTEST_RUN_ROW_TITLE_STYLE: CSSProperties = {
   whiteSpace: "nowrap",
   color: "var(--text)",
   fontSize: 12,
-  fontWeight: 900,
+  fontWeight: 700,
 };
 
 export const BACKTEST_RUN_ROW_META_STYLE: CSSProperties = {
@@ -241,7 +241,7 @@ export const BACKTEST_RUN_ROW_META_STYLE: CSSProperties = {
   flexWrap: "wrap",
   gap: 6,
   color: "var(--muted)",
-  fontSize: 10,
+  fontSize: 12,
   overflow: "hidden",
   textOverflow: "ellipsis",
   whiteSpace: "nowrap",
@@ -260,8 +260,8 @@ export const BACKTEST_SUMMARY_ITEM_STYLE: CSSProperties = {
   borderRadius: 999,
   background: "#f1f5f9",
   color: "#475569",
-  fontSize: 11,
-  fontWeight: 800,
+  fontSize: 12,
+  fontWeight: 700,
   overflow: "hidden",
   textOverflow: "ellipsis",
   whiteSpace: "nowrap",
@@ -281,7 +281,7 @@ export const BACKTEST_ATTRIBUTION_TITLE_STYLE: CSSProperties = {
   borderRadius: 999,
   background: "#0b1422",
   color: "#f4d08a",
-  fontSize: 11,
+  fontSize: 12,
 };
 
 export const BACKTEST_ATTRIBUTION_ITEM_STYLE: CSSProperties = {
@@ -289,8 +289,8 @@ export const BACKTEST_ATTRIBUTION_ITEM_STYLE: CSSProperties = {
   borderRadius: 999,
   background: "#f8fafc",
   color: "#475569",
-  fontSize: 11,
-  fontWeight: 800,
+  fontSize: 12,
+  fontWeight: 700,
 };
 
 export const BACKTEST_METRIC_GRID_STYLE: CSSProperties = {
@@ -312,8 +312,8 @@ export const BACKTEST_METRIC_STYLE: CSSProperties = {
 
 export const BACKTEST_METRIC_LABEL_STYLE: CSSProperties = {
   color: "var(--muted)",
-  fontSize: 10,
-  fontWeight: 800,
+  fontSize: 12,
+  fontWeight: 700,
 };
 
 export const BACKTEST_METRIC_VALUE_STYLE: CSSProperties = {
@@ -351,7 +351,7 @@ export const BACKTEST_SUBMIT_BUTTON_STYLE: CSSProperties = {
   minHeight: 34,
   borderRadius: 8,
   background: "linear-gradient(90deg, #d6a55c 0%, #0b1422 48%, #0b1422 100%)",
-  fontWeight: 900,
+  fontWeight: 700,
 };
 
 export const BACKTEST_ECHARTS_STYLE: CSSProperties = {

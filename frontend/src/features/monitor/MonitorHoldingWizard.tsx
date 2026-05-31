@@ -20,7 +20,7 @@ const HOLDING_WIZARD_CARD_STYLE: CSSProperties = {
 
 const HOLDING_WIZARD_LABEL_STYLE: CSSProperties = {
   color: "#64748b",
-  fontSize: 11,
+  fontSize: 12,
   lineHeight: 1.35,
 };
 

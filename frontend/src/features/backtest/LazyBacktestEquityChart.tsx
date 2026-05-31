@@ -45,7 +45,7 @@ function buildOption(points: EquityPoint[]): echarts.EChartsCoreOption {
     legend: {
       top: 4,
       right: 18,
-      textStyle: { color: "#94a3b8", fontSize: 11 },
+      textStyle: { color: "#94a3b8", fontSize: 12 },
       data: ["策略净值", "基准净值", "回撤"],
     },
     tooltip: {
@@ -72,7 +72,7 @@ function buildOption(points: EquityPoint[]): echarts.EChartsCoreOption {
         data: dates,
         boundaryGap: false,
         axisLine: { lineStyle: { color: "rgba(148, 163, 184, 0.28)" } },
-        axisLabel: { color: "#94a3b8", fontSize: 10 },
+        axisLabel: { color: "#94a3b8", fontSize: 12 },
       },
       {
         type: "category",
@@ -88,13 +88,13 @@ function buildOption(points: EquityPoint[]): echarts.EChartsCoreOption {
         type: "value",
         scale: true,
         splitLine: { lineStyle: { color: "rgba(148, 163, 184, 0.12)" } },
-        axisLabel: { color: "#94a3b8", fontSize: 10 },
+        axisLabel: { color: "#94a3b8", fontSize: 12 },
       },
       {
         type: "value",
         gridIndex: 1,
         splitLine: { lineStyle: { color: "rgba(239, 68, 68, 0.10)" } },
-        axisLabel: { color: "#94a3b8", fontSize: 10, formatter: "{value}%" },
+        axisLabel: { color: "#94a3b8", fontSize: 12, formatter: "{value}%" },
       },
     ],
     series: [
@@ -108,7 +108,7 @@ function buildOption(points: EquityPoint[]): echarts.EChartsCoreOption {
         areaStyle: { color: "rgba(103, 232, 249, 0.10)" },
         markPoint: {
           symbolSize: 42,
-          label: { color: "#0f172a", fontSize: 10 },
+          label: { color: "#0f172a", fontSize: 12 },
           data: [
             { type: "max", name: "高点" },
             { type: "min", name: "低点" },

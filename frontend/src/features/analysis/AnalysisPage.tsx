@@ -65,7 +65,7 @@ const ANALYSIS_CHART_META_STYLE: CSSProperties = {
   margin: "0 0 8px",
   color: "#aeb8c7",
   fontFamily: "\"IBM Plex Mono\", monospace",
-  fontSize: 11,
+  fontSize: 12,
 };
 
 export function AnalysisPage({

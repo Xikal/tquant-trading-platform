@@ -23,8 +23,8 @@ const ROOT_STYLE: CSSProperties = {
 const KICKER_STYLE: CSSProperties = {
   color: "rgba(100, 116, 139, 0.9)",
   fontFamily: '"IBM Plex Mono", "SFMono-Regular", monospace',
-  fontSize: 10,
-  fontWeight: 900,
+  fontSize: 12,
+  fontWeight: 700,
   letterSpacing: "0.14em",
 };
 
@@ -281,7 +281,7 @@ export function OrderEntryModal({
                 type={draft.side === "buy" ? "primary" : "default"}
                 disabled={locked}
                 onClick={() => setDraft({ ...draft, side: "buy" })}
-                style={{ minHeight: 32, borderRadius: 8, fontWeight: 900 }}
+                style={{ minHeight: 32, borderRadius: 8, fontWeight: 700 }}
               >
                 买入
               </Button>
@@ -289,7 +289,7 @@ export function OrderEntryModal({
                 type={draft.side === "sell" ? "primary" : "default"}
                 disabled={locked}
                 onClick={() => setDraft({ ...draft, side: "sell" })}
-                style={{ minHeight: 32, borderRadius: 8, fontWeight: 900 }}
+                style={{ minHeight: 32, borderRadius: 8, fontWeight: 700 }}
               >
                 卖出
               </Button>

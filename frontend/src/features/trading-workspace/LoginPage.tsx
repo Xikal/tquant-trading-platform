@@ -52,11 +52,11 @@ const LOGIN_FORM_HEADER_STYLE: CSSProperties = {
 const LOGIN_FORM_TITLE_STYLE: CSSProperties = {
   color: "#07111f",
   fontSize: 15,
-  fontWeight: 900,
+  fontWeight: 700,
   margin: 0,
 };
 const LOGIN_FORM_COPY_STYLE: CSSProperties = {
-  fontSize: 11,
+  fontSize: 12,
   margin: 0,
 };
 const LOGIN_FORM_ITEM_STYLE: CSSProperties = {
@@ -65,7 +65,7 @@ const LOGIN_FORM_ITEM_STYLE: CSSProperties = {
 const LOGIN_SECURITY_NOTE_STYLE: CSSProperties = {
   color: "#6b7280",
   display: "block",
-  fontSize: 10,
+  fontSize: 12,
   lineHeight: 1.5,
   textAlign: "center",
 };
