@@ -35,6 +35,7 @@ def register_analytics_handlers(registry: TaskHandlerRegistry) -> None:
     registry.register("data_quality_sla_refresh", handle_data_quality_sla_refresh)
     registry.register("data_repair_run", handle_data_repair_run)
     registry.register("realized_outcome_refresh", handle_realized_outcome_refresh)
+    registry.register("strategy_drift_refresh", handle_strategy_drift_refresh)
 
 
 def handle_data_backfill_24m(context: TaskContext) -> dict[str, Any]:
@@ -230,9 +231,42 @@ def handle_realized_outcome_refresh(context: TaskContext) -> dict[str, Any]:
     }
 
 
+def handle_strategy_drift_refresh(context: TaskContext) -> dict[str, Any]:
+    from app.services.track_record.drift_alerts import maybe_send_drift_alert
+    from app.services.track_record.drift_metrics import compute_all_strategy_drift
+
+    payload = context.payload
+    as_of = _payload_end_date({"end_date": payload.get("as_of_date") or payload.get("end_date")})
+    window_days = int(payload.get("window_days") or 60)
+    min_sample = int(payload.get("min_sample") or 20)
+    context.progress(20.0, "开始计算生产信号 realized vs expected 漂移")
+    snapshots = compute_all_strategy_drift(context.db, window_days=window_days, as_of=as_of, min_sample=min_sample)
+    alerts = [maybe_send_drift_alert(snapshot) for snapshot in snapshots]
+    return {
+        "ok": True,
+        "worker_scope": "analytics-worker",
+        "task_type": "strategy_drift_refresh",
+        "gate_owner": "production-track-record",
+        "not_research_gated": True,
+        "snapshots": [_drift_snapshot_payload(snapshot) for snapshot in snapshots],
+        "alerts": alerts,
+    }
+
+
 def _payload_end_date(payload: dict[str, Any]) -> date:
     raw = str(payload.get("end_date") or date.today().isoformat())
     return date.fromisoformat(raw[:10])
+
+
+def _drift_snapshot_payload(snapshot) -> dict[str, Any]:  # noqa: ANN001
+    return {
+        "strategy_key": snapshot.strategy_key,
+        "drift_flag": snapshot.drift_flag,
+        "sample_settled": int(snapshot.sample_settled or 0),
+        "realized_pf": float(snapshot.realized_pf or 0.0) if snapshot.realized_pf is not None else None,
+        "expected_pf": float(snapshot.expected_pf or 0.0) if snapshot.expected_pf is not None else None,
+        "decay_pct": float(snapshot.decay_pct or 0.0),
+    }
 
 
 def _notify_data_quality_failures(payload: dict[str, Any]) -> None:
