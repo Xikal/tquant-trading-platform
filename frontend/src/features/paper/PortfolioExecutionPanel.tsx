@@ -1,6 +1,6 @@
 import { Collapse, Space, Typography } from "antd";
 import type { PaperPortfolioExecutionPreview, PaperPortfolioMetrics } from "../../types";
-import { DataTable } from "../../ui/table/DataTable";
+import { VirtualGrid } from "../../ui/grid/VirtualGrid";
 import { EmptyState, InfoPill } from "../workspace-shared/WorkspaceComponents";
 import { formatInteger, formatPct, toneFromChange } from "../workspace-shared/workspaceFormatters";
 
@@ -25,7 +25,7 @@ export function PortfolioExecutionPanel({ preview }: { preview?: PaperPortfolioE
               <InfoPill compact label="来源" value={preview?.source || "paper_trades"} />
               <InfoPill compact label="跳过原因" value={Object.keys(preview?.skip_reason_counts ?? {}).length ? "已统计" : "无跳过"} />
             </Space>
-            <DataTable<PaperPortfolioMetrics>
+            <VirtualGrid<PaperPortfolioMetrics>
               rowKey={(item) => item.capital_model}
               dataSource={rows}
               defaultScrollY={220}
@@ -42,7 +42,7 @@ export function PortfolioExecutionPanel({ preview }: { preview?: PaperPortfolioE
               ]}
               scroll={{ x: 820 }}
             />
-            <DataTable<SkipReasonRow>
+            <VirtualGrid<SkipReasonRow>
               rowKey={(item) => item.reason}
               dataSource={skipRows}
               defaultScrollY={180}

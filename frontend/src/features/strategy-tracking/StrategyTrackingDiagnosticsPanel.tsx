@@ -8,7 +8,7 @@ import type {
   StrategyTrackingSegment,
   StrategyTrackingShadowObservation,
 } from "../../types";
-import { DataTable } from "../../ui/table/DataTable";
+import { VirtualGrid } from "../../ui/grid/VirtualGrid";
 import { formatPct } from "../workspace-shared/workspaceFormatters";
 
 export function StrategyTrackingDiagnosticsPanel({
@@ -40,7 +40,7 @@ export function StrategyTrackingDiagnosticsPanel({
       {viewMode === "professional" && weeklyReport?.data?.markdown ? (
         <Alert type="info" showIcon title="策略跟踪周报" description={weeklyReport.data.markdown} />
       ) : null}
-      <DataTable<StrategyTrackingSegment>
+      <VirtualGrid<StrategyTrackingSegment>
         rowKey={(item) => `${item.strategy_key}:${item.market_state}:${item.sector_state}`}
         dataSource={result.market_segments}
         columns={segmentColumns}

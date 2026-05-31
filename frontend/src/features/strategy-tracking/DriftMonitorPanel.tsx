@@ -2,8 +2,8 @@ import { Alert, Collapse, Tag, Typography } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import type { TrackRecordDriftItem } from "../../types";
 import { TqEmpty } from "../../ui/feedback/StateViews";
-import { DataTable } from "../../ui/table/DataTable";
-import { PercentCell } from "../../ui/table/DataTable";
+import { VirtualGrid } from "../../ui/grid/VirtualGrid";
+import { PercentCell } from "../../ui/grid/VirtualGrid";
 import { formatPct } from "../workspace-shared/workspaceFormatters";
 
 export function DriftMonitorPanel({
@@ -31,7 +31,7 @@ export function DriftMonitorPanel({
               <Alert type="warning" showIcon message={`漂移 advisory ${advisoryCount} 条`} />
             ) : null}
             {items.length ? (
-              <DataTable<TrackRecordDriftItem>
+              <VirtualGrid<TrackRecordDriftItem>
                 rowKey={(item) => `${item.strategy_key}:${item.as_of_date}:${item.window_days}`}
                 loading={loading}
                 dataSource={items}

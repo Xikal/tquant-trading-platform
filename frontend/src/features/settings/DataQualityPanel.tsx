@@ -4,7 +4,7 @@ import { dataQualityApi } from "../../api/dataQuality";
 import type { DataQualitySlaResponse, DataQualitySnapshotItem, DataRepairAuditItem } from "../../api/dataQuality";
 import { useSettingsUiStore } from "../../stores/settingsUiStore";
 import { useServerState } from "../../state/serverState";
-import { DataTable } from "../../ui/table/DataTable";
+import { VirtualGrid } from "../../ui/grid/VirtualGrid";
 import { InfoPill, SettingCard } from "../workspace-shared/WorkspaceComponents";
 
 const SUMMARY_STYLE: CSSProperties = {
@@ -78,7 +78,7 @@ export function DataQualityPanel() {
             key: "snapshots",
             label: "SLA 快照",
             children: (
-              <DataTable<DataQualitySnapshotItem>
+              <VirtualGrid<DataQualitySnapshotItem>
                 rowKey={(row) => `${row.dataset_key}:${row.scope}:${row.as_of_date}`}
                 dataSource={items}
                 defaultScrollY={260}
@@ -107,7 +107,7 @@ export function DataQualityPanel() {
             key: "audits",
             label: "最近修复审计",
             children: (
-              <DataTable<DataRepairAuditItem>
+              <VirtualGrid<DataRepairAuditItem>
                 rowKey="repair_id"
                 dataSource={audits}
                 defaultScrollY={220}

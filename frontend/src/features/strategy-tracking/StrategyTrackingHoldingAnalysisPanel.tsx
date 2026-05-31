@@ -2,7 +2,7 @@ import { Progress, Tag } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import type { StrategyTrackingHoldingAnalysis } from "../../types";
 import { TqEmpty } from "../../ui/feedback/StateViews";
-import { DataTable } from "../../ui/table/DataTable";
+import { VirtualGrid } from "../../ui/grid/VirtualGrid";
 import { formatPct } from "../workspace-shared/workspaceFormatters";
 
 export function StrategyTrackingHoldingAnalysisPanel({ items, loading }: { items: StrategyTrackingHoldingAnalysis[]; loading: boolean }) {
@@ -10,7 +10,7 @@ export function StrategyTrackingHoldingAnalysisPanel({ items, loading }: { items
     return <TqEmpty title="暂无持有分析" description="当前筛选条件下还没有足够样本生成策略持有结论。" />;
   }
   return (
-    <DataTable<StrategyTrackingHoldingAnalysis>
+    <VirtualGrid<StrategyTrackingHoldingAnalysis>
       rowKey="strategy_key"
       loading={loading}
       dataSource={items}

@@ -25,7 +25,7 @@ import {
   TextField,
   truthyFlag,
 } from "./BacktestResearchShared";
-import { DataTable } from "../../ui/table/DataTable";
+import { VirtualGrid } from "../../ui/grid/VirtualGrid";
 import {
   BACKTEST_MINI_METRICS_STYLE,
   BACKTEST_RESEARCH_CARD_STYLE,
@@ -101,7 +101,7 @@ export function OptimizationPanel({
               <Metric label="样本外评分" value={formatNumber(detail.best_oos_score)} />
               <Metric label="最优参数" value={formatParams(detail.best_params)} />
             </div>
-            <DataTable<BacktestOptimizationCandidate>
+            <VirtualGrid<BacktestOptimizationCandidate>
               className="backtest-data-table"
               rowKey={(item, index) => `${item.rank ?? index}-${formatParams(item.params)}`}
               dataSource={detail.candidates ?? []}

@@ -30,7 +30,7 @@ import {
 } from "./BacktestDashboard.helpers";
 import { BacktestResearchPanel, type BacktestResearchActions, type BacktestResearchState } from "./BacktestResearchPanel";
 import { backtestVerdict } from "../../utils/uxClarity";
-import { DataTable } from "../../ui/table/DataTable";
+import { VirtualGrid } from "../../ui/grid/VirtualGrid";
 import {
   BACKTEST_ATTRIBUTION_ITEM_STYLE,
   BACKTEST_ATTRIBUTION_STRIP_STYLE,
@@ -199,7 +199,7 @@ export function TradesPanel({ trades }: { trades: BacktestTrade[] }) {
   return (
     <section className="panel" style={BACKTEST_PANEL_SURFACE_STYLE}>
       <PanelHeader title="交易明细" action={<span style={BACKTEST_SECTION_META_STYLE}>{trades.length} 笔</span>} />
-      <DataTable<BacktestTrade>
+      <VirtualGrid<BacktestTrade>
         rowKey={(trade) => String(trade.id)}
         dataSource={trades}
         locale={{ emptyText: <EmptyLine text="暂无成交明细。" /> }}

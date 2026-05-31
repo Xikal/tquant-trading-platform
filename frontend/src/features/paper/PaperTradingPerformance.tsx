@@ -9,7 +9,7 @@ import type { EtfT0OosLatestResponse } from "../../types/etfT0Oos";
 import { EmptyState, InfoPill, toneTextStyle } from "../workspace-shared/WorkspaceComponents";
 import { formatPaperDateTime } from "./paperTradingFormatters";
 import { formatInteger, formatNumber, formatPct, toneFromChange } from "../workspace-shared/workspaceFormatters";
-import { DataTable } from "../../ui/table/DataTable";
+import { VirtualGrid } from "../../ui/grid/VirtualGrid";
 
 const PAPER_PERFORMANCE_SERVER_KEYS = {
   etfT0OosLatest: ["paper", "etf-t0-oos", "latest"] as const,
@@ -135,7 +135,7 @@ export function SectorEtfT0PerformancePanel({ item }: { item: PaperSectorEtfT0Pe
           <InfoPill compact label="OOS结论" value={latest?.verdict || "needs_validation"} />
         </Col>
       </Row>
-      <DataTable<PaperSectorEtfT0Performance>
+      <VirtualGrid<PaperSectorEtfT0Performance>
         rowKey={() => "sector-etf-t0"}
         dataSource={[item]}
         scroll={{ x: 680 }}
@@ -160,7 +160,7 @@ export function SectorEtfT0PerformancePanel({ item }: { item: PaperSectorEtfT0Pe
         ))}
       </Space>
       <Typography.Text strong style={{ fontSize: 12 }}>逐笔复盘归因</Typography.Text>
-      <DataTable<PaperSectorEtfT0ReviewTrade>
+      <VirtualGrid<PaperSectorEtfT0ReviewTrade>
         rowKey={(trade) => String(trade.id)}
         dataSource={item.review_trades ?? []}
         locale={{ emptyText: <EmptyState text="暂无 ETF T0 成交复盘记录" /> }}
@@ -188,7 +188,7 @@ function oosStageText(stage: string): string {
 export function GroupedPerformanceTable({ items, emptyText }: { items: PaperGroupedPerformance[]; emptyText: string }) {
   if (!items.length) return <EmptyState text={emptyText} />;
   return (
-    <DataTable<PaperGroupedPerformance>
+    <VirtualGrid<PaperGroupedPerformance>
       rowKey={(item) => item.key || "unlabeled"}
       dataSource={items}
       scroll={{ x: 680 }}

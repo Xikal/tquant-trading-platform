@@ -2,7 +2,7 @@ import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
 
 const ROOT = new URL("../src", import.meta.url).pathname;
-const allowed = new Set(["test/antdMobileMock.tsx", "ui/table/DataTable.tsx"]);
+const allowed = new Set(["test/antdMobileMock.tsx", "ui/grid/VirtualGrid.tsx"]);
 const statePatterns = [
   { label: "useState", regex: /\buseState\b/ },
   { label: "useReducer", regex: /\buseReducer\b/ },

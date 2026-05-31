@@ -10,7 +10,7 @@ import {
 } from "./backtestDisplay";
 import type { BacktestResearchActions, BacktestResearchState } from "./BacktestResearchPanel";
 import { Empty, parseRunIdsLoose, PanelTitle, sortCompareItems } from "./BacktestResearchShared";
-import { DataTable } from "../../ui/table/DataTable";
+import { VirtualGrid } from "../../ui/grid/VirtualGrid";
 import { useBacktestResearchUiStore } from "../../stores/backtestResearchUiStore";
 import { BACKTEST_CHART_FALLBACK_STYLE } from "./backtestChartStyles";
 import {
@@ -60,7 +60,7 @@ export function ComparePanel({ state, actions }: { state: BacktestResearchState;
           {state.loading === "compare" ? "对比中..." : "运行对比"}
         </Button>
       </div>
-      <DataTable<BacktestCompareItem>
+      <VirtualGrid<BacktestCompareItem>
         className="backtest-data-table narrow"
         rowKey="run_id"
         dataSource={compareItems}
@@ -88,7 +88,7 @@ export function ComparePanel({ state, actions }: { state: BacktestResearchState;
       <Suspense fallback={<div style={BACKTEST_CHART_FALLBACK_STYLE}>热力图加载中...</div>}>
         <LazyBacktestMonthlyHeatmap items={state.monthlyReturns?.items ?? []} />
       </Suspense>
-      <DataTable<BacktestMonthlyReturn>
+      <VirtualGrid<BacktestMonthlyReturn>
         className="backtest-data-table narrow"
         rowKey="month"
         dataSource={state.monthlyReturns?.items ?? []}

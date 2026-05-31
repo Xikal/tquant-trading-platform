@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { Alert, Button, Space, Tag, Typography } from "antd";
 import { backtestsApi, type StrategyImprovementReportResponse } from "../../api/backtests";
-import { DataTable } from "../../ui/table/DataTable";
+import { VirtualGrid } from "../../ui/grid/VirtualGrid";
 import { useBacktestResearchUiStore } from "../../stores/backtestResearchUiStore";
 import { useServerState } from "../../state/serverState";
 import { Metric, PanelHeader } from "./BacktestDashboard.components";
@@ -84,7 +84,7 @@ export function StrategyImprovementGateContent({ report }: { report: StrategyImp
         </Typography.Text>
       ) : null}
       <AuditSummary report={report} />
-      <DataTable
+      <VirtualGrid
         rowKey="key"
         size="small"
         pagination={false}

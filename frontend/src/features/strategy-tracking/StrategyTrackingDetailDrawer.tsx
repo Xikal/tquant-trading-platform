@@ -4,7 +4,7 @@ import type { StrategyTrackingViewMode } from "../../stores/strategyTrackingStor
 import type { AnalysisResponse } from "../../types";
 import type { StrategyTrackingDetailResponse, StrategyTrackingTimelinePoint } from "../../types";
 import { TqEmpty, TqPageLoading } from "../../ui/feedback/StateViews";
-import { DataTable } from "../../ui/table/DataTable";
+import { VirtualGrid } from "../../ui/grid/VirtualGrid";
 import { MiniKline } from "../workspace-shared/MiniKlineChart";
 import { formatPct, formatPrice } from "../workspace-shared/workspaceFormatters";
 import { exitQualityTone, holdingBucketText, holdExtensionTone, suggestedPlanText } from "./strategyTrackingFormatters";
@@ -136,7 +136,7 @@ export function StrategyTrackingDetailContent({ detail, viewMode = "beginner" }:
         />
       ) : null}
       <MiniKline bars={timelineToKlineBars(detail.timeline)} />
-      <DataTable<StrategyTrackingTimelinePoint>
+      <VirtualGrid<StrategyTrackingTimelinePoint>
         rowKey="trade_date"
         dataSource={detail.timeline}
         paginated

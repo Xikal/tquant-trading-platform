@@ -2,7 +2,7 @@ import { Button, Tag } from "antd";
 import type { ColumnsType, TablePaginationConfig } from "antd/es/table";
 import type { StrategyTrackingViewMode } from "../../stores/strategyTrackingStore";
 import type { StrategyTrackingItem } from "../../types";
-import { DataTable } from "../../ui/table/DataTable";
+import { VirtualGrid } from "../../ui/grid/VirtualGrid";
 import { formatPct, formatPrice } from "../workspace-shared/workspaceFormatters";
 import {
   displayReturn,
@@ -36,7 +36,7 @@ export function StrategyTrackingTable({
   onOpenDetail,
 }: StrategyTrackingTableProps) {
   return (
-    <DataTable<StrategyTrackingItem>
+    <VirtualGrid<StrategyTrackingItem>
       rowKey="id"
       loading={loading}
       dataSource={items}

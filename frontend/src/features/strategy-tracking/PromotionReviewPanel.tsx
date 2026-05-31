@@ -1,7 +1,7 @@
 import { Collapse, Space, Tag, Typography } from "antd";
 import type { StrategyPromotionReview } from "../../types";
 import { TqEmpty } from "../../ui/feedback/StateViews";
-import { DataTable } from "../../ui/table/DataTable";
+import { VirtualGrid } from "../../ui/grid/VirtualGrid";
 import { InfoPill } from "../workspace-shared/WorkspaceComponents";
 import { formatPct } from "../workspace-shared/workspaceFormatters";
 
@@ -30,7 +30,7 @@ export function PromotionReviewPanel({
                   <InfoPill compact label="自动生效" value={review.can_apply_override ? "允许" : "禁止"} tone={review.can_apply_override ? "down" : "neutral"} />
                   <Tag color={review.recommendation.includes("promote") ? "green" : "default"}>{review.recommendation}</Tag>
                 </Space>
-                <DataTable<PromotionMetricRow>
+                <VirtualGrid<PromotionMetricRow>
                   rowKey={(item) => item.key}
                   loading={loading}
                   dataSource={rows}

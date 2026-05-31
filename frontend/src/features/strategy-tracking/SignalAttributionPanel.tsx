@@ -1,6 +1,6 @@
 import { Alert, Tag } from "antd";
 import type { DecisionContextAttribution, DecisionContextGateContribution, DecisionContextOutcome } from "../../types";
-import { DataTable } from "../../ui/table/DataTable";
+import { VirtualGrid } from "../../ui/grid/VirtualGrid";
 import { formatPct } from "../workspace-shared/workspaceFormatters";
 
 export function SignalAttributionPanel({ context }: { context?: DecisionContextAttribution }) {
@@ -19,7 +19,7 @@ export function SignalAttributionPanel({ context }: { context?: DecisionContextA
         <Tag>{payload.final_decision || "无最终决策"}</Tag>
         <Tag>{payload.data_quality || "missing"}</Tag>
       </div>
-      <DataTable<DecisionContextOutcome>
+      <VirtualGrid<DecisionContextOutcome>
         rowKey="horizon_days"
         dataSource={payload.outcomes ?? []}
         columns={[

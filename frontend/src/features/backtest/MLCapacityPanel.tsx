@@ -31,7 +31,7 @@ import {
   PanelTitle,
   TextField,
 } from "./BacktestResearchShared";
-import { DataTable } from "../../ui/table/DataTable";
+import { VirtualGrid } from "../../ui/grid/VirtualGrid";
 import { useBacktestResearchUiStore } from "../../stores/backtestResearchUiStore";
 import { useServerState } from "../../state/serverState";
 import { BACKTEST_ERROR_STYLE } from "./backtestPageLayoutStyles";
@@ -175,7 +175,7 @@ export function MLCapacityPanel({ strategyOptions }: { strategyOptions: Backtest
         </div>
       ) : null}
       {markowitz?.weights?.length ? (
-        <DataTable<PortfolioOptimizationWeight>
+        <VirtualGrid<PortfolioOptimizationWeight>
           className="backtest-data-table compact"
           rowKey="strategy_key"
           dataSource={markowitz.weights}
@@ -199,7 +199,7 @@ export function MLCapacityPanel({ strategyOptions }: { strategyOptions: Backtest
           RL Shadow：{policy.summary || "仅研究输出，不自动交易。"} 样本 {String(policy.shadow_reinforcement_learning?.sample_count ?? "--")}。
         </div>
       ) : null}
-      <DataTable<StrategyCapacityItem>
+      <VirtualGrid<StrategyCapacityItem>
         className="backtest-data-table capacity"
         rowKey="strategy_key"
         dataSource={capacity?.items ?? []}

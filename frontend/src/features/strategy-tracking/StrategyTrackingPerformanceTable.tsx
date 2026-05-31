@@ -1,11 +1,11 @@
 import type { ColumnsType } from "antd/es/table";
 import type { StrategyTrackingPerformance } from "../../types";
-import { DataTable } from "../../ui/table/DataTable";
+import { VirtualGrid } from "../../ui/grid/VirtualGrid";
 import { formatPct } from "../workspace-shared/workspaceFormatters";
 
 export function StrategyTrackingPerformanceTable({ items }: { items: StrategyTrackingPerformance[] }) {
   return (
-    <DataTable<StrategyTrackingPerformance>
+    <VirtualGrid<StrategyTrackingPerformance>
       rowKey="strategy_key"
       dataSource={items}
       columns={columns}

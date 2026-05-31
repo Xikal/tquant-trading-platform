@@ -14,7 +14,7 @@ import { EvalResultCard } from "./EvalResultCard";
 import { FactorActivationToggle } from "./FactorActivationToggle";
 import { FactorHealthDashboard } from "./FactorHealthDashboard";
 import { HypothesisPanel } from "./HypothesisPanel";
-import { DataTable } from "../../ui/table/DataTable";
+import { VirtualGrid } from "../../ui/grid/VirtualGrid";
 import { AppForm, SubmitBar } from "../../ui/forms/AppForm";
 import { useFactorMiningUiStore, type FactorDraft } from "../../stores/factorMiningUiStore";
 import { useServerState } from "../../state/serverState";
@@ -249,7 +249,7 @@ function FactorLibraryList({
   }
   return (
     <Card size="small" title="因子库" extra={<Typography.Text type="secondary">{factors.length} 个因子</Typography.Text>}>
-      <DataTable<FactorDefinition>
+      <VirtualGrid<FactorDefinition>
         rowKey="factor_key"
         dataSource={factors}
         onRow={(factor) => ({

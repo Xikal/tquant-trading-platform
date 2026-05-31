@@ -13,7 +13,7 @@ import { Button, Checkbox, Space, Switch, Tag } from "antd";
 import { TextField } from "../../components/shared/FormFields";
 import { InfoPill, PanelTitle, SettingCard } from "../workspace-shared/WorkspaceComponents";
 import { readySummary } from "../workspace-shared/workspaceFormatters";
-import { DataTable } from "../../ui/table/DataTable";
+import { VirtualGrid } from "../../ui/grid/VirtualGrid";
 
 const SECTOR_FILTER_SUMMARY_STYLE: CSSProperties = {
   display: "flex",
@@ -149,7 +149,7 @@ export function StrategyGovernanceCard({
       <InfoPill label="生产策略" value={strategyGovernance ? `${strategyGovernance.production_strategies.length} 个` : "--"} />
       <InfoPill label="治理状态" value={strategyGovernance ? strategyGovernanceSummary(strategyGovernance) : "--"} />
       {strategyGovernance ? (
-        <DataTable
+        <VirtualGrid
           rowKey="strategy_key"
           dataSource={strategyGovernance.items}
           columns={[
@@ -225,7 +225,7 @@ export function FeatureFlagsCard({
       className="feature-flags-card"
     >
       {featureFlagError ? <p className="form-error">{featureFlagError}</p> : null}
-      <DataTable
+      <VirtualGrid
         rowKey="key"
         dataSource={featureFlags}
         locale={{ emptyText: "功能开关未加载" }}
@@ -255,7 +255,7 @@ export function FeatureFlagsCard({
       />
       <p className="hint">普通用户可查看，只有管理员可以修改；修改会写入审计日志。</p>
       {featureFlagAudits.length ? (
-        <DataTable
+        <VirtualGrid
           rowKey="id"
           dataSource={featureFlagAudits}
           columns={[
@@ -313,7 +313,7 @@ export function RuntimeDiagnosticsCard({
       <InfoPill label="后台任务" value={taskHealthSummary(adminTasks)} />
       <InfoPill label="行情链路" value={providerSummary ? `${providerOkCount}/${providerSummary.items.length} 可用` : "--"} />
       {adminTasks.length > 0 ? (
-        <DataTable
+        <VirtualGrid
           rowKey="name"
           dataSource={adminTasks}
           columns={[
@@ -331,7 +331,7 @@ export function RuntimeDiagnosticsCard({
         />
       ) : null}
       {providerSummary?.items?.length ? (
-        <DataTable
+        <VirtualGrid
           rowKey="source"
           dataSource={providerSummary.items}
           columns={[
@@ -372,7 +372,7 @@ export function OperationAuditCard({
   return (
     <SettingCard title="操作审计" button="刷新审计" onSave={onRefresh} loading={loading}>
       {error ? <p className="form-error">{error}</p> : null}
-      <DataTable
+      <VirtualGrid
         rowKey="id"
         dataSource={items}
         locale={{ emptyText: "暂无审计记录，只有管理员可查看" }}

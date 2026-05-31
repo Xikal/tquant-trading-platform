@@ -14,7 +14,7 @@ import {
 } from "./backtestDisplay";
 import type { BacktestResearchState } from "./BacktestResearchPanel";
 import { Empty, normalizeAttributionRows, PanelTitle } from "./BacktestResearchShared";
-import { DataTable } from "../../ui/table/DataTable";
+import { VirtualGrid } from "../../ui/grid/VirtualGrid";
 import { BACKTEST_CHART_FALLBACK_STYLE } from "./backtestChartStyles";
 import { BACKTEST_RESEARCH_CARD_STYLE, backtestToneTextStyle } from "./backtestResearchStyles";
 
@@ -66,7 +66,7 @@ function CorrelationMatrixTable({ correlation }: { correlation: BacktestStrategy
     values: Object.fromEntries(strategies.map((target, columnIndex) => [target, correlation?.matrix?.[rowIndex]?.[columnIndex]])),
   }));
   return (
-    <DataTable<CorrelationRow>
+    <VirtualGrid<CorrelationRow>
       className="backtest-correlation"
       rowKey="strategy"
       dataSource={rows}
@@ -85,7 +85,7 @@ function CorrelationMatrixTable({ correlation }: { correlation: BacktestStrategy
 
 function AttributionTable({ title, items }: { title: string; items: NonNullable<BacktestAttributionResponse["industry"]> }) {
   return (
-    <DataTable<NonNullable<BacktestAttributionResponse["industry"]>[number]>
+    <VirtualGrid<NonNullable<BacktestAttributionResponse["industry"]>[number]>
       className="backtest-data-table narrow"
       rowKey={(item) => `${title}-${item.bucket}`}
       title={() => title}
@@ -119,7 +119,7 @@ function StrategyDecompositionTable({ attribution }: { attribution: BacktestAttr
     .sort((a, b) => Math.abs(b.returnValue) - Math.abs(a.returnValue))
     .slice(0, 10);
   return (
-    <DataTable<(typeof rows)[number]>
+    <VirtualGrid<(typeof rows)[number]>
       className="backtest-data-table decomposition"
       rowKey={(item) => `${item.group}-${item.label}`}
       title={() => "策略拆解对比"}

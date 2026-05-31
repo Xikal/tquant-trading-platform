@@ -1,6 +1,6 @@
 import { Collapse, Space, Tag, Typography } from "antd";
 import type { SectorRelativeStrengthResponse } from "../../types";
-import { DataTable } from "../../ui/table/DataTable";
+import { VirtualGrid } from "../../ui/grid/VirtualGrid";
 import { EmptyState, InfoPill } from "../workspace-shared/WorkspaceComponents";
 import { formatPct } from "../workspace-shared/workspaceFormatters";
 
@@ -20,7 +20,7 @@ export function SectorLeaderGatePanel({ sectorRelativeStrength }: { sectorRelati
               <InfoPill compact label="板块数" value={String(sectorRelativeStrength?.sector_count ?? 0)} />
               <InfoPill compact label="状态" value={healthyCount ? "有健康龙头" : "等待扩散"} tone={healthyCount ? "up" : "warn"} />
             </Space>
-            <DataTable
+            <VirtualGrid
               rowKey={(item) => `${item.sector_name}-${item.symbol}`}
               dataSource={items}
               defaultScrollY={260}

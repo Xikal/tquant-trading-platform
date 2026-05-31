@@ -30,7 +30,7 @@ import {
 import { formatPaperDateTime } from "./paperTradingFormatters";
 import { EmptyState } from "../workspace-shared/WorkspaceComponents";
 import { formatInteger, formatPrice } from "../workspace-shared/workspaceFormatters";
-import { DataTable } from "../../ui/table/DataTable";
+import { VirtualGrid } from "../../ui/grid/VirtualGrid";
 import { usePaperUiStore, type PaperDetailTabKey } from "../../stores/paperUiStore";
 import { PaperExitModelShadowSummaryPanel } from "../backtest/StrategyImprovementSummary";
 
@@ -155,7 +155,7 @@ function buildTabs(props: PaperDetailTabsProps) {
 
 function OrdersTab({ orders, loading }: { orders: PaperOrder[]; loading: boolean }) {
   return (
-    <DataTable<PaperOrder>
+    <VirtualGrid<PaperOrder>
       rowKey="id"
       loading={loading}
       dataSource={orders}
@@ -225,7 +225,7 @@ function TradesTab({
     <TabScroll>
       <PerformancePills performance={performance} />
       <TagPerformanceStrip items={tagPerformance} />
-      <DataTable<PaperTrade>
+      <VirtualGrid<PaperTrade>
         rowKey="id"
         loading={loading}
         dataSource={trades}

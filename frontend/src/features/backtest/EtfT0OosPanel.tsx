@@ -11,7 +11,7 @@ import type {
   EtfT0OosRegimeSegment,
   EtfT0OosValidationResponse,
 } from "../../types/etfT0Oos";
-import { DataTable } from "../../ui/table/DataTable";
+import { VirtualGrid } from "../../ui/grid/VirtualGrid";
 import { formatInteger, formatNumber, formatPct } from "./backtestDisplay";
 import { Empty, Metric, PanelTitle } from "./BacktestResearchShared";
 import {
@@ -151,7 +151,7 @@ export function EtfT0OosPanel({
         <Metric label="最近阶段" value={latest?.available ? stageText(latest.stage) : "未验证"} />
         <Metric label="最近结论" value={latest?.verdict || "--"} />
       </div>
-      <DataTable<EtfT0OosRegimeSegment>
+      <VirtualGrid<EtfT0OosRegimeSegment>
         rowKey={(item) => `${item.regime}-${item.start_time}`}
         dataSource={selectedDataset?.regime_segments ?? []}
         locale={{ emptyText: <Empty text="暂无 OOS 数据集；检查后端 manifest 或研究权限。" /> }}
@@ -173,7 +173,7 @@ export function EtfT0OosPanel({
             <Metric label="交易数" value={formatInteger(validation.research_report.base_report.trade_count)} />
             <Metric label="热力图通过点" value={formatInteger(validation.research_report.heatmap.filter((item) => item.pass_gate).length)} />
           </div>
-          <DataTable
+          <VirtualGrid
             rowKey={(item) => item.regime}
             dataSource={validation.research_report.regime_validations}
             scroll={{ x: 860 }}

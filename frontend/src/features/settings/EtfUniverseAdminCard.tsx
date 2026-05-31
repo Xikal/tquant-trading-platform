@@ -13,7 +13,7 @@ import type {
   EtfUniverseOverrideMap,
   EtfUniverseRepairDraftResponse,
 } from "../../types/etfUniverseAdmin";
-import { DataTable } from "../../ui/table/DataTable";
+import { VirtualGrid } from "../../ui/grid/VirtualGrid";
 import { InfoPill, SettingCard } from "../workspace-shared/WorkspaceComponents";
 
 const FORM_GRID_STYLE: CSSProperties = {
@@ -193,7 +193,7 @@ export function EtfUniverseAdminCard() {
       <TextField label="筛选" value={filter} placeholder="代码、名称、分类、指数、备注" onChange={(event) => setField("filter", event.target.value)} />
 
       <div style={PANEL_GRID_STYLE}>
-        <DataTable<EtfUniverseAdminProfile>
+        <VirtualGrid<EtfUniverseAdminProfile>
           rowKey="symbol"
           dataSource={filteredItems}
           scroll={{ x: 940 }}
@@ -222,7 +222,7 @@ export function EtfUniverseAdminCard() {
         </div>
       </div>
 
-      <DataTable
+      <VirtualGrid
         rowKey={(item) => `${item.symbol}-${item.field}-${item.message}`}
         dataSource={payload?.validation.issues ?? []}
         locale={{ emptyText: "未发现校验问题" }}
@@ -234,7 +234,7 @@ export function EtfUniverseAdminCard() {
         ]}
       />
 
-      <DataTable
+      <VirtualGrid
         rowKey={(item) => `${item.symbol}-${item.field}`}
         dataSource={payload?.diff ?? []}
         locale={{ emptyText: "当前草稿与运行时无差异" }}
@@ -274,7 +274,7 @@ function OverrideEditor({ draft, onChange }: { draft: EtfUniverseOverrideMap; on
     return <p className="hint">当前没有 universe 覆盖项。可通过修复向导生成草稿。</p>;
   }
   return (
-    <DataTable<EtfUniverseOverride>
+    <VirtualGrid<EtfUniverseOverride>
       rowKey="symbol"
       dataSource={overrides}
       scroll={{ x: 860 }}

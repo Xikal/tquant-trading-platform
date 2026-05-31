@@ -10,7 +10,7 @@ import {
 } from "../../api/backtests";
 import { useBacktestResearchUiStore } from "../../stores/backtestResearchUiStore";
 import { useServerState } from "../../state/serverState";
-import { DataTable } from "../../ui/table/DataTable";
+import { VirtualGrid } from "../../ui/grid/VirtualGrid";
 import { formatInteger, formatMoney, formatNumber, formatPct, formatPrice, toneFromNumber } from "./backtestDisplay";
 import { Empty, Metric, PanelTitle, TextField } from "./BacktestResearchShared";
 import {
@@ -154,7 +154,7 @@ export function EtfT0BacktestPanel() {
               <Metric label="持有基线" value={formatPct(result.baseline_hold_return_pct)} />
               <Metric label="拒绝信号" value={formatInteger(result.rejected_signal_count)} />
             </div>
-            <DataTable<EtfT0BacktestTrade>
+            <VirtualGrid<EtfT0BacktestTrade>
               rowKey={(trade, index) => `${trade.entry_time}-${trade.side}-${index}`}
               dataSource={result.trades}
               locale={{ emptyText: <Empty text="未产生 ETF T0 交易，检查 eligibility、分钟信号和风控阻断。" /> }}
@@ -177,7 +177,7 @@ export function EtfT0BacktestPanel() {
       </div>
       <div style={BACKTEST_RESULT_BLOCK_STYLE}>
         <PanelTitle title="参数热力图" meta={research?.version || "等待运行"} />
-        <DataTable<EtfT0HeatmapCell>
+        <VirtualGrid<EtfT0HeatmapCell>
           rowKey={(item) => `${item.buy_vwap_deviation_pct}-${item.oversold_rsi}`}
           dataSource={research?.heatmap ?? []}
           locale={{ emptyText: <Empty text="运行参数热力图后显示 VWAP 偏离、RSI、PF、回撤和基础门槛。" /> }}
@@ -198,7 +198,7 @@ export function EtfT0BacktestPanel() {
       <div style={BACKTEST_RESULT_BLOCK_STYLE}>
         <PanelTitle title="五类市场验证" meta={research ? `${research.regime_validations.length} 类` : "自动分段"} />
         {hasRegimeValidation ? (
-          <DataTable<EtfT0RegimeValidation>
+          <VirtualGrid<EtfT0RegimeValidation>
             rowKey={(item) => item.regime}
             dataSource={research?.regime_validations ?? []}
             scroll={{ x: 860 }}
@@ -213,7 +213,7 @@ export function EtfT0BacktestPanel() {
             ]}
           />
         ) : (
-          <DataTable
+          <VirtualGrid
             rowKey={(item) => item[0]}
             dataSource={[...REGIME_VALIDATION_ROWS]}
             scroll={{ x: 640 }}
