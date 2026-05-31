@@ -60,6 +60,10 @@ class LowBuyPriorityBoardItemOut(BaseModel):
     execution_quality_score: float = 0.0
     execution_quality_text: str = ""
     strategy_performance_text: str = ""
+    expected_horizon_returns: dict[str, float] = Field(default_factory=dict)
+    expected_avg_return_pct: float = 0.0
+    expected_profit_factor: float = 0.0
+    expected_sample_settled: int = 0
     kelly_half_position_pct: float = 0.0
     kelly_position_text: str = ""
     atr_pct: float = 0.0

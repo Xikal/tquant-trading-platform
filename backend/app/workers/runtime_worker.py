@@ -50,6 +50,7 @@ RUNTIME_WORKER_TASK_TYPES = (
     "ml_feature_drift_monitor",
     "paper_ledger_reconcile_preview",
     "hermes_platform_autopilot",
+    "signal_ledger_capture",
     "factor_mining_evaluate",
     "factor_mining_monthly",
 )
@@ -362,6 +363,21 @@ def _execute_task(task_type: str, payload: dict[str, Any], db) -> dict[str, Any]
             threshold=float(payload.get("threshold") or 1.0),
             channel=str(payload.get("channel") or "feishu"),
         )
+    if task_type == "signal_ledger_capture":
+        from app.services.track_record.signal_ledger import capture_latest_priority_board
+
+        result = capture_latest_priority_board(
+            db,
+            as_of=date.fromisoformat(str(payload.get("as_of_date") or date.today().isoformat())[:10]),
+            limit=max(1, min(int(payload.get("limit") or 30), 100)),
+        )
+        return {
+            **result,
+            "worker_scope": "runtime-worker",
+            "task_type": task_type,
+            "gate_owner": "production-track-record",
+            "not_research_gated": True,
+        }
     if task_type == "hermes_platform_autopilot":
         from app.services.platform_autopilot import PlatformAutopilotService
 

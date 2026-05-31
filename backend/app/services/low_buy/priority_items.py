@@ -195,6 +195,10 @@ def _build_priority_item(
         execution_quality_score=candidate.execution_quality_score,
         execution_quality_text=candidate.execution_quality_text,
         strategy_performance_text=strategy_performance_text(primary_hit.performance),
+        expected_horizon_returns=_expected_horizon_returns(primary_hit.performance),
+        expected_avg_return_pct=round(float(getattr(primary_hit.performance, "avg_net_return_pct", 0.0) or 0.0), 4),
+        expected_profit_factor=round(float(getattr(primary_hit.performance, "profit_factor", 0.0) or 0.0), 4),
+        expected_sample_settled=int(getattr(primary_hit.performance, "filled_signals", 0) or 0),
         kelly_half_position_pct=kelly_half_position_pct,
         kelly_position_text=_kelly_position_text(kelly_half_position_pct),
         atr_pct=candidate.atr_pct,
@@ -247,3 +251,15 @@ def _kelly_position_text(kelly_half_position_pct: float) -> str:
     if kelly_half_position_pct <= 0:
         return ""
     return f"半凯利建议仓位上限 {kelly_half_position_pct:.1f}%"
+
+
+def _expected_horizon_returns(performance) -> dict[str, float]:  # noqa: ANN001
+    if performance is None:
+        return {}
+    return {
+        "1": round(float(getattr(performance, "avg_return_1d", 0.0) or 0.0), 4),
+        "2": round(float(getattr(performance, "avg_return_2d", 0.0) or 0.0), 4),
+        "3": round(float(getattr(performance, "avg_return_3d", 0.0) or 0.0), 4),
+        "4": round(float(getattr(performance, "avg_return_4d", 0.0) or 0.0), 4),
+        "5": round(float(getattr(performance, "avg_return_5d", 0.0) or 0.0), 4),
+    }
