@@ -61,6 +61,7 @@ def _write_json(path: Path, payload: dict[str, Any]) -> None:
 
 def _read_sources(root: Path, source_date: str) -> dict[str, Any]:
     report_dir = root / "docs" / "reports"
+    archive_report_dir = root / "docs" / "archive" / "reports"
     related_dir = report_dir / f"main-force-related-strategy-backtest-{source_date}"
     return {
         "strategy_24m": _load_json(report_dir / f"strategy-24m-backtest-{source_date}.json"),
@@ -84,8 +85,9 @@ def _read_sources(root: Path, source_date: str) -> dict[str, Any]:
         "focus_parameter_walk_forward": _load_optional_json(
             report_dir / f"focus-strategy-parameter-walk-forward-{source_date}" / "summary.json"
         ),
-        "profile_summary": _load_optional_json(
-            report_dir / f"strategy-24m-profile-{source_date}.json"
+        "profile_summary": _load_first_existing_json(
+            report_dir / f"strategy-24m-profile-{source_date}.json",
+            archive_report_dir / f"strategy-24m-profile-{source_date}.json",
         ),
     }
 
@@ -98,6 +100,13 @@ def _load_optional_json(path: Path) -> dict[str, Any]:
     if not path.exists():
         return {}
     return _load_json(path)
+
+
+def _load_first_existing_json(*paths: Path) -> dict[str, Any]:
+    for path in paths:
+        if path.exists():
+            return _load_json(path)
+    return {}
 
 
 def _extract_suggestion(strategy_key: str, suggestions: list[dict[str, Any]]) -> dict[str, Any]:
