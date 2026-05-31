@@ -2,16 +2,21 @@ from __future__ import annotations
 
 from datetime import datetime, time as dt_time
 
-from sqlalchemy import select
+from sqlalchemy import desc, func, select
 from sqlalchemy.orm import Session
 
 from app.core.timezone import beijing_now
-from app.models.entities import DailyBarSnapshot, Instrument, UserWatchlist
+from app.models.entities import DailyBarSnapshot, Instrument, LowBuyResultSnapshot, PaperPosition, UserWatchlist
 from app.models.schemas import QuoteSnapshot
 from app.services.market.local_quote_cache import write_local_quote_snapshots
 from app.services.market_data import MarketDataService
 
-DEFAULT_LIMIT = 200
+DEFAULT_LIMIT = 1200
+WATCHLIST_CORE_LIMIT = 200
+PRIORITY_CORE_LIMIT = 600
+HOLDING_CORE_LIMIT = 300
+MONITOR_SECTOR_LIMIT = 8
+MONITOR_SECTOR_MEMBER_LIMIT = 30
 
 
 class MarketQuoteCacheRefreshService:
@@ -79,9 +84,20 @@ class MarketQuoteCacheRefreshService:
         return result
 
     def _target_symbols(self, *, limit: int) -> list[str]:
+        core_symbols = self._core_demand_symbols()
+        liquidity_limit = max(0, int(limit or DEFAULT_LIMIT) - len(core_symbols))
+        symbols = [*core_symbols, *self._top_liquidity_symbols(limit=max(50, liquidity_limit))]
+        return self._dedupe_symbols(symbols)
+
+    def _core_demand_symbols(self) -> list[str]:
         symbols: list[str] = []
-        symbols.extend(self._watchlist_symbols(limit=max(20, min(limit, 80))))
-        symbols.extend(self._top_liquidity_symbols(limit=max(50, limit)))
+        symbols.extend(self._watchlist_symbols(limit=WATCHLIST_CORE_LIMIT))
+        symbols.extend(self._priority_board_symbols(limit=PRIORITY_CORE_LIMIT))
+        symbols.extend(self._paper_holding_symbols(limit=HOLDING_CORE_LIMIT))
+        symbols.extend(self._monitor_sector_member_symbols())
+        return self._dedupe_symbols(symbols)
+
+    def _dedupe_symbols(self, symbols: list[str]) -> list[str]:
         seen: set[str] = set()
         ordered: list[str] = []
         for symbol in symbols:
@@ -90,13 +106,73 @@ class MarketQuoteCacheRefreshService:
                 continue
             seen.add(clean)
             ordered.append(clean)
-            if len(ordered) >= limit:
-                break
         return ordered
 
     def _watchlist_symbols(self, *, limit: int) -> list[str]:
         rows = self.db.execute(
             select(UserWatchlist.symbol).order_by(UserWatchlist.updated_at.desc()).limit(limit)
+        ).scalars().all()
+        return [str(item) for item in rows if item]
+
+    def _priority_board_symbols(self, *, limit: int) -> list[str]:
+        latest_date = self.db.execute(
+            select(LowBuyResultSnapshot.latest_trade_date)
+            .group_by(LowBuyResultSnapshot.latest_trade_date)
+            .order_by(desc(LowBuyResultSnapshot.latest_trade_date))
+            .limit(1)
+        ).scalar()
+        if not latest_date:
+            return []
+        rows = self.db.execute(
+            select(LowBuyResultSnapshot.symbol)
+            .where(LowBuyResultSnapshot.latest_trade_date == latest_date)
+            .order_by(
+                LowBuyResultSnapshot.buy_signal_state.asc(),
+                desc(LowBuyResultSnapshot.score),
+                LowBuyResultSnapshot.symbol.asc(),
+            )
+            .limit(limit)
+        ).scalars().all()
+        return [str(item) for item in rows if item]
+
+    def _paper_holding_symbols(self, *, limit: int) -> list[str]:
+        rows = self.db.execute(
+            select(PaperPosition.symbol)
+            .where(PaperPosition.quantity > 0)
+            .order_by(desc(PaperPosition.updated_at), PaperPosition.symbol.asc())
+            .limit(limit)
+        ).scalars().all()
+        return [str(item) for item in rows if item]
+
+    def _monitor_sector_member_symbols(self) -> list[str]:
+        latest_date = self.db.execute(select(DailyBarSnapshot.trade_date).order_by(DailyBarSnapshot.trade_date.desc()).limit(1)).scalar()
+        if not latest_date:
+            return []
+        sector_rows = self.db.execute(
+            select(
+                Instrument.sector_name,
+                func.sum(DailyBarSnapshot.amount).label("sector_amount"),
+            )
+            .join(Instrument, Instrument.symbol == DailyBarSnapshot.symbol)
+            .where(DailyBarSnapshot.trade_date == latest_date)
+            .where(DailyBarSnapshot.instrument_type == "stock")
+            .where(Instrument.sector_name.isnot(None))
+            .where(Instrument.sector_name != "")
+            .group_by(Instrument.sector_name)
+            .order_by(desc("sector_amount"))
+            .limit(MONITOR_SECTOR_LIMIT)
+        ).all()
+        sectors = [str(sector) for sector, _amount in sector_rows if sector]
+        if not sectors:
+            return []
+        rows = self.db.execute(
+            select(DailyBarSnapshot.symbol)
+            .join(Instrument, Instrument.symbol == DailyBarSnapshot.symbol)
+            .where(DailyBarSnapshot.trade_date == latest_date)
+            .where(DailyBarSnapshot.instrument_type == "stock")
+            .where(Instrument.sector_name.in_(sectors))
+            .order_by(Instrument.sector_name.asc(), desc(DailyBarSnapshot.amount), DailyBarSnapshot.symbol.asc())
+            .limit(MONITOR_SECTOR_LIMIT * MONITOR_SECTOR_MEMBER_LIMIT)
         ).scalars().all()
         return [str(item) for item in rows if item]
 

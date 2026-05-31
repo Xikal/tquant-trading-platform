@@ -1,0 +1,90 @@
+from __future__ import annotations
+
+from decimal import Decimal
+
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+
+from app.models.base import Base
+from app.models.entities import (
+    DailyBarSnapshot,
+    Instrument,
+    LowBuyResultSnapshot,
+    LowBuyScanSnapshot,
+    PaperAccount,
+    PaperPosition,
+    User,
+    UserWatchlist,
+)
+from app.services.market_quote_cache_refresh import MarketQuoteCacheRefreshService
+
+
+def test_target_symbols_keeps_core_hot_read_demand_before_liquidity_tail() -> None:
+    engine = create_engine("sqlite+pysqlite:///:memory:", future=True)
+    Base.metadata.create_all(engine)
+    Session = sessionmaker(bind=engine, future=True)
+
+    with Session() as db:
+        db.add(User(username="quote-cache-user", password_hash="hash"))
+        db.flush()
+        db.add(UserWatchlist(user_id=1, symbol="000001", name="自选"))
+        db.add(PaperAccount(id=1, user_id=1, name="模拟账户"))
+        db.add(
+            PaperPosition(
+                account_id=1,
+                symbol="000002",
+                name="纸面持仓",
+                quantity=100,
+                available_quantity=100,
+                cost_basis=Decimal("10.0000"),
+            )
+        )
+        db.add(
+            LowBuyScanSnapshot(
+                latest_trade_date="2026-05-29",
+                strategy_key="first_board",
+                strategy_title="首板",
+                as_of_date="2026-05-29 15:00:00",
+                matched_count=1,
+            )
+        )
+        db.add(
+            LowBuyResultSnapshot(
+                latest_trade_date="2026-05-29",
+                strategy_key="first_board",
+                symbol="000003",
+                name="优先榜候选",
+                score=90,
+                buy_signal_state="buy_now",
+                payload_json="{}",
+            )
+        )
+        for symbol, sector, amount in [
+            ("000004", "半导体", 9000),
+            ("000005", "半导体", 8000),
+            ("000006", "半导体", 7000),
+            ("000007", "半导体", 6000),
+            ("000008", "半导体", 5000),
+            ("000009", "半导体", 4000),
+            ("600001", "银行", 100000),
+            ("600002", "银行", 99000),
+        ]:
+            db.add(Instrument(symbol=symbol, name=f"{sector}{symbol}", sector_name=sector))
+            db.add(
+                DailyBarSnapshot(
+                    symbol=symbol,
+                    trade_date="2026-05-29",
+                    close_price=10,
+                    pre_close=9.8,
+                    amount=amount,
+                    volume=1000,
+                    pct_chg=1.0,
+                )
+            )
+        db.commit()
+
+        symbols = MarketQuoteCacheRefreshService(db)._target_symbols(limit=4)
+
+    assert {"000001", "000002", "000003", "000004", "000005", "000006", "000007", "000008", "000009"}.issubset(
+        set(symbols)
+    )
