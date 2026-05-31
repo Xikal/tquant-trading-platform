@@ -60,6 +60,7 @@ export const PATH_PAGE_MAP: Record<string, Page> = {
   "/settings": "settings",
 };
 
-export const MONITOR_REFRESH_INTERVAL_MS = 20_000;
+export const MONITOR_NON_REALTIME_REFRESH_INTERVAL_MS = 5 * 60 * 1000;
+export const MONITOR_REFRESH_INTERVAL_MS = MONITOR_NON_REALTIME_REFRESH_INTERVAL_MS;
 export const PLAYBOOK_QUOTE_REFRESH_INTERVAL_MS = 15_000;
 export const PLAYBOOK_QUOTE_REFRESH_LIMIT = 60;

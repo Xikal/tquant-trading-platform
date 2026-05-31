@@ -2,6 +2,8 @@ import { useCallback, useEffect, useMemo, useRef } from "react";
 import { API_BASE, getAuthAccessToken, getAdminApiToken, invalidateCache, request } from "../../api/base";
 import { api } from "../../api/client";
 import { useWorkspaceMonitorStore } from "../../stores/workspaceMonitorStore";
+import { seedLiveQuoteSignal, updateLiveQuoteSignal } from "../../state/realtime/liveQuoteSignals";
+import { useQuoteStream } from "../../state/realtime/useQuoteStream";
 import { useServerState } from "../../state/serverState";
 import type {
   LowBuyPriorityBoardResult,
@@ -111,6 +113,11 @@ export function useMonitorData({ active, withLoading, setError, setNotice }: Use
     ...watchlistSignals.slice(0, 8).map((item) => item.symbol),
   ].filter(Boolean))].slice(0, 16), [priorityBoard?.items, watchlistSignals]);
   const keyLevelSymbolsKey = keyLevelSymbols.join(",");
+  const liveQuoteSymbols = useMemo(() => [...new Set([
+    ...(priorityBoard?.items ?? []).map((item) => item.symbol),
+    ...watchlistSignals.map((item) => item.symbol),
+    ...(sectorEtfT0?.opportunities ?? []).map((item) => item.etf_symbol),
+  ].filter(Boolean))], [priorityBoard?.items, sectorEtfT0?.opportunities, watchlistSignals]);
   const keyLevelEntryZonesKey = useMemo(() => (priorityBoard?.items ?? [])
     .slice(0, 8)
     .filter((item) => item.entry_zone_low > 0 && item.entry_zone_high > 0)
@@ -128,6 +135,36 @@ export function useMonitorData({ active, withLoading, setError, setNotice }: Use
   useEffect(() => {
     sectorEtfT0Ref.current = sectorEtfT0;
   }, [sectorEtfT0]);
+
+  useEffect(() => {
+    for (const item of priorityBoard?.items ?? []) {
+      seedLiveQuoteSignal(item.symbol, {
+        price: item.latest_price,
+        changePct: item.change_pct,
+        signalState: item.buy_signal_state,
+      });
+    }
+  }, [priorityBoard?.items]);
+
+  useEffect(() => {
+    for (const item of watchlistSignals) {
+      seedLiveQuoteSignal(item.symbol, {
+        price: item.quote.last_price,
+        changePct: item.quote.change_pct,
+        signalState: item.signal.action,
+      });
+    }
+  }, [watchlistSignals]);
+
+  useEffect(() => {
+    for (const item of sectorEtfT0?.opportunities ?? []) {
+      seedLiveQuoteSignal(item.etf_symbol, {
+        price: item.last_price,
+        changePct: item.change_pct,
+        signalState: item.bias,
+      });
+    }
+  }, [sectorEtfT0?.opportunities]);
 
   const clearPendingRetry = useCallback(() => {
     if (pendingRetryTimerRef.current != null) {
@@ -329,72 +366,104 @@ export function useMonitorData({ active, withLoading, setError, setNotice }: Use
     return () => clearPendingRetry();
   }, [active, clearPendingRetry, fetchMonitorData, priorityBoard]);
 
+  const refreshRealtimeQuotes = useCallback(async () => {
+    if (!shouldRefreshRealtimePrices() || quoteRefreshRef.current) {
+      return;
+    }
+    const currentBoard = priorityBoardRef.current;
+    const currentWatchlist = watchlistSignalsRef.current;
+    const currentEtfT0 = sectorEtfT0Ref.current;
+    const priorityGroups = collectPrioritySymbolsByStrategy(currentBoard?.items ?? []);
+    const etfSymbols = [...new Set((currentEtfT0?.opportunities ?? []).map((item) => item.etf_symbol).filter(Boolean))];
+    if (!priorityGroups.length && !currentWatchlist.length && !etfSymbols.length) {
+      return;
+    }
+    quoteRefreshRef.current = true;
+    try {
+      const priorityResults = await Promise.allSettled(
+        priorityGroups.map(({ strategy, symbols }) => api.getLowBuyQuoteRefresh(strategy, symbols)),
+      );
+      const priorityQuoteMap = priorityResults.reduce<Record<string, LowBuyQuoteRefreshItem>>((acc, result) => {
+        if (result.status === "fulfilled") {
+          Object.assign(acc, result.value.items);
+        }
+        return acc;
+      }, {});
+      if (useLiveQuoteSignals()) {
+        for (const [symbol, quote] of Object.entries(priorityQuoteMap)) {
+          updateLiveQuoteSignal(symbol, {
+            price: quote.latest_price,
+            changePct: quote.change_pct,
+            signalState: quote.buy_signal_state,
+          });
+        }
+      } else if (currentBoard && Object.keys(priorityQuoteMap).length) {
+        setPriorityBoard((board) => (board ? applyPriorityBoardQuoteRefresh(board, priorityQuoteMap) : board));
+      }
+
+      if (currentWatchlist.length) {
+        const watchlistQuotes = await api.getWatchlistQuotes();
+        if (watchlistQuotes.length) {
+          if (useLiveQuoteSignals()) {
+            for (const item of watchlistQuotes) {
+              updateLiveQuoteSignal(item.symbol, {
+                price: item.quote.last_price,
+                changePct: item.quote.change_pct,
+              });
+            }
+          } else {
+            setWatchlistSignals((signals) => applyWatchlistQuoteRefresh(signals, watchlistQuotes));
+          }
+        }
+      }
+
+      if (etfSymbols.length) {
+        const etfQuotes = await api.getLowBuyQuoteRefresh(DEFAULT_PLAYBOOK_STRATEGY, etfSymbols);
+        if (useLiveQuoteSignals()) {
+          for (const [symbol, quote] of Object.entries(etfQuotes.items)) {
+            updateLiveQuoteSignal(symbol, {
+              price: quote.latest_price,
+              changePct: quote.change_pct,
+              signalState: quote.buy_signal_state,
+            });
+          }
+        } else {
+          setSectorEtfT0((payload) =>
+            payload ? applySectorEtfQuoteRefresh(payload, etfQuotes.items) : payload,
+          );
+        }
+      }
+    } catch (err) {
+      if (import.meta.env.DEV) {
+        console.warn("监控实时价格刷新失败，已保留上次快照。", err);
+      }
+    } finally {
+      quoteRefreshRef.current = false;
+    }
+  }, [setPriorityBoard, setSectorEtfT0, setWatchlistSignals]);
+
+  useQuoteStream({
+    active,
+    symbols: liveQuoteSymbols,
+    fallbackPoll: refreshRealtimeQuotes,
+  });
+
   useEffect(() => {
     if (!active) {
       return undefined;
     }
+    if (useLiveQuoteSignals()) {
+      return undefined;
+    }
     let cancelled = false;
     let timer: number | undefined;
-    const refreshQuotes = async () => {
-      if (!shouldRefreshRealtimePrices() || quoteRefreshRef.current || cancelled) {
-        return;
-      }
-      const currentBoard = priorityBoardRef.current;
-      const currentWatchlist = watchlistSignalsRef.current;
-      const currentEtfT0 = sectorEtfT0Ref.current;
-      const priorityGroups = collectPrioritySymbolsByStrategy(currentBoard?.items ?? []);
-      const etfSymbols = [...new Set((currentEtfT0?.opportunities ?? []).map((item) => item.etf_symbol).filter(Boolean))];
-      if (!priorityGroups.length && !currentWatchlist.length && !etfSymbols.length) {
-        return;
-      }
-      quoteRefreshRef.current = true;
-      try {
-        const priorityResults = await Promise.allSettled(
-          priorityGroups.map(({ strategy, symbols }) => api.getLowBuyQuoteRefresh(strategy, symbols)),
-        );
-        if (cancelled) {
-          return;
-        }
-        const priorityQuoteMap = priorityResults.reduce<Record<string, LowBuyQuoteRefreshItem>>((acc, result) => {
-          if (result.status === "fulfilled") {
-            Object.assign(acc, result.value.items);
-          }
-          return acc;
-        }, {});
-        if (currentBoard && Object.keys(priorityQuoteMap).length) {
-          setPriorityBoard((board) => (board ? applyPriorityBoardQuoteRefresh(board, priorityQuoteMap) : board));
-        }
-
-        if (currentWatchlist.length) {
-          const watchlistQuotes = await api.getWatchlistQuotes();
-          if (!cancelled && watchlistQuotes.length) {
-            setWatchlistSignals((signals) => applyWatchlistQuoteRefresh(signals, watchlistQuotes));
-          }
-        }
-
-        if (etfSymbols.length) {
-          const etfQuotes = await api.getLowBuyQuoteRefresh(DEFAULT_PLAYBOOK_STRATEGY, etfSymbols);
-          if (!cancelled) {
-            setSectorEtfT0((payload) =>
-              payload ? applySectorEtfQuoteRefresh(payload, etfQuotes.items) : payload,
-            );
-          }
-        }
-      } catch (err) {
-        if (import.meta.env.DEV) {
-          console.warn("监控实时价格刷新失败，已保留上次快照。", err);
-        }
-      } finally {
-        quoteRefreshRef.current = false;
-      }
-    };
     const scheduleNext = () => {
       void refreshTradingSessionStatus(api.getMarketTradingSession).finally(() => {
         if (cancelled) {
           return;
         }
         timer = window.setTimeout(() => {
-          void refreshQuotes().finally(() => {
+          void refreshRealtimeQuotes().finally(() => {
             if (!cancelled) {
               scheduleNext();
             }
@@ -404,12 +473,12 @@ export function useMonitorData({ active, withLoading, setError, setNotice }: Use
     };
     const handleVisibilityChange = () => {
       if (document.visibilityState === "visible") {
-        void refreshQuotes();
+        void refreshRealtimeQuotes();
       }
     };
     void refreshTradingSessionStatus(api.getMarketTradingSession).finally(() => {
       if (!cancelled) {
-        void refreshQuotes();
+        void refreshRealtimeQuotes();
         scheduleNext();
       }
     });
@@ -421,7 +490,7 @@ export function useMonitorData({ active, withLoading, setError, setNotice }: Use
       }
       document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
-  }, [active]);
+  }, [active, refreshRealtimeQuotes]);
 
   useEffect(() => {
     if (!active || !getAuthAccessToken()) {
@@ -520,4 +589,8 @@ function priorityCardKey(item: LowBuyPriorityBoardItem): string {
 
 function monitorCardSignature(item: unknown): string {
   return JSON.stringify(item);
+}
+
+function useLiveQuoteSignals(): boolean {
+  return import.meta.env.VITE_LIVE_QUOTE_SIGNALS !== "false";
 }
