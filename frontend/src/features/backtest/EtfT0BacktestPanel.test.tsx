@@ -1,10 +1,16 @@
 import { renderToStaticMarkup } from "react-dom/server";
+import { QueryClientProvider } from "@tanstack/react-query";
 import { describe, expect, it } from "vitest";
+import { createAppQueryClient } from "../../state/queryClient";
 import { EtfT0BacktestPanel } from "./EtfT0BacktestPanel";
 
 describe("EtfT0BacktestPanel", () => {
   it("renders the ETF minute backtest controls and baseline placeholders", () => {
-    const html = renderToStaticMarkup(<EtfT0BacktestPanel />);
+    const html = renderToStaticMarkup(
+      <QueryClientProvider client={createAppQueryClient()}>
+        <EtfT0BacktestPanel />
+      </QueryClientProvider>,
+    );
 
     expect(html).toContain("ETF T0 分钟回测");
     expect(html).toContain("ETF代码");
