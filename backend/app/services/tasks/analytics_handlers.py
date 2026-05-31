@@ -34,6 +34,7 @@ def register_analytics_handlers(registry: TaskHandlerRegistry) -> None:
     registry.register("backtest_all_strategies_24m", handle_backtest_all_strategies_24m)
     registry.register("data_quality_sla_refresh", handle_data_quality_sla_refresh)
     registry.register("data_repair_run", handle_data_repair_run)
+    registry.register("realized_outcome_refresh", handle_realized_outcome_refresh)
 
 
 def handle_data_backfill_24m(context: TaskContext) -> dict[str, Any]:
@@ -210,6 +211,23 @@ def handle_data_repair_run(context: TaskContext) -> dict[str, Any]:
     if result.backup_path:
         context.add_artifact(result.backup_path)
     return {"ok": True, "repair": result.as_dict()}
+
+
+def handle_realized_outcome_refresh(context: TaskContext) -> dict[str, Any]:
+    from app.services.track_record.realized_outcome import refresh_realized_outcomes
+
+    payload = context.payload
+    as_of = _payload_end_date({"end_date": payload.get("as_of_date") or payload.get("end_date")})
+    horizons = [int(item) for item in payload.get("horizons") or [1, 3, 5, 10]]
+    context.progress(20.0, "开始结算生产信号 realized outcome")
+    result = refresh_realized_outcomes(context.db, as_of=as_of, horizons=horizons)
+    return {
+        **result,
+        "worker_scope": "analytics-worker",
+        "task_type": "realized_outcome_refresh",
+        "gate_owner": "production-track-record",
+        "not_research_gated": True,
+    }
 
 
 def _payload_end_date(payload: dict[str, Any]) -> date:
