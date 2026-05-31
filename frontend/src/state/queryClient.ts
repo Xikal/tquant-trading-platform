@@ -8,6 +8,17 @@ export const queryClientDefaults = {
   structuralSharing: true,
 } as const;
 
+const queryClientDefaultOptions = {
+  queries: queryClientDefaults,
+  mutations: {
+    retry: false,
+  },
+} satisfies QueryClientConfig["defaultOptions"];
+
+export const queryClient = new QueryClient({
+  defaultOptions: queryClientDefaultOptions,
+});
+
 export function createAppQueryClient(config: QueryClientConfig = {}) {
   return new QueryClient({
     ...config,
@@ -24,5 +35,3 @@ export function createAppQueryClient(config: QueryClientConfig = {}) {
     },
   });
 }
-
-export const queryClient = createAppQueryClient();

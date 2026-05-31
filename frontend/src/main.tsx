@@ -4,10 +4,7 @@ import "antd/dist/reset.css";
 import { AppProviders } from "./app/AppProviders";
 import { WebApp } from "./app/WebApp";
 import { WebUiProviders } from "./app/WebUiProviders";
-import { registerServiceWorker } from "./registerServiceWorker";
 import "./styles/workspace/workspace.css";
-
-registerServiceWorker();
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
@@ -18,3 +15,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
     </AppProviders>
   </React.StrictMode>
 );
+
+void import("./registerServiceWorker").then(({ registerServiceWorker }) => {
+  registerServiceWorker();
+});
