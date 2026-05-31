@@ -3,6 +3,7 @@
 ## Current Operational Documents
 
 - `README.md`
+- `docs/engineering-conventions.md`
 - `docs/operations/market-data-provider-runbook.md`
 - `docs/operations/observability-warning-budget-runbook.md`
 - `docs/operations/phase4-phase5-rollout.md`
