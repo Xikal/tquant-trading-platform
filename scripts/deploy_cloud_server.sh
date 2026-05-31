@@ -234,7 +234,7 @@ if not dsn:
     password = values.get('MYSQL_PASSWORD', '').strip()
     database = values.get('MYSQL_DATABASE', 't_quant').strip() or 't_quant'
     if password:
-        dsn = f"mysql+pymysql://{quote(user, safe='')}:{quote(password, safe='')}@mysql:3306/{quote(database, safe='')}?charset=utf8mb4"
+        dsn = f"mysql+mysqldb://{quote(user, safe='')}:{quote(password, safe='')}@mysql:3306/{quote(database, safe='')}?charset=utf8mb4"
         if not text.endswith('\n'):
             text += '\n'
         text += f"MYSQL_DSN={dsn}\n"

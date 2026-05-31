@@ -35,7 +35,12 @@ ENV PIP_DEFAULT_TIMEOUT=120
 WORKDIR /app/backend
 
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends curl ca-certificates \
+    && apt-get install -y --no-install-recommends \
+        build-essential \
+        curl \
+        ca-certificates \
+        default-libmysqlclient-dev \
+        pkg-config \
     && rm -rf /var/lib/apt/lists/*
 
 COPY backend/requirements.txt /tmp/backend-requirements.txt

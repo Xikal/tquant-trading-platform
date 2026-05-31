@@ -141,7 +141,7 @@ func TestIntradayLatestPreservesStaleQualityEvenWhenRecentlyCached(t *testing.T)
 }
 
 func TestMySQLDSNParsesSQLAlchemyURL(t *testing.T) {
-	dsn := mysqlDSN("mysql+pymysql://user:pass@mysql:3306/tquant")
+	dsn := mysqlDSN("mysql+mysqldb://user:pass@mysql:3306/tquant")
 
 	if dsn != "user:pass@tcp(mysql:3306)/tquant?parseTime=true&charset=utf8mb4" {
 		t.Fatalf("dsn mismatch: %s", dsn)

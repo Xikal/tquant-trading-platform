@@ -8,6 +8,7 @@ from sqlalchemy import create_engine, event, text
 from sqlalchemy.orm import Session, sessionmaker
 
 from app.core.config import get_settings
+from app.core.database_url import resolve_database_url_driver
 from app.core.schema_compat import ensure_schema_compatibility, verify_schema_compatibility
 from app.models.base import Base
 import app.models.entities  # noqa: F401
@@ -50,14 +51,15 @@ def _ensure_sqlite_storage(database_url: str) -> None:
 
 
 settings = get_settings()
-_ensure_sqlite_storage(settings.database_url)
+database_url = resolve_database_url_driver(settings.database_url)
+_ensure_sqlite_storage(database_url)
 
 _engine_kwargs = dict(
     future=True,
     pool_pre_ping=True,
-    connect_args=_sqlite_connect_args(settings.database_url),
+    connect_args=_sqlite_connect_args(database_url),
 )
-if settings.database_url.startswith("mysql"):
+if database_url.startswith("mysql"):
     _engine_kwargs.update(
         pool_size=max(int(settings.db_pool_size or 12), 1),
         max_overflow=max(int(settings.db_max_overflow or 24), 0),
@@ -66,7 +68,7 @@ if settings.database_url.startswith("mysql"):
     )
 
 engine = create_engine(
-    settings.database_url,
+    database_url,
     **_engine_kwargs,
 )
 
@@ -91,7 +93,7 @@ def _configure_sqlite_connection(dbapi_connection, _connection_record) -> None:
         cursor.close()
 
 
-if settings.database_url.startswith("sqlite"):
+if database_url.startswith("sqlite"):
     event.listen(engine, "connect", _configure_sqlite_connection)
 
 SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False, future=True)
@@ -106,7 +108,7 @@ def get_db() -> Session:
 
 
 def init_db() -> None:
-    if settings.database_url.startswith("sqlite") or settings.schema_compat_repair_enabled:
+    if database_url.startswith("sqlite") or settings.schema_compat_repair_enabled:
         Base.metadata.create_all(bind=engine)
     if settings.schema_compat_repair_enabled or _sqlite_dev_repair_enabled():
         ensure_schema_compatibility(engine)
@@ -121,6 +123,6 @@ def ping_database() -> None:
 
 
 def _sqlite_dev_repair_enabled() -> bool:
-    if not settings.database_url.startswith("sqlite"):
+    if not database_url.startswith("sqlite"):
         return False
     return settings.app_environment.strip().lower() not in {"prod", "production", "cloud"}
