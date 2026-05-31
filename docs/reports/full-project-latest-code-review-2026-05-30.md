@@ -262,7 +262,7 @@
 ## 7. 覆盖检查（实际检查范围与未覆盖说明）
 
 ### 已实际检查
-- **指定文档（9/9）**：`AGENTS.md`、`IMPLEMENTATION_PLAN.md`（按标题与近段抽读，198KB 未逐行）、`PRODUCTION_RUNBOOK.md`、`docs/reports/strategy_24m_duckdb_report.md`、`docs/reports/strategy-24m-backtest-2026-05-30.md`（grep 结构+关键段）、`docs/reports/gupiao-cloud-performance-2026-05-30-153724.json`、两份 front-row 开发计划、`docs/TQuant_DuckDB_Parquet_Worker_ContractFirst_开发方案.md`。
+- **指定文档（9/9）**：`AGENTS.md`、`IMPLEMENTATION_PLAN.md`（按标题与近段抽读，198KB 未逐行）、`PRODUCTION_RUNBOOK.md`、`docs/reports/strategy_24m_duckdb_report.md`、`docs/reports/strategy-24m-backtest-2026-05-30.md`（grep 结构+关键段）、`docs/reports/gupiao-cloud-performance-2026-05-30-153724.json`、两份 front-row 开发计划、`docs/archive/plans/TQuant_DuckDB_Parquet_Worker_ContractFirst_开发方案.md`。
 - **策略与回测**：`strategy_policy.py`、`production_scoring.py`（全文）、`production_scoring_config.py`、`strategy_lanes.py`（全文）、`priority_items.py`（核心段）、`signal_state.py`（前次审查）、`low_buy_market_backtest_reporting.py:679-840`（组合约束）、`engine_helpers.py`/`broker.py`（前视/撮合，前次审查）、`strategy_auto_governance.py`（决策段）。
 - **分析层/任务系统**：`backend/app/services/analytics/*`（config/exporters/manifest/quality/duckdb_repository/report_queries/__init__）、`tasks/{registry,handlers,worker,analytics_handlers}.py`、`workers/runtime_worker.py`。
 - **后端/路由/安全**：`main.py`、`api/router.py`、`screeners.py`、`runtime_tasks.py`、`backtests.py`、`admin_auth.py`、`security_config.py`、`config.py`、`auth.py`（cookie 段）。

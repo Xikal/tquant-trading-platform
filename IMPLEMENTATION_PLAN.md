@@ -139,7 +139,7 @@
 
 需求来源：
 
-- 用户目标：按 `docs/strategy-tracking-performance-snapshot-plan-2026-05-29.md` 落地“后台预计算快照 + 首页读取单一快照接口 + 详情懒加载”，完成后自动部署。
+- 用户目标：按 `docs/archive/plans/strategy-tracking-performance-snapshot-plan-2026-05-29.md` 落地“后台预计算快照 + 首页读取单一快照接口 + 详情懒加载”，完成后自动部署。
 
 ### 执行边界
 
@@ -177,7 +177,7 @@
 
 需求来源：
 
-- 用户目标：严格按 `docs/strategy-tracking-usability-enhancement-development-plan-2026-05-29.md` 落地，把 `/strategy-tracking` 优化为普通用户也能看懂的推荐结果追踪看板。
+- 用户目标：严格按 `docs/archive/plans/strategy-tracking-usability-enhancement-development-plan-2026-05-29.md` 落地，把 `/strategy-tracking` 优化为普通用户也能看懂的推荐结果追踪看板。
 
 ### 执行边界
 
@@ -377,7 +377,7 @@
 
 需求来源：
 
-- `docs/main-force-model-production-development-plan-2026-05-28.md`
+- `docs/archive/plans/main-force-model-production-development-plan-2026-05-28.md`
 - 当前目标：将“主力结构识别 + 买点分级 + 风险解释”从旁路组件升级为生产只读展示、Shadow 自动记录、受控排序加权和模拟盘只读/小仓建议灰度路径。
 
 ### 执行边界
@@ -717,7 +717,7 @@
 
 需求来源：
 
-- `docs/TQuant_Claude审查问题提取与实施整改方案.md`
+- `docs/archive/plans/TQuant_Claude审查问题提取与实施整改方案.md`
 - 当前 Goal：落地整改方案全部可实施项，并对所有策略执行最近 24 个月回测、根据结果继续调整策略参数/过滤/风控/信号逻辑。
 
 ### 本轮执行顺序
@@ -1208,7 +1208,7 @@
 
 ## 前端最终重构优化基础层
 
-需求来源：`docs/frontend-final-refactor-optimization-plan-2026-05-21.md`
+需求来源：`docs/archive/plans/frontend-final-refactor-optimization-plan-2026-05-21.md`
 
 ### 本轮执行范围
 
