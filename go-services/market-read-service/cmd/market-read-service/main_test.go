@@ -312,6 +312,10 @@ func TestChainedQuoteCacheRecordsRedisMissAndMySQLFallbackMetrics(t *testing.T) 
 	if marketReadUnresolvedMisses.Load()-beforeUnresolved != 1 {
 		t.Fatalf("expected one unresolved miss")
 	}
+	samples := unresolvedQuoteSamples()
+	if len(samples) == 0 || samples[len(samples)-1] != "000003" {
+		t.Fatalf("expected unresolved symbol sample, got %#v", samples)
+	}
 }
 
 func TestMetricsExposeCacheCoverageCounters(t *testing.T) {
@@ -326,6 +330,7 @@ func TestMetricsExposeCacheCoverageCounters(t *testing.T) {
 		"tquant_market_read_cache_miss_total",
 		"tquant_market_read_mysql_fallbacks_total",
 		"tquant_market_read_unresolved_misses_total",
+		"tquant_market_read_unresolved_symbol_sample",
 	} {
 		if !bytes.Contains([]byte(body), []byte(metricName)) {
 			t.Fatalf("metrics should expose %s, body=%s", metricName, body)

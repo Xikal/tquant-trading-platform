@@ -1,6 +1,17 @@
 package main
 
-import "context"
+import (
+	"context"
+	"strings"
+	"sync"
+)
+
+const unresolvedQuoteSampleLimit = 20
+
+var unresolvedQuoteSampleStore = struct {
+	sync.Mutex
+	values []string
+}{}
 
 type chainedQuoteCache struct {
 	primary   quoteCache
@@ -62,12 +73,39 @@ func (cache chainedQuoteCache) MGet(ctx context.Context, keys []string) (map[str
 	for _, key := range remaining {
 		if len(result[key]) == 0 {
 			unresolved++
+			recordUnresolvedQuoteSample(key)
 		}
 	}
 	if unresolved > 0 {
 		marketReadUnresolvedMisses.Add(int64(unresolved))
 	}
 	return result, nil
+}
+
+func recordUnresolvedQuoteSample(key string) {
+	symbol := strings.TrimPrefix(strings.TrimSpace(key), quoteCachePrefix)
+	if symbol == "" {
+		return
+	}
+	unresolvedQuoteSampleStore.Lock()
+	defer unresolvedQuoteSampleStore.Unlock()
+	for _, item := range unresolvedQuoteSampleStore.values {
+		if item == symbol {
+			return
+		}
+	}
+	unresolvedQuoteSampleStore.values = append(unresolvedQuoteSampleStore.values, symbol)
+	if len(unresolvedQuoteSampleStore.values) > unresolvedQuoteSampleLimit {
+		unresolvedQuoteSampleStore.values = unresolvedQuoteSampleStore.values[len(unresolvedQuoteSampleStore.values)-unresolvedQuoteSampleLimit:]
+	}
+}
+
+func unresolvedQuoteSamples() []string {
+	unresolvedQuoteSampleStore.Lock()
+	defer unresolvedQuoteSampleStore.Unlock()
+	result := make([]string, len(unresolvedQuoteSampleStore.values))
+	copy(result, unresolvedQuoteSampleStore.values)
+	return result
 }
 
 func (cache chainedQuoteCache) MinuteBars(ctx context.Context, symbols []string, period string, limit int) (map[string][]map[string]any, error) {

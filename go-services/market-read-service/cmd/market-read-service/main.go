@@ -64,7 +64,15 @@ func metrics(w http.ResponseWriter, _ *http.Request) {
 		"tquant_market_read_mysql_fallbacks_total " + strconv.FormatInt(marketReadMySQLFallbacks.Load(), 10),
 		"tquant_market_read_unresolved_misses_total " + strconv.FormatInt(marketReadUnresolvedMisses.Load(), 10),
 	}
+	for _, symbol := range unresolvedQuoteSamples() {
+		lines = append(lines, `tquant_market_read_unresolved_symbol_sample{symbol="`+escapeMetricLabel(symbol)+`"} 1`)
+	}
 	_, _ = w.Write([]byte(strings.Join(lines, "\n") + "\n"))
+}
+
+func escapeMetricLabel(value string) string {
+	replacer := strings.NewReplacer(`\`, `\\`, `"`, `\"`, "\n", `\n`)
+	return replacer.Replace(value)
 }
 
 func notEnabled(w http.ResponseWriter, _ *http.Request) {
