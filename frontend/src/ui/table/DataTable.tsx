@@ -1,19 +1,40 @@
 import { Table, Typography } from "antd";
 import type { TableProps } from "antd";
 
+type DataTableProps<RecordType extends object> = TableProps<RecordType> & {
+  defaultScrollY?: number;
+  paginated?: boolean;
+  virtualized?: boolean;
+};
+
 export function DataTable<RecordType extends object>({
   className = "",
   size = "small",
   pagination = false,
+  defaultScrollY = 420,
   locale,
+  paginated = false,
+  scroll,
+  virtualized = true,
   ...props
-}: TableProps<RecordType>) {
+}: DataTableProps<RecordType>) {
+  const resolvedPagination = paginated ? pagination || {} : pagination;
+  const resolvedScroll = virtualized
+    ? {
+        ...scroll,
+        x: scroll?.x ?? 960,
+        y: scroll?.y ?? defaultScrollY,
+      }
+    : scroll;
+
   return (
     <Table<RecordType>
       className={className || undefined}
       style={{ width: "100%" }}
       size={size}
-      pagination={pagination}
+      pagination={resolvedPagination}
+      scroll={resolvedScroll}
+      virtual={virtualized || undefined}
       locale={{
         emptyText: "暂无数据",
         ...locale,
