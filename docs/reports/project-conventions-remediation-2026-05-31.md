@@ -6,7 +6,7 @@
 
 ## 结论
 
-已补齐缺失的工程规范文档，并把它纳入 AGENTS 与 docs 索引。其余发现项以清单形式保留，不做高风险搬迁或业务重写。
+已补齐缺失的工程规范文档，并把它纳入 AGENTS 与 docs 索引。随后将一批无活引用历史报告迁入 `docs/archive/reports/`，并在 `docs/README.md` 中明确 archive 入口。其余发现项以清单形式保留，不做高风险搬迁或业务重写。
 
 ## 数据范围
 
@@ -40,6 +40,7 @@
 1. 根目录仍保留多份历史计划/评估/交付类文档，如 `IMPLEMENTATION_PLAN.md`、`OPTIMIZATION_PLAN.md`、`FINAL_DELIVERY.md`、`APP_API_SPEC.md`、`ARCHITECTURE.md`、`PROJECT_PLAN.md`、`PRODUCT_STAGE_ACCEPTANCE.md`、`全方位评估报告-2026-05-01.md`、`策略体系重组方案.md`、`系统级全方位提升方案-2026-05-30.md`。这些文件属于历史材料，未在本轮移动，以免破坏现有引用链。
 2. `docs/reports/` 仍包含大量机器可读产物和大文件，例如 `front-row-weighted-production-scoring-backtest-2026-05-29.json`、`strategy-24m-backtest-2026-05-30.json`、`strategy-24m-optimization-report-2026-05-28.json`、`front-row-weighted-production-scoring-review-package-2026-05-30.zip`、`main-force-model-dataset-smoke.jsonl`。其中多个文件在计划、脚本或审查报告中存在引用，暂不移动。
 3. 前端存在大量 `slice(...)` 截断用法，主要用于展示层的窗口裁剪或列表限长；本轮未改动业务 UI 逻辑，只做结构扫描记录。
+4. 根目录仍有少量隐式配置文件（`.vercelignore`、`Dockerfile.prebuilt`、`pytest.ini`）没有文本引用，但属于工具/构建默认入口，未纳入本轮文档归档范围。
 
 ## P2
 
@@ -60,6 +61,7 @@
 ## 生成产物清理建议
 
 - 保留：当前仍被计划、脚本或报告引用的 JSON/ZIP 证据文件。
+- 已移动：无活引用的历史报告批次已迁入 `docs/archive/reports/`。
 - 仅加 ignore：`docs/reports/*.jsonl`，避免新生成物继续进入报告目录。
 - 后续可迁移：未被引用、纯机器产出的新 JSON/Parquet/ZIP，优先放 `backend/data/analytics/reports/` 或 `artifacts/`。
 
@@ -83,9 +85,10 @@
 
 - 运行了根目录、`docs/reports/` 和前端结构扫描。
 - 运行了引用检查，确认 `front-row-weighted-production-scoring-review-package-2026-05-30.zip` 与 `front-row-weighted-production-scoring-backtest-2026-05-29.json` 等仍被引用，未做删除或搬迁。
+- 运行了 archive 归档检查，确认迁移后的历史报告在 `docs/archive/reports/` 中可见。
 
 ## 未完成项
 
-- 未移动历史根目录文档。
+- 未移动仍有活引用的根目录历史文档。
 - 未重写业务逻辑。
 - 未做大规模文件搬迁或并行回测引擎改造。
