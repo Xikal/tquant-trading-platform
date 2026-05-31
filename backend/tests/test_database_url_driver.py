@@ -76,3 +76,28 @@ def test_mysql_deployment_templates_expose_async_quote_provider_switch() -> None
     assert "MARKET_QUOTE_ASYNC_PROVIDER_ENABLED: ${MARKET_QUOTE_ASYNC_PROVIDER_ENABLED:-true}" in compose
     assert "MARKET_QUOTE_ASYNC_PROVIDER_ENABLED=true" in env_example
     assert "MARKET_QUOTE_ASYNC_PROVIDER_CONCURRENCY=4" in env_example
+
+
+def test_mysql_deployment_templates_offload_analytics_to_worker() -> None:
+    compose = (ROOT_DIR / "docker-compose.mysql.yml").read_text(encoding="utf-8")
+    env_example = (ROOT_DIR / ".env.docker.example").read_text(encoding="utf-8")
+
+    assert "WEB_TQUANT_ANALYTICS_ENABLED=false" in env_example
+    assert "ANALYTICS_WORKER_TQUANT_ANALYTICS_ENABLED=true" in env_example
+    assert "TQUANT_ANALYTICS_ENABLED: ${WEB_TQUANT_ANALYTICS_ENABLED:-false}" in compose
+    assert "analytics-worker:" in compose
+    assert 'INSTALL_ANALYTICS: "1"' in compose
+    assert 'command: ["python", "/app/backend/scripts/analytics_worker.py"' in compose
+    assert "TQUANT_ANALYTICS_ENABLED: ${ANALYTICS_WORKER_TQUANT_ANALYTICS_ENABLED:-true}" in compose
+    assert "import duckdb, pyarrow; from app.core.database import ping_database; ping_database()" in compose
+
+
+def test_cloud_deploy_waits_for_analytics_worker_dependency_readiness() -> None:
+    deploy_script = (ROOT_DIR / "scripts" / "deploy_cloud_server.sh").read_text(encoding="utf-8")
+
+    assert "build app analytics-worker" in deploy_script
+    assert "app runtime-worker backtest-worker analytics-worker" in deploy_script
+    assert "ANALYTICS_STATUS=$(sudo docker inspect tquant-analytics-worker-mysql" in deploy_script
+    assert "analytics_worker_readyz:ok" in deploy_script
+    assert "require_analytics_dependencies()" in deploy_script
+    assert "ping_database()" in deploy_script

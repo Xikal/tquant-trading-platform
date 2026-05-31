@@ -213,7 +213,26 @@ if test "$ACTUAL_ANALYTICS_IMAGE" != "$EXPECTED_ANALYTICS_IMAGE"; then
   echo "tquant-analytics-worker-mysql is still running $ACTUAL_ANALYTICS_IMAGE; expected $EXPECTED_ANALYTICS_IMAGE" >&2
   exit 1
 fi
-sudo docker exec tquant-analytics-worker-mysql python -c 'import duckdb, pyarrow'
+for _ in $(seq 1 30); do
+  ANALYTICS_STATUS=$(sudo docker inspect tquant-analytics-worker-mysql --format '{{.State.Health.Status}}' 2>/dev/null || echo none)
+  echo "analytics-worker health:$ANALYTICS_STATUS"
+  if test "$ANALYTICS_STATUS" = healthy; then
+    break
+  fi
+  sleep 2
+done
+if test "$ANALYTICS_STATUS" != healthy; then
+  echo "analytics-worker did not become healthy" >&2
+  exit 1
+fi
+sudo docker exec tquant-analytics-worker-mysql python - <<'PY'
+from app.core.database import ping_database
+from app.services.analytics.dependencies import require_analytics_dependencies
+
+require_analytics_dependencies()
+ping_database()
+print("analytics_worker_readyz:ok")
+PY
 sudo docker exec -u root tquant-app-mysql sh -c 'mkdir -p /app/backend/data && chown -R tquant:tquant /app/backend/data' || true
 python3 - <<'PY'
 from pathlib import Path
