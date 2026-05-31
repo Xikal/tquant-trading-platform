@@ -6,7 +6,7 @@ from decimal import Decimal
 
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
@@ -259,6 +259,37 @@ class StrategyTrackingTests(unittest.TestCase):
 
         self.assertTrue(holding.items)
         self.assertEqual(calls, 0)
+
+    def test_strategy_tracking_list_keeps_hot_queries_bounded(self) -> None:
+        self._seed_board_fixture()
+        from app.services.strategy_tracking import StrategyTrackingService, clear_strategy_tracking_read_cache
+
+        clear_strategy_tracking_read_cache()
+        statements: list[str] = []
+        with self.Session() as db:
+            bind = db.get_bind()
+
+            @event.listens_for(bind, "before_cursor_execute")
+            def _count_sql(_conn, _cursor, statement, _parameters, _context, _executemany):  # noqa: ANN001
+                watched = (
+                    "low_buy_result_snapshots",
+                    "daily_bar_snapshots",
+                    "low_buy_trade_lifecycle_snapshots",
+                    "instruments",
+                    "strategy_metadata",
+                    "low_buy_strategy_performance",
+                    "market_model_observations",
+                )
+                if any(table in statement for table in watched):
+                    statements.append(statement)
+
+            try:
+                result = StrategyTrackingService(db).list_items(range_days=10, limit=10)
+            finally:
+                event.remove(bind, "before_cursor_execute", _count_sql)
+
+        self.assertGreaterEqual(result.total, 4)
+        self.assertLessEqual(len(statements), 10)
 
     def test_snapshot_missing_does_not_recompute_on_public_read(self) -> None:
         self._seed_board_fixture()

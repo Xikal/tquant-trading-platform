@@ -47,3 +47,12 @@ def test_mysql_deployment_templates_default_to_mysqldb() -> None:
     assert "DATABASE_URL=mysql+mysqldb://" in env_example
     assert "mysql+mysqldb://" in deploy_script
     assert "DATABASE_URL: mysql+pymysql://" not in compose
+
+
+def test_mysql_deployment_templates_enable_200ms_slow_query_log() -> None:
+    compose = (ROOT_DIR / "docker-compose.mysql.yml").read_text(encoding="utf-8")
+    env_example = (ROOT_DIR / ".env.docker.example").read_text(encoding="utf-8")
+
+    assert "--slow-query-log=${MYSQL_SLOW_QUERY_LOG:-ON}" in compose
+    assert "--long-query-time=${MYSQL_LONG_QUERY_TIME:-0.2}" in compose
+    assert "MYSQL_LONG_QUERY_TIME=0.2" in env_example

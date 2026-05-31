@@ -31,6 +31,21 @@ class StrategyTierResolver:
         _CACHE[strategy_key] = (now + _CACHE_TTL_SECONDS, tier)
         return tier
 
+    def prime(self, strategy_keys: list[str]) -> None:
+        if self.db is None:
+            return
+        keys = sorted({item for item in strategy_keys if item})
+        if not keys:
+            return
+        now = time.monotonic()
+        missing = [key for key in keys if not (_CACHE.get(key) and _CACHE[key][0] > now)]
+        if not missing:
+            return
+        overrides = self._load_overrides(missing)
+        expires_at = now + _CACHE_TTL_SECONDS
+        for key in missing:
+            _CACHE[key] = (expires_at, overrides.get(key) or get_strategy_tier(key))
+
     def _load_override(self, strategy_key: str) -> StrategyTier | None:
         try:
             row = self.db.execute(
@@ -49,6 +64,30 @@ class StrategyTierResolver:
             return StrategyTier(str(row.override_tier or ""))
         except ValueError:
             return None
+
+    def _load_overrides(self, strategy_keys: list[str]) -> dict[str, StrategyTier]:
+        try:
+            rows = (
+                self.db.execute(
+                    select(StrategyTierOverride).where(
+                        StrategyTierOverride.strategy_key.in_(strategy_keys),
+                        StrategyTierOverride.reverted_at.is_(None),
+                    )
+                )
+                .scalars()
+                .all()
+            )
+        except OperationalError as exc:
+            if "no such table" in str(exc).lower():
+                return {}
+            raise
+        overrides: dict[str, StrategyTier] = {}
+        for row in rows:
+            try:
+                overrides[row.strategy_key] = StrategyTier(str(row.override_tier or ""))
+            except ValueError:
+                continue
+        return overrides
 
 
 def clear_strategy_tier_cache(strategy_key: str | None = None) -> None:

@@ -130,10 +130,12 @@ class StrategyTrackingService:
     ) -> StrategyTrackingListResponse:
         safe_limit = max(1, min(limit, MAX_LIMIT))
         safe_offset = max(0, offset)
+        result_dates = self._recent_result_dates(range_days)
         all_items, partial_errors = self._load_read_model(
             range_days=range_days,
             strategy_key=strategy_key,
             strategy_family=strategy_family,
+            result_dates=result_dates,
         )
         if signal_state:
             all_items = [item for item in all_items if item.signal_state == signal_state]
@@ -155,7 +157,7 @@ class StrategyTrackingService:
         summary = build_summary(items)
         performance = build_performance(items)
         market_segments = build_market_segments(items)
-        shadow = self.shadow_observations(range_days=range_days, items=all_items)
+        shadow = self.shadow_observations(range_days=range_days, items=all_items, result_dates=result_dates)
         summary.shadow_observation_count = sum(item.observation_count for item in shadow)
         return StrategyTrackingListResponse(
             items=page_items,
@@ -261,20 +263,25 @@ class StrategyTrackingService:
         model_key: str | None = None,
         strategy_key: str | None = None,
         items: list[StrategyTrackingItemOut] | None = None,
+        result_dates: list[str] | None = None,
     ) -> list[StrategyTrackingShadowObservationOut]:
         keys = [model_key] if model_key else ["main_force_model_observation", "sector_etf_t0", "paper_exit_model"]
         tracking_items = items
         if tracking_items is None:
             tracking_items = self.list_items(range_days=range_days, strategy_key=strategy_key, limit=MAX_LIMIT).items
-        start_date = self._range_start_date(range_days)
-        rows: list[StrategyTrackingShadowObservationOut] = []
-        for key in keys:
-            statement = select(MarketModelObservation).where(MarketModelObservation.model_key == key)
-            if start_date:
-                statement = statement.where(MarketModelObservation.trade_date >= start_date)
-            observations = self.db.execute(statement.order_by(MarketModelObservation.observed_at.desc())).scalars().all()
-            rows.append(build_shadow_row(model_key=key, observations=observations, tracking_items=tracking_items))
-        return rows
+        active_dates = result_dates if result_dates is not None else self._recent_result_dates(range_days)
+        start_date = active_dates[0] if active_dates else ""
+        statement = select(MarketModelObservation).where(MarketModelObservation.model_key.in_(keys))
+        if start_date:
+            statement = statement.where(MarketModelObservation.trade_date >= start_date)
+        observations = self.db.execute(statement.order_by(MarketModelObservation.observed_at.desc())).scalars().all()
+        observations_by_key: dict[str, list[MarketModelObservation]] = {key: [] for key in keys}
+        for row in observations:
+            observations_by_key.setdefault(row.model_key, []).append(row)
+        return [
+            build_shadow_row(model_key=key, observations=observations_by_key.get(key, []), tracking_items=tracking_items)
+            for key in keys
+        ]
 
     def leakage_audit(
         self,
@@ -463,8 +470,9 @@ class StrategyTrackingService:
         range_days: int,
         strategy_key: str | None,
         strategy_family: str | None,
+        result_dates: list[str] | None = None,
     ) -> tuple[list[StrategyTrackingItemOut], list[str]]:
-        result_dates = self._recent_result_dates(range_days)
+        result_dates = result_dates if result_dates is not None else self._recent_result_dates(range_days)
         if not result_dates:
             return [], []
         latest_bar_date = self._latest_bar_date()

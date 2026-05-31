@@ -18,7 +18,7 @@ services:
       - --innodb-log-file-size=${MYSQL_INNODB_LOG_FILE_SIZE:-256M}
       - --innodb-flush-log-at-trx-commit=${MYSQL_INNODB_FLUSH_LOG_AT_TRX_COMMIT:-2}
       - --slow-query-log=${MYSQL_SLOW_QUERY_LOG:-ON}
-      - --long-query-time=${MYSQL_LONG_QUERY_TIME:-1}
+      - --long-query-time=${MYSQL_LONG_QUERY_TIME:-0.2}
       - --log-output=${MYSQL_LOG_OUTPUT:-FILE}
       - --slow-query-log-file=/var/lib/mysql/mysql-slow.log
     volumes:

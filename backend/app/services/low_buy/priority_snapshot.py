@@ -61,14 +61,19 @@ def build_priority_base_snapshot(
     missing_strategies: list[str] = []
     stale_strategies: list[str] = []
     tier_resolver = StrategyTierResolver(db)
+    tier_resolver.prime(list(PLAYBOOKS))
+    eligible_strategies = [
+        strategy_key
+        for strategy_key in PLAYBOOKS
+        if tier_resolver.resolve(strategy_key) in {StrategyTier.CORE, StrategyTier.AUXILIARY}
+    ]
+    summaries_by_strategy = repository.fetch_scan_summaries(
+        latest_trade_date=target_trade_date,
+        strategy_keys=eligible_strategies,
+    ) if target_trade_date else {}
 
-    for strategy_key in PLAYBOOKS:
-        if tier_resolver.resolve(strategy_key) not in {StrategyTier.CORE, StrategyTier.AUXILIARY}:
-            continue
-        summary = repository.fetch_scan_summary(
-            strategy_key=strategy_key,
-            latest_trade_date=target_trade_date,
-        ) if target_trade_date else None
+    for strategy_key in eligible_strategies:
+        summary = summaries_by_strategy.get(strategy_key)
         if summary is None:
             missing_strategies.append(strategy_key)
             continue

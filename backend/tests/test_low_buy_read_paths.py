@@ -4,7 +4,7 @@ import json
 import threading
 import unittest
 
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker
 
 from app.services.low_buy import pool as pool_module
@@ -252,6 +252,19 @@ class _PrioritySnapshotTargetService:
 
     @staticmethod
     def _build_market_context(db, latest_trade_date: str):  # noqa: ARG002
+        return None
+
+
+class _PrioritySnapshotQueryBudgetService(_PrioritySnapshotTargetService):
+    def __init__(self) -> None:
+        self.loaded: list[tuple[str, str]] = []
+
+    @staticmethod
+    def _resolve_priority_target_trade_date() -> str:
+        return "2026-04-25"
+
+    def _load_materialized_full_result(self, db, strategy: str, latest_trade_date: str, limit: int, include_history: bool):  # noqa: ARG002
+        self.loaded.append((strategy, latest_trade_date))
         return None
 
 
@@ -650,6 +663,27 @@ class LowBuyReadPathTests(unittest.TestCase):
             )
 
         self.assertEqual(snapshot.latest_available_trade_date, "2026-04-30")
+
+    def test_priority_snapshot_batches_strategy_summary_reads(self) -> None:
+        service = _PrioritySnapshotQueryBudgetService()
+        statements: list[str] = []
+
+        with self.Session() as db:
+            bind = db.get_bind()
+
+            @event.listens_for(bind, "before_cursor_execute")
+            def _count_sql(_conn, _cursor, statement, _parameters, _context, _executemany):  # noqa: ANN001
+                if "low_buy_scan_snapshots" in statement or "strategy_tier_overrides" in statement:
+                    statements.append(statement)
+
+            try:
+                snapshot = build_priority_base_snapshot(builder=service, db=db, limit=12)
+            finally:
+                event.remove(bind, "before_cursor_execute", _count_sql)
+
+        self.assertEqual(snapshot.latest_trade_date, "")
+        self.assertEqual(service.loaded, [])
+        self.assertLessEqual(len(statements), 3)
 
     def test_load_latest_materialized_full_result_on_or_before_ignores_newer_incomplete_date(self) -> None:
         service = _RepairingResultService(repaired_payload=_payload(_candidate()))

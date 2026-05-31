@@ -39,6 +39,27 @@ class LowBuyResultRepository:
             .first()
         )
 
+    def fetch_scan_summaries(
+        self,
+        *,
+        latest_trade_date: str,
+        strategy_keys: list[str],
+    ) -> dict[str, LowBuyScanSnapshot]:
+        keys = sorted({item for item in strategy_keys if item})
+        if not latest_trade_date or not keys:
+            return {}
+        rows = (
+            self.db.execute(
+                select(LowBuyScanSnapshot).where(
+                    LowBuyScanSnapshot.latest_trade_date == latest_trade_date,
+                    LowBuyScanSnapshot.strategy_key.in_(keys),
+                )
+            )
+            .scalars()
+            .all()
+        )
+        return {row.strategy_key: row for row in rows}
+
     def fetch_latest_scan_summary(self, strategy_key: str) -> LowBuyScanSnapshot | None:
         return (
             self.db.execute(
