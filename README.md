@@ -2,7 +2,7 @@
 
 一个面向 A 股股票与 ETF 的短线做T量化系统，采用 `React + ECharts + FastAPI + SQLite` 架构，支持实时监控、量化信号、AI 补充分析、制度识别、风控配置、信号复盘与回测。
 
-最终交付摘要见：[FINAL_DELIVERY.md](/Users/j/Documents/gupiao/FINAL_DELIVERY.md)
+文档入口见：[docs/README.md](/Users/j/Documents/gupiao/docs/README.md)
 
 原生 App 开发说明见：[NATIVE_APP_SETUP.md](/Users/j/Documents/gupiao/frontend/NATIVE_APP_SETUP.md)
 
@@ -53,8 +53,13 @@
 │   │   └── styles.css
 │   ├── package.json
 │   └── .env.example
-├── PROJECT_PLAN.md
+├── docs
+│   ├── README.md
+│   ├── engineering-conventions.md
+│   ├── operations
+│   └── reports
 ├── DEVELOPMENT_GUIDE.md
+├── PRODUCTION_RUNBOOK.md
 └── README.md
 ```
 
@@ -376,8 +381,8 @@ mysql+pymysql://root:你的密码@127.0.0.1:3306/t_quant?charset=utf8mb4
 ## 文档
 
 - [多 Agent 编排](./AGENTS.md)
+- [工程规范](./docs/engineering-conventions.md)
+- [文档索引](./docs/README.md)
 - [策略负责人手册](./TRADING_QUANT_LEAD_PLAYBOOK.md)
 - [产品阶段验收清单](./PRODUCT_STAGE_ACCEPTANCE.md)
-- [整体计划](./PROJECT_PLAN.md)
-- [优化方案](./OPTIMIZATION_PLAN.md)
 - [开发文档](./DEVELOPMENT_GUIDE.md)

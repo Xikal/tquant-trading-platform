@@ -29,5 +29,6 @@ docs/reports/*.zip
 docs/reports/*-backtest-*.json
 docs/reports/*-performance-*.json
 docs/reports/*.jsonl
+docs/reports/**/windows/
 backend/data/analytics/reports/*.json
 backend/data/analytics/parquet/

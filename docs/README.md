@@ -36,18 +36,25 @@ These files are kept as historical decision records. Do not treat them as curren
 - `OPTIMIZATION_PLAN.md`
 - `APP_API_SPEC.md`
 - `ARCHITECTURE.md`
-- `全方位评估报告-2026-05-01.md`
-- `策略体系重组方案.md`
-- `docs/frontend-bff-microservices-evolution-plan-2026-05-19.md`
-- `docs/microservices-independent-deployment-design-2026-05-20.md`
-- `docs/backend-final-refactor-master-plan-2026-05-21.md`
-- `docs/backend-final-refactor-optimization-plan-2026-05-21.md`
-- `docs/backend-final-refactor-pragmatic-plan-2026-05-21.md`
 - `docs/backend-go-rust-refactor-final-plan-2026-05-22.md`
 - `docs/backend-refactor-runtime-runbook-2026-05-22.md`
-- `docs/remaining-architecture-debt-executable-plan-2026-05-24.md`
 
 Archived historical evidence lives under `docs/archive/`; only the current entries above should be treated as active references. Use `docs/archive/plans/` for archived plan docs and `docs/archive/reports/` for older report evidence. Do not treat archived files as current implementation truth without checking the latest code and reports.
+
+Recently archived historical plans:
+
+- `docs/archive/plans/backend-final-refactor-master-plan-2026-05-21.md`
+- `docs/archive/plans/backend-final-refactor-optimization-plan-2026-05-21.md`
+- `docs/archive/plans/backend-final-refactor-pragmatic-plan-2026-05-21.md`
+- `docs/archive/plans/frontend-bff-microservices-evolution-plan-2026-05-19.md`
+- `docs/archive/plans/microservices-independent-deployment-design-2026-05-20.md`
+- `docs/archive/plans/remaining-architecture-debt-executable-plan-2026-05-24.md`
+- `docs/archive/plans/策略体系重组方案.md`
+- `docs/archive/plans/系统级全方位提升方案-2026-05-30.md`
+
+Recently archived historical reports:
+
+- `docs/archive/reports/全方位评估报告-2026-05-01.md`
 
 ## Reports And Evidence
 
@@ -70,6 +77,14 @@ Archived historical evidence lives under `docs/archive/`; only the current entri
 - The generated DuckDB strategy report has a tracked Markdown summary at `docs/reports/strategy_24m_duckdb_report.md`; its JSON companion belongs at `backend/data/analytics/reports/strategy_24m_duckdb_report.json`.
 - Data quality repair dry-run/apply JSON, SLA exports and large machine-readable repair evidence belong under `backend/data/analytics/reports`, `backups/data_quality`, an external `artifacts/` directory, or object storage; do not place them directly under `docs/reports`.
 - `docs/reports/*-backtest-*.json`, `docs/reports/*-performance-*.json`, report zips, and analytics parquet/report JSON are ignored by default to avoid accidental repository bloat.
+
+## Validation Entry Points
+
+- Documentation-only cleanup: run `git diff --check`, reference checks with `rg`, and a docs index file-existence check.
+- Backend or route changes: run the affected `backend/.venv/bin/python -m pytest ...` target from the repository root.
+- API schema changes: run `cd frontend && npm run api:check` and commit regenerated contract artifacts only when the change intentionally alters the contract.
+- Frontend changes: run `cd frontend && npm run lint && npm run build && npm test -- --run`; add `npm run analyze` for performance-sensitive UI changes.
+- Strategy, production scoring, backtest, or report-generation changes: run the relevant guard pytest plus the report/backtest generator required by the touched path.
 
 ## Cleanup Policy
 

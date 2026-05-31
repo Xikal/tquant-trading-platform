@@ -456,7 +456,7 @@ backend/app
 ## 7. 给 Codex 的最终执行提示词
 
 ```text
-你是 TQuant 项目的资深后端工程师和性能优化工程师。请按 docs/backend-final-refactor-pragmatic-plan-2026-05-21.md 执行后端务实重构。
+你是 TQuant 项目的资深后端工程师和性能优化工程师。请按 docs/archive/plans/backend-final-refactor-pragmatic-plan-2026-05-21.md 执行后端务实重构。
 
 要求：
 1. 不推倒重写。

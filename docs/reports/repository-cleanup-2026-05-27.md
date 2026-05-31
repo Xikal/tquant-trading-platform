@@ -36,7 +36,7 @@
 - `docs/README.md`
   - 新增文档索引，把当前运行文档、当前产品/策略参考、历史架构/重构记录、报告证据和清理规则分层。
 
-- `策略体系重组方案.md`
+- `docs/archive/plans/策略体系重组方案.md`
   - 增加历史状态说明，避免旧策略分层方案被误当作当前上线验收口径。
 
 - `docs/reports/full-regression-2026-05-27.md`
@@ -57,7 +57,7 @@
   - 被历史审查报告和 Go/Rust 文档引用，作为早期验收基线保留。
 
 - 根目录计划/交付/评估类文档：
-  - `FINAL_DELIVERY.md`、`IMPLEMENTATION_PLAN.md`、`OPTIMIZATION_PLAN.md`、`PROJECT_PLAN.md`、`PRODUCT_STAGE_ACCEPTANCE.md`、`全方位评估报告-2026-05-01.md`、`策略体系重组方案.md`
+  - `FINAL_DELIVERY.md`、`IMPLEMENTATION_PLAN.md`、`OPTIMIZATION_PLAN.md`、`PROJECT_PLAN.md`、`PRODUCT_STAGE_ACCEPTANCE.md`、`docs/archive/reports/全方位评估报告-2026-05-01.md`、`docs/archive/plans/策略体系重组方案.md`
   - 判定依据：仍被 `README.md`、脚本或历史方案引用，且保留了产品/策略演进背景；本轮通过 `docs/README.md` 分层和历史状态标记降低误用风险，不直接删除。
 
 - `docs/reports/go-rust-performance-acceptance-2026-05-27.json`、`docs/reports/gupiao-go-rust-runtime-performance-2026-05-27.json`、`docs/reports/rust-bench-baseline.json`

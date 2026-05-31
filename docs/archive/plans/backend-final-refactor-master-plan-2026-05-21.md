@@ -6,7 +6,7 @@
 输入材料：
 
 - `/Users/j/Downloads/TQuant_后端全方位深度审查报告.html`
-- `docs/backend-final-refactor-optimization-plan-2026-05-21.md`
+- `docs/archive/plans/backend-final-refactor-optimization-plan-2026-05-21.md`
 
 目标：形成一份最终可执行的后端重构方案，解决扩展性、性能、可靠性、数据库精度、任务队列、缓存一致性、可观测性和长期演进问题。
 
@@ -991,7 +991,7 @@ P1 告警：
 ## 13. 给 Codex 的最终执行提示词
 
 ```text
-你是 TQuant 项目的资深后端架构师、性能优化工程师、量化交易系统工程师和 DevOps 负责人。请基于当前仓库，按照 docs/backend-final-refactor-master-plan-2026-05-21.md 执行后端最终重构。
+你是 TQuant 项目的资深后端架构师、性能优化工程师、量化交易系统工程师和 DevOps 负责人。请基于当前仓库，按照 docs/archive/plans/backend-final-refactor-master-plan-2026-05-21.md 执行后端最终重构。
 
 强制要求：
 1. 不推倒重写。
