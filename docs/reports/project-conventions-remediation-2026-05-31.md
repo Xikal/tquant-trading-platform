@@ -6,7 +6,7 @@
 
 ## 结论
 
-已补齐缺失的工程规范文档，并把它纳入 AGENTS 与 docs 索引。随后将一批无活引用历史报告迁入 `docs/archive/reports/`，并在 `docs/README.md` 中明确 archive 入口。其余发现项以清单形式保留，不做高风险搬迁或业务重写。
+已补齐缺失的工程规范文档，并把它纳入 AGENTS 与 docs 索引。随后将一批无活引用历史报告迁入 `docs/archive/reports/`，并将一批无活引用历史计划迁入 `docs/archive/plans/`；同时在 `docs/README.md` 中明确 archive 入口。其余发现项以清单形式保留，不做高风险搬迁或业务重写。
 
 ## 数据范围
 
@@ -61,7 +61,7 @@
 ## 生成产物清理建议
 
 - 保留：当前仍被计划、脚本或报告引用的 JSON/ZIP 证据文件。
-- 已移动：无活引用的历史报告批次已迁入 `docs/archive/reports/`。
+- 已移动：无活引用的历史报告批次已迁入 `docs/archive/reports/`，无活引用的历史计划批次已迁入 `docs/archive/plans/`。
 - 仅加 ignore：`docs/reports/*.jsonl`，避免新生成物继续进入报告目录。
 - 后续可迁移：未被引用、纯机器产出的新 JSON/Parquet/ZIP，优先放 `backend/data/analytics/reports/` 或 `artifacts/`。
 
@@ -85,7 +85,7 @@
 
 - 运行了根目录、`docs/reports/` 和前端结构扫描。
 - 运行了引用检查，确认 `front-row-weighted-production-scoring-review-package-2026-05-30.zip` 与 `front-row-weighted-production-scoring-backtest-2026-05-29.json` 等仍被引用，未做删除或搬迁。
-- 运行了 archive 归档检查，确认迁移后的历史报告在 `docs/archive/reports/` 中可见。
+- 运行了 archive 归档检查，确认迁移后的历史报告在 `docs/archive/reports/` 中可见，历史计划在 `docs/archive/plans/` 中可见。
 
 ## 未完成项
 
