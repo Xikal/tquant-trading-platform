@@ -47,6 +47,8 @@ These files are kept as historical decision records. Do not treat them as curren
 - `docs/backend-refactor-runtime-runbook-2026-05-22.md`
 - `docs/remaining-architecture-debt-executable-plan-2026-05-24.md`
 
+Archived historical evidence lives under `docs/archive/`; only the current entries above should be treated as active references.
+
 ## Reports And Evidence
 
 - `docs/reports/full-project-audit-2026-05-25.md`
