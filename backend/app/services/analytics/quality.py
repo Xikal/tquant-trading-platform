@@ -111,24 +111,11 @@ def check_daily_bars_24m_quality(
         ).scalar_one()
         or 0
     )
-    invalid_ohlc_rows = int(
-        db.execute(
-            select(func.count(DailyBarSnapshot.id)).where(
-                DailyBarSnapshot.instrument_type == "stock",
-                DailyBarSnapshot.trade_date >= start,
-                DailyBarSnapshot.trade_date <= end,
-                (
-                    (DailyBarSnapshot.open_price <= 0)
-                    | (DailyBarSnapshot.close_price <= 0)
-                    | (DailyBarSnapshot.high_price < DailyBarSnapshot.low_price)
-                    | (DailyBarSnapshot.high_price < DailyBarSnapshot.open_price)
-                    | (DailyBarSnapshot.high_price < DailyBarSnapshot.close_price)
-                    | (DailyBarSnapshot.low_price > DailyBarSnapshot.open_price)
-                    | (DailyBarSnapshot.low_price > DailyBarSnapshot.close_price)
-                ),
-            )
-        ).scalar_one()
-        or 0
+    invalid_ohlc_rows = count_invalid_daily_bar_ohlc_rows(
+        db,
+        start_date=start,
+        end_date=end,
+        min_symbols_per_day=None,
     )
     actual_start = str(min_date or "")
     actual_end = str(max_date or "")
@@ -218,6 +205,44 @@ def _days_in_month(year: int, month: int) -> int:
 def _minimum_expected_trade_days(start: date, end: date) -> int:
     weekdays = sum(1 for offset in range((end - start).days + 1) if (start + timedelta(days=offset)).weekday() < 5)
     return max(int(weekdays * 0.68), 1)
+
+
+def minimum_expected_trade_days(start: date, end: date) -> int:
+    return _minimum_expected_trade_days(start, end)
+
+
+def daily_bar_invalid_ohlc_filter():
+    return (
+        (DailyBarSnapshot.open_price <= 0)
+        | (DailyBarSnapshot.close_price <= 0)
+        | (DailyBarSnapshot.high_price < DailyBarSnapshot.low_price)
+        | (DailyBarSnapshot.high_price < DailyBarSnapshot.open_price)
+        | (DailyBarSnapshot.high_price < DailyBarSnapshot.close_price)
+        | (DailyBarSnapshot.low_price > DailyBarSnapshot.open_price)
+        | (DailyBarSnapshot.low_price > DailyBarSnapshot.close_price)
+    )
+
+
+def count_invalid_daily_bar_ohlc_rows(
+    db: Session,
+    *,
+    start_date: date,
+    end_date: date,
+    extra_filters: list[Any] | None = None,
+    min_symbols_per_day: int | None = MIN_FULL_MARKET_SYMBOLS,
+) -> int:
+    filters: list[Any] = [
+        DailyBarSnapshot.instrument_type == "stock",
+        DailyBarSnapshot.trade_date >= start_date,
+        DailyBarSnapshot.trade_date <= end_date,
+        daily_bar_invalid_ohlc_filter(),
+    ]
+    if extra_filters:
+        filters.extend(extra_filters)
+    return int(
+        db.execute(select(func.count(DailyBarSnapshot.id)).where(*filters)).scalar_one()
+        or 0
+    )
 
 
 def _backfill_range(*, required_start: date, required_end: date, actual_start: str, actual_end: str) -> tuple[str, str]:
