@@ -47,7 +47,7 @@ These files are kept as historical decision records. Do not treat them as curren
 - `docs/backend-refactor-runtime-runbook-2026-05-22.md`
 - `docs/remaining-architecture-debt-executable-plan-2026-05-24.md`
 
-Archived historical evidence lives under `docs/archive/`; only the current entries above should be treated as active references. Use `docs/archive/plans/` for archived plan docs and `docs/archive/reports/` for older report evidence.
+Archived historical evidence lives under `docs/archive/`; only the current entries above should be treated as active references. Use `docs/archive/plans/` for archived plan docs and `docs/archive/reports/` for older report evidence. Do not treat archived files as current implementation truth without checking the latest code and reports.
 
 ## Reports And Evidence
 
