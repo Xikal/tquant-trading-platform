@@ -76,6 +76,7 @@ def test_quote_cache_refresh_writes_daily_fallback_when_realtime_missing(monkeyp
         )
         service = MarketQuoteCacheRefreshService(db)
         service._target_symbols = lambda limit: ["000001"]  # type: ignore[method-assign]
+        service.market.get_quotes_batch_async_provider = lambda *_args, **_kwargs: {}  # type: ignore[attr-defined, method-assign]
         service.market.get_quotes_batch = lambda *_args, **_kwargs: {}  # type: ignore[method-assign]
 
         result = service.refresh(limit=1)
@@ -87,9 +88,100 @@ def test_quote_cache_refresh_writes_daily_fallback_when_realtime_missing(monkeyp
         assert written["000001"].data_quality == "stale"
 
 
+def test_quote_cache_refresh_uses_worker_async_provider_batch(monkeypatch):
+    Session = _session_factory()
+    with Session() as db:
+        written: dict[str, QuoteSnapshot] = {}
+        monkeypatch.setattr(
+            "app.services.market_quote_cache_refresh.write_local_quote_snapshots",
+            lambda payload: written.update(payload) or len(payload),
+        )
+        service = MarketQuoteCacheRefreshService(db)
+        service._target_symbols = lambda limit: ["000001", "000002"]  # type: ignore[method-assign]
+        calls: list[tuple[list[str], dict[str, object]]] = []
+
+        def async_batch(symbols, **kwargs):  # noqa: ANN001
+            calls.append((list(symbols), dict(kwargs)))
+            return {
+                "000001": _quote("000001"),
+                "000002": _quote("000002"),
+            }
+
+        service.market.get_quotes_batch_async_provider = async_batch  # type: ignore[attr-defined, method-assign]
+        service.market.get_quotes_batch = lambda *_args, **_kwargs: (_ for _ in ()).throw(  # type: ignore[method-assign]
+            AssertionError("worker refresh must use async provider batch before sync fallback")
+        )
+
+        result = service.refresh(limit=2)
+
+        assert result["count"] == 2
+        assert result["missing_count"] == 0
+        assert [symbol for symbol, _quote_item in written.items()] == ["000001", "000002"]
+        assert calls == [
+            (
+                ["000001", "000002"],
+                {"force_refresh": True, "allow_slow_fallback": True},
+            )
+        ]
+
+
+def test_quote_cache_refresh_falls_back_to_sync_batch_when_async_provider_fails(monkeypatch):
+    Session = _session_factory()
+    with Session() as db:
+        written: dict[str, QuoteSnapshot] = {}
+        monkeypatch.setattr(
+            "app.services.market_quote_cache_refresh.write_local_quote_snapshots",
+            lambda payload: written.update(payload) or len(payload),
+        )
+        service = MarketQuoteCacheRefreshService(db)
+        service._target_symbols = lambda limit: ["000001"]  # type: ignore[method-assign]
+        service.market.get_quotes_batch_async_provider = lambda *_args, **_kwargs: (_ for _ in ()).throw(  # type: ignore[attr-defined, method-assign]
+            RuntimeError("async provider down")
+        )
+        sync_calls: list[tuple[list[str], dict[str, object]]] = []
+
+        def sync_batch(symbols, **kwargs):  # noqa: ANN001
+            sync_calls.append((list(symbols), dict(kwargs)))
+            return {"000001": _quote("000001")}
+
+        service.market.get_quotes_batch = sync_batch  # type: ignore[method-assign]
+
+        result = service.refresh(limit=1)
+
+        assert result["count"] == 1
+        assert written["000001"].data_source == "async_provider"
+        assert sync_calls == [
+            (
+                ["000001"],
+                {"force_refresh": True, "allow_slow_fallback": True},
+            )
+        ]
+
+
 def test_quote_cache_ttl_policy_matches_go_market_read_fresh_window():
     assert LOCAL_QUOTE_FRESH_AGE_SECONDS <= 30
     assert LOCAL_QUOTE_TTL_SECONDS >= LOCAL_QUOTE_FRESH_AGE_SECONDS
+
+
+def _quote(symbol: str) -> QuoteSnapshot:
+    return QuoteSnapshot(
+        symbol=symbol,
+        name=symbol,
+        market="SZ",
+        instrument_type="stock",
+        last_price=10.0,
+        change_pct=0.0,
+        change_amount=0.0,
+        open_price=10.0,
+        high_price=10.0,
+        low_price=10.0,
+        prev_close=10.0,
+        volume=1000,
+        amount=10000,
+        timestamp="2026-05-27 10:00:00",
+        data_source="async_provider",
+        source_quality="fresh",
+    )
 
 
 def _session_factory():

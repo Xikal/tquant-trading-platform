@@ -1,5 +1,9 @@
 from __future__ import annotations
 
+import asyncio
+
+import httpx
+
 from app.services.market.local_quote_cache import read_local_quote_snapshot, write_local_quote_snapshot, write_local_quote_snapshots
 from app.services.market.go_read_client import load_go_intraday_latest, load_go_market_read_quotes
 from app.services.market.spot_snapshot import fetch_eastmoney_stock_spot_snapshot_map
@@ -135,6 +139,129 @@ class MarketQuoteMixin:
                 )
             for symbol, snapshot in batch_quotes.items():
                 self._set_quote_cache(symbol, snapshot)
+                result[symbol] = snapshot
+        return result
+
+    def get_quotes_batch_async_provider(
+        self,
+        symbols: list[str],
+        force_refresh: bool = False,
+        allow_slow_fallback: bool = True,
+    ) -> dict[str, QuoteSnapshot]:
+        try:
+            return asyncio.run(self._get_quotes_batch_async_provider(symbols))
+        except Exception:
+            if allow_slow_fallback:
+                return self.get_quotes_batch(
+                    symbols,
+                    force_refresh=force_refresh,
+                    allow_slow_fallback=allow_slow_fallback,
+                )
+            return {}
+
+    async def _get_quotes_batch_async_provider(self, symbols: list[str]) -> dict[str, QuoteSnapshot]:
+        cleaned_symbols = list(dict.fromkeys(symbol.strip() for symbol in symbols if symbol and symbol.strip()))
+        if not cleaned_symbols:
+            return {}
+        if not self._async_provider_can_call("eastmoney", "fetch_quote"):
+            raise DataSourceError("eastmoney fetch_quote circuit open")
+        chunk_size = max(1, int(getattr(self.settings, "market_quote_async_provider_chunk_size", 60) or 60))
+        concurrency = max(1, int(getattr(self.settings, "market_quote_async_provider_concurrency", 4) or 4))
+        timeout = max(float(getattr(self.settings, "market_provider_call_timeout_seconds", 4.0) or 4.0), 0.1)
+        semaphore = asyncio.Semaphore(concurrency)
+        started = time.perf_counter()
+        result: dict[str, QuoteSnapshot] = {}
+        try:
+            async with httpx.AsyncClient(timeout=timeout, trust_env=False) as client:
+                async def fetch_chunk(chunk: list[str]) -> dict[str, QuoteSnapshot]:
+                    async with semaphore:
+                        return await self._fetch_eastmoney_realtime_quotes_chunk_async(
+                            chunk,
+                            timeout=timeout,
+                            client=client,
+                        )
+
+                tasks = [
+                    fetch_chunk(cleaned_symbols[index : index + chunk_size])
+                    for index in range(0, len(cleaned_symbols), chunk_size)
+                ]
+                for chunk_result in await asyncio.gather(*tasks):
+                    result.update(chunk_result)
+        except Exception as exc:
+            self._async_provider_record("eastmoney", "fetch_quote", ok=False, started=started, error=str(exc))
+            raise
+        self._async_provider_record(
+            "eastmoney",
+            "fetch_quote",
+            ok=bool(result),
+            started=started,
+            error="" if result else "empty async quote batch",
+        )
+        if not result:
+            raise DataSourceError("东财异步行情未返回可用报价")
+        return result
+
+    def _async_provider_can_call(self, provider_name: str, operation: str) -> bool:
+        circuits = getattr(getattr(self, "provider_router", None), "circuits", None)
+        if circuits is None:
+            return True
+        return bool(circuits.can_call(provider_name, operation))
+
+    def _async_provider_record(
+        self,
+        provider_name: str,
+        operation: str,
+        *,
+        ok: bool,
+        started: float,
+        error: str,
+    ) -> None:
+        circuits = getattr(getattr(self, "provider_router", None), "circuits", None)
+        if circuits is None:
+            return
+        latency_ms = int((time.perf_counter() - started) * 1000)
+        circuits.record(provider_name, operation, ok=ok, latency_ms=latency_ms, error=error)
+
+    async def _fetch_eastmoney_realtime_quotes_chunk_async(
+        self,
+        symbols: list[str],
+        *,
+        timeout: float,
+        client: httpx.AsyncClient | None = None,
+    ) -> dict[str, QuoteSnapshot]:
+        if not symbols:
+            return {}
+        if client is None:
+            async with httpx.AsyncClient(timeout=timeout, trust_env=False) as active_client:
+                payload = await _async_http_get_json(
+                    active_client,
+                    "https://push2.eastmoney.com/api/qt/ulist.np/get",
+                    {
+                        "fltt": "2",
+                        "fields": "f12,f13,f14,f2,f3,f4,f5,f6,f15,f16,f17,f18,f8,f10,f124",
+                        "secids": ",".join(to_secid(symbol) for symbol in symbols),
+                    },
+                )
+        else:
+            payload = await _async_http_get_json(
+                client,
+                "https://push2.eastmoney.com/api/qt/ulist.np/get",
+                {
+                    "fltt": "2",
+                    "fields": "f12,f13,f14,f2,f3,f4,f5,f6,f15,f16,f17,f18,f8,f10,f124",
+                    "secids": ",".join(to_secid(symbol) for symbol in symbols),
+                },
+            )
+        if payload.get("rc") not in (0, None):
+            raise DataSourceError(str(payload.get("rt") or "东财异步行情返回异常"))
+        rows = ((payload.get("data") or {}).get("diff") or [])
+        result: dict[str, QuoteSnapshot] = {}
+        for row in rows:
+            symbol = _safe_str(row.get("f12")).strip()
+            if not symbol:
+                continue
+            snapshot = self._build_eastmoney_realtime_quote_snapshot(symbol, row)
+            if snapshot.last_price > 0:
                 result[symbol] = snapshot
         return result
 
@@ -419,3 +546,18 @@ class MarketQuoteMixin:
     def _to_sina_symbol(symbol: str) -> str:
         prefix_map = {"SH": "sh", "SZ": "sz", "BJ": "bj"}
         return f"{prefix_map.get(guess_market(symbol), 'sh')}{symbol}"
+
+
+async def _async_http_get_json(
+    client: httpx.AsyncClient,
+    url: str,
+    params: dict[str, object],
+) -> dict[str, object]:
+    response = await client.get(
+        url,
+        params=params,
+        headers={"User-Agent": "Mozilla/5.0", "Referer": "https://quote.eastmoney.com/"},
+    )
+    response.raise_for_status()
+    payload = response.json()
+    return payload if isinstance(payload, dict) else {}

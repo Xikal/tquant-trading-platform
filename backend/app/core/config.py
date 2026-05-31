@@ -163,6 +163,9 @@ class AppSettings(BaseSettings):
     market_provider_circuit_cooldown_max_seconds: int = 90
     market_provider_slow_call_ms: int = 3000
     market_provider_call_timeout_seconds: float = 4.0
+    market_quote_async_provider_enabled: bool = True
+    market_quote_async_provider_chunk_size: int = 60
+    market_quote_async_provider_concurrency: int = 4
     bff_workspace_timeout_seconds: float = 8.0
     market_akshare_quote_fallback_enabled: bool = False
     eastmoney_bypass_proxy: bool = False

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+import time
 import pandas as pd
 from types import SimpleNamespace
 
@@ -9,6 +10,8 @@ from app.services.market import MarketDataService
 from app.models.schemas import QuoteSnapshot
 from app.services.market.providers.akshare_provider import AkshareMarketProvider
 from app.services.market.providers.openbb_provider import OpenBBMarketProvider
+from app.services.market.providers.circuit import ProviderCircuitConfig, ProviderCircuitRegistry
+from app.services.market.providers.circuit_state import ProviderCircuitStore
 from app.services.market.providers.quality import MarketDataQuality, ProviderResult
 from app.services.market.providers.router import MarketProviderRouter
 from app.services.market.sectors import MarketSectorMixin
@@ -86,6 +89,61 @@ def test_force_refresh_batch_bypasses_cached_provider_quote(monkeypatch) -> None
     assert first.last_price == 11.0
     assert refreshed.last_price == 12.0
     assert router.count == 2
+
+
+def test_async_provider_batch_fetches_eastmoney_chunks_concurrently(monkeypatch) -> None:
+    service = MarketDataService()
+    service._quote_cache.clear()
+    settings = service.settings.model_copy(
+        update={
+            "market_quote_async_provider_chunk_size": 1,
+            "market_quote_async_provider_concurrency": 2,
+            "market_provider_call_timeout_seconds": 1.0,
+        }
+    )
+    service.settings = settings
+    service.provider_router.circuits = ProviderCircuitRegistry(ProviderCircuitConfig(), store=ProviderCircuitStore())
+    started: list[str] = []
+
+    async def fake_get_json(_client, _url, params):  # noqa: ANN001
+        symbol = str(params["secids"]).split(".", 1)[-1]
+        started.append(symbol)
+        await __import__("asyncio").sleep(0.04)
+        return {
+            "rc": 0,
+            "data": {
+                "diff": [
+                    {
+                        "f12": symbol,
+                        "f13": "0",
+                        "f14": f"测试{symbol}",
+                        "f2": 10.0,
+                        "f3": 1.0,
+                        "f4": 0.1,
+                        "f5": 1000,
+                        "f6": 10000,
+                        "f15": 10.2,
+                        "f16": 9.8,
+                        "f17": 9.9,
+                        "f18": 9.9,
+                        "f8": 1.1,
+                        "f10": 1.2,
+                        "f124": 1780000000,
+                    }
+                ]
+            },
+        }
+
+    monkeypatch.setattr("app.services.market.quotes._async_http_get_json", fake_get_json)
+
+    started_at = time.perf_counter()
+    result = service.get_quotes_batch_async_provider(["000001", "000002"], force_refresh=True)
+    elapsed = time.perf_counter() - started_at
+
+    assert set(result) == {"000001", "000002"}
+    assert started == ["000001", "000002"]
+    assert elapsed < 0.075
+    assert result["000001"].data_source == "eastmoney_realtime"
 
 
 def test_openbb_provider_keeps_estimated_quote_fields_consistent() -> None:

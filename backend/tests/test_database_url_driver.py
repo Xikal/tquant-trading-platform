@@ -67,3 +67,12 @@ def test_mysql_compose_pool_defaults_match_worker_roles() -> None:
     assert "DB_MAX_OVERFLOW: ${WORKER_DB_MAX_OVERFLOW:-2}" in compose
     assert "DB_POOL_SIZE: ${ANALYTICS_DB_POOL_SIZE:-4}" in compose
     assert "DB_MAX_OVERFLOW: ${ANALYTICS_DB_MAX_OVERFLOW:-4}" in compose
+
+
+def test_mysql_deployment_templates_expose_async_quote_provider_switch() -> None:
+    compose = (ROOT_DIR / "docker-compose.mysql.yml").read_text(encoding="utf-8")
+    env_example = (ROOT_DIR / ".env.docker.example").read_text(encoding="utf-8")
+
+    assert "MARKET_QUOTE_ASYNC_PROVIDER_ENABLED: ${MARKET_QUOTE_ASYNC_PROVIDER_ENABLED:-true}" in compose
+    assert "MARKET_QUOTE_ASYNC_PROVIDER_ENABLED=true" in env_example
+    assert "MARKET_QUOTE_ASYNC_PROVIDER_CONCURRENCY=4" in env_example
