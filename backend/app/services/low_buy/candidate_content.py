@@ -142,7 +142,7 @@ def build_candidate_risks(
     if strategy in {"n_pattern_long_wash", "n_pattern_short_wash"}:
         risks = [
             "跌破启动日低点，说明主力成本区失守，N 字结构直接失败。",
-            "当前是核心生产策略，只能按小仓冲高止盈纪律执行。",
+            "当前为研究层样本，只做观察归因，不进入生产强买。",
         ]
         if strategy == "n_pattern_short_wash":
             risks.append("短洗试错必须次日验证，不能把失败试仓拿成被动持仓。")

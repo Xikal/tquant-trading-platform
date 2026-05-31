@@ -385,7 +385,7 @@ export function TradingWorkspace() {
     await withLoading("ai", async () => {
       const result = await api.buildAiDecisionSupport({
         task: "priority_board_summary",
-        title: "全策略优先级榜盘中解读",
+        title: "生产优先榜盘中解读",
         include_ai: true,
         payload: {
           market_state: monitor.priorityBoard?.market_state_text,
@@ -393,7 +393,7 @@ export function TradingWorkspace() {
           total_candidates: monitor.priorityBoard?.total_candidates,
           immediate_count: monitor.priorityBoard?.immediate_count,
           focus_count: monitor.priorityBoard?.focus_count,
-          items: (monitor.priorityBoard?.items ?? []).slice(0, 12),
+          items: monitor.priorityBoard?.items ?? [],
         },
       });
       setAiResult(result);

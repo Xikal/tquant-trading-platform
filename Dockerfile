@@ -50,16 +50,25 @@ RUN if [ "$INSTALL_RL_EXTRAS" = "1" ] || [ "$WITH_RL" = "1" ] || [ "$WITH_RL" = 
         pip install --retries 8 -r /tmp/backend-requirements-rl-extra.txt; \
     fi
 
+ARG INSTALL_ANALYTICS=0
+COPY backend/requirements-analytics.txt /tmp/backend-requirements-analytics.txt
+RUN if [ "$INSTALL_ANALYTICS" = "1" ] || [ "$INSTALL_ANALYTICS" = "true" ]; then \
+        pip install --retries 8 -r /tmp/backend-requirements-analytics.txt; \
+    fi
+
 COPY backend /app/backend
 COPY scripts /app/scripts
+COPY docs/reports/strategy-24m-backtest-2026-05-30.json /app/docs/reports/strategy-24m-backtest-2026-05-30.json
+COPY docs/reports/focus-strategy-walk-forward-plan-2026-05-28/summary.json /app/docs/reports/focus-strategy-walk-forward-plan-2026-05-28/summary.json
+COPY docs/reports/focus-strategy-parameter-walk-forward-2026-05-28/summary.json /app/docs/reports/focus-strategy-parameter-walk-forward-2026-05-28/summary.json
 COPY --from=frontend-builder /app/frontend/dist /app/frontend/dist
 
 RUN adduser --disabled-password --gecos "" --home /home/tquant tquant \
     && mkdir -p /app/backend/data \
-    && chown -R tquant:tquant /app/backend /app/frontend /app/scripts
+    && chown -R tquant:tquant /app/backend /app/frontend /app/scripts /app/docs
 
 USER tquant
 
 EXPOSE 8000
 
-CMD ["gunicorn", "-k", "uvicorn.workers.UvicornWorker", "-w", "4", "--bind", "0.0.0.0:8000", "app.main:app"]
+CMD ["sh", "-c", "exec gunicorn -k uvicorn.workers.UvicornWorker -w \"${APP_WORKERS:-1}\" --bind 0.0.0.0:8000 app.main:app"]

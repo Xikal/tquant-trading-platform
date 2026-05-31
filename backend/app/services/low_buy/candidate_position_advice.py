@@ -42,8 +42,8 @@ _BUY_NOW_ADVICE: dict[str, tuple[float, str]] = {
     "breakout_support": (20.0, "突破回踩更看确认，先试仓 20%。"),
     "limit_up_breakout_retrace": (18.0, "突破回踩型机会更强调确认，先试仓 18%。"),
     "divergence_consensus": (16.0, "分歧转一致属于右侧确认，先试仓 16%，跌回突破位不留恋。"),
-    "n_pattern_long_wash": (12.0, "长洗 N 字已纳入核心生产策略，只做冲高止盈，先试仓 12%。"),
-    "n_pattern_short_wash": (8.0, "短洗 N 字已纳入核心生产策略，只做 T+1/T+2 冲高止盈，先试仓 8%。"),
+    "n_pattern_long_wash": (0.0, "长洗 N 字已降为研究层，只记录观察样本，不进入生产试仓。"),
+    "n_pattern_short_wash": (0.0, "短洗 N 字为删除候选研究样本，只归档验证，不进入生产试仓。"),
     "deep_pullback": (15.0, "深水低吸风险高，只建议 15% 试仓。"),
     "trend_rebound": (25.0, "趋势龙回头，先试仓 25%，不要一次打满。"),
 }
@@ -60,8 +60,8 @@ _SOFT_BUY_ADVICE: dict[str, tuple[float, str]] = {
     "breakout_support": (15.0, "突破回踩先轻仓，等进一步承接。"),
     "limit_up_breakout_retrace": (12.0, "涨停突破回踩先小仓试错，确认二次转强再加。"),
     "divergence_consensus": (10.0, "突破确认还不够硬，只允许 10% 轻仓观察。"),
-    "n_pattern_long_wash": (8.0, "长洗 N 字软确认只做 8% 轻仓，盈利来源以冲高兑现为主。"),
-    "n_pattern_short_wash": (5.0, "短洗 N 字软确认只做 5% 轻仓，次日不冲高就快速退出。"),
+    "n_pattern_long_wash": (0.0, "长洗 N 字软确认只记录研究样本，不进入生产试仓。"),
+    "n_pattern_short_wash": (0.0, "短洗 N 字软确认只做研究归档，不进入生产试仓。"),
     "deep_pullback": (10.0, "深水回撤只允许更轻的软确认试仓。"),
     "trend_rebound": (18.0, "龙回头软确认，先轻仓参与。"),
 }

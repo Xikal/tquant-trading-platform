@@ -23,10 +23,10 @@ def test_production_requires_secure_refresh_cookie() -> None:
         validate_security_settings(settings)
 
 
-def test_production_allows_insecure_refresh_cookie_only_with_explicit_ip_access_override() -> None:
+def test_production_rejects_insecure_refresh_cookie_even_with_override() -> None:
     settings = AppSettings(
         app_environment="production",
-        auth_cookie_secure=False,
+        auth_cookie_secure=True,
         auth_allow_insecure_http_cookie=True,
         auth_cookie_samesite="strict",
         auth_secret_key=STRONG_TEST_SECRET,
@@ -34,7 +34,8 @@ def test_production_allows_insecure_refresh_cookie_only_with_explicit_ip_access_
         global_rate_limit_backend="redis",
     )
 
-    validate_security_settings(settings)
+    with pytest.raises(RuntimeError, match="AUTH_ALLOW_INSECURE_HTTP_COOKIE"):
+        validate_security_settings(settings)
 
 
 def test_production_accepts_secure_strict_cookie() -> None:
@@ -91,6 +92,20 @@ def test_multi_worker_rejects_memory_rate_limit_even_outside_production() -> Non
 
     with pytest.raises(RuntimeError, match="多 worker"):
         validate_security_settings(settings)
+
+
+def test_single_worker_development_allows_memory_rate_limit() -> None:
+    settings = AppSettings(
+        app_environment="development",
+        auth_cookie_secure=False,
+        auth_cookie_samesite="lax",
+        auth_secret_key="",
+        tquant_settings_encryption_key="",
+        app_workers=1,
+        global_rate_limit_backend="memory",
+    )
+
+    validate_security_settings(settings)
 
 
 def test_production_requires_internal_token_for_microservice_urls() -> None:

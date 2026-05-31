@@ -3,8 +3,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 
-PRODUCTION_SCORING_CONFIG_VERSION = "front_row_weighted_v1_2026-05-29"
-PRODUCTION_SCORING_VALIDATION_CONFIG_VERSION = "front_row_weighted_v1_2026-05-30_validation"
+PRODUCTION_SCORING_CONFIG_VERSION = "front_row_weighted_policy_v2_2026-05-30"
+PRODUCTION_SCORING_VALIDATION_CONFIG_VERSION = "front_row_weighted_policy_v2_2026-05-30_validation"
 
 BASE_PRODUCTION_SCORE = 50.0
 BASE_WATCH_SCORE = 45.0
@@ -35,22 +35,8 @@ WATCH_SIGNAL_WEIGHTS: dict[str, float] = {
 
 PRODUCTION_STRATEGY_PRIORS: dict[str, float] = {
     "first_board": 14.0,
-    "ma_channel_band": 10.0,
-    "leader_pullback_band": 8.0,
     "volume_shrink": 5.0,
-    "deep_pullback": 4.0,
-    "n_pattern_long_wash": 3.0,
-    "classic_retrace": 2.0,
-    "ma_support": 2.0,
     "late_session_strong_support": 3.0,
-    "core_midcap_vwap_ma5_retrace": 1.0,
-    "breakout_support": 0.0,
-    "limit_up_breakout_retrace": -2.0,
-    "trend_rebound": -3.0,
-    "n_pattern_short_wash": -10.0,
-    "divergence_consensus": -10.0,
-    "sector_mainline_first_divergence_low_buy": -10.0,
-    "mainline_limitup_shrink_retrace_reclaim": -10.0,
 }
 
 WATCH_STRATEGY_PRIORS: dict[str, float] = {
@@ -95,15 +81,8 @@ FRONT_ROW_WATCH_WEIGHTS: dict[str, float] = {
 
 FRONT_ROW_INTERACTION_WEIGHTS: dict[str, float] = {
     "first_board": 6.0,
-    "leader_pullback_band": 6.0,
-    "n_pattern_long_wash": 4.0,
     "late_session_strong_support": 3.0,
-    "ma_support": 2.0,
-    "ma_channel_band": 1.0,
     "volume_shrink": 0.0,
-    "breakout_support": 0.0,
-    "trend_rebound": -1.0,
-    "deep_pullback": -1.0,
 }
 
 FRONT_ROW_INTERACTION_TIERS = {"core_leader", "leader_hot", "strong_follower"}
@@ -134,22 +113,13 @@ RETREAT_MARKET_STATES = {"high_flyer_retreat", "risk_release"}
 WEAK_MARKET_STATES = {"low_volume_wait", "fast_rotation"}
 LAGGARD_TIERS = {"laggard", "cold_laggard"}
 
-PAUSED_PRODUCTION_STRATEGIES = {
-    "n_pattern_short_wash",
-    "divergence_consensus",
-    "sector_mainline_first_divergence_low_buy",
-    "mainline_limitup_shrink_retrace_reclaim",
-}
-
-
 @dataclass(frozen=True)
 class ProductionScoringCaps:
     laggard: float = 68.0
     weak_market_laggard: float = 55.0
     retreat_market: float = 50.0
-    high_drawdown_strategy: float = 72.0
-    insufficient_sample_strategy: float = 74.0
-    paused_production_strategy: float = 60.0
+    low_sample_strategy: float = 74.0
+    non_production_strategy: float = 0.0
 
 
 CAPS = ProductionScoringCaps()

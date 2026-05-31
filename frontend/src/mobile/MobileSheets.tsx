@@ -62,7 +62,7 @@ export function PriorityActionSheet({
   if (!item) {
     return null
   }
-  const strategies = item.strategy_titles?.length ? item.strategy_titles.join(" / ") : item.strategy_title || "全策略"
+  const strategies = item.strategy_titles?.length ? item.strategy_titles.join(" / ") : item.strategy_title || "生产优先榜"
   const mainline = item.industry_tier_text || item.industry_tier || "主线状态待确认"
 
   return (

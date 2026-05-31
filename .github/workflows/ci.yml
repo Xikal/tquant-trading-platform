@@ -57,6 +57,13 @@ jobs:
       - name: Install frontend dependencies
         working-directory: frontend
         run: npm ci
+      - name: Check frontend API contract
+        working-directory: frontend
+        run: npm run api:check
+      - name: Verify generated frontend files are current
+        run: |
+          python scripts/sync_strategy_meta_fallback.py
+          git diff --exit-code -- frontend/src/generated/strategyMetaFallback.ts
       - name: Run frontend lint and refactor guards
         working-directory: frontend
         run: npm run lint
@@ -124,7 +131,7 @@ jobs:
           BACKUP_TIME: ${{ secrets.BACKUP_TIME }}
           AUTO_INSTALL_BACKUP_CRON: "1"
           AUTO_CONFIGURE_HTTPS: "1"
-          HTTPS_REQUIRED: "0"
+          HTTPS_REQUIRED: "1"
           RUN_FULL_TESTS: "0"
         run: |
           if [ -z "${CLOUD_HOST}" ] || [ -z "${CLOUD_USER}" ]; then

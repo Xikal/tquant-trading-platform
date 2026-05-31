@@ -19,7 +19,7 @@ class LowBuyProductionScoringTests(unittest.TestCase):
         self.assertIn("near_entry_watch_only", result.warning_tags)
 
     def test_soft_buy_now_scores_above_same_condition_buy_now(self) -> None:
-        buy_now = _candidate("classic_retrace").model_copy(
+        buy_now = _candidate("first_board").model_copy(
             update={
                 "buy_signal_state": "buy_now",
                 "leader_rank": "unknown",
@@ -109,14 +109,37 @@ class LowBuyProductionScoringTests(unittest.TestCase):
         self.assertLessEqual(result.production_score or 0.0, 50.0)
         self.assertEqual(result.decision, "watch_only_retreat_market")
 
-    def test_paused_production_strategy_has_no_production_score(self) -> None:
+    def test_non_production_strategy_has_no_production_score(self) -> None:
         candidate = _front_row_candidate("n_pattern_short_wash")
 
         result = score_low_buy_candidate_for_production(candidate)
 
         self.assertIsNone(result.production_score)
-        self.assertEqual(result.decision, "paused_strategy_watch_only")
-        self.assertIn("paused_production_strategy", result.exclusion_reasons)
+        self.assertEqual(result.decision, "research_watch_only")
+        self.assertIn("non_production_strategy", result.exclusion_reasons)
+
+    def test_n_pattern_long_wash_has_no_production_score_or_prior(self) -> None:
+        candidate = _front_row_candidate("n_pattern_long_wash")
+
+        result = score_low_buy_candidate_for_production(candidate)
+
+        self.assertIsNone(result.production_score)
+        self.assertEqual(result.decision, "research_watch_only")
+        self.assertNotIn("strategy_prior", result.score_components)
+        self.assertNotIn("strategy_front_interaction", result.score_components)
+        self.assertIn("non_production_strategy", result.warning_tags)
+
+    def test_low_sample_auxiliary_strategy_is_capped(self) -> None:
+        candidate = _front_row_candidate("late_session_strong_support").model_copy(
+            update={"multi_timeframe_resonance_score": 20.0}
+        )
+
+        result = score_low_buy_candidate_for_production(candidate)
+
+        self.assertIsNotNone(result.production_score)
+        self.assertEqual(result.score_cap, 74.0)
+        self.assertLessEqual(result.production_score or 0.0, 74.0)
+        self.assertIn("low_sample_capped", result.warning_tags)
 
     def test_hard_risk_excludes_candidate(self) -> None:
         candidate = _front_row_candidate().model_copy(

@@ -14,17 +14,12 @@ CORE_STRATEGIES = frozenset(
     {
         "first_board",
         "volume_shrink",
-        "n_pattern_long_wash",
-        "n_pattern_short_wash",
     }
 )
 
 AUXILIARY_STRATEGIES = frozenset(
     {
         "late_session_strong_support",
-        "core_midcap_vwap_ma5_retrace",
-        "sector_mainline_first_divergence_low_buy",
-        "mainline_limitup_shrink_retrace_reclaim",
     }
 )
 
@@ -37,10 +32,17 @@ RESEARCH_STRATEGIES = frozenset(
         "divergence_consensus",
         "ma_channel_band",
         "leader_pullback_band",
+        "n_pattern_long_wash",
+        "n_pattern_short_wash",
+        "core_midcap_vwap_ma5_retrace",
+        "sector_mainline_first_divergence_low_buy",
+        "mainline_limitup_shrink_retrace_reclaim",
     }
 )
 
 OBSERVATION_LAYER_STRATEGIES = frozenset()
+
+LOW_SAMPLE_CAPPED_STRATEGIES = frozenset({"late_session_strong_support"})
 
 FACTOR_STRATEGIES = frozenset(
     {
@@ -93,6 +95,10 @@ def is_factor_strategy(strategy_key: str) -> bool:
 
 def is_observation_layer_strategy(strategy_key: str) -> bool:
     return strategy_key in OBSERVATION_LAYER_STRATEGIES
+
+
+def is_low_sample_capped_strategy(strategy_key: str) -> bool:
+    return strategy_key in LOW_SAMPLE_CAPPED_STRATEGIES
 
 
 def get_tier_weight(strategy_key: str) -> float:

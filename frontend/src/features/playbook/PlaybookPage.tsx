@@ -9,6 +9,7 @@ import { WEB_PLAYBOOK_TABS } from "../workspace-shared/workspaceConstants";
 import { candidateToCard } from "../workspace-shared/workspaceViewModels";
 import { formatNumber, formatPct, strategyLabel } from "../workspace-shared/workspaceFormatters";
 import type { MetricItem, StockCardView } from "../workspace-shared/workspaceTypes";
+import { VirtualCardList } from "../../ui/list/VirtualCardList";
 
 const PLAYBOOK_PAGE_STYLE: CSSProperties = {
   display: "grid",
@@ -105,7 +106,7 @@ export function PlaybookPage({
   const nearEntry = allCandidates.filter((item) => item.buy_signal_state === "near_entry").map(candidateToCard);
   const watch = allCandidates.filter((item) => item.buy_signal_state === "watch").map(candidateToCard);
   const avoid = allCandidates.filter((item) => item.buy_signal_state === "avoid").map(candidateToCard);
-  const passiveCandidates = [...watch, ...avoid].slice(0, 16);
+  const passiveCandidates = [...watch, ...avoid];
   const executableCount = buyNow.length + observeConfirmed.length + nearEntry.length;
   const focus = buyNow[0] ?? observeConfirmed[0] ?? nearEntry[0] ?? watch[0];
   const strategyName = tabLabel(strategy, tabs) || strategyLabel(strategy);
@@ -227,10 +228,10 @@ function strategyPurpose(strategyKey: string): string {
   if (strategyKey.includes("first_board")) return "首板回调，只看启动后第一次承接。";
   if (strategyKey.includes("volume_shrink")) return "缩量回踩，等价格接近支撑再看。";
   if (strategyKey.includes("late_session")) return "收盘承接，主要看次日冲高兑现。";
-  if (strategyKey.includes("core_midcap")) return "板块中军回踩，只做主线核心。";
-  if (strategyKey.includes("mainline") || strategyKey.includes("divergence")) return "主线首分歧，确认修复前不追。";
-  if (strategyKey.includes("n_pattern_long")) return "长洗 N 字核心生产策略，主要看 3-5 日冲高止盈。";
-  if (strategyKey.includes("n_pattern_short")) return "短洗 N 字核心生产策略，主要看 T+1/T+2 冲高止盈。";
+  if (strategyKey.includes("core_midcap")) return "板块中军回踩，当前只做研究观察。";
+  if (strategyKey.includes("mainline") || strategyKey.includes("divergence")) return "主线分歧研究，确认修复前不追。";
+  if (strategyKey.includes("n_pattern_long")) return "长洗 N 字研究策略，因 24M 回撤过高不进生产榜。";
+  if (strategyKey.includes("n_pattern_short")) return "短洗 N 字研究归档，因 24M 结果弱不进生产榜。";
   return "按当前策略规则分层筛选，先看买点和止损。";
 }
 
@@ -340,8 +341,13 @@ function DenseCandidateList({
     return <EmptyState text={empty} />;
   }
   return (
-    <div style={PLAYBOOK_DENSE_LIST_STYLE}>
-      {items.slice(0, 18).map((stock) => (
+    <VirtualCardList
+      items={items}
+      estimateSize={54}
+      maxHeight={520}
+      style={PLAYBOOK_DENSE_LIST_STYLE}
+      getItemKey={(stock) => `${stock.symbol}-${stock.actionText}`}
+      renderItem={(stock) => (
         <article key={`${stock.symbol}-${stock.actionText}`} style={PLAYBOOK_DENSE_ROW_STYLE}>
           <div style={PLAYBOOK_DENSE_NAME_STYLE}>
             <strong style={PLAYBOOK_DENSE_TEXT_STYLE}>{stock.name}</strong>
@@ -357,8 +363,8 @@ function DenseCandidateList({
             <Button size="small" type="primary" onClick={() => onAnalyze(stock)}>分析</Button>
           </Flex>
         </article>
-      ))}
-    </div>
+      )}
+    />
   );
 }
 

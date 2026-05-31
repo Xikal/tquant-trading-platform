@@ -176,6 +176,11 @@ def test_manual_ml_model_promotion_revalidates_current_thresholds_before_archivi
 
 def test_strategy_self_evolution_runtime_task(monkeypatch) -> None:
     db = _db()
+    monkeypatch.setenv("TQUANT_RESEARCH_JOBS_ENABLED", "true")
+    monkeypatch.setenv("TQUANT_ML_JOBS_ENABLED", "true")
+    from app.core.config import get_settings
+
+    get_settings.cache_clear()
 
     def _run_stub(self, payload):  # noqa: ANN001
         return {"ok": True, "payload": payload}
@@ -185,6 +190,7 @@ def test_strategy_self_evolution_runtime_task(monkeypatch) -> None:
     result = _execute_task("strategy_self_evolution", {"min_samples": 100}, db)
 
     assert result == {"ok": True, "payload": {"min_samples": 100}}
+    get_settings.cache_clear()
 
 
 def test_strategy_self_evolution_orchestrator_marks_human_approval(monkeypatch) -> None:

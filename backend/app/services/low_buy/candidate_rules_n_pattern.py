@@ -14,7 +14,7 @@ def n_pattern_long_wash_setup(item: BoardCandidate, metrics: CandidateMetrics, s
         entry_zone_low=round(anchor * execution["entry_low_multiplier"], 3),
         entry_zone_high=round(max(anchor, metrics.ma10) * execution["entry_high_multiplier"], 3),
         execution_ready=setup_ready,
-        execution_note="长洗 N 字已纳入核心生产层，只在严格确认后参与，盈利以 3-5 日冲高止盈为主。",
+        execution_note="长洗 N 字已降为研究层，只记录严格确认样本，盈利以 3-5 日冲高观察为主。",
         summary_reason="大阳启动后 7-15 日缩量洗盘，未跌破启动低点，最新出现放量修复。",
         reasons=[
             f"启动日低点 {metrics.board_low:.3f} 未被有效跌破，主力成本区仍被守住。",
@@ -32,7 +32,7 @@ def n_pattern_short_wash_setup(item: BoardCandidate, metrics: CandidateMetrics, 
         entry_zone_low=round(anchor * execution["entry_low_multiplier"], 3),
         entry_zone_high=round(max(anchor, metrics.ma5) * execution["entry_high_multiplier"], 3),
         execution_ready=setup_ready,
-        execution_note="短洗 N 字已纳入核心生产层，只做 T+1/T+2 冲高止盈，失败必须快速退出。",
+        execution_note="短洗 N 字为研究归档/删除候选，只记录 T+1/T+2 冲高验证，失败样本快速归因。",
         summary_reason="启动后 2-5 日快速分歧，红十字/锤头线守住启动低点，观察尾盘试错机会。",
         reasons=[
             f"启动后快速分歧 {metrics.retracement_days} 天，仍守住启动低点 {metrics.board_low:.3f}。",

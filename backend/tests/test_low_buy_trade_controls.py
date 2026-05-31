@@ -276,8 +276,6 @@ class LowBuyTradeControlTests(unittest.TestCase):
             "first_board",
             "volume_shrink",
             "late_session_strong_support",
-            "core_midcap_vwap_ma5_retrace",
-            "sector_mainline_first_divergence_low_buy",
         )
         demoted = (
             "limit_up_breakout_retrace",
@@ -287,6 +285,11 @@ class LowBuyTradeControlTests(unittest.TestCase):
             "divergence_consensus",
             "deep_pullback",
             "trend_rebound",
+            "n_pattern_long_wash",
+            "n_pattern_short_wash",
+            "core_midcap_vwap_ma5_retrace",
+            "sector_mainline_first_divergence_low_buy",
+            "mainline_limitup_shrink_retrace_reclaim",
         )
         for strategy in production:
             self.assertTrue(participates_in_priority_board(strategy), strategy)

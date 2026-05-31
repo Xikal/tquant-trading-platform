@@ -15,7 +15,6 @@ from app.services.low_buy.production_scoring_config import (
     LAGGARD_TIERS,
     MARKET_PRODUCTION_WEIGHTS,
     MARKET_WATCH_WEIGHTS,
-    PAUSED_PRODUCTION_STRATEGIES,
     PORTFOLIO_CANDIDATE_SCORE_THRESHOLD,
     PRODUCTION_SCORING_CONFIG_VERSION,
     PRODUCTION_SIGNAL_WEIGHTS,
@@ -26,6 +25,7 @@ from app.services.low_buy.production_scoring_config import (
     WATCH_STRATEGY_PRIORS,
     WEAK_MARKET_STATES,
 )
+from app.services.low_buy.strategy_policy import is_low_sample_capped_strategy, participates_in_priority_board
 
 
 PRODUCTION_STATES = {"buy_now", "soft_buy_now"}
@@ -125,16 +125,16 @@ def score_low_buy_candidate_for_production(
             warning_tags=_dedupe(warnings),
         )
 
-    if strategy_key in PAUSED_PRODUCTION_STRATEGIES:
-        warnings.append("paused_production_strategy")
+    if not participates_in_priority_board(strategy_key):
+        warnings.append("non_production_strategy")
         return ProductionScoreResult(
             production_score=None,
             watch_score=watch_score,
-            decision="paused_strategy_watch_only",
+            decision="research_watch_only",
             front_row_tier=front_row_tier,
-            score_cap=CAPS.paused_production_strategy,
+            score_cap=CAPS.non_production_strategy,
             score_components={},
-            exclusion_reasons=["paused_production_strategy"],
+            exclusion_reasons=["non_production_strategy"],
             warning_tags=_dedupe(warnings),
         )
 
@@ -157,6 +157,8 @@ def score_low_buy_candidate_for_production(
     decision = _decision(production_score, market_state=market_state)
     if front_row_tier in LAGGARD_TIERS:
         warnings.append("laggard_capped")
+    if is_low_sample_capped_strategy(strategy_key):
+        warnings.append("low_sample_capped")
     if market_state in RETREAT_MARKET_STATES:
         warnings.append("retreat_market_no_new_position")
     elif market_state in WEAK_MARKET_STATES and front_row_tier in LAGGARD_TIERS:
@@ -246,10 +248,8 @@ def _score_cap(*, strategy_key: str, market_state: str, front_row_tier: str) -> 
         cap = min(cap, CAPS.weak_market_laggard)
     if market_state in RETREAT_MARKET_STATES:
         cap = min(cap, CAPS.retreat_market)
-    if strategy_key == "n_pattern_long_wash":
-        cap = min(cap, CAPS.high_drawdown_strategy)
-    if strategy_key == "deep_pullback":
-        cap = min(cap, CAPS.insufficient_sample_strategy)
+    if is_low_sample_capped_strategy(strategy_key):
+        cap = min(cap, CAPS.low_sample_strategy)
     return float(cap)
 
 

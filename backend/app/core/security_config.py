@@ -9,12 +9,14 @@ _WEAK_AUTH_SECRETS = {"default_secret", "tquant_secret_2024", "test-secret", "te
 def validate_security_settings(settings: AppSettings) -> None:
     """Fail fast for production-like insecure auth cookie settings."""
 
-    if settings.app_workers > 1 and (settings.global_rate_limit_backend or "memory").strip().lower() == "memory":
+    if _memory_limited_multi_worker(settings):
         raise RuntimeError("多 worker 部署必须配置 GLOBAL_RATE_LIMIT_BACKEND=redis 或网关限流")
     if not _production_like(settings):
         return
-    if not settings.auth_cookie_secure and not settings.auth_allow_insecure_http_cookie:
+    if not settings.auth_cookie_secure:
         raise RuntimeError("生产环境必须启用 AUTH_COOKIE_SECURE=true")
+    if settings.auth_allow_insecure_http_cookie:
+        raise RuntimeError("生产环境必须启用 AUTH_ALLOW_INSECURE_HTTP_COOKIE=false")
     if settings.auth_cookie_samesite.strip().lower() != "strict":
         raise RuntimeError("生产环境必须启用 AUTH_COOKIE_SAMESITE=strict")
     if _weak_auth_secret(settings.auth_secret_key):
@@ -57,3 +59,7 @@ def _microservice_urls_configured(settings: AppSettings) -> bool:
             settings.tquant_admin_service_url,
         )
     )
+
+
+def _memory_limited_multi_worker(settings: AppSettings) -> bool:
+    return settings.app_workers > 1 and (settings.global_rate_limit_backend or "memory").strip().lower() == "memory"

@@ -91,19 +91,16 @@ def escape_like(value: str) -> str:
 
 
 def strategy_tier(seed: StrategyDisplaySeed) -> StrategyTier:
-    try:
-        return StrategyTier(seed.tier)
-    except ValueError:
-        return get_strategy_tier(seed.key)
+    return get_strategy_tier(seed.key)
 
 
 def metadata_fallback_tier(seed: StrategyDisplaySeed | None, row: StrategyMetadata | None) -> StrategyTier:
+    if seed is not None:
+        return strategy_tier(seed)
     if row is not None:
         normalized = normalize_tier(getattr(row, "category", "") or "")
         if normalized in {"core", "auxiliary", "research", "factor"}:
             return StrategyTier(normalized)
-    if seed is not None:
-        return strategy_tier(seed)
     return StrategyTier.RESEARCH
 
 

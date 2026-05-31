@@ -25,3 +25,8 @@ rust/**/target/
 .mysql-local/
 .mysql-dist/*.tar
 backups/
+docs/reports/*.zip
+docs/reports/*-backtest-*.json
+docs/reports/*-performance-*.json
+backend/data/analytics/reports/*.json
+backend/data/analytics/parquet/

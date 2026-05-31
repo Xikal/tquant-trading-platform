@@ -71,6 +71,22 @@ def _background_jobs_enabled() -> bool:
     return True
 
 
+def _research_jobs_enabled() -> bool:
+    return settings.tquant_research_jobs_enabled
+
+
+def _ml_jobs_enabled() -> bool:
+    return _research_jobs_enabled() and settings.tquant_ml_jobs_enabled
+
+
+def _factor_jobs_enabled() -> bool:
+    return _research_jobs_enabled() and settings.tquant_factor_jobs_enabled
+
+
+def _strategy_evolution_jobs_enabled() -> bool:
+    return _research_jobs_enabled() and settings.tquant_strategy_evolution_enabled
+
+
 def _background_low_buy_strategies() -> list[str]:
     if settings.database_url.startswith("sqlite"):
         return [strategy for strategy in PLAYBOOKS if strategy in PRODUCTION_PRIORITY_STRATEGIES]
@@ -194,6 +210,8 @@ def _warm_market_regime_once() -> None:
 
 
 def _run_monthly_strategy_validation_once() -> None:
+    if not _research_jobs_enabled():
+        return
     if settings.database_url.startswith("sqlite"):
         return
     with SessionLocal() as db:
@@ -203,6 +221,8 @@ def _run_monthly_strategy_validation_once() -> None:
 
 
 def _run_backtest_research_worker_once() -> None:
+    if not _research_jobs_enabled():
+        return
     result = BacktestResearchWorker().run_once()
     if result is not None:
         logger.info(
@@ -215,6 +235,8 @@ def _run_backtest_research_worker_once() -> None:
 
 
 def _refresh_low_buy_strategy_governance_once() -> None:
+    if not _research_jobs_enabled():
+        return
     if settings.database_url.startswith("sqlite"):
         return
     with SessionLocal() as db:
@@ -257,6 +279,8 @@ def _push_agent_daily_report_once() -> None:
 
 
 def _enqueue_ml_incremental_train_once() -> None:
+    if not _ml_jobs_enabled():
+        return
     enqueue_strategy_self_evolution_once(beijing_now())
 
 
@@ -340,7 +364,8 @@ def _acquire_background_leader_lock() -> bool:
 def start_runtime_background_jobs() -> None:
     background_leader = _background_jobs_enabled() and _acquire_background_leader_lock()
     if background_leader:
-        start_strategy_evolution_scheduler()
+        if _strategy_evolution_jobs_enabled():
+            start_strategy_evolution_scheduler()
         threading.Thread(target=_startup_maintenance_and_warm_runtime_caches, daemon=True).start()
         task_manager.register_loop(
             name="low_buy_full_scan",
@@ -406,25 +431,26 @@ def start_runtime_background_jobs() -> None:
                 interval_seconds=300,
                 initial_delay_seconds=105,
             )
-        if settings.strategy_validation_monthly_enabled:
+        if settings.strategy_validation_monthly_enabled and _research_jobs_enabled():
             task_manager.register_loop(
                 name="strategy_validation_monthly",
                 target=_run_monthly_strategy_validation_once,
                 interval_seconds=24 * 60 * 60,
                 initial_delay_seconds=180,
             )
-        task_manager.register_loop(
-            name="backtest_research_worker",
-            target=_run_backtest_research_worker_once,
-            interval_seconds=15,
-            initial_delay_seconds=45,
-        )
-        task_manager.register_loop(
-            name="low_buy_strategy_governance",
-            target=_refresh_low_buy_strategy_governance_once,
-            interval_seconds=60 * 60,
-            initial_delay_seconds=210,
-        )
+        if _research_jobs_enabled():
+            task_manager.register_loop(
+                name="backtest_research_worker",
+                target=_run_backtest_research_worker_once,
+                interval_seconds=15,
+                initial_delay_seconds=45,
+            )
+            task_manager.register_loop(
+                name="low_buy_strategy_governance",
+                target=_refresh_low_buy_strategy_governance_once,
+                interval_seconds=60 * 60,
+                initial_delay_seconds=210,
+            )
         if settings.notification_signal_scan_enabled:
             task_manager.register_loop(
                 name="agent_priority_notifications",
@@ -438,30 +464,32 @@ def start_runtime_background_jobs() -> None:
             interval_seconds=300,
             initial_delay_seconds=150,
         )
-        task_manager.register_loop(
-            name="ml_signal_incremental_train_weekly",
-            target=_enqueue_ml_incremental_train_once,
-            interval_seconds=60 * 60,
-            initial_delay_seconds=240,
-        )
-        task_manager.register_loop(
-            name="ml_feature_drift_monitor_monthly",
-            target=enqueue_monthly_drift_monitor_once,
-            interval_seconds=60 * 60,
-            initial_delay_seconds=300,
-        )
+        if _ml_jobs_enabled():
+            task_manager.register_loop(
+                name="ml_signal_incremental_train_weekly",
+                target=_enqueue_ml_incremental_train_once,
+                interval_seconds=60 * 60,
+                initial_delay_seconds=240,
+            )
+            task_manager.register_loop(
+                name="ml_feature_drift_monitor_monthly",
+                target=enqueue_monthly_drift_monitor_once,
+                interval_seconds=60 * 60,
+                initial_delay_seconds=300,
+            )
         task_manager.register_loop(
             name="paper_ledger_reconcile_preview_daily",
             target=enqueue_daily_ledger_reconcile_preview_once,
             interval_seconds=60 * 60,
             initial_delay_seconds=330,
         )
-        task_manager.register_loop(
-            name="factor_mining_monthly",
-            target=enqueue_monthly_factor_mining_once,
-            interval_seconds=60 * 60,
-            initial_delay_seconds=360,
-        )
+        if _factor_jobs_enabled():
+            task_manager.register_loop(
+                name="factor_mining_monthly",
+                target=enqueue_monthly_factor_mining_once,
+                interval_seconds=60 * 60,
+                initial_delay_seconds=360,
+            )
         if settings.paper_auto_trading_enabled:
             logger.info("启动模拟盘自动交易")
             start_auto_trader(build_auto_trader_config(settings))

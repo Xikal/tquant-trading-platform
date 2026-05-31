@@ -91,6 +91,8 @@ describe("MonitorPage", () => {
     expect(html).toContain("前排加权");
     expect(html).toContain("前排极精选");
     expect(html).toContain("只做验证，暂不影响真实排序");
+    expect(html).toContain("今日无生产可推荐票");
+    expect(html).toContain("研究观察池只做提醒");
   });
 
   it("renders hourly all-market snapshot feedback", () => {

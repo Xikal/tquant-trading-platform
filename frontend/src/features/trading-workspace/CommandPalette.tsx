@@ -22,7 +22,7 @@ type CommandItem =
   | { type: "symbol"; label: string; hint: string; symbol: string };
 
 const PAGE_COMMANDS: CommandItem[] = [
-  { type: "page", label: "实时监控", hint: "打开持仓和全策略榜单", page: "monitor" },
+  { type: "page", label: "实时监控", hint: "打开持仓和生产优先榜", page: "monitor" },
   { type: "page", label: "量化分析", hint: "打开单票做T分析", page: "analysis" },
   { type: "page", label: "选股宝典", hint: "打开低吸策略候选", page: "playbook" },
   { type: "page", label: "策略跟踪", hint: "查看生产策略推荐后的表现", page: "strategy-tracking" },

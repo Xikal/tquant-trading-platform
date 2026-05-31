@@ -32,12 +32,7 @@ class LowBuyStrategyReplacementTests(unittest.TestCase):
         production = {
             "first_board",
             "volume_shrink",
-            "n_pattern_long_wash",
-            "n_pattern_short_wash",
             "late_session_strong_support",
-            "core_midcap_vwap_ma5_retrace",
-            "sector_mainline_first_divergence_low_buy",
-            "mainline_limitup_shrink_retrace_reclaim",
         }
         demoted = {
             "classic_retrace",
@@ -47,6 +42,11 @@ class LowBuyStrategyReplacementTests(unittest.TestCase):
             "trend_rebound",
             "deep_pullback",
             "limit_up_breakout_retrace",
+            "n_pattern_long_wash",
+            "n_pattern_short_wash",
+            "core_midcap_vwap_ma5_retrace",
+            "sector_mainline_first_divergence_low_buy",
+            "mainline_limitup_shrink_retrace_reclaim",
         }
 
         for strategy in production:
@@ -56,6 +56,8 @@ class LowBuyStrategyReplacementTests(unittest.TestCase):
         for strategy in demoted:
             self.assertFalse(participates_in_priority_board(strategy), strategy)
         self.assertEqual(strategy_layer("deep_pullback"), "research")
+        self.assertEqual(strategy_layer("core_midcap_vwap_ma5_retrace"), "research")
+        self.assertEqual(strategy_layer("mainline_limitup_shrink_retrace_reclaim"), "research")
         self.assertTrue(requires_mainline_industry("core_midcap_vwap_ma5_retrace"))
         self.assertTrue(requires_mainline_industry("mainline_limitup_shrink_retrace_reclaim"))
         self.assertEqual(DEFAULT_PRODUCTION_LOW_BUY_STRATEGY, "first_board")
@@ -319,7 +321,7 @@ class LowBuyStrategyReplacementTests(unittest.TestCase):
 
         self.assertTrue(passes_strategy_prefilter(strategy, item, double_bottom_metrics))
 
-    def test_n_pattern_strategies_are_core_production_and_use_launch_low_guard(self) -> None:
+    def test_n_pattern_strategies_are_research_and_use_launch_low_guard(self) -> None:
         item = _item(amount=220_000_000)
         long_metrics = _metrics(
             retracement_days=10,
@@ -357,10 +359,10 @@ class LowBuyStrategyReplacementTests(unittest.TestCase):
             ("n_pattern_short_wash", short_metrics),
         ):
             with self.subTest(strategy=strategy):
-                self.assertEqual(strategy_layer(strategy), "production")
-                self.assertEqual(get_strategy_tier(strategy), StrategyTier.CORE)
-                self.assertFalse(strong_buy_paused(strategy))
-                self.assertTrue(participates_in_priority_board(strategy))
+                self.assertEqual(strategy_layer(strategy), "research")
+                self.assertEqual(get_strategy_tier(strategy), StrategyTier.RESEARCH)
+                self.assertTrue(strong_buy_paused(strategy))
+                self.assertFalse(participates_in_priority_board(strategy))
                 self.assertTrue(passes_strategy_prefilter(strategy, item, metrics))
                 setup = build_strategy_setup(strategy, item, metrics, 88.0)
                 self.assertTrue(setup.execution_ready)
