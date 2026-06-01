@@ -20,8 +20,10 @@ const partCss = allFiles
   .map((file) => relative(srcRoot, file));
 
 // 规则 2：棘轮指标（只许降不许升），随重构 Phase 推进逐步降基线。
-// tokens.ts 是设计 Token 唯一源，允许出现 hex；测试与生成代码不计入。
+// tokens.ts / foundation tokens.css 是设计 Token 出口，允许出现 hex；测试与生成代码不计入。
 const TOKEN_SOURCE = /ui[/\\]theme[/\\]tokens\.ts$/;
+const TOKEN_CSS = /styles[/\\]foundation[/\\]tokens\.css$/;
+const PRICE_TEXT_SOURCE = /ui[/\\]data[/\\]PriceText\.tsx$/;
 const codeFiles = allFiles.filter(
   (file) =>
     /\.(ts|tsx)$/.test(file) &&
@@ -29,9 +31,13 @@ const codeFiles = allFiles.filter(
     !/[/\\]generated[/\\]/.test(file),
 );
 
-const metrics = { inlineStyleObjects: 0, cssPropertiesFiles: 0, smallFonts: 0, hardcodedHex: 0 };
+const cssFiles = allFiles.filter((file) => /\.css$/.test(file));
+const metrics = { inlineStyleObjects: 0, cssPropertiesFiles: 0, smallFonts: 0, hardcodedHex: 0, cssHardcodedHex: 0 };
 const hexFiles = new Set();
+const cssHexFiles = new Set();
 const smallFontFiles = new Set();
+const marketColorFiles = new Set();
+const MARKET_HEX = new Set(["#C62828", "#c62828", "#1F8B4C", "#1f8b4c", "#CF2626", "#cf2626"]);
 
 for (const file of codeFiles) {
   const text = readFileSync(file, "utf8");
@@ -45,11 +51,28 @@ for (const file of codeFiles) {
     smallFontFiles.add(relative(srcRoot, file));
   }
   if (!TOKEN_SOURCE.test(file)) {
-    const hex = (text.match(/#[0-9a-fA-F]{3,8}\b/g) || []).length;
+    const matches = text.match(/#[0-9a-fA-F]{3,8}\b/g) || [];
+    const hex = matches.length;
     if (hex) {
       metrics.hardcodedHex += hex;
       hexFiles.add(relative(srcRoot, file));
     }
+    if (!PRICE_TEXT_SOURCE.test(file) && matches.some((item) => MARKET_HEX.has(item))) {
+      marketColorFiles.add(relative(srcRoot, file));
+    }
+  }
+}
+
+for (const file of cssFiles) {
+  if (TOKEN_CSS.test(file)) continue;
+  const text = readFileSync(file, "utf8");
+  const matches = text.match(/#[0-9a-fA-F]{3,8}\b/g) || [];
+  if (matches.length) {
+    metrics.cssHardcodedHex += matches.length;
+    cssHexFiles.add(relative(srcRoot, file));
+  }
+  if (matches.some((item) => MARKET_HEX.has(item))) {
+    marketColorFiles.add(relative(srcRoot, file));
   }
 }
 
@@ -63,6 +86,16 @@ const errors = [];
 
 if (partCss.length) {
   errors.push(`禁止 .part-N.css：\n  ${partCss.join("\n  ")}`);
+}
+
+if (smallFontFiles.size) {
+  errors.push(`禁止 fontSize < 12：\n  ${[...smallFontFiles].join("\n  ")}`);
+}
+
+if (marketColorFiles.size) {
+  errors.push(
+    `行情色只能通过 tokens 或 PriceText 使用：\n  ${[...marketColorFiles].join("\n  ")}`,
+  );
 }
 
 if (existsSync(baselinePath)) {

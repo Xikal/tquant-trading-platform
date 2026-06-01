@@ -2,6 +2,7 @@ import type { CSSProperties } from "react";
 import { useEffect, useRef } from "react";
 import type { EChartsCoreOption, EChartsType } from "echarts/core";
 import * as echarts from "echarts/core";
+import { ensureTquantEchartsThemeRegistered, TQUANT_ECHARTS_THEME } from "./echartsTheme";
 
 interface ChartIslandProps {
   className?: string;
@@ -24,7 +25,8 @@ export function ChartIsland({ className = "", option, style }: ChartIslandProps)
     if (!elementRef.current) {
       return undefined;
     }
-    chartRef.current = echarts.init(elementRef.current, undefined, { renderer: "canvas" });
+    ensureTquantEchartsThemeRegistered();
+    chartRef.current = echarts.init(elementRef.current, TQUANT_ECHARTS_THEME, { renderer: "canvas" });
     const handleResize = () => {
       if (resizeTimerRef.current != null) {
         window.clearTimeout(resizeTimerRef.current);

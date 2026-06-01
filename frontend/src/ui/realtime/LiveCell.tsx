@@ -1,25 +1,25 @@
-import { memo, type CSSProperties } from "react";
+import { memo } from "react";
 import { useSignals } from "@preact/signals-react/runtime";
 import { liveQuoteSignalsFor, type LiveQuoteField } from "../../state/realtime/liveQuoteSignals";
 import { formatPct, formatPrice } from "../../features/workspace-shared/workspaceFormatters";
+import { resolvePriceTone } from "../data/PriceText";
 
 interface LiveCellProps {
   symbol: string;
   field: LiveQuoteField;
   fallback?: string;
-  style?: CSSProperties;
 }
 
 export const LiveCell = memo(function LiveCell({
   symbol,
   field,
   fallback = "--",
-  style,
 }: LiveCellProps) {
   useSignals();
   const signals = liveQuoteSignalsFor(symbol);
   const value = signals[field].value;
-  return <span style={style}>{formatLiveValue(field, value, fallback)}</span>;
+  const toneClass = field === "changePct" && typeof value === "number" ? ` tq-price--${resolvePriceTone(value)}` : "";
+  return <span className={`tq-live-cell${toneClass}`}>{formatLiveValue(field, value, fallback)}</span>;
 });
 
 function formatLiveValue(field: LiveQuoteField, value: number | string | null, fallback: string): string {

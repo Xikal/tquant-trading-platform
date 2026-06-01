@@ -1,5 +1,6 @@
 import { Table, Typography } from "antd";
 import type { TableProps } from "antd";
+import { PriceText } from "../data/PriceText";
 
 export type VirtualGridProps<RecordType extends object> = TableProps<RecordType> & {
   defaultScrollY?: number;
@@ -51,11 +52,10 @@ export function VirtualGrid<RecordType extends object>(props: VirtualGridProps<R
 
 export function MoneyCell({ value, digits = 2 }: { value?: number | null; digits?: number }) {
   if (typeof value !== "number" || !Number.isFinite(value)) return <Typography.Text type="secondary">--</Typography.Text>;
-  return <span>{value.toLocaleString("zh-CN", { minimumFractionDigits: digits, maximumFractionDigits: digits })}</span>;
+  return <span className="tnum">{value.toLocaleString("zh-CN", { minimumFractionDigits: digits, maximumFractionDigits: digits })}</span>;
 }
 
 export function PercentCell({ value, digits = 2 }: { value?: number | null; digits?: number }) {
   if (typeof value !== "number" || !Number.isFinite(value)) return <Typography.Text type="secondary">--</Typography.Text>;
-  const color = value > 0 ? "#B42318" : value < 0 ? "#08875D" : "#64748B";
-  return <Typography.Text style={{ color }}>{value.toFixed(digits)}%</Typography.Text>;
+  return <PriceText value={value} digits={digits} suffix="%" />;
 }

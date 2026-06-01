@@ -21,6 +21,7 @@ const VIRTUAL_CARD_LIST_STYLE: CSSProperties = {
   position: "relative",
   width: "100%",
   overflow: "auto",
+  scrollbarGutter: "stable",
 };
 
 const VIRTUAL_CARD_LIST_INNER_STYLE: CSSProperties = {
@@ -41,7 +42,7 @@ export function VirtualCardList<T>({
   estimateSize = 112,
   getItemKey,
   height,
-  itemGap = 6,
+  itemGap = 8,
   items,
   maxHeight = 520,
   overscan = 6,

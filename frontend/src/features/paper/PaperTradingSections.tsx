@@ -85,7 +85,7 @@ function PositionRow({ item }: { item: PaperPosition }) {
 }
 
 function toneColor(tone: string): string {
-  if (tone === "up") return "#c62828";
-  if (tone === "down") return "#1f8b4c";
-  return "#162235";
+  if (tone === "up") return "var(--price-up)";
+  if (tone === "down") return "var(--price-down)";
+  return "var(--text-1)";
 }

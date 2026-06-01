@@ -55,4 +55,24 @@ export const space = {
   sp7: 48,
 } as const;
 
-export const tokens = { color, radius, font, space } as const;
+export const shadow = {
+  level1: "0 1px 2px rgba(16, 27, 45, 0.06)",
+  level2: "0 4px 12px rgba(16, 27, 45, 0.08)",
+  level3: "0 12px 32px rgba(16, 27, 45, 0.12)",
+} as const;
+
+export const motion = {
+  ease: "cubic-bezier(0.2, 0.8, 0.2, 1)",
+  fast: 120,
+  base: 200,
+  slow: 320,
+} as const;
+
+export const zIndex = {
+  sticky: 100,
+  dropdown: 1000,
+  modal: 1100,
+  toast: 1200,
+} as const;
+
+export const tokens = { color, radius, font, space, shadow, motion, zIndex } as const;

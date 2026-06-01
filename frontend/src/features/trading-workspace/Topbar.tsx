@@ -2,9 +2,7 @@ import { Badge, Button, Dropdown, Grid, Space, Typography } from "antd";
 import { MenuOutlined } from "@ant-design/icons";
 import { useEffect } from "react";
 import { useWorkspaceStore } from "../../stores/workspaceStore";
-import { useThemeStore } from "../../stores/themeStore";
 import type { AuthUser, LowBuyPriorityBoardResult } from "../../types";
-import { RitualLuckyDraw, useRitualPreference } from "../ritual-ui";
 import type { Page, StockCardView } from "../workspace-shared/workspaceTypes";
 import { pageTitle } from "./navConfig";
 import {
@@ -43,9 +41,6 @@ export function Topbar({
   const pulse = useWorkspaceStore((state) => state.topbarPulse);
   const setTopbarPulse = useWorkspaceStore((state) => state.setTopbarPulse);
   const screens = useBreakpoint();
-  const ritual = useRitualPreference();
-  const themeMode = useThemeStore((state) => state.mode);
-  const toggleTheme = useThemeStore((state) => state.toggleMode);
   const isMobile = !screens.lg;
   const riskCount = watchCards.filter((item) => item.riskText.includes("高")).length;
   const userName = currentUser.display_name || currentUser.username;
@@ -84,26 +79,15 @@ export function Topbar({
         {screens.xl ? (
           <span style={TOPBAR_CHIP_STYLE}>脉冲<strong style={TOPBAR_CHIP_VALUE_STYLE}>{pulse}</strong></span>
         ) : null}
-        <RitualLuckyDraw enabled={ritual.enabled} compact />
         <Dropdown
           menu={{
             items: [
-              { key: "theme-toggle", label: themeMode === "dark" ? "切换浅色模式" : "切换深色模式" },
-              { key: "ritual-toggle", label: ritual.enabled ? "关闭红运仪式" : "开启红运仪式" },
               { key: "settings", label: "系统配置" },
               { key: "logout", label: "退出登录", danger: true },
             ],
             onClick: ({ key }) => {
               if (key === "logout") {
                 onLogout();
-                return;
-              }
-              if (key === "theme-toggle") {
-                toggleTheme();
-                return;
-              }
-              if (key === "ritual-toggle") {
-                ritual.setEnabled(!ritual.enabled);
                 return;
               }
               onNavigate("settings");

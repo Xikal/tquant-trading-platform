@@ -58,7 +58,7 @@ const MONITOR_METRIC_DETAILS_STYLE: CSSProperties = {
 
 const MONITOR_METRIC_SUMMARY_STYLE: CSSProperties = {
   cursor: "pointer",
-  color: "#475569",
+  color: "var(--text-2)",
   fontSize: 12,
   fontWeight: 700,
 };
@@ -870,10 +870,10 @@ function pulseTone(level?: string): "up" | "warn" | "down" | "neutral" {
 }
 
 function toneColor(tone: string): string {
-  if (tone === "up") return "#cf2626";
-  if (tone === "down") return "#1f8b4c";
-  if (tone === "warn") return "#b7791f";
-  return "#475569";
+  if (tone === "up") return "var(--price-up)";
+  if (tone === "down") return "var(--price-down)";
+  if (tone === "warn") return "var(--warning)";
+  return "var(--muted)";
 }
 
 function HourlyAllMarketPulse({
@@ -1014,7 +1014,7 @@ function trendBarStyle(score: number, height: number): CSSProperties {
   return {
     ...MONITOR_TREND_BAR_DYNAMIC_STYLE,
     height,
-    background: score >= 10 ? "#16a34a" : score <= -10 ? "#dc2626" : "#f59e0b",
+    background: score >= 10 ? "var(--price-down)" : score <= -10 ? "var(--price-up)" : "var(--warning)",
   };
 }
 

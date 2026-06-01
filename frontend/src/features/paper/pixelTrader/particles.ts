@@ -12,8 +12,8 @@ export interface MechaParticle {
   kind: "spark" | "coolant";
 }
 
-const BUY_COLORS = ["#c62828", "#e53935", "#ff8a80", "#ffcdd2"];
-const SELL_COLORS = ["#1f8b4c", "#43a047", "#a5d6a7", "#c8e6c9"];
+const BUY_COLORS = ["var(--price-up)", "color-mix(in srgb, var(--price-up) 82%, white)", "color-mix(in srgb, var(--price-up) 60%, white)", "color-mix(in srgb, var(--price-up) 38%, white)"];
+const SELL_COLORS = ["var(--price-down)", "color-mix(in srgb, var(--price-down) 82%, white)", "color-mix(in srgb, var(--price-down) 60%, white)", "color-mix(in srgb, var(--price-down) 38%, white)"];
 
 export function createActionParticles(action: PixelTraderOrderAction): MechaParticle[] {
   return action.type === "buy" ? createBuyParticles() : createSellParticles();

@@ -83,8 +83,8 @@ function SummaryItem({ label, value, color }: { label: string; value: string; co
 }
 
 function amountColor(value: number): string | undefined {
-  if (value > 0) return "#cf2626";
-  if (value < 0) return "#1f8b4c";
+  if (value > 0) return "var(--price-up)";
+  if (value < 0) return "var(--price-down)";
   return undefined;
 }
 

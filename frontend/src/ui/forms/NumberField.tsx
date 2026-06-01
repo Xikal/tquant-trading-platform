@@ -15,7 +15,7 @@ export function NumberField({
 }) {
   return (
     <Form.Item name={name} label={label}>
-      <InputNumber min={min} max={max} step={step} style={{ width: "100%" }} />
+      <InputNumber min={min} max={max} step={step} className="tq-number-field" />
     </Form.Item>
   );
 }

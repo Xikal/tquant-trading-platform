@@ -13,7 +13,7 @@ export function TqEmpty({ title = "暂无数据", description, action }: EmptyPr
       description={(
         <span>
           <strong>{title}</strong>
-          {description ? <small style={{ display: "block", marginTop: 4 }}>{description}</small> : null}
+          {description ? <small className="tq-empty__desc">{description}</small> : null}
         </span>
       )}
     >
@@ -24,7 +24,7 @@ export function TqEmpty({ title = "暂无数据", description, action }: EmptyPr
 
 export function TqPageLoading({ label = "加载中", rows = 4 }: { label?: string; rows?: number }) {
   return (
-    <div aria-label={label} role="status" style={{ padding: 24 }}>
+    <div aria-label={label} role="status" className="tq-loading">
       <Spin size="small" /> <span>{label}</span>
       <Skeleton active paragraph={{ rows }} title />
     </div>

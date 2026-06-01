@@ -13,15 +13,17 @@ function readInitialMode(): ThemeMode {
   } catch {
     /* localStorage 不可用时忽略 */
   }
-  if (typeof window !== "undefined" && window.matchMedia?.("(prefers-color-scheme: dark)").matches) {
-    return "dark";
-  }
+  // Phase 5 暗色模式仅保留结构，当前 Web 端态固定浅色，不跟随系统自动上线。
   return "light";
 }
 
 function applyMode(mode: ThemeMode) {
   if (typeof document !== "undefined") {
-    document.documentElement.dataset.theme = mode;
+    if (mode === "dark") {
+      document.documentElement.dataset.theme = "dark";
+    } else {
+      delete document.documentElement.dataset.theme;
+    }
   }
 }
 

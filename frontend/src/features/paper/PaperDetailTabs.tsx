@@ -379,10 +379,10 @@ function TradeTags({
           onClick={() => onDeleteTag(item.id, tag.id)}
           title="点击删除标签"
           style={{
-            border: "1px solid rgba(31, 139, 76, 0.22)",
+            border: "1px solid color-mix(in srgb, var(--price-down) 22%, transparent)",
             borderRadius: 999,
-            background: "#f2fbf5",
-            color: "var(--price-down, #1f8b4c)",
+            background: "var(--mkt-down-soft)",
+            color: "var(--price-down)",
             fontSize: 12,
             fontWeight: 700,
             padding: "2px 6px",
@@ -400,7 +400,7 @@ function TradeTags({
           style={{
             border: "1px dashed var(--line)",
             borderRadius: 999,
-            background: "#fff",
+            background: "var(--bg-elevated)",
             color: "var(--muted)",
             fontSize: 12,
             fontWeight: 700,
@@ -423,15 +423,9 @@ function StatusChip({ tone, children }: { tone: "up" | "down" | "warn" | "neutra
     padding: "2px 7px",
     borderRadius: 999,
     background:
-      tone === "up" ? "#fff7f4" : tone === "down" ? "#f2fbf5" : tone === "warn" ? "#fff8e8" : "#eef2f7",
+      tone === "up" ? "var(--mkt-up-soft)" : tone === "down" ? "var(--mkt-down-soft)" : tone === "warn" ? "color-mix(in srgb, var(--warning) 12%, transparent)" : "var(--bg-subtle)",
     color:
-      tone === "up"
-        ? "var(--price-up, #c62828)"
-        : tone === "down"
-          ? "var(--price-down, #1f8b4c)"
-          : tone === "warn"
-            ? "var(--muted)"
-            : "var(--muted)",
+      tone === "up" ? "var(--price-up)" : tone === "down" ? "var(--price-down)" : "var(--muted)",
     fontSize: 12,
     fontWeight: 700,
   } as const;

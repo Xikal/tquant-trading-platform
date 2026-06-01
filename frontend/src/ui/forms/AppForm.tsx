@@ -11,8 +11,7 @@ export function AppForm<T extends object>({
     <Form<T>
       layout="vertical"
       requiredMark={false}
-      className={className || undefined}
-      style={{ width: "100%" }}
+      className={`tq-form ${className || ""}`.trim()}
       {...props}
     >
       {children}
@@ -22,10 +21,10 @@ export function AppForm<T extends object>({
 
 export function FormSection({ title, hint, children }: { title: string; hint?: string; children: ReactNode }) {
   return (
-    <Space direction="vertical" size={12} style={{ display: "flex" }}>
+    <Space direction="vertical" size={12} className="tq-form__section">
       <Flex align="baseline" justify="space-between" gap={12}>
         <Typography.Text strong>{title}</Typography.Text>
-        {hint ? <Typography.Text type="secondary" style={{ fontSize: 12 }}>{hint}</Typography.Text> : null}
+        {hint ? <Typography.Text type="secondary" className="tq-form__hint">{hint}</Typography.Text> : null}
       </Flex>
       {children}
     </Space>
@@ -50,7 +49,7 @@ export function SubmitBar({
   submitProps?: ButtonProps;
 }) {
   return (
-    <Flex justify="flex-end" style={{ paddingTop: 8 }}>
+    <Flex justify="flex-end" className="tq-form__submit-bar">
       <Space wrap>
         {cancelText ? <Button onClick={onCancel} disabled={loading}>{cancelText}</Button> : null}
         <Button htmlType="submit" type="primary" loading={loading} disabled={disabled} {...submitProps}>

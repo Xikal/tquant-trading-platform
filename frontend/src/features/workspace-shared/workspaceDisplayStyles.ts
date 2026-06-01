@@ -2,8 +2,8 @@ import type { CSSProperties } from "react";
 import type { Tone } from "./workspaceTypes";
 
 export const DISPLAY_TONE_VALUE_STYLES: Record<Tone, CSSProperties | undefined> = {
-  up: { color: "var(--price-up, #c62828)" },
-  down: { color: "var(--price-down, #1f8b4c)" },
+  up: { color: "var(--price-up)" },
+  down: { color: "var(--price-down)" },
   warn: { color: "var(--warning)" },
   neutral: undefined,
 };
@@ -37,9 +37,9 @@ export const METRIC_COMPACT_STYLE: CSSProperties = {
 };
 
 export const METRIC_TONE_STYLES: Partial<Record<Tone, CSSProperties>> = {
-  up: { background: "#fff7f4", borderColor: "#f0c9bf" },
-  down: { background: "#f2fbf5", borderColor: "#b8dbc7" },
-  warn: { background: "#fbf4e6", borderColor: "#ecd59a" },
+  up: { background: "var(--mkt-up-soft)", borderColor: "color-mix(in srgb, var(--mkt-up) 24%, transparent)" },
+  down: { background: "var(--mkt-down-soft)", borderColor: "color-mix(in srgb, var(--mkt-down) 24%, transparent)" },
+  warn: { background: "color-mix(in srgb, var(--warning) 12%, transparent)", borderColor: "color-mix(in srgb, var(--warning) 24%, transparent)" },
 };
 
 export const METRIC_TEXT_STYLE: CSSProperties = {

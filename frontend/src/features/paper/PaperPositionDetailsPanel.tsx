@@ -317,8 +317,8 @@ function DetailSkeleton() {
 
 function amountColor(value?: number | null, tone?: string): string | undefined {
   const resolvedTone = tone ?? toneFromChange(value);
-  if (resolvedTone === "up") return "#cf2626";
-  if (resolvedTone === "down") return "#1f8b4c";
+  if (resolvedTone === "up") return "var(--price-up)";
+  if (resolvedTone === "down") return "var(--price-down)";
   return undefined;
 }
 
