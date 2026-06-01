@@ -182,7 +182,7 @@ export function EtfT0OosPanel({
               { title: "样本", dataIndex: "bar_count", render: (value) => formatInteger(value) },
               { title: "交易", dataIndex: "trade_count", render: (value) => formatInteger(value) },
               { title: "净收益", dataIndex: "net_pnl" },
-              { title: "PF", dataIndex: "profit_factor", render: (value) => formatNumber(value) },
+              { title: "利润因子", dataIndex: "profit_factor", render: (value) => formatNumber(value) },
               { title: "结论", dataIndex: "verdict", render: (value) => <Tag color={verdictColor(String(value))}>{verdictText(String(value))}</Tag> },
             ]}
           />

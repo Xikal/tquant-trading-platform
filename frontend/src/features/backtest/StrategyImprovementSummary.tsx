@@ -117,7 +117,7 @@ function StrategyList({
         <Space key={item.strategy_key} orientation="vertical" size={0} style={{ width: "100%" }}>
           <Typography.Text>{item.strategy_title || item.strategy_key}</Typography.Text>
           <Space size={4} wrap>
-            <Tag color={tone}>PF {formatNumber(item.profit_factor ?? null)}</Tag>
+            <Tag color={tone}>利润因子 {formatNumber(item.profit_factor ?? null)}</Tag>
             <Tag color={tone}>胜率 {formatNumber(item.win_rate_pct ?? null)}%</Tag>
             <Typography.Text type="secondary" style={{ fontSize: 12 }}>{actionText(item.recommended_action)}</Typography.Text>
           </Space>

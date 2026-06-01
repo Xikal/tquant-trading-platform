@@ -10,11 +10,19 @@ describe("backtest copy guard", () => {
     const validation = readLocal("./ValidationPanel.tsx");
     const optimization = readLocal("./OptimizationPanel.tsx");
     const capacity = readLocal("./MLCapacityPanel.tsx");
+    const dashboard = readLocal("./BacktestDashboard.panels.tsx");
+    const etfT0 = readLocal("./EtfT0BacktestPanel.tsx");
+    const compare = readLocal("./ComparePanel.tsx");
 
     expect(validation).not.toContain(">IS ");
     expect(validation).not.toContain(">OOS ");
     expect(optimization).not.toContain("OOS 降级");
     expect(optimization).not.toContain("IS/OOS 对比");
     expect(capacity).not.toContain("RL Shadow");
+    for (const source of [dashboard, etfT0, compare, optimization, capacity]) {
+      expect(source).not.toContain("MaxDD");
+      expect(source).not.toContain("PF");
+      expect(source).not.toContain("Paper 样本");
+    }
   });
 });

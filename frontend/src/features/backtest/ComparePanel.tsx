@@ -76,7 +76,7 @@ export function ComparePanel({ state, actions }: { state: BacktestResearchState;
             render: (_value, item) => formatNumber(item.metrics?.sharpe ?? item.metrics?.sharpe_ratio),
           },
           {
-            title: <Button type="text" size="small" onClick={() => setSortKey("drawdown")}>MaxDD</Button>,
+            title: <Button type="text" size="small" onClick={() => setSortKey("drawdown")}>最大回撤</Button>,
             render: (_value, item) => <span style={backtestToneTextStyle("down")}>{formatPct(item.metrics?.max_drawdown_pct)}</span>,
           },
         ]}

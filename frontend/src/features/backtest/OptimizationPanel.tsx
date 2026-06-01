@@ -114,8 +114,8 @@ export function OptimizationPanel({
                 { title: "收益", align: "right", render: (_value, item) => <span style={backtestToneTextStyle(toneFromNumber(item.total_return_pct))}>{formatPct(item.total_return_pct)}</span> },
                 { title: "胜率", align: "right", render: (_value, item) => formatPct(item.win_rate_pct) },
                 { title: "止损率", align: "right", render: (_value, item) => formatPct(item.stop_loss_rate_pct) },
-                { title: "MaxDD", align: "right", render: (_value, item) => <span style={backtestToneTextStyle("down")}>{formatPct(item.max_drawdown_pct)}</span> },
-                { title: "PF", align: "right", render: (_value, item) => formatNumber(item.profit_factor) },
+                { title: "最大回撤", align: "right", render: (_value, item) => <span style={backtestToneTextStyle("down")}>{formatPct(item.max_drawdown_pct)}</span> },
+                { title: "利润因子", align: "right", render: (_value, item) => formatNumber(item.profit_factor) },
                 { title: "Sharpe", align: "right", render: (_value, item) => formatNumber(item.sharpe ?? item.sharpe_ratio) },
               ]}
             />

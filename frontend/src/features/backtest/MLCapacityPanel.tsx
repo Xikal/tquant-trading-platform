@@ -141,7 +141,7 @@ export function MLCapacityPanel({ strategyOptions }: { strategyOptions: Backtest
       <PanelTitle title="ML 在线学习 / 策略容量" meta="模拟盘闭环 + 资金容量" />
       {error ? <div style={BACKTEST_ERROR_STYLE}>{error}</div> : null}
       <div style={BACKTEST_MINI_METRICS_STYLE}>
-        <Metric label="Paper 样本" value={formatInteger(status?.paper_sample_count)} />
+        <Metric label="模拟样本" value={formatInteger(status?.paper_sample_count)} />
         <Metric label="平仓样本" value={formatInteger(status?.closed_trade_sample_count)} />
         <Metric label="正/负样本" value={`${formatInteger(status?.positive_sample_count)} / ${formatInteger(status?.negative_sample_count)}`} />
         <Metric label="训练状态" value={status?.ready_for_training ? "可训练" : "样本不足"} className={status?.ready_for_training ? "pbo-low" : "pbo-medium"} />

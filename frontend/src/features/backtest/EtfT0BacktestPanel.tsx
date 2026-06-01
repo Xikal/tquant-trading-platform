@@ -150,7 +150,7 @@ export function EtfT0BacktestPanel() {
               <Metric label="净收益" value={formatMoney(result.net_pnl)} />
               <Metric label="平均净收益" value={formatPct(result.avg_net_return_pct)} />
               <Metric label="利润因子" value={formatNumber(result.profit_factor)} />
-              <Metric label="MaxDD" value={formatPct(result.max_drawdown_pct)} />
+              <Metric label="最大回撤" value={formatPct(result.max_drawdown_pct)} />
               <Metric label="持有基线" value={formatPct(result.baseline_hold_return_pct)} />
               <Metric label="拒绝信号" value={formatInteger(result.rejected_signal_count)} />
             </div>
@@ -180,7 +180,7 @@ export function EtfT0BacktestPanel() {
         <VirtualGrid<EtfT0HeatmapCell>
           rowKey={(item) => `${item.buy_vwap_deviation_pct}-${item.oversold_rsi}`}
           dataSource={research?.heatmap ?? []}
-          locale={{ emptyText: <Empty text="运行参数热力图后显示 VWAP 偏离、RSI、PF、回撤和基础门槛。" /> }}
+          locale={{ emptyText: <Empty text="运行参数热力图后显示 VWAP 偏离、RSI、利润因子、回撤和基础门槛。" /> }}
           scroll={{ x: 960 }}
           columns={[
             { title: "VWAP阈值", dataIndex: "buy_vwap_deviation_pct", render: (value) => formatPct(value) },
@@ -188,8 +188,8 @@ export function EtfT0BacktestPanel() {
             { title: "交易", dataIndex: "trade_count", align: "right", render: (value) => formatInteger(value) },
             { title: "胜率", dataIndex: "win_rate_pct", align: "right", render: (value) => formatPct(value) },
             { title: "净收益", dataIndex: "net_pnl", align: "right", render: (value) => <span style={backtestToneTextStyle(toneFromNumber(value))}>{formatMoney(value)}</span> },
-            { title: "PF", dataIndex: "profit_factor", align: "right", render: (value) => formatNumber(value) },
-            { title: "MaxDD", dataIndex: "max_drawdown_pct", align: "right", render: (value) => formatPct(value) },
+            { title: "利润因子", dataIndex: "profit_factor", align: "right", render: (value) => formatNumber(value) },
+            { title: "最大回撤", dataIndex: "max_drawdown_pct", align: "right", render: (value) => formatPct(value) },
             { title: "评分", dataIndex: "score", align: "right", render: (value) => formatNumber(value) },
             { title: "门槛", dataIndex: "pass_gate", render: (value) => value ? "通过" : "观察" },
           ]}
@@ -207,8 +207,8 @@ export function EtfT0BacktestPanel() {
               { title: "样本", dataIndex: "bar_count", render: (value) => formatInteger(value) },
               { title: "交易", dataIndex: "trade_count", render: (value) => formatInteger(value) },
               { title: "净收益", dataIndex: "net_pnl", render: (value) => <span style={backtestToneTextStyle(toneFromNumber(value))}>{formatMoney(value)}</span> },
-              { title: "PF", dataIndex: "profit_factor", render: (value) => formatNumber(value) },
-              { title: "MaxDD", dataIndex: "max_drawdown_pct", render: (value) => formatPct(value) },
+              { title: "利润因子", dataIndex: "profit_factor", render: (value) => formatNumber(value) },
+              { title: "最大回撤", dataIndex: "max_drawdown_pct", render: (value) => formatPct(value) },
               { title: "结论", dataIndex: "verdict", render: (value) => regimeVerdictText(String(value || "")) },
             ]}
           />

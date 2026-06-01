@@ -171,7 +171,7 @@ export function RunDetailPanel({
             <Metric label="Sortino" value={formatNumber(selectedMetrics?.sortino_ratio ?? selectedMetrics?.sortino)} />
             <Metric label="Calmar" value={formatNumber(selectedMetrics?.calmar_ratio ?? selectedMetrics?.calmar)} />
             <Metric label="IR" value={formatNumber(selectedMetrics?.information_ratio)} />
-            <Metric label="MaxDD" value={formatPct(selectedMetrics?.max_drawdown_pct)} tone="down" />
+            <Metric label="最大回撤" value={formatPct(selectedMetrics?.max_drawdown_pct)} tone="down" />
             <Metric label="胜率" value={formatPct(selectedMetrics?.win_rate_pct)} />
             <Metric label="交易数" value={formatInteger(selectedMetrics?.total_trades ?? selectedMetrics?.trade_count)} />
             <Metric label="利润因子" value={formatNumber(selectedMetrics?.profit_factor)} />
