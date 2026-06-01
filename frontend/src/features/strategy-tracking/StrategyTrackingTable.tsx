@@ -2,6 +2,7 @@ import { Button, Tag } from "antd";
 import type { ColumnsType, TablePaginationConfig } from "antd/es/table";
 import type { StrategyTrackingViewMode } from "../../stores/strategyTrackingStore";
 import type { StrategyTrackingItem } from "../../types";
+import { VirtualCardList } from "../../ui/list/VirtualCardList";
 import { VirtualGrid } from "../../ui/grid/VirtualGrid";
 import { formatPct, formatPrice } from "../workspace-shared/workspaceFormatters";
 import {
@@ -36,24 +37,100 @@ export function StrategyTrackingTable({
   onOpenDetail,
 }: StrategyTrackingTableProps) {
   return (
-    <VirtualGrid<StrategyTrackingItem>
-      rowKey="id"
-      loading={loading}
-      dataSource={items}
-      columns={columns(onOpenDetail, viewMode)}
-      scroll={{ x: viewMode === "professional" ? 1260 : 1040 }}
-      defaultScrollY={560}
-      paginated
-      pagination={{
-        current: page,
-        pageSize,
-        total,
-        showSizeChanger: true,
-        pageSizeOptions: [20, 30, 50],
-      }}
-      onChange={(pagination: TablePaginationConfig) => onPageChange(pagination.current || 1, pagination.pageSize || 30)}
-    />
+    <>
+      <div className="strategy-tracking-table-grid">
+        <VirtualGrid<StrategyTrackingItem>
+          rowKey="id"
+          loading={loading}
+          dataSource={items}
+          columns={columns(onOpenDetail, viewMode)}
+          scroll={{ x: viewMode === "professional" ? 1260 : 1040 }}
+          defaultScrollY={560}
+          paginated
+          pagination={{
+            current: page,
+            pageSize,
+            total,
+            showSizeChanger: true,
+            pageSizeOptions: [20, 30, 50],
+          }}
+          onChange={(pagination: TablePaginationConfig) => onPageChange(pagination.current || 1, pagination.pageSize || 30)}
+        />
+      </div>
+      <div className="strategy-tracking-card-list">
+        <VirtualCardList
+          items={items}
+          estimateSize={214}
+          maxHeight={680}
+          getItemKey={(item) => item.id}
+          empty={loading ? <p className="hint">策略跟踪加载中...</p> : null}
+          renderItem={(item) => <StrategyTrackingMobileCard item={item} onOpenDetail={onOpenDetail} />}
+        />
+        {total > pageSize ? (
+          <div className="strategy-tracking-card-pagination">
+            <Button size="small" disabled={page <= 1 || loading} onClick={() => onPageChange(Math.max(1, page - 1), pageSize)}>
+              上一页
+            </Button>
+            <span>第 {page} 页 / 共 {total} 条</span>
+            <Button size="small" disabled={page * pageSize >= total || loading} onClick={() => onPageChange(page + 1, pageSize)}>
+              下一页
+            </Button>
+          </div>
+        ) : null}
+      </div>
+    </>
   );
+}
+
+function StrategyTrackingMobileCard({
+  item,
+  onOpenDetail,
+}: {
+  item: StrategyTrackingItem;
+  onOpenDetail: (itemId: string) => void;
+}) {
+  return (
+    <article className="strategy-tracking-mobile-card">
+      <div className="strategy-tracking-mobile-card__head">
+        <Button className="strategy-tracking-stock-link" type="link" size="small" onClick={() => onOpenDetail(item.id)}>
+          <span>{item.name || item.symbol}</span>
+          <small>{item.symbol}</small>
+        </Button>
+        <Tag color={friendlyTone(item.user_friendly_status)}>{item.user_friendly_status_text}</Tag>
+      </div>
+      <StrategyTrackingSectorTags sectors={item.display_sectors} boardType={item.board_type} boardText={item.board_type_text} />
+      <div className="strategy-tracking-mobile-card__section">
+        <strong>结论与原因</strong>
+        <span>{item.user_friendly_reason}</span>
+        <small>{item.failure_reason_text || item.plain_language_summary || item.data_quality_text}</small>
+      </div>
+      <div className="strategy-tracking-mobile-card__section">
+        <strong>信号性质</strong>
+        <Tag color={signalTone(item.signal_state)}>{signalStateText(item)}</Tag>
+        <span>{mobileSignalStateText(item.signal_state)}</span>
+      </div>
+      <div className="strategy-tracking-mobile-card__metrics">
+        <span>计划买入区 {entryZoneText(item)}</span>
+        <span>风险线 {formatPrice(item.stop_loss)}</span>
+        <span>目标 {formatPrice(item.target_price)}</span>
+        <span>最高 {displayReturn(item.max_gain_pct)}</span>
+        <span>回撤 {formatPct(item.max_drawdown_pct)}</span>
+        <span>现涨跌 {displayReturn(item.current_return_pct)}</span>
+      </div>
+      <div className="strategy-tracking-tag-row">
+        {item.entry_touched ? <Tag color="green">已到计划买入区</Tag> : <Tag>还没到计划买入价</Tag>}
+        {item.stop_triggered ? <Tag color="red">已跌破风险线</Tag> : null}
+        {item.target_touched ? <Tag color="blue">已触达目标位</Tag> : null}
+      </div>
+    </article>
+  );
+}
+
+function mobileSignalStateText(signalState: string): string {
+  if (signalState === "near_entry") return "观察提醒：接近买点但不是买入";
+  if (signalState === "observe_confirmed") return "观察提醒：确认观察但不是买入";
+  if (signalState === "watch" || signalState === "front_row_only") return "观察提醒：只跟踪，不是买入";
+  return signalStateKindText(signalState);
 }
 
 function columns(onOpenDetail: (itemId: string) => void, viewMode: StrategyTrackingViewMode): ColumnsType<StrategyTrackingItem> {

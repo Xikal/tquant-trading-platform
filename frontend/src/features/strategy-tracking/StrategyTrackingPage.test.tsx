@@ -107,6 +107,29 @@ describe("StrategyTracking UI", () => {
     expect(html).not.toContain(">接近买点只代表快到观察区，不是买入建议，不能提前买。<");
   });
 
+  it("renders a narrow viewport card list for strategy tracking rows", () => {
+    const html = renderToStaticMarkup(
+      <StrategyTrackingTable
+        items={[itemFixture({ signal_state: "near_entry", signal_text: "" })]}
+        total={1}
+        page={1}
+        pageSize={30}
+        loading={false}
+        viewMode="beginner"
+        onOpenDetail={vi.fn()}
+        onPageChange={vi.fn()}
+      />
+    );
+
+    expect(html).toContain("strategy-tracking-table-grid");
+    expect(html).toContain("strategy-tracking-card-list");
+    expect(html).toContain("strategy-tracking-mobile-card");
+    expect(html).toContain("结论与原因");
+    expect(html).toContain("观察提醒：接近买点但不是买入");
+    expect(html).toContain("计划买入区");
+    expect(html).toContain("width:1040px");
+  });
+
   it("renders detail drawer timeline without needing list payload_json", () => {
     const html = renderToStaticMarkup(
       <StrategyTrackingDetailContent detail={detailFixture()} viewMode="professional" />

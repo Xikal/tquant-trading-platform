@@ -226,6 +226,70 @@
   vertical-align: top;
 }
 
+.strategy-tracking-card-list {
+  display: none;
+}
+
+.strategy-tracking-card-pagination {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding-top: 8px;
+}
+
+.strategy-tracking-card-pagination span {
+  color: var(--muted);
+  font-size: var(--font-meta);
+}
+
+.strategy-tracking-mobile-card {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--bg-elevated);
+  padding: 10px;
+}
+
+.strategy-tracking-mobile-card__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+}
+
+.strategy-tracking-mobile-card__section {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.strategy-tracking-mobile-card__section span,
+.strategy-tracking-mobile-card__section small {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: var(--font-meta);
+  text-overflow: ellipsis;
+}
+
+.strategy-tracking-mobile-card__metrics {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px 8px;
+  color: var(--muted);
+  font-size: var(--font-meta);
+}
+
+.strategy-tracking-mobile-card__metrics span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .strategy-tracking-stock-link {
   display: inline-grid;
   gap: 1px;
@@ -312,6 +376,14 @@
 }
 
 @media (max-width: 640px) {
+  .strategy-tracking-table-grid {
+    display: none;
+  }
+
+  .strategy-tracking-card-list {
+    display: block;
+  }
+
   .strategy-tracking-hero,
   .strategy-tracking-review-head,
   .strategy-tracking-detail-head {
