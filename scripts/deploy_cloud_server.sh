@@ -89,7 +89,6 @@ make_package() {
     --exclude='.mysql-local' \
     --exclude='artifacts' \
     --exclude='backups' \
-    --exclude='./data' \
     --exclude='backend/.venv' \
     --exclude='backend/.env' \
     --exclude='backend/__pycache__' \
