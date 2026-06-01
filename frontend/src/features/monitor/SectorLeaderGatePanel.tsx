@@ -4,12 +4,19 @@ import { VirtualGrid } from "../../ui/grid/VirtualGrid";
 import { EmptyState, InfoPill } from "../workspace-shared/WorkspaceComponents";
 import { formatPct } from "../workspace-shared/workspaceFormatters";
 
-export function SectorLeaderGatePanel({ sectorRelativeStrength }: { sectorRelativeStrength: SectorRelativeStrengthResponse | null }) {
+export function SectorLeaderGatePanel({
+  sectorRelativeStrength,
+  defaultOpen = false,
+}: {
+  sectorRelativeStrength: SectorRelativeStrengthResponse | null;
+  defaultOpen?: boolean;
+}) {
   const items = sectorRelativeStrength?.items ?? [];
   const healthyCount = items.filter((item) => item.leader_status === "healthy").length;
   return (
     <Collapse
       size="small"
+      defaultActiveKey={defaultOpen ? ["sector-leader-gate"] : []}
       items={[{
         key: "sector-leader-gate",
         label: `板块/龙头确认 · 健康 ${healthyCount}/${items.length}`,
@@ -44,7 +51,10 @@ export function SectorLeaderGatePanel({ sectorRelativeStrength }: { sectorRelati
                   title: "门控",
                   dataIndex: "sector_leader_gate_decision",
                   width: 110,
-                  render: (value) => <Tag color={value === "allow" ? "green" : value === "reduce" ? "orange" : "default"}>{value || "research_only"}</Tag>,
+                  render: (value) => {
+                    const decision = String(value || "research_only");
+                    return <Tag color={decision === "allow" ? "green" : decision === "reduce" ? "orange" : "default"}>{sectorLeaderGateDecisionText(decision)}</Tag>;
+                  },
                 },
               ]}
               scroll={{ x: 760 }}
@@ -57,4 +67,13 @@ export function SectorLeaderGatePanel({ sectorRelativeStrength }: { sectorRelati
       }]}
     />
   );
+}
+
+function sectorLeaderGateDecisionText(value: string): string {
+  if (value === "allow") return "允许生产";
+  if (value === "reduce") return "降权观察";
+  if (value === "block") return "生产阻断";
+  if (value === "no_data") return "数据缺失";
+  if (value === "research_only") return "仅研究观察";
+  return value || "--";
 }

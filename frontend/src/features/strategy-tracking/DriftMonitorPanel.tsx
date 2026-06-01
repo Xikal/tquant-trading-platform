@@ -28,7 +28,7 @@ export function DriftMonitorPanel({
         children: (
           <section className="strategy-tracking-drift-panel">
             {advisoryCount ? (
-              <Alert type="warning" showIcon message={`漂移 advisory ${advisoryCount} 条`} />
+              <Alert type="warning" showIcon message={`漂移衰减预警 ${advisoryCount} 条`} />
             ) : null}
             {items.length ? (
               <VirtualGrid<TrackRecordDriftItem>
@@ -91,11 +91,17 @@ const driftColumns: ColumnsType<TrackRecordDriftItem> = [
     title: "标记",
     dataIndex: "drift_flag",
     width: 130,
-    render: (value) => <Tag color={value === "decay_advisory" ? "orange" : value === "ok" ? "green" : "default"}>{String(value || "--")}</Tag>,
+    render: (value) => <Tag color={value === "decay_advisory" ? "orange" : value === "ok" ? "green" : "default"}>{driftFlagText(String(value || ""))}</Tag>,
   },
 ];
 
 function numText(value: number | null): string {
   if (typeof value !== "number" || !Number.isFinite(value)) return "--";
   return value.toFixed(2);
+}
+
+function driftFlagText(value: string): string {
+  if (value === "decay_advisory") return "衰减预警";
+  if (value === "ok") return "正常";
+  return value || "--";
 }

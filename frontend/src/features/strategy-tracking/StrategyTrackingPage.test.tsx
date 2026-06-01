@@ -9,6 +9,7 @@ import { StrategyTrackingDiagnosticsPanel } from "./StrategyTrackingDiagnosticsP
 import { DriftMonitorPanel } from "./DriftMonitorPanel";
 import { StrategyTrackingHoldingAnalysisPanel } from "./StrategyTrackingHoldingAnalysisPanel";
 import { StrategyTrackingPerformanceTable } from "./StrategyTrackingPerformanceTable";
+import { PromotionReviewPanel } from "./PromotionReviewPanel";
 import { StrategyTrackingReviewPanel } from "./StrategyTrackingReviewPanel";
 import { StrategyTrackingSummaryBar } from "./StrategyTrackingSummaryBar";
 import { buildParams } from "./StrategyTrackingPage";
@@ -274,9 +275,41 @@ describe("StrategyTracking UI", () => {
     );
 
     expect(html).toContain("真实战绩漂移");
-    expect(html).toContain("decay_advisory");
+    expect(html).toContain("衰减预警");
+    expect(html).not.toContain("decay_advisory");
     expect(html).toContain("first_board");
     expect(html).toContain("利润因子");
+  });
+
+  it("localizes promotion review policy states instead of rendering internal codes", () => {
+    const html = renderToStaticMarkup(
+      <PromotionReviewPanel
+        loading={false}
+        defaultOpen
+        review={{
+          strategy_key: "n_pattern_long_wash",
+          current_tier: "research",
+          recommended_tier: "candidate_production",
+          recommendation: "stay_research",
+          evidence: {
+            sample_count: 18,
+            profit_factor: 1.3,
+            average_trade_pct: 1.2,
+            max_drawdown_pct: -4.5,
+          },
+          blocking_reasons: ["needs_validation"],
+          can_apply_override: false,
+        }}
+      />
+    );
+
+    expect(html).toContain("研究层");
+    expect(html).toContain("可进入生产候选");
+    expect(html).toContain("继续研究验证");
+    expect(html).toContain("仍需验证");
+    expect(html).not.toContain("candidate_production");
+    expect(html).not.toContain("stay_research");
+    expect(html).not.toContain("needs_validation");
   });
 });
 

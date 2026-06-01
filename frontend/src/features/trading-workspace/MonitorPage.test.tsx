@@ -2,6 +2,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import type { LowBuyPriorityBoardResult } from "../../types";
 import { MonitorPage } from "../monitor/MonitorPage";
+import { SectorLeaderGatePanel } from "../monitor/SectorLeaderGatePanel";
 
 describe("MonitorPage", () => {
   it("puts the direct action card before numeric metrics", () => {
@@ -395,6 +396,40 @@ describe("MonitorPage", () => {
     expect(html).toContain("分钟信心");
     expect(html).toContain("VWAP");
     expect(html).toContain("净边际");
+  });
+
+  it("localizes sector leader gate decisions instead of rendering internal codes", () => {
+    const html = renderToStaticMarkup(
+      <SectorLeaderGatePanel
+        defaultOpen
+        sectorRelativeStrength={{
+          updated_at: "2026-06-01 10:30:00",
+          trade_date: "2026-06-01",
+          sector_count: 1,
+          notes: [],
+          items: [{
+            sector_name: "半导体",
+            symbol: "512480",
+            name: "半导体ETF",
+            latest_price: 1.23,
+            change_pct: 1.2,
+            sector_median_change_pct: 0.8,
+            volume_ratio: 1.5,
+            turnover_proxy: 0.6,
+            leader_score: 82,
+            rank: 1,
+            leader_status: "healthy",
+            same_sector_limit_up_count: 2,
+            diffusion_score: 74,
+            sector_leader_gate_decision: "reduce",
+          }],
+        }}
+      />
+    );
+
+    expect(html).toContain("降权观察");
+    expect(html).not.toContain("reduce");
+    expect(html).not.toContain("research_only");
   });
 });
 
