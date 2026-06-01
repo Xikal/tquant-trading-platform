@@ -66,7 +66,7 @@ const baseCandidate = {
   confirmed_trade_date: "2026-05-30",
   summary_reason: "主线 ETF 回踩承接",
   buy_signal_state: "near_entry",
-  buy_signal_text: "接近买点",
+  buy_signal_text: "接近买点（观察类·未到买入）",
   buy_signal_hint: "等待价格进入买点区",
   recommendation_days: 1,
   reasons: ["回踩承接"],
@@ -86,7 +86,7 @@ const priorityItems = symbols.map((symbol, index) => ({
   entry_zone_high: Number((3.18 + index * 0.01).toFixed(3)),
   stop_loss: Number((3.02 + index * 0.01).toFixed(3)),
   buy_signal_state: index % 5 === 0 ? "buy_now" : index % 3 === 0 ? "observe_confirmed" : "near_entry",
-  buy_signal_text: index % 5 === 0 ? "现在可买" : index % 3 === 0 ? "观察确认" : "接近买点",
+  buy_signal_text: index % 5 === 0 ? "现在可买" : index % 3 === 0 ? "观察确认" : "接近买点（观察类·未到买入）",
 }));
 
 const watchSignals = priorityItems.slice(0, 120).map((item, index) => ({

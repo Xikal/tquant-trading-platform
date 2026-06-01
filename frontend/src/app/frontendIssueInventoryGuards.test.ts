@@ -33,4 +33,19 @@ describe("frontend issue inventory guards", () => {
       expect(readProjectFile(file)).not.toContain(">PF<");
     }
   });
+
+  it("keeps responsive and performance mock signal copy observation-only", () => {
+    const scripts = [
+      "scripts/smoke-responsive.mjs",
+      "scripts/perf-profile.mjs",
+    ];
+
+    for (const script of scripts) {
+      const source = readProjectFile(script);
+      expect(source).not.toContain('buy_signal_text: "接近买点"');
+      expect(source).not.toContain('signal_text: "接近买点"');
+      expect(source).not.toContain('label: "首次推荐"');
+      expect(source).not.toContain('buy_signal_hint: "等待确认"');
+    }
+  });
 });

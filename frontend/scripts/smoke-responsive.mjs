@@ -99,7 +99,7 @@ const mockLowBuyCandidate = {
   confirmed_trade_date: "2026-05-26",
   summary_reason: "主线 ETF 回踩承接",
   buy_signal_state: "near_entry",
-  buy_signal_text: "接近买点",
+  buy_signal_text: "接近买点（观察类·未到买入）",
   buy_signal_hint: "等待价格进入买点区",
   recommendation_days: 1,
 };
@@ -135,7 +135,7 @@ const mockStrategyTrackingItem = {
   strategy_name: "首板低吸",
   strategy_family: "core",
   signal_state: "near_entry",
-  signal_text: "接近买点",
+  signal_text: "接近买点（观察类·未到买入）",
   observe_only: false,
   lifecycle_status: "active",
   lifecycle_status_text: "仍在跟踪",
@@ -603,7 +603,7 @@ async function installMockAuth(page) {
       timeline: [
         { trade_date: "2026-05-26", open: 3.42, high: 3.48, low: 3.4, close: 3.45, pct_chg: 0.88, current_return_pct: 0.88, max_return_pct: 1.75, max_drawdown_pct: -0.58, hit_entry_zone: true, hit_stop_loss: false, hit_target: false, lifecycle_status: "active", data_quality: "ok" },
       ],
-      markers: [{ kind: "first_signal", trade_date: "2026-05-25", price: 3.42, label: "首次推荐" }],
+      markers: [{ kind: "first_signal", trade_date: "2026-05-25", price: 3.42, label: "首次信号" }],
       signal_snapshot: { summary_reason: "主线 ETF 回踩承接" },
       review_text: mockStrategyTrackingItem.review_text,
       partial_errors: [],
@@ -647,7 +647,7 @@ async function installMockAuth(page) {
     }
     if (path === "/screeners/low-buy/priority-board") return response({ strategy: "first_board", trade_date: "2026-05-26", items: [mockLowBuyCandidate], total: 1 });
     if (path === "/screeners/low-buy") return response(mockLowBuy);
-    if (path === "/screeners/low-buy/quotes") return response({ items: { "510300": { latest_price: 3.45, change_pct: 0.6, quote_timestamp: now, in_entry_zone: true, distance_to_entry_pct: -0.2, stop_confirmed: false, buy_signal_state: "near_entry", buy_signal_text: "接近买点", buy_signal_hint: "等待确认" } } });
+    if (path === "/screeners/low-buy/quotes") return response({ items: { "510300": { latest_price: 3.45, change_pct: 0.6, quote_timestamp: now, in_entry_zone: true, distance_to_entry_pct: -0.2, stop_confirmed: false, buy_signal_state: "near_entry", buy_signal_text: "接近买点（观察类·未到买入）", buy_signal_hint: "等待承接确认，不是买入建议" } } });
     if (path === "/analyze") return response(mockAnalysis);
     if (path === "/analyze/batch") return response([mockAnalysis]);
     if (path === "/ai/decision-support") return response({ enabled: false, summary: "smoke", suggestions: [], warnings: [] });
