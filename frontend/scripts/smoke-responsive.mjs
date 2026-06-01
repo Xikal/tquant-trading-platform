@@ -715,9 +715,6 @@ async function installMockAuth(page) {
     if (path === "/backtests/optimize" || path === "/backtests/validate") return response({ items: [], total: 0, limit: 20, offset: 0 });
     if (path === "/ml/signals/online-learning/status") return response({ generated_at: now, paper_sample_count: 0, closed_trade_sample_count: 0, positive_sample_count: 0, negative_sample_count: 0, ready_for_training: false, min_samples: 100, feature_names: [], sequence_feature_names: [], production_model_key: "smoke", latest_incremental_task_status: "idle", latest_incremental_task_progress_pct: 0, next_training_rule: "manual", warnings: [] });
     if (path === "/ml/signals/capacity") return response({ generated_at: now, capital_levels: [], items: [], assumptions: {} });
-    if (path === "/factor-mining/health") return response({ total: 0, production: 0, validated: 0, items: [] });
-    if (path === "/factor-mining/factors") return response({ items: [], total: 0 });
-    if (path === "/factor-mining/hypotheses") return response({ provider: "smoke", items: [] });
     if (path === "/bff/v1/workspace/paper") return response(mockPaperWorkspace);
     if (path === "/paper/account") return response(mockPaperAccount);
     if (path === "/paper/positions" || path === "/paper/positions/refresh") {

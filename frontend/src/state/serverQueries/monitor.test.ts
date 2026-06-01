@@ -1,11 +1,34 @@
 import { QueryClient, QueryObserver } from "@tanstack/react-query";
 import { describe, expect, it, vi } from "vitest";
 import type { components } from "../../generated/api-types";
+import * as monitorQueries from "./monitor";
 import { monitorSnapshotOptions } from "./monitor";
 
 type MonitorWorkspace = components["schemas"]["MonitorWorkspaceBffResponse"];
 
 describe("monitor server queries", () => {
+  it("does not expose the unmounted workspace query or a duplicate polling interval", () => {
+    const options = monitorSnapshotOptions({
+      fetchMonitorWorkspace: async () => ({
+        api_version: "v1",
+        generated_at: "2026-05-31T10:00:00+08:00",
+        monitor_snapshot: null,
+        market_breadth: null,
+        market_pulse: null,
+        review_status: null,
+        review_reports: [],
+        sector_relative_strength: null,
+        paired_hedge: null,
+        partial_errors: [],
+        schema_version: "v14",
+      }),
+    });
+
+    expect("monitorWorkspaceOptions" in monitorQueries).toBe(false);
+    expect("useMonitorWorkspaceQuery" in monitorQueries).toBe(false);
+    expect(options).not.toHaveProperty("refetchInterval");
+  });
+
   it("keeps the full response in query cache while select returns only monitor snapshot", async () => {
     const payload: MonitorWorkspace = {
       api_version: "v1",

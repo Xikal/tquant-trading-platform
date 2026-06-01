@@ -8,7 +8,7 @@ interface MonitorWorkspaceOptionsArgs {
   fetchMonitorWorkspace?: (priorityLimit: number) => Promise<MonitorWorkspaceResponse>;
 }
 
-export function monitorWorkspaceOptions({
+export function monitorSnapshotOptions({
   priorityLimit = 12,
   fetchMonitorWorkspace = fetchMonitorWorkspaceBff,
 }: MonitorWorkspaceOptionsArgs = {}) {
@@ -16,19 +16,8 @@ export function monitorWorkspaceOptions({
     queryKey: queryKeys.monitorWorkspace(priorityLimit),
     queryFn: () => fetchMonitorWorkspace(priorityLimit),
     staleTime: 20_000,
-    refetchInterval: 30_000,
-  });
-}
-
-export function monitorSnapshotOptions(args: MonitorWorkspaceOptionsArgs = {}) {
-  return queryOptions({
-    ...monitorWorkspaceOptions(args),
     select: (payload): MonitorSnapshotResponse | null => payload.monitor_snapshot ?? null,
   });
-}
-
-export function useMonitorWorkspaceQuery(priorityLimit = 12) {
-  return useQuery(monitorWorkspaceOptions({ priorityLimit }));
 }
 
 export function useMonitorSnapshotQuery(priorityLimit = 12) {
