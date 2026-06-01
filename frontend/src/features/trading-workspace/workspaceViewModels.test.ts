@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { candidateToCard, settingsPayload, trackedPlaybookSymbols, watchSignalToCard } from "../workspace-shared/workspaceViewModels";
+import { candidateToCard, priorityToCard, settingsPayload, trackedPlaybookSymbols, watchSignalToCard } from "../workspace-shared/workspaceViewModels";
 
 describe("workspaceViewModels", () => {
   it("keeps playbook symbols unique across confirmed and watch buckets", () => {
@@ -52,8 +52,11 @@ describe("workspaceViewModels", () => {
     } as never);
 
     expect(card.name).toBe("测试股份");
-    expect(card.details).toContain("9.800-10.200");
-    expect(card.details).toContain("连续推荐 2天");
+    expect(card.details).toContain("价格接近支撑");
+    expect(card.details).not.toContain(" / ");
+    expect(card.executionHint).toContain("连续跟踪 2天");
+    expect(card.expectedText).toBeUndefined();
+    expect(card.operationAmountText).toBe("15%");
   });
 
   it("renders main force advice in low-buy card details", () => {
@@ -82,9 +85,81 @@ describe("workspaceViewModels", () => {
       },
     } as never);
 
-    expect(card.details).toContain("主力：洗盘确认 · 小仓试买 · 68.5");
-    expect(card.details).toContain("旁路观察");
+    expect(card.details).toContain("价格接近支撑");
+    expect(card.details).not.toContain("旁路观察");
     expect(card.badges).toContain("主力洗盘确认");
+    expect(card.badges).toHaveLength(2);
+  });
+
+  it("keeps observation priority cards out of buy-recommendation copy and caps card density", () => {
+    const nearEntry = priorityToCard({
+      name: "观察股份",
+      symbol: "300001",
+      sector_name: "半导体",
+      strategy_key: "front_row",
+      strategy_title: "前排加权",
+      strategy_titles: ["前排加权", "N 字洗盘", "缩量回踩", "涨停回踩"],
+      strategy_count: 4,
+      family_count: 3,
+      latest_price: 20.5,
+      change_pct: 2.1,
+      buy_signal_state: "near_entry",
+      buy_signal_text: "接近买点",
+      action_summary: "接近买点",
+      next_action_text: "等承接确认",
+      priority_score: 72,
+      production_score: 82,
+      entry_zone_low: 19.8,
+      entry_zone_high: 20.2,
+      stop_loss: 19.2,
+      suggested_position_text: "10%",
+      display_lane: "front_row_weighted",
+      mainline_tier_text: "核心主线",
+      leader_strength_rank: 1,
+      multi_timeframe_resonance_score: 88,
+      matched_strategy_variants: ["baseline", "front_row_weighted", "front_row_only"],
+      primary_lane_reason: "只进入影子验证，不参与真实生产排序",
+      recommendation_days: 3,
+      recommendation_start_date: "2026-05-27",
+      risk_tier: "note",
+    } as never);
+
+    expect(nearEntry.identityNote).toBe("前排加权 · 模拟验证中");
+    expect(nearEntry.scoreText).toBe("影子分 82（仅验证）");
+    expect(nearEntry.expectedText).toBeUndefined();
+    expect(nearEntry.details).toBe("等承接确认");
+    expect(nearEntry.details).not.toContain(" / ");
+    expect(nearEntry.badges).toHaveLength(2);
+    expect(`${nearEntry.actionText} ${nearEntry.executionHint} ${nearEntry.failureText}`).toContain("观察类");
+    expect(`${nearEntry.actionText} ${nearEntry.executionHint} ${nearEntry.failureText}`).toContain("不是买入");
+    expect(`${nearEntry.actionText} ${nearEntry.executionHint} ${nearEntry.failureText}`).not.toContain("买入推荐");
+
+    const watchOnly = priorityToCard({
+      name: "只观察股份",
+      symbol: "300002",
+      strategy_key: "front_row_only",
+      strategy_title: "前排极精选",
+      strategy_titles: ["前排极精选"],
+      strategy_count: 1,
+      latest_price: 9.8,
+      change_pct: -0.4,
+      buy_signal_state: "observe_confirmed",
+      buy_signal_text: "观察确认",
+      action_summary: "观察确认",
+      next_action_text: "继续提醒",
+      priority_score: 61,
+      elite_watch_score: 75,
+      entry_zone_low: 9.6,
+      entry_zone_high: 10,
+      stop_loss: 9.2,
+      suggested_position_text: "0%",
+      display_lane: "front_row_only",
+      risk_tier: "degrade",
+    } as never);
+
+    expect(watchOnly.identityNote).toBe("前排极精选 · 只观察，不参与买入排序");
+    expect(watchOnly.scoreText).toBe("观察分 75（只观察）");
+    expect(`${watchOnly.actionText} ${watchOnly.executionHint} ${watchOnly.failureText}`).toContain("不是买入");
   });
 
   it("renders watchlist signal with plain-language action", () => {

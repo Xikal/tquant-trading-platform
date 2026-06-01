@@ -30,7 +30,7 @@ function resolveLaneStatus(board: LowBuyPriorityBoardResult | null, activeLane: 
       title: plain?.conclusion || "只做验证，暂不影响真实排序",
       reason: plain?.reason || "样本外验证不足、滚动验证不稳定、成交数据不足",
       nextStep: plain?.next_step || "继续影子验证和模拟盘观察",
-      tag: "Shadow/Paper",
+      tag: "影子跟踪 / 模拟盘",
     };
   }
   if (activeLane === "front_row_only") {
@@ -38,7 +38,7 @@ function resolveLaneStatus(board: LowBuyPriorityBoardResult | null, activeLane: 
       type: "info" as const,
       title: plain?.conclusion || "只做提醒，不参与生产排序",
       reason: plain?.reason || "信号很少，可能连续多天没有票",
-      nextStep: plain?.next_step || "继续作为强前排观察池",
+      nextStep: plain?.next_step || "继续作为强前排观察提醒，不是买入建议",
       tag: "仅观察",
     };
   }

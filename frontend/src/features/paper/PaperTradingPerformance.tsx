@@ -33,6 +33,7 @@ const TRUNCATED_TEXT_STYLE: CSSProperties = {
   textOverflow: "ellipsis",
   whiteSpace: "nowrap",
 };
+const SMALL_TEXT_STYLE: CSSProperties = { fontSize: 12 };
 const RISK_TODO_LIST_STYLE: CSSProperties = {
   display: "grid",
   gap: 6,
@@ -109,12 +110,13 @@ export function SectorEtfT0PerformancePanel({ item }: { item: PaperSectorEtfT0Pe
       .catch((error: unknown) => setError(error instanceof Error ? error.message : "ETF T0 OOS 阶段加载失败"));
   }, [setError, setLatest]);
   if (!item) return <EmptyState text="暂无 ETF T+0 自动交易绩效" />;
-  const gateNotes = item.execution_gate_notes?.length ? item.execution_gate_notes : [
-    "自动执行门禁：必须同时满足 ETF universe T+0 eligibility、分钟信号 positive_t_buy、无风险 flags、置信度达标。",
+  const gateNotes = (item.execution_gate_notes?.length ? item.execution_gate_notes : [
+    "自动执行门禁：必须同时满足 ETF T+0 标的、分钟级正向买点、无风险标记、置信度达标。",
     "反T卖出仍处于展示/研究状态，不自动卖出底仓。",
-  ];
+  ]).map(plainEtfT0Text);
   return (
     <Space direction="vertical" size={6} style={FULL_WIDTH_STYLE}>
+      <Typography.Text strong style={SMALL_TEXT_STYLE}>真实模拟组合收益</Typography.Text>
       <Row gutter={[8, 8]}>
         <Col xs={24} sm={12} xl={6}>
           <InfoPill compact label="自动委托" value={`${formatInteger(item.simulated_trades)} 笔`} />
@@ -129,12 +131,10 @@ export function SectorEtfT0PerformancePanel({ item }: { item: PaperSectorEtfT0Pe
           <InfoPill compact label="平均收益" value={formatPct(item.simulated_avg_return_pct)} tone={toneFromChange(item.simulated_avg_return_pct)} />
         </Col>
         <Col xs={24} sm={12} xl={6}>
-          <InfoPill compact label="OOS阶段" value={latest?.available ? oosStageText(latest.stage) : "未验证"} tone={latest?.stage === "candidate_production" ? "up" : latest?.stage === "paper_small" ? "warn" : "neutral"} />
-        </Col>
-        <Col xs={24} sm={12} xl={6}>
-          <InfoPill compact label="OOS结论" value={latest?.verdict || "needs_validation"} />
+          <InfoPill compact label="样本外状态" value={latest?.available ? `${oosStageText(latest.stage)} · ${oosVerdictText(latest.verdict)}` : "尚未验证"} tone={latest?.stage === "candidate_production" ? "up" : latest?.stage === "paper_small" ? "warn" : "neutral"} />
         </Col>
       </Row>
+      <Typography.Text strong style={SMALL_TEXT_STYLE}>影子跟踪收益（非真实成交）</Typography.Text>
       <VirtualGrid<PaperSectorEtfT0Performance>
         rowKey={() => "sector-etf-t0"}
         dataSource={[item]}
@@ -143,23 +143,25 @@ export function SectorEtfT0PerformancePanel({ item }: { item: PaperSectorEtfT0Pe
           { title: "跟踪样本", dataIndex: "shadow_sample_count", render: (value) => <strong>{formatInteger(value)}</strong> },
           { title: "已结算", dataIndex: "shadow_settled_count", render: (value) => formatInteger(value) },
           { title: "待结算", dataIndex: "shadow_pending_count", render: (value) => formatInteger(value) },
-          { title: "影子胜率", dataIndex: "shadow_success_rate_pct", render: (value) => formatPct(value) },
+          { title: "跟踪胜率（非真实成交）", dataIndex: "shadow_success_rate_pct", render: (value) => formatPct(value) },
           { title: "1日均收", dataIndex: "shadow_avg_return_1d_pct", render: (value) => <span className={toneFromChange(value)}>{formatPct(value)}</span> },
           { title: "3日均收", dataIndex: "shadow_avg_return_3d_pct", render: (value) => <span className={toneFromChange(value)}>{formatPct(value)}</span> },
         ]}
       />
-      <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-        {item.notes?.[0] || "只统计 strategy_key=sector_etf_t0 的模拟成交，并和 ETF 机会池影子跟踪对账。"}
+      <Typography.Text strong style={SMALL_TEXT_STYLE}>每日信号等权收益（非真实组合收益）</Typography.Text>
+      <Typography.Text type="secondary" style={SMALL_TEXT_STYLE}>
+        {plainEtfT0Text(item.notes?.[0] || "只统计 sector_etf_t0 的模拟成交，并和 ETF 机会池影子跟踪对账。")}
       </Typography.Text>
-      <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-        {latest?.available ? `真实 OOS ${latest.dataset_version || latest.dataset_key}：${latest.gate_reasons[0] || "无阻断原因"}。通过也只作为阶段建议，不绕过自动交易风控。` : "真实 OOS 尚未验证，ETF T0 自动交易保持研究/小仓观察边界。"}
+      <Typography.Text type="secondary" style={SMALL_TEXT_STYLE}>
+        {latest?.available ? `真实样本外 ${latest.dataset_version || latest.dataset_key}：${plainEtfT0Text(latest.gate_reasons[0] || "无阻断原因")}。通过也只作为阶段建议，不绕过自动交易风控。` : "真实样本外尚未验证，ETF T0 自动交易保持研究/小仓观察边界。"}
       </Typography.Text>
-      <Space wrap size={[5, 5]}>
+      <Typography.Text strong style={SMALL_TEXT_STYLE}>执行门禁说明</Typography.Text>
+      <Space direction="vertical" size={2} style={FULL_WIDTH_STYLE}>
         {gateNotes.map((note) => (
-          <InfoPill key={note} compact label="执行门禁" value={note} />
+          <Typography.Text key={note} type="secondary" style={SMALL_TEXT_STYLE}>{note}</Typography.Text>
         ))}
       </Space>
-      <Typography.Text strong style={{ fontSize: 12 }}>逐笔复盘归因</Typography.Text>
+      <Typography.Text strong style={SMALL_TEXT_STYLE}>逐笔复盘归因</Typography.Text>
       <VirtualGrid<PaperSectorEtfT0ReviewTrade>
         rowKey={(trade) => String(trade.id)}
         dataSource={item.review_trades ?? []}
@@ -171,7 +173,7 @@ export function SectorEtfT0PerformancePanel({ item }: { item: PaperSectorEtfT0Pe
           { title: "执行", dataIndex: "execution_summary" },
           { title: "时间", dataIndex: "trade_time", render: (value) => formatPaperDateTime(value) },
           { title: "市场", dataIndex: "market_state", render: (value) => value || "--" },
-          { title: "原因/归因", dataIndex: "attribution", render: (value) => <span style={TRUNCATED_TEXT_STYLE} title={value}>{value}</span> },
+          { title: "原因/归因", dataIndex: "attribution", render: (value) => <span style={TRUNCATED_TEXT_STYLE} title={plainEtfT0Text(value)}>{plainEtfT0Text(value)}</span> },
           { title: "风险提示", dataIndex: "risk_notes", render: (value) => Array.isArray(value) && value.length ? value[0] : "完整" },
         ]}
       />
@@ -181,8 +183,32 @@ export function SectorEtfT0PerformancePanel({ item }: { item: PaperSectorEtfT0Pe
 
 function oosStageText(stage: string): string {
   if (stage === "paper_small") return "小仓模拟";
-  if (stage === "candidate_production") return "生产候选";
+  if (stage === "candidate_production") return "可进入生产候选";
   return "研究观察";
+}
+
+function oosVerdictText(verdict?: string | null): string {
+  if (verdict === "pass") return "验证通过";
+  if (verdict === "candidate_production") return "可进入生产候选";
+  if (verdict === "paper_small") return "小仓模拟";
+  if (verdict === "needs_validation") return "仍需验证";
+  if (verdict === "blocked") return "暂不通过";
+  return plainEtfT0Text(verdict || "仍需验证");
+}
+
+function plainEtfT0Text(value: string): string {
+  return value
+    .replace(/\bOOS\b/g, "样本外")
+    .replace(/needs_validation/g, "仍需验证")
+    .replace(/candidate_production/g, "可进入生产候选")
+    .replace(/paper_small/g, "小仓模拟")
+    .replace(/positive_t_buy/g, "分钟级正向买点")
+    .replace(/T\+0 eligibility/g, "ETF T+0 标的")
+    .replace(/no risk flags/g, "无风险标记")
+    .replace(/\brisk flags\b/g, "风险标记")
+    .replace(/ETF universe/g, "ETF 标的池")
+    .replace(/Shadow/g, "影子跟踪")
+    .replace(/Paper/g, "模拟盘");
 }
 
 export function GroupedPerformanceTable({ items, emptyText }: { items: PaperGroupedPerformance[]; emptyText: string }) {

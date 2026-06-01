@@ -27,6 +27,29 @@ const sampleStock: StockCardView = {
 };
 
 describe("StockCard", () => {
+  it("keeps card-facing quality, position, and labels de-duplicated", () => {
+    const html = renderToStaticMarkup(
+      <StockCard
+        stock={{
+          ...sampleStock,
+          scoreText: "影子分 82（仅验证）",
+          expectedText: undefined,
+          operationAmountText: "2 成",
+          badges: ["龙头#1", "N策略命中", "多周期共振"],
+          subBadges: ["额外审计"],
+        }}
+      />,
+    );
+
+    expect(html).toContain("影子分 82（仅验证）");
+    expect(html).not.toContain("质量 ★");
+    expect(html).not.toContain("预期 2 成");
+    expect(html).toContain("龙头#1");
+    expect(html).toContain("N策略命中");
+    expect(html).not.toContain("多周期共振");
+    expect(html).not.toContain("额外审计");
+  });
+
   it("uses shared stock card classes for tone, risk, badges, and execution hints", () => {
     const html = renderToStaticMarkup(
       <StockCard stock={sampleStock} actions={["详情", "分析"]} compact />,
@@ -39,7 +62,7 @@ describe("StockCard", () => {
     expect(html).toContain("tq-stock-card__meta--warn");
     expect(html).toContain("tq-stock-card__risk--warn");
     expect(html).toContain("tq-stock-card__operation");
-    expect(html).toContain("tq-stock-card__badge--sub");
+    expect(html).not.toContain("tq-stock-card__badge--sub");
     expect(html).toContain("tq-stock-card__execution-hint");
     expect(html).toContain("观察信号，不构成买入建议。");
   });

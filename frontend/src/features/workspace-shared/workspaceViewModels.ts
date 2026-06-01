@@ -19,57 +19,51 @@ export function priorityToCard(item: LowBuyPriorityBoardItem): StockCardView {
     livePrice: true,
     scoreText: priorityScoreText(item),
     riskText: riskTierText(item.risk_tier),
-    expectedText: item.suggested_position_text,
+    expectedText: undefined,
     actionText: item.buy_signal_text || item.action_summary,
     entryText: optionalPriceRange(item.entry_zone_low, item.entry_zone_high),
     stopText: optionalPrice(item.stop_loss),
     operationAmountText: item.suggested_position_text,
     primaryReason: item.next_action_text || item.action_summary,
-    details: [
-      mainForceSummary(item.main_force_advice),
-      nextDayPlanText(item.next_day_event_plan),
-      strategyNames.slice(0, 3).join(" + ") || item.strategy_title,
-      item.leader_strength_text,
-      item.multi_timeframe_resonance_text,
-      sectorText,
-      recommendationSummary(item.recommendation_days, item.recommendation_start_date),
-      item.exit_plan_text,
-      item.position_breakdown_text || item.suggested_position_text,
+    details: primaryCardDetail([
+      item.next_action_text,
       item.primary_lane_reason,
-      `止损 ${formatPrice(item.stop_loss)}`,
-    ].filter(Boolean).join(" / "),
-    executionHint: [nextDayPlanHint(item.next_day_event_plan), priorityExecutionHint(item), item.exit_plan_text, item.recommendation_duration_text].filter(Boolean).join(" "),
+      item.action_summary,
+      mainForceSummary(item.main_force_advice),
+      strategyNames.slice(0, 3).join(" + ") || item.strategy_title,
+    ]),
+    executionHint: [nextDayPlanHint(item.next_day_event_plan), priorityExecutionHint(item), item.exit_plan_text, recommendationSummary(item.recommendation_days, item.recommendation_start_date), item.recommendation_duration_text].filter(Boolean).join(" "),
     failureText: priorityFailureText(item),
     tone: toneFromChange(item.change_pct),
-    badges: [
+    badges: cardBadges([
       (item.strategy_count ?? 0) > 1 ? `${item.strategy_count}策略命中` : "",
       mainForceBadge(item.main_force_advice),
       item.family_count && item.family_count > 1 ? `${item.family_count}类逻辑共振` : "",
       item.leader_strength_rank ? `板块龙头#${item.leader_strength_rank}` : "",
       item.multi_timeframe_resonance_score ? "多周期共振" : "",
       matchedLaneBadge(item),
-    ].filter(Boolean),
+    ]),
     highlight,
   };
 }
 
 function laneIdentityText(item: LowBuyPriorityBoardItem): string {
   if (item.display_lane === "front_row_weighted") {
-    return "前排加权 · Paper验证";
+    return "前排加权 · 模拟验证中";
   }
   if (item.display_lane === "front_row_only") {
-    return "前排极精选 · 仅观察";
+    return "前排极精选 · 只观察，不参与买入排序";
   }
   return item.strategy_title;
 }
 
 function priorityScoreText(item: LowBuyPriorityBoardItem): string {
   if (item.display_lane === "front_row_weighted" && item.production_score != null) {
-    return `Shadow ${fixedNumberText(item.production_score, 0)}`;
+    return `影子分 ${fixedNumberText(item.production_score, 0)}（仅验证）`;
   }
   if (item.display_lane === "front_row_only") {
     const score = item.elite_watch_score ?? item.watch_score ?? item.priority_score;
-    return `观察 ${fixedNumberText(score, 0)}`;
+    return `观察分 ${fixedNumberText(score, 0)}（只观察）`;
   }
   return fixedNumberText(item.priority_score, 0);
 }
@@ -87,10 +81,10 @@ function priorityExecutionHint(item: LowBuyPriorityBoardItem): string {
     return "确定买入：价格已进入买点区并通过承接确认，按建议仓位执行；跌破止损或出现阻断信号立即放弃。";
   }
   if (item.buy_signal_state === "near_entry") {
-    return "接近买点：价格接近买点或已到位但确认不足，只盯承接，不提前买；确认后才进入执行。";
+    return "接近买点（观察类·未到买入）：价格接近买点或已到位但确认不足，只盯承接，不提前买；这不是买入建议。";
   }
   if (item.buy_signal_state === "observe_confirmed") {
-    return "观察确认：结构、热点和市场状态已达标，仍需结合买点、仓位和风控执行。";
+    return "观察确认（不是买入建议）：结构、热点和市场状态已达标，仍需等买点、仓位和风控同时满足。";
   }
   return "";
 }
@@ -105,7 +99,7 @@ function priorityFailureText(item: LowBuyPriorityBoardItem): string {
     return [stopLoss, "观察确认不等于自动买入，跌破买点区或板块转弱即降级", `风险 ${risk}`].filter(Boolean).join("；");
   }
   if (item.buy_signal_state === "near_entry") {
-    return [stopLoss, "没有承接确认、冲高回落或板块转弱时继续观望", `风险 ${risk}`].filter(Boolean).join("；");
+    return [stopLoss, "观察类信号不是买入建议；没有承接确认、冲高回落或板块转弱时继续观望", `风险 ${risk}`].filter(Boolean).join("；");
   }
   return [stopLoss, `风险 ${risk}，不满足买点和承接确认就不操作`].filter(Boolean).join("；");
 }
@@ -131,28 +125,22 @@ export function candidateToCard(item: LowBuyCandidate): StockCardView {
     changeText: formatPct(item.change_pct),
     scoreText: fixedNumberText(item.score, 0),
     riskText: riskTierText(item.risk_tier),
-    expectedText: item.suggested_position_text,
+    expectedText: undefined,
     actionText: item.buy_signal_text,
     entryText: optionalPriceRange(item.entry_zone_low, item.entry_zone_high),
     stopText: optionalPrice(item.stop_loss),
     operationAmountText: item.suggested_position_text,
     primaryReason: item.summary_reason,
-    details: [
-      mainForceSummary(item.main_force_advice),
-      nextDayPlanText(item.next_day_event_plan),
-      exitPlanSummary(item.exit_plan),
-      item.leader_strength_text,
-      item.multi_timeframe_resonance_text,
-      `${formatPrice(item.entry_zone_low)}-${formatPrice(item.entry_zone_high)}`,
-      `止损 ${formatPrice(item.stop_loss)}`,
-      quoteQualityText(item),
-      recommendationSummary(item.recommendation_days, item.recommendation_start_date),
+    details: primaryCardDetail([
       item.summary_reason,
-    ].filter(Boolean).join(" / "),
-    executionHint: [nextDayPlanHint(item.next_day_event_plan), exitPlanHint(item.exit_plan), item.recommendation_duration_text].filter(Boolean).join(" "),
+      mainForceSummary(item.main_force_advice),
+      quoteQualityText(item),
+      `${formatPrice(item.entry_zone_low)}-${formatPrice(item.entry_zone_high)}`,
+    ]),
+    executionHint: [nextDayPlanHint(item.next_day_event_plan), exitPlanHint(item.exit_plan), recommendationSummary(item.recommendation_days, item.recommendation_start_date), item.recommendation_duration_text].filter(Boolean).join(" "),
     failureText: candidateFailureText(item),
     tone: toneFromChange(item.change_pct),
-    badges: [
+    badges: cardBadges([
       item.strategy_title,
       mainForceBadge(item.main_force_advice),
       item.leader_strength_rank ? `板块龙头#${item.leader_strength_rank}` : "",
@@ -160,7 +148,7 @@ export function candidateToCard(item: LowBuyCandidate): StockCardView {
       item.mainline_tier_text || "",
       item.execution_quality_text || "",
       item.is_stale ? "行情过期" : "",
-    ].filter(Boolean),
+    ]),
     highlight: item.strategy_key === "limit_up_breakout_retrace",
   };
 }
@@ -245,7 +233,16 @@ function recommendationSummary(days?: number, startDate?: string | null): string
   if (!days || days <= 0) {
     return "";
   }
-  return startDate ? `连续推荐 ${days}天，自 ${startDate}` : `连续推荐 ${days}天`;
+  return startDate ? `连续跟踪 ${days}天，自 ${startDate}` : `连续跟踪 ${days}天`;
+}
+
+function primaryCardDetail(values: Array<string | undefined | null>): string {
+  const first = values.map((value) => (value ?? "").trim()).find(Boolean);
+  return first ?? "";
+}
+
+function cardBadges(values: Array<string | undefined | null>): string[] {
+  return uniqueStrings(values).slice(0, 2);
 }
 
 export function watchSignalToCard(item: WatchlistSignal): StockCardView {

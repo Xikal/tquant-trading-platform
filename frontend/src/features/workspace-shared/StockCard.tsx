@@ -75,12 +75,11 @@ export function StockCard({
       <div className="tq-stock-card__body">
         <div className="tq-stock-card__direct-action">
           <strong className="tq-stock-card__direct-action-title">{directActionTitle(stock.actionText)}</strong>
-          {stock.scoreText ? <span className="tq-stock-card__score" title={`质量分 ${stock.scoreText}`}>质量 {scoreStars(stock.scoreText)}</span> : null}
+          {stock.scoreText ? <span className="tq-stock-card__score" title={qualityScoreTitle(stock.scoreText)}>{qualityScoreText(stock.scoreText)}</span> : null}
         </div>
         <div className="tq-stock-card__meta">
           <span>当前价 {stock.livePrice ? <LiveCell symbol={stock.symbol} field="price" fallback={stock.priceText} /> : stock.priceText}</span>
           <span className={`tq-stock-card__meta--${stock.tone}`}>涨跌 {stock.livePrice ? <LiveCell symbol={stock.symbol} field="changePct" fallback={stock.changeText} /> : stock.changeText}</span>
-          {stock.scoreText ? <span>质量分 {stock.scoreText}</span> : null}
           <span className={`tq-stock-card__badge tq-stock-card__risk tq-stock-card__risk--${riskTone(stock.riskText)}`}>风险 {stock.riskText}</span>
           {stock.expectedText ? <span>预期 {stock.expectedText}</span> : null}
         </div>
@@ -93,12 +92,7 @@ export function StockCard({
         ) : null}
         {stock.badges?.length ? (
           <div className="tq-stock-card__badge-row">
-            {stock.badges.map((badge) => <span key={badge} className="tq-stock-card__badge">{badge}</span>)}
-          </div>
-        ) : null}
-        {stock.subBadges?.length ? (
-          <div className="tq-stock-card__badge-row">
-            {stock.subBadges.map((badge) => <span key={badge} className="tq-stock-card__badge tq-stock-card__badge--sub">{badge}</span>)}
+            {stock.badges.slice(0, 2).map((badge) => <span key={badge} className="tq-stock-card__badge">{badge}</span>)}
           </div>
         ) : null}
         {actions?.length ? (
@@ -123,6 +117,16 @@ export function StockCard({
       </div>
     </article>
   );
+}
+
+function qualityScoreText(scoreText: string): string {
+  return scoreText.includes("分") ? scoreText : `质量分 ${scoreText}`;
+}
+
+function qualityScoreTitle(scoreText: string): string {
+  const score = Number(scoreText);
+  if (!Number.isFinite(score)) return "质量分仅作排序参考";
+  return `质量星级 ${scoreStars(scoreText)}`;
 }
 
 function OperationItem({ label, value }: { label: string; value: string }) {

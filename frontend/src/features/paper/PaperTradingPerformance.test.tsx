@@ -5,7 +5,7 @@ import { createAppQueryClient } from "../../state/queryClient";
 import { SectorEtfT0PerformancePanel } from "./PaperTradingPerformance";
 
 describe("SectorEtfT0PerformancePanel", () => {
-  it("renders ETF T0 execution gate notes", () => {
+  it("renders ETF T0 performance with separated return semantics and plain-language status", () => {
     const html = renderToStaticMarkup(
       <QueryClientProvider client={createAppQueryClient()}>
         <SectorEtfT0PerformancePanel
@@ -45,11 +45,21 @@ describe("SectorEtfT0PerformancePanel", () => {
     );
 
     expect(html).toContain("自动委托");
-    expect(html).toContain("执行门禁");
-    expect(html).toContain("positive_t_buy");
+    expect(html).toContain("真实模拟组合收益");
+    expect(html).toContain("影子跟踪收益（非真实成交）");
+    expect(html).toContain("每日信号等权收益（非真实组合收益）");
+    expect(html).toContain("执行门禁说明");
+    expect(html).toContain("分钟级正向买点");
+    expect(html).not.toContain("positive_t_buy");
+    expect(html).not.toContain("T+0 eligibility");
+    expect(html).not.toContain("no risk flags");
     expect(html).toContain("逐笔复盘归因");
-    expect(html).toContain("OOS阶段");
-    expect(html).toContain("真实 OOS 尚未验证");
+    expect(html).toContain("样本外状态");
+    expect(html).toContain("真实样本外尚未验证");
+    expect(html).not.toContain("OOS阶段");
+    expect(html).not.toContain("真实 OOS");
+    expect(html).not.toContain("needs_validation");
+    expect(html).toContain("跟踪胜率（非真实成交）");
     expect(html).toContain("510300");
   });
 });
