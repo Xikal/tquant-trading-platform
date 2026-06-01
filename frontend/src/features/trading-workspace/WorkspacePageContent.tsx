@@ -14,6 +14,7 @@ import type { Page, StockCardView } from "../workspace-shared/workspaceTypes";
 interface WorkspacePageContentProps {
   AnalysisPage: ComponentType<ComponentProps<any>>;
   BacktestPage: ComponentType<ComponentProps<any>>;
+  DataConsolePage: ComponentType<{ currentUser: AuthUser }>;
   MonitorPage: ComponentType<MonitorPageProps>;
   PaperTradingPage: ComponentType<PaperTradingPageProps>;
   PlaybookPage: ComponentType<ComponentProps<any>>;
@@ -37,6 +38,7 @@ interface WorkspacePageContentProps {
 export function WorkspacePageContent({
   AnalysisPage,
   BacktestPage,
+  DataConsolePage,
   MonitorPage,
   PaperTradingPage,
   PlaybookPage,
@@ -95,6 +97,7 @@ export function WorkspacePageContent({
         )}
         {page === "strategy-tracking" && <StrategyTrackingPage strategyMeta={strategyMeta} />}
         {page === "backtest" && <BacktestPage />}
+        {page === "data" && <DataConsolePage currentUser={currentUser} />}
         {page === "paper" && (
           currentUser.can_paper_trade ? (
             <PaperTradingPage {...paperPageProps} />

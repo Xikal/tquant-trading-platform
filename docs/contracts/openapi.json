@@ -6485,6 +6485,92 @@
         "title": "BffWorkspaceManifest",
         "type": "object"
       },
+      "DataQualityBackfillRequest": {
+        "properties": {
+          "dataset_key": {
+            "default": "daily_bars",
+            "title": "Dataset Key",
+            "type": "string"
+          },
+          "end_date": {
+            "format": "date",
+            "title": "End Date",
+            "type": "string"
+          },
+          "scope": {
+            "default": "all",
+            "title": "Scope",
+            "type": "string"
+          },
+          "start_date": {
+            "format": "date",
+            "title": "Start Date",
+            "type": "string"
+          }
+        },
+        "required": [
+          "start_date",
+          "end_date"
+        ],
+        "title": "DataQualityBackfillRequest",
+        "type": "object"
+      },
+      "DataQualityCoverageResponse": {
+        "properties": {
+          "dataset_key": {
+            "title": "Dataset Key",
+            "type": "string"
+          },
+          "missing_dates": {
+            "items": {
+              "format": "date",
+              "type": "string"
+            },
+            "title": "Missing Dates",
+            "type": "array"
+          },
+          "missing_symbols": {
+            "items": {
+              "$ref": "#/components/schemas/DataQualityMissingSymbolOut"
+            },
+            "title": "Missing Symbols",
+            "type": "array"
+          },
+          "scope": {
+            "title": "Scope",
+            "type": "string"
+          }
+        },
+        "required": [
+          "dataset_key",
+          "scope"
+        ],
+        "title": "DataQualityCoverageResponse",
+        "type": "object"
+      },
+      "DataQualityMissingSymbolOut": {
+        "properties": {
+          "missing_days": {
+            "default": 0,
+            "title": "Missing Days",
+            "type": "integer"
+          },
+          "name": {
+            "default": "",
+            "title": "Name",
+            "type": "string"
+          },
+          "symbol": {
+            "title": "Symbol",
+            "type": "string"
+          }
+        },
+        "required": [
+          "symbol"
+        ],
+        "title": "DataQualityMissingSymbolOut",
+        "type": "object"
+      },
       "DataQualitySlaResponse": {
         "properties": {
           "items": {
@@ -21197,6 +21283,64 @@
         "title": "TrackRecordLedgerResponse",
         "type": "object"
       },
+      "TradeDataGateCheckOut": {
+        "properties": {
+          "detail": {
+            "default": "",
+            "title": "Detail",
+            "type": "string"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "ok": {
+            "title": "Ok",
+            "type": "boolean"
+          },
+          "severity": {
+            "enum": [
+              "green",
+              "yellow",
+              "red"
+            ],
+            "title": "Severity",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "label",
+          "ok",
+          "severity"
+        ],
+        "title": "TradeDataGateCheckOut",
+        "type": "object"
+      },
+      "TradeDataGateResponse": {
+        "properties": {
+          "checks": {
+            "items": {
+              "$ref": "#/components/schemas/TradeDataGateCheckOut"
+            },
+            "title": "Checks",
+            "type": "array"
+          },
+          "ok": {
+            "title": "Ok",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "ok"
+        ],
+        "title": "TradeDataGateResponse",
+        "type": "object"
+      },
       "TradingRuleOut": {
         "properties": {
           "notes": {
@@ -26910,6 +27054,146 @@
         ]
       }
     },
+    "/api/data-quality/backfill": {
+      "post": {
+        "operationId": "enqueue_data_quality_backfill_api_data_quality_backfill_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-Admin-Token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Admin-Token"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DataQualityBackfillRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RuntimeTaskOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Enqueue Data Quality Backfill",
+        "tags": [
+          "data-quality"
+        ]
+      }
+    },
+    "/api/data-quality/coverage": {
+      "get": {
+        "operationId": "get_data_quality_coverage_api_data_quality_coverage_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "dataset_key",
+            "required": false,
+            "schema": {
+              "default": "daily_bars",
+              "maxLength": 40,
+              "title": "Dataset Key",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "scope",
+            "required": false,
+            "schema": {
+              "default": "all",
+              "maxLength": 40,
+              "title": "Scope",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DataQualityCoverageResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Data Quality Coverage",
+        "tags": [
+          "data-quality"
+        ]
+      }
+    },
     "/api/data-quality/repair": {
       "post": {
         "operationId": "enqueue_data_repair_api_data_quality_repair_post",
@@ -27069,6 +27353,32 @@
           }
         ],
         "summary": "List Data Quality Sla",
+        "tags": [
+          "data-quality"
+        ]
+      }
+    },
+    "/api/data-quality/trade-gate": {
+      "get": {
+        "operationId": "get_trade_data_gate_api_data_quality_trade_gate_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TradeDataGateResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Trade Data Gate",
         "tags": [
           "data-quality"
         ]
@@ -28049,6 +28359,38 @@
               "pattern": "^(all|stock|etf)$",
               "title": "Kind",
               "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Admin-Token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Admin-Token"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
             }
           }
         ],

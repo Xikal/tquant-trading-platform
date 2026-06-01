@@ -5,6 +5,7 @@ export type Page =
   | "strategy-tracking"
   | "backtest"
   | "paper"
+  | "data"
   | "settings";
 export type Tone = "up" | "down" | "neutral" | "warn";
 

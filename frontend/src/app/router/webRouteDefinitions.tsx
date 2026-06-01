@@ -46,6 +46,7 @@ export const webRoutes: RouteObject[] = [
   { path: "/backtest", element: workspaceElement("backtest"), errorElement: <TqErrorResult title="页面加载失败" description="请刷新页面，或返回实时监控。" /> },
   { path: "/paper", element: routeElement(PaperRoute), errorElement: <TqErrorResult title="页面加载失败" description="请刷新页面，或返回实时监控。" /> },
   { path: "/performance", element: <Navigate to="/paper" replace />, errorElement: <TqErrorResult title="页面加载失败" description="请刷新页面，或返回实时监控。" /> },
+  { path: "/data", element: workspaceElement("data"), errorElement: <TqErrorResult title="页面加载失败" description="请刷新页面，或返回实时监控。" /> },
   { path: "/settings", element: routeElement(SettingsRoute), errorElement: <TqErrorResult title="页面加载失败" description="请刷新页面，或返回实时监控。" /> },
   {
     path: "*",

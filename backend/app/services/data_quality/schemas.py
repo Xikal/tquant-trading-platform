@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import date, datetime
+from typing import Literal
 
 from pydantic import BaseModel, Field
 
@@ -38,6 +39,39 @@ class DataQualitySlaResponse(BaseModel):
     items: list[DataQualitySnapshotOut] = Field(default_factory=list)
     latest_repair_audits: list[DataRepairAuditOut] = Field(default_factory=list)
     total: int = 0
+
+
+class DataQualityMissingSymbolOut(BaseModel):
+    symbol: str
+    name: str = ""
+    missing_days: int = 0
+
+
+class DataQualityCoverageResponse(BaseModel):
+    dataset_key: str
+    scope: str
+    missing_symbols: list[DataQualityMissingSymbolOut] = Field(default_factory=list)
+    missing_dates: list[date] = Field(default_factory=list)
+
+
+class DataQualityBackfillRequest(BaseModel):
+    dataset_key: str = "daily_bars"
+    scope: str = "all"
+    start_date: date
+    end_date: date
+
+
+class TradeDataGateCheckOut(BaseModel):
+    key: str
+    label: str
+    ok: bool
+    severity: Literal["green", "yellow", "red"]
+    detail: str = ""
+
+
+class TradeDataGateResponse(BaseModel):
+    ok: bool
+    checks: list[TradeDataGateCheckOut] = Field(default_factory=list)
 
 
 class DataRepairRunRequest(BaseModel):

@@ -27,6 +27,7 @@ DEFAULT_JSON = PROJECT_ROOT / "backend" / "data" / "analytics" / "reports" / "st
 
 def register_analytics_handlers(registry: TaskHandlerRegistry) -> None:
     registry.register("data_backfill_24m", handle_data_backfill_24m)
+    registry.register("data_quality_backfill", handle_data_quality_backfill)
     registry.register("analytics_export_daily_bars", handle_analytics_export_daily_bars)
     registry.register("analytics_quality_check", handle_analytics_quality_check)
     registry.register("strategy_24m_duckdb_report", handle_strategy_24m_duckdb_report)
@@ -68,6 +69,72 @@ def handle_data_backfill_24m(context: TaskContext) -> dict[str, Any]:
     context.progress(90.0, "补数脚本完成，等待质量复查")
     quality = check_daily_bars_24m_quality(context.db, months=months, end_date=date.fromisoformat(end_date), create_backfill_task=False)
     return {"ok": quality.status == "ok", "quality": quality.as_dict(), "artifacts": [artifact], "stdout_tail": completed.stdout[-2000:]}
+
+
+def handle_data_quality_backfill(context: TaskContext) -> dict[str, Any]:
+    payload = context.payload
+    dataset_key = str(payload.get("dataset_key") or "daily_bars")
+    scope = str(payload.get("scope") or "all")
+    start_date = str(payload.get("start_date") or "")
+    end_date = str(payload.get("end_date") or date.today().isoformat())
+    if dataset_key != "daily_bars":
+        context.progress(100.0, "该数据集回补需要后端数据源适配", {"dataset_key": dataset_key})
+        return {
+            "ok": False,
+            "status": "blocked_by_data",
+            "dataset_key": dataset_key,
+            "scope": scope,
+            "reason": "minute_bars/tick_trades 区间回补需后端数据源配合，未造假数据。",
+        }
+    script_scope = "all-stock" if scope in {"all", "production_universe"} else "all-stock"
+    artifact = str(PROJECT_ROOT / "backend" / "data" / "analytics" / "reports" / f"data_quality_backfill_task_{context.task_id}.json")
+    command = [
+        sys.executable,
+        str(PROJECT_ROOT / "backend" / "scripts" / "backfill_daily_history.py"),
+        "--scope",
+        script_scope,
+        "--start-date",
+        start_date,
+        "--end-date",
+        end_date,
+        "--report-output",
+        artifact,
+    ]
+    if payload.get("limit"):
+        command.extend(["--limit", str(payload["limit"])])
+    context.progress(5.0, "开始区间回补日线数据", {"command": " ".join(command)})
+    completed = subprocess.run(command, cwd=PROJECT_ROOT, text=True, capture_output=True, timeout=int(payload.get("timeout_seconds") or 21600))
+    context.add_artifact(artifact)
+    if completed.returncode != 0:
+        raise RuntimeError((completed.stderr or completed.stdout or "data_quality_backfill failed")[-1000:])
+    context.progress(90.0, "回补脚本完成，刷新数据质量 SLA")
+    snapshots = []
+    for item in ["daily_bars"]:
+        snapshot = compute_dataset_sla(
+            context.db,
+            dataset_key=item,
+            scope=scope if scope in {"all", "production_universe"} else "all",
+            as_of=date.fromisoformat(end_date[:10]),
+            start_date=date.fromisoformat(start_date[:10]) if start_date else None,
+        )
+        snapshots.append(
+            {
+                "dataset_key": snapshot.dataset_key,
+                "scope": snapshot.scope,
+                "status": snapshot.status,
+                "coverage_pct": float(snapshot.coverage_pct or 0.0),
+                "missing_days": int(snapshot.missing_days or 0),
+            }
+        )
+    return {
+        "ok": True,
+        "status": "completed",
+        "dataset_key": dataset_key,
+        "scope": scope,
+        "artifacts": [artifact],
+        "snapshots": snapshots,
+        "stdout_tail": completed.stdout[-2000:],
+    }
 
 
 def handle_analytics_export_daily_bars(context: TaskContext) -> dict[str, Any]:

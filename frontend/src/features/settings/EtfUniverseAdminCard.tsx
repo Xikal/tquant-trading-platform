@@ -40,7 +40,13 @@ export const ETF_UNIVERSE_ADMIN_SERVER_KEYS = {
   repairDraft: ["settings", "etf-universe-admin", "repair-draft"] as const,
 };
 
-export function EtfUniverseAdminCard() {
+export function EtfUniverseAdminCard({
+  adminReady = true,
+  adminDisabledReason = "需填写管理令牌",
+}: {
+  adminReady?: boolean;
+  adminDisabledReason?: string;
+}) {
   const [payload, setPayload] = useServerState<EtfUniverseAdminResponse | null>(ETF_UNIVERSE_ADMIN_SERVER_KEYS.payload, null);
   const [repairDraft, setRepairDraft] = useServerState<EtfUniverseRepairDraftResponse | null>(
     ETF_UNIVERSE_ADMIN_SERVER_KEYS.repairDraft,
@@ -93,7 +99,8 @@ export function EtfUniverseAdminCard() {
   }, [filter, payload]);
 
   const highRiskCount = useMemo(() => payload?.diff.filter((item) => item.risk_level === "high").length ?? 0, [payload]);
-  const applyDisabled = !version.trim() || !description.trim() || Boolean(payload?.validation.error_count) || (activate && highRiskCount > 0 && !confirmHighRisk);
+  const writeDisabled = !adminReady || loading;
+  const applyDisabled = writeDisabled || !version.trim() || !description.trim() || Boolean(payload?.validation.error_count) || (activate && highRiskCount > 0 && !confirmHighRisk);
 
   async function validateDraft() {
     setField("loading", true);
@@ -180,6 +187,7 @@ export function EtfUniverseAdminCard() {
       disabled={loading}
     >
       <p className="muted">仅管理员可改 universe 覆盖项；这里维护品种能力、T+0 规则和执行约束，不生成策略信号。</p>
+      {!adminReady ? <Alert type="warning" showIcon message={adminDisabledReason} /> : null}
       {error ? <Alert type="error" showIcon message={error} /> : null}
       {message ? <Alert type="success" showIcon message={message} /> : null}
       <div style={INLINE_STYLE}>
@@ -215,10 +223,10 @@ export function EtfUniverseAdminCard() {
             <TextField label="名称" value={repairName} onChange={(event) => setField("repairName", event.target.value)} />
             <TextField label="分类" value={repairCategory} placeholder="sector / gold / cross_border" onChange={(event) => setField("repairCategory", event.target.value)} />
           </div>
-          <Button htmlType="button" onClick={() => void buildRepairDraft()} disabled={!repairSymbol.trim() || loading}>生成修复草稿</Button>
+          <Button htmlType="button" onClick={() => void buildRepairDraft()} disabled={!repairSymbol.trim() || writeDisabled}>生成修复草稿</Button>
           {repairDraft ? <Alert type={repairDraft.validation.error_count ? "error" : "warning"} showIcon message={repairDraft.notes[0] || "修复草稿已生成"} /> : null}
           <OverrideEditor draft={draftOverrides} onChange={setDraftOverrides} />
-          <Button htmlType="button" onClick={() => void validateDraft()} disabled={loading}>校验草稿</Button>
+          <Button htmlType="button" onClick={() => void validateDraft()} disabled={writeDisabled}>校验草稿</Button>
         </div>
       </div>
 
@@ -259,9 +267,9 @@ export function EtfUniverseAdminCard() {
         </label>
       </div>
       <Space wrap>
-        <Button type="primary" htmlType="button" onClick={() => void applyDraft()} disabled={applyDisabled || loading}>保存 Universe</Button>
+        <Button type="primary" htmlType="button" onClick={() => void applyDraft()} disabled={applyDisabled}>保存 Universe</Button>
         <TextField label="回滚版本" value={rollbackVersion} onChange={(event) => setField("rollbackVersion", event.target.value)} />
-        <Button danger htmlType="button" onClick={() => void rollback()} disabled={!rollbackVersion || loading}>回滚</Button>
+        <Button danger htmlType="button" onClick={() => void rollback()} disabled={!rollbackVersion || writeDisabled}>回滚</Button>
       </Space>
       <p className="hint">回滚与保存都会写入 quant parameter audit 和 operation audit；自动交易仍受模拟盘权限、风控和确认机制约束。</p>
     </SettingCard>

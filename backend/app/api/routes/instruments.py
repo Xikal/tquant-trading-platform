@@ -5,6 +5,7 @@ import logging
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
+from app.core.admin_auth import require_admin_auth
 from app.core.auth import get_current_user
 from app.core.database import get_db
 from app.models.schema_defs.phase4 import RuntimeTaskCreate
@@ -41,6 +42,7 @@ def list_instruments(
 @router.post("/instruments/sync")
 def sync_instruments(
     kind: str = Query("all", pattern="^(all|stock|etf)$"),
+    _: None = Depends(require_admin_auth),
     db: Session = Depends(get_db),
 ):
     run_id = sync_status.start(kind=kind)

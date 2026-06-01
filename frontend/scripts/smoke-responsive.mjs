@@ -10,7 +10,7 @@ const viewports = [
   { name: "tablet", width: 768, height: 1024 },
   { name: "desktop", width: 1440, height: 960 },
 ];
-const paths = ["/monitor", "/emotion", "/analysis", "/playbook", "/strategy-tracking", "/strategy", "/backtest", "/paper", "/settings"];
+const paths = ["/monitor", "/emotion", "/analysis", "/playbook", "/strategy-tracking", "/strategy", "/backtest", "/paper", "/data", "/settings"];
 const reportPath = resolve("dist", "responsive-smoke-report.json");
 
 const mockUser = {
@@ -485,6 +485,103 @@ const mockPaperDashboard = {
   updated_at: now,
 };
 
+const mockDataQualitySla = {
+  items: [
+    {
+      dataset_key: "daily_bars",
+      as_of_date: "2026-05-26",
+      scope: "all",
+      expected_days: 20,
+      actual_days: 20,
+      missing_days: 0,
+      invalid_rows: 0,
+      duplicate_rows: 0,
+      stale: false,
+      coverage_pct: 100,
+      status: "ok",
+      blockers: [],
+      checked_at: now,
+    },
+    {
+      dataset_key: "minute_bars",
+      as_of_date: "2026-05-26",
+      scope: "production_universe",
+      expected_days: 20,
+      actual_days: 18,
+      missing_days: 2,
+      invalid_rows: 0,
+      duplicate_rows: 0,
+      stale: true,
+      coverage_pct: 90,
+      status: "stale",
+      blockers: ["minute_bars_partial"],
+      checked_at: now,
+    },
+  ],
+  latest_repair_audits: [],
+  total: 2,
+};
+
+const mockDataSources = {
+  updated_at: now,
+  provider_order: ["eastmoney", "akshare"],
+  summary: "eastmoney ok",
+  items: [
+    { source: "eastmoney", ok: true, quality: "ok", latency_ms: 36, is_stale: false, warning: "" },
+    { source: "akshare", ok: false, quality: "failed", latency_ms: 0, is_stale: true, warning: "该数据源暂时不可用，已自动切换，部分数据可能延迟" },
+  ],
+};
+
+const mockRuntimeTasks = {
+  items: [
+    { id: 1, task_type: "data_quality_backfill", status: "succeeded", progress_pct: 100, payload: {}, result: {}, error_message: "", created_at: now, updated_at: now },
+  ],
+  limit: 80,
+  offset: 0,
+  total: 1,
+};
+
+const mockTradeGate = {
+  ok: false,
+  checks: [
+    { key: "freshness", label: "行情新鲜度", ok: true, severity: "yellow", detail: "部分数据偏旧：minute_bars" },
+    { key: "sla", label: "关键 SLA", ok: false, severity: "red", detail: "minute_bars stale minute_bars_partial" },
+  ],
+};
+
+const mockEtfUniverseAdmin = {
+  version: "smoke-etf-universe",
+  updated_at: now,
+  audit_scope: "market.sector_etf_t0.universe_overrides",
+  baseline_count: 1,
+  current_count: 1,
+  override_count: 0,
+  t0_enabled_count: 1,
+  items: [{
+    symbol: "518880",
+    name: "黄金ETF",
+    category: "gold",
+    t0_eligible: true,
+    settlement_rule: "t0",
+    tracking_index: "黄金现货",
+    min_amount: 30000000,
+    max_spread_bps: 10,
+    slippage_bps: 4,
+    premium_discount_available: true,
+    enabled_for_t0: true,
+    same_day_sell_allowed: true,
+    notes: "黄金 ETF",
+    source: "baseline",
+    validation_severity: "ok",
+  }],
+  overrides: {},
+  normalized_overrides: {},
+  validation: { error_count: 0, warning_count: 0, info_count: 0, issues: [] },
+  diff: [],
+  recent_versions: [],
+  notes: [],
+};
+
 async function installMockAuth(page) {
   if (!mockAuth) return;
   await page.addInitScript(() => {
@@ -734,6 +831,22 @@ async function installMockAuth(page) {
     if (path === "/paper/auto-trading/status") return response(mockPaperAutoTradingStatus);
     if (path === "/paper/auto-trading/runs") return response([]);
     if (path.startsWith("/paper") || path.startsWith("/app/paper")) return response(emptyList);
+    if (path === "/data-quality/sla") return response(mockDataQualitySla);
+    if (path === "/data-quality/coverage") return response({ dataset_key: url.searchParams.get("dataset_key") || "daily_bars", scope: url.searchParams.get("scope") || "all", missing_symbols: [], missing_dates: [] });
+    if (path === "/data-quality/trade-gate") return response(mockTradeGate);
+    if (path === "/data-quality/repair") return response({ id: 2, task_type: "data_repair_run", status: "queued", progress_pct: 0, payload: {}, created_at: now, updated_at: now });
+    if (path === "/data-quality/backfill") return response({ id: 3, task_type: "data_quality_backfill", status: "queued", progress_pct: 0, payload: {}, created_at: now, updated_at: now });
+    if (path === "/market/data-sources/health") return response(mockDataSources);
+    if (path === "/runtime-tasks") return response(mockRuntimeTasks);
+    if (path === "/market/etf-universe/admin") return response(mockEtfUniverseAdmin);
+    if (path === "/market/etf-universe/validate") return response(mockEtfUniverseAdmin);
+    if (path === "/market/etf-universe/repair-draft") return response({ draft_overrides: {}, validation: { error_count: 0, warning_count: 0, info_count: 0, issues: [] }, notes: ["smoke"] });
+    if (path === "/market/etf-universe/apply" || path === "/market/etf-universe/rollback") return response({ admin: mockEtfUniverseAdmin, message: "ok" });
+    if (path.startsWith("/quote/")) return response({ symbol: "510300", name: "沪深300ETF", market: "SH", instrument_type: "etf", last_price: 3.45, change_pct: 0.6, change_amount: 0.02, open_price: 3.43, high_price: 3.48, low_price: 3.41, prev_close: 3.43, volume: 1200000, amount: 4140000, timestamp: now, data_source: "smoke", source_quality: "ok", is_stale: false });
+    if (path.startsWith("/kline/")) return response({ symbol: "510300", period: "5m", bars: [{ timestamp: now, open: 3.42, close: 3.45, high: 3.48, low: 3.41, volume: 1000, amount: 3450 }] });
+    if (/^\/instruments\/[^/]+\/rules$/.test(path)) return response({ symbol: "510300", turnaround_mode: "t0", supports_positive_t: true, supports_negative_t: true, same_day_sell_allowed: true, requires_base_position: true, notes: "ETF T+0" });
+    if (/^\/instruments\/[^/]+\/sector$/.test(path)) return response({ sector_name: "ETF", sector_strength: 58, market_strength: 52, alignment_score: 61, notes: "smoke" });
+    if (/^\/instruments\/[^/]+\/events$/.test(path)) return response({ symbol: "510300", events: [] });
     if (path.startsWith("/settings") || path.startsWith("/admin")) return response({});
     if (path.startsWith("/market") || path.startsWith("/bff") || path.startsWith("/app") || path.startsWith("/strategy") || path.startsWith("/factor")) return response(emptyList);
     return response({});

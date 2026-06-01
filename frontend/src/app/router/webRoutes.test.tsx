@@ -6,7 +6,7 @@ import { useWorkspaceStore } from "../../stores/workspaceStore";
 import { pageFromPath } from "../../features/trading-workspace/workspaceRoutes";
 
 describe("webRoutes", () => {
-  it.each(["/monitor", "/paper", "/strategy-tracking"])("keeps %s mounted as a real route entry", (path) => {
+  it.each(["/monitor", "/paper", "/strategy-tracking", "/data"])("keeps %s mounted as a real route entry", (path) => {
     const route = webRoutes.find((item) => item.path === path);
 
     expect(route).toBeDefined();
@@ -27,7 +27,7 @@ describe("webRoutes", () => {
     expect(redirect.props.to).toBe(target);
   });
 
-  it.each(["monitor", "strategy-tracking", "paper"] as const)(
+  it.each(["monitor", "strategy-tracking", "paper", "data"] as const)(
     "workspace store accepts cold route page state %s",
     (page) => {
       useWorkspaceStore.setState({ page: "settings" });
@@ -40,6 +40,7 @@ describe("webRoutes", () => {
 
   it("maps only live workspace pages from cold paths", () => {
     expect(pageFromPath("/strategy-tracking")).toBe("strategy-tracking");
+    expect(pageFromPath("/data")).toBe("data");
     expect(pageFromPath("/strategy")).toBe("monitor");
     expect(pageFromPath("/emotion")).toBe("monitor");
   });

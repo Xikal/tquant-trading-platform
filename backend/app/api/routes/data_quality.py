@@ -12,13 +12,19 @@ from app.core.auth import get_current_user
 from app.core.database import get_db
 from app.models.entities import DataQualitySnapshot, DataRepairAudit
 from app.models.schema_defs.phase4 import RuntimeTaskCreate, RuntimeTaskOut
+from app.services.data_quality.coverage import build_data_quality_coverage
 from app.services.data_quality.schemas import (
+    DataQualityBackfillRequest,
+    DataQualityCoverageResponse,
     DataQualitySlaResponse,
     DataQualitySnapshotOut,
     DataRepairAuditOut,
     DataRepairRunRequest,
+    TradeDataGateResponse,
 )
 from app.services.data_quality.sla import SUPPORTED_DATASETS, SUPPORTED_SCOPES
+from app.services.data_quality.trade_gate import build_trade_data_gate
+from app.services.market.providers import DataSourceProbeService
 from app.services.tasks import RuntimeTaskQueue
 
 router = APIRouter(prefix="/data-quality", dependencies=[Depends(get_current_user)])
@@ -52,6 +58,54 @@ def list_data_quality_sla(
         latest_repair_audits=[_audit_out(row) for row in audits],
         total=len(items),
     )
+
+
+@router.get("/coverage", response_model=DataQualityCoverageResponse)
+def get_data_quality_coverage(
+    dataset_key: str = Query(default="daily_bars", max_length=40),
+    scope: str = Query(default="all", max_length=40),
+    db: Session = Depends(get_db),
+) -> DataQualityCoverageResponse:
+    try:
+        return build_data_quality_coverage(db, dataset_key=dataset_key, scope=scope)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.post("/backfill", response_model=RuntimeTaskOut)
+def enqueue_data_quality_backfill(
+    payload: DataQualityBackfillRequest,
+    _: None = Depends(require_admin_auth),
+    db: Session = Depends(get_db),
+) -> RuntimeTaskOut:
+    dataset_key = _normalize_filter(payload.dataset_key, SUPPORTED_DATASETS)
+    scope = _normalize_filter(payload.scope, SUPPORTED_SCOPES)
+    if payload.start_date > payload.end_date:
+        raise HTTPException(status_code=400, detail="start_date must be <= end_date")
+    task_payload = {
+        "dataset_key": dataset_key,
+        "scope": scope,
+        "start_date": payload.start_date.isoformat(),
+        "end_date": payload.end_date.isoformat(),
+    }
+    return RuntimeTaskQueue(db).enqueue(
+        RuntimeTaskCreate(
+            task_type="data_quality_backfill",
+            payload=task_payload,
+            priority=25,
+            idempotency_key=f"data_quality_backfill:{dataset_key}:{scope}:{payload.start_date}:{payload.end_date}",
+            max_attempts=2,
+        )
+    )
+
+
+@router.get("/trade-gate", response_model=TradeDataGateResponse)
+def get_trade_data_gate(db: Session = Depends(get_db)) -> TradeDataGateResponse:
+    try:
+        source_probe = DataSourceProbeService().probe()
+    except Exception:
+        source_probe = None
+    return build_trade_data_gate(db, source_probe=source_probe)
 
 
 @router.post("/repair", response_model=RuntimeTaskOut)

@@ -30,6 +30,7 @@ const PaperTradingPage = lazy(async () => ({ default: (await import("../paper/Pa
 const PlaybookPage = lazy(async () => ({ default: (await import("../playbook/PlaybookPage")).PlaybookPage }));
 const SettingsPage = lazy(async () => ({ default: (await import("../settings/SettingsPage")).SettingsPage }));
 const StrategyTrackingPage = lazy(async () => ({ default: (await import("../strategy-tracking/StrategyTrackingPage")).StrategyTrackingPage }));
+const DataConsolePage = lazy(async () => ({ default: (await import("../data-console/DataConsolePage")).DataConsolePage }));
 
 type TradingWorkspaceChromeProps = {
   aiDialogOpen: boolean;
@@ -144,6 +145,7 @@ export function TradingWorkspaceChrome(props: TradingWorkspaceChromeProps) {
             <WorkspacePageContent
               AnalysisPage={AnalysisPage}
               BacktestPage={BacktestPage}
+              DataConsolePage={DataConsolePage}
               MonitorPage={MonitorPage}
               PaperTradingPage={PaperTradingPage}
               PlaybookPage={PlaybookPage}

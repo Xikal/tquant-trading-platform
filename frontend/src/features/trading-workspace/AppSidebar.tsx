@@ -2,7 +2,7 @@ import { Button, Menu } from "antd";
 import { MenuFoldOutlined, MenuUnfoldOutlined } from "@ant-design/icons";
 import type { AuthUser } from "../../types";
 import type { Page } from "../workspace-shared/workspaceTypes";
-import { PRIMARY_NAV, SETTINGS_NAV } from "./navConfig";
+import { SETTINGS_NAV, visiblePrimaryNav } from "./navConfig";
 import {
   SIDEBAR_COLLAPSE_BTN_STYLE,
   SIDEBAR_FOOTER_STYLE,
@@ -29,7 +29,7 @@ export function AppSidebar({
   onItemClick,
 }: AppSidebarProps) {
   const paperDisabled = !currentUser.can_paper_trade;
-  const items = [...PRIMARY_NAV, SETTINGS_NAV].map((item) => ({
+  const items = [...visiblePrimaryNav(currentUser), SETTINGS_NAV].map((item) => ({
     key: item.key,
     icon: item.icon,
     label: item.label,

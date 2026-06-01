@@ -1694,6 +1694,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/data-quality/backfill": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Enqueue Data Quality Backfill */
+        post: operations["enqueue_data_quality_backfill_api_data_quality_backfill_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/data-quality/coverage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Data Quality Coverage */
+        get: operations["get_data_quality_coverage_api_data_quality_coverage_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/data-quality/repair": {
         parameters: {
             query?: never;
@@ -1720,6 +1754,23 @@ export interface paths {
         };
         /** List Data Quality Sla */
         get: operations["list_data_quality_sla_api_data_quality_sla_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/data-quality/trade-gate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Trade Data Gate */
+        get: operations["get_trade_data_gate_api_data_quality_trade_gate_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -8423,6 +8474,55 @@ export interface components {
              * @default v14
              */
             schema_version: string;
+        };
+        /** DataQualityBackfillRequest */
+        DataQualityBackfillRequest: {
+            /**
+             * Dataset Key
+             * @default daily_bars
+             */
+            dataset_key: string;
+            /**
+             * End Date
+             * Format: date
+             */
+            end_date: string;
+            /**
+             * Scope
+             * @default all
+             */
+            scope: string;
+            /**
+             * Start Date
+             * Format: date
+             */
+            start_date: string;
+        };
+        /** DataQualityCoverageResponse */
+        DataQualityCoverageResponse: {
+            /** Dataset Key */
+            dataset_key: string;
+            /** Missing Dates */
+            missing_dates?: string[];
+            /** Missing Symbols */
+            missing_symbols?: components["schemas"]["DataQualityMissingSymbolOut"][];
+            /** Scope */
+            scope: string;
+        };
+        /** DataQualityMissingSymbolOut */
+        DataQualityMissingSymbolOut: {
+            /**
+             * Missing Days
+             * @default 0
+             */
+            missing_days: number;
+            /**
+             * Name
+             * @default
+             */
+            name: string;
+            /** Symbol */
+            symbol: string;
         };
         /** DataQualitySlaResponse */
         DataQualitySlaResponse: {
@@ -17625,6 +17725,32 @@ export interface components {
              */
             total: number;
         };
+        /** TradeDataGateCheckOut */
+        TradeDataGateCheckOut: {
+            /**
+             * Detail
+             * @default
+             */
+            detail: string;
+            /** Key */
+            key: string;
+            /** Label */
+            label: string;
+            /** Ok */
+            ok: boolean;
+            /**
+             * Severity
+             * @enum {string}
+             */
+            severity: "green" | "yellow" | "red";
+        };
+        /** TradeDataGateResponse */
+        TradeDataGateResponse: {
+            /** Checks */
+            checks?: components["schemas"]["TradeDataGateCheckOut"][];
+            /** Ok */
+            ok: boolean;
+        };
         /** TradingRuleOut */
         TradingRuleOut: {
             /** Notes */
@@ -21006,6 +21132,74 @@ export interface operations {
             };
         };
     };
+    enqueue_data_quality_backfill_api_data_quality_backfill_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Admin-Token"?: string | null;
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DataQualityBackfillRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RuntimeTaskOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_data_quality_coverage_api_data_quality_coverage_get: {
+        parameters: {
+            query?: {
+                dataset_key?: string;
+                scope?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DataQualityCoverageResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     enqueue_data_repair_api_data_quality_repair_post: {
         parameters: {
             query?: never;
@@ -21071,6 +21265,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_trade_data_gate_api_data_quality_trade_gate_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TradeDataGateResponse"];
                 };
             };
         };
@@ -21637,7 +21851,10 @@ export interface operations {
             query?: {
                 kind?: string;
             };
-            header?: never;
+            header?: {
+                "X-Admin-Token"?: string | null;
+                authorization?: string | null;
+            };
             path?: never;
             cookie?: never;
         };

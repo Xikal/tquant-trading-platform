@@ -1,0 +1,134 @@
+.page {
+  display: grid;
+  gap: var(--sp-3);
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+.hero {
+  min-width: 0;
+}
+
+.grid {
+  display: grid;
+  align-items: start;
+  gap: var(--sp-3);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.full {
+  min-width: 0;
+}
+
+.panelBody {
+  display: grid;
+  gap: var(--sp-3);
+  min-width: 0;
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+  min-width: 0;
+}
+
+.formGrid {
+  display: grid;
+  gap: var(--sp-2);
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  min-width: 0;
+}
+
+.summaryGrid {
+  display: grid;
+  gap: var(--sp-2);
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  min-width: 0;
+}
+
+.sourceList,
+.checkList,
+.kvList {
+  display: grid;
+  gap: var(--sp-2);
+  min-width: 0;
+}
+
+.sourceRow,
+.checkRow,
+.kvRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--sp-2);
+  align-items: start;
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: var(--sp-2);
+}
+
+.muted,
+.detail,
+.empty {
+  color: var(--text-2);
+  font-size: var(--fs-micro);
+  line-height: var(--lh-base);
+}
+
+.detail {
+  overflow-wrap: anywhere;
+}
+
+.empty {
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-sm);
+  padding: var(--sp-3);
+}
+
+.numbers {
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.dangerText {
+  color: var(--error);
+}
+
+.warningText {
+  color: var(--warning);
+}
+
+.successText {
+  color: var(--success);
+}
+
+.confirmation {
+  display: grid;
+  gap: var(--sp-2);
+  border: 1px solid color-mix(in srgb, var(--warning) 30%, var(--border));
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--warning) 10%, var(--bg-elevated));
+  padding: var(--sp-3);
+}
+
+.inspectorResult {
+  display: grid;
+  gap: var(--sp-2);
+}
+
+@media (max-width: 1199px) {
+  .grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 575px) {
+  .sourceRow,
+  .checkRow,
+  .kvRow {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

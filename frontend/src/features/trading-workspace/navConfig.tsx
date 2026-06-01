@@ -1,5 +1,6 @@
 import {
   AimOutlined,
+  DatabaseOutlined,
   ExperimentOutlined,
   FundOutlined,
   LineChartOutlined,
@@ -8,6 +9,8 @@ import {
   WalletOutlined,
 } from "@ant-design/icons";
 import type { ReactNode } from "react";
+import type { AuthUser } from "../../types";
+import { isAdmin } from "../shared/strategyPermissions";
 import type { Page } from "../workspace-shared/workspaceTypes";
 
 export interface NavItem {
@@ -26,6 +29,8 @@ export const PRIMARY_NAV: NavItem[] = [
   { key: "paper", label: "模拟盘", icon: <WalletOutlined /> },
 ];
 
+export const DATA_NAV: NavItem = { key: "data", label: "数据", icon: <DatabaseOutlined /> };
+
 /** 系统配置单列底部。 */
 export const SETTINGS_NAV: NavItem = { key: "settings", label: "系统配置", icon: <SettingOutlined /> };
 
@@ -36,9 +41,14 @@ const TITLES: Record<Page, string> = {
   "strategy-tracking": "策略跟踪",
   backtest: "回测页",
   paper: "模拟盘",
+  data: "数据",
   settings: "系统配置",
 };
 
 export function pageTitle(page: Page): string {
   return TITLES[page] ?? "维斯量化交易平台";
+}
+
+export function visiblePrimaryNav(user: AuthUser): NavItem[] {
+  return isAdmin(user) ? [...PRIMARY_NAV, DATA_NAV] : PRIMARY_NAV;
 }
