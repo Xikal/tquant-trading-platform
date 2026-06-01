@@ -70,6 +70,7 @@ export function TradingWorkspace() {
     withLoading,
     setError,
     setNotice,
+    onAuthRequired: handleAuthRequired,
   });
   const playbookData = usePlaybookData({
     currentUser,
