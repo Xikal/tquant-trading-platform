@@ -3,21 +3,12 @@ import { Button, Input, Modal, Skeleton } from "antd";
 import type { AiDecisionSupportResponse } from "../../types";
 import { formatPct, normalizeLines, plainTradingText } from "./workspaceFormatters";
 import type { MetricItem, StockCardView, Tone } from "./workspaceTypes";
+import { PriceText, StatTile } from "../../ui/data";
+import { Panel, SectionHeader } from "../../ui/surfaces";
 import {
   DISPLAY_TONE_VALUE_STYLES,
-  INFO_PILL_COMPACT_STYLE,
-  INFO_PILL_STYLE,
-  INFO_PILL_TEXT_COMPACT_STYLE,
-  INFO_PILL_TEXT_STYLE,
   METRIC_GRID_COMPACT_STYLE,
   METRIC_GRID_STYLE,
-  METRIC_TONE_STYLES,
-  METRIC_COMPACT_STYLE,
-  METRIC_STYLE,
-  METRIC_TEXT_COMPACT_STYLE,
-  METRIC_TEXT_STYLE,
-  METRIC_VALUE_COMPACT_STYLE,
-  METRIC_VALUE_STYLE,
 } from "./workspaceDisplayStyles";
 
 export { MiniKline } from "./MiniKlineChart";
@@ -27,184 +18,20 @@ const METRIC_SKELETON_STYLE: CSSProperties = {
   minHeight: 19,
 };
 
-const AI_RESULT_STYLE: CSSProperties = {
-  display: "grid",
-  gap: 6,
-  marginTop: 8,
-  padding: 8,
-  borderRadius: 8,
-  background: "var(--muted-bg)",
-};
-
-const AI_FIXED_GRID_STYLE: CSSProperties = {
-  display: "grid",
-  gap: 6,
-  gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
-};
-
-const LINE_LIST_STYLE: CSSProperties = {
-  display: "grid",
-  gap: 4,
-};
-
-const LINE_LIST_TITLE_STYLE: CSSProperties = {
-  color: "var(--muted)",
-  fontSize: 12,
-  fontWeight: 700,
-};
-
-const LINE_LIST_BODY_STYLE: CSSProperties = {
-  display: "grid",
-  gap: 4,
-  margin: 0,
-  paddingLeft: 16,
-};
-
-const LINE_LIST_ITEM_STYLE: CSSProperties = {
-  color: "var(--text)",
-  fontSize: 12,
-  lineHeight: 1.45,
-};
-
-const CONTEXT_ROW_STYLE: CSSProperties = {
-  display: "grid",
-  gap: 8,
-  gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
-};
-
-const PANEL_TITLE_STYLE: CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "space-between",
-  gap: 8,
-  marginBottom: 6,
-};
-
-const PANEL_TITLE_HEADING_STYLE: CSSProperties = {
-  margin: 0,
-  fontSize: 13,
-  lineHeight: 1.2,
-};
-
-const PANEL_TITLE_ACTIONS_STYLE: CSSProperties = {
-  display: "flex",
-  flexWrap: "wrap",
-  gap: 6,
-};
-
-const SETTING_CARD_STYLE: CSSProperties = {
-  display: "flex",
-  flexDirection: "column",
-  minHeight: 216,
-};
-
-const SETTING_FIELDS_STYLE: CSSProperties = {
-  display: "grid",
-  gap: 6,
-};
-
-const SETTING_BUTTON_STYLE: CSSProperties = {
-  width: "fit-content",
-  marginTop: "auto",
-};
-
-const SETTING_BUTTON_SAVED_STYLE: CSSProperties = {
-  borderColor: "#16a34a",
-  background: "#16a34a",
-  color: "#fff",
-};
-
-const EMPTY_STATE_STYLE: CSSProperties = {
-  display: "block",
-  marginBottom: 5,
-  borderRadius: 7,
-  background: "var(--muted-bg)",
-  color: "var(--muted)",
-  padding: 6,
-  fontSize: 12,
-};
-
-const MODAL_METRICS_STYLE: CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
-  gap: 6,
-};
-
-const EDITABLE_GRID_STYLE: CSSProperties = {
-  display: "grid",
-  gap: 8,
-  gridTemplateColumns: "1fr 1fr",
-};
-
-const EDITABLE_GRID_LABEL_STYLE: CSSProperties = {
-  display: "grid",
-  gap: 4,
-};
-
-const REPORT_PILL_ROW_STYLE: CSSProperties = {
-  display: "flex",
-  flexWrap: "wrap",
-  gap: 6,
-};
-
-const REPORT_PILL_STYLE: CSSProperties = {
-  borderRadius: 999,
-  background: "#eef2f7",
-  color: "#435168",
-  fontSize: 12,
-  fontWeight: 700,
-  padding: "3px 7px",
-};
-
-const STATUS_STRIP_STYLE: CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  gap: 8,
-  marginBottom: 8,
-  borderRadius: 8,
-  background: "var(--muted-bg)",
-  color: "var(--muted)",
-  padding: "6px 8px",
-  fontSize: 12,
-};
-
-const STOCK_DETAIL_BADGE_ROW_STYLE: CSSProperties = {
-  display: "flex",
-  flexWrap: "wrap",
-  gap: 6,
-};
-
-const STOCK_DETAIL_BADGE_STYLE: CSSProperties = {
-  borderRadius: 999,
-  background: "#eef2f7",
-  color: "#435168",
-  fontSize: 12,
-  fontWeight: 700,
-  padding: "3px 7px",
-};
-
-const STOCK_DETAIL_SUB_BADGE_STYLE: CSSProperties = {
-  ...STOCK_DETAIL_BADGE_STYLE,
-  background: "#fff7e6",
-  color: "#9a5a00",
-};
-
-const STOCK_DETAIL_HINT_STYLE: CSSProperties = {
-  gridColumn: "1 / -1",
-  border: "1px solid #f3d49c",
-  borderRadius: 6,
-  background: "#fff7e8",
-  color: "#7a4b00",
-  padding: "6px 8px",
-  fontSize: 12,
-  lineHeight: 1.45,
-};
-
-export function PanelTitle({ title, actions, style }: { title: string; actions?: ReactNode; style?: CSSProperties }) {
+export function PanelTitle({
+  title,
+  actions,
+  className = "",
+  style,
+}: {
+  title: string;
+  actions?: ReactNode;
+  className?: string;
+  style?: CSSProperties;
+}) {
   return (
-    <div style={{ ...PANEL_TITLE_STYLE, ...style }}>
-      <h2 style={PANEL_TITLE_HEADING_STYLE}>{title}</h2>
-      {actions ? <div style={PANEL_TITLE_ACTIONS_STYLE}>{actions}</div> : null}
+    <div className={className} style={style}>
+      <SectionHeader title={title} actions={actions ? <div className="tq-section-header__actions">{actions}</div> : undefined} />
     </div>
   );
 }
@@ -225,13 +52,16 @@ export function MetricGrid({
   style?: CSSProperties;
 }) {
   const compact = compactProp || className.includes("compact");
+  const gridClassName = ["tq-metric-grid", compact ? "tq-metric-grid--compact" : "", className].filter(Boolean).join(" ");
   return (
-    <Component style={{ ...METRIC_GRID_STYLE, ...(compact ? METRIC_GRID_COMPACT_STYLE : undefined), ...style }}>
+    <Component className={gridClassName} style={{ ...METRIC_GRID_STYLE, ...(compact ? METRIC_GRID_COMPACT_STYLE : undefined), ...style }}>
       {items.map((item) => (
-        <div key={item.label} style={{ ...METRIC_STYLE, ...(METRIC_TONE_STYLES[item.tone] ?? undefined), ...(compact ? METRIC_COMPACT_STYLE : undefined) }}>
-          <span style={compact ? { ...METRIC_TEXT_STYLE, ...METRIC_TEXT_COMPACT_STYLE } : METRIC_TEXT_STYLE}>{item.label}</span>
-          {loading ? <Skeleton.Input active size="small" style={METRIC_SKELETON_STYLE} /> : <strong style={{ ...(compact ? { ...METRIC_VALUE_STYLE, ...METRIC_VALUE_COMPACT_STYLE } : METRIC_VALUE_STYLE), ...DISPLAY_TONE_VALUE_STYLES[item.tone] }}>{item.value}</strong>}
-        </div>
+        <StatTile
+          key={item.label}
+          label={item.label}
+          value={loading ? <Skeleton.Input active size="small" style={METRIC_SKELETON_STYLE} /> : item.value}
+          delta={undefined}
+        />
       ))}
     </Component>
   );
@@ -243,8 +73,8 @@ export function toneTextStyle(tone: Tone): CSSProperties | undefined {
 
 export { Callout } from "./Callout";
 
-export function ContextRow({ children, style }: { children: ReactNode; style?: CSSProperties }) {
-  return <div style={{ ...CONTEXT_ROW_STYLE, ...style }}>{children}</div>;
+export function ContextRow({ children, className = "", style }: { children: ReactNode; className?: string; style?: CSSProperties }) {
+  return <div className={`tq-context-row ${className}`.trim()} style={style}>{children}</div>;
 }
 
 export function InfoPill({
@@ -258,12 +88,23 @@ export function InfoPill({
   tone?: "up" | "down" | "neutral" | "warn";
   compact?: boolean;
 }) {
-  const textStyle = compact ? { ...INFO_PILL_TEXT_STYLE, ...INFO_PILL_TEXT_COMPACT_STYLE } : INFO_PILL_TEXT_STYLE;
   return (
-    <div style={{ ...INFO_PILL_STYLE, ...(compact ? INFO_PILL_COMPACT_STYLE : undefined) }}>
-      <span style={textStyle}>{label}</span>
-      <strong style={{ ...textStyle, ...DISPLAY_TONE_VALUE_STYLES[tone] }}>{value}</strong>
+    <div className={`tq-info-pill ${compact ? "tq-info-pill--compact" : ""}`.trim()}>
+      <span className="tq-info-pill__label">{label}</span>
+      <strong className={`tq-info-pill__value tq-info-pill__value--${tone}`.trim()}>{value}</strong>
     </div>
+  );
+}
+
+export function PriceToneBadge({ value }: { value: number | null | undefined }) {
+  return <PriceText value={value ?? null} />;
+}
+
+export function ContentPanel({ title, children, extra }: { title?: ReactNode; children: ReactNode; extra?: ReactNode }) {
+  return (
+    <Panel title={title} extra={extra}>
+      {children}
+    </Panel>
   );
 }
 
@@ -273,9 +114,9 @@ export function EditableGrid({
   fields: Array<[string, string, (value: string) => void]>;
 }) {
   return (
-    <div style={EDITABLE_GRID_STYLE}>
+    <div className="tq-editable-grid">
       {fields.map(([label, value, onChange]) => (
-        <label key={label} style={EDITABLE_GRID_LABEL_STYLE}>
+        <label key={label} className="tq-editable-grid__label">
           <span>{label}</span>
           <Input value={value} onChange={(event) => onChange(event.target.value)} />
         </label>
@@ -307,24 +148,23 @@ export function SettingCard({
   onSave: () => void;
 }) {
   return (
-    <div className={`panel ${className}`.trim()} style={SETTING_CARD_STYLE}>
-      <PanelTitle title={title} />
-      <div style={SETTING_FIELDS_STYLE}>{children}</div>
+    <Panel className={`tq-setting-card ${className}`.trim()} title={title}>
+      <div className="tq-setting-card__fields">{children}</div>
       <Button
         type="primary"
-        style={saved ? { ...SETTING_BUTTON_STYLE, ...SETTING_BUTTON_SAVED_STYLE } : SETTING_BUTTON_STYLE}
+        className={`tq-setting-card__save ${saved ? "tq-setting-card__save--saved" : ""}`.trim()}
         onClick={onSave}
         disabled={loading || disabled}
         loading={loading}
       >
         {loading ? "保存中..." : saved ? "已保存" : button}
       </Button>
-    </div>
+    </Panel>
   );
 }
 
 export function EmptyState({ text, className = "" }: { text: string; className?: string }) {
-  return <div className={className || undefined} style={EMPTY_STATE_STYLE}>{text}</div>;
+  return <div className={`tq-empty-state ${className}`.trim()}>{text}</div>;
 }
 
 export function StatusStrip({ loading: _loading, notice }: { loading: string; notice: string }) {
@@ -332,7 +172,7 @@ export function StatusStrip({ loading: _loading, notice }: { loading: string; no
     return null;
   }
   return (
-    <div style={STATUS_STRIP_STYLE}>
+    <div className="tq-status-strip">
       <span>{notice}</span>
     </div>
   );
@@ -373,7 +213,7 @@ export function StockDetailDialog({ stock, onClose, onAnalyze }: { stock: StockC
         <Button key="close" onClick={onClose}>知道了</Button>,
       ]}
     >
-      <div style={MODAL_METRICS_STYLE}>
+      <div className="tq-modal-metrics">
         <InfoPill label="当前价" value={stock.priceText} />
         <InfoPill label="涨跌" value={stock.changeText} />
         <InfoPill label="风险" value={stock.riskText} />
@@ -381,15 +221,15 @@ export function StockDetailDialog({ stock, onClose, onAnalyze }: { stock: StockC
       </div>
       <p><strong>{stock.actionText}</strong></p>
       <p>{stock.details}</p>
-      {stock.executionHint ? <div style={STOCK_DETAIL_HINT_STYLE}>{stock.executionHint}</div> : null}
+      {stock.executionHint ? <div className="tq-stock-detail-hint">{stock.executionHint}</div> : null}
       {stock.badges?.length ? (
-        <div style={STOCK_DETAIL_BADGE_ROW_STYLE}>
-          {stock.badges.map((badge) => <span key={badge} style={STOCK_DETAIL_BADGE_STYLE}>{badge}</span>)}
+        <div className="tq-stock-detail-row">
+          {stock.badges.map((badge) => <span key={badge} className="tq-stock-detail-badge">{badge}</span>)}
         </div>
       ) : null}
       {stock.subBadges?.length ? (
-        <div style={STOCK_DETAIL_BADGE_ROW_STYLE}>
-          {stock.subBadges.map((badge) => <span key={badge} style={STOCK_DETAIL_SUB_BADGE_STYLE}>{badge}</span>)}
+        <div className="tq-stock-detail-row">
+          {stock.subBadges.map((badge) => <span key={badge} className="tq-stock-detail-badge tq-stock-detail-badge--sub">{badge}</span>)}
         </div>
       ) : null}
     </Modal>
@@ -400,16 +240,16 @@ export function AiInsightPanel({ response }: { response: AiDecisionSupportRespon
   const suggestions = normalizeLines(response.insight.suggestions).map(plainTradingText);
   const warnings = normalizeLines(response.insight.warnings).map(plainTradingText);
   return (
-    <div style={AI_RESULT_STYLE}>
+    <div className="tq-ai-panel">
       <strong>{response.title}</strong>
-      <p>{plainTradingText(response.insight.summary)}</p>
-      <div style={REPORT_PILL_ROW_STYLE}>
-        <span style={REPORT_PILL_STYLE}>模型 {response.model || "未配置"}</span>
-        <span style={REPORT_PILL_STYLE}>置信度 {formatPct(response.insight.confidence * 100, 0)}</span>
-        <span style={REPORT_PILL_STYLE}>{response.insight.enabled ? "AI 已启用" : "量化降级"}</span>
+      <p className="tq-ai-panel__summary">{plainTradingText(response.insight.summary)}</p>
+      <div className="tq-report-pill-row">
+        <span className="tq-report-pill">模型 {response.model || "未配置"}</span>
+        <span className="tq-report-pill">置信度 {formatPct(response.insight.confidence * 100, 0)}</span>
+        <span className="tq-report-pill">{response.insight.enabled ? "AI 已启用" : "量化降级"}</span>
       </div>
       {response.fixed_sections ? (
-        <div style={AI_FIXED_GRID_STYLE}>
+        <div className="tq-ai-panel__fixed-grid">
           <InfoPill label="能不能买" value={response.fixed_sections.can_buy} />
           <InfoPill label="为什么" value={response.fixed_sections.why} />
           <InfoPill label="最大风险" value={response.fixed_sections.main_risk} />
@@ -445,7 +285,7 @@ export function AiInsightDialog({
       destroyOnHidden
     >
       {loading ? (
-        <div style={EMPTY_STATE_STYLE}>AI 正在读取榜单并生成分析...</div>
+        <div className="tq-empty-state">AI 正在读取榜单并生成分析...</div>
       ) : response ? (
         <AiInsightPanel response={response} />
       ) : null}
@@ -455,10 +295,10 @@ export function AiInsightDialog({
 
 export function LineList({ title, items }: { title: string; items: string[] }) {
   return (
-    <div style={LINE_LIST_STYLE}>
-      <span style={LINE_LIST_TITLE_STYLE}>{title}</span>
-      <ul style={LINE_LIST_BODY_STYLE}>
-        {items.map((item, index) => <li key={`${item}-${index}`} style={LINE_LIST_ITEM_STYLE}>{item}</li>)}
+    <div className="tq-line-list">
+      <span className="tq-line-list__title">{title}</span>
+      <ul className="tq-line-list__items">
+        {items.map((item, index) => <li key={`${item}-${index}`} className="tq-line-list__item">{item}</li>)}
       </ul>
     </div>
   );

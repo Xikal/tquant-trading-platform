@@ -138,11 +138,18 @@ export function useSettingsData({ withLoading, setError, setNotice, setRuntime }
         setAdminTasks([]);
         setAdminMetrics(null);
       }
-      const rejected = [settingsResult, runtimeResult, strategyResult].find(
+      const rejections = [settingsResult, runtimeResult, strategyResult].filter(
         (item): item is PromiseRejectedResult => item.status === "rejected"
       );
-      if (rejected) {
-        setError(errorMessage(rejected.reason));
+      // 会话过期：把 401 抛给外层 withLoading，由其统一触发登出，避免只弹错误条而不退出登录。
+      const authRejection = rejections.find(
+        (item) => (item.reason as { status?: number } | null)?.status === 401,
+      );
+      if (authRejection) {
+        throw authRejection.reason;
+      }
+      if (rejections.length > 0) {
+        setError(errorMessage(rejections[0].reason));
       }
     });
   }, [applySettingsWorkspace, setError, settingsDraft.adminToken, withLoading]);

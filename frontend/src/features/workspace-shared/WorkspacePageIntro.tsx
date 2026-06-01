@@ -3,84 +3,6 @@ import { Collapse, Typography } from "antd";
 import { ContextRow, InfoPill } from "./WorkspaceComponents";
 import type { Tone } from "./workspaceTypes";
 
-const INTRO_STYLE: CSSProperties = {
-  display: "grid",
-  gap: 6,
-  minWidth: 0,
-};
-
-const INTRO_HEAD_STYLE: CSSProperties = {
-  display: "flex",
-  flexWrap: "wrap",
-  justifyContent: "space-between",
-  gap: 8,
-  alignItems: "flex-start",
-};
-
-const INTRO_TEXT_STYLE: CSSProperties = {
-  display: "grid",
-  gap: 2,
-  minWidth: 0,
-  flex: "1 1 440px",
-};
-
-const INTRO_TITLE_BASE_STYLE: CSSProperties = {
-  margin: 0,
-  lineHeight: 1.15,
-  letterSpacing: 0,
-  fontSize: 13,
-  fontWeight: 700,
-};
-
-const INTRO_SUMMARY_BASE_STYLE: CSSProperties = {
-  margin: 0,
-  fontSize: 12,
-  lineHeight: 1.42,
-};
-
-const INTRO_DETAIL_BASE_STYLE: CSSProperties = {
-  fontSize: 12,
-  lineHeight: 1.45,
-};
-
-const INTRO_NOTE_BASE_STYLE: CSSProperties = {
-  fontSize: 12,
-  lineHeight: 1.45,
-};
-
-const INTRO_ACTIONS_STYLE: CSSProperties = {
-  display: "flex",
-  flexWrap: "wrap",
-  gap: 6,
-  alignItems: "center",
-  justifyContent: "flex-end",
-};
-
-const LIGHT_STYLE: CSSProperties = {
-  color: "#0f172a",
-};
-
-const DARK_STYLE: CSSProperties = {
-  color: "#f8fafc",
-};
-
-const INTRO_COLLAPSE_STYLE: CSSProperties = {
-  background: "transparent",
-  fontSize: 12,
-};
-
-const INTRO_COLLAPSE_BODY_STYLE: CSSProperties = {
-  padding: "4px 0 0",
-};
-
-const NOTE_LIGHT_STYLE: CSSProperties = {
-  color: "#64748b",
-};
-
-const NOTE_DARK_STYLE: CSSProperties = {
-  color: "#aeb8c7",
-};
-
 export function WorkspacePageIntro({
   title,
   summary,
@@ -106,28 +28,29 @@ export function WorkspacePageIntro({
   variant?: "light" | "dark";
   style?: CSSProperties;
 }) {
-  const themeStyle = variant === "dark" ? DARK_STYLE : LIGHT_STYLE;
-  const noteStyle = variant === "dark" ? NOTE_DARK_STYLE : NOTE_LIGHT_STYLE;
   return (
-    <div style={{ ...INTRO_STYLE, ...themeStyle, ...style }}>
-      <div style={INTRO_HEAD_STYLE}>
-        <div style={INTRO_TEXT_STYLE}>
-          <Typography.Text strong style={{ ...INTRO_TITLE_BASE_STYLE, ...themeStyle }}>
+    <div
+      className={`tq-workspace-intro tq-workspace-intro--tone-${tone} ${variant === "dark" ? "tq-workspace-intro--dark" : ""}`.trim()}
+      style={style}
+    >
+      <div className="tq-workspace-intro__head">
+        <div className="tq-workspace-intro__text">
+          <Typography.Text strong className="tq-workspace-intro__title">
             {title}
           </Typography.Text>
-          <Typography.Paragraph style={{ ...INTRO_SUMMARY_BASE_STYLE, ...themeStyle }}>
+          <Typography.Paragraph className="tq-workspace-intro__summary">
             {summary}
           </Typography.Paragraph>
           {detail ? (
-            <Typography.Text style={{ ...INTRO_DETAIL_BASE_STYLE, ...noteStyle }}>
+            <Typography.Text className="tq-workspace-intro__detail">
               {detail}
             </Typography.Text>
           ) : null}
         </div>
-        {actions ? <div style={INTRO_ACTIONS_STYLE}>{actions}</div> : null}
+        {actions ? <div className="tq-workspace-intro__actions">{actions}</div> : null}
       </div>
       {pills?.length ? (
-        <ContextRow>
+        <ContextRow className="tq-workspace-intro__pills">
           {pills.map((item) => (
             <InfoPill key={`${item.label}-${item.value}`} compact label={item.label} value={item.value} tone={item.tone ?? "neutral"} />
           ))}
@@ -137,19 +60,18 @@ export function WorkspacePageIntro({
         <Collapse
           ghost
           size="small"
-          style={{ ...INTRO_COLLAPSE_STYLE, color: themeStyle.color }}
+          className="tq-workspace-intro__more"
           items={[
             {
               key: "more",
               label: moreLabel,
-              children: <Typography.Text style={{ ...INTRO_DETAIL_BASE_STYLE, ...noteStyle }}>{more}</Typography.Text>,
-              styles: { body: INTRO_COLLAPSE_BODY_STYLE },
+              children: <Typography.Text className="tq-workspace-intro__detail">{more}</Typography.Text>,
             },
           ]}
         />
       ) : null}
       {note ? (
-        <Typography.Text style={{ ...INTRO_NOTE_BASE_STYLE, ...noteStyle }}>
+        <Typography.Text className="tq-workspace-intro__note">
           {note}
         </Typography.Text>
       ) : null}

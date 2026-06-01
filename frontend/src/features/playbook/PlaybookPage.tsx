@@ -1,4 +1,3 @@
-import type { CSSProperties } from "react";
 import type { LowBuyScreenerResult } from "../../types";
 import { Button, Collapse, Flex, Tabs, Typography } from "antd";
 import { playbookActionLabel } from "../../utils/uxClarity";
@@ -10,70 +9,6 @@ import { candidateToCard } from "../workspace-shared/workspaceViewModels";
 import { formatNumber, formatPct, strategyLabel } from "../workspace-shared/workspaceFormatters";
 import type { MetricItem, StockCardView } from "../workspace-shared/workspaceTypes";
 import { VirtualCardList } from "../../ui/list/VirtualCardList";
-
-const PLAYBOOK_PAGE_STYLE: CSSProperties = {
-  display: "grid",
-  gap: 6,
-  gridTemplateColumns: "minmax(300px, 380px) minmax(0, 1fr)",
-  gridTemplateAreas: '"hero hero" "performance candidates" "focus candidates"',
-  fontSize: 12,
-  lineHeight: 1.32,
-};
-
-const PLAYBOOK_HERO_STYLE: CSSProperties = { gridArea: "hero" };
-const PLAYBOOK_METRICS_STYLE: CSSProperties = { alignContent: "stretch", gridTemplateColumns: "repeat(3, minmax(72px, 1fr))", gap: 4 };
-const PLAYBOOK_PERFORMANCE_STYLE: CSSProperties = { gridArea: "performance", outline: "2px solid rgba(64, 149, 255, 0.12)" };
-const PLAYBOOK_FOCUS_STYLE: CSSProperties = { gridArea: "focus", outline: "2px solid rgba(64, 149, 255, 0.12)" };
-const PLAYBOOK_DARK_FOCUS_STYLE: CSSProperties = {
-  ...PLAYBOOK_FOCUS_STYLE,
-  borderColor: "rgba(255, 255, 255, 0.1)",
-  background: "linear-gradient(180deg, var(--panel), var(--deep))",
-  color: "#dde3ec",
-};
-const PLAYBOOK_CANDIDATE_TABS_STYLE: CSSProperties = { gridArea: "candidates", minHeight: 0 };
-const PLAYBOOK_TAB_BODY_STYLE: CSSProperties = {
-  maxHeight: "min(52vh, 520px)",
-  overflowY: "auto",
-  paddingRight: 2,
-};
-const PLAYBOOK_DENSE_LIST_STYLE: CSSProperties = {
-  display: "grid",
-  gap: 4,
-};
-const PLAYBOOK_DENSE_ROW_STYLE: CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "minmax(78px, 0.85fr) minmax(0, 1.7fr) minmax(54px, 0.45fr) auto auto",
-  gap: 6,
-  alignItems: "center",
-  border: "1px solid rgba(148, 163, 184, 0.2)",
-  borderRadius: 7,
-  background: "#fff",
-  padding: "5px 6px",
-  minWidth: 0,
-};
-const PLAYBOOK_DENSE_NAME_STYLE: CSSProperties = {
-  display: "grid",
-  gap: 1,
-  minWidth: 0,
-};
-const PLAYBOOK_DENSE_TEXT_STYLE: CSSProperties = {
-  minWidth: 0,
-  overflow: "hidden",
-  textOverflow: "ellipsis",
-  whiteSpace: "nowrap",
-  fontSize: 12,
-};
-const PLAYBOOK_DENSE_META_STYLE: CSSProperties = {
-  color: "#64748b",
-  fontSize: 12,
-};
-const PLAYBOOK_TAB_LABEL_STYLE: CSSProperties = {
-  display: "inline-flex",
-  alignItems: "center",
-  gap: 4,
-  fontSize: 12,
-  fontWeight: 700,
-};
 
 export function PlaybookPage({
   strategy,
@@ -118,8 +53,8 @@ export function PlaybookPage({
   const sampleReason = sampleInsufficientReason(playbook?.strategy_key || strategy, playbook);
   const marketAttributionText = summarizeMarketAttribution(playbook?.performance?.market_state_attribution ?? []);
   return (
-    <section style={PLAYBOOK_PAGE_STYLE}>
-      <div className="panel" style={PLAYBOOK_HERO_STYLE}>
+    <section className="tq-playbook-page">
+      <div className="panel tq-playbook-page__hero">
         <WorkspacePageIntro
           title="选股宝典"
           summary={`${strategyName}：${strategyPurpose(strategy)}`}
@@ -132,11 +67,11 @@ export function PlaybookPage({
             { label: "交易日", value: playbook?.latest_trade_date ?? "--" },
           ]}
         />
-        <Flex wrap gap={6} align="center" style={{ marginTop: 6 }}>
+        <Flex wrap gap={6} align="center" className="tq-playbook-page__hero-actions">
           <RitualFortuneStrip marketTone={buyNow.length ? "strong" : executableCount ? "neutral" : "unknown"} compact />
           <RitualLuckyDraw compact />
         </Flex>
-        <Flex wrap gap={6} style={{ marginTop: 8 }}>
+        <Flex wrap gap={6} className="tq-playbook-page__strategy-tabs">
           {tabs.map((tab) => (
             <Button
               key={tab.key}
@@ -151,7 +86,7 @@ export function PlaybookPage({
       </div>
       <MetricGrid
         compact
-        style={PLAYBOOK_METRICS_STYLE}
+        className="tq-playbook-page__metrics"
         items={[
           { label: playbookActionLabel("buy_now"), value: String(buyNow.length), tone: buyNow.length ? "up" : "neutral" },
           { label: playbookActionLabel("observe_confirmed"), value: String(observeConfirmed.length), tone: observeConfirmed.length ? "warn" : "neutral" },
@@ -164,8 +99,8 @@ export function PlaybookPage({
           { label: "5日达标率", value: hitRateDisplay, tone: hitRateTone },
         ]}
       />
-      <div className="panel" style={PLAYBOOK_PERFORMANCE_STYLE}>
-        <PanelTitle title="最近表现" style={{ marginBottom: 4 }} />
+      <div className="panel tq-playbook-page__performance">
+        <PanelTitle title="最近表现" className="tq-playbook-page__panel-title" />
         <p>当前策略：{strategyName}；已加载：{loadedStrategyName}{switchingText}</p>
         <p>近5日 达标率 {hitRateDisplay}　平均收益 {formatPct(playbook?.performance?.avg_return_5d)}　回撤 {formatPct(playbook?.performance?.avg_max_drawdown_5d)}　赚亏比 {formatNumber(playbook?.performance?.profit_factor)}</p>
         {hasInsufficientData ? <p>样本说明：{sampleReason}</p> : null}
@@ -187,7 +122,7 @@ export function PlaybookPage({
           }]}
         />
       </div>
-      <aside className="panel" style={PLAYBOOK_DARK_FOCUS_STYLE}>
+      <aside className="panel tq-playbook-page__focus">
         <PanelTitle title="今日主看" />
         {focus ? (
           <>
@@ -307,15 +242,14 @@ function CandidateTabs({
     { key: "watch", title: "继续观察 / 今天放弃", short: "观察/放弃", items: passiveCandidates, empty: "这一档为空，说明当前结构要么未到位，要么质量不足。" },
   ];
   return (
-    <div className="panel" style={PLAYBOOK_CANDIDATE_TABS_STYLE}>
+    <div className="panel tq-playbook-page__candidate-tabs tq-playbook-candidate-tabs">
       <Tabs
         size="small"
-        tabBarStyle={{ marginBottom: 6 }}
         items={sections.map((section) => ({
           key: section.key,
-          label: <span style={PLAYBOOK_TAB_LABEL_STYLE}>{section.short}<Typography.Text type="secondary" style={{ fontSize: 12 }}>{section.items.length}</Typography.Text></span>,
+          label: <span className="tq-playbook-page__tab-label">{section.short}<Typography.Text type="secondary" className="tq-playbook-page__tab-count">{section.items.length}</Typography.Text></span>,
           children: (
-            <div style={PLAYBOOK_TAB_BODY_STYLE}>
+            <div className="tq-playbook-page__tab-body">
               <PanelTitle title={section.title} />
               <DenseCandidateList items={section.items} empty={section.empty} onAnalyze={onAnalyze} onSelect={onSelect} />
             </div>
@@ -345,18 +279,18 @@ function DenseCandidateList({
       items={items}
       estimateSize={54}
       maxHeight={520}
-      style={PLAYBOOK_DENSE_LIST_STYLE}
+      className="tq-playbook-page__dense-list tq-playbook-dense-list"
       getItemKey={(stock) => `${stock.symbol}-${stock.actionText}`}
       renderItem={(stock) => (
-        <article key={`${stock.symbol}-${stock.actionText}`} style={PLAYBOOK_DENSE_ROW_STYLE}>
-          <div style={PLAYBOOK_DENSE_NAME_STYLE}>
-            <strong style={PLAYBOOK_DENSE_TEXT_STYLE}>{stock.name}</strong>
-            <span style={PLAYBOOK_DENSE_META_STYLE}>{stock.symbol}</span>
+        <article key={`${stock.symbol}-${stock.actionText}`} className="tq-playbook-page__dense-row tq-playbook-dense-row">
+          <div className="tq-playbook-page__dense-name">
+            <strong className="tq-playbook-page__dense-text">{stock.name}</strong>
+            <span className="tq-playbook-page__dense-meta tq-playbook-dense-row__meta">{stock.symbol}</span>
           </div>
-          <span style={PLAYBOOK_DENSE_TEXT_STYLE} title={stock.details}>
+          <span className="tq-playbook-page__dense-text" title={stock.details}>
             {stock.actionText} · {stock.details}
           </span>
-          <span style={PLAYBOOK_DENSE_META_STYLE}>{stock.scoreText ? `质量 ${stock.scoreText}` : stock.riskText}</span>
+          <span className="tq-playbook-page__dense-meta tq-playbook-dense-row__meta">{stock.scoreText ? `质量 ${stock.scoreText}` : stock.riskText}</span>
           <RitualSignalSeal signalState={ritualStateFromAction(stock.actionText)} riskLevel={stock.riskText} compact />
           <Flex gap={4} justify="flex-end">
             <Button size="small" onClick={() => onSelect(stock)}>详情</Button>

@@ -1,39 +1,27 @@
-import type { CSSProperties } from "react";
 import { lazy, Suspense } from "react";
 import type { AnalysisResponse } from "../../types";
+import { color, font } from "../../ui/theme/tokens";
 
 const LazyKlineChart = lazy(() => import("../../ui/charts/LazyKlineChart"));
-
-const MINI_KLINE_STYLE: CSSProperties = {
-  display: "flex",
-  alignItems: "stretch",
-  gap: 7,
-  height: 210,
-  padding: "14px 18px",
-  borderRadius: 8,
-  background: "#0b1422",
-};
-
-const MINI_KLINE_EMPTY_STYLE: CSSProperties = {
-  display: "grid",
-  placeItems: "center",
-  flex: 1,
-  minWidth: 0,
-  color: "#aeb8c7",
-  fontSize: 12,
-};
-
-const MINI_KLINE_CHART_STYLE: CSSProperties = {
-  flex: 1,
-  minWidth: 0,
-  minHeight: 0,
-};
 
 export function MiniKline({ bars }: { bars: AnalysisResponse["bars"] }) {
   const visible = bars.filter((bar) => Number.isFinite(bar.open) && Number.isFinite(bar.close));
   if (!visible.length) {
-    return <div style={MINI_KLINE_STYLE}><div style={MINI_KLINE_EMPTY_STYLE}>等待分析后显示K线</div></div>;
+    return <div className="tq-mini-kline"><div className="tq-mini-kline__empty">等待分析后显示K线</div></div>;
   }
+  const option = buildMiniKlineOption(visible);
+  return (
+    <div className="tq-mini-kline" aria-label="分钟K线">
+      <Suspense fallback={<div className="tq-mini-kline__empty">K线加载中...</div>}>
+        <LazyKlineChart option={option} className="tq-mini-kline__chart" />
+      </Suspense>
+    </div>
+  );
+}
+
+type KlineBar = AnalysisResponse["bars"][number];
+
+export function buildMiniKlineOption(visible: KlineBar[]) {
   const labels = visible.map((bar) => bar.timestamp.slice(5, 16).replace("T", " "));
   const candleData = visible.map((bar) => [
     Number(bar.open),
@@ -44,9 +32,9 @@ export function MiniKline({ bars }: { bars: AnalysisResponse["bars"] }) {
   const closePrices = visible.map((bar) => Number(bar.close));
   const volumeData = visible.map((bar) => ({
     value: Number(bar.volume || 0),
-    itemStyle: { color: Number(bar.close) >= Number(bar.open) ? "#d92d2d" : "#17965a" },
+    itemStyle: { color: Number(bar.close) >= Number(bar.open) ? color.mktUp : color.mktDown },
   }));
-  const option = {
+  return {
     animation: false,
     backgroundColor: "transparent",
     tooltip: {
@@ -70,7 +58,7 @@ export function MiniKline({ bars }: { bars: AnalysisResponse["bars"] }) {
     legend: {
       top: 2,
       right: 8,
-      textStyle: { color: "#aeb8c7", fontSize: 12 },
+      textStyle: { color: color.text3, fontSize: font.micro },
       itemWidth: 10,
       itemHeight: 6,
     },
@@ -83,8 +71,8 @@ export function MiniKline({ bars }: { bars: AnalysisResponse["bars"] }) {
         type: "category",
         data: labels,
         boundaryGap: true,
-        axisLine: { lineStyle: { color: "#26354a" } },
-        axisLabel: { color: "#8f9caf", fontSize: 12, hideOverlap: true },
+        axisLine: { lineStyle: { color: color.borderStrong } },
+        axisLabel: { color: color.text3, fontSize: font.micro, hideOverlap: true },
         axisTick: { show: false },
       },
       {
@@ -103,8 +91,8 @@ export function MiniKline({ bars }: { bars: AnalysisResponse["bars"] }) {
         splitNumber: 4,
         axisLine: { show: false },
         axisTick: { show: false },
-        axisLabel: { color: "#8f9caf", fontSize: 12 },
-        splitLine: { lineStyle: { color: "rgba(255,255,255,0.08)" } },
+        axisLabel: { color: color.text3, fontSize: font.micro },
+        splitLine: { lineStyle: { color: "rgba(255, 255, 255, 0.08)" } },
       },
       {
         scale: true,
@@ -112,7 +100,7 @@ export function MiniKline({ bars }: { bars: AnalysisResponse["bars"] }) {
         splitNumber: 2,
         axisLine: { show: false },
         axisTick: { show: false },
-        axisLabel: { color: "#778395", fontSize: 12, formatter: formatKlineVolume },
+        axisLabel: { color: color.text2, fontSize: font.micro, formatter: formatKlineVolume },
         splitLine: { show: false },
       },
     ],
@@ -122,15 +110,15 @@ export function MiniKline({ bars }: { bars: AnalysisResponse["bars"] }) {
         type: "candlestick",
         data: candleData,
         itemStyle: {
-          color: "#d92d2d",
-          color0: "#17965a",
-          borderColor: "#d92d2d",
-          borderColor0: "#17965a",
+          color: color.mktUp,
+          color0: color.mktDown,
+          borderColor: color.mktUp,
+          borderColor0: color.mktDown,
         },
       },
-      makeMaSeries("5日线", closePrices, 5, "#f0b44c"),
-      makeMaSeries("10日线", closePrices, 10, "#4f9df7"),
-      makeMaSeries("20日线", closePrices, 20, "#9b7bff"),
+      makeMaSeries("5日线", closePrices, 5, color.warning),
+      makeMaSeries("10日线", closePrices, 10, color.info),
+      makeMaSeries("20日线", closePrices, 20, color.brand),
       {
         name: "成交量",
         type: "bar",
@@ -141,13 +129,6 @@ export function MiniKline({ bars }: { bars: AnalysisResponse["bars"] }) {
       },
     ],
   };
-  return (
-    <div style={MINI_KLINE_STYLE} aria-label="分钟K线">
-      <Suspense fallback={<div style={MINI_KLINE_EMPTY_STYLE}>K线加载中...</div>}>
-        <LazyKlineChart option={option} style={MINI_KLINE_CHART_STYLE} />
-      </Suspense>
-    </div>
-  );
 }
 
 function makeMaSeries(name: string, closePrices: number[], windowSize: number, color: string) {

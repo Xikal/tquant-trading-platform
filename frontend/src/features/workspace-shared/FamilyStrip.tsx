@@ -1,78 +1,9 @@
-import type { CSSProperties } from "react";
 import { useMemo } from "react";
 import { Button, Modal } from "antd";
 import { useWorkspaceMonitorStore } from "../../stores/workspaceMonitorStore";
 import type { LowBuyPriorityBoardResult, LowBuyPriorityFamilySection } from "../../types";
 import { familyStripQualityText } from "./workspaceFamilyQuality";
 import { formatPct, plainTradingText } from "./workspaceFormatters";
-
-const FAMILY_STRIP_STYLE: CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
-  gap: 8,
-  margin: "8px 0",
-};
-
-const FAMILY_TILE_STYLE: CSSProperties = {
-  display: "grid",
-  gap: 6,
-};
-
-const INFO_PILL_STYLE: CSSProperties = {
-  display: "grid",
-  gap: 2,
-  border: "1px solid var(--border)",
-  borderRadius: 8,
-  background: "var(--panel)",
-  padding: 8,
-};
-
-const INFO_PILL_COMPACT_STYLE: CSSProperties = {
-  padding: "5px 7px",
-};
-
-const INFO_LABEL_STYLE: CSSProperties = {
-  color: "var(--muted)",
-  fontSize: 12,
-};
-
-const INFO_VALUE_STYLE: CSSProperties = {
-  color: "var(--text)",
-  fontSize: 12,
-  lineHeight: 1.35,
-};
-
-const INFO_WARN_VALUE_STYLE: CSSProperties = {
-  color: "#a16207",
-};
-
-const DETAIL_GRID_STYLE: CSSProperties = {
-  display: "grid",
-  gap: 8,
-};
-
-const DETAIL_SECTION_STYLE: CSSProperties = {
-  display: "grid",
-  gap: 6,
-};
-
-const DETAIL_TITLE_STYLE: CSSProperties = {
-  margin: 0,
-  fontSize: 13,
-};
-
-const DETAIL_LIST_STYLE: CSSProperties = {
-  display: "grid",
-  gap: 4,
-  margin: 0,
-  paddingLeft: 16,
-};
-
-const DETAIL_ITEM_STYLE: CSSProperties = {
-  color: "var(--text)",
-  fontSize: 12,
-  lineHeight: 1.45,
-};
 
 export function FamilyStrip({ priorityBoard }: { priorityBoard: LowBuyPriorityBoardResult | null }) {
   const sections = priorityBoard?.family_sections ?? [];
@@ -87,9 +18,9 @@ export function FamilyStrip({ priorityBoard }: { priorityBoard: LowBuyPriorityBo
   }
   return (
     <>
-      <div style={FAMILY_STRIP_STYLE}>
+      <div className="tq-family-strip">
         {sections.slice(0, 4).map((section) => (
-          <div key={section.family_key} style={FAMILY_TILE_STYLE}>
+          <div key={section.family_key} className="tq-family-strip__tile">
             <InfoPill label={section.family_text} value={familyValue(priorityBoard, section)} />
             <Button size="small" type="text" onClick={() => setActiveKey(section.family_key)}>
               查看明细
@@ -120,9 +51,9 @@ function FamilyDetail({
   const fallbackItems = section.items.filter((item) => item.main_force_advice?.fallback_reason);
   const weakQualityItems = section.items.filter((item) => item.data_quality && !["fresh", "ok", "complete", "verified"].includes(item.data_quality));
   return (
-    <div style={DETAIL_GRID_STYLE}>
-      <div style={DETAIL_SECTION_STYLE}>
-        <h4 style={DETAIL_TITLE_STYLE}>族维度概览</h4>
+    <div className="tq-family-detail">
+      <div className="tq-family-detail__section">
+        <h4 className="tq-family-detail__title">族维度概览</h4>
         <InfoPill compact label="候选" value={`${section.total_candidates} 只`} />
         <InfoPill compact label="立即/重点/跟踪" value={`${section.immediate_count}/${section.focus_count}/${section.track_count}`} />
         <InfoPill compact label="净胜优势" value={formatPct(section.performance?.net_win_rate, 0)} />
@@ -139,11 +70,11 @@ function FamilyDetail({
 function DetailList({ title, items, empty = "无" }: { title: string; items: string[]; empty?: string }) {
   const visibleItems = items.filter(Boolean).slice(0, 8);
   return (
-    <div style={DETAIL_SECTION_STYLE}>
-      <h4 style={DETAIL_TITLE_STYLE}>{title}</h4>
-      <ul style={DETAIL_LIST_STYLE}>
+    <div className="tq-family-detail__section">
+      <h4 className="tq-family-detail__title">{title}</h4>
+      <ul className="tq-family-detail__list">
         {(visibleItems.length ? visibleItems : [empty]).map((item) => (
-          <li key={item} style={DETAIL_ITEM_STYLE}>{plainTradingText(item)}</li>
+          <li key={item} className="tq-family-detail__item">{plainTradingText(item)}</li>
         ))}
       </ul>
     </div>
@@ -162,9 +93,9 @@ function InfoPill({
   tone?: "neutral" | "warn";
 }) {
   return (
-    <div style={{ ...INFO_PILL_STYLE, ...(compact ? INFO_PILL_COMPACT_STYLE : undefined) }}>
-      <span style={INFO_LABEL_STYLE}>{label}</span>
-      <strong style={{ ...INFO_VALUE_STYLE, ...(tone === "warn" ? INFO_WARN_VALUE_STYLE : undefined) }}>{value}</strong>
+    <div className={`tq-info-pill ${compact ? "tq-info-pill--compact" : ""}`.trim()}>
+      <span className="tq-info-pill__label">{label}</span>
+      <strong className={`tq-info-pill__value ${tone === "warn" ? "tq-info-pill__value--warn" : ""}`.trim()}>{value}</strong>
     </div>
   );
 }
