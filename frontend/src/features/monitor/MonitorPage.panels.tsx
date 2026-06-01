@@ -42,7 +42,7 @@ const MONITOR_ETF_CARD_META_STYLE = {
   gap: 8,
   color: "#64748b",
   fontSize: 12,
-};
+} as const;
 
 const MONITOR_ETF_CARD_HINT_STYLE = {
   color: "#64748b",
@@ -89,14 +89,14 @@ const MONITOR_TREND_BAR_ITEM_STYLE = {
 const MONITOR_TREND_LABEL_STYLE = {
   fontSize: 12,
   textAlign: "center",
-};
+} as const;
 const MONITOR_KEY_ALERT_WRAP_STYLE = {
   bottom: 10,
   maxWidth: "min(300px, calc(100vw - 20px))",
   position: "fixed",
   right: 10,
   zIndex: 60,
-};
+} as const;
 const MONITOR_KEY_ALERT_STYLE = {
   padding: "6px 8px",
 };
