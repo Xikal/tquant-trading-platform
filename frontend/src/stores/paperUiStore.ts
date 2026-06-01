@@ -1,8 +1,8 @@
 import { create } from "zustand";
 import type { PixelTraderAnimationState } from "../features/paper/pixelTrader/types";
 
-export type PaperDetailTabKey = "today" | "orders" | "trades" | "pnl" | "strategy" | "risk" | "diagnostic";
-export type PaperDetailGroupKey = "records" | "performance" | "automation";
+export type PaperDetailTabKey = "today" | "orders" | "trades" | "pnl" | "strategy" | "risk" | "diagnostic" | "review-history" | "execution-preview";
+export type PaperDetailGroupKey = "records" | "performance" | "automation" | "details";
 
 interface PaperUiStore {
   detailTab: PaperDetailTabKey;

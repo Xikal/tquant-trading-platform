@@ -29,9 +29,9 @@ const SECTOR_FILTER_LIST_STYLE: CSSProperties = {
   maxHeight: 240,
   overflow: "auto",
   padding: 6,
-  border: "1px solid var(--line)",
+  border: "1px solid var(--border)",
   borderRadius: 10,
-  background: "#f8fafc",
+  background: "var(--bg-subtle)",
 };
 
 const SECTOR_FILTER_OPTION_STYLE: CSSProperties = {
@@ -43,22 +43,22 @@ const SECTOR_FILTER_OPTION_STYLE: CSSProperties = {
   padding: "6px 8px",
   border: "1px solid transparent",
   borderRadius: 8,
-  color: "var(--text)",
-  fontSize: 12,
+  color: "var(--text-1)",
+  fontSize: "var(--fs-micro)",
   fontWeight: 700,
   cursor: "pointer",
 };
 
 const SECTOR_FILTER_OPTION_ACTIVE_STYLE: CSSProperties = {
-  borderColor: "#f59e0b",
-  color: "#92400e",
-  background: "#fffbeb",
+  borderColor: "color-mix(in srgb, var(--warning) 56%, var(--border))",
+  color: "var(--warning)",
+  background: "color-mix(in srgb, var(--warning) 10%, var(--bg-elevated))",
 };
 
 const RUNTIME_SNAPSHOT_PANEL_STYLE: CSSProperties = {
-  borderColor: "rgba(255, 255, 255, 0.1)",
-  background: "linear-gradient(180deg, var(--panel), var(--deep))",
-  color: "#dde3ec",
+  borderColor: "color-mix(in srgb, var(--brand) 18%, var(--border))",
+  background: "linear-gradient(180deg, var(--bg-elevated), var(--bg-subtle))",
+  color: "var(--text-1)",
 };
 
 export function SectorFilterCard({

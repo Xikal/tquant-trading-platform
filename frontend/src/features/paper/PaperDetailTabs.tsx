@@ -3,10 +3,12 @@ import { Button, Card, Space, Tabs, Typography } from "antd";
 import type {
   PaperAgentRun,
   PaperAutoTradingStatus,
+  MarketReviewHistoryEntry,
   PaperGroupedPerformance,
   PaperLedgerRepairResponse,
   PaperOrder,
   PaperPerformance,
+  PaperPerformanceDashboard,
   PaperPosition,
   PaperSectorEtfT0Performance,
   PaperStockPnlItem,
@@ -19,6 +21,7 @@ import type {
 import { PaperLedgerRepairPanel } from "./PaperLedgerRepairPanel";
 import { PaperPositionDetailsPanel } from "./PaperPositionDetailsPanel";
 import { PaperTodayActionPanel } from "./PaperTodayActionPanel";
+import { PortfolioExecutionPanel } from "./PortfolioExecutionPanel";
 import {
   AgentRunList,
   GroupedPerformanceTable,
@@ -64,7 +67,8 @@ export function PaperDetailTabs(props: PaperDetailTabsProps) {
         items={[
           { key: "automation", label: "自动化" },
           { key: "records", label: "记录" },
-          { key: "performance", label: "表现（策略绩效）" },
+          { key: "performance", label: "策略绩效" },
+          { key: "details", label: "详情信息" },
         ]}
       />
       <Tabs
@@ -133,6 +137,12 @@ export function PaperDetailTabs(props: PaperDetailTabsProps) {
             onApplyLedgerRepair={props.onApplyLedgerRepair}
           />
         ) : null}
+        {activeTab === "review-history" ? (
+          <ReviewHistoryTab performanceDashboard={props.performanceDashboard} />
+        ) : null}
+        {activeTab === "execution-preview" ? (
+          <ExecutionPreviewTab performance={props.performance} />
+        ) : null}
       </div>
     </Card>
   );
@@ -145,6 +155,7 @@ interface PaperDetailTabsProps {
   stockPnl: PaperStockPnlItem[];
   stockPnlSummary: PaperStockPnlSummary | null;
   performance: PaperPerformance | null;
+  performanceDashboard?: PaperPerformanceDashboard | null;
   autoTradingStatus: PaperAutoTradingStatus | null;
   sectorEtfT0Performance: PaperSectorEtfT0Performance | null;
   strategyPerformance: PaperGroupedPerformance[];
@@ -171,12 +182,15 @@ function buildTabs(props: PaperDetailTabsProps) {
     { key: "trades", group: "records", label: "成交记录", hint: `${props.trades.length} 条` },
     { key: "pnl", group: "performance", label: "个股盈亏", hint: `${props.stockPnl.length} 只` },
     { key: "strategy", group: "performance", label: "策略绩效", hint: `${props.strategyPerformance.length + props.marketPerformance.length} 组` },
+    { key: "execution-preview", group: "performance", label: "组合执行预览", hint: `${props.performance?.portfolio_execution_preview?.candidate_count ?? 0} 样本` },
+    { key: "review-history", group: "details", label: "复盘历史", hint: `${reviewReportCount(props.performanceDashboard)} 条` },
   ] as Array<{ key: PaperDetailTabKey; group: PaperDetailGroupKey; label: string; hint: string }>;
 }
 
 function defaultTabForGroup(group: PaperDetailGroupKey): PaperDetailTabKey {
   if (group === "records") return "orders";
   if (group === "performance") return "strategy";
+  if (group === "details") return "review-history";
   return "today";
 }
 
@@ -459,6 +473,92 @@ function DiagnosticTab({
         onApply={() => void onApplyLedgerRepair()}
       />
     </TabScroll>
+  );
+}
+
+export function ReviewHistoryTab({ performanceDashboard }: { performanceDashboard?: PaperPerformanceDashboard | null }) {
+  const items = reviewHistoryItems(performanceDashboard);
+  return (
+    <TabScroll>
+      <Card size="small" title="复盘历史" extra={<Typography.Text type="secondary">模拟盘只作历史辅助，市场复盘主入口在实时监控。</Typography.Text>}>
+        {items.length ? (
+          <Space className="paper-review-history-list" direction="vertical" size={8}>
+            {items.map((item) => <ReviewHistoryCard key={item.key} item={item} />)}
+          </Space>
+        ) : (
+          <EmptyState text="暂无复盘历史" />
+        )}
+      </Card>
+    </TabScroll>
+  );
+}
+
+export function ExecutionPreviewTab({ performance }: { performance: PaperPerformance | null }) {
+  return (
+    <TabScroll>
+      <Card size="small" title="组合执行预览" extra={<Typography.Text type="secondary">只读测算，不会触发委托。</Typography.Text>}>
+        <PortfolioExecutionPanel preview={performance?.portfolio_execution_preview} embedded />
+      </Card>
+    </TabScroll>
+  );
+}
+
+type ReviewHistoryItem = {
+  key: string;
+  title: string;
+  summary: string;
+  suggestion?: string;
+  generatedAt?: string;
+  riskCount: number;
+};
+
+function reviewHistoryItems(performanceDashboard?: PaperPerformanceDashboard | null): ReviewHistoryItem[] {
+  if (!performanceDashboard) return [];
+  const items: ReviewHistoryItem[] = [];
+  const report = performanceDashboard.today_report;
+  if (report) {
+    items.push({
+      key: `paper-${report.id}`,
+      title: `模拟盘日报 · ${report.report_date}`,
+      summary: report.overall_summary,
+      suggestion: report.suggestion,
+      generatedAt: report.generated_at,
+      riskCount: report.risk_alerts.length,
+    });
+  }
+  for (const reportItem of performanceDashboard.review_reports ?? []) {
+    items.push(reviewHistoryEntry(reportItem));
+  }
+  return items;
+}
+
+function reviewHistoryEntry(report: MarketReviewHistoryEntry): ReviewHistoryItem {
+  const slot = report.report_slot === "midday" ? "午盘" : report.report_slot === "close" ? "收盘" : (report.report_slot || "复盘");
+  return {
+    key: `market-${report.id}`,
+    title: `${report.review_subject || "全市场"}${slot}复盘 · ${report.report_date}`,
+    summary: report.overall_summary || "复盘记录已生成，具体正文请到实时监控页查看。",
+    suggestion: report.suggestion,
+    generatedAt: report.generated_at,
+    riskCount: report.risk_alerts.length,
+  };
+}
+
+function reviewReportCount(performanceDashboard?: PaperPerformanceDashboard | null) {
+  return (performanceDashboard?.today_report ? 1 : 0) + (performanceDashboard?.review_reports?.length ?? 0);
+}
+
+function ReviewHistoryCard({ item }: { item: ReviewHistoryItem }) {
+  return (
+    <article className="paper-mobile-card">
+      <div className="paper-mobile-card__head">
+        <strong>{item.title}</strong>
+        <StatusChip tone={item.riskCount > 0 ? "warn" : "neutral"}>{item.riskCount > 0 ? `${item.riskCount} 个风险` : "无风险提示"}</StatusChip>
+      </div>
+      <Typography.Text className="paper-mobile-card__summary">{item.summary}</Typography.Text>
+      {item.suggestion ? <Typography.Text className="paper-mobile-card__note" type="secondary">提示：{item.suggestion}</Typography.Text> : null}
+      {item.generatedAt ? <Typography.Text className="paper-mobile-card__note" type="secondary">生成时间：{formatPaperDateTime(item.generatedAt)}</Typography.Text> : null}
+    </article>
   );
 }
 

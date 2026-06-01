@@ -181,12 +181,12 @@ export function monitorGridStyle(stacked: boolean): CSSProperties {
     gridTemplateColumns: stacked ? "1fr" : "minmax(0, 1fr) minmax(360px, 440px)",
     gridTemplateAreas: stacked
       ? `"summary"
-         "input"
          "priority"
+         "input"
          "etf"`
-      : `"summary input"
+      : `"summary summary"
          "priority input"
-         "etf input"`,
+         "etf etf"`,
     gridAutoRows: "min-content",
     gap: "clamp(12px, 1vw, 16px)",
     minHeight: "calc(100vh - 88px)",

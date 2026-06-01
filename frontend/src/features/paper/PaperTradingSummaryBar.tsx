@@ -1,7 +1,7 @@
 import type { PaperAccount, PaperAutoTradingStatus, PaperPerformance } from "../../types";
 import { Alert, Button, Card, Col, Flex, Row, Space, Statistic, Tag, theme } from "antd";
 import { formatMoneyPlain, formatPct, toneFromChange } from "../workspace-shared/workspaceFormatters";
-import { autoTradingSkipNotice, resolveAutoManagedStatus } from "./paperTradingStatus";
+import { autoTradingSkipNotice, paperAccountNeedsResume, resolveAutoManagedStatus } from "./paperTradingStatus";
 import { formatPaperDateTime } from "./paperTradingFormatters";
 
 export function PaperTradingSummaryBar({
@@ -10,6 +10,7 @@ export function PaperTradingSummaryBar({
   autoTradingStatus,
   loading,
   canOpenOrder,
+  canResumeOrder,
   onOpenOrderEntry,
   onTogglePause,
 }: {
@@ -18,12 +19,14 @@ export function PaperTradingSummaryBar({
   autoTradingStatus: PaperAutoTradingStatus | null;
   loading: boolean;
   canOpenOrder: boolean;
+  canResumeOrder?: boolean;
   onOpenOrderEntry: () => void;
   onTogglePause?: () => void | Promise<void>;
 }) {
   const { token } = theme.useToken();
   const status = resolveAutoManagedStatus(account, autoTradingStatus);
   const skipNotice = autoTradingSkipNotice(autoTradingStatus);
+  const showResumeOrder = canResumeOrder ?? paperAccountNeedsResume(account, autoTradingStatus);
   const totalTone = toneFromChange(account?.total_return_pct);
   const dayTone = toneFromChange(account?.today_return_pct);
 
@@ -69,9 +72,9 @@ export function PaperTradingSummaryBar({
           >
             {canOpenOrder ? "委托录入" : "自动交易中"}
           </Button>
-          {account?.status === "paused" && onTogglePause ? (
+          {showResumeOrder && onTogglePause ? (
             <Button type="default" size="small" disabled={loading} onClick={() => void onTogglePause()}>
-              恢复自动委托
+              恢复委托
             </Button>
           ) : null}
         </Space>

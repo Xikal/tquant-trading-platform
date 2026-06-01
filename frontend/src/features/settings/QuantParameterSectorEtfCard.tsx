@@ -27,14 +27,14 @@ const INLINE_CHECKBOX_FIELD_STYLE: CSSProperties = {
 };
 
 const INLINE_FIELD_LABEL_STYLE: CSSProperties = {
-  color: "#62708a",
-  fontSize: 12,
+  color: "var(--text-2)",
+  fontSize: "var(--fs-micro)",
   fontWeight: 700,
 };
 
 const INLINE_FIELD_ERROR_STYLE: CSSProperties = {
-  color: "#b91c1c",
-  fontSize: 12,
+  color: "var(--error)",
+  fontSize: "var(--fs-micro)",
 };
 
 const SECTOR_ETF_QUANT_PARAM_KEY = ["settings", "quant-parameters", "sector-etf"] as const;

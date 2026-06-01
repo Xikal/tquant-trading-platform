@@ -63,6 +63,27 @@ canvas {
   gap: 8px;
 }
 
+.monitor-holdings {
+  align-self: start;
+}
+
+.monitor-holdings .tq-section-header__actions,
+.monitor-conclusion-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
+}
+
+.monitor-conclusion-actions {
+  min-width: min(100%, 300px);
+}
+
+.monitor-holdings .tq-section-header__actions {
+  min-width: 0;
+}
+
 .monitor-card-list--inset,
 .monitor-secondary-panel__list {
   padding-right: 2px;

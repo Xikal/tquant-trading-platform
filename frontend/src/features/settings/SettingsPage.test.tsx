@@ -5,8 +5,13 @@ import { describe, expect, it, vi } from "vitest";
 import { createAppQueryClient } from "../../state/queryClient";
 import { useSettingsUiStore } from "../../stores/settingsUiStore";
 import { SettingsPage } from "./SettingsPage";
+import { AdminTokenGate } from "./AdminTokenGate";
+import { DataCenterEntryCard } from "./DataCenterEntryCard";
+import { SettingsLayout } from "./SettingsLayout";
+import { SettingsSection } from "./SettingsSection";
 import type { AuthUser, SettingsPayload } from "../../types";
 import type { SettingsDraft } from "../workspace-shared/workspaceTypes";
+import type { SettingsTabItem } from "./SettingsPageTabs";
 
 describe("SettingsPage", () => {
   it("keeps admin tuning and diagnostics out of the normal user first screen", () => {
@@ -43,9 +48,9 @@ describe("SettingsPage", () => {
       </QueryClientProvider>
     );
 
-    expect(html).toContain("我的账户");
-    expect(html).toContain("交易参数");
-    expect(html).not.toContain("大模型与因子");
+    expect(html).toContain("账户与安全");
+    expect(html).toContain("交易偏好");
+    expect(html).not.toContain("模型与因子");
     expect(html).not.toContain("大模型");
     expect(html).not.toContain("数据库");
     expect(html).not.toContain("数据库与诊断");
@@ -54,7 +59,69 @@ describe("SettingsPage", () => {
     expect(html).not.toContain("ML");
     expect(html).not.toContain("每日最新数据");
   });
+
+  it("renders the redesigned settings shell with side navigation and admin token gate", () => {
+    const html = renderToStaticMarkup(
+      <SettingsLayout
+        activeTab="data"
+        loading={false}
+        onRefresh={vi.fn()}
+        onSaveAll={vi.fn()}
+        onTabChange={vi.fn()}
+        tabs={adminTabsFixture()}
+        unsavedCount={1}
+      >
+        <SettingsSection title="数据与运行" description="数据源配置、最新数据状态和运行快照。" admin>
+          <AdminTokenGate error="保存配置前需要填写管理令牌" value="" onChange={vi.fn()} />
+          <DataCenterEntryCard title="数据质量与修复" description="数据质量、更新任务和修复操作在数据中心统一处理。" />
+        </SettingsSection>
+      </SettingsLayout>
+    );
+
+    expect(html).toContain("settings-layout");
+    expect(html).toContain("settings-side-nav");
+    expect(html).toContain("数据与运行");
+    expect(html).toContain("诊断与审计");
+    expect(html).toContain("管理员操作门");
+    expect(html).toContain("先填写管理令牌，才能保存管理员配置。");
+    expect(html).toContain("打开数据中心");
+    expect(html).not.toContain("当前页签");
+    expect(html).not.toContain("数据质量 SLA");
+  });
+
+  it("keeps ETF universe management as a data center entry instead of duplicating the full card", () => {
+    const html = renderToStaticMarkup(
+      <SettingsSection title="交易偏好" description="风控、行业过滤、模拟盘退出和 ETF 自动交易参数。">
+        <DataCenterEntryCard title="交易标的范围" description="ETF / 股票池在数据中心统一维护。" />
+      </SettingsSection>
+    );
+
+    expect(html).toContain("交易标的范围");
+    expect(html).toContain("ETF / 股票池在数据中心统一维护");
+    expect(html).toContain("打开数据中心");
+    expect(html).not.toContain("股票池修复");
+  });
 });
+
+function adminTabsFixture(): SettingsTabItem[] {
+  return [
+    { key: "account", label: "账户与安全", description: "安全与权限" },
+    { key: "trading", label: "交易偏好", description: "风控、行业、退出", dirty: true },
+    { key: "llm", label: "模型与因子", description: "DeepSeek、权重、ML", admin: true },
+    { key: "data", label: "数据与运行", description: "数据源、运行状态", admin: true },
+    { key: "governance", label: "诊断与审计", description: "治理、开关、审计", admin: true },
+  ];
+}
+
+function adminUserFixture(): AuthUser {
+  return {
+    ...normalUserFixture(),
+    id: 99,
+    username: "admin",
+    display_name: "管理员",
+    roles: ["admin"],
+  };
+}
 
 function normalUserFixture(): AuthUser {
   return {

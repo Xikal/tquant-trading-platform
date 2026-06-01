@@ -6,6 +6,7 @@ export function resolveAutoManagedStatus(
   autoTradingStatus: PaperAutoTradingStatus | null,
 ): { label: string; tone: MetricItem["tone"] | "warn" } {
   if (!account) return { label: "--", tone: "neutral" };
+  if (paperAccountNeedsResume(account, autoTradingStatus)) return { label: "暂停新增委托", tone: "warn" };
   if (autoTradingStatus?.circuit_open) return { label: "熔断保护", tone: "warn" };
   if (autoTradingStatus?.trading_time) {
     return autoTradingStatus.running
@@ -32,4 +33,13 @@ export function autoTradingSkipNotice(
     time: autoTradingStatus.last_skip_at,
     tone: "neutral",
   };
+}
+
+export function paperAccountNeedsResume(
+  account: PaperAccount | null,
+  autoTradingStatus: PaperAutoTradingStatus | null,
+) {
+  return account?.status === "paused"
+    || autoTradingStatus?.account_status === "paused"
+    || Boolean(String(autoTradingStatus?.blocking_reason || "").trim());
 }

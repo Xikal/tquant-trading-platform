@@ -133,7 +133,6 @@ export const MonitorPage = memo(function MonitorPage({
           priorityCards={priorityCards}
           reviewStatus={reviewStatus}
           watchCards={watchCards}
-          onOpenHoldingDrawer={() => setHoldingDrawerOpen(true)}
           onRefresh={onRefresh}
           onSync={onSync}
         />
@@ -142,8 +141,13 @@ export const MonitorPage = memo(function MonitorPage({
 
       <aside className="panel monitor-holdings" style={MONITOR_INPUT_STYLE}>
         <PanelTitle
-          title="我的持仓信号"
-          actions={<span className="muted">{watchCards.length} 个自选 / {runtime?.database_backend ?? "runtime"} </span>}
+          title="我的持仓"
+          actions={(
+            <>
+              <span className="muted">{watchCards.length} 个自选 / {runtime?.database_backend ?? "runtime"} </span>
+              <Button type="primary" size="small" onClick={() => setHoldingDrawerOpen(true)}>+ 录入持仓</Button>
+            </>
+          )}
         />
         <div className="monitor-holdings__body">
           <Callout
@@ -159,9 +163,9 @@ export const MonitorPage = memo(function MonitorPage({
           />
           <VirtualCardList
             items={watchCards}
-            empty={<EmptyState text="暂无自选持仓。点击结论区的“录入持仓”后会显示做T信号。" />}
+            empty={<EmptyState text="暂无自选持仓。点击右上角“录入持仓”后会显示做T信号。" />}
             estimateSize={170}
-            maxHeight={520}
+            maxHeight={620}
             className="monitor-card-list--inset"
             getItemKey={(stock) => stock.symbol}
             renderItem={(stock) => (

@@ -83,7 +83,10 @@ describe("StrategyTracking UI", () => {
     expect(html).toContain("观察等待");
     expect(html).toContain("已走弱");
     expect(html).toContain("样本与口径");
+    expect(html).toContain("strategy-tracking-help-icon");
+    expect(html).toContain("aria-label=\"重点跟踪说明\"");
     expect(html).not.toContain("重点推荐");
+    expect(html).not.toContain("tq-conclusion-bar__helper");
   });
 
   it("renders list rows with stable detail actions and pagination wiring", () => {

@@ -2,6 +2,28 @@
   display: none;
 }
 
+.paper-conclusion__pixel {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 54px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-subtle);
+}
+
+.paper-conclusion__pixel-value {
+  display: block;
+}
+
+.paper-conclusion__pixel-canvas {
+  display: block;
+  width: 48px;
+  height: 54px;
+  image-rendering: pixelated;
+}
+
 .paper-mobile-card {
   display: grid;
   gap: 7px;
@@ -32,6 +54,14 @@
 
 .paper-mobile-card__note {
   font-size: 12px;
+}
+
+.paper-mobile-card__summary {
+  font-size: 12px;
+}
+
+.paper-review-history-list {
+  width: 100%;
 }
 
 .paper-mobile-card__head strong {

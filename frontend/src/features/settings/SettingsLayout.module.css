@@ -1,0 +1,279 @@
+.layout {
+  display: grid;
+  gap: var(--sp-4);
+  min-width: 0;
+}
+
+.topBar {
+  position: sticky;
+  top: var(--sp-2);
+  z-index: var(--z-sticky);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--bg-elevated) 94%, transparent);
+  padding: var(--sp-3);
+  box-shadow: var(--shadow-1);
+  backdrop-filter: blur(8px);
+}
+
+.topBarText {
+  display: grid;
+  gap: var(--sp-1);
+  min-width: 0;
+}
+
+.topBarTitle {
+  color: var(--text-1);
+  font-size: var(--fs-md);
+  font-weight: 700;
+  line-height: var(--lh-tight);
+}
+
+.topBarSummary {
+  color: var(--text-2);
+  font-size: var(--fs-micro);
+  line-height: var(--lh-base);
+}
+
+.topBarActions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--sp-2);
+}
+
+.unsavedPill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  border: 1px solid color-mix(in srgb, var(--warning) 42%, var(--border));
+  border-radius: var(--radius-pill);
+  background: color-mix(in srgb, var(--warning) 10%, var(--bg-elevated));
+  color: var(--warning);
+  padding: 0 var(--sp-3);
+  font-size: var(--fs-micro);
+  font-weight: 700;
+}
+
+.body {
+  display: grid;
+  align-items: start;
+  justify-content: center;
+  gap: var(--sp-4);
+  grid-template-columns: minmax(180px, 220px) minmax(0, 880px);
+  min-width: 0;
+}
+
+.sideNav {
+  position: sticky;
+  top: calc(var(--sp-2) + 70px);
+  display: grid;
+  gap: var(--sp-2);
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-elevated);
+  padding: var(--sp-2);
+  box-shadow: var(--shadow-1);
+}
+
+.navGroupLabel {
+  color: var(--text-3);
+  font-size: var(--fs-micro);
+  font-weight: 700;
+  line-height: var(--lh-tight);
+  padding: var(--sp-1) var(--sp-2);
+}
+
+.navButton {
+  justify-content: flex-start;
+  width: 100%;
+  height: auto;
+  min-height: 46px;
+  padding: var(--sp-2);
+  text-align: left;
+}
+
+.navButtonActive {
+  border-color: color-mix(in srgb, var(--brand) 24%, var(--border));
+  background: var(--brand-soft);
+}
+
+.navLabel {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  min-width: 0;
+  color: var(--text-1);
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  line-height: var(--lh-tight);
+}
+
+.navDescription {
+  display: block;
+  margin-top: var(--sp-1);
+  color: var(--text-2);
+  font-size: var(--fs-micro);
+  line-height: var(--lh-tight);
+}
+
+.content {
+  display: grid;
+  gap: var(--sp-4);
+  min-width: 0;
+}
+
+.section {
+  display: grid;
+  gap: var(--sp-3);
+  min-width: 0;
+}
+
+.sectionHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  min-width: 0;
+}
+
+.sectionTitle {
+  color: var(--text-1);
+  font-size: var(--fs-md);
+  font-weight: 700;
+  line-height: var(--lh-tight);
+}
+
+.sectionDescription {
+  margin-top: var(--sp-1);
+  color: var(--text-2);
+  font-size: var(--fs-micro);
+  line-height: var(--lh-base);
+}
+
+.adminBadge {
+  flex: 0 0 auto;
+  border: 1px solid color-mix(in srgb, var(--warning) 36%, var(--border));
+  border-radius: var(--radius-pill);
+  color: var(--warning);
+  padding: 2px var(--sp-2);
+  font-size: var(--fs-micro);
+  font-weight: 700;
+}
+
+.sectionCards {
+  display: grid;
+  gap: var(--sp-3);
+  min-width: 0;
+}
+
+.formGrid {
+  display: grid;
+  gap: var(--sp-3);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  min-width: 0;
+}
+
+.adminGate {
+  display: grid;
+  gap: var(--sp-3);
+  min-width: 0;
+  border: 1px solid color-mix(in srgb, var(--warning) 28%, var(--border));
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--warning) 8%, var(--bg-elevated));
+  padding: var(--sp-3);
+}
+
+.adminGateHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  min-width: 0;
+}
+
+.adminGateTitle {
+  color: var(--text-1);
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  line-height: var(--lh-tight);
+}
+
+.adminGateHint {
+  margin-top: var(--sp-1);
+  color: var(--text-2);
+  font-size: var(--fs-micro);
+  line-height: var(--lh-base);
+}
+
+.adminGateStatus {
+  flex: 0 0 auto;
+  color: var(--warning);
+  font-size: var(--fs-micro);
+  font-weight: 700;
+}
+
+.adminGateReady {
+  color: var(--success);
+}
+
+.dataCenterCard {
+  display: grid;
+  gap: var(--sp-3);
+}
+
+.dataCenterText {
+  display: grid;
+  gap: var(--sp-1);
+  color: var(--text-2);
+  font-size: var(--fs-micro);
+  line-height: var(--lh-base);
+}
+
+@media (max-width: 900px) {
+  .topBar {
+    position: static;
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .topBarActions {
+    justify-content: flex-start;
+    width: 100%;
+  }
+
+  .body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .sideNav {
+    position: static;
+    display: flex;
+    overflow-x: auto;
+  }
+
+  .navGroupLabel {
+    display: none;
+  }
+
+  .navButton {
+    flex: 0 0 168px;
+  }
+}
+
+@media (max-width: 575px) {
+  .formGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .sectionHeader,
+  .adminGateHeader {
+    display: grid;
+  }
+}

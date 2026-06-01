@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { Button } from "antd";
 import type { PaperAccount, PaperAutoTradingStatus, PaperPerformance } from "../../types";
 import { ConclusionBar } from "../../ui/surfaces";
@@ -10,21 +11,26 @@ export function PaperConclusionBar({
   performance,
   autoTradingStatus,
   loading,
-  canOpenOrder,
-  onOpenOrderEntry,
+  canResumeOrder,
+  pixel,
   onTogglePause,
 }: {
   account: PaperAccount | null;
   performance: PaperPerformance | null;
   autoTradingStatus: PaperAutoTradingStatus | null;
   loading: boolean;
-  canOpenOrder: boolean;
-  onOpenOrderEntry: () => void;
+  canResumeOrder?: boolean;
+  pixel?: ReactNode;
   onTogglePause?: () => void | Promise<void>;
 }) {
   const status = resolveAutoManagedStatus(account, autoTradingStatus);
   const skipNotice = autoTradingSkipNotice(autoTradingStatus);
   const positionRatio = account?.total_assets ? (account.market_value / account.total_assets) * 100 : null;
+  const actions = canResumeOrder && onTogglePause ? (
+    <Button size="small" disabled={loading} onClick={() => void onTogglePause()}>
+      恢复委托
+    </Button>
+  ) : null;
 
   return (
     <section className="paper-conclusion">
@@ -36,23 +42,7 @@ export function PaperConclusionBar({
             <span>{skipNotice ? `${skipNotice.title}：${skipNotice.text}` : "真实收益、影子收益和信号收益分区展示；自动交易只在模拟盘口径内执行。"}</span>
           </>
         )}
-        actions={(
-          <>
-            <Button
-              type="primary"
-              size="small"
-              disabled={!canOpenOrder || loading}
-              onClick={onOpenOrderEntry}
-            >
-              +委托
-            </Button>
-            {account?.status === "paused" && onTogglePause ? (
-              <Button size="small" disabled={loading} onClick={() => void onTogglePause()}>
-                恢复自动委托
-              </Button>
-            ) : null}
-          </>
-        )}
+        actions={actions}
         items={[
           {
             key: "real-return",
@@ -82,6 +72,12 @@ export function PaperConclusionBar({
             tone: toneFromChange(performance?.net_win_rate_pct),
             helper: `影子/信号收益在次区绩效中单独展示 · 总交易 ${performance?.total_trades ?? 0}`,
           },
+          ...(pixel ? [{
+            key: "pixel",
+            label: "像素图",
+            value: <span className="paper-conclusion__pixel-value">{pixel}</span>,
+            tone: "neutral" as const,
+          }] : []),
         ]}
       />
     </section>

@@ -12,7 +12,6 @@ export function MonitorConclusionBar({
   priorityCards,
   reviewStatus,
   watchCards,
-  onOpenHoldingDrawer,
   onRefresh,
   onSync,
 }: {
@@ -22,7 +21,6 @@ export function MonitorConclusionBar({
   priorityCards: StockCardView[];
   reviewStatus: MarketReviewStatus | null;
   watchCards: StockCardView[];
-  onOpenHoldingDrawer: () => void;
   onRefresh: () => void;
   onSync: () => void;
 }) {
@@ -38,11 +36,10 @@ export function MonitorConclusionBar({
       title="实时监控"
       summary={`${primaryAction.title} · ${primaryAction.detail}`}
       actions={(
-        <>
-          <Button type="primary" onClick={onOpenHoldingDrawer}>+ 录入持仓</Button>
+        <div className="monitor-conclusion-actions">
           <Button onClick={onRefresh}>手动刷新</Button>
           <Button onClick={onSync}>更新股票库（较慢）</Button>
-        </>
+        </div>
       )}
       items={[
         {

@@ -13,15 +13,15 @@ const FACTOR_WEIGHT_ITEM_STYLE: CSSProperties = {
   display: "grid",
   gap: 4,
   padding: 8,
-  border: "1px solid var(--line)",
+  border: "1px solid var(--border)",
   borderRadius: 8,
-  background: "#f8fafc",
+  background: "var(--bg-subtle)",
 };
 
 const FACTOR_WEIGHT_NAME_STYLE: CSSProperties = {
   overflow: "hidden",
-  color: "var(--text)",
-  fontSize: 12,
+  color: "var(--text-1)",
+  fontSize: "var(--fs-micro)",
   fontWeight: 700,
   textOverflow: "ellipsis",
   whiteSpace: "nowrap",
@@ -29,8 +29,8 @@ const FACTOR_WEIGHT_NAME_STYLE: CSSProperties = {
 
 const FACTOR_WEIGHT_META_STYLE: CSSProperties = {
   overflow: "hidden",
-  color: "var(--muted)",
-  fontSize: 12,
+  color: "var(--text-2)",
+  fontSize: "var(--fs-micro)",
   textOverflow: "ellipsis",
   whiteSpace: "nowrap",
 };

@@ -21,6 +21,7 @@ import type {
   PaperTradeTag,
   RiskEventItem,
 } from "../../types";
+import { paperAccountNeedsResume } from "../paper/paperTradingStatus";
 import { errorMessage, nullableNumber, parseNumber } from "../workspace-shared/workspaceFormatters";
 
 interface PaperLiveRefreshOptions {
@@ -286,11 +287,11 @@ export function usePaperTrading({ canManageReconcile = false, setError, setLoadi
 
   async function togglePause() {
     await withPaperLoading("paper-status", async () => {
-      const nextAccount = account?.status === "paused"
+      const nextAccount = paperAccountNeedsResume(account, autoTradingStatus)
         ? await runAuthenticated(() => api.resumePaperAccount())
         : await runAuthenticated(() => api.pausePaperAccount());
       setAccount(nextAccount);
-      setNotice(nextAccount.status === "paused" ? "模拟盘已暂停" : "模拟盘已恢复");
+      setNotice(nextAccount.status === "paused" ? "模拟盘已暂停" : "模拟盘委托已恢复");
       await load(false, false);
     });
   }

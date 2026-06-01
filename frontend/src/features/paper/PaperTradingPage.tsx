@@ -18,14 +18,13 @@ import type {
 } from "../../types";
 import type { CSSProperties } from "react";
 import { memo, useEffect, useMemo } from "react";
-import { Card, Col, Collapse, Row, Space } from "antd";
-import { PixelTraderWorker } from "./PixelTraderWorker";
-import { PortfolioExecutionPanel } from "./PortfolioExecutionPanel";
+import { Card, Col, Row, Space } from "antd";
+import { PixelTraderAvatar } from "./PixelTraderWorker";
 import { PaperDetailTabs } from "./PaperDetailTabs";
 import { PaperConclusionBar } from "./PaperConclusionBar";
 import { PaperTodayActionPanel } from "./PaperTodayActionPanel";
+import { paperAccountNeedsResume } from "./paperTradingStatus";
 import {
-  formatPaperDateTime,
   OrderEntryModal,
   PaperPositionsPanel,
 } from "./PaperTradingSections";
@@ -101,6 +100,7 @@ export const PaperTradingPage = memo(function PaperTradingPage({
   autoTradingStatus,
   autoTradingRuns,
   ledgerRepairStatus = null,
+  performanceDashboard = null,
   canManageReconcile = false,
   draft,
   setDraft,
@@ -112,8 +112,8 @@ export const PaperTradingPage = memo(function PaperTradingPage({
   onAddTradeTag,
   onDeleteTradeTag,
 }: PaperTradingPageProps) {
-  const autoManaged = Boolean(autoTradingStatus?.engine_running || autoTradingStatus?.trading_time);
-  const paused = account?.status === "paused" && !autoManaged;
+  const needsResumeOrder = paperAccountNeedsResume(account, autoTradingStatus);
+  const paused = needsResumeOrder;
   const paperLoading = loading === "paper";
   const orderLoading = loading === "paper-order";
   const autoTradingRunning = Boolean(autoTradingStatus?.running);
@@ -124,14 +124,6 @@ export const PaperTradingPage = memo(function PaperTradingPage({
   const cockpitMarketState = useMemo(() => (
     resolveCockpitMarketState(autoTradingStatus, clockMs)
   ), [autoTradingStatus, clockMs]);
-  const cockpitRecentTrades = useMemo(() => (
-    trades.slice(0, 3).map((item) => ({
-      type: item.side === "sell" ? "sell" as const : "buy" as const,
-      symbol: item.symbol,
-      name: item.symbol,
-      time: formatPaperDateTime(item.trade_time).slice(11, 16),
-    }))
-  ), [trades]);
   const lastOrderAction = useMemo(() => {
     const latestTrade = trades[0];
     if (!latestTrade) return null;
@@ -160,8 +152,15 @@ export const PaperTradingPage = memo(function PaperTradingPage({
         performance={performance}
         autoTradingStatus={autoTradingStatus}
         loading={paperLoading || orderLoading}
-        canOpenOrder={!paused && !autoTradingRunning}
-        onOpenOrderEntry={() => setOrderModalOpen(true)}
+        canResumeOrder={needsResumeOrder}
+        pixel={(
+          <PixelTraderAvatar
+            marketState={cockpitMarketState}
+            paused={paused}
+            autoTradingRunning={autoTradingRunning}
+            lastOrderAction={Number.isFinite(lastOrderAction?.timestamp) ? lastOrderAction : null}
+          />
+        )}
         onTogglePause={onTogglePause}
       />
       {orderModalOpen ? (
@@ -195,31 +194,6 @@ export const PaperTradingPage = memo(function PaperTradingPage({
                 riskEvents={riskEvents}
               />
             </Card>
-            <Collapse
-              size="small"
-              items={[
-                {
-                  key: "execution-preview",
-                  label: "组合执行预览",
-                  children: <PortfolioExecutionPanel preview={performance?.portfolio_execution_preview} />,
-                },
-                {
-                  key: "pixel",
-                  label: "像素状态",
-                  children: (
-                    <PixelTraderWorker
-                      marketState={cockpitMarketState}
-                      paused={paused}
-                      autoTradingRunning={autoTradingRunning}
-                      lastOrderAction={Number.isFinite(lastOrderAction?.timestamp) ? lastOrderAction : null}
-                      loading={paperLoading || orderLoading}
-                      onOpenOrderEntry={() => setOrderModalOpen(true)}
-                      recentTrades={cockpitRecentTrades}
-                    />
-                  ),
-                },
-              ]}
-            />
           </Space>
         </Col>
       </Row>
@@ -230,6 +204,7 @@ export const PaperTradingPage = memo(function PaperTradingPage({
         stockPnl={stockPnl}
         stockPnlSummary={stockPnlSummary}
         performance={performance}
+        performanceDashboard={performanceDashboard}
         autoTradingStatus={autoTradingStatus}
         sectorEtfT0Performance={sectorEtfT0Performance}
         strategyPerformance={strategyPerformance}

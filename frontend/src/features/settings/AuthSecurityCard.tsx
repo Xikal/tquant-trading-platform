@@ -23,37 +23,37 @@ const SECURITY_STEP_GUIDE_STYLE: CSSProperties = {
 };
 
 const SECURITY_STEP_STYLE: CSSProperties = {
-  border: "1px solid rgba(148, 163, 184, 0.24)",
+  border: "1px solid var(--border)",
   borderRadius: 10,
-  background: "#f8fafc",
-  color: "#334155",
+  background: "var(--bg-subtle)",
+  color: "var(--text-1)",
   padding: 8,
-  fontSize: 12,
+  fontSize: "var(--fs-micro)",
   fontWeight: 700,
 };
 
 const SECURITY_SECRET_BOX_STYLE: CSSProperties = {
   display: "grid",
   gap: 6,
-  background: "#f8fafc",
-  border: "1px solid #dbe3ef",
+  background: "var(--bg-subtle)",
+  border: "1px solid var(--border)",
   borderRadius: 12,
   padding: "10px 12px",
 };
 
 const SECURITY_SECRET_CODE_STYLE: CSSProperties = {
-  color: "#0f172a",
-  fontSize: 13,
+  color: "var(--text-1)",
+  fontSize: "var(--fs-sm)",
   overflowWrap: "anywhere",
 };
 
 const SECURITY_SUCCESS_STYLE: CSSProperties = {
-  color: "#15803d",
+  color: "var(--success)",
 };
 
 const SECURITY_ERROR_STYLE: CSSProperties = {
-  color: "#b91c1c",
-  fontSize: 12,
+  color: "var(--error)",
+  fontSize: "var(--fs-micro)",
   margin: 0,
 };
 
@@ -64,8 +64,8 @@ const SECURITY_CODE_FIELD_STYLE: CSSProperties = {
 };
 
 const SECURITY_CODE_LABEL_STYLE: CSSProperties = {
-  color: "#62708a",
-  fontSize: 12,
+  color: "var(--text-2)",
+  fontSize: "var(--fs-micro)",
   fontWeight: 700,
 };
 

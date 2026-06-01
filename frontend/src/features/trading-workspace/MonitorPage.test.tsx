@@ -58,9 +58,11 @@ describe("MonitorPage", () => {
     expect(html).toContain("持仓风险");
     expect(html).toContain("大盘状态");
     expect(html).toContain("+ 录入持仓");
-    expect(html).toContain("我的持仓信号");
+    expect(html).toContain("我的持仓");
     expect(html).toContain("农业银行");
     expect(html).toContain("更多：ETF做T · 复盘 · 快照");
+    expect(html.indexOf("手动刷新")).toBeLessThan(html.indexOf("我的持仓"));
+    expect(html.indexOf("+ 录入持仓")).toBeGreaterThan(html.indexOf("我的持仓"));
   });
 
   it("renders independent low-buy strategy lanes with plain status copy", () => {

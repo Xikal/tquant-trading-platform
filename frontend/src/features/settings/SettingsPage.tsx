@@ -1,4 +1,3 @@
-import type { CSSProperties } from "react";
 import type {
   AdminTaskStatus,
   AdminMetricsResponse,
@@ -9,14 +8,12 @@ import type {
   SettingsPayload,
   UserSectorExclusionsResponse,
 } from "../../types";
-import { lazy, Suspense, useEffect, useMemo, useRef } from "react";
-import { Button } from "antd";
+import { useEffect, useMemo, useRef } from "react";
 import { featureFlagsApi, type FeatureFlagItem } from "../../api/featureFlags";
 import { operationAuditApi, type OperationAuditItem } from "../../api/operationAudit";
 import { NumberField, TextField } from "../../components/shared/FormFields";
 import { AuthSecurityCard } from "./AuthSecurityCard";
-import { InfoPill, PanelTitle, SettingCard } from "../workspace-shared/WorkspaceComponents";
-import { WorkspacePageIntro } from "../workspace-shared/WorkspacePageIntro";
+import { InfoPill, SettingCard } from "../workspace-shared/WorkspaceComponents";
 import {
   FeatureFlagsCard,
   OperationAuditCard,
@@ -25,14 +22,15 @@ import {
   SectorFilterCard,
   StrategyGovernanceCard,
 } from "./SettingsPagePanels";
-import { SettingsPageTabs, type SettingsTabItem, type SettingsTabKey } from "./SettingsPageTabs";
+import type { SettingsTabItem } from "./SettingsPageTabs";
 import { SettingsSection } from "./SettingsSection";
+import { AdminTokenGate } from "./AdminTokenGate";
+import { DataCenterEntryCard } from "./DataCenterEntryCard";
 import { FactorWeightSettingsCard } from "./FactorWeightSettingsCard";
 import { LatestDataStatusCard } from "./LatestDataStatusCard";
 import { QuantParameterMlCard } from "./QuantParameterMlCard";
 import { QuantParameterPaperExitCard } from "./QuantParameterPaperExitCard";
 import { QuantParameterSectorEtfCard } from "./QuantParameterSectorEtfCard";
-import { EtfUniverseAdminCard } from "./EtfUniverseAdminCard";
 import { RitualSettingsCard } from "../ritual-ui";
 import { useSettingsUiStore } from "../../stores/settingsUiStore";
 import { useServerState } from "../../state/serverState";
@@ -46,55 +44,14 @@ import {
   urlFieldError,
 } from "./SettingsPage.helpers";
 import type { SettingsDraft } from "../workspace-shared/workspaceTypes";
+import { SettingsLayout } from "./SettingsLayout";
+import styles from "./SettingsLayout.module.css";
 
 const SETTINGS_PAGE_SERVER_KEYS = {
   featureFlags: ["settings-page", "feature-flags"] as const,
   featureFlagAudits: ["settings-page", "feature-flag-audits"] as const,
   operationAudits: ["settings-page", "operation-audits"] as const,
 };
-
-const SETTINGS_PAGE_STYLE: CSSProperties = {
-  display: "grid",
-  gap: 8,
-  gridTemplateColumns: "minmax(0, 1fr)",
-  gridTemplateAreas: '"hero" "tabs" "cards"',
-};
-
-const SETTINGS_HERO_STYLE: CSSProperties = { gridArea: "hero" };
-const SETTINGS_TABS_STYLE: CSSProperties = { gridArea: "tabs" };
-const SETTINGS_CARDS_STYLE: CSSProperties = {
-  display: "grid",
-  alignItems: "start",
-  gap: 14,
-  gridArea: "cards",
-  gridTemplateColumns: "minmax(0, 1fr)",
-};
-const SETTINGS_FORM_GRID_STYLE: CSSProperties = {
-  display: "grid",
-  gap: 10,
-  gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
-};
-const SETTINGS_FORM_GRID_COMPACT_STYLE: CSSProperties = {
-  display: "grid",
-  gap: 10,
-  gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
-};
-const SETTINGS_UNSAVED_BANNER_STYLE: CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "space-between",
-  gap: 10,
-  marginTop: 10,
-  padding: "8px 10px",
-  border: "1px solid #f3d08b",
-  borderRadius: 10,
-  background: "#fff8e6",
-  color: "#7c4a03",
-  fontSize: 12,
-  fontWeight: 700,
-};
-
-const DataQualityPanel = lazy(() => import("./DataQualityPanel").then((module) => ({ default: module.DataQualityPanel })));
 
 export function SettingsPage({
   settings,
@@ -184,36 +141,25 @@ export function SettingsPage({
   }, [sectorExclusions, sectorQuery]);
   const settingsTabs = useMemo<SettingsTabItem[]>(() => {
     const baseTabs: SettingsTabItem[] = [
-      { key: "account", label: "我的账户", description: "安全与权限" },
-      { key: "trading", label: "交易参数", description: "风控、行业、退出", dirty: dirtyState.risk || sectorDirty },
+      { key: "account", label: "账户与安全", description: "安全与权限" },
+      { key: "trading", label: "交易偏好", description: "风控、行业、退出", dirty: dirtyState.risk || sectorDirty },
     ];
     if (!isAdmin) {
       return baseTabs;
     }
     return [
       ...baseTabs,
-      { key: "llm", label: "大模型与因子", description: "DeepSeek、权重、ML", dirty: dirtyState.llm || dirtyState.factor },
-      { key: "data", label: "数据库与诊断", description: "数据源、运行状态", dirty: dirtyState.data },
-      { key: "governance", label: "策略治理", description: "开关、审计、治理" },
+      { key: "llm", label: "模型与因子", description: "DeepSeek、权重、ML", dirty: dirtyState.llm || dirtyState.factor, admin: true },
+      { key: "data", label: "数据与运行", description: "数据源、运行状态", dirty: dirtyState.data, admin: true },
+      { key: "governance", label: "诊断与审计", description: "治理、开关、审计", admin: true },
     ];
   }, [dirtyState.data, dirtyState.factor, dirtyState.llm, dirtyState.risk, isAdmin, sectorDirty]);
-  const heroSummary = isAdmin
-    ? runtime?.settings_consistency_text || "账户安全、风控参数、数据源、策略治理。"
-    : "账户安全、风控参数和个人交易偏好。";
-  const heroPills = [
-    { label: "当前页签", value: settingsTabs.find((tab) => tab.key === activeTab)?.label || "--" },
-    { label: "未保存", value: String(unsavedCount), tone: unsavedCount > 0 ? "warn" as const : "neutral" as const },
-    ...(isAdmin ? [
-      { label: "数据库", value: runtime?.database_backend || "--" },
-      { label: "大模型", value: runtime?.llm_configured ? "已配置" : "未配置", tone: runtime?.llm_configured ? "up" as const : "neutral" as const },
-    ] : []),
-  ];
 
   useEffect(() => {
     if (!settingsTabs.some((tab) => tab.key === activeTab)) {
       setActiveTab(settingsTabs[0]?.key ?? "account");
     }
-  }, [activeTab, settingsTabs]);
+  }, [activeTab, setActiveTab, settingsTabs]);
 
   async function saveSection(section: SettingsSectionKey) {
     const error = sectionError(section, {
@@ -276,7 +222,7 @@ export function SettingsPage({
 
   useEffect(() => {
     setSectorDraft(sectorExclusions?.excluded_sectors ?? []);
-  }, [sectorExclusions]);
+  }, [sectorExclusions, setSectorDraft]);
 
   async function loadFeatureFlags(options: { includeAudit?: boolean; cancelled?: () => boolean } = {}) {
     try {
@@ -350,41 +296,26 @@ export function SettingsPage({
   }
 
   return (
-    <section style={SETTINGS_PAGE_STYLE}>
-      <div className="panel" style={SETTINGS_HERO_STYLE}>
-        <WorkspacePageIntro
-          title="系统设置"
-          summary={heroSummary}
-          more="配置保存采用一致性语义；敏感字段只显示配置状态，不回显真实值。"
-          moreLabel="保存规则"
-          tone={unsavedCount > 0 ? "warn" : runtime?.settings_consistency_status === "ok" ? "up" : "neutral"}
-          actions={<Button onClick={onRefresh} loading={loading === "settings"}>刷新配置</Button>}
-          pills={heroPills}
-        />
-        {unsavedCount > 0 ? (
-          <div style={SETTINGS_UNSAVED_BANNER_STYLE}>
-            <span>有 {unsavedCount} 项未保存的更改</span>
-            <Button type="primary" size="small" htmlType="button" onClick={() => void saveAllDirty()} disabled={Boolean(loading)}>
-              全部保存
-            </Button>
-          </div>
-        ) : null}
-      </div>
-      <div style={SETTINGS_TABS_STYLE}>
-        <SettingsPageTabs tabs={settingsTabs} activeTab={activeTab} onChange={setActiveTab} />
-      </div>
-      <div style={SETTINGS_CARDS_STYLE}>
+    <SettingsLayout
+      activeTab={activeTab}
+      loading={Boolean(loading)}
+      onRefresh={onRefresh}
+      onSaveAll={() => void saveAllDirty()}
+      onTabChange={setActiveTab}
+      tabs={settingsTabs}
+      unsavedCount={unsavedCount}
+    >
         {activeTab === "account" ? (
-          <SettingsSection title="我的账户" description="安全 / 权限">
+          <SettingsSection title="账户与安全" description="安全、权限和个人偏好。">
             <AuthSecurityCard currentUser={currentUser} onUserUpdate={onUserUpdate} />
             <RitualSettingsCard />
           </SettingsSection>
         ) : null}
 
         {activeTab === "trading" ? (
-        <SettingsSection title="交易参数" description="风控 / 行业 / 退出">
+        <SettingsSection title="交易偏好" description="风控、行业过滤、模拟盘退出和 ETF 自动交易参数。">
             <SettingCard className="risk-params-card" title="风控参数" button="保存风控参数" onSave={() => void saveSection("risk")} loading={loading === "settings-risk"} saved={savedSection === "risk"} disabled={Boolean(adminTokenError || singleLossError || dailyLossError || pauseLossError || minProfitError)}>
-              <div style={SETTINGS_FORM_GRID_STYLE}>
+              <div className={styles.formGrid}>
                 <NumberField label="单笔最大亏损" suffix="%" value={draft.risk_max_single_loss_pct} error={singleLossError} onChange={(event) => setDraft({ ...draft, risk_max_single_loss_pct: event.target.value })} />
                 <NumberField label="日内最大亏损" suffix="%" value={draft.risk_max_daily_loss_pct} error={dailyLossError} onChange={(event) => setDraft({ ...draft, risk_max_daily_loss_pct: event.target.value })} />
                 <NumberField label="连亏暂停" value={draft.risk_pause_after_losses} error={pauseLossError} onChange={(event) => setDraft({ ...draft, risk_pause_after_losses: event.target.value })} />
@@ -407,15 +338,24 @@ export function SettingsPage({
           />
           <QuantParameterPaperExitCard adminTokenError={adminTokenError} />
           <QuantParameterSectorEtfCard adminTokenError={adminTokenError} />
-          {isAdmin ? <EtfUniverseAdminCard /> : null}
+          {isAdmin ? (
+            <DataCenterEntryCard
+              title="交易标的范围"
+              description="ETF / 股票池在数据中心统一维护。"
+            />
+          ) : null}
         </SettingsSection>
         ) : null}
 
         {isAdmin && activeTab === "llm" ? (
-          <SettingsSection title="大模型与因子" description="LLM / 因子 / ML" admin>
+          <SettingsSection title="模型与因子" description="大模型配置、因子权重和 ML 参数。" admin>
+            <AdminTokenGate
+              error={adminTokenError}
+              value={draft.adminToken}
+              onChange={(value) => setDraft({ ...draft, adminToken: value })}
+            />
             <SettingCard className="llm-config-card" title="大模型配置" button="保存大模型配置" onSave={() => void saveSection("llm")} loading={loading === "settings-llm"} saved={savedSection === "llm"} disabled={Boolean(adminTokenError || llmKeyError || llmBaseUrlError)}>
-              <div style={SETTINGS_FORM_GRID_STYLE}>
-                <TextField label="管理令牌" value={draft.adminToken} error={adminTokenError} onChange={(event) => setDraft({ ...draft, adminToken: event.target.value })} />
+              <div className={styles.formGrid}>
                 <TextField label="API Key" value={draft.llm_api_key} error={llmKeyError} onChange={(event) => setDraft({ ...draft, llm_api_key: event.target.value })} />
                 <TextField label="Base URL" value={draft.llm_base_url} error={llmBaseUrlError} onChange={(event) => setDraft({ ...draft, llm_base_url: event.target.value })} />
                 <TextField label="模型名" value={draft.llm_model} onChange={(event) => setDraft({ ...draft, llm_model: event.target.value })} />
@@ -437,9 +377,14 @@ export function SettingsPage({
         ) : null}
 
         {isAdmin && activeTab === "data" ? (
-          <SettingsSection title="数据库与诊断" description="数据源 / 任务 / 快照" admin>
+          <SettingsSection title="数据与运行" description="数据源配置、最新数据状态和运行快照。" admin>
+            <AdminTokenGate
+              error={adminTokenError}
+              value={draft.adminToken}
+              onChange={(value) => setDraft({ ...draft, adminToken: value })}
+            />
             <SettingCard title="数据库与数据源" button="保存数据配置" onSave={() => void saveSection("data")} loading={loading === "settings-data"} saved={savedSection === "data"} disabled={Boolean(adminTokenError || dataSourceUrlError)}>
-              <div style={SETTINGS_FORM_GRID_COMPACT_STYLE}>
+              <div className={styles.formGrid}>
                 <TextField label="数据源" value={draft.data_source} hint={adminTokenError || "保存数据源配置同样需要管理令牌。"} onChange={(event) => setDraft({ ...draft, data_source: event.target.value })} />
                 <TextField label="数据源地址" value={draft.data_source_base_url} error={dataSourceUrlError} onChange={(event) => setDraft({ ...draft, data_source_base_url: event.target.value })} />
               </div>
@@ -452,22 +397,27 @@ export function SettingsPage({
               adminTokenError={adminTokenError}
               onRefresh={onRefreshLatestData}
             />
-            <Suspense fallback={<p className="hint">数据质量面板加载中...</p>}>
-              <DataQualityPanel />
-            </Suspense>
-            <RuntimeDiagnosticsCard runtime={runtime} adminTasks={adminTasks} adminMetrics={adminMetrics} loading={loading} onRefresh={onRefresh} />
+            <DataCenterEntryCard
+              title="数据质量与修复"
+              description="数据质量、更新任务和修复操作在数据中心统一处理。"
+            />
             <RuntimeSnapshotPanel settings={settings} runtime={runtime} />
           </SettingsSection>
         ) : null}
 
         {isAdmin && activeTab === "governance" ? (
-          <SettingsSection title="策略治理" description="状态 / 开关 / 审计" admin>
+          <SettingsSection title="诊断与审计" description="策略治理、功能开关、运行诊断和操作审计。" admin>
+            <AdminTokenGate
+              error={adminTokenError}
+              value={draft.adminToken}
+              onChange={(value) => setDraft({ ...draft, adminToken: value })}
+            />
             <StrategyGovernanceCard strategyGovernance={strategyGovernance} loading={loading} onRefresh={onRefresh} onUpdateStrategyGovernance={onUpdateStrategyGovernance} />
             <FeatureFlagsCard featureFlags={featureFlags} featureFlagAudits={featureFlagAudits} featureFlagError={featureFlagError} loading={loading} saved={savedSection === "feature-flags"} onRefresh={() => void loadFeatureFlags({ includeAudit: true })} onToggle={(item) => void toggleFeatureFlag(item)} />
+            <RuntimeDiagnosticsCard runtime={runtime} adminTasks={adminTasks} adminMetrics={adminMetrics} loading={loading} onRefresh={onRefresh} />
             <OperationAuditCard items={operationAudits} error={operationAuditError} loading={operationAuditLoading} onRefresh={() => void loadOperationAudits()} />
           </SettingsSection>
         ) : null}
-      </div>
-    </section>
+    </SettingsLayout>
   );
 }

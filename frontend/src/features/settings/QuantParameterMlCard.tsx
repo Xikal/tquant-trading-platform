@@ -29,8 +29,8 @@ const FIELD_SPECS: FieldSpec[] = [
 ];
 
 const INLINE_FIELD_ERROR_STYLE: CSSProperties = {
-  color: "#b91c1c",
-  fontSize: 12,
+  color: "var(--error)",
+  fontSize: "var(--fs-micro)",
 };
 
 const ML_QUANT_PARAM_KEY = ["settings", "quant-parameters", "ml"] as const;

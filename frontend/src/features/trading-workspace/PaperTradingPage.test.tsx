@@ -1,7 +1,7 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { usePaperUiStore } from "../../stores/paperUiStore";
-import { PaperOrdersTab, PaperTradesTab } from "../paper/PaperDetailTabs";
+import { ExecutionPreviewTab, PaperOrdersTab, PaperTradesTab, ReviewHistoryTab } from "../paper/PaperDetailTabs";
 import { PaperTradingPage } from "../paper/PaperTradingPage";
 
 describe("PaperTradingPage", () => {
@@ -54,11 +54,14 @@ describe("PaperTradingPage", () => {
     expect(html).toContain("paper-main-grid");
     expect(html).toContain("主区：持仓与今日动作");
     expect(html).not.toContain("今日红运");
-    expect(html).not.toContain("机甲指挥舱");
-    expect(html).toContain("+委托");
+    expect(html).not.toContain("像素状态");
+    expect(html).not.toContain("+委托");
+    expect(html).not.toContain("打开模拟委托弹窗");
+    expect(html).toContain("paper-conclusion__pixel");
     expect(html).toContain("次区：记录、表现与自动化");
     expect(html).toContain("自动化");
     expect(html).toContain("策略绩效");
+    expect(html).not.toContain("表现（策略绩效）");
     expect(html).toContain("对账诊断");
   });
 
@@ -229,7 +232,70 @@ describe("PaperTradingPage", () => {
     );
 
     expect(html).toContain("运行中");
-    expect(html).toContain("disabled");
+    expect(html).not.toContain("+委托");
+    expect(html).not.toContain("打开模拟委托弹窗");
+  });
+
+  it("shows a resume order button when risk review pauses new paper orders", () => {
+    const blockingReason = "最近连续 3 次卖出亏损，模拟账户已暂停新增委托，请先复盘。";
+    const html = renderToStaticMarkup(
+      <PaperTradingPage
+        account={{
+          id: 1,
+          name: "测试账户",
+          initial_cash: 100000,
+          cash_available: 50000,
+          frozen_cash: 0,
+          market_value: 50000,
+          total_assets: 100000,
+          realized_pnl: 0,
+          unrealized_pnl: 0,
+          total_return_pct: 0,
+          max_drawdown_pct: 0,
+          status: "active",
+          today_return_pct: 0,
+        }}
+        positions={[]}
+        orders={[]}
+        trades={[]}
+        performance={null}
+        strategyPerformance={[]}
+        marketPerformance={[]}
+        tagPerformance={[]}
+        tradeTags={{}}
+        riskEvents={[]}
+        autoTradingStatus={{
+          running: false,
+          trading_time: true,
+          account_status: "paused",
+          blocking_reason: blockingReason,
+        }}
+        autoTradingRuns={[]}
+        draft={{
+          symbol: "",
+          name: "",
+          side: "buy",
+          order_type: "market",
+          quantity: "100",
+          price: "",
+          current_price: "",
+          strategy_key: "",
+          reason: "",
+          require_intraday_confirmation: false,
+        }}
+        setDraft={vi.fn()}
+        loading=""
+        onSubmitOrder={vi.fn()}
+        onTogglePause={vi.fn()}
+        onAddTradeTag={vi.fn()}
+        onDeleteTradeTag={vi.fn()}
+      />
+    );
+
+    expect(html).toContain("未买原因");
+    expect(html).toContain(blockingReason);
+    expect(html).toContain("恢复委托");
+    expect(html).not.toContain("恢复自动委托");
   });
 
   it("does not require an intraday confirmation card before manual buy", () => {
@@ -402,6 +468,153 @@ describe("PaperTradingPage", () => {
     expect(html).not.toContain("复盘历史入口 · 2 条");
     expect(html).not.toContain("今日收盘福袋");
     expect(html).not.toContain("明日优先处理弱势仓位");
+  });
+
+  it("places review history and portfolio execution preview under paper detail tabs", () => {
+    const dashboard = {
+      account: { id: 1, total_assets: 100500, total_return_pct: 0.5, sharpe_ratio: 1.2 },
+      equity_curve: [],
+      win_rate_trend: [],
+      strategy_trend: [],
+      market_perf_heatmap: [],
+      strategy_market_matrix: [],
+      today_report: {
+        id: 1,
+        report_date: "2026-05-25",
+        report_slot: "midday",
+        overall_summary: "模拟盘日报稳定",
+        strategy_highlights: [],
+        risk_alerts: [],
+        suggestion: "午后控制追高",
+        generated_at: "2026-05-25 11:35:00",
+        llm_model: "",
+      },
+      review_reports: [{
+        id: 2,
+        report_date: "2026-05-25",
+        report_slot: "close",
+        review_subject: "全市场",
+        source_scope: "market",
+        overall_summary: "收盘市场复盘完成",
+        strategy_highlights: [],
+        risk_alerts: [],
+        suggestion: "明日优先处理弱势仓位",
+        generated_at: "2026-05-25 15:05:00",
+        llm_model: "",
+      }],
+      updated_at: "2026-05-25 15:05:00",
+    };
+    const baseProps = {
+      account: null,
+      positions: [],
+      orders: [],
+      trades: [],
+      performance: {
+        total_trades: 2,
+        win_rate_pct: 50,
+        total_return_pct: 0.8,
+        net_win_rate_pct: 50,
+        avg_trade_return_pct: 1.2,
+        avg_win_pct: 2.1,
+        avg_loss_pct: -1.1,
+        profit_factor: 1.5,
+        max_drawdown_pct: 2,
+        stop_loss_rate_pct: 0,
+        avg_hold_days: 2,
+        win_loss_ratio: 1.9,
+        portfolio_execution_preview: {
+          capital_model_label: "真实组合执行预览",
+          source: "paper_trades",
+          candidate_count: 2,
+          skip_reason_counts: {},
+          notes: ["组合预览只读，不会触发委托。"],
+          max_5: {
+            capital_model: "max_5",
+            capital_model_label: "最多 5 只",
+            max_positions: 5,
+            candidate_count: 2,
+            trade_count: 1,
+            skipped_count: 1,
+            skipped_by_duplicate_symbol: 0,
+            skipped_by_max_positions: 1,
+            skipped_by_strategy_daily_limit: 0,
+            skipped_by_sector_limit: 0,
+            skipped_by_retreat_market: 0,
+            skipped_by_weak_market_position_cap: 0,
+            skip_reason_counts: {},
+            portfolio_return_pct: 1.2,
+            annualized_return_pct: 12,
+            max_drawdown_pct: 2,
+            profit_factor: 1.5,
+            avg_trade_return_pct: 1,
+            avg_capital_utilization_pct: 40,
+          },
+          max_10: {
+            capital_model: "max_10",
+            capital_model_label: "最多 10 只",
+            max_positions: 10,
+            candidate_count: 2,
+            trade_count: 2,
+            skipped_count: 0,
+            skipped_by_duplicate_symbol: 0,
+            skipped_by_max_positions: 0,
+            skipped_by_strategy_daily_limit: 0,
+            skipped_by_sector_limit: 0,
+            skipped_by_retreat_market: 0,
+            skipped_by_weak_market_position_cap: 0,
+            skip_reason_counts: {},
+            portfolio_return_pct: 1.6,
+            annualized_return_pct: 14,
+            max_drawdown_pct: 2.3,
+            profit_factor: 1.8,
+            avg_trade_return_pct: 1.1,
+            avg_capital_utilization_pct: 55,
+          },
+        },
+      },
+      performanceDashboard: dashboard,
+      strategyPerformance: [],
+      marketPerformance: [],
+      tagPerformance: [],
+      tradeTags: {},
+      riskEvents: [],
+      autoTradingStatus: { running: false },
+      autoTradingRuns: [],
+      draft: {
+        symbol: "",
+        name: "",
+        side: "buy" as const,
+        order_type: "market" as const,
+        quantity: "100",
+        price: "",
+        current_price: "",
+        strategy_key: "",
+        reason: "",
+        require_intraday_confirmation: false,
+      },
+      setDraft: vi.fn(),
+      loading: "",
+      onSubmitOrder: vi.fn(),
+      onTogglePause: vi.fn(),
+      onAddTradeTag: vi.fn(),
+      onDeleteTradeTag: vi.fn(),
+    };
+
+    const mainHtml = renderToStaticMarkup(<PaperTradingPage {...baseProps} />);
+    expect(mainHtml).toContain("详情信息");
+    expect(mainHtml).not.toContain("收盘市场复盘完成");
+    expect(mainHtml).not.toContain("最多 5 只");
+    expect(mainHtml).toContain("策略绩效");
+
+    const reviewHtml = renderToStaticMarkup(<ReviewHistoryTab performanceDashboard={dashboard} />);
+    expect(reviewHtml).toContain("复盘历史");
+    expect(reviewHtml).toContain("模拟盘日报稳定");
+    expect(reviewHtml).toContain("收盘市场复盘完成");
+
+    const previewHtml = renderToStaticMarkup(<ExecutionPreviewTab performance={baseProps.performance} />);
+    expect(previewHtml).toContain("组合执行预览");
+    expect(previewHtml).toContain("最多 5 只");
+    expect(previewHtml).toContain("组合预览只读，不会触发委托。");
   });
 
   it("renders order records as narrow viewport cards beside the virtual grid", () => {

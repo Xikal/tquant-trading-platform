@@ -188,6 +188,26 @@
   font-size: var(--font-meta);
 }
 
+.strategy-tracking-conclusion .tq-conclusion-bar__grid {
+  grid-template-columns: repeat(4, minmax(112px, 1fr));
+}
+
+.strategy-tracking-conclusion .tq-conclusion-bar__item {
+  display: grid;
+}
+
+.strategy-tracking-metric-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 100%;
+}
+
+.strategy-tracking-help-icon {
+  color: var(--muted);
+  font-size: 12px;
+}
+
 .strategy-tracking-status-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(120px, 1fr));

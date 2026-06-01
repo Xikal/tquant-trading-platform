@@ -38,8 +38,8 @@ const PAPER_EXIT_FIELDS: QuantFieldSpec[] = [
 ];
 
 const INLINE_FIELD_ERROR_STYLE: CSSProperties = {
-  color: "#b91c1c",
-  fontSize: 12,
+  color: "var(--error)",
+  fontSize: "var(--fs-micro)",
 };
 
 const PAPER_EXIT_QUANT_PARAM_KEY = ["settings", "quant-parameters", "paper-exit"] as const;
