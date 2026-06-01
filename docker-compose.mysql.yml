@@ -65,6 +65,8 @@ services:
       dockerfile: Dockerfile
       args:
         INSTALL_ANALYTICS: "0"
+        DEBIAN_APT_MIRROR: ${DEBIAN_APT_MIRROR:-}
+        DEBIAN_APT_SECURITY_MIRROR: ${DEBIAN_APT_SECURITY_MIRROR:-}
     image: tquant-web:mysql
     container_name: tquant-app-mysql
     restart: unless-stopped
@@ -158,6 +160,8 @@ services:
       dockerfile: Dockerfile
       args:
         INSTALL_ANALYTICS: "0"
+        DEBIAN_APT_MIRROR: ${DEBIAN_APT_MIRROR:-}
+        DEBIAN_APT_SECURITY_MIRROR: ${DEBIAN_APT_SECURITY_MIRROR:-}
     image: tquant-web:mysql
     container_name: tquant-runtime-worker-mysql
     restart: unless-stopped
@@ -243,6 +247,8 @@ services:
       dockerfile: Dockerfile
       args:
         INSTALL_ANALYTICS: "0"
+        DEBIAN_APT_MIRROR: ${DEBIAN_APT_MIRROR:-}
+        DEBIAN_APT_SECURITY_MIRROR: ${DEBIAN_APT_SECURITY_MIRROR:-}
     image: tquant-web:mysql
     container_name: tquant-backtest-worker-mysql
     restart: unless-stopped
@@ -287,6 +293,8 @@ services:
       dockerfile: Dockerfile
       args:
         INSTALL_ANALYTICS: "1"
+        DEBIAN_APT_MIRROR: ${DEBIAN_APT_MIRROR:-}
+        DEBIAN_APT_SECURITY_MIRROR: ${DEBIAN_APT_SECURITY_MIRROR:-}
     image: tquant-analytics:mysql
     container_name: tquant-analytics-worker-mysql
     restart: unless-stopped
@@ -329,6 +337,9 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        DEBIAN_APT_MIRROR: ${DEBIAN_APT_MIRROR:-}
+        DEBIAN_APT_SECURITY_MIRROR: ${DEBIAN_APT_SECURITY_MIRROR:-}
     image: tquant-web:mysql
     container_name: tquant-migration-mysql
     restart: "no"

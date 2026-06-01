@@ -19,6 +19,9 @@ CLOUD_DOMAIN="${CLOUD_DOMAIN:-}"
 CLOUD_CERT_EMAIL="${CLOUD_CERT_EMAIL:-}"
 CLOUD_AUTH_COOKIE_SECURE="${CLOUD_AUTH_COOKIE_SECURE:-}"
 CLOUD_AUTH_ALLOW_INSECURE_HTTP_COOKIE="${CLOUD_AUTH_ALLOW_INSECURE_HTTP_COOKIE:-}"
+REMOTE_DEBIAN_APT_MIRROR="${REMOTE_DEBIAN_APT_MIRROR:-http://mirrors.tencentyun.com/debian}"
+REMOTE_DEBIAN_APT_SECURITY_MIRROR="${REMOTE_DEBIAN_APT_SECURITY_MIRROR:-http://mirrors.tencentyun.com/debian-security}"
+VERIFY_PUBLIC_DOMAIN="${VERIFY_PUBLIC_DOMAIN:-0}"
 BACKUP_TIME="${BACKUP_TIME:-02:20}"
 RUN_COMPILE="${RUN_COMPILE:-1}"
 RUN_FRONTEND_BUILD="${RUN_FRONTEND_BUILD:-1}"
@@ -26,6 +29,7 @@ RUN_STRATEGY_TEST="${RUN_STRATEGY_TEST:-1}"
 RUN_FULL_TESTS="${RUN_FULL_TESTS:-0}"
 RUN_LATEST_DATA_ACCEPTANCE="${RUN_LATEST_DATA_ACCEPTANCE:-1}"
 LATEST_DATA_ACCEPTANCE_REQUIRED="${LATEST_DATA_ACCEPTANCE_REQUIRED:-0}"
+DEPLOY_PACKAGE_REQUIRED_PATHS="${DEPLOY_PACKAGE_REQUIRED_PATHS:-Dockerfile docker-compose.mysql.yml backend/app/main.py frontend/package.json frontend/src/main.tsx frontend/src/ui/data/index.ts scripts/install_https_nginx.sh}"
 
 log() {
   printf '[deploy] %s\n' "$*"
@@ -74,6 +78,23 @@ run_local_checks() {
   fi
 }
 
+verify_package_contents() {
+  local package_path="$1"
+  local missing=0
+  local required_path
+
+  log "verify package contents"
+  for required_path in $DEPLOY_PACKAGE_REQUIRED_PATHS; do
+    if ! tar -tzf "$package_path" "./$required_path" >/dev/null 2>&1; then
+      printf 'deploy package missing required path: %s\n' "$required_path" >&2
+      missing=1
+    fi
+  done
+  if [[ "$missing" != "0" ]]; then
+    return 1
+  fi
+}
+
 make_package() {
   local package_path
   package_path="$(mktemp "/tmp/gupiao-deploy-$(date +%Y%m%d%H%M%S)-XXXXXX")"
@@ -106,6 +127,7 @@ make_package() {
     --exclude='._*' \
     --exclude='.DS_Store' \
     -czf "$package_path" -C "$ROOT_DIR" .
+  verify_package_contents "$package_path"
   printf '%s\n' "$package_path"
 }
 
@@ -123,15 +145,55 @@ remote_deploy() {
     CLOUD_KEEP_BACKUPS="$CLOUD_KEEP_BACKUPS" \
     CLOUD_AUTH_COOKIE_SECURE="${CLOUD_AUTH_COOKIE_SECURE:-}" \
     CLOUD_AUTH_ALLOW_INSECURE_HTTP_COOKIE="${CLOUD_AUTH_ALLOW_INSECURE_HTTP_COOKIE:-}" \
-REMOTE_PACKAGE="$remote_package" \
+    REMOTE_PACKAGE="$remote_package" \
+    REMOTE_DEBIAN_APT_MIRROR="$REMOTE_DEBIAN_APT_MIRROR" \
+    REMOTE_DEBIAN_APT_SECURITY_MIRROR="$REMOTE_DEBIAN_APT_SECURITY_MIRROR" \
     HTTPS_REQUIRED="$HTTPS_REQUIRED" \
     bash -s <<'REMOTE'
 set -euo pipefail
 TS=$(date +%Y%m%d%H%M%S)
+REQUIRED_PATHS="Dockerfile docker-compose.mysql.yml backend/app/main.py frontend/package.json frontend/src/main.tsx frontend/src/ui/data/index.ts scripts/install_https_nginx.sh"
+
+require_release_paths() {
+  local root="$1"
+  local path
+  for path in $REQUIRED_PATHS; do
+    if ! test -e "$root/$path"; then
+      echo "release package missing required path after extract: $path" >&2
+      exit 1
+    fi
+  done
+}
+
+upsert_env_value() {
+  local key="$1"
+  local value="$2"
+  sed -i "/^${key}=/d" .env
+  printf '%s=%s\n' "$key" "$value" >> .env
+}
+
+docker_compose_build() {
+  local log_file="/tmp/gupiao-docker-build-$TS.log"
+  if COMPOSE_BAKE=false sudo -E docker compose -f "$CLOUD_COMPOSE_FILE" build "$@" 2>&1 | tee "$log_file"; then
+    rm -f "$log_file"
+    return 0
+  fi
+  if grep -Eqi 'context deadline exceeded|no active session|DeadlineExceeded|BuildKit' "$log_file"; then
+    echo "docker buildkit failed; retrying with classic builder" >&2
+    COMPOSE_BAKE=false DOCKER_BUILDKIT=0 COMPOSE_DOCKER_CLI_BUILD=0 sudo -E docker compose -f "$CLOUD_COMPOSE_FILE" build "$@"
+    rm -f "$log_file"
+    return 0
+  fi
+  cat "$log_file" >&2
+  rm -f "$log_file"
+  return 1
+}
+
 cd /home/$CLOUD_USER
 rm -rf gupiao-upload-new
 mkdir gupiao-upload-new
 tar -xzf "$REMOTE_PACKAGE" -C gupiao-upload-new
+require_release_paths gupiao-upload-new
 if test -d "$CLOUD_PROJECT_DIR/.runtime"; then cp -a "$CLOUD_PROJECT_DIR/.runtime" gupiao-upload-new/.runtime || true; fi
 if test -f "$CLOUD_PROJECT_DIR/.env"; then cp -a "$CLOUD_PROJECT_DIR/.env" gupiao-upload-new/.env || true; fi
 PROJECT_PARENT=$(dirname "$CLOUD_PROJECT_DIR")
@@ -183,17 +245,18 @@ if test -n "$CLOUD_AUTH_ALLOW_INSECURE_HTTP_COOKIE" && test "$(printf '%s' "$CLO
   echo "production cloud deployment requires AUTH_ALLOW_INSECURE_HTTP_COOKIE=false" >&2
   exit 2
 fi
-sed -i '/^AUTH_COOKIE_SECURE=/d' .env
-printf 'AUTH_COOKIE_SECURE=%s\n' "$AUTH_COOKIE_SECURE_VALUE" >> .env
-sed -i '/^AUTH_ALLOW_INSECURE_HTTP_COOKIE=/d' .env
-printf 'AUTH_ALLOW_INSECURE_HTTP_COOKIE=false\n' >> .env
-sed -i '/^HTTPS_REQUIRED=/d' .env
-printf 'HTTPS_REQUIRED=%s\n' "$HTTPS_REQUIRED" >> .env
-sed -i '/^WEB_RUNTIME_BACKGROUND_JOBS_ENABLED=/d' .env
-printf 'WEB_RUNTIME_BACKGROUND_JOBS_ENABLED=false\n' >> .env
-sed -i '/^PAPER_AUTO_TRADING_ENABLED=/d' .env
-printf 'PAPER_AUTO_TRADING_ENABLED=%s\n' "${PAPER_AUTO_TRADING_ENABLED:-false}" >> .env
-sudo docker compose -f "$CLOUD_COMPOSE_FILE" build app analytics-worker
+upsert_env_value AUTH_COOKIE_SECURE "$AUTH_COOKIE_SECURE_VALUE"
+upsert_env_value AUTH_ALLOW_INSECURE_HTTP_COOKIE false
+upsert_env_value HTTPS_REQUIRED "$HTTPS_REQUIRED"
+upsert_env_value WEB_RUNTIME_BACKGROUND_JOBS_ENABLED false
+upsert_env_value PAPER_AUTO_TRADING_ENABLED "${PAPER_AUTO_TRADING_ENABLED:-false}"
+if test -n "$REMOTE_DEBIAN_APT_MIRROR"; then
+  upsert_env_value DEBIAN_APT_MIRROR "$REMOTE_DEBIAN_APT_MIRROR"
+fi
+if test -n "$REMOTE_DEBIAN_APT_SECURITY_MIRROR"; then
+  upsert_env_value DEBIAN_APT_SECURITY_MIRROR "$REMOTE_DEBIAN_APT_SECURITY_MIRROR"
+fi
+docker_compose_build app analytics-worker
 sudo docker compose -f "$CLOUD_COMPOSE_FILE" up --no-build --force-recreate --abort-on-container-exit --exit-code-from migration migration
 sudo docker rm -f tquant-app-mysql tquant-runtime-worker-mysql tquant-backtest-worker-mysql tquant-analytics-worker-mysql 2>/dev/null || true
 sudo docker compose -f "$CLOUD_COMPOSE_FILE" up -d --no-build --force-recreate app runtime-worker backtest-worker analytics-worker
@@ -259,7 +322,7 @@ if not dsn:
         path.write_text(text, encoding='utf-8')
         print('mysql_dsn:created')
 PY
-sudo docker compose -f "$CLOUD_COMPOSE_FILE" build go-bff-gateway go-market-read-service go-scan-worker
+docker_compose_build go-bff-gateway go-market-read-service go-scan-worker
 sudo docker compose -f "$CLOUD_COMPOSE_FILE" up -d --no-build --force-recreate go-bff-gateway go-market-read-service go-scan-worker
 EXPECTED_WEB_IMAGE=$(sudo docker image inspect tquant-web:mysql --format '{{.Id}}')
 for container in tquant-app-mysql tquant-runtime-worker-mysql tquant-backtest-worker-mysql; do
@@ -373,6 +436,43 @@ PY
 REMOTE
 }
 
+verify_https_remote() {
+  if [[ -z "$CLOUD_DOMAIN" ]]; then
+    return 0
+  fi
+  log "verify HTTPS nginx SNI loopback"
+  cloud_ssh env CLOUD_DOMAIN="$CLOUD_DOMAIN" VERIFY_PUBLIC_DOMAIN="$VERIFY_PUBLIC_DOMAIN" bash -s <<'REMOTE'
+set -euo pipefail
+curl -k -sS -f --max-time 10 --resolve "${CLOUD_DOMAIN}:443:127.0.0.1" "https://${CLOUD_DOMAIN}/readyz" >/tmp/gupiao_https_sni_readyz.json
+python3 - <<'PY'
+import json
+payload = json.load(open('/tmp/gupiao_https_sni_readyz.json', encoding='utf-8'))
+assert payload.get('status') == 'ok', payload
+print('https_sni_loopback:ok')
+PY
+if test "$VERIFY_PUBLIC_DOMAIN" = "1"; then
+  curl -k -sS -f --max-time 10 "https://${CLOUD_DOMAIN}/readyz" >/tmp/gupiao_public_domain_readyz.json
+  python3 - <<'PY'
+import json
+payload = json.load(open('/tmp/gupiao_public_domain_readyz.json', encoding='utf-8'))
+assert payload.get('status') == 'ok', payload
+print('public_domain:ok')
+PY
+else
+  if curl -k -sS -f --max-time 10 "https://${CLOUD_DOMAIN}/readyz" >/tmp/gupiao_public_domain_readyz.json; then
+    python3 - <<'PY'
+import json
+payload = json.load(open('/tmp/gupiao_public_domain_readyz.json', encoding='utf-8'))
+assert payload.get('status') == 'ok', payload
+print('public_domain:ok')
+PY
+  else
+    echo "public_domain:warning"
+  fi
+fi
+REMOTE
+}
+
 verify_latest_data_remote() {
   if [[ "$RUN_LATEST_DATA_ACCEPTANCE" != "1" ]]; then
     return 0
@@ -398,6 +498,7 @@ main() {
   remote_deploy "$package_path"
   remote_configure_ops
   verify_remote
+  verify_https_remote
   verify_go_remote
   verify_latest_data_remote
   rm -f "$package_path"

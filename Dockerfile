@@ -11,9 +11,18 @@ RUN npm run build
 
 FROM docker.m.daocloud.io/library/rust:1.95-bookworm AS rust-builder
 
+ARG DEBIAN_APT_MIRROR=""
+ARG DEBIAN_APT_SECURITY_MIRROR=""
+
 WORKDIR /app/rust/tquant-rs
 
-RUN apt-get update \
+RUN if [ -n "$DEBIAN_APT_SECURITY_MIRROR" ]; then \
+        sed -i "s|http://deb.debian.org/debian-security|$DEBIAN_APT_SECURITY_MIRROR|g" /etc/apt/sources.list.d/debian.sources; \
+    fi \
+    && if [ -n "$DEBIAN_APT_MIRROR" ]; then \
+        sed -i "s|http://deb.debian.org/debian|$DEBIAN_APT_MIRROR|g" /etc/apt/sources.list.d/debian.sources; \
+    fi \
+    && apt-get update \
     && apt-get install -y --no-install-recommends python3-dev python3-pip \
     && pip3 install --break-system-packages --no-cache-dir --retries 20 --timeout 600 --progress-bar off -i https://pypi.tuna.tsinghua.edu.cn/simple maturin \
     && mkdir -p /usr/local/cargo \
@@ -26,6 +35,9 @@ RUN PYO3_USE_ABI3_FORWARD_COMPATIBILITY=1 maturin build --release --locked --str
 
 FROM docker.m.daocloud.io/library/python:3.11-slim AS runtime
 
+ARG DEBIAN_APT_MIRROR=""
+ARG DEBIAN_APT_SECURITY_MIRROR=""
+
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 ENV PIP_NO_CACHE_DIR=1
@@ -34,7 +46,13 @@ ENV PIP_DEFAULT_TIMEOUT=120
 
 WORKDIR /app/backend
 
-RUN apt-get update \
+RUN if [ -n "$DEBIAN_APT_SECURITY_MIRROR" ]; then \
+        sed -i "s|http://deb.debian.org/debian-security|$DEBIAN_APT_SECURITY_MIRROR|g" /etc/apt/sources.list.d/debian.sources; \
+    fi \
+    && if [ -n "$DEBIAN_APT_MIRROR" ]; then \
+        sed -i "s|http://deb.debian.org/debian|$DEBIAN_APT_MIRROR|g" /etc/apt/sources.list.d/debian.sources; \
+    fi \
+    && apt-get update \
     && apt-get install -y --no-install-recommends \
         build-essential \
         curl \

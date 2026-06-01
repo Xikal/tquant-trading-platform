@@ -26,9 +26,10 @@ RUN_PERFORMANCE_VERIFY=0
 AUTO_INITIAL_GIT_COMMIT=0
 AUTO_INSTALL_BACKUP_CRON=0
 AUTO_CONFIGURE_HTTPS=0
-HTTPS_REQUIRED=0
-CLOUD_AUTH_COOKIE_SECURE=false
-CLOUD_AUTH_ALLOW_INSECURE_HTTP_COOKIE=true
+HTTPS_REQUIRED=1
+CLOUD_AUTH_COOKIE_SECURE=true
+CLOUD_AUTH_ALLOW_INSECURE_HTTP_COOKIE=false
+VERIFY_PUBLIC_DOMAIN="${VERIFY_PUBLIC_DOMAIN:-0}"
 
 log() {
   printf '[quick-deploy] %s\n' "$*"
@@ -49,6 +50,8 @@ Options:
   --full          Run the slower local checks and latest-data acceptance.
   --performance-verify
                  Run online Go/Rust performance gates after deploy/verify.
+  --public-domain-verify
+                 Fail when the public HTTPS domain cannot be reached.
   --host <host>   Override cloud host.
   --user <user>   Override cloud ssh user.
   --key <path>    Override ssh private key path.
@@ -74,6 +77,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --performance-verify)
       RUN_PERFORMANCE_VERIFY=1
+      shift
+      ;;
+    --public-domain-verify)
+      VERIFY_PUBLIC_DOMAIN=1
       shift
       ;;
     --host)
@@ -112,6 +119,7 @@ export CLOUD_HOST CLOUD_USER CLOUD_SSH_KEY CLOUD_PROJECT_DIR CLOUD_APP_PORT
 export CLOUD_SSH_TIMEOUT CLOUD_SSH_CONNECT_TIMEOUT CLOUD_SSH_SERVER_ALIVE_COUNT_MAX
 export CLOUD_DOMAIN CLOUD_CERT_EMAIL CLOUD_AUTH_COOKIE_SECURE CLOUD_AUTH_ALLOW_INSECURE_HTTP_COOKIE
 export AUTO_INITIAL_GIT_COMMIT AUTO_INSTALL_BACKUP_CRON AUTO_CONFIGURE_HTTPS HTTPS_REQUIRED
+export VERIFY_PUBLIC_DOMAIN
 export RUN_COMPILE RUN_FRONTEND_BUILD RUN_STRATEGY_TEST RUN_FULL_TESTS RUN_LATEST_DATA_ACCEPTANCE
 export CLOUD_SSH_TIMEOUT CLOUD_SSH_CONNECT_TIMEOUT CLOUD_SSH_SERVER_ALIVE_COUNT_MAX
 
@@ -150,8 +158,9 @@ for container in tquant-app-mysql tquant-runtime-worker-mysql tquant-backtest-wo
   test "$ACTUAL_WEB_IMAGE" = "$EXPECTED_WEB_IMAGE"
 done
 echo web_image:ok
-grep -Eq '^AUTH_COOKIE_SECURE=false$' "$CLOUD_PROJECT_DIR/.env"
-grep -Eq '^AUTH_ALLOW_INSECURE_HTTP_COOKIE=true$' "$CLOUD_PROJECT_DIR/.env"
+grep -Eq '^AUTH_COOKIE_SECURE=true$' "$CLOUD_PROJECT_DIR/.env"
+grep -Eq '^AUTH_ALLOW_INSECURE_HTTP_COOKIE=false$' "$CLOUD_PROJECT_DIR/.env"
+grep -Eq '^HTTPS_REQUIRED=1$' "$CLOUD_PROJECT_DIR/.env"
 grep -Eq '^TQUANT_INTERNAL_SERVICE_TOKEN=.{32,}$' "$CLOUD_PROJECT_DIR/.env"
 curl -sS -f --max-time 10 "http://127.0.0.1:${CLOUD_APP_PORT}/readyz" >/tmp/gupiao_readyz.json
 python3 - <<'PY'
@@ -215,7 +224,7 @@ if [[ "$VERIFY_ONLY" == "1" ]]; then
 fi
 
 log "deploy to ${CLOUD_USER}@${CLOUD_HOST} using ${CLOUD_SSH_KEY}"
-log "fast mode: local checks skipped, HTTPS/cron disabled, auth cookie allows http://${CLOUD_HOST}:${CLOUD_APP_PORT}"
+log "fast mode: local checks skipped, HTTPS automation/cron disabled, production-safe cookies kept enabled"
 RUN_COMPILE="$RUN_LOCAL_CHECKS" \
 RUN_FRONTEND_BUILD="$RUN_LOCAL_CHECKS" \
 RUN_STRATEGY_TEST="$RUN_STRATEGY_TEST" \
@@ -234,6 +243,7 @@ CLOUD_DOMAIN="$CLOUD_DOMAIN" \
 CLOUD_CERT_EMAIL="$CLOUD_CERT_EMAIL" \
 CLOUD_AUTH_COOKIE_SECURE="$CLOUD_AUTH_COOKIE_SECURE" \
 CLOUD_AUTH_ALLOW_INSECURE_HTTP_COOKIE="$CLOUD_AUTH_ALLOW_INSECURE_HTTP_COOKIE" \
+VERIFY_PUBLIC_DOMAIN="$VERIFY_PUBLIC_DOMAIN" \
 CLOUD_SSH_TIMEOUT="$CLOUD_SSH_TIMEOUT" \
 CLOUD_SSH_CONNECT_TIMEOUT="$CLOUD_SSH_CONNECT_TIMEOUT" \
 CLOUD_SSH_SERVER_ALIVE_COUNT_MAX="$CLOUD_SSH_SERVER_ALIVE_COUNT_MAX" \
