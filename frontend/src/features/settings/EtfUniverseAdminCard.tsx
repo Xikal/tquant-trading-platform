@@ -35,6 +35,23 @@ const INLINE_STYLE: CSSProperties = {
   gap: 8,
 };
 
+const CATEGORY_LABELS: Record<string, string> = {
+  broad: "宽基",
+  broad_base: "宽基",
+  bond: "债券",
+  commodity: "商品",
+  cross_border: "跨境",
+  gold: "黄金",
+  money: "货币",
+  sector: "行业",
+  unknown: "未知",
+};
+
+const SETTLEMENT_RULE_LABELS: Record<string, string> = {
+  t0: "T+0",
+  t1: "T+1",
+};
+
 export const ETF_UNIVERSE_ADMIN_SERVER_KEYS = {
   payload: ["settings", "etf-universe-admin", "payload"] as const,
   repairDraft: ["settings", "etf-universe-admin", "repair-draft"] as const,
@@ -42,7 +59,7 @@ export const ETF_UNIVERSE_ADMIN_SERVER_KEYS = {
 
 export function EtfUniverseAdminCard({
   adminReady = true,
-  adminDisabledReason = "需填写管理令牌",
+  adminDisabledReason = "先填管理令牌才能操作",
 }: {
   adminReady?: boolean;
   adminDisabledReason?: string;
@@ -79,7 +96,7 @@ export function EtfUniverseAdminCard({
       setField("rollbackVersion", response.recent_versions?.[0]?.version ?? "");
       setField("message", "");
     } catch (exc: unknown) {
-      setField("error", exc instanceof Error ? exc.message : "ETF Universe 加载失败");
+      setField("error", exc instanceof Error ? exc.message : "交易标的范围加载失败");
     } finally {
       setField("loading", false);
     }
@@ -154,7 +171,7 @@ export function EtfUniverseAdminCard({
       setField("version", `etf-universe-${Date.now()}`);
       setField("description", "");
     } catch (exc: unknown) {
-      setField("error", exc instanceof Error ? exc.message : "ETF Universe 保存失败");
+      setField("error", exc instanceof Error ? exc.message : "交易标的范围保存失败");
     } finally {
       setField("loading", false);
     }
@@ -171,7 +188,7 @@ export function EtfUniverseAdminCard({
       setField("rollbackVersion", response.admin.recent_versions?.[0]?.version ?? "");
       setField("message", response.message);
     } catch (exc: unknown) {
-      setField("error", exc instanceof Error ? exc.message : "ETF Universe 回滚失败");
+      setField("error", exc instanceof Error ? exc.message : "交易标的范围回滚失败");
     } finally {
       setField("loading", false);
     }
@@ -180,23 +197,23 @@ export function EtfUniverseAdminCard({
   return (
     <SettingCard
       className="etf-universe-admin-card"
-      title="ETF Universe 管理"
-      button="刷新 Universe"
+      title="交易标的范围"
+      button="刷新标的范围"
       onSave={() => void load()}
       loading={loading}
       disabled={loading}
     >
-      <p className="muted">仅管理员可改 universe 覆盖项；这里维护品种能力、T+0 规则和执行约束，不生成策略信号。</p>
+      <p className="muted">仅管理员可改交易标的覆盖项；这里维护品种能力、T+0 规则和执行约束，不生成策略信号。</p>
       {!adminReady ? <Alert type="warning" showIcon message={adminDisabledReason} /> : null}
       {error ? <Alert type="error" showIcon message={error} /> : null}
       {message ? <Alert type="success" showIcon message={message} /> : null}
       <div style={INLINE_STYLE}>
-        <InfoPill label="Universe" value={payload?.version ?? "--"} />
+        <InfoPill label="版本" value={payload?.version ?? "--"} />
         <InfoPill label="总数" value={payload ? String(payload.current_count) : "--"} />
         <InfoPill label="T+0 可用" value={payload ? String(payload.t0_enabled_count) : "--"} />
         <InfoPill label="覆盖项" value={payload ? String(payload.override_count) : "--"} />
-        <InfoPill label="异常" value={payload ? `${payload.validation.error_count} error / ${payload.validation.warning_count} warning` : "--"} />
-        <InfoPill label="高风险 diff" value={String(highRiskCount)} tone={highRiskCount ? "warn" : "neutral"} />
+        <InfoPill label="异常" value={payload ? `${payload.validation.error_count} 异常 / ${payload.validation.warning_count} 注意` : "--"} />
+        <InfoPill label="高风险变更" value={String(highRiskCount)} tone={highRiskCount ? "warn" : "neutral"} />
       </div>
       <TextField label="筛选" value={filter} placeholder="代码、名称、分类、指数、备注" onChange={(event) => setField("filter", event.target.value)} />
 
@@ -207,12 +224,12 @@ export function EtfUniverseAdminCard({
           scroll={{ x: 940 }}
           columns={[
             { title: "代码", dataIndex: "symbol", width: 90, render: (value, item) => <span><strong>{value}</strong><small className="hint">{item.name}</small></span> },
-            { title: "分类", dataIndex: "category", width: 110, render: (value, item) => <Tag color={item.source === "override" ? "blue" : "default"}>{value}</Tag> },
+            { title: "分类", dataIndex: "category", width: 110, render: (value, item) => <Tag color={item.source === "override" ? "blue" : "default"}>{categoryLabel(value)}</Tag> },
             { title: "T+0", dataIndex: "same_day_sell_allowed", width: 90, render: (value, item) => <Tag color={value ? "green" : "default"}>{value ? "可用" : item.t0_eligible ? "禁用" : "不可用"}</Tag> },
-            { title: "结算", dataIndex: "settlement_rule", width: 80 },
+            { title: "结算", dataIndex: "settlement_rule", width: 80, render: (value) => settlementRuleLabel(value) },
             { title: "最低额", dataIndex: "min_amount", width: 110, render: (value) => `${Math.round(Number(value || 0) / 10000)} 万` },
             { title: "价差/滑点", width: 120, render: (_, item) => `${item.max_spread_bps} / ${item.slippage_bps} bps` },
-            { title: "校验", dataIndex: "validation_severity", width: 90, render: (value) => <Tag color={severityColor(value)}>{value}</Tag> },
+            { title: "校验", dataIndex: "validation_severity", width: 90, render: (value) => <Tag color={severityColor(value)}>{validationSeverityLabel(value)}</Tag> },
             { title: "备注", dataIndex: "notes", ellipsis: true },
           ]}
         />
@@ -221,7 +238,7 @@ export function EtfUniverseAdminCard({
           <div style={FORM_GRID_STYLE}>
             <TextField label="代码" value={repairSymbol} onChange={(event) => setField("repairSymbol", event.target.value)} />
             <TextField label="名称" value={repairName} onChange={(event) => setField("repairName", event.target.value)} />
-            <TextField label="分类" value={repairCategory} placeholder="sector / gold / cross_border" onChange={(event) => setField("repairCategory", event.target.value)} />
+            <TextField label="分类" value={repairCategory} placeholder="行业 / 黄金 / 跨境" onChange={(event) => setField("repairCategory", event.target.value)} />
           </div>
           <Button htmlType="button" onClick={() => void buildRepairDraft()} disabled={!repairSymbol.trim() || writeDisabled}>生成修复草稿</Button>
           {repairDraft ? <Alert type={repairDraft.validation.error_count ? "error" : "warning"} showIcon message={repairDraft.notes[0] || "修复草稿已生成"} /> : null}
@@ -235,7 +252,7 @@ export function EtfUniverseAdminCard({
         dataSource={payload?.validation.issues ?? []}
         locale={{ emptyText: "未发现校验问题" }}
         columns={[
-          { title: "级别", dataIndex: "severity", width: 90, render: (value) => <Tag color={severityColor(value)}>{value}</Tag> },
+          { title: "级别", dataIndex: "severity", width: 90, render: (value) => <Tag color={severityColor(value)}>{validationSeverityLabel(value)}</Tag> },
           { title: "代码", dataIndex: "symbol", width: 90 },
           { title: "字段", dataIndex: "field", width: 160 },
           { title: "问题", dataIndex: "message" },
@@ -247,7 +264,7 @@ export function EtfUniverseAdminCard({
         dataSource={payload?.diff ?? []}
         locale={{ emptyText: "当前草稿与运行时无差异" }}
         columns={[
-          { title: "风险", dataIndex: "risk_level", width: 90, render: (value) => <Tag color={riskColor(value)}>{value}</Tag> },
+          { title: "风险", dataIndex: "risk_level", width: 90, render: (value) => <Tag color={riskColor(value)}>{riskLevelLabel(value)}</Tag> },
           { title: "代码", dataIndex: "symbol", width: 90 },
           { title: "字段", dataIndex: "field", width: 150 },
           { title: "说明", dataIndex: "message" },
@@ -263,15 +280,15 @@ export function EtfUniverseAdminCard({
         </label>
         <label style={INLINE_STYLE}>
           <Checkbox checked={confirmHighRisk} onChange={(event) => setField("confirmHighRisk", event.target.checked)} />
-          <span>确认高风险 diff</span>
+          <span>确认高风险变更</span>
         </label>
       </div>
       <Space wrap>
-        <Button type="primary" htmlType="button" onClick={() => void applyDraft()} disabled={applyDisabled}>保存 Universe</Button>
+        <Button type="primary" htmlType="button" onClick={() => void applyDraft()} disabled={applyDisabled}>保存标的范围</Button>
         <TextField label="回滚版本" value={rollbackVersion} onChange={(event) => setField("rollbackVersion", event.target.value)} />
         <Button danger htmlType="button" onClick={() => void rollback()} disabled={!rollbackVersion || writeDisabled}>回滚</Button>
       </Space>
-      <p className="hint">回滚与保存都会写入 quant parameter audit 和 operation audit；自动交易仍受模拟盘权限、风控和确认机制约束。</p>
+      <p className="hint">回滚与保存都会写入参数审计和操作审计；自动交易仍受模拟盘权限、风控和确认机制约束。</p>
     </SettingCard>
   );
 }
@@ -279,7 +296,7 @@ export function EtfUniverseAdminCard({
 function OverrideEditor({ draft, onChange }: { draft: EtfUniverseOverrideMap; onChange: (draft: EtfUniverseOverrideMap) => void }) {
   const overrides = Object.values(draft);
   if (!overrides.length) {
-    return <p className="hint">当前没有 universe 覆盖项。可通过修复向导生成草稿。</p>;
+    return <p className="hint">当前没有标的覆盖项。可通过修复向导生成草稿。</p>;
   }
   return (
     <VirtualGrid<EtfUniverseOverride>
@@ -289,8 +306,8 @@ function OverrideEditor({ draft, onChange }: { draft: EtfUniverseOverrideMap; on
       columns={[
         { title: "代码", dataIndex: "symbol", width: 86 },
         { title: "名称", dataIndex: "name", width: 130 },
-        { title: "分类", dataIndex: "category", width: 110 },
-        { title: "T0", dataIndex: "t0_eligible", width: 68, render: (value) => <Tag color={value ? "green" : "default"}>{value ? "是" : "否"}</Tag> },
+        { title: "分类", dataIndex: "category", width: 110, render: (value) => categoryLabel(value) },
+        { title: "T+0资格", dataIndex: "t0_eligible", width: 88, render: (value) => <Tag color={value ? "green" : "default"}>{value ? "是" : "否"}</Tag> },
         { title: "启用", dataIndex: "enabled_for_t0", width: 74, render: (value) => <Tag color={value ? "green" : "default"}>{value ? "是" : "否"}</Tag> },
         {
           title: "最低额",
@@ -308,6 +325,29 @@ function OverrideEditor({ draft, onChange }: { draft: EtfUniverseOverrideMap; on
       ]}
     />
   );
+}
+
+function categoryLabel(value: string) {
+  return CATEGORY_LABELS[value] ?? value;
+}
+
+function settlementRuleLabel(value: string) {
+  return SETTLEMENT_RULE_LABELS[value] ?? value;
+}
+
+function validationSeverityLabel(value: string) {
+  if (value === "error") return "异常";
+  if (value === "warning") return "注意";
+  if (value === "info") return "提示";
+  if (value === "ok") return "正常";
+  return value;
+}
+
+function riskLevelLabel(value: string) {
+  if (value === "high") return "高";
+  if (value === "medium") return "中";
+  if (value === "low") return "低";
+  return value;
 }
 
 function severityColor(value: string) {

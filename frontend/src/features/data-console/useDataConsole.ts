@@ -12,7 +12,7 @@ import type { InstrumentInspectorResponse } from "../../api/dataConsoleInspector
 import type { TradeDataGateResponse } from "../../api/dataQuality";
 import type { DataConsoleActions, DataConsoleData } from "./dataConsoleTypes";
 
-const DATA_CONSOLE_SERVER_KEYS = {
+export const DATA_CONSOLE_SERVER_KEYS = {
   sla: ["data-console", "sla"] as const,
   sources: ["data-console", "sources"] as const,
   coverage: ["data-console", "coverage"] as const,

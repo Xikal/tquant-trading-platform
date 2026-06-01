@@ -1,7 +1,7 @@
 import { Alert, Button, Tag } from "antd";
 import type { TradeDataGateResponse } from "../../api/dataQuality";
 import { Callout } from "../workspace-shared/Callout";
-import { conclusionText, gateTone } from "./dataConsoleTypes";
+import { conclusionText, dataConsoleText, gateTone, severityLabel } from "./dataConsoleTypes";
 import styles from "./DataConsolePage.module.css";
 
 export function TradeDataGateCard({
@@ -22,9 +22,9 @@ export function TradeDataGateCard({
       <Callout
         primary
         tone={tone === "blocked" ? "down" : tone === "warn" ? "warn" : "up"}
-        label="实盘前数据门"
+        label="能否用于交易"
         title={conclusionText(tone)}
-        detail="仅检查数据可信度，不触发交易。"
+        detail="只判断数据能不能用，不会下单。"
         action={<Button size="small" onClick={onRefresh} loading={loading}>刷新</Button>}
       />
       <div className={styles.checkList}>
@@ -32,9 +32,9 @@ export function TradeDataGateCard({
           <div className={styles.checkRow} key={item.key}>
             <div>
               <strong>{item.label}</strong>
-              <div className={styles.detail}>{item.detail || (item.ok ? "通过" : "未通过")}</div>
+              <div className={styles.detail}>{dataConsoleText(item.detail) || (item.ok ? "通过" : "未通过")}</div>
             </div>
-            <Tag color={item.severity === "red" ? "red" : item.severity === "yellow" ? "orange" : "green"}>{item.severity}</Tag>
+            <Tag color={item.severity === "red" ? "red" : item.severity === "yellow" ? "orange" : "green"}>{severityLabel(item.severity)}</Tag>
           </div>
         ))}
       </div>

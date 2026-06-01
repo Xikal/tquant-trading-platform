@@ -29,7 +29,7 @@ export const PRIMARY_NAV: NavItem[] = [
   { key: "paper", label: "模拟盘", icon: <WalletOutlined /> },
 ];
 
-export const DATA_NAV: NavItem = { key: "data", label: "数据", icon: <DatabaseOutlined /> };
+export const DATA_NAV: NavItem = { key: "data", label: "数据中心", icon: <DatabaseOutlined /> };
 
 /** 系统配置单列底部。 */
 export const SETTINGS_NAV: NavItem = { key: "settings", label: "系统配置", icon: <SettingOutlined /> };
@@ -41,7 +41,7 @@ const TITLES: Record<Page, string> = {
   "strategy-tracking": "策略跟踪",
   backtest: "回测页",
   paper: "模拟盘",
-  data: "数据",
+  data: "数据中心",
   settings: "系统配置",
 };
 

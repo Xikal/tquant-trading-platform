@@ -1,7 +1,7 @@
 import { Alert, Button, Collapse, Select, Tag } from "antd";
 import type { DataQualityCoverageResponse, DataQualitySnapshotItem } from "../../api/dataQuality";
 import { VirtualGrid } from "../../ui/grid/VirtualGrid";
-import { criticalStatus } from "./dataConsoleTypes";
+import { criticalStatus, dataConsoleText, datasetLabel, scopeLabel, statusLabel } from "./dataConsoleTypes";
 import styles from "./DataConsolePage.module.css";
 
 export function CoveragePanel({
@@ -45,8 +45,8 @@ export function CoveragePanel({
             onChange={onStatusFilterChange}
             options={[
               { value: "all", label: "全部状态" },
-              { value: "blocked", label: "仅阻断" },
-              { value: "stale", label: "仅过期" },
+              { value: "blocked", label: "仅看不可用" },
+              { value: "stale", label: "仅看待更新" },
             ]}
           />
           <Select
@@ -54,9 +54,9 @@ export function CoveragePanel({
             value={scopeFilter}
             onChange={onScopeFilterChange}
             options={[
-              { value: "all", label: "全部范围" },
-              { value: "production_universe", label: "生产池" },
-              { value: "watchlist", label: "自选池" },
+              { value: "all", label: scopeLabel("all") },
+              { value: "production_universe", label: scopeLabel("production_universe") },
+              { value: "watchlist", label: scopeLabel("watchlist") },
             ]}
           />
         </div>
@@ -73,16 +73,16 @@ export function CoveragePanel({
             title: "数据集",
             dataIndex: "dataset_key",
             width: 180,
-            render: (value, item) => <span><strong>{String(value)}</strong><small className="hint">{item.scope} / {item.as_of_date}</small></span>,
+            render: (value, item) => <span><strong>{datasetLabel(String(value))}</strong><small className="hint">{scopeLabel(item.scope)} / {item.as_of_date}</small></span>,
           },
           { title: "覆盖率", dataIndex: "coverage_pct", width: 92, align: "right", render: (value) => <span className="tnum">{Number(value || 0).toFixed(2)}%</span> },
-          { title: "期望", dataIndex: "expected_days", width: 76, align: "right" },
-          { title: "实际", dataIndex: "actual_days", width: 76, align: "right" },
-          { title: "缺失", dataIndex: "missing_days", width: 76, align: "right" },
-          { title: "invalid", dataIndex: "invalid_rows", width: 86, align: "right" },
+          { title: "应有", dataIndex: "expected_days", width: 76, align: "right" },
+          { title: "实有", dataIndex: "actual_days", width: 76, align: "right" },
+          { title: "待补", dataIndex: "missing_days", width: 76, align: "right" },
+          { title: "异常行", dataIndex: "invalid_rows", width: 86, align: "right" },
           { title: "重复", dataIndex: "duplicate_rows", width: 76, align: "right" },
           { title: "状态", dataIndex: "status", width: 124, render: (value) => <StatusTag status={String(value)} /> },
-          { title: "原因", dataIndex: "blockers", render: (value) => Array.isArray(value) && value.length ? value.join("、") : "--" },
+          { title: "原因", dataIndex: "blockers", render: (value) => Array.isArray(value) && value.length ? value.map((item) => dataConsoleText(String(item))).join("、") : "--" },
           { title: "明细", width: 88, render: (_, item) => <Button size="small" onClick={() => onSelectDetail(item)}>展开</Button> },
         ]}
       />
@@ -91,10 +91,10 @@ export function CoveragePanel({
         items={[
           {
             key: "coverage-detail",
-            label: `缺失明细 ${detail ? `${detail.dataset_key}/${detail.scope}` : ""}`,
+            label: `待补明细 ${detail ? `${datasetLabel(detail.dataset_key)} / ${scopeLabel(detail.scope)}` : ""}`,
             children: detail ? (
               <div className={styles.panelBody}>
-                <div className={styles.detail}>缺失日期：{detail.missing_dates.length ? detail.missing_dates.join("、") : "无"}</div>
+                <div className={styles.detail}>待补日期：{detail.missing_dates.length ? detail.missing_dates.join("、") : "无"}</div>
                 <VirtualGrid
                   rowKey="symbol"
                   dataSource={detail.missing_symbols}
@@ -102,12 +102,12 @@ export function CoveragePanel({
                   columns={[
                     { title: "代码", dataIndex: "symbol", width: 100 },
                     { title: "名称", dataIndex: "name", width: 140 },
-                    { title: "缺失天数", dataIndex: "missing_days", width: 100, align: "right" },
+                    { title: "待补天数", dataIndex: "missing_days", width: 100, align: "right" },
                   ]}
                 />
               </div>
             ) : (
-              <div className={styles.empty}>点击表格行的「展开」查看缺失标的和日期。</div>
+              <div className={styles.empty}>点击表格行的「展开」查看待补标的和日期。</div>
             ),
           },
         ]}
@@ -117,8 +117,8 @@ export function CoveragePanel({
 }
 
 function StatusTag({ status }: { status: string }) {
-  if (criticalStatus(status)) return <Tag color="red">{status}</Tag>;
-  if (status === "stale" || status === "warn") return <Tag color="orange">{status}</Tag>;
-  if (status === "ok") return <Tag color="green">{status}</Tag>;
-  return <Tag>{status}</Tag>;
+  if (criticalStatus(status)) return <Tag color="red">{statusLabel(status)}</Tag>;
+  if (status === "stale" || status === "warn") return <Tag color="orange">{statusLabel(status)}</Tag>;
+  if (status === "ok") return <Tag color="green">{statusLabel(status)}</Tag>;
+  return <Tag>{statusLabel(status)}</Tag>;
 }
