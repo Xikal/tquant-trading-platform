@@ -1,6 +1,7 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import { BacktestDashboard } from "./BacktestDashboard";
+import { TradesPanel } from "./BacktestDashboard.panels";
 import { resourceTierHint } from "./backtestDisplay";
 import type { BacktestRunDetail, BacktestTrade, EquityPoint } from "../../api/backtests";
 import { backtestsApi } from "../../api/backtests";
@@ -402,6 +403,15 @@ describe("BacktestDashboard", () => {
     expect(html).toContain("详情摘要 #42");
     expect(html).toContain("净值曲线");
     expect(html).not.toContain('data-node-key="submit" class="ant-tabs-tab ant-tabs-tab-active"');
+  });
+
+  it("renders trade details as narrow viewport cards beside the virtual grid", () => {
+    const html = renderToStaticMarkup(<TradesPanel trades={trades} />);
+
+    expect(html).toContain("backtest-trade-card-list");
+    expect(html).toContain("backtest-trade-mobile-card");
+    expect(html).toContain("300059");
+    expect(html).toContain("首板回调");
   });
 });
 

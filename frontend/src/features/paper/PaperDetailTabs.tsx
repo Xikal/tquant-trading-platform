@@ -31,6 +31,7 @@ import { formatPaperDateTime } from "./paperTradingFormatters";
 import { EmptyState } from "../workspace-shared/WorkspaceComponents";
 import { formatInteger, formatPrice } from "../workspace-shared/workspaceFormatters";
 import { VirtualGrid } from "../../ui/grid/VirtualGrid";
+import { VirtualCardList } from "../../ui/list/VirtualCardList";
 import { usePaperUiStore, type PaperDetailTabKey } from "../../stores/paperUiStore";
 import { PaperExitModelShadowSummaryPanel } from "../backtest/StrategyImprovementSummary";
 
@@ -67,9 +68,9 @@ export function PaperDetailTabs(props: PaperDetailTabsProps) {
             riskEvents={props.riskEvents}
           />
         ) : null}
-        {tab === "orders" ? <OrdersTab orders={props.orders} loading={props.loading} /> : null}
+        {tab === "orders" ? <PaperOrdersTab orders={props.orders} loading={props.loading} /> : null}
         {tab === "trades" ? (
-          <TradesTab
+          <PaperTradesTab
             trades={props.trades}
             performance={props.performance}
             tagPerformance={props.tagPerformance}
@@ -153,58 +154,71 @@ function buildTabs(props: PaperDetailTabsProps) {
   ] as Array<{ key: PaperDetailTabKey; label: string; hint: string }>;
 }
 
-function OrdersTab({ orders, loading }: { orders: PaperOrder[]; loading: boolean }) {
+export function PaperOrdersTab({ orders, loading }: { orders: PaperOrder[]; loading: boolean }) {
   return (
-    <VirtualGrid<PaperOrder>
-      rowKey="id"
-      loading={loading}
-      dataSource={orders}
-      scroll={{ y: 320, x: 760 }}
-      columns={[
-        {
-          title: "标的",
-          dataIndex: "symbol",
-          render: (_, item) => (
-            <Space direction="vertical" size={0} style={{ minWidth: 0 }}>
-              <strong>{item.symbol}</strong>
-              <Typography.Text type="secondary" style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                {item.name || item.strategy_key || "--"}
-              </Typography.Text>
-              {item.reject_reason ? <Typography.Text type="warning" style={{ fontSize: 12 }}>原因：{item.reject_reason}</Typography.Text> : null}
-            </Space>
-          ),
-        },
-        {
-          title: "方向/类型",
-          render: (_, item) => (
-            <StatusChip tone={item.side === "buy" ? "up" : "down"}>
-              {item.side === "buy" ? "买入" : "卖出"} · {item.order_type === "market" ? "市价" : "限价"}
-            </StatusChip>
-          ),
-        },
-        {
-          title: "状态",
-          dataIndex: "status",
-          render: (status: PaperOrder["status"]) => <StatusChip tone={orderStatusTone(status)}>{orderStatusText(status)}</StatusChip>,
-        },
-        {
-          title: "数量",
-          dataIndex: "quantity",
-          align: "right",
-          render: (value: number) => `${formatInteger(value)} 股`,
-        },
-        {
-          title: "成交价",
-          dataIndex: "avg_fill_price",
-          align: "right",
-          render: (value?: number | null) => formatPrice(value),
-        },
-      ]}
-    />
+    <>
+      <div className="paper-detail-grid">
+        <VirtualGrid<PaperOrder>
+          rowKey="id"
+          loading={loading}
+          dataSource={orders}
+          scroll={{ y: 320, x: 760 }}
+          columns={[
+            {
+              title: "标的",
+              dataIndex: "symbol",
+              render: (_, item) => (
+                <Space direction="vertical" size={0} style={{ minWidth: 0 }}>
+                  <strong>{item.symbol}</strong>
+                  <Typography.Text type="secondary" style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {item.name || item.strategy_key || "--"}
+                  </Typography.Text>
+                  {item.reject_reason ? <Typography.Text type="warning" style={{ fontSize: 12 }}>原因：{item.reject_reason}</Typography.Text> : null}
+                </Space>
+              ),
+            },
+            {
+              title: "方向/类型",
+              render: (_, item) => (
+                <StatusChip tone={item.side === "buy" ? "up" : "down"}>
+                  {item.side === "buy" ? "买入" : "卖出"} · {item.order_type === "market" ? "市价" : "限价"}
+                </StatusChip>
+              ),
+            },
+            {
+              title: "状态",
+              dataIndex: "status",
+              render: (status: PaperOrder["status"]) => <StatusChip tone={orderStatusTone(status)}>{orderStatusText(status)}</StatusChip>,
+            },
+            {
+              title: "数量",
+              dataIndex: "quantity",
+              align: "right",
+              render: (value: number) => `${formatInteger(value)} 股`,
+            },
+            {
+              title: "成交价",
+              dataIndex: "avg_fill_price",
+              align: "right",
+              render: (value?: number | null) => formatPrice(value),
+            },
+          ]}
+        />
+      </div>
+      <VirtualCardList
+        className="paper-detail-card-list"
+        empty={<EmptyState text="暂无委托记录" />}
+        estimateSize={112}
+        getItemKey={(item) => item.id}
+        items={orders}
+        maxHeight={340}
+        renderItem={(item) => <PaperOrderMobileCard item={item} />}
+      />
+    </>
   );
 }
 
-function TradesTab({
+export function PaperTradesTab({
   trades,
   performance,
   tagPerformance,
@@ -225,52 +239,125 @@ function TradesTab({
     <TabScroll>
       <PerformancePills performance={performance} />
       <TagPerformanceStrip items={tagPerformance} />
-      <VirtualGrid<PaperTrade>
-        rowKey="id"
-        loading={loading}
-        dataSource={trades}
-        scroll={{ y: 340, x: 980 }}
-        columns={[
-          {
-            title: "标的",
-            dataIndex: "symbol",
-            render: (_, item) => {
-              const reasonText = item.side === "buy" ? item.entry_reason : item.exit_reason;
-              return (
-                <Space direction="vertical" size={0} style={{ minWidth: 0 }}>
-                  <strong>{item.symbol}</strong>
-                  <Typography.Text type="secondary" style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                    {item.strategy_key || "未标注"}
-                  </Typography.Text>
-                  <Typography.Text type={item.commission_warning ? "warning" : "secondary"} style={{ fontSize: 12 }}>
-                    {item.commission_warning || reasonText || (item.side === "buy" ? "买入原因未记录" : "退出原因未记录")}
-                  </Typography.Text>
-                </Space>
-              );
+      <div className="paper-detail-grid">
+        <VirtualGrid<PaperTrade>
+          rowKey="id"
+          loading={loading}
+          dataSource={trades}
+          scroll={{ y: 340, x: 980 }}
+          columns={[
+            {
+              title: "标的",
+              dataIndex: "symbol",
+              render: (_, item) => {
+                const reasonText = item.side === "buy" ? item.entry_reason : item.exit_reason;
+                return (
+                  <Space direction="vertical" size={0} style={{ minWidth: 0 }}>
+                    <strong>{item.symbol}</strong>
+                    <Typography.Text type="secondary" style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {item.strategy_key || "未标注"}
+                    </Typography.Text>
+                    <Typography.Text type={item.commission_warning ? "warning" : "secondary"} style={{ fontSize: 12 }}>
+                      {item.commission_warning || reasonText || (item.side === "buy" ? "买入原因未记录" : "退出原因未记录")}
+                    </Typography.Text>
+                  </Space>
+                );
+              },
             },
-          },
-          {
-            title: "方向",
-            dataIndex: "side",
-            render: (side: PaperTrade["side"]) => <StatusChip tone={side === "buy" ? "up" : "down"}>{side === "buy" ? "买入" : "卖出"}</StatusChip>,
-          },
-          { title: "数量", dataIndex: "quantity", align: "right", render: (value: number) => `${formatInteger(value)} 股` },
-          { title: "价格", dataIndex: "price", align: "right", render: (value?: number | null) => formatPrice(value) },
-          { title: "时间", dataIndex: "trade_time", render: (value: string) => formatPaperDateTime(value) },
-          {
-            title: "标签",
-            render: (_, item) => (
-              <TradeTags
-                item={item}
-                tags={tradeTags[item.id] ?? []}
-                onAddTag={onAddTradeTag}
-                onDeleteTag={onDeleteTradeTag}
-              />
-            ),
-          },
-        ]}
+            {
+              title: "方向",
+              dataIndex: "side",
+              render: (side: PaperTrade["side"]) => <StatusChip tone={side === "buy" ? "up" : "down"}>{side === "buy" ? "买入" : "卖出"}</StatusChip>,
+            },
+            { title: "数量", dataIndex: "quantity", align: "right", render: (value: number) => `${formatInteger(value)} 股` },
+            { title: "价格", dataIndex: "price", align: "right", render: (value?: number | null) => formatPrice(value) },
+            { title: "时间", dataIndex: "trade_time", render: (value: string) => formatPaperDateTime(value) },
+            {
+              title: "标签",
+              render: (_, item) => (
+                <TradeTags
+                  item={item}
+                  tags={tradeTags[item.id] ?? []}
+                  onAddTag={onAddTradeTag}
+                  onDeleteTag={onDeleteTradeTag}
+                />
+              ),
+            },
+          ]}
+        />
+      </div>
+      <VirtualCardList
+        className="paper-detail-card-list"
+        empty={<EmptyState text="暂无成交记录" />}
+        estimateSize={118}
+        getItemKey={(item) => item.id}
+        items={trades}
+        maxHeight={340}
+        renderItem={(item) => (
+          <PaperTradeMobileCard
+            item={item}
+            tags={tradeTags[item.id] ?? []}
+            onAddTradeTag={onAddTradeTag}
+            onDeleteTradeTag={onDeleteTradeTag}
+          />
+        )}
       />
     </TabScroll>
+  );
+}
+
+function PaperOrderMobileCard({ item }: { item: PaperOrder }) {
+  return (
+    <article className="paper-mobile-card paper-order-mobile-card">
+      <div className="paper-mobile-card__head">
+        <strong>{item.name || item.symbol}</strong>
+        <StatusChip tone={orderStatusTone(item.status)}>{orderStatusText(item.status)}</StatusChip>
+      </div>
+      <div className="paper-mobile-card__meta">
+        <span>{item.symbol}</span>
+        <span>{item.side === "buy" ? "买入" : "卖出"} · {item.order_type === "market" ? "市价" : "限价"}</span>
+        <span>{formatPaperDateTime(item.created_at)}</span>
+      </div>
+      <div className="paper-mobile-card__facts">
+        <span>委托 {formatInteger(item.quantity)} 股</span>
+        <span>已成 {formatInteger(item.filled_quantity)} 股</span>
+        <span>均价 {formatPrice(item.avg_fill_price)}</span>
+      </div>
+      {item.reject_reason ? <Typography.Text className="paper-mobile-card__note" type="warning">{item.reject_reason}</Typography.Text> : null}
+    </article>
+  );
+}
+
+function PaperTradeMobileCard({
+  item,
+  tags,
+  onAddTradeTag,
+  onDeleteTradeTag,
+}: {
+  item: PaperTrade;
+  tags: PaperTradeTag[];
+  onAddTradeTag: (tradeId: number, tag: string) => void;
+  onDeleteTradeTag: (tradeId: number, tagId: number) => void;
+}) {
+  const reasonText = item.commission_warning || (item.side === "buy" ? item.entry_reason : item.exit_reason);
+  return (
+    <article className="paper-mobile-card paper-trade-mobile-card">
+      <div className="paper-mobile-card__head">
+        <strong>{item.symbol}</strong>
+        <StatusChip tone={item.side === "buy" ? "up" : "down"}>{item.side === "buy" ? "买入" : "卖出"}</StatusChip>
+      </div>
+      <div className="paper-mobile-card__meta">
+        <span>{item.strategy_key || "未标注策略"}</span>
+        <span>{formatPaperDateTime(item.trade_time)}</span>
+      </div>
+      <div className="paper-mobile-card__facts">
+        <span>{formatInteger(item.quantity)} 股</span>
+        <span>价格 {formatPrice(item.price)}</span>
+        <span>净额 {formatInteger(item.net_amount)}</span>
+      </div>
+      {reasonText ? <Typography.Text className="paper-mobile-card__note" type={item.commission_warning ? "warning" : "secondary"}>{reasonText}</Typography.Text> : null}
+      <TradeTags item={item} tags={tags} onAddTag={onAddTradeTag} onDeleteTag={onDeleteTradeTag} />
+    </article>
   );
 }
 

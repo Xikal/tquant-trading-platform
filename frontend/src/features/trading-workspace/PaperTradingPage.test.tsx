@@ -1,8 +1,14 @@
 import { renderToStaticMarkup } from "react-dom/server";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { usePaperUiStore } from "../../stores/paperUiStore";
+import { PaperOrdersTab, PaperTradesTab } from "../paper/PaperDetailTabs";
 import { PaperTradingPage } from "../paper/PaperTradingPage";
 
 describe("PaperTradingPage", () => {
+  afterEach(() => {
+    usePaperUiStore.setState({ detailTab: "today" });
+  });
+
   it("renders paper trading panels and mecha order cockpit", () => {
     const html = renderToStaticMarkup(
       <PaperTradingPage
@@ -388,5 +394,79 @@ describe("PaperTradingPage", () => {
     expect(html).toContain("复盘历史入口 · 2 条");
     expect(html).toContain("今日收盘福袋");
     expect(html).not.toContain("明日优先处理弱势仓位");
+  });
+
+  it("renders order records as narrow viewport cards beside the virtual grid", () => {
+    const html = renderToStaticMarkup(
+      <PaperOrdersTab
+        loading={false}
+        orders={[
+          {
+            id: 7,
+            account_id: 1,
+            symbol: "600519",
+            name: "贵州茅台",
+            side: "buy",
+            order_type: "limit",
+            price: 1688.5,
+            quantity: 100,
+            filled_quantity: 40,
+            avg_fill_price: 1688.1,
+            status: "partial",
+            reject_reason: null,
+            source: "manual",
+            strategy_key: "first_board",
+            reason: "观察后手动委托",
+            created_at: "2026-05-29T10:05:00",
+          },
+        ]}
+      />
+    );
+
+    expect(html).toContain("paper-detail-card-list");
+    expect(html).toContain("paper-order-mobile-card");
+    expect(html).toContain("贵州茅台");
+    expect(html).toContain("已成 40 股");
+  });
+
+  it("renders trade records as narrow viewport cards beside the virtual grid", () => {
+    const html = renderToStaticMarkup(
+      <PaperTradesTab
+        loading={false}
+        performance={null}
+        tagPerformance={[]}
+        tradeTags={{}}
+        onAddTradeTag={vi.fn()}
+        onDeleteTradeTag={vi.fn()}
+        trades={[
+          {
+            id: 9,
+            order_id: 7,
+            account_id: 1,
+            symbol: "600519",
+            side: "sell",
+            price: 1702.3,
+            quantity: 100,
+            gross_amount: 170230,
+            commission: 5,
+            stamp_tax: 170.23,
+            transfer_fee: 0,
+            net_amount: 170054.77,
+            strategy_key: "first_board",
+            entry_reason: "",
+            entry_reason_code: "",
+            exit_reason: "达到计划价",
+            exit_reason_code: "target",
+            commission_warning: "",
+            trade_time: "2026-05-29T14:35:00",
+          },
+        ]}
+      />
+    );
+
+    expect(html).toContain("paper-detail-card-list");
+    expect(html).toContain("paper-trade-mobile-card");
+    expect(html).toContain("600519");
+    expect(html).toContain("达到计划价");
   });
 });

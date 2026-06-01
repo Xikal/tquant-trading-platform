@@ -1,0 +1,52 @@
+.paper-detail-card-list {
+  display: none;
+}
+
+.paper-mobile-card {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--card);
+  padding: 8px;
+  font-size: 12px;
+}
+
+.paper-mobile-card__head,
+.paper-mobile-card__meta,
+.paper-mobile-card__facts {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.paper-mobile-card__meta,
+.paper-mobile-card__facts {
+  justify-content: flex-start;
+  color: var(--muted);
+}
+
+.paper-mobile-card__note {
+  font-size: 12px;
+}
+
+.paper-mobile-card__head strong {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 640px) {
+  .paper-detail-grid {
+    display: none;
+  }
+
+  .paper-detail-card-list {
+    display: block;
+  }
+}

@@ -31,6 +31,7 @@ import {
 import { BacktestResearchPanel, type BacktestResearchActions, type BacktestResearchState } from "./BacktestResearchPanel";
 import { backtestVerdict } from "../../utils/uxClarity";
 import { VirtualGrid } from "../../ui/grid/VirtualGrid";
+import { VirtualCardList } from "../../ui/list/VirtualCardList";
 import {
   BACKTEST_ATTRIBUTION_ITEM_STYLE,
   BACKTEST_ATTRIBUTION_STRIP_STYLE,
@@ -199,59 +200,92 @@ export function TradesPanel({ trades }: { trades: BacktestTrade[] }) {
   return (
     <section className="panel" style={BACKTEST_PANEL_SURFACE_STYLE}>
       <PanelHeader title="交易明细" action={<span style={BACKTEST_SECTION_META_STYLE}>{trades.length} 笔</span>} />
-      <VirtualGrid<BacktestTrade>
-        rowKey={(trade) => String(trade.id)}
-        dataSource={trades}
-        locale={{ emptyText: <EmptyLine text="暂无成交明细。" /> }}
-        scroll={{ x: 980, y: 520 }}
-        columns={[
-          { title: "日期", dataIndex: "trade_date" },
-          {
-            title: "标的",
-            dataIndex: "symbol",
-            render: (symbol) => <strong>{symbol}</strong>,
-          },
-          {
-            title: "方向",
-            dataIndex: "side",
-            render: (side) => <span className={side === "buy" ? "buy" : "sell"}>{side === "buy" ? "买入" : "卖出"}</span>,
-          },
-          {
-            title: "数量",
-            dataIndex: "quantity",
-            align: "right",
-            render: (quantity) => formatInteger(quantity),
-          },
-          {
-            title: "成交价",
-            dataIndex: "price",
-            align: "right",
-            render: (price) => formatPrice(price),
-          },
-          {
-            title: "净额",
-            dataIndex: "net_amount",
-            align: "right",
-            render: (amount) => formatMoney(amount),
-          },
-          {
-            title: "策略",
-            render: (_value, trade) => formatBacktestStrategy(trade.strategy_key ?? trade.strategy),
-          },
-          {
-            title: "收益",
-            dataIndex: "return_pct",
-            align: "right",
-            render: (value) => <span style={backtestToneTextStyle(toneFromNumber(value))}>{formatPct(value)}</span>,
-          },
-          {
-            title: "退出",
-            dataIndex: "exit_reason",
-            render: (reason) => reason || "--",
-          },
-        ]}
+      <div className="backtest-trade-grid">
+        <VirtualGrid<BacktestTrade>
+          rowKey={(trade) => String(trade.id)}
+          dataSource={trades}
+          locale={{ emptyText: <EmptyLine text="暂无成交明细。" /> }}
+          scroll={{ x: 980, y: 520 }}
+          columns={[
+            { title: "日期", dataIndex: "trade_date" },
+            {
+              title: "标的",
+              dataIndex: "symbol",
+              render: (symbol) => <strong>{symbol}</strong>,
+            },
+            {
+              title: "方向",
+              dataIndex: "side",
+              render: (side) => <span className={side === "buy" ? "buy" : "sell"}>{side === "buy" ? "买入" : "卖出"}</span>,
+            },
+            {
+              title: "数量",
+              dataIndex: "quantity",
+              align: "right",
+              render: (quantity) => formatInteger(quantity),
+            },
+            {
+              title: "成交价",
+              dataIndex: "price",
+              align: "right",
+              render: (price) => formatPrice(price),
+            },
+            {
+              title: "净额",
+              dataIndex: "net_amount",
+              align: "right",
+              render: (amount) => formatMoney(amount),
+            },
+            {
+              title: "策略",
+              render: (_value, trade) => formatBacktestStrategy(trade.strategy_key ?? trade.strategy),
+            },
+            {
+              title: "收益",
+              dataIndex: "return_pct",
+              align: "right",
+              render: (value) => <span style={backtestToneTextStyle(toneFromNumber(value))}>{formatPct(value)}</span>,
+            },
+            {
+              title: "退出",
+              dataIndex: "exit_reason",
+              render: (reason) => reason || "--",
+            },
+          ]}
+        />
+      </div>
+      <VirtualCardList
+        className="backtest-trade-card-list"
+        empty={<EmptyLine text="暂无成交明细。" />}
+        estimateSize={116}
+        getItemKey={(trade) => trade.id}
+        items={trades}
+        maxHeight={520}
+        renderItem={(trade) => <BacktestTradeMobileCard trade={trade} />}
       />
     </section>
+  );
+}
+
+function BacktestTradeMobileCard({ trade }: { trade: BacktestTrade }) {
+  return (
+    <article className="backtest-trade-mobile-card">
+      <div className="backtest-trade-mobile-card__head">
+        <strong>{trade.symbol}</strong>
+        <span className={trade.side === "buy" ? "buy" : "sell"}>{trade.side === "buy" ? "买入" : "卖出"}</span>
+      </div>
+      <div className="backtest-trade-mobile-card__meta">
+        <span>{trade.trade_date}</span>
+        <span>{formatBacktestStrategy(trade.strategy_key ?? trade.strategy)}</span>
+      </div>
+      <div className="backtest-trade-mobile-card__facts">
+        <span>数量 {formatInteger(trade.quantity)}</span>
+        <span>成交价 {formatPrice(trade.price)}</span>
+        <span>净额 {formatMoney(trade.net_amount)}</span>
+        <span>收益 {formatPct(trade.return_pct)}</span>
+      </div>
+      {trade.exit_reason ? <Typography.Text className="backtest-trade-mobile-card__note" type="secondary">{trade.exit_reason}</Typography.Text> : null}
+    </article>
   );
 }
 
