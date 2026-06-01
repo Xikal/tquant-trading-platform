@@ -10,10 +10,13 @@ import {
 } from "../features/backtest/backtestForms";
 
 type BacktestMode = "quick" | "expert";
+export type BacktestDashboardTab = "submit" | "overview" | "trades" | "etf-t0" | "research";
 type StateValue<T> = T | ((current: T) => T);
 
 interface BacktestUiStore {
   mode: BacktestMode;
+  activeTab: BacktestDashboardTab;
+  activeTabTouched: boolean;
   verdictThresholdVersion: number;
   strategyOptions: StrategyOption[];
   form: BacktestFormState;
@@ -29,6 +32,7 @@ interface BacktestUiStore {
   researchError: string;
   researchNotice: string;
   setMode: (mode: BacktestMode) => void;
+  setActiveTab: (activeTab: BacktestDashboardTab) => void;
   setStrategyOptions: (strategyOptions: StrategyOption[]) => void;
   setForm: (form: StateValue<BacktestFormState>) => void;
   setLoading: (loading: string) => void;
@@ -47,6 +51,8 @@ interface BacktestUiStore {
 
 export const useBacktestUiStore = create<BacktestUiStore>((set) => ({
   mode: "quick",
+  activeTab: "submit",
+  activeTabTouched: false,
   verdictThresholdVersion: 0,
   strategyOptions: [...STRATEGY_OPTIONS],
   form: initialBacktestForm,
@@ -62,6 +68,7 @@ export const useBacktestUiStore = create<BacktestUiStore>((set) => ({
   researchError: "",
   researchNotice: "",
   setMode: (mode) => set({ mode }),
+  setActiveTab: (activeTab) => set({ activeTab, activeTabTouched: true }),
   setStrategyOptions: (strategyOptions) => set({ strategyOptions }),
   setForm: (form) => set((state) => ({ form: typeof form === "function" ? form(state.form) : form })),
   setLoading: (loading) => set({ loading }),

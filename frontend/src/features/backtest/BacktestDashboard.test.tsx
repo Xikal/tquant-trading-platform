@@ -152,7 +152,7 @@ describe("BacktestDashboard", () => {
           { ...run, id: 5, status: "cancelled" },
           { ...run, id: 8, status: "deleted" },
         ]}
-        selectedRun={run}
+        selectedRun={null}
         equity={equity}
         trades={trades}
         loading=""
@@ -373,7 +373,120 @@ describe("BacktestDashboard", () => {
     expect(html).toContain("首板回调 / 量能低吸");
     expect(html).toContain("2025-01-02 → 2026-04-30");
   });
+
+  it("opens the result overview first when a completed run is selected", () => {
+    const html = renderToStaticMarkup(
+      <BacktestDashboard
+        form={backtestFormFixture()}
+        runs={[run]}
+        selectedRun={run}
+        equity={equity}
+        trades={trades}
+        loading=""
+        error=""
+        notice=""
+        research={emptyResearchFixture()}
+        researchActions={researchActionsFixture()}
+        onFormChange={vi.fn()}
+        onToggleStrategy={vi.fn()}
+        onSubmit={vi.fn()}
+        onRefresh={vi.fn()}
+        onSelectRun={vi.fn()}
+        onCancelRun={vi.fn()}
+      />
+    );
+
+    expect(html).toContain('data-node-key="overview" class="ant-tabs-tab ant-tabs-tab-active"');
+    expect(html).toContain("详情摘要 #42");
+    expect(html).toContain("净值曲线");
+    expect(html).not.toContain('data-node-key="submit" class="ant-tabs-tab ant-tabs-tab-active"');
+  });
 });
+
+function backtestFormFixture() {
+  return {
+    name: "联合回测",
+    start_date: "2025-01-02",
+    end_date: "2026-04-30",
+    initial_capital: "500000",
+    strategies: ["first_board"],
+    execution_model: "open_price",
+    resource_tier: "full",
+    max_position_pct: "30",
+    max_positions: "8",
+    max_daily_loss_pct: "5",
+    max_single_order_pct: "30",
+    min_cash_reserve: "5000",
+    benchmark: "000300",
+  };
+}
+
+function emptyResearchFixture() {
+  return {
+    optimizationForm: {
+      name: "",
+      strategy: "first_board",
+      train_start: "",
+      train_end: "",
+      test_start: "",
+      test_end: "",
+      initial_capital: "500000",
+      execution_model: "open_price",
+      optimization_target: "sharpe",
+      min_score: "",
+      max_position_pct: "",
+      max_holding_days: "",
+      stop_loss_pct: "",
+      take_profit_pct: "",
+    },
+    optimizations: [],
+    selectedOptimizationId: null,
+    selectedOptimization: null,
+    validationForm: {
+      name: "",
+      strategy: "first_board",
+      start_date: "",
+      end_date: "",
+      window_count: "4",
+      train_ratio: "0.75",
+      initial_capital: "500000",
+      execution_model: "open_price",
+      optimization_target: "sharpe",
+      auto_promote_state_params: false,
+    },
+    validations: [],
+    selectedValidationId: null,
+    selectedValidation: null,
+    completedRuns: [],
+    compareRunIds: "",
+    compareResult: null,
+    monthlyReturns: null,
+    attribution: null,
+    correlation: null,
+    loading: "",
+    error: "",
+    notice: "",
+  };
+}
+
+function researchActionsFixture() {
+  return {
+    onOptimizationFormChange: vi.fn(),
+    onSubmitOptimization: vi.fn(),
+    onSelectOptimization: vi.fn(),
+    onCancelOptimization: vi.fn(),
+    onDeleteOptimization: vi.fn(),
+    onValidationFormChange: vi.fn(),
+    onSubmitValidation: vi.fn(),
+    onSelectValidation: vi.fn(),
+    onCancelValidation: vi.fn(),
+    onDeleteValidation: vi.fn(),
+    onPromoteValidationStateParams: vi.fn(),
+    onCompareRunIdsChange: vi.fn(),
+    onRunCompare: vi.fn(),
+    onRefreshResearch: vi.fn(),
+  };
+}
 
 const strategyImprovementReport = {
   summary: {

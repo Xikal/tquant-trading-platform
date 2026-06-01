@@ -91,11 +91,15 @@ export function BacktestDashboard({
   const selectedMetrics = selectedRun ? resolveMetrics(selectedRun) : null;
   const selectedAttribution = selectedRun ? resolveAttribution(selectedRun) : null;
   const mode = useBacktestUiStore((state) => state.mode);
+  const activeTab = useBacktestUiStore((state) => state.activeTab);
+  const activeTabTouched = useBacktestUiStore((state) => state.activeTabTouched);
   const screens = useBreakpoint();
   const wideLayout = Boolean(screens.xl);
   useBacktestUiStore((state) => state.verdictThresholdVersion);
   const setMode = useBacktestUiStore((state) => state.setMode);
+  const setActiveTab = useBacktestUiStore((state) => state.setActiveTab);
   const bumpVerdictThresholdVersion = useBacktestUiStore((state) => state.bumpVerdictThresholdVersion);
+  const resolvedActiveTab = selectedRun && !activeTabTouched ? "overview" : activeTab;
   const runningCount = runs.filter((run) => run.status === "queued" || run.status === "running").length;
   const completedCount = runs.filter((run) => run.status === "completed" || run.status === "succeeded").length;
   const tabItems = [
@@ -210,6 +214,8 @@ export function BacktestDashboard({
         size="small"
         style={BACKTEST_TABS_STYLE}
         tabBarGutter={8}
+        activeKey={resolvedActiveTab}
+        onChange={(key) => setActiveTab(key as typeof resolvedActiveTab)}
         items={tabItems.map((item) => ({
           ...item,
           children: <div style={BACKTEST_TAB_BODY_STYLE}>{item.children}</div>,
