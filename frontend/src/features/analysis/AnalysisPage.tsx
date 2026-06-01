@@ -43,6 +43,9 @@ export function AnalysisPage({
   const invalidText =
     suggestion?.plain_invalid_condition ||
     (suggestion?.blocking_rules.length ? suggestion.blocking_rules.map(plainTradingText).join("；") : "没有硬性阻止条件");
+  const uniqueReasons = (suggestion?.reasons ?? [])
+    .map(plainTradingText)
+    .filter((reason) => reason && reason !== actionReason);
   const decisionTone = suggestion?.is_actionable ? "up" : suggestion?.signal_layer === "watch_prepare" ? "warn" : "neutral";
   const decisionTitle = suggestion?.is_actionable
     ? `当前可以：${actionHeadline}`
@@ -64,12 +67,13 @@ export function AnalysisPage({
             { label: "批量结果", value: String(batchResults.length) },
           ]}
         />
-        <Callout
-          label="综合判断"
-          title={decisionTitle}
-          detail={suggestion ? actionReason : "系统会先检查价格、持仓、手续费、风险和失效条件。"}
-          tone={decisionTone}
-        />
+        {!suggestion ? (
+          <Callout
+            label="判断原因"
+            title="系统会先检查价格、持仓、手续费、风险和失效条件。"
+            tone={decisionTone}
+          />
+        ) : null}
       </div>
       <div className="panel tq-analysis-page__identity">
         <StockIdentity name={result?.instrument.name ?? draft.symbol} symbol={draft.symbol} />
@@ -149,7 +153,7 @@ export function AnalysisPage({
         {suggestion?.fee_warning || suggestion?.liquidity_warning ? (
           <LineList title="交易成本提示" items={[suggestion.fee_warning, suggestion.liquidity_warning].filter(Boolean).map(plainTradingText)} />
         ) : null}
-        {suggestion?.reasons.length ? <LineList title="主要依据" items={suggestion.reasons.slice(0, 3).map(plainTradingText)} /> : null}
+        {uniqueReasons.length ? <LineList title="主要依据" items={uniqueReasons.slice(0, 3)} /> : null}
       </div>
       {anomaly ? <div className="panel tq-analysis-page__anomaly">
         <PanelTitle title="盘中异常提醒" />
@@ -188,8 +192,9 @@ export function AnalysisPage({
                 <div className="tq-analysis-page__plan-grid">
                   <div>
                     <PanelTitle title="执行计划" />
-                    <p>{executionText}</p>
-                    <p className="hint">{invalidText}</p>
+                    <p className="hint">
+                      具体入场、失效和仓位口径已在上方“当前建议”区展示；这里仅保留策略补充和合规假设，避免重复同一执行句。
+                    </p>
                     <p className="hint">
                       {plainTradingText(suggestion?.strategy_notes) ||
                         "先买后卖只等回落后重新走强；先卖后接回只在冲高乏力且有接回空间时执行；AI 只解释，不放宽底线规则。"}
