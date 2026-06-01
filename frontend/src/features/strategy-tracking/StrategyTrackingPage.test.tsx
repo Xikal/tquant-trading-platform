@@ -2,6 +2,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { api } from "../../api/client";
 import { configureApiClient, resetApiClient } from "../../api/httpClient";
+import { useStrategyTrackingStore } from "../../stores/strategyTrackingStore";
 import type { StrategyTrackingDetailResponse, StrategyTrackingHoldingAnalysis, StrategyTrackingItem, StrategyTrackingPerformance, StrategyTrackingSummary } from "../../types";
 import { Topbar } from "../trading-workspace/Topbar";
 import { StrategyTrackingDetailContent } from "./StrategyTrackingDetailDrawer";
@@ -18,6 +19,7 @@ import { StrategyTrackingTable } from "./StrategyTrackingTable";
 
 afterEach(() => {
   resetApiClient();
+  resetStrategyTrackingStore();
 });
 
 describe("StrategyTracking UI", () => {
@@ -236,6 +238,33 @@ describe("StrategyTracking UI", () => {
     });
 
     expect(params.strategy_variant).toBe("front_row_weighted");
+  });
+
+  it("builds main list params from overview tab instead of secondary analysis tab", () => {
+    const params = buildParams({
+      ...baseStoreState(),
+      tab: "holding" as const,
+      overviewTab: "risk" as const,
+      analysisTab: "holding" as const,
+      sort: "risk_desc",
+    });
+
+    expect(params.stopped).toBe(true);
+    expect(params.sort).toBe("risk_desc");
+  });
+
+  it("does not change overview list state when switching secondary analysis tabs", () => {
+    const store = useStrategyTrackingStore.getState();
+    store.setOverviewTab("risk");
+    store.setPagination(3, 30);
+
+    store.setAnalysisTab("holding");
+
+    const state = useStrategyTrackingStore.getState();
+    expect(state.overviewTab).toBe("risk");
+    expect(state.tab).toBe("risk");
+    expect(state.analysisTab).toBe("holding");
+    expect(state.page).toBe(3);
   });
 
   it("loads the strategy tracking homepage through one snapshot endpoint", async () => {
@@ -692,6 +721,18 @@ function baseStoreState() {
     setPagination: vi.fn(),
     setSelectedItemId: vi.fn(),
   };
+}
+
+function resetStrategyTrackingStore() {
+  useStrategyTrackingStore.setState({
+    tab: "active",
+    overviewTab: "active",
+    analysisTab: "diagnostics",
+    summaryGroup: "overview",
+    sort: "max_gain_desc",
+    page: 1,
+    pageSize: 30,
+  });
 }
 
 function performanceFixture(): StrategyTrackingPerformance {

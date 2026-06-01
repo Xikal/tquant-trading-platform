@@ -93,10 +93,8 @@ export const useStrategyTrackingStore = create<StrategyTrackingStore>((set) => (
     ...resetPage,
   }),
   setAnalysisTab: (analysisTab) => set({
-    tab: analysisTab,
     analysisTab,
     summaryGroup: "analysis",
-    ...resetPage,
   }),
   setViewMode: (viewMode) =>
     set({

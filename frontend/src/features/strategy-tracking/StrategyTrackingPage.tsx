@@ -194,7 +194,7 @@ function snapshotMetaText(snapshot?: StrategyTrackingSnapshotResponse): string {
 }
 
 export function buildParams(store: StrategyTrackingStoreState): StrategyTrackingParams {
-  const preset = tabParams(store.tab);
+  const preset = tabParams(store.overviewTab);
   return {
     range: store.range,
     strategy_key: store.strategyKey || undefined,
