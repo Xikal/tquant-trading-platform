@@ -197,6 +197,17 @@ export function SettingsPage({
       { key: "governance", label: "策略治理", description: "开关、审计、治理" },
     ];
   }, [dirtyState.data, dirtyState.factor, dirtyState.llm, dirtyState.risk, isAdmin, sectorDirty]);
+  const heroSummary = isAdmin
+    ? runtime?.settings_consistency_text || "账户安全、风控参数、数据源、策略治理。"
+    : "账户安全、风控参数和个人交易偏好。";
+  const heroPills = [
+    { label: "当前页签", value: settingsTabs.find((tab) => tab.key === activeTab)?.label || "--" },
+    { label: "未保存", value: String(unsavedCount), tone: unsavedCount > 0 ? "warn" as const : "neutral" as const },
+    ...(isAdmin ? [
+      { label: "数据库", value: runtime?.database_backend || "--" },
+      { label: "大模型", value: runtime?.llm_configured ? "已配置" : "未配置", tone: runtime?.llm_configured ? "up" as const : "neutral" as const },
+    ] : []),
+  ];
 
   useEffect(() => {
     if (!settingsTabs.some((tab) => tab.key === activeTab)) {
@@ -343,17 +354,12 @@ export function SettingsPage({
       <div className="panel" style={SETTINGS_HERO_STYLE}>
         <WorkspacePageIntro
           title="系统设置"
-          summary={runtime?.settings_consistency_text || "账户安全、风控参数、数据源、策略治理。"}
+          summary={heroSummary}
           more="配置保存采用一致性语义；敏感字段只显示配置状态，不回显真实值。"
           moreLabel="保存规则"
           tone={unsavedCount > 0 ? "warn" : runtime?.settings_consistency_status === "ok" ? "up" : "neutral"}
           actions={<Button onClick={onRefresh} loading={loading === "settings"}>刷新配置</Button>}
-          pills={[
-            { label: "当前页签", value: settingsTabs.find((tab) => tab.key === activeTab)?.label || "--" },
-            { label: "未保存", value: String(unsavedCount), tone: unsavedCount > 0 ? "warn" : "neutral" },
-            { label: "数据库", value: runtime?.database_backend || "--" },
-            { label: "大模型", value: runtime?.llm_configured ? "已配置" : "未配置", tone: runtime?.llm_configured ? "up" : "neutral" },
-          ]}
+          pills={heroPills}
         />
         {unsavedCount > 0 ? (
           <div style={SETTINGS_UNSAVED_BANNER_STYLE}>
