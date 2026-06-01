@@ -95,7 +95,7 @@ export function OptimizationPanel({
         <PanelTitle title="参数排名" meta={detail ? `#${detail.id}` : "等待选择"} />
         {detail ? (
           <>
-            {truthyFlag(detail.oos_downgrade) ? <div style={BACKTEST_ERROR_STYLE}>OOS 降级：{detail.oos_downgrade_reason || "样本外表现低于阈值"}</div> : null}
+            {truthyFlag(detail.oos_downgrade) ? <div style={BACKTEST_ERROR_STYLE}>样本外降级：{detail.oos_downgrade_reason || "样本外表现低于阈值"}</div> : null}
             <div style={BACKTEST_MINI_METRICS_STYLE}>
               <Metric label="历史内评分" value={formatNumber(detail.best_is_score)} />
               <Metric label="样本外评分" value={formatNumber(detail.best_oos_score)} />
@@ -110,7 +110,7 @@ export function OptimizationPanel({
               columns={[
                 { title: "Rank", render: (_value, item, index) => item.rank ?? index + 1 },
                 { title: "参数", render: (_value, item) => formatParams(item.params) },
-                { title: "样本", render: (_value, item) => item.sample ?? (item.is_oos ? "oos" : "is") },
+                { title: "样本", render: (_value, item) => sampleScopeText(item.sample, item.is_oos) },
                 { title: "收益", align: "right", render: (_value, item) => <span style={backtestToneTextStyle(toneFromNumber(item.total_return_pct))}>{formatPct(item.total_return_pct)}</span> },
                 { title: "胜率", align: "right", render: (_value, item) => formatPct(item.win_rate_pct) },
                 { title: "止损率", align: "right", render: (_value, item) => formatPct(item.stop_loss_rate_pct) },
@@ -120,8 +120,14 @@ export function OptimizationPanel({
               ]}
             />
           </>
-        ) : <Empty text="选择一条优化任务查看 IS/OOS 对比和候选排名。" />}
+        ) : <Empty text="选择一条优化任务查看历史内/样本外对比和候选排名。" />}
       </div>
     </section>
   );
+}
+
+function sampleScopeText(sample?: string | null, isOos?: boolean | null): string {
+  if (sample === "oos" || isOos) return "样本外";
+  if (sample === "is") return "历史内";
+  return sample || "历史内";
 }

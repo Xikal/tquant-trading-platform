@@ -126,8 +126,8 @@ export function ValidationPanel({
                   <span style={BACKTEST_WINDOW_CARD_META_STYLE}>{window.train_start ?? "--"} → {window.train_end ?? "--"}</span>
                   <span style={BACKTEST_WINDOW_CARD_META_STYLE}>{window.test_start ?? "--"} → {window.test_end ?? "--"}</span>
                   <div style={BACKTEST_WINDOW_CARD_BADGE_ROW_STYLE}>
-                    <b style={BACKTEST_WINDOW_CARD_BADGE_STYLE}>IS {formatNumber(window.train_sharpe ?? window.is_sharpe)}</b>
-                    <b style={BACKTEST_WINDOW_CARD_BADGE_STYLE}>OOS {formatNumber(window.test_sharpe ?? window.oos_sharpe)}</b>
+                    <b style={BACKTEST_WINDOW_CARD_BADGE_STYLE}>历史内 {formatNumber(window.train_sharpe ?? window.is_sharpe)}</b>
+                    <b style={BACKTEST_WINDOW_CARD_BADGE_STYLE}>样本外 {formatNumber(window.test_sharpe ?? window.oos_sharpe)}</b>
                     <b style={BACKTEST_WINDOW_CARD_BADGE_STYLE}>{formatPct(window.test_return_pct ?? window.oos_return_pct)}</b>
                   </div>
                   <small style={BACKTEST_WINDOW_CARD_META_STYLE}>{formatParams(window.best_params)}</small>

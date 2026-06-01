@@ -68,7 +68,7 @@ export function PaperExitModelShadowSummaryContent({ report }: { report: Strateg
       <div style={BACKTEST_METRIC_GRID_STYLE}>
         <Metric label="影子样本" value={`${formatInteger(shadow?.record_count ?? 0)} / ${formatInteger(shadow?.settled_count ?? 0)}`} />
         <Metric label="更激进动作" value={formatInteger(diff?.more_aggressive_than_rule ?? 0)} />
-        <Metric label="Fallback" value={formatInteger(diff?.fallback ?? 0)} />
+        <Metric label="备用动作" value={formatInteger(diff?.fallback ?? 0)} />
         <Metric label="卖飞率" value={`${formatNumber(outcome?.sell_flying_rate_pct ?? 0)}%`} />
       </div>
       <Alert

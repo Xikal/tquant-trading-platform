@@ -285,7 +285,7 @@ function StrategyTab({
 }) {
   return (
     <TabScroll>
-      <Card size="small" title="止盈止损模型 Shadow" extra={<Typography.Text type="secondary">只读对比，不改规则动作。</Typography.Text>}>
+      <Card size="small" title="止盈止损模型影子验证" extra={<Typography.Text type="secondary">只读对比，不改规则动作。</Typography.Text>}>
         <PaperExitModelShadowSummaryPanel />
       </Card>
       <Card size="small" title="按策略" extra={<Typography.Text type="secondary">看哪个策略赚钱，哪个策略拖后腿。</Typography.Text>}>
