@@ -1,5 +1,7 @@
 /* 设计 Token 已统一至 src/styles/foundation/tokens.css（唯一源，含旧变量别名）。 */
 
+@import "./workspace-primitives.css";
+
 * {
   box-sizing: border-box;
 }
@@ -100,8 +102,6 @@ h5.ant-typography {
   font-size: var(--font-section);
   line-height: 1.2;
 }
-
-@import "./workspace-primitives.css";
 
 .tq-analysis-page {
   display: grid;
