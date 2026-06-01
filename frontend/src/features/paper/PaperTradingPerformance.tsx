@@ -107,7 +107,7 @@ export function SectorEtfT0PerformancePanel({ item }: { item: PaperSectorEtfT0Pe
   useEffect(() => {
     etfT0OosApi.latest()
       .then(setLatest)
-      .catch((error: unknown) => setError(error instanceof Error ? error.message : "ETF T0 OOS 阶段加载失败"));
+      .catch((error: unknown) => setError(error instanceof Error ? error.message : "ETF T0 样本外阶段加载失败"));
   }, [setError, setLatest]);
   if (!item) return <EmptyState text="暂无 ETF T+0 自动交易绩效" />;
   const gateNotes = (item.execution_gate_notes?.length ? item.execution_gate_notes : [

@@ -28,7 +28,7 @@ export function StrategyTrackingDiagnosticsPanel({
         <Alert
           type="warning"
           showIcon
-          title="Shadow 观测样本为 0"
+          title="影子观察样本为 0"
           description={zeroShadow.map((item) => `${item.model_key}: ${item.no_sample_reason_text || item.no_sample_reason}`).join("；")}
         />
       ) : null}

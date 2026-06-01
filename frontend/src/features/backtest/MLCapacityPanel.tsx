@@ -196,7 +196,7 @@ export function MLCapacityPanel({ strategyOptions }: { strategyOptions: Backtest
       ) : null}
       {policy ? (
         <div style={BACKTEST_RESEARCH_NOTE_STYLE}>
-          RL Shadow：{policy.summary || "仅研究输出，不自动交易。"} 样本 {String(policy.shadow_reinforcement_learning?.sample_count ?? "--")}。
+          强化学习影子验证：{policy.summary || "仅研究输出，不自动交易。"} 样本 {String(policy.shadow_reinforcement_learning?.sample_count ?? "--")}。
         </div>
       ) : null}
       <VirtualGrid<StrategyCapacityItem>

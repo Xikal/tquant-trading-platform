@@ -215,7 +215,8 @@ describe("StrategyTracking UI", () => {
   it("renders diagnostics for market segments and shadow zero reasons", () => {
     const html = renderToStaticMarkup(<StrategyTrackingDiagnosticsPanel result={listFixture()} viewMode="professional" />);
 
-    expect(html).toContain("Shadow 观测样本为 0");
+    expect(html).toContain("影子观察样本为 0");
+    expect(html).not.toContain("Shadow 观测样本为 0");
     expect(html).toContain("观测表里目前没有该模型观测记录");
     expect(html).toContain("强势行情");
     expect(html).toContain("冲高回落");
