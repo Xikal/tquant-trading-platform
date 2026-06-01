@@ -19,6 +19,7 @@
 - `TRADING_QUANT_LEAD_PLAYBOOK.md`
 - `PROJECT_PLAN.md`
 - `PRODUCT_STAGE_ACCEPTANCE.md`
+- `docs/market-support-resistance-ma30-development-plan-2026-06-01.md`
 - `docs/low-buy-strategy-mechanism.md`
 - `docs/market-trading-enhancement-requirements-2026-05-25.md`
 - `docs/market-trading-enhancement-execution-plan-2026-05-25.md`
