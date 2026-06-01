@@ -2,7 +2,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { describe, expect, it } from "vitest";
 import { createAppQueryClient } from "../../state/queryClient";
-import { SectorEtfT0PerformancePanel } from "./PaperTradingPerformance";
+import { GroupedPerformanceTable, SectorEtfT0PerformancePanel } from "./PaperTradingPerformance";
 
 describe("SectorEtfT0PerformancePanel", () => {
   it("renders ETF T0 performance with separated return semantics and plain-language status", () => {
@@ -61,5 +61,31 @@ describe("SectorEtfT0PerformancePanel", () => {
     expect(html).not.toContain("needs_validation");
     expect(html).toContain("跟踪胜率（非真实成交）");
     expect(html).toContain("510300");
+    expect(html).toContain("paper-etf-t0-kv-grid");
+    expect(html).toContain("paper-etf-t0-review-list");
+    expect(html).not.toContain("ant-table");
+  });
+});
+
+describe("GroupedPerformanceTable", () => {
+  it("renders paper grouped performance as responsive cards instead of a wide table", () => {
+    const html = renderToStaticMarkup(
+      <GroupedPerformanceTable
+        emptyText="暂无策略绩效"
+        items={[{
+          key: "首板低吸",
+          trades: 8,
+          win_rate_pct: 62.5,
+          net_win_rate_pct: 50,
+          avg_return_pct: 1.2,
+          profit_factor: 1.8,
+        }]}
+      />,
+    );
+
+    expect(html).toContain("paper-grouped-performance-list");
+    expect(html).toContain("首板低吸");
+    expect(html).toContain("PF");
+    expect(html).not.toContain("ant-table");
   });
 });

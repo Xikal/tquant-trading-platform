@@ -1496,6 +1496,45 @@ h5.ant-typography {
   justify-content: flex-start;
 }
 
+.paper-etf-t0-kv-grid,
+.paper-etf-t0-review-list,
+.paper-grouped-performance-list {
+  display: grid;
+  gap: var(--sp-2);
+  min-width: 0;
+}
+
+.paper-etf-t0-kv-grid,
+.paper-grouped-performance-card__metrics {
+  grid-template-columns: repeat(auto-fit, minmax(132px, 1fr));
+}
+
+.paper-etf-t0-kv-item,
+.paper-etf-t0-review-card,
+.paper-grouped-performance-card {
+  display: grid;
+  gap: var(--sp-1);
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-elevated);
+  padding: var(--sp-2);
+}
+
+.paper-etf-t0-review-card__head,
+.paper-grouped-performance-card__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+  min-width: 0;
+}
+
+.paper-grouped-performance-card__metrics {
+  display: grid;
+  gap: var(--sp-2);
+}
+
 @media (max-width: 960px) {
   .strategy-tracking-top-grid {
     grid-template-columns: 1fr;

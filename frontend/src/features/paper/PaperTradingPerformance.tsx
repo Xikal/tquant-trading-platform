@@ -135,19 +135,14 @@ export function SectorEtfT0PerformancePanel({ item }: { item: PaperSectorEtfT0Pe
         </Col>
       </Row>
       <Typography.Text strong style={SMALL_TEXT_STYLE}>影子跟踪收益（非真实成交）</Typography.Text>
-      <VirtualGrid<PaperSectorEtfT0Performance>
-        rowKey={() => "sector-etf-t0"}
-        dataSource={[item]}
-        scroll={{ x: 680 }}
-        columns={[
-          { title: "跟踪样本", dataIndex: "shadow_sample_count", render: (value) => <strong>{formatInteger(value)}</strong> },
-          { title: "已结算", dataIndex: "shadow_settled_count", render: (value) => formatInteger(value) },
-          { title: "待结算", dataIndex: "shadow_pending_count", render: (value) => formatInteger(value) },
-          { title: "跟踪胜率（非真实成交）", dataIndex: "shadow_success_rate_pct", render: (value) => formatPct(value) },
-          { title: "1日均收", dataIndex: "shadow_avg_return_1d_pct", render: (value) => <span className={toneFromChange(value)}>{formatPct(value)}</span> },
-          { title: "3日均收", dataIndex: "shadow_avg_return_3d_pct", render: (value) => <span className={toneFromChange(value)}>{formatPct(value)}</span> },
-        ]}
-      />
+      <div className="paper-etf-t0-kv-grid">
+        <PaperEtfT0Metric label="跟踪样本" value={formatInteger(item.shadow_sample_count)} strong />
+        <PaperEtfT0Metric label="已结算" value={formatInteger(item.shadow_settled_count)} />
+        <PaperEtfT0Metric label="待结算" value={formatInteger(item.shadow_pending_count)} />
+        <PaperEtfT0Metric label="跟踪胜率（非真实成交）" value={formatPct(item.shadow_success_rate_pct)} />
+        <PaperEtfT0Metric label="1日均收" value={formatPct(item.shadow_avg_return_1d_pct)} tone={toneFromChange(item.shadow_avg_return_1d_pct)} />
+        <PaperEtfT0Metric label="3日均收" value={formatPct(item.shadow_avg_return_3d_pct)} tone={toneFromChange(item.shadow_avg_return_3d_pct)} />
+      </div>
       <Typography.Text strong style={SMALL_TEXT_STYLE}>每日信号等权收益（非真实组合收益）</Typography.Text>
       <Typography.Text type="secondary" style={SMALL_TEXT_STYLE}>
         {plainEtfT0Text(item.notes?.[0] || "只统计 sector_etf_t0 的模拟成交，并和 ETF 机会池影子跟踪对账。")}
@@ -162,22 +157,52 @@ export function SectorEtfT0PerformancePanel({ item }: { item: PaperSectorEtfT0Pe
         ))}
       </Space>
       <Typography.Text strong style={SMALL_TEXT_STYLE}>逐笔复盘归因</Typography.Text>
-      <VirtualGrid<PaperSectorEtfT0ReviewTrade>
-        rowKey={(trade) => String(trade.id)}
-        dataSource={item.review_trades ?? []}
-        locale={{ emptyText: <EmptyState text="暂无 ETF T0 成交复盘记录" /> }}
-        scroll={{ x: 980 }}
-        columns={[
-          { title: "标的", dataIndex: "symbol", render: (value) => <strong>{value}</strong> },
-          { title: "方向", dataIndex: "side", render: (value) => value === "buy" ? "买入" : value === "sell" ? "卖出" : value },
-          { title: "执行", dataIndex: "execution_summary" },
-          { title: "时间", dataIndex: "trade_time", render: (value) => formatPaperDateTime(value) },
-          { title: "市场", dataIndex: "market_state", render: (value) => value || "--" },
-          { title: "原因/归因", dataIndex: "attribution", render: (value) => <span style={TRUNCATED_TEXT_STYLE} title={plainEtfT0Text(value)}>{plainEtfT0Text(value)}</span> },
-          { title: "风险提示", dataIndex: "risk_notes", render: (value) => Array.isArray(value) && value.length ? value[0] : "完整" },
-        ]}
-      />
+      <PaperEtfT0ReviewList trades={item.review_trades ?? []} />
     </Space>
+  );
+}
+
+function PaperEtfT0Metric({
+  label,
+  strong = false,
+  tone = "",
+  value,
+}: {
+  label: string;
+  strong?: boolean;
+  tone?: string;
+  value: string;
+}) {
+  return (
+    <article className="paper-etf-t0-kv-item">
+      <Typography.Text type="secondary" style={SMALL_TEXT_STYLE}>{label}</Typography.Text>
+      <Typography.Text strong={strong} className={tone} style={SMALL_TEXT_STYLE}>{value}</Typography.Text>
+    </article>
+  );
+}
+
+function PaperEtfT0ReviewList({ trades }: { trades: PaperSectorEtfT0ReviewTrade[] }) {
+  if (!trades.length) return <EmptyState text="暂无 ETF T0 成交复盘记录" />;
+  return (
+    <div className="paper-etf-t0-review-list">
+      {trades.map((trade) => {
+        const attribution = plainEtfT0Text(trade.attribution || "--");
+        const risk = Array.isArray(trade.risk_notes) && trade.risk_notes.length ? trade.risk_notes[0] : "完整";
+        return (
+          <article key={trade.id} className="paper-etf-t0-review-card">
+            <div className="paper-etf-t0-review-card__head">
+              <Typography.Text strong style={SMALL_TEXT_STYLE}>{trade.symbol}</Typography.Text>
+              <Typography.Text type="secondary" style={SMALL_TEXT_STYLE}>
+                {trade.side === "buy" ? "买入" : trade.side === "sell" ? "卖出" : trade.side} · {formatPaperDateTime(trade.trade_time)}
+              </Typography.Text>
+            </div>
+            <Typography.Text style={SMALL_TEXT_STYLE}>{trade.execution_summary || "--"}</Typography.Text>
+            <Typography.Text type="secondary" style={SMALL_TEXT_STYLE}>市场：{trade.market_state || "--"}；风险：{risk}</Typography.Text>
+            <Typography.Text type="secondary" style={TRUNCATED_TEXT_STYLE} title={attribution}>{attribution}</Typography.Text>
+          </article>
+        );
+      })}
+    </div>
   );
 }
 
@@ -214,24 +239,22 @@ function plainEtfT0Text(value: string): string {
 export function GroupedPerformanceTable({ items, emptyText }: { items: PaperGroupedPerformance[]; emptyText: string }) {
   if (!items.length) return <EmptyState text={emptyText} />;
   return (
-    <VirtualGrid<PaperGroupedPerformance>
-      rowKey={(item) => item.key || "unlabeled"}
-      dataSource={items}
-      scroll={{ x: 680 }}
-      columns={[
-        { title: "分组", render: (_value, item) => <strong>{item.key || "未标注"}</strong> },
-        { title: "成交", dataIndex: "trades", align: "right", render: (value) => formatInteger(value) },
-        { title: "胜率", dataIndex: "win_rate_pct", align: "right", render: (value) => formatPct(value) },
-        { title: "净胜率", dataIndex: "net_win_rate_pct", align: "right", render: (value) => formatPct(value) },
-        { title: "均收", dataIndex: "avg_return_pct", align: "right", render: (value) => <span className={toneFromChange(value)}>{formatPct(value)}</span> },
-        {
-          title: "PF",
-          dataIndex: "profit_factor",
-          align: "right",
-          render: (value) => <span className={typeof value === "number" && value > 1 ? "up" : "neutral"}>{formatNumber(value)}</span>,
-        },
-      ]}
-    />
+    <div className="paper-grouped-performance-list">
+      {items.map((item) => (
+        <article className="paper-grouped-performance-card" key={item.key || "unlabeled"}>
+          <div className="paper-grouped-performance-card__head">
+            <Typography.Text strong style={SMALL_TEXT_STYLE}>{item.key || "未标注"}</Typography.Text>
+            <Typography.Text type="secondary" style={SMALL_TEXT_STYLE}>{formatInteger(item.trades)} 笔</Typography.Text>
+          </div>
+          <div className="paper-grouped-performance-card__metrics">
+            <PaperEtfT0Metric label="胜率" value={formatPct(item.win_rate_pct)} />
+            <PaperEtfT0Metric label="净胜率" value={formatPct(item.net_win_rate_pct)} />
+            <PaperEtfT0Metric label="均收" value={formatPct(item.avg_return_pct)} tone={toneFromChange(item.avg_return_pct)} />
+            <PaperEtfT0Metric label="PF" value={formatNumber(item.profit_factor)} tone={typeof item.profit_factor === "number" && item.profit_factor > 1 ? "up" : "neutral"} />
+          </div>
+        </article>
+      ))}
+    </div>
   );
 }
 
