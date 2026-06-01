@@ -10,6 +10,7 @@ import {
   BACKTEST_ECHARTS_STYLE,
   combineBacktestStyles,
 } from "./backtestStyles";
+import { backtestChartColor, withAlpha } from "./backtestChartTheme";
 
 echarts.use([BarChart, CanvasRenderer, GridComponent, LegendComponent, LineChart, TooltipComponent]);
 
@@ -26,12 +27,12 @@ function buildOption(points: EquityPoint[]): echarts.EChartsCoreOption {
   const maxCount = Math.max(1, ...bins.map((bin) => bin.count));
   return {
     animation: false,
-    color: ["#d6a55c", "#67e8f9"],
+    color: [backtestChartColor.benchmark, backtestChartColor.strategy],
     grid: { left: 44, right: 18, top: 32, bottom: 32 },
-    legend: { top: 2, right: 12, textStyle: { color: "#64748b", fontSize: 12 } },
+    legend: { top: 2, right: 12, textStyle: { color: backtestChartColor.textSecondary, fontSize: 12 } },
     tooltip: { trigger: "axis" },
-    xAxis: { type: "category", data: bins.map((bin) => bin.label), axisLabel: { color: "#64748b", fontSize: 12, rotate: 24 } },
-    yAxis: { type: "value", axisLabel: { color: "#64748b", fontSize: 12 }, splitLine: { lineStyle: { color: "rgba(148, 163, 184, 0.14)" } } },
+    xAxis: { type: "category", data: bins.map((bin) => bin.label), axisLabel: { color: backtestChartColor.textSecondary, fontSize: 12, rotate: 24 } },
+    yAxis: { type: "value", axisLabel: { color: backtestChartColor.textSecondary, fontSize: 12 }, splitLine: { lineStyle: { color: withAlpha(backtestChartColor.textMuted, 0.14) } } },
     series: [
       { type: "bar", name: "收益分布", data: bins.map((bin) => bin.count), barMaxWidth: 28 },
       {

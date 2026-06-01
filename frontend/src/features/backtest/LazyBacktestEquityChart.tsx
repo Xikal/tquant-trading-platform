@@ -12,6 +12,7 @@ import { CanvasRenderer } from "echarts/renderers";
 import type { EquityPoint } from "../../api/backtests";
 import { ChartIsland } from "../../ui/charts/ChartIsland";
 import { BACKTEST_ECHARTS_STYLE } from "./backtestStyles";
+import { backtestChartColor, withAlpha } from "./backtestChartTheme";
 
 echarts.use([
   CanvasRenderer,
@@ -37,7 +38,7 @@ function buildOption(points: EquityPoint[]): echarts.EChartsCoreOption {
   return {
     animation: false,
     backgroundColor: "transparent",
-    color: ["#67e8f9", "#d6a55c", "#ef4444"],
+    color: [backtestChartColor.strategy, backtestChartColor.benchmark, backtestChartColor.drawdown],
     grid: [
       { left: 46, right: 22, top: 34, height: "56%" },
       { left: 46, right: 22, bottom: 36, height: "18%" },
@@ -45,7 +46,7 @@ function buildOption(points: EquityPoint[]): echarts.EChartsCoreOption {
     legend: {
       top: 4,
       right: 18,
-      textStyle: { color: "#94a3b8", fontSize: 12 },
+      textStyle: { color: backtestChartColor.textMuted, fontSize: 12 },
       data: ["策略净值", "基准净值", "回撤"],
     },
     tooltip: {
@@ -60,10 +61,10 @@ function buildOption(points: EquityPoint[]): echarts.EChartsCoreOption {
         xAxisIndex: [0, 1],
         bottom: 8,
         height: 16,
-        borderColor: "rgba(148, 163, 184, 0.18)",
-        fillerColor: "rgba(103, 232, 249, 0.12)",
-        handleStyle: { color: "#67e8f9" },
-        textStyle: { color: "#94a3b8" },
+        borderColor: withAlpha(backtestChartColor.textMuted, 0.18),
+        fillerColor: withAlpha(backtestChartColor.strategy, 0.12),
+        handleStyle: { color: backtestChartColor.strategy },
+        textStyle: { color: backtestChartColor.textMuted },
       },
     ],
     xAxis: [
@@ -71,15 +72,15 @@ function buildOption(points: EquityPoint[]): echarts.EChartsCoreOption {
         type: "category",
         data: dates,
         boundaryGap: false,
-        axisLine: { lineStyle: { color: "rgba(148, 163, 184, 0.28)" } },
-        axisLabel: { color: "#94a3b8", fontSize: 12 },
+        axisLine: { lineStyle: { color: withAlpha(backtestChartColor.textMuted, 0.28) } },
+        axisLabel: { color: backtestChartColor.textMuted, fontSize: 12 },
       },
       {
         type: "category",
         data: dates,
         gridIndex: 1,
         boundaryGap: false,
-        axisLine: { lineStyle: { color: "rgba(148, 163, 184, 0.22)" } },
+        axisLine: { lineStyle: { color: withAlpha(backtestChartColor.textMuted, 0.22) } },
         axisLabel: { show: false },
       },
     ],
@@ -87,14 +88,14 @@ function buildOption(points: EquityPoint[]): echarts.EChartsCoreOption {
       {
         type: "value",
         scale: true,
-        splitLine: { lineStyle: { color: "rgba(148, 163, 184, 0.12)" } },
-        axisLabel: { color: "#94a3b8", fontSize: 12 },
+        splitLine: { lineStyle: { color: withAlpha(backtestChartColor.textMuted, 0.12) } },
+        axisLabel: { color: backtestChartColor.textMuted, fontSize: 12 },
       },
       {
         type: "value",
         gridIndex: 1,
-        splitLine: { lineStyle: { color: "rgba(239, 68, 68, 0.10)" } },
-        axisLabel: { color: "#94a3b8", fontSize: 12, formatter: "{value}%" },
+        splitLine: { lineStyle: { color: withAlpha(backtestChartColor.drawdown, 0.1) } },
+        axisLabel: { color: backtestChartColor.textMuted, fontSize: 12, formatter: "{value}%" },
       },
     ],
     series: [
@@ -105,10 +106,10 @@ function buildOption(points: EquityPoint[]): echarts.EChartsCoreOption {
         smooth: true,
         showSymbol: false,
         lineStyle: { width: 2.6 },
-        areaStyle: { color: "rgba(103, 232, 249, 0.10)" },
+        areaStyle: { color: withAlpha(backtestChartColor.strategy, 0.1) },
         markPoint: {
           symbolSize: 42,
-          label: { color: "#0f172a", fontSize: 12 },
+          label: { color: backtestChartColor.textPrimary, fontSize: 12 },
           data: [
             { type: "max", name: "高点" },
             { type: "min", name: "低点" },
@@ -131,7 +132,7 @@ function buildOption(points: EquityPoint[]): echarts.EChartsCoreOption {
         data: drawdown,
         showSymbol: false,
         lineStyle: { width: 1.8 },
-        areaStyle: { color: "rgba(239, 68, 68, 0.10)" },
+        areaStyle: { color: withAlpha(backtestChartColor.drawdown, 0.1) },
       },
     ],
   };

@@ -10,6 +10,7 @@ import {
   BACKTEST_ECHARTS_STYLE,
   combineBacktestStyles,
 } from "./backtestStyles";
+import { backtestChartColor } from "./backtestChartTheme";
 
 echarts.use([CalendarComponent, CanvasRenderer, HeatmapChart, TooltipComponent, VisualMapComponent]);
 
@@ -41,8 +42,8 @@ function buildOption(items: BacktestMonthlyReturn[]): echarts.EChartsCoreOption 
       orient: "horizontal",
       left: "center",
       bottom: 0,
-      inRange: { color: ["#22c55e", "#f8fafc", "#dc2626"] },
-      textStyle: { color: "#64748b" },
+      inRange: { color: [backtestChartColor.success, backtestChartColor.surface, backtestChartColor.drawdown] },
+      textStyle: { color: backtestChartColor.textSecondary },
     },
     calendar: {
       top: 18,
@@ -50,10 +51,10 @@ function buildOption(items: BacktestMonthlyReturn[]): echarts.EChartsCoreOption 
       right: 28,
       cellSize: ["auto", 18],
       range: [`${minYear}-01-01`, `${maxYear}-12-31`],
-      itemStyle: { borderColor: "#e2e8f0" },
-      monthLabel: { color: "#475569", fontSize: 12 },
+      itemStyle: { borderColor: backtestChartColor.border },
+      monthLabel: { color: backtestChartColor.textSecondary, fontSize: 12 },
       dayLabel: { show: false },
-      yearLabel: { color: "#0f172a" },
+      yearLabel: { color: backtestChartColor.textPrimary },
     },
     series: {
       type: "heatmap",

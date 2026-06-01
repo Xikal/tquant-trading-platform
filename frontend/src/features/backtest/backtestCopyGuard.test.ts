@@ -25,4 +25,19 @@ describe("backtest copy guard", () => {
       expect(source).not.toContain("Paper 样本");
     }
   });
+
+  it("keeps lazy ECharts options on theme tokens instead of hardcoded colors", () => {
+    const chartSources = [
+      "./LazyBacktestCompareChart.tsx",
+      "./LazyBacktestEquityChart.tsx",
+      "./LazyBacktestMonthlyHeatmap.tsx",
+      "./LazyBacktestReturnDistribution.tsx",
+    ];
+
+    for (const chartSource of chartSources) {
+      const source = readLocal(chartSource);
+      expect(source).not.toMatch(/#[0-9a-fA-F]{3,8}/);
+      expect(source).not.toContain("rgba(");
+    }
+  });
 });

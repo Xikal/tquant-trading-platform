@@ -10,6 +10,7 @@ import {
   BACKTEST_ECHARTS_STYLE,
   combineBacktestStyles,
 } from "./backtestStyles";
+import { backtestChartColor, backtestComparePalette, withAlpha } from "./backtestChartTheme";
 
 echarts.use([CanvasRenderer, DataZoomComponent, GridComponent, LegendComponent, LineChart, TooltipComponent]);
 
@@ -24,16 +25,16 @@ function buildOption(result: BacktestCompareResponse | null): echarts.EChartsCor
   return {
     animation: false,
     backgroundColor: "transparent",
-    color: ["#67e8f9", "#d6a55c", "#ef4444", "#22c55e", "#f97316", "#a78bfa"],
+    color: [...backtestComparePalette],
     grid: { left: 44, right: 18, top: 34, bottom: 42 },
-    legend: { top: 4, right: 12, textStyle: { color: "#94a3b8", fontSize: 12 } },
+    legend: { top: 4, right: 12, textStyle: { color: backtestChartColor.textMuted, fontSize: 12 } },
     tooltip: { trigger: "axis" },
     dataZoom: [
       { type: "inside", filterMode: "none" },
-      { type: "slider", height: 14, bottom: 8, textStyle: { color: "#94a3b8" } },
+      { type: "slider", height: 14, bottom: 8, textStyle: { color: backtestChartColor.textMuted } },
     ],
-    xAxis: { type: "category", data: dates, boundaryGap: false, axisLabel: { color: "#94a3b8", fontSize: 12 } },
-    yAxis: { type: "value", scale: true, axisLabel: { color: "#94a3b8", fontSize: 12 }, splitLine: { lineStyle: { color: "rgba(148, 163, 184, 0.12)" } } },
+    xAxis: { type: "category", data: dates, boundaryGap: false, axisLabel: { color: backtestChartColor.textMuted, fontSize: 12 } },
+    yAxis: { type: "value", scale: true, axisLabel: { color: backtestChartColor.textMuted, fontSize: 12 }, splitLine: { lineStyle: { color: withAlpha(backtestChartColor.textMuted, 0.12) } } },
     series: series.map((item) => {
       const pointMap = new Map((item.equity ?? []).map((point) => [point.date, point.nav]));
       return {
