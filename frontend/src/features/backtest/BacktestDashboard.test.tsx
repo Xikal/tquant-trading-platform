@@ -4,6 +4,8 @@ import { BacktestDashboard } from "./BacktestDashboard";
 import { resourceTierHint } from "./backtestDisplay";
 import type { BacktestRunDetail, BacktestTrade, EquityPoint } from "../../api/backtests";
 import { backtestsApi } from "../../api/backtests";
+import type { BacktestFormState } from "./backtestForms";
+import type { BacktestResearchActions, BacktestResearchState } from "./BacktestResearchPanel";
 
 vi.mock("../../api/backtests", async () => {
   const actual = await vi.importActual<typeof import("../../api/backtests")>("../../api/backtests");
@@ -403,7 +405,7 @@ describe("BacktestDashboard", () => {
   });
 });
 
-function backtestFormFixture() {
+function backtestFormFixture(): BacktestFormState {
   return {
     name: "联合回测",
     start_date: "2025-01-02",
@@ -421,7 +423,7 @@ function backtestFormFixture() {
   };
 }
 
-function emptyResearchFixture() {
+function emptyResearchFixture(): BacktestResearchState {
   return {
     optimizationForm: {
       name: "",
@@ -469,7 +471,7 @@ function emptyResearchFixture() {
   };
 }
 
-function researchActionsFixture() {
+function researchActionsFixture(): BacktestResearchActions {
   return {
     onOptimizationFormChange: vi.fn(),
     onSubmitOptimization: vi.fn(),
