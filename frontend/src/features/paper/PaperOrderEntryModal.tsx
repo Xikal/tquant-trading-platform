@@ -175,7 +175,7 @@ export function OrderEntryModal({
       const payload = await api.getLowBuyPriorityBoard(10);
       setRecommended(payload.items.filter((item) => item.buy_signal_state === "buy_now" || item.buy_signal_state === "soft_buy_now"));
     } catch (error) {
-      setRecommendedError(error instanceof Error ? error.message : "今日推荐加载失败");
+      setRecommendedError(error instanceof Error ? error.message : "生产买入信号加载失败");
     } finally {
       setRecommendedLoading(false);
     }
@@ -193,7 +193,7 @@ export function OrderEntryModal({
       current_price: item.latest_price ? String(item.latest_price.toFixed(3)) : draft.current_price,
       quantity: draft.quantity || "100",
       strategy_key: item.strategy_key,
-      reason: `${item.strategy_title || "今日推荐"}：${item.buy_signal_text || item.action_summary || "优先级榜导入"}`,
+      reason: `${item.strategy_title || "生产买入信号"}：${item.buy_signal_text || item.action_summary || "优先级榜导入"}`,
     });
     setRecommendedOpen(false);
   }
@@ -226,7 +226,7 @@ export function OrderEntryModal({
 
         <div style={INTRO_ROW_STYLE}>
           <Button type="default" disabled={locked} loading={recommendedLoading} onClick={() => void loadRecommendedOrders()}>
-            {recommendedLoading ? "读取今日推荐..." : "从今日推荐导入"}
+            {recommendedLoading ? "读取生产买入信号..." : "从生产买入信号导入"}
           </Button>
           <Typography.Text type="secondary">自动填入代码、限价、策略来源和备注，提交前仍可微调。</Typography.Text>
         </div>

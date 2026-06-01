@@ -64,8 +64,8 @@ export function resolveTodayAction(
     const market = priorityBoard.market_state_text || priorityBoard.daily_decision?.market_plain_text || "当前市场";
     if ((priorityBoard.total_candidates ?? 0) <= 0 && !isPriorityBoardRefreshing(priorityBoard)) {
       return {
-        title: "今日无生产可推荐票",
-        detail: `${market}，生产层候选未同时满足买点、承接、风控和交易范围；研究观察池不能当作买入推荐。`,
+        title: "今日无生产买入信号",
+        detail: `${market}，生产层候选未同时满足买点、承接、风控和交易范围；研究观察只做提醒，不能当作买入建议。`,
         tone: "warn",
         source: "priority",
       };
@@ -73,7 +73,7 @@ export function resolveTodayAction(
     return {
       title: "今日无确认买入",
       detail: observeCount > 0
-        ? `${market}，系统仅保留 ${observeCount} 只观察票，不能当作买入推荐。`
+        ? `${market}，系统仅保留 ${observeCount} 只观察票，不能当作买入建议。`
         : `${market}，没有股票同时满足买点、承接和风控条件。`,
       tone: "warn",
       source: "priority",
@@ -103,10 +103,10 @@ export function buildPriorityNotice(
   const marketText = priorityBoard.market_state_text || priorityBoard.daily_decision?.market_plain_text || "当前市场";
   if ((priorityBoard.total_candidates ?? 0) <= 0 && !isPriorityBoardRefreshing(priorityBoard)) {
     return {
-      title: "今日无生产可推荐票",
+      title: "今日无生产买入信号",
       detail: blockedMarket
-        ? `${marketText}，生产层候选已被买点、风险或交易范围过滤；这不是后台没刷新，研究观察池也不能当作买入推荐。`
-        : "生产层没有股票同时满足价格区间、承接确认、风控和交易范围；研究观察池只用于提醒，不进入生产推荐。",
+        ? `${marketText}，生产层候选已被买点、风险或交易范围过滤；这不是后台没刷新，研究观察也不能当作买入建议。`
+        : "生产层没有股票同时满足价格区间、承接确认、风控和交易范围；研究观察只用于提醒，不进入生产买入排序。",
       tone: blockedMarket ? "danger" : "warn",
     };
   }
@@ -131,7 +131,7 @@ export function buildPriorityEmptyText(priorityBoard: LowBuyPriorityBoardResult 
     return "生产优先榜正在后台刷新，稍后自动更新。";
   }
   if ((priorityBoard.total_candidates ?? 0) <= 0) {
-    return "今日无生产可推荐票：候选未同时满足买点、承接、风控和交易范围；研究观察池只做提醒。";
+    return "今日无生产买入信号：候选未同时满足买点、承接、风控和交易范围；研究观察只做提醒。";
   }
   return "当前视图暂无可展示股票，请切换策略线或手动刷新。";
 }
