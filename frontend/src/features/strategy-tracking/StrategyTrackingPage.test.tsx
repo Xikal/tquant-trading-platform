@@ -10,6 +10,7 @@ import { DriftMonitorPanel } from "./DriftMonitorPanel";
 import { StrategyTrackingHoldingAnalysisPanel } from "./StrategyTrackingHoldingAnalysisPanel";
 import { StrategyTrackingPerformanceTable } from "./StrategyTrackingPerformanceTable";
 import { PromotionReviewPanel } from "./PromotionReviewPanel";
+import { StrategyTrackingConclusionBar } from "./StrategyTrackingConclusionBar";
 import { StrategyTrackingReviewPanel } from "./StrategyTrackingReviewPanel";
 import { StrategyTrackingSummaryBar } from "./StrategyTrackingSummaryBar";
 import { buildParams } from "./StrategyTrackingPage";
@@ -51,6 +52,36 @@ describe("StrategyTracking UI", () => {
     expect(html).toContain("当前跟踪");
     expect(html).toContain("部分行情或 payload 缺失");
     expect(html).toContain("跌破止损");
+  });
+
+  it("renders one conclusion bar that separates buy-class and observation-class signals", () => {
+    const html = renderToStaticMarkup(
+      <StrategyTrackingConclusionBar
+        result={{
+          ...listFixture(),
+          items: [
+            itemFixture({ user_friendly_status: "focus", signal_state: "buy_now", signal_text: "确定可买" }),
+            itemFixture({ user_friendly_status: "wait_entry", signal_state: "near_entry", signal_text: "接近买点" }),
+            itemFixture({ user_friendly_status: "weakening", signal_state: "observe_confirmed", signal_text: "观察确认" }),
+          ],
+        }}
+        range={30}
+        activeStatus=""
+        snapshotMeta="已生成 2026-05-29T10:00:00+08:00 / 截止 2026-05-29T09:30:00+08:00"
+        onSelectStatus={vi.fn()}
+      />
+    );
+
+    expect(html).toContain("strategy-tracking-conclusion");
+    expect(html).toContain("策略跟踪");
+    expect(html).toContain("买入类和观察类分开看");
+    expect(html).toContain("只有“确定可买”和“小仓试买”属于买入类");
+    expect(html).toContain("“接近买点”和“观察确认”只用于提醒和复盘");
+    expect(html).toContain("重点跟踪");
+    expect(html).toContain("观察等待");
+    expect(html).toContain("已走弱");
+    expect(html).toContain("样本与口径");
+    expect(html).not.toContain("重点推荐");
   });
 
   it("renders list rows with stable detail actions and pagination wiring", () => {
@@ -244,6 +275,21 @@ describe("StrategyTracking UI", () => {
     expect(html).toContain("观测表里目前没有该模型观测记录");
     expect(html).toContain("强势行情");
     expect(html).toContain("冲高回落");
+  });
+
+  it("keeps diagnostics rendering when older snapshots omit failure tags", () => {
+    const item = itemFixture();
+    (item as Partial<StrategyTrackingItem>).failure_tags = undefined;
+
+    const html = renderToStaticMarkup(
+      <StrategyTrackingDiagnosticsPanel
+        result={{ ...listFixture(), items: [item] }}
+        viewMode="professional"
+      />
+    );
+
+    expect(html).toContain("强势行情");
+    expect(html).toContain("需复核");
   });
 
   it("renders drift monitor with realized vs expected evidence", () => {
@@ -601,7 +647,11 @@ function holdingFixture(): StrategyTrackingHoldingAnalysis {
 function baseStoreState() {
   return {
     tab: "active" as const,
+    overviewTab: "active" as const,
+    analysisTab: "diagnostics" as const,
     viewMode: "beginner" as const,
+    summaryGroup: "overview" as const,
+    filtersDrawerOpen: false,
     range: 30,
     strategyKey: "",
     strategyVariant: "" as const,
@@ -620,7 +670,11 @@ function baseStoreState() {
     pageSize: 30,
     selectedItemId: null,
     setTab: vi.fn(),
+    setOverviewTab: vi.fn(),
+    setAnalysisTab: vi.fn(),
     setViewMode: vi.fn(),
+    setSummaryGroup: vi.fn(),
+    setFiltersDrawerOpen: vi.fn(),
     setRange: vi.fn(),
     setStrategyKey: vi.fn(),
     setStrategyVariant: vi.fn(),

@@ -1,4 +1,4 @@
-import { Alert, Tabs } from "antd";
+import { Alert, Button, Drawer, Segmented, Tabs } from "antd";
 import type { StrategyMeta } from "../../api/strategies";
 import { useStrategyTrackingStore } from "../../stores/strategyTrackingStore";
 import { TqEmpty, TqErrorResult } from "../../ui/feedback/StateViews";
@@ -9,16 +9,13 @@ import { PromotionReviewPanel } from "./PromotionReviewPanel";
 import { StrategyTrackingDetailDrawer } from "./StrategyTrackingDetailDrawer";
 import { StrategyTrackingDiagnosticsPanel } from "./StrategyTrackingDiagnosticsPanel";
 import { StrategyTrackingFilters } from "./StrategyTrackingFilters";
-import { StrategyTrackingFriendlySummary } from "./StrategyTrackingFriendlySummary";
+import { StrategyTrackingConclusionBar } from "./StrategyTrackingConclusionBar";
 import { StrategyTrackingHoldingAnalysisPanel } from "./StrategyTrackingHoldingAnalysisPanel";
 import { StrategyTrackingModeToggle } from "./StrategyTrackingModeToggle";
 import { StrategyTrackingPerformanceTable } from "./StrategyTrackingPerformanceTable";
 import { StrategyTrackingReviewPanel } from "./StrategyTrackingReviewPanel";
-import { StrategyTrackingStatusCards } from "./StrategyTrackingStatusCards";
-import { StrategyTrackingSummaryBar } from "./StrategyTrackingSummaryBar";
 import { StrategyTrackingTable } from "./StrategyTrackingTable";
 import { boolParam, tabParams } from "./strategyTrackingFormatters";
-import { RitualFortuneStrip, RitualLuckyDraw } from "../ritual-ui";
 
 type StrategyTrackingStoreState = ReturnType<typeof useStrategyTrackingStore.getState>;
 
@@ -27,9 +24,9 @@ export function StrategyTrackingPage({ strategyMeta }: { strategyMeta: StrategyM
   const params = buildParams(store);
   const query = useStrategyTrackingItems(params);
   const detailQuery = useStrategyTrackingDetail(store.selectedItemId);
-  const weeklyReportQuery = useStrategyTrackingReport("weekly", { range: store.range }, store.tab === "diagnostics");
-  const holdingQuery = useStrategyTrackingHoldingAnalysis(holdingParams(store), store.tab === "holding");
-  const driftQuery = useTrackRecordDrift(60, store.tab === "drift");
+  const weeklyReportQuery = useStrategyTrackingReport("weekly", { range: store.range }, store.analysisTab === "diagnostics");
+  const holdingQuery = useStrategyTrackingHoldingAnalysis(holdingParams(store), store.analysisTab === "holding");
+  const driftQuery = useTrackRecordDrift(60, store.analysisTab === "drift");
   const promotionReviewQuery = useStrategyPromotionReview(store.strategyKey || "n_pattern_long_wash", true);
   const snapshot = query.data;
   const result = snapshot ? snapshotToListResponse(snapshot) : undefined;
@@ -37,22 +34,86 @@ export function StrategyTrackingPage({ strategyMeta }: { strategyMeta: StrategyM
 
   return (
     <section className="strategy-tracking-page">
-      <div className="panel strategy-tracking-hero">
-        <div className="strategy-tracking-title">
-          <h1>策略跟踪</h1>
-          <p>跟踪生产层信号触发后的买点、涨幅、回撤和生命周期；买入类和观察类分开看。</p>
+      {result ? (
+        <StrategyTrackingConclusionBar
+          result={result}
+          range={store.range}
+          activeStatus={store.userStatus}
+          snapshotMeta={snapshotMetaText(snapshot)}
+          onSelectStatus={store.setUserStatus}
+        />
+      ) : (
+        <div className="panel strategy-tracking-hero">
+          <div className="strategy-tracking-title">
+            <h1>策略跟踪</h1>
+            <p>买入类和观察类分开看；观察信号只用于提醒和复盘。</p>
+          </div>
+          <div className="strategy-tracking-hero-meta">
+            <span>{snapshotMetaText(snapshot)}</span>
+            <span>只读观察</span>
+          </div>
         </div>
-        <div className="strategy-tracking-hero-meta">
-          <RitualFortuneStrip marketTone={(result?.summary.in_entry_zone_count ?? 0) > 0 ? "strong" : (result?.summary.stopped_count ?? 0) > 0 ? "weak" : "neutral"} compact />
-          <RitualLuckyDraw compact />
-          <span>区间 {store.range === 1 ? "今日" : `${store.range}日`}</span>
-          <span>样本 {result?.total ?? "--"}</span>
-          <span>{snapshotMetaText(snapshot)}</span>
-          <span>只读观察</span>
-        </div>
-      </div>
+      )}
       <div className="panel strategy-tracking-filter-panel">
-        <StrategyTrackingModeToggle viewMode={store.viewMode} onChange={store.setViewMode} />
+        <div className="strategy-tracking-filter-toolbar">
+          <StrategyTrackingModeToggle viewMode={store.viewMode} onChange={store.setViewMode} />
+          <Button onClick={() => store.setFiltersDrawerOpen(true)}>筛选条件</Button>
+        </div>
+        <div className="strategy-tracking-active-filters">{activeFilterText(store)}</div>
+      </div>
+      {snapshot?.stale ? <Alert type="warning" showIcon title="策略跟踪快照数据刷新中" description="当前先展示上一版快照，后台会在策略任务完成后重建。" /> : null}
+      {snapshot?.status === "missing" ? <Alert type="info" showIcon title="策略跟踪快照尚未生成" description="请先等待后台快照任务或由管理员手动刷新。" /> : null}
+      {store.excludeChinext || store.excludeStar || store.boardFilter === "main_only" ? (
+        <Alert type="info" showIcon title={filterNotice(store)} />
+      ) : null}
+      {result?.partial_errors.length ? (
+        <Alert type="warning" showIcon title={result.partial_errors.slice(0, 2).join("；")} />
+      ) : null}
+      {errorText ? <TqErrorResult title="策略跟踪加载失败" description={errorText} onRetry={() => void query.refetch()} /> : null}
+      {!errorText ? (
+        <div className="panel strategy-tracking-main-panel">
+          <div className="strategy-tracking-section-head">
+            <div>
+              <strong>主区：信号列表</strong>
+              <span>先看当前跟踪、涨幅和风险，观察信号不等于买入动作。</span>
+            </div>
+            <Segmented
+              size="small"
+              value={store.overviewTab}
+              onChange={(value) => store.setOverviewTab(value as typeof store.overviewTab)}
+              options={[
+                { label: "跟踪复盘", value: "active" },
+                { label: "涨幅", value: "gain" },
+                { label: "风险", value: "risk" },
+              ]}
+            />
+          </div>
+          {tableContent(result, query.isFetching, store)}
+        </div>
+      ) : null}
+      {!errorText ? (
+        <div className="panel strategy-tracking-secondary-panel">
+          <Tabs
+            size="small"
+            activeKey={store.analysisTab}
+            onChange={(key) => store.setAnalysisTab(key as typeof store.analysisTab)}
+            items={analysisTabs(result, store, holdingQuery, driftQuery, weeklyReportQuery, promotionReviewQuery)}
+          />
+        </div>
+      ) : null}
+      <StrategyTrackingDetailDrawer
+        open={Boolean(store.selectedItemId)}
+        loading={detailQuery.isFetching}
+        detail={detailQuery.data}
+        errorText={detailQuery.error instanceof Error ? detailQuery.error.message : ""}
+        viewMode={store.viewMode}
+        onClose={() => store.setSelectedItemId(null)}
+      />
+      <Drawer
+        title="策略跟踪筛选"
+        open={store.filtersDrawerOpen}
+        onClose={() => store.setFiltersDrawerOpen(false)}
+      >
         <StrategyTrackingFilters
           range={store.range}
           strategyKey={store.strategyKey}
@@ -82,99 +143,7 @@ export function StrategyTrackingPage({ strategyMeta }: { strategyMeta: StrategyM
           onExcludeStarChange={store.setExcludeStar}
           onBoardFilterChange={store.setBoardFilter}
         />
-      </div>
-      {result ? <StrategyTrackingFriendlySummary result={result} range={store.range} /> : null}
-      {snapshot?.stale ? <Alert type="warning" showIcon title="策略跟踪快照数据刷新中" description="当前先展示上一版快照，后台会在策略任务完成后重建。" /> : null}
-      {snapshot?.status === "missing" ? <Alert type="info" showIcon title="策略跟踪快照尚未生成" description="请先等待后台快照任务或由管理员手动刷新。" /> : null}
-      {store.excludeChinext || store.excludeStar || store.boardFilter === "main_only" ? (
-        <Alert type="info" showIcon title={filterNotice(store)} />
-      ) : null}
-      {result ? (
-        <div className="strategy-tracking-top-grid">
-          <StrategyTrackingSummaryBar summary={result.summary} />
-          <StrategyTrackingReviewPanel summary={result.summary} performance={result.performance} />
-          <PromotionReviewPanel review={promotionReviewQuery.data} loading={promotionReviewQuery.isFetching} />
-        </div>
-      ) : null}
-      {result ? (
-        <StrategyTrackingStatusCards items={result.items} activeStatus={store.userStatus} onSelectStatus={store.setUserStatus} />
-      ) : null}
-      {result?.partial_errors.length ? (
-        <Alert type="warning" showIcon title={result.partial_errors.slice(0, 2).join("；")} />
-      ) : null}
-      {errorText ? <TqErrorResult title="策略跟踪加载失败" description={errorText} onRetry={() => void query.refetch()} /> : null}
-      {!errorText ? (
-        <div className="panel strategy-tracking-main-panel">
-          <Tabs
-            activeKey={store.tab}
-            onChange={(key) => store.setTab(key as typeof store.tab)}
-            items={[
-              {
-                key: "active",
-                label: "跟踪复盘",
-                children: tableContent(result, query.isFetching, store),
-              },
-              {
-                key: "gain",
-                label: "涨幅榜",
-                children: tableContent(result, query.isFetching, store),
-              },
-              {
-                key: "risk",
-                label: "风险榜",
-                children: tableContent(result, query.isFetching, store),
-              },
-              {
-                key: "performance",
-                label: "策略表现",
-                children: result?.performance.length ? (
-                  <StrategyTrackingPerformanceTable items={result.performance} />
-                ) : (
-                  <TqEmpty title="暂无策略表现" description="当前筛选条件下还没有可聚合的跟踪信号样本。" />
-                ),
-              },
-              {
-                key: "holding",
-                label: "持有分析",
-                children: (
-                  <StrategyTrackingHoldingAnalysisPanel
-                    items={holdingQuery.data?.items ?? []}
-                    loading={holdingQuery.isFetching}
-                  />
-                ),
-              },
-              {
-                key: "drift",
-                label: "战绩漂移",
-                children: (
-                  <DriftMonitorPanel
-                    items={driftQuery.data?.items ?? []}
-                    total={driftQuery.data?.total ?? 0}
-                    loading={driftQuery.isFetching}
-                  />
-                ),
-              },
-              {
-                key: "diagnostics",
-                label: "复盘诊断",
-                children: result ? (
-                  <StrategyTrackingDiagnosticsPanel result={result} weeklyReport={weeklyReportQuery} viewMode={store.viewMode} />
-                ) : (
-                  <TqEmpty title="暂无复盘诊断" description="当前筛选条件下没有可诊断样本。" />
-                ),
-              },
-            ]}
-          />
-        </div>
-      ) : null}
-      <StrategyTrackingDetailDrawer
-        open={Boolean(store.selectedItemId)}
-        loading={detailQuery.isFetching}
-        detail={detailQuery.data}
-        errorText={detailQuery.error instanceof Error ? detailQuery.error.message : ""}
-        viewMode={store.viewMode}
-        onClose={() => store.setSelectedItemId(null)}
-      />
+      </Drawer>
     </section>
   );
 }
@@ -255,6 +224,77 @@ function holdingParams(store: StrategyTrackingStoreState): StrategyTrackingParam
     exclude_star: store.excludeStar,
     board_filter: store.boardFilter === "main_only" ? "main_only" : undefined,
   };
+}
+
+function analysisTabs(
+  result: StrategyTrackingListResponse | undefined,
+  store: StrategyTrackingStoreState,
+  holdingQuery: ReturnType<typeof useStrategyTrackingHoldingAnalysis>,
+  driftQuery: ReturnType<typeof useTrackRecordDrift>,
+  weeklyReportQuery: ReturnType<typeof useStrategyTrackingReport>,
+  promotionReviewQuery: ReturnType<typeof useStrategyPromotionReview>,
+) {
+  return [
+    {
+      key: "performance",
+      label: "策略表现",
+      children: result?.performance.length ? (
+        <StrategyTrackingPerformanceTable items={result.performance} />
+      ) : (
+        <TqEmpty title="暂无策略表现" description="当前筛选条件下还没有可聚合的跟踪信号样本。" />
+      ),
+    },
+    {
+      key: "holding",
+      label: "持有分析",
+      children: (
+        <StrategyTrackingHoldingAnalysisPanel
+          items={holdingQuery.data?.items ?? []}
+          loading={holdingQuery.isFetching}
+        />
+      ),
+    },
+    {
+      key: "drift",
+      label: "战绩漂移",
+      children: (
+        <DriftMonitorPanel
+          items={driftQuery.data?.items ?? []}
+          total={driftQuery.data?.total ?? 0}
+          loading={driftQuery.isFetching}
+        />
+      ),
+    },
+    {
+      key: "diagnostics",
+      label: "复盘诊断",
+      children: result ? (
+        <div className="strategy-tracking-analysis-stack">
+          <StrategyTrackingReviewPanel summary={result.summary} performance={result.performance} />
+          <StrategyTrackingDiagnosticsPanel result={result} weeklyReport={weeklyReportQuery} viewMode={store.viewMode} />
+          <PromotionReviewPanel review={promotionReviewQuery.data} loading={promotionReviewQuery.isFetching} />
+        </div>
+      ) : (
+        <TqEmpty title="暂无复盘诊断" description="当前筛选条件下没有可诊断样本。" />
+      ),
+    },
+  ];
+}
+
+function activeFilterText(store: StrategyTrackingStoreState): string {
+  const rangeText = store.range === 1 ? "今日" : `近 ${store.range} 日`;
+  const boardText = store.boardFilter === "main_only" ? "只看主板" : "全部市场板";
+  const hiddenBoards = [store.excludeChinext ? "屏蔽创业板" : "", store.excludeStar ? "屏蔽科创板" : ""].filter(Boolean);
+  const signalText = `信号 ${signalStateLabel(store.signalState)}`;
+  return [rangeText, boardText, signalText, ...hiddenBoards].join(" · ");
+}
+
+function signalStateLabel(signalState: string): string {
+  if (signalState === "buy_now") return "确定可买";
+  if (signalState === "soft_buy_now") return "小仓试买";
+  if (signalState === "near_entry") return "接近买点（观察）";
+  if (signalState === "observe_confirmed") return "观察确认（非买入）";
+  return "全部";
 }
 
 function filterNotice(store: StrategyTrackingStoreState): string {

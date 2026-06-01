@@ -1,6 +1,5 @@
-import type { CSSProperties } from "react";
 import { memo, useMemo } from "react";
-import { Button, Collapse, Grid, Space } from "antd";
+import { Button, Grid, Space } from "antd";
 import type {
   IntradayKeyLevelResponse,
   IntradayMarketPulse,
@@ -16,38 +15,24 @@ import type {
   StrategyVariant,
 } from "../../types";
 import type { InstrumentSyncStatus } from "../../types";
-import { NumberField, SearchField, TextField } from "../../components/shared/FormFields";
-import { InstrumentSyncProgress } from "./InstrumentSyncProgress";
 import {
-  buildMonitorMetrics,
   buildPriorityEmptyText,
   buildPriorityNotice,
   dataQualityTone,
-  formatRatioPct,
   resolveTodayAction,
 } from "./MonitorPage.helpers";
 import {
-  HourlyAllMarketPulse,
-  IntradayPulseCard,
   KeyLevelAlerts,
-  MarketBreadthStrip,
-  MonitorInputSideRail,
   MonitorPriorityStockCard,
-  MonitorReviewPanel,
   MonitorWatchStockCard,
-  SectorEtfOpportunityCard,
 } from "./MonitorPage.panels";
 import { MarketStateGatePanel } from "./MarketStateGatePanel";
-import { MonitorHoldingWizard } from "./MonitorHoldingWizard";
 import { RiskFilterBadges } from "./RiskFilterBadges";
 import { SectorLeaderGatePanel } from "./SectorLeaderGatePanel";
-import { Callout, ContextRow, EmptyState, FamilyStrip, InfoPill, MetricGrid, PanelTitle } from "../workspace-shared/WorkspaceComponents";
-import { WorkspacePageIntro } from "../workspace-shared/WorkspacePageIntro";
-import { RitualFortuneStrip } from "../ritual-ui";
+import { Callout, ContextRow, EmptyState, FamilyStrip, InfoPill, PanelTitle } from "../workspace-shared/WorkspaceComponents";
 import { formatPct, riskLevelText, shortTime } from "../workspace-shared/workspaceFormatters";
-import type { MetricItem, StockCardView, WatchDraft } from "../workspace-shared/workspaceTypes";
+import type { StockCardView, WatchDraft } from "../workspace-shared/workspaceTypes";
 import {
-  MONITOR_ETF_STYLE,
   MONITOR_INPUT_STYLE,
   MONITOR_PRIORITY_STYLE,
   MONITOR_SUMMARY_STYLE,
@@ -57,74 +42,9 @@ import { StrategyLaneStatusCard } from "../low-buy/StrategyLaneStatusCard";
 import { StrategyLaneTabs } from "../low-buy/StrategyLaneTabs";
 import { useWorkspaceMonitorStore } from "../../stores/workspaceMonitorStore";
 import { VirtualCardList } from "../../ui/list/VirtualCardList";
-
-const MONITOR_METRIC_DETAILS_STYLE: CSSProperties = {
-  marginTop: 8,
-  border: "1px solid rgba(148, 163, 184, 0.2)",
-  borderRadius: 8,
-  background: "#fff",
-  padding: "6px 8px",
-};
-
-const MONITOR_METRIC_SUMMARY_STYLE: CSSProperties = {
-  cursor: "pointer",
-  color: "var(--text-2)",
-  fontSize: 12,
-  fontWeight: 700,
-};
-
-const MONITOR_METRIC_GRID_STYLE: CSSProperties = {
-  marginTop: 6,
-};
-const MONITOR_COLLAPSE_STYLE: CSSProperties = {
-  marginTop: 8,
-  border: "1px solid rgba(148, 163, 184, 0.2)",
-  borderRadius: 8,
-  background: "#fff",
-};
-const MONITOR_COLLAPSE_BODY_STYLE: CSSProperties = {
-  display: "grid",
-  gap: 8,
-  padding: 8,
-};
-const MONITOR_HOLDING_GRID_STYLE: CSSProperties = {
-  display: "grid",
-  gap: 6,
-  gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
-  alignItems: "start",
-};
-const MONITOR_HOLDING_SEARCH_STYLE: CSSProperties = {
-  gridColumn: "1 / -1",
-};
-
-const MONITOR_HOLDING_SPAN_STYLE: CSSProperties = {
-  gridColumn: "1 / -1",
-};
-
-const MONITOR_FULL_ACTION_STYLE: CSSProperties = {
-  width: "100%",
-};
-
-const MONITOR_GOLD_ACTION_STYLE: CSSProperties = {
-  borderColor: "#ecd59a",
-  background: "#fbf4e6",
-  color: "var(--accent)",
-};
-
-const MONITOR_REVIEW_DRAFT_STYLE: CSSProperties = {
-  borderColor: "rgba(59, 130, 246, 0.24)",
-  background: "#f8fbff",
-};
-const MONITOR_EMBEDDED_HOLDING_STYLE: CSSProperties = {
-  display: "grid",
-  gap: 6,
-  marginTop: 10,
-  paddingTop: 10,
-  borderTop: "1px solid rgba(148, 163, 184, 0.18)",
-};
-const MONITOR_VIRTUAL_CARD_INSET_STYLE: CSSProperties = {
-  paddingRight: 2,
-};
+import { MonitorConclusionBar } from "./MonitorConclusionBar";
+import { HoldingEntryDrawer } from "./HoldingEntryDrawer";
+import { MonitorMoreTabs } from "./MonitorMoreTabs";
 
 export interface MonitorPageProps {
   priorityBoard: LowBuyPriorityBoardResult | null;
@@ -191,21 +111,13 @@ export const MonitorPage = memo(function MonitorPage({
 }: MonitorPageProps) {
   const activeLane = useWorkspaceMonitorStore((state) => state.activeStrategyLane);
   const setActiveLane = useWorkspaceMonitorStore((state) => state.setActiveStrategyLane);
+  const holdingDrawerOpen = useWorkspaceMonitorStore((state) => state.holdingDrawerOpen);
+  const setHoldingDrawerOpen = useWorkspaceMonitorStore((state) => state.setHoldingDrawerOpen);
+  const moreTab = useWorkspaceMonitorStore((state) => state.moreTab);
+  const setMoreTab = useWorkspaceMonitorStore((state) => state.setMoreTab);
   const screens = Grid.useBreakpoint();
-  const isEditing = Boolean(editingWatchSymbol);
   const primaryAction = useMemo(() => resolveTodayAction(watchCards, priorityCards, priorityBoard), [watchCards, priorityCards, priorityBoard]);
   const priorityNotice = useMemo(() => buildPriorityNotice(priorityBoard, priorityCards.length), [priorityBoard, priorityCards.length]);
-  const metrics: MetricItem[] = useMemo(
-    () => buildMonitorMetrics({ priorityBoard, priorityCards, watchCards }),
-    [priorityBoard, priorityCards, watchCards]
-  );
-  const ritualTone = marketPulse?.pulse_level === "weak" || marketPulse?.pulse_level === "defensive" || marketPulse?.pulse_level === "risk_off"
-    ? "weak"
-    : marketPulse?.pulse_level === "strong" || marketPulse?.pulse_level === "repair" || marketPulse?.pulse_level === "risk_on"
-      ? "strong"
-      : "neutral";
-  const instrumentSyncActive =
-    loading === "sync" || instrumentSyncStatus?.status === "queued" || instrumentSyncStatus?.status === "running";
   const wideLayout = screens.xl ?? true;
   const handleLaneChange = (next: StrategyVariant) => {
     setActiveLane(next);
@@ -213,110 +125,44 @@ export const MonitorPage = memo(function MonitorPage({
   };
   return (
     <section style={monitorGridStyle(!wideLayout)}>
-      <div className="panel" style={MONITOR_SUMMARY_STYLE}>
-        <WorkspacePageIntro
-          title="实时监控"
-          summary={reviewStatus?.status_text || marketPulse?.pulse_text || "今日复盘、Pulse 和风险动作。"}
-          tone={marketPulse?.data_quality === "fresh" ? "up" : marketPulse?.data_quality === "unavailable" ? "down" : marketPulse?.data_quality ? "warn" : "neutral"}
-          actions={
-            <>
-              <Button
-                onClick={onSync}
-                disabled={instrumentSyncActive}
-                title="从数据源更新股票基础信息，通常只在股票名称、行业或代码库异常时使用，可能耗时较久。"
-              >
-                {instrumentSyncActive ? "股票库更新中" : "更新股票库（较慢）"}
-              </Button>
-              <Button onClick={onRefresh} loading={loading === "monitor"}>手动刷新</Button>
-            </>
-          }
-          style={MONITOR_REVIEW_DRAFT_STYLE}
-        />
-        <RitualFortuneStrip marketTone={ritualTone} showCalendarHint />
-        <Callout
-          label="今天最重要的 1 件事"
-          title={primaryAction.title}
-          detail={primaryAction.detail}
-          tone={primaryAction.tone}
-          primary
-          action={(
-            <Button type="primary" size="small" onClick={primaryAction.source === "holding" ? onRefresh : onGoPlaybook}>
-              {primaryAction.source === "holding" ? "刷新确认" : "查看候选"}
-            </Button>
-          )}
-        />
-        <IntradayPulseCard pulse={marketPulse} />
-        <MonitorReviewPanel reviewStatus={reviewStatus} reviewReports={reviewReports} marketPulse={marketPulse} />
-        <Collapse
-          size="small"
-          style={MONITOR_COLLAPSE_STYLE}
-          items={[{
-            key: "market-detail",
-            label: "盘面细节、小时快照与维护状态",
-            styles: { body: MONITOR_COLLAPSE_BODY_STYLE },
-            children: (
-              <>
-                <details style={MONITOR_METRIC_DETAILS_STYLE}>
-                  <summary style={MONITOR_METRIC_SUMMARY_STYLE}>盘面数字摘要</summary>
-                  <MetricGrid items={metrics} compact style={MONITOR_METRIC_GRID_STYLE} />
-                </details>
-                <MarketBreadthStrip marketBreadth={marketBreadth} />
-                <HourlyAllMarketPulse marketBreadth={marketBreadth} history={hourlySnapshotHistory} />
-                <InstrumentSyncProgress status={instrumentSyncStatus} loading={loading === "sync"} />
-              </>
-            ),
-          }]}
+      <div style={MONITOR_SUMMARY_STYLE}>
+        <MonitorConclusionBar
+          marketBreadthState={marketBreadth?.state_text ?? null}
+          marketPulse={marketPulse}
+          priorityBoard={priorityBoard}
+          priorityCards={priorityCards}
+          reviewStatus={reviewStatus}
+          watchCards={watchCards}
+          onOpenHoldingDrawer={() => setHoldingDrawerOpen(true)}
+          onRefresh={onRefresh}
+          onSync={onSync}
         />
         <KeyLevelAlerts alerts={keyLevelAlerts} />
       </div>
 
-      <aside className="panel monitor-input" style={MONITOR_INPUT_STYLE}>
+      <aside className="panel monitor-holdings" style={MONITOR_INPUT_STYLE}>
         <PanelTitle
-          title={isEditing ? "编辑持仓约束" : "录入底仓约束"}
-          actions={isEditing ? <Button htmlType="button" onClick={onCancelEdit}>取消编辑</Button> : null}
+          title="我的持仓信号"
+          actions={<span className="muted">{watchCards.length} 个自选 / {runtime?.database_backend ?? "runtime"} </span>}
         />
-        <p className="hint">{isEditing ? `正在编辑 ${editingWatchSymbol}。` : "填写底仓、可卖和成本价，系统按 T+1 判断做T信号。"}</p>
-        <MonitorHoldingWizard draft={watchDraft} editing={isEditing} />
-        <div style={MONITOR_HOLDING_GRID_STYLE}>
-          <div style={MONITOR_HOLDING_SEARCH_STYLE}>
-            <SearchField
-              label="证券代码"
-              value={watchDraft.symbol}
-              placeholder="代码或名称"
-              disabled={isEditing}
-              onChange={(value) => setWatchDraft({ ...watchDraft, symbol: value })}
-            />
-          </div>
-          <NumberField label="底仓数量" value={watchDraft.base_position} onChange={(event) => setWatchDraft({ ...watchDraft, base_position: event.target.value })} />
-          <NumberField label="可卖数量" value={watchDraft.available_position} onChange={(event) => setWatchDraft({ ...watchDraft, available_position: event.target.value })} />
-          <NumberField label="成本价" value={watchDraft.cost_basis} onChange={(event) => setWatchDraft({ ...watchDraft, cost_basis: event.target.value })} />
-          <TextField label="名称" value={watchDraft.name} onChange={(event) => setWatchDraft({ ...watchDraft, name: event.target.value })} />
-          <div style={MONITOR_HOLDING_SPAN_STYLE}>
-            <TextField label="备注" value={watchDraft.memo} onChange={(event) => setWatchDraft({ ...watchDraft, memo: event.target.value })} />
-          </div>
-        </div>
-        <Button type="primary" style={MONITOR_FULL_ACTION_STYLE} onClick={onAddWatchlist} loading={loading === "watchlist"}>
-          {loading === "watchlist" ? "保存中..." : isEditing ? "更新持仓" : watchDraft.symbol.trim() ? "保存持仓" : "加入自选监控"}
-        </Button>
-        <MonitorInputSideRail
-          marketPulse={marketPulse}
-          primaryAction={primaryAction}
-          priorityCards={priorityCards}
-          reviewStatus={reviewStatus}
-          watchCards={watchCards}
-          onAnalyze={onAnalyze}
-          onGoPlaybook={onGoPlaybook}
-          onRefresh={onRefresh}
-          onSelect={onSelect}
-        />
-        <div style={MONITOR_EMBEDDED_HOLDING_STYLE}>
-          <PanelTitle title="已录入底仓" actions={<span className="muted">{watchCards.length} 个自选 / {runtime?.database_backend ?? "runtime"} </span>} />
+        <div className="monitor-holdings__body">
+          <Callout
+            title={primaryAction.title}
+            detail={primaryAction.detail}
+            tone={primaryAction.tone}
+            compact
+            action={(
+              <Button type="primary" size="small" onClick={primaryAction.source === "holding" ? onRefresh : onGoPlaybook}>
+                {primaryAction.source === "holding" ? "刷新确认" : "查看候选"}
+              </Button>
+            )}
+          />
           <VirtualCardList
             items={watchCards}
-            empty={<EmptyState text="暂无自选持仓。录入底仓后会显示做T信号。" />}
+            empty={<EmptyState text="暂无自选持仓。点击结论区的“录入持仓”后会显示做T信号。" />}
             estimateSize={170}
-            maxHeight={460}
-            style={MONITOR_VIRTUAL_CARD_INSET_STYLE}
+            maxHeight={520}
+            className="monitor-card-list--inset"
             getItemKey={(stock) => stock.symbol}
             renderItem={(stock) => (
               <MonitorWatchStockCard
@@ -336,12 +182,12 @@ export const MonitorPage = memo(function MonitorPage({
           title={priorityBoard?.display_lane_title || "生产优先榜"}
           actions={
             <>
-              <Button style={MONITOR_GOLD_ACTION_STYLE} onClick={onAi} loading={loading === "ai"}>{loading === "ai" ? "解读中..." : "解读榜单"}</Button>
+              <Button className="monitor-gold-action" onClick={onAi} loading={loading === "ai"}>{loading === "ai" ? "解读中..." : "解读榜单"}</Button>
               <Button onClick={onGoPlaybook}>去选股宝典</Button>
             </>
           }
         />
-        <Space direction="vertical" size={8} style={MONITOR_FULL_ACTION_STYLE}>
+        <Space direction="vertical" size={8} className="monitor-full-action">
           <StrategyLaneTabs value={activeLane} onChange={handleLaneChange} />
           <StrategyLaneStatusCard board={priorityBoard} activeLane={activeLane} />
         </Space>
@@ -369,7 +215,7 @@ export const MonitorPage = memo(function MonitorPage({
           empty={<EmptyState text={buildPriorityEmptyText(priorityBoard)} />}
           estimateSize={164}
           maxHeight={620}
-          style={MONITOR_VIRTUAL_CARD_INSET_STYLE}
+          className="monitor-card-list--inset"
           getItemKey={(stock) => `${stock.symbol}-${stock.actionText}`}
           renderItem={(stock) => (
             <MonitorPriorityStockCard stock={stock} onAnalyze={onAnalyze} onSelect={onSelect} />
@@ -377,20 +223,35 @@ export const MonitorPage = memo(function MonitorPage({
         />
       </div>
 
-      <div className="panel" style={MONITOR_ETF_STYLE}>
-        <PanelTitle title="行业 ETF 做T替代" actions={<span className="muted">利用 ETF T+0 特性，降低个股隔夜风险</span>} />
-        {pairedHedge?.disclaimer ? <Callout title={pairedHedge.disclaimer} tone="down" compact /> : null}
-        <VirtualCardList
-          items={sectorEtfT0?.opportunities ?? []}
-          empty={<EmptyState text="暂无 ETF 做T替代信号。只有板块低吸/热点信号明确时才展示。" />}
-          estimateSize={155}
-          maxHeight={520}
-          style={MONITOR_VIRTUAL_CARD_INSET_STYLE}
-          getItemKey={(item) => `${item.etf_symbol}-${item.source_signal_symbol}`}
-          renderItem={(item) => <SectorEtfOpportunityCard item={item} />}
+      <div className="monitor-secondary-region">
+        <MonitorMoreTabs
+          activeKey={moreTab}
+          instrumentSyncStatus={instrumentSyncStatus}
+          loading={loading}
+          marketBreadth={marketBreadth}
+          marketPulse={marketPulse}
+          hourlySnapshotHistory={hourlySnapshotHistory}
+          pairedHedge={pairedHedge}
+          priorityBoard={priorityBoard}
+          priorityCards={priorityCards}
+          reviewReports={reviewReports}
+          reviewStatus={reviewStatus}
+          runtime={runtime}
+          sectorEtfT0={sectorEtfT0}
+          watchCards={watchCards}
+          onChange={setMoreTab}
         />
-        {sectorEtfT0?.notes?.length ? <p className="hint">{sectorEtfT0.notes[0]}</p> : null}
       </div>
+      <HoldingEntryDrawer
+        draft={watchDraft}
+        editingSymbol={editingWatchSymbol}
+        loading={loading}
+        open={holdingDrawerOpen}
+        setDraft={setWatchDraft}
+        onAddWatchlist={onAddWatchlist}
+        onCancelEdit={onCancelEdit}
+        onClose={() => setHoldingDrawerOpen(false)}
+      />
     </section>
   );
 });

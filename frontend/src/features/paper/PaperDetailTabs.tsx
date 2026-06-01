@@ -32,28 +32,48 @@ import { EmptyState } from "../workspace-shared/WorkspaceComponents";
 import { formatInteger, formatPrice } from "../workspace-shared/workspaceFormatters";
 import { VirtualGrid } from "../../ui/grid/VirtualGrid";
 import { VirtualCardList } from "../../ui/list/VirtualCardList";
-import { usePaperUiStore, type PaperDetailTabKey } from "../../stores/paperUiStore";
+import { usePaperUiStore, type PaperDetailGroupKey, type PaperDetailTabKey } from "../../stores/paperUiStore";
 import { PaperExitModelShadowSummaryPanel } from "../backtest/StrategyImprovementSummary";
 
 export function PaperDetailTabs(props: PaperDetailTabsProps) {
   const tab = usePaperUiStore((state) => state.detailTab);
   const setTab = usePaperUiStore((state) => state.setDetailTab);
+  const group = usePaperUiStore((state) => state.detailGroup);
+  const setGroup = usePaperUiStore((state) => state.setDetailGroup);
   const tabs = useMemo(() => buildTabs(props), [props]);
+  const visibleTabs = tabs.filter((item) => item.group === group);
+  const activeTab = visibleTabs.some((item) => item.key === tab) ? tab : defaultTabForGroup(group);
 
   return (
     <Card
-      title="详情信息"
+      title="次区：记录、表现与自动化"
       size="small"
       style={{ gridArea: "details" }}
       styles={{ body: { padding: 8, fontSize: 12 } }}
     >
       <Tabs
         size="small"
-        activeKey={tab}
+        activeKey={group}
+        onChange={(key) => {
+          const nextGroup = key as PaperDetailGroupKey;
+          setGroup(nextGroup);
+          setTab(defaultTabForGroup(nextGroup));
+        }}
+        tabBarGutter={8}
+        tabBarStyle={{ marginBottom: 4, fontSize: 12 }}
+        items={[
+          { key: "automation", label: "自动化" },
+          { key: "records", label: "记录" },
+          { key: "performance", label: "表现（策略绩效）" },
+        ]}
+      />
+      <Tabs
+        size="small"
+        activeKey={activeTab}
         onChange={(key) => setTab(key as PaperDetailTabKey)}
         tabBarGutter={8}
         tabBarStyle={{ marginBottom: 6, fontSize: 12 }}
-        items={tabs.map((item) => ({
+        items={visibleTabs.map((item) => ({
           key: item.key,
           label: (
             <Typography.Text strong style={{ fontSize: 12, lineHeight: 1.2 }}>{item.label} <Typography.Text type="secondary" style={{ fontSize: 12 }}>{item.hint}</Typography.Text></Typography.Text>
@@ -61,15 +81,15 @@ export function PaperDetailTabs(props: PaperDetailTabsProps) {
         }))}
       />
       <div role="tabpanel" style={{ minHeight: 236, fontSize: 12 }}>
-        {tab === "today" ? (
+        {activeTab === "today" ? (
           <PaperTodayActionPanel
             autoTradingStatus={props.autoTradingStatus}
             autoTradingRuns={props.autoTradingRuns}
             riskEvents={props.riskEvents}
           />
         ) : null}
-        {tab === "orders" ? <PaperOrdersTab orders={props.orders} loading={props.loading} /> : null}
-        {tab === "trades" ? (
+        {activeTab === "orders" ? <PaperOrdersTab orders={props.orders} loading={props.loading} /> : null}
+        {activeTab === "trades" ? (
           <PaperTradesTab
             trades={props.trades}
             performance={props.performance}
@@ -80,7 +100,7 @@ export function PaperDetailTabs(props: PaperDetailTabsProps) {
             loading={props.loading}
           />
         ) : null}
-        {tab === "pnl" ? (
+        {activeTab === "pnl" ? (
           <PaperPositionDetailsPanel
             positions={props.positions}
             orders={props.orders}
@@ -91,20 +111,20 @@ export function PaperDetailTabs(props: PaperDetailTabsProps) {
             embedded
           />
         ) : null}
-        {tab === "strategy" ? (
+        {activeTab === "strategy" ? (
           <StrategyTab
             strategyPerformance={props.strategyPerformance}
             marketPerformance={props.marketPerformance}
             sectorEtfT0Performance={props.sectorEtfT0Performance}
           />
         ) : null}
-        {tab === "risk" ? (
+        {activeTab === "risk" ? (
           <RiskTab
             riskEvents={props.riskEvents}
             autoTradingRuns={props.autoTradingRuns}
           />
         ) : null}
-        {tab === "diagnostic" ? (
+        {activeTab === "diagnostic" ? (
           <DiagnosticTab
             ledgerRepairStatus={props.ledgerRepairStatus}
             canManageReconcile={props.canManageReconcile}
@@ -144,14 +164,20 @@ interface PaperDetailTabsProps {
 
 function buildTabs(props: PaperDetailTabsProps) {
   return [
-    { key: "today", label: "今日动作", hint: props.autoTradingStatus?.running ? "运行" : "待命" },
-    { key: "orders", label: "委托记录", hint: `${props.orders.length} 条` },
-    { key: "trades", label: "成交记录", hint: `${props.trades.length} 条` },
-    { key: "pnl", label: "个股盈亏", hint: `${props.stockPnl.length} 只` },
-    { key: "strategy", label: "策略绩效", hint: `${props.strategyPerformance.length + props.marketPerformance.length} 组` },
-    { key: "risk", label: "风险与日志", hint: `${props.riskEvents.length} 个风险` },
-    { key: "diagnostic", label: "对账诊断", hint: props.canManageReconcile ? "可修复" : "只读" },
-  ] as Array<{ key: PaperDetailTabKey; label: string; hint: string }>;
+    { key: "today", group: "automation", label: "今日动作", hint: props.autoTradingStatus?.running ? "运行" : "待命" },
+    { key: "risk", group: "automation", label: "风险与日志", hint: `${props.riskEvents.length} 个风险` },
+    { key: "diagnostic", group: "automation", label: "对账诊断", hint: props.canManageReconcile ? "可修复" : "只读" },
+    { key: "orders", group: "records", label: "委托记录", hint: `${props.orders.length} 条` },
+    { key: "trades", group: "records", label: "成交记录", hint: `${props.trades.length} 条` },
+    { key: "pnl", group: "performance", label: "个股盈亏", hint: `${props.stockPnl.length} 只` },
+    { key: "strategy", group: "performance", label: "策略绩效", hint: `${props.strategyPerformance.length + props.marketPerformance.length} 组` },
+  ] as Array<{ key: PaperDetailTabKey; group: PaperDetailGroupKey; label: string; hint: string }>;
+}
+
+function defaultTabForGroup(group: PaperDetailGroupKey): PaperDetailTabKey {
+  if (group === "records") return "orders";
+  if (group === "performance") return "strategy";
+  return "today";
 }
 
 export function PaperOrdersTab({ orders, loading }: { orders: PaperOrder[]; loading: boolean }) {

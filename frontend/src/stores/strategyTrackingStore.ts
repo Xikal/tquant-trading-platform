@@ -3,10 +3,15 @@ import { create } from "zustand";
 export type StrategyTrackingTab = "active" | "gain" | "risk" | "performance" | "holding" | "drift" | "diagnostics";
 export type StrategyTrackingViewMode = "beginner" | "professional";
 export type StrategyTrackingLane = "" | "baseline" | "front_row_weighted" | "front_row_only";
+export type StrategyTrackingSummaryGroup = "overview" | "analysis";
 
 interface StrategyTrackingStore {
   tab: StrategyTrackingTab;
+  overviewTab: "active" | "gain" | "risk";
+  analysisTab: "performance" | "holding" | "drift" | "diagnostics";
   viewMode: StrategyTrackingViewMode;
+  summaryGroup: StrategyTrackingSummaryGroup;
+  filtersDrawerOpen: boolean;
   range: number;
   strategyKey: string;
   strategyVariant: StrategyTrackingLane;
@@ -25,7 +30,11 @@ interface StrategyTrackingStore {
   pageSize: number;
   selectedItemId: string | null;
   setTab: (tab: StrategyTrackingTab) => void;
+  setOverviewTab: (tab: "active" | "gain" | "risk") => void;
+  setAnalysisTab: (tab: "performance" | "holding" | "drift" | "diagnostics") => void;
   setViewMode: (viewMode: StrategyTrackingViewMode) => void;
+  setSummaryGroup: (summaryGroup: StrategyTrackingSummaryGroup) => void;
+  setFiltersDrawerOpen: (open: boolean) => void;
   setRange: (range: number) => void;
   setStrategyKey: (strategyKey: string) => void;
   setStrategyVariant: (strategyVariant: StrategyTrackingLane) => void;
@@ -48,7 +57,11 @@ const resetPage = { page: 1 };
 
 export const useStrategyTrackingStore = create<StrategyTrackingStore>((set) => ({
   tab: "active",
+  overviewTab: "active",
+  analysisTab: "diagnostics",
   viewMode: "beginner",
+  summaryGroup: "overview",
+  filtersDrawerOpen: false,
   range: 30,
   strategyKey: "",
   strategyVariant: "",
@@ -66,7 +79,25 @@ export const useStrategyTrackingStore = create<StrategyTrackingStore>((set) => (
   page: 1,
   pageSize: 30,
   selectedItemId: null,
-  setTab: (tab) => set({ tab, sort: sortForTab(tab), ...resetPage }),
+  setTab: (tab) => set({
+    tab,
+    ...(isOverviewTab(tab) ? { overviewTab: tab, summaryGroup: "overview" as const } : { analysisTab: tab as StrategyTrackingStore["analysisTab"], summaryGroup: "analysis" as const }),
+    sort: sortForTab(tab),
+    page: resetPage.page,
+  }),
+  setOverviewTab: (overviewTab) => set({
+    tab: overviewTab,
+    overviewTab,
+    summaryGroup: "overview",
+    sort: sortForTab(overviewTab),
+    ...resetPage,
+  }),
+  setAnalysisTab: (analysisTab) => set({
+    tab: analysisTab,
+    analysisTab,
+    summaryGroup: "analysis",
+    ...resetPage,
+  }),
   setViewMode: (viewMode) =>
     set({
       viewMode,
@@ -74,6 +105,8 @@ export const useStrategyTrackingStore = create<StrategyTrackingStore>((set) => (
       excludeStar: viewMode === "beginner",
       ...resetPage,
     }),
+  setSummaryGroup: (summaryGroup) => set({ summaryGroup }),
+  setFiltersDrawerOpen: (filtersDrawerOpen) => set({ filtersDrawerOpen }),
   setRange: (range) => set({ range, ...resetPage }),
   setStrategyKey: (strategyKey) => set({ strategyKey, ...resetPage }),
   setStrategyVariant: (strategyVariant) => set({ strategyVariant, ...resetPage }),
@@ -99,4 +132,8 @@ function sortForTab(tab: StrategyTrackingTab): string {
   if (tab === "drift") return "max_gain_desc";
   if (tab === "performance") return "max_gain_desc";
   return "max_gain_desc";
+}
+
+function isOverviewTab(tab: StrategyTrackingTab): tab is "active" | "gain" | "risk" {
+  return tab === "active" || tab === "gain" || tab === "risk";
 }

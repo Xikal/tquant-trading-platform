@@ -18,11 +18,12 @@ import type {
 } from "../../types";
 import type { CSSProperties } from "react";
 import { memo, useEffect, useMemo } from "react";
-import { Card, Col, Collapse, Row, Space, Typography } from "antd";
+import { Card, Col, Collapse, Row, Space } from "antd";
 import { PixelTraderWorker } from "./PixelTraderWorker";
 import { PortfolioExecutionPanel } from "./PortfolioExecutionPanel";
 import { PaperDetailTabs } from "./PaperDetailTabs";
-import { PaperTradingSummaryBar } from "./PaperTradingSummaryBar";
+import { PaperConclusionBar } from "./PaperConclusionBar";
+import { PaperTodayActionPanel } from "./PaperTodayActionPanel";
 import {
   formatPaperDateTime,
   OrderEntryModal,
@@ -30,7 +31,6 @@ import {
 } from "./PaperTradingSections";
 import type { PaperOrderDraft } from "../workspace-shared/workspaceTypes";
 import { usePaperUiStore } from "../../stores/paperUiStore";
-import { RitualCloseBag, RitualFortuneStrip } from "../ritual-ui";
 
 const PAPER_PAGE_STACK_STYLE: CSSProperties = {
   display: "flex",
@@ -52,11 +52,6 @@ const PAPER_ROW_STYLE: CSSProperties = {
 const PAPER_SIDE_STACK_STYLE: CSSProperties = {
   display: "flex",
   fontSize: 12,
-};
-const PAPER_REVIEW_SUMMARY_BODY_STYLE: CSSProperties = {
-  display: "grid",
-  gap: 6,
-  padding: 10,
 };
 
 export interface PaperTradingPageProps {
@@ -106,7 +101,6 @@ export const PaperTradingPage = memo(function PaperTradingPage({
   autoTradingStatus,
   autoTradingRuns,
   ledgerRepairStatus = null,
-  performanceDashboard = null,
   canManageReconcile = false,
   draft,
   setDraft,
@@ -161,7 +155,7 @@ export const PaperTradingPage = memo(function PaperTradingPage({
 
   return (
     <Space direction="vertical" size={8} style={PAPER_PAGE_STACK_STYLE}>
-      <PaperTradingSummaryBar
+      <PaperConclusionBar
         account={account}
         performance={performance}
         autoTradingStatus={autoTradingStatus}
@@ -170,9 +164,6 @@ export const PaperTradingPage = memo(function PaperTradingPage({
         onOpenOrderEntry={() => setOrderModalOpen(true)}
         onTogglePause={onTogglePause}
       />
-      <RitualFortuneStrip marketTone={(account?.today_return_pct ?? performance?.total_return_pct ?? 0) > 0 ? "strong" : "neutral"} compact showCalendarHint />
-      <PaperReviewOverview dashboard={performanceDashboard} />
-      <PortfolioExecutionPanel preview={performance?.portfolio_execution_preview} />
       {orderModalOpen ? (
         <OrderEntryModal
           draft={draft}
@@ -185,7 +176,10 @@ export const PaperTradingPage = memo(function PaperTradingPage({
           onSubmitOrder={submitOrderFromModal}
         />
       ) : null}
-      <Row gutter={[8, 8]} align="top" style={PAPER_ROW_STYLE}>
+      <Row className="paper-main-grid" gutter={[8, 8]} align="top" style={PAPER_ROW_STYLE}>
+        <Col xs={24}>
+          <Card size="small" title="主区：持仓与今日动作" styles={{ body: { display: "none" } }} />
+        </Col>
         <Col xs={24} xl={15}>
           <PaperPositionsPanel
             positions={positions}
@@ -194,14 +188,37 @@ export const PaperTradingPage = memo(function PaperTradingPage({
         </Col>
         <Col xs={24} xl={9}>
           <Space direction="vertical" size={8} style={PAPER_SIDE_STACK_STYLE}>
-            <PixelTraderWorker
-              marketState={cockpitMarketState}
-              paused={paused}
-              autoTradingRunning={autoTradingRunning}
-              lastOrderAction={Number.isFinite(lastOrderAction?.timestamp) ? lastOrderAction : null}
-              loading={paperLoading || orderLoading}
-              onOpenOrderEntry={() => setOrderModalOpen(true)}
-              recentTrades={cockpitRecentTrades}
+            <Card size="small" title="今日动作 / 自动交易状态">
+              <PaperTodayActionPanel
+                autoTradingStatus={autoTradingStatus}
+                autoTradingRuns={autoTradingRuns}
+                riskEvents={riskEvents}
+              />
+            </Card>
+            <Collapse
+              size="small"
+              items={[
+                {
+                  key: "execution-preview",
+                  label: "组合执行预览",
+                  children: <PortfolioExecutionPanel preview={performance?.portfolio_execution_preview} />,
+                },
+                {
+                  key: "pixel",
+                  label: "像素状态",
+                  children: (
+                    <PixelTraderWorker
+                      marketState={cockpitMarketState}
+                      paused={paused}
+                      autoTradingRunning={autoTradingRunning}
+                      lastOrderAction={Number.isFinite(lastOrderAction?.timestamp) ? lastOrderAction : null}
+                      loading={paperLoading || orderLoading}
+                      onOpenOrderEntry={() => setOrderModalOpen(true)}
+                      recentTrades={cockpitRecentTrades}
+                    />
+                  ),
+                },
+              ]}
             />
           </Space>
         </Col>
@@ -232,36 +249,6 @@ export const PaperTradingPage = memo(function PaperTradingPage({
     </Space>
   );
 });
-
-function PaperReviewOverview({ dashboard }: { dashboard: PaperPerformanceDashboard | null }) {
-  if (!dashboard) {
-    return null;
-  }
-  const reports = dashboard.review_reports ?? [];
-  return (
-    <Row gutter={[12, 12]} align="stretch" style={PAPER_ROW_STYLE}>
-      <Col xs={24}>
-        <RitualCloseBag compact visible={reports.some((item) => item.report_slot === "close")} />
-        <Collapse
-          size="small"
-          items={[{
-            key: "review-history",
-            label: `复盘历史入口 · ${reports.length} 条`,
-            children: (
-              <Card
-                size="small"
-                extra={<Typography.Text type="secondary">{dashboard.updated_at || "--"}</Typography.Text>}
-                styles={{ body: PAPER_REVIEW_SUMMARY_BODY_STYLE }}
-              >
-                <Typography.Text type="secondary">全市场复盘主入口在实时监控页。</Typography.Text>
-              </Card>
-            ),
-          }]}
-        />
-      </Col>
-    </Row>
-  );
-}
 
 function resolveCockpitMarketState(
   autoTradingStatus: PaperAutoTradingStatus | null,

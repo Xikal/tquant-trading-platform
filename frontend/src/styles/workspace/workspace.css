@@ -57,6 +57,46 @@ canvas {
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
 }
 
+.monitor-holdings__body,
+.monitor-secondary-panel .ant-card-body {
+  display: grid;
+  gap: 8px;
+}
+
+.monitor-card-list--inset,
+.monitor-secondary-panel__list {
+  padding-right: 2px;
+}
+
+.monitor-gold-action {
+  border-color: color-mix(in srgb, var(--accent) 35%, var(--line));
+  background: color-mix(in srgb, var(--accent) 10%, var(--card));
+  color: var(--accent);
+}
+
+.monitor-full-action {
+  width: 100%;
+}
+
+.monitor-secondary-region {
+  grid-area: etf;
+}
+
+.monitor-holding-drawer__grid {
+  display: grid;
+  align-items: start;
+  gap: 6px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.monitor-holding-drawer__span {
+  grid-column: 1 / -1;
+}
+
+.monitor-holding-drawer__action {
+  width: 100%;
+}
+
 .hint,
 .muted,
 .ant-typography.ant-typography-secondary {

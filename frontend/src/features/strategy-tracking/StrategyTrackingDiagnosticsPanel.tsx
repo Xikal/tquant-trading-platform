@@ -56,7 +56,7 @@ export function StrategyTrackingDiagnosticsPanel({
 function failureTagCounts(result: StrategyTrackingListResponse): Array<[string, number]> {
   const counts = new Map<string, number>();
   for (const item of result.items) {
-    for (const tag of item.failure_tags) {
+    for (const tag of Array.isArray(item.failure_tags) ? item.failure_tags : []) {
       counts.set(tag, (counts.get(tag) || 0) + 1);
     }
   }

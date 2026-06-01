@@ -1,11 +1,16 @@
 import { renderToStaticMarkup } from "react-dom/server";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import type { LowBuyPriorityBoardResult } from "../../types";
+import { useWorkspaceMonitorStore } from "../../stores/workspaceMonitorStore";
 import { MonitorPage } from "../monitor/MonitorPage";
 import { SectorLeaderGatePanel } from "../monitor/SectorLeaderGatePanel";
 
 describe("MonitorPage", () => {
-  it("puts the direct action card before numeric metrics", () => {
+  afterEach(() => {
+    useWorkspaceMonitorStore.getState().resetMonitorData();
+  });
+
+  it("renders a conclusion bar before main priority and holding sections", () => {
     const html = renderToStaticMarkup(
       <MonitorPage
         priorityBoard={null}
@@ -48,10 +53,14 @@ describe("MonitorPage", () => {
       />
     );
 
-    expect(html).toContain("今天最重要的 1 件事");
-    expect(html).toContain("今日红运");
+    expect(html).toContain("tq-conclusion-bar");
+    expect(html).toContain("今日机会");
+    expect(html).toContain("持仓风险");
+    expect(html).toContain("大盘状态");
+    expect(html).toContain("+ 录入持仓");
+    expect(html).toContain("我的持仓信号");
     expect(html).toContain("农业银行");
-    expect(html).toContain("盘面细节、小时快照与维护状态");
+    expect(html).toContain("更多：ETF做T · 复盘 · 快照");
   });
 
   it("renders independent low-buy strategy lanes with plain status copy", () => {
@@ -98,6 +107,7 @@ describe("MonitorPage", () => {
   });
 
   it("renders hourly all-market snapshot feedback", () => {
+    useWorkspaceMonitorStore.setState({ moreTab: "snapshot" });
     const html = renderToStaticMarkup(
       <MonitorPage
         priorityBoard={null}
@@ -162,11 +172,13 @@ describe("MonitorPage", () => {
       />
     );
 
-    expect(html).toContain("盘面细节、小时快照与维护状态");
-    expect(html).toContain("今日复盘、Pulse 和风险动作");
+    expect(html).toContain("更多：ETF做T · 复盘 · 快照");
+    expect(html).toContain("小时快照");
+    expect(html).toContain("今日机会");
   });
 
   it("renders hourly trend and weakening warning", () => {
+    useWorkspaceMonitorStore.setState({ moreTab: "snapshot" });
     const html = renderToStaticMarkup(
       <MonitorPage
         priorityBoard={null}
@@ -233,11 +245,12 @@ describe("MonitorPage", () => {
       />
     );
 
-    expect(html).toContain("盘面细节、小时快照与维护状态");
-    expect(html).toContain("等待触发");
+    expect(html).toContain("更多：ETF做T · 复盘 · 快照");
+    expect(html).toContain("全市场强弱分连续走弱");
   });
 
   it("renders intraday pulse and review status on monitor first screen", () => {
+    useWorkspaceMonitorStore.setState({ moreTab: "review" });
     const html = renderToStaticMarkup(
       <MonitorPage
         priorityBoard={null}
@@ -310,14 +323,14 @@ describe("MonitorPage", () => {
       />
     );
 
-    expect(html).toContain("盘中 Pulse");
+    expect(html).toContain("大盘状态");
     expect(html).toContain("盘中结构转为可观察");
     expect(html).toContain("今日全市场午盘 / 收盘复盘");
     expect(html).toContain("今日市场午盘复盘已生成");
     expect(html).toContain("午后控制追高");
     expect(html).toContain("明细");
     expect(html).toContain("自动补全明细");
-    expect(html).toContain("今日红运");
+    expect(html).not.toContain("今日红运");
   });
 
   it("renders ETF T0 intraday signal details on monitor page", () => {

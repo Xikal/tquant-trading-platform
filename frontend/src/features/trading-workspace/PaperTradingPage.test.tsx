@@ -6,10 +6,10 @@ import { PaperTradingPage } from "../paper/PaperTradingPage";
 
 describe("PaperTradingPage", () => {
   afterEach(() => {
-    usePaperUiStore.setState({ detailTab: "today" });
+    usePaperUiStore.setState({ detailTab: "today", detailGroup: "automation" });
   });
 
-  it("renders paper trading panels and mecha order cockpit", () => {
+  it("renders paper trading as conclusion, main, and secondary sections", () => {
     const html = renderToStaticMarkup(
       <PaperTradingPage
         account={null}
@@ -46,10 +46,18 @@ describe("PaperTradingPage", () => {
     );
 
     expect(html).not.toContain("模拟交易");
-    expect(html).toContain("今日红运");
-    expect(html).toContain("机甲指挥舱");
+    expect(html).toContain("paper-conclusion");
+    expect(html).toContain("模拟盘");
+    expect(html).toContain("真实收益");
+    expect(html).toContain("仓位与风控");
+    expect(html).toContain("自动状态");
+    expect(html).toContain("paper-main-grid");
+    expect(html).toContain("主区：持仓与今日动作");
+    expect(html).not.toContain("今日红运");
+    expect(html).not.toContain("机甲指挥舱");
     expect(html).toContain("+委托");
-    expect(html).toContain("详情信息");
+    expect(html).toContain("次区：记录、表现与自动化");
+    expect(html).toContain("自动化");
     expect(html).toContain("策略绩效");
     expect(html).toContain("对账诊断");
   });
@@ -220,7 +228,7 @@ describe("PaperTradingPage", () => {
       />
     );
 
-    expect(html).toContain("超频");
+    expect(html).toContain("运行中");
     expect(html).toContain("disabled");
   });
 
@@ -307,7 +315,7 @@ describe("PaperTradingPage", () => {
     expect(html).toContain("自动交易按计划轮询，不依赖人工确认");
   });
 
-  it("keeps paper review as history entry instead of the main review surface", () => {
+  it("keeps paper page free of the full-market review entry", () => {
     const html = renderToStaticMarkup(
       <PaperTradingPage
         account={null}
@@ -391,8 +399,8 @@ describe("PaperTradingPage", () => {
       />
     );
 
-    expect(html).toContain("复盘历史入口 · 2 条");
-    expect(html).toContain("今日收盘福袋");
+    expect(html).not.toContain("复盘历史入口 · 2 条");
+    expect(html).not.toContain("今日收盘福袋");
     expect(html).not.toContain("明日优先处理弱势仓位");
   });
 
