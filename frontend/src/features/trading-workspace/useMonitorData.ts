@@ -56,14 +56,28 @@ const MONITOR_SERVER_KEYS = {
 
 type WithLoading = <T>(key: string, action: () => Promise<T>) => Promise<T | undefined>;
 
+function isMonitorAuthError(reason: unknown): boolean {
+  const status = (reason as { status?: number } | null)?.status;
+  if (status !== undefined) {
+    return status === 401;
+  }
+  const message = errorMessage(reason).toLowerCase();
+  return message.includes("401") || message.includes("unauthorized") || message.includes("not authenticated");
+}
+
 interface UseMonitorDataOptions {
   active: boolean;
   withLoading: WithLoading;
   setError: (message: string) => void;
   setNotice: (message: string) => void;
+  onAuthRequired: () => void;
 }
 
-export function useMonitorData({ active, withLoading, setError, setNotice }: UseMonitorDataOptions) {
+export function useMonitorData({ active, withLoading, setError, setNotice, onAuthRequired }: UseMonitorDataOptions) {
+  const onAuthRequiredRef = useRef(onAuthRequired);
+  useEffect(() => {
+    onAuthRequiredRef.current = onAuthRequired;
+  }, [onAuthRequired]);
   const [priorityBoard, setPriorityBoard, resetPriorityBoard] = useServerState<LowBuyPriorityBoardResult | null>(MONITOR_SERVER_KEYS.priorityBoard, null);
   const [marketBreadth, setMarketBreadth, resetMarketBreadth] = useServerState<MarketBreadth | null>(MONITOR_SERVER_KEYS.marketBreadth, null);
   const [marketPulse, setMarketPulse, resetMarketPulse] = useServerState<IntradayMarketPulse | null>(MONITOR_SERVER_KEYS.marketPulse, null);
@@ -213,11 +227,16 @@ export function useMonitorData({ active, withLoading, setError, setNotice }: Use
       if (runtimeResult.status === "fulfilled" && runtimeResult.value) {
         setRuntime(runtimeResult.value);
       }
-      const rejected = [workspaceResult, hourlyHistoryResult, runtimeResult].find(
+      const rejections = [workspaceResult, hourlyHistoryResult, runtimeResult].filter(
         (item): item is PromiseRejectedResult => item.status === "rejected"
       );
-      if (rejected) {
-        setError(errorMessage(rejected.reason));
+      // 会话过期：401 必须触发登出，否则轮询会无限刷 401（清登录态后轮询随 currentUser 置空而停止）。
+      if (rejections.some((item) => isMonitorAuthError(item.reason))) {
+        onAuthRequiredRef.current();
+        return;
+      }
+      if (rejections.length > 0) {
+        setError(errorMessage(rejections[0].reason));
       }
     } finally {
       monitorRefreshRef.current = false;
