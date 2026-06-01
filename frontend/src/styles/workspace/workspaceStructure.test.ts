@@ -13,6 +13,6 @@ describe("workspace styles structure", () => {
     const source = readStyle("workspace.css");
 
     expect(source).toContain("@import \"./workspace-primitives.css\"");
-    expect(source.split("\n").length).toBeLessThanOrEqual(1700);
+    expect(source.split("\n").length).toBeLessThanOrEqual(700);
   });
 });
