@@ -20,8 +20,8 @@ describe("EtfT0BacktestPanel", () => {
     expect(html).toContain("分钟回测结果");
     expect(html).toContain("参数热力图");
     expect(html).toContain("五类市场验证");
-    expect(html).toContain("真实 OOS 验证");
-    expect(html).toContain("OOS 使用 manifest");
+    expect(html).toContain("真实样本外验证");
+    expect(html).toContain("样本外使用 manifest");
     expect(html).toContain("牛市");
     expect(html).toContain("强反弹");
     expect(html).toContain("必须验收");

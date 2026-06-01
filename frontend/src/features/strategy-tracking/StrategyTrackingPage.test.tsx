@@ -83,6 +83,30 @@ describe("StrategyTracking UI", () => {
     expect(html).toContain("需复核");
   });
 
+  it("keeps beginner tracking table compact without putting help text in every cell", () => {
+    const html = renderToStaticMarkup(
+      <StrategyTrackingTable
+        items={[itemFixture({ signal_state: "near_entry", signal_text: "" })]}
+        total={1}
+        page={1}
+        pageSize={30}
+        loading={false}
+        viewMode="beginner"
+        onOpenDetail={vi.fn()}
+        onPageChange={vi.fn()}
+      />
+    );
+
+    const headerCount = (html.match(/scope="col"/g) ?? []).length;
+    expect(headerCount).toBe(6);
+    expect(html).toContain("width:1040px");
+    expect(html).toContain("结论与原因");
+    expect(html).not.toContain("当前结论");
+    expect(html).not.toContain("为什么");
+    expect(html).toContain("title=\"接近买点只代表快到观察区，不是买入建议，不能提前买。\"");
+    expect(html).not.toContain(">接近买点只代表快到观察区，不是买入建议，不能提前买。<");
+  });
+
   it("renders detail drawer timeline without needing list payload_json", () => {
     const html = renderToStaticMarkup(
       <StrategyTrackingDetailContent detail={detailFixture()} viewMode="professional" />
@@ -340,7 +364,7 @@ function snapshotFixture() {
   };
 }
 
-function itemFixture(): StrategyTrackingItem {
+function itemFixture(overrides: Partial<StrategyTrackingItem> = {}): StrategyTrackingItem {
   return {
     id: "first_board:600000:2026-04-20",
     symbol: "600000",
@@ -429,6 +453,7 @@ function itemFixture(): StrategyTrackingItem {
     user_friendly_reason: "已经跌破风险线，优先复盘失败原因。",
     plain_language_summary: "信号后最高涨过 +10.00%，最多跌过 -16.19%，现在涨跌 -12.00%，已经跌破风险线。",
     sector_detail: { board_type_text: "主板" },
+    ...overrides,
   };
 }
 

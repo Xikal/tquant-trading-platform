@@ -41,7 +41,7 @@ export function StrategyTrackingTable({
       loading={loading}
       dataSource={items}
       columns={columns(onOpenDetail, viewMode)}
-      scroll={{ x: 1360 }}
+      scroll={{ x: viewMode === "professional" ? 1260 : 1040 }}
       defaultScrollY={560}
       paginated
       pagination={{
@@ -62,7 +62,7 @@ function columns(onOpenDetail: (itemId: string) => void, viewMode: StrategyTrack
       title: "股票 / 板块",
       dataIndex: "symbol",
       fixed: "left",
-      width: 190,
+      width: 170,
       render: (_, item) => (
         <Button className="strategy-tracking-stock-link" type="link" size="small" onClick={() => onOpenDetail(item.id)}>
           <span>{item.name || item.symbol}</span>
@@ -72,41 +72,46 @@ function columns(onOpenDetail: (itemId: string) => void, viewMode: StrategyTrack
       ),
     },
     {
-      title: "当前结论",
-      width: 170,
+      title: "结论与原因",
+      width: 190,
       render: (_, item) => (
         <div className="strategy-tracking-cell-stack">
           <Tag color={friendlyTone(item.user_friendly_status)}>{item.user_friendly_status_text}</Tag>
           <RitualSignalSeal signalState={item.signal_state} riskLevel={item.stop_triggered ? "stop" : item.user_friendly_status} compact />
           <span>{item.user_friendly_reason}</span>
+          <small>{item.failure_reason_text || item.plain_language_summary || item.data_quality_text}</small>
         </div>
       ),
     },
     {
       title: "信号性质",
-      width: 210,
+      width: 180,
       render: (_, item) => (
-        <div className="strategy-tracking-cell-stack">
+        <div className="strategy-tracking-cell-stack" title={signalStateHelpText(item.signal_state)}>
           <Tag color={signalTone(item.signal_state)}>{signalStateText(item)}</Tag>
           <strong>{signalStateKindText(item.signal_state)}</strong>
-          <span>{signalStateHelpText(item.signal_state)}</span>
         </div>
       ),
     },
     {
-      title: "跟踪计划",
-      width: 190,
+      title: "计划与触发",
+      width: 200,
       render: (_, item) => (
         <div className="strategy-tracking-cell-stack">
           <strong>{item.strategy_name}</strong>
           <span>计划买入区 {entryZoneText(item)}</span>
           <span>风险线 {formatPrice(item.stop_loss)} · 目标 {formatPrice(item.target_price)}</span>
+          <div className="strategy-tracking-tag-row">
+            {item.entry_touched ? <Tag color="green">已到计划买入区</Tag> : <Tag>还没到计划买入价</Tag>}
+            {item.stop_triggered ? <Tag color="red">已跌破风险线</Tag> : null}
+            {item.target_touched ? <Tag color="blue">已触达目标位</Tag> : null}
+          </div>
         </div>
       ),
     },
     {
       title: "策略线",
-      width: 150,
+      width: 130,
       render: (_, item) => (
         <div className="strategy-tracking-cell-stack">
           <Tag color={laneTone(item.display_lane)}>{item.display_lane_title || "原低吸策略"}</Tag>
@@ -119,7 +124,7 @@ function columns(onOpenDetail: (itemId: string) => void, viewMode: StrategyTrack
     },
     {
       title: "信号后表现",
-      width: 200,
+      width: 170,
       render: (_, item) => (
         <div className="strategy-tracking-cell-stack">
           <span>信号后最高涨过 {displayReturn(item.max_gain_pct)}</span>
@@ -128,41 +133,37 @@ function columns(onOpenDetail: (itemId: string) => void, viewMode: StrategyTrack
         </div>
       ),
     },
-    {
-      title: "适合持有",
-      width: 190,
-      render: (_, item) => (
-        <div className="strategy-tracking-cell-stack">
-          <span>{item.best_holding_days ? `更适合：${holdingBucketText(item.holding_bucket)}` : "暂无持有窗口"}</span>
-          <span>{item.best_holding_days ? `最优：${item.best_holding_days} 天` : "样本不足"}</span>
-          <Tag color={holdExtensionTone(item.hold_extension_state)}>{item.hold_extension_text}</Tag>
-        </div>
-      ),
-    },
-    {
-      title: "触发",
-      width: 150,
-      render: (_, item) => (
-        <div className="strategy-tracking-tag-row">
-          {item.entry_touched ? <Tag color="green">已到计划买入区</Tag> : <Tag>还没到计划买入价</Tag>}
-          {item.stop_triggered ? <Tag color="red">已跌破风险线</Tag> : null}
-          {item.target_touched ? <Tag color="blue">已触达目标位</Tag> : null}
-        </div>
-      ),
-    },
-    {
-      title: "为什么",
-      width: 230,
-      render: (_, item) => (
-        <div className="strategy-tracking-cell-stack">
-          <strong>{item.failure_reason_text || item.plain_language_summary || item.data_quality_text}</strong>
-          <span>{item.first_signal_date} 信号 · 现价 {formatPrice(item.current_price)}</span>
-          {viewMode === "professional" && item.needs_review ? <Tag color="orange">需复核</Tag> : null}
-        </div>
-      ),
-    },
+    ...(viewMode === "professional" ? [holdingColumn(), reviewColumn()] : []),
     ...(viewMode === "professional" ? [professionalColumn()] : []),
   ];
+}
+
+function holdingColumn(): ColumnsType<StrategyTrackingItem>[number] {
+  return {
+    title: "适合持有",
+    width: 190,
+    render: (_, item) => (
+      <div className="strategy-tracking-cell-stack">
+        <span>{item.best_holding_days ? `更适合：${holdingBucketText(item.holding_bucket)}` : "暂无持有窗口"}</span>
+        <span>{item.best_holding_days ? `最优：${item.best_holding_days} 天` : "样本不足"}</span>
+        <Tag color={holdExtensionTone(item.hold_extension_state)}>{item.hold_extension_text}</Tag>
+      </div>
+    ),
+  };
+}
+
+function reviewColumn(): ColumnsType<StrategyTrackingItem>[number] {
+  return {
+    title: "复核",
+    width: 160,
+    render: (_, item) => (
+      <div className="strategy-tracking-cell-stack">
+        <span>{item.first_signal_date} 信号</span>
+        <span>现价 {formatPrice(item.current_price)}</span>
+        {item.needs_review ? <Tag color="orange">需复核</Tag> : null}
+      </div>
+    ),
+  };
 }
 
 function professionalColumn(): ColumnsType<StrategyTrackingItem>[number] {
@@ -201,7 +202,7 @@ function laneTone(lane?: string): string {
 }
 
 function laneRoleText(item: StrategyTrackingItem): string {
-  if (item.display_lane === "front_row_weighted") return "Paper验证 · 未接生产";
+  if (item.display_lane === "front_row_weighted") return "模拟验证中 · 未接生产";
   if (item.display_lane === "front_row_only") return "仅观察 · 不参与生产排序";
   return "旧策略排序 · 保留具体策略名";
 }

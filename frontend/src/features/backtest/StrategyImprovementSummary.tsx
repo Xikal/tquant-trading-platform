@@ -20,8 +20,8 @@ export function StrategyGovernanceSummaryPanel() {
 export function PaperExitModelShadowSummaryPanel() {
   const report = useStrategyImprovementReport();
   const error = useBacktestResearchUiStore((state) => state.strategyImprovementError);
-  if (error && !report) return <Alert type="warning" showIcon title="模型 Shadow 报告暂不可用" description={error} />;
-  if (!report) return <Typography.Text type="secondary">正在读取模型 Shadow 报告。</Typography.Text>;
+  if (error && !report) return <Alert type="warning" showIcon title="模型影子验证报告暂不可用" description={error} />;
+  if (!report) return <Typography.Text type="secondary">正在读取模型影子验证报告。</Typography.Text>;
   return <PaperExitModelShadowSummaryContent report={report} />;
 }
 
@@ -38,7 +38,7 @@ export function StrategyGovernanceSummaryContent({ report }: { report: StrategyI
         <Metric label="生产候选" value={formatInteger(counts.positive_expectancy_candidate ?? 0)} />
         <Metric label="高收益高回撤" value={formatInteger(counts.high_return_high_drawdown ?? 0)} />
         <Metric label="暂停/降权" value={formatInteger(counts.weak_strategy ?? 0)} />
-        <Metric label="WF窗口" value={formatInteger(report.walk_forward?.window_count ?? 0)} />
+        <Metric label="滚动窗口" value={formatInteger(report.walk_forward?.window_count ?? 0)} />
       </div>
       <Alert
         type={report.summary.production_parameter_change_allowed ? "success" : "warning"}
@@ -52,7 +52,7 @@ export function StrategyGovernanceSummaryContent({ report }: { report: StrategyI
         <Col xs={24} lg={8}><StrategyList title="暂停/降权" tone="red" items={weak} emptyText="暂无弱策略" /></Col>
       </Row>
       <Typography.Text style={BACKTEST_SECTION_META_STYLE}>
-        Walk-forward：{report.walk_forward?.status ?? "--"}，随机切分{report.walk_forward?.random_split_allowed ? "允许" : "禁止"}；约束审计 {report.constraint_policy?.status ?? "--"}，防未来函数 {report.temporal_guard?.status ?? "--"}。
+        滚动验证：{report.walk_forward?.status ?? "--"}，随机切分{report.walk_forward?.random_split_allowed ? "允许" : "禁止"}；约束审计 {report.constraint_policy?.status ?? "--"}，防未来函数 {report.temporal_guard?.status ?? "--"}。
       </Typography.Text>
     </Space>
   );
@@ -66,7 +66,7 @@ export function PaperExitModelShadowSummaryContent({ report }: { report: Strateg
   return (
     <Space orientation="vertical" size={8} style={{ width: "100%" }}>
       <div style={BACKTEST_METRIC_GRID_STYLE}>
-        <Metric label="Shadow样本" value={`${formatInteger(shadow?.record_count ?? 0)} / ${formatInteger(shadow?.settled_count ?? 0)}`} />
+        <Metric label="影子样本" value={`${formatInteger(shadow?.record_count ?? 0)} / ${formatInteger(shadow?.settled_count ?? 0)}`} />
         <Metric label="更激进动作" value={formatInteger(diff?.more_aggressive_than_rule ?? 0)} />
         <Metric label="Fallback" value={formatInteger(diff?.fallback ?? 0)} />
         <Metric label="卖飞率" value={`${formatNumber(outcome?.sell_flying_rate_pct ?? 0)}%`} />
@@ -74,7 +74,7 @@ export function PaperExitModelShadowSummaryContent({ report }: { report: Strateg
       <Alert
         type={shadow?.promotion_ready ? "success" : "info"}
         showIcon
-        title={shadow?.promotion_ready ? "模型可进入下一阶段评审" : "模型仍为 Shadow-only"}
+        title={shadow?.promotion_ready ? "模型可进入下一阶段评审" : "模型仍为仅影子验证"}
         description={`硬止损覆盖：${shadow?.hard_stop_override_allowed ? "允许" : "禁止"}；阻断：${blockers}`}
       />
       <Typography.Text style={BACKTEST_SECTION_META_STYLE}>

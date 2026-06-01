@@ -22,7 +22,7 @@ describe("StrategyImprovementSummary", () => {
   it("renders paper exit model as shadow-only with safety blockers", () => {
     const html = renderToStaticMarkup(<PaperExitModelShadowSummaryContent report={report} />);
 
-    expect(html).toContain("模型仍为 Shadow-only");
+    expect(html).toContain("模型仍为仅影子验证");
     expect(html).toContain("硬止损覆盖：禁止");
     expect(html).toContain("shadow_record_count_lt_30");
     expect(html).toContain("不下单、不改账本、不取消硬止损");

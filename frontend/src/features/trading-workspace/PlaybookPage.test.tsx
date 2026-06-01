@@ -3,6 +3,47 @@ import { describe, expect, it, vi } from "vitest";
 import { PlaybookPage } from "../playbook/PlaybookPage";
 
 describe("PlaybookPage", () => {
+  it("keeps hero metrics from duplicating into the compact metric grid", () => {
+    const html = renderToStaticMarkup(
+      <PlaybookPage
+        strategy="volume_shrink"
+        setStrategy={vi.fn()}
+        playbook={{
+          strategy_key: "volume_shrink",
+          strategy_title: "缩量回踩",
+          scanned_count: 18,
+          candidates: [],
+          confirmed_candidates: [],
+          hot_industries: ["机器人"],
+          latest_trade_date: "2026-05-04",
+          data_quality: "ok",
+          data_quality_text: "数据完整",
+          full_scan_ready: true,
+          performance: {
+            data_insufficient: false,
+            filled_signals: 4,
+            hit_rate: 62,
+            avg_return_5d: 1.2,
+            avg_max_drawdown_5d: -2.1,
+            profit_factor: 1.4,
+            market_state_attribution: [],
+          },
+        } as any}
+        loading=""
+        onRefresh={vi.fn()}
+        onAnalyze={vi.fn()}
+        onSelect={vi.fn()}
+      />
+    );
+
+    expect((html.match(/全量深筛/g) ?? []).length).toBe(1);
+    expect((html.match(/数据状态/g) ?? []).length).toBe(1);
+    expect(html).toContain("真实成交样本");
+    expect(html).toContain("5日达标率");
+    expect(html).not.toContain(">现在可买<");
+    expect(html).not.toContain(">观察确认<");
+  });
+
   it("shows strategy switching state when selected tab differs from loaded playbook", () => {
     const html = renderToStaticMarkup(
       <PlaybookPage
@@ -98,8 +139,9 @@ describe("PlaybookPage", () => {
       />
     );
 
-    expect(html).toContain("主力：洗盘确认 · 小仓试买 · 68.5");
-    expect(html).toContain("旁路观察");
+    expect(html).not.toContain("主力：洗盘确认 · 小仓试买 · 68.5");
+    expect(html).not.toContain("旁路观察");
+    expect(html).toContain("价格接近支撑");
     expect(html).toContain("买点已至");
     expect(html).toContain("tq-playbook-candidate-tabs");
     expect(html).toContain("tq-playbook-dense-row");

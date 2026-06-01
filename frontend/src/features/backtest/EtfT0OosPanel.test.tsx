@@ -20,12 +20,15 @@ describe("EtfT0OosPanel", () => {
       </QueryClientProvider>,
     );
 
-    expect(html).toContain("真实 OOS 验证");
+    expect(html).toContain("真实样本外验证");
     expect(html).toContain("manifest 中真实标注");
-    expect(html).toContain("OOS 数据集");
-    expect(html).toContain("运行真实 OOS");
+    expect(html).toContain("样本外数据集");
+    expect(html).toContain("运行真实样本外验证");
     expect(html).toContain("质量");
     expect(html).toContain("覆盖状态");
-    expect(html).toContain("暂无 OOS 数据集");
+    expect(html).toContain("暂无样本外数据集");
+    expect(html).not.toContain("OOS");
+    expect(html).not.toContain("paper_small");
+    expect(html).not.toContain("candidate_production");
   });
 });

@@ -20,12 +20,12 @@ describe("StrategyImprovementGateContent", () => {
     expect(html).toContain("tushare token not configured");
     expect(html).toContain("fake_minute_bars_forbidden");
     expect(html).toContain("daily_24m_coverage");
-    expect(html).toContain("Walk-forward");
+    expect(html).toContain("滚动验证");
     expect(html).toContain("随机切分禁止");
     expect(html).toContain("2025-08-01");
     expect(html).toContain("约束审计");
     expect(html).toContain("防未来函数");
-    expect(html).toContain("Shadow-only");
+    expect(html).toContain("仅影子验证");
     expect(html).toContain("动作差异");
     expect(html).toContain("shadow_record_count_lt_30");
   });

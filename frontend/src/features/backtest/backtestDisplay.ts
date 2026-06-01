@@ -27,13 +27,13 @@ export const BACKTEST_EXECUTION_MODELS: Array<[BacktestExecutionModel, string]> 
 export const BACKTEST_RESOURCE_TIER_OPTIONS: Array<[BacktestResourceTier, string]> = [
   ["light", "轻量验证"],
   ["full", "标准回测"],
-  ["walk_forward", "重型 Walk-forward"],
+  ["walk_forward", "重型滚动验证"],
 ];
 
 export const BACKTEST_RESOURCE_TIER_HINTS: Record<BacktestResourceTier, string> = {
   light: "轻量：快速判断参数方向，速度最快，适合初筛，不作为上线依据。",
   full: "标准：覆盖完整交易成本和风控口径，适合对比生产策略。",
-  walk_forward: "Walk-forward：样本外稳健性验证，耗时最长，适合上线前确认过拟合风险。",
+  walk_forward: "滚动验证（按时间逐段向前验证）：样本外稳健性验证，耗时最长，适合上线前确认过拟合风险。",
 };
 
 export const OPTIMIZATION_TARGET_OPTIONS = [

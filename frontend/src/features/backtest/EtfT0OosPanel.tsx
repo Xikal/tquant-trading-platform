@@ -75,7 +75,7 @@ export function EtfT0OosPanel({
       }
       setLatest(latestResponse);
     } catch (exc: unknown) {
-      setError(exc instanceof Error ? exc.message : "OOS 数据集加载失败。");
+      setError(exc instanceof Error ? exc.message : "样本外数据集加载失败。");
     } finally {
       setLoading(false);
     }
@@ -83,7 +83,7 @@ export function EtfT0OosPanel({
 
   async function validateOos() {
     if (!selectedDatasetKey || !bars.length) {
-      setError("请选择 OOS 数据集并提供分钟线。");
+      setError("请选择样本外数据集并提供分钟线。");
       return;
     }
     setLoading(true);
@@ -122,7 +122,7 @@ export function EtfT0OosPanel({
         quality: response.dataset.quality as unknown as Record<string, unknown>,
       });
     } catch (exc: unknown) {
-      setError(exc instanceof Error ? exc.message : "OOS 验证失败。");
+      setError(exc instanceof Error ? exc.message : "样本外验证失败。");
     } finally {
       setLoading(false);
     }
@@ -130,18 +130,18 @@ export function EtfT0OosPanel({
 
   return (
     <div style={BACKTEST_RESULT_BLOCK_STYLE}>
-      <PanelTitle title="真实 OOS 验证" meta={validation ? stageText(validation.stage) : selectedDataset?.version || "待选择"} />
-      <p style={BACKTEST_RESEARCH_NOTE_STYLE}>OOS 使用 manifest 中真实标注市场状态，不使用自动等分；结果只作为 research_only / paper_small / candidate_production 的只读阶段门槛。</p>
+      <PanelTitle title="真实样本外验证" meta={validation ? stageText(validation.stage) : selectedDataset?.version || "待选择"} />
+      <p style={BACKTEST_RESEARCH_NOTE_STYLE}>样本外使用 manifest 中真实标注市场状态，不使用自动等分；结果只作为研究观察、小仓模拟、可进入生产候选的只读阶段门槛。</p>
       {error ? <div style={BACKTEST_ERROR_STYLE}>{error}</div> : null}
       <div style={BACKTEST_RESEARCH_FORM_STYLE}>
         <SelectField
-          label="OOS 数据集"
+          label="样本外数据集"
           value={selectedDatasetKey}
           options={datasets.map((dataset) => ({ value: dataset.dataset_key, label: `${dataset.version} / ${dataset.dataset_key}` }))}
           onChange={(event) => setSelectedDatasetKey(event.target.value)}
         />
         <Button onClick={() => void loadDatasets()} loading={loading}>刷新数据集</Button>
-        <Button type="primary" onClick={() => void validateOos()} loading={loading} disabled={!selectedDatasetKey || !bars.length}>运行真实 OOS</Button>
+        <Button type="primary" onClick={() => void validateOos()} loading={loading} disabled={!selectedDatasetKey || !bars.length}>运行真实样本外验证</Button>
       </div>
       <div style={BACKTEST_MINI_METRICS_STYLE}>
         <Metric label="质量" value={selectedDataset?.quality_ok ? "通过" : selectedDataset ? "未通过" : "--"} />
@@ -149,12 +149,12 @@ export function EtfT0OosPanel({
         <Metric label="缺失率" value={selectedDataset ? formatPct(selectedDataset.quality.missing_bar_ratio * 100) : "--"} />
         <Metric label="标的覆盖" value={selectedDataset ? formatPct(selectedDataset.quality.symbol_coverage_ratio * 100) : "--"} />
         <Metric label="最近阶段" value={latest?.available ? stageText(latest.stage) : "未验证"} />
-        <Metric label="最近结论" value={latest?.verdict || "--"} />
+        <Metric label="最近结论" value={verdictText(latest?.verdict)} />
       </div>
       <VirtualGrid<EtfT0OosRegimeSegment>
         rowKey={(item) => `${item.regime}-${item.start_time}`}
         dataSource={selectedDataset?.regime_segments ?? []}
-        locale={{ emptyText: <Empty text="暂无 OOS 数据集；检查后端 manifest 或研究权限。" /> }}
+        locale={{ emptyText: <Empty text="暂无样本外数据集；检查后端 manifest 或研究权限。" /> }}
         scroll={{ x: 940 }}
         columns={[
           { title: "状态", render: (_value, item) => <strong>{item.label || item.regime}</strong> },
@@ -168,7 +168,7 @@ export function EtfT0OosPanel({
         <>
           <div style={BACKTEST_MINI_METRICS_STYLE}>
             <Metric label="阶段" value={stageText(validation.stage)} />
-            <Metric label="结论" value={validation.verdict} />
+            <Metric label="结论" value={verdictText(validation.verdict)} />
             <Metric label="通过" value={validation.passed ? "是" : "否"} />
             <Metric label="交易数" value={formatInteger(validation.research_report.base_report.trade_count)} />
             <Metric label="热力图通过点" value={formatInteger(validation.research_report.heatmap.filter((item) => item.pass_gate).length)} />
@@ -183,7 +183,7 @@ export function EtfT0OosPanel({
               { title: "交易", dataIndex: "trade_count", render: (value) => formatInteger(value) },
               { title: "净收益", dataIndex: "net_pnl" },
               { title: "PF", dataIndex: "profit_factor", render: (value) => formatNumber(value) },
-              { title: "结论", dataIndex: "verdict", render: (value) => <Tag color={verdictColor(String(value))}>{String(value)}</Tag> },
+              { title: "结论", dataIndex: "verdict", render: (value) => <Tag color={verdictColor(String(value))}>{verdictText(String(value))}</Tag> },
             ]}
           />
           {validation.gate_reasons.length ? <p style={BACKTEST_RESEARCH_NOTE_STYLE}>门槛原因：{validation.gate_reasons.join("；")}</p> : null}
@@ -195,8 +195,17 @@ export function EtfT0OosPanel({
 
 export function stageText(stage: string): string {
   if (stage === "paper_small") return "小仓模拟";
-  if (stage === "candidate_production") return "生产候选";
+  if (stage === "candidate_production") return "可进入生产候选";
   return "研究观察";
+}
+
+function verdictText(value?: string | null): string {
+  if (value === "pass") return "通过";
+  if (value === "fail") return "未通过";
+  if (value === "blocked") return "暂不通过";
+  if (value === "needs_data") return "需要补数据";
+  if (value === "needs_validation") return "仍需验证";
+  return value || "--";
 }
 
 function verdictColor(value: string): string {

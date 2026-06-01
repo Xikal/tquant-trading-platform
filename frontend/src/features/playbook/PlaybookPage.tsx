@@ -6,7 +6,7 @@ import { WorkspacePageIntro } from "../workspace-shared/WorkspacePageIntro";
 import { RitualFortuneStrip, RitualLuckyDraw, RitualSignalSeal } from "../ritual-ui";
 import { WEB_PLAYBOOK_TABS } from "../workspace-shared/workspaceConstants";
 import { candidateToCard } from "../workspace-shared/workspaceViewModels";
-import { formatNumber, formatPct, strategyLabel } from "../workspace-shared/workspaceFormatters";
+import { formatNumber, formatPct, strategyLabel, toneFromChange } from "../workspace-shared/workspaceFormatters";
 import type { MetricItem, StockCardView } from "../workspace-shared/workspaceTypes";
 import { VirtualCardList } from "../../ui/list/VirtualCardList";
 
@@ -88,15 +88,10 @@ export function PlaybookPage({
         compact
         className="tq-playbook-page__metrics"
         items={[
-          { label: playbookActionLabel("buy_now"), value: String(buyNow.length), tone: buyNow.length ? "up" : "neutral" },
-          { label: playbookActionLabel("observe_confirmed"), value: String(observeConfirmed.length), tone: observeConfirmed.length ? "warn" : "neutral" },
-          { label: playbookActionLabel("near_entry"), value: String(nearEntry.length), tone: nearEntry.length ? "warn" : "neutral" },
-          { label: playbookActionLabel("watch"), value: String(watch.length), tone: "neutral" },
-          { label: playbookActionLabel("avoid"), value: String(avoid.length), tone: avoid.length ? "down" : "neutral" },
-          { label: "全量深筛", value: String(playbook?.scanned_count ?? "--"), tone: "neutral" },
           { label: "真实成交样本", value: String(playbook?.performance?.filled_signals ?? 0), tone: hasInsufficientData ? "warn" : "up" },
-          { label: "数据状态", value: playbook?.data_quality_text ?? "--", tone: dataQualityTone(playbook?.data_quality) },
           { label: "5日达标率", value: hitRateDisplay, tone: hitRateTone },
+          { label: "平均收益", value: formatPct(playbook?.performance?.avg_return_5d), tone: toneFromChange(playbook?.performance?.avg_return_5d) },
+          { label: "最大回撤", value: formatPct(playbook?.performance?.avg_max_drawdown_5d), tone: toneFromChange(playbook?.performance?.avg_max_drawdown_5d) },
         ]}
       />
       <div className="panel tq-playbook-page__performance">

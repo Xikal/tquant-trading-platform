@@ -62,15 +62,15 @@ export function StrategyImprovementGateContent({ report }: { report: StrategyImp
         type={report.summary.formal_backtest_allowed ? "success" : "warning"}
         showIcon
         title={report.summary.formal_backtest_allowed ? "允许正式回测" : "正式回测已阻断"}
-        description={report.summary.reason || "数据、Walk-forward 和模型 Shadow 需要继续验证。"}
+        description={report.summary.reason || "数据、滚动验证和模型影子验证需要继续验证。"}
       />
       <div style={BACKTEST_METRIC_GRID_STYLE}>
         <Metric label="全市场覆盖" value={`${formatNumber(report.data_coverage.full_market_trade_day_coverage_pct ?? report.data_coverage.coverage_pct)}%`} />
         <Metric label="完整交易日" value={`${formatInteger(report.data_coverage.complete_trade_day_count ?? 0)} / ${formatInteger(report.data_coverage.trade_day_count ?? 0)}`} />
         <Metric label="ETF 验收分钟线" value={`${formatNumber(minuteCoverage)}%`} />
         <Metric label="候选策略" value={formatInteger(report.walk_forward?.candidate_strategy_count ?? 0)} />
-        <Metric label="WF窗口" value={formatInteger(report.walk_forward?.window_count ?? 0)} />
-        <Metric label="Shadow样本" value={`${formatInteger(report.auxiliary_model_shadow?.record_count ?? 0)} / ${formatInteger(report.auxiliary_model_shadow?.settled_count ?? 0)}`} />
+        <Metric label="滚动窗口" value={formatInteger(report.walk_forward?.window_count ?? 0)} />
+        <Metric label="影子样本" value={`${formatInteger(report.auxiliary_model_shadow?.record_count ?? 0)} / ${formatInteger(report.auxiliary_model_shadow?.settled_count ?? 0)}`} />
       </div>
       <Typography.Text style={BACKTEST_SECTION_META_STYLE}>
         日线缺口：{String(dailyGap?.trade_date ?? "--")}，当前 {String(dailyGap?.symbol_count ?? 0)} / {String(dailyGap?.threshold ?? 0)}；ETF 分钟线状态 {report.minute_coverage.status} / {report.minute_coverage.raw_data_status ?? "--"}，阻断 {report.minute_coverage.blocked_reason ?? "--"}；ETF 任意分钟线 {formatNumber(anyMinuteCoverage)}%，验收交易日 {formatInteger(report.minute_coverage.expected_trade_day_count ?? 0)}，缺口：{missingEtfs}
@@ -113,16 +113,16 @@ function AuditSummary({ report }: { report: StrategyImprovementReportResponse })
   return (
     <Space orientation="vertical" size={4} style={{ width: "100%" }}>
       <Typography.Text style={BACKTEST_SECTION_META_STYLE}>
-        Walk-forward：{formatInteger(report.walk_forward?.window_count ?? 0)} 个窗口，随机切分{report.walk_forward?.random_split_allowed ? "允许" : "禁止"}，参数网格：{gridSummary}，过拟合检查：{stability}
+        滚动验证：{formatInteger(report.walk_forward?.window_count ?? 0)} 个窗口，随机切分{report.walk_forward?.random_split_allowed ? "允许" : "禁止"}，参数网格：{gridSummary}，过拟合检查：{stability}
       </Typography.Text>
       <Typography.Text style={BACKTEST_SECTION_META_STYLE}>
-        首个窗口：训练 {firstWindow?.train_start ?? "--"} 至 {firstWindow?.train_end ?? "--"}，验证 {firstWindow?.validation_start ?? "--"} 至 {firstWindow?.validation_end ?? "--"}，OOS {firstWindow?.oos_start ?? "--"} 至 {firstWindow?.oos_end ?? "--"}。
+        首个窗口：训练 {firstWindow?.train_start ?? "--"} 至 {firstWindow?.train_end ?? "--"}，验证 {firstWindow?.validation_start ?? "--"} 至 {firstWindow?.validation_end ?? "--"}，样本外 {firstWindow?.oos_start ?? "--"} 至 {firstWindow?.oos_end ?? "--"}。
       </Typography.Text>
       <Typography.Text style={BACKTEST_SECTION_META_STYLE}>
         约束审计：{report.constraint_policy?.status ?? "--"}，问题 {formatInteger(report.constraint_policy?.issue_count ?? 0)}，防未来函数：{report.temporal_guard?.status ?? "--"}。
       </Typography.Text>
       <Typography.Text style={BACKTEST_SECTION_META_STYLE}>
-        模型Shadow：{shadow?.status ?? "--"}，Shadow-only {shadow?.shadow_only ? "是" : "否"}，可晋级 {shadow?.promotion_ready ? "是" : "否"}；动作差异 一致 {formatInteger(diff?.same_as_rule ?? 0)} / 更激进 {formatInteger(diff?.more_aggressive_than_rule ?? 0)} / 更保守 {formatInteger(diff?.less_aggressive_than_rule ?? 0)} / fallback {formatInteger(diff?.fallback ?? 0)}；5日均收益 {formatNumber(outcome?.avg_return_5d_pct ?? 0)}%，卖飞率 {formatNumber(outcome?.sell_flying_rate_pct ?? 0)}%；阻断：{shadowBlockers}
+        模型影子验证：{shadow?.status ?? "--"}，仅影子验证 {shadow?.shadow_only ? "是" : "否"}，可晋级 {shadow?.promotion_ready ? "是" : "否"}；动作差异 一致 {formatInteger(diff?.same_as_rule ?? 0)} / 更激进 {formatInteger(diff?.more_aggressive_than_rule ?? 0)} / 更保守 {formatInteger(diff?.less_aggressive_than_rule ?? 0)} / fallback {formatInteger(diff?.fallback ?? 0)}；5日均收益 {formatNumber(outcome?.avg_return_5d_pct ?? 0)}%，卖飞率 {formatNumber(outcome?.sell_flying_rate_pct ?? 0)}%；阻断：{shadowBlockers}
       </Typography.Text>
     </Space>
   );
