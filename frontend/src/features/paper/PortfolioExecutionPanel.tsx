@@ -37,7 +37,7 @@ export function PortfolioExecutionPanel({ preview }: { preview?: PaperPortfolioE
                 { title: "跳过", dataIndex: "skipped_count", width: 80, align: "right", render: (value) => formatInteger(value) },
                 { title: "收益", dataIndex: "portfolio_return_pct", width: 90, align: "right", render: (value) => <span className={toneFromChange(value)}>{formatPct(value)}</span> },
                 { title: "回撤", dataIndex: "max_drawdown_pct", width: 90, align: "right", render: (value) => formatPct(value) },
-                { title: "PF", dataIndex: "profit_factor", width: 80, align: "right" },
+                { title: "利润因子", dataIndex: "profit_factor", width: 80, align: "right" },
                 { title: "资金占用", dataIndex: "avg_capital_utilization_pct", width: 100, align: "right", render: (value) => formatPct(value) },
               ]}
               scroll={{ x: 820 }}

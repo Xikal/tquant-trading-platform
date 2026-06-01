@@ -64,7 +64,7 @@ const driftColumns: ColumnsType<TrackRecordDriftItem> = [
   },
   { title: "样本", dataIndex: "sample_settled", width: 70 },
   {
-    title: "PF",
+    title: "利润因子",
     width: 120,
     render: (_, item) => (
       <Typography.Text>{numText(item.realized_pf)} / {numText(item.expected_pf)}</Typography.Text>

@@ -85,7 +85,7 @@ describe("GroupedPerformanceTable", () => {
 
     expect(html).toContain("paper-grouped-performance-list");
     expect(html).toContain("首板低吸");
-    expect(html).toContain("PF");
+    expect(html).toContain("利润因子");
     expect(html).not.toContain("ant-table");
   });
 });

@@ -276,7 +276,7 @@ describe("StrategyTracking UI", () => {
     expect(html).toContain("真实战绩漂移");
     expect(html).toContain("decay_advisory");
     expect(html).toContain("first_board");
-    expect(html).toContain("PF");
+    expect(html).toContain("利润因子");
   });
 });
 

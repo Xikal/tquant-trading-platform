@@ -250,7 +250,7 @@ export function GroupedPerformanceTable({ items, emptyText }: { items: PaperGrou
             <PaperEtfT0Metric label="胜率" value={formatPct(item.win_rate_pct)} />
             <PaperEtfT0Metric label="净胜率" value={formatPct(item.net_win_rate_pct)} />
             <PaperEtfT0Metric label="均收" value={formatPct(item.avg_return_pct)} tone={toneFromChange(item.avg_return_pct)} />
-            <PaperEtfT0Metric label="PF" value={formatNumber(item.profit_factor)} tone={typeof item.profit_factor === "number" && item.profit_factor > 1 ? "up" : "neutral"} />
+            <PaperEtfT0Metric label="利润因子" value={formatNumber(item.profit_factor)} tone={typeof item.profit_factor === "number" && item.profit_factor > 1 ? "up" : "neutral"} />
           </div>
         </article>
       ))}

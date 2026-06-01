@@ -13,7 +13,7 @@ export function PromotionReviewPanel({
   loading: boolean;
 }) {
   const evidence = review?.evidence ?? {};
-  const rows = review ? [metricRow("样本数", evidence.sample_count), metricRow("PF", evidence.profit_factor), metricRow("平均单笔", evidence.average_trade_pct, "pct"), metricRow("最大回撤", evidence.max_drawdown_pct, "pct"), metricRow("max5", evidence.max5_return_pct, "pct"), metricRow("max10", evidence.max10_return_pct, "pct"), metricRow("季度稳定性", Number(evidence.quarterly_stability ?? 0) * 100, "pct")] : [];
+  const rows = review ? [metricRow("样本数", evidence.sample_count), metricRow("利润因子", evidence.profit_factor), metricRow("平均单笔", evidence.average_trade_pct, "pct"), metricRow("最大回撤", evidence.max_drawdown_pct, "pct"), metricRow("max5", evidence.max5_return_pct, "pct"), metricRow("max10", evidence.max10_return_pct, "pct"), metricRow("季度稳定性", Number(evidence.quarterly_stability ?? 0) * 100, "pct")] : [];
   return (
     <Collapse
       size="small"
