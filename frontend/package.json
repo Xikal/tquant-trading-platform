@@ -15,7 +15,7 @@
     "check:state-separation": "node ./scripts/check-state-separation.mjs",
     "check:css": "node ./scripts/check-css-guard.mjs",
     "check:strategy-meta": "python3 ../scripts/sync_strategy_meta_fallback.py --check",
-    "api:export": "cd .. && DATABASE_URL=${DATABASE_URL:-sqlite:///backend/data/t_quant.db} PYTHONPATH=backend:. backend/.venv/bin/python backend/scripts/export_openapi_schema.py --output docs/contracts/openapi.json",
+    "api:export": "cd .. && PYTHON_BIN=${PYTHON:-backend/.venv/bin/python}; if [ ! -x \"$PYTHON_BIN\" ]; then PYTHON_BIN=python; fi; DATABASE_URL=${DATABASE_URL:-sqlite:///backend/data/t_quant.db} PYTHONPATH=backend:. \"$PYTHON_BIN\" backend/scripts/export_openapi_schema.py --output docs/contracts/openapi.json",
     "api:generate": "openapi-typescript ../docs/contracts/openapi.json -o src/generated/api-types.ts",
     "api:check": "npm run api:export && npm run api:generate && npm run typecheck",
     "typecheck": "tsc -b",
