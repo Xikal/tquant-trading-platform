@@ -1,5 +1,41 @@
 # TQuant 实施计划
 
+## 2026-06-02 A 股交易经验观察与复盘套件最终开发计划
+
+需求来源：
+
+- 用户目标：把 16 篇章盟主交易经验与 Claude 需求文档合并进当前开发计划，形成一份最终、完整、可实施的计划。
+- 权威计划：`docs/trading-experience-observation-suite-final-execution-plan-2026-06-02.md`。
+
+### 执行边界
+
+- [ ] 只做观察、复盘、解释、纪律提示和研究归因。
+- [ ] 默认 feature flag 关闭。
+- [ ] 不替换 low-buy、priority board、front-row weighted 或任何现有生产排序。
+- [ ] 不产生 `production_score`，不修改 `strategy_policy`。
+- [ ] 不输出买入、卖出、加仓、低吸、必涨、推荐等交易指令。
+- [ ] “主力出货、洗盘、吸筹、对倒”只转为可观测价量标签，不当作事实。
+- [ ] 涨停后形态和做 T 规则必须先证伪、再采信，未达标保持 `research_only`。
+
+### 本轮实施顺序
+
+- [ ] G0：计划收口与守卫，新增 feature flags、文案禁词守卫、生产隔离守卫。
+- [ ] G1：每日复盘池 + 交易纪律日志，补 `review_pool_item` 与 `trade_journal_entry`。
+- [ ] G2：量价-位置风险标签 + 相对强度 / 抗跌榜。
+- [ ] G3：持仓纪律助手，复用 AKeyLevel 和 paper 持仓。
+- [ ] G4：涨停后量价跟踪研究门，24M 回测未达标不进入排序。
+- [ ] G5：做 T 纪律与效果归因，基于 paper 成交和分钟数据覆盖检查。
+- [ ] G6：统一验收、报告、OpenAPI/generated 同步和 flag 回退验证。
+
+### 验收要求
+
+- [ ] 后端相关 `pytest` 通过。
+- [ ] 前端 `api:check`、`lint`、`test`、`build`、`analyze` 通过。
+- [ ] `git diff --check` 通过。
+- [ ] 关闭全部 flags 后，监控、策略跟踪、模拟盘、回测和生产排序行为不变。
+- [ ] 所有新增展示带 `data_quality`、`as_of`、`engine_version` 或等价字段。
+- [ ] 报告明确区分观察池、候选池、真实组合和研究归因，不出现裸“总收益”。
+
 ## 2026-05-30 可接受整改 P0-A~P2-I 一次性交付
 
 需求来源：

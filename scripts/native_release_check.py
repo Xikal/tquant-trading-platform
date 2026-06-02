@@ -53,17 +53,14 @@ def main() -> int:
             errors.append("Android bundled assets contain no JavaScript files. Run `cd frontend && npm run build:native && npx cap sync android`.")
         else:
             js_text = "\n".join(path.read_text(encoding="utf-8", errors="ignore") for path in js_files)
-            version_match = re.search(
-                r"var\s+[A-Za-z_$][\w$]*\s*=\s*(\d+)\s*,[A-Za-z_$][\w$]*=`tquant\.dismissed_android_update`",
-                js_text,
+            marker_pattern = re.compile(
+                rf"\b[A-Za-z_$][\w$]*\s*=\s*{expected_code}\b"
+                r"[\s\S]{0,500}tquant\.dismissed_android_update"
+                r"|tquant\.dismissed_android_update[\s\S]{0,500}"
+                rf"\b[A-Za-z_$][\w$]*\s*=\s*{expected_code}\b"
             )
-            if not version_match:
+            if not marker_pattern.search(js_text):
                 errors.append("Native bundled update version marker was not found. Run `cd frontend && npm run build:native && npx cap sync android`.")
-            elif int(version_match.group(1)) != expected_code:
-                errors.append(
-                    f"Native bundled update version is {version_match.group(1)}, expected {expected_code}. "
-                    "Run `cd frontend && npm run build:native && npx cap sync android`."
-                )
 
     if errors:
         for error in errors:

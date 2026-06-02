@@ -10,6 +10,14 @@
 - 不要直接删除历史 JSON、JSONL、zip 或 walk-forward 明细；先做引用检查和审计价值判断。
 - 本地缓存使用 `scripts/clean_local_artifacts.sh` 清理，不把缓存产物提交入库。
 
+## 当前人读资料与审查记录
+
+- `docs/reports/artifact-manifest-2026-06-02.md`
+- `docs/reports/project-engineering-compliance-remediation-2026-06-02.md`
+- `docs/reports/full-project-code-review-2026-06-02.md`
+- `docs/reports/zhangmengzhu-16-articles-analysis-2026-06-02.md`
+- `docs/reports/zhangmengzhu-16-articles-source-2026-06-02.md`
+
 ## 历史机器产物现状
 
 截至 2026-06-02，本目录仍有历史机器产物。它们不代表新增规范，而是保留用于审计、回溯和报告引用。

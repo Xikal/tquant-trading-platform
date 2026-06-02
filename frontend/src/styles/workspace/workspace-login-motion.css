@@ -1,0 +1,321 @@
+@keyframes wise-login-ticker-flow {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+@keyframes purple-aurora {
+  0% {
+    opacity: 0.6;
+    transform: translate(-30%, -30%) rotate(0deg);
+  }
+  50% {
+    opacity: 0.9;
+    transform: translate(-20%, -25%) rotate(180deg);
+  }
+  100% {
+    opacity: 0.6;
+    transform: translate(-30%, -30%) rotate(360deg);
+  }
+}
+
+@keyframes rotate-gold {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes taiji-rotate {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes login-grid-drift {
+  from {
+    background-position: 0 0, 0 0, center;
+  }
+  to {
+    background-position: 46px 46px, 46px 46px, center;
+  }
+}
+
+@keyframes login-ring-pulse {
+  0%,
+  100% {
+    opacity: 0.48;
+    transform: translate(-50%, -50%) scale(0.96);
+  }
+  50% {
+    opacity: 0.92;
+    transform: translate(-50%, -50%) scale(1.04);
+  }
+}
+
+@keyframes login-line-flow {
+  from {
+    stroke-dashoffset: 0;
+  }
+  to {
+    stroke-dashoffset: -104;
+  }
+}
+
+@keyframes login-orbit-spin {
+  from {
+    transform: translate(-50%, -50%) rotate(0deg);
+  }
+  to {
+    transform: translate(-50%, -50%) rotate(360deg);
+  }
+}
+
+@keyframes login-ticker-left {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+@keyframes login-ticker-right {
+  from {
+    transform: translateX(-50%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes login-candle-rise {
+  0%,
+  100% {
+    opacity: 0.62;
+    transform: scaleY(0.82);
+  }
+  50% {
+    opacity: 1;
+    transform: scaleY(1);
+  }
+}
+
+@keyframes login-flow-one {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  50% {
+    transform: translate(42vw, -11vh);
+  }
+}
+
+@keyframes login-flow-two {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  50% {
+    transform: translate(-32vw, 18vh);
+  }
+}
+
+@keyframes login-flow-three {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  50% {
+    transform: translate(28vw, -24vh);
+  }
+}
+
+@keyframes login-signal-ping {
+  0% {
+    opacity: 0;
+    transform: scale(0.72);
+  }
+  24% {
+    opacity: 0.78;
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.55);
+  }
+}
+
+@keyframes login-depth-breathe {
+  0%,
+  100% {
+    opacity: 0.46;
+  }
+  50% {
+    opacity: 0.88;
+  }
+}
+
+@keyframes login-hud-breathe {
+  0%,
+  100% {
+    opacity: 0.52;
+    transform: translateY(0);
+  }
+  50% {
+    opacity: 0.84;
+    transform: translateY(-4px);
+  }
+}
+
+@keyframes login-heat-flicker {
+  0%,
+  100% {
+    opacity: 0.54;
+    transform: scaleY(0.72);
+  }
+  50% {
+    opacity: 0.94;
+    transform: scaleY(1);
+  }
+}
+
+@keyframes login-card-aura {
+  0%,
+  100% {
+    opacity: 0.28;
+  }
+  50% {
+    opacity: 0.48;
+  }
+}
+
+@keyframes login-ritual-breathe {
+  0%,
+  100% {
+    opacity: 0.58;
+    transform: rotate(-9deg) scale(0.98);
+  }
+  50% {
+    opacity: 0.88;
+    transform: rotate(-9deg) scale(1.03);
+  }
+}
+
+@media (max-width: 1024px) {
+  .wise-login-left-hud,
+  .wise-login-right-hud,
+  .login-depth-panel {
+    display: none;
+  }
+
+  .login-hud-panel {
+    opacity: 0.34;
+  }
+}
+
+@media (max-width: 720px) {
+  .wise-login-shell {
+    min-height: 100dvh;
+  }
+
+  .wise-login-stage {
+    padding: 16px;
+  }
+
+  .wise-login-card {
+    width: min(100%, 430px);
+  }
+
+  .wise-login-card .ant-card-body {
+    padding: 26px 20px;
+  }
+
+  .wise-login-footer {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 4px;
+    padding: 8px 16px;
+  }
+
+  .login-candle-field,
+  .login-heat-strip,
+  .login-hud-panel,
+  .login-ritual-seal {
+    opacity: 0.24;
+  }
+
+  .login-radar-ring-one {
+    width: 112vw;
+  }
+
+  .login-radar-ring-two {
+    width: 84vw;
+  }
+
+  .login-ticker-strip {
+    font-size: 12px;
+  }
+
+  .login-hud-panel {
+    width: 132px;
+  }
+
+  .login-ritual-motto {
+    bottom: 52px;
+    font-size: 12px;
+  }
+
+  .login-market-lines {
+    opacity: 0.34;
+  }
+
+  .wise-login-options {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
+
+@media (max-width: 420px) {
+  .wise-login-ticker,
+  .wise-login-footer {
+    font-size: 12px;
+  }
+
+  .wise-login-title,
+  .wise-login-card .wise-login-title.ant-typography {
+    font-size: 22px;
+  }
+
+  .wise-login-mode-strip {
+    font-size: 12px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wise-login-ticker-track,
+  .login-purple-glow-field,
+  .login-grid-layer,
+  .login-radar-ring,
+  .login-market-line,
+  .login-orbit-dial,
+  .login-ticker-strip,
+  .login-candle-field span,
+  .login-flow-node,
+  .login-signal-pulse,
+  .login-depth-panel span::before,
+  .login-hud-panel,
+  .login-heat-strip span,
+  .wise-login-card::before,
+  .login-core-card::before,
+  .wise-taiji-ring,
+  .wise-taiji-mark,
+  .wise-talisman span,
+  .login-ritual-seal,
+  .ritual-fortune-strip::after,
+  .ritual-signal-seal,
+  .ritual-close-bag::after {
+    animation: none;
+  }
+}

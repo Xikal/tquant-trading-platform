@@ -1,212 +1,279 @@
-# Project Engineering Compliance Remediation - 2026-06-02
+# 工程规范整改报告 - 2026-06-02
 
-状态：已执行整改并完成验证
+状态：整改进行中；G1 清理、G2 后端测试拆分、前端 CSS 拆分与前端 smoke 脚本拆分已完成，全量目标未完成
 最后核验日期：2026-06-02
 适用范围：`backend/`、`frontend/`、`scripts/`、`deploy/`、`docs/`、`tests/`、`data/generated`
 
 ## 1. 当前 git 状态摘要
 
-- 分支：`codex/phase4-phase5-architecture`
-- 跟踪关系：`origin/codex/phase4-phase5-architecture`，本地 ahead 33
-- 开始前工作区：已有未提交改动；本轮未回滚、未覆盖、未删除用户或其他任务已有改动。
-- 当前改动类型：
-  - 后端守卫与任务边界整改。
-  - 前端认证与 SSE 降级整改。
-  - 部署脚本与本地清理脚本整改。
-  - 文档入口、报告索引和生成缓存治理整改。
-
-开始前记录的 `git status --short --branch`：
+本轮重新核验的 `git status --short --branch`：
 
 ```text
-## codex/phase4-phase5-architecture...origin/codex/phase4-phase5-architecture [ahead 33]
- M backend/app/core/config.py
- M backend/app/main.py
- M backend/app/runtime/background_jobs.py
- M backend/app/services/factor_mining/compute_engine.py
- M backend/app/services/tasks/queue.py
- M backend/tests/test_cloud_deploy_scripts.py
- M backend/tests/test_factor_mining.py
- M backend/tests/test_full_regression_runner.py
- M backend/tests/test_legacy_routes.py
- M backend/tests/test_ml_online_learning_schedule.py
+## codex/phase4-phase5-architecture...origin/codex/phase4-phase5-architecture [ahead 34]
+ M backend/tests/test_backtest_v2_api_contract.py
+ M backend/tests/test_backtest_v2_engine_contract.py
+ M backend/tests/test_low_buy_read_paths.py
+ M backend/tests/test_paper_auto_trading.py
  M backend/tests/test_phase4_phase5_foundation.py
- M docker-compose.mysql.yml
- M frontend/src/api/appClient.ts
- M frontend/src/api/base.test.ts
- M frontend/src/api/base.ts
- M frontend/src/state/realtime/useQuoteStream.test.tsx
- M frontend/src/state/realtime/useQuoteStream.ts
- M scripts/deploy_cloud_server.sh
- M scripts/quick_cloud_deploy.sh
- M scripts/run_focus_strategy_purged_gap_rerun.py
-?? backend/tests/test_purged_gap_rerun_script.py
-?? docs/reports/README.md
-?? docs/reports/full-project-code-review-2026-06-02.md
-?? frontend/src/api/publicApiPaths.ts
-?? scripts/clean_local_artifacts.sh
+ M docs/README.md
+ M docs/reports/README.md
+ M docs/reports/project-engineering-compliance-remediation-2026-06-02.md
+ M frontend/scripts/smoke-responsive.mjs
+ M frontend/src/styles/workspace/workspace-login.css
+ M frontend/src/styles/workspace/workspace-primitives.css
+ D frontend/tsconfig.node.tsbuildinfo
+?? backend/tests/test_backtest_v2_execution_components.py
+?? backend/tests/test_backtest_v2_worker_persistence.py
+?? backend/tests/test_low_buy_runtime_seams.py
+?? backend/tests/test_low_buy_trade_date_read_paths.py
+?? backend/tests/test_paper_auto_trading_runtime_config.py
+?? backend/tests/test_phase4_runtime_worker_tasks.py
+?? docs/a-share-strong-stock-trading-requirements-2026-06-02.md
+?? docs/reports/artifact-manifest-2026-06-02.md
+?? docs/reports/zhangmengzhu-16-articles-analysis-2026-06-02.md
+?? docs/reports/zhangmengzhu-16-articles-source-2026-06-02.md
+?? docs/trading-experience-observation-suite-requirements-2026-06-02.md
+?? frontend/scripts/smoke-responsive-fixtures.mjs
+?? frontend/src/styles/workspace/workspace-login-card.css
+?? frontend/src/styles/workspace/workspace-login-motion.css
+?? frontend/src/styles/workspace/workspace-login-scene.css
+?? frontend/src/styles/workspace/workspace-login-shell.css
+?? frontend/src/styles/workspace/workspace-primitives-base.css
+?? frontend/src/styles/workspace/workspace-primitives-intro.css
+?? frontend/src/styles/workspace/workspace-primitives-stock.css
 ```
+
+说明：
+
+- 分支：`codex/phase4-phase5-architecture`
+- 跟踪关系：`origin/codex/phase4-phase5-architecture`，本地 ahead 34。
+- 开始前未提交改动：未跟踪 Markdown 文档；本轮未回滚或覆盖既有改动。
+- 本轮新增改动：文档索引补齐、历史机器产物 manifest、超长后端测试拆分、前端超长 CSS 拆分、前端 smoke 脚本拆分、报告刷新、删除已跟踪 TypeScript 增量缓存。
+- 未执行提交：本轮仅完成整改与验证，未执行 `git add` 或提交。
+- 未部署：本轮整改不部署；部署脚本还要求 `CLOUD_HOST` 与 `CLOUD_SSH_KEY`。
 
 ## 2. 整改覆盖范围
 
-| 区域 | 覆盖动作 |
+| 区域 | 本轮覆盖动作 |
 |---|---|
-| backend | API fallback、runtime background role、RuntimeTask retry/backoff、factor mining code validation、purged gap rerun script safety |
-| frontend | auth refresh single-flight、SSE stream token retry/fallback、public API path 去重 |
-| scripts/deploy | hardcoded host/key 清理、fast mode 显式确认、API fallback JSON smoke |
-| scripts/cleanup | 新增本地缓存清理脚本，dry-run 默认，补可执行位 |
-| docs | README 结构修正、reports 索引、全项目审查报告、本整改报告 |
-| tests | 后端守卫测试、前端认证/SSE 测试、RuntimeTaskQueue 聚焦拆分测试、脚本安全测试 |
-| data/generated | 删除已跟踪 TypeScript 构建缓存，保留未跟踪本地缓存 |
+| backend | 拆分超长测试文件；未改后端业务代码 |
+| frontend | 删除已跟踪的 `frontend/tsconfig.node.tsbuildinfo` 构建缓存；拆分 `workspace-login.css`、`workspace-primitives.css` 与 `frontend/scripts/smoke-responsive.mjs` |
+| scripts/deploy | 只确认部署脚本入口和环境要求；未改部署配置 |
+| scripts/cleanup | 复用既有 `scripts/clean_local_artifacts.sh` 作为本地缓存治理入口 |
+| docs | 补齐新增需求文档、资料整理报告和 artifact manifest 索引，刷新本整改报告 |
+| tests | 拆分 runtime worker、low-buy、backtest、paper trading 测试，运行相关 pytest 与前端结构测试 |
+| data/generated | 不迁移历史回测和审计产物；仅删除误跟踪的前端构建缓存 |
 
 ## 3. 发现的不合规项清单
 
-| 编号 | 分类 | 发现 | 风险 |
-|---|---|---|---|
-| G1-1 | 生成产物位置 | `frontend/tsconfig.node.tsbuildinfo` 被 git 跟踪；`.gitignore` 和 `docs/README.md` 均要求 `frontend/*.tsbuildinfo` 不应跟踪 | 构建缓存污染提交，造成无意义 diff |
-| G1-2 | 文档入口 | `README.md` 的前端结构仍写 `components/pages/App.tsx/styles.css`，与当前 `app/features/state/ui/generated` 结构不符 | 新人和审计误判模块边界 |
-| G1-3 | 文档产物治理 | `docs/README.md` 在报告区直接列 JSON 历史产物，容易延续将机器产物放进 `docs/reports/` 的习惯 | 新增大型 JSON/zip 混入手写报告区 |
-| G1-4 | 本地缓存 | 工作区存在大量未跟踪 `__pycache__`、`.pytest_cache`、`frontend/dist` 可能反复出现 | 本地产物误提交风险 |
-| G2-1 | 超长测试 | `backend/tests/test_phase4_phase5_foundation.py` 1191 行，已超过后端测试 800 行必须拆分阈值；本轮新增队列守卫前未拆分 | 综合测试继续膨胀，定位成本高 |
-| G2-2 | 历史文档 | 根目录仍有 `IMPLEMENTATION_PLAN.md`、`APP_API_SPEC.md`、`ARCHITECTURE.md` 等历史/当前交叉文档 | 移动会破坏引用链；不移动会增加认知成本 |
-| G2-3 | 机器产物 | `docs/reports/` 仍有 377 个历史 JSON/JSONL/zip/parquet 类产物 | 存量审计价值与规范冲突，需要后续迁移批次 |
-| G2-4 | 超长历史 Markdown | 多份历史计划/报告超过 Markdown 评审阈值或必须拆分阈值 | 多为审计材料，直接拆分会破坏原始证据 |
-| G3-1 | 后台任务边界 | Web runtime background loops 需要明确角色门控 | 多 worker/Web 重复执行重任务 |
-| G3-2 | 任务重试 | RuntimeTask 失败或 stale recovery 立即重新 claim，缺少 backoff | 异常时形成热循环 |
-| G3-3 | 研究代码安全 | factor mining 公式校验需禁止顶层可执行语句、导入、循环和危险调用 | 研究功能代码执行面过宽 |
-| G3-4 | 部署脚本 | 快速部署脚本历史上容易把服务器地址、密钥路径和跳过本地检查混成默认行为 | 误部署、跳过验证或 API fallback 返回 HTML |
-| G3-5 | API 401/SSE | token 过期时 protected request 与 SSE stream token 获取需要统一刷新和降级 | 登录失效、实时流中断、页面阻塞 |
+| 编号 | 分类 | 发现 | 风险 | 本轮处理 |
+|---|---|---|---|---|
+| G1-1 | 生成产物位置 | `frontend/tsconfig.node.tsbuildinfo` 仍被 Git 跟踪；`.gitignore` 和 `docs/README.md` 均要求 `frontend/*.tsbuildinfo` 不应跟踪 | 构建缓存污染提交，造成无意义 diff | 已删除 |
+| G1-2 | 文档索引 | `docs/a-share-strong-stock-trading-requirements-2026-06-02.md` 未进入 `docs/README.md` | 当前需求文档不可从文档入口追踪 | 已补索引 |
+| G1-3 | 报告索引 | `docs/reports/zhangmengzhu-16-articles-source-2026-06-02.md` 未进入 `docs/README.md` 和 `docs/reports/README.md` | 人读资料整理与 reports 治理入口脱节 | 已补索引 |
+| G1-4 | 报告漂移 | 原整改报告仍写 ahead 33、377 个历史机器产物、已完成状态，与当前工作区不一致 | 后续审计会依据过期结论误判 | 已刷新 |
+| G1-5 | 文档索引 | `docs/trading-experience-observation-suite-requirements-2026-06-02.md` 与 `docs/reports/zhangmengzhu-16-articles-analysis-2026-06-02.md` 未进入文档索引 | 新增 PRD 与分析报告不可从文档入口追踪 | 已补索引 |
+| G2-1 | 历史机器产物 | `docs/reports/` 顶层仍有 43 个历史 JSON/JSONL/zip 机器产物 | 与新增产物治理规范冲突，但有审计价值 | 已建 manifest，暂缓迁移 |
+| G2-2 | 超长文档 | 新增 `a-share...` 791 行、`zhangmengzhu...` 661 行，超过 Markdown 目标上限 500 行 | 长文维护成本较高 | 暂缓拆分，记录职责单一 |
+| G2-3 | 超长测试 | `backend/tests/test_phase4_phase5_foundation.py` 1074 行，超过后端测试 800 行必须拆分阈值 | 综合测试继续膨胀，定位成本高 | 已拆到 797 行 |
+| G2-4 | 超长测试 | `backend/tests/test_backtest_v2_api_contract.py` 882 行，超过后端测试 800 行必须拆分阈值 | API 契约、worker、persistence 职责混杂 | 已拆到 549 行 |
+| G2-5 | 超长测试 | `backend/tests/test_paper_auto_trading.py` 801 行，超过后端测试 800 行必须拆分阈值 | runtime/config helper 与自动交易行为测试混在一起 | 已拆到 743 行 |
+| G2-6 | 超长测试 | `backend/tests/test_low_buy_read_paths.py` 860 行，超过后端测试 800 行必须拆分阈值 | materialized read path 与交易日 fallback 混在一起 | 已拆到 716 行 |
+| G2-7 | 超长测试 | `backend/tests/test_backtest_v2_engine_contract.py` 849 行，超过后端测试 800 行必须拆分阈值 | engine 集成、data provider、broker、portfolio component 测试混杂 | 已拆到 501 行 |
+| G2-8 | 超长 CSS | `frontend/src/styles/workspace/workspace-login.css` 1273 行，超过 CSS 700 行必须拆分阈值 | 登录页 shell、金融场景、卡片、动画/响应式样式混在单文件 | 已拆到 4 行聚合入口 |
+| G2-9 | 超长 CSS | `frontend/src/styles/workspace/workspace-primitives.css` 881 行，超过 CSS 700 行必须拆分阈值 | 通用面板、intro、股票卡片样式混在单文件 | 已拆到 3 行聚合入口 |
+| G2-10 | 超长前端检查脚本 | `frontend/scripts/smoke-responsive.mjs` 939 行，超过前端脚本 650 行必须拆分阈值 | 响应式冒烟运行流程与大块 mock fixtures 混在单文件 | 已拆到 396 行 |
+| G2-11 | 其他超长代码/文档 | 扫描仍发现多处历史超长文件，如 generated API types、历史计划、后端回测脚本 | 大范围拆分可能改变行为或破坏审计材料 | 暂缓，后续按领域分批 |
 
 ## 4. 已整改项清单
 
 ### G1：低风险清理
 
-- 删除已跟踪生成缓存 `frontend/tsconfig.node.tsbuildinfo`；删除前引用检查只发现历史清理报告提及，无代码、脚本、部署或测试依赖。报告生成后，本整改报告自身也会命中该文件名。
-- 更新 `README.md` 当前项目结构，前端入口改为 `api/app/features/generated/state/styles/ui/scripts`。
-- 更新 `docs/README.md` 报告索引，改为指向 `docs/reports/README.md`，不再把 JSON 历史产物作为新增报告示例。
-- 新增 `docs/reports/README.md`，明确 `docs/reports/` 端态是人读 Markdown，历史机器产物迁移前保留，新机器产物默认进入 `backend/data/reports/`、`backend/data/analytics/reports/` 或外部 artifact。
-- 新增 `scripts/clean_local_artifacts.sh`，默认 dry-run，只清理 `__pycache__`、`*.pyc` 与 `frontend/dist`，不触碰 `backend/data`；已补可执行位。
-- 修正 `backend/tests/test_cloud_deploy_scripts.py` 新增断言块缩进为四空格。
+- 删除 `frontend/tsconfig.node.tsbuildinfo`。该文件是 TypeScript incremental build cache，已被 `.gitignore` 忽略，不应入库。
+- 更新 `docs/README.md`：
+  - 将 `docs/a-share-strong-stock-trading-requirements-2026-06-02.md` 加入当前产品与策略参考。
+  - 将 `docs/trading-experience-observation-suite-requirements-2026-06-02.md` 加入当前产品与策略参考。
+  - 将 `docs/reports/zhangmengzhu-16-articles-analysis-2026-06-02.md` 加入报告与证据索引。
+  - 将 `docs/reports/zhangmengzhu-16-articles-source-2026-06-02.md` 加入报告与证据索引。
+- 更新 `docs/reports/README.md`：
+  - 增加当前人读资料与审查记录清单。
+  - 明确 `zhangmengzhu-16-articles-analysis-2026-06-02.md` 是经验分析报告。
+  - 明确 `zhangmengzhu-16-articles-source-2026-06-02.md` 是人读资料整理，不是新增机器产物。
+- 新增 `docs/reports/artifact-manifest-2026-06-02.md`：
+  - 记录 `docs/reports/` 顶层 43 个历史 JSON/JSONL/zip 产物。
+  - 按引用计数标记保留、迁移候选和外部归档候选。
+  - 明确迁移或删除前仍需重新引用检查，不把 manifest 当作删除许可。
+- 刷新本报告，移除旧的 ahead 33、377 个机器产物等过期状态。
 
 ### G2：中风险结构整改
 
-- 将 `RuntimeTaskQueue` 的队列事件、stale recovery、retry backoff 测试从超长综合文件拆到 `backend/tests/test_runtime_task_queue.py`。
-- `backend/tests/test_phase4_phase5_foundation.py` 从 1191 行降到 1074 行；仍超阈值，但本轮新增职责已从该文件移出，后续不得继续追加无关守卫。
-- `frontend/src/api/publicApiPaths.ts` 收敛 public API path 判断，避免 request 层与 app client 重复维护白名单。
-- `scripts/run_focus_strategy_purged_gap_rerun.py` 从 shell 字符串执行改为 argv 构造和参数 allowlist，补 `backend/tests/test_purged_gap_rerun_script.py`。
+- 拆分 `backend/tests/test_phase4_phase5_foundation.py`：
+  - 新增 `backend/tests/test_phase4_runtime_worker_tasks.py`，承接 runtime worker task execution 测试。
+  - 新增 `backend/tests/test_low_buy_runtime_seams.py`，承接 low-buy runtime cache/composition seam 测试。
+  - 原文件从 1074 行降到 797 行，低于后端测试 800 行必须拆分阈值。
+- 拆分 `backend/tests/test_backtest_v2_api_contract.py`：
+  - 新增 `backend/tests/test_backtest_v2_worker_persistence.py`，承接 backtest worker、job service 和 persistence 测试。
+  - 原 API contract 文件从 882 行降到 549 行，回归为路由/API 契约测试职责。
+- 拆分 `backend/tests/test_paper_auto_trading.py`：
+  - 新增 `backend/tests/test_paper_auto_trading_runtime_config.py`，承接 auto trader runtime config 和 trading-time helper 测试。
+  - 原文件从 801 行降到 743 行，低于后端测试 800 行必须拆分阈值。
+- 拆分 `backend/tests/test_low_buy_read_paths.py`：
+  - 新增 `backend/tests/test_low_buy_trade_date_read_paths.py`，承接 low-buy 交易日解析和日历 fallback 测试。
+  - 原文件从 860 行降到 716 行，低于后端测试 800 行必须拆分阈值。
+- 拆分 `backend/tests/test_backtest_v2_engine_contract.py`：
+  - 新增 `backend/tests/test_backtest_v2_execution_components.py`，承接 data provider、broker、portfolio execution component 测试。
+  - 原文件从 849 行降到 501 行，低于后端测试 800 行必须拆分阈值。
+- 当前扫描结果：`backend/tests/test_*.py` 已无文件达到 800 行必须拆分阈值。
+- 拆分 `frontend/src/styles/workspace/workspace-login.css`：
+  - 新增 `workspace-login-shell.css`、`workspace-login-scene.css`、`workspace-login-card.css`、`workspace-login-motion.css`。
+  - 原文件保留为 4 行 `@import` 聚合入口，继续由 `workspace.css` 引用。
+  - 已用 `diff` 校验：四个子文件串联内容与 HEAD 中原 `workspace-login.css` 完全一致。
+- 拆分 `frontend/src/styles/workspace/workspace-primitives.css`：
+  - 新增 `workspace-primitives-base.css`、`workspace-primitives-intro.css`、`workspace-primitives-stock.css`。
+  - 原文件保留为 3 行 `@import` 聚合入口，继续由 `workspace.css` 引用。
+  - 已用 `diff` 校验：三个子文件串联内容与 HEAD 中原 `workspace-primitives.css` 完全一致。
+- 当前扫描结果：`frontend/src/styles/workspace/*.css` 已无文件达到 700 行必须拆分阈值。
+- 拆分 `frontend/scripts/smoke-responsive.mjs`：
+  - 新增 `frontend/scripts/smoke-responsive-fixtures.mjs`，承接响应式冒烟脚本的 mock payload fixtures。
+  - 原文件从 939 行降到 396 行，只保留浏览器运行流程、API route mock 入口和结果写入逻辑。
+  - 新 fixtures 文件 596 行，低于前端脚本 650 行必须拆分阈值。
+  - 当前扫描结果：`frontend/scripts/*.mjs` 已无文件达到 650 行必须拆分阈值。
+- 对超长 Markdown 文档先做职责判断：
+  - `docs/a-share-strong-stock-trading-requirements-2026-06-02.md` 是单一需求文档，当前不拆，避免打断后续评审上下文。
+  - `docs/reports/zhangmengzhu-16-articles-source-2026-06-02.md` 是 16 篇资料原文整理，当前不拆，避免破坏原文证据完整性。
 
 ### G3：高风险守卫整改
 
-- `backend/app/core/config.py` 新增 `runtime_background_role` 配置声明。
-- `backend/app/runtime/background_jobs.py` 在 web role 下跳过 runtime background jobs。
-- `docker-compose.mysql.yml` 将 app 标记为 `RUNTIME_BACKGROUND_ROLE=web`，runtime-worker 标记为 `worker`。
-- `backend/app/services/tasks/queue.py` 对 retryable failure 和 stale recovery 设置 future `run_after`，避免异常热循环。
-- `backend/app/services/factor_mining/compute_engine.py` 增加 AST module body 校验，只允许顶层 `compute_factor`、大写常量和 docstring。
-- `backend/app/main.py` 对未匹配 `/api/*` 返回 JSON 404，避免 SPA HTML fallback 污染 API。
-- `frontend/src/api/base.ts` / `appClient.ts` 统一 auth refresh single-flight，protected request 401 后只重试一次。
-- `frontend/src/state/realtime/useQuoteStream.ts` stream token 失败先走认证刷新/重连，达到限制后 fallback poll，不阻塞页面。
-- `scripts/quick_cloud_deploy.sh` 移除硬编码云主机和密钥路径，fast mode 必须显式 `--fast-risk-accepted`。
-- `scripts/deploy_cloud_server.sh` 和 quick deploy 均增加 `/api/__missing_smoke__` JSON fallback smoke。
+- 本轮未修改 feature flag、API 契约、生产排序、后台任务或部署配置。
+- 原因：当前低风险问题集中在生成缓存和文档治理；高风险守卫改动需要单独需求、测试和部署前验收。
 
 ## 5. 已删除文件清单
 
 | 路径 | 删除理由 | 引用检查证据 | 风险判断 |
 |---|---|---|---|
-| `frontend/tsconfig.node.tsbuildinfo` | TypeScript incremental build cache；`.gitignore` 已忽略 `frontend/*.tsbuildinfo`；规范明确不得跟踪 | 删除前 `rg --fixed-strings "tsconfig.node.tsbuildinfo" .` 仅命中 `docs/reports/repository-cleanup-2026-05-27.md` 的历史记录；报告生成后会额外命中本报告 | 低风险；删除后前端构建可重新生成本地缓存，不影响源码、契约或部署 |
+| `frontend/tsconfig.node.tsbuildinfo` | TypeScript incremental build cache；`.gitignore` 已忽略 `frontend/*.tsbuildinfo`；`docs/README.md` 明确该类文件不得跟踪 | 删除前执行 `rg --fixed-strings "tsconfig.node.tsbuildinfo" .`，仅命中历史清理报告和本整改报告，无代码、脚本、部署、测试引用 | 低风险；前端构建可重新生成本地缓存，不影响源码、API 契约或部署 |
 
 未删除：
 
-- 未跟踪的 `frontend/tsconfig.app.tsbuildinfo`：本地缓存，未入库，不需要通过 git 删除。
-- 未跟踪 `__pycache__` / `.pytest_cache` / `frontend/dist`：本地验证产物，提供清理脚本，不在本轮直接批量删除，避免误删用户当前运行输出。
-- `docs/reports/` 历史 JSON/JSONL/zip：共扫描到 377 个，保留审计价值，后续单独迁移。
+- `frontend/tsconfig.app.tsbuildinfo`：未被 Git 跟踪，属于本地缓存。
+- `docs/reports/` 历史机器产物：顶层 43 个，已建立 `docs/reports/artifact-manifest-2026-06-02.md`；涉及审计和回测证据，需引用迁移后再处理。
+- 大型历史计划/报告：多数是审计材料，直接拆分会破坏原始证据。
 
 ## 6. 已移动/重命名文件清单
 
 本轮没有移动或重命名文件。
 
-原因：根目录历史文档和 `docs/reports/` 历史机器产物均有活跃引用或审计价值；移动前需要批量改链接和迁移 manifest，超出本轮低风险整改边界。
+原因：新增文档命名符合 kebab-case 和 `YYYY-MM-DD` 日期规则；现有历史机器产物和长文档迁移需要先建立引用清单。
 
 ## 7. 已拆分超长文件清单
 
 | 原文件 | 新文件 | 整改内容 | 结果 |
 |---|---|---|---|
-| `backend/tests/test_phase4_phase5_foundation.py` | `backend/tests/test_runtime_task_queue.py` | 拆出 RuntimeTaskQueue 事件、stale recovery、retry backoff 测试 | 原文件减少 117 行；新增队列测试独立运行，`39 passed` |
+| `backend/tests/test_phase4_phase5_foundation.py` | `backend/tests/test_phase4_runtime_worker_tasks.py` | 拆出 runtime worker `_execute_task` 任务执行守卫测试 | 原文件减少到 797 行；新文件 280 行 |
+| `backend/tests/test_phase4_phase5_foundation.py` | `backend/tests/test_low_buy_runtime_seams.py` | 拆出 low-buy runtime cache 和 composition seam 测试 | 新文件 24 行；职责独立 |
+| `backend/tests/test_backtest_v2_api_contract.py` | `backend/tests/test_backtest_v2_worker_persistence.py` | 拆出 backtest worker、job service 和 persistence 测试 | 原文件减少到 549 行；新文件 365 行 |
+| `backend/tests/test_paper_auto_trading.py` | `backend/tests/test_paper_auto_trading_runtime_config.py` | 拆出 auto trader runtime config 和 trading-time helper 测试 | 原文件减少到 743 行；新文件 68 行 |
+| `backend/tests/test_low_buy_read_paths.py` | `backend/tests/test_low_buy_trade_date_read_paths.py` | 拆出 low-buy 交易日解析和日历 fallback 测试 | 原文件减少到 716 行；新文件 155 行 |
+| `backend/tests/test_backtest_v2_engine_contract.py` | `backend/tests/test_backtest_v2_execution_components.py` | 拆出 data provider、broker、portfolio execution component 测试 | 原文件减少到 501 行；新文件 391 行 |
+| `frontend/src/styles/workspace/workspace-login.css` | `workspace-login-shell.css`、`workspace-login-scene.css`、`workspace-login-card.css`、`workspace-login-motion.css` | 拆出登录页 shell、金融场景、卡片与动画/响应式样式 | 原文件减少到 4 行聚合入口；新文件分别为 101、486、365、321 行 |
+| `frontend/src/styles/workspace/workspace-primitives.css` | `workspace-primitives-base.css`、`workspace-primitives-intro.css`、`workspace-primitives-stock.css` | 拆出通用基础、intro/info、股票卡片/mini-kline 样式 | 原文件减少到 3 行聚合入口；新文件分别为 353、287、241 行 |
+| `frontend/scripts/smoke-responsive.mjs` | `frontend/scripts/smoke-responsive-fixtures.mjs` | 拆出响应式冒烟脚本 mock payload fixtures | 原文件减少到 396 行；新文件 596 行 |
 
-仍超阈值但暂缓：
+暂缓说明：
 
-- `backend/tests/test_phase4_phase5_foundation.py`：仍 1074 行。后续建议按 runtime worker、ML guard、decision context、quant parameters 继续拆分。
-- `backend/tests/test_backtest_v2_api_contract.py`、`backend/tests/test_low_buy_read_paths.py`、`backend/tests/test_backtest_v2_engine_contract.py`：均超过 800 行附近，未在本轮修改，避免把未触达测试做大范围机械重排。
-- `frontend/scripts/smoke-responsive.mjs`：939 行，属于现有 smoke runner；本轮只运行验证，不拆脚本以免影响响应式验收入口。
-- 多份历史 Markdown：按规范为历史遗留，不因形式拆分破坏审计原文。
+- `docs/a-share-strong-stock-trading-requirements-2026-06-02.md`：791 行，超过 Markdown 目标上限但未超过必须拆分阈值 1200 行；职责单一，作为需求评审材料保留。
+- `docs/reports/zhangmengzhu-16-articles-source-2026-06-02.md`：661 行，超过 Markdown 目标上限但未超过必须拆分阈值 1200 行；作为原文资料证据保留。
+- `frontend/src/generated/api-types.ts`：generated types，属于规范豁免文件，不按手写代码阈值处理。
 
 ## 8. 暂缓整改项和原因
 
 | 暂缓项 | 原因 | 后续建议 |
 |---|---|---|
-| 根目录历史文档整体迁入 `docs/archive/` | `docs/README.md`、历史审查、脚本和运行说明仍引用；移动会造成链接链式修改 | 建立 `docs/archive/root-docs-2026-06-02/`，先生成引用迁移清单，再一次性改索引 |
-| `docs/reports/` 377 个历史机器产物迁移 | 属于回测和审计证据，部分仍被报告引用 | 新增 artifact manifest，按 basename 引用检查后分批迁入 `backend/data/reports/` 或外部 artifact |
-| Go/Rust/native 实验链路清理 | 属于可选增强与历史路线，可能影响文档和部署选择 | 先 feature flag/入口审计，再决定是否归档 |
-| 大型测试继续拆分 | 需要按领域重组 fixtures 和 helper，风险高于本轮范围 | 单独做 test architecture batch，避免和安全/部署整改混合 |
-| `ARCHITECTURE.md` 策略矩阵漂移 | 涉及策略事实源和生产分层说明 | 只记录建议；应以 `strategy_policy` 自动生成或人工同步，需策略边界复审 |
+| `docs/reports/` 43 个历史机器产物迁移 | 涉及回测、云性能、审计证据，不能直接删除或移动；本轮已先建 manifest | 按 `docs/reports/artifact-manifest-2026-06-02.md` 逐项复查后迁入 `backend/data/reports/` 或外部 artifact |
+| 其他超长后端脚本拆分 | 后端测试必须拆分阈值已清零；后端脚本仍存在超长历史文件，继续拆会触及回测脚本和策略报告生成口径 | 按 backend scripts 单独批次拆，避免混入测试拆分 |
+| 根目录历史文档迁移 | `docs/README.md` 已标记部分为历史决策记录，仍可能被报告引用 | 先做 `rg --fixed-strings <basename> .` 引用矩阵，再迁入 `docs/archive/` |
+| 新增长文 Markdown 拆分 | 当前是需求与资料证据，拆分会影响评审上下文完整性 | 评审后可按章节拆为需求正文和 source appendix |
+| 其他页面/浏览器深测 | 本轮已完成 responsive smoke 覆盖；未逐页人工截图审查所有交互分支 | 后续 UI 交互改动时再按页面补充截图和控制台检查 |
 
 ## 9. 风险判断
 
-- 策略逻辑：未修改生产策略计算、策略分层、选股规则或策略阈值。
-- 回测口径：未修改回测收益口径、样本选择、费用、滑点、成交假设。
-- 生产排序：未修改 production scoring、priority board 排序逻辑或生产策略准入规则。
-- 部署配置：未部署；仅修改部署脚本安全默认和 smoke 检查。`docker-compose.mysql.yml` 只增加 `RUNTIME_BACKGROUND_ROLE` 角色声明，目的是隔离 Web 与 worker 后台任务。
-- API 契约：未新增/删除接口字段；`/api/*` fallback 从 HTML 改为 JSON 404，属于错误响应边界修正。OpenAPI/generated types 无字段语义变更。
+- 策略逻辑：未修改选股规则、策略阈值、信号计算或策略分层。
+- 回测口径：未修改样本范围、费用、滑点、成交假设、回测脚本或报告计算。
+- 生产排序：未修改 production scoring、priority board、生产候选准入或排序逻辑。
+- API 契约：未修改路由、DTO、OpenAPI 或 generated types。
+- 部署配置：未修改部署配置，未部署。
 
 ## 10. 验证命令和结果
 
-已完成的阶段验证：
+本轮已执行的取证命令：
 
 ```bash
-PYTHONPATH=backend:. backend/.venv/bin/python -m pytest backend/tests/test_runtime_task_queue.py backend/tests/test_phase4_phase5_foundation.py -q
-```
-
-结果：
-
-```text
-39 passed, 1 warning in 2.93s
-```
-
-最终完整验证：
-
-```bash
-cd frontend && npm run api:check && npm run lint && npm test -- --run && npm run build:web && npm run analyze
-PYTHONPATH=backend:. backend/.venv/bin/python -m pytest backend/tests -q
-cd frontend && npm run smoke:responsive
-git diff --check
-rg "\buseState\b|\buseReducer\b" frontend/src
-rg "<Table" frontend/src
+git status --short --branch
+git ls-files | rg '(^|/)(__pycache__/|.*\.pyc$|frontend/.*\.tsbuildinfo$|frontend/dist/|rust/.*/target/|\.log$|\.zip$|\.parquet$)'
+find docs/reports -maxdepth 1 -type f \( -name '*.json' -o -name '*.jsonl' -o -name '*.zip' -o -name '*.parquet' \) | wc -l
+rg --fixed-strings "tsconfig.node.tsbuildinfo" .
+rg -n "a-share-strong-stock-trading-requirements|trading-experience-observation-suite-requirements|zhangmengzhu-16-articles-analysis|zhangmengzhu-16-articles-source" docs README.md AGENTS.md
+git check-ignore -v docs/a-share-strong-stock-trading-requirements-2026-06-02.md docs/trading-experience-observation-suite-requirements-2026-06-02.md docs/reports/zhangmengzhu-16-articles-analysis-2026-06-02.md docs/reports/zhangmengzhu-16-articles-source-2026-06-02.md
 ```
 
 结果摘要：
 
-- Frontend：`api:check`、lint、Vitest、`build:web`、analyze 均通过。
-- OpenAPI 导出：`sha256=eeaad0612d692a3d65a1292129a795fa662fe87b1be3a6d44b8184e4cfd83f5d`。
-- Frontend Vitest：50 files / 154 tests passed。
-- CSS guard：`inlineStyleObjects=117`、`cssPropertiesFiles=34`、`smallFonts=0`、`hardcodedHex=197`、`cssHardcodedHex=0`。
-- Analyze：`total_gzip_kb=782.07`，`first_screen_js_gzip_kb=9`。
-- Backend：1098 passed / 1 LibreSSL warning。
-- Responsive smoke：通过，`frontend/dist/responsive-smoke-report.json`，`ok=true`，375px mobile 10 pages，`max_mobile_overflow_x=0`，failed=0。
-- `git diff --check`：通过。
-- `rg "\buseState\b|\buseReducer\b" frontend/src`：无命中。
-- `rg "<Table" frontend/src`：仅 `frontend/src/ui/grid/VirtualGrid.tsx`。
+- `frontend/tsconfig.node.tsbuildinfo` 被 Git 跟踪，已删除。
+- `docs/reports/` 顶层历史机器产物当前为 43 个，暂缓迁移。
+- 新增 Markdown 未被忽略，适合提交为人读资料。
+- 删除引用检查未发现代码、脚本、部署或测试依赖。
 
-脚本专项验证：
+已执行验证：
 
 ```bash
-bash -n scripts/quick_cloud_deploy.sh scripts/deploy_cloud_server.sh scripts/clean_local_artifacts.sh
-backend/.venv/bin/python -m pytest backend/tests/test_cloud_deploy_scripts.py backend/tests/test_purged_gap_rerun_script.py -q
+git diff --check
+test ! -e frontend/tsconfig.node.tsbuildinfo
+bash -lc 'diff -q <(git show HEAD:frontend/src/styles/workspace/workspace-login.css) <(cat frontend/src/styles/workspace/workspace-login-shell.css frontend/src/styles/workspace/workspace-login-scene.css frontend/src/styles/workspace/workspace-login-card.css frontend/src/styles/workspace/workspace-login-motion.css)'
+bash -lc 'diff -q <(git show HEAD:frontend/src/styles/workspace/workspace-primitives.css) <(cat frontend/src/styles/workspace/workspace-primitives-base.css frontend/src/styles/workspace/workspace-primitives-intro.css frontend/src/styles/workspace/workspace-primitives-stock.css)'
+PYTHONPATH=backend:. backend/.venv/bin/python -m pytest backend/tests/test_cloud_deploy_scripts.py -q
+PYTHONPATH=backend:. backend/.venv/bin/python -m pytest backend/tests/test_phase4_phase5_foundation.py backend/tests/test_phase4_runtime_worker_tasks.py backend/tests/test_low_buy_runtime_seams.py backend/tests/test_runtime_task_queue.py -q
+PYTHONPATH=backend:. backend/.venv/bin/python -m pytest backend/tests/test_backtest_v2_api_contract.py backend/tests/test_backtest_v2_worker_persistence.py -q
+PYTHONPATH=backend:. backend/.venv/bin/python -m pytest backend/tests/test_paper_auto_trading.py backend/tests/test_paper_auto_trading_runtime_config.py -q
+PYTHONPATH=backend:. backend/.venv/bin/python -m pytest backend/tests/test_low_buy_read_paths.py backend/tests/test_low_buy_trade_date_read_paths.py -q
+PYTHONPATH=backend:. backend/.venv/bin/python -m pytest backend/tests/test_backtest_v2_engine_contract.py backend/tests/test_backtest_v2_execution_components.py -q
+cd frontend && npm run lint
+cd frontend && npm run build
+cd frontend && npm test -- src/styles/workspace/workspaceStructure.test.ts
+node --check frontend/scripts/smoke-responsive.mjs
+node --check frontend/scripts/smoke-responsive-fixtures.mjs
+cd frontend && npm run preview -- --host 127.0.0.1
+cd frontend && SMOKE_MOCK_AUTH=1 npm run smoke:responsive
 ```
 
-结果：脚本语法检查通过；脚本安全专项测试 11 passed。
+结果摘要：
+
+- `git diff --check`：通过。
+- `test ! -e frontend/tsconfig.node.tsbuildinfo`：通过，工作区文件已删除。
+- `git diff --name-status -- frontend/tsconfig.node.tsbuildinfo`：显示 `D frontend/tsconfig.node.tsbuildinfo`，删除等待提交。
+- CSS 等价校验：通过；拆分后的 login/primitives 子文件串联内容分别与 HEAD 中原 CSS 完全一致。
+- 后端脚本守卫测试：`10 passed, 1 warning in 1.53s`；warning 为本地 LibreSSL/urllib3 环境提示。
+- 后端拆分相关测试：`39 passed, 1 warning in 3.15s`；warning 为本地 LibreSSL/urllib3 环境提示。
+- Backtest API/worker 拆分测试：`19 passed in 2.79s`。
+- Paper auto trading 拆分测试：`29 passed, 1 warning in 1.42s`；warning 为本地 LibreSSL/urllib3 环境提示。
+- Low-buy read path 拆分测试：`19 passed, 1 warning in 1.57s`；warning 为本地 LibreSSL/urllib3 环境提示。
+- Backtest engine/component 拆分测试：`19 passed, 1 warning in 0.97s`；warning 为本地 LibreSSL/urllib3 环境提示。
+- 后端测试行数扫描：`backend/tests/test_*.py` 已无文件达到 800 行。
+- 前端 lint：通过，包含 `lint:state`、`check:refactor`、`check:state-separation`、`check:css`。
+- 前端 build：通过，执行 `lint && tsc -b && vite build`，构建完成。
+- 前端结构测试：`src/styles/workspace/workspaceStructure.test.ts` 通过，`1 passed`。
+- 前端 CSS 行数扫描：`frontend/src/styles/workspace/*.css` 已无文件达到 700 行。
+- 前端 smoke 脚本语法检查：`node --check frontend/scripts/smoke-responsive.mjs` 与 `node --check frontend/scripts/smoke-responsive-fixtures.mjs` 均通过。
+- 前端 smoke 脚本行数扫描：`frontend/scripts/*.mjs` 已无文件达到 650 行。
+- 本地 preview：通过，`cd frontend && npm run preview -- --host 127.0.0.1` 启动 `http://127.0.0.1:4173/`。
+- Responsive smoke：通过，`cd frontend && SMOKE_MOCK_AUTH=1 npm run smoke:responsive` 产出 `frontend/dist/responsive-smoke-report.json`；30 个路径/视口组合全部通过，覆盖 mobile 375px、tablet 768px、desktop 1440px，`failures=0`、`maxOverflow=0`。
+- `frontend/dist/responsive-smoke-report.json` 位于被 `.gitignore` 忽略的 `frontend/dist/`，不纳入提交。
+
+说明：本轮未改路由、API 或契约，因此不需要 OpenAPI/generated types 更新。CSS 拆分属于页面样式结构整改，已完成 lint/build/结构测试、内容等价校验和 375px responsive smoke 验证。
 
 ## 11. 后续建议
 
-1. 建立 `docs/reports/artifact-manifest-2026-06-02.md`，逐项记录历史 JSON/zip 的引用、审计价值和迁移目标。
-2. 将 `backend/tests/test_phase4_phase5_foundation.py` 继续拆分为 runtime worker、ML guard、decision context、quant parameters 四个测试文件。
-3. 将 `docs/README.md` 当前索引与根目录历史文档解耦，逐步把不再作为当前依据的根目录计划迁入 `docs/archive/`。
-4. 对 `ARCHITECTURE.md` 建立从 `strategy_policy` 同步策略矩阵的流程，避免策略数量和生产层口径再次漂移。
-5. 将 `frontend/scripts/smoke-responsive.mjs` 拆为 CLI、browser runner、assertion helpers 和 report writer，降低响应式 smoke 维护成本。
+1. 按 `docs/reports/artifact-manifest-2026-06-02.md` 迁移候选清单逐项复核，不直接删除。
+2. 为超长后端脚本建立单独拆分批次，优先处理不改变策略口径的 report writer / runner 分离。
+3. 评审 `a-share-strong-stock-trading-requirements` 后，将原文资料作为 appendix 或 archive source 保存，需求正文保留在当前索引。
+4. 后续若继续拆后端回测脚本，应先锁定 report writer / runner / domain helper 边界并保留回测口径守卫测试。
+5. 当前仍未提交；提交前建议再跑一次 `git status --short --branch` 与受影响测试集合。

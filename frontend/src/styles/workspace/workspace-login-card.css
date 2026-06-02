@@ -1,0 +1,365 @@
+.wise-login-card {
+  position: relative;
+  z-index: 20;
+  width: min(448px, calc(100vw - 32px));
+  overflow: hidden;
+  border-radius: 24px;
+  background: rgba(12, 5, 28, 0.85);
+  box-shadow:
+    0 0 60px rgba(168, 85, 247, 0.15),
+    0 0 30px rgba(245, 158, 11, 0.1),
+    inset 0 0 30px rgba(245, 158, 11, 0.05);
+  backdrop-filter: blur(40px);
+}
+
+.wise-login-card::before {
+  content: "";
+  position: absolute;
+  z-index: -2;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: conic-gradient(from 0deg, transparent, var(--login-gold-soft), rgb(236, 72, 153), var(--login-gold), transparent);
+  animation: rotate-gold 10s linear infinite;
+  pointer-events: none;
+}
+
+.wise-login-card::after {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  inset: 2px;
+  border-radius: 22px;
+  background: rgba(8, 3, 18, 0.96);
+  pointer-events: none;
+}
+
+.wise-login-card .ant-card-body {
+  position: relative;
+  padding: clamp(28px, 4vw, 40px);
+}
+
+.login-core-card::before {
+  content: "";
+  position: absolute;
+  inset: 1px;
+  z-index: -1;
+  border-radius: 22px;
+  background: linear-gradient(135deg, rgba(168, 85, 247, 0.36), rgba(245, 158, 11, 0.26), rgba(255, 59, 48, 0.16));
+  filter: blur(18px);
+  opacity: 0.42;
+  animation: login-card-aura 4.8s ease-in-out infinite;
+}
+
+.wise-card-corner {
+  position: absolute;
+  z-index: 2;
+  color: rgba(255, 215, 0, 0.32);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.wise-card-corner-nw {
+  left: 12px;
+  top: 10px;
+}
+
+.wise-card-corner-ne {
+  top: 10px;
+  right: 12px;
+}
+
+.wise-card-corner-sw {
+  bottom: 10px;
+  left: 12px;
+}
+
+.wise-card-corner-se {
+  right: 12px;
+  bottom: 10px;
+}
+
+.wise-login-form {
+  position: relative;
+  z-index: 3;
+}
+
+.wise-login-brand {
+  width: 100%;
+  align-items: center;
+  text-align: center;
+}
+
+.wise-taiji-logo {
+  position: relative;
+  display: grid;
+  width: 64px;
+  height: 64px;
+  margin-bottom: 10px;
+  place-items: center;
+}
+
+.wise-taiji-ring {
+  position: absolute;
+  border-radius: 50%;
+}
+
+.wise-taiji-ring-outer {
+  inset: 0;
+  border: 1px solid rgba(255, 215, 0, 0.42);
+  animation: taiji-rotate 10s linear infinite;
+}
+
+.wise-taiji-ring-inner {
+  inset: 8px;
+  border: 2px dashed rgba(255, 59, 48, 0.5);
+  animation: taiji-rotate 5s linear infinite reverse;
+}
+
+.wise-taiji-mark {
+  width: 34px;
+  height: 34px;
+  color: var(--login-gold);
+  filter: drop-shadow(0 0 15px rgba(245, 158, 11, 0.74));
+  animation: taiji-rotate 12s linear infinite;
+}
+
+.wise-login-title,
+.wise-login-card .wise-login-title.ant-typography {
+  margin: 0;
+  color: var(--login-text);
+  font-size: 25px;
+  font-weight: 900;
+  letter-spacing: 0;
+}
+
+.wise-login-title span {
+  color: var(--login-gold);
+  text-shadow: 0 0 15px var(--login-gold-soft);
+}
+
+.wise-login-subtitle,
+.wise-login-card .wise-login-subtitle.ant-typography,
+.wise-login-copy,
+.wise-login-card .wise-login-copy.ant-typography {
+  margin: 0;
+  color: var(--login-muted);
+  font-size: 12px;
+  line-height: 1.6;
+  text-align: center;
+}
+
+.wise-login-mode-strip {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--login-muted);
+  font-size: 12px;
+  font-weight: 800;
+  text-align: center;
+}
+
+.wise-login-mode-strip span {
+  padding-bottom: 8px;
+  border-bottom: 2px solid transparent;
+}
+
+.wise-login-mode-strip span:first-child {
+  border-bottom-color: var(--login-gold);
+  color: var(--login-gold);
+  text-shadow: 0 0 8px var(--login-gold-soft);
+}
+
+.wise-login-card .ant-form-item-label {
+  padding-bottom: 4px;
+}
+
+.wise-login-card .ant-form-item-label > label {
+  color: var(--login-gold-bright);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0;
+  text-shadow: 0 0 10px rgba(245, 158, 11, 0.42);
+}
+
+.wise-login-card .ant-input,
+.wise-login-card .ant-input-password {
+  border-width: 0 0 2px;
+  border-style: solid;
+  border-color: rgba(245, 158, 11, 0.25);
+  border-radius: 0;
+  background: rgba(4, 1, 10, 0.8);
+  color: var(--login-text);
+  box-shadow: none;
+  transition: border-color 0.3s ease, box-shadow 0.3s ease, background 0.3s ease;
+}
+
+.wise-login-card .ant-input::placeholder,
+.wise-login-card .ant-input-password input::placeholder {
+  color: rgba(142, 134, 168, 0.86);
+}
+
+.wise-login-card .ant-input:focus,
+.wise-login-card .ant-input-focused,
+.wise-login-card .ant-input-password:focus,
+.wise-login-card .ant-input-password-focused {
+  border-bottom-color: var(--login-gold-soft);
+  background: rgba(245, 158, 11, 0.04);
+  box-shadow: 0 8px 24px -6px rgba(245, 158, 11, 0.4), 0 0 12px rgba(245, 158, 11, 0.15);
+}
+
+.wise-login-card .ant-input-password .ant-input,
+.wise-login-card .ant-input-password input {
+  border: 0;
+  background: transparent;
+  color: var(--login-text);
+  box-shadow: none;
+}
+
+.wise-login-card .ant-input-password-icon {
+  color: var(--login-muted);
+}
+
+.wise-login-options {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  color: var(--login-muted);
+  font-size: 12px;
+}
+
+.wise-login-options .ant-checkbox-wrapper,
+.wise-login-options .ant-btn {
+  color: var(--login-muted);
+  font-size: 12px;
+}
+
+.wise-login-options .ant-btn:hover {
+  color: var(--login-gold);
+}
+
+.wise-login-card .ant-checkbox-inner {
+  border-color: rgba(255, 215, 0, 0.36);
+  background: rgba(0, 0, 0, 0.42);
+}
+
+.wise-login-card .ant-checkbox-checked .ant-checkbox-inner {
+  border-color: var(--login-gold);
+  background: var(--login-gold-soft);
+}
+
+.wise-login-alert {
+  border-color: rgba(255, 59, 48, 0.3);
+  background: rgba(255, 59, 48, 0.1);
+}
+
+.wise-login-alert .ant-alert-message,
+.wise-login-alert .ant-alert-description {
+  color: rgba(255, 214, 214, 0.96);
+}
+
+.wise-login-actions {
+  display: grid;
+  gap: 12px;
+  padding-top: 4px;
+}
+
+.wise-login-primary-btn.ant-btn-primary {
+  height: 48px;
+  border: 1px solid rgba(255, 215, 0, 0.4);
+  background: linear-gradient(135deg, rgb(180, 83, 9) 0%, rgb(245, 158, 11) 50%, rgb(252, 211, 77) 100%);
+  background-size: 200% auto;
+  color: rgb(11, 5, 28);
+  font-weight: 900;
+  letter-spacing: 0;
+  text-shadow: 0 1px 4px rgba(255, 255, 255, 0.35);
+  box-shadow: 0 0 30px rgba(245, 158, 11, 0.45), 0 0 15px rgba(255, 59, 48, 0.3);
+  transition: background-position 0.4s ease, box-shadow 0.4s ease, transform 0.2s ease;
+}
+
+.wise-login-primary-btn.ant-btn-primary:not(:disabled):hover {
+  background-position: right center;
+  color: rgb(11, 5, 28);
+  box-shadow: 0 0 45px rgba(245, 158, 11, 0.8), 0 0 25px rgba(255, 215, 0, 0.5), inset 0 0 20px rgba(255, 255, 255, 0.4);
+  transform: scale(1.02);
+}
+
+.wise-login-primary-btn.ant-btn-primary:not(:disabled):active {
+  transform: scale(0.98);
+}
+
+.wise-login-secondary-btn.ant-btn-default {
+  border-color: rgba(255, 215, 0, 0.2);
+  background: rgba(255, 215, 0, 0.04);
+  color: var(--login-muted);
+  font-weight: 800;
+}
+
+.wise-login-secondary-btn.ant-btn-default:not(:disabled):hover {
+  border-color: rgba(255, 215, 0, 0.52);
+  background: rgba(255, 215, 0, 0.08);
+  color: var(--login-text);
+}
+
+.wise-login-security-note,
+.wise-login-card .wise-login-security-note.ant-typography {
+  display: block;
+  color: var(--login-muted);
+  font-size: 12px;
+  line-height: 1.6;
+  text-align: center;
+}
+
+.login-ritual-seal {
+  position: absolute;
+  right: clamp(18px, 6vw, 96px);
+  top: clamp(70px, 14vh, 150px);
+  display: grid;
+  width: 86px;
+  aspect-ratio: 1;
+  place-items: center;
+  border: 1px solid rgba(255, 215, 0, 0.42);
+  border-radius: 50%;
+  color: rgba(253, 224, 154, 0.88);
+  font-size: 18px;
+  font-weight: 800;
+  text-shadow: 0 0 18px rgba(255, 59, 48, 0.62);
+  box-shadow: inset 0 0 28px rgba(255, 59, 48, 0.22), 0 0 34px rgba(255, 215, 0, 0.16);
+  transform: rotate(-9deg);
+  animation: login-ritual-breathe 4.8s ease-in-out infinite;
+}
+
+.login-ritual-seal::before,
+.login-ritual-seal::after {
+  content: "";
+  position: absolute;
+  inset: 9px;
+  border: 1px solid rgba(255, 59, 48, 0.42);
+  border-radius: inherit;
+}
+
+.login-ritual-seal::after {
+  inset: 18px;
+  border-color: rgba(255, 215, 0, 0.34);
+}
+
+.login-ritual-motto {
+  position: absolute;
+  left: clamp(16px, 4vw, 72px);
+  bottom: clamp(74px, 12vh, 132px);
+  display: inline-flex;
+  max-width: min(360px, calc(100vw - 32px));
+  align-items: center;
+  gap: 8px;
+  border: 1px solid rgba(255, 215, 0, 0.26);
+  border-radius: 999px;
+  background: rgba(12, 5, 28, 0.56);
+  color: rgba(255, 247, 237, 0.9);
+  padding: 6px 10px;
+  font-size: 12px;
+  font-weight: 800;
+  box-shadow: 0 12px 34px rgba(0, 0, 0, 0.22);
+}
+

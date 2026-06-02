@@ -19,6 +19,8 @@
 - `TRADING_QUANT_LEAD_PLAYBOOK.md`
 - `PROJECT_PLAN.md`
 - `PRODUCT_STAGE_ACCEPTANCE.md`
+- `docs/a-share-strong-stock-trading-requirements-2026-06-02.md`
+- `docs/trading-experience-observation-suite-requirements-2026-06-02.md`
 - `docs/market-support-resistance-ma30-development-plan-2026-06-01.md`
 - `docs/low-buy-strategy-mechanism.md`
 - `docs/market-trading-enhancement-requirements-2026-05-25.md`
@@ -60,6 +62,7 @@ Recently archived historical reports:
 ## Reports And Evidence
 
 - `docs/reports/README.md`
+- `docs/reports/artifact-manifest-2026-06-02.md`
 - `docs/reports/project-engineering-compliance-remediation-2026-06-02.md`
 - `docs/reports/full-project-code-review-2026-06-02.md`
 - `docs/reports/full-project-audit-2026-05-25.md`
@@ -68,6 +71,8 @@ Recently archived historical reports:
 - `docs/reports/repository-cleanup-2026-05-27.md`
 - `docs/reports/project-conventions-remediation-2026-05-31.md`
 - `docs/reports/strategy_24m_duckdb_report.md`
+- `docs/reports/zhangmengzhu-16-articles-analysis-2026-06-02.md`
+- `docs/reports/zhangmengzhu-16-articles-source-2026-06-02.md`
 
 Historical JSON, JSONL and zip evidence under `docs/reports/` is indexed by `docs/reports/README.md`. Do not add new machine-readable artifacts to this section; add a Markdown summary or move the artifact to the governed data/artifact location.
 

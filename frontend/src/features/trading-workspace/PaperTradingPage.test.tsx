@@ -45,20 +45,25 @@ describe("PaperTradingPage", () => {
       />
     );
 
-    expect(html).not.toContain("模拟交易");
     expect(html).toContain("paper-conclusion");
     expect(html).toContain("模拟盘");
     expect(html).toContain("真实收益");
     expect(html).toContain("仓位与风控");
     expect(html).toContain("自动状态");
     expect(html).toContain("paper-main-grid");
-    expect(html).toContain("主区：持仓与今日动作");
+    expect(html).not.toContain("主区：持仓与今日动作");
     expect(html).not.toContain("今日红运");
     expect(html).not.toContain("像素状态");
     expect(html).not.toContain("+委托");
     expect(html).not.toContain("打开模拟委托弹窗");
-    expect(html).toContain("paper-conclusion__pixel");
-    expect(html).toContain("次区：记录、表现与自动化");
+    expect(html).toContain("paper-hero-grid");
+    expect(html).toContain("paper-mecha-action-panel");
+    expect(html).toContain("模拟盘机甲交易舱");
+    expect(html).toContain("壹式·紫");
+    expect(html).not.toContain("[ 模拟交易事件 / 触发特效 ]");
+    expect(html).not.toContain("SIMULATE ACTION");
+    expect(html).toContain("实时同步监控日志");
+    expect(html).not.toContain("次区：记录、表现与自动化");
     expect(html).toContain("自动化");
     expect(html).toContain("策略绩效");
     expect(html).not.toContain("表现（策略绩效）");
@@ -336,7 +341,8 @@ describe("PaperTradingPage", () => {
 
     expect(html).not.toContain("盘中确认已通过");
     expect(html).not.toContain("确认买入");
-    expect(html).toContain("自动交易触发");
+    expect(html).not.toContain("自动 (AUTO)");
+    expect(html).toContain("SYS_FLOW: OK");
   });
 
   it("explains auto trading without any manual confirmation copy", () => {
@@ -378,7 +384,9 @@ describe("PaperTradingPage", () => {
     expect(html).not.toContain("可以进入委托确认");
     expect(html).not.toContain("确认买入");
     expect(html).not.toContain("分时确认");
-    expect(html).toContain("自动交易按计划轮询，不依赖人工确认");
+    expect(html).not.toContain("系统自动执行中");
+    expect(html).not.toContain("自动 (AUTO)");
+    expect(html).toContain("实时同步监控日志");
   });
 
   it("keeps paper page free of the full-market review entry", () => {

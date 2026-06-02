@@ -49,7 +49,6 @@ export function PaperDetailTabs(props: PaperDetailTabsProps) {
 
   return (
     <Card
-      title="次区：记录、表现与自动化"
       size="small"
       style={{ gridArea: "details" }}
       styles={{ body: { padding: 8, fontSize: 12 } }}

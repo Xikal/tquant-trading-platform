@@ -17,11 +17,11 @@ import type {
   RiskEventItem,
 } from "../../types";
 import type { CSSProperties } from "react";
-import { memo, useEffect, useMemo } from "react";
-import { Card, Col, Row, Space } from "antd";
-import { PixelTraderAvatar } from "./PixelTraderWorker";
+import { memo, useMemo } from "react";
+import { Col, Row, Space } from "antd";
 import { PaperDetailTabs } from "./PaperDetailTabs";
 import { PaperConclusionBar } from "./PaperConclusionBar";
+import { PaperMechaActionPanel } from "./PaperMechaActionPanel";
 import { PaperTodayActionPanel } from "./PaperTodayActionPanel";
 import { paperAccountNeedsResume } from "./paperTradingStatus";
 import {
@@ -47,10 +47,6 @@ const PAPER_ROW_STYLE: CSSProperties = {
   maxWidth: "100%",
   minWidth: 0,
   overflowX: "hidden",
-};
-const PAPER_SIDE_STACK_STYLE: CSSProperties = {
-  display: "flex",
-  fontSize: 12,
 };
 
 export interface PaperTradingPageProps {
@@ -117,13 +113,8 @@ export const PaperTradingPage = memo(function PaperTradingPage({
   const paperLoading = loading === "paper";
   const orderLoading = loading === "paper-order";
   const autoTradingRunning = Boolean(autoTradingStatus?.running);
-  const clockMs = usePaperUiStore((state) => state.clockMs);
-  const setClockMs = usePaperUiStore((state) => state.setClockMs);
   const orderModalOpen = usePaperUiStore((state) => state.orderModalOpen);
   const setOrderModalOpen = usePaperUiStore((state) => state.setOrderModalOpen);
-  const cockpitMarketState = useMemo(() => (
-    resolveCockpitMarketState(autoTradingStatus, clockMs)
-  ), [autoTradingStatus, clockMs]);
   const lastOrderAction = useMemo(() => {
     const latestTrade = trades[0];
     if (!latestTrade) return null;
@@ -135,11 +126,6 @@ export const PaperTradingPage = memo(function PaperTradingPage({
     };
   }, [trades]);
 
-  useEffect(() => {
-    const timer = window.setInterval(() => setClockMs(Date.now()), 60_000);
-    return () => window.clearInterval(timer);
-  }, []);
-
   async function submitOrderFromModal() {
     await Promise.resolve(onSubmitOrder());
     setOrderModalOpen(false);
@@ -147,22 +133,27 @@ export const PaperTradingPage = memo(function PaperTradingPage({
 
   return (
     <Space direction="vertical" size={8} style={PAPER_PAGE_STACK_STYLE}>
-      <PaperConclusionBar
-        account={account}
-        performance={performance}
-        autoTradingStatus={autoTradingStatus}
-        loading={paperLoading || orderLoading}
-        canResumeOrder={needsResumeOrder}
-        pixel={(
-          <PixelTraderAvatar
-            marketState={cockpitMarketState}
+      <Row className="paper-hero-grid" gutter={[8, 8]} align="stretch" style={PAPER_ROW_STYLE}>
+        <Col xs={24} xl={16} className="paper-hero-grid__left">
+          <PaperConclusionBar
+            account={account}
+            performance={performance}
+            autoTradingStatus={autoTradingStatus}
+            loading={paperLoading || orderLoading}
+            canResumeOrder={needsResumeOrder}
+            onTogglePause={onTogglePause}
+          />
+        </Col>
+        <Col xs={24} xl={8} className="paper-hero-grid__right">
+          <PaperMechaActionPanel
+            autoTradingStatus={autoTradingStatus}
+            autoTradingRuns={autoTradingRuns}
+            riskEvents={riskEvents}
             paused={paused}
-            autoTradingRunning={autoTradingRunning}
             lastOrderAction={Number.isFinite(lastOrderAction?.timestamp) ? lastOrderAction : null}
           />
-        )}
-        onTogglePause={onTogglePause}
-      />
+        </Col>
+      </Row>
       {orderModalOpen ? (
         <OrderEntryModal
           draft={draft}
@@ -175,26 +166,19 @@ export const PaperTradingPage = memo(function PaperTradingPage({
           onSubmitOrder={submitOrderFromModal}
         />
       ) : null}
-      <Row className="paper-main-grid" gutter={[8, 8]} align="top" style={PAPER_ROW_STYLE}>
-        <Col xs={24}>
-          <Card size="small" title="主区：持仓与今日动作" styles={{ body: { display: "none" } }} />
-        </Col>
-        <Col xs={24} xl={15}>
+      <Row className="paper-main-grid" gutter={[8, 8]} align="stretch" style={PAPER_ROW_STYLE}>
+        <Col xs={24} xl={16} className="paper-main-grid__left">
           <PaperPositionsPanel
             positions={positions}
             loading={paperLoading}
           />
         </Col>
-        <Col xs={24} xl={9}>
-          <Space direction="vertical" size={8} style={PAPER_SIDE_STACK_STYLE}>
-            <Card size="small" title="今日动作 / 自动交易状态">
-              <PaperTodayActionPanel
-                autoTradingStatus={autoTradingStatus}
-                autoTradingRuns={autoTradingRuns}
-                riskEvents={riskEvents}
-              />
-            </Card>
-          </Space>
+        <Col xs={24} xl={8} className="paper-main-grid__right">
+          <PaperTodayActionPanel
+            autoTradingStatus={autoTradingStatus}
+            autoTradingRuns={autoTradingRuns}
+            riskEvents={riskEvents}
+          />
         </Col>
       </Row>
       <PaperDetailTabs
@@ -224,19 +208,3 @@ export const PaperTradingPage = memo(function PaperTradingPage({
     </Space>
   );
 });
-
-function resolveCockpitMarketState(
-  autoTradingStatus: PaperAutoTradingStatus | null,
-  clockMs: number,
-) {
-  if (autoTradingStatus?.engine_running || autoTradingStatus?.running) return "open";
-  if (autoTradingStatus?.trading_time === false) return "closed";
-  const now = new Date(clockMs);
-  const day = now.getDay();
-  if (day === 0 || day === 6) return "closed";
-  const minutes = now.getHours() * 60 + now.getMinutes();
-  if (minutes >= 570 && minutes < 690) return "open";
-  if (minutes >= 690 && minutes < 780) return "lunch_break";
-  if (minutes >= 780 && minutes < 900) return "open";
-  return "closed";
-}

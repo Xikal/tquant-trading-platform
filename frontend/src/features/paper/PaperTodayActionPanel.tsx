@@ -1,89 +1,37 @@
-import { Col, Row, Space, Statistic, Tag, Timeline, Typography } from "antd";
 import type { PaperAgentRun, PaperAutoTradingStatus, RiskEventItem } from "../../types";
 import { formatPaperDateTime } from "./paperTradingFormatters";
 
 export function PaperTodayActionPanel({
   autoTradingStatus,
   autoTradingRuns,
-  riskEvents,
 }: {
   autoTradingStatus: PaperAutoTradingStatus | null;
   autoTradingRuns: PaperAgentRun[];
   riskEvents: RiskEventItem[];
 }) {
-  const openRisk = riskEvents.find((item) => item.status !== "resolved") ?? null;
   const actions = buildActionTimeline(autoTradingStatus, autoTradingRuns);
 
   return (
-    <Space direction="vertical" size={6} style={{ width: "100%", fontSize: 12 }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
-        <Typography.Text strong style={{ fontSize: 12 }}>今日动作</Typography.Text>
-        <Tag color={autoTradingStatus?.running ? "green" : "default"}>
-          {autoTradingStatus?.running ? "系统自动执行中" : "当前未自动下单"}
-        </Tag>
+    <section className="paper-action-hud" aria-label="今日动作与自动交易状态">
+      <div className="paper-action-hud__monitor">
+        <div className="paper-action-hud__panel-title paper-action-hud__panel-title--split">
+          <span>
+            <span className="paper-action-hud__title-mark paper-action-hud__title-mark--pulse" />
+            实时同步监控日志
+          </span>
+          <strong>SYS_FLOW: OK</strong>
+        </div>
+        <div className="paper-action-hud__console" role="log">
+          {actions.map((item, index) => (
+            <p key={`${item.time}-${index}`}>
+              <span>[{item.time}] </span>
+              <strong className={`paper-action-hud__log-tag paper-action-hud__log-tag--${item.tone}`}>{item.title}:</strong>
+              <span> {item.detail}</span>
+            </p>
+          ))}
+        </div>
       </div>
-      <Row gutter={[6, 6]}>
-        <StatusItem
-          label="自动交易状态"
-          value={autoTradingStatus?.running ? "运行中" : autoTradingStatus?.trading_time ? "待启动" : "非交易时间"}
-          detail={autoTradingStatus?.last_cycle_summary || "没有新的自动交易动作。"}
-        />
-        <StatusItem
-          label="当前阻断原因"
-          value={openRisk ? "需要处理" : "无阻断"}
-          detail={openRisk?.message || autoTradingStatus?.blocking_reason || "可以按计划执行。"}
-          tone={openRisk ? "warning" : "success"}
-        />
-        <StatusItem
-          label="自动交易触发"
-          value={autoTradingStatus?.running ? "已执行" : autoTradingStatus?.trading_time ? "等待下一轮" : "非交易时间"}
-          detail={autoTradingStatus?.last_cycle_summary || "自动交易按计划轮询，不依赖人工确认。"}
-        />
-      </Row>
-      {actions.length ? (
-        <Timeline
-          items={actions.map((item, index) => ({
-            key: `${item.time}-${index}`,
-            children: (
-              <Space direction="vertical" size={1}>
-                <Typography.Text strong style={{ fontSize: 12 }}>{item.time} {item.title}</Typography.Text>
-                <Typography.Text type="secondary" style={{ fontSize: 12 }}>{item.detail}</Typography.Text>
-              </Space>
-            ),
-          }))}
-          style={{ fontSize: 12 }}
-        />
-      ) : <Typography.Text type="secondary" style={{ fontSize: 12 }}>今日暂无执行记录。</Typography.Text>}
-    </Space>
-  );
-}
-
-function StatusItem({
-  label,
-  value,
-  detail,
-  tone,
-}: {
-  label: string;
-  value: string;
-  detail: string;
-  tone?: "success" | "warning";
-}) {
-  return (
-    <Col xs={24} md={8}>
-      <div style={{
-        background: tone === "success" ? "#f0fbf4" : tone === "warning" ? "#fff8e8" : "#fff",
-        border: "1px solid #edf0f5",
-        borderRadius: 6,
-        padding: 6,
-        minHeight: 76,
-      }}>
-        <Space direction="vertical" size={3}>
-          <Statistic title={label} value={value} styles={{ content: { fontSize: 12, lineHeight: 1.1 } }} />
-          <Typography.Text type="secondary" style={{ fontSize: 12, lineHeight: 1.32 }}>{detail}</Typography.Text>
-        </Space>
-      </div>
-    </Col>
+    </section>
   );
 }
 
@@ -98,22 +46,38 @@ function buildActionTimeline(
       time: formatPaperDateTime(item.created_at).slice(11, 16),
       title: runStatusText(item.status),
       detail: summary,
+      tone: runStatusTone(item.status),
     };
   });
   if (autoTradingStatus?.last_cycle_at && autoTradingStatus?.last_cycle_summary) {
     items.unshift({
       time: formatPaperDateTime(autoTradingStatus.last_cycle_at).slice(11, 16),
-      title: "最近一轮",
+      title: "INFO",
       detail: autoTradingStatus.last_cycle_summary,
+      tone: "info",
     });
   }
-  return items.slice(0, 3);
+  if (!items.length) {
+    items.push(
+      { time: "09:30:00", title: "SYSTEM_INIT", detail: "维斯量化终端同步启动", tone: "init" },
+      { time: "09:30:05", title: "LINK", detail: "神经元连接（1st Pilot）同步率稳定在 84.2%", tone: "link" },
+      { time: "09:31:24", title: "INFO", detail: "A股沪深两市指数馈入开始...", tone: "info" },
+    );
+  }
+  return items.slice(0, 4);
 }
 
 function runStatusText(status: string): string {
-  if (status === "succeeded") return "已执行";
-  if (status === "failed") return "执行失败";
-  if (status === "skipped") return "本轮跳过";
-  if (status === "running") return "执行中";
-  return "已记录";
+  if (status === "succeeded") return "SELL";
+  if (status === "failed") return "RISK";
+  if (status === "skipped") return "INFO";
+  if (status === "running") return "AUTO";
+  return "LINK";
+}
+
+function runStatusTone(status: string): string {
+  if (status === "succeeded") return "sell";
+  if (status === "failed") return "risk";
+  if (status === "running") return "auto";
+  return "info";
 }

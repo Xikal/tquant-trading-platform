@@ -3,6 +3,7 @@ import { appApi } from "../../api/appClient";
 import { clearAuthTokens, getAuthAccessToken, shouldAttemptAuthRefresh } from "../../api/base";
 import { api } from "../../api/client";
 import { strategiesApi, type StrategyMeta } from "../../api/strategies";
+import { useNativeAppUpdate } from "../../app/useNativeAppUpdate";
 import { useWorkspaceStore } from "../../stores/workspaceStore";
 import { useServerState } from "../../state/serverState";
 import { LoginPage } from "./LoginPage";
@@ -31,6 +32,7 @@ const WORKSPACE_SERVER_KEYS = {
 };
 
 export function TradingWorkspace() {
+  useNativeAppUpdate();
   const { page, navigatePage } = useWorkspaceNavigation();
   const authReady = useWorkspaceStore((state) => state.authReady);
   const [currentUser, setCurrentUser] = useServerState<AuthUser | null>(WORKSPACE_SERVER_KEYS.currentUser, null);
