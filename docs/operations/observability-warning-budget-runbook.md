@@ -19,8 +19,12 @@ make warning-budget
 Budget policy:
 
 - Unexpected warnings fail the gate.
-- The only current allowance is one local `NotOpenSSLWarning` from urllib3 when this macOS workspace Python is linked against LibreSSL.
+- Current allowances are capped third-party import-time warnings only:
+  - one local `NotOpenSSLWarning` from urllib3 when this macOS workspace Python is linked against LibreSSL;
+  - one FastAPI/Starlette `TestClient` deprecation warning emitted by the upstream test helper in CI;
+  - one `py_mini_racer` `pkg_resources` deprecation warning emitted by the upstream dependency in CI.
 - sklearn `RuntimeWarning` from ML training is not allowed. Logistic ML training must stay numerically quiet.
+- Project-code warnings remain disallowed unless they are fixed or reviewed into a narrow allowance with path, message, count and reason.
 
 Why the LibreSSL allowance exists:
 

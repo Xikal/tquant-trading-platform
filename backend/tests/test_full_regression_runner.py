@@ -135,6 +135,27 @@ def test_warning_budget_allows_documented_libressl_environment_warning() -> None
     assert budget["violations"] == []
 
 
+def test_warning_budget_allows_documented_upstream_import_warnings() -> None:
+    warnings = [
+        {
+            "category": "StarletteDeprecationWarning",
+            "message": "Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.",
+            "filename": "/opt/hostedtoolcache/Python/3.11.15/x64/lib/python3.11/site-packages/fastapi/testclient.py",
+            "lineno": 1,
+        },
+        {
+            "category": "DeprecationWarning",
+            "message": "pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html",
+            "filename": "/opt/hostedtoolcache/Python/3.11.15/x64/lib/python3.11/site-packages/py_mini_racer/py_mini_racer.py",
+            "lineno": 15,
+        },
+    ]
+    budget = warning_budget.evaluate_budget(warnings)
+
+    assert budget["allowed_warning_count"] == 2
+    assert budget["violations"] == []
+
+
 def test_warning_budget_fails_when_allowance_count_is_exceeded() -> None:
     warnings = [
         {

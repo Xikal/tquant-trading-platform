@@ -33,6 +33,20 @@ ALLOWANCES = (
         max_count=1,
         reason="macOS system Python in this workspace is linked against LibreSSL; this is an environment warning, not project runtime behavior.",
     ),
+    WarningAllowance(
+        warning_type="StarletteDeprecationWarning",
+        message_pattern=r"Using `httpx` with `starlette\.testclient` is deprecated; install `httpx2` instead\.",
+        path_pattern=r"/fastapi/testclient\.py$",
+        max_count=1,
+        reason="FastAPI re-exports Starlette TestClient and currently emits one import-time upstream deprecation warning in CI.",
+    ),
+    WarningAllowance(
+        warning_type="DeprecationWarning",
+        message_pattern=r"pkg_resources is deprecated as an API\.",
+        path_pattern=r"/py_mini_racer/py_mini_racer\.py$",
+        max_count=1,
+        reason="py_mini_racer currently imports pkg_resources once at import time; project code must remain warning-clean.",
+    ),
 )
 
 
