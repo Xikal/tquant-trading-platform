@@ -179,8 +179,19 @@
 }
 
 .strategy-tracking-conclusion .tq-conclusion-bar__summary {
-  display: grid;
-  gap: 2px;
+  display: flex;
+  gap: var(--sp-2);
+  align-items: center;
+  min-width: 0;
+  line-height: var(--lh-tight);
+}
+
+.strategy-tracking-conclusion .tq-conclusion-bar__summary strong,
+.strategy-tracking-conclusion .tq-conclusion-bar__summary span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .strategy-tracking-conclusion .tq-conclusion-bar__summary span {
@@ -194,6 +205,35 @@
 
 .strategy-tracking-conclusion .tq-conclusion-bar__item {
   display: grid;
+}
+
+.strategy-tracking-conclusion--compact .tq-conclusion-bar {
+  gap: var(--sp-2);
+}
+
+.strategy-tracking-conclusion--compact .tq-panel__header {
+  padding: var(--sp-2) var(--sp-3) 0;
+}
+
+.strategy-tracking-conclusion--compact .tq-panel__body {
+  padding: var(--sp-2) var(--sp-3) var(--sp-3);
+}
+
+.strategy-tracking-conclusion--compact .tq-conclusion-bar__grid {
+  gap: 6px;
+}
+
+.strategy-tracking-conclusion--compact .tq-stat-tile {
+  padding: 7px 8px;
+}
+
+.strategy-tracking-conclusion--compact .tq-stat-tile__value {
+  margin-top: 2px;
+  font-size: var(--font-body);
+}
+
+.strategy-tracking-conclusion--compact .tq-stat-tile__label {
+  font-size: var(--font-meta);
 }
 
 .strategy-tracking-metric-label {

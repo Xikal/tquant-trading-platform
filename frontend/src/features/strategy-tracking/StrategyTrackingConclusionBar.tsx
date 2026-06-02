@@ -31,13 +31,13 @@ export function StrategyTrackingConclusionBar({
   const sampleHelp = `${snapshotMeta} · 平均涨跌 ${formatPct(summary.avg_current_return_pct)} · 复核 ${reviewCount}`;
 
   return (
-    <section className="strategy-tracking-conclusion">
+    <section className="strategy-tracking-conclusion strategy-tracking-conclusion--compact">
       <ConclusionBar
         title="策略跟踪"
         summary={(
           <>
             <strong>{rangeText}共有 {summary.tracking_count} 条跟踪信号，买入类和观察类分开看。</strong>
-            <span>只有“确定可买”和“小仓试买”属于买入类；“接近买点”和“观察确认”只用于提醒和复盘。</span>
+            <span>买入类仅含确定可买/小仓试买；接近买点、观察确认等观察类只提醒复盘。</span>
           </>
         )}
         items={[

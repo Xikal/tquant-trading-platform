@@ -28,7 +28,7 @@ export function PixelTraderAvatar(props: PixelTraderCoreProps) {
   const { canvasRef } = usePixelTraderCanvas(props);
   return (
     <div
-      aria-label="模拟盘像素图"
+      aria-label="模拟盘角色动画"
       className="paper-conclusion__pixel"
     >
       <canvas

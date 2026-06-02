@@ -75,10 +75,11 @@ describe("StrategyTracking UI", () => {
     );
 
     expect(html).toContain("strategy-tracking-conclusion");
+    expect(html).toContain("strategy-tracking-conclusion--compact");
     expect(html).toContain("策略跟踪");
     expect(html).toContain("买入类和观察类分开看");
-    expect(html).toContain("只有“确定可买”和“小仓试买”属于买入类");
-    expect(html).toContain("“接近买点”和“观察确认”只用于提醒和复盘");
+    expect(html).toContain("买入类仅含确定可买/小仓试买");
+    expect(html).toContain("观察类只提醒复盘");
     expect(html).toContain("重点跟踪");
     expect(html).toContain("观察等待");
     expect(html).toContain("已走弱");
