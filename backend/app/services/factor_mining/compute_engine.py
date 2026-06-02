@@ -109,7 +109,7 @@ class FactorComputeEngine:
     ) -> None:
         self.timeout_seconds = timeout_seconds
         self.max_rows = max_rows
-        self.parallel_workers = max(1, int(parallel_workers))
+        self.parallel_workers = max(0, int(parallel_workers))
         self.parallel_symbol_threshold = max(1, int(parallel_symbol_threshold))
 
     def validate(self, formula_code: str) -> None:
@@ -141,7 +141,7 @@ class FactorComputeEngine:
         ordered = bars.sort_values(["symbol", "trade_date"])
         symbols = [str(item) for item in ordered["symbol"].drop_duplicates().tolist()]
         if self.parallel_workers <= 0:
-            return FactorComputeResult(_compute_factor_batch(formula_code, ordered), time.monotonic() - started)
+            return FactorComputeResult(_compute_factor_batch(formula_code, ordered, apply_limits=False), time.monotonic() - started)
         return self._compute_parallel(formula_code, ordered, symbols, started)
 
     def _compute_parallel(
@@ -210,8 +210,9 @@ def _is_literal_constant(node: ast.AST) -> bool:
     return False
 
 
-def _compute_factor_batch(formula_code: str, bars: pd.DataFrame) -> pd.DataFrame:
-    _apply_resource_limits()
+def _compute_factor_batch(formula_code: str, bars: pd.DataFrame, *, apply_limits: bool = True) -> pd.DataFrame:
+    if apply_limits:
+        _apply_resource_limits()
     namespace = _compile_namespace(formula_code)
     compute_factor = namespace.get("compute_factor")
     if not callable(compute_factor):

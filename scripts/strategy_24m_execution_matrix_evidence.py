@@ -10,6 +10,10 @@ from typing import Any
 MATRIX_PATHS = (
     Path("backend/data/reports/execution_matrix_full/low_buy_execution_matrix_24m_confirmed_all_2025-10-09_2026-04-28.json"),
     Path("backend/data/reports/execution_matrix/low_buy_execution_matrix_24m_confirmed_all_2025-10-09_2026-04-28.json"),
+    Path(
+        "docs/reports/exit-parameter-walk-forward-2026-05-28/windows/"
+        "low_buy_execution_matrix_24m_confirmed_all_2026-02-02_2026-04-28.json"
+    ),
 )
 
 PARAMETER_HINTS = {

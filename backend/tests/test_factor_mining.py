@@ -158,7 +158,11 @@ def test_hypothesis_agent_generates_at_least_twenty_without_llm():
     assert response.items[0].data_deps
 
 
-def test_factor_evaluation_records_metrics():
+def test_factor_evaluation_records_metrics(monkeypatch):
+    monkeypatch.setattr(
+        "app.services.factor_mining.evaluation.FactorComputeEngine",
+        lambda: FactorComputeEngine(parallel_workers=0),
+    )
     db = _db()
     _seed_bars(db)
     formula = (
