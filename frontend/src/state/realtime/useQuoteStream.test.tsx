@@ -84,4 +84,19 @@ describe("quote SSE stream", () => {
     expect(FakeEventSource.instances[0].closed).toBe(true);
     controller.close();
   });
+
+  it("lets the request layer restore auth before opening the stream token subscription", async () => {
+    const requestStreamToken = vi.fn(async () => ({ stream_token: "token-1", expires_in: 3600 }));
+    const controller = startQuoteStream({
+      symbols: ["600000"],
+      apiBase: "/api",
+      createEventSource: (url) => new FakeEventSource(url) as unknown as EventSource,
+      requestStreamToken,
+    });
+    await controller.ready;
+
+    expect(requestStreamToken).toHaveBeenCalledTimes(1);
+    expect(FakeEventSource.instances[FakeEventSource.instances.length - 1]?.url).toContain("stream_token=token-1");
+    controller.close();
+  });
 });

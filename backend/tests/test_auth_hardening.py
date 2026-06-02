@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import secrets
+from datetime import timedelta
 from os import environ
 
 import pytest
@@ -14,6 +15,7 @@ from app.models.entities import User, UserSession
 from app.services.auth_service import (
     PASSWORD_ALGORITHM,
     PASSWORD_ITERATIONS,
+    REFRESH_RETRY_GRACE_SECONDS,
     AuthError,
     AuthService,
     _b64encode,
@@ -51,6 +53,10 @@ def test_refresh_token_replay_revokes_all_user_sessions(session_factory) -> None
         tokens = service.register(db, username="replay_user", password="secret123")
         rotated = service.refresh(db, tokens.refresh_token)
         assert rotated.access_token
+        old_session = service._get_session_by_token(db, tokens.refresh_token)
+        assert old_session is not None
+        old_session.revoked_at = old_session.revoked_at - timedelta(seconds=REFRESH_RETRY_GRACE_SECONDS + 1)
+        db.commit()
 
         with pytest.raises(AuthError, match="重放"):
             service.refresh(db, tokens.refresh_token)
@@ -58,6 +64,21 @@ def test_refresh_token_replay_revokes_all_user_sessions(session_factory) -> None
         sessions = db.execute(select(UserSession)).scalars().all()
         assert sessions
         assert all(row.revoked_at is not None for row in sessions)
+
+
+def test_recent_refresh_token_retry_does_not_revoke_rotated_session(session_factory) -> None:
+    service = AuthService()
+    with session_factory() as db:
+        tokens = service.register(db, username="retry_user", password="secret123")
+        rotated = service.refresh(db, tokens.refresh_token)
+        assert rotated.access_token
+
+        with pytest.raises(AuthError, match="登录凭证已轮换"):
+            service.refresh(db, tokens.refresh_token)
+
+        assert service.refresh(db, rotated.refresh_token).access_token
+        sessions = db.execute(select(UserSession)).scalars().all()
+        assert any(row.revoked_at is None for row in sessions)
 
 
 def test_legacy_pbkdf2_password_rehashes_to_scrypt_after_login(session_factory) -> None:

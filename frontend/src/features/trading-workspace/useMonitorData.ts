@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef } from "react";
-import { API_BASE, getAuthAccessToken, getAdminApiToken, invalidateCache, request } from "../../api/base";
+import { API_BASE, getAdminApiToken, invalidateCache, request } from "../../api/base";
 import { api } from "../../api/client";
 import { useWorkspaceMonitorStore } from "../../stores/workspaceMonitorStore";
 import { seedLiveQuoteSignal, updateLiveQuoteSignal } from "../../state/realtime/liveQuoteSignals";
@@ -512,7 +512,7 @@ export function useMonitorData({ active, withLoading, setError, setNotice, onAut
   }, [active, refreshRealtimeQuotes]);
 
   useEffect(() => {
-    if (!active || !getAuthAccessToken()) {
+    if (!active) {
       keyLevelStreamOpenedRef.current = false;
       setKeyLevelAlerts([]);
       return undefined;

@@ -38,6 +38,7 @@ ACCESS_TOKEN_ISSUER = "tquant"
 ACCESS_TOKEN_AUDIENCE = "tquant-client"
 MIN_AUTH_SECRET_LENGTH = 64
 WEAK_AUTH_SECRETS = {"default_secret", "tquant_secret_2024", "test-secret", "test-auth-secret"}
+REFRESH_RETRY_GRACE_SECONDS = 10
 
 
 class AuthError(ValueError):
@@ -213,6 +214,8 @@ class AuthService:
         if session is None:
             raise AuthError("登录已失效，请重新登录")
         if session.revoked_at is not None:
+            if self._is_recent_refresh_retry(session):
+                raise AuthError("登录凭证已轮换，请使用最新会话")
             self._revoke_all_user_sessions(db, session.user_id)
             db.commit()
             raise AuthError("登录凭证疑似被重放，已吊销该账号所有会话，请重新登录")
@@ -439,6 +442,12 @@ class AuthService:
                 UserSession.refresh_token_hash == _hash_token(refresh_token),
             )
         ).scalar_one_or_none()
+
+    @staticmethod
+    def _is_recent_refresh_retry(session: UserSession) -> bool:
+        if session.revoked_at is None:
+            return False
+        return session.revoked_at >= utc_now_naive() - timedelta(seconds=REFRESH_RETRY_GRACE_SECONDS)
 
     @staticmethod
     def _revoke_all_user_sessions(db: Session, user_id: int) -> None:

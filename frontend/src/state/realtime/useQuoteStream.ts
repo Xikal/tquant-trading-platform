@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { API_BASE, getAuthAccessToken, request } from "../../api/base";
+import { API_BASE, request } from "../../api/base";
 import { updateLiveQuoteSignal, type LiveQuotePatch } from "./liveQuoteSignals";
 
 interface StreamTokenResponse {
@@ -42,7 +42,7 @@ const DEFAULT_RECONNECT_DELAY_MS = 1000;
 export function useQuoteStream(options: QuoteStreamOptions): void {
   const symbolsKey = normalizedSymbols(options.symbols).join(",");
   useEffect(() => {
-    if (options.active === false || !symbolsKey || !getAuthAccessToken() || liveQuoteSignalsDisabled()) {
+    if (options.active === false || !symbolsKey || liveQuoteSignalsDisabled()) {
       return undefined;
     }
     const controller = startQuoteStream({ ...options, symbols: symbolsKey.split(",") });

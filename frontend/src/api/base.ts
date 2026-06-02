@@ -15,11 +15,12 @@ const AUTH_PERSISTENCE_MODE_KEY = "tquant:auth:persistence_mode"
 const hydratedAuth = hydrateAuthAccessToken()
 let authAccessToken = hydratedAuth.accessToken
 let authPersistenceMode: AuthPersistenceMode = hydratedAuth.mode
+let authRefreshUnavailable = false
 const MAX_IDEMPOTENT_RETRIES = 2
 
 export async function request<T>(path: string, init?: ApiRequestInit): Promise<T> {
   const { timeoutMs, fetchInit } = splitApiRequestInit(init)
-  const headers = buildRequestHeaders(fetchInit)
+  let headers = buildRequestHeaders(fetchInit)
 
   const method = (fetchInit?.method ?? "GET").toUpperCase()
   const canRetry = method === "GET" || method === "HEAD"
@@ -28,6 +29,13 @@ export async function request<T>(path: string, init?: ApiRequestInit): Promise<T
     path,
     () =>
       retryRequest(async () => {
+        if (!headers.Authorization && canRefreshForPath(path)) {
+          if (await refreshAccessToken()) {
+            headers = buildRequestHeaders(fetchInit)
+          } else {
+            throw authRequiredError()
+          }
+        }
         let response = await fetchWithTimeout(
           `${API_BASE}${path}`,
           { ...fetchInit, headers, credentials: "include" },
@@ -85,7 +93,15 @@ function buildRequestHeaders(init?: RequestInit): Record<string, string> {
 }
 
 function canRefreshForPath(path: string): boolean {
-  return !path.startsWith("/auth/") && Boolean(getAuthAccessToken() || shouldAttemptAuthRefresh())
+  return !isPublicApiPath(path) && Boolean(getAuthAccessToken() || shouldAttemptAuthRefresh())
+}
+
+function isPublicApiPath(path: string): boolean {
+  return (
+    path.startsWith("/auth/") ||
+    path === "/app/bootstrap" ||
+    path.startsWith("/app/update/android")
+  )
 }
 
 let refreshAccessPromise: Promise<boolean> | null = null
@@ -120,6 +136,12 @@ async function refreshAccessToken(): Promise<boolean> {
       })
   }
   return refreshAccessPromise
+}
+
+function authRequiredError(): Error {
+  const error = new Error("登录已失效，请重新登录") as Error & { status?: number }
+  error.status = 401
+  return error
 }
 
 async function requestWithOfflineFallback<T>(
@@ -211,7 +233,7 @@ export function getAuthAccessToken(): string {
 }
 
 export function shouldAttemptAuthRefresh(): boolean {
-  return authPersistenceMode !== "memory"
+  return authPersistenceMode !== "memory" && !authRefreshUnavailable
 }
 
 export function setAuthTokens(accessToken: string, mode: AuthPersistenceMode = authPersistenceMode) {
@@ -221,12 +243,14 @@ export function setAuthTokens(accessToken: string, mode: AuthPersistenceMode = a
   }
   authAccessToken = accessToken
   authPersistenceMode = mode
+  authRefreshUnavailable = false
   persistAuthAccessToken(accessToken, mode)
 }
 
 export function clearAuthTokens() {
   authAccessToken = ""
   authPersistenceMode = "memory"
+  authRefreshUnavailable = true
   clearPersistedAuthAccessToken()
   void clearOfflineCache()
   clearQueryApiCache()

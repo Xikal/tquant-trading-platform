@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef } from "react";
-import { API_BASE, getAuthAccessToken, request } from "../../api/base";
+import { API_BASE, request } from "../../api/base";
 import { usePaperIntradayStore } from "../../stores/paperIntradayStore";
 import type { AuthUser, IntradayConfirmationItem, PaperPosition } from "../../types";
 import type { Page } from "../workspace-shared/workspaceTypes";
@@ -33,11 +33,6 @@ export function usePaperIntraday({
     let cancelled = false;
     let lastEventId = "";
     if (!currentUser || page !== "paper" || !positionSymbols) {
-      streamOpenedRef.current = false;
-      setIntradayConfirmations([]);
-      return undefined;
-    }
-    if (!getAuthAccessToken()) {
       streamOpenedRef.current = false;
       setIntradayConfirmations([]);
       return undefined;
