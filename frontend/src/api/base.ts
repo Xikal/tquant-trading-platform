@@ -1,5 +1,6 @@
 import { clearOfflineCache, readOfflineCache, writeOfflineCache } from "./offlineCache"
 import { fetchWithTimeout } from "./fetchWithTimeout"
+import { isPublicApiPath } from "./publicApiPaths"
 import type { ApiRequestInit } from "./requestTypes"
 import { queryClient } from "../app/query/queryClient"
 
@@ -17,6 +18,10 @@ let authAccessToken = hydratedAuth.accessToken
 let authPersistenceMode: AuthPersistenceMode = hydratedAuth.mode
 let authRefreshUnavailable = false
 const MAX_IDEMPOTENT_RETRIES = 2
+
+interface AuthRefreshPayload {
+  access_token?: string
+}
 
 export async function request<T>(path: string, init?: ApiRequestInit): Promise<T> {
   const { timeoutMs, fetchInit } = splitApiRequestInit(init)
@@ -96,17 +101,26 @@ function canRefreshForPath(path: string): boolean {
   return !isPublicApiPath(path) && Boolean(getAuthAccessToken() || shouldAttemptAuthRefresh())
 }
 
-function isPublicApiPath(path: string): boolean {
-  return (
-    path.startsWith("/auth/") ||
-    path === "/app/bootstrap" ||
-    path.startsWith("/app/update/android")
-  )
+let refreshAccessPromise: Promise<AuthRefreshPayload | null> | null = null
+
+export async function refreshAuthSession<T extends AuthRefreshPayload = AuthRefreshPayload>(): Promise<T> {
+  const payload = await refreshAccessPayload()
+  if (!payload) {
+    throw authRequiredError()
+  }
+  return payload as T
 }
 
-let refreshAccessPromise: Promise<boolean> | null = null
-
 async function refreshAccessToken(): Promise<boolean> {
+  try {
+    await refreshAuthSession()
+    return true
+  } catch {
+    return false
+  }
+}
+
+async function refreshAccessPayload(): Promise<AuthRefreshPayload | null> {
   if (!refreshAccessPromise) {
     refreshAccessPromise = fetchWithTimeout(`${API_BASE}/auth/refresh`, {
       method: "POST",
@@ -117,19 +131,19 @@ async function refreshAccessToken(): Promise<boolean> {
       .then(async (response) => {
         if (!response.ok) {
           clearAuthTokens()
-          return false
+          return null
         }
-        const payload = (await response.json()) as { access_token?: string }
+        const payload = (await response.json()) as AuthRefreshPayload
         if (!payload.access_token) {
           clearAuthTokens()
-          return false
+          return null
         }
         setAuthTokens(payload.access_token)
-        return true
+        return payload
       })
       .catch(() => {
         clearAuthTokens()
-        return false
+        return null
       })
       .finally(() => {
         refreshAccessPromise = null

@@ -114,6 +114,7 @@ class FactorComputeEngine:
 
     def validate(self, formula_code: str) -> None:
         tree = ast.parse(formula_code)
+        _validate_module_body(tree)
         has_compute_factor = False
         for node in ast.walk(tree):
             if isinstance(node, ast.FunctionDef) and node.name == "compute_factor":
@@ -182,6 +183,31 @@ def _call_name(func: ast.AST) -> str:
     if isinstance(func, ast.Attribute):
         return func.attr
     return ""
+
+
+def _validate_module_body(tree: ast.Module) -> None:
+    for node in tree.body:
+        if isinstance(node, ast.FunctionDef) and node.name == "compute_factor":
+            continue
+        if isinstance(node, ast.Assign) and all(isinstance(target, ast.Name) and target.id.isupper() for target in node.targets):
+            if _is_literal_constant(node.value):
+                continue
+        if isinstance(node, ast.Expr) and isinstance(node.value, ast.Constant) and isinstance(node.value.value, str):
+            continue
+        raise FactorSafetyError("公式只允许在顶层定义 compute_factor 和常量")
+
+
+def _is_literal_constant(node: ast.AST) -> bool:
+    if isinstance(node, ast.Constant) and isinstance(node.value, (int, float, str, bool, type(None))):
+        return True
+    if isinstance(node, (ast.Tuple, ast.List)):
+        return all(_is_literal_constant(item) for item in node.elts)
+    if isinstance(node, ast.Dict):
+        return all(
+            (key is None or _is_literal_constant(key)) and _is_literal_constant(value)
+            for key, value in zip(node.keys, node.values)
+        )
+    return False
 
 
 def _compute_factor_batch(formula_code: str, bars: pd.DataFrame) -> pd.DataFrame:

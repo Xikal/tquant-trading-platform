@@ -3,7 +3,8 @@ from __future__ import annotations
 from datetime import date, datetime
 from typing import Optional
 
-from sqlalchemy import Boolean, Date, DateTime, Float, ForeignKey, Integer, Numeric, String, Text, UniqueConstraint, func
+from sqlalchemy import Boolean, Date, DateTime, Float, ForeignKey, Index, Integer, Numeric, String, Text, UniqueConstraint, func
+from sqlalchemy.dialects import mysql
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base
@@ -146,6 +147,34 @@ class TradingElasticityCache(Base):
     computed_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), index=True)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime, server_default=func.now(), onupdate=func.now()
+    )
+
+
+class KeyLevelSnapshot(Base):
+    __tablename__ = "key_level_snapshots"
+    __table_args__ = (
+        UniqueConstraint(
+            "scope",
+            "cache_key",
+            "trade_date",
+            "engine_version",
+            name="uq_key_level_snapshot_scope_key_day_version",
+        ),
+        Index("ix_key_level_snapshots_latest", "scope", "cache_key", "trade_date"),
+        Index("ix_key_level_snapshots_symbol_day", "symbol", "trade_date"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    scope: Mapped[str] = mapped_column(String(16), index=True)
+    cache_key: Mapped[str] = mapped_column(String(120), index=True)
+    symbol: Mapped[str] = mapped_column(String(80), default="", index=True)
+    trade_date: Mapped[str] = mapped_column(String(16), index=True)
+    engine_version: Mapped[str] = mapped_column(String(40), default="akey-level-v1", index=True)
+    data_quality: Mapped[str] = mapped_column(String(24), default="insufficient", index=True)
+    payload_json: Mapped[str] = mapped_column(Text().with_variant(mysql.LONGTEXT(), "mysql"), default="{}")
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), index=True)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, server_default=func.now(), onupdate=func.now(), index=True
     )
 
 

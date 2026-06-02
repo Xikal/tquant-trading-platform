@@ -1,8 +1,10 @@
 import { renderToStaticMarkup } from "react-dom/server";
+import { QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { api } from "../../api/client";
 import { configureApiClient, resetApiClient } from "../../api/httpClient";
 import { useStrategyTrackingStore } from "../../stores/strategyTrackingStore";
+import { createAppQueryClient } from "../../state/queryClient";
 import type { StrategyTrackingDetailResponse, StrategyTrackingHoldingAnalysis, StrategyTrackingItem, StrategyTrackingPerformance, StrategyTrackingSummary } from "../../types";
 import { Topbar } from "../trading-workspace/Topbar";
 import { StrategyTrackingDetailContent } from "./StrategyTrackingDetailDrawer";
@@ -170,7 +172,9 @@ describe("StrategyTracking UI", () => {
 
   it("renders detail drawer timeline without needing list payload_json", () => {
     const html = renderToStaticMarkup(
-      <StrategyTrackingDetailContent detail={detailFixture()} viewMode="professional" />
+      <QueryClientProvider client={createAppQueryClient()}>
+        <StrategyTrackingDetailContent detail={detailFixture()} viewMode="professional" />
+      </QueryClientProvider>
     );
 
     expect(html).toContain("浦发银行");

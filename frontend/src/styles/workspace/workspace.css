@@ -6,6 +6,7 @@
 @import "./workspace-strategy-tracking.css";
 @import "./workspace-paper.css";
 @import "./workspace-backtest.css";
+@import "./workspace-key-levels.css";
 
 * {
   box-sizing: border-box;
@@ -177,6 +178,7 @@ h5.ant-typography {
     "hero hero"
     "decision control"
     "identity batch"
+    "key-levels key-levels"
     "chart chart"
     "plan plan"
     "anomaly anomaly";
@@ -202,6 +204,10 @@ h5.ant-typography {
 
 .tq-analysis-page__decision {
   grid-area: decision;
+}
+
+.tq-analysis-page__key-levels {
+  grid-area: key-levels;
 }
 
 .tq-analysis-page__anomaly {

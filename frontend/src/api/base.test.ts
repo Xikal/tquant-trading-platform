@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { PUBLIC_API_PATHS, isPublicApiPath } from "./publicApiPaths";
 
 function jsonResponse(payload: unknown, status = 200): Response {
   return new Response(JSON.stringify(payload), {
@@ -100,5 +101,49 @@ describe("api auth refresh", () => {
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(String(fetchMock.mock.calls[0][0])).toBe("/api/app/bootstrap");
+  });
+
+  it("uses the centralized public API allowlist for bootstrap and update endpoints", () => {
+    expect(PUBLIC_API_PATHS).toContain("/app/bootstrap");
+    expect(isPublicApiPath("/app/bootstrap")).toBe(true);
+    expect(isPublicApiPath("/app/update/android/stable")).toBe(true);
+    expect(isPublicApiPath("/intraday/subscribe")).toBe(false);
+    expect(isPublicApiPath("/auth/refresh")).toBe(true);
+  });
+
+  it("shares one refresh request between explicit session restore and protected SSE subscribe", async () => {
+    installBrowserAuthStorage("local");
+    const user = {
+      id: 1,
+      username: "tester",
+      display_name: "tester",
+      can_paper_trade: true,
+      roles: [],
+      created_at: "2026-06-02T10:00:00+08:00",
+    };
+    const fetchMock = vi.fn((url: RequestInfo | URL) => {
+      const path = String(url);
+      if (path === "/api/auth/refresh") {
+        return Promise.resolve(jsonResponse({ access_token: "fresh-access", token_type: "bearer", expires_in: 1800, user }));
+      }
+      if (path === "/api/intraday/subscribe") {
+        return Promise.resolve(jsonResponse({ stream_token: "stream-token", expires_in: 3600 }));
+      }
+      return Promise.resolve(jsonResponse({ detail: "unexpected" }, 500));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    const { refreshAuthSession, request } = await loadBaseApi();
+
+    await expect(Promise.all([
+      refreshAuthSession(),
+      request("/intraday/subscribe", { method: "POST" }),
+    ])).resolves.toEqual([
+      { access_token: "fresh-access", token_type: "bearer", expires_in: 1800, user },
+      { stream_token: "stream-token", expires_in: 3600 },
+    ]);
+
+    const refreshCalls = fetchMock.mock.calls.filter(([url]) => String(url) === "/api/auth/refresh");
+    expect(refreshCalls).toHaveLength(1);
+    expect(fetchMock.mock.calls.some(([url]) => String(url) === "/api/intraday/subscribe")).toBe(true);
   });
 });

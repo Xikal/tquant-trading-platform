@@ -47,6 +47,7 @@ class AppSettings(BaseSettings):
     app_mobile_quick_history_timeout: float = 10.0
     runtime_background_jobs_enabled: bool = False
     runtime_background_jobs_on_sqlite: bool = True
+    runtime_background_role: str = "scheduler"
     runtime_worker_poll_interval_seconds: float = 5.0
     decision_context_enabled: bool = True
     market_gate_production_enabled: bool = True

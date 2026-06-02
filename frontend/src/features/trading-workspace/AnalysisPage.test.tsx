@@ -1,11 +1,22 @@
+import type { ReactElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
+import { QueryClientProvider } from "@tanstack/react-query";
 import { describe, expect, it, vi } from "vitest";
 import type { AnalysisResponse } from "../../types";
+import { createAppQueryClient } from "../../state/queryClient";
 import { AnalysisPage } from "../analysis/AnalysisPage";
+
+function renderAnalysisPage(element: ReactElement) {
+  return renderToStaticMarkup(
+    <QueryClientProvider client={createAppQueryClient()}>
+      {element}
+    </QueryClientProvider>
+  );
+}
 
 describe("AnalysisPage", () => {
   it("uses semantic layout classes for the analysis workspace", () => {
-    const html = renderToStaticMarkup(
+    const html = renderAnalysisPage(
       <AnalysisPage
         draft={{
           symbol: "510300",
@@ -33,12 +44,13 @@ describe("AnalysisPage", () => {
     expect(html).toContain("tq-analysis-page__control");
     expect(html).toContain("tq-analysis-page__batch");
     expect(html).toContain("tq-analysis-page__decision");
+    expect(html).toContain("tq-analysis-page__key-levels");
     expect(html).toContain("tq-analysis-page__chart");
     expect(html).toContain("tq-analysis-page__plan");
   });
 
   it("does not repeat the same decision and execution copy across hero and plan details", () => {
-    const html = renderToStaticMarkup(
+    const html = renderAnalysisPage(
       <AnalysisPage
         draft={{
           symbol: "510300",
@@ -64,6 +76,7 @@ describe("AnalysisPage", () => {
     expect(countOccurrences(html, "等待承接确认后再处理")).toBe(1);
     expect(countOccurrences(html, "跌破 3.20 失效")).toBe(1);
     expect(html).toContain("执行计划、AI 补充与合规假设");
+    expect(html).not.toMatch(/建议买入|建议卖出|强烈推荐|直接低吸/);
   });
 });
 

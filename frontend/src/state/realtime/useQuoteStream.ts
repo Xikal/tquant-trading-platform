@@ -61,6 +61,7 @@ export function startQuoteStream({
 }: QuoteStreamOptions): QuoteStreamController {
   let closed = false;
   let source: EventSource | undefined;
+  let reconnectTimer: ReturnType<typeof globalThis.setTimeout> | undefined;
   let reconnects = 0;
   let lastEventId = "";
   const cleanedSymbols = normalizedSymbols(symbols);
@@ -75,7 +76,29 @@ export function startQuoteStream({
 
   const close = () => {
     closed = true;
+    if (reconnectTimer !== undefined) {
+      globalThis.clearTimeout(reconnectTimer);
+    }
     source?.close();
+  };
+
+  const fallback = () => {
+    void Promise.resolve(fallbackPoll?.()).finally(() => {
+      resolveReady();
+      resolveFallback();
+    });
+  };
+
+  const scheduleReconnect = () => {
+    if (closed) {
+      return;
+    }
+    if (reconnects >= reconnectLimit) {
+      fallback();
+      return;
+    }
+    reconnects += 1;
+    reconnectTimer = globalThis.setTimeout(open, reconnectDelayMs);
   };
 
   const open = () => {
@@ -98,23 +121,12 @@ export function startQuoteStream({
         });
         source.onerror = () => {
           source?.close();
-          if (closed) {
-            return;
-          }
-          if (reconnects >= reconnectLimit) {
-            void Promise.resolve(fallbackPoll?.()).finally(resolveFallback);
-            return;
-          }
-          reconnects += 1;
-          window.setTimeout(open, reconnectDelayMs);
+          scheduleReconnect();
         };
         resolveReady();
       })
       .catch(() => {
-        void Promise.resolve(fallbackPoll?.()).finally(() => {
-          resolveReady();
-          resolveFallback();
-        });
+        scheduleReconnect();
       });
   };
 

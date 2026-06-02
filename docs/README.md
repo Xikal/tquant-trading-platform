@@ -59,17 +59,17 @@ Recently archived historical reports:
 
 ## Reports And Evidence
 
+- `docs/reports/README.md`
+- `docs/reports/project-engineering-compliance-remediation-2026-06-02.md`
+- `docs/reports/full-project-code-review-2026-06-02.md`
 - `docs/reports/full-project-audit-2026-05-25.md`
 - `docs/reports/full-regression-2026-05-27.md`
 - `docs/reports/observability-warning-budget-2026-05-27.md`
 - `docs/reports/repository-cleanup-2026-05-27.md`
 - `docs/reports/project-conventions-remediation-2026-05-31.md`
 - `docs/reports/strategy_24m_duckdb_report.md`
-- `docs/reports/go-rust-performance-acceptance-2026-05-27.json`
-- `docs/reports/gupiao-cloud-performance-2026-05-27-120241.json`
-- `docs/reports/gupiao-cloud-performance-2026-05-27-124403.json`
-- `docs/reports/gupiao-go-rust-runtime-performance-2026-05-27.json`
-- `docs/reports/rust-bench-baseline.json`
+
+Historical JSON, JSONL and zip evidence under `docs/reports/` is indexed by `docs/reports/README.md`. Do not add new machine-readable artifacts to this section; add a Markdown summary or move the artifact to the governed data/artifact location.
 
 ## Artifact Governance
 

@@ -15,6 +15,8 @@ import {
 } from "../workspace-shared/workspaceFormatters";
 import { usePaperUiStore } from "../../stores/paperUiStore";
 import { VirtualCardList } from "../../ui/list/VirtualCardList";
+import { KeyLevelPanel } from "../key-levels/KeyLevelPanel";
+import { useStockKeyLevels } from "../key-levels/queries";
 
 interface PaperPositionDetailsPanelProps {
   positions: PaperPosition[];
@@ -53,6 +55,7 @@ export function PaperPositionDetailsPanel({
   const selectedSymbol = usePaperUiStore((state) => state.selectedPositionSymbol);
   const setSelectedSymbol = usePaperUiStore((state) => state.setSelectedPositionSymbol);
   const selected = details.find((item) => item.symbol === selectedSymbol) ?? details[0] ?? null;
+  const keyLevels = useStockKeyLevels(selected?.symbol, true);
   const content = (
     <Space direction="vertical" size={8} style={{ display: "flex", width: "100%", fontSize: 12 }}>
       {loading ? <DetailSkeleton /> : null}
@@ -89,6 +92,7 @@ export function PaperPositionDetailsPanel({
             })}
           </Flex>
           <SelectedStockSummary detail={selected} />
+          <KeyLevelPanel title="持仓关键位观察" result={keyLevels.data} loading={keyLevels.isFetching} compact />
           <Row gutter={[12, 12]}>
             <DetailList
               title="最近成交"

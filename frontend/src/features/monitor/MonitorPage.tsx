@@ -45,6 +45,8 @@ import { VirtualCardList } from "../../ui/list/VirtualCardList";
 import { MonitorConclusionBar } from "./MonitorConclusionBar";
 import { HoldingEntryDrawer } from "./HoldingEntryDrawer";
 import { MonitorMoreTabs } from "./MonitorMoreTabs";
+import { KeyLevelPanel } from "../key-levels/KeyLevelPanel";
+import { useMarketKeyLevels, useStockKeyLevels } from "../key-levels/queries";
 
 export interface MonitorPageProps {
   priorityBoard: LowBuyPriorityBoardResult | null;
@@ -119,6 +121,9 @@ export const MonitorPage = memo(function MonitorPage({
   const primaryAction = useMemo(() => resolveTodayAction(watchCards, priorityCards, priorityBoard), [watchCards, priorityCards, priorityBoard]);
   const priorityNotice = useMemo(() => buildPriorityNotice(priorityBoard, priorityCards.length), [priorityBoard, priorityCards.length]);
   const wideLayout = screens.xl ?? true;
+  const primaryKeyLevelSymbol = priorityCards[0]?.symbol ?? watchCards[0]?.symbol ?? "";
+  const marketKeyLevels = useMarketKeyLevels();
+  const stockKeyLevels = useStockKeyLevels(primaryKeyLevelSymbol, true);
   const handleLaneChange = (next: StrategyVariant) => {
     setActiveLane(next);
     onLaneChange?.(next);
@@ -137,6 +142,10 @@ export const MonitorPage = memo(function MonitorPage({
           onSync={onSync}
         />
         <KeyLevelAlerts alerts={keyLevelAlerts} />
+        <div className="monitor-key-level-grid">
+          <KeyLevelPanel title="大盘关键位观察" result={marketKeyLevels.data} loading={marketKeyLevels.isFetching} compact={!wideLayout} />
+          <KeyLevelPanel title="个股关键位观察" result={stockKeyLevels.data} loading={stockKeyLevels.isFetching} compact={!wideLayout} />
+        </div>
       </div>
 
       <aside className="panel monitor-holdings" style={MONITOR_INPUT_STYLE}>

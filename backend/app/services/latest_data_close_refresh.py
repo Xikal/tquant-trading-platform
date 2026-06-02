@@ -23,6 +23,7 @@ from app.services.tasks import RuntimeTaskQueue
 CLOSE_REFRESH_AFTER = dt_time(hour=15, minute=1)
 DAILY_BAR_REFRESH_TASK = "daily_bar_refresh"
 STRATEGY_TRACKING_SNAPSHOT_TASK = "strategy_tracking_snapshot_refresh"
+A_KEY_LEVEL_MATERIALIZATION_TASK = "a_key_level_materialization_refresh"
 
 
 def enqueue_latest_data_close_refresh(
@@ -60,6 +61,11 @@ def enqueue_latest_data_close_refresh(
             "task_status": task.status,
         }
 
+    key_level_task = _enqueue_a_key_level_materialization(
+        db,
+        trade_date=expected,
+        reason="after_close_latest_data",
+    )
     status = latest_data_status(db, strategies=required)
     missing = list(status.get("missing_strategies") or [])
     if status.get("published_trade_date") == expected and status.get("status") == "success":
@@ -80,6 +86,8 @@ def enqueue_latest_data_close_refresh(
             "publish_status": status,
             "strategy_tracking_snapshot_task_id": tracking_task.id,
             "strategy_tracking_snapshot_task_status": tracking_task.status,
+            "a_key_level_materialization_task_id": key_level_task.id,
+            "a_key_level_materialization_task_status": key_level_task.status,
         }
     if missing:
         enqueue_low_buy_materialization(db, reason="after_close_latest_data", commit=True)
@@ -89,6 +97,8 @@ def enqueue_latest_data_close_refresh(
             "expected_trade_date": expected,
             "daily_bar_count": daily_count,
             "missing_strategies": missing,
+            "a_key_level_materialization_task_id": key_level_task.id,
+            "a_key_level_materialization_task_status": key_level_task.status,
         }
 
     publish_status = publish_latest_trade_date_if_ready(db, strategies=required)
@@ -110,4 +120,18 @@ def enqueue_latest_data_close_refresh(
         "publish_status": publish_status,
         "strategy_tracking_snapshot_task_id": tracking_task.id,
         "strategy_tracking_snapshot_task_status": tracking_task.status,
+        "a_key_level_materialization_task_id": key_level_task.id,
+        "a_key_level_materialization_task_status": key_level_task.status,
     }
+
+
+def _enqueue_a_key_level_materialization(db: Session, *, trade_date: str, reason: str):
+    return RuntimeTaskQueue(db).enqueue(
+        RuntimeTaskCreate(
+            task_type=A_KEY_LEVEL_MATERIALIZATION_TASK,
+            payload={"trade_date": trade_date, "reason": reason},
+            priority=45,
+            idempotency_key=f"{A_KEY_LEVEL_MATERIALIZATION_TASK}:{trade_date}",
+            max_attempts=3,
+        )
+    )

@@ -71,6 +71,10 @@ def _background_jobs_enabled() -> bool:
     return True
 
 
+def _runtime_background_role() -> str:
+    return str(getattr(settings, "runtime_background_role", "scheduler") or "scheduler").strip().lower()
+
+
 def _research_jobs_enabled() -> bool:
     return settings.tquant_research_jobs_enabled
 
@@ -362,6 +366,9 @@ def _acquire_background_leader_lock() -> bool:
 
 
 def start_runtime_background_jobs() -> None:
+    if _runtime_background_role() == "web":
+        logger.info("runtime background jobs disabled for web role")
+        return
     background_leader = _background_jobs_enabled() and _acquire_background_leader_lock()
     if background_leader:
         if _strategy_evolution_jobs_enabled():

@@ -20,6 +20,7 @@ import type {
   MarketTradingSession,
   SectorRelativeStrengthResponse,
   IntradayKeyLevelResponse,
+  KeyLevelResult,
   AlternativeSentimentResponse,
   MultiExchangeArbitrageResearchResponse,
   PairedHedgeResearchResponse,
@@ -116,6 +117,14 @@ export const api = {
     ),
   getIntradayKeyLevels: (symbol: string) =>
     requestCached<IntradayKeyLevelResponse>(`/market/intraday-key-levels/${encodeURIComponent(symbol)}`, 10000),
+  getStockKeyLevels: (symbol: string, includeIntraday = false) =>
+    requestCached<KeyLevelResult>(
+      `/key-levels/stock/${encodeURIComponent(symbol)}?include_intraday=${includeIntraday ? "true" : "false"}`,
+      20000,
+    ),
+  getSectorKeyLevels: (sectorKey: string) =>
+    requestCached<KeyLevelResult>(`/key-levels/sector/${encodeURIComponent(sectorKey)}`, 30000),
+  getMarketKeyLevels: () => requestCached<KeyLevelResult>("/key-levels/market", 30000),
   getSectorEtfT0: (limit = 8) => requestCached<SectorEtfT0Response>(`/market/sector-etf-t0?limit=${limit}`, 20000),
   getEtfUniverse: (category = "", t0Only = false) =>
     requestCached<EtfUniverseResponse>(

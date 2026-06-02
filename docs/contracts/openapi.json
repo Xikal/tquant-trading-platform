@@ -10261,6 +10261,529 @@
         "title": "IntradayMarketPulse",
         "type": "object"
       },
+      "KeyLevelCandidate": {
+        "properties": {
+          "direction": {
+            "enum": [
+              "support",
+              "resistance",
+              "neutral"
+            ],
+            "title": "Direction",
+            "type": "string"
+          },
+          "evidence": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Evidence",
+            "type": "array"
+          },
+          "invalid_condition": {
+            "default": "",
+            "title": "Invalid Condition",
+            "type": "string"
+          },
+          "invalidate_below": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Invalidate Below"
+          },
+          "invalidate_volume_x": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Invalidate Volume X"
+          },
+          "last_touched_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Touched Date"
+          },
+          "level_type": {
+            "enum": [
+              "volume_profile",
+              "swing_high",
+              "swing_low",
+              "platform_high",
+              "platform_low",
+              "gap",
+              "limit_up_anchor",
+              "anchored_vwap",
+              "ma5",
+              "ma10",
+              "ma20",
+              "ma30",
+              "ma60",
+              "intraday_vwap",
+              "open",
+              "prev_close",
+              "round_number"
+            ],
+            "title": "Level Type",
+            "type": "string"
+          },
+          "price": {
+            "title": "Price",
+            "type": "number"
+          },
+          "source_window_days": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Window Days"
+          },
+          "strength_score": {
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Strength Score",
+            "type": "integer"
+          },
+          "touch_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Touch Count"
+          },
+          "zone_high": {
+            "title": "Zone High",
+            "type": "number"
+          },
+          "zone_low": {
+            "title": "Zone Low",
+            "type": "number"
+          }
+        },
+        "required": [
+          "price",
+          "zone_low",
+          "zone_high",
+          "direction",
+          "level_type",
+          "strength_score"
+        ],
+        "title": "KeyLevelCandidate",
+        "type": "object"
+      },
+      "KeyLevelResult": {
+        "properties": {
+          "adjust_mode": {
+            "default": "qfq",
+            "enum": [
+              "qfq",
+              "hfq",
+              "none"
+            ],
+            "title": "Adjust Mode",
+            "type": "string"
+          },
+          "as_of": {
+            "title": "As Of",
+            "type": "string"
+          },
+          "close_to_ma10": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Close To Ma10"
+          },
+          "close_to_ma20": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Close To Ma20"
+          },
+          "close_to_ma30": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Close To Ma30"
+          },
+          "close_to_ma5": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Close To Ma5"
+          },
+          "close_to_ma60": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Close To Ma60"
+          },
+          "data_quality": {
+            "default": "insufficient",
+            "enum": [
+              "ok",
+              "insufficient",
+              "stale",
+              "blocked",
+              "research_only"
+            ],
+            "title": "Data Quality",
+            "type": "string"
+          },
+          "engine_version": {
+            "default": "akey-level-v1",
+            "title": "Engine Version",
+            "type": "string"
+          },
+          "explanation": {
+            "default": "数据不足，仅观察。",
+            "title": "Explanation",
+            "type": "string"
+          },
+          "intraday_included": {
+            "default": false,
+            "title": "Intraday Included",
+            "type": "boolean"
+          },
+          "key_level_candidates": {
+            "items": {
+              "$ref": "#/components/schemas/KeyLevelCandidate"
+            },
+            "title": "Key Level Candidates",
+            "type": "array"
+          },
+          "latest_price": {
+            "title": "Latest Price",
+            "type": "number"
+          },
+          "ma10": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ma10"
+          },
+          "ma20": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ma20"
+          },
+          "ma30": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ma30"
+          },
+          "ma5": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ma5"
+          },
+          "ma60": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ma60"
+          },
+          "name": {
+            "default": "",
+            "title": "Name",
+            "type": "string"
+          },
+          "resistance_distance_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resistance Distance Pct"
+          },
+          "resistance_level_type": {
+            "anyOf": [
+              {
+                "enum": [
+                  "volume_profile",
+                  "swing_high",
+                  "swing_low",
+                  "platform_high",
+                  "platform_low",
+                  "gap",
+                  "limit_up_anchor",
+                  "anchored_vwap",
+                  "ma5",
+                  "ma10",
+                  "ma20",
+                  "ma30",
+                  "ma60",
+                  "intraday_vwap",
+                  "open",
+                  "prev_close",
+                  "round_number"
+                ],
+                "type": "string"
+              },
+              {
+                "const": "",
+                "type": "string"
+              }
+            ],
+            "default": "",
+            "title": "Resistance Level Type"
+          },
+          "resistance_price": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resistance Price"
+          },
+          "resistance_strength": {
+            "default": 0,
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Resistance Strength",
+            "type": "integer"
+          },
+          "resistance_zone_high": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resistance Zone High"
+          },
+          "resistance_zone_low": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resistance Zone Low"
+          },
+          "scope": {
+            "enum": [
+              "stock",
+              "sector",
+              "market"
+            ],
+            "title": "Scope",
+            "type": "string"
+          },
+          "support_distance_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Support Distance Pct"
+          },
+          "support_level_type": {
+            "anyOf": [
+              {
+                "enum": [
+                  "volume_profile",
+                  "swing_high",
+                  "swing_low",
+                  "platform_high",
+                  "platform_low",
+                  "gap",
+                  "limit_up_anchor",
+                  "anchored_vwap",
+                  "ma5",
+                  "ma10",
+                  "ma20",
+                  "ma30",
+                  "ma60",
+                  "intraday_vwap",
+                  "open",
+                  "prev_close",
+                  "round_number"
+                ],
+                "type": "string"
+              },
+              {
+                "const": "",
+                "type": "string"
+              }
+            ],
+            "default": "",
+            "title": "Support Level Type"
+          },
+          "support_price": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Support Price"
+          },
+          "support_strength": {
+            "default": 0,
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Support Strength",
+            "type": "integer"
+          },
+          "support_zone_high": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Support Zone High"
+          },
+          "support_zone_low": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Support Zone Low"
+          },
+          "symbol": {
+            "title": "Symbol",
+            "type": "string"
+          },
+          "trade_date": {
+            "title": "Trade Date",
+            "type": "string"
+          },
+          "trend_above_ma30": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trend Above Ma30"
+          },
+          "trend_above_ma60": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trend Above Ma60"
+          },
+          "warnings": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Warnings",
+            "type": "array"
+          }
+        },
+        "required": [
+          "symbol",
+          "scope",
+          "trade_date",
+          "latest_price",
+          "as_of"
+        ],
+        "title": "KeyLevelResult",
+        "type": "object"
+      },
       "KlineBar": {
         "properties": {
           "amount": {
@@ -29052,6 +29575,293 @@
         "summary": "Create Intraday Stream Subscription",
         "tags": [
           "intraday"
+        ]
+      }
+    },
+    "/api/key-levels/intraday/{symbol}": {
+      "get": {
+        "operationId": "intraday_key_levels_api_key_levels_intraday__symbol__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "symbol",
+            "required": true,
+            "schema": {
+              "title": "Symbol",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KeyLevelResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Intraday Key Levels",
+        "tags": [
+          "key-levels"
+        ]
+      }
+    },
+    "/api/key-levels/market": {
+      "get": {
+        "operationId": "market_key_levels_api_key_levels_market_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "trade_date",
+            "required": false,
+            "schema": {
+              "default": "",
+              "title": "Trade Date",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "lookback_days",
+            "required": false,
+            "schema": {
+              "default": 120,
+              "maximum": 240,
+              "minimum": 20,
+              "title": "Lookback Days",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "include_intraday",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Include Intraday",
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KeyLevelResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Market Key Levels",
+        "tags": [
+          "key-levels"
+        ]
+      }
+    },
+    "/api/key-levels/sector/{sector_key}": {
+      "get": {
+        "operationId": "sector_key_levels_api_key_levels_sector__sector_key__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "sector_key",
+            "required": true,
+            "schema": {
+              "title": "Sector Key",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "trade_date",
+            "required": false,
+            "schema": {
+              "default": "",
+              "title": "Trade Date",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "lookback_days",
+            "required": false,
+            "schema": {
+              "default": 120,
+              "maximum": 240,
+              "minimum": 20,
+              "title": "Lookback Days",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "include_intraday",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Include Intraday",
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KeyLevelResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Sector Key Levels",
+        "tags": [
+          "key-levels"
+        ]
+      }
+    },
+    "/api/key-levels/stock/{symbol}": {
+      "get": {
+        "operationId": "stock_key_levels_api_key_levels_stock__symbol__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "symbol",
+            "required": true,
+            "schema": {
+              "title": "Symbol",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "trade_date",
+            "required": false,
+            "schema": {
+              "default": "",
+              "title": "Trade Date",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "lookback_days",
+            "required": false,
+            "schema": {
+              "default": 120,
+              "maximum": 240,
+              "minimum": 20,
+              "title": "Lookback Days",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "include_intraday",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Include Intraday",
+              "type": "boolean"
+            }
+          },
+          {
+            "in": "query",
+            "name": "threshold_pct",
+            "required": false,
+            "schema": {
+              "default": 0.3,
+              "maximum": 3.0,
+              "minimum": 0.1,
+              "title": "Threshold Pct",
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KeyLevelResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Stock Key Levels",
+        "tags": [
+          "key-levels"
         ]
       }
     },

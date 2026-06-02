@@ -167,6 +167,7 @@ def test_responsive_smoke_covers_all_workspace_routes() -> None:
         "/strategy",
         "/backtest",
         "/paper",
+        "/data",
         "/settings",
     ]
     assert "visible_text_length" in source

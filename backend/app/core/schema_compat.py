@@ -41,7 +41,7 @@ def ensure_schema_compatibility(engine: Engine) -> None:
 
 
 def _create_additive_market_metadata_tables(engine: Engine, existing_tables: set[str]) -> None:
-    for table_name in ("instrument_industry_history", "instrument_concept_history"):
+    for table_name in ("instrument_industry_history", "instrument_concept_history", "key_level_snapshots"):
         table = Base.metadata.tables.get(table_name)
         if table is None or table_name in existing_tables:
             continue

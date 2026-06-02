@@ -1,9 +1,20 @@
+import type { ReactElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
+import { QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { LowBuyPriorityBoardResult } from "../../types";
 import { useWorkspaceMonitorStore } from "../../stores/workspaceMonitorStore";
+import { createAppQueryClient } from "../../state/queryClient";
 import { MonitorPage } from "../monitor/MonitorPage";
 import { SectorLeaderGatePanel } from "../monitor/SectorLeaderGatePanel";
+
+function renderMonitorPage(element: ReactElement) {
+  return renderToStaticMarkup(
+    <QueryClientProvider client={createAppQueryClient()}>
+      {element}
+    </QueryClientProvider>
+  );
+}
 
 describe("MonitorPage", () => {
   afterEach(() => {
@@ -11,7 +22,7 @@ describe("MonitorPage", () => {
   });
 
   it("renders a conclusion bar before main priority and holding sections", () => {
-    const html = renderToStaticMarkup(
+    const html = renderMonitorPage(
       <MonitorPage
         priorityBoard={null}
         marketBreadth={null}
@@ -66,7 +77,7 @@ describe("MonitorPage", () => {
   });
 
   it("renders independent low-buy strategy lanes with plain status copy", () => {
-    const html = renderToStaticMarkup(
+    const html = renderMonitorPage(
       <MonitorPage
         priorityBoard={priorityBoardFixture()}
         marketBreadth={null}
@@ -110,7 +121,7 @@ describe("MonitorPage", () => {
 
   it("renders hourly all-market snapshot feedback", () => {
     useWorkspaceMonitorStore.setState({ moreTab: "snapshot" });
-    const html = renderToStaticMarkup(
+    const html = renderMonitorPage(
       <MonitorPage
         priorityBoard={null}
         marketBreadth={{
@@ -181,7 +192,7 @@ describe("MonitorPage", () => {
 
   it("renders hourly trend and weakening warning", () => {
     useWorkspaceMonitorStore.setState({ moreTab: "snapshot" });
-    const html = renderToStaticMarkup(
+    const html = renderMonitorPage(
       <MonitorPage
         priorityBoard={null}
         marketBreadth={null}
@@ -253,7 +264,7 @@ describe("MonitorPage", () => {
 
   it("renders intraday pulse and review status on monitor first screen", () => {
     useWorkspaceMonitorStore.setState({ moreTab: "review" });
-    const html = renderToStaticMarkup(
+    const html = renderMonitorPage(
       <MonitorPage
         priorityBoard={null}
         marketBreadth={null}
@@ -336,7 +347,7 @@ describe("MonitorPage", () => {
   });
 
   it("renders ETF T0 intraday signal details on monitor page", () => {
-    const html = renderToStaticMarkup(
+    const html = renderMonitorPage(
       <MonitorPage
         priorityBoard={null}
         marketBreadth={null}

@@ -99,4 +99,31 @@ describe("quote SSE stream", () => {
     expect(FakeEventSource.instances[FakeEventSource.instances.length - 1]?.url).toContain("stream_token=token-1");
     controller.close();
   });
+
+  it("retries a transient stream-token 401 before falling back to polling", async () => {
+    vi.useFakeTimers();
+    FakeEventSource.instances = [];
+    const fallbackPoll = vi.fn();
+    const requestStreamToken = vi.fn()
+      .mockRejectedValueOnce(new Error("登录已失效，请重新登录"))
+      .mockResolvedValueOnce({ stream_token: "token-2", expires_in: 3600 });
+    const controller = startQuoteStream({
+      symbols: ["600000"],
+      apiBase: "/api",
+      reconnectDelayMs: 50,
+      reconnectLimit: 1,
+      createEventSource: (url) => new FakeEventSource(url) as unknown as EventSource,
+      fallbackPoll,
+      requestStreamToken,
+    });
+
+    await vi.advanceTimersByTimeAsync(50);
+    await controller.ready;
+
+    expect(requestStreamToken).toHaveBeenCalledTimes(2);
+    expect(fallbackPoll).not.toHaveBeenCalled();
+    expect(FakeEventSource.instances[FakeEventSource.instances.length - 1]?.url).toContain("stream_token=token-2");
+    controller.close();
+    vi.useRealTimers();
+  });
 });

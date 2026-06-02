@@ -499,6 +499,9 @@ def _legacy_route_response(target: str, request: Request):
 
 @app.get("/{full_path:path}", include_in_schema=False)
 def frontend_app(full_path: str):
+    api_prefix = settings.api_prefix.strip("/")
+    if full_path == api_prefix or full_path.startswith(f"{api_prefix}/"):
+        return JSONResponse(status_code=404, content={"detail": "API endpoint not found"})
     requested = FRONTEND_DIST_DIR / full_path
     try:
         resolved = requested.resolve()

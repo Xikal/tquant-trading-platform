@@ -40,6 +40,7 @@ _FLAG_DESCRIPTIONS: dict[str, str] = {
     "smart_mode_enabled": "策略工作台启用傻瓜模式摘要。",
     "playbook_lazy_load_enabled": "策略宝典按页面分段加载，减少首屏请求。",
     "market_provider_router_enabled": "启用统一市场数据 provider router（默认开启，旧链路作为 fallback）。",
+    "a_key_level_engine_enabled": "启用 AKeyLevel 关键位引擎展示与 API 入口；默认关闭，开启后 API 优先读取物化缓存。",
 }
 
 
@@ -53,6 +54,7 @@ _DEFAULT_FLAGS = {
     "smart_mode_enabled": True,
     "playbook_lazy_load_enabled": True,
     "market_provider_router_enabled": True,
+    "a_key_level_engine_enabled": False,
 }
 
 

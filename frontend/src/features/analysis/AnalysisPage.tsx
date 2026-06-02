@@ -5,6 +5,8 @@ import { Callout, ContextRow, InfoPill, LineList, MetricGrid, MiniKline, PanelTi
 import { WorkspacePageIntro } from "../workspace-shared/WorkspacePageIntro";
 import { actionStatusText, actionText, formatAmount, formatNumber, formatPct, formatPrice, plainTradingText, riskText, toneFromChange } from "../workspace-shared/workspaceFormatters";
 import type { AnalysisDraft } from "../workspace-shared/workspaceTypes";
+import { KeyLevelPanel } from "../key-levels/KeyLevelPanel";
+import { useStockKeyLevels } from "../key-levels/queries";
 
 export function AnalysisPage({
   draft,
@@ -52,6 +54,7 @@ export function AnalysisPage({
     : suggestion
       ? `当前先不下单：${statusText}`
       : "输入股票后先看能不能操作";
+  const stockKeyLevels = useStockKeyLevels(draft.symbol || result?.symbol, true);
   return (
     <section className="tq-analysis-page">
       <div className="panel tq-analysis-page__hero">
@@ -154,6 +157,9 @@ export function AnalysisPage({
           <LineList title="交易成本提示" items={[suggestion.fee_warning, suggestion.liquidity_warning].filter(Boolean).map(plainTradingText)} />
         ) : null}
         {uniqueReasons.length ? <LineList title="主要依据" items={uniqueReasons.slice(0, 3)} /> : null}
+      </div>
+      <div className="panel tq-analysis-page__key-levels">
+        <KeyLevelPanel title="分析关键位观察" result={stockKeyLevels.data} loading={stockKeyLevels.isFetching} compact />
       </div>
       {anomaly ? <div className="panel tq-analysis-page__anomaly">
         <PanelTitle title="盘中异常提醒" />

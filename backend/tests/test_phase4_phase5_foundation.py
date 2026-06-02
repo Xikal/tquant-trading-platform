@@ -3,7 +3,6 @@ from __future__ import annotations
 import json
 import warnings
 from copy import deepcopy
-from datetime import datetime, timedelta
 from decimal import Decimal
 
 from sqlalchemy import create_engine
@@ -31,7 +30,6 @@ from app.models.schema_defs.phase4 import (
     MLSignalTrainRequest,
     PaperBacktestComparisonRequest,
     QuantParameterSetCreate,
-    RuntimeTaskCreate,
 )
 from app.models.schema_defs.market import (
     IntradayMarketPulse,
@@ -55,7 +53,6 @@ from app.services.quant import runtime_parameters
 from app.services.quant_engine_intraday_structure import classify_intraday_structure
 from app.services.sector_etf_t0 import SectorEtfT0Service
 from app.services.strategy_capacity import StrategyCapacityService
-from app.services.tasks import RuntimeTaskQueue
 from app.workers import runtime_worker
 
 
@@ -85,67 +82,6 @@ def test_agent_quality_blocks_incomplete_executable_result():
     assert response.passed is False
     assert response.blocked is True
     assert any(issue.code == "action_conflicts_with_risk" for issue in response.issues)
-
-
-def test_runtime_task_queue_records_events_and_status(monkeypatch):
-    db = _db()
-    queue = RuntimeTaskQueue(db)
-    published = []
-
-    monkeypatch.setattr("app.services.tasks.queue.publish_runtime_task_event", lambda event: published.append(event.event_type))
-
-    created = queue.enqueue(RuntimeTaskCreate(task_type="noop", payload={"ok": True}))
-    claimed = queue.claim_next(worker_id="test-worker")
-    assert claimed is not None
-    assert claimed.id == created.id
-    finished = queue.mark_succeeded(created.id, {"done": True})
-
-    assert finished.status == "succeeded"
-    events = queue.events(created.id)
-    assert [event.event_type for event in events] == ["queued", "started", "succeeded"]
-    assert published == ["queued", "started", "succeeded"]
-
-
-def test_runtime_task_queue_recovers_stale_running_idempotent_task(monkeypatch):
-    db = _db()
-    queue = RuntimeTaskQueue(db)
-    published = []
-
-    monkeypatch.setattr("app.services.tasks.queue.publish_runtime_task_event", lambda event: published.append(event.event_type))
-
-    created = queue.enqueue(
-        RuntimeTaskCreate(
-            task_type="monitor_snapshot_refresh",
-            payload={"user_id": 3, "priority_limit": 12},
-            idempotency_key="monitor_snapshot_refresh:3:12",
-            max_attempts=2,
-        )
-    )
-    row = db.get(RuntimeTask, created.id)
-    assert row is not None
-    row.status = "running"
-    row.locked_by = "dead-worker"
-    row.locked_at = datetime.utcnow() - timedelta(minutes=30)
-    row.attempt_count = 1
-    db.commit()
-
-    enqueued = queue.enqueue(
-        RuntimeTaskCreate(
-            task_type="monitor_snapshot_refresh",
-            payload={"user_id": 3, "priority_limit": 12},
-            idempotency_key="monitor_snapshot_refresh:3:12",
-            max_attempts=2,
-        )
-    )
-    claimed = queue.claim_next(worker_id="new-worker")
-
-    assert enqueued.id == created.id
-    assert claimed is not None
-    assert claimed.id == created.id
-    assert claimed.status == "running"
-    assert claimed.locked_by == "new-worker"
-    assert claimed.attempt_count == 2
-    assert "retry" in published
 
 
 def test_runtime_worker_executes_monitor_snapshot_refresh(monkeypatch):

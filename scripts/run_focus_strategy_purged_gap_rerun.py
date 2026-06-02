@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import shlex
 import subprocess
 import time
@@ -14,6 +15,9 @@ from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
 REPORT_DATE = "2026-05-28"
+_ALLOWED_EXECUTABLE_SUFFIXES = ("python", "python3")
+_ALLOWED_SCRIPT = "backend/scripts/low_buy_execution_matrix.py"
+_SHELL_METACHARS = {";", "&&", "||", "|", "`", "$(", ">", "<"}
 
 
 def run_manifest(
@@ -31,6 +35,7 @@ def run_manifest(
     records: list[dict[str, Any]] = []
     started_at = time.time()
     for index, item in enumerate(commands, start=1):
+        argv = _command_argv(item["command"], root=root)
         expected = _expected_json_path(item["command"], root=root)
         if expected.exists() and not force:
             records.append(_record(item, index=index, status="skipped_existing", expected=expected, seconds=0.0, returncode=0))
@@ -41,7 +46,9 @@ def run_manifest(
             if markdown.exists():
                 markdown.unlink()
         before = time.time()
-        result = subprocess.run(item["command"], shell=True, cwd=root, text=True, capture_output=True)
+        env = os.environ.copy()
+        env["PYTHONPATH"] = "backend"
+        result = subprocess.run(argv, cwd=root, env=env, text=True, capture_output=True)
         seconds = round(time.time() - before, 3)
         status = "passed" if result.returncode == 0 and expected.exists() else "failed"
         records.append(
@@ -72,7 +79,7 @@ def _load_manifest(*, root: Path, report_date: str) -> dict[str, Any]:
 
 
 def _expected_json_path(command: str, *, root: Path) -> Path:
-    parts = shlex.split(command)
+    parts = _command_argv(command, root=root)
     output_dir = _arg(parts, "--matrix-output-dir") or _arg(parts, "--output-dir") or "."
     states = (_arg(parts, "--states") or "all").replace(",", "_").replace("/", "_")
     strategies = (_arg(parts, "--strategies") or "all").replace(",", "_").replace("/", "_")
@@ -81,7 +88,31 @@ def _expected_json_path(command: str, *, root: Path) -> Path:
     max_dates = _arg(parts, "--max-dates")
     suffix = f"_{max_dates}d" if max_dates and int(max_dates) > 0 else ""
     stem = f"low_buy_execution_matrix_24m_{states}_{strategies}_{start}_{end}{suffix}.json"
-    return root / output_dir / stem
+    path = (root / output_dir / stem).resolve()
+    root_resolved = root.resolve()
+    if not path.is_relative_to(root_resolved):
+        raise ValueError(f"manifest output path escapes repository: {path}")
+    return path
+
+
+def _command_argv(command: str, *, root: Path = ROOT) -> list[str]:
+    if any(token in command for token in _SHELL_METACHARS):
+        raise ValueError("manifest command contains shell metacharacters")
+    parts = shlex.split(command)
+    if parts and parts[0].startswith("PYTHONPATH="):
+        parts = parts[1:]
+    if len(parts) < 2:
+        raise ValueError("manifest command is incomplete")
+    executable = Path(parts[0]).name
+    if not executable.endswith(_ALLOWED_EXECUTABLE_SUFFIXES):
+        raise ValueError(f"manifest command executable is not allowed: {parts[0]}")
+    script = parts[1]
+    if script != _ALLOWED_SCRIPT:
+        raise ValueError(f"manifest command script is not allowed: {script}")
+    script_path = (root / script).resolve()
+    if not script_path.is_file() or not script_path.is_relative_to(root.resolve()):
+        raise ValueError(f"manifest command script is invalid: {script}")
+    return parts
 
 
 def _arg(parts: list[str], name: str) -> str:

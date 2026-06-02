@@ -196,3 +196,73 @@ def test_runtime_background_jobs_keep_research_loops_off_by_default(monkeypatch)
     assert "ml_signal_incremental_train_weekly" not in calls
     assert "ml_feature_drift_monitor_monthly" not in calls
     assert "factor_mining_monthly" not in calls
+
+
+def test_web_role_does_not_register_runtime_background_loops(monkeypatch) -> None:
+    calls: list[str] = []
+
+    monkeypatch.setattr("app.runtime.background_jobs._background_jobs_enabled", lambda: True)
+    monkeypatch.setattr("app.runtime.background_jobs._runtime_background_role", lambda: "web")
+    monkeypatch.setattr("app.runtime.background_jobs._acquire_background_leader_lock", lambda: calls.append("lock") or True)
+    monkeypatch.setattr("app.runtime.background_jobs.threading.Thread", lambda *args, **kwargs: calls.append("thread"))
+    monkeypatch.setattr("app.runtime.background_jobs.task_manager.register_loop", lambda **kwargs: calls.append(kwargs["name"]))
+    monkeypatch.setattr(
+        "app.runtime.background_jobs.settings",
+        SimpleNamespace(
+            market_review_enabled=True,
+            paper_perf_archive_enabled=True,
+            paper_perf_ai_report_enabled=True,
+            strategy_validation_monthly_enabled=True,
+            notification_signal_scan_enabled=True,
+            notification_signal_scan_interval_seconds=120,
+            paper_auto_trading_enabled=True,
+            database_url="mysql+pymysql://user:pass@localhost/db",
+            tquant_research_jobs_enabled=True,
+            tquant_ml_jobs_enabled=True,
+            tquant_factor_jobs_enabled=True,
+            tquant_strategy_evolution_enabled=True,
+        ),
+    )
+
+    start_runtime_background_jobs()
+
+    assert calls == []
+
+
+def test_scheduler_role_registers_runtime_background_loops(monkeypatch) -> None:
+    calls: list[str] = []
+
+    class _DummyThread:
+        def __init__(self, *args, **kwargs) -> None:  # noqa: ANN002, ANN003
+            pass
+
+        def start(self) -> None:
+            calls.append("thread")
+
+    monkeypatch.setattr("app.runtime.background_jobs._background_jobs_enabled", lambda: True)
+    monkeypatch.setattr("app.runtime.background_jobs._runtime_background_role", lambda: "scheduler")
+    monkeypatch.setattr("app.runtime.background_jobs._acquire_background_leader_lock", lambda: True)
+    monkeypatch.setattr("app.runtime.background_jobs.start_strategy_evolution_scheduler", lambda: calls.append("scheduler-start"))
+    monkeypatch.setattr("app.runtime.background_jobs.threading.Thread", _DummyThread)
+    monkeypatch.setattr("app.runtime.background_jobs.task_manager.register_loop", lambda **kwargs: calls.append(kwargs["name"]))
+    monkeypatch.setattr("app.runtime.background_jobs.start_auto_trader", lambda config: calls.append("auto-trader-start"))
+    monkeypatch.setattr(
+        "app.runtime.background_jobs.settings",
+        SimpleNamespace(
+            market_review_enabled=False,
+            paper_perf_archive_enabled=False,
+            strategy_validation_monthly_enabled=False,
+            notification_signal_scan_enabled=False,
+            paper_auto_trading_enabled=False,
+            database_url="mysql+pymysql://user:pass@localhost/db",
+            tquant_research_jobs_enabled=False,
+            tquant_ml_jobs_enabled=False,
+            tquant_factor_jobs_enabled=False,
+            tquant_strategy_evolution_enabled=False,
+        ),
+    )
+
+    start_runtime_background_jobs()
+
+    assert "market_quote_cache_refresh" in calls
+    assert "daily_bar_refresh" in calls

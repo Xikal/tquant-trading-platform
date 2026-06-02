@@ -47,10 +47,13 @@
 ├── frontend
 │   ├── src
 │   │   ├── api
-│   │   ├── components
-│   │   ├── pages
-│   │   ├── App.tsx
-│   │   └── styles.css
+│   │   ├── app
+│   │   ├── features
+│   │   ├── generated
+│   │   ├── state
+│   │   ├── styles
+│   │   └── ui
+│   ├── scripts
 │   ├── package.json
 │   └── .env.example
 ├── docs

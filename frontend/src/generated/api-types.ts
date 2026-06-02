@@ -2207,6 +2207,74 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/key-levels/intraday/{symbol}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Intraday Key Levels */
+        get: operations["intraday_key_levels_api_key_levels_intraday__symbol__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/key-levels/market": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Market Key Levels */
+        get: operations["market_key_levels_api_key_levels_market_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/key-levels/sector/{sector_key}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Sector Key Levels */
+        get: operations["sector_key_levels_api_key_levels_sector__sector_key__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/key-levels/stock/{symbol}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Stock Key Levels */
+        get: operations["stock_key_levels_api_key_levels_stock__symbol__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/kline/{symbol}": {
         parameters: {
             query?: never;
@@ -10689,6 +10757,156 @@ export interface components {
             suggested_action: string;
             /** Updated At */
             updated_at: string;
+        };
+        /** KeyLevelCandidate */
+        KeyLevelCandidate: {
+            /**
+             * Direction
+             * @enum {string}
+             */
+            direction: "support" | "resistance" | "neutral";
+            /** Evidence */
+            evidence?: string[];
+            /**
+             * Invalid Condition
+             * @default
+             */
+            invalid_condition: string;
+            /** Invalidate Below */
+            invalidate_below?: number | null;
+            /** Invalidate Volume X */
+            invalidate_volume_x?: number | null;
+            /** Last Touched Date */
+            last_touched_date?: string | null;
+            /**
+             * Level Type
+             * @enum {string}
+             */
+            level_type: "volume_profile" | "swing_high" | "swing_low" | "platform_high" | "platform_low" | "gap" | "limit_up_anchor" | "anchored_vwap" | "ma5" | "ma10" | "ma20" | "ma30" | "ma60" | "intraday_vwap" | "open" | "prev_close" | "round_number";
+            /** Price */
+            price: number;
+            /** Source Window Days */
+            source_window_days?: number | null;
+            /** Strength Score */
+            strength_score: number;
+            /** Touch Count */
+            touch_count?: number | null;
+            /** Zone High */
+            zone_high: number;
+            /** Zone Low */
+            zone_low: number;
+        };
+        /** KeyLevelResult */
+        KeyLevelResult: {
+            /**
+             * Adjust Mode
+             * @default qfq
+             * @enum {string}
+             */
+            adjust_mode: "qfq" | "hfq" | "none";
+            /** As Of */
+            as_of: string;
+            /** Close To Ma10 */
+            close_to_ma10?: number | null;
+            /** Close To Ma20 */
+            close_to_ma20?: number | null;
+            /** Close To Ma30 */
+            close_to_ma30?: number | null;
+            /** Close To Ma5 */
+            close_to_ma5?: number | null;
+            /** Close To Ma60 */
+            close_to_ma60?: number | null;
+            /**
+             * Data Quality
+             * @default insufficient
+             * @enum {string}
+             */
+            data_quality: "ok" | "insufficient" | "stale" | "blocked" | "research_only";
+            /**
+             * Engine Version
+             * @default akey-level-v1
+             */
+            engine_version: string;
+            /**
+             * Explanation
+             * @default 数据不足，仅观察。
+             */
+            explanation: string;
+            /**
+             * Intraday Included
+             * @default false
+             */
+            intraday_included: boolean;
+            /** Key Level Candidates */
+            key_level_candidates?: components["schemas"]["KeyLevelCandidate"][];
+            /** Latest Price */
+            latest_price: number;
+            /** Ma10 */
+            ma10?: number | null;
+            /** Ma20 */
+            ma20?: number | null;
+            /** Ma30 */
+            ma30?: number | null;
+            /** Ma5 */
+            ma5?: number | null;
+            /** Ma60 */
+            ma60?: number | null;
+            /**
+             * Name
+             * @default
+             */
+            name: string;
+            /** Resistance Distance Pct */
+            resistance_distance_pct?: number | null;
+            /**
+             * Resistance Level Type
+             * @default
+             */
+            resistance_level_type: ("volume_profile" | "swing_high" | "swing_low" | "platform_high" | "platform_low" | "gap" | "limit_up_anchor" | "anchored_vwap" | "ma5" | "ma10" | "ma20" | "ma30" | "ma60" | "intraday_vwap" | "open" | "prev_close" | "round_number") | "";
+            /** Resistance Price */
+            resistance_price?: number | null;
+            /**
+             * Resistance Strength
+             * @default 0
+             */
+            resistance_strength: number;
+            /** Resistance Zone High */
+            resistance_zone_high?: number | null;
+            /** Resistance Zone Low */
+            resistance_zone_low?: number | null;
+            /**
+             * Scope
+             * @enum {string}
+             */
+            scope: "stock" | "sector" | "market";
+            /** Support Distance Pct */
+            support_distance_pct?: number | null;
+            /**
+             * Support Level Type
+             * @default
+             */
+            support_level_type: ("volume_profile" | "swing_high" | "swing_low" | "platform_high" | "platform_low" | "gap" | "limit_up_anchor" | "anchored_vwap" | "ma5" | "ma10" | "ma20" | "ma30" | "ma60" | "intraday_vwap" | "open" | "prev_close" | "round_number") | "";
+            /** Support Price */
+            support_price?: number | null;
+            /**
+             * Support Strength
+             * @default 0
+             */
+            support_strength: number;
+            /** Support Zone High */
+            support_zone_high?: number | null;
+            /** Support Zone Low */
+            support_zone_low?: number | null;
+            /** Symbol */
+            symbol: string;
+            /** Trade Date */
+            trade_date: string;
+            /** Trend Above Ma30 */
+            trend_above_ma30?: boolean | null;
+            /** Trend Above Ma60 */
+            trend_above_ma60?: boolean | null;
+            /** Warnings */
+            warnings?: string[];
         };
         /** KlineBar */
         KlineBar: {
@@ -22228,6 +22446,141 @@ export interface operations {
                     "application/json": {
                         [key: string]: unknown;
                     };
+                };
+            };
+        };
+    };
+    intraday_key_levels_api_key_levels_intraday__symbol__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                symbol: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KeyLevelResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    market_key_levels_api_key_levels_market_get: {
+        parameters: {
+            query?: {
+                trade_date?: string;
+                lookback_days?: number;
+                include_intraday?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KeyLevelResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    sector_key_levels_api_key_levels_sector__sector_key__get: {
+        parameters: {
+            query?: {
+                trade_date?: string;
+                lookback_days?: number;
+                include_intraday?: boolean;
+            };
+            header?: never;
+            path: {
+                sector_key: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KeyLevelResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    stock_key_levels_api_key_levels_stock__symbol__get: {
+        parameters: {
+            query?: {
+                trade_date?: string;
+                lookback_days?: number;
+                include_intraday?: boolean;
+                threshold_pct?: number;
+            };
+            header?: never;
+            path: {
+                symbol: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KeyLevelResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

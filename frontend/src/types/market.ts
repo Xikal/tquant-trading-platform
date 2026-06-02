@@ -282,6 +282,66 @@ export interface IntradayKeyLevelResponse {
   data_quality_text?: string;
 }
 
+export type KeyLevelDirection = "support" | "resistance" | "neutral";
+export type KeyLevelScope = "stock" | "sector" | "market";
+export type KeyLevelDataQuality = "ok" | "insufficient" | "stale" | "blocked" | "research_only";
+
+export interface KeyLevelCandidate {
+  price: number;
+  zone_low: number;
+  zone_high: number;
+  direction: KeyLevelDirection;
+  level_type: string;
+  strength_score: number;
+  evidence: string[];
+  invalid_condition: string;
+  last_touched_date?: string | null;
+  touch_count?: number | null;
+  source_window_days?: number | null;
+  invalidate_below?: number | null;
+  invalidate_volume_x?: number | null;
+}
+
+export interface KeyLevelResult {
+  symbol: string;
+  name: string;
+  scope: KeyLevelScope;
+  trade_date: string;
+  latest_price: number;
+  engine_version: string;
+  as_of: string;
+  adjust_mode: "qfq" | "hfq" | "none";
+  intraday_included: boolean;
+  support_price?: number | null;
+  support_zone_low?: number | null;
+  support_zone_high?: number | null;
+  support_distance_pct?: number | null;
+  support_strength: number;
+  support_level_type: string;
+  resistance_price?: number | null;
+  resistance_zone_low?: number | null;
+  resistance_zone_high?: number | null;
+  resistance_distance_pct?: number | null;
+  resistance_strength: number;
+  resistance_level_type: string;
+  ma5?: number | null;
+  ma10?: number | null;
+  ma20?: number | null;
+  ma30?: number | null;
+  ma60?: number | null;
+  close_to_ma5?: number | null;
+  close_to_ma10?: number | null;
+  close_to_ma20?: number | null;
+  close_to_ma30?: number | null;
+  close_to_ma60?: number | null;
+  trend_above_ma30?: boolean | null;
+  trend_above_ma60?: boolean | null;
+  key_level_candidates: KeyLevelCandidate[];
+  data_quality: KeyLevelDataQuality;
+  explanation: string;
+  warnings: string[];
+}
+
 export interface EtfUniverseProfile {
   symbol: string;
   name: string;

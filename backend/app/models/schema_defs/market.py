@@ -5,6 +5,14 @@ from typing import Any, Literal, Optional
 from pydantic import BaseModel, Field
 
 from app.models.schema_defs.common import KlineBar
+from app.models.schema_defs.key_levels import (
+    KeyLevelCandidate,
+    KeyLevelDataQuality,
+    KeyLevelDirection,
+    KeyLevelResult,
+    KeyLevelScope,
+    KeyLevelType,
+)
 
 DataQualityState = Literal["fresh", "stale", "partial", "unavailable"]
 

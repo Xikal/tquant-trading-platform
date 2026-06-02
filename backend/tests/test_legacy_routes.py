@@ -30,3 +30,13 @@ def test_legacy_routes_can_be_temporarily_redirected() -> None:
 
     assert response.status_code == 301
     assert response.headers["location"] == "/strategy?tab=replay"
+
+
+def test_api_get_paths_do_not_fall_back_to_frontend_html() -> None:
+    client = TestClient(app)
+
+    response = client.get("/api/intraday/subscribe")
+
+    assert response.status_code in {404, 405}
+    assert "application/json" in response.headers["content-type"]
+    assert "<!doctype html>" not in response.text.lower()

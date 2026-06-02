@@ -16,6 +16,8 @@ from app.services.realtime import publish_runtime_task_event
 TERMINAL_STATUSES = {"succeeded", "failed", "cancelled"}
 RUNNING_TASK_STALE_SECONDS = 5 * 60
 STALE_RECOVERY_BATCH_SIZE = 20
+RETRY_BACKOFF_BASE_SECONDS = 30
+RETRY_BACKOFF_MAX_SECONDS = 15 * 60
 
 
 class RuntimeTaskQueue:
@@ -160,7 +162,12 @@ class RuntimeTaskQueue:
         should_retry = retryable and int(row.attempt_count or 0) < int(row.max_attempts or 1)
         row.status = "queued" if should_retry else "failed"
         row.error_message = message[:1000]
-        if not should_retry:
+        if should_retry:
+            row.locked_by = ""
+            row.locked_at = None
+            row.run_after = _next_retry_at(row.attempt_count)
+        else:
+            row.run_after = None
             row.active_idempotency_key = None
             row.finished_at = datetime.utcnow()
         event = self.add_event(task_id, "retry" if should_retry else "failed", message[:240])
@@ -240,7 +247,7 @@ class RuntimeTaskQueue:
                 events.append(self.add_event(row.id, "failed", "任务运行超时，已标记失败"))
             else:
                 row.status = "queued"
-                row.run_after = None
+                row.run_after = _next_retry_at(row.attempt_count)
                 events.append(self.add_event(row.id, "retry", "任务运行超时，已重新排队"))
         self.db.commit()
         for event in events:
@@ -272,6 +279,12 @@ def _supports_skip_locked(db: Session) -> bool:
     dialect = getattr(bind, "dialect", None)
     name = getattr(dialect, "name", "")
     return name in {"mysql", "postgresql"}
+
+
+def _next_retry_at(attempt_count: int | None) -> datetime:
+    attempt = max(1, int(attempt_count or 1))
+    seconds = min(RETRY_BACKOFF_MAX_SECONDS, RETRY_BACKOFF_BASE_SECONDS * (2 ** (attempt - 1)))
+    return datetime.utcnow() + timedelta(seconds=seconds)
 
 
 def _event_out(row: RuntimeTaskEvent) -> RuntimeTaskEventOut:

@@ -33,6 +33,7 @@ RUNTIME_WORKER_TASK_TYPES = (
     "market_pulse_refresh",
     "instrument_sync",
     "daily_bar_refresh",
+    "a_key_level_materialization_refresh",
     "market_review_report",
     "paper_review_report",
     "low_buy_materialization_refresh",
@@ -172,6 +173,17 @@ def _execute_task(task_type: str, payload: dict[str, Any], db) -> dict[str, Any]
         from app.services.daily_bar_refresh import DailyBarRefreshService
 
         return DailyBarRefreshService(db).refresh_latest(limit=int(payload.get("limit") or 6000))
+    if task_type == "a_key_level_materialization_refresh":
+        from app.services.key_levels.materialization import AKeyLevelMaterializationService
+
+        return AKeyLevelMaterializationService(db).refresh(
+            trade_date=str(payload.get("trade_date") or "") or None,
+            symbols=[str(item) for item in payload.get("symbols") or []] if "symbols" in payload else None,
+            sectors=[str(item) for item in payload.get("sectors") or []] if "sectors" in payload else None,
+            stock_limit=max(1, min(int(payload["stock_limit"]), 10000)) if payload.get("stock_limit") else None,
+            sector_limit=max(1, min(int(payload["sector_limit"]), 1000)) if payload.get("sector_limit") else None,
+            batch_size=max(1, min(int(payload["batch_size"]), 1000)) if payload.get("batch_size") else 250,
+        )
     if task_type in {"market_review_report", "paper_review_report"}:
         from app.services.market.review import MarketReviewService
 

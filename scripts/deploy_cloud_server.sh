@@ -258,10 +258,10 @@ if test -n "$REMOTE_DEBIAN_APT_SECURITY_MIRROR"; then
 fi
 docker_compose_build app analytics-worker
 sudo docker compose -f "$CLOUD_COMPOSE_FILE" up --no-build --force-recreate --abort-on-container-exit --exit-code-from migration migration
-sudo docker rm -f tquant-app-mysql tquant-runtime-worker-mysql tquant-backtest-worker-mysql tquant-analytics-worker-mysql 2>/dev/null || true
-sudo docker compose -f "$CLOUD_COMPOSE_FILE" up -d --no-build --force-recreate app runtime-worker backtest-worker analytics-worker
+sudo docker rm -f tquant-app-mysql tquant-runtime-scheduler-mysql tquant-runtime-worker-mysql tquant-backtest-worker-mysql tquant-analytics-worker-mysql 2>/dev/null || true
+sudo docker compose -f "$CLOUD_COMPOSE_FILE" up -d --no-build --force-recreate app runtime-scheduler runtime-worker backtest-worker analytics-worker
 EXPECTED_WEB_IMAGE=$(sudo docker image inspect tquant-web:mysql --format '{{.Id}}')
-for container in tquant-app-mysql tquant-runtime-worker-mysql tquant-backtest-worker-mysql; do
+for container in tquant-app-mysql tquant-runtime-scheduler-mysql tquant-runtime-worker-mysql tquant-backtest-worker-mysql; do
   ACTUAL_WEB_IMAGE=$(sudo docker inspect "$container" --format '{{.Image}}')
   if test "$ACTUAL_WEB_IMAGE" != "$EXPECTED_WEB_IMAGE"; then
     echo "$container is still running $ACTUAL_WEB_IMAGE; expected $EXPECTED_WEB_IMAGE" >&2
@@ -325,7 +325,7 @@ PY
 docker_compose_build go-bff-gateway go-market-read-service go-scan-worker
 sudo docker compose -f "$CLOUD_COMPOSE_FILE" up -d --no-build --force-recreate go-bff-gateway go-market-read-service go-scan-worker
 EXPECTED_WEB_IMAGE=$(sudo docker image inspect tquant-web:mysql --format '{{.Id}}')
-for container in tquant-app-mysql tquant-runtime-worker-mysql tquant-backtest-worker-mysql; do
+for container in tquant-app-mysql tquant-runtime-scheduler-mysql tquant-runtime-worker-mysql tquant-backtest-worker-mysql; do
   ACTUAL_WEB_IMAGE=$(sudo docker inspect "$container" --format '{{.Image}}')
   if test "$ACTUAL_WEB_IMAGE" != "$EXPECTED_WEB_IMAGE"; then
     echo "$container changed away from web image after Go service deploy" >&2
@@ -390,6 +390,15 @@ PY
 AUTH_STATUS=$(curl -sS -o /tmp/gupiao_auth_guard.json -w '%{http_code}' --max-time 10 "http://127.0.0.1:${CLOUD_APP_PORT}/api/screeners/low-buy?limit=4&scan_limit=24")
 test "$AUTH_STATUS" = 401
 echo protected_api:ok
+API_FALLBACK_STATUS=$(curl -sS -D /tmp/gupiao_api_fallback_headers.txt -o /tmp/gupiao_api_fallback.json -w '%{http_code}' --max-time 10 "http://127.0.0.1:${CLOUD_APP_PORT}/api/__missing_smoke__")
+test "$API_FALLBACK_STATUS" = 404
+grep -qi '^Content-Type: application/json' /tmp/gupiao_api_fallback_headers.txt
+python3 - <<'PY'
+import json
+payload = json.load(open('/tmp/gupiao_api_fallback.json', encoding='utf-8'))
+assert payload.get('detail') == 'API endpoint not found', payload
+print('api_fallback:ok')
+PY
 curl -sS -f -o /tmp/gupiao_home.html --max-time 10 "http://127.0.0.1:${CLOUD_APP_PORT}/"
 grep -q '<div id="root"></div>' /tmp/gupiao_home.html
 echo frontend:ok

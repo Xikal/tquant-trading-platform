@@ -18,6 +18,7 @@ import type {
 import {
   clearAuthTokens,
   invalidateCache,
+  refreshAuthSession,
   setAuthTokens
 } from "./base"
 import { apiClient } from "./httpClient"
@@ -61,11 +62,7 @@ export const appApi = {
     })
   },
   refreshAuth: () => {
-    return request<AuthTokenResponse>("/auth/refresh", {
-      method: "POST",
-      body: JSON.stringify({})
-    }).then((result) => {
-      setAuthTokens(result.access_token)
+    return refreshAuthSession<AuthTokenResponse>().then((result) => {
       invalidateAppCaches()
       return result
     })

@@ -92,10 +92,23 @@ def test_factor_compute_engine_does_not_execute_top_level_code_in_main_process()
                 ]
             ),
         )
-    except ZeroDivisionError:
+    except FactorSafetyError:
         return
     else:
-        raise AssertionError("worker should fail after main process safety validation")
+        raise AssertionError("top-level executable factor code should be rejected before execution")
+
+
+def test_factor_compute_engine_rejects_top_level_executable_statements():
+    formula = (
+        "pd.set_option('display.max_rows', 999)\n"
+        "def compute_factor(bars):\n"
+        "    return bars['close_price'].astype(float)\n"
+    )
+    try:
+        FactorComputeEngine().validate(formula)
+    except FactorSafetyError:
+        return
+    raise AssertionError("top-level executable factor code should be rejected")
 
 
 def test_walk_forward_ic_requires_stable_rolling_oos_windows():
