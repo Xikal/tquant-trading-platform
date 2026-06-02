@@ -6,6 +6,8 @@ from datetime import date, datetime
 from decimal import Decimal
 from unittest.mock import patch
 
+from app.core.timezone import beijing_now
+
 
 class PaperAutoTradingTest(unittest.TestCase):
     def test_imports_work(self):
@@ -504,7 +506,7 @@ class PaperAutoTradingTest(unittest.TestCase):
                     run_type="auto_trade_cycle",
                     status="skipped",
                     response_json=f'{{"skipped":[{{"account_id":{account.id},"reason":"{reason}"}}]}}',
-                    created_at=datetime.now(),
+                    created_at=beijing_now().replace(tzinfo=None),
                 )
             )
             db.commit()
@@ -633,7 +635,7 @@ class PaperAutoTradingTest(unittest.TestCase):
             quantity=100,
             limit_price=None,
             current_price=Decimal("0"),
-            quote_time=datetime.now(),
+            quote_time=beijing_now().replace(tzinfo=None),
             is_suspended=False,
         )
         self.assertEqual(result.result, "rejected")
@@ -650,7 +652,7 @@ class PaperAutoTradingTest(unittest.TestCase):
             quantity=100,
             limit_price=None,
             current_price=Decimal("10.1234"),
-            quote_time=datetime.now(),
+            quote_time=beijing_now().replace(tzinfo=None),
             is_suspended=False,
         )
         etf = engine.match(
@@ -660,7 +662,7 @@ class PaperAutoTradingTest(unittest.TestCase):
             quantity=100,
             limit_price=None,
             current_price=Decimal("3.1234"),
-            quote_time=datetime.now(),
+            quote_time=beijing_now().replace(tzinfo=None),
             is_suspended=False,
         )
         self.assertEqual(stock.avg_fill_price, Decimal("10.12"))

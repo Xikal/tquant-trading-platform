@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-import time
+import asyncio
 import pandas as pd
 from types import SimpleNamespace
 
@@ -104,11 +104,18 @@ def test_async_provider_batch_fetches_eastmoney_chunks_concurrently(monkeypatch)
     service.settings = settings
     service.provider_router.circuits = ProviderCircuitRegistry(ProviderCircuitConfig(), store=ProviderCircuitStore())
     started: list[str] = []
+    started_order: list[tuple[str, int]] = []
+    finished_count = 0
 
     async def fake_get_json(_client, _url, params):  # noqa: ANN001
+        nonlocal finished_count
         symbol = str(params["secids"]).split(".", 1)[-1]
         started.append(symbol)
-        await __import__("asyncio").sleep(0.04)
+        started_order.append((symbol, finished_count))
+        while len(started_order) < 2:
+            await asyncio.sleep(0)
+        await asyncio.sleep(0)
+        finished_count += 1
         return {
             "rc": 0,
             "data": {
@@ -136,13 +143,12 @@ def test_async_provider_batch_fetches_eastmoney_chunks_concurrently(monkeypatch)
 
     monkeypatch.setattr("app.services.market.quotes._async_http_get_json", fake_get_json)
 
-    started_at = time.perf_counter()
-    result = service.get_quotes_batch_async_provider(["000001", "000002"], force_refresh=True)
-    elapsed = time.perf_counter() - started_at
+    result = service.get_quotes_batch_async_provider(["000001", "000002"], force_refresh=True, allow_slow_fallback=False)
 
     assert set(result) == {"000001", "000002"}
     assert started == ["000001", "000002"]
-    assert elapsed < 0.075
+    assert started_order == [("000001", 0), ("000002", 0)]
+    assert finished_count == 2
     assert result["000001"].data_source == "eastmoney_realtime"
 
 

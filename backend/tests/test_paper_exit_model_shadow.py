@@ -132,11 +132,12 @@ def test_exit_model_dataset_uses_time_ordered_split() -> None:
 
 
 def test_evaluate_exit_model_shadow_smoke_script_outputs_metrics() -> None:
-    script = Path("/Users/j/Documents/gupiao/research/scripts/evaluate_exit_model_shadow.py")
+    repo_root = Path(__file__).resolve().parents[2]
+    script = repo_root / "research/scripts/evaluate_exit_model_shadow.py"
 
     result = subprocess.run(
         [sys.executable, str(script), "--smoke"],
-        cwd="/Users/j/Documents/gupiao",
+        cwd=repo_root,
         check=True,
         text=True,
         capture_output=True,

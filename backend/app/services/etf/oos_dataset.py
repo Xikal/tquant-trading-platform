@@ -18,7 +18,9 @@ REGIME_LABELS = {
     "strong_rebound": "强反弹",
 }
 REQUIRED_REGIMES = tuple(REGIME_LABELS)
-DEFAULT_OOS_DIR = Path(__file__).resolve().parents[4] / "data" / "oos" / "etf_t0"
+PROJECT_ROOT = Path(__file__).resolve().parents[4]
+DEFAULT_OOS_DIR = PROJECT_ROOT / "backend" / "app" / "services" / "etf" / "oos_manifests"
+LEGACY_OOS_DIR = PROJECT_ROOT / "data" / "oos" / "etf_t0"
 
 
 class OOSDatasetError(ValueError):
@@ -27,11 +29,16 @@ class OOSDatasetError(ValueError):
 
 def list_oos_datasets() -> list[dict[str, Any]]:
     items: list[dict[str, Any]] = []
-    for path in sorted(_dataset_dir().glob("*.json")):
+    seen: set[str] = set()
+    for path in _dataset_paths():
         try:
             manifest = load_oos_dataset(path.stem)
         except OOSDatasetError:
             continue
+        key = str(manifest.get("dataset_key") or path.stem)
+        if key in seen:
+            continue
+        seen.add(key)
         items.append(_dataset_summary(manifest))
     return items
 
@@ -163,7 +170,7 @@ def _segments(manifest: dict[str, Any]) -> list[dict[str, Any]]:
 
 def _resolve_dataset_path(dataset_key: str) -> Path | None:
     clean = str(dataset_key or "").strip()
-    for path in sorted(_dataset_dir().glob("*.json")):
+    for path in _dataset_paths():
         if path.stem == clean:
             return path
         try:
@@ -177,6 +184,22 @@ def _resolve_dataset_path(dataset_key: str) -> Path | None:
 
 def _dataset_dir() -> Path:
     return Path(os.getenv("TQUANT_ETF_T0_OOS_DIR", str(DEFAULT_OOS_DIR))).expanduser()
+
+
+def _dataset_paths() -> list[Path]:
+    dirs = [_dataset_dir()]
+    if "TQUANT_ETF_T0_OOS_DIR" not in os.environ and LEGACY_OOS_DIR != dirs[0]:
+        dirs.append(LEGACY_OOS_DIR)
+    paths: list[Path] = []
+    seen: set[Path] = set()
+    for directory in dirs:
+        for path in sorted(directory.glob("*.json")):
+            resolved = path.resolve()
+            if resolved in seen:
+                continue
+            seen.add(resolved)
+            paths.append(path)
+    return paths
 
 
 def _stable(value: Any) -> Any:

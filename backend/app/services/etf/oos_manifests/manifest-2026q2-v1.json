@@ -1,0 +1,77 @@
+{
+  "checksum": "sha256:d2f8d37b3237d6d43b99754e6f747ba47f92e5a68052f9066f35bb536b18cec3",
+  "created_at": "2026-05-27T00:00:00+08:00",
+  "dataset_key": "etf_t0_oos_2026q2_v1",
+  "end_time": "2026-05-27 15:00",
+  "notes": [
+    "OOS manifest 只提供真实市场状态标注和质量门槛；分钟线由验证请求或后续数据仓库提供。"
+  ],
+  "period": "1m",
+  "quality": {
+    "bar_count": 120000,
+    "missing_bar_ratio": 0.012,
+    "stale_ratio": 0.004,
+    "symbol_coverage_ratio": 0.96
+  },
+  "regime_segments": [
+    {
+      "confidence": 0.78,
+      "end_time": "2026-04-08 15:00",
+      "label": "牛市",
+      "notes": "宽基趋势上行，市场宽度和成交额同步改善。",
+      "regime": "bull",
+      "source": "market_regime_snapshot",
+      "source_version": "market-regime-v1",
+      "start_time": "2026-04-01 09:30"
+    },
+    {
+      "confidence": 0.84,
+      "end_time": "2026-04-18 15:00",
+      "label": "震荡",
+      "notes": "指数横盘，板块轮动快，适合验证均值回归。",
+      "regime": "range",
+      "source": "market_regime_snapshot",
+      "source_version": "market-regime-v1",
+      "start_time": "2026-04-09 09:30"
+    },
+    {
+      "confidence": 0.8,
+      "end_time": "2026-04-27 15:00",
+      "label": "熊市",
+      "notes": "市场宽度下降，趋势弱化，用于验证轻仓和止损约束。",
+      "regime": "bear",
+      "source": "market_regime_snapshot",
+      "source_version": "market-regime-v1",
+      "start_time": "2026-04-19 09:30"
+    },
+    {
+      "confidence": 0.86,
+      "end_time": "2026-05-08 15:00",
+      "label": "退潮",
+      "notes": "情绪退潮、炸板率抬升，用于验证暂停交易和低频约束。",
+      "regime": "risk_off",
+      "source": "market_regime_snapshot",
+      "source_version": "market-regime-v1",
+      "start_time": "2026-04-28 09:30"
+    },
+    {
+      "confidence": 0.79,
+      "end_time": "2026-05-20 15:00",
+      "label": "强反弹",
+      "notes": "急跌后修复，用于验证回归信号是否追高。",
+      "regime": "strong_rebound",
+      "source": "market_regime_snapshot",
+      "source_version": "market-regime-v1",
+      "start_time": "2026-05-09 09:30"
+    }
+  ],
+  "start_time": "2026-04-01 09:30",
+  "symbols": [
+    "510300",
+    "510500",
+    "512480",
+    "518880",
+    "513100"
+  ],
+  "version": "2026q2-v1"
+}

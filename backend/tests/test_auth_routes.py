@@ -62,7 +62,7 @@ class AuthRouteTests(unittest.TestCase):
                 db.close()
 
         app.dependency_overrides[get_db] = override_db
-        self.client = TestClient(app)
+        self.client = TestClient(app, base_url="https://testserver")
 
     def tearDown(self) -> None:
         if self._auth_secret_original is None:

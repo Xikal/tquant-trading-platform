@@ -96,7 +96,7 @@ def test_cloud_deploy_waits_for_analytics_worker_dependency_readiness() -> None:
     deploy_script = (ROOT_DIR / "scripts" / "deploy_cloud_server.sh").read_text(encoding="utf-8")
 
     assert "build app analytics-worker" in deploy_script
-    assert "app runtime-worker backtest-worker analytics-worker" in deploy_script
+    assert "up -d --no-build --force-recreate app runtime-scheduler runtime-worker backtest-worker analytics-worker" in deploy_script
     assert "ANALYTICS_STATUS=$(sudo docker inspect tquant-analytics-worker-mysql" in deploy_script
     assert "analytics_worker_readyz:ok" in deploy_script
     assert "require_analytics_dependencies()" in deploy_script

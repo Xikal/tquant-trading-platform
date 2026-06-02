@@ -425,7 +425,7 @@ def test_closed_loop_constraint_policy_gate_passes_for_governed_report() -> None
 
 
 def test_new_strategy_improvement_files_stay_under_500_lines() -> None:
-    root = Path("/Users/j/Documents/gupiao")
+    root = Path(__file__).resolve().parents[2]
     paths = [root / "backend/scripts/strategy_improvement_closed_loop.py", *sorted((root / "backend/app/services/strategy_improvement").glob("*.py"))]
 
     for path in paths:
