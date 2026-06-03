@@ -235,6 +235,7 @@ def run_remote_measurement(args: argparse.Namespace) -> dict[str, Any]:
                 }
             samples = []
             statuses = []
+            notes = []
             url = "http://127.0.0.1:8093/api/scan-worker/v1/run?strategies=first_board&scan_limit=12&limit=5&reason=perf_gate"
             for _ in range(SAMPLES):
                 started = time.perf_counter()
@@ -243,21 +244,59 @@ def run_remote_measurement(args: argparse.Namespace) -> dict[str, Any]:
                         "sudo", "docker", "exec", "tquant-go-scan-worker", "wget", "-qO-",
                         "--header", "X-Internal-Service-Token: " + token,
                         url,
-                    ], text=True, timeout=10)
+                    ], stderr=subprocess.STDOUT, text=True, timeout=10)
                     payload = json.loads(out)
-                    statuses.append(202 if payload.get("accepted") else 200)
-                except Exception:
-                    statuses.append(500)
+                    status, note = scan_accept_status(payload, 202 if payload.get("accepted") else 200)
+                    statuses.append(status)
+                    if note:
+                        notes.append(note)
+                except subprocess.CalledProcessError as exc:
+                    payload = parse_scan_worker_payload(exc.output)
+                    status, note = scan_accept_status(payload, 500)
+                    statuses.append(status)
+                    if note:
+                        notes.append(note)
+                except Exception as exc:
+                    statuses.append("failed")
+                    notes.append({"state": "failed", "detail": str(exc)})
                 samples.append((time.perf_counter() - started) * 1000)
             ordered = sorted(samples)
             p95_index = max(0, min(len(ordered) - 1, int(len(ordered) * 0.95) - 1))
             return {
                 "name": "scan_worker_accept",
                 "path": "/api/scan-worker/v1/run",
-                "statuses": sorted(set(statuses)),
+                "statuses": sorted(set(statuses), key=lambda item: str(item)),
                 "p50_ms": round(statistics.median(samples), 3),
                 "p95_ms": round(ordered[p95_index], 3),
+                "notes": notes[-20:],
             }
+
+        def parse_scan_worker_payload(raw):
+            if not raw:
+                return {}
+            text = raw.decode(errors="replace") if isinstance(raw, bytes) else str(raw)
+            for line in reversed(text.splitlines()):
+                candidate = line.strip()
+                if not candidate or not candidate.startswith("{"):
+                    continue
+                try:
+                    return json.loads(candidate)
+                except Exception:
+                    continue
+            return {"status": "failed", "detail": text[-500:]}
+
+        def scan_accept_status(payload, http_status):
+            state = str(payload.get("status") or "").strip().lower()
+            if payload.get("accepted") is True:
+                state = "accepted"
+            if not state and payload.get("fallback_available") is True and not payload.get("ok"):
+                state = "fallback_available"
+            non_fatal = {"accepted", "queued", "busy", "duplicate", "fallback_available"}
+            if state in non_fatal:
+                return 202, {"state": state, "http_status": http_status, "detail": payload.get("detail") or payload.get("fallback_reason") or ""}
+            if payload.get("ok") is True:
+                return 200, {"state": state or "ok", "http_status": http_status}
+            return "failed", {"state": state or "failed", "http_status": http_status, "detail": payload.get("detail") or payload.get("fallback_reason") or ""}
 
         def rust_smoke():
             code = (
@@ -424,12 +463,16 @@ def run_remote_measurement(args: argparse.Namespace) -> dict[str, Any]:
             for item in api
             if item["p95_ms"] > thresholds[item["name"]] or item["statuses"] != [200]
         ]
-        if scan_accept["p95_ms"] > thresholds["scan_worker_accept"] or scan_accept["statuses"] != [202]:
+        scan_statuses = set(scan_accept["statuses"])
+        scan_has_real_failure = "failed" in scan_statuses
+        scan_has_unexpected_status = bool(scan_statuses - {200, 202})
+        if scan_accept["p95_ms"] > thresholds["scan_worker_accept"] or scan_has_real_failure or scan_has_unexpected_status:
             failures.append({
                 "name": scan_accept["name"],
                 "p95_ms": scan_accept["p95_ms"],
                 "threshold_ms": thresholds["scan_worker_accept"],
                 "statuses": scan_accept["statuses"],
+                "notes": scan_accept.get("notes") or [],
             })
         if not rust.get("available") or int(rust.get("metrics", {}).get("hits") or 0) < 6:
             failures.append({

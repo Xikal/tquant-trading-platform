@@ -40,6 +40,7 @@ def test_internal_scan_worker_run_returns_accepted_job(monkeypatch):
         payload = response.json()
         assert payload["ok"] is True
         assert payload["accepted"] is True
+        assert payload["status"] == "accepted"
         assert payload["job_id"]
         assert payload["strategy_engine"] == "python_reference"
         assert payload["production_write_enabled"] is True

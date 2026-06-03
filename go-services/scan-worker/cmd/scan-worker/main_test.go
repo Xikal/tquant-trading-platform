@@ -123,6 +123,9 @@ func TestRunAcceptsAsyncPythonReference(t *testing.T) {
 	if !strings.Contains(body, `"accepted":true`) {
 		t.Fatalf("expected accepted payload: %s", body)
 	}
+	if !strings.Contains(body, `"status":"accepted"`) {
+		t.Fatalf("expected accepted status: %s", body)
+	}
 	if !strings.Contains(body, `"production_write_enabled":true`) {
 		t.Fatalf("expected production write enabled in accepted body: %s", body)
 	}
@@ -148,6 +151,9 @@ func TestRunReportsFallbackOnPythonFailure(t *testing.T) {
 	body := recorder.Body.String()
 	if !strings.Contains(body, `"fallback_available":true`) {
 		t.Fatalf("expected fallback available in body: %s", body)
+	}
+	if !strings.Contains(body, `"status":"fallback_available"`) {
+		t.Fatalf("expected fallback status in body: %s", body)
 	}
 	if !strings.Contains(body, `"production_write_enabled":false`) {
 		t.Fatalf("expected failed run to disable writes in body: %s", body)

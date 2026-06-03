@@ -119,6 +119,7 @@ func runHandler(cfg config, client *http.Client) http.Handler {
 			scanFallbacks.Add(1)
 			writeJSON(w, http.StatusBadGateway, map[string]any{
 				"ok":                       false,
+				"status":                   "fallback_available",
 				"production_scan_enabled":  true,
 				"production_write_enabled": false,
 				"production_readiness":     scanProductionStatus,
@@ -133,10 +134,17 @@ func runHandler(cfg config, client *http.Client) http.Handler {
 		if status == http.StatusAccepted {
 			scanAccepted.Add(1)
 			result["accepted"] = true
+			result["status"] = "accepted"
 		} else if ok, _ := result["ok"].(bool); ok {
 			scanWrites.Add(1)
+			if strings.TrimSpace(fmt.Sprint(result["status"])) == "" {
+				result["status"] = "queued"
+			}
 		} else {
 			scanFailures.Add(1)
+			if strings.TrimSpace(fmt.Sprint(result["status"])) == "" {
+				result["status"] = "failed"
+			}
 		}
 		result["production_scan_enabled"] = true
 		result["production_write_enabled"] = true

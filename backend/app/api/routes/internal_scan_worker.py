@@ -37,6 +37,7 @@ def run_scan_worker_reference(
     return {
         **result,
         "reason": reason,
+        "status": _scan_worker_status(result),
         "production_scan_enabled": True,
         "production_write_enabled": True,
         "scan_worker_role": "go_orchestrated_reference",
@@ -47,3 +48,10 @@ def run_scan_worker_reference(
             "detail": "Go scan-worker enqueued the Python strategy reference and latest is published only after the reference write succeeds.",
         },
     }
+
+
+def _scan_worker_status(result: dict) -> str:
+    if result.get("accepted"):
+        return "accepted"
+    status_value = str(result.get("status") or "").strip()
+    return status_value or ("queued" if result.get("ok") else "failed")

@@ -17,7 +17,7 @@ def test_cloud_measurement_script_has_hard_thresholds():
     assert '"priority_board": 500' in source
     assert '"market_pulse": 500' in source
     assert '"scan_worker_accept": 500' in source
-    assert 'scan_accept["statuses"] != [202]' in source
+    assert "scan_has_real_failure" in source
     assert "HTTPError" in source
     assert "rust_smoke" in source
     assert '"rust_finance_math"' in source
@@ -29,6 +29,16 @@ def test_cloud_measurement_script_has_hard_thresholds():
     assert '"quote_cache_batch_coverage"' in source
     assert "tquant-go-bff-gateway" in source
     assert "tquant-go-scan-worker" in source
+
+
+def test_cloud_measurement_scan_accept_reads_non_2xx_body():
+    script = Path(__file__).resolve().parents[1].parent / "scripts" / "measure_cloud_go_rust_performance.py"
+    source = script.read_text(encoding="utf-8")
+    assert "CalledProcessError" in source
+    assert "parse_scan_worker_payload" in source
+    assert "busy" in source
+    assert "duplicate" in source
+    assert "fallback_available" in source
 
 
 def test_mysql_compose_runs_go_services_on_production_path_by_default():
