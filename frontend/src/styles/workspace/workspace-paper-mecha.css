@@ -136,7 +136,10 @@
   justify-content: center;
   color: var(--hud-accent);
   opacity: 0.18;
-  animation: paper-at-field 4s infinite ease-in-out;
+}
+
+.paper-mecha-action-panel--effects-active .paper-mecha-action-panel__at-field {
+  animation: paper-at-field 1.6s ease-in-out 2;
 }
 
 .paper-mecha-action-panel__at-field svg {
@@ -170,12 +173,12 @@
   stroke-width: 2.5;
 }
 
-.paper-mecha-action-panel__ring--slow {
-  animation: paper-hud-rotate 35s linear infinite;
+.paper-mecha-action-panel--effects-active .paper-mecha-action-panel__ring--slow {
+  animation: paper-hud-rotate 2.6s linear;
 }
 
-.paper-mecha-action-panel__ring--reverse {
-  animation: paper-hud-rotate 18s linear infinite reverse;
+.paper-mecha-action-panel--effects-active .paper-mecha-action-panel__ring--reverse {
+  animation: paper-hud-rotate 1.6s linear reverse;
 }
 
 .paper-mecha-action-panel__readout {
@@ -230,13 +233,16 @@
   transform: translateY(4px);
 }
 
-.paper-mecha-plug-drop {
-  animation: paper-plug-drop 0.4s ease-in-out infinite;
+.paper-mecha-action-panel--effects-active .paper-mecha-plug-drop {
+  animation: paper-plug-drop 0.4s ease-in-out 4;
 }
 
 .paper-mecha-halo {
   opacity: 0.85;
-  animation: paper-halo-pulse 1.8s infinite ease-in-out;
+}
+
+.paper-mecha-action-panel--effects-active .paper-mecha-halo {
+  animation: paper-halo-pulse 0.9s ease-in-out 3;
 }
 
 .paper-mecha-lens {
@@ -248,22 +254,25 @@
 }
 
 .animate-eye {
-  animation: paper-pulse-eye 2.5s infinite ease-in-out;
   filter: drop-shadow(0 0 3px currentColor);
 }
 
-.animate-core {
-  animation: paper-pulse-core 2s infinite ease-in-out;
+.paper-mecha-action-panel--effects-active .animate-eye {
+  animation: paper-pulse-eye 0.9s ease-in-out 3;
 }
 
-.paper-mecha-action-panel--buy .paper-mecha-action-panel__avatar {
+.paper-mecha-action-panel--effects-active .animate-core {
+  animation: paper-pulse-core 0.9s ease-in-out 3;
+}
+
+.paper-mecha-action-panel--effects-active.paper-mecha-action-panel--buy .paper-mecha-action-panel__avatar {
   animation: paper-buy-flash 0.8s cubic-bezier(0.16, 1, 0.3, 1);
   transform: scale(1.05);
 }
 
-.paper-mecha-action-panel--auto .paper-mecha-action-panel__avatar,
-.paper-mecha-action-panel--profit .paper-mecha-action-panel__avatar {
-  animation: paper-auto-glow 2s infinite ease-in-out;
+.paper-mecha-action-panel--effects-active.paper-mecha-action-panel--auto .paper-mecha-action-panel__avatar,
+.paper-mecha-action-panel--effects-active.paper-mecha-action-panel--profit .paper-mecha-action-panel__avatar {
+  animation: paper-auto-glow 1.2s ease-in-out 2;
 }
 
 .paper-mecha-action-panel--paused .paper-mecha-action-panel__avatar,
@@ -271,9 +280,9 @@
   filter: saturate(0.35) brightness(0.78);
 }
 
-.paper-mecha-action-panel--loss .paper-mecha-action-panel__avatar,
-.paper-mecha-action-panel--risk .paper-mecha-action-panel__avatar {
-  animation: paper-risk-alert 1s infinite ease-in-out;
+.paper-mecha-action-panel--effects-active.paper-mecha-action-panel--loss .paper-mecha-action-panel__avatar,
+.paper-mecha-action-panel--effects-active.paper-mecha-action-panel--risk .paper-mecha-action-panel__avatar {
+  animation: paper-risk-alert 0.75s ease-in-out 3;
 }
 
 .state-sell-overlay,
@@ -295,13 +304,13 @@
     rgba(239, 68, 68, 0.08);
 }
 
-.paper-mecha-action-panel--sell .state-sell-overlay {
+.paper-mecha-action-panel--effects-active.paper-mecha-action-panel--sell .state-sell-overlay {
   animation: paper-sell-slash 0.6s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.paper-mecha-action-panel--loss .state-loss-overlay {
+.paper-mecha-action-panel--effects-active.paper-mecha-action-panel--loss .state-loss-overlay {
   opacity: 0.8;
-  animation: paper-title-pulse 0.7s infinite ease-in-out;
+  animation: paper-title-pulse 0.7s ease-in-out 4;
 }
 
 .paper-mecha-action-panel__sync {

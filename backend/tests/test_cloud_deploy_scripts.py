@@ -67,26 +67,40 @@ def test_quick_deploy_requires_explicit_fast_mode_and_external_connection_config
 
 def test_one_click_deploy_defaults_are_overridable_and_do_not_embed_secret_content() -> None:
     one_click_script = read_repo_file("scripts/one_click_cloud_deploy.sh")
+    gitignore = read_repo_file(".gitignore")
+    deploy_example = read_repo_file(".env.deploy.local.example")
 
-    assert "DEFAULT_CLOUD_HOST" in one_click_script
-    assert "43.143.243.97" in one_click_script
-    assert "$HOME/Downloads/gupiao.pem" in one_click_script
-    assert "CLOUD_HOST:-$DEFAULT_CLOUD_HOST" in one_click_script
-    assert "CLOUD_SSH_KEY:-$DEFAULT_CLOUD_SSH_KEY" in one_click_script
-    assert "explicit_key" in one_click_script
-    assert "--fast-risk-accepted" in one_click_script
+    assert "DEPLOY_ENV_FILE" in one_click_script
+    assert ".env.deploy.local" in one_click_script
+    assert "DEFAULT_DEPLOY_MODE" in one_click_script
+    assert "CLOUD_HOST is required" in one_click_script
+    assert "CLOUD_SSH_KEY or CLOUD_PASSWORD is required" in one_click_script
+    assert "43.143.243.97" not in one_click_script
+    assert "$HOME/Downloads/gupiao.pem" not in one_click_script
+    assert ".env.deploy.local" in gitignore
+    assert "CLOUD_HOST=" in deploy_example
+    assert "CLOUD_SSH_KEY=" in deploy_example
+    assert "DEFAULT_DEPLOY_MODE=safe" in deploy_example
     assert "quick_cloud_deploy.sh" in one_click_script
     assert "BEGIN OPENSSH PRIVATE KEY" not in one_click_script
 
 
-def test_one_click_deploy_no_args_dry_run_uses_default_fast_mode(tmp_path: Path) -> None:
-    fake_home = tmp_path / "home"
-    key_path = fake_home / "Downloads" / "gupiao.pem"
-    key_path.parent.mkdir(parents=True)
+def test_one_click_deploy_no_args_dry_run_uses_safe_mode_from_local_env(tmp_path: Path) -> None:
+    key_path = tmp_path / "gupiao.pem"
     key_path.write_text("fake-key", encoding="utf-8")
+    deploy_env = tmp_path / ".env.deploy.local"
+    deploy_env.write_text(
+        "\n".join([
+            "CLOUD_HOST=example.internal",
+            f"CLOUD_SSH_KEY={key_path}",
+            "CLOUD_DOMAIN=example.com",
+            "CLOUD_CERT_EMAIL=ops@example.com",
+        ]),
+        encoding="utf-8",
+    )
     env = {
         **os.environ,
-        "HOME": str(fake_home),
+        "DEPLOY_ENV_FILE": str(deploy_env),
         "ONE_CLICK_DEPLOY_DRY_RUN": "1",
     }
 
@@ -99,8 +113,40 @@ def test_one_click_deploy_no_args_dry_run_uses_default_fast_mode(tmp_path: Path)
         check=True,
     )
 
-    assert "mode=--fast-risk-accepted" in result.stdout
-    assert "dry-run args=--fast-risk-accepted" in result.stdout
+    assert f"env={deploy_env}" in result.stdout
+    assert "target=ubuntu@example.internal" in result.stdout
+    assert "domain=example.com" in result.stdout
+    assert "mode=--refresh-https-config --public-domain-verify" in result.stdout
+    assert "dry-run args=--refresh-https-config --public-domain-verify" in result.stdout
+
+
+def test_one_click_deploy_fast_mode_is_explicit_in_dry_run(tmp_path: Path) -> None:
+    key_path = tmp_path / "gupiao.pem"
+    key_path.write_text("fake-key", encoding="utf-8")
+    env = {
+        **os.environ,
+        "ONE_CLICK_DEPLOY_DRY_RUN": "1",
+    }
+
+    result = subprocess.run(
+        [
+            "bash",
+            str(ROOT_DIR / "scripts/one_click_cloud_deploy.sh"),
+            "--fast",
+            "--host",
+            "example.internal",
+            "--key",
+            str(key_path),
+        ],
+        cwd=ROOT_DIR,
+        env=env,
+        text=True,
+        capture_output=True,
+        check=True,
+    )
+
+    assert "mode=--fast-risk-accepted --host example.internal --key" in result.stdout
+    assert "--refresh-https-config --public-domain-verify" in result.stdout
 
 
 def test_quick_deploy_can_skip_nginx_refresh_and_retries_frontend_smoke() -> None:
@@ -114,6 +160,29 @@ def test_quick_deploy_can_skip_nginx_refresh_and_retries_frontend_smoke() -> Non
     assert "REFRESH_HTTPS_CONFIG" in deploy_script
     assert "skip HTTPS/nginx config refresh" in deploy_script
     assert "curl_retry /tmp/gupiao_home.html" in deploy_script
+
+
+def test_quick_deploy_prints_machine_readable_summary() -> None:
+    quick_script = read_repo_file("scripts/quick_cloud_deploy.sh")
+
+    assert "print_deploy_summary" in quick_script
+    assert "summary outcome=" in quick_script
+    assert "mode=${mode}" in quick_script
+    assert "public_domain_verify=${VERIFY_PUBLIC_DOMAIN}" in quick_script
+    assert "performance_verify=${RUN_PERFORMANCE_VERIFY}" in quick_script
+    assert 'print_deploy_summary "verify-ok"' in quick_script
+    assert 'print_deploy_summary "deploy-ok"' in quick_script
+
+
+def test_makefile_has_one_click_deploy_shortcuts() -> None:
+    makefile = read_repo_file("Makefile")
+
+    assert "deploy-cloud:" in makefile
+    assert "./scripts/one_click_cloud_deploy.sh" in makefile
+    assert "deploy-cloud-fast:" in makefile
+    assert "./scripts/one_click_cloud_deploy.sh --fast" in makefile
+    assert "deploy-cloud-verify:" in makefile
+    assert "./scripts/one_click_cloud_deploy.sh --verify-only" in makefile
 
 
 def test_ci_deploy_fails_when_cloud_secrets_are_missing() -> None:

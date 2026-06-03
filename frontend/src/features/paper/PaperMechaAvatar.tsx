@@ -1,6 +1,6 @@
-import type { PaperMechaUnitId } from "../../stores/paperUiStore";
+import type { PaperMechaUnitId, PaperMechaVisualState } from "../../stores/paperUiStore";
 
-export type PaperMechaVisualState = "idle" | "buy" | "sell" | "profit" | "loss" | "auto" | "paused" | "risk" | "closed";
+export type { PaperMechaVisualState } from "../../stores/paperUiStore";
 
 export const MECHA_UNITS: Record<PaperMechaUnitId, { name: string; desc: string }> = {
   purple: { name: "壹式·紫", desc: "下颚拘束解锁，双眼暴走红光" },

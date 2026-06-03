@@ -38,6 +38,22 @@ log() {
   printf '[quick-deploy] %s\n' "$*"
 }
 
+print_deploy_summary() {
+  local outcome="$1"
+  local mode="safe"
+  if [[ "$FAST_MODE" == "1" ]]; then
+    mode="fast-risk-accepted"
+  elif [[ "$RUN_FULL_TESTS" == "1" ]]; then
+    mode="full"
+  fi
+  log "summary outcome=${outcome} mode=${mode} target=${CLOUD_USER}@${CLOUD_HOST} port=${CLOUD_APP_PORT} domain=${CLOUD_DOMAIN:-none} https_required=${HTTPS_REQUIRED} public_domain_verify=${VERIFY_PUBLIC_DOMAIN} performance_verify=${RUN_PERFORMANCE_VERIFY}"
+  if [[ -n "$CLOUD_DOMAIN" ]]; then
+    log "summary urls http=http://${CLOUD_HOST}:${CLOUD_APP_PORT} https=https://${CLOUD_DOMAIN}"
+  else
+    log "summary urls http=http://${CLOUD_HOST}:${CLOUD_APP_PORT}"
+  fi
+}
+
 usage() {
   cat <<'EOF'
 Usage: scripts/quick_cloud_deploy.sh [options]
@@ -290,7 +306,7 @@ performance_verify() {
 if [[ "$VERIFY_ONLY" == "1" ]]; then
   verify_remote
   performance_verify
-  log "verification completed for http://${CLOUD_HOST}:${CLOUD_APP_PORT}"
+  print_deploy_summary "verify-ok"
   exit 0
 fi
 
@@ -327,4 +343,4 @@ CLOUD_SSH_SERVER_ALIVE_COUNT_MAX="$CLOUD_SSH_SERVER_ALIVE_COUNT_MAX" \
 
 verify_remote
 performance_verify
-log "done: http://${CLOUD_HOST}:${CLOUD_APP_PORT}"
+print_deploy_summary "deploy-ok"

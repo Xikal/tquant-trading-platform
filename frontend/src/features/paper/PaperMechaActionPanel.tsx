@@ -1,8 +1,8 @@
-import { useMemo, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, type ReactNode } from "react";
 import type { PaperAgentRun, PaperAutoTradingStatus, RiskEventItem } from "../../types";
-import { usePaperUiStore, type PaperMechaUnitId } from "../../stores/paperUiStore";
+import { usePaperUiStore, type PaperMechaEffectState, type PaperMechaUnitId, type PaperMechaVisualState } from "../../stores/paperUiStore";
 import type { PixelTraderOrderAction } from "./pixelTrader/types";
-import { MECHA_UNITS, PaperMechaAvatar, type PaperMechaVisualState } from "./PaperMechaAvatar";
+import { MECHA_UNITS, PaperMechaAvatar } from "./PaperMechaAvatar";
 import { PaperMechaParticles } from "./PaperMechaParticles";
 
 interface PaperMechaActionPanelProps {
@@ -21,6 +21,9 @@ interface MechaHudState {
   caption: string;
 }
 
+const MECHA_EFFECT_DURATION_MS = 2600;
+const EFFECT_BASE_STATES = new Set<PaperMechaVisualState>(["auto", "risk", "loss"]);
+
 export function PaperMechaActionPanel({
   autoTradingStatus,
   autoTradingRuns,
@@ -29,18 +32,27 @@ export function PaperMechaActionPanel({
   lastOrderAction,
   monitor,
 }: PaperMechaActionPanelProps) {
-  const state = resolveMechaHudState(autoTradingStatus, autoTradingRuns, riskEvents, paused, lastOrderAction);
+  const baseState = resolveMechaHudState(autoTradingStatus, autoTradingRuns, riskEvents, paused);
+  const activeEffect = usePaperUiStore((store) => store.activeMechaEffect);
+  useTriggeredMechaEffect(baseState, lastOrderAction);
+  const state = activeEffect ?? baseState;
+  const effectsActive = Boolean(activeEffect);
   const activeUnitId = usePaperUiStore((store) => store.selectedMechaUnitId);
   const setActiveUnitId = usePaperUiStore((store) => store.setSelectedMechaUnitId);
   const activeUnit = MECHA_UNITS[activeUnitId] ?? MECHA_UNITS.purple;
   const animationKey = useMemo(
-    () => `${state.key}-${activeUnitId}-${lastOrderAction?.timestamp ?? "static"}`,
-    [activeUnitId, lastOrderAction?.timestamp, state.key],
+    () => `${state.key}-${activeUnitId}-${activeEffect?.token ?? "static"}`,
+    [activeEffect?.token, activeUnitId, state.key],
   );
 
   return (
     <aside
-      className={`paper-mecha-action-panel paper-mecha-action-panel--${state.key} paper-mecha-action-panel--unit-${activeUnitId}`}
+      className={[
+        "paper-mecha-action-panel",
+        `paper-mecha-action-panel--${state.key}`,
+        `paper-mecha-action-panel--unit-${activeUnitId}`,
+        effectsActive ? "paper-mecha-action-panel--effects-active" : "",
+      ].filter(Boolean).join(" ")}
       aria-label="模拟盘机甲交易舱"
     >
       <div className="paper-mecha-action-panel__chooser" aria-label="特设机型选择舱">
@@ -65,7 +77,7 @@ export function PaperMechaActionPanel({
         })}
       </div>
       <div className="paper-mecha-action-panel__stage">
-        <PaperMechaParticles state={state.key} />
+        {effectsActive ? <PaperMechaParticles key={activeEffect?.token} state={state.key} /> : null}
         <div className="paper-mecha-action-panel__glow" aria-hidden="true" />
         <div className="paper-mecha-action-panel__at-field" aria-hidden="true">
           <svg viewBox="0 0 100 100" focusable="false">
@@ -126,15 +138,81 @@ function resolveMechaHudState(
   autoTradingRuns: PaperAgentRun[],
   riskEvents: RiskEventItem[],
   paused: boolean,
-  lastOrderAction: PixelTraderOrderAction | null,
 ): MechaHudState {
   const hasOpenRisk = riskEvents.some((item) => item.status !== "resolved") || Boolean(autoTradingStatus?.circuit_open);
   if (hasOpenRisk) return { key: "risk", label: "RISK", syncRate: "15.6%", caption: "CRITICAL RISK" };
   if (paused) return { key: "paused", label: "PAUSED", syncRate: "0.0%", caption: "ORDER HOLD" };
-  if (lastOrderAction?.type === "buy") return { key: "buy", label: "BUY", syncRate: "93.5%", caption: lastOrderAction.symbol };
-  if (lastOrderAction?.type === "sell") return { key: "sell", label: "SELL", syncRate: "88.0%", caption: lastOrderAction.symbol };
   if (autoTradingRuns.some((item) => item.status === "failed")) return { key: "loss", label: "LOSS", syncRate: "31.2%", caption: "DAMAGE CHECK" };
   if (autoTradingStatus?.running || autoTradingStatus?.engine_running) return { key: "auto", label: "AUTO", syncRate: "89.4%", caption: "MAGI LOOP" };
   if (autoTradingStatus?.trading_time === false) return { key: "closed", label: "IDLE", syncRate: "52.0%", caption: "MARKET CLOSED" };
   return { key: "idle", label: "IDLE", syncRate: "84.2%", caption: "PILOT ACTIVE" };
+}
+
+function useTriggeredMechaEffect(
+  baseState: MechaHudState,
+  lastOrderAction: PixelTraderOrderAction | null,
+): void {
+  const setActiveMechaEffect = usePaperUiStore((store) => store.setActiveMechaEffect);
+  const effectTimerRef = useRef<number | null>(null);
+  const seenOrderTimestampRef = useRef<number | null>(null);
+  const orderFeedInitializedRef = useRef(false);
+  const previousBaseKeyRef = useRef<PaperMechaVisualState | null>(null);
+
+  const triggerEffect = useCallback((next: PaperMechaEffectState) => {
+    if (effectTimerRef.current != null) {
+      window.clearTimeout(effectTimerRef.current);
+    }
+    setActiveMechaEffect(next);
+    effectTimerRef.current = window.setTimeout(() => {
+      const current = usePaperUiStore.getState().activeMechaEffect;
+      if (current?.token === next.token) {
+        setActiveMechaEffect(null);
+      }
+      effectTimerRef.current = null;
+    }, MECHA_EFFECT_DURATION_MS);
+  }, [setActiveMechaEffect]);
+
+  useEffect(() => {
+    return () => {
+      if (effectTimerRef.current != null) {
+        window.clearTimeout(effectTimerRef.current);
+      }
+      setActiveMechaEffect(null);
+    };
+  }, [setActiveMechaEffect]);
+
+  useEffect(() => {
+    if (!lastOrderAction || !Number.isFinite(lastOrderAction.timestamp)) {
+      orderFeedInitializedRef.current = true;
+      return;
+    }
+
+    const feedInitialized = orderFeedInitializedRef.current;
+    const previousTimestamp = seenOrderTimestampRef.current;
+    seenOrderTimestampRef.current = lastOrderAction.timestamp;
+    orderFeedInitializedRef.current = true;
+    if (!feedInitialized || previousTimestamp === lastOrderAction.timestamp) return;
+
+    triggerEffect({
+      key: lastOrderAction.type === "sell" ? "sell" : "buy",
+      label: lastOrderAction.type === "sell" ? "SELL" : "BUY",
+      syncRate: lastOrderAction.type === "sell" ? "88.0%" : "93.5%",
+      caption: lastOrderAction.symbol,
+      token: `${lastOrderAction.type}-${lastOrderAction.timestamp}`,
+    });
+  }, [lastOrderAction, triggerEffect]);
+
+  useEffect(() => {
+    const previousBaseKey = previousBaseKeyRef.current;
+    previousBaseKeyRef.current = baseState.key;
+    if (previousBaseKey == null || previousBaseKey === baseState.key) return;
+    if (!EFFECT_BASE_STATES.has(baseState.key)) return;
+
+    triggerEffect({
+      ...baseState,
+      token: `${baseState.key}-${Date.now()}`,
+    });
+  }, [baseState.caption, baseState.key, baseState.label, baseState.syncRate, triggerEffect]);
+
+  return undefined;
 }

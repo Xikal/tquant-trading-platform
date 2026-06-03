@@ -2,6 +2,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { usePaperUiStore } from "../../stores/paperUiStore";
 import { ExecutionPreviewTab, PaperOrdersTab, PaperTradesTab, ReviewHistoryTab } from "../paper/PaperDetailTabs";
+import { PaperMechaActionPanel } from "../paper/PaperMechaActionPanel";
 import { PaperTradingPage } from "../paper/PaperTradingPage";
 
 describe("PaperTradingPage", () => {
@@ -62,7 +63,8 @@ describe("PaperTradingPage", () => {
     expect(html).toContain("paper-hero-grid");
     expect(html).toContain("paper-mecha-action-panel");
     expect(html).toContain("模拟盘机甲交易舱");
-    expect(html).toContain("paper-mecha-action-panel__particles");
+    expect(html).not.toContain("paper-mecha-action-panel__particles");
+    expect(html).not.toContain("paper-mecha-action-panel--effects-active");
     expect(html).toContain("paper-mecha-action-panel__unit-thumb");
     expect(html).toContain("paper-mecha-action-panel__monitor");
     expect(html).toContain("paper-mecha-jaw");
@@ -81,6 +83,23 @@ describe("PaperTradingPage", () => {
     expect(html).toContain("策略绩效");
     expect(html).not.toContain("表现（策略绩效）");
     expect(html).toContain("对账诊断");
+  });
+
+  it("does not keep the latest trade as a standing mecha effect on first render", () => {
+    const html = renderToStaticMarkup(
+      <PaperMechaActionPanel
+        autoTradingStatus={{ running: false }}
+        autoTradingRuns={[]}
+        riskEvents={[]}
+        paused={false}
+        lastOrderAction={{ type: "buy", symbol: "600000", timestamp: Date.now() }}
+      />
+    );
+
+    expect(html).toContain("paper-mecha-action-panel--idle");
+    expect(html).not.toContain("paper-mecha-action-panel--buy");
+    expect(html).not.toContain("paper-mecha-action-panel--effects-active");
+    expect(html).not.toContain("paper-mecha-action-panel__particles");
   });
 
   it("renders current positions as compact cards with only core position facts", () => {

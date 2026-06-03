@@ -10,6 +10,7 @@ node_modules/
 dist/
 frontend/dist-native/
 frontend/.env.native.local
+.env.deploy.local
 frontend/*.tsbuildinfo
 frontend/android/keystore.properties
 frontend/android/keystores/

@@ -1,6 +1,6 @@
 SHELL := /bin/bash
 
-.PHONY: frontend-build native-build native-sync backend-compile version-sync version-check qa ui-smoke warning-budget full-regression full-regression-release full-regression-cloud prod-preflight runtime-snapshot rust-bench go-rust-acceptance public-up public-down docker-sqlite-up docker-sqlite-down docker-mysql-up docker-mysql-down
+.PHONY: frontend-build native-build native-sync backend-compile version-sync version-check qa ui-smoke warning-budget full-regression full-regression-release full-regression-cloud prod-preflight runtime-snapshot rust-bench go-rust-acceptance deploy-cloud deploy-cloud-fast deploy-cloud-verify public-up public-down docker-sqlite-up docker-sqlite-down docker-mysql-up docker-mysql-down
 
 frontend-build:
 	cd frontend && npm run build
@@ -49,6 +49,15 @@ rust-bench:
 
 go-rust-acceptance:
 	python scripts/verify_go_rust_performance_acceptance.py
+
+deploy-cloud:
+	./scripts/one_click_cloud_deploy.sh
+
+deploy-cloud-fast:
+	./scripts/one_click_cloud_deploy.sh --fast
+
+deploy-cloud-verify:
+	./scripts/one_click_cloud_deploy.sh --verify-only
 
 public-up:
 	./scripts/run_public_app.sh

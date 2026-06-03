@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import type { PaperMechaVisualState } from "./PaperMechaAvatar";
+import type { PaperMechaVisualState } from "../../stores/paperUiStore";
 
 interface Particle {
   x: number;

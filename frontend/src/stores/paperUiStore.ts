@@ -4,6 +4,15 @@ import type { PixelTraderAnimationState } from "../features/paper/pixelTrader/ty
 export type PaperDetailTabKey = "today" | "orders" | "trades" | "pnl" | "strategy" | "risk" | "diagnostic" | "review-history" | "execution-preview";
 export type PaperDetailGroupKey = "records" | "performance" | "automation" | "details";
 export type PaperMechaUnitId = "purple" | "blue" | "red" | "black" | "grey";
+export type PaperMechaVisualState = "idle" | "buy" | "sell" | "profit" | "loss" | "auto" | "paused" | "risk" | "closed";
+
+export interface PaperMechaEffectState {
+  key: PaperMechaVisualState;
+  label: string;
+  syncRate: string;
+  caption: string;
+  token: string;
+}
 
 interface PaperUiStore {
   detailTab: PaperDetailTabKey;
@@ -16,6 +25,7 @@ interface PaperUiStore {
   recommendedOrdersError: string;
   clockMs: number;
   selectedMechaUnitId: PaperMechaUnitId;
+  activeMechaEffect: PaperMechaEffectState | null;
   pixelTraderVisualState: PixelTraderAnimationState;
   setDetailTab: (tab: PaperDetailTabKey) => void;
   setDetailGroup: (group: PaperDetailGroupKey) => void;
@@ -27,6 +37,7 @@ interface PaperUiStore {
   setRecommendedOrdersError: (error: string) => void;
   setClockMs: (clockMs: number) => void;
   setSelectedMechaUnitId: (unitId: PaperMechaUnitId) => void;
+  setActiveMechaEffect: (effect: PaperMechaEffectState | null) => void;
   setPixelTraderVisualState: (state: PixelTraderAnimationState) => void;
 }
 
@@ -41,6 +52,7 @@ export const usePaperUiStore = create<PaperUiStore>((set) => ({
   recommendedOrdersError: "",
   clockMs: Date.now(),
   selectedMechaUnitId: "purple",
+  activeMechaEffect: null,
   pixelTraderVisualState: "idle",
   setDetailTab: (detailTab) => set({ detailTab }),
   setDetailGroup: (detailGroup) => set({ detailGroup }),
@@ -52,5 +64,6 @@ export const usePaperUiStore = create<PaperUiStore>((set) => ({
   setRecommendedOrdersError: (recommendedOrdersError) => set({ recommendedOrdersError }),
   setClockMs: (clockMs) => set({ clockMs }),
   setSelectedMechaUnitId: (selectedMechaUnitId) => set({ selectedMechaUnitId }),
+  setActiveMechaEffect: (activeMechaEffect) => set({ activeMechaEffect }),
   setPixelTraderVisualState: (pixelTraderVisualState) => set({ pixelTraderVisualState }),
 }));

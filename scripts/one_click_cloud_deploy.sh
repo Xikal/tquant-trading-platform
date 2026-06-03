@@ -3,75 +3,154 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+DEPLOY_ENV_FILE="${DEPLOY_ENV_FILE:-$ROOT_DIR/.env.deploy.local}"
 
-DEFAULT_CLOUD_HOST="${DEFAULT_CLOUD_HOST:-43.143.243.97}"
 DEFAULT_CLOUD_USER="${DEFAULT_CLOUD_USER:-ubuntu}"
 DEFAULT_CLOUD_DOMAIN="${DEFAULT_CLOUD_DOMAIN:-weisilianghua.cloud}"
-DEFAULT_CLOUD_CERT_EMAIL="${DEFAULT_CLOUD_CERT_EMAIL:-admin@${DEFAULT_CLOUD_DOMAIN}}"
-DEFAULT_CLOUD_SSH_KEY="${DEFAULT_CLOUD_SSH_KEY:-$HOME/Downloads/gupiao.pem}"
+DEFAULT_DEPLOY_MODE="${DEFAULT_DEPLOY_MODE:-safe}"
 
 usage() {
   cat <<'EOF'
-Usage: scripts/one_click_cloud_deploy.sh [--full] [--verify-only] [--refresh-https-config] [--configure-https] [--public-domain-verify]
+Usage: scripts/one_click_cloud_deploy.sh [--safe|--fast|--full|--verify-only] [quick deploy options]
 
-One-click defaults:
-  host   43.143.243.97
-  user   ubuntu
-  key    ~/Downloads/gupiao.pem
-  domain weisilianghua.cloud
+Config:
+  Reads .env.deploy.local by default when present. Override with DEPLOY_ENV_FILE.
+  Required: CLOUD_HOST plus CLOUD_SSH_KEY or CLOUD_PASSWORD.
+  Optional: CLOUD_USER, CLOUD_DOMAIN, CLOUD_CERT_EMAIL, CLOUD_PROJECT_DIR.
 
-Override with CLOUD_HOST, CLOUD_USER, CLOUD_SSH_KEY, CLOUD_DOMAIN, CLOUD_CERT_EMAIL.
+Modes:
+  --safe   Default. Run quick deploy with local compile/build gates.
+  --fast   Explicit emergency path; maps to --fast-risk-accepted.
+  --full   Run full local checks and latest-data acceptance.
+  --verify-only
+
+One-click defaults also refresh HTTPS/nginx config and verify the public domain.
 Additional args are passed through to scripts/quick_cloud_deploy.sh.
 EOF
 }
 
+load_deploy_env() {
+  if [[ ! -f "$DEPLOY_ENV_FILE" ]]; then
+    return 0
+  fi
+  set -a
+  # shellcheck disable=SC1090
+  source "$DEPLOY_ENV_FILE"
+  set +a
+  printf '[one-click-deploy] env=%s\n' "$DEPLOY_ENV_FILE"
+}
+
+require_connection_config() {
+  if [[ -z "${CLOUD_HOST:-}" ]]; then
+    echo "[one-click-deploy] CLOUD_HOST is required. Put it in .env.deploy.local or export it." >&2
+    exit 2
+  fi
+  if [[ -z "${CLOUD_SSH_KEY:-}" && -z "${CLOUD_PASSWORD:-}" ]]; then
+    echo "[one-click-deploy] CLOUD_SSH_KEY or CLOUD_PASSWORD is required." >&2
+    exit 2
+  fi
+  if [[ -n "${CLOUD_SSH_KEY:-}" && ! -f "$CLOUD_SSH_KEY" ]]; then
+    echo "[one-click-deploy] ssh key not found: $CLOUD_SSH_KEY" >&2
+    echo "[one-click-deploy] set CLOUD_SSH_KEY in .env.deploy.local or pass --key to quick_cloud_deploy.sh." >&2
+    exit 2
+  fi
+}
+
+load_deploy_env
+
 args=()
 explicit_mode=0
-explicit_key=0
-for arg in "$@"; do
-  case "$arg" in
+while [[ $# -gt 0 ]]; do
+  case "$1" in
     --help|-h)
       usage
       exit 0
       ;;
+    --safe)
+      explicit_mode=1
+      shift
+      ;;
+    --fast)
+      explicit_mode=1
+      args+=(--fast-risk-accepted)
+      shift
+      ;;
     --full|--fast-risk-accepted|--verify-only)
       explicit_mode=1
-      args+=("$arg")
+      args+=("$1")
+      shift
+      ;;
+    --host)
+      CLOUD_HOST="${2:?missing host}"
+      args+=("$1" "$2")
+      shift 2
+      ;;
+    --user)
+      CLOUD_USER="${2:?missing user}"
+      args+=("$1" "$2")
+      shift 2
       ;;
     --key)
-      explicit_key=1
-      args+=("$arg")
+      CLOUD_SSH_KEY="${2:?missing key}"
+      args+=("$1" "$2")
+      shift 2
+      ;;
+    --project-dir)
+      CLOUD_PROJECT_DIR="${2:?missing project dir}"
+      args+=("$1" "$2")
+      shift 2
+      ;;
+    --port)
+      CLOUD_APP_PORT="${2:?missing port}"
+      args+=("$1" "$2")
+      shift 2
       ;;
     *)
-      args+=("$arg")
+      args+=("$1")
+      shift
       ;;
   esac
 done
 
 if [[ "$explicit_mode" == "0" ]]; then
-  if [[ "${#args[@]}" -eq 0 ]]; then
-    args=(--fast-risk-accepted)
-  else
-    args=(--fast-risk-accepted "${args[@]}")
+  case "$DEFAULT_DEPLOY_MODE" in
+    safe)
+      ;;
+    fast)
+      args=(--fast-risk-accepted "${args[@]}")
+      ;;
+    full)
+      args=(--full "${args[@]}")
+      ;;
+    *)
+      echo "[one-click-deploy] invalid DEFAULT_DEPLOY_MODE=$DEFAULT_DEPLOY_MODE" >&2
+      exit 2
+      ;;
+  esac
+fi
+
+args_text="${args[*]-}"
+
+if [[ "$explicit_mode" == "0" || "$args_text" != *"--verify-only"* ]]; then
+  if [[ "$args_text" != *"--refresh-https-config"* && "$args_text" != *"--configure-https"* ]]; then
+    args+=(--refresh-https-config)
+  fi
+  if [[ "$args_text" != *"--public-domain-verify"* ]]; then
+    args+=(--public-domain-verify)
   fi
 fi
 
-export CLOUD_HOST="${CLOUD_HOST:-$DEFAULT_CLOUD_HOST}"
 export CLOUD_USER="${CLOUD_USER:-$DEFAULT_CLOUD_USER}"
-export CLOUD_SSH_KEY="${CLOUD_SSH_KEY:-$DEFAULT_CLOUD_SSH_KEY}"
 export CLOUD_DOMAIN="${CLOUD_DOMAIN:-$DEFAULT_CLOUD_DOMAIN}"
-export CLOUD_CERT_EMAIL="${CLOUD_CERT_EMAIL:-$DEFAULT_CLOUD_CERT_EMAIL}"
+export CLOUD_CERT_EMAIL="${CLOUD_CERT_EMAIL:-admin@${CLOUD_DOMAIN}}"
 export CLOUD_SSH_TIMEOUT="${CLOUD_SSH_TIMEOUT:-2400}"
 export CLOUD_SSH_CONNECT_TIMEOUT="${CLOUD_SSH_CONNECT_TIMEOUT:-15}"
 
-if [[ "$explicit_key" == "0" && ! -f "$CLOUD_SSH_KEY" ]]; then
-  echo "[one-click-deploy] ssh key not found: $CLOUD_SSH_KEY" >&2
-  echo "[one-click-deploy] set CLOUD_SSH_KEY or pass --key to quick_cloud_deploy.sh." >&2
-  exit 2
-fi
+require_connection_config
 
-printf '[one-click-deploy] target=%s@%s domain=%s mode=%s\n' \
-  "$CLOUD_USER" "$CLOUD_HOST" "$CLOUD_DOMAIN" "${args[*]:-safe}"
+printf '[one-click-deploy] target=%s@%s domain=%s mode=%s ssh=%s\n' \
+  "$CLOUD_USER" "$CLOUD_HOST" "$CLOUD_DOMAIN" "${args[*]:-safe}" \
+  "$(if [[ -n "${CLOUD_SSH_KEY:-}" ]]; then printf 'key'; else printf 'password'; fi)"
 
 if [[ "${ONE_CLICK_DEPLOY_DRY_RUN:-0}" == "1" ]]; then
   printf '[one-click-deploy] dry-run args=%s\n' "${args[*]:-safe}"
