@@ -17,6 +17,8 @@ from app.models.entities import (
     User,
     UserWatchlist,
 )
+from app.models.schemas import QuoteSnapshot
+import app.services.market_quote_cache_refresh as quote_refresh_module
 from app.services.market_quote_cache_refresh import MarketQuoteCacheRefreshService
 from app.services.market.local_quote_cache import (
     local_quote_cache_metrics_snapshot,
@@ -24,6 +26,29 @@ from app.services.market.local_quote_cache import (
     reset_local_quote_cache_metrics,
 )
 from app.services.market_quote_cache_refresh import maybe_send_quote_cache_coverage_alert
+
+
+def _quote(symbol: str, *, source_quality: str = "fresh") -> QuoteSnapshot:
+    return QuoteSnapshot(
+        symbol=symbol,
+        name=symbol,
+        market="CN",
+        instrument_type="stock",
+        last_price=10.0,
+        change_pct=1.0,
+        change_amount=0.1,
+        open_price=9.9,
+        high_price=10.2,
+        low_price=9.8,
+        prev_close=9.9,
+        volume=1000,
+        amount=10000,
+        timestamp="2026-05-29",
+        data_source="test",
+        source_quality=source_quality,
+        data_quality=source_quality,
+        is_stale=source_quality == "stale",
+    )
 
 
 def test_target_symbols_keeps_core_hot_read_demand_before_liquidity_tail() -> None:
@@ -116,6 +141,78 @@ def test_target_symbols_keeps_core_hot_read_demand_before_liquidity_tail() -> No
         "000010",
         "000011",
     }.issubset(set(symbols))
+
+
+def test_refresh_coverage_uses_daily_fallback_and_read_back(monkeypatch) -> None:
+    reset_local_quote_cache_metrics()
+    service = MarketQuoteCacheRefreshService(db=None)  # type: ignore[arg-type]
+    symbols = ["000001", "000002", "000003"]
+    stored: dict[str, QuoteSnapshot] = {}
+
+    monkeypatch.setattr(service, "_target_symbols", lambda limit: symbols)
+    monkeypatch.setattr(
+        service,
+        "_fetch_realtime_quotes",
+        lambda requested: {"000001": _quote("000001"), "000002": _quote("000002")},
+    )
+    monkeypatch.setattr(service, "_daily_fallback_quotes", lambda requested: {"000003": _quote("000003", source_quality="stale")})
+    monkeypatch.setattr(
+        quote_refresh_module,
+        "write_local_quote_snapshots",
+        lambda quotes: stored.update(quotes) or len(quotes),
+    )
+    monkeypatch.setattr(quote_refresh_module, "read_local_quote_snapshot", lambda symbol: stored.get(symbol))
+    monkeypatch.setattr(
+        quote_refresh_module,
+        "maybe_send_quote_cache_coverage_alert",
+        lambda coverage: {"ok": True, "sent": False, "reason": "test"},
+    )
+
+    result = service.refresh(limit=3)
+
+    assert result["requested_count"] == 3
+    assert result["count"] == 3
+    assert result["cached_count"] == 3
+    assert result["missing_count"] == 0
+    assert result["coverage"]["coverage_ratio_bps"] == 10000
+    assert result["coverage"]["coverage_below_target"] is False
+
+
+def test_refresh_coverage_reflects_actual_cache_read_back(monkeypatch) -> None:
+    reset_local_quote_cache_metrics()
+    service = MarketQuoteCacheRefreshService(db=None)  # type: ignore[arg-type]
+    symbols = ["000001", "000002", "000003"]
+    stored: dict[str, QuoteSnapshot] = {}
+
+    monkeypatch.setattr(service, "_target_symbols", lambda limit: symbols)
+    monkeypatch.setattr(
+        service,
+        "_fetch_realtime_quotes",
+        lambda requested: {symbol: _quote(symbol) for symbol in symbols},
+    )
+    monkeypatch.setattr(service, "_daily_fallback_quotes", lambda requested: {})
+
+    def write_without_third(quotes: dict[str, QuoteSnapshot]) -> int:
+        stored.update({symbol: quote for symbol, quote in quotes.items() if symbol != "000003"})
+        return len(stored)
+
+    monkeypatch.setattr(quote_refresh_module, "write_local_quote_snapshots", write_without_third)
+    monkeypatch.setattr(quote_refresh_module, "read_local_quote_snapshot", lambda symbol: stored.get(symbol))
+    monkeypatch.setattr(
+        quote_refresh_module,
+        "maybe_send_quote_cache_coverage_alert",
+        lambda coverage: {"ok": True, "sent": False, "reason": "test"},
+    )
+
+    result = service.refresh(limit=3)
+
+    assert result["count"] == 3
+    assert result["redis_written"] == 2
+    assert result["cached_count"] == 2
+    assert result["missing_count"] == 1
+    assert result["coverage"]["coverage_ratio_bps"] == 6667
+    assert result["coverage"]["coverage_below_target"] is True
+    assert result["coverage"]["missing_symbols_sample"] == ["000003"]
 
 
 def test_quote_cache_demand_coverage_marks_below_target_alert() -> None:

@@ -4,6 +4,7 @@ import math
 from typing import Any, Iterable
 
 from app.services.low_buy.main_force_model_schema import MainForceFeatureSnapshot
+from app.services.read_models.indicator_cache import cached_rolling_mean_latest
 
 
 def build_main_force_features(
@@ -39,10 +40,10 @@ def build_main_force_features(
     pct_changes = [row["pct_chg"] for row in rows]
     latest = rows[-1]
     close = closes[-1]
-    ma5 = _mean(closes[-5:])
-    ma10 = _mean(closes[-10:])
-    ma20 = _mean(closes[-20:])
-    ma60 = _mean(closes[-60:]) if len(closes) >= 60 else _mean(closes)
+    ma5 = cached_rolling_mean_latest(symbol=symbol, trade_date=as_of_date, values=closes, window=5)
+    ma10 = cached_rolling_mean_latest(symbol=symbol, trade_date=as_of_date, values=closes, window=10)
+    ma20 = cached_rolling_mean_latest(symbol=symbol, trade_date=as_of_date, values=closes, window=20)
+    ma60 = cached_rolling_mean_latest(symbol=symbol, trade_date=as_of_date, values=closes, window=60)
     high20 = max(highs[-20:])
     low20 = min(lows[-20:])
     high60 = max(highs[-60:]) if len(highs) >= 60 else max(highs)

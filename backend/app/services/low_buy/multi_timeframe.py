@@ -5,6 +5,8 @@ from typing import Any
 
 import pandas as pd
 
+from app.services.finance.rust_math import rolling_mean
+
 
 @dataclass(frozen=True)
 class MultiTimeframeResonance:
@@ -61,7 +63,7 @@ def _aggregate_ohlcv(history: pd.DataFrame, rule: str) -> pd.DataFrame:
 def _weekly_ma10_support(weekly: pd.DataFrame, latest_close: float) -> bool:
     if len(weekly) < 10:
         return False
-    ma10 = float(weekly["close"].rolling(10).mean().iloc[-1])
+    ma10 = _latest_rolling_mean(weekly["close"].tolist(), 10)
     latest_low = _last_value(weekly, "low")
     latest_week_close = _last_value(weekly, "close")
     if ma10 <= 0:
@@ -74,7 +76,7 @@ def _weekly_ma10_support(weekly: pd.DataFrame, latest_close: float) -> bool:
 def _monthly_ma20_intact(monthly: pd.DataFrame, latest_close: float) -> bool:
     if len(monthly) < 20:
         return False
-    ma20 = float(monthly["close"].rolling(20).mean().iloc[-1])
+    ma20 = _latest_rolling_mean(monthly["close"].tolist(), 20)
     if ma20 <= 0:
         return False
     return latest_close >= ma20 * 0.98
@@ -86,3 +88,9 @@ def _last_value(frame: pd.DataFrame, column: str) -> float:
         return float(value or 0.0)
     except (TypeError, ValueError):
         return 0.0
+
+
+def _latest_rolling_mean(values: list[Any], window: int) -> float:
+    series = rolling_mean([float(value) for value in values], window)
+    latest = series[-1] if series else None
+    return float(latest or 0.0)

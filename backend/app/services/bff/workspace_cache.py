@@ -10,10 +10,17 @@ from typing import TypeVar
 from pydantic import BaseModel, ValidationError
 
 from app.core.config import get_settings
+from app.services.performance.read_model_metrics import (
+    record_read_model_cache_hit,
+    record_read_model_cache_miss,
+    record_read_model_cache_stale,
+    record_read_model_cache_write,
+)
 from app.services.shared.distributed_cache import get_json_cache, set_json_cache
 
 logger = logging.getLogger(__name__)
 T = TypeVar("T", bound=BaseModel)
+READ_MODEL_CACHE_VERSION = "bff-workspace-v1"
 _METRICS_LOCK = threading.Lock()
 _METRICS = {
     "reads": 0,
@@ -44,14 +51,18 @@ def load_cached_workspace(
     if isinstance(cached, dict):
         try:
             _increment("hits")
+            record_read_model_cache_hit(f"bff_{workspace}")
             return model.model_validate(cached)
         except ValidationError:
             _increment("schema_misses")
+            record_read_model_cache_stale(f"bff_{workspace}")
             logger.warning("bff workspace cache schema mismatch workspace=%s", workspace, exc_info=True)
 
+    record_read_model_cache_miss(f"bff_{workspace}")
     result = loader()
     if _cacheable(result):
         _increment("writes")
+        record_read_model_cache_write(f"bff_{workspace}")
         set_json_cache(key, result.model_dump(mode="json"), ttl)
     return result
 
@@ -85,7 +96,7 @@ def _cache_key(*, workspace: str, user_id: int | str, params: Mapping[str, objec
         sort_keys=True,
     )
     digest = hashlib.sha256(normalized.encode("utf-8")).hexdigest()
-    return f"tq:bff:{workspace}:{digest}"
+    return f"tq:bff:{READ_MODEL_CACHE_VERSION}:{workspace}:{digest}"
 
 
 def _increment(key: str) -> None:

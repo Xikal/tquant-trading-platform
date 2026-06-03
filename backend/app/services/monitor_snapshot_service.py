@@ -15,6 +15,7 @@ from app.services.monitor_snapshot_cache import (
     read_monitor_snapshot_cache,
     rows_signature,
 )
+from app.services.performance.read_model_metrics import record_read_model_cache_hit, record_read_model_cache_miss
 from app.services.user_sector_preferences import UserSectorPreferenceService, filter_monitor_snapshot_payload
 
 
@@ -38,6 +39,7 @@ def build_monitor_snapshot(
         required_trade_date=required_trade_date,
     )
     if cached is not None:
+        record_read_model_cache_hit("monitor_workspace")
         if cached.needs_refresh:
             enqueue_monitor_snapshot_refresh(
                 db,
@@ -46,6 +48,7 @@ def build_monitor_snapshot(
             )
         return MonitorSnapshotResponse(**filter_monitor_snapshot_payload(cached.payload, excluded))
 
+    record_read_model_cache_miss("monitor_workspace")
     enqueue_monitor_snapshot_refresh(
         db,
         user_id=current_user.id,

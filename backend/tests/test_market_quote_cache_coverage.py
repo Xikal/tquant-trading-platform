@@ -74,6 +74,7 @@ def test_quote_cache_refresh_writes_daily_fallback_when_realtime_missing(monkeyp
             "app.services.market_quote_cache_refresh.write_local_quote_snapshots",
             lambda payload: written.update(payload) or len(payload),
         )
+        monkeypatch.setattr("app.services.market_quote_cache_refresh.read_local_quote_snapshot", lambda symbol: written.get(symbol))
         service = MarketQuoteCacheRefreshService(db)
         service._target_symbols = lambda limit: ["000001"]  # type: ignore[method-assign]
         service.market.get_quotes_batch_async_provider = lambda *_args, **_kwargs: {}  # type: ignore[attr-defined, method-assign]
@@ -96,6 +97,7 @@ def test_quote_cache_refresh_uses_worker_async_provider_batch(monkeypatch):
             "app.services.market_quote_cache_refresh.write_local_quote_snapshots",
             lambda payload: written.update(payload) or len(payload),
         )
+        monkeypatch.setattr("app.services.market_quote_cache_refresh.read_local_quote_snapshot", lambda symbol: written.get(symbol))
         service = MarketQuoteCacheRefreshService(db)
         service._target_symbols = lambda limit: ["000001", "000002"]  # type: ignore[method-assign]
         calls: list[tuple[list[str], dict[str, object]]] = []
@@ -133,6 +135,7 @@ def test_quote_cache_refresh_falls_back_to_sync_batch_when_async_provider_fails(
             "app.services.market_quote_cache_refresh.write_local_quote_snapshots",
             lambda payload: written.update(payload) or len(payload),
         )
+        monkeypatch.setattr("app.services.market_quote_cache_refresh.read_local_quote_snapshot", lambda symbol: written.get(symbol))
         service = MarketQuoteCacheRefreshService(db)
         service._target_symbols = lambda limit: ["000001"]  # type: ignore[method-assign]
         service.market.get_quotes_batch_async_provider = lambda *_args, **_kwargs: (_ for _ in ()).throw(  # type: ignore[attr-defined, method-assign]

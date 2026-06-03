@@ -107,6 +107,10 @@ class AppSettings(BaseSettings):
     bff_paper_cache_ttl_seconds: int = 3
     bff_strategy_cache_ttl_seconds: int = 30
     bff_settings_cache_ttl_seconds: int = 30
+    read_model_live_overlay_enabled: bool = True
+    response_payload_metrics_enabled: bool = True
+    derived_indicator_cache_enabled: bool = True
+    derived_indicator_cache_ttl_seconds: int = 120
     rust_finance_math_enabled: bool = True
     app_workers: int = 1
     global_rate_limit_backend: str = "memory"

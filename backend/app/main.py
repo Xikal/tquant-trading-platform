@@ -34,6 +34,7 @@ from app.services.bff.workspace_cache import bff_workspace_cache_metrics_snapsho
 from app.services.bff.remote_client import remote_bff_metrics_snapshot
 from app.services.finance.rust_math import rust_math_metrics_snapshot
 from app.services.operation_audit_middleware import OperationAuditMiddleware
+from app.services.performance.prometheus import performance_prometheus_lines
 
 settings = get_settings()
 configure_logging(structured=settings.structured_logs)
@@ -505,6 +506,7 @@ def prometheus_metrics(_: None = Depends(require_admin_auth)) -> PlainTextRespon
         "# TYPE tquant_local_quote_cache_coverage_ratio_bps gauge",
         f"tquant_local_quote_cache_coverage_ratio_bps {provider_snapshot.get('local_quote_cache_coverage_ratio_bps', 0)}",
     ]
+    lines.extend(performance_prometheus_lines())
     return PlainTextResponse("\n".join(lines) + "\n", media_type="text/plain; version=0.0.4")
 
 

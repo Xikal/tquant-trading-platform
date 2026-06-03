@@ -3,6 +3,7 @@ from __future__ import annotations
 import pandas as pd
 
 from app.repositories.low_buy import DailyBarRow
+from app.services.finance.rust_math import rolling_mean
 
 
 def rows_to_daily_history_frame(rows: list[DailyBarRow], start_date_iso: str) -> pd.DataFrame | None:
@@ -86,8 +87,9 @@ def finalize_daily_history_frame(normalized: pd.DataFrame | None, start_date_iso
     normalized = normalized.dropna(subset=["open", "close", "high", "low", "volume", "pct_chg"])
     if normalized.empty:
         return None
-    normalized["ma5"] = normalized["close"].rolling(5).mean()
-    normalized["ma10"] = normalized["close"].rolling(10).mean()
-    normalized["ma20"] = normalized["close"].rolling(20).mean()
-    normalized["ma60"] = normalized["close"].rolling(60).mean()
+    closes = [float(value) for value in normalized["close"].tolist()]
+    normalized["ma5"] = rolling_mean(closes, 5)
+    normalized["ma10"] = rolling_mean(closes, 10)
+    normalized["ma20"] = rolling_mean(closes, 20)
+    normalized["ma60"] = rolling_mean(closes, 60)
     return normalized.reset_index(drop=True)

@@ -23,6 +23,8 @@ from app.models.schema_defs.strategy_tracking import (
     StrategyTrackingSnapshotResponse,
     StrategyTrackingSummaryOut,
 )
+from app.services.performance.read_model_metrics import record_response_payload
+from app.services.read_models.live_quote_overlay import apply_strategy_tracking_live_overlay
 from app.services.strategy_tracking import DEFAULT_LIMIT, DEFAULT_RANGE_DAYS, StrategyTrackingService
 from app.services.strategy_tracking_snapshot import StrategyTrackingSnapshotBuilder
 
@@ -149,7 +151,7 @@ def strategy_tracking_items_view(
 ):
     started_at = monotonic_start()
     try:
-        return StrategyTrackingService(db).list_items(
+        response = StrategyTrackingService(db).list_items(
             range_days=range_days,
             strategy_key=strategy_key,
             strategy_family=strategy_family,
@@ -167,6 +169,9 @@ def strategy_tracking_items_view(
             limit=limit,
             offset=offset,
         )
+        response = apply_strategy_tracking_live_overlay(response)
+        record_response_payload("strategy_tracking_items", response, item_count=len(response.items))
+        return response
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"策略跟踪列表加载失败: {exc}") from exc
     finally:

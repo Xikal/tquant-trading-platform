@@ -12,6 +12,8 @@ from app.services.low_buy.shared import DEFAULT_PRODUCTION_LOW_BUY_STRATEGY
 from app.services.low_buy.strategy_governance import build_low_buy_strategy_governance
 from app.services.low_buy_screener import LowBuyScreenerService
 from app.services.market_data import DataSourceError
+from app.services.performance.read_model_metrics import record_response_payload
+from app.services.read_models.live_quote_overlay import apply_priority_board_live_overlay
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/v1", dependencies=[Depends(get_current_user)])
@@ -29,7 +31,9 @@ def v1_low_buy_priority_board(
     db: Session = Depends(get_db),
 ) -> dict:
     try:
-        return low_buy_screener.priority_board(db=db, limit=limit).model_dump()
+        result = apply_priority_board_live_overlay(low_buy_screener.priority_board(db=db, limit=limit))
+        record_response_payload("v1_priority_board", result, item_count=len(result.items))
+        return result.model_dump()
     except DataSourceError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except Exception as exc:

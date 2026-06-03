@@ -128,7 +128,11 @@ def run_remote_measurement(args: argparse.Namespace) -> dict[str, Any]:
             market_unresolved = metric_value(go_market_metrics, "tquant_market_read_unresolved_misses_total")
             market_partials = metric_value(go_market_metrics, "tquant_market_read_partials_total")
             market_fallbacks = metric_value(go_market_metrics, "tquant_market_read_fallbacks_total")
+            warmup = quote_cache_coverage.get("warmup") if isinstance(quote_cache_coverage, dict) else {}
+            warmup_coverage = warmup.get("coverage") if isinstance(warmup, dict) else {}
             quote_missing = int(quote_cache_coverage.get("missing_count") or 0) if isinstance(quote_cache_coverage, dict) else 0
+            coverage_bps = int(warmup_coverage.get("coverage_ratio_bps") or 10000) if isinstance(warmup_coverage, dict) else 10000
+            coverage_below_target = bool(warmup_coverage.get("coverage_below_target")) if isinstance(warmup_coverage, dict) else False
             alerts = []
             if bff_total > 0 and bff_classified < bff_total:
                 alerts.append({
@@ -153,13 +157,14 @@ def run_remote_measurement(args: argparse.Namespace) -> dict[str, Any]:
                     "status_failures": bff_status,
                     "decode_failures": bff_decode,
                 })
-            if market_unresolved > 0 or quote_missing > 0:
+            if market_unresolved > 0 or quote_missing > 0 or coverage_below_target:
                 alerts.append({
-                    "severity": "critical" if quote_missing > 0 else "warning",
+                    "severity": "critical" if quote_missing > 0 or coverage_below_target else "warning",
                     "code": "market_read_unresolved_miss",
-                    "message": "Go market-read service has symbols missing after Redis and MySQL fallback.",
+                    "message": "Quote cache or Go market-read has symbols missing after warmup/fallback.",
                     "unresolved_misses": market_unresolved,
                     "quote_missing": quote_missing,
+                    "quote_cache_coverage_bps": coverage_bps,
                 })
             elif market_misses > 0 and market_mysql > 0:
                 alerts.append({
@@ -202,6 +207,7 @@ def run_remote_measurement(args: argparse.Namespace) -> dict[str, Any]:
                     "partials": market_partials,
                     "fallbacks": market_fallbacks,
                     "quote_missing": quote_missing,
+                    "quote_cache_coverage_bps": coverage_bps,
                 },
             }
 
@@ -285,6 +291,11 @@ def run_remote_measurement(args: argparse.Namespace) -> dict[str, Any]:
         def quote_cache_snapshot():
             token = read_internal_token()
             warm = quote_cache_warmup()
+            warm_symbols = []
+            if isinstance(warm, dict):
+                warm_symbols = [str(item).strip() for item in warm.get("symbols") or [] if len(str(item).strip()) == 6]
+            warmup_coverage = warm.get("coverage") if isinstance(warm, dict) else {}
+            warmup_missing = int(warmup_coverage.get("demand_miss_count") or warm.get("missing_count") or 0) if isinstance(warm, dict) else 0
             try:
                 redis_raw = subprocess.check_output(
                     ["sudo", "docker", "exec", "tquant-redis", "redis-cli", "--scan", "--pattern", "tquant:market:quote:*"],
@@ -294,27 +305,36 @@ def run_remote_measurement(args: argparse.Namespace) -> dict[str, Any]:
                 redis_count = len([line for line in redis_raw.splitlines() if line.strip()])
             except Exception:
                 redis_count = -1
-            try:
-                code = (
-                    "from sqlalchemy import select\n"
-                    "from app.core.database import SessionLocal\n"
-                    "from app.models.entities import DailyBarSnapshot\n"
-                    "with SessionLocal() as db:\n"
-                    "    latest = db.execute(select(DailyBarSnapshot.trade_date).order_by(DailyBarSnapshot.trade_date.desc()).limit(1)).scalar()\n"
-                    "    rows = db.execute(select(DailyBarSnapshot.symbol).where(DailyBarSnapshot.trade_date == latest).order_by(DailyBarSnapshot.amount.desc()).limit(20)).scalars().all() if latest else []\n"
-                    "print(','.join(str(item) for item in rows if item))\n"
-                )
-                out = subprocess.check_output(
-                    ["sudo", "docker", "exec", "-i", "tquant-app-mysql", "python", "-"],
-                    input=code,
-                    text=True,
-                    timeout=20,
-                )
-                symbols = [item.strip() for item in out.strip().split(",") if item.strip()]
-            except Exception:
-                symbols = []
+            symbols = warm_symbols[:20]
+            if not symbols:
+                try:
+                    code = (
+                        "from sqlalchemy import select\n"
+                        "from app.core.database import SessionLocal\n"
+                        "from app.models.entities import DailyBarSnapshot\n"
+                        "with SessionLocal() as db:\n"
+                        "    latest = db.execute(select(DailyBarSnapshot.trade_date).order_by(DailyBarSnapshot.trade_date.desc()).limit(1)).scalar()\n"
+                        "    rows = db.execute(select(DailyBarSnapshot.symbol).where(DailyBarSnapshot.trade_date == latest).order_by(DailyBarSnapshot.amount.desc()).limit(20)).scalars().all() if latest else []\n"
+                        "print(','.join(str(item) for item in rows if item))\n"
+                    )
+                    out = subprocess.check_output(
+                        ["sudo", "docker", "exec", "-i", "tquant-app-mysql", "python", "-"],
+                        input=code,
+                        text=True,
+                        timeout=20,
+                    )
+                    symbols = [item.strip() for item in out.strip().split(",") if item.strip()]
+                except Exception:
+                    symbols = []
             if not symbols or not token:
-                return {"warmup": warm, "redis_quote_keys": redis_count, "symbols_checked": len(symbols), "data_quality": "unavailable"}
+                return {
+                    "warmup": warm,
+                    "redis_quote_keys": redis_count,
+                    "symbols_checked": len(symbols),
+                    "warmup_missing_count": warmup_missing,
+                    "missing_count": warmup_missing,
+                    "data_quality": "unavailable",
+                }
             try:
                 out = subprocess.check_output(
                     [
@@ -327,24 +347,35 @@ def run_remote_measurement(args: argparse.Namespace) -> dict[str, Any]:
                 )
                 payload = json.loads(out)
                 items = payload.get("items") or []
+                batch_missing = len(payload.get("missing") or [])
                 return {
                     "warmup": warm,
                     "redis_quote_keys": redis_count,
                     "symbols_checked": len(symbols),
                     "items_returned": len(items),
-                    "missing_count": len(payload.get("missing") or []),
+                    "warmup_missing_count": warmup_missing,
+                    "batch_missing_count": batch_missing,
+                    "missing_count": max(warmup_missing, batch_missing),
                     "data_quality": payload.get("data_quality"),
                 }
             except Exception as exc:
-                return {"warmup": warm, "redis_quote_keys": redis_count, "symbols_checked": len(symbols), "data_quality": "unavailable", "error": str(exc)}
+                return {
+                    "warmup": warm,
+                    "redis_quote_keys": redis_count,
+                    "symbols_checked": len(symbols),
+                    "warmup_missing_count": warmup_missing,
+                    "missing_count": warmup_missing,
+                    "data_quality": "unavailable",
+                    "error": str(exc),
+                }
 
         def quote_cache_warmup():
             code = (
                 "import json\n"
                 "from app.core.database import SessionLocal\n"
-                "from app.services.market_quote_cache_refresh import MarketQuoteCacheRefreshService\n"
+                "from app.services.market_quote_cache_refresh import DEFAULT_LIMIT, MarketQuoteCacheRefreshService\n"
                 "with SessionLocal() as db:\n"
-                "    result = MarketQuoteCacheRefreshService(db).refresh(limit=80)\n"
+                "    result = MarketQuoteCacheRefreshService(db).refresh(limit=DEFAULT_LIMIT)\n"
                 "print(json.dumps(result, ensure_ascii=False, default=str))\n"
             )
             try:
@@ -359,6 +390,7 @@ def run_remote_measurement(args: argparse.Namespace) -> dict[str, Any]:
                 return {"ok": False, "error": str(exc)}
 
         token = login()
+        quote_cache = quote_cache_snapshot()
         api = [
             measure("readyz", "/readyz"),
             measure("monitor_bff", "/api/bff/v1/workspace/monitor?priority_limit=12&sector_limit=8&per_sector_limit=8&hedge_limit=4", token),
@@ -369,7 +401,6 @@ def run_remote_measurement(args: argparse.Namespace) -> dict[str, Any]:
         go_scan = []
         scan_accept = measure_scan_accept()
         rust = rust_smoke()
-        quote_cache = quote_cache_snapshot()
         try:
             out = subprocess.check_output([
                 "sudo", "docker", "exec", "tquant-go-scan-worker", "wget", "-qO-",
@@ -405,6 +436,12 @@ def run_remote_measurement(args: argparse.Namespace) -> dict[str, Any]:
                 "name": "rust_finance_math",
                 "detail": rust.get("error") or "rust smoke did not hit all migrated functions",
             })
+        warmup = quote_cache.get("warmup") if isinstance(quote_cache, dict) else {}
+        warmup_coverage = warmup.get("coverage") if isinstance(warmup, dict) else {}
+        if isinstance(warmup_coverage, dict) and warmup_coverage.get("coverage_below_target"):
+            failures.append({"name": "quote_cache_warmup_coverage", "detail": quote_cache})
+        if quote_cache.get("missing_count"):
+            failures.append({"name": "quote_cache_batch_coverage", "detail": quote_cache})
         if quote_cache.get("symbols_checked") and quote_cache.get("data_quality") == "unavailable":
             failures.append({"name": "quote_cache_coverage", "detail": quote_cache})
         go_bff_metrics = metrics("tquant-go-bff-gateway", 8091)

@@ -25,6 +25,12 @@ from app.models.schema_defs.strategy_tracking import (
 )
 from app.repositories.low_buy import DailyBarRow, DailyHistoryRepository
 from app.services.low_buy.strategy_policy import get_strategy_tier, participates_in_priority_board
+from app.services.performance.read_model_metrics import (
+    record_read_model_cache_hit,
+    record_read_model_cache_miss,
+    record_read_model_cache_stale,
+    record_read_model_cache_write,
+)
 from app.services.strategy_metadata_service import StrategyMetadataService
 from app.services.strategy_tracking_constants import (
     DEFAULT_LIMIT,
@@ -54,6 +60,7 @@ from app.services.strategy_tracking_usability import build_holding_analysis
 logger = logging.getLogger(__name__)
 _READ_MODEL_CACHE_TTL_SECONDS = 20.0
 _READ_MODEL_CACHE_MAX_SIZE = 16
+_READ_MODEL_CACHE_VERSION = "strategy-tracking-read-model-v1"
 _READ_MODEL_CACHE_LOCK = threading.Lock()
 _READ_MODEL_CACHE: dict[tuple[object, ...], tuple[float, list[StrategyTrackingItemOut], list[str]]] = {}
 
@@ -68,11 +75,14 @@ def _get_read_model_cache(cache_key: tuple[object, ...]) -> tuple[list[StrategyT
     with _READ_MODEL_CACHE_LOCK:
         cached = _READ_MODEL_CACHE.get(cache_key)
         if cached is None:
+            record_read_model_cache_miss("strategy_tracking")
             return None
         expires_at, items, partial_errors = cached
         if expires_at <= now:
             _READ_MODEL_CACHE.pop(cache_key, None)
+            record_read_model_cache_stale("strategy_tracking")
             return None
+        record_read_model_cache_hit("strategy_tracking", age_seconds=max(_READ_MODEL_CACHE_TTL_SECONDS - (expires_at - now), 0.0))
         return list(items), list(partial_errors)
 
 
@@ -91,6 +101,7 @@ def _set_read_model_cache(
             _READ_MODEL_CACHE.pop(oldest_key, None)
         items, partial_errors = payload
         _READ_MODEL_CACHE[cache_key] = (expires_at, list(items), list(partial_errors))
+    record_read_model_cache_write("strategy_tracking")
 
 
 @dataclass(frozen=True)
@@ -477,6 +488,7 @@ class StrategyTrackingService:
             return [], []
         latest_bar_date = self._latest_bar_date()
         cache_key = (
+            _READ_MODEL_CACHE_VERSION,
             max(1, min(range_days, 260)),
             strategy_key or "",
             strategy_family or "",

@@ -42,6 +42,8 @@ from app.services.bff.workspace_cache import load_cached_workspace
 from app.services.market.pulse_cache import latest_pulse_or_placeholder
 from app.services.monitor_snapshot_service import build_monitor_snapshot
 from app.services.market.review import build_market_review_summary
+from app.services.performance.read_model_metrics import record_response_payload
+from app.services.read_models.live_quote_overlay import apply_monitor_workspace_live_overlay
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/bff/v1", dependencies=[Depends(get_current_user)])
@@ -119,7 +121,8 @@ def monitor_workspace_bff(
         )
         if remote is not None:
             remote_used = True
-            response = remote
+            response = apply_monitor_workspace_live_overlay(remote)
+            record_response_payload("monitor_bff", response, item_count=_monitor_priority_item_count(response))
             schedule_go_bff_shadow_check(
                 background_tasks,
                 workspace="monitor",
@@ -155,6 +158,8 @@ def monitor_workspace_bff(
             allow_live_sources=False,
         ),
     )
+    response = apply_monitor_workspace_live_overlay(response)
+    record_response_payload("monitor_bff", response, item_count=_monitor_priority_item_count(response))
     if not remote_used:
         schedule_go_bff_shadow_check(
             background_tasks,
@@ -480,6 +485,15 @@ def _remote_adapter_allowed(request: Request) -> bool:
 
 def _bff_timeout_seconds() -> float:
     return float(getattr(get_settings(), "bff_workspace_timeout_seconds", 8.0) or 8.0)
+
+
+def _monitor_priority_item_count(response: MonitorWorkspaceBffResponse) -> int:
+    if response.monitor_snapshot is None:
+        return 0
+    board = response.monitor_snapshot.priority_board
+    if isinstance(board, dict) and isinstance(board.get("items"), list):
+        return len(board["items"])
+    return 0
 
 
 def _settings_admin_enabled(

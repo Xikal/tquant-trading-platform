@@ -19,7 +19,11 @@ from app.models.schema_defs.agent import AgentNotificationTestRequest
 from app.models.schemas import QuoteSnapshot
 from app.services.agent_notification_service import AgentNotificationService
 from app.core.config import get_settings
-from app.services.market.local_quote_cache import record_quote_cache_demand_coverage, write_local_quote_snapshots
+from app.services.market.local_quote_cache import (
+    read_local_quote_snapshot,
+    record_quote_cache_demand_coverage,
+    write_local_quote_snapshots,
+)
 from app.services.market_data import MarketDataService
 
 DEFAULT_LIMIT = 1200
@@ -45,9 +49,10 @@ class MarketQuoteCacheRefreshService:
         if len(quotes) < len(symbols):
             quotes.update({symbol: quote for symbol, quote in self._daily_fallback_quotes(symbols).items() if symbol not in quotes})
         redis_written = write_local_quote_snapshots(quotes)
+        cached_symbols = self._cached_symbols_after_write(symbols)
         coverage = record_quote_cache_demand_coverage(
             requested_symbols=symbols,
-            cached_symbols=list(quotes),
+            cached_symbols=cached_symbols,
             target_ratio=QUOTE_CACHE_COVERAGE_TARGET,
         )
         alert = maybe_send_quote_cache_coverage_alert(coverage)
@@ -55,11 +60,13 @@ class MarketQuoteCacheRefreshService:
             "ok": True,
             "count": len(quotes),
             "redis_written": redis_written,
+            "requested_count": len(symbols),
+            "cached_count": len(cached_symbols),
             "coverage": coverage,
             "coverage_alert": alert,
-            "missing_count": max(len(symbols) - len(quotes), 0),
+            "missing_count": coverage["demand_miss_count"],
             "symbols": symbols[:20],
-            "message": f"已刷新 {len(quotes)} 只标的本地行情缓存，Redis 写入 {redis_written} 条",
+            "message": f"已刷新 {len(quotes)} 只标的本地行情缓存，Redis 写入 {redis_written} 条，可读 {len(cached_symbols)} 条",
         }
 
     def _fetch_realtime_quotes(self, symbols: list[str]) -> dict[str, QuoteSnapshot]:
@@ -71,6 +78,13 @@ class MarketQuoteCacheRefreshService:
                 except Exception:
                     pass
         return self.market.get_quotes_batch(symbols, force_refresh=True, allow_slow_fallback=True)
+
+    def _cached_symbols_after_write(self, symbols: list[str]) -> list[str]:
+        cached: list[str] = []
+        for symbol in self._dedupe_symbols(symbols):
+            if read_local_quote_snapshot(symbol) is not None:
+                cached.append(symbol)
+        return cached
 
     def _daily_fallback_quotes(self, symbols: list[str]) -> dict[str, QuoteSnapshot]:
         cleaned = list(dict.fromkeys(symbol for symbol in symbols if symbol))

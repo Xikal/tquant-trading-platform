@@ -3,7 +3,7 @@ from __future__ import annotations
 from app.services.distribution_signals import build_daily_distribution_snapshot
 from app.services.low_buy.candidate_metrics_divergence import build_divergence_consensus_metrics
 from app.services.low_buy.candidate_types import CandidateMetrics
-from app.services.low_buy.atr_metrics import ATR_SOURCE, ATR_WINDOW, compute_daily_atr
+from app.services.low_buy.atr_metrics import ATR_SOURCE, ATR_WINDOW, compute_daily_atr_cached
 from app.services.low_buy.multi_timeframe import evaluate_multi_timeframe_resonance
 from app.services.low_buy.shared import BoardCandidate, DEFAULT_PRODUCTION_LOW_BUY_STRATEGY, LOW_BUY_THRESHOLDS, pd
 
@@ -154,7 +154,7 @@ def build_candidate_metrics(
         latest_gap_distance_pct=gap_metrics["latest_gap_distance_pct"],
         retracement_atr=volatility_metrics["retracement_atr"],
         retracement_atr_trend=volatility_metrics["retracement_atr_trend"],
-        atr14=compute_daily_atr(history, ATR_WINDOW),
+        atr14=compute_daily_atr_cached(history, symbol=item.symbol, trade_date=latest_trade_date, period=ATR_WINDOW),
         atr_window=ATR_WINDOW,
         atr_source=ATR_SOURCE,
         consecutive_lower_lows=int(price_structure_metrics["consecutive_lower_lows"]),

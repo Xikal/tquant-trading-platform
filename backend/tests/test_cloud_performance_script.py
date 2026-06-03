@@ -23,6 +23,10 @@ def test_cloud_measurement_script_has_hard_thresholds():
     assert '"rust_finance_math"' in source
     assert "quote_cache_snapshot" in source
     assert '"quote_cache_coverage"' in source
+    assert source.index("quote_cache = quote_cache_snapshot()") < source.index("api = [")
+    assert "DEFAULT_LIMIT, MarketQuoteCacheRefreshService" in source
+    assert '"quote_cache_warmup_coverage"' in source
+    assert '"quote_cache_batch_coverage"' in source
     assert "tquant-go-bff-gateway" in source
     assert "tquant-go-scan-worker" in source
 
