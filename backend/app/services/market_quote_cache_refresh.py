@@ -46,14 +46,21 @@ class MarketQuoteCacheRefreshService:
         if not symbols:
             return {"ok": True, "count": 0, "symbols": [], "message": "无可预热行情标的"}
         quotes = self._fetch_realtime_quotes(symbols)
+        realtime_missing = [symbol for symbol in symbols if symbol not in quotes]
         if len(quotes) < len(symbols):
             quotes.update({symbol: quote for symbol, quote in self._daily_fallback_quotes(symbols).items() if symbol not in quotes})
         redis_written = write_local_quote_snapshots(quotes)
         cached_symbols = self._cached_symbols_after_write(symbols)
+        unresolved_reasons = {
+            symbol: "no_daily_bar"
+            for symbol in realtime_missing
+            if symbol not in quotes
+        }
         coverage = record_quote_cache_demand_coverage(
             requested_symbols=symbols,
             cached_symbols=cached_symbols,
             target_ratio=QUOTE_CACHE_COVERAGE_TARGET,
+            unresolved_reasons=unresolved_reasons,
         )
         alert = maybe_send_quote_cache_coverage_alert(coverage)
         return {

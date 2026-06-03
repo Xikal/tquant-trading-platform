@@ -104,11 +104,14 @@ def record_quote_cache_demand_coverage(
     requested_symbols: list[str],
     cached_symbols: list[str] | set[str],
     target_ratio: float = 0.9,
+    unresolved_reasons: dict[str, str] | None = None,
 ) -> dict[str, Any]:
+    raw_requested = [str(item or "").strip() for item in requested_symbols if str(item or "").strip()]
     requested = _clean_symbol_set(requested_symbols)
     cached = _clean_symbol_set(list(cached_symbols))
     covered = requested & cached
     missing = requested - cached
+    invalid_symbols = sorted({symbol for symbol in raw_requested if len(symbol) != 6 or not symbol.isdigit()})
     demand_count = len(requested)
     covered_count = len(covered)
     ratio = (covered_count / demand_count) if demand_count else 1.0
@@ -129,6 +132,11 @@ def record_quote_cache_demand_coverage(
         "coverage_below_target": below_target,
         "alert_code": "quote_cache_coverage_below_target" if below_target else "",
         "missing_symbols_sample": sorted(missing)[:20],
+        "unresolved_symbols_sample": _unresolved_symbols_sample(
+            missing=missing,
+            invalid_symbols=invalid_symbols,
+            unresolved_reasons=unresolved_reasons or {},
+        ),
     }
 
 
@@ -159,7 +167,31 @@ def _increment_by(key: str, count: int) -> None:
 
 
 def _clean_symbol_set(symbols: list[str]) -> set[str]:
-    return {clean for item in symbols if len(clean := str(item or "").strip()) == 6}
+    return {clean for item in symbols if len(clean := str(item or "").strip()) == 6 and clean.isdigit()}
+
+
+def _unresolved_symbols_sample(
+    *,
+    missing: set[str],
+    invalid_symbols: list[str],
+    unresolved_reasons: dict[str, str],
+) -> list[dict[str, str]]:
+    sample: list[dict[str, str]] = []
+    for symbol in sorted(missing):
+        sample.append({"symbol": symbol, "reason": _known_unresolved_reason(unresolved_reasons.get(symbol) or "not_in_cache")})
+        if len(sample) >= 20:
+            return sample
+    for symbol in invalid_symbols:
+        sample.append({"symbol": symbol, "reason": "invalid_symbol"})
+        if len(sample) >= 20:
+            return sample
+    return sample
+
+
+def _known_unresolved_reason(reason: str) -> str:
+    value = str(reason or "not_in_cache")
+    allowed = {"not_in_cache", "no_daily_bar", "invalid_symbol", "stale_only"}
+    return value if value in allowed else "not_in_cache"
 
 
 def _parse_payload(raw: Any) -> tuple[QuoteSnapshot | None, float]:

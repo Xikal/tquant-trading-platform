@@ -25,15 +25,18 @@ func quoteBatchHandler(cache quoteCache) http.Handler {
 		cachedPayloads := readQuotePayloads(r.Context(), cache, symbols)
 		items := make([]map[string]any, 0, len(symbols))
 		missing := make([]string, 0)
+		unresolvedReasons := make(map[string]string)
 		for _, symbol := range symbols {
 			raw := cachedPayloads[symbol]
 			if len(raw) == 0 {
 				missing = append(missing, symbol)
+				unresolvedReasons[symbol] = "not_in_cache"
 				continue
 			}
 			item, err := parseQuoteCachePayload(symbol, raw)
 			if err != nil {
 				missing = append(missing, symbol)
+				unresolvedReasons[symbol] = "not_in_cache"
 				continue
 			}
 			items = append(items, item)
@@ -56,6 +59,10 @@ func quoteBatchHandler(cache quoteCache) http.Handler {
 			"data_quality": quality,
 			"items":        items,
 			"missing":      missing,
+			"unresolved_symbols_sample": unresolvedQuoteSamplePayload(
+				missing,
+				unresolvedReasons,
+			),
 		})
 	})
 }

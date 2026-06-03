@@ -213,6 +213,9 @@ def test_refresh_coverage_reflects_actual_cache_read_back(monkeypatch) -> None:
     assert result["coverage"]["coverage_ratio_bps"] == 6667
     assert result["coverage"]["coverage_below_target"] is True
     assert result["coverage"]["missing_symbols_sample"] == ["000003"]
+    assert result["coverage"]["unresolved_symbols_sample"] == [
+        {"symbol": "000003", "reason": "not_in_cache"}
+    ]
 
 
 def test_quote_cache_demand_coverage_marks_below_target_alert() -> None:
@@ -229,6 +232,11 @@ def test_quote_cache_demand_coverage_marks_below_target_alert() -> None:
     assert coverage["demand_miss_count"] == 3
     assert coverage["coverage_below_target"] is True
     assert coverage["alert_code"] == "quote_cache_coverage_below_target"
+    assert coverage["unresolved_symbols_sample"] == [
+        {"symbol": "000002", "reason": "not_in_cache"},
+        {"symbol": "000003", "reason": "not_in_cache"},
+        {"symbol": "000004", "reason": "not_in_cache"},
+    ]
     metrics = local_quote_cache_metrics_snapshot()
     assert metrics["coverage_demand_total"] == 4
     assert metrics["coverage_demand_miss_total"] == 3
@@ -256,3 +264,17 @@ def test_quote_cache_coverage_alert_skips_without_notification_channel(monkeypat
     )
 
     assert result == {"ok": True, "sent": False, "reason": "notification_channel_not_configured"}
+
+
+def test_quote_cache_unresolved_reason_sample_is_bounded() -> None:
+    coverage = record_quote_cache_demand_coverage(
+        requested_symbols=["000001", "999999", "bad"],
+        cached_symbols=["000001"],
+        unresolved_reasons={"999999": "no_daily_bar"},
+        target_ratio=0.9,
+    )
+
+    assert coverage["unresolved_symbols_sample"] == [
+        {"symbol": "999999", "reason": "no_daily_bar"},
+        {"symbol": "bad", "reason": "invalid_symbol"},
+    ]

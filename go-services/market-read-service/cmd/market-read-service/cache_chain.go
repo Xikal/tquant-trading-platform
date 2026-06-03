@@ -8,9 +8,14 @@ import (
 
 const unresolvedQuoteSampleLimit = 20
 
+type unresolvedQuoteSample struct {
+	Symbol string
+	Reason string
+}
+
 var unresolvedQuoteSampleStore = struct {
 	sync.Mutex
-	values []string
+	values []unresolvedQuoteSample
 }{}
 
 type chainedQuoteCache struct {
@@ -73,7 +78,7 @@ func (cache chainedQuoteCache) MGet(ctx context.Context, keys []string) (map[str
 	for _, key := range remaining {
 		if len(result[key]) == 0 {
 			unresolved++
-			recordUnresolvedQuoteSample(key)
+			recordUnresolvedQuoteSample(key, "not_in_cache")
 		}
 	}
 	if unresolved > 0 {
@@ -82,30 +87,69 @@ func (cache chainedQuoteCache) MGet(ctx context.Context, keys []string) (map[str
 	return result, nil
 }
 
-func recordUnresolvedQuoteSample(key string) {
+func recordUnresolvedQuoteSample(key string, reason string) {
 	symbol := strings.TrimPrefix(strings.TrimSpace(key), quoteCachePrefix)
 	if symbol == "" {
 		return
 	}
+	cleanReason := boundedUnresolvedReason(reason)
 	unresolvedQuoteSampleStore.Lock()
 	defer unresolvedQuoteSampleStore.Unlock()
 	for _, item := range unresolvedQuoteSampleStore.values {
-		if item == symbol {
+		if item.Symbol == symbol {
 			return
 		}
 	}
-	unresolvedQuoteSampleStore.values = append(unresolvedQuoteSampleStore.values, symbol)
+	unresolvedQuoteSampleStore.values = append(unresolvedQuoteSampleStore.values, unresolvedQuoteSample{Symbol: symbol, Reason: cleanReason})
 	if len(unresolvedQuoteSampleStore.values) > unresolvedQuoteSampleLimit {
 		unresolvedQuoteSampleStore.values = unresolvedQuoteSampleStore.values[len(unresolvedQuoteSampleStore.values)-unresolvedQuoteSampleLimit:]
 	}
 }
 
 func unresolvedQuoteSamples() []string {
+	samples := unresolvedQuoteReasonSamples()
+	result := make([]string, len(samples))
+	for index, item := range samples {
+		result[index] = item.Symbol
+	}
+	return result
+}
+
+func unresolvedQuoteReasonSamples() []unresolvedQuoteSample {
 	unresolvedQuoteSampleStore.Lock()
 	defer unresolvedQuoteSampleStore.Unlock()
-	result := make([]string, len(unresolvedQuoteSampleStore.values))
-	copy(result, unresolvedQuoteSampleStore.values)
+	values := make([]unresolvedQuoteSample, len(unresolvedQuoteSampleStore.values))
+	copy(values, unresolvedQuoteSampleStore.values)
+	return values
+}
+
+func unresolvedQuoteSamplePayload(missing []string, reasons map[string]string) []map[string]string {
+	result := make([]map[string]string, 0, len(missing))
+	seen := map[string]bool{}
+	for _, symbol := range missing {
+		clean := strings.TrimSpace(symbol)
+		if clean == "" || seen[clean] {
+			continue
+		}
+		seen[clean] = true
+		result = append(result, map[string]string{
+			"symbol": clean,
+			"reason": boundedUnresolvedReason(reasons[clean]),
+		})
+		if len(result) >= unresolvedQuoteSampleLimit {
+			return result
+		}
+	}
 	return result
+}
+
+func boundedUnresolvedReason(reason string) string {
+	switch reason {
+	case "not_in_cache", "no_daily_bar", "invalid_symbol", "stale_only":
+		return reason
+	default:
+		return "not_in_cache"
+	}
 }
 
 func (cache chainedQuoteCache) MinuteBars(ctx context.Context, symbols []string, period string, limit int) (map[string][]map[string]any, error) {

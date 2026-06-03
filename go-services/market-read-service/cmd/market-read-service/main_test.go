@@ -81,6 +81,11 @@ func TestQuoteBatchReadsRedisLocalQuotePayload(t *testing.T) {
 	if payload["data_quality"] != "partial" {
 		t.Fatalf("data quality mismatch: %v", payload["data_quality"])
 	}
+	samples := payload["unresolved_symbols_sample"].([]any)
+	firstSample := samples[0].(map[string]any)
+	if firstSample["symbol"] != "000002" || firstSample["reason"] != "not_in_cache" {
+		t.Fatalf("unresolved reason sample mismatch: %#v", firstSample)
+	}
 	items := payload["items"].([]any)
 	if len(items) != 1 {
 		t.Fatalf("items length mismatch got=%d", len(items))
@@ -221,6 +226,9 @@ func TestIntradayLatestBatchHandlerReturnsPartialPayload(t *testing.T) {
 	if !bytes.Contains(recorder.Body.Bytes(), []byte(`"latest"`)) {
 		t.Fatalf("expected latest payload body=%s", recorder.Body.String())
 	}
+	if !bytes.Contains(recorder.Body.Bytes(), []byte(`"unresolved_symbols_sample":[{"reason":"not_in_cache","symbol":"000002"}]`)) {
+		t.Fatalf("expected unresolved reason sample body=%s", recorder.Body.String())
+	}
 }
 
 func TestEtfMinuteSnapshotBatchReadsRedisMinuteBars(t *testing.T) {
@@ -316,6 +324,11 @@ func TestChainedQuoteCacheRecordsRedisMissAndMySQLFallbackMetrics(t *testing.T) 
 	if len(samples) == 0 || samples[len(samples)-1] != "000003" {
 		t.Fatalf("expected unresolved symbol sample, got %#v", samples)
 	}
+	reasonSamples := unresolvedQuoteReasonSamples()
+	lastSample := reasonSamples[len(reasonSamples)-1]
+	if lastSample.Symbol != "000003" || lastSample.Reason != "not_in_cache" {
+		t.Fatalf("expected unresolved reason sample, got %#v", lastSample)
+	}
 }
 
 func TestMetricsExposeCacheCoverageCounters(t *testing.T) {
@@ -331,6 +344,7 @@ func TestMetricsExposeCacheCoverageCounters(t *testing.T) {
 		"tquant_market_read_mysql_fallbacks_total",
 		"tquant_market_read_unresolved_misses_total",
 		"tquant_market_read_unresolved_symbol_sample",
+		`reason="not_in_cache"`,
 	} {
 		if !bytes.Contains([]byte(body), []byte(metricName)) {
 			t.Fatalf("metrics should expose %s, body=%s", metricName, body)

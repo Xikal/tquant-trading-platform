@@ -67,6 +67,12 @@ func metrics(w http.ResponseWriter, _ *http.Request) {
 	for _, symbol := range unresolvedQuoteSamples() {
 		lines = append(lines, `tquant_market_read_unresolved_symbol_sample{symbol="`+escapeMetricLabel(symbol)+`"} 1`)
 	}
+	for _, sample := range unresolvedQuoteReasonSamples() {
+		lines = append(
+			lines,
+			`tquant_market_read_unresolved_symbol_sample{symbol="`+escapeMetricLabel(sample.Symbol)+`",reason="`+escapeMetricLabel(sample.Reason)+`"} 1`,
+		)
+	}
 	_, _ = w.Write([]byte(strings.Join(lines, "\n") + "\n"))
 }
 
