@@ -45,6 +45,19 @@ def test_cloud_deploy_validates_release_package_and_has_builder_fallback() -> No
     assert "retrying attempt $((attempt + 1))/3" in deploy_script
 
 
+def test_cloud_ssh_lib_retries_transient_scp_connection_resets() -> None:
+    ssh_lib = read_repo_file("scripts/cloud_ssh_lib.sh")
+
+    assert "cloud_ssh_transient_log" in ssh_lib
+    assert "CLOUD_SSH_RETRY_ATTEMPTS" in ssh_lib
+    assert "CLOUD_SSH_RETRY_DELAY_SECONDS" in ssh_lib
+    assert "ConnectionAttempts" in ssh_lib
+    assert "kex_exchange_identification" in ssh_lib
+    assert "Connection reset by peer" in ssh_lib
+    assert "Connection closed" in ssh_lib
+    assert "ssh/scp transient connection failure" in ssh_lib
+
+
 def test_quick_deploy_uses_production_safe_cookie_defaults() -> None:
     quick_script = read_repo_file("scripts/quick_cloud_deploy.sh")
 
