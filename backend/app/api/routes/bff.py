@@ -42,7 +42,7 @@ from app.services.bff.workspace_cache import load_cached_workspace
 from app.services.market.pulse_cache import latest_pulse_or_placeholder
 from app.services.monitor_snapshot_service import build_monitor_snapshot
 from app.services.market.review import build_market_review_summary
-from app.services.performance.read_model_metrics import record_response_payload
+from app.services.performance.read_model_metrics import record_bff_partial_failure, record_response_payload
 from app.services.read_models.live_quote_overlay import apply_monitor_workspace_live_overlay
 
 logger = logging.getLogger(__name__)
@@ -122,6 +122,7 @@ def monitor_workspace_bff(
         if remote is not None:
             remote_used = True
             response = apply_monitor_workspace_live_overlay(remote)
+            _record_partial_errors(response)
             record_response_payload("monitor_bff", response, item_count=_monitor_priority_item_count(response))
             schedule_go_bff_shadow_check(
                 background_tasks,
@@ -159,6 +160,7 @@ def monitor_workspace_bff(
         ),
     )
     response = apply_monitor_workspace_live_overlay(response)
+    _record_partial_errors(response)
     record_response_payload("monitor_bff", response, item_count=_monitor_priority_item_count(response))
     if not remote_used:
         schedule_go_bff_shadow_check(
@@ -200,6 +202,7 @@ def paper_workspace_bff(
         if remote is not None:
             remote_used = True
             response = remote
+            _record_partial_errors(response)
             schedule_go_bff_shadow_check(
                 background_tasks,
                 workspace="paper",
@@ -231,6 +234,7 @@ def paper_workspace_bff(
             ),
         ),
     )
+    _record_partial_errors(response)
     if not remote_used:
         schedule_go_bff_shadow_check(
             background_tasks,
@@ -262,6 +266,7 @@ def strategy_workspace_bff(
         if remote is not None:
             remote_used = True
             response = remote
+            _record_partial_errors(response)
             schedule_go_bff_shadow_check(
                 background_tasks,
                 workspace="strategy",
@@ -287,6 +292,7 @@ def strategy_workspace_bff(
             ),
         ),
     )
+    _record_partial_errors(response)
     if not remote_used:
         schedule_go_bff_shadow_check(
             background_tasks,
@@ -325,6 +331,7 @@ def settings_workspace_bff(
         if remote is not None:
             remote_used = True
             response = remote
+            _record_partial_errors(response)
             schedule_go_bff_shadow_check(
                 background_tasks,
                 workspace="settings",
@@ -355,6 +362,7 @@ def settings_workspace_bff(
             ),
         ),
     )
+    _record_partial_errors(response)
     if not remote_used:
         schedule_go_bff_shadow_check(
             background_tasks,
@@ -423,7 +431,15 @@ def _safe_market_pulse_snapshot(db: Session, errors: list[BffPartialError]):
         pulse, pulse_needs_refresh = latest_pulse_or_placeholder(db, trade_date=beijing_today().isoformat())
     except Exception as exc:
         logger.warning("bff source failed source=market_pulse", exc_info=(type(exc), exc, exc.__traceback__))
-        errors.append(BffPartialError(source="market_pulse", detail="盘中 pulse 快照暂时不可用"))
+        errors.append(
+            BffPartialError(
+                source="market_pulse",
+                detail="盘中 pulse 快照暂时不可用",
+                reason="other",
+                fallback_source="python_local",
+                message="market pulse snapshot unavailable",
+            )
+        )
         return None
     if pulse_needs_refresh:
         _enqueue_market_pulse_refresh(db, reason="bff_monitor_workspace")
@@ -442,11 +458,28 @@ def _safe(
     except HTTPException as exc:
         if ignore_forbidden and exc.status_code == 403:
             return None
-        errors.append(BffPartialError(source=source, detail=str(exc.detail)))
+        errors.append(
+            BffPartialError(
+                source=source,
+                detail=str(exc.detail),
+                reason="status",
+                status_code=exc.status_code,
+                fallback_source="python_local",
+                message="source returned HTTPException",
+            )
+        )
         return None
     except Exception as exc:
         logger.warning("bff source failed source=%s", source, exc_info=(type(exc), exc, exc.__traceback__))
-        errors.append(BffPartialError(source=source, detail="数据暂时不可用"))
+        errors.append(
+            BffPartialError(
+                source=source,
+                detail="数据暂时不可用",
+                reason="other",
+                fallback_source="python_local",
+                message="source unavailable",
+            )
+        )
         return None
 
 
@@ -481,6 +514,16 @@ def _remote_adapter_allowed(request: Request) -> bool:
     expected = get_settings().tquant_internal_service_token.strip()
     provided = request.headers.get("X-Internal-Service-Token", "").strip()
     return not (request.headers.get("X-TQuant-Bff-Hop") == "1" and expected and provided == expected)
+
+
+def _record_partial_errors(response: object) -> None:
+    for error in getattr(response, "partial_errors", []) or []:
+        source = getattr(error, "source", "")
+        reason = getattr(error, "reason", "other")
+        if isinstance(error, dict):
+            source = str(error.get("source") or source)
+            reason = str(error.get("reason") or reason)
+        record_bff_partial_failure(str(source), str(reason))
 
 
 def _bff_timeout_seconds() -> float:

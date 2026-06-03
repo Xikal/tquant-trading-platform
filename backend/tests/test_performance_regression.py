@@ -101,6 +101,7 @@ class PerformanceRegressionTest(unittest.TestCase):
         self.assertIn("tquant_derived_indicator_cache_misses_total", body)
         self.assertIn("tquant_derived_indicator_cache_size", body)
         self.assertIn("tquant_runtime_task_duration_p95_ms", body)
+        self.assertIn("tquant_bff_partial_source_failures_total", body)
 
 
 if __name__ == "__main__":

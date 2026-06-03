@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -21,10 +23,14 @@ type aggregateResult struct {
 }
 
 type partialError struct {
-	Source    string `json:"source"`
-	Reason    string `json:"reason"`
-	Detail    string `json:"detail"`
-	ElapsedMs int64  `json:"elapsed_ms,omitempty"`
+	Source         string `json:"source"`
+	Reason         string `json:"reason"`
+	Detail         string `json:"detail"`
+	StatusCode     int    `json:"status_code,omitempty"`
+	TimeoutMs      int64  `json:"timeout_ms,omitempty"`
+	FallbackSource string `json:"fallback_source"`
+	Message        string `json:"message,omitempty"`
+	ElapsedMs      int64  `json:"elapsed_ms,omitempty"`
 }
 
 type rawSource struct {
@@ -305,10 +311,19 @@ func fetchSources(cfg config, client *http.Client, r *http.Request, sources []ra
 			mu.Lock()
 			defer mu.Unlock()
 			if err != nil {
-				bffPartialSourceFailures.Add(1)
 				reason := partialReason(err)
-				incrementPartialReason(reason)
-				errors = append(errors, partialError{Source: source.name, Reason: reason, Detail: partialDetail(err, resolvedSourceTimeout(cfg, source)), ElapsedMs: elapsedMs})
+				timeout := resolvedSourceTimeout(cfg, source)
+				incrementPartialFailure(source.name, reason)
+				errors = append(errors, partialError{
+					Source:         source.name,
+					Reason:         reason,
+					Detail:         partialDetail(err, timeout),
+					StatusCode:     partialStatusCode(err),
+					TimeoutMs:      partialTimeoutMs(reason, timeout),
+					FallbackSource: "go_bff_gateway",
+					Message:        partialMessage(reason),
+					ElapsedMs:      elapsedMs,
+				})
 				return
 			}
 			results[source.name] = body
@@ -370,6 +385,23 @@ func partialReason(err error) string {
 	}
 }
 
+type partialSourceReasonCounter struct {
+	mu     sync.Mutex
+	values map[string]int64
+}
+
+var bffPartialSourceReasonFailures = partialSourceReasonCounter{values: map[string]int64{}}
+
+func incrementPartialFailure(source string, reason string) {
+	bffPartialSourceFailures.Add(1)
+	incrementPartialReason(reason)
+	cleanSource := boundedPartialSource(source)
+	cleanReason := boundedPartialReason(reason)
+	bffPartialSourceReasonFailures.mu.Lock()
+	bffPartialSourceReasonFailures.values[cleanSource+"|"+cleanReason]++
+	bffPartialSourceReasonFailures.mu.Unlock()
+}
+
 func incrementPartialReason(reason string) {
 	switch reason {
 	case "timeout":
@@ -383,6 +415,39 @@ func incrementPartialReason(reason string) {
 	}
 }
 
+func partialSourceReasonMetricsLines() []string {
+	bffPartialSourceReasonFailures.mu.Lock()
+	snapshot := make(map[string]int64, len(bffPartialSourceReasonFailures.values))
+	for key, value := range bffPartialSourceReasonFailures.values {
+		snapshot[key] = value
+	}
+	bffPartialSourceReasonFailures.mu.Unlock()
+	if len(snapshot) == 0 {
+		return []string{`tquant_bff_gateway_partial_source_failures_total{source="none",reason="none"} 0`}
+	}
+	keys := make([]string, 0, len(snapshot))
+	for key := range snapshot {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	lines := make([]string, 0, len(keys))
+	for _, key := range keys {
+		source, reason, ok := strings.Cut(key, "|")
+		if !ok {
+			source = "other"
+			reason = "other"
+		}
+		lines = append(lines, fmt.Sprintf(`tquant_bff_gateway_partial_source_failures_total{source="%s",reason="%s"} %d`, source, reason, snapshot[key]))
+	}
+	return lines
+}
+
+func resetPartialSourceReasonFailures() {
+	bffPartialSourceReasonFailures.mu.Lock()
+	bffPartialSourceReasonFailures.values = map[string]int64{}
+	bffPartialSourceReasonFailures.mu.Unlock()
+}
+
 func partialDetail(err error, timeout time.Duration) string {
 	if err == nil {
 		return "数据暂时不可用"
@@ -391,6 +456,73 @@ func partialDetail(err error, timeout time.Duration) string {
 		return fmt.Sprintf("source timeout after %dms", timeout.Milliseconds())
 	}
 	return "数据暂时不可用"
+}
+
+func partialStatusCode(err error) int {
+	if err == nil {
+		return 0
+	}
+	text := strings.ToLower(err.Error())
+	marker := "returned status "
+	index := strings.Index(text, marker)
+	if index < 0 {
+		return 0
+	}
+	raw := strings.TrimSpace(text[index+len(marker):])
+	parts := strings.Fields(raw)
+	if len(parts) == 0 {
+		return 0
+	}
+	status, parseErr := strconv.Atoi(parts[0])
+	if parseErr != nil {
+		return 0
+	}
+	return status
+}
+
+func partialTimeoutMs(reason string, timeout time.Duration) int64 {
+	if reason != "timeout" {
+		return 0
+	}
+	return timeout.Milliseconds()
+}
+
+func partialMessage(reason string) string {
+	switch reason {
+	case "timeout":
+		return "source timed out"
+	case "status":
+		return "source returned non-2xx status"
+	case "decode":
+		return "source returned invalid JSON"
+	default:
+		return "source unavailable"
+	}
+}
+
+func boundedPartialSource(source string) string {
+	switch source {
+	case "account", "admin_metrics", "admin_tasks", "auto_trading_runs", "auto_trading_status",
+		"factor_health", "factor_weights", "factors", "market_breadth", "market_pulse",
+		"market_performance", "monitor_review", "monitor_snapshot", "orders", "paired_hedge",
+		"performance", "positions", "presets", "recent_runs", "risk_events", "runtime",
+		"sector_etf_t0_performance", "sector_exclusions", "sector_relative_strength", "settings",
+		"stock_pnl", "strategy_governance", "strategy_meta", "strategy_performance",
+		"strategy_tracking_detail", "strategy_tracking_snapshot", "tag_performance", "trades",
+		"verdict_thresholds":
+		return source
+	default:
+		return "other"
+	}
+}
+
+func boundedPartialReason(reason string) string {
+	switch reason {
+	case "timeout", "status", "decode", "schema_mismatch", "other":
+		return reason
+	default:
+		return "other"
+	}
 }
 
 func resolvedSourceTimeout(cfg config, source rawSource) time.Duration {

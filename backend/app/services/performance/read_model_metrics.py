@@ -18,6 +18,7 @@ _COUNTERS: dict[str, defaultdict[str, int]] = {
     "read_model_cache_stale": defaultdict(int),
     "live_overlay_hits": defaultdict(int),
     "live_overlay_misses": defaultdict(int),
+    "bff_partial_source_failures": defaultdict(int),
 }
 _GAUGES: dict[str, defaultdict[str, float]] = {
     "read_model_cache_age_seconds": defaultdict(float),
@@ -64,6 +65,12 @@ def record_response_payload(route: str, payload: Any, *, item_count: int | None 
     _set_gauge("response_item_count", route, float(item_count if item_count is not None else _infer_item_count(payload)))
     _set_gauge("response_bytes", route, float(len(raw.encode("utf-8"))))
     _set_gauge("response_serialization_ms", route, elapsed_ms)
+
+
+def record_bff_partial_failure(source: str, reason: str) -> None:
+    clean_source = _clean_label(_known_bff_source(source))
+    clean_reason = _clean_label(_known_bff_reason(reason))
+    _increment("bff_partial_source_failures", f"{clean_source}|{clean_reason}")
 
 
 def read_model_metrics_snapshot() -> dict[str, dict[str, float]]:
@@ -117,3 +124,51 @@ def _infer_item_count(payload: Any) -> int:
 def _clean_label(value: str) -> str:
     return str(value or "unknown").replace('"', "").replace("\\", "_")[:80]
 
+
+def _known_bff_source(source: str) -> str:
+    value = str(source or "unknown")
+    allowed = {
+        "account",
+        "admin_metrics",
+        "admin_tasks",
+        "auto_trading_runs",
+        "auto_trading_status",
+        "factor_health",
+        "factor_weights",
+        "factors",
+        "market_breadth",
+        "market_pulse",
+        "market_performance",
+        "monitor_review",
+        "monitor_snapshot",
+        "paired_hedge",
+        "paper_workspace",
+        "performance",
+        "positions",
+        "presets",
+        "recent_runs",
+        "risk_events",
+        "sector_etf_t0_performance",
+        "sector_exclusions",
+        "sector_relative_strength",
+        "settings",
+        "settings_workspace",
+        "stock_pnl",
+        "strategy_governance",
+        "strategy_meta",
+        "strategy_performance",
+        "strategy_tracking_detail",
+        "strategy_tracking_snapshot",
+        "strategy_workspace",
+        "tag_performance",
+        "trades",
+        "orders",
+        "runtime",
+        "verdict_thresholds",
+    }
+    return value if value in allowed else "other"
+
+
+def _known_bff_reason(reason: str) -> str:
+    value = str(reason or "other")
+    return value if value in {"timeout", "status", "decode", "schema_mismatch", "other"} else "other"

@@ -140,6 +140,7 @@ func metricsHandler(cache *workspaceCache) http.HandlerFunc {
 			"tquant_bff_gateway_workspace_proxy_fallbacks_total{workspace=\"settings\"} " + strconv.FormatInt(bffWorkspaceProxySettingsFallbacks.Load(), 10),
 			"tquant_bff_gateway_workspace_proxy_fallbacks_total{workspace=\"factor\"} " + strconv.FormatInt(bffWorkspaceProxyFactorFallbacks.Load(), 10),
 		}
+		lines = append(lines, partialSourceReasonMetricsLines()...)
 		_, _ = w.Write([]byte(strings.Join(lines, "\n") + "\n"))
 	}
 }

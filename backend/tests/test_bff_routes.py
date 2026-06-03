@@ -21,6 +21,7 @@ from app.models.schema_defs.market import MarketBreadthResponse, SectorRelativeS
 from app.models.schema_defs.market import IntradayMarketPulse
 from app.services.bff import remote_adapters, remote_client
 from app.services.bff import workspace_cache
+from app.services.performance.read_model_metrics import reset_read_model_metrics
 
 
 def test_bff_manifest_exposes_versioned_frontend_contract() -> None:
@@ -98,7 +99,12 @@ def test_paper_workspace_timeout_returns_partial_payload(monkeypatch) -> None:
 
     assert response.status_code == 200
     payload = response.json()
-    assert payload["partial_errors"][0]["source"] == "paper_workspace"
+    error = payload["partial_errors"][0]
+    assert error["source"] == "paper_workspace"
+    assert error["reason"] == "timeout"
+    assert error["timeout_ms"] == 10
+    assert error["status_code"] is None
+    assert error["fallback_source"] == "python_local"
 
 
 def test_monitor_workspace_builder_errors_return_partial_payload(monkeypatch) -> None:
@@ -146,7 +152,58 @@ def test_monitor_workspace_builder_errors_return_partial_payload(monkeypatch) ->
     assert payload["monitor_snapshot"] is None
     assert payload["market_breadth"] is None
     assert payload["market_pulse"]["pulse_text"] == "读取物化 pulse。"
-    assert payload["partial_errors"][0]["source"] == "monitor_snapshot"
+    error = payload["partial_errors"][0]
+    assert error["source"] == "monitor_snapshot"
+    assert error["reason"] == "other"
+    assert error["status_code"] is None
+    assert error["fallback_source"] == "python_local"
+
+
+def test_bff_partial_errors_are_exposed_by_source_and_reason_metrics(monkeypatch) -> None:
+    reset_read_model_metrics()
+    app = FastAPI()
+    app.include_router(bff.router, prefix="/api")
+    user = SimpleNamespace(id=1, username="tester", is_active=True, roles="")
+    app.dependency_overrides[get_current_user] = lambda: user
+    app.dependency_overrides[get_db] = lambda: object()
+    monkeypatch.setattr(bff, "get_settings", lambda: SimpleNamespace(tquant_internal_service_token=""))
+    monkeypatch.setattr(
+        workspace_cache,
+        "get_settings",
+        lambda: SimpleNamespace(
+            bff_workspace_cache_enabled=False,
+            bff_monitor_cache_ttl_seconds=0,
+            bff_paper_cache_ttl_seconds=0,
+            bff_strategy_cache_ttl_seconds=0,
+            bff_settings_cache_ttl_seconds=0,
+        ),
+    )
+    monkeypatch.setattr(bff, "build_monitor_snapshot", lambda *args, **kwargs: (_ for _ in ()).throw(RuntimeError("offline")))
+    monkeypatch.setattr(bff, "market_breadth", lambda *args, **kwargs: MarketBreadthResponse(updated_at="2026-05-25 10:00:00"))
+    monkeypatch.setattr(bff, "sector_relative_strength", lambda *args: SectorRelativeStrengthResponse(updated_at="2026-05-25 10:00:00"))
+    monkeypatch.setattr(
+        bff,
+        "latest_pulse_or_placeholder",
+        lambda *_args, **_kwargs: (
+            IntradayMarketPulse(
+                updated_at="2026-05-25 10:00:00",
+                data_quality="fresh",
+                pulse_level="repair",
+                pulse_text="读取物化 pulse。",
+            ),
+            False,
+        ),
+    )
+    monkeypatch.setattr(bff, "build_market_review_summary", lambda *args, **kwargs: (None, []))
+    monkeypatch.setattr(bff, "paired_hedge_research", lambda *args: {"updated_at": "2026-05-25 10:00:00", "ideas": []})
+
+    response = TestClient(app).get("/api/bff/v1/workspace/monitor")
+
+    assert response.status_code == 200
+    from app.services.performance.prometheus import performance_prometheus_lines
+
+    body = "\n".join(performance_prometheus_lines())
+    assert 'tquant_bff_partial_source_failures_total{source="monitor_snapshot",reason="other"} 1' in body
 
 
 def test_monitor_workspace_request_path_uses_cached_snapshot_when_sources_unreachable(monkeypatch) -> None:

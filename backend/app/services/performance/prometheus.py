@@ -81,6 +81,13 @@ def read_model_prometheus_lines() -> list[str]:
         ]
     )
     lines.extend(_labeled("tquant_response_serialization_ms", "route", snapshot.get("response_serialization_ms", {})))
+    lines.extend(
+        [
+            "# HELP tquant_bff_partial_source_failures_total BFF partial source failures by bounded source and reason.",
+            "# TYPE tquant_bff_partial_source_failures_total counter",
+        ]
+    )
+    lines.extend(_labeled_source_reason("tquant_bff_partial_source_failures_total", snapshot.get("bff_partial_source_failures", {})))
     return lines
 
 
@@ -114,6 +121,15 @@ def _labeled(metric: str, label: str, values: dict[str, float]) -> list[str]:
     return [f'{metric}{{{label}="{_escape(name)}"}} {value:g}' for name, value in sorted(values.items())]
 
 
+def _labeled_source_reason(metric: str, values: dict[str, float]) -> list[str]:
+    if not values:
+        return [f'{metric}{{source="none",reason="none"}} 0']
+    lines: list[str] = []
+    for name, value in sorted(values.items()):
+        source, _, reason = str(name).partition("|")
+        lines.append(f'{metric}{{source="{_escape(source)}",reason="{_escape(reason or "other")}"}} {value:g}')
+    return lines
+
+
 def _escape(value: str) -> str:
     return str(value).replace("\\", "\\\\").replace('"', '\\"')
-

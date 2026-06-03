@@ -26,6 +26,13 @@ def run_workspace_with_timeout(
         return future.result(timeout=timeout_seconds)
     except TimeoutError:
         future.cancel()
-        error = BffPartialError(source=source, detail="数据聚合超时，已返回降级结果")
+        error = BffPartialError(
+            source=source,
+            detail="数据聚合超时，已返回降级结果",
+            reason="timeout",
+            timeout_ms=max(int(timeout_seconds * 1000), 0),
+            fallback_source="python_local",
+            message="workspace aggregation timeout",
+        )
         logger.warning("bff workspace timed out source=%s timeout=%.2fs", source, timeout_seconds)
         return fallback(error)

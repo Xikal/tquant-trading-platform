@@ -42,6 +42,11 @@ BFF_SCHEMA_VERSION = "v14"
 class BffPartialError(BaseModel):
     source: str
     detail: str
+    reason: str = "other"
+    status_code: int | None = None
+    timeout_ms: int | None = None
+    fallback_source: str = "python_local"
+    message: str = ""
 
 
 class BffWorkspaceManifest(BaseModel):

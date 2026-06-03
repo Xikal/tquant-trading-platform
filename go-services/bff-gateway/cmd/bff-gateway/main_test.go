@@ -7,6 +7,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 )
@@ -633,6 +634,7 @@ func TestAggregateFactorWorkspaceBuildsPayload(t *testing.T) {
 func TestAggregateMonitorWorkspacePartialFailureIsObservable(t *testing.T) {
 	bffPartialSourceFailures.Store(0)
 	bffPartialStatusFailures.Store(0)
+	resetPartialSourceReasonFailures()
 	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
@@ -657,11 +659,21 @@ func TestAggregateMonitorWorkspacePartialFailureIsObservable(t *testing.T) {
 	if !bytes.Contains(result.body, []byte(`"reason":"status"`)) {
 		t.Fatalf("monitor aggregate should report partial reason: %s", string(result.body))
 	}
+	if !bytes.Contains(result.body, []byte(`"status_code":502`)) {
+		t.Fatalf("monitor aggregate should report partial status code: %s", string(result.body))
+	}
+	if !bytes.Contains(result.body, []byte(`"fallback_source":"go_bff_gateway"`)) {
+		t.Fatalf("monitor aggregate should report fallback source: %s", string(result.body))
+	}
 	if bffPartialSourceFailures.Load() == 0 {
 		t.Fatal("expected partial source failure metric to increment")
 	}
 	if bffPartialStatusFailures.Load() == 0 {
 		t.Fatal("expected status partial source failure metric to increment")
+	}
+	lines := strings.Join(partialSourceReasonMetricsLines(), "\n")
+	if !strings.Contains(lines, `tquant_bff_gateway_partial_source_failures_total{source="monitor_review",reason="status"} 1`) {
+		t.Fatalf("missing source/reason metric: %s", lines)
 	}
 }
 
