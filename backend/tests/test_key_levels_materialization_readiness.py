@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import date, datetime, timedelta
+from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
@@ -329,3 +330,23 @@ def test_schema_compatibility_repair_creates_key_level_snapshot_table() -> None:
     ensure_schema_compatibility(engine)
 
     assert "key_level_snapshots" in inspect(engine).get_table_names()
+
+
+def test_key_level_snapshot_table_has_formal_alembic_migration() -> None:
+    table = Base.metadata.tables.get("key_level_snapshots")
+    assert table is not None
+
+    migration_path = (
+        Path(__file__).resolve().parents[1]
+        / "alembic"
+        / "versions"
+        / "20260603_0001_key_level_snapshots.py"
+    )
+    migration_source = migration_path.read_text(encoding="utf-8")
+
+    assert 'op.create_table(\n        "key_level_snapshots"' in migration_source
+    for column_name in table.columns.keys():
+        assert f'"{column_name}"' in migration_source
+    assert "uq_key_level_snapshot_scope_key_day_version" in migration_source
+    assert "ix_key_level_snapshots_latest" in migration_source
+    assert "ix_key_level_snapshots_symbol_day" in migration_source
