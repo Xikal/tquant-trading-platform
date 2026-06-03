@@ -5,7 +5,7 @@ const reportPath = new URL("../dist/bundle-report.json", import.meta.url);
 const allowlistPath = new URL("../.bundle-allowlist.json", import.meta.url);
 
 const FIRST_SCREEN_GZIP_LIMIT_KB = 350;
-const SINGLE_CHUNK_GZIP_LIMIT_KB = 150;
+const SINGLE_CHUNK_GZIP_LIMIT_KB = 110;
 const TOTAL_GZIP_LIMIT_KB = 820;
 
 async function main() {

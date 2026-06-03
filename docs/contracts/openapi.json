@@ -6450,9 +6450,46 @@
             "title": "Detail",
             "type": "string"
           },
+          "fallback_source": {
+            "default": "python_local",
+            "title": "Fallback Source",
+            "type": "string"
+          },
+          "message": {
+            "default": "",
+            "title": "Message",
+            "type": "string"
+          },
+          "reason": {
+            "default": "other",
+            "title": "Reason",
+            "type": "string"
+          },
           "source": {
             "title": "Source",
             "type": "string"
+          },
+          "status_code": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status Code"
+          },
+          "timeout_ms": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timeout Ms"
           }
         },
         "required": [

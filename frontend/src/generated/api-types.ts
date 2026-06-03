@@ -8665,8 +8665,27 @@ export interface components {
         BffPartialError: {
             /** Detail */
             detail: string;
+            /**
+             * Fallback Source
+             * @default python_local
+             */
+            fallback_source: string;
+            /**
+             * Message
+             * @default
+             */
+            message: string;
+            /**
+             * Reason
+             * @default other
+             */
+            reason: string;
             /** Source */
             source: string;
+            /** Status Code */
+            status_code?: number | null;
+            /** Timeout Ms */
+            timeout_ms?: number | null;
         };
         /** BffWorkspaceManifest */
         BffWorkspaceManifest: {

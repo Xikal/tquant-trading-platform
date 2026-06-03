@@ -45,7 +45,10 @@ function classifyAsset(file) {
   if (
     file.startsWith("antd-shell-") ||
     file.startsWith("antd-core-") ||
-    file.startsWith("antd-controls-") ||
+    file.startsWith("antd-check-controls-") ||
+    file.startsWith("antd-switch-controls-") ||
+    file.startsWith("antd-radio-controls-") ||
+    file.startsWith("antd-value-controls-") ||
     file.startsWith("antd-display-") ||
     file.startsWith("antd-feedback-") ||
     file.startsWith("antd-icons-") ||

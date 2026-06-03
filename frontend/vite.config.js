@@ -8,6 +8,7 @@ export default defineConfig(function (_a) {
         base: isNativeMode ? "./" : "/",
         build: {
             chunkSizeWarningLimit: 700,
+            emptyOutDir: true,
             outDir: "dist",
             rolldownOptions: {
                 output: {
@@ -108,8 +109,17 @@ function splitVendorChunks(id) {
     if (matchesAntdComponent(normalized, ["button"])) {
         return "antd-shell";
     }
-    if (matchesAntdComponent(normalized, ["checkbox", "switch", "slider", "radio"])) {
-        return "antd-controls";
+    if (matchesAntdComponent(normalized, ["checkbox"])) {
+        return "antd-check-controls";
+    }
+    if (matchesAntdComponent(normalized, ["switch"])) {
+        return "antd-switch-controls";
+    }
+    if (matchesAntdComponent(normalized, ["radio"])) {
+        return "antd-radio-controls";
+    }
+    if (matchesAntdComponent(normalized, ["slider"])) {
+        return "antd-value-controls";
     }
     if (matchesAntdComponent(normalized, ["popconfirm", "popover", "tooltip"]) ||
         matchesAntdComponent(normalized, ["result", "empty", "skeleton", "spin", "alert", "message", "notification", "progress"])) {
