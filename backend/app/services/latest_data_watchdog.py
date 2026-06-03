@@ -12,7 +12,7 @@ from app.models.entities import NotificationEvent
 from app.models.schema_defs.agent import AgentNotificationTestRequest
 from app.repositories.low_buy import DailyHistoryRepository
 from app.services.agent_notification_service import AgentNotificationService
-from app.services.latest_data_status import MIN_STOCK_DAILY_BARS, expected_low_buy_trade_date
+from app.services.latest_data_status import MIN_STOCK_DAILY_BARS
 from app.services.market.trading_calendar import is_a_share_trading_day
 
 CLOSE_WATCHDOG_AFTER = dt_time(hour=15, minute=20)
@@ -57,7 +57,7 @@ class LatestDailyBarWatchdog:
                 "checked_at": current.isoformat(),
             }
 
-        expected = (trade_date or expected_low_buy_trade_date(db) or current.date().isoformat()).strip()
+        expected = (trade_date or current.date().isoformat()).strip()
         daily_count = DailyHistoryRepository(db).stock_count_by_trade_date(expected)
         complete = daily_count >= MIN_STOCK_DAILY_BARS
         message = _message(

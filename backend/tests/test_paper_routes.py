@@ -17,6 +17,7 @@ from app.api.routes import auth, paper
 from app.core.config import get_settings
 from app.core.database import get_db
 from app.core.rate_limit import clear_rate_limit_events
+from app.core.timezone import beijing_today
 from app.models.base import Base
 from app.models.entities import (
     MarketReviewReport,
@@ -562,7 +563,7 @@ class PaperRouteTests(unittest.TestCase):
         with self.Session() as db:
             db.add(
                 MarketReviewReport(
-                    report_date=date.today(),
+                    report_date=beijing_today(),
                     report_slot="midday",
                     overall_summary="午盘市场复盘正文只能在实时监控页展示",
                     strategy_highlights='[{"content":"主线修复"}]',
