@@ -21,7 +21,8 @@
 - `PRODUCT_STAGE_ACCEPTANCE.md`
 - `docs/a-share-strong-stock-trading-requirements-2026-06-02.md`
 - `docs/trading-experience-observation-suite-requirements-2026-06-02.md`
-- `docs/market-support-resistance-ma30-development-plan-2026-06-01.md`
+- `docs/a-share-key-level-engine-execution-plan-2026-06-02.md`
+- `docs/auxiliary-lines-requirements-2026-06-03.md`
 - `docs/low-buy-strategy-mechanism.md`
 - `docs/market-trading-enhancement-requirements-2026-05-25.md`
 - `docs/market-trading-enhancement-execution-plan-2026-05-25.md`
@@ -52,11 +53,18 @@ Recently archived historical plans:
 - `docs/archive/plans/frontend-bff-microservices-evolution-plan-2026-05-19.md`
 - `docs/archive/plans/microservices-independent-deployment-design-2026-05-20.md`
 - `docs/archive/plans/remaining-architecture-debt-executable-plan-2026-05-24.md`
+- `docs/archive/plans/market-support-resistance-ma30-development-plan-2026-06-01.md`
 - `docs/archive/plans/策略体系重组方案.md`
 - `docs/archive/plans/系统级全方位提升方案-2026-05-30.md`
+- `docs/archive/plans/维斯量化平台-完整提升整改方案-2026-05-30.md`
 
 Recently archived historical reports:
 
+- `docs/archive/reports/full-project-audit-2026-05-25.md`
+- `docs/archive/reports/full-project-latest-code-review-2026-05-30.md`
+- `docs/archive/reports/full-regression-2026-05-27.md`
+- `docs/archive/reports/observability-warning-budget-2026-05-27.md`
+- `docs/archive/reports/repository-cleanup-2026-05-27.md`
 - `docs/archive/reports/全方位评估报告-2026-05-01.md`
 
 ## Reports And Evidence
@@ -65,10 +73,6 @@ Recently archived historical reports:
 - `docs/reports/artifact-manifest-2026-06-02.md`
 - `docs/reports/project-engineering-compliance-remediation-2026-06-02.md`
 - `docs/reports/full-project-code-review-2026-06-02.md`
-- `docs/reports/full-project-audit-2026-05-25.md`
-- `docs/reports/full-regression-2026-05-27.md`
-- `docs/reports/observability-warning-budget-2026-05-27.md`
-- `docs/reports/repository-cleanup-2026-05-27.md`
 - `docs/reports/project-conventions-remediation-2026-05-31.md`
 - `docs/reports/strategy_24m_duckdb_report.md`
 - `docs/reports/zhangmengzhu-16-articles-analysis-2026-06-02.md`

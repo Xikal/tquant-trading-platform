@@ -1,6 +1,6 @@
 SHELL := /bin/bash
 
-.PHONY: frontend-build native-build native-sync backend-compile version-sync version-check qa ui-smoke warning-budget full-regression full-regression-release full-regression-cloud prod-preflight runtime-snapshot rust-bench go-rust-acceptance deploy-cloud deploy-cloud-fast deploy-cloud-verify public-up public-down docker-sqlite-up docker-sqlite-down docker-mysql-up docker-mysql-down
+.PHONY: frontend-build native-build native-sync backend-compile version-sync version-check qa ui-smoke warning-budget full-regression full-regression-release full-regression-cloud prod-preflight runtime-snapshot rust-bench go-rust-acceptance deploy-cloud deploy-cloud-web deploy-cloud-go deploy-cloud-full deploy-cloud-fast deploy-cloud-verify public-up public-down docker-sqlite-up docker-sqlite-down docker-mysql-up docker-mysql-down
 
 frontend-build:
 	cd frontend && npm run build
@@ -52,6 +52,16 @@ go-rust-acceptance:
 
 deploy-cloud:
 	./scripts/one_click_cloud_deploy.sh
+
+deploy-cloud-web:
+	cd frontend && npm run build
+	./scripts/one_click_cloud_deploy.sh --scope frontend-hot --frontend-hot-required
+
+deploy-cloud-go:
+	./scripts/one_click_cloud_deploy.sh --scope go
+
+deploy-cloud-full:
+	./scripts/one_click_cloud_deploy.sh --scope all --full
 
 deploy-cloud-fast:
 	./scripts/one_click_cloud_deploy.sh --fast

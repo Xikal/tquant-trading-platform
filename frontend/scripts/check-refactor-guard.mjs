@@ -3,11 +3,13 @@ import { join, relative } from "node:path";
 
 const ROOT = new URL("../src", import.meta.url).pathname;
 const allowed = new Set(["ui/grid/VirtualGrid.tsx"]);
+const allowedSignalDefinitionDirs = ["state/realtime/"];
 const statePatterns = [
   { label: "useState", regex: /\buseState\b/ },
   { label: "useReducer", regex: /\buseReducer\b/ },
 ];
 const tsxPatterns = [
+  { label: "AntD icons barrel import", regex: /from\s+["']@ant-design\/icons["']/ },
   { label: "raw AntD Table import", regex: /import\s+\{[^}]*\bTable\b[^}]*\}\s+from\s+["']antd["']/ },
   { label: "echarts-for-react import", regex: /from\s+["']echarts-for-react["']/ },
   { label: "raw AntD Table JSX", regex: /<Table\b/ },
@@ -46,6 +48,12 @@ for (const file of walk(ROOT)) {
   const text = readFileSync(file, "utf8");
   const lines = text.split(/\r?\n/);
   const patterns = /\.tsx$/.test(file) ? [...statePatterns, ...tsxPatterns] : statePatterns;
+  if (definesSignal(text) && !allowedSignalDefinitionDirs.some((dir) => rel.startsWith(dir))) {
+    violations.push(`${rel}:1 signal definition outside hot realtime state path`);
+  }
+  for (const violation of findFastStoreIntervalViolations(rel, text)) {
+    violations.push(violation);
+  }
   lines.forEach((line, index) => {
     for (const pattern of patterns) {
       if (pattern.regex.test(line)) {
@@ -62,3 +70,31 @@ if (violations.length) {
 }
 
 console.log("Frontend refactor guard passed.");
+
+function definesSignal(text) {
+  return /from\s+["']@preact\/signals-react["']/.test(text) && /\bsignal\s*</.test(text);
+}
+
+function findFastStoreIntervalViolations(rel, text) {
+  const violations = [];
+  const intervalRegex = /setInterval\s*\(([\s\S]{0,900}?),\s*(\d{1,4})\s*\)/g;
+  for (const match of text.matchAll(intervalRegex)) {
+    const intervalMs = Number(match[2]);
+    if (!Number.isFinite(intervalMs) || intervalMs > 1000) {
+      continue;
+    }
+    const callback = match[1];
+    if (writesGlobalStore(callback)) {
+      const line = text.slice(0, match.index ?? 0).split(/\r?\n/).length;
+      violations.push(`${rel}:${line} <=1000ms setInterval writes Zustand/global store`);
+    }
+  }
+  return violations;
+}
+
+function writesGlobalStore(text) {
+  return (
+    /\.setState\s*\(/.test(text) ||
+    /\bset[A-Z][A-Za-z0-9_]*\s*\(/.test(text) && /use[A-Za-z0-9_]*Store/.test(text)
+  );
+}

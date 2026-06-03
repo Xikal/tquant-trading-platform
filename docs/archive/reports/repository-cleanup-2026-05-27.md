@@ -8,7 +8,7 @@
 
 - 本地运行缓存：`.runtime/`
   - 内容包括临时 SQLite、smoke/preflight 日志、full-regression 临时 JSON/Markdown、warning-budget 临时 JSON、移动端截图/XML。
-  - 判定依据：`.runtime/` 已在 `.gitignore` 中；持久结论已汇总到 `docs/reports/full-regression-2026-05-27.md`、`docs/reports/observability-warning-budget-2026-05-27.md` 和云端性能报告。
+  - 判定依据：`.runtime/` 已在 `.gitignore` 中；持久结论已汇总到 `docs/archive/reports/full-regression-2026-05-27.md`、`docs/archive/reports/observability-warning-budget-2026-05-27.md` 和云端性能报告。
 
 - Python 缓存：`__pycache__/`、`.pytest_cache/`
   - 判定依据：均为解释器/pytest 可再生成缓存，已被 `.gitignore` 覆盖。
@@ -39,10 +39,10 @@
 - `docs/archive/plans/策略体系重组方案.md`
   - 增加历史状态说明，避免旧策略分层方案被误当作当前上线验收口径。
 
-- `docs/reports/full-regression-2026-05-27.md`
+- `docs/archive/reports/full-regression-2026-05-27.md`
   - 移除对 `.runtime/full-regression/...` 临时明细报告的持久引用，改为说明临时报告已汇总到本文。
 
-- `docs/reports/observability-warning-budget-2026-05-27.md`
+- `docs/archive/reports/observability-warning-budget-2026-05-27.md`
   - 移除对 `.runtime/full-regression/...` 临时明细报告的持久引用，改为说明临时报告已汇总到本文。
 
 ## Kept

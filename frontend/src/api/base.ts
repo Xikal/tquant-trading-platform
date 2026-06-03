@@ -23,6 +23,15 @@ interface AuthRefreshPayload {
   access_token?: string
 }
 
+export interface BffPartialError {
+  source?: string
+  detail?: string
+}
+
+export interface BffPartialErrorPayload {
+  partial_errors?: Array<BffPartialError | string> | null
+}
+
 export async function request<T>(path: string, init?: ApiRequestInit): Promise<T> {
   const { timeoutMs, fetchInit } = splitApiRequestInit(init)
   let headers = buildRequestHeaders(fetchInit)
@@ -64,10 +73,41 @@ export async function request<T>(path: string, init?: ApiRequestInit): Promise<T
           throw error
         }
 
-        return response.json() as Promise<T>
+        const payload = await response.json() as T
+        return payload
       }, canRetry),
     canRetry
   )
+}
+
+export function getBffPartialErrors(payload: unknown): BffPartialError[] {
+  if (!payload || typeof payload !== "object" || !("partial_errors" in payload)) {
+    return []
+  }
+  const errors = (payload as BffPartialErrorPayload).partial_errors
+  if (!Array.isArray(errors)) {
+    return []
+  }
+  return errors
+    .map((item): BffPartialError | null => {
+      if (typeof item === "string") {
+        return { detail: item }
+      }
+      if (!item || typeof item !== "object") {
+        return null
+      }
+      const source = typeof item.source === "string" ? item.source : undefined
+      const detail = typeof item.detail === "string" ? item.detail : undefined
+      return source || detail ? { source, detail } : null
+    })
+    .filter((item): item is BffPartialError => item !== null)
+}
+
+export function bffPartialErrorsText(payload: unknown): string {
+  return getBffPartialErrors(payload)
+    .map((item) => [item.source, item.detail].filter(Boolean).join("："))
+    .filter(Boolean)
+    .join("；")
 }
 
 function splitApiRequestInit(init?: ApiRequestInit): { timeoutMs?: number; fetchInit?: RequestInit } {

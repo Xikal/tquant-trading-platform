@@ -2,7 +2,7 @@
 
 > 日期：2026-05-30　分支：`codex/phase4-phase5-architecture`
 > 性质：**最终方案（非过渡）**，仅为待执行规格，不在本文件中改代码/部署。
-> 配套：`docs/reports/full-project-latest-code-review-2026-05-30.md`（P0、P1-1、P1-3）。
+> 配套：`docs/archive/reports/full-project-latest-code-review-2026-05-30.md`（P0、P1-1、P1-3）。
 > 数据源：`strategy_24m_duckdb_report.md` / `strategy-24m-backtest-2026-05-30.md`（2026-05-30 全策略 24 个月回测）。
 
 本方案做两件最终决定，并把它们焊死成一个闭环：

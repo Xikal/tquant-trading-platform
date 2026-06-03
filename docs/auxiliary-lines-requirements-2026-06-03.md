@@ -6,7 +6,7 @@
 关联文档：
 
 - `docs/a-share-key-level-engine-execution-plan-2026-06-02.md`
-- `docs/market-support-resistance-ma30-development-plan-2026-06-01.md`
+- `docs/archive/plans/market-support-resistance-ma30-development-plan-2026-06-01.md`
 - `docs/engineering-conventions.md`
 
 ## 1. 背景

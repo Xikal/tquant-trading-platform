@@ -42,6 +42,17 @@ async function main() {
 
 function classifyAsset(file) {
   if (!file.endsWith(".js")) return "style-or-static";
+  if (
+    file.startsWith("antd-shell-") ||
+    file.startsWith("antd-core-") ||
+    file.startsWith("antd-controls-") ||
+    file.startsWith("antd-display-") ||
+    file.startsWith("antd-feedback-") ||
+    file.startsWith("antd-icons-") ||
+    file.startsWith("antd-navigation-")
+  ) {
+    return "first-screen-js";
+  }
   if (file.startsWith("echarts-") || file.startsWith("antd-")) {
     return "heavy-vendor";
   }

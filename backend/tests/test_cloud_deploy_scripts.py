@@ -168,10 +168,39 @@ def test_quick_deploy_prints_machine_readable_summary() -> None:
     assert "print_deploy_summary" in quick_script
     assert "summary outcome=" in quick_script
     assert "mode=${mode}" in quick_script
+    assert "scope=${DEPLOY_TARGET_SCOPE}" in quick_script
     assert "public_domain_verify=${VERIFY_PUBLIC_DOMAIN}" in quick_script
     assert "performance_verify=${RUN_PERFORMANCE_VERIFY}" in quick_script
     assert 'print_deploy_summary "verify-ok"' in quick_script
     assert 'print_deploy_summary "deploy-ok"' in quick_script
+
+
+def test_deploy_scripts_support_scope_aware_fast_paths() -> None:
+    deploy_script = read_repo_file("scripts/deploy_cloud_server.sh")
+    quick_script = read_repo_file("scripts/quick_cloud_deploy.sh")
+    one_click_script = read_repo_file("scripts/one_click_cloud_deploy.sh")
+    deploy_example = read_repo_file(".env.deploy.local.example")
+
+    assert 'DEPLOY_TARGET_SCOPE="${DEPLOY_TARGET_SCOPE:-auto}"' in deploy_script
+    assert "resolve_deploy_scope" in deploy_script
+    assert "frontend-hot" in deploy_script
+    assert "go-services/*" in deploy_script
+    assert "create frontend hot package" in deploy_script
+    assert "frontend_hot:updated" in deploy_script
+    assert "frontend_hot_image:rebuilt" in deploy_script
+    assert "tquant-web:mysql-before-frontend-hot" in deploy_script
+    assert "Dockerfile.frontend-hot" in deploy_script
+    assert "rm -rf /app/frontend/dist" in deploy_script
+    assert "sudo docker build -t tquant-web:mysql -f \"$WORK_DIR/Dockerfile.frontend-hot\"" in deploy_script
+    assert "docker commit" not in deploy_script
+    assert "skip HTTPS/backup cron refresh for scope" in deploy_script
+    assert "skip latest low-buy data closure for scope" in deploy_script
+    assert "--scope <auto|all|frontend-hot|go|ops>" in quick_script
+    assert "DEPLOY_FRONTEND_HOT_REQUIRED" in quick_script
+    assert "VERIFY_WEB_IMAGE_SYNC" in quick_script
+    assert "web_image:skipped_frontend_hot" in quick_script
+    assert "--scope  Override target selection" in one_click_script
+    assert "DEPLOY_TARGET_SCOPE=auto" in deploy_example
 
 
 def test_makefile_has_one_click_deploy_shortcuts() -> None:
@@ -179,10 +208,29 @@ def test_makefile_has_one_click_deploy_shortcuts() -> None:
 
     assert "deploy-cloud:" in makefile
     assert "./scripts/one_click_cloud_deploy.sh" in makefile
+    assert "deploy-cloud-web:" in makefile
+    assert "./scripts/one_click_cloud_deploy.sh --scope frontend-hot --frontend-hot-required" in makefile
+    assert "deploy-cloud-go:" in makefile
+    assert "./scripts/one_click_cloud_deploy.sh --scope go" in makefile
+    assert "deploy-cloud-full:" in makefile
+    assert "./scripts/one_click_cloud_deploy.sh --scope all --full" in makefile
     assert "deploy-cloud-fast:" in makefile
     assert "./scripts/one_click_cloud_deploy.sh --fast" in makefile
     assert "deploy-cloud-verify:" in makefile
     assert "./scripts/one_click_cloud_deploy.sh --verify-only" in makefile
+
+
+def test_ci_reuses_frontend_artifact_and_selects_deploy_scope() -> None:
+    workflow = read_repo_file(".github/workflows/ci.yml")
+
+    assert "Upload frontend dist artifact" in workflow
+    assert "actions/upload-artifact@v4" in workflow
+    assert "Download frontend dist artifact" in workflow
+    assert "actions/download-artifact@v4" in workflow
+    assert "Select deploy target scope" in workflow
+    assert "DEPLOY_TARGET_SCOPE=$scope" in workflow
+    assert "DEPLOY_CHANGED_FILES<<DEPLOY_FILES" in workflow
+    assert "DEPLOY_FRONTEND_HOT_REQUIRED" in workflow
 
 
 def test_ci_deploy_fails_when_cloud_secrets_are_missing() -> None:

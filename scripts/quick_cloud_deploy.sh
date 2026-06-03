@@ -33,6 +33,9 @@ HTTPS_REQUIRED=1
 CLOUD_AUTH_COOKIE_SECURE=true
 CLOUD_AUTH_ALLOW_INSECURE_HTTP_COOKIE=false
 VERIFY_PUBLIC_DOMAIN="${VERIFY_PUBLIC_DOMAIN:-0}"
+DEPLOY_TARGET_SCOPE="${DEPLOY_TARGET_SCOPE:-auto}"
+DEPLOY_FRONTEND_HOT_REQUIRED="${DEPLOY_FRONTEND_HOT_REQUIRED:-0}"
+VERIFY_WEB_IMAGE_SYNC=1
 
 log() {
   printf '[quick-deploy] %s\n' "$*"
@@ -46,7 +49,7 @@ print_deploy_summary() {
   elif [[ "$RUN_FULL_TESTS" == "1" ]]; then
     mode="full"
   fi
-  log "summary outcome=${outcome} mode=${mode} target=${CLOUD_USER}@${CLOUD_HOST} port=${CLOUD_APP_PORT} domain=${CLOUD_DOMAIN:-none} https_required=${HTTPS_REQUIRED} public_domain_verify=${VERIFY_PUBLIC_DOMAIN} performance_verify=${RUN_PERFORMANCE_VERIFY}"
+  log "summary outcome=${outcome} mode=${mode} scope=${DEPLOY_TARGET_SCOPE} target=${CLOUD_USER}@${CLOUD_HOST} port=${CLOUD_APP_PORT} domain=${CLOUD_DOMAIN:-none} https_required=${HTTPS_REQUIRED} public_domain_verify=${VERIFY_PUBLIC_DOMAIN} performance_verify=${RUN_PERFORMANCE_VERIFY}"
   if [[ -n "$CLOUD_DOMAIN" ]]; then
     log "summary urls http=http://${CLOUD_HOST}:${CLOUD_APP_PORT} https=https://${CLOUD_DOMAIN}"
   else
@@ -69,6 +72,10 @@ Options:
   --full          Run the slower local checks and latest-data acceptance.
   --fast-risk-accepted
                  Skip local compile/build checks for emergency deploys only.
+  --scope <auto|all|frontend-hot|go|ops>
+                 Choose deployment target. auto is the default and uses changed files.
+  --frontend-hot-required
+                 Fail instead of falling back when frontend-hot has no dist artifact.
   --performance-verify
                  Run online Go/Rust performance gates after deploy/verify.
   --public-domain-verify
@@ -111,6 +118,14 @@ while [[ $# -gt 0 ]]; do
       RUN_FULL_TESTS=0
       RUN_STRATEGY_TEST=0
       RUN_LATEST_DATA_ACCEPTANCE=0
+      shift
+      ;;
+    --scope)
+      DEPLOY_TARGET_SCOPE="${2:?missing scope}"
+      shift 2
+      ;;
+    --frontend-hot-required)
+      DEPLOY_FRONTEND_HOT_REQUIRED=1
       shift
       ;;
     --performance-verify)
@@ -172,6 +187,7 @@ export CLOUD_DOMAIN CLOUD_CERT_EMAIL CLOUD_AUTH_COOKIE_SECURE CLOUD_AUTH_ALLOW_I
 export AUTO_INITIAL_GIT_COMMIT AUTO_INSTALL_BACKUP_CRON AUTO_CONFIGURE_HTTPS REFRESH_HTTPS_CONFIG HTTPS_REQUIRED
 export VERIFY_PUBLIC_DOMAIN
 export RUN_COMPILE RUN_FRONTEND_BUILD RUN_STRATEGY_TEST RUN_FULL_TESTS RUN_LATEST_DATA_ACCEPTANCE
+export DEPLOY_TARGET_SCOPE DEPLOY_FRONTEND_HOT_REQUIRED
 export CLOUD_SSH_TIMEOUT CLOUD_SSH_CONNECT_TIMEOUT CLOUD_SSH_SERVER_ALIVE_COUNT_MAX
 
 if [[ -z "$CLOUD_HOST" ]]; then
@@ -194,7 +210,10 @@ chmod 600 "$CLOUD_SSH_KEY" 2>/dev/null || true
 
 verify_remote() {
   log "verify remote service health"
-  cloud_ssh env CLOUD_APP_PORT="$CLOUD_APP_PORT" CLOUD_PROJECT_DIR="$CLOUD_PROJECT_DIR" bash -s <<'REMOTE'
+  if [[ "$DEPLOY_TARGET_SCOPE" == "frontend-hot" ]]; then
+    VERIFY_WEB_IMAGE_SYNC=0
+  fi
+  cloud_ssh env CLOUD_APP_PORT="$CLOUD_APP_PORT" CLOUD_PROJECT_DIR="$CLOUD_PROJECT_DIR" VERIFY_WEB_IMAGE_SYNC="$VERIFY_WEB_IMAGE_SYNC" bash -s <<'REMOTE'
 set -euo pipefail
 wait_for_container() {
   local name="$1"
@@ -230,12 +249,16 @@ curl_retry() {
 for name in tquant-app-mysql tquant-runtime-scheduler-mysql tquant-runtime-worker-mysql tquant-backtest-worker-mysql tquant-go-bff-gateway tquant-go-market-read-service tquant-go-scan-worker; do
   wait_for_container "$name"
 done
-EXPECTED_WEB_IMAGE=$(sudo docker image inspect tquant-web:mysql --format '{{.Id}}')
-for container in tquant-app-mysql tquant-runtime-scheduler-mysql tquant-runtime-worker-mysql tquant-backtest-worker-mysql; do
-  ACTUAL_WEB_IMAGE=$(sudo docker inspect "$container" --format '{{.Image}}')
-  test "$ACTUAL_WEB_IMAGE" = "$EXPECTED_WEB_IMAGE"
-done
-echo web_image:ok
+if test "${VERIFY_WEB_IMAGE_SYNC:-1}" = "1"; then
+  EXPECTED_WEB_IMAGE=$(sudo docker image inspect tquant-web:mysql --format '{{.Id}}')
+  for container in tquant-app-mysql tquant-runtime-scheduler-mysql tquant-runtime-worker-mysql tquant-backtest-worker-mysql; do
+    ACTUAL_WEB_IMAGE=$(sudo docker inspect "$container" --format '{{.Image}}')
+    test "$ACTUAL_WEB_IMAGE" = "$EXPECTED_WEB_IMAGE"
+  done
+  echo web_image:ok
+else
+  echo web_image:skipped_frontend_hot
+fi
 grep -Eq '^AUTH_COOKIE_SECURE=true$' "$CLOUD_PROJECT_DIR/.env"
 grep -Eq '^AUTH_ALLOW_INSECURE_HTTP_COOKIE=false$' "$CLOUD_PROJECT_DIR/.env"
 grep -Eq '^HTTPS_REQUIRED=1$' "$CLOUD_PROJECT_DIR/.env"
@@ -321,6 +344,8 @@ RUN_FRONTEND_BUILD="$RUN_LOCAL_CHECKS" \
 RUN_STRATEGY_TEST="$RUN_STRATEGY_TEST" \
 RUN_FULL_TESTS="$RUN_FULL_TESTS" \
 RUN_LATEST_DATA_ACCEPTANCE="$RUN_LATEST_DATA_ACCEPTANCE" \
+DEPLOY_TARGET_SCOPE="$DEPLOY_TARGET_SCOPE" \
+DEPLOY_FRONTEND_HOT_REQUIRED="$DEPLOY_FRONTEND_HOT_REQUIRED" \
 AUTO_INITIAL_GIT_COMMIT="$AUTO_INITIAL_GIT_COMMIT" \
 AUTO_INSTALL_BACKUP_CRON="$AUTO_INSTALL_BACKUP_CRON" \
 AUTO_CONFIGURE_HTTPS="$AUTO_CONFIGURE_HTTPS" \

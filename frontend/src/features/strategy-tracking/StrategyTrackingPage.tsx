@@ -1,4 +1,5 @@
 import { Alert, Button, Drawer, Segmented, Tabs } from "antd";
+import { bffPartialErrorsText } from "../../api/base";
 import type { StrategyMeta } from "../../api/strategies";
 import type { StrategyTrackingAnalysisTab } from "../../stores/strategyTrackingStore";
 import { useStrategyTrackingStore } from "../../stores/strategyTrackingStore";
@@ -79,7 +80,7 @@ export function StrategyTrackingPage({ strategyMeta }: { strategyMeta: StrategyM
         <Alert type="info" showIcon title={filterNotice(store)} />
       ) : null}
       {result?.partial_errors.length ? (
-        <Alert type="warning" showIcon title={result.partial_errors.slice(0, 2).join("；")} />
+        <Alert type="warning" showIcon title={`部分降级源：${bffPartialErrorsText(result)}`} />
       ) : null}
       {errorText ? <TqErrorResult title="策略跟踪加载失败" description={errorText} onRetry={() => void query.refetch()} /> : null}
       {!errorText ? (
@@ -318,7 +319,14 @@ function analysisTabs(
       {
         key: "trade-review",
         label: "复盘",
-        children: <TradeReviewPanel data={tradingExperience.reviewQuery.data} loading={tradingExperience.reviewQuery.isFetching} />,
+        children: (
+          <TradeReviewPanel
+            data={tradingExperience.reviewQuery.data}
+            loading={tradingExperience.reviewQuery.isFetching}
+            boardFilter={store.boardFilter}
+            onBoardFilterChange={store.setBoardFilter}
+          />
+        ),
       },
       {
         key: "trade-journal",
@@ -331,7 +339,14 @@ function analysisTabs(
     items.push({
       key: "relative-strength",
       label: "抗跌事实",
-      children: <RelativeStrengthBoard data={tradingExperience.rsQuery.data} loading={tradingExperience.rsQuery.isFetching} />,
+      children: (
+        <RelativeStrengthBoard
+          data={tradingExperience.rsQuery.data}
+          loading={tradingExperience.rsQuery.isFetching}
+          boardFilter={store.boardFilter}
+          onBoardFilterChange={store.setBoardFilter}
+        />
+      ),
     });
   }
   return items;

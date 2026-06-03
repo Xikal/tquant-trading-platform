@@ -8,6 +8,8 @@ describe("TradeReviewPanel", () => {
     const html = renderToStaticMarkup(
       <TradeReviewPanel
         loading={false}
+        boardFilter="main_only"
+        onBoardFilterChange={() => undefined}
         data={{
           enabled: true,
           pool_date: "2026-05-24",
@@ -17,28 +19,48 @@ describe("TradeReviewPanel", () => {
           engine_version: "trading-experience-v1",
           source: "daily_bar_snapshots",
           research_only: true,
-          items: [{
-            pool_date: "2026-05-24",
-            symbol: "600000",
-            name: "浦发银行",
-            status: "dropped",
-            entry_pct: 9.2,
-            volume_ratio: 2.1,
-            mainline_state: "sector_known",
-            sector_role: "银行",
-            drop_reason: "跟踪期最大单日回撤 -3.50%",
-            tracked_days: 3,
-            evidence: ["信号日涨幅 9.20%"],
-            data_quality: "ok",
-            as_of: "2026-05-24T15:10:00",
-            engine_version: "trading-experience-v1",
-          }],
+          items: [
+            {
+              pool_date: "2026-05-24",
+              symbol: "600000",
+              name: "浦发银行",
+              status: "dropped",
+              entry_pct: 9.2,
+              volume_ratio: 2.1,
+              mainline_state: "sector_known",
+              sector_role: "银行",
+              drop_reason: "跟踪期最大单日回撤 -3.50%",
+              tracked_days: 3,
+              evidence: ["信号日涨幅 9.20%"],
+              data_quality: "ok",
+              as_of: "2026-05-24T15:10:00",
+              engine_version: "trading-experience-v1",
+            },
+            {
+              pool_date: "2026-05-24",
+              symbol: "300001",
+              name: "创业样本",
+              status: "retained",
+              entry_pct: 3.1,
+              volume_ratio: 1.2,
+              mainline_state: "unknown",
+              sector_role: "测试",
+              drop_reason: "",
+              tracked_days: 1,
+              evidence: ["信号日涨幅 3.10%"],
+              data_quality: "ok",
+              as_of: "2026-05-24T15:10:00",
+              engine_version: "trading-experience-v1",
+            },
+          ],
         }}
       />,
     );
 
     expect(html).toContain("观察池只用于收盘复盘");
+    expect(html).toContain("只看主板");
     expect(html).toContain("浦发银行");
+    expect(html).not.toContain("创业样本");
     expect(html).not.toContain("production_score");
     expect(html).not.toContain("稳赚");
   });

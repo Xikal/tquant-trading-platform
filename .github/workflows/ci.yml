@@ -78,9 +78,19 @@ jobs:
       - name: Build frontend
         working-directory: frontend
         run: npm run build
+      - name: Check frontend bundle budget
+        working-directory: frontend
+        run: node ./scripts/bundle-report.mjs && npm run check:bundle-budget
       - name: Run frontend tests
         working-directory: frontend
         run: npm test -- --run
+      - name: Upload frontend dist artifact
+        if: github.event_name == 'push'
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-dist
+          path: frontend/dist
+          if-no-files-found: error
 
   go-rust:
     runs-on: ubuntu-latest
@@ -127,6 +137,66 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - name: Download frontend dist artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend-dist
+          path: frontend/dist
+      - name: Select deploy target scope
+        run: |
+          set -euo pipefail
+          if git rev-parse --verify HEAD^ >/dev/null 2>&1; then
+            changed_files="$(git diff --name-only HEAD^ HEAD)"
+          else
+            changed_files=""
+          fi
+          printf '%s\n' "$changed_files" > /tmp/gupiao_changed_files.txt
+          scope=ops
+          has_frontend=0
+          has_go=0
+          has_ops=0
+          if [ -z "$changed_files" ]; then
+            scope=all
+          else
+            while IFS= read -r path; do
+              [ -z "$path" ] && continue
+              case "$path" in
+                frontend/*)
+                  has_frontend=1
+                  ;;
+                go-services/*)
+                  has_go=1
+                  ;;
+                docs/*|AGENTS.md|IMPLEMENTATION_PLAN.md)
+                  ;;
+                .github/workflows/ci.yml|.gitignore|.env.deploy.local.example|Makefile|backend/tests/test_cloud_deploy_scripts.py|scripts/cloud_ssh_lib.sh|scripts/deploy_cloud_server.sh|scripts/quick_cloud_deploy.sh|scripts/one_click_cloud_deploy.sh|scripts/install_https_nginx.sh|scripts/install_backup_cron.sh|scripts/backup_database.sh|scripts/clean_local_artifacts.sh)
+                  has_ops=1
+                  ;;
+                *)
+                  scope=all
+                  ;;
+              esac
+              [ "$scope" = all ] && break
+            done <<< "$changed_files"
+            if [ "$scope" != all ]; then
+              if [ "$has_frontend" = 1 ] && [ "$has_go" = 0 ] && [ "$has_ops" = 0 ]; then
+                scope=frontend-hot
+              elif [ "$has_frontend" = 0 ] && [ "$has_go" = 1 ] && [ "$has_ops" = 0 ]; then
+                scope=go
+              elif [ "$has_frontend" = 0 ] && [ "$has_go" = 0 ]; then
+                scope=ops
+              else
+                scope=all
+              fi
+            fi
+          fi
+          echo "DEPLOY_TARGET_SCOPE=$scope" >> "$GITHUB_ENV"
+          echo "DEPLOY_CHANGED_FILES<<DEPLOY_FILES" >> "$GITHUB_ENV"
+          cat /tmp/gupiao_changed_files.txt >> "$GITHUB_ENV"
+          echo "DEPLOY_FILES" >> "$GITHUB_ENV"
+          echo "selected deploy scope: $scope"
       - name: Deploy through project script
         env:
           CLOUD_HOST: ${{ secrets.CLOUD_HOST }}
@@ -144,6 +214,7 @@ jobs:
           RUN_FRONTEND_BUILD: "0"
           RUN_STRATEGY_TEST: "0"
           RUN_FULL_TESTS: "0"
+          DEPLOY_FRONTEND_HOT_REQUIRED: "1"
         run: |
           if [ -z "${CLOUD_HOST}" ] || [ -z "${CLOUD_USER}" ]; then
             echo "CLOUD_HOST/CLOUD_USER secrets 未配置，不能执行真实部署。"

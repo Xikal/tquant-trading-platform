@@ -7,7 +7,7 @@ import {
   ReadOutlined,
   SettingOutlined,
   WalletOutlined,
-} from "@ant-design/icons";
+} from "../../ui/icons";
 import type { ReactNode } from "react";
 import type { AuthUser } from "../../types";
 import { isAdmin } from "../shared/strategyPermissions";

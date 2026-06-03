@@ -425,6 +425,22 @@
   min-width: 0;
 }
 
+.strategy-tracking-tab-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+  min-width: 0;
+}
+
+.strategy-tracking-tab-toolbar .ant-typography {
+  min-width: 0;
+}
+
+.strategy-tracking-tab-toolbar .ant-btn {
+  flex: 0 0 auto;
+}
+
 .paper-etf-t0-kv-grid,
 .paper-etf-t0-review-list,
 .paper-grouped-performance-list {

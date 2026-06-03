@@ -1,6 +1,6 @@
 # docs/reports 历史机器产物清单 - 2026-06-02
 
-状态：治理清单 / 暂不迁移
+状态：治理清单 / 部分本地清理
 生成日期：2026-06-02
 适用范围：`docs/reports/` 顶层 JSON、JSONL、zip、parquet 历史产物
 
@@ -9,7 +9,7 @@
 - 本清单只记录顶层历史机器产物，不包含子目录中的 walk-forward 明细、窗口结果和 manifest。
 - 引用计数来自 `rg --fixed-strings <basename> .` 的当前工作区扫描，作为迁移优先级线索，不作为删除许可。
 - 任何迁移或删除前仍需重新做引用检查，并确认不影响代码、脚本、测试、部署、审计和报告追溯。
-- 本轮不移动、不删除这些历史产物；先建立可追踪治理入口。
+- 2026-06-03 清理已移除 4 个零活引用、未跟踪的本地云端性能 JSON。
 
 ## 分类规则
 
@@ -49,10 +49,10 @@
 | `docs/reports/gupiao-cloud-performance-2026-05-27-155515.json` | json | 1 | 迁移候选 |
 | `docs/reports/gupiao-cloud-performance-2026-05-28-022048.json` | json | 2 | 迁移候选 |
 | `docs/reports/gupiao-cloud-performance-2026-05-30-153724.json` | json | 4 | 保留 |
-| `docs/reports/gupiao-cloud-performance-2026-05-31-233419.json` | json | 0 | 迁移候选 |
-| `docs/reports/gupiao-cloud-performance-2026-05-31-234942.json` | json | 0 | 迁移候选 |
-| `docs/reports/gupiao-cloud-performance-2026-06-01-001827.json` | json | 0 | 迁移候选 |
-| `docs/reports/gupiao-cloud-performance-2026-06-01-005902.json` | json | 0 | 迁移候选 |
+| `docs/reports/gupiao-cloud-performance-2026-05-31-233419.json` | json | 0 | 已清理本地未跟踪产物 |
+| `docs/reports/gupiao-cloud-performance-2026-05-31-234942.json` | json | 0 | 已清理本地未跟踪产物 |
+| `docs/reports/gupiao-cloud-performance-2026-06-01-001827.json` | json | 0 | 已清理本地未跟踪产物 |
+| `docs/reports/gupiao-cloud-performance-2026-06-01-005902.json` | json | 0 | 已清理本地未跟踪产物 |
 | `docs/reports/gupiao-go-rust-runtime-performance-2026-05-27.json` | json | 1 | 迁移候选 |
 | `docs/reports/instrument-metadata-backfill-2026-05-28.json` | json | 4 | 保留 |
 | `docs/reports/invalid-daily-bar-cleanup-2026-05-28.json` | json | 1 | 迁移候选 |

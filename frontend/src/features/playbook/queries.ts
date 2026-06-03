@@ -7,7 +7,10 @@ export function usePriorityBoardQuery(strategy: StrategyVariant = "baseline", li
   return useQuery({
     queryKey: queryKeys.priorityBoard(strategy, limit),
     queryFn: () => api.getLowBuyPriorityBoard(limit, strategy),
-    staleTime: 20_000,
+    placeholderData: (previous) => previous,
+    refetchOnMount: false,
+    refetchOnReconnect: true,
+    staleTime: 30_000,
     refetchInterval: 30_000,
   });
 }

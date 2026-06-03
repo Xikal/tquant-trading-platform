@@ -1,19 +1,41 @@
-import { Tag, Typography } from "antd";
+import { Button, Tag, Typography } from "antd";
+import { useMemo } from "react";
 import { DataTable, PercentCell } from "../../ui/table/DataTable";
 import { TqEmpty } from "../../ui/feedback/StateViews";
 import type { ReviewPoolItem, ReviewPoolResponse } from "../../types";
+import { filterMainBoardItems, nextBoardFilter, type BoardFilter } from "./boardFilters";
 
-export function TradeReviewPanel({ data, loading }: { data?: ReviewPoolResponse; loading: boolean }) {
+export function TradeReviewPanel({
+  data,
+  loading,
+  boardFilter = "include_all",
+  onBoardFilterChange,
+}: {
+  data?: ReviewPoolResponse;
+  loading: boolean;
+  boardFilter?: BoardFilter;
+  onBoardFilterChange?: (boardFilter: BoardFilter) => void;
+}) {
+  const items = useMemo(() => filterMainBoardItems(data?.items ?? [], boardFilter), [data?.items, boardFilter]);
   if (data && !data.enabled) {
     return <TqEmpty title="复盘入口未开启" description="当前功能开关关闭，策略跟踪保持既有展示。" />;
   }
   return (
     <div className="strategy-tracking-analysis-stack">
-      <Typography.Text type="secondary">观察池只用于收盘复盘、次日剔除和三日留存，不进入生产排序。</Typography.Text>
+      <div className="strategy-tracking-tab-toolbar">
+        <Typography.Text type="secondary">观察池只用于收盘复盘、次日剔除和三日留存，不进入生产排序。</Typography.Text>
+        <Button
+          size="small"
+          type={boardFilter === "main_only" ? "primary" : "default"}
+          onClick={() => onBoardFilterChange?.(nextBoardFilter(boardFilter))}
+        >
+          只看主板
+        </Button>
+      </div>
       <DataTable<ReviewPoolItem>
         rowKey={(item) => `${item.pool_date}-${item.symbol}`}
         loading={loading}
-        dataSource={data?.items ?? []}
+        dataSource={items}
         defaultScrollY={320}
         columns={[
           { title: "代码", dataIndex: "symbol", width: 96 },

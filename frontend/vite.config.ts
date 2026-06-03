@@ -65,37 +65,78 @@ function splitVendorChunks(id: string): string | undefined {
   if (normalized.includes("/@ant-design/icons")) {
     return "antd-icons";
   }
-  if (matchesAntdComponent(normalized, ["button", "float-button"])) {
-    return "antd-button";
+  if (matchesAntdComponent(normalized, [
+    "anchor",
+    "auto-complete",
+    "calendar",
+    "carousel",
+    "cascader",
+    "collapse",
+    "color-picker",
+    "date-picker",
+    "drawer",
+    "float-button",
+    "image",
+    "mentions",
+    "modal",
+    "qr-code",
+    "statistic",
+    "steps",
+    "time-picker",
+    "tour",
+    "transfer",
+    "tree",
+    "tree-select",
+    "upload",
+    "watermark",
+  ])) {
+    return "antd-detail";
+  }
+  if (matchesRcPackage(normalized, [
+    "async-validator",
+    "calendar",
+    "cascader",
+    "collapse",
+    "color-picker",
+    "dialog",
+    "picker",
+    "tree",
+    "tree-select",
+    "upload",
+  ])) {
+    return "antd-detail";
+  }
+  if (matchesAntdComponent(normalized, ["button"])) {
+    return "antd-shell";
   }
   if (matchesAntdComponent(normalized, ["checkbox", "switch", "slider", "radio"])) {
     return "antd-controls";
   }
   if (
-    matchesAntdComponent(normalized, ["modal", "drawer", "popconfirm", "popover", "tooltip"]) ||
+    matchesAntdComponent(normalized, ["popconfirm", "popover", "tooltip"]) ||
     matchesAntdComponent(normalized, ["result", "empty", "skeleton", "spin", "alert", "message", "notification", "progress"])
   ) {
     return "antd-feedback";
   }
   if (
-    matchesAntdComponent(normalized, ["tabs", "dropdown", "menu", "breadcrumb", "pagination", "steps"]) ||
+    matchesAntdComponent(normalized, ["tabs", "dropdown", "menu", "breadcrumb", "pagination"]) ||
     matchesAntdComponent(normalized, ["badge", "segmented"])
   ) {
     return "antd-navigation";
   }
   if (
-    matchesAntdComponent(normalized, ["form", "input", "input-number", "select", "date-picker", "time-picker", "tree-select"])
+    matchesAntdComponent(normalized, ["form", "input", "input-number", "select"])
   ) {
     return "antd-form";
   }
-  if (matchesAntdComponent(normalized, ["table", "list", "descriptions", "statistic", "tag", "timeline"])) {
+  if (matchesAntdComponent(normalized, ["table", "list", "descriptions", "tag", "timeline"])) {
     return "antd-display";
   }
-  if (matchesAntdComponent(normalized, ["row", "col", "grid", "layout", "card", "divider", "flex", "space"])) {
-    return "antd-layout";
-  }
-  if (normalized.includes("/@ant-design") || normalized.includes("/@rc-component") || normalized.includes("/rc-")) {
-    return "antd-foundation";
+  if (
+    matchesAntdComponent(normalized, ["row", "col", "grid", "layout", "card", "divider", "flex", "space"]) ||
+    matchesAntdComponent(normalized, ["typography", "config-provider", "theme"])
+  ) {
+    return "antd-shell";
   }
   if (
     normalized.includes("/antd/es/config-provider") ||
@@ -113,8 +154,11 @@ function splitVendorChunks(id: string): string | undefined {
   ) {
     return "antd-core";
   }
+  if (normalized.includes("/@ant-design") || normalized.includes("/@rc-component") || normalized.includes("/rc-")) {
+    return "antd-core";
+  }
   if (normalized.includes("/antd/")) {
-    return "antd";
+    return "antd-core";
   }
   if (normalized.includes("/@tanstack")) {
     return "tanstack";
@@ -129,5 +173,12 @@ function matchesAntdComponent(id: string, componentNames: string[]): boolean {
   return componentNames.some((component) => (
     id.includes(`/antd/es/${component}`) ||
     id.includes(`/antd/lib/${component}`)
+  ));
+}
+
+function matchesRcPackage(id: string, packageNames: string[]): boolean {
+  return packageNames.some((packageName) => (
+    id.includes(`/@rc-component/${packageName}/`) ||
+    id.includes(`/rc-${packageName}/`)
   ));
 }

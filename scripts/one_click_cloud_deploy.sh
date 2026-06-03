@@ -11,7 +11,7 @@ DEFAULT_DEPLOY_MODE="${DEFAULT_DEPLOY_MODE:-safe}"
 
 usage() {
   cat <<'EOF'
-Usage: scripts/one_click_cloud_deploy.sh [--safe|--fast|--full|--verify-only] [quick deploy options]
+Usage: scripts/one_click_cloud_deploy.sh [--safe|--fast|--full|--verify-only] [--scope <auto|all|frontend-hot|go|ops>] [quick deploy options]
 
 Config:
   Reads .env.deploy.local by default when present. Override with DEPLOY_ENV_FILE.
@@ -19,9 +19,10 @@ Config:
   Optional: CLOUD_USER, CLOUD_DOMAIN, CLOUD_CERT_EMAIL, CLOUD_PROJECT_DIR.
 
 Modes:
-  --safe   Default. Run quick deploy with local compile/build gates.
+  --safe   Default. Run quick deploy with local compile/build gates and auto scope.
   --fast   Explicit emergency path; maps to --fast-risk-accepted.
   --full   Run full local checks and latest-data acceptance.
+  --scope  Override target selection. auto is default; frontend-hot skips image rebuild.
   --verify-only
 
 One-click defaults also refresh HTTPS/nginx config and verify the public domain.
@@ -98,6 +99,10 @@ while [[ $# -gt 0 ]]; do
     --project-dir)
       CLOUD_PROJECT_DIR="${2:?missing project dir}"
       args+=("$1" "$2")
+      shift 2
+      ;;
+    --scope)
+      args+=("$1" "${2:?missing scope}")
       shift 2
       ;;
     --port)

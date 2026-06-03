@@ -1,5 +1,5 @@
 import { Button, Menu } from "antd";
-import { MenuFoldOutlined, MenuUnfoldOutlined } from "@ant-design/icons";
+import { MenuFoldOutlined, MenuUnfoldOutlined } from "../../ui/icons";
 import type { AuthUser } from "../../types";
 import type { Page } from "../workspace-shared/workspaceTypes";
 import { SETTINGS_NAV, visiblePrimaryNav } from "./navConfig";

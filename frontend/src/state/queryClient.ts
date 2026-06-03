@@ -3,6 +3,9 @@ import { QueryClient, type QueryClientConfig } from "@tanstack/react-query";
 export const queryClientDefaults = {
   staleTime: 15_000,
   gcTime: 5 * 60_000,
+  placeholderData: <T>(previousData: T | undefined) => previousData,
+  refetchOnMount: false,
+  refetchOnReconnect: true,
   refetchOnWindowFocus: false,
   retry: false,
   structuralSharing: true,

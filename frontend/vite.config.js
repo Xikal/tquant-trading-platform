@@ -64,31 +64,70 @@ function splitVendorChunks(id) {
     if (normalized.includes("/@ant-design/icons")) {
         return "antd-icons";
     }
-    if (matchesAntdComponent(normalized, ["button", "float-button"])) {
-        return "antd-button";
+    if (matchesAntdComponent(normalized, [
+        "anchor",
+        "auto-complete",
+        "calendar",
+        "carousel",
+        "cascader",
+        "collapse",
+        "color-picker",
+        "date-picker",
+        "drawer",
+        "float-button",
+        "image",
+        "mentions",
+        "modal",
+        "qr-code",
+        "statistic",
+        "steps",
+        "time-picker",
+        "tour",
+        "transfer",
+        "tree",
+        "tree-select",
+        "upload",
+        "watermark",
+    ])) {
+        return "antd-detail";
+    }
+    if (matchesRcPackage(normalized, [
+        "async-validator",
+        "calendar",
+        "cascader",
+        "collapse",
+        "color-picker",
+        "dialog",
+        "picker",
+        "tree",
+        "tree-select",
+        "upload",
+    ])) {
+        return "antd-detail";
+    }
+    if (matchesAntdComponent(normalized, ["button"])) {
+        return "antd-shell";
     }
     if (matchesAntdComponent(normalized, ["checkbox", "switch", "slider", "radio"])) {
         return "antd-controls";
     }
-    if (matchesAntdComponent(normalized, ["modal", "drawer", "popconfirm", "popover", "tooltip"]) ||
+    if (matchesAntdComponent(normalized, ["popconfirm", "popover", "tooltip"]) ||
         matchesAntdComponent(normalized, ["result", "empty", "skeleton", "spin", "alert", "message", "notification", "progress"])) {
         return "antd-feedback";
     }
-    if (matchesAntdComponent(normalized, ["tabs", "dropdown", "menu", "breadcrumb", "pagination", "steps"]) ||
+    if (matchesAntdComponent(normalized, ["tabs", "dropdown", "menu", "breadcrumb", "pagination"]) ||
         matchesAntdComponent(normalized, ["badge", "segmented"])) {
         return "antd-navigation";
     }
-    if (matchesAntdComponent(normalized, ["form", "input", "input-number", "select", "date-picker", "time-picker", "tree-select"])) {
+    if (matchesAntdComponent(normalized, ["form", "input", "input-number", "select"])) {
         return "antd-form";
     }
-    if (matchesAntdComponent(normalized, ["table", "list", "descriptions", "statistic", "tag", "timeline"])) {
+    if (matchesAntdComponent(normalized, ["table", "list", "descriptions", "tag", "timeline"])) {
         return "antd-display";
     }
-    if (matchesAntdComponent(normalized, ["row", "col", "grid", "layout", "card", "divider", "flex", "space"])) {
-        return "antd-layout";
-    }
-    if (normalized.includes("/@ant-design") || normalized.includes("/@rc-component") || normalized.includes("/rc-")) {
-        return "antd-foundation";
+    if (matchesAntdComponent(normalized, ["row", "col", "grid", "layout", "card", "divider", "flex", "space"]) ||
+        matchesAntdComponent(normalized, ["typography", "config-provider", "theme"])) {
+        return "antd-shell";
     }
     if (normalized.includes("/antd/es/config-provider") ||
         normalized.includes("/antd/lib/config-provider") ||
@@ -104,8 +143,11 @@ function splitVendorChunks(id) {
         normalized.includes("/antd/lib/style")) {
         return "antd-core";
     }
+    if (normalized.includes("/@ant-design") || normalized.includes("/@rc-component") || normalized.includes("/rc-")) {
+        return "antd-core";
+    }
     if (normalized.includes("/antd/")) {
-        return "antd";
+        return "antd-core";
     }
     if (normalized.includes("/@tanstack")) {
         return "tanstack";
@@ -118,4 +160,8 @@ function splitVendorChunks(id) {
 function matchesAntdComponent(id, componentNames) {
     return componentNames.some(function (component) { return (id.includes("/antd/es/".concat(component)) ||
         id.includes("/antd/lib/".concat(component))); });
+}
+function matchesRcPackage(id, packageNames) {
+    return packageNames.some(function (packageName) { return (id.includes("/@rc-component/".concat(packageName, "/")) ||
+        id.includes("/rc-".concat(packageName, "/"))); });
 }

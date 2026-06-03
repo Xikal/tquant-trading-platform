@@ -1,7 +1,8 @@
 import { Badge, Button, Dropdown, Grid, Space, Typography } from "antd";
-import { MenuOutlined } from "@ant-design/icons";
 import { useEffect } from "react";
-import { useWorkspaceStore } from "../../stores/workspaceStore";
+import { useSignals } from "@preact/signals-react/runtime";
+import { topbarPulseSignal, updateTopbarPulse } from "../../state/realtime/topbarClockSignal";
+import { MenuOutlined } from "../../ui/icons";
 import type { AuthUser, LowBuyPriorityBoardResult } from "../../types";
 import type { Page, StockCardView } from "../workspace-shared/workspaceTypes";
 import { pageTitle } from "./navConfig";
@@ -38,17 +39,17 @@ export function Topbar({
   onPaperRefresh?: () => void;
   paperRefreshLoading?: boolean;
 }) {
-  const pulse = useWorkspaceStore((state) => state.topbarPulse);
-  const setTopbarPulse = useWorkspaceStore((state) => state.setTopbarPulse);
+  useSignals();
+  const pulse = topbarPulseSignal.value;
   const screens = useBreakpoint();
   const isMobile = !screens.lg;
   const riskCount = watchCards.filter((item) => item.riskText.includes("高")).length;
   const userName = currentUser.display_name || currentUser.username;
 
   useEffect(() => {
-    const timer = window.setInterval(() => setTopbarPulse(realTimePulse()), 1000);
+    const timer = window.setInterval(() => updateTopbarPulse(realTimePulse()), 1000);
     return () => window.clearInterval(timer);
-  }, [setTopbarPulse]);
+  }, []);
 
   return (
     <header style={TOPBAR_STYLE}>

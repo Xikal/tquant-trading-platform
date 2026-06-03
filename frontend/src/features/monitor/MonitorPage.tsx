@@ -1,5 +1,6 @@
-import { memo, useMemo } from "react";
+import { memo, useCallback, useMemo } from "react";
 import { Button, Grid, Space } from "antd";
+import { useShallow } from "zustand/react/shallow";
 import type {
   IntradayKeyLevelResponse,
   IntradayMarketPulse,
@@ -113,12 +114,21 @@ export const MonitorPage = memo(function MonitorPage({
   onAddWatchlist,
   onCancelEdit,
 }: MonitorPageProps) {
-  const activeLane = useWorkspaceMonitorStore((state) => state.activeStrategyLane);
-  const setActiveLane = useWorkspaceMonitorStore((state) => state.setActiveStrategyLane);
-  const holdingDrawerOpen = useWorkspaceMonitorStore((state) => state.holdingDrawerOpen);
-  const setHoldingDrawerOpen = useWorkspaceMonitorStore((state) => state.setHoldingDrawerOpen);
-  const moreTab = useWorkspaceMonitorStore((state) => state.moreTab);
-  const setMoreTab = useWorkspaceMonitorStore((state) => state.setMoreTab);
+  const {
+    activeLane,
+    holdingDrawerOpen,
+    moreTab,
+    setActiveLane,
+    setHoldingDrawerOpen,
+    setMoreTab,
+  } = useWorkspaceMonitorStore(useShallow((state) => ({
+    activeLane: state.activeStrategyLane,
+    holdingDrawerOpen: state.holdingDrawerOpen,
+    moreTab: state.moreTab,
+    setActiveLane: state.setActiveStrategyLane,
+    setHoldingDrawerOpen: state.setHoldingDrawerOpen,
+    setMoreTab: state.setMoreTab,
+  })));
   const screens = Grid.useBreakpoint();
   const primaryAction = useMemo(() => resolveTodayAction(watchCards, priorityCards, priorityBoard), [watchCards, priorityCards, priorityBoard]);
   const priorityNotice = useMemo(() => buildPriorityNotice(priorityBoard, priorityCards.length), [priorityBoard, priorityCards.length]);
@@ -132,10 +142,27 @@ export const MonitorPage = memo(function MonitorPage({
     tradingExperienceReadiness.data?.flags?.vp_position_tags_enabled,
   );
   const volumeTags = useVolumePositionTags(primaryKeyLevelSymbol, vpEnabled);
-  const handleLaneChange = (next: StrategyVariant) => {
+  const openHoldingDrawer = useCallback(() => setHoldingDrawerOpen(true), [setHoldingDrawerOpen]);
+  const closeHoldingDrawer = useCallback(() => setHoldingDrawerOpen(false), [setHoldingDrawerOpen]);
+  const primaryActionClick = primaryAction.source === "holding" ? onRefresh : onGoPlaybook;
+  const watchListKey = useCallback((stock: StockCardView) => stock.symbol, []);
+  const priorityListKey = useCallback((stock: StockCardView) => `${stock.symbol}-${stock.actionText}`, []);
+  const renderWatchCard = useCallback((stock: StockCardView) => (
+    <MonitorWatchStockCard
+      stock={stock}
+      onAnalyze={onAnalyze}
+      onEdit={onEdit}
+      onRemove={onRemove}
+      onSelect={onSelect}
+    />
+  ), [onAnalyze, onEdit, onRemove, onSelect]);
+  const renderPriorityCard = useCallback((stock: StockCardView) => (
+    <MonitorPriorityStockCard stock={stock} onAnalyze={onAnalyze} onSelect={onSelect} />
+  ), [onAnalyze, onSelect]);
+  const handleLaneChange = useCallback((next: StrategyVariant) => {
     setActiveLane(next);
     onLaneChange?.(next);
-  };
+  }, [onLaneChange, setActiveLane]);
   return (
     <section style={monitorGridStyle(!wideLayout)}>
       <div style={MONITOR_SUMMARY_STYLE}>
@@ -168,7 +195,7 @@ export const MonitorPage = memo(function MonitorPage({
           actions={(
             <>
               <span className="muted">{watchCards.length} 个自选 / {runtime?.database_backend ?? "runtime"} </span>
-              <Button type="primary" size="small" onClick={() => setHoldingDrawerOpen(true)}>+ 录入持仓</Button>
+              <Button type="primary" size="small" onClick={openHoldingDrawer}>+ 录入持仓</Button>
             </>
           )}
         />
@@ -179,7 +206,7 @@ export const MonitorPage = memo(function MonitorPage({
             tone={primaryAction.tone}
             compact
             action={(
-              <Button type="primary" size="small" onClick={primaryAction.source === "holding" ? onRefresh : onGoPlaybook}>
+              <Button type="primary" size="small" onClick={primaryActionClick}>
                 {primaryAction.source === "holding" ? "刷新确认" : "查看候选"}
               </Button>
             )}
@@ -190,16 +217,8 @@ export const MonitorPage = memo(function MonitorPage({
             estimateSize={170}
             maxHeight={620}
             className="monitor-card-list--inset"
-            getItemKey={(stock) => stock.symbol}
-            renderItem={(stock) => (
-              <MonitorWatchStockCard
-                stock={stock}
-                onAnalyze={onAnalyze}
-                onEdit={onEdit}
-                onRemove={onRemove}
-                onSelect={onSelect}
-              />
-            )}
+            getItemKey={watchListKey}
+            renderItem={renderWatchCard}
           />
         </div>
       </aside>
@@ -243,10 +262,8 @@ export const MonitorPage = memo(function MonitorPage({
           estimateSize={164}
           maxHeight={620}
           className="monitor-card-list--inset"
-          getItemKey={(stock) => `${stock.symbol}-${stock.actionText}`}
-          renderItem={(stock) => (
-            <MonitorPriorityStockCard stock={stock} onAnalyze={onAnalyze} onSelect={onSelect} />
-          )}
+          getItemKey={priorityListKey}
+          renderItem={renderPriorityCard}
         />
       </div>
 
@@ -277,7 +294,7 @@ export const MonitorPage = memo(function MonitorPage({
         setDraft={setWatchDraft}
         onAddWatchlist={onAddWatchlist}
         onCancelEdit={onCancelEdit}
-        onClose={() => setHoldingDrawerOpen(false)}
+        onClose={closeHoldingDrawer}
       />
     </section>
   );

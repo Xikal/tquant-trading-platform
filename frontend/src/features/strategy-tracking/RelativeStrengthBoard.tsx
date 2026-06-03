@@ -1,19 +1,41 @@
-import { Tag, Typography } from "antd";
+import { Button, Tag, Typography } from "antd";
+import { useMemo } from "react";
 import { DataTable, PercentCell } from "../../ui/table/DataTable";
 import { TqEmpty } from "../../ui/feedback/StateViews";
 import type { RelativeStrengthItem, RelativeStrengthResponse } from "../../types";
+import { filterMainBoardItems, nextBoardFilter, type BoardFilter } from "./boardFilters";
 
-export function RelativeStrengthBoard({ data, loading }: { data?: RelativeStrengthResponse; loading: boolean }) {
+export function RelativeStrengthBoard({
+  data,
+  loading,
+  boardFilter = "include_all",
+  onBoardFilterChange,
+}: {
+  data?: RelativeStrengthResponse;
+  loading: boolean;
+  boardFilter?: BoardFilter;
+  onBoardFilterChange?: (boardFilter: BoardFilter) => void;
+}) {
+  const items = useMemo(() => filterMainBoardItems(data?.items ?? [], boardFilter), [data?.items, boardFilter]);
   if (data && !data.enabled) {
     return <TqEmpty title="抗跌榜未开启" description="当前功能开关关闭，监控和策略跟踪保持既有展示。" />;
   }
   return (
     <div className="strategy-tracking-analysis-stack">
-      <Typography.Text type="secondary">相对强度只展示信号日事实，不预测后续涨跌。</Typography.Text>
+      <div className="strategy-tracking-tab-toolbar">
+        <Typography.Text type="secondary">相对强度只展示信号日事实，不预测后续涨跌。</Typography.Text>
+        <Button
+          size="small"
+          type={boardFilter === "main_only" ? "primary" : "default"}
+          onClick={() => onBoardFilterChange?.(nextBoardFilter(boardFilter))}
+        >
+          只看主板
+        </Button>
+      </div>
       <DataTable<RelativeStrengthItem>
         rowKey={(item) => `${item.trade_date}-${item.symbol}`}
         loading={loading}
-        dataSource={data?.items ?? []}
+        dataSource={items}
         defaultScrollY={320}
         columns={[
           { title: "代码", dataIndex: "symbol", width: 96 },

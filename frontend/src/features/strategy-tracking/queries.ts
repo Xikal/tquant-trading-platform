@@ -5,11 +5,17 @@ import type { StrategyTrackingParams, TradeJournalEntryCreate } from "../../type
 
 const STRATEGY_TRACKING_STALE_TIME_MS = 60_000;
 const STRATEGY_TRACKING_DETAIL_STALE_TIME_MS = 30_000;
+const strategyTrackingSwrOptions = {
+  placeholderData: <T>(previous: T | undefined) => previous,
+  refetchOnMount: false,
+  refetchOnReconnect: true,
+} as const;
 
 export function useStrategyTrackingItems(params: StrategyTrackingParams) {
   return useQuery({
     queryKey: queryKeys.strategyTracking(params as Record<string, unknown>),
     queryFn: () => api.getStrategyTrackingSnapshot(params),
+    ...strategyTrackingSwrOptions,
     staleTime: STRATEGY_TRACKING_STALE_TIME_MS,
   });
 }
@@ -19,6 +25,7 @@ export function useStrategyTrackingDetail(itemId: string | null) {
     queryKey: queryKeys.strategyTrackingDetail(itemId),
     queryFn: () => api.getStrategyTrackingDetail(itemId || ""),
     enabled: Boolean(itemId),
+    ...strategyTrackingSwrOptions,
     staleTime: STRATEGY_TRACKING_DETAIL_STALE_TIME_MS,
   });
 }
@@ -28,6 +35,7 @@ export function useStrategyTrackingReport(type: "daily" | "weekly", params: Stra
     queryKey: queryKeys.strategyTrackingReport(type, params as Record<string, unknown>),
     queryFn: () => api.getStrategyTrackingReport(type, params),
     enabled,
+    ...strategyTrackingSwrOptions,
     staleTime: STRATEGY_TRACKING_STALE_TIME_MS,
   });
 }
@@ -37,6 +45,7 @@ export function useStrategyTrackingHoldingAnalysis(params: StrategyTrackingParam
     queryKey: queryKeys.strategyTrackingHoldingAnalysis(params as Record<string, unknown>),
     queryFn: () => api.getStrategyTrackingHoldingAnalysis(params),
     enabled,
+    ...strategyTrackingSwrOptions,
     staleTime: STRATEGY_TRACKING_STALE_TIME_MS,
   });
 }
@@ -46,6 +55,7 @@ export function useStrategyPromotionReview(strategyKey: string, enabled = true) 
     queryKey: ["strategy-promotion-review", strategyKey],
     queryFn: () => api.getStrategyPromotionReview(strategyKey),
     enabled,
+    ...strategyTrackingSwrOptions,
     staleTime: STRATEGY_TRACKING_STALE_TIME_MS,
   });
 }
@@ -55,6 +65,7 @@ export function useTrackRecordDrift(windowDays = 60, enabled = true) {
     queryKey: queryKeys.trackRecordDrift(windowDays),
     queryFn: () => api.getTrackRecordDrift(windowDays),
     enabled,
+    ...strategyTrackingSwrOptions,
     staleTime: STRATEGY_TRACKING_STALE_TIME_MS,
   });
 }
@@ -63,6 +74,7 @@ export function useTradingExperienceReadiness() {
   return useQuery({
     queryKey: queryKeys.tradingExperienceReadiness,
     queryFn: () => api.getTradingExperienceReadiness(),
+    ...strategyTrackingSwrOptions,
     staleTime: STRATEGY_TRACKING_STALE_TIME_MS,
   });
 }
@@ -72,6 +84,7 @@ export function useTradeReviewSuite(enabled = true) {
     queryKey: queryKeys.tradingExperienceReview,
     queryFn: () => api.getTradingExperienceReviewPool(30),
     enabled,
+    ...strategyTrackingSwrOptions,
     staleTime: STRATEGY_TRACKING_STALE_TIME_MS,
   });
 }
@@ -81,6 +94,7 @@ export function useTradeJournal(accountId?: number | null, enabled = true) {
     queryKey: queryKeys.tradingExperienceJournal(accountId),
     queryFn: () => api.getTradingExperienceTradeJournal(accountId),
     enabled,
+    ...strategyTrackingSwrOptions,
     staleTime: STRATEGY_TRACKING_STALE_TIME_MS,
   });
 }
@@ -103,6 +117,7 @@ export function useRelativeStrengthBoard(enabled = true) {
     queryKey: queryKeys.tradingExperienceRelativeStrength,
     queryFn: () => api.getTradingExperienceRelativeStrength(30),
     enabled,
+    ...strategyTrackingSwrOptions,
     staleTime: STRATEGY_TRACKING_STALE_TIME_MS,
   });
 }
@@ -113,6 +128,7 @@ export function useVolumePositionTags(symbol?: string | null, enabled = true) {
     queryKey: queryKeys.tradingExperienceVolumeTags(normalized),
     queryFn: () => api.getVolumePositionTags(normalized),
     enabled: enabled && Boolean(normalized),
+    ...strategyTrackingSwrOptions,
     staleTime: STRATEGY_TRACKING_STALE_TIME_MS,
   });
 }

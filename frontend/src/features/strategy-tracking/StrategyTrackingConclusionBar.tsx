@@ -1,5 +1,5 @@
-import { InfoCircleOutlined } from "@ant-design/icons";
 import { Tooltip } from "antd";
+import { InfoCircleOutlined } from "../../ui/icons";
 import type { StrategyTrackingItem, StrategyTrackingListResponse } from "../../types";
 import { ConclusionBar } from "../../ui/surfaces";
 import { formatPct } from "../workspace-shared/workspaceFormatters";

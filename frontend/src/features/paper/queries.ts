@@ -6,7 +6,10 @@ export function usePaperSummaryQuery() {
   return useQuery({
     queryKey: queryKeys.paperWorkspace,
     queryFn: () => api.getPaperWorkspaceBff(),
-    staleTime: 20_000,
+    placeholderData: (previous) => previous,
+    refetchOnMount: false,
+    refetchOnReconnect: true,
+    staleTime: 30_000,
     refetchInterval: 30_000,
   });
 }
@@ -16,6 +19,9 @@ export function useHoldingDiscipline(accountId?: number | null, enabled = true) 
     queryKey: queryKeys.tradingExperienceHoldingDiscipline(accountId),
     queryFn: () => api.getHoldingDiscipline(accountId),
     enabled,
+    placeholderData: (previous) => previous,
+    refetchOnMount: false,
+    refetchOnReconnect: true,
     staleTime: 60_000,
   });
 }
@@ -25,6 +31,9 @@ export function useTTradeAttribution(accountId?: number | null, enabled = true) 
     queryKey: queryKeys.tradingExperienceTTrade(accountId),
     queryFn: () => api.getTTradeAttribution(accountId, 30),
     enabled,
+    placeholderData: (previous) => previous,
+    refetchOnMount: false,
+    refetchOnReconnect: true,
     staleTime: 60_000,
   });
 }

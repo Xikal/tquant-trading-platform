@@ -31,9 +31,9 @@
 - `/Users/j/Documents/gupiao/README.md`
 - `/Users/j/Documents/gupiao/docs/README.md`
 - `/Users/j/Documents/gupiao/.gitignore`
-- `/Users/j/Documents/gupiao/docs/维斯量化平台-完整提升整改方案-2026-05-30.md`
+- `/Users/j/Documents/gupiao/docs/archive/plans/维斯量化平台-完整提升整改方案-2026-05-30.md`
 - `/Users/j/Documents/gupiao/docs/reports/project-conventions-remediation-2026-05-31.md`
-- `/Users/j/Documents/gupiao/docs/reports/repository-cleanup-2026-05-27.md`
+- `/Users/j/Documents/gupiao/docs/archive/reports/repository-cleanup-2026-05-27.md`
 - `/Users/j/Documents/gupiao/docs/archive/plans/backend-final-refactor-master-plan-2026-05-21.md`
 - `/Users/j/Documents/gupiao/docs/archive/plans/backend-final-refactor-optimization-plan-2026-05-21.md`
 - `/Users/j/Documents/gupiao/docs/archive/plans/backend-final-refactor-pragmatic-plan-2026-05-21.md`

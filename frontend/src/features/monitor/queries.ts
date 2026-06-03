@@ -6,7 +6,10 @@ export function useMonitorQuery(priorityLimit = 12) {
   return useQuery({
     queryKey: queryKeys.monitorWorkspace(priorityLimit),
     queryFn: () => api.getMonitorWorkspaceBff(priorityLimit),
-    staleTime: 20_000,
+    placeholderData: (previous) => previous,
+    refetchOnMount: false,
+    refetchOnReconnect: true,
+    staleTime: 5_000,
     refetchInterval: 30_000,
   });
 }

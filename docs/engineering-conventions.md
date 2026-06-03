@@ -282,6 +282,14 @@ Runbook 使用 `docs/operations/<topic>-runbook.md`。
 4. 同一例外连续出现两次后，第三次必须治理，不能继续延期。
 5. 用户明确要求的临时交付，也要在最终说明中标记技术债。
 
+### 6.13 前端性能预算与热路径规则
+
+1. 前端构建必须保留 bundle budget 门：`frontend/scripts/check-bundle-budget.mjs` 校验 `first_screen_js_gzip_kb`、总 gzip 和单 chunk gzip，CI build 后必须执行。
+2. 任何单 JS chunk gzip 超过 150KB 必须在预算脚本或 allowlist 中给出明确理由；首屏预算以 `docs/superpowers/plans/2026-06-03-frontend-stability-final-hardening.md` 为准。
+3. 禁止 `<=1000ms` 定时器写 Zustand/global store；高频心跳、行情 tick 等真实热路径只能写 `frontend/src/state/realtime/` 下的 signals。
+4. signals 不替代 TanStack Query，不外溢到普通页面组件；服务端数据仍以 Query 为唯一真源。
+5. 热接口默认使用 stale-while-revalidate：保留上一版数据、reconnect 自动刷新、mount 不强制清空重取。
+
 ## 7. 新功能落位规则
 
 新增功能先回答四个问题：
