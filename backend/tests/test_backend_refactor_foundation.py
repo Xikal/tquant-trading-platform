@@ -244,6 +244,21 @@ def test_go_market_read_client_parses_quote_payload(monkeypatch) -> None:
     assert result["000001"].data_source == "go_market_read_service"
 
 
+def test_go_market_read_client_falls_back_on_remote_timeout(monkeypatch) -> None:
+    monkeypatch.setattr(
+        go_read_client,
+        "get_settings",
+        lambda: SimpleNamespace(tquant_market_read_service_url="http://go-market-read-service:8092"),
+    )
+
+    def fake_remote(*args, **kwargs):  # noqa: ANN002, ANN003
+        raise go_read_client.RemoteBffError("timeout")
+
+    monkeypatch.setattr(go_read_client, "remote_bff_get", fake_remote)
+
+    assert go_read_client.load_go_market_read_quotes(["000001"]) == {}
+
+
 def test_go_market_read_client_parses_intraday_latest_payload(monkeypatch) -> None:
     monkeypatch.setattr(
         go_read_client,
@@ -283,6 +298,47 @@ def test_go_market_read_client_parses_intraday_latest_payload(monkeypatch) -> No
 
     assert result["000001"].last_price == 10.2
     assert result["000001"].data_source == "go_market_read_service"
+
+
+def test_go_market_read_client_skips_schema_mismatch_but_keeps_valid_quotes(monkeypatch) -> None:
+    monkeypatch.setattr(
+        go_read_client,
+        "get_settings",
+        lambda: SimpleNamespace(tquant_market_read_service_url="http://go-market-read-service:8092"),
+    )
+    monkeypatch.setattr(
+        go_read_client,
+        "remote_bff_get",
+        lambda *args, **kwargs: {
+            "items": [
+                {"data_quality": "fresh", "quote": {"symbol": "bad"}},
+                {
+                    "data_quality": "fresh",
+                    "quote": {
+                        "symbol": "000001",
+                        "name": "平安银行",
+                        "market": "SZ",
+                        "instrument_type": "stock",
+                        "last_price": 10.1,
+                        "change_pct": 1.2,
+                        "change_amount": 0.12,
+                        "open_price": 10.0,
+                        "high_price": 10.2,
+                        "low_price": 9.9,
+                        "prev_close": 9.98,
+                        "volume": 1000,
+                        "amount": 10100,
+                        "timestamp": "2026-05-23 10:00:00",
+                    },
+                },
+            ]
+        },
+    )
+
+    result = go_read_client.load_go_market_read_quotes(["000001", "000002"])
+
+    assert set(result) == {"000001"}
+    assert result["000001"].data_quality == "fresh"
 
 
 def test_go_market_read_client_preserves_stale_quality(monkeypatch) -> None:

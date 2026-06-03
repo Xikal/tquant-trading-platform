@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from app.services.finance.rust_math import atr as rust_math_atr
+
 ATR_WINDOW = 14
 ATR_SOURCE = "daily_ohlcv_wilder_true_range_14"
 
@@ -24,6 +26,11 @@ def compute_daily_atr(history: Any, period: int = ATR_WINDOW) -> float:
     highs = [float(value) for value in rows["high"].tolist()]
     lows = [float(value) for value in rows["low"].tolist()]
     closes = [float(value) for value in rows["close"].tolist()]
+    rust_values = rust_math_atr(highs, lows, closes, period)
+    if rust_values:
+        latest = rust_values[-1]
+        if latest is not None:
+            return round(float(latest), 4)
     true_ranges: list[float] = []
     for index in range(1, len(rows)):
         previous_close = closes[index - 1]

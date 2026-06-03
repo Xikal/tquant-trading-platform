@@ -5,7 +5,12 @@ from numbers import Real
 from typing import Any
 
 from app.models.schemas import KlineBar
-from app.services.finance.rust_math import rust_atr_wilder, rust_bollinger_bands, rust_rsi_wilder, rust_vwap
+from app.services.finance.rust_math import (
+    atr as rust_math_atr,
+    bollinger_bands as rust_math_bollinger_bands,
+    rsi_wilder as rust_math_rsi_wilder,
+    vwap as rust_math_vwap,
+)
 
 
 def closes_from_bars(bars: list[KlineBar]) -> list[float]:
@@ -105,7 +110,7 @@ def rsi_wilder(values: list[float], period: int = 14) -> float:
     if len(values) < period + 1:
         return 50.0
     period = max(1, int(period or 1))
-    rust_value = rust_rsi_wilder(values, period)
+    rust_value = rust_math_rsi_wilder(values, period)
     if rust_value is not None:
         return round(float(rust_value), 4)
     gains: list[float] = []
@@ -135,7 +140,7 @@ def atr(bars: list[KlineBar], period: int = 14) -> float | None:
     # a tradable ATR value; callers should use conservative fallback sizing.
     if len(bars) < period * 2:
         return None
-    rust_values = rust_atr_wilder(
+    rust_values = rust_math_atr(
         [bar.high for bar in bars],
         [bar.low for bar in bars],
         [bar.close for bar in bars],
@@ -171,7 +176,7 @@ def bollinger_bands(values: list[float], window: int = 20, num_std: float = 2.0)
     if not clean:
         return (0.0, 0.0, 0.0)
     window = max(1, int(window or 1))
-    rust_values = rust_bollinger_bands(clean, window=window, num_std=num_std)
+    rust_values = rust_math_bollinger_bands(clean, window=window, num_std=num_std)
     if rust_values:
         latest = rust_values[-1]
         if latest is not None:
@@ -214,7 +219,7 @@ def stochastic(bars: list[KlineBar], k_period: int = 14, d_period: int = 3) -> t
 
 def vwap(bars: list[KlineBar]) -> float:
     bars = _latest_session_bars(bars)
-    rust_value = rust_vwap(
+    rust_value = rust_math_vwap(
         [(bar.high + bar.low + bar.close) / 3 for bar in bars],
         [max(bar.volume, 1) for bar in bars],
     )

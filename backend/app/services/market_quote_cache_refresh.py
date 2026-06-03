@@ -1,12 +1,20 @@
 from __future__ import annotations
 
+import json
 from datetime import datetime, time as dt_time
 
 from sqlalchemy import desc, func, select
 from sqlalchemy.orm import Session
 
 from app.core.timezone import beijing_now
-from app.models.entities import DailyBarSnapshot, Instrument, LowBuyResultSnapshot, PaperPosition, UserWatchlist
+from app.models.entities import (
+    DailyBarSnapshot,
+    Instrument,
+    LowBuyResultSnapshot,
+    PaperPosition,
+    StrategyTrackingSnapshot,
+    UserWatchlist,
+)
 from app.models.schema_defs.agent import AgentNotificationTestRequest
 from app.models.schemas import QuoteSnapshot
 from app.services.agent_notification_service import AgentNotificationService
@@ -18,6 +26,7 @@ DEFAULT_LIMIT = 1200
 WATCHLIST_CORE_LIMIT = 200
 PRIORITY_CORE_LIMIT = 600
 HOLDING_CORE_LIMIT = 300
+STRATEGY_TRACKING_CORE_LIMIT = 300
 MONITOR_SECTOR_LIMIT = 8
 MONITOR_SECTOR_MEMBER_LIMIT = 30
 QUOTE_CACHE_COVERAGE_TARGET = 0.9
@@ -116,6 +125,7 @@ class MarketQuoteCacheRefreshService:
         symbols.extend(self._watchlist_symbols(limit=WATCHLIST_CORE_LIMIT))
         symbols.extend(self._priority_board_symbols(limit=PRIORITY_CORE_LIMIT))
         symbols.extend(self._paper_holding_symbols(limit=HOLDING_CORE_LIMIT))
+        symbols.extend(self._strategy_tracking_symbols(limit=STRATEGY_TRACKING_CORE_LIMIT))
         symbols.extend(self._monitor_sector_member_symbols())
         return self._dedupe_symbols(symbols)
 
@@ -165,6 +175,20 @@ class MarketQuoteCacheRefreshService:
             .limit(limit)
         ).scalars().all()
         return [str(item) for item in rows if item]
+
+    def _strategy_tracking_symbols(self, *, limit: int) -> list[str]:
+        rows = self.db.execute(
+            select(StrategyTrackingSnapshot.payload_json)
+            .where(StrategyTrackingSnapshot.status == "fresh")
+            .order_by(desc(StrategyTrackingSnapshot.generated_at))
+            .limit(3)
+        ).scalars().all()
+        symbols: list[str] = []
+        for payload_json in rows:
+            symbols.extend(_strategy_tracking_payload_symbols(str(payload_json or ""), remaining=limit - len(symbols)))
+            if len(symbols) >= limit:
+                break
+        return symbols[:limit]
 
     def _monitor_sector_member_symbols(self) -> list[str]:
         latest_date = self.db.execute(select(DailyBarSnapshot.trade_date).order_by(DailyBarSnapshot.trade_date.desc()).limit(1)).scalar()
@@ -251,3 +275,25 @@ def maybe_send_quote_cache_coverage_alert(coverage: dict[str, object]) -> dict[s
         )
     )
     return {"ok": bool(response.ok), "sent": bool(response.ok), "reason": response.message, "code": response.code}
+
+
+def _strategy_tracking_payload_symbols(payload_json: str, *, remaining: int) -> list[str]:
+    if remaining <= 0:
+        return []
+    try:
+        payload = json.loads(payload_json)
+    except (TypeError, ValueError):
+        return []
+    raw_items = payload.get("items") if isinstance(payload, dict) else []
+    if not isinstance(raw_items, list):
+        return []
+    symbols: list[str] = []
+    for item in raw_items:
+        if not isinstance(item, dict):
+            continue
+        symbol = str(item.get("symbol") or "").strip()
+        if len(symbol) == 6:
+            symbols.append(symbol)
+        if len(symbols) >= remaining:
+            break
+    return symbols

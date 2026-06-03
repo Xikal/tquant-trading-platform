@@ -407,6 +407,21 @@ def test_remote_adapter_schema_mismatch_falls_back(monkeypatch, caplog) -> None:
     assert "missing_fields" in caplog.text
 
 
+def test_remote_adapter_remote_failure_falls_back(monkeypatch) -> None:
+    monkeypatch.setattr(
+        remote_adapters,
+        "get_settings",
+        lambda: SimpleNamespace(tquant_trade_service_url="http://trade-service"),
+    )
+
+    def fake_remote(*args, **kwargs):  # noqa: ANN002, ANN003
+        raise remote_client.RemoteBffError("timeout")
+
+    monkeypatch.setattr(remote_adapters, "remote_bff_get", fake_remote)
+
+    assert remote_adapters.load_remote_paper_workspace(order_limit=1, trade_limit=1, run_limit=1) is None
+
+
 def test_remote_client_does_not_forward_credentials_to_untrusted_http(monkeypatch) -> None:
     remote_client._CIRCUIT_OPEN_UNTIL.clear()
     monkeypatch.setattr(

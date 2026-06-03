@@ -96,6 +96,11 @@ class PerformanceRegressionTest(unittest.TestCase):
         self.assertIn("tquant_agent_tool_failure_total 1", body)
         self.assertIn("tquant_bff_remote_calls_total", body)
         self.assertIn("tquant_bff_remote_failures_total", body)
+        self.assertIn("tquant_rust_math_fallback_ratio_bps", body)
+        self.assertIn("tquant_derived_indicator_cache_hits_total", body)
+        self.assertIn("tquant_derived_indicator_cache_misses_total", body)
+        self.assertIn("tquant_derived_indicator_cache_size", body)
+        self.assertIn("tquant_runtime_task_duration_p95_ms", body)
 
 
 if __name__ == "__main__":

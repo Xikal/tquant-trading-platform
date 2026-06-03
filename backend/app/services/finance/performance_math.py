@@ -3,7 +3,7 @@ from __future__ import annotations
 from math import sqrt
 from typing import Iterable
 
-from app.services.finance.rust_math import rust_max_drawdown
+from app.services.finance.rust_math import max_drawdown
 
 
 TRADING_DAYS_PER_YEAR = 252
@@ -51,16 +51,7 @@ def sequence_max_drawdown_pct(equity_values: Iterable[float]) -> float:
     values = list(equity_values)
     if not values:
         return 0.0
-    rust_value = rust_max_drawdown(values)
-    if rust_value is not None:
-        return -float(rust_value) * 100.0
-    peak = 0.0
-    max_drawdown = 0.0
-    for value in values:
-        peak = max(peak, value)
-        if peak > 0:
-            max_drawdown = min(max_drawdown, (value - peak) / peak * 100)
-    return max_drawdown
+    return -float(max_drawdown(values)) * 100.0
 
 
 def risk_free_rate_from_params(params: dict[str, object] | None) -> float:

@@ -37,8 +37,8 @@ def test_sequence_max_drawdown_respects_time_order() -> None:
     assert sequence_max_drawdown_pct([100.0, 80.0, 120.0, 110.0]) == pytest.approx(-20.0)
 
 
-def test_sequence_max_drawdown_uses_rust_fallback_when_available(monkeypatch) -> None:
-    monkeypatch.setattr(performance_math, "rust_max_drawdown", lambda _: 0.25)
+def test_sequence_max_drawdown_uses_rust_math_api(monkeypatch) -> None:
+    monkeypatch.setattr(performance_math, "max_drawdown", lambda _: 0.25)
     assert performance_math.sequence_max_drawdown_pct([100.0, 80.0, 120.0, 110.0]) == pytest.approx(-25.0)
 
 

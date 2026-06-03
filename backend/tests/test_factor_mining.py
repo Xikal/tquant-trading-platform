@@ -121,14 +121,14 @@ def test_walk_forward_ic_requires_stable_rolling_oos_windows():
     assert any(value < 0 for value in windows)
 
 
-def test_daily_rank_ic_uses_rust_when_available(monkeypatch):
+def test_daily_rank_ic_uses_unified_rust_math_api(monkeypatch):
     calls = []
 
     def fake_rank_ic(factors, returns):
         calls.append((factors, returns))
         return 0.42
 
-    monkeypatch.setattr("app.services.factor_mining.evaluation.rust_rank_ic", fake_rank_ic)
+    monkeypatch.setattr("app.services.factor_mining.evaluation.rank_ic", fake_rank_ic)
     samples = pd.DataFrame(
         [
             {"trade_date": "2026-05-25", "symbol": "600000", "factor_value": 1.0, "future_return": 0.01},

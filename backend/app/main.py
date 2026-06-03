@@ -3,6 +3,7 @@ from __future__ import annotations
 from contextlib import asynccontextmanager
 from datetime import time as dt_time
 import logging
+import math
 from pathlib import Path
 import time
 from uuid import uuid4
@@ -227,10 +228,24 @@ def _phase4_metrics_snapshot() -> dict[str, int]:
                 db.execute(select(func.count(AgentResultQuality.id)).where(AgentResultQuality.passed.is_(False))).scalar()
                 or 0
             )
+            completed_durations = [
+                int((row.finished_at - row.started_at).total_seconds() * 1000)
+                for row in db.execute(
+                    select(RuntimeTask.started_at, RuntimeTask.finished_at)
+                    .where(RuntimeTask.status == "succeeded")
+                    .where(RuntimeTask.started_at.isnot(None))
+                    .where(RuntimeTask.finished_at.isnot(None))
+                    .order_by(RuntimeTask.finished_at.desc())
+                    .limit(200)
+                ).all()
+                if row.started_at and row.finished_at and row.finished_at >= row.started_at
+            ]
         return {
             "runtime_tasks_queued": queued,
             "runtime_tasks_running": running,
             "runtime_tasks_failed": failed,
+            "runtime_task_duration_samples": len(completed_durations),
+            "runtime_task_duration_p95_ms": _p95_int(completed_durations),
             "agent_quality_blocked_total": low_quality,
         }
     except Exception:
@@ -239,8 +254,18 @@ def _phase4_metrics_snapshot() -> dict[str, int]:
             "runtime_tasks_queued": 0,
             "runtime_tasks_running": 0,
             "runtime_tasks_failed": 0,
+            "runtime_task_duration_samples": 0,
+            "runtime_task_duration_p95_ms": 0,
             "agent_quality_blocked_total": 0,
         }
+
+
+def _p95_int(values: list[int]) -> int:
+    if not values:
+        return 0
+    ordered = sorted(values)
+    index = min(len(ordered) - 1, math.ceil(len(ordered) * 0.95) - 1)
+    return int(ordered[index])
 
 
 def _provider_metrics_snapshot() -> dict[str, int]:
@@ -371,6 +396,12 @@ def prometheus_metrics(_: None = Depends(require_admin_auth)) -> PlainTextRespon
         "# HELP tquant_runtime_tasks_failed Failed runtime worker tasks.",
         "# TYPE tquant_runtime_tasks_failed gauge",
         f"tquant_runtime_tasks_failed {phase4_snapshot.get('runtime_tasks_failed', 0)}",
+        "# HELP tquant_runtime_task_duration_samples Retained completed runtime worker task duration samples.",
+        "# TYPE tquant_runtime_task_duration_samples gauge",
+        f"tquant_runtime_task_duration_samples {phase4_snapshot.get('runtime_task_duration_samples', 0)}",
+        "# HELP tquant_runtime_task_duration_p95_ms Completed runtime worker task duration p95 in milliseconds.",
+        "# TYPE tquant_runtime_task_duration_p95_ms gauge",
+        f"tquant_runtime_task_duration_p95_ms {phase4_snapshot.get('runtime_task_duration_p95_ms', 0)}",
         "# HELP tquant_agent_quality_blocked_total Agent quality results that failed validation.",
         "# TYPE tquant_agent_quality_blocked_total gauge",
         f"tquant_agent_quality_blocked_total {phase4_snapshot.get('agent_quality_blocked_total', 0)}",
@@ -416,6 +447,18 @@ def prometheus_metrics(_: None = Depends(require_admin_auth)) -> PlainTextRespon
         "# HELP tquant_rust_math_disabled_total Rust finance math disabled checks.",
         "# TYPE tquant_rust_math_disabled_total counter",
         f"tquant_rust_math_disabled_total {rust_snapshot.get('disabled', 0)}",
+        "# HELP tquant_rust_math_fallback_ratio_bps Rust finance math fallback ratio in basis points.",
+        "# TYPE tquant_rust_math_fallback_ratio_bps gauge",
+        f"tquant_rust_math_fallback_ratio_bps {rust_snapshot.get('fallback_ratio_bps', 0)}",
+        "# HELP tquant_derived_indicator_cache_hits_total Derived finance indicator cache hits.",
+        "# TYPE tquant_derived_indicator_cache_hits_total counter",
+        f"tquant_derived_indicator_cache_hits_total {rust_snapshot.get('cache_hits', 0)}",
+        "# HELP tquant_derived_indicator_cache_misses_total Derived finance indicator cache misses.",
+        "# TYPE tquant_derived_indicator_cache_misses_total counter",
+        f"tquant_derived_indicator_cache_misses_total {rust_snapshot.get('cache_misses', 0)}",
+        "# HELP tquant_derived_indicator_cache_size Derived finance indicator cache size.",
+        "# TYPE tquant_derived_indicator_cache_size gauge",
+        f"tquant_derived_indicator_cache_size {rust_snapshot.get('cache_size', 0)}",
         "# HELP tquant_provider_calls_total Market provider calls across configured providers.",
         "# TYPE tquant_provider_calls_total counter",
         f"tquant_provider_calls_total {provider_snapshot.get('provider_calls_total', 0)}",

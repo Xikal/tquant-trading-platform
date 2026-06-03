@@ -13,6 +13,7 @@ from app.models.entities import (
     LowBuyScanSnapshot,
     PaperAccount,
     PaperPosition,
+    StrategyTrackingSnapshot,
     User,
     UserWatchlist,
 )
@@ -65,6 +66,15 @@ def test_target_symbols_keeps_core_hot_read_demand_before_liquidity_tail() -> No
                 payload_json="{}",
             )
         )
+        db.add(
+            StrategyTrackingSnapshot(
+                snapshot_key="range=30",
+                as_of_date="2026-05-29",
+                range_days=30,
+                status="fresh",
+                payload_json='{"items":[{"symbol":"000010"},{"symbol":"000011"},{"symbol":"bad"}]}',
+            )
+        )
         for symbol, sector, amount in [
             ("000004", "半导体", 9000),
             ("000005", "半导体", 8000),
@@ -72,6 +82,8 @@ def test_target_symbols_keeps_core_hot_read_demand_before_liquidity_tail() -> No
             ("000007", "半导体", 6000),
             ("000008", "半导体", 5000),
             ("000009", "半导体", 4000),
+            ("000010", "半导体", 3000),
+            ("000011", "半导体", 2000),
             ("600001", "银行", 100000),
             ("600002", "银行", 99000),
         ]:
@@ -91,9 +103,19 @@ def test_target_symbols_keeps_core_hot_read_demand_before_liquidity_tail() -> No
 
         symbols = MarketQuoteCacheRefreshService(db)._target_symbols(limit=4)
 
-    assert {"000001", "000002", "000003", "000004", "000005", "000006", "000007", "000008", "000009"}.issubset(
-        set(symbols)
-    )
+    assert {
+        "000001",
+        "000002",
+        "000003",
+        "000004",
+        "000005",
+        "000006",
+        "000007",
+        "000008",
+        "000009",
+        "000010",
+        "000011",
+    }.issubset(set(symbols))
 
 
 def test_quote_cache_demand_coverage_marks_below_target_alert() -> None:
