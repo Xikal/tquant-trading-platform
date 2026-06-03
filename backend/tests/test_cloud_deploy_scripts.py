@@ -175,6 +175,23 @@ def test_quick_deploy_prints_machine_readable_summary() -> None:
     assert 'print_deploy_summary "deploy-ok"' in quick_script
 
 
+def test_quick_deploy_performance_verify_runs_two_sampled_rounds_and_dumps_diagnostics() -> None:
+    quick_script = read_repo_file("scripts/quick_cloud_deploy.sh")
+    deploy_script = read_repo_file("scripts/deploy_cloud_server.sh")
+
+    assert 'RUN_PERFORMANCE_VERIFY_ROUNDS="${RUN_PERFORMANCE_VERIFY_ROUNDS:-2}"' in quick_script
+    assert 'RUN_PERFORMANCE_VERIFY_SAMPLES="${RUN_PERFORMANCE_VERIFY_SAMPLES:-8}"' in quick_script
+    assert "--performance-rounds <n>" in quick_script
+    assert "--performance-samples <n>" in quick_script
+    assert 'for round in $(seq 1 "$RUN_PERFORMANCE_VERIFY_ROUNDS")' in quick_script
+    assert '--samples "$RUN_PERFORMANCE_VERIFY_SAMPLES"' in quick_script
+    assert "dump_container_diagnostics" in quick_script
+    assert "sudo docker logs --tail=120" in quick_script
+    assert "dump_container_diagnostics" in deploy_script
+    assert "tquant-app-mysql did not become healthy" in deploy_script
+    assert "did not become healthy" in deploy_script
+
+
 def test_deploy_scripts_support_scope_aware_fast_paths() -> None:
     deploy_script = read_repo_file("scripts/deploy_cloud_server.sh")
     quick_script = read_repo_file("scripts/quick_cloud_deploy.sh")

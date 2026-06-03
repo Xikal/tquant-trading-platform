@@ -25,6 +25,8 @@ RUN_FULL_TESTS=0
 RUN_STRATEGY_TEST=1
 RUN_LATEST_DATA_ACCEPTANCE=0
 RUN_PERFORMANCE_VERIFY=0
+RUN_PERFORMANCE_VERIFY_ROUNDS="${RUN_PERFORMANCE_VERIFY_ROUNDS:-2}"
+RUN_PERFORMANCE_VERIFY_SAMPLES="${RUN_PERFORMANCE_VERIFY_SAMPLES:-8}"
 AUTO_INITIAL_GIT_COMMIT=0
 AUTO_INSTALL_BACKUP_CRON=0
 AUTO_CONFIGURE_HTTPS=0
@@ -78,6 +80,11 @@ Options:
                  Fail instead of falling back when frontend-hot has no dist artifact.
   --performance-verify
                  Run online Go/Rust performance gates after deploy/verify.
+                 Defaults to 2 rounds with 8 samples per round.
+  --performance-rounds <n>
+                 Override online performance validation rounds.
+  --performance-samples <n>
+                 Override samples per online performance validation round.
   --public-domain-verify
                  Fail when the public HTTPS domain cannot be reached.
   --configure-https
@@ -131,6 +138,14 @@ while [[ $# -gt 0 ]]; do
     --performance-verify)
       RUN_PERFORMANCE_VERIFY=1
       shift
+      ;;
+    --performance-rounds)
+      RUN_PERFORMANCE_VERIFY_ROUNDS="${2:?missing performance rounds}"
+      shift 2
+      ;;
+    --performance-samples)
+      RUN_PERFORMANCE_VERIFY_SAMPLES="${2:?missing performance samples}"
+      shift 2
       ;;
     --public-domain-verify)
       VERIFY_PUBLIC_DOMAIN=1
@@ -189,6 +204,7 @@ export VERIFY_PUBLIC_DOMAIN
 export RUN_COMPILE RUN_FRONTEND_BUILD RUN_STRATEGY_TEST RUN_FULL_TESTS RUN_LATEST_DATA_ACCEPTANCE
 export DEPLOY_TARGET_SCOPE DEPLOY_FRONTEND_HOT_REQUIRED
 export CLOUD_SSH_TIMEOUT CLOUD_SSH_CONNECT_TIMEOUT CLOUD_SSH_SERVER_ALIVE_COUNT_MAX
+export RUN_PERFORMANCE_VERIFY_ROUNDS RUN_PERFORMANCE_VERIFY_SAMPLES
 
 if [[ -z "$CLOUD_HOST" ]]; then
   log "CLOUD_HOST is required. Use --host <host> or export CLOUD_HOST."
@@ -215,6 +231,12 @@ verify_remote() {
   fi
   cloud_ssh env CLOUD_APP_PORT="$CLOUD_APP_PORT" CLOUD_PROJECT_DIR="$CLOUD_PROJECT_DIR" VERIFY_WEB_IMAGE_SYNC="$VERIFY_WEB_IMAGE_SYNC" bash -s <<'REMOTE'
 set -euo pipefail
+dump_container_diagnostics() {
+  local name="$1"
+  echo "diagnostics:$name" >&2
+  sudo docker inspect "$name" --format '{{json .State}}' 2>/dev/null >&2 || true
+  sudo docker logs --tail=120 "$name" 2>/dev/null >&2 || true
+}
 wait_for_container() {
   local name="$1"
   local status=""
@@ -229,6 +251,7 @@ wait_for_container() {
     sleep 2
   done
   echo "$name status did not reach running/healthy" >&2
+  dump_container_diagnostics "$name"
   return 1
 }
 curl_retry() {
@@ -317,13 +340,17 @@ performance_verify() {
   if [[ "$RUN_PERFORMANCE_VERIFY" != "1" ]]; then
     return 0
   fi
-  log "run online Go/Rust performance gates"
-  "$ROOT_DIR/scripts/measure_cloud_go_rust_performance.py" \
-    --host "$CLOUD_HOST" \
-    --user "$CLOUD_USER" \
-    --key "$CLOUD_SSH_KEY" \
-    --base-url "http://127.0.0.1:${CLOUD_APP_PORT}" \
-    --project-dir "$CLOUD_PROJECT_DIR"
+  local round
+  for round in $(seq 1 "$RUN_PERFORMANCE_VERIFY_ROUNDS"); do
+    log "run online Go/Rust performance gates round ${round}/${RUN_PERFORMANCE_VERIFY_ROUNDS} samples=${RUN_PERFORMANCE_VERIFY_SAMPLES}"
+    "$ROOT_DIR/scripts/measure_cloud_go_rust_performance.py" \
+      --host "$CLOUD_HOST" \
+      --user "$CLOUD_USER" \
+      --key "$CLOUD_SSH_KEY" \
+      --base-url "http://127.0.0.1:${CLOUD_APP_PORT}" \
+      --project-dir "$CLOUD_PROJECT_DIR" \
+      --samples "$RUN_PERFORMANCE_VERIFY_SAMPLES"
+  done
 }
 
 if [[ "$VERIFY_ONLY" == "1" ]]; then

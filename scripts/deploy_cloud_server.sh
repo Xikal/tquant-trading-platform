@@ -537,12 +537,23 @@ verify_remote() {
   log "wait for container health"
   cloud_ssh env CLOUD_APP_PORT="$CLOUD_APP_PORT" CLOUD_PROJECT_DIR="$CLOUD_PROJECT_DIR" bash -s <<'REMOTE'
 set -euo pipefail
+dump_container_diagnostics() {
+  local name="$1"
+  echo "diagnostics:$name" >&2
+  sudo docker inspect "$name" --format '{{json .State}}' 2>/dev/null >&2 || true
+  sudo docker logs --tail=120 "$name" 2>/dev/null >&2 || true
+}
 for _ in $(seq 1 40); do
   STATUS=$(sudo docker inspect tquant-app-mysql --format '{{.State.Health.Status}}' 2>/dev/null || echo none)
   echo "health:$STATUS"
   if test "$STATUS" = healthy; then break; fi
   sleep 3
 done
+if test "$STATUS" != healthy; then
+  echo "tquant-app-mysql did not become healthy" >&2
+  dump_container_diagnostics tquant-app-mysql
+  exit 1
+fi
 curl_retry() {
   local output_path="$1"
   local url="$2"
@@ -602,6 +613,12 @@ verify_go_remote() {
   log "verify go services"
   cloud_ssh bash -s <<'REMOTE'
 set -euo pipefail
+dump_container_diagnostics() {
+  local name="$1"
+  echo "diagnostics:$name" >&2
+  sudo docker inspect "$name" --format '{{json .State}}' 2>/dev/null >&2 || true
+  sudo docker logs --tail=120 "$name" 2>/dev/null >&2 || true
+}
 for name in tquant-go-bff-gateway tquant-go-market-read-service tquant-go-scan-worker; do
   for _ in $(seq 1 30); do
     STATUS=$(sudo docker inspect "$name" --format '{{.State.Health.Status}}' 2>/dev/null || echo none)
@@ -611,6 +628,11 @@ for name in tquant-go-bff-gateway tquant-go-market-read-service tquant-go-scan-w
     fi
     sleep 2
   done
+  if test "$STATUS" != healthy; then
+    echo "$name did not become healthy" >&2
+    dump_container_diagnostics "$name"
+    exit 1
+  fi
 done
 sudo docker exec tquant-go-bff-gateway wget -qO- http://127.0.0.1:8091/readyz >/tmp/go_bff_readyz.json
 sudo docker exec tquant-go-market-read-service wget -qO- http://127.0.0.1:8092/readyz >/tmp/go_market_readyz.json
