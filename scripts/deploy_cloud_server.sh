@@ -320,16 +320,27 @@ upsert_env_value() {
 
 docker_compose_build() {
   local log_file="/tmp/gupiao-docker-build-$TS.log"
-  if COMPOSE_BAKE=false sudo -E docker compose -f "$CLOUD_COMPOSE_FILE" build "$@" 2>&1 | tee "$log_file"; then
+  local attempt
+  for attempt in 1 2 3; do
+    if COMPOSE_BAKE=false sudo -E docker compose -f "$CLOUD_COMPOSE_FILE" build "$@" 2>&1 | tee "$log_file"; then
+      rm -f "$log_file"
+      return 0
+    fi
+    if grep -Eqi 'TLS handshake timeout|failed to resolve source metadata|failed to do request|i/o timeout|connection reset by peer|temporary failure|context deadline exceeded|no active session|DeadlineExceeded|BuildKit' "$log_file"; then
+      if test "$attempt" -lt 3; then
+        echo "docker build transient registry/buildkit failure; retrying attempt $((attempt + 1))/3" >&2
+        sleep $((attempt * 5))
+        continue
+      fi
+      echo "docker build transient failure persisted; retrying with classic builder" >&2
+      COMPOSE_BAKE=false DOCKER_BUILDKIT=0 COMPOSE_DOCKER_CLI_BUILD=0 sudo -E docker compose -f "$CLOUD_COMPOSE_FILE" build "$@"
+      rm -f "$log_file"
+      return 0
+    fi
+    cat "$log_file" >&2
     rm -f "$log_file"
-    return 0
-  fi
-  if grep -Eqi 'context deadline exceeded|no active session|DeadlineExceeded|BuildKit' "$log_file"; then
-    echo "docker buildkit failed; retrying with classic builder" >&2
-    COMPOSE_BAKE=false DOCKER_BUILDKIT=0 COMPOSE_DOCKER_CLI_BUILD=0 sudo -E docker compose -f "$CLOUD_COMPOSE_FILE" build "$@"
-    rm -f "$log_file"
-    return 0
-  fi
+    return 1
+  done
   cat "$log_file" >&2
   rm -f "$log_file"
   return 1

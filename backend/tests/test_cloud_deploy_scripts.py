@@ -38,6 +38,11 @@ def test_cloud_deploy_validates_release_package_and_has_builder_fallback() -> No
     assert "DOCKER_BUILDKIT=0" in deploy_script
     assert "context deadline exceeded" in deploy_script
     assert "no active session" in deploy_script
+    assert "TLS handshake timeout" in deploy_script
+    assert "failed to resolve source metadata" in deploy_script
+    assert "failed to do request" in deploy_script
+    assert "docker build transient registry/buildkit failure" in deploy_script
+    assert "retrying attempt $((attempt + 1))/3" in deploy_script
 
 
 def test_quick_deploy_uses_production_safe_cookie_defaults() -> None:
