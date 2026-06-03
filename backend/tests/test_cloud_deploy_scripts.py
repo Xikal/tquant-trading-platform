@@ -63,6 +63,41 @@ def test_quick_deploy_requires_explicit_fast_mode_and_external_connection_config
     assert "fast mode requires --fast-risk-accepted" in quick_script
 
 
+def test_one_click_deploy_defaults_are_overridable_and_do_not_embed_secret_content() -> None:
+    one_click_script = read_repo_file("scripts/one_click_cloud_deploy.sh")
+
+    assert "DEFAULT_CLOUD_HOST" in one_click_script
+    assert "43.143.243.97" in one_click_script
+    assert "$HOME/Downloads/gupiao.pem" in one_click_script
+    assert "CLOUD_HOST:-$DEFAULT_CLOUD_HOST" in one_click_script
+    assert "CLOUD_SSH_KEY:-$DEFAULT_CLOUD_SSH_KEY" in one_click_script
+    assert "explicit_key" in one_click_script
+    assert "--fast-risk-accepted" in one_click_script
+    assert "quick_cloud_deploy.sh" in one_click_script
+    assert "BEGIN OPENSSH PRIVATE KEY" not in one_click_script
+
+
+def test_quick_deploy_can_skip_nginx_refresh_and_retries_frontend_smoke() -> None:
+    quick_script = read_repo_file("scripts/quick_cloud_deploy.sh")
+    deploy_script = read_repo_file("scripts/deploy_cloud_server.sh")
+
+    assert "REFRESH_HTTPS_CONFIG=0" in quick_script
+    assert "--refresh-https-config" in quick_script
+    assert "--configure-https" in quick_script
+    assert "curl_retry /tmp/gupiao_home.html" in quick_script
+    assert "REFRESH_HTTPS_CONFIG" in deploy_script
+    assert "skip HTTPS/nginx config refresh" in deploy_script
+    assert "curl_retry /tmp/gupiao_home.html" in deploy_script
+
+
+def test_ci_deploy_fails_when_cloud_secrets_are_missing() -> None:
+    workflow = read_repo_file(".github/workflows/ci.yml")
+
+    assert "CLOUD_HOST/CLOUD_USER secrets 未配置，不能执行真实部署。" in workflow
+    assert 'echo "CLOUD_HOST/CLOUD_USER secrets 未配置，跳过部署。"' not in workflow
+    assert "exit 2" in workflow
+
+
 def test_cloud_deploy_remote_smoke_rejects_api_html_fallback() -> None:
     deploy_script = read_repo_file("scripts/deploy_cloud_server.sh")
     quick_script = read_repo_file("scripts/quick_cloud_deploy.sh")

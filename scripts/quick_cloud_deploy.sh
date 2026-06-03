@@ -28,6 +28,7 @@ RUN_PERFORMANCE_VERIFY=0
 AUTO_INITIAL_GIT_COMMIT=0
 AUTO_INSTALL_BACKUP_CRON=0
 AUTO_CONFIGURE_HTTPS=0
+REFRESH_HTTPS_CONFIG=0
 HTTPS_REQUIRED=1
 CLOUD_AUTH_COOKIE_SECURE=true
 CLOUD_AUTH_ALLOW_INSECURE_HTTP_COOKIE=false
@@ -56,6 +57,12 @@ Options:
                  Run online Go/Rust performance gates after deploy/verify.
   --public-domain-verify
                  Fail when the public HTTPS domain cannot be reached.
+  --configure-https
+                 Request or renew certificates and install nginx config.
+  --refresh-https-config
+                 Refresh existing nginx config without requesting certificates.
+  --install-backup-cron
+                 Install or refresh the remote database backup cron.
   --host <host>   Override cloud host.
   --user <user>   Override cloud ssh user.
   --key <path>    Override ssh private key path.
@@ -98,6 +105,19 @@ while [[ $# -gt 0 ]]; do
       VERIFY_PUBLIC_DOMAIN=1
       shift
       ;;
+    --configure-https)
+      AUTO_CONFIGURE_HTTPS=1
+      REFRESH_HTTPS_CONFIG=0
+      shift
+      ;;
+    --refresh-https-config)
+      REFRESH_HTTPS_CONFIG=1
+      shift
+      ;;
+    --install-backup-cron)
+      AUTO_INSTALL_BACKUP_CRON=1
+      shift
+      ;;
     --host)
       CLOUD_HOST="${2:?missing host}"
       shift 2
@@ -133,7 +153,7 @@ done
 export CLOUD_HOST CLOUD_USER CLOUD_SSH_KEY CLOUD_PROJECT_DIR CLOUD_APP_PORT
 export CLOUD_SSH_TIMEOUT CLOUD_SSH_CONNECT_TIMEOUT CLOUD_SSH_SERVER_ALIVE_COUNT_MAX
 export CLOUD_DOMAIN CLOUD_CERT_EMAIL CLOUD_AUTH_COOKIE_SECURE CLOUD_AUTH_ALLOW_INSECURE_HTTP_COOKIE
-export AUTO_INITIAL_GIT_COMMIT AUTO_INSTALL_BACKUP_CRON AUTO_CONFIGURE_HTTPS HTTPS_REQUIRED
+export AUTO_INITIAL_GIT_COMMIT AUTO_INSTALL_BACKUP_CRON AUTO_CONFIGURE_HTTPS REFRESH_HTTPS_CONFIG HTTPS_REQUIRED
 export VERIFY_PUBLIC_DOMAIN
 export RUN_COMPILE RUN_FRONTEND_BUILD RUN_STRATEGY_TEST RUN_FULL_TESTS RUN_LATEST_DATA_ACCEPTANCE
 export CLOUD_SSH_TIMEOUT CLOUD_SSH_CONNECT_TIMEOUT CLOUD_SSH_SERVER_ALIVE_COUNT_MAX
@@ -176,6 +196,21 @@ wait_for_container() {
   echo "$name status did not reach running/healthy" >&2
   return 1
 }
+curl_retry() {
+  local output_path="$1"
+  local url="$2"
+  local max_time="${3:-20}"
+  local attempts="${4:-5}"
+  local attempt
+  for attempt in $(seq 1 "$attempts"); do
+    if curl -sS -f -o "$output_path" --max-time "$max_time" "$url"; then
+      return 0
+    fi
+    echo "curl_retry:${attempt}/${attempts}:${url}" >&2
+    sleep $((attempt * 2))
+  done
+  return 1
+}
 for name in tquant-app-mysql tquant-runtime-scheduler-mysql tquant-runtime-worker-mysql tquant-backtest-worker-mysql tquant-go-bff-gateway tquant-go-market-read-service tquant-go-scan-worker; do
   wait_for_container "$name"
 done
@@ -210,7 +245,7 @@ payload = json.load(open('/tmp/gupiao_api_fallback.json', encoding='utf-8'))
 assert payload.get('detail') == 'API endpoint not found', payload
 print('api_fallback:ok')
 PY
-curl -sS -f -o /tmp/gupiao_home.html --max-time 10 "http://127.0.0.1:${CLOUD_APP_PORT}/"
+curl_retry /tmp/gupiao_home.html "http://127.0.0.1:${CLOUD_APP_PORT}/" 20 5
 grep -q '<div id="root"></div>' /tmp/gupiao_home.html
 echo frontend:ok
 cd "$CLOUD_PROJECT_DIR"
@@ -273,6 +308,7 @@ RUN_LATEST_DATA_ACCEPTANCE="$RUN_LATEST_DATA_ACCEPTANCE" \
 AUTO_INITIAL_GIT_COMMIT="$AUTO_INITIAL_GIT_COMMIT" \
 AUTO_INSTALL_BACKUP_CRON="$AUTO_INSTALL_BACKUP_CRON" \
 AUTO_CONFIGURE_HTTPS="$AUTO_CONFIGURE_HTTPS" \
+REFRESH_HTTPS_CONFIG="$REFRESH_HTTPS_CONFIG" \
 HTTPS_REQUIRED="$HTTPS_REQUIRED" \
 CLOUD_HOST="$CLOUD_HOST" \
 CLOUD_USER="$CLOUD_USER" \

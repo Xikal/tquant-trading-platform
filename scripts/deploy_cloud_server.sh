@@ -14,6 +14,7 @@ CLOUD_KEEP_BACKUPS="${CLOUD_KEEP_BACKUPS:-3}"
 AUTO_INITIAL_GIT_COMMIT="${AUTO_INITIAL_GIT_COMMIT:-1}"
 AUTO_INSTALL_BACKUP_CRON="${AUTO_INSTALL_BACKUP_CRON:-1}"
 AUTO_CONFIGURE_HTTPS="${AUTO_CONFIGURE_HTTPS:-1}"
+REFRESH_HTTPS_CONFIG="${REFRESH_HTTPS_CONFIG:-1}"
 HTTPS_REQUIRED="${HTTPS_REQUIRED:-1}"
 CLOUD_DOMAIN="${CLOUD_DOMAIN:-}"
 CLOUD_CERT_EMAIL="${CLOUD_CERT_EMAIL:-}"
@@ -358,13 +359,15 @@ sudo DOMAIN='$CLOUD_DOMAIN' APP_PORT='$CLOUD_APP_PORT' EMAIL='$CLOUD_CERT_EMAIL'
     else
       cloud_ssh "$https_cmd" || log "warning: HTTPS 自动配置失败；部署继续，检查 DNS/80端口/证书限额后重试"
     fi
-  else
+  elif [[ "$REFRESH_HTTPS_CONFIG" == "1" ]]; then
     log "refresh remote nginx config when HTTPS site already exists"
     cloud_ssh "set -euo pipefail
 cd '$CLOUD_PROJECT_DIR'
 if test -n '$CLOUD_DOMAIN' -a -f /etc/nginx/sites-available/weisilianghua.conf; then
   sudo REQUIRE_EMAIL=0 DOMAIN='$CLOUD_DOMAIN' APP_PORT='$CLOUD_APP_PORT' ./scripts/install_https_nginx.sh
 fi"
+  else
+    log "skip HTTPS/nginx config refresh"
   fi
 }
 
@@ -378,6 +381,21 @@ for _ in $(seq 1 40); do
   if test "$STATUS" = healthy; then break; fi
   sleep 3
 done
+curl_retry() {
+  local output_path="$1"
+  local url="$2"
+  local max_time="${3:-20}"
+  local attempts="${4:-5}"
+  local attempt
+  for attempt in $(seq 1 "$attempts"); do
+    if curl -sS -f -o "$output_path" --max-time "$max_time" "$url"; then
+      return 0
+    fi
+    echo "curl_retry:${attempt}/${attempts}:${url}" >&2
+    sleep $((attempt * 2))
+  done
+  return 1
+}
 curl -sS -f --max-time 10 "http://127.0.0.1:${CLOUD_APP_PORT}/readyz" >/tmp/gupiao_readyz.json
 python3 - <<'PY'
 import json
@@ -399,7 +417,7 @@ payload = json.load(open('/tmp/gupiao_api_fallback.json', encoding='utf-8'))
 assert payload.get('detail') == 'API endpoint not found', payload
 print('api_fallback:ok')
 PY
-curl -sS -f -o /tmp/gupiao_home.html --max-time 10 "http://127.0.0.1:${CLOUD_APP_PORT}/"
+curl_retry /tmp/gupiao_home.html "http://127.0.0.1:${CLOUD_APP_PORT}/" 20 5
 grep -q '<div id="root"></div>' /tmp/gupiao_home.html
 echo frontend:ok
 cd "$CLOUD_PROJECT_DIR"

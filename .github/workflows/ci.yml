@@ -143,8 +143,8 @@ jobs:
           RUN_FULL_TESTS: "0"
         run: |
           if [ -z "${CLOUD_HOST}" ] || [ -z "${CLOUD_USER}" ]; then
-            echo "CLOUD_HOST/CLOUD_USER secrets 未配置，跳过部署。"
-            exit 0
+            echo "CLOUD_HOST/CLOUD_USER secrets 未配置，不能执行真实部署。"
+            exit 2
           fi
           export CLOUD_DOMAIN="${CLOUD_DOMAIN:-weisilianghua.cloud}"
           export CLOUD_CERT_EMAIL="${CLOUD_CERT_EMAIL:-admin@${CLOUD_DOMAIN}}"

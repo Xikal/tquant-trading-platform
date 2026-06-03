@@ -150,16 +150,33 @@ export const PaperTradingPage = memo(function PaperTradingPage({
             loading={paperLoading || orderLoading}
             canResumeOrder={needsResumeOrder}
             onTogglePause={onTogglePause}
+            positions={(
+              <PaperPositionsPanel
+                positions={positions}
+                loading={paperLoading}
+                embedded
+              />
+            )}
           />
         </Col>
         <Col xs={24} xl={8} className="paper-hero-grid__right">
-          <PaperMechaActionPanel
-            autoTradingStatus={autoTradingStatus}
-            autoTradingRuns={autoTradingRuns}
-            riskEvents={riskEvents}
-            paused={paused}
-            lastOrderAction={Number.isFinite(lastOrderAction?.timestamp) ? lastOrderAction : null}
-          />
+          <div className="paper-side-stack">
+            <PaperMechaActionPanel
+              autoTradingStatus={autoTradingStatus}
+              autoTradingRuns={autoTradingRuns}
+              riskEvents={riskEvents}
+              paused={paused}
+              lastOrderAction={Number.isFinite(lastOrderAction?.timestamp) ? lastOrderAction : null}
+              monitor={(
+                <PaperTodayActionPanel
+                  autoTradingStatus={autoTradingStatus}
+                  autoTradingRuns={autoTradingRuns}
+                  riskEvents={riskEvents}
+                  embedded
+                />
+              )}
+            />
+          </div>
         </Col>
       </Row>
       {orderModalOpen ? (
@@ -174,21 +191,6 @@ export const PaperTradingPage = memo(function PaperTradingPage({
           onSubmitOrder={submitOrderFromModal}
         />
       ) : null}
-      <Row className="paper-main-grid" gutter={[8, 8]} align="stretch" style={PAPER_ROW_STYLE}>
-        <Col xs={24} xl={16} className="paper-main-grid__left">
-          <PaperPositionsPanel
-            positions={positions}
-            loading={paperLoading}
-          />
-        </Col>
-        <Col xs={24} xl={8} className="paper-main-grid__right">
-          <PaperTodayActionPanel
-            autoTradingStatus={autoTradingStatus}
-            autoTradingRuns={autoTradingRuns}
-            riskEvents={riskEvents}
-          />
-        </Col>
-      </Row>
       {holdingEnabled || tTradeEnabled ? (
         <PaperTradingExperiencePanels accountId={account?.id} holdingEnabled={holdingEnabled} tTradeEnabled={tTradeEnabled} />
       ) : null}

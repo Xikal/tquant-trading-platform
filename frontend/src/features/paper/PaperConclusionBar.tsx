@@ -12,6 +12,7 @@ export function PaperConclusionBar({
   loading,
   canResumeOrder,
   pixel,
+  positions,
   onTogglePause,
 }: {
   account: PaperAccount | null;
@@ -20,6 +21,7 @@ export function PaperConclusionBar({
   loading: boolean;
   canResumeOrder?: boolean;
   pixel?: ReactNode;
+  positions?: ReactNode;
   onTogglePause?: () => void | Promise<void>;
 }) {
   const status = resolveAutoManagedStatus(account, autoTradingStatus);
@@ -76,6 +78,7 @@ export function PaperConclusionBar({
           {pixel}
         </div>
       ) : null}
+      {positions ? <div className="paper-conclusion__positions">{positions}</div> : null}
     </section>
   );
 }

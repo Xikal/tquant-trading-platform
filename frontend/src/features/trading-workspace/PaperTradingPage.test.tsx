@@ -50,7 +50,10 @@ describe("PaperTradingPage", () => {
     expect(html).toContain("真实收益");
     expect(html).toContain("仓位与风控");
     expect(html).toContain("自动状态");
-    expect(html).toContain("paper-main-grid");
+    expect(html).toContain("paper-conclusion__positions");
+    expect(html).toContain("paper-positions-embedded");
+    expect(html).toContain("当前持仓");
+    expect(html).toContain("paper-side-stack");
     expect(html).not.toContain("主区：持仓与今日动作");
     expect(html).not.toContain("今日红运");
     expect(html).not.toContain("像素状态");
@@ -59,6 +62,11 @@ describe("PaperTradingPage", () => {
     expect(html).toContain("paper-hero-grid");
     expect(html).toContain("paper-mecha-action-panel");
     expect(html).toContain("模拟盘机甲交易舱");
+    expect(html).toContain("paper-mecha-action-panel__particles");
+    expect(html).toContain("paper-mecha-action-panel__unit-thumb");
+    expect(html).toContain("paper-mecha-action-panel__monitor");
+    expect(html).toContain("paper-mecha-jaw");
+    expect(html).toContain("S2 ENGINE: ACTIVE");
     expect(html).toContain("壹式·紫");
     expect(html).toContain("零式·蓝白");
     expect(html).toContain("贰式·赤");
@@ -67,6 +75,7 @@ describe("PaperTradingPage", () => {
     expect(html).not.toContain("[ 模拟交易事件 / 触发特效 ]");
     expect(html).not.toContain("SIMULATE ACTION");
     expect(html).toContain("实时同步监控日志");
+    expect(html).toContain("paper-action-hud--embedded");
     expect(html).not.toContain("次区：记录、表现与自动化");
     expect(html).toContain("自动化");
     expect(html).toContain("策略绩效");
@@ -74,7 +83,7 @@ describe("PaperTradingPage", () => {
     expect(html).toContain("对账诊断");
   });
 
-  it("shows main force paper advice on positions", () => {
+  it("renders current positions as compact cards with only core position facts", () => {
     const html = renderToStaticMarkup(
       <PaperTradingPage
         account={null}
@@ -133,7 +142,19 @@ describe("PaperTradingPage", () => {
       />
     );
 
-    expect(html).toContain("主力：洗盘确认 · 小仓试买 · 旁路观察，不自动下单");
+    expect(html).toContain("paper-position-card");
+    expect(html).toContain("测试股份");
+    expect(html).toContain("600000");
+    expect(html).toContain("持仓/可卖");
+    expect(html).toContain("1,000");
+    expect(html).toContain("成本/现价");
+    expect(html).toContain("10.00");
+    expect(html).toContain("10.50");
+    expect(html).toContain("+5.00%");
+    expect(html).not.toContain("主力：洗盘确认");
+    expect(html).not.toContain("小仓试买");
+    expect(html).not.toContain("旁路观察，不自动下单");
+    expect(html).not.toContain("模型旁路");
   });
 
   it("uses account-level total return for the top paper metric", () => {

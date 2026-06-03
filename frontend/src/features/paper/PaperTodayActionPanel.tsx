@@ -4,15 +4,17 @@ import { formatPaperDateTime } from "./paperTradingFormatters";
 export function PaperTodayActionPanel({
   autoTradingStatus,
   autoTradingRuns,
+  embedded = false,
 }: {
   autoTradingStatus: PaperAutoTradingStatus | null;
   autoTradingRuns: PaperAgentRun[];
   riskEvents: RiskEventItem[];
+  embedded?: boolean;
 }) {
   const actions = buildActionTimeline(autoTradingStatus, autoTradingRuns);
 
   return (
-    <section className="paper-action-hud" aria-label="今日动作与自动交易状态">
+    <section className={`paper-action-hud${embedded ? " paper-action-hud--embedded" : ""}`} aria-label="今日动作与自动交易状态">
       <div className="paper-action-hud__monitor">
         <div className="paper-action-hud__panel-title paper-action-hud__panel-title--split">
           <span>

@@ -1,7 +1,7 @@
 import type {
   PaperPosition,
 } from "../../types";
-import { Card, List, Skeleton, Space, Tag, Typography } from "antd";
+import { Card, Skeleton, Typography } from "antd";
 import { OrderEntryModal } from "./PaperOrderEntryModal";
 import { EmptyState } from "../workspace-shared/WorkspaceComponents";
 import { formatInteger, formatPct, formatPrice, toneFromChange } from "../workspace-shared/workspaceFormatters";
@@ -12,10 +12,43 @@ export { OrderEntryModal };
 export function PaperPositionsPanel({
   positions,
   loading,
+  embedded = false,
 }: {
   positions: PaperPosition[];
   loading: boolean;
+  embedded?: boolean;
 }) {
+  const body = (
+    <>
+      {loading ? (
+        <Skeleton active paragraph={{ rows: 4 }} />
+      ) : positions.length ? (
+        <div
+          className="paper-position-card-grid"
+          style={{
+            maxHeight: positions.length > 6 ? 300 : undefined,
+            overflowY: positions.length > 6 ? "auto" : "visible",
+            paddingRight: positions.length > 6 ? 4 : 0,
+          }}
+        >
+          {positions.map((item) => <PositionRow key={item.id || item.symbol} item={item} />)}
+        </div>
+      ) : (
+        <EmptyState text="暂无模拟持仓" />
+      )}
+    </>
+  );
+  if (embedded) {
+    return (
+      <section className="paper-positions-embedded" aria-label="当前持仓">
+        <header className="paper-positions-embedded__header">
+          <Typography.Text strong>当前持仓</Typography.Text>
+          <Typography.Text type="secondary">{positions.length ? `共 ${positions.length} 只，首屏直接处理` : "暂无持仓"}</Typography.Text>
+        </header>
+        <div className="paper-positions-embedded__body">{body}</div>
+      </section>
+    );
+  }
   return (
     <Card
       size="small"
@@ -24,63 +57,32 @@ export function PaperPositionsPanel({
       variant="borderless"
       styles={{ body: { padding: 6, minHeight: 0, fontSize: 12 } }}
     >
-      {loading ? (
-        <Skeleton active paragraph={{ rows: 4 }} />
-      ) : positions.length ? (
-        <List
-          split={false}
-          style={{
-            maxHeight: positions.length > 6 ? 300 : undefined,
-            overflowY: positions.length > 6 ? "auto" : "visible",
-            paddingRight: positions.length > 6 ? 4 : 0,
-          }}
-          dataSource={positions}
-          renderItem={(item) => <PositionRow item={item} />}
-        />
-      ) : (
-        <EmptyState text="暂无模拟持仓" />
-      )}
+      {body}
     </Card>
   );
 }
 function PositionRow({ item }: { item: PaperPosition }) {
   const tone = item.latest_price == null ? "neutral" : toneFromChange(item.unrealized_pnl_pct);
-  const actionText = item.smart_exit_text || item.smart_exit_action || "按计划持有";
-  const model = item.exit_model_shadow;
-  const modelText = model?.fallback_reason
-    ? `模型旁路：${model.fallback_reason}`
-    : model?.action && model.action !== "hold"
-      ? `模型旁路：${model.action} · ${(Number(model.confidence || 0) * 100).toFixed(0)}%`
-      : "模型旁路：只观察";
-  const mainForce = item.main_force_paper_advice;
-  const mainForceText = mainForce?.visible
-    ? `主力：${[mainForce.stage_text, mainForce.model_action_text, mainForce.action_text].filter(Boolean).join(" · ")}`
-    : "主力：旁路观察";
   return (
-    <List.Item
+    <article
+      className={`paper-position-card paper-position-card--${tone}`}
       style={{
-        border: "1px solid rgba(100, 116, 139, 0.18)",
-        borderRadius: 8,
         boxShadow: `inset 3px 0 0 ${toneColor(tone)}`,
-        marginBottom: 5,
-        padding: "5px 6px",
       }}
     >
-      <List.Item.Meta
-        title={<Typography.Text strong style={{ fontSize: 12 }}>{item.name || item.symbol}</Typography.Text>}
-        description={<Typography.Text type="secondary" style={{ fontSize: 12 }}>{item.symbol}</Typography.Text>}
-      />
-      <Space size={6} wrap style={{ fontSize: 12 }}>
-        <Typography.Text style={{ fontSize: 12 }}>持仓 {formatInteger(item.quantity)} / 可卖 {formatInteger(item.available_quantity)}</Typography.Text>
-        <Typography.Text style={{ fontSize: 12 }}>成本 {formatPrice(item.cost_basis)} / 现价 {formatPrice(item.latest_price)}</Typography.Text>
-        <Tag color="blue">{actionText}</Tag>
-        <Tag color={model?.safety_blocked ? "red" : model?.fallback_reason ? "default" : "purple"}>{modelText}</Tag>
-        <Tag color={mainForce?.suggestion_enabled ? "gold" : mainForce?.risk_flags?.length ? "default" : "cyan"}>
-          {mainForceText}
-        </Tag>
-        <Typography.Text strong style={{ color: toneColor(tone), fontSize: 12 }}>{formatPct(item.unrealized_pnl_pct)}</Typography.Text>
-      </Space>
-    </List.Item>
+      <Typography.Text className="paper-position-card__line paper-position-card__line--identity" strong>
+        {item.name || item.symbol} / {item.symbol}
+      </Typography.Text>
+      <Typography.Text className="paper-position-card__line">
+        持仓/可卖 {formatInteger(item.quantity)} / {formatInteger(item.available_quantity)}
+      </Typography.Text>
+      <Typography.Text className="paper-position-card__line">
+        成本/现价 {formatPrice(item.cost_basis)} / {formatPrice(item.latest_price)}
+      </Typography.Text>
+      <Typography.Text className="paper-position-card__line" strong style={{ color: toneColor(tone) }}>
+        涨跌幅 {formatPct(item.unrealized_pnl_pct)}
+      </Typography.Text>
+    </article>
   );
 }
 
