@@ -138,7 +138,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 2
+          fetch-depth: 0
       - name: Download frontend dist artifact
         uses: actions/download-artifact@v4
         with:
@@ -147,7 +147,11 @@ jobs:
       - name: Select deploy target scope
         run: |
           set -euo pipefail
-          if git rev-parse --verify HEAD^ >/dev/null 2>&1; then
+          before="${{ github.event.before }}"
+          after="${{ github.sha }}"
+          if [ -n "$before" ] && [ "$before" != "0000000000000000000000000000000000000000" ] && git cat-file -e "$before^{commit}" 2>/dev/null; then
+            changed_files="$(git diff --name-only "$before" "$after")"
+          elif git rev-parse --verify HEAD^ >/dev/null 2>&1; then
             changed_files="$(git diff --name-only HEAD^ HEAD)"
           else
             changed_files=""

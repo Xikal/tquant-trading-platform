@@ -228,6 +228,10 @@ def test_ci_reuses_frontend_artifact_and_selects_deploy_scope() -> None:
     assert "Download frontend dist artifact" in workflow
     assert "actions/download-artifact@v4" in workflow
     assert "Select deploy target scope" in workflow
+    assert "fetch-depth: 0" in workflow
+    assert "github.event.before" in workflow
+    assert 'git diff --name-only "$before" "$after"' in workflow
+    assert 'git diff --name-only HEAD^ HEAD' in workflow
     assert "DEPLOY_TARGET_SCOPE=$scope" in workflow
     assert "DEPLOY_CHANGED_FILES<<DEPLOY_FILES" in workflow
     assert "DEPLOY_FRONTEND_HOT_REQUIRED" in workflow
