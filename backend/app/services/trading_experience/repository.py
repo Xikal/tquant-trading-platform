@@ -4,7 +4,7 @@ import json
 from datetime import date, datetime, timedelta
 from typing import Any
 
-from sqlalchemy import desc, func, select
+from sqlalchemy import desc, func, or_, select
 from sqlalchemy.orm import Session
 
 from app.models.entities import (
@@ -24,14 +24,17 @@ def latest_trade_date(db: Session) -> date | None:
     return db.execute(select(func.max(DailyBarSnapshot.trade_date))).scalar_one_or_none()
 
 
-def daily_rows_for_date(db: Session, trade_date: date, *, limit: int = 500) -> list[Any]:
+def daily_rows_for_date(db: Session, trade_date: date, *, limit: int = 500, board_filter: str = "include_all") -> list[Any]:
+    statement = (
+        select(DailyBarSnapshot, Instrument.name, Instrument.sector_name)
+        .outerjoin(Instrument, Instrument.symbol == DailyBarSnapshot.symbol)
+        .where(DailyBarSnapshot.trade_date == trade_date, DailyBarSnapshot.instrument_type == "stock")
+    )
+    if board_filter == "main_only":
+        statement = statement.where(or_(DailyBarSnapshot.symbol.like("60%"), DailyBarSnapshot.symbol.like("00%")))
     return list(
         db.execute(
-            select(DailyBarSnapshot, Instrument.name, Instrument.sector_name)
-            .outerjoin(Instrument, Instrument.symbol == DailyBarSnapshot.symbol)
-            .where(DailyBarSnapshot.trade_date == trade_date, DailyBarSnapshot.instrument_type == "stock")
-            .order_by(DailyBarSnapshot.pct_chg.desc(), DailyBarSnapshot.amount.desc())
-            .limit(limit)
+            statement.order_by(DailyBarSnapshot.pct_chg.desc(), DailyBarSnapshot.amount.desc()).limit(limit)
         ).all()
     )
 

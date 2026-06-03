@@ -15324,6 +15324,16 @@ export interface components {
              */
             as_of: string;
             /**
+             * Board Name
+             * @default 未知
+             */
+            board_name: string;
+            /**
+             * Board Type
+             * @default unknown
+             */
+            board_type: string;
+            /**
              * Data Quality
              * @enum {string}
              */
@@ -15378,6 +15388,12 @@ export interface components {
              * Format: date-time
              */
             as_of: string;
+            /**
+             * Board Filter
+             * @default include_all
+             * @enum {string}
+             */
+            board_filter: "include_all" | "main_only";
             /**
              * Data Quality
              * @default insufficient
@@ -27839,6 +27855,7 @@ export interface operations {
             query?: {
                 pool_date?: string | null;
                 limit?: number;
+                board_filter?: "include_all" | "main_only";
             };
             header?: never;
             path?: never;

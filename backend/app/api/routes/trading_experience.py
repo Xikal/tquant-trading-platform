@@ -11,6 +11,7 @@ from app.core.database import get_db
 from app.core.paper_auth import require_paper_trading
 from app.models.entities import User
 from app.services.trading_experience.schemas import (
+    BoardFilter,
     HoldingDisciplineResponse,
     LimitUpFollowthroughResponse,
     RelativeStrengthResponse,
@@ -36,9 +37,10 @@ def readiness(db: Session = Depends(get_db)) -> TradingExperienceReadinessRespon
 def get_review_pool(
     pool_date: date | None = None,
     limit: Annotated[int, Query(ge=1, le=100)] = 30,
+    board_filter: BoardFilter = "include_all",
     db: Session = Depends(get_db),
 ) -> ReviewPoolResponse:
-    return TradingExperienceService(db).review_pool(pool_date=pool_date, limit=limit)
+    return TradingExperienceService(db).review_pool(pool_date=pool_date, limit=limit, board_filter=board_filter)
 
 
 @router.get("/trade-journal", response_model=TradeJournalResponse)

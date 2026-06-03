@@ -6,6 +6,7 @@ from typing import Literal
 from pydantic import BaseModel, Field
 
 DataQuality = Literal["ok", "insufficient", "no_data", "blocked", "stale", "research_only"]
+BoardFilter = Literal["include_all", "main_only"]
 
 
 class TradingExperienceMeta(BaseModel):
@@ -27,6 +28,8 @@ class ReviewPoolItem(BaseModel):
     pool_date: str
     symbol: str
     name: str = ""
+    board_type: str = "unknown"
+    board_name: str = "未知"
     status: Literal["in_pool", "retained", "dropped"]
     entry_pct: float
     volume_ratio: float
@@ -43,6 +46,7 @@ class ReviewPoolItem(BaseModel):
 class ReviewPoolResponse(TradingExperienceMeta):
     enabled: bool
     pool_date: str | None = None
+    board_filter: BoardFilter = "include_all"
     items: list[ReviewPoolItem] = Field(default_factory=list)
     total: int = 0
 

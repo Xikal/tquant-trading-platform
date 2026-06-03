@@ -38,7 +38,7 @@ export function StrategyTrackingPage({ strategyMeta }: { strategyMeta: StrategyM
   const reviewEnabled = Boolean(tradingExperienceFlags.trading_experience_suite_enabled && tradingExperienceFlags.trade_review_suite_enabled);
   const rsEnabled = Boolean(tradingExperienceFlags.trading_experience_suite_enabled && tradingExperienceFlags.relative_strength_board_enabled);
   const activeAnalysisTab = visibleAnalysisTab(store.analysisTab, { reviewEnabled, rsEnabled });
-  const reviewQuery = useTradeReviewSuite(activeAnalysisTab === "trade-review" && reviewEnabled);
+  const reviewQuery = useTradeReviewSuite(store.boardFilter, activeAnalysisTab === "trade-review" && reviewEnabled);
   const journalQuery = useTradeJournal(null, activeAnalysisTab === "trade-journal" && reviewEnabled);
   const rsQuery = useRelativeStrengthBoard(activeAnalysisTab === "relative-strength" && rsEnabled);
   const snapshot = query.data;

@@ -19,6 +19,8 @@ export interface ReviewPoolItem {
   pool_date: string;
   symbol: string;
   name: string;
+  board_type: string;
+  board_name: string;
   status: "in_pool" | "retained" | "dropped";
   entry_pct: number;
   volume_ratio: number;
@@ -35,6 +37,7 @@ export interface ReviewPoolItem {
 export interface ReviewPoolResponse extends TradingExperienceMeta {
   enabled: boolean;
   pool_date: string | null;
+  board_filter: "include_all" | "main_only";
   items: ReviewPoolItem[];
   total: number;
 }

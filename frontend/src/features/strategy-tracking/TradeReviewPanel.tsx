@@ -1,9 +1,8 @@
 import { Button, Tag, Typography } from "antd";
-import { useMemo } from "react";
 import { DataTable, PercentCell } from "../../ui/table/DataTable";
 import { TqEmpty } from "../../ui/feedback/StateViews";
 import type { ReviewPoolItem, ReviewPoolResponse } from "../../types";
-import { filterMainBoardItems, nextBoardFilter, type BoardFilter } from "./boardFilters";
+import { nextBoardFilter, type BoardFilter } from "./boardFilters";
 
 export function TradeReviewPanel({
   data,
@@ -16,7 +15,6 @@ export function TradeReviewPanel({
   boardFilter?: BoardFilter;
   onBoardFilterChange?: (boardFilter: BoardFilter) => void;
 }) {
-  const items = useMemo(() => filterMainBoardItems(data?.items ?? [], boardFilter), [data?.items, boardFilter]);
   if (data && !data.enabled) {
     return <TqEmpty title="复盘入口未开启" description="当前功能开关关闭，策略跟踪保持既有展示。" />;
   }
@@ -35,11 +33,12 @@ export function TradeReviewPanel({
       <DataTable<ReviewPoolItem>
         rowKey={(item) => `${item.pool_date}-${item.symbol}`}
         loading={loading}
-        dataSource={items}
+        dataSource={data?.items ?? []}
         defaultScrollY={320}
         columns={[
           { title: "代码", dataIndex: "symbol", width: 96 },
           { title: "名称", dataIndex: "name", width: 120 },
+          { title: "市场板", dataIndex: "board_name", width: 90 },
           { title: "状态", dataIndex: "status", width: 110, render: statusTag },
           { title: "信号日涨幅", dataIndex: "entry_pct", width: 120, render: (value) => <PercentCell value={value as number} /> },
           { title: "量比", dataIndex: "volume_ratio", width: 100, render: (value) => Number(value || 0).toFixed(2) },

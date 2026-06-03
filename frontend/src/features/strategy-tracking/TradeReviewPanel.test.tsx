@@ -4,7 +4,7 @@ import { TradeJournalPanel } from "./TradeJournalPanel";
 import { TradeReviewPanel } from "./TradeReviewPanel";
 
 describe("TradeReviewPanel", () => {
-  it("renders review pool without production wording", () => {
+  it("renders review pool with board labels without production wording", () => {
     const html = renderToStaticMarkup(
       <TradeReviewPanel
         loading={false}
@@ -13,6 +13,7 @@ describe("TradeReviewPanel", () => {
         data={{
           enabled: true,
           pool_date: "2026-05-24",
+          board_filter: "main_only",
           total: 1,
           data_quality: "ok",
           as_of: "2026-05-24T15:10:00",
@@ -24,6 +25,8 @@ describe("TradeReviewPanel", () => {
               pool_date: "2026-05-24",
               symbol: "600000",
               name: "浦发银行",
+              board_type: "main",
+              board_name: "主板",
               status: "dropped",
               entry_pct: 9.2,
               volume_ratio: 2.1,
@@ -38,8 +41,10 @@ describe("TradeReviewPanel", () => {
             },
             {
               pool_date: "2026-05-24",
-              symbol: "300001",
-              name: "创业样本",
+              symbol: "600001",
+              name: "主板样本",
+              board_type: "main",
+              board_name: "主板",
               status: "retained",
               entry_pct: 3.1,
               volume_ratio: 1.2,
@@ -59,8 +64,9 @@ describe("TradeReviewPanel", () => {
 
     expect(html).toContain("观察池只用于收盘复盘");
     expect(html).toContain("只看主板");
+    expect(html).toContain("市场板");
+    expect(html).toContain("主板");
     expect(html).toContain("浦发银行");
-    expect(html).not.toContain("创业样本");
     expect(html).not.toContain("production_score");
     expect(html).not.toContain("稳赚");
   });

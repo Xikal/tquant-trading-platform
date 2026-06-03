@@ -10,6 +10,7 @@ from app.services.trading_experience import holding_discipline, limit_up_followt
 from app.services.trading_experience.config import ENGINE_VERSION, TRADING_EXPERIENCE_FLAGS
 from app.services.trading_experience.guards import validate_observation_payload
 from app.services.trading_experience.schemas import (
+    BoardFilter,
     HoldingDisciplineResponse,
     LimitUpFollowthroughResponse,
     RelativeStrengthResponse,
@@ -50,13 +51,14 @@ class TradingExperienceService:
         )
         return self._validated(response)
 
-    def review_pool(self, *, pool_date: date | None, limit: int) -> ReviewPoolResponse:
+    def review_pool(self, *, pool_date: date | None, limit: int, board_filter: BoardFilter = "include_all") -> ReviewPoolResponse:
         if not self._enabled("trade_review_suite_enabled"):
             return self._disabled_review_pool()
-        items = review_pool.list_review_pool(self.db, pool_date=pool_date, limit=limit)
+        items = review_pool.list_review_pool(self.db, pool_date=pool_date, limit=limit, board_filter=board_filter)
         response = ReviewPoolResponse(
             enabled=True,
             pool_date=items[0].pool_date if items else (pool_date.isoformat() if pool_date else None),
+            board_filter=board_filter,
             items=items,
             total=len(items),
             data_quality="ok" if items else "insufficient",

@@ -360,8 +360,8 @@ export const api = {
     requestCached<StrategyPromotionReview>(`/strategy/promotion-review?strategy=${encodeURIComponent(strategy)}`, 12000),
   getTradingExperienceReadiness: () =>
     requestCached<TradingExperienceReadinessResponse>("/trading-experience/readiness", 12000),
-  getTradingExperienceReviewPool: (limit = 30) =>
-    requestCached<ReviewPoolResponse>(`/trading-experience/review-pool?limit=${limit}`, 12000),
+  getTradingExperienceReviewPool: (limit = 30, boardFilter: "include_all" | "main_only" = "include_all") =>
+    requestCached<ReviewPoolResponse>(`/trading-experience/review-pool?limit=${limit}&board_filter=${boardFilter}`, 12000),
   getTradingExperienceTradeJournal: (accountId?: number | null, symbol?: string, limit = 50) => {
     const query = new URLSearchParams({ limit: String(limit) });
     if (accountId) query.set("account_id", String(accountId));

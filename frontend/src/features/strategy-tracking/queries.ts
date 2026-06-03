@@ -79,10 +79,10 @@ export function useTradingExperienceReadiness() {
   });
 }
 
-export function useTradeReviewSuite(enabled = true) {
+export function useTradeReviewSuite(boardFilter: "include_all" | "main_only" = "include_all", enabled = true) {
   return useQuery({
-    queryKey: queryKeys.tradingExperienceReview,
-    queryFn: () => api.getTradingExperienceReviewPool(30),
+    queryKey: queryKeys.tradingExperienceReview(boardFilter),
+    queryFn: () => api.getTradingExperienceReviewPool(30, boardFilter),
     enabled,
     ...strategyTrackingSwrOptions,
     staleTime: STRATEGY_TRACKING_STALE_TIME_MS,

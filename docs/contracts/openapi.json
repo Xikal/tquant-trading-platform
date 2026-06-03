@@ -17582,6 +17582,16 @@
             "title": "As Of",
             "type": "string"
           },
+          "board_name": {
+            "default": "未知",
+            "title": "Board Name",
+            "type": "string"
+          },
+          "board_type": {
+            "default": "unknown",
+            "title": "Board Type",
+            "type": "string"
+          },
           "data_quality": {
             "enum": [
               "ok",
@@ -17674,6 +17684,15 @@
           "as_of": {
             "format": "date-time",
             "title": "As Of",
+            "type": "string"
+          },
+          "board_filter": {
+            "default": "include_all",
+            "enum": [
+              "include_all",
+              "main_only"
+            ],
+            "title": "Board Filter",
             "type": "string"
           },
           "data_quality": {
@@ -40124,6 +40143,20 @@
               "minimum": 1,
               "title": "Limit",
               "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "board_filter",
+            "required": false,
+            "schema": {
+              "default": "include_all",
+              "enum": [
+                "include_all",
+                "main_only"
+              ],
+              "title": "Board Filter",
+              "type": "string"
             }
           }
         ],

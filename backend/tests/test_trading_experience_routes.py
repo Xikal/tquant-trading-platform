@@ -63,6 +63,24 @@ def test_trade_journal_route_rejects_other_user_account() -> None:
     assert response.json()["detail"] == "paper_account_not_found"
 
 
+def test_review_pool_route_applies_main_board_filter_in_backend() -> None:
+    Session = session_factory()
+    db = Session()
+    _enable_flags(db, "trade_review_suite_enabled")
+    seed_daily_bars(db, symbol="300001", pct=20.0, sector="创业板样本")
+    seed_daily_bars(db, symbol="600001", pct=10.0, sector="主板样本")
+    db.close()
+    client = client_for(Session)
+
+    response = client.get("/api/trading-experience/review-pool?pool_date=2026-05-24&limit=2&board_filter=main_only")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["board_filter"] == "main_only"
+    assert [item["symbol"] for item in payload["items"]] == ["600001"]
+    assert payload["items"][0]["board_name"] == "主板"
+
+
 def _enable_flags(db, *keys: str) -> None:  # noqa: ANN001
     db.add(SystemSetting(key="ff_trading_experience_suite_enabled", value="true"))
     for key in keys:

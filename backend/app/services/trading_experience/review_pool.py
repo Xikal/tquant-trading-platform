@@ -8,17 +8,27 @@ from sqlalchemy.orm import Session
 from app.models.entities import TradingExperienceReviewPoolItem
 from app.services.trading_experience import repository
 from app.services.trading_experience.config import ENGINE_VERSION, REVIEW_POOL_DROPPED_PCT, REVIEW_POOL_MIN_PCT, REVIEW_POOL_RETAINED_PCT
-from app.services.trading_experience.schemas import ReviewPoolItem
+from app.services.trading_experience.schemas import BoardFilter, ReviewPoolItem
 
 
-def build_review_pool(db: Session, *, pool_date: date | None = None, limit: int = 30, persist: bool = False) -> list[ReviewPoolItem]:
+def build_review_pool(
+    db: Session,
+    *,
+    pool_date: date | None = None,
+    limit: int = 30,
+    persist: bool = False,
+    board_filter: BoardFilter = "include_all",
+) -> list[ReviewPoolItem]:
     target_date = pool_date or repository.latest_trade_date(db)
     if not target_date:
         return []
-    rows = repository.daily_rows_for_date(db, target_date, limit=max(limit * 4, 80))
+    rows = repository.daily_rows_for_date(db, target_date, limit=max(limit * 4, 80), board_filter=board_filter)
     result: list[ReviewPoolItem] = []
     as_of = datetime.now()
     for daily, name, sector in rows:
+        board_type, board_name = _board_for_symbol(daily.symbol)
+        if board_filter == "main_only" and board_type != "main":
+            continue
         pct = float(daily.pct_chg or 0.0)
         if pct < REVIEW_POOL_MIN_PCT:
             continue
@@ -35,6 +45,8 @@ def build_review_pool(db: Session, *, pool_date: date | None = None, limit: int 
             pool_date=target_date.isoformat(),
             symbol=daily.symbol,
             name=name or "",
+            board_type=board_type,
+            board_name=board_name,
             status=status,
             entry_pct=round(pct, 4),
             volume_ratio=round(volume_ratio, 4),
@@ -57,14 +69,21 @@ def build_review_pool(db: Session, *, pool_date: date | None = None, limit: int 
     return result
 
 
-def list_review_pool(db: Session, *, pool_date: date | None = None, limit: int = 30) -> list[ReviewPoolItem]:
+def list_review_pool(
+    db: Session,
+    *,
+    pool_date: date | None = None,
+    limit: int = 30,
+    board_filter: BoardFilter = "include_all",
+) -> list[ReviewPoolItem]:
     target_date = pool_date or repository.latest_trade_date(db)
     if not target_date:
         return []
-    stored = repository.stored_review_pool(db, target_date, limit=limit)
-    if stored:
-        return [_from_entity(row) for row in stored]
-    return build_review_pool(db, pool_date=target_date, limit=limit, persist=False)
+    if board_filter == "include_all":
+        stored = repository.stored_review_pool(db, target_date, limit=limit)
+        if stored:
+            return [_from_entity(row) for row in stored]
+    return build_review_pool(db, pool_date=target_date, limit=limit, persist=False, board_filter=board_filter)
 
 
 def _volume_ratio(history: list[object]) -> float:
@@ -87,6 +106,19 @@ def _retention_state(rows: list[object]) -> tuple[str, str]:
     if best >= REVIEW_POOL_RETAINED_PCT:
         return "retained", ""
     return "in_pool", ""
+
+
+def _board_for_symbol(symbol: str) -> tuple[str, str]:
+    normalized = symbol.strip()
+    if normalized.startswith(("300", "301")):
+        return "chinext", "创业板"
+    if normalized.startswith(("688", "689")):
+        return "star", "科创板"
+    if normalized.startswith(("8", "4", "920")):
+        return "bse", "北交所"
+    if normalized.startswith(("60", "00")):
+        return "main", "主板"
+    return "unknown", "未知"
 
 
 def _to_entity(item: ReviewPoolItem) -> TradingExperienceReviewPoolItem:
@@ -114,6 +146,8 @@ def _from_entity(row: TradingExperienceReviewPoolItem) -> ReviewPoolItem:
         pool_date=row.pool_date.isoformat(),
         symbol=row.symbol,
         name=row.name,
+        board_type=_board_for_symbol(row.symbol)[0],
+        board_name=_board_for_symbol(row.symbol)[1],
         status=row.status,
         entry_pct=row.entry_pct,
         volume_ratio=row.volume_ratio,
