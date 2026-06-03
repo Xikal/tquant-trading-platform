@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import os
+import subprocess
 from pathlib import Path
 
 
@@ -75,6 +77,30 @@ def test_one_click_deploy_defaults_are_overridable_and_do_not_embed_secret_conte
     assert "--fast-risk-accepted" in one_click_script
     assert "quick_cloud_deploy.sh" in one_click_script
     assert "BEGIN OPENSSH PRIVATE KEY" not in one_click_script
+
+
+def test_one_click_deploy_no_args_dry_run_uses_default_fast_mode(tmp_path: Path) -> None:
+    fake_home = tmp_path / "home"
+    key_path = fake_home / "Downloads" / "gupiao.pem"
+    key_path.parent.mkdir(parents=True)
+    key_path.write_text("fake-key", encoding="utf-8")
+    env = {
+        **os.environ,
+        "HOME": str(fake_home),
+        "ONE_CLICK_DEPLOY_DRY_RUN": "1",
+    }
+
+    result = subprocess.run(
+        ["bash", str(ROOT_DIR / "scripts/one_click_cloud_deploy.sh")],
+        cwd=ROOT_DIR,
+        env=env,
+        text=True,
+        capture_output=True,
+        check=True,
+    )
+
+    assert "mode=--fast-risk-accepted" in result.stdout
+    assert "dry-run args=--fast-risk-accepted" in result.stdout
 
 
 def test_quick_deploy_can_skip_nginx_refresh_and_retries_frontend_smoke() -> None:

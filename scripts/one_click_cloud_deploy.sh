@@ -49,7 +49,11 @@ for arg in "$@"; do
 done
 
 if [[ "$explicit_mode" == "0" ]]; then
-  args=(--fast-risk-accepted "${args[@]}")
+  if [[ "${#args[@]}" -eq 0 ]]; then
+    args=(--fast-risk-accepted)
+  else
+    args=(--fast-risk-accepted "${args[@]}")
+  fi
 fi
 
 export CLOUD_HOST="${CLOUD_HOST:-$DEFAULT_CLOUD_HOST}"
@@ -68,5 +72,10 @@ fi
 
 printf '[one-click-deploy] target=%s@%s domain=%s mode=%s\n' \
   "$CLOUD_USER" "$CLOUD_HOST" "$CLOUD_DOMAIN" "${args[*]:-safe}"
+
+if [[ "${ONE_CLICK_DEPLOY_DRY_RUN:-0}" == "1" ]]; then
+  printf '[one-click-deploy] dry-run args=%s\n' "${args[*]:-safe}"
+  exit 0
+fi
 
 exec "$ROOT_DIR/scripts/quick_cloud_deploy.sh" "${args[@]}"
