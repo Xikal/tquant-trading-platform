@@ -41,6 +41,19 @@ class DataQualitySlaResponse(BaseModel):
     total: int = 0
 
 
+class RuntimeFallbackStatusResponse(BaseModel):
+    worker_status: Literal["running", "stale", "missing"] | str
+    worker_id: str = ""
+    heartbeat_updated_at: str = ""
+    heartbeat_age_seconds: int | None = None
+    critical_queued_count: int = 0
+    oldest_critical_queued_at: str = ""
+    oldest_critical_queued_age_seconds: int | None = None
+    blocking: bool = False
+    message: str = ""
+    recovery_actions: list[str] = Field(default_factory=list)
+
+
 class DataQualityMissingSymbolOut(BaseModel):
     symbol: str
     name: str = ""

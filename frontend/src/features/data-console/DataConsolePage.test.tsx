@@ -315,6 +315,33 @@ describe("DataConsolePage", () => {
     expect(html).toContain("SLA 加载失败");
     expect(html).toContain("eastmoney");
   });
+
+  it("describes stale runtime fallback separately from queued backlog", () => {
+    const html = renderToStaticMarkup(
+      <DataHealthOverview
+        data={null}
+        runtimeFallback={{
+          worker_status: "stale",
+          worker_id: "runtime-test",
+          heartbeat_updated_at: "2026-06-03T16:00:00",
+          heartbeat_age_seconds: 300,
+          critical_queued_count: 0,
+          oldest_critical_queued_at: "",
+          oldest_critical_queued_age_seconds: null,
+          blocking: true,
+          message: "runtime worker heartbeat stale",
+          recovery_actions: [],
+        }}
+        loading={false}
+        error=""
+        onRefresh={() => undefined}
+        onShowBlocked={() => undefined}
+      />,
+    );
+
+    expect(html).toContain("后台心跳长时间未更新");
+    expect(html).not.toContain("关键刷新排队过久，请先处理后台任务积压。");
+  });
 });
 
 function dataQualityItemsFixture(): DataQualitySnapshotItem[] {

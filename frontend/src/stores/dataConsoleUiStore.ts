@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { getAdminApiToken } from "../api/base";
 
-export type DataConsoleModuleKey = "sla" | "sources" | "coverage" | "tasks" | "repair" | "inspector" | "gate";
+export type DataConsoleModuleKey = "sla" | "sources" | "coverage" | "tasks" | "repair" | "inspector" | "gate" | "runtimeFallback";
 export type CoverageStatusFilter = "all" | "blocked" | "stale";
 
 interface DataConsoleUiStore {
@@ -34,7 +34,7 @@ type DataConsoleField =
   | "repairConfirmOpen"
   | "inspectorSymbol";
 
-const MODULE_KEYS: DataConsoleModuleKey[] = ["sla", "sources", "coverage", "tasks", "repair", "inspector", "gate"];
+const MODULE_KEYS: DataConsoleModuleKey[] = ["sla", "sources", "coverage", "tasks", "repair", "inspector", "gate", "runtimeFallback"];
 const today = new Date().toISOString().slice(0, 10);
 
 export const useDataConsoleUiStore = create<DataConsoleUiStore>((set) => ({

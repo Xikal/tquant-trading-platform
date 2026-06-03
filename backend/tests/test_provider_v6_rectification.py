@@ -88,6 +88,52 @@ def test_daily_bar_refresh_resumes_from_checkpoint_and_prioritizes_liquid_symbol
         assert '"status": "completed"' in stored.value
 
 
+def test_daily_bar_refresh_reports_insufficient_daily_bars(monkeypatch) -> None:
+    Session = _session_factory()
+    with Session() as db:
+        _seed_instruments(db)
+        monkeypatch.setattr(refresh_module, "expected_low_buy_trade_date", lambda _: "2026-06-03")
+        service = DailyBarRefreshService(db)
+        service.market = _FakeMarket()
+
+        result = service.refresh_latest(limit=3, chunk_size=2, expected_trade_date="2026-06-03")
+
+        assert result["ok"] is False
+        assert result["status"] == "insufficient_daily_bars"
+        assert result["trade_date"] == "2026-06-03"
+        assert result["daily_bar_count"] < result["min_daily_bar_count"]
+
+
+def test_daily_bar_refresh_retries_completed_checkpoint_when_daily_bars_insufficient(monkeypatch) -> None:
+    Session = _session_factory()
+    with Session() as db:
+        _seed_instruments(db)
+        checkpoint_store = DailyBarRefreshCheckpointStore(db)
+        checkpoint_store.save(
+            DailyBarRefreshCheckpoint(
+                trade_date="2026-06-03",
+                limit=3,
+                chunk_size=2,
+                total_chunks=2,
+                last_chunk_index=1,
+                updated=3,
+                skipped=0,
+                status="completed",
+            )
+        )
+        db.commit()
+        monkeypatch.setattr(refresh_module, "expected_low_buy_trade_date", lambda _: "2026-06-03")
+        service = DailyBarRefreshService(db)
+        fake_market = _FakeMarket()
+        service.market = fake_market
+
+        result = service.refresh_latest(limit=3, chunk_size=2, expected_trade_date="2026-06-03")
+
+        assert result["status"] == "insufficient_daily_bars"
+        assert result["resumed"] is False
+        assert fake_market.calls == [["600002", "600003"], ["600001"]]
+
+
 def _session_factory():
     engine = create_engine(
         "sqlite+pysqlite:///:memory:",

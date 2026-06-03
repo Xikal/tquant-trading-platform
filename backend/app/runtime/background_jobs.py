@@ -31,6 +31,7 @@ from app.services.agent_signal_scan_service import AgentSignalScanService
 from app.services.backtest_research_worker import BacktestResearchWorker
 from app.services.latest_data_close_refresh import enqueue_latest_data_close_refresh
 from app.services.latest_data_status import expected_low_buy_trade_date, publish_latest_trade_date_if_ready
+from app.services.latest_data_watchdog import LatestDataWatchdogLedger
 from app.services.low_buy.shared import DEFAULT_PRODUCTION_LOW_BUY_STRATEGY
 from app.services.low_buy.strategy_auto_governance import refresh_low_buy_strategy_auto_governance
 from app.services.low_buy.strategy_policy import PRODUCTION_PRIORITY_STRATEGIES
@@ -60,6 +61,7 @@ SQLITE_BACKGROUND_SCAN_LIMIT = 120
 DEFAULT_BACKGROUND_SCAN_LIMIT = 480
 ML_INCREMENTAL_TRAIN_WEEKDAY = 4  # Friday
 ML_INCREMENTAL_TRAIN_AFTER = dt_time(hour=16, minute=0)
+LATEST_DATA_WATCHDOG_AFTER = dt_time(hour=15, minute=25)
 _background_leader_lock_handle = None
 
 
@@ -338,6 +340,33 @@ def _enqueue_daily_bar_refresh_once() -> None:
         enqueue_latest_data_close_refresh(db)
 
 
+def _latest_data_watchdog_due() -> bool:
+    now = beijing_now()
+    if now.weekday() >= 5:
+        return False
+    return now.time() >= LATEST_DATA_WATCHDOG_AFTER
+
+
+def _enqueue_latest_data_watchdog_once() -> None:
+    if not _latest_data_watchdog_due():
+        return
+    with SessionLocal() as db:
+        expected = expected_low_buy_trade_date(db)
+        if LatestDataWatchdogLedger(db).already_notified(trade_date=expected, channel="feishu"):
+            logger.info("日线刷新巡查通知已发送，跳过重复入队: trade_date=%s", expected)
+            return
+        task = RuntimeTaskQueue(db).enqueue(
+            RuntimeTaskCreate(
+                task_type="latest_data_watchdog",
+                payload={"expected_trade_date": expected, "notify": True, "reason": "after_close_watchdog"},
+                priority=22,
+                idempotency_key=f"latest_data_watchdog:{expected}",
+                max_attempts=2,
+            )
+        )
+        logger.info("日线刷新巡查任务检查完成: trade_date=%s task_id=%s status=%s", expected, task.id, task.status)
+
+
 def _agent_daily_report_push_due() -> bool:
     now = beijing_now()
     if now.weekday() >= 5:
@@ -415,6 +444,12 @@ def start_runtime_background_jobs() -> None:
             target=_enqueue_daily_bar_refresh_once,
             interval_seconds=300,
             initial_delay_seconds=45,
+        )
+        task_manager.register_loop(
+            name="latest_data_watchdog",
+            target=_enqueue_latest_data_watchdog_once,
+            interval_seconds=300,
+            initial_delay_seconds=135,
         )
         if settings.market_review_enabled:
             task_manager.register_loop(

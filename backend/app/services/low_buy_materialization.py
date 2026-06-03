@@ -108,9 +108,15 @@ def refresh_latest_low_buy_materialization(
             reason="latest_low_buy_materialization",
         )
         if go_result.get("ok"):
+            publish_status = _publish_latest_materialization_state(required)
+            missing = list(publish_status.get("missing_strategies") or [])
             return {
                 **go_result,
+                "ok": not missing and publish_status.get("status") == "success",
                 "source": "go_scan_worker",
+                "publish_status": publish_status,
+                "published_trade_date": str(publish_status.get("published_trade_date") or ""),
+                "missing_strategies": missing,
                 "main_force_shadow": warm_main_force_shadow_observations(
                     strategies=required,
                     limit=limit,
@@ -324,14 +330,26 @@ def _refresh_latest_low_buy_materialization_python(
     with SessionLocal() as db:
         status = publish_latest_trade_date_if_ready(db, strategies=strategies)
         db.commit()
+    missing = list(status.get("missing_strategies") or [])
     return {
-        "ok": not skipped,
+        "ok": not skipped and not missing and status.get("status") == "success",
         "source": "python_fallback" if fallback_reason else "python",
         "fallback_reason": fallback_reason or "",
         "refreshed": refreshed,
         "skipped": skipped,
         "publish_status": status,
+        "published_trade_date": str(status.get("published_trade_date") or ""),
+        "missing_strategies": missing,
     }
+
+
+def _publish_latest_materialization_state(strategies: list[str]) -> dict[str, Any]:
+    from app.core.database import SessionLocal
+
+    with SessionLocal() as db:
+        status = publish_latest_trade_date_if_ready(db, strategies=strategies)
+        db.commit()
+        return status
 
 
 def _allowed_main_force_strategies(raw: str) -> set[str]:

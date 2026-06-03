@@ -271,14 +271,45 @@ def test_mysql_compose_runs_runtime_scheduler_separately_from_web_and_worker() -
     assert "RUNTIME_BACKGROUND_ROLE: worker" in compose
 
 
+def test_runtime_worker_supports_latest_data_watchdog_task() -> None:
+    source = read_repo_file("backend/app/workers/runtime_worker.py")
+    background_jobs = read_repo_file("backend/app/runtime/background_jobs.py")
+
+    assert '"latest_data_watchdog"' in source
+    assert "LatestDailyBarWatchdog().run" in source
+    assert 'name="latest_data_watchdog"' in background_jobs
+    assert 'task_type="latest_data_watchdog"' in background_jobs
+
+
 def test_cloud_deploy_starts_runtime_scheduler_container() -> None:
     deploy_script = read_repo_file("scripts/deploy_cloud_server.sh")
     quick_script = read_repo_file("scripts/quick_cloud_deploy.sh")
+    compose = read_repo_file("docker-compose.mysql.yml")
 
+    assert "runtime-worker:" in compose
+    assert "runtime-scheduler:" in compose
+    assert 'command: ["python", "-m", "app.workers.runtime_worker"]' in compose
+    assert 'command: ["python", "-m", "app.workers.runtime_scheduler"]' in compose
     assert "tquant-runtime-scheduler-mysql" in deploy_script
+    assert "tquant-runtime-worker-mysql" in deploy_script
     assert "runtime-scheduler" in deploy_script
+    assert "runtime-worker" in deploy_script
     assert "app runtime-scheduler runtime-worker backtest-worker analytics-worker" in deploy_script
     assert "tquant-runtime-scheduler-mysql" in quick_script
+
+
+def test_runtime_data_fallback_runbook_and_startup_guard_exist() -> None:
+    runbook = read_repo_file("docs/operations/runtime-data-fallback-runbook.md")
+    production_runbook = read_repo_file("PRODUCTION_RUNBOOK.md")
+    startup_script = read_repo_file("scripts/dev_start_all.sh")
+
+    assert "runtime_worker.heartbeat" in runbook
+    assert "critical tasks queued > 10 min" in runbook
+    assert "hermes_daily_bar_watchdog.py" in runbook
+    assert "runtime-data-fallback-runbook.md" in production_runbook
+    assert "RUNTIME_BACKGROUND_JOBS_ENABLED" in startup_script
+    assert "app.workers.runtime_worker" in startup_script
+    assert "uvicorn app.main:app" in startup_script
 
 
 def test_cloud_deploy_distinguishes_nginx_sni_from_public_domain_reachability() -> None:

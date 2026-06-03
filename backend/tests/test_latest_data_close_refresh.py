@@ -4,6 +4,7 @@ from datetime import datetime
 from types import SimpleNamespace
 
 from app.services import latest_data_close_refresh as close_refresh
+from app.runtime import background_jobs
 
 
 class _FakeRepo:
@@ -148,3 +149,42 @@ def test_before_close_skips_without_touching_queue(monkeypatch) -> None:
 
     assert result["action"] == "skip_before_close"
     assert _FakeQueue.last_payload is None
+
+
+def test_latest_data_watchdog_enqueue_skips_when_same_trade_date_already_notified(monkeypatch) -> None:
+    captured = []
+
+    class _Queue:
+        def __init__(self, _db) -> None:
+            pass
+
+        def enqueue(self, payload):
+            captured.append(payload)
+            return SimpleNamespace(id=9, status="queued")
+
+    class _Repo:
+        def __init__(self, _db) -> None:
+            pass
+
+        def already_notified(self, *, trade_date: str, channel: str = "feishu") -> bool:
+            assert trade_date == "2026-05-18"
+            assert channel == "feishu"
+            return True
+
+    monkeypatch.setattr(background_jobs, "_latest_data_watchdog_due", lambda: True)
+    monkeypatch.setattr(background_jobs, "expected_low_buy_trade_date", lambda _db: "2026-05-18")
+    monkeypatch.setattr(background_jobs, "LatestDataWatchdogLedger", _Repo)
+    monkeypatch.setattr(background_jobs, "RuntimeTaskQueue", _Queue)
+    monkeypatch.setattr(background_jobs, "SessionLocal", lambda: _ContextDb())
+
+    background_jobs._enqueue_latest_data_watchdog_once()
+
+    assert captured == []
+
+
+class _ContextDb:
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *_args):
+        return False

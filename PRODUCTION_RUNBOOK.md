@@ -100,6 +100,10 @@ cd frontend
 npm run dev
 ```
 
+### Runtime Data Fallback
+
+Latest-data gaps, stuck `runtime_tasks`, empty priority board recovery, and runtime-worker startup checks are documented in [runtime-data-fallback-runbook.md](docs/operations/runtime-data-fallback-runbook.md).
+
 ## 5.1 单端口生产化运行
 
 后端现在会直接托管 `frontend/dist`，所以构建前端后，可以只启动后端：

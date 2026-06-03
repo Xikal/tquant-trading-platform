@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 import socket
+import threading
 import time
 from datetime import date
 from typing import Any
@@ -33,6 +34,7 @@ RUNTIME_WORKER_TASK_TYPES = (
     "market_pulse_refresh",
     "instrument_sync",
     "daily_bar_refresh",
+    "latest_data_watchdog",
     "a_key_level_materialization_refresh",
     "market_review_report",
     "paper_review_report",
@@ -74,6 +76,7 @@ RESEARCH_TASK_TYPES = {
 }
 ML_TASK_TYPES = {"ml_signal_incremental_train", "strategy_self_evolution", "ml_feature_drift_monitor"}
 FACTOR_TASK_TYPES = {"factor_mining_evaluate", "factor_mining_monthly"}
+LONG_TASK_HEARTBEAT_SECONDS = 30.0
 
 
 class RuntimeWorker:
@@ -90,12 +93,15 @@ class RuntimeWorker:
 
     def run_once(self) -> bool:
         with SessionLocal() as db:
+            _record_worker_heartbeat(db, worker_id=self.worker_id)
             queue = RuntimeTaskQueue(db)
             task = queue.claim_next(worker_id=self.worker_id, task_types=RUNTIME_WORKER_TASK_TYPES)
             if task is None:
                 return False
             task_id = int(task.id)
             task_type = str(task.task_type)
+            heartbeat_stop = threading.Event()
+            heartbeat_thread = _start_task_heartbeat(worker_id=self.worker_id, stop_event=heartbeat_stop)
             try:
                 result = _execute_task(task_type, _json_payload(task.payload_json), db)
                 queue.mark_succeeded(task_id, result)
@@ -103,6 +109,10 @@ class RuntimeWorker:
                 logger.exception("runtime task failed: id=%s type=%s", task_id, task_type)
                 db.rollback()
                 queue.mark_failed(task_id, str(exc), retryable=True)
+            finally:
+                heartbeat_stop.set()
+                heartbeat_thread.join(timeout=1.0)
+            _record_worker_heartbeat(db, worker_id=self.worker_id)
             return True
 
     def run_forever(self) -> None:
@@ -182,7 +192,24 @@ def _execute_task(task_type: str, payload: dict[str, Any], db) -> dict[str, Any]
     if task_type == "daily_bar_refresh":
         from app.services.daily_bar_refresh import DailyBarRefreshService
 
-        return DailyBarRefreshService(db).refresh_latest(limit=int(payload.get("limit") or 6000))
+        result = DailyBarRefreshService(db).refresh_latest(
+            limit=int(payload.get("limit") or 6000),
+            expected_trade_date=str(payload.get("expected_trade_date") or "") or None,
+        )
+        if result.get("ok"):
+            from app.services.latest_data_close_refresh import enqueue_latest_data_close_refresh
+
+            result["next_refresh_check"] = enqueue_latest_data_close_refresh(db)
+        return result
+    if task_type == "latest_data_watchdog":
+        from app.services.latest_data_watchdog import LatestDailyBarWatchdog
+
+        return LatestDailyBarWatchdog().run(
+            db,
+            trade_date=str(payload.get("expected_trade_date") or payload.get("trade_date") or "") or None,
+            notify=bool(payload.get("notify", True)),
+            force_notify=bool(payload.get("force_notify", False)),
+        )
     if task_type == "a_key_level_materialization_refresh":
         from app.services.key_levels.materialization import AKeyLevelMaterializationService
 
@@ -459,6 +486,26 @@ def _json_payload(raw: str) -> dict[str, Any]:
     except Exception:
         return {}
     return value if isinstance(value, dict) else {}
+
+
+def _record_worker_heartbeat(db, *, worker_id: str) -> None:  # noqa: ANN001
+    try:
+        from app.services.runtime_worker_health import record_runtime_worker_heartbeat
+
+        record_runtime_worker_heartbeat(db, worker_id=worker_id)
+    except Exception:
+        logger.exception("runtime worker heartbeat update failed: worker_id=%s", worker_id)
+
+
+def _start_task_heartbeat(*, worker_id: str, stop_event: threading.Event) -> threading.Thread:
+    def _loop() -> None:
+        while not stop_event.wait(LONG_TASK_HEARTBEAT_SECONDS):
+            with SessionLocal() as heartbeat_db:
+                _record_worker_heartbeat(heartbeat_db, worker_id=worker_id)
+
+    thread = threading.Thread(target=_loop, name=f"runtime-heartbeat-{worker_id}", daemon=True)
+    thread.start()
+    return thread
 
 
 def _execute_trading_experience_task(task_type: str, payload: dict[str, Any], db) -> dict[str, Any]:  # noqa: ANN001

@@ -17850,6 +17850,90 @@
         "title": "RiskEventOut",
         "type": "object"
       },
+      "RuntimeFallbackStatusResponse": {
+        "properties": {
+          "blocking": {
+            "default": false,
+            "title": "Blocking",
+            "type": "boolean"
+          },
+          "critical_queued_count": {
+            "default": 0,
+            "title": "Critical Queued Count",
+            "type": "integer"
+          },
+          "heartbeat_age_seconds": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Heartbeat Age Seconds"
+          },
+          "heartbeat_updated_at": {
+            "default": "",
+            "title": "Heartbeat Updated At",
+            "type": "string"
+          },
+          "message": {
+            "default": "",
+            "title": "Message",
+            "type": "string"
+          },
+          "oldest_critical_queued_age_seconds": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Oldest Critical Queued Age Seconds"
+          },
+          "oldest_critical_queued_at": {
+            "default": "",
+            "title": "Oldest Critical Queued At",
+            "type": "string"
+          },
+          "recovery_actions": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Recovery Actions",
+            "type": "array"
+          },
+          "worker_id": {
+            "default": "",
+            "title": "Worker Id",
+            "type": "string"
+          },
+          "worker_status": {
+            "anyOf": [
+              {
+                "enum": [
+                  "running",
+                  "stale",
+                  "missing"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Worker Status"
+          }
+        },
+        "required": [
+          "worker_status"
+        ],
+        "title": "RuntimeFallbackStatusResponse",
+        "type": "object"
+      },
       "RuntimeStatusResponse": {
         "properties": {
           "api_prefix": {
@@ -29091,6 +29175,32 @@
           }
         ],
         "summary": "Enqueue Data Repair",
+        "tags": [
+          "data-quality"
+        ]
+      }
+    },
+    "/api/data-quality/runtime-fallback": {
+      "get": {
+        "operationId": "get_runtime_fallback_status_api_data_quality_runtime_fallback_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RuntimeFallbackStatusResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Runtime Fallback Status",
         "tags": [
           "data-quality"
         ]

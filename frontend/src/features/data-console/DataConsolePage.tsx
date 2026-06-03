@@ -12,6 +12,7 @@ import { CoveragePanel } from "./CoveragePanel";
 import { CollectionJobsPanel } from "./CollectionJobsPanel";
 import { DataRepairPanel } from "./DataRepairPanel";
 import { InstrumentInspectorPanel } from "./InstrumentInspectorPanel";
+import { RuntimeFallbackPanel } from "./RuntimeFallbackPanel";
 import { TradeDataGateCard } from "./TradeDataGateCard";
 import { useDataConsole } from "./useDataConsole";
 import { buildDataConsoleSummary } from "./dataConsoleTypes";
@@ -69,6 +70,7 @@ function DataConsoleAdminContent() {
             <h3>今日数据状态</h3>
             <DataHealthOverview
               data={data.sla}
+              runtimeFallback={data.runtimeFallback}
               loading={moduleLoading.sla}
               error={moduleErrors.sla}
               onRefresh={() => void actions.refreshSla()}
@@ -82,6 +84,15 @@ function DataConsoleAdminContent() {
               loading={moduleLoading.gate}
               error={moduleErrors.gate}
               onRefresh={() => void actions.refreshGate()}
+            />
+          </section>
+          <section className={styles.layerSection} aria-label="后台兜底状态">
+            <h3>后台兜底状态</h3>
+            <RuntimeFallbackPanel
+              status={data.runtimeFallback}
+              loading={moduleLoading.runtimeFallback}
+              error={moduleErrors.runtimeFallback}
+              onRefresh={() => void actions.refreshRuntimeFallback()}
             />
           </section>
         </div>

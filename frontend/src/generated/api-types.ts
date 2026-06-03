@@ -1745,6 +1745,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/data-quality/runtime-fallback": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Runtime Fallback Status */
+        get: operations["get_runtime_fallback_status_api_data_quality_runtime_fallback_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/data-quality/sla": {
         parameters: {
             query?: never;
@@ -15468,6 +15485,47 @@ export interface components {
              */
             triggered_at: string;
         };
+        /** RuntimeFallbackStatusResponse */
+        RuntimeFallbackStatusResponse: {
+            /**
+             * Blocking
+             * @default false
+             */
+            blocking: boolean;
+            /**
+             * Critical Queued Count
+             * @default 0
+             */
+            critical_queued_count: number;
+            /** Heartbeat Age Seconds */
+            heartbeat_age_seconds?: number | null;
+            /**
+             * Heartbeat Updated At
+             * @default
+             */
+            heartbeat_updated_at: string;
+            /**
+             * Message
+             * @default
+             */
+            message: string;
+            /** Oldest Critical Queued Age Seconds */
+            oldest_critical_queued_age_seconds?: number | null;
+            /**
+             * Oldest Critical Queued At
+             * @default
+             */
+            oldest_critical_queued_at: string;
+            /** Recovery Actions */
+            recovery_actions?: string[];
+            /**
+             * Worker Id
+             * @default
+             */
+            worker_id: string;
+            /** Worker Status */
+            worker_status: ("running" | "stale" | "missing") | string;
+        };
         /** RuntimeStatusResponse */
         RuntimeStatusResponse: {
             /** Api Prefix */
@@ -22254,6 +22312,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_runtime_fallback_status_api_data_quality_runtime_fallback_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RuntimeFallbackStatusResponse"];
                 };
             };
         };

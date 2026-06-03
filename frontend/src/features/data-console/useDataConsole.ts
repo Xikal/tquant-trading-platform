@@ -2,7 +2,7 @@ import { useCallback, useEffect } from "react";
 import { setAdminApiToken } from "../../api/base";
 import { api } from "../../api/client";
 import { dataConsoleInspectorApi } from "../../api/dataConsoleInspector";
-import { dataQualityApi, type DataQualityCoverageResponse, type DataQualitySlaResponse } from "../../api/dataQuality";
+import { dataQualityApi, type DataQualityCoverageResponse, type DataQualitySlaResponse, type RuntimeFallbackStatus } from "../../api/dataQuality";
 import { dataSourcesApi } from "../../api/dataSources";
 import { runtimeTasksApi, type RuntimeTaskOut } from "../../api/runtimeTasks";
 import { useDataConsoleUiStore, type DataConsoleModuleKey } from "../../stores/dataConsoleUiStore";
@@ -19,6 +19,7 @@ export const DATA_CONSOLE_SERVER_KEYS = {
   tasks: ["data-console", "tasks"] as const,
   inspector: ["data-console", "inspector"] as const,
   gate: ["data-console", "gate"] as const,
+  runtimeFallback: ["data-console", "runtime-fallback"] as const,
 };
 
 const READ_REFRESH_MS = 5 * 60 * 1000;
@@ -32,6 +33,7 @@ export function useDataConsole(): { data: DataConsoleData; actions: DataConsoleA
   const [tasks, setTasks] = useServerState<RuntimeTaskOut[]>(DATA_CONSOLE_SERVER_KEYS.tasks, EMPTY_TASKS);
   const [inspector, setInspector] = useServerState<InstrumentInspectorResponse | null>(DATA_CONSOLE_SERVER_KEYS.inspector, null);
   const [gate, setGate] = useServerState<TradeDataGateResponse | null>(DATA_CONSOLE_SERVER_KEYS.gate, null);
+  const [runtimeFallback, setRuntimeFallback] = useServerState<RuntimeFallbackStatus | null>(DATA_CONSOLE_SERVER_KEYS.runtimeFallback, null);
   const selectedDatasetKey = useDataConsoleUiStore((state) => state.selectedDatasetKey);
   const selectedScope = useDataConsoleUiStore((state) => state.selectedScope);
   const backfillStartDate = useDataConsoleUiStore((state) => state.backfillStartDate);
@@ -69,9 +71,13 @@ export function useDataConsole(): { data: DataConsoleData; actions: DataConsoleA
     await loadModule("gate", setModuleLoading, setModuleError, async () => setGate(await dataQualityApi.tradeGate()));
   }, [setGate, setModuleError, setModuleLoading]);
 
+  const refreshRuntimeFallback = useCallback(async () => {
+    await loadModule("runtimeFallback", setModuleLoading, setModuleError, async () => setRuntimeFallback(await dataQualityApi.runtimeFallback()));
+  }, [setModuleError, setModuleLoading, setRuntimeFallback]);
+
   const refreshAll = useCallback(async () => {
-    await Promise.all([refreshSla(), refreshSources(), refreshCoverage(), refreshTasks(), refreshGate()]);
-  }, [refreshCoverage, refreshGate, refreshSla, refreshSources, refreshTasks]);
+    await Promise.all([refreshSla(), refreshSources(), refreshCoverage(), refreshTasks(), refreshGate(), refreshRuntimeFallback()]);
+  }, [refreshCoverage, refreshGate, refreshRuntimeFallback, refreshSla, refreshSources, refreshTasks]);
 
   const syncInstruments = useCallback(async () => {
     await loadModule("tasks", setModuleLoading, setModuleError, async () => {
@@ -136,11 +142,11 @@ export function useDataConsole(): { data: DataConsoleData; actions: DataConsoleA
   useEffect(() => {
     const timer = window.setInterval(() => {
       if (document.visibilityState === "visible") {
-        void Promise.all([refreshSla(), refreshSources(), refreshCoverage(), refreshGate()]);
+        void Promise.all([refreshSla(), refreshSources(), refreshCoverage(), refreshGate(), refreshRuntimeFallback()]);
       }
     }, READ_REFRESH_MS);
     return () => window.clearInterval(timer);
-  }, [refreshCoverage, refreshGate, refreshSla, refreshSources]);
+  }, [refreshCoverage, refreshGate, refreshRuntimeFallback, refreshSla, refreshSources]);
 
   useEffect(() => {
     if (!shouldPollRuntimeTasks(tasks, document.visibilityState)) {
@@ -151,13 +157,14 @@ export function useDataConsole(): { data: DataConsoleData; actions: DataConsoleA
   }, [refreshTasks, tasks]);
 
   return {
-    data: { sla, sourceHealth, coverage, tasks, inspector, gate },
+    data: { sla, sourceHealth, coverage, tasks, inspector, gate, runtimeFallback },
     actions: {
       refreshSla,
       refreshSources,
       refreshCoverage,
       refreshTasks,
       refreshGate,
+      refreshRuntimeFallback,
       refreshAll,
       syncInstruments,
       refreshCloseData,

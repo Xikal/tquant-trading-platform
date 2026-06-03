@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import time
 import warnings
 
 from sqlalchemy import create_engine
@@ -73,6 +74,109 @@ def test_runtime_worker_executes_market_pulse_refresh(monkeypatch):
     assert result == {"ok": True, "data_quality": "fresh", "pulse_level": "repair"}
     assert calls == [db]
     assert recorded == [(db, "repair")]
+
+
+def test_runtime_worker_executes_latest_data_watchdog(monkeypatch):
+    db = _db()
+    calls = []
+
+    class _Watchdog:
+        def run(self, db_arg, *, trade_date=None, notify=True, force_notify=False):  # noqa: ANN001
+            calls.append((db_arg, trade_date, notify, force_notify))
+            return {"ok": False, "status": "alert_sent", "expected_trade_date": trade_date}
+
+    monkeypatch.setattr("app.services.latest_data_watchdog.LatestDailyBarWatchdog", lambda: _Watchdog())
+
+    result = runtime_worker._execute_task(
+        "latest_data_watchdog",
+        {"expected_trade_date": "2026-06-03", "notify": True, "force_notify": True},
+        db,
+    )
+
+    assert result == {"ok": False, "status": "alert_sent", "expected_trade_date": "2026-06-03"}
+    assert calls == [(db, "2026-06-03", True, True)]
+
+
+def test_runtime_worker_passes_expected_trade_date_to_daily_bar_refresh(monkeypatch):
+    db = _db()
+    calls = []
+
+    class _RefreshService:
+        def __init__(self, db_arg):  # noqa: ANN001
+            calls.append(("init", db_arg))
+
+        def refresh_latest(self, *, limit: int, expected_trade_date=None):  # noqa: ANN001
+            calls.append(("refresh", limit, expected_trade_date))
+            return {"ok": True, "expected_trade_date": expected_trade_date, "limit": limit}
+
+    monkeypatch.setattr("app.services.daily_bar_refresh.DailyBarRefreshService", _RefreshService)
+
+    result = runtime_worker._execute_task(
+        "daily_bar_refresh",
+        {"limit": 6000, "expected_trade_date": "2026-06-03"},
+        db,
+    )
+
+    assert result["expected_trade_date"] == "2026-06-03"
+    assert calls == [("init", db), ("refresh", 6000, "2026-06-03")]
+
+
+def test_runtime_worker_chains_close_refresh_after_daily_bar_success(monkeypatch):
+    db = _db()
+    calls = []
+
+    class _RefreshService:
+        def __init__(self, _db_arg):  # noqa: ANN001
+            pass
+
+        def refresh_latest(self, **_kwargs):  # noqa: ANN003
+            return {"ok": True, "trade_date": "2026-06-03", "daily_bar_count": 4950}
+
+    monkeypatch.setattr("app.services.daily_bar_refresh.DailyBarRefreshService", _RefreshService)
+    monkeypatch.setattr(
+        "app.services.latest_data_close_refresh.enqueue_latest_data_close_refresh",
+        lambda db_arg: calls.append(db_arg) or {"ok": True, "action": "publish_latest_trade_date"},
+    )
+
+    result = runtime_worker._execute_task("daily_bar_refresh", {"expected_trade_date": "2026-06-03"}, db)
+
+    assert result["next_refresh_check"]["action"] == "publish_latest_trade_date"
+    assert calls == [db]
+
+
+def test_runtime_worker_keeps_heartbeat_fresh_during_long_task(monkeypatch):
+    db = _db()
+    heartbeats = []
+
+    class _SessionFactory:
+        def __call__(self):
+            return db
+
+    class _Queue:
+        def __init__(self, _db_arg):  # noqa: ANN001
+            pass
+
+        def claim_next(self, *, worker_id, task_types=None):  # noqa: ANN001
+            return type("Task", (), {"id": 7, "task_type": "noop", "payload_json": "{}"})()
+
+        def mark_succeeded(self, task_id, result):  # noqa: ANN001
+            assert task_id == 7
+            assert result == {"ok": True}
+
+    def _execute_task(_task_type, _payload, _db_arg):  # noqa: ANN001
+        time.sleep(0.05)
+        return {"ok": True}
+
+    monkeypatch.setattr(runtime_worker, "SessionLocal", _SessionFactory())
+    monkeypatch.setattr(runtime_worker, "RuntimeTaskQueue", _Queue)
+    monkeypatch.setattr(runtime_worker, "_execute_task", _execute_task)
+    monkeypatch.setattr(runtime_worker, "_record_worker_heartbeat", lambda _db_arg, *, worker_id: heartbeats.append(worker_id))
+    monkeypatch.setattr(runtime_worker, "LONG_TASK_HEARTBEAT_SECONDS", 0.01)
+
+    did_work = runtime_worker.RuntimeWorker(worker_id="runtime-test").run_once()
+
+    assert did_work is True
+    assert len(heartbeats) >= 3
 
 
 def test_runtime_worker_executes_ml_incremental_train_task(tmp_path, monkeypatch):

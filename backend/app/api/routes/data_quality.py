@@ -20,11 +20,13 @@ from app.services.data_quality.schemas import (
     DataQualitySnapshotOut,
     DataRepairAuditOut,
     DataRepairRunRequest,
+    RuntimeFallbackStatusResponse,
     TradeDataGateResponse,
 )
 from app.services.data_quality.sla import SUPPORTED_DATASETS, SUPPORTED_SCOPES
 from app.services.data_quality.trade_gate import build_trade_data_gate
 from app.services.market.providers import DataSourceProbeService
+from app.services.runtime_worker_health import build_runtime_fallback_status
 from app.services.tasks import RuntimeTaskQueue
 
 router = APIRouter(prefix="/data-quality", dependencies=[Depends(get_current_user)])
@@ -106,6 +108,11 @@ def get_trade_data_gate(db: Session = Depends(get_db)) -> TradeDataGateResponse:
     except Exception:
         source_probe = None
     return build_trade_data_gate(db, source_probe=source_probe)
+
+
+@router.get("/runtime-fallback", response_model=RuntimeFallbackStatusResponse)
+def get_runtime_fallback_status(db: Session = Depends(get_db)) -> RuntimeFallbackStatusResponse:
+    return RuntimeFallbackStatusResponse(**build_runtime_fallback_status(db))
 
 
 @router.post("/repair", response_model=RuntimeTaskOut)

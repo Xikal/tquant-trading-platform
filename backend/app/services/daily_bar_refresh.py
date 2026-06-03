@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from app.models.entities import DailyBarSnapshot, Instrument
 from app.repositories.low_buy.daily_history import DailyBarRow, DailyHistoryRepository
 from app.services.daily_bar_refresh_checkpoint import DailyBarRefreshCheckpoint, DailyBarRefreshCheckpointStore
-from app.services.latest_data_status import expected_low_buy_trade_date
+from app.services.latest_data_status import MIN_STOCK_DAILY_BARS, expected_low_buy_trade_date
 from app.services.market_data import MarketDataService
 
 DEFAULT_CHUNK_SIZE = 300
@@ -20,8 +20,14 @@ class DailyBarRefreshService:
         self.db = db
         self.market = MarketDataService()
 
-    def refresh_latest(self, *, limit: int = 6000, chunk_size: int = DEFAULT_CHUNK_SIZE) -> dict[str, Any]:
-        trade_date = expected_low_buy_trade_date(self.db)
+    def refresh_latest(
+        self,
+        *,
+        limit: int = 6000,
+        chunk_size: int = DEFAULT_CHUNK_SIZE,
+        expected_trade_date: str | None = None,
+    ) -> dict[str, Any]:
+        trade_date = expected_trade_date or expected_low_buy_trade_date(self.db)
         actual_chunk_size = max(1, chunk_size)
         symbols = self._stock_symbols(limit=limit)
         if not trade_date or not symbols:
@@ -35,7 +41,10 @@ class DailyBarRefreshService:
             total_chunks=len(chunks),
         )
         if checkpoint and checkpoint.completed:
-            return _completed_payload(checkpoint, requested=len(symbols), resumed=False)
+            completed = _completed_payload(self.db, checkpoint, requested=len(symbols), resumed=False)
+            if completed.get("ok"):
+                return completed
+            checkpoint = None
         start_chunk_index = checkpoint.next_chunk_index if checkpoint else 0
         repository = DailyHistoryRepository(self.db)
         updated = checkpoint.updated if checkpoint else 0
@@ -75,7 +84,7 @@ class DailyBarRefreshService:
         )
         checkpoint_store.save(final_checkpoint)
         self.db.flush()
-        return _completed_payload(final_checkpoint, requested=len(symbols), resumed=start_chunk_index > 0)
+        return _completed_payload(self.db, final_checkpoint, requested=len(symbols), resumed=start_chunk_index > 0)
 
     def _stock_symbols(self, *, limit: int) -> list[str]:
         rows = self.db.execute(
@@ -121,9 +130,18 @@ def _latest_daily_trade_date(db: Session):
     return select(DailyBarSnapshot.trade_date).order_by(DailyBarSnapshot.trade_date.desc()).limit(1).scalar_subquery()
 
 
-def _completed_payload(checkpoint: DailyBarRefreshCheckpoint, *, requested: int, resumed: bool) -> dict[str, Any]:
+def _completed_payload(
+    db: Session,
+    checkpoint: DailyBarRefreshCheckpoint,
+    *,
+    requested: int,
+    resumed: bool,
+) -> dict[str, Any]:
+    daily_bar_count = DailyHistoryRepository(db).stock_count_by_trade_date(checkpoint.trade_date)
+    sufficient = daily_bar_count >= MIN_STOCK_DAILY_BARS
     return {
-        "ok": checkpoint.updated > 0,
+        "ok": checkpoint.updated > 0 and sufficient,
+        "status": "completed" if sufficient else "insufficient_daily_bars",
         "trade_date": checkpoint.trade_date,
         "updated": checkpoint.updated,
         "skipped": checkpoint.skipped,
@@ -132,6 +150,8 @@ def _completed_payload(checkpoint: DailyBarRefreshCheckpoint, *, requested: int,
         "checkpoint_status": checkpoint.status,
         "last_chunk_index": checkpoint.last_chunk_index,
         "total_chunks": checkpoint.total_chunks,
+        "daily_bar_count": daily_bar_count,
+        "min_daily_bar_count": MIN_STOCK_DAILY_BARS,
     }
 
 

@@ -83,6 +83,19 @@ export interface TradeDataGateResponse {
   checks: TradeDataGateCheck[];
 }
 
+export interface RuntimeFallbackStatus {
+  worker_status: "running" | "stale" | "missing" | string;
+  worker_id: string;
+  heartbeat_updated_at: string;
+  heartbeat_age_seconds: number | null;
+  critical_queued_count: number;
+  oldest_critical_queued_at: string;
+  oldest_critical_queued_age_seconds: number | null;
+  blocking: boolean;
+  message: string;
+  recovery_actions: string[];
+}
+
 export const dataQualityApi = {
   sla: () => apiClient.request<DataQualitySlaResponse>("/data-quality/sla"),
   coverage: ({ dataset_key, scope }: { dataset_key: string; scope: string }) =>
@@ -102,4 +115,5 @@ export const dataQualityApi = {
     body: JSON.stringify({ dataset_key: "daily_bars", dry_run: true }),
   }),
   tradeGate: () => apiClient.request<TradeDataGateResponse>("/data-quality/trade-gate"),
+  runtimeFallback: () => apiClient.request<RuntimeFallbackStatus>("/data-quality/runtime-fallback"),
 };

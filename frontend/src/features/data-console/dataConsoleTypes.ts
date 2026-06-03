@@ -2,6 +2,7 @@ import type {
   DataQualityCoverageResponse,
   DataQualitySlaResponse,
   DataQualitySnapshotItem,
+  RuntimeFallbackStatus,
   TradeDataGateResponse,
 } from "../../api/dataQuality";
 import type { InstrumentInspectorResponse } from "../../api/dataConsoleInspector";
@@ -27,6 +28,7 @@ export interface DataConsoleData {
   tasks: RuntimeTaskOut[];
   inspector: InstrumentInspectorResponse | null;
   gate: TradeDataGateResponse | null;
+  runtimeFallback: RuntimeFallbackStatus | null;
 }
 
 export interface DataConsoleActions {
@@ -35,6 +37,7 @@ export interface DataConsoleActions {
   refreshCoverage: (next?: { dataset_key: string; scope: string }) => Promise<void>;
   refreshTasks: () => Promise<void>;
   refreshGate: () => Promise<void>;
+  refreshRuntimeFallback: () => Promise<void>;
   refreshAll: () => Promise<void>;
   syncInstruments: () => Promise<void>;
   refreshCloseData: () => Promise<void>;
