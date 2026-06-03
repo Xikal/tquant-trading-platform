@@ -187,19 +187,95 @@ export function useMonitorData({ active, withLoading, setError, setNotice, onAut
     }
   }, []);
 
+  const fetchLegacyMonitorData = useCallback(async (includeRuntime: boolean) => {
+    const shouldLoadRuntime = includeRuntime && Boolean(getAdminApiToken());
+    const requests = [
+      api.getMonitorSnapshot(12),
+      api.getMarketBreadth(),
+      api.getMarketHourlySnapshotsHistory(8),
+      api.getSectorRelativeStrength(8, 8),
+      api.getSectorEtfT0(8),
+      api.getPairedHedgeResearch(4),
+      api.getMarketReviewSummary(),
+      shouldLoadRuntime ? api.getRuntimeStatus() : Promise.resolve(null),
+    ] as const;
+    const [
+      snapshotResult,
+      breadthResult,
+      hourlyHistoryResult,
+      sectorStrengthResult,
+      sectorEtfResult,
+      pairedHedgeResult,
+      reviewResult,
+      runtimeResult,
+    ] = await Promise.allSettled(requests);
+    if (snapshotResult.status === "fulfilled") {
+      setPriorityBoard(snapshotResult.value.priority_board);
+      laneBoardsRef.current.baseline = snapshotResult.value.priority_board;
+      setWatchlistSignals(snapshotResult.value.watchlist_signals);
+      setSectorEtfT0(snapshotResult.value.sector_etf_t0 ?? null);
+    }
+    if (breadthResult.status === "fulfilled") setMarketBreadth(breadthResult.value);
+    if (hourlyHistoryResult.status === "fulfilled") setHourlySnapshotHistory(hourlyHistoryResult.value.items ?? []);
+    if (sectorStrengthResult.status === "fulfilled") setSectorRelativeStrength(sectorStrengthResult.value);
+    if (sectorEtfResult.status === "fulfilled") setSectorEtfT0(sectorEtfResult.value);
+    if (pairedHedgeResult.status === "fulfilled") setPairedHedge(pairedHedgeResult.value);
+    if (reviewResult.status === "fulfilled") {
+      setReviewStatus(reviewResult.value.review_status);
+      setReviewReports(reviewResult.value.review_reports ?? []);
+    }
+    if (runtimeResult.status === "fulfilled" && runtimeResult.value) setRuntime(runtimeResult.value);
+    const rejections = [
+      snapshotResult,
+      breadthResult,
+      hourlyHistoryResult,
+      sectorStrengthResult,
+      sectorEtfResult,
+      pairedHedgeResult,
+      reviewResult,
+      runtimeResult,
+    ].filter((item): item is PromiseRejectedResult => item.status === "rejected");
+    if (rejections.some((item) => isMonitorAuthError(item.reason))) {
+      onAuthRequiredRef.current();
+      return;
+    }
+    if (rejections.length > 0) {
+      setError(errorMessage(rejections[0].reason));
+    }
+  }, [
+    setError,
+    setHourlySnapshotHistory,
+    setMarketBreadth,
+    setPairedHedge,
+    setPriorityBoard,
+    setReviewReports,
+    setReviewStatus,
+    setRuntime,
+    setSectorEtfT0,
+    setSectorRelativeStrength,
+    setWatchlistSignals,
+  ]);
+
   const fetchMonitorData = useCallback(async (includeRuntime: boolean) => {
     if (monitorRefreshRef.current) {
       return;
     }
     monitorRefreshRef.current = true;
     try {
-      const shouldLoadRuntime = includeRuntime && Boolean(getAdminApiToken());
-      const requests = [
-        api.getMonitorWorkspaceBff(12),
-        api.getMarketHourlySnapshotsHistory(8),
-        shouldLoadRuntime ? api.getRuntimeStatus() : Promise.resolve(null),
-      ] as const;
-      const [workspaceResult, hourlyHistoryResult, runtimeResult] = await Promise.allSettled(requests);
+      const aggregateEnabled = monitorBffAggregateEnabled();
+      if (!aggregateEnabled) {
+        await fetchLegacyMonitorData(includeRuntime);
+        return;
+      }
+      const workspaceResult = await Promise.resolve(api.getMonitorWorkspaceBff(12))
+        .then((value) => ({ status: "fulfilled" as const, value }))
+        .catch((reason) => ({ status: "rejected" as const, reason }));
+      if (workspaceResult.status === "rejected" && isMonitorBffDisabled(workspaceResult.reason)) {
+        await fetchLegacyMonitorData(includeRuntime);
+        return;
+      }
+      let hourlyHistoryLoadedFromBff = false;
+      let runtimeLoadedFromBff = !includeRuntime || !Boolean(getAdminApiToken());
       if (workspaceResult.status === "fulfilled") {
         const monitorSnapshot = workspaceResult.value.monitor_snapshot;
         if (monitorSnapshot) {
@@ -220,14 +296,36 @@ export function useMonitorData({ active, withLoading, setError, setNotice, onAut
         if (workspaceResult.value.paired_hedge) {
           setPairedHedge(workspaceResult.value.paired_hedge);
         }
+        if (Array.isArray(workspaceResult.value.hourly_snapshot_history)) {
+          setHourlySnapshotHistory(workspaceResult.value.hourly_snapshot_history);
+          hourlyHistoryLoadedFromBff = true;
+        }
+        if ("runtime" in workspaceResult.value) {
+          runtimeLoadedFromBff = true;
+        }
+        if (workspaceResult.value.runtime) {
+          setRuntime(workspaceResult.value.runtime);
+        }
       }
-      if (hourlyHistoryResult.status === "fulfilled") {
-        setHourlySnapshotHistory(hourlyHistoryResult.value.items ?? []);
+      const fallbackRequests: Promise<unknown>[] = [];
+      if (!hourlyHistoryLoadedFromBff) {
+        fallbackRequests.push(api.getMarketHourlySnapshotsHistory(8));
       }
-      if (runtimeResult.status === "fulfilled" && runtimeResult.value) {
-        setRuntime(runtimeResult.value);
+      if (!runtimeLoadedFromBff && includeRuntime && Boolean(getAdminApiToken())) {
+        fallbackRequests.push(api.getRuntimeStatus());
       }
-      const rejections = [workspaceResult, hourlyHistoryResult, runtimeResult].filter(
+      const fallbackResults = await Promise.allSettled(fallbackRequests);
+      for (const result of fallbackResults) {
+        if (result.status !== "fulfilled") {
+          continue;
+        }
+        if (isHourlyHistoryResponse(result.value)) {
+          setHourlySnapshotHistory(result.value.items ?? []);
+        } else if (isRuntimeStatus(result.value)) {
+          setRuntime(result.value);
+        }
+      }
+      const rejections = [workspaceResult, ...fallbackResults].filter(
         (item): item is PromiseRejectedResult => item.status === "rejected"
       );
       // 会话过期：401 必须触发登出，否则轮询会无限刷 401（清登录态后轮询随 currentUser 置空而停止）。
@@ -241,7 +339,21 @@ export function useMonitorData({ active, withLoading, setError, setNotice, onAut
     } finally {
       monitorRefreshRef.current = false;
     }
-  }, [setError]);
+  }, [
+    fetchLegacyMonitorData,
+    setError,
+    setHourlySnapshotHistory,
+    setMarketBreadth,
+    setMarketPulse,
+    setPairedHedge,
+    setPriorityBoard,
+    setReviewReports,
+    setReviewStatus,
+    setRuntime,
+    setSectorEtfT0,
+    setSectorRelativeStrength,
+    setWatchlistSignals,
+  ]);
 
   const refreshMonitor = useCallback(async () => {
     await withLoading("monitor", () => fetchMonitorData(true));
@@ -587,6 +699,23 @@ export function useMonitorData({ active, withLoading, setError, setNotice, onAut
     syncInstruments,
     resetMonitorData,
   };
+}
+
+function monitorBffAggregateEnabled(): boolean {
+  return import.meta.env.VITE_MONITOR_BFF_AGGREGATE_ENABLED !== "false";
+}
+
+function isMonitorBffDisabled(reason: unknown): boolean {
+  const status = (reason as { status?: number } | null)?.status;
+  return status === 404 && errorMessage(reason).includes("monitor BFF aggregate disabled");
+}
+
+function isHourlyHistoryResponse(value: unknown): value is { items?: MarketHourlySnapshotHistoryItem[] } {
+  return Boolean(value && typeof value === "object" && "items" in value);
+}
+
+function isRuntimeStatus(value: unknown): value is RuntimeStatus {
+  return Boolean(value && typeof value === "object" && "ready_checks" in value);
 }
 
 function isPendingMonitorSnapshot(priorityBoard: LowBuyPriorityBoardResult | null): boolean {

@@ -21,7 +21,7 @@ from app.services.user_sector_preferences import (
     UserSectorPreferenceService,
     filter_low_buy_history_response,
     filter_low_buy_screener_response,
-    filter_priority_board_response,
+    filter_priority_board_response_for_user,
 )
 
 router = APIRouter(prefix="/screeners", dependencies=[Depends(get_current_user)])
@@ -163,7 +163,7 @@ def low_buy_priority_board_view(
             strategy_variant=strategy_variant,
         )
         excluded = UserSectorPreferenceService(db).get_excluded_sector_set(current_user.id)
-        result = filter_priority_board_response(result, excluded)
+        result = filter_priority_board_response_for_user(result, user_id=current_user.id, excluded_sectors=excluded)
         result = apply_priority_board_live_overlay(result)
         record_response_payload("priority_board", result, item_count=len(result.items))
     except DataSourceError as exc:

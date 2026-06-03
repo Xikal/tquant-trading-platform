@@ -1,5 +1,9 @@
 from __future__ import annotations
 
+import hashlib
+import json
+import threading
+import time
 from typing import Any
 
 from app.core.config import get_settings
@@ -10,22 +14,35 @@ from app.models.schema_defs.screener_parts.priority import (
 )
 from app.models.schema_defs.strategy_tracking import StrategyTrackingItemOut, StrategyTrackingListResponse
 from app.models.schema_defs.bff import MonitorWorkspaceBffResponse
-from app.services.market.local_quote_cache import read_local_quote_snapshots
+from app.services.market.local_quote_cache import local_quote_cache_marker, read_local_quote_snapshots
 from app.services.performance.read_model_metrics import record_live_overlay_hit, record_live_overlay_miss
 
 _SOURCE = "local_quote_cache"
+_CACHE_LOCK = threading.RLock()
+_OVERLAY_CACHE: dict[str, tuple[float, str]] = {}
 
 
 def apply_priority_board_live_overlay(response: LowBuyPriorityBoardResponse) -> LowBuyPriorityBoardResponse:
-    if not get_settings().read_model_live_overlay_enabled:
+    settings = get_settings()
+    if not settings.read_model_live_overlay_enabled:
         return response
-    quote_map = _quote_map(_priority_board_symbols(response))
+    marker = local_quote_cache_marker()
+    if getattr(settings, "priority_board_overlay_cache_enabled", True):
+        cache_key = _priority_overlay_cache_key(response.model_dump(mode="json"), marker)
+        cached = _get_overlay_cache(cache_key)
+        if cached is not None:
+            return cached
+    symbols = _priority_board_symbols(response)
+    quote_map = _quote_map(symbols)
     items = [_overlay_priority_item(item, quote_map.get(item.symbol)) for item in response.items]
     sections = [
         section.model_copy(update={"items": [_overlay_priority_item(item, quote_map.get(item.symbol)) for item in section.items]})
         for section in response.family_sections
     ]
-    return response.model_copy(update={"items": items, "family_sections": sections})
+    result = response.model_copy(update={"items": items, "family_sections": sections})
+    if getattr(settings, "priority_board_overlay_cache_enabled", True):
+        _set_overlay_cache(cache_key, result, getattr(settings, "priority_board_overlay_cache_ttl_seconds", 2))
+    return result
 
 
 def apply_strategy_tracking_live_overlay(response: StrategyTrackingListResponse) -> StrategyTrackingListResponse:
@@ -137,3 +154,45 @@ def _quote_map(symbols: list[str]) -> dict[str, QuoteSnapshot]:
         else:
             record_live_overlay_miss(_SOURCE)
     return quotes
+
+
+def _priority_overlay_cache_key(payload: dict[str, Any], marker: dict[str, Any]) -> str:
+    raw = json.dumps(
+        {
+            "payload": payload,
+            "quote_cache": {
+                "version": str(marker.get("version") or ""),
+                "as_of": str(marker.get("as_of") or ""),
+            },
+        },
+        ensure_ascii=False,
+        sort_keys=True,
+        default=str,
+    )
+    return hashlib.sha256(raw.encode("utf-8")).hexdigest()
+
+
+def _get_overlay_cache(cache_key: str) -> LowBuyPriorityBoardResponse | None:
+    now = time.monotonic()
+    with _CACHE_LOCK:
+        cached = _OVERLAY_CACHE.get(cache_key)
+        if cached is None:
+            return None
+        expires_at, payload = cached
+        if expires_at <= now:
+            _OVERLAY_CACHE.pop(cache_key, None)
+            return None
+        return LowBuyPriorityBoardResponse.model_validate_json(payload)
+
+
+def _set_overlay_cache(cache_key: str, payload: LowBuyPriorityBoardResponse, ttl_seconds: int | float) -> None:
+    with _CACHE_LOCK:
+        _OVERLAY_CACHE[cache_key] = (
+            time.monotonic() + max(float(ttl_seconds or 2), 0.1),
+            payload.model_dump_json(),
+        )
+
+
+def clear_priority_board_overlay_cache() -> None:
+    with _CACHE_LOCK:
+        _OVERLAY_CACHE.clear()

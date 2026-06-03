@@ -40,10 +40,12 @@ from app.services.bff.strategy_workspace import build_strategy_workspace
 from app.services.bff.timeout import run_workspace_with_timeout
 from app.services.bff.workspace_cache import load_cached_workspace
 from app.services.market.pulse_cache import latest_pulse_or_placeholder
+from app.services.market.pulse_history import list_hourly_snapshot_history
 from app.services.monitor_snapshot_service import build_monitor_snapshot
 from app.services.market.review import build_market_review_summary
 from app.services.performance.read_model_metrics import record_bff_partial_failure, record_response_payload
 from app.services.read_models.live_quote_overlay import apply_monitor_workspace_live_overlay
+from app.services.settings_runtime import SettingsRuntimeDiagnosticsService
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/bff/v1", dependencies=[Depends(get_current_user)])
@@ -110,6 +112,10 @@ def monitor_workspace_bff(
 ) -> MonitorWorkspaceBffResponse:
     """Aggregate monitor first-screen data behind a frontend-specific seam."""
 
+    if not getattr(get_settings(), "monitor_bff_aggregate_enabled", True):
+        raise HTTPException(status_code=404, detail="monitor BFF aggregate disabled")
+
+    include_runtime = _monitor_runtime_allowed(request, current_user)
     remote_used = False
     if _remote_adapter_allowed(request):
         remote = load_remote_monitor_workspace(
@@ -148,6 +154,7 @@ def monitor_workspace_bff(
             "sector_limit": sector_limit,
             "per_sector_limit": per_sector_limit,
             "hedge_limit": hedge_limit,
+            "include_runtime": include_runtime,
         },
         loader=lambda: _build_monitor_workspace(
             db,
@@ -157,6 +164,7 @@ def monitor_workspace_bff(
             per_sector_limit=per_sector_limit,
             hedge_limit=hedge_limit,
             allow_live_sources=False,
+            include_runtime=include_runtime,
         ),
     )
     response = apply_monitor_workspace_live_overlay(response)
@@ -384,6 +392,7 @@ def _build_monitor_workspace(
     per_sector_limit: int,
     hedge_limit: int,
     allow_live_sources: bool = True,
+    include_runtime: bool = False,
 ) -> MonitorWorkspaceBffResponse:
     errors: list[BffPartialError] = []
     monitor_snapshot_payload = _safe(
@@ -412,16 +421,24 @@ def _build_monitor_workspace(
         errors,
         lambda: build_market_review_summary(db),
     ) or (None, [])
+    hourly_history = _safe(
+        "hourly_snapshot_history",
+        errors,
+        lambda: _safe_hourly_snapshot_history(db),
+    ) or []
     pulse = _safe_market_pulse_snapshot(db, errors)
+    runtime = _safe_runtime_status(db, current_user, errors) if include_runtime else None
     return MonitorWorkspaceBffResponse(
         generated_at=beijing_now_string(),
         monitor_snapshot=monitor_snapshot_payload,
         market_breadth=market_breadth_payload,
         sector_relative_strength=sector_payload,
         market_pulse=pulse,
+        hourly_snapshot_history=hourly_history,
         review_status=review_status,
         review_reports=review_reports,
         paired_hedge=paired_payload,
+        runtime=runtime,
         partial_errors=errors,
     )
 
@@ -444,6 +461,53 @@ def _safe_market_pulse_snapshot(db: Session, errors: list[BffPartialError]):
     if pulse_needs_refresh:
         _enqueue_market_pulse_refresh(db, reason="bff_monitor_workspace")
     return pulse
+
+
+def _safe_hourly_snapshot_history(db: Session):
+    if not hasattr(db, "execute"):
+        return []
+    return list_hourly_snapshot_history(db, trade_date="", limit=8)
+
+
+def _safe_runtime_status(db: Session, current_user: User, errors: list[BffPartialError]):
+    try:
+        if not is_admin_user(current_user):
+            return None
+    except Exception:
+        return None
+    try:
+        return SettingsRuntimeDiagnosticsService(db).build_status()
+    except Exception as exc:
+        logger.warning("bff source failed source=runtime", exc_info=(type(exc), exc, exc.__traceback__))
+        errors.append(
+            BffPartialError(
+                source="runtime",
+                detail="运行态诊断暂时不可用",
+                reason="other",
+                fallback_source="python_local",
+                message="runtime status unavailable",
+            )
+        )
+        return None
+
+
+def _monitor_runtime_allowed(request: Request, current_user: User) -> bool:
+    try:
+        if is_admin_user(current_user):
+            return True
+    except Exception:
+        pass
+    try:
+        require_admin_auth(
+            request,
+            x_admin_token=request.headers.get("X-Admin-Token"),
+            authorization=request.headers.get("Authorization"),
+        )
+        return True
+    except HTTPException:
+        return False
+    except Exception:
+        return False
 
 
 def _safe(

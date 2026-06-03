@@ -13,6 +13,8 @@ import type {
   LowBuyExecutionBacktestResult,
   LowBuyTradeLifecycle,
   MarketBreadth,
+  MarketReviewReport,
+  MarketReviewStatus,
   EtfMinuteSnapshotBatchResponse,
   EtfUniverseResponse,
   MarketHourlySnapshotHistoryResponse,
@@ -148,6 +150,11 @@ export const api = {
     ),
   getPairedHedgeResearch: (limit = 8) =>
     requestCached<PairedHedgeResearchResponse>(`/market/paired-hedge-research?limit=${limit}`, 30000),
+  getMarketReviewSummary: () =>
+    requestCached<{ review_status: MarketReviewStatus; review_reports: MarketReviewReport[] }>(
+      "/market/review-summary",
+      30000,
+    ),
   getAlternativeSentiment: (symbols: string[] = [], limit = 80) =>
     requestCached<AlternativeSentimentResponse>(
       `/market/alternative-sentiment?symbols=${encodeURIComponent(symbols.join(","))}&limit=${limit}`,

@@ -4,10 +4,14 @@ from types import SimpleNamespace
 
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
 
 from app.api.routes import screeners
 from app.core.auth import get_current_user
 from app.core.database import get_db
+from app.models.base import Base
+from app.models.entities import SystemSetting
 from app.models.schemas import LowBuyPriorityBoardResponse
 from app.services.low_buy.priority_board import LowBuyPriorityBoardMixin
 
@@ -84,6 +88,42 @@ def test_priority_board_async_empty_returns_placeholder_and_queues(monkeypatch):
     assert result.latest_trade_date == ""
     assert result.data_quality == "unavailable"
     assert "cache_empty" in result.data_quality_tags
+    assert queued == ["priority_board_cache_empty"]
+    assert service.rebuild_count == 0
+
+
+def test_priority_board_empty_falls_back_to_last_snapshot_with_stale_flag(monkeypatch):
+    engine = create_engine("sqlite:///:memory:", future=True)
+    Base.metadata.create_all(bind=engine)
+    Session = sessionmaker(bind=engine, future=True)
+    db = Session()
+    service = _Service()
+    last_snapshot = _board().model_copy(
+        update={
+            "latest_trade_date": "2026-05-26",
+            "latest_available_trade_date": "2026-05-27",
+            "items": [],
+        }
+    )
+    db.add(SystemSetting(key="priority_board:last:baseline:12", value=last_snapshot.model_dump_json()))
+    db.commit()
+    monkeypatch.setattr(
+        "app.services.low_buy.priority_board.get_priority_response_cache",
+        lambda _service, _key, *, allow_stale=False: None,
+    )
+    queued = []
+    monkeypatch.setattr(
+        "app.services.low_buy.priority_board.enqueue_low_buy_materialization",
+        lambda db, reason, commit=False: queued.append(reason),
+    )
+    monkeypatch.setattr("app.services.low_buy.priority_board.published_low_buy_trade_date", lambda db: "2026-05-27")
+
+    result = service.priority_board(db, limit=12)
+
+    assert result.latest_trade_date == "2026-05-26"
+    assert result.data_quality == "stale"
+    assert "stale_snapshot" in result.data_quality_tags
+    assert "上次可用榜单" in result.snapshot_warning
     assert queued == ["priority_board_cache_empty"]
     assert service.rebuild_count == 0
 

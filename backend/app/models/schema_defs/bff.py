@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field
 from app.models.schema_defs.market import (
     IntradayMarketPulse,
     MarketBreadthResponse,
+    MarketHourlySnapshotHistoryOut,
     MarketReviewReportOut,
     MarketReviewStatusOut,
     PairedHedgeResearchResponse,
@@ -71,10 +72,12 @@ class MonitorWorkspaceBffResponse(BaseModel):
     monitor_snapshot: MonitorSnapshotResponse | None = None
     market_breadth: MarketBreadthResponse | None = None
     market_pulse: IntradayMarketPulse | None = None
+    hourly_snapshot_history: list[MarketHourlySnapshotHistoryOut] = Field(default_factory=list)
     review_status: MarketReviewStatusOut | None = None
     review_reports: list[MarketReviewReportOut] = Field(default_factory=list)
     sector_relative_strength: SectorRelativeStrengthResponse | None = None
     paired_hedge: PairedHedgeResearchResponse | None = None
+    runtime: RuntimeStatusResponse | None = None
     partial_errors: list[BffPartialError] = Field(default_factory=list)
 
 

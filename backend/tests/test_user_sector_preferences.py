@@ -1,9 +1,16 @@
 from __future__ import annotations
 
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+
+from app.models.base import Base
+from app.models.entities import User
 from app.services.paper.admission import AdmissionFilter
 from app.services.user_sector_preferences import (
     candidate_matches_excluded_sector,
     filter_priority_board_payload,
+    filter_priority_board_response_for_user,
+    UserSectorPreferenceService,
 )
 
 
@@ -71,3 +78,30 @@ def test_admission_filter_rejects_excluded_sector() -> None:
 
     assert not report.passed
     assert report.filtered[0].reason == "用户已排除银行，不自动买入"
+
+
+def test_priority_board_filter_cache_invalidates_on_user_preference_change() -> None:
+    engine = create_engine("sqlite:///:memory:", future=True)
+    Base.metadata.create_all(bind=engine)
+    Session = sessionmaker(bind=engine, future=True)
+    db = Session()
+    db.add(User(id=7, username="tester", password_hash="x", is_active=True))
+    db.commit()
+    board = {
+        "items": [
+            {"symbol": "600000", "sector_name": "银行", "simple_bucket": "buy_now"},
+            {"symbol": "002000", "sector_name": "半导体", "simple_bucket": "wait_price"},
+        ],
+        "family_sections": [],
+        "simple_buckets": [
+            {"key": "buy_now", "count": 1, "symbols": ["600000"]},
+            {"key": "wait_price", "count": 1, "symbols": ["002000"]},
+        ],
+    }
+
+    first = filter_priority_board_response_for_user(board, user_id=7, excluded_sectors={"银行"})
+    UserSectorPreferenceService(db).replace_excluded_sectors(7, ["半导体"])
+    second = filter_priority_board_response_for_user(board, user_id=7, excluded_sectors={"半导体"})
+
+    assert [item["symbol"] for item in first["items"]] == ["002000"]
+    assert [item["symbol"] for item in second["items"]] == ["600000"]

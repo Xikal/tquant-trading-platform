@@ -13612,6 +13612,8 @@ export interface components {
             api_version: string;
             /** Generated At */
             generated_at: string;
+            /** Hourly Snapshot History */
+            hourly_snapshot_history?: components["schemas"]["MarketHourlySnapshotHistoryOut"][];
             market_breadth?: components["schemas"]["MarketBreadthResponse"] | null;
             market_pulse?: components["schemas"]["IntradayMarketPulse"] | null;
             monitor_snapshot?: components["schemas"]["MonitorSnapshotResponse"] | null;
@@ -13621,6 +13623,7 @@ export interface components {
             /** Review Reports */
             review_reports?: components["schemas"]["MarketReviewReportOut"][];
             review_status?: components["schemas"]["MarketReviewStatusOut"] | null;
+            runtime?: components["schemas"]["RuntimeStatusResponse"] | null;
             /**
              * Schema Version
              * @default v14

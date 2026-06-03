@@ -1,11 +1,16 @@
 from __future__ import annotations
 
+import hashlib
+import json
+import threading
+import time
 from datetime import datetime
 from typing import Any, Iterable
 
 from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
 
+from app.core.config import get_settings
 from app.core.timezone import beijing_now_string
 from app.models.entities import Instrument, UserSectorExclusion
 
@@ -63,6 +68,9 @@ _SECTOR_FIELD_KEYS = (
     "board_name",
     "mainline_sector",
 )
+_FILTER_CACHE_TTL_SECONDS = 30.0
+_FILTER_CACHE_LOCK = threading.RLock()
+_PRIORITY_FILTER_CACHE: dict[str, tuple[float, dict[str, Any]]] = {}
 
 
 class UserSectorPreferenceService:
@@ -116,6 +124,7 @@ class UserSectorPreferenceService:
                 )
             )
         self.db.commit()
+        invalidate_priority_board_filter_cache(user_id)
         return normalized
 
     def build_response(self, user_id: int) -> dict[str, Any]:
@@ -164,6 +173,28 @@ def filter_priority_board_response(response: Any, excluded_sectors: set[str]) ->
     payload["family_sections"] = _filter_family_sections(payload.get("family_sections"), excluded_sectors)
     payload["simple_buckets"] = _rebuild_simple_buckets(payload.get("simple_buckets"), filtered_items)
     return _rebuild_model(response, payload)
+
+
+def filter_priority_board_response_for_user(response: Any, *, user_id: int, excluded_sectors: set[str]) -> Any:
+    if not excluded_sectors:
+        return response
+    if not getattr(get_settings(), "priority_board_filter_cache_enabled", True):
+        return filter_priority_board_response(response, excluded_sectors)
+    cache_key = _priority_filter_cache_key(response, user_id=user_id, excluded_sectors=excluded_sectors)
+    cached = _priority_filter_cache_get(cache_key)
+    if cached is not None:
+        return _rebuild_model(response, cached)
+    filtered = filter_priority_board_response(response, excluded_sectors)
+    _priority_filter_cache_set(cache_key, _model_payload(filtered))
+    return filtered
+
+
+def invalidate_priority_board_filter_cache(user_id: int) -> None:
+    prefix = f"user={int(user_id)}:"
+    with _FILTER_CACHE_LOCK:
+        for key in list(_PRIORITY_FILTER_CACHE):
+            if key.startswith(prefix):
+                _PRIORITY_FILTER_CACHE.pop(key, None)
 
 
 def filter_monitor_snapshot_payload(payload: dict[str, Any], excluded_sectors: set[str]) -> dict[str, Any]:
@@ -322,3 +353,31 @@ def _float_value(value: Any, key: str) -> float:
         return float(_field(value, key) or 0.0)
     except (TypeError, ValueError):
         return 0.0
+
+
+def _priority_filter_cache_key(response: Any, *, user_id: int, excluded_sectors: set[str]) -> str:
+    excluded_hash = hashlib.sha256(
+        json.dumps(sorted(excluded_sectors), ensure_ascii=False).encode("utf-8")
+    ).hexdigest()
+    payload_hash = hashlib.sha256(
+        json.dumps(_model_payload(response), ensure_ascii=False, sort_keys=True, default=str).encode("utf-8")
+    ).hexdigest()
+    return f"user={int(user_id)}:excluded={excluded_hash}:payload={payload_hash}"
+
+
+def _priority_filter_cache_get(cache_key: str) -> dict[str, Any] | None:
+    now = time.monotonic()
+    with _FILTER_CACHE_LOCK:
+        cached = _PRIORITY_FILTER_CACHE.get(cache_key)
+        if cached is None:
+            return None
+        expires_at, payload = cached
+        if expires_at <= now:
+            _PRIORITY_FILTER_CACHE.pop(cache_key, None)
+            return None
+        return dict(payload)
+
+
+def _priority_filter_cache_set(cache_key: str, payload: dict[str, Any]) -> None:
+    with _FILTER_CACHE_LOCK:
+        _PRIORITY_FILTER_CACHE[cache_key] = (time.monotonic() + _FILTER_CACHE_TTL_SECONDS, dict(payload))

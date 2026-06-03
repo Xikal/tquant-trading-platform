@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 from copy import deepcopy
+import json
 
 from sqlalchemy import select
 
-from app.models.entities import Watchlist
+from app.core.config import get_settings
+from app.models.entities import SystemSetting, Watchlist
 from app.models.schemas import (
     LowBuyCandidateOut,
     LowBuyPriorityBoardItemOut,
@@ -111,6 +113,10 @@ class LowBuyPriorityBoardMixin(LowBuyPriorityScoringMixin):
                 return _mark_priority_refresh_queued(stale_response, stale=True)
 
             _enqueue_priority_refresh(db, reason="priority_board_cache_empty")
+            if getattr(get_settings(), "priority_board_empty_fallback_to_last_snapshot", True):
+                last_success = _load_latest_successful_priority_snapshot(db, variant=variant, limit=limit)
+                if last_success is not None:
+                    return _mark_latest_successful_snapshot_queued(last_success)
             return _empty_priority_board_response(
                 target_trade_date=target_trade_date,
                 warning="优先榜正在后台刷新，当前暂无最近可用榜单。",
@@ -177,6 +183,7 @@ class LowBuyPriorityBoardMixin(LowBuyPriorityScoringMixin):
                 readiness_summary=front_row_readiness_summary(variant),
             )
             self._set_priority_response_cache(cache_key, response)
+            _set_latest_successful_priority_snapshot(db, variant=variant, limit=limit, payload=response)
             return response
         finally:
             self._main_force_shadow_summary_cache = None
@@ -443,6 +450,20 @@ def _mark_priority_refresh_queued(
     )
 
 
+def _mark_latest_successful_snapshot_queued(payload: LowBuyPriorityBoardResponse) -> LowBuyPriorityBoardResponse:
+    warning = "优先榜正在后台刷新，当前展示上次可用榜单。"
+    snapshot_warning = " ".join(part for part in [payload.snapshot_warning.strip(), warning] if part)
+    tags = list(dict.fromkeys([*(payload.data_quality_tags or []), "refresh_queued", "stale_snapshot"]))
+    return payload.model_copy(
+        update={
+            "snapshot_warning": snapshot_warning,
+            "data_quality": "stale",
+            "data_quality_text": "优先榜正在后台刷新，当前展示上次可用榜单。",
+            "data_quality_tags": tags,
+        }
+    )
+
+
 def _empty_priority_board_response(
     *,
     target_trade_date: str,
@@ -476,3 +497,48 @@ def _empty_priority_board_response(
         family_sections=[],
         simple_buckets=[],
     )
+
+
+def _latest_priority_snapshot_key(*, variant: str, limit: int) -> str:
+    return f"priority_board:last:{variant}:{int(limit)}"
+
+
+def _set_latest_successful_priority_snapshot(
+    db: Session,
+    *,
+    variant: str,
+    limit: int,
+    payload: LowBuyPriorityBoardResponse,
+) -> None:
+    try:
+        key = _latest_priority_snapshot_key(variant=variant, limit=limit)
+        value = payload.model_dump_json()
+        row = db.execute(select(SystemSetting).where(SystemSetting.key == key)).scalar_one_or_none()
+        if row is None:
+            db.add(SystemSetting(key=key, value=value))
+        else:
+            row.value = value
+        if hasattr(db, "commit"):
+            db.commit()
+    except Exception:
+        if hasattr(db, "rollback"):
+            db.rollback()
+
+
+def _load_latest_successful_priority_snapshot(
+    db: Session,
+    *,
+    variant: str,
+    limit: int,
+) -> LowBuyPriorityBoardResponse | None:
+    try:
+        row = db.execute(
+            select(SystemSetting.value).where(
+                SystemSetting.key == _latest_priority_snapshot_key(variant=variant, limit=limit)
+            )
+        ).scalar_one_or_none()
+        if not row:
+            return None
+        return LowBuyPriorityBoardResponse.model_validate(json.loads(str(row)))
+    except Exception:
+        return None

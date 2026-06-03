@@ -14664,6 +14664,13 @@
             "title": "Generated At",
             "type": "string"
           },
+          "hourly_snapshot_history": {
+            "items": {
+              "$ref": "#/components/schemas/MarketHourlySnapshotHistoryOut"
+            },
+            "title": "Hourly Snapshot History",
+            "type": "array"
+          },
           "market_breadth": {
             "anyOf": [
               {
@@ -14722,6 +14729,16 @@
             "anyOf": [
               {
                 "$ref": "#/components/schemas/MarketReviewStatusOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "runtime": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RuntimeStatusResponse"
               },
               {
                 "type": "null"

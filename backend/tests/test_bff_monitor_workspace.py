@@ -10,6 +10,7 @@ from fastapi import HTTPException
 
 from app.models.schema_defs.market import MarketBreadthResponse, MarketReviewStatusOut, SectorRelativeStrengthResponse
 from app.models.schema_defs.monitor import MonitorSnapshotResponse
+from app.models.schema_defs.settings import RuntimeStatusResponse
 
 
 def _db_with_user(user_id: int = 9):
@@ -78,6 +79,7 @@ def test_monitor_workspace_paired_hedge_reloads_detached_user(monkeypatch) -> No
             [],
         ),
     )
+    monkeypatch.setattr(bff, "list_hourly_snapshot_history", lambda *_args, **_kwargs: [])
 
     response = bff._build_monitor_workspace(
         db,
@@ -86,6 +88,7 @@ def test_monitor_workspace_paired_hedge_reloads_detached_user(monkeypatch) -> No
         sector_limit=8,
         per_sector_limit=8,
         hedge_limit=4,
+        include_runtime=True,
     )
 
     assert response.paired_hedge is not None
@@ -93,6 +96,60 @@ def test_monitor_workspace_paired_hedge_reloads_detached_user(monkeypatch) -> No
     assert response.review_status is not None
     assert response.review_status.suggested_action == "午后控制追高"
     assert response.partial_errors == []
+
+
+def test_monitor_workspace_bundles_hourly_history_and_admin_runtime(monkeypatch) -> None:
+    db = _db_with_user(13)
+    db.query(User).filter(User.id == 13).update({"roles": "admin"})
+    db.commit()
+    monkeypatch.setattr(
+        bff,
+        "build_monitor_snapshot",
+        lambda *args, **kwargs: MonitorSnapshotResponse(updated_at="2026-05-25 10:00:00"),
+    )
+    monkeypatch.setattr(bff, "market_breadth", lambda *args, **kwargs: MarketBreadthResponse(updated_at="2026-05-25 10:00:00"))
+    monkeypatch.setattr(bff, "sector_relative_strength", lambda *args: SectorRelativeStrengthResponse(updated_at="2026-05-25 10:00:00"))
+    monkeypatch.setattr(bff, "paired_hedge_research", lambda *args: {"updated_at": "2026-05-25 10:00:00", "ideas": []})
+    monkeypatch.setattr(bff, "build_market_review_summary", lambda *_args, **_kwargs: (None, []))
+    monkeypatch.setattr(
+        bff,
+        "list_hourly_snapshot_history",
+        lambda *_args, **_kwargs: [{"id": 1, "trade_date": "2026-06-03", "snapshot_bucket": "10:30"}],
+    )
+    monkeypatch.setattr(
+        bff.SettingsRuntimeDiagnosticsService,
+        "build_status",
+        lambda self: RuntimeStatusResponse(
+            app_name="test",
+            api_prefix="/api",
+            database_backend="sqlite",
+            database_url_masked="sqlite:///test",
+            runtime_env_path="/tmp/runtime.env",
+            runtime_env_exists=False,
+            runtime_database_override=False,
+            frontend_dist_path="/tmp/dist/index.html",
+            frontend_dist_ready=True,
+            llm_configured=False,
+            data_source="test",
+            data_source_base_url="",
+            cors_origins=[],
+            ready_checks={},
+        ),
+    )
+
+    response = bff._build_monitor_workspace(
+        db,
+        current_user=User(id=13, username="admin", password_hash="x", is_active=True, roles="admin"),
+        priority_limit=12,
+        sector_limit=8,
+        per_sector_limit=8,
+        hedge_limit=4,
+        include_runtime=True,
+    )
+
+    assert len(response.hourly_snapshot_history) == 1
+    assert response.runtime is not None
+    assert response.runtime.app_name == "test"
 
 
 def test_monitor_workspace_uses_attached_db_for_market_breadth_and_detached_user(monkeypatch) -> None:

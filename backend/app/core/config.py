@@ -103,11 +103,16 @@ class AppSettings(BaseSettings):
     tquant_service_call_timeout_seconds: float = 5.0
     tquant_service_circuit_breaker_seconds: float = 30.0
     bff_workspace_cache_enabled: bool = True
+    monitor_bff_aggregate_enabled: bool = True
     bff_monitor_cache_ttl_seconds: int = 5
     bff_paper_cache_ttl_seconds: int = 3
     bff_strategy_cache_ttl_seconds: int = 30
     bff_settings_cache_ttl_seconds: int = 30
     read_model_live_overlay_enabled: bool = True
+    priority_board_empty_fallback_to_last_snapshot: bool = True
+    priority_board_overlay_cache_enabled: bool = True
+    priority_board_overlay_cache_ttl_seconds: int = 2
+    priority_board_filter_cache_enabled: bool = True
     response_payload_metrics_enabled: bool = True
     derived_indicator_cache_enabled: bool = True
     derived_indicator_cache_ttl_seconds: int = 120

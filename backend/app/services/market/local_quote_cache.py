@@ -78,6 +78,7 @@ def write_local_quote_snapshot(snapshot: QuoteSnapshot, ttl_seconds: int = _LOCA
         _cache_payload(snapshot),
         ttl_seconds=ttl_seconds,
     )
+    _touch_local_quote_cache_marker()
 
 
 def write_local_quote_snapshots(snapshots: dict[str, QuoteSnapshot], ttl_seconds: int = _LOCAL_QUOTE_TTL_SECONDS) -> int:
@@ -92,11 +93,19 @@ def write_local_quote_snapshots(snapshots: dict[str, QuoteSnapshot], ttl_seconds
     written = set_many_json_cache(payloads, ttl_seconds=ttl_seconds)
     if written:
         _increment_by("writes", written)
+        _touch_local_quote_cache_marker()
     return written
 
 
 def local_quote_cache_key(symbol: str) -> str:
     return _cache_key(symbol)
+
+
+def local_quote_cache_marker() -> dict[str, Any]:
+    payload = get_json_cache(_marker_key())
+    if isinstance(payload, dict):
+        return {"version": str(payload.get("version") or ""), "as_of": str(payload.get("as_of") or "")}
+    return {"version": "", "as_of": ""}
 
 
 def local_quote_cache_metrics_snapshot() -> dict[str, int]:
@@ -153,6 +162,22 @@ def reset_local_quote_cache_metrics() -> None:
 
 def _cache_key(symbol: str) -> str:
     return f"tquant:market:quote:{symbol.strip()}"
+
+
+def _marker_key() -> str:
+    return "tquant:market:quote:__marker__"
+
+
+def _touch_local_quote_cache_marker() -> None:
+    now = time.time()
+    set_json_cache(
+        _marker_key(),
+        {
+            "version": str(int(now * 1000)),
+            "as_of": now,
+        },
+        ttl_seconds=_LOCAL_QUOTE_TTL_SECONDS,
+    )
 
 
 def _cache_payload(snapshot: QuoteSnapshot) -> dict[str, Any]:

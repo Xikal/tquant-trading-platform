@@ -71,6 +71,33 @@ def test_priority_board_live_overlay_includes_family_section_symbols(monkeypatch
     assert overlaid.family_sections[0].items[0].latest_price == 13.0
 
 
+def test_priority_board_overlay_cache_returns_same_payload_as_uncached(monkeypatch) -> None:
+    live_quote_overlay.clear_priority_board_overlay_cache()
+    response = LowBuyPriorityBoardResponse(
+        as_of_date="2026-06-03",
+        latest_trade_date="2026-06-03",
+        updated_at="2026-06-03 10:00:00",
+        items=[_priority_item("000001", 91.0)],
+    )
+    calls: list[list[str]] = []
+    monkeypatch.setattr(
+        live_quote_overlay,
+        "local_quote_cache_marker",
+        lambda: {"version": "v1", "as_of": "2026-06-03 10:30:00"},
+    )
+    monkeypatch.setattr(
+        live_quote_overlay,
+        "read_local_quote_snapshots",
+        lambda symbols: calls.append(symbols) or {"000001": _quote("000001", 12.3, 1.2)},
+    )
+
+    first = apply_priority_board_live_overlay(response)
+    second = apply_priority_board_live_overlay(response)
+
+    assert second.model_dump() == first.model_dump()
+    assert calls == [["000001"]]
+
+
 def test_strategy_tracking_overlay_preserves_current_return_pct(monkeypatch) -> None:
     reset_read_model_metrics()
     response = StrategyTrackingListResponse(
