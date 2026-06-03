@@ -5,6 +5,7 @@ import type { useAnalysisData } from "./useAnalysisData";
 import type { useMonitorData } from "./useMonitorData";
 import type { usePaperTrading } from "./usePaperTrading";
 import type { Page, StockCardView, WatchDraft } from "../workspace-shared/workspaceTypes";
+import { useTradingExperienceReadiness } from "../strategy-tracking/queries";
 
 interface UseWorkspacePagePropsParams {
   analysis: ReturnType<typeof useAnalysisData>;
@@ -43,6 +44,8 @@ export function useWorkspacePageProps({
   onRunPriorityAi,
   onSelectStock,
 }: UseWorkspacePagePropsParams) {
+  const tradingExperienceReadiness = useTradingExperienceReadiness();
+  const tradingExperienceFlags = tradingExperienceReadiness.data?.flags ?? {};
   const monitorPageProps: MonitorPageProps = {
     priorityBoard: monitor.priorityBoard,
     marketBreadth: monitor.marketBreadth,
@@ -106,6 +109,7 @@ export function useWorkspacePageProps({
     onTogglePause: paper.togglePause,
     onAddTradeTag: (tradeId, tag) => void paper.addTradeTag(tradeId, tag),
     onDeleteTradeTag: (tradeId, tagId) => void paper.deleteTradeTag(tradeId, tagId),
+    tradingExperienceFlags,
   };
 
   return {

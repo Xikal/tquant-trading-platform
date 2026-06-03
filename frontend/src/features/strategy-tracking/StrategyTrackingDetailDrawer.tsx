@@ -15,6 +15,8 @@ import { EventRiskPanel } from "./EventRiskPanel";
 import { RitualSignalSeal } from "../ritual-ui";
 import { KeyLevelPanel } from "../key-levels/KeyLevelPanel";
 import { useStockKeyLevels } from "../key-levels/queries";
+import { VolumePositionTagStrip } from "../trading-experience/VolumePositionTagStrip";
+import { useTradingExperienceReadiness, useVolumePositionTags } from "./queries";
 
 interface StrategyTrackingDetailDrawerProps {
   open: boolean;
@@ -49,11 +51,23 @@ export function StrategyTrackingDetailDrawer({
 export function StrategyTrackingDetailContent({ detail, viewMode = "beginner" }: { detail: StrategyTrackingDetailResponse; viewMode?: StrategyTrackingViewMode }) {
   const item = detail.item;
   const keyLevels = useStockKeyLevels(item.symbol, true);
+  const tradingExperienceReadiness = useTradingExperienceReadiness();
+  const vpEnabled = Boolean(
+    tradingExperienceReadiness.data?.flags?.trading_experience_suite_enabled &&
+    tradingExperienceReadiness.data?.flags?.vp_position_tags_enabled,
+  );
+  const volumeTags = useVolumePositionTags(item.symbol, vpEnabled);
   return (
     <Space className="strategy-tracking-detail" orientation="vertical" size={12}>
       {detail.partial_errors.length ? <Alert type="warning" showIcon title={detail.partial_errors.join("；")} /> : null}
       <Alert type={item.user_friendly_status === "weakening" ? "warning" : "info"} showIcon title="当前结论" description={item.plain_language_summary || item.user_friendly_reason} />
-      <KeyLevelPanel title="个股关键位观察" result={keyLevels.data} loading={keyLevels.isFetching} compact />
+      <KeyLevelPanel
+        title="个股关键位观察"
+        result={keyLevels.data}
+        loading={keyLevels.isFetching}
+        compact
+        extra={<VolumePositionTagStrip items={volumeTags.data?.items ?? []} />}
+      />
       <div className="strategy-tracking-detail-head">
         <strong>{item.name || item.symbol} · {item.symbol}</strong>
         <div className="strategy-tracking-tag-row">

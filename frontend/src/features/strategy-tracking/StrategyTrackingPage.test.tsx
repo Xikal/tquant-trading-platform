@@ -16,7 +16,7 @@ import { PromotionReviewPanel } from "./PromotionReviewPanel";
 import { StrategyTrackingConclusionBar } from "./StrategyTrackingConclusionBar";
 import { StrategyTrackingReviewPanel } from "./StrategyTrackingReviewPanel";
 import { StrategyTrackingSummaryBar } from "./StrategyTrackingSummaryBar";
-import { buildParams } from "./StrategyTrackingPage";
+import { buildParams, visibleAnalysisTab } from "./StrategyTrackingPage";
 import { StrategyTrackingTable } from "./StrategyTrackingTable";
 
 afterEach(() => {
@@ -273,6 +273,13 @@ describe("StrategyTracking UI", () => {
     expect(state.tab).toBe("risk");
     expect(state.analysisTab).toBe("holding");
     expect(state.page).toBe(3);
+  });
+
+  it("falls back hidden trading-experience analysis tabs when feature flags are off", () => {
+    expect(visibleAnalysisTab("trade-review", { reviewEnabled: false, rsEnabled: true })).toBe("diagnostics");
+    expect(visibleAnalysisTab("trade-journal", { reviewEnabled: false, rsEnabled: true })).toBe("diagnostics");
+    expect(visibleAnalysisTab("relative-strength", { reviewEnabled: true, rsEnabled: false })).toBe("diagnostics");
+    expect(visibleAnalysisTab("relative-strength", { reviewEnabled: false, rsEnabled: true })).toBe("relative-strength");
   });
 
   it("loads the strategy tracking homepage through one snapshot endpoint", async () => {

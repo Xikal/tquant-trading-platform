@@ -1,6 +1,7 @@
 import { create } from "zustand";
 
-export type StrategyTrackingTab = "active" | "gain" | "risk" | "performance" | "holding" | "drift" | "diagnostics";
+export type StrategyTrackingAnalysisTab = "performance" | "holding" | "drift" | "diagnostics" | "trade-review" | "trade-journal" | "relative-strength";
+export type StrategyTrackingTab = "active" | "gain" | "risk" | StrategyTrackingAnalysisTab;
 export type StrategyTrackingViewMode = "beginner" | "professional";
 export type StrategyTrackingLane = "" | "baseline" | "front_row_weighted" | "front_row_only";
 export type StrategyTrackingSummaryGroup = "overview" | "analysis";
@@ -8,7 +9,7 @@ export type StrategyTrackingSummaryGroup = "overview" | "analysis";
 interface StrategyTrackingStore {
   tab: StrategyTrackingTab;
   overviewTab: "active" | "gain" | "risk";
-  analysisTab: "performance" | "holding" | "drift" | "diagnostics";
+  analysisTab: StrategyTrackingAnalysisTab;
   viewMode: StrategyTrackingViewMode;
   summaryGroup: StrategyTrackingSummaryGroup;
   filtersDrawerOpen: boolean;
@@ -31,7 +32,7 @@ interface StrategyTrackingStore {
   selectedItemId: string | null;
   setTab: (tab: StrategyTrackingTab) => void;
   setOverviewTab: (tab: "active" | "gain" | "risk") => void;
-  setAnalysisTab: (tab: "performance" | "holding" | "drift" | "diagnostics") => void;
+  setAnalysisTab: (tab: StrategyTrackingAnalysisTab) => void;
   setViewMode: (viewMode: StrategyTrackingViewMode) => void;
   setSummaryGroup: (summaryGroup: StrategyTrackingSummaryGroup) => void;
   setFiltersDrawerOpen: (open: boolean) => void;

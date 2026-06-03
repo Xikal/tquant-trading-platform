@@ -1,4 +1,4 @@
-const CACHE_NAME = "tquant-static-v2";
+const CACHE_NAME = "tquant-static-v3";
 const SAFE_ASSET = /\.(?:js|css|png|svg|ico|webp|woff2?|webmanifest)$/i;
 const APP_SHELL = ["/", "/offline.html", "/offline.css", "/manifest.webmanifest"];
 

@@ -41,6 +41,13 @@ _FLAG_DESCRIPTIONS: dict[str, str] = {
     "playbook_lazy_load_enabled": "策略宝典按页面分段加载，减少首屏请求。",
     "market_provider_router_enabled": "启用统一市场数据 provider router（默认开启，旧链路作为 fallback）。",
     "a_key_level_engine_enabled": "启用 AKeyLevel 关键位引擎展示与 API 入口；默认关闭，开启后 API 优先读取物化缓存。",
+    "trading_experience_suite_enabled": "启用交易经验观察与复盘套件总入口；默认关闭。",
+    "trade_review_suite_enabled": "启用每日复盘池和交易纪律日志；默认关闭。",
+    "vp_position_tags_enabled": "启用量价-位置风险标签展示；默认关闭。",
+    "relative_strength_board_enabled": "启用相对强度和抗跌榜展示；默认关闭。",
+    "holding_discipline_assistant_enabled": "启用模拟盘持仓纪律助手；默认关闭。",
+    "limit_up_followthrough_enabled": "启用涨停后形态研究列表；默认关闭。",
+    "t_trade_discipline_enabled": "启用做 T 纪律与效果归因；默认关闭。",
 }
 
 
@@ -55,6 +62,13 @@ _DEFAULT_FLAGS = {
     "playbook_lazy_load_enabled": True,
     "market_provider_router_enabled": True,
     "a_key_level_engine_enabled": False,
+    "trading_experience_suite_enabled": False,
+    "trade_review_suite_enabled": False,
+    "vp_position_tags_enabled": False,
+    "relative_strength_board_enabled": False,
+    "holding_discipline_assistant_enabled": False,
+    "limit_up_followthrough_enabled": False,
+    "t_trade_discipline_enabled": False,
 }
 
 

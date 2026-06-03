@@ -60,6 +60,10 @@ describe("PaperTradingPage", () => {
     expect(html).toContain("paper-mecha-action-panel");
     expect(html).toContain("模拟盘机甲交易舱");
     expect(html).toContain("壹式·紫");
+    expect(html).toContain("零式·蓝白");
+    expect(html).toContain("贰式·赤");
+    expect(html).toContain("陆式·黑");
+    expect(html).toContain("拾参·灰");
     expect(html).not.toContain("[ 模拟交易事件 / 触发特效 ]");
     expect(html).not.toContain("SIMULATE ACTION");
     expect(html).toContain("实时同步监控日志");

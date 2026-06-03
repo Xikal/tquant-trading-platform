@@ -16,4 +16,13 @@ export const queryKeys = {
   strategyTrackingReport: (type: string, params: Record<string, unknown>) =>
     ["strategy-tracking", "report", type, params] as const,
   trackRecordDrift: (windowDays: number) => ["track-record", "drift", windowDays] as const,
+  tradingExperienceReadiness: ["trading-experience", "readiness"] as const,
+  tradingExperienceReview: ["trading-experience", "review"] as const,
+  tradingExperienceJournal: (accountId?: number | null) => ["trading-experience", "journal", accountId] as const,
+  tradingExperienceVolumeTags: (symbol?: string | null) => ["trading-experience", "volume-tags", symbol] as const,
+  tradingExperienceRelativeStrength: ["trading-experience", "relative-strength"] as const,
+  tradingExperienceHoldingDiscipline: (accountId?: number | null) =>
+    ["trading-experience", "holding-discipline", accountId] as const,
+  tradingExperienceLimitUp: ["trading-experience", "limit-up"] as const,
+  tradingExperienceTTrade: (accountId?: number | null) => ["trading-experience", "t-trade", accountId] as const,
 };

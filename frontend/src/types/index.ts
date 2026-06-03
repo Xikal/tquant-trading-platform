@@ -10,4 +10,5 @@ export * from "./research";
 export * from "./settings";
 export * from "./strategyTracking";
 export * from "./strategyLanes";
+export * from "./tradingExperience";
 export * from "./watchlist";

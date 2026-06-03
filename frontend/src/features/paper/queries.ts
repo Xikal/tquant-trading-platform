@@ -10,3 +10,21 @@ export function usePaperSummaryQuery() {
     refetchInterval: 30_000,
   });
 }
+
+export function useHoldingDiscipline(accountId?: number | null, enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.tradingExperienceHoldingDiscipline(accountId),
+    queryFn: () => api.getHoldingDiscipline(accountId),
+    enabled,
+    staleTime: 60_000,
+  });
+}
+
+export function useTTradeAttribution(accountId?: number | null, enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.tradingExperienceTTrade(accountId),
+    queryFn: () => api.getTTradeAttribution(accountId, 30),
+    enabled,
+    staleTime: 60_000,
+  });
+}

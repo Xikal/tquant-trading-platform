@@ -9638,6 +9638,141 @@
         "title": "HealthResponse",
         "type": "object"
       },
+      "HoldingDisciplineHint": {
+        "properties": {
+          "account_id": {
+            "title": "Account Id",
+            "type": "integer"
+          },
+          "as_of": {
+            "format": "date-time",
+            "title": "As Of",
+            "type": "string"
+          },
+          "data_quality": {
+            "enum": [
+              "ok",
+              "insufficient",
+              "no_data",
+              "blocked",
+              "stale",
+              "research_only"
+            ],
+            "title": "Data Quality",
+            "type": "string"
+          },
+          "evidence": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Evidence",
+            "type": "array"
+          },
+          "hint_code": {
+            "enum": [
+              "trailing_stop",
+              "no_add_down_warning",
+              "break_down",
+              "emotional_pullback",
+              "watch_cadence"
+            ],
+            "title": "Hint Code",
+            "type": "string"
+          },
+          "level": {
+            "enum": [
+              "info",
+              "warn"
+            ],
+            "title": "Level",
+            "type": "string"
+          },
+          "symbol": {
+            "title": "Symbol",
+            "type": "string"
+          }
+        },
+        "required": [
+          "account_id",
+          "symbol",
+          "hint_code",
+          "level",
+          "data_quality",
+          "as_of"
+        ],
+        "title": "HoldingDisciplineHint",
+        "type": "object"
+      },
+      "HoldingDisciplineResponse": {
+        "properties": {
+          "account_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Account Id"
+          },
+          "as_of": {
+            "format": "date-time",
+            "title": "As Of",
+            "type": "string"
+          },
+          "data_quality": {
+            "default": "insufficient",
+            "enum": [
+              "ok",
+              "insufficient",
+              "no_data",
+              "blocked",
+              "stale",
+              "research_only"
+            ],
+            "title": "Data Quality",
+            "type": "string"
+          },
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "engine_version": {
+            "title": "Engine Version",
+            "type": "string"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/HoldingDisciplineHint"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "research_only": {
+            "default": true,
+            "title": "Research Only",
+            "type": "boolean"
+          },
+          "source": {
+            "default": "local_snapshot",
+            "title": "Source",
+            "type": "string"
+          },
+          "total": {
+            "default": 0,
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "as_of",
+          "engine_version",
+          "enabled"
+        ],
+        "title": "HoldingDisciplineResponse",
+        "type": "object"
+      },
       "InstrumentOut": {
         "properties": {
           "instrument_type": {
@@ -10890,6 +11025,194 @@
           "amount"
         ],
         "title": "KlineBar",
+        "type": "object"
+      },
+      "LimitUpFollowthroughItem": {
+        "properties": {
+          "as_of": {
+            "format": "date-time",
+            "title": "As Of",
+            "type": "string"
+          },
+          "backtest_max_drawdown": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Backtest Max Drawdown"
+          },
+          "backtest_pf": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Backtest Pf"
+          },
+          "backtest_winrate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Backtest Winrate"
+          },
+          "data_quality": {
+            "enum": [
+              "ok",
+              "insufficient",
+              "no_data",
+              "blocked",
+              "stale",
+              "research_only"
+            ],
+            "title": "Data Quality",
+            "type": "string"
+          },
+          "days_since": {
+            "title": "Days Since",
+            "type": "integer"
+          },
+          "evidence": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Evidence",
+            "type": "array"
+          },
+          "limit_up_date": {
+            "title": "Limit Up Date",
+            "type": "string"
+          },
+          "pattern_code": {
+            "title": "Pattern Code",
+            "type": "string"
+          },
+          "quarter_stability": {
+            "default": "blocked",
+            "title": "Quarter Stability",
+            "type": "string"
+          },
+          "sample_count": {
+            "default": 0,
+            "title": "Sample Count",
+            "type": "integer"
+          },
+          "status": {
+            "default": "research_only",
+            "enum": [
+              "research_only",
+              "observed",
+              "blocked"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "symbol": {
+            "title": "Symbol",
+            "type": "string"
+          }
+        },
+        "required": [
+          "symbol",
+          "limit_up_date",
+          "pattern_code",
+          "days_since",
+          "data_quality",
+          "as_of"
+        ],
+        "title": "LimitUpFollowthroughItem",
+        "type": "object"
+      },
+      "LimitUpFollowthroughResponse": {
+        "properties": {
+          "as_of": {
+            "format": "date-time",
+            "title": "As Of",
+            "type": "string"
+          },
+          "backtest_gate": {
+            "default": "blocked",
+            "enum": [
+              "blocked",
+              "passed",
+              "failed"
+            ],
+            "title": "Backtest Gate",
+            "type": "string"
+          },
+          "backtest_window_months": {
+            "default": 24,
+            "title": "Backtest Window Months",
+            "type": "integer"
+          },
+          "data_quality": {
+            "default": "insufficient",
+            "enum": [
+              "ok",
+              "insufficient",
+              "no_data",
+              "blocked",
+              "stale",
+              "research_only"
+            ],
+            "title": "Data Quality",
+            "type": "string"
+          },
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "engine_version": {
+            "title": "Engine Version",
+            "type": "string"
+          },
+          "gate_reasons": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Gate Reasons",
+            "type": "array"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/LimitUpFollowthroughItem"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "research_only": {
+            "default": true,
+            "title": "Research Only",
+            "type": "boolean"
+          },
+          "source": {
+            "default": "local_snapshot",
+            "title": "Source",
+            "type": "string"
+          },
+          "total": {
+            "default": 0,
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "as_of",
+          "engine_version",
+          "enabled"
+        ],
+        "title": "LimitUpFollowthroughResponse",
         "type": "object"
       },
       "LowBuyCandidateOut": {
@@ -17106,6 +17429,316 @@
         "title": "ReadinessResponse",
         "type": "object"
       },
+      "RelativeStrengthItem": {
+        "properties": {
+          "as_of": {
+            "format": "date-time",
+            "title": "As Of",
+            "type": "string"
+          },
+          "data_quality": {
+            "enum": [
+              "ok",
+              "insufficient",
+              "no_data",
+              "blocked",
+              "stale",
+              "research_only"
+            ],
+            "title": "Data Quality",
+            "type": "string"
+          },
+          "index_code": {
+            "title": "Index Code",
+            "type": "string"
+          },
+          "index_pct": {
+            "title": "Index Pct",
+            "type": "number"
+          },
+          "resilience_flag": {
+            "enum": [
+              "resilient",
+              "follow_down",
+              "neutral"
+            ],
+            "title": "Resilience Flag",
+            "type": "string"
+          },
+          "rs_vs_index": {
+            "title": "Rs Vs Index",
+            "type": "number"
+          },
+          "rs_vs_sector": {
+            "title": "Rs Vs Sector",
+            "type": "number"
+          },
+          "sector_code": {
+            "title": "Sector Code",
+            "type": "string"
+          },
+          "sector_pct": {
+            "title": "Sector Pct",
+            "type": "number"
+          },
+          "sector_rank": {
+            "title": "Sector Rank",
+            "type": "integer"
+          },
+          "stock_pct": {
+            "title": "Stock Pct",
+            "type": "number"
+          },
+          "symbol": {
+            "title": "Symbol",
+            "type": "string"
+          },
+          "trade_date": {
+            "title": "Trade Date",
+            "type": "string"
+          }
+        },
+        "required": [
+          "symbol",
+          "trade_date",
+          "index_code",
+          "sector_code",
+          "stock_pct",
+          "index_pct",
+          "sector_pct",
+          "rs_vs_index",
+          "rs_vs_sector",
+          "sector_rank",
+          "resilience_flag",
+          "data_quality",
+          "as_of"
+        ],
+        "title": "RelativeStrengthItem",
+        "type": "object"
+      },
+      "RelativeStrengthResponse": {
+        "properties": {
+          "as_of": {
+            "format": "date-time",
+            "title": "As Of",
+            "type": "string"
+          },
+          "data_quality": {
+            "default": "insufficient",
+            "enum": [
+              "ok",
+              "insufficient",
+              "no_data",
+              "blocked",
+              "stale",
+              "research_only"
+            ],
+            "title": "Data Quality",
+            "type": "string"
+          },
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "engine_version": {
+            "title": "Engine Version",
+            "type": "string"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/RelativeStrengthItem"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "research_only": {
+            "default": true,
+            "title": "Research Only",
+            "type": "boolean"
+          },
+          "source": {
+            "default": "local_snapshot",
+            "title": "Source",
+            "type": "string"
+          },
+          "total": {
+            "default": 0,
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "as_of",
+          "engine_version",
+          "enabled"
+        ],
+        "title": "RelativeStrengthResponse",
+        "type": "object"
+      },
+      "ReviewPoolItem": {
+        "properties": {
+          "as_of": {
+            "format": "date-time",
+            "title": "As Of",
+            "type": "string"
+          },
+          "data_quality": {
+            "enum": [
+              "ok",
+              "insufficient",
+              "no_data",
+              "blocked",
+              "stale",
+              "research_only"
+            ],
+            "title": "Data Quality",
+            "type": "string"
+          },
+          "drop_reason": {
+            "default": "",
+            "title": "Drop Reason",
+            "type": "string"
+          },
+          "engine_version": {
+            "title": "Engine Version",
+            "type": "string"
+          },
+          "entry_pct": {
+            "title": "Entry Pct",
+            "type": "number"
+          },
+          "evidence": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Evidence",
+            "type": "array"
+          },
+          "mainline_state": {
+            "default": "unknown",
+            "title": "Mainline State",
+            "type": "string"
+          },
+          "name": {
+            "default": "",
+            "title": "Name",
+            "type": "string"
+          },
+          "pool_date": {
+            "title": "Pool Date",
+            "type": "string"
+          },
+          "sector_role": {
+            "default": "unknown",
+            "title": "Sector Role",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "in_pool",
+              "retained",
+              "dropped"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "symbol": {
+            "title": "Symbol",
+            "type": "string"
+          },
+          "tracked_days": {
+            "default": 0,
+            "title": "Tracked Days",
+            "type": "integer"
+          },
+          "volume_ratio": {
+            "title": "Volume Ratio",
+            "type": "number"
+          }
+        },
+        "required": [
+          "pool_date",
+          "symbol",
+          "status",
+          "entry_pct",
+          "volume_ratio",
+          "data_quality",
+          "as_of",
+          "engine_version"
+        ],
+        "title": "ReviewPoolItem",
+        "type": "object"
+      },
+      "ReviewPoolResponse": {
+        "properties": {
+          "as_of": {
+            "format": "date-time",
+            "title": "As Of",
+            "type": "string"
+          },
+          "data_quality": {
+            "default": "insufficient",
+            "enum": [
+              "ok",
+              "insufficient",
+              "no_data",
+              "blocked",
+              "stale",
+              "research_only"
+            ],
+            "title": "Data Quality",
+            "type": "string"
+          },
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "engine_version": {
+            "title": "Engine Version",
+            "type": "string"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ReviewPoolItem"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "pool_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pool Date"
+          },
+          "research_only": {
+            "default": true,
+            "title": "Research Only",
+            "type": "boolean"
+          },
+          "source": {
+            "default": "local_snapshot",
+            "title": "Source",
+            "type": "string"
+          },
+          "total": {
+            "default": 0,
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "as_of",
+          "engine_version",
+          "enabled"
+        ],
+        "title": "ReviewPoolResponse",
+        "type": "object"
+      },
       "RiskEventOut": {
         "properties": {
           "account_id": {
@@ -21554,6 +22187,178 @@
         "title": "SymbolSearchResponse",
         "type": "object"
       },
+      "TTradeAttributionItem": {
+        "properties": {
+          "account_id": {
+            "title": "Account Id",
+            "type": "integer"
+          },
+          "as_of": {
+            "format": "date-time",
+            "title": "As Of",
+            "type": "string"
+          },
+          "comparison_method": {
+            "default": "paired_cashflow_vs_hold",
+            "title": "Comparison Method",
+            "type": "string"
+          },
+          "completeness_issues": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Completeness Issues",
+            "type": "array"
+          },
+          "data_quality": {
+            "enum": [
+              "ok",
+              "insufficient",
+              "no_data",
+              "blocked",
+              "stale",
+              "research_only"
+            ],
+            "title": "Data Quality",
+            "type": "string"
+          },
+          "discipline_notes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Discipline Notes",
+            "type": "array"
+          },
+          "key_level_state": {
+            "default": "insufficient",
+            "title": "Key Level State",
+            "type": "string"
+          },
+          "minute_data_coverage": {
+            "title": "Minute Data Coverage",
+            "type": "number"
+          },
+          "period": {
+            "title": "Period",
+            "type": "string"
+          },
+          "realized_cost_delta": {
+            "title": "Realized Cost Delta",
+            "type": "number"
+          },
+          "sell_fly_count": {
+            "title": "Sell Fly Count",
+            "type": "integer"
+          },
+          "symbol": {
+            "title": "Symbol",
+            "type": "string"
+          },
+          "t_trade_count": {
+            "title": "T Trade Count",
+            "type": "integer"
+          },
+          "vs_no_t_trade_return_delta": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Vs No T Trade Return Delta"
+          },
+          "win_rate": {
+            "title": "Win Rate",
+            "type": "number"
+          }
+        },
+        "required": [
+          "account_id",
+          "symbol",
+          "period",
+          "t_trade_count",
+          "realized_cost_delta",
+          "win_rate",
+          "sell_fly_count",
+          "minute_data_coverage",
+          "data_quality",
+          "as_of"
+        ],
+        "title": "TTradeAttributionItem",
+        "type": "object"
+      },
+      "TTradeAttributionResponse": {
+        "properties": {
+          "account_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Account Id"
+          },
+          "as_of": {
+            "format": "date-time",
+            "title": "As Of",
+            "type": "string"
+          },
+          "data_quality": {
+            "default": "insufficient",
+            "enum": [
+              "ok",
+              "insufficient",
+              "no_data",
+              "blocked",
+              "stale",
+              "research_only"
+            ],
+            "title": "Data Quality",
+            "type": "string"
+          },
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "engine_version": {
+            "title": "Engine Version",
+            "type": "string"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/TTradeAttributionItem"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "research_only": {
+            "default": true,
+            "title": "Research Only",
+            "type": "boolean"
+          },
+          "source": {
+            "default": "local_snapshot",
+            "title": "Source",
+            "type": "string"
+          },
+          "total": {
+            "default": 0,
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "as_of",
+          "engine_version",
+          "enabled"
+        ],
+        "title": "TTradeAttributionResponse",
+        "type": "object"
+      },
       "TrackRecordDriftItemOut": {
         "properties": {
           "as_of_date": {
@@ -21864,6 +22669,317 @@
         "title": "TradeDataGateResponse",
         "type": "object"
       },
+      "TradeJournalEntryCreate": {
+        "properties": {
+          "account_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Account Id"
+          },
+          "action": {
+            "enum": [
+              "buy",
+              "sell",
+              "trim",
+              "add",
+              "t_trade",
+              "note"
+            ],
+            "title": "Action",
+            "type": "string"
+          },
+          "discipline_flags": {
+            "additionalProperties": {
+              "type": "boolean"
+            },
+            "title": "Discipline Flags",
+            "type": "object"
+          },
+          "mistake_tags": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Mistake Tags",
+            "type": "array"
+          },
+          "reason_text": {
+            "default": "",
+            "title": "Reason Text",
+            "type": "string"
+          },
+          "signal_source": {
+            "default": "",
+            "title": "Signal Source",
+            "type": "string"
+          },
+          "symbol": {
+            "title": "Symbol",
+            "type": "string"
+          }
+        },
+        "required": [
+          "symbol",
+          "action"
+        ],
+        "title": "TradeJournalEntryCreate",
+        "type": "object"
+      },
+      "TradeJournalEntryOut": {
+        "properties": {
+          "account_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Account Id"
+          },
+          "action": {
+            "enum": [
+              "buy",
+              "sell",
+              "trim",
+              "add",
+              "t_trade",
+              "note"
+            ],
+            "title": "Action",
+            "type": "string"
+          },
+          "as_of": {
+            "format": "date-time",
+            "title": "As Of",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "data_quality": {
+            "default": "ok",
+            "enum": [
+              "ok",
+              "insufficient",
+              "no_data",
+              "blocked",
+              "stale",
+              "research_only"
+            ],
+            "title": "Data Quality",
+            "type": "string"
+          },
+          "discipline_flags": {
+            "additionalProperties": {
+              "type": "boolean"
+            },
+            "title": "Discipline Flags",
+            "type": "object"
+          },
+          "engine_version": {
+            "title": "Engine Version",
+            "type": "string"
+          },
+          "entry_id": {
+            "title": "Entry Id",
+            "type": "integer"
+          },
+          "mistake_tags": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Mistake Tags",
+            "type": "array"
+          },
+          "reason_text": {
+            "default": "",
+            "title": "Reason Text",
+            "type": "string"
+          },
+          "research_only": {
+            "default": true,
+            "title": "Research Only",
+            "type": "boolean"
+          },
+          "signal_source": {
+            "default": "",
+            "title": "Signal Source",
+            "type": "string"
+          },
+          "source": {
+            "default": "manual",
+            "title": "Source",
+            "type": "string"
+          },
+          "symbol": {
+            "title": "Symbol",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          },
+          "user_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "User Id"
+          }
+        },
+        "required": [
+          "symbol",
+          "action",
+          "entry_id",
+          "as_of",
+          "engine_version",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "TradeJournalEntryOut",
+        "type": "object"
+      },
+      "TradeJournalResponse": {
+        "properties": {
+          "as_of": {
+            "format": "date-time",
+            "title": "As Of",
+            "type": "string"
+          },
+          "data_quality": {
+            "default": "insufficient",
+            "enum": [
+              "ok",
+              "insufficient",
+              "no_data",
+              "blocked",
+              "stale",
+              "research_only"
+            ],
+            "title": "Data Quality",
+            "type": "string"
+          },
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "engine_version": {
+            "title": "Engine Version",
+            "type": "string"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/TradeJournalEntryOut"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "research_only": {
+            "default": true,
+            "title": "Research Only",
+            "type": "boolean"
+          },
+          "source": {
+            "default": "local_snapshot",
+            "title": "Source",
+            "type": "string"
+          },
+          "total": {
+            "default": 0,
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "as_of",
+          "engine_version",
+          "enabled"
+        ],
+        "title": "TradeJournalResponse",
+        "type": "object"
+      },
+      "TradingExperienceReadinessResponse": {
+        "properties": {
+          "as_of": {
+            "format": "date-time",
+            "title": "As Of",
+            "type": "string"
+          },
+          "data_quality": {
+            "default": "insufficient",
+            "enum": [
+              "ok",
+              "insufficient",
+              "no_data",
+              "blocked",
+              "stale",
+              "research_only"
+            ],
+            "title": "Data Quality",
+            "type": "string"
+          },
+          "disabled_reasons": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Disabled Reasons",
+            "type": "array"
+          },
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "engine_version": {
+            "title": "Engine Version",
+            "type": "string"
+          },
+          "flags": {
+            "additionalProperties": {
+              "type": "boolean"
+            },
+            "title": "Flags",
+            "type": "object"
+          },
+          "research_only": {
+            "default": true,
+            "title": "Research Only",
+            "type": "boolean"
+          },
+          "source": {
+            "default": "local_snapshot",
+            "title": "Source",
+            "type": "string"
+          },
+          "worker_task_types": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Worker Task Types",
+            "type": "array"
+          }
+        },
+        "required": [
+          "as_of",
+          "engine_version",
+          "enabled"
+        ],
+        "title": "TradingExperienceReadinessResponse",
+        "type": "object"
+      },
       "TradingRuleOut": {
         "properties": {
           "notes": {
@@ -21993,6 +23109,133 @@
           "type"
         ],
         "title": "ValidationError",
+        "type": "object"
+      },
+      "VolumePositionTag": {
+        "properties": {
+          "as_of": {
+            "format": "date-time",
+            "title": "As Of",
+            "type": "string"
+          },
+          "data_quality": {
+            "enum": [
+              "ok",
+              "insufficient",
+              "no_data",
+              "blocked",
+              "stale",
+              "research_only"
+            ],
+            "title": "Data Quality",
+            "type": "string"
+          },
+          "engine_version": {
+            "title": "Engine Version",
+            "type": "string"
+          },
+          "evidence": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Evidence",
+            "type": "array"
+          },
+          "explanation": {
+            "title": "Explanation",
+            "type": "string"
+          },
+          "level": {
+            "enum": [
+              "info",
+              "warn"
+            ],
+            "title": "Level",
+            "type": "string"
+          },
+          "symbol": {
+            "title": "Symbol",
+            "type": "string"
+          },
+          "tag_code": {
+            "title": "Tag Code",
+            "type": "string"
+          },
+          "trade_date": {
+            "title": "Trade Date",
+            "type": "string"
+          }
+        },
+        "required": [
+          "symbol",
+          "trade_date",
+          "tag_code",
+          "level",
+          "explanation",
+          "data_quality",
+          "as_of",
+          "engine_version"
+        ],
+        "title": "VolumePositionTag",
+        "type": "object"
+      },
+      "VolumePositionTagResponse": {
+        "properties": {
+          "as_of": {
+            "format": "date-time",
+            "title": "As Of",
+            "type": "string"
+          },
+          "data_quality": {
+            "default": "insufficient",
+            "enum": [
+              "ok",
+              "insufficient",
+              "no_data",
+              "blocked",
+              "stale",
+              "research_only"
+            ],
+            "title": "Data Quality",
+            "type": "string"
+          },
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "engine_version": {
+            "title": "Engine Version",
+            "type": "string"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/VolumePositionTag"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "research_only": {
+            "default": true,
+            "title": "Research Only",
+            "type": "boolean"
+          },
+          "source": {
+            "default": "local_snapshot",
+            "title": "Source",
+            "type": "string"
+          },
+          "symbol": {
+            "title": "Symbol",
+            "type": "string"
+          }
+        },
+        "required": [
+          "as_of",
+          "engine_version",
+          "enabled",
+          "symbol"
+        ],
+        "title": "VolumePositionTagResponse",
         "type": "object"
       },
       "WatchlistCreate": {
@@ -38633,6 +39876,543 @@
         "summary": "Track Record Ledger View",
         "tags": [
           "track-record"
+        ]
+      }
+    },
+    "/api/trading-experience/holding-discipline": {
+      "get": {
+        "operationId": "get_holding_discipline_api_trading_experience_holding_discipline_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "account_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Account Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HoldingDisciplineResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Holding Discipline",
+        "tags": [
+          "trading-experience"
+        ]
+      }
+    },
+    "/api/trading-experience/limit-up-followthrough": {
+      "get": {
+        "operationId": "get_limit_up_followthrough_api_trading_experience_limit_up_followthrough_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "trade_date",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Trade Date"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 30,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LimitUpFollowthroughResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Limit Up Followthrough",
+        "tags": [
+          "trading-experience"
+        ]
+      }
+    },
+    "/api/trading-experience/readiness": {
+      "get": {
+        "operationId": "readiness_api_trading_experience_readiness_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TradingExperienceReadinessResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Readiness",
+        "tags": [
+          "trading-experience"
+        ]
+      }
+    },
+    "/api/trading-experience/relative-strength": {
+      "get": {
+        "operationId": "get_relative_strength_api_trading_experience_relative_strength_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "trade_date",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Trade Date"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 30,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RelativeStrengthResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Relative Strength",
+        "tags": [
+          "trading-experience"
+        ]
+      }
+    },
+    "/api/trading-experience/review-pool": {
+      "get": {
+        "operationId": "get_review_pool_api_trading_experience_review_pool_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "pool_date",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Pool Date"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 30,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReviewPoolResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Review Pool",
+        "tags": [
+          "trading-experience"
+        ]
+      }
+    },
+    "/api/trading-experience/t-trade-attribution": {
+      "get": {
+        "operationId": "get_t_trade_attribution_api_trading_experience_t_trade_attribution_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "account_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Account Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "days",
+            "required": false,
+            "schema": {
+              "default": 30,
+              "maximum": 120,
+              "minimum": 1,
+              "title": "Days",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TTradeAttributionResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get T Trade Attribution",
+        "tags": [
+          "trading-experience"
+        ]
+      }
+    },
+    "/api/trading-experience/trade-journal": {
+      "get": {
+        "operationId": "get_trade_journal_api_trading_experience_trade_journal_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "account_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Account Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "symbol",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Symbol"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TradeJournalResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Trade Journal",
+        "tags": [
+          "trading-experience"
+        ]
+      },
+      "post": {
+        "operationId": "create_trade_journal_api_trading_experience_trade_journal_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TradeJournalEntryCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TradeJournalEntryOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Create Trade Journal",
+        "tags": [
+          "trading-experience"
+        ]
+      }
+    },
+    "/api/trading-experience/volume-position-tags/{symbol}": {
+      "get": {
+        "operationId": "get_volume_position_tags_api_trading_experience_volume_position_tags__symbol__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "symbol",
+            "required": true,
+            "schema": {
+              "title": "Symbol",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "trade_date",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Trade Date"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VolumePositionTagResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Volume Position Tags",
+        "tags": [
+          "trading-experience"
         ]
       }
     },

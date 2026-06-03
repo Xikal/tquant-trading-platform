@@ -9,32 +9,41 @@
 
 ### 执行边界
 
-- [ ] 只做观察、复盘、解释、纪律提示和研究归因。
-- [ ] 默认 feature flag 关闭。
-- [ ] 不替换 low-buy、priority board、front-row weighted 或任何现有生产排序。
-- [ ] 不产生 `production_score`，不修改 `strategy_policy`。
-- [ ] 不输出买入、卖出、加仓、低吸、必涨、推荐等交易指令。
-- [ ] “主力出货、洗盘、吸筹、对倒”只转为可观测价量标签，不当作事实。
-- [ ] 涨停后形态和做 T 规则必须先证伪、再采信，未达标保持 `research_only`。
+- [x] 只做观察、复盘、解释、纪律提示和研究归因。
+- [x] 默认 feature flag 关闭。
+- [x] 不替换 low-buy、priority board、front-row weighted 或任何现有生产排序。
+- [x] 不产生 `production_score`，不修改 `strategy_policy`。
+- [x] 不输出买入、卖出、加仓、低吸、必涨、推荐等交易指令。
+- [x] “主力出货、洗盘、吸筹、对倒”只转为可观测价量标签，不当作事实。
+- [x] 涨停后形态和做 T 规则必须先证伪、再采信，未达标保持 `research_only`。
 
 ### 本轮实施顺序
 
-- [ ] G0：计划收口与守卫，新增 feature flags、文案禁词守卫、生产隔离守卫。
-- [ ] G1：每日复盘池 + 交易纪律日志，补 `review_pool_item` 与 `trade_journal_entry`。
-- [ ] G2：量价-位置风险标签 + 相对强度 / 抗跌榜。
-- [ ] G3：持仓纪律助手，复用 AKeyLevel 和 paper 持仓。
-- [ ] G4：涨停后量价跟踪研究门，24M 回测未达标不进入排序。
-- [ ] G5：做 T 纪律与效果归因，基于 paper 成交和分钟数据覆盖检查。
-- [ ] G6：统一验收、报告、OpenAPI/generated 同步和 flag 回退验证。
+- [x] G0：计划收口与守卫，新增 feature flags、文案禁词守卫、生产隔离守卫。
+- [x] G1：每日复盘池 + 交易纪律日志，补 `review_pool_item` 与 `trade_journal_entry`。
+- [x] G2：量价-位置风险标签 + 相对强度 / 抗跌榜。
+- [x] G3：持仓纪律助手，复用 AKeyLevel 和 paper 持仓。
+- [x] G4：涨停后量价跟踪研究门，runtime task 物化 24M 回测门，未达标或数据不足不进入排序。
+- [x] G5：做 T 纪律与效果归因，基于 paper 成交完整性、分钟数据覆盖和 AKeyLevel 破位状态检查。
+- [x] G6：统一验收、报告、OpenAPI/generated 同步和 flag 回退验证。
 
 ### 验收要求
 
-- [ ] 后端相关 `pytest` 通过。
-- [ ] 前端 `api:check`、`lint`、`test`、`build`、`analyze` 通过。
-- [ ] `git diff --check` 通过。
-- [ ] 关闭全部 flags 后，监控、策略跟踪、模拟盘、回测和生产排序行为不变。
-- [ ] 所有新增展示带 `data_quality`、`as_of`、`engine_version` 或等价字段。
-- [ ] 报告明确区分观察池、候选池、真实组合和研究归因，不出现裸“总收益”。
+- [x] 后端相关 `pytest` 通过。
+- [x] 前端 `api:check`、`lint`、`test`、`build`、`analyze` 通过。
+- [x] `git diff --check` 通过。
+- [x] 关闭全部 flags 后，监控、策略跟踪、模拟盘、回测和生产排序行为不变。
+- [x] 所有新增展示带 `data_quality`、`as_of`、`engine_version` 或等价字段。
+- [x] 报告明确区分观察池、候选池、真实组合和研究归因，不出现裸“总收益”。
+- [x] 375px responsive smoke 通过。
+
+### 本轮完成记录
+
+- [x] 新增 `backend/app/services/trading_experience/`、`backend/app/api/routes/trading_experience.py`、`trading_experience_review_pool_items`、`trading_experience_trade_journal_entries` 和 `trading_experience_snapshots`。
+- [x] 新增 runtime task 类型，任务仍受 `TQUANT_RESEARCH_JOBS_ENABLED` 研究任务门控；`trading_experience_limit_up_backtest` 写入 24M 回测快照；Web 不新增后台 loop。
+- [x] 量价标签和持仓纪律复用 AKeyLevel 缓存；缺关键位输出 `insufficient`。
+- [x] 策略跟踪新增复盘、纪律日志快速记录、抗跌事实入口；模拟盘新增持仓纪律与 T 归因入口；监控/策略详情/关键位区域接入量价标签；入口默认随 flag 关闭隐藏。
+- [x] OpenAPI 与 `frontend/src/generated/api-types.ts` 已同步，OpenAPI hash `6b778f722715bba6b1aba8378beb35aced215e4ba135b4f1d264027c394ad6e5`。
 
 ## 2026-05-30 可接受整改 P0-A~P2-I 一次性交付
 

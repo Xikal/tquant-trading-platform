@@ -37,6 +37,11 @@ from app.models.track_record_entities import (
     SignalRealizedOutcome,
     StrategyDriftSnapshot,
 )
+from app.models.trading_experience_entities import (
+    TradingExperienceReviewPoolItem,
+    TradingExperienceSnapshot,
+    TradingExperienceTradeJournalEntry,
+)
 from app.models.low_buy_entities import (
     LowBuyCloseReviewSnapshot,
     LowBuyHotIndustrySnapshot,
@@ -145,6 +150,9 @@ __all__ = [
     "ProductionSignalLedger",
     "SignalRealizedOutcome",
     "StrategyDriftSnapshot",
+    "TradingExperienceReviewPoolItem",
+    "TradingExperienceSnapshot",
+    "TradingExperienceTradeJournalEntry",
     "MarketEventCache",
     "MarketHourlySnapshotHistory",
     "MarketModelObservation",

@@ -4552,6 +4552,143 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/trading-experience/holding-discipline": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Holding Discipline */
+        get: operations["get_holding_discipline_api_trading_experience_holding_discipline_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/trading-experience/limit-up-followthrough": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Limit Up Followthrough */
+        get: operations["get_limit_up_followthrough_api_trading_experience_limit_up_followthrough_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/trading-experience/readiness": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Readiness */
+        get: operations["readiness_api_trading_experience_readiness_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/trading-experience/relative-strength": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Relative Strength */
+        get: operations["get_relative_strength_api_trading_experience_relative_strength_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/trading-experience/review-pool": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Review Pool */
+        get: operations["get_review_pool_api_trading_experience_review_pool_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/trading-experience/t-trade-attribution": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get T Trade Attribution */
+        get: operations["get_t_trade_attribution_api_trading_experience_t_trade_attribution_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/trading-experience/trade-journal": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Trade Journal */
+        get: operations["get_trade_journal_api_trading_experience_trade_journal_get"];
+        put?: never;
+        /** Create Trade Journal */
+        post: operations["create_trade_journal_api_trading_experience_trade_journal_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/trading-experience/volume-position-tags/{symbol}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Volume Position Tags */
+        get: operations["get_volume_position_tags_api_trading_experience_volume_position_tags__symbol__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/agent/tools": {
         parameters: {
             query?: never;
@@ -10418,6 +10555,72 @@ export interface components {
             /** Status */
             status: string;
         };
+        /** HoldingDisciplineHint */
+        HoldingDisciplineHint: {
+            /** Account Id */
+            account_id: number;
+            /**
+             * As Of
+             * Format: date-time
+             */
+            as_of: string;
+            /**
+             * Data Quality
+             * @enum {string}
+             */
+            data_quality: "ok" | "insufficient" | "no_data" | "blocked" | "stale" | "research_only";
+            /** Evidence */
+            evidence?: string[];
+            /**
+             * Hint Code
+             * @enum {string}
+             */
+            hint_code: "trailing_stop" | "no_add_down_warning" | "break_down" | "emotional_pullback" | "watch_cadence";
+            /**
+             * Level
+             * @enum {string}
+             */
+            level: "info" | "warn";
+            /** Symbol */
+            symbol: string;
+        };
+        /** HoldingDisciplineResponse */
+        HoldingDisciplineResponse: {
+            /** Account Id */
+            account_id?: number | null;
+            /**
+             * As Of
+             * Format: date-time
+             */
+            as_of: string;
+            /**
+             * Data Quality
+             * @default insufficient
+             * @enum {string}
+             */
+            data_quality: "ok" | "insufficient" | "no_data" | "blocked" | "stale" | "research_only";
+            /** Enabled */
+            enabled: boolean;
+            /** Engine Version */
+            engine_version: string;
+            /** Items */
+            items?: components["schemas"]["HoldingDisciplineHint"][];
+            /**
+             * Research Only
+             * @default true
+             */
+            research_only: boolean;
+            /**
+             * Source
+             * @default local_snapshot
+             */
+            source: string;
+            /**
+             * Total
+             * @default 0
+             */
+            total: number;
+        };
         /** InstrumentOut */
         InstrumentOut: {
             /** Instrument Type */
@@ -10944,6 +11147,99 @@ export interface components {
             turnover?: number | null;
             /** Volume */
             volume: number;
+        };
+        /** LimitUpFollowthroughItem */
+        LimitUpFollowthroughItem: {
+            /**
+             * As Of
+             * Format: date-time
+             */
+            as_of: string;
+            /** Backtest Max Drawdown */
+            backtest_max_drawdown?: number | null;
+            /** Backtest Pf */
+            backtest_pf?: number | null;
+            /** Backtest Winrate */
+            backtest_winrate?: number | null;
+            /**
+             * Data Quality
+             * @enum {string}
+             */
+            data_quality: "ok" | "insufficient" | "no_data" | "blocked" | "stale" | "research_only";
+            /** Days Since */
+            days_since: number;
+            /** Evidence */
+            evidence?: string[];
+            /** Limit Up Date */
+            limit_up_date: string;
+            /** Pattern Code */
+            pattern_code: string;
+            /**
+             * Quarter Stability
+             * @default blocked
+             */
+            quarter_stability: string;
+            /**
+             * Sample Count
+             * @default 0
+             */
+            sample_count: number;
+            /**
+             * Status
+             * @default research_only
+             * @enum {string}
+             */
+            status: "research_only" | "observed" | "blocked";
+            /** Symbol */
+            symbol: string;
+        };
+        /** LimitUpFollowthroughResponse */
+        LimitUpFollowthroughResponse: {
+            /**
+             * As Of
+             * Format: date-time
+             */
+            as_of: string;
+            /**
+             * Backtest Gate
+             * @default blocked
+             * @enum {string}
+             */
+            backtest_gate: "blocked" | "passed" | "failed";
+            /**
+             * Backtest Window Months
+             * @default 24
+             */
+            backtest_window_months: number;
+            /**
+             * Data Quality
+             * @default insufficient
+             * @enum {string}
+             */
+            data_quality: "ok" | "insufficient" | "no_data" | "blocked" | "stale" | "research_only";
+            /** Enabled */
+            enabled: boolean;
+            /** Engine Version */
+            engine_version: string;
+            /** Gate Reasons */
+            gate_reasons?: string[];
+            /** Items */
+            items?: components["schemas"]["LimitUpFollowthroughItem"][];
+            /**
+             * Research Only
+             * @default true
+             */
+            research_only: boolean;
+            /**
+             * Source
+             * @default local_snapshot
+             */
+            source: string;
+            /**
+             * Total
+             * @default 0
+             */
+            total: number;
         };
         /** LowBuyCandidateOut */
         LowBuyCandidateOut: {
@@ -14947,6 +15243,171 @@ export interface components {
             /** Status */
             status: string;
         };
+        /** RelativeStrengthItem */
+        RelativeStrengthItem: {
+            /**
+             * As Of
+             * Format: date-time
+             */
+            as_of: string;
+            /**
+             * Data Quality
+             * @enum {string}
+             */
+            data_quality: "ok" | "insufficient" | "no_data" | "blocked" | "stale" | "research_only";
+            /** Index Code */
+            index_code: string;
+            /** Index Pct */
+            index_pct: number;
+            /**
+             * Resilience Flag
+             * @enum {string}
+             */
+            resilience_flag: "resilient" | "follow_down" | "neutral";
+            /** Rs Vs Index */
+            rs_vs_index: number;
+            /** Rs Vs Sector */
+            rs_vs_sector: number;
+            /** Sector Code */
+            sector_code: string;
+            /** Sector Pct */
+            sector_pct: number;
+            /** Sector Rank */
+            sector_rank: number;
+            /** Stock Pct */
+            stock_pct: number;
+            /** Symbol */
+            symbol: string;
+            /** Trade Date */
+            trade_date: string;
+        };
+        /** RelativeStrengthResponse */
+        RelativeStrengthResponse: {
+            /**
+             * As Of
+             * Format: date-time
+             */
+            as_of: string;
+            /**
+             * Data Quality
+             * @default insufficient
+             * @enum {string}
+             */
+            data_quality: "ok" | "insufficient" | "no_data" | "blocked" | "stale" | "research_only";
+            /** Enabled */
+            enabled: boolean;
+            /** Engine Version */
+            engine_version: string;
+            /** Items */
+            items?: components["schemas"]["RelativeStrengthItem"][];
+            /**
+             * Research Only
+             * @default true
+             */
+            research_only: boolean;
+            /**
+             * Source
+             * @default local_snapshot
+             */
+            source: string;
+            /**
+             * Total
+             * @default 0
+             */
+            total: number;
+        };
+        /** ReviewPoolItem */
+        ReviewPoolItem: {
+            /**
+             * As Of
+             * Format: date-time
+             */
+            as_of: string;
+            /**
+             * Data Quality
+             * @enum {string}
+             */
+            data_quality: "ok" | "insufficient" | "no_data" | "blocked" | "stale" | "research_only";
+            /**
+             * Drop Reason
+             * @default
+             */
+            drop_reason: string;
+            /** Engine Version */
+            engine_version: string;
+            /** Entry Pct */
+            entry_pct: number;
+            /** Evidence */
+            evidence?: string[];
+            /**
+             * Mainline State
+             * @default unknown
+             */
+            mainline_state: string;
+            /**
+             * Name
+             * @default
+             */
+            name: string;
+            /** Pool Date */
+            pool_date: string;
+            /**
+             * Sector Role
+             * @default unknown
+             */
+            sector_role: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "in_pool" | "retained" | "dropped";
+            /** Symbol */
+            symbol: string;
+            /**
+             * Tracked Days
+             * @default 0
+             */
+            tracked_days: number;
+            /** Volume Ratio */
+            volume_ratio: number;
+        };
+        /** ReviewPoolResponse */
+        ReviewPoolResponse: {
+            /**
+             * As Of
+             * Format: date-time
+             */
+            as_of: string;
+            /**
+             * Data Quality
+             * @default insufficient
+             * @enum {string}
+             */
+            data_quality: "ok" | "insufficient" | "no_data" | "blocked" | "stale" | "research_only";
+            /** Enabled */
+            enabled: boolean;
+            /** Engine Version */
+            engine_version: string;
+            /** Items */
+            items?: components["schemas"]["ReviewPoolItem"][];
+            /** Pool Date */
+            pool_date?: string | null;
+            /**
+             * Research Only
+             * @default true
+             */
+            research_only: boolean;
+            /**
+             * Source
+             * @default local_snapshot
+             */
+            source: string;
+            /**
+             * Total
+             * @default 0
+             */
+            total: number;
+        };
         /** RiskEventOut */
         RiskEventOut: {
             /** Account Id */
@@ -17777,6 +18238,88 @@ export interface components {
              */
             total: number;
         };
+        /** TTradeAttributionItem */
+        TTradeAttributionItem: {
+            /** Account Id */
+            account_id: number;
+            /**
+             * As Of
+             * Format: date-time
+             */
+            as_of: string;
+            /**
+             * Comparison Method
+             * @default paired_cashflow_vs_hold
+             */
+            comparison_method: string;
+            /** Completeness Issues */
+            completeness_issues?: string[];
+            /**
+             * Data Quality
+             * @enum {string}
+             */
+            data_quality: "ok" | "insufficient" | "no_data" | "blocked" | "stale" | "research_only";
+            /** Discipline Notes */
+            discipline_notes?: string[];
+            /**
+             * Key Level State
+             * @default insufficient
+             */
+            key_level_state: string;
+            /** Minute Data Coverage */
+            minute_data_coverage: number;
+            /** Period */
+            period: string;
+            /** Realized Cost Delta */
+            realized_cost_delta: number;
+            /** Sell Fly Count */
+            sell_fly_count: number;
+            /** Symbol */
+            symbol: string;
+            /** T Trade Count */
+            t_trade_count: number;
+            /** Vs No T Trade Return Delta */
+            vs_no_t_trade_return_delta?: number | null;
+            /** Win Rate */
+            win_rate: number;
+        };
+        /** TTradeAttributionResponse */
+        TTradeAttributionResponse: {
+            /** Account Id */
+            account_id?: number | null;
+            /**
+             * As Of
+             * Format: date-time
+             */
+            as_of: string;
+            /**
+             * Data Quality
+             * @default insufficient
+             * @enum {string}
+             */
+            data_quality: "ok" | "insufficient" | "no_data" | "blocked" | "stale" | "research_only";
+            /** Enabled */
+            enabled: boolean;
+            /** Engine Version */
+            engine_version: string;
+            /** Items */
+            items?: components["schemas"]["TTradeAttributionItem"][];
+            /**
+             * Research Only
+             * @default true
+             */
+            research_only: boolean;
+            /**
+             * Source
+             * @default local_snapshot
+             */
+            source: string;
+            /**
+             * Total
+             * @default 0
+             */
+            total: number;
+        };
         /** TrackRecordDriftItemOut */
         TrackRecordDriftItemOut: {
             /**
@@ -17969,6 +18512,170 @@ export interface components {
             /** Ok */
             ok: boolean;
         };
+        /** TradeJournalEntryCreate */
+        TradeJournalEntryCreate: {
+            /** Account Id */
+            account_id?: number | null;
+            /**
+             * Action
+             * @enum {string}
+             */
+            action: "buy" | "sell" | "trim" | "add" | "t_trade" | "note";
+            /** Discipline Flags */
+            discipline_flags?: {
+                [key: string]: boolean;
+            };
+            /** Mistake Tags */
+            mistake_tags?: string[];
+            /**
+             * Reason Text
+             * @default
+             */
+            reason_text: string;
+            /**
+             * Signal Source
+             * @default
+             */
+            signal_source: string;
+            /** Symbol */
+            symbol: string;
+        };
+        /** TradeJournalEntryOut */
+        TradeJournalEntryOut: {
+            /** Account Id */
+            account_id?: number | null;
+            /**
+             * Action
+             * @enum {string}
+             */
+            action: "buy" | "sell" | "trim" | "add" | "t_trade" | "note";
+            /**
+             * As Of
+             * Format: date-time
+             */
+            as_of: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Data Quality
+             * @default ok
+             * @enum {string}
+             */
+            data_quality: "ok" | "insufficient" | "no_data" | "blocked" | "stale" | "research_only";
+            /** Discipline Flags */
+            discipline_flags?: {
+                [key: string]: boolean;
+            };
+            /** Engine Version */
+            engine_version: string;
+            /** Entry Id */
+            entry_id: number;
+            /** Mistake Tags */
+            mistake_tags?: string[];
+            /**
+             * Reason Text
+             * @default
+             */
+            reason_text: string;
+            /**
+             * Research Only
+             * @default true
+             */
+            research_only: boolean;
+            /**
+             * Signal Source
+             * @default
+             */
+            signal_source: string;
+            /**
+             * Source
+             * @default manual
+             */
+            source: string;
+            /** Symbol */
+            symbol: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+            /** User Id */
+            user_id?: number | null;
+        };
+        /** TradeJournalResponse */
+        TradeJournalResponse: {
+            /**
+             * As Of
+             * Format: date-time
+             */
+            as_of: string;
+            /**
+             * Data Quality
+             * @default insufficient
+             * @enum {string}
+             */
+            data_quality: "ok" | "insufficient" | "no_data" | "blocked" | "stale" | "research_only";
+            /** Enabled */
+            enabled: boolean;
+            /** Engine Version */
+            engine_version: string;
+            /** Items */
+            items?: components["schemas"]["TradeJournalEntryOut"][];
+            /**
+             * Research Only
+             * @default true
+             */
+            research_only: boolean;
+            /**
+             * Source
+             * @default local_snapshot
+             */
+            source: string;
+            /**
+             * Total
+             * @default 0
+             */
+            total: number;
+        };
+        /** TradingExperienceReadinessResponse */
+        TradingExperienceReadinessResponse: {
+            /**
+             * As Of
+             * Format: date-time
+             */
+            as_of: string;
+            /**
+             * Data Quality
+             * @default insufficient
+             * @enum {string}
+             */
+            data_quality: "ok" | "insufficient" | "no_data" | "blocked" | "stale" | "research_only";
+            /** Disabled Reasons */
+            disabled_reasons?: string[];
+            /** Enabled */
+            enabled: boolean;
+            /** Engine Version */
+            engine_version: string;
+            /** Flags */
+            flags?: {
+                [key: string]: boolean;
+            };
+            /**
+             * Research Only
+             * @default true
+             */
+            research_only: boolean;
+            /**
+             * Source
+             * @default local_snapshot
+             */
+            source: string;
+            /** Worker Task Types */
+            worker_task_types?: string[];
+        };
         /** TradingRuleOut */
         TradingRuleOut: {
             /** Notes */
@@ -18023,6 +18730,68 @@ export interface components {
             msg: string;
             /** Error Type */
             type: string;
+        };
+        /** VolumePositionTag */
+        VolumePositionTag: {
+            /**
+             * As Of
+             * Format: date-time
+             */
+            as_of: string;
+            /**
+             * Data Quality
+             * @enum {string}
+             */
+            data_quality: "ok" | "insufficient" | "no_data" | "blocked" | "stale" | "research_only";
+            /** Engine Version */
+            engine_version: string;
+            /** Evidence */
+            evidence?: string[];
+            /** Explanation */
+            explanation: string;
+            /**
+             * Level
+             * @enum {string}
+             */
+            level: "info" | "warn";
+            /** Symbol */
+            symbol: string;
+            /** Tag Code */
+            tag_code: string;
+            /** Trade Date */
+            trade_date: string;
+        };
+        /** VolumePositionTagResponse */
+        VolumePositionTagResponse: {
+            /**
+             * As Of
+             * Format: date-time
+             */
+            as_of: string;
+            /**
+             * Data Quality
+             * @default insufficient
+             * @enum {string}
+             */
+            data_quality: "ok" | "insufficient" | "no_data" | "blocked" | "stale" | "research_only";
+            /** Enabled */
+            enabled: boolean;
+            /** Engine Version */
+            engine_version: string;
+            /** Items */
+            items?: components["schemas"]["VolumePositionTag"][];
+            /**
+             * Research Only
+             * @default true
+             */
+            research_only: boolean;
+            /**
+             * Source
+             * @default local_snapshot
+             */
+            source: string;
+            /** Symbol */
+            symbol: string;
         };
         /** WatchlistCreate */
         WatchlistCreate: {
@@ -26937,6 +27706,284 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TrackRecordLedgerResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_holding_discipline_api_trading_experience_holding_discipline_get: {
+        parameters: {
+            query?: {
+                account_id?: number | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HoldingDisciplineResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_limit_up_followthrough_api_trading_experience_limit_up_followthrough_get: {
+        parameters: {
+            query?: {
+                trade_date?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LimitUpFollowthroughResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    readiness_api_trading_experience_readiness_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TradingExperienceReadinessResponse"];
+                };
+            };
+        };
+    };
+    get_relative_strength_api_trading_experience_relative_strength_get: {
+        parameters: {
+            query?: {
+                trade_date?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RelativeStrengthResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_review_pool_api_trading_experience_review_pool_get: {
+        parameters: {
+            query?: {
+                pool_date?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReviewPoolResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_t_trade_attribution_api_trading_experience_t_trade_attribution_get: {
+        parameters: {
+            query?: {
+                account_id?: number | null;
+                days?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TTradeAttributionResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_trade_journal_api_trading_experience_trade_journal_get: {
+        parameters: {
+            query?: {
+                account_id?: number | null;
+                symbol?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TradeJournalResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_trade_journal_api_trading_experience_trade_journal_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TradeJournalEntryCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TradeJournalEntryOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_volume_position_tags_api_trading_experience_volume_position_tags__symbol__get: {
+        parameters: {
+            query?: {
+                trade_date?: string | null;
+            };
+            header?: never;
+            path: {
+                symbol: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VolumePositionTagResponse"];
                 };
             };
             /** @description Validation Error */

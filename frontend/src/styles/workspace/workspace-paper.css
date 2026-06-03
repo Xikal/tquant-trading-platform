@@ -114,6 +114,26 @@
   --u-purple-base: rgb(30 27 75);
   --u-purple-eye: rgb(74 222 128);
   --u-purple-core: rgb(249 115 22);
+  --u-blue-primary: rgb(29 78 216);
+  --u-blue-accent: rgb(249 115 22);
+  --u-blue-base: rgb(203 213 225);
+  --u-blue-eye: rgb(239 68 68);
+  --u-blue-core: rgb(239 68 68);
+  --u-red-primary: rgb(190 18 60);
+  --u-red-accent: rgb(234 179 8);
+  --u-red-base: rgb(76 5 25);
+  --u-red-eye: rgb(34 197 94);
+  --u-red-core: rgb(34 197 94);
+  --u-black-primary: rgb(30 41 59);
+  --u-black-accent: rgb(6 182 212);
+  --u-black-base: rgb(15 23 42);
+  --u-black-eye: rgb(34 211 238);
+  --u-black-core: rgb(6 182 212);
+  --u-grey-primary: rgb(100 116 139);
+  --u-grey-accent: rgb(234 179 8);
+  --u-grey-base: rgb(203 213 225);
+  --u-grey-eye: rgb(251 191 36);
+  --u-grey-core: rgb(245 158 11);
   --hud-accent: rgb(249 115 22);
   --hud-accent-soft: rgba(249, 115, 22, 0.4);
   position: relative;
@@ -123,14 +143,64 @@
   gap: 10px;
   min-width: 0;
   overflow: hidden;
-  border: 1px solid rgb(226 232 240);
+  border: 1px solid rgba(30, 41, 59, 0.8);
   border-radius: 16px;
   background:
-    radial-gradient(circle at center, rgba(249, 115, 22, 0.08), transparent 70%),
-    rgb(255 255 255);
-  box-shadow: 0 10px 26px rgba(15, 23, 42, 0.08);
-  color: rgb(15 23 42);
+    radial-gradient(circle at center, rgba(249, 115, 22, 0.09), transparent 70%),
+    linear-gradient(180deg, rgba(7, 20, 38, 0.96), rgba(2, 8, 19, 0.98));
+  box-shadow: 0 18px 42px rgba(2, 8, 23, 0.28);
+  color: rgb(226 232 240);
   padding: 14px 16px;
+}
+
+.paper-mecha-action-panel__chooser {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 6px;
+  min-width: 0;
+}
+
+.paper-mecha-action-panel__unit-option {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  border: 1px solid rgba(51, 65, 85, 0.85);
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.72);
+  color: rgb(148 163 184);
+  cursor: pointer;
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1;
+  overflow: hidden;
+  padding: 6px 5px;
+  transition: border-color 0.2s ease, color 0.2s ease, background 0.2s ease, transform 0.2s ease;
+}
+
+.paper-mecha-action-panel__unit-option:hover,
+.paper-mecha-action-panel__unit-option--active {
+  border-color: rgba(249, 115, 22, 0.8);
+  background: rgba(249, 115, 22, 0.12);
+  color: rgb(251 146 60);
+  transform: translateY(-1px);
+}
+
+.paper-mecha-action-panel__unit-option span:last-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.paper-mecha-action-panel__unit-dot {
+  flex: 0 0 auto;
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--hud-accent);
+  box-shadow: 0 0 8px var(--hud-accent);
 }
 
 .paper-mecha-action-panel--auto,
@@ -158,7 +228,7 @@
 .paper-mecha-action-panel__stage {
   position: relative;
   display: flex;
-  width: min(100%, 232px);
+  width: min(100%, 244px);
   aspect-ratio: 1;
   margin: 0 auto;
   align-items: center;
@@ -243,7 +313,7 @@
 .paper-mecha-action-panel__avatar {
   position: relative;
   display: flex;
-  width: min(68%, 156px);
+  width: min(72%, 176px);
   aspect-ratio: 1;
   align-items: center;
   justify-content: center;
@@ -258,19 +328,42 @@
 .paper-mecha-action-panel__unit {
   width: 100%;
   height: 100%;
-  color: var(--u-purple-primary);
   padding: 8px;
   transition: filter 0.3s ease;
 }
 
 .animate-eye {
   animation: paper-pulse-eye 2.5s infinite ease-in-out;
-  filter: drop-shadow(0 0 3px var(--u-purple-eye));
+  filter: drop-shadow(0 0 3px currentColor);
 }
 
 .animate-core {
-  color: var(--u-purple-core);
   animation: paper-pulse-core 2s infinite ease-in-out;
+}
+
+.paper-mecha-action-panel--unit-purple .animate-eye,
+.paper-mecha-action-panel--unit-purple .animate-core {
+  color: var(--u-purple-eye);
+}
+
+.paper-mecha-action-panel--unit-blue .animate-eye,
+.paper-mecha-action-panel--unit-blue .animate-core {
+  color: var(--u-blue-eye);
+}
+
+.paper-mecha-action-panel--unit-red .animate-eye,
+.paper-mecha-action-panel--unit-red .animate-core {
+  color: var(--u-red-eye);
+}
+
+.paper-mecha-action-panel--unit-black .animate-eye,
+.paper-mecha-action-panel--unit-black .animate-core {
+  color: var(--u-black-eye);
+}
+
+.paper-mecha-action-panel--unit-grey .animate-eye,
+.paper-mecha-action-panel--unit-grey .animate-core {
+  color: var(--u-grey-eye);
 }
 
 .paper-mecha-action-panel--buy .paper-mecha-action-panel__avatar {
@@ -331,9 +424,9 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  border: 1px solid rgb(226 232 240);
+  border: 1px solid rgb(30 41 59);
   border-radius: 8px;
-  background: rgb(248 250 252);
+  background: rgba(15, 23, 42, 0.76);
   padding: 8px 10px;
 }
 
@@ -344,7 +437,7 @@
 }
 
 .paper-mecha-action-panel__status span {
-  color: rgb(71 85 105);
+  color: rgb(148 163 184);
   font-size: 12px;
 }
 

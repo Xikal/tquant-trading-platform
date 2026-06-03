@@ -20,10 +20,13 @@ import type { CSSProperties } from "react";
 import { memo, useMemo } from "react";
 import { Col, Row, Space } from "antd";
 import { PaperDetailTabs } from "./PaperDetailTabs";
+import { HoldingDisciplinePanel } from "./HoldingDisciplinePanel";
 import { PaperConclusionBar } from "./PaperConclusionBar";
 import { PaperMechaActionPanel } from "./PaperMechaActionPanel";
 import { PaperTodayActionPanel } from "./PaperTodayActionPanel";
+import { TTradeAttributionPanel } from "./TTradeAttributionPanel";
 import { paperAccountNeedsResume } from "./paperTradingStatus";
+import { useHoldingDiscipline, useTTradeAttribution } from "./queries";
 import {
   OrderEntryModal,
   PaperPositionsPanel,
@@ -77,6 +80,7 @@ export interface PaperTradingPageProps {
   onTogglePause: () => void | Promise<void>;
   onAddTradeTag: (tradeId: number, tag: string) => void;
   onDeleteTradeTag: (tradeId: number, tagId: number) => void;
+  tradingExperienceFlags?: Record<string, boolean>;
 }
 
 export const PaperTradingPage = memo(function PaperTradingPage({
@@ -107,6 +111,7 @@ export const PaperTradingPage = memo(function PaperTradingPage({
   onTogglePause,
   onAddTradeTag,
   onDeleteTradeTag,
+  tradingExperienceFlags = {},
 }: PaperTradingPageProps) {
   const needsResumeOrder = paperAccountNeedsResume(account, autoTradingStatus);
   const paused = needsResumeOrder;
@@ -115,6 +120,9 @@ export const PaperTradingPage = memo(function PaperTradingPage({
   const autoTradingRunning = Boolean(autoTradingStatus?.running);
   const orderModalOpen = usePaperUiStore((state) => state.orderModalOpen);
   const setOrderModalOpen = usePaperUiStore((state) => state.setOrderModalOpen);
+  const flags = tradingExperienceFlags;
+  const holdingEnabled = Boolean(flags.trading_experience_suite_enabled && flags.holding_discipline_assistant_enabled);
+  const tTradeEnabled = Boolean(flags.trading_experience_suite_enabled && flags.t_trade_discipline_enabled);
   const lastOrderAction = useMemo(() => {
     const latestTrade = trades[0];
     if (!latestTrade) return null;
@@ -181,6 +189,9 @@ export const PaperTradingPage = memo(function PaperTradingPage({
           />
         </Col>
       </Row>
+      {holdingEnabled || tTradeEnabled ? (
+        <PaperTradingExperiencePanels accountId={account?.id} holdingEnabled={holdingEnabled} tTradeEnabled={tTradeEnabled} />
+      ) : null}
       <PaperDetailTabs
         positions={positions}
         orders={orders}
@@ -208,3 +219,36 @@ export const PaperTradingPage = memo(function PaperTradingPage({
     </Space>
   );
 });
+
+function PaperTradingExperiencePanels({
+  accountId,
+  holdingEnabled,
+  tTradeEnabled,
+}: {
+  accountId?: number | null;
+  holdingEnabled: boolean;
+  tTradeEnabled: boolean;
+}) {
+  const holdingQuery = useHoldingDiscipline(accountId, holdingEnabled);
+  const tTradeQuery = useTTradeAttribution(accountId, tTradeEnabled);
+  return (
+    <Row className="paper-main-grid" gutter={[8, 8]} align="stretch" style={PAPER_ROW_STYLE}>
+      {holdingEnabled ? (
+        <Col xs={24} xl={12}>
+          <section className="panel">
+            <h3>持仓纪律</h3>
+            <HoldingDisciplinePanel data={holdingQuery.data} loading={holdingQuery.isFetching} />
+          </section>
+        </Col>
+      ) : null}
+      {tTradeEnabled ? (
+        <Col xs={24} xl={12}>
+          <section className="panel">
+            <h3>T 归因</h3>
+            <TTradeAttributionPanel data={tTradeQuery.data} loading={tTradeQuery.isFetching} />
+          </section>
+        </Col>
+      ) : null}
+    </Row>
+  );
+}

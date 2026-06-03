@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { Alert, Collapse, Space, Tag } from "antd";
 import type { KeyLevelResult } from "../../types";
 import { InfoPill, MetricGrid, PanelTitle } from "../workspace-shared/WorkspaceComponents";
@@ -8,6 +9,7 @@ interface KeyLevelPanelProps {
   result?: KeyLevelResult | null;
   loading?: boolean;
   compact?: boolean;
+  extra?: ReactNode;
 }
 
 export function KeyLevelPanel({
@@ -15,6 +17,7 @@ export function KeyLevelPanel({
   result,
   loading = false,
   compact = false,
+  extra,
 }: KeyLevelPanelProps) {
   if (loading && !result) {
     return (
@@ -49,6 +52,7 @@ export function KeyLevelPanel({
         message={summaryText(result)}
         description={compact ? undefined : result.explanation}
       />
+      {extra}
       <MetricGrid
         compact
         items={[

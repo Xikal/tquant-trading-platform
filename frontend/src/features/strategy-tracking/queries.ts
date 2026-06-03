@@ -1,7 +1,7 @@
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../../api/client";
 import { queryKeys } from "../../app/query/queryKeys";
-import type { StrategyTrackingParams } from "../../types";
+import type { StrategyTrackingParams, TradeJournalEntryCreate } from "../../types";
 
 const STRATEGY_TRACKING_STALE_TIME_MS = 60_000;
 const STRATEGY_TRACKING_DETAIL_STALE_TIME_MS = 30_000;
@@ -55,6 +55,64 @@ export function useTrackRecordDrift(windowDays = 60, enabled = true) {
     queryKey: queryKeys.trackRecordDrift(windowDays),
     queryFn: () => api.getTrackRecordDrift(windowDays),
     enabled,
+    staleTime: STRATEGY_TRACKING_STALE_TIME_MS,
+  });
+}
+
+export function useTradingExperienceReadiness() {
+  return useQuery({
+    queryKey: queryKeys.tradingExperienceReadiness,
+    queryFn: () => api.getTradingExperienceReadiness(),
+    staleTime: STRATEGY_TRACKING_STALE_TIME_MS,
+  });
+}
+
+export function useTradeReviewSuite(enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.tradingExperienceReview,
+    queryFn: () => api.getTradingExperienceReviewPool(30),
+    enabled,
+    staleTime: STRATEGY_TRACKING_STALE_TIME_MS,
+  });
+}
+
+export function useTradeJournal(accountId?: number | null, enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.tradingExperienceJournal(accountId),
+    queryFn: () => api.getTradingExperienceTradeJournal(accountId),
+    enabled,
+    staleTime: STRATEGY_TRACKING_STALE_TIME_MS,
+  });
+}
+
+export function useCreateTradeJournal(accountId?: number | null) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: TradeJournalEntryCreate) => api.createTradingExperienceTradeJournal(payload),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: queryKeys.tradingExperienceJournal(accountId) });
+      if (accountId !== null) {
+        await queryClient.invalidateQueries({ queryKey: queryKeys.tradingExperienceJournal(null) });
+      }
+    },
+  });
+}
+
+export function useRelativeStrengthBoard(enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.tradingExperienceRelativeStrength,
+    queryFn: () => api.getTradingExperienceRelativeStrength(30),
+    enabled,
+    staleTime: STRATEGY_TRACKING_STALE_TIME_MS,
+  });
+}
+
+export function useVolumePositionTags(symbol?: string | null, enabled = true) {
+  const normalized = symbol?.trim() ?? "";
+  return useQuery({
+    queryKey: queryKeys.tradingExperienceVolumeTags(normalized),
+    queryFn: () => api.getVolumePositionTags(normalized),
+    enabled: enabled && Boolean(normalized),
     staleTime: STRATEGY_TRACKING_STALE_TIME_MS,
   });
 }

@@ -71,6 +71,16 @@ import type {
   StrategyPromotionReview,
   StrategyTrackingReviewResponse,
   StrategyTrackingSnapshotResponse,
+  HoldingDisciplineResponse,
+  LimitUpFollowthroughResponse,
+  RelativeStrengthResponse,
+  ReviewPoolResponse,
+  TTradeAttributionResponse,
+  TradeJournalEntry,
+  TradeJournalEntryCreate,
+  TradeJournalResponse,
+  TradingExperienceReadinessResponse,
+  VolumePositionTagResponse,
   WatchlistItem,
   WatchlistQuoteItem,
   WatchlistSignal,
@@ -348,6 +358,37 @@ export const api = {
     requestCached<TrackRecordDriftResponse>(`/track-record/drift?window_days=${windowDays}&limit=80`, 12000),
   getStrategyPromotionReview: (strategy = "n_pattern_long_wash") =>
     requestCached<StrategyPromotionReview>(`/strategy/promotion-review?strategy=${encodeURIComponent(strategy)}`, 12000),
+  getTradingExperienceReadiness: () =>
+    requestCached<TradingExperienceReadinessResponse>("/trading-experience/readiness", 12000),
+  getTradingExperienceReviewPool: (limit = 30) =>
+    requestCached<ReviewPoolResponse>(`/trading-experience/review-pool?limit=${limit}`, 12000),
+  getTradingExperienceTradeJournal: (accountId?: number | null, symbol?: string, limit = 50) => {
+    const query = new URLSearchParams({ limit: String(limit) });
+    if (accountId) query.set("account_id", String(accountId));
+    if (symbol) query.set("symbol", symbol);
+    return requestCached<TradeJournalResponse>(`/trading-experience/trade-journal?${query.toString()}`, 12000);
+  },
+  createTradingExperienceTradeJournal: (payload: TradeJournalEntryCreate) =>
+    request<TradeJournalEntry>("/trading-experience/trade-journal", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+  getVolumePositionTags: (symbol: string) =>
+    requestCached<VolumePositionTagResponse>(`/trading-experience/volume-position-tags/${encodeURIComponent(symbol)}`, 12000),
+  getTradingExperienceRelativeStrength: (limit = 30) =>
+    requestCached<RelativeStrengthResponse>(`/trading-experience/relative-strength?limit=${limit}`, 12000),
+  getHoldingDiscipline: (accountId?: number | null) =>
+    requestCached<HoldingDisciplineResponse>(
+      `/trading-experience/holding-discipline${accountId ? `?account_id=${accountId}` : ""}`,
+      12000,
+    ),
+  getLimitUpFollowthrough: (limit = 30) =>
+    requestCached<LimitUpFollowthroughResponse>(`/trading-experience/limit-up-followthrough?limit=${limit}`, 12000),
+  getTTradeAttribution: (accountId?: number | null, days = 30) => {
+    const query = new URLSearchParams({ days: String(days) });
+    if (accountId) query.set("account_id", String(accountId));
+    return requestCached<TTradeAttributionResponse>(`/trading-experience/t-trade-attribution?${query.toString()}`, 12000);
+  },
   getPaperAccount: () => request<PaperAccount>("/paper/account"),
   getPaperWorkspaceBff: () =>
     request<PaperWorkspaceBffResponse>("/bff/v1/workspace/paper?order_limit=80&trade_limit=300&run_limit=20"),

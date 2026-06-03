@@ -64,6 +64,13 @@ class AppSettings(BaseSettings):
     tquant_ml_jobs_enabled: bool = False
     tquant_factor_jobs_enabled: bool = False
     tquant_strategy_evolution_enabled: bool = False
+    trading_experience_suite_enabled: bool = False
+    trade_review_suite_enabled: bool = False
+    vp_position_tags_enabled: bool = False
+    relative_strength_board_enabled: bool = False
+    holding_discipline_assistant_enabled: bool = False
+    limit_up_followthrough_enabled: bool = False
+    t_trade_discipline_enabled: bool = False
     platform_autopilot_enabled: bool = True
     platform_autopilot_notify_enabled: bool = False
     platform_autopilot_interval_seconds: int = 300

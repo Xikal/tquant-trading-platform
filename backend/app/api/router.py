@@ -34,6 +34,7 @@ from app.api.routes import (
     strategy_stream,
     strategy_meta,
     strategy_tracking,
+    trading_experience,
     track_record,
     v1,
     watchlist,
@@ -63,6 +64,7 @@ api_router.include_router(data_quality.router, tags=["data-quality"])
 api_router.include_router(strategy_meta.router, tags=["strategy-meta"])
 api_router.include_router(strategy_stream.router, tags=["strategy-stream"])
 api_router.include_router(strategy_tracking.router, tags=["strategy-tracking"])
+api_router.include_router(trading_experience.router, tags=["trading-experience"])
 api_router.include_router(track_record.router, tags=["track-record"])
 api_router.include_router(agent.router, tags=["agent"])
 api_router.include_router(agent_quality.router, tags=["agent"])

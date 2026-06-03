@@ -54,6 +54,11 @@ RUNTIME_WORKER_TASK_TYPES = (
     "signal_ledger_capture",
     "factor_mining_evaluate",
     "factor_mining_monthly",
+    "trading_experience_review_refresh",
+    "trading_experience_tag_materialization",
+    "trading_experience_relative_strength_refresh",
+    "trading_experience_limit_up_backtest",
+    "trading_experience_t_attribution_refresh",
 )
 RESEARCH_TASK_TYPES = {
     "ml_signal_incremental_train",
@@ -61,6 +66,11 @@ RESEARCH_TASK_TYPES = {
     "ml_feature_drift_monitor",
     "factor_mining_evaluate",
     "factor_mining_monthly",
+    "trading_experience_review_refresh",
+    "trading_experience_tag_materialization",
+    "trading_experience_relative_strength_refresh",
+    "trading_experience_limit_up_backtest",
+    "trading_experience_t_attribution_refresh",
 }
 ML_TASK_TYPES = {"ml_signal_incremental_train", "strategy_self_evolution", "ml_feature_drift_monitor"}
 FACTOR_TASK_TYPES = {"factor_mining_evaluate", "factor_mining_monthly"}
@@ -420,6 +430,14 @@ def _execute_task(task_type: str, payload: dict[str, Any], db) -> dict[str, Any]
             use_llm=True,
         )
         return response.model_dump(mode="json")
+    if task_type in {
+        "trading_experience_review_refresh",
+        "trading_experience_tag_materialization",
+        "trading_experience_relative_strength_refresh",
+        "trading_experience_limit_up_backtest",
+        "trading_experience_t_attribution_refresh",
+    }:
+        return _execute_trading_experience_task(task_type, payload, db)
     raise ValueError(f"未知任务类型: {task_type}")
 
 
@@ -441,6 +459,44 @@ def _json_payload(raw: str) -> dict[str, Any]:
     except Exception:
         return {}
     return value if isinstance(value, dict) else {}
+
+
+def _execute_trading_experience_task(task_type: str, payload: dict[str, Any], db) -> dict[str, Any]:  # noqa: ANN001
+    from datetime import date as date_type
+
+    from app.services.trading_experience import limit_up_followthrough, review_pool
+    from app.services.trading_experience.service import TradingExperienceService
+
+    raw_date = str(payload.get("trade_date") or "")
+    trade_date = date_type.fromisoformat(raw_date) if raw_date else None
+    service = TradingExperienceService(db)
+    if task_type == "trading_experience_review_refresh":
+        items = review_pool.build_review_pool(db, pool_date=trade_date, limit=int(payload.get("limit") or 50), persist=True)
+        return {"ok": True, "item_count": len(items), "data_quality": "ok" if items else "insufficient"}
+    if task_type == "trading_experience_tag_materialization":
+        symbol = str(payload.get("symbol") or "")
+        if not symbol:
+            return {"ok": True, "status": "blocked", "reason": "symbol_required"}
+        response = service.volume_position_tags(symbol, trade_date=trade_date)
+        return response.model_dump(mode="json")
+    if task_type == "trading_experience_relative_strength_refresh":
+        response = service.relative_strength(trade_date=trade_date, limit=int(payload.get("limit") or 50))
+        return response.model_dump(mode="json")
+    if task_type == "trading_experience_limit_up_backtest":
+        report = limit_up_followthrough.build_backtest_report(db, end_date=trade_date)
+        limit_up_followthrough.persist_backtest_report(db, report)
+        return report
+    if task_type == "trading_experience_t_attribution_refresh":
+        user_id = payload.get("user_id")
+        if user_id is None:
+            return {"ok": True, "status": "blocked", "reason": "user_id_required", "data_quality": "blocked"}
+        response = service.t_trade_attribution(
+            account_id=payload.get("account_id"),
+            days=int(payload.get("days") or 30),
+            user_id=int(user_id),
+        )
+        return response.model_dump(mode="json")
+    raise ValueError(f"未知任务类型: {task_type}")
 
 
 def main() -> None:
