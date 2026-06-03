@@ -10,7 +10,7 @@ from app.models.schema_defs.screener_parts.priority import (
 )
 from app.models.schema_defs.strategy_tracking import StrategyTrackingItemOut, StrategyTrackingListResponse
 from app.models.schema_defs.bff import MonitorWorkspaceBffResponse
-from app.services.market.local_quote_cache import read_local_quote_snapshot
+from app.services.market.local_quote_cache import read_local_quote_snapshots
 from app.services.performance.read_model_metrics import record_live_overlay_hit, record_live_overlay_miss
 
 _SOURCE = "local_quote_cache"
@@ -122,17 +122,18 @@ def _priority_board_dict_symbols(board: dict[str, Any]) -> list[str]:
 
 
 def _quote_map(symbols: list[str]) -> dict[str, QuoteSnapshot]:
-    quotes: dict[str, QuoteSnapshot] = {}
+    requested: list[str] = []
     seen: set[str] = set()
     for symbol in symbols:
         clean = str(symbol or "").strip()
         if not clean or clean in seen:
             continue
         seen.add(clean)
-        quote = read_local_quote_snapshot(clean)
-        if quote is None:
+        requested.append(clean)
+    quotes = read_local_quote_snapshots(requested)
+    for symbol in requested:
+        if symbol in quotes:
+            record_live_overlay_hit(_SOURCE)
+        else:
             record_live_overlay_miss(_SOURCE)
-            continue
-        record_live_overlay_hit(_SOURCE)
-        quotes[clean] = quote
     return quotes

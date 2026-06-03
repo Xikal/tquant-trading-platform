@@ -24,11 +24,13 @@ def test_priority_board_live_overlay_updates_quote_fields_without_resorting(monk
         ],
     )
 
-    monkeypatch.setattr(
-        live_quote_overlay,
-        "read_local_quote_snapshot",
-        lambda symbol: _quote(symbol, 12.3, 1.2) if symbol == "000001" else None,
-    )
+    requested: list[list[str]] = []
+
+    def fake_batch(symbols: list[str]):
+        requested.append(symbols)
+        return {"000001": _quote("000001", 12.3, 1.2)}
+
+    monkeypatch.setattr(live_quote_overlay, "read_local_quote_snapshots", fake_batch)
 
     overlaid = apply_priority_board_live_overlay(response)
     snapshot = read_model_metrics_snapshot()
@@ -38,6 +40,7 @@ def test_priority_board_live_overlay_updates_quote_fields_without_resorting(monk
     assert overlaid.items[0].change_pct == 1.2
     assert overlaid.items[0].priority_score == 91.0
     assert overlaid.items[1].latest_price == 10.0
+    assert requested == [["000001", "000002"]]
     assert snapshot["live_overlay_hits"]["local_quote_cache"] == 1
     assert snapshot["live_overlay_misses"]["local_quote_cache"] == 1
 
@@ -58,8 +61,8 @@ def test_priority_board_live_overlay_includes_family_section_symbols(monkeypatch
     )
     monkeypatch.setattr(
         live_quote_overlay,
-        "read_local_quote_snapshot",
-        lambda symbol: _quote(symbol, 13.0, 3.0) if symbol == "000003" else None,
+        "read_local_quote_snapshots",
+        lambda symbols: {"000003": _quote("000003", 13.0, 3.0)},
     )
 
     overlaid = apply_priority_board_live_overlay(response)
@@ -83,7 +86,7 @@ def test_strategy_tracking_overlay_preserves_current_return_pct(monkeypatch) -> 
         ],
         total=1,
     )
-    monkeypatch.setattr(live_quote_overlay, "read_local_quote_snapshot", lambda symbol: _quote(symbol, 12.0, 2.0))
+    monkeypatch.setattr(live_quote_overlay, "read_local_quote_snapshots", lambda symbols: {"000001": _quote("000001", 12.0, 2.0)})
 
     overlaid = apply_strategy_tracking_live_overlay(response)
 

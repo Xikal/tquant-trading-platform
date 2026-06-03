@@ -49,7 +49,31 @@ def get_json_cache(key: str) -> Any | None:
         return json.loads(raw)
     except (TypeError, ValueError):
         logger.warning("redis cache json decode failed key=%s", key, exc_info=True)
-        return None
+    return None
+
+
+def get_many_json_cache(keys: list[str]) -> dict[str, Any]:
+    if not keys:
+        return {}
+    client = get_distributed_cache_client()
+    if client is None:
+        return {}
+    try:
+        raw_values = client.mget(keys)
+    except RedisError:
+        mark_distributed_cache_unhealthy()
+        logger.warning("redis cache batch read failed keys=%s", len(keys), exc_info=True)
+        return {}
+    result: dict[str, Any] = {}
+    for key, raw in zip(keys, raw_values):
+        if raw is None:
+            continue
+        text = raw.decode("utf-8") if isinstance(raw, bytes) else str(raw)
+        try:
+            result[key] = json.loads(text)
+        except (TypeError, ValueError):
+            logger.warning("redis cache json decode failed key=%s", key, exc_info=True)
+    return result
 
 
 def set_json_cache(key: str, value: Any, ttl_seconds: int | float) -> None:

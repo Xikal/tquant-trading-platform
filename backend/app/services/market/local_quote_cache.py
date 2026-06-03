@@ -5,7 +5,7 @@ import time
 from typing import Any
 
 from app.models.schemas import QuoteSnapshot
-from app.services.shared.distributed_cache import get_json_cache, set_json_cache, set_many_json_cache
+from app.services.shared.distributed_cache import get_json_cache, get_many_json_cache, set_json_cache, set_many_json_cache
 
 LOCAL_QUOTE_TTL_SECONDS = 45
 LOCAL_QUOTE_FRESH_AGE_SECONDS = 15
@@ -34,34 +34,39 @@ def read_local_quote_snapshot(symbol: str) -> QuoteSnapshot | None:
     if payload is None:
         _increment("misses")
         return None
-    snapshot, cached_at = _parse_payload(payload)
+    snapshot = _snapshot_from_cache_payload(payload)
     if snapshot is None:
         _increment("misses")
         return None
-    age_seconds = max(time.time() - cached_at, 0.0) if cached_at else _LOCAL_QUOTE_TTL_SECONDS + 1
-    if age_seconds <= _FRESH_LOCAL_AGE_SECONDS:
-        _increment("hits")
-        _increment("fresh_hits")
-        return snapshot.model_copy(
-            update={
-                "data_source": snapshot.data_source or "local_quote_cache",
-                "source_quality": snapshot.source_quality or snapshot.data_quality or "fresh",
-                "data_quality": snapshot.data_quality or "fresh",
-                "data_quality_message": snapshot.data_quality_message or "来自本地行情缓存，数据仍处于有效刷新窗口。",
-                "is_stale": False,
-            }
-        )
-    _increment("hits")
-    _increment("stale_hits")
-    return snapshot.model_copy(
-        update={
-            "data_source": snapshot.data_source or "local_quote_cache",
-            "source_quality": "stale",
-            "data_quality": "stale",
-            "data_quality_message": f"来自本地行情缓存，最近刷新于 {int(age_seconds)} 秒前。",
-            "is_stale": True,
-        }
-    )
+    return snapshot
+
+
+def read_local_quote_snapshots(symbols: list[str]) -> dict[str, QuoteSnapshot]:
+    requested = []
+    seen: set[str] = set()
+    for symbol in symbols:
+        clean = str(symbol or "").strip()
+        if not clean or clean in seen:
+            continue
+        seen.add(clean)
+        requested.append(clean)
+    if not requested:
+        return {}
+    _increment_by("reads", len(requested))
+    keys = [_cache_key(symbol) for symbol in requested]
+    payloads = get_many_json_cache(keys)
+    result: dict[str, QuoteSnapshot] = {}
+    for symbol, key in zip(requested, keys):
+        payload = payloads.get(key)
+        if payload is None:
+            _increment("misses")
+            continue
+        snapshot = _snapshot_from_cache_payload(payload)
+        if snapshot is None:
+            _increment("misses")
+            continue
+        result[symbol] = snapshot
+    return result
 
 
 def write_local_quote_snapshot(snapshot: QuoteSnapshot, ttl_seconds: int = _LOCAL_QUOTE_TTL_SECONDS) -> None:
@@ -205,3 +210,33 @@ def _parse_payload(raw: Any) -> tuple[QuoteSnapshot | None, float]:
     except Exception:
         return None, 0.0
     return None, 0.0
+
+
+def _snapshot_from_cache_payload(raw: Any) -> QuoteSnapshot | None:
+    snapshot, cached_at = _parse_payload(raw)
+    if snapshot is None:
+        return None
+    age_seconds = max(time.time() - cached_at, 0.0) if cached_at else _LOCAL_QUOTE_TTL_SECONDS + 1
+    if age_seconds <= _FRESH_LOCAL_AGE_SECONDS:
+        _increment("hits")
+        _increment("fresh_hits")
+        return snapshot.model_copy(
+            update={
+                "data_source": snapshot.data_source or "local_quote_cache",
+                "source_quality": snapshot.source_quality or snapshot.data_quality or "fresh",
+                "data_quality": snapshot.data_quality or "fresh",
+                "data_quality_message": snapshot.data_quality_message or "来自本地行情缓存，数据仍处于有效刷新窗口。",
+                "is_stale": False,
+            }
+        )
+    _increment("hits")
+    _increment("stale_hits")
+    return snapshot.model_copy(
+        update={
+            "data_source": snapshot.data_source or "local_quote_cache",
+            "source_quality": "stale",
+            "data_quality": "stale",
+            "data_quality_message": f"来自本地行情缓存，最近刷新于 {int(age_seconds)} 秒前。",
+            "is_stale": True,
+        }
+    )
