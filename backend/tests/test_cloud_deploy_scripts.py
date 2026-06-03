@@ -122,6 +122,9 @@ def test_ci_deploy_fails_when_cloud_secrets_are_missing() -> None:
     assert "CLOUD_HOST/CLOUD_USER secrets 未配置，不能执行真实部署。" in workflow
     assert 'echo "CLOUD_HOST/CLOUD_USER secrets 未配置，跳过部署。"' not in workflow
     assert "exit 2" in workflow
+    assert 'RUN_COMPILE: "0"' in workflow
+    assert 'RUN_FRONTEND_BUILD: "0"' in workflow
+    assert 'RUN_STRATEGY_TEST: "0"' in workflow
 
 
 def test_cloud_deploy_remote_smoke_rejects_api_html_fallback() -> None:

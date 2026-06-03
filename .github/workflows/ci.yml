@@ -140,6 +140,9 @@ jobs:
           AUTO_INSTALL_BACKUP_CRON: "1"
           AUTO_CONFIGURE_HTTPS: "1"
           HTTPS_REQUIRED: "1"
+          RUN_COMPILE: "0"
+          RUN_FRONTEND_BUILD: "0"
+          RUN_STRATEGY_TEST: "0"
           RUN_FULL_TESTS: "0"
         run: |
           if [ -z "${CLOUD_HOST}" ] || [ -z "${CLOUD_USER}" ]; then
