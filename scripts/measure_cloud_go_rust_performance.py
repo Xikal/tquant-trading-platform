@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import statistics
 import subprocess
 import tempfile
@@ -15,11 +16,17 @@ from urllib.request import Request, urlopen
 
 
 ROOT = Path(__file__).resolve().parents[1]
+TRANSIENT_REMOTE_ERRORS = (
+    "RemoteProtocolError",
+    "Server disconnected without sending a response",
+    "Timeout reading from socket",
+    "Connection reset by peer",
+)
 
 
 def main() -> int:
     args = parse_args()
-    report = run_remote_measurement(args)
+    report = run_remote_measurement_with_retry(args)
     report_path = ROOT / "docs" / "reports" / f"gupiao-cloud-performance-{time.strftime('%Y-%m-%d-%H%M%S')}.json"
     report_path.parent.mkdir(parents=True, exist_ok=True)
     report_path.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
@@ -36,6 +43,36 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--project-dir", default="/home/ubuntu/gupiao-upload")
     parser.add_argument("--samples", type=int, default=8)
     return parser.parse_args()
+
+
+def run_remote_measurement_with_retry(args: argparse.Namespace) -> dict[str, Any]:
+    first = run_remote_measurement(args)
+    if first.get("ok") or not _measurement_retry_enabled():
+        return first
+    stderr = str(first.get("stderr") or "")
+    if not _is_transient_remote_measurement_error(stderr):
+        return first
+    print("retrying transient online measurement", flush=True)
+    second = run_remote_measurement(args)
+    retry_errors = list(first.get("retry_errors") or [])
+    retry_errors.append(
+        {
+            "error": first.get("error"),
+            "stdout": str(first.get("stdout") or "")[-1000:],
+            "stderr": stderr[-2000:],
+        }
+    )
+    if isinstance(second, dict):
+        second["retry_errors"] = retry_errors
+    return second
+
+
+def _measurement_retry_enabled() -> bool:
+    return os.getenv("PERFORMANCE_MEASUREMENT_RETRY_ENABLED", "true").strip().lower() not in {"0", "false", "no"}
+
+
+def _is_transient_remote_measurement_error(stderr: str) -> bool:
+    return any(token in str(stderr or "") for token in TRANSIENT_REMOTE_ERRORS)
 
 
 def run_remote_measurement(args: argparse.Namespace) -> dict[str, Any]:

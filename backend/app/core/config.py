@@ -114,6 +114,7 @@ class AppSettings(BaseSettings):
     priority_board_overlay_cache_ttl_seconds: int = 2
     priority_board_filter_cache_enabled: bool = True
     response_payload_metrics_enabled: bool = True
+    distributed_cache_fail_open_enabled: bool = True
     derived_indicator_cache_enabled: bool = True
     derived_indicator_cache_ttl_seconds: int = 120
     rust_finance_math_enabled: bool = True

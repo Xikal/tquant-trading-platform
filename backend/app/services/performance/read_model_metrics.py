@@ -19,6 +19,7 @@ _COUNTERS: dict[str, defaultdict[str, int]] = {
     "live_overlay_hits": defaultdict(int),
     "live_overlay_misses": defaultdict(int),
     "bff_partial_source_failures": defaultdict(int),
+    "cache_operation_errors": defaultdict(int),
 }
 _GAUGES: dict[str, defaultdict[str, float]] = {
     "read_model_cache_age_seconds": defaultdict(float),
@@ -71,6 +72,13 @@ def record_bff_partial_failure(source: str, reason: str) -> None:
     clean_source = _clean_label(_known_bff_source(source))
     clean_reason = _clean_label(_known_bff_reason(reason))
     _increment("bff_partial_source_failures", f"{clean_source}|{clean_reason}")
+
+
+def record_cache_operation_error(*, cache_name: str, operation: str, reason: str) -> None:
+    clean_cache = _clean_label(cache_name or "unknown")
+    clean_operation = _clean_label(_known_cache_operation(operation))
+    clean_reason = _clean_label(_known_cache_error_reason(reason))
+    _increment("cache_operation_errors", f"{clean_cache}|{clean_operation}|{clean_reason}")
 
 
 def read_model_metrics_snapshot() -> dict[str, dict[str, float]]:
@@ -172,3 +180,13 @@ def _known_bff_source(source: str) -> str:
 def _known_bff_reason(reason: str) -> str:
     value = str(reason or "other")
     return value if value in {"timeout", "status", "decode", "schema_mismatch", "other"} else "other"
+
+
+def _known_cache_operation(operation: str) -> str:
+    value = str(operation or "unknown")
+    return value if value in {"get", "set", "mget", "mset", "delete"} else "other"
+
+
+def _known_cache_error_reason(reason: str) -> str:
+    value = str(reason or "unknown")
+    return value if value in {"timeout", "connection", "redis_error", "decode", "other"} else "other"

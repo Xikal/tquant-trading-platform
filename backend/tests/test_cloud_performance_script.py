@@ -41,6 +41,17 @@ def test_cloud_measurement_scan_accept_reads_non_2xx_body():
     assert "fallback_available" in source
 
 
+def test_cloud_measurement_retries_transient_remote_protocol_errors() -> None:
+    script = Path(__file__).resolve().parents[1].parent / "scripts" / "measure_cloud_go_rust_performance.py"
+    source = script.read_text(encoding="utf-8")
+
+    assert "PERFORMANCE_MEASUREMENT_RETRY_ENABLED" in source
+    assert "RemoteProtocolError" in source
+    assert "Server disconnected without sending a response" in source
+    assert "retrying transient online measurement" in source
+    assert "retry_errors" in source
+
+
 def test_mysql_compose_runs_go_services_on_production_path_by_default():
     compose = Path(__file__).resolve().parents[1].parent / "docker-compose.mysql.yml"
     source = compose.read_text(encoding="utf-8")

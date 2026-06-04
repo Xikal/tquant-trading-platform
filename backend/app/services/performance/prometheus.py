@@ -88,6 +88,13 @@ def read_model_prometheus_lines() -> list[str]:
         ]
     )
     lines.extend(_labeled_source_reason("tquant_bff_partial_source_failures_total", snapshot.get("bff_partial_source_failures", {})))
+    lines.extend(
+        [
+            "# HELP tquant_cache_operation_errors_total Cache operation errors by cache, operation, and reason.",
+            "# TYPE tquant_cache_operation_errors_total counter",
+        ]
+    )
+    lines.extend(_labeled_cache_operation_reason("tquant_cache_operation_errors_total", snapshot.get("cache_operation_errors", {})))
     return lines
 
 
@@ -128,6 +135,19 @@ def _labeled_source_reason(metric: str, values: dict[str, float]) -> list[str]:
     for name, value in sorted(values.items()):
         source, _, reason = str(name).partition("|")
         lines.append(f'{metric}{{source="{_escape(source)}",reason="{_escape(reason or "other")}"}} {value:g}')
+    return lines
+
+
+def _labeled_cache_operation_reason(metric: str, values: dict[str, float]) -> list[str]:
+    if not values:
+        return [f'{metric}{{cache="none",operation="none",reason="none"}} 0']
+    lines: list[str] = []
+    for name, value in sorted(values.items()):
+        cache, _, rest = str(name).partition("|")
+        operation, _, reason = rest.partition("|")
+        lines.append(
+            f'{metric}{{cache="{_escape(cache)}",operation="{_escape(operation or "other")}",reason="{_escape(reason or "other")}"}} {value:g}'
+        )
     return lines
 
 
