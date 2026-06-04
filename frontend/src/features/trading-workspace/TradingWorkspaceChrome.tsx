@@ -10,6 +10,7 @@ import { AiInsightDialog, ErrorDialog, StatusStrip, StockDetailDialog } from "..
 import { RitualBlessingModal } from "../ritual-ui";
 import type { Page, StockCardView } from "../workspace-shared/workspaceTypes";
 import { WorkspacePageContent } from "./WorkspacePageContent";
+import { PagePriorityStrip } from "./PagePriorityStrip";
 import {
   CONTENT_INNER_STYLE,
   CONTENT_MAIN_STYLE,
@@ -142,6 +143,7 @@ export function TradingWorkspaceChrome(props: TradingWorkspaceChromeProps) {
               onOpenStrategy={props.onOpenStrategy}
             />
             <RitualBlessingModal userId={props.currentUser.id} />
+            <PagePriorityStrip page={props.page} />
             <WorkspacePageContent
               AnalysisPage={AnalysisPage}
               BacktestPage={BacktestPage}
