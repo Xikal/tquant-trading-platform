@@ -110,7 +110,7 @@ class LowBuyPriorityBoardMixin(LowBuyPriorityScoringMixin):
                 if normalized_refresh == "async":
                     _enqueue_priority_refresh(db, reason="priority_board_refresh_requested")
                     return _mark_priority_refresh_queued(cached_response, stale=False)
-                return cached_response
+                return _mark_priority_read_path(cached_response, read_path="priority_board_response_cache")
 
             read_model_response = self._get_priority_read_model(
                 cache_key=cache_key,
@@ -121,7 +121,7 @@ class LowBuyPriorityBoardMixin(LowBuyPriorityScoringMixin):
                 if normalized_refresh == "async":
                     _enqueue_priority_refresh(db, reason="priority_board_read_model_refresh_requested")
                     return _mark_priority_refresh_queued(read_model_response, stale=False)
-                return read_model_response
+                return _mark_priority_read_path(read_model_response, read_path="priority_board_read_model")
 
             stale_response = self._get_priority_response_cache(cache_key, allow_stale=True)
             if stale_response is not None:
@@ -306,7 +306,11 @@ class LowBuyPriorityBoardMixin(LowBuyPriorityScoringMixin):
                 target_trade_date=target_trade_date,
                 strategy_variant=strategy_variant,
             ),
-            payload.model_dump(mode="json"),
+            payload.model_copy(
+                update={
+                    "read_path": "priority_board_read_model",
+                }
+            ).model_dump(mode="json"),
             ttl_seconds=getattr(settings, "priority_board_stable_read_model_ttl_seconds", 45),
         )
 
@@ -526,6 +530,10 @@ def _mark_priority_refresh_queued(
             "data_quality": "stale" if stale else payload.data_quality,
             "data_quality_text": "优先榜使用最近一次缓存，后台正在刷新。" if stale else payload.data_quality_text,
             "data_quality_tags": tags,
+            "stale": stale,
+            "stale_reason": "cache_stale_background_refresh" if stale else "",
+            "refresh_queued": True,
+            "read_path": payload.read_path or "priority_board_cached_background_refresh",
         }
     )
 
@@ -540,6 +548,20 @@ def _mark_latest_successful_snapshot_queued(payload: LowBuyPriorityBoardResponse
             "data_quality": "stale",
             "data_quality_text": "优先榜正在后台刷新，当前展示上次可用榜单。",
             "data_quality_tags": tags,
+            "stale": True,
+            "stale_reason": "latest_successful_snapshot_fallback",
+            "refresh_queued": True,
+            "read_path": payload.read_path or "priority_board_latest_successful_snapshot",
+        }
+    )
+
+
+def _mark_priority_read_path(payload: LowBuyPriorityBoardResponse, *, read_path: str) -> LowBuyPriorityBoardResponse:
+    return payload.model_copy(
+        update={
+            "read_path": read_path,
+            "stale": bool(payload.stale),
+            "refresh_queued": bool(payload.refresh_queued),
         }
     )
 
@@ -573,6 +595,10 @@ def _empty_priority_board_response(
         data_quality="unavailable",
         data_quality_text="优先榜后台刷新中，暂无可用快照。",
         data_quality_tags=["refresh_queued", "cache_empty"],
+        stale=True,
+        stale_reason="cache_empty_background_refresh",
+        refresh_queued=True,
+        read_path="priority_board_empty_background_refresh",
         items=[],
         family_sections=[],
         simple_buckets=[],

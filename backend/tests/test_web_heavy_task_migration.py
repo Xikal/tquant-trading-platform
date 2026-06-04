@@ -13,6 +13,7 @@ from app.core.database import get_db
 from app.core.paper_auth import require_paper_trading
 from app.models.base import Base
 from app.models.entities import BacktestRun, RuntimeTask, User
+from app.models.schema_defs.screener_parts.priority import LowBuyPriorityBoardResponse
 
 
 def _client(*, roles: str = "admin,backtest_research,backtest_optimizer", paper: bool = True) -> tuple[TestClient, sessionmaker]:
@@ -103,6 +104,39 @@ def test_low_buy_execution_backtest_is_queued(monkeypatch) -> None:
 
     assert response.status_code == 202
     assert response.json()["task_type"] == "low_buy_execution_backtest"
+
+
+def test_priority_board_web_sync_refresh_is_downgraded_to_async(monkeypatch) -> None:
+    client, _factory = _client(roles="")
+    calls = []
+
+    def fake_priority_board(**kwargs):
+        calls.append(kwargs)
+        return LowBuyPriorityBoardResponse(
+            as_of_date="2026-06-05",
+            latest_trade_date="2026-06-05",
+            updated_at="2026-06-05 10:00:00",
+            refresh_queued=True,
+            read_path="priority_board_read_model",
+            items=[],
+            family_sections=[],
+            simple_buckets=[],
+        )
+
+    monkeypatch.setattr(screeners.low_buy_screener, "priority_board", fake_priority_board)
+    monkeypatch.setattr(
+        screeners,
+        "UserSectorPreferenceService",
+        lambda _db: type("S", (), {"get_excluded_sector_set": lambda _self, _user_id: set()})(),
+    )
+    monkeypatch.setattr(screeners, "filter_priority_board_response_for_user", lambda result, **_kwargs: result)
+    monkeypatch.setattr(screeners, "apply_priority_board_live_overlay", lambda result: result)
+
+    response = client.get("/api/screeners/low-buy/priority-board?limit=12&refresh=sync")
+
+    assert response.status_code == 200
+    assert calls and calls[0]["refresh_mode"] == "async"
+    assert response.json()["read_path"] == "priority_board_read_model"
 
 
 def test_large_etf_t0_research_is_queued() -> None:

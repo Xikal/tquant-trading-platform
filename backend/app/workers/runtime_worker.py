@@ -188,8 +188,11 @@ def _execute_task(task_type: str, payload: dict[str, Any], db) -> dict[str, Any]
         if result.get("ok"):
             from app.services.latest_data_close_refresh import enqueue_latest_data_close_refresh
             from app.services.latest_data_watchdog import LatestDailyBarWatchdog
+            from app.services.low_buy_materialization import enqueue_low_buy_materialization
 
             result["next_refresh_check"] = enqueue_latest_data_close_refresh(db)
+            enqueue_low_buy_materialization(db, reason="daily_bar_refresh_success_priority_board_read_model", commit=True)
+            result["priority_board_read_model_refresh_queued"] = True
             result["post_close_notification"] = LatestDailyBarWatchdog().run(
                 db,
                 trade_date=str(result.get("trade_date") or payload.get("expected_trade_date") or "") or None,

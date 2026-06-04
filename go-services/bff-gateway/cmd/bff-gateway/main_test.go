@@ -60,6 +60,12 @@ func TestMonitorAggregateReturnsPartialWhenPulseIsSlow(t *testing.T) {
 	if !bytes.Contains(result.body, []byte(`source timeout after 50ms`)) {
 		t.Fatalf("expected timeout detail: %s", string(result.body))
 	}
+	if !bytes.Contains(result.body, []byte(`"source_timings"`)) {
+		t.Fatalf("expected source timings: %s", string(result.body))
+	}
+	if !bytes.Contains(result.body, []byte(`"source":"market_pulse"`)) || !bytes.Contains(result.body, []byte(`"reason":"timeout"`)) {
+		t.Fatalf("expected market pulse timing reason: %s", string(result.body))
+	}
 }
 
 func TestMonitorAggregateUsesShortDeadlineForHeavyOptionalSources(t *testing.T) {
@@ -249,6 +255,79 @@ func TestWorkspaceCacheReturnsFreshEntryAndExpires(t *testing.T) {
 	}
 }
 
+func TestWorkspaceCacheReturnsStaleEntryWithinStaleTTL(t *testing.T) {
+	cache := newWorkspaceCacheWithStale(10*time.Millisecond, 80*time.Millisecond)
+	cache.set("key", http.StatusOK, []byte(`{"ok":true}`), "application/json")
+
+	time.Sleep(20 * time.Millisecond)
+	if _, ok := cache.get("key"); ok {
+		t.Fatal("expected fresh cache miss after ttl")
+	}
+	item, ok := cache.getStale("key")
+	if !ok {
+		t.Fatal("expected stale cache hit within stale ttl")
+	}
+	if item.status != http.StatusOK || !bytes.Equal(item.body, []byte(`{"ok":true}`)) {
+		t.Fatalf("unexpected stale item %#v", item)
+	}
+	time.Sleep(80 * time.Millisecond)
+	if _, ok := cache.getStale("key"); ok {
+		t.Fatal("expected stale cache miss after stale ttl")
+	}
+}
+
+func TestProxyMonitorReturnsStaleCacheBeforeRefreshing(t *testing.T) {
+	requests := 0
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests++
+		time.Sleep(80 * time.Millisecond)
+		w.Header().Set("Content-Type", "application/json")
+		switch r.URL.Path {
+		case "/api/monitor/snapshot":
+			_, _ = w.Write([]byte(`{"updated_at":"2026-05-27 10:00:00","watchlist_signals":[],"priority_board":{"items":[]}}`))
+		default:
+			_, _ = w.Write([]byte(`{}`))
+		}
+	}))
+	defer upstream.Close()
+	cfg := config{
+		pythonAPIBase: upstream.URL,
+		internalToken: "token",
+		timeout:       time.Second,
+		sourceTimeout: time.Second,
+	}
+	cache := newWorkspaceCacheWithStale(10*time.Millisecond, time.Second)
+	req := httptest.NewRequest(http.MethodGet, "/api/bff/v1/workspace/monitor", nil)
+	req.Header.Set("X-Internal-Service-Token", "token")
+	cache.set(workspaceCacheKey(req), http.StatusOK, []byte(`{"cached":true}`), "application/json")
+	time.Sleep(20 * time.Millisecond)
+
+	recorder := httptest.NewRecorder()
+	started := time.Now()
+	proxyWorkspaceHandler(cfg, upstream.Client(), cache).ServeHTTP(recorder, req)
+
+	if elapsed := time.Since(started); elapsed >= 50*time.Millisecond {
+		t.Fatalf("expected stale response without waiting for refresh, elapsed=%s", elapsed)
+	}
+	if recorder.Header().Get("X-BFF-Cache") != "STALE" {
+		t.Fatalf("expected stale header got=%s", recorder.Header().Get("X-BFF-Cache"))
+	}
+	if !bytes.Contains(recorder.Body.Bytes(), []byte(`"cached":true`)) {
+		t.Fatalf("unexpected stale body %s", recorder.Body.String())
+	}
+	if !bytes.Contains(recorder.Body.Bytes(), []byte(`"stale":true`)) || !bytes.Contains(recorder.Body.Bytes(), []byte(`"refresh_queued":true`)) {
+		t.Fatalf("expected stale metadata in body %s", recorder.Body.String())
+	}
+	deadline := time.Now().Add(time.Second)
+	for time.Now().Before(deadline) {
+		if requests > 0 {
+			return
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	t.Fatal("expected background refresh request")
+}
+
 func TestWorkspaceCacheKeyUsesIdentityAndQuery(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/api/bff/v1/workspace/paper?run_limit=3", nil)
 	req.Header.Set("Authorization", "Bearer a")
@@ -409,6 +488,12 @@ func TestAggregateMonitorWorkspaceIncludesPulseAndReview(t *testing.T) {
 	}
 	if !bytes.Contains(result.body, []byte(`"review_reports":[{"id":1`)) {
 		t.Fatalf("monitor aggregate missing review reports: %s", string(result.body))
+	}
+	if !bytes.Contains(result.body, []byte(`"source_timings"`)) {
+		t.Fatalf("monitor aggregate missing source timings: %s", string(result.body))
+	}
+	if !bytes.Contains(result.body, []byte(`"source":"monitor_snapshot"`)) || !bytes.Contains(result.body, []byte(`"status":"ok"`)) {
+		t.Fatalf("monitor aggregate should expose successful source timing: %s", string(result.body))
 	}
 }
 

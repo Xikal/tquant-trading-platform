@@ -125,6 +125,7 @@ def test_runtime_worker_chains_close_refresh_after_daily_bar_success(monkeypatch
     db = _db()
     calls = []
     notifications = []
+    materializations = []
 
     class _RefreshService:
         def __init__(self, _db_arg):  # noqa: ANN001
@@ -151,12 +152,18 @@ def test_runtime_worker_chains_close_refresh_after_daily_bar_success(monkeypatch
             },
         )(),
     )
+    monkeypatch.setattr(
+        "app.services.low_buy_materialization.enqueue_low_buy_materialization",
+        lambda db_arg, *, reason, commit=False: materializations.append((db_arg, reason, commit)),
+    )
 
     result = runtime_worker._execute_task("daily_bar_refresh", {"expected_trade_date": "2026-06-03"}, db)
 
     assert result["next_refresh_check"]["action"] == "publish_latest_trade_date"
+    assert result["priority_board_read_model_refresh_queued"] is True
     assert result["post_close_notification"]["status"] == "notification_sent"
     assert calls == [db]
+    assert materializations == [(db, "daily_bar_refresh_success_priority_board_read_model", True)]
     assert notifications == [(db, "2026-06-03", True, False, False)]
 
 

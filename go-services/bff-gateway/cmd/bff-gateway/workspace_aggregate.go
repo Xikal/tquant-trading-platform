@@ -33,6 +33,14 @@ type partialError struct {
 	ElapsedMs      int64  `json:"elapsed_ms,omitempty"`
 }
 
+type sourceTiming struct {
+	Source    string `json:"source"`
+	ElapsedMs int64  `json:"elapsed_ms"`
+	Status    string `json:"status"`
+	TimeoutMs int64  `json:"timeout_ms,omitempty"`
+	Reason    string `json:"reason,omitempty"`
+}
+
 type rawSource struct {
 	name    string
 	path    string
@@ -108,7 +116,7 @@ func aggregateMonitorWorkspace(cfg config, client *http.Client, r *http.Request)
 		), timeout: 250 * time.Millisecond},
 		{name: "paired_hedge", path: "/api/market/paired-hedge-research", query: values("limit", queryDefault(q, "hedge_limit", "4")), timeout: 250 * time.Millisecond},
 	}
-	results, errors := fetchSources(cfg, client, r, sources)
+	results, errors, timings := fetchSources(cfg, client, r, sources)
 	payload := map[string]any{
 		"api_version":              "v1",
 		"schema_version":           schemaVersion,
@@ -121,6 +129,7 @@ func aggregateMonitorWorkspace(cfg config, client *http.Client, r *http.Request)
 		"sector_relative_strength": nullableJSON(results["sector_relative_strength"]),
 		"paired_hedge":             nullableJSON(results["paired_hedge"]),
 		"partial_errors":           errors,
+		"source_timings":           timings,
 	}
 	return jsonPayload(http.StatusOK, payload)
 }
@@ -142,7 +151,7 @@ func aggregatePaperWorkspace(cfg config, client *http.Client, r *http.Request) a
 		{name: "auto_trading_status", path: "/api/paper/auto-trading/status"},
 		{name: "auto_trading_runs", path: "/api/paper/auto-trading/runs", query: values("limit", queryDefault(q, "run_limit", "20"))},
 	}
-	results, errors := fetchSources(cfg, client, r, sources)
+	results, errors, timings := fetchSources(cfg, client, r, sources)
 	payload := map[string]any{
 		"api_version":               "v1",
 		"schema_version":            schemaVersion,
@@ -161,6 +170,7 @@ func aggregatePaperWorkspace(cfg config, client *http.Client, r *http.Request) a
 		"auto_trading_status":       jsonObject(results["auto_trading_status"]),
 		"auto_trading_runs":         jsonArray(results["auto_trading_runs"]),
 		"partial_errors":            errors,
+		"source_timings":            timings,
 	}
 	return jsonPayload(http.StatusOK, payload)
 }
@@ -174,7 +184,7 @@ func aggregateStrategyWorkspace(cfg config, client *http.Client, r *http.Request
 		{name: "verdict_thresholds", path: "/api/backtests/verdict-thresholds"},
 		{name: "factor_health", path: "/api/factor-mining/health", query: values("limit", queryDefault(q, "factor_limit", "20"))},
 	}
-	results, errors := fetchSources(cfg, client, r, sources)
+	results, errors, timings := fetchSources(cfg, client, r, sources)
 	payload := map[string]any{
 		"api_version":        "v1",
 		"schema_version":     schemaVersion,
@@ -185,6 +195,7 @@ func aggregateStrategyWorkspace(cfg config, client *http.Client, r *http.Request
 		"verdict_thresholds": nullableJSON(results["verdict_thresholds"]),
 		"factor_health":      nullableJSON(results["factor_health"]),
 		"partial_errors":     errors,
+		"source_timings":     timings,
 	}
 	return jsonPayload(http.StatusOK, payload)
 }
@@ -212,7 +223,7 @@ func aggregateStrategyTrackingWorkspace(cfg config, client *http.Client, r *http
 			path: "/api/strategy-tracking/items/" + url.PathEscape(detailID),
 		})
 	}
-	results, errors := fetchSources(cfg, client, r, sources)
+	results, errors, timings := fetchSources(cfg, client, r, sources)
 	snapshot := results["strategy_tracking_snapshot"]
 	payload := map[string]any{
 		"api_version":           "v1",
@@ -238,6 +249,7 @@ func aggregateStrategyTrackingWorkspace(cfg config, client *http.Client, r *http
 		"partial_errors":        mergePartialErrors(errors, jsonArrayField(snapshot, "partial_errors")),
 		"production_writeable":  false,
 		"read_path":             "go_bff_strategy_tracking_snapshot_aggregation",
+		"source_timings":        timings,
 	}
 	return jsonPayload(http.StatusOK, payload)
 }
@@ -258,7 +270,7 @@ func aggregateSettingsWorkspace(cfg config, client *http.Client, r *http.Request
 			rawSource{name: "admin_metrics", path: "/api/admin/metrics"},
 		)
 	}
-	results, errors := fetchSources(cfg, client, r, sources)
+	results, errors, timings := fetchSources(cfg, client, r, sources)
 	payload := map[string]any{
 		"api_version":         "v1",
 		"schema_version":      schemaVersion,
@@ -272,6 +284,7 @@ func aggregateSettingsWorkspace(cfg config, client *http.Client, r *http.Request
 		"admin_metrics":       nullableJSON(results["admin_metrics"]),
 		"admin_enabled":       includeAdmin,
 		"partial_errors":      errors,
+		"source_timings":      timings,
 	}
 	return jsonPayload(http.StatusOK, payload)
 }
@@ -283,7 +296,7 @@ func aggregateFactorWorkspace(cfg config, client *http.Client, r *http.Request) 
 		{name: "factor_health", path: "/api/factor-mining/health", query: values("limit", queryDefault(q, "health_limit", "50"))},
 		{name: "factor_weights", path: "/api/settings/factor-weights"},
 	}
-	results, errors := fetchSources(cfg, client, r, sources)
+	results, errors, timings := fetchSources(cfg, client, r, sources)
 	payload := map[string]any{
 		"api_version":    "v1",
 		"schema_version": schemaVersion,
@@ -292,13 +305,15 @@ func aggregateFactorWorkspace(cfg config, client *http.Client, r *http.Request) 
 		"factor_health":  nullableJSON(results["factor_health"]),
 		"factor_weights": nullableJSON(results["factor_weights"]),
 		"partial_errors": errors,
+		"source_timings": timings,
 	}
 	return jsonPayload(http.StatusOK, payload)
 }
 
-func fetchSources(cfg config, client *http.Client, r *http.Request, sources []rawSource) (map[string]json.RawMessage, []partialError) {
+func fetchSources(cfg config, client *http.Client, r *http.Request, sources []rawSource) (map[string]json.RawMessage, []partialError, []sourceTiming) {
 	results := make(map[string]json.RawMessage, len(sources))
 	errors := make([]partialError, 0)
+	timings := make([]sourceTiming, 0, len(sources))
 	var mu sync.Mutex
 	var wg sync.WaitGroup
 	for _, source := range sources {
@@ -313,6 +328,13 @@ func fetchSources(cfg config, client *http.Client, r *http.Request, sources []ra
 			if err != nil {
 				reason := partialReason(err)
 				timeout := resolvedSourceTimeout(cfg, source)
+				timings = append(timings, sourceTiming{
+					Source:    source.name,
+					ElapsedMs: elapsedMs,
+					Status:    "error",
+					TimeoutMs: partialTimeoutMs(reason, timeout),
+					Reason:    reason,
+				})
 				incrementPartialFailure(source.name, reason)
 				errors = append(errors, partialError{
 					Source:         source.name,
@@ -326,11 +348,19 @@ func fetchSources(cfg config, client *http.Client, r *http.Request, sources []ra
 				})
 				return
 			}
+			timings = append(timings, sourceTiming{
+				Source:    source.name,
+				ElapsedMs: elapsedMs,
+				Status:    "ok",
+				TimeoutMs: 0,
+				Reason:    "",
+			})
 			results[source.name] = body
 		}(source)
 	}
 	wg.Wait()
-	return results, errors
+	sort.Slice(timings, func(i, j int) bool { return timings[i].Source < timings[j].Source })
+	return results, errors, timings
 }
 
 func fetchRawSource(cfg config, client *http.Client, incoming *http.Request, source rawSource) (json.RawMessage, error) {

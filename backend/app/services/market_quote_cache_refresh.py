@@ -35,6 +35,29 @@ STRATEGY_TRACKING_CORE_LIMIT = 300
 MONITOR_SECTOR_LIMIT = 8
 MONITOR_SECTOR_MEMBER_LIMIT = 30
 QUOTE_CACHE_COVERAGE_TARGET = 0.9
+MARKET_PULSE_INDEX_ETF_SYMBOLS = [
+    "510300",
+    "510050",
+    "512100",
+    "159915",
+    "588000",
+    "512480",
+    "512760",
+    "515000",
+    "512660",
+    "512880",
+    "515790",
+    "516160",
+    "512170",
+    "510310",
+    "512690",
+    "512400",
+    "516780",
+    "512200",
+    "159930",
+    "515220",
+    "512800",
+]
 
 
 class MarketQuoteCacheRefreshService:
@@ -280,8 +303,13 @@ def build_quote_cache_demand_symbols(db: Session) -> list[str]:
         paper_position_symbols(db),
         strategy_tracking_symbols(db),
         sector_hot_member_symbols(db),
+        market_pulse_index_etf_symbols(),
     ]
     return _dedupe_symbols([symbol for group in groups for symbol in group])
+
+
+def market_pulse_index_etf_symbols() -> list[str]:
+    return list(MARKET_PULSE_INDEX_ETF_SYMBOLS)
 
 
 def priority_board_symbols(db: Session) -> list[str]:

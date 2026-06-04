@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import time
+from types import SimpleNamespace
+
 from app.models.schema_defs.common import QuoteSnapshot
 from app.models.schema_defs.screener_parts.priority import (
     LowBuyPriorityBoardItemOut,
@@ -138,6 +141,37 @@ def test_priority_board_overlay_cache_invalidates_on_ranking_field_change(monkey
     assert second.items[0].priority_score == 92.0
     assert second.items[0].latest_price == 12.8
     assert calls == [["000001"], ["000001"]]
+
+
+def test_priority_board_live_overlay_timeout_returns_original_payload(monkeypatch) -> None:
+    live_quote_overlay.clear_priority_board_overlay_cache()
+    response = LowBuyPriorityBoardResponse(
+        as_of_date="2026-06-03",
+        latest_trade_date="2026-06-03",
+        updated_at="2026-06-03 10:00:00",
+        items=[_priority_item("000001", 91.0)],
+    )
+    monkeypatch.setattr(
+        live_quote_overlay,
+        "get_settings",
+        lambda: SimpleNamespace(
+            read_model_live_overlay_enabled=True,
+            priority_board_overlay_cache_enabled=False,
+            priority_board_live_overlay_timeout_ms=1,
+        ),
+    )
+
+    def slow_batch(symbols: list[str]):  # noqa: ARG001
+        time.sleep(0.05)
+        return {"000001": _quote("000001", 12.3, 1.2)}
+
+    monkeypatch.setattr(live_quote_overlay, "read_local_quote_snapshots", slow_batch)
+
+    started = time.perf_counter()
+    overlaid = apply_priority_board_live_overlay(response)
+
+    assert (time.perf_counter() - started) < 0.03
+    assert overlaid.model_dump() == response.model_dump()
 
 
 def test_strategy_tracking_overlay_preserves_current_return_pct(monkeypatch) -> None:

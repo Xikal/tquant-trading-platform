@@ -24,6 +24,15 @@ def test_cloud_measurement_script_has_hard_thresholds():
     assert "quote_cache_snapshot" in source
     assert '"quote_cache_coverage"' in source
     assert source.index("quote_cache = quote_cache_snapshot()") < source.index("api = [")
+    assert "go_bff_metrics_before = metrics" in source
+    assert "go_bff_metrics_delta = metric_delta" in source
+    assert "go_market_metrics_delta = metric_delta" in source
+    assert '"monitor_bff_sources"' in source
+    assert '"priority_board_breakdown"' in source
+    assert '"go_bff_cache_hit_rate"' in source
+    assert '"go_bff_partial_errors_by_source"' in source
+    assert "partial_errors_by_source" in source
+    assert "capture_payload=True" in source
     assert "DEFAULT_LIMIT, MarketQuoteCacheRefreshService" in source
     assert '"quote_cache_warmup_coverage"' in source
     assert '"quote_cache_batch_coverage"' in source

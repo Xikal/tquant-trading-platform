@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import time
 from typing import Callable, TypeVar
 
 from fastapi import APIRouter, BackgroundTasks, Depends, Header, HTTPException, Query, Request
@@ -21,6 +22,7 @@ from app.models.schema_defs.bff import (
     BffManifestResponse,
     BffWorkspaceManifest,
     BffPartialError,
+    BffSourceTiming,
     MonitorWorkspaceBffResponse,
     PaperWorkspaceBffResponse,
     SettingsWorkspaceBffResponse,
@@ -413,24 +415,28 @@ def _build_monitor_workspace(
     include_runtime: bool = False,
 ) -> MonitorWorkspaceBffResponse:
     errors: list[BffPartialError] = []
+    timings: list[BffSourceTiming] = []
     monitor_snapshot_payload = _safe(
         "monitor_snapshot",
         errors,
+        timings,
         lambda: build_monitor_snapshot(db, current_user=current_user, priority_limit=priority_limit),
     )
     market_breadth_payload = None
     sector_payload = None
     paired_payload = None
     if allow_live_sources:
-        market_breadth_payload = _safe("market_breadth", errors, lambda: market_breadth(realtime=False, db=db))
+        market_breadth_payload = _safe("market_breadth", errors, timings, lambda: market_breadth(realtime=False, db=db))
         sector_payload = _safe(
             "sector_relative_strength",
             errors,
+            timings,
             lambda: sector_relative_strength(sector_limit, per_sector_limit, db),
         )
         paired_payload = _safe(
             "paired_hedge",
             errors,
+            timings,
             lambda: paired_hedge_research(hedge_limit, _attached_user(db, current_user), db),
             ignore_forbidden=True,
         )
@@ -438,6 +444,7 @@ def _build_monitor_workspace(
     review_status, review_reports = _safe_monitor_source(
         "review",
         errors,
+        timings,
         lambda: _run_monitor_db_source(db, lambda source_db: build_market_review_summary(source_db)),
         default=(None, []),
         threaded=threaded_db_budget,
@@ -445,12 +452,13 @@ def _build_monitor_workspace(
     hourly_history = _safe_monitor_source(
         "hourly_snapshot_history",
         errors,
+        timings,
         lambda: _run_monitor_db_source(db, _safe_hourly_snapshot_history),
         default=[],
         threaded=threaded_db_budget,
     ) or []
-    pulse = _safe_market_pulse_snapshot(db, errors)
-    runtime = _safe_runtime_status(db, current_user, errors) if include_runtime else None
+    pulse = _safe_market_pulse_snapshot(db, errors, timings)
+    runtime = _safe_runtime_status(db, current_user, errors, timings) if include_runtime else None
     return MonitorWorkspaceBffResponse(
         generated_at=beijing_now_string(),
         monitor_snapshot=monitor_snapshot_payload,
@@ -463,14 +471,17 @@ def _build_monitor_workspace(
         paired_hedge=paired_payload,
         runtime=runtime,
         partial_errors=errors,
+        source_timings=timings,
     )
 
 
-def _safe_market_pulse_snapshot(db: Session, errors: list[BffPartialError]):
+def _safe_market_pulse_snapshot(db: Session, errors: list[BffPartialError], timings: list[BffSourceTiming]):
+    started = time.perf_counter()
     try:
         pulse, pulse_needs_refresh = latest_pulse_or_placeholder(db, trade_date=beijing_today().isoformat())
     except Exception as exc:
         logger.warning("bff source failed source=market_pulse", exc_info=(type(exc), exc, exc.__traceback__))
+        elapsed_ms = _elapsed_ms(started)
         errors.append(
             BffPartialError(
                 source="market_pulse",
@@ -478,11 +489,14 @@ def _safe_market_pulse_snapshot(db: Session, errors: list[BffPartialError]):
                 reason="other",
                 fallback_source="python_local",
                 message="market pulse snapshot unavailable",
+                elapsed_ms=elapsed_ms,
             )
         )
+        _append_source_timing(timings, "market_pulse", elapsed_ms=elapsed_ms, status="error", reason="other")
         return None
     if pulse_needs_refresh:
         _enqueue_market_pulse_refresh(db, reason="bff_monitor_workspace")
+    _append_source_timing(timings, "market_pulse", elapsed_ms=_elapsed_ms(started), status="ok")
     return pulse
 
 
@@ -492,16 +506,20 @@ def _safe_hourly_snapshot_history(db: Session):
     return list_hourly_snapshot_history(db, trade_date="", limit=8)
 
 
-def _safe_runtime_status(db: Session, current_user: User, errors: list[BffPartialError]):
+def _safe_runtime_status(db: Session, current_user: User, errors: list[BffPartialError], timings: list[BffSourceTiming]):
     try:
         if not is_admin_user(current_user):
             return None
     except Exception:
         return None
+    started = time.perf_counter()
     try:
-        return SettingsRuntimeDiagnosticsService(db).build_status()
+        result = SettingsRuntimeDiagnosticsService(db).build_status()
+        _append_source_timing(timings, "runtime", elapsed_ms=_elapsed_ms(started), status="ok")
+        return result
     except Exception as exc:
         logger.warning("bff source failed source=runtime", exc_info=(type(exc), exc, exc.__traceback__))
+        elapsed_ms = _elapsed_ms(started)
         errors.append(
             BffPartialError(
                 source="runtime",
@@ -509,8 +527,10 @@ def _safe_runtime_status(db: Session, current_user: User, errors: list[BffPartia
                 reason="other",
                 fallback_source="python_local",
                 message="runtime status unavailable",
+                elapsed_ms=elapsed_ms,
             )
         )
+        _append_source_timing(timings, "runtime", elapsed_ms=elapsed_ms, status="error", reason="other")
         return None
 
 
@@ -536,15 +556,21 @@ def _monitor_runtime_allowed(request: Request, current_user: User) -> bool:
 def _safe(
     source: str,
     errors: list[BffPartialError],
+    timings: list[BffSourceTiming],
     loader: Callable[[], T],
     *,
     ignore_forbidden: bool = False,
 ) -> T | None:
+    started = time.perf_counter()
     try:
-        return loader()
+        result = loader()
+        _append_source_timing(timings, source, elapsed_ms=_elapsed_ms(started), status="ok")
+        return result
     except HTTPException as exc:
         if ignore_forbidden and exc.status_code == 403:
+            _append_source_timing(timings, source, elapsed_ms=_elapsed_ms(started), status="skipped", reason="forbidden")
             return None
+        elapsed_ms = _elapsed_ms(started)
         errors.append(
             BffPartialError(
                 source=source,
@@ -553,11 +579,14 @@ def _safe(
                 status_code=exc.status_code,
                 fallback_source="python_local",
                 message="source returned HTTPException",
+                elapsed_ms=elapsed_ms,
             )
         )
+        _append_source_timing(timings, source, elapsed_ms=elapsed_ms, status="error", reason="status")
         return None
     except Exception as exc:
         logger.warning("bff source failed source=%s", source, exc_info=(type(exc), exc, exc.__traceback__))
+        elapsed_ms = _elapsed_ms(started)
         errors.append(
             BffPartialError(
                 source=source,
@@ -565,14 +594,17 @@ def _safe(
                 reason="other",
                 fallback_source="python_local",
                 message="source unavailable",
+                elapsed_ms=elapsed_ms,
             )
         )
+        _append_source_timing(timings, source, elapsed_ms=elapsed_ms, status="error", reason="other")
         return None
 
 
 def _safe_monitor_source(
     source: str,
     errors: list[BffPartialError],
+    timings: list[BffSourceTiming],
     loader: Callable[[], T],
     *,
     default: T,
@@ -580,12 +612,14 @@ def _safe_monitor_source(
     threaded: bool = True,
 ) -> T:
     if not getattr(get_settings(), "monitor_bff_source_budget_enabled", True):
-        result = _safe(source, errors, loader)
+        result = _safe(source, errors, timings, loader)
         return result if result is not None else default
     effective_timeout_ms = timeout_ms or MONITOR_SOURCE_TIMEOUT_MS.get(source)
     if effective_timeout_ms and effective_timeout_ms > 0 and threaded:
+        started = time.perf_counter()
+        error_count = len(errors)
         try:
-            return run_workspace_with_timeout(
+            result = run_workspace_with_timeout(
                 source=source,
                 timeout_seconds=float(effective_timeout_ms) / 1000.0,
                 loader=loader,
@@ -595,35 +629,76 @@ def _safe_monitor_source(
                     default,
                     timeout_ms=error.timeout_ms or effective_timeout_ms,
                     message=error.message or error.detail,
+                    elapsed_ms=_elapsed_ms(started),
                 ),
             )
+            status = "ok"
+            reason = ""
+            if len(errors) > error_count:
+                status = "error"
+                reason = errors[-1].reason
+            _append_source_timing(
+                timings,
+                source,
+                elapsed_ms=_elapsed_ms(started),
+                status=status,
+                timeout_ms=effective_timeout_ms if reason == "timeout" else None,
+                reason=reason,
+            )
+            return result
         except TimeoutError as exc:
-            errors.append(_partial_error(source, "timeout", str(exc), timeout_ms=effective_timeout_ms))
+            elapsed_ms = _elapsed_ms(started)
+            errors.append(_partial_error(source, "timeout", str(exc), timeout_ms=effective_timeout_ms, elapsed_ms=elapsed_ms))
+            _append_source_timing(timings, source, elapsed_ms=elapsed_ms, status="error", timeout_ms=effective_timeout_ms, reason="timeout")
             return default
         except HTTPException as exc:
-            if source in NONCRITICAL_MONITOR_SOURCES:
-                errors.append(_partial_error(source, "status", str(exc.detail), timeout_ms=effective_timeout_ms, status_code=exc.status_code))
-                return default
-            errors.append(_partial_error(source, "status", str(exc.detail), timeout_ms=effective_timeout_ms, status_code=exc.status_code))
+            elapsed_ms = _elapsed_ms(started)
+            errors.append(
+                _partial_error(
+                    source,
+                    "status",
+                    str(exc.detail),
+                    timeout_ms=effective_timeout_ms,
+                    status_code=exc.status_code,
+                    elapsed_ms=elapsed_ms,
+                )
+            )
+            _append_source_timing(timings, source, elapsed_ms=elapsed_ms, status="error", reason="status")
             return default
         except Exception as exc:
             logger.warning("bff source failed source=%s", source, exc_info=(type(exc), exc, exc.__traceback__))
-            errors.append(_partial_error(source, "error", str(exc), timeout_ms=effective_timeout_ms))
+            elapsed_ms = _elapsed_ms(started)
+            errors.append(_partial_error(source, "error", str(exc), timeout_ms=effective_timeout_ms, elapsed_ms=elapsed_ms))
+            _append_source_timing(timings, source, elapsed_ms=elapsed_ms, status="error", reason="error")
             return default
+    started = time.perf_counter()
     try:
-        return loader()
+        result = loader()
+        _append_source_timing(timings, source, elapsed_ms=_elapsed_ms(started), status="ok")
+        return result
     except HTTPException as exc:
-        if source in NONCRITICAL_MONITOR_SOURCES:
-            errors.append(_partial_error(source, "status", str(exc.detail), timeout_ms=timeout_ms, status_code=exc.status_code))
-            return default
-        errors.append(_partial_error(source, "status", str(exc.detail), timeout_ms=timeout_ms, status_code=exc.status_code))
+        elapsed_ms = _elapsed_ms(started)
+        errors.append(_partial_error(source, "status", str(exc.detail), timeout_ms=timeout_ms, status_code=exc.status_code, elapsed_ms=elapsed_ms))
+        _append_source_timing(timings, source, elapsed_ms=elapsed_ms, status="error", reason="status")
         return default
     except TimeoutError as exc:
-        errors.append(_partial_error(source, "timeout", str(exc), timeout_ms=timeout_ms or MONITOR_SOURCE_TIMEOUT_MS.get(source)))
+        elapsed_ms = _elapsed_ms(started)
+        errors.append(
+            _partial_error(
+                source,
+                "timeout",
+                str(exc),
+                timeout_ms=timeout_ms or MONITOR_SOURCE_TIMEOUT_MS.get(source),
+                elapsed_ms=elapsed_ms,
+            )
+        )
+        _append_source_timing(timings, source, elapsed_ms=elapsed_ms, status="error", reason="timeout")
         return default
     except Exception as exc:
         logger.warning("bff source failed source=%s", source, exc_info=(type(exc), exc, exc.__traceback__))
-        errors.append(_partial_error(source, "error", str(exc), timeout_ms=timeout_ms or MONITOR_SOURCE_TIMEOUT_MS.get(source)))
+        elapsed_ms = _elapsed_ms(started)
+        errors.append(_partial_error(source, "error", str(exc), timeout_ms=timeout_ms or MONITOR_SOURCE_TIMEOUT_MS.get(source), elapsed_ms=elapsed_ms))
+        _append_source_timing(timings, source, elapsed_ms=elapsed_ms, status="error", reason="error")
         return default
 
 
@@ -650,8 +725,9 @@ def _record_monitor_timeout_fallback(
     *,
     timeout_ms: int,
     message: str,
+    elapsed_ms: int | None = None,
 ) -> T:
-    errors.append(_partial_error(source, "timeout", message, timeout_ms=timeout_ms))
+    errors.append(_partial_error(source, "timeout", message, timeout_ms=timeout_ms, elapsed_ms=elapsed_ms))
     return default
 
 
@@ -662,6 +738,7 @@ def _partial_error(
     *,
     timeout_ms: int | None = None,
     status_code: int | None = None,
+    elapsed_ms: int | None = None,
 ) -> BffPartialError:
     return BffPartialError(
         source=_monitor_partial_source_name(source),
@@ -671,6 +748,31 @@ def _partial_error(
         timeout_ms=timeout_ms,
         fallback_source="python_local",
         message=str(message or "")[:240],
+        elapsed_ms=elapsed_ms,
+    )
+
+
+def _elapsed_ms(started_at: float) -> int:
+    return max(0, int((time.perf_counter() - started_at) * 1000))
+
+
+def _append_source_timing(
+    timings: list[BffSourceTiming],
+    source: str,
+    *,
+    elapsed_ms: int,
+    status: str,
+    timeout_ms: int | None = None,
+    reason: str = "",
+) -> None:
+    timings.append(
+        BffSourceTiming(
+            source=_monitor_partial_source_name(source),
+            elapsed_ms=max(0, int(elapsed_ms or 0)),
+            status=status,
+            timeout_ms=timeout_ms,
+            reason=_monitor_partial_reason(reason) if reason else "",
+        )
     )
 
 

@@ -20,7 +20,10 @@ describe("monitor server queries", () => {
         sector_relative_strength: null,
         paired_hedge: null,
         partial_errors: [],
-        schema_version: "v14",
+        refresh_queued: false,
+        stale: false,
+        stale_reason: "",
+        schema_version: "v15",
       }),
     });
 
@@ -46,7 +49,10 @@ describe("monitor server queries", () => {
       sector_relative_strength: null,
       paired_hedge: null,
       partial_errors: [],
-      schema_version: "v14",
+      refresh_queued: false,
+      stale: false,
+      stale_reason: "",
+      schema_version: "v15",
     };
     const fetchMonitorWorkspace = vi.fn(async () => payload);
     const options = monitorSnapshotOptions({ priorityLimit: 3, fetchMonitorWorkspace });

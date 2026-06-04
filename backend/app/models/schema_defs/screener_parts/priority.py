@@ -186,6 +186,12 @@ class LowBuyPriorityBoardResponse(BaseModel):
     data_quality: str = "ok"
     data_quality_text: str = "数据完整"
     data_quality_tags: list[str] = Field(default_factory=list)
+    stale: bool = False
+    stale_reason: str = ""
+    refresh_queued: bool = False
+    read_path: str = ""
+    read_model_generated_at: Optional[str] = None
+    read_model_age_seconds: Optional[int] = None
     market_gate_decision: str = "allow"
     market_gate_score: float = 100.0
     market_gate_reasons: list[str] = Field(default_factory=list)

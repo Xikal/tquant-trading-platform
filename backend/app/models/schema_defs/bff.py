@@ -37,7 +37,7 @@ from app.models.schema_defs.settings import (
 )
 from app.models.schema_defs.strategy_meta import StrategyMetaResponse, StrategyPresetResponse
 
-BFF_SCHEMA_VERSION = "v14"
+BFF_SCHEMA_VERSION = "v15"
 
 
 class BffPartialError(BaseModel):
@@ -48,6 +48,15 @@ class BffPartialError(BaseModel):
     timeout_ms: int | None = None
     fallback_source: str = "python_local"
     message: str = ""
+    elapsed_ms: int | None = None
+
+
+class BffSourceTiming(BaseModel):
+    source: str
+    elapsed_ms: int = 0
+    status: str = "ok"
+    timeout_ms: int | None = None
+    reason: str = ""
 
 
 class BffWorkspaceManifest(BaseModel):
@@ -69,6 +78,9 @@ class MonitorWorkspaceBffResponse(BaseModel):
     api_version: str = "v1"
     schema_version: str = BFF_SCHEMA_VERSION
     generated_at: str
+    stale: bool = False
+    stale_reason: str = ""
+    refresh_queued: bool = False
     monitor_snapshot: MonitorSnapshotResponse | None = None
     market_breadth: MarketBreadthResponse | None = None
     market_pulse: IntradayMarketPulse | None = None
@@ -79,6 +91,7 @@ class MonitorWorkspaceBffResponse(BaseModel):
     paired_hedge: PairedHedgeResearchResponse | None = None
     runtime: RuntimeStatusResponse | None = None
     partial_errors: list[BffPartialError] = Field(default_factory=list)
+    source_timings: list[BffSourceTiming] = Field(default_factory=list)
 
 
 class PaperWorkspaceBffResponse(BaseModel):

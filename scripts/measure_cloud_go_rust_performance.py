@@ -117,23 +117,55 @@ def run_remote_measurement(args: argparse.Namespace) -> dict[str, Any]:
                 data = json.loads(response.read().decode())
             return data["access_token"]
 
-        def measure(name, path, token="", timeout=12):
+        def measure(name, path, token="", timeout=12, capture_payload=False):
             samples = []
             statuses = []
+            payload_summary = {}
             for _ in range(SAMPLES):
                 elapsed, status, body = fetch(path, token=token, timeout=timeout)
                 samples.append(elapsed)
                 statuses.append(status)
+                if capture_payload and status == 200:
+                    payload_summary = summarize_payload(name, body)
                 time.sleep(0.08)
             ordered = sorted(samples)
             p95_index = max(0, min(len(ordered) - 1, int(len(ordered) * 0.95) - 1))
-            return {
+            result = {
                 "name": name,
                 "path": path,
                 "statuses": sorted(set(statuses), key=lambda item: str(item)),
                 "p50_ms": round(statistics.median(samples), 3),
                 "p95_ms": round(ordered[p95_index], 3),
             }
+            if payload_summary:
+                result["payload_summary"] = payload_summary
+            return result
+
+        def summarize_payload(name, body):
+            try:
+                payload = json.loads(body.decode(errors="replace"))
+            except Exception as exc:
+                return {"error": "payload_parse_failed", "detail": str(exc)[:200]}
+            if name == "monitor_bff":
+                snapshot = payload.get("monitor_snapshot") if isinstance(payload, dict) else {}
+                board = snapshot.get("priority_board") if isinstance(snapshot, dict) else {}
+                return {
+                    "source_timings": payload.get("source_timings") or [],
+                    "partial_errors": payload.get("partial_errors") or [],
+                    "priority_items": len(board.get("items") or []) if isinstance(board, dict) else 0,
+                    "generated_at": payload.get("generated_at") if isinstance(payload, dict) else "",
+                }
+            if name == "priority_board":
+                return {
+                    "items": len(payload.get("items") or []) if isinstance(payload, dict) else 0,
+                    "read_path": payload.get("read_path") if isinstance(payload, dict) else "",
+                    "stale": bool(payload.get("stale")) if isinstance(payload, dict) else False,
+                    "stale_reason": payload.get("stale_reason") if isinstance(payload, dict) else "",
+                    "refresh_queued": bool(payload.get("refresh_queued")) if isinstance(payload, dict) else False,
+                    "data_quality": payload.get("data_quality") if isinstance(payload, dict) else "",
+                    "data_quality_tags": payload.get("data_quality_tags") if isinstance(payload, dict) else [],
+                }
+            return {}
 
         def metrics(container, port):
             try:
@@ -152,19 +184,49 @@ def run_remote_measurement(args: argparse.Namespace) -> dict[str, Any]:
                         pass
             return parsed
 
-        def observability_assessment(go_bff_metrics, go_market_metrics, quote_cache_coverage):
-            def metric_value(metrics_map, name):
+        def metric_delta(after, before):
+            if not isinstance(after, dict) or not isinstance(before, dict):
+                return {}
+            result = {}
+            for key, value in after.items():
+                if key == "error":
+                    continue
                 try:
-                    return float(metrics_map.get(name) or 0)
+                    result[key] = max(0.0, float(value) - float(before.get(key, 0) or 0))
                 except Exception:
-                    return 0.0
+                    pass
+            return result
 
+        def metric_value(metrics_map, name):
+            try:
+                return float(metrics_map.get(name) or 0)
+            except Exception:
+                return 0.0
+
+        def partial_errors_by_source(metrics_map):
+            result = {}
+            prefix = "tquant_bff_gateway_partial_source_failures_total{source=\""
+            for key, value in (metrics_map or {}).items():
+                if not key.startswith(prefix):
+                    continue
+                try:
+                    source_part = key.split('source="', 1)[1]
+                    source = source_part.split('"', 1)[0]
+                    reason_part = key.split('reason="', 1)[1]
+                    reason = reason_part.split('"', 1)[0]
+                except Exception:
+                    continue
+                result.setdefault(source, {})[reason] = value
+            return result
+
+        def observability_assessment(go_bff_metrics, go_market_metrics, quote_cache_coverage):
             bff_total = metric_value(go_bff_metrics, "tquant_bff_gateway_partial_source_failures_total")
             bff_timeout = metric_value(go_bff_metrics, 'tquant_bff_gateway_partial_source_failures_total{reason="timeout"}')
             bff_status = metric_value(go_bff_metrics, 'tquant_bff_gateway_partial_source_failures_total{reason="status"}')
             bff_decode = metric_value(go_bff_metrics, 'tquant_bff_gateway_partial_source_failures_total{reason="decode"}')
             bff_other = metric_value(go_bff_metrics, 'tquant_bff_gateway_partial_source_failures_total{reason="other"}')
             bff_classified = bff_timeout + bff_status + bff_decode + bff_other
+            bff_cache_hit_rate = metric_value(go_bff_metrics, "tquant_bff_gateway_cache_hit_rate")
             market_misses = metric_value(go_market_metrics, "tquant_market_read_cache_miss_total")
             market_mysql = metric_value(go_market_metrics, "tquant_market_read_mysql_fallbacks_total")
             market_unresolved = metric_value(go_market_metrics, "tquant_market_read_unresolved_misses_total")
@@ -241,7 +303,9 @@ def run_remote_measurement(args: argparse.Namespace) -> dict[str, Any]:
                     "status": bff_status,
                     "decode": bff_decode,
                     "other": bff_other,
+                    "partial_errors_by_source": partial_errors_by_source(go_bff_metrics),
                 },
+                "go_bff_cache_hit_rate": bff_cache_hit_rate,
                 "market_read": {
                     "cache_misses": market_misses,
                     "mysql_fallbacks": market_mysql,
@@ -495,11 +559,13 @@ def run_remote_measurement(args: argparse.Namespace) -> dict[str, Any]:
 
         token = login()
         quote_cache = quote_cache_snapshot()
+        go_bff_metrics_before = metrics("tquant-go-bff-gateway", 8091)
+        go_market_metrics_before = metrics("tquant-go-market-read-service", 8092)
         api = [
             measure("readyz", "/readyz"),
-            measure("monitor_bff", "/api/bff/v1/workspace/monitor?priority_limit=12&sector_limit=8&per_sector_limit=8&hedge_limit=4", token),
+            measure("monitor_bff", "/api/bff/v1/workspace/monitor?priority_limit=12&sector_limit=8&per_sector_limit=8&hedge_limit=4", token, capture_payload=True),
             measure("market_pulse", "/api/market/pulse", token),
-            measure("priority_board", "/api/screeners/low-buy/priority-board?limit=12", token),
+            measure("priority_board", "/api/screeners/low-buy/priority-board?limit=12", token, capture_payload=True),
             measure("watchlist_signals", "/api/watchlist/signals", token),
         ]
         go_scan = []
@@ -554,17 +620,30 @@ def run_remote_measurement(args: argparse.Namespace) -> dict[str, Any]:
             failures.append({"name": "quote_cache_coverage", "detail": quote_cache})
         go_bff_metrics = metrics("tquant-go-bff-gateway", 8091)
         go_market_metrics = metrics("tquant-go-market-read-service", 8092)
-        observability = observability_assessment(go_bff_metrics, go_market_metrics, quote_cache)
+        go_bff_metrics_delta = metric_delta(go_bff_metrics, go_bff_metrics_before)
+        go_market_metrics_delta = metric_delta(go_market_metrics, go_market_metrics_before)
+        observability = observability_assessment(go_bff_metrics_delta, go_market_metrics_delta, quote_cache)
         if not observability.get("ok"):
             failures.append({"name": "observability_alerts", "detail": observability})
+        api_by_name = {item["name"]: item for item in api}
+        monitor_payload_summary = api_by_name.get("monitor_bff", {}).get("payload_summary") or {}
+        priority_payload_summary = api_by_name.get("priority_board", {}).get("payload_summary") or {}
         report = {
             "generated_at": time.strftime("%Y-%m-%d %H:%M:%S"),
             "api": api,
+            "monitor_bff_sources": monitor_payload_summary.get("source_timings") or [],
+            "priority_board_breakdown": priority_payload_summary,
+            "go_bff_cache_hit_rate": observability.get("go_bff_cache_hit_rate"),
+            "go_bff_partial_errors_by_source": observability.get("bff_partial", {}).get("partial_errors_by_source") or {},
             "go_scan_accept": scan_accept,
             "rust_finance_math": rust,
             "quote_cache_coverage": quote_cache,
+            "go_bff_metrics_before": go_bff_metrics_before,
             "go_bff_metrics": go_bff_metrics,
+            "go_bff_metrics_delta": go_bff_metrics_delta,
+            "go_market_metrics_before": go_market_metrics_before,
             "go_market_metrics": go_market_metrics,
+            "go_market_metrics_delta": go_market_metrics_delta,
             "observability": observability,
             "go_scan": go_scan,
             "app_metrics": fetch("/metrics")[2].decode(errors="replace")[-4000:],

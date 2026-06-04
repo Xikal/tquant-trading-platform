@@ -8759,7 +8759,7 @@ export interface components {
             modules?: string[];
             /**
              * Schema Version
-             * @default v14
+             * @default v15
              */
             schema_version: string;
             /** Workspaces */
@@ -8771,6 +8771,8 @@ export interface components {
         BffPartialError: {
             /** Detail */
             detail: string;
+            /** Elapsed Ms */
+            elapsed_ms?: number | null;
             /**
              * Fallback Source
              * @default python_local
@@ -8793,6 +8795,28 @@ export interface components {
             /** Timeout Ms */
             timeout_ms?: number | null;
         };
+        /** BffSourceTiming */
+        BffSourceTiming: {
+            /**
+             * Elapsed Ms
+             * @default 0
+             */
+            elapsed_ms: number;
+            /**
+             * Reason
+             * @default
+             */
+            reason: string;
+            /** Source */
+            source: string;
+            /**
+             * Status
+             * @default ok
+             */
+            status: string;
+            /** Timeout Ms */
+            timeout_ms?: number | null;
+        };
         /** BffWorkspaceManifest */
         BffWorkspaceManifest: {
             /** Model */
@@ -8801,7 +8825,7 @@ export interface components {
             path: string;
             /**
              * Schema Version
-             * @default v14
+             * @default v15
              */
             schema_version: string;
         };
@@ -13637,16 +13661,33 @@ export interface components {
             paired_hedge?: components["schemas"]["PairedHedgeResearchResponse"] | null;
             /** Partial Errors */
             partial_errors?: components["schemas"]["BffPartialError"][];
+            /**
+             * Refresh Queued
+             * @default false
+             */
+            refresh_queued: boolean;
             /** Review Reports */
             review_reports?: components["schemas"]["MarketReviewReportOut"][];
             review_status?: components["schemas"]["MarketReviewStatusOut"] | null;
             runtime?: components["schemas"]["RuntimeStatusResponse"] | null;
             /**
              * Schema Version
-             * @default v14
+             * @default v15
              */
             schema_version: string;
             sector_relative_strength?: components["schemas"]["SectorRelativeStrengthResponse"] | null;
+            /** Source Timings */
+            source_timings?: components["schemas"]["BffSourceTiming"][];
+            /**
+             * Stale
+             * @default false
+             */
+            stale: boolean;
+            /**
+             * Stale Reason
+             * @default
+             */
+            stale_reason: string;
         };
         /** OperationAuditListResponse */
         OperationAuditListResponse: {
@@ -15014,7 +15055,7 @@ export interface components {
             risk_events?: components["schemas"]["RiskEventOut"][];
             /**
              * Schema Version
-             * @default v14
+             * @default v15
              */
             schema_version: string;
             sector_etf_t0_performance?: components["schemas"]["PaperSectorEtfT0PerformanceOut"] | null;
@@ -16420,7 +16461,7 @@ export interface components {
             runtime?: components["schemas"]["RuntimeStatusResponse"] | null;
             /**
              * Schema Version
-             * @default v14
+             * @default v15
              */
             schema_version: string;
             sector_exclusions?: components["schemas"]["UserSectorExclusionsResponse"] | null;
@@ -18484,7 +18525,7 @@ export interface components {
             recent_runs?: components["schemas"]["app__models__schema_defs__backtest__BacktestRunListResponse"] | null;
             /**
              * Schema Version
-             * @default v14
+             * @default v15
              */
             schema_version: string;
             strategy_meta?: components["schemas"]["StrategyMetaResponse"] | null;

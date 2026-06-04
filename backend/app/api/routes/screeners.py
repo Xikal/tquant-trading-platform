@@ -1,12 +1,14 @@
 from typing import Optional
 import logging
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session
 
 from app.core.admin_auth import require_admin_auth
 from app.core.auth import get_current_user
+from app.core.config import get_settings
 from app.core.database import get_db
+from app.core.role_permissions import is_admin_user
 from app.core.timing import log_slow_call, monotonic_start
 from app.models.entities import User
 from app.models.schemas import LowBuyTradeLifecycleUpdate
@@ -158,6 +160,7 @@ def low_buy_history_view(
 
 @router.get("/low-buy/priority-board")
 def low_buy_priority_board_view(
+    request: Request,
     limit: int = Query(12, ge=3, le=30),
     refresh: str = Query("cache", pattern="^(cache|async|sync)$"),
     strategy_variant: str = Query("baseline", pattern="^(baseline|front_row_weighted|front_row_only)$"),
@@ -166,11 +169,16 @@ def low_buy_priority_board_view(
     db: Session = Depends(get_db),
 ):
     started_at = monotonic_start()
+    effective_refresh = _priority_board_refresh_mode_for_web(
+        request=request,
+        current_user=current_user,
+        refresh=refresh,
+    )
     try:
         result = low_buy_screener.priority_board(
             db=db,
             limit=limit,
-            refresh_mode=refresh,
+            refresh_mode=effective_refresh,
             front_row_only=front_row_only,
             strategy_variant=strategy_variant,
         )
@@ -189,6 +197,7 @@ def low_buy_priority_board_view(
             started_at,
             limit=limit,
             refresh=refresh,
+            effective_refresh=effective_refresh,
             front_row_only=front_row_only,
             strategy_variant=strategy_variant,
         )
@@ -288,3 +297,39 @@ def low_buy_execution_backtest_view(
 
 def _low_buy_screen_requires_queue(*, scan_mode: str, scan_limit: int) -> bool:
     return scan_mode == "full" and int(scan_limit or 0) > 120
+
+
+def _priority_board_refresh_mode_for_web(
+    *,
+    request: Request,
+    current_user: User,
+    refresh: str,
+) -> str:
+    requested = str(refresh or "cache").strip().lower()
+    if requested != "sync":
+        return requested if requested in {"cache", "async"} else "cache"
+    if getattr(get_settings(), "priority_board_web_sync_refresh_enabled", False) and _priority_board_admin_allowed(
+        request=request,
+        current_user=current_user,
+    ):
+        return "sync"
+    return "async"
+
+
+def _priority_board_admin_allowed(*, request: Request, current_user: User) -> bool:
+    try:
+        if is_admin_user(current_user):
+            return True
+    except Exception:
+        pass
+    try:
+        require_admin_auth(
+            request,
+            x_admin_token=request.headers.get("X-Admin-Token"),
+            authorization=request.headers.get("Authorization"),
+        )
+        return True
+    except HTTPException:
+        return False
+    except Exception:
+        return False

@@ -36,10 +36,11 @@ def test_quote_cache_warmup_includes_all_hot_demand_sets(monkeypatch) -> None:
     monkeypatch.setattr("app.services.market_quote_cache_refresh.paper_position_symbols", lambda db: ["600003"])
     monkeypatch.setattr("app.services.market_quote_cache_refresh.strategy_tracking_symbols", lambda db: ["600004"])
     monkeypatch.setattr("app.services.market_quote_cache_refresh.sector_hot_member_symbols", lambda db: ["600005"])
+    monkeypatch.setattr("app.services.market_quote_cache_refresh.market_pulse_index_etf_symbols", lambda: ["510300", "159915"])
 
     symbols = build_quote_cache_demand_symbols(db=None)  # type: ignore[arg-type]
 
-    assert symbols == ["600000", "600001", "600002", "600003", "600004", "600005"]
+    assert symbols == ["600000", "600001", "600002", "600003", "600004", "600005", "510300", "159915"]
 
 
 def _quote(symbol: str, *, source_quality: str = "fresh") -> QuoteSnapshot:
@@ -125,8 +126,9 @@ def test_target_symbols_keeps_core_hot_read_demand_before_liquidity_tail() -> No
             ("000011", "半导体", 2000),
             ("600001", "银行", 100000),
             ("600002", "银行", 99000),
+            ("510300", "宽基", 5000),
         ]:
-            db.add(Instrument(symbol=symbol, name=f"{sector}{symbol}", sector_name=sector))
+            db.add(Instrument(symbol=symbol, name=f"{sector}{symbol}", sector_name=sector, instrument_type="etf" if symbol == "510300" else "stock"))
             db.add(
                 DailyBarSnapshot(
                     symbol=symbol,

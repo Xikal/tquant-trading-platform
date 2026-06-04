@@ -114,8 +114,10 @@ class AppSettings(BaseSettings):
     quote_cache_demand_warmup_enabled: bool = True
     read_model_live_overlay_enabled: bool = True
     priority_board_empty_fallback_to_last_snapshot: bool = True
+    priority_board_web_sync_refresh_enabled: bool = False
     priority_board_overlay_cache_enabled: bool = True
     priority_board_overlay_cache_ttl_seconds: int = 2
+    priority_board_live_overlay_timeout_ms: int = 80
     priority_board_filter_cache_enabled: bool = True
     priority_board_stable_read_model_enabled: bool = True
     priority_board_stable_read_model_ttl_seconds: int = 45

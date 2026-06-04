@@ -6441,7 +6441,7 @@
             "type": "array"
           },
           "schema_version": {
-            "default": "v14",
+            "default": "v15",
             "title": "Schema Version",
             "type": "string"
           },
@@ -6461,6 +6461,17 @@
           "detail": {
             "title": "Detail",
             "type": "string"
+          },
+          "elapsed_ms": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Elapsed Ms"
           },
           "fallback_source": {
             "default": "python_local",
@@ -6511,6 +6522,45 @@
         "title": "BffPartialError",
         "type": "object"
       },
+      "BffSourceTiming": {
+        "properties": {
+          "elapsed_ms": {
+            "default": 0,
+            "title": "Elapsed Ms",
+            "type": "integer"
+          },
+          "reason": {
+            "default": "",
+            "title": "Reason",
+            "type": "string"
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          },
+          "status": {
+            "default": "ok",
+            "title": "Status",
+            "type": "string"
+          },
+          "timeout_ms": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timeout Ms"
+          }
+        },
+        "required": [
+          "source"
+        ],
+        "title": "BffSourceTiming",
+        "type": "object"
+      },
       "BffWorkspaceManifest": {
         "properties": {
           "model": {
@@ -6522,7 +6572,7 @@
             "type": "string"
           },
           "schema_version": {
-            "default": "v14",
+            "default": "v15",
             "title": "Schema Version",
             "type": "string"
           }
@@ -14622,6 +14672,11 @@
             "title": "Partial Errors",
             "type": "array"
           },
+          "refresh_queued": {
+            "default": false,
+            "title": "Refresh Queued",
+            "type": "boolean"
+          },
           "review_reports": {
             "items": {
               "$ref": "#/components/schemas/MarketReviewReportOut"
@@ -14650,7 +14705,7 @@
             ]
           },
           "schema_version": {
-            "default": "v14",
+            "default": "v15",
             "title": "Schema Version",
             "type": "string"
           },
@@ -14663,6 +14718,23 @@
                 "type": "null"
               }
             ]
+          },
+          "source_timings": {
+            "items": {
+              "$ref": "#/components/schemas/BffSourceTiming"
+            },
+            "title": "Source Timings",
+            "type": "array"
+          },
+          "stale": {
+            "default": false,
+            "title": "Stale",
+            "type": "boolean"
+          },
+          "stale_reason": {
+            "default": "",
+            "title": "Stale Reason",
+            "type": "string"
           }
         },
         "required": [
@@ -16857,7 +16929,7 @@
             "type": "array"
           },
           "schema_version": {
-            "default": "v14",
+            "default": "v15",
             "title": "Schema Version",
             "type": "string"
           },
@@ -19354,7 +19426,7 @@
             ]
           },
           "schema_version": {
-            "default": "v14",
+            "default": "v15",
             "title": "Schema Version",
             "type": "string"
           },
@@ -22506,7 +22578,7 @@
             ]
           },
           "schema_version": {
-            "default": "v14",
+            "default": "v15",
             "title": "Schema Version",
             "type": "string"
           },

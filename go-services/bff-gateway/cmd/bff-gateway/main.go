@@ -1,8 +1,10 @@
 package main
 
 import (
+	"context"
 	crand "crypto/rand"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -25,6 +27,7 @@ type config struct {
 	timeout           time.Duration
 	sourceTimeout     time.Duration
 	workspaceCacheTTL time.Duration
+	workspaceStaleTTL time.Duration
 }
 
 var bffAggregateHits atomic.Int64
@@ -52,7 +55,7 @@ var bffWorkspaceProxyFactorFallbacks atomic.Int64
 func main() {
 	cfg := loadConfig()
 	client := &http.Client{Timeout: cfg.timeout}
-	cache := newWorkspaceCache(cfg.workspaceCacheTTL)
+	cache := newWorkspaceCacheWithStale(cfg.workspaceCacheTTL, cfg.workspaceStaleTTL)
 	mux := http.NewServeMux()
 	mux.HandleFunc("/healthz", healthHandler)
 	mux.HandleFunc("/readyz", healthHandler)
@@ -85,6 +88,7 @@ func loadConfig() config {
 		timeout:           durationSeconds("TQUANT_SERVICE_CALL_TIMEOUT_SECONDS", 5),
 		sourceTimeout:     durationSeconds("BFF_SOURCE_TIMEOUT_SECONDS", 1),
 		workspaceCacheTTL: durationSeconds("BFF_WORKSPACE_CACHE_TTL_SECONDS", 5),
+		workspaceStaleTTL: durationSeconds("BFF_WORKSPACE_STALE_TTL_SECONDS", 60),
 	}
 }
 
@@ -122,6 +126,7 @@ func metricsHandler(cache *workspaceCache) http.HandlerFunc {
 			"tquant_bff_gateway_cache_hit_rate " + strconv.FormatFloat(hitRate, 'f', 6, 64),
 			"tquant_bff_gateway_cache_items " + strconv.Itoa(cache.size()),
 			"tquant_bff_gateway_cache_ttl_seconds " + strconv.FormatFloat(cache.ttlSeconds(), 'f', 3, 64),
+			"tquant_bff_gateway_cache_stale_ttl_seconds " + strconv.FormatFloat(cache.staleTTLSeconds(), 'f', 3, 64),
 			"tquant_bff_gateway_partial_source_failures_total " + strconv.FormatInt(bffPartialSourceFailures.Load(), 10),
 			"tquant_bff_gateway_partial_source_failures_total{reason=\"timeout\"} " + strconv.FormatInt(bffPartialTimeoutFailures.Load(), 10),
 			"tquant_bff_gateway_partial_source_failures_total{reason=\"status\"} " + strconv.FormatInt(bffPartialStatusFailures.Load(), 10),
@@ -182,6 +187,21 @@ func proxyWorkspaceHandler(cfg config, client *http.Client, cache *workspaceCach
 			return
 		}
 		workspace := workspaceName(r.URL.Path)
+		cacheKey := workspaceCacheKey(r)
+		if workspace == "monitor" && cache.staleEnabled() {
+			if cached, ok := cache.getStale(cacheKey); ok {
+				bffCacheHits.Add(1)
+				if cached.contentType != "" {
+					w.Header().Set("Content-Type", cached.contentType)
+				}
+				w.Header().Set("X-BFF-Cache", "STALE")
+				w.Header().Set("X-BFF-Stale", "1")
+				go refreshWorkspaceCache(cfg, client, cache, cacheKey, cloneWorkspaceRequest(r))
+				w.WriteHeader(cached.status)
+				_, _ = w.Write(markMonitorWorkspaceStale(cached.body, "go_bff_stale_cache_background_refresh"))
+				return
+			}
+		}
 		if result := aggregateWorkspace(cfg, client, r); result.ok {
 			bffAggregateHits.Add(1)
 			incrementWorkspaceAggregate(workspace)
@@ -225,6 +245,42 @@ func proxyWorkspaceHandler(cfg config, client *http.Client, cache *workspaceCach
 		w.WriteHeader(resp.StatusCode)
 		_, _ = w.Write(body)
 	}
+}
+
+func refreshWorkspaceCache(cfg config, client *http.Client, cache *workspaceCache, cacheKey string, r *http.Request) {
+	if cache == nil || r == nil {
+		return
+	}
+	workspace := workspaceName(r.URL.Path)
+	if result := aggregateWorkspace(cfg, client, r); result.ok {
+		bffAggregateHits.Add(1)
+		incrementWorkspaceAggregate(workspace)
+		cache.set(cacheKey, result.status, result.body, result.contentType)
+	}
+}
+
+func cloneWorkspaceRequest(r *http.Request) *http.Request {
+	clone := r.Clone(context.Background())
+	clone.Header = make(http.Header, len(r.Header))
+	for key, values := range r.Header {
+		clone.Header[key] = append([]string(nil), values...)
+	}
+	return clone
+}
+
+func markMonitorWorkspaceStale(body []byte, reason string) []byte {
+	var payload map[string]any
+	if err := json.Unmarshal(body, &payload); err != nil {
+		return body
+	}
+	payload["stale"] = true
+	payload["stale_reason"] = reason
+	payload["refresh_queued"] = true
+	updated, err := json.Marshal(payload)
+	if err != nil {
+		return body
+	}
+	return updated
 }
 
 func incrementWorkspaceAggregate(workspace string) {

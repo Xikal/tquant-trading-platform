@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import threading
 import time
+from concurrent.futures import ThreadPoolExecutor, TimeoutError
 from typing import Any
 
 from app.core.config import get_settings
@@ -19,6 +20,7 @@ from app.services.performance.read_model_metrics import record_live_overlay_hit,
 _SOURCE = "local_quote_cache"
 _CACHE_LOCK = threading.RLock()
 _OVERLAY_CACHE: dict[str, tuple[float, LowBuyPriorityBoardResponse]] = {}
+_QUOTE_EXECUTOR = ThreadPoolExecutor(max_workers=2, thread_name_prefix="live-quote-overlay")
 
 
 def apply_priority_board_live_overlay(response: LowBuyPriorityBoardResponse) -> LowBuyPriorityBoardResponse:
@@ -32,7 +34,12 @@ def apply_priority_board_live_overlay(response: LowBuyPriorityBoardResponse) -> 
         if cached is not None:
             return cached
     symbols = _priority_board_symbols(response)
-    quote_map = _quote_map(symbols)
+    quote_map = _quote_map_with_budget(
+        symbols,
+        timeout_ms=getattr(settings, "priority_board_live_overlay_timeout_ms", 80),
+    )
+    if not quote_map:
+        return response
     items = [_overlay_priority_item(item, quote_map.get(item.symbol)) for item in response.items]
     sections = [
         section.model_copy(update={"items": [_overlay_priority_item(item, quote_map.get(item.symbol)) for item in section.items]})
@@ -153,6 +160,20 @@ def _quote_map(symbols: list[str]) -> dict[str, QuoteSnapshot]:
         else:
             record_live_overlay_miss(_SOURCE)
     return quotes
+
+
+def _quote_map_with_budget(symbols: list[str], *, timeout_ms: int | float | None) -> dict[str, QuoteSnapshot]:
+    budget = float(timeout_ms or 0)
+    if budget <= 0:
+        return {}
+    future = _QUOTE_EXECUTOR.submit(_quote_map, list(symbols))
+    try:
+        return future.result(timeout=budget / 1000.0)
+    except TimeoutError:
+        future.cancel()
+        return {}
+    except Exception:
+        return {}
 
 
 def _priority_overlay_cache_key(response: LowBuyPriorityBoardResponse, marker: dict[str, Any]) -> str:
