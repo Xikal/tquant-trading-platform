@@ -41,9 +41,35 @@
 
 ## Deployment Status
 
-- Local implementation completed.
+- Deployed to `43.143.243.97` with:
+  - `./scripts/one_click_cloud_deploy.sh --scope all --host 43.143.243.97 --key /Users/j/Downloads/gupiao.pem`
+- Remote services verified healthy:
+  - `tquant-app-mysql`
+  - `tquant-go-bff-gateway`
+  - `tquant-go-market-read-service`
+  - runtime scheduler/worker, analytics worker, backtest worker
 - Not pushed.
-- Online deployment and two-round performance acceptance are pending commit-state gate and user-approved deployment command.
+
+## Online Acceptance
+
+Command, twice:
+
+```bash
+python3 scripts/measure_cloud_go_rust_performance.py --samples 8
+python3 scripts/measure_cloud_go_rust_performance.py --samples 8
+```
+
+| Report | ok | failures | monitor_bff p95 | priority_board p95 | BFF timeout | BFF partial | market unresolved | market fallback | quote_missing | coverage |
+| --- | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| `docs/reports/gupiao-cloud-performance-2026-06-05-012124.json` | true | `[]` | `193.362ms` | `163.228ms` | `0` | `0` | `0` | `0` | `0` | `10000bps` |
+| `docs/reports/gupiao-cloud-performance-2026-06-05-012235.json` | true | `[]` | `20.531ms` | `103.539ms` | `0` | `0` | `0` | `0` | `0` | `10000bps` |
+
+Result:
+
+- `monitor_bff` target `<500ms` met; ideal `<300ms` met in both rounds.
+- `priority_board` target `<500ms` met; ideal `<250ms` met in both rounds.
+- BFF timeout cleared.
+- market-read unresolved/fallback warnings cleared during both sampling windows.
 
 ## Boundaries
 
