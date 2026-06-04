@@ -49,6 +49,7 @@ def test_cloud_ssh_lib_retries_transient_scp_connection_resets() -> None:
     ssh_lib = read_repo_file("scripts/cloud_ssh_lib.sh")
 
     assert "cloud_ssh_transient_log" in ssh_lib
+    assert "/tmp/gupiao-ssh-retry" in ssh_lib
     assert 'ConnectTimeout="${CLOUD_SSH_CONNECT_TIMEOUT:-30}"' in ssh_lib
     assert 'ConnectionAttempts="${CLOUD_SSH_CONNECTION_ATTEMPTS:-3}"' in ssh_lib
     assert "CLOUD_SSH_RETRY_ATTEMPTS" in ssh_lib
@@ -59,6 +60,7 @@ def test_cloud_ssh_lib_retries_transient_scp_connection_resets() -> None:
     assert "kex_exchange_identification" in ssh_lib
     assert "Connection reset by peer" in ssh_lib
     assert "Connection closed" in ssh_lib
+    assert "ssh transient connection failure" in ssh_lib
     assert "ssh/scp transient connection failure" in ssh_lib
 
 
@@ -242,6 +244,25 @@ def test_deploy_scripts_support_scope_aware_fast_paths() -> None:
     assert "web_image:skipped_frontend_hot" in quick_script
     assert "--scope  Override target selection" in one_click_script
     assert "DEPLOY_TARGET_SCOPE=auto" in deploy_example
+    assert "DEPLOY_SYNC_MODE=git-first" in deploy_example
+
+
+def test_cloud_deploy_prefers_remote_git_sync_before_package_upload() -> None:
+    deploy_script = read_repo_file("scripts/deploy_cloud_server.sh")
+    workflow = read_repo_file(".github/workflows/ci.yml")
+
+    assert 'DEPLOY_SYNC_MODE="${DEPLOY_SYNC_MODE:-git-first}"' in deploy_script
+    assert 'DEPLOY_GIT_REMOTE_URL="${DEPLOY_GIT_REMOTE_URL:-https://github.com/Xikal/tquant-trading-platform.git}"' in deploy_script
+    assert 'DEPLOY_GIT_REF="${DEPLOY_GIT_REF:-${GITHUB_SHA:-HEAD}}"' in deploy_script
+    assert "remote_deploy_from_git" in deploy_script
+    assert "deploy via remote git sync ref" in deploy_script
+    assert "deploy_sync:git" in deploy_script
+    assert "git clone --no-checkout \"$git_url\" \"$WORKTREE\"" in deploy_script
+    assert "git -C \"$WORKTREE\" checkout --detach \"$DEPLOY_GIT_REF\"" in deploy_script
+    assert "remote git sync unavailable; falling back to package upload" in deploy_script
+    assert "package-only" in deploy_script
+    assert "DEPLOY_GIT_REF: ${{ github.sha }}" in workflow
+    assert "DEPLOY_GIT_AUTH_TOKEN: ${{ github.token }}" in workflow
 
 
 def test_makefile_has_one_click_deploy_shortcuts() -> None:

@@ -175,7 +175,7 @@ jobs:
                   ;;
                 docs/*|AGENTS.md|IMPLEMENTATION_PLAN.md)
                   ;;
-                .github/workflows/ci.yml|.gitignore|.env.deploy.local.example|Makefile|backend/tests/test_cloud_deploy_scripts.py|scripts/cloud_ssh_lib.sh|scripts/deploy_cloud_server.sh|scripts/quick_cloud_deploy.sh|scripts/one_click_cloud_deploy.sh|scripts/install_https_nginx.sh|scripts/install_backup_cron.sh|scripts/backup_database.sh|scripts/clean_local_artifacts.sh)
+                .github/workflows/ci.yml|.gitignore|.env.deploy.local.example|Makefile|backend/tests/test_cloud_deploy_scripts.py|scripts/cloud_ssh_lib.sh|scripts/deploy_cloud_server.sh|scripts/quick_cloud_deploy.sh|scripts/one_click_cloud_deploy.sh|scripts/install_https_nginx.sh|scripts/install_backup_cron.sh|scripts/backup_database.sh|scripts/clean_local_artifacts.sh|scripts/run_platform_component.sh)
                   has_ops=1
                   ;;
                 *)
@@ -219,6 +219,8 @@ jobs:
           RUN_STRATEGY_TEST: "0"
           RUN_FULL_TESTS: "0"
           DEPLOY_FRONTEND_HOT_REQUIRED: "1"
+          DEPLOY_GIT_REF: ${{ github.sha }}
+          DEPLOY_GIT_AUTH_TOKEN: ${{ github.token }}
         run: |
           if [ -z "${CLOUD_HOST}" ] || [ -z "${CLOUD_USER}" ]; then
             echo "CLOUD_HOST/CLOUD_USER secrets 未配置，不能执行真实部署。"

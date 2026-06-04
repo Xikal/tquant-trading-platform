@@ -29,13 +29,23 @@ cloud_ssh() {
   target="$(cloud_ssh_target)"
   local -a CLOUD_SSH_OPTS
   cloud_build_ssh_opts
+  local attempts="${CLOUD_SSH_RETRY_ATTEMPTS:-6}"
+  local retry_delay="${CLOUD_SSH_RETRY_DELAY_SECONDS:-5}"
+  local attempt=1
+  local status=0
   if [[ -n "${CLOUD_PASSWORD:-}" ]]; then
     command -v expect >/dev/null || {
       echo "CLOUD_PASSWORD requires expect. Install expect or use CLOUD_SSH_KEY." >&2
       return 1
     }
-    local remote_cmd="$*"
-    CLOUD_EXPECT_TARGET="$target" CLOUD_EXPECT_CMD="$remote_cmd" CLOUD_EXPECT_OPTS="${CLOUD_SSH_OPTS[*]}" expect <<'EOF'
+  fi
+
+  while (( attempt <= attempts )); do
+    local log_file
+    log_file="$(mktemp "/tmp/gupiao-ssh-retry-${attempt}-XXXXXX.log")"
+    if [[ -n "${CLOUD_PASSWORD:-}" ]]; then
+      local remote_cmd="$*"
+      if CLOUD_EXPECT_TARGET="$target" CLOUD_EXPECT_CMD="$remote_cmd" CLOUD_EXPECT_OPTS="${CLOUD_SSH_OPTS[*]}" expect >"$log_file" 2>&1 <<'EOF'
 set timeout [expr {[info exists env(CLOUD_SSH_TIMEOUT)] ? $env(CLOUD_SSH_TIMEOUT) : 900}]
 set argv [concat [split $env(CLOUD_EXPECT_OPTS)] [list $env(CLOUD_EXPECT_TARGET) $env(CLOUD_EXPECT_CMD)]]
 spawn ssh {*}$argv
@@ -46,9 +56,32 @@ expect {
 catch wait result
 exit [lindex $result 3]
 EOF
-  else
-    ssh "${CLOUD_SSH_OPTS[@]}" "$target" "$@"
-  fi
+      then
+        cat "$log_file"
+        rm -f "$log_file"
+        return 0
+      fi
+      status=$?
+    elif ssh "${CLOUD_SSH_OPTS[@]}" "$target" "$@" >"$log_file" 2>&1; then
+      cat "$log_file"
+      rm -f "$log_file"
+      return 0
+    else
+      status=$?
+    fi
+
+    cat "$log_file" >&2
+    if (( attempt < attempts )) && cloud_ssh_transient_log "$log_file"; then
+      echo "ssh transient connection failure; retrying attempt $((attempt + 1))/${attempts}" >&2
+      rm -f "$log_file"
+      sleep $((attempt * retry_delay))
+      attempt=$((attempt + 1))
+      continue
+    fi
+    rm -f "$log_file"
+    return "$status"
+  done
+  return "$status"
 }
 
 cloud_scp_to() {

@@ -27,6 +27,10 @@ BACKUP_TIME="${BACKUP_TIME:-02:20}"
 DEPLOY_TARGET_SCOPE="${DEPLOY_TARGET_SCOPE:-auto}"
 DEPLOY_CHANGED_FILES="${DEPLOY_CHANGED_FILES:-}"
 DEPLOY_FRONTEND_HOT_REQUIRED="${DEPLOY_FRONTEND_HOT_REQUIRED:-0}"
+DEPLOY_SYNC_MODE="${DEPLOY_SYNC_MODE:-git-first}"
+DEPLOY_GIT_REMOTE_URL="${DEPLOY_GIT_REMOTE_URL:-https://github.com/Xikal/tquant-trading-platform.git}"
+DEPLOY_GIT_REF="${DEPLOY_GIT_REF:-${GITHUB_SHA:-HEAD}}"
+DEPLOY_GIT_AUTH_TOKEN="${DEPLOY_GIT_AUTH_TOKEN:-}"
 RUN_COMPILE="${RUN_COMPILE:-1}"
 RUN_FRONTEND_BUILD="${RUN_FRONTEND_BUILD:-1}"
 RUN_STRATEGY_TEST="${RUN_STRATEGY_TEST:-1}"
@@ -236,6 +240,239 @@ make_package() {
     -czf "$package_path" -C "$ROOT_DIR" .
   verify_package_contents "$package_path"
   printf '%s\n' "$package_path"
+}
+
+remote_deploy_from_git() {
+  if [[ "$DEPLOY_RESOLVED_SCOPE" != "all" || "$DEPLOY_SYNC_MODE" == "package-only" ]]; then
+    return 1
+  fi
+
+  log "deploy via remote git sync ref ${DEPLOY_GIT_REF}"
+  cloud_ssh env \
+    CLOUD_PROJECT_DIR="$CLOUD_PROJECT_DIR" \
+    CLOUD_COMPOSE_FILE="$CLOUD_COMPOSE_FILE" \
+    CLOUD_USER="$CLOUD_USER" \
+    CLOUD_KEEP_BACKUPS="$CLOUD_KEEP_BACKUPS" \
+    CLOUD_AUTH_COOKIE_SECURE="${CLOUD_AUTH_COOKIE_SECURE:-}" \
+    CLOUD_AUTH_ALLOW_INSECURE_HTTP_COOKIE="${CLOUD_AUTH_ALLOW_INSECURE_HTTP_COOKIE:-}" \
+    REMOTE_DEBIAN_APT_MIRROR="$REMOTE_DEBIAN_APT_MIRROR" \
+    REMOTE_DEBIAN_APT_SECURITY_MIRROR="$REMOTE_DEBIAN_APT_SECURITY_MIRROR" \
+    DEPLOY_RESOLVED_SCOPE="$DEPLOY_RESOLVED_SCOPE" \
+    HTTPS_REQUIRED="$HTTPS_REQUIRED" \
+    DEPLOY_GIT_REMOTE_URL="$DEPLOY_GIT_REMOTE_URL" \
+    DEPLOY_GIT_REF="$DEPLOY_GIT_REF" \
+    DEPLOY_GIT_AUTH_TOKEN="$DEPLOY_GIT_AUTH_TOKEN" \
+    bash -s <<'REMOTE'
+set -euo pipefail
+TS=$(date +%Y%m%d%H%M%S)
+REQUIRED_PATHS="Dockerfile docker-compose.mysql.yml backend/app/main.py frontend/package.json frontend/src/main.tsx frontend/src/ui/data/index.ts scripts/install_https_nginx.sh"
+DEPLOY_SCOPE="${DEPLOY_RESOLVED_SCOPE:-all}"
+
+require_release_paths() {
+  local root="$1"
+  local path
+  for path in $REQUIRED_PATHS; do
+    if ! test -e "$root/$path"; then
+      echo "remote git release missing required path: $path" >&2
+      exit 1
+    fi
+  done
+}
+
+upsert_env_value() {
+  local key="$1"
+  local value="$2"
+  sed -i "/^${key}=/d" .env
+  printf '%s=%s\n' "$key" "$value" >> .env
+}
+
+docker_compose_build() {
+  local log_file="/tmp/gupiao-docker-build-$TS.log"
+  local attempt
+  for attempt in 1 2 3; do
+    if COMPOSE_BAKE=false sudo -E docker compose -f "$CLOUD_COMPOSE_FILE" build "$@" 2>&1 | tee "$log_file"; then
+      rm -f "$log_file"
+      return 0
+    fi
+    if grep -Eqi 'TLS handshake timeout|failed to resolve source metadata|failed to do request|i/o timeout|connection reset by peer|temporary failure|context deadline exceeded|no active session|DeadlineExceeded|BuildKit' "$log_file"; then
+      if test "$attempt" -lt 3; then
+        echo "docker build transient registry/buildkit failure; retrying attempt $((attempt + 1))/3" >&2
+        sleep $((attempt * 5))
+        continue
+      fi
+      echo "docker build transient failure persisted; retrying with classic builder" >&2
+      COMPOSE_BAKE=false DOCKER_BUILDKIT=0 COMPOSE_DOCKER_CLI_BUILD=0 sudo -E docker compose -f "$CLOUD_COMPOSE_FILE" build "$@"
+      rm -f "$log_file"
+      return 0
+    fi
+    cat "$log_file" >&2
+    rm -f "$log_file"
+    return 1
+  done
+  cat "$log_file" >&2
+  rm -f "$log_file"
+  return 1
+}
+
+git_url="$DEPLOY_GIT_REMOTE_URL"
+if test -n "${DEPLOY_GIT_AUTH_TOKEN:-}" && printf '%s' "$git_url" | grep -q '^https://github.com/'; then
+  git_url="$(printf '%s' "$git_url" | sed "s#^https://#https://x-access-token:${DEPLOY_GIT_AUTH_TOKEN}@#")"
+fi
+
+cd /home/$CLOUD_USER
+WORKTREE="/home/$CLOUD_USER/gupiao-git-worktree"
+rm -rf "$WORKTREE"
+git clone --no-checkout "$git_url" "$WORKTREE"
+git -C "$WORKTREE" fetch --prune --tags origin
+git -C "$WORKTREE" checkout --detach "$DEPLOY_GIT_REF"
+git -C "$WORKTREE" remote set-url origin "$DEPLOY_GIT_REMOTE_URL" 2>/dev/null || true
+require_release_paths "$WORKTREE"
+if test -d "$CLOUD_PROJECT_DIR/.runtime"; then cp -a "$CLOUD_PROJECT_DIR/.runtime" "$WORKTREE/.runtime" || true; fi
+if test -f "$CLOUD_PROJECT_DIR/.env"; then cp -a "$CLOUD_PROJECT_DIR/.env" "$WORKTREE/.env" || true; fi
+PROJECT_PARENT=$(dirname "$CLOUD_PROJECT_DIR")
+sudo mkdir -p "$PROJECT_PARENT"
+if test -d "$CLOUD_PROJECT_DIR"; then
+  sudo mv "$CLOUD_PROJECT_DIR" "/home/$CLOUD_USER/gupiao-deploy-backup-$TS"
+  sudo chown -R "$CLOUD_USER:$CLOUD_USER" "/home/$CLOUD_USER/gupiao-deploy-backup-$TS" || true
+fi
+sudo mv "$WORKTREE" "$CLOUD_PROJECT_DIR"
+sudo chown -R "$CLOUD_USER:$CLOUD_USER" "$CLOUD_PROJECT_DIR"
+cd "$CLOUD_PROJECT_DIR"
+touch .env
+echo "deploy_scope:$DEPLOY_SCOPE"
+echo "deploy_sync:git"
+if ! grep -Eq '^AUTH_SECRET_KEY=.{64,}' .env; then
+  sed -i '/^AUTH_SECRET_KEY=/d' .env
+  SECRET=$(openssl rand -hex 32 2>/dev/null || python3 - <<'PY'
+import secrets
+print(secrets.token_hex(32))
+PY
+)
+  printf 'AUTH_SECRET_KEY=%s\n' "$SECRET" >> .env
+fi
+if ! grep -Eq '^TQUANT_SETTINGS_ENCRYPTION_KEY=.{64,}' .env; then
+  sed -i '/^TQUANT_SETTINGS_ENCRYPTION_KEY=/d' .env
+  SETTINGS_SECRET=$(openssl rand -hex 32 2>/dev/null || python3 - <<'PY'
+import secrets
+print(secrets.token_hex(32))
+PY
+)
+  printf 'TQUANT_SETTINGS_ENCRYPTION_KEY=%s\n' "$SETTINGS_SECRET" >> .env
+fi
+if ! grep -Eq '^TQUANT_INTERNAL_SERVICE_TOKEN=.{32,}' .env; then
+  sed -i '/^TQUANT_INTERNAL_SERVICE_TOKEN=/d' .env
+  INTERNAL_SERVICE_TOKEN=$(openssl rand -hex 32 2>/dev/null || python3 - <<'PY'
+import secrets
+print(secrets.token_hex(32))
+PY
+)
+  printf 'TQUANT_INTERNAL_SERVICE_TOKEN=%s\n' "$INTERNAL_SERVICE_TOKEN" >> .env
+fi
+AUTH_COOKIE_SECURE_VALUE="$CLOUD_AUTH_COOKIE_SECURE"
+if test -z "$AUTH_COOKIE_SECURE_VALUE"; then
+  AUTH_COOKIE_SECURE_VALUE=true
+fi
+if test "$(printf '%s' "$AUTH_COOKIE_SECURE_VALUE" | tr '[:upper:]' '[:lower:]')" != "true"; then
+  echo "production cloud deployment requires AUTH_COOKIE_SECURE=true" >&2
+  exit 2
+fi
+if test -n "$CLOUD_AUTH_ALLOW_INSECURE_HTTP_COOKIE" && test "$(printf '%s' "$CLOUD_AUTH_ALLOW_INSECURE_HTTP_COOKIE" | tr '[:upper:]' '[:lower:]')" != "false"; then
+  echo "production cloud deployment requires AUTH_ALLOW_INSECURE_HTTP_COOKIE=false" >&2
+  exit 2
+fi
+upsert_env_value AUTH_COOKIE_SECURE "$AUTH_COOKIE_SECURE_VALUE"
+upsert_env_value AUTH_ALLOW_INSECURE_HTTP_COOKIE false
+upsert_env_value HTTPS_REQUIRED "$HTTPS_REQUIRED"
+upsert_env_value WEB_RUNTIME_BACKGROUND_JOBS_ENABLED false
+upsert_env_value PAPER_AUTO_TRADING_ENABLED "${PAPER_AUTO_TRADING_ENABLED:-false}"
+if test -n "$REMOTE_DEBIAN_APT_MIRROR"; then
+  upsert_env_value DEBIAN_APT_MIRROR "$REMOTE_DEBIAN_APT_MIRROR"
+fi
+if test -n "$REMOTE_DEBIAN_APT_SECURITY_MIRROR"; then
+  upsert_env_value DEBIAN_APT_SECURITY_MIRROR "$REMOTE_DEBIAN_APT_SECURITY_MIRROR"
+fi
+
+docker_compose_build app analytics-worker
+sudo docker compose -f "$CLOUD_COMPOSE_FILE" up --no-build --force-recreate --abort-on-container-exit --exit-code-from migration migration
+sudo docker rm -f tquant-app-mysql tquant-runtime-scheduler-mysql tquant-runtime-worker-mysql tquant-backtest-worker-mysql tquant-analytics-worker-mysql 2>/dev/null || true
+sudo docker compose -f "$CLOUD_COMPOSE_FILE" up -d --no-build --force-recreate app runtime-scheduler runtime-worker backtest-worker analytics-worker
+EXPECTED_WEB_IMAGE=$(sudo docker image inspect tquant-web:mysql --format '{{.Id}}')
+for container in tquant-app-mysql tquant-runtime-scheduler-mysql tquant-runtime-worker-mysql tquant-backtest-worker-mysql; do
+  ACTUAL_WEB_IMAGE=$(sudo docker inspect "$container" --format '{{.Image}}')
+  if test "$ACTUAL_WEB_IMAGE" != "$EXPECTED_WEB_IMAGE"; then
+    echo "$container is still running $ACTUAL_WEB_IMAGE; expected $EXPECTED_WEB_IMAGE" >&2
+    exit 1
+  fi
+done
+echo "web_image:updated"
+EXPECTED_ANALYTICS_IMAGE=$(sudo docker image inspect tquant-analytics:mysql --format '{{.Id}}')
+ACTUAL_ANALYTICS_IMAGE=$(sudo docker inspect tquant-analytics-worker-mysql --format '{{.Image}}')
+if test "$ACTUAL_ANALYTICS_IMAGE" != "$EXPECTED_ANALYTICS_IMAGE"; then
+  echo "tquant-analytics-worker-mysql is still running $ACTUAL_ANALYTICS_IMAGE; expected $EXPECTED_ANALYTICS_IMAGE" >&2
+  exit 1
+fi
+for _ in $(seq 1 30); do
+  ANALYTICS_STATUS=$(sudo docker inspect tquant-analytics-worker-mysql --format '{{.State.Health.Status}}' 2>/dev/null || echo none)
+  echo "analytics-worker health:$ANALYTICS_STATUS"
+  if test "$ANALYTICS_STATUS" = healthy; then
+    break
+  fi
+  sleep 2
+done
+if test "$ANALYTICS_STATUS" != healthy; then
+  echo "analytics-worker did not become healthy" >&2
+  exit 1
+fi
+sudo docker exec tquant-analytics-worker-mysql python - <<'PY'
+from app.core.database import ping_database
+from app.services.analytics.dependencies import require_analytics_dependencies
+
+require_analytics_dependencies()
+ping_database()
+print("analytics_worker_readyz:ok")
+PY
+sudo docker exec -u root tquant-app-mysql sh -c 'mkdir -p /app/backend/data && chown -R tquant:tquant /app/backend/data' || true
+
+python3 - <<'PY'
+from pathlib import Path
+from urllib.parse import quote
+
+path = Path('.env')
+text = path.read_text(encoding='utf-8')
+values = {}
+for line in text.splitlines():
+    if line.startswith('#') or '=' not in line:
+        continue
+    key, value = line.split('=', 1)
+    values[key.strip()] = value.strip()
+
+dsn = values.get('MYSQL_DSN', '').strip()
+if not dsn:
+    user = values.get('MYSQL_USER', 'tquant_app').strip() or 'tquant_app'
+    password = values.get('MYSQL_PASSWORD', '').strip()
+    database = values.get('MYSQL_DATABASE', 't_quant').strip() or 't_quant'
+    if password:
+        dsn = f"mysql+mysqldb://{quote(user, safe='')}:{quote(password, safe='')}@mysql:3306/{quote(database, safe='')}?charset=utf8mb4"
+        if not text.endswith('\n'):
+            text += '\n'
+        text += f"MYSQL_DSN={dsn}\n"
+        path.write_text(text, encoding='utf-8')
+        print('mysql_dsn:created')
+PY
+docker_compose_build go-bff-gateway go-market-read-service go-scan-worker
+sudo docker compose -f "$CLOUD_COMPOSE_FILE" up -d --no-build --force-recreate go-bff-gateway go-market-read-service go-scan-worker
+EXPECTED_WEB_IMAGE=$(sudo docker image inspect tquant-web:mysql --format '{{.Id}}')
+for container in tquant-app-mysql tquant-runtime-scheduler-mysql tquant-runtime-worker-mysql tquant-backtest-worker-mysql; do
+  ACTUAL_WEB_IMAGE=$(sudo docker inspect "$container" --format '{{.Image}}')
+  if test "$ACTUAL_WEB_IMAGE" != "$EXPECTED_WEB_IMAGE"; then
+    echo "$container changed away from web image after Go service deploy" >&2
+    exit 1
+  fi
+done
+sudo docker exec -u root tquant-app-mysql sh -c 'mkdir -p /app/backend/data/ml_models && chown -R tquant:tquant /app/backend/data' || true
+ls -dt /home/$CLOUD_USER/gupiao-deploy-backup-* 2>/dev/null | tail -n +$((CLOUD_KEEP_BACKUPS + 1)) | xargs -r sudo rm -rf
+sudo docker ps --format 'table {{.Names}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}'
+REMOTE
 }
 
 remote_deploy() {
@@ -722,15 +959,24 @@ main() {
   log "resolved deploy scope: ${DEPLOY_RESOLVED_SCOPE}"
   run_local_checks
   ensure_frontend_hot_artifact
-  local package_path
-  package_path="$(make_package | tail -n 1)"
-  remote_deploy "$package_path"
+  local package_path=""
+  if remote_deploy_from_git; then
+    log "remote git sync deploy completed"
+  else
+    if [[ "$DEPLOY_RESOLVED_SCOPE" == "all" && "$DEPLOY_SYNC_MODE" != "package-only" ]]; then
+      log "remote git sync unavailable; falling back to package upload"
+    fi
+    package_path="$(make_package | tail -n 1)"
+    remote_deploy "$package_path"
+  fi
   remote_configure_ops
   verify_remote
   verify_https_remote
   verify_go_remote
   verify_latest_data_remote
-  rm -f "$package_path"
+  if [[ -n "$package_path" ]]; then
+    rm -f "$package_path"
+  fi
   log "done: http://${CLOUD_HOST}:${CLOUD_APP_PORT} / https://${CLOUD_DOMAIN}"
 }
 
