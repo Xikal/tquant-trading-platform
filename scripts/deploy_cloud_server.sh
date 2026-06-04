@@ -339,7 +339,14 @@ prepare_deploy_package() {
     return 0
   fi
 
-  make_delta_package "$remote_manifest" "$delta_path" "$local_manifest" "$summary_path"
+  if ! make_delta_package "$remote_manifest" "$delta_path" "$local_manifest" "$summary_path"; then
+    DEPLOY_DELTA_FALLBACK_REASON="invalid_remote_manifest"
+    rm -f "$remote_manifest" "$delta_path" "$local_manifest" "$summary_path"
+    DEPLOY_PACKAGE_PATH="$(make_package | tail -n 1)"
+    DEPLOY_EFFECTIVE_SYNC_MODE="package-only"
+    DEPLOY_DELTA_FULL_BYTES="$(file_size_bytes "$DEPLOY_PACKAGE_PATH")"
+    return 0
+  fi
   load_delta_summary_env "$summary_path"
   if [[ -n "$DEPLOY_DELTA_FALLBACK_REASON" ]]; then
     rm -f "$remote_manifest" "$delta_path" "$local_manifest" "$summary_path"

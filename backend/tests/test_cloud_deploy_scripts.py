@@ -437,6 +437,7 @@ def test_delta_deploy_mode_is_logged_and_falls_back_to_package_only() -> None:
     assert "deploy_sync:delta-package" in deploy_script
     assert "deploy_sync:package-only" in deploy_script
     assert "missing_remote_manifest" in deploy_script
+    assert "invalid_remote_manifest" in deploy_script
     assert "remote_delta_apply_failed" in deploy_script
     assert "delta package deploy failed; falling back to full package upload" in deploy_script
     assert "sync metrics: requested_mode=${DEPLOY_SYNC_MODE} sync_mode=${DEPLOY_EFFECTIVE_SYNC_MODE}" in deploy_script
