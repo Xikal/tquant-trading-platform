@@ -304,7 +304,7 @@ def _enqueue_market_quote_cache_refresh_once() -> None:
         task = RuntimeTaskQueue(db).enqueue(
             RuntimeTaskCreate(
                 task_type="market_quote_cache_refresh",
-                payload={"limit": 200},
+                payload={"limit": 200, "demand_warmup": True},
                 priority=40,
                 idempotency_key=f"market_quote_cache_refresh:{bucket}",
                 max_attempts=2,

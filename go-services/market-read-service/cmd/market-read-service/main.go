@@ -20,6 +20,12 @@ var marketReadRedisHits atomic.Int64
 var marketReadCacheMisses atomic.Int64
 var marketReadMySQLFallbacks atomic.Int64
 var marketReadUnresolvedMisses atomic.Int64
+var marketReadUnresolvedNotInDemandSet atomic.Int64
+var marketReadUnresolvedCacheWriteFailed atomic.Int64
+var marketReadUnresolvedCacheReadMiss atomic.Int64
+var marketReadUnresolvedMySQLFallbackMissing atomic.Int64
+var marketReadUnresolvedStaleQuote atomic.Int64
+var marketReadUnresolvedSchemaMismatch atomic.Int64
 
 func main() {
 	token := strings.TrimSpace(os.Getenv("TQUANT_INTERNAL_SERVICE_TOKEN"))
@@ -63,6 +69,12 @@ func metrics(w http.ResponseWriter, _ *http.Request) {
 		"tquant_market_read_cache_miss_total " + strconv.FormatInt(marketReadCacheMisses.Load(), 10),
 		"tquant_market_read_mysql_fallbacks_total " + strconv.FormatInt(marketReadMySQLFallbacks.Load(), 10),
 		"tquant_market_read_unresolved_misses_total " + strconv.FormatInt(marketReadUnresolvedMisses.Load(), 10),
+		`tquant_market_read_unresolved_reason_total{reason="not_in_demand_set"} ` + strconv.FormatInt(marketReadUnresolvedNotInDemandSet.Load(), 10),
+		`tquant_market_read_unresolved_reason_total{reason="cache_write_failed"} ` + strconv.FormatInt(marketReadUnresolvedCacheWriteFailed.Load(), 10),
+		`tquant_market_read_unresolved_reason_total{reason="cache_read_miss"} ` + strconv.FormatInt(marketReadUnresolvedCacheReadMiss.Load(), 10),
+		`tquant_market_read_unresolved_reason_total{reason="mysql_fallback_missing"} ` + strconv.FormatInt(marketReadUnresolvedMySQLFallbackMissing.Load(), 10),
+		`tquant_market_read_unresolved_reason_total{reason="stale_quote"} ` + strconv.FormatInt(marketReadUnresolvedStaleQuote.Load(), 10),
+		`tquant_market_read_unresolved_reason_total{reason="schema_mismatch"} ` + strconv.FormatInt(marketReadUnresolvedSchemaMismatch.Load(), 10),
 	}
 	for _, symbol := range unresolvedQuoteSamples() {
 		lines = append(lines, `tquant_market_read_unresolved_symbol_sample{symbol="`+escapeMetricLabel(symbol)+`"} 1`)

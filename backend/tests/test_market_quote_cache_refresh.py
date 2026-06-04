@@ -20,12 +20,26 @@ from app.models.entities import (
 from app.models.schemas import QuoteSnapshot
 import app.services.market_quote_cache_refresh as quote_refresh_module
 from app.services.market_quote_cache_refresh import MarketQuoteCacheRefreshService
+from app.services.market_quote_cache_refresh import build_quote_cache_demand_symbols
 from app.services.market.local_quote_cache import (
     local_quote_cache_metrics_snapshot,
     record_quote_cache_demand_coverage,
     reset_local_quote_cache_metrics,
 )
 from app.services.market_quote_cache_refresh import maybe_send_quote_cache_coverage_alert
+
+
+def test_quote_cache_warmup_includes_all_hot_demand_sets(monkeypatch) -> None:
+    monkeypatch.setattr("app.services.market_quote_cache_refresh.priority_board_symbols", lambda db: ["600000"])
+    monkeypatch.setattr("app.services.market_quote_cache_refresh.monitor_board_symbols", lambda db: ["600001", "600000"])
+    monkeypatch.setattr("app.services.market_quote_cache_refresh.watchlist_symbols", lambda db: ["600002"])
+    monkeypatch.setattr("app.services.market_quote_cache_refresh.paper_position_symbols", lambda db: ["600003"])
+    monkeypatch.setattr("app.services.market_quote_cache_refresh.strategy_tracking_symbols", lambda db: ["600004"])
+    monkeypatch.setattr("app.services.market_quote_cache_refresh.sector_hot_member_symbols", lambda db: ["600005"])
+
+    symbols = build_quote_cache_demand_symbols(db=None)  # type: ignore[arg-type]
+
+    assert symbols == ["600000", "600001", "600002", "600003", "600004", "600005"]
 
 
 def _quote(symbol: str, *, source_quality: str = "fresh") -> QuoteSnapshot:

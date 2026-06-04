@@ -220,7 +220,18 @@ def _unresolved_symbols_sample(
 
 def _known_unresolved_reason(reason: str) -> str:
     value = str(reason or "not_in_cache")
-    allowed = {"not_in_cache", "no_daily_bar", "invalid_symbol", "stale_only"}
+    allowed = {
+        "not_in_cache",
+        "no_daily_bar",
+        "invalid_symbol",
+        "stale_only",
+        "not_in_demand_set",
+        "cache_write_failed",
+        "cache_read_miss",
+        "mysql_fallback_missing",
+        "stale_quote",
+        "schema_mismatch",
+    }
     return value if value in allowed else "not_in_cache"
 
 

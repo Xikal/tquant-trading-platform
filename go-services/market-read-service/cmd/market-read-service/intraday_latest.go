@@ -17,13 +17,13 @@ func intradayLatestBatchHandler(cache quoteCache) http.Handler {
 			raw := cachedPayloads[symbol]
 			if len(raw) == 0 {
 				missing = append(missing, symbol)
-				unresolvedReasons[symbol] = "not_in_cache"
+				unresolvedReasons[symbol] = "cache_read_miss"
 				continue
 			}
 			item, err := parseQuoteCachePayload(symbol, raw)
 			if err != nil {
 				missing = append(missing, symbol)
-				unresolvedReasons[symbol] = "not_in_cache"
+				unresolvedReasons[symbol] = "schema_mismatch"
 				continue
 			}
 			quote, _ := item["quote"].(map[string]any)

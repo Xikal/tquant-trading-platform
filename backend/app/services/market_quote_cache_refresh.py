@@ -13,6 +13,7 @@ from app.models.entities import (
     LowBuyResultSnapshot,
     PaperPosition,
     StrategyTrackingSnapshot,
+    SystemSetting,
     UserWatchlist,
 )
 from app.models.schema_defs.agent import AgentNotificationTestRequest
@@ -41,8 +42,8 @@ class MarketQuoteCacheRefreshService:
         self.db = db
         self.market = MarketDataService()
 
-    def refresh(self, *, limit: int = DEFAULT_LIMIT) -> dict[str, object]:
-        symbols = self._target_symbols(limit=limit)
+    def refresh(self, *, limit: int = DEFAULT_LIMIT, demand_warmup: bool | None = None) -> dict[str, object]:
+        symbols = self._target_symbols_for_refresh(limit=limit, demand_warmup=demand_warmup)
         if not symbols:
             return {"ok": True, "count": 0, "symbols": [], "message": "无可预热行情标的"}
         quotes = self._fetch_realtime_quotes(symbols)
@@ -85,6 +86,12 @@ class MarketQuoteCacheRefreshService:
                 except Exception:
                     pass
         return self.market.get_quotes_batch(symbols, force_refresh=True, allow_slow_fallback=True)
+
+    def _target_symbols_for_refresh(self, *, limit: int, demand_warmup: bool | None) -> list[str]:
+        try:
+            return self._target_symbols(limit=limit, demand_warmup=demand_warmup)
+        except TypeError:
+            return self._target_symbols(limit=limit)
 
     def _cached_symbols_after_write(self, symbols: list[str]) -> list[str]:
         cached: list[str] = []
@@ -135,13 +142,17 @@ class MarketQuoteCacheRefreshService:
             )
         return result
 
-    def _target_symbols(self, *, limit: int) -> list[str]:
-        core_symbols = self._core_demand_symbols()
+    def _target_symbols(self, *, limit: int, demand_warmup: bool | None = None) -> list[str]:
+        core_symbols = self._core_demand_symbols(demand_warmup=demand_warmup)
         liquidity_limit = max(0, int(limit or DEFAULT_LIMIT) - len(core_symbols))
         symbols = [*core_symbols, *self._top_liquidity_symbols(limit=max(50, liquidity_limit))]
         return self._dedupe_symbols(symbols)
 
-    def _core_demand_symbols(self) -> list[str]:
+    def _core_demand_symbols(self, *, demand_warmup: bool | None = None) -> list[str]:
+        demand_enabled = getattr(get_settings(), "quote_cache_demand_warmup_enabled", True)
+        use_demand_builder = demand_enabled if demand_warmup is None else bool(demand_warmup) and demand_enabled
+        if use_demand_builder:
+            return build_quote_cache_demand_symbols(self.db)
         symbols: list[str] = []
         symbols.extend(self._watchlist_symbols(limit=WATCHLIST_CORE_LIMIT))
         symbols.extend(self._priority_board_symbols(limit=PRIORITY_CORE_LIMIT))
@@ -261,6 +272,136 @@ class MarketQuoteCacheRefreshService:
         return [str(item) for item in rows if item]
 
 
+def build_quote_cache_demand_symbols(db: Session) -> list[str]:
+    groups = [
+        priority_board_symbols(db),
+        monitor_board_symbols(db),
+        watchlist_symbols(db),
+        paper_position_symbols(db),
+        strategy_tracking_symbols(db),
+        sector_hot_member_symbols(db),
+    ]
+    return _dedupe_symbols([symbol for group in groups for symbol in group])
+
+
+def priority_board_symbols(db: Session) -> list[str]:
+    try:
+        latest_date = db.execute(
+            select(LowBuyResultSnapshot.latest_trade_date)
+            .group_by(LowBuyResultSnapshot.latest_trade_date)
+            .order_by(desc(LowBuyResultSnapshot.latest_trade_date))
+            .limit(1)
+        ).scalar()
+        if not latest_date:
+            return []
+        rows = db.execute(
+            select(LowBuyResultSnapshot.symbol)
+            .where(LowBuyResultSnapshot.latest_trade_date == latest_date)
+            .order_by(
+                LowBuyResultSnapshot.buy_signal_state.asc(),
+                desc(LowBuyResultSnapshot.score),
+                LowBuyResultSnapshot.symbol.asc(),
+            )
+            .limit(PRIORITY_CORE_LIMIT)
+        ).scalars().all()
+    except Exception:
+        return []
+    return [str(item) for item in rows if item]
+
+
+def monitor_board_symbols(db: Session) -> list[str]:
+    try:
+        rows = db.execute(
+            select(SystemSetting.value)
+            .where(SystemSetting.key.like("monitor_cache:%"))
+            .order_by(desc(SystemSetting.updated_at))
+            .limit(20)
+        ).scalars().all()
+    except Exception:
+        return []
+    symbols: list[str] = []
+    for raw in rows:
+        symbols.extend(_monitor_cache_payload_symbols(str(raw or "")))
+    return symbols
+
+
+def watchlist_symbols(db: Session) -> list[str]:
+    try:
+        rows = db.execute(
+            select(UserWatchlist.symbol).order_by(UserWatchlist.updated_at.desc()).limit(WATCHLIST_CORE_LIMIT)
+        ).scalars().all()
+    except Exception:
+        return []
+    return [str(item) for item in rows if item]
+
+
+def paper_position_symbols(db: Session) -> list[str]:
+    try:
+        rows = db.execute(
+            select(PaperPosition.symbol)
+            .where(PaperPosition.quantity > 0)
+            .order_by(desc(PaperPosition.updated_at), PaperPosition.symbol.asc())
+            .limit(HOLDING_CORE_LIMIT)
+        ).scalars().all()
+    except Exception:
+        return []
+    return [str(item) for item in rows if item]
+
+
+def strategy_tracking_symbols(db: Session) -> list[str]:
+    try:
+        rows = db.execute(
+            select(StrategyTrackingSnapshot.payload_json)
+            .where(StrategyTrackingSnapshot.status == "fresh")
+            .order_by(desc(StrategyTrackingSnapshot.generated_at))
+            .limit(3)
+        ).scalars().all()
+    except Exception:
+        return []
+    symbols: list[str] = []
+    for payload_json in rows:
+        symbols.extend(_strategy_tracking_payload_symbols(str(payload_json or ""), remaining=STRATEGY_TRACKING_CORE_LIMIT - len(symbols)))
+        if len(symbols) >= STRATEGY_TRACKING_CORE_LIMIT:
+            break
+    return symbols[:STRATEGY_TRACKING_CORE_LIMIT]
+
+
+def sector_hot_member_symbols(db: Session) -> list[str]:
+    try:
+        latest_date = db.execute(select(DailyBarSnapshot.trade_date).order_by(DailyBarSnapshot.trade_date.desc()).limit(1)).scalar()
+        if not latest_date:
+            return []
+        sector_rows = db.execute(
+            select(
+                Instrument.sector_name,
+                func.sum(DailyBarSnapshot.amount).label("sector_amount"),
+            )
+            .join(Instrument, Instrument.symbol == DailyBarSnapshot.symbol)
+            .where(DailyBarSnapshot.trade_date == latest_date)
+            .where(DailyBarSnapshot.instrument_type == "stock")
+            .where(Instrument.sector_name.isnot(None))
+            .where(Instrument.sector_name != "")
+            .group_by(Instrument.sector_name)
+            .order_by(desc("sector_amount"))
+            .limit(MONITOR_SECTOR_LIMIT)
+        ).all()
+        sectors = [str(sector) for sector, _amount in sector_rows if sector]
+        if not sectors:
+            return []
+        rows = db.execute(
+            select(DailyBarSnapshot.symbol)
+            .join(Instrument, Instrument.symbol == DailyBarSnapshot.symbol)
+            .where(DailyBarSnapshot.trade_date == latest_date)
+            .where(DailyBarSnapshot.instrument_type == "stock")
+            .where(Instrument.sector_name.in_(sectors))
+            .order_by(Instrument.sector_name.asc(), desc(DailyBarSnapshot.amount), DailyBarSnapshot.symbol.asc())
+            .limit(MONITOR_SECTOR_LIMIT * MONITOR_SECTOR_MEMBER_LIMIT)
+        ).scalars().all()
+    except Exception:
+        return []
+    return [str(item) for item in rows if item]
+
+
 def quote_cache_refresh_due(now: datetime | None = None) -> bool:
     current = now or beijing_now()
     if current.weekday() >= 5:
@@ -318,3 +459,50 @@ def _strategy_tracking_payload_symbols(payload_json: str, *, remaining: int) -> 
         if len(symbols) >= remaining:
             break
     return symbols
+
+
+def _monitor_cache_payload_symbols(payload_json: str) -> list[str]:
+    try:
+        value = json.loads(payload_json)
+    except (TypeError, ValueError):
+        return []
+    payload = value.get("payload") if isinstance(value, dict) else None
+    if not isinstance(payload, dict):
+        return []
+    result: list[str] = []
+    board = payload.get("priority_board")
+    if isinstance(board, dict):
+        result.extend(_symbols_from_items(board.get("items")))
+        for section in board.get("family_sections") or []:
+            if isinstance(section, dict):
+                result.extend(_symbols_from_items(section.get("items")))
+    result.extend(_symbols_from_items(payload.get("watchlist_signals")))
+    sector_etf_t0 = payload.get("sector_etf_t0")
+    if isinstance(sector_etf_t0, dict):
+        result.extend(_symbols_from_items(sector_etf_t0.get("opportunities"), symbol_key="etf_symbol"))
+    return result
+
+
+def _symbols_from_items(items: object, *, symbol_key: str = "symbol") -> list[str]:
+    if not isinstance(items, list):
+        return []
+    symbols: list[str] = []
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        symbol = str(item.get(symbol_key) or item.get("symbol") or "").strip()
+        if symbol:
+            symbols.append(symbol)
+    return symbols
+
+
+def _dedupe_symbols(symbols: list[str]) -> list[str]:
+    seen: set[str] = set()
+    ordered: list[str] = []
+    for symbol in symbols:
+        clean = str(symbol or "").strip()
+        if len(clean) != 6 or clean in seen:
+            continue
+        seen.add(clean)
+        ordered.append(clean)
+    return ordered

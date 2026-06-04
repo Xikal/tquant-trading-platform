@@ -78,7 +78,7 @@ func (cache chainedQuoteCache) MGet(ctx context.Context, keys []string) (map[str
 	for _, key := range remaining {
 		if len(result[key]) == 0 {
 			unresolved++
-			recordUnresolvedQuoteSample(key, "not_in_cache")
+			recordUnresolvedQuoteSample(key, "mysql_fallback_missing")
 		}
 	}
 	if unresolved > 0 {
@@ -93,6 +93,7 @@ func recordUnresolvedQuoteSample(key string, reason string) {
 		return
 	}
 	cleanReason := boundedUnresolvedReason(reason)
+	incrementUnresolvedReason(cleanReason)
 	unresolvedQuoteSampleStore.Lock()
 	defer unresolvedQuoteSampleStore.Unlock()
 	for _, item := range unresolvedQuoteSampleStore.values {
@@ -145,10 +146,27 @@ func unresolvedQuoteSamplePayload(missing []string, reasons map[string]string) [
 
 func boundedUnresolvedReason(reason string) string {
 	switch reason {
-	case "not_in_cache", "no_daily_bar", "invalid_symbol", "stale_only":
+	case "not_in_demand_set", "cache_write_failed", "cache_read_miss", "mysql_fallback_missing", "stale_quote", "schema_mismatch":
 		return reason
 	default:
-		return "not_in_cache"
+		return "cache_read_miss"
+	}
+}
+
+func incrementUnresolvedReason(reason string) {
+	switch reason {
+	case "not_in_demand_set":
+		marketReadUnresolvedNotInDemandSet.Add(1)
+	case "cache_write_failed":
+		marketReadUnresolvedCacheWriteFailed.Add(1)
+	case "cache_read_miss":
+		marketReadUnresolvedCacheReadMiss.Add(1)
+	case "mysql_fallback_missing":
+		marketReadUnresolvedMySQLFallbackMissing.Add(1)
+	case "stale_quote":
+		marketReadUnresolvedStaleQuote.Add(1)
+	case "schema_mismatch":
+		marketReadUnresolvedSchemaMismatch.Add(1)
 	}
 }
 

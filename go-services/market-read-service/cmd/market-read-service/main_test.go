@@ -83,7 +83,7 @@ func TestQuoteBatchReadsRedisLocalQuotePayload(t *testing.T) {
 	}
 	samples := payload["unresolved_symbols_sample"].([]any)
 	firstSample := samples[0].(map[string]any)
-	if firstSample["symbol"] != "000002" || firstSample["reason"] != "not_in_cache" {
+	if firstSample["symbol"] != "000002" || firstSample["reason"] != "cache_read_miss" {
 		t.Fatalf("unresolved reason sample mismatch: %#v", firstSample)
 	}
 	items := payload["items"].([]any)
@@ -226,8 +226,25 @@ func TestIntradayLatestBatchHandlerReturnsPartialPayload(t *testing.T) {
 	if !bytes.Contains(recorder.Body.Bytes(), []byte(`"latest"`)) {
 		t.Fatalf("expected latest payload body=%s", recorder.Body.String())
 	}
-	if !bytes.Contains(recorder.Body.Bytes(), []byte(`"unresolved_symbols_sample":[{"reason":"not_in_cache","symbol":"000002"}]`)) {
+	if !bytes.Contains(recorder.Body.Bytes(), []byte(`"unresolved_symbols_sample":[{"reason":"cache_read_miss","symbol":"000002"}]`)) {
 		t.Fatalf("expected unresolved reason sample body=%s", recorder.Body.String())
+	}
+}
+
+func TestQuoteBatchClassifiesSchemaMismatch(t *testing.T) {
+	cache := mapQuoteCache{
+		"tquant:market:quote:000001": []byte(`{bad json`),
+	}
+	recorder := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/api/market-read/v1/quote-batch?symbols=000001", nil)
+
+	quoteBatchHandler(cache).ServeHTTP(recorder, req)
+
+	if recorder.Code != http.StatusServiceUnavailable {
+		t.Fatalf("status mismatch want=%d got=%d body=%s", http.StatusServiceUnavailable, recorder.Code, recorder.Body.String())
+	}
+	if !bytes.Contains(recorder.Body.Bytes(), []byte(`"unresolved_symbols_sample":[{"reason":"schema_mismatch","symbol":"000001"}]`)) {
+		t.Fatalf("expected schema mismatch reason body=%s", recorder.Body.String())
 	}
 }
 
@@ -326,7 +343,7 @@ func TestChainedQuoteCacheRecordsRedisMissAndMySQLFallbackMetrics(t *testing.T) 
 	}
 	reasonSamples := unresolvedQuoteReasonSamples()
 	lastSample := reasonSamples[len(reasonSamples)-1]
-	if lastSample.Symbol != "000003" || lastSample.Reason != "not_in_cache" {
+	if lastSample.Symbol != "000003" || lastSample.Reason != "mysql_fallback_missing" {
 		t.Fatalf("expected unresolved reason sample, got %#v", lastSample)
 	}
 }
@@ -343,8 +360,9 @@ func TestMetricsExposeCacheCoverageCounters(t *testing.T) {
 		"tquant_market_read_cache_miss_total",
 		"tquant_market_read_mysql_fallbacks_total",
 		"tquant_market_read_unresolved_misses_total",
+		"tquant_market_read_unresolved_reason_total",
 		"tquant_market_read_unresolved_symbol_sample",
-		`reason="not_in_cache"`,
+		`reason="mysql_fallback_missing"`,
 	} {
 		if !bytes.Contains([]byte(body), []byte(metricName)) {
 			t.Fatalf("metrics should expose %s, body=%s", metricName, body)

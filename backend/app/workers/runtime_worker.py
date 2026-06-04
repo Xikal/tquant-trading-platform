@@ -142,7 +142,10 @@ def _execute_task(task_type: str, payload: dict[str, Any], db) -> dict[str, Any]
             priority_limit=max(1, min(priority_limit, 30)),
         )
     if task_type == "market_quote_cache_refresh":
-        return MarketQuoteCacheRefreshService(db).refresh(limit=int(payload.get("limit") or 200))
+        return MarketQuoteCacheRefreshService(db).refresh(
+            limit=int(payload.get("limit") or 200),
+            demand_warmup=bool(payload.get("demand_warmup", True)),
+        )
     if task_type == "market_hourly_all_a_snapshot":
         return HourlyAllMarketSnapshotService(db).refresh(
             reason=str(payload.get("reason") or "runtime_hourly_market_pulse")

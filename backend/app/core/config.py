@@ -109,6 +109,7 @@ class AppSettings(BaseSettings):
     bff_strategy_cache_ttl_seconds: int = 30
     bff_settings_cache_ttl_seconds: int = 30
     monitor_bff_source_budget_enabled: bool = True
+    quote_cache_demand_warmup_enabled: bool = True
     read_model_live_overlay_enabled: bool = True
     priority_board_empty_fallback_to_last_snapshot: bool = True
     priority_board_overlay_cache_enabled: bool = True
