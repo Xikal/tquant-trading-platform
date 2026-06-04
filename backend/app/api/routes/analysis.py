@@ -9,6 +9,7 @@ from app.core.database import get_db
 from app.core.rate_limit import require_analysis_batch_rate_limit
 from app.core.timing import log_slow_call, monotonic_start
 from app.models.schemas import AnalysisRequest
+from app.api.routes.heavy_task_helpers import enqueue_runtime_task, queued_task_response
 from app.services.analysis_service import AnalysisService
 
 router = APIRouter(dependencies=[Depends(get_current_user)])
@@ -32,10 +33,22 @@ def analyze_symbol(payload: AnalysisRequest, db: Session = Depends(get_db)):
 def analyze_batch(
     request: Request,
     payloads: list[AnalysisRequest] = Body(...),
+    queue: bool = False,
     db: Session = Depends(get_db),
 ):
     require_analysis_batch_rate_limit(request)
     _validate_batch_payload(payloads)
+    if queue:
+        return queued_task_response(
+            enqueue_runtime_task(
+                db,
+                task_type="analysis_batch",
+                payload={"items": [item.model_dump(mode="json") for item in payloads]},
+                priority=170,
+                idempotency_key=f"analysis_batch:{','.join(item.symbol for item in payloads)}",
+                max_attempts=2,
+            )
+        )
     started_at = monotonic_start()
     try:
         results = analysis_service.analyze_batch(db, payloads)

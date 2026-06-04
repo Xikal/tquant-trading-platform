@@ -14,6 +14,12 @@ from app.services.market.hourly_snapshot import HourlyAllMarketSnapshotService
 from app.services.market_quote_cache_refresh import MarketQuoteCacheRefreshService
 from app.services.monitor_snapshot_cache import build_and_store_monitor_snapshot
 from app.services.tasks import RuntimeTaskQueue
+from app.workers.heavy_research_tasks import (
+    FACTOR_HEAVY_TASK_TYPES,
+    HEAVY_RESEARCH_TASK_TYPES,
+    ML_HEAVY_TASK_TYPES,
+    execute_heavy_research_task,
+)
 from app.workers.latest_data_close_scheduler import (
     start_latest_data_close_scheduler,
     stop_latest_data_close_scheduler,
@@ -48,6 +54,7 @@ RUNTIME_WORKER_TASK_TYPES = (
     "strategy_promotion_review",
     "paper_portfolio_execution_preview",
     "strategy_tracking_snapshot_refresh",
+    *HEAVY_RESEARCH_TASK_TYPES,
     "ml_signal_incremental_train",
     "strategy_self_evolution",
     "ml_feature_drift_monitor",
@@ -63,6 +70,7 @@ RUNTIME_WORKER_TASK_TYPES = (
     "trading_experience_t_attribution_refresh",
 )
 RESEARCH_TASK_TYPES = {
+    *HEAVY_RESEARCH_TASK_TYPES,
     "ml_signal_incremental_train",
     "strategy_self_evolution",
     "ml_feature_drift_monitor",
@@ -74,8 +82,8 @@ RESEARCH_TASK_TYPES = {
     "trading_experience_limit_up_backtest",
     "trading_experience_t_attribution_refresh",
 }
-ML_TASK_TYPES = {"ml_signal_incremental_train", "strategy_self_evolution", "ml_feature_drift_monitor"}
-FACTOR_TASK_TYPES = {"factor_mining_evaluate", "factor_mining_monthly"}
+ML_TASK_TYPES = {"ml_signal_incremental_train", "strategy_self_evolution", "ml_feature_drift_monitor", *ML_HEAVY_TASK_TYPES}
+FACTOR_TASK_TYPES = {"factor_mining_evaluate", "factor_mining_monthly", *FACTOR_HEAVY_TASK_TYPES}
 LONG_TASK_HEARTBEAT_SECONDS = 30.0
 
 
@@ -103,7 +111,19 @@ class RuntimeWorker:
             heartbeat_stop = threading.Event()
             heartbeat_thread = _start_task_heartbeat(worker_id=self.worker_id, stop_event=heartbeat_stop)
             try:
+                queue.update_progress(
+                    task_id,
+                    progress_pct=5.0,
+                    message="任务已被 Runtime Worker 接收",
+                    payload={"worker_id": self.worker_id, "task_type": task_type},
+                )
                 result = _execute_task(task_type, _json_payload(task.payload_json), db)
+                queue.update_progress(
+                    task_id,
+                    progress_pct=95.0,
+                    message="任务计算完成，准备写入结果",
+                    payload={"worker_id": self.worker_id, "task_type": task_type},
+                )
                 queue.mark_succeeded(task_id, result)
             except Exception as exc:
                 logger.exception("runtime task failed: id=%s type=%s", task_id, task_type)
@@ -381,6 +401,8 @@ def _execute_task(task_type: str, payload: dict[str, Any], db) -> dict[str, Any]
             strategy_family=str(payload.get("strategy_family") or "") or None,
         )
         return response.model_dump(mode="json")
+    if task_type in HEAVY_RESEARCH_TASK_TYPES:
+        return execute_heavy_research_task(task_type, payload, db)
     if task_type == "ml_signal_incremental_train":
         from app.models.schema_defs.phase4 import MLSignalIncrementalTrainRequest
         from app.services.ml_signal import MLSignalService

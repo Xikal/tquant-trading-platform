@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
 from app.core.admin_auth import require_admin_auth
@@ -16,12 +16,12 @@ from app.models.schema_defs.phase4 import (
     MLSignalModelListResponse,
     MLSignalOnlineLearningStatusResponse,
     MLSignalSampleBuildRequest,
-    MLSignalSampleBuildResponse,
     MLSignalTrainRequest,
-    MLSignalTrainResponse,
+    RuntimeTaskOut,
     StrategyCapacityRequest,
     StrategyCapacityResponse,
 )
+from app.api.routes.heavy_task_helpers import enqueue_runtime_task
 from app.services.ml_signal import MLSignalService
 from app.services.ml_signal.promotion_service import MLSignalPromotionService
 from app.services.strategy_capacity import StrategyCapacityService
@@ -29,37 +29,52 @@ from app.services.strategy_capacity import StrategyCapacityService
 router = APIRouter(prefix="/ml/signals", dependencies=[Depends(get_current_user)])
 
 
-@router.post("/samples", response_model=MLSignalSampleBuildResponse)
+@router.post("/samples", response_model=RuntimeTaskOut, status_code=status.HTTP_202_ACCEPTED)
 def build_ml_signal_samples(
     payload: MLSignalSampleBuildRequest,
     _: None = Depends(require_admin_auth),
     db: Session = Depends(get_db),
-) -> MLSignalSampleBuildResponse:
-    return MLSignalService(db).build_samples(payload)
+) -> RuntimeTaskOut:
+    return enqueue_runtime_task(
+        db,
+        task_type="ml_signal_build_samples",
+        payload=payload.model_dump(mode="json"),
+        priority=200,
+        idempotency_key=f"ml_signal_build_samples:{payload.source}:{payload.limit}:{payload.persist}",
+        max_attempts=2,
+    )
 
 
-@router.post("/train", response_model=MLSignalTrainResponse)
+@router.post("/train", response_model=RuntimeTaskOut, status_code=status.HTTP_202_ACCEPTED)
 def train_ml_signal_model(
     payload: MLSignalTrainRequest,
     _: None = Depends(require_admin_auth),
     db: Session = Depends(get_db),
-) -> MLSignalTrainResponse:
-    try:
-        return MLSignalService(db).train(payload)
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+) -> RuntimeTaskOut:
+    return enqueue_runtime_task(
+        db,
+        task_type="ml_signal_train",
+        payload=payload.model_dump(mode="json"),
+        priority=200,
+        idempotency_key=f"ml_signal_train:{payload.model_key}:{payload.model_type}:{payload.source}:{payload.limit}:{payload.promote}",
+        max_attempts=2,
+    )
 
 
-@router.post("/incremental-train", response_model=MLSignalTrainResponse)
+@router.post("/incremental-train", response_model=RuntimeTaskOut, status_code=status.HTTP_202_ACCEPTED)
 def incremental_train_ml_signal_model(
     payload: MLSignalIncrementalTrainRequest,
     _: None = Depends(require_admin_auth),
     db: Session = Depends(get_db),
-) -> MLSignalTrainResponse:
-    try:
-        return MLSignalService(db).incremental_train(payload)
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+) -> RuntimeTaskOut:
+    return enqueue_runtime_task(
+        db,
+        task_type="ml_signal_incremental_train",
+        payload=payload.model_dump(mode="json"),
+        priority=190,
+        idempotency_key=f"ml_signal_incremental_train:{payload.model_type}:{payload.limit}:{payload.min_samples}:{payload.promote}",
+        max_attempts=2,
+    )
 
 
 @router.get("/models", response_model=MLSignalModelListResponse)

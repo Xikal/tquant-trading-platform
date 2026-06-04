@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import date, timedelta
+from typing import Union
 
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
@@ -19,7 +20,9 @@ from app.models.schemas import (
     PaperStrategyMarketPerformanceOut,
     PaperTagPerformanceOut,
 )
+from app.models.schema_defs.phase4 import RuntimeTaskOut
 from app.models.schema_defs.market import MarketReviewReportOut, MarketReviewStatusOut
+from app.api.routes.heavy_task_helpers import enqueue_runtime_task, queued_task_response
 from app.services.paper import PaperAccountService, PaperArchiveService, PaperPerformanceService
 from app.services.paper.dashboard import PaperPerformanceDashboardService
 from app.services.paper.smart_t_backtest import SmartTBacktestService
@@ -127,7 +130,7 @@ def paper_performance_stock_pnl(
     return PaperStockPnlResponse(**PaperStockPnlService(db).summary(account.id))
 
 
-@router.get("/performance/smart-t-backtest", response_model=PaperSmartTBacktestResponse)
+@router.get("/performance/smart-t-backtest", response_model=Union[PaperSmartTBacktestResponse, RuntimeTaskOut])
 def paper_performance_smart_t_backtest(
     start_date: str | None = Query(default=None, pattern=r"^\d{4}-\d{2}-\d{2}$"),
     end_date: str | None = Query(default=None, pattern=r"^\d{4}-\d{2}-\d{2}$"),
@@ -138,8 +141,25 @@ def paper_performance_smart_t_backtest(
     current_user: User = Depends(require_paper_trading),
     db: Session = Depends(get_db),
 ) -> PaperSmartTBacktestResponse:
-    # current_user dependency intentionally gates this research endpoint.
-    _ = current_user
+    if _smart_t_backtest_requires_queue(start_date=start_date, end_date=end_date, sample_limit=sample_limit):
+        return queued_task_response(
+            enqueue_runtime_task(
+                db,
+                task_type="paper_smart_t_backtest",
+                payload={
+                    "start_date": start_date,
+                    "end_date": end_date,
+                    "strategies": strategies or [],
+                    "max_signals_per_day": max_signals_per_day,
+                    "forward_days": forward_days,
+                    "sample_limit": sample_limit,
+                    "owner_user_id": current_user.id,
+                },
+                priority=210,
+                idempotency_key=f"paper_smart_t_backtest:{current_user.id}:{start_date or ''}:{end_date or ''}:{sample_limit}",
+                max_attempts=2,
+            )
+        )
     report = SmartTBacktestService(db).run(
         start_date=start_date,
         end_date=end_date,
@@ -214,3 +234,9 @@ def _report_dict(report) -> dict:
         "threshold_stats": [item.__dict__ for item in report.threshold_stats],
         "samples": [item.__dict__ for item in report.samples],
     }
+
+
+def _smart_t_backtest_requires_queue(*, start_date: str | None, end_date: str | None, sample_limit: int) -> bool:
+    if sample_limit > 120:
+        return True
+    return bool(start_date and end_date)

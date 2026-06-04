@@ -16,6 +16,7 @@ import {
   normalizeValidation,
 } from "./backtests.normalizers";
 import { apiClient } from "./httpClient";
+import type { RuntimeTaskOut } from "./runtimeTasks";
 import type { paths } from "../generated/api-types";
 
 import type {
@@ -248,7 +249,7 @@ export const backtestsApi = {
     request<BacktestStrategyCorrelationResponse>(`/backtests/${runId}/strategy-correlation`).then(normalizeStrategyCorrelation),
 
   getPortfolioOptimization: (runId: number, method: "hrp" | "risk_adjusted" | "markowitz" | "black_litterman" = "markowitz") =>
-    request<PortfolioOptimizationResponse>(`/backtests/${runId}/portfolio-optimization?method=${method}`),
+    request<RuntimeTaskOut>(`/backtests/${runId}/portfolio-optimization?method=${method}`),
 
   getLiveBacktestComparison: (accountId?: number, days = 60) => {
     const params = new URLSearchParams();
@@ -267,13 +268,13 @@ export const backtestsApi = {
     request<StrategyImprovementReportResponse>("/backtests/strategy-improvement-report"),
 
   runEtfT0MinuteBacktest: (payload: EtfT0BacktestRequest) =>
-    request<EtfT0BacktestResponse>("/backtests/etf-t0-minute", {
+    request<EtfT0BacktestResponse | RuntimeTaskOut>("/backtests/etf-t0-minute", {
       method: "POST",
       body: JSON.stringify(payload),
     }),
 
   runEtfT0Research: (payload: EtfT0ResearchRequest) =>
-    request<EtfT0ResearchResponse>("/backtests/etf-t0-research", {
+    request<EtfT0ResearchResponse | RuntimeTaskOut>("/backtests/etf-t0-research", {
       method: "POST",
       body: JSON.stringify(payload),
     }),

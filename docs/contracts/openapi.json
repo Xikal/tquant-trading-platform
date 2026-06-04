@@ -9220,43 +9220,6 @@
         "title": "FactorEvaluationRequest",
         "type": "object"
       },
-      "FactorEvaluationResponse": {
-        "properties": {
-          "elapsed_seconds": {
-            "default": 0.0,
-            "title": "Elapsed Seconds",
-            "type": "number"
-          },
-          "factor": {
-            "$ref": "#/components/schemas/FactorDefinitionOut"
-          },
-          "interpretation": {
-            "additionalProperties": true,
-            "title": "Interpretation",
-            "type": "object"
-          },
-          "result": {
-            "$ref": "#/components/schemas/FactorEvalResultOut"
-          },
-          "run_id": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Run Id"
-          }
-        },
-        "required": [
-          "factor",
-          "result"
-        ],
-        "title": "FactorEvaluationResponse",
-        "type": "object"
-      },
       "FactorHypothesisOut": {
         "properties": {
           "category": {
@@ -9383,24 +9346,6 @@
           "hypothesis"
         ],
         "title": "FactorIterationRequest",
-        "type": "object"
-      },
-      "FactorIterationResponse": {
-        "properties": {
-          "final_verdict": {
-            "default": "reject",
-            "title": "Final Verdict",
-            "type": "string"
-          },
-          "rounds": {
-            "items": {
-              "$ref": "#/components/schemas/FactorEvaluationResponse"
-            },
-            "title": "Rounds",
-            "type": "array"
-          }
-        },
-        "title": "FactorIterationResponse",
         "type": "object"
       },
       "FactorListResponse": {
@@ -13821,41 +13766,6 @@
         "title": "MLSignalSampleBuildRequest",
         "type": "object"
       },
-      "MLSignalSampleBuildResponse": {
-        "properties": {
-          "feature_names": {
-            "items": {
-              "type": "string"
-            },
-            "title": "Feature Names",
-            "type": "array"
-          },
-          "generated": {
-            "default": 0,
-            "title": "Generated",
-            "type": "integer"
-          },
-          "persisted": {
-            "default": 0,
-            "title": "Persisted",
-            "type": "integer"
-          },
-          "source": {
-            "title": "Source",
-            "type": "string"
-          },
-          "warning": {
-            "default": "",
-            "title": "Warning",
-            "type": "string"
-          }
-        },
-        "required": [
-          "source"
-        ],
-        "title": "MLSignalSampleBuildResponse",
-        "type": "object"
-      },
       "MLSignalTrainRequest": {
         "properties": {
           "limit": {
@@ -13931,71 +13841,6 @@
           }
         },
         "title": "MLSignalTrainRequest",
-        "type": "object"
-      },
-      "MLSignalTrainResponse": {
-        "properties": {
-          "artifact_checksum": {
-            "default": "",
-            "title": "Artifact Checksum",
-            "type": "string"
-          },
-          "artifact_uri": {
-            "default": "",
-            "title": "Artifact Uri",
-            "type": "string"
-          },
-          "feature_names": {
-            "items": {
-              "type": "string"
-            },
-            "title": "Feature Names",
-            "type": "array"
-          },
-          "metrics": {
-            "additionalProperties": true,
-            "title": "Metrics",
-            "type": "object"
-          },
-          "model_key": {
-            "title": "Model Key",
-            "type": "string"
-          },
-          "model_type": {
-            "title": "Model Type",
-            "type": "string"
-          },
-          "remote_artifact_uri": {
-            "default": "",
-            "title": "Remote Artifact Uri",
-            "type": "string"
-          },
-          "sample_count": {
-            "default": 0,
-            "title": "Sample Count",
-            "type": "integer"
-          },
-          "status": {
-            "default": "research",
-            "enum": [
-              "research",
-              "production",
-              "failed"
-            ],
-            "title": "Status",
-            "type": "string"
-          },
-          "warning": {
-            "default": "",
-            "title": "Warning",
-            "type": "string"
-          }
-        },
-        "required": [
-          "model_key",
-          "model_type"
-        ],
-        "title": "MLSignalTrainResponse",
         "type": "object"
       },
       "MarketBreadthResponse": {
@@ -15226,59 +15071,6 @@
           "backtest_run_id"
         ],
         "title": "PaperBacktestComparisonRequest",
-        "type": "object"
-      },
-      "PaperBacktestComparisonResponse": {
-        "properties": {
-          "account_id": {
-            "title": "Account Id",
-            "type": "integer"
-          },
-          "actual_return_pct": {
-            "default": 0.0,
-            "title": "Actual Return Pct",
-            "type": "number"
-          },
-          "alert": {
-            "default": false,
-            "title": "Alert",
-            "type": "boolean"
-          },
-          "backtest_run_id": {
-            "title": "Backtest Run Id",
-            "type": "integer"
-          },
-          "comparison_date": {
-            "title": "Comparison Date",
-            "type": "string"
-          },
-          "detail": {
-            "additionalProperties": true,
-            "title": "Detail",
-            "type": "object"
-          },
-          "deviation_pct": {
-            "default": 0.0,
-            "title": "Deviation Pct",
-            "type": "number"
-          },
-          "expected_return_pct": {
-            "default": 0.0,
-            "title": "Expected Return Pct",
-            "type": "number"
-          },
-          "reason": {
-            "default": "",
-            "title": "Reason",
-            "type": "string"
-          }
-        },
-        "required": [
-          "account_id",
-          "backtest_run_id",
-          "comparison_date"
-        ],
-        "title": "PaperBacktestComparisonResponse",
         "type": "object"
       },
       "PaperGroupedPerformanceOut": {
@@ -25752,6 +25544,18 @@
     "/api/analyze/batch": {
       "post": {
         "operationId": "analyze_batch_api_analyze_batch_post",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "queue",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Queue",
+              "type": "boolean"
+            }
+          }
+        ],
         "requestBody": {
           "content": {
             "application/json": {
@@ -27034,7 +26838,15 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/EtfT0BacktestResponse"
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/EtfT0BacktestResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/RuntimeTaskOut"
+                    }
+                  ],
+                  "title": "Response Run Etf T0 Minute Backtest Api Backtests Etf T0 Minute Post"
                 }
               }
             },
@@ -27271,7 +27083,15 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/EtfT0ResearchResponse"
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/EtfT0ResearchResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/RuntimeTaskOut"
+                    }
+                  ],
+                  "title": "Response Run Etf T0 Research Api Backtests Etf T0 Research Post"
                 }
               }
             },
@@ -29710,11 +29530,11 @@
           "required": true
         },
         "responses": {
-          "200": {
+          "202": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/FactorEvaluationResponse"
+                  "$ref": "#/components/schemas/RuntimeTaskOut"
                 }
               }
             },
@@ -29943,11 +29763,11 @@
           "required": true
         },
         "responses": {
-          "200": {
+          "202": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/FactorIterationResponse"
+                  "$ref": "#/components/schemas/RuntimeTaskOut"
                 }
               }
             },
@@ -32877,11 +32697,11 @@
           "required": true
         },
         "responses": {
-          "200": {
+          "202": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/MLSignalTrainResponse"
+                  "$ref": "#/components/schemas/RuntimeTaskOut"
                 }
               }
             },
@@ -33214,11 +33034,11 @@
           "required": true
         },
         "responses": {
-          "200": {
+          "202": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/MLSignalSampleBuildResponse"
+                  "$ref": "#/components/schemas/RuntimeTaskOut"
                 }
               }
             },
@@ -33294,11 +33114,11 @@
           "required": true
         },
         "responses": {
-          "200": {
+          "202": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/MLSignalTrainResponse"
+                  "$ref": "#/components/schemas/RuntimeTaskOut"
                 }
               }
             },
@@ -34076,11 +33896,11 @@
           "required": true
         },
         "responses": {
-          "200": {
+          "202": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PaperBacktestComparisonResponse"
+                  "$ref": "#/components/schemas/RuntimeTaskOut"
                 }
               }
             },
@@ -34831,7 +34651,15 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PaperSmartTBacktestResponse"
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/PaperSmartTBacktestResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/RuntimeTaskOut"
+                    }
+                  ],
+                  "title": "Response Paper Performance Smart T Backtest Api Paper Performance Smart T Backtest Get"
                 }
               }
             },

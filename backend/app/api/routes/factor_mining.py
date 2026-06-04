@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy.orm import Session
 
 from app.core.admin_auth import require_admin_auth
@@ -23,6 +23,7 @@ from app.models.schema_defs.factor_mining import (
     FactorPromoteRequest,
 )
 from app.models.schema_defs.phase4 import RuntimeTaskCreate, RuntimeTaskOut
+from app.api.routes.heavy_task_helpers import enqueue_runtime_task
 from app.services.factor_mining.code_synth_agent import FactorCodeSynthAgent
 from app.services.factor_mining.combination import ic_weighted_combination, ridge_regression_combination
 from app.services.factor_mining.health import FactorHealthService
@@ -96,31 +97,33 @@ def synthesize_factor_code(
     return FactorCodeSynthAgent(db).synthesize(payload)
 
 
-@router.post("/factors/{factor_key}/evaluate", response_model=FactorEvaluationResponse)
+@router.post("/factors/{factor_key}/evaluate", response_model=RuntimeTaskOut, status_code=status.HTTP_202_ACCEPTED)
 def evaluate_factor(
     factor_key: str,
     payload: FactorEvaluationRequest,
     request: Request,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
-) -> FactorEvaluationResponse:
-    try:
-        result = FactorMiningOrchestrator(db).evaluate_factor(factor_key, payload)
-        record_operation_audit(
-            db,
-            operation="factor_mining_evaluate",
-            user=current_user,
-            resource_type="factor_definition",
-            resource_id=factor_key,
-            operator_ip=_client_ip(request),
-            detail={"run_id": result.run_id, "passed_candidate": result.result.passed_candidate_gate},
-        )
-        db.commit()
-        return result
-    except LookupError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
-    except Exception as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+) -> RuntimeTaskOut:
+    task = enqueue_runtime_task(
+        db,
+        task_type="factor_mining_evaluate",
+        payload={"factor_key": factor_key, "evaluation": payload.model_dump(mode="json"), "operator_ip": _client_ip(request)},
+        priority=220,
+        idempotency_key=f"factor_mining_evaluate:{factor_key}:{payload.holding_days}:{payload.limit_symbols}:{payload.min_cross_section}",
+        max_attempts=2,
+    )
+    record_operation_audit(
+        db,
+        operation="factor_mining_evaluate_queued",
+        user=current_user,
+        resource_type="factor_definition",
+        resource_id=factor_key,
+        operator_ip=_client_ip(request),
+        detail={"task_id": task.id},
+    )
+    db.commit()
+    return task
 
 
 @router.post("/factors/{factor_key}/promote", response_model=FactorDefinitionOut)
@@ -183,16 +186,21 @@ def update_factor_activation(
     return {"factor_key": factor_key, "active": active}
 
 
-@router.post("/iterate", response_model=FactorIterationResponse)
+@router.post("/iterate", response_model=RuntimeTaskOut, status_code=status.HTTP_202_ACCEPTED)
 def iterate_factor(
     payload: FactorIterationRequest,
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
-) -> FactorIterationResponse:
-    return FactorMiningOrchestrator(db).iterate(
-        hypothesis=payload.hypothesis,
-        rounds=payload.rounds,
-        evaluation=payload.evaluation,
+) -> RuntimeTaskOut:
+    task = enqueue_runtime_task(
+        db,
+        task_type="factor_mining_iterate",
+        payload=payload.model_dump(mode="json"),
+        priority=220,
+        idempotency_key=f"factor_mining_iterate:{current_user.id}:{payload.hypothesis.factor_key}:{payload.rounds}",
+        max_attempts=2,
     )
+    return task
 
 
 @router.post("/tasks/evaluate", response_model=RuntimeTaskOut)

@@ -1,6 +1,6 @@
 import json
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -16,6 +16,8 @@ from app.models.schemas import (
     StrategyValidationReport,
     StrategyValidationRequest,
 )
+from app.models.schema_defs.phase4 import RuntimeTaskOut
+from app.api.routes.heavy_task_helpers import enqueue_runtime_task
 from app.services.analysis_service import AnalysisService
 from app.services.market_data import MarketDataService
 from app.services.paper.validation import StrategyValidationPipeline
@@ -31,15 +33,20 @@ def get_replays(db: Session = Depends(get_db), limit: int = 100):
     return [item.model_dump() for item in items]
 
 
-@router.post("/backtests", include_in_schema=False)
+@router.post("/backtests", response_model=RuntimeTaskOut, status_code=status.HTTP_202_ACCEPTED, include_in_schema=False)
 def run_backtest(
     payload: LegacyResearchBacktestRequest,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
-):
-    instrument = market_data.get_instrument(db, payload.symbol)
-    result = analysis_service.run_backtest(db, payload, instrument, owner_user_id=current_user.id)
-    return result.model_dump()
+) -> RuntimeTaskOut:
+    return enqueue_runtime_task(
+        db,
+        task_type="legacy_research_backtest",
+        payload={**payload.model_dump(mode="json"), "owner_user_id": current_user.id},
+        priority=180,
+        idempotency_key=f"legacy_research_backtest:{current_user.id}:{payload.symbol}:{payload.bar_period}:{payload.lookback_bars}",
+        max_attempts=2,
+    )
 
 
 @router.get("/backtests/runs", response_model=BacktestRunListResponse)

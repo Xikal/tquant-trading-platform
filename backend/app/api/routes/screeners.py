@@ -11,6 +11,7 @@ from app.core.timing import log_slow_call, monotonic_start
 from app.models.entities import User
 from app.models.schemas import LowBuyTradeLifecycleUpdate
 from app.models.schema_defs.screener import LowBuyStrategyGovernanceUpdate
+from app.api.routes.heavy_task_helpers import enqueue_runtime_task, queued_task_response
 from app.services.low_buy.strategy_governance import build_low_buy_strategy_governance, set_strategy_governance_override
 from app.services.low_buy.shared import DEFAULT_PRODUCTION_LOW_BUY_STRATEGY
 from app.services.low_buy_screener import LowBuyScreenerService
@@ -67,6 +68,17 @@ def low_buy_screener_view(
 ):
     started_at = monotonic_start()
     try:
+        if _low_buy_screen_requires_queue(scan_mode=scan_mode, scan_limit=scan_limit):
+            return queued_task_response(
+                enqueue_runtime_task(
+                    db,
+                    task_type="low_buy_materialization_refresh",
+                    payload={"strategies": [strategy], "limit": limit, "scan_limit": scan_limit, "source": "screeners.low_buy"},
+                    priority=120,
+                    idempotency_key=f"low_buy_materialization_refresh:{strategy}:{scan_limit}",
+                    max_attempts=2,
+                )
+            )
         result = low_buy_screener.screen(
             db=db,
             strategy=strategy,
@@ -250,14 +262,18 @@ def low_buy_execution_backtest_view(
 ):
     started_at = monotonic_start()
     try:
-        result = low_buy_screener.execution_backtest(
-            db=db,
-            strategy=strategy,
-            lookback_days=lookback_days,
-            limit=limit,
+        return queued_task_response(
+            enqueue_runtime_task(
+                db,
+                task_type="low_buy_execution_backtest",
+                payload={"strategy": strategy, "lookback_days": lookback_days, "limit": limit},
+                priority=190,
+                idempotency_key=f"low_buy_execution_backtest:{strategy}:{lookback_days}:{limit}",
+                max_attempts=2,
+            )
         )
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"执行回测失败: {exc}") from exc
+        raise HTTPException(status_code=500, detail=f"执行回测入队失败: {exc}") from exc
     finally:
         log_slow_call(
             logger,
@@ -268,4 +284,7 @@ def low_buy_execution_backtest_view(
             limit=limit,
             threshold_seconds=5.0,
         )
-    return result.model_dump()
+
+
+def _low_buy_screen_requires_queue(*, scan_mode: str, scan_limit: int) -> bool:
+    return scan_mode == "full" and int(scan_limit or 0) > 120

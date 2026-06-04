@@ -1,42 +1,25 @@
 import { apiClient } from "./httpClient";
+import type { components } from "../generated/api-types";
 
-export interface RuntimeTaskOut {
-  id: number;
-  task_type: string;
-  status: string;
-  progress_pct: number;
-  payload?: Record<string, unknown>;
-  result?: Record<string, unknown>;
-  error_message?: string;
-  created_at?: string;
-  updated_at?: string;
-  started_at?: string | null;
-  finished_at?: string | null;
-}
+export type RuntimeTaskOut = components["schemas"]["RuntimeTaskOut"];
 
-export interface RuntimeTaskListResponse {
-  items: RuntimeTaskOut[];
-  limit: number;
-  offset: number;
-  total: number;
-}
+export type RuntimeTaskListResponse = components["schemas"]["RuntimeTaskListResponse"];
 
-export interface RuntimeTaskCreate {
-  task_type: string;
-  payload?: Record<string, unknown>;
-  priority?: number;
-  idempotency_key?: string;
-  max_attempts?: number;
+export type RuntimeTaskCreate = components["schemas"]["RuntimeTaskCreate"];
+export type RuntimeTaskCreateInput = Omit<RuntimeTaskCreate, "idempotency_key"> & { idempotency_key?: string };
+
+export function isRuntimeTask(value: unknown): value is RuntimeTaskOut {
+  return Boolean(value && typeof value === "object" && "task_type" in value && "status" in value && "id" in value);
 }
 
 export const runtimeTasksApi = {
   list: (status = "", limit = 50) =>
     apiClient.request<RuntimeTaskListResponse>(
       `/runtime-tasks?limit=${limit}${status ? `&status=${encodeURIComponent(status)}` : ""}`,
-    ),
+    ).then((payload) => ({ ...payload, items: payload.items ?? [] })),
   get: (taskId: number) => apiClient.request<RuntimeTaskOut>(`/runtime-tasks/${taskId}`),
-  enqueue: (payload: RuntimeTaskCreate) => apiClient.request<RuntimeTaskOut>("/runtime-tasks", {
+  enqueue: (payload: RuntimeTaskCreateInput) => apiClient.request<RuntimeTaskOut>("/runtime-tasks", {
     method: "POST",
-    body: JSON.stringify(payload),
+    body: JSON.stringify({ idempotency_key: "", ...payload }),
   }),
 };

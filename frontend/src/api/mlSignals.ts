@@ -1,4 +1,5 @@
 import { apiClient } from "./httpClient";
+import type { RuntimeTaskOut } from "./runtimeTasks";
 
 const request = apiClient.request;
 
@@ -45,19 +46,6 @@ export interface MLSignalIncrementalTrainRequest {
   warm_start?: boolean;
   max_validation_p_value?: number;
   min_validation_accuracy?: number;
-}
-
-export interface MLSignalTrainResponse {
-  model_key: string;
-  model_type: string;
-  status: "research" | "production" | "failed";
-  sample_count: number;
-  feature_names: string[];
-  metrics: Record<string, unknown>;
-  artifact_uri?: string;
-  remote_artifact_uri?: string;
-  artifact_checksum?: string;
-  warning?: string;
 }
 
 export interface StrategyCapacityRequest {
@@ -108,7 +96,7 @@ export const mlSignalsApi = {
     request<MLSignalOnlineLearningStatus>(`/ml/signals/online-learning/status?min_samples=${minSamples}`),
 
   incrementalTrain: (payload: MLSignalIncrementalTrainRequest = {}) =>
-    request<MLSignalTrainResponse>("/ml/signals/incremental-train", {
+    request<RuntimeTaskOut>("/ml/signals/incremental-train", {
       method: "POST",
       body: JSON.stringify({ source: "paper", model_type: "xgboost", promote: true, warm_start: true, ...payload }),
     }),

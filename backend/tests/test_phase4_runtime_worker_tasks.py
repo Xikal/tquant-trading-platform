@@ -147,6 +147,7 @@ def test_runtime_worker_chains_close_refresh_after_daily_bar_success(monkeypatch
 def test_runtime_worker_keeps_heartbeat_fresh_during_long_task(monkeypatch):
     db = _db()
     heartbeats = []
+    progress_events = []
 
     class _SessionFactory:
         def __call__(self):
@@ -158,6 +159,9 @@ def test_runtime_worker_keeps_heartbeat_fresh_during_long_task(monkeypatch):
 
         def claim_next(self, *, worker_id, task_types=None):  # noqa: ANN001
             return type("Task", (), {"id": 7, "task_type": "noop", "payload_json": "{}"})()
+
+        def update_progress(self, task_id, *, progress_pct, message="", payload=None):  # noqa: ANN001
+            progress_events.append((task_id, progress_pct, message, payload))
 
         def mark_succeeded(self, task_id, result):  # noqa: ANN001
             assert task_id == 7
@@ -177,6 +181,7 @@ def test_runtime_worker_keeps_heartbeat_fresh_during_long_task(monkeypatch):
 
     assert did_work is True
     assert len(heartbeats) >= 3
+    assert [event[1] for event in progress_events] == [5.0, 95.0]
 
 
 def test_runtime_worker_executes_ml_incremental_train_task(tmp_path, monkeypatch):

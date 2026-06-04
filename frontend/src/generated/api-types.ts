@@ -10346,22 +10346,6 @@ export interface components {
              */
             start_date: string;
         };
-        /** FactorEvaluationResponse */
-        FactorEvaluationResponse: {
-            /**
-             * Elapsed Seconds
-             * @default 0
-             */
-            elapsed_seconds: number;
-            factor: components["schemas"]["FactorDefinitionOut"];
-            /** Interpretation */
-            interpretation?: {
-                [key: string]: unknown;
-            };
-            result: components["schemas"]["FactorEvalResultOut"];
-            /** Run Id */
-            run_id?: number | null;
-        };
         /** FactorHypothesisOut */
         FactorHypothesisOut: {
             /**
@@ -10430,16 +10414,6 @@ export interface components {
              * @default 3
              */
             rounds: number;
-        };
-        /** FactorIterationResponse */
-        FactorIterationResponse: {
-            /**
-             * Final Verdict
-             * @default reject
-             */
-            final_verdict: string;
-            /** Rounds */
-            rounds?: components["schemas"]["FactorEvaluationResponse"][];
         };
         /** FactorListResponse */
         FactorListResponse: {
@@ -12987,28 +12961,6 @@ export interface components {
              */
             source: "paper" | "backtest" | "combined";
         };
-        /** MLSignalSampleBuildResponse */
-        MLSignalSampleBuildResponse: {
-            /** Feature Names */
-            feature_names?: string[];
-            /**
-             * Generated
-             * @default 0
-             */
-            generated: number;
-            /**
-             * Persisted
-             * @default 0
-             */
-            persisted: number;
-            /** Source */
-            source: string;
-            /**
-             * Warning
-             * @default
-             */
-            warning: string;
-        };
         /** MLSignalTrainRequest */
         MLSignalTrainRequest: {
             /**
@@ -13063,50 +13015,6 @@ export interface components {
              * @default false
              */
             warm_start: boolean;
-        };
-        /** MLSignalTrainResponse */
-        MLSignalTrainResponse: {
-            /**
-             * Artifact Checksum
-             * @default
-             */
-            artifact_checksum: string;
-            /**
-             * Artifact Uri
-             * @default
-             */
-            artifact_uri: string;
-            /** Feature Names */
-            feature_names?: string[];
-            /** Metrics */
-            metrics?: {
-                [key: string]: unknown;
-            };
-            /** Model Key */
-            model_key: string;
-            /** Model Type */
-            model_type: string;
-            /**
-             * Remote Artifact Uri
-             * @default
-             */
-            remote_artifact_uri: string;
-            /**
-             * Sample Count
-             * @default 0
-             */
-            sample_count: number;
-            /**
-             * Status
-             * @default research
-             * @enum {string}
-             */
-            status: "research" | "production" | "failed";
-            /**
-             * Warning
-             * @default
-             */
-            warning: string;
         };
         /** MarketBreadthResponse */
         MarketBreadthResponse: {
@@ -13938,44 +13846,6 @@ export interface components {
              * @default 20
              */
             deviation_threshold_pct: number;
-        };
-        /** PaperBacktestComparisonResponse */
-        PaperBacktestComparisonResponse: {
-            /** Account Id */
-            account_id: number;
-            /**
-             * Actual Return Pct
-             * @default 0
-             */
-            actual_return_pct: number;
-            /**
-             * Alert
-             * @default false
-             */
-            alert: boolean;
-            /** Backtest Run Id */
-            backtest_run_id: number;
-            /** Comparison Date */
-            comparison_date: string;
-            /** Detail */
-            detail?: {
-                [key: string]: unknown;
-            };
-            /**
-             * Deviation Pct
-             * @default 0
-             */
-            deviation_pct: number;
-            /**
-             * Expected Return Pct
-             * @default 0
-             */
-            expected_return_pct: number;
-            /**
-             * Reason
-             * @default
-             */
-            reason: string;
         };
         /** PaperGroupedPerformanceOut */
         PaperGroupedPerformanceOut: {
@@ -20215,7 +20085,9 @@ export interface operations {
     };
     analyze_batch_api_analyze_batch_post: {
         parameters: {
-            query?: never;
+            query?: {
+                queue?: boolean;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -21044,7 +20916,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["EtfT0BacktestResponse"];
+                    "application/json": components["schemas"]["EtfT0BacktestResponse"] | components["schemas"]["RuntimeTaskOut"];
                 };
             };
             /** @description Validation Error */
@@ -21214,7 +21086,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["EtfT0ResearchResponse"];
+                    "application/json": components["schemas"]["EtfT0ResearchResponse"] | components["schemas"]["RuntimeTaskOut"];
                 };
             };
             /** @description Validation Error */
@@ -22619,12 +22491,12 @@ export interface operations {
         };
         responses: {
             /** @description Successful Response */
-            200: {
+            202: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["FactorEvaluationResponse"];
+                    "application/json": components["schemas"]["RuntimeTaskOut"];
                 };
             };
             /** @description Validation Error */
@@ -22756,12 +22628,12 @@ export interface operations {
         };
         responses: {
             /** @description Successful Response */
-            200: {
+            202: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["FactorIterationResponse"];
+                    "application/json": components["schemas"]["RuntimeTaskOut"];
                 };
             };
             /** @description Validation Error */
@@ -24335,12 +24207,12 @@ export interface operations {
         };
         responses: {
             /** @description Successful Response */
-            200: {
+            202: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["MLSignalTrainResponse"];
+                    "application/json": components["schemas"]["RuntimeTaskOut"];
                 };
             };
             /** @description Validation Error */
@@ -24503,12 +24375,12 @@ export interface operations {
         };
         responses: {
             /** @description Successful Response */
-            200: {
+            202: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["MLSignalSampleBuildResponse"];
+                    "application/json": components["schemas"]["RuntimeTaskOut"];
                 };
             };
             /** @description Validation Error */
@@ -24539,12 +24411,12 @@ export interface operations {
         };
         responses: {
             /** @description Successful Response */
-            200: {
+            202: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["MLSignalTrainResponse"];
+                    "application/json": components["schemas"]["RuntimeTaskOut"];
                 };
             };
             /** @description Validation Error */
@@ -24959,12 +24831,12 @@ export interface operations {
         };
         responses: {
             /** @description Successful Response */
-            200: {
+            202: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["PaperBacktestComparisonResponse"];
+                    "application/json": components["schemas"]["RuntimeTaskOut"];
                 };
             };
             /** @description Validation Error */
@@ -25370,7 +25242,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["PaperSmartTBacktestResponse"];
+                    "application/json": components["schemas"]["PaperSmartTBacktestResponse"] | components["schemas"]["RuntimeTaskOut"];
                 };
             };
             /** @description Validation Error */

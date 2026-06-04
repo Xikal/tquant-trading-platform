@@ -8,6 +8,7 @@ import {
   type EtfT0RegimeValidation,
   type EtfT0ResearchResponse,
 } from "../../api/backtests";
+import { isRuntimeTask } from "../../api/runtimeTasks";
 import { useBacktestResearchUiStore } from "../../stores/backtestResearchUiStore";
 import { useServerState } from "../../state/serverState";
 import { VirtualGrid } from "../../ui/grid/VirtualGrid";
@@ -80,6 +81,10 @@ export function EtfT0BacktestPanel() {
         },
         bars,
       });
+      if (isRuntimeTask(response)) {
+        setState({ error: `ETF T0 回测已提交后台任务 #${response.id}，请在数据控制台查看进度。` });
+        return;
+      }
       setResult(response);
     } catch (err) {
       setState({ error: err instanceof Error ? err.message : "ETF T0 回测请求失败。" });
@@ -110,6 +115,10 @@ export function EtfT0BacktestPanel() {
         oversold_rsi_values: [34, 38, 42],
         bars,
       });
+      if (isRuntimeTask(response)) {
+        setState({ error: `ETF T0 参数热力图已提交后台任务 #${response.id}，请在数据控制台查看进度。` });
+        return;
+      }
       setResearch(response);
       setResult(response.base_report);
     } catch (err) {

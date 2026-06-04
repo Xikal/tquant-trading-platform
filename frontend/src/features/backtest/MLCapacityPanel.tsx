@@ -2,6 +2,7 @@ import { useEffect, useMemo } from "react";
 import { Button } from "antd";
 import { backtestsApi, type PortfolioOptimizationResponse, type PortfolioOptimizationWeight, type PositionPolicyResearchResponse } from "../../api/backtests";
 import { mlSignalsApi, type MLSignalOnlineLearningStatus, type StrategyCapacityItem, type StrategyCapacityResponse } from "../../api/mlSignals";
+import type { RuntimeTaskOut } from "../../api/runtimeTasks";
 import { formatBacktestStrategy, formatInteger, formatPct, type BacktestStrategyOption } from "./backtestDisplay";
 import {
   BACKTEST_CAPACITY_BUTTON_STYLE,
@@ -43,6 +44,7 @@ const ML_CAPACITY_SERVER_KEYS = {
   markowitz: ["backtest", "research", "markowitz"] as const,
   blackLitterman: ["backtest", "research", "black-litterman"] as const,
   policy: ["backtest", "research", "position-policy"] as const,
+  portfolioTasks: ["backtest", "research", "portfolio-tasks"] as const,
 };
 
 export function MLCapacityPanel({ strategyOptions }: { strategyOptions: BacktestStrategyOption[] }) {
@@ -57,6 +59,7 @@ export function MLCapacityPanel({ strategyOptions }: { strategyOptions: Backtest
     null,
   );
   const [policy, setPolicy] = useServerState<PositionPolicyResearchResponse | null>(ML_CAPACITY_SERVER_KEYS.policy, null);
+  const [portfolioTasks, setPortfolioTasks] = useServerState<RuntimeTaskOut[]>(ML_CAPACITY_SERVER_KEYS.portfolioTasks, []);
   const loading = useBacktestResearchUiStore((ui) => ui.capacityLoading);
   const error = useBacktestResearchUiStore((ui) => ui.capacityError);
   const setStrategies = useBacktestResearchUiStore((ui) => ui.setCapacityStrategies);
@@ -100,8 +103,9 @@ export function MLCapacityPanel({ strategyOptions }: { strategyOptions: Backtest
     setLoading("train");
     setError("");
     try {
-      await mlSignalsApi.incrementalTrain({ model_type: "xgboost", min_samples: 100, promote: true, warm_start: true });
+      const task = await mlSignalsApi.incrementalTrain({ model_type: "xgboost", min_samples: 100, promote: true, warm_start: true });
       await loadStatus();
+      setError(`增量训练已提交后台任务 #${task.id}，请在数据控制台查看进度。`);
     } catch (err) {
       setError(errorMessage(err));
       setLoading("");
@@ -122,9 +126,11 @@ export function MLCapacityPanel({ strategyOptions }: { strategyOptions: Backtest
         backtestsApi.getPortfolioOptimization(numericRunId, "black_litterman"),
         backtestsApi.getPositionPolicyResearch(numericRunId),
       ]);
-      setMarkowitz(markowitzResult);
-      setBlackLitterman(blackLittermanResult);
+      setPortfolioTasks([markowitzResult, blackLittermanResult]);
+      setMarkowitz(null);
+      setBlackLitterman(null);
       setPolicy(policyResult);
+      setError(`组合优化已提交后台任务：#${markowitzResult.id}、#${blackLittermanResult.id}。`);
     } catch (err) {
       setError(errorMessage(err));
     } finally {
@@ -154,6 +160,11 @@ export function MLCapacityPanel({ strategyOptions }: { strategyOptions: Backtest
       {status?.warnings?.length ? (
         <div style={BACKTEST_WARNING_LIST_STYLE}>
           {status.warnings.slice(0, 3).map((item) => <span key={item} style={BACKTEST_WARNING_ITEM_STYLE}>{item}</span>)}
+        </div>
+      ) : null}
+      {portfolioTasks.length ? (
+        <div style={BACKTEST_RESEARCH_NOTE_STYLE}>
+          组合优化任务：{portfolioTasks.map((task) => `#${task.id} ${task.status}`).join(" / ")}
         </div>
       ) : null}
       <div style={BACKTEST_CAPACITY_CONTROLS_STYLE}>

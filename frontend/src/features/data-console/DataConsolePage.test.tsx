@@ -3,6 +3,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { describe, expect, it } from "vitest";
 
 import type { DataQualitySnapshotItem } from "../../api/dataQuality";
+import type { RuntimeTaskOut } from "../../api/runtimeTasks";
 import { createAppQueryClient } from "../../state/queryClient";
 import { useDataConsoleUiStore } from "../../stores/dataConsoleUiStore";
 import type { AuthUser } from "../../types";
@@ -207,9 +208,15 @@ describe("DataConsolePage", () => {
         adminReady={false}
         disabledReason="先填管理令牌才能操作"
         tasks={[
-          { id: 1, task_type: "daily_bar_refresh", status: "queued", progress_pct: 0 },
-          { id: 2, task_type: "data_quality_repair", status: "succeeded", progress_pct: 100 },
-          { id: 3, task_type: "data_quality_backfill", status: "failed", progress_pct: 20, error_message: "daily_bars blocked_by_data failed" },
+          runtimeTaskFixture({ id: 1, task_type: "daily_bar_refresh", status: "queued", progress_pct: 0 }),
+          runtimeTaskFixture({ id: 2, task_type: "data_quality_repair", status: "succeeded", progress_pct: 100 }),
+          runtimeTaskFixture({
+            id: 3,
+            task_type: "data_quality_backfill",
+            status: "failed",
+            progress_pct: 20,
+            error_message: "daily_bars blocked_by_data failed",
+          }),
         ]}
         loading={false}
         error=""
@@ -392,4 +399,25 @@ function dataQualityItemsFixture(): DataQualitySnapshotItem[] {
       checked_at: "2026-06-01T15:30:00+08:00",
     },
   ];
+}
+
+function runtimeTaskFixture(patch: Partial<RuntimeTaskOut>): RuntimeTaskOut {
+  return {
+    id: 0,
+    task_type: "noop",
+    status: "queued",
+    priority: 100,
+    payload: {},
+    result: {},
+    error_message: "",
+    attempt_count: 0,
+    max_attempts: 3,
+    progress_pct: 0,
+    locked_by: "",
+    created_at: "2026-06-04T00:00:00+08:00",
+    updated_at: "2026-06-04T00:00:00+08:00",
+    started_at: null,
+    finished_at: null,
+    ...patch,
+  };
 }

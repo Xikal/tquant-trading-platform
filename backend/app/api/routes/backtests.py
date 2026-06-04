@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Union
+
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
@@ -39,6 +41,8 @@ from app.models.schema_defs.backtest import (
     EtfT0ResearchRequest,
     EtfT0ResearchResponse,
 )
+from app.models.schema_defs.phase4 import RuntimeTaskOut
+from app.api.routes.heavy_task_helpers import enqueue_runtime_task, queued_task_response
 from app.api.routes.backtest_route_helpers import (
     is_admin,
     normalized_verdict_thresholds,
@@ -51,7 +55,6 @@ from app.services.backtest_optimization_service import BacktestOptimizationServi
 from app.services.backtest_validation_service import BacktestValidationService
 from app.services.backtest.regime_parameter_promotion import promote_regime_parameter_versions
 from app.services.position_policy_research import run_position_policy_research
-from app.services.portfolio_heuristic_optimizer import optimize_strategy_portfolio
 from app.services.live_backtest_monitor import build_live_backtest_comparison
 from app.services.low_buy.main_force_model_shadow import summarize_main_force_shadow
 from app.models.schemas import KlineBar
@@ -120,12 +123,24 @@ def get_live_backtest_comparison(
     return build_live_backtest_comparison(db, user_id=current_user.id, account_id=account_id, days=days)
 
 
-@router.post("/etf-t0-minute", response_model=EtfT0BacktestResponse)
+@router.post("/etf-t0-minute", response_model=Union[EtfT0BacktestResponse, RuntimeTaskOut])
 def run_etf_t0_minute_backtest(
     payload: EtfT0BacktestRequest,
     current_user: User = Depends(get_current_user),
-) -> EtfT0BacktestResponse:
+    db: Session = Depends(get_db),
+) -> EtfT0BacktestResponse | RuntimeTaskOut:
     require_research_access(current_user)
+    if _etf_t0_minute_requires_queue(payload):
+        return queued_task_response(
+            enqueue_runtime_task(
+                db,
+                task_type="etf_t0_minute_backtest",
+                payload=payload.model_dump(mode="json"),
+                priority=180,
+                idempotency_key=f"etf_t0_minute_backtest:{current_user.id}:{payload.symbol}:{len(payload.bars)}",
+                max_attempts=2,
+            )
+        )
     bars = [
         KlineBar(
             timestamp=item.timestamp,
@@ -150,12 +165,24 @@ def run_etf_t0_minute_backtest(
     return EtfT0BacktestResponse(**report.to_dict())
 
 
-@router.post("/etf-t0-research", response_model=EtfT0ResearchResponse)
+@router.post("/etf-t0-research", response_model=Union[EtfT0ResearchResponse, RuntimeTaskOut])
 def run_etf_t0_research(
     payload: EtfT0ResearchRequest,
     current_user: User = Depends(get_current_user),
-) -> EtfT0ResearchResponse:
+    db: Session = Depends(get_db),
+) -> EtfT0ResearchResponse | RuntimeTaskOut:
     require_research_access(current_user)
+    if _etf_t0_research_requires_queue(payload):
+        return queued_task_response(
+            enqueue_runtime_task(
+                db,
+                task_type="etf_t0_research_report",
+                payload=payload.model_dump(mode="json"),
+                priority=180,
+                idempotency_key=f"etf_t0_research_report:{current_user.id}:{payload.symbol}:{len(payload.bars)}:{len(payload.vwap_deviation_values)}:{len(payload.oversold_rsi_values)}",
+                max_attempts=2,
+            )
+        )
     bars = [
         KlineBar(
             timestamp=item.timestamp,
@@ -204,6 +231,15 @@ def _etf_bars(items) -> list[KlineBar]:
         )
         for item in items
     ]
+
+
+def _etf_t0_minute_requires_queue(payload: EtfT0BacktestRequest) -> bool:
+    return len(payload.bars or []) > 480
+
+
+def _etf_t0_research_requires_queue(payload: EtfT0ResearchRequest) -> bool:
+    grid_size = max(1, len(payload.vwap_deviation_values or [])) * max(1, len(payload.oversold_rsi_values or []))
+    return len(payload.bars or []) > 480 or grid_size > 16
 
 
 @router.get("/etf-t0-oos/datasets", response_model=EtfT0OosDatasetListResponse)
@@ -618,7 +654,16 @@ def get_backtest_portfolio_optimization(
 ) -> dict:
     require_research_access(current_user)
     BacktestJobService(db).get_run(run_id, owner_user_id=current_user.id, is_admin=is_admin(current_user))
-    return optimize_strategy_portfolio(db, run_id=run_id, method=method)
+    return queued_task_response(
+        enqueue_runtime_task(
+            db,
+            task_type="backtest_portfolio_optimization",
+            payload={"run_id": run_id, "method": method, "owner_user_id": current_user.id},
+            priority=180,
+            idempotency_key=f"backtest_portfolio_optimization:{current_user.id}:{run_id}:{method}",
+            max_attempts=2,
+        )
+    )
 
 
 @router.get("/{run_id}/position-policy-research")
@@ -632,6 +677,17 @@ def get_backtest_position_policy_research(
     if train_shadow:
         require_optimizer_access(current_user)
     BacktestJobService(db).get_run(run_id, owner_user_id=current_user.id, is_admin=is_admin(current_user))
+    if train_shadow:
+        return queued_task_response(
+            enqueue_runtime_task(
+                db,
+                task_type="backtest_position_policy_research",
+                payload={"run_id": run_id, "train_shadow": train_shadow, "owner_user_id": current_user.id},
+                priority=180,
+                idempotency_key=f"backtest_position_policy_research:{current_user.id}:{run_id}:train_shadow",
+                max_attempts=2,
+            )
+        )
     return run_position_policy_research(db, run_id=run_id, train_shadow=train_shadow)
 
 
