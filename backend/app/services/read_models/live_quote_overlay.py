@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import hashlib
-import json
 import threading
 import time
 from typing import Any
@@ -19,7 +18,7 @@ from app.services.performance.read_model_metrics import record_live_overlay_hit,
 
 _SOURCE = "local_quote_cache"
 _CACHE_LOCK = threading.RLock()
-_OVERLAY_CACHE: dict[str, tuple[float, str]] = {}
+_OVERLAY_CACHE: dict[str, tuple[float, LowBuyPriorityBoardResponse]] = {}
 
 
 def apply_priority_board_live_overlay(response: LowBuyPriorityBoardResponse) -> LowBuyPriorityBoardResponse:
@@ -28,7 +27,7 @@ def apply_priority_board_live_overlay(response: LowBuyPriorityBoardResponse) -> 
         return response
     marker = local_quote_cache_marker()
     if getattr(settings, "priority_board_overlay_cache_enabled", True):
-        cache_key = _priority_overlay_cache_key(response.model_dump(mode="json"), marker)
+        cache_key = _priority_overlay_cache_key(response, marker)
         cached = _get_overlay_cache(cache_key)
         if cached is not None:
             return cached
@@ -156,20 +155,39 @@ def _quote_map(symbols: list[str]) -> dict[str, QuoteSnapshot]:
     return quotes
 
 
-def _priority_overlay_cache_key(payload: dict[str, Any], marker: dict[str, Any]) -> str:
-    raw = json.dumps(
-        {
-            "payload": payload,
-            "quote_cache": {
-                "version": str(marker.get("version") or ""),
-                "as_of": str(marker.get("as_of") or ""),
-            },
-        },
-        ensure_ascii=False,
-        sort_keys=True,
-        default=str,
-    )
-    return hashlib.sha256(raw.encode("utf-8")).hexdigest()
+def _priority_overlay_cache_key(response: LowBuyPriorityBoardResponse, marker: dict[str, Any]) -> str:
+    parts = [
+        str(marker.get("version") or ""),
+        str(marker.get("as_of") or ""),
+        str(response.as_of_date or ""),
+        str(response.latest_trade_date or ""),
+        str(response.latest_available_trade_date or ""),
+        str(response.updated_at or ""),
+        str(response.total_candidates),
+        str(response.data_quality or ""),
+        ",".join(str(tag) for tag in (response.data_quality_tags or [])),
+        str(response.snapshot_warning or ""),
+        str(getattr(response, "strategy_variant", "") or ""),
+    ]
+    parts.extend(_priority_item_fingerprint(item) for item in response.items)
+    for section in response.family_sections:
+        parts.append(str(section.family_key or ""))
+        parts.extend(_priority_item_fingerprint(item) for item in section.items)
+    return hashlib.sha256("\x1f".join(parts).encode("utf-8")).hexdigest()
+
+
+def _priority_item_fingerprint(item: LowBuyPriorityBoardItemOut) -> str:
+    return hashlib.sha256(
+        item.model_dump_json(
+            exclude={
+                "latest_price",
+                "change_pct",
+                "change_amount",
+                "quote_timestamp",
+                "data_quality",
+            }
+        ).encode("utf-8")
+    ).hexdigest()
 
 
 def _get_overlay_cache(cache_key: str) -> LowBuyPriorityBoardResponse | None:
@@ -182,14 +200,14 @@ def _get_overlay_cache(cache_key: str) -> LowBuyPriorityBoardResponse | None:
         if expires_at <= now:
             _OVERLAY_CACHE.pop(cache_key, None)
             return None
-        return LowBuyPriorityBoardResponse.model_validate_json(payload)
+        return payload.model_copy(deep=True)
 
 
 def _set_overlay_cache(cache_key: str, payload: LowBuyPriorityBoardResponse, ttl_seconds: int | float) -> None:
     with _CACHE_LOCK:
         _OVERLAY_CACHE[cache_key] = (
             time.monotonic() + max(float(ttl_seconds or 2), 0.1),
-            payload.model_dump_json(),
+            payload.model_copy(deep=True),
         )
 
 

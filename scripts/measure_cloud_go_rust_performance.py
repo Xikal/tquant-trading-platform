@@ -20,6 +20,8 @@ TRANSIENT_REMOTE_ERRORS = (
     "RemoteProtocolError",
     "Server disconnected without sending a response",
     "Timeout reading from socket",
+    "TimeoutError",
+    "timed out",
     "Connection reset by peer",
 )
 
@@ -96,6 +98,9 @@ def run_remote_measurement(args: argparse.Namespace) -> dict[str, Any]:
             except urllib.error.HTTPError as exc:
                 body = exc.read()
                 return (time.perf_counter() - started) * 1000, exc.code, body
+            except Exception as exc:
+                body = str(exc).encode()
+                return (time.perf_counter() - started) * 1000, "error:" + type(exc).__name__, body
 
         def login():
             username = "perf_gate_" + time.strftime("%Y%m%d%H%M%S")
@@ -125,7 +130,7 @@ def run_remote_measurement(args: argparse.Namespace) -> dict[str, Any]:
             return {
                 "name": name,
                 "path": path,
-                "statuses": sorted(set(statuses)),
+                "statuses": sorted(set(statuses), key=lambda item: str(item)),
                 "p50_ms": round(statistics.median(samples), 3),
                 "p95_ms": round(ordered[p95_index], 3),
             }
@@ -367,11 +372,16 @@ def run_remote_measurement(args: argparse.Namespace) -> dict[str, Any]:
         def quote_cache_snapshot():
             token = read_internal_token()
             warm = quote_cache_warmup()
+            if not isinstance(warm, dict):
+                warm = {
+                    "ok": False,
+                    "error": "quote_cache_warmup_returned_non_object",
+                    "raw": repr(warm)[:200],
+                }
             warm_symbols = []
-            if isinstance(warm, dict):
-                warm_symbols = [str(item).strip() for item in warm.get("symbols") or [] if len(str(item).strip()) == 6]
+            warm_symbols = [str(item).strip() for item in warm.get("symbols") or [] if len(str(item).strip()) == 6]
             warmup_coverage = warm.get("coverage") if isinstance(warm, dict) else {}
-            warmup_missing = int(warmup_coverage.get("demand_miss_count") or warm.get("missing_count") or 0) if isinstance(warm, dict) else 0
+            warmup_missing = int(warmup_coverage.get("demand_miss_count") or warm.get("missing_count") or 0)
             try:
                 redis_raw = subprocess.check_output(
                     ["sudo", "docker", "exec", "tquant-redis", "redis-cli", "--scan", "--pattern", "tquant:market:quote:*"],
@@ -422,6 +432,17 @@ def run_remote_measurement(args: argparse.Namespace) -> dict[str, Any]:
                     timeout=20,
                 )
                 payload = json.loads(out)
+                if not isinstance(payload, dict):
+                    return {
+                        "warmup": warm,
+                        "redis_quote_keys": redis_count,
+                        "symbols_checked": len(symbols),
+                        "warmup_missing_count": warmup_missing,
+                        "missing_count": warmup_missing,
+                        "data_quality": "unavailable",
+                        "error": "market_read_batch_returned_non_object",
+                        "raw": repr(payload)[:200],
+                    }
                 items = payload.get("items") or []
                 batch_missing = len(payload.get("missing") or [])
                 return {
@@ -461,7 +482,14 @@ def run_remote_measurement(args: argparse.Namespace) -> dict[str, Any]:
                     text=True,
                     timeout=90,
                 )
-                return json.loads(out.strip().splitlines()[-1])
+                payload = json.loads(out.strip().splitlines()[-1])
+                if isinstance(payload, dict):
+                    return payload
+                return {
+                    "ok": False,
+                    "error": "quote_cache_warmup_returned_non_object",
+                    "raw": repr(payload)[:200],
+                }
             except Exception as exc:
                 return {"ok": False, "error": str(exc)}
 

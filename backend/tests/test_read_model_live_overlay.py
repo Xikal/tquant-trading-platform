@@ -98,6 +98,48 @@ def test_priority_board_overlay_cache_returns_same_payload_as_uncached(monkeypat
     assert calls == [["000001"]]
 
 
+def test_priority_board_overlay_cache_invalidates_on_ranking_field_change(monkeypatch) -> None:
+    live_quote_overlay.clear_priority_board_overlay_cache()
+    calls: list[list[str]] = []
+    quotes = [
+        {"000001": _quote("000001", 12.3, 1.2)},
+        {"000001": _quote("000001", 12.8, 1.8)},
+    ]
+
+    monkeypatch.setattr(
+        live_quote_overlay,
+        "local_quote_cache_marker",
+        lambda: {"version": "v1", "as_of": "2026-06-03 10:30:00"},
+    )
+    monkeypatch.setattr(
+        live_quote_overlay,
+        "read_local_quote_snapshots",
+        lambda symbols: calls.append(symbols) or quotes[min(len(calls) - 1, len(quotes) - 1)],
+    )
+
+    first = apply_priority_board_live_overlay(
+        LowBuyPriorityBoardResponse(
+            as_of_date="2026-06-03",
+            latest_trade_date="2026-06-03",
+            updated_at="2026-06-03 10:00:00",
+            items=[_priority_item("000001", 91.0)],
+        )
+    )
+    second = apply_priority_board_live_overlay(
+        LowBuyPriorityBoardResponse(
+            as_of_date="2026-06-03",
+            latest_trade_date="2026-06-03",
+            updated_at="2026-06-03 10:00:00",
+            items=[_priority_item("000001", 92.0)],
+        )
+    )
+
+    assert first.items[0].latest_price == 12.3
+    assert second.items[0].priority_score == 92.0
+    assert second.items[0].latest_price == 12.8
+    assert calls == [["000001"], ["000001"]]
+
+
 def test_strategy_tracking_overlay_preserves_current_return_pct(monkeypatch) -> None:
     reset_read_model_metrics()
     response = StrategyTrackingListResponse(
