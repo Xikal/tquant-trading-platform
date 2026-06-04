@@ -56,6 +56,7 @@ class AppSettings(BaseSettings):
     intraday_entry_production_boost_enabled: bool = False
     event_risk_production_block_enabled: bool = False
     promotion_engine_auto_apply_enabled: bool = False
+    strategy_engine_adapter_enabled: bool = False
     data_quality_sla_enabled: bool = True
     data_repair_auto_enabled: bool = False
     track_record_enabled: bool = True
