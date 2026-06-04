@@ -53,13 +53,13 @@ export function PaperTradingSummaryBar({
         <Row gutter={[6, 6]} style={{ flex: "1 1 560px", minWidth: 0 }}>
           {metrics.map((item) => (
             <Col key={item.label} xs={12} sm={8} lg={4}>
-              <Card size="small" styles={{ body: { padding: 6 } }}>
+              <div className="paper-summary-metric">
                 <Statistic
                   title={item.label}
                   value={item.value}
                   styles={{ content: { color: metricColor(item.tone, token), fontSize: 12, lineHeight: 1.1 } }}
                 />
-              </Card>
+              </div>
             </Col>
           ))}
         </Row>

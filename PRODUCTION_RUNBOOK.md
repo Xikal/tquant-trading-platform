@@ -104,6 +104,10 @@ npm run dev
 
 Latest-data gaps, stuck `runtime_tasks`, empty priority board recovery, and runtime-worker startup checks are documented in [runtime-data-fallback-runbook.md](docs/operations/runtime-data-fallback-runbook.md).
 
+### Deployment Topology And Workers
+
+Independent Web, runtime-worker, scheduler, analytics-worker and backtest-worker operation is documented in [deployment-topology-runbook.md](docs/operations/deployment-topology-runbook.md) and [worker-runbook.md](docs/operations/worker-runbook.md).
+
 ## 5.1 单端口生产化运行
 
 后端现在会直接托管 `frontend/dist`，所以构建前端后，可以只启动后端：
@@ -317,6 +321,7 @@ APP_PORT=18090 docker compose -f docker-compose.mysql.yml up -d --build
 - `migration` 容器会先执行 `alembic upgrade head`，成功后才启动 Web/API 与后台 worker
 - `app` 容器默认关闭运行时后台任务，只负责 Web/API 响应
 - `runtime-worker` 容器运行 `python -m app.workers.runtime_worker`，消费 `runtime_tasks` 持久化任务队列
+- `runtime-scheduler` 容器独立运行 `python -m app.workers.runtime_scheduler`，负责周期性入队；Web 容器不打开调度循环
 - `backtest-worker` 容器独立消费回测任务
 - `analytics-worker` 容器独立消费 `strategy_24m_duckdb_report`、`analytics_export_daily_bars`、`analytics_quality_check`、`data_quality_sla_refresh`、`data_repair_run` 等分析与数据质量任务，并在镜像构建时通过 `INSTALL_ANALYTICS=1` 安装 `duckdb`、`pyarrow`
 - `go-bff-gateway`、`go-market-read-service`、`go-scan-worker` 是生产主路径组件，MySQL compose 默认启动；Python 保留 fallback，但 fallback 必须通过日志或 metrics 可观测

@@ -343,14 +343,47 @@ def test_runtime_data_fallback_runbook_and_startup_guard_exist() -> None:
     runbook = read_repo_file("docs/operations/runtime-data-fallback-runbook.md")
     production_runbook = read_repo_file("PRODUCTION_RUNBOOK.md")
     startup_script = read_repo_file("scripts/dev_start_all.sh")
+    component_script = read_repo_file("scripts/run_platform_component.sh")
 
     assert "runtime_worker.heartbeat" in runbook
     assert "critical tasks queued > 10 min" in runbook
     assert "hermes_daily_bar_watchdog.py" in runbook
     assert "runtime-data-fallback-runbook.md" in production_runbook
     assert "RUNTIME_BACKGROUND_JOBS_ENABLED" in startup_script
-    assert "app.workers.runtime_worker" in startup_script
-    assert "uvicorn app.main:app" in startup_script
+    assert "scripts/run_platform_component.sh runtime-worker" in startup_script
+    assert "scripts/run_platform_component.sh web" in startup_script
+    assert "app.workers.runtime_worker" in component_script
+    assert "uvicorn app.main:app" in component_script
+
+
+def test_platform_component_entrypoints_and_worker_runbooks_exist() -> None:
+    component_script = read_repo_file("scripts/run_platform_component.sh")
+    startup_script = read_repo_file("scripts/dev_start_all.sh")
+    topology_runbook = read_repo_file("docs/operations/deployment-topology-runbook.md")
+    worker_runbook = read_repo_file("docs/operations/worker-runbook.md")
+    production_runbook = read_repo_file("PRODUCTION_RUNBOOK.md")
+
+    for component in ("web", "runtime-worker", "scheduler", "analytics-worker", "backtest-worker"):
+        result = subprocess.run(
+            ["bash", str(ROOT_DIR / "scripts/run_platform_component.sh"), component, "--print-command"],
+            cwd=ROOT_DIR,
+            text=True,
+            capture_output=True,
+            check=True,
+        )
+        assert result.stdout.strip()
+
+    assert "uvicorn app.main:app" in component_script
+    assert "app.workers.runtime_worker" in component_script
+    assert "app.workers.runtime_scheduler" in component_script
+    assert "backend/scripts/analytics_worker.py" in component_script
+    assert "scripts/backtest_worker.py" in component_script
+    assert "scripts/run_platform_component.sh web" in startup_script
+    assert "scripts/run_platform_component.sh runtime-worker" in startup_script
+    assert "Deployment Topology Runbook" in topology_runbook
+    assert "Worker Runbook" in worker_runbook
+    assert "deployment-topology-runbook.md" in production_runbook
+    assert "worker-runbook.md" in production_runbook
 
 
 def test_cloud_deploy_distinguishes_nginx_sni_from_public_domain_reachability() -> None:

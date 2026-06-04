@@ -6,6 +6,7 @@ import type { StrategyMeta } from "../../api/strategies";
 import { PRODUCTION_PLAYBOOK_TABS } from "../workspace-shared/workspaceConstants";
 import type { Page } from "../workspace-shared/workspaceTypes";
 import { useWorkspaceStore } from "../../stores/workspaceStore";
+import { pageResponsibilityHint } from "./pageResponsibilities";
 
 interface CommandPaletteProps {
   open: boolean;
@@ -22,13 +23,13 @@ type CommandItem =
   | { type: "symbol"; label: string; hint: string; symbol: string };
 
 const PAGE_COMMANDS: CommandItem[] = [
-  { type: "page", label: "实时监控", hint: "打开持仓和生产优先榜", page: "monitor" },
+  { type: "page", label: "实时监控", hint: pageResponsibilityHint("monitor", "打开持仓和生产优先榜"), page: "monitor" },
   { type: "page", label: "量化分析", hint: "打开单票做T分析", page: "analysis" },
   { type: "page", label: "选股宝典", hint: "打开低吸策略候选", page: "playbook" },
-  { type: "page", label: "策略跟踪", hint: "查看生产策略推荐后的表现", page: "strategy-tracking" },
-  { type: "page", label: "回测页", hint: "打开完整回测看板", page: "backtest" },
-  { type: "page", label: "模拟盘", hint: "打开模拟交易账户", page: "paper" },
-  { type: "page", label: "数据", hint: "打开数据健康、回补和实盘前数据门", page: "data" },
+  { type: "page", label: "策略跟踪", hint: pageResponsibilityHint("strategy-tracking", "查看生产策略推荐后的表现"), page: "strategy-tracking" },
+  { type: "page", label: "回测页", hint: pageResponsibilityHint("backtest", "打开完整回测看板"), page: "backtest" },
+  { type: "page", label: "模拟盘", hint: pageResponsibilityHint("paper", "打开模拟交易账户"), page: "paper" },
+  { type: "page", label: "数据", hint: pageResponsibilityHint("data", "打开数据健康、回补和实盘前数据门"), page: "data" },
   { type: "page", label: "系统配置", hint: "打开运行配置与治理", page: "settings" },
 ];
 

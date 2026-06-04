@@ -152,6 +152,15 @@
   font-size: 14px;
 }
 
+.paper-summary-metric {
+  min-height: 48px;
+  min-width: 0;
+  border: 1px solid rgb(226 232 240);
+  border-radius: 8px;
+  background: rgb(248 250 252);
+  padding: 6px;
+}
+
 .paper-conclusion__positions {
   min-width: 0;
 }
