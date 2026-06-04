@@ -12,7 +12,7 @@ from app.core.auth import get_current_user
 from app.core.database import get_db
 from app.models.base import Base
 from app.models.entities import SystemSetting
-from app.models.schemas import LowBuyPriorityBoardResponse
+from app.models.schemas import LowBuyPriorityBoardItemOut, LowBuyPriorityBoardResponse
 from app.services.low_buy.priority_board import LowBuyPriorityBoardMixin
 
 
@@ -43,6 +43,47 @@ def _board() -> LowBuyPriorityBoardResponse:
         items=[],
         snapshot_warning="缓存已过期。",
     )
+
+
+def _board_with_ranking_fields() -> LowBuyPriorityBoardResponse:
+    return LowBuyPriorityBoardResponse(
+        as_of_date="2026-05-26",
+        latest_trade_date="2026-05-26",
+        latest_available_trade_date="2026-05-26",
+        updated_at="2026-05-26 15:10:00",
+        total_candidates=1,
+        items=[
+            LowBuyPriorityBoardItemOut(
+                symbol="600000",
+                name="测试银行",
+                strategy_key="first_board",
+                strategy_title="首板回调",
+                latest_price=10.0,
+                change_pct=0.0,
+                quote_timestamp="2026-05-26 15:00:00",
+                priority_score=88.5,
+                production_score=91.0,
+                buy_signal_state="observe_confirmed",
+                elite_watch_score=77.0,
+                entry_zone_low=9.6,
+                entry_zone_high=10.2,
+                stop_loss=9.2,
+            )
+        ],
+    )
+
+
+def _ranking_fields(response: LowBuyPriorityBoardResponse) -> list[tuple[str, float, float | None, str, float | None]]:
+    return [
+        (
+            item.symbol,
+            item.priority_score,
+            item.production_score,
+            item.buy_signal_state,
+            item.elite_watch_score,
+        )
+        for item in response.items
+    ]
 
 
 def test_priority_board_fast_path_returns_latest_stale_without_rebuild(monkeypatch):
@@ -125,6 +166,28 @@ def test_priority_board_empty_falls_back_to_last_snapshot_with_stale_flag(monkey
     assert "stale_snapshot" in result.data_quality_tags
     assert "上次可用榜单" in result.snapshot_warning
     assert queued == ["priority_board_cache_empty"]
+    assert service.rebuild_count == 0
+
+
+def test_priority_board_read_model_preserves_ranking_fields(monkeypatch):
+    service = _Service()
+    original = _board_with_ranking_fields()
+    payload = original.model_dump(mode="json")
+
+    monkeypatch.setattr(
+        "app.services.low_buy.priority_board.get_priority_response_cache",
+        lambda _service, _key, *, allow_stale=False: None,
+    )
+    monkeypatch.setattr(
+        "app.services.low_buy.priority_board.load_priority_board_read_model",
+        lambda _key: payload,
+    )
+    monkeypatch.setattr("app.services.low_buy.priority_board.published_low_buy_trade_date", lambda db: "2026-05-26")
+
+    cached = service.priority_board(SimpleNamespace(), limit=12)
+
+    assert cached.latest_trade_date == original.latest_trade_date
+    assert _ranking_fields(cached) == _ranking_fields(original)
     assert service.rebuild_count == 0
 
 

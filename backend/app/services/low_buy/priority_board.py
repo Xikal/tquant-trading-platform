@@ -23,6 +23,11 @@ from app.services.low_buy.priority_cache import (
     set_priority_base_cache,
     set_priority_response_cache,
 )
+from app.services.low_buy.priority_board_read_model import (
+    load_priority_board_read_model,
+    priority_board_read_model_key,
+    store_priority_board_read_model,
+)
 from app.services.low_buy.priority_types import (
     PriorityBaseSnapshot,
     PriorityCandidate,
@@ -107,6 +112,17 @@ class LowBuyPriorityBoardMixin(LowBuyPriorityScoringMixin):
                     return _mark_priority_refresh_queued(cached_response, stale=False)
                 return cached_response
 
+            read_model_response = self._get_priority_read_model(
+                cache_key=cache_key,
+                target_trade_date=target_trade_date,
+                strategy_variant=variant,
+            )
+            if read_model_response is not None:
+                if normalized_refresh == "async":
+                    _enqueue_priority_refresh(db, reason="priority_board_read_model_refresh_requested")
+                    return _mark_priority_refresh_queued(read_model_response, stale=False)
+                return read_model_response
+
             stale_response = self._get_priority_response_cache(cache_key, allow_stale=True)
             if stale_response is not None:
                 _enqueue_priority_refresh(db, reason="priority_board_cache_miss")
@@ -183,6 +199,12 @@ class LowBuyPriorityBoardMixin(LowBuyPriorityScoringMixin):
                 readiness_summary=front_row_readiness_summary(variant),
             )
             self._set_priority_response_cache(cache_key, response)
+            self._set_priority_read_model(
+                cache_key=cache_key,
+                target_trade_date=target_trade_date,
+                strategy_variant=variant,
+                payload=response,
+            )
             _set_latest_successful_priority_snapshot(db, variant=variant, limit=limit, payload=response)
             return response
         finally:
@@ -242,6 +264,51 @@ class LowBuyPriorityBoardMixin(LowBuyPriorityScoringMixin):
 
     def _set_priority_response_cache(self, cache_key: str, payload: LowBuyPriorityBoardResponse) -> None:
         set_priority_response_cache(self, cache_key, payload)
+
+    def _get_priority_read_model(
+        self,
+        *,
+        cache_key: str,
+        target_trade_date: str,
+        strategy_variant: str,
+    ) -> LowBuyPriorityBoardResponse | None:
+        settings = get_settings()
+        if not getattr(settings, "priority_board_stable_read_model_enabled", True):
+            return None
+        payload = load_priority_board_read_model(
+            _priority_read_model_key(
+                cache_key=cache_key,
+                target_trade_date=target_trade_date,
+                strategy_variant=strategy_variant,
+            )
+        )
+        if payload is None:
+            return None
+        try:
+            return LowBuyPriorityBoardResponse.model_validate(payload)
+        except Exception:
+            return None
+
+    def _set_priority_read_model(
+        self,
+        *,
+        cache_key: str,
+        target_trade_date: str,
+        strategy_variant: str,
+        payload: LowBuyPriorityBoardResponse,
+    ) -> None:
+        settings = get_settings()
+        if not getattr(settings, "priority_board_stable_read_model_enabled", True):
+            return
+        store_priority_board_read_model(
+            _priority_read_model_key(
+                cache_key=cache_key,
+                target_trade_date=target_trade_date,
+                strategy_variant=strategy_variant,
+            ),
+            payload.model_dump(mode="json"),
+            ttl_seconds=getattr(settings, "priority_board_stable_read_model_ttl_seconds", 45),
+        )
 
     def _load_watchlist_symbols(self, db: Session) -> set[str]:
         return set(db.execute(select(Watchlist.symbol)).scalars())
@@ -421,6 +488,19 @@ def filter_priority_candidates_for_recommendation(rows: list[PriorityCandidate])
     """Keep recommendation boards aligned with current stock-scope policy."""
 
     return [row for row in rows if not is_growth_board_stock(row.symbol)]
+
+
+def _priority_read_model_key(
+    *,
+    cache_key: str,
+    target_trade_date: str,
+    strategy_variant: str,
+) -> str:
+    return priority_board_read_model_key(
+        trade_date=target_trade_date,
+        strategy_variant=strategy_variant,
+        cache_key=cache_key,
+    )
 
 
 def _enqueue_priority_refresh(db: Session, *, reason: str) -> None:
