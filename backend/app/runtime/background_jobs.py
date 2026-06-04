@@ -367,6 +367,23 @@ def _enqueue_latest_data_watchdog_once() -> None:
         logger.info("日线刷新巡查任务检查完成: trade_date=%s task_id=%s status=%s", expected, task.id, task.status)
 
 
+def _enqueue_analytics_24m_report_once() -> None:
+    if not settings.analytics_24m_report_schedule_enabled:
+        return
+    bucket = beijing_now().strftime("%Y-%m-%d")
+    with SessionLocal() as db:
+        task = RuntimeTaskQueue(db).enqueue(
+            RuntimeTaskCreate(
+                task_type="strategy_24m_duckdb_report",
+                payload={"months": 24, "manifest": "latest", "source": "scheduler"},
+                priority=30,
+                idempotency_key=f"strategy_24m_duckdb_report:{bucket}",
+                max_attempts=1,
+            )
+        )
+        logger.info("24M DuckDB 策略报告任务检查完成: bucket=%s task_id=%s status=%s", bucket, task.id, task.status)
+
+
 def _agent_daily_report_push_due() -> bool:
     now = beijing_now()
     if now.weekday() >= 5:
@@ -499,6 +516,13 @@ def start_runtime_background_jobs() -> None:
                 target=_scan_priority_notifications_once,
                 interval_seconds=max(settings.notification_signal_scan_interval_seconds, 30),
                 initial_delay_seconds=120,
+            )
+        if settings.analytics_24m_report_schedule_enabled:
+            task_manager.register_loop(
+                name="analytics_24m_duckdb_report",
+                target=_enqueue_analytics_24m_report_once,
+                interval_seconds=max(int(settings.analytics_24m_report_interval_hours or 24) * 60 * 60, 60 * 60),
+                initial_delay_seconds=390,
             )
         task_manager.register_loop(
             name="agent_daily_report_push",

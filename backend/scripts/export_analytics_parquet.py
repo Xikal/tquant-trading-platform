@@ -38,7 +38,7 @@ def main() -> int:
             create_backfill_task=not args.no_create_backfill_task,
         )
     print(json.dumps(manifest, ensure_ascii=False, indent=2, sort_keys=True))
-    return 0 if manifest.get("quality", {}).get("status") == "ok" else 2
+    return 0
 
 
 if __name__ == "__main__":

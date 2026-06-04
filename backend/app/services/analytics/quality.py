@@ -36,6 +36,16 @@ class DailyBarsQualityResult:
     backfill_task_id: int | None = None
 
     def as_dict(self) -> dict[str, Any]:
+        coverage_pct = (
+            round(float(self.actual_days) / float(self.expected_days) * 100.0, 4)
+            if self.expected_days
+            else 0.0
+        )
+        complete_coverage_pct = (
+            round(float(self.complete_trade_day_count) / float(self.expected_days) * 100.0, 4)
+            if self.expected_days
+            else 0.0
+        )
         return {
             "dataset_key": self.dataset_key,
             "period_start": self.period_start,
@@ -43,6 +53,8 @@ class DailyBarsQualityResult:
             "expected_days": self.expected_days,
             "actual_days": self.actual_days,
             "missing_days": self.missing_days,
+            "coverage_pct": coverage_pct,
+            "complete_coverage_pct": complete_coverage_pct,
             "duplicate_rows": self.duplicate_rows,
             "invalid_ohlc_rows": self.invalid_ohlc_rows,
             "row_count": self.row_count,
@@ -51,6 +63,7 @@ class DailyBarsQualityResult:
             "actual_start": self.actual_start,
             "actual_end": self.actual_end,
             "status": self.status,
+            "canonical_status": normalized_quality_status(self),
             "blockers": list(self.blockers),
             "backfill_task_id": self.backfill_task_id,
         }
@@ -186,6 +199,30 @@ def check_daily_bars_24m_quality(
         blockers=blockers,
         backfill_task_id=backfill_task_id,
     )
+
+
+def normalized_quality_status(quality: DailyBarsQualityResult | dict[str, Any]) -> str:
+    """Map legacy quality fail/ok into product-facing data states."""
+
+    status = _quality_value(quality, "status")
+    blockers = [str(item) for item in (_quality_value(quality, "blockers") or [])]
+    row_count = int(_quality_value(quality, "row_count") or 0)
+    actual_days = int(_quality_value(quality, "actual_days") or 0)
+    if status == "ok" and not blockers:
+        return "ok"
+    if row_count <= 0 or "daily_bars_empty" in blockers:
+        return "no_data"
+    if "daily_bars_end_before_required_window" in blockers:
+        return "stale"
+    if actual_days > 0:
+        return "partial"
+    return "blocked"
+
+
+def _quality_value(quality: DailyBarsQualityResult | dict[str, Any], key: str) -> Any:
+    if isinstance(quality, dict):
+        return quality.get(key)
+    return getattr(quality, key)
 
 
 def _subtract_months(value: date, months: int) -> date:

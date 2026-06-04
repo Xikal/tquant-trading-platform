@@ -13,7 +13,7 @@ if str(BACKEND_DIR) not in sys.path:
 
 from app.core.database import SessionLocal, init_db
 from app.services.analytics.exporters import export_daily_bars_parquet
-from app.services.analytics.manifest import load_manifest
+from app.services.analytics.manifest import latest_manifest_path, load_manifest
 from app.services.analytics.report_queries import build_strategy_24m_duckdb_report, write_strategy_24m_report
 from app.services.data_quality.snapshots import data_quality_sla_payload
 from app.services.track_record.reporting import track_record_drift_payload
@@ -34,7 +34,8 @@ def build_parser() -> argparse.ArgumentParser:
 def main() -> int:
     args = build_parser().parse_args()
     init_db()
-    if args.manifest == "latest":
+    manifest_path = latest_manifest_path(output_root=args.output_root) if args.manifest == "latest" else None
+    if args.manifest == "latest" and manifest_path is None:
         with SessionLocal() as db:
             manifest = export_daily_bars_parquet(
                 db,
@@ -43,6 +44,8 @@ def main() -> int:
                 output_root=args.output_root,
                 create_backfill_task=True,
             )
+    elif args.manifest == "latest":
+        manifest = load_manifest(manifest_path, output_root=args.output_root)
     else:
         manifest = load_manifest(args.manifest, output_root=args.output_root)
     with SessionLocal() as db:
@@ -57,7 +60,7 @@ def main() -> int:
     )
     write_strategy_24m_report(report, output_md=args.output_md, output_json=args.output_json)
     print(json.dumps({"status": report["status"], "output_md": args.output_md, "output_json": args.output_json}, ensure_ascii=False))
-    return 0 if report.get("status") == "ok" else 2
+    return 0
 
 
 if __name__ == "__main__":

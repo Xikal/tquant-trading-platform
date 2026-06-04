@@ -7,13 +7,14 @@ from pathlib import Path
 from typing import Any
 
 import pandas as pd
-from sqlalchemy import text
+from sqlalchemy import func, select, text
 from sqlalchemy.orm import Session
 
 from app.services.analytics.config import analytics_config
 from app.services.analytics.dependencies import require_analytics_dependencies
 from app.services.analytics.manifest import dataset_version, file_sha256, write_manifest
-from app.services.analytics.quality import check_daily_bars_24m_quality, period_for_months
+from app.models.entities import DailyBarSnapshot
+from app.services.analytics.quality import check_daily_bars_24m_quality, normalized_quality_status, period_for_months
 from app.services.analytics.schemas import DAILY_BARS_SCHEMA
 
 
@@ -37,6 +38,7 @@ def export_daily_bars_parquet(
         create_backfill_task=create_backfill_task,
     )
     generated_at = datetime.utcnow()
+    source_updated_at = _latest_source_updated_at(db, period_start=period_start, period_end=period_end)
     version = dataset_version("daily_bars", generated_at)
     files: list[dict[str, Any]] = []
     row_count = 0
@@ -90,20 +92,47 @@ def export_daily_bars_parquet(
                 }
             )
     manifest = {
+        "dataset": DAILY_BARS_SCHEMA.dataset_key,
         "dataset_key": DAILY_BARS_SCHEMA.dataset_key,
         "schema_version": DAILY_BARS_SCHEMA.schema_version,
         "dataset_version": version,
         "generated_at": generated_at.isoformat(timespec="seconds") + "Z",
+        "status": normalized_quality_status(quality),
         "period_start": period_start.isoformat(),
         "period_end": period_end.isoformat(),
+        "date_range": {
+            "start": period_start.isoformat(),
+            "end": period_end.isoformat(),
+            "months": months,
+            "requested_end_date": resolved_end.isoformat(),
+        },
         "row_count": row_count,
         "symbol_count": quality.symbol_count,
+        "coverage": {
+            "expected_days": quality.expected_days,
+            "actual_days": quality.actual_days,
+            "missing_days": quality.missing_days,
+            "complete_trade_day_count": quality.complete_trade_day_count,
+            "coverage_pct": (
+                round(float(quality.actual_days) / float(quality.expected_days) * 100.0, 4)
+                if quality.expected_days
+                else 0.0
+            ),
+            "complete_coverage_pct": (
+                round(float(quality.complete_trade_day_count) / float(quality.expected_days) * 100.0, 4)
+                if quality.expected_days
+                else 0.0
+            ),
+        },
         "source": {
             "type": "transaction_db",
             "snapshot": generated_at.isoformat(timespec="seconds") + "Z",
+            "latest_db_updated_at": source_updated_at,
             "source_table": "daily_bar_snapshots",
         },
         "quality": quality.as_dict(),
+        "quality_status": normalized_quality_status(quality),
+        "artifact_paths": [item["path"] for item in files],
         "files": files,
     }
     path = write_manifest(manifest, output_root=config.root)
@@ -125,3 +154,14 @@ def _month_end(value: date) -> date:
     if value.month == 12:
         return date(value.year, 12, 31)
     return date(value.year, value.month + 1, 1) - timedelta(days=1)
+
+
+def _latest_source_updated_at(db: Session, *, period_start: date, period_end: date) -> str:
+    value = db.execute(
+        select(func.max(DailyBarSnapshot.updated_at)).where(
+            DailyBarSnapshot.instrument_type == "stock",
+            DailyBarSnapshot.trade_date >= period_start,
+            DailyBarSnapshot.trade_date <= period_end,
+        )
+    ).scalar()
+    return value.isoformat(timespec="seconds") + "Z" if value else ""

@@ -10,7 +10,7 @@ from app.core.database import SessionLocal
 from app.models.schema_defs.backtest import BacktestRunCreate
 from app.services.analytics import export_daily_bars_parquet, load_manifest
 from app.services.analytics.config import PROJECT_ROOT
-from app.services.analytics.quality import check_daily_bars_24m_quality
+from app.services.analytics.quality import check_daily_bars_24m_quality, normalized_quality_status
 from app.services.analytics.report_queries import build_strategy_24m_duckdb_report, write_strategy_24m_report
 from app.services.data_quality.repair import repair_invalid_ohlc
 from app.services.data_quality.sla import SUPPORTED_DATASETS, compute_dataset_sla
@@ -149,15 +149,36 @@ def handle_analytics_export_daily_bars(context: TaskContext) -> dict[str, Any]:
         create_backfill_task=True,
     )
     context.add_artifact(str(manifest.get("manifest_path") or ""))
-    return {"ok": manifest.get("quality", {}).get("status") == "ok", "manifest": manifest, "artifacts": [manifest.get("manifest_path")]}
+    status = str(manifest.get("quality_status") or normalized_quality_status(manifest.get("quality") or {}))
+    return {
+        "ok": status == "ok",
+        "status": status,
+        "manifest": manifest,
+        "artifacts": [manifest.get("manifest_path")],
+        "backfill_task_id": (manifest.get("quality") or {}).get("backfill_task_id"),
+    }
 
 
 def handle_analytics_quality_check(context: TaskContext) -> dict[str, Any]:
     months = int(context.payload.get("months") or 24)
     end = _payload_end_date(context.payload)
+    manifest_ref = str(context.payload.get("manifest") or "")
+    if manifest_ref:
+        context.progress(20.0, "读取 Manifest 并检查24个月日线完整性")
+        manifest = load_manifest(manifest_ref, output_root=context.payload.get("output_root"))
+        quality_payload = dict(manifest.get("quality") or {})
+        status = str(manifest.get("quality_status") or normalized_quality_status(quality_payload))
+        return {
+            "ok": status == "ok",
+            "status": status,
+            "quality": quality_payload,
+            "manifest": _manifest_summary(manifest),
+            "backfill_task_id": quality_payload.get("backfill_task_id"),
+        }
     context.progress(20.0, "开始检查24个月日线完整性")
     quality = check_daily_bars_24m_quality(context.db, months=months, end_date=end, create_backfill_task=True)
-    return {"ok": quality.status == "ok", "quality": quality.as_dict()}
+    status = normalized_quality_status(quality)
+    return {"ok": status == "ok", "status": status, "quality": quality.as_dict(), "backfill_task_id": quality.backfill_task_id}
 
 
 def handle_strategy_24m_duckdb_report(context: TaskContext) -> dict[str, Any]:
@@ -188,10 +209,8 @@ def handle_strategy_24m_duckdb_report(context: TaskContext) -> dict[str, Any]:
     write_strategy_24m_report(report, output_md=output_md, output_json=output_json)
     context.add_artifact(str(output_md))
     context.add_artifact(str(output_json))
-    if report.get("status") != "ok":
-        raise RuntimeError(f"strategy_24m_duckdb_report blocked: {report.get('status')}")
     return {
-        "ok": True,
+        "ok": report.get("status") == "ok",
         "status": report.get("status"),
         "manifest": report.get("manifest"),
         "artifacts": [str(output_md), str(output_json)],
@@ -325,6 +344,19 @@ def handle_strategy_drift_refresh(context: TaskContext) -> dict[str, Any]:
 def _payload_end_date(payload: dict[str, Any]) -> date:
     raw = str(payload.get("end_date") or date.today().isoformat())
     return date.fromisoformat(raw[:10])
+
+
+def _manifest_summary(manifest: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "dataset": manifest.get("dataset") or manifest.get("dataset_key"),
+        "dataset_version": manifest.get("dataset_version"),
+        "manifest_path": manifest.get("manifest_path"),
+        "period_start": manifest.get("period_start"),
+        "period_end": manifest.get("period_end"),
+        "row_count": manifest.get("row_count"),
+        "symbol_count": manifest.get("symbol_count"),
+        "quality_status": manifest.get("quality_status"),
+    }
 
 
 def _drift_snapshot_payload(snapshot) -> dict[str, Any]:  # noqa: ANN001

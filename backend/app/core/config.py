@@ -238,6 +238,8 @@ class AppSettings(BaseSettings):
     paper_perf_archive_time: str = "15:05"
     paper_perf_ai_report_enabled: bool = True
     strategy_validation_monthly_enabled: bool = True
+    analytics_24m_report_schedule_enabled: bool = False
+    analytics_24m_report_interval_hours: int = 24
     strategy_validation_monthly_lookback_days: int = 252
     strategy_validation_monthly_max_signals_per_day: int = 8
     evolution_scheduler_weekday: int = 4
