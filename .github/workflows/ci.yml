@@ -219,6 +219,7 @@ jobs:
           RUN_STRATEGY_TEST: "0"
           RUN_FULL_TESTS: "0"
           DEPLOY_FRONTEND_HOT_REQUIRED: "1"
+          DEPLOY_SYNC_MODE: "package-only"
           DEPLOY_GIT_REF: ${{ github.sha }}
           DEPLOY_GIT_AUTH_TOKEN: ${{ github.token }}
         run: |

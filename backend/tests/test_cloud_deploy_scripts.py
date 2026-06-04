@@ -244,14 +244,14 @@ def test_deploy_scripts_support_scope_aware_fast_paths() -> None:
     assert "web_image:skipped_frontend_hot" in quick_script
     assert "--scope  Override target selection" in one_click_script
     assert "DEPLOY_TARGET_SCOPE=auto" in deploy_example
-    assert "DEPLOY_SYNC_MODE=git-first" in deploy_example
+    assert "DEPLOY_SYNC_MODE=package-only" in deploy_example
 
 
 def test_cloud_deploy_prefers_remote_git_sync_before_package_upload() -> None:
     deploy_script = read_repo_file("scripts/deploy_cloud_server.sh")
     workflow = read_repo_file(".github/workflows/ci.yml")
 
-    assert 'DEPLOY_SYNC_MODE="${DEPLOY_SYNC_MODE:-git-first}"' in deploy_script
+    assert 'DEPLOY_SYNC_MODE="${DEPLOY_SYNC_MODE:-package-only}"' in deploy_script
     assert 'DEPLOY_GIT_REMOTE_URL="${DEPLOY_GIT_REMOTE_URL:-https://github.com/Xikal/tquant-trading-platform.git}"' in deploy_script
     assert 'DEPLOY_GIT_REF="${DEPLOY_GIT_REF:-${GITHUB_SHA:-HEAD}}"' in deploy_script
     assert "remote_deploy_from_git" in deploy_script
@@ -270,6 +270,7 @@ def test_cloud_deploy_prefers_remote_git_sync_before_package_upload() -> None:
     assert '[[ "$DEPLOY_RESOLVED_SCOPE" != "frontend-hot" && "$DEPLOY_SYNC_MODE" != "package-only" ]]' in deploy_script
     assert "remote git sync unavailable; falling back to package upload" in deploy_script
     assert "package-only" in deploy_script
+    assert 'DEPLOY_SYNC_MODE: "package-only"' in workflow
     assert "DEPLOY_GIT_REF: ${{ github.sha }}" in workflow
     assert "DEPLOY_GIT_AUTH_TOKEN: ${{ github.token }}" in workflow
 
