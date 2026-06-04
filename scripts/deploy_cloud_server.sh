@@ -314,6 +314,24 @@ docker_compose_build() {
   return 1
 }
 
+git_network_retry() {
+  local attempt
+  for attempt in 1 2 3; do
+    if GIT_HTTP_LOW_SPEED_LIMIT="${GIT_HTTP_LOW_SPEED_LIMIT:-1000}" \
+      GIT_HTTP_LOW_SPEED_TIME="${GIT_HTTP_LOW_SPEED_TIME:-30}" \
+      git -c "http.lowSpeedLimit=${GIT_HTTP_LOW_SPEED_LIMIT:-1000}" \
+        -c "http.lowSpeedTime=${GIT_HTTP_LOW_SPEED_TIME:-30}" "$@"; then
+      return 0
+    fi
+    if test "$attempt" -lt 3; then
+      echo "git network failure; retrying attempt $((attempt + 1))/3" >&2
+      sleep $((attempt * 5))
+      continue
+    fi
+  done
+  return 1
+}
+
 git_url="$DEPLOY_GIT_REMOTE_URL"
 if test -n "${DEPLOY_GIT_AUTH_TOKEN:-}" && printf '%s' "$git_url" | grep -q '^https://github.com/'; then
   git_url="$(printf '%s' "$git_url" | sed "s#^https://#https://x-access-token:${DEPLOY_GIT_AUTH_TOKEN}@#")"
@@ -321,26 +339,48 @@ fi
 
 cd /home/$CLOUD_USER
 WORKTREE="/home/$CLOUD_USER/gupiao-git-worktree"
-rm -rf "$WORKTREE"
-git clone --no-checkout "$git_url" "$WORKTREE"
-git -C "$WORKTREE" fetch --prune --tags origin
-git -C "$WORKTREE" checkout --detach "$DEPLOY_GIT_REF"
-git -C "$WORKTREE" remote set-url origin "$DEPLOY_GIT_REMOTE_URL" 2>/dev/null || true
-require_release_paths "$WORKTREE"
-if test -d "$CLOUD_PROJECT_DIR/.runtime"; then cp -a "$CLOUD_PROJECT_DIR/.runtime" "$WORKTREE/.runtime" || true; fi
-if test -f "$CLOUD_PROJECT_DIR/.env"; then cp -a "$CLOUD_PROJECT_DIR/.env" "$WORKTREE/.env" || true; fi
-PROJECT_PARENT=$(dirname "$CLOUD_PROJECT_DIR")
-sudo mkdir -p "$PROJECT_PARENT"
-if test -d "$CLOUD_PROJECT_DIR"; then
-  sudo mv "$CLOUD_PROJECT_DIR" "/home/$CLOUD_USER/gupiao-deploy-backup-$TS"
-  sudo chown -R "$CLOUD_USER:$CLOUD_USER" "/home/$CLOUD_USER/gupiao-deploy-backup-$TS" || true
+cleanup_git_remote_url() {
+  if test -d "$CLOUD_PROJECT_DIR/.git"; then
+    git -C "$CLOUD_PROJECT_DIR" remote set-url origin "$DEPLOY_GIT_REMOTE_URL" 2>/dev/null || true
+  fi
+  if test -d "$WORKTREE/.git"; then
+    git -C "$WORKTREE" remote set-url origin "$DEPLOY_GIT_REMOTE_URL" 2>/dev/null || true
+  fi
+}
+trap cleanup_git_remote_url EXIT
+
+if test -d "$CLOUD_PROJECT_DIR/.git"; then
+  cd "$CLOUD_PROJECT_DIR"
+  git remote set-url origin "$git_url"
+  git_network_retry fetch --prune --tags origin
+  git checkout --detach "$DEPLOY_GIT_REF"
+  git reset --hard "$DEPLOY_GIT_REF"
+  git clean -fd -e .env -e .runtime -e backend/data
+  cleanup_git_remote_url
+  require_release_paths "$CLOUD_PROJECT_DIR"
+  echo "deploy_sync:git-inplace"
+else
+  rm -rf "$WORKTREE"
+  git_network_retry clone --no-checkout "$git_url" "$WORKTREE"
+  git_network_retry -C "$WORKTREE" fetch --prune --tags origin
+  git -C "$WORKTREE" checkout --detach "$DEPLOY_GIT_REF"
+  cleanup_git_remote_url
+  require_release_paths "$WORKTREE"
+  if test -d "$CLOUD_PROJECT_DIR/.runtime"; then cp -a "$CLOUD_PROJECT_DIR/.runtime" "$WORKTREE/.runtime" || true; fi
+  if test -f "$CLOUD_PROJECT_DIR/.env"; then cp -a "$CLOUD_PROJECT_DIR/.env" "$WORKTREE/.env" || true; fi
+  PROJECT_PARENT=$(dirname "$CLOUD_PROJECT_DIR")
+  sudo mkdir -p "$PROJECT_PARENT"
+  if test -d "$CLOUD_PROJECT_DIR"; then
+    sudo mv "$CLOUD_PROJECT_DIR" "/home/$CLOUD_USER/gupiao-deploy-backup-$TS"
+    sudo chown -R "$CLOUD_USER:$CLOUD_USER" "/home/$CLOUD_USER/gupiao-deploy-backup-$TS" || true
+  fi
+  sudo mv "$WORKTREE" "$CLOUD_PROJECT_DIR"
+  sudo chown -R "$CLOUD_USER:$CLOUD_USER" "$CLOUD_PROJECT_DIR"
+  cd "$CLOUD_PROJECT_DIR"
+  echo "deploy_sync:git-clone"
 fi
-sudo mv "$WORKTREE" "$CLOUD_PROJECT_DIR"
-sudo chown -R "$CLOUD_USER:$CLOUD_USER" "$CLOUD_PROJECT_DIR"
-cd "$CLOUD_PROJECT_DIR"
 touch .env
 echo "deploy_scope:$DEPLOY_SCOPE"
-echo "deploy_sync:git"
 if ! grep -Eq '^AUTH_SECRET_KEY=.{64,}' .env; then
   sed -i '/^AUTH_SECRET_KEY=/d' .env
   SECRET=$(openssl rand -hex 32 2>/dev/null || python3 - <<'PY'

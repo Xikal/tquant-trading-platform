@@ -257,8 +257,15 @@ def test_cloud_deploy_prefers_remote_git_sync_before_package_upload() -> None:
     assert "remote_deploy_from_git" in deploy_script
     assert '[[ "$DEPLOY_RESOLVED_SCOPE" == "frontend-hot" || "$DEPLOY_SYNC_MODE" == "package-only" ]]' in deploy_script
     assert "deploy via remote git sync ref ${DEPLOY_GIT_REF} scope ${DEPLOY_RESOLVED_SCOPE}" in deploy_script
-    assert "deploy_sync:git" in deploy_script
-    assert "git clone --no-checkout \"$git_url\" \"$WORKTREE\"" in deploy_script
+    assert "git_network_retry" in deploy_script
+    assert "http.lowSpeedLimit" in deploy_script
+    assert "http.lowSpeedTime" in deploy_script
+    assert "git network failure; retrying attempt" in deploy_script
+    assert 'if test -d "$CLOUD_PROJECT_DIR/.git"; then' in deploy_script
+    assert "deploy_sync:git-inplace" in deploy_script
+    assert "deploy_sync:git-clone" in deploy_script
+    assert "git clean -fd -e .env -e .runtime -e backend/data" in deploy_script
+    assert "git_network_retry clone --no-checkout \"$git_url\" \"$WORKTREE\"" in deploy_script
     assert "git -C \"$WORKTREE\" checkout --detach \"$DEPLOY_GIT_REF\"" in deploy_script
     assert '[[ "$DEPLOY_RESOLVED_SCOPE" != "frontend-hot" && "$DEPLOY_SYNC_MODE" != "package-only" ]]' in deploy_script
     assert "remote git sync unavailable; falling back to package upload" in deploy_script
