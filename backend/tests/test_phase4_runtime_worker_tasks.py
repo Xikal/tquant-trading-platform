@@ -107,7 +107,7 @@ def test_runtime_worker_passes_expected_trade_date_to_daily_bar_refresh(monkeypa
 
         def refresh_latest(self, *, limit: int, expected_trade_date=None):  # noqa: ANN001
             calls.append(("refresh", limit, expected_trade_date))
-            return {"ok": True, "expected_trade_date": expected_trade_date, "limit": limit}
+            return {"ok": False, "expected_trade_date": expected_trade_date, "limit": limit}
 
     monkeypatch.setattr("app.services.daily_bar_refresh.DailyBarRefreshService", _RefreshService)
 
@@ -124,6 +124,7 @@ def test_runtime_worker_passes_expected_trade_date_to_daily_bar_refresh(monkeypa
 def test_runtime_worker_chains_close_refresh_after_daily_bar_success(monkeypatch):
     db = _db()
     calls = []
+    notifications = []
 
     class _RefreshService:
         def __init__(self, _db_arg):  # noqa: ANN001
@@ -137,11 +138,26 @@ def test_runtime_worker_chains_close_refresh_after_daily_bar_success(monkeypatch
         "app.services.latest_data_close_refresh.enqueue_latest_data_close_refresh",
         lambda db_arg: calls.append(db_arg) or {"ok": True, "action": "publish_latest_trade_date"},
     )
+    monkeypatch.setattr(
+        "app.services.latest_data_watchdog.LatestDailyBarWatchdog",
+        lambda: type(
+            "_Watchdog",
+            (),
+            {
+                "run": lambda self, db_arg, *, trade_date=None, notify=True, force_notify=False: notifications.append(
+                    (db_arg, trade_date, notify, force_notify)
+                )
+                or {"ok": True, "status": "notification_sent"},
+            },
+        )(),
+    )
 
     result = runtime_worker._execute_task("daily_bar_refresh", {"expected_trade_date": "2026-06-03"}, db)
 
     assert result["next_refresh_check"]["action"] == "publish_latest_trade_date"
+    assert result["post_close_notification"]["status"] == "notification_sent"
     assert calls == [db]
+    assert notifications == [(db, "2026-06-03", True, False)]
 
 
 def test_runtime_worker_keeps_heartbeat_fresh_during_long_task(monkeypatch):

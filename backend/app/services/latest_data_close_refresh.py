@@ -10,6 +10,7 @@ from app.models.schema_defs.phase4 import RuntimeTaskCreate
 from app.repositories.low_buy import DailyHistoryRepository
 from app.services.latest_data_status import (
     MIN_STOCK_DAILY_BARS,
+    daily_bar_freshness_status,
     expected_low_buy_trade_date,
     latest_data_status,
     publish_latest_trade_date_if_ready,
@@ -38,17 +39,24 @@ def enqueue_latest_data_close_refresh(
 
     required = sorted(strategies or PRODUCTION_PRIORITY_STRATEGIES)
     expected = expected_low_buy_trade_date(db)
-    daily_count = DailyHistoryRepository(db).stock_count_by_trade_date(expected) if expected else 0
     if not expected:
         return {"ok": False, "action": "missing_expected_trade_date"}
+    freshness = daily_bar_freshness_status(db, expected)
+    daily_count = int(freshness.get("daily_bar_count") or 0)
+    post_close_count = int(freshness.get("post_close_daily_bar_count") or 0)
 
-    if daily_count < MIN_STOCK_DAILY_BARS:
+    if daily_count < MIN_STOCK_DAILY_BARS or post_close_count < MIN_STOCK_DAILY_BARS:
+        refresh_reason = (
+            "after_close_stale_fetch_time"
+            if daily_count >= MIN_STOCK_DAILY_BARS
+            else "after_close_latest_data"
+        )
         task = RuntimeTaskQueue(db).enqueue(
             RuntimeTaskCreate(
                 task_type=DAILY_BAR_REFRESH_TASK,
-                payload={"limit": 6000, "expected_trade_date": expected, "reason": "after_close_latest_data"},
+                payload={"limit": 6000, "expected_trade_date": expected, "reason": refresh_reason},
                 priority=20,
-                idempotency_key=f"{DAILY_BAR_REFRESH_TASK}:{expected}",
+                idempotency_key=f"{DAILY_BAR_REFRESH_TASK}:{expected}:{refresh_reason}",
                 max_attempts=3,
             )
         )
@@ -57,6 +65,11 @@ def enqueue_latest_data_close_refresh(
             "action": "enqueue_daily_bar_refresh",
             "expected_trade_date": expected,
             "daily_bar_count": daily_count,
+            "post_close_daily_bar_count": post_close_count,
+            "min_daily_bar_count": MIN_STOCK_DAILY_BARS,
+            "daily_bar_freshness_status": freshness.get("daily_bar_freshness_status"),
+            "post_close_fetch_cutoff": freshness.get("post_close_fetch_cutoff"),
+            "latest_daily_bar_fetch_time": freshness.get("latest_daily_bar_fetch_time"),
             "task_id": task.id,
             "task_status": task.status,
         }

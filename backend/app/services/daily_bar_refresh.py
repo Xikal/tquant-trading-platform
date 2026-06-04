@@ -9,7 +9,11 @@ from sqlalchemy.orm import Session
 from app.models.entities import DailyBarSnapshot, Instrument
 from app.repositories.low_buy.daily_history import DailyBarRow, DailyHistoryRepository
 from app.services.daily_bar_refresh_checkpoint import DailyBarRefreshCheckpoint, DailyBarRefreshCheckpointStore
-from app.services.latest_data_status import MIN_STOCK_DAILY_BARS, expected_low_buy_trade_date
+from app.services.latest_data_status import (
+    MIN_STOCK_DAILY_BARS,
+    daily_bar_freshness_status,
+    expected_low_buy_trade_date,
+)
 from app.services.market_data import MarketDataService
 
 DEFAULT_CHUNK_SIZE = 300
@@ -137,11 +141,13 @@ def _completed_payload(
     requested: int,
     resumed: bool,
 ) -> dict[str, Any]:
-    daily_bar_count = DailyHistoryRepository(db).stock_count_by_trade_date(checkpoint.trade_date)
-    sufficient = daily_bar_count >= MIN_STOCK_DAILY_BARS
+    freshness = daily_bar_freshness_status(db, checkpoint.trade_date)
+    daily_bar_count = int(freshness.get("daily_bar_count") or 0)
+    post_close_count = int(freshness.get("post_close_daily_bar_count") or 0)
+    sufficient = daily_bar_count >= MIN_STOCK_DAILY_BARS and post_close_count >= MIN_STOCK_DAILY_BARS
     return {
         "ok": checkpoint.updated > 0 and sufficient,
-        "status": "completed" if sufficient else "insufficient_daily_bars",
+        "status": "completed" if sufficient else str(freshness.get("daily_bar_freshness_status") or "insufficient_daily_bars"),
         "trade_date": checkpoint.trade_date,
         "updated": checkpoint.updated,
         "skipped": checkpoint.skipped,
@@ -152,6 +158,10 @@ def _completed_payload(
         "total_chunks": checkpoint.total_chunks,
         "daily_bar_count": daily_bar_count,
         "min_daily_bar_count": MIN_STOCK_DAILY_BARS,
+        "post_close_daily_bar_count": post_close_count,
+        "post_close_fetch_cutoff": freshness.get("post_close_fetch_cutoff"),
+        "latest_daily_bar_fetch_time": freshness.get("latest_daily_bar_fetch_time"),
+        "post_close_daily_bars_ready": freshness.get("post_close_daily_bars_ready"),
     }
 
 

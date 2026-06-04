@@ -187,8 +187,14 @@ def _execute_task(task_type: str, payload: dict[str, Any], db) -> dict[str, Any]
         )
         if result.get("ok"):
             from app.services.latest_data_close_refresh import enqueue_latest_data_close_refresh
+            from app.services.latest_data_watchdog import LatestDailyBarWatchdog
 
             result["next_refresh_check"] = enqueue_latest_data_close_refresh(db)
+            result["post_close_notification"] = LatestDailyBarWatchdog().run(
+                db,
+                trade_date=str(result.get("trade_date") or payload.get("expected_trade_date") or "") or None,
+                notify=True,
+            )
         return result
     if task_type == "latest_data_watchdog":
         from app.services.latest_data_watchdog import LatestDailyBarWatchdog

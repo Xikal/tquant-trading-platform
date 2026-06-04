@@ -3,11 +3,12 @@ from __future__ import annotations
 import hashlib
 import json
 from dataclasses import dataclass
-from datetime import date, datetime
+from datetime import date
 
 from sqlalchemy import func, select, text
 from sqlalchemy.orm import Session
 
+from app.core.timezone import beijing_now
 from app.models.entities import DailyBarSnapshot
 
 
@@ -82,7 +83,7 @@ def _daily_bar_insert_payload(symbol: str, item: DailyBarRow) -> dict[str, objec
         "is_st": item.is_st,
         "is_delisted": item.is_delisted,
         "source": item.source,
-        "fetch_time": item.fetch_time or datetime.utcnow().isoformat(timespec="seconds"),
+        "fetch_time": item.fetch_time or _now_fetch_time(),
         "adjusted_mode": item.adjusted_mode,
         "checksum": item.checksum or daily_bar_checksum(symbol, item),
         "data_quality": item.data_quality,
@@ -363,7 +364,7 @@ class DailyHistoryRepository:
                     "is_st": item.is_st,
                     "is_delisted": item.is_delisted,
                     "source": item.source,
-                    "fetch_time": item.fetch_time or datetime.utcnow().isoformat(timespec="seconds"),
+                    "fetch_time": item.fetch_time or _now_fetch_time(),
                     "adjusted_mode": item.adjusted_mode,
                     "checksum": item.checksum or daily_bar_checksum(symbol, item),
                     "data_quality": item.data_quality,
@@ -379,6 +380,10 @@ def _as_iso_date(value: object) -> str:
     if isinstance(value, date):
         return value.isoformat()
     return str(value)[:10]
+
+
+def _now_fetch_time() -> str:
+    return beijing_now().replace(tzinfo=None).isoformat(timespec="seconds")
 
 
 def daily_bar_checksum(symbol: str, item: DailyBarRow) -> str:

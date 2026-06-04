@@ -9,6 +9,7 @@ from app.runtime import background_jobs
 
 class _FakeRepo:
     count = 0
+    post_close_count = 0
 
     def __init__(self, _db) -> None:
         pass
@@ -33,11 +34,26 @@ def _patch_base(monkeypatch, *, expected: str = "2026-05-18") -> None:
     monkeypatch.setattr(close_refresh, "expected_low_buy_trade_date", lambda _db: expected)
     monkeypatch.setattr(close_refresh, "DailyHistoryRepository", _FakeRepo)
     monkeypatch.setattr(close_refresh, "RuntimeTaskQueue", _FakeQueue)
+    monkeypatch.setattr(
+        close_refresh,
+        "daily_bar_freshness_status",
+        lambda _db, trade_date: {
+            "daily_bar_count": _FakeRepo.count,
+            "post_close_daily_bar_count": _FakeRepo.post_close_count,
+            "min_daily_bar_count": close_refresh.MIN_STOCK_DAILY_BARS,
+            "daily_bar_freshness_status": "post_close_complete"
+            if _FakeRepo.post_close_count >= close_refresh.MIN_STOCK_DAILY_BARS
+            else "stale_before_post_close",
+            "post_close_fetch_cutoff": f"{trade_date}T15:01:00",
+            "latest_daily_bar_fetch_time": f"{trade_date}T13:51:11",
+        },
+    )
 
 
 def test_after_close_enqueues_daily_bar_refresh_when_daily_bars_missing(monkeypatch) -> None:
     _patch_base(monkeypatch)
     _FakeRepo.count = 0
+    _FakeRepo.post_close_count = 0
     _FakeQueue.last_payload = None
 
     result = close_refresh.enqueue_latest_data_close_refresh(
@@ -49,12 +65,34 @@ def test_after_close_enqueues_daily_bar_refresh_when_daily_bars_missing(monkeypa
     assert result["action"] == "enqueue_daily_bar_refresh"
     assert result["task_status"] == "queued"
     assert _FakeQueue.last_payload.task_type == "daily_bar_refresh"
-    assert _FakeQueue.last_payload.idempotency_key == "daily_bar_refresh:2026-05-18"
+    assert _FakeQueue.last_payload.idempotency_key == "daily_bar_refresh:2026-05-18:after_close_latest_data"
+
+
+def test_after_close_enqueues_daily_bar_refresh_when_only_before_close_fetch_exists(monkeypatch) -> None:
+    _patch_base(monkeypatch)
+    _FakeRepo.count = close_refresh.MIN_STOCK_DAILY_BARS
+    _FakeRepo.post_close_count = 0
+    _FakeQueue.last_payload = None
+
+    result = close_refresh.enqueue_latest_data_close_refresh(
+        object(),
+        now=datetime(2026, 5, 18, 15, 2),
+        strategies=["first_board"],
+    )
+
+    assert result["action"] == "enqueue_daily_bar_refresh"
+    assert result["daily_bar_count"] == close_refresh.MIN_STOCK_DAILY_BARS
+    assert result["post_close_daily_bar_count"] == 0
+    assert result["daily_bar_freshness_status"] == "stale_before_post_close"
+    assert _FakeQueue.last_payload.task_type == "daily_bar_refresh"
+    assert _FakeQueue.last_payload.payload["reason"] == "after_close_stale_fetch_time"
+    assert _FakeQueue.last_payload.idempotency_key == "daily_bar_refresh:2026-05-18:after_close_stale_fetch_time"
 
 
 def test_after_close_enqueues_materialization_when_strategy_snapshots_missing(monkeypatch) -> None:
     _patch_base(monkeypatch)
     _FakeRepo.count = close_refresh.MIN_STOCK_DAILY_BARS
+    _FakeRepo.post_close_count = close_refresh.MIN_STOCK_DAILY_BARS
     captured: dict[str, object] = {}
     monkeypatch.setattr(
         close_refresh,
@@ -82,6 +120,7 @@ def test_after_close_enqueues_materialization_when_strategy_snapshots_missing(mo
 def test_after_close_publishes_when_latest_data_is_complete(monkeypatch) -> None:
     _patch_base(monkeypatch)
     _FakeRepo.count = close_refresh.MIN_STOCK_DAILY_BARS
+    _FakeRepo.post_close_count = close_refresh.MIN_STOCK_DAILY_BARS
     _FakeQueue.last_payload = None
     monkeypatch.setattr(close_refresh, "latest_data_status", lambda _db, strategies: {"missing_strategies": []})
     monkeypatch.setattr(
@@ -108,6 +147,7 @@ def test_after_close_publishes_when_latest_data_is_complete(monkeypatch) -> None
 def test_after_close_skips_when_already_published(monkeypatch) -> None:
     _patch_base(monkeypatch)
     _FakeRepo.count = close_refresh.MIN_STOCK_DAILY_BARS
+    _FakeRepo.post_close_count = close_refresh.MIN_STOCK_DAILY_BARS
     _FakeQueue.last_payload = None
     monkeypatch.setattr(
         close_refresh,
