@@ -194,6 +194,7 @@ def _execute_task(task_type: str, payload: dict[str, Any], db) -> dict[str, Any]
                 db,
                 trade_date=str(result.get("trade_date") or payload.get("expected_trade_date") or "") or None,
                 notify=True,
+                enforce_watchdog_time_gate=False,
             )
         return result
     if task_type == "latest_data_watchdog":
@@ -204,6 +205,7 @@ def _execute_task(task_type: str, payload: dict[str, Any], db) -> dict[str, Any]
             trade_date=str(payload.get("expected_trade_date") or payload.get("trade_date") or "") or None,
             notify=bool(payload.get("notify", True)),
             force_notify=bool(payload.get("force_notify", False)),
+            enforce_watchdog_time_gate=bool(payload.get("enforce_watchdog_time_gate", True)),
         )
     if task_type == "a_key_level_materialization_refresh":
         from app.services.key_levels.materialization import AKeyLevelMaterializationService

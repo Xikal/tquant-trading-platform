@@ -81,8 +81,8 @@ def test_runtime_worker_executes_latest_data_watchdog(monkeypatch):
     calls = []
 
     class _Watchdog:
-        def run(self, db_arg, *, trade_date=None, notify=True, force_notify=False):  # noqa: ANN001
-            calls.append((db_arg, trade_date, notify, force_notify))
+        def run(self, db_arg, *, trade_date=None, notify=True, force_notify=False, enforce_watchdog_time_gate=True):  # noqa: ANN001
+            calls.append((db_arg, trade_date, notify, force_notify, enforce_watchdog_time_gate))
             return {"ok": False, "status": "alert_sent", "expected_trade_date": trade_date}
 
     monkeypatch.setattr("app.services.latest_data_watchdog.LatestDailyBarWatchdog", lambda: _Watchdog())
@@ -94,7 +94,7 @@ def test_runtime_worker_executes_latest_data_watchdog(monkeypatch):
     )
 
     assert result == {"ok": False, "status": "alert_sent", "expected_trade_date": "2026-06-03"}
-    assert calls == [(db, "2026-06-03", True, True)]
+    assert calls == [(db, "2026-06-03", True, True, True)]
 
 
 def test_runtime_worker_passes_expected_trade_date_to_daily_bar_refresh(monkeypatch):
@@ -144,8 +144,8 @@ def test_runtime_worker_chains_close_refresh_after_daily_bar_success(monkeypatch
             "_Watchdog",
             (),
             {
-                "run": lambda self, db_arg, *, trade_date=None, notify=True, force_notify=False: notifications.append(
-                    (db_arg, trade_date, notify, force_notify)
+                "run": lambda self, db_arg, *, trade_date=None, notify=True, force_notify=False, enforce_watchdog_time_gate=True: notifications.append(
+                    (db_arg, trade_date, notify, force_notify, enforce_watchdog_time_gate)
                 )
                 or {"ok": True, "status": "notification_sent"},
             },
@@ -157,7 +157,7 @@ def test_runtime_worker_chains_close_refresh_after_daily_bar_success(monkeypatch
     assert result["next_refresh_check"]["action"] == "publish_latest_trade_date"
     assert result["post_close_notification"]["status"] == "notification_sent"
     assert calls == [db]
-    assert notifications == [(db, "2026-06-03", True, False)]
+    assert notifications == [(db, "2026-06-03", True, False, False)]
 
 
 def test_runtime_worker_keeps_heartbeat_fresh_during_long_task(monkeypatch):

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from argparse import Namespace
+from datetime import datetime
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -11,8 +12,9 @@ from app.models.entities import MinuteBarSnapshot
 from backend.scripts import backfill_etf_execution_metadata as script
 
 
-def test_etf_execution_metadata_backfill_does_not_fake_spread_or_premium() -> None:
+def test_etf_execution_metadata_backfill_does_not_fake_spread_or_premium(monkeypatch) -> None:
     db = _session()
+    monkeypatch.setattr(script, "beijing_now", lambda: datetime(2026, 4, 28, 15, 40, 0))
     db.add(
         MinuteBarSnapshot(
             symbol="510300",
@@ -50,6 +52,7 @@ def test_etf_execution_metadata_backfill_does_not_fake_spread_or_premium() -> No
     assert row.bid_ask_spread == 0.0
     assert row.premium_discount_pct is None
     assert row.data_quality == "partial_metadata"
+    assert row.fetch_time == "2026-04-28T15:40:00"
     assert results[0].updated_rows == 1
     assert report["status"] == "completed_with_blocking_metadata_gaps"
     assert report["totals"]["fresh_or_verified_rows"] == 0

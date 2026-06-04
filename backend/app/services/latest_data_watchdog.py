@@ -38,10 +38,11 @@ class LatestDailyBarWatchdog:
         now: datetime | None = None,
         notify: bool = True,
         force_notify: bool = False,
+        enforce_watchdog_time_gate: bool = True,
         channel: str = "feishu",
     ) -> dict[str, Any]:
         current = now or beijing_now()
-        if current.time() < CLOSE_WATCHDOG_AFTER:
+        if enforce_watchdog_time_gate and current.time() < CLOSE_WATCHDOG_AFTER:
             return {
                 "ok": True,
                 "status": "skip_before_close",

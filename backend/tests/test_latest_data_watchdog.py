@@ -36,6 +36,43 @@ def test_watchdog_skips_before_close(monkeypatch):
     assert sent == []
 
 
+def test_watchdog_can_bypass_time_gate_for_refresh_success_notification(monkeypatch):
+    db = _db()
+    monkeypatch.setattr(watchdog, "is_a_share_trading_day", lambda _date: True)
+    sent = []
+    for index in range(watchdog.MIN_STOCK_DAILY_BARS):
+        db.add(
+            DailyBarSnapshot(
+                symbol=f"{index:06d}",
+                trade_date="2026-06-03",
+                close_price=10,
+                pre_close=9.9,
+                volume=1000,
+                amount=10000,
+                pct_chg=1.0,
+                fetch_time="2026-06-03T15:05:00",
+            )
+        )
+    db.commit()
+
+    result = watchdog.LatestDailyBarWatchdog(
+        notification_service=SimpleNamespace(
+            supports_channel=lambda channel="feishu": True,
+            send_test=lambda payload: sent.append(payload) or SimpleNamespace(ok=True, message="sent"),
+        )
+    ).run(
+        db,
+        now=datetime(2026, 6, 3, 15, 5, 0),
+        notify=True,
+        enforce_watchdog_time_gate=False,
+    )
+
+    assert result["ok"] is True
+    assert result["status"] == "notification_sent"
+    assert sent
+    assert "日线已更新" in sent[0].message
+
+
 def test_watchdog_sends_alert_when_after_close_daily_bars_missing(monkeypatch):
     db = _db()
     monkeypatch.setattr(watchdog, "is_a_share_trading_day", lambda _date: True)

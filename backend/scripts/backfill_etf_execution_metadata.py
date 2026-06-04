@@ -16,6 +16,7 @@ if str(APP_DIR) not in sys.path:
     sys.path.insert(0, str(APP_DIR))
 
 from app.core.database import SessionLocal, init_db
+from app.core.timezone import beijing_now
 from app.models.entities import MinuteBarSnapshot
 from app.models.schemas import KlineBar
 from app.services.etf.universe import EtfProfile, list_etf_profiles
@@ -91,7 +92,7 @@ def backfill_execution_metadata(
     dry_run: bool = False,
 ) -> list[MetadataBackfillResult]:
     results: list[MetadataBackfillResult] = []
-    now = datetime.utcnow().isoformat(timespec="seconds")
+    now = beijing_now().replace(tzinfo=None).isoformat(timespec="seconds")
     for profile in profiles:
         rows = _rows_for_profile(db, profile=profile, start_date=start_date, end_date=end_date, period=period)
         updated = 0

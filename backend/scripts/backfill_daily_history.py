@@ -18,6 +18,7 @@ if str(APP_DIR) not in sys.path:
     sys.path.insert(0, str(APP_DIR))
 
 from app.core.database import SessionLocal, init_db
+from app.core.timezone import beijing_now
 from app.models.entities import Instrument
 from app.repositories.low_buy import DailyBarRow, DailyHistoryRepository
 from app.services.market_data import guess_market
@@ -304,7 +305,7 @@ def _fetch_daily_rows(*, symbol: str, start_date: str, end_date: str) -> list[Da
     if frame is None or frame.empty:
         return []
     normalized = _normalize_daily_frame(frame)
-    fetch_time = datetime.utcnow().isoformat(timespec="seconds")
+    fetch_time = beijing_now().replace(tzinfo=None).isoformat(timespec="seconds")
     valid_records = [record for record in normalized if _daily_quality(record) != "unavailable"]
     return [
         DailyBarRow(

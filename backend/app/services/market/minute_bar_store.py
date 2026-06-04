@@ -8,6 +8,7 @@ from typing import Iterable
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from app.core.timezone import beijing_now
 from app.models.entities import MinuteBarSnapshot
 from app.models.schemas import KlineBar, QuoteSnapshot
 
@@ -90,7 +91,7 @@ class MinuteBarSnapshotStore:
             row.tracking_index_symbol = bar.tracking_index_symbol or ""
             row.liquidity_tier = bar.liquidity_tier or "unknown"
             row.source = quote.data_source or "unknown"
-            row.fetch_time = datetime.utcnow().isoformat(timespec="seconds")
+            row.fetch_time = beijing_now().replace(tzinfo=None).isoformat(timespec="seconds")
             row.data_quality = quote.data_quality or quote.source_quality or "unknown"
             row.checksum = minute_bar_checksum(quote.symbol, bar, source=row.source, data_quality=row.data_quality)
         if persisted or existing_rows:

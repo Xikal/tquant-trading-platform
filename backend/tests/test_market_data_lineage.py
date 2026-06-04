@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from datetime import datetime
+
 from sqlalchemy import create_engine, inspect, text
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
@@ -78,8 +80,12 @@ def test_daily_history_repository_persists_lineage_fields() -> None:
     assert stored.fetch_time
 
 
-def test_minute_bar_store_persists_lineage_fields() -> None:
+def test_minute_bar_store_persists_lineage_fields(monkeypatch) -> None:
     db = _session()
+    monkeypatch.setattr(
+        "app.services.market.minute_bar_store.beijing_now",
+        lambda: datetime(2026, 4, 28, 15, 35, 0),
+    )
     quote = QuoteSnapshot(
         symbol="510300",
         name="沪深300ETF",
@@ -126,7 +132,7 @@ def test_minute_bar_store_persists_lineage_fields() -> None:
     assert row.tracking_index_symbol == "沪深300"
     assert row.liquidity_tier == "sufficient"
     assert len(row.checksum) == 64
-    assert row.fetch_time
+    assert row.fetch_time == "2026-04-28T15:35:00"
 
 
 def test_minute_bar_store_can_backfill_older_history() -> None:
@@ -212,10 +218,12 @@ def test_daily_backfill_fetch_filters_unavailable_ohlc_rows(monkeypatch) -> None
             )
 
     monkeypatch.setattr(backfill_daily_history, "ak", FakeAk)
+    monkeypatch.setattr(backfill_daily_history, "beijing_now", lambda: datetime(2026, 5, 29, 15, 31, 0))
 
     rows = backfill_daily_history._fetch_daily_rows(symbol="000001", start_date="2024-05-28", end_date="2024-05-29")
 
     assert [row.trade_date for row in rows] == ["2024-05-29"]
+    assert rows[0].fetch_time == "2026-05-29T15:31:00"
 
 
 def test_daily_backfill_coverage_requires_dense_window_and_lineage(monkeypatch) -> None:
