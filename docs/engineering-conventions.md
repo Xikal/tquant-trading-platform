@@ -138,6 +138,19 @@ Runbook 使用 `docs/operations/<topic>-runbook.md`。
 
 ## 5. 模块边界
 
+### 5.0 默认架构基线
+
+后续所有开发默认以 `docs/platform-modular-architecture-uplift-execution-plan-2026-06-04.md` 为当前架构基线。除非用户当轮明确要求或唯一权威计划文档另有更高优先级说明，否则必须遵守以下端态方向：
+
+1. 平台采用模块化单体优先，不直接拆成大量微服务。
+2. Web 主进程只处理页面请求、轻量查询、任务提交和状态查询。
+3. 数据补齐、24 个月回测、Parquet 导出、DuckDB 报告、批量策略验证等重任务必须由 Worker 执行。
+4. DuckDB/Parquet 只作为分析层和报告层，不作为生产交易事实源。
+5. API 契约以后端 FastAPI OpenAPI 为事实源，前端类型从契约生成。
+6. 策略、回测、模拟盘、数据分析、任务运行时必须逐步收敛到独立领域模块，禁止新增无边界的并行实现。
+7. 生产策略、研究策略、观察池、Shadow/Paper 必须有明确门控，研究能力不得绕过门控进入生产排序。
+8. 最终部署形态支持 Web、Runtime Worker、Analytics Worker、Backtest Worker、Scheduler 独立启动和恢复，但不要求一次性微服务化。
+
 ### 5.1 核心流程
 
 核心流程默认保留并优先维护：

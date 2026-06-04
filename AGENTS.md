@@ -64,4 +64,6 @@
 ## 默认工程规范
 
 - 后续开发默认遵循 `docs/engineering-conventions.md`，包括文档结构、文件命名、单文件行数、模块边界、生成产物归档、feature flag、API 契约、测试最低要求、报告口径和验收分层。
+- 后续开发默认遵循 `docs/platform-modular-architecture-uplift-execution-plan-2026-06-04.md` 作为当前架构基线：模块化单体优先、重任务 Worker 化、DuckDB/Parquet 作为分析层、OpenAPI 契约优先、策略/回测/模拟盘/分析/任务运行时按领域模块解耦，并支持 Web 与各类 Worker 独立部署。
+- 默认不直接拆成大量微服务；除非用户当轮明确要求，否则新能力应先落在既有模块边界和 Worker 队列内。
 - 若用户当轮明确要求或唯一权威计划文档与该规范冲突，以更高优先级要求为准，并在交付说明中写明偏离点。
