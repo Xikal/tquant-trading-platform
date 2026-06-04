@@ -5,8 +5,8 @@ set -euo pipefail
 cloud_build_ssh_opts() {
   CLOUD_SSH_OPTS=(
     -o StrictHostKeyChecking=no
-    -o ConnectTimeout="${CLOUD_SSH_CONNECT_TIMEOUT:-10}"
-    -o ConnectionAttempts="${CLOUD_SSH_CONNECTION_ATTEMPTS:-2}"
+    -o ConnectTimeout="${CLOUD_SSH_CONNECT_TIMEOUT:-30}"
+    -o ConnectionAttempts="${CLOUD_SSH_CONNECTION_ATTEMPTS:-3}"
     -o ServerAliveInterval=30
     -o ServerAliveCountMax="${CLOUD_SSH_SERVER_ALIVE_COUNT_MAX:-120}"
   )
@@ -21,7 +21,7 @@ cloud_ssh_target() {
 
 cloud_ssh_transient_log() {
   local log_file="$1"
-  grep -Eqi 'kex_exchange_identification|ssh_exchange_identification|Connection reset by peer|Connection closed|Connection timed out|Operation timed out|Broken pipe|No route to host|Network is unreachable' "$log_file"
+  grep -Eqi 'banner exchange|kex_exchange_identification|ssh_exchange_identification|Connection reset by peer|Connection closed|Connection timed out|Operation timed out|Broken pipe|No route to host|Network is unreachable' "$log_file"
 }
 
 cloud_ssh() {
@@ -58,7 +58,7 @@ cloud_scp_to() {
   target="$(cloud_ssh_target)"
   local -a CLOUD_SSH_OPTS
   cloud_build_ssh_opts
-  local attempts="${CLOUD_SSH_RETRY_ATTEMPTS:-4}"
+  local attempts="${CLOUD_SSH_RETRY_ATTEMPTS:-6}"
   local retry_delay="${CLOUD_SSH_RETRY_DELAY_SECONDS:-5}"
   local attempt=1
   local status=0

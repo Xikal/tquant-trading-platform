@@ -49,9 +49,13 @@ def test_cloud_ssh_lib_retries_transient_scp_connection_resets() -> None:
     ssh_lib = read_repo_file("scripts/cloud_ssh_lib.sh")
 
     assert "cloud_ssh_transient_log" in ssh_lib
+    assert 'ConnectTimeout="${CLOUD_SSH_CONNECT_TIMEOUT:-30}"' in ssh_lib
+    assert 'ConnectionAttempts="${CLOUD_SSH_CONNECTION_ATTEMPTS:-3}"' in ssh_lib
     assert "CLOUD_SSH_RETRY_ATTEMPTS" in ssh_lib
+    assert 'CLOUD_SSH_RETRY_ATTEMPTS:-6' in ssh_lib
     assert "CLOUD_SSH_RETRY_DELAY_SECONDS" in ssh_lib
     assert "ConnectionAttempts" in ssh_lib
+    assert "banner exchange" in ssh_lib
     assert "kex_exchange_identification" in ssh_lib
     assert "Connection reset by peer" in ssh_lib
     assert "Connection closed" in ssh_lib
@@ -77,6 +81,7 @@ def test_quick_deploy_requires_explicit_fast_mode_and_external_connection_config
     assert "43.143.243.97" not in quick_script
     assert "/Users/j/Downloads/gupiao.pem" not in quick_script
     assert "FAST_MODE=0" in quick_script
+    assert 'CLOUD_SSH_CONNECT_TIMEOUT="${CLOUD_SSH_CONNECT_TIMEOUT:-30}"' in quick_script
     assert "RUN_LOCAL_CHECKS=1" in quick_script
     assert "RUN_FRONTEND_BUILD=1" in quick_script
     assert "--fast-risk-accepted" in quick_script
@@ -91,6 +96,7 @@ def test_one_click_deploy_defaults_are_overridable_and_do_not_embed_secret_conte
     assert "DEPLOY_ENV_FILE" in one_click_script
     assert ".env.deploy.local" in one_click_script
     assert "DEFAULT_DEPLOY_MODE" in one_click_script
+    assert 'CLOUD_SSH_CONNECT_TIMEOUT="${CLOUD_SSH_CONNECT_TIMEOUT:-30}"' in one_click_script
     assert "CLOUD_HOST is required" in one_click_script
     assert "CLOUD_SSH_KEY or CLOUD_PASSWORD is required" in one_click_script
     assert "43.143.243.97" not in one_click_script
