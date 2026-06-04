@@ -21,13 +21,14 @@ import (
 var errMissingProductionInternalToken = errors.New("TQUANT_INTERNAL_SERVICE_TOKEN is required when APP_ENVIRONMENT=production")
 
 type config struct {
-	addr              string
-	pythonAPIBase     string
-	internalToken     string
-	timeout           time.Duration
-	sourceTimeout     time.Duration
-	workspaceCacheTTL time.Duration
-	workspaceStaleTTL time.Duration
+	addr                          string
+	pythonAPIBase                 string
+	internalToken                 string
+	timeout                       time.Duration
+	sourceTimeout                 time.Duration
+	workspaceCacheTTL             time.Duration
+	workspaceStaleTTL             time.Duration
+	monitorDegradedSourcesEnabled bool
 }
 
 var bffAggregateHits atomic.Int64
@@ -82,13 +83,14 @@ func loadConfig() config {
 		log.Fatal(err)
 	}
 	return config{
-		addr:              ":" + env("PORT", "8091"),
-		pythonAPIBase:     strings.TrimRight(env("TQUANT_PYTHON_API_BASE", "http://127.0.0.1:8000"), "/"),
-		internalToken:     internalToken,
-		timeout:           durationSeconds("TQUANT_SERVICE_CALL_TIMEOUT_SECONDS", 5),
-		sourceTimeout:     durationSeconds("BFF_SOURCE_TIMEOUT_SECONDS", 1),
-		workspaceCacheTTL: durationSeconds("BFF_WORKSPACE_CACHE_TTL_SECONDS", 5),
-		workspaceStaleTTL: durationSeconds("BFF_WORKSPACE_STALE_TTL_SECONDS", 60),
+		addr:                          ":" + env("PORT", "8091"),
+		pythonAPIBase:                 strings.TrimRight(env("TQUANT_PYTHON_API_BASE", "http://127.0.0.1:8000"), "/"),
+		internalToken:                 internalToken,
+		timeout:                       durationSeconds("TQUANT_SERVICE_CALL_TIMEOUT_SECONDS", 5),
+		sourceTimeout:                 durationSeconds("BFF_SOURCE_TIMEOUT_SECONDS", 1),
+		workspaceCacheTTL:             durationSeconds("BFF_WORKSPACE_CACHE_TTL_SECONDS", 5),
+		workspaceStaleTTL:             durationSeconds("BFF_WORKSPACE_STALE_TTL_SECONDS", 60),
+		monitorDegradedSourcesEnabled: envBool("BFF_MONITOR_DEGRADED_SOURCES_ENABLED", false),
 	}
 }
 
@@ -405,6 +407,14 @@ func env(key string, fallback string) string {
 		return value
 	}
 	return fallback
+}
+
+func envBool(key string, fallback bool) bool {
+	value := strings.ToLower(strings.TrimSpace(os.Getenv(key)))
+	if value == "" {
+		return fallback
+	}
+	return value == "1" || value == "true" || value == "yes" || value == "on"
 }
 
 func durationSeconds(key string, fallback int) time.Duration {

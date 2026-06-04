@@ -41,9 +41,10 @@ func TestMonitorAggregateReturnsPartialWhenPulseIsSlow(t *testing.T) {
 	defer upstream.Close()
 
 	cfg := config{
-		pythonAPIBase: upstream.URL,
-		internalToken: "token",
-		sourceTimeout: 50 * time.Millisecond,
+		pythonAPIBase:                 upstream.URL,
+		internalToken:                 "token",
+		sourceTimeout:                 50 * time.Millisecond,
+		monitorDegradedSourcesEnabled: true,
 	}
 	req := httptest.NewRequest(http.MethodGet, "/api/bff/v1/workspace/monitor", nil)
 	result := aggregateMonitorWorkspace(cfg, upstream.Client(), req)
@@ -84,9 +85,10 @@ func TestMonitorAggregateUsesShortDeadlineForHeavyOptionalSources(t *testing.T) 
 	defer upstream.Close()
 
 	cfg := config{
-		pythonAPIBase: upstream.URL,
-		internalToken: "token",
-		sourceTimeout: 900 * time.Millisecond,
+		pythonAPIBase:                 upstream.URL,
+		internalToken:                 "token",
+		sourceTimeout:                 900 * time.Millisecond,
+		monitorDegradedSourcesEnabled: true,
 	}
 	req := httptest.NewRequest(http.MethodGet, "/api/bff/v1/workspace/monitor", nil)
 	started := time.Now()
@@ -471,7 +473,7 @@ func TestAggregateMonitorWorkspaceIncludesPulseAndReview(t *testing.T) {
 		}
 	}))
 	defer upstream.Close()
-	cfg := config{pythonAPIBase: upstream.URL, timeout: time.Second}
+	cfg := config{pythonAPIBase: upstream.URL, timeout: time.Second, monitorDegradedSourcesEnabled: true}
 	req := httptest.NewRequest(http.MethodGet, "/api/bff/v1/workspace/monitor?priority_limit=3", nil)
 
 	result := aggregateMonitorWorkspace(cfg, upstream.Client(), req)
@@ -497,6 +499,37 @@ func TestAggregateMonitorWorkspaceIncludesPulseAndReview(t *testing.T) {
 	}
 }
 
+func TestAggregateMonitorWorkspaceSkipsDegradedSourcesByDefault(t *testing.T) {
+	seen := map[string]int{}
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		seen[r.URL.Path]++
+		w.Header().Set("Content-Type", "application/json")
+		switch r.URL.Path {
+		case "/api/monitor/snapshot":
+			_, _ = w.Write([]byte(`{"updated_at":"2026-05-25 10:00:00","watchlist_signals":[],"priority_board":{"items":[]}}`))
+		case "/api/market/pulse":
+			_, _ = w.Write([]byte(`{"updated_at":"2026-05-25 10:00:00","pulse_text":"ok"}`))
+		default:
+			t.Fatalf("default monitor hot path should not request degraded source %s", r.URL.Path)
+		}
+	}))
+	defer upstream.Close()
+	cfg := config{pythonAPIBase: upstream.URL, timeout: time.Second}
+	req := httptest.NewRequest(http.MethodGet, "/api/bff/v1/workspace/monitor", nil)
+
+	result := aggregateMonitorWorkspace(cfg, upstream.Client(), req)
+
+	if !result.ok {
+		t.Fatal("expected monitor aggregate result")
+	}
+	if seen["/api/monitor/snapshot"] != 1 || seen["/api/market/pulse"] != 1 {
+		t.Fatalf("expected only critical monitor sources, seen=%#v body=%s", seen, string(result.body))
+	}
+	if !bytes.Contains(result.body, []byte(`"partial_errors":[]`)) {
+		t.Fatalf("default monitor aggregate should not include degraded partials: %s", string(result.body))
+	}
+}
+
 func TestAggregateStrategyWorkspaceBuildsPayloadFromSourceEndpoints(t *testing.T) {
 	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -519,7 +552,7 @@ func TestAggregateStrategyWorkspaceBuildsPayloadFromSourceEndpoints(t *testing.T
 		}
 	}))
 	defer upstream.Close()
-	cfg := config{pythonAPIBase: upstream.URL, timeout: time.Second}
+	cfg := config{pythonAPIBase: upstream.URL, timeout: time.Second, monitorDegradedSourcesEnabled: true}
 	req := httptest.NewRequest(http.MethodGet, "/api/bff/v1/workspace/strategy?run_limit=4", nil)
 
 	result := aggregateStrategyWorkspace(cfg, upstream.Client(), req)
@@ -730,7 +763,7 @@ func TestAggregateMonitorWorkspacePartialFailureIsObservable(t *testing.T) {
 		}
 	}))
 	defer upstream.Close()
-	cfg := config{pythonAPIBase: upstream.URL, timeout: time.Second}
+	cfg := config{pythonAPIBase: upstream.URL, timeout: time.Second, monitorDegradedSourcesEnabled: true}
 	req := httptest.NewRequest(http.MethodGet, "/api/bff/v1/workspace/monitor", nil)
 
 	result := aggregateMonitorWorkspace(cfg, upstream.Client(), req)
