@@ -149,6 +149,82 @@ class RuntimeTaskListResponse(BaseModel):
     offset: int = 0
 
 
+class RuntimeTaskStatusCountOut(BaseModel):
+    status: str
+    count: int = 0
+
+
+class RuntimeTaskTypeCountOut(BaseModel):
+    task_type: str
+    count: int = 0
+
+
+class RuntimeTaskSummaryResponse(BaseModel):
+    queued: int = 0
+    running: int = 0
+    failed: int = 0
+    retrying: int = 0
+    succeeded_recent: int = 0
+    longest_wait_seconds: int | None = None
+    oldest_queued_at: datetime | None = None
+    running_count: int = 0
+    status_counts: list[RuntimeTaskStatusCountOut] = Field(default_factory=list)
+    task_type_counts: list[RuntimeTaskTypeCountOut] = Field(default_factory=list)
+
+
+class RuntimeTaskWorkerOut(BaseModel):
+    worker_id: str
+    component: str = "runtime-worker"
+    status: str = "missing"
+    task_count: int = 0
+    running_task_count: int = 0
+    heartbeat_updated_at: str = ""
+    heartbeat_age_seconds: int | None = None
+    current_task_ids: list[int] = Field(default_factory=list)
+
+
+class RuntimeTaskWorkerListResponse(BaseModel):
+    items: list[RuntimeTaskWorkerOut] = Field(default_factory=list)
+    total: int = 0
+
+
+class RuntimeTaskFailureResponse(BaseModel):
+    items: list[RuntimeTaskOut] = Field(default_factory=list)
+    total: int = 0
+
+
+class RuntimeTaskArtifactOut(BaseModel):
+    task_id: int
+    task_type: str
+    status: str
+    artifact_key: str
+    artifact_path: str
+    created_at: datetime
+    finished_at: datetime | None = None
+
+
+class RuntimeTaskArtifactResponse(BaseModel):
+    items: list[RuntimeTaskArtifactOut] = Field(default_factory=list)
+    total: int = 0
+
+
+class RuntimeTaskAnalyticsReportOut(BaseModel):
+    report_type: str = ""
+    generated_at: str = ""
+    status: str = ""
+    manifest_id: str | None = None
+    dataset_version: str | None = None
+    duration_seconds: float | None = None
+    output_md: str = ""
+    output_json: str = ""
+
+
+class RuntimeTaskAnalyticsReportResponse(BaseModel):
+    items: list[RuntimeTaskAnalyticsReportOut] = Field(default_factory=list)
+    total: int = 0
+    updated_at: str = ""
+
+
 class MLSignalSampleBuildRequest(BaseModel):
     source: Literal["paper", "backtest", "combined"] = "combined"
     limit: int = Field(default=500, ge=1, le=5000)

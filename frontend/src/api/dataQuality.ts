@@ -1,119 +1,99 @@
 import { apiClient } from "./httpClient";
+import type { components, paths } from "../generated/api-types";
 
-export interface DataQualitySnapshotItem {
-  dataset_key: string;
-  as_of_date: string;
-  scope: string;
-  expected_days: number;
-  actual_days: number;
-  missing_days: number;
-  invalid_rows: number;
-  duplicate_rows: number;
-  stale: boolean;
-  coverage_pct: number;
-  status: string;
-  blockers: string[];
-  checked_at?: string | null;
-}
+type ApiOperation<Path extends keyof paths, Method extends keyof paths[Path]> =
+  paths[Path][Method] extends infer Operation ? Operation : never;
 
-export interface DataRepairAuditItem {
-  id: number;
-  repair_id: string;
-  dataset_key: string;
-  reason: string;
-  backup_path: string;
-  refetch_result: string;
-  deleted_rows_count: number;
-  fabricated: boolean;
-  operator: string;
-  created_at?: string | null;
-}
+type ApiJson<Path extends keyof paths, Method extends keyof paths[Path]> =
+  ApiOperation<Path, Method> extends { responses: { 200: { content: { "application/json": infer Payload } } } } ? Payload : never;
 
-export interface DataQualitySlaResponse {
+type ApiRequestBody<Path extends keyof paths, Method extends keyof paths[Path]> =
+  paths[Path][Method] extends { requestBody: { content: { "application/json": infer Payload } } } ? Payload : never;
+
+export type DataQualitySnapshotItem = components["schemas"]["DataQualitySnapshotOut"];
+export type DataRepairAuditItem = components["schemas"]["DataRepairAuditOut"];
+export type DataQualityMissingSymbol = components["schemas"]["DataQualityMissingSymbolOut"];
+type GeneratedDataQualitySlaResponse = ApiJson<"/api/data-quality/sla", "get">;
+type GeneratedDataQualityCoverageResponse = ApiJson<"/api/data-quality/coverage", "get">;
+type GeneratedDataRepairRunRequest = ApiRequestBody<"/api/data-quality/repair", "post">;
+type GeneratedTradeDataGateResponse = ApiJson<"/api/data-quality/trade-gate", "get">;
+type GeneratedRuntimeFallbackStatus = ApiJson<"/api/data-quality/runtime-fallback", "get">;
+export type DataQualitySlaResponse = Omit<GeneratedDataQualitySlaResponse, "items" | "latest_repair_audits"> & {
   items: DataQualitySnapshotItem[];
   latest_repair_audits: DataRepairAuditItem[];
-  total: number;
-}
-
-export interface DataQualityMissingSymbol {
-  symbol: string;
-  name: string;
-  missing_days: number;
-}
-
-export interface DataQualityCoverageResponse {
-  dataset_key: string;
-  scope: string;
+};
+export type DataQualityCoverageResponse = Omit<GeneratedDataQualityCoverageResponse, "missing_symbols" | "missing_dates"> & {
   missing_symbols: DataQualityMissingSymbol[];
   missing_dates: string[];
-}
-
-export interface DataQualityBackfillRequest {
-  dataset_key: string;
-  scope: string;
-  start_date: string;
-  end_date: string;
-}
-
-export interface DataRepairRunRequest {
-  dataset_key: string;
-  dry_run: boolean;
-}
-
-export interface DataRepairRunResponse {
-  id: number;
-  task_type: string;
-  status: string;
-  payload: Record<string, unknown>;
-  created_at: string;
-  progress_pct?: number;
-  error_message?: string;
-}
-
-export interface TradeDataGateCheck {
-  key: string;
-  label: string;
-  ok: boolean;
-  severity: "green" | "yellow" | "red";
-  detail: string;
-}
-
-export interface TradeDataGateResponse {
-  ok: boolean;
+};
+export type DataQualityBackfillRequest = ApiRequestBody<"/api/data-quality/backfill", "post">;
+export type DataRepairRunRequest = Pick<GeneratedDataRepairRunRequest, "dataset_key" | "dry_run"> & Partial<Omit<GeneratedDataRepairRunRequest, "dataset_key" | "dry_run">>;
+export type DataRepairRunResponse = components["schemas"]["RuntimeTaskOut"];
+export type TradeDataGateCheck = components["schemas"]["TradeDataGateCheckOut"];
+export type TradeDataGateResponse = Omit<GeneratedTradeDataGateResponse, "checks"> & {
   checks: TradeDataGateCheck[];
-}
-
-export interface RuntimeFallbackStatus {
-  worker_status: "running" | "stale" | "missing" | string;
-  worker_id: string;
-  heartbeat_updated_at: string;
-  heartbeat_age_seconds: number | null;
-  critical_queued_count: number;
-  oldest_critical_queued_at: string;
-  oldest_critical_queued_age_seconds: number | null;
-  blocking: boolean;
-  message: string;
+};
+export type RuntimeFallbackStatus = Omit<GeneratedRuntimeFallbackStatus, "recovery_actions"> & {
   recovery_actions: string[];
-}
+};
 
 export const dataQualityApi = {
-  sla: () => apiClient.request<DataQualitySlaResponse>("/data-quality/sla"),
+  sla: () => apiClient.request<GeneratedDataQualitySlaResponse>("/data-quality/sla").then(normalizeSlaResponse),
   coverage: ({ dataset_key, scope }: { dataset_key: string; scope: string }) =>
-    apiClient.request<DataQualityCoverageResponse>(
+    apiClient.request<GeneratedDataQualityCoverageResponse>(
       `/data-quality/coverage?dataset_key=${encodeURIComponent(dataset_key)}&scope=${encodeURIComponent(scope)}`,
-    ),
+    ).then(normalizeCoverageResponse),
   backfill: (payload: DataQualityBackfillRequest) => apiClient.request<DataRepairRunResponse>("/data-quality/backfill", {
     method: "POST",
     body: JSON.stringify(payload),
   }),
   repair: (payload: DataRepairRunRequest) => apiClient.request<DataRepairRunResponse>("/data-quality/repair", {
     method: "POST",
-    body: JSON.stringify(payload),
+    body: JSON.stringify(toRepairRunRequest(payload)),
   }),
   repairDryRun: () => apiClient.request<DataRepairRunResponse>("/data-quality/repair", {
     method: "POST",
-    body: JSON.stringify({ dataset_key: "daily_bars", dry_run: true }),
+    body: JSON.stringify(toRepairRunRequest({ dataset_key: "daily_bars", dry_run: true })),
   }),
-  tradeGate: () => apiClient.request<TradeDataGateResponse>("/data-quality/trade-gate"),
-  runtimeFallback: () => apiClient.request<RuntimeFallbackStatus>("/data-quality/runtime-fallback"),
+  tradeGate: () => apiClient.request<GeneratedTradeDataGateResponse>("/data-quality/trade-gate").then(normalizeTradeGateResponse),
+  runtimeFallback: () => apiClient.request<GeneratedRuntimeFallbackStatus>("/data-quality/runtime-fallback").then(normalizeRuntimeFallbackStatus),
 };
+
+function normalizeSlaResponse(payload: GeneratedDataQualitySlaResponse): DataQualitySlaResponse {
+  return {
+    ...payload,
+    items: payload.items ?? [],
+    latest_repair_audits: payload.latest_repair_audits ?? [],
+  };
+}
+
+function normalizeCoverageResponse(payload: GeneratedDataQualityCoverageResponse): DataQualityCoverageResponse {
+  return {
+    ...payload,
+    missing_symbols: payload.missing_symbols ?? [],
+    missing_dates: payload.missing_dates ?? [],
+  };
+}
+
+function normalizeTradeGateResponse(payload: GeneratedTradeDataGateResponse): TradeDataGateResponse {
+  return {
+    ...payload,
+    checks: payload.checks ?? [],
+  };
+}
+
+function normalizeRuntimeFallbackStatus(payload: GeneratedRuntimeFallbackStatus): RuntimeFallbackStatus {
+  return {
+    ...payload,
+    recovery_actions: payload.recovery_actions ?? [],
+  };
+}
+
+function toRepairRunRequest(payload: DataRepairRunRequest): GeneratedDataRepairRunRequest {
+  return {
+    backup_dir: "",
+    output_path: "",
+    refetch: true,
+    ...payload,
+  };
+}

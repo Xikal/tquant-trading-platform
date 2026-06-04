@@ -190,6 +190,12 @@ class StrategyTrackingItemOut(BaseModel):
     exclusion_reasons: list[str] = Field(default_factory=list)
     warning_tags: list[str] = Field(default_factory=list)
     production_scoring_config_version: str = ""
+    strategy_engine_shadow: dict[str, Any] | None = None
+    strategy_engine_decision: str = ""
+    strategy_engine_warning_tags: list[str] = Field(default_factory=list)
+    strategy_engine_exclusion_reasons: list[str] = Field(default_factory=list)
+    strategy_engine_score_delta: float | None = None
+    strategy_engine_parity_status: str = "not_evaluated"
     strategy_variant: str = "baseline"
     strategy_role: str = "production_baseline"
     display_lane: str = "baseline"

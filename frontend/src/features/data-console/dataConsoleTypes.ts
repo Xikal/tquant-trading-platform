@@ -6,7 +6,14 @@ import type {
   TradeDataGateResponse,
 } from "../../api/dataQuality";
 import type { InstrumentInspectorResponse } from "../../api/dataConsoleInspector";
-import type { RuntimeTaskOut } from "../../api/runtimeTasks";
+import type {
+  RuntimeTaskArtifactResponse,
+  RuntimeTaskAnalyticsReportResponse,
+  RuntimeTaskFailureResponse,
+  RuntimeTaskOut,
+  RuntimeTaskSummaryResponse,
+  RuntimeTaskWorkerListResponse,
+} from "../../api/runtimeTasks";
 import type { DataSourceProbeResponse } from "../../types";
 
 export type DataConsoleStatus = "ok" | "warn" | "blocked";
@@ -26,6 +33,11 @@ export interface DataConsoleData {
   sourceHealth: DataSourceProbeResponse | null;
   coverage: DataQualityCoverageResponse | null;
   tasks: RuntimeTaskOut[];
+  taskSummary: RuntimeTaskSummaryResponse | null;
+  taskWorkers: RuntimeTaskWorkerListResponse | null;
+  taskFailures: RuntimeTaskFailureResponse | null;
+  taskArtifacts: RuntimeTaskArtifactResponse | null;
+  analyticsReports: RuntimeTaskAnalyticsReportResponse | null;
   inspector: InstrumentInspectorResponse | null;
   gate: TradeDataGateResponse | null;
   runtimeFallback: RuntimeFallbackStatus | null;

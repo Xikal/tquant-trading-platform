@@ -26,6 +26,7 @@ describe("workspace page responsibilities", () => {
       expect(responsibility.emptyFallback).toMatch(/空态|stale|partial|no_data|blocked|补数|持仓|快照/);
       expect(responsibility.featureFlagFallback).toMatch(/关闭|flag/);
       expect(responsibility.heavyListSurface.length).toBeGreaterThan(0);
+      expect(responsibility.modeBadges.length).toBeGreaterThan(0);
     }
   });
 
@@ -42,5 +43,12 @@ describe("workspace page responsibilities", () => {
     expect(pageResponsibilityHint("paper", "fallback")).toContain("持仓");
     expect(pageResponsibilityHint("data", "fallback")).toContain("覆盖率");
     expect(pageResponsibilityHint("backtest", "fallback")).toContain("24个月");
+  });
+
+  it("keeps Shadow and Preview labels explicitly scoped to non-production modes", () => {
+    expect(WORKSPACE_PAGE_RESPONSIBILITIES.monitor.modeBadges).toContain("shadow");
+    expect(WORKSPACE_PAGE_RESPONSIBILITIES.backtest.modeBadges).toContain("preview");
+    expect(WORKSPACE_PAGE_RESPONSIBILITIES.paper.modeBadges).toContain("paper");
+    expect(WORKSPACE_PAGE_RESPONSIBILITIES["strategy-tracking"].modeBadges).toContain("watch");
   });
 });

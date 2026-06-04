@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 from app.models.entities import RuntimeTask, SystemSetting
 
 HEARTBEAT_SETTING_KEY = "runtime_worker.heartbeat"
+COMPONENT_HEARTBEAT_PREFIX = "platform_component.heartbeat."
 HEARTBEAT_STALE_SECONDS = 120
 CRITICAL_QUEUE_BLOCK_SECONDS = 600
 CRITICAL_TASK_TYPES = {
@@ -19,6 +20,7 @@ CRITICAL_TASK_TYPES = {
     "a_key_level_materialization_refresh",
     "monitor_snapshot_refresh",
 }
+DEFAULT_OBSERVED_COMPONENTS = ("runtime-worker", "runtime-scheduler", "analytics-worker", "backtest-worker")
 
 
 def record_runtime_worker_heartbeat(
@@ -28,19 +30,85 @@ def record_runtime_worker_heartbeat(
     now: datetime | None = None,
     status: str = "running",
 ) -> None:
+    record_platform_component_heartbeat(db, component="runtime-worker", worker_id=worker_id, now=now, status=status)
+
+
+def record_platform_component_heartbeat(
+    db: Session,
+    *,
+    component: str,
+    worker_id: str,
+    now: datetime | None = None,
+    status: str = "running",
+) -> None:
     current = now or datetime.utcnow()
+    component_name = _normalize_component(component)
     payload = {
+        "component": component_name,
         "worker_id": str(worker_id or ""),
         "updated_at": current.isoformat(timespec="seconds"),
         "status": status,
     }
     raw = json.dumps(payload, ensure_ascii=False)
-    row = db.execute(select(SystemSetting).where(SystemSetting.key == HEARTBEAT_SETTING_KEY)).scalar_one_or_none()
-    if row is None:
-        db.add(SystemSetting(key=HEARTBEAT_SETTING_KEY, value=raw))
-    else:
-        row.value = raw
+    _upsert_setting(db, _component_heartbeat_key(component_name), raw)
+    if component_name == "runtime-worker":
+        _upsert_setting(db, HEARTBEAT_SETTING_KEY, raw)
     db.commit()
+
+
+def platform_component_heartbeats(
+    db: Session,
+    *,
+    now: datetime | None = None,
+    components: tuple[str, ...] = DEFAULT_OBSERVED_COMPONENTS,
+) -> list[dict[str, Any]]:
+    current = now or datetime.utcnow()
+    items: list[dict[str, Any]] = []
+    for component in components:
+        component_name = _normalize_component(component)
+        payload = _load_component_heartbeat(db, component_name)
+        heartbeat_at = _parse_datetime(str(payload.get("updated_at") or ""))
+        age = _age_seconds(current, heartbeat_at)
+        status = _worker_status(heartbeat=payload, heartbeat_age=age)
+        items.append(
+            {
+                "component": component_name,
+                "worker_id": str(payload.get("worker_id") or component_name),
+                "status": status,
+                "updated_at": heartbeat_at.isoformat(timespec="seconds") if heartbeat_at else "",
+                "age_seconds": age,
+            }
+        )
+    return items
+
+
+def _upsert_setting(db: Session, key: str, value: str) -> None:
+    row = db.execute(select(SystemSetting).where(SystemSetting.key == key)).scalar_one_or_none()
+    if row is None:
+        db.add(SystemSetting(key=key, value=value))
+        return
+    row.value = value
+
+
+def _component_heartbeat_key(component: str) -> str:
+    return f"{COMPONENT_HEARTBEAT_PREFIX}{_normalize_component(component)}"
+
+
+def _normalize_component(component: str) -> str:
+    return str(component or "").strip() or "unknown"
+
+
+def _load_component_heartbeat(db: Session, component: str) -> dict[str, Any]:
+    row = db.execute(select(SystemSetting).where(SystemSetting.key == _component_heartbeat_key(component))).scalar_one_or_none()
+    if row is None and component == "runtime-worker":
+        row = db.execute(select(SystemSetting).where(SystemSetting.key == HEARTBEAT_SETTING_KEY)).scalar_one_or_none()
+    if row is None or not row.value:
+        return {}
+    try:
+        loaded = json.loads(row.value)
+    except json.JSONDecodeError:
+        return {}
+    return loaded if isinstance(loaded, dict) else {}
 
 
 def build_runtime_fallback_status(db: Session, *, now: datetime | None = None) -> dict[str, Any]:

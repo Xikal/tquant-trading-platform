@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from app.services.execution_model import build_backtest_execution_model_preview
+from app.services.backtest.persistence import _compact_result_payload
 from test_backtest_v2_engine_contract import _ProviderStub, _config, engine_module
 from test_decision_context_portfolio_executor import _trade
 
@@ -24,3 +25,16 @@ def test_execution_model_preview_does_not_replace_backtest_fact_source() -> None
 
     assert preview["replacement_enabled"] is False
     assert preview["final_fact_source"] == "portfolio_backtest_metrics"
+
+
+def test_backtest_result_payload_exposes_execution_model_preview_without_replacement() -> None:
+    result = getattr(engine_module, "BacktestEngine")(_ProviderStub()).run(_config())
+    payload = _compact_result_payload(result)
+    preview = payload["execution_model_preview"]
+
+    assert preview["ok"] is False
+    assert preview["replacement_enabled"] is False
+    assert preview["final_fact_source"] == "portfolio_backtest_metrics"
+    assert preview["mode"] == "parallel_preview"
+    assert preview["blocked_reason"] == "no_daily_return_path"
+    assert payload["metrics"]["trade_count"] == result.metrics["trade_count"]

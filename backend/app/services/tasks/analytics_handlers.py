@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import subprocess
 import sys
+import time
 from datetime import date
 from pathlib import Path
 from typing import Any
@@ -182,6 +183,7 @@ def handle_analytics_quality_check(context: TaskContext) -> dict[str, Any]:
 
 
 def handle_strategy_24m_duckdb_report(context: TaskContext) -> dict[str, Any]:
+    started = time.monotonic()
     months = int(context.payload.get("months") or 24)
     end = _payload_end_date(context.payload)
     context.progress(10.0, "检查24个月日线完整性")
@@ -204,9 +206,15 @@ def handle_strategy_24m_duckdb_report(context: TaskContext) -> dict[str, Any]:
         data_quality_sla=data_quality_sla_payload(context.db),
         track_record_drift=track_record_drift_payload(context.db),
     )
+    report["duration_seconds"] = round(time.monotonic() - started, 3)
     output_md = Path(context.payload.get("output_md") or DEFAULT_MD)
     output_json = Path(context.payload.get("output_json") or DEFAULT_JSON)
-    write_strategy_24m_report(report, output_md=output_md, output_json=output_json)
+    write_strategy_24m_report(
+        report,
+        output_md=output_md,
+        output_json=output_json,
+        output_root=context.payload.get("output_root"),
+    )
     context.add_artifact(str(output_md))
     context.add_artifact(str(output_json))
     return {

@@ -4,6 +4,7 @@ import { join } from "node:path";
 
 const distDir = new URL("../dist/assets", import.meta.url);
 const outputPath = new URL("../dist/bundle-report.json", import.meta.url);
+const baselineFirstScreenKb = Number(process.env.BUNDLE_BASELINE_FIRST_SCREEN_JS_GZIP_KB || "400");
 
 async function main() {
   const files = await readdir(distDir);
@@ -31,6 +32,10 @@ async function main() {
     first_screen_js_gzip_kb: Number((assets
       .filter((item) => item.kind === "first-screen-js")
       .reduce((sum, item) => sum + item.gzip_bytes, 0) / 1024).toFixed(2)),
+    baseline_first_screen_js_gzip_kb: baselineFirstScreenKb,
+    first_screen_js_gzip_reduction_pct: reductionPct(baselineFirstScreenKb, assets
+      .filter((item) => item.kind === "first-screen-js")
+      .reduce((sum, item) => sum + item.gzip_bytes, 0) / 1024),
     assets,
   };
   await writeFile(outputPath, JSON.stringify(report, null, 2));
@@ -38,6 +43,13 @@ async function main() {
   for (const item of assets.slice(0, 8)) {
     console.log(`${item.kb.toFixed(2)} KB (${item.gzip_kb.toFixed(2)} gzip)  ${item.file}`);
   }
+}
+
+function reductionPct(baselineKb, currentKb) {
+  if (!Number.isFinite(baselineKb) || baselineKb <= 0) {
+    return 0;
+  }
+  return Number(((baselineKb - currentKb) / baselineKb * 100).toFixed(2));
 }
 
 function classifyAsset(file) {

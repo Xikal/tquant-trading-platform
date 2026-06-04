@@ -113,6 +113,8 @@ describe("StrategyTracking UI", () => {
     expect(html).toContain("首板回调");
     expect(html).toContain("策略线");
     expect(html).toContain("旧策略排序");
+    expect(html).toContain("影子校验一致");
+    expect(html).toContain("不影响真实排序");
     expect(html).toContain("过火勿追");
     expect(html).toContain("已到计划买入区");
     expect(html).toContain("已跌破风险线");
@@ -600,6 +602,30 @@ function itemFixture(overrides: Partial<StrategyTrackingItem> = {}): StrategyTra
     user_friendly_reason: "已经跌破风险线，优先复盘失败原因。",
     plain_language_summary: "信号后最高涨过 +10.00%，最多跌过 -16.19%，现在涨跌 -12.00%，已经跌破风险线。",
     sector_detail: { board_type_text: "主板" },
+    strategy_engine_shadow: {
+      strategy_key: "first_board",
+      symbol: "600000",
+      signal_state: "buy_now",
+      production_score: 82.5,
+      watch_score: 72.5,
+      score_components: { base: 45 },
+      exclusion_reasons: [],
+      warning_tags: ["front_row_weighted_shadow"],
+      decision: "production_candidate",
+      source: "low_buy_adapter",
+      metadata: { adapter_version: "low-buy-adapter-v1" },
+      shadow_only: true,
+      replacement_enabled: false,
+      production_sort_replaced: false,
+      parity_status: "match",
+      production_score_delta: 0,
+      watch_score_delta: 0,
+    },
+    strategy_engine_decision: "production_candidate",
+    strategy_engine_warning_tags: ["front_row_weighted_shadow"],
+    strategy_engine_exclusion_reasons: [],
+    strategy_engine_score_delta: 0,
+    strategy_engine_parity_status: "match",
     ...overrides,
   };
 }

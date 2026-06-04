@@ -11,6 +11,7 @@ from app.models.entities import DailyBarSnapshot, RuntimeTask
 from app.services.analytics.exporters import export_daily_bars_parquet
 from app.services.analytics.manifest import load_manifest
 from app.services.analytics.quality import check_daily_bars_24m_quality
+from app.services.analytics.report_queries import build_strategy_24m_duckdb_report
 
 
 def _db():
@@ -61,6 +62,90 @@ def test_export_writes_parquet_and_manifest_with_failure_quality(tmp_path):
     assert manifest["files"]
     loaded = load_manifest(manifest["manifest_path"])
     assert loaded["dataset_version"] == manifest["dataset_version"]
+    assert loaded["manifest_id"] == manifest["manifest_id"]
+    assert loaded["valid_until"]
+
+
+def test_quality_coverage_pct_is_capped_and_extra_days_are_explicit(tmp_path):
+    db = _db()
+    for offset in range(31):
+        db.add(_bar("000001", date(2025, 12, 6) + timedelta(days=offset)))
+    db.commit()
+
+    quality = check_daily_bars_24m_quality(
+        db,
+        months=1,
+        end_date=date(2026, 1, 5),
+        min_symbols_per_day=1,
+        create_backfill_task=False,
+    )
+    payload = quality.as_dict()
+
+    assert payload["actual_trade_days"] > payload["required_trade_days"]
+    assert payload["coverage_pct"] == 100.0
+    assert payload["coverage_pct"] <= 100.0
+    assert payload["over_coverage_trade_days"] == payload["actual_trade_days"] - payload["required_trade_days"]
+    assert payload["required_start"] == payload["period_start"]
+    assert payload["required_end"] == payload["period_end"]
+
+
+def test_manifest_coverage_uses_capped_semantics(tmp_path):
+    db = _db()
+    for offset in range(31):
+        db.add(_bar("000001", date(2025, 12, 6) + timedelta(days=offset)))
+    db.commit()
+
+    manifest = export_daily_bars_parquet(
+        db,
+        months=1,
+        end_date=date(2026, 1, 5),
+        output_root=tmp_path,
+        create_backfill_task=False,
+    )
+
+    assert manifest["coverage"]["coverage_pct"] <= 100.0
+    assert manifest["coverage"]["coverage_pct"] == manifest["quality"]["coverage_pct"]
+    assert manifest["coverage"]["over_coverage_trade_days"] == manifest["quality"]["over_coverage_trade_days"]
+    assert manifest["coverage"]["required_trade_days"] == manifest["quality"]["required_trade_days"]
+
+
+def test_duckdb_report_normalizes_legacy_manifest_coverage(tmp_path):
+    db = _db()
+    for offset in range(31):
+        db.add(_bar("000001", date(2025, 12, 6) + timedelta(days=offset)))
+    db.commit()
+    manifest = export_daily_bars_parquet(
+        db,
+        months=1,
+        end_date=date(2026, 1, 5),
+        output_root=tmp_path,
+        create_backfill_task=False,
+    )
+    legacy_manifest = dict(manifest)
+    legacy_manifest["quality"] = {
+        key: value
+        for key, value in dict(manifest["quality"]).items()
+        if key
+        not in {
+            "required_trade_days",
+            "actual_trade_days",
+            "complete_trade_days",
+            "missing_trade_days",
+            "over_coverage_trade_days",
+            "coverage_status",
+            "coverage_pct",
+        }
+    }
+    legacy_manifest["quality"]["coverage_pct"] = 140.0
+    legacy_manifest["quality"]["complete_coverage_pct"] = 125.0
+
+    report = build_strategy_24m_duckdb_report(legacy_manifest, output_root=tmp_path)
+    quality = report["manifest"]["quality"]
+
+    assert quality["coverage_pct"] == 100.0
+    assert quality["complete_coverage_pct"] <= 100.0
+    assert quality["over_coverage_trade_days"] > 0
+    assert quality["required_trade_days"] > 0
 
 
 def _bar(symbol: str, trade_date: date) -> DailyBarSnapshot:

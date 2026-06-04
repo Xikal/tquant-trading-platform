@@ -24,6 +24,17 @@ def test_runtime_worker_registers_b1_heavy_task_types() -> None:
     assert "factor_mining_evaluate" in registered
 
 
+def test_runtime_task_observability_routes_are_registered() -> None:
+    from app.api.router import api_router
+
+    paths = {route.path for route in api_router.routes}
+
+    assert "/runtime-tasks/summary" in paths
+    assert "/runtime-tasks/workers" in paths
+    assert "/runtime-tasks/failures" in paths
+    assert "/runtime-tasks/artifacts" in paths
+
+
 def test_heavy_research_task_empty_analysis_batch_is_blocked() -> None:
     db = _db()
 

@@ -39,9 +39,7 @@
 
 These files are kept as historical decision records. Do not treat them as current implementation truth without checking code and latest reports.
 
-- `FINAL_DELIVERY.md`
 - `IMPLEMENTATION_PLAN.md`
-- `OPTIMIZATION_PLAN.md`
 - `APP_API_SPEC.md`
 - `ARCHITECTURE.md`
 - `docs/backend-go-rust-refactor-final-plan-2026-05-22.md`
@@ -58,6 +56,7 @@ Recently archived historical plans:
 - `docs/archive/plans/microservices-independent-deployment-design-2026-05-20.md`
 - `docs/archive/plans/remaining-architecture-debt-executable-plan-2026-05-24.md`
 - `docs/archive/plans/market-support-resistance-ma30-development-plan-2026-06-01.md`
+- `docs/archive/plans/optimization-plan-2026-04.md`
 - `docs/archive/plans/策略体系重组方案.md`
 - `docs/archive/plans/系统级全方位提升方案-2026-05-30.md`
 - `docs/archive/plans/维斯量化平台-完整提升整改方案-2026-05-30.md`
@@ -67,6 +66,7 @@ Recently archived historical reports:
 - `docs/archive/reports/full-project-audit-2026-05-25.md`
 - `docs/archive/reports/full-project-latest-code-review-2026-05-30.md`
 - `docs/archive/reports/full-regression-2026-05-27.md`
+- `docs/archive/reports/final-delivery-2026-04.md`
 - `docs/archive/reports/observability-warning-budget-2026-05-27.md`
 - `docs/archive/reports/repository-cleanup-2026-05-27.md`
 - `docs/archive/reports/全方位评估报告-2026-05-01.md`

@@ -7,6 +7,7 @@ import time
 from typing import Any
 
 from app.core.database import SessionLocal
+from app.services.runtime_worker_health import record_platform_component_heartbeat
 from app.services.tasks.handlers import TaskContext
 from app.services.tasks.queue import RuntimeTaskQueue
 from app.services.tasks.registry import TaskHandlerRegistry
@@ -20,14 +21,17 @@ class RuntimeTaskWorker:
         *,
         registry: TaskHandlerRegistry,
         worker_id: str | None = None,
+        component: str = "runtime-task-worker",
         poll_interval_seconds: float = 2.0,
     ) -> None:
         self.registry = registry
         self.worker_id = worker_id or f"worker-{socket.gethostname()}"
+        self.component = component
         self.poll_interval_seconds = max(float(poll_interval_seconds), 0.2)
 
     def run_once(self) -> bool:
         with SessionLocal() as db:
+            _record_component_heartbeat(db, component=self.component, worker_id=self.worker_id)
             queue = RuntimeTaskQueue(db)
             task = queue.claim_next(worker_id=self.worker_id, task_types=self.registry.task_types())
             if task is None:
@@ -53,6 +57,7 @@ class RuntimeTaskWorker:
                 logger.exception("runtime task worker failed: id=%s type=%s", task_id, task_type)
                 db.rollback()
                 queue.mark_failed(task_id, str(exc), retryable=True)
+            _record_component_heartbeat(db, component=self.component, worker_id=self.worker_id)
             return True
 
     def run_forever(self) -> None:
@@ -69,3 +74,10 @@ def _json_payload(raw: str) -> dict[str, Any]:
     except Exception:
         return {}
     return value if isinstance(value, dict) else {}
+
+
+def _record_component_heartbeat(db, *, component: str, worker_id: str) -> None:  # noqa: ANN001
+    try:
+        record_platform_component_heartbeat(db, component=component, worker_id=worker_id)
+    except Exception:
+        logger.exception("component heartbeat update failed: component=%s worker_id=%s", component, worker_id)

@@ -42,9 +42,20 @@ export function priorityToCard(item: LowBuyPriorityBoardItem): StockCardView {
       item.leader_strength_rank ? `板块龙头#${item.leader_strength_rank}` : "",
       item.multi_timeframe_resonance_score ? "多周期共振" : "",
       matchedLaneBadge(item),
+      strategyEngineShadowBadge(item),
     ]),
     highlight,
   };
+}
+
+function strategyEngineShadowBadge(item: LowBuyPriorityBoardItem): string {
+  if (!item.strategy_engine_shadow) {
+    return "";
+  }
+  if (item.strategy_engine_parity_status === "match") {
+    return "影子校验一致";
+  }
+  return "影子校验复核";
 }
 
 function laneIdentityText(item: LowBuyPriorityBoardItem): string {

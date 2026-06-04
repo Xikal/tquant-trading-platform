@@ -1,4 +1,5 @@
 import type { Page } from "../workspace-shared/workspaceTypes";
+import { ModeSafetyBadges } from "../../ui/feedback/ModeSafetyBadges";
 import { pageResponsibility } from "./pageResponsibilities";
 
 export function PagePriorityStrip({ page }: { page: Page }) {
@@ -15,6 +16,7 @@ export function PagePriorityStrip({ page }: { page: Page }) {
         <span>首屏：{responsibility.primarySections.join(" / ")}</span>
         <span>明细：{responsibility.detailSections.join(" / ")}</span>
         <span>模式：{responsibility.drilldownPattern}</span>
+        <ModeSafetyBadges kinds={[...responsibility.modeBadges]} />
       </div>
     </div>
   );

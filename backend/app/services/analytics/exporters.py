@@ -91,13 +91,17 @@ def export_daily_bars_parquet(
                     "sha256": file_sha256(target),
                 }
             )
+    quality_payload = quality.as_dict()
     manifest = {
         "dataset": DAILY_BARS_SCHEMA.dataset_key,
         "dataset_key": DAILY_BARS_SCHEMA.dataset_key,
         "schema_version": DAILY_BARS_SCHEMA.schema_version,
         "dataset_version": version,
+        "manifest_id": f"{DAILY_BARS_SCHEMA.dataset_key}:{version}",
         "generated_at": generated_at.isoformat(timespec="seconds") + "Z",
         "status": normalized_quality_status(quality),
+        "valid_until": (generated_at + timedelta(days=7)).isoformat(timespec="seconds") + "Z",
+        "superseded_by": None,
         "period_start": period_start.isoformat(),
         "period_end": period_end.isoformat(),
         "date_range": {
@@ -109,20 +113,22 @@ def export_daily_bars_parquet(
         "row_count": row_count,
         "symbol_count": quality.symbol_count,
         "coverage": {
+            "required_trade_days": quality_payload["required_trade_days"],
+            "actual_trade_days": quality_payload["actual_trade_days"],
+            "complete_trade_days": quality_payload["complete_trade_days"],
+            "missing_trade_days": quality_payload["missing_trade_days"],
+            "over_coverage_trade_days": quality_payload["over_coverage_trade_days"],
+            "coverage_status": quality_payload["coverage_status"],
+            "required_start": quality_payload["required_start"],
+            "required_end": quality_payload["required_end"],
+            "actual_start": quality_payload["actual_start"],
+            "actual_end": quality_payload["actual_end"],
             "expected_days": quality.expected_days,
             "actual_days": quality.actual_days,
             "missing_days": quality.missing_days,
             "complete_trade_day_count": quality.complete_trade_day_count,
-            "coverage_pct": (
-                round(float(quality.actual_days) / float(quality.expected_days) * 100.0, 4)
-                if quality.expected_days
-                else 0.0
-            ),
-            "complete_coverage_pct": (
-                round(float(quality.complete_trade_day_count) / float(quality.expected_days) * 100.0, 4)
-                if quality.expected_days
-                else 0.0
-            ),
+            "coverage_pct": quality_payload["coverage_pct"],
+            "complete_coverage_pct": quality_payload["complete_coverage_pct"],
         },
         "source": {
             "type": "transaction_db",
@@ -130,7 +136,7 @@ def export_daily_bars_parquet(
             "latest_db_updated_at": source_updated_at,
             "source_table": "daily_bar_snapshots",
         },
-        "quality": quality.as_dict(),
+        "quality": quality_payload,
         "quality_status": normalized_quality_status(quality),
         "artifact_paths": [item["path"] for item in files],
         "files": files,

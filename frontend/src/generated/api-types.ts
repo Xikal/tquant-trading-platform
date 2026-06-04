@@ -3703,6 +3703,91 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/runtime-tasks/analytics-reports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Runtime Task Analytics Reports */
+        get: operations["list_runtime_task_analytics_reports_api_runtime_tasks_analytics_reports_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/runtime-tasks/artifacts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Runtime Task Artifacts */
+        get: operations["list_runtime_task_artifacts_api_runtime_tasks_artifacts_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/runtime-tasks/failures": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Runtime Task Failures */
+        get: operations["list_runtime_task_failures_api_runtime_tasks_failures_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/runtime-tasks/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Runtime Task Summary */
+        get: operations["get_runtime_task_summary_api_runtime_tasks_summary_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/runtime-tasks/workers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Runtime Task Workers */
+        get: operations["list_runtime_task_workers_api_runtime_tasks_workers_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/runtime-tasks/{task_id}": {
         parameters: {
             query?: never;
@@ -8027,6 +8112,10 @@ export interface components {
              * @default fallback_resource_tier
              */
             estimated_wait_source: string;
+            /** Execution Model Preview */
+            execution_model_preview?: {
+                [key: string]: unknown;
+            } | null;
             /**
              * Fee Model Version
              * @default
@@ -12280,6 +12369,26 @@ export interface components {
              */
             strategy_count: number;
             /**
+             * Strategy Engine Decision
+             * @default
+             */
+            strategy_engine_decision: string;
+            /** Strategy Engine Exclusion Reasons */
+            strategy_engine_exclusion_reasons?: string[];
+            /**
+             * Strategy Engine Parity Status
+             * @default not_evaluated
+             */
+            strategy_engine_parity_status: string;
+            /** Strategy Engine Score Delta */
+            strategy_engine_score_delta?: number | null;
+            /** Strategy Engine Shadow */
+            strategy_engine_shadow?: {
+                [key: string]: unknown;
+            } | null;
+            /** Strategy Engine Warning Tags */
+            strategy_engine_warning_tags?: string[];
+            /**
              * Strategy Family
              * @default uncategorized
              */
@@ -15457,6 +15566,85 @@ export interface components {
              */
             settings_consistency_text: string;
         };
+        /** RuntimeTaskAnalyticsReportOut */
+        RuntimeTaskAnalyticsReportOut: {
+            /** Dataset Version */
+            dataset_version?: string | null;
+            /** Duration Seconds */
+            duration_seconds?: number | null;
+            /**
+             * Generated At
+             * @default
+             */
+            generated_at: string;
+            /** Manifest Id */
+            manifest_id?: string | null;
+            /**
+             * Output Json
+             * @default
+             */
+            output_json: string;
+            /**
+             * Output Md
+             * @default
+             */
+            output_md: string;
+            /**
+             * Report Type
+             * @default
+             */
+            report_type: string;
+            /**
+             * Status
+             * @default
+             */
+            status: string;
+        };
+        /** RuntimeTaskAnalyticsReportResponse */
+        RuntimeTaskAnalyticsReportResponse: {
+            /** Items */
+            items?: components["schemas"]["RuntimeTaskAnalyticsReportOut"][];
+            /**
+             * Total
+             * @default 0
+             */
+            total: number;
+            /**
+             * Updated At
+             * @default
+             */
+            updated_at: string;
+        };
+        /** RuntimeTaskArtifactOut */
+        RuntimeTaskArtifactOut: {
+            /** Artifact Key */
+            artifact_key: string;
+            /** Artifact Path */
+            artifact_path: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Finished At */
+            finished_at?: string | null;
+            /** Status */
+            status: string;
+            /** Task Id */
+            task_id: number;
+            /** Task Type */
+            task_type: string;
+        };
+        /** RuntimeTaskArtifactResponse */
+        RuntimeTaskArtifactResponse: {
+            /** Items */
+            items?: components["schemas"]["RuntimeTaskArtifactOut"][];
+            /**
+             * Total
+             * @default 0
+             */
+            total: number;
+        };
         /** RuntimeTaskCreate */
         RuntimeTaskCreate: {
             /**
@@ -15503,6 +15691,16 @@ export interface components {
             };
             /** Task Id */
             task_id: number;
+        };
+        /** RuntimeTaskFailureResponse */
+        RuntimeTaskFailureResponse: {
+            /** Items */
+            items?: components["schemas"]["RuntimeTaskOut"][];
+            /**
+             * Total
+             * @default 0
+             */
+            total: number;
         };
         /** RuntimeTaskListResponse */
         RuntimeTaskListResponse: {
@@ -15584,6 +15782,111 @@ export interface components {
              * Format: date-time
              */
             updated_at: string;
+        };
+        /** RuntimeTaskStatusCountOut */
+        RuntimeTaskStatusCountOut: {
+            /**
+             * Count
+             * @default 0
+             */
+            count: number;
+            /** Status */
+            status: string;
+        };
+        /** RuntimeTaskSummaryResponse */
+        RuntimeTaskSummaryResponse: {
+            /**
+             * Failed
+             * @default 0
+             */
+            failed: number;
+            /** Longest Wait Seconds */
+            longest_wait_seconds?: number | null;
+            /** Oldest Queued At */
+            oldest_queued_at?: string | null;
+            /**
+             * Queued
+             * @default 0
+             */
+            queued: number;
+            /**
+             * Retrying
+             * @default 0
+             */
+            retrying: number;
+            /**
+             * Running
+             * @default 0
+             */
+            running: number;
+            /**
+             * Running Count
+             * @default 0
+             */
+            running_count: number;
+            /** Status Counts */
+            status_counts?: components["schemas"]["RuntimeTaskStatusCountOut"][];
+            /**
+             * Succeeded Recent
+             * @default 0
+             */
+            succeeded_recent: number;
+            /** Task Type Counts */
+            task_type_counts?: components["schemas"]["RuntimeTaskTypeCountOut"][];
+        };
+        /** RuntimeTaskTypeCountOut */
+        RuntimeTaskTypeCountOut: {
+            /**
+             * Count
+             * @default 0
+             */
+            count: number;
+            /** Task Type */
+            task_type: string;
+        };
+        /** RuntimeTaskWorkerListResponse */
+        RuntimeTaskWorkerListResponse: {
+            /** Items */
+            items?: components["schemas"]["RuntimeTaskWorkerOut"][];
+            /**
+             * Total
+             * @default 0
+             */
+            total: number;
+        };
+        /** RuntimeTaskWorkerOut */
+        RuntimeTaskWorkerOut: {
+            /**
+             * Component
+             * @default runtime-worker
+             */
+            component: string;
+            /** Current Task Ids */
+            current_task_ids?: number[];
+            /** Heartbeat Age Seconds */
+            heartbeat_age_seconds?: number | null;
+            /**
+             * Heartbeat Updated At
+             * @default
+             */
+            heartbeat_updated_at: string;
+            /**
+             * Running Task Count
+             * @default 0
+             */
+            running_task_count: number;
+            /**
+             * Status
+             * @default missing
+             */
+            status: string;
+            /**
+             * Task Count
+             * @default 0
+             */
+            task_count: number;
+            /** Worker Id */
+            worker_id: string;
         };
         /** SectorEtfT0Opportunity */
         SectorEtfT0Opportunity: {
@@ -17264,6 +17567,26 @@ export interface components {
             stop_triggered: boolean;
             /** Stop Triggered Date */
             stop_triggered_date?: string | null;
+            /**
+             * Strategy Engine Decision
+             * @default
+             */
+            strategy_engine_decision: string;
+            /** Strategy Engine Exclusion Reasons */
+            strategy_engine_exclusion_reasons?: string[];
+            /**
+             * Strategy Engine Parity Status
+             * @default not_evaluated
+             */
+            strategy_engine_parity_status: string;
+            /** Strategy Engine Score Delta */
+            strategy_engine_score_delta?: number | null;
+            /** Strategy Engine Shadow */
+            strategy_engine_shadow?: {
+                [key: string]: unknown;
+            } | null;
+            /** Strategy Engine Warning Tags */
+            strategy_engine_warning_tags?: string[];
             /**
              * Strategy Family
              * @default
@@ -25956,6 +26279,172 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RuntimeTaskOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_runtime_task_analytics_reports_api_runtime_tasks_analytics_reports_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: {
+                "X-Admin-Token"?: string | null;
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RuntimeTaskAnalyticsReportResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_runtime_task_artifacts_api_runtime_tasks_artifacts_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: {
+                "X-Admin-Token"?: string | null;
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RuntimeTaskArtifactResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_runtime_task_failures_api_runtime_tasks_failures_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: {
+                "X-Admin-Token"?: string | null;
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RuntimeTaskFailureResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_runtime_task_summary_api_runtime_tasks_summary_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Admin-Token"?: string | null;
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RuntimeTaskSummaryResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_runtime_task_workers_api_runtime_tasks_workers_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Admin-Token"?: string | null;
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RuntimeTaskWorkerListResponse"];
                 };
             };
             /** @description Validation Error */

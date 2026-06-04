@@ -37,6 +37,7 @@ import {
   shouldRefreshRealtimePrices,
 } from "./realtimePriceRefresh";
 import { createStableCardListMapper } from "./stableMonitorCards";
+import { isMonitorBffDisabled, useMonitorWorkspaceBff } from "./useMonitorWorkspaceBff";
 
 const MONITOR_SERVER_KEYS = {
   priorityBoard: ["monitor", "priority-board"] as const,
@@ -53,6 +54,8 @@ const MONITOR_SERVER_KEYS = {
   runtime: ["monitor", "runtime"] as const,
   instrumentSyncStatus: ["monitor", "instrument-sync-status"] as const,
 };
+
+const MONITOR_BFF_RETRYING_MESSAGE = "加载失败，正在重试… 已保留上次可用数据，接口恢复后会自动更新。";
 
 type WithLoading = <T>(key: string, action: () => Promise<T>) => Promise<T | undefined>;
 
@@ -113,6 +116,7 @@ export function useMonitorData({ active, withLoading, setError, setNotice, onAut
     signatureOf: monitorCardSignature,
     mapItem: watchSignalToCard,
   }));
+  const monitorWorkspaceBff = useMonitorWorkspaceBff();
 
   const priorityCards: StockCardView[] = useMemo(
     () => priorityCardMapperRef.current(priorityBoard?.items ?? []),
@@ -262,54 +266,59 @@ export function useMonitorData({ active, withLoading, setError, setNotice, onAut
     }
     monitorRefreshRef.current = true;
     try {
-      const aggregateEnabled = monitorBffAggregateEnabled();
-      if (!aggregateEnabled) {
+      if (!monitorWorkspaceBff.aggregateEnabled) {
         await fetchLegacyMonitorData(includeRuntime);
         return;
       }
-      const workspaceResult = await Promise.resolve(api.getMonitorWorkspaceBff(12))
+      const workspaceResult = await Promise.resolve(monitorWorkspaceBff.fetchMonitorWorkspace(12))
         .then((value) => ({ status: "fulfilled" as const, value }))
         .catch((reason) => ({ status: "rejected" as const, reason }));
       if (workspaceResult.status === "rejected" && isMonitorBffDisabled(workspaceResult.reason)) {
         await fetchLegacyMonitorData(includeRuntime);
         return;
       }
+      if (workspaceResult.status === "rejected") {
+        if (isMonitorAuthError(workspaceResult.reason)) {
+          onAuthRequiredRef.current();
+          return;
+        }
+        setError(MONITOR_BFF_RETRYING_MESSAGE);
+        return;
+      }
       let hourlyHistoryLoadedFromBff = false;
       let runtimeLoadedFromBff = !includeRuntime || !Boolean(getAdminApiToken());
-      if (workspaceResult.status === "fulfilled") {
-        const partialWarnings = bffPartialErrorsText(workspaceResult.value);
-        if (partialWarnings) {
-          setNotice(`监控合包部分降级：${partialWarnings}`);
-        }
-        const monitorSnapshot = workspaceResult.value.monitor_snapshot;
-        if (monitorSnapshot) {
-          setPriorityBoard(monitorSnapshot.priority_board);
-          laneBoardsRef.current.baseline = monitorSnapshot.priority_board;
-          setWatchlistSignals(monitorSnapshot.watchlist_signals);
-          setSectorEtfT0(monitorSnapshot.sector_etf_t0 ?? null);
-        }
-        if (workspaceResult.value.market_breadth) {
-          setMarketBreadth(workspaceResult.value.market_breadth);
-        }
-        setMarketPulse(workspaceResult.value.market_pulse ?? null);
-        setReviewStatus(workspaceResult.value.review_status ?? null);
-        setReviewReports(workspaceResult.value.review_reports ?? []);
-        if (workspaceResult.value.sector_relative_strength) {
-          setSectorRelativeStrength(workspaceResult.value.sector_relative_strength);
-        }
-        if (workspaceResult.value.paired_hedge) {
-          setPairedHedge(workspaceResult.value.paired_hedge);
-        }
-        if (Array.isArray(workspaceResult.value.hourly_snapshot_history)) {
-          setHourlySnapshotHistory(workspaceResult.value.hourly_snapshot_history);
-          hourlyHistoryLoadedFromBff = true;
-        }
-        if ("runtime" in workspaceResult.value) {
-          runtimeLoadedFromBff = true;
-        }
-        if (workspaceResult.value.runtime) {
-          setRuntime(workspaceResult.value.runtime);
-        }
+      const partialWarnings = bffPartialErrorsText(workspaceResult.value);
+      if (partialWarnings) {
+        setNotice(`监控合包部分降级：${partialWarnings}`);
+      }
+      const monitorSnapshot = workspaceResult.value.monitor_snapshot;
+      if (monitorSnapshot) {
+        setPriorityBoard(monitorSnapshot.priority_board);
+        laneBoardsRef.current.baseline = monitorSnapshot.priority_board;
+        setWatchlistSignals(monitorSnapshot.watchlist_signals);
+        setSectorEtfT0(monitorSnapshot.sector_etf_t0 ?? null);
+      }
+      if (workspaceResult.value.market_breadth) {
+        setMarketBreadth(workspaceResult.value.market_breadth);
+      }
+      setMarketPulse(workspaceResult.value.market_pulse ?? null);
+      setReviewStatus(workspaceResult.value.review_status ?? null);
+      setReviewReports(workspaceResult.value.review_reports ?? []);
+      if (workspaceResult.value.sector_relative_strength) {
+        setSectorRelativeStrength(workspaceResult.value.sector_relative_strength);
+      }
+      if (workspaceResult.value.paired_hedge) {
+        setPairedHedge(workspaceResult.value.paired_hedge);
+      }
+      if (Array.isArray(workspaceResult.value.hourly_snapshot_history)) {
+        setHourlySnapshotHistory(workspaceResult.value.hourly_snapshot_history);
+        hourlyHistoryLoadedFromBff = true;
+      }
+      if ("runtime" in workspaceResult.value) {
+        runtimeLoadedFromBff = true;
+      }
+      if (workspaceResult.value.runtime) {
+        setRuntime(workspaceResult.value.runtime);
       }
       const fallbackRequests: Promise<unknown>[] = [];
       if (!hourlyHistoryLoadedFromBff) {
@@ -345,6 +354,7 @@ export function useMonitorData({ active, withLoading, setError, setNotice, onAut
     }
   }, [
     fetchLegacyMonitorData,
+    monitorWorkspaceBff,
     setError,
     setHourlySnapshotHistory,
     setMarketBreadth,
@@ -703,15 +713,6 @@ export function useMonitorData({ active, withLoading, setError, setNotice, onAut
     syncInstruments,
     resetMonitorData,
   };
-}
-
-function monitorBffAggregateEnabled(): boolean {
-  return import.meta.env.VITE_MONITOR_BFF_AGGREGATE_ENABLED !== "false";
-}
-
-function isMonitorBffDisabled(reason: unknown): boolean {
-  const status = (reason as { status?: number } | null)?.status;
-  return status === 404 && errorMessage(reason).includes("monitor BFF aggregate disabled");
 }
 
 function isHourlyHistoryResponse(value: unknown): value is { items?: MarketHourlySnapshotHistoryItem[] } {

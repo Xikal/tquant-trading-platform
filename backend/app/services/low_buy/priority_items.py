@@ -23,6 +23,7 @@ from app.services.low_buy.priority_family import (
 )
 from app.services.low_buy.priority_types import PriorityMarketContext, StrategyHit, PriorityCandidate
 from app.services.low_buy.strategy_families import resolve_strategy_family_label
+from app.services.strategy_engine.shadow import low_buy_strategy_engine_shadow_payload
 
 
 class PriorityItemBuilder(Protocol):
@@ -243,6 +244,13 @@ def _build_priority_item(
         warning_tags=warning_tags,
         production_scoring_config_version=production_scoring.config_version,
         elite_watch_score=elite_watch_score,
+        **low_buy_strategy_engine_shadow_payload(
+            candidate,
+            current_production_score=None if strategy_variant == FRONT_ROW_ONLY_VARIANT else original_production_score,
+            current_watch_score=watch_score,
+            market_context=market_context,
+            strategy_variant=strategy_variant,
+        ),
     )
     return item.model_copy(update=lane_item_update(item, strategy_variant))
 

@@ -11,6 +11,7 @@ from app.services.finance.performance_math import sequence_max_drawdown_pct
 from app.services.low_buy.production_scoring import production_score_payload
 from app.services.low_buy.strategy_lanes import lane_item_update
 from app.services.low_buy.strategy_policy import get_strategy_tier
+from app.services.strategy_engine.shadow import low_buy_strategy_engine_shadow_payload
 from app.services.strategy_tracking_constants import (
     MISSING_SIGNAL_GRACE_DAYS,
     MAX_TRACKING_DAYS,
@@ -218,6 +219,14 @@ def _attach_production_scoring_fields(item: StrategyTrackingItemOut, payload: di
     item.warning_tags = shadow_payload["warning_tags"]
     item.production_scoring_config_version = shadow_payload["production_scoring_config_version"]
     for key, value in lane_item_update(item, payload.get("strategy_variant") or "baseline").items():
+        setattr(item, key, value)
+    strategy_engine_shadow = low_buy_strategy_engine_shadow_payload(
+        _PayloadCandidate(item=item, payload=payload),
+        current_production_score=item.production_score,
+        current_watch_score=item.watch_score,
+        strategy_variant=item.strategy_variant,
+    )
+    for key, value in strategy_engine_shadow.items():
         setattr(item, key, value)
 
 

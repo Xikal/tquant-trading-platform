@@ -5,6 +5,7 @@ import type {
   BacktestResourceTier,
   BacktestRunDetail,
   BacktestRunSummary,
+  ExecutionModelPreview,
   BacktestTrade,
   EquityPoint,
 } from "../../api/backtests";
@@ -163,6 +164,7 @@ export function RunDetailPanel({
             <span style={BACKTEST_SUMMARY_ITEM_STYLE}>{selectedRun.execution_model || "--"} · {formatResourceTier(selectedRun.resource_tier)} · {selectedRun.benchmark || "--"}</span>
           </div>
           <ResultSummaryBanner metrics={selectedMetrics} resourceTier={selectedRun.resource_tier} />
+          <ExecutionModelPreviewPanel preview={selectedRun.execution_model_preview} />
           {selectedRun.error_message ? <div style={BACKTEST_ERROR_STYLE}>{selectedRun.error_message}</div> : null}
           <div style={BACKTEST_METRIC_GRID_STYLE}>
             <Metric label="总收益" value={formatPct(selectedMetrics?.total_return_pct)} tone={toneFromNumber(selectedMetrics?.total_return_pct)} />
@@ -185,6 +187,51 @@ export function RunDetailPanel({
       ) : <EmptyLine text="选择一条任务查看摘要。" />}
     </section>
   );
+}
+
+function ExecutionModelPreviewPanel({ preview }: { preview?: ExecutionModelPreview | null }) {
+  if (!preview) return null;
+  const parityOk = allParityOk(preview);
+  const eventCounts = preview.event_counts ?? {};
+  return (
+    <Alert
+      style={{ margin: "10px 0" }}
+      type={parityOk ? "info" : "warning"}
+      showIcon
+      title="执行模型预览：Preview · 非事实源"
+      description={
+        <Space orientation="vertical" size={2}>
+          <Typography.Text type="secondary">
+            事实源仍是 {preview.final_fact_source || "portfolio_backtest_metrics"}；replacement_enabled={String(Boolean(preview.replacement_enabled))}。
+          </Typography.Text>
+          <Typography.Text type="secondary">
+            forward_path_status={preview.forward_path_status || "unknown"}；一致性校验只用于预览，不替换真实收益。
+          </Typography.Text>
+          <Typography.Text type="secondary">
+            事件 {formatExecutionEventCounts(eventCounts)}；max5 {paritySummary(preview.parity?.max_5)}，max10 {paritySummary(preview.parity?.max_10)}。
+          </Typography.Text>
+          {preview.blocked_reason ? <Typography.Text type="secondary">预览状态：{preview.blocked_reason}</Typography.Text> : null}
+        </Space>
+      }
+    />
+  );
+}
+
+function allParityOk(preview: ExecutionModelPreview): boolean {
+  const groups = [preview.parity?.max_5, preview.parity?.max_10].filter(Boolean) as Array<Record<string, boolean>>;
+  if (!groups.length) return false;
+  return groups.every((group) => Object.values(group).every(Boolean));
+}
+
+function paritySummary(values?: Record<string, boolean>): string {
+  const items = values ? Object.values(values) : [];
+  if (!items.length) return "无样本";
+  return items.every(Boolean) ? "一致" : "有差异";
+}
+
+function formatExecutionEventCounts(counts: Record<string, number>): string {
+  const keys = ["signal", "order", "fill", "position", "exit"];
+  return keys.map((key) => `${key}:${formatInteger(counts[key])}`).join(" / ");
 }
 
 export function EquityPanel({ equity }: { equity: EquityPoint[] }) {

@@ -5283,6 +5283,18 @@
             "title": "Estimated Wait Source",
             "type": "string"
           },
+          "execution_model_preview": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Execution Model Preview"
+          },
           "fee_model_version": {
             "default": "",
             "title": "Fee Model Version",
@@ -12662,6 +12674,53 @@
             "title": "Strategy Count",
             "type": "integer"
           },
+          "strategy_engine_decision": {
+            "default": "",
+            "title": "Strategy Engine Decision",
+            "type": "string"
+          },
+          "strategy_engine_exclusion_reasons": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Strategy Engine Exclusion Reasons",
+            "type": "array"
+          },
+          "strategy_engine_parity_status": {
+            "default": "not_evaluated",
+            "title": "Strategy Engine Parity Status",
+            "type": "string"
+          },
+          "strategy_engine_score_delta": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Strategy Engine Score Delta"
+          },
+          "strategy_engine_shadow": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Strategy Engine Shadow"
+          },
+          "strategy_engine_warning_tags": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Strategy Engine Warning Tags",
+            "type": "array"
+          },
           "strategy_family": {
             "default": "uncategorized",
             "title": "Strategy Family",
@@ -17852,6 +17911,162 @@
         "title": "RuntimeStatusResponse",
         "type": "object"
       },
+      "RuntimeTaskAnalyticsReportOut": {
+        "properties": {
+          "dataset_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dataset Version"
+          },
+          "duration_seconds": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duration Seconds"
+          },
+          "generated_at": {
+            "default": "",
+            "title": "Generated At",
+            "type": "string"
+          },
+          "manifest_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Manifest Id"
+          },
+          "output_json": {
+            "default": "",
+            "title": "Output Json",
+            "type": "string"
+          },
+          "output_md": {
+            "default": "",
+            "title": "Output Md",
+            "type": "string"
+          },
+          "report_type": {
+            "default": "",
+            "title": "Report Type",
+            "type": "string"
+          },
+          "status": {
+            "default": "",
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "title": "RuntimeTaskAnalyticsReportOut",
+        "type": "object"
+      },
+      "RuntimeTaskAnalyticsReportResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/RuntimeTaskAnalyticsReportOut"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "total": {
+            "default": 0,
+            "title": "Total",
+            "type": "integer"
+          },
+          "updated_at": {
+            "default": "",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "title": "RuntimeTaskAnalyticsReportResponse",
+        "type": "object"
+      },
+      "RuntimeTaskArtifactOut": {
+        "properties": {
+          "artifact_key": {
+            "title": "Artifact Key",
+            "type": "string"
+          },
+          "artifact_path": {
+            "title": "Artifact Path",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "finished_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finished At"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "task_id": {
+            "title": "Task Id",
+            "type": "integer"
+          },
+          "task_type": {
+            "title": "Task Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "task_id",
+          "task_type",
+          "status",
+          "artifact_key",
+          "artifact_path",
+          "created_at"
+        ],
+        "title": "RuntimeTaskArtifactOut",
+        "type": "object"
+      },
+      "RuntimeTaskArtifactResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/RuntimeTaskArtifactOut"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "total": {
+            "default": 0,
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "title": "RuntimeTaskArtifactResponse",
+        "type": "object"
+      },
       "RuntimeTaskCreate": {
         "properties": {
           "idempotency_key": {
@@ -17929,6 +18144,24 @@
           "created_at"
         ],
         "title": "RuntimeTaskEventOut",
+        "type": "object"
+      },
+      "RuntimeTaskFailureResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/RuntimeTaskOut"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "total": {
+            "default": 0,
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "title": "RuntimeTaskFailureResponse",
         "type": "object"
       },
       "RuntimeTaskListResponse": {
@@ -18056,6 +18289,189 @@
           "updated_at"
         ],
         "title": "RuntimeTaskOut",
+        "type": "object"
+      },
+      "RuntimeTaskStatusCountOut": {
+        "properties": {
+          "count": {
+            "default": 0,
+            "title": "Count",
+            "type": "integer"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "title": "RuntimeTaskStatusCountOut",
+        "type": "object"
+      },
+      "RuntimeTaskSummaryResponse": {
+        "properties": {
+          "failed": {
+            "default": 0,
+            "title": "Failed",
+            "type": "integer"
+          },
+          "longest_wait_seconds": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Longest Wait Seconds"
+          },
+          "oldest_queued_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Oldest Queued At"
+          },
+          "queued": {
+            "default": 0,
+            "title": "Queued",
+            "type": "integer"
+          },
+          "retrying": {
+            "default": 0,
+            "title": "Retrying",
+            "type": "integer"
+          },
+          "running": {
+            "default": 0,
+            "title": "Running",
+            "type": "integer"
+          },
+          "running_count": {
+            "default": 0,
+            "title": "Running Count",
+            "type": "integer"
+          },
+          "status_counts": {
+            "items": {
+              "$ref": "#/components/schemas/RuntimeTaskStatusCountOut"
+            },
+            "title": "Status Counts",
+            "type": "array"
+          },
+          "succeeded_recent": {
+            "default": 0,
+            "title": "Succeeded Recent",
+            "type": "integer"
+          },
+          "task_type_counts": {
+            "items": {
+              "$ref": "#/components/schemas/RuntimeTaskTypeCountOut"
+            },
+            "title": "Task Type Counts",
+            "type": "array"
+          }
+        },
+        "title": "RuntimeTaskSummaryResponse",
+        "type": "object"
+      },
+      "RuntimeTaskTypeCountOut": {
+        "properties": {
+          "count": {
+            "default": 0,
+            "title": "Count",
+            "type": "integer"
+          },
+          "task_type": {
+            "title": "Task Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "task_type"
+        ],
+        "title": "RuntimeTaskTypeCountOut",
+        "type": "object"
+      },
+      "RuntimeTaskWorkerListResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/RuntimeTaskWorkerOut"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "total": {
+            "default": 0,
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "title": "RuntimeTaskWorkerListResponse",
+        "type": "object"
+      },
+      "RuntimeTaskWorkerOut": {
+        "properties": {
+          "component": {
+            "default": "runtime-worker",
+            "title": "Component",
+            "type": "string"
+          },
+          "current_task_ids": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Current Task Ids",
+            "type": "array"
+          },
+          "heartbeat_age_seconds": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Heartbeat Age Seconds"
+          },
+          "heartbeat_updated_at": {
+            "default": "",
+            "title": "Heartbeat Updated At",
+            "type": "string"
+          },
+          "running_task_count": {
+            "default": 0,
+            "title": "Running Task Count",
+            "type": "integer"
+          },
+          "status": {
+            "default": "missing",
+            "title": "Status",
+            "type": "string"
+          },
+          "task_count": {
+            "default": 0,
+            "title": "Task Count",
+            "type": "integer"
+          },
+          "worker_id": {
+            "title": "Worker Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "worker_id"
+        ],
+        "title": "RuntimeTaskWorkerOut",
         "type": "object"
       },
       "SectorEtfT0Opportunity": {
@@ -20734,6 +21150,53 @@
               }
             ],
             "title": "Stop Triggered Date"
+          },
+          "strategy_engine_decision": {
+            "default": "",
+            "title": "Strategy Engine Decision",
+            "type": "string"
+          },
+          "strategy_engine_exclusion_reasons": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Strategy Engine Exclusion Reasons",
+            "type": "array"
+          },
+          "strategy_engine_parity_status": {
+            "default": "not_evaluated",
+            "title": "Strategy Engine Parity Status",
+            "type": "string"
+          },
+          "strategy_engine_score_delta": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Strategy Engine Score Delta"
+          },
+          "strategy_engine_shadow": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Strategy Engine Shadow"
+          },
+          "strategy_engine_warning_tags": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Strategy Engine Warning Tags",
+            "type": "array"
           },
           "strategy_family": {
             "default": "",
@@ -35953,6 +36416,367 @@
           }
         },
         "summary": "Enqueue Runtime Task",
+        "tags": [
+          "runtime-tasks"
+        ]
+      }
+    },
+    "/api/runtime-tasks/analytics-reports": {
+      "get": {
+        "operationId": "list_runtime_task_analytics_reports_api_runtime_tasks_analytics_reports_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Admin-Token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Admin-Token"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RuntimeTaskAnalyticsReportResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Runtime Task Analytics Reports",
+        "tags": [
+          "runtime-tasks"
+        ]
+      }
+    },
+    "/api/runtime-tasks/artifacts": {
+      "get": {
+        "operationId": "list_runtime_task_artifacts_api_runtime_tasks_artifacts_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Admin-Token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Admin-Token"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RuntimeTaskArtifactResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Runtime Task Artifacts",
+        "tags": [
+          "runtime-tasks"
+        ]
+      }
+    },
+    "/api/runtime-tasks/failures": {
+      "get": {
+        "operationId": "list_runtime_task_failures_api_runtime_tasks_failures_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Admin-Token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Admin-Token"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RuntimeTaskFailureResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Runtime Task Failures",
+        "tags": [
+          "runtime-tasks"
+        ]
+      }
+    },
+    "/api/runtime-tasks/summary": {
+      "get": {
+        "operationId": "get_runtime_task_summary_api_runtime_tasks_summary_get",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-Admin-Token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Admin-Token"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RuntimeTaskSummaryResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Runtime Task Summary",
+        "tags": [
+          "runtime-tasks"
+        ]
+      }
+    },
+    "/api/runtime-tasks/workers": {
+      "get": {
+        "operationId": "list_runtime_task_workers_api_runtime_tasks_workers_get",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-Admin-Token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Admin-Token"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RuntimeTaskWorkerListResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Runtime Task Workers",
         "tags": [
           "runtime-tasks"
         ]

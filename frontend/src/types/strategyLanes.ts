@@ -29,6 +29,26 @@ export interface StrategyLaneReadinessSummary {
   source_report?: string;
 }
 
+export interface StrategyEngineShadowPayload {
+  strategy_key?: string;
+  symbol?: string;
+  signal_state?: string;
+  production_score?: number | null;
+  watch_score?: number | null;
+  score_components?: Record<string, number>;
+  exclusion_reasons?: string[];
+  warning_tags?: string[];
+  decision?: string;
+  source?: string;
+  metadata?: Record<string, unknown>;
+  shadow_only?: boolean;
+  replacement_enabled?: boolean;
+  production_sort_replaced?: boolean;
+  parity_status?: string;
+  production_score_delta?: number | null;
+  watch_score_delta?: number | null;
+}
+
 export interface StrategyLaneFields {
   strategy_variant?: StrategyVariant;
   strategy_role?: StrategyRole;
@@ -44,4 +64,10 @@ export interface StrategyLaneFields {
   elite_watch_score?: number | null;
   readiness_status?: string;
   readiness_blockers?: string[];
+  strategy_engine_shadow?: StrategyEngineShadowPayload | null;
+  strategy_engine_decision?: string;
+  strategy_engine_warning_tags?: string[];
+  strategy_engine_exclusion_reasons?: string[];
+  strategy_engine_score_delta?: number | null;
+  strategy_engine_parity_status?: string;
 }

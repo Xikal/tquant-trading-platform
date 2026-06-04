@@ -18,6 +18,8 @@ from app.models.backtest_entities import (
 from app.models.entities import BacktestRun, QuantParameterSet
 from app.services.backtest.data_provider import DATA_PROVIDER_VERSION
 from app.services.backtest.engine import BACKTEST_ENGINE_VERSION, BacktestResult
+from app.services.backtest.forward_path import FORWARD_PATH_FIELDS, enrich_trade_forward_path
+from app.services.execution_model import build_backtest_execution_model_preview
 from app.services.low_buy.shared import LOW_BUY_RESULT_VERSION
 from app.services.quant.parameter_version_service import default_quant_parameters
 
@@ -175,7 +177,7 @@ class BacktestResultPersistence:
             return
         metrics = dict(result.metrics or {})
         quant_parameter = _active_quant_parameter_metadata(self.db)
-        result_payload = _compact_result_payload(result)
+        result_payload = _compact_result_payload(result, db=self.db)
         result_payload["quant_parameter"] = quant_parameter
         finished_at = datetime.utcnow()
         values = {
@@ -235,7 +237,7 @@ def _matched_exit_order_id(trade: Any, persisted_orders: list[tuple[Any, int]]) 
     return None
 
 
-def _compact_result_payload(result: BacktestResult) -> dict[str, Any]:
+def _compact_result_payload(result: BacktestResult, db: Session | None = None) -> dict[str, Any]:
     """Keep run detail light; normalized tables store curves, orders and trades."""
 
     return {
@@ -246,6 +248,7 @@ def _compact_result_payload(result: BacktestResult) -> dict[str, Any]:
         "dataset_manifest": result.dataset_manifest,
         "data_quality": result.data_quality.__dict__,
         "metrics": result.metrics,
+        "execution_model_preview": _build_execution_model_preview(result, db=db),
         "attribution": result.attribution,
         "counts": {
             "equity_points": len(result.equity_curve),
@@ -253,6 +256,92 @@ def _compact_result_payload(result: BacktestResult) -> dict[str, Any]:
             "trades": len(result.trades),
         },
     }
+
+
+def _build_execution_model_preview(result: BacktestResult, db: Session | None = None) -> dict[str, Any]:
+    try:
+        enriched = [_trade_forward_path(item, db=db) for item in result.trades]
+        blocked = next((item for item in enriched if item["status"] != "ok"), None)
+        if blocked is not None:
+            return _unavailable_execution_model_preview(str(blocked["status"] or "no_daily_return_path"))
+        outcomes = [
+            _trade_outcome_from_realized_trade(item["trade"], forward_path=item["values"])
+            for item in enriched
+        ]
+        if outcomes:
+            preview = build_backtest_execution_model_preview(outcomes)
+            preview["forward_path_status"] = "ok"
+            return preview
+    except Exception:
+        return _unavailable_execution_model_preview("preview_build_failed")
+    return _unavailable_execution_model_preview("no_trade_outcomes")
+
+
+def _trade_has_forward_path(item: Any) -> bool:
+    return all(getattr(item, field, None) is not None for field in FORWARD_PATH_FIELDS)
+
+
+def _trade_forward_path(item: Any, *, db: Session | None) -> dict[str, Any]:
+    if _trade_has_forward_path(item):
+        return {"status": "ok", "trade": item, "values": {field: _float_attr(item, field) for field in FORWARD_PATH_FIELDS}}
+    if db is None:
+        return {"status": "no_daily_return_path", "trade": item, "values": {}}
+    result = enrich_trade_forward_path(db, item)
+    return {"status": result.status, "trade": item, "values": result.values, "missing_days": result.missing_days}
+
+
+def _unavailable_execution_model_preview(reason: str) -> dict[str, Any]:
+    notes = [
+        "execution_model preview unavailable for this run result.",
+        "portfolio_backtest_metrics remains the final max5/max10 fact source.",
+    ]
+    if reason == "no_daily_return_path":
+        notes[0] = "backtest realized trades do not include daily forward-return path fields, so parity preview is withheld."
+    return {
+        "ok": False,
+        "mode": "parallel_preview",
+        "source": "backtest",
+        "event_counts": {},
+        "max_5": {},
+        "max_10": {},
+        "parity": {"max_5": {}, "max_10": {}},
+        "final_fact_source": "portfolio_backtest_metrics",
+        "replacement_enabled": False,
+        "blocked_reason": reason,
+        "forward_path_status": reason,
+        "notes": notes,
+    }
+
+
+def _trade_outcome_from_realized_trade(item: Any, *, forward_path: dict[str, float] | None = None):
+    from scripts.low_buy_market_backtest_reporting import TradeOutcome
+
+    path = forward_path or {field: _float_attr(item, field) for field in FORWARD_PATH_FIELDS}
+    return_pct = _float_attr(item, "return_pct")
+    return TradeOutcome(
+        symbol=str(getattr(item, "symbol", "") or ""),
+        name=str(getattr(item, "name", "") or ""),
+        signal_date=str(getattr(item, "entry_date", "") or getattr(item, "exit_date", "") or ""),
+        strategy_key=str(getattr(item, "strategy_key", "") or ""),
+        buy_signal_state="buy_now",
+        entry_price=float(getattr(item, "entry_price", 0.0) or 0.0),
+        execution_status="filled",
+        net_return_pct=return_pct,
+        execution_exit_reason=str(getattr(item, "exit_reason", "") or "backtest_trade"),
+        return_1d=float(path.get("return_1d") or 0.0),
+        return_2d=float(path.get("return_2d") or 0.0),
+        return_3d=float(path.get("return_3d") or 0.0),
+        return_4d=float(path.get("return_4d") or 0.0),
+        return_5d=float(path.get("return_5d") or 0.0),
+        max_gain_5d=float(path.get("max_gain_5d") or 0.0),
+        max_drawdown_5d=float(path.get("max_drawdown_5d") or 0.0),
+        entry_trade_date=str(getattr(item, "entry_date", "") or ""),
+        exit_trade_date=str(getattr(item, "exit_date", "") or ""),
+    )
+
+
+def _float_attr(item: Any, field: str) -> float:
+    return float(getattr(item, field, 0.0) or 0.0)
 
 
 def _active_quant_parameter_metadata(db: Session) -> dict[str, Any]:

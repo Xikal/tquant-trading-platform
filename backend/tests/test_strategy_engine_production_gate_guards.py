@@ -3,6 +3,7 @@ from __future__ import annotations
 from app.models.schemas import LowBuyHardRiskOut
 from app.services.strategy_engine.gates import StrategyGateInput, evaluate_strategy_gate
 from app.services.strategy_engine.low_buy_adapter import low_buy_strategy_engine_output, low_buy_strategy_gate_input
+from app.services.strategy_engine.parity_tracker import StrategyEngineParityObservation, build_strategy_engine_parity_report
 from app.services.low_buy.strategy_lanes import FRONT_ROW_ONLY_VARIANT
 from test_low_buy_production_scoring import _front_row_candidate
 
@@ -63,3 +64,20 @@ def test_hard_risk_blocked_candidate_has_no_production_score() -> None:
     assert output.decision == "blocked"
     assert "hard_risk_execution_blocked" in output.exclusion_reasons
     assert "strategy_blocked" in output.warning_tags
+
+
+def test_strategy_engine_parity_report_is_not_a_production_gate() -> None:
+    report = build_strategy_engine_parity_report(
+        [
+            StrategyEngineParityObservation(
+                trade_date="2026-01-01",
+                strategy_key="first_board",
+                production_priority_score=80.0,
+                strategy_engine_production_score=90.0,
+            )
+        ]
+    )
+
+    assert report["shadow_only"] is True
+    assert report["replacement_enabled"] is False
+    assert report["production_adoption_allowed"] is False

@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+import time
 from datetime import date
 from pathlib import Path
 
@@ -32,6 +33,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main() -> int:
+    started = time.monotonic()
     args = build_parser().parse_args()
     init_db()
     manifest_path = latest_manifest_path(output_root=args.output_root) if args.manifest == "latest" else None
@@ -58,7 +60,8 @@ def main() -> int:
         data_quality_sla=sla_payload,
         track_record_drift=track_record_payload,
     )
-    write_strategy_24m_report(report, output_md=args.output_md, output_json=args.output_json)
+    report["duration_seconds"] = round(time.monotonic() - started, 3)
+    write_strategy_24m_report(report, output_md=args.output_md, output_json=args.output_json, output_root=args.output_root)
     print(json.dumps({"status": report["status"], "output_md": args.output_md, "output_json": args.output_json}, ensure_ascii=False))
     return 0
 

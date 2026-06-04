@@ -6,6 +6,7 @@ import json
 from app.core.config import get_settings
 from app.services.low_buy.production_scoring import score_low_buy_candidate_for_production
 from app.services.strategy_engine.low_buy_adapter import low_buy_strategy_engine_output
+from app.services.strategy_engine.shadow import low_buy_strategy_engine_shadow_payload
 from test_low_buy_production_scoring import _front_row_candidate
 
 
@@ -52,6 +53,26 @@ def test_low_buy_adapter_near_entry_stays_watch_only() -> None:
     assert output.watch_score == existing.watch_score
     assert output.decision == "watch_only"
     assert "near_entry_watch_only" in output.warning_tags
+
+
+def test_low_buy_shadow_payload_is_read_only_and_matches_existing_scoring() -> None:
+    candidate = _front_row_candidate("first_board")
+    existing = score_low_buy_candidate_for_production(candidate)
+
+    payload = low_buy_strategy_engine_shadow_payload(
+        candidate,
+        current_production_score=existing.production_score,
+        current_watch_score=existing.watch_score,
+    )
+
+    assert payload["strategy_engine_parity_status"] == "match"
+    assert payload["strategy_engine_score_delta"] == 0.0
+    assert payload["strategy_engine_decision"] == "production_candidate"
+    assert payload["strategy_engine_shadow"]["shadow_only"] is True
+    assert payload["strategy_engine_shadow"]["replacement_enabled"] is False
+    assert payload["strategy_engine_shadow"]["production_sort_replaced"] is False
+    assert payload["strategy_engine_shadow"]["production_score"] == existing.production_score
+    assert payload["strategy_engine_shadow"]["watch_score"] == existing.watch_score
 
 
 def _golden_hash(payload: dict) -> str:

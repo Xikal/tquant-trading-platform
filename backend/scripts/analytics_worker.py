@@ -33,6 +33,7 @@ def main() -> int:
     worker = RuntimeTaskWorker(
         registry=analytics_task_registry(),
         worker_id=args.worker_id or f"analytics-worker",
+        component="analytics-worker",
         poll_interval_seconds=args.poll_interval_seconds,
     )
     if args.once:

@@ -80,26 +80,36 @@ git status --short
 
 ## Online Acceptance
 
-Pending B6 deployment:
+Updated in A1 follow-up review with traceable online evidence.
 
 | Check | Result |
 |---|---|
-| `git push origin HEAD:main` | pending |
-| GitHub Actions deploy job | pending |
-| Deploy sync mode | pending |
-| Delta changed count | pending |
-| Delta deleted count | pending |
-| Delta bytes | pending |
-| Full bytes | pending |
-| Upload seconds | pending |
-| Fallback reason | pending |
-| Web readyz | pending |
-| runtime-worker health | pending |
-| runtime-scheduler health | pending |
-| analytics-worker health | pending |
-| backtest-worker health | pending |
-| Online performance round 1 | pending |
-| Online performance round 2 | pending |
+| `git push origin HEAD:main` | done for `1824b363a3bfdf4b2900fe4c2e881ab4e6bf1335` |
+| GitHub Actions deploy job | success, run `26939035586`, deploy job `79476390009` |
+| Deploy sync mode | requested `delta-package`, effective `package-only` |
+| Delta changed count | `0` |
+| Delta deleted count | `0` |
+| Delta bytes | `0` |
+| Full bytes | `6477745` |
+| Upload seconds | `397` |
+| Fallback reason | `invalid_remote_manifest` |
+| Web readyz | `{"status":"ok","checks":{"database":true,"frontend_dist":true,"analytics_dependencies":true}}` |
+| runtime-worker health | `healthy` |
+| runtime-scheduler health | `healthy` |
+| analytics-worker health | `healthy`; DuckDB `1.5.3`, PyArrow `22.0.0`, DB ping returned no error |
+| backtest-worker health | container running; no Docker healthcheck configured |
+| Online performance round 1 | `docs/reports/gupiao-cloud-performance-2026-06-04-162901.json`, `ok=true` |
+| Online performance round 2 | `docs/reports/gupiao-cloud-performance-2026-06-04-163020.json`, `ok=true` |
+
+Current remote manifest check:
+
+```text
+manifest_ok version=1 file_count=2343 total_size=47777433
+```
+
+The final B6 deployment still fell back because the remote manifest available
+at that deploy step was invalid. After that deployment, the remote manifest is
+valid and can be used by the next delta-package attempt.
 
 ## Production Sorting Impact
 

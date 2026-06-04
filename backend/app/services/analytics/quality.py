@@ -36,23 +36,25 @@ class DailyBarsQualityResult:
     backfill_task_id: int | None = None
 
     def as_dict(self) -> dict[str, Any]:
-        coverage_pct = (
-            round(float(self.actual_days) / float(self.expected_days) * 100.0, 4)
-            if self.expected_days
-            else 0.0
-        )
-        complete_coverage_pct = (
-            round(float(self.complete_trade_day_count) / float(self.expected_days) * 100.0, 4)
-            if self.expected_days
-            else 0.0
-        )
+        coverage_pct = capped_coverage_pct(self.actual_days, self.expected_days)
+        complete_coverage_pct = capped_coverage_pct(self.complete_trade_day_count, self.expected_days)
+        over_coverage_trade_days = max(int(self.actual_days or 0) - int(self.expected_days or 0), 0)
+        coverage_status = "ok" if self.status == "ok" else ("partial" if self.actual_days > 0 else "fail")
         return {
             "dataset_key": self.dataset_key,
             "period_start": self.period_start,
             "period_end": self.period_end,
+            "required_start": self.period_start,
+            "required_end": self.period_end,
             "expected_days": self.expected_days,
             "actual_days": self.actual_days,
             "missing_days": self.missing_days,
+            "required_trade_days": self.expected_days,
+            "actual_trade_days": self.actual_days,
+            "complete_trade_days": self.complete_trade_day_count,
+            "missing_trade_days": self.missing_days,
+            "over_coverage_trade_days": over_coverage_trade_days,
+            "coverage_status": coverage_status,
             "coverage_pct": coverage_pct,
             "complete_coverage_pct": complete_coverage_pct,
             "duplicate_rows": self.duplicate_rows,
@@ -217,6 +219,15 @@ def normalized_quality_status(quality: DailyBarsQualityResult | dict[str, Any]) 
     if actual_days > 0:
         return "partial"
     return "blocked"
+
+
+def capped_coverage_pct(actual_days: int, required_days: int) -> float:
+    """Coverage is a minimum-window completeness percentage, capped at 100."""
+
+    if required_days <= 0:
+        return 0.0
+    value = float(actual_days or 0) / float(required_days) * 100.0
+    return round(max(0.0, min(value, 100.0)), 4)
 
 
 def _quality_value(quality: DailyBarsQualityResult | dict[str, Any], key: str) -> Any:

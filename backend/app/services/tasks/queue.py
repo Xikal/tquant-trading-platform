@@ -8,12 +8,35 @@ from sqlalchemy import and_, func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.models.entities import RuntimeTask, RuntimeTaskEvent
-from app.models.schema_defs.phase4 import RuntimeTaskCreate, RuntimeTaskEventOut, RuntimeTaskListResponse, RuntimeTaskOut
+from app.models.entities import RuntimeTask, RuntimeTaskEvent, SystemSetting
+from app.models.schema_defs.phase4 import (
+    RuntimeTaskArtifactOut,
+    RuntimeTaskArtifactResponse,
+    RuntimeTaskCreate,
+    RuntimeTaskEventOut,
+    RuntimeTaskFailureResponse,
+    RuntimeTaskListResponse,
+    RuntimeTaskOut,
+    RuntimeTaskStatusCountOut,
+    RuntimeTaskSummaryResponse,
+    RuntimeTaskTypeCountOut,
+    RuntimeTaskWorkerListResponse,
+    RuntimeTaskWorkerOut,
+)
+from app.services.runtime_worker_health import platform_component_heartbeats
 from app.services.realtime import publish_runtime_task_event
 
 
 TERMINAL_STATUSES = {"succeeded", "failed", "cancelled"}
+ARTIFACT_KEYS = {
+    "artifact_path",
+    "artifact_uri",
+    "manifest_path",
+    "output_json",
+    "output_md",
+    "output_path",
+    "report_path",
+}
 RUNNING_TASK_STALE_SECONDS = 5 * 60
 STALE_RECOVERY_BATCH_SIZE = 20
 RETRY_BACKOFF_BASE_SECONDS = 30
@@ -73,6 +96,130 @@ class RuntimeTaskQueue:
         ).scalars().all()
         total = int(self.db.execute(count_statement).scalar() or 0)
         return RuntimeTaskListResponse(items=[_task_out(row) for row in rows], total=total, limit=limit, offset=offset)
+
+    def summary(self, *, recent_hours: int = 24) -> RuntimeTaskSummaryResponse:
+        now = datetime.utcnow()
+        recent_cutoff = now - timedelta(hours=max(int(recent_hours or 24), 1))
+        status_rows = self.db.execute(
+            select(RuntimeTask.status, func.count(RuntimeTask.id)).group_by(RuntimeTask.status)
+        ).all()
+        status_counts = {str(status): int(count or 0) for status, count in status_rows}
+        retrying = int(
+            self.db.execute(
+                select(func.count(RuntimeTask.id))
+                .where(RuntimeTask.status == "queued")
+                .where(RuntimeTask.run_after.is_not(None))
+                .where(RuntimeTask.run_after > now)
+            ).scalar()
+            or 0
+        )
+        succeeded_recent = int(
+            self.db.execute(
+                select(func.count(RuntimeTask.id))
+                .where(RuntimeTask.status == "succeeded")
+                .where(RuntimeTask.finished_at >= recent_cutoff)
+            ).scalar()
+            or 0
+        )
+        oldest = self.db.execute(
+            select(RuntimeTask)
+            .where(RuntimeTask.status == "queued")
+            .order_by(RuntimeTask.created_at.asc(), RuntimeTask.id.asc())
+            .limit(1)
+        ).scalar_one_or_none()
+        type_rows = self.db.execute(
+            select(RuntimeTask.task_type, func.count(RuntimeTask.id))
+            .group_by(RuntimeTask.task_type)
+            .order_by(func.count(RuntimeTask.id).desc(), RuntimeTask.task_type.asc())
+            .limit(12)
+        ).all()
+        return RuntimeTaskSummaryResponse(
+            queued=status_counts.get("queued", 0),
+            running=status_counts.get("running", 0),
+            failed=status_counts.get("failed", 0),
+            retrying=retrying,
+            succeeded_recent=succeeded_recent,
+            longest_wait_seconds=_age_seconds(now, oldest.created_at if oldest else None),
+            oldest_queued_at=oldest.created_at if oldest else None,
+            running_count=status_counts.get("running", 0),
+            status_counts=[RuntimeTaskStatusCountOut(status=key, count=value) for key, value in sorted(status_counts.items())],
+            task_type_counts=[RuntimeTaskTypeCountOut(task_type=str(key), count=int(value or 0)) for key, value in type_rows],
+        )
+
+    def workers(self) -> RuntimeTaskWorkerListResponse:
+        now = datetime.utcnow()
+        running_rows = self.db.execute(
+            select(RuntimeTask).where(RuntimeTask.status == "running").order_by(RuntimeTask.locked_by.asc(), RuntimeTask.id.asc())
+        ).scalars().all()
+        by_worker: dict[str, list[RuntimeTask]] = {}
+        for row in running_rows:
+            worker_id = str(row.locked_by or "unknown")
+            by_worker.setdefault(worker_id, []).append(row)
+        items: list[RuntimeTaskWorkerOut] = []
+        emitted_workers: set[str] = set()
+        for heartbeat in platform_component_heartbeats(self.db, now=now):
+            worker_id = str(heartbeat["worker_id"] or heartbeat["component"])
+            emitted_workers.add(worker_id)
+            tasks = by_worker.get(worker_id, [])
+            items.append(
+                RuntimeTaskWorkerOut(
+                    worker_id=worker_id,
+                    component=str(heartbeat["component"]),
+                    status=str(heartbeat["status"]),
+                    task_count=len(tasks),
+                    running_task_count=len(tasks),
+                    heartbeat_updated_at=str(heartbeat["updated_at"]),
+                    heartbeat_age_seconds=heartbeat["age_seconds"],
+                    current_task_ids=[int(row.id) for row in tasks],
+                )
+            )
+        for worker_id in sorted(set(by_worker) - emitted_workers):
+            tasks = by_worker.get(worker_id, [])
+            items.append(
+                RuntimeTaskWorkerOut(
+                    worker_id=worker_id,
+                    component="runtime-task",
+                    status="running",
+                    task_count=len(tasks),
+                    running_task_count=len(tasks),
+                    current_task_ids=[int(row.id) for row in tasks],
+                )
+            )
+        return RuntimeTaskWorkerListResponse(items=items, total=len(items))
+
+    def failures(self, *, limit: int = 20) -> RuntimeTaskFailureResponse:
+        rows = self.db.execute(
+            select(RuntimeTask)
+            .where(RuntimeTask.status == "failed")
+            .order_by(*_recent_terminal_task_order())
+            .limit(limit)
+        ).scalars().all()
+        return RuntimeTaskFailureResponse(items=[_task_out(row) for row in rows], total=len(rows))
+
+    def artifacts(self, *, limit: int = 50) -> RuntimeTaskArtifactResponse:
+        rows = self.db.execute(
+            select(RuntimeTask)
+            .where(RuntimeTask.status.in_(["succeeded", "failed"]))
+            .order_by(*_recent_terminal_task_order())
+            .limit(limit)
+        ).scalars().all()
+        items: list[RuntimeTaskArtifactOut] = []
+        for row in rows:
+            for key, value in _artifact_paths(_json_dict(row.result_json), _json_dict(row.payload_json)):
+                items.append(
+                    RuntimeTaskArtifactOut(
+                        task_id=int(row.id),
+                        task_type=row.task_type,
+                        status=row.status,
+                        artifact_key=key,
+                        artifact_path=value,
+                        created_at=row.created_at,
+                        finished_at=row.finished_at,
+                    )
+                )
+                if len(items) >= limit:
+                    return RuntimeTaskArtifactResponse(items=items, total=len(items))
+        return RuntimeTaskArtifactResponse(items=items, total=len(items))
 
     def get(self, task_id: int) -> RuntimeTaskOut:
         row = self._get_row(task_id)
@@ -298,6 +445,15 @@ def _event_out(row: RuntimeTaskEvent) -> RuntimeTaskEventOut:
     )
 
 
+def _recent_terminal_task_order() -> tuple[Any, Any, Any, Any]:
+    return (
+        RuntimeTask.finished_at.is_(None).asc(),
+        RuntimeTask.finished_at.desc(),
+        RuntimeTask.updated_at.desc(),
+        RuntimeTask.id.desc(),
+    )
+
+
 def _json_dumps(value: Any) -> str:
     return json.dumps(value, ensure_ascii=False, default=str)
 
@@ -308,3 +464,29 @@ def _json_dict(raw: str) -> dict[str, Any]:
     except Exception:
         return {}
     return value if isinstance(value, dict) else {}
+
+
+def _artifact_paths(*payloads: dict[str, Any]) -> list[tuple[str, str]]:
+    output: list[tuple[str, str]] = []
+    for payload in payloads:
+        for key, value in payload.items():
+            if key in ARTIFACT_KEYS and isinstance(value, str) and value.strip():
+                output.append((key, value.strip()))
+            elif isinstance(value, dict):
+                output.extend(_artifact_paths(value))
+    return output
+
+
+def _parse_datetime(raw: str) -> datetime | None:
+    if not raw:
+        return None
+    try:
+        return datetime.fromisoformat(raw.replace("Z", "+00:00")).replace(tzinfo=None)
+    except ValueError:
+        return None
+
+
+def _age_seconds(now: datetime, value: datetime | None) -> int | None:
+    if value is None:
+        return None
+    return max(0, int((now.replace(tzinfo=None) - value.replace(tzinfo=None)).total_seconds()))

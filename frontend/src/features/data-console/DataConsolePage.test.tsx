@@ -17,6 +17,7 @@ import { DATA_CONSOLE_SERVER_KEYS } from "./useDataConsole";
 import { DataRepairPanel } from "./DataRepairPanel";
 import { InstrumentInspectorPanel } from "./InstrumentInspectorPanel";
 import { TradeDataGateCard } from "./TradeDataGateCard";
+import { WorkerObservabilityPanel } from "./WorkerObservabilityPanel";
 import { datasetLabel, qualityLabel, scopeLabel, severityLabel, statusLabel, taskStatusLabel } from "./dataConsoleTypes";
 import { shouldPollRuntimeTasks } from "./useDataConsole";
 
@@ -113,6 +114,95 @@ describe("DataConsolePage", () => {
     expect(html).toContain("数据源离线");
     expect(html).toContain("不通过");
     expect(html).not.toContain(">red<");
+  });
+
+  it("renders worker observability with queue, failures and artifacts", () => {
+    const html = renderToStaticMarkup(
+      <WorkerObservabilityPanel
+        loading={false}
+        error=""
+        summary={{
+          queued: 2,
+          running: 1,
+          failed: 1,
+          retrying: 1,
+          succeeded_recent: 5,
+          longest_wait_seconds: 120,
+          oldest_queued_at: "2026-06-04T10:00:00",
+          running_count: 1,
+          status_counts: [],
+          task_type_counts: [{ task_type: "analytics_export_daily_bars", count: 3 }],
+        }}
+        workers={{
+          total: 1,
+          items: [{
+            worker_id: "analytics-worker",
+            component: "analytics-worker",
+            status: "running",
+            task_count: 1,
+            running_task_count: 1,
+            heartbeat_updated_at: "2026-06-04T10:01:00",
+            heartbeat_age_seconds: 30,
+            current_task_ids: [9],
+          }],
+        }}
+        failures={{
+          total: 1,
+          items: [runtimeTaskFixture({ id: 8, task_type: "analytics_quality_check", status: "failed", error_message: "provider unavailable" })],
+        }}
+        artifacts={{
+          total: 1,
+          items: [{
+            task_id: 7,
+            task_type: "analytics_export_daily_bars",
+            status: "succeeded",
+            artifact_key: "output_json",
+            artifact_path: "/tmp/report.json",
+            created_at: "2026-06-04T10:00:00",
+            finished_at: "2026-06-04T10:02:00",
+          }],
+        }}
+        analyticsReports={{
+          total: 2,
+          updated_at: "2026-06-04T10:04:00Z",
+          items: [
+            {
+              report_type: "strategy_24m_duckdb",
+              generated_at: "2026-06-04T10:03:00Z",
+              status: "ok",
+              manifest_id: "daily_bars:daily_bars_20260604100000",
+              dataset_version: "daily_bars_20260604100000",
+              duration_seconds: 2.5,
+              output_md: "/tmp/analytics_report.md",
+              output_json: "/tmp/analytics_report.json",
+            },
+            {
+              report_type: "strategy_24m_duckdb",
+              generated_at: "2026-06-03T10:03:00Z",
+              status: "blocked_by_data",
+              manifest_id: "daily_bars:daily_bars_20260603100000",
+              dataset_version: "daily_bars_20260603100000",
+              duration_seconds: 65,
+              output_md: "/tmp/old.md",
+              output_json: "/tmp/old.json",
+            },
+          ],
+        }}
+        onRefresh={() => undefined}
+      />,
+    );
+
+    expect(html).toContain("队列、Worker、失败任务和产物路径只读观测");
+    expect(html).toContain("分析报告版本");
+    expect(html).toContain("最新报告");
+    expect(html).toContain("历史报告");
+    expect(html).toContain("daily_bars:daily_bars_20260604100000");
+    expect(html).toContain("耗时 2.5s");
+    expect(html).toContain("/tmp/analytics_report.md");
+    expect(html).toContain("analytics-worker");
+    expect(html).toContain("provider 取不到");
+    expect(html).toContain("/tmp/report.json");
+    expect(html).toContain("analytics_export_daily_bars");
   });
 
   it("renders data center as conclusion, inspection and collapsed maintenance layers", () => {

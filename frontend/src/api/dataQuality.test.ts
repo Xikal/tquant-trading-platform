@@ -20,7 +20,7 @@ describe("dataQualityApi", () => {
     });
     expect(request).toHaveBeenNthCalledWith(3, "/data-quality/repair", {
       method: "POST",
-      body: JSON.stringify({ dataset_key: "daily_bars", dry_run: false }),
+      body: JSON.stringify({ backup_dir: "", output_path: "", refetch: true, dataset_key: "daily_bars", dry_run: false }),
     });
     expect(request).toHaveBeenNthCalledWith(4, "/data-quality/trade-gate");
     expect(request).toHaveBeenNthCalledWith(5, "/data-quality/runtime-fallback");

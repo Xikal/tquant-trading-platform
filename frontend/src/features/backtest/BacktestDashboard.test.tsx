@@ -101,6 +101,23 @@ const run: BacktestRunDetail = {
       information_ratio: 0.92,
     },
   },
+  execution_model_preview: {
+    ok: true,
+    mode: "parallel_preview",
+    source: "backtest",
+    execution_model_version: "execution-model-parity-v1",
+    event_counts: { signal: 3, order: 3, fill: 3, position: 3, exit: 3 },
+    max_5: { portfolio_return_pct: 8.2, trade_count: 3 },
+    max_10: { portfolio_return_pct: 8.2, trade_count: 3 },
+    parity: {
+      max_5: { portfolio_return_pct: true, trade_count: true },
+      max_10: { portfolio_return_pct: true, trade_count: true },
+    },
+    final_fact_source: "portfolio_backtest_metrics",
+    replacement_enabled: false,
+    forward_path_status: "ok",
+    notes: ["preview only"],
+  },
   created_at: "2026-05-05T09:30:00",
 };
 
@@ -401,6 +418,12 @@ describe("BacktestDashboard", () => {
 
     expect(html).toContain('data-node-key="overview" class="ant-tabs-tab ant-tabs-tab-active"');
     expect(html).toContain("详情摘要 #42");
+    expect(html).toContain("执行模型预览");
+    expect(html).toContain("Preview · 非事实源");
+    expect(html).toContain("forward_path_status=ok");
+    expect(html).toContain("一致性校验只用于预览，不替换真实收益");
+    expect(html).toContain("replacement_enabled=false");
+    expect(html).toContain("portfolio_backtest_metrics");
     expect(html).toContain("净值曲线");
     expect(html).not.toContain('data-node-key="submit" class="ant-tabs-tab ant-tabs-tab-active"');
   });

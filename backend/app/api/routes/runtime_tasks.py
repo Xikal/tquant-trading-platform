@@ -10,7 +10,18 @@ from sqlalchemy.orm import Session
 from app.core.admin_auth import require_admin_auth
 from app.core.config import get_settings
 from app.core.database import SessionLocal, get_db
-from app.models.schema_defs.phase4 import RuntimeTaskCreate, RuntimeTaskEventOut, RuntimeTaskListResponse, RuntimeTaskOut
+from app.models.schema_defs.phase4 import (
+    RuntimeTaskAnalyticsReportResponse,
+    RuntimeTaskArtifactResponse,
+    RuntimeTaskCreate,
+    RuntimeTaskEventOut,
+    RuntimeTaskFailureResponse,
+    RuntimeTaskListResponse,
+    RuntimeTaskOut,
+    RuntimeTaskSummaryResponse,
+    RuntimeTaskWorkerListResponse,
+)
+from app.services.analytics.report_index import read_analytics_report_index
 from app.services.realtime import redis_runtime_task_events_enabled, subscribe_runtime_task_events
 from app.services.tasks import RuntimeTaskQueue
 
@@ -30,6 +41,39 @@ def list_runtime_tasks(
     db: Session = Depends(get_db),
 ) -> RuntimeTaskListResponse:
     return RuntimeTaskQueue(db).list(limit=limit, offset=offset, status=status)
+
+
+@router.get("/summary", response_model=RuntimeTaskSummaryResponse)
+def get_runtime_task_summary(db: Session = Depends(get_db)) -> RuntimeTaskSummaryResponse:
+    return RuntimeTaskQueue(db).summary()
+
+
+@router.get("/workers", response_model=RuntimeTaskWorkerListResponse)
+def list_runtime_task_workers(db: Session = Depends(get_db)) -> RuntimeTaskWorkerListResponse:
+    return RuntimeTaskQueue(db).workers()
+
+
+@router.get("/failures", response_model=RuntimeTaskFailureResponse)
+def list_runtime_task_failures(
+    limit: int = Query(default=20, ge=1, le=100),
+    db: Session = Depends(get_db),
+) -> RuntimeTaskFailureResponse:
+    return RuntimeTaskQueue(db).failures(limit=limit)
+
+
+@router.get("/artifacts", response_model=RuntimeTaskArtifactResponse)
+def list_runtime_task_artifacts(
+    limit: int = Query(default=50, ge=1, le=200),
+    db: Session = Depends(get_db),
+) -> RuntimeTaskArtifactResponse:
+    return RuntimeTaskQueue(db).artifacts(limit=limit)
+
+
+@router.get("/analytics-reports", response_model=RuntimeTaskAnalyticsReportResponse)
+def list_runtime_task_analytics_reports(
+    limit: int = Query(default=20, ge=1, le=100),
+) -> RuntimeTaskAnalyticsReportResponse:
+    return read_analytics_report_index(limit=limit)
 
 
 @router.get("/{task_id}", response_model=RuntimeTaskOut)

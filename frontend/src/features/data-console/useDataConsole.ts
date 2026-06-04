@@ -4,7 +4,15 @@ import { api } from "../../api/client";
 import { dataConsoleInspectorApi } from "../../api/dataConsoleInspector";
 import { dataQualityApi, type DataQualityCoverageResponse, type DataQualitySlaResponse, type RuntimeFallbackStatus } from "../../api/dataQuality";
 import { dataSourcesApi } from "../../api/dataSources";
-import { runtimeTasksApi, type RuntimeTaskOut } from "../../api/runtimeTasks";
+import {
+  runtimeTasksApi,
+  type RuntimeTaskArtifactResponse,
+  type RuntimeTaskAnalyticsReportResponse,
+  type RuntimeTaskFailureResponse,
+  type RuntimeTaskOut,
+  type RuntimeTaskSummaryResponse,
+  type RuntimeTaskWorkerListResponse,
+} from "../../api/runtimeTasks";
 import { useDataConsoleUiStore, type DataConsoleModuleKey } from "../../stores/dataConsoleUiStore";
 import { useServerState } from "../../state/serverState";
 import type { DataSourceProbeResponse } from "../../types";
@@ -17,6 +25,11 @@ export const DATA_CONSOLE_SERVER_KEYS = {
   sources: ["data-console", "sources"] as const,
   coverage: ["data-console", "coverage"] as const,
   tasks: ["data-console", "tasks"] as const,
+  taskSummary: ["data-console", "task-summary"] as const,
+  taskWorkers: ["data-console", "task-workers"] as const,
+  taskFailures: ["data-console", "task-failures"] as const,
+  taskArtifacts: ["data-console", "task-artifacts"] as const,
+  analyticsReports: ["data-console", "analytics-reports"] as const,
   inspector: ["data-console", "inspector"] as const,
   gate: ["data-console", "gate"] as const,
   runtimeFallback: ["data-console", "runtime-fallback"] as const,
@@ -31,6 +44,11 @@ export function useDataConsole(): { data: DataConsoleData; actions: DataConsoleA
   const [sourceHealth, setSourceHealth] = useServerState<DataSourceProbeResponse | null>(DATA_CONSOLE_SERVER_KEYS.sources, null);
   const [coverage, setCoverage] = useServerState<DataQualityCoverageResponse | null>(DATA_CONSOLE_SERVER_KEYS.coverage, null);
   const [tasks, setTasks] = useServerState<RuntimeTaskOut[]>(DATA_CONSOLE_SERVER_KEYS.tasks, EMPTY_TASKS);
+  const [taskSummary, setTaskSummary] = useServerState<RuntimeTaskSummaryResponse | null>(DATA_CONSOLE_SERVER_KEYS.taskSummary, null);
+  const [taskWorkers, setTaskWorkers] = useServerState<RuntimeTaskWorkerListResponse | null>(DATA_CONSOLE_SERVER_KEYS.taskWorkers, null);
+  const [taskFailures, setTaskFailures] = useServerState<RuntimeTaskFailureResponse | null>(DATA_CONSOLE_SERVER_KEYS.taskFailures, null);
+  const [taskArtifacts, setTaskArtifacts] = useServerState<RuntimeTaskArtifactResponse | null>(DATA_CONSOLE_SERVER_KEYS.taskArtifacts, null);
+  const [analyticsReports, setAnalyticsReports] = useServerState<RuntimeTaskAnalyticsReportResponse | null>(DATA_CONSOLE_SERVER_KEYS.analyticsReports, null);
   const [inspector, setInspector] = useServerState<InstrumentInspectorResponse | null>(DATA_CONSOLE_SERVER_KEYS.inspector, null);
   const [gate, setGate] = useServerState<TradeDataGateResponse | null>(DATA_CONSOLE_SERVER_KEYS.gate, null);
   const [runtimeFallback, setRuntimeFallback] = useServerState<RuntimeFallbackStatus | null>(DATA_CONSOLE_SERVER_KEYS.runtimeFallback, null);
@@ -64,8 +82,23 @@ export function useDataConsole(): { data: DataConsoleData; actions: DataConsoleA
   }, [selectedDatasetKey, selectedScope, setCoverage, setModuleError, setModuleLoading]);
 
   const refreshTasks = useCallback(async () => {
-    await loadModule("tasks", setModuleLoading, setModuleError, async () => setTasks((await runtimeTasksApi.list("", 80)).items));
-  }, [setModuleError, setModuleLoading, setTasks]);
+    await loadModule("tasks", setModuleLoading, setModuleError, async () => {
+      const [list, summary, workers, failures, artifacts, reports] = await Promise.all([
+        runtimeTasksApi.list("", 80),
+        runtimeTasksApi.summary(),
+        runtimeTasksApi.workers(),
+        runtimeTasksApi.failures(10),
+        runtimeTasksApi.artifacts(20),
+        runtimeTasksApi.analyticsReports(10),
+      ]);
+      setTasks(list.items);
+      setTaskSummary(summary);
+      setTaskWorkers(workers);
+      setTaskFailures(failures);
+      setTaskArtifacts(artifacts);
+      setAnalyticsReports(reports);
+    });
+  }, [setAnalyticsReports, setModuleError, setModuleLoading, setTaskArtifacts, setTaskFailures, setTaskSummary, setTaskWorkers, setTasks]);
 
   const refreshGate = useCallback(async () => {
     await loadModule("gate", setModuleLoading, setModuleError, async () => setGate(await dataQualityApi.tradeGate()));
@@ -157,7 +190,7 @@ export function useDataConsole(): { data: DataConsoleData; actions: DataConsoleA
   }, [refreshTasks, tasks]);
 
   return {
-    data: { sla, sourceHealth, coverage, tasks, inspector, gate, runtimeFallback },
+    data: { sla, sourceHealth, coverage, tasks, taskSummary, taskWorkers, taskFailures, taskArtifacts, analyticsReports, inspector, gate, runtimeFallback },
     actions: {
       refreshSla,
       refreshSources,

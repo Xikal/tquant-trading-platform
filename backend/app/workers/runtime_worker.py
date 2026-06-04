@@ -14,6 +14,7 @@ from app.services.market.hourly_snapshot import HourlyAllMarketSnapshotService
 from app.services.market_quote_cache_refresh import MarketQuoteCacheRefreshService
 from app.services.monitor_snapshot_cache import build_and_store_monitor_snapshot
 from app.services.tasks import RuntimeTaskQueue
+from app.services.tasks.registry import task_definitions_for_worker
 from app.workers.heavy_research_tasks import (
     FACTOR_HEAVY_TASK_TYPES,
     HEAVY_RESEARCH_TASK_TYPES,
@@ -32,42 +33,7 @@ from app.workers.platform_autopilot_scheduler import (
 logger = logging.getLogger(__name__)
 
 RUNTIME_WORKER_TASK_TYPES = (
-    "noop",
-    "agent_daily_report_push",
-    "monitor_snapshot_refresh",
-    "market_quote_cache_refresh",
-    "market_hourly_all_a_snapshot",
-    "market_pulse_refresh",
-    "instrument_sync",
-    "daily_bar_refresh",
-    "latest_data_watchdog",
-    "a_key_level_materialization_refresh",
-    "market_review_report",
-    "paper_review_report",
-    "low_buy_materialization_refresh",
-    "market_state_gate_refresh",
-    "sector_leader_snapshot_refresh",
-    "hard_risk_context_refresh",
-    "signal_attribution_refresh",
-    "intraday_entry_snapshot_refresh",
-    "event_risk_refresh",
-    "strategy_promotion_review",
-    "paper_portfolio_execution_preview",
-    "strategy_tracking_snapshot_refresh",
-    *HEAVY_RESEARCH_TASK_TYPES,
-    "ml_signal_incremental_train",
-    "strategy_self_evolution",
-    "ml_feature_drift_monitor",
-    "paper_ledger_reconcile_preview",
-    "hermes_platform_autopilot",
-    "signal_ledger_capture",
-    "factor_mining_evaluate",
-    "factor_mining_monthly",
-    "trading_experience_review_refresh",
-    "trading_experience_tag_materialization",
-    "trading_experience_relative_strength_refresh",
-    "trading_experience_limit_up_backtest",
-    "trading_experience_t_attribution_refresh",
+    *task_definitions_for_worker("runtime"),
 )
 RESEARCH_TASK_TYPES = {
     *HEAVY_RESEARCH_TASK_TYPES,

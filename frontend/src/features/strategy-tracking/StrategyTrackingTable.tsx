@@ -193,6 +193,9 @@ function columns(onOpenDetail: (itemId: string) => void, viewMode: StrategyTrack
         <div className="strategy-tracking-cell-stack">
           <Tag color={laneTone(item.display_lane)}>{item.display_lane_title || "原低吸策略"}</Tag>
           <span>{laneRoleText(item)}</span>
+          {item.strategy_engine_shadow ? (
+            <small>{strategyEngineShadowText(item.strategy_engine_parity_status)}</small>
+          ) : null}
           {item.matched_strategy_variants?.length && item.matched_strategy_variants.length > 1 ? (
             <small>同时命中：{item.matched_strategy_variants.map(laneName).join(" / ")}</small>
           ) : null}
@@ -282,6 +285,10 @@ function laneRoleText(item: StrategyTrackingItem): string {
   if (item.display_lane === "front_row_weighted") return "模拟验证中 · 未接生产";
   if (item.display_lane === "front_row_only") return "仅观察 · 不参与生产排序";
   return "旧策略排序 · 保留具体策略名";
+}
+
+function strategyEngineShadowText(status?: string): string {
+  return status === "match" ? "影子校验一致 · 不影响真实排序" : "影子校验待复核 · 不影响真实排序";
 }
 
 function laneName(lane: string): string {

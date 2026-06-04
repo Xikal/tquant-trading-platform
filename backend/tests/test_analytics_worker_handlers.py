@@ -53,6 +53,8 @@ def test_analytics_quality_check_consumes_manifest_with_explicit_status(monkeypa
     assert finished.result["ok"] is False
     assert finished.result["status"] == "no_data"
     assert finished.result["manifest"]["dataset"] == "daily_bars"
+    assert finished.result["quality"]["coverage_pct"] <= 100.0
+    assert "required_trade_days" in finished.result["quality"]
 
 
 def test_strategy_report_worker_records_blocked_artifacts_instead_of_retrying(monkeypatch, tmp_path) -> None:

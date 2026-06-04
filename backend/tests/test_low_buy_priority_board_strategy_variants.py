@@ -22,6 +22,11 @@ def test_front_row_only_priority_item_is_watch_only_without_production_score() -
     assert items[0].watch_only is True
     assert items[0].production_score is None
     assert items[0].elite_watch_score is not None
+    assert items[0].strategy_engine_shadow is not None
+    assert items[0].strategy_engine_shadow["shadow_only"] is True
+    assert items[0].strategy_engine_shadow["production_sort_replaced"] is False
+    assert items[0].strategy_engine_parity_status == "match"
+    assert items[0].strategy_engine_decision == "watch_only"
 
 
 def test_front_row_weighted_priority_item_is_paper_not_production_replacement() -> None:
@@ -35,6 +40,10 @@ def test_front_row_weighted_priority_item_is_paper_not_production_replacement() 
     assert items[0].display_lane == FRONT_ROW_WEIGHTED_VARIANT
     assert items[0].paper_enabled is True
     assert items[0].production_sort_replaced is False
+    assert items[0].strategy_engine_shadow is not None
+    assert items[0].strategy_engine_shadow["replacement_enabled"] is False
+    assert items[0].strategy_engine_shadow["production_sort_replaced"] is False
+    assert items[0].strategy_engine_parity_status == "match"
 
 
 def test_priority_item_event_risk_gate_reduces_production_score() -> None:
@@ -85,6 +94,9 @@ def test_priority_item_event_risk_gate_reduces_production_score() -> None:
     assert risk_items[0].production_score < base_items[0].production_score
     assert risk_items[0].score_components["event_risk_gate"] < 0
     assert "event_risk_reduced" in risk_items[0].warning_tags
+    assert risk_items[0].strategy_engine_shadow is not None
+    assert risk_items[0].strategy_engine_shadow["production_sort_replaced"] is False
+    assert risk_items[0].strategy_engine_parity_status == "match"
 
 
 def _market_context(**overrides):

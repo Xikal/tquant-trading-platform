@@ -18,6 +18,7 @@ let authAccessToken = hydratedAuth.accessToken
 let authPersistenceMode: AuthPersistenceMode = hydratedAuth.mode
 let authRefreshUnavailable = false
 const MAX_IDEMPOTENT_RETRIES = 2
+export const DEFAULT_API_TIMEOUT_MS = 8_000
 
 interface AuthRefreshPayload {
   access_token?: string
@@ -131,12 +132,12 @@ export function bffPartialErrorsText(payload: unknown): string {
     .join("；")
 }
 
-function splitApiRequestInit(init?: ApiRequestInit): { timeoutMs?: number; fetchInit?: RequestInit } {
+function splitApiRequestInit(init?: ApiRequestInit): { timeoutMs: number; fetchInit?: RequestInit } {
   if (!init) {
-    return {}
+    return { timeoutMs: DEFAULT_API_TIMEOUT_MS }
   }
   const { timeoutMs, ...fetchInit } = init
-  return { timeoutMs, fetchInit }
+  return { timeoutMs: timeoutMs ?? DEFAULT_API_TIMEOUT_MS, fetchInit }
 }
 
 function buildRequestHeaders(init?: RequestInit): Record<string, string> {

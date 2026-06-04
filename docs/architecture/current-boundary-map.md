@@ -11,6 +11,7 @@ more work out of the Web process. It is not a microservice split plan.
 | --- | --- | --- |
 | Web API | `backend/app/api/routes/` | Lightweight reads, task submission, task status, cached/read-model payloads |
 | Runtime queue | `backend/app/services/tasks/queue.py` | Durable enqueue, claim, heartbeat, progress, retry, events, stale recovery |
+| Runtime task registry | `backend/app/services/tasks/registry.py`, `docs/architecture/runtime-task-registry.md` | Declarative task owner/worker/retry/artifact/idempotency governance; source for worker claim-scope guard tests |
 | Runtime worker | `backend/app/workers/runtime_worker.py` | Latest data refresh, quote cache, AKey materialization, low-buy materialization, monitor snapshots, research refresh tasks |
 | Analytics worker | `backend/scripts/analytics_worker.py`, `backend/app/services/tasks/analytics_handlers.py` | 24-month backfill, Parquet export, DuckDB reports, data quality checks, analytics artifacts |
 | Backtest worker | `backend/app/services/backtest_worker.py` | Persistent backtest job execution outside request threads |
@@ -45,6 +46,11 @@ migration backlog, not a pattern for new endpoints.
 - heartbeat and stale running recovery
 - progress events
 - succeeded/failed/retry status
+
+`RUNTIME_TASK_REGISTRY` declares every RuntimeTask task type with its owner
+role, expected worker, retry policy, artifact kind, idempotency expectation and
+runtime budget. New RuntimeTask types must be added to the registry and covered
+by the worker-scope guard tests before routes enqueue them.
 
 `RuntimeWorker` currently claims these architecture-critical task types:
 

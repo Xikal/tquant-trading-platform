@@ -420,6 +420,7 @@ class BacktestJobService:
             result=result,
             result_quality=_result_quality(result),
             attribution=_result_attribution(result),
+            execution_model_preview=_execution_model_preview(result),
             dataset_manifest_id=row.dataset_manifest_id,
             engine_version=row.engine_version or "",
             strategy_version=row.strategy_version or "",
@@ -469,3 +470,27 @@ class BacktestJobService:
             payload=_json_dict(row.payload_json),
             created_at=row.created_at,
         )
+
+
+def _execution_model_preview(result: dict[str, object]) -> dict[str, object] | None:
+    preview = result.get("execution_model_preview")
+    if isinstance(preview, dict):
+        return preview
+    if not result:
+        return None
+    return {
+        "ok": False,
+        "mode": "parallel_preview",
+        "source": "backtest",
+        "event_counts": {},
+        "max_5": {},
+        "max_10": {},
+        "parity": {"max_5": {}, "max_10": {}},
+        "final_fact_source": "portfolio_backtest_metrics",
+        "replacement_enabled": False,
+        "blocked_reason": "preview_not_persisted",
+        "notes": [
+            "execution_model preview is not persisted for this historical run.",
+            "portfolio_backtest_metrics remains the final max5/max10 fact source.",
+        ],
+    }

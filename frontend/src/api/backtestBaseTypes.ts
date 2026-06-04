@@ -89,6 +89,27 @@ export interface BacktestSummaryMetrics {
   attribution?: BacktestAttribution | null;
 }
 
+export interface ExecutionModelPreview {
+  ok?: boolean;
+  mode?: string;
+  source?: string;
+  execution_model_version?: string;
+  event_counts?: Record<string, number>;
+  position_summary?: Record<string, number>;
+  exit_reason_counts?: Record<string, number>;
+  max_5?: BacktestSummaryMetrics & Record<string, unknown>;
+  max_10?: BacktestSummaryMetrics & Record<string, unknown>;
+  parity?: {
+    max_5?: Record<string, boolean>;
+    max_10?: Record<string, boolean>;
+  };
+  final_fact_source?: string;
+  replacement_enabled?: boolean;
+  blocked_reason?: string;
+  forward_path_status?: string;
+  notes?: string[];
+}
+
 export interface BacktestRunSummary {
   id: number;
   name: string;
@@ -121,6 +142,7 @@ export interface BacktestRunSummary {
   } | null;
   params?: Record<string, unknown> | null;
   error_message?: string | null;
+  execution_model_preview?: ExecutionModelPreview | null;
   created_at?: string | null;
   started_at?: string | null;
   completed_at?: string | null;

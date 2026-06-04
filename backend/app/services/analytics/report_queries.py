@@ -34,7 +34,7 @@ def build_strategy_24m_duckdb_report(
     track_record_drift: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     config = analytics_config(output_root)
-    quality = dict(manifest.get("quality") or {})
+    quality = _normalize_manifest_quality(manifest)
     sla_payload = _normalize_data_quality_sla(data_quality_sla)
     live_vs_backtest = _normalize_live_vs_backtest(track_record_drift)
     files = list(manifest.get("files") or [])
@@ -94,8 +94,13 @@ def build_strategy_24m_duckdb_report(
             "generated_at": datetime.utcnow().isoformat(timespec="seconds") + "Z",
             "status": status,
             "manifest": {
+                "manifest_id": manifest.get("manifest_id"),
                 "dataset_version": manifest.get("dataset_version"),
                 "manifest_path": manifest.get("manifest_path"),
+                "generated_at": manifest.get("generated_at"),
+                "valid_until": manifest.get("valid_until"),
+                "superseded_by": manifest.get("superseded_by"),
+                "status": manifest.get("status"),
                 "period_start": manifest.get("period_start"),
                 "period_end": manifest.get("period_end"),
                 "row_count": manifest.get("row_count"),
@@ -131,6 +136,14 @@ def render_strategy_24m_markdown(report: dict[str, Any]) -> str:
         f"- 数据窗口：{report.get('manifest', {}).get('period_start', '')} 至 {report.get('manifest', {}).get('period_end', '')}",
         f"- 数据完整性：{quality.get('status', '')}",
         f"- 结论：{report.get('data_quality_conclusion', '')}",
+        "- Manifest 覆盖：required={required}，actual={actual}，complete={complete}，missing={missing}，extra={extra}，coverage={coverage}".format(
+            required=int(quality.get("required_trade_days") or quality.get("expected_days") or 0),
+            actual=int(quality.get("actual_trade_days") or quality.get("actual_days") or 0),
+            complete=int(quality.get("complete_trade_days") or quality.get("complete_trade_day_count") or 0),
+            missing=int(quality.get("missing_trade_days") or quality.get("missing_days") or 0),
+            extra=int(quality.get("over_coverage_trade_days") or 0),
+            coverage=_fmt_pct(quality.get("coverage_pct")),
+        ),
         "",
         "## 数据质量 SLA",
         "",
@@ -298,7 +311,13 @@ def render_strategy_24m_markdown(report: dict[str, Any]) -> str:
     return "\n".join(lines) + "\n"
 
 
-def write_strategy_24m_report(report: dict[str, Any], *, output_md: str | Path, output_json: str | Path) -> None:
+def write_strategy_24m_report(
+    report: dict[str, Any],
+    *,
+    output_md: str | Path,
+    output_json: str | Path,
+    output_root: str | Path | None = None,
+) -> None:
     md_path = Path(output_md)
     json_path = Path(output_json)
     safe_report = _json_safe(report)
@@ -306,6 +325,43 @@ def write_strategy_24m_report(report: dict[str, Any], *, output_md: str | Path, 
     json_path.parent.mkdir(parents=True, exist_ok=True)
     md_path.write_text(render_strategy_24m_markdown(safe_report), encoding="utf-8")
     json_path.write_text(json.dumps(safe_report, ensure_ascii=False, indent=2, sort_keys=True), encoding="utf-8")
+    _update_report_index(safe_report, output_md=md_path, output_json=json_path, output_root=output_root)
+
+
+def _update_report_index(
+    report: dict[str, Any],
+    *,
+    output_md: Path,
+    output_json: Path,
+    output_root: str | Path | None,
+) -> None:
+    config = analytics_config(output_root)
+    config.ensure_dirs()
+    index_path = config.report_dir / "index.json"
+    try:
+        index = json.loads(index_path.read_text(encoding="utf-8")) if index_path.exists() else {}
+    except json.JSONDecodeError:
+        index = {}
+    reports = [item for item in list(index.get("reports") or []) if item.get("output_json") != str(output_json)]
+    manifest = dict(report.get("manifest") or {})
+    reports.insert(
+        0,
+        {
+            "report_type": "strategy_24m_duckdb",
+            "generated_at": report.get("generated_at"),
+            "status": report.get("status"),
+            "manifest_id": manifest.get("manifest_id"),
+            "dataset_version": manifest.get("dataset_version"),
+            "duration_seconds": report.get("duration_seconds"),
+            "output_md": str(output_md),
+            "output_json": str(output_json),
+        },
+    )
+    index_payload = {
+        "updated_at": datetime.utcnow().isoformat(timespec="seconds") + "Z",
+        "reports": reports[:50],
+    }
+    index_path.write_text(json.dumps(_json_safe(index_payload), ensure_ascii=False, indent=2, sort_keys=True), encoding="utf-8")
 
 
 def _json_safe(value: Any) -> Any:
@@ -532,6 +588,52 @@ def _portfolio_metric(item: dict[str, Any], portfolio: str, field: str) -> float
 
 def _missing_validation(status: str, note: str) -> dict[str, Any]:
     return {"status": status, "note": note}
+
+
+def _normalize_manifest_quality(manifest: dict[str, Any]) -> dict[str, Any]:
+    quality = dict(manifest.get("quality") or {})
+    coverage = dict(manifest.get("coverage") or {})
+    required = int(
+        quality.get("required_trade_days")
+        or coverage.get("required_trade_days")
+        or quality.get("expected_days")
+        or coverage.get("expected_days")
+        or 0
+    )
+    actual = int(
+        quality.get("actual_trade_days")
+        or coverage.get("actual_trade_days")
+        or quality.get("actual_days")
+        or coverage.get("actual_days")
+        or 0
+    )
+    complete = int(
+        quality.get("complete_trade_days")
+        or coverage.get("complete_trade_days")
+        or quality.get("complete_trade_day_count")
+        or coverage.get("complete_trade_day_count")
+        or 0
+    )
+    missing = max(required - actual, 0)
+    quality.setdefault("required_trade_days", required)
+    quality.setdefault("actual_trade_days", actual)
+    quality.setdefault("complete_trade_days", complete)
+    quality.setdefault("missing_trade_days", int(quality.get("missing_days") or coverage.get("missing_days") or missing))
+    quality.setdefault("over_coverage_trade_days", max(actual - required, 0))
+    quality["coverage_pct"] = _capped_coverage_pct(actual, required)
+    quality["complete_coverage_pct"] = _capped_coverage_pct(complete, required)
+    quality.setdefault("coverage_status", "ok" if quality.get("status") == "ok" else ("partial" if actual > 0 else "fail"))
+    quality.setdefault("required_start", quality.get("period_start") or manifest.get("period_start") or "")
+    quality.setdefault("required_end", quality.get("period_end") or manifest.get("period_end") or "")
+    quality.setdefault("actual_start", coverage.get("actual_start") or quality.get("actual_start") or "")
+    quality.setdefault("actual_end", coverage.get("actual_end") or quality.get("actual_end") or "")
+    return quality
+
+
+def _capped_coverage_pct(actual: int, required: int) -> float:
+    if required <= 0:
+        return 0.0
+    return round(max(0.0, min(float(actual or 0) / float(required) * 100.0, 100.0)), 4)
 
 
 def _quality_conclusion(quality: dict[str, Any]) -> str:

@@ -1,4 +1,5 @@
 import type { Page } from "../workspace-shared/workspaceTypes";
+import type { ModeSafetyKind } from "../../ui/feedback/ModeSafetyBadges";
 
 export type DenoisedWorkspacePage = Extract<Page, "monitor" | "strategy-tracking" | "paper" | "data" | "backtest">;
 
@@ -16,6 +17,7 @@ export interface PageResponsibility {
   emptyFallback: string;
   featureFlagFallback: string;
   heavyListSurface: readonly ("DataTable" | "VirtualCardList")[];
+  modeBadges: readonly ModeSafetyKind[];
 }
 
 export const WORKSPACE_PAGE_RESPONSIBILITIES: Record<DenoisedWorkspacePage, PageResponsibility> = {
@@ -33,6 +35,7 @@ export const WORKSPACE_PAGE_RESPONSIBILITIES: Record<DenoisedWorkspacePage, Page
     emptyFallback: "冷启动或慢源失败时保留上次快照，并显式显示 stale / partial / no_data。",
     featureFlagFallback: "关闭监控合包或 overlay flag 后仍展示既有监控查询和空状态。",
     heavyListSurface: ["VirtualCardList"],
+    modeBadges: ["shadow", "research", "watch"],
   },
   "strategy-tracking": {
     page: "strategy-tracking",
@@ -48,6 +51,7 @@ export const WORKSPACE_PAGE_RESPONSIBILITIES: Record<DenoisedWorkspacePage, Page
     emptyFallback: "无快照或研究 flag 关闭时显示明确空态，不留空白面板。",
     featureFlagFallback: "关闭交易经验 suite 后只隐藏研究面板，策略跟踪主表和复盘仍可用。",
     heavyListSurface: ["DataTable", "VirtualCardList"],
+    modeBadges: ["shadow", "research", "paper", "watch"],
   },
   paper: {
     page: "paper",
@@ -63,6 +67,7 @@ export const WORKSPACE_PAGE_RESPONSIBILITIES: Record<DenoisedWorkspacePage, Page
     emptyFallback: "无持仓、无成交或纪律 flag 关闭时保留模拟盘结论区和明确空态。",
     featureFlagFallback: "关闭持仓纪律或 T 归因 flag 后只隐藏扩展面板，不影响模拟盘账户视图。",
     heavyListSurface: ["VirtualCardList"],
+    modeBadges: ["paper", "preview", "watch"],
   },
   data: {
     page: "data",
@@ -78,6 +83,7 @@ export const WORKSPACE_PAGE_RESPONSIBILITIES: Record<DenoisedWorkspacePage, Page
     emptyFallback: "无权限、无数据或 worker 异常时显示 blocked / stale / no_data，不伪造新数据。",
     featureFlagFallback: "关闭运行时兜底面板后保留数据健康总览和补数入口。",
     heavyListSurface: ["DataTable"],
+    modeBadges: ["shadow", "preview", "research"],
   },
   backtest: {
     page: "backtest",
@@ -93,6 +99,7 @@ export const WORKSPACE_PAGE_RESPONSIBILITIES: Record<DenoisedWorkspacePage, Page
     emptyFallback: "数据不足 24 个月时显式 blocked 或触发 worker 补数任务，不展示半成品结论。",
     featureFlagFallback: "关闭研究或优化 flag 后保留正式回测记录、状态和空态。",
     heavyListSurface: ["DataTable", "VirtualCardList"],
+    modeBadges: ["preview", "research", "paper"],
   },
 };
 

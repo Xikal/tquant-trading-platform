@@ -16,6 +16,7 @@ from app.services.backtest.cancel_token import BacktestCancelToken, TimedDatabas
 from app.services.backtest.concurrency import backtest_execution_slot, max_concurrent_backtests
 from app.services.backtest.queue_lock import backtest_claim_lock
 from app.services.backtest_job_service import BacktestJobService, _safe_error_message
+from app.services.runtime_worker_health import record_platform_component_heartbeat
 
 
 logger = logging.getLogger(__name__)
@@ -38,20 +39,26 @@ class BacktestWorker:
         *,
         session_factory: Callable[[], Session] = SessionLocal,
         max_duration_seconds: float | None = 1800,
+        worker_id: str = "backtest-worker",
     ) -> None:
         self.session_factory = session_factory
         self.max_duration_seconds = max_duration_seconds
+        self.worker_id = worker_id
 
     def run_once(self) -> BacktestWorkerResult | None:
+        self._record_heartbeat(status="running")
         timed_out = self._cancel_timed_out_running_job()
         if timed_out is not None:
+            self._record_heartbeat(status="running")
             return timed_out
 
         with backtest_execution_slot() as acquired:
             if not acquired:
+                self._record_heartbeat(status="running")
                 return None
             run_id = self._claim_next_queued_job()
             if run_id is None:
+                self._record_heartbeat(status="running")
                 return None
 
             token = TimedDatabaseStatusCancelToken(
@@ -66,6 +73,7 @@ class BacktestWorker:
                 return self._execute_claimed_job(run_id, token)
             finally:
                 BacktestJobService.unregister_cancel_token(run_id)
+                self._record_heartbeat(status="running")
 
     def run_forever(self, *, poll_interval_seconds: float = 5.0, stop_event: threading.Event | None = None) -> None:
         while stop_event is None or not stop_event.is_set():
@@ -244,6 +252,18 @@ class BacktestWorker:
             run.finished_at = _utcnow()
             run.progress_pct = max(float(run.progress_pct or 0.0), 0.0)
             db.commit()
+
+    def _record_heartbeat(self, *, status: str) -> None:
+        try:
+            with self.session_factory() as db:
+                record_platform_component_heartbeat(
+                    db,
+                    component="backtest-worker",
+                    worker_id=self.worker_id,
+                    status=status,
+                )
+        except Exception:
+            logger.exception("backtest worker heartbeat update failed")
 
 
 def _utcnow() -> datetime:

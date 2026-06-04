@@ -14,6 +14,7 @@ import { DataRepairPanel } from "./DataRepairPanel";
 import { InstrumentInspectorPanel } from "./InstrumentInspectorPanel";
 import { RuntimeFallbackPanel } from "./RuntimeFallbackPanel";
 import { TradeDataGateCard } from "./TradeDataGateCard";
+import { WorkerObservabilityPanel } from "./WorkerObservabilityPanel";
 import { useDataConsole } from "./useDataConsole";
 import { buildDataConsoleSummary } from "./dataConsoleTypes";
 import styles from "./DataConsolePage.module.css";
@@ -132,6 +133,19 @@ function DataConsoleAdminContent() {
       </Panel>
 
       <Panel title="数据维护" className={styles.full}>
+        <section className={styles.layerSection} aria-label="后台任务观测">
+          <h3>后台任务观测</h3>
+          <WorkerObservabilityPanel
+            summary={data.taskSummary}
+            workers={data.taskWorkers}
+            failures={data.taskFailures}
+            artifacts={data.taskArtifacts}
+            analyticsReports={data.analyticsReports}
+            loading={moduleLoading.tasks}
+            error={moduleErrors.tasks}
+            onRefresh={() => void actions.refreshTasks()}
+          />
+        </section>
         <div className={styles.maintenanceGate}>
           <div>
             <strong>管理令牌</strong>
