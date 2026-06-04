@@ -39,6 +39,13 @@ DEPLOY_TARGET_SCOPE="${DEPLOY_TARGET_SCOPE:-auto}"
 DEPLOY_FRONTEND_HOT_REQUIRED="${DEPLOY_FRONTEND_HOT_REQUIRED:-0}"
 DEPLOY_SYNC_MODE="${DEPLOY_SYNC_MODE:-package-only}"
 VERIFY_WEB_IMAGE_SYNC=1
+RUN_REMOTE_PREFLIGHT="${RUN_REMOTE_PREFLIGHT:-1}"
+RUN_REMOTE_SAFE_CLEANUP="${RUN_REMOTE_SAFE_CLEANUP:-1}"
+REMOTE_MIN_FREE_GB="${REMOTE_MIN_FREE_GB:-8}"
+REMOTE_MIN_SWAP_MB="${REMOTE_MIN_SWAP_MB:-2048}"
+REMOTE_TEMP_SWAP_PATH="${REMOTE_TEMP_SWAP_PATH:-/swapfile-codex-deploy}"
+REMOTE_TEMP_SWAP_MB="${REMOTE_TEMP_SWAP_MB:-2048}"
+REMOTE_REMOVE_TEMP_SWAP_AFTER_DEPLOY="${REMOTE_REMOVE_TEMP_SWAP_AFTER_DEPLOY:-1}"
 
 log() {
   printf '[quick-deploy] %s\n' "$*"
@@ -68,7 +75,7 @@ Usage: scripts/quick_cloud_deploy.sh [options]
 Defaults:
   host   required via CLOUD_HOST or --host
   user   ubuntu
-  key    required via CLOUD_SSH_KEY or --key
+  key    required via CLOUD_SSH_KEY or --key unless CLOUD_PASSWORD is set
   port   18090
 
 Options:
@@ -91,6 +98,10 @@ Options:
                  Override samples per online performance validation round.
   --public-domain-verify
                  Fail when the public HTTPS domain cannot be reached.
+  --skip-remote-preflight
+                 Skip remote disk/swap/docker preflight before deployment.
+  --skip-remote-cleanup
+                 Keep old upload packages and temp hotpatch dirs during preflight.
   --configure-https
                  Request or renew certificates and install nginx config.
   --refresh-https-config
@@ -159,6 +170,14 @@ while [[ $# -gt 0 ]]; do
       VERIFY_PUBLIC_DOMAIN=1
       shift
       ;;
+    --skip-remote-preflight)
+      RUN_REMOTE_PREFLIGHT=0
+      shift
+      ;;
+    --skip-remote-cleanup)
+      RUN_REMOTE_SAFE_CLEANUP=0
+      shift
+      ;;
     --configure-https)
       AUTO_CONFIGURE_HTTPS=1
       REFRESH_HTTPS_CONFIG=0
@@ -214,24 +233,129 @@ export DEPLOY_TARGET_SCOPE DEPLOY_FRONTEND_HOT_REQUIRED
 export DEPLOY_SYNC_MODE
 export CLOUD_SSH_TIMEOUT CLOUD_SSH_CONNECT_TIMEOUT CLOUD_SSH_SERVER_ALIVE_COUNT_MAX
 export RUN_PERFORMANCE_VERIFY_ROUNDS RUN_PERFORMANCE_VERIFY_SAMPLES
+export RUN_REMOTE_PREFLIGHT RUN_REMOTE_SAFE_CLEANUP REMOTE_MIN_FREE_GB REMOTE_MIN_SWAP_MB
+export REMOTE_TEMP_SWAP_PATH REMOTE_TEMP_SWAP_MB REMOTE_REMOVE_TEMP_SWAP_AFTER_DEPLOY
 
 if [[ -z "$CLOUD_HOST" ]]; then
   log "CLOUD_HOST is required. Use --host <host> or export CLOUD_HOST."
   exit 2
 fi
-if [[ -z "$CLOUD_SSH_KEY" ]]; then
-  log "CLOUD_SSH_KEY is required. Use --key <path> or export CLOUD_SSH_KEY."
+if [[ -z "$CLOUD_SSH_KEY" && -z "${CLOUD_PASSWORD:-}" ]]; then
+  log "CLOUD_SSH_KEY or CLOUD_PASSWORD is required. Use --key <path> or export CLOUD_SSH_KEY/CLOUD_PASSWORD."
   exit 2
 fi
 if [[ "$FAST_MODE" == "1" && "$FAST_RISK_ACCEPTED" != "1" ]]; then
   log "fast mode requires --fast-risk-accepted"
   exit 2
 fi
-if [[ ! -f "$CLOUD_SSH_KEY" ]]; then
+if [[ -n "$CLOUD_SSH_KEY" && ! -f "$CLOUD_SSH_KEY" ]]; then
   log "ssh key not found: $CLOUD_SSH_KEY"
   exit 2
 fi
-chmod 600 "$CLOUD_SSH_KEY" 2>/dev/null || true
+if [[ -n "$CLOUD_SSH_KEY" ]]; then
+  chmod 600 "$CLOUD_SSH_KEY" 2>/dev/null || true
+fi
+
+remote_preflight() {
+  if [[ "$RUN_REMOTE_PREFLIGHT" != "1" ]]; then
+    return 0
+  fi
+  log "remote preflight: disk/swap/docker safe cleanup"
+  cloud_ssh env \
+    CLOUD_PROJECT_DIR="$CLOUD_PROJECT_DIR" \
+    RUN_REMOTE_SAFE_CLEANUP="$RUN_REMOTE_SAFE_CLEANUP" \
+    REMOTE_MIN_FREE_GB="$REMOTE_MIN_FREE_GB" \
+    REMOTE_MIN_SWAP_MB="$REMOTE_MIN_SWAP_MB" \
+    REMOTE_TEMP_SWAP_PATH="$REMOTE_TEMP_SWAP_PATH" \
+    REMOTE_TEMP_SWAP_MB="$REMOTE_TEMP_SWAP_MB" \
+    bash -s <<'REMOTE'
+set -euo pipefail
+
+free_root_gb() {
+  df -BG / | awk 'NR==2 {gsub("G", "", $4); print $4 + 0}'
+}
+
+swap_total_mb() {
+  awk '/SwapTotal/ {print int($2 / 1024)}' /proc/meminfo
+}
+
+echo "preflight:project_dir=${CLOUD_PROJECT_DIR}"
+echo "preflight:disk_before"
+df -h /
+echo "preflight:swap_before"
+free -m || true
+echo "preflight:docker_before"
+sudo docker system df || true
+
+if test "${RUN_REMOTE_SAFE_CLEANUP:-1}" = "1"; then
+  echo "preflight:safe_cleanup"
+  find /home/ubuntu -maxdepth 1 -type f \( -name 'gupiao-deploy-*' -o -name 'gupiao-delta-deploy-*' -o -name 'gupiao-frontend-hot-*' -o -name 'gupiao_remote_verify*.sh' \) -print -delete || true
+  find /tmp -maxdepth 1 -type d \( -name 'gupiao-python-hot-*' -o -name 'tquant-queue-hotpatch-*' \) -print -exec rm -rf {} + || true
+fi
+
+FREE_GB="$(free_root_gb)"
+echo "preflight:root_free_gb=${FREE_GB}"
+if test "$FREE_GB" -lt "${REMOTE_MIN_FREE_GB:-8}"; then
+  echo "preflight:low_disk_safe_prune"
+  sudo docker builder prune -f || true
+  sudo docker image prune -f || true
+  echo "preflight:docker_volumes_kept"
+  FREE_GB="$(free_root_gb)"
+  echo "preflight:root_free_gb_after_prune=${FREE_GB}"
+fi
+
+if test "$FREE_GB" -lt 4; then
+  echo "preflight:root_free_gb_below_hard_minimum=${FREE_GB}" >&2
+  exit 42
+fi
+
+SWAP_MB="$(swap_total_mb)"
+echo "preflight:swap_total_mb=${SWAP_MB}"
+if test "$SWAP_MB" -lt "${REMOTE_MIN_SWAP_MB:-2048}" && test "${REMOTE_TEMP_SWAP_MB:-0}" -gt 0; then
+  echo "preflight:create_temp_swap=${REMOTE_TEMP_SWAP_PATH}:${REMOTE_TEMP_SWAP_MB}M"
+  if ! sudo swapon --show=NAME --noheadings | grep -Fxq "${REMOTE_TEMP_SWAP_PATH}"; then
+    if ! test -f "${REMOTE_TEMP_SWAP_PATH}"; then
+      sudo fallocate -l "${REMOTE_TEMP_SWAP_MB}M" "${REMOTE_TEMP_SWAP_PATH}" 2>/dev/null || sudo dd if=/dev/zero of="${REMOTE_TEMP_SWAP_PATH}" bs=1M count="${REMOTE_TEMP_SWAP_MB}"
+      sudo chmod 600 "${REMOTE_TEMP_SWAP_PATH}"
+      sudo mkswap "${REMOTE_TEMP_SWAP_PATH}" >/dev/null
+    fi
+    sudo swapon "${REMOTE_TEMP_SWAP_PATH}"
+  fi
+fi
+
+echo "preflight:disk_after"
+df -h /
+echo "preflight:swap_after"
+free -m || true
+echo "preflight:docker_after"
+sudo docker system df || true
+REMOTE
+}
+
+remote_post_deploy_cleanup() {
+  if [[ "$RUN_REMOTE_PREFLIGHT" != "1" || "$REMOTE_REMOVE_TEMP_SWAP_AFTER_DEPLOY" != "1" ]]; then
+    return 0
+  fi
+  log "remote post-deploy cleanup: remove temporary deploy swap when idle"
+  cloud_ssh env REMOTE_TEMP_SWAP_PATH="$REMOTE_TEMP_SWAP_PATH" bash -s <<'REMOTE'
+set -euo pipefail
+if test "${REMOTE_TEMP_SWAP_PATH}" != "/swapfile-codex-deploy"; then
+  echo "post_cleanup:skip_non_default_temp_swap=${REMOTE_TEMP_SWAP_PATH}"
+  exit 0
+fi
+if sudo swapon --show=NAME --noheadings | grep -Fxq "${REMOTE_TEMP_SWAP_PATH}"; then
+  if sudo swapoff "${REMOTE_TEMP_SWAP_PATH}"; then
+    sudo rm -f "${REMOTE_TEMP_SWAP_PATH}"
+    echo "post_cleanup:temp_swap_removed"
+  else
+    echo "post_cleanup:temp_swap_still_in_use"
+  fi
+else
+  sudo rm -f "${REMOTE_TEMP_SWAP_PATH}" 2>/dev/null || true
+  echo "post_cleanup:temp_swap_absent"
+fi
+REMOTE
+}
 
 verify_remote() {
   log "verify remote service health"
@@ -376,12 +500,17 @@ if [[ "$VERIFY_ONLY" == "1" ]]; then
   exit 0
 fi
 
-log "deploy to ${CLOUD_USER}@${CLOUD_HOST} using ${CLOUD_SSH_KEY}"
+if [[ -n "$CLOUD_SSH_KEY" ]]; then
+  log "deploy to ${CLOUD_USER}@${CLOUD_HOST} using ssh-key:${CLOUD_SSH_KEY}"
+else
+  log "deploy to ${CLOUD_USER}@${CLOUD_HOST} using password"
+fi
 if [[ "$FAST_MODE" == "1" ]]; then
   log "fast mode: local checks skipped by explicit --fast-risk-accepted, HTTPS automation/cron disabled, production-safe cookies kept enabled"
 else
   log "safe mode: local compile/build checks enabled; HTTPS automation/cron disabled, production-safe cookies kept enabled"
 fi
+remote_preflight
 RUN_COMPILE="$RUN_LOCAL_CHECKS" \
 RUN_FRONTEND_BUILD="$RUN_LOCAL_CHECKS" \
 RUN_STRATEGY_TEST="$RUN_STRATEGY_TEST" \
@@ -412,4 +541,5 @@ CLOUD_SSH_SERVER_ALIVE_COUNT_MAX="$CLOUD_SSH_SERVER_ALIVE_COUNT_MAX" \
 
 verify_remote
 performance_verify
+remote_post_deploy_cleanup
 print_deploy_summary "deploy-ok"

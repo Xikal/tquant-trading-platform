@@ -42,7 +42,7 @@ cloud_ssh() {
 
   while (( attempt <= attempts )); do
     local log_file
-    log_file="$(mktemp "/tmp/gupiao-ssh-retry-${attempt}-XXXXXX.log")"
+    log_file="$(mktemp "/tmp/gupiao-ssh-retry-${attempt}.XXXXXX")"
     if [[ -n "${CLOUD_PASSWORD:-}" ]]; then
       local remote_cmd="$*"
       if CLOUD_EXPECT_TARGET="$target" CLOUD_EXPECT_CMD="$remote_cmd" CLOUD_EXPECT_OPTS="${CLOUD_SSH_OPTS[*]}" expect >"$log_file" 2>&1 <<'EOF'
@@ -104,7 +104,7 @@ cloud_scp_to() {
 
   while (( attempt <= attempts )); do
     local log_file
-    log_file="$(mktemp "/tmp/gupiao-scp-retry-${attempt}-XXXXXX.log")"
+    log_file="$(mktemp "/tmp/gupiao-scp-retry-${attempt}.XXXXXX")"
     if [[ -n "${CLOUD_PASSWORD:-}" ]]; then
       if CLOUD_EXPECT_SOURCE="$source" CLOUD_EXPECT_DEST="${target}:${target_path}" CLOUD_EXPECT_OPTS="${CLOUD_SSH_OPTS[*]}" expect >"$log_file" 2>&1 <<'EOF'
 set timeout [expr {[info exists env(CLOUD_SSH_TIMEOUT)] ? $env(CLOUD_SSH_TIMEOUT) : 300}]

@@ -55,11 +55,13 @@ sudo docker system df || true
 echo
 
 echo "[cleanup candidates]"
-find /home/ubuntu -maxdepth 1 -type f \( -name 'gupiao-deploy-*.tgz' -o -name 'gupiao_remote_verify*.sh' \) -print
+find /home/ubuntu -maxdepth 1 -type f \( -name 'gupiao-deploy-*' -o -name 'gupiao-delta-deploy-*' -o -name 'gupiao-frontend-hot-*' -o -name 'gupiao_remote_verify*.sh' \) -print
+find /tmp -maxdepth 1 -type d \( -name 'gupiao-python-hot-*' -o -name 'tquant-queue-hotpatch-*' \) -print
 
 echo
 echo "[remove upload packages and temporary verify scripts]"
-run_or_echo "find /home/ubuntu -maxdepth 1 -type f \\( -name 'gupiao-deploy-*.tgz' -o -name 'gupiao_remote_verify*.sh' \\) -delete"
+run_or_echo "find /home/ubuntu -maxdepth 1 -type f \\( -name 'gupiao-deploy-*' -o -name 'gupiao-delta-deploy-*' -o -name 'gupiao-frontend-hot-*' -o -name 'gupiao_remote_verify*.sh' \\) -delete"
+run_or_echo "find /tmp -maxdepth 1 -type d \\( -name 'gupiao-python-hot-*' -o -name 'tquant-queue-hotpatch-*' \\) -exec rm -rf {} +"
 
 echo
 echo "[keep latest deploy backups]"
@@ -104,6 +106,7 @@ echo "[docker prune build cache and dangling images]"
 if [[ "$PRUNE_DOCKER" == "1" ]]; then
   run_or_echo "sudo docker builder prune -f"
   run_or_echo "sudo docker image prune -f"
+  echo "docker volumes:kept"
 fi
 
 echo

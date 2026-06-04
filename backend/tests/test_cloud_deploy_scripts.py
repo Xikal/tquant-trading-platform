@@ -52,6 +52,9 @@ def test_cloud_ssh_lib_retries_transient_scp_connection_resets() -> None:
 
     assert "cloud_ssh_transient_log" in ssh_lib
     assert "/tmp/gupiao-ssh-retry" in ssh_lib
+    assert 'mktemp "/tmp/gupiao-ssh-retry-${attempt}.XXXXXX"' in ssh_lib
+    assert 'mktemp "/tmp/gupiao-scp-retry-${attempt}.XXXXXX"' in ssh_lib
+    assert "XXXXXX.log" not in ssh_lib
     assert 'ConnectTimeout="${CLOUD_SSH_CONNECT_TIMEOUT:-30}"' in ssh_lib
     assert 'ConnectionAttempts="${CLOUD_SSH_CONNECTION_ATTEMPTS:-3}"' in ssh_lib
     assert "CLOUD_SSH_RETRY_ATTEMPTS" in ssh_lib
@@ -82,6 +85,9 @@ def test_quick_deploy_requires_explicit_fast_mode_and_external_connection_config
 
     assert 'CLOUD_HOST="${CLOUD_HOST:-}"' in quick_script
     assert 'CLOUD_SSH_KEY="${CLOUD_SSH_KEY:-}"' in quick_script
+    assert "CLOUD_SSH_KEY or CLOUD_PASSWORD is required" in quick_script
+    assert '[[ -z "$CLOUD_SSH_KEY" && -z "${CLOUD_PASSWORD:-}" ]]' in quick_script
+    assert '[[ -n "$CLOUD_SSH_KEY" && ! -f "$CLOUD_SSH_KEY" ]]' in quick_script
     assert "43.143.243.97" not in quick_script
     assert "/Users/j/Downloads/gupiao.pem" not in quick_script
     assert "FAST_MODE=0" in quick_script
@@ -108,7 +114,11 @@ def test_one_click_deploy_defaults_are_overridable_and_do_not_embed_secret_conte
     assert ".env.deploy.local" in gitignore
     assert "CLOUD_HOST=" in deploy_example
     assert "CLOUD_SSH_KEY=" in deploy_example
+    assert "# CLOUD_PASSWORD=" in deploy_example
     assert "DEFAULT_DEPLOY_MODE=safe" in deploy_example
+    assert "RUN_REMOTE_PREFLIGHT=1" in deploy_example
+    assert "REMOTE_MIN_FREE_GB=8" in deploy_example
+    assert "REMOTE_MIN_SWAP_MB=2048" in deploy_example
     assert "quick_cloud_deploy.sh" in one_click_script
     assert "BEGIN OPENSSH PRIVATE KEY" not in one_click_script
 
@@ -147,6 +157,36 @@ def test_one_click_deploy_no_args_dry_run_uses_safe_mode_from_local_env(tmp_path
     assert "mode=--refresh-https-config --public-domain-verify" in result.stdout
     assert "sync_mode=package-only" in result.stdout
     assert "dry-run sync_mode=package-only args=--refresh-https-config --public-domain-verify" in result.stdout
+
+
+def test_one_click_deploy_no_args_dry_run_allows_password_from_local_env(tmp_path: Path) -> None:
+    deploy_env = tmp_path / ".env.deploy.local"
+    deploy_env.write_text(
+        "\n".join([
+            "CLOUD_HOST=example.internal",
+            "CLOUD_PASSWORD=secret",
+            "CLOUD_DOMAIN=example.com",
+            "CLOUD_CERT_EMAIL=ops@example.com",
+        ]),
+        encoding="utf-8",
+    )
+    env = {
+        **os.environ,
+        "DEPLOY_ENV_FILE": str(deploy_env),
+        "ONE_CLICK_DEPLOY_DRY_RUN": "1",
+    }
+
+    result = subprocess.run(
+        ["bash", str(ROOT_DIR / "scripts/one_click_cloud_deploy.sh")],
+        cwd=ROOT_DIR,
+        env=env,
+        text=True,
+        capture_output=True,
+        check=True,
+    )
+
+    assert "target=ubuntu@example.internal" in result.stdout
+    assert "ssh=password" in result.stdout
 
 
 def test_one_click_deploy_fast_mode_is_explicit_in_dry_run(tmp_path: Path) -> None:
@@ -203,6 +243,42 @@ def test_quick_deploy_prints_machine_readable_summary() -> None:
     assert "performance_verify=${RUN_PERFORMANCE_VERIFY}" in quick_script
     assert 'print_deploy_summary "verify-ok"' in quick_script
     assert 'print_deploy_summary "deploy-ok"' in quick_script
+
+
+def test_quick_deploy_runs_remote_resource_preflight_without_destructive_prune() -> None:
+    quick_script = read_repo_file("scripts/quick_cloud_deploy.sh")
+
+    assert 'RUN_REMOTE_PREFLIGHT="${RUN_REMOTE_PREFLIGHT:-1}"' in quick_script
+    assert 'REMOTE_MIN_FREE_GB="${REMOTE_MIN_FREE_GB:-8}"' in quick_script
+    assert 'REMOTE_MIN_SWAP_MB="${REMOTE_MIN_SWAP_MB:-2048}"' in quick_script
+    assert 'REMOTE_TEMP_SWAP_PATH="${REMOTE_TEMP_SWAP_PATH:-/swapfile-codex-deploy}"' in quick_script
+    assert "--skip-remote-preflight" in quick_script
+    assert "--skip-remote-cleanup" in quick_script
+    assert "remote_preflight" in quick_script
+    assert "preflight:low_disk_safe_prune" in quick_script
+    assert "sudo docker builder prune -f" in quick_script
+    assert "sudo docker image prune -f" in quick_script
+    assert "docker_volumes_kept" in quick_script
+    assert "sudo swapon" in quick_script
+    assert "remote_post_deploy_cleanup" in quick_script
+    assert "image prune -a" not in quick_script
+    assert "volume prune" not in quick_script
+
+
+def test_cloud_cleanup_removes_extensionless_upload_packages_without_volume_prune() -> None:
+    cleanup_script = read_repo_file("scripts/cloud_server_cleanup.sh")
+
+    assert "-name 'gupiao-deploy-*'" in cleanup_script
+    assert "-name 'gupiao-delta-deploy-*'" in cleanup_script
+    assert "-name 'gupiao-frontend-hot-*'" in cleanup_script
+    assert "-name 'gupiao_remote_verify*.sh'" in cleanup_script
+    assert "-name 'gupiao-deploy-*.tgz'" not in cleanup_script
+    assert "tquant-queue-hotpatch-*" in cleanup_script
+    assert "docker volumes:kept" in cleanup_script
+    assert "sudo docker builder prune -f" in cleanup_script
+    assert "sudo docker image prune -f" in cleanup_script
+    assert "image prune -a" not in cleanup_script
+    assert "volume prune" not in cleanup_script
 
 
 def test_quick_deploy_performance_verify_runs_two_sampled_rounds_and_dumps_diagnostics() -> None:

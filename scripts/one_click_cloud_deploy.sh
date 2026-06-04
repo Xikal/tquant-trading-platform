@@ -176,7 +176,7 @@ fi
 printf '[one-click-deploy] target=%s@%s domain=%s mode=%s sync_mode=%s ssh=%s\n' \
   "$CLOUD_USER" "$CLOUD_HOST" "$CLOUD_DOMAIN" "${args[*]:-safe}" \
   "$DEPLOY_SYNC_MODE" \
-  "$(if [[ -n "${CLOUD_SSH_KEY:-}" ]]; then printf 'key'; else printf 'password'; fi)"
+  "$(if [[ -n "${CLOUD_SSH_KEY:-}" ]]; then printf 'key'; elif [[ -n "${CLOUD_PASSWORD:-}" ]]; then printf 'password'; else printf 'none'; fi)"
 
 if [[ "${ONE_CLICK_DEPLOY_DRY_RUN:-0}" == "1" ]]; then
   printf '[one-click-deploy] dry-run sync_mode=%s args=%s\n' "$DEPLOY_SYNC_MODE" "${args[*]:-safe}"
