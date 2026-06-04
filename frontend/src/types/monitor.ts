@@ -13,6 +13,11 @@ export interface MonitorSnapshot {
 export interface BffPartialError {
   source: string;
   detail: string;
+  reason?: string;
+  status_code?: number | null;
+  timeout_ms?: number | null;
+  fallback_source?: string;
+  message?: string;
 }
 
 export interface MonitorWorkspaceBffResponse {

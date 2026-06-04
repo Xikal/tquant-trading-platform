@@ -26,6 +26,11 @@ interface AuthRefreshPayload {
 export interface BffPartialError {
   source?: string
   detail?: string
+  reason?: string
+  status_code?: number | null
+  timeout_ms?: number | null
+  fallback_source?: string
+  message?: string
 }
 
 export interface BffPartialErrorPayload {
@@ -98,7 +103,23 @@ export function getBffPartialErrors(payload: unknown): BffPartialError[] {
       }
       const source = typeof item.source === "string" ? item.source : undefined
       const detail = typeof item.detail === "string" ? item.detail : undefined
-      return source || detail ? { source, detail } : null
+      const reason = typeof item.reason === "string" ? item.reason : undefined
+      const status_code = typeof item.status_code === "number" ? item.status_code : null
+      const timeout_ms = typeof item.timeout_ms === "number" ? item.timeout_ms : null
+      const fallback_source = typeof item.fallback_source === "string" ? item.fallback_source : undefined
+      const message = typeof item.message === "string" ? item.message : undefined
+      if (!(source || detail || reason || message)) {
+        return null
+      }
+      return {
+        ...(source ? { source } : {}),
+        ...(detail ? { detail } : {}),
+        ...(reason ? { reason } : {}),
+        ...(typeof item.status_code === "number" ? { status_code } : {}),
+        ...(typeof item.timeout_ms === "number" ? { timeout_ms } : {}),
+        ...(fallback_source ? { fallback_source } : {}),
+        ...(message ? { message } : {}),
+      }
     })
     .filter((item): item is BffPartialError => item !== null)
 }

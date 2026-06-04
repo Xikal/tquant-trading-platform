@@ -155,6 +155,7 @@ def _known_bff_source(source: str) -> str:
         "positions",
         "presets",
         "recent_runs",
+        "review",
         "risk_events",
         "sector_etf_t0_performance",
         "sector_exclusions",
@@ -179,7 +180,7 @@ def _known_bff_source(source: str) -> str:
 
 def _known_bff_reason(reason: str) -> str:
     value = str(reason or "other")
-    return value if value in {"timeout", "status", "decode", "schema_mismatch", "other"} else "other"
+    return value if value in {"timeout", "status", "error", "decode", "schema_mismatch", "other"} else "other"
 
 
 def _known_cache_operation(operation: str) -> str:

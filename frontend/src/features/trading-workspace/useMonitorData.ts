@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef } from "react";
-import { API_BASE, getAdminApiToken, invalidateCache, request } from "../../api/base";
+import { API_BASE, bffPartialErrorsText, getAdminApiToken, invalidateCache, request } from "../../api/base";
 import { api } from "../../api/client";
 import { useWorkspaceMonitorStore } from "../../stores/workspaceMonitorStore";
 import { seedLiveQuoteSignal, updateLiveQuoteSignal } from "../../state/realtime/liveQuoteSignals";
@@ -277,6 +277,10 @@ export function useMonitorData({ active, withLoading, setError, setNotice, onAut
       let hourlyHistoryLoadedFromBff = false;
       let runtimeLoadedFromBff = !includeRuntime || !Boolean(getAdminApiToken());
       if (workspaceResult.status === "fulfilled") {
+        const partialWarnings = bffPartialErrorsText(workspaceResult.value);
+        if (partialWarnings) {
+          setNotice(`监控合包部分降级：${partialWarnings}`);
+        }
         const monitorSnapshot = workspaceResult.value.monitor_snapshot;
         if (monitorSnapshot) {
           setPriorityBoard(monitorSnapshot.priority_board);

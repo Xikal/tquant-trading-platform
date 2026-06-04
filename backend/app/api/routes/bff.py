@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 from app.api.routes.market import _enqueue_market_pulse_refresh, market_breadth, paired_hedge_research, sector_relative_strength
 from app.core.auth import get_current_user
 from app.core.config import get_settings
-from app.core.database import get_db
+from app.core.database import SessionLocal, get_db
 from app.core.paper_auth import require_paper_trading
 from app.core.admin_auth import require_admin_auth
 from app.core.role_permissions import is_admin_user
@@ -50,6 +50,24 @@ from app.services.settings_runtime import SettingsRuntimeDiagnosticsService
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/bff/v1", dependencies=[Depends(get_current_user)])
 T = TypeVar("T")
+NONCRITICAL_MONITOR_SOURCES = {
+    "review",
+    "hourly_snapshot_history",
+    "extended_diagnostics",
+}
+CRITICAL_MONITOR_SOURCES = {
+    "monitor_snapshot",
+    "market_breadth",
+    "market_pulse",
+    "sector_relative_strength",
+    "paired_hedge",
+    "runtime",
+}
+MONITOR_SOURCE_TIMEOUT_MS = {
+    "review": 80,
+    "hourly_snapshot_history": 80,
+    "extended_diagnostics": 120,
+}
 
 
 @router.get("/manifest", response_model=BffManifestResponse)
@@ -416,15 +434,20 @@ def _build_monitor_workspace(
             lambda: paired_hedge_research(hedge_limit, _attached_user(db, current_user), db),
             ignore_forbidden=True,
         )
-    review_status, review_reports = _safe(
-        "monitor_review",
+    threaded_db_budget = _monitor_db_source_thread_budget_allowed(db)
+    review_status, review_reports = _safe_monitor_source(
+        "review",
         errors,
-        lambda: build_market_review_summary(db),
+        lambda: _run_monitor_db_source(db, lambda source_db: build_market_review_summary(source_db)),
+        default=(None, []),
+        threaded=threaded_db_budget,
     ) or (None, [])
-    hourly_history = _safe(
+    hourly_history = _safe_monitor_source(
         "hourly_snapshot_history",
         errors,
-        lambda: _safe_hourly_snapshot_history(db),
+        lambda: _run_monitor_db_source(db, _safe_hourly_snapshot_history),
+        default=[],
+        threaded=threaded_db_budget,
     ) or []
     pulse = _safe_market_pulse_snapshot(db, errors)
     runtime = _safe_runtime_status(db, current_user, errors) if include_runtime else None
@@ -545,6 +568,130 @@ def _safe(
             )
         )
         return None
+
+
+def _safe_monitor_source(
+    source: str,
+    errors: list[BffPartialError],
+    loader: Callable[[], T],
+    *,
+    default: T,
+    timeout_ms: int | None = None,
+    threaded: bool = True,
+) -> T:
+    if not getattr(get_settings(), "monitor_bff_source_budget_enabled", True):
+        result = _safe(source, errors, loader)
+        return result if result is not None else default
+    effective_timeout_ms = timeout_ms or MONITOR_SOURCE_TIMEOUT_MS.get(source)
+    if effective_timeout_ms and effective_timeout_ms > 0 and threaded:
+        try:
+            return run_workspace_with_timeout(
+                source=source,
+                timeout_seconds=float(effective_timeout_ms) / 1000.0,
+                loader=loader,
+                fallback=lambda error: _record_monitor_timeout_fallback(
+                    source,
+                    errors,
+                    default,
+                    timeout_ms=error.timeout_ms or effective_timeout_ms,
+                    message=error.message or error.detail,
+                ),
+            )
+        except TimeoutError as exc:
+            errors.append(_partial_error(source, "timeout", str(exc), timeout_ms=effective_timeout_ms))
+            return default
+        except HTTPException as exc:
+            if source in NONCRITICAL_MONITOR_SOURCES:
+                errors.append(_partial_error(source, "status", str(exc.detail), timeout_ms=effective_timeout_ms, status_code=exc.status_code))
+                return default
+            errors.append(_partial_error(source, "status", str(exc.detail), timeout_ms=effective_timeout_ms, status_code=exc.status_code))
+            return default
+        except Exception as exc:
+            logger.warning("bff source failed source=%s", source, exc_info=(type(exc), exc, exc.__traceback__))
+            errors.append(_partial_error(source, "error", str(exc), timeout_ms=effective_timeout_ms))
+            return default
+    try:
+        return loader()
+    except HTTPException as exc:
+        if source in NONCRITICAL_MONITOR_SOURCES:
+            errors.append(_partial_error(source, "status", str(exc.detail), timeout_ms=timeout_ms, status_code=exc.status_code))
+            return default
+        errors.append(_partial_error(source, "status", str(exc.detail), timeout_ms=timeout_ms, status_code=exc.status_code))
+        return default
+    except TimeoutError as exc:
+        errors.append(_partial_error(source, "timeout", str(exc), timeout_ms=timeout_ms or MONITOR_SOURCE_TIMEOUT_MS.get(source)))
+        return default
+    except Exception as exc:
+        logger.warning("bff source failed source=%s", source, exc_info=(type(exc), exc, exc.__traceback__))
+        errors.append(_partial_error(source, "error", str(exc), timeout_ms=timeout_ms or MONITOR_SOURCE_TIMEOUT_MS.get(source)))
+        return default
+
+
+def _run_monitor_db_source(db: Session, loader: Callable[[Session], T]) -> T:
+    if not _monitor_db_source_thread_budget_allowed(db):
+        return loader(db)
+    with SessionLocal() as source_db:
+        return loader(source_db)
+
+
+def _monitor_db_source_thread_budget_allowed(db: Session) -> bool:
+    try:
+        bind = db.get_bind()
+        url = str(bind.url)
+    except Exception:
+        return False
+    return url not in {"sqlite:///:memory:", "sqlite://"}
+
+
+def _record_monitor_timeout_fallback(
+    source: str,
+    errors: list[BffPartialError],
+    default: T,
+    *,
+    timeout_ms: int,
+    message: str,
+) -> T:
+    errors.append(_partial_error(source, "timeout", message, timeout_ms=timeout_ms))
+    return default
+
+
+def _partial_error(
+    source: str,
+    reason: str,
+    message: str,
+    *,
+    timeout_ms: int | None = None,
+    status_code: int | None = None,
+) -> BffPartialError:
+    return BffPartialError(
+        source=_monitor_partial_source_name(source),
+        detail=_monitor_partial_detail(reason),
+        reason=_monitor_partial_reason(reason),
+        status_code=status_code,
+        timeout_ms=timeout_ms,
+        fallback_source="python_local",
+        message=str(message or "")[:240],
+    )
+
+
+def _monitor_partial_source_name(source: str) -> str:
+    if source == "monitor_review":
+        return "review"
+    return source
+
+
+def _monitor_partial_detail(reason: str) -> str:
+    if reason == "timeout":
+        return "数据源超时，已保留主数据并降级显示。"
+    if reason == "status":
+        return "数据源状态异常，已保留主数据并降级显示。"
+    return "数据源暂时不可用，已保留主数据并降级显示。"
+
+
+def _monitor_partial_reason(reason: str) -> str:
+    if reason in {"timeout", "status", "error"}:
+        return reason
+    return "other"
 
 
 def _attached_user(db: Session, user: User) -> User:

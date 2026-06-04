@@ -1,12 +1,17 @@
 from __future__ import annotations
 
+from types import SimpleNamespace
+
+from fastapi import FastAPI, HTTPException
+from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from app.api.routes import bff
+from app.core.auth import get_current_user
+from app.core.database import get_db
 from app.models.base import Base
 from app.models.entities import User
-from fastapi import HTTPException
 
 from app.models.schema_defs.market import MarketBreadthResponse, MarketReviewStatusOut, SectorRelativeStrengthResponse
 from app.models.schema_defs.monitor import MonitorSnapshotResponse
@@ -233,3 +238,51 @@ def test_monitor_workspace_hides_forbidden_paired_hedge_for_standard_user(monkey
     assert response.sector_relative_strength is not None
     assert response.paired_hedge is None
     assert response.partial_errors == []
+
+
+def test_monitor_bff_degrades_slow_noncritical_source(monkeypatch) -> None:
+    app = FastAPI()
+    app.include_router(bff.router, prefix="/api")
+    user = SimpleNamespace(id=1, username="tester", is_active=True, roles="")
+    app.dependency_overrides[get_current_user] = lambda: user
+    app.dependency_overrides[get_db] = lambda: object()
+    monkeypatch.setattr(
+        bff,
+        "get_settings",
+        lambda: SimpleNamespace(
+            monitor_bff_aggregate_enabled=True,
+            tquant_internal_service_token="",
+        ),
+    )
+    monkeypatch.setattr(
+        "app.services.bff.workspace_cache.get_settings",
+        lambda: SimpleNamespace(
+            bff_workspace_cache_enabled=False,
+            bff_monitor_cache_ttl_seconds=0,
+            bff_paper_cache_ttl_seconds=0,
+            bff_strategy_cache_ttl_seconds=0,
+            bff_settings_cache_ttl_seconds=0,
+        ),
+    )
+    monkeypatch.setattr(
+        bff,
+        "build_monitor_snapshot",
+        lambda *args, **kwargs: MonitorSnapshotResponse(
+            updated_at="2026-06-04 10:00:00",
+            priority_board={"items": []},
+        ),
+    )
+    monkeypatch.setattr(bff, "latest_pulse_or_placeholder", lambda *_args, **_kwargs: (None, False))
+
+    def slow_review_source(*_args, **_kwargs):
+        raise TimeoutError("review source exceeded 80ms budget")
+
+    monkeypatch.setattr(bff, "build_market_review_summary", slow_review_source)
+
+    response = TestClient(app).get("/api/bff/v1/workspace/monitor")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["monitor_snapshot"]["priority_board"]["items"] is not None
+    assert body["partial_errors"]
+    assert any(error["source"] == "review" and error["reason"] == "timeout" for error in body["partial_errors"])
