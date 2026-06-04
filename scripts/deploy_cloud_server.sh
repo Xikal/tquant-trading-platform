@@ -28,6 +28,7 @@ DEPLOY_TARGET_SCOPE="${DEPLOY_TARGET_SCOPE:-auto}"
 DEPLOY_CHANGED_FILES="${DEPLOY_CHANGED_FILES:-}"
 DEPLOY_FRONTEND_HOT_REQUIRED="${DEPLOY_FRONTEND_HOT_REQUIRED:-0}"
 DEPLOY_SYNC_MODE="${DEPLOY_SYNC_MODE:-package-only}"
+DEPLOY_DELTA_MAX_CHANGE_RATIO="${DEPLOY_DELTA_MAX_CHANGE_RATIO:-0.35}"
 DEPLOY_GIT_REMOTE_URL="${DEPLOY_GIT_REMOTE_URL:-https://github.com/Xikal/tquant-trading-platform.git}"
 DEPLOY_GIT_REF="${DEPLOY_GIT_REF:-${GITHUB_SHA:-HEAD}}"
 DEPLOY_GIT_AUTH_TOKEN="${DEPLOY_GIT_AUTH_TOKEN:-}"
@@ -37,10 +38,33 @@ RUN_STRATEGY_TEST="${RUN_STRATEGY_TEST:-1}"
 RUN_FULL_TESTS="${RUN_FULL_TESTS:-0}"
 RUN_LATEST_DATA_ACCEPTANCE="${RUN_LATEST_DATA_ACCEPTANCE:-1}"
 LATEST_DATA_ACCEPTANCE_REQUIRED="${LATEST_DATA_ACCEPTANCE_REQUIRED:-0}"
-DEPLOY_PACKAGE_REQUIRED_PATHS="${DEPLOY_PACKAGE_REQUIRED_PATHS:-Dockerfile docker-compose.mysql.yml backend/app/main.py frontend/package.json frontend/src/main.tsx frontend/src/ui/data/index.ts scripts/install_https_nginx.sh}"
+DEPLOY_PACKAGE_REQUIRED_PATHS="${DEPLOY_PACKAGE_REQUIRED_PATHS:-Dockerfile docker-compose.mysql.yml backend/app/main.py frontend/package.json frontend/src/main.tsx frontend/src/ui/data/index.ts scripts/install_https_nginx.sh scripts/deploy_delta_package.py}"
+DEPLOY_EFFECTIVE_SYNC_MODE="package-only"
+DEPLOY_DELTA_CHANGED_COUNT=0
+DEPLOY_DELTA_DELETED_COUNT=0
+DEPLOY_DELTA_BYTES=0
+DEPLOY_DELTA_FULL_BYTES=0
+DEPLOY_DELTA_FALLBACK_REASON=""
+DEPLOY_PACKAGE_PATH=""
+DEPLOY_UPLOAD_SECONDS=0
 
 log() {
   printf '[deploy] %s\n' "$*"
+}
+
+file_size_bytes() {
+  wc -c < "$1" | tr -d '[:space:]'
+}
+
+validate_deploy_sync_mode() {
+  case "$DEPLOY_SYNC_MODE" in
+    package-only|delta-package|git-inplace|git-clone)
+      ;;
+    *)
+      log "invalid DEPLOY_SYNC_MODE=$DEPLOY_SYNC_MODE; expected package-only, delta-package, git-inplace, or git-clone"
+      exit 2
+      ;;
+  esac
 }
 
 collect_changed_files() {
@@ -242,8 +266,101 @@ make_package() {
   printf '%s\n' "$package_path"
 }
 
+fetch_remote_deploy_manifest() {
+  local output_path="$1"
+  if [[ "$DEPLOY_RESOLVED_SCOPE" == "frontend-hot" ]]; then
+    return 1
+  fi
+  cloud_ssh "set -euo pipefail
+if test -f '$CLOUD_PROJECT_DIR/.runtime/deploy-manifest.json'; then
+  cat '$CLOUD_PROJECT_DIR/.runtime/deploy-manifest.json'
+fi" > "$output_path"
+  test -s "$output_path"
+}
+
+make_delta_package() {
+  local remote_manifest="$1"
+  local delta_path="$2"
+  local local_manifest="$3"
+  local summary_path="$4"
+
+  python3 "$ROOT_DIR/scripts/deploy_delta_package.py" build \
+    --root "$ROOT_DIR" \
+    --previous "$remote_manifest" \
+    --output "$delta_path" \
+    --manifest-output "$local_manifest" \
+    --summary-output "$summary_path" \
+    --max-change-ratio "$DEPLOY_DELTA_MAX_CHANGE_RATIO"
+}
+
+load_delta_summary_env() {
+  local summary_path="$1"
+  local env_path
+  env_path="$(mktemp "/tmp/gupiao-delta-summary-env-XXXXXX")"
+  python3 "$ROOT_DIR/scripts/deploy_delta_package.py" summary-env --summary "$summary_path" > "$env_path"
+  # shellcheck disable=SC1090
+  source "$env_path"
+  rm -f "$env_path"
+}
+
+prepare_deploy_package() {
+  DEPLOY_EFFECTIVE_SYNC_MODE="$DEPLOY_SYNC_MODE"
+  DEPLOY_DELTA_CHANGED_COUNT=0
+  DEPLOY_DELTA_DELETED_COUNT=0
+  DEPLOY_DELTA_BYTES=0
+  DEPLOY_DELTA_FULL_BYTES=0
+  DEPLOY_DELTA_FALLBACK_REASON=""
+
+  if [[ "$DEPLOY_SYNC_MODE" != "delta-package" || "$DEPLOY_RESOLVED_SCOPE" == "frontend-hot" ]]; then
+    DEPLOY_PACKAGE_PATH="$(make_package | tail -n 1)"
+    DEPLOY_EFFECTIVE_SYNC_MODE="package-only"
+    DEPLOY_DELTA_FULL_BYTES="$(file_size_bytes "$DEPLOY_PACKAGE_PATH")"
+    if [[ "$DEPLOY_SYNC_MODE" == "delta-package" && "$DEPLOY_RESOLVED_SCOPE" == "frontend-hot" ]]; then
+      DEPLOY_DELTA_FALLBACK_REASON="frontend_hot_uses_hot_package"
+    fi
+    return 0
+  fi
+
+  local remote_manifest
+  local delta_path
+  local local_manifest
+  local summary_path
+  remote_manifest="$(mktemp "/tmp/gupiao-remote-deploy-manifest-XXXXXX.json")"
+  delta_path="$(mktemp "/tmp/gupiao-delta-deploy-$(date +%Y%m%d%H%M%S)-XXXXXX.tgz")"
+  local_manifest="$(mktemp "/tmp/gupiao-local-deploy-manifest-XXXXXX.json")"
+  summary_path="$(mktemp "/tmp/gupiao-delta-summary-XXXXXX.json")"
+
+  if ! fetch_remote_deploy_manifest "$remote_manifest"; then
+    DEPLOY_DELTA_FALLBACK_REASON="missing_remote_manifest"
+    rm -f "$remote_manifest" "$delta_path" "$local_manifest" "$summary_path"
+    DEPLOY_PACKAGE_PATH="$(make_package | tail -n 1)"
+    DEPLOY_EFFECTIVE_SYNC_MODE="package-only"
+    DEPLOY_DELTA_FULL_BYTES="$(file_size_bytes "$DEPLOY_PACKAGE_PATH")"
+    return 0
+  fi
+
+  make_delta_package "$remote_manifest" "$delta_path" "$local_manifest" "$summary_path"
+  load_delta_summary_env "$summary_path"
+  if [[ -n "$DEPLOY_DELTA_FALLBACK_REASON" ]]; then
+    rm -f "$remote_manifest" "$delta_path" "$local_manifest" "$summary_path"
+    DEPLOY_PACKAGE_PATH="$(make_package | tail -n 1)"
+    DEPLOY_EFFECTIVE_SYNC_MODE="package-only"
+    if [[ "$DEPLOY_DELTA_FULL_BYTES" == "0" ]]; then
+      DEPLOY_DELTA_FULL_BYTES="$(file_size_bytes "$DEPLOY_PACKAGE_PATH")"
+    fi
+    return 0
+  fi
+  DEPLOY_PACKAGE_PATH="$delta_path"
+  DEPLOY_EFFECTIVE_SYNC_MODE="delta-package"
+  rm -f "$remote_manifest" "$local_manifest" "$summary_path"
+}
+
+log_sync_metrics() {
+  log "sync metrics: requested_mode=${DEPLOY_SYNC_MODE} sync_mode=${DEPLOY_EFFECTIVE_SYNC_MODE} changed_count=${DEPLOY_DELTA_CHANGED_COUNT} deleted_count=${DEPLOY_DELTA_DELETED_COUNT} delta_bytes=${DEPLOY_DELTA_BYTES} full_bytes=${DEPLOY_DELTA_FULL_BYTES} upload_seconds=${DEPLOY_UPLOAD_SECONDS} fallback_reason=${DEPLOY_DELTA_FALLBACK_REASON:-none}"
+}
+
 remote_deploy_from_git() {
-  if [[ "$DEPLOY_RESOLVED_SCOPE" == "frontend-hot" || "$DEPLOY_SYNC_MODE" == "package-only" ]]; then
+  if [[ "$DEPLOY_RESOLVED_SCOPE" == "frontend-hot" || ( "$DEPLOY_SYNC_MODE" != "git-inplace" && "$DEPLOY_SYNC_MODE" != "git-clone" ) ]]; then
     return 1
   fi
 
@@ -265,7 +382,7 @@ remote_deploy_from_git() {
     bash -s <<'REMOTE'
 set -euo pipefail
 TS=$(date +%Y%m%d%H%M%S)
-REQUIRED_PATHS="Dockerfile docker-compose.mysql.yml backend/app/main.py frontend/package.json frontend/src/main.tsx frontend/src/ui/data/index.ts scripts/install_https_nginx.sh"
+REQUIRED_PATHS="Dockerfile docker-compose.mysql.yml backend/app/main.py frontend/package.json frontend/src/main.tsx frontend/src/ui/data/index.ts scripts/install_https_nginx.sh scripts/deploy_delta_package.py"
 DEPLOY_SCOPE="${DEPLOY_RESOLVED_SCOPE:-all}"
 
 require_release_paths() {
@@ -380,6 +497,9 @@ else
   echo "deploy_sync:git-clone"
 fi
 touch .env
+mkdir -p .runtime
+python3 scripts/deploy_delta_package.py manifest --root . --output .runtime/deploy-manifest.json --quiet
+echo "deploy_manifest:updated"
 echo "deploy_scope:$DEPLOY_SCOPE"
 if ! grep -Eq '^AUTH_SECRET_KEY=.{64,}' .env; then
   sed -i '/^AUTH_SECRET_KEY=/d' .env
@@ -526,11 +646,18 @@ REMOTE
 remote_deploy() {
   local package_path="$1"
   local remote_package="/home/${CLOUD_USER}/$(basename "$package_path")"
+  local upload_seconds=0
   if [[ "$DEPLOY_RESOLVED_SCOPE" == "frontend-hot" ]]; then
     log "upload frontend hot package to ${CLOUD_USER}@${CLOUD_HOST}:${remote_package}"
-    cloud_scp_to "$package_path" "$remote_package"
+    local upload_start
+    upload_start="$(date +%s)"
+    if ! cloud_scp_to "$package_path" "$remote_package"; then
+      return 1
+    fi
+    upload_seconds=$(( $(date +%s) - upload_start ))
+    DEPLOY_DELTA_BYTES="$(file_size_bytes "$package_path")"
     log "hot update frontend dist in running app container"
-    cloud_ssh env \
+    if ! cloud_ssh env \
       CLOUD_USER="$CLOUD_USER" \
       REMOTE_PACKAGE="$remote_package" \
       bash -s <<'REMOTE'
@@ -560,14 +687,30 @@ echo "frontend_hot:updated"
 echo "frontend_hot_image:rebuilt"
 rm -rf "$WORK_DIR" "$REMOTE_PACKAGE"
 REMOTE
+    then
+      return 1
+    fi
+    DEPLOY_UPLOAD_SECONDS="$upload_seconds"
     return 0
   fi
 
-  log "upload package to ${CLOUD_USER}@${CLOUD_HOST}:${remote_package}"
-  cloud_scp_to "$package_path" "$remote_package"
+  if [[ "$DEPLOY_EFFECTIVE_SYNC_MODE" == "delta-package" ]]; then
+    log "upload delta package to ${CLOUD_USER}@${CLOUD_HOST}:${remote_package}"
+  else
+    log "upload package to ${CLOUD_USER}@${CLOUD_HOST}:${remote_package}"
+  fi
+  local upload_start
+  upload_start="$(date +%s)"
+  if ! cloud_scp_to "$package_path" "$remote_package"; then
+    return 1
+  fi
+  upload_seconds=$(( $(date +%s) - upload_start ))
+  if [[ "$DEPLOY_EFFECTIVE_SYNC_MODE" == "delta-package" ]]; then
+    DEPLOY_DELTA_BYTES="$(file_size_bytes "$package_path")"
+  fi
 
   log "backup current release and deploy scope ${DEPLOY_RESOLVED_SCOPE}"
-  cloud_ssh env \
+  if ! cloud_ssh env \
     CLOUD_PROJECT_DIR="$CLOUD_PROJECT_DIR" \
     CLOUD_COMPOSE_FILE="$CLOUD_COMPOSE_FILE" \
     CLOUD_USER="$CLOUD_USER" \
@@ -575,6 +718,7 @@ REMOTE
     CLOUD_AUTH_COOKIE_SECURE="${CLOUD_AUTH_COOKIE_SECURE:-}" \
     CLOUD_AUTH_ALLOW_INSECURE_HTTP_COOKIE="${CLOUD_AUTH_ALLOW_INSECURE_HTTP_COOKIE:-}" \
     REMOTE_PACKAGE="$remote_package" \
+    DEPLOY_EFFECTIVE_SYNC_MODE="$DEPLOY_EFFECTIVE_SYNC_MODE" \
     REMOTE_DEBIAN_APT_MIRROR="$REMOTE_DEBIAN_APT_MIRROR" \
     REMOTE_DEBIAN_APT_SECURITY_MIRROR="$REMOTE_DEBIAN_APT_SECURITY_MIRROR" \
     DEPLOY_RESOLVED_SCOPE="$DEPLOY_RESOLVED_SCOPE" \
@@ -582,8 +726,9 @@ REMOTE
     bash -s <<'REMOTE'
 set -euo pipefail
 TS=$(date +%Y%m%d%H%M%S)
-REQUIRED_PATHS="Dockerfile docker-compose.mysql.yml backend/app/main.py frontend/package.json frontend/src/main.tsx frontend/src/ui/data/index.ts scripts/install_https_nginx.sh"
+REQUIRED_PATHS="Dockerfile docker-compose.mysql.yml backend/app/main.py frontend/package.json frontend/src/main.tsx frontend/src/ui/data/index.ts scripts/install_https_nginx.sh scripts/deploy_delta_package.py"
 DEPLOY_SCOPE="${DEPLOY_RESOLVED_SCOPE:-all}"
+SYNC_MODE="${DEPLOY_EFFECTIVE_SYNC_MODE:-package-only}"
 
 require_release_paths() {
   local root="$1"
@@ -632,22 +777,58 @@ docker_compose_build() {
 }
 
 cd /home/$CLOUD_USER
-rm -rf gupiao-upload-new
-mkdir gupiao-upload-new
-tar -xzf "$REMOTE_PACKAGE" -C gupiao-upload-new
-require_release_paths gupiao-upload-new
-if test -d "$CLOUD_PROJECT_DIR/.runtime"; then cp -a "$CLOUD_PROJECT_DIR/.runtime" gupiao-upload-new/.runtime || true; fi
-if test -f "$CLOUD_PROJECT_DIR/.env"; then cp -a "$CLOUD_PROJECT_DIR/.env" gupiao-upload-new/.env || true; fi
 PROJECT_PARENT=$(dirname "$CLOUD_PROJECT_DIR")
 sudo mkdir -p "$PROJECT_PARENT"
-if test -d "$CLOUD_PROJECT_DIR"; then
+if test "$SYNC_MODE" = delta-package; then
+  echo "deploy_sync:delta-package"
+  if ! test -d "$CLOUD_PROJECT_DIR"; then
+    echo "delta fallback required: release directory missing" >&2
+    exit 42
+  fi
+  if ! test -f "$CLOUD_PROJECT_DIR/.runtime/deploy-manifest.json"; then
+    echo "delta fallback required: manifest missing" >&2
+    exit 42
+  fi
+  rm -rf gupiao-upload-delta-new
+  mkdir gupiao-upload-delta-new
+  cp -a "$CLOUD_PROJECT_DIR/." gupiao-upload-delta-new/
+  tar -xzf "$REMOTE_PACKAGE" -C gupiao-upload-delta-new
+  test -f gupiao-upload-delta-new/.deploy-delta/deploy-manifest.json
+  test -f gupiao-upload-delta-new/.deploy-delta/deploy-delete-manifest.json
+  python3 gupiao-upload-delta-new/scripts/deploy_delta_package.py apply-deletes \
+    --root gupiao-upload-delta-new \
+    --previous-manifest "$CLOUD_PROJECT_DIR/.runtime/deploy-manifest.json" \
+    --delete-manifest gupiao-upload-delta-new/.deploy-delta/deploy-delete-manifest.json \
+    --summary-output gupiao-upload-delta-new/.deploy-delta/delete-summary.json
+  mkdir -p gupiao-upload-delta-new/.runtime
+  cp gupiao-upload-delta-new/.deploy-delta/deploy-manifest.json gupiao-upload-delta-new/.runtime/deploy-manifest.json
+  rm -rf gupiao-upload-delta-new/.deploy-delta
+  require_release_paths gupiao-upload-delta-new
   sudo mv "$CLOUD_PROJECT_DIR" "/home/$CLOUD_USER/gupiao-deploy-backup-$TS"
   sudo chown -R "$CLOUD_USER:$CLOUD_USER" "/home/$CLOUD_USER/gupiao-deploy-backup-$TS" || true
+  sudo mv gupiao-upload-delta-new "$CLOUD_PROJECT_DIR"
+else
+  echo "deploy_sync:package-only"
+  rm -rf gupiao-upload-new
+  mkdir gupiao-upload-new
+  tar -xzf "$REMOTE_PACKAGE" -C gupiao-upload-new
+  require_release_paths gupiao-upload-new
+  if test -d "$CLOUD_PROJECT_DIR/.runtime"; then cp -a "$CLOUD_PROJECT_DIR/.runtime" gupiao-upload-new/.runtime || true; fi
+  if test -f "$CLOUD_PROJECT_DIR/.env"; then cp -a "$CLOUD_PROJECT_DIR/.env" gupiao-upload-new/.env || true; fi
+  if test -d "$CLOUD_PROJECT_DIR"; then
+    sudo mv "$CLOUD_PROJECT_DIR" "/home/$CLOUD_USER/gupiao-deploy-backup-$TS"
+    sudo chown -R "$CLOUD_USER:$CLOUD_USER" "/home/$CLOUD_USER/gupiao-deploy-backup-$TS" || true
+  fi
+  sudo mv gupiao-upload-new "$CLOUD_PROJECT_DIR"
 fi
-sudo mv gupiao-upload-new "$CLOUD_PROJECT_DIR"
 sudo chown -R "$CLOUD_USER:$CLOUD_USER" "$CLOUD_PROJECT_DIR"
 cd "$CLOUD_PROJECT_DIR"
 touch .env
+mkdir -p .runtime
+if test "$SYNC_MODE" != delta-package; then
+  python3 scripts/deploy_delta_package.py manifest --root . --output .runtime/deploy-manifest.json --quiet
+fi
+echo "deploy_manifest:updated"
 echo "deploy_scope:$DEPLOY_SCOPE"
 if ! grep -Eq '^AUTH_SECRET_KEY=.{64,}' .env; then
   sed -i '/^AUTH_SECRET_KEY=/d' .env
@@ -791,6 +972,10 @@ ls -dt /home/$CLOUD_USER/gupiao-deploy-backup-* 2>/dev/null | tail -n +$((CLOUD_
 rm -f "$REMOTE_PACKAGE"
 sudo docker ps --format 'table {{.Names}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}'
 REMOTE
+  then
+    return 1
+  fi
+  DEPLOY_UPLOAD_SECONDS="$upload_seconds"
 }
 
 remote_configure_ops() {
@@ -839,17 +1024,33 @@ dump_container_diagnostics() {
   sudo docker inspect "$name" --format '{{json .State}}' 2>/dev/null >&2 || true
   sudo docker logs --tail=120 "$name" 2>/dev/null >&2 || true
 }
-for _ in $(seq 1 40); do
-  STATUS=$(sudo docker inspect tquant-app-mysql --format '{{.State.Health.Status}}' 2>/dev/null || echo none)
-  echo "health:$STATUS"
-  if test "$STATUS" = healthy; then break; fi
-  sleep 3
-done
-if test "$STATUS" != healthy; then
-  echo "tquant-app-mysql did not become healthy" >&2
-  dump_container_diagnostics tquant-app-mysql
+wait_for_container() {
+  local name="$1"
+  local status=""
+  for _ in $(seq 1 40); do
+    status=$(sudo docker inspect "$name" --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' 2>/dev/null || echo none)
+    echo "$name health:$status"
+    case "$status" in
+      healthy|running)
+        return 0
+        ;;
+    esac
+    sleep 3
+  done
+  echo "$name did not become healthy" >&2
+  dump_container_diagnostics "$name"
   exit 1
-fi
+}
+for name in tquant-app-mysql tquant-runtime-scheduler-mysql tquant-runtime-worker-mysql tquant-backtest-worker-mysql tquant-analytics-worker-mysql; do
+  wait_for_container "$name"
+done
+sudo docker exec tquant-analytics-worker-mysql python - <<'PY'
+import duckdb, pyarrow  # noqa: F401
+from app.core.database import ping_database
+
+ping_database()
+print("analytics_worker_readyz:ok")
+PY
 curl_retry() {
   local output_path="$1"
   local url="$2"
@@ -1001,22 +1202,40 @@ sudo docker exec tquant-app-mysql python scripts/latest_data_acceptance.py --pub
 }
 
 main() {
+  validate_deploy_sync_mode
   require_cloud_host
   require_https_config
   DEPLOY_RESOLVED_SCOPE="$(resolve_deploy_scope)"
   log "resolved deploy scope: ${DEPLOY_RESOLVED_SCOPE}"
+  log "requested deploy sync mode: ${DEPLOY_SYNC_MODE}"
   run_local_checks
   ensure_frontend_hot_artifact
   local package_path=""
   if remote_deploy_from_git; then
+    DEPLOY_EFFECTIVE_SYNC_MODE="$DEPLOY_SYNC_MODE"
     log "remote git sync deploy completed"
   else
-    if [[ "$DEPLOY_RESOLVED_SCOPE" != "frontend-hot" && "$DEPLOY_SYNC_MODE" != "package-only" ]]; then
+    if [[ "$DEPLOY_RESOLVED_SCOPE" != "frontend-hot" && ( "$DEPLOY_SYNC_MODE" == "git-inplace" || "$DEPLOY_SYNC_MODE" == "git-clone" ) ]]; then
       log "remote git sync unavailable; falling back to package upload"
+      DEPLOY_DELTA_FALLBACK_REASON="remote_git_sync_unavailable"
     fi
-    package_path="$(make_package | tail -n 1)"
-    remote_deploy "$package_path"
+    prepare_deploy_package
+    package_path="$DEPLOY_PACKAGE_PATH"
+    if ! remote_deploy "$package_path"; then
+      if [[ "$DEPLOY_EFFECTIVE_SYNC_MODE" != "delta-package" ]]; then
+        return 1
+      fi
+      log "delta package deploy failed; falling back to full package upload"
+      rm -f "$package_path"
+      DEPLOY_DELTA_FALLBACK_REASON="remote_delta_apply_failed"
+      DEPLOY_EFFECTIVE_SYNC_MODE="package-only"
+      DEPLOY_PACKAGE_PATH="$(make_package | tail -n 1)"
+      package_path="$DEPLOY_PACKAGE_PATH"
+      DEPLOY_DELTA_FULL_BYTES="$(file_size_bytes "$package_path")"
+      remote_deploy "$package_path"
+    fi
   fi
+  log_sync_metrics
   remote_configure_ops
   verify_remote
   verify_https_remote

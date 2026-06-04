@@ -517,11 +517,14 @@ def start_runtime_background_jobs() -> None:
                 interval_seconds=max(settings.notification_signal_scan_interval_seconds, 30),
                 initial_delay_seconds=120,
             )
-        if settings.analytics_24m_report_schedule_enabled:
+        if bool(getattr(settings, "analytics_24m_report_schedule_enabled", False)):
             task_manager.register_loop(
                 name="analytics_24m_duckdb_report",
                 target=_enqueue_analytics_24m_report_once,
-                interval_seconds=max(int(settings.analytics_24m_report_interval_hours or 24) * 60 * 60, 60 * 60),
+                interval_seconds=max(
+                    int(getattr(settings, "analytics_24m_report_interval_hours", 24) or 24) * 60 * 60,
+                    60 * 60,
+                ),
                 initial_delay_seconds=390,
             )
         task_manager.register_loop(

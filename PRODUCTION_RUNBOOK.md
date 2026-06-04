@@ -226,11 +226,13 @@ CLOUD_SSH_KEY=/path/to/gupiao.pem \
 默认行为：
 
 - 本地执行后端编译、核心策略测试和前端构建。
-- 打包当前项目，排除 `.runtime`、虚拟环境、`node_modules`、本地数据库运行配置等非发布内容。
-- 上传到云服务器。
+- `DEPLOY_SYNC_MODE=delta-package` 时优先上传 changed/new files 与删除 manifest；缺远端 manifest、关键文件变更、变更比例过高、校验失败或删除不安全时自动回退 `package-only`。
+- `DEPLOY_SYNC_MODE=package-only` 会打包当前项目，排除 `.runtime`、虚拟环境、`node_modules`、本地数据库运行配置等非发布内容。
+- 远端 GitHub clone/fetch 默认不使用；只有显式设置 `DEPLOY_SYNC_MODE=git-inplace` 或 `DEPLOY_SYNC_MODE=git-clone` 才启用。
 - 备份远端当前 `/home/ubuntu/gupiao-upload`。
 - 使用 `docker-compose.mysql.yml` 先执行 `migration` 容器完成 Alembic 迁移，再重建 `app`、`runtime-worker`、`backtest-worker`，不删除 MySQL volume。
 - 自动验证 `/readyz`、默认低吸接口和前端首页。
+- 部署日志输出 `sync_mode`、`changed_count`、`deleted_count`、`delta_bytes`、`full_bytes`、`upload_seconds`、`fallback_reason`，用于比较差量上传和全量包。
 
 常用参数：
 
@@ -240,7 +242,16 @@ CLOUD_COMPOSE_FILE=docker-compose.mysql.yml
 CLOUD_APP_PORT=18090
 CLOUD_KEEP_BACKUPS=3
 RUN_FULL_TESTS=1
+DEPLOY_SYNC_MODE=delta-package
 ```
+
+若差量上传异常，可显式关闭：
+
+```bash
+DEPLOY_SYNC_MODE=package-only ./scripts/deploy_cloud_server.sh
+```
+
+差量删除只允许删除上一版 `.runtime/deploy-manifest.json` 中存在的文件，且禁止删除 `.env`、`.runtime`、数据库、备份、上传产物和运行时数据。
 
 如果没有 SSH key，也可以临时使用：
 

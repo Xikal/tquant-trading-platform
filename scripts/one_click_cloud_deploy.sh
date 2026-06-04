@@ -23,7 +23,10 @@ Modes:
   --fast   Explicit emergency path; maps to --fast-risk-accepted.
   --full   Run full local checks and latest-data acceptance.
   --scope  Override target selection. auto is default; frontend-hot skips image rebuild.
+  --sync-mode <delta-package|package-only|git-inplace|git-clone>
+           Choose deploy sync mode. delta-package falls back to package-only.
   --verify-only
+  --dry-run
 
 One-click defaults also refresh HTTPS/nginx config and verify the public domain.
 Additional args are passed through to scripts/quick_cloud_deploy.sh.
@@ -105,10 +108,19 @@ while [[ $# -gt 0 ]]; do
       args+=("$1" "${2:?missing scope}")
       shift 2
       ;;
+    --sync-mode)
+      DEPLOY_SYNC_MODE="${2:?missing sync mode}"
+      args+=("$1" "$2")
+      shift 2
+      ;;
     --port)
       CLOUD_APP_PORT="${2:?missing port}"
       args+=("$1" "$2")
       shift 2
+      ;;
+    --dry-run)
+      ONE_CLICK_DEPLOY_DRY_RUN=1
+      shift
       ;;
     *)
       args+=("$1")
@@ -150,16 +162,25 @@ export CLOUD_DOMAIN="${CLOUD_DOMAIN:-$DEFAULT_CLOUD_DOMAIN}"
 export CLOUD_CERT_EMAIL="${CLOUD_CERT_EMAIL:-admin@${CLOUD_DOMAIN}}"
 export CLOUD_SSH_TIMEOUT="${CLOUD_SSH_TIMEOUT:-2400}"
 export CLOUD_SSH_CONNECT_TIMEOUT="${CLOUD_SSH_CONNECT_TIMEOUT:-30}"
+export DEPLOY_SYNC_MODE="${DEPLOY_SYNC_MODE:-package-only}"
 
-require_connection_config
+if [[ "${ONE_CLICK_DEPLOY_DRY_RUN:-0}" == "1" ]]; then
+  CLOUD_HOST="${CLOUD_HOST:-dry-run-host}"
+  if [[ -z "${CLOUD_SSH_KEY:-}" && -z "${CLOUD_PASSWORD:-}" ]]; then
+    CLOUD_PASSWORD="dry-run-password"
+  fi
+else
+  require_connection_config
+fi
 
-printf '[one-click-deploy] target=%s@%s domain=%s mode=%s ssh=%s\n' \
+printf '[one-click-deploy] target=%s@%s domain=%s mode=%s sync_mode=%s ssh=%s\n' \
   "$CLOUD_USER" "$CLOUD_HOST" "$CLOUD_DOMAIN" "${args[*]:-safe}" \
+  "$DEPLOY_SYNC_MODE" \
   "$(if [[ -n "${CLOUD_SSH_KEY:-}" ]]; then printf 'key'; else printf 'password'; fi)"
 
 if [[ "${ONE_CLICK_DEPLOY_DRY_RUN:-0}" == "1" ]]; then
-  printf '[one-click-deploy] dry-run args=%s\n' "${args[*]:-safe}"
+  printf '[one-click-deploy] dry-run sync_mode=%s args=%s\n' "$DEPLOY_SYNC_MODE" "${args[*]:-safe}"
   exit 0
 fi
 
-exec "$ROOT_DIR/scripts/quick_cloud_deploy.sh" "${args[@]}"
+DEPLOY_SYNC_MODE="$DEPLOY_SYNC_MODE" exec "$ROOT_DIR/scripts/quick_cloud_deploy.sh" "${args[@]}"

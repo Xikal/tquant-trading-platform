@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import json
 import os
 import subprocess
+import tarfile
 from pathlib import Path
 
 
@@ -143,7 +145,8 @@ def test_one_click_deploy_no_args_dry_run_uses_safe_mode_from_local_env(tmp_path
     assert "target=ubuntu@example.internal" in result.stdout
     assert "domain=example.com" in result.stdout
     assert "mode=--refresh-https-config --public-domain-verify" in result.stdout
-    assert "dry-run args=--refresh-https-config --public-domain-verify" in result.stdout
+    assert "sync_mode=package-only" in result.stdout
+    assert "dry-run sync_mode=package-only args=--refresh-https-config --public-domain-verify" in result.stdout
 
 
 def test_one_click_deploy_fast_mode_is_explicit_in_dry_run(tmp_path: Path) -> None:
@@ -172,6 +175,7 @@ def test_one_click_deploy_fast_mode_is_explicit_in_dry_run(tmp_path: Path) -> No
     )
 
     assert "mode=--fast-risk-accepted --host example.internal --key" in result.stdout
+    assert "sync_mode=package-only" in result.stdout
     assert "--refresh-https-config --public-domain-verify" in result.stdout
 
 
@@ -214,7 +218,7 @@ def test_quick_deploy_performance_verify_runs_two_sampled_rounds_and_dumps_diagn
     assert "dump_container_diagnostics" in quick_script
     assert "sudo docker logs --tail=120" in quick_script
     assert "dump_container_diagnostics" in deploy_script
-    assert "tquant-app-mysql did not become healthy" in deploy_script
+    assert 'echo "$name did not become healthy"' in deploy_script
     assert "did not become healthy" in deploy_script
 
 
@@ -244,7 +248,8 @@ def test_deploy_scripts_support_scope_aware_fast_paths() -> None:
     assert "web_image:skipped_frontend_hot" in quick_script
     assert "--scope  Override target selection" in one_click_script
     assert "DEPLOY_TARGET_SCOPE=auto" in deploy_example
-    assert "DEPLOY_SYNC_MODE=package-only" in deploy_example
+    assert "DEPLOY_SYNC_MODE=delta-package" in deploy_example
+    assert "package-only remains the automatic fallback" in deploy_example
 
 
 def test_cloud_deploy_prefers_remote_git_sync_before_package_upload() -> None:
@@ -252,10 +257,12 @@ def test_cloud_deploy_prefers_remote_git_sync_before_package_upload() -> None:
     workflow = read_repo_file(".github/workflows/ci.yml")
 
     assert 'DEPLOY_SYNC_MODE="${DEPLOY_SYNC_MODE:-package-only}"' in deploy_script
+    assert 'DEPLOY_DELTA_MAX_CHANGE_RATIO="${DEPLOY_DELTA_MAX_CHANGE_RATIO:-0.35}"' in deploy_script
     assert 'DEPLOY_GIT_REMOTE_URL="${DEPLOY_GIT_REMOTE_URL:-https://github.com/Xikal/tquant-trading-platform.git}"' in deploy_script
     assert 'DEPLOY_GIT_REF="${DEPLOY_GIT_REF:-${GITHUB_SHA:-HEAD}}"' in deploy_script
     assert "remote_deploy_from_git" in deploy_script
-    assert '[[ "$DEPLOY_RESOLVED_SCOPE" == "frontend-hot" || "$DEPLOY_SYNC_MODE" == "package-only" ]]' in deploy_script
+    assert '"$DEPLOY_SYNC_MODE" != "git-inplace"' in deploy_script
+    assert '"$DEPLOY_SYNC_MODE" != "git-clone"' in deploy_script
     assert "deploy via remote git sync ref ${DEPLOY_GIT_REF} scope ${DEPLOY_RESOLVED_SCOPE}" in deploy_script
     assert "git_network_retry" in deploy_script
     assert "http.lowSpeedLimit" in deploy_script
@@ -267,12 +274,180 @@ def test_cloud_deploy_prefers_remote_git_sync_before_package_upload() -> None:
     assert "git clean -fd -e .env -e .runtime -e backend/data" in deploy_script
     assert "git_network_retry clone --no-checkout \"$git_url\" \"$WORKTREE\"" in deploy_script
     assert "git -C \"$WORKTREE\" checkout --detach \"$DEPLOY_GIT_REF\"" in deploy_script
-    assert '[[ "$DEPLOY_RESOLVED_SCOPE" != "frontend-hot" && "$DEPLOY_SYNC_MODE" != "package-only" ]]' in deploy_script
+    assert '"$DEPLOY_SYNC_MODE" == "git-inplace" || "$DEPLOY_SYNC_MODE" == "git-clone"' in deploy_script
     assert "remote git sync unavailable; falling back to package upload" in deploy_script
     assert "package-only" in deploy_script
-    assert 'DEPLOY_SYNC_MODE: "package-only"' in workflow
+    assert 'DEPLOY_SYNC_MODE: "delta-package"' in workflow
     assert "DEPLOY_GIT_REF: ${{ github.sha }}" in workflow
     assert "DEPLOY_GIT_AUTH_TOKEN: ${{ github.token }}" in workflow
+
+
+def test_delta_package_helper_builds_manifest_delta_and_safe_delete_manifest(tmp_path: Path) -> None:
+    root = tmp_path / "repo"
+    root.mkdir()
+    (root / "Dockerfile").write_text("FROM python:3.12\n", encoding="utf-8")
+    (root / "docker-compose.mysql.yml").write_text("services: {}\n", encoding="utf-8")
+    (root / "backend/app/main.py").parent.mkdir(parents=True)
+    (root / "backend/app/main.py").write_text("print('main')\n", encoding="utf-8")
+    (root / "frontend/src/main.tsx").parent.mkdir(parents=True)
+    (root / "frontend/package.json").write_text("{}\n", encoding="utf-8")
+    (root / "frontend/src/main.tsx").write_text("console.log('main')\n", encoding="utf-8")
+    (root / "scripts").mkdir()
+    (root / "scripts/install_https_nginx.sh").write_text("#!/usr/bin/env bash\n", encoding="utf-8")
+    (root / "scripts/deploy_delta_package.py").write_text("helper\n", encoding="utf-8")
+    (root / "docs").mkdir()
+    (root / "docs/old-report.md").write_text("old\n", encoding="utf-8")
+    previous_manifest = tmp_path / "previous.json"
+    subprocess.run(
+        [
+            "python3",
+            str(ROOT_DIR / "scripts/deploy_delta_package.py"),
+            "manifest",
+            "--root",
+            str(root),
+            "--output",
+            str(previous_manifest),
+            "--quiet",
+        ],
+        check=True,
+        cwd=ROOT_DIR,
+    )
+
+    (root / "docs/old-report.md").unlink()
+    (root / "docs/new-report.md").write_text("new\n", encoding="utf-8")
+    delta_archive = tmp_path / "delta.tgz"
+    local_manifest = tmp_path / "local.json"
+    summary_path = tmp_path / "summary.json"
+    subprocess.run(
+        [
+            "python3",
+            str(ROOT_DIR / "scripts/deploy_delta_package.py"),
+            "build",
+            "--root",
+            str(root),
+            "--previous",
+            str(previous_manifest),
+            "--output",
+            str(delta_archive),
+            "--manifest-output",
+            str(local_manifest),
+            "--summary-output",
+            str(summary_path),
+            "--max-change-ratio",
+            "1.0",
+        ],
+        check=True,
+        cwd=ROOT_DIR,
+    )
+
+    summary = json.loads(summary_path.read_text(encoding="utf-8"))
+    assert summary["fallback_reason"] == ""
+    assert summary["changed_count"] == 1
+    assert summary["deleted_count"] == 1
+    assert summary["delta_bytes"] > 0
+    with tarfile.open(delta_archive, "r:gz") as tar:
+        names = set(tar.getnames())
+    assert "./docs/new-report.md" in names
+    assert "./.deploy-delta/deploy-manifest.json" in names
+    assert "./.deploy-delta/deploy-delete-manifest.json" in names
+
+
+def test_delta_package_helper_falls_back_on_critical_and_unsafe_delete(tmp_path: Path) -> None:
+    root = tmp_path / "repo"
+    root.mkdir()
+    (root / "Dockerfile").write_text("FROM python:3.12\n", encoding="utf-8")
+    (root / "docs").mkdir()
+    (root / "docs/report.md").write_text("old\n", encoding="utf-8")
+    (root / "backend/data").mkdir(parents=True)
+    (root / "backend/data/live.db").write_text("db\n", encoding="utf-8")
+    previous_manifest = tmp_path / "previous.json"
+    subprocess.run(
+        [
+            "python3",
+            str(ROOT_DIR / "scripts/deploy_delta_package.py"),
+            "manifest",
+            "--root",
+            str(root),
+            "--output",
+            str(previous_manifest),
+            "--quiet",
+        ],
+        check=True,
+        cwd=ROOT_DIR,
+    )
+
+    (root / "Dockerfile").write_text("FROM python:3.12-slim\n", encoding="utf-8")
+    delta_archive = tmp_path / "critical.tgz"
+    summary_path = tmp_path / "critical-summary.json"
+    subprocess.run(
+        [
+            "python3",
+            str(ROOT_DIR / "scripts/deploy_delta_package.py"),
+            "build",
+            "--root",
+            str(root),
+            "--previous",
+            str(previous_manifest),
+            "--output",
+            str(delta_archive),
+            "--manifest-output",
+            str(tmp_path / "local.json"),
+            "--summary-output",
+            str(summary_path),
+        ],
+        check=True,
+        cwd=ROOT_DIR,
+    )
+    summary = json.loads(summary_path.read_text(encoding="utf-8"))
+    assert summary["fallback_reason"] == "critical_paths_changed"
+    assert not delta_archive.exists()
+
+    delete_manifest = tmp_path / "delete.json"
+    delete_manifest.write_text(
+        json.dumps({"files": [{"path": "backend/data/live.db", "sha256": "bad"}]}),
+        encoding="utf-8",
+    )
+    result = subprocess.run(
+        [
+            "python3",
+            str(ROOT_DIR / "scripts/deploy_delta_package.py"),
+            "apply-deletes",
+            "--root",
+            str(root),
+            "--previous-manifest",
+            str(previous_manifest),
+            "--delete-manifest",
+            str(delete_manifest),
+        ],
+        cwd=ROOT_DIR,
+        text=True,
+        capture_output=True,
+    )
+    assert result.returncode != 0
+    assert "unsafe delete path" in result.stderr
+
+
+def test_delta_deploy_mode_is_logged_and_falls_back_to_package_only() -> None:
+    deploy_script = read_repo_file("scripts/deploy_cloud_server.sh")
+
+    assert "DEPLOY_SYNC_MODE=delta-package" in read_repo_file(".env.deploy.local.example")
+    assert "prepare_deploy_package" in deploy_script
+    assert "fetch_remote_deploy_manifest" in deploy_script
+    assert "deploy_delta_package.py\" build" in deploy_script
+    assert "deploy_sync:delta-package" in deploy_script
+    assert "deploy_sync:package-only" in deploy_script
+    assert "missing_remote_manifest" in deploy_script
+    assert "remote_delta_apply_failed" in deploy_script
+    assert "delta package deploy failed; falling back to full package upload" in deploy_script
+    assert "sync metrics: requested_mode=${DEPLOY_SYNC_MODE} sync_mode=${DEPLOY_EFFECTIVE_SYNC_MODE}" in deploy_script
+    assert "changed_count=${DEPLOY_DELTA_CHANGED_COUNT}" in deploy_script
+    assert "deleted_count=${DEPLOY_DELTA_DELETED_COUNT}" in deploy_script
+    assert "delta_bytes=${DEPLOY_DELTA_BYTES}" in deploy_script
+    assert "full_bytes=${DEPLOY_DELTA_FULL_BYTES}" in deploy_script
+    assert "upload_seconds=${DEPLOY_UPLOAD_SECONDS}" in deploy_script
+    assert "fallback_reason=${DEPLOY_DELTA_FALLBACK_REASON:-none}" in deploy_script
+    assert "python3 gupiao-upload-delta-new/scripts/deploy_delta_package.py apply-deletes" in deploy_script
+    assert ".runtime/deploy-manifest.json" in deploy_script
 
 
 def test_makefile_has_one_click_deploy_shortcuts() -> None:

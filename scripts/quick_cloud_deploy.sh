@@ -37,6 +37,7 @@ CLOUD_AUTH_ALLOW_INSECURE_HTTP_COOKIE=false
 VERIFY_PUBLIC_DOMAIN="${VERIFY_PUBLIC_DOMAIN:-0}"
 DEPLOY_TARGET_SCOPE="${DEPLOY_TARGET_SCOPE:-auto}"
 DEPLOY_FRONTEND_HOT_REQUIRED="${DEPLOY_FRONTEND_HOT_REQUIRED:-0}"
+DEPLOY_SYNC_MODE="${DEPLOY_SYNC_MODE:-package-only}"
 VERIFY_WEB_IMAGE_SYNC=1
 
 log() {
@@ -52,6 +53,7 @@ print_deploy_summary() {
     mode="full"
   fi
   log "summary outcome=${outcome} mode=${mode} scope=${DEPLOY_TARGET_SCOPE} target=${CLOUD_USER}@${CLOUD_HOST} port=${CLOUD_APP_PORT} domain=${CLOUD_DOMAIN:-none} https_required=${HTTPS_REQUIRED} public_domain_verify=${VERIFY_PUBLIC_DOMAIN} performance_verify=${RUN_PERFORMANCE_VERIFY}"
+  log "summary sync_mode=${DEPLOY_SYNC_MODE}"
   if [[ -n "$CLOUD_DOMAIN" ]]; then
     log "summary urls http=http://${CLOUD_HOST}:${CLOUD_APP_PORT} https=https://${CLOUD_DOMAIN}"
   else
@@ -76,6 +78,8 @@ Options:
                  Skip local compile/build checks for emergency deploys only.
   --scope <auto|all|frontend-hot|go|ops>
                  Choose deployment target. auto is the default and uses changed files.
+  --sync-mode <delta-package|package-only|git-inplace|git-clone>
+                 Choose release sync mode. delta-package falls back to package-only.
   --frontend-hot-required
                  Fail instead of falling back when frontend-hot has no dist artifact.
   --performance-verify
@@ -134,6 +138,10 @@ while [[ $# -gt 0 ]]; do
     --frontend-hot-required)
       DEPLOY_FRONTEND_HOT_REQUIRED=1
       shift
+      ;;
+    --sync-mode)
+      DEPLOY_SYNC_MODE="${2:?missing sync mode}"
+      shift 2
       ;;
     --performance-verify)
       RUN_PERFORMANCE_VERIFY=1
@@ -203,6 +211,7 @@ export AUTO_INITIAL_GIT_COMMIT AUTO_INSTALL_BACKUP_CRON AUTO_CONFIGURE_HTTPS REF
 export VERIFY_PUBLIC_DOMAIN
 export RUN_COMPILE RUN_FRONTEND_BUILD RUN_STRATEGY_TEST RUN_FULL_TESTS RUN_LATEST_DATA_ACCEPTANCE
 export DEPLOY_TARGET_SCOPE DEPLOY_FRONTEND_HOT_REQUIRED
+export DEPLOY_SYNC_MODE
 export CLOUD_SSH_TIMEOUT CLOUD_SSH_CONNECT_TIMEOUT CLOUD_SSH_SERVER_ALIVE_COUNT_MAX
 export RUN_PERFORMANCE_VERIFY_ROUNDS RUN_PERFORMANCE_VERIFY_SAMPLES
 
@@ -269,7 +278,7 @@ curl_retry() {
   done
   return 1
 }
-for name in tquant-app-mysql tquant-runtime-scheduler-mysql tquant-runtime-worker-mysql tquant-backtest-worker-mysql tquant-go-bff-gateway tquant-go-market-read-service tquant-go-scan-worker; do
+for name in tquant-app-mysql tquant-runtime-scheduler-mysql tquant-runtime-worker-mysql tquant-backtest-worker-mysql tquant-analytics-worker-mysql tquant-go-bff-gateway tquant-go-market-read-service tquant-go-scan-worker; do
   wait_for_container "$name"
 done
 if test "${VERIFY_WEB_IMAGE_SYNC:-1}" = "1"; then
@@ -323,6 +332,13 @@ if test -n "${MYSQL_ROOT_PASSWORD:-}"; then
 else
   echo mysql_tuning:skipped_missing_password
 fi
+sudo docker exec tquant-analytics-worker-mysql python - <<'PY'
+import duckdb, pyarrow  # noqa: F401
+from app.core.database import ping_database
+
+ping_database()
+print("analytics_worker_readyz:ok")
+PY
 sudo docker exec tquant-go-bff-gateway wget -qO- http://127.0.0.1:8091/readyz >/tmp/go_bff_readyz.json
 sudo docker exec tquant-go-market-read-service wget -qO- http://127.0.0.1:8092/readyz >/tmp/go_market_readyz.json
 sudo docker exec tquant-go-scan-worker wget -qO- http://127.0.0.1:8093/readyz >/tmp/go_scan_readyz.json
@@ -373,6 +389,7 @@ RUN_FULL_TESTS="$RUN_FULL_TESTS" \
 RUN_LATEST_DATA_ACCEPTANCE="$RUN_LATEST_DATA_ACCEPTANCE" \
 DEPLOY_TARGET_SCOPE="$DEPLOY_TARGET_SCOPE" \
 DEPLOY_FRONTEND_HOT_REQUIRED="$DEPLOY_FRONTEND_HOT_REQUIRED" \
+DEPLOY_SYNC_MODE="$DEPLOY_SYNC_MODE" \
 AUTO_INITIAL_GIT_COMMIT="$AUTO_INITIAL_GIT_COMMIT" \
 AUTO_INSTALL_BACKUP_CRON="$AUTO_INSTALL_BACKUP_CRON" \
 AUTO_CONFIGURE_HTTPS="$AUTO_CONFIGURE_HTTPS" \

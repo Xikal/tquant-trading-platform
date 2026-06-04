@@ -73,6 +73,32 @@ scripts/one_click_cloud_deploy.sh --scope go
 scripts/one_click_cloud_deploy.sh --scope all --full
 ```
 
+Delta upload path:
+
+```bash
+DEPLOY_SYNC_MODE=delta-package scripts/one_click_cloud_deploy.sh --scope all
+DEPLOY_SYNC_MODE=package-only scripts/one_click_cloud_deploy.sh --scope all
+```
+
+`delta-package` compares the local deploy manifest with
+`.runtime/deploy-manifest.json` on the current release. It uploads changed/new
+files plus a manifest-bounded delete list. Missing manifests, critical path
+changes, high change ratios, unsafe deletes, or remote staging validation
+automatically fall back to `package-only`. Remote GitHub clone/fetch remains
+explicit opt-in through `git-inplace` or `git-clone`.
+
+Deploy logs must include:
+
+```text
+sync_mode=<delta-package|package-only>
+changed_count=<n>
+deleted_count=<n>
+delta_bytes=<bytes>
+full_bytes=<bytes>
+upload_seconds=<seconds>
+fallback_reason=<reason|none>
+```
+
 Local single-process entrypoints:
 
 ```bash
@@ -86,6 +112,18 @@ scripts/run_platform_component.sh backtest-worker
 Use `--print-command` to inspect the exact command without starting a process.
 
 ## Rollback
+
+Per-process rollback/restart:
+
+```bash
+docker compose -f docker-compose.mysql.yml up -d --no-build --force-recreate app
+docker compose -f docker-compose.mysql.yml up -d --no-build --force-recreate runtime-worker
+docker compose -f docker-compose.mysql.yml up -d --no-build --force-recreate runtime-scheduler
+docker compose -f docker-compose.mysql.yml up -d --no-build --force-recreate analytics-worker
+docker compose -f docker-compose.mysql.yml up -d --no-build --force-recreate backtest-worker
+```
+
+Release rollback:
 
 1. Stop write-heavy workers before restoring data:
 
