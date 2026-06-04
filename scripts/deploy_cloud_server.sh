@@ -96,7 +96,7 @@ resolve_deploy_scope() {
         ;;
       docs/*|AGENTS.md|IMPLEMENTATION_PLAN.md)
         ;;
-      .github/workflows/ci.yml|.gitignore|.env.deploy.local.example|Makefile|backend/tests/test_cloud_deploy_scripts.py|scripts/cloud_ssh_lib.sh|scripts/deploy_cloud_server.sh|scripts/quick_cloud_deploy.sh|scripts/one_click_cloud_deploy.sh|scripts/install_https_nginx.sh|scripts/install_backup_cron.sh|scripts/backup_database.sh|scripts/clean_local_artifacts.sh)
+      .github/workflows/ci.yml|.gitignore|.env.deploy.local.example|Makefile|backend/tests/test_cloud_deploy_scripts.py|scripts/cloud_ssh_lib.sh|scripts/deploy_cloud_server.sh|scripts/quick_cloud_deploy.sh|scripts/one_click_cloud_deploy.sh|scripts/install_https_nginx.sh|scripts/install_backup_cron.sh|scripts/backup_database.sh|scripts/clean_local_artifacts.sh|scripts/run_platform_component.sh)
         has_ops=1
         ;;
       *)
@@ -243,11 +243,11 @@ make_package() {
 }
 
 remote_deploy_from_git() {
-  if [[ "$DEPLOY_RESOLVED_SCOPE" != "all" || "$DEPLOY_SYNC_MODE" == "package-only" ]]; then
+  if [[ "$DEPLOY_RESOLVED_SCOPE" == "frontend-hot" || "$DEPLOY_SYNC_MODE" == "package-only" ]]; then
     return 1
   fi
 
-  log "deploy via remote git sync ref ${DEPLOY_GIT_REF}"
+  log "deploy via remote git sync ref ${DEPLOY_GIT_REF} scope ${DEPLOY_RESOLVED_SCOPE}"
   cloud_ssh env \
     CLOUD_PROJECT_DIR="$CLOUD_PROJECT_DIR" \
     CLOUD_COMPOSE_FILE="$CLOUD_COMPOSE_FILE" \
@@ -392,38 +392,39 @@ if test -n "$REMOTE_DEBIAN_APT_SECURITY_MIRROR"; then
   upsert_env_value DEBIAN_APT_SECURITY_MIRROR "$REMOTE_DEBIAN_APT_SECURITY_MIRROR"
 fi
 
-docker_compose_build app analytics-worker
-sudo docker compose -f "$CLOUD_COMPOSE_FILE" up --no-build --force-recreate --abort-on-container-exit --exit-code-from migration migration
-sudo docker rm -f tquant-app-mysql tquant-runtime-scheduler-mysql tquant-runtime-worker-mysql tquant-backtest-worker-mysql tquant-analytics-worker-mysql 2>/dev/null || true
-sudo docker compose -f "$CLOUD_COMPOSE_FILE" up -d --no-build --force-recreate app runtime-scheduler runtime-worker backtest-worker analytics-worker
-EXPECTED_WEB_IMAGE=$(sudo docker image inspect tquant-web:mysql --format '{{.Id}}')
-for container in tquant-app-mysql tquant-runtime-scheduler-mysql tquant-runtime-worker-mysql tquant-backtest-worker-mysql; do
-  ACTUAL_WEB_IMAGE=$(sudo docker inspect "$container" --format '{{.Image}}')
-  if test "$ACTUAL_WEB_IMAGE" != "$EXPECTED_WEB_IMAGE"; then
-    echo "$container is still running $ACTUAL_WEB_IMAGE; expected $EXPECTED_WEB_IMAGE" >&2
+if test "$DEPLOY_SCOPE" = all; then
+  docker_compose_build app analytics-worker
+  sudo docker compose -f "$CLOUD_COMPOSE_FILE" up --no-build --force-recreate --abort-on-container-exit --exit-code-from migration migration
+  sudo docker rm -f tquant-app-mysql tquant-runtime-scheduler-mysql tquant-runtime-worker-mysql tquant-backtest-worker-mysql tquant-analytics-worker-mysql 2>/dev/null || true
+  sudo docker compose -f "$CLOUD_COMPOSE_FILE" up -d --no-build --force-recreate app runtime-scheduler runtime-worker backtest-worker analytics-worker
+  EXPECTED_WEB_IMAGE=$(sudo docker image inspect tquant-web:mysql --format '{{.Id}}')
+  for container in tquant-app-mysql tquant-runtime-scheduler-mysql tquant-runtime-worker-mysql tquant-backtest-worker-mysql; do
+    ACTUAL_WEB_IMAGE=$(sudo docker inspect "$container" --format '{{.Image}}')
+    if test "$ACTUAL_WEB_IMAGE" != "$EXPECTED_WEB_IMAGE"; then
+      echo "$container is still running $ACTUAL_WEB_IMAGE; expected $EXPECTED_WEB_IMAGE" >&2
+      exit 1
+    fi
+  done
+  echo "web_image:updated"
+  EXPECTED_ANALYTICS_IMAGE=$(sudo docker image inspect tquant-analytics:mysql --format '{{.Id}}')
+  ACTUAL_ANALYTICS_IMAGE=$(sudo docker inspect tquant-analytics-worker-mysql --format '{{.Image}}')
+  if test "$ACTUAL_ANALYTICS_IMAGE" != "$EXPECTED_ANALYTICS_IMAGE"; then
+    echo "tquant-analytics-worker-mysql is still running $ACTUAL_ANALYTICS_IMAGE; expected $EXPECTED_ANALYTICS_IMAGE" >&2
     exit 1
   fi
-done
-echo "web_image:updated"
-EXPECTED_ANALYTICS_IMAGE=$(sudo docker image inspect tquant-analytics:mysql --format '{{.Id}}')
-ACTUAL_ANALYTICS_IMAGE=$(sudo docker inspect tquant-analytics-worker-mysql --format '{{.Image}}')
-if test "$ACTUAL_ANALYTICS_IMAGE" != "$EXPECTED_ANALYTICS_IMAGE"; then
-  echo "tquant-analytics-worker-mysql is still running $ACTUAL_ANALYTICS_IMAGE; expected $EXPECTED_ANALYTICS_IMAGE" >&2
-  exit 1
-fi
-for _ in $(seq 1 30); do
-  ANALYTICS_STATUS=$(sudo docker inspect tquant-analytics-worker-mysql --format '{{.State.Health.Status}}' 2>/dev/null || echo none)
-  echo "analytics-worker health:$ANALYTICS_STATUS"
-  if test "$ANALYTICS_STATUS" = healthy; then
-    break
+  for _ in $(seq 1 30); do
+    ANALYTICS_STATUS=$(sudo docker inspect tquant-analytics-worker-mysql --format '{{.State.Health.Status}}' 2>/dev/null || echo none)
+    echo "analytics-worker health:$ANALYTICS_STATUS"
+    if test "$ANALYTICS_STATUS" = healthy; then
+      break
+    fi
+    sleep 2
+  done
+  if test "$ANALYTICS_STATUS" != healthy; then
+    echo "analytics-worker did not become healthy" >&2
+    exit 1
   fi
-  sleep 2
-done
-if test "$ANALYTICS_STATUS" != healthy; then
-  echo "analytics-worker did not become healthy" >&2
-  exit 1
-fi
-sudo docker exec tquant-analytics-worker-mysql python - <<'PY'
+  sudo docker exec tquant-analytics-worker-mysql python - <<'PY'
 from app.core.database import ping_database
 from app.services.analytics.dependencies import require_analytics_dependencies
 
@@ -431,9 +432,11 @@ require_analytics_dependencies()
 ping_database()
 print("analytics_worker_readyz:ok")
 PY
-sudo docker exec -u root tquant-app-mysql sh -c 'mkdir -p /app/backend/data && chown -R tquant:tquant /app/backend/data' || true
+  sudo docker exec -u root tquant-app-mysql sh -c 'mkdir -p /app/backend/data && chown -R tquant:tquant /app/backend/data' || true
+fi
 
-python3 - <<'PY'
+if test "$DEPLOY_SCOPE" = all || test "$DEPLOY_SCOPE" = go; then
+  python3 - <<'PY'
 from pathlib import Path
 from urllib.parse import quote
 
@@ -459,17 +462,22 @@ if not dsn:
         path.write_text(text, encoding='utf-8')
         print('mysql_dsn:created')
 PY
-docker_compose_build go-bff-gateway go-market-read-service go-scan-worker
-sudo docker compose -f "$CLOUD_COMPOSE_FILE" up -d --no-build --force-recreate go-bff-gateway go-market-read-service go-scan-worker
-EXPECTED_WEB_IMAGE=$(sudo docker image inspect tquant-web:mysql --format '{{.Id}}')
-for container in tquant-app-mysql tquant-runtime-scheduler-mysql tquant-runtime-worker-mysql tquant-backtest-worker-mysql; do
-  ACTUAL_WEB_IMAGE=$(sudo docker inspect "$container" --format '{{.Image}}')
-  if test "$ACTUAL_WEB_IMAGE" != "$EXPECTED_WEB_IMAGE"; then
-    echo "$container changed away from web image after Go service deploy" >&2
-    exit 1
+  docker_compose_build go-bff-gateway go-market-read-service go-scan-worker
+  sudo docker compose -f "$CLOUD_COMPOSE_FILE" up -d --no-build --force-recreate go-bff-gateway go-market-read-service go-scan-worker
+  if test "$DEPLOY_SCOPE" = all; then
+    EXPECTED_WEB_IMAGE=$(sudo docker image inspect tquant-web:mysql --format '{{.Id}}')
+    for container in tquant-app-mysql tquant-runtime-scheduler-mysql tquant-runtime-worker-mysql tquant-backtest-worker-mysql; do
+      ACTUAL_WEB_IMAGE=$(sudo docker inspect "$container" --format '{{.Image}}')
+      if test "$ACTUAL_WEB_IMAGE" != "$EXPECTED_WEB_IMAGE"; then
+        echo "$container changed away from web image after Go service deploy" >&2
+        exit 1
+      fi
+    done
   fi
-done
-sudo docker exec -u root tquant-app-mysql sh -c 'mkdir -p /app/backend/data/ml_models && chown -R tquant:tquant /app/backend/data' || true
+fi
+if test "$DEPLOY_SCOPE" = all; then
+  sudo docker exec -u root tquant-app-mysql sh -c 'mkdir -p /app/backend/data/ml_models && chown -R tquant:tquant /app/backend/data' || true
+fi
 ls -dt /home/$CLOUD_USER/gupiao-deploy-backup-* 2>/dev/null | tail -n +$((CLOUD_KEEP_BACKUPS + 1)) | xargs -r sudo rm -rf
 sudo docker ps --format 'table {{.Names}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}'
 REMOTE
@@ -963,7 +971,7 @@ main() {
   if remote_deploy_from_git; then
     log "remote git sync deploy completed"
   else
-    if [[ "$DEPLOY_RESOLVED_SCOPE" == "all" && "$DEPLOY_SYNC_MODE" != "package-only" ]]; then
+    if [[ "$DEPLOY_RESOLVED_SCOPE" != "frontend-hot" && "$DEPLOY_SYNC_MODE" != "package-only" ]]; then
       log "remote git sync unavailable; falling back to package upload"
     fi
     package_path="$(make_package | tail -n 1)"

@@ -255,10 +255,12 @@ def test_cloud_deploy_prefers_remote_git_sync_before_package_upload() -> None:
     assert 'DEPLOY_GIT_REMOTE_URL="${DEPLOY_GIT_REMOTE_URL:-https://github.com/Xikal/tquant-trading-platform.git}"' in deploy_script
     assert 'DEPLOY_GIT_REF="${DEPLOY_GIT_REF:-${GITHUB_SHA:-HEAD}}"' in deploy_script
     assert "remote_deploy_from_git" in deploy_script
-    assert "deploy via remote git sync ref" in deploy_script
+    assert '[[ "$DEPLOY_RESOLVED_SCOPE" == "frontend-hot" || "$DEPLOY_SYNC_MODE" == "package-only" ]]' in deploy_script
+    assert "deploy via remote git sync ref ${DEPLOY_GIT_REF} scope ${DEPLOY_RESOLVED_SCOPE}" in deploy_script
     assert "deploy_sync:git" in deploy_script
     assert "git clone --no-checkout \"$git_url\" \"$WORKTREE\"" in deploy_script
     assert "git -C \"$WORKTREE\" checkout --detach \"$DEPLOY_GIT_REF\"" in deploy_script
+    assert '[[ "$DEPLOY_RESOLVED_SCOPE" != "frontend-hot" && "$DEPLOY_SYNC_MODE" != "package-only" ]]' in deploy_script
     assert "remote git sync unavailable; falling back to package upload" in deploy_script
     assert "package-only" in deploy_script
     assert "DEPLOY_GIT_REF: ${{ github.sha }}" in workflow
