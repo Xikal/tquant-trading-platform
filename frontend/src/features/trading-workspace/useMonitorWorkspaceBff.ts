@@ -1,6 +1,7 @@
 import { useCallback } from "react";
 import { api } from "../../api/client";
 import type { components } from "../../generated/api-types";
+import type { LowBuyPriorityBoardResult } from "../../types";
 import type { MonitorWorkspaceBffResponse as LegacyMonitorWorkspaceBffResponse } from "../../types";
 import { errorMessage } from "../workspace-shared/workspaceFormatters";
 
@@ -54,6 +55,26 @@ export function stableMonitorPriorityParityPayload(
   board: { items?: Array<Record<string, unknown>> } | null | undefined,
 ): string {
   return JSON.stringify(monitorPriorityBoardParityProjection(board));
+}
+
+export function shouldFallbackMonitorPriorityBoard(
+  workspace: Pick<MonitorWorkspaceData, "monitor_snapshot"> | null | undefined,
+): boolean {
+  return (workspace?.monitor_snapshot?.priority_board?.items ?? []).length <= 0;
+}
+
+export function fetchMonitorPriorityBoardFallback(
+  workspace: Pick<MonitorWorkspaceData, "monitor_snapshot"> | null | undefined,
+  fetchPriorityBoard: (
+    limit: number,
+    strategyVariant: "baseline",
+    refresh: "cache",
+  ) => Promise<LowBuyPriorityBoardResult>,
+): Promise<LowBuyPriorityBoardResult | null> {
+  if (!shouldFallbackMonitorPriorityBoard(workspace)) {
+    return Promise.resolve(null);
+  }
+  return fetchPriorityBoard(12, "baseline", "cache");
 }
 
 function numberOrNull(value: unknown): number | null {

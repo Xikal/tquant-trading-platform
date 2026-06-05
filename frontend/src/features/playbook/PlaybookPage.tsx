@@ -6,7 +6,6 @@ import { WorkspacePageIntro } from "../workspace-shared/WorkspacePageIntro";
 import { RitualFortuneStrip, RitualLuckyDraw, RitualSignalSeal } from "../ritual-ui";
 import { WEB_PLAYBOOK_TABS } from "../workspace-shared/workspaceConstants";
 import { candidateToCard } from "../workspace-shared/workspaceViewModels";
-import { filterTodayConfirmedCandidates, isBeijingTodayTradeDate } from "../workspace-shared/todayRecommendations";
 import { formatNumber, formatPct, strategyLabel, toneFromChange } from "../workspace-shared/workspaceFormatters";
 import type { MetricItem, StockCardView } from "../workspace-shared/workspaceTypes";
 import { VirtualCardList } from "../../ui/list/VirtualCardList";
@@ -37,18 +36,14 @@ export function PlaybookPage({
     ...(playbook?.confirmed_candidates ?? []),
     ...(playbook?.candidates ?? []),
   ]);
-  const todayCandidates = isBeijingTodayTradeDate(playbook?.latest_trade_date)
-    ? allCandidates
-    : [];
-  const buyNow = filterTodayConfirmedCandidates(playbook).map(candidateToCard);
-  const observeConfirmed = todayCandidates.filter((item) => item.buy_signal_state === "observe_confirmed").map(candidateToCard);
-  const nearEntry = todayCandidates.filter((item) => item.buy_signal_state === "near_entry").map(candidateToCard);
-  const watch = todayCandidates.filter((item) => item.buy_signal_state === "watch").map(candidateToCard);
-  const avoid = todayCandidates.filter((item) => item.buy_signal_state === "avoid").map(candidateToCard);
+  const buyNow = allCandidates.filter((item) => item.buy_signal_state === "buy_now" || item.buy_signal_state === "soft_buy_now").map(candidateToCard);
+  const observeConfirmed = allCandidates.filter((item) => item.buy_signal_state === "observe_confirmed").map(candidateToCard);
+  const nearEntry = allCandidates.filter((item) => item.buy_signal_state === "near_entry").map(candidateToCard);
+  const watch = allCandidates.filter((item) => item.buy_signal_state === "watch").map(candidateToCard);
+  const avoid = allCandidates.filter((item) => item.buy_signal_state === "avoid").map(candidateToCard);
   const passiveCandidates = [...watch, ...avoid];
-  const confirmedCount = buyNow.length;
-  const hasHiddenCandidates = allCandidates.length > 0;
-  const focus = buyNow[0] ?? null;
+  const attentionCount = buyNow.length + observeConfirmed.length + nearEntry.length;
+  const focus = buyNow[0] ?? observeConfirmed[0] ?? nearEntry[0] ?? watch[0];
   const strategyName = tabLabel(strategy, tabs) || strategyLabel(strategy);
   const loadedStrategyName = playbook?.strategy_title || tabLabel(playbook?.strategy_key || strategy, tabs) || strategyLabel(playbook?.strategy_key || strategy);
   const switchingText = playbook && playbook.strategy_key !== strategy ? "，正在切换数据" : "";
@@ -63,17 +58,17 @@ export function PlaybookPage({
         <WorkspacePageIntro
           title="选股宝典"
           summary={`${strategyName}：${strategyPurpose(strategy)}`}
-          tone={confirmedCount ? "up" : "neutral"}
+          tone={buyNow.length ? "up" : attentionCount > 0 ? "warn" : "neutral"}
           actions={<Button onClick={onRefresh} loading={loading === "playbook"}>刷新全量结果</Button>}
           pills={[
-            { label: "可执行", value: String(confirmedCount), tone: confirmedCount ? "up" : "neutral" },
+            { label: "确认可买", value: String(buyNow.length), tone: buyNow.length ? "up" : "neutral" },
             { label: "全量深筛", value: String(playbook?.scanned_count ?? "--") },
             { label: "数据状态", value: playbook?.data_quality_text ?? "--", tone: dataQualityTone(playbook?.data_quality) },
             { label: "交易日", value: playbook?.latest_trade_date ?? "--" },
           ]}
         />
         <Flex wrap gap={6} align="center" className="tq-playbook-page__hero-actions">
-          <RitualFortuneStrip marketTone={confirmedCount ? "strong" : "unknown"} compact />
+          <RitualFortuneStrip marketTone={buyNow.length ? "strong" : attentionCount ? "neutral" : "unknown"} compact />
           <RitualLuckyDraw compact />
         </Flex>
         <Flex wrap gap={6} className="tq-playbook-page__strategy-tabs">
@@ -126,15 +121,23 @@ export function PlaybookPage({
         <PanelTitle title="今日主看" />
         {focus ? (
           <>
-            <p>主看：{focus.name} {focus.symbol}，{focus.actionText}，{focus.details}</p>
+            {buyNow.length <= 0 ? (
+              <Callout
+                title="当前无确认买入"
+                detail="以下标的是后端策略筛出的观察或接近买点样本，不能当作确认买入；等待价格、承接和风控同时满足后才会升级。"
+                tone="warn"
+                compact
+              />
+            ) : null}
+            <p>{buyNow.length > 0 ? "主看" : "观察"}：{focus.name} {focus.symbol}，{focus.actionText}，{focus.details}</p>
             <RitualSignalSeal signalState={ritualStateFromAction(focus.actionText)} riskLevel={focus.riskText} />
             <InfoPill label="主线轮动" value={playbook?.hot_industries?.slice(0, 4).join(" / ") || "--"} />
           </>
-        ) : hasHiddenCandidates ? (
+        ) : avoid.length ? (
           <Callout
-            title="今日暂无确认推荐"
-            detail="当前不展示旧交易日或观察层股票；若后台刷新后出现当日确认票，会自动进入对应榜单。"
-            tone="neutral"
+            title="当前全部放弃"
+            detail="当前策略有样本但都未通过买点、承接或风控过滤，不展示为主看标的。"
+            tone="down"
             compact
           />
         ) : <EmptyState text="当前策略暂无主看标的。" />}
@@ -228,10 +231,10 @@ function CandidateTabs({
   onSelect: (stock: StockCardView) => void;
 }) {
   const sections = [
-    { key: "buy", title: "今日确认推荐", short: "可买", items: buyNow, empty: "今日暂无确认推荐，榜单保持空状态。" },
-    { key: "observe", title: "今日观察确认（非推荐）", short: "观察", items: observeConfirmed, empty: "今日暂无观察确认股票。" },
-    { key: "near", title: "今日等确认（非推荐）", short: "等确认", items: nearEntry, empty: "今日暂无接近买点股票。" },
-    { key: "watch", title: "今日继续观察 / 放弃", short: "观察/放弃", items: passiveCandidates, empty: "今日暂无继续观察或放弃股票。" },
+    { key: "buy", title: "现在可买 / 小仓试买", short: "可买", items: buyNow, empty: "当前没有可以直接执行的股票" },
+    { key: "observe", title: "观察确认", short: "观察", items: observeConfirmed, empty: "当前没有观察确认的股票" },
+    { key: "near", title: "等确认", short: "等确认", items: nearEntry, empty: "当前没有接近买点的股票" },
+    { key: "watch", title: "继续观察 / 今天放弃", short: "观察/放弃", items: passiveCandidates, empty: "这一档为空，说明当前结构要么未到位，要么质量不足。" },
   ];
   return (
     <div className="panel tq-playbook-page__candidate-tabs tq-playbook-candidate-tabs">

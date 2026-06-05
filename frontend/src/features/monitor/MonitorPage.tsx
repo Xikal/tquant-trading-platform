@@ -133,6 +133,8 @@ export const MonitorPage = memo(function MonitorPage({
   const screens = Grid.useBreakpoint();
   const primaryAction = useMemo(() => resolveTodayAction(watchCards, priorityCards, priorityBoard), [watchCards, priorityCards, priorityBoard]);
   const priorityNotice = useMemo(() => buildPriorityNotice(priorityBoard, priorityCards.length), [priorityBoard, priorityCards.length]);
+  const immediateCount = priorityBoard?.immediate_count ?? 0;
+  const observeCount = (priorityBoard?.focus_count ?? 0) + (priorityBoard?.track_count ?? 0);
   const priorityListInitializedRef = useRef(false);
   const previousPrioritySymbolsRef = useRef<Set<string> | null>(null);
   const priorityNewSymbols = useMemo(() => {
@@ -263,7 +265,7 @@ export const MonitorPage = memo(function MonitorPage({
           <InfoPill compact label="快照日期" value={`${priorityBoard?.latest_trade_date ?? "--"} / 更新 ${shortTime(priorityBoard?.updated_at) || "--"}`} />
           <InfoPill compact label="数据状态" value={priorityBoard?.data_quality_text ?? "--"} tone={dataQualityTone(priorityBoard?.data_quality)} />
           <InfoPill compact label="市场总闸" value={`${priorityBoard?.market_gate_decision ?? "--"} / ${Math.round((priorityBoard?.market_firepower_multiplier ?? 1) * 100)}%`} tone={priorityBoard?.market_gate_decision === "block" ? "down" : priorityBoard?.market_gate_decision === "reduce" ? "warn" : "up"} />
-          <InfoPill compact label="今日分层" value={`确认 ${priorityCards.length} / 观察 ${(priorityBoard?.focus_count ?? 0) + (priorityBoard?.track_count ?? 0)} / 榜单 ${priorityBoard?.total_candidates ?? 0}`} tone={priorityCards.length ? "up" : "neutral"} />
+          <InfoPill compact label="今日分层" value={`确认 ${immediateCount} / 观察 ${observeCount} / 榜单 ${priorityBoard?.total_candidates ?? 0}`} tone={immediateCount ? "up" : "neutral"} />
         </ContextRow>
         <MarketStateGatePanel board={priorityBoard} />
         <SectorLeaderGatePanel sectorRelativeStrength={sectorRelativeStrength} />

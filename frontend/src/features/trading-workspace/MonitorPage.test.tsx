@@ -88,7 +88,7 @@ describe("MonitorPage", () => {
         keyLevelAlerts={[]}
         sectorEtfT0={null}
         pairedHedge={null}
-        priorityCards={[]}
+        priorityCards={[priorityCardFixture()]}
         watchCards={[]}
         runtime={null}
         instrumentSyncStatus={null}
@@ -114,13 +114,17 @@ describe("MonitorPage", () => {
     expect(html).toContain("前排加权");
     expect(html).toContain("前排极精选");
     expect(html).toContain("只做验证，暂不影响真实排序");
-    expect(html).toContain("今日暂无确认推荐");
-    expect(html).toContain("当前不展示旧交易日股票，榜单保持空状态。");
-    expect(html).not.toContain("今日无生产买入信号");
+    expect(html).toContain("当前无确认买入");
+    expect(html).toContain("测试股份");
+    expect(html).toContain("观察确认");
+    expect(html).toContain("可买 0 / 观察 1");
+    expect(html).toContain("确认 0 / 观察 1 / 榜单 1");
+    expect(html).not.toContain("当前不展示旧交易日股票");
+    expect(html).not.toContain("当前无生产买入信号");
     expect(html).not.toContain("买入推荐");
   });
 
-  it("hides queued refresh copy when there is no visible current-day recommendation", () => {
+  it("hides queued refresh copy while keeping stale strategy candidates visible", () => {
     const html = renderMonitorPage(
       <MonitorPage
         priorityBoard={{
@@ -135,7 +139,7 @@ describe("MonitorPage", () => {
         keyLevelAlerts={[]}
         sectorEtfT0={null}
         pairedHedge={null}
-        priorityCards={[]}
+        priorityCards={[priorityCardFixture()]}
         watchCards={[]}
         runtime={null}
         instrumentSyncStatus={null}
@@ -159,7 +163,9 @@ describe("MonitorPage", () => {
 
     expect(html).not.toContain("监控榜单刷新任务已排队");
     expect(html).not.toContain("稍后会自动更新");
-    expect(html).toContain("当前不展示旧交易日股票，榜单保持空状态。");
+    expect(html).toContain("测试股份");
+    expect(html).toContain("观察确认");
+    expect(html).not.toContain("榜单保持空状态");
   });
 
   it("renders hourly all-market snapshot feedback", () => {
@@ -520,9 +526,9 @@ function priorityBoardFixture(): LowBuyPriorityBoardResult {
     as_of_date: "2026-05-30",
     latest_trade_date: "2026-05-29",
     updated_at: "2026-05-30 10:00:00",
-    total_candidates: 0,
+    total_candidates: 1,
     immediate_count: 0,
-    focus_count: 0,
+    focus_count: 1,
     track_count: 0,
     market_state: "repair",
     market_state_text: "修复",
@@ -551,6 +557,45 @@ function priorityBoardFixture(): LowBuyPriorityBoardResult {
     hot_industries: [],
     hot_industry_source: "",
     hot_industry_source_text: "",
-    items: [],
+    items: [{
+      symbol: "600000",
+      name: "测试股份",
+      strategy_key: "volume_shrink",
+      strategy_title: "缩量回踩",
+      latest_price: 10.12,
+      change_pct: 1.23,
+      priority_score: 82,
+      risk_tier: "note",
+      suggested_position_text: "10%",
+      buy_signal_state: "observe_confirmed",
+      buy_signal_text: "观察确认",
+      entry_zone_low: 9.8,
+      entry_zone_high: 10.2,
+      stop_loss: 9.5,
+      action_summary: "观察确认",
+      next_action_text: "等待承接确认",
+      primary_lane_reason: "价格接近支撑",
+      display_lane: "front_row_weighted",
+      strategy_titles: ["缩量回踩"],
+      matched_strategy_variants: ["baseline"],
+    } as any],
+  };
+}
+
+function priorityCardFixture() {
+  return {
+    name: "测试股份",
+    symbol: "600000",
+    identityNote: "缩量回踩",
+    priceText: "10.120",
+    changeText: "+1.23%",
+    scoreText: "82",
+    riskText: "中风险",
+    actionText: "观察确认",
+    entryText: "9.800-10.200",
+    stopText: "9.500",
+    details: "价格接近支撑",
+    executionHint: "观察确认不是买入建议",
+    tone: "up" as const,
   };
 }

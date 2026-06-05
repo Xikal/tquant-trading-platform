@@ -27,7 +27,6 @@ import { DEFAULT_PLAYBOOK_STRATEGY } from "../workspace-shared/workspaceConstant
 import { errorMessage } from "../workspace-shared/workspaceFormatters";
 import type { StockCardView } from "../workspace-shared/workspaceTypes";
 import { priorityToCard, watchSignalToCard } from "../workspace-shared/workspaceViewModels";
-import { filterTodayConfirmedPriorityItems } from "../workspace-shared/todayRecommendations";
 import {
   applyPriorityBoardQuoteRefresh,
   applySectorEtfQuoteRefresh,
@@ -38,7 +37,7 @@ import {
   shouldRefreshRealtimePrices,
 } from "./realtimePriceRefresh";
 import { createStableCardListMapper } from "./stableMonitorCards";
-import { isMonitorBffDisabled, useMonitorWorkspaceBff } from "./useMonitorWorkspaceBff";
+import { fetchMonitorPriorityBoardFallback, isMonitorBffDisabled, useMonitorWorkspaceBff } from "./useMonitorWorkspaceBff";
 
 const MONITOR_SERVER_KEYS = {
   priorityBoard: ["monitor", "priority-board"] as const,
@@ -121,12 +120,12 @@ export function useMonitorData({ active, withLoading, setError, setNotice, onAut
   const monitorWorkspaceBff = useMonitorWorkspaceBff();
 
   const priorityCards: StockCardView[] = useMemo(
-    () => priorityCardMapperRef.current(filterTodayConfirmedPriorityItems(priorityBoard)),
-    [priorityBoard]
+    () => priorityCardMapperRef.current(priorityBoard?.items ?? []),
+    [priorityBoard?.items]
   );
   const visiblePriorityItems = useMemo(
-    () => filterTodayConfirmedPriorityItems(priorityBoard),
-    [priorityBoard]
+    () => priorityBoard?.items ?? [],
+    [priorityBoard?.items]
   );
   const watchCards: StockCardView[] = useMemo(
     () => watchCardMapperRef.current(watchlistSignals),
@@ -333,6 +332,10 @@ export function useMonitorData({ active, withLoading, setError, setNotice, onAut
       if (!runtimeLoadedFromBff && includeRuntime && Boolean(getAdminApiToken())) {
         fallbackRequests.push(api.getRuntimeStatus());
       }
+      const priorityBoardFallbackRequest = fetchMonitorPriorityBoardFallback(
+        workspaceResult.value,
+        api.getLowBuyPriorityBoard,
+      );
       const fallbackResults = await Promise.allSettled(fallbackRequests);
       for (const result of fallbackResults) {
         if (result.status !== "fulfilled") {
@@ -344,7 +347,20 @@ export function useMonitorData({ active, withLoading, setError, setNotice, onAut
           setRuntime(result.value);
         }
       }
-      const rejections = [workspaceResult, ...fallbackResults].filter(
+      const priorityBoardFallbackResult = priorityBoardFallbackRequest
+        ? await Promise.resolve(priorityBoardFallbackRequest)
+          .then((value) => ({ status: "fulfilled" as const, value }))
+          .catch((reason) => ({ status: "rejected" as const, reason }))
+        : null;
+      if (priorityBoardFallbackResult?.status === "fulfilled" && priorityBoardFallbackResult.value) {
+        setPriorityBoard(priorityBoardFallbackResult.value);
+        laneBoardsRef.current.baseline = priorityBoardFallbackResult.value;
+      }
+      const rejections = [
+        workspaceResult,
+        ...fallbackResults,
+        ...(priorityBoardFallbackResult ? [priorityBoardFallbackResult] : []),
+      ].filter(
         (item): item is PromiseRejectedResult => item.status === "rejected"
       );
       // 会话过期：401 必须触发登出，否则轮询会无限刷 401（清登录态后轮询随 currentUser 置空而停止）。
@@ -525,7 +541,7 @@ export function useMonitorData({ active, withLoading, setError, setNotice, onAut
     const currentBoard = priorityBoardRef.current;
     const currentWatchlist = watchlistSignalsRef.current;
     const currentEtfT0 = sectorEtfT0Ref.current;
-    const priorityGroups = collectPrioritySymbolsByStrategy(filterTodayConfirmedPriorityItems(currentBoard));
+    const priorityGroups = collectPrioritySymbolsByStrategy(currentBoard?.items ?? []);
     const etfSymbols = [...new Set((currentEtfT0?.opportunities ?? []).map((item) => item.etf_symbol).filter(Boolean))];
     if (!priorityGroups.length && !currentWatchlist.length && !etfSymbols.length) {
       return;

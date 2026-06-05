@@ -6,7 +6,6 @@ import { MenuOutlined } from "../../ui/icons";
 import type { AuthUser, LowBuyPriorityBoardResult } from "../../types";
 import type { Page, StockCardView } from "../workspace-shared/workspaceTypes";
 import { pageTitle } from "./navConfig";
-import { countTodayConfirmedPriorityItems } from "../workspace-shared/todayRecommendations";
 import {
   TOPBAR_CHIP_STYLE,
   TOPBAR_CHIP_VALUE_STYLE,
@@ -45,7 +44,7 @@ export function Topbar({
   const screens = useBreakpoint();
   const isMobile = !screens.lg;
   const riskCount = watchCards.filter((item) => item.riskText.includes("高")).length;
-  const opportunityCount = countTodayConfirmedPriorityItems(priorityBoard);
+  const opportunityCount = priorityBoard?.total_candidates ?? priorityBoard?.items.length ?? 0;
   const userName = currentUser.display_name || currentUser.username;
 
   useEffect(() => {

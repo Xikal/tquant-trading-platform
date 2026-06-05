@@ -1,8 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
 import {
+  fetchMonitorPriorityBoardFallback,
   isMonitorBffDisabled,
   monitorBffAggregateEnabled,
   monitorPriorityBoardParityProjection,
+  shouldFallbackMonitorPriorityBoard,
   stableMonitorPriorityParityPayload,
 } from "./useMonitorWorkspaceBff";
 
@@ -50,6 +52,50 @@ describe("monitor BFF priority-board parity projection", () => {
     await expect(sha256(stableMonitorPriorityParityPayload(aggregateBoard))).resolves.toBe(
       await sha256(stableMonitorPriorityParityPayload(legacyBoard)),
     );
+  });
+});
+
+describe("monitor BFF priority-board fallback guard", () => {
+  it("falls back to the cache priority-board endpoint when the aggregate snapshot is empty", () => {
+    expect(shouldFallbackMonitorPriorityBoard(null)).toBe(true);
+    expect(shouldFallbackMonitorPriorityBoard({ monitor_snapshot: null })).toBe(true);
+    expect(shouldFallbackMonitorPriorityBoard({
+      monitor_snapshot: {
+        priority_board: { items: [] },
+      },
+    } as any)).toBe(true);
+  });
+
+  it("does not fall back when the aggregate snapshot already carries strategy candidates", () => {
+    expect(shouldFallbackMonitorPriorityBoard({
+      monitor_snapshot: {
+        priority_board: priorityBoardFixture(),
+      },
+    } as any)).toBe(false);
+  });
+
+  it("requests the read-model cache fallback with the production baseline lane", async () => {
+    const fetchPriorityBoard = vi.fn(async () => priorityBoardFixture());
+
+    await expect(fetchMonitorPriorityBoardFallback({
+      monitor_snapshot: {
+        priority_board: { items: [] },
+      },
+    } as any, fetchPriorityBoard as any)).resolves.toEqual(priorityBoardFixture());
+
+    expect(fetchPriorityBoard).toHaveBeenCalledWith(12, "baseline", "cache");
+  });
+
+  it("skips the extra priority-board request when the BFF snapshot is populated", async () => {
+    const fetchPriorityBoard = vi.fn(async () => priorityBoardFixture());
+
+    await expect(fetchMonitorPriorityBoardFallback({
+      monitor_snapshot: {
+        priority_board: priorityBoardFixture(),
+      },
+    } as any, fetchPriorityBoard as any)).resolves.toBeNull();
+
+    expect(fetchPriorityBoard).not.toHaveBeenCalled();
   });
 });
 

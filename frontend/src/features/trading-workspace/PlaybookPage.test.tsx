@@ -38,10 +38,11 @@ describe("PlaybookPage", () => {
 
     expect((html.match(/全量深筛/g) ?? []).length).toBe(1);
     expect((html.match(/数据状态/g) ?? []).length).toBe(1);
+    expect(html).toContain("确认可买");
     expect(html).toContain("真实成交样本");
     expect(html).toContain("5日达标率");
     expect(html).toContain("tq-playbook-candidate-tabs");
-    expect(html).toContain("今日暂无确认推荐，榜单保持空状态。");
+    expect(html).toContain("当前没有可以直接执行的股票");
     expect(html).not.toContain(">现在可买<");
     expect(html).toContain(">观察<span");
     expect(html).toContain(">等确认<span");
@@ -152,7 +153,7 @@ describe("PlaybookPage", () => {
     expect(html).toContain("tq-playbook-dense-row__meta");
   });
 
-  it("keeps observe-only stocks out of current-day recommendations but visible in observe tab", () => {
+  it("shows observe-only stocks as strategy candidates without marking them buyable", () => {
     const html = renderToStaticMarkup(
       <PlaybookPage
         strategy="volume_shrink"
@@ -194,17 +195,18 @@ describe("PlaybookPage", () => {
       />
     );
 
-    expect(html).toContain("今日暂无确认推荐");
+    expect(html).toContain("当前无确认买入");
+    expect(html).toContain("确认可买");
     expect(html).toContain("tq-playbook-candidate-tabs");
-    expect(html).toContain("今日暂无确认推荐，榜单保持空状态。");
+    expect(html).toContain("当前没有可以直接执行的股票");
     expect(html).toContain(">观察<span");
     expect(html).toMatch(/>观察<span[^>]*tq-playbook-page__tab-count[^>]*>1<\/span>/);
+    expect(html).toContain("观察：观察股份");
+    expect(html).toContain("600123");
     expect(html).not.toContain("主看：观察股份");
-    expect(html).not.toContain("观察股份");
-    expect(html).not.toContain("600123");
   });
 
-  it("hides stale non-buy candidates from playbook category tabs", () => {
+  it("keeps backend stale-date candidates visible in their strategy state lanes", () => {
     const html = renderToStaticMarkup(
       <PlaybookPage
         strategy="volume_shrink"
@@ -247,8 +249,10 @@ describe("PlaybookPage", () => {
     );
 
     expect(html).toContain(">等确认<span");
-    expect(html).not.toContain("旧观察");
-    expect(html).not.toContain("600456");
+    expect(html).toMatch(/>等确认<span[^>]*tq-playbook-page__tab-count[^>]*>1<\/span>/);
+    expect(html).toContain("观察：旧观察");
+    expect(html).toContain("600456");
+    expect(html).toContain("当前无确认买入");
   });
 });
 
