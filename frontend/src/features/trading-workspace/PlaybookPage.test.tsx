@@ -40,6 +40,8 @@ describe("PlaybookPage", () => {
     expect((html.match(/数据状态/g) ?? []).length).toBe(1);
     expect(html).toContain("真实成交样本");
     expect(html).toContain("5日达标率");
+    expect(html).toContain("tq-playbook-candidate-tabs");
+    expect(html).toContain("今日暂无确认推荐，榜单保持空状态。");
     expect(html).not.toContain(">现在可买<");
     expect(html).not.toContain(">观察确认<");
   });
@@ -191,6 +193,8 @@ describe("PlaybookPage", () => {
     );
 
     expect(html).toContain("今日暂无确认推荐");
+    expect(html).toContain("tq-playbook-candidate-tabs");
+    expect(html).toContain("今日暂无确认推荐，榜单保持空状态。");
     expect(html).not.toContain("观察股份");
     expect(html).not.toContain("600123");
     expect(html).not.toContain("观察确认");

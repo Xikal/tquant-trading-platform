@@ -136,13 +136,13 @@ export function buildPriorityNotice(
 }
 
 export function buildPriorityEmptyText(priorityBoard: LowBuyPriorityBoardResult | null): string {
-  if (!priorityBoard || isPriorityBoardRefreshing(priorityBoard)) {
-    return "";
+  if (!priorityBoard) {
+    return "生产优先榜暂无数据，榜单保持空状态。";
   }
-  if ((priorityBoard.total_candidates ?? 0) <= 0) {
-    return "";
+  if (!isTodayPriorityBoard(priorityBoard)) {
+    return "当前不展示旧交易日股票，榜单保持空状态。";
   }
-  return "";
+  return "今日暂无确认推荐，榜单保持空状态。";
 }
 
 export function shouldShowPrioritySnapshotWarning(

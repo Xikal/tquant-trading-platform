@@ -131,13 +131,11 @@ export function PlaybookPage({
           />
         ) : <EmptyState text="当前策略暂无主看标的。" />}
       </aside>
-      {confirmedCount ? (
-        <CandidateTabs
-          buyNow={buyNow}
-          onAnalyze={onAnalyze}
-          onSelect={onSelect}
-        />
-      ) : null}
+      <CandidateTabs
+        buyNow={buyNow}
+        onAnalyze={onAnalyze}
+        onSelect={onSelect}
+      />
     </section>
   );
 }
@@ -213,7 +211,7 @@ function CandidateTabs({
   onSelect: (stock: StockCardView) => void;
 }) {
   const sections = [
-    { key: "buy", title: "今日确认推荐", short: "可买", items: buyNow, empty: "" },
+    { key: "buy", title: "今日确认推荐", short: "可买", items: buyNow, empty: "今日暂无确认推荐，榜单保持空状态。" },
   ];
   return (
     <div className="panel tq-playbook-page__candidate-tabs tq-playbook-candidate-tabs">

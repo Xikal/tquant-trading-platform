@@ -115,6 +115,7 @@ describe("MonitorPage", () => {
     expect(html).toContain("前排极精选");
     expect(html).toContain("只做验证，暂不影响真实排序");
     expect(html).toContain("今日暂无确认推荐");
+    expect(html).toContain("当前不展示旧交易日股票，榜单保持空状态。");
     expect(html).not.toContain("今日无生产买入信号");
     expect(html).not.toContain("买入推荐");
   });
@@ -158,6 +159,7 @@ describe("MonitorPage", () => {
 
     expect(html).not.toContain("监控榜单刷新任务已排队");
     expect(html).not.toContain("稍后会自动更新");
+    expect(html).toContain("当前不展示旧交易日股票，榜单保持空状态。");
   });
 
   it("renders hourly all-market snapshot feedback", () => {
