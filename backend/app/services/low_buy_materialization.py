@@ -6,17 +6,20 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
+from app.core.database import SessionLocal
 from app.models.schema_defs.phase4 import RuntimeTaskCreate
 from app.services.latest_data_status import (
     expected_low_buy_trade_date,
     publish_latest_trade_date_if_ready,
 )
 from app.core.config import get_settings
+from app.services.low_buy.strategy_lanes import STRATEGY_VARIANTS
 from app.services.low_buy.strategy_policy import OBSERVATION_LAYER_STRATEGIES, PRODUCTION_PRIORITY_STRATEGIES
 from app.services.tasks import RuntimeTaskQueue
 
 DEFAULT_LIMIT = 40
 DEFAULT_SCAN_LIMIT = 480
+PRIORITY_BOARD_WARM_LIMITS = (12, 20, 30)
 TASK_TYPE = "low_buy_materialization_refresh"
 
 
@@ -110,13 +113,20 @@ def refresh_latest_low_buy_materialization(
         if go_result.get("ok"):
             publish_status = _publish_latest_materialization_state(required)
             missing = list(publish_status.get("missing_strategies") or [])
+            priority_board_read_models = _warm_priority_board_after_publish(publish_status)
+            ok = (
+                not missing
+                and publish_status.get("status") == "success"
+                and priority_board_read_models.get("ok") is not False
+            )
             return {
                 **go_result,
-                "ok": not missing and publish_status.get("status") == "success",
+                "ok": ok,
                 "source": "go_scan_worker",
                 "publish_status": publish_status,
                 "published_trade_date": str(publish_status.get("published_trade_date") or ""),
                 "missing_strategies": missing,
+                "priority_board_read_models": priority_board_read_models,
                 "main_force_shadow": warm_main_force_shadow_observations(
                     strategies=required,
                     limit=limit,
@@ -131,6 +141,69 @@ def refresh_latest_low_buy_materialization(
         strategies=required,
         fallback_reason=None if not prefer_go else go_result.get("fallback_reason", "go_scan_worker_unavailable"),
     )
+
+
+def warm_priority_board_read_models(
+    *,
+    variants: list[str] | tuple[str, ...] | None = None,
+    limits: list[int] | tuple[int, ...] | None = None,
+    reason: str = "latest_low_buy_materialization",
+) -> dict[str, Any]:
+    active_variants = [item for item in (variants or STRATEGY_VARIANTS) if item]
+    active_limits = sorted({max(1, min(int(item or 12), 50)) for item in (limits or PRIORITY_BOARD_WARM_LIMITS)})
+    if not active_variants or not active_limits:
+        return {"ok": True, "reason": reason, "warmed": [], "skipped": []}
+
+    from app.services.low_buy_screener import LowBuyScreenerService
+
+    screener = LowBuyScreenerService()
+    warmed: list[dict[str, Any]] = []
+    skipped: list[dict[str, str]] = []
+    with SessionLocal() as db:
+        for variant in active_variants:
+            for limit in active_limits:
+                try:
+                    board = screener.priority_board(
+                        db=db,
+                        limit=limit,
+                        refresh_mode="sync",
+                        strategy_variant=variant,
+                    )
+                    warmed.append(
+                        {
+                            "strategy_variant": variant,
+                            "limit": limit,
+                            "latest_trade_date": str(getattr(board, "latest_trade_date", "") or ""),
+                            "item_count": len(getattr(board, "items", []) or []),
+                            "total_candidates": int(getattr(board, "total_candidates", 0) or 0),
+                            "read_path": str(getattr(board, "read_path", "") or "priority_board_sync_warmup"),
+                        }
+                    )
+                except Exception as exc:
+                    if hasattr(db, "rollback"):
+                        db.rollback()
+                    skipped.append({"strategy_variant": str(variant), "limit": str(limit), "reason": str(exc)})
+                    continue
+
+    return {
+        "ok": not skipped,
+        "reason": reason,
+        "variants": active_variants,
+        "limits": active_limits,
+        "warmed": warmed,
+        "skipped": skipped,
+    }
+
+
+def _warm_priority_board_after_publish(publish_status: dict[str, Any]) -> dict[str, Any]:
+    if publish_status.get("status") != "success" or not publish_status.get("published_trade_date"):
+        return {
+            "ok": False,
+            "reason": "latest_low_buy_not_published",
+            "warmed": [],
+            "skipped": [{"reason": str(publish_status.get("status") or "unknown")}],
+        }
+    return warm_priority_board_read_models(reason="latest_low_buy_materialization_published")
 
 
 def warm_main_force_shadow_observations(
@@ -325,14 +398,19 @@ def _refresh_latest_low_buy_materialization_python(
             refreshed.append(f"{strategy}:{payload.latest_trade_date}")
         except Exception as exc:
             skipped.append({"strategy": strategy, "reason": str(exc)})
-    from app.core.database import SessionLocal
-
     with SessionLocal() as db:
         status = publish_latest_trade_date_if_ready(db, strategies=strategies)
         db.commit()
     missing = list(status.get("missing_strategies") or [])
+    priority_board_read_models = _warm_priority_board_after_publish(status)
+    ok = (
+        not skipped
+        and not missing
+        and status.get("status") == "success"
+        and priority_board_read_models.get("ok") is not False
+    )
     return {
-        "ok": not skipped and not missing and status.get("status") == "success",
+        "ok": ok,
         "source": "python_fallback" if fallback_reason else "python",
         "fallback_reason": fallback_reason or "",
         "refreshed": refreshed,
@@ -340,12 +418,11 @@ def _refresh_latest_low_buy_materialization_python(
         "publish_status": status,
         "published_trade_date": str(status.get("published_trade_date") or ""),
         "missing_strategies": missing,
+        "priority_board_read_models": priority_board_read_models,
     }
 
 
 def _publish_latest_materialization_state(strategies: list[str]) -> dict[str, Any]:
-    from app.core.database import SessionLocal
-
     with SessionLocal() as db:
         status = publish_latest_trade_date_if_ready(db, strategies=strategies)
         db.commit()

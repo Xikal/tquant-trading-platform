@@ -167,6 +167,29 @@ def test_runtime_worker_chains_close_refresh_after_daily_bar_success(monkeypatch
     assert notifications == [(db, "2026-06-03", True, False, False)]
 
 
+def test_runtime_worker_low_buy_materialization_requires_priority_board_warmup(monkeypatch):
+    db = _db()
+
+    monkeypatch.setattr(
+        "app.services.low_buy_materialization.refresh_latest_low_buy_materialization",
+        lambda **_kwargs: {
+            "ok": True,
+            "priority_board_read_models": {
+                "ok": False,
+                "skipped": [{"strategy_variant": "front_row_only", "limit": "12", "reason": "cache write failed"}],
+            },
+        },
+    )
+
+    try:
+        runtime_worker._execute_task("low_buy_materialization_refresh", {"strategies": ["first_board"]}, db)
+    except RuntimeError as exc:
+        assert "priority board warmup incomplete" in str(exc)
+        assert "front_row_only" in str(exc)
+    else:
+        raise AssertionError("runtime worker must fail incomplete priority board warmup")
+
+
 def test_runtime_worker_keeps_heartbeat_fresh_during_long_task(monkeypatch):
     db = _db()
     heartbeats = []

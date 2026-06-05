@@ -128,12 +128,19 @@ export function buildPriorityNotice(
 
 export function buildPriorityEmptyText(priorityBoard: LowBuyPriorityBoardResult | null): string {
   if (!priorityBoard || isPriorityBoardRefreshing(priorityBoard)) {
-    return "生产优先榜正在后台刷新，稍后自动更新。";
+    return "榜单正在后台刷新，稍后自动更新。";
   }
+  const laneTitle = priorityBoard.display_lane_title || "当前榜单";
   if ((priorityBoard.total_candidates ?? 0) <= 0) {
-    return "当前无生产买入信号：候选未同时满足买点、承接、风控和交易范围；研究观察只做提醒。";
+    if (priorityBoard.display_lane === "front_row_weighted") {
+      return "今日前排加权无票：当前没有候选同时满足前排加权、买点、承接和风控条件。";
+    }
+    if (priorityBoard.display_lane === "front_row_only") {
+      return "今日前排极精选无票：当前没有强前排观察票满足策略条件。";
+    }
+    return "今日无票：当前没有股票同时满足买点、承接、风控和交易范围。";
   }
-  return "当前视图暂无可展示股票，请切换策略线或手动刷新。";
+  return `${laneTitle}今日无可展示股票，请等待下一轮刷新或切换策略线。`;
 }
 
 export function shouldShowPrioritySnapshotWarning(

@@ -238,11 +238,13 @@ def _execute_task(task_type: str, payload: dict[str, Any], db) -> dict[str, Any]
     if task_type == "low_buy_materialization_refresh":
         from app.services.low_buy_materialization import refresh_latest_low_buy_materialization
 
-        return refresh_latest_low_buy_materialization(
+        result = refresh_latest_low_buy_materialization(
             limit=int(payload.get("limit") or 40),
             scan_limit=int(payload.get("scan_limit") or 480),
             strategies=[str(item) for item in payload.get("strategies") or []] or None,
         )
+        _ensure_low_buy_materialization_complete(result)
+        return result
     if task_type == "market_state_gate_refresh":
         from app.services.decision_context.market_gate import market_gate_from_context
         from app.services.low_buy.priority_market import empty_priority_market_context
@@ -508,6 +510,22 @@ def _start_task_heartbeat(*, worker_id: str, stop_event: threading.Event) -> thr
     thread = threading.Thread(target=_loop, name=f"runtime-heartbeat-{worker_id}", daemon=True)
     thread.start()
     return thread
+
+
+def _ensure_low_buy_materialization_complete(result: dict[str, Any]) -> None:
+    if result.get("ok") is not True:
+        missing = result.get("missing_strategies") or []
+        skipped = result.get("skipped") or []
+        raise RuntimeError(
+            "low_buy_materialization_refresh incomplete: "
+            f"missing_strategies={missing}; skipped={skipped}"
+        )
+    priority_board = result.get("priority_board_read_models") or {}
+    if isinstance(priority_board, dict) and priority_board.get("ok") is False:
+        raise RuntimeError(
+            "low_buy_materialization_refresh priority board warmup incomplete: "
+            f"skipped={priority_board.get('skipped') or []}"
+        )
 
 
 def _execute_trading_experience_task(task_type: str, payload: dict[str, Any], db) -> dict[str, Any]:  # noqa: ANN001
