@@ -37,7 +37,10 @@ const DataConsolePage = lazy(async () => ({ default: (await import("../data-cons
 const PAGES_WITHOUT_PRIORITY_STRIP: ReadonlySet<Page> = new Set([
   "monitor",
   "monitor-market",
+  "strategy-tracking",
+  "backtest",
   "paper",
+  "data",
 ]);
 
 export function shouldShowPagePriorityStrip(page: Page): boolean {

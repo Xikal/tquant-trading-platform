@@ -10,6 +10,17 @@ import { formatNumber, formatPct, strategyLabel, toneFromChange } from "../works
 import type { MetricItem, StockCardView } from "../workspace-shared/workspaceTypes";
 import { VirtualCardList } from "../../ui/list/VirtualCardList";
 
+type PlaybookCandidate = LowBuyScreenerResult["candidates"][number];
+
+const PLAYBOOK_STATE_RANK: Record<string, number> = {
+  soft_buy_now: 50,
+  buy_now: 40,
+  observe_confirmed: 30,
+  near_entry: 20,
+  watch: 10,
+  avoid: 0,
+};
+
 export function PlaybookPage({
   strategy,
   setStrategy,
@@ -41,9 +52,10 @@ export function PlaybookPage({
   const nearEntry = allCandidates.filter((item) => item.buy_signal_state === "near_entry").map(candidateToCard);
   const watch = allCandidates.filter((item) => item.buy_signal_state === "watch").map(candidateToCard);
   const avoid = allCandidates.filter((item) => item.buy_signal_state === "avoid").map(candidateToCard);
-  const passiveCandidates = [...watch, ...avoid];
+  const fallbackPassive = allCandidates.filter((item) => isUnknownSignalState(item.buy_signal_state)).map(candidateToCard);
+  const passiveCandidates = [...watch, ...fallbackPassive, ...avoid];
   const attentionCount = buyNow.length + observeConfirmed.length + nearEntry.length;
-  const focus = buyNow[0] ?? observeConfirmed[0] ?? nearEntry[0] ?? watch[0];
+  const focus = buyNow[0] ?? observeConfirmed[0] ?? nearEntry[0] ?? watch[0] ?? fallbackPassive[0];
   const strategyName = tabLabel(strategy, tabs) || strategyLabel(strategy);
   const loadedStrategyName = playbook?.strategy_title || tabLabel(playbook?.strategy_key || strategy, tabs) || strategyLabel(playbook?.strategy_key || strategy);
   const switchingText = playbook && playbook.strategy_key !== strategy ? "，正在切换数据" : "";
@@ -174,13 +186,30 @@ function tabLabel(strategyKey: string | undefined, tabs: Array<{ key: string; la
 
 function uniqueCandidates(items: LowBuyScreenerResult["candidates"]) {
   const seen = new Set<string>();
-  return items.filter((item) => {
-    if (!item.symbol || seen.has(item.symbol)) {
-      return false;
+  const bySymbol = new Map<string, PlaybookCandidate>();
+  for (const item of items) {
+    if (!item.symbol) {
+      continue;
     }
-    seen.add(item.symbol);
-    return true;
-  });
+    if (!seen.has(item.symbol)) {
+      seen.add(item.symbol);
+      bySymbol.set(item.symbol, item);
+      continue;
+    }
+    const current = bySymbol.get(item.symbol);
+    if (!current || candidateSignalRank(item) > candidateSignalRank(current)) {
+      bySymbol.set(item.symbol, item);
+    }
+  }
+  return [...seen].map((symbol) => bySymbol.get(symbol)).filter((item): item is PlaybookCandidate => Boolean(item));
+}
+
+function candidateSignalRank(item: PlaybookCandidate): number {
+  return PLAYBOOK_STATE_RANK[String(item.buy_signal_state ?? "")] ?? 5;
+}
+
+function isUnknownSignalState(value: string | null | undefined): boolean {
+  return PLAYBOOK_STATE_RANK[String(value ?? "")] === undefined;
 }
 
 function summarizeMarketAttribution(buckets: NonNullable<LowBuyScreenerResult["performance"]>["market_state_attribution"]) {
@@ -236,9 +265,16 @@ function CandidateTabs({
     { key: "near", title: "等确认", short: "等确认", items: nearEntry, empty: "当前没有接近买点的股票" },
     { key: "watch", title: "继续观察 / 今天放弃", short: "观察/放弃", items: passiveCandidates, empty: "这一档为空，说明当前结构要么未到位，要么质量不足。" },
   ];
+  const defaultActiveKey = sections.find((section) => section.items.length > 0)?.key ?? "buy";
+  const sectionSignature = sections.map((section) => `${section.key}:${section.items.length}`).join("|");
   return (
-    <div className="panel tq-playbook-page__candidate-tabs tq-playbook-candidate-tabs">
+    <div
+      className="panel tq-playbook-page__candidate-tabs tq-playbook-candidate-tabs"
+      data-playbook-active-section={defaultActiveKey}
+    >
       <Tabs
+        key={`playbook-candidate-tabs-${defaultActiveKey}-${sectionSignature}`}
+        defaultActiveKey={defaultActiveKey}
         size="small"
         items={sections.map((section) => ({
           key: section.key,

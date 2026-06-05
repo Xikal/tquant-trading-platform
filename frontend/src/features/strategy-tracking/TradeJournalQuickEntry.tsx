@@ -31,17 +31,29 @@ export function TradeJournalQuickEntry({
   onSubmit,
   submitting,
   errorText,
+  initialSymbol = "",
+  initialReasonText = "",
+  initialSignalSource = "manual_review",
 }: {
   accountId?: number | null;
   onSubmit: (payload: TradeJournalEntryCreate) => void;
   submitting: boolean;
   errorText?: string;
+  initialSymbol?: string;
+  initialReasonText?: string;
+  initialSignalSource?: string;
 }) {
   return (
     <Form
       className="trade-journal-quick-entry"
       layout="vertical"
-      initialValues={{ action: "note", discipline_keys: [], mistake_tags: [] }}
+      initialValues={{
+        symbol: initialSymbol,
+        action: "note",
+        reason_text: initialReasonText,
+        discipline_keys: [],
+        mistake_tags: [],
+      }}
       onFinish={(values) => {
         const disciplineKeys = Array.isArray(values.discipline_keys) ? values.discipline_keys : [];
         onSubmit({
@@ -49,7 +61,7 @@ export function TradeJournalQuickEntry({
           symbol: String(values.symbol || "").trim(),
           action: values.action || "note",
           reason_text: String(values.reason_text || "").trim(),
-          signal_source: "manual_review",
+          signal_source: initialSignalSource,
           discipline_flags: Object.fromEntries(DISCIPLINE_OPTIONS.map((item) => [item.value, disciplineKeys.includes(item.value)])),
           mistake_tags: Array.isArray(values.mistake_tags) ? values.mistake_tags : [],
         });
@@ -58,13 +70,13 @@ export function TradeJournalQuickEntry({
       {errorText ? <Alert type="error" showIcon message={errorText} /> : null}
       <Space align="start" wrap>
         <Form.Item name="symbol" label="代码" rules={[{ required: true, message: "请填写代码" }]}>
-          <Input placeholder="600000" style={{ width: 120 }} />
+          <Input className="trade-journal-code-input" placeholder="600000" />
         </Form.Item>
         <Form.Item name="action" label="记录类型">
-          <Select options={ACTION_OPTIONS} style={{ width: 144 }} />
+          <Select className="trade-journal-action-select" options={ACTION_OPTIONS} />
         </Form.Item>
         <Form.Item name="reason_text" label="复盘理由">
-          <Input.TextArea autoSize={{ minRows: 1, maxRows: 3 }} placeholder="记录当时依据和纪律状态" style={{ width: 260 }} />
+          <Input.TextArea className="trade-journal-reason-input" autoSize={{ minRows: 1, maxRows: 3 }} placeholder="记录当时依据和纪律状态" />
         </Form.Item>
       </Space>
       <Form.Item name="discipline_keys" label="纪律项">

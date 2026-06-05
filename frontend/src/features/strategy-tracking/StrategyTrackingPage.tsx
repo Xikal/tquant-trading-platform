@@ -1,14 +1,14 @@
 import { Alert, Button, Drawer, Segmented, Tabs } from "antd";
+import { lazy, Suspense } from "react";
 import { bffPartialErrorsText } from "../../api/base";
 import type { StrategyMeta } from "../../api/strategies";
 import type { StrategyTrackingAnalysisTab } from "../../stores/strategyTrackingStore";
 import { useStrategyTrackingStore } from "../../stores/strategyTrackingStore";
 import { TqEmpty, TqErrorResult } from "../../ui/feedback/StateViews";
 import type { StrategyTrackingListResponse, StrategyTrackingParams, StrategyTrackingSnapshotResponse } from "../../types";
-import { useRelativeStrengthBoard, useStrategyPromotionReview, useStrategyTrackingDetail, useStrategyTrackingHoldingAnalysis, useStrategyTrackingItems, useStrategyTrackingReport, useTrackRecordDrift, useTradeJournal, useTradeReviewSuite, useTradingExperienceReadiness } from "./queries";
+import { useCreateTradeJournal, useDeleteTradeJournal, useReviewWorkspace, useStrategyPromotionReview, useStrategyTrackingDetail, useStrategyTrackingHoldingAnalysis, useStrategyTrackingItems, useStrategyTrackingReport, useTrackRecordDrift, useTradingExperienceReadiness, useUpdateTradeJournal } from "./queries";
 import { DriftMonitorPanel } from "./DriftMonitorPanel";
 import { PromotionReviewPanel } from "./PromotionReviewPanel";
-import { RelativeStrengthBoard } from "./RelativeStrengthBoard";
 import { StrategyTrackingDetailDrawer } from "./StrategyTrackingDetailDrawer";
 import { StrategyTrackingDiagnosticsPanel } from "./StrategyTrackingDiagnosticsPanel";
 import { StrategyTrackingFilters } from "./StrategyTrackingFilters";
@@ -18,11 +18,13 @@ import { StrategyTrackingModeToggle } from "./StrategyTrackingModeToggle";
 import { StrategyTrackingPerformanceTable } from "./StrategyTrackingPerformanceTable";
 import { StrategyTrackingReviewPanel } from "./StrategyTrackingReviewPanel";
 import { StrategyTrackingTable } from "./StrategyTrackingTable";
-import { TradeJournalPanel } from "./TradeJournalPanel";
-import { TradeReviewPanel } from "./TradeReviewPanel";
 import { boolParam, tabParams } from "./strategyTrackingFormatters";
 
 type StrategyTrackingStoreState = ReturnType<typeof useStrategyTrackingStore.getState>;
+
+const StrategyReviewWorkspacePanel = lazy(() =>
+  import("./StrategyReviewWorkspacePanel").then((module) => ({ default: module.StrategyReviewWorkspacePanel }))
+);
 
 export function StrategyTrackingPage({ strategyMeta }: { strategyMeta: StrategyMeta[] }) {
   const store = useStrategyTrackingStore();
@@ -38,9 +40,11 @@ export function StrategyTrackingPage({ strategyMeta }: { strategyMeta: StrategyM
   const reviewEnabled = Boolean(tradingExperienceFlags.trading_experience_suite_enabled && tradingExperienceFlags.trade_review_suite_enabled);
   const rsEnabled = Boolean(tradingExperienceFlags.trading_experience_suite_enabled && tradingExperienceFlags.relative_strength_board_enabled);
   const activeAnalysisTab = visibleAnalysisTab(store.analysisTab, { reviewEnabled, rsEnabled });
-  const reviewQuery = useTradeReviewSuite(store.boardFilter, activeAnalysisTab === "trade-review" && reviewEnabled);
-  const journalQuery = useTradeJournal(null, activeAnalysisTab === "trade-journal" && reviewEnabled);
-  const rsQuery = useRelativeStrengthBoard(activeAnalysisTab === "relative-strength" && rsEnabled);
+  const reviewWorkspaceEnabled = reviewEnabled || rsEnabled;
+  const reviewWorkspaceQuery = useReviewWorkspace(store.boardFilter, activeAnalysisTab === "review-workspace" && reviewWorkspaceEnabled);
+  const createJournal = useCreateTradeJournal(null);
+  const updateJournal = useUpdateTradeJournal(null);
+  const deleteJournal = useDeleteTradeJournal(null);
   const snapshot = query.data;
   const result = snapshot ? snapshotToListResponse(snapshot) : undefined;
   const errorText = query.error instanceof Error ? query.error.message : "";
@@ -113,9 +117,10 @@ export function StrategyTrackingPage({ strategyMeta }: { strategyMeta: StrategyM
             items={analysisTabs(result, store, holdingQuery, driftQuery, weeklyReportQuery, promotionReviewQuery, {
               reviewEnabled,
               rsEnabled,
-              reviewQuery,
-              journalQuery,
-              rsQuery,
+              reviewWorkspaceQuery,
+              createJournal,
+              updateJournal,
+              deleteJournal,
             })}
           />
         </div>
@@ -171,6 +176,8 @@ export function visibleAnalysisTab(
   tab: StrategyTrackingAnalysisTab,
   flags: { reviewEnabled: boolean; rsEnabled: boolean },
 ): StrategyTrackingAnalysisTab {
+  if ((tab === "trade-review" || tab === "trade-journal" || tab === "relative-strength") && (flags.reviewEnabled || flags.rsEnabled)) return "review-workspace";
+  if (tab === "review-workspace" && !(flags.reviewEnabled || flags.rsEnabled)) return "diagnostics";
   if ((tab === "trade-review" || tab === "trade-journal") && !flags.reviewEnabled) return "diagnostics";
   if (tab === "relative-strength" && !flags.rsEnabled) return "diagnostics";
   return tab;
@@ -264,9 +271,10 @@ function analysisTabs(
   tradingExperience: {
     reviewEnabled: boolean;
     rsEnabled: boolean;
-    reviewQuery: ReturnType<typeof useTradeReviewSuite>;
-    journalQuery: ReturnType<typeof useTradeJournal>;
-    rsQuery: ReturnType<typeof useRelativeStrengthBoard>;
+    reviewWorkspaceQuery: ReturnType<typeof useReviewWorkspace>;
+    createJournal: ReturnType<typeof useCreateTradeJournal>;
+    updateJournal: ReturnType<typeof useUpdateTradeJournal>;
+    deleteJournal: ReturnType<typeof useDeleteTradeJournal>;
   },
 ) {
   const items = [
@@ -314,38 +322,26 @@ function analysisTabs(
       ),
     },
   ];
-  if (tradingExperience.reviewEnabled) {
-    items.push(
-      {
-        key: "trade-review",
-        label: "复盘",
-        children: (
-          <TradeReviewPanel
-            data={tradingExperience.reviewQuery.data}
-            loading={tradingExperience.reviewQuery.isFetching}
+  if (tradingExperience.reviewEnabled || tradingExperience.rsEnabled) {
+    items.push({
+      key: "review-workspace",
+      label: "复盘中心",
+      children: (
+        <Suspense fallback={<TqEmpty title="复盘中心加载中" description="正在加载复盘队列、纪律日志和抗跌事实。" />}>
+          <StrategyReviewWorkspacePanel
+            data={tradingExperience.reviewWorkspaceQuery.data}
+            loading={tradingExperience.reviewWorkspaceQuery.isFetching}
             boardFilter={store.boardFilter}
             onBoardFilterChange={store.setBoardFilter}
+            onCreateJournal={(payload) => tradingExperience.createJournal.mutate(payload)}
+            onUpdateJournal={(entryId, payload) => tradingExperience.updateJournal.mutate({ entryId, payload })}
+            onDeleteJournal={(entryId) => tradingExperience.deleteJournal.mutate(entryId)}
+            creatingJournal={tradingExperience.createJournal.isPending}
+            updatingJournal={tradingExperience.updateJournal.isPending}
+            deletingJournal={tradingExperience.deleteJournal.isPending}
+            professional={store.viewMode === "professional"}
           />
-        ),
-      },
-      {
-        key: "trade-journal",
-        label: "纪律日志",
-        children: <TradeJournalPanel accountId={null} data={tradingExperience.journalQuery.data} loading={tradingExperience.journalQuery.isFetching} />,
-      },
-    );
-  }
-  if (tradingExperience.rsEnabled) {
-    items.push({
-      key: "relative-strength",
-      label: "抗跌事实",
-      children: (
-        <RelativeStrengthBoard
-          data={tradingExperience.rsQuery.data}
-          loading={tradingExperience.rsQuery.isFetching}
-          boardFilter={store.boardFilter}
-          onBoardFilterChange={store.setBoardFilter}
-        />
+        </Suspense>
       ),
     });
   }

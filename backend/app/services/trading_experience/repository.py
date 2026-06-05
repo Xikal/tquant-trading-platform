@@ -227,6 +227,43 @@ def journal_entries(
     )
 
 
+def journal_entry_by_id(
+    db: Session,
+    entry_id: int,
+    *,
+    user_id: int | None,
+) -> TradingExperienceTradeJournalEntry | None:
+    statement = select(TradingExperienceTradeJournalEntry).where(TradingExperienceTradeJournalEntry.id == entry_id)
+    if user_id is not None:
+        statement = statement.where(TradingExperienceTradeJournalEntry.user_id == user_id)
+    return db.execute(statement).scalar_one_or_none()
+
+
+def update_journal_entry(
+    db: Session,
+    row: TradingExperienceTradeJournalEntry,
+    *,
+    reason_text: str | None = None,
+    discipline_flags: dict[str, bool] | None = None,
+    mistake_tags: list[str] | None = None,
+) -> TradingExperienceTradeJournalEntry:
+    if reason_text is not None:
+        row.reason_text = reason_text
+    if discipline_flags is not None:
+        row.discipline_flags_json = json.dumps(discipline_flags, ensure_ascii=False, sort_keys=True)
+    if mistake_tags is not None:
+        row.mistake_tags_json = json.dumps(mistake_tags, ensure_ascii=False)
+    row.updated_at = datetime.now()
+    db.commit()
+    db.refresh(row)
+    return row
+
+
+def delete_journal_entry(db: Session, row: TradingExperienceTradeJournalEntry) -> None:
+    db.delete(row)
+    db.commit()
+
+
 def active_paper_account(db: Session, account_id: int | None = None, *, user_id: int | None = None) -> PaperAccount | None:
     statement = select(PaperAccount).where(PaperAccount.status == "active")
     if user_id is not None:

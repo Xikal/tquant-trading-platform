@@ -4739,6 +4739,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/trading-experience/review-workspace": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Review Workspace */
+        get: operations["get_review_workspace_api_trading_experience_review_workspace_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/trading-experience/t-trade-attribution": {
         parameters: {
             query?: never;
@@ -4772,6 +4789,24 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/api/trading-experience/trade-journal/{entry_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete Trade Journal */
+        delete: operations["delete_trade_journal_api_trading_experience_trade_journal__entry_id__delete"];
+        options?: never;
+        head?: never;
+        /** Update Trade Journal */
+        patch: operations["update_trade_journal_api_trading_experience_trade_journal__entry_id__patch"];
         trace?: never;
     };
     "/api/trading-experience/volume-position-tags/{symbol}": {
@@ -15555,6 +15590,191 @@ export interface components {
              */
             total: number;
         };
+        /** ReviewWorkspaceItem */
+        ReviewWorkspaceItem: {
+            /** Journal Entries */
+            journal_entries?: components["schemas"]["TradeJournalEntryOut"][];
+            /** Next Action Label */
+            next_action_label: string;
+            pool_item: components["schemas"]["ReviewPoolItem"];
+            relative_strength?: components["schemas"]["RelativeStrengthItem"] | null;
+            /** Review Key */
+            review_key: string;
+            /**
+             * Review Status
+             * @enum {string}
+             */
+            review_status: "pending" | "journaled" | "retained" | "dropped" | "data_issue";
+        };
+        /** ReviewWorkspaceReminder */
+        ReviewWorkspaceReminder: {
+            /**
+             * Data Quality
+             * @default insufficient
+             * @enum {string}
+             */
+            data_quality: "ok" | "insufficient" | "no_data" | "blocked" | "stale" | "research_only";
+            /** Last Success At */
+            last_success_at?: string | null;
+            /**
+             * Message
+             * @default 收盘后生成复盘池
+             */
+            message: string;
+            /** Pool Date */
+            pool_date?: string | null;
+            /**
+             * Refresh Queued
+             * @default false
+             */
+            refresh_queued: boolean;
+            /**
+             * Status
+             * @default not_due
+             * @enum {string}
+             */
+            status: "not_due" | "queued" | "refreshing" | "ready" | "insufficient" | "blocked";
+        };
+        /** ReviewWorkspaceResponse */
+        ReviewWorkspaceResponse: {
+            /**
+             * As Of
+             * Format: date-time
+             */
+            as_of: string;
+            /**
+             * Board Filter
+             * @default include_all
+             * @enum {string}
+             */
+            board_filter: "include_all" | "main_only";
+            /**
+             * Cache Status
+             * @default miss
+             * @enum {string}
+             */
+            cache_status: "fresh" | "stale" | "miss";
+            /**
+             * Data Quality
+             * @default insufficient
+             * @enum {string}
+             */
+            data_quality: "ok" | "insufficient" | "no_data" | "blocked" | "stale" | "research_only";
+            /**
+             * Elapsed Ms
+             * @default 0
+             */
+            elapsed_ms: number;
+            /** Enabled */
+            enabled: boolean;
+            /** Engine Version */
+            engine_version: string;
+            /** Items */
+            items?: components["schemas"]["ReviewWorkspaceItem"][];
+            /** Pool Date */
+            pool_date?: string | null;
+            /** Relative Strength Enabled */
+            relative_strength_enabled: boolean;
+            reminder?: components["schemas"]["ReviewWorkspaceReminder"];
+            /**
+             * Research Only
+             * @default true
+             */
+            research_only: boolean;
+            /** Review Enabled */
+            review_enabled: boolean;
+            /**
+             * Source
+             * @default local_snapshot
+             */
+            source: string;
+            /** Sources */
+            sources?: components["schemas"]["ReviewWorkspaceSourceStatus"][];
+            summary?: components["schemas"]["ReviewWorkspaceSummary"];
+            /**
+             * Total
+             * @default 0
+             */
+            total: number;
+        };
+        /** ReviewWorkspaceSourceStatus */
+        ReviewWorkspaceSourceStatus: {
+            /**
+             * Elapsed Ms
+             * @default 0
+             */
+            elapsed_ms: number;
+            /**
+             * Item Count
+             * @default 0
+             */
+            item_count: number;
+            /**
+             * Reason
+             * @default
+             */
+            reason: string;
+            /**
+             * Source
+             * @enum {string}
+             */
+            source: "review_pool" | "trade_journal" | "relative_strength";
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "ok" | "disabled" | "stale" | "insufficient" | "timeout" | "error";
+        };
+        /** ReviewWorkspaceSummary */
+        ReviewWorkspaceSummary: {
+            /**
+             * Completion Rate Pct
+             * @default 0
+             */
+            completion_rate_pct: number;
+            /**
+             * Dropped Count
+             * @default 0
+             */
+            dropped_count: number;
+            /**
+             * Journal Count
+             * @default 0
+             */
+            journal_count: number;
+            /**
+             * Market Context
+             * @default unknown
+             */
+            market_context: string;
+            /**
+             * Missing Journal Count
+             * @default 0
+             */
+            missing_journal_count: number;
+            /**
+             * Pending Review Count
+             * @default 0
+             */
+            pending_review_count: number;
+            /**
+             * Relative Strength Count
+             * @default 0
+             */
+            relative_strength_count: number;
+            /**
+             * Retained Count
+             * @default 0
+             */
+            retained_count: number;
+            /** Seven Day Discipline Pass Rate Pct */
+            seven_day_discipline_pass_rate_pct?: number | null;
+            /**
+             * Seven Day Journal Count
+             * @default 0
+             */
+            seven_day_journal_count: number;
+        };
         /** RiskEventOut */
         RiskEventOut: {
             /** Account Id */
@@ -19019,6 +19239,17 @@ export interface components {
             updated_at: string;
             /** User Id */
             user_id?: number | null;
+        };
+        /** TradeJournalEntryUpdate */
+        TradeJournalEntryUpdate: {
+            /** Discipline Flags */
+            discipline_flags?: {
+                [key: string]: boolean;
+            } | null;
+            /** Mistake Tags */
+            mistake_tags?: string[] | null;
+            /** Reason Text */
+            reason_text?: string | null;
         };
         /** TradeJournalResponse */
         TradeJournalResponse: {
@@ -28471,6 +28702,39 @@ export interface operations {
             };
         };
     };
+    get_review_workspace_api_trading_experience_review_workspace_get: {
+        parameters: {
+            query?: {
+                pool_date?: string | null;
+                limit?: number;
+                board_filter?: "include_all" | "main_only";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReviewWorkspaceResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_t_trade_attribution_api_trading_experience_t_trade_attribution_get: {
         parameters: {
             query?: {
@@ -28546,6 +28810,70 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["TradeJournalEntryCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TradeJournalEntryOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_trade_journal_api_trading_experience_trade_journal__entry_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                entry_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_trade_journal_api_trading_experience_trade_journal__entry_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                entry_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TradeJournalEntryUpdate"];
             };
         };
         responses: {

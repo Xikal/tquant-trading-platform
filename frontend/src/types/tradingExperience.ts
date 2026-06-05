@@ -1,4 +1,9 @@
+import type { components } from "../generated/api-types";
+
 export type TradingExperienceDataQuality = "ok" | "insufficient" | "no_data" | "blocked" | "stale" | "research_only";
+export type ReviewWorkspaceResponse = components["schemas"]["ReviewWorkspaceResponse"];
+export type ReviewWorkspaceItem = components["schemas"]["ReviewWorkspaceItem"];
+export type TradeJournalEntryUpdate = components["schemas"]["TradeJournalEntryUpdate"];
 
 export interface TradingExperienceMeta {
   data_quality: TradingExperienceDataQuality;

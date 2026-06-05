@@ -18,6 +18,7 @@ import { StrategyTrackingReviewPanel } from "./StrategyTrackingReviewPanel";
 import { StrategyTrackingSummaryBar } from "./StrategyTrackingSummaryBar";
 import { buildParams, visibleAnalysisTab } from "./StrategyTrackingPage";
 import { StrategyTrackingTable } from "./StrategyTrackingTable";
+import { getTradingExperienceReviewWorkspace } from "./reviewWorkspaceApi";
 
 afterEach(() => {
   resetApiClient();
@@ -278,10 +279,35 @@ describe("StrategyTracking UI", () => {
   });
 
   it("falls back hidden trading-experience analysis tabs when feature flags are off", () => {
-    expect(visibleAnalysisTab("trade-review", { reviewEnabled: false, rsEnabled: true })).toBe("diagnostics");
-    expect(visibleAnalysisTab("trade-journal", { reviewEnabled: false, rsEnabled: true })).toBe("diagnostics");
-    expect(visibleAnalysisTab("relative-strength", { reviewEnabled: true, rsEnabled: false })).toBe("diagnostics");
-    expect(visibleAnalysisTab("relative-strength", { reviewEnabled: false, rsEnabled: true })).toBe("relative-strength");
+    expect(visibleAnalysisTab("trade-review", { reviewEnabled: false, rsEnabled: false })).toBe("diagnostics");
+    expect(visibleAnalysisTab("trade-journal", { reviewEnabled: false, rsEnabled: false })).toBe("diagnostics");
+    expect(visibleAnalysisTab("relative-strength", { reviewEnabled: false, rsEnabled: false })).toBe("diagnostics");
+    expect(visibleAnalysisTab("review-workspace", { reviewEnabled: false, rsEnabled: false })).toBe("diagnostics");
+  });
+
+  it("maps legacy review deep links to one review center tab when suite is enabled", () => {
+    expect(visibleAnalysisTab("trade-review", { reviewEnabled: true, rsEnabled: true })).toBe("review-workspace");
+    expect(visibleAnalysisTab("trade-journal", { reviewEnabled: true, rsEnabled: true })).toBe("review-workspace");
+    expect(visibleAnalysisTab("relative-strength", { reviewEnabled: true, rsEnabled: true })).toBe("review-workspace");
+    expect(visibleAnalysisTab("relative-strength", { reviewEnabled: false, rsEnabled: true })).toBe("review-workspace");
+  });
+
+  it("loads review center through one aggregate endpoint instead of three separate queries", async () => {
+    const requestedPaths: string[] = [];
+    configureApiClient({
+      request: async <T,>() => ({} as T),
+      requestCached: async <T,>(path: string) => {
+        requestedPaths.push(path);
+        return {} as T;
+      },
+    });
+
+    await getTradingExperienceReviewWorkspace(30, "include_all");
+
+    expect(requestedPaths).toEqual(["/trading-experience/review-workspace?limit=30&board_filter=include_all"]);
+    expect(requestedPaths[0]).not.toContain("/trading-experience/review-pool");
+    expect(requestedPaths[0]).not.toContain("/trading-experience/trade-journal");
+    expect(requestedPaths[0]).not.toContain("/trading-experience/relative-strength");
   });
 
   it("loads the strategy tracking homepage through one snapshot endpoint", async () => {
@@ -739,6 +765,7 @@ function baseStoreState() {
     page: 1,
     pageSize: 30,
     selectedItemId: null,
+    reviewWorkspaceSelectedKey: null,
     setTab: vi.fn(),
     setOverviewTab: vi.fn(),
     setAnalysisTab: vi.fn(),
@@ -761,6 +788,7 @@ function baseStoreState() {
     setSort: vi.fn(),
     setPagination: vi.fn(),
     setSelectedItemId: vi.fn(),
+    setReviewWorkspaceSelectedKey: vi.fn(),
   };
 }
 
@@ -773,6 +801,7 @@ function resetStrategyTrackingStore() {
     sort: "max_gain_desc",
     page: 1,
     pageSize: 30,
+    reviewWorkspaceSelectedKey: null,
   });
 }
 

@@ -17905,6 +17905,347 @@
         "title": "ReviewPoolResponse",
         "type": "object"
       },
+      "ReviewWorkspaceItem": {
+        "properties": {
+          "journal_entries": {
+            "items": {
+              "$ref": "#/components/schemas/TradeJournalEntryOut"
+            },
+            "title": "Journal Entries",
+            "type": "array"
+          },
+          "next_action_label": {
+            "title": "Next Action Label",
+            "type": "string"
+          },
+          "pool_item": {
+            "$ref": "#/components/schemas/ReviewPoolItem"
+          },
+          "relative_strength": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RelativeStrengthItem"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "review_key": {
+            "title": "Review Key",
+            "type": "string"
+          },
+          "review_status": {
+            "enum": [
+              "pending",
+              "journaled",
+              "retained",
+              "dropped",
+              "data_issue"
+            ],
+            "title": "Review Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "review_key",
+          "pool_item",
+          "review_status",
+          "next_action_label"
+        ],
+        "title": "ReviewWorkspaceItem",
+        "type": "object"
+      },
+      "ReviewWorkspaceReminder": {
+        "properties": {
+          "data_quality": {
+            "default": "insufficient",
+            "enum": [
+              "ok",
+              "insufficient",
+              "no_data",
+              "blocked",
+              "stale",
+              "research_only"
+            ],
+            "title": "Data Quality",
+            "type": "string"
+          },
+          "last_success_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Success At"
+          },
+          "message": {
+            "default": "收盘后生成复盘池",
+            "title": "Message",
+            "type": "string"
+          },
+          "pool_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pool Date"
+          },
+          "refresh_queued": {
+            "default": false,
+            "title": "Refresh Queued",
+            "type": "boolean"
+          },
+          "status": {
+            "default": "not_due",
+            "enum": [
+              "not_due",
+              "queued",
+              "refreshing",
+              "ready",
+              "insufficient",
+              "blocked"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "title": "ReviewWorkspaceReminder",
+        "type": "object"
+      },
+      "ReviewWorkspaceResponse": {
+        "properties": {
+          "as_of": {
+            "format": "date-time",
+            "title": "As Of",
+            "type": "string"
+          },
+          "board_filter": {
+            "default": "include_all",
+            "enum": [
+              "include_all",
+              "main_only"
+            ],
+            "title": "Board Filter",
+            "type": "string"
+          },
+          "cache_status": {
+            "default": "miss",
+            "enum": [
+              "fresh",
+              "stale",
+              "miss"
+            ],
+            "title": "Cache Status",
+            "type": "string"
+          },
+          "data_quality": {
+            "default": "insufficient",
+            "enum": [
+              "ok",
+              "insufficient",
+              "no_data",
+              "blocked",
+              "stale",
+              "research_only"
+            ],
+            "title": "Data Quality",
+            "type": "string"
+          },
+          "elapsed_ms": {
+            "default": 0.0,
+            "title": "Elapsed Ms",
+            "type": "number"
+          },
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "engine_version": {
+            "title": "Engine Version",
+            "type": "string"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ReviewWorkspaceItem"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "pool_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pool Date"
+          },
+          "relative_strength_enabled": {
+            "title": "Relative Strength Enabled",
+            "type": "boolean"
+          },
+          "reminder": {
+            "$ref": "#/components/schemas/ReviewWorkspaceReminder"
+          },
+          "research_only": {
+            "default": true,
+            "title": "Research Only",
+            "type": "boolean"
+          },
+          "review_enabled": {
+            "title": "Review Enabled",
+            "type": "boolean"
+          },
+          "source": {
+            "default": "local_snapshot",
+            "title": "Source",
+            "type": "string"
+          },
+          "sources": {
+            "items": {
+              "$ref": "#/components/schemas/ReviewWorkspaceSourceStatus"
+            },
+            "title": "Sources",
+            "type": "array"
+          },
+          "summary": {
+            "$ref": "#/components/schemas/ReviewWorkspaceSummary"
+          },
+          "total": {
+            "default": 0,
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "as_of",
+          "engine_version",
+          "enabled",
+          "review_enabled",
+          "relative_strength_enabled"
+        ],
+        "title": "ReviewWorkspaceResponse",
+        "type": "object"
+      },
+      "ReviewWorkspaceSourceStatus": {
+        "properties": {
+          "elapsed_ms": {
+            "default": 0.0,
+            "title": "Elapsed Ms",
+            "type": "number"
+          },
+          "item_count": {
+            "default": 0,
+            "title": "Item Count",
+            "type": "integer"
+          },
+          "reason": {
+            "default": "",
+            "title": "Reason",
+            "type": "string"
+          },
+          "source": {
+            "enum": [
+              "review_pool",
+              "trade_journal",
+              "relative_strength"
+            ],
+            "title": "Source",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "ok",
+              "disabled",
+              "stale",
+              "insufficient",
+              "timeout",
+              "error"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "source",
+          "status"
+        ],
+        "title": "ReviewWorkspaceSourceStatus",
+        "type": "object"
+      },
+      "ReviewWorkspaceSummary": {
+        "properties": {
+          "completion_rate_pct": {
+            "default": 0.0,
+            "title": "Completion Rate Pct",
+            "type": "number"
+          },
+          "dropped_count": {
+            "default": 0,
+            "title": "Dropped Count",
+            "type": "integer"
+          },
+          "journal_count": {
+            "default": 0,
+            "title": "Journal Count",
+            "type": "integer"
+          },
+          "market_context": {
+            "default": "unknown",
+            "title": "Market Context",
+            "type": "string"
+          },
+          "missing_journal_count": {
+            "default": 0,
+            "title": "Missing Journal Count",
+            "type": "integer"
+          },
+          "pending_review_count": {
+            "default": 0,
+            "title": "Pending Review Count",
+            "type": "integer"
+          },
+          "relative_strength_count": {
+            "default": 0,
+            "title": "Relative Strength Count",
+            "type": "integer"
+          },
+          "retained_count": {
+            "default": 0,
+            "title": "Retained Count",
+            "type": "integer"
+          },
+          "seven_day_discipline_pass_rate_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Seven Day Discipline Pass Rate Pct"
+          },
+          "seven_day_journal_count": {
+            "default": 0,
+            "title": "Seven Day Journal Count",
+            "type": "integer"
+          }
+        },
+        "title": "ReviewWorkspaceSummary",
+        "type": "object"
+      },
       "RiskEventOut": {
         "properties": {
           "account_id": {
@@ -23538,6 +23879,51 @@
           "updated_at"
         ],
         "title": "TradeJournalEntryOut",
+        "type": "object"
+      },
+      "TradeJournalEntryUpdate": {
+        "properties": {
+          "discipline_flags": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "boolean"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Discipline Flags"
+          },
+          "mistake_tags": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mistake Tags"
+          },
+          "reason_text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason Text"
+          }
+        },
+        "title": "TradeJournalEntryUpdate",
         "type": "object"
       },
       "TradeJournalResponse": {
@@ -41314,6 +41700,87 @@
         ]
       }
     },
+    "/api/trading-experience/review-workspace": {
+      "get": {
+        "operationId": "get_review_workspace_api_trading_experience_review_workspace_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "pool_date",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Pool Date"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 30,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "board_filter",
+            "required": false,
+            "schema": {
+              "default": "include_all",
+              "enum": [
+                "include_all",
+                "main_only"
+              ],
+              "title": "Board Filter",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReviewWorkspaceResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Review Workspace",
+        "tags": [
+          "trading-experience"
+        ]
+      }
+    },
     "/api/trading-experience/t-trade-attribution": {
       "get": {
         "operationId": "get_t_trade_attribution_api_trading_experience_t_trade_attribution_get",
@@ -41501,6 +41968,101 @@
           }
         ],
         "summary": "Create Trade Journal",
+        "tags": [
+          "trading-experience"
+        ]
+      }
+    },
+    "/api/trading-experience/trade-journal/{entry_id}": {
+      "delete": {
+        "operationId": "delete_trade_journal_api_trading_experience_trade_journal__entry_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "entry_id",
+            "required": true,
+            "schema": {
+              "title": "Entry Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Delete Trade Journal",
+        "tags": [
+          "trading-experience"
+        ]
+      },
+      "patch": {
+        "operationId": "update_trade_journal_api_trading_experience_trade_journal__entry_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "entry_id",
+            "required": true,
+            "schema": {
+              "title": "Entry Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TradeJournalEntryUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TradeJournalEntryOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Update Trade Journal",
         "tags": [
           "trading-experience"
         ]

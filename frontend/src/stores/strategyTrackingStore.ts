@@ -1,6 +1,6 @@
 import { create } from "zustand";
 
-export type StrategyTrackingAnalysisTab = "performance" | "holding" | "drift" | "diagnostics" | "trade-review" | "trade-journal" | "relative-strength";
+export type StrategyTrackingAnalysisTab = "performance" | "holding" | "drift" | "diagnostics" | "review-workspace" | "trade-review" | "trade-journal" | "relative-strength";
 export type StrategyTrackingTab = "active" | "gain" | "risk" | StrategyTrackingAnalysisTab;
 export type StrategyTrackingViewMode = "beginner" | "professional";
 export type StrategyTrackingLane = "" | "baseline" | "front_row_weighted" | "front_row_only";
@@ -30,6 +30,7 @@ interface StrategyTrackingStore {
   page: number;
   pageSize: number;
   selectedItemId: string | null;
+  reviewWorkspaceSelectedKey: string | null;
   setTab: (tab: StrategyTrackingTab) => void;
   setOverviewTab: (tab: "active" | "gain" | "risk") => void;
   setAnalysisTab: (tab: StrategyTrackingAnalysisTab) => void;
@@ -52,6 +53,7 @@ interface StrategyTrackingStore {
   setSort: (sort: string) => void;
   setPagination: (page: number, pageSize: number) => void;
   setSelectedItemId: (selectedItemId: string | null) => void;
+  setReviewWorkspaceSelectedKey: (reviewWorkspaceSelectedKey: string | null) => void;
 }
 
 const resetPage = { page: 1 };
@@ -80,6 +82,7 @@ export const useStrategyTrackingStore = create<StrategyTrackingStore>((set) => (
   page: 1,
   pageSize: 30,
   selectedItemId: null,
+  reviewWorkspaceSelectedKey: null,
   setTab: (tab) => set({
     tab,
     ...(isOverviewTab(tab) ? { overviewTab: tab, summaryGroup: "overview" as const } : { analysisTab: tab as StrategyTrackingStore["analysisTab"], summaryGroup: "analysis" as const }),
@@ -122,6 +125,7 @@ export const useStrategyTrackingStore = create<StrategyTrackingStore>((set) => (
   setSort: (sort) => set({ sort, ...resetPage }),
   setPagination: (page, pageSize) => set({ page, pageSize }),
   setSelectedItemId: (selectedItemId) => set({ selectedItemId }),
+  setReviewWorkspaceSelectedKey: (reviewWorkspaceSelectedKey) => set({ reviewWorkspaceSelectedKey }),
 }));
 
 function sortForTab(tab: StrategyTrackingTab): string {

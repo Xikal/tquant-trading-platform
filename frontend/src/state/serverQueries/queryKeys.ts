@@ -18,6 +18,7 @@ export const queryKeys = {
   trackRecordDrift: (windowDays: number) => ["track-record", "drift", windowDays] as const,
   tradingExperienceReadiness: ["trading-experience", "readiness"] as const,
   tradingExperienceReview: (boardFilter: string) => ["trading-experience", "review", boardFilter] as const,
+  tradingExperienceReviewWorkspace: (boardFilter: string) => ["trading-experience", "review-workspace", boardFilter] as const,
   tradingExperienceJournal: (accountId?: number | null) => ["trading-experience", "journal", accountId] as const,
   tradingExperienceVolumeTags: (symbol?: string | null) => ["trading-experience", "volume-tags", symbol] as const,
   tradingExperienceRelativeStrength: ["trading-experience", "relative-strength"] as const,

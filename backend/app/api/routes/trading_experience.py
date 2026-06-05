@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import date
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy.orm import Session
 
 from app.core.auth import get_current_user
@@ -16,9 +16,11 @@ from app.services.trading_experience.schemas import (
     LimitUpFollowthroughResponse,
     RelativeStrengthResponse,
     ReviewPoolResponse,
+    ReviewWorkspaceResponse,
     TTradeAttributionResponse,
     TradeJournalEntryCreate,
     TradeJournalEntryOut,
+    TradeJournalEntryUpdate,
     TradeJournalResponse,
     TradingExperienceReadinessResponse,
     VolumePositionTagResponse,
@@ -41,6 +43,22 @@ def get_review_pool(
     db: Session = Depends(get_db),
 ) -> ReviewPoolResponse:
     return TradingExperienceService(db).review_pool(pool_date=pool_date, limit=limit, board_filter=board_filter)
+
+
+@router.get("/review-workspace", response_model=ReviewWorkspaceResponse)
+def get_review_workspace(
+    pool_date: date | None = None,
+    limit: Annotated[int, Query(ge=1, le=100)] = 30,
+    board_filter: BoardFilter = "include_all",
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_paper_trading),
+) -> ReviewWorkspaceResponse:
+    return TradingExperienceService(db).review_workspace(
+        pool_date=pool_date,
+        limit=limit,
+        board_filter=board_filter,
+        user_id=getattr(current_user, "id", None),
+    )
 
 
 @router.get("/trade-journal", response_model=TradeJournalResponse)
@@ -69,6 +87,38 @@ def create_trade_journal(
         return TradingExperienceService(db).create_trade_journal(payload, user_id=getattr(current_user, "id", None))
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.patch("/trade-journal/{entry_id}", response_model=TradeJournalEntryOut)
+def update_trade_journal(
+    entry_id: int,
+    payload: TradeJournalEntryUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_paper_trading),
+) -> TradeJournalEntryOut:
+    try:
+        return TradingExperienceService(db).update_trade_journal(
+            entry_id,
+            payload,
+            user_id=getattr(current_user, "id", None),
+        )
+    except ValueError as exc:
+        status_code = 404 if str(exc) == "trade_journal_entry_not_found" else 400
+        raise HTTPException(status_code=status_code, detail=str(exc)) from exc
+
+
+@router.delete("/trade-journal/{entry_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_trade_journal(
+    entry_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_paper_trading),
+) -> Response:
+    try:
+        TradingExperienceService(db).delete_trade_journal(entry_id, user_id=getattr(current_user, "id", None))
+    except ValueError as exc:
+        status_code = 404 if str(exc) == "trade_journal_entry_not_found" else 400
+        raise HTTPException(status_code=status_code, detail=str(exc)) from exc
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.get("/volume-position-tags/{symbol}", response_model=VolumePositionTagResponse)

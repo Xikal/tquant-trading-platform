@@ -34,7 +34,7 @@ def build_board(db: Session, *, trade_date: date | None = None, limit: int = 30)
             RelativeStrengthItem(
                 symbol=row.symbol,
                 trade_date=target.isoformat(),
-                index_code="market_average",
+                index_code="market_average_fallback",
                 sector_code=sector_key,
                 stock_pct=round(stock_pct, 4),
                 index_pct=round(market_pct, 4),
@@ -43,7 +43,7 @@ def build_board(db: Session, *, trade_date: date | None = None, limit: int = 30)
                 rs_vs_sector=round(stock_pct - sec_pct, 4),
                 sector_rank=index,
                 resilience_flag=_flag(stock_pct, market_pct, sec_pct),
-                data_quality="ok" if row.data_quality == "ok" else "insufficient",
+                data_quality="insufficient",
                 as_of=as_of,
             )
         )

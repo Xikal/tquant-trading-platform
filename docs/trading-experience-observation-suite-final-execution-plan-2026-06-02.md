@@ -381,6 +381,10 @@ as_of
 3. 标签条可在详情 drawer 内折叠展示。
 4. flag 关闭时入口隐藏。
 
+### 复盘中心后续优化
+
+策略跟踪页将“复盘 / 纪律日志 / 抗跌事实”收敛为“复盘中心”。该入口仍属于交易经验观察与复盘套件，继续受 `trading_experience_suite_enabled`、`trade_review_suite_enabled`、`relative_strength_board_enabled` 控制，不进入生产排序，不产 `production_score`，不改 `strategy_policy.py`。
+
 ### 10.2 模拟盘页
 
 在 `frontend/src/features/paper/` 新增或增强：

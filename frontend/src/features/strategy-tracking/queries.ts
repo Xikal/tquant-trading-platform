@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../../api/client";
 import { queryKeys } from "../../app/query/queryKeys";
-import type { StrategyTrackingParams, TradeJournalEntryCreate } from "../../types";
+import type { StrategyTrackingParams, TradeJournalEntryCreate, TradeJournalEntryUpdate } from "../../types";
 
 const STRATEGY_TRACKING_STALE_TIME_MS = 60_000;
 const STRATEGY_TRACKING_DETAIL_STALE_TIME_MS = 30_000;
@@ -89,6 +89,19 @@ export function useTradeReviewSuite(boardFilter: "include_all" | "main_only" = "
   });
 }
 
+export function useReviewWorkspace(boardFilter: "include_all" | "main_only" = "include_all", enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.tradingExperienceReviewWorkspace(boardFilter),
+    queryFn: async () => {
+      const module = await import("./reviewWorkspaceApi");
+      return module.getTradingExperienceReviewWorkspace(30, boardFilter);
+    },
+    enabled,
+    ...strategyTrackingSwrOptions,
+    staleTime: STRATEGY_TRACKING_STALE_TIME_MS,
+  });
+}
+
 export function useTradeJournal(accountId?: number | null, enabled = true) {
   return useQuery({
     queryKey: queryKeys.tradingExperienceJournal(accountId),
@@ -105,6 +118,40 @@ export function useCreateTradeJournal(accountId?: number | null) {
     mutationFn: (payload: TradeJournalEntryCreate) => api.createTradingExperienceTradeJournal(payload),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: queryKeys.tradingExperienceJournal(accountId) });
+      await queryClient.invalidateQueries({ queryKey: queryKeys.tradingExperienceReviewWorkspace("include_all") });
+      await queryClient.invalidateQueries({ queryKey: queryKeys.tradingExperienceReviewWorkspace("main_only") });
+      if (accountId !== null) {
+        await queryClient.invalidateQueries({ queryKey: queryKeys.tradingExperienceJournal(null) });
+      }
+    },
+  });
+}
+
+export function useUpdateTradeJournal(accountId?: number | null) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ entryId, payload }: { entryId: number; payload: TradeJournalEntryUpdate }) =>
+      import("./reviewWorkspaceApi").then((module) => module.updateTradingExperienceTradeJournal(entryId, payload)),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: queryKeys.tradingExperienceJournal(accountId) });
+      await queryClient.invalidateQueries({ queryKey: queryKeys.tradingExperienceReviewWorkspace("include_all") });
+      await queryClient.invalidateQueries({ queryKey: queryKeys.tradingExperienceReviewWorkspace("main_only") });
+      if (accountId !== null) {
+        await queryClient.invalidateQueries({ queryKey: queryKeys.tradingExperienceJournal(null) });
+      }
+    },
+  });
+}
+
+export function useDeleteTradeJournal(accountId?: number | null) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (entryId: number) =>
+      import("./reviewWorkspaceApi").then((module) => module.deleteTradingExperienceTradeJournal(entryId)),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: queryKeys.tradingExperienceJournal(accountId) });
+      await queryClient.invalidateQueries({ queryKey: queryKeys.tradingExperienceReviewWorkspace("include_all") });
+      await queryClient.invalidateQueries({ queryKey: queryKeys.tradingExperienceReviewWorkspace("main_only") });
       if (accountId !== null) {
         await queryClient.invalidateQueries({ queryKey: queryKeys.tradingExperienceJournal(null) });
       }

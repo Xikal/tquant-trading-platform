@@ -36,3 +36,15 @@ def test_relative_strength_board_outputs_fact_metrics_only() -> None:
     assert items
     assert items[0].rs_vs_index is not None
     assert all(item.resilience_flag in {"resilient", "follow_down", "neutral"} for item in items)
+
+
+def test_relative_strength_fallback_index_is_labeled_insufficient() -> None:
+    Session = session_factory()
+    db = Session()
+    seed_daily_bars(db, "600000", pct=1.2, sector="银行")
+
+    items = build_board(db, trade_date=date(2026, 5, 24), limit=5)
+
+    assert items
+    assert all(item.index_code == "market_average_fallback" for item in items)
+    assert all(item.data_quality == "insufficient" for item in items)

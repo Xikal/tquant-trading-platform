@@ -197,13 +197,176 @@ describe("PlaybookPage", () => {
 
     expect(html).toContain("当前无确认买入");
     expect(html).toContain("确认可买");
+    expect(html).toContain('data-playbook-active-section="observe"');
     expect(html).toContain("tq-playbook-candidate-tabs");
-    expect(html).toContain("当前没有可以直接执行的股票");
+    expect(html).not.toContain("当前没有可以直接执行的股票");
     expect(html).toContain(">观察<span");
     expect(html).toMatch(/>观察<span[^>]*tq-playbook-page__tab-count[^>]*>1<\/span>/);
     expect(html).toContain("观察：观察股份");
     expect(html).toContain("600123");
     expect(html).not.toContain("主看：观察股份");
+  });
+
+  it("opens the passive candidate tab when only watch or avoid stocks exist", () => {
+    const html = renderToStaticMarkup(
+      <PlaybookPage
+        strategy="first_board"
+        setStrategy={vi.fn()}
+        playbook={{
+          strategy_key: "first_board",
+          strategy_title: "首板回调",
+          scanned_count: 18,
+          candidates: [{
+            name: "观察候选",
+            symbol: "603977",
+            strategy_key: "first_board",
+            strategy_title: "首板回调",
+            latest_price: 10.12,
+            change_pct: 1.23,
+            score: 88,
+            risk_tier: "note",
+            suggested_position_text: "15%",
+            buy_signal_state: "watch",
+            buy_signal_text: "继续观察",
+            entry_zone_low: 9.8,
+            entry_zone_high: 10.2,
+            stop_loss: 9.5,
+            summary_reason: "未到买点",
+            reasons: [],
+            risks: [],
+            tags: [],
+          }],
+          confirmed_candidates: [],
+          hot_industries: ["机器人"],
+          latest_trade_date: beijingTodayString(),
+          full_scan_ready: true,
+          performance: null,
+        } as any}
+        loading=""
+        onRefresh={vi.fn()}
+        onAnalyze={vi.fn()}
+        onSelect={vi.fn()}
+      />
+    );
+
+    expect(html).toContain('data-playbook-active-section="watch"');
+    expect(html).toMatch(/>观察\/放弃<span[^>]*tq-playbook-page__tab-count[^>]*>1<\/span>/);
+    expect(html).toContain("观察候选");
+    expect(html).toContain("603977");
+  });
+
+  it("does not drop backend states that are unknown to the current frontend", () => {
+    const html = renderToStaticMarkup(
+      <PlaybookPage
+        strategy="first_board"
+        setStrategy={vi.fn()}
+        playbook={{
+          strategy_key: "first_board",
+          strategy_title: "首板回调",
+          scanned_count: 1,
+          candidates: [{
+            name: "新状态候选",
+            symbol: "603888",
+            strategy_key: "first_board",
+            strategy_title: "首板回调",
+            latest_price: 10.12,
+            change_pct: 1.23,
+            score: 88,
+            risk_tier: "note",
+            suggested_position_text: "15%",
+            buy_signal_state: "backend_new_state",
+            buy_signal_text: "新增观察状态",
+            entry_zone_low: 9.8,
+            entry_zone_high: 10.2,
+            stop_loss: 9.5,
+            summary_reason: "后端新增状态",
+            reasons: [],
+            risks: [],
+            tags: [],
+          }],
+          confirmed_candidates: [],
+          hot_industries: ["机器人"],
+          latest_trade_date: beijingTodayString(),
+          full_scan_ready: true,
+          performance: null,
+        } as any}
+        loading=""
+        onRefresh={vi.fn()}
+        onAnalyze={vi.fn()}
+        onSelect={vi.fn()}
+      />
+    );
+
+    expect(html).toContain('data-playbook-active-section="watch"');
+    expect(html).toContain("新状态候选");
+    expect(html).toContain("603888");
+    expect(html).toContain("新增观察状态");
+  });
+
+  it("keeps the more actionable state when the same stock appears in multiple buckets", () => {
+    const html = renderToStaticMarkup(
+      <PlaybookPage
+        strategy="first_board"
+        setStrategy={vi.fn()}
+        playbook={{
+          strategy_key: "first_board",
+          strategy_title: "首板回调",
+          scanned_count: 2,
+          confirmed_candidates: [{
+            name: "重复候选",
+            symbol: "600001",
+            strategy_key: "first_board",
+            strategy_title: "首板回调",
+            latest_price: 10.12,
+            change_pct: 1.23,
+            score: 88,
+            risk_tier: "note",
+            suggested_position_text: "15%",
+            buy_signal_state: "observe_confirmed",
+            buy_signal_text: "观察确认",
+            entry_zone_low: 9.8,
+            entry_zone_high: 10.2,
+            stop_loss: 9.5,
+            summary_reason: "观察版本",
+            reasons: [],
+            risks: [],
+            tags: [],
+          }],
+          candidates: [{
+            name: "重复候选",
+            symbol: "600001",
+            strategy_key: "first_board",
+            strategy_title: "首板回调",
+            latest_price: 10.12,
+            change_pct: 1.23,
+            score: 80,
+            risk_tier: "note",
+            suggested_position_text: "15%",
+            buy_signal_state: "watch",
+            buy_signal_text: "继续观察",
+            entry_zone_low: 9.8,
+            entry_zone_high: 10.2,
+            stop_loss: 9.5,
+            summary_reason: "弱版本",
+            reasons: [],
+            risks: [],
+            tags: [],
+          }],
+          hot_industries: ["机器人"],
+          latest_trade_date: beijingTodayString(),
+          full_scan_ready: true,
+          performance: null,
+        } as any}
+        loading=""
+        onRefresh={vi.fn()}
+        onAnalyze={vi.fn()}
+        onSelect={vi.fn()}
+      />
+    );
+
+    expect(html).toContain('data-playbook-active-section="observe"');
+    expect(html).toContain("观察确认 · 观察版本");
+    expect(html).not.toContain("继续观察 · 弱版本");
   });
 
   it("keeps backend stale-date candidates visible in their strategy state lanes", () => {

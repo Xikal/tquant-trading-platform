@@ -3,7 +3,6 @@ import type { AuthUser } from "../../types";
 import { setAdminApiToken } from "../../api/base";
 import { isAdmin } from "../shared/strategyPermissions";
 import { EtfUniverseAdminCard } from "../settings/EtfUniverseAdminCard";
-import { WorkspacePageIntro } from "../workspace-shared/WorkspacePageIntro";
 import { Panel } from "../../ui/surfaces";
 import { useDataConsoleUiStore } from "../../stores/dataConsoleUiStore";
 import { DataHealthOverview } from "./DataHealthOverview";
@@ -16,7 +15,6 @@ import { RuntimeFallbackPanel } from "./RuntimeFallbackPanel";
 import { TradeDataGateCard } from "./TradeDataGateCard";
 import { WorkerObservabilityPanel } from "./WorkerObservabilityPanel";
 import { useDataConsole } from "./useDataConsole";
-import { buildDataConsoleSummary } from "./dataConsoleTypes";
 import styles from "./DataConsolePage.module.css";
 
 export function DataConsolePage({ currentUser }: { currentUser: AuthUser }) {
@@ -49,7 +47,6 @@ function DataConsoleAdminContent() {
   const setField = useDataConsoleUiStore((state) => state.setField);
   const adminReady = Boolean(adminToken.trim());
   const disabledReason = "先填管理令牌才能操作";
-  const summary = buildDataConsoleSummary(data.sla?.items ?? []);
 
   function updateAdminToken(value: string) {
     setAdminToken(value);
@@ -58,13 +55,6 @@ function DataConsoleAdminContent() {
 
   return (
     <div className={styles.page}>
-      <WorkspacePageIntro
-        title="数据中心"
-        summary="先看今日数据能不能用，再看哪里不对，最后去更新或修复。"
-        detail="所有更新都交后台处理，不会动你的持仓和交易。"
-        tone={summary.status === "blocked" ? "down" : summary.status === "warn" ? "warn" : "up"}
-      />
-
       <Panel title="今日数据能不能用" className={styles.full}>
         <div className={styles.conclusionGrid}>
           <section className={styles.layerSection} aria-label="今日数据状态">

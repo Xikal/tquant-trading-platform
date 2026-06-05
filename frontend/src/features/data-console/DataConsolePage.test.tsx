@@ -250,7 +250,6 @@ describe("DataConsolePage", () => {
       </QueryClientProvider>
     );
 
-    expect(html).toContain("数据中心");
     expect(html).toContain("今日数据能不能用");
     expect(html).toContain("今日数据状态");
     expect(html).toContain("能否用于交易");
@@ -259,8 +258,10 @@ describe("DataConsolePage", () => {
     expect(html).toContain("数据完整度");
     expect(html).toContain("数据维护");
     expect(html).toContain("先填管理令牌才能操作");
-    expect(html).toContain("所有更新都交后台处理，不会动你的持仓和交易。");
     expect(html).toContain("质量下降");
+    expect(html).not.toContain("数据中心");
+    expect(html).not.toContain("先看今日数据能不能用，再看哪里不对，最后去更新或修复。");
+    expect(html).not.toContain("所有更新都交后台处理，不会动你的持仓和交易。");
     expect(html).not.toMatch(/[A-H] 数据|实盘前数据门|数据控制台|综合灯|阻断|过期|探测|需填写管理令牌|>red<|>degraded<|>queued</);
   });
 

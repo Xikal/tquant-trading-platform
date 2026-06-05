@@ -1,6 +1,7 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { PagePriorityStrip } from "./PagePriorityStrip";
+import { shouldShowPagePriorityStrip } from "./TradingWorkspaceChrome";
 
 describe("PagePriorityStrip", () => {
   it("can render compact hierarchy for denoised pages when explicitly mounted", () => {
@@ -27,5 +28,17 @@ describe("PagePriorityStrip", () => {
     const html = renderToStaticMarkup(<PagePriorityStrip page="analysis" />);
 
     expect(html).toBe("");
+  });
+
+  it("hides hierarchy copy from dense work pages in the workspace shell", () => {
+    expect(shouldShowPagePriorityStrip("strategy-tracking")).toBe(false);
+    expect(shouldShowPagePriorityStrip("backtest")).toBe(false);
+    expect(shouldShowPagePriorityStrip("data")).toBe(false);
+  });
+
+  it("does not render removed hierarchy copy when mounted directly for dense work pages", () => {
+    expect(renderToStaticMarkup(<PagePriorityStrip page="strategy-tracking" />)).toBe("");
+    expect(renderToStaticMarkup(<PagePriorityStrip page="backtest" />)).toBe("");
+    expect(renderToStaticMarkup(<PagePriorityStrip page="data" />)).toBe("");
   });
 });

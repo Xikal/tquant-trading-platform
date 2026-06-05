@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from app.services.trading_experience import repository
 from app.services.trading_experience.config import DISCIPLINE_FLAG_KEYS, ENGINE_VERSION
 from app.services.trading_experience.guards import assert_no_forbidden_trading_copy
-from app.services.trading_experience.schemas import TradeJournalEntryCreate, TradeJournalEntryOut
+from app.services.trading_experience.schemas import TradeJournalEntryCreate, TradeJournalEntryOut, TradeJournalEntryUpdate
 
 
 def create_entry(db: Session, payload: TradeJournalEntryCreate, *, user_id: int | None) -> TradeJournalEntryOut:
@@ -44,6 +44,34 @@ def list_entries(
         _to_out(row)
         for row in repository.journal_entries(db, user_id=user_id, account_id=account_id, symbol=symbol, limit=limit)
     ]
+
+
+def update_entry(
+    db: Session,
+    entry_id: int,
+    payload: TradeJournalEntryUpdate,
+    *,
+    user_id: int | None,
+) -> TradeJournalEntryOut:
+    assert_no_forbidden_trading_copy(payload.model_dump(exclude_none=True))
+    row = repository.journal_entry_by_id(db, entry_id, user_id=user_id)
+    if row is None:
+        raise ValueError("trade_journal_entry_not_found")
+    updated = repository.update_journal_entry(
+        db,
+        row,
+        reason_text=payload.reason_text,
+        discipline_flags=_normalize_flags(payload.discipline_flags) if payload.discipline_flags is not None else None,
+        mistake_tags=payload.mistake_tags,
+    )
+    return _to_out(updated)
+
+
+def delete_entry(db: Session, entry_id: int, *, user_id: int | None) -> None:
+    row = repository.journal_entry_by_id(db, entry_id, user_id=user_id)
+    if row is None:
+        raise ValueError("trade_journal_entry_not_found")
+    repository.delete_journal_entry(db, row)
 
 
 def _normalize_flags(flags: dict[str, bool]) -> dict[str, bool]:

@@ -74,7 +74,6 @@ export function DataRepairPanel({
           { title: "备份", dataIndex: "backup_path", render: (value) => String(value || "--") },
         ]}
       />
-      <div className={styles.muted}>所有更新都交后台处理，不会动你的持仓和交易。</div>
     </div>
   );
 }

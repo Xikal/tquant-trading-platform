@@ -480,6 +480,127 @@
   gap: var(--sp-2);
 }
 
+.strategy-review-reminder {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  display: grid;
+  gap: var(--sp-1);
+  margin-bottom: var(--sp-3);
+  padding: var(--sp-3);
+}
+
+.strategy-review-reminder span,
+.strategy-review-data-quality {
+  color: var(--muted);
+}
+
+.strategy-review-data-quality {
+  margin: 0;
+}
+
+.strategy-review-perf-status {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+  margin-bottom: var(--sp-3);
+}
+
+.strategy-review-summary-cards {
+  display: grid;
+  gap: var(--sp-3);
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+}
+
+.strategy-review-summary-card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  display: grid;
+  gap: var(--sp-1);
+  min-width: 0;
+  padding: var(--sp-3);
+}
+
+.strategy-review-summary-card span {
+  color: var(--muted);
+}
+
+.strategy-review-summary-card strong {
+  font-size: 20px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+
+.strategy-review-workspace-grid {
+  display: grid;
+  gap: var(--sp-4);
+  grid-template-columns: minmax(0, 1.15fr) minmax(320px, 0.85fr);
+}
+
+.strategy-review-queue,
+.strategy-review-detail,
+.strategy-review-relative-card,
+.strategy-review-journal-list {
+  min-width: 0;
+}
+
+.strategy-review-journal-row {
+  border-top: 1px solid var(--border);
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--sp-2);
+  min-width: 0;
+  padding: var(--sp-2) 0;
+}
+
+.strategy-review-journal-row > div {
+  display: grid;
+  gap: var(--sp-1);
+  min-width: 0;
+}
+
+.strategy-review-journal-actions {
+  display: flex !important;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.strategy-review-journal-empty {
+  color: var(--muted);
+  margin: 0;
+}
+
+.strategy-review-detail,
+.strategy-review-relative-card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  display: grid;
+  gap: var(--sp-3);
+  padding: var(--sp-3);
+}
+
+.strategy-review-relative-grid {
+  display: grid;
+  gap: var(--sp-2);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.strategy-review-relative-grid span {
+  min-width: 0;
+}
+
+.trade-journal-code-input {
+  width: 120px;
+}
+
+.trade-journal-action-select {
+  width: 144px;
+}
+
+.trade-journal-reason-input {
+  width: min(260px, 100%);
+}
+
 @media (max-width: 960px) {
   .strategy-tracking-top-grid {
     grid-template-columns: 1fr;
@@ -495,6 +616,14 @@
 }
 
 @media (max-width: 640px) {
+  .strategy-review-summary-cards {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .strategy-review-workspace-grid {
+    grid-template-columns: 1fr;
+  }
+
   .strategy-tracking-table-grid {
     display: none;
   }

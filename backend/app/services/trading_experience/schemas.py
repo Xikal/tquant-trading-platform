@@ -64,6 +64,12 @@ class TradeJournalEntryCreate(BaseModel):
     mistake_tags: list[str] = Field(default_factory=list)
 
 
+class TradeJournalEntryUpdate(BaseModel):
+    reason_text: str | None = None
+    discipline_flags: dict[str, bool] | None = None
+    mistake_tags: list[str] | None = None
+
+
 class TradeJournalEntryOut(TradeJournalEntryCreate):
     entry_id: int
     user_id: int | None = None
@@ -119,6 +125,63 @@ class RelativeStrengthItem(BaseModel):
 class RelativeStrengthResponse(TradingExperienceMeta):
     enabled: bool
     items: list[RelativeStrengthItem] = Field(default_factory=list)
+    total: int = 0
+
+
+ReviewReminderStatus = Literal["not_due", "queued", "refreshing", "ready", "insufficient", "blocked"]
+
+
+class ReviewWorkspaceSourceStatus(BaseModel):
+    source: Literal["review_pool", "trade_journal", "relative_strength"]
+    status: Literal["ok", "disabled", "stale", "insufficient", "timeout", "error"]
+    elapsed_ms: float = 0.0
+    item_count: int = 0
+    reason: str = ""
+
+
+class ReviewWorkspaceReminder(BaseModel):
+    status: ReviewReminderStatus = "not_due"
+    message: str = "收盘后生成复盘池"
+    pool_date: str | None = None
+    refresh_queued: bool = False
+    last_success_at: datetime | None = None
+    data_quality: DataQuality = "insufficient"
+
+
+class ReviewWorkspaceSummary(BaseModel):
+    pending_review_count: int = 0
+    retained_count: int = 0
+    dropped_count: int = 0
+    missing_journal_count: int = 0
+    journal_count: int = 0
+    relative_strength_count: int = 0
+    completion_rate_pct: float = 0.0
+    seven_day_discipline_pass_rate_pct: float | None = None
+    seven_day_journal_count: int = 0
+    market_context: str = "unknown"
+
+
+class ReviewWorkspaceItem(BaseModel):
+    review_key: str
+    pool_item: ReviewPoolItem
+    journal_entries: list[TradeJournalEntryOut] = Field(default_factory=list)
+    relative_strength: RelativeStrengthItem | None = None
+    review_status: Literal["pending", "journaled", "retained", "dropped", "data_issue"]
+    next_action_label: str
+
+
+class ReviewWorkspaceResponse(TradingExperienceMeta):
+    enabled: bool
+    review_enabled: bool
+    relative_strength_enabled: bool
+    pool_date: str | None = None
+    board_filter: BoardFilter = "include_all"
+    reminder: ReviewWorkspaceReminder = Field(default_factory=ReviewWorkspaceReminder)
+    summary: ReviewWorkspaceSummary = Field(default_factory=ReviewWorkspaceSummary)
+    sources: list[ReviewWorkspaceSourceStatus] = Field(default_factory=list)
+    cache_status: Literal["fresh", "stale", "miss"] = "miss"
+    elapsed_ms: float = 0.0
+    items: list[ReviewWorkspaceItem] = Field(default_factory=list)
     total: int = 0
 
 

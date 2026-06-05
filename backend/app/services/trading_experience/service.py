@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
 from app.services.shared.feature_flags import feature_enabled
-from app.services.trading_experience import holding_discipline, limit_up_followthrough, relative_strength, review_pool, t_trade_attribution, trade_journal, volume_position_tags
+from app.services.trading_experience import holding_discipline, limit_up_followthrough, relative_strength, review_pool, review_workspace, t_trade_attribution, trade_journal, volume_position_tags
 from app.services.trading_experience.config import ENGINE_VERSION, TRADING_EXPERIENCE_FLAGS
 from app.services.trading_experience.guards import validate_observation_payload
 from app.services.trading_experience.schemas import (
@@ -15,8 +15,10 @@ from app.services.trading_experience.schemas import (
     LimitUpFollowthroughResponse,
     RelativeStrengthResponse,
     ReviewPoolResponse,
+    ReviewWorkspaceResponse,
     TTradeAttributionResponse,
     TradeJournalEntryCreate,
+    TradeJournalEntryUpdate,
     TradeJournalResponse,
     TradingExperienceReadinessResponse,
     VolumePositionTagResponse,
@@ -69,6 +71,36 @@ class TradingExperienceService:
         )
         return self._validated(response)
 
+    def review_workspace(
+        self,
+        *,
+        pool_date: date | None,
+        limit: int,
+        board_filter: BoardFilter = "include_all",
+        user_id: int | None,
+    ) -> ReviewWorkspaceResponse:
+        flags = self.flags()
+        review_enabled = flags["trading_experience_suite_enabled"] and flags.get("trade_review_suite_enabled", False)
+        rs_enabled = flags["trading_experience_suite_enabled"] and flags.get("relative_strength_board_enabled", False)
+        if not review_enabled:
+            return self._validated(
+                review_workspace.disabled_workspace(
+                    review_enabled=review_enabled,
+                    relative_strength_enabled=rs_enabled,
+                    board_filter=board_filter,
+                )
+            )
+        return self._validated(
+            review_workspace.build_workspace(
+                self.db,
+                pool_date=pool_date,
+                limit=limit,
+                board_filter=board_filter,
+                relative_strength_enabled=rs_enabled,
+                user_id=user_id,
+            )
+        )
+
     def trade_journal(self, *, user_id: int | None, account_id: int | None, symbol: str | None, limit: int) -> TradeJournalResponse:
         if not self._enabled("trade_review_suite_enabled"):
             return self._disabled_trade_journal()
@@ -89,6 +121,16 @@ class TradingExperienceService:
         if not self._enabled("trade_review_suite_enabled"):
             raise ValueError("trade_review_suite_disabled")
         return self._validated(trade_journal.create_entry(self.db, payload, user_id=user_id))
+
+    def update_trade_journal(self, entry_id: int, payload: TradeJournalEntryUpdate, *, user_id: int | None):
+        if not self._enabled("trade_review_suite_enabled"):
+            raise ValueError("trade_review_suite_disabled")
+        return self._validated(trade_journal.update_entry(self.db, entry_id, payload, user_id=user_id))
+
+    def delete_trade_journal(self, entry_id: int, *, user_id: int | None) -> None:
+        if not self._enabled("trade_review_suite_enabled"):
+            raise ValueError("trade_review_suite_disabled")
+        trade_journal.delete_entry(self.db, entry_id, user_id=user_id)
 
     def volume_position_tags(self, symbol: str, *, trade_date: date | None) -> VolumePositionTagResponse:
         if not self._enabled("vp_position_tags_enabled"):

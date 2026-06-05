@@ -114,7 +114,7 @@ function splitVendorChunks(id: string): string | undefined {
     return "antd-check-controls";
   }
   if (matchesAntdComponent(normalized, ["switch"])) {
-    return "antd-switch-controls";
+    return "antd-detail";
   }
   if (matchesAntdComponent(normalized, ["radio"])) {
     return "antd-radio-controls";
