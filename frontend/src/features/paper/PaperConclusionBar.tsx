@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Button } from "antd";
+import { Button, Space } from "antd";
 import type { PaperAccount, PaperAutoTradingStatus, PaperPerformance } from "../../types";
 import { ConclusionBar } from "../../ui/surfaces";
 import { formatPct, toneFromChange } from "../workspace-shared/workspaceFormatters";
@@ -11,26 +11,41 @@ export function PaperConclusionBar({
   autoTradingStatus,
   loading,
   canResumeOrder,
+  reviewReportCount = 0,
   pixel,
   positions,
   onTogglePause,
+  onOpenReviewHistory,
 }: {
   account: PaperAccount | null;
   performance: PaperPerformance | null;
   autoTradingStatus: PaperAutoTradingStatus | null;
   loading: boolean;
   canResumeOrder?: boolean;
+  reviewReportCount?: number;
   pixel?: ReactNode;
   positions?: ReactNode;
   onTogglePause?: () => void | Promise<void>;
+  onOpenReviewHistory?: () => void;
 }) {
   const status = resolveAutoManagedStatus(account, autoTradingStatus);
   const skipNotice = autoTradingSkipNotice(autoTradingStatus);
   const positionRatio = account?.total_assets ? (account.market_value / account.total_assets) * 100 : null;
-  const actions = canResumeOrder && onTogglePause ? (
-    <Button size="small" disabled={loading} onClick={() => void onTogglePause()}>
-      恢复委托
-    </Button>
+  const hasReviewHistoryAction = Boolean(onOpenReviewHistory);
+  const hasResumeAction = Boolean(canResumeOrder && onTogglePause);
+  const actions = hasReviewHistoryAction || hasResumeAction ? (
+    <Space size={6} wrap>
+      {hasReviewHistoryAction ? (
+        <Button size="small" disabled={loading} onClick={onOpenReviewHistory}>
+          {reviewReportCount > 0 ? `复盘历史 · ${reviewReportCount} 条` : "复盘历史"}
+        </Button>
+      ) : null}
+      {hasResumeAction ? (
+        <Button size="small" disabled={loading} onClick={() => void onTogglePause?.()}>
+          恢复委托
+        </Button>
+      ) : null}
+    </Space>
   ) : null;
 
   return (

@@ -433,7 +433,7 @@ describe("PaperTradingPage", () => {
     expect(html).toContain("实时同步监控日志");
   });
 
-  it("keeps paper page free of the full-market review entry", () => {
+  it("keeps full-market review details behind the paper review action", () => {
     const html = renderToStaticMarkup(
       <PaperTradingPage
         account={null}
@@ -517,6 +517,7 @@ describe("PaperTradingPage", () => {
       />
     );
 
+    expect(html).toContain("复盘历史 · 3 条");
     expect(html).not.toContain("复盘历史入口 · 2 条");
     expect(html).not.toContain("今日收盘福袋");
     expect(html).not.toContain("明日优先处理弱势仓位");
@@ -654,6 +655,7 @@ describe("PaperTradingPage", () => {
 
     const mainHtml = renderToStaticMarkup(<PaperTradingPage {...baseProps} />);
     expect(mainHtml).toContain("详情信息");
+    expect(mainHtml).toContain("复盘历史 · 2 条");
     expect(mainHtml).not.toContain("收盘市场复盘完成");
     expect(mainHtml).not.toContain("最多 5 只");
     expect(mainHtml).toContain("策略绩效");

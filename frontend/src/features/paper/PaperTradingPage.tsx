@@ -19,7 +19,7 @@ import type {
 import type { CSSProperties } from "react";
 import { memo, useMemo } from "react";
 import { Col, Row, Space } from "antd";
-import { PaperDetailTabs } from "./PaperDetailTabs";
+import { PaperDetailTabs, reviewReportCount } from "./PaperDetailTabs";
 import { HoldingDisciplinePanel } from "./HoldingDisciplinePanel";
 import { PaperConclusionBar } from "./PaperConclusionBar";
 import { PaperMechaActionPanel } from "./PaperMechaActionPanel";
@@ -120,9 +120,12 @@ export const PaperTradingPage = memo(function PaperTradingPage({
   const autoTradingRunning = Boolean(autoTradingStatus?.running);
   const orderModalOpen = usePaperUiStore((state) => state.orderModalOpen);
   const setOrderModalOpen = usePaperUiStore((state) => state.setOrderModalOpen);
+  const setDetailGroup = usePaperUiStore((state) => state.setDetailGroup);
+  const setDetailTab = usePaperUiStore((state) => state.setDetailTab);
   const flags = tradingExperienceFlags;
   const holdingEnabled = Boolean(flags.trading_experience_suite_enabled && flags.holding_discipline_assistant_enabled);
   const tTradeEnabled = Boolean(flags.trading_experience_suite_enabled && flags.t_trade_discipline_enabled);
+  const paperReviewReportCount = reviewReportCount(performanceDashboard);
   const lastOrderAction = useMemo(() => {
     const latestTrade = trades[0];
     if (!latestTrade) return null;
@@ -139,6 +142,11 @@ export const PaperTradingPage = memo(function PaperTradingPage({
     setOrderModalOpen(false);
   }
 
+  function openReviewHistory() {
+    setDetailGroup("details");
+    setDetailTab("review-history");
+  }
+
   return (
     <Space direction="vertical" size={8} style={PAPER_PAGE_STACK_STYLE}>
       <Row className="paper-hero-grid" gutter={[8, 8]} align="stretch" style={PAPER_ROW_STYLE}>
@@ -149,7 +157,9 @@ export const PaperTradingPage = memo(function PaperTradingPage({
             autoTradingStatus={autoTradingStatus}
             loading={paperLoading || orderLoading}
             canResumeOrder={needsResumeOrder}
+            reviewReportCount={paperReviewReportCount}
             onTogglePause={onTogglePause}
+            onOpenReviewHistory={openReviewHistory}
             positions={(
               <PaperPositionsPanel
                 positions={positions}

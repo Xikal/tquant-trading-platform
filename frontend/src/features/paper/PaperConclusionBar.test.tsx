@@ -55,4 +55,35 @@ describe("PaperConclusionBar", () => {
     expect(html).not.toContain("最近刷新");
     expect(html).not.toContain("总交易");
   });
+
+  it("renders a first-screen review history action when available", () => {
+    const html = renderToStaticMarkup(
+      <PaperConclusionBar
+        account={null}
+        performance={null}
+        autoTradingStatus={{ running: false }}
+        loading={false}
+        reviewReportCount={2}
+        onOpenReviewHistory={vi.fn()}
+      />
+    );
+
+    expect(html).toContain("复盘历史 · 2 条");
+  });
+
+  it("keeps the review history action visible when there are no reports", () => {
+    const html = renderToStaticMarkup(
+      <PaperConclusionBar
+        account={null}
+        performance={null}
+        autoTradingStatus={{ running: false }}
+        loading={false}
+        reviewReportCount={0}
+        onOpenReviewHistory={vi.fn()}
+      />
+    );
+
+    expect(html).toContain("复盘历史");
+    expect(html).not.toContain("复盘历史 · 0 条");
+  });
 });

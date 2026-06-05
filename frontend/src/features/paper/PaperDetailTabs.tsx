@@ -543,7 +543,7 @@ function reviewHistoryEntry(report: MarketReviewHistoryEntry): ReviewHistoryItem
   };
 }
 
-function reviewReportCount(performanceDashboard?: PaperPerformanceDashboard | null) {
+export function reviewReportCount(performanceDashboard?: PaperPerformanceDashboard | null) {
   return (performanceDashboard?.today_report ? 1 : 0) + (performanceDashboard?.review_reports?.length ?? 0);
 }
 
