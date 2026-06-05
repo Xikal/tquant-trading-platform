@@ -13,13 +13,14 @@ from app.core.database import get_db
 from app.core.timing import log_slow_call, monotonic_start
 from app.models.entities import Instrument, User, UserWatchlist, Watchlist
 from app.models.schemas import WatchlistCreate, WatchlistItemOut
-from app.services.market_data import MarketDataService, guess_instrument_type, guess_market
+from app.services.market.go_read_client import load_go_intraday_latest, load_go_market_read_quotes
+from app.services.market.local_quote_cache import read_local_quote_snapshots
+from app.services.market_data import guess_instrument_type, guess_market
 from app.services.watchlist_t1 import mark_watchlist_t1_availability, refresh_watchlist_t1_availability
 from app.services.watchlist_signal_service import WatchlistSignalService
 
 router = APIRouter(prefix="/watchlist")
 logger = logging.getLogger(__name__)
-market_data = MarketDataService()
 watchlist_signal_service = WatchlistSignalService()
 def _fallback_quote_payload(symbol: str, name: str) -> dict:
     market = guess_market(symbol)
@@ -148,25 +149,51 @@ def watchlist_quotes(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    _refresh_user_watchlist_t1(db, current_user.id)
-    rows = _list_user_watchlist_rows(db, current_user.id)
-    if not rows:
-        return []
-    quote_map = market_data.get_quotes_batch([row.symbol for row in rows], force_refresh=True)
-    items: list[dict] = []
-    for row in rows:
-        quote = quote_map.get(row.symbol)
-        if quote is not None:
-            items.append(_watchlist_quote_item(row, quote.model_dump()))
-            continue
-        items.append(
-            _watchlist_quote_item(
-                row,
-                _fallback_quote_payload(row.symbol, row.name or row.symbol),
-                "实时行情暂不可用，已回退默认快照。",
+    started_at = monotonic_start()
+    try:
+        _refresh_user_watchlist_t1(db, current_user.id)
+        rows = _list_user_watchlist_rows(db, current_user.id)
+        if not rows:
+            return []
+        quote_map = _load_watchlist_hot_quotes([row.symbol for row in rows])
+        items: list[dict] = []
+        for row in rows:
+            quote = quote_map.get(row.symbol)
+            if quote is not None:
+                items.append(_watchlist_quote_item(row, quote.model_dump()))
+                continue
+            items.append(
+                _watchlist_quote_item(
+                    row,
+                    _fallback_quote_payload(row.symbol, row.name or row.symbol),
+                    "实时行情暂不可用，已回退默认快照。",
+                )
             )
-        )
-    return items
+        return items
+    finally:
+        log_slow_call(logger, "watchlist.quotes", started_at)
+
+
+def _load_watchlist_hot_quotes(symbols: list[str]) -> dict:
+    cleaned = list(dict.fromkeys(symbol.strip() for symbol in symbols if symbol and symbol.strip()))
+    if not cleaned:
+        return {}
+    result = _safe_quote_batch("local_quote_cache", read_local_quote_snapshots, cleaned)
+    remaining = [symbol for symbol in cleaned if symbol not in result]
+    if remaining:
+        result.update(_safe_quote_batch("go_intraday_latest", load_go_intraday_latest, remaining))
+    remaining = [symbol for symbol in cleaned if symbol not in result]
+    if remaining:
+        result.update(_safe_quote_batch("go_market_read_quotes", load_go_market_read_quotes, remaining))
+    return result
+
+
+def _safe_quote_batch(source: str, loader, symbols: list[str]) -> dict:  # noqa: ANN001
+    try:
+        return loader(symbols) or {}
+    except Exception:
+        logger.warning("watchlist quote hot-read source failed: %s", source, exc_info=True)
+        return {}
 
 
 @router.get("/signals")

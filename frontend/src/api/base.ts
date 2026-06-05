@@ -192,7 +192,9 @@ async function refreshAccessPayload(): Promise<AuthRefreshPayload | null> {
     })
       .then(async (response) => {
         if (!response.ok) {
-          clearAuthTokens()
+          if (response.status === 401 || response.status === 403) {
+            clearAuthTokens()
+          }
           return null
         }
         const payload = (await response.json()) as AuthRefreshPayload
@@ -204,7 +206,6 @@ async function refreshAccessPayload(): Promise<AuthRefreshPayload | null> {
         return payload
       })
       .catch(() => {
-        clearAuthTokens()
         return null
       })
       .finally(() => {

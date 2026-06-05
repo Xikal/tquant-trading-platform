@@ -146,4 +146,23 @@ describe("api auth refresh", () => {
     expect(refreshCalls).toHaveLength(1);
     expect(fetchMock.mock.calls.some(([url]) => String(url) === "/api/intraday/subscribe")).toBe(true);
   });
+
+  it("keeps refresh-cookie restore enabled after a transient refresh outage", async () => {
+    installBrowserAuthStorage("local");
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(jsonResponse({ detail: "temporary unavailable" }, 503))
+      .mockResolvedValueOnce(jsonResponse({ access_token: "fresh-access" }))
+      .mockResolvedValueOnce(jsonResponse({ stream_token: "stream-token", expires_in: 3600 }));
+    vi.stubGlobal("fetch", fetchMock);
+    const { request, shouldAttemptAuthRefresh } = await loadBaseApi();
+
+    await expect(request("/intraday/subscribe", { method: "POST" })).rejects.toMatchObject({ status: 401 });
+    expect(shouldAttemptAuthRefresh()).toBe(true);
+
+    await expect(request("/intraday/subscribe", { method: "POST" })).resolves.toEqual({
+      stream_token: "stream-token",
+      expires_in: 3600,
+    });
+    expect(fetchMock.mock.calls.filter(([url]) => String(url) === "/api/auth/refresh")).toHaveLength(2);
+  });
 });
