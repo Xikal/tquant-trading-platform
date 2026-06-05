@@ -47,6 +47,16 @@ def test_cloud_deploy_validates_release_package_and_has_builder_fallback() -> No
     assert "retrying attempt $((attempt + 1))/3" in deploy_script
 
 
+def test_cloud_deploy_preserves_existing_paper_auto_trading_flag() -> None:
+    deploy_script = read_repo_file("scripts/deploy_cloud_server.sh")
+
+    assert 'if test -n "${PAPER_AUTO_TRADING_ENABLED+x}"; then' in deploy_script
+    assert 'upsert_env_value PAPER_AUTO_TRADING_ENABLED "$PAPER_AUTO_TRADING_ENABLED"' in deploy_script
+    assert "elif ! grep -Eq '^PAPER_AUTO_TRADING_ENABLED=' .env; then" in deploy_script
+    assert "upsert_env_value PAPER_AUTO_TRADING_ENABLED false" in deploy_script
+    assert 'upsert_env_value PAPER_AUTO_TRADING_ENABLED "${PAPER_AUTO_TRADING_ENABLED:-false}"' not in deploy_script
+
+
 def test_cloud_ssh_lib_retries_transient_scp_connection_resets() -> None:
     ssh_lib = read_repo_file("scripts/cloud_ssh_lib.sh")
 
