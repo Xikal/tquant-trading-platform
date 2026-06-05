@@ -143,6 +143,7 @@ def test_one_click_deploy_no_args_dry_run_uses_safe_mode_from_local_env(tmp_path
             f"CLOUD_SSH_KEY={key_path}",
             "CLOUD_DOMAIN=example.com",
             "CLOUD_CERT_EMAIL=ops@example.com",
+            "CLOUD_PUBLIC_BASE_URL=https://example.internal",
         ]),
         encoding="utf-8",
     )
@@ -164,9 +165,10 @@ def test_one_click_deploy_no_args_dry_run_uses_safe_mode_from_local_env(tmp_path
     assert f"env={deploy_env}" in result.stdout
     assert "target=ubuntu@example.internal" in result.stdout
     assert "domain=example.com" in result.stdout
-    assert "mode=--refresh-https-config --public-domain-verify" in result.stdout
+    assert "mode=--refresh-https-config" in result.stdout
+    assert "--public-domain-verify" not in result.stdout
     assert "sync_mode=package-only" in result.stdout
-    assert "dry-run sync_mode=package-only args=--refresh-https-config --public-domain-verify" in result.stdout
+    assert "dry-run sync_mode=package-only args=--refresh-https-config" in result.stdout
 
 
 def test_one_click_deploy_no_args_dry_run_allows_password_from_local_env(tmp_path: Path) -> None:
@@ -226,7 +228,8 @@ def test_one_click_deploy_fast_mode_is_explicit_in_dry_run(tmp_path: Path) -> No
 
     assert "mode=--fast-risk-accepted --host example.internal --key" in result.stdout
     assert "sync_mode=package-only" in result.stdout
-    assert "--refresh-https-config --public-domain-verify" in result.stdout
+    assert "--refresh-https-config" in result.stdout
+    assert "--public-domain-verify" not in result.stdout
 
 
 def test_quick_deploy_can_skip_nginx_refresh_and_retries_frontend_smoke() -> None:
@@ -250,6 +253,9 @@ def test_quick_deploy_prints_machine_readable_summary() -> None:
     assert "mode=${mode}" in quick_script
     assert "scope=${DEPLOY_TARGET_SCOPE}" in quick_script
     assert "public_domain_verify=${VERIFY_PUBLIC_DOMAIN}" in quick_script
+    assert "public_entry_verify=${VERIFY_PUBLIC_ENTRY}" in quick_script
+    assert "public_base=${public_base}" in quick_script
+    assert "summary urls default=${public_base}/monitor" in quick_script
     assert "performance_verify=${RUN_PERFORMANCE_VERIFY}" in quick_script
     assert 'print_deploy_summary "verify-ok"' in quick_script
     assert 'print_deploy_summary "deploy-ok"' in quick_script
@@ -335,6 +341,7 @@ def test_deploy_scripts_support_scope_aware_fast_paths() -> None:
     assert "--scope  Override target selection" in one_click_script
     assert "DEPLOY_TARGET_SCOPE=auto" in deploy_example
     assert "DEPLOY_SYNC_MODE=delta-package" in deploy_example
+    assert "CLOUD_PUBLIC_BASE_URL=https://43.143.243.97" in deploy_example
     assert "package-only remains the automatic fallback" in deploy_example
 
 

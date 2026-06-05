@@ -28,7 +28,10 @@ Modes:
   --verify-only
   --dry-run
 
-One-click defaults also refresh HTTPS/nginx config and verify the public domain.
+One-click defaults refresh HTTPS/nginx config and verify the default public entry.
+The public entry defaults to https://<CLOUD_HOST>; CLOUD_DOMAIN is kept for
+certificate/nginx configuration and can still be verified explicitly with
+--public-domain-verify.
 Additional args are passed through to scripts/quick_cloud_deploy.sh.
 EOF
 }
@@ -118,6 +121,11 @@ while [[ $# -gt 0 ]]; do
       args+=("$1" "$2")
       shift 2
       ;;
+    --public-base-url)
+      CLOUD_PUBLIC_BASE_URL="${2:?missing public base url}"
+      args+=("$1" "$2")
+      shift 2
+      ;;
     --dry-run)
       ONE_CLICK_DEPLOY_DRY_RUN=1
       shift
@@ -152,14 +160,12 @@ if [[ "$explicit_mode" == "0" || "$args_text" != *"--verify-only"* ]]; then
   if [[ "$args_text" != *"--refresh-https-config"* && "$args_text" != *"--configure-https"* ]]; then
     args+=(--refresh-https-config)
   fi
-  if [[ "$args_text" != *"--public-domain-verify"* ]]; then
-    args+=(--public-domain-verify)
-  fi
 fi
 
 export CLOUD_USER="${CLOUD_USER:-$DEFAULT_CLOUD_USER}"
 export CLOUD_DOMAIN="${CLOUD_DOMAIN:-$DEFAULT_CLOUD_DOMAIN}"
 export CLOUD_CERT_EMAIL="${CLOUD_CERT_EMAIL:-admin@${CLOUD_DOMAIN}}"
+export CLOUD_PUBLIC_BASE_URL="${CLOUD_PUBLIC_BASE_URL:-https://${CLOUD_HOST:-}}"
 export CLOUD_SSH_TIMEOUT="${CLOUD_SSH_TIMEOUT:-2400}"
 export CLOUD_SSH_CONNECT_TIMEOUT="${CLOUD_SSH_CONNECT_TIMEOUT:-30}"
 export DEPLOY_SYNC_MODE="${DEPLOY_SYNC_MODE:-package-only}"

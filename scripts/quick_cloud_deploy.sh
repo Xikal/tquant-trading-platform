@@ -12,6 +12,7 @@ CLOUD_PROJECT_DIR="${CLOUD_PROJECT_DIR:-/home/ubuntu/gupiao-upload}"
 CLOUD_APP_PORT="${CLOUD_APP_PORT:-18090}"
 CLOUD_DOMAIN="${CLOUD_DOMAIN:-}"
 CLOUD_CERT_EMAIL="${CLOUD_CERT_EMAIL:-}"
+CLOUD_PUBLIC_BASE_URL="${CLOUD_PUBLIC_BASE_URL:-}"
 CLOUD_SSH_TIMEOUT="${CLOUD_SSH_TIMEOUT:-2400}"
 CLOUD_SSH_CONNECT_TIMEOUT="${CLOUD_SSH_CONNECT_TIMEOUT:-30}"
 CLOUD_SSH_SERVER_ALIVE_COUNT_MAX="${CLOUD_SSH_SERVER_ALIVE_COUNT_MAX:-120}"
@@ -35,6 +36,7 @@ HTTPS_REQUIRED=1
 CLOUD_AUTH_COOKIE_SECURE=true
 CLOUD_AUTH_ALLOW_INSECURE_HTTP_COOKIE=false
 VERIFY_PUBLIC_DOMAIN="${VERIFY_PUBLIC_DOMAIN:-0}"
+VERIFY_PUBLIC_ENTRY="${VERIFY_PUBLIC_ENTRY:-1}"
 DEPLOY_TARGET_SCOPE="${DEPLOY_TARGET_SCOPE:-auto}"
 DEPLOY_FRONTEND_HOT_REQUIRED="${DEPLOY_FRONTEND_HOT_REQUIRED:-0}"
 DEPLOY_SYNC_MODE="${DEPLOY_SYNC_MODE:-package-only}"
@@ -51,6 +53,16 @@ log() {
   printf '[quick-deploy] %s\n' "$*"
 }
 
+resolved_public_base_url() {
+  if [[ -n "$CLOUD_PUBLIC_BASE_URL" ]]; then
+    printf '%s' "${CLOUD_PUBLIC_BASE_URL%/}"
+  elif [[ "$HTTPS_REQUIRED" == "1" ]]; then
+    printf 'https://%s' "$CLOUD_HOST"
+  else
+    printf 'http://%s:%s' "$CLOUD_HOST" "$CLOUD_APP_PORT"
+  fi
+}
+
 print_deploy_summary() {
   local outcome="$1"
   local mode="safe"
@@ -59,12 +71,14 @@ print_deploy_summary() {
   elif [[ "$RUN_FULL_TESTS" == "1" ]]; then
     mode="full"
   fi
-  log "summary outcome=${outcome} mode=${mode} scope=${DEPLOY_TARGET_SCOPE} target=${CLOUD_USER}@${CLOUD_HOST} port=${CLOUD_APP_PORT} domain=${CLOUD_DOMAIN:-none} https_required=${HTTPS_REQUIRED} public_domain_verify=${VERIFY_PUBLIC_DOMAIN} performance_verify=${RUN_PERFORMANCE_VERIFY}"
+  local public_base
+  public_base="$(resolved_public_base_url)"
+  log "summary outcome=${outcome} mode=${mode} scope=${DEPLOY_TARGET_SCOPE} target=${CLOUD_USER}@${CLOUD_HOST} port=${CLOUD_APP_PORT} domain=${CLOUD_DOMAIN:-none} public_base=${public_base} https_required=${HTTPS_REQUIRED} public_entry_verify=${VERIFY_PUBLIC_ENTRY} public_domain_verify=${VERIFY_PUBLIC_DOMAIN} performance_verify=${RUN_PERFORMANCE_VERIFY}"
   log "summary sync_mode=${DEPLOY_SYNC_MODE}"
   if [[ -n "$CLOUD_DOMAIN" ]]; then
-    log "summary urls http=http://${CLOUD_HOST}:${CLOUD_APP_PORT} https=https://${CLOUD_DOMAIN}"
+    log "summary urls default=${public_base}/monitor http=http://${CLOUD_HOST}:${CLOUD_APP_PORT} domain=https://${CLOUD_DOMAIN}"
   else
-    log "summary urls http=http://${CLOUD_HOST}:${CLOUD_APP_PORT}"
+    log "summary urls default=${public_base}/monitor http=http://${CLOUD_HOST}:${CLOUD_APP_PORT}"
   fi
 }
 
@@ -98,6 +112,10 @@ Options:
                  Override samples per online performance validation round.
   --public-domain-verify
                  Fail when the public HTTPS domain cannot be reached.
+  --public-base-url <url>
+                 Override the default public entry URL. Defaults to https://<host>.
+  --skip-public-entry-verify
+                 Skip local verification of the default public entry URL.
   --skip-remote-preflight
                  Skip remote disk/swap/docker preflight before deployment.
   --skip-remote-cleanup
@@ -170,6 +188,14 @@ while [[ $# -gt 0 ]]; do
       VERIFY_PUBLIC_DOMAIN=1
       shift
       ;;
+    --public-base-url)
+      CLOUD_PUBLIC_BASE_URL="${2:?missing public base url}"
+      shift 2
+      ;;
+    --skip-public-entry-verify)
+      VERIFY_PUBLIC_ENTRY=0
+      shift
+      ;;
     --skip-remote-preflight)
       RUN_REMOTE_PREFLIGHT=0
       shift
@@ -225,9 +251,9 @@ done
 
 export CLOUD_HOST CLOUD_USER CLOUD_SSH_KEY CLOUD_PROJECT_DIR CLOUD_APP_PORT
 export CLOUD_SSH_TIMEOUT CLOUD_SSH_CONNECT_TIMEOUT CLOUD_SSH_SERVER_ALIVE_COUNT_MAX
-export CLOUD_DOMAIN CLOUD_CERT_EMAIL CLOUD_AUTH_COOKIE_SECURE CLOUD_AUTH_ALLOW_INSECURE_HTTP_COOKIE
+export CLOUD_DOMAIN CLOUD_CERT_EMAIL CLOUD_PUBLIC_BASE_URL CLOUD_AUTH_COOKIE_SECURE CLOUD_AUTH_ALLOW_INSECURE_HTTP_COOKIE
 export AUTO_INITIAL_GIT_COMMIT AUTO_INSTALL_BACKUP_CRON AUTO_CONFIGURE_HTTPS REFRESH_HTTPS_CONFIG HTTPS_REQUIRED
-export VERIFY_PUBLIC_DOMAIN
+export VERIFY_PUBLIC_DOMAIN VERIFY_PUBLIC_ENTRY
 export RUN_COMPILE RUN_FRONTEND_BUILD RUN_STRATEGY_TEST RUN_FULL_TESTS RUN_LATEST_DATA_ACCEPTANCE
 export DEPLOY_TARGET_SCOPE DEPLOY_FRONTEND_HOT_REQUIRED
 export DEPLOY_SYNC_MODE
@@ -493,8 +519,25 @@ performance_verify() {
   done
 }
 
+verify_public_entry() {
+  if [[ "$VERIFY_PUBLIC_ENTRY" != "1" ]]; then
+    return 0
+  fi
+  local public_base
+  public_base="$(resolved_public_base_url)"
+  log "verify default public entry ${public_base}"
+  curl -k -sS -f --max-time 15 "${public_base}/readyz" >/tmp/gupiao_public_entry_readyz.json
+  python3 - <<'PY'
+import json
+payload = json.load(open('/tmp/gupiao_public_entry_readyz.json', encoding='utf-8'))
+assert payload.get('status') == 'ok', payload
+print('public_entry:ok')
+PY
+}
+
 if [[ "$VERIFY_ONLY" == "1" ]]; then
   verify_remote
+  verify_public_entry
   performance_verify
   print_deploy_summary "verify-ok"
   exit 0
@@ -540,6 +583,7 @@ CLOUD_SSH_SERVER_ALIVE_COUNT_MAX="$CLOUD_SSH_SERVER_ALIVE_COUNT_MAX" \
 "$ROOT_DIR/scripts/deploy_cloud_server.sh"
 
 verify_remote
+verify_public_entry
 performance_verify
 remote_post_deploy_cleanup
 print_deploy_summary "deploy-ok"
