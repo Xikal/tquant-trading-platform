@@ -2760,6 +2760,96 @@
         "title": "AnalysisRequest",
         "type": "object"
       },
+      "AnalysisResponse": {
+        "properties": {
+          "ai": {
+            "$ref": "#/components/schemas/AiInsight"
+          },
+          "analysis_log_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Analysis Log Id"
+          },
+          "assumptions": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Assumptions",
+            "type": "array"
+          },
+          "bars": {
+            "items": {
+              "$ref": "#/components/schemas/KlineBar"
+            },
+            "title": "Bars",
+            "type": "array"
+          },
+          "compliance_notes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Compliance Notes",
+            "type": "array"
+          },
+          "events": {
+            "items": {
+              "$ref": "#/components/schemas/MarketEventOut"
+            },
+            "title": "Events",
+            "type": "array"
+          },
+          "instrument": {
+            "$ref": "#/components/schemas/InstrumentOut"
+          },
+          "metrics": {
+            "additionalProperties": true,
+            "title": "Metrics",
+            "type": "object"
+          },
+          "microstructure": {
+            "$ref": "#/components/schemas/MicrostructureSnapshot"
+          },
+          "quote": {
+            "$ref": "#/components/schemas/QuoteSnapshot"
+          },
+          "rules": {
+            "$ref": "#/components/schemas/TradingRuleOut"
+          },
+          "sector": {
+            "$ref": "#/components/schemas/SectorSnapshot"
+          },
+          "suggestion": {
+            "$ref": "#/components/schemas/StrategySuggestion"
+          },
+          "symbol": {
+            "title": "Symbol",
+            "type": "string"
+          }
+        },
+        "required": [
+          "symbol",
+          "instrument",
+          "quote",
+          "rules",
+          "sector",
+          "events",
+          "microstructure",
+          "bars",
+          "metrics",
+          "suggestion",
+          "ai",
+          "compliance_notes",
+          "assumptions"
+        ],
+        "title": "AnalysisResponse",
+        "type": "object"
+      },
       "AppAndroidUpdateResponse": {
         "properties": {
           "apk_sha256": {
@@ -14102,6 +14192,44 @@
         "title": "MarketBreadthResponse",
         "type": "object"
       },
+      "MarketEventOut": {
+        "properties": {
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "event_time": {
+            "title": "Event Time",
+            "type": "string"
+          },
+          "risk_level": {
+            "enum": [
+              "low",
+              "medium",
+              "high"
+            ],
+            "title": "Risk Level",
+            "type": "string"
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "title",
+          "risk_level",
+          "description",
+          "source",
+          "event_time"
+        ],
+        "title": "MarketEventOut",
+        "type": "object"
+      },
       "MarketHourlySnapshotHistoryOut": {
         "properties": {
           "created_at": {
@@ -14574,6 +14702,37 @@
           "updated_at"
         ],
         "title": "MarketTradingSessionResponse",
+        "type": "object"
+      },
+      "MicrostructureSnapshot": {
+        "properties": {
+          "available": {
+            "default": false,
+            "title": "Available",
+            "type": "boolean"
+          },
+          "buy_pressure": {
+            "default": 0.0,
+            "title": "Buy Pressure",
+            "type": "number"
+          },
+          "large_order_flow": {
+            "default": 0.0,
+            "title": "Large Order Flow",
+            "type": "number"
+          },
+          "notes": {
+            "default": "",
+            "title": "Notes",
+            "type": "string"
+          },
+          "sell_pressure": {
+            "default": 0.0,
+            "title": "Sell Pressure",
+            "type": "number"
+          }
+        },
+        "title": "MicrostructureSnapshot",
         "type": "object"
       },
       "MonitorSnapshotResponse": {
@@ -18929,6 +19088,39 @@
           "updated_at"
         ],
         "title": "SectorRelativeStrengthResponse",
+        "type": "object"
+      },
+      "SectorSnapshot": {
+        "properties": {
+          "alignment_score": {
+            "title": "Alignment Score",
+            "type": "number"
+          },
+          "market_strength": {
+            "title": "Market Strength",
+            "type": "number"
+          },
+          "notes": {
+            "title": "Notes",
+            "type": "string"
+          },
+          "sector_name": {
+            "title": "Sector Name",
+            "type": "string"
+          },
+          "sector_strength": {
+            "title": "Sector Strength",
+            "type": "number"
+          }
+        },
+        "required": [
+          "sector_name",
+          "sector_strength",
+          "market_strength",
+          "alignment_score",
+          "notes"
+        ],
+        "title": "SectorSnapshot",
         "type": "object"
       },
       "SettingsPayload": {
@@ -26049,7 +26241,9 @@
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/AnalysisResponse"
+                }
               }
             },
             "description": "Successful Response"
@@ -26109,7 +26303,20 @@
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "anyOf": [
+                    {
+                      "items": {
+                        "$ref": "#/components/schemas/AnalysisResponse"
+                      },
+                      "type": "array"
+                    },
+                    {
+                      "$ref": "#/components/schemas/RuntimeTaskOut"
+                    }
+                  ],
+                  "title": "Response Analyze Batch Api Analyze Batch Post"
+                }
               }
             },
             "description": "Successful Response"

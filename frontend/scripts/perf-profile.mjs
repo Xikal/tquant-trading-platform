@@ -209,6 +209,66 @@ const paperTrades = priorityItems.slice(0, 150).map((item, index) => ({
   trade_time: now,
 }));
 
+const equityPoints = Array.from({ length: 1800 }, (_, index) => {
+  const nav = 1 + index * 0.0009 + Math.sin(index / 13) * 0.018;
+  return {
+    date: `2021-${String(Math.floor(index / 30) % 12 + 1).padStart(2, "0")}-${String(index % 28 + 1).padStart(2, "0")}`,
+    nav: Number(nav.toFixed(4)),
+    benchmark_nav: Number((1 + index * 0.00045).toFixed(4)),
+    drawdown_pct: Number((-Math.abs(Math.sin(index / 19)) * 3.5).toFixed(2)),
+    total_value: Number((100000 * nav).toFixed(2)),
+  };
+});
+
+const backtestTrades = priorityItems.slice(0, 120).map((item, index) => ({
+  id: index + 1,
+  trade_date: "2026-05-30",
+  symbol: item.symbol,
+  name: item.name,
+  side: index % 2 === 0 ? "buy" : "sell",
+  quantity: 100 + (index % 6) * 100,
+  price: item.latest_price,
+  net_amount: Number((item.latest_price * (100 + (index % 6) * 100)).toFixed(2)),
+  strategy: "first_board",
+  strategy_key: "first_board",
+  return_pct: Number((((index % 9) - 3) * 0.35).toFixed(2)),
+  pnl_pct: Number((((index % 9) - 3) * 0.35).toFixed(2)),
+}));
+
+const backtestRun = {
+  id: 1,
+  name: "性能样本回测",
+  status: "completed",
+  progress: 100,
+  start_date: "2024-01-01",
+  end_date: "2026-05-30",
+  initial_capital: 100000,
+  final_equity: 128600,
+  strategies: ["first_board"],
+  execution_model: "next_open",
+  benchmark: "000300",
+  resource_tier: "full",
+  summary: {
+    total_return_pct: 28.6,
+    benchmark_return_pct: 10.8,
+    benchmark_alpha_pct: 17.8,
+    sharpe: 1.36,
+    max_drawdown_pct: -6.2,
+    win_rate_pct: 58.4,
+    trade_count: backtestTrades.length,
+    profit_factor: 1.52,
+  },
+  created_at: now,
+  completed_at: now,
+  execution_model_preview: {
+    mode: "preview",
+    source: "perf",
+    replacement_enabled: false,
+    blocked_reason: "no_daily_return_path",
+    notes: ["perf mock"],
+  },
+};
+
 function priorityBoard() {
   return {
     strategy: "first_board",
@@ -342,6 +402,153 @@ function paperWorkspace() {
   };
 }
 
+function backtestList() {
+  return {
+    items: [backtestRun],
+    total: 1,
+    limit: 20,
+    offset: 0,
+  };
+}
+
+function backtestOptimizationList() {
+  return {
+    items: [{
+      id: 1,
+      name: "性能参数优化",
+      strategy: "first_board",
+      status: "completed",
+      progress: 100,
+      progress_pct: 100,
+      best_params: { max_position_pct: 0.12 },
+      best_is_score: 1.4,
+      best_oos_score: 1.1,
+      optimization_target: "sharpe",
+      search_method: "grid",
+      candidates: [],
+      created_at: now,
+      completed_at: now,
+    }],
+    total: 1,
+    limit: 20,
+    offset: 0,
+  };
+}
+
+function backtestValidationList() {
+  return {
+    items: [{
+      id: 1,
+      name: "性能滚动验证",
+      strategy: "first_board",
+      status: "completed",
+      progress: 100,
+      progress_pct: 100,
+      window_count: 4,
+      oos_pass_rate: 0.75,
+      avg_oos_sharpe: 1.05,
+      pbo_risk: "low",
+      stability_conclusion: "stable",
+      windows: [],
+      created_at: now,
+      completed_at: now,
+    }],
+    total: 1,
+    limit: 20,
+    offset: 0,
+  };
+}
+
+function analysisResponse(symbol = "510300", index = 0) {
+  const item = priorityItems[index % priorityItems.length];
+  return {
+    symbol,
+    instrument: {
+      symbol,
+      name: item.name,
+      market: "SH",
+      instrument_type: "etf",
+      sector_name: "ETF",
+    },
+    quote: {
+      symbol,
+      name: item.name,
+      market: "SH",
+      instrument_type: "etf",
+      last_price: item.latest_price,
+      change_pct: item.change_pct,
+      change_amount: 0.02,
+      open_price: item.latest_price - 0.01,
+      high_price: item.latest_price + 0.05,
+      low_price: item.latest_price - 0.04,
+      prev_close: item.latest_price - 0.02,
+      volume: 12345678,
+      amount: 43210000,
+      turnover_rate: 1.2,
+      volume_ratio: 1.1,
+      timestamp: now,
+      data_source: "perf",
+      source_quality: "fresh",
+    },
+    rules: {
+      symbol,
+      turnaround_mode: "t0",
+      supports_positive_t: true,
+      supports_negative_t: true,
+      same_day_sell_allowed: false,
+      requires_base_position: true,
+      notes: "perf",
+    },
+    sector: {
+      sector_name: "ETF",
+      sector_strength: 72,
+      market_strength: 58,
+      alignment_score: 64,
+      notes: "主线修复",
+    },
+    events: [],
+    microstructure: {
+      available: true,
+      buy_pressure: 0.58,
+      sell_pressure: 0.42,
+      large_order_flow: 0.12,
+      notes: "承接正常",
+    },
+    bars: equityPoints.slice(0, 120).map((point, barIndex) => ({
+      timestamp: point.date,
+      open: 3 + barIndex * 0.002,
+      close: 3.02 + barIndex * 0.002,
+      high: 3.05 + barIndex * 0.002,
+      low: 2.98 + barIndex * 0.002,
+      volume: 1000000 + barIndex * 1000,
+      amount: 3000000 + barIndex * 3000,
+    })),
+    metrics: { signal_score: 78, tradability_score: 74 },
+    suggestion: {
+      action: "hold",
+      position_pct: 0.12,
+      risk_level: "medium",
+      signal_score: 78 - (index % 5),
+      tradability_score: 74,
+      confidence: 0.72,
+      expected_profit_pct: 1.5,
+      scenario: "低吸观察",
+      reasons: ["回踩承接"],
+      blocking_rules: [],
+      strategy_notes: "等待确认",
+      is_actionable: index % 3 === 0,
+      plain_action_text: "观察",
+      plain_action_reason: "买点未完全确认。",
+      plain_execution_text: "仅提醒，不自动下单。",
+      plain_invalid_condition: "跌破止损放弃。",
+    },
+    ai: { enabled: false, summary: "", confidence: 0, suggestions: [], warnings: [] },
+    compliance_notes: [],
+    assumptions: [],
+    analysis_log_id: null,
+  };
+}
+
 async function installRoutes(page) {
   await page.addInitScript(() => {
     localStorage.setItem("tquant:auth:persistence_mode", "session");
@@ -391,22 +598,118 @@ async function installRoutes(page) {
     if (path === "/paper/performance/sector-etf-t0") return response(null);
     if (path.startsWith("/paper/performance/by-") || path === "/paper/risk/events" || path === "/paper/auto-trading/runs") return response([]);
     if (path === "/paper/auto-trading/status") return response(paperWorkspace().auto_trading_status);
+    if (path === "/backtests") return response(backtestList());
+    if (path === "/backtests/optimize") return response(backtestOptimizationList());
+    if (path === "/backtests/optimize/1") return response(backtestOptimizationList().items[0]);
+    if (path === "/backtests/validate") return response(backtestValidationList());
+    if (path === "/backtests/validate/1") return response(backtestValidationList().items[0]);
+    if (path === "/backtests/1") return response(backtestRun);
+    if (path === "/backtests/1/equity") return response({ items: equityPoints, total: equityPoints.length });
+    if (path === "/backtests/1/trades") return response({ items: backtestTrades, total: backtestTrades.length, limit: 50, offset: 0 });
+    if (path === "/backtests/1/monthly-returns") return response({
+      items: [
+        { month: "2026-01", return_pct: 2.1 },
+        { month: "2026-02", return_pct: -0.8 },
+        { month: "2026-03", return_pct: 3.4 },
+      ],
+      summary: { best_month: "2026-03", worst_month: "2026-02" },
+    });
+    if (path === "/backtests/1/attribution") return response({
+      version: "perf",
+      by_strategy: [{ bucket: "first_board", label: "首板低吸", trade_count: 82, win_rate_pct: 58, return_pct: 18.6 }],
+      industry: [{ bucket: "ETF", label: "ETF", trade_count: 36, win_rate_pct: 60, return_pct: 8.2 }],
+      notes: [],
+    });
+    if (path === "/backtests/1/strategy-correlation") return response({ strategies: ["first_board"], matrix: [[1]], rows: [], notes: [] });
+    if (path === "/backtests/compare") return response({ items: [], notes: [] });
+    if (path === "/backtests/verdict-thresholds") return response({
+      thresholds: {
+        light: { min_return_pct: 5, min_sharpe: 0.8, max_drawdown_pct: -12, cautious_min_return_pct: 3, cautious_max_drawdown_pct: -15 },
+        full: { min_return_pct: 8, min_sharpe: 1, max_drawdown_pct: -10, cautious_min_return_pct: 5, cautious_max_drawdown_pct: -12 },
+        walk_forward: { min_return_pct: 6, min_sharpe: 0.9, max_drawdown_pct: -11, cautious_min_return_pct: 4, cautious_max_drawdown_pct: -13 },
+      },
+    });
+    if (path === "/backtests/strategy-improvement-report") return response({
+      summary: { overall_status: "watch_only", formal_backtest_allowed: false, generated_at: now },
+      data_coverage: { status: "partial", coverage_pct: 88 },
+      minute_coverage: { status: "blocked", blocked_reason: "perf_mock" },
+      strategy_governance: { status: "shadow" },
+    });
+    if (path === "/analyze") return response(analysisResponse());
+    if (path === "/analyze/batch") return response(Array.from({ length: 8 }, (_, index) => analysisResponse(priorityItems[index].symbol, index)));
+    if (path.startsWith("/market/intraday-anomaly/")) return response({
+      symbol: path.split("/").pop() ?? "510300",
+      name: "性能样本",
+      anomaly_level: "normal",
+      anomaly_text: "无异常",
+      score: 0,
+      pattern: "normal",
+      action_hint: "观察",
+      reasons: [],
+      risk_notes: [],
+      data_quality_text: "fresh",
+      updated_at: now,
+    });
     if (path.startsWith("/market") || path.startsWith("/settings") || path.startsWith("/admin") || path.startsWith("/screeners") || path.startsWith("/bff")) return response({});
     return response({});
   });
 }
 
-async function scenario(page, path, name, locatorText) {
-  await page.goto(`${baseUrl}${path}`, { waitUntil: "networkidle", timeout: 30_000 });
+function profiledUrl(path) {
+  const url = new URL(path, `${baseUrl}/`);
+  url.searchParams.set("perf_profile", "1");
+  return url.toString();
+}
+
+async function gotoMeasured(page, path) {
+  const startedAt = Date.now();
+  await page.goto(profiledUrl(path), { waitUntil: "networkidle", timeout: 30_000 });
+  return Date.now() - startedAt;
+}
+
+async function routeSwitchMeasured(page, path) {
+  const startedAt = Date.now();
+  await page.evaluate((nextPath) => {
+    const anchor = document.createElement("a");
+    anchor.href = `${nextPath}${nextPath.includes("?") ? "&" : "?"}perf_profile=1`;
+    document.body.append(anchor);
+    anchor.click();
+    anchor.remove();
+  }, path);
+  await page.waitForURL((url) => url.pathname === path, { timeout: 30_000 }).catch(() => {});
+  await page.waitForLoadState("networkidle", { timeout: 30_000 }).catch(() => {});
+  await page.waitForTimeout(250);
+  return Date.now() - startedAt;
+}
+
+async function scenario(page, path, name, locatorText, fromPath = "/monitor") {
+  const firstEntryMs = await gotoMeasured(page, path);
+  await page.waitForTimeout(250);
+  const secondEntryMs = await gotoMeasured(page, path);
+  let routeSwitchMs = secondEntryMs;
+  if (fromPath !== path) {
+    await gotoMeasured(page, fromPath);
+    routeSwitchMs = await routeSwitchMeasured(page, path);
+  }
   await page.waitForTimeout(500);
+  await page.evaluate(() => {
+    if (window.__TQUANT_FRONTEND_PERF__) {
+      window.__TQUANT_FRONTEND_PERF__.commits = [];
+    }
+  }).catch(() => {});
   if (name === "strategy_tracking_table_scroll") {
     await page.waitForSelector("text=性能样本1", { timeout: 10_000 }).catch(() => {});
   } else if (name === "paper_trades_table_scroll") {
     await page.getByText("成交记录").click({ force: true }).catch(() => {});
     await page.waitForSelector("text=510300", { timeout: 10_000 }).catch(() => {});
+  } else if (name === "backtest_dashboard_dense_chart") {
+    await page.waitForSelector("text=性能样本回测", { timeout: 10_000 }).catch(() => {});
+    await page.waitForFunction(() => (window.__TQUANT_FRONTEND_PERF__?.workerTasks ?? []).some((item) => item.kind === "chartDownsample"), null, { timeout: 5_000 }).catch(() => {});
+  } else if (name === "analysis_workspace_entry") {
+    await page.waitForSelector("text=智能分析", { timeout: 10_000 }).catch(() => {});
   }
   let scrollTarget;
-  if (name === "monitor_refresh_virtual_cards") {
+  if (name === "monitor_refresh_virtual_cards" && locatorText) {
     const target = page.locator(locatorText).first();
     await target.scrollIntoViewIfNeeded().catch(() => {});
     scrollTarget = await page.evaluateHandle((selector) => {
@@ -418,6 +721,7 @@ async function scenario(page, path, name, locatorText) {
     scrollTarget = await page.evaluateHandle(() => document.scrollingElement);
   }
   const startRows = await page.locator(".ant-table-row, .ant-table-cell, article, [data-index]").count().catch(() => 0);
+  const domBefore = await page.evaluate(() => document.querySelectorAll("*").length);
   const durations = [];
   for (let i = 0; i < 8; i += 1) {
     const duration = await page.evaluate(async (element) => {
@@ -429,18 +733,107 @@ async function scenario(page, path, name, locatorText) {
     durations.push(Number(duration.toFixed(2)));
   }
   const endRows = await page.locator(".ant-table-row, .ant-table-cell, article, [data-index]").count().catch(() => 0);
+  const domAfter = await page.evaluate(() => document.querySelectorAll("*").length);
+  const chartResizeFrameMs = await page.evaluate(async () => {
+    if (!document.querySelector("canvas")) {
+      return 0;
+    }
+    const start = performance.now();
+    window.dispatchEvent(new Event("resize"));
+    await new Promise((resolveFrame) => requestAnimationFrame(() => requestAnimationFrame(resolveFrame)));
+    return Number((performance.now() - start).toFixed(2));
+  });
   const longTasks = await page.evaluate(() => performance.getEntriesByType("longtask").map((entry) => entry.duration));
+  const reactCommits = await page.evaluate(() => window.__TQUANT_FRONTEND_PERF__?.commits ?? []).catch(() => []);
+  const workerTasks = await page.evaluate(() => window.__TQUANT_FRONTEND_PERF__?.workerTasks ?? []).catch(() => []);
+  const reactDurations = reactCommits.map((item) => item.actualDuration).filter((item) => Number.isFinite(item));
+  const avgScrollMs = Number((durations.reduce((sum, item) => sum + item, 0) / durations.length).toFixed(2));
+  const maxScrollMs = Math.max(...durations);
+  const longtaskMaxMs = longTasks.length ? Number(Math.max(...longTasks).toFixed(2)) : 0;
+  const reactCommitP95 = percentile(reactDurations, 0.95);
   return {
     name,
     path,
-    ok: durations.every((item) => item < 80),
-    max_scroll_frame_ms: Math.max(...durations),
-    avg_scroll_frame_ms: Number((durations.reduce((sum, item) => sum + item, 0) / durations.length).toFixed(2)),
+    ok: durations.every((item) => item < 80) && reactCommitP95 < 80 && longtaskMaxMs < 120,
+    first_entry_ms: firstEntryMs,
+    second_entry_ms: secondEntryMs,
+    route_switch_ms: routeSwitchMs,
+    max_scroll_frame_ms: maxScrollMs,
+    avg_scroll_frame_ms: avgScrollMs,
+    scroll_fps_estimate: Number((1000 / Math.max(avgScrollMs, 1)).toFixed(1)),
     rendered_node_count_before: startRows,
     rendered_node_count_after: endRows,
+    dom_node_count_before: domBefore,
+    dom_node_count_after: domAfter,
+    dom_node_peak: Math.max(domBefore, domAfter),
+    chart_count: await page.locator("canvas").count().catch(() => 0),
+    chart_refresh_ms: chartResizeFrameMs,
+    react_commit_count: reactDurations.length,
+    react_commit_p95_ms: reactCommitP95,
+    react_commit_max_ms: percentile(reactDurations, 1),
+    worker_tasks: summarizeWorkerTasks(workerTasks),
     longtask_count: longTasks.length,
-    longtask_max_ms: longTasks.length ? Number(Math.max(...longTasks).toFixed(2)) : 0,
+    longtask_max_ms: longtaskMaxMs,
+    bottleneck: classifyBottleneck({
+      chartRefreshMs: chartResizeFrameMs,
+      entryMs: secondEntryMs,
+      longtaskMaxMs,
+      maxScrollMs,
+      reactCommitP95,
+    }),
   };
+}
+
+function summarizeWorkerTasks(samples) {
+  const grouped = new Map();
+  for (const sample of samples) {
+    const key = sample.kind || "unknown";
+    const current = grouped.get(key) ?? {
+      count: 0,
+      elapsed: [],
+      input_count_max: 0,
+      sources: {},
+      total: [],
+    };
+    current.count += 1;
+    current.elapsed.push(Number(sample.elapsed_ms || 0));
+    current.total.push(Number(sample.total_ms || 0));
+    current.input_count_max = Math.max(current.input_count_max, Number(sample.input_count || 0));
+    current.sources[sample.source || "unknown"] = (current.sources[sample.source || "unknown"] ?? 0) + 1;
+    grouped.set(key, current);
+  }
+  return Object.fromEntries([...grouped.entries()].map(([kind, item]) => [kind, {
+    count: item.count,
+    elapsed_p95_ms: percentile(item.elapsed, 0.95),
+    elapsed_max_ms: percentile(item.elapsed, 1),
+    input_count_max: item.input_count_max,
+    sources: item.sources,
+    total_p95_ms: percentile(item.total, 0.95),
+  }]));
+}
+
+function percentile(values, p) {
+  if (!values.length) {
+    return 0;
+  }
+  const sorted = [...values].sort((left, right) => left - right);
+  const index = Math.min(sorted.length - 1, Math.max(0, Math.ceil(sorted.length * p) - 1));
+  return Number(sorted[index].toFixed(2));
+}
+
+function classifyBottleneck({
+  chartRefreshMs,
+  entryMs,
+  longtaskMaxMs,
+  maxScrollMs,
+  reactCommitP95,
+}) {
+  if (longtaskMaxMs >= 80) return "main_thread_long_task";
+  if (reactCommitP95 >= 50) return "react_commit";
+  if (chartRefreshMs >= 50) return "chart_refresh";
+  if (maxScrollMs >= 50) return "scroll_render";
+  if (entryMs >= 1200) return "network_or_serialization";
+  return "within_budget";
 }
 
 const browser = await chromium.launch({ headless: true });
@@ -449,9 +842,11 @@ const page = await context.newPage();
 await installRoutes(page);
 
 const results = [];
-results.push(await scenario(page, "/monitor", "monitor_refresh_virtual_cards", ".panel"));
+results.push(await scenario(page, "/monitor", "monitor_refresh_virtual_cards", ".panel", "/analysis"));
 results.push(await scenario(page, "/strategy-tracking", "strategy_tracking_table_scroll", ".ant-table-body"));
 results.push(await scenario(page, "/paper", "paper_trades_table_scroll", ".ant-table-body"));
+results.push(await scenario(page, "/backtest", "backtest_dashboard_dense_chart", ".ant-table-body"));
+results.push(await scenario(page, "/analysis", "analysis_workspace_entry", ".analysis-panel"));
 
 await browser.close();
 await mkdir(resolve("dist"), { recursive: true });

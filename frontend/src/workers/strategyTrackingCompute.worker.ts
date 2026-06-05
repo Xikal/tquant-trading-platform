@@ -1,0 +1,3 @@
+import "./monitorCompute.worker";
+
+export {};

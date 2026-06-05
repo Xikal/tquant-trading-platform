@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { API_BASE, request } from "../../api/base";
+import { frontendPerformanceFlagEnabled } from "../../config/frontendPerformanceFlags";
 import { updateLiveQuoteSignal, type LiveQuotePatch } from "./liveQuoteSignals";
 
 interface StreamTokenResponse {
@@ -208,5 +209,8 @@ function numberFromUnknown(value: unknown): number | null {
 }
 
 function liveQuoteSignalsDisabled(): boolean {
-  return import.meta.env.VITE_LIVE_QUOTE_SIGNALS === "false";
+  return (
+    !frontendPerformanceFlagEnabled("frontend_realtime_signals_island_enabled") ||
+    import.meta.env.VITE_LIVE_QUOTE_SIGNALS === "false"
+  );
 }

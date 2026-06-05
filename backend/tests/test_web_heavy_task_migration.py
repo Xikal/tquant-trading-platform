@@ -238,6 +238,20 @@ def test_analysis_batch_queue_flag_queues_without_running(monkeypatch) -> None:
     assert response.json()["task_type"] == "analysis_batch"
 
 
+def test_analysis_batch_openapi_has_generated_response_contract() -> None:
+    client, _factory = _client()
+
+    response_schema = (
+        client.app.openapi()["paths"]["/api/analyze/batch"]["post"]["responses"]["200"]["content"]["application/json"]["schema"]
+    )
+
+    assert any(
+        option.get("items", {}).get("$ref", "").endswith("/AnalysisResponse")
+        for option in response_schema["anyOf"]
+        if option.get("type") == "array"
+    )
+
+
 def test_paper_heavy_routes_are_queued() -> None:
     client, factory = _client()
     with factory() as db:

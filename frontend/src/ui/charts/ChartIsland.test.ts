@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { applyChartIslandOption, disposeChartIsland, resizeChartIsland } from "./ChartIsland";
+import { downsampleDenseChartPoints, downsampleDenseChartPointsAsync } from "./chartDownsample";
 
 describe("ChartIsland contract", () => {
   it("updates options imperatively without rebuilding the chart instance", () => {
@@ -30,5 +31,26 @@ describe("ChartIsland contract", () => {
     disposeChartIsland(chart);
 
     expect(chart.dispose).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps ordinary charts unchanged and downsamples dense chart islands", () => {
+    const ordinary = Array.from({ length: 60 }, (_, index) => ({ nav: index }));
+    const dense = Array.from({ length: 240 }, (_, index) => ({ nav: Math.sin(index / 8), date: String(index) }));
+
+    expect(downsampleDenseChartPoints(ordinary, 120)).toBe(ordinary);
+    const downsampled = downsampleDenseChartPoints(dense, 80);
+    expect(downsampled).toHaveLength(80);
+    expect(downsampled[0]).toBe(dense[0]);
+    expect(downsampled[downsampled.length - 1]).toBe(dense[dense.length - 1]);
+  });
+
+  it("supports async worker-backed dense chart downsample with sync fallback", async () => {
+    const dense = Array.from({ length: 160 }, (_, index) => ({ nav: 1 + index / 100, date: String(index) }));
+
+    const downsampled = await downsampleDenseChartPointsAsync(dense, 80);
+
+    expect(downsampled).toHaveLength(80);
+    expect(downsampled[0]).toBe(dense[0]);
+    expect(downsampled[downsampled.length - 1]).toBe(dense[dense.length - 1]);
   });
 });

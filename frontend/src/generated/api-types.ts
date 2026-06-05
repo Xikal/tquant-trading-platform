@@ -6678,6 +6678,32 @@ export interface components {
              */
             symbol: string;
         };
+        /** AnalysisResponse */
+        AnalysisResponse: {
+            ai: components["schemas"]["AiInsight"];
+            /** Analysis Log Id */
+            analysis_log_id?: number | null;
+            /** Assumptions */
+            assumptions: string[];
+            /** Bars */
+            bars: components["schemas"]["KlineBar"][];
+            /** Compliance Notes */
+            compliance_notes: string[];
+            /** Events */
+            events: components["schemas"]["MarketEventOut"][];
+            instrument: components["schemas"]["InstrumentOut"];
+            /** Metrics */
+            metrics: {
+                [key: string]: unknown;
+            };
+            microstructure: components["schemas"]["MicrostructureSnapshot"];
+            quote: components["schemas"]["QuoteSnapshot"];
+            rules: components["schemas"]["TradingRuleOut"];
+            sector: components["schemas"]["SectorSnapshot"];
+            suggestion: components["schemas"]["StrategySuggestion"];
+            /** Symbol */
+            symbol: string;
+        };
         /** AppAndroidUpdateResponse */
         AppAndroidUpdateResponse: {
             /**
@@ -13267,6 +13293,22 @@ export interface components {
             /** Updated At */
             updated_at: string;
         };
+        /** MarketEventOut */
+        MarketEventOut: {
+            /** Description */
+            description: string;
+            /** Event Time */
+            event_time: string;
+            /**
+             * Risk Level
+             * @enum {string}
+             */
+            risk_level: "low" | "medium" | "high";
+            /** Source */
+            source: string;
+            /** Title */
+            title: string;
+        };
         /** MarketHourlySnapshotHistoryOut */
         MarketHourlySnapshotHistoryOut: {
             /**
@@ -13626,6 +13668,34 @@ export interface components {
             timezone: string;
             /** Updated At */
             updated_at: string;
+        };
+        /** MicrostructureSnapshot */
+        MicrostructureSnapshot: {
+            /**
+             * Available
+             * @default false
+             */
+            available: boolean;
+            /**
+             * Buy Pressure
+             * @default 0
+             */
+            buy_pressure: number;
+            /**
+             * Large Order Flow
+             * @default 0
+             */
+            large_order_flow: number;
+            /**
+             * Notes
+             * @default
+             */
+            notes: string;
+            /**
+             * Sell Pressure
+             * @default 0
+             */
+            sell_pressure: number;
         };
         /** MonitorSnapshotResponse */
         MonitorSnapshotResponse: {
@@ -16236,6 +16306,19 @@ export interface components {
             trade_date: string;
             /** Updated At */
             updated_at: string;
+        };
+        /** SectorSnapshot */
+        SectorSnapshot: {
+            /** Alignment Score */
+            alignment_score: number;
+            /** Market Strength */
+            market_strength: number;
+            /** Notes */
+            notes: string;
+            /** Sector Name */
+            sector_name: string;
+            /** Sector Strength */
+            sector_strength: number;
         };
         /** SettingsPayload */
         SettingsPayload: {
@@ -20433,7 +20516,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["AnalysisResponse"];
                 };
             };
             /** @description Validation Error */
@@ -20468,7 +20551,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["AnalysisResponse"][] | components["schemas"]["RuntimeTaskOut"];
                 };
             };
             /** @description Validation Error */

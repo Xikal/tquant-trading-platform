@@ -1,6 +1,7 @@
 import { Badge, Button, Dropdown, Grid, Space, Typography } from "antd";
 import { useEffect } from "react";
 import { useSignals } from "@preact/signals-react/runtime";
+import { frontendPerformanceFlagEnabled } from "../../config/frontendPerformanceFlags";
 import { topbarPulseSignal, updateTopbarPulse } from "../../state/realtime/topbarClockSignal";
 import { MenuOutlined } from "../../ui/icons";
 import type { AuthUser, LowBuyPriorityBoardResult } from "../../types";
@@ -48,6 +49,9 @@ export function Topbar({
   const userName = currentUser.display_name || currentUser.username;
 
   useEffect(() => {
+    if (!topbarRealtimePulseEnabled()) {
+      return undefined;
+    }
     const timer = window.setInterval(() => updateTopbarPulse(realTimePulse()), 1000);
     return () => window.clearInterval(timer);
   }, []);
@@ -109,4 +113,8 @@ function realTimePulse(): string {
     hour12: false,
     timeZone: "Asia/Shanghai",
   });
+}
+
+export function topbarRealtimePulseEnabled(): boolean {
+  return frontendPerformanceFlagEnabled("frontend_realtime_signals_island_enabled");
 }

@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { renderToString } from "react-dom/server";
 import { LiveCell } from "../../ui/realtime/LiveCell";
 import { clearLiveQuoteSignals, liveQuoteSnapshot } from "./liveQuoteSignals";
@@ -34,6 +34,10 @@ class FakeEventSource {
 }
 
 describe("quote SSE stream", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
   it("writes intraday SSE ticks into live quote signals so LiveCell updates", async () => {
     clearLiveQuoteSignals();
     FakeEventSource.instances = [];
@@ -125,5 +129,22 @@ describe("quote SSE stream", () => {
     expect(FakeEventSource.instances[FakeEventSource.instances.length - 1]?.url).toContain("stream_token=token-2");
     controller.close();
     vi.useRealTimers();
+  });
+
+  it("does not open the SSE stream when the realtime signals island flag is disabled", async () => {
+    vi.stubEnv("VITE_FRONTEND_REALTIME_SIGNALS_ISLAND_ENABLED", "false");
+    FakeEventSource.instances = [];
+    const requestStreamToken = vi.fn(async () => ({ stream_token: "token-disabled", expires_in: 3600 }));
+    const controller = startQuoteStream({
+      symbols: ["600000"],
+      apiBase: "/api",
+      createEventSource: (url) => new FakeEventSource(url) as unknown as EventSource,
+      requestStreamToken,
+    });
+    await controller.ready;
+
+    expect(requestStreamToken).not.toHaveBeenCalled();
+    expect(FakeEventSource.instances).toHaveLength(0);
+    controller.close();
   });
 });

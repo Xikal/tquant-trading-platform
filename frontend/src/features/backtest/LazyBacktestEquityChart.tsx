@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { LineChart } from "echarts/charts";
 import {
   DataZoomComponent,
@@ -10,7 +10,9 @@ import {
 import * as echarts from "echarts/core";
 import { CanvasRenderer } from "echarts/renderers";
 import type { EquityPoint } from "../../api/backtests";
+import { useServerState } from "../../state/serverState";
 import { ChartIsland } from "../../ui/charts/ChartIsland";
+import { downsampleDenseChartPoints, downsampleDenseChartPointsAsync } from "../../ui/charts/chartDownsample";
 import { BACKTEST_ECHARTS_STYLE } from "./backtestStyles";
 import { backtestChartColor, withAlpha } from "./backtestChartTheme";
 
@@ -24,9 +26,45 @@ echarts.use([
   TooltipComponent,
 ]);
 
+const EQUITY_CHART_MAX_POINTS = 1200;
+const EQUITY_CHART_WORKER_KEY = ["backtest", "equity-chart", "worker-downsample"] as const;
+
 export default function LazyBacktestEquityChart({ points }: { points: EquityPoint[] }) {
-  const option = useMemo(() => buildOption(points), [points]);
+  const fallbackPoints = useMemo(() => downsampleDenseChartPoints(points, EQUITY_CHART_MAX_POINTS), [points]);
+  const [workerPoints, setWorkerPoints] = useServerState<EquityPoint[] | null>(EQUITY_CHART_WORKER_KEY, null);
+  const pointsSignature = useMemo(() => equityPointsSignature(points), [points]);
+
+  useEffect(() => {
+    let cancelled = false;
+    setWorkerPoints(null);
+    if (points.length <= EQUITY_CHART_MAX_POINTS) {
+      return undefined;
+    }
+    void downsampleDenseChartPointsAsync(points, EQUITY_CHART_MAX_POINTS)
+      .then((result) => {
+        if (!cancelled) {
+          setWorkerPoints(result);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setWorkerPoints(null);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [points, pointsSignature, setWorkerPoints]);
+
+  const chartPoints = workerPoints ?? fallbackPoints;
+  const option = useMemo(() => buildOption(chartPoints), [chartPoints]);
   return <ChartIsland option={option} style={BACKTEST_ECHARTS_STYLE} />;
+}
+
+function equityPointsSignature(points: EquityPoint[]): string {
+  const first = points[0];
+  const last = points[points.length - 1];
+  return `${points.length}:${first?.date ?? ""}:${first?.nav ?? ""}:${last?.date ?? ""}:${last?.nav ?? ""}`;
 }
 
 function buildOption(points: EquityPoint[]): echarts.EChartsCoreOption {

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { API_BASE, bffPartialErrorsText, getAdminApiToken, invalidateCache, request } from "../../api/base";
 import { api } from "../../api/client";
+import { frontendPerformanceFlagEnabled } from "../../config/frontendPerformanceFlags";
 import { useWorkspaceMonitorStore } from "../../stores/workspaceMonitorStore";
 import { seedLiveQuoteSignal, updateLiveQuoteSignal } from "../../state/realtime/liveQuoteSignals";
 import { useQuoteStream } from "../../state/realtime/useQuoteStream";
@@ -770,5 +771,8 @@ function monitorCardSignature(item: unknown): string {
 }
 
 function useLiveQuoteSignals(): boolean {
-  return import.meta.env.VITE_LIVE_QUOTE_SIGNALS !== "false";
+  return (
+    frontendPerformanceFlagEnabled("frontend_realtime_signals_island_enabled") &&
+    import.meta.env.VITE_LIVE_QUOTE_SIGNALS !== "false"
+  );
 }

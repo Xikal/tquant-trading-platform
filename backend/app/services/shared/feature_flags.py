@@ -48,6 +48,11 @@ _FLAG_DESCRIPTIONS: dict[str, str] = {
     "holding_discipline_assistant_enabled": "启用模拟盘持仓纪律助手；默认关闭。",
     "limit_up_followthrough_enabled": "启用涨停后形态研究列表；默认关闭。",
     "t_trade_discipline_enabled": "启用做 T 纪律与效果归因；默认关闭。",
+    "frontend_worker_compute_enabled": "启用前端 TypeScript Worker 计算孤岛；失败自动回退同步路径。",
+    "frontend_realtime_signals_island_enabled": "启用前端 signals 实时字段性能孤岛；服务端数据仍以 Query 为真源。",
+    "frontend_canvas_chart_island_enabled": "启用前端 ChartIsland 密集图表降采样路径；普通图表保持 ECharts。",
+    "frontend_wasm_compute_enabled": "启用前端 WASM 纯计算实验；默认关闭，必须保留 TypeScript fallback。",
+    "frontend_solid_island_enabled": "启用 Solid 局部性能孤岛实验；默认关闭，禁止整站迁移。",
 }
 
 
@@ -69,6 +74,11 @@ _DEFAULT_FLAGS = {
     "holding_discipline_assistant_enabled": False,
     "limit_up_followthrough_enabled": False,
     "t_trade_discipline_enabled": False,
+    "frontend_worker_compute_enabled": True,
+    "frontend_realtime_signals_island_enabled": True,
+    "frontend_canvas_chart_island_enabled": True,
+    "frontend_wasm_compute_enabled": False,
+    "frontend_solid_island_enabled": False,
 }
 
 

@@ -1,5 +1,6 @@
 import logging
 import re
+from typing import Union
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
@@ -8,7 +9,7 @@ from app.core.auth import get_current_user
 from app.core.database import get_db
 from app.core.rate_limit import require_analysis_batch_rate_limit
 from app.core.timing import log_slow_call, monotonic_start
-from app.models.schemas import AnalysisRequest
+from app.models.schemas import AnalysisRequest, AnalysisResponse, RuntimeTaskOut
 from app.api.routes.heavy_task_helpers import enqueue_runtime_task, queued_task_response
 from app.services.analysis_service import AnalysisService
 
@@ -19,7 +20,7 @@ _SYMBOL_PATTERN = re.compile(r"^\d{6}$")
 _MAX_BATCH_SIZE = 10
 
 
-@router.post("/analyze")
+@router.post("/analyze", response_model=AnalysisResponse)
 def analyze_symbol(payload: AnalysisRequest, db: Session = Depends(get_db)):
     started_at = monotonic_start()
     try:
@@ -29,7 +30,7 @@ def analyze_symbol(payload: AnalysisRequest, db: Session = Depends(get_db)):
         log_slow_call(logger, "analysis.analyze", started_at, symbol=payload.symbol)
 
 
-@router.post("/analyze/batch")
+@router.post("/analyze/batch", response_model=Union[list[AnalysisResponse], RuntimeTaskOut])
 def analyze_batch(
     request: Request,
     payloads: list[AnalysisRequest] = Body(...),

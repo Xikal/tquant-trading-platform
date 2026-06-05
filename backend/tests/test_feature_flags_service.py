@@ -42,6 +42,17 @@ class FeatureFlagsServiceTests(unittest.TestCase):
             self.assertIn("updated_at", first)
             self.assertIn("updated_by", first)
 
+    def test_frontend_performance_flags_are_declared_with_safe_defaults(self) -> None:
+        with self.Session() as db:
+            flags = {item.key: item for item in list_feature_flags(db)}
+
+        self.assertTrue(flags["frontend_worker_compute_enabled"].enabled)
+        self.assertTrue(flags["frontend_realtime_signals_island_enabled"].enabled)
+        self.assertTrue(flags["frontend_canvas_chart_island_enabled"].enabled)
+        self.assertFalse(flags["frontend_wasm_compute_enabled"].enabled)
+        self.assertFalse(flags["frontend_solid_island_enabled"].enabled)
+        self.assertIn("回退", flags["frontend_worker_compute_enabled"].description)
+
     def test_update_writes_operator_ip_audit_and_clears_cache(self) -> None:
         with self.Session() as db:
             user = User(username="admin", display_name="admin", password_hash="x", roles="admin")

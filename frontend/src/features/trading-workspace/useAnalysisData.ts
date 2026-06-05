@@ -3,6 +3,7 @@ import { api } from "../../api/client";
 import type { AnalysisResponse, IntradayAnomalyResponse } from "../../types";
 import { useWorkspaceAnalysisStore } from "../../stores/workspaceAnalysisStore";
 import { useServerState } from "../../state/serverState";
+import { rankAnalysisBatch } from "../../workers/workerClient";
 import { nullableNumber, parseNumber } from "../workspace-shared/workspaceFormatters";
 import type { Page, StockCardView } from "../workspace-shared/workspaceTypes";
 
@@ -98,7 +99,8 @@ export function useAnalysisData({
         include_microstructure: true,
       }));
       const responses = await api.analyzeBatch(payload);
-      setBatchResults(sortBatchAnalysis(responses));
+      const ranked = await rankAnalysisBatch({ items: responses.map(toAnalysisRankItem) });
+      setBatchResults(applyAnalysisRankOrder(responses, ranked.items.map((item) => item.symbol)));
       setNotice(`批量分析完成：${responses.length} 只`);
     });
   }, [batchSymbols, draft, navigatePage, setError, setNotice, withLoading]);
@@ -117,10 +119,20 @@ export function useAnalysisData({
   };
 }
 
-function sortBatchAnalysis(items: AnalysisResponse[]): AnalysisResponse[] {
-  return [...items].sort((left, right) => {
-    const leftAction = left.suggestion.is_actionable ? 1000 : 0;
-    const rightAction = right.suggestion.is_actionable ? 1000 : 0;
-    return (rightAction + right.suggestion.signal_score) - (leftAction + left.suggestion.signal_score);
-  });
+function toAnalysisRankItem(item: AnalysisResponse) {
+  return {
+    symbol: item.symbol,
+    suggestion: {
+      is_actionable: Boolean(item.suggestion.is_actionable),
+      signal_score: item.suggestion.signal_score,
+    },
+  };
+}
+
+function applyAnalysisRankOrder(items: AnalysisResponse[], symbols: string[]): AnalysisResponse[] {
+  const bySymbol = new Map(items.map((item) => [item.symbol, item]));
+  const ranked = symbols
+    .map((symbol) => bySymbol.get(symbol))
+    .filter((item): item is AnalysisResponse => Boolean(item));
+  return ranked.length === items.length ? ranked : items;
 }
