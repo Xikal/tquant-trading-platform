@@ -43,7 +43,9 @@ describe("PlaybookPage", () => {
     expect(html).toContain("tq-playbook-candidate-tabs");
     expect(html).toContain("今日暂无确认推荐，榜单保持空状态。");
     expect(html).not.toContain(">现在可买<");
-    expect(html).not.toContain(">观察确认<");
+    expect(html).toContain(">观察<span");
+    expect(html).toContain(">等确认<span");
+    expect(html).toContain(">观察/放弃<span");
   });
 
   it("shows strategy switching state when selected tab differs from loaded playbook", () => {
@@ -150,7 +152,7 @@ describe("PlaybookPage", () => {
     expect(html).toContain("tq-playbook-dense-row__meta");
   });
 
-  it("does not render observe-only stocks as current-day recommendations", () => {
+  it("keeps observe-only stocks out of current-day recommendations but visible in observe tab", () => {
     const html = renderToStaticMarkup(
       <PlaybookPage
         strategy="volume_shrink"
@@ -195,9 +197,58 @@ describe("PlaybookPage", () => {
     expect(html).toContain("今日暂无确认推荐");
     expect(html).toContain("tq-playbook-candidate-tabs");
     expect(html).toContain("今日暂无确认推荐，榜单保持空状态。");
+    expect(html).toContain(">观察<span");
+    expect(html).toMatch(/>观察<span[^>]*tq-playbook-page__tab-count[^>]*>1<\/span>/);
+    expect(html).not.toContain("主看：观察股份");
     expect(html).not.toContain("观察股份");
     expect(html).not.toContain("600123");
-    expect(html).not.toContain("观察确认");
+  });
+
+  it("hides stale non-buy candidates from playbook category tabs", () => {
+    const html = renderToStaticMarkup(
+      <PlaybookPage
+        strategy="volume_shrink"
+        setStrategy={vi.fn()}
+        playbook={{
+          strategy_key: "volume_shrink",
+          strategy_title: "缩量回踩",
+          scanned_count: 1,
+          candidates: [{
+            name: "旧观察",
+            symbol: "600456",
+            strategy_key: "volume_shrink",
+            strategy_title: "缩量回踩",
+            latest_price: 10.12,
+            change_pct: 1.23,
+            score: 88,
+            risk_tier: "note",
+            suggested_position_text: "15%",
+            buy_signal_state: "near_entry",
+            buy_signal_text: "接近买点",
+            entry_zone_low: 9.8,
+            entry_zone_high: 10.2,
+            stop_loss: 9.5,
+            summary_reason: "旧交易日",
+            reasons: [],
+            risks: [],
+            tags: [],
+          }],
+          confirmed_candidates: [],
+          hot_industries: ["机器人"],
+          latest_trade_date: "2026-01-01",
+          full_scan_ready: true,
+          performance: null,
+        } as any}
+        loading=""
+        onRefresh={vi.fn()}
+        onAnalyze={vi.fn()}
+        onSelect={vi.fn()}
+      />
+    );
+
+    expect(html).toContain(">等确认<span");
+    expect(html).not.toContain("旧观察");
+    expect(html).not.toContain("600456");
   });
 });
 

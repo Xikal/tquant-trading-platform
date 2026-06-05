@@ -56,7 +56,6 @@ export function MonitorMoreTabs({
     <Card
       className="monitor-secondary-panel"
       size="small"
-      title="更多：ETF做T · 复盘 · 快照"
       extra={<Typography.Text type="secondary">{runtime?.database_backend ?? "runtime"}</Typography.Text>}
     >
       <Tabs

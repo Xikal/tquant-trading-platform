@@ -6,7 +6,7 @@ import { WorkspacePageIntro } from "../workspace-shared/WorkspacePageIntro";
 import { RitualFortuneStrip, RitualLuckyDraw, RitualSignalSeal } from "../ritual-ui";
 import { WEB_PLAYBOOK_TABS } from "../workspace-shared/workspaceConstants";
 import { candidateToCard } from "../workspace-shared/workspaceViewModels";
-import { filterTodayConfirmedCandidates } from "../workspace-shared/todayRecommendations";
+import { filterTodayConfirmedCandidates, isBeijingTodayTradeDate } from "../workspace-shared/todayRecommendations";
 import { formatNumber, formatPct, strategyLabel, toneFromChange } from "../workspace-shared/workspaceFormatters";
 import type { MetricItem, StockCardView } from "../workspace-shared/workspaceTypes";
 import { VirtualCardList } from "../../ui/list/VirtualCardList";
@@ -37,7 +37,15 @@ export function PlaybookPage({
     ...(playbook?.confirmed_candidates ?? []),
     ...(playbook?.candidates ?? []),
   ]);
+  const todayCandidates = isBeijingTodayTradeDate(playbook?.latest_trade_date)
+    ? allCandidates
+    : [];
   const buyNow = filterTodayConfirmedCandidates(playbook).map(candidateToCard);
+  const observeConfirmed = todayCandidates.filter((item) => item.buy_signal_state === "observe_confirmed").map(candidateToCard);
+  const nearEntry = todayCandidates.filter((item) => item.buy_signal_state === "near_entry").map(candidateToCard);
+  const watch = todayCandidates.filter((item) => item.buy_signal_state === "watch").map(candidateToCard);
+  const avoid = todayCandidates.filter((item) => item.buy_signal_state === "avoid").map(candidateToCard);
+  const passiveCandidates = [...watch, ...avoid];
   const confirmedCount = buyNow.length;
   const hasHiddenCandidates = allCandidates.length > 0;
   const focus = buyNow[0] ?? null;
@@ -133,6 +141,9 @@ export function PlaybookPage({
       </aside>
       <CandidateTabs
         buyNow={buyNow}
+        observeConfirmed={observeConfirmed}
+        nearEntry={nearEntry}
+        passiveCandidates={passiveCandidates}
         onAnalyze={onAnalyze}
         onSelect={onSelect}
       />
@@ -203,15 +214,24 @@ function dataQualityTone(value?: string | null): "up" | "warn" | "down" | "neutr
 
 function CandidateTabs({
   buyNow,
+  observeConfirmed,
+  nearEntry,
+  passiveCandidates,
   onAnalyze,
   onSelect,
 }: {
   buyNow: StockCardView[];
+  observeConfirmed: StockCardView[];
+  nearEntry: StockCardView[];
+  passiveCandidates: StockCardView[];
   onAnalyze: (stock: StockCardView) => void;
   onSelect: (stock: StockCardView) => void;
 }) {
   const sections = [
     { key: "buy", title: "今日确认推荐", short: "可买", items: buyNow, empty: "今日暂无确认推荐，榜单保持空状态。" },
+    { key: "observe", title: "今日观察确认（非推荐）", short: "观察", items: observeConfirmed, empty: "今日暂无观察确认股票。" },
+    { key: "near", title: "今日等确认（非推荐）", short: "等确认", items: nearEntry, empty: "今日暂无接近买点股票。" },
+    { key: "watch", title: "今日继续观察 / 放弃", short: "观察/放弃", items: passiveCandidates, empty: "今日暂无继续观察或放弃股票。" },
   ];
   return (
     <div className="panel tq-playbook-page__candidate-tabs tq-playbook-candidate-tabs">
