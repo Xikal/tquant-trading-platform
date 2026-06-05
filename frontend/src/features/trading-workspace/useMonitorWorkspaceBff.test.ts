@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import {
+  createMonitorWorkspaceFetcher,
   fetchMonitorPriorityBoardFallback,
   isMonitorBffDisabled,
   monitorBffAggregateEnabled,
@@ -15,6 +16,15 @@ describe("monitor BFF aggregate switch", () => {
 
     vi.stubEnv("VITE_MONITOR_BFF_AGGREGATE_ENABLED", "false");
     expect(monitorBffAggregateEnabled()).toBe(false);
+  });
+
+  it("passes the requested BFF view projection to the fetcher", async () => {
+    const fetchWorkspace = vi.fn(async () => ({ partial_errors: [] }));
+    const fetchMonitorWorkspace = createMonitorWorkspaceFetcher(fetchWorkspace as any);
+
+    await fetchMonitorWorkspace(12, "market");
+
+    expect(fetchWorkspace).toHaveBeenCalledWith(12, "market");
   });
 
   it("recognizes the explicit backend disabled response for legacy fallback", () => {

@@ -1,7 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { PRODUCTION_PLAYBOOK_TABS, WEB_PLAYBOOK_TABS } from "../workspace-shared/workspaceConstants";
+import { PAGE_PATHS, PATH_PAGE_MAP, PRODUCTION_PLAYBOOK_TABS, WEB_PLAYBOOK_TABS } from "../workspace-shared/workspaceConstants";
 
 describe("workspaceConstants", () => {
+  it("maps monitor action and market pages to stable routes", () => {
+    expect(PAGE_PATHS.monitor).toBe("/monitor");
+    expect(PAGE_PATHS["monitor-market"]).toBe("/monitor/market");
+    expect(PATH_PAGE_MAP["/monitor"]).toBe("monitor");
+    expect(PATH_PAGE_MAP["/monitor/market"]).toBe("monitor-market");
+  });
+
   it("shows only active playbook strategies in production tabs", () => {
     const keys = PRODUCTION_PLAYBOOK_TABS.map((tab) => tab.key);
 

@@ -7,6 +7,7 @@ import { errorMessage } from "../workspace-shared/workspaceFormatters";
 
 export type MonitorWorkspaceBffPayload = components["schemas"]["MonitorWorkspaceBffResponse"];
 export type MonitorWorkspaceData = LegacyMonitorWorkspaceBffResponse;
+export type MonitorWorkspaceView = "full" | "action" | "market";
 
 export interface MonitorPriorityParityItem {
   symbol: string;
@@ -17,17 +18,20 @@ export interface MonitorPriorityParityItem {
 }
 
 export function useMonitorWorkspaceBff(
-  fetchWorkspace: (priorityLimit?: number) => Promise<MonitorWorkspaceData> = api.getMonitorWorkspaceBff,
+  fetchWorkspace: (priorityLimit?: number, view?: MonitorWorkspaceView) => Promise<MonitorWorkspaceData> = api.getMonitorWorkspaceBff,
 ) {
-  const fetchMonitorWorkspace = useCallback(
-    (priorityLimit = 12) => fetchWorkspace(priorityLimit),
-    [fetchWorkspace],
-  );
+  const fetchMonitorWorkspace = useCallback(createMonitorWorkspaceFetcher(fetchWorkspace), [fetchWorkspace]);
 
   return {
     aggregateEnabled: monitorBffAggregateEnabled(),
     fetchMonitorWorkspace,
   };
+}
+
+export function createMonitorWorkspaceFetcher(
+  fetchWorkspace: (priorityLimit?: number, view?: MonitorWorkspaceView) => Promise<MonitorWorkspaceData>,
+) {
+  return (priorityLimit = 12, view: MonitorWorkspaceView = "full") => fetchWorkspace(priorityLimit, view);
 }
 
 export function monitorBffAggregateEnabled(): boolean {

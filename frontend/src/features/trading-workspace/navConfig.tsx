@@ -21,7 +21,8 @@ export interface NavItem {
 
 /** 侧边栏主导航（与原顶栏横排一致的 6 项）。 */
 export const PRIMARY_NAV: NavItem[] = [
-  { key: "monitor", label: "实时监控", icon: <FundOutlined /> },
+  { key: "monitor", label: "实时行动", icon: <FundOutlined /> },
+  { key: "monitor-market", label: "市场环境", icon: <LineChartOutlined /> },
   { key: "analysis", label: "量化分析", icon: <LineChartOutlined /> },
   { key: "playbook", label: "选股宝典", icon: <ReadOutlined /> },
   { key: "strategy-tracking", label: "策略跟踪", icon: <AimOutlined /> },
@@ -35,7 +36,8 @@ export const DATA_NAV: NavItem = { key: "data", label: "数据中心", icon: <Da
 export const SETTINGS_NAV: NavItem = { key: "settings", label: "系统配置", icon: <SettingOutlined /> };
 
 const TITLES: Record<Page, string> = {
-  monitor: "实时监控",
+  monitor: "实时行动台",
+  "monitor-market": "市场环境台",
   analysis: "量化分析",
   playbook: "选股宝典",
   "strategy-tracking": "策略跟踪",

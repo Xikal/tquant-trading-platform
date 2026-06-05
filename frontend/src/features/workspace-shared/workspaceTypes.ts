@@ -1,5 +1,6 @@
 export type Page =
   | "monitor"
+  | "monitor-market"
   | "analysis"
   | "playbook"
   | "strategy-tracking"

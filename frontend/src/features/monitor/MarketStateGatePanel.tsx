@@ -17,7 +17,13 @@ const GATE_STATUS: Record<string, "success" | "warning" | "error" | "default"> =
   no_data: "default",
 };
 
-export function MarketStateGatePanel({ board }: { board: LowBuyPriorityBoardResult | null }) {
+export function MarketStateGatePanel({
+  board,
+  defaultOpen = false,
+}: {
+  board: LowBuyPriorityBoardResult | null;
+  defaultOpen?: boolean;
+}) {
   const decision = board?.market_gate_decision ?? "allow";
   const score = board?.market_gate_score ?? 100;
   const multiplier = board?.market_firepower_multiplier ?? 1;
@@ -26,6 +32,7 @@ export function MarketStateGatePanel({ board }: { board: LowBuyPriorityBoardResu
   return (
     <Collapse
       size="small"
+      defaultActiveKey={defaultOpen ? ["market-state-gate"] : []}
       items={[
         {
           key: "market-state-gate",

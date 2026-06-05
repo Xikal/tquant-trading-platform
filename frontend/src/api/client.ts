@@ -169,9 +169,9 @@ export const api = {
     requestCached<IntradayAnomalyResponse>(`/market/intraday-anomaly/${encodeURIComponent(symbol)}`, 15000),
   getMonitorSnapshot: (priorityLimit = 12) =>
     requestCached<MonitorSnapshot>(`/monitor/snapshot?priority_limit=${priorityLimit}`, 15000),
-  getMonitorWorkspaceBff: (priorityLimit = 12) =>
+  getMonitorWorkspaceBff: (priorityLimit = 12, view: "full" | "action" | "market" = "full") =>
     requestCached<MonitorWorkspaceBffResponse>(
-      `/bff/v1/workspace/monitor?priority_limit=${priorityLimit}&sector_limit=8&per_sector_limit=8&hedge_limit=4`,
+      `/bff/v1/workspace/monitor?priority_limit=${priorityLimit}&sector_limit=8&per_sector_limit=8&hedge_limit=4&view=${view}`,
       10000
     ),
   getPaperAccess: () => request<PaperAccessResponse>("/auth/paper-access"),

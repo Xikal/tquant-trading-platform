@@ -4,6 +4,7 @@ import type { AuthUser } from "../../types";
 import { QueryErrorBoundary } from "../../ui/feedback/QueryErrorBoundary";
 import { PageErrorBoundary } from "./PageErrorBoundary";
 import type { MonitorPageProps } from "../monitor/MonitorPage";
+import type { MonitorMarketPageProps } from "../monitor/MonitorMarketPage";
 import type { PaperTradingPageProps } from "../paper/PaperTradingPage";
 import type { useAnalysisData } from "./useAnalysisData";
 import type { useMonitorData } from "./useMonitorData";
@@ -17,6 +18,7 @@ interface WorkspacePageContentProps {
   BacktestPage: ComponentType<ComponentProps<any>>;
   DataConsolePage: ComponentType<{ currentUser: AuthUser }>;
   MonitorPage: ComponentType<MonitorPageProps>;
+  MonitorMarketPage: ComponentType<MonitorMarketPageProps>;
   PaperTradingPage: ComponentType<PaperTradingPageProps>;
   PlaybookPage: ComponentType<ComponentProps<any>>;
   SettingsPage: ComponentType<ComponentProps<any>>;
@@ -41,6 +43,7 @@ export function WorkspacePageContent({
   BacktestPage,
   DataConsolePage,
   MonitorPage,
+  MonitorMarketPage,
   PaperTradingPage,
   PlaybookPage,
   SettingsPage,
@@ -70,6 +73,7 @@ export function WorkspacePageContent({
       <QueryErrorBoundary resetKey={page}>
         <Suspense fallback={<div className="panel">页面模块加载中...</div>}>
           {page === "monitor" && <MonitorPage {...monitorPageProps} />}
+          {page === "monitor-market" && <MonitorMarketPage {...monitorPageProps} />}
           {page === "analysis" && (
             <AnalysisPage
               draft={analysis.draft}

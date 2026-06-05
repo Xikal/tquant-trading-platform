@@ -26,7 +26,7 @@ import type {
 } from "../../types";
 import { DEFAULT_PLAYBOOK_STRATEGY } from "../workspace-shared/workspaceConstants";
 import { errorMessage } from "../workspace-shared/workspaceFormatters";
-import type { StockCardView } from "../workspace-shared/workspaceTypes";
+import type { Page, StockCardView } from "../workspace-shared/workspaceTypes";
 import { priorityToCard, watchSignalToCard } from "../workspace-shared/workspaceViewModels";
 import {
   applyPriorityBoardQuoteRefresh,
@@ -39,6 +39,7 @@ import {
 } from "./realtimePriceRefresh";
 import { createStableCardListMapper } from "./stableMonitorCards";
 import { fetchMonitorPriorityBoardFallback, isMonitorBffDisabled, useMonitorWorkspaceBff } from "./useMonitorWorkspaceBff";
+import { isMonitorDataPage } from "./workspaceRoutes";
 
 const MONITOR_SERVER_KEYS = {
   priorityBoard: ["monitor", "priority-board"] as const,
@@ -60,6 +61,8 @@ const MONITOR_BFF_RETRYING_MESSAGE = "加载失败，正在重试… 已保留�
 const MONITOR_PENDING_REFRESH_DELAYS_MS = [3_000, 5_000, 8_000, 13_000, 20_000, 30_000];
 
 type WithLoading = <T>(key: string, action: () => Promise<T>) => Promise<T | undefined>;
+type MonitorWorkspaceView = "full" | "action" | "market";
+export type MonitorRefreshResult = "started" | "queued";
 
 function isMonitorAuthError(reason: unknown): boolean {
   const status = (reason as { status?: number } | null)?.status;
@@ -72,13 +75,14 @@ function isMonitorAuthError(reason: unknown): boolean {
 
 interface UseMonitorDataOptions {
   active: boolean;
+  page?: Page;
   withLoading: WithLoading;
   setError: (message: string) => void;
   setNotice: (message: string) => void;
   onAuthRequired: () => void;
 }
 
-export function useMonitorData({ active, withLoading, setError, setNotice, onAuthRequired }: UseMonitorDataOptions) {
+export function useMonitorData({ active, page = "monitor", withLoading, setError, setNotice, onAuthRequired }: UseMonitorDataOptions) {
   const onAuthRequiredRef = useRef(onAuthRequired);
   useEffect(() => {
     onAuthRequiredRef.current = onAuthRequired;
@@ -98,6 +102,9 @@ export function useMonitorData({ active, withLoading, setError, setNotice, onAut
   const [instrumentSyncStatus, setInstrumentSyncStatus, resetInstrumentSyncStatus] = useServerState<InstrumentSyncStatus | null>(MONITOR_SERVER_KEYS.instrumentSyncStatus, null);
   const resetMonitorState = useWorkspaceMonitorStore((state) => state.resetMonitorData);
   const monitorRefreshRef = useRef(false);
+  const pendingMonitorRefreshRef = useRef<{ includeRuntime: boolean } | null>(null);
+  const latestMonitorPageRef = useRef(page);
+  latestMonitorPageRef.current = page;
   const quoteRefreshRef = useRef(false);
   const instrumentSyncPollRef = useRef<number | null>(null);
   const instrumentSyncRunIdRef = useRef<string>("");
@@ -118,7 +125,10 @@ export function useMonitorData({ active, withLoading, setError, setNotice, onAut
     signatureOf: monitorCardSignature,
     mapItem: watchSignalToCard,
   }));
-  const monitorWorkspaceBff = useMonitorWorkspaceBff();
+  const {
+    aggregateEnabled: monitorBffAggregateEnabled,
+    fetchMonitorWorkspace,
+  } = useMonitorWorkspaceBff();
 
   const priorityCards: StockCardView[] = useMemo(
     () => priorityCardMapperRef.current(priorityBoard?.items ?? []),
@@ -266,30 +276,33 @@ export function useMonitorData({ active, withLoading, setError, setNotice, onAut
     setWatchlistSignals,
   ]);
 
-  const fetchMonitorData = useCallback(async (includeRuntime: boolean) => {
+  const fetchMonitorData = useCallback(async (includeRuntime: boolean): Promise<MonitorRefreshResult> => {
     if (monitorRefreshRef.current) {
-      return;
+      const pending = pendingMonitorRefreshRef.current;
+      pendingMonitorRefreshRef.current = { includeRuntime: Boolean(pending?.includeRuntime || includeRuntime) };
+      return "queued";
     }
     monitorRefreshRef.current = true;
+    const requestPage = latestMonitorPageRef.current;
     try {
-      if (!monitorWorkspaceBff.aggregateEnabled) {
+      if (!monitorBffAggregateEnabled) {
         await fetchLegacyMonitorData(includeRuntime);
-        return;
+        return "started";
       }
-      const workspaceResult = await Promise.resolve(monitorWorkspaceBff.fetchMonitorWorkspace(12))
+      const workspaceResult = await Promise.resolve(fetchMonitorWorkspace(12, monitorWorkspaceView(requestPage)))
         .then((value) => ({ status: "fulfilled" as const, value }))
         .catch((reason) => ({ status: "rejected" as const, reason }));
       if (workspaceResult.status === "rejected" && isMonitorBffDisabled(workspaceResult.reason)) {
         await fetchLegacyMonitorData(includeRuntime);
-        return;
+        return "started";
       }
       if (workspaceResult.status === "rejected") {
         if (isMonitorAuthError(workspaceResult.reason)) {
           onAuthRequiredRef.current();
-          return;
+          return "started";
         }
         setError(MONITOR_BFF_RETRYING_MESSAGE);
-        return;
+        return "started";
       }
       let hourlyHistoryLoadedFromBff = false;
       let runtimeLoadedFromBff = !includeRuntime || !Boolean(getAdminApiToken());
@@ -301,23 +314,20 @@ export function useMonitorData({ active, withLoading, setError, setNotice, onAut
       if (monitorSnapshot) {
         setPriorityBoard(monitorSnapshot.priority_board);
         laneBoardsRef.current.baseline = monitorSnapshot.priority_board;
-        setWatchlistSignals(monitorSnapshot.watchlist_signals);
+        if (requestPage !== "monitor-market") {
+          setWatchlistSignals(monitorSnapshot.watchlist_signals);
+        }
         setSectorEtfT0(monitorSnapshot.sector_etf_t0 ?? null);
       }
-      if (workspaceResult.value.market_breadth) {
-        setMarketBreadth(workspaceResult.value.market_breadth);
-      }
-      setMarketPulse(workspaceResult.value.market_pulse ?? null);
-      setReviewStatus(workspaceResult.value.review_status ?? null);
-      setReviewReports(workspaceResult.value.review_reports ?? []);
-      if (workspaceResult.value.sector_relative_strength) {
-        setSectorRelativeStrength(workspaceResult.value.sector_relative_strength);
-      }
-      if (workspaceResult.value.paired_hedge) {
-        setPairedHedge(workspaceResult.value.paired_hedge);
-      }
-      if (Array.isArray(workspaceResult.value.hourly_snapshot_history)) {
-        setHourlySnapshotHistory(workspaceResult.value.hourly_snapshot_history);
+      const projected = monitorWorkspaceProjection(workspaceResult.value);
+      setMarketBreadth(projected.marketBreadth);
+      setMarketPulse(projected.marketPulse);
+      setReviewStatus(projected.reviewStatus);
+      setReviewReports(projected.reviewReports);
+      setSectorRelativeStrength(projected.sectorRelativeStrength);
+      setPairedHedge(projected.pairedHedge);
+      if (projected.hourlySnapshotHistory) {
+        setHourlySnapshotHistory(projected.hourlySnapshotHistory);
         hourlyHistoryLoadedFromBff = true;
       }
       if ("runtime" in workspaceResult.value) {
@@ -367,17 +377,24 @@ export function useMonitorData({ active, withLoading, setError, setNotice, onAut
       // 会话过期：401 必须触发登出，否则轮询会无限刷 401（清登录态后轮询随 currentUser 置空而停止）。
       if (rejections.some((item) => isMonitorAuthError(item.reason))) {
         onAuthRequiredRef.current();
-        return;
+        return "started";
       }
       if (rejections.length > 0) {
         setError(errorMessage(rejections[0].reason));
       }
+      return "started";
     } finally {
       monitorRefreshRef.current = false;
+      const pending = pendingMonitorRefreshRef.current;
+      pendingMonitorRefreshRef.current = null;
+      if (pending && isMonitorDataPage(latestMonitorPageRef.current)) {
+        window.setTimeout(() => void fetchMonitorData(pending.includeRuntime), 0);
+      }
     }
   }, [
     fetchLegacyMonitorData,
-    monitorWorkspaceBff,
+    fetchMonitorWorkspace,
+    monitorBffAggregateEnabled,
     setError,
     setHourlySnapshotHistory,
     setMarketBreadth,
@@ -738,6 +755,53 @@ export function useMonitorData({ active, withLoading, setError, setNotice, onAut
     resetMonitorData,
   };
 }
+
+export function monitorWorkspaceView(page: Page): MonitorWorkspaceView {
+  if (page === "monitor") {
+    return "action";
+  }
+  if (page === "monitor-market") {
+    return "market";
+  }
+  return "full";
+}
+
+export function monitorWorkspaceProjection(workspace: {
+  hourly_snapshot_history?: MarketHourlySnapshotHistoryItem[] | null;
+  market_breadth?: MarketBreadth | null;
+  market_pulse?: IntradayMarketPulse | null;
+  paired_hedge?: PairedHedgeResearchResponse | null;
+  review_reports?: MarketReviewReport[] | null;
+  review_status?: MarketReviewStatus | null;
+  sector_relative_strength?: SectorRelativeStrengthResponse | null;
+}) {
+  return {
+    hourlySnapshotHistory: Array.isArray(workspace.hourly_snapshot_history)
+      ? workspace.hourly_snapshot_history
+      : null,
+    marketBreadth: workspace.market_breadth ?? null,
+    marketPulse: workspace.market_pulse ?? null,
+    pairedHedge: workspace.paired_hedge ?? null,
+    reviewReports: workspace.review_reports ?? [],
+    reviewStatus: workspace.review_status ?? null,
+    sectorRelativeStrength: workspace.sector_relative_strength ?? null,
+  };
+}
+
+export function nextMonitorDataPageRef(
+  previousPage: Page | null,
+  nextPage: Page,
+  refreshResult: MonitorRefreshResult,
+): Page | null {
+  if (!isMonitorDataPage(nextPage)) {
+    return null;
+  }
+  if (previousPage === nextPage) {
+    return previousPage;
+  }
+  return refreshResult === "started" || refreshResult === "queued" ? nextPage : previousPage;
+}
+
 
 function isHourlyHistoryResponse(value: unknown): value is { items?: MarketHourlySnapshotHistoryItem[] } {
   return Boolean(value && typeof value === "object" && "items" in value);

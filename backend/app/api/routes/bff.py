@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 import time
-from typing import Callable, TypeVar
+from typing import Callable, Literal, TypeVar
 
 from fastapi import APIRouter, BackgroundTasks, Depends, Header, HTTPException, Query, Request
 from sqlalchemy import inspect as sa_inspect, select
@@ -52,6 +52,7 @@ from app.services.settings_runtime import SettingsRuntimeDiagnosticsService
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/bff/v1", dependencies=[Depends(get_current_user)])
 T = TypeVar("T")
+MonitorWorkspaceView = Literal["full", "action", "market"]
 NONCRITICAL_MONITOR_SOURCES = {
     "review",
     "hourly_snapshot_history",
@@ -127,6 +128,7 @@ def monitor_workspace_bff(
     sector_limit: int = Query(default=8, ge=1, le=20),
     per_sector_limit: int = Query(default=8, ge=1, le=30),
     hedge_limit: int = Query(default=4, ge=1, le=20),
+    view: MonitorWorkspaceView = Query(default="full"),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> MonitorWorkspaceBffResponse:
@@ -143,11 +145,12 @@ def monitor_workspace_bff(
             sector_limit=sector_limit,
             per_sector_limit=per_sector_limit,
             hedge_limit=hedge_limit,
+            view=view,
             forward_headers=forwarded_request_headers(request.headers),
         )
         if remote is not None:
             remote_used = True
-            response = apply_monitor_workspace_live_overlay(remote)
+            response = _project_monitor_workspace(apply_monitor_workspace_live_overlay(remote), view)
             _record_partial_errors(response)
             record_response_payload("monitor_bff", response, item_count=_monitor_priority_item_count(response))
             schedule_go_bff_shadow_check(
@@ -161,6 +164,7 @@ def monitor_workspace_bff(
                     "sector_limit": sector_limit,
                     "per_sector_limit": per_sector_limit,
                     "hedge_limit": hedge_limit,
+                    "view": view,
                 },
             )
             return response
@@ -175,6 +179,7 @@ def monitor_workspace_bff(
             "per_sector_limit": per_sector_limit,
             "hedge_limit": hedge_limit,
             "include_runtime": include_runtime,
+            "view": view,
         },
         loader=lambda: _build_monitor_workspace(
             db,
@@ -183,11 +188,12 @@ def monitor_workspace_bff(
             sector_limit=sector_limit,
             per_sector_limit=per_sector_limit,
             hedge_limit=hedge_limit,
+            view=view,
             allow_live_sources=False,
             include_runtime=include_runtime,
         ),
     )
-    response = apply_monitor_workspace_live_overlay(response)
+    response = _project_monitor_workspace(apply_monitor_workspace_live_overlay(response), view)
     _record_partial_errors(response)
     record_response_payload("monitor_bff", response, item_count=_monitor_priority_item_count(response))
     if not remote_used:
@@ -202,9 +208,44 @@ def monitor_workspace_bff(
                 "sector_limit": sector_limit,
                 "per_sector_limit": per_sector_limit,
                 "hedge_limit": hedge_limit,
+                "view": view,
             },
         )
     return response
+
+
+def _project_monitor_workspace(
+    response: MonitorWorkspaceBffResponse,
+    view: MonitorWorkspaceView,
+) -> MonitorWorkspaceBffResponse:
+    """Keep the monitor BFF schema stable while trimming view-specific payloads."""
+
+    if view == "full":
+        return response
+    payload = response.model_copy(deep=True)
+    if view == "action":
+        payload.market_breadth = None
+        payload.hourly_snapshot_history = []
+        payload.review_status = None
+        payload.review_reports = []
+        payload.sector_relative_strength = None
+        payload.paired_hedge = None
+        payload.runtime = None
+        return payload
+    payload.monitor_snapshot = _monitor_market_snapshot_alias(payload.monitor_snapshot)
+    return payload
+
+
+def _monitor_market_snapshot_alias(snapshot):
+    if snapshot is None:
+        return None
+    if hasattr(snapshot, "model_copy"):
+        return snapshot.model_copy(update={"watchlist_signals": []}, deep=True)
+    if isinstance(snapshot, dict):
+        alias = dict(snapshot)
+        alias["watchlist_signals"] = []
+        return alias
+    return snapshot
 
 
 @router.get("/workspace/paper", response_model=PaperWorkspaceBffResponse)
@@ -411,6 +452,7 @@ def _build_monitor_workspace(
     sector_limit: int,
     per_sector_limit: int,
     hedge_limit: int,
+    view: MonitorWorkspaceView = "full",
     allow_live_sources: bool = True,
     include_runtime: bool = False,
 ) -> MonitorWorkspaceBffResponse:
@@ -441,24 +483,29 @@ def _build_monitor_workspace(
             ignore_forbidden=True,
         )
     threaded_db_budget = _monitor_db_source_thread_budget_allowed(db)
-    review_status, review_reports = _safe_monitor_source(
-        "review",
-        errors,
-        timings,
-        lambda: _run_monitor_db_source(db, lambda source_db: build_market_review_summary(source_db)),
-        default=(None, []),
-        threaded=threaded_db_budget,
-    ) or (None, [])
-    hourly_history = _safe_monitor_source(
-        "hourly_snapshot_history",
-        errors,
-        timings,
-        lambda: _run_monitor_db_source(db, _safe_hourly_snapshot_history),
-        default=[],
-        threaded=threaded_db_budget,
-    ) or []
+    include_market_context = view != "action"
+    if include_market_context:
+        review_status, review_reports = _safe_monitor_source(
+            "review",
+            errors,
+            timings,
+            lambda: _run_monitor_db_source(db, lambda source_db: build_market_review_summary(source_db)),
+            default=(None, []),
+            threaded=threaded_db_budget,
+        ) or (None, [])
+        hourly_history = _safe_monitor_source(
+            "hourly_snapshot_history",
+            errors,
+            timings,
+            lambda: _run_monitor_db_source(db, _safe_hourly_snapshot_history),
+            default=[],
+            threaded=threaded_db_budget,
+        ) or []
+    else:
+        review_status, review_reports = None, []
+        hourly_history = []
     pulse = _safe_market_pulse_snapshot(db, errors, timings)
-    runtime = _safe_runtime_status(db, current_user, errors, timings) if include_runtime else None
+    runtime = _safe_runtime_status(db, current_user, errors, timings) if include_market_context and include_runtime else None
     return MonitorWorkspaceBffResponse(
         generated_at=beijing_now_string(),
         monitor_snapshot=monitor_snapshot_payload,

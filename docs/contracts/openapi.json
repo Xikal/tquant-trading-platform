@@ -29307,6 +29307,21 @@
               "title": "Hedge Limit",
               "type": "integer"
             }
+          },
+          {
+            "in": "query",
+            "name": "view",
+            "required": false,
+            "schema": {
+              "default": "full",
+              "enum": [
+                "full",
+                "action",
+                "market"
+              ],
+              "title": "View",
+              "type": "string"
+            }
           }
         ],
         "responses": {

@@ -1,4 +1,4 @@
-import { Badge, Button, Dropdown, Grid, Space, Typography } from "antd";
+import { Badge, Button, Dropdown, Grid, Segmented, Space, Typography } from "antd";
 import { useEffect } from "react";
 import { useSignals } from "@preact/signals-react/runtime";
 import { frontendPerformanceFlagEnabled } from "../../config/frontendPerformanceFlags";
@@ -47,6 +47,7 @@ export function Topbar({
   const riskCount = watchCards.filter((item) => item.riskText.includes("高")).length;
   const opportunityCount = priorityBoard?.total_candidates ?? priorityBoard?.items.length ?? 0;
   const userName = currentUser.display_name || currentUser.username;
+  const showMonitorSwitch = page === "monitor" || page === "monitor-market";
 
   useEffect(() => {
     if (!topbarRealtimePulseEnabled()) {
@@ -69,6 +70,17 @@ export function Topbar({
           />
         ) : null}
         <Typography.Text strong style={TOPBAR_TITLE_STYLE}>{pageTitle(page)}</Typography.Text>
+        {showMonitorSwitch ? (
+          <Segmented
+            size="small"
+            value={page}
+            options={[
+              { label: "实时行动", value: "monitor" },
+              { label: "市场环境", value: "monitor-market" },
+            ]}
+            onChange={(value) => onNavigate(value as Page)}
+          />
+        ) : null}
       </div>
       <Space style={TOPBAR_RIGHT_STYLE} size={8}>
         {page === "paper" && onPaperRefresh ? (

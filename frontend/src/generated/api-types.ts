@@ -22411,6 +22411,7 @@ export interface operations {
                 sector_limit?: number;
                 per_sector_limit?: number;
                 hedge_limit?: number;
+                view?: "full" | "action" | "market";
             };
             header?: never;
             path?: never;

@@ -530,6 +530,82 @@ func TestAggregateMonitorWorkspaceSkipsDegradedSourcesByDefault(t *testing.T) {
 	}
 }
 
+func TestAggregateMonitorWorkspaceActionViewUsesOnlyActionSources(t *testing.T) {
+	seen := map[string]int{}
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		seen[r.URL.Path]++
+		w.Header().Set("Content-Type", "application/json")
+		switch r.URL.Path {
+		case "/api/monitor/snapshot":
+			_, _ = w.Write([]byte(`{"updated_at":"2026-06-05 10:00:00","watchlist_signals":[{"symbol":"600000"}],"priority_board":{"items":[{"symbol":"600000"}]}}`))
+		case "/api/market/pulse":
+			_, _ = w.Write([]byte(`{"updated_at":"2026-06-05 10:00:00","pulse_text":"行动台总闸"}`))
+		default:
+			t.Fatalf("action view should not request market source %s", r.URL.Path)
+		}
+	}))
+	defer upstream.Close()
+	cfg := config{pythonAPIBase: upstream.URL, timeout: time.Second, monitorDegradedSourcesEnabled: true}
+	req := httptest.NewRequest(http.MethodGet, "/api/bff/v1/workspace/monitor?view=action", nil)
+
+	result := aggregateMonitorWorkspace(cfg, upstream.Client(), req)
+
+	if !result.ok {
+		t.Fatal("expected monitor aggregate result")
+	}
+	if seen["/api/monitor/snapshot"] != 1 || seen["/api/market/pulse"] != 1 || len(seen) != 2 {
+		t.Fatalf("expected only action sources, seen=%#v body=%s", seen, string(result.body))
+	}
+	if !bytes.Contains(result.body, []byte(`"market_pulse":{"updated_at"`)) {
+		t.Fatalf("action projection should keep compact market pulse: %s", string(result.body))
+	}
+	if !bytes.Contains(result.body, []byte(`"review_reports":[]`)) {
+		t.Fatalf("action projection should expose empty review reports: %s", string(result.body))
+	}
+}
+
+func TestAggregateMonitorWorkspaceMarketViewKeepsPriorityAliasWithoutWatchlist(t *testing.T) {
+	seen := map[string]int{}
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		seen[r.URL.Path]++
+		w.Header().Set("Content-Type", "application/json")
+		switch r.URL.Path {
+		case "/api/monitor/snapshot":
+			_, _ = w.Write([]byte(`{"updated_at":"2026-06-05 10:00:00","watchlist_signals":[{"symbol":"600000"}],"priority_board":{"items":[{"symbol":"600000"}]}}`))
+		case "/api/market/breadth":
+			_, _ = w.Write([]byte(`{"updated_at":"2026-06-05 10:00:00","state":"repair"}`))
+		case "/api/market/pulse":
+			_, _ = w.Write([]byte(`{"updated_at":"2026-06-05 10:00:00","pulse_text":"市场可观察"}`))
+		case "/api/market/review-summary":
+			_, _ = w.Write([]byte(`{"review_status":null,"review_reports":[]}`))
+		case "/api/market/sector-relative-strength":
+			_, _ = w.Write([]byte(`{"updated_at":"2026-06-05 10:00:00","items":[]}`))
+		case "/api/market/paired-hedge-research":
+			_, _ = w.Write([]byte(`{"updated_at":"2026-06-05 10:00:00","ideas":[]}`))
+		default:
+			t.Fatalf("unexpected upstream path %s", r.URL.Path)
+		}
+	}))
+	defer upstream.Close()
+	cfg := config{pythonAPIBase: upstream.URL, timeout: time.Second}
+	req := httptest.NewRequest(http.MethodGet, "/api/bff/v1/workspace/monitor?view=market", nil)
+
+	result := aggregateMonitorWorkspace(cfg, upstream.Client(), req)
+
+	if !result.ok {
+		t.Fatal("expected monitor aggregate result")
+	}
+	if seen["/api/market/breadth"] != 1 || seen["/api/market/review-summary"] != 1 {
+		t.Fatalf("market view should request market context sources, seen=%#v body=%s", seen, string(result.body))
+	}
+	if !bytes.Contains(result.body, []byte(`"priority_board":{"items":[{"symbol":"600000"}]}`)) {
+		t.Fatalf("market view should keep priority-board compatibility alias: %s", string(result.body))
+	}
+	if !bytes.Contains(result.body, []byte(`"watchlist_signals":[]`)) {
+		t.Fatalf("market view should trim watchlist action payload: %s", string(result.body))
+	}
+}
+
 func TestAggregateStrategyWorkspaceBuildsPayloadFromSourceEndpoints(t *testing.T) {
 	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")

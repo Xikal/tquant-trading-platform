@@ -15,6 +15,7 @@ describe("workspace page information hierarchy", () => {
 
   it("assigns scalable list surfaces only where large lists are expected", () => {
     expect(WORKSPACE_PAGE_RESPONSIBILITIES.monitor.heavyListSurface).toContain("VirtualCardList");
+    expect(WORKSPACE_PAGE_RESPONSIBILITIES["monitor-market"].heavyListSurface).toContain("VirtualCardList");
     expect(WORKSPACE_PAGE_RESPONSIBILITIES["strategy-tracking"].heavyListSurface).toContain("DataTable");
     expect(WORKSPACE_PAGE_RESPONSIBILITIES.data.heavyListSurface).toEqual(["DataTable"]);
     expect(WORKSPACE_PAGE_RESPONSIBILITIES.backtest.heavyListSurface).toContain("DataTable");

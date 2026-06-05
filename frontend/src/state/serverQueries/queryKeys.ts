@@ -1,6 +1,6 @@
 export const queryKeys = {
   monitor: ["monitor"] as const,
-  monitorWorkspace: (priorityLimit: number) => ["monitor", "workspace", priorityLimit] as const,
+  monitorWorkspace: (priorityLimit: number, view: string = "full") => ["monitor", "workspace", priorityLimit, view] as const,
   monitorSnapshot: (priorityLimit: number) => ["monitor", "snapshot", priorityLimit] as const,
   holdings: ["holdings"] as const,
   priorityBoard: (strategy: string, limit: number) => ["playbook", "priority", strategy, limit] as const,

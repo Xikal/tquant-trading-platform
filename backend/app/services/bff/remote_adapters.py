@@ -24,6 +24,7 @@ def load_remote_monitor_workspace(
     sector_limit: int,
     per_sector_limit: int,
     hedge_limit: int,
+    view: str = "full",
     forward_headers: Mapping[str, str] | None = None,
 ) -> MonitorWorkspaceBffResponse | None:
     settings = get_settings()
@@ -35,6 +36,7 @@ def load_remote_monitor_workspace(
             "sector_limit": sector_limit,
             "per_sector_limit": per_sector_limit,
             "hedge_limit": hedge_limit,
+            "view": view,
         },
         forward_headers=forward_headers,
     )
@@ -49,6 +51,7 @@ def load_remote_monitor_workspace(
             "sector_limit": sector_limit,
             "per_sector_limit": per_sector_limit,
             "hedge_limit": hedge_limit,
+            "view": view,
         },
         forward_headers=forward_headers,
     )

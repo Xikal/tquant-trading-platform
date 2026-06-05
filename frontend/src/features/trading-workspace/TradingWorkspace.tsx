@@ -12,7 +12,7 @@ import { nullableNumber, parseNumber } from "../workspace-shared/workspaceFormat
 import { isLoading } from "./loadingState";
 import type { Page, StockCardView } from "../workspace-shared/workspaceTypes";
 import { useAnalysisData } from "./useAnalysisData";
-import { useMonitorData } from "./useMonitorData";
+import { nextMonitorDataPageRef, useMonitorData } from "./useMonitorData";
 import { usePaperIntraday } from "./usePaperIntraday";
 import { usePaperTrading } from "./usePaperTrading";
 import { usePlaybookData } from "./usePlaybookData";
@@ -21,6 +21,7 @@ import { useWorkspaceLoading } from "./useWorkspaceLoading";
 import { useWorkspaceNavigation } from "./useWorkspaceNavigation";
 import { useWorkspacePageProps } from "./useWorkspacePageProps";
 import { useWorkspaceAutoRefresh } from "./useWorkspaceAutoRefresh";
+import { isMonitorDataPage } from "./workspaceRoutes";
 import { WORKSPACE_AUTH_LOADING_STYLE } from "./workspaceShellStyles";
 import type { AiDecisionSupportResponse, AuthUser } from "../../types";
 
@@ -57,6 +58,7 @@ export function TradingWorkspace() {
   const setAiDialogOpen = useWorkspaceStore((state) => state.setAiDialogOpen);
   const setSelectedStock = useWorkspaceStore((state) => state.setSelectedStock);
   const clearTransientUi = useWorkspaceStore((state) => state.clearTransientUi);
+  const lastMonitorDataPageRef = useRef<Page | null>(null);
   const {
     loading,
     loadingState,
@@ -68,7 +70,8 @@ export function TradingWorkspace() {
     onAuthRequired: handleAuthRequired,
   });
   const monitor = useMonitorData({
-    active: Boolean(currentUser) && page === "monitor",
+    active: Boolean(currentUser) && isMonitorDataPage(page),
+    page,
     withLoading,
     setError,
     setNotice,
@@ -144,8 +147,28 @@ export function TradingWorkspace() {
     if (authReady && currentUser) {
       void refreshMonitor();
       void loadCommandStrategies();
+      if (isMonitorDataPage(page)) {
+        lastMonitorDataPageRef.current = page;
+      }
     }
   }, [authReady, currentUser?.id]);
+
+  useEffect(() => {
+    if (!authReady || !currentUser) {
+      lastMonitorDataPageRef.current = null;
+      return;
+    }
+    if (!isMonitorDataPage(page)) {
+      lastMonitorDataPageRef.current = null;
+      return;
+    }
+    if (lastMonitorDataPageRef.current === page) {
+      return;
+    }
+    void monitor.fetchMonitorData(false).then((result) => {
+      lastMonitorDataPageRef.current = nextMonitorDataPageRef(lastMonitorDataPageRef.current, page, result);
+    });
+  }, [authReady, currentUser, monitor.fetchMonitorData, page]);
 
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {

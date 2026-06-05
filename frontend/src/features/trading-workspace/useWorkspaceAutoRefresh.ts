@@ -2,6 +2,7 @@ import { useEffect, type RefObject } from "react";
 import type { AuthUser } from "../../types";
 import { MONITOR_REFRESH_INTERVAL_MS } from "../workspace-shared/workspaceConstants";
 import type { Page } from "../workspace-shared/workspaceTypes";
+import { isMonitorDataPage } from "./workspaceRoutes";
 
 const PAPER_TRADING_REFRESH_INTERVAL_MS = 30_000;
 const PAPER_IDLE_REFRESH_INTERVAL_MS = 60 * 60 * 1000;
@@ -9,7 +10,7 @@ const PAPER_IDLE_REFRESH_INTERVAL_MS = 60 * 60 * 1000;
 interface UseWorkspaceAutoRefreshParams {
   currentUser: AuthUser | null;
   page: Page;
-  fetchMonitorData: (includeRuntime: boolean) => Promise<void>;
+  fetchMonitorData: (includeRuntime: boolean) => Promise<unknown>;
   paperTradingTime?: boolean;
   refreshPaperLiveSnapshotRef: RefObject<(options?: { refreshPrices?: boolean }) => Promise<void>>;
 }
@@ -22,7 +23,7 @@ export function useWorkspaceAutoRefresh({
   refreshPaperLiveSnapshotRef,
 }: UseWorkspaceAutoRefreshParams) {
   useEffect(() => {
-    if (!currentUser || page !== "monitor") {
+    if (!currentUser || !isMonitorDataPage(page)) {
       return undefined;
     }
     let inFlight = false;

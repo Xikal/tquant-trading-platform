@@ -6,6 +6,9 @@ import type { LowBuyPriorityBoardResult } from "../../types";
 import { useWorkspaceMonitorStore } from "../../stores/workspaceMonitorStore";
 import { createAppQueryClient } from "../../state/queryClient";
 import { MonitorPage } from "../monitor/MonitorPage";
+import { MonitorMarketPage } from "../monitor/MonitorMarketPage";
+import type { MonitorMarketPageProps } from "../monitor/MonitorMarketPage";
+import { baseMonitorPageProps } from "../monitor/monitorTestFixtures";
 import { SectorLeaderGatePanel } from "../monitor/SectorLeaderGatePanel";
 
 function renderMonitorPage(element: ReactElement) {
@@ -14,6 +17,29 @@ function renderMonitorPage(element: ReactElement) {
       {element}
     </QueryClientProvider>
   );
+}
+
+function marketPageProps(overrides: Partial<MonitorMarketPageProps> = {}): MonitorMarketPageProps {
+  const base = {
+    ...baseMonitorPageProps(),
+    ...overrides,
+  };
+  return {
+    hourlySnapshotHistory: base.hourlySnapshotHistory,
+    instrumentSyncStatus: base.instrumentSyncStatus,
+    loading: base.loading,
+    marketBreadth: base.marketBreadth,
+    marketPulse: base.marketPulse,
+    pairedHedge: base.pairedHedge,
+    priorityBoard: base.priorityBoard,
+    priorityCards: base.priorityCards,
+    reviewReports: base.reviewReports,
+    reviewStatus: base.reviewStatus,
+    runtime: base.runtime,
+    sectorEtfT0: base.sectorEtfT0,
+    sectorRelativeStrength: base.sectorRelativeStrength,
+    watchCards: base.watchCards,
+  };
 }
 
 describe("MonitorPage", () => {
@@ -168,12 +194,12 @@ describe("MonitorPage", () => {
     expect(html).not.toContain("榜单保持空状态");
   });
 
-  it("renders hourly all-market snapshot feedback", () => {
+  it("renders hourly all-market snapshot feedback on the market context page", () => {
     useWorkspaceMonitorStore.setState({ moreTab: "snapshot" });
     const html = renderMonitorPage(
-      <MonitorPage
-        priorityBoard={null}
-        marketBreadth={{
+      <MonitorMarketPage
+        {...marketPageProps({
+          marketBreadth: {
           updated_at: "2026-05-25 10:30:00",
           state: "neutral",
           state_text: "震荡",
@@ -205,47 +231,22 @@ describe("MonitorPage", () => {
             market_strength_score: 18,
             market_strength_text: "全市场温和修复",
           },
-        }}
-        marketPulse={null}
-        hourlySnapshotHistory={[]}
-        reviewStatus={null}
-        reviewReports={[]}
-        keyLevelAlerts={[]}
-        sectorEtfT0={null}
-        pairedHedge={null}
-        priorityCards={[]}
-        watchCards={[]}
-        runtime={null}
-        instrumentSyncStatus={null}
-        watchDraft={{ symbol: "", name: "", base_position: "", available_position: "", cost_basis: "", memo: "" }}
-        setWatchDraft={vi.fn()}
-        editingWatchSymbol=""
-        loading=""
-        onRefresh={vi.fn()}
-        onSync={vi.fn()}
-        onAi={vi.fn()}
-        onGoPlaybook={vi.fn()}
-        onSelect={vi.fn()}
-        onAnalyze={vi.fn()}
-        onEdit={vi.fn()}
-        onRemove={vi.fn()}
-        onAddWatchlist={vi.fn()}
-        onCancelEdit={vi.fn()}
+          },
+        })}
       />
     );
 
-    expect(html).not.toContain("更多：ETF做T · 复盘 · 快照");
-    expect(html).toContain("小时快照");
-    expect(html).toContain("今日机会");
+    expect(html).toContain("市场宽度与日内脉冲");
+    expect(html).toContain("小时全市场快照");
+    expect(html).not.toContain("+ 录入持仓");
   });
 
-  it("renders hourly trend and weakening warning", () => {
+  it("renders hourly trend and weakening warning on the market context page", () => {
     useWorkspaceMonitorStore.setState({ moreTab: "snapshot" });
     const html = renderMonitorPage(
-      <MonitorPage
-        priorityBoard={null}
-        marketBreadth={null}
-        hourlySnapshotHistory={[
+      <MonitorMarketPage
+        {...marketPageProps({
+          hourlySnapshotHistory: [
           {
             id: 1,
             trade_date: "2026-05-25",
@@ -279,46 +280,21 @@ describe("MonitorPage", () => {
             created_at: "",
             updated_at: "2026-05-25 14:00:00",
           },
-        ]}
-        marketPulse={null}
-        reviewStatus={null}
-        reviewReports={[]}
-        keyLevelAlerts={[]}
-        sectorEtfT0={null}
-        pairedHedge={null}
-        priorityCards={[]}
-        watchCards={[]}
-        runtime={null}
-        instrumentSyncStatus={null}
-        watchDraft={{ symbol: "", name: "", base_position: "", available_position: "", cost_basis: "", memo: "" }}
-        setWatchDraft={vi.fn()}
-        editingWatchSymbol=""
-        loading=""
-        onRefresh={vi.fn()}
-        onSync={vi.fn()}
-        onAi={vi.fn()}
-        onGoPlaybook={vi.fn()}
-        onSelect={vi.fn()}
-        onAnalyze={vi.fn()}
-        onEdit={vi.fn()}
-        onRemove={vi.fn()}
-        onAddWatchlist={vi.fn()}
-        onCancelEdit={vi.fn()}
+          ],
+        })}
       />
     );
 
-    expect(html).not.toContain("更多：ETF做T · 复盘 · 快照");
+    expect(html).toContain("市场宽度与日内脉冲");
     expect(html).toContain("全市场强弱分连续走弱");
   });
 
-  it("renders intraday pulse and review status on monitor first screen", () => {
+  it("renders intraday pulse and review status on the market context page", () => {
     useWorkspaceMonitorStore.setState({ moreTab: "review" });
     const html = renderMonitorPage(
-      <MonitorPage
-        priorityBoard={null}
-        marketBreadth={null}
-        hourlySnapshotHistory={[]}
-        marketPulse={{
+      <MonitorMarketPage
+        {...marketPageProps({
+          marketPulse: {
           updated_at: "2026-05-25 10:30:00",
           data_quality: "partial",
           data_quality_text: "部分可用",
@@ -333,8 +309,8 @@ describe("MonitorPage", () => {
           emotion_summary: {},
           hourly_snapshot_summary: {},
           autofill_details: [{ source: "emotion_temperature", detail: "情绪温度由市场涨跌面派生" }],
-        }}
-        reviewStatus={{
+          },
+          reviewStatus: {
           trade_date: "2026-05-25",
           status: "midday_ready",
           status_text: "今日市场午盘复盘已生成，等待收盘复盘",
@@ -345,8 +321,8 @@ describe("MonitorPage", () => {
           next_trigger_at: "2026-05-25 15:05",
           risk_alert_count: 1,
           suggested_action: "午后控制追高",
-        }}
-        reviewReports={[{
+          },
+          reviewReports: [{
           id: 1,
           report_date: "2026-05-25",
           report_slot: "midday",
@@ -360,32 +336,12 @@ describe("MonitorPage", () => {
           llm_model: "",
           missing_data: [{ source: "sector_relative_strength", name: "板块/龙头强度" }],
           autofill_details: [{ source: "emotion_temperature", detail: "情绪温度由市场涨跌面派生" }],
-        }]}
-        keyLevelAlerts={[]}
-        sectorEtfT0={null}
-        pairedHedge={null}
-        priorityCards={[]}
-        watchCards={[]}
-        runtime={null}
-        instrumentSyncStatus={null}
-        watchDraft={{ symbol: "", name: "", base_position: "", available_position: "", cost_basis: "", memo: "" }}
-        setWatchDraft={vi.fn()}
-        editingWatchSymbol=""
-        loading=""
-        onRefresh={vi.fn()}
-        onSync={vi.fn()}
-        onAi={vi.fn()}
-        onGoPlaybook={vi.fn()}
-        onSelect={vi.fn()}
-        onAnalyze={vi.fn()}
-        onEdit={vi.fn()}
-        onRemove={vi.fn()}
-        onAddWatchlist={vi.fn()}
-        onCancelEdit={vi.fn()}
+          }],
+        })}
       />
     );
 
-    expect(html).toContain("大盘状态");
+    expect(html).toContain("市场总闸 / 数据质量");
     expect(html).toContain("盘中结构转为可观察");
     expect(html).toContain("今日全市场午盘 / 收盘复盘");
     expect(html).toContain("今日市场午盘复盘已生成");
@@ -395,17 +351,11 @@ describe("MonitorPage", () => {
     expect(html).not.toContain("今日红运");
   });
 
-  it("renders ETF T0 intraday signal details on monitor page", () => {
+  it("renders ETF T0 intraday signal details on the market context page", () => {
     const html = renderMonitorPage(
-      <MonitorPage
-        priorityBoard={null}
-        marketBreadth={null}
-        marketPulse={null}
-        hourlySnapshotHistory={[]}
-        reviewStatus={null}
-        reviewReports={[]}
-        keyLevelAlerts={[]}
-        sectorEtfT0={{
+      <MonitorMarketPage
+        {...marketPageProps({
+          sectorEtfT0: {
           updated_at: "2026-05-27 10:30:00",
           market_state: "repair",
           market_state_text: "震荡修复",
@@ -444,26 +394,8 @@ describe("MonitorPage", () => {
             reason: "测试股票 属于该方向强信号。",
             risk: "执行前检查价差和数据 freshness。",
           }],
-        }}
-        pairedHedge={null}
-        priorityCards={[]}
-        watchCards={[]}
-        runtime={null}
-        instrumentSyncStatus={null}
-        watchDraft={{ symbol: "", name: "", base_position: "", available_position: "", cost_basis: "", memo: "" }}
-        setWatchDraft={vi.fn()}
-        editingWatchSymbol=""
-        loading=""
-        onRefresh={vi.fn()}
-        onSync={vi.fn()}
-        onAi={vi.fn()}
-        onGoPlaybook={vi.fn()}
-        onSelect={vi.fn()}
-        onAnalyze={vi.fn()}
-        onEdit={vi.fn()}
-        onRemove={vi.fn()}
-        onAddWatchlist={vi.fn()}
-        onCancelEdit={vi.fn()}
+          },
+        })}
       />
     );
 

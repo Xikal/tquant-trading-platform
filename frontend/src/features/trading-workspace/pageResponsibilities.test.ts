@@ -10,6 +10,7 @@ describe("workspace page responsibilities", () => {
   it("documents the Phase 6 page split for the five decision surfaces", () => {
     expect(WORKSPACE_DENOISED_PAGES).toEqual([
       "monitor",
+      "monitor-market",
       "strategy-tracking",
       "paper",
       "data",
@@ -39,6 +40,7 @@ describe("workspace page responsibilities", () => {
 
   it("keeps command hints aligned with the page core question", () => {
     expect(pageResponsibilityHint("monitor", "fallback")).toContain("优先榜");
+    expect(pageResponsibilityHint("monitor-market", "fallback")).toContain("宽度");
     expect(pageResponsibilityHint("strategy-tracking", "fallback")).toContain("复盘");
     expect(pageResponsibilityHint("paper", "fallback")).toContain("持仓");
     expect(pageResponsibilityHint("data", "fallback")).toContain("覆盖率");
@@ -47,8 +49,17 @@ describe("workspace page responsibilities", () => {
 
   it("keeps Shadow and Preview labels explicitly scoped to non-production modes", () => {
     expect(WORKSPACE_PAGE_RESPONSIBILITIES.monitor.modeBadges).toContain("shadow");
+    expect(WORKSPACE_PAGE_RESPONSIBILITIES["monitor-market"].modeBadges).toContain("research");
     expect(WORKSPACE_PAGE_RESPONSIBILITIES.backtest.modeBadges).toContain("preview");
     expect(WORKSPACE_PAGE_RESPONSIBILITIES.paper.modeBadges).toContain("paper");
     expect(WORKSPACE_PAGE_RESPONSIBILITIES["strategy-tracking"].modeBadges).toContain("watch");
+  });
+
+  it("documents the monitor action and market split responsibilities", () => {
+    expect(WORKSPACE_PAGE_RESPONSIBILITIES.monitor.primaryQuestion).toContain("今天");
+    expect(WORKSPACE_PAGE_RESPONSIBILITIES.monitor.primarySections).toContain("生产优先榜");
+    expect(WORKSPACE_PAGE_RESPONSIBILITIES["monitor-market"].primaryQuestion).toContain("市场");
+    expect(WORKSPACE_PAGE_RESPONSIBILITIES["monitor-market"].primarySections).toContain("市场宽度");
+    expect(WORKSPACE_PAGE_RESPONSIBILITIES["monitor-market"].heavyListSurface).toContain("VirtualCardList");
   });
 });

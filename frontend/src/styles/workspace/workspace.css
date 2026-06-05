@@ -134,6 +134,41 @@ canvas {
   grid-area: etf;
 }
 
+.monitor-market-page {
+  display: grid;
+  gap: 12px;
+}
+
+.monitor-market-page--wide .monitor-market-main {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.monitor-market-page--stack .monitor-market-main,
+.monitor-market-main {
+  display: grid;
+  gap: 12px;
+}
+
+.monitor-market-gate,
+.monitor-market-card,
+.monitor-shared-summary {
+  min-width: 0;
+}
+
+.monitor-market-card .ant-card-body,
+.monitor-shared-summary .ant-card-body {
+  display: grid;
+  gap: 8px;
+}
+
+@media (max-width: 900px) {
+  .monitor-market-page--wide .monitor-market-main {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 .monitor-holding-drawer__grid {
   display: grid;
   align-items: start;

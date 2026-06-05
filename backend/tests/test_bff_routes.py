@@ -12,6 +12,7 @@ from app.core.auth import get_current_user
 from app.core.database import get_db
 from app.core.paper_auth import require_paper_trading
 from app.models.schema_defs.bff import (
+    BFF_SCHEMA_VERSION,
     MonitorWorkspaceBffResponse,
     PaperWorkspaceBffResponse,
     SettingsWorkspaceBffResponse,
@@ -40,11 +41,11 @@ def test_bff_manifest_exposes_versioned_frontend_contract() -> None:
     payload = response.json()
     assert payload["api_version"] == "v1"
     assert payload["bff_version"] == "v1"
-    assert payload["schema_version"] == "v14"
+    assert payload["schema_version"] == BFF_SCHEMA_VERSION
     assert "market" in payload["modules"]
     assert "strategy" in payload["modules"]
     assert "settings" in payload["modules"]
-    assert payload["workspaces"]["strategy"]["schema_version"] == "v14"
+    assert payload["workspaces"]["strategy"]["schema_version"] == BFF_SCHEMA_VERSION
     assert payload["workspaces"]["paper"]["path"] == "/api/bff/v1/workspace/paper"
 
 
@@ -69,7 +70,7 @@ def test_paper_workspace_uses_bff_contract(monkeypatch) -> None:
     assert response.status_code == 200
     payload = response.json()
     assert payload["api_version"] == "v1"
-    assert payload["schema_version"] == "v14"
+    assert payload["schema_version"] == BFF_SCHEMA_VERSION
     assert payload["auto_trading_status"]["running"] is False
 
 
@@ -327,6 +328,180 @@ def test_monitor_workspace_uses_fast_breadth_without_workspace_timeout(monkeypat
     assert payload["market_pulse"]["pulse_text"] == "读取物化 pulse。"
     assert payload["partial_errors"] == []
     assert calls == {}
+
+
+def test_monitor_workspace_view_action_projects_action_payload(monkeypatch) -> None:
+    app = FastAPI()
+    app.include_router(bff.router, prefix="/api")
+    user = SimpleNamespace(id=1, username="tester", is_active=True, roles="")
+    app.dependency_overrides[get_current_user] = lambda: user
+    app.dependency_overrides[get_db] = lambda: object()
+    monkeypatch.setattr(bff, "get_settings", lambda: SimpleNamespace(tquant_internal_service_token=""))
+    monkeypatch.setattr(
+        workspace_cache,
+        "get_settings",
+        lambda: SimpleNamespace(
+            bff_workspace_cache_enabled=False,
+            bff_monitor_cache_ttl_seconds=0,
+            bff_paper_cache_ttl_seconds=0,
+            bff_strategy_cache_ttl_seconds=0,
+            bff_settings_cache_ttl_seconds=0,
+        ),
+    )
+    monkeypatch.setattr(
+        bff,
+        "build_monitor_snapshot",
+        lambda *args, **kwargs: {
+            "updated_at": "2026-06-05 10:00:00",
+            "watchlist_signals": [{"symbol": "600000"}],
+            "priority_board": {"items": [{"symbol": "600000", "priority_score": 80}]},
+        },
+    )
+    monkeypatch.setattr(
+        bff,
+        "latest_pulse_or_placeholder",
+        lambda *_args, **_kwargs: (
+            IntradayMarketPulse(
+                updated_at="2026-06-05 10:00:00",
+                data_quality="fresh",
+                pulse_level="strong",
+                pulse_text="行动台总闸",
+            ),
+            False,
+        ),
+    )
+    monkeypatch.setattr(bff, "build_market_review_summary", lambda *args, **kwargs: (None, []))
+
+    response = TestClient(app).get("/api/bff/v1/workspace/monitor?view=action")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["monitor_snapshot"]["priority_board"]["items"][0]["symbol"] == "600000"
+    assert payload["monitor_snapshot"]["watchlist_signals"][0]["symbol"] == "600000"
+    assert payload["market_pulse"]["pulse_text"] == "行动台总闸"
+    assert payload["market_breadth"] is None
+    assert payload["review_status"] is None
+    assert payload["review_reports"] == []
+    assert payload["sector_relative_strength"] is None
+    assert payload["paired_hedge"] is None
+    assert payload["runtime"] is None
+
+
+def test_monitor_workspace_view_action_skips_market_context_sources(monkeypatch) -> None:
+    app = FastAPI()
+    app.include_router(bff.router, prefix="/api")
+    user = SimpleNamespace(id=1, username="admin", is_active=True, roles="admin")
+    app.dependency_overrides[get_current_user] = lambda: user
+    app.dependency_overrides[get_db] = lambda: object()
+    monkeypatch.setattr(bff, "get_settings", lambda: SimpleNamespace(tquant_internal_service_token=""))
+    monkeypatch.setattr(
+        workspace_cache,
+        "get_settings",
+        lambda: SimpleNamespace(
+            bff_workspace_cache_enabled=False,
+            bff_monitor_cache_ttl_seconds=0,
+            bff_paper_cache_ttl_seconds=0,
+            bff_strategy_cache_ttl_seconds=0,
+            bff_settings_cache_ttl_seconds=0,
+        ),
+    )
+    monkeypatch.setattr(
+        bff,
+        "build_monitor_snapshot",
+        lambda *args, **kwargs: {
+            "updated_at": "2026-06-05 10:00:00",
+            "watchlist_signals": [],
+            "priority_board": {"items": []},
+        },
+    )
+    monkeypatch.setattr(
+        bff,
+        "latest_pulse_or_placeholder",
+        lambda *_args, **_kwargs: (
+            IntradayMarketPulse(
+                updated_at="2026-06-05 10:00:00",
+                data_quality="fresh",
+                pulse_level="strong",
+                pulse_text="行动台总闸",
+            ),
+            False,
+        ),
+    )
+    monkeypatch.setattr(
+        bff,
+        "build_market_review_summary",
+        lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError("action view should not build review")),
+    )
+    monkeypatch.setattr(
+        bff,
+        "list_hourly_snapshot_history",
+        lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError("action view should not build hourly history")),
+    )
+    monkeypatch.setattr(
+        bff.SettingsRuntimeDiagnosticsService,
+        "build_status",
+        lambda self: (_ for _ in ()).throw(AssertionError("action view should not build runtime")),
+    )
+
+    response = TestClient(app).get("/api/bff/v1/workspace/monitor?view=action")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["market_pulse"]["pulse_text"] == "行动台总闸"
+    assert payload["review_reports"] == []
+    assert payload["hourly_snapshot_history"] == []
+    assert payload["runtime"] is None
+
+
+def test_monitor_workspace_view_market_keeps_priority_alias_without_watchlist(monkeypatch) -> None:
+    app = FastAPI()
+    app.include_router(bff.router, prefix="/api")
+    user = SimpleNamespace(id=1, username="tester", is_active=True, roles="")
+    app.dependency_overrides[get_current_user] = lambda: user
+    app.dependency_overrides[get_db] = lambda: object()
+    monkeypatch.setattr(bff, "get_settings", lambda: SimpleNamespace(tquant_internal_service_token=""))
+    monkeypatch.setattr(
+        workspace_cache,
+        "get_settings",
+        lambda: SimpleNamespace(
+            bff_workspace_cache_enabled=False,
+            bff_monitor_cache_ttl_seconds=0,
+            bff_paper_cache_ttl_seconds=0,
+            bff_strategy_cache_ttl_seconds=0,
+            bff_settings_cache_ttl_seconds=0,
+        ),
+    )
+    monkeypatch.setattr(
+        bff,
+        "build_monitor_snapshot",
+        lambda *args, **kwargs: {
+            "updated_at": "2026-06-05 10:00:00",
+            "watchlist_signals": [{"symbol": "600000"}],
+            "priority_board": {"items": [{"symbol": "600000", "priority_score": 80}]},
+        },
+    )
+    monkeypatch.setattr(
+        bff,
+        "latest_pulse_or_placeholder",
+        lambda *_args, **_kwargs: (
+            IntradayMarketPulse(
+                updated_at="2026-06-05 10:00:00",
+                data_quality="fresh",
+                pulse_level="repair",
+                pulse_text="市场可观察",
+            ),
+            False,
+        ),
+    )
+    monkeypatch.setattr(bff, "build_market_review_summary", lambda *args, **kwargs: (None, []))
+
+    response = TestClient(app).get("/api/bff/v1/workspace/monitor?view=market")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["monitor_snapshot"]["priority_board"]["items"][0]["symbol"] == "600000"
+    assert payload["monitor_snapshot"]["watchlist_signals"] == []
+    assert payload["market_pulse"]["pulse_text"] == "市场可观察"
 
 
 def test_paper_workspace_can_use_remote_adapter(monkeypatch) -> None:

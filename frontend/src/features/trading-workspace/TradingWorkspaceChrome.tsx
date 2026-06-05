@@ -27,6 +27,7 @@ const { useBreakpoint } = Grid;
 const AnalysisPage = lazy(async () => ({ default: (await import("../analysis/AnalysisPage")).AnalysisPage }));
 const BacktestPage = lazy(async () => ({ default: (await import("../backtest/BacktestPage")).BacktestPage }));
 const MonitorPage = lazy(async () => ({ default: (await import("../monitor/MonitorPage")).MonitorPage }));
+const MonitorMarketPage = lazy(async () => ({ default: (await import("../monitor/MonitorMarketPage")).MonitorMarketPage }));
 const PaperTradingPage = lazy(async () => ({ default: (await import("../paper/PaperTradingPage")).PaperTradingPage }));
 const PlaybookPage = lazy(async () => ({ default: (await import("../playbook/PlaybookPage")).PlaybookPage }));
 const SettingsPage = lazy(async () => ({ default: (await import("../settings/SettingsPage")).SettingsPage }));
@@ -149,6 +150,7 @@ export function TradingWorkspaceChrome(props: TradingWorkspaceChromeProps) {
               BacktestPage={BacktestPage}
               DataConsolePage={DataConsolePage}
               MonitorPage={MonitorPage}
+              MonitorMarketPage={MonitorMarketPage}
               PaperTradingPage={PaperTradingPage}
               PlaybookPage={PlaybookPage}
               SettingsPage={SettingsPage}

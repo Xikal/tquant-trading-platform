@@ -63,8 +63,27 @@ describe("monitor server queries", () => {
     const observer = new QueryObserver(client, defaultedOptions);
     const selected = observer.getOptimisticResult(defaultedOptions).data;
 
-    expect(fetchMonitorWorkspace).toHaveBeenCalledWith(3);
+    expect(fetchMonitorWorkspace).toHaveBeenCalledWith(3, "full");
     expect(selected).toBe(payload.monitor_snapshot);
     expect(client.getQueryData(options.queryKey)).toBe(payload);
+  });
+
+  it("keys and fetches monitor workspace by view projection", async () => {
+    const fetchMonitorWorkspace = vi.fn(async () => ({
+      api_version: "v1",
+      generated_at: "2026-06-05T10:00:00+08:00",
+      monitor_snapshot: null,
+      partial_errors: [],
+      refresh_queued: false,
+      stale: false,
+      stale_reason: "",
+      schema_version: "v15",
+    } as MonitorWorkspace));
+
+    const options = monitorSnapshotOptions({ priorityLimit: 12, view: "market", fetchMonitorWorkspace });
+    await new QueryClient().fetchQuery(options);
+
+    expect(options.queryKey).toEqual(["monitor", "workspace", 12, "market"]);
+    expect(fetchMonitorWorkspace).toHaveBeenCalledWith(12, "market");
   });
 });

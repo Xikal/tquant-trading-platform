@@ -105,11 +105,17 @@ func aggregateManifest() aggregateResult {
 
 func aggregateMonitorWorkspace(cfg config, client *http.Client, r *http.Request) aggregateResult {
 	q := r.URL.Query()
+	view := monitorWorkspaceView(q)
 	sources := []rawSource{
 		{name: "monitor_snapshot", path: "/api/monitor/snapshot", query: values("priority_limit", queryDefault(q, "priority_limit", "12"))},
 		{name: "market_pulse", path: "/api/market/pulse"},
 	}
-	if cfg.monitorDegradedSourcesEnabled {
+	if view == "action" {
+		sources = []rawSource{
+			{name: "monitor_snapshot", path: "/api/monitor/snapshot", query: values("priority_limit", queryDefault(q, "priority_limit", "12"))},
+			{name: "market_pulse", path: "/api/market/pulse"},
+		}
+	} else if cfg.monitorDegradedSourcesEnabled || view == "market" {
 		sources = append(
 			sources,
 			rawSource{name: "market_breadth", path: "/api/market/breadth", query: values("realtime", "true"), timeout: 250 * time.Millisecond},
@@ -126,7 +132,7 @@ func aggregateMonitorWorkspace(cfg config, client *http.Client, r *http.Request)
 		"api_version":              "v1",
 		"schema_version":           schemaVersion,
 		"generated_at":             beijingNowString(),
-		"monitor_snapshot":         nullableJSON(results["monitor_snapshot"]),
+		"monitor_snapshot":         monitorSnapshotProjection(nullableJSON(results["monitor_snapshot"]), view),
 		"market_breadth":           nullableJSON(results["market_breadth"]),
 		"market_pulse":             nullableJSON(results["market_pulse"]),
 		"review_status":            jsonObjectField(results["monitor_review"], "review_status"),
@@ -136,7 +142,61 @@ func aggregateMonitorWorkspace(cfg config, client *http.Client, r *http.Request)
 		"partial_errors":           errors,
 		"source_timings":           timings,
 	}
+	if view == "action" {
+		payload["market_breadth"] = nil
+		payload["review_status"] = nil
+		payload["review_reports"] = []any{}
+		payload["sector_relative_strength"] = nil
+		payload["paired_hedge"] = nil
+	}
 	return jsonPayload(http.StatusOK, payload)
+}
+
+func monitorWorkspaceView(q url.Values) string {
+	view := strings.TrimSpace(q.Get("view"))
+	if view == "action" || view == "market" {
+		return view
+	}
+	return "full"
+}
+
+func monitorSnapshotProjection(snapshot any, view string) any {
+	if view != "market" {
+		return snapshot
+	}
+	mapped := jsonMap(snapshot)
+	if mapped == nil {
+		return snapshot
+	}
+	next := make(map[string]any, len(mapped))
+	for key, value := range mapped {
+		next[key] = value
+	}
+	next["watchlist_signals"] = []any{}
+	return next
+}
+
+func jsonMap(value any) map[string]any {
+	switch typed := value.(type) {
+	case nil:
+		return nil
+	case map[string]any:
+		return typed
+	case json.RawMessage:
+		var mapped map[string]any
+		if err := json.Unmarshal(typed, &mapped); err != nil {
+			return nil
+		}
+		return mapped
+	case []byte:
+		var mapped map[string]any
+		if err := json.Unmarshal(typed, &mapped); err != nil {
+			return nil
+		}
+		return mapped
+	default:
+		return nil
+	}
 }
 
 func aggregatePaperWorkspace(cfg config, client *http.Client, r *http.Request) aggregateResult {

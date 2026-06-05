@@ -1,7 +1,7 @@
 import type { Page } from "../workspace-shared/workspaceTypes";
 import type { ModeSafetyKind } from "../../ui/feedback/ModeSafetyBadges";
 
-export type DenoisedWorkspacePage = Extract<Page, "monitor" | "strategy-tracking" | "paper" | "data" | "backtest">;
+export type DenoisedWorkspacePage = Extract<Page, "monitor" | "monitor-market" | "strategy-tracking" | "paper" | "data" | "backtest">;
 
 export interface PageResponsibility {
   page: DenoisedWorkspacePage;
@@ -23,17 +23,33 @@ export interface PageResponsibility {
 export const WORKSPACE_PAGE_RESPONSIBILITIES: Record<DenoisedWorkspacePage, PageResponsibility> = {
   monitor: {
     page: "monitor",
-    label: "实时监控",
-    coreQuestion: "今天看什么",
-    firstScreenConclusion: "市场状态、生产优先榜、持仓提醒和关键位先给结论，复盘与快照放到更多区。",
-    commandHint: "市场状态、优先榜、持仓提醒",
-    primaryQuestion: "当前市场和持仓是否允许新动作",
-    detailQuestion: "哪个信号、板块或关键位需要继续观察",
-    drilldownPattern: "首屏结论 + 优先榜列表 + 更多页签",
-    primarySections: ["市场状态", "生产优先榜", "持仓提醒", "关键位"],
-    detailSections: ["ETF 做T替代", "全市场复盘", "小时快照"],
+    label: "实时行动",
+    coreQuestion: "今天行动什么",
+    firstScreenConclusion: "今日结论、生产优先榜、持仓提醒和个股关键位先给可执行动作，市场上下文移到市场环境台。",
+    commandHint: "今日结论、优先榜、持仓提醒",
+    primaryQuestion: "今天有哪些信号需要行动或观察",
+    detailQuestion: "哪个候选、持仓或关键位需要继续处理",
+    drilldownPattern: "首屏结论 + 生产优先榜 + 持仓/自选 + 个股关键位",
+    primarySections: ["今日结论", "生产优先榜", "持仓提醒", "个股关键位"],
+    detailSections: ["策略 lane", "风险过滤", "榜单详情", "持仓编辑"],
     emptyFallback: "冷启动或慢源失败时保留上次快照，并显式显示 stale / partial / no_data。",
     featureFlagFallback: "关闭监控合包或 overlay flag 后仍展示既有监控查询和空状态。",
+    heavyListSurface: ["VirtualCardList"],
+    modeBadges: ["shadow", "research", "watch"],
+  },
+  "monitor-market": {
+    page: "monitor-market",
+    label: "市场环境",
+    coreQuestion: "市场是否支持行动",
+    firstScreenConclusion: "市场总闸、市场宽度、日内脉冲、板块轮动、ETF T0、复盘与数据质量集中展示。",
+    commandHint: "市场总闸、宽度、脉冲和复盘",
+    primaryQuestion: "市场是否支持行动",
+    detailQuestion: "哪些市场、板块或数据质量条件影响行动",
+    drilldownPattern: "市场总闸 + 宽度/脉冲 + 板块/ETF + 复盘/运行时",
+    primarySections: ["市场总闸", "市场宽度", "日内脉冲", "板块轮动", "数据质量"],
+    detailSections: ["ETF T0", "市场复盘", "运行时状态", "同步状态"],
+    emptyFallback: "慢源、无数据或降级源时展示 stale / partial / no_data，不影响行动台既有候选。",
+    featureFlagFallback: "关闭监控合包或市场上下文 flag 后保留市场环境台空态和既有监控查询。",
     heavyListSurface: ["VirtualCardList"],
     modeBadges: ["shadow", "research", "watch"],
   },
