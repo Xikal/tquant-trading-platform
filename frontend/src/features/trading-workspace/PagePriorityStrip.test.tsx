@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { PagePriorityStrip } from "./PagePriorityStrip";
 
 describe("PagePriorityStrip", () => {
-  it("renders compact hierarchy for denoised pages", () => {
+  it("can render compact hierarchy for denoised pages when explicitly mounted", () => {
     const html = renderToStaticMarkup(<PagePriorityStrip page="monitor" />);
 
     expect(html).toContain("workspace-priority-strip");

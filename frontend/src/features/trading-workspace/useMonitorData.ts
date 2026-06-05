@@ -101,6 +101,7 @@ export function useMonitorData({ active, page = "monitor", withLoading, setError
   const [runtime, setRuntime, resetRuntime] = useServerState<RuntimeStatus | null>(MONITOR_SERVER_KEYS.runtime, null);
   const [instrumentSyncStatus, setInstrumentSyncStatus, resetInstrumentSyncStatus] = useServerState<InstrumentSyncStatus | null>(MONITOR_SERVER_KEYS.instrumentSyncStatus, null);
   const resetMonitorState = useWorkspaceMonitorStore((state) => state.resetMonitorData);
+  const activeStrategyLane = useWorkspaceMonitorStore((state) => state.activeStrategyLane);
   const monitorRefreshRef = useRef(false);
   const pendingMonitorRefreshRef = useRef<{ includeRuntime: boolean } | null>(null);
   const latestMonitorPageRef = useRef(page);
@@ -112,6 +113,7 @@ export function useMonitorData({ active, page = "monitor", withLoading, setError
   const pendingRetryCountRef = useRef(0);
   const keyLevelStreamOpenedRef = useRef(false);
   const priorityBoardRef = useRef<LowBuyPriorityBoardResult | null>(null);
+  const activeStrategyLaneRef = useRef<StrategyVariant>(activeStrategyLane);
   const laneBoardsRef = useRef<Partial<Record<StrategyVariant, LowBuyPriorityBoardResult>>>({});
   const watchlistSignalsRef = useRef<WatchlistSignal[]>([]);
   const sectorEtfT0Ref = useRef<SectorEtfT0Response | null>(null);
@@ -163,6 +165,10 @@ export function useMonitorData({ active, page = "monitor", withLoading, setError
   }, [priorityBoard]);
 
   useEffect(() => {
+    activeStrategyLaneRef.current = activeStrategyLane;
+  }, [activeStrategyLane]);
+
+  useEffect(() => {
     watchlistSignalsRef.current = watchlistSignals;
   }, [watchlistSignals]);
 
@@ -207,7 +213,31 @@ export function useMonitorData({ active, page = "monitor", withLoading, setError
     }
   }, []);
 
+  const applyBaselinePriorityBoard = useCallback((board: LowBuyPriorityBoardResult) => {
+    laneBoardsRef.current.baseline = board;
+    if (shouldApplyMonitorSnapshotPriorityBoard(activeStrategyLaneRef.current)) {
+      setPriorityBoard(board);
+    }
+  }, [setPriorityBoard]);
+
+  const refreshActivePriorityLane = useCallback(async (requestPage: Page): Promise<LowBuyPriorityBoardResult | null> => {
+    if (requestPage !== "monitor") {
+      return null;
+    }
+    const strategyVariant = monitorPriorityLaneRefreshVariant(activeStrategyLaneRef.current);
+    if (!strategyVariant) {
+      return null;
+    }
+    const payload = await api.getLowBuyPriorityBoard(12, strategyVariant);
+    laneBoardsRef.current[strategyVariant] = payload;
+    if (shouldApplyPriorityLanePayload(activeStrategyLaneRef.current, strategyVariant)) {
+      setPriorityBoard(payload);
+    }
+    return payload;
+  }, [setPriorityBoard]);
+
   const fetchLegacyMonitorData = useCallback(async (includeRuntime: boolean) => {
+    const requestPage = latestMonitorPageRef.current;
     const shouldLoadRuntime = includeRuntime && Boolean(getAdminApiToken());
     const requests = [
       api.getMonitorSnapshot(12),
@@ -230,11 +260,15 @@ export function useMonitorData({ active, page = "monitor", withLoading, setError
       runtimeResult,
     ] = await Promise.allSettled(requests);
     if (snapshotResult.status === "fulfilled") {
-      setPriorityBoard(snapshotResult.value.priority_board);
-      laneBoardsRef.current.baseline = snapshotResult.value.priority_board;
+      applyBaselinePriorityBoard(snapshotResult.value.priority_board);
       setWatchlistSignals(snapshotResult.value.watchlist_signals);
       setSectorEtfT0(snapshotResult.value.sector_etf_t0 ?? null);
     }
+    const activeLaneResult = snapshotResult.status === "fulfilled"
+      ? await Promise.resolve(refreshActivePriorityLane(requestPage))
+        .then((value) => ({ status: "fulfilled" as const, value }))
+        .catch((reason) => ({ status: "rejected" as const, reason }))
+      : null;
     if (breadthResult.status === "fulfilled") setMarketBreadth(breadthResult.value);
     if (hourlyHistoryResult.status === "fulfilled") setHourlySnapshotHistory(hourlyHistoryResult.value.items ?? []);
     if (sectorStrengthResult.status === "fulfilled") setSectorRelativeStrength(sectorStrengthResult.value);
@@ -254,6 +288,7 @@ export function useMonitorData({ active, page = "monitor", withLoading, setError
       pairedHedgeResult,
       reviewResult,
       runtimeResult,
+      ...(activeLaneResult ? [activeLaneResult] : []),
     ].filter((item): item is PromiseRejectedResult => item.status === "rejected");
     if (rejections.some((item) => isMonitorAuthError(item.reason))) {
       onAuthRequiredRef.current();
@@ -264,10 +299,11 @@ export function useMonitorData({ active, page = "monitor", withLoading, setError
     }
   }, [
     setError,
+    applyBaselinePriorityBoard,
+    refreshActivePriorityLane,
     setHourlySnapshotHistory,
     setMarketBreadth,
     setPairedHedge,
-    setPriorityBoard,
     setReviewReports,
     setReviewStatus,
     setRuntime,
@@ -312,8 +348,7 @@ export function useMonitorData({ active, page = "monitor", withLoading, setError
       }
       const monitorSnapshot = workspaceResult.value.monitor_snapshot;
       if (monitorSnapshot) {
-        setPriorityBoard(monitorSnapshot.priority_board);
-        laneBoardsRef.current.baseline = monitorSnapshot.priority_board;
+        applyBaselinePriorityBoard(monitorSnapshot.priority_board);
         if (requestPage !== "monitor-market") {
           setWatchlistSignals(monitorSnapshot.watchlist_signals);
         }
@@ -364,13 +399,18 @@ export function useMonitorData({ active, page = "monitor", withLoading, setError
           .catch((reason) => ({ status: "rejected" as const, reason }))
         : null;
       if (priorityBoardFallbackResult?.status === "fulfilled" && priorityBoardFallbackResult.value) {
-        setPriorityBoard(priorityBoardFallbackResult.value);
-        laneBoardsRef.current.baseline = priorityBoardFallbackResult.value;
+        applyBaselinePriorityBoard(priorityBoardFallbackResult.value);
       }
+      const activeLaneResult = monitorSnapshot
+        ? await Promise.resolve(refreshActivePriorityLane(requestPage))
+          .then((value) => ({ status: "fulfilled" as const, value }))
+          .catch((reason) => ({ status: "rejected" as const, reason }))
+        : null;
       const rejections = [
         workspaceResult,
         ...fallbackResults,
         ...(priorityBoardFallbackResult ? [priorityBoardFallbackResult] : []),
+        ...(activeLaneResult ? [activeLaneResult] : []),
       ].filter(
         (item): item is PromiseRejectedResult => item.status === "rejected"
       );
@@ -396,11 +436,12 @@ export function useMonitorData({ active, page = "monitor", withLoading, setError
     fetchMonitorWorkspace,
     monitorBffAggregateEnabled,
     setError,
+    applyBaselinePriorityBoard,
+    refreshActivePriorityLane,
     setHourlySnapshotHistory,
     setMarketBreadth,
     setMarketPulse,
     setPairedHedge,
-    setPriorityBoard,
     setReviewReports,
     setReviewStatus,
     setRuntime,
@@ -414,6 +455,7 @@ export function useMonitorData({ active, page = "monitor", withLoading, setError
   }, [fetchMonitorData, withLoading]);
 
   const loadPriorityLane = useCallback(async (strategyVariant: StrategyVariant) => {
+    activeStrategyLaneRef.current = strategyVariant;
     if (strategyVariant === "baseline") {
       const cached = laneBoardsRef.current.baseline;
       if (cached) {
@@ -426,7 +468,9 @@ export function useMonitorData({ active, page = "monitor", withLoading, setError
     await withLoading("priority-lane", async () => {
       const payload = await api.getLowBuyPriorityBoard(12, strategyVariant);
       laneBoardsRef.current[strategyVariant] = payload;
-      setPriorityBoard(payload);
+      if (shouldApplyPriorityLanePayload(activeStrategyLaneRef.current, strategyVariant)) {
+        setPriorityBoard(payload);
+      }
     });
   }, [refreshMonitor, setPriorityBoard, withLoading]);
 
@@ -764,6 +808,18 @@ export function monitorWorkspaceView(page: Page): MonitorWorkspaceView {
     return "market";
   }
   return "full";
+}
+
+export function shouldApplyMonitorSnapshotPriorityBoard(activeLane: StrategyVariant): boolean {
+  return activeLane === "baseline";
+}
+
+export function monitorPriorityLaneRefreshVariant(activeLane: StrategyVariant): StrategyVariant | null {
+  return activeLane === "baseline" ? null : activeLane;
+}
+
+export function shouldApplyPriorityLanePayload(activeLane: StrategyVariant, payloadLane: StrategyVariant): boolean {
+  return activeLane === payloadLane;
 }
 
 export function monitorWorkspaceProjection(workspace: {

@@ -24,6 +24,7 @@ from app.models.entities import (
     PaperAccount,
     PaperAgentRun,
     PaperOrder,
+    PaperPerformanceSnapshot,
     PaperPosition,
     PaperPositionLot,
     PaperTrade,
@@ -113,10 +114,34 @@ class PaperRouteTests(unittest.TestCase):
         self.assertGreater(body["total_assets"], 99900.0)
         self.assertGreater(body["total_return_pct"], -0.2)
         self.assertEqual(body["today_return_pct"], body["total_return_pct"])
+        self.assertIsNone(body["today_pnl"])
 
         with self.Session() as db:
             row = db.execute(select(PaperAccount)).scalar_one()
             self.assertEqual(float(row.market_value), expected_market_value)
+
+    def test_paper_account_today_pnl_uses_previous_daily_snapshot(self) -> None:
+        headers = self._register("paper_today_pnl")
+        self.assertEqual(self.client.get("/api/paper/account", headers=headers).status_code, 200)
+
+        with self.Session() as db:
+            account = db.execute(select(PaperAccount)).scalar_one()
+            account.cash_available = 101230
+            account.total_assets = 101230
+            db.add(
+                PaperPerformanceSnapshot(
+                    account_id=account.id,
+                    snapshot_date=date(2026, 6, 4),
+                    total_assets=100500,
+                )
+            )
+            db.commit()
+
+        with patch("app.api.routes.paper_serializers.beijing_today", return_value=date(2026, 6, 5)):
+            account = self.client.get("/api/paper/account", headers=headers)
+
+        self.assertEqual(account.status_code, 200)
+        self.assertEqual(account.json()["today_pnl"], 730.0)
 
     def test_paper_routes_require_whitelist_permission(self) -> None:
         headers = self._register("paper_blocked")

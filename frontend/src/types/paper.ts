@@ -27,6 +27,7 @@ export interface PaperAccount {
   realized_pnl: number
   unrealized_pnl: number
   total_return_pct: number
+  today_pnl?: number | null
   max_drawdown_pct: number
   status: string
   today_return_pct: number

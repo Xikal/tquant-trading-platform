@@ -3,8 +3,11 @@ from __future__ import annotations
 import json
 from datetime import datetime
 
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.core.timezone import beijing_today
+from app.models.entities import PaperPerformanceSnapshot
 from app.models.schemas import (
     PaperAccountOut,
     PaperOrderOut,
@@ -21,7 +24,7 @@ from app.services.paper.main_force_paper_advisor import build_main_force_paper_a
 from app.services.paper.reasons import normalize_entry_reason, normalize_exit_reason
 
 
-def account_out(row) -> PaperAccountOut:
+def account_out(row, *, db: Session | None = None) -> PaperAccountOut:
     initial = float(row.initial_cash or 0)
     total = float(row.total_assets or 0)
     total_return_pct = round((total - initial) / initial * 100, 3) if initial else 0.0
@@ -37,10 +40,32 @@ def account_out(row) -> PaperAccountOut:
         realized_pnl=float(row.realized_pnl or 0),
         unrealized_pnl=float(row.unrealized_pnl or 0),
         total_return_pct=total_return_pct,
+        today_pnl=_paper_account_today_pnl(db, account_id=int(row.id), total_assets=total),
         max_drawdown_pct=float(row.max_drawdown_pct or 0),
         status=row.status,
         today_return_pct=total_return_pct,
     )
+
+
+def _paper_account_today_pnl(db: Session | None, *, account_id: int, total_assets: float) -> float | None:
+    if db is None:
+        return None
+    snapshot = (
+        db.execute(
+            select(PaperPerformanceSnapshot)
+            .where(
+                PaperPerformanceSnapshot.account_id == account_id,
+                PaperPerformanceSnapshot.snapshot_date < beijing_today(),
+            )
+            .order_by(PaperPerformanceSnapshot.snapshot_date.desc())
+            .limit(1)
+        )
+        .scalars()
+        .first()
+    )
+    if snapshot is None:
+        return None
+    return round(total_assets - float(snapshot.total_assets or 0), 2)
 
 
 def positions_response(rows, *, db: Session | None = None) -> PaperPositionsResponse:

@@ -1,6 +1,6 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
-import { LoginPage } from "./LoginPage";
+import { isIpAddressLoginOrigin, LoginPage } from "./LoginPage";
 
 describe("LoginPage", () => {
   it("renders the centered login scene and actions", () => {
@@ -23,5 +23,12 @@ describe("LoginPage", () => {
     expect(html).toContain("login-ritual-seal");
     expect(html).toContain("今日红运");
     expect(html).not.toContain("动态验证码");
+    expect(html).not.toContain("当前是 IP 入口");
+  });
+
+  it("detects IP login origins that cannot reliably persist Secure refresh cookies", () => {
+    expect(isIpAddressLoginOrigin("43.143.243.97")).toBe(true);
+    expect(isIpAddressLoginOrigin("weisilianghua.cloud")).toBe(false);
+    expect(isIpAddressLoginOrigin("www.weisilianghua.cloud")).toBe(false);
   });
 });

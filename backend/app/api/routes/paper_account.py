@@ -43,7 +43,7 @@ def get_paper_account(
     service.update_market_value(account.id)
     db.commit()
     db.refresh(account)
-    return account_out(account)
+    return account_out(account, db=db)
 
 
 @router.post("/account", response_model=PaperAccountOut)
@@ -53,7 +53,7 @@ def create_paper_account(
     db: Session = Depends(get_db),
 ) -> PaperAccountOut:
     account = PaperAccountService(db).create_account(payload.name, Decimal(str(payload.initial_cash)), user_id=current_user.id)
-    return account_out(account)
+    return account_out(account, db=db)
 
 
 @router.post("/account/reset", response_model=PaperAccountOut)
@@ -64,14 +64,14 @@ def reset_paper_account(
 ) -> PaperAccountOut:
     service = PaperAccountService(db)
     account = service.get_or_create_default(current_user.id)
-    return account_out(service.reset_account(account.id))
+    return account_out(service.reset_account(account.id), db=db)
 
 
 @router.post("/account/pause", response_model=PaperAccountOut)
 def pause_paper_account(current_user: User = Depends(require_paper_trading), db: Session = Depends(get_db)) -> PaperAccountOut:
     service = PaperAccountService(db)
     account = service.get_or_create_default(current_user.id)
-    return account_out(service.pause(account.id))
+    return account_out(service.pause(account.id), db=db)
 
 
 @router.post("/account/resume", response_model=PaperAccountOut)
@@ -79,7 +79,7 @@ def resume_paper_account(current_user: User = Depends(require_paper_trading), db
     service = PaperAccountService(db)
     account = service.get_or_create_default(current_user.id)
     PaperRiskCircuitBreaker(db).resolve_open_events(account.id, reason="manual_review_resume")
-    return account_out(service.resume(account.id))
+    return account_out(service.resume(account.id), db=db)
 
 
 @router.post("/account/reconcile", response_model=PaperLedgerRepairResponse)

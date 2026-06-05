@@ -19,6 +19,7 @@ const LOGIN_FORM_STACK_STYLE: CSSProperties = {
 const LOGIN_FORM_ITEM_STYLE: CSSProperties = {
   marginBottom: 0,
 };
+const CERTIFICATE_DOMAIN_LOGIN_URL = "https://weisilianghua.cloud/monitor";
 
 interface LoginPageProps {
   draft: AuthDraft;
@@ -40,6 +41,7 @@ export function LoginPage({
   const loginStepText = loading
     ? "验证成功后会自动加载您的持仓、榜单和模拟盘数据。"
     : "输入账号和密码即可进入工作台，系统会自动恢复您的持仓、榜单和模拟盘数据。";
+  const showIpEntryPersistenceWarning = isIpAddressLoginOrigin();
 
   return (
     <main className="wise-login-shell login-scanlines">
@@ -86,6 +88,15 @@ export function LoginPage({
               <Typography.Paragraph className="wise-login-copy">
                 {loginStepText}
               </Typography.Paragraph>
+              {showIpEntryPersistenceWarning ? (
+                <Alert
+                  className="wise-login-alert"
+                  type="warning"
+                  showIcon
+                  message="当前是 IP 入口"
+                  description={`浏览器的安全会话依赖证书域名，IP 入口下记住登录可能无法长期保存。建议使用 ${CERTIFICATE_DOMAIN_LOGIN_URL}`}
+                />
+              ) : null}
               <Form.Item
                 name="username"
                 label="USER ID / 账号"
@@ -163,6 +174,11 @@ export function LoginPage({
       </footer>
     </main>
   );
+}
+
+export function isIpAddressLoginOrigin(hostname = typeof window === "undefined" ? "" : window.location.hostname): boolean {
+  const host = hostname.trim();
+  return /^\d{1,3}(?:\.\d{1,3}){3}$/.test(host) || host.startsWith("[");
 }
 
 function WiseLoginTicker() {

@@ -62,7 +62,7 @@ export function MonitorConclusionBar({
           label: "大盘状态",
           value: marketValue,
           tone: marketPulse?.pulse_level === "strong" || marketPulse?.pulse_level === "risk_on" ? "up" : marketPulse?.pulse_level === "weak" || marketPulse?.pulse_level === "risk_off" ? "down" : "neutral",
-          helper: marketPulse?.suggested_action || "Pulse 与门控只做观察提醒。",
+          helper: marketPulse?.suggested_action || "Pulse 与门控仅供盘面判断。",
         },
       ]}
     />

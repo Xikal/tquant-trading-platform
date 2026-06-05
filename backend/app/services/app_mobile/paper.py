@@ -50,7 +50,7 @@ class AppMobilePaperMixin:
         risk_events = PaperRiskCircuitBreaker(db).list_open_events(account.id, limit=8)
 
         return {
-            "account": account_out(account),
+            "account": account_out(account, db=db),
             "positions": [position_out(row, db=db) for row in position_rows],
             "orders": [order_out(row) for row in order_rows],
             "trades": [trade_out(row) for row in trade_rows],

@@ -1,13 +1,12 @@
 import type { ReactNode } from "react";
 import { Button, Space } from "antd";
-import type { PaperAccount, PaperAutoTradingStatus, PaperPerformance } from "../../types";
+import type { PaperAccount, PaperAutoTradingStatus } from "../../types";
 import { ConclusionBar } from "../../ui/surfaces";
-import { formatPct, toneFromChange } from "../workspace-shared/workspaceFormatters";
-import { autoTradingSkipNotice, resolveAutoManagedStatus } from "./paperTradingStatus";
+import { formatMoneyPlain, formatPct, toneFromChange } from "../workspace-shared/workspaceFormatters";
+import { autoTradingSkipNotice } from "./paperTradingStatus";
 
 export function PaperConclusionBar({
   account,
-  performance,
   autoTradingStatus,
   loading,
   canResumeOrder,
@@ -18,7 +17,6 @@ export function PaperConclusionBar({
   onOpenReviewHistory,
 }: {
   account: PaperAccount | null;
-  performance: PaperPerformance | null;
   autoTradingStatus: PaperAutoTradingStatus | null;
   loading: boolean;
   canResumeOrder?: boolean;
@@ -28,9 +26,7 @@ export function PaperConclusionBar({
   onTogglePause?: () => void | Promise<void>;
   onOpenReviewHistory?: () => void;
 }) {
-  const status = resolveAutoManagedStatus(account, autoTradingStatus);
   const skipNotice = autoTradingSkipNotice(autoTradingStatus);
-  const positionRatio = account?.total_assets ? (account.market_value / account.total_assets) * 100 : null;
   const hasReviewHistoryAction = Boolean(onOpenReviewHistory);
   const hasResumeAction = Boolean(canResumeOrder && onTogglePause);
   const actions = hasReviewHistoryAction || hasResumeAction ? (
@@ -52,38 +48,33 @@ export function PaperConclusionBar({
     <section className={`paper-conclusion${pixel ? " paper-conclusion--with-pixel" : ""}`}>
       <div className="paper-conclusion__metrics">
         <ConclusionBar
-          title="模拟盘"
-          summary={(
-            <>
-              <strong>{status.label}</strong>
-              <span>{skipNotice ? `${skipNotice.title}：${skipNotice.text}` : "真实收益、影子收益和信号收益分区展示；自动交易只在模拟盘口径内执行。"}</span>
-            </>
-          )}
+          title={null}
+          summary={skipNotice ? `${skipNotice.title}：${skipNotice.text}` : null}
           actions={actions}
           items={[
             {
-              key: "real-return",
-              label: "真实收益（总收益率）",
-              value: formatPct(account?.total_return_pct),
-              tone: toneFromChange(account?.total_return_pct),
+              key: "total-assets",
+              label: "总资产",
+              value: formatMoneyPlain(account?.total_assets),
+              tone: "neutral",
             },
             {
-              key: "position-risk",
-              label: "仓位与风控",
-              value: positionRatio === null ? "--" : formatPct(positionRatio),
-              tone: toneFromChange(account?.today_return_pct),
+              key: "unrealized-pnl",
+              label: "浮动盈亏",
+              value: formatSignedMoney(account?.unrealized_pnl),
+              tone: toneFromChange(account?.unrealized_pnl),
             },
             {
-              key: "auto",
-              label: "自动状态",
-              value: autoTradingStatus?.running ? "运行中" : autoTradingStatus?.trading_time ? "待启动" : "非交易时间",
-              tone: status.tone === "down" ? "down" : status.tone === "warn" ? "warn" : "neutral",
+              key: "today-pnl",
+              label: "当日盈亏",
+              value: formatSignedMoney(account?.today_pnl),
+              tone: toneFromChange(account?.today_pnl),
             },
             {
-              key: "signal-return",
-              label: "信号收益",
-              value: formatPct(performance?.net_win_rate_pct),
-              tone: toneFromChange(performance?.net_win_rate_pct),
+              key: "market-value",
+              label: "总市值",
+              value: formatMoneyPlain(account?.market_value),
+              tone: "neutral",
             },
           ]}
         />
@@ -96,4 +87,10 @@ export function PaperConclusionBar({
       {positions ? <div className="paper-conclusion__positions">{positions}</div> : null}
     </section>
   );
+}
+
+function formatSignedMoney(value?: number | null): string {
+  if (typeof value !== "number" || !Number.isFinite(value)) return "--";
+  const sign = value > 0 ? "+" : value < 0 ? "-" : "";
+  return `${sign}${formatMoneyPlain(Math.abs(value))}`;
 }

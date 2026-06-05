@@ -153,7 +153,6 @@ export const PaperTradingPage = memo(function PaperTradingPage({
         <Col xs={24} xl={16} className="paper-hero-grid__left">
           <PaperConclusionBar
             account={account}
-            performance={performance}
             autoTradingStatus={autoTradingStatus}
             loading={paperLoading || orderLoading}
             canResumeOrder={needsResumeOrder}

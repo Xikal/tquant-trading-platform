@@ -119,6 +119,9 @@ def test_one_click_deploy_defaults_are_overridable_and_do_not_embed_secret_conte
     assert 'CLOUD_SSH_CONNECT_TIMEOUT="${CLOUD_SSH_CONNECT_TIMEOUT:-30}"' in one_click_script
     assert "CLOUD_HOST is required" in one_click_script
     assert "CLOUD_SSH_KEY or CLOUD_PASSWORD is required" in one_click_script
+    assert 'CLOUD_PUBLIC_BASE_URL="${CLOUD_PUBLIC_BASE_URL:-https://${CLOUD_DOMAIN}}"' in one_click_script
+    assert "https://<CLOUD_DOMAIN>" in one_click_script
+    assert "https://<CLOUD_HOST>" not in one_click_script
     assert "43.143.243.97" not in one_click_script
     assert "$HOME/Downloads/gupiao.pem" not in one_click_script
     assert ".env.deploy.local" in gitignore
@@ -341,7 +344,7 @@ def test_deploy_scripts_support_scope_aware_fast_paths() -> None:
     assert "--scope  Override target selection" in one_click_script
     assert "DEPLOY_TARGET_SCOPE=auto" in deploy_example
     assert "DEPLOY_SYNC_MODE=delta-package" in deploy_example
-    assert "CLOUD_PUBLIC_BASE_URL=https://43.143.243.97" in deploy_example
+    assert "CLOUD_PUBLIC_BASE_URL=https://weisilianghua.cloud" in deploy_example
     assert "package-only remains the automatic fallback" in deploy_example
 
 

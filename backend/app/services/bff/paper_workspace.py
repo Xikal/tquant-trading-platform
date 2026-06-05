@@ -64,7 +64,7 @@ def _account(db: Session, current_user: User):
     service.update_market_value(account.id)
     db.commit()
     db.refresh(account)
-    return account_out(account)
+    return account_out(account, db=db)
 
 
 def _positions(db: Session, account_id: int | None):

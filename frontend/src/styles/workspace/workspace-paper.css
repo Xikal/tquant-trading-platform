@@ -102,7 +102,7 @@
 }
 
 .paper-conclusion__metrics .tq-panel__body--md {
-  padding: 6px 4px 4px;
+  padding: 4px;
 }
 
 .paper-conclusion__metrics .tq-panel__header,
@@ -123,7 +123,7 @@
 }
 
 .paper-conclusion__metrics .tq-conclusion-bar {
-  gap: 5px;
+  gap: 4px;
 }
 
 .paper-conclusion__metrics .tq-conclusion-bar__summary,
@@ -134,8 +134,8 @@
 }
 
 .paper-conclusion__metrics .tq-conclusion-bar__grid {
-  gap: 5px;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
 .paper-conclusion__metrics .tq-conclusion-bar__item {
@@ -143,13 +143,19 @@
 }
 
 .paper-conclusion__metrics .tq-stat-tile {
-  border-radius: 8px;
-  padding: 6px 8px;
+  border-radius: 7px;
+  padding: 5px 7px;
 }
 
 .paper-conclusion__metrics .tq-stat-tile__value {
-  margin-top: 2px;
-  font-size: 14px;
+  margin-top: 1px;
+  font-size: 13px;
+  line-height: 1.1;
+}
+
+.paper-conclusion__metrics .tq-stat-tile__label {
+  font-size: 11px;
+  line-height: 1.1;
 }
 
 .paper-summary-metric {
@@ -192,22 +198,20 @@
 .paper-position-card-grid {
   display: grid;
   min-width: 0;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 8px;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 5px;
 }
 
 .paper-position-card {
   display: grid;
-  aspect-ratio: 1 / 1;
   min-width: 0;
   align-items: stretch;
   border: 1px solid rgba(100, 116, 139, 0.16);
-  border-radius: 8px;
+  border-radius: 7px;
   background: rgb(255 255 255);
-  gap: 0;
-  grid-template-rows: repeat(4, minmax(0, 1fr));
+  gap: 2px;
   margin: 0;
-  padding: 10px;
+  padding: 6px 7px;
 }
 
 .paper-position-card-grid .paper-position-card {
@@ -220,8 +224,8 @@
   align-items: center;
   overflow: hidden;
   color: rgb(71 85 105);
-  font-size: 12px;
-  line-height: 1.28;
+  font-size: 11px;
+  line-height: 1.15;
   text-overflow: ellipsis;
   white-space: nowrap;
   word-break: keep-all;
@@ -229,6 +233,7 @@
 
 .paper-position-card__line--identity {
   color: rgb(15 23 42);
+  font-size: 11px;
 }
 
 .paper-action-hud {
@@ -436,6 +441,10 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .paper-conclusion__metrics .tq-conclusion-bar__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .paper-positions-embedded__header {
     align-items: flex-start;
     flex-direction: column;
@@ -469,6 +478,10 @@
 @media (min-width: 641px) and (max-width: 900px) {
   .paper-position-card-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .paper-conclusion__metrics .tq-conclusion-bar__grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 }
 

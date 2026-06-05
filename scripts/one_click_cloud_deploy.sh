@@ -29,9 +29,8 @@ Modes:
   --dry-run
 
 One-click defaults refresh HTTPS/nginx config and verify the default public entry.
-The public entry defaults to https://<CLOUD_HOST>; CLOUD_DOMAIN is kept for
-certificate/nginx configuration and can still be verified explicitly with
---public-domain-verify.
+The public entry defaults to https://<CLOUD_DOMAIN> so Secure auth cookies match
+the certificate host. Override with --public-base-url only for explicit tests.
 Additional args are passed through to scripts/quick_cloud_deploy.sh.
 EOF
 }
@@ -165,7 +164,7 @@ fi
 export CLOUD_USER="${CLOUD_USER:-$DEFAULT_CLOUD_USER}"
 export CLOUD_DOMAIN="${CLOUD_DOMAIN:-$DEFAULT_CLOUD_DOMAIN}"
 export CLOUD_CERT_EMAIL="${CLOUD_CERT_EMAIL:-admin@${CLOUD_DOMAIN}}"
-export CLOUD_PUBLIC_BASE_URL="${CLOUD_PUBLIC_BASE_URL:-https://${CLOUD_HOST:-}}"
+export CLOUD_PUBLIC_BASE_URL="${CLOUD_PUBLIC_BASE_URL:-https://${CLOUD_DOMAIN}}"
 export CLOUD_SSH_TIMEOUT="${CLOUD_SSH_TIMEOUT:-2400}"
 export CLOUD_SSH_CONNECT_TIMEOUT="${CLOUD_SSH_CONNECT_TIMEOUT:-30}"
 export DEPLOY_SYNC_MODE="${DEPLOY_SYNC_MODE:-package-only}"

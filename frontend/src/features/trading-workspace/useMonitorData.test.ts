@@ -1,8 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
+  monitorPriorityLaneRefreshVariant,
   monitorWorkspaceProjection,
   monitorWorkspaceView,
   nextMonitorDataPageRef,
+  shouldApplyMonitorSnapshotPriorityBoard,
+  shouldApplyPriorityLanePayload,
 } from "./useMonitorData";
 
 describe("monitor workspace view projection", () => {
@@ -44,5 +47,25 @@ describe("monitor page switch refresh gate", () => {
 
   it("clears the remembered monitor page outside monitor surfaces", () => {
     expect(nextMonitorDataPageRef("monitor", "paper", "started")).toBeNull();
+  });
+});
+
+describe("monitor priority lane refresh", () => {
+  it("keeps monitor snapshot priority board as the baseline lane only", () => {
+    expect(shouldApplyMonitorSnapshotPriorityBoard("baseline")).toBe(true);
+    expect(shouldApplyMonitorSnapshotPriorityBoard("front_row_weighted")).toBe(false);
+    expect(shouldApplyMonitorSnapshotPriorityBoard("front_row_only")).toBe(false);
+  });
+
+  it("refreshes the selected strategy lane after monitor snapshot updates", () => {
+    expect(monitorPriorityLaneRefreshVariant("baseline")).toBeNull();
+    expect(monitorPriorityLaneRefreshVariant("front_row_weighted")).toBe("front_row_weighted");
+    expect(monitorPriorityLaneRefreshVariant("front_row_only")).toBe("front_row_only");
+  });
+
+  it("ignores stale async lane payloads after the user switches lanes", () => {
+    expect(shouldApplyPriorityLanePayload("front_row_weighted", "front_row_weighted")).toBe(true);
+    expect(shouldApplyPriorityLanePayload("baseline", "front_row_weighted")).toBe(false);
+    expect(shouldApplyPriorityLanePayload("front_row_only", "front_row_weighted")).toBe(false);
   });
 });

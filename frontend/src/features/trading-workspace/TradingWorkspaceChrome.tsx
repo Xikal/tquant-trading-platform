@@ -34,6 +34,16 @@ const SettingsPage = lazy(async () => ({ default: (await import("../settings/Set
 const StrategyTrackingPage = lazy(async () => ({ default: (await import("../strategy-tracking/StrategyTrackingPage")).StrategyTrackingPage }));
 const DataConsolePage = lazy(async () => ({ default: (await import("../data-console/DataConsolePage")).DataConsolePage }));
 
+const PAGES_WITHOUT_PRIORITY_STRIP: ReadonlySet<Page> = new Set([
+  "monitor",
+  "monitor-market",
+  "paper",
+]);
+
+export function shouldShowPagePriorityStrip(page: Page): boolean {
+  return !PAGES_WITHOUT_PRIORITY_STRIP.has(page);
+}
+
 type TradingWorkspaceChromeProps = {
   aiDialogOpen: boolean;
   aiLoading: boolean;
@@ -144,7 +154,7 @@ export function TradingWorkspaceChrome(props: TradingWorkspaceChromeProps) {
               onOpenStrategy={props.onOpenStrategy}
             />
             <RitualBlessingModal userId={props.currentUser.id} />
-            <PagePriorityStrip page={props.page} />
+            {shouldShowPagePriorityStrip(props.page) ? <PagePriorityStrip page={props.page} /> : null}
             <WorkspacePageContent
               AnalysisPage={AnalysisPage}
               BacktestPage={BacktestPage}

@@ -15236,6 +15236,17 @@
             "title": "Status",
             "type": "string"
           },
+          "today_pnl": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Today Pnl"
+          },
           "today_return_pct": {
             "default": 0.0,
             "title": "Today Return Pct",

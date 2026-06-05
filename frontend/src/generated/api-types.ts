@@ -13995,6 +13995,8 @@ export interface components {
              * @default active
              */
             status: string;
+            /** Today Pnl */
+            today_pnl?: number | null;
             /**
              * Today Return Pct
              * @default 0

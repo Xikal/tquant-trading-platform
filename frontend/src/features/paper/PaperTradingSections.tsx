@@ -26,9 +26,9 @@ export function PaperPositionsPanel({
         <div
           className="paper-position-card-grid"
           style={{
-            maxHeight: positions.length > 6 ? 300 : undefined,
-            overflowY: positions.length > 6 ? "auto" : "visible",
-            paddingRight: positions.length > 6 ? 4 : 0,
+            maxHeight: positions.length > 8 ? 260 : undefined,
+            overflowY: positions.length > 8 ? "auto" : "visible",
+            paddingRight: positions.length > 8 ? 4 : 0,
           }}
         >
           {positions.map((item) => <PositionRow key={item.id || item.symbol} item={item} />)}
@@ -74,13 +74,13 @@ function PositionRow({ item }: { item: PaperPosition }) {
         {item.name || item.symbol} / {item.symbol}
       </Typography.Text>
       <Typography.Text className="paper-position-card__line">
-        持仓/可卖 {formatInteger(item.quantity)} / {formatInteger(item.available_quantity)}
+        持/可 {formatInteger(item.quantity)} / {formatInteger(item.available_quantity)}
       </Typography.Text>
       <Typography.Text className="paper-position-card__line">
         成本/现价 {formatPrice(item.cost_basis)} / {formatPrice(item.latest_price)}
       </Typography.Text>
       <Typography.Text className="paper-position-card__line" strong style={{ color: toneColor(tone) }}>
-        涨跌幅 {formatPct(item.unrealized_pnl_pct)}
+        盈亏 {formatPct(item.unrealized_pnl_pct)}
       </Typography.Text>
     </article>
   );

@@ -38,7 +38,7 @@ function resolveLaneStatus(board: LowBuyPriorityBoardResult | null, activeLane: 
       type: "info" as const,
       title: plain?.conclusion || "只做提醒，不参与生产排序",
       reason: plain?.reason || "信号很少，可能连续多天没有票",
-      nextStep: plain?.next_step || "继续作为强前排观察提醒，不是买入建议",
+      nextStep: plain?.next_step || "继续作为强前排观察信号，不是买入建议",
       tag: "仅观察",
     };
   }

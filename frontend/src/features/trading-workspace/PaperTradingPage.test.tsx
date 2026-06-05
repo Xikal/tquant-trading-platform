@@ -48,9 +48,10 @@ describe("PaperTradingPage", () => {
 
     expect(html).toContain("paper-conclusion");
     expect(html).toContain("模拟盘");
-    expect(html).toContain("真实收益");
-    expect(html).toContain("仓位与风控");
-    expect(html).toContain("自动状态");
+    expect(html).toContain("总资产");
+    expect(html).toContain("浮动盈亏");
+    expect(html).toContain("当日盈亏");
+    expect(html).toContain("总市值");
     expect(html).toContain("paper-conclusion__positions");
     expect(html).toContain("paper-positions-embedded");
     expect(html).toContain("当前持仓");
@@ -83,6 +84,12 @@ describe("PaperTradingPage", () => {
     expect(html).toContain("策略绩效");
     expect(html).not.toContain("表现（策略绩效）");
     expect(html).toContain("对账诊断");
+    expect(html).not.toContain("执行结果如何");
+    expect(html).not.toContain("首屏：持仓");
+    expect(html).not.toContain("明细：自动化日志");
+    expect(html).not.toContain("模式：账户结论");
+    expect(html).not.toContain("预览验证");
+    expect(html).not.toContain("观察提醒");
   });
 
   it("does not keep the latest trade as a standing mecha effect on first render", () => {
@@ -164,7 +171,7 @@ describe("PaperTradingPage", () => {
     expect(html).toContain("paper-position-card");
     expect(html).toContain("测试股份");
     expect(html).toContain("600000");
-    expect(html).toContain("持仓/可卖");
+    expect(html).toContain("持/可");
     expect(html).toContain("1,000");
     expect(html).toContain("成本/现价");
     expect(html).toContain("10.00");
@@ -176,7 +183,7 @@ describe("PaperTradingPage", () => {
     expect(html).not.toContain("模型旁路");
   });
 
-  it("uses account-level total return for the top paper metric", () => {
+  it("uses account-level asset fields for the top paper metrics", () => {
     const html = renderToStaticMarkup(
       <PaperTradingPage
         account={{
@@ -190,6 +197,7 @@ describe("PaperTradingPage", () => {
           realized_pnl: 0,
           unrealized_pnl: 1230,
           total_return_pct: 1.23,
+          today_pnl: 730,
           max_drawdown_pct: 0,
           status: "active",
           today_return_pct: 1.23,
@@ -239,8 +247,16 @@ describe("PaperTradingPage", () => {
       />
     );
 
-    expect(html).toContain("总收益率");
-    expect(html).toContain("+1.23%");
+    expect(html).toContain("总资产");
+    expect(html).toContain("101,230.00");
+    expect(html).toContain("浮动盈亏");
+    expect(html).toContain("+1,230.00");
+    expect(html).toContain("当日盈亏");
+    expect(html).toContain("+730.00");
+    expect(html).toContain("总市值");
+    expect(html).toContain("51,230.00");
+    expect(html).not.toContain("总收益率");
+    expect(html).not.toContain("净胜率");
     expect(html).not.toContain("-9.99%");
   });
 
@@ -280,7 +296,6 @@ describe("PaperTradingPage", () => {
       />
     );
 
-    expect(html).toContain("运行中");
     expect(html).not.toContain("+委托");
     expect(html).not.toContain("打开模拟委托弹窗");
   });

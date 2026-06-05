@@ -37,6 +37,7 @@ const routeElement = (Route: typeof MonitorRoute) => (
 export const webRoutes: RouteObject[] = [
   { path: "/", element: <Navigate to="/monitor" replace />, errorElement: <TqErrorResult title="页面加载失败" description="请刷新页面，或返回实时监控。" /> },
   { path: "/monitor", element: routeElement(MonitorRoute), errorElement: <TqErrorResult title="页面加载失败" description="请刷新页面，或返回实时监控。" /> },
+  { path: "/monitor/market", element: workspaceElement("monitor-market"), errorElement: <TqErrorResult title="页面加载失败" description="请刷新页面，或返回实时监控。" /> },
   { path: "/emotion", element: <Navigate to="/monitor" replace />, errorElement: <TqErrorResult title="页面加载失败" description="请刷新页面，或返回实时监控。" /> },
   { path: "/analysis", element: routeElement(AnalysisRoute), errorElement: <TqErrorResult title="页面加载失败" description="请刷新页面，或返回实时监控。" /> },
   { path: "/playbook", element: routeElement(PlaybookRoute), errorElement: <TqErrorResult title="页面加载失败" description="请刷新页面，或返回实时监控。" /> },
