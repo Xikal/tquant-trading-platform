@@ -125,7 +125,7 @@ frontend-next/
       styles/
         tokens.css
         workspace-compat.css
-        responsive.css
+        web-layout.css
       ui/
         Button.tsx
         Panel.tsx
@@ -200,9 +200,9 @@ frontend/src/ui/list/VirtualCardList.tsx
 5. Use screenshot parity instead of subjective design review.
 6. Keep the paper mecha avatar and execution log elements, but isolate them in the paper feature and keep them display-only.
 
-## 6. Page Style Specs And Layout Images
+## 6. Page Style Specs And Web Layout Images
 
-Every target page must have approved desktop and mobile style images before feature implementation starts. These images are binding implementation references, not visual redesign concepts.
+Every target page must have an approved Web style image before feature implementation starts. These images are binding implementation references, not visual redesign concepts. Mobile implementation, mobile layout images, and mobile parity are out of scope for this phase.
 
 ### Required Style Spec Artifacts
 
@@ -220,52 +220,43 @@ docs/frontend-next/style-specs/settings-style-spec-2026-06-05.md
 
 Each style spec must contain:
 
-1. Desktop style image path.
-2. Mobile style image path.
-3. Current route and new route.
+1. Web style image path.
+2. Current route and new route.
+3. Approved Web viewport size, with `1440x900` as the default capture target unless the style spec records a different Web desktop size.
 4. Visible section order.
 5. Panel, card, table, list, chart, and toolbar density rules.
 6. Color token mapping from the current frontend.
 7. Typography and spacing rules.
 8. Component inventory.
-9. Responsive collapse behavior.
+9. Web layout behavior, including fixed sidebars, scroll regions, sticky headers, overflow, and first-screen boundaries.
 10. Visual non-goals.
 11. Screenshot parity checklist.
 
 ### Required Style Images
 
 ```text
-docs/frontend-next/style-specs/images/monitor-action-desktop.png
-docs/frontend-next/style-specs/images/monitor-action-mobile.png
-docs/frontend-next/style-specs/images/monitor-market-desktop.png
-docs/frontend-next/style-specs/images/monitor-market-mobile.png
-docs/frontend-next/style-specs/images/paper-desktop.png
-docs/frontend-next/style-specs/images/paper-mobile.png
-docs/frontend-next/style-specs/images/strategy-tracking-desktop.png
-docs/frontend-next/style-specs/images/strategy-tracking-mobile.png
-docs/frontend-next/style-specs/images/analysis-desktop.png
-docs/frontend-next/style-specs/images/analysis-mobile.png
-docs/frontend-next/style-specs/images/playbook-desktop.png
-docs/frontend-next/style-specs/images/playbook-mobile.png
-docs/frontend-next/style-specs/images/backtest-desktop.png
-docs/frontend-next/style-specs/images/backtest-mobile.png
-docs/frontend-next/style-specs/images/data-console-desktop.png
-docs/frontend-next/style-specs/images/data-console-mobile.png
-docs/frontend-next/style-specs/images/settings-desktop.png
-docs/frontend-next/style-specs/images/settings-mobile.png
+docs/frontend-next/style-specs/images/monitor-action-web.png
+docs/frontend-next/style-specs/images/monitor-market-web.png
+docs/frontend-next/style-specs/images/paper-web.png
+docs/frontend-next/style-specs/images/strategy-tracking-web.png
+docs/frontend-next/style-specs/images/analysis-web.png
+docs/frontend-next/style-specs/images/playbook-web.png
+docs/frontend-next/style-specs/images/backtest-web.png
+docs/frontend-next/style-specs/images/data-console-web.png
+docs/frontend-next/style-specs/images/settings-web.png
 ```
 
 ### Image Source Rules
 
-1. Preferred source: run the existing `frontend/`, capture current page screenshots at desktop and mobile widths, and use those captures as the style images.
+1. Preferred source: run the existing `frontend/`, capture current page screenshots at the approved Web viewport, and use those captures as the style images.
 2. Allowed fallback: if the current page does not exist or the new split page has no exact old equivalent, compose the image only from current frontend style tokens, current components, and the approved layout plan.
 3. Forbidden: new visual direction, new theme, decorative redesign, or generated concept art.
-4. The image must show the actual page structure to implement, including header, tabs, side panels, tables, charts, cards, logs, empty states when relevant, and responsive behavior.
+4. The image must show the actual Web page structure to implement, including header, tabs, side panels, tables, charts, cards, logs, empty states when relevant, and scroll boundaries.
 
 ### Binding Implementation Rule
 
-1. No feature page implementation may start until its style spec and desktop/mobile style images exist.
-2. No feature page may be accepted until screenshot parity matches the approved style images for layout, section order, colors, typography, density, spacing, responsive collapse, and copy hierarchy.
+1. No feature page implementation may start until its style spec and Web style image exist.
+2. No feature page may be accepted until screenshot parity matches the approved Web style image for layout, section order, colors, typography, density, spacing, scroll behavior, and copy hierarchy.
 3. Any deviation from a style image must be recorded in the page style spec and approved before coding continues.
 
 ## 7. Functional Parity Matrix
@@ -319,7 +310,7 @@ Responsible for:
 1. Extract style tokens from current frontend.
 2. Build `shared/ui` wrappers.
 3. Build `DataGrid`, `VirtualList`, `StockCard`, `MetricGrid`.
-4. Create all page style specs and desktop/mobile style images.
+4. Create all page style specs and Web style images.
 5. Add screenshot parity fixtures.
 
 Must not invent new visual language.
@@ -388,7 +379,7 @@ Acceptance:
 3. Current style sources inventoried.
 4. Current performance baselines referenced.
 5. Cutover remains opt-in.
-6. Every target page has desktop and mobile style images.
+6. Every target page has a Web style image.
 
 ### Phase 1: Scaffold `frontend-next/`
 
@@ -450,7 +441,7 @@ Acceptance:
 
 1. Components match current density and style.
 2. No third-party default visual style leaks.
-3. Desktop and mobile page style images exist.
+3. Web page style images exist.
 4. Screenshot parity snapshots pass against approved style images.
 
 ### Phase 4: Realtime, Worker, And Chart Infrastructure
@@ -577,6 +568,7 @@ npm run screenshot:parity
 ```
 
 `npm run screenshot:parity` must compare `/next/*` screenshots against the approved images in `docs/frontend-next/style-specs/images/`.
+This phase only checks Web viewport parity; mobile parity is deferred.
 
 Old frontend must remain green:
 
@@ -611,7 +603,7 @@ Cutover is forbidden until all are true:
 1. `frontend/` remains available and green.
 2. `frontend-next/` passes all validation commands.
 3. All feature routes have parity reports.
-4. Every page has approved desktop/mobile style images and screenshot parity passes for both breakpoints.
+4. Every page has an approved Web style image and screenshot parity passes at the approved Web viewport.
 5. Contract parity passes.
 6. Strategy state and production ranking displays match old frontend.
 7. No duplicate SSE streams.
@@ -677,7 +669,7 @@ git status --short
 多 Agent 并行：
 A 架构/脚手架：创建 frontend-next/、Vite/Solid/TS、路由骨架、providers、app shell。
 B 契约/API：生成 api-types、typed API client、auth、query keys、contract smoke。
-C UI 风格系统：从旧前端提取 tokens/workspace 样式，先产出每个页面 desktop/mobile 样式图和 style spec，再构建 shared/ui wrappers、DataGrid、VirtualList、StockCard、MetricGrid，并做截图 parity。
+C UI 风格系统：从旧前端提取 tokens/workspace 样式，先产出每个页面 Web 样式图和 style spec，再构建 shared/ui wrappers、DataGrid、VirtualList、StockCard、MetricGrid，并做 Web 截图 parity。
 D 实时/Worker/图表：SSE、signals、Worker protocol/fallback、KlineChart、ECharts adapter、telemetry。
 E 核心页面：/next/monitor、/next/monitor/market、/next/paper、/next/strategy-tracking。
 F 次级页面：/next/analysis、/next/playbook、/next/backtest、/next/data、/next/settings。
