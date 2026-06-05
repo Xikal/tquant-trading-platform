@@ -10,6 +10,7 @@ import type { PaperOrderDraft } from "../workspace-shared/workspaceTypes";
 import { usePaperUiStore } from "../../stores/paperUiStore";
 import { useServerState } from "../../state/serverState";
 import type { StrategyMeta } from "../../api/strategies";
+import { filterTodayConfirmedPriorityItems } from "../workspace-shared/todayRecommendations";
 
 const MODAL_BODY_STYLE: CSSProperties = {
   padding: 16,
@@ -173,7 +174,11 @@ export function OrderEntryModal({
       setRecommendedLoading(true);
       setRecommendedError("");
       const payload = await api.getLowBuyPriorityBoard(10);
-      setRecommended(payload.items.filter((item) => item.buy_signal_state === "buy_now" || item.buy_signal_state === "soft_buy_now"));
+      const items = filterTodayConfirmedPriorityItems(payload);
+      setRecommended(items);
+      if (!items.length) {
+        setRecommendedOpen(false);
+      }
     } catch (error) {
       setRecommendedError(error instanceof Error ? error.message : "生产买入信号加载失败");
     } finally {
@@ -231,12 +236,9 @@ export function OrderEntryModal({
           <Typography.Text type="secondary">自动填入代码、限价、策略来源和备注，提交前仍可微调。</Typography.Text>
         </div>
 
-        {recommendedOpen ? (
+        {recommendedOpen && (recommendedLoading || Boolean(recommendedError) || recommended.length > 0) ? (
           <div style={RECOMMEND_LIST_STYLE}>
             {recommendedError ? <Alert type="error" showIcon message={recommendedError} /> : null}
-            {!recommendedError && !recommended.length && !recommendedLoading ? (
-              <Typography.Text type="secondary">当前优先榜没有确定买入/小仓试买标的。</Typography.Text>
-            ) : null}
             {recommended.map((item) => (
               <Button
                 type="text"

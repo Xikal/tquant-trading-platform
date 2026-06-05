@@ -323,6 +323,12 @@ export interface LowBuyPriorityBoardResult {
   latest_available_trade_date?: string;
   snapshot_warning?: string;
   updated_at: string;
+  stale?: boolean;
+  stale_reason?: string;
+  refresh_queued?: boolean;
+  read_path?: string;
+  read_model_generated_at?: string | null;
+  read_model_age_seconds?: number | null;
   total_candidates: number;
   immediate_count: number;
   focus_count: number;

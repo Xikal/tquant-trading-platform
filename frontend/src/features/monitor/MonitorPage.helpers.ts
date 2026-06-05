@@ -1,5 +1,6 @@
 import type { LowBuyPriorityBoardResult } from "../../types";
 import { directActionTitle } from "../../utils/uxClarity";
+import { countTodayConfirmedPriorityItems, isTodayPriorityBoard } from "../workspace-shared/todayRecommendations";
 import { average, shortTime } from "../workspace-shared/workspaceFormatters";
 import type { MetricItem, StockCardView } from "../workspace-shared/workspaceTypes";
 
@@ -19,7 +20,7 @@ export function buildMonitorMetrics({
     { label: "今天可操作", value: String(executableCount), tone: executableCount ? "up" : "neutral" },
     { label: "需要避险", value: String(watchCards.filter((card) => card.riskText.includes("高")).length), tone: "down" },
     { label: "平均质量分", value: Number.isFinite(Number(avgScore)) ? avgScore : "--", tone: "warn" },
-    { label: "生产榜 / 刷新", value: `${priorityBoard?.items.length ?? 0} / ${shortTime(priorityBoard?.updated_at) || "--"}`, tone: "neutral" },
+    { label: "生产榜 / 刷新", value: `${countTodayConfirmedPriorityItems(priorityBoard)} / ${shortTime(priorityBoard?.updated_at) || "--"}`, tone: "neutral" },
   ];
 }
 
@@ -58,10 +59,18 @@ export function resolveTodayAction(
       source: "holding",
     };
   }
-  const immediateCount = priorityBoard?.immediate_count ?? 0;
+  const immediateCount = countTodayConfirmedPriorityItems(priorityBoard);
   const observeCount = (priorityBoard?.focus_count ?? 0) + (priorityBoard?.track_count ?? 0);
   if (priorityBoard && immediateCount <= 0) {
     const market = priorityBoard.market_state_text || priorityBoard.daily_decision?.market_plain_text || "当前市场";
+    if (!isTodayPriorityBoard(priorityBoard)) {
+      return {
+        title: "今日暂无确认推荐",
+        detail: "当前不展示旧交易日或观察层股票；后台刷新完成后，若出现今日确认票会自动进入榜单。",
+        tone: "neutral",
+        source: "priority",
+      };
+    }
     if ((priorityBoard.total_candidates ?? 0) <= 0 && !isPriorityBoardRefreshing(priorityBoard)) {
       return {
         title: "今日无生产买入信号",
@@ -95,7 +104,7 @@ export function buildPriorityNotice(
   priorityBoard: LowBuyPriorityBoardResult | null,
   visibleCount: number,
 ): { title: string; detail: string; tone: "warn" | "danger" } | null {
-  if (!priorityBoard || (priorityBoard.immediate_count ?? 0) > 0) {
+  if (!priorityBoard || countTodayConfirmedPriorityItems(priorityBoard) > 0 || !isTodayPriorityBoard(priorityBoard)) {
     return null;
   }
   const observeCount = (priorityBoard.focus_count ?? 0) + (priorityBoard.track_count ?? 0);
@@ -128,12 +137,27 @@ export function buildPriorityNotice(
 
 export function buildPriorityEmptyText(priorityBoard: LowBuyPriorityBoardResult | null): string {
   if (!priorityBoard || isPriorityBoardRefreshing(priorityBoard)) {
-    return "生产优先榜正在后台刷新，稍后自动更新。";
+    return "";
   }
   if ((priorityBoard.total_candidates ?? 0) <= 0) {
-    return "今日无生产买入信号：候选未同时满足买点、承接、风控和交易范围；研究观察只做提醒。";
+    return "";
   }
-  return "当前视图暂无可展示股票，请切换策略线或手动刷新。";
+  return "";
+}
+
+export function shouldShowPrioritySnapshotWarning(
+  priorityBoard: LowBuyPriorityBoardResult | null,
+  visibleCount: number,
+): boolean {
+  const warning = priorityBoard?.snapshot_warning?.trim() ?? "";
+  if (!warning || visibleCount <= 0) {
+    return false;
+  }
+  return !(
+    warning.includes("后台刷新")
+    || warning.includes("刷新任务已排队")
+    || warning.includes("已排队")
+  );
 }
 
 function isPriorityBoardRefreshing(priorityBoard: LowBuyPriorityBoardResult): boolean {

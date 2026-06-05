@@ -9,6 +9,7 @@ import { useServerState } from "../../state/serverState";
 import { LoginPage } from "./LoginPage";
 import { TradingWorkspaceChrome } from "./TradingWorkspaceChrome";
 import { nullableNumber, parseNumber } from "../workspace-shared/workspaceFormatters";
+import { filterTodayConfirmedPriorityItems } from "../workspace-shared/todayRecommendations";
 import { isLoading } from "./loadingState";
 import type { Page, StockCardView } from "../workspace-shared/workspaceTypes";
 import { useAnalysisData } from "./useAnalysisData";
@@ -392,6 +393,7 @@ export function TradingWorkspace() {
     setAiDialogOpen(true);
     setAiResult(null);
     await withLoading("ai", async () => {
+      const todayConfirmedItems = filterTodayConfirmedPriorityItems(monitor.priorityBoard);
       const result = await api.buildAiDecisionSupport({
         task: "priority_board_summary",
         title: "生产优先榜盘中解读",
@@ -399,10 +401,10 @@ export function TradingWorkspace() {
         payload: {
           market_state: monitor.priorityBoard?.market_state_text,
           hot_industries: monitor.priorityBoard?.hot_industries,
-          total_candidates: monitor.priorityBoard?.total_candidates,
-          immediate_count: monitor.priorityBoard?.immediate_count,
+          total_candidates: todayConfirmedItems.length,
+          immediate_count: todayConfirmedItems.length,
           focus_count: monitor.priorityBoard?.focus_count,
-          items: monitor.priorityBoard?.items ?? [],
+          items: todayConfirmedItems,
         },
       });
       setAiResult(result);

@@ -27,7 +27,7 @@ export function MonitorConclusionBar({
   const primaryAction = resolveTodayAction(watchCards, priorityCards, priorityBoard);
   const observeCount = (priorityBoard?.focus_count ?? 0) + (priorityBoard?.track_count ?? 0);
   const riskCount = watchCards.filter((card) => card.riskText.includes("高")).length;
-  const opportunityValue = `可买 ${priorityBoard?.immediate_count ?? 0} / 观察 ${observeCount}`;
+  const opportunityValue = `可买 ${priorityCards.length} / 观察 ${observeCount}`;
   const riskValue = `高风险 ${riskCount}`;
   const marketValue = priorityBoard?.market_state_text || marketBreadthState || marketPulse?.pulse_text || "等待刷新";
 
@@ -46,7 +46,7 @@ export function MonitorConclusionBar({
           key: "opportunity",
           label: "今日机会",
           value: opportunityValue,
-          tone: priorityBoard?.immediate_count ? "up" : "warn",
+          tone: priorityCards.length ? "up" : "neutral",
           helper: reviewStatus?.status_text || "首屏先看可买和观察分布。",
         },
         {

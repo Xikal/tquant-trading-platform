@@ -27,6 +27,7 @@ import { DEFAULT_PLAYBOOK_STRATEGY } from "../workspace-shared/workspaceConstant
 import { errorMessage } from "../workspace-shared/workspaceFormatters";
 import type { StockCardView } from "../workspace-shared/workspaceTypes";
 import { priorityToCard, watchSignalToCard } from "../workspace-shared/workspaceViewModels";
+import { filterTodayConfirmedPriorityItems } from "../workspace-shared/todayRecommendations";
 import {
   applyPriorityBoardQuoteRefresh,
   applySectorEtfQuoteRefresh,
@@ -56,6 +57,7 @@ const MONITOR_SERVER_KEYS = {
 };
 
 const MONITOR_BFF_RETRYING_MESSAGE = "加载失败，正在重试… 已保留上次可用数据，接口恢复后会自动更新。";
+const MONITOR_PENDING_REFRESH_DELAYS_MS = [3_000, 5_000, 8_000, 13_000, 20_000, 30_000];
 
 type WithLoading = <T>(key: string, action: () => Promise<T>) => Promise<T | undefined>;
 
@@ -119,28 +121,32 @@ export function useMonitorData({ active, withLoading, setError, setNotice, onAut
   const monitorWorkspaceBff = useMonitorWorkspaceBff();
 
   const priorityCards: StockCardView[] = useMemo(
-    () => priorityCardMapperRef.current(priorityBoard?.items ?? []),
-    [priorityBoard?.items]
+    () => priorityCardMapperRef.current(filterTodayConfirmedPriorityItems(priorityBoard)),
+    [priorityBoard]
+  );
+  const visiblePriorityItems = useMemo(
+    () => filterTodayConfirmedPriorityItems(priorityBoard),
+    [priorityBoard]
   );
   const watchCards: StockCardView[] = useMemo(
     () => watchCardMapperRef.current(watchlistSignals),
     [watchlistSignals]
   );
   const keyLevelSymbols = useMemo(() => [...new Set([
-    ...(priorityBoard?.items ?? []).slice(0, 8).map((item) => item.symbol),
+    ...visiblePriorityItems.slice(0, 8).map((item) => item.symbol),
     ...watchlistSignals.slice(0, 8).map((item) => item.symbol),
-  ].filter(Boolean))].slice(0, 16), [priorityBoard?.items, watchlistSignals]);
+  ].filter(Boolean))].slice(0, 16), [visiblePriorityItems, watchlistSignals]);
   const keyLevelSymbolsKey = keyLevelSymbols.join(",");
   const liveQuoteSymbols = useMemo(() => [...new Set([
-    ...(priorityBoard?.items ?? []).map((item) => item.symbol),
+    ...visiblePriorityItems.map((item) => item.symbol),
     ...watchlistSignals.map((item) => item.symbol),
     ...(sectorEtfT0?.opportunities ?? []).map((item) => item.etf_symbol),
-  ].filter(Boolean))], [priorityBoard?.items, sectorEtfT0?.opportunities, watchlistSignals]);
-  const keyLevelEntryZonesKey = useMemo(() => (priorityBoard?.items ?? [])
+  ].filter(Boolean))], [visiblePriorityItems, sectorEtfT0?.opportunities, watchlistSignals]);
+  const keyLevelEntryZonesKey = useMemo(() => visiblePriorityItems
     .slice(0, 8)
     .filter((item) => item.entry_zone_low > 0 && item.entry_zone_high > 0)
     .map((item) => `${item.symbol}:${item.entry_zone_low}:${item.entry_zone_high}`)
-    .join(";"), [priorityBoard?.items]);
+    .join(";"), [visiblePriorityItems]);
 
   useEffect(() => {
     priorityBoardRef.current = priorityBoard;
@@ -155,14 +161,14 @@ export function useMonitorData({ active, withLoading, setError, setNotice, onAut
   }, [sectorEtfT0]);
 
   useEffect(() => {
-    for (const item of priorityBoard?.items ?? []) {
+    for (const item of visiblePriorityItems) {
       seedLiveQuoteSignal(item.symbol, {
         price: item.latest_price,
         changePct: item.change_pct,
         signalState: item.buy_signal_state,
       });
     }
-  }, [priorityBoard?.items]);
+  }, [visiblePriorityItems]);
 
   useEffect(() => {
     for (const item of watchlistSignals) {
@@ -499,15 +505,16 @@ export function useMonitorData({ active, withLoading, setError, setNotice, onAut
       pendingRetryCountRef.current = 0;
       return undefined;
     }
-    if (pendingRetryCountRef.current >= 2) {
+    if (pendingRetryCountRef.current >= MONITOR_PENDING_REFRESH_DELAYS_MS.length) {
       return undefined;
     }
     clearPendingRetry();
+    const retryDelay = MONITOR_PENDING_REFRESH_DELAYS_MS[pendingRetryCountRef.current] ?? 30_000;
     pendingRetryTimerRef.current = window.setTimeout(() => {
       pendingRetryCountRef.current += 1;
       invalidateCache(["/bff/v1/workspace/monitor"]);
       void fetchMonitorData(false);
-    }, 15000);
+    }, retryDelay);
     return () => clearPendingRetry();
   }, [active, clearPendingRetry, fetchMonitorData, priorityBoard]);
 
@@ -518,7 +525,7 @@ export function useMonitorData({ active, withLoading, setError, setNotice, onAut
     const currentBoard = priorityBoardRef.current;
     const currentWatchlist = watchlistSignalsRef.current;
     const currentEtfT0 = sectorEtfT0Ref.current;
-    const priorityGroups = collectPrioritySymbolsByStrategy(currentBoard?.items ?? []);
+    const priorityGroups = collectPrioritySymbolsByStrategy(filterTodayConfirmedPriorityItems(currentBoard));
     const etfSymbols = [...new Set((currentEtfT0?.opportunities ?? []).map((item) => item.etf_symbol).filter(Boolean))];
     if (!priorityGroups.length && !currentWatchlist.length && !etfSymbols.length) {
       return;
@@ -727,6 +734,9 @@ function isPendingMonitorSnapshot(priorityBoard: LowBuyPriorityBoardResult | nul
   if (!priorityBoard) {
     return false;
   }
+  if (priorityBoard.refresh_queued || priorityBoard.stale) {
+    return true;
+  }
   const warning = `${priorityBoard.snapshot_warning ?? ""} ${priorityBoard.data_quality_text ?? ""}`;
   return warning.includes("已排队") || warning.includes("后台刷新中");
 }
@@ -736,7 +746,6 @@ function priorityCardKey(item: LowBuyPriorityBoardItem): string {
     item.symbol,
     item.strategy_key,
     item.display_lane ?? "",
-    item.buy_signal_state ?? "",
   ].join(":");
 }
 

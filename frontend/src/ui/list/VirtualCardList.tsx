@@ -7,6 +7,7 @@ interface VirtualCardListProps<T> {
   empty?: ReactNode;
   estimateSize?: number;
   getItemKey: (item: T, index: number) => string | number;
+  getItemClassName?: (item: T, index: number) => string;
   height?: number;
   itemGap?: number;
   items: T[];
@@ -41,6 +42,7 @@ export function VirtualCardList<T>({
   empty,
   estimateSize = 112,
   getItemKey,
+  getItemClassName,
   height,
   itemGap = 8,
   items,
@@ -66,7 +68,7 @@ export function VirtualCardList<T>({
     return (
       <div className={className} style={style}>
         {items.map((item, index) => (
-          <div key={getItemKey(item, index)} style={{ paddingBottom: itemGap }}>
+          <div key={getItemKey(item, index)} className={getItemClassName?.(item, index)} style={{ paddingBottom: itemGap }}>
             {renderItem(item, index)}
           </div>
         ))}
@@ -88,6 +90,7 @@ export function VirtualCardList<T>({
         {rowVirtualizer.getVirtualItems().map((virtualItem) => (
           <div
             key={virtualItem.key}
+            className={getItemClassName?.(items[virtualItem.index], virtualItem.index)}
             ref={rowVirtualizer.measureElement}
             data-index={virtualItem.index}
             style={{

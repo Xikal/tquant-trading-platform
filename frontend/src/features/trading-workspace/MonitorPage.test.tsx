@@ -114,9 +114,50 @@ describe("MonitorPage", () => {
     expect(html).toContain("前排加权");
     expect(html).toContain("前排极精选");
     expect(html).toContain("只做验证，暂不影响真实排序");
-    expect(html).toContain("今日无生产买入信号");
-    expect(html).toContain("研究观察只做提醒");
+    expect(html).toContain("今日暂无确认推荐");
+    expect(html).not.toContain("今日无生产买入信号");
     expect(html).not.toContain("买入推荐");
+  });
+
+  it("hides queued refresh copy when there is no visible current-day recommendation", () => {
+    const html = renderMonitorPage(
+      <MonitorPage
+        priorityBoard={{
+          ...priorityBoardFixture(),
+          snapshot_warning: "监控榜单刷新任务已排队，稍后会自动更新。",
+        }}
+        marketBreadth={null}
+        marketPulse={null}
+        hourlySnapshotHistory={[]}
+        reviewStatus={null}
+        reviewReports={[]}
+        keyLevelAlerts={[]}
+        sectorEtfT0={null}
+        pairedHedge={null}
+        priorityCards={[]}
+        watchCards={[]}
+        runtime={null}
+        instrumentSyncStatus={null}
+        watchDraft={{ symbol: "", name: "", base_position: "", available_position: "", cost_basis: "", memo: "" }}
+        setWatchDraft={vi.fn()}
+        editingWatchSymbol=""
+        loading=""
+        onRefresh={vi.fn()}
+        onSync={vi.fn()}
+        onAi={vi.fn()}
+        onGoPlaybook={vi.fn()}
+        onLaneChange={vi.fn()}
+        onSelect={vi.fn()}
+        onAnalyze={vi.fn()}
+        onEdit={vi.fn()}
+        onRemove={vi.fn()}
+        onAddWatchlist={vi.fn()}
+        onCancelEdit={vi.fn()}
+      />
+    );
+
+    expect(html).not.toContain("监控榜单刷新任务已排队");
+    expect(html).not.toContain("稍后会自动更新");
   });
 
   it("renders hourly all-market snapshot feedback", () => {

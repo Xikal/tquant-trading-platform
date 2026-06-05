@@ -6,6 +6,7 @@ import { MenuOutlined } from "../../ui/icons";
 import type { AuthUser, LowBuyPriorityBoardResult } from "../../types";
 import type { Page, StockCardView } from "../workspace-shared/workspaceTypes";
 import { pageTitle } from "./navConfig";
+import { countTodayConfirmedPriorityItems } from "../workspace-shared/todayRecommendations";
 import {
   TOPBAR_CHIP_STYLE,
   TOPBAR_CHIP_VALUE_STYLE,
@@ -44,6 +45,7 @@ export function Topbar({
   const screens = useBreakpoint();
   const isMobile = !screens.lg;
   const riskCount = watchCards.filter((item) => item.riskText.includes("高")).length;
+  const opportunityCount = countTodayConfirmedPriorityItems(priorityBoard);
   const userName = currentUser.display_name || currentUser.username;
 
   useEffect(() => {
@@ -71,7 +73,7 @@ export function Topbar({
             {paperRefreshLoading ? "刷新中" : "刷新"}
           </Button>
         ) : null}
-        <Badge count={priorityBoard?.total_candidates ?? 0} showZero color="var(--mkt-up)">
+        <Badge count={opportunityCount} showZero color="var(--mkt-up)">
           <span style={TOPBAR_CHIP_STYLE}>机会</span>
         </Badge>
         <Badge count={riskCount} showZero color="var(--error)">

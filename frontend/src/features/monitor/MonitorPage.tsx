@@ -1,4 +1,4 @@
-import { memo, useCallback, useMemo } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef } from "react";
 import { Button, Grid, Space } from "antd";
 import { useShallow } from "zustand/react/shallow";
 import type {
@@ -21,6 +21,7 @@ import {
   buildPriorityNotice,
   dataQualityTone,
   resolveTodayAction,
+  shouldShowPrioritySnapshotWarning,
 } from "./MonitorPage.helpers";
 import {
   KeyLevelAlerts,
@@ -132,6 +133,15 @@ export const MonitorPage = memo(function MonitorPage({
   const screens = Grid.useBreakpoint();
   const primaryAction = useMemo(() => resolveTodayAction(watchCards, priorityCards, priorityBoard), [watchCards, priorityCards, priorityBoard]);
   const priorityNotice = useMemo(() => buildPriorityNotice(priorityBoard, priorityCards.length), [priorityBoard, priorityCards.length]);
+  const priorityListInitializedRef = useRef(false);
+  const previousPrioritySymbolsRef = useRef<Set<string> | null>(null);
+  const priorityNewSymbols = useMemo(() => {
+    const previous = previousPrioritySymbolsRef.current;
+    if (!previous) {
+      return new Set<string>();
+    }
+    return new Set(priorityCards.map((stock) => stock.symbol).filter((symbol) => !previous.has(symbol)));
+  }, [priorityCards]);
   const wideLayout = screens.xl ?? true;
   const primaryKeyLevelSymbol = priorityCards[0]?.symbol ?? watchCards[0]?.symbol ?? "";
   const marketKeyLevels = useMarketKeyLevels();
@@ -146,7 +156,7 @@ export const MonitorPage = memo(function MonitorPage({
   const closeHoldingDrawer = useCallback(() => setHoldingDrawerOpen(false), [setHoldingDrawerOpen]);
   const primaryActionClick = primaryAction.source === "holding" ? onRefresh : onGoPlaybook;
   const watchListKey = useCallback((stock: StockCardView) => stock.symbol, []);
-  const priorityListKey = useCallback((stock: StockCardView) => `${stock.symbol}-${stock.actionText}`, []);
+  const priorityListKey = useCallback((stock: StockCardView) => stock.symbol, []);
   const renderWatchCard = useCallback((stock: StockCardView) => (
     <MonitorWatchStockCard
       stock={stock}
@@ -159,6 +169,13 @@ export const MonitorPage = memo(function MonitorPage({
   const renderPriorityCard = useCallback((stock: StockCardView) => (
     <MonitorPriorityStockCard stock={stock} onAnalyze={onAnalyze} onSelect={onSelect} />
   ), [onAnalyze, onSelect]);
+  const priorityItemClassName = useCallback((stock: StockCardView) => {
+    return priorityListInitializedRef.current && priorityNewSymbols.has(stock.symbol) ? "monitor-priority-card-row--new" : "";
+  }, [priorityNewSymbols]);
+  useEffect(() => {
+    previousPrioritySymbolsRef.current = new Set(priorityCards.map((stock) => stock.symbol));
+    priorityListInitializedRef.current = true;
+  }, [priorityCards]);
   const handleLaneChange = useCallback((next: StrategyVariant) => {
     setActiveLane(next);
     onLaneChange?.(next);
@@ -246,7 +263,7 @@ export const MonitorPage = memo(function MonitorPage({
           <InfoPill compact label="快照日期" value={`${priorityBoard?.latest_trade_date ?? "--"} / 更新 ${shortTime(priorityBoard?.updated_at) || "--"}`} />
           <InfoPill compact label="数据状态" value={priorityBoard?.data_quality_text ?? "--"} tone={dataQualityTone(priorityBoard?.data_quality)} />
           <InfoPill compact label="市场总闸" value={`${priorityBoard?.market_gate_decision ?? "--"} / ${Math.round((priorityBoard?.market_firepower_multiplier ?? 1) * 100)}%`} tone={priorityBoard?.market_gate_decision === "block" ? "down" : priorityBoard?.market_gate_decision === "reduce" ? "warn" : "up"} />
-          <InfoPill compact label="今日分层" value={`确认 ${priorityBoard?.immediate_count ?? 0} / 观察 ${(priorityBoard?.focus_count ?? 0) + (priorityBoard?.track_count ?? 0)} / 榜单 ${priorityBoard?.total_candidates ?? 0}`} tone={(priorityBoard?.immediate_count ?? 0) ? "up" : "warn"} />
+          <InfoPill compact label="今日分层" value={`确认 ${priorityCards.length} / 观察 ${(priorityBoard?.focus_count ?? 0) + (priorityBoard?.track_count ?? 0)} / 榜单 ${priorityBoard?.total_candidates ?? 0}`} tone={priorityCards.length ? "up" : "neutral"} />
         </ContextRow>
         <MarketStateGatePanel board={priorityBoard} />
         <SectorLeaderGatePanel sectorRelativeStrength={sectorRelativeStrength} />
@@ -254,15 +271,16 @@ export const MonitorPage = memo(function MonitorPage({
         {priorityNotice ? (
           <Callout title={priorityNotice.title} detail={priorityNotice.detail} tone={priorityNotice.tone === "danger" ? "down" : "warn"} compact />
         ) : null}
-        {priorityBoard?.snapshot_warning ? <Callout title={priorityBoard.snapshot_warning} tone="warn" compact /> : null}
+        {shouldShowPrioritySnapshotWarning(priorityBoard, priorityCards.length) ? <Callout title={priorityBoard?.snapshot_warning} tone="warn" compact /> : null}
         <FamilyStrip priorityBoard={priorityBoard} />
         <VirtualCardList
           items={priorityCards}
-          empty={<EmptyState text={buildPriorityEmptyText(priorityBoard)} />}
+          empty={buildPriorityEmptyText(priorityBoard) ? <EmptyState text={buildPriorityEmptyText(priorityBoard)} /> : null}
           estimateSize={164}
           maxHeight={620}
           className="monitor-card-list--inset"
           getItemKey={priorityListKey}
+          getItemClassName={priorityItemClassName}
           renderItem={renderPriorityCard}
         />
       </div>

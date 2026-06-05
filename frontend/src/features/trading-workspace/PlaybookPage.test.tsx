@@ -15,7 +15,7 @@ describe("PlaybookPage", () => {
           candidates: [],
           confirmed_candidates: [],
           hot_industries: ["机器人"],
-          latest_trade_date: "2026-05-04",
+          latest_trade_date: beijingTodayString(),
           data_quality: "ok",
           data_quality_text: "数据完整",
           full_scan_ready: true,
@@ -56,7 +56,7 @@ describe("PlaybookPage", () => {
           candidates: [],
           confirmed_candidates: [],
           hot_industries: ["机器人"],
-          latest_trade_date: "2026-05-04",
+          latest_trade_date: beijingTodayString(),
           full_scan_ready: true,
           performance: {
             data_insufficient: true,
@@ -128,7 +128,7 @@ describe("PlaybookPage", () => {
             },
           }],
           hot_industries: ["机器人"],
-          latest_trade_date: "2026-05-04",
+          latest_trade_date: beijingTodayString(),
           full_scan_ready: true,
           performance: null,
         } as any}
@@ -147,4 +147,65 @@ describe("PlaybookPage", () => {
     expect(html).toContain("tq-playbook-dense-row");
     expect(html).toContain("tq-playbook-dense-row__meta");
   });
+
+  it("does not render observe-only stocks as current-day recommendations", () => {
+    const html = renderToStaticMarkup(
+      <PlaybookPage
+        strategy="volume_shrink"
+        setStrategy={vi.fn()}
+        playbook={{
+          strategy_key: "volume_shrink",
+          strategy_title: "缩量回踩",
+          scanned_count: 1,
+          candidates: [],
+          confirmed_candidates: [{
+            name: "观察股份",
+            symbol: "600123",
+            strategy_key: "volume_shrink",
+            strategy_title: "缩量回踩",
+            latest_price: 10.12,
+            change_pct: 1.23,
+            score: 88,
+            risk_tier: "note",
+            suggested_position_text: "15%",
+            buy_signal_state: "observe_confirmed",
+            buy_signal_text: "观察确认",
+            entry_zone_low: 9.8,
+            entry_zone_high: 10.2,
+            stop_loss: 9.5,
+            summary_reason: "只观察",
+            reasons: [],
+            risks: [],
+            tags: [],
+          }],
+          hot_industries: ["机器人"],
+          latest_trade_date: beijingTodayString(),
+          full_scan_ready: true,
+          performance: null,
+        } as any}
+        loading=""
+        onRefresh={vi.fn()}
+        onAnalyze={vi.fn()}
+        onSelect={vi.fn()}
+      />
+    );
+
+    expect(html).toContain("今日暂无确认推荐");
+    expect(html).not.toContain("观察股份");
+    expect(html).not.toContain("600123");
+    expect(html).not.toContain("观察确认");
+  });
 });
+
+function beijingTodayString(): string {
+  const parts = new Intl.DateTimeFormat("zh-CN", {
+    timeZone: "Asia/Shanghai",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date());
+  const year = parts.find((part) => part.type === "year")?.value ?? "";
+  const month = parts.find((part) => part.type === "month")?.value ?? "";
+  const day = parts.find((part) => part.type === "day")?.value ?? "";
+  return `${year}-${month}-${day}`;
+}
