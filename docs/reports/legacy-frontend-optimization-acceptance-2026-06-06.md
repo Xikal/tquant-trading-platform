@@ -21,9 +21,25 @@ Scope: `frontend/` only
 
 ## Batch Results
 
-Pending.
+### Batch 1: Monitor BFF First-Screen Cleanup
+
+- files changed:
+  - `frontend/src/features/trading-workspace/useMonitorData.ts`
+  - `frontend/src/features/trading-workspace/monitorWorkspaceLoaders.ts`
+  - `frontend/src/features/trading-workspace/monitorWorkspaceLoaders.test.ts`
+  - `frontend/src/features/trading-workspace/monitorRefreshState.ts`
+  - `frontend/src/features/trading-workspace/monitorRefreshState.test.ts`
+  - `frontend/scripts/smoke-monitor-bff.mjs`
+- focused tests: pass (`npm test -- --run src/features/trading-workspace/useMonitorData.test.ts src/features/trading-workspace/useMonitorWorkspaceBff.test.ts src/features/trading-workspace/monitorWorkspaceLoaders.test.ts src/features/trading-workspace/monitorRefreshState.test.ts`, 4 files / 26 tests)
+- typecheck: pass (`npm run typecheck`)
+- lint: pass (`npm run lint`)
+- build: pass (`npm run build`)
+- full vitest: pass (`npm test -- --run`, 82 files / 285 tests)
+- monitor BFF smoke normal: pass
+- monitor BFF smoke 500: pass
+- monitor BFF smoke auth: pass
+- note: normal smoke now uses the current nested `monitor_snapshot.priority_board` BFF contract with a populated board, so the first-screen path no longer issues the legacy `/api/screeners/low-buy/priority-board` fallback in the healthy aggregate case.
 
 ## Residual Risk
 
-- Batch 1 must remove the extra normal-scenario priority-board fallback from the first-screen smoke path while preserving explicit fallback behavior for disabled BFF or intentionally empty aggregate snapshots.
-
+- Batch 2 still needs to unify stale/degraded/waiting copy across monitor, playbook, and latest-data settings surfaces.

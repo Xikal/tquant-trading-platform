@@ -38,7 +38,9 @@ import {
   shouldRefreshRealtimePrices,
 } from "./realtimePriceRefresh";
 import { createStableCardListMapper } from "./stableMonitorCards";
-import { fetchMonitorPriorityBoardFallback, isMonitorBffDisabled, useMonitorWorkspaceBff } from "./useMonitorWorkspaceBff";
+import { loadMonitorWorkspaceFirstScreen, monitorWorkspaceViewForPage } from "./monitorWorkspaceLoaders";
+import { createMonitorRefreshState } from "./monitorRefreshState";
+import { useMonitorWorkspaceBff } from "./useMonitorWorkspaceBff";
 import { isMonitorDataPage } from "./workspaceRoutes";
 
 const MONITOR_SERVER_KEYS = {
@@ -61,7 +63,6 @@ const MONITOR_BFF_RETRYING_MESSAGE = "加载失败，正在重试… 已保留�
 const MONITOR_PENDING_REFRESH_DELAYS_MS = [3_000, 5_000, 8_000, 13_000, 20_000, 30_000];
 
 type WithLoading = <T>(key: string, action: () => Promise<T>) => Promise<T | undefined>;
-type MonitorWorkspaceView = "full" | "action" | "market";
 export type MonitorRefreshResult = "started" | "queued";
 
 function isMonitorAuthError(reason: unknown): boolean {
@@ -102,8 +103,7 @@ export function useMonitorData({ active, page = "monitor", withLoading, setError
   const [instrumentSyncStatus, setInstrumentSyncStatus, resetInstrumentSyncStatus] = useServerState<InstrumentSyncStatus | null>(MONITOR_SERVER_KEYS.instrumentSyncStatus, null);
   const resetMonitorState = useWorkspaceMonitorStore((state) => state.resetMonitorData);
   const activeStrategyLane = useWorkspaceMonitorStore((state) => state.activeStrategyLane);
-  const monitorRefreshRef = useRef(false);
-  const pendingMonitorRefreshRef = useRef<{ includeRuntime: boolean } | null>(null);
+  const monitorRefreshStateRef = useRef(createMonitorRefreshState());
   const latestMonitorPageRef = useRef(page);
   latestMonitorPageRef.current = page;
   const quoteRefreshRef = useRef(false);
@@ -313,35 +313,43 @@ export function useMonitorData({ active, page = "monitor", withLoading, setError
   ]);
 
   const fetchMonitorData = useCallback(async (includeRuntime: boolean): Promise<MonitorRefreshResult> => {
-    if (monitorRefreshRef.current) {
-      const pending = pendingMonitorRefreshRef.current;
-      pendingMonitorRefreshRef.current = { includeRuntime: Boolean(pending?.includeRuntime || includeRuntime) };
+    const refreshStart = monitorRefreshStateRef.current.start({ includeRuntime });
+    if (refreshStart.status === "queued") {
       return "queued";
     }
-    monitorRefreshRef.current = true;
     const requestPage = latestMonitorPageRef.current;
     try {
-      if (!monitorBffAggregateEnabled) {
-        await fetchLegacyMonitorData(includeRuntime);
-        return "started";
-      }
-      const workspaceResult = await Promise.resolve(fetchMonitorWorkspace(12, monitorWorkspaceView(requestPage)))
-        .then((value) => ({ status: "fulfilled" as const, value }))
+      const loadResult = await loadMonitorWorkspaceFirstScreen({
+        page: requestPage,
+        priorityLimit: 12,
+        includeRuntime,
+        bffEnabled: monitorBffAggregateEnabled,
+        fetchWorkspace: fetchMonitorWorkspace,
+        fetchLegacy: fetchLegacyMonitorData,
+        fetchPriorityBoard: api.getLowBuyPriorityBoard,
+        fetchHourlyHistory: () => api.getMarketHourlySnapshotsHistory(8),
+        fetchRuntime: api.getRuntimeStatus,
+        hasAdminToken: () => Boolean(getAdminApiToken()),
+      }).then((value) => ({ status: "fulfilled" as const, value }))
         .catch((reason) => ({ status: "rejected" as const, reason }));
-      if (workspaceResult.status === "rejected" && isMonitorBffDisabled(workspaceResult.reason)) {
-        await fetchLegacyMonitorData(includeRuntime);
-        return "started";
-      }
-      if (workspaceResult.status === "rejected") {
-        if (isMonitorAuthError(workspaceResult.reason)) {
+      if (loadResult.status === "rejected") {
+        if (isMonitorAuthError(loadResult.reason)) {
           onAuthRequiredRef.current();
           return "started";
         }
         setError(MONITOR_BFF_RETRYING_MESSAGE);
         return "started";
       }
+      if (loadResult.value.source === "legacy") {
+        return "started";
+      }
+      const workspace = loadResult.value.workspace;
+      if (!workspace) {
+        setError(MONITOR_BFF_RETRYING_MESSAGE);
+        return "started";
+      }
+      const workspaceResult = { status: "fulfilled" as const, value: workspace };
       let hourlyHistoryLoadedFromBff = false;
-      let runtimeLoadedFromBff = !includeRuntime || !Boolean(getAdminApiToken());
       const partialWarnings = bffPartialErrorsText(workspaceResult.value);
       if (partialWarnings) {
         setNotice(`监控合包部分降级：${partialWarnings}`);
@@ -365,24 +373,10 @@ export function useMonitorData({ active, page = "monitor", withLoading, setError
         setHourlySnapshotHistory(projected.hourlySnapshotHistory);
         hourlyHistoryLoadedFromBff = true;
       }
-      if ("runtime" in workspaceResult.value) {
-        runtimeLoadedFromBff = true;
-      }
       if (workspaceResult.value.runtime) {
         setRuntime(workspaceResult.value.runtime);
       }
-      const fallbackRequests: Promise<unknown>[] = [];
-      if (!hourlyHistoryLoadedFromBff) {
-        fallbackRequests.push(api.getMarketHourlySnapshotsHistory(8));
-      }
-      if (!runtimeLoadedFromBff && includeRuntime && Boolean(getAdminApiToken())) {
-        fallbackRequests.push(api.getRuntimeStatus());
-      }
-      const priorityBoardFallbackRequest = fetchMonitorPriorityBoardFallback(
-        workspaceResult.value,
-        api.getLowBuyPriorityBoard,
-      );
-      const fallbackResults = await Promise.allSettled(fallbackRequests);
+      const fallbackResults = loadResult.value.fallbackResults;
       for (const result of fallbackResults) {
         if (result.status !== "fulfilled") {
           continue;
@@ -393,13 +387,8 @@ export function useMonitorData({ active, page = "monitor", withLoading, setError
           setRuntime(result.value);
         }
       }
-      const priorityBoardFallbackResult = priorityBoardFallbackRequest
-        ? await Promise.resolve(priorityBoardFallbackRequest)
-          .then((value) => ({ status: "fulfilled" as const, value }))
-          .catch((reason) => ({ status: "rejected" as const, reason }))
-        : null;
-      if (priorityBoardFallbackResult?.status === "fulfilled" && priorityBoardFallbackResult.value) {
-        applyBaselinePriorityBoard(priorityBoardFallbackResult.value);
+      if (loadResult.value.priorityBoardFallback) {
+        applyBaselinePriorityBoard(loadResult.value.priorityBoardFallback);
       }
       const activeLaneResult = monitorSnapshot
         ? await Promise.resolve(refreshActivePriorityLane(requestPage))
@@ -409,7 +398,6 @@ export function useMonitorData({ active, page = "monitor", withLoading, setError
       const rejections = [
         workspaceResult,
         ...fallbackResults,
-        ...(priorityBoardFallbackResult ? [priorityBoardFallbackResult] : []),
         ...(activeLaneResult ? [activeLaneResult] : []),
       ].filter(
         (item): item is PromiseRejectedResult => item.status === "rejected"
@@ -424,11 +412,9 @@ export function useMonitorData({ active, page = "monitor", withLoading, setError
       }
       return "started";
     } finally {
-      monitorRefreshRef.current = false;
-      const pending = pendingMonitorRefreshRef.current;
-      pendingMonitorRefreshRef.current = null;
-      if (pending && isMonitorDataPage(latestMonitorPageRef.current)) {
-        window.setTimeout(() => void fetchMonitorData(pending.includeRuntime), 0);
+      const { next } = monitorRefreshStateRef.current.finish();
+      if (next && isMonitorDataPage(latestMonitorPageRef.current)) {
+        window.setTimeout(() => void fetchMonitorData(next.includeRuntime), 0);
       }
     }
   }, [
@@ -800,14 +786,8 @@ export function useMonitorData({ active, page = "monitor", withLoading, setError
   };
 }
 
-export function monitorWorkspaceView(page: Page): MonitorWorkspaceView {
-  if (page === "monitor") {
-    return "action";
-  }
-  if (page === "monitor-market") {
-    return "market";
-  }
-  return "full";
+export function monitorWorkspaceView(page: Page) {
+  return monitorWorkspaceViewForPage(page);
 }
 
 export function shouldApplyMonitorSnapshotPriorityBoard(activeLane: StrategyVariant): boolean {
