@@ -126,6 +126,38 @@ describe("loadMonitorWorkspaceFirstScreen", () => {
     expect(fetchPriorityBoard).toHaveBeenCalledWith(12, "baseline", "cache");
     expect(result.priorityBoardFallback).toEqual(priorityBoardFixture());
   });
+
+  it("keeps the BFF workspace usable when the optional priority-board fallback fails", async () => {
+    const fallbackError = new Error("priority fallback unavailable");
+    const workspace = {
+      ...workspaceFixture(),
+      monitor_snapshot: {
+        updated_at: "2026-06-06T09:30:00+08:00",
+        watchlist_signals: [],
+        priority_board: { items: [] },
+      },
+    };
+
+    const result = await loadMonitorWorkspaceFirstScreen({
+      page: "monitor",
+      priorityLimit: 12,
+      includeRuntime: false,
+      bffEnabled: true,
+      fetchWorkspace: vi.fn(async () => workspace),
+      fetchLegacy: vi.fn(),
+      fetchPriorityBoard: vi.fn(async () => {
+        throw fallbackError;
+      }),
+      fetchHourlyHistory: vi.fn(),
+      fetchRuntime: vi.fn(),
+      hasAdminToken: () => false,
+    });
+
+    expect(result.source).toBe("bff");
+    expect(result.workspace).toBe(workspace);
+    expect(result.priorityBoardFallback).toBeNull();
+    expect(result.fallbackResults).toEqual([{ status: "rejected", reason: fallbackError }]);
+  });
 });
 
 describe("monitorWorkspaceViewForPage", () => {

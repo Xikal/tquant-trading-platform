@@ -50,15 +50,20 @@ export async function loadMonitorWorkspaceFirstScreen(
     if (shouldLoadRuntimeFallback(workspace, options.includeRuntime, options.hasAdminToken)) {
       fallbackRequests.push(options.fetchRuntime());
     }
-    const [priorityBoardFallback, fallbackResults] = await Promise.all([
-      fetchMonitorPriorityBoardFallback(workspace, options.fetchPriorityBoard),
+    const [priorityBoardFallbackResult, fallbackResults] = await Promise.all([
+      Promise.resolve(fetchMonitorPriorityBoardFallback(workspace, options.fetchPriorityBoard))
+        .then((value) => ({ status: "fulfilled" as const, value }))
+        .catch((reason) => ({ status: "rejected" as const, reason })),
       Promise.allSettled(fallbackRequests),
     ]);
     return {
       source: "bff",
       workspace,
-      priorityBoardFallback,
-      fallbackResults,
+      priorityBoardFallback: priorityBoardFallbackResult.status === "fulfilled" ? priorityBoardFallbackResult.value : null,
+      fallbackResults: [
+        ...fallbackResults,
+        ...(priorityBoardFallbackResult.status === "rejected" ? [priorityBoardFallbackResult] : []),
+      ],
     };
   } catch (error) {
     if (isMonitorBffDisabled(error)) {
