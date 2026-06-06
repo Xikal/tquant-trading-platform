@@ -424,6 +424,23 @@ class TickTradeSnapshot(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
 
+class MarketCalendarDate(Base):
+    __tablename__ = "market_calendar_dates"
+    __table_args__ = (
+        UniqueConstraint("market", "trade_date", name="uq_market_calendar_date"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    market: Mapped[str] = mapped_column(String(16), default="CN", index=True)
+    trade_date: Mapped[date] = mapped_column(FlexibleDate(), index=True)
+    is_trading_day: Mapped[bool] = mapped_column(Boolean, default=True, index=True)
+    session_type: Mapped[str] = mapped_column(String(24), default="regular", index=True)
+    source: Mapped[str] = mapped_column(String(48), default="manual", index=True)
+    note: Mapped[str] = mapped_column(String(160), default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), onupdate=func.now())
+
+
 class DailyBarSnapshot(Base):
     __tablename__ = "daily_bar_snapshots"
     __table_args__ = (

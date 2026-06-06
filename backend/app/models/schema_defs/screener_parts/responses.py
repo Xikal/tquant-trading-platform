@@ -30,6 +30,9 @@ class LowBuyScreenerResponse(BaseModel):
     pool_size: int
     scanned_count: int
     matched_count: int
+    snapshot_warning: str = ""
+    stale: bool = False
+    stale_reason: str = ""
     requested_scan_limit: int = 0
     active_scan_limit: int = 0
     full_scan_ready: bool = False

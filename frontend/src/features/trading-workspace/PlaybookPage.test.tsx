@@ -401,6 +401,8 @@ describe("PlaybookPage", () => {
           confirmed_candidates: [],
           hot_industries: ["机器人"],
           latest_trade_date: "2026-01-01",
+          stale: true,
+          stale_reason: "当前选股宝典停留在 2026-01-01，距最新交易日 2026-01-05 已落后 2 个交易日，仅供复盘，不作为今日观察。",
           full_scan_ready: true,
           performance: null,
         } as any}
@@ -416,6 +418,8 @@ describe("PlaybookPage", () => {
     expect(html).toContain("观察：旧观察");
     expect(html).toContain("600456");
     expect(html).toContain("当前无确认买入");
+    expect(html).toContain("推荐快照已过期");
+    expect(html).toContain("仅供复盘");
   });
 });
 

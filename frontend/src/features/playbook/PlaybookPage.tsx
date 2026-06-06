@@ -95,6 +95,16 @@ export function PlaybookPage({
             </Button>
           ))}
         </Flex>
+        {playbook?.stale ? (
+          <Callout
+            title="推荐快照已过期"
+            detail={playbook.stale_reason || playbook.snapshot_warning || "当前只展示最近可用快照，仅供复盘。"}
+            tone="warn"
+            compact
+          />
+        ) : playbook?.snapshot_warning ? (
+          <Callout title={playbook.snapshot_warning} tone="warn" compact />
+        ) : null}
       </div>
       <MetricGrid
         compact

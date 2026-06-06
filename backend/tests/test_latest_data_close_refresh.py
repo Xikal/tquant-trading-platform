@@ -188,6 +188,23 @@ def test_before_close_skips_without_touching_queue(monkeypatch) -> None:
     )
 
     assert result["action"] == "skip_before_close"
+    assert result["metric"] == "latest_data_close_refresh.skip_before_close"
+    assert _FakeQueue.last_payload is None
+
+
+def test_non_trading_day_skips_with_specific_action(monkeypatch) -> None:
+    _patch_base(monkeypatch)
+    monkeypatch.setattr(close_refresh, "is_a_share_trading_day", lambda _date: False)
+    _FakeQueue.last_payload = None
+
+    result = close_refresh.enqueue_latest_data_close_refresh(
+        object(),
+        now=datetime(2026, 6, 6, 15, 30),
+        strategies=["first_board"],
+    )
+
+    assert result["action"] == "skip_non_trading_day"
+    assert result["metric"] == "latest_data_close_refresh.skip_non_trading_day"
     assert _FakeQueue.last_payload is None
 
 

@@ -34,8 +34,20 @@ def enqueue_latest_data_close_refresh(
     strategies: list[str] | None = None,
 ) -> dict[str, Any]:
     current = now or beijing_now()
-    if current.time() < CLOSE_REFRESH_AFTER or not is_a_share_trading_day(current.date()):
-        return {"ok": True, "action": "skip_before_close", "now": current.isoformat()}
+    if not is_a_share_trading_day(current.date()):
+        return {
+            "ok": True,
+            "action": "skip_non_trading_day",
+            "metric": "latest_data_close_refresh.skip_non_trading_day",
+            "now": current.isoformat(),
+        }
+    if current.time() < CLOSE_REFRESH_AFTER:
+        return {
+            "ok": True,
+            "action": "skip_before_close",
+            "metric": "latest_data_close_refresh.skip_before_close",
+            "now": current.isoformat(),
+        }
 
     required = sorted(strategies or PRODUCTION_PRIORITY_STRATEGIES)
     expected = expected_low_buy_trade_date(db)
@@ -63,6 +75,7 @@ def enqueue_latest_data_close_refresh(
         return {
             "ok": False,
             "action": "enqueue_daily_bar_refresh",
+            "metric": "latest_data_close_refresh.enqueue_daily_bar_refresh",
             "expected_trade_date": expected,
             "daily_bar_count": daily_count,
             "post_close_daily_bar_count": post_close_count,
@@ -94,6 +107,7 @@ def enqueue_latest_data_close_refresh(
         return {
             "ok": True,
             "action": "already_latest",
+            "metric": "latest_data_close_refresh.already_latest",
             "expected_trade_date": expected,
             "daily_bar_count": daily_count,
             "publish_status": status,
@@ -107,6 +121,7 @@ def enqueue_latest_data_close_refresh(
         return {
             "ok": False,
             "action": "enqueue_low_buy_materialization",
+            "metric": "latest_data_close_refresh.missing_strategy_snapshots",
             "expected_trade_date": expected,
             "daily_bar_count": daily_count,
             "missing_strategies": missing,
@@ -128,6 +143,9 @@ def enqueue_latest_data_close_refresh(
     return {
         "ok": publish_status.get("status") == "success",
         "action": "publish_latest_trade_date",
+        "metric": "latest_data_close_refresh.published_success"
+        if publish_status.get("status") == "success"
+        else "latest_data_close_refresh.publish_pending",
         "expected_trade_date": expected,
         "daily_bar_count": daily_count,
         "publish_status": publish_status,

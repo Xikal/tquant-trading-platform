@@ -4,7 +4,7 @@ from typing import Protocol
 
 from app.models.schemas import LowBuyStrategyPerformanceOut
 from app.repositories.low_buy.results import LowBuyResultRepository
-from app.services.latest_data_status import expected_low_buy_trade_date, published_low_buy_trade_date
+from app.services.latest_data_status import expected_low_buy_trade_date, published_low_buy_trade_date, trade_day_gap
 from app.services.low_buy_materialization import enqueue_low_buy_materialization
 from app.services.low_buy.priority_types import PriorityBaseSnapshot, PriorityCandidate
 from app.services.low_buy.shared import PLAYBOOKS, Session
@@ -107,6 +107,8 @@ def build_priority_base_snapshot(
         updated_at=updated_at,
         candidates=list(merged_candidates.values()),
         market_context=market_context,
+        expected_trade_date=expected_trade_date,
+        staleness_trade_days=trade_day_gap(db, latest_trade_date, expected_trade_date),
         missing_strategies=missing_strategies,
         stale_strategies=stale_strategies,
     )

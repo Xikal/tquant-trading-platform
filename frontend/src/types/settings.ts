@@ -105,7 +105,11 @@ export interface AdminTasksResponse {
 
 export interface LatestLowBuyDataStatus {
   expected_trade_date?: string;
+  calendar_expected_trade_date?: string;
+  local_latest_trade_date?: string;
   published_trade_date?: string;
+  staleness_trade_days?: number;
+  local_staleness_trade_days?: number;
   status?: string;
   daily_bar_count?: number;
   min_daily_bar_count?: number;

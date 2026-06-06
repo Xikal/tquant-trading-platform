@@ -2,10 +2,11 @@ from __future__ import annotations
 
 import unittest
 
-from app.models.schemas import LowBuyCandidateOut, LowBuyPerformanceBucketOut, LowBuyStrategyPerformanceOut
+from app.models.schemas import LowBuyCandidateOut, LowBuyPerformanceBucketOut, LowBuyPortfolioRiskOut, LowBuyStrategyPerformanceOut
 from app.services.low_buy.priority_board import LowBuyPriorityBoardMixin, filter_priority_candidates_for_recommendation
+from app.services.low_buy.priority_response import build_priority_board_response
 from app.services.low_buy.priority_scoring import LowBuyPriorityScoringMixin
-from app.services.low_buy.priority_types import PriorityBaseSnapshot, PriorityCandidate, StrategyHit
+from app.services.low_buy.priority_types import PriorityBaseSnapshot, PriorityCandidate, PriorityMarketContext, StrategyHit
 from app.services.low_buy.shared import LOW_BUY_RESULT_VERSION
 from app.services.low_buy.strategy_families import (
     LOW_BUY_STRATEGY_KEYS,
@@ -155,6 +156,48 @@ def _hit(strategy_key: str, weight: float, context_bonus: float = 0.0) -> Strate
     )
 
 
+def _market_context(**overrides) -> PriorityMarketContext:
+    values = {
+        "market_state": "repair",
+        "market_bonus": 0.0,
+        "market_state_strength": 0.0,
+        "regime_confidence": 0.0,
+        "state_persistence_days": 1,
+        "transition_risk": 0.0,
+        "market_state_label": "repair",
+        "market_state_description": "修复",
+        "breadth_ready": True,
+        "emotion_ready": True,
+        "stock_up_ratio": 0.55,
+        "stock_median_change": 0.0,
+        "style_divergence": 0.0,
+        "hot_turnover": 0.0,
+        "hot_overlap_ratio": 0.0,
+        "limit_down_count": 0,
+        "limit_up_count": 0,
+        "board_height": 0,
+        "previous_board_height": 0,
+        "promotion_ratio": 0.0,
+        "broken_board_ratio": 0.0,
+        "promotion_break_gap": 0.0,
+        "promotion_break_pressure": 0.0,
+        "high_flyer_retreat_ratio": 0.0,
+        "high_flyer_gap_speed": 0.0,
+        "distribution_pressure": 0.0,
+        "emotion_temperature": "neutral",
+        "emotion_temperature_text": "中性",
+        "emotion_temperature_score": 0.0,
+        "hot_industries": [],
+        "hot_industry_source": "",
+        "hot_industry_source_text": "",
+        "mainline_lifecycle_state": "",
+        "mainline_lifecycle_text": "",
+        "industry_ranks": {},
+    }
+    values.update(overrides)
+    return PriorityMarketContext(**values)
+
+
 class PriorityWeightingTests(unittest.TestCase):
     def setUp(self) -> None:
         self.service = _ScoringService()
@@ -177,6 +220,30 @@ class PriorityWeightingTests(unittest.TestCase):
         self.assertIn("部分策略结果仍在重建", warning)
         self.assertNotIn("过期策略", warning)
         self.assertNotIn("first_board", warning)
+
+    def test_priority_board_response_marks_stale_snapshot(self) -> None:
+        response = build_priority_board_response(
+            base_snapshot=PriorityBaseSnapshot(
+                latest_trade_date="2026-05-29",
+                latest_available_trade_date="2026-06-05",
+                updated_at="2026-05-29 15:30:00",
+                candidates=[],
+                market_context=_market_context(),
+                expected_trade_date="2026-06-05",
+                staleness_trade_days=5,
+            ),
+            items=[],
+            item_limit=12,
+            family_sections=[],
+            portfolio_risk=LowBuyPortfolioRiskOut(),
+            snapshot_warning="",
+            market_state_text="修复",
+        )
+
+        self.assertTrue(response.stale)
+        self.assertIn("2026-05-29", response.stale_reason)
+        self.assertIn("2026-06-05", response.stale_reason)
+        self.assertIn("仅供复盘", response.snapshot_warning)
 
     def test_priority_recommendation_filter_excludes_chinext_and_star_market(self) -> None:
         rows = [

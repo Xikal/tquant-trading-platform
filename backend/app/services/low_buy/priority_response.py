@@ -41,6 +41,7 @@ def build_priority_board_response(
     )
     market_state_fields = standard_market_state_payload(market_context.market_state)
     market_gate = market_gate_from_context(market_context)
+    snapshot_warning = _with_stale_snapshot_warning(snapshot_warning, base_snapshot)
     quality_fields = data_quality_payload(
         build_market_data_quality(
             breadth_ready=market_context.breadth_ready,
@@ -74,6 +75,8 @@ def build_priority_board_response(
         market_state_category=market_state_fields["market_state_category"],
         market_state_category_text=market_state_fields["market_state_category_text"],
         **quality_fields,
+        stale=base_snapshot.staleness_trade_days > 0,
+        stale_reason=_stale_reason(base_snapshot),
         market_gate_decision=market_gate.decision,
         market_gate_score=market_gate.score,
         market_gate_reasons=market_gate.reasons,
@@ -121,3 +124,22 @@ def build_priority_board_response(
     response.daily_decision = build_daily_decision(response)
     response.simple_buckets = build_simple_buckets(response.items)
     return response
+
+
+def _with_stale_snapshot_warning(snapshot_warning: str, base_snapshot: PriorityBaseSnapshot) -> str:
+    stale_reason = _stale_reason(base_snapshot)
+    if not stale_reason:
+        return snapshot_warning
+    return " ".join(item for item in (snapshot_warning, stale_reason) if item).strip()
+
+
+def _stale_reason(base_snapshot: PriorityBaseSnapshot) -> str:
+    if base_snapshot.staleness_trade_days <= 0:
+        return ""
+    if not base_snapshot.latest_trade_date:
+        return f"最新交易日 {base_snapshot.expected_trade_date} 的推荐快照尚未生成，当前不展示今日推荐。"
+    return (
+        f"当前榜单停留在 {base_snapshot.latest_trade_date}，"
+        f"距最新交易日 {base_snapshot.expected_trade_date} 已落后 {base_snapshot.staleness_trade_days} 个交易日，"
+        "仅供复盘，不作为今日观察。"
+    )

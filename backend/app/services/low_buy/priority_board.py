@@ -519,19 +519,21 @@ def _mark_priority_refresh_queued(
     *,
     stale: bool,
 ) -> LowBuyPriorityBoardResponse:
+    effective_stale = stale or bool(payload.stale)
     warning = "优先榜正在后台刷新，当前先展示最近一次可用结果。"
     snapshot_warning = " ".join(part for part in [payload.snapshot_warning.strip(), warning] if part)
     tags = list(dict.fromkeys([*(payload.data_quality_tags or []), "refresh_queued"]))
-    if stale:
+    if effective_stale:
         tags = list(dict.fromkeys([*tags, "stale_cache"]))
     return payload.model_copy(
         update={
             "snapshot_warning": snapshot_warning,
-            "data_quality": "stale" if stale else payload.data_quality,
-            "data_quality_text": "优先榜使用最近一次缓存，后台正在刷新。" if stale else payload.data_quality_text,
+            "data_quality": "stale" if effective_stale else payload.data_quality,
+            "data_quality_text": "优先榜使用最近一次缓存，后台正在刷新。" if effective_stale else payload.data_quality_text,
             "data_quality_tags": tags,
-            "stale": stale,
-            "stale_reason": "cache_stale_background_refresh" if stale else "",
+            "stale": effective_stale,
+            "stale_reason": payload.stale_reason
+            or ("当前优先榜使用最近一次缓存，后台正在刷新；仅供复盘，不作为今日观察。" if effective_stale else ""),
             "refresh_queued": True,
             "read_path": payload.read_path or "priority_board_cached_background_refresh",
         }
@@ -549,7 +551,7 @@ def _mark_latest_successful_snapshot_queued(payload: LowBuyPriorityBoardResponse
             "data_quality_text": "优先榜正在后台刷新，当前展示上次可用榜单。",
             "data_quality_tags": tags,
             "stale": True,
-            "stale_reason": "latest_successful_snapshot_fallback",
+            "stale_reason": "优先榜正在后台刷新，当前展示上次可用榜单；仅供复盘，不作为今日观察。",
             "refresh_queued": True,
             "read_path": payload.read_path or "priority_board_latest_successful_snapshot",
         }
@@ -596,7 +598,7 @@ def _empty_priority_board_response(
         data_quality_text="优先榜后台刷新中，暂无可用快照。",
         data_quality_tags=["refresh_queued", "cache_empty"],
         stale=True,
-        stale_reason="cache_empty_background_refresh",
+        stale_reason="优先榜正在后台刷新，当前暂无可用榜单；请等待最新交易日快照生成。",
         refresh_queued=True,
         read_path="priority_board_empty_background_refresh",
         items=[],

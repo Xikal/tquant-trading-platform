@@ -256,6 +256,14 @@ export const MonitorActionPage = memo(function MonitorActionPage({
         {priorityNotice ? (
           <Callout title={priorityNotice.title} detail={priorityNotice.detail} tone={priorityNotice.tone === "danger" ? "down" : "warn"} compact />
         ) : null}
+        {priorityBoard?.stale ? (
+          <Callout
+            title="优先榜快照已过期"
+            detail={priorityBoard.stale_reason || priorityBoard.snapshot_warning || "当前只展示最近可用榜单，仅供复盘。"}
+            tone="warn"
+            compact
+          />
+        ) : null}
         {shouldShowPrioritySnapshotWarning(priorityBoard, priorityCards.length) ? <Callout title={priorityBoard?.snapshot_warning} tone="warn" compact /> : null}
         <FamilyStrip priorityBoard={priorityBoard} />
         <VirtualCardList

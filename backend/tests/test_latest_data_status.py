@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, datetime
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -65,12 +65,56 @@ def test_publish_latest_trade_date_succeeds_after_beijing_post_close_fetch(monke
     assert payload["daily_bar_freshness_status"] == "post_close_complete"
 
 
-def _seed_daily_bars(db, *, fetch_time: str) -> None:  # noqa: ANN001
+def test_expected_trade_date_uses_calendar_not_stale_local_history(monkeypatch) -> None:
+    db = _db()
+    _seed_daily_bars(db, trade_date=date(2026, 5, 29), fetch_time="2026-05-29T15:31:00")
+    monkeypatch.setattr(
+        status_module,
+        "beijing_now",
+        lambda: datetime(2026, 6, 6, 10, 0, 0),
+    )
+
+    payload = status_module.latest_data_status(db, strategies=[])
+
+    assert payload["expected_trade_date"] == "2026-06-05"
+    assert payload["calendar_expected_trade_date"] == "2026-06-05"
+    assert payload["local_latest_trade_date"] == "2026-05-29"
+    assert payload["staleness_trade_days"] >= 1
+    assert payload["local_staleness_trade_days"] >= 1
+    assert payload["daily_bar_count"] == 0
+
+
+def test_trade_day_gap_uses_calendar_when_local_history_is_partial() -> None:
+    db = _db()
+    _seed_one_daily_bar(db, trade_date=date(2026, 6, 1))
+
+    gap = status_module.trade_day_gap(db, "2026-05-29", "2026-06-05")
+
+    assert gap == 5
+
+
+def _seed_one_daily_bar(db, *, trade_date: date) -> None:  # noqa: ANN001
+    db.add(
+        DailyBarSnapshot(
+            symbol="000001",
+            trade_date=trade_date,
+            close_price=10,
+            pre_close=9.9,
+            volume=1000,
+            amount=10000,
+            pct_chg=1.0,
+            fetch_time=f"{trade_date.isoformat()}T15:31:00",
+        )
+    )
+    db.commit()
+
+
+def _seed_daily_bars(db, *, fetch_time: str, trade_date: date = date(2026, 6, 3)) -> None:  # noqa: ANN001
     for index in range(status_module.MIN_STOCK_DAILY_BARS):
         db.add(
             DailyBarSnapshot(
                 symbol=f"{index:06d}",
-                trade_date=date(2026, 6, 3),
+                trade_date=trade_date,
                 close_price=10,
                 pre_close=9.9,
                 volume=1000,

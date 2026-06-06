@@ -22,6 +22,7 @@ from app.services.low_buy.performance import LowBuyPerformanceMixin
 from app.services.low_buy.pool import LowBuyPoolMixin
 from app.services.low_buy.priority_snapshot import build_priority_base_snapshot
 from app.services.low_buy.results import LowBuyResultStoreMixin
+from app.services.low_buy.screening_read import screen_read_path
 from app.services.low_buy.shared import (
     LOW_BUY_PERFORMANCE_SNAPSHOT_VERSION,
     LOW_BUY_RESULT_VERSION,
@@ -273,6 +274,64 @@ class _RepairingResultService(LowBuyResultStoreMixin):
         except Exception:
             return {}
         return payload if isinstance(payload, dict) else {}
+
+
+class _ScreenReadFallbackService:
+    def __init__(self, fallback_payload: LowBuyScreenerResponse) -> None:
+        self.fallback_payload = fallback_payload
+        self.loaded_cached_dates: list[str] = []
+        self.loaded_fallback_dates: list[str] = []
+
+    @staticmethod
+    def _get_recent_trade_dates(count: int) -> list[str]:  # noqa: ARG004
+        return ["2026-05-29", "2026-06-01", "2026-06-05"]
+
+    def _load_cached_full_result(self, db, strategy: str, latest_trade_date: str, limit: int, include_history: bool):  # noqa: ARG002
+        self.loaded_cached_dates.append(latest_trade_date)
+        return None
+
+    def _load_latest_materialized_full_result_on_or_before(
+        self,
+        db,
+        strategy: str,
+        latest_trade_date: str,
+        limit: int,
+        include_history: bool,
+    ):  # noqa: ARG002
+        self.loaded_fallback_dates.append(latest_trade_date)
+        return self.fallback_payload.model_copy(deep=True)
+
+    @staticmethod
+    def _is_full_scan_running(strategy: str, latest_trade_date: str, limit: int, include_history: bool) -> bool:  # noqa: ARG004
+        return False
+
+    @staticmethod
+    def _attach_strategy_performance(db, payload: LowBuyScreenerResponse, build_if_missing: bool):  # noqa: ARG002
+        return payload
+
+    @staticmethod
+    def _attach_close_review_snapshot(db, payload: LowBuyScreenerResponse, review_trade_date: str, build_if_missing: bool):  # noqa: ARG002
+        return payload
+
+    @staticmethod
+    def _load_strategy_performance_snapshot(db, strategy: str, latest_trade_date: str):  # noqa: ARG002
+        return None
+
+    @staticmethod
+    def _empty_strategy_performance(target_profit_pct: float, lookback_days: int, note: str):  # noqa: ARG002
+        return _performance()
+
+    @staticmethod
+    def _load_stock_profit_target_pct(db) -> float:  # noqa: ARG002
+        return 3.0
+
+    @staticmethod
+    def _get_playbook(strategy: str):  # noqa: ARG002
+        return None
+
+    @staticmethod
+    def _resolve_full_scan_limit(scan_limit: int) -> int:
+        return scan_limit
 
 
 class LowBuyReadPathTests(unittest.TestCase):
@@ -540,6 +599,38 @@ class LowBuyReadPathTests(unittest.TestCase):
         self.assertEqual(snapshot.latest_trade_date, "")
         self.assertEqual(service.loaded, [])
         self.assertLessEqual(len(statements), 3)
+
+    def test_screen_read_path_returns_stale_materialized_snapshot_when_latest_unpublished(self) -> None:
+        fallback = _payload(_candidate(strategy_key="first_board", strategy_title="首板回调")).model_copy(
+            update={
+                "strategy_key": "first_board",
+                "strategy_title": "首板回调",
+                "latest_trade_date": "2026-05-29",
+                "requested_mode": "full",
+                "response_mode": "full",
+                "full_scan_ready": True,
+                "full_scan_in_progress": False,
+            }
+        )
+        service = _ScreenReadFallbackService(fallback)
+
+        with self.Session() as db:
+            response = screen_read_path(
+                service,
+                db,
+                strategy="first_board",
+                limit=16,
+                include_history=False,
+                scan_mode="quick",
+            )
+
+        self.assertEqual(service.loaded_cached_dates, ["2026-06-05"])
+        self.assertEqual(service.loaded_fallback_dates, ["2026-06-05"])
+        self.assertEqual(response.latest_trade_date, "2026-05-29")
+        self.assertTrue(response.stale)
+        self.assertIn("2026-05-29", response.stale_reason)
+        self.assertIn("2026-06-05", response.stale_reason)
+        self.assertIn("仅供复盘", response.snapshot_warning)
 
     def test_load_latest_materialized_full_result_on_or_before_ignores_newer_incomplete_date(self) -> None:
         service = _RepairingResultService(repaired_payload=_payload(_candidate()))

@@ -90,6 +90,9 @@ export interface LowBuyScreenerResult {
   response_mode: "quick" | "full";
   as_of_date: string;
   latest_trade_date: string;
+  snapshot_warning?: string;
+  stale?: boolean;
+  stale_reason?: string;
   pool_size: number;
   scanned_count: number;
   matched_count: number;

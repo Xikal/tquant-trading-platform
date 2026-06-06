@@ -148,6 +148,9 @@ export function shouldShowPrioritySnapshotWarning(
   visibleCount: number,
 ): boolean {
   const warning = priorityBoard?.snapshot_warning?.trim() ?? "";
+  if (priorityBoard?.stale) {
+    return false;
+  }
   if (!warning || visibleCount <= 0) {
     return false;
   }

@@ -68,5 +68,7 @@ class PriorityBaseSnapshot:
     updated_at: str
     candidates: list[PriorityCandidate]
     market_context: PriorityMarketContext
+    expected_trade_date: str = ""
+    staleness_trade_days: int = 0
     missing_strategies: list[str] = field(default_factory=list)
     stale_strategies: list[str] = field(default_factory=list)

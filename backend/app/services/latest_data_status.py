@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from datetime import date, datetime, time as dt_time
+from datetime import date, datetime, time as dt_time, timedelta
 from typing import Any
 
 from sqlalchemy import func, select
@@ -11,7 +11,7 @@ from app.core.timezone import beijing_now, beijing_now_string
 from app.models.entities import DailyBarSnapshot, SystemSetting
 from app.repositories.low_buy import DailyHistoryRepository, LowBuyResultRepository
 from app.services.low_buy.strategy_policy import PRODUCTION_PRIORITY_STRATEGIES
-from app.services.market.trading_calendar import is_a_share_trading_day
+from app.services.market.trading_calendar import is_a_share_trading_day, last_a_share_trading_day, resolved_trading_day
 
 SETTING_KEY = "low_buy.latest_data"
 MIN_STOCK_DAILY_BARS = 4500
@@ -20,19 +20,27 @@ POST_CLOSE_FETCH_AFTER = dt_time(hour=15, minute=1)
 
 
 def expected_low_buy_trade_date(db: Session) -> str:
-    now = beijing_now()
-    today = now.date()
-    today_iso = today.isoformat()
+    return calendar_expected_low_buy_trade_date()
+
+
+def calendar_expected_low_buy_trade_date(now: datetime | None = None) -> str:
+    current = now or beijing_now()
+    today = current.date()
+    if is_a_share_trading_day(today) and current.time() >= PUBLISH_AFTER:
+        return today.isoformat()
+    return last_a_share_trading_day(today - timedelta(days=1)).isoformat()
+
+
+def local_latest_low_buy_trade_date(db: Session) -> str:
+    today_iso = beijing_now().date().isoformat()
     local_dates = DailyHistoryRepository(db).fetch_recent_trade_dates(20)
-    if is_a_share_trading_day(today) and now.time() >= PUBLISH_AFTER:
-        return today_iso
-    previous_dates = [item for item in local_dates if item < today_iso]
-    if previous_dates:
-        return previous_dates[-1]
-    return local_dates[-1] if local_dates else today_iso
+    available_dates = [item for item in local_dates if item <= today_iso]
+    return available_dates[-1] if available_dates else ""
 
 
 def latest_data_status(db: Session, strategies: list[str] | None = None) -> dict[str, Any]:
+    calendar_expected = calendar_expected_low_buy_trade_date()
+    local_latest = local_latest_low_buy_trade_date(db)
     expected = expected_low_buy_trade_date(db)
     required = _required_strategies(strategies)
     published = _read_state(db)
@@ -40,12 +48,18 @@ def latest_data_status(db: Session, strategies: list[str] | None = None) -> dict
     daily_count = int(freshness.get("daily_bar_count") or 0)
     missing = _missing_strategy_snapshots(db, expected, required)
     ready = bool(expected and _daily_bars_ready(freshness) and not missing)
+    published_trade_date = str(published.get("published_trade_date") or "")
+    visible_trade_date = published_trade_date or local_latest
     status = "success" if ready else "pending"
     if ready and published.get("published_trade_date") == expected and published.get("status") == "success":
         status = "success"
     return {
         "expected_trade_date": expected,
-        "published_trade_date": str(published.get("published_trade_date") or ""),
+        "calendar_expected_trade_date": calendar_expected,
+        "local_latest_trade_date": local_latest,
+        "published_trade_date": published_trade_date,
+        "staleness_trade_days": trade_day_gap(db, visible_trade_date, calendar_expected),
+        "local_staleness_trade_days": trade_day_gap(db, local_latest, calendar_expected),
         "status": status,
         "daily_bar_count": daily_count,
         "min_daily_bar_count": MIN_STOCK_DAILY_BARS,
@@ -69,15 +83,22 @@ def published_low_buy_trade_date(db: Session, strategies: list[str] | None = Non
 
 
 def publish_latest_trade_date_if_ready(db: Session, strategies: list[str] | None = None) -> dict[str, Any]:
+    calendar_expected = calendar_expected_low_buy_trade_date()
+    local_latest = local_latest_low_buy_trade_date(db)
     expected = expected_low_buy_trade_date(db)
     required = _required_strategies(strategies)
     freshness = daily_bar_freshness_status(db, expected) if expected else _empty_daily_bar_freshness("")
     daily_count = int(freshness.get("daily_bar_count") or 0)
     missing = _missing_strategy_snapshots(db, expected, required)
     ready = bool(expected and _daily_bars_ready(freshness) and not missing)
+    visible_trade_date = expected if ready else local_latest
     payload = {
         "expected_trade_date": expected,
+        "calendar_expected_trade_date": calendar_expected,
+        "local_latest_trade_date": local_latest,
         "published_trade_date": expected if ready else "",
+        "staleness_trade_days": trade_day_gap(db, visible_trade_date, calendar_expected),
+        "local_staleness_trade_days": trade_day_gap(db, local_latest, calendar_expected),
         "status": "success" if ready else "pending",
         "daily_bar_count": daily_count,
         "min_daily_bar_count": MIN_STOCK_DAILY_BARS,
@@ -92,6 +113,26 @@ def publish_latest_trade_date_if_ready(db: Session, strategies: list[str] | None
     }
     _write_state(db, payload)
     return payload
+
+
+def trade_day_gap(db: Session, from_trade_date: str, to_trade_date: str) -> int:
+    start = str(from_trade_date or "").strip()
+    end = str(to_trade_date or "").strip()
+    if not start or not end or start >= end:
+        return 0
+    try:
+        current = date.fromisoformat(start[:10]) + timedelta(days=1)
+        target = date.fromisoformat(end[:10])
+    except ValueError:
+        return 0
+    local_dates = DailyHistoryRepository(db).fetch_recent_trade_dates(260)
+    local_count = len([item for item in local_dates if start < item <= end])
+    calendar_count = 0
+    while current <= target:
+        if resolved_trading_day(db, current):
+            calendar_count += 1
+        current += timedelta(days=1)
+    return max(local_count, calendar_count)
 
 
 def daily_bar_freshness_status(db: Session, trade_date: str) -> dict[str, Any]:
