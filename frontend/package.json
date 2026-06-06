@@ -23,6 +23,7 @@
     "preview": "vite preview",
     "test": "vitest run",
     "smoke:monitor-bff": "node ./scripts/smoke-monitor-bff.mjs",
+    "smoke:core-workflow": "node ./scripts/smoke-core-workflow.mjs",
     "cap:sync": "npm run build:native && npx cap sync",
     "cap:ios": "npm run cap:sync && npx cap open ios",
     "cap:android": "npm run cap:sync && npx cap open android",

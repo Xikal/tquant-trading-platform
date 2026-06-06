@@ -88,6 +88,24 @@ Scope: `frontend/` only
 - build: pass (`npm run build`)
 - page behavior: Settings API calls, save handlers, feature-flag actions, and Paper UI store/event handlers remain in page components; only pure derived state moved to helpers.
 
+### Batch 5: Core Workflow Browser Smoke
+
+- files changed:
+  - `frontend/scripts/smoke-core-workflow.mjs`
+  - `frontend/scripts/smoke-core-workflow-fixtures.mjs`
+  - `frontend/scripts/smoke-core-workflow-payloads.mjs`
+  - `frontend/package.json`
+- script check: pass (`node --check scripts/smoke-core-workflow.mjs && node --check scripts/smoke-core-workflow-fixtures.mjs && node --check scripts/smoke-core-workflow-payloads.mjs`)
+- build: pass (`npm run build`)
+- core workflow smoke normal: pass (`FRONTEND_SMOKE_URL=http://127.0.0.1:4173 npm run smoke:core-workflow`)
+- core workflow smoke stale: pass (`CORE_WORKFLOW_SMOKE_SCENARIO=stale FRONTEND_SMOKE_URL=http://127.0.0.1:4173 npm run smoke:core-workflow`)
+- monitor BFF smoke: pass (`npm run smoke:monitor-bff`)
+- typecheck: pass (`npm run typecheck`)
+- lint: pass (`npm run lint`)
+- full vitest: pass (`npm test -- --run`, 85 files / 298 tests)
+- route coverage: `/monitor -> /playbook -> /backtest -> /paper -> /settings` direct-entry workflow renders in one authenticated browser session; stale monitor smoke asserts visible `仅供复盘` / `数据已过期` copy.
+
 ## Residual Risk
 
-- Batch 5 still needs to add browser-level smoke coverage for the core old frontend workflow.
+- No production deployment was run in this pass.
+- The smoke uses mocked API payloads; live backend contract drift still needs the existing online smoke/deployment gate before production rollout.
