@@ -120,6 +120,15 @@ def test_after_close_enqueues_a_key_level_materialization_with_stable_idempotenc
     monkeypatch.setattr(close_refresh, "expected_low_buy_trade_date", lambda _db: "2026-05-18")
     monkeypatch.setattr(close_refresh, "DailyHistoryRepository", _FakeRepo)
     monkeypatch.setattr(close_refresh, "RuntimeTaskQueue", _FakeQueue)
+    monkeypatch.setattr(
+        close_refresh,
+        "daily_bar_freshness_status",
+        lambda _db, _trade_date: {
+            "daily_bar_count": close_refresh.MIN_STOCK_DAILY_BARS,
+            "post_close_daily_bar_count": close_refresh.MIN_STOCK_DAILY_BARS,
+            "daily_bar_freshness_status": "post_close_complete",
+        },
+    )
     monkeypatch.setattr(close_refresh, "latest_data_status", lambda _db, strategies: {"missing_strategies": []})
     monkeypatch.setattr(
         close_refresh,
