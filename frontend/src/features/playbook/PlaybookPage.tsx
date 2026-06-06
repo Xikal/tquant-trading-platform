@@ -5,6 +5,7 @@ import { Callout, EmptyState, InfoPill, MetricGrid, PanelTitle } from "../worksp
 import { WorkspacePageIntro } from "../workspace-shared/WorkspacePageIntro";
 import { RitualFortuneStrip, RitualLuckyDraw, RitualSignalSeal } from "../ritual-ui";
 import { WEB_PLAYBOOK_TABS } from "../workspace-shared/workspaceConstants";
+import { buildDataFreshnessView } from "../workspace-shared/dataFreshnessViewModel";
 import { candidateToCard } from "../workspace-shared/workspaceViewModels";
 import { formatNumber, formatPct, strategyLabel, toneFromChange } from "../workspace-shared/workspaceFormatters";
 import type { MetricItem, StockCardView } from "../workspace-shared/workspaceTypes";
@@ -64,6 +65,13 @@ export function PlaybookPage({
   const hitRateTone: MetricItem["tone"] = hasInsufficientData ? "neutral" : "up";
   const sampleReason = sampleInsufficientReason(playbook?.strategy_key || strategy, playbook);
   const marketAttributionText = summarizeMarketAttribution(playbook?.performance?.market_state_attribution ?? []);
+  const freshness = buildDataFreshnessView({
+    stale: playbook?.stale,
+    staleReason: playbook?.stale_reason || playbook?.snapshot_warning,
+    dataQuality: playbook?.data_quality,
+    latestTradeDate: playbook?.latest_trade_date,
+    expectedTradeDate: playbook?.as_of_date,
+  });
   return (
     <section className="tq-playbook-page">
       <div className="panel tq-playbook-page__hero">
@@ -97,9 +105,9 @@ export function PlaybookPage({
         </Flex>
         {playbook?.stale ? (
           <Callout
-            title="推荐快照已过期"
-            detail={playbook.stale_reason || playbook.snapshot_warning || "当前只展示最近可用快照，仅供复盘。"}
-            tone="warn"
+            title={freshness.title}
+            detail={freshness.detail}
+            tone={freshness.tone === "down" ? "down" : "warn"}
             compact
           />
         ) : playbook?.snapshot_warning ? (

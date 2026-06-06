@@ -418,7 +418,7 @@ describe("PlaybookPage", () => {
     expect(html).toContain("观察：旧观察");
     expect(html).toContain("600456");
     expect(html).toContain("当前无确认买入");
-    expect(html).toContain("推荐快照已过期");
+    expect(html).toContain("数据已过期，仅供复盘");
     expect(html).toContain("仅供复盘");
   });
 });

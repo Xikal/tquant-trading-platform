@@ -141,7 +141,7 @@ describe("MonitorActionPage", () => {
       />,
     );
 
-    expect(html).toContain("优先榜快照已过期");
+    expect(html).toContain("数据已过期，仅供复盘");
     expect(html).toContain("仅供复盘");
     expect(html).toContain("今日无票");
   });

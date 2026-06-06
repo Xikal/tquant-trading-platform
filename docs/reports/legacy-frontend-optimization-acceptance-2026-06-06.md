@@ -40,6 +40,23 @@ Scope: `frontend/` only
 - monitor BFF smoke auth: pass
 - note: normal smoke now uses the current nested `monitor_snapshot.priority_board` BFF contract with a populated board, so the first-screen path no longer issues the legacy `/api/screeners/low-buy/priority-board` fallback in the healthy aggregate case.
 
+### Batch 2: Unified Freshness And Degraded-State UI
+
+- files changed:
+  - `frontend/src/features/workspace-shared/dataFreshnessViewModel.ts`
+  - `frontend/src/features/workspace-shared/dataFreshnessViewModel.test.ts`
+  - `frontend/src/features/monitor/MonitorActionPage.tsx`
+  - `frontend/src/features/monitor/MonitorActionPage.test.tsx`
+  - `frontend/src/features/playbook/PlaybookPage.tsx`
+  - `frontend/src/features/trading-workspace/PlaybookPage.test.tsx`
+  - `frontend/src/features/settings/LatestDataStatusCard.tsx`
+- focused tests: pass (`npm test -- --run src/features/workspace-shared/dataFreshnessViewModel.test.ts src/features/monitor/MonitorActionPage.test.tsx src/features/trading-workspace/PlaybookPage.test.tsx src/features/settings/SettingsPage.test.tsx`, 4 files / 19 tests)
+- typecheck: pass (`npm run typecheck`)
+- lint: pass (`npm run lint`)
+- full vitest: pass (`npm test -- --run`, 83 files / 290 tests)
+- build: pass (`npm run build`)
+- stale copy: monitor priority board and playbook stale surfaces now share `数据已过期，仅供复盘` while preserving the backend stale reason.
+
 ## Residual Risk
 
-- Batch 2 still needs to unify stale/degraded/waiting copy across monitor, playbook, and latest-data settings surfaces.
+- Batch 3 still needs to add route-specific bundle budget guards so heavy lazy route chunks cannot be accidentally classified as first-screen JS.

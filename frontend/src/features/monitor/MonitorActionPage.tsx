@@ -31,6 +31,7 @@ import {
 import { MarketStateGatePanel } from "./MarketStateGatePanel";
 import { RiskFilterBadges } from "./RiskFilterBadges";
 import { Callout, ContextRow, EmptyState, FamilyStrip, InfoPill, PanelTitle } from "../workspace-shared/WorkspaceComponents";
+import { buildDataFreshnessView } from "../workspace-shared/dataFreshnessViewModel";
 import { formatPct, riskLevelText, shortTime } from "../workspace-shared/workspaceFormatters";
 import type { StockCardView, WatchDraft } from "../workspace-shared/workspaceTypes";
 import {
@@ -121,6 +122,13 @@ export const MonitorActionPage = memo(function MonitorActionPage({
   const screens = Grid.useBreakpoint();
   const primaryAction = useMemo(() => resolveTodayAction(watchCards, priorityCards, priorityBoard), [watchCards, priorityCards, priorityBoard]);
   const priorityNotice = useMemo(() => buildPriorityNotice(priorityBoard, priorityCards.length), [priorityBoard, priorityCards.length]);
+  const priorityFreshness = useMemo(() => buildDataFreshnessView({
+    stale: priorityBoard?.stale,
+    staleReason: priorityBoard?.stale_reason || priorityBoard?.snapshot_warning,
+    dataQuality: priorityBoard?.data_quality,
+    latestTradeDate: priorityBoard?.latest_trade_date,
+    expectedTradeDate: priorityBoard?.latest_available_trade_date || priorityBoard?.as_of_date,
+  }), [priorityBoard]);
   const immediateCount = priorityBoard?.immediate_count ?? 0;
   const observeCount = (priorityBoard?.focus_count ?? 0) + (priorityBoard?.track_count ?? 0);
   const priorityListInitializedRef = useRef(false);
@@ -258,9 +266,9 @@ export const MonitorActionPage = memo(function MonitorActionPage({
         ) : null}
         {priorityBoard?.stale ? (
           <Callout
-            title="优先榜快照已过期"
-            detail={priorityBoard.stale_reason || priorityBoard.snapshot_warning || "当前只展示最近可用榜单，仅供复盘。"}
-            tone="warn"
+            title={priorityFreshness.title}
+            detail={priorityFreshness.detail}
+            tone={priorityFreshness.tone === "down" ? "down" : "warn"}
             compact
           />
         ) : null}
