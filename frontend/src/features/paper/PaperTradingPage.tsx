@@ -17,7 +17,7 @@ import type {
   RiskEventItem,
 } from "../../types";
 import type { CSSProperties } from "react";
-import { memo, useMemo } from "react";
+import { memo } from "react";
 import { Col, Row, Space } from "antd";
 import { PaperDetailTabs, reviewReportCount } from "./PaperDetailTabs";
 import { HoldingDisciplinePanel } from "./HoldingDisciplinePanel";
@@ -25,7 +25,7 @@ import { PaperConclusionBar } from "./PaperConclusionBar";
 import { PaperMechaActionPanel } from "./PaperMechaActionPanel";
 import { PaperTodayActionPanel } from "./PaperTodayActionPanel";
 import { TTradeAttributionPanel } from "./TTradeAttributionPanel";
-import { paperAccountNeedsResume } from "./paperTradingStatus";
+import { buildPaperTradingPageStatus } from "./paperTradingStatus";
 import { useHoldingDiscipline, useTTradeAttribution } from "./queries";
 import {
   OrderEntryModal,
@@ -113,29 +113,18 @@ export const PaperTradingPage = memo(function PaperTradingPage({
   onDeleteTradeTag,
   tradingExperienceFlags = {},
 }: PaperTradingPageProps) {
-  const needsResumeOrder = paperAccountNeedsResume(account, autoTradingStatus);
-  const paused = needsResumeOrder;
-  const paperLoading = loading === "paper";
-  const orderLoading = loading === "paper-order";
-  const autoTradingRunning = Boolean(autoTradingStatus?.running);
+  const pageStatus = buildPaperTradingPageStatus({
+    account,
+    autoTradingStatus,
+    trades,
+    loading,
+    tradingExperienceFlags,
+  });
   const orderModalOpen = usePaperUiStore((state) => state.orderModalOpen);
   const setOrderModalOpen = usePaperUiStore((state) => state.setOrderModalOpen);
   const setDetailGroup = usePaperUiStore((state) => state.setDetailGroup);
   const setDetailTab = usePaperUiStore((state) => state.setDetailTab);
-  const flags = tradingExperienceFlags;
-  const holdingEnabled = Boolean(flags.trading_experience_suite_enabled && flags.holding_discipline_assistant_enabled);
-  const tTradeEnabled = Boolean(flags.trading_experience_suite_enabled && flags.t_trade_discipline_enabled);
   const paperReviewReportCount = reviewReportCount(performanceDashboard);
-  const lastOrderAction = useMemo(() => {
-    const latestTrade = trades[0];
-    if (!latestTrade) return null;
-    const timestamp = latestTrade.trade_time;
-    return {
-      type: latestTrade.side === "sell" ? "sell" as const : "buy" as const,
-      symbol: latestTrade.symbol,
-      timestamp: Date.parse(timestamp),
-    };
-  }, [trades]);
 
   async function submitOrderFromModal() {
     await Promise.resolve(onSubmitOrder());
@@ -154,15 +143,15 @@ export const PaperTradingPage = memo(function PaperTradingPage({
           <PaperConclusionBar
             account={account}
             autoTradingStatus={autoTradingStatus}
-            loading={paperLoading || orderLoading}
-            canResumeOrder={needsResumeOrder}
+            loading={pageStatus.paperLoading || pageStatus.orderLoading}
+            canResumeOrder={pageStatus.needsResumeOrder}
             reviewReportCount={paperReviewReportCount}
             onTogglePause={onTogglePause}
             onOpenReviewHistory={openReviewHistory}
             positions={(
               <PaperPositionsPanel
                 positions={positions}
-                loading={paperLoading}
+                loading={pageStatus.paperLoading}
                 embedded
               />
             )}
@@ -174,8 +163,8 @@ export const PaperTradingPage = memo(function PaperTradingPage({
               autoTradingStatus={autoTradingStatus}
               autoTradingRuns={autoTradingRuns}
               riskEvents={riskEvents}
-              paused={paused}
-              lastOrderAction={Number.isFinite(lastOrderAction?.timestamp) ? lastOrderAction : null}
+              paused={pageStatus.paused}
+              lastOrderAction={pageStatus.lastOrderAction}
               monitor={(
                 <PaperTodayActionPanel
                   autoTradingStatus={autoTradingStatus}
@@ -192,16 +181,16 @@ export const PaperTradingPage = memo(function PaperTradingPage({
         <OrderEntryModal
           draft={draft}
           setDraft={setDraft}
-          paused={paused}
-          autoTradingRunning={autoTradingRunning}
-          loading={orderLoading}
+          paused={pageStatus.paused}
+          autoTradingRunning={pageStatus.autoTradingRunning}
+          loading={pageStatus.orderLoading}
           positions={positions}
           onClose={() => setOrderModalOpen(false)}
           onSubmitOrder={submitOrderFromModal}
         />
       ) : null}
-      {holdingEnabled || tTradeEnabled ? (
-        <PaperTradingExperiencePanels accountId={account?.id} holdingEnabled={holdingEnabled} tTradeEnabled={tTradeEnabled} />
+      {pageStatus.holdingEnabled || pageStatus.tTradeEnabled ? (
+        <PaperTradingExperiencePanels accountId={account?.id} holdingEnabled={pageStatus.holdingEnabled} tTradeEnabled={pageStatus.tTradeEnabled} />
       ) : null}
       <PaperDetailTabs
         positions={positions}
@@ -221,7 +210,7 @@ export const PaperTradingPage = memo(function PaperTradingPage({
         autoTradingRuns={autoTradingRuns}
         ledgerRepairStatus={ledgerRepairStatus}
         canManageReconcile={canManageReconcile}
-        loading={paperLoading || loading === "paper-ledger-repair"}
+        loading={pageStatus.paperLoading || loading === "paper-ledger-repair"}
         onRefreshLedgerRepair={onRefreshLedgerRepair}
         onApplyLedgerRepair={onApplyLedgerRepair}
         onAddTradeTag={onAddTradeTag}

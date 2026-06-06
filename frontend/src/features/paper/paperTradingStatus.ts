@@ -1,4 +1,4 @@
-import type { PaperAccount, PaperAutoTradingStatus } from "../../types";
+import type { PaperAccount, PaperAutoTradingStatus, PaperTrade } from "../../types";
 import type { MetricItem } from "../workspace-shared/workspaceTypes";
 
 export function resolveAutoManagedStatus(
@@ -42,4 +42,50 @@ export function paperAccountNeedsResume(
   return account?.status === "paused"
     || autoTradingStatus?.account_status === "paused"
     || Boolean(String(autoTradingStatus?.blocking_reason || "").trim());
+}
+
+export interface PaperTradingPageStatusInput {
+  account: PaperAccount | null;
+  autoTradingStatus: PaperAutoTradingStatus | null;
+  trades: PaperTrade[];
+  loading: string;
+  tradingExperienceFlags?: Record<string, boolean>;
+}
+
+export interface PaperTradingPageStatus {
+  needsResumeOrder: boolean;
+  paused: boolean;
+  paperLoading: boolean;
+  orderLoading: boolean;
+  autoTradingRunning: boolean;
+  holdingEnabled: boolean;
+  tTradeEnabled: boolean;
+  lastOrderAction: { type: "buy" | "sell"; symbol: string; timestamp: number } | null;
+}
+
+export function buildPaperTradingPageStatus(input: PaperTradingPageStatusInput): PaperTradingPageStatus {
+  const flags = input.tradingExperienceFlags ?? {};
+  const needsResumeOrder = paperAccountNeedsResume(input.account, input.autoTradingStatus);
+  return {
+    needsResumeOrder,
+    paused: needsResumeOrder,
+    paperLoading: input.loading === "paper",
+    orderLoading: input.loading === "paper-order",
+    autoTradingRunning: Boolean(input.autoTradingStatus?.running),
+    holdingEnabled: Boolean(flags.trading_experience_suite_enabled && flags.holding_discipline_assistant_enabled),
+    tTradeEnabled: Boolean(flags.trading_experience_suite_enabled && flags.t_trade_discipline_enabled),
+    lastOrderAction: buildLastOrderAction(input.trades),
+  };
+}
+
+function buildLastOrderAction(trades: PaperTrade[]): PaperTradingPageStatus["lastOrderAction"] {
+  const latestTrade = trades[0];
+  if (!latestTrade) return null;
+  const timestamp = Date.parse(latestTrade.trade_time);
+  if (!Number.isFinite(timestamp)) return null;
+  return {
+    type: latestTrade.side === "sell" ? "sell" : "buy",
+    symbol: latestTrade.symbol,
+    timestamp,
+  };
 }

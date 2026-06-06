@@ -38,11 +38,11 @@ import {
   buildSettingsDirtyState,
   integerFieldError,
   percentFieldError,
-  sameStringSet,
   sectionError,
   type SettingsSectionKey,
   urlFieldError,
 } from "./SettingsPage.helpers";
+import { buildSettingsPageViewModel } from "./SettingsPage.viewModel";
 import type { SettingsDraft } from "../workspace-shared/workspaceTypes";
 import { SettingsLayout } from "./SettingsLayout";
 import styles from "./SettingsLayout.module.css";
@@ -125,35 +125,23 @@ export function SettingsPage({
   const dailyLossError = percentFieldError(draft.risk_max_daily_loss_pct, "日内最大亏损");
   const pauseLossError = integerFieldError(draft.risk_pause_after_losses, "连亏暂停");
   const minProfitError = percentFieldError(draft.strategy_min_profit_pct, "最小收益");
-  const isAdmin = useMemo(() => currentUser.roles.some((role) => {
-    const normalized = role.trim().toLowerCase();
-    return normalized === "admin" || normalized === "administrator";
-  }), [currentUser.roles]);
-  const dirtyState = useMemo(() => buildSettingsDirtyState(settings, factorWeights, draft, factorDraft), [draft, factorDraft, factorWeights, settings]);
-  const sectorDirty = useMemo(() => !sameStringSet(sectorDraft, sectorExclusions?.excluded_sectors ?? []), [sectorDraft, sectorExclusions]);
-  const visibleDirtyCount = Number(dirtyState.risk) + (isAdmin ? Number(dirtyState.llm) + Number(dirtyState.data) + Number(dirtyState.factor) : 0);
-  const unsavedCount = visibleDirtyCount + (sectorDirty ? 1 : 0);
-  const filteredSectors = useMemo(() => {
-    const query = sectorQuery.trim().toLowerCase();
-    const sectors = sectorExclusions?.available_sectors ?? [];
-    if (!query) return sectors;
-    return sectors.filter((sector) => sector.toLowerCase().includes(query));
-  }, [sectorExclusions, sectorQuery]);
-  const settingsTabs = useMemo<SettingsTabItem[]>(() => {
-    const baseTabs: SettingsTabItem[] = [
-      { key: "account", label: "账户与安全", description: "安全与权限" },
-      { key: "trading", label: "交易偏好", description: "风控、行业、退出", dirty: dirtyState.risk || sectorDirty },
-    ];
-    if (!isAdmin) {
-      return baseTabs;
-    }
-    return [
-      ...baseTabs,
-      { key: "llm", label: "模型与因子", description: "DeepSeek、权重、ML", dirty: dirtyState.llm || dirtyState.factor, admin: true },
-      { key: "data", label: "数据与运行", description: "数据源、运行状态", dirty: dirtyState.data, admin: true },
-      { key: "governance", label: "诊断与审计", description: "治理、开关、审计", admin: true },
-    ];
-  }, [dirtyState.data, dirtyState.factor, dirtyState.llm, dirtyState.risk, isAdmin, sectorDirty]);
+  const {
+    isAdmin,
+    dirtyState,
+    sectorDirty,
+    unsavedCount,
+    filteredSectors,
+    settingsTabs,
+  } = useMemo(() => buildSettingsPageViewModel({
+    currentUser,
+    settings,
+    factorWeights,
+    draft,
+    factorDraft,
+    sectorDraft,
+    sectorQuery,
+    sectorExclusions,
+  }), [currentUser, draft, factorDraft, factorWeights, sectorDraft, sectorExclusions, sectorQuery, settings]);
 
   useEffect(() => {
     if (!settingsTabs.some((tab) => tab.key === activeTab)) {

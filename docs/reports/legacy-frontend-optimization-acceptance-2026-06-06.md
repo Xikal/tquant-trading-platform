@@ -72,6 +72,22 @@ Scope: `frontend/` only
 - analyze total_gzip_kb: 819.59
 - forbidden lazy/heavy route chunks in first-screen-js: guarded by `check-bundle-budget.mjs` for `BacktestPage-`, `PaperTradingPage-`, `SettingsPage-`, `DataConsolePage-`, `StrategyTrackingPage-`, and `echarts-`.
 
+### Batch 4: Settings And Paper Page View Models
+
+- files changed:
+  - `frontend/src/features/settings/SettingsPage.viewModel.ts`
+  - `frontend/src/features/settings/SettingsPage.viewModel.test.ts`
+  - `frontend/src/features/settings/SettingsPage.tsx`
+  - `frontend/src/features/paper/paperTradingStatus.ts`
+  - `frontend/src/features/paper/paperTradingStatus.test.ts`
+  - `frontend/src/features/paper/PaperTradingPage.tsx`
+- focused tests: pass (`npm test -- --run src/features/settings/SettingsPage.viewModel.test.ts src/features/settings/SettingsPage.test.tsx src/features/paper/paperTradingStatus.test.ts src/features/trading-workspace/PaperTradingPage.test.tsx`, 4 files / 21 tests)
+- typecheck: pass (`npm run typecheck`)
+- lint: pass (`npm run lint`)
+- full vitest: pass (`npm test -- --run`, 85 files / 298 tests)
+- build: pass (`npm run build`)
+- page behavior: Settings API calls, save handlers, feature-flag actions, and Paper UI store/event handlers remain in page components; only pure derived state moved to helpers.
+
 ## Residual Risk
 
-- Batch 4 still needs to slim settings/paper page view models without changing API calls or page behavior.
+- Batch 5 still needs to add browser-level smoke coverage for the core old frontend workflow.
