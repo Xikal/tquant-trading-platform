@@ -41,6 +41,36 @@ describe("checkBundleBudget", () => {
     expect(violations).toEqual([]);
   });
 
+  it("fails when a lazy route chunk is classified as first-screen JS", () => {
+    const violations = checkBundleBudget({
+      first_screen_js_gzip_kb: 300,
+      baseline_first_screen_js_gzip_kb: 400,
+      total_gzip_kb: 700,
+      assets: [
+        { file: "BacktestPage-demo.js", gzip_kb: 30, kind: "first-screen-js" },
+      ],
+    });
+
+    expect(violations).toEqual([
+      "BacktestPage-demo.js is a lazy/heavy route chunk but is classified as first-screen-js",
+    ]);
+  });
+
+  it("fails when chart chunks are pulled into first-screen JS", () => {
+    const violations = checkBundleBudget({
+      first_screen_js_gzip_kb: 300,
+      baseline_first_screen_js_gzip_kb: 400,
+      total_gzip_kb: 700,
+      assets: [
+        { file: "echarts-charts-demo.js", gzip_kb: 90, kind: "first-screen-js" },
+      ],
+    });
+
+    expect(violations).toEqual([
+      "echarts-charts-demo.js is a lazy/heavy route chunk but is classified as first-screen-js",
+    ]);
+  });
+
   it("computes budget summary from assets when explicit totals are missing", () => {
     const summary = summarizeBundleReport({
       assets: [

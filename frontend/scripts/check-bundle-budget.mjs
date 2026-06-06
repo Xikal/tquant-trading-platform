@@ -8,6 +8,14 @@ const FIRST_SCREEN_GZIP_LIMIT_KB = 350;
 const SINGLE_CHUNK_GZIP_LIMIT_KB = 110;
 const TOTAL_GZIP_LIMIT_KB = 820;
 const MIN_FIRST_SCREEN_REDUCTION_PCT = 20;
+const FORBIDDEN_FIRST_SCREEN_PREFIXES = [
+  "BacktestPage-",
+  "PaperTradingPage-",
+  "SettingsPage-",
+  "DataConsolePage-",
+  "StrategyTrackingPage-",
+  "echarts-",
+];
 
 async function main() {
   const report = await readBundleReport();
@@ -49,6 +57,9 @@ export function checkBundleBudget(report, allowlist = { chunks: {} }) {
   }
 
   for (const asset of summary.assets) {
+    if (isForbiddenFirstScreenAsset(asset)) {
+      violations.push(`${asset.file} is a lazy/heavy route chunk but is classified as first-screen-js`);
+    }
     if (!asset.file?.endsWith(".js") || asset.gzip_kb <= SINGLE_CHUNK_GZIP_LIMIT_KB) {
       continue;
     }
@@ -59,6 +70,11 @@ export function checkBundleBudget(report, allowlist = { chunks: {} }) {
   }
 
   return violations;
+}
+
+function isForbiddenFirstScreenAsset(asset) {
+  return asset.kind === "first-screen-js"
+    && FORBIDDEN_FIRST_SCREEN_PREFIXES.some((prefix) => asset.file?.startsWith(prefix));
 }
 
 export function summarizeBundleReport(report) {

@@ -57,6 +57,21 @@ Scope: `frontend/` only
 - build: pass (`npm run build`)
 - stale copy: monitor priority board and playbook stale surfaces now share `数据已过期，仅供复盘` while preserving the backend stale reason.
 
+### Batch 3: Route Bundle Budget Tightening
+
+- files changed:
+  - `frontend/scripts/check-bundle-budget.mjs`
+  - `frontend/scripts/check-bundle-budget.test.mjs`
+- route budget test: pass (`npm test -- --run scripts/check-bundle-budget.test.mjs`, 1 file / 6 tests)
+- build: pass (`npm run build`)
+- analyze: pass (`npm run analyze`)
+- typecheck: pass (`npm run typecheck`)
+- lint: pass (`npm run lint`)
+- full vitest: pass (`npm test -- --run`, 83 files / 292 tests)
+- analyze first_screen_js_gzip_kb: 318
+- analyze total_gzip_kb: 819.59
+- forbidden lazy/heavy route chunks in first-screen-js: guarded by `check-bundle-budget.mjs` for `BacktestPage-`, `PaperTradingPage-`, `SettingsPage-`, `DataConsolePage-`, `StrategyTrackingPage-`, and `echarts-`.
+
 ## Residual Risk
 
-- Batch 3 still needs to add route-specific bundle budget guards so heavy lazy route chunks cannot be accidentally classified as first-screen JS.
+- Batch 4 still needs to slim settings/paper page view models without changing API calls or page behavior.
