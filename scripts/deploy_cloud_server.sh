@@ -1190,6 +1190,28 @@ run_database_backup() {
   fi
   echo "db_migration:backup_ok"
 }
+publish_frontend_next() {
+  test -f frontend-next/dist/index.html
+  if test "${DEPLOY_COMPOSE_TOPOLOGY:-monolith}" = "separated"; then
+    sudo docker compose -f "$FRONTEND_COMPOSE_FILE" up -d --no-deps --force-recreate frontend-web
+    echo "frontend_next:separated_frontend_web"
+  elif sudo docker inspect tquant-app-mysql >/dev/null 2>&1; then
+    sudo docker exec -u root tquant-app-mysql sh -c 'rm -rf /app/frontend-next/dist && mkdir -p /app/frontend-next/dist'
+    sudo docker cp frontend-next/dist/. tquant-app-mysql:/app/frontend-next/dist/
+    sudo docker exec -u root tquant-app-mysql sh -c 'chmod -R a+rX /app/frontend-next/dist'
+    echo "frontend_next:monolith_compat"
+  else
+    echo "frontend_next:no_running_target" >&2
+    exit 1
+  fi
+  echo "frontend_next:updated"
+}
+refresh_gateway_if_present() {
+  if test "${DEPLOY_COMPOSE_TOPOLOGY:-monolith}" = "separated"; then
+    sudo docker compose -f "$FRONTEND_COMPOSE_FILE" up -d --no-deps --force-recreate gateway 2>/dev/null || true
+    echo "gateway:refreshed"
+  fi
+}
 
 cd /home/$CLOUD_USER
 PROJECT_PARENT=$(dirname "$CLOUD_PROJECT_DIR")

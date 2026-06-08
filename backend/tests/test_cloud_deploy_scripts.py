@@ -487,6 +487,7 @@ def test_combined_frontend_next_scope_publishes_dist_without_backend_build() -> 
     make_package = deploy_script.split("make_package() {", 1)[1].split(
         "fetch_remote_deploy_manifest() {", 1
     )[0]
+    package_branch = deploy_script.split('if ! cloud_ssh env \\', 2)[2]
     publish_function = deploy_script.split("publish_frontend_next() {", 1)[1].split(
         "refresh_gateway_if_present() {", 1
     )[0]
@@ -495,6 +496,8 @@ def test_combined_frontend_next_scope_publishes_dist_without_backend_build() -> 
     )[0]
     assert "if ! deploy_scope_has_unit frontend-legacy && ! deploy_scope_has_unit frontend-next; then" in make_package
     assert "tar_excludes+=(--exclude='frontend/dist')" in make_package
+    assert package_branch.index("publish_frontend_next() {") < package_branch.index("if has_unit frontend-next")
+    assert package_branch.index("refresh_gateway_if_present() {") < package_branch.index("if has_unit ops")
     assert "test -f frontend-next/dist/index.html" in publish_function
     assert "frontend_next:separated_frontend_web" in publish_function
     assert "frontend_next:monolith_compat" in publish_function
@@ -569,8 +572,10 @@ def test_all_scope_runs_frontend_after_go_and_then_gateway_refresh() -> None:
     assert package_remote.index("if has_unit go; then") < package_remote.index(
         'if test "$DEPLOY_SCOPE" = all; then\n  publish_frontend_next'
     )
-    assert package_remote.index('if test "$DEPLOY_SCOPE" = all; then\n  publish_frontend_next') < package_remote.index(
-        "refresh_gateway_if_present"
+    assert package_remote.index(
+        'if test "$DEPLOY_SCOPE" = all; then\n  publish_frontend_next\nfi'
+    ) < package_remote.index(
+        'if has_unit ops || test "$DEPLOY_SCOPE" = all; then\n  refresh_gateway_if_present\nfi'
     )
 
 
