@@ -1,0 +1,38 @@
+{
+  "generated_at": "2026-06-08T05:47:08.453990+00:00",
+  "source": {
+    "mode": "ssh",
+    "host": "43.143.243.97",
+    "user": "ubuntu",
+    "backup_glob": "/home/*/mysql-backups/*.sql.gz"
+  },
+  "backup": {
+    "present": true,
+    "size_bytes": 140674550,
+    "mtime": 1780848703.8764987,
+    "path": "/home/ubuntu/mysql-backups/tquant-all-databases-20260608-001016.sql.gz",
+    "gzip_ok": true,
+    "sha256": "f82db5fa2334fdd84abc4f7d2e136fd3af82742354ebb6a3bb24767215380db5",
+    "sql_signature_ok": true,
+    "sql_signatures": [
+      "-- MySQL dump",
+      "CREATE TABLE",
+      "INSERT INTO",
+      "LOCK TABLES"
+    ],
+    "sample_bytes": 65536
+  },
+  "commands": {
+    "ssh": {
+      "command": "ssh -o BatchMode=yes -i /Users/j/Downloads/gupiao.pem ubuntu@43.143.243.97 \nset -eu\nLATEST=\"$(sudo find /home -path '/home/*/mysql-backups/*.sql.gz' -type f -printf '%s %T@ %p\\n' 2>/dev/null | sort -k2,2nr | head -1 || true)\"\nif test -z \"$LATEST\"; then\n  echo \"__NO_BACKUP__\"\n  exit 0\nfi\nSIZE=\"$(printf '%s\\n' \"$LATEST\" | awk '{print $1}')\"\nMTIME=\"$(printf '%s\\n' \"$LATEST\" | awk '{print $2}')\"\nPATH_VALUE=\"$(printf '%s\\n' \"$LATEST\" | cut -d' ' -f3-)\"\necho \"__BACKUP__ $SIZE $MTIME $PATH_VALUE\"\nif sudo gzip -t \"$PATH_VALUE\" >/dev/null 2>&1; then\n  echo \"__GZIP__ ok\"\nelse\n  echo \"__GZIP__ fail\"\nfi\nSHA=\"$(sudo sha256sum \"$PATH_VALUE\" 2>/dev/null | awk '{print $1}' || true)\"\necho \"__SHA256__ $SHA\"\necho \"__SAMPLE_BEGIN__\"\nsudo gzip -cd \"$PATH_VALUE\" 2>/dev/null | head -c 65536 || true\nprintf '\\n__SAMPLE_END__\\n'\n",
+      "returncode": 0,
+      "stderr": ""
+    }
+  },
+  "evaluation": {
+    "ok": true,
+    "status": "ok",
+    "blocking": [],
+    "warnings": []
+  }
+}

@@ -1,0 +1,51 @@
+.key-level-panel {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.key-level-panel__candidate {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  padding: 8px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  background: var(--panel-muted);
+}
+
+.key-level-panel__evidence {
+  min-width: 0;
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.key-level-panel .ant-collapse,
+.key-level-panel .ant-alert,
+.key-level-panel .ant-space,
+.key-level-panel .metric-grid {
+  min-width: 0;
+}
+
+.monitor-key-level-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  min-width: 0;
+}
+
+@media (max-width: 520px) {
+  .key-level-panel {
+    gap: 6px;
+  }
+
+  .key-level-panel__candidate {
+    padding: 6px;
+  }
+
+  .monitor-key-level-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

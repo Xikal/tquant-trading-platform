@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import hashlib
 import threading
 import time
 from collections import defaultdict
@@ -31,6 +32,7 @@ from app.services.performance.read_model_metrics import (
     record_read_model_cache_stale,
     record_read_model_cache_write,
 )
+from app.services.shared.distributed_cache import get_json_cache, set_json_cache
 from app.services.strategy_metadata_service import StrategyMetadataService
 from app.services.strategy_tracking_constants import (
     DEFAULT_LIMIT,
@@ -74,21 +76,26 @@ def _get_read_model_cache(cache_key: tuple[object, ...]) -> tuple[list[StrategyT
     now = time.monotonic()
     with _READ_MODEL_CACHE_LOCK:
         cached = _READ_MODEL_CACHE.get(cache_key)
-        if cached is None:
-            record_read_model_cache_miss("strategy_tracking")
-            return None
-        expires_at, items, partial_errors = cached
-        if expires_at <= now:
+        if cached is not None:
+            expires_at, items, partial_errors = cached
+            if expires_at > now:
+                record_read_model_cache_hit("strategy_tracking", age_seconds=max(_READ_MODEL_CACHE_TTL_SECONDS - (expires_at - now), 0.0))
+                return list(items), list(partial_errors)
             _READ_MODEL_CACHE.pop(cache_key, None)
             record_read_model_cache_stale("strategy_tracking")
-            return None
-        record_read_model_cache_hit("strategy_tracking", age_seconds=max(_READ_MODEL_CACHE_TTL_SECONDS - (expires_at - now), 0.0))
-        return list(items), list(partial_errors)
+    distributed = _get_distributed_read_model_cache(cache_key)
+    if distributed is not None:
+        _set_read_model_cache(cache_key, distributed, distributed_write=False)
+        return distributed
+    record_read_model_cache_miss("strategy_tracking")
+    return None
 
 
 def _set_read_model_cache(
     cache_key: tuple[object, ...],
     payload: tuple[list[StrategyTrackingItemOut], list[str]],
+    *,
+    distributed_write: bool = True,
 ) -> None:
     now = time.monotonic()
     expires_at = now + _READ_MODEL_CACHE_TTL_SECONDS
@@ -102,6 +109,47 @@ def _set_read_model_cache(
         items, partial_errors = payload
         _READ_MODEL_CACHE[cache_key] = (expires_at, list(items), list(partial_errors))
     record_read_model_cache_write("strategy_tracking")
+    if distributed_write:
+        _set_distributed_read_model_cache(cache_key, payload)
+
+
+def _get_distributed_read_model_cache(cache_key: tuple[object, ...]) -> tuple[list[StrategyTrackingItemOut], list[str]] | None:
+    payload = get_json_cache(_distributed_read_model_cache_key(cache_key))
+    if not isinstance(payload, dict):
+        return None
+    raw_items = payload.get("items")
+    raw_errors = payload.get("partial_errors")
+    if not isinstance(raw_items, list):
+        return None
+    try:
+        items = [StrategyTrackingItemOut.model_validate(item) for item in raw_items if isinstance(item, dict)]
+    except Exception:
+        logger.warning("strategy tracking distributed read cache schema mismatch", exc_info=True)
+        return None
+    partial_errors = [str(item) for item in raw_errors] if isinstance(raw_errors, list) else []
+    record_read_model_cache_hit("strategy_tracking")
+    return items, partial_errors
+
+
+def _set_distributed_read_model_cache(
+    cache_key: tuple[object, ...],
+    payload: tuple[list[StrategyTrackingItemOut], list[str]],
+) -> None:
+    items, partial_errors = payload
+    set_json_cache(
+        _distributed_read_model_cache_key(cache_key),
+        {
+            "items": [item.model_dump(mode="json") for item in items],
+            "partial_errors": list(partial_errors),
+        },
+        _READ_MODEL_CACHE_TTL_SECONDS,
+    )
+
+
+def _distributed_read_model_cache_key(cache_key: tuple[object, ...]) -> str:
+    normalized = "|".join(str(item) for item in cache_key)
+    digest = hashlib.sha256(normalized.encode("utf-8")).hexdigest()
+    return f"tq:{_READ_MODEL_CACHE_VERSION}:{digest}"
 
 
 @dataclass(frozen=True)

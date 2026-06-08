@@ -4,6 +4,8 @@ from typing import Any, Literal, Optional
 
 from pydantic import BaseModel, Field
 
+from app.models.schema_defs.screener_parts.common import BuySignalState
+
 class LowBuyExecutionBacktestItemOut(BaseModel):
     symbol: str
     name: str
@@ -90,3 +92,5 @@ class LowBuyTradeLifecycleUpdate(BaseModel):
     max_drawdown_pct: Optional[float] = None
     attribution_note: Optional[str] = None
 
+
+LowBuyTradeLifecycleOut.model_rebuild(_types_namespace={"BuySignalState": BuySignalState})

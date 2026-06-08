@@ -8,6 +8,7 @@ from sqlalchemy import and_, func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from app.core.config import get_settings
 from app.models.entities import RuntimeTask, RuntimeTaskEvent, SystemSetting
 from app.models.schema_defs.phase4 import (
     RuntimeTaskArtifactOut,
@@ -100,10 +101,24 @@ class RuntimeTaskQueue:
     def summary(self, *, recent_hours: int = 24) -> RuntimeTaskSummaryResponse:
         now = datetime.utcnow()
         recent_cutoff = now - timedelta(hours=max(int(recent_hours or 24), 1))
+        paused_task_types = _paused_low_priority_task_types()
         status_rows = self.db.execute(
             select(RuntimeTask.status, func.count(RuntimeTask.id)).group_by(RuntimeTask.status)
         ).all()
         status_counts = {str(status): int(count or 0) for status, count in status_rows}
+        paused_type_rows: list[tuple[str, int]] = []
+        if paused_task_types:
+            paused_type_rows = [
+                (str(task_type), int(count or 0))
+                for task_type, count in self.db.execute(
+                    select(RuntimeTask.task_type, func.count(RuntimeTask.id))
+                    .where(RuntimeTask.status == "queued")
+                    .where(RuntimeTask.task_type.in_(paused_task_types))
+                    .group_by(RuntimeTask.task_type)
+                    .order_by(func.count(RuntimeTask.id).desc(), RuntimeTask.task_type.asc())
+                ).all()
+            ]
+        paused_queued = sum(count for _, count in paused_type_rows)
         retrying = int(
             self.db.execute(
                 select(func.count(RuntimeTask.id))
@@ -142,8 +157,15 @@ class RuntimeTaskQueue:
             longest_wait_seconds=_age_seconds(now, oldest.created_at if oldest else None),
             oldest_queued_at=oldest.created_at if oldest else None,
             running_count=status_counts.get("running", 0),
+            low_priority_tasks_paused=bool(paused_task_types),
+            paused_task_types=paused_task_types,
+            paused_queued=paused_queued,
+            claimable_queued=max(status_counts.get("queued", 0) - paused_queued, 0),
             status_counts=[RuntimeTaskStatusCountOut(status=key, count=value) for key, value in sorted(status_counts.items())],
             task_type_counts=[RuntimeTaskTypeCountOut(task_type=str(key), count=int(value or 0)) for key, value in type_rows],
+            paused_task_type_counts=[
+                RuntimeTaskTypeCountOut(task_type=task_type, count=count) for task_type, count in paused_type_rows
+            ],
         )
 
     def workers(self) -> RuntimeTaskWorkerListResponse:
@@ -240,6 +262,7 @@ class RuntimeTaskQueue:
 
     def claim_next(self, *, worker_id: str, task_types: list[str] | tuple[str, ...] | None = None) -> RuntimeTask | None:
         self._recover_stale_running_tasks()
+        paused_task_types = _paused_low_priority_task_types()
         statement = (
             select(RuntimeTask)
             .where(RuntimeTask.status == "queued")
@@ -249,6 +272,8 @@ class RuntimeTaskQueue:
         )
         if task_types:
             statement = statement.where(RuntimeTask.task_type.in_([str(item) for item in task_types]))
+        if paused_task_types:
+            statement = statement.where(RuntimeTask.task_type.not_in(paused_task_types))
         if _supports_skip_locked(self.db):
             statement = statement.with_for_update(skip_locked=True)
         row = self.db.execute(statement).scalar_one_or_none()
@@ -318,6 +343,24 @@ class RuntimeTaskQueue:
             row.active_idempotency_key = None
             row.finished_at = datetime.utcnow()
         event = self.add_event(task_id, "retry" if should_retry else "failed", message[:240])
+        self.db.commit()
+        publish_runtime_task_event(event)
+        self.db.refresh(row)
+        return _task_out(row)
+
+    def cancel(self, task_id: int, *, reason: str = "") -> RuntimeTaskOut:
+        row = self._get_row(task_id)
+        if row.status in TERMINAL_STATUSES:
+            return _task_out(row)
+        message = (reason or "任务已取消")[:240]
+        row.status = "cancelled"
+        row.active_idempotency_key = None
+        row.locked_by = ""
+        row.locked_at = None
+        row.run_after = None
+        row.error_message = message
+        row.finished_at = datetime.utcnow()
+        event = self.add_event(task_id, "cancelled", message, {"reason": reason})
         self.db.commit()
         publish_runtime_task_event(event)
         self.db.refresh(row)
@@ -452,6 +495,14 @@ def _recent_terminal_task_order() -> tuple[Any, Any, Any, Any]:
         RuntimeTask.updated_at.desc(),
         RuntimeTask.id.desc(),
     )
+
+
+def _paused_low_priority_task_types() -> list[str]:
+    settings = get_settings()
+    if not bool(getattr(settings, "runtime_low_priority_tasks_paused", False)):
+        return []
+    raw = str(getattr(settings, "runtime_low_priority_task_types", "") or "")
+    return sorted({item.strip() for item in raw.split(",") if item.strip()})
 
 
 def _json_dumps(value: Any) -> str:

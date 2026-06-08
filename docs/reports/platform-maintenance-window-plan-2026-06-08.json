@@ -1,0 +1,225 @@
+{
+  "generated_at": "2026-06-08T00:56:04.981393+00:00",
+  "date_tag": "2026-06-08",
+  "analytics_root": "/var/lib/docker/volumes/tquant-mysql_app_runtime_data/_data/analytics",
+  "execution": {
+    "operator_working_directory": "/Users/j/Documents/gupiao",
+    "remote_host": "43.143.243.97",
+    "remote_user": "ubuntu",
+    "remote_project_dir": "/home/ubuntu/gupiao-upload",
+    "ssh_key": "/Users/j/Downloads/gupiao.pem",
+    "public_base_url": "http://43.143.243.97:18090",
+    "app_port": "18090",
+    "mysql_slow_log": "/var/lib/docker/volumes/tquant-mysql_mysql_data/_data/mysql-slow.log",
+    "failure_policy": "Run commands in order and stop on the first non-zero exit."
+  },
+  "source_status": "blocking",
+  "source_blocking": [
+    "manifest:manifest_blocked_count=9"
+  ],
+  "source_warnings": [
+    "resource:resource_config_missing=docker_daemon",
+    "resource:resource_config_missing=journald_dropin",
+    "resource:resource_config_missing=buildkit",
+    "resource:resource_config_missing=mysql_compose_resource_config",
+    "resource:resource_config_missing=mysql_slow_logrotate",
+    "resource:swap_used_pct=100.0",
+    "resource:mysql_slow_log_bytes=3328599654",
+    "resource:docker_build_cache_bytes=6400575012",
+    "resource:max_binlog_size=1073741824",
+    "worker_budget:mysql_max_connections=300",
+    "worker_budget:low_priority_pause_env_missing=runtime_worker",
+    "worker_budget:low_priority_pause_env_missing=runtime_scheduler",
+    "worker_budget:low_priority_pause_env_missing=backtest_worker",
+    "worker_budget:low_priority_pause_env_missing=analytics_worker",
+    "manifest:manifest_missing_count=9",
+    "manifest:manifest_warning_dataset_count=1",
+    "export_plan:required_task_count=9",
+    "export_plan:manifest_export_required_count=9"
+  ],
+  "required_analytics_tasks": [
+    "analytics_export_strategy_tracking_snapshots",
+    "analytics_export_key_level_snapshots",
+    "analytics_export_low_buy_result_snapshots",
+    "analytics_export_backtest_runs",
+    "analytics_export_backtest_trades",
+    "analytics_export_backtest_daily_snapshots",
+    "analytics_export_analysis_logs",
+    "analytics_export_market_review_reports",
+    "analytics_export_paper_review_reports"
+  ],
+  "selected_datasets": [
+    "strategy_tracking_snapshots",
+    "key_level_snapshots",
+    "low_buy_result_snapshots",
+    "backtest_runs",
+    "backtest_trades",
+    "backtest_daily_snapshots",
+    "analysis_logs",
+    "market_review_reports",
+    "paper_review_reports"
+  ],
+  "safety": {
+    "does_execute_commands": false,
+    "does_deploy": false,
+    "does_cutover": false,
+    "does_clean_mysql_source_tables": false,
+    "does_delete_docker_volumes": false,
+    "operator_apply_steps": [
+      "resource_limits_apply",
+      "analytics_manifest_enqueue"
+    ]
+  },
+  "steps": [
+    {
+      "id": "preflight_resource_readiness",
+      "title": "只读复验资源与 readiness",
+      "commands": [
+        "ssh -i '/Users/j/Downloads/gupiao.pem' -o BatchMode=yes -o StrictHostKeyChecking=no ubuntu@43.143.243.97 'set -eu; cd '\"'\"'/home/ubuntu/gupiao-upload'\"'\"'; test -f scripts/install_platform_resource_limits.py && test -f scripts/submit_analytics_manifest_exports.py && test -f docker-compose.mysql.yml && test -f deploy/docker/daemon-resource.json'",
+        "python3 scripts/collect_platform_resource_report.py --ssh-host 43.143.243.97 --ssh-user ubuntu --ssh-key /Users/j/Downloads/gupiao.pem --json-output docs/reports/platform-resource-baseline-2026-06-08.json --markdown-output docs/reports/platform-resource-baseline-2026-06-08.md",
+        "python3 scripts/verify_mysql_backup_artifact.py --ssh-host 43.143.243.97 --ssh-user ubuntu --ssh-key /Users/j/Downloads/gupiao.pem --json-output docs/reports/platform-mysql-backup-verification-2026-06-08.json --markdown-output docs/reports/platform-mysql-backup-verification-2026-06-08.md --fail-on-blocking",
+        "python3 scripts/verify_platform_budget.py --ssh-host 43.143.243.97 --ssh-user ubuntu --ssh-key /Users/j/Downloads/gupiao.pem --project-dir /home/ubuntu/gupiao-upload --json-output docs/reports/platform-budget-2026-06-08.json --markdown-output docs/reports/platform-budget-2026-06-08.md",
+        "python3 scripts/verify_platform_optimization_readiness.py --backup-verification-report docs/reports/platform-mysql-backup-verification-2026-06-08.json --json-output docs/reports/platform-optimization-readiness-2026-06-08.json --markdown-output docs/reports/platform-optimization-readiness-2026-06-08.md"
+      ],
+      "destructive": false,
+      "requires_operator": false,
+      "rollback": ""
+    },
+    {
+      "id": "resource_limits_dry_run",
+      "title": "预演资源上限配置安装",
+      "commands": [
+        "ssh -i '/Users/j/Downloads/gupiao.pem' -o BatchMode=yes -o StrictHostKeyChecking=no ubuntu@43.143.243.97 'set -eu; cd '\"'\"'/home/ubuntu/gupiao-upload'\"'\"'; python3 scripts/install_platform_resource_limits.py --backup-root /tmp/tquant-resource-backups-dry-run --json-output docs/reports/platform-resource-limits-dry-run-2026-06-08.json'",
+        "scp -i '/Users/j/Downloads/gupiao.pem' -o BatchMode=yes -o StrictHostKeyChecking=no ubuntu@43.143.243.97:/home/ubuntu/gupiao-upload/docs/reports/platform-resource-limits-dry-run-2026-06-08.json docs/reports/platform-resource-limits-dry-run-2026-06-08.json"
+      ],
+      "destructive": false,
+      "requires_operator": false,
+      "rollback": ""
+    },
+    {
+      "id": "resource_limits_apply",
+      "title": "低峰窗口安装资源上限配置并重启相关服务",
+      "commands": [
+        "ssh -i '/Users/j/Downloads/gupiao.pem' -o BatchMode=yes -o StrictHostKeyChecking=no ubuntu@43.143.243.97 'set -eu; cd '\"'\"'/home/ubuntu/gupiao-upload'\"'\"'; sudo python3 scripts/install_platform_resource_limits.py --apply --restart-hints --json-output docs/reports/platform-resource-limits-apply-2026-06-08.json'",
+        "scp -i '/Users/j/Downloads/gupiao.pem' -o BatchMode=yes -o StrictHostKeyChecking=no ubuntu@43.143.243.97:/home/ubuntu/gupiao-upload/docs/reports/platform-resource-limits-apply-2026-06-08.json docs/reports/platform-resource-limits-apply-2026-06-08.json",
+        "ssh -i '/Users/j/Downloads/gupiao.pem' -o BatchMode=yes -o StrictHostKeyChecking=no ubuntu@43.143.243.97 'set -eu; cd '\"'\"'/home/ubuntu/gupiao-upload'\"'\"'; TS=$(date -u +%Y%m%d%H%M%S); sudo mkdir -p /home/ubuntu/mysql-backups/slow-log; if sudo test -f '\"'\"'/var/lib/docker/volumes/tquant-mysql_mysql_data/_data/mysql-slow.log'\"'\"'; then sudo cp -a '\"'\"'/var/lib/docker/volumes/tquant-mysql_mysql_data/_data/mysql-slow.log'\"'\"' /home/ubuntu/mysql-backups/slow-log/mysql-slow-$TS.log; sudo gzip /home/ubuntu/mysql-backups/slow-log/mysql-slow-$TS.log; fi'",
+        "ssh -i '/Users/j/Downloads/gupiao.pem' -o BatchMode=yes -o StrictHostKeyChecking=no ubuntu@43.143.243.97 'set -eu; cd '\"'\"'/home/ubuntu/gupiao-upload'\"'\"'; sudo systemctl restart docker'",
+        "ssh -i '/Users/j/Downloads/gupiao.pem' -o BatchMode=yes -o StrictHostKeyChecking=no ubuntu@43.143.243.97 'set -eu; cd '\"'\"'/home/ubuntu/gupiao-upload'\"'\"'; sudo systemctl restart systemd-journald'",
+        "ssh -i '/Users/j/Downloads/gupiao.pem' -o BatchMode=yes -o StrictHostKeyChecking=no ubuntu@43.143.243.97 'set -eu; cd '\"'\"'/home/ubuntu/gupiao-upload'\"'\"'; sudo systemctl restart buildkit || true'",
+        "ssh -i '/Users/j/Downloads/gupiao.pem' -o BatchMode=yes -o StrictHostKeyChecking=no ubuntu@43.143.243.97 'set -eu; cd '\"'\"'/home/ubuntu/gupiao-upload'\"'\"'; sudo logrotate -f /etc/logrotate.d/tquant-mysql-slow-log'",
+        "ssh -i '/Users/j/Downloads/gupiao.pem' -o BatchMode=yes -o StrictHostKeyChecking=no ubuntu@43.143.243.97 'set -eu; cd '\"'\"'/home/ubuntu/gupiao-upload'\"'\"'; sudo docker compose -f docker-compose.mysql.yml up -d mysql'",
+        "ssh -i '/Users/j/Downloads/gupiao.pem' -o BatchMode=yes -o StrictHostKeyChecking=no ubuntu@43.143.243.97 'set -eu; cd '\"'\"'/home/ubuntu/gupiao-upload'\"'\"'; sudo docker compose -f docker-compose.mysql.yml up -d app runtime-scheduler runtime-worker backtest-worker analytics-worker'"
+      ],
+      "destructive": false,
+      "requires_operator": true,
+      "rollback": "SSH to ubuntu@43.143.243.97, restore /etc/tquant-resource-backups/<timestamp>/ files, then restart the same services."
+    },
+    {
+      "id": "post_resource_verify",
+      "title": "资源配置生效后复验",
+      "commands": [
+        "ssh -i '/Users/j/Downloads/gupiao.pem' -o BatchMode=yes -o StrictHostKeyChecking=no ubuntu@43.143.243.97 'set -eu; cd '\"'\"'/home/ubuntu/gupiao-upload'\"'\"'; curl -f http://127.0.0.1:18090/readyz'",
+        "python3 scripts/collect_platform_resource_report.py --ssh-host 43.143.243.97 --ssh-user ubuntu --ssh-key /Users/j/Downloads/gupiao.pem --json-output docs/reports/platform-resource-after-limits-2026-06-08.json --markdown-output docs/reports/platform-resource-after-limits-2026-06-08.md",
+        "python3 scripts/verify_platform_budget.py --ssh-host 43.143.243.97 --ssh-user ubuntu --ssh-key /Users/j/Downloads/gupiao.pem --project-dir /home/ubuntu/gupiao-upload --json-output docs/reports/platform-budget-after-limits-2026-06-08.json --markdown-output docs/reports/platform-budget-after-limits-2026-06-08.md",
+        "python3 scripts/verify_mysql_backup_artifact.py --ssh-host 43.143.243.97 --ssh-user ubuntu --ssh-key /Users/j/Downloads/gupiao.pem --json-output docs/reports/platform-mysql-backup-verification-after-limits-2026-06-08.json --markdown-output docs/reports/platform-mysql-backup-verification-after-limits-2026-06-08.md --fail-on-blocking"
+      ],
+      "destructive": false,
+      "requires_operator": false,
+      "rollback": ""
+    },
+    {
+      "id": "analytics_manifest_preflight",
+      "title": "只读复验 Analytics manifest 并生成导出计划",
+      "commands": [
+        "python3 scripts/verify_analytics_manifests.py --ssh-host 43.143.243.97 --ssh-user ubuntu --ssh-key /Users/j/Downloads/gupiao.pem --analytics-root /var/lib/docker/volumes/tquant-mysql_app_runtime_data/_data/analytics --json-output docs/reports/platform-analytics-manifests-2026-06-08.json --markdown-output docs/reports/platform-analytics-manifests-2026-06-08.md",
+        "python3 scripts/plan_analytics_manifest_exports.py --manifest-report docs/reports/platform-analytics-manifests-2026-06-08.json --analytics-root /var/lib/docker/volumes/tquant-mysql_app_runtime_data/_data/analytics --end-date 2026-06-08 --json-output docs/reports/platform-analytics-export-plan-2026-06-08.json --markdown-output docs/reports/platform-analytics-export-plan-2026-06-08.md",
+        "python3 scripts/submit_analytics_manifest_exports.py --export-plan docs/reports/platform-analytics-export-plan-2026-06-08.json --json-output docs/reports/platform-analytics-export-submission-dry-run-2026-06-08.json --markdown-output docs/reports/platform-analytics-export-submission-dry-run-2026-06-08.md"
+      ],
+      "destructive": false,
+      "requires_operator": false,
+      "rollback": ""
+    },
+    {
+      "id": "analytics_manifest_enqueue",
+      "title": "显式入队缺失 manifest 导出任务",
+      "commands": [
+        "ssh -i '/Users/j/Downloads/gupiao.pem' -o BatchMode=yes -o StrictHostKeyChecking=no ubuntu@43.143.243.97 'set -eu; cd '\"'\"'/home/ubuntu/gupiao-upload'\"'\"'; mkdir -p docs/reports'",
+        "scp -i '/Users/j/Downloads/gupiao.pem' -o BatchMode=yes -o StrictHostKeyChecking=no docs/reports/platform-analytics-export-plan-2026-06-08.json ubuntu@43.143.243.97:/home/ubuntu/gupiao-upload/docs/reports/platform-analytics-export-plan-2026-06-08.json",
+        "ssh -i '/Users/j/Downloads/gupiao.pem' -o BatchMode=yes -o StrictHostKeyChecking=no ubuntu@43.143.243.97 'set -eu; cd '\"'\"'/home/ubuntu/gupiao-upload'\"'\"'; PYTHONPATH=backend:. python3 scripts/submit_analytics_manifest_exports.py --export-plan docs/reports/platform-analytics-export-plan-2026-06-08.json --apply --confirm-apply submit-analytics-manifest-exports --json-output docs/reports/platform-analytics-export-submission-apply-2026-06-08.json --markdown-output docs/reports/platform-analytics-export-submission-apply-2026-06-08.md'",
+        "scp -i '/Users/j/Downloads/gupiao.pem' -o BatchMode=yes -o StrictHostKeyChecking=no ubuntu@43.143.243.97:/home/ubuntu/gupiao-upload/docs/reports/platform-analytics-export-submission-apply-2026-06-08.json docs/reports/platform-analytics-export-submission-apply-2026-06-08.json",
+        "scp -i '/Users/j/Downloads/gupiao.pem' -o BatchMode=yes -o StrictHostKeyChecking=no ubuntu@43.143.243.97:/home/ubuntu/gupiao-upload/docs/reports/platform-analytics-export-submission-apply-2026-06-08.md docs/reports/platform-analytics-export-submission-apply-2026-06-08.md"
+      ],
+      "destructive": false,
+      "requires_operator": true,
+      "rollback": "Cancel queued/running runtime task ids via POST /api/runtime-tasks/<task_id>/cancel on the remote server."
+    },
+    {
+      "id": "analytics_worker_observe",
+      "title": "观察 analytics worker 与任务队列",
+      "commands": [
+        "ssh -i '/Users/j/Downloads/gupiao.pem' -o BatchMode=yes -o StrictHostKeyChecking=no ubuntu@43.143.243.97 'set -eu; cd '\"'\"'/home/ubuntu/gupiao-upload'\"'\"'; set -a; test ! -f .env || . ./.env; set +a; test -n \"${ADMIN_API_TOKEN:-${FRONTEND_ADMIN_TOKEN:-}}\" && curl -fsS http://127.0.0.1:18090/api/runtime-tasks/summary -H \"Authorization: Bearer ${ADMIN_API_TOKEN:-${FRONTEND_ADMIN_TOKEN:-}}\" | python3 -m json.tool'",
+        "ssh -i '/Users/j/Downloads/gupiao.pem' -o BatchMode=yes -o StrictHostKeyChecking=no ubuntu@43.143.243.97 'set -eu; cd '\"'\"'/home/ubuntu/gupiao-upload'\"'\"'; set -a; test ! -f .env || . ./.env; set +a; test -n \"${ADMIN_API_TOKEN:-${FRONTEND_ADMIN_TOKEN:-}}\" && curl -fsS http://127.0.0.1:18090/api/runtime-tasks/workers -H \"Authorization: Bearer ${ADMIN_API_TOKEN:-${FRONTEND_ADMIN_TOKEN:-}}\" | python3 -m json.tool'",
+        "ssh -i '/Users/j/Downloads/gupiao.pem' -o BatchMode=yes -o StrictHostKeyChecking=no ubuntu@43.143.243.97 'set -eu; cd '\"'\"'/home/ubuntu/gupiao-upload'\"'\"'; set -a; test ! -f .env || . ./.env; set +a; test -n \"${ADMIN_API_TOKEN:-${FRONTEND_ADMIN_TOKEN:-}}\" && curl -fsS \"http://127.0.0.1:18090/api/runtime-tasks/failures?limit=20\" -H \"Authorization: Bearer ${ADMIN_API_TOKEN:-${FRONTEND_ADMIN_TOKEN:-}}\" | python3 -m json.tool'"
+      ],
+      "destructive": false,
+      "requires_operator": false,
+      "rollback": ""
+    },
+    {
+      "id": "analytics_manifest_post_verify",
+      "title": "导出完成后复验 manifest",
+      "commands": [
+        "python3 scripts/verify_analytics_manifests.py --ssh-host 43.143.243.97 --ssh-user ubuntu --ssh-key /Users/j/Downloads/gupiao.pem --analytics-root /var/lib/docker/volumes/tquant-mysql_app_runtime_data/_data/analytics --json-output docs/reports/platform-analytics-manifests-after-export-2026-06-08.json --markdown-output docs/reports/platform-analytics-manifests-after-export-2026-06-08.md --fail-on-blocking",
+        "python3 scripts/plan_analytics_manifest_exports.py --manifest-report docs/reports/platform-analytics-manifests-after-export-2026-06-08.json --analytics-root /var/lib/docker/volumes/tquant-mysql_app_runtime_data/_data/analytics --end-date 2026-06-08 --json-output docs/reports/platform-analytics-export-plan-after-export-2026-06-08.json --markdown-output docs/reports/platform-analytics-export-plan-after-export-2026-06-08.md",
+        "python3 scripts/submit_analytics_manifest_exports.py --export-plan docs/reports/platform-analytics-export-plan-after-export-2026-06-08.json --json-output docs/reports/platform-analytics-export-submission-dry-run-after-export-2026-06-08.json --markdown-output docs/reports/platform-analytics-export-submission-dry-run-after-export-2026-06-08.md",
+        "python3 scripts/verify_platform_optimization_readiness.py --resource-report docs/reports/platform-resource-after-limits-2026-06-08.json --budget-report docs/reports/platform-budget-after-limits-2026-06-08.json --backup-verification-report docs/reports/platform-mysql-backup-verification-after-limits-2026-06-08.json --manifest-report docs/reports/platform-analytics-manifests-after-export-2026-06-08.json --export-plan docs/reports/platform-analytics-export-plan-after-export-2026-06-08.json --submission-report docs/reports/platform-analytics-export-submission-dry-run-after-export-2026-06-08.json --json-output docs/reports/platform-optimization-readiness-after-export-2026-06-08.json --markdown-output docs/reports/platform-optimization-readiness-after-export-2026-06-08.md --fail-on-blocking"
+      ],
+      "destructive": false,
+      "requires_operator": false,
+      "rollback": ""
+    },
+    {
+      "id": "final_validation_gates",
+      "title": "最终性能与全量验收 gate",
+      "commands": [
+        "./scripts/quick_cloud_deploy.sh --verify-only --performance-verify --performance-rounds 3 --performance-samples 8 --host 43.143.243.97 --user ubuntu --key /Users/j/Downloads/gupiao.pem --port 18090 --public-base-url http://43.143.243.97:18090",
+        "(cd frontend-next && npm run api:check && npm run typecheck && npm run lint && npm test -- --run && npm run build && npm run e2e && npm run request:trace && npm run screenshot:parity && npm run visual:consistency && npm run perf:compare && npm run css:budget && npm run css:unused-report)",
+        "PYTHONPATH=backend:. backend/.venv/bin/python -m pytest backend/tests/test_platform_resource_report.py backend/tests/test_platform_budget_verifier.py backend/tests/test_analytics_manifest_verifier.py backend/tests/test_analytics_manifest_export_plan.py backend/tests/test_analytics_manifest_export_submitter.py backend/tests/test_platform_optimization_readiness.py backend/tests/test_platform_maintenance_window_plan.py backend/tests/test_platform_resource_optimization_acceptance.py backend/tests/test_platform_resource_optimization_completion_audit.py backend/tests/test_analytics_layer.py backend/tests/test_analytics_manifest_lifecycle.py backend/tests/test_runtime_task_queue.py backend/tests/test_backtest_v2_worker_persistence.py backend/tests/test_cloud_performance_script.py backend/tests/test_cloud_deploy_scripts.py backend/tests/test_bff_strategy_workspace.py backend/tests/test_bff_routes.py::test_strategy_workspace_uses_bff_contract backend/tests/test_contract_first_openapi.py -q",
+        "BACKEND_PYTHON=backend/.venv/bin/python python3 scripts/verify_go_rust_performance_acceptance.py",
+        "test -n \"$(ls -t docs/reports/gupiao-cloud-performance-*.json | head -1)\"",
+        "python3 scripts/render_platform_resource_optimization_acceptance.py --resource-report docs/reports/platform-resource-after-limits-2026-06-08.json --budget-report docs/reports/platform-budget-after-limits-2026-06-08.json --manifest-report docs/reports/platform-analytics-manifests-after-export-2026-06-08.json --readiness-report docs/reports/platform-optimization-readiness-after-export-2026-06-08.json --backup-verification-report docs/reports/platform-mysql-backup-verification-after-limits-2026-06-08.json --cloud-performance-report \"$(ls -t docs/reports/gupiao-cloud-performance-*.json | head -1)\" --json-output docs/reports/platform-resource-optimization-acceptance-after-export-2026-06-08.json --markdown-output docs/reports/platform-resource-optimization-acceptance-after-export-2026-06-08.md",
+        "python3 scripts/audit_platform_resource_optimization_completion.py --acceptance-report docs/reports/platform-resource-optimization-acceptance-after-export-2026-06-08.json --resource-report docs/reports/platform-resource-after-limits-2026-06-08.json --budget-report docs/reports/platform-budget-after-limits-2026-06-08.json --manifest-report docs/reports/platform-analytics-manifests-after-export-2026-06-08.json --readiness-report docs/reports/platform-optimization-readiness-after-export-2026-06-08.json --backup-verification-report docs/reports/platform-mysql-backup-verification-after-limits-2026-06-08.json --cloud-performance-report \"$(ls -t docs/reports/gupiao-cloud-performance-*.json | head -1)\" --json-output docs/reports/platform-resource-optimization-completion-audit-after-export-2026-06-08.json --markdown-output docs/reports/platform-resource-optimization-completion-audit-after-export-2026-06-08.md --fail-on-incomplete",
+        "git diff --check",
+        "git diff --name-only | rg '(^|/)strategy_policy\\.py$|^frontend/' && exit 1 || true",
+        "git status --short"
+      ],
+      "destructive": false,
+      "requires_operator": false,
+      "rollback": ""
+    }
+  ],
+  "evaluation": {
+    "status": "planned",
+    "blocking": [],
+    "warnings": [
+      "resource:resource_config_missing=docker_daemon",
+      "resource:resource_config_missing=journald_dropin",
+      "resource:resource_config_missing=buildkit",
+      "resource:resource_config_missing=mysql_compose_resource_config",
+      "resource:resource_config_missing=mysql_slow_logrotate",
+      "resource:swap_used_pct=100.0",
+      "resource:mysql_slow_log_bytes=3328599654",
+      "resource:docker_build_cache_bytes=6400575012",
+      "resource:max_binlog_size=1073741824",
+      "worker_budget:mysql_max_connections=300",
+      "worker_budget:low_priority_pause_env_missing=runtime_worker",
+      "worker_budget:low_priority_pause_env_missing=runtime_scheduler",
+      "worker_budget:low_priority_pause_env_missing=backtest_worker",
+      "worker_budget:low_priority_pause_env_missing=analytics_worker",
+      "manifest:manifest_missing_count=9",
+      "manifest:manifest_warning_dataset_count=1",
+      "export_plan:required_task_count=9",
+      "export_plan:manifest_export_required_count=9"
+    ]
+  }
+}

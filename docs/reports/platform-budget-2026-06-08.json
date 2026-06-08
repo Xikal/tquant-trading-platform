@@ -1,0 +1,202 @@
+{
+  "generated_at": "2026-06-07T22:03:09.246744+00:00",
+  "mysql": {
+    "max_connections": 300,
+    "threads_connected": 26,
+    "threads_running": 2
+  },
+  "pool_budget": {
+    "total": 28,
+    "target": 40
+  },
+  "roles": {
+    "web": {
+      "container": "tquant-app-mysql",
+      "container_present": true,
+      "env": {
+        "DB_POOL_SIZE": "4",
+        "DB_MAX_OVERFLOW": "4",
+        "RUNTIME_BACKGROUND_ROLE": "web",
+        "RUNTIME_BACKGROUND_JOBS_ENABLED": "false",
+        "APP_WORKERS": "4",
+        "TQUANT_ANALYTICS_ENABLED": "false"
+      },
+      "pool_budget": 8
+    },
+    "runtime_worker": {
+      "container": "tquant-runtime-worker-mysql",
+      "container_present": true,
+      "env": {
+        "DB_POOL_SIZE": "2",
+        "DB_MAX_OVERFLOW": "2",
+        "RUNTIME_BACKGROUND_ROLE": "worker",
+        "RUNTIME_BACKGROUND_JOBS_ENABLED": "false"
+      },
+      "pool_budget": 4
+    },
+    "runtime_scheduler": {
+      "container": "tquant-runtime-scheduler-mysql",
+      "container_present": true,
+      "env": {
+        "DB_POOL_SIZE": "2",
+        "DB_MAX_OVERFLOW": "2",
+        "RUNTIME_BACKGROUND_ROLE": "scheduler",
+        "RUNTIME_BACKGROUND_JOBS_ENABLED": "true"
+      },
+      "pool_budget": 4
+    },
+    "backtest_worker": {
+      "container": "tquant-backtest-worker-mysql",
+      "container_present": true,
+      "env": {
+        "DB_POOL_SIZE": "2",
+        "DB_MAX_OVERFLOW": "2"
+      },
+      "pool_budget": 4
+    },
+    "analytics_worker": {
+      "container": "tquant-analytics-worker-mysql",
+      "container_present": true,
+      "env": {
+        "DB_POOL_SIZE": "4",
+        "DB_MAX_OVERFLOW": "4",
+        "APP_WORKERS": "1",
+        "TQUANT_ANALYTICS_ENABLED": "true",
+        "TQUANT_DUCKDB_THREADS": "2"
+      },
+      "pool_budget": 8
+    }
+  },
+  "compose": {
+    "service_env": {
+      "analytics-worker": {
+        "APP_WORKERS": "1",
+        "DB_MAX_OVERFLOW": "4",
+        "DB_POOL_RECYCLE": "1800",
+        "DB_POOL_SIZE": "4",
+        "DB_POOL_TIMEOUT": "30",
+        "TQUANT_ANALYTICS_ENABLED": "true",
+        "TQUANT_DUCKDB_THREADS": "2"
+      },
+      "app": {
+        "APP_WORKERS": "4",
+        "DB_MAX_OVERFLOW": "4",
+        "DB_POOL_RECYCLE": "1800",
+        "DB_POOL_SIZE": "4",
+        "DB_POOL_TIMEOUT": "30",
+        "RUNTIME_BACKGROUND_JOBS_ENABLED": "false",
+        "RUNTIME_BACKGROUND_ROLE": "web",
+        "TQUANT_ANALYTICS_ENABLED": "false"
+      },
+      "backtest-worker": {
+        "DB_MAX_OVERFLOW": "2",
+        "DB_POOL_RECYCLE": "1800",
+        "DB_POOL_SIZE": "2",
+        "DB_POOL_TIMEOUT": "30"
+      },
+      "go-bff-gateway": {},
+      "go-market-read-service": {},
+      "go-scan-worker": {},
+      "migration": {
+        "DB_MAX_OVERFLOW": "2",
+        "DB_POOL_RECYCLE": "1800",
+        "DB_POOL_SIZE": "2",
+        "DB_POOL_TIMEOUT": "30"
+      },
+      "mysql": {},
+      "redis": {},
+      "runtime-scheduler": {
+        "DB_MAX_OVERFLOW": "2",
+        "DB_POOL_RECYCLE": "1800",
+        "DB_POOL_SIZE": "2",
+        "DB_POOL_TIMEOUT": "30",
+        "RUNTIME_BACKGROUND_JOBS_ENABLED": "true",
+        "RUNTIME_BACKGROUND_ROLE": "scheduler"
+      },
+      "runtime-worker": {
+        "DB_MAX_OVERFLOW": "2",
+        "DB_POOL_RECYCLE": "1800",
+        "DB_POOL_SIZE": "2",
+        "DB_POOL_TIMEOUT": "30",
+        "RUNTIME_BACKGROUND_JOBS_ENABLED": "false",
+        "RUNTIME_BACKGROUND_ROLE": "worker"
+      },
+      "default": {},
+      "app_runtime_data": {},
+      "mysql_data": {},
+      "redis_data": {}
+    },
+    "service_commands": {
+      "analytics-worker": "- python - /app/backend/scripts/analytics_worker.py - --poll-interval-seconds - \"2\"",
+      "backtest-worker": "- python - -m - app.workers.backtest_queue_worker",
+      "migration": "- alembic - -c - alembic.ini - upgrade - head",
+      "mysql": "- --character-set-server=utf8mb4 - --collation-server=utf8mb4_unicode_ci - --max-connections=300 - --innodb-buffer-pool-size=512M - --innodb-log-file-size=256M - --innodb-flush-log-at-trx-commit=2 - --slow-query-log=ON - --long-query-time=0.2 - --log-output=FILE - --slow-query-log-file=/var/lib/mysql/mysql-slow.log",
+      "redis": "- redis-server - --appendonly - \"yes\" - --appendfsync - everysec - --auto-aof-rewrite-percentage - \"100\" - --auto-aof-rewrite-min-size - 64mb - --save - \"900\" - \"1\" - --save - \"300\" - \"10\"",
+      "runtime-scheduler": "- python - -m - app.workers.runtime_scheduler",
+      "runtime-worker": "- python - -m - app.workers.runtime_worker"
+    }
+  },
+  "commands": {
+    "compose_config": {
+      "command": "remote:compose_config",
+      "returncode": 0,
+      "stderr": ""
+    },
+    "mysql_status": {
+      "command": "remote:mysql_status",
+      "returncode": 0,
+      "stderr": ""
+    },
+    "container_env_web": {
+      "command": "remote:container_env_web",
+      "returncode": 0,
+      "stderr": ""
+    },
+    "container_env_runtime_worker": {
+      "command": "remote:container_env_runtime_worker",
+      "returncode": 0,
+      "stderr": ""
+    },
+    "container_env_runtime_scheduler": {
+      "command": "remote:container_env_runtime_scheduler",
+      "returncode": 0,
+      "stderr": ""
+    },
+    "container_env_backtest_worker": {
+      "command": "remote:container_env_backtest_worker",
+      "returncode": 0,
+      "stderr": ""
+    },
+    "container_env_analytics_worker": {
+      "command": "remote:container_env_analytics_worker",
+      "returncode": 0,
+      "stderr": ""
+    },
+    "ssh": {
+      "command": "ssh <redacted>",
+      "returncode": 0,
+      "stderr": ""
+    }
+  },
+  "source": {
+    "remote_host": "43.143.243.97",
+    "remote_user": "ubuntu",
+    "project_dir": "/home/ubuntu/gupiao-upload"
+  },
+  "thresholds": {
+    "mysql_max_connections": 120,
+    "pool_budget": 40
+  },
+  "evaluation": {
+    "ok": true,
+    "status": "warning",
+    "warnings": [
+      "mysql_max_connections=300",
+      "low_priority_pause_env_missing=runtime_worker",
+      "low_priority_pause_env_missing=runtime_scheduler",
+      "low_priority_pause_env_missing=backtest_worker",
+      "low_priority_pause_env_missing=analytics_worker"
+    ],
+    "blocking": []
+  }
+}

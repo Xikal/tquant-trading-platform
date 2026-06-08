@@ -1,0 +1,155 @@
+.ritual-fortune-strip {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  min-width: 0;
+  gap: 6px;
+  overflow: hidden;
+  border: 1px solid rgba(217, 45, 32, 0.18);
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(217, 45, 32, 0.08), rgba(214, 168, 79, 0.12));
+  color: rgb(122, 36, 27);
+  padding: 4px 8px;
+  font-size: var(--font-meta);
+  font-weight: 700;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.ritual-fortune-strip::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.36), transparent);
+  transform: translateX(-110%);
+  animation: ritual-shimmer 5.8s ease-in-out infinite;
+}
+
+.ritual-fortune-strip > * {
+  position: relative;
+  z-index: 1;
+}
+
+.ritual-fortune-strip.is-compact {
+  padding: 3px 7px;
+  font-size: 10.5px;
+}
+
+.ritual-fortune-strip.tone-weak {
+  border-color: rgba(180, 83, 9, 0.2);
+  background: linear-gradient(90deg, rgba(180, 83, 9, 0.08), rgba(214, 168, 79, 0.1));
+}
+
+.ritual-fortune-mark {
+  display: inline-grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border: 1px solid rgba(217, 45, 32, 0.34);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.48);
+  color: var(--error);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.ritual-signal-seal {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  max-width: 100%;
+  border: 1px solid rgba(217, 45, 32, 0.3);
+  border-radius: 6px;
+  background: rgba(217, 45, 32, 0.06);
+  color: var(--error);
+  padding: 2px 5px;
+  font-size: 10.5px;
+  font-weight: 700;
+  line-height: 1.25;
+  white-space: nowrap;
+  transform: rotate(-2deg);
+}
+
+.ritual-signal-seal.tone-danger {
+  border-color: rgba(180, 83, 9, 0.28);
+  background: rgba(180, 83, 9, 0.06);
+  color: rgb(146, 64, 14);
+}
+
+.ritual-signal-seal.is-compact {
+  padding: 1px 4px;
+  font-size: 12px;
+}
+
+.ritual-lucky-draw {
+  border-color: rgba(214, 168, 79, 0.34);
+  color: rgb(159, 31, 24);
+  font-weight: 700;
+}
+
+.ritual-close-bag {
+  position: relative;
+  display: grid;
+  gap: 2px;
+  overflow: hidden;
+  border: 1px solid rgba(214, 168, 79, 0.24);
+  border-radius: 8px;
+  background: linear-gradient(135deg, rgba(217, 45, 32, 0.06), rgba(214, 168, 79, 0.12));
+  color: rgb(122, 36, 27);
+  padding: 7px 9px;
+  font-size: var(--font-meta);
+  line-height: 1.35;
+}
+
+.ritual-close-bag::after {
+  content: "";
+  position: absolute;
+  right: 8px;
+  top: 8px;
+  width: 30px;
+  aspect-ratio: 1;
+  border: 1px solid rgba(217, 45, 32, 0.16);
+  border-radius: 50%;
+  opacity: 0.5;
+  animation: login-ritual-breathe 5.2s ease-in-out infinite;
+}
+
+.ritual-close-bag-label {
+  color: var(--error);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.ritual-close-bag strong {
+  font-size: 12px;
+}
+
+.ritual-close-bag span:last-child {
+  color: var(--muted);
+}
+
+.ritual-settings-card {
+  display: grid;
+  gap: 8px;
+}
+
+.ritual-settings-card label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
+  font-size: var(--font-meta);
+  font-weight: 700;
+}
+
+@keyframes ritual-shimmer {
+  0%,
+  72% {
+    transform: translateX(-110%);
+  }
+  100% {
+    transform: translateX(110%);
+  }
+}

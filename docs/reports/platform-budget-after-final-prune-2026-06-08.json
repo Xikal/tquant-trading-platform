@@ -1,0 +1,252 @@
+{
+  "generated_at": "2026-06-08T06:43:45.749270+00:00",
+  "mysql": {
+    "max_connections": 120,
+    "threads_connected": 14,
+    "threads_running": 2
+  },
+  "pool_budget": {
+    "total": 15,
+    "target": 40
+  },
+  "roles": {
+    "web": {
+      "container": "tquant-app-mysql",
+      "container_present": true,
+      "env": {
+        "DB_POOL_SIZE": "2",
+        "DB_MAX_OVERFLOW": "2",
+        "RUNTIME_BACKGROUND_ROLE": "web",
+        "RUNTIME_BACKGROUND_JOBS_ENABLED": "false",
+        "APP_WORKERS": "2",
+        "TQUANT_ANALYTICS_ENABLED": "false"
+      },
+      "pool_budget": 4
+    },
+    "runtime_worker": {
+      "container": "tquant-runtime-worker-mysql",
+      "container_present": true,
+      "env": {
+        "DB_POOL_SIZE": "2",
+        "DB_MAX_OVERFLOW": "1",
+        "RUNTIME_LOW_PRIORITY_TASKS_PAUSED": "false",
+        "RUNTIME_LOW_PRIORITY_TASK_TYPES": "analytics_export_daily_bars,analytics_export_strategy_tracking_snapshots,analytics_export_key_level_snapshots,analytics_export_low_buy_result_snapshots,analytics_export_backtest_runs,analytics_export_backtest_trades,analytics_export_backtest_daily_snapshots,analytics_export_analysis_logs,analytics_export_market_review_reports,analytics_export_paper_review_reports,strategy_24m_duckdb_report,decision_context_24m_report,portfolio_execution_24m_report,backtest_all_strategies_24m,data_backfill_24m,data_quality_backfill,data_repair_run,low_buy_execution_backtest,legacy_research_backtest,etf_t0_minute_backtest,etf_t0_research_report,backtest_portfolio_optimization,backtest_position_policy_research,paper_smart_t_backtest,paper_backtest_comparison,trading_experience_limit_up_backtest,ml_signal_build_samples,ml_signal_train,ml_signal_incremental_train,factor_mining_iterate,factor_mining_evaluate,factor_mining_monthly",
+        "RUNTIME_BACKGROUND_ROLE": "worker",
+        "RUNTIME_BACKGROUND_JOBS_ENABLED": "false",
+        "RUNTIME_BACKGROUND_COMPACT_MODE_ENABLED": "true",
+        "RUNTIME_STARTUP_CACHE_PREWARM_ENABLED": "false",
+        "RUNTIME_STARTUP_HISTORY_PREWARM_ENABLED": "false"
+      },
+      "pool_budget": 3
+    },
+    "runtime_scheduler": {
+      "container": "tquant-runtime-scheduler-mysql",
+      "container_present": true,
+      "env": {
+        "DB_POOL_SIZE": "1",
+        "DB_MAX_OVERFLOW": "1",
+        "RUNTIME_LOW_PRIORITY_TASKS_PAUSED": "false",
+        "RUNTIME_LOW_PRIORITY_TASK_TYPES": "analytics_export_daily_bars,analytics_export_strategy_tracking_snapshots,analytics_export_key_level_snapshots,analytics_export_low_buy_result_snapshots,analytics_export_backtest_runs,analytics_export_backtest_trades,analytics_export_backtest_daily_snapshots,analytics_export_analysis_logs,analytics_export_market_review_reports,analytics_export_paper_review_reports,strategy_24m_duckdb_report,decision_context_24m_report,portfolio_execution_24m_report,backtest_all_strategies_24m,data_backfill_24m,data_quality_backfill,data_repair_run,low_buy_execution_backtest,legacy_research_backtest,etf_t0_minute_backtest,etf_t0_research_report,backtest_portfolio_optimization,backtest_position_policy_research,paper_smart_t_backtest,paper_backtest_comparison,trading_experience_limit_up_backtest,ml_signal_build_samples,ml_signal_train,ml_signal_incremental_train,factor_mining_iterate,factor_mining_evaluate,factor_mining_monthly",
+        "RUNTIME_BACKGROUND_ROLE": "scheduler",
+        "RUNTIME_BACKGROUND_JOBS_ENABLED": "true",
+        "RUNTIME_BACKGROUND_COMPACT_MODE_ENABLED": "true",
+        "RUNTIME_STARTUP_CACHE_PREWARM_ENABLED": "false",
+        "RUNTIME_STARTUP_HISTORY_PREWARM_ENABLED": "false",
+        "RUNTIME_LOW_BUY_FULL_SCAN_INTERVAL_SECONDS": "7200",
+        "RUNTIME_WATCHLIST_REFRESH_INTERVAL_SECONDS": "180",
+        "RUNTIME_MARKET_REGIME_REFRESH_INTERVAL_SECONDS": "900",
+        "RUNTIME_QUOTE_CACHE_REFRESH_INTERVAL_SECONDS": "180",
+        "RUNTIME_HOURLY_MARKET_SNAPSHOT_INTERVAL_SECONDS": "900",
+        "RUNTIME_MATERIALIZATION_REFRESH_INTERVAL_SECONDS": "900",
+        "RUNTIME_DAILY_BAR_REFRESH_INTERVAL_SECONDS": "900",
+        "RUNTIME_LATEST_DATA_WATCHDOG_INTERVAL_SECONDS": "900",
+        "RUNTIME_MARKET_REVIEW_INTERVAL_SECONDS": "900",
+        "RUNTIME_PAPER_PERF_ARCHIVE_INTERVAL_SECONDS": "900",
+        "RUNTIME_AGENT_DAILY_REPORT_INTERVAL_SECONDS": "900"
+      },
+      "pool_budget": 2
+    },
+    "backtest_worker": {
+      "container": "tquant-backtest-worker-mysql",
+      "container_present": true,
+      "env": {
+        "DB_POOL_SIZE": "2",
+        "DB_MAX_OVERFLOW": "1",
+        "RUNTIME_LOW_PRIORITY_TASKS_PAUSED": "false",
+        "RUNTIME_LOW_PRIORITY_TASK_TYPES": "analytics_export_daily_bars,analytics_export_strategy_tracking_snapshots,analytics_export_key_level_snapshots,analytics_export_low_buy_result_snapshots,analytics_export_backtest_runs,analytics_export_backtest_trades,analytics_export_backtest_daily_snapshots,analytics_export_analysis_logs,analytics_export_market_review_reports,analytics_export_paper_review_reports,strategy_24m_duckdb_report,decision_context_24m_report,portfolio_execution_24m_report,backtest_all_strategies_24m,data_backfill_24m,data_quality_backfill,data_repair_run,low_buy_execution_backtest,legacy_research_backtest,etf_t0_minute_backtest,etf_t0_research_report,backtest_portfolio_optimization,backtest_position_policy_research,paper_smart_t_backtest,paper_backtest_comparison,trading_experience_limit_up_backtest,ml_signal_build_samples,ml_signal_train,ml_signal_incremental_train,factor_mining_iterate,factor_mining_evaluate,factor_mining_monthly",
+        "TQUANT_ANALYTICS_ENABLED": "true",
+        "TQUANT_DUCKDB_THREADS": "2",
+        "BACKTEST_PARQUET_DAILY_BARS_ENABLED": "false"
+      },
+      "pool_budget": 3
+    },
+    "analytics_worker": {
+      "container": "tquant-analytics-worker-mysql",
+      "container_present": true,
+      "env": {
+        "DB_POOL_SIZE": "2",
+        "DB_MAX_OVERFLOW": "1",
+        "RUNTIME_LOW_PRIORITY_TASKS_PAUSED": "false",
+        "RUNTIME_LOW_PRIORITY_TASK_TYPES": "analytics_export_daily_bars,analytics_export_strategy_tracking_snapshots,analytics_export_key_level_snapshots,analytics_export_low_buy_result_snapshots,analytics_export_backtest_runs,analytics_export_backtest_trades,analytics_export_backtest_daily_snapshots,analytics_export_analysis_logs,analytics_export_market_review_reports,analytics_export_paper_review_reports,strategy_24m_duckdb_report,decision_context_24m_report,portfolio_execution_24m_report,backtest_all_strategies_24m,data_backfill_24m,data_quality_backfill,data_repair_run,low_buy_execution_backtest,legacy_research_backtest,etf_t0_minute_backtest,etf_t0_research_report,backtest_portfolio_optimization,backtest_position_policy_research,paper_smart_t_backtest,paper_backtest_comparison,trading_experience_limit_up_backtest,ml_signal_build_samples,ml_signal_train,ml_signal_incremental_train,factor_mining_iterate,factor_mining_evaluate,factor_mining_monthly",
+        "APP_WORKERS": "1",
+        "TQUANT_ANALYTICS_ENABLED": "true",
+        "TQUANT_DUCKDB_THREADS": "2"
+      },
+      "pool_budget": 3
+    }
+  },
+  "compose": {
+    "service_env": {
+      "analytics-worker": {
+        "APP_WORKERS": "1",
+        "DB_MAX_OVERFLOW": "1",
+        "DB_POOL_RECYCLE": "1800",
+        "DB_POOL_SIZE": "2",
+        "DB_POOL_TIMEOUT": "30",
+        "RUNTIME_LOW_PRIORITY_TASK_TYPES": "analytics_export_daily_bars,analytics_export_strategy_tracking_snapshots,analytics_export_key_level_snapshots,analytics_export_low_buy_result_snapshots,analytics_export_backtest_runs,analytics_export_backtest_trades,analytics_export_backtest_daily_snapshots,analytics_export_analysis_logs,analytics_export_market_review_reports,analytics_export_paper_review_reports,strategy_24m_duckdb_report,decision_context_24m_report,portfolio_execution_24m_report,backtest_all_strategies_24m,data_backfill_24m,data_quality_backfill,data_repair_run,low_buy_execution_backtest,legacy_research_backtest,etf_t0_minute_backtest,etf_t0_research_report,backtest_portfolio_optimization,backtest_position_policy_research,paper_smart_t_backtest,paper_backtest_comparison,trading_experience_limit_up_backtest,ml_signal_build_samples,ml_signal_train,ml_signal_incremental_train,factor_mining_iterate,factor_mining_evaluate,factor_mining_monthly",
+        "RUNTIME_LOW_PRIORITY_TASKS_PAUSED": "false",
+        "TQUANT_ANALYTICS_ENABLED": "true",
+        "TQUANT_DUCKDB_THREADS": "2"
+      },
+      "app": {
+        "APP_WORKERS": "2",
+        "DB_MAX_OVERFLOW": "2",
+        "DB_POOL_RECYCLE": "1800",
+        "DB_POOL_SIZE": "2",
+        "DB_POOL_TIMEOUT": "30",
+        "RUNTIME_BACKGROUND_JOBS_ENABLED": "false",
+        "RUNTIME_BACKGROUND_ROLE": "web",
+        "TQUANT_ANALYTICS_ENABLED": "false"
+      },
+      "backtest-worker": {
+        "BACKTEST_PARQUET_DAILY_BARS_ENABLED": "false",
+        "DB_MAX_OVERFLOW": "1",
+        "DB_POOL_RECYCLE": "1800",
+        "DB_POOL_SIZE": "2",
+        "DB_POOL_TIMEOUT": "30",
+        "RUNTIME_LOW_PRIORITY_TASK_TYPES": "analytics_export_daily_bars,analytics_export_strategy_tracking_snapshots,analytics_export_key_level_snapshots,analytics_export_low_buy_result_snapshots,analytics_export_backtest_runs,analytics_export_backtest_trades,analytics_export_backtest_daily_snapshots,analytics_export_analysis_logs,analytics_export_market_review_reports,analytics_export_paper_review_reports,strategy_24m_duckdb_report,decision_context_24m_report,portfolio_execution_24m_report,backtest_all_strategies_24m,data_backfill_24m,data_quality_backfill,data_repair_run,low_buy_execution_backtest,legacy_research_backtest,etf_t0_minute_backtest,etf_t0_research_report,backtest_portfolio_optimization,backtest_position_policy_research,paper_smart_t_backtest,paper_backtest_comparison,trading_experience_limit_up_backtest,ml_signal_build_samples,ml_signal_train,ml_signal_incremental_train,factor_mining_iterate,factor_mining_evaluate,factor_mining_monthly",
+        "RUNTIME_LOW_PRIORITY_TASKS_PAUSED": "false",
+        "TQUANT_ANALYTICS_ENABLED": "true",
+        "TQUANT_DUCKDB_THREADS": "2"
+      },
+      "go-bff-gateway": {},
+      "go-market-read-service": {},
+      "go-scan-worker": {},
+      "migration": {
+        "DB_MAX_OVERFLOW": "1",
+        "DB_POOL_RECYCLE": "1800",
+        "DB_POOL_SIZE": "2",
+        "DB_POOL_TIMEOUT": "30"
+      },
+      "mysql": {},
+      "redis": {},
+      "runtime-scheduler": {
+        "DB_MAX_OVERFLOW": "1",
+        "DB_POOL_RECYCLE": "1800",
+        "DB_POOL_SIZE": "1",
+        "DB_POOL_TIMEOUT": "30",
+        "RUNTIME_AGENT_DAILY_REPORT_INTERVAL_SECONDS": "900",
+        "RUNTIME_BACKGROUND_COMPACT_MODE_ENABLED": "true",
+        "RUNTIME_BACKGROUND_JOBS_ENABLED": "true",
+        "RUNTIME_BACKGROUND_ROLE": "scheduler",
+        "RUNTIME_DAILY_BAR_REFRESH_INTERVAL_SECONDS": "900",
+        "RUNTIME_HOURLY_MARKET_SNAPSHOT_INTERVAL_SECONDS": "900",
+        "RUNTIME_LATEST_DATA_WATCHDOG_INTERVAL_SECONDS": "900",
+        "RUNTIME_LOW_BUY_FULL_SCAN_INTERVAL_SECONDS": "7200",
+        "RUNTIME_LOW_PRIORITY_TASK_TYPES": "analytics_export_daily_bars,analytics_export_strategy_tracking_snapshots,analytics_export_key_level_snapshots,analytics_export_low_buy_result_snapshots,analytics_export_backtest_runs,analytics_export_backtest_trades,analytics_export_backtest_daily_snapshots,analytics_export_analysis_logs,analytics_export_market_review_reports,analytics_export_paper_review_reports,strategy_24m_duckdb_report,decision_context_24m_report,portfolio_execution_24m_report,backtest_all_strategies_24m,data_backfill_24m,data_quality_backfill,data_repair_run,low_buy_execution_backtest,legacy_research_backtest,etf_t0_minute_backtest,etf_t0_research_report,backtest_portfolio_optimization,backtest_position_policy_research,paper_smart_t_backtest,paper_backtest_comparison,trading_experience_limit_up_backtest,ml_signal_build_samples,ml_signal_train,ml_signal_incremental_train,factor_mining_iterate,factor_mining_evaluate,factor_mining_monthly",
+        "RUNTIME_LOW_PRIORITY_TASKS_PAUSED": "false",
+        "RUNTIME_MARKET_REGIME_REFRESH_INTERVAL_SECONDS": "900",
+        "RUNTIME_MARKET_REVIEW_INTERVAL_SECONDS": "900",
+        "RUNTIME_MATERIALIZATION_REFRESH_INTERVAL_SECONDS": "900",
+        "RUNTIME_PAPER_PERF_ARCHIVE_INTERVAL_SECONDS": "900",
+        "RUNTIME_QUOTE_CACHE_REFRESH_INTERVAL_SECONDS": "180",
+        "RUNTIME_STARTUP_CACHE_PREWARM_ENABLED": "false",
+        "RUNTIME_STARTUP_HISTORY_PREWARM_ENABLED": "false",
+        "RUNTIME_WATCHLIST_REFRESH_INTERVAL_SECONDS": "180"
+      },
+      "runtime-worker": {
+        "DB_MAX_OVERFLOW": "1",
+        "DB_POOL_RECYCLE": "1800",
+        "DB_POOL_SIZE": "2",
+        "DB_POOL_TIMEOUT": "30",
+        "RUNTIME_BACKGROUND_COMPACT_MODE_ENABLED": "true",
+        "RUNTIME_BACKGROUND_JOBS_ENABLED": "false",
+        "RUNTIME_BACKGROUND_ROLE": "worker",
+        "RUNTIME_LOW_PRIORITY_TASK_TYPES": "analytics_export_daily_bars,analytics_export_strategy_tracking_snapshots,analytics_export_key_level_snapshots,analytics_export_low_buy_result_snapshots,analytics_export_backtest_runs,analytics_export_backtest_trades,analytics_export_backtest_daily_snapshots,analytics_export_analysis_logs,analytics_export_market_review_reports,analytics_export_paper_review_reports,strategy_24m_duckdb_report,decision_context_24m_report,portfolio_execution_24m_report,backtest_all_strategies_24m,data_backfill_24m,data_quality_backfill,data_repair_run,low_buy_execution_backtest,legacy_research_backtest,etf_t0_minute_backtest,etf_t0_research_report,backtest_portfolio_optimization,backtest_position_policy_research,paper_smart_t_backtest,paper_backtest_comparison,trading_experience_limit_up_backtest,ml_signal_build_samples,ml_signal_train,ml_signal_incremental_train,factor_mining_iterate,factor_mining_evaluate,factor_mining_monthly",
+        "RUNTIME_LOW_PRIORITY_TASKS_PAUSED": "false",
+        "RUNTIME_STARTUP_CACHE_PREWARM_ENABLED": "false",
+        "RUNTIME_STARTUP_HISTORY_PREWARM_ENABLED": "false"
+      },
+      "default": {},
+      "app_runtime_data": {},
+      "mysql_data": {},
+      "redis_data": {}
+    },
+    "service_commands": {
+      "analytics-worker": "- python - /app/backend/scripts/analytics_worker.py - --poll-interval-seconds - \"10\"",
+      "backtest-worker": "- python - -m - app.workers.backtest_queue_worker",
+      "migration": "- alembic - -c - alembic.ini - upgrade - head",
+      "mysql": "- --character-set-server=utf8mb4 - --collation-server=utf8mb4_unicode_ci - --max-connections=120 - --innodb-buffer-pool-size=512M - --innodb-log-file-size=256M - --innodb-flush-log-at-trx-commit=2 - --binlog-expire-logs-seconds=259200 - --max-binlog-size=256M - --slow-query-log=ON - --long-query-time=0.2 - --log-output=FILE - --slow-query-log-file=/var/lib/mysql/mysql-slow.log",
+      "redis": "- redis-server - --appendonly - \"yes\" - --appendfsync - everysec - --auto-aof-rewrite-percentage - \"100\" - --auto-aof-rewrite-min-size - 64mb - --save - \"900\" - \"1\" - --save - \"300\" - \"10\"",
+      "runtime-scheduler": "- python - -m - app.workers.runtime_scheduler",
+      "runtime-worker": "- python - -m - app.workers.runtime_worker"
+    }
+  },
+  "commands": {
+    "compose_config": {
+      "command": "remote:compose_config",
+      "returncode": 0,
+      "stderr": ""
+    },
+    "mysql_status": {
+      "command": "remote:mysql_status",
+      "returncode": 0,
+      "stderr": ""
+    },
+    "container_env_web": {
+      "command": "remote:container_env_web",
+      "returncode": 0,
+      "stderr": ""
+    },
+    "container_env_runtime_worker": {
+      "command": "remote:container_env_runtime_worker",
+      "returncode": 0,
+      "stderr": ""
+    },
+    "container_env_runtime_scheduler": {
+      "command": "remote:container_env_runtime_scheduler",
+      "returncode": 0,
+      "stderr": ""
+    },
+    "container_env_backtest_worker": {
+      "command": "remote:container_env_backtest_worker",
+      "returncode": 0,
+      "stderr": ""
+    },
+    "container_env_analytics_worker": {
+      "command": "remote:container_env_analytics_worker",
+      "returncode": 0,
+      "stderr": ""
+    },
+    "ssh": {
+      "command": "ssh <redacted>",
+      "returncode": 0,
+      "stderr": ""
+    }
+  },
+  "source": {
+    "remote_host": "43.143.243.97",
+    "remote_user": "ubuntu",
+    "project_dir": "/home/ubuntu/gupiao-upload"
+  },
+  "thresholds": {
+    "mysql_max_connections": 120,
+    "pool_budget": 40
+  },
+  "evaluation": {
+    "ok": true,
+    "status": "ok",
+    "warnings": [],
+    "blocking": []
+  }
+}

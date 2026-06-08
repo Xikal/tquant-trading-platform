@@ -265,8 +265,11 @@ def _ensure_system_user(connection) -> int:
         return int(existing_id)
     connection.execute(text(
         """
-        INSERT INTO users (username, display_name, password_hash, is_active, can_paper_trade, roles)
-        VALUES ('system', '系统管理员', 'disabled-system-user', 0, 0, 'admin')
+        INSERT INTO users (
+            username, display_name, password_hash, is_active, can_paper_trade, roles,
+            mfa_totp_enabled, mfa_totp_secret, failed_login_count, token_version
+        )
+        VALUES ('system', '系统管理员', 'disabled-system-user', 0, 0, 'admin', 0, '', 0, 0)
         """
     ))
     created_id = connection.execute(text("SELECT id FROM users WHERE username = 'system' LIMIT 1")).scalar()

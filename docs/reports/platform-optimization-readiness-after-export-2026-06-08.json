@@ -1,0 +1,134 @@
+{
+  "generated_at": "2026-06-08T05:47:02.543176+00:00",
+  "paths": {
+    "resource_report": "docs/reports/platform-resource-after-export-2026-06-08.json",
+    "budget_report": "docs/reports/platform-budget-after-export-2026-06-08.json",
+    "manifest_report": "docs/reports/platform-analytics-manifests-after-export-2026-06-08.json",
+    "export_plan": "docs/reports/platform-analytics-export-plan-after-export-2026-06-08.json",
+    "submission_report": "docs/reports/platform-analytics-export-submission-dry-run-after-export-2026-06-08.json",
+    "backup_verification_report": "docs/reports/platform-mysql-backup-verification-2026-06-08.json"
+  },
+  "checks": [
+    {
+      "name": "resource_limits",
+      "status": "warning",
+      "blocking": [],
+      "warnings": [
+        "resource:swap_used_pct=70.06"
+      ],
+      "evidence": {
+        "root_used_pct": 41,
+        "swap_used_pct": 70.06,
+        "slow_log_bytes": 69632,
+        "docker_build_cache_bytes": 0,
+        "max_binlog_size": 268435456
+      }
+    },
+    {
+      "name": "mysql_backup_verification",
+      "status": "ready",
+      "blocking": [],
+      "warnings": [],
+      "evidence": {
+        "path": "/home/ubuntu/mysql-backups/tquant-all-databases-20260608-001016.sql.gz",
+        "size_bytes": 140674550,
+        "gzip_ok": true,
+        "sql_signature_ok": true,
+        "sha256": "f82db5fa2334fdd84abc4f7d2e136fd3af82742354ebb6a3bb24767215380db5",
+        "sql_signatures": [
+          "-- MySQL dump",
+          "CREATE TABLE",
+          "INSERT INTO",
+          "LOCK TABLES"
+        ]
+      }
+    },
+    {
+      "name": "worker_budget",
+      "status": "ready",
+      "blocking": [],
+      "warnings": [],
+      "evidence": {
+        "mysql": {
+          "max_connections": 120,
+          "threads_connected": 25,
+          "threads_running": 2
+        },
+        "pool_budget": {
+          "total": 28,
+          "target": 40
+        }
+      }
+    },
+    {
+      "name": "analytics_manifest",
+      "status": "warning",
+      "blocking": [],
+      "warnings": [
+        "manifest:manifest_warning_dataset_count=1"
+      ],
+      "evidence": {
+        "ready_count": 10,
+        "missing_count": 0,
+        "blocked_count": 0,
+        "verified_files": 267,
+        "blocked_datasets": []
+      }
+    },
+    {
+      "name": "analytics_export_plan",
+      "status": "ready",
+      "blocking": [],
+      "warnings": [],
+      "evidence": {
+        "required_task_count": 0,
+        "required_tasks": [],
+        "safe_dry_run": {
+          "does_enqueue_tasks": false,
+          "does_run_exporters": false,
+          "does_modify_mysql": false,
+          "does_clean_source_tables": false
+        }
+      }
+    },
+    {
+      "name": "analytics_export_submission",
+      "status": "ready",
+      "blocking": [],
+      "warnings": [],
+      "evidence": {
+        "selected_task_count": 0,
+        "required_task_count": 0,
+        "submitted_task_count": 0,
+        "mode": "dry-run",
+        "safety": {
+          "dry_run_default": true,
+          "requires_apply_flag": true,
+          "requires_confirm_apply": true,
+          "does_run_exporters": false,
+          "does_clean_source_tables": false,
+          "does_modify_mysql_source_tables": false,
+          "writes_runtime_tasks_only_when_apply": false
+        }
+      }
+    }
+  ],
+  "summary": {
+    "check_count": 6,
+    "ready_count": 4,
+    "warning_count": 2,
+    "blocking_count": 0
+  },
+  "evaluation": {
+    "ok": true,
+    "status": "warning",
+    "blocking": [],
+    "warnings": [
+      "resource:swap_used_pct=70.06",
+      "manifest:manifest_warning_dataset_count=1"
+    ]
+  },
+  "next_actions": [
+    "All readiness checks are clear; continue with full validation gates before any cutover decision."
+  ]
+}

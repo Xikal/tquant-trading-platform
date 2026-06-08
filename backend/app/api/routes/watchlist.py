@@ -205,7 +205,7 @@ def watchlist_signals(
     try:
         _refresh_user_watchlist_t1(db, current_user.id)
         rows = _list_user_watchlist_rows(db, current_user.id)
-        return watchlist_signal_service.build_live_signals(db, rows)
+        return watchlist_signal_service.list_signals_for_rows(db, rows)
     finally:
         log_slow_call(logger, "watchlist.signals", started_at)
 

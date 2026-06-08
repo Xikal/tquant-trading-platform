@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Any
 
 from pydantic import BaseModel, Field
@@ -358,4 +359,32 @@ class StrategyTrackingRefreshResponse(BaseModel):
     refreshed_count: int = 0
     changed_strategy_results: bool = False
     changed_paper_ledger: bool = False
+    audit_id: int | None = None
     summary: StrategyTrackingSummaryOut = Field(default_factory=StrategyTrackingSummaryOut)
+
+
+class StrategyReviewRecordCreate(BaseModel):
+    strategy_key: str = Field(default="n_pattern_long_wash", min_length=1, max_length=80)
+    symbol: str = Field(min_length=1, max_length=16)
+    review_state: str = Field(default="watch", max_length=32)
+    notes: str = Field(default="", max_length=2000)
+    verdict: str = Field(default="", max_length=120)
+    source: str = Field(default="frontend-next", max_length=80)
+    idempotency_key: str = Field(default="", max_length=160)
+
+
+class StrategyReviewRecordOut(BaseModel):
+    review_id: int
+    strategy_key: str
+    symbol: str
+    review_state: str = "watch"
+    notes: str = ""
+    verdict: str = ""
+    source: str = "frontend-next"
+    audit_id: int | None = None
+    created_at: datetime | None = None
+
+
+class StrategyReviewRecordListResponse(BaseModel):
+    items: list[StrategyReviewRecordOut] = Field(default_factory=list)
+    total: int = 0

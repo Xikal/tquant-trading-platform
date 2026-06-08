@@ -1,0 +1,2421 @@
+{
+  "generated_at": "2026-06-08T05:46:41.080579+00:00",
+  "analytics_root": "/var/lib/docker/volumes/tquant-mysql_app_runtime_data/_data/analytics",
+  "dataset_count": 10,
+  "datasets": {
+    "daily_bars": {
+      "dataset_key": "daily_bars",
+      "manifest_path": "/var/lib/docker/volumes/tquant-mysql_app_runtime_data/_data/analytics/manifests/daily_bars.latest.json",
+      "present": true,
+      "valid_json": true,
+      "row_count": 2443775,
+      "quality_status": "ok",
+      "status": "",
+      "file_count": 25,
+      "verified_file_count": 25,
+      "missing_file_count": 0,
+      "hash_mismatch_count": 0,
+      "warnings": [
+        "manifest_id_missing"
+      ],
+      "blockers": [],
+      "manifest_id": null,
+      "dataset_version": "daily_bars_20260531080443",
+      "generated_at": "2026-05-31T08:04:43Z",
+      "period_start": "2024-05-31",
+      "period_end": "2026-05-31",
+      "source_table": "daily_bar_snapshots",
+      "files": [
+        {
+          "path": "parquet/daily_bars/trade_year=2024/trade_month=05/part-000.parquet",
+          "exists": true,
+          "rows": 5033,
+          "expected_sha256": "4284c2455d4e1daa461ab39a9a9c22d890e7f73cee8fb14342b0fc36bc71526d",
+          "actual_sha256": "4284c2455d4e1daa461ab39a9a9c22d890e7f73cee8fb14342b0fc36bc71526d",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/daily_bars/trade_year=2024/trade_month=06/part-000.parquet",
+          "exists": true,
+          "rows": 95704,
+          "expected_sha256": "82470a12652e8e310066776721289ed3a86b3c3ba93818fecc46a6fa3265bb3d",
+          "actual_sha256": "82470a12652e8e310066776721289ed3a86b3c3ba93818fecc46a6fa3265bb3d",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/daily_bars/trade_year=2024/trade_month=07/part-000.parquet",
+          "exists": true,
+          "rows": 115991,
+          "expected_sha256": "74c3fb368b6f592647b88180e4abda50ba9e31f604e334899b7404e32549cc8e",
+          "actual_sha256": "74c3fb368b6f592647b88180e4abda50ba9e31f604e334899b7404e32549cc8e",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/daily_bars/trade_year=2024/trade_month=08/part-000.parquet",
+          "exists": true,
+          "rows": 111099,
+          "expected_sha256": "dc91123e075d2c6e89beda0c21d58ee4e1a4ab9205504b859b49611e5d0866fb",
+          "actual_sha256": "dc91123e075d2c6e89beda0c21d58ee4e1a4ab9205504b859b49611e5d0866fb",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/daily_bars/trade_year=2024/trade_month=09/part-000.parquet",
+          "exists": true,
+          "rows": 96039,
+          "expected_sha256": "b3e31a2cb860f6e514b41b6d3cbd3734a36494f8884a82f350fa8d77ef1c18b4",
+          "actual_sha256": "b3e31a2cb860f6e514b41b6d3cbd3734a36494f8884a82f350fa8d77ef1c18b4",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/daily_bars/trade_year=2024/trade_month=10/part-000.parquet",
+          "exists": true,
+          "rows": 91033,
+          "expected_sha256": "0af160024c1811959579890cdff4f8583bbb726e19123f78e600936860dd2fbc",
+          "actual_sha256": "0af160024c1811959579890cdff4f8583bbb726e19123f78e600936860dd2fbc",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/daily_bars/trade_year=2024/trade_month=11/part-000.parquet",
+          "exists": true,
+          "rows": 106301,
+          "expected_sha256": "80ac283991d861489f18279e7df6faa28bd372be87d527ba6ea2f14fddf327f8",
+          "actual_sha256": "80ac283991d861489f18279e7df6faa28bd372be87d527ba6ea2f14fddf327f8",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/daily_bars/trade_year=2024/trade_month=12/part-000.parquet",
+          "exists": true,
+          "rows": 111548,
+          "expected_sha256": "e0fc7fe36dca0ed5d2ff60615e21643efd82caea0506ba056f04f916a3b5b8ca",
+          "actual_sha256": "e0fc7fe36dca0ed5d2ff60615e21643efd82caea0506ba056f04f916a3b5b8ca",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/daily_bars/trade_year=2025/trade_month=01/part-000.parquet",
+          "exists": true,
+          "rows": 91432,
+          "expected_sha256": "3c3881462b9ea62f748778ee3af3f4a097350d7d8607cf2875c09e1f9f58353a",
+          "actual_sha256": "3c3881462b9ea62f748778ee3af3f4a097350d7d8607cf2875c09e1f9f58353a",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/daily_bars/trade_year=2025/trade_month=02/part-000.parquet",
+          "exists": true,
+          "rows": 91631,
+          "expected_sha256": "5ab6f93713ca807bf9c7bf1e683310471016f5c2ee73548756299c3c621ed4de",
+          "actual_sha256": "5ab6f93713ca807bf9c7bf1e683310471016f5c2ee73548756299c3c621ed4de",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/daily_bars/trade_year=2025/trade_month=03/part-000.parquet",
+          "exists": true,
+          "rows": 106928,
+          "expected_sha256": "60f4b358c3d7bf48652b091f617bb0dcf0f2cb02459b75e388131ed6b04bf27b",
+          "actual_sha256": "60f4b358c3d7bf48652b091f617bb0dcf0f2cb02459b75e388131ed6b04bf27b",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/daily_bars/trade_year=2025/trade_month=04/part-000.parquet",
+          "exists": true,
+          "rows": 107150,
+          "expected_sha256": "aac1de2f1d3589408487fd19791dca8e3451412b9814384379a3e72c38938699",
+          "actual_sha256": "aac1de2f1d3589408487fd19791dca8e3451412b9814384379a3e72c38938699",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/daily_bars/trade_year=2025/trade_month=05/part-000.parquet",
+          "exists": true,
+          "rows": 97090,
+          "expected_sha256": "b91967d1455869df860b90ec17739722ca258af5914e4d2f8484d290e512c863",
+          "actual_sha256": "b91967d1455869df860b90ec17739722ca258af5914e4d2f8484d290e512c863",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/daily_bars/trade_year=2025/trade_month=06/part-000.parquet",
+          "exists": true,
+          "rows": 102345,
+          "expected_sha256": "7dab11645daf785b89adaa89069cf50d3a9cbdbaafab6a3256482084b2218e89",
+          "actual_sha256": "7dab11645daf785b89adaa89069cf50d3a9cbdbaafab6a3256482084b2218e89",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/daily_bars/trade_year=2025/trade_month=07/part-000.parquet",
+          "exists": true,
+          "rows": 117856,
+          "expected_sha256": "f87471cbf777bf2323e6166e3777449bab0b8ec54d83050218d0504218391278",
+          "actual_sha256": "f87471cbf777bf2323e6166e3777449bab0b8ec54d83050218d0504218391278",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/daily_bars/trade_year=2025/trade_month=08/part-000.parquet",
+          "exists": true,
+          "rows": 107748,
+          "expected_sha256": "57cf180da647cb71a11818cabfd4779b17c75297432b8ee804956fa967582220",
+          "actual_sha256": "57cf180da647cb71a11818cabfd4779b17c75297432b8ee804956fa967582220",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/daily_bars/trade_year=2025/trade_month=09/part-000.parquet",
+          "exists": true,
+          "rows": 112989,
+          "expected_sha256": "170f7dcd502ba599c948ea8d938bdf396111e031455330da6f7cc8fb4454f471",
+          "actual_sha256": "170f7dcd502ba599c948ea8d938bdf396111e031455330da6f7cc8fb4454f471",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/daily_bars/trade_year=2025/trade_month=10/part-000.parquet",
+          "exists": true,
+          "rows": 87402,
+          "expected_sha256": "0cd70fe94194a1a8b67180b1063ce60fc87cae9a907a25d360ad7b92de150732",
+          "actual_sha256": "0cd70fe94194a1a8b67180b1063ce60fc87cae9a907a25d360ad7b92de150732",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/daily_bars/trade_year=2025/trade_month=11/part-000.parquet",
+          "exists": true,
+          "rows": 102959,
+          "expected_sha256": "dbe5e8ddc2e18c0031f50580d26ec4545956194782416e28d471528a8e095973",
+          "actual_sha256": "dbe5e8ddc2e18c0031f50580d26ec4545956194782416e28d471528a8e095973",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/daily_bars/trade_year=2025/trade_month=12/part-000.parquet",
+          "exists": true,
+          "rows": 118517,
+          "expected_sha256": "d382b340d61418dc4a3c4ee6f0c0964b0f307b9dd84617bc771c4eb1fa4c2654",
+          "actual_sha256": "d382b340d61418dc4a3c4ee6f0c0964b0f307b9dd84617bc771c4eb1fa4c2654",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/daily_bars/trade_year=2026/trade_month=01/part-000.parquet",
+          "exists": true,
+          "rows": 103339,
+          "expected_sha256": "f8b04e792c85c3b050d8f3a9673591725da81f33ee53acbddf7ba0a49f033f8b",
+          "actual_sha256": "f8b04e792c85c3b050d8f3a9673591725da81f33ee53acbddf7ba0a49f033f8b",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/daily_bars/trade_year=2026/trade_month=02/part-000.parquet",
+          "exists": true,
+          "rows": 72444,
+          "expected_sha256": "308e1e27eafb436dba07f206a63160ac97f37cf91c9a4a89ea40bd92c9c5720b",
+          "actual_sha256": "308e1e27eafb436dba07f206a63160ac97f37cf91c9a4a89ea40bd92c9c5720b",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/daily_bars/trade_year=2026/trade_month=03/part-000.parquet",
+          "exists": true,
+          "rows": 113912,
+          "expected_sha256": "27c83a6c341e01b85bd3803a93b00de2eb2e334d162890fb8fc6e338759c04d3",
+          "actual_sha256": "27c83a6c341e01b85bd3803a93b00de2eb2e334d162890fb8fc6e338759c04d3",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/daily_bars/trade_year=2026/trade_month=04/part-000.parquet",
+          "exists": true,
+          "rows": 99428,
+          "expected_sha256": "cdaba6f3da69b81a2d77b9f9c354bfe2da90958b77b9f03ed84cde9b72b9f12a",
+          "actual_sha256": "cdaba6f3da69b81a2d77b9f9c354bfe2da90958b77b9f03ed84cde9b72b9f12a",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/daily_bars/trade_year=2026/trade_month=05/part-000.parquet",
+          "exists": true,
+          "rows": 77857,
+          "expected_sha256": "d6489e8a432039d56107a534d0c04f99f369969d928c92ba13d2393b9ecade9d",
+          "actual_sha256": "d6489e8a432039d56107a534d0c04f99f369969d928c92ba13d2393b9ecade9d",
+          "hash_ok": true
+        }
+      ]
+    },
+    "strategy_tracking_snapshots": {
+      "dataset_key": "strategy_tracking_snapshots",
+      "manifest_path": "/var/lib/docker/volumes/tquant-mysql_app_runtime_data/_data/analytics/manifests/strategy_tracking_snapshots.latest.json",
+      "present": true,
+      "valid_json": true,
+      "row_count": 2,
+      "quality_status": "ok",
+      "status": "active",
+      "file_count": 2,
+      "verified_file_count": 2,
+      "missing_file_count": 0,
+      "hash_mismatch_count": 0,
+      "warnings": [],
+      "blockers": [],
+      "manifest_id": "strategy_tracking_snapshots:strategy_tracking_snapshots_20260608051655",
+      "dataset_version": "strategy_tracking_snapshots_20260608051655",
+      "generated_at": "2026-06-08T05:16:55Z",
+      "period_start": "2026-03-11",
+      "period_end": "2026-06-08",
+      "source_table": "strategy_tracking_snapshots",
+      "files": [
+        {
+          "path": "parquet/strategy_tracking_snapshots/generated_date=2026-06-05/part-000.parquet",
+          "exists": true,
+          "rows": 1,
+          "expected_sha256": "795857b041dc0fcfbbbc64e1630e80f6a727122d3ac9f4f75dba4333a29a81c1",
+          "actual_sha256": "795857b041dc0fcfbbbc64e1630e80f6a727122d3ac9f4f75dba4333a29a81c1",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/strategy_tracking_snapshots/generated_date=2026-06-08/part-000.parquet",
+          "exists": true,
+          "rows": 1,
+          "expected_sha256": "426b8e840ca9d9c51bd553565aa95fd8980d1282d17b5e089ccff6d38690392f",
+          "actual_sha256": "426b8e840ca9d9c51bd553565aa95fd8980d1282d17b5e089ccff6d38690392f",
+          "hash_ok": true
+        }
+      ]
+    },
+    "key_level_snapshots": {
+      "dataset_key": "key_level_snapshots",
+      "manifest_path": "/var/lib/docker/volumes/tquant-mysql_app_runtime_data/_data/analytics/manifests/key_level_snapshots.latest.json",
+      "present": true,
+      "valid_json": true,
+      "row_count": 16372,
+      "quality_status": "ok",
+      "status": "active",
+      "file_count": 5,
+      "verified_file_count": 5,
+      "missing_file_count": 0,
+      "hash_mismatch_count": 0,
+      "warnings": [],
+      "blockers": [],
+      "manifest_id": "key_level_snapshots:key_level_snapshots_20260608051656",
+      "dataset_version": "key_level_snapshots_20260608051656",
+      "generated_at": "2026-06-08T05:16:56Z",
+      "period_start": "2026-03-11",
+      "period_end": "2026-06-08",
+      "source_table": "key_level_snapshots",
+      "files": [
+        {
+          "path": "parquet/key_level_snapshots/trade_date=2026-05-07/part-000.parquet",
+          "exists": true,
+          "rows": 308,
+          "expected_sha256": "3cb1566c04cd4d21fa6a41d20d224aba5a71095fc948bed730b7a9b45b855a8c",
+          "actual_sha256": "3cb1566c04cd4d21fa6a41d20d224aba5a71095fc948bed730b7a9b45b855a8c",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/key_level_snapshots/trade_date=2026-06-03/part-000.parquet",
+          "exists": true,
+          "rows": 5352,
+          "expected_sha256": "a5a8bd6c4b8cdc6f683fb8a4996a831fca07aa1aaf2702c6df231d491406712d",
+          "actual_sha256": "a5a8bd6c4b8cdc6f683fb8a4996a831fca07aa1aaf2702c6df231d491406712d",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/key_level_snapshots/trade_date=2026-06-04/part-000.parquet",
+          "exists": true,
+          "rows": 5352,
+          "expected_sha256": "18d68075de5d01d03b420ecee3e543dc60259baa2b2f25c7acf67e9b1fb1743a",
+          "actual_sha256": "18d68075de5d01d03b420ecee3e543dc60259baa2b2f25c7acf67e9b1fb1743a",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/key_level_snapshots/trade_date=2026-06-05/part-000.parquet",
+          "exists": true,
+          "rows": 5352,
+          "expected_sha256": "e935de61df17d7ec25dc654932490d36e3845054f1c9bf4540a5533b04e9ef61",
+          "actual_sha256": "e935de61df17d7ec25dc654932490d36e3845054f1c9bf4540a5533b04e9ef61",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/key_level_snapshots/trade_date=2026-06-06/part-000.parquet",
+          "exists": true,
+          "rows": 8,
+          "expected_sha256": "a86e88c421a282f2eaea59e83704f426b2ad231bf808f385a92cfd92cbbab33a",
+          "actual_sha256": "a86e88c421a282f2eaea59e83704f426b2ad231bf808f385a92cfd92cbbab33a",
+          "hash_ok": true
+        }
+      ]
+    },
+    "low_buy_result_snapshots": {
+      "dataset_key": "low_buy_result_snapshots",
+      "manifest_path": "/var/lib/docker/volumes/tquant-mysql_app_runtime_data/_data/analytics/manifests/low_buy_result_snapshots.latest.json",
+      "present": true,
+      "valid_json": true,
+      "row_count": 5259,
+      "quality_status": "ok",
+      "status": "active",
+      "file_count": 42,
+      "verified_file_count": 42,
+      "missing_file_count": 0,
+      "hash_mismatch_count": 0,
+      "warnings": [],
+      "blockers": [],
+      "manifest_id": "low_buy_result_snapshots:low_buy_result_snapshots_20260608051658",
+      "dataset_version": "low_buy_result_snapshots_20260608051658",
+      "generated_at": "2026-06-08T05:16:58Z",
+      "period_start": "2026-03-11",
+      "period_end": "2026-06-08",
+      "source_table": "low_buy_result_snapshots",
+      "files": [
+        {
+          "path": "parquet/low_buy_result_snapshots/latest_trade_date=2026-03-31/part-000.parquet",
+          "exists": true,
+          "rows": 35,
+          "expected_sha256": "900d21bf1985f443c3051c1e07435d28a20732f28dfb68cd02043e7339b5cfd6",
+          "actual_sha256": "900d21bf1985f443c3051c1e07435d28a20732f28dfb68cd02043e7339b5cfd6",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/low_buy_result_snapshots/latest_trade_date=2026-04-01/part-000.parquet",
+          "exists": true,
+          "rows": 72,
+          "expected_sha256": "ef6a52b32709042be6bd642cc6c942ed1a708033963c1720e196280bbb009eb9",
+          "actual_sha256": "ef6a52b32709042be6bd642cc6c942ed1a708033963c1720e196280bbb009eb9",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/low_buy_result_snapshots/latest_trade_date=2026-04-02/part-000.parquet",
+          "exists": true,
+          "rows": 84,
+          "expected_sha256": "306ceca2c413df2e3506f38d65b1c321300dca06849266adce7c6c4063f08c95",
+          "actual_sha256": "306ceca2c413df2e3506f38d65b1c321300dca06849266adce7c6c4063f08c95",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/low_buy_result_snapshots/latest_trade_date=2026-04-03/part-000.parquet",
+          "exists": true,
+          "rows": 84,
+          "expected_sha256": "3b72fa05f903ff69a9143e911b461d0b8b812d401b324f6e33f633aed046c2ff",
+          "actual_sha256": "3b72fa05f903ff69a9143e911b461d0b8b812d401b324f6e33f633aed046c2ff",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/low_buy_result_snapshots/latest_trade_date=2026-04-07/part-000.parquet",
+          "exists": true,
+          "rows": 104,
+          "expected_sha256": "c0553192c6937c93d005b0d6c607a70a1f1fb98104c9d675bd507aa72aca7452",
+          "actual_sha256": "c0553192c6937c93d005b0d6c607a70a1f1fb98104c9d675bd507aa72aca7452",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/low_buy_result_snapshots/latest_trade_date=2026-04-08/part-000.parquet",
+          "exists": true,
+          "rows": 107,
+          "expected_sha256": "c257310d6f61b8a4c654747ba6e41ac9cec192797e14d3d67d759bb01d05e15b",
+          "actual_sha256": "c257310d6f61b8a4c654747ba6e41ac9cec192797e14d3d67d759bb01d05e15b",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/low_buy_result_snapshots/latest_trade_date=2026-04-09/part-000.parquet",
+          "exists": true,
+          "rows": 105,
+          "expected_sha256": "f31183c9dc38a8dc532a7d71774b98debab91eedd0ceef633a00a22937874db1",
+          "actual_sha256": "f31183c9dc38a8dc532a7d71774b98debab91eedd0ceef633a00a22937874db1",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/low_buy_result_snapshots/latest_trade_date=2026-04-10/part-000.parquet",
+          "exists": true,
+          "rows": 102,
+          "expected_sha256": "ed893d0cae5f338324a5c241439ba60105f0327b922c416bdf28e0d25e076233",
+          "actual_sha256": "ed893d0cae5f338324a5c241439ba60105f0327b922c416bdf28e0d25e076233",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/low_buy_result_snapshots/latest_trade_date=2026-04-13/part-000.parquet",
+          "exists": true,
+          "rows": 134,
+          "expected_sha256": "b9f1dc7f08ffc8985ee01b8ddda544e798f82b59c287014d2b96ade97bb53426",
+          "actual_sha256": "b9f1dc7f08ffc8985ee01b8ddda544e798f82b59c287014d2b96ade97bb53426",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/low_buy_result_snapshots/latest_trade_date=2026-04-14/part-000.parquet",
+          "exists": true,
+          "rows": 157,
+          "expected_sha256": "562d92b515ba2c3ca7f753d0993dd74c83c2d22984d4d59a11712b9994c85e19",
+          "actual_sha256": "562d92b515ba2c3ca7f753d0993dd74c83c2d22984d4d59a11712b9994c85e19",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/low_buy_result_snapshots/latest_trade_date=2026-04-15/part-000.parquet",
+          "exists": true,
+          "rows": 114,
+          "expected_sha256": "93cdf59ccf5b172c5662193b5cc63a7f8aec436e2baab350b0af1e3056896f77",
+          "actual_sha256": "93cdf59ccf5b172c5662193b5cc63a7f8aec436e2baab350b0af1e3056896f77",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/low_buy_result_snapshots/latest_trade_date=2026-04-16/part-000.parquet",
+          "exists": true,
+          "rows": 160,
+          "expected_sha256": "3d4bc2c6e82b4b883a694dd49bfcda3bc7059616920c71fcc57a3eef95445e95",
+          "actual_sha256": "3d4bc2c6e82b4b883a694dd49bfcda3bc7059616920c71fcc57a3eef95445e95",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/low_buy_result_snapshots/latest_trade_date=2026-04-17/part-000.parquet",
+          "exists": true,
+          "rows": 135,
+          "expected_sha256": "b09f469860b09e9ee0ecbaaf31be61b2a276fd1cd6942b38f9f9c8909227b9bc",
+          "actual_sha256": "b09f469860b09e9ee0ecbaaf31be61b2a276fd1cd6942b38f9f9c8909227b9bc",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/low_buy_result_snapshots/latest_trade_date=2026-04-20/part-000.parquet",
+          "exists": true,
+          "rows": 133,
+          "expected_sha256": "75836a2ba3725160bcae2dbb163219a59422aba722351553eb5e491ce3f58834",
+          "actual_sha256": "75836a2ba3725160bcae2dbb163219a59422aba722351553eb5e491ce3f58834",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/low_buy_result_snapshots/latest_trade_date=2026-04-21/part-000.parquet",
+          "exists": true,
+          "rows": 116,
+          "expected_sha256": "f8ae7b353d0efb188209b45a649892bc67da9a369a484e80bbbaf58f9580a10a",
+          "actual_sha256": "f8ae7b353d0efb188209b45a649892bc67da9a369a484e80bbbaf58f9580a10a",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/low_buy_result_snapshots/latest_trade_date=2026-04-22/part-000.parquet",
+          "exists": true,
+          "rows": 145,
+          "expected_sha256": "8b778db728bed05363bb094cbbc644b8282e302d543fb365947c60006dc9fd37",
+          "actual_sha256": "8b778db728bed05363bb094cbbc644b8282e302d543fb365947c60006dc9fd37",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/low_buy_result_snapshots/latest_trade_date=2026-04-23/part-000.parquet",
+          "exists": true,
+          "rows": 96,
+          "expected_sha256": "b11959f2054a746f924567dbf610f86ae7ed2715025dd9be81ebe9da45d98af6",
+          "actual_sha256": "b11959f2054a746f924567dbf610f86ae7ed2715025dd9be81ebe9da45d98af6",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/low_buy_result_snapshots/latest_trade_date=2026-04-24/part-000.parquet",
+          "exists": true,
+          "rows": 99,
+          "expected_sha256": "38c98a8db08ec2348da4ef92da057ae25805069daac42be48ed3ec98b05ced47",
+          "actual_sha256": "38c98a8db08ec2348da4ef92da057ae25805069daac42be48ed3ec98b05ced47",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/low_buy_result_snapshots/latest_trade_date=2026-04-27/part-000.parquet",
+          "exists": true,
+          "rows": 118,
+          "expected_sha256": "a92391fedf9d17d7a976f32c0ae56e8e839226f365c30b201a311acd986ab333",
+          "actual_sha256": "a92391fedf9d17d7a976f32c0ae56e8e839226f365c30b201a311acd986ab333",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/low_buy_result_snapshots/latest_trade_date=2026-04-28/part-000.parquet",
+          "exists": true,
+          "rows": 328,
+          "expected_sha256": "5a68310644b0a43c12dc52ba8d4254a033418028774fb279e8399dda73175b52",
+          "actual_sha256": "5a68310644b0a43c12dc52ba8d4254a033418028774fb279e8399dda73175b52",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/low_buy_result_snapshots/latest_trade_date=2026-04-29/part-000.parquet",
+          "exists": true,
+          "rows": 301,
+          "expected_sha256": "5dde2e1752d338ca0f72673b73c42018b62eb3e2dbf5a79d614f2ad850649a23",
+          "actual_sha256": "5dde2e1752d338ca0f72673b73c42018b62eb3e2dbf5a79d614f2ad850649a23",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/low_buy_result_snapshots/latest_trade_date=2026-05-06/part-000.parquet",
+          "exists": true,
+          "rows": 272,
+          "expected_sha256": "6fbf0941fc06de5792d62c9f34c7151e92d6d21cf5e6f26268fdd1b6af051b14",
+          "actual_sha256": "6fbf0941fc06de5792d62c9f34c7151e92d6d21cf5e6f26268fdd1b6af051b14",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/low_buy_result_snapshots/latest_trade_date=2026-05-07/part-000.parquet",
+          "exists": true,
+          "rows": 93,
+          "expected_sha256": "c0a5b2f0aa8975e3e510b1ed2ce9ed99ee1eda1c8311bbea2fbe11fe77322ddf",
+          "actual_sha256": "c0a5b2f0aa8975e3e510b1ed2ce9ed99ee1eda1c8311bbea2fbe11fe77322ddf",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/low_buy_result_snapshots/latest_trade_date=2026-05-12/part-000.parquet",
+          "exists": true,
+          "rows": 84,
+          "expected_sha256": "bba4ccc3f346e3643db28efdc73766f0494a222151b6e788f12d89d0adbd2ccb",
+          "actual_sha256": "bba4ccc3f346e3643db28efdc73766f0494a222151b6e788f12d89d0adbd2ccb",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/low_buy_result_snapshots/latest_trade_date=2026-05-13/part-000.parquet",
+          "exists": true,
+          "rows": 81,
+          "expected_sha256": "401b165781e63a8cdccae2da0c4bd2d1994c2b6f5695fe545c1f35dd6116ab64",
+          "actual_sha256": "401b165781e63a8cdccae2da0c4bd2d1994c2b6f5695fe545c1f35dd6116ab64",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/low_buy_result_snapshots/latest_trade_date=2026-05-14/part-000.parquet",
+          "exists": true,
+          "rows": 44,
+          "expected_sha256": "784a5462ad68cbdc1734965c5d0c1e05fca34f6916d4feada08a1f6b5232fa8c",
+          "actual_sha256": "784a5462ad68cbdc1734965c5d0c1e05fca34f6916d4feada08a1f6b5232fa8c",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/low_buy_result_snapshots/latest_trade_date=2026-05-15/part-000.parquet",
+          "exists": true,
+          "rows": 26,
+          "expected_sha256": "9188ad351e30dd1541905fcfadc92c3b46fe2561a27743f1825d3a4c2184d2d1",
+          "actual_sha256": "9188ad351e30dd1541905fcfadc92c3b46fe2561a27743f1825d3a4c2184d2d1",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/low_buy_result_snapshots/latest_trade_date=2026-05-18/part-000.parquet",
+          "exists": true,
+          "rows": 18,
+          "expected_sha256": "6576ff1f4a490fc8954606947d337024d0c6e980b2bf7e8e0d2a0e5ccb20bf6a",
+          "actual_sha256": "6576ff1f4a490fc8954606947d337024d0c6e980b2bf7e8e0d2a0e5ccb20bf6a",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/low_buy_result_snapshots/latest_trade_date=2026-05-19/part-000.parquet",
+          "exists": true,
+          "rows": 13,
+          "expected_sha256": "51f37fef07b2e97f995c0d8d9cbb778ae20a5dec6b87e3bd9c1394dbaf896c0c",
+          "actual_sha256": "51f37fef07b2e97f995c0d8d9cbb778ae20a5dec6b87e3bd9c1394dbaf896c0c",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/low_buy_result_snapshots/latest_trade_date=2026-05-20/part-000.parquet",
+          "exists": true,
+          "rows": 37,
+          "expected_sha256": "b9900b98bf6afa8ebaadf20a1639415dd28c51920e6bd71a27348486dacc444d",
+          "actual_sha256": "b9900b98bf6afa8ebaadf20a1639415dd28c51920e6bd71a27348486dacc444d",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/low_buy_result_snapshots/latest_trade_date=2026-05-21/part-000.parquet",
+          "exists": true,
+          "rows": 15,
+          "expected_sha256": "92e1dc1758976d5382c6e6023315776d19b3a6b9f05084f9206e611b75eef009",
+          "actual_sha256": "92e1dc1758976d5382c6e6023315776d19b3a6b9f05084f9206e611b75eef009",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/low_buy_result_snapshots/latest_trade_date=2026-05-22/part-000.parquet",
+          "exists": true,
+          "rows": 124,
+          "expected_sha256": "7d3b69541ce13280d67ab5a1b3f9a84e784567d30432af02fbc3f6db10e9ac57",
+          "actual_sha256": "7d3b69541ce13280d67ab5a1b3f9a84e784567d30432af02fbc3f6db10e9ac57",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/low_buy_result_snapshots/latest_trade_date=2026-05-25/part-000.parquet",
+          "exists": true,
+          "rows": 259,
+          "expected_sha256": "e3bbece58883e0503cca540a0117ca2c44765fbfb73c0a0e40a6830cd60b3e58",
+          "actual_sha256": "e3bbece58883e0503cca540a0117ca2c44765fbfb73c0a0e40a6830cd60b3e58",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/low_buy_result_snapshots/latest_trade_date=2026-05-26/part-000.parquet",
+          "exists": true,
+          "rows": 269,
+          "expected_sha256": "2f16d22311fde60db81260c12f7ee83ee8aeae288cdf178dfcf42d929b23ecef",
+          "actual_sha256": "2f16d22311fde60db81260c12f7ee83ee8aeae288cdf178dfcf42d929b23ecef",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/low_buy_result_snapshots/latest_trade_date=2026-05-27/part-000.parquet",
+          "exists": true,
+          "rows": 247,
+          "expected_sha256": "1fd502057274b18ab4538e428bd86672c343237acee441bbf1a746dbb82a27ff",
+          "actual_sha256": "1fd502057274b18ab4538e428bd86672c343237acee441bbf1a746dbb82a27ff",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/low_buy_result_snapshots/latest_trade_date=2026-05-28/part-000.parquet",
+          "exists": true,
+          "rows": 304,
+          "expected_sha256": "67255a8db534e13777ed1d16756375f2081a784fe2020aea503d503d170c194b",
+          "actual_sha256": "67255a8db534e13777ed1d16756375f2081a784fe2020aea503d503d170c194b",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/low_buy_result_snapshots/latest_trade_date=2026-05-29/part-000.parquet",
+          "exists": true,
+          "rows": 223,
+          "expected_sha256": "00ec0737f9f5e40dfc4875ecba58fbc47cd90aa1f4d2f853b1bcd9279d7ac4cc",
+          "actual_sha256": "00ec0737f9f5e40dfc4875ecba58fbc47cd90aa1f4d2f853b1bcd9279d7ac4cc",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/low_buy_result_snapshots/latest_trade_date=2026-06-01/part-000.parquet",
+          "exists": true,
+          "rows": 63,
+          "expected_sha256": "539dfecf17df37959e84ca3848db17ca0c9147590dd1b63fd02aa71b3d560430",
+          "actual_sha256": "539dfecf17df37959e84ca3848db17ca0c9147590dd1b63fd02aa71b3d560430",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/low_buy_result_snapshots/latest_trade_date=2026-06-02/part-000.parquet",
+          "exists": true,
+          "rows": 77,
+          "expected_sha256": "aef35ea9cc7f0df214eecc3c6a2a660aaedf5227baf32a8a6404b86c5a19f7b5",
+          "actual_sha256": "aef35ea9cc7f0df214eecc3c6a2a660aaedf5227baf32a8a6404b86c5a19f7b5",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/low_buy_result_snapshots/latest_trade_date=2026-06-03/part-000.parquet",
+          "exists": true,
+          "rows": 83,
+          "expected_sha256": "e1a35e437b2f0de4ceefd60d2723a1c1a197834820bbced8c1bf542d0bd2fec9",
+          "actual_sha256": "e1a35e437b2f0de4ceefd60d2723a1c1a197834820bbced8c1bf542d0bd2fec9",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/low_buy_result_snapshots/latest_trade_date=2026-06-04/part-000.parquet",
+          "exists": true,
+          "rows": 66,
+          "expected_sha256": "138c86975c2cbb099d9d349d3c1b396f55780f583d4c053be1ebdebd00e6140f",
+          "actual_sha256": "138c86975c2cbb099d9d349d3c1b396f55780f583d4c053be1ebdebd00e6140f",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/low_buy_result_snapshots/latest_trade_date=2026-06-05/part-000.parquet",
+          "exists": true,
+          "rows": 132,
+          "expected_sha256": "c95bf367005c30730f383b01fb1db7a95dc1d2d247466c565d1801a3c37d5388",
+          "actual_sha256": "c95bf367005c30730f383b01fb1db7a95dc1d2d247466c565d1801a3c37d5388",
+          "hash_ok": true
+        }
+      ]
+    },
+    "backtest_runs": {
+      "dataset_key": "backtest_runs",
+      "manifest_path": "/var/lib/docker/volumes/tquant-mysql_app_runtime_data/_data/analytics/manifests/backtest_runs.latest.json",
+      "present": true,
+      "valid_json": true,
+      "row_count": 48,
+      "quality_status": "ok",
+      "status": "active",
+      "file_count": 22,
+      "verified_file_count": 22,
+      "missing_file_count": 0,
+      "hash_mismatch_count": 0,
+      "warnings": [],
+      "blockers": [],
+      "manifest_id": "backtest_runs:backtest_runs_20260608051701",
+      "dataset_version": "backtest_runs_20260608051701",
+      "generated_at": "2026-06-08T05:17:01Z",
+      "period_start": "2025-12-11",
+      "period_end": "2026-06-08",
+      "source_table": "backtest_runs",
+      "files": [
+        {
+          "path": "parquet/backtest_runs/created_date=2026-04-18/part-000.parquet",
+          "exists": true,
+          "rows": 2,
+          "expected_sha256": "aef3d662d4a4f29f9b20fa022be89b058ae01b8c49581d4dfede08eb9dcd2890",
+          "actual_sha256": "aef3d662d4a4f29f9b20fa022be89b058ae01b8c49581d4dfede08eb9dcd2890",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/backtest_runs/created_date=2026-04-19/part-000.parquet",
+          "exists": true,
+          "rows": 2,
+          "expected_sha256": "d69a4df1bba115f6559c9ade02d820d98b1fe8bbf5cc15b892325fcc438ca914",
+          "actual_sha256": "d69a4df1bba115f6559c9ade02d820d98b1fe8bbf5cc15b892325fcc438ca914",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/backtest_runs/created_date=2026-04-21/part-000.parquet",
+          "exists": true,
+          "rows": 1,
+          "expected_sha256": "85da80b7120b4ee2220c356b67a80d9ecf6f592c447f336672d8ca99260ed277",
+          "actual_sha256": "85da80b7120b4ee2220c356b67a80d9ecf6f592c447f336672d8ca99260ed277",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/backtest_runs/created_date=2026-04-22/part-000.parquet",
+          "exists": true,
+          "rows": 3,
+          "expected_sha256": "314aecc82ed3fb271624d6f389e803e6a0f773b6542631aa8c4a4e787aabd973",
+          "actual_sha256": "314aecc82ed3fb271624d6f389e803e6a0f773b6542631aa8c4a4e787aabd973",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/backtest_runs/created_date=2026-04-26/part-000.parquet",
+          "exists": true,
+          "rows": 1,
+          "expected_sha256": "e88918bdb1e1b0e5d4ce8b5d4e2a0023df0a380d70ff4a1e35058cdd8b1b3891",
+          "actual_sha256": "e88918bdb1e1b0e5d4ce8b5d4e2a0023df0a380d70ff4a1e35058cdd8b1b3891",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/backtest_runs/created_date=2026-04-28/part-000.parquet",
+          "exists": true,
+          "rows": 2,
+          "expected_sha256": "dc2b130ec22880b404efd62d370a22a72cb770be61773b0cb57edeb7c5faea17",
+          "actual_sha256": "dc2b130ec22880b404efd62d370a22a72cb770be61773b0cb57edeb7c5faea17",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/backtest_runs/created_date=2026-04-29/part-000.parquet",
+          "exists": true,
+          "rows": 7,
+          "expected_sha256": "2d151e81448435b55efebbd657669e2b67a4059e2f4b9945cbf45681ee872c04",
+          "actual_sha256": "2d151e81448435b55efebbd657669e2b67a4059e2f4b9945cbf45681ee872c04",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/backtest_runs/created_date=2026-04-30/part-000.parquet",
+          "exists": true,
+          "rows": 1,
+          "expected_sha256": "cc503919ca1a3a7555e817ed1c4c0da4d8541bb7d6b11aeb729a1aec029952ad",
+          "actual_sha256": "cc503919ca1a3a7555e817ed1c4c0da4d8541bb7d6b11aeb729a1aec029952ad",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/backtest_runs/created_date=2026-05-02/part-000.parquet",
+          "exists": true,
+          "rows": 1,
+          "expected_sha256": "fee482a6f5bd42630f39a3d3865e9312c15d8b7ac3ca00fde426170485417b17",
+          "actual_sha256": "fee482a6f5bd42630f39a3d3865e9312c15d8b7ac3ca00fde426170485417b17",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/backtest_runs/created_date=2026-05-03/part-000.parquet",
+          "exists": true,
+          "rows": 1,
+          "expected_sha256": "4d9ff23efab7e089a6fc76ec6ad61512fb55c3e6dc27d98e8250b61531040983",
+          "actual_sha256": "4d9ff23efab7e089a6fc76ec6ad61512fb55c3e6dc27d98e8250b61531040983",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/backtest_runs/created_date=2026-05-05/part-000.parquet",
+          "exists": true,
+          "rows": 7,
+          "expected_sha256": "f90da7e2334dc67413142c019ffc62f5198251337d0b87b99199e0e64c49d401",
+          "actual_sha256": "f90da7e2334dc67413142c019ffc62f5198251337d0b87b99199e0e64c49d401",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/backtest_runs/created_date=2026-05-06/part-000.parquet",
+          "exists": true,
+          "rows": 1,
+          "expected_sha256": "df1bd3eb95768cce680ea2cc20912197d2c8ea8ed8c5541acb46fab84efb334b",
+          "actual_sha256": "df1bd3eb95768cce680ea2cc20912197d2c8ea8ed8c5541acb46fab84efb334b",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/backtest_runs/created_date=2026-05-07/part-000.parquet",
+          "exists": true,
+          "rows": 2,
+          "expected_sha256": "94c6882cffa37f1460381e3ebf560b048d4c12e8b5343f2a35721f67362866f7",
+          "actual_sha256": "94c6882cffa37f1460381e3ebf560b048d4c12e8b5343f2a35721f67362866f7",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/backtest_runs/created_date=2026-05-09/part-000.parquet",
+          "exists": true,
+          "rows": 1,
+          "expected_sha256": "67421ee1f265758fec8aedcf320eaf97ddbba19c0eaabbe00691849bc00e2814",
+          "actual_sha256": "67421ee1f265758fec8aedcf320eaf97ddbba19c0eaabbe00691849bc00e2814",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/backtest_runs/created_date=2026-05-10/part-000.parquet",
+          "exists": true,
+          "rows": 1,
+          "expected_sha256": "b8492cec941f8c3bde6ef457b164e86596bbf16996a9ad322609a4a5ddcc58ce",
+          "actual_sha256": "b8492cec941f8c3bde6ef457b164e86596bbf16996a9ad322609a4a5ddcc58ce",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/backtest_runs/created_date=2026-05-13/part-000.parquet",
+          "exists": true,
+          "rows": 2,
+          "expected_sha256": "4f45b72e1243d0a9187dad733668801fb77bbee5a20bc59ea5eed6f0e36d163b",
+          "actual_sha256": "4f45b72e1243d0a9187dad733668801fb77bbee5a20bc59ea5eed6f0e36d163b",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/backtest_runs/created_date=2026-05-15/part-000.parquet",
+          "exists": true,
+          "rows": 5,
+          "expected_sha256": "bf4d80a8e264d797ee7697ba6d6b37dcc3857969ce7a5c2ce0a69a2f04ce6927",
+          "actual_sha256": "bf4d80a8e264d797ee7697ba6d6b37dcc3857969ce7a5c2ce0a69a2f04ce6927",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/backtest_runs/created_date=2026-05-16/part-000.parquet",
+          "exists": true,
+          "rows": 1,
+          "expected_sha256": "8db7351882588ee1283ca13015b79f34bd074912ffac27208424b56b83e06c1c",
+          "actual_sha256": "8db7351882588ee1283ca13015b79f34bd074912ffac27208424b56b83e06c1c",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/backtest_runs/created_date=2026-05-17/part-000.parquet",
+          "exists": true,
+          "rows": 3,
+          "expected_sha256": "bc6a2848f633b2d4ec174a462532eb993ca80214070924da6411bd93967711a0",
+          "actual_sha256": "bc6a2848f633b2d4ec174a462532eb993ca80214070924da6411bd93967711a0",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/backtest_runs/created_date=2026-05-25/part-000.parquet",
+          "exists": true,
+          "rows": 1,
+          "expected_sha256": "7d578d9daf8bf15232fa99e9325db3b89a13d32a35059d3912864168d29dcf68",
+          "actual_sha256": "7d578d9daf8bf15232fa99e9325db3b89a13d32a35059d3912864168d29dcf68",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/backtest_runs/created_date=2026-05-26/part-000.parquet",
+          "exists": true,
+          "rows": 2,
+          "expected_sha256": "31cdcba04037d55ea5a4c2358a621053a4d1efb0bf335da984506dce48dc7f00",
+          "actual_sha256": "31cdcba04037d55ea5a4c2358a621053a4d1efb0bf335da984506dce48dc7f00",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/backtest_runs/created_date=2026-05-27/part-000.parquet",
+          "exists": true,
+          "rows": 1,
+          "expected_sha256": "ed44a1773c36d6fbf847c5023b4f1d19e78ac2d6c2bd301be103bdfc423f6678",
+          "actual_sha256": "ed44a1773c36d6fbf847c5023b4f1d19e78ac2d6c2bd301be103bdfc423f6678",
+          "hash_ok": true
+        }
+      ]
+    },
+    "backtest_trades": {
+      "dataset_key": "backtest_trades",
+      "manifest_path": "/var/lib/docker/volumes/tquant-mysql_app_runtime_data/_data/analytics/manifests/backtest_trades.latest.json",
+      "present": true,
+      "valid_json": true,
+      "row_count": 775,
+      "quality_status": "ok",
+      "status": "active",
+      "file_count": 29,
+      "verified_file_count": 29,
+      "missing_file_count": 0,
+      "hash_mismatch_count": 0,
+      "warnings": [],
+      "blockers": [],
+      "manifest_id": "backtest_trades:backtest_trades_20260608051701",
+      "dataset_version": "backtest_trades_20260608051701",
+      "generated_at": "2026-06-08T05:17:01Z",
+      "period_start": "2025-12-11",
+      "period_end": "2026-06-08",
+      "source_table": "backtest_trades",
+      "files": [
+        {
+          "path": "parquet/backtest_trades/trade_date=2026-04-02/part-000.parquet",
+          "exists": true,
+          "rows": 11,
+          "expected_sha256": "6f1ae0e697e8a64efbf11a85b2e57c49c266ca9e3d7ca6c74907041bb31eb13b",
+          "actual_sha256": "6f1ae0e697e8a64efbf11a85b2e57c49c266ca9e3d7ca6c74907041bb31eb13b",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/backtest_trades/trade_date=2026-04-03/part-000.parquet",
+          "exists": true,
+          "rows": 55,
+          "expected_sha256": "fd411bce6b552aa9c48b57af23822bfc4a5adaadbe83d113a13561f34dfe7cf2",
+          "actual_sha256": "fd411bce6b552aa9c48b57af23822bfc4a5adaadbe83d113a13561f34dfe7cf2",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/backtest_trades/trade_date=2026-04-07/part-000.parquet",
+          "exists": true,
+          "rows": 11,
+          "expected_sha256": "c9deb853c406526dc83f0d2e1e009ac8cfb97e950a97a2b426b9a634959b84c1",
+          "actual_sha256": "c9deb853c406526dc83f0d2e1e009ac8cfb97e950a97a2b426b9a634959b84c1",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/backtest_trades/trade_date=2026-04-08/part-000.parquet",
+          "exists": true,
+          "rows": 33,
+          "expected_sha256": "9f875daaae2bd68584438de160f0919c6363f29e09cad49979212e033367d64e",
+          "actual_sha256": "9f875daaae2bd68584438de160f0919c6363f29e09cad49979212e033367d64e",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/backtest_trades/trade_date=2026-04-09/part-000.parquet",
+          "exists": true,
+          "rows": 11,
+          "expected_sha256": "c5d32c49cf60735975f1ce6be9a42365c861d73409a24a49b6c32b4168e03bc0",
+          "actual_sha256": "c5d32c49cf60735975f1ce6be9a42365c861d73409a24a49b6c32b4168e03bc0",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/backtest_trades/trade_date=2026-04-10/part-000.parquet",
+          "exists": true,
+          "rows": 27,
+          "expected_sha256": "8d0cc2db960780f640dea78696514e9a3d15f6dfd50872ede4c3e4a4eeb6230c",
+          "actual_sha256": "8d0cc2db960780f640dea78696514e9a3d15f6dfd50872ede4c3e4a4eeb6230c",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/backtest_trades/trade_date=2026-04-13/part-000.parquet",
+          "exists": true,
+          "rows": 41,
+          "expected_sha256": "c7851f6a819f3f46c6aaf065aaa7d3840ee2455b8ad0863d3788dd9db36c46d1",
+          "actual_sha256": "c7851f6a819f3f46c6aaf065aaa7d3840ee2455b8ad0863d3788dd9db36c46d1",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/backtest_trades/trade_date=2026-04-14/part-000.parquet",
+          "exists": true,
+          "rows": 10,
+          "expected_sha256": "abf73695da2e9278d1674b4afd63937c3f80e62c793c425385040c49bcd7b2f0",
+          "actual_sha256": "abf73695da2e9278d1674b4afd63937c3f80e62c793c425385040c49bcd7b2f0",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/backtest_trades/trade_date=2026-04-15/part-000.parquet",
+          "exists": true,
+          "rows": 35,
+          "expected_sha256": "09354797799937283a2a4147706c72de28cc22fae1354c4bc2484fdd32e5a8b4",
+          "actual_sha256": "09354797799937283a2a4147706c72de28cc22fae1354c4bc2484fdd32e5a8b4",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/backtest_trades/trade_date=2026-04-16/part-000.parquet",
+          "exists": true,
+          "rows": 38,
+          "expected_sha256": "96a3593cb571b952fe99348412ef722fe2e64ca3ab0f1a86a347486d93460c0e",
+          "actual_sha256": "96a3593cb571b952fe99348412ef722fe2e64ca3ab0f1a86a347486d93460c0e",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/backtest_trades/trade_date=2026-04-17/part-000.parquet",
+          "exists": true,
+          "rows": 33,
+          "expected_sha256": "8e61d76e579c93f343d495b59191bb3669d9f8cea0f8ea91c4f1fdcb5616a0e9",
+          "actual_sha256": "8e61d76e579c93f343d495b59191bb3669d9f8cea0f8ea91c4f1fdcb5616a0e9",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/backtest_trades/trade_date=2026-04-20/part-000.parquet",
+          "exists": true,
+          "rows": 53,
+          "expected_sha256": "7604a912f57f27124067a08127996bf64a391869f175d3c936f20382594afc4c",
+          "actual_sha256": "7604a912f57f27124067a08127996bf64a391869f175d3c936f20382594afc4c",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/backtest_trades/trade_date=2026-04-21/part-000.parquet",
+          "exists": true,
+          "rows": 33,
+          "expected_sha256": "10d8e63b9ed2aa13d96c8dce515e25b56007ff1b8307088e3ddfdbc2e7ddb5a9",
+          "actual_sha256": "10d8e63b9ed2aa13d96c8dce515e25b56007ff1b8307088e3ddfdbc2e7ddb5a9",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/backtest_trades/trade_date=2026-04-22/part-000.parquet",
+          "exists": true,
+          "rows": 39,
+          "expected_sha256": "f15da7c234cb5c0b2cda522554114bd6bbea346455feb4e358b56d8b6d2f46af",
+          "actual_sha256": "f15da7c234cb5c0b2cda522554114bd6bbea346455feb4e358b56d8b6d2f46af",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/backtest_trades/trade_date=2026-04-23/part-000.parquet",
+          "exists": true,
+          "rows": 41,
+          "expected_sha256": "a1ed8f767d8462255bd45e6b13294fdc7be53d7c32167f4c78b6ba514cf6a6b6",
+          "actual_sha256": "a1ed8f767d8462255bd45e6b13294fdc7be53d7c32167f4c78b6ba514cf6a6b6",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/backtest_trades/trade_date=2026-04-24/part-000.parquet",
+          "exists": true,
+          "rows": 21,
+          "expected_sha256": "0d635c07d17b6c648a447367b16b6d4523a26c1b190398fbae61ed568769a590",
+          "actual_sha256": "0d635c07d17b6c648a447367b16b6d4523a26c1b190398fbae61ed568769a590",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/backtest_trades/trade_date=2026-04-27/part-000.parquet",
+          "exists": true,
+          "rows": 43,
+          "expected_sha256": "935b228660718c9eae52f948c4199f934da0b5cde0b2ec70dae4b13c0bb11683",
+          "actual_sha256": "935b228660718c9eae52f948c4199f934da0b5cde0b2ec70dae4b13c0bb11683",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/backtest_trades/trade_date=2026-04-28/part-000.parquet",
+          "exists": true,
+          "rows": 40,
+          "expected_sha256": "d122fe0769c1400acd1b6fb5e5714a291cbbc078b4ca22ca3e6db85afdbf9203",
+          "actual_sha256": "d122fe0769c1400acd1b6fb5e5714a291cbbc078b4ca22ca3e6db85afdbf9203",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/backtest_trades/trade_date=2026-04-29/part-000.parquet",
+          "exists": true,
+          "rows": 46,
+          "expected_sha256": "6f873cbbc77a72d7c3635212412b9ee1a357fc6b2f56289b7462cd223e88c813",
+          "actual_sha256": "6f873cbbc77a72d7c3635212412b9ee1a357fc6b2f56289b7462cd223e88c813",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/backtest_trades/trade_date=2026-05-06/part-000.parquet",
+          "exists": true,
+          "rows": 18,
+          "expected_sha256": "d90835cfd26cc8ffca26e40a4da1e820a089353309b13da52b307dd632898a06",
+          "actual_sha256": "d90835cfd26cc8ffca26e40a4da1e820a089353309b13da52b307dd632898a06",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/backtest_trades/trade_date=2026-05-07/part-000.parquet",
+          "exists": true,
+          "rows": 25,
+          "expected_sha256": "6401b6dc25b50d9aeb35ee88d7a0db666c6805625a419bfe3ed300be3e64c32d",
+          "actual_sha256": "6401b6dc25b50d9aeb35ee88d7a0db666c6805625a419bfe3ed300be3e64c32d",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/backtest_trades/trade_date=2026-05-12/part-000.parquet",
+          "exists": true,
+          "rows": 17,
+          "expected_sha256": "2d9d8d8deb185d00c25a288dcc3a337812898196d1f7faabeeee331a7a863273",
+          "actual_sha256": "2d9d8d8deb185d00c25a288dcc3a337812898196d1f7faabeeee331a7a863273",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/backtest_trades/trade_date=2026-05-13/part-000.parquet",
+          "exists": true,
+          "rows": 9,
+          "expected_sha256": "a505392f14b96c5fab53a3621bd90bc973897106bad86f34a4a712fdfddc4aac",
+          "actual_sha256": "a505392f14b96c5fab53a3621bd90bc973897106bad86f34a4a712fdfddc4aac",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/backtest_trades/trade_date=2026-05-14/part-000.parquet",
+          "exists": true,
+          "rows": 19,
+          "expected_sha256": "c403981d707c7fb966e510d6f37119b11e5ff801d96fc76f9d3696f629f7b69c",
+          "actual_sha256": "c403981d707c7fb966e510d6f37119b11e5ff801d96fc76f9d3696f629f7b69c",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/backtest_trades/trade_date=2026-05-15/part-000.parquet",
+          "exists": true,
+          "rows": 37,
+          "expected_sha256": "3cabaa5179313a0ff0c53f76681f01aa205eec18c9c6dbadbace2537537c72c4",
+          "actual_sha256": "3cabaa5179313a0ff0c53f76681f01aa205eec18c9c6dbadbace2537537c72c4",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/backtest_trades/trade_date=2026-05-20/part-000.parquet",
+          "exists": true,
+          "rows": 4,
+          "expected_sha256": "fcfa5057022a983f06af2139ef1311fe2cd966adfd15f240531b0fd420356f7d",
+          "actual_sha256": "fcfa5057022a983f06af2139ef1311fe2cd966adfd15f240531b0fd420356f7d",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/backtest_trades/trade_date=2026-05-21/part-000.parquet",
+          "exists": true,
+          "rows": 6,
+          "expected_sha256": "484ec77580b9b5b482ff4b49c0ed586e3d880dffa1fd792f21cc267b2075fc0e",
+          "actual_sha256": "484ec77580b9b5b482ff4b49c0ed586e3d880dffa1fd792f21cc267b2075fc0e",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/backtest_trades/trade_date=2026-05-22/part-000.parquet",
+          "exists": true,
+          "rows": 8,
+          "expected_sha256": "516b1b825fe987cf7ab04bb1fff49d8882512229421b45c0acf186f8c69c1c27",
+          "actual_sha256": "516b1b825fe987cf7ab04bb1fff49d8882512229421b45c0acf186f8c69c1c27",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/backtest_trades/trade_date=2026-05-26/part-000.parquet",
+          "exists": true,
+          "rows": 11,
+          "expected_sha256": "6dea02fc233a915bfaad9a75881f126e4a693918eb6ba53838473f5f3c978720",
+          "actual_sha256": "6dea02fc233a915bfaad9a75881f126e4a693918eb6ba53838473f5f3c978720",
+          "hash_ok": true
+        }
+      ]
+    },
+    "backtest_daily_snapshots": {
+      "dataset_key": "backtest_daily_snapshots",
+      "manifest_path": "/var/lib/docker/volumes/tquant-mysql_app_runtime_data/_data/analytics/manifests/backtest_daily_snapshots.latest.json",
+      "present": true,
+      "valid_json": true,
+      "row_count": 2068,
+      "quality_status": "ok",
+      "status": "active",
+      "file_count": 107,
+      "verified_file_count": 107,
+      "missing_file_count": 0,
+      "hash_mismatch_count": 0,
+      "warnings": [],
+      "blockers": [],
+      "manifest_id": "backtest_daily_snapshots:backtest_daily_snapshots_20260608051701",
+      "dataset_version": "backtest_daily_snapshots_20260608051701",
+      "generated_at": "2026-06-08T05:17:01Z",
+      "period_start": "2025-12-11",
+      "period_end": "2026-06-08",
+      "source_table": "backtest_daily_snapshots",
+      "files": [
+        {
+          "path": "parquet/backtest_daily_snapshots/trade_date=2025-12-11/part-000.parquet",
+          "exists": true,
+          "rows": 20,
+          "expected_sha256": "a413a575326d91d9fe1648cd363f02a246b803366a566ad7469a9e0421d29f66",
+          "actual_sha256": "a413a575326d91d9fe1648cd363f02a246b803366a566ad7469a9e0421d29f66",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/backtest_daily_snapshots/trade_date=2025-12-12/part-000.parquet",
+          "exists": true,
+          "rows": 20,
+          "expected_sha256": "9a0b9f79409d5682abae59fe2deb279a0fcb425d29cbbfb9df358b65a47bf907",
+          "actual_sha256": "9a0b9f79409d5682abae59fe2deb279a0fcb425d29cbbfb9df358b65a47bf907",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/backtest_daily_snapshots/trade_date=2025-12-15/part-000.parquet",
+          "exists": true,
+          "rows": 20,
+          "expected_sha256": "3fe44e83f663e90da0cc1107cc0d3d739e3ec221e668db626021fb0aaed7767c",
+          "actual_sha256": "3fe44e83f663e90da0cc1107cc0d3d739e3ec221e668db626021fb0aaed7767c",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/backtest_daily_snapshots/trade_date=2025-12-16/part-000.parquet",
+          "exists": true,
+          "rows": 20,
+          "expected_sha256": "5aebbe65537a22bdac4cc2910c00ead24994150df9d43c3b0e1f4c8b9290716d",
+          "actual_sha256": "5aebbe65537a22bdac4cc2910c00ead24994150df9d43c3b0e1f4c8b9290716d",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/backtest_daily_snapshots/trade_date=2025-12-17/part-000.parquet",
+          "exists": true,
+          "rows": 20,
+          "expected_sha256": "79d27f2b76ce0c13c713d00300c44315b64a9c49f393ef69cf6fd899c7ba6eb7",
+          "actual_sha256": "79d27f2b76ce0c13c713d00300c44315b64a9c49f393ef69cf6fd899c7ba6eb7",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/backtest_daily_snapshots/trade_date=2025-12-18/part-000.parquet",
+          "exists": true,
+          "rows": 20,
+          "expected_sha256": "c0134b32ca59766527e706dc782138a9378f08aec8b20f8b4d2967c8ebff488c",
+          "actual_sha256": "c0134b32ca59766527e706dc782138a9378f08aec8b20f8b4d2967c8ebff488c",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/backtest_daily_snapshots/trade_date=2025-12-19/part-000.parquet",
+          "exists": true,
+          "rows": 20,
+          "expected_sha256": "e471c93caa36ada3db79903e75da51e948d08cc6693e1da6b0cb0680eb1198ea",
+          "actual_sha256": "e471c93caa36ada3db79903e75da51e948d08cc6693e1da6b0cb0680eb1198ea",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/backtest_daily_snapshots/trade_date=2025-12-22/part-000.parquet",
+          "exists": true,
+          "rows": 20,
+          "expected_sha256": "39e27031d1f02f619df7a24788edb747134ec36e13e43cb0ea7f11158f24909c",
+          "actual_sha256": "39e27031d1f02f619df7a24788edb747134ec36e13e43cb0ea7f11158f24909c",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/backtest_daily_snapshots/trade_date=2025-12-23/part-000.parquet",
+          "exists": true,
+          "rows": 20,
+          "expected_sha256": "cc0f550e372d81b2845a1fab6d0dde6c50d4d9081debc1aeba93effe0b97f240",
+          "actual_sha256": "cc0f550e372d81b2845a1fab6d0dde6c50d4d9081debc1aeba93effe0b97f240",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/backtest_daily_snapshots/trade_date=2025-12-24/part-000.parquet",
+          "exists": true,
+          "rows": 20,
+          "expected_sha256": "3f5c09e45a186efaeb71812e0e3ff0658f24f483accfcc73a627b043fda5cc4b",
+          "actual_sha256": "3f5c09e45a186efaeb71812e0e3ff0658f24f483accfcc73a627b043fda5cc4b",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/backtest_daily_snapshots/trade_date=2025-12-25/part-000.parquet",
+          "exists": true,
+          "rows": 20,
+          "expected_sha256": "edceb4661b4fa4f58a01ef432087fcc399b8bd60ba50fe6dc37acf4af4654318",
+          "actual_sha256": "edceb4661b4fa4f58a01ef432087fcc399b8bd60ba50fe6dc37acf4af4654318",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/backtest_daily_snapshots/trade_date=2025-12-26/part-000.parquet",
+          "exists": true,
+          "rows": 20,
+          "expected_sha256": "69a4f67d526c73c5c37f46c2e29aa95cd927215fe44e5b2edbe26091b7bb6396",
+          "actual_sha256": "69a4f67d526c73c5c37f46c2e29aa95cd927215fe44e5b2edbe26091b7bb6396",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/backtest_daily_snapshots/trade_date=2025-12-29/part-000.parquet",
+          "exists": true,
+          "rows": 20,
+          "expected_sha256": "c67269cf9ef5df92eeae4a21533050eeed97cbdcf5927670ed14e08b43f7094d",
+          "actual_sha256": "c67269cf9ef5df92eeae4a21533050eeed97cbdcf5927670ed14e08b43f7094d",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/backtest_daily_snapshots/trade_date=2025-12-30/part-000.parquet",
+          "exists": true,
+          "rows": 20,
+          "expected_sha256": "eda0cf01b8ffaae27adcf79d14ad4109a2c5ce029577355029acc1e6f856e4cb",
+          "actual_sha256": "eda0cf01b8ffaae27adcf79d14ad4109a2c5ce029577355029acc1e6f856e4cb",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/backtest_daily_snapshots/trade_date=2025-12-31/part-000.parquet",
+          "exists": true,
+          "rows": 20,
+          "expected_sha256": "5ee5e2a5bf9e02a0a8d1dcf62644e28a2d3b1dc9750459d75d7725d8bd03a11d",
+          "actual_sha256": "5ee5e2a5bf9e02a0a8d1dcf62644e28a2d3b1dc9750459d75d7725d8bd03a11d",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/backtest_daily_snapshots/trade_date=2026-01-05/part-000.parquet",
+          "exists": true,
+          "rows": 21,
+          "expected_sha256": "d1b775fbadd4a17e36bdd5c91de864f28251c0e0c35bcd356cb3f1f811e30694",
+          "actual_sha256": "d1b775fbadd4a17e36bdd5c91de864f28251c0e0c35bcd356cb3f1f811e30694",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/backtest_daily_snapshots/trade_date=2026-01-06/part-000.parquet",
+          "exists": true,
+          "rows": 21,
+          "expected_sha256": "08124dce7c4b703abc1adb74750bdfc223d1639424027f0d633d8e2bb19989c8",
+          "actual_sha256": "08124dce7c4b703abc1adb74750bdfc223d1639424027f0d633d8e2bb19989c8",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/backtest_daily_snapshots/trade_date=2026-01-07/part-000.parquet",
+          "exists": true,
+          "rows": 21,
+          "expected_sha256": "93512d5e1d667e10a7f064c4fecddb461d29a3af8f88d0ccc622d7b5602b855d",
+          "actual_sha256": "93512d5e1d667e10a7f064c4fecddb461d29a3af8f88d0ccc622d7b5602b855d",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/backtest_daily_snapshots/trade_date=2026-01-08/part-000.parquet",
+          "exists": true,
+          "rows": 21,
+          "expected_sha256": "02461b2edc95795cc2028d13756efb926501f8e8c7bdb5c80c676f334e98a625",
+          "actual_sha256": "02461b2edc95795cc2028d13756efb926501f8e8c7bdb5c80c676f334e98a625",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/backtest_daily_snapshots/trade_date=2026-01-09/part-000.parquet",
+          "exists": true,
+          "rows": 21,
+          "expected_sha256": "7be12a45651b28c89f3f092c3a88190f2ce9ea2c58c81158273d11be79e18855",
+          "actual_sha256": "7be12a45651b28c89f3f092c3a88190f2ce9ea2c58c81158273d11be79e18855",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/backtest_daily_snapshots/trade_date=2026-01-12/part-000.parquet",
+          "exists": true,
+          "rows": 21,
+          "expected_sha256": "6a90f7f5e8a1a8d41766384dffa5f79e5b392aa7f0690f77f6081057f4d9fb5c",
+          "actual_sha256": "6a90f7f5e8a1a8d41766384dffa5f79e5b392aa7f0690f77f6081057f4d9fb5c",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/backtest_daily_snapshots/trade_date=2026-01-13/part-000.parquet",
+          "exists": true,
+          "rows": 21,
+          "expected_sha256": "764decdf0e3ccf27290688286788a4215add1f51cc934a10ffb5fe335c2e7242",
+          "actual_sha256": "764decdf0e3ccf27290688286788a4215add1f51cc934a10ffb5fe335c2e7242",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/backtest_daily_snapshots/trade_date=2026-01-14/part-000.parquet",
+          "exists": true,
+          "rows": 21,
+          "expected_sha256": "1402940eb77360cf791dc4635e45bfe27326fb3d1faa63ba52a15a52d0e9c446",
+          "actual_sha256": "1402940eb77360cf791dc4635e45bfe27326fb3d1faa63ba52a15a52d0e9c446",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/backtest_daily_snapshots/trade_date=2026-01-15/part-000.parquet",
+          "exists": true,
+          "rows": 21,
+          "expected_sha256": "0e1dd2d93e40bf832d8ed70d46bdc3facedc696a98e85db41ede7fff2b9dc87a",
+          "actual_sha256": "0e1dd2d93e40bf832d8ed70d46bdc3facedc696a98e85db41ede7fff2b9dc87a",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/backtest_daily_snapshots/trade_date=2026-01-16/part-000.parquet",
+          "exists": true,
+          "rows": 21,
+          "expected_sha256": "fa1d0512531716b05d895acf010bceddccb8c94eca7a68ee251618a326149e1c",
+          "actual_sha256": "fa1d0512531716b05d895acf010bceddccb8c94eca7a68ee251618a326149e1c",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/backtest_daily_snapshots/trade_date=2026-01-19/part-000.parquet",
+          "exists": true,
+          "rows": 21,
+          "expected_sha256": "c6b8954d632c30ec824f8d40c76860552f9d43b2ddd56470acc463aa33391914",
+          "actual_sha256": "c6b8954d632c30ec824f8d40c76860552f9d43b2ddd56470acc463aa33391914",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/backtest_daily_snapshots/trade_date=2026-01-20/part-000.parquet",
+          "exists": true,
+          "rows": 21,
+          "expected_sha256": "6e83cd0ee1b483e995480b333c8745b62636946bc43160f77fdef15b4881a0c5",
+          "actual_sha256": "6e83cd0ee1b483e995480b333c8745b62636946bc43160f77fdef15b4881a0c5",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/backtest_daily_snapshots/trade_date=2026-01-21/part-000.parquet",
+          "exists": true,
+          "rows": 21,
+          "expected_sha256": "5dbffe7cbeb707c06a9d1c99320c0812f4ac5946091f007fef9a2a80bb4f046c",
+          "actual_sha256": "5dbffe7cbeb707c06a9d1c99320c0812f4ac5946091f007fef9a2a80bb4f046c",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/backtest_daily_snapshots/trade_date=2026-01-22/part-000.parquet",
+          "exists": true,
+          "rows": 21,
+          "expected_sha256": "947fcace8a9b9b190cd42a8a754e5c70223dde3beb5046c33fc6255bee2c1a85",
+          "actual_sha256": "947fcace8a9b9b190cd42a8a754e5c70223dde3beb5046c33fc6255bee2c1a85",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/backtest_daily_snapshots/trade_date=2026-01-23/part-000.parquet",
+          "exists": true,
+          "rows": 21,
+          "expected_sha256": "c23c4b3832224231f1b456cc412952fe76f72cd56e809585d0f5a415f4511417",
+          "actual_sha256": "c23c4b3832224231f1b456cc412952fe76f72cd56e809585d0f5a415f4511417",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/backtest_daily_snapshots/trade_date=2026-01-26/part-000.parquet",
+          "exists": true,
+          "rows": 21,
+          "expected_sha256": "7241d6aed8b8328f8420148eb264f7a5043b94ebcd5130a193905f2eef4a12fb",
+          "actual_sha256": "7241d6aed8b8328f8420148eb264f7a5043b94ebcd5130a193905f2eef4a12fb",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/backtest_daily_snapshots/trade_date=2026-01-27/part-000.parquet",
+          "exists": true,
+          "rows": 21,
+          "expected_sha256": "0bf866ffbc30fecedf6886285586ebae3ee9d5a1f846f128727b39f900fb636a",
+          "actual_sha256": "0bf866ffbc30fecedf6886285586ebae3ee9d5a1f846f128727b39f900fb636a",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/backtest_daily_snapshots/trade_date=2026-01-28/part-000.parquet",
+          "exists": true,
+          "rows": 21,
+          "expected_sha256": "3785c1b59aceed85bf579c8b39cbf4f3be1a31d4574885bdfc66ce22f169be5a",
+          "actual_sha256": "3785c1b59aceed85bf579c8b39cbf4f3be1a31d4574885bdfc66ce22f169be5a",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/backtest_daily_snapshots/trade_date=2026-01-29/part-000.parquet",
+          "exists": true,
+          "rows": 21,
+          "expected_sha256": "7e115e8a1cce85181e483b7d4ad32eb90b88dc4a29ebf712419881c43b0a616f",
+          "actual_sha256": "7e115e8a1cce85181e483b7d4ad32eb90b88dc4a29ebf712419881c43b0a616f",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/backtest_daily_snapshots/trade_date=2026-01-30/part-000.parquet",
+          "exists": true,
+          "rows": 21,
+          "expected_sha256": "bfb42044f8a23d91101622fd70a484232d679db0809b3c36e848f7f3442dd6ec",
+          "actual_sha256": "bfb42044f8a23d91101622fd70a484232d679db0809b3c36e848f7f3442dd6ec",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/backtest_daily_snapshots/trade_date=2026-02-02/part-000.parquet",
+          "exists": true,
+          "rows": 21,
+          "expected_sha256": "6318dbf6a9d34f0196a194fce0286dc9984f9d5cfacf67a26530924667892538",
+          "actual_sha256": "6318dbf6a9d34f0196a194fce0286dc9984f9d5cfacf67a26530924667892538",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/backtest_daily_snapshots/trade_date=2026-02-03/part-000.parquet",
+          "exists": true,
+          "rows": 21,
+          "expected_sha256": "b230e06aed23aa96d338133f80c1b7d6db783abb4a894d2d9da35047298aa1fc",
+          "actual_sha256": "b230e06aed23aa96d338133f80c1b7d6db783abb4a894d2d9da35047298aa1fc",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/backtest_daily_snapshots/trade_date=2026-02-04/part-000.parquet",
+          "exists": true,
+          "rows": 21,
+          "expected_sha256": "bc3511d8d67dbf7995f03f643eb7897f74e5481fdf8831a487fa496b438fe895",
+          "actual_sha256": "bc3511d8d67dbf7995f03f643eb7897f74e5481fdf8831a487fa496b438fe895",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/backtest_daily_snapshots/trade_date=2026-02-05/part-000.parquet",
+          "exists": true,
+          "rows": 21,
+          "expected_sha256": "4c8a72d0afd8d03fa571d5882681177f8dfee61b5988e470af5d3624eb475cf9",
+          "actual_sha256": "4c8a72d0afd8d03fa571d5882681177f8dfee61b5988e470af5d3624eb475cf9",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/backtest_daily_snapshots/trade_date=2026-02-06/part-000.parquet",
+          "exists": true,
+          "rows": 21,
+          "expected_sha256": "fdd01422e8c37c8eee95f045de08fdd94be714ff9a6b2f58f1b64d1831a0354a",
+          "actual_sha256": "fdd01422e8c37c8eee95f045de08fdd94be714ff9a6b2f58f1b64d1831a0354a",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/backtest_daily_snapshots/trade_date=2026-02-09/part-000.parquet",
+          "exists": true,
+          "rows": 21,
+          "expected_sha256": "2daa5caf0d31a1ee0b36ce033e7e684f7d835d1937da83e33fd0f913cd655d51",
+          "actual_sha256": "2daa5caf0d31a1ee0b36ce033e7e684f7d835d1937da83e33fd0f913cd655d51",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/backtest_daily_snapshots/trade_date=2026-02-10/part-000.parquet",
+          "exists": true,
+          "rows": 21,
+          "expected_sha256": "3d3c7fb9cb06c30df18e60768b4c50e1521ecb014402de6e1bd818e5ebde9eae",
+          "actual_sha256": "3d3c7fb9cb06c30df18e60768b4c50e1521ecb014402de6e1bd818e5ebde9eae",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/backtest_daily_snapshots/trade_date=2026-02-11/part-000.parquet",
+          "exists": true,
+          "rows": 21,
+          "expected_sha256": "546d6df963ee4e68e761bbdb8e50a7328d5e6edd8f0f41cd060ef690da1ad497",
+          "actual_sha256": "546d6df963ee4e68e761bbdb8e50a7328d5e6edd8f0f41cd060ef690da1ad497",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/backtest_daily_snapshots/trade_date=2026-02-12/part-000.parquet",
+          "exists": true,
+          "rows": 21,
+          "expected_sha256": "7ed672848bb9f368d1e51e707b26df8bff349a1f9d7a1e5033bd221eda7ae8b4",
+          "actual_sha256": "7ed672848bb9f368d1e51e707b26df8bff349a1f9d7a1e5033bd221eda7ae8b4",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/backtest_daily_snapshots/trade_date=2026-02-13/part-000.parquet",
+          "exists": true,
+          "rows": 21,
+          "expected_sha256": "1ba9259db7df75332685f9f00b38d2556daaf375599a3cb3c277012fe53f2582",
+          "actual_sha256": "1ba9259db7df75332685f9f00b38d2556daaf375599a3cb3c277012fe53f2582",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/backtest_daily_snapshots/trade_date=2026-02-24/part-000.parquet",
+          "exists": true,
+          "rows": 22,
+          "expected_sha256": "c60a577068d1e67d4abd61175a42354dd1b41e4de8680da8bc54defc7639e39c",
+          "actual_sha256": "c60a577068d1e67d4abd61175a42354dd1b41e4de8680da8bc54defc7639e39c",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/backtest_daily_snapshots/trade_date=2026-02-25/part-000.parquet",
+          "exists": true,
+          "rows": 22,
+          "expected_sha256": "3aaf4afb661186b9203ec33687fd9b7607fe1e4ba171b63282a2cbacd884739c",
+          "actual_sha256": "3aaf4afb661186b9203ec33687fd9b7607fe1e4ba171b63282a2cbacd884739c",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/backtest_daily_snapshots/trade_date=2026-02-26/part-000.parquet",
+          "exists": true,
+          "rows": 22,
+          "expected_sha256": "7d93549867947a3713c2b4cd9a3fa2a4f3f5366e3d17f637ba0f6b0df822595e",
+          "actual_sha256": "7d93549867947a3713c2b4cd9a3fa2a4f3f5366e3d17f637ba0f6b0df822595e",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/backtest_daily_snapshots/trade_date=2026-02-27/part-000.parquet",
+          "exists": true,
+          "rows": 22,
+          "expected_sha256": "8d49e80d0ba488e9c8196636c319a4fe8ce5bbcc00c588690f3a0bd55372b9af",
+          "actual_sha256": "8d49e80d0ba488e9c8196636c319a4fe8ce5bbcc00c588690f3a0bd55372b9af",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/backtest_daily_snapshots/trade_date=2026-03-02/part-000.parquet",
+          "exists": true,
+          "rows": 22,
+          "expected_sha256": "d1704705dc68de39519bc33278dc22460780cf4b1793a898b730a4ccc675d273",
+          "actual_sha256": "d1704705dc68de39519bc33278dc22460780cf4b1793a898b730a4ccc675d273",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/backtest_daily_snapshots/trade_date=2026-03-03/part-000.parquet",
+          "exists": true,
+          "rows": 22,
+          "expected_sha256": "fcad715fe17129664ad768c4ff988848aa1cd8c62e0b286636984284abad1dd6",
+          "actual_sha256": "fcad715fe17129664ad768c4ff988848aa1cd8c62e0b286636984284abad1dd6",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/backtest_daily_snapshots/trade_date=2026-03-04/part-000.parquet",
+          "exists": true,
+          "rows": 22,
+          "expected_sha256": "6e3e174f6de3c6c12e5b2b25b6f97be488bf6308fc4e62d8c9ca83f985cbc6e5",
+          "actual_sha256": "6e3e174f6de3c6c12e5b2b25b6f97be488bf6308fc4e62d8c9ca83f985cbc6e5",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/backtest_daily_snapshots/trade_date=2026-03-05/part-000.parquet",
+          "exists": true,
+          "rows": 22,
+          "expected_sha256": "8be497c7bc2687dac69724870d6bd8b9149ff68f0ff45dfc2a464526abdfa97b",
+          "actual_sha256": "8be497c7bc2687dac69724870d6bd8b9149ff68f0ff45dfc2a464526abdfa97b",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/backtest_daily_snapshots/trade_date=2026-03-06/part-000.parquet",
+          "exists": true,
+          "rows": 22,
+          "expected_sha256": "b6e8eaf08d52e1f81e2a61b5f1f687feceb0aead2e69e1e660ab311828add814",
+          "actual_sha256": "b6e8eaf08d52e1f81e2a61b5f1f687feceb0aead2e69e1e660ab311828add814",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/backtest_daily_snapshots/trade_date=2026-03-09/part-000.parquet",
+          "exists": true,
+          "rows": 22,
+          "expected_sha256": "0537dc42a6f87162d63389b4439237bf5ea368f7c73399769f1e5b1ab6ed15f4",
+          "actual_sha256": "0537dc42a6f87162d63389b4439237bf5ea368f7c73399769f1e5b1ab6ed15f4",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/backtest_daily_snapshots/trade_date=2026-03-10/part-000.parquet",
+          "exists": true,
+          "rows": 22,
+          "expected_sha256": "96392e6909972e001c6057a5ca917fca9cd348925574f01710201ca31d093021",
+          "actual_sha256": "96392e6909972e001c6057a5ca917fca9cd348925574f01710201ca31d093021",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/backtest_daily_snapshots/trade_date=2026-03-11/part-000.parquet",
+          "exists": true,
+          "rows": 22,
+          "expected_sha256": "1dd782852de6c775be34a38463283e3ee12674cc179357de7b459723ac253ad4",
+          "actual_sha256": "1dd782852de6c775be34a38463283e3ee12674cc179357de7b459723ac253ad4",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/backtest_daily_snapshots/trade_date=2026-03-12/part-000.parquet",
+          "exists": true,
+          "rows": 22,
+          "expected_sha256": "a64e13f05a540edc43e0d283b79735c923846183e20638f303991dfc022abcfe",
+          "actual_sha256": "a64e13f05a540edc43e0d283b79735c923846183e20638f303991dfc022abcfe",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/backtest_daily_snapshots/trade_date=2026-03-13/part-000.parquet",
+          "exists": true,
+          "rows": 22,
+          "expected_sha256": "15269fcbabe30713c6892792898512613d9c1ab22e3472247772c4a8b48ba589",
+          "actual_sha256": "15269fcbabe30713c6892792898512613d9c1ab22e3472247772c4a8b48ba589",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/backtest_daily_snapshots/trade_date=2026-03-16/part-000.parquet",
+          "exists": true,
+          "rows": 22,
+          "expected_sha256": "b5c20862390bff15719e79d513469b9de57e07cb03bcd5a24cc8610eccd2cd88",
+          "actual_sha256": "b5c20862390bff15719e79d513469b9de57e07cb03bcd5a24cc8610eccd2cd88",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/backtest_daily_snapshots/trade_date=2026-03-17/part-000.parquet",
+          "exists": true,
+          "rows": 22,
+          "expected_sha256": "6a3170fbe6a73dbdb5b33cff8cf6940a92e6d8c8c340e8926480d607e2ad36d1",
+          "actual_sha256": "6a3170fbe6a73dbdb5b33cff8cf6940a92e6d8c8c340e8926480d607e2ad36d1",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/backtest_daily_snapshots/trade_date=2026-03-18/part-000.parquet",
+          "exists": true,
+          "rows": 22,
+          "expected_sha256": "010555e02344cbf2ccfcb2d2a2edc5a496102943b72c9a2b83228ec8778dcf3b",
+          "actual_sha256": "010555e02344cbf2ccfcb2d2a2edc5a496102943b72c9a2b83228ec8778dcf3b",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/backtest_daily_snapshots/trade_date=2026-03-19/part-000.parquet",
+          "exists": true,
+          "rows": 22,
+          "expected_sha256": "32c568f016ca036bda3082de4f0729ea09b255212b09d7612b216fe281868229",
+          "actual_sha256": "32c568f016ca036bda3082de4f0729ea09b255212b09d7612b216fe281868229",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/backtest_daily_snapshots/trade_date=2026-03-20/part-000.parquet",
+          "exists": true,
+          "rows": 22,
+          "expected_sha256": "ef9bf6b30d42810ce50e94253ea18887af366e8b200f059dadc2d9e1ecba128b",
+          "actual_sha256": "ef9bf6b30d42810ce50e94253ea18887af366e8b200f059dadc2d9e1ecba128b",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/backtest_daily_snapshots/trade_date=2026-03-23/part-000.parquet",
+          "exists": true,
+          "rows": 22,
+          "expected_sha256": "4c4fb155f5a1c96f65208d9169d15a9343fc74eebe0dcfa6fabea964933f7752",
+          "actual_sha256": "4c4fb155f5a1c96f65208d9169d15a9343fc74eebe0dcfa6fabea964933f7752",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/backtest_daily_snapshots/trade_date=2026-03-24/part-000.parquet",
+          "exists": true,
+          "rows": 22,
+          "expected_sha256": "afee2ea408e48df7b56a96d3d4fa865565d320c239cce5e111920091e4f4429f",
+          "actual_sha256": "afee2ea408e48df7b56a96d3d4fa865565d320c239cce5e111920091e4f4429f",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/backtest_daily_snapshots/trade_date=2026-03-25/part-000.parquet",
+          "exists": true,
+          "rows": 22,
+          "expected_sha256": "88b26d3226a2f5c4e26008f3e7d2f78fa6068f6de33394b1ea1df3d04c249a63",
+          "actual_sha256": "88b26d3226a2f5c4e26008f3e7d2f78fa6068f6de33394b1ea1df3d04c249a63",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/backtest_daily_snapshots/trade_date=2026-03-26/part-000.parquet",
+          "exists": true,
+          "rows": 22,
+          "expected_sha256": "7af99e9e26e4e5f7f3591611bcf5a6f80a87269b26305cb970996d904938e8cf",
+          "actual_sha256": "7af99e9e26e4e5f7f3591611bcf5a6f80a87269b26305cb970996d904938e8cf",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/backtest_daily_snapshots/trade_date=2026-03-27/part-000.parquet",
+          "exists": true,
+          "rows": 22,
+          "expected_sha256": "5876482ca91bfad0c54c3b1c30d80cea12120dd0f19bbe92dd6735af592ccf68",
+          "actual_sha256": "5876482ca91bfad0c54c3b1c30d80cea12120dd0f19bbe92dd6735af592ccf68",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/backtest_daily_snapshots/trade_date=2026-03-30/part-000.parquet",
+          "exists": true,
+          "rows": 22,
+          "expected_sha256": "c6742f30754438ca5eb4d73f84318bd9dc00934e7f0a395ca5797c9d1b7ff988",
+          "actual_sha256": "c6742f30754438ca5eb4d73f84318bd9dc00934e7f0a395ca5797c9d1b7ff988",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/backtest_daily_snapshots/trade_date=2026-03-31/part-000.parquet",
+          "exists": true,
+          "rows": 22,
+          "expected_sha256": "0749a5a055fa3510db9d95b4f341ddd7fa6dd6cce9196d7ff331ef9b5bf7575a",
+          "actual_sha256": "0749a5a055fa3510db9d95b4f341ddd7fa6dd6cce9196d7ff331ef9b5bf7575a",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/backtest_daily_snapshots/trade_date=2026-04-01/part-000.parquet",
+          "exists": true,
+          "rows": 22,
+          "expected_sha256": "6883ce8feb56b6a9d016ea20b7cf2a5d5c5755c8fa11bff90695b4815a3ee199",
+          "actual_sha256": "6883ce8feb56b6a9d016ea20b7cf2a5d5c5755c8fa11bff90695b4815a3ee199",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/backtest_daily_snapshots/trade_date=2026-04-02/part-000.parquet",
+          "exists": true,
+          "rows": 22,
+          "expected_sha256": "1c8f5ad26ce9874131a3e7c2941050facfbc32d38fad85f70ccb7e8ce35b75bd",
+          "actual_sha256": "1c8f5ad26ce9874131a3e7c2941050facfbc32d38fad85f70ccb7e8ce35b75bd",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/backtest_daily_snapshots/trade_date=2026-04-03/part-000.parquet",
+          "exists": true,
+          "rows": 22,
+          "expected_sha256": "e891ac9e8b7f3605f6de76940e28c91e220cf609f25bb65ef9cc53c88a3c1375",
+          "actual_sha256": "e891ac9e8b7f3605f6de76940e28c91e220cf609f25bb65ef9cc53c88a3c1375",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/backtest_daily_snapshots/trade_date=2026-04-07/part-000.parquet",
+          "exists": true,
+          "rows": 22,
+          "expected_sha256": "5905587e454ef0faa9db9cd6cf466104492c15a4fb10871d2312c87dab0024d9",
+          "actual_sha256": "5905587e454ef0faa9db9cd6cf466104492c15a4fb10871d2312c87dab0024d9",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/backtest_daily_snapshots/trade_date=2026-04-08/part-000.parquet",
+          "exists": true,
+          "rows": 22,
+          "expected_sha256": "3ccb70d809f207ef0702701a6e207089a686f7edc0e50375db464e22c9cbc7da",
+          "actual_sha256": "3ccb70d809f207ef0702701a6e207089a686f7edc0e50375db464e22c9cbc7da",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/backtest_daily_snapshots/trade_date=2026-04-09/part-000.parquet",
+          "exists": true,
+          "rows": 22,
+          "expected_sha256": "65ca7cbd1a728000f7c73d487112d85baf912671ab10edc7ee94264346495eff",
+          "actual_sha256": "65ca7cbd1a728000f7c73d487112d85baf912671ab10edc7ee94264346495eff",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/backtest_daily_snapshots/trade_date=2026-04-10/part-000.parquet",
+          "exists": true,
+          "rows": 22,
+          "expected_sha256": "8381d1295473b40fb732718fe3b194600a6ab5ea8a96bc568c7344e25159b146",
+          "actual_sha256": "8381d1295473b40fb732718fe3b194600a6ab5ea8a96bc568c7344e25159b146",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/backtest_daily_snapshots/trade_date=2026-04-13/part-000.parquet",
+          "exists": true,
+          "rows": 22,
+          "expected_sha256": "fbdf62d87aa90c9c6c58587a316d5b14578237fd16cb490f89b35954c84277f7",
+          "actual_sha256": "fbdf62d87aa90c9c6c58587a316d5b14578237fd16cb490f89b35954c84277f7",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/backtest_daily_snapshots/trade_date=2026-04-14/part-000.parquet",
+          "exists": true,
+          "rows": 22,
+          "expected_sha256": "ad0a2fe9a8ab9ef2bae2f8fda26eb6b8fd39e600dff69c0bbebce6291f2e4ac1",
+          "actual_sha256": "ad0a2fe9a8ab9ef2bae2f8fda26eb6b8fd39e600dff69c0bbebce6291f2e4ac1",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/backtest_daily_snapshots/trade_date=2026-04-15/part-000.parquet",
+          "exists": true,
+          "rows": 22,
+          "expected_sha256": "8c382608349f16ac36064f35dc13e23127f79bf2ca6aefcbe34f9c76b67e91c2",
+          "actual_sha256": "8c382608349f16ac36064f35dc13e23127f79bf2ca6aefcbe34f9c76b67e91c2",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/backtest_daily_snapshots/trade_date=2026-04-16/part-000.parquet",
+          "exists": true,
+          "rows": 22,
+          "expected_sha256": "c4dba8ff7d65801f113a813d7624bc5ec9b24cf2e991fa7f52baa055bb14c738",
+          "actual_sha256": "c4dba8ff7d65801f113a813d7624bc5ec9b24cf2e991fa7f52baa055bb14c738",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/backtest_daily_snapshots/trade_date=2026-04-17/part-000.parquet",
+          "exists": true,
+          "rows": 22,
+          "expected_sha256": "ab08a1b99e01177987dbb47f8f2388133a296486336729055a796e46b232c8a6",
+          "actual_sha256": "ab08a1b99e01177987dbb47f8f2388133a296486336729055a796e46b232c8a6",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/backtest_daily_snapshots/trade_date=2026-04-20/part-000.parquet",
+          "exists": true,
+          "rows": 22,
+          "expected_sha256": "2e91ca3d769faec826590da39c25504b171289caeda7cbde1bd759e7de1a788c",
+          "actual_sha256": "2e91ca3d769faec826590da39c25504b171289caeda7cbde1bd759e7de1a788c",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/backtest_daily_snapshots/trade_date=2026-04-21/part-000.parquet",
+          "exists": true,
+          "rows": 22,
+          "expected_sha256": "5bc0d9eaf24604a465e9a601e0cd8b5cc83e39cd54c2c1244ba5ebd7852ecfaf",
+          "actual_sha256": "5bc0d9eaf24604a465e9a601e0cd8b5cc83e39cd54c2c1244ba5ebd7852ecfaf",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/backtest_daily_snapshots/trade_date=2026-04-22/part-000.parquet",
+          "exists": true,
+          "rows": 22,
+          "expected_sha256": "d99cfbb3781959096491bee60d35fed8fcac549c507bd7b2e09739b810352e17",
+          "actual_sha256": "d99cfbb3781959096491bee60d35fed8fcac549c507bd7b2e09739b810352e17",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/backtest_daily_snapshots/trade_date=2026-04-23/part-000.parquet",
+          "exists": true,
+          "rows": 22,
+          "expected_sha256": "09b172fc2e6387f43b943f934f9f66428c5c6f170978e2a4d7ae37dc7829c502",
+          "actual_sha256": "09b172fc2e6387f43b943f934f9f66428c5c6f170978e2a4d7ae37dc7829c502",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/backtest_daily_snapshots/trade_date=2026-04-24/part-000.parquet",
+          "exists": true,
+          "rows": 22,
+          "expected_sha256": "ec21cf36174851dd27f898832c0501a3231a088b7a4349ec6373407a5aa9f6b4",
+          "actual_sha256": "ec21cf36174851dd27f898832c0501a3231a088b7a4349ec6373407a5aa9f6b4",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/backtest_daily_snapshots/trade_date=2026-04-27/part-000.parquet",
+          "exists": true,
+          "rows": 22,
+          "expected_sha256": "059eb9b19e233db131fb582f9f944fba1af623742967a2490aca143400d21896",
+          "actual_sha256": "059eb9b19e233db131fb582f9f944fba1af623742967a2490aca143400d21896",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/backtest_daily_snapshots/trade_date=2026-04-28/part-000.parquet",
+          "exists": true,
+          "rows": 22,
+          "expected_sha256": "e6814156c2304e7e79f517aa4a44f5d2b1b408fdf3b8b77db5499356041a8b0b",
+          "actual_sha256": "e6814156c2304e7e79f517aa4a44f5d2b1b408fdf3b8b77db5499356041a8b0b",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/backtest_daily_snapshots/trade_date=2026-04-29/part-000.parquet",
+          "exists": true,
+          "rows": 22,
+          "expected_sha256": "58e4043abd4c9b62fe691ce8988c2e5f96afc84403d14dc675e88316c3ba8d89",
+          "actual_sha256": "58e4043abd4c9b62fe691ce8988c2e5f96afc84403d14dc675e88316c3ba8d89",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/backtest_daily_snapshots/trade_date=2026-04-30/part-000.parquet",
+          "exists": true,
+          "rows": 16,
+          "expected_sha256": "d456154acbc5596b3bde04356aa1d372769244b4affe47e5ca0327b93ecb5045",
+          "actual_sha256": "d456154acbc5596b3bde04356aa1d372769244b4affe47e5ca0327b93ecb5045",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/backtest_daily_snapshots/trade_date=2026-05-06/part-000.parquet",
+          "exists": true,
+          "rows": 16,
+          "expected_sha256": "20a33600bf17f01d368068ea939f33311a197cdf74bc82ecd4a90b0b1875a652",
+          "actual_sha256": "20a33600bf17f01d368068ea939f33311a197cdf74bc82ecd4a90b0b1875a652",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/backtest_daily_snapshots/trade_date=2026-05-07/part-000.parquet",
+          "exists": true,
+          "rows": 15,
+          "expected_sha256": "1f81dcea2b7c5211a330ac6702df3ed6bb095c87af1c3a865ffc614b2d63dce6",
+          "actual_sha256": "1f81dcea2b7c5211a330ac6702df3ed6bb095c87af1c3a865ffc614b2d63dce6",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/backtest_daily_snapshots/trade_date=2026-05-08/part-000.parquet",
+          "exists": true,
+          "rows": 4,
+          "expected_sha256": "276c5bfbc4d70a31c2234f1e78ae57dcb7707a3bb87d2a7f790bf5de03c95d0d",
+          "actual_sha256": "276c5bfbc4d70a31c2234f1e78ae57dcb7707a3bb87d2a7f790bf5de03c95d0d",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/backtest_daily_snapshots/trade_date=2026-05-11/part-000.parquet",
+          "exists": true,
+          "rows": 4,
+          "expected_sha256": "5fed62a51774427827ea232981679ff87908933fe3fb0d18b580ea2e358583d0",
+          "actual_sha256": "5fed62a51774427827ea232981679ff87908933fe3fb0d18b580ea2e358583d0",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/backtest_daily_snapshots/trade_date=2026-05-12/part-000.parquet",
+          "exists": true,
+          "rows": 13,
+          "expected_sha256": "d2c543256c17a4a5500ead89376f79a34deff4a92e96cf788b15af55abfc1159",
+          "actual_sha256": "d2c543256c17a4a5500ead89376f79a34deff4a92e96cf788b15af55abfc1159",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/backtest_daily_snapshots/trade_date=2026-05-13/part-000.parquet",
+          "exists": true,
+          "rows": 11,
+          "expected_sha256": "5fb828d1f579b82e036f5944d775de077b29a5173963bf8053397885330c28a0",
+          "actual_sha256": "5fb828d1f579b82e036f5944d775de077b29a5173963bf8053397885330c28a0",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/backtest_daily_snapshots/trade_date=2026-05-14/part-000.parquet",
+          "exists": true,
+          "rows": 11,
+          "expected_sha256": "921ccc818f411e6f4c253a3d2cc7ec4d55be111f775da6c611f58aef76db2ec3",
+          "actual_sha256": "921ccc818f411e6f4c253a3d2cc7ec4d55be111f775da6c611f58aef76db2ec3",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/backtest_daily_snapshots/trade_date=2026-05-15/part-000.parquet",
+          "exists": true,
+          "rows": 9,
+          "expected_sha256": "dfd9c6454731135633d3d152cfa484073b0013c4dec993cb46a80ca7de672705",
+          "actual_sha256": "dfd9c6454731135633d3d152cfa484073b0013c4dec993cb46a80ca7de672705",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/backtest_daily_snapshots/trade_date=2026-05-18/part-000.parquet",
+          "exists": true,
+          "rows": 4,
+          "expected_sha256": "95a1a04858c3e933340a2ffc186cbad9d17764ea0cb9308a365da086c72b6d76",
+          "actual_sha256": "95a1a04858c3e933340a2ffc186cbad9d17764ea0cb9308a365da086c72b6d76",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/backtest_daily_snapshots/trade_date=2026-05-19/part-000.parquet",
+          "exists": true,
+          "rows": 4,
+          "expected_sha256": "de4e731a557a85ed964e2cb26055054bc20d53c72876290583c78c2b9e793bdb",
+          "actual_sha256": "de4e731a557a85ed964e2cb26055054bc20d53c72876290583c78c2b9e793bdb",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/backtest_daily_snapshots/trade_date=2026-05-20/part-000.parquet",
+          "exists": true,
+          "rows": 4,
+          "expected_sha256": "62978a1b38a04955fbf1703e21b00ce8aabf3e342493e02b3074d6334365d8cc",
+          "actual_sha256": "62978a1b38a04955fbf1703e21b00ce8aabf3e342493e02b3074d6334365d8cc",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/backtest_daily_snapshots/trade_date=2026-05-21/part-000.parquet",
+          "exists": true,
+          "rows": 4,
+          "expected_sha256": "19d549e84bc76f7276c992c5a0d6f11b8e24cbb4a67c6d11ba689984dab54086",
+          "actual_sha256": "19d549e84bc76f7276c992c5a0d6f11b8e24cbb4a67c6d11ba689984dab54086",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/backtest_daily_snapshots/trade_date=2026-05-22/part-000.parquet",
+          "exists": true,
+          "rows": 4,
+          "expected_sha256": "16277130a2eef12275d19c9ea08b93ea0678fc9a8be3739629fb8b05d223f9a4",
+          "actual_sha256": "16277130a2eef12275d19c9ea08b93ea0678fc9a8be3739629fb8b05d223f9a4",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/backtest_daily_snapshots/trade_date=2026-05-25/part-000.parquet",
+          "exists": true,
+          "rows": 4,
+          "expected_sha256": "266a77d0569c0a0cd3f18bd94d400971174ccdde4032dc76f0a24891aa93b443",
+          "actual_sha256": "266a77d0569c0a0cd3f18bd94d400971174ccdde4032dc76f0a24891aa93b443",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/backtest_daily_snapshots/trade_date=2026-05-26/part-000.parquet",
+          "exists": true,
+          "rows": 3,
+          "expected_sha256": "c9b10397893d81157b96a7f532a4628f9d798890a869fc102b22a0d998e14b16",
+          "actual_sha256": "c9b10397893d81157b96a7f532a4628f9d798890a869fc102b22a0d998e14b16",
+          "hash_ok": true
+        }
+      ]
+    },
+    "analysis_logs": {
+      "dataset_key": "analysis_logs",
+      "manifest_path": "/var/lib/docker/volumes/tquant-mysql_app_runtime_data/_data/analytics/manifests/analysis_logs.latest.json",
+      "present": true,
+      "valid_json": true,
+      "row_count": 82,
+      "quality_status": "ok",
+      "status": "active",
+      "file_count": 24,
+      "verified_file_count": 24,
+      "missing_file_count": 0,
+      "hash_mismatch_count": 0,
+      "warnings": [],
+      "blockers": [],
+      "manifest_id": "analysis_logs:analysis_logs_20260608051702",
+      "dataset_version": "analysis_logs_20260608051702",
+      "generated_at": "2026-06-08T05:17:02Z",
+      "period_start": "2026-03-11",
+      "period_end": "2026-06-08",
+      "source_table": "analysis_logs",
+      "files": [
+        {
+          "path": "parquet/analysis_logs/created_date=2026-04-17/part-000.parquet",
+          "exists": true,
+          "rows": 8,
+          "expected_sha256": "cf26f0a76076172d9b593e2032c875e2fbcf02db6cfd5526ce5d2652bc880472",
+          "actual_sha256": "cf26f0a76076172d9b593e2032c875e2fbcf02db6cfd5526ce5d2652bc880472",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/analysis_logs/created_date=2026-04-18/part-000.parquet",
+          "exists": true,
+          "rows": 3,
+          "expected_sha256": "dc79c5ba93b4e4f7efb4ee9b62edea72be839a2c5a96cfb259cfc0c1601175f4",
+          "actual_sha256": "dc79c5ba93b4e4f7efb4ee9b62edea72be839a2c5a96cfb259cfc0c1601175f4",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/analysis_logs/created_date=2026-04-19/part-000.parquet",
+          "exists": true,
+          "rows": 3,
+          "expected_sha256": "3c9f2b0da29b214d51a56f62691bcce1c073605c2efef49f61253a7c0802ad7b",
+          "actual_sha256": "3c9f2b0da29b214d51a56f62691bcce1c073605c2efef49f61253a7c0802ad7b",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/analysis_logs/created_date=2026-04-20/part-000.parquet",
+          "exists": true,
+          "rows": 5,
+          "expected_sha256": "964248e340e32a2e8410e5dfc384caaaa970404e30041739774d6bd4a5d516e4",
+          "actual_sha256": "964248e340e32a2e8410e5dfc384caaaa970404e30041739774d6bd4a5d516e4",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/analysis_logs/created_date=2026-04-21/part-000.parquet",
+          "exists": true,
+          "rows": 9,
+          "expected_sha256": "735646fc31827cee303e48d4ed16c2ad7c94343a918de70ecf4871c2ad1c2b59",
+          "actual_sha256": "735646fc31827cee303e48d4ed16c2ad7c94343a918de70ecf4871c2ad1c2b59",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/analysis_logs/created_date=2026-04-22/part-000.parquet",
+          "exists": true,
+          "rows": 3,
+          "expected_sha256": "8e381d6a94386889a997c19f9057d12720dba491ad159bde071dbc0424b5e8ab",
+          "actual_sha256": "8e381d6a94386889a997c19f9057d12720dba491ad159bde071dbc0424b5e8ab",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/analysis_logs/created_date=2026-04-23/part-000.parquet",
+          "exists": true,
+          "rows": 5,
+          "expected_sha256": "d797b22c146762b9562bf33039fedb9c78879844057167d1af8f6076f6eebc52",
+          "actual_sha256": "d797b22c146762b9562bf33039fedb9c78879844057167d1af8f6076f6eebc52",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/analysis_logs/created_date=2026-04-24/part-000.parquet",
+          "exists": true,
+          "rows": 1,
+          "expected_sha256": "cd1dc0b697457a229ec6fd21c092e771894667dc282b15fb8c1c37d9db6f9645",
+          "actual_sha256": "cd1dc0b697457a229ec6fd21c092e771894667dc282b15fb8c1c37d9db6f9645",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/analysis_logs/created_date=2026-04-28/part-000.parquet",
+          "exists": true,
+          "rows": 13,
+          "expected_sha256": "29860e1c8334a9083ca87e495c6c0a9927865caadff68927d63d59fd18dec1e1",
+          "actual_sha256": "29860e1c8334a9083ca87e495c6c0a9927865caadff68927d63d59fd18dec1e1",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/analysis_logs/created_date=2026-04-29/part-000.parquet",
+          "exists": true,
+          "rows": 6,
+          "expected_sha256": "7ce2b82af60eee3d0310fa8859d2c25733381958c7903d20d80e07b6f3601b30",
+          "actual_sha256": "7ce2b82af60eee3d0310fa8859d2c25733381958c7903d20d80e07b6f3601b30",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/analysis_logs/created_date=2026-04-30/part-000.parquet",
+          "exists": true,
+          "rows": 1,
+          "expected_sha256": "68a2f567cecf1b0f343007a68ff004017edd4a1132d834d187fcf3cce8357331",
+          "actual_sha256": "68a2f567cecf1b0f343007a68ff004017edd4a1132d834d187fcf3cce8357331",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/analysis_logs/created_date=2026-05-06/part-000.parquet",
+          "exists": true,
+          "rows": 4,
+          "expected_sha256": "0e9ca30d90bddd09988c7c9ad32616f133bdd5168ec78ac1ec11629bf4990661",
+          "actual_sha256": "0e9ca30d90bddd09988c7c9ad32616f133bdd5168ec78ac1ec11629bf4990661",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/analysis_logs/created_date=2026-05-07/part-000.parquet",
+          "exists": true,
+          "rows": 2,
+          "expected_sha256": "3ef07f2da70dade0d380afe6e99f5e09b99058509d7bb920139fe1cdc6435702",
+          "actual_sha256": "3ef07f2da70dade0d380afe6e99f5e09b99058509d7bb920139fe1cdc6435702",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/analysis_logs/created_date=2026-05-08/part-000.parquet",
+          "exists": true,
+          "rows": 1,
+          "expected_sha256": "7adf98968f9de52dab9135121c573ab63e9e993c8a1d1f641986bf8303c221fd",
+          "actual_sha256": "7adf98968f9de52dab9135121c573ab63e9e993c8a1d1f641986bf8303c221fd",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/analysis_logs/created_date=2026-05-09/part-000.parquet",
+          "exists": true,
+          "rows": 2,
+          "expected_sha256": "ad33ba870361f2f98152b5d10d559d6fc5fdf92d511e6c9a5d64c78ac7566b25",
+          "actual_sha256": "ad33ba870361f2f98152b5d10d559d6fc5fdf92d511e6c9a5d64c78ac7566b25",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/analysis_logs/created_date=2026-05-13/part-000.parquet",
+          "exists": true,
+          "rows": 1,
+          "expected_sha256": "3be9395375c977bdd677e5aaa830d244047a27a02daecd1832e934609a1a0055",
+          "actual_sha256": "3be9395375c977bdd677e5aaa830d244047a27a02daecd1832e934609a1a0055",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/analysis_logs/created_date=2026-05-16/part-000.parquet",
+          "exists": true,
+          "rows": 1,
+          "expected_sha256": "57d84acf45900a5becdb9c91899bb5e19495f12f5360df6136de408f640af827",
+          "actual_sha256": "57d84acf45900a5becdb9c91899bb5e19495f12f5360df6136de408f640af827",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/analysis_logs/created_date=2026-05-18/part-000.parquet",
+          "exists": true,
+          "rows": 2,
+          "expected_sha256": "014b5f3480fdef7c57dcd6f468f295954be045e853df067f52cf0ad1b523ffdc",
+          "actual_sha256": "014b5f3480fdef7c57dcd6f468f295954be045e853df067f52cf0ad1b523ffdc",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/analysis_logs/created_date=2026-05-21/part-000.parquet",
+          "exists": true,
+          "rows": 2,
+          "expected_sha256": "6a1ba9a3a4d274788744e5ad04d796a4f293573a2f73b0bfbe61f8dc47cbc17a",
+          "actual_sha256": "6a1ba9a3a4d274788744e5ad04d796a4f293573a2f73b0bfbe61f8dc47cbc17a",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/analysis_logs/created_date=2026-05-25/part-000.parquet",
+          "exists": true,
+          "rows": 1,
+          "expected_sha256": "4980245c82764569b8248a4b4d674cda1e53f62e9fe337fa715ff0d3e4d96294",
+          "actual_sha256": "4980245c82764569b8248a4b4d674cda1e53f62e9fe337fa715ff0d3e4d96294",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/analysis_logs/created_date=2026-06-01/part-000.parquet",
+          "exists": true,
+          "rows": 3,
+          "expected_sha256": "97f770e86cf0db0c114739de8c972e2f1d4d9f72ed4651f20efa401373c595ee",
+          "actual_sha256": "97f770e86cf0db0c114739de8c972e2f1d4d9f72ed4651f20efa401373c595ee",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/analysis_logs/created_date=2026-06-03/part-000.parquet",
+          "exists": true,
+          "rows": 2,
+          "expected_sha256": "23576f8a5acc3c5419ec7d91d7c499b49f1303ec35f624260e8748140ca80349",
+          "actual_sha256": "23576f8a5acc3c5419ec7d91d7c499b49f1303ec35f624260e8748140ca80349",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/analysis_logs/created_date=2026-06-04/part-000.parquet",
+          "exists": true,
+          "rows": 1,
+          "expected_sha256": "479261aa563bfb37c41c034bdad8be019f0b20df3d8aaf4ac4f174ba37afbd8d",
+          "actual_sha256": "479261aa563bfb37c41c034bdad8be019f0b20df3d8aaf4ac4f174ba37afbd8d",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/analysis_logs/created_date=2026-06-08/part-000.parquet",
+          "exists": true,
+          "rows": 3,
+          "expected_sha256": "d4ba2541542b424408ba579f245a4512accd721a349462c1ff4c3b8ccdcdfeec",
+          "actual_sha256": "d4ba2541542b424408ba579f245a4512accd721a349462c1ff4c3b8ccdcdfeec",
+          "hash_ok": true
+        }
+      ]
+    },
+    "market_review_reports": {
+      "dataset_key": "market_review_reports",
+      "manifest_path": "/var/lib/docker/volumes/tquant-mysql_app_runtime_data/_data/analytics/manifests/market_review_reports.latest.json",
+      "present": true,
+      "valid_json": true,
+      "row_count": 17,
+      "quality_status": "ok",
+      "status": "active",
+      "file_count": 9,
+      "verified_file_count": 9,
+      "missing_file_count": 0,
+      "hash_mismatch_count": 0,
+      "warnings": [],
+      "blockers": [],
+      "manifest_id": "market_review_reports:market_review_reports_20260608051702",
+      "dataset_version": "market_review_reports_20260608051702",
+      "generated_at": "2026-06-08T05:17:02Z",
+      "period_start": "2026-03-11",
+      "period_end": "2026-06-08",
+      "source_table": "market_review_reports",
+      "files": [
+        {
+          "path": "parquet/market_review_reports/report_date=2026-05-26/part-000.parquet",
+          "exists": true,
+          "rows": 2,
+          "expected_sha256": "bd45cbd24bf4a8783fbcb21a0c50298af9a58c762509ee0b4d720f0013939a20",
+          "actual_sha256": "bd45cbd24bf4a8783fbcb21a0c50298af9a58c762509ee0b4d720f0013939a20",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/market_review_reports/report_date=2026-05-27/part-000.parquet",
+          "exists": true,
+          "rows": 2,
+          "expected_sha256": "bf8f2c2efa20b759e765a77b5252b8a7c3cbfce73cc9e3e563c61cd6a4930005",
+          "actual_sha256": "bf8f2c2efa20b759e765a77b5252b8a7c3cbfce73cc9e3e563c61cd6a4930005",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/market_review_reports/report_date=2026-05-28/part-000.parquet",
+          "exists": true,
+          "rows": 2,
+          "expected_sha256": "c3ad1d9462f8a047912fd16b33c332cb2f231cc65ba3054f7b39cbd6932d3f02",
+          "actual_sha256": "c3ad1d9462f8a047912fd16b33c332cb2f231cc65ba3054f7b39cbd6932d3f02",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/market_review_reports/report_date=2026-05-29/part-000.parquet",
+          "exists": true,
+          "rows": 2,
+          "expected_sha256": "fdafc87b7069813f42438835347de5be1e9be0f11101b05c44fb1b8a395b2838",
+          "actual_sha256": "fdafc87b7069813f42438835347de5be1e9be0f11101b05c44fb1b8a395b2838",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/market_review_reports/report_date=2026-06-02/part-000.parquet",
+          "exists": true,
+          "rows": 2,
+          "expected_sha256": "db2f6d74d38827b4c3c83982d06cfe387eca70a3b227c177cd18f756ee62d144",
+          "actual_sha256": "db2f6d74d38827b4c3c83982d06cfe387eca70a3b227c177cd18f756ee62d144",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/market_review_reports/report_date=2026-06-03/part-000.parquet",
+          "exists": true,
+          "rows": 2,
+          "expected_sha256": "f10a27c29fb45c070b6ab6d9e06982dd4f17c54016968087b99688a22f8b634b",
+          "actual_sha256": "f10a27c29fb45c070b6ab6d9e06982dd4f17c54016968087b99688a22f8b634b",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/market_review_reports/report_date=2026-06-04/part-000.parquet",
+          "exists": true,
+          "rows": 2,
+          "expected_sha256": "1ff4006e38a0fc236db842318e5ed1b3ecc33291ce727f62969ed94ab75bf411",
+          "actual_sha256": "1ff4006e38a0fc236db842318e5ed1b3ecc33291ce727f62969ed94ab75bf411",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/market_review_reports/report_date=2026-06-05/part-000.parquet",
+          "exists": true,
+          "rows": 2,
+          "expected_sha256": "5b80242423dd4a2bdf7b1c77419a854aa8ca615fd272d646025a61de9c726fd5",
+          "actual_sha256": "5b80242423dd4a2bdf7b1c77419a854aa8ca615fd272d646025a61de9c726fd5",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/market_review_reports/report_date=2026-06-08/part-000.parquet",
+          "exists": true,
+          "rows": 1,
+          "expected_sha256": "729ae7ab0a4571d59440f9906b71331a0359abc2d76bc155a94019df97845999",
+          "actual_sha256": "729ae7ab0a4571d59440f9906b71331a0359abc2d76bc155a94019df97845999",
+          "hash_ok": true
+        }
+      ]
+    },
+    "paper_review_reports": {
+      "dataset_key": "paper_review_reports",
+      "manifest_path": "/var/lib/docker/volumes/tquant-mysql_app_runtime_data/_data/analytics/manifests/paper_review_reports.latest.json",
+      "present": true,
+      "valid_json": true,
+      "row_count": 6,
+      "quality_status": "ok",
+      "status": "active",
+      "file_count": 2,
+      "verified_file_count": 2,
+      "missing_file_count": 0,
+      "hash_mismatch_count": 0,
+      "warnings": [],
+      "blockers": [],
+      "manifest_id": "paper_review_reports:paper_review_reports_20260608051702",
+      "dataset_version": "paper_review_reports_20260608051702",
+      "generated_at": "2026-06-08T05:17:02Z",
+      "period_start": "2026-03-11",
+      "period_end": "2026-06-08",
+      "source_table": "paper_review_reports",
+      "files": [
+        {
+          "path": "parquet/paper_review_reports/report_date=2026-05-25/part-000.parquet",
+          "exists": true,
+          "rows": 4,
+          "expected_sha256": "07aeac0f454508325408734592eaf8ffaab57d56968ac6932792377789fae6a5",
+          "actual_sha256": "07aeac0f454508325408734592eaf8ffaab57d56968ac6932792377789fae6a5",
+          "hash_ok": true
+        },
+        {
+          "path": "parquet/paper_review_reports/report_date=2026-05-26/part-000.parquet",
+          "exists": true,
+          "rows": 2,
+          "expected_sha256": "604e3d124bc4d757e23d5549359e5ab9897cc784b6d7e6656e13d33cc601ddda",
+          "actual_sha256": "604e3d124bc4d757e23d5549359e5ab9897cc784b6d7e6656e13d33cc601ddda",
+          "hash_ok": true
+        }
+      ]
+    }
+  },
+  "summary": {
+    "ready_count": 10,
+    "no_data_count": 0,
+    "missing_count": 0,
+    "blocked_count": 0,
+    "warning_dataset_count": 1,
+    "ready_datasets": [
+      "daily_bars",
+      "strategy_tracking_snapshots",
+      "key_level_snapshots",
+      "low_buy_result_snapshots",
+      "backtest_runs",
+      "backtest_trades",
+      "backtest_daily_snapshots",
+      "analysis_logs",
+      "market_review_reports",
+      "paper_review_reports"
+    ],
+    "missing_datasets": [],
+    "blocked_datasets": [],
+    "warning_datasets": [
+      "daily_bars"
+    ],
+    "total_rows": 2468404,
+    "verified_files": 267
+  },
+  "source": {
+    "remote_host": "43.143.243.97",
+    "remote_user": "ubuntu",
+    "analytics_root": "/var/lib/docker/volumes/tquant-mysql_app_runtime_data/_data/analytics"
+  },
+  "commands": {
+    "ssh": {
+      "command": "ssh <redacted>",
+      "returncode": 0,
+      "stderr": ""
+    }
+  },
+  "evaluation": {
+    "ok": true,
+    "status": "warning",
+    "warnings": [
+      "manifest_warning_dataset_count=1"
+    ],
+    "blocking": []
+  }
+}

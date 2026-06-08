@@ -1,15 +1,22 @@
 from __future__ import annotations
 
+import json
 import logging
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.api.routes.frontend_next_audit import record_frontend_next_audit
 from app.core.admin_auth import require_admin_auth
 from app.core.auth import get_current_user
 from app.core.database import get_db
+from app.models.entities import OperationAuditLog, User
 from app.core.timing import log_slow_call, monotonic_start
 from app.models.schema_defs.strategy_tracking import (
+    StrategyReviewRecordCreate,
+    StrategyReviewRecordListResponse,
+    StrategyReviewRecordOut,
     StrategyTrackingDetailResponse,
     StrategyTrackingHoldingAnalysisResponse,
     StrategyTrackingListResponse,
@@ -245,6 +252,96 @@ def strategy_tracking_review_view(
         log_slow_call(logger, "strategy_tracking.review", started_at, range_days=range_days)
 
 
+@router.get("/review-records", response_model=StrategyReviewRecordListResponse)
+def list_strategy_review_records(
+    strategy_key: str | None = Query(None, max_length=80),
+    symbol: str | None = Query(None, max_length=16),
+    limit: int = Query(default=50, ge=1, le=200),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> StrategyReviewRecordListResponse:
+    rows = (
+        db.execute(
+            select(OperationAuditLog)
+            .where(OperationAuditLog.user_id == current_user.id)
+            .where(OperationAuditLog.operation.in_(["frontend_next.strategy_review_record", "frontend_next.strategy_review_delete"]))
+            .order_by(OperationAuditLog.id.desc())
+            .limit(500)
+        )
+        .scalars()
+        .all()
+    )
+    deleted = {str(row.resource_id) for row in rows if row.operation == "frontend_next.strategy_review_delete"}
+    items: list[StrategyReviewRecordOut] = []
+    for row in rows:
+        if row.operation != "frontend_next.strategy_review_record" or str(row.id) in deleted:
+            continue
+        item = _strategy_review_record_out(row)
+        if strategy_key and item.strategy_key != strategy_key:
+            continue
+        if symbol and item.symbol != symbol:
+            continue
+        items.append(item)
+        if len(items) >= limit:
+            break
+    return StrategyReviewRecordListResponse(items=items, total=len(items))
+
+
+@router.post("/review-records", response_model=StrategyReviewRecordOut)
+def create_strategy_review_record(
+    request: Request,
+    payload: StrategyReviewRecordCreate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> StrategyReviewRecordOut:
+    audit_id = record_frontend_next_audit(
+        db,
+        request=request,
+        operation="frontend_next.strategy_review_record",
+        user=current_user,
+        resource_type="strategy_review",
+        resource_id=f"{payload.strategy_key}:{payload.symbol}",
+        detail={
+            "strategy_key": payload.strategy_key,
+            "symbol": payload.symbol,
+            "review_state": payload.review_state,
+            "notes": payload.notes,
+            "verdict": payload.verdict,
+            "source": payload.source,
+            "idempotency_key": payload.idempotency_key,
+            "review_only": True,
+        },
+    )
+    db.commit()
+    row = db.get(OperationAuditLog, audit_id) if audit_id else None
+    if row is None:
+        raise HTTPException(status_code=500, detail="策略复盘记录写入失败。")
+    return _strategy_review_record_out(row)
+
+
+@router.delete("/review-records/{review_id}")
+def delete_strategy_review_record(
+    review_id: int,
+    request: Request,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    row = db.get(OperationAuditLog, review_id)
+    if row is None or row.user_id != current_user.id or row.operation != "frontend_next.strategy_review_record":
+        raise HTTPException(status_code=404, detail="策略复盘记录不存在。")
+    audit_id = record_frontend_next_audit(
+        db,
+        request=request,
+        operation="frontend_next.strategy_review_delete",
+        user=current_user,
+        resource_type="strategy_review",
+        resource_id=review_id,
+        detail={"review_id": review_id, "rollback": True},
+    )
+    db.commit()
+    return {"ok": True, "review_id": review_id, "audit_id": audit_id}
+
+
 @router.get("/failure-attribution", response_model=StrategyTrackingReviewResponse)
 def strategy_tracking_failure_view(
     range_days: int = Query(DEFAULT_RANGE_DAYS, ge=1, le=260, alias="range"),
@@ -377,14 +474,51 @@ def strategy_tracking_detail_view(item_id: str, db: Session = Depends(get_db)):
 
 @router.post("/refresh", response_model=StrategyTrackingRefreshResponse)
 def strategy_tracking_refresh_view(
+    request: Request,
     range_days: int = Query(DEFAULT_RANGE_DAYS, ge=1, le=260, alias="range"),
     _: None = Depends(require_admin_auth),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     started_at = monotonic_start()
     try:
-        return StrategyTrackingService(db).refresh(range_days=range_days)
+        response = StrategyTrackingService(db).refresh(range_days=range_days)
+        audit_id = record_frontend_next_audit(
+            db,
+            request=request,
+            operation="frontend_next.strategy_tracking_refresh",
+            user=current_user,
+            resource_type="strategy_tracking_refresh",
+            resource_id=f"range:{range_days}",
+            detail={
+                "range_days": range_days,
+                "refreshed_count": response.refreshed_count,
+                "changed_strategy_results": response.changed_strategy_results,
+                "changed_paper_ledger": response.changed_paper_ledger,
+            },
+        )
+        db.commit()
+        return response.model_copy(update={"audit_id": audit_id})
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"策略跟踪刷新失败: {exc}") from exc
     finally:
         log_slow_call(logger, "strategy_tracking.refresh", started_at, range_days=range_days)
+
+
+def _strategy_review_record_out(row: OperationAuditLog) -> StrategyReviewRecordOut:
+    try:
+        detail = json.loads(row.detail_json or "{}")
+    except json.JSONDecodeError:
+        detail = {}
+    payload = detail if isinstance(detail, dict) else {}
+    return StrategyReviewRecordOut(
+        review_id=int(row.id),
+        strategy_key=str(payload.get("strategy_key") or ""),
+        symbol=str(payload.get("symbol") or ""),
+        review_state=str(payload.get("review_state") or "watch"),
+        notes=str(payload.get("notes") or ""),
+        verdict=str(payload.get("verdict") or ""),
+        source=str(payload.get("source") or "frontend-next"),
+        audit_id=int(row.id),
+        created_at=row.created_at,
+    )

@@ -1,0 +1,27 @@
+{
+  "generated_at": "2026-06-08T05:47:02.300257+00:00",
+  "source_export_plan": "docs/reports/platform-analytics-export-plan-after-export-2026-06-08.json",
+  "mode": "dry-run",
+  "safety": {
+    "dry_run_default": true,
+    "requires_apply_flag": true,
+    "requires_confirm_apply": true,
+    "does_run_exporters": false,
+    "does_clean_source_tables": false,
+    "does_modify_mysql_source_tables": false,
+    "writes_runtime_tasks_only_when_apply": false
+  },
+  "summary": {
+    "selected_task_count": 0,
+    "selected_datasets": [],
+    "selected_task_types": []
+  },
+  "tasks": [],
+  "evaluation": {
+    "status": "empty",
+    "warnings": [
+      "no_tasks_selected"
+    ],
+    "blocking": []
+  }
+}

@@ -234,6 +234,23 @@ CLOUD_SSH_KEY=/path/to/gupiao.pem \
 - 自动验证 `/readyz`、默认低吸接口和前端首页。
 - 部署日志输出 `sync_mode`、`changed_count`、`deleted_count`、`delta_bytes`、`full_bytes`、`upload_seconds`、`fallback_reason`，用于比较差量上传和全量包。
 
+2026-06-08 起，云端部署还必须通过资源 gate。根分区、swap、Docker build cache、journal、MySQL volume/binlog/slow log、部署归档、MySQL 备份和 worker 连接预算都要先生成报告；blocking 时停止部署，不切流，不用删除 MySQL `.ibd`、直接删除 binlog 或 Docker volume 规避。
+
+```bash
+python3 scripts/collect_platform_resource_report.py \
+  --json-output docs/reports/platform-resource-baseline-$(date +%F).json \
+  --markdown-output docs/reports/platform-resource-baseline-$(date +%F).md
+python3 scripts/verify_platform_budget.py \
+  --json-output docs/reports/platform-budget-$(date +%F).json \
+  --markdown-output docs/reports/platform-budget-$(date +%F).md
+python3 scripts/verify_platform_optimization_readiness.py \
+  --json-output docs/reports/platform-optimization-readiness-$(date +%F).json \
+  --markdown-output docs/reports/platform-optimization-readiness-$(date +%F).md \
+  --fail-on-blocking
+```
+
+资源配置、slow log 轮转、binlog 保留、BuildKit GC、manifest 导出和回滚步骤见 [mysql-maintenance-runbook.md](docs/operations/mysql-maintenance-runbook.md)。`scripts/quick_cloud_deploy.sh --verify-only` 会执行只读资源 preflight；输出 warning/blocking 后先处理资源项，再继续部署。
+
 常用参数：
 
 ```bash

@@ -1,0 +1,30 @@
+{
+  "generated_at": "2026-06-05T19:34:02.028Z",
+  "started_at": "2026-06-05T19:34:00.452Z",
+  "trading_day": "2026-06-06",
+  "ok": false,
+  "note": "One local shadow sample across API payload parity, request/SSE trace, and screenshot parity. Repeat during two real trading-day windows before any cutover.",
+  "results": {
+    "apiParity": {
+      "ok": false,
+      "exit_code": 1,
+      "payload": null,
+      "stderr": "Error: Unable to register frontend-next shadow auth user: HTTP 429\n    at registerSmokeUser (file:///Users/j/Documents/gupiao/frontend-next/scripts/script-utils.mjs:128:11)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at async ensureAccessToken (file:///Users/j/Documents/gupiao/frontend-next/scripts/script-utils.mjs:62:22)\n    at async buildResolvedAuthHeaders (file:///Users/j/Documents/gupiao/frontend-next/scripts/script-utils.mjs:70:3)\n    at async main (file:///Users/j/Documents/gupiao/frontend-next/scripts/api-parity.mjs:15:19)"
+    },
+    "requestTrace": {
+      "ok": false,
+      "exit_code": 1,
+      "payload": null,
+      "stderr": "Error: Unable to register frontend-next shadow auth user: HTTP 429\n    at registerSmokeUser (file:///Users/j/Documents/gupiao/frontend-next/scripts/script-utils.mjs:128:11)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at async ensureAccessToken (file:///Users/j/Documents/gupiao/frontend-next/scripts/script-utils.mjs:62:22)\n    at async main (file:///Users/j/Documents/gupiao/frontend-next/scripts/request-trace.mjs:26:3)"
+    },
+    "screenshotParity": {
+      "ok": false,
+      "exit_code": 1,
+      "payload": null,
+      "stderr": "Error: Unable to register frontend-next shadow auth user: HTTP 429\n    at registerSmokeUser (file:///Users/j/Documents/gupiao/frontend-next/scripts/script-utils.mjs:128:11)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at async ensureAccessToken (file:///Users/j/Documents/gupiao/frontend-next/scripts/script-utils.mjs:62:22)\n    at async main (file:///Users/j/Documents/gupiao/frontend-next/scripts/screenshot-parity.mjs:40:3)"
+    }
+  },
+  "api_summary": [],
+  "request_summary": [],
+  "screenshot_summary": []
+}

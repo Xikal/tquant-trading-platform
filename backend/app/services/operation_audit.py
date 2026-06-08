@@ -22,21 +22,23 @@ def record_operation_audit(
     status: str = "ok",
     operator_ip: str = "",
     detail: dict[str, Any] | None = None,
-) -> None:
+) -> int | None:
     try:
-        db.add(
-            OperationAuditLog(
-                user_id=getattr(user, "id", None),
-                operation=operation[:80],
-                resource_type=resource_type[:80],
-                resource_id=str(resource_id)[:80],
-                status=status[:24],
-                operator_ip=operator_ip[:80],
-                detail_json=json.dumps(_redact(detail or {}), ensure_ascii=False, default=str),
-            )
+        row = OperationAuditLog(
+            user_id=getattr(user, "id", None),
+            operation=operation[:80],
+            resource_type=resource_type[:80],
+            resource_id=str(resource_id)[:80],
+            status=status[:24],
+            operator_ip=operator_ip[:80],
+            detail_json=json.dumps(_redact(detail or {}), ensure_ascii=False, default=str),
         )
+        db.add(row)
+        db.flush()
+        return int(row.id)
     except Exception:
         logger.warning("failed to append operation audit log for operation=%s", operation)
+        return None
 
 
 def _redact(value: Any) -> Any:

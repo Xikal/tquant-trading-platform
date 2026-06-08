@@ -130,6 +130,9 @@ describe("DataConsolePage", () => {
           longest_wait_seconds: 120,
           oldest_queued_at: "2026-06-04T10:00:00",
           running_count: 1,
+          low_priority_tasks_paused: false,
+          paused_queued: 0,
+          claimable_queued: 2,
           status_counts: [],
           task_type_counts: [{ task_type: "analytics_export_daily_bars", count: 3 }],
         }}

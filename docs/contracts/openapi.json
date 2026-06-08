@@ -6531,7 +6531,7 @@
             "type": "array"
           },
           "schema_version": {
-            "default": "v15",
+            "default": "v16",
             "title": "Schema Version",
             "type": "string"
           },
@@ -6662,7 +6662,7 @@
             "type": "string"
           },
           "schema_version": {
-            "default": "v15",
+            "default": "v16",
             "title": "Schema Version",
             "type": "string"
           }
@@ -14864,7 +14864,7 @@
             ]
           },
           "schema_version": {
-            "default": "v15",
+            "default": "v16",
             "title": "Schema Version",
             "type": "string"
           },
@@ -17099,7 +17099,7 @@
             "type": "array"
           },
           "schema_version": {
-            "default": "v15",
+            "default": "v16",
             "title": "Schema Version",
             "type": "string"
           },
@@ -18650,6 +18650,18 @@
         "title": "RuntimeTaskArtifactResponse",
         "type": "object"
       },
+      "RuntimeTaskCancelRequest": {
+        "properties": {
+          "reason": {
+            "default": "",
+            "maxLength": 240,
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "title": "RuntimeTaskCancelRequest",
+        "type": "object"
+      },
       "RuntimeTaskCreate": {
         "properties": {
           "idempotency_key": {
@@ -18782,6 +18794,17 @@
             "title": "Attempt Count",
             "type": "integer"
           },
+          "audit_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Audit Id"
+          },
           "created_at": {
             "format": "date-time",
             "title": "Created At",
@@ -18894,6 +18917,11 @@
       },
       "RuntimeTaskSummaryResponse": {
         "properties": {
+          "claimable_queued": {
+            "default": 0,
+            "title": "Claimable Queued",
+            "type": "integer"
+          },
           "failed": {
             "default": 0,
             "title": "Failed",
@@ -18910,6 +18938,11 @@
             ],
             "title": "Longest Wait Seconds"
           },
+          "low_priority_tasks_paused": {
+            "default": false,
+            "title": "Low Priority Tasks Paused",
+            "type": "boolean"
+          },
           "oldest_queued_at": {
             "anyOf": [
               {
@@ -18921,6 +18954,25 @@
               }
             ],
             "title": "Oldest Queued At"
+          },
+          "paused_queued": {
+            "default": 0,
+            "title": "Paused Queued",
+            "type": "integer"
+          },
+          "paused_task_type_counts": {
+            "items": {
+              "$ref": "#/components/schemas/RuntimeTaskTypeCountOut"
+            },
+            "title": "Paused Task Type Counts",
+            "type": "array"
+          },
+          "paused_task_types": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Paused Task Types",
+            "type": "array"
           },
           "queued": {
             "default": 0,
@@ -19970,7 +20022,7 @@
             ]
           },
           "schema_version": {
-            "default": "v15",
+            "default": "v16",
             "title": "Schema Version",
             "type": "string"
           },
@@ -20569,6 +20621,142 @@
           "strategy_key"
         ],
         "title": "StrategyPromotionReviewOut",
+        "type": "object"
+      },
+      "StrategyReviewRecordCreate": {
+        "properties": {
+          "idempotency_key": {
+            "default": "",
+            "maxLength": 160,
+            "title": "Idempotency Key",
+            "type": "string"
+          },
+          "notes": {
+            "default": "",
+            "maxLength": 2000,
+            "title": "Notes",
+            "type": "string"
+          },
+          "review_state": {
+            "default": "watch",
+            "maxLength": 32,
+            "title": "Review State",
+            "type": "string"
+          },
+          "source": {
+            "default": "frontend-next",
+            "maxLength": 80,
+            "title": "Source",
+            "type": "string"
+          },
+          "strategy_key": {
+            "default": "n_pattern_long_wash",
+            "maxLength": 80,
+            "minLength": 1,
+            "title": "Strategy Key",
+            "type": "string"
+          },
+          "symbol": {
+            "maxLength": 16,
+            "minLength": 1,
+            "title": "Symbol",
+            "type": "string"
+          },
+          "verdict": {
+            "default": "",
+            "maxLength": 120,
+            "title": "Verdict",
+            "type": "string"
+          }
+        },
+        "required": [
+          "symbol"
+        ],
+        "title": "StrategyReviewRecordCreate",
+        "type": "object"
+      },
+      "StrategyReviewRecordListResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/StrategyReviewRecordOut"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "total": {
+            "default": 0,
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "title": "StrategyReviewRecordListResponse",
+        "type": "object"
+      },
+      "StrategyReviewRecordOut": {
+        "properties": {
+          "audit_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Audit Id"
+          },
+          "created_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created At"
+          },
+          "notes": {
+            "default": "",
+            "title": "Notes",
+            "type": "string"
+          },
+          "review_id": {
+            "title": "Review Id",
+            "type": "integer"
+          },
+          "review_state": {
+            "default": "watch",
+            "title": "Review State",
+            "type": "string"
+          },
+          "source": {
+            "default": "frontend-next",
+            "title": "Source",
+            "type": "string"
+          },
+          "strategy_key": {
+            "title": "Strategy Key",
+            "type": "string"
+          },
+          "symbol": {
+            "title": "Symbol",
+            "type": "string"
+          },
+          "verdict": {
+            "default": "",
+            "title": "Verdict",
+            "type": "string"
+          }
+        },
+        "required": [
+          "review_id",
+          "strategy_key",
+          "symbol"
+        ],
+        "title": "StrategyReviewRecordOut",
         "type": "object"
       },
       "StrategySignalReplayItem": {
@@ -22155,6 +22343,17 @@
       },
       "StrategyTrackingRefreshResponse": {
         "properties": {
+          "audit_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Audit Id"
+          },
           "changed_paper_ledger": {
             "default": false,
             "title": "Changed Paper Ledger",
@@ -23094,11 +23293,52 @@
             "title": "Generated At",
             "type": "string"
           },
+          "holding_analysis": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/StrategyTrackingHoldingAnalysisResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/StrategyTrackingItemOut"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "limit": {
+            "default": 50,
+            "title": "Limit",
+            "type": "integer"
+          },
+          "market_segments": {
+            "items": {
+              "$ref": "#/components/schemas/StrategyTrackingSegmentOut"
+            },
+            "title": "Market Segments",
+            "type": "array"
+          },
+          "offset": {
+            "default": 0,
+            "title": "Offset",
+            "type": "integer"
+          },
           "partial_errors": {
             "items": {
               "$ref": "#/components/schemas/BffPartialError"
             },
             "title": "Partial Errors",
+            "type": "array"
+          },
+          "performance": {
+            "items": {
+              "$ref": "#/components/schemas/StrategyTrackingPerformanceOut"
+            },
+            "title": "Performance",
             "type": "array"
           },
           "presets": {
@@ -23121,9 +23361,31 @@
               }
             ]
           },
+          "review": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/StrategyTrackingReviewResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "schema_version": {
-            "default": "v15",
+            "default": "v16",
             "title": "Schema Version",
+            "type": "string"
+          },
+          "shadow_observations": {
+            "items": {
+              "$ref": "#/components/schemas/StrategyTrackingShadowObservationOut"
+            },
+            "title": "Shadow Observations",
+            "type": "array"
+          },
+          "sort": {
+            "default": "max_gain_desc",
+            "title": "Sort",
             "type": "string"
           },
           "strategy_meta": {
@@ -23135,6 +23397,28 @@
                 "type": "null"
               }
             ]
+          },
+          "summary": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/StrategyTrackingSummaryOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "total": {
+            "default": 0,
+            "title": "Total",
+            "type": "integer"
+          },
+          "tracking_notes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Tracking Notes",
+            "type": "array"
           },
           "verdict_thresholds": {
             "anyOf": [
@@ -37547,6 +37831,97 @@
         ]
       }
     },
+    "/api/runtime-tasks/{task_id}/cancel": {
+      "post": {
+        "operationId": "cancel_runtime_task_api_runtime_tasks__task_id__cancel_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "task_id",
+            "required": true,
+            "schema": {
+              "title": "Task Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Admin-Token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Admin-Token"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/RuntimeTaskCancelRequest"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Payload"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RuntimeTaskOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Cancel Runtime Task",
+        "tags": [
+          "runtime-tasks"
+        ]
+      }
+    },
     "/api/runtime-tasks/{task_id}/events": {
       "get": {
         "operationId": "list_runtime_task_events_api_runtime_tasks__task_id__events_get",
@@ -40220,6 +40595,179 @@
           }
         ],
         "summary": "Strategy Tracking Review View",
+        "tags": [
+          "strategy-tracking"
+        ]
+      }
+    },
+    "/api/strategy-tracking/review-records": {
+      "get": {
+        "operationId": "list_strategy_review_records_api_strategy_tracking_review_records_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "strategy_key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 80,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Strategy Key"
+            }
+          },
+          {
+            "in": "query",
+            "name": "symbol",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 16,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Symbol"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StrategyReviewRecordListResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Strategy Review Records",
+        "tags": [
+          "strategy-tracking"
+        ]
+      },
+      "post": {
+        "operationId": "create_strategy_review_record_api_strategy_tracking_review_records_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StrategyReviewRecordCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StrategyReviewRecordOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Create Strategy Review Record",
+        "tags": [
+          "strategy-tracking"
+        ]
+      }
+    },
+    "/api/strategy-tracking/review-records/{review_id}": {
+      "delete": {
+        "operationId": "delete_strategy_review_record_api_strategy_tracking_review_records__review_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "review_id",
+            "required": true,
+            "schema": {
+              "title": "Review Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Delete Strategy Review Record",
         "tags": [
           "strategy-tracking"
         ]

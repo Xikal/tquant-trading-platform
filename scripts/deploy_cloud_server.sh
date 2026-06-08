@@ -20,6 +20,8 @@ CLOUD_DOMAIN="${CLOUD_DOMAIN:-}"
 CLOUD_CERT_EMAIL="${CLOUD_CERT_EMAIL:-}"
 CLOUD_AUTH_COOKIE_SECURE="${CLOUD_AUTH_COOKIE_SECURE:-}"
 CLOUD_AUTH_ALLOW_INSECURE_HTTP_COOKIE="${CLOUD_AUTH_ALLOW_INSECURE_HTTP_COOKIE:-}"
+FRONTEND_NEXT_MONITOR_CUTOVER_ENABLED="${FRONTEND_NEXT_MONITOR_CUTOVER_ENABLED:-false}"
+FRONTEND_NEXT_CUTOVER_PATHS="${FRONTEND_NEXT_CUTOVER_PATHS:-}"
 REMOTE_DEBIAN_APT_MIRROR="${REMOTE_DEBIAN_APT_MIRROR:-http://mirrors.tencentyun.com/debian}"
 REMOTE_DEBIAN_APT_SECURITY_MIRROR="${REMOTE_DEBIAN_APT_SECURITY_MIRROR:-http://mirrors.tencentyun.com/debian-security}"
 VERIFY_PUBLIC_DOMAIN="${VERIFY_PUBLIC_DOMAIN:-0}"
@@ -32,13 +34,19 @@ DEPLOY_DELTA_MAX_CHANGE_RATIO="${DEPLOY_DELTA_MAX_CHANGE_RATIO:-0.35}"
 DEPLOY_GIT_REMOTE_URL="${DEPLOY_GIT_REMOTE_URL:-https://github.com/Xikal/tquant-trading-platform.git}"
 DEPLOY_GIT_REF="${DEPLOY_GIT_REF:-${GITHUB_SHA:-HEAD}}"
 DEPLOY_GIT_AUTH_TOKEN="${DEPLOY_GIT_AUTH_TOKEN:-}"
+DEPLOY_PREBUILT_IMAGES_ENABLED="${DEPLOY_PREBUILT_IMAGES_ENABLED:-auto}"
+DEPLOY_PREBUILT_WEB_IMAGE_REF="${DEPLOY_PREBUILT_WEB_IMAGE_REF:-}"
+DEPLOY_PREBUILT_ANALYTICS_IMAGE_REF="${DEPLOY_PREBUILT_ANALYTICS_IMAGE_REF:-}"
+DEPLOY_PREBUILT_GO_BFF_IMAGE_REF="${DEPLOY_PREBUILT_GO_BFF_IMAGE_REF:-}"
+DEPLOY_PREBUILT_GO_MARKET_READ_IMAGE_REF="${DEPLOY_PREBUILT_GO_MARKET_READ_IMAGE_REF:-}"
+DEPLOY_PREBUILT_GO_SCAN_IMAGE_REF="${DEPLOY_PREBUILT_GO_SCAN_IMAGE_REF:-}"
 RUN_COMPILE="${RUN_COMPILE:-1}"
 RUN_FRONTEND_BUILD="${RUN_FRONTEND_BUILD:-1}"
 RUN_STRATEGY_TEST="${RUN_STRATEGY_TEST:-1}"
 RUN_FULL_TESTS="${RUN_FULL_TESTS:-0}"
 RUN_LATEST_DATA_ACCEPTANCE="${RUN_LATEST_DATA_ACCEPTANCE:-1}"
 LATEST_DATA_ACCEPTANCE_REQUIRED="${LATEST_DATA_ACCEPTANCE_REQUIRED:-0}"
-DEPLOY_PACKAGE_REQUIRED_PATHS="${DEPLOY_PACKAGE_REQUIRED_PATHS:-Dockerfile docker-compose.mysql.yml backend/app/main.py frontend/package.json frontend/src/main.tsx frontend/src/ui/data/index.ts scripts/install_https_nginx.sh scripts/deploy_delta_package.py}"
+DEPLOY_PACKAGE_REQUIRED_PATHS="${DEPLOY_PACKAGE_REQUIRED_PATHS:-Dockerfile docker-compose.mysql.yml backend/app/main.py frontend/package.json frontend/src/main.tsx frontend/src/ui/data/index.ts frontend-next/package.json frontend-next/src/index.tsx scripts/install_https_nginx.sh scripts/deploy_delta_package.py}"
 DEPLOY_EFFECTIVE_SYNC_MODE="package-only"
 DEPLOY_DELTA_CHANGED_COUNT=0
 DEPLOY_DELTA_DELETED_COUNT=0
@@ -255,6 +263,11 @@ make_package() {
     --exclude='frontend/node_modules' \
     --exclude='frontend/dist' \
     --exclude='frontend/*.tsbuildinfo' \
+    --exclude='frontend-next/node_modules' \
+    --exclude='frontend-next/dist' \
+    --exclude='frontend-next/test-results' \
+    --exclude='frontend-next/playwright-report' \
+    --exclude='frontend-next/*.tsbuildinfo' \
     --exclude='rust/*/target' \
     --exclude='*.pyc' \
     --exclude='*.pyo' \
@@ -379,6 +392,8 @@ remote_deploy_from_git() {
     CLOUD_KEEP_BACKUPS="$CLOUD_KEEP_BACKUPS" \
     CLOUD_AUTH_COOKIE_SECURE="${CLOUD_AUTH_COOKIE_SECURE:-}" \
     CLOUD_AUTH_ALLOW_INSECURE_HTTP_COOKIE="${CLOUD_AUTH_ALLOW_INSECURE_HTTP_COOKIE:-}" \
+    FRONTEND_NEXT_MONITOR_CUTOVER_ENABLED="$FRONTEND_NEXT_MONITOR_CUTOVER_ENABLED" \
+    FRONTEND_NEXT_CUTOVER_PATHS="$FRONTEND_NEXT_CUTOVER_PATHS" \
     REMOTE_DEBIAN_APT_MIRROR="$REMOTE_DEBIAN_APT_MIRROR" \
     REMOTE_DEBIAN_APT_SECURITY_MIRROR="$REMOTE_DEBIAN_APT_SECURITY_MIRROR" \
     DEPLOY_RESOLVED_SCOPE="$DEPLOY_RESOLVED_SCOPE" \
@@ -386,10 +401,16 @@ remote_deploy_from_git() {
     DEPLOY_GIT_REMOTE_URL="$DEPLOY_GIT_REMOTE_URL" \
     DEPLOY_GIT_REF="$DEPLOY_GIT_REF" \
     DEPLOY_GIT_AUTH_TOKEN="$DEPLOY_GIT_AUTH_TOKEN" \
+    DEPLOY_PREBUILT_IMAGES_ENABLED="$DEPLOY_PREBUILT_IMAGES_ENABLED" \
+    DEPLOY_PREBUILT_WEB_IMAGE_REF="$DEPLOY_PREBUILT_WEB_IMAGE_REF" \
+    DEPLOY_PREBUILT_ANALYTICS_IMAGE_REF="$DEPLOY_PREBUILT_ANALYTICS_IMAGE_REF" \
+    DEPLOY_PREBUILT_GO_BFF_IMAGE_REF="$DEPLOY_PREBUILT_GO_BFF_IMAGE_REF" \
+    DEPLOY_PREBUILT_GO_MARKET_READ_IMAGE_REF="$DEPLOY_PREBUILT_GO_MARKET_READ_IMAGE_REF" \
+    DEPLOY_PREBUILT_GO_SCAN_IMAGE_REF="$DEPLOY_PREBUILT_GO_SCAN_IMAGE_REF" \
     bash -s <<'REMOTE'
 set -euo pipefail
 TS=$(date +%Y%m%d%H%M%S)
-REQUIRED_PATHS="Dockerfile docker-compose.mysql.yml backend/app/main.py frontend/package.json frontend/src/main.tsx frontend/src/ui/data/index.ts scripts/install_https_nginx.sh scripts/deploy_delta_package.py"
+REQUIRED_PATHS="Dockerfile docker-compose.mysql.yml backend/app/main.py frontend/package.json frontend/src/main.tsx frontend/src/ui/data/index.ts frontend-next/package.json frontend-next/src/index.tsx scripts/install_https_nginx.sh scripts/deploy_delta_package.py"
 DEPLOY_SCOPE="${DEPLOY_RESOLVED_SCOPE:-all}"
 
 require_release_paths() {
@@ -414,18 +435,18 @@ docker_compose_build() {
   local log_file="/tmp/gupiao-docker-build-$TS.log"
   local attempt
   for attempt in 1 2 3; do
-    if COMPOSE_BAKE=false sudo -E docker compose -f "$CLOUD_COMPOSE_FILE" build "$@" 2>&1 | tee "$log_file"; then
+    if COMPOSE_BAKE=false COMPOSE_PARALLEL_LIMIT="${COMPOSE_PARALLEL_LIMIT:-1}" sudo -E docker compose -f "$CLOUD_COMPOSE_FILE" build "$@" 2>&1 | tee "$log_file"; then
       rm -f "$log_file"
       return 0
     fi
-    if grep -Eqi 'TLS handshake timeout|failed to resolve source metadata|failed to do request|i/o timeout|connection reset by peer|temporary failure|context deadline exceeded|no active session|DeadlineExceeded|BuildKit' "$log_file"; then
+    if grep -Eqi 'TLS handshake timeout|failed to resolve source metadata|failed to do request|i/o timeout|connection reset by peer|temporary failure|context deadline exceeded|context canceled|no active session|DeadlineExceeded|BuildKit' "$log_file"; then
       if test "$attempt" -lt 3; then
         echo "docker build transient registry/buildkit failure; retrying attempt $((attempt + 1))/3" >&2
         sleep $((attempt * 5))
         continue
       fi
       echo "docker build transient failure persisted; retrying with classic builder" >&2
-      COMPOSE_BAKE=false DOCKER_BUILDKIT=0 COMPOSE_DOCKER_CLI_BUILD=0 sudo -E docker compose -f "$CLOUD_COMPOSE_FILE" build "$@"
+      COMPOSE_BAKE=false COMPOSE_PARALLEL_LIMIT="${COMPOSE_PARALLEL_LIMIT:-1}" DOCKER_BUILDKIT=0 COMPOSE_DOCKER_CLI_BUILD=0 sudo -E docker compose -f "$CLOUD_COMPOSE_FILE" build "$@"
       rm -f "$log_file"
       return 0
     fi
@@ -436,6 +457,68 @@ docker_compose_build() {
   cat "$log_file" >&2
   rm -f "$log_file"
   return 1
+}
+
+require_prebuilt_ref() {
+  local name="$1"
+  local value="$2"
+  if test -z "$value"; then
+    echo "prebuilt image mode requires $name" >&2
+    exit 2
+  fi
+}
+
+use_prebuilt_app_images() {
+  case "${DEPLOY_PREBUILT_IMAGES_ENABLED:-auto}" in
+    1|true|yes)
+      ;;
+    auto)
+      if test -z "${DEPLOY_PREBUILT_WEB_IMAGE_REF:-}" || test -z "${DEPLOY_PREBUILT_ANALYTICS_IMAGE_REF:-}"; then
+        echo "prebuilt_images:app_unavailable_fallback_build"
+        return 1
+      fi
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+  require_prebuilt_ref DEPLOY_PREBUILT_WEB_IMAGE_REF "${DEPLOY_PREBUILT_WEB_IMAGE_REF:-}"
+  require_prebuilt_ref DEPLOY_PREBUILT_ANALYTICS_IMAGE_REF "${DEPLOY_PREBUILT_ANALYTICS_IMAGE_REF:-}"
+  echo "prebuilt_images:pull_app"
+  sudo docker pull "$DEPLOY_PREBUILT_WEB_IMAGE_REF"
+  sudo docker pull "$DEPLOY_PREBUILT_ANALYTICS_IMAGE_REF"
+  sudo docker tag "$DEPLOY_PREBUILT_WEB_IMAGE_REF" tquant-web:mysql
+  sudo docker tag "$DEPLOY_PREBUILT_ANALYTICS_IMAGE_REF" tquant-analytics:mysql
+  echo "docker_build:skipped_prebuilt_app"
+  return 0
+}
+
+use_prebuilt_go_images() {
+  case "${DEPLOY_PREBUILT_IMAGES_ENABLED:-auto}" in
+    1|true|yes)
+      ;;
+    auto)
+      if test -z "${DEPLOY_PREBUILT_GO_BFF_IMAGE_REF:-}" || test -z "${DEPLOY_PREBUILT_GO_MARKET_READ_IMAGE_REF:-}" || test -z "${DEPLOY_PREBUILT_GO_SCAN_IMAGE_REF:-}"; then
+        echo "prebuilt_images:go_unavailable_fallback_build"
+        return 1
+      fi
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+  require_prebuilt_ref DEPLOY_PREBUILT_GO_BFF_IMAGE_REF "${DEPLOY_PREBUILT_GO_BFF_IMAGE_REF:-}"
+  require_prebuilt_ref DEPLOY_PREBUILT_GO_MARKET_READ_IMAGE_REF "${DEPLOY_PREBUILT_GO_MARKET_READ_IMAGE_REF:-}"
+  require_prebuilt_ref DEPLOY_PREBUILT_GO_SCAN_IMAGE_REF "${DEPLOY_PREBUILT_GO_SCAN_IMAGE_REF:-}"
+  echo "prebuilt_images:pull_go"
+  sudo docker pull "$DEPLOY_PREBUILT_GO_BFF_IMAGE_REF"
+  sudo docker pull "$DEPLOY_PREBUILT_GO_MARKET_READ_IMAGE_REF"
+  sudo docker pull "$DEPLOY_PREBUILT_GO_SCAN_IMAGE_REF"
+  sudo docker tag "$DEPLOY_PREBUILT_GO_BFF_IMAGE_REF" tquant-go-bff:mysql
+  sudo docker tag "$DEPLOY_PREBUILT_GO_MARKET_READ_IMAGE_REF" tquant-go-market-read:mysql
+  sudo docker tag "$DEPLOY_PREBUILT_GO_SCAN_IMAGE_REF" tquant-go-scan-worker:mysql
+  echo "docker_build:skipped_prebuilt_go"
+  return 0
 }
 
 git_network_retry() {
@@ -551,6 +634,8 @@ upsert_env_value AUTH_COOKIE_SECURE "$AUTH_COOKIE_SECURE_VALUE"
 upsert_env_value AUTH_ALLOW_INSECURE_HTTP_COOKIE false
 upsert_env_value HTTPS_REQUIRED "$HTTPS_REQUIRED"
 upsert_env_value WEB_RUNTIME_BACKGROUND_JOBS_ENABLED false
+upsert_env_value FRONTEND_NEXT_MONITOR_CUTOVER_ENABLED "$FRONTEND_NEXT_MONITOR_CUTOVER_ENABLED"
+upsert_env_value FRONTEND_NEXT_CUTOVER_PATHS "$FRONTEND_NEXT_CUTOVER_PATHS"
 if test -n "${PAPER_AUTO_TRADING_ENABLED+x}"; then
   upsert_env_value PAPER_AUTO_TRADING_ENABLED "$PAPER_AUTO_TRADING_ENABLED"
 elif ! grep -Eq '^PAPER_AUTO_TRADING_ENABLED=' .env; then
@@ -564,7 +649,10 @@ if test -n "$REMOTE_DEBIAN_APT_SECURITY_MIRROR"; then
 fi
 
 if test "$DEPLOY_SCOPE" = all; then
-  docker_compose_build app analytics-worker
+  if ! use_prebuilt_app_images; then
+    docker_compose_build app
+    docker_compose_build analytics-worker
+  fi
   sudo docker compose -f "$CLOUD_COMPOSE_FILE" up --no-build --force-recreate --abort-on-container-exit --exit-code-from migration migration
   sudo docker rm -f tquant-app-mysql tquant-runtime-scheduler-mysql tquant-runtime-worker-mysql tquant-backtest-worker-mysql tquant-analytics-worker-mysql 2>/dev/null || true
   sudo docker compose -f "$CLOUD_COMPOSE_FILE" up -d --no-build --force-recreate app runtime-scheduler runtime-worker backtest-worker analytics-worker
@@ -633,7 +721,9 @@ if not dsn:
         path.write_text(text, encoding='utf-8')
         print('mysql_dsn:created')
 PY
-  docker_compose_build go-bff-gateway go-market-read-service go-scan-worker
+  if ! use_prebuilt_go_images; then
+    docker_compose_build go-bff-gateway go-market-read-service go-scan-worker
+  fi
   sudo docker compose -f "$CLOUD_COMPOSE_FILE" up -d --no-build --force-recreate go-bff-gateway go-market-read-service go-scan-worker
   if test "$DEPLOY_SCOPE" = all; then
     EXPECTED_WEB_IMAGE=$(sudo docker image inspect tquant-web:mysql --format '{{.Id}}')
@@ -728,16 +818,24 @@ REMOTE
     CLOUD_KEEP_BACKUPS="$CLOUD_KEEP_BACKUPS" \
     CLOUD_AUTH_COOKIE_SECURE="${CLOUD_AUTH_COOKIE_SECURE:-}" \
     CLOUD_AUTH_ALLOW_INSECURE_HTTP_COOKIE="${CLOUD_AUTH_ALLOW_INSECURE_HTTP_COOKIE:-}" \
+    FRONTEND_NEXT_MONITOR_CUTOVER_ENABLED="$FRONTEND_NEXT_MONITOR_CUTOVER_ENABLED" \
+    FRONTEND_NEXT_CUTOVER_PATHS="$FRONTEND_NEXT_CUTOVER_PATHS" \
     REMOTE_PACKAGE="$remote_package" \
     DEPLOY_EFFECTIVE_SYNC_MODE="$DEPLOY_EFFECTIVE_SYNC_MODE" \
     REMOTE_DEBIAN_APT_MIRROR="$REMOTE_DEBIAN_APT_MIRROR" \
     REMOTE_DEBIAN_APT_SECURITY_MIRROR="$REMOTE_DEBIAN_APT_SECURITY_MIRROR" \
     DEPLOY_RESOLVED_SCOPE="$DEPLOY_RESOLVED_SCOPE" \
     HTTPS_REQUIRED="$HTTPS_REQUIRED" \
+    DEPLOY_PREBUILT_IMAGES_ENABLED="$DEPLOY_PREBUILT_IMAGES_ENABLED" \
+    DEPLOY_PREBUILT_WEB_IMAGE_REF="$DEPLOY_PREBUILT_WEB_IMAGE_REF" \
+    DEPLOY_PREBUILT_ANALYTICS_IMAGE_REF="$DEPLOY_PREBUILT_ANALYTICS_IMAGE_REF" \
+    DEPLOY_PREBUILT_GO_BFF_IMAGE_REF="$DEPLOY_PREBUILT_GO_BFF_IMAGE_REF" \
+    DEPLOY_PREBUILT_GO_MARKET_READ_IMAGE_REF="$DEPLOY_PREBUILT_GO_MARKET_READ_IMAGE_REF" \
+    DEPLOY_PREBUILT_GO_SCAN_IMAGE_REF="$DEPLOY_PREBUILT_GO_SCAN_IMAGE_REF" \
     bash -s <<'REMOTE'
 set -euo pipefail
 TS=$(date +%Y%m%d%H%M%S)
-REQUIRED_PATHS="Dockerfile docker-compose.mysql.yml backend/app/main.py frontend/package.json frontend/src/main.tsx frontend/src/ui/data/index.ts scripts/install_https_nginx.sh scripts/deploy_delta_package.py"
+REQUIRED_PATHS="Dockerfile docker-compose.mysql.yml backend/app/main.py frontend/package.json frontend/src/main.tsx frontend/src/ui/data/index.ts frontend-next/package.json frontend-next/src/index.tsx scripts/install_https_nginx.sh scripts/deploy_delta_package.py"
 DEPLOY_SCOPE="${DEPLOY_RESOLVED_SCOPE:-all}"
 SYNC_MODE="${DEPLOY_EFFECTIVE_SYNC_MODE:-package-only}"
 
@@ -763,18 +861,18 @@ docker_compose_build() {
   local log_file="/tmp/gupiao-docker-build-$TS.log"
   local attempt
   for attempt in 1 2 3; do
-    if COMPOSE_BAKE=false sudo -E docker compose -f "$CLOUD_COMPOSE_FILE" build "$@" 2>&1 | tee "$log_file"; then
+    if COMPOSE_BAKE=false COMPOSE_PARALLEL_LIMIT="${COMPOSE_PARALLEL_LIMIT:-1}" sudo -E docker compose -f "$CLOUD_COMPOSE_FILE" build "$@" 2>&1 | tee "$log_file"; then
       rm -f "$log_file"
       return 0
     fi
-    if grep -Eqi 'TLS handshake timeout|failed to resolve source metadata|failed to do request|i/o timeout|connection reset by peer|temporary failure|context deadline exceeded|no active session|DeadlineExceeded|BuildKit' "$log_file"; then
+    if grep -Eqi 'TLS handshake timeout|failed to resolve source metadata|failed to do request|i/o timeout|connection reset by peer|temporary failure|context deadline exceeded|context canceled|no active session|DeadlineExceeded|BuildKit' "$log_file"; then
       if test "$attempt" -lt 3; then
         echo "docker build transient registry/buildkit failure; retrying attempt $((attempt + 1))/3" >&2
         sleep $((attempt * 5))
         continue
       fi
       echo "docker build transient failure persisted; retrying with classic builder" >&2
-      COMPOSE_BAKE=false DOCKER_BUILDKIT=0 COMPOSE_DOCKER_CLI_BUILD=0 sudo -E docker compose -f "$CLOUD_COMPOSE_FILE" build "$@"
+      COMPOSE_BAKE=false COMPOSE_PARALLEL_LIMIT="${COMPOSE_PARALLEL_LIMIT:-1}" DOCKER_BUILDKIT=0 COMPOSE_DOCKER_CLI_BUILD=0 sudo -E docker compose -f "$CLOUD_COMPOSE_FILE" build "$@"
       rm -f "$log_file"
       return 0
     fi
@@ -785,6 +883,68 @@ docker_compose_build() {
   cat "$log_file" >&2
   rm -f "$log_file"
   return 1
+}
+
+require_prebuilt_ref() {
+  local name="$1"
+  local value="$2"
+  if test -z "$value"; then
+    echo "prebuilt image mode requires $name" >&2
+    exit 2
+  fi
+}
+
+use_prebuilt_app_images() {
+  case "${DEPLOY_PREBUILT_IMAGES_ENABLED:-auto}" in
+    1|true|yes)
+      ;;
+    auto)
+      if test -z "${DEPLOY_PREBUILT_WEB_IMAGE_REF:-}" || test -z "${DEPLOY_PREBUILT_ANALYTICS_IMAGE_REF:-}"; then
+        echo "prebuilt_images:app_unavailable_fallback_build"
+        return 1
+      fi
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+  require_prebuilt_ref DEPLOY_PREBUILT_WEB_IMAGE_REF "${DEPLOY_PREBUILT_WEB_IMAGE_REF:-}"
+  require_prebuilt_ref DEPLOY_PREBUILT_ANALYTICS_IMAGE_REF "${DEPLOY_PREBUILT_ANALYTICS_IMAGE_REF:-}"
+  echo "prebuilt_images:pull_app"
+  sudo docker pull "$DEPLOY_PREBUILT_WEB_IMAGE_REF"
+  sudo docker pull "$DEPLOY_PREBUILT_ANALYTICS_IMAGE_REF"
+  sudo docker tag "$DEPLOY_PREBUILT_WEB_IMAGE_REF" tquant-web:mysql
+  sudo docker tag "$DEPLOY_PREBUILT_ANALYTICS_IMAGE_REF" tquant-analytics:mysql
+  echo "docker_build:skipped_prebuilt_app"
+  return 0
+}
+
+use_prebuilt_go_images() {
+  case "${DEPLOY_PREBUILT_IMAGES_ENABLED:-auto}" in
+    1|true|yes)
+      ;;
+    auto)
+      if test -z "${DEPLOY_PREBUILT_GO_BFF_IMAGE_REF:-}" || test -z "${DEPLOY_PREBUILT_GO_MARKET_READ_IMAGE_REF:-}" || test -z "${DEPLOY_PREBUILT_GO_SCAN_IMAGE_REF:-}"; then
+        echo "prebuilt_images:go_unavailable_fallback_build"
+        return 1
+      fi
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+  require_prebuilt_ref DEPLOY_PREBUILT_GO_BFF_IMAGE_REF "${DEPLOY_PREBUILT_GO_BFF_IMAGE_REF:-}"
+  require_prebuilt_ref DEPLOY_PREBUILT_GO_MARKET_READ_IMAGE_REF "${DEPLOY_PREBUILT_GO_MARKET_READ_IMAGE_REF:-}"
+  require_prebuilt_ref DEPLOY_PREBUILT_GO_SCAN_IMAGE_REF "${DEPLOY_PREBUILT_GO_SCAN_IMAGE_REF:-}"
+  echo "prebuilt_images:pull_go"
+  sudo docker pull "$DEPLOY_PREBUILT_GO_BFF_IMAGE_REF"
+  sudo docker pull "$DEPLOY_PREBUILT_GO_MARKET_READ_IMAGE_REF"
+  sudo docker pull "$DEPLOY_PREBUILT_GO_SCAN_IMAGE_REF"
+  sudo docker tag "$DEPLOY_PREBUILT_GO_BFF_IMAGE_REF" tquant-go-bff:mysql
+  sudo docker tag "$DEPLOY_PREBUILT_GO_MARKET_READ_IMAGE_REF" tquant-go-market-read:mysql
+  sudo docker tag "$DEPLOY_PREBUILT_GO_SCAN_IMAGE_REF" tquant-go-scan-worker:mysql
+  echo "docker_build:skipped_prebuilt_go"
+  return 0
 }
 
 cd /home/$CLOUD_USER
@@ -884,6 +1044,8 @@ upsert_env_value AUTH_COOKIE_SECURE "$AUTH_COOKIE_SECURE_VALUE"
 upsert_env_value AUTH_ALLOW_INSECURE_HTTP_COOKIE false
 upsert_env_value HTTPS_REQUIRED "$HTTPS_REQUIRED"
 upsert_env_value WEB_RUNTIME_BACKGROUND_JOBS_ENABLED false
+upsert_env_value FRONTEND_NEXT_MONITOR_CUTOVER_ENABLED "$FRONTEND_NEXT_MONITOR_CUTOVER_ENABLED"
+upsert_env_value FRONTEND_NEXT_CUTOVER_PATHS "$FRONTEND_NEXT_CUTOVER_PATHS"
 if test -n "${PAPER_AUTO_TRADING_ENABLED+x}"; then
   upsert_env_value PAPER_AUTO_TRADING_ENABLED "$PAPER_AUTO_TRADING_ENABLED"
 elif ! grep -Eq '^PAPER_AUTO_TRADING_ENABLED=' .env; then
@@ -897,7 +1059,10 @@ if test -n "$REMOTE_DEBIAN_APT_SECURITY_MIRROR"; then
 fi
 
 if test "$DEPLOY_SCOPE" = all; then
-  docker_compose_build app analytics-worker
+  if ! use_prebuilt_app_images; then
+    docker_compose_build app
+    docker_compose_build analytics-worker
+  fi
   sudo docker compose -f "$CLOUD_COMPOSE_FILE" up --no-build --force-recreate --abort-on-container-exit --exit-code-from migration migration
   sudo docker rm -f tquant-app-mysql tquant-runtime-scheduler-mysql tquant-runtime-worker-mysql tquant-backtest-worker-mysql tquant-analytics-worker-mysql 2>/dev/null || true
   sudo docker compose -f "$CLOUD_COMPOSE_FILE" up -d --no-build --force-recreate app runtime-scheduler runtime-worker backtest-worker analytics-worker
@@ -966,7 +1131,9 @@ if not dsn:
         path.write_text(text, encoding='utf-8')
         print('mysql_dsn:created')
 PY
-  docker_compose_build go-bff-gateway go-market-read-service go-scan-worker
+  if ! use_prebuilt_go_images; then
+    docker_compose_build go-bff-gateway go-market-read-service go-scan-worker
+  fi
   sudo docker compose -f "$CLOUD_COMPOSE_FILE" up -d --no-build --force-recreate go-bff-gateway go-market-read-service go-scan-worker
   if test "$DEPLOY_SCOPE" = all; then
     EXPECTED_WEB_IMAGE=$(sudo docker image inspect tquant-web:mysql --format '{{.Id}}')

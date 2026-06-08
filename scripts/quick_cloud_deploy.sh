@@ -35,15 +35,31 @@ REFRESH_HTTPS_CONFIG=0
 HTTPS_REQUIRED=1
 CLOUD_AUTH_COOKIE_SECURE=true
 CLOUD_AUTH_ALLOW_INSECURE_HTTP_COOKIE=false
+FRONTEND_NEXT_MONITOR_CUTOVER_ENABLED="${FRONTEND_NEXT_MONITOR_CUTOVER_ENABLED:-false}"
+FRONTEND_NEXT_CUTOVER_PATHS="${FRONTEND_NEXT_CUTOVER_PATHS:-}"
 VERIFY_PUBLIC_DOMAIN="${VERIFY_PUBLIC_DOMAIN:-0}"
 VERIFY_PUBLIC_ENTRY="${VERIFY_PUBLIC_ENTRY:-1}"
 DEPLOY_TARGET_SCOPE="${DEPLOY_TARGET_SCOPE:-auto}"
 DEPLOY_FRONTEND_HOT_REQUIRED="${DEPLOY_FRONTEND_HOT_REQUIRED:-0}"
 DEPLOY_SYNC_MODE="${DEPLOY_SYNC_MODE:-package-only}"
+DEPLOY_PREBUILT_IMAGES_ENABLED="${DEPLOY_PREBUILT_IMAGES_ENABLED:-auto}"
+DEPLOY_PREBUILT_WEB_IMAGE_REF="${DEPLOY_PREBUILT_WEB_IMAGE_REF:-}"
+DEPLOY_PREBUILT_ANALYTICS_IMAGE_REF="${DEPLOY_PREBUILT_ANALYTICS_IMAGE_REF:-}"
+DEPLOY_PREBUILT_GO_BFF_IMAGE_REF="${DEPLOY_PREBUILT_GO_BFF_IMAGE_REF:-}"
+DEPLOY_PREBUILT_GO_MARKET_READ_IMAGE_REF="${DEPLOY_PREBUILT_GO_MARKET_READ_IMAGE_REF:-}"
+DEPLOY_PREBUILT_GO_SCAN_IMAGE_REF="${DEPLOY_PREBUILT_GO_SCAN_IMAGE_REF:-}"
 VERIFY_WEB_IMAGE_SYNC=1
 RUN_REMOTE_PREFLIGHT="${RUN_REMOTE_PREFLIGHT:-1}"
 RUN_REMOTE_SAFE_CLEANUP="${RUN_REMOTE_SAFE_CLEANUP:-1}"
+REMOTE_PREFLIGHT_READ_ONLY="${REMOTE_PREFLIGHT_READ_ONLY:-0}"
 REMOTE_MIN_FREE_GB="${REMOTE_MIN_FREE_GB:-8}"
+REMOTE_ROOT_WARN_PCT="${REMOTE_ROOT_WARN_PCT:-70}"
+REMOTE_ROOT_BLOCK_PCT="${REMOTE_ROOT_BLOCK_PCT:-80}"
+REMOTE_DOCKER_BUILD_CACHE_WARN_GB="${REMOTE_DOCKER_BUILD_CACHE_WARN_GB:-2}"
+REMOTE_MYSQL_SLOW_LOG_WARN_MB="${REMOTE_MYSQL_SLOW_LOG_WARN_MB:-512}"
+REMOTE_BINLOG_EXPIRE_MAX_SECONDS="${REMOTE_BINLOG_EXPIRE_MAX_SECONDS:-259200}"
+REMOTE_MAX_BINLOG_SIZE_WARN_MB="${REMOTE_MAX_BINLOG_SIZE_WARN_MB:-256}"
+REMOTE_MYSQL_BACKUP_MIN_COUNT="${REMOTE_MYSQL_BACKUP_MIN_COUNT:-1}"
 REMOTE_MIN_SWAP_MB="${REMOTE_MIN_SWAP_MB:-2048}"
 REMOTE_TEMP_SWAP_PATH="${REMOTE_TEMP_SWAP_PATH:-/swapfile-codex-deploy}"
 REMOTE_TEMP_SWAP_MB="${REMOTE_TEMP_SWAP_MB:-2048}"
@@ -73,7 +89,7 @@ print_deploy_summary() {
   fi
   local public_base
   public_base="$(resolved_public_base_url)"
-  log "summary outcome=${outcome} mode=${mode} scope=${DEPLOY_TARGET_SCOPE} target=${CLOUD_USER}@${CLOUD_HOST} port=${CLOUD_APP_PORT} domain=${CLOUD_DOMAIN:-none} public_base=${public_base} https_required=${HTTPS_REQUIRED} public_entry_verify=${VERIFY_PUBLIC_ENTRY} public_domain_verify=${VERIFY_PUBLIC_DOMAIN} performance_verify=${RUN_PERFORMANCE_VERIFY}"
+  log "summary outcome=${outcome} mode=${mode} scope=${DEPLOY_TARGET_SCOPE} target=${CLOUD_USER}@${CLOUD_HOST} port=${CLOUD_APP_PORT} domain=${CLOUD_DOMAIN:-none} public_base=${public_base} https_required=${HTTPS_REQUIRED} public_entry_verify=${VERIFY_PUBLIC_ENTRY} public_domain_verify=${VERIFY_PUBLIC_DOMAIN} performance_verify=${RUN_PERFORMANCE_VERIFY} prebuilt_images=${DEPLOY_PREBUILT_IMAGES_ENABLED}"
   log "summary sync_mode=${DEPLOY_SYNC_MODE}"
   if [[ -n "$CLOUD_DOMAIN" ]]; then
     log "summary urls default=${public_base}/monitor http=http://${CLOUD_HOST}:${CLOUD_APP_PORT} domain=https://${CLOUD_DOMAIN}"
@@ -93,7 +109,7 @@ Defaults:
   port   18090
 
 Options:
-  --verify-only   Skip deploy and only verify the current remote state.
+  --verify-only   Skip deploy and verify current remote state. Remote preflight runs read-only.
   --full          Run the slower local checks and latest-data acceptance.
   --fast-risk-accepted
                  Skip local compile/build checks for emergency deploys only.
@@ -101,6 +117,18 @@ Options:
                  Choose deployment target. auto is the default and uses changed files.
   --sync-mode <delta-package|package-only|git-inplace|git-clone>
                  Choose release sync mode. delta-package falls back to package-only.
+  --prebuilt-images
+                 Pull prebuilt images on the server and restart instead of building app images.
+  --prebuilt-web-image <ref>
+                 Image ref to tag as tquant-web:mysql when --prebuilt-images is enabled.
+  --prebuilt-analytics-image <ref>
+                 Image ref to tag as tquant-analytics:mysql when --prebuilt-images is enabled.
+  --prebuilt-go-bff-image <ref>
+                 Image ref to tag as tquant-go-bff:mysql when --prebuilt-images is enabled.
+  --prebuilt-go-market-read-image <ref>
+                 Image ref to tag as tquant-go-market-read:mysql when --prebuilt-images is enabled.
+  --prebuilt-go-scan-image <ref>
+                 Image ref to tag as tquant-go-scan-worker:mysql when --prebuilt-images is enabled.
   --frontend-hot-required
                  Fail instead of falling back when frontend-hot has no dist artifact.
   --performance-verify
@@ -120,6 +148,8 @@ Options:
                  Skip remote disk/swap/docker preflight before deployment.
   --skip-remote-cleanup
                  Keep old upload packages and temp hotpatch dirs during preflight.
+  --remote-root-block-pct <n>
+                 Stop before deploy when root filesystem usage is at or above this percent.
   --configure-https
                  Request or renew certificates and install nginx config.
   --refresh-https-config
@@ -172,6 +202,30 @@ while [[ $# -gt 0 ]]; do
       DEPLOY_SYNC_MODE="${2:?missing sync mode}"
       shift 2
       ;;
+    --prebuilt-images)
+      DEPLOY_PREBUILT_IMAGES_ENABLED=1
+      shift
+      ;;
+    --prebuilt-web-image)
+      DEPLOY_PREBUILT_WEB_IMAGE_REF="${2:?missing prebuilt web image ref}"
+      shift 2
+      ;;
+    --prebuilt-analytics-image)
+      DEPLOY_PREBUILT_ANALYTICS_IMAGE_REF="${2:?missing prebuilt analytics image ref}"
+      shift 2
+      ;;
+    --prebuilt-go-bff-image)
+      DEPLOY_PREBUILT_GO_BFF_IMAGE_REF="${2:?missing prebuilt go bff image ref}"
+      shift 2
+      ;;
+    --prebuilt-go-market-read-image)
+      DEPLOY_PREBUILT_GO_MARKET_READ_IMAGE_REF="${2:?missing prebuilt go market read image ref}"
+      shift 2
+      ;;
+    --prebuilt-go-scan-image)
+      DEPLOY_PREBUILT_GO_SCAN_IMAGE_REF="${2:?missing prebuilt go scan image ref}"
+      shift 2
+      ;;
     --performance-verify)
       RUN_PERFORMANCE_VERIFY=1
       shift
@@ -203,6 +257,10 @@ while [[ $# -gt 0 ]]; do
     --skip-remote-cleanup)
       RUN_REMOTE_SAFE_CLEANUP=0
       shift
+      ;;
+    --remote-root-block-pct)
+      REMOTE_ROOT_BLOCK_PCT="${2:?missing remote root block percent}"
+      shift 2
       ;;
     --configure-https)
       AUTO_CONFIGURE_HTTPS=1
@@ -252,14 +310,24 @@ done
 export CLOUD_HOST CLOUD_USER CLOUD_SSH_KEY CLOUD_PROJECT_DIR CLOUD_APP_PORT
 export CLOUD_SSH_TIMEOUT CLOUD_SSH_CONNECT_TIMEOUT CLOUD_SSH_SERVER_ALIVE_COUNT_MAX
 export CLOUD_DOMAIN CLOUD_CERT_EMAIL CLOUD_PUBLIC_BASE_URL CLOUD_AUTH_COOKIE_SECURE CLOUD_AUTH_ALLOW_INSECURE_HTTP_COOKIE
+export FRONTEND_NEXT_MONITOR_CUTOVER_ENABLED
+export FRONTEND_NEXT_CUTOVER_PATHS
 export AUTO_INITIAL_GIT_COMMIT AUTO_INSTALL_BACKUP_CRON AUTO_CONFIGURE_HTTPS REFRESH_HTTPS_CONFIG HTTPS_REQUIRED
 export VERIFY_PUBLIC_DOMAIN VERIFY_PUBLIC_ENTRY
 export RUN_COMPILE RUN_FRONTEND_BUILD RUN_STRATEGY_TEST RUN_FULL_TESTS RUN_LATEST_DATA_ACCEPTANCE
 export DEPLOY_TARGET_SCOPE DEPLOY_FRONTEND_HOT_REQUIRED
 export DEPLOY_SYNC_MODE
+export DEPLOY_PREBUILT_IMAGES_ENABLED
+export DEPLOY_PREBUILT_WEB_IMAGE_REF
+export DEPLOY_PREBUILT_ANALYTICS_IMAGE_REF
+export DEPLOY_PREBUILT_GO_BFF_IMAGE_REF
+export DEPLOY_PREBUILT_GO_MARKET_READ_IMAGE_REF
+export DEPLOY_PREBUILT_GO_SCAN_IMAGE_REF
 export CLOUD_SSH_TIMEOUT CLOUD_SSH_CONNECT_TIMEOUT CLOUD_SSH_SERVER_ALIVE_COUNT_MAX
 export RUN_PERFORMANCE_VERIFY_ROUNDS RUN_PERFORMANCE_VERIFY_SAMPLES
-export RUN_REMOTE_PREFLIGHT RUN_REMOTE_SAFE_CLEANUP REMOTE_MIN_FREE_GB REMOTE_MIN_SWAP_MB
+export RUN_REMOTE_PREFLIGHT RUN_REMOTE_SAFE_CLEANUP REMOTE_PREFLIGHT_READ_ONLY REMOTE_MIN_FREE_GB REMOTE_MIN_SWAP_MB
+export REMOTE_ROOT_WARN_PCT REMOTE_ROOT_BLOCK_PCT REMOTE_DOCKER_BUILD_CACHE_WARN_GB
+export REMOTE_MYSQL_SLOW_LOG_WARN_MB REMOTE_BINLOG_EXPIRE_MAX_SECONDS REMOTE_MAX_BINLOG_SIZE_WARN_MB
 export REMOTE_TEMP_SWAP_PATH REMOTE_TEMP_SWAP_MB REMOTE_REMOVE_TEMP_SWAP_AFTER_DEPLOY
 
 if [[ -z "$CLOUD_HOST" ]]; then
@@ -286,11 +354,25 @@ remote_preflight() {
   if [[ "$RUN_REMOTE_PREFLIGHT" != "1" ]]; then
     return 0
   fi
-  log "remote preflight: disk/swap/docker safe cleanup"
+  local preflight_mode="read-only resource gate"
+  if [[ "$REMOTE_PREFLIGHT_READ_ONLY" == "1" ]]; then
+    preflight_mode="read-only resource gate"
+  elif [[ "$RUN_REMOTE_SAFE_CLEANUP" == "1" || "${REMOTE_TEMP_SWAP_MB:-0}" -gt 0 ]]; then
+    preflight_mode="resource gate with safe cleanup"
+  fi
+  log "remote preflight: ${preflight_mode}"
   cloud_ssh env \
     CLOUD_PROJECT_DIR="$CLOUD_PROJECT_DIR" \
     RUN_REMOTE_SAFE_CLEANUP="$RUN_REMOTE_SAFE_CLEANUP" \
+    REMOTE_PREFLIGHT_READ_ONLY="$REMOTE_PREFLIGHT_READ_ONLY" \
     REMOTE_MIN_FREE_GB="$REMOTE_MIN_FREE_GB" \
+    REMOTE_ROOT_WARN_PCT="$REMOTE_ROOT_WARN_PCT" \
+    REMOTE_ROOT_BLOCK_PCT="$REMOTE_ROOT_BLOCK_PCT" \
+    REMOTE_DOCKER_BUILD_CACHE_WARN_GB="$REMOTE_DOCKER_BUILD_CACHE_WARN_GB" \
+    REMOTE_MYSQL_SLOW_LOG_WARN_MB="$REMOTE_MYSQL_SLOW_LOG_WARN_MB" \
+    REMOTE_BINLOG_EXPIRE_MAX_SECONDS="$REMOTE_BINLOG_EXPIRE_MAX_SECONDS" \
+    REMOTE_MAX_BINLOG_SIZE_WARN_MB="$REMOTE_MAX_BINLOG_SIZE_WARN_MB" \
+    REMOTE_MYSQL_BACKUP_MIN_COUNT="$REMOTE_MYSQL_BACKUP_MIN_COUNT" \
     REMOTE_MIN_SWAP_MB="$REMOTE_MIN_SWAP_MB" \
     REMOTE_TEMP_SWAP_PATH="$REMOTE_TEMP_SWAP_PATH" \
     REMOTE_TEMP_SWAP_MB="$REMOTE_TEMP_SWAP_MB" \
@@ -301,8 +383,150 @@ free_root_gb() {
   df -BG / | awk 'NR==2 {gsub("G", "", $4); print $4 + 0}'
 }
 
+root_used_pct() {
+  df -P / | awk 'NR==2 {gsub("%", "", $5); print $5 + 0}'
+}
+
 swap_total_mb() {
   awk '/SwapTotal/ {print int($2 / 1024)}' /proc/meminfo
+}
+
+docker_build_cache_gb() {
+  sudo docker system df 2>/dev/null | awk '
+    $1 == "Build" && $2 == "Cache" {
+      value=$5
+      number=value
+      gsub(/[^0-9.]/, "", number)
+      if (value ~ /Gi?B$/ || value ~ /GB$/ || value ~ /G$/) print int(number + 0)
+      else if (value ~ /Mi?B$/ || value ~ /MB$/ || value ~ /M$/) print int((number + 0) / 1024)
+      else if (value ~ /Ki?B$/ || value ~ /KB$/ || value ~ /K$/) print 0
+      else print 0
+    }'
+}
+
+mysql_slow_log_mb() {
+  local slow_log="/var/lib/docker/volumes/tquant-mysql_mysql_data/_data/mysql-slow.log"
+  if sudo test -f "$slow_log"; then
+    sudo du -m "$slow_log" | awk '{print $1 + 0}'
+  else
+    echo 0
+  fi
+}
+
+mysql_binlog_expire_seconds() {
+  cd "$CLOUD_PROJECT_DIR"
+  if test -f .env; then
+    set -a
+    . ./.env
+    set +a
+  fi
+  if test -n "${MYSQL_ROOT_PASSWORD:-}"; then
+    sudo docker compose -f docker-compose.mysql.yml exec -T mysql mysql -N -uroot -p"$MYSQL_ROOT_PASSWORD" -e "SELECT @@binlog_expire_logs_seconds;" 2>/dev/null || echo unknown
+  else
+    echo unknown
+  fi
+}
+
+mysql_max_binlog_size_mb() {
+  cd "$CLOUD_PROJECT_DIR"
+  if test -f .env; then
+    set -a
+    . ./.env
+    set +a
+  fi
+  if test -n "${MYSQL_ROOT_PASSWORD:-}"; then
+    sudo docker compose -f docker-compose.mysql.yml exec -T mysql mysql -N -uroot -p"$MYSQL_ROOT_PASSWORD" -e "SELECT FLOOR(@@max_binlog_size / 1024 / 1024);" 2>/dev/null || echo unknown
+  else
+    echo unknown
+  fi
+}
+
+mysql_compose_resource_config_present() {
+  if test -f "$CLOUD_PROJECT_DIR/docker-compose.mysql.yml" \
+    && grep -q -- '--binlog-expire-logs-seconds=${MYSQL_BINLOG_EXPIRE_LOGS_SECONDS:-259200}' "$CLOUD_PROJECT_DIR/docker-compose.mysql.yml" \
+    && grep -q -- '--max-binlog-size=${MYSQL_MAX_BINLOG_SIZE:-256M}' "$CLOUD_PROJECT_DIR/docker-compose.mysql.yml"; then
+    echo present
+  else
+    echo missing
+  fi
+}
+
+journald_resource_config_present() {
+  if sudo test -f /etc/systemd/journald.conf.d/tquant-resource.conf; then
+    echo present
+  else
+    echo missing
+  fi
+}
+
+deploy_backup_count() {
+  sudo find /home -maxdepth 1 -type d -name 'gupiao-deploy-backup-*' 2>/dev/null | wc -l | tr -d '[:space:]'
+}
+
+mysql_backup_count() {
+  sudo find /home -path '*/mysql-backups/*.sql.gz' -type f 2>/dev/null | wc -l | tr -d '[:space:]'
+}
+
+remote_resource_gate() {
+  local used_pct build_cache_gb slow_log_mb binlog_expire max_binlog_size_mb mysql_compose_resource_config journald_resource_config backup_count mysql_backups
+  used_pct="$(root_used_pct)"
+  echo "preflight:root_used_pct=${used_pct}"
+  if test "$used_pct" -ge "${REMOTE_ROOT_BLOCK_PCT:-80}"; then
+    echo "preflight:blocking_root_used_pct=${used_pct}" >&2
+    exit 42
+  elif test "$used_pct" -ge "${REMOTE_ROOT_WARN_PCT:-70}"; then
+    echo "preflight:warning_root_used_pct=${used_pct}"
+  fi
+
+  build_cache_gb="$(docker_build_cache_gb)"
+  if test -n "$build_cache_gb"; then
+    echo "preflight:docker_build_cache_gb=${build_cache_gb}"
+    if test "$build_cache_gb" -ge "${REMOTE_DOCKER_BUILD_CACHE_WARN_GB:-2}"; then
+      echo "preflight:warning_docker_build_cache_gb=${build_cache_gb}"
+    fi
+  fi
+
+  slow_log_mb="$(mysql_slow_log_mb)"
+  echo "preflight:mysql_slow_log_mb=${slow_log_mb}"
+  if test "$slow_log_mb" -ge "${REMOTE_MYSQL_SLOW_LOG_WARN_MB:-512}"; then
+    echo "preflight:warning_mysql_slow_log_mb=${slow_log_mb}"
+  fi
+
+  binlog_expire="$(mysql_binlog_expire_seconds)"
+  echo "preflight:binlog_expire_seconds=${binlog_expire}"
+  if test "$binlog_expire" != "unknown" && test "$binlog_expire" -gt "${REMOTE_BINLOG_EXPIRE_MAX_SECONDS:-259200}"; then
+    echo "preflight:warning_binlog_expire_seconds=${binlog_expire}"
+  fi
+
+  max_binlog_size_mb="$(mysql_max_binlog_size_mb)"
+  echo "preflight:max_binlog_size_mb=${max_binlog_size_mb}"
+  if test "$max_binlog_size_mb" != "unknown" && test "$max_binlog_size_mb" -gt "${REMOTE_MAX_BINLOG_SIZE_WARN_MB:-256}"; then
+    echo "preflight:warning_max_binlog_size_mb=${max_binlog_size_mb}"
+  fi
+
+  mysql_compose_resource_config="$(mysql_compose_resource_config_present)"
+  echo "preflight:mysql_compose_resource_config=${mysql_compose_resource_config}"
+  if test "$mysql_compose_resource_config" != "present"; then
+    echo "preflight:warning_mysql_compose_resource_config=${mysql_compose_resource_config}"
+  fi
+
+  journald_resource_config="$(journald_resource_config_present)"
+  echo "preflight:journald_resource_config=${journald_resource_config}"
+  if test "$journald_resource_config" != "present"; then
+    echo "preflight:warning_journald_resource_config=${journald_resource_config}"
+  fi
+
+  backup_count="$(deploy_backup_count)"
+  echo "preflight:deploy_backup_count=${backup_count}"
+  if test "$backup_count" -gt "${REMOTE_DEPLOY_BACKUP_WARN_COUNT:-3}"; then
+    echo "preflight:warning_deploy_backup_count=${backup_count}"
+  fi
+
+  mysql_backups="$(mysql_backup_count)"
+  echo "preflight:mysql_backup_count=${mysql_backups}"
+  if test "$mysql_backups" -lt "${REMOTE_MYSQL_BACKUP_MIN_COUNT:-1}"; then
+    echo "preflight:warning_mysql_backup_count=${mysql_backups}"
+  fi
 }
 
 echo "preflight:project_dir=${CLOUD_PROJECT_DIR}"
@@ -312,8 +536,9 @@ echo "preflight:swap_before"
 free -m || true
 echo "preflight:docker_before"
 sudo docker system df || true
+remote_resource_gate
 
-if test "${RUN_REMOTE_SAFE_CLEANUP:-1}" = "1"; then
+if test "${REMOTE_PREFLIGHT_READ_ONLY:-0}" != "1" && test "${RUN_REMOTE_SAFE_CLEANUP:-1}" = "1"; then
   echo "preflight:safe_cleanup"
   find /home/ubuntu -maxdepth 1 -type f \( -name 'gupiao-deploy-*' -o -name 'gupiao-delta-deploy-*' -o -name 'gupiao-frontend-hot-*' -o -name 'gupiao_remote_verify*.sh' \) -print -delete || true
   find /tmp -maxdepth 1 -type d \( -name 'gupiao-python-hot-*' -o -name 'tquant-queue-hotpatch-*' \) -print -exec rm -rf {} + || true
@@ -321,7 +546,7 @@ fi
 
 FREE_GB="$(free_root_gb)"
 echo "preflight:root_free_gb=${FREE_GB}"
-if test "$FREE_GB" -lt "${REMOTE_MIN_FREE_GB:-8}"; then
+if test "${REMOTE_PREFLIGHT_READ_ONLY:-0}" != "1" && test "$FREE_GB" -lt "${REMOTE_MIN_FREE_GB:-8}"; then
   echo "preflight:low_disk_safe_prune"
   sudo docker builder prune -f || true
   sudo docker image prune -f || true
@@ -337,7 +562,7 @@ fi
 
 SWAP_MB="$(swap_total_mb)"
 echo "preflight:swap_total_mb=${SWAP_MB}"
-if test "$SWAP_MB" -lt "${REMOTE_MIN_SWAP_MB:-2048}" && test "${REMOTE_TEMP_SWAP_MB:-0}" -gt 0; then
+if test "${REMOTE_PREFLIGHT_READ_ONLY:-0}" != "1" && test "$SWAP_MB" -lt "${REMOTE_MIN_SWAP_MB:-2048}" && test "${REMOTE_TEMP_SWAP_MB:-0}" -gt 0; then
   echo "preflight:create_temp_swap=${REMOTE_TEMP_SWAP_PATH}:${REMOTE_TEMP_SWAP_MB}M"
   if ! sudo swapon --show=NAME --noheadings | grep -Fxq "${REMOTE_TEMP_SWAP_PATH}"; then
     if ! test -f "${REMOTE_TEMP_SWAP_PATH}"; then
@@ -356,6 +581,19 @@ free -m || true
 echo "preflight:docker_after"
 sudo docker system df || true
 REMOTE
+}
+
+run_verify_only_preflight() {
+  if [[ "$RUN_REMOTE_PREFLIGHT" != "1" ]]; then
+    return 0
+  fi
+  log "verify-only remote preflight: read-only resource gate"
+  (
+    RUN_REMOTE_SAFE_CLEANUP=0
+    REMOTE_PREFLIGHT_READ_ONLY=1
+    REMOTE_TEMP_SWAP_MB=0
+    remote_preflight
+  )
 }
 
 remote_post_deploy_cleanup() {
@@ -536,6 +774,7 @@ PY
 }
 
 if [[ "$VERIFY_ONLY" == "1" ]]; then
+  run_verify_only_preflight
   verify_remote
   verify_public_entry
   performance_verify
@@ -576,6 +815,8 @@ CLOUD_DOMAIN="$CLOUD_DOMAIN" \
 CLOUD_CERT_EMAIL="$CLOUD_CERT_EMAIL" \
 CLOUD_AUTH_COOKIE_SECURE="$CLOUD_AUTH_COOKIE_SECURE" \
 CLOUD_AUTH_ALLOW_INSECURE_HTTP_COOKIE="$CLOUD_AUTH_ALLOW_INSECURE_HTTP_COOKIE" \
+FRONTEND_NEXT_MONITOR_CUTOVER_ENABLED="$FRONTEND_NEXT_MONITOR_CUTOVER_ENABLED" \
+FRONTEND_NEXT_CUTOVER_PATHS="$FRONTEND_NEXT_CUTOVER_PATHS" \
 VERIFY_PUBLIC_DOMAIN="$VERIFY_PUBLIC_DOMAIN" \
 CLOUD_SSH_TIMEOUT="$CLOUD_SSH_TIMEOUT" \
 CLOUD_SSH_CONNECT_TIMEOUT="$CLOUD_SSH_CONNECT_TIMEOUT" \

@@ -1,0 +1,147 @@
+import { createContext, createResource, createSignal, onMount, useContext, type JSX } from "solid-js";
+import { authApi, getAuthRefreshToken, setAuthAccessToken, setAuthRefreshToken } from "../../shared/api/auth";
+import { ApiError, errorMessage } from "../../shared/api/errors";
+import type { AuthMfaSetupResponse, AuthTokenResponse, AuthUser } from "../../shared/api/types";
+
+
+export type AuthStatus = "restoring" | "anonymous" | "authenticated";
+
+export interface AuthModel {
+  status: () => AuthStatus;
+  user: () => AuthUser | null;
+  error: () => string;
+  isAdmin: () => boolean;
+  canPaperTrade: () => boolean;
+  restore: () => Promise<void>;
+  login: (payload: LoginPayload) => Promise<void>;
+  register: (payload: RegisterPayload) => Promise<void>;
+  logout: () => Promise<void>;
+  setupTotp: () => Promise<AuthMfaSetupResponse>;
+  enableTotp: (code: string) => Promise<void>;
+  disableTotp: (code: string) => Promise<void>;
+}
+
+export interface LoginPayload {
+  username: string;
+  password: string;
+  mfa_code?: string;
+  remember?: boolean;
+}
+
+export interface RegisterPayload {
+  username: string;
+  password: string;
+  display_name?: string;
+  remember?: boolean;
+}
+
+const AuthContext = createContext<AuthModel>();
+
+export function AuthProvider(props: { children: JSX.Element }) {
+  const [status, setStatus] = createSignal<AuthStatus>("restoring");
+  const [user, setUser] = createSignal<AuthUser | null>(null);
+  const [error, setError] = createSignal("");
+
+  async function applyToken(result: AuthTokenResponse, remember = true) {
+    setAuthAccessToken(result.access_token);
+    setAuthRefreshToken(result.refresh_token, remember);
+    setUser(result.user);
+    setStatus("authenticated");
+    setError("");
+  }
+
+  async function restore() {
+    setStatus("restoring");
+    try {
+      const current = await authApi.me();
+      setUser(current.user);
+      setStatus("authenticated");
+      setError("");
+    } catch (firstError) {
+      const refreshed = await tryRefresh();
+      if (refreshed) return;
+      setAuthAccessToken("");
+      setAuthRefreshToken("", true);
+      setUser(null);
+      setStatus("anonymous");
+      if (firstError instanceof ApiError && firstError.status === 401) {
+        setError("");
+      } else {
+        setError(errorMessage(firstError));
+      }
+    }
+  }
+
+  async function tryRefresh() {
+    const refreshToken = getAuthRefreshToken();
+    if (!refreshToken) return false;
+    try {
+      const result = await authApi.refresh({ refresh_token: refreshToken });
+      await applyToken(result);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  const model: AuthModel = {
+    status,
+    user,
+    error,
+    isAdmin: () => user()?.roles?.includes("admin") ?? false,
+    canPaperTrade: () => user()?.can_paper_trade ?? false,
+    restore,
+    login: async (payload) => {
+      const result = await authApi.login({
+        username: payload.username,
+        password: payload.password,
+        mfa_code: payload.mfa_code ?? "",
+        device_name: "frontend-next-web",
+      }, payload.remember ?? true);
+      await applyToken(result, payload.remember ?? true);
+    },
+    register: async (payload) => {
+      const result = await authApi.register({
+        username: payload.username,
+        password: payload.password,
+        display_name: payload.display_name ?? payload.username,
+        device_name: "frontend-next-web",
+      }, payload.remember ?? true);
+      await applyToken(result, payload.remember ?? true);
+    },
+    logout: async () => {
+      const refreshToken = getAuthRefreshToken();
+      setAuthAccessToken("");
+      setAuthRefreshToken("", true);
+      setUser(null);
+      setStatus("anonymous");
+      await authApi.logout({ refresh_token: refreshToken }).catch(() => undefined);
+    },
+    setupTotp: () => authApi.setupTotp(),
+    enableTotp: async (code) => {
+      const result = await authApi.enableTotp({ code });
+      setUser(result.user);
+    },
+    disableTotp: async (code) => {
+      const result = await authApi.disableTotp({ code });
+      setUser(result.user);
+    },
+  };
+
+  onMount(() => {
+    void restore();
+  });
+
+  return <AuthContext.Provider value={model}>{props.children}</AuthContext.Provider>;
+}
+
+export function useAuth() {
+  const model = useContext(AuthContext);
+  if (!model) throw new Error("useAuth must be used inside AuthProvider");
+  return model;
+}
+
+export function createAuthResource<T>(source: () => T) {
+  const auth = useAuth();
+  return createResource(() => (auth.status() === "authenticated" ? source() : undefined), (value) => value);
+}

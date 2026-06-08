@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-05-28 02:16:15",
+  "generated_at": "2026-06-08 06:14:01",
   "go": {
     "ok": true,
     "checks": [
@@ -7,7 +7,7 @@
         "name": "market-read-service",
         "command": "go test ./...",
         "ok": true,
-        "elapsed_ms": 236.812,
+        "elapsed_ms": 246.523,
         "stdout_tail": "ok  \ttquant/go-services/market-read-service/cmd/market-read-service\t(cached)\n",
         "stderr_tail": ""
       },
@@ -15,7 +15,7 @@
         "name": "bff-gateway",
         "command": "go test ./...",
         "ok": true,
-        "elapsed_ms": 109.445,
+        "elapsed_ms": 100.517,
         "stdout_tail": "ok  \ttquant/go-services/bff-gateway/cmd/bff-gateway\t(cached)\n",
         "stderr_tail": ""
       },
@@ -23,7 +23,7 @@
         "name": "scan-worker",
         "command": "go test ./...",
         "ok": true,
-        "elapsed_ms": 105.106,
+        "elapsed_ms": 101.622,
         "stdout_tail": "ok  \ttquant/go-services/scan-worker/cmd/scan-worker\t(cached)\n",
         "stderr_tail": ""
       }
@@ -32,15 +32,15 @@
       "ok": true,
       "name": "market-read-service benchmark",
       "command": "go test -run ^$ -bench ^BenchmarkQuoteBatchHandlerCachedPayload$ -benchmem -benchtime=1s ./...",
-      "ns_per_op": 8225.0,
-      "bytes_per_op": 11239.0,
-      "allocs_per_op": 212.0,
+      "ns_per_op": 8091.0,
+      "bytes_per_op": 11471.0,
+      "allocs_per_op": 215.0,
       "thresholds": {
         "ns_per_op_max": 10000.0,
         "bytes_per_op_max": 12000.0,
         "allocs_per_op_max": 250.0
       },
-      "stdout_tail": "goos: darwin\ngoarch: arm64\npkg: tquant/go-services/market-read-service/cmd/market-read-service\ncpu: Apple M5\nBenchmarkQuoteBatchHandlerCachedPayload-10    \t  131919\t      8225 ns/op\t   11239 B/op\t     212 allocs/op\nPASS\nok  \ttquant/go-services/market-read-service/cmd/market-read-service\t1.597s\n",
+      "stdout_tail": "goos: darwin\ngoarch: arm64\npkg: tquant/go-services/market-read-service/cmd/market-read-service\ncpu: Apple M5\nBenchmarkQuoteBatchHandlerCachedPayload-10    \t  143118\t      8091 ns/op\t   11471 B/op\t     215 allocs/op\nPASS\nok  \ttquant/go-services/market-read-service/cmd/market-read-service\t2.693s\n",
       "stderr_tail": ""
     }
   },
@@ -48,9 +48,9 @@
     "name": "tquant-rs cargo test",
     "command": "cargo test --no-default-features",
     "ok": true,
-    "elapsed_ms": 4659.74,
-    "stdout_tail": "\nrunning 10 tests\ntest tests::max_drawdown_uses_time_ordered_peak_to_trough ... ok\ntest tests::rank_ic_uses_spearman_correlation ... ok\ntest tests::rolling_mean_keeps_warmup_empty ... ok\ntest tests::bollinger_bands_keep_warmup_empty ... ok\ntest tests::correlation_and_beta_are_numeric_only ... ok\ntest tests::rolling_std_uses_sample_standard_deviation ... ok\ntest tests::rsi_wilder_matches_known_sequence ... ok\ntest tests::atr_wilder_matches_expected_sequence ... ok\ntest tests::rsi_wilder_returns_neutral_for_flat_sequence ... ok\ntest tests::vwap_weights_by_volume ... ok\n\ntest result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s\n\n\nrunning 0 tests\n\ntest result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s\n\n",
-    "stderr_tail": "   Compiling pyo3-build-config v0.22.6\n   Compiling pyo3-macros-backend v0.22.6\n   Compiling pyo3-ffi v0.22.6\n   Compiling pyo3 v0.22.6\n   Compiling tquant_rs v0.1.0 (/Users/j/Documents/gupiao/rust/tquant-rs)\n   Compiling pyo3-macros v0.22.6\n    Finished `test` profile [unoptimized + debuginfo] target(s) in 4.16s\n     Running unittests src/lib.rs (target/debug/deps/tquant_rs-556fc1d6a8c008a1)\n   Doc-tests tquant_rs\n"
+    "elapsed_ms": 717.65,
+    "stdout_tail": "\nrunning 10 tests\ntest tests::max_drawdown_uses_time_ordered_peak_to_trough ... ok\ntest tests::rolling_mean_keeps_warmup_empty ... ok\ntest tests::rolling_std_uses_sample_standard_deviation ... ok\ntest tests::atr_wilder_matches_expected_sequence ... ok\ntest tests::rank_ic_uses_spearman_correlation ... ok\ntest tests::correlation_and_beta_are_numeric_only ... ok\ntest tests::bollinger_bands_keep_warmup_empty ... ok\ntest tests::rsi_wilder_matches_known_sequence ... ok\ntest tests::rsi_wilder_returns_neutral_for_flat_sequence ... ok\ntest tests::vwap_weights_by_volume ... ok\n\ntest result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s\n\n\nrunning 0 tests\n\ntest result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s\n\n",
+    "stderr_tail": "    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.11s\n     Running unittests src/lib.rs (target/debug/deps/tquant_rs-556fc1d6a8c008a1)\n   Doc-tests tquant_rs\n"
   },
   "python_rust_seam": {
     "ok": true,
@@ -59,21 +59,21 @@
     "drawdown": 1.0,
     "expected_drawdown": 1.0,
     "speedups": {
-      "max_drawdown": 6.827,
-      "rolling_mean": 12.162,
-      "atr_wilder": 9.168
+      "max_drawdown": 7.157,
+      "rolling_mean": 11.844,
+      "atr_wilder": 9.446
     },
     "timings_ms": {
-      "python_drawdown_ms": 10.401667000000003,
-      "rust_drawdown_ms": 1.523500000000011,
-      "python_rolling_ms": 28.254834000000034,
-      "rust_rolling_ms": 2.323291000000005,
-      "python_atr_ms": 28.834625000000003,
-      "rust_atr_ms": 3.1451670000000043
+      "python_drawdown_ms": 10.780458000000007,
+      "rust_drawdown_ms": 1.5062919999999924,
+      "python_rolling_ms": 29.075040999999995,
+      "rust_rolling_ms": 2.454833000000045,
+      "python_atr_ms": 30.690416,
+      "rust_atr_ms": 3.249084000000013
     },
     "rolling_len": 160000,
     "atr_len": 120000,
-    "import_elapsed_ms": 18.826,
+    "import_elapsed_ms": 43.491,
     "backend_python": "/Users/j/Documents/gupiao/backend/.venv/bin/python",
     "notes": "Rust abi3 extension imports under backend python, matches python parity, and clears the release benchmark threshold."
   },

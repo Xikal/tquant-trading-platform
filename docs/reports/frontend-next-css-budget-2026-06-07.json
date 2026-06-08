@@ -1,0 +1,262 @@
+{
+  "generated_at": "2026-06-08T03:33:24.322Z",
+  "summary": {
+    "source_css_files": 29,
+    "source_css_bytes": 299197,
+    "source_css_gzip_bytes": 59727,
+    "source_css_lines": 15682,
+    "dist_css_files": 11,
+    "dist_css_bytes": 240556,
+    "dist_css_gzip_bytes": 48132,
+    "important_count": 23,
+    "dist_available": true
+  },
+  "important_by_file": [
+    {
+      "file": "src/shared/styles/legacy-workspace/workspace-strategy-tracking.css",
+      "bytes": 12516,
+      "gzip_bytes": 2052,
+      "lines": 656,
+      "important_count": 6
+    },
+    {
+      "file": "src/shared/styles/legacy-solid-adapter.css",
+      "bytes": 14691,
+      "gzip_bytes": 3312,
+      "lines": 809,
+      "important_count": 5
+    },
+    {
+      "file": "src/features/auth/LoginPage.css",
+      "bytes": 17343,
+      "gzip_bytes": 3676,
+      "lines": 880,
+      "important_count": 4
+    },
+    {
+      "file": "src/shared/styles/legacy-workspace/workspace.css",
+      "bytes": 10388,
+      "gzip_bytes": 2557,
+      "lines": 563,
+      "important_count": 3
+    },
+    {
+      "file": "src/shared/styles/legacy-workspace/workspace-paper-mecha.css",
+      "bytes": 11325,
+      "gzip_bytes": 2490,
+      "lines": 460,
+      "important_count": 2
+    },
+    {
+      "file": "src/shared/styles/legacy-workspace/workspace-paper.css",
+      "bytes": 9600,
+      "gzip_bytes": 1958,
+      "lines": 500,
+      "important_count": 2
+    },
+    {
+      "file": "src/shared/styles/legacy-workspace/workspace-primitives-base.css",
+      "bytes": 6522,
+      "gzip_bytes": 1289,
+      "lines": 354,
+      "important_count": 1
+    }
+  ],
+  "largest_source_css": [
+    {
+      "file": "src/features/backtest/backtest-slice.css",
+      "bytes": 24016,
+      "gzip_bytes": 4092,
+      "lines": 1343,
+      "important_count": 0
+    },
+    {
+      "file": "src/features/settings/settings-slice.css",
+      "bytes": 23791,
+      "gzip_bytes": 3732,
+      "lines": 1158,
+      "important_count": 0
+    },
+    {
+      "file": "src/features/paper/paper-page.css",
+      "bytes": 22995,
+      "gzip_bytes": 4114,
+      "lines": 1177,
+      "important_count": 0
+    },
+    {
+      "file": "src/features/strategy-tracking/strategy-tracking.css",
+      "bytes": 22694,
+      "gzip_bytes": 3832,
+      "lines": 1235,
+      "important_count": 0
+    },
+    {
+      "file": "src/features/monitor-action/monitor-action.css",
+      "bytes": 19121,
+      "gzip_bytes": 3659,
+      "lines": 1095,
+      "important_count": 0
+    },
+    {
+      "file": "src/features/monitor-market/monitor-market.css",
+      "bytes": 18282,
+      "gzip_bytes": 3041,
+      "lines": 949,
+      "important_count": 0
+    },
+    {
+      "file": "src/features/data-console/data-console-slice.css",
+      "bytes": 17805,
+      "gzip_bytes": 3149,
+      "lines": 968,
+      "important_count": 0
+    },
+    {
+      "file": "src/features/auth/LoginPage.css",
+      "bytes": 17343,
+      "gzip_bytes": 3676,
+      "lines": 880,
+      "important_count": 4
+    },
+    {
+      "file": "src/shared/styles/legacy-solid-adapter.css",
+      "bytes": 14691,
+      "gzip_bytes": 3312,
+      "lines": 809,
+      "important_count": 5
+    },
+    {
+      "file": "src/features/playbook/playbookSlice.css",
+      "bytes": 13383,
+      "gzip_bytes": 2527,
+      "lines": 769,
+      "important_count": 0
+    },
+    {
+      "file": "src/shared/styles/legacy-workspace/workspace-strategy-tracking.css",
+      "bytes": 12516,
+      "gzip_bytes": 2052,
+      "lines": 656,
+      "important_count": 6
+    },
+    {
+      "file": "src/shared/styles/legacy-workspace/workspace-paper-mecha.css",
+      "bytes": 11325,
+      "gzip_bytes": 2490,
+      "lines": 460,
+      "important_count": 2
+    },
+    {
+      "file": "src/shared/styles/legacy-workspace/workspace-login-scene.css",
+      "bytes": 10543,
+      "gzip_bytes": 2435,
+      "lines": 487,
+      "important_count": 0
+    },
+    {
+      "file": "src/shared/styles/legacy-workspace/workspace.css",
+      "bytes": 10388,
+      "gzip_bytes": 2557,
+      "lines": 563,
+      "important_count": 3
+    },
+    {
+      "file": "src/shared/styles/legacy-workspace/workspace-paper.css",
+      "bytes": 9600,
+      "gzip_bytes": 1958,
+      "lines": 500,
+      "important_count": 2
+    }
+  ],
+  "largest_dist_css": [
+    {
+      "file": "dist/assets/index-D1m2N8l9.css",
+      "bytes": 88546,
+      "gzip_bytes": 17028,
+      "lines": 2,
+      "important_count": 19
+    },
+    {
+      "file": "dist/assets/SettingsPage-BEGsxa-y.css",
+      "bytes": 19996,
+      "gzip_bytes": 3582,
+      "lines": 2,
+      "important_count": 0
+    },
+    {
+      "file": "dist/assets/BacktestPage-Bh0PnbqD.css",
+      "bytes": 19559,
+      "gzip_bytes": 3766,
+      "lines": 2,
+      "important_count": 0
+    },
+    {
+      "file": "dist/assets/StrategyTrackingPage-BfcLV-3B.css",
+      "bytes": 18759,
+      "gzip_bytes": 3605,
+      "lines": 2,
+      "important_count": 0
+    },
+    {
+      "file": "dist/assets/PaperPage-RihhV-yi.css",
+      "bytes": 18439,
+      "gzip_bytes": 3741,
+      "lines": 2,
+      "important_count": 0
+    },
+    {
+      "file": "dist/assets/MonitorActionPage-CrG0_n4h.css",
+      "bytes": 15290,
+      "gzip_bytes": 3331,
+      "lines": 2,
+      "important_count": 0
+    },
+    {
+      "file": "dist/assets/MonitorMarketPage-DxnU4VuE.css",
+      "bytes": 14757,
+      "gzip_bytes": 2806,
+      "lines": 2,
+      "important_count": 0
+    },
+    {
+      "file": "dist/assets/LoginPage-qTpIqddy.css",
+      "bytes": 13823,
+      "gzip_bytes": 3408,
+      "lines": 2,
+      "important_count": 4
+    },
+    {
+      "file": "dist/assets/DataConsolePage-CTQzT0Dp.css",
+      "bytes": 13769,
+      "gzip_bytes": 2856,
+      "lines": 2,
+      "important_count": 0
+    },
+    {
+      "file": "dist/assets/PlaybookPage-mnH0OPyl.css",
+      "bytes": 10696,
+      "gzip_bytes": 2282,
+      "lines": 2,
+      "important_count": 0
+    }
+  ],
+  "budgets": {
+    "source_css_bytes_target": 180000,
+    "source_css_important_target": 25,
+    "dist_css_gzip_warn": 60000
+  },
+  "status": {
+    "source_css_bytes": "needs-explanation",
+    "important_count": "ok",
+    "dist_css_gzip": "ok"
+  },
+  "pass": {
+    "dist_css_gzip": true
+  },
+  "notes": [
+    "Budget report is read-only and does not delete selectors.",
+    "Dist CSS numbers require npm run build before this command.",
+    "CSS optimization must be verified by screenshot health and visual consistency after any style change."
+  ]
+}

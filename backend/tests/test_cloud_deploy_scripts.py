@@ -267,13 +267,52 @@ def test_quick_deploy_runs_remote_resource_preflight_without_destructive_prune()
     quick_script = read_repo_file("scripts/quick_cloud_deploy.sh")
 
     assert 'RUN_REMOTE_PREFLIGHT="${RUN_REMOTE_PREFLIGHT:-1}"' in quick_script
+    assert 'REMOTE_PREFLIGHT_READ_ONLY="${REMOTE_PREFLIGHT_READ_ONLY:-0}"' in quick_script
     assert 'REMOTE_MIN_FREE_GB="${REMOTE_MIN_FREE_GB:-8}"' in quick_script
+    assert 'REMOTE_ROOT_WARN_PCT="${REMOTE_ROOT_WARN_PCT:-70}"' in quick_script
+    assert 'REMOTE_ROOT_BLOCK_PCT="${REMOTE_ROOT_BLOCK_PCT:-80}"' in quick_script
+    assert 'REMOTE_DOCKER_BUILD_CACHE_WARN_GB="${REMOTE_DOCKER_BUILD_CACHE_WARN_GB:-2}"' in quick_script
+    assert 'REMOTE_MYSQL_SLOW_LOG_WARN_MB="${REMOTE_MYSQL_SLOW_LOG_WARN_MB:-512}"' in quick_script
+    assert 'REMOTE_BINLOG_EXPIRE_MAX_SECONDS="${REMOTE_BINLOG_EXPIRE_MAX_SECONDS:-259200}"' in quick_script
+    assert 'REMOTE_MAX_BINLOG_SIZE_WARN_MB="${REMOTE_MAX_BINLOG_SIZE_WARN_MB:-256}"' in quick_script
+    assert 'REMOTE_MYSQL_BACKUP_MIN_COUNT="${REMOTE_MYSQL_BACKUP_MIN_COUNT:-1}"' in quick_script
     assert 'REMOTE_MIN_SWAP_MB="${REMOTE_MIN_SWAP_MB:-2048}"' in quick_script
     assert 'REMOTE_TEMP_SWAP_PATH="${REMOTE_TEMP_SWAP_PATH:-/swapfile-codex-deploy}"' in quick_script
     assert "--skip-remote-preflight" in quick_script
     assert "--skip-remote-cleanup" in quick_script
+    assert "--remote-root-block-pct <n>" in quick_script
     assert "remote_preflight" in quick_script
+    assert "run_verify_only_preflight" in quick_script
+    assert 'REMOTE_PREFLIGHT_READ_ONLY=1' in quick_script
+    assert 'RUN_REMOTE_SAFE_CLEANUP=0' in quick_script
+    assert 'REMOTE_TEMP_SWAP_MB=0' in quick_script
+    assert 'run_verify_only_preflight' in quick_script.split('if [[ "$VERIFY_ONLY" == "1" ]]; then', 1)[1]
+    assert 'REMOTE_PREFLIGHT_READ_ONLY="$REMOTE_PREFLIGHT_READ_ONLY"' in quick_script
+    assert 'test "${REMOTE_PREFLIGHT_READ_ONLY:-0}" != "1" && test "${RUN_REMOTE_SAFE_CLEANUP:-1}" = "1"' in quick_script
+    assert 'test "${REMOTE_PREFLIGHT_READ_ONLY:-0}" != "1" && test "$FREE_GB" -lt' in quick_script
+    assert 'test "${REMOTE_PREFLIGHT_READ_ONLY:-0}" != "1" && test "$SWAP_MB" -lt' in quick_script
+    assert "remote_resource_gate" in quick_script
+    assert "preflight:root_used_pct=" in quick_script
+    assert "preflight:blocking_root_used_pct=" in quick_script
+    assert "preflight:docker_build_cache_gb=" in quick_script
+    assert "preflight:mysql_slow_log_mb=" in quick_script
+    assert "preflight:binlog_expire_seconds=" in quick_script
+    assert "preflight:max_binlog_size_mb=" in quick_script
+    assert "preflight:mysql_compose_resource_config=" in quick_script
+    assert "preflight:journald_resource_config=" in quick_script
+    assert "preflight:deploy_backup_count=" in quick_script
+    assert "preflight:mysql_backup_count=" in quick_script
+    assert "preflight:warning_max_binlog_size_mb=" in quick_script
+    assert "preflight:warning_mysql_compose_resource_config=" in quick_script
+    assert "preflight:warning_journald_resource_config=" in quick_script
+    assert "preflight:warning_deploy_backup_count=" in quick_script
+    assert "preflight:warning_mysql_backup_count=" in quick_script
     assert "preflight:low_disk_safe_prune" in quick_script
+    assert 'value ~ /Gi?B$/' in quick_script
+    assert 'sudo du -m "$slow_log"' in quick_script
+    assert "--binlog-expire-logs-seconds=${MYSQL_BINLOG_EXPIRE_LOGS_SECONDS:-259200}" in quick_script
+    assert "--max-binlog-size=${MYSQL_MAX_BINLOG_SIZE:-256M}" in quick_script
+    assert "exec -T mysql test -f /etc/mysql/conf.d/tquant-resource.cnf" not in quick_script
     assert "sudo docker builder prune -f" in quick_script
     assert "sudo docker image prune -f" in quick_script
     assert "docker_volumes_kept" in quick_script
@@ -281,6 +320,63 @@ def test_quick_deploy_runs_remote_resource_preflight_without_destructive_prune()
     assert "remote_post_deploy_cleanup" in quick_script
     assert "image prune -a" not in quick_script
     assert "volume prune" not in quick_script
+
+
+def test_deploy_scripts_support_prebuilt_image_pull_restart_mode() -> None:
+    deploy_script = read_repo_file("scripts/deploy_cloud_server.sh")
+    quick_script = read_repo_file("scripts/quick_cloud_deploy.sh")
+    builder_script = read_repo_file("scripts/build_prebuilt_images.sh")
+    deploy_example = read_repo_file(".env.deploy.local.example")
+
+    assert 'DEPLOY_PREBUILT_IMAGES_ENABLED="${DEPLOY_PREBUILT_IMAGES_ENABLED:-auto}"' in deploy_script
+    assert 'DEPLOY_PREBUILT_WEB_IMAGE_REF="${DEPLOY_PREBUILT_WEB_IMAGE_REF:-}"' in deploy_script
+    assert 'DEPLOY_PREBUILT_ANALYTICS_IMAGE_REF="${DEPLOY_PREBUILT_ANALYTICS_IMAGE_REF:-}"' in deploy_script
+    assert 'DEPLOY_PREBUILT_GO_BFF_IMAGE_REF="${DEPLOY_PREBUILT_GO_BFF_IMAGE_REF:-}"' in deploy_script
+    assert 'DEPLOY_PREBUILT_GO_MARKET_READ_IMAGE_REF="${DEPLOY_PREBUILT_GO_MARKET_READ_IMAGE_REF:-}"' in deploy_script
+    assert 'DEPLOY_PREBUILT_GO_SCAN_IMAGE_REF="${DEPLOY_PREBUILT_GO_SCAN_IMAGE_REF:-}"' in deploy_script
+    assert "use_prebuilt_app_images" in deploy_script
+    assert "use_prebuilt_go_images" in deploy_script
+    assert "prebuilt_images:pull_app" in deploy_script
+    assert "prebuilt_images:pull_go" in deploy_script
+    assert 'sudo docker pull "$DEPLOY_PREBUILT_WEB_IMAGE_REF"' in deploy_script
+    assert 'sudo docker tag "$DEPLOY_PREBUILT_WEB_IMAGE_REF" tquant-web:mysql' in deploy_script
+    assert 'sudo docker tag "$DEPLOY_PREBUILT_ANALYTICS_IMAGE_REF" tquant-analytics:mysql' in deploy_script
+    assert 'sudo docker tag "$DEPLOY_PREBUILT_GO_BFF_IMAGE_REF" tquant-go-bff:mysql' in deploy_script
+    assert 'sudo docker tag "$DEPLOY_PREBUILT_GO_MARKET_READ_IMAGE_REF" tquant-go-market-read:mysql' in deploy_script
+    assert 'sudo docker tag "$DEPLOY_PREBUILT_GO_SCAN_IMAGE_REF" tquant-go-scan-worker:mysql' in deploy_script
+    assert "docker_build:skipped_prebuilt_app" in deploy_script
+    assert "docker_build:skipped_prebuilt_go" in deploy_script
+    assert "prebuilt_images:app_unavailable_fallback_build" in deploy_script
+    assert "prebuilt_images:go_unavailable_fallback_build" in deploy_script
+
+    assert 'DEPLOY_PREBUILT_IMAGES_ENABLED="${DEPLOY_PREBUILT_IMAGES_ENABLED:-auto}"' in quick_script
+    assert "--prebuilt-images" in quick_script
+    assert "--prebuilt-web-image <ref>" in quick_script
+    assert "prebuilt_images=${DEPLOY_PREBUILT_IMAGES_ENABLED}" in quick_script
+    assert "export DEPLOY_PREBUILT_IMAGES_ENABLED" in quick_script
+    assert "export DEPLOY_PREBUILT_WEB_IMAGE_REF" in quick_script
+    assert "export DEPLOY_PREBUILT_ANALYTICS_IMAGE_REF" in quick_script
+    assert "export DEPLOY_PREBUILT_GO_BFF_IMAGE_REF" in quick_script
+    assert "export DEPLOY_PREBUILT_GO_MARKET_READ_IMAGE_REF" in quick_script
+    assert "export DEPLOY_PREBUILT_GO_SCAN_IMAGE_REF" in quick_script
+
+    assert "Build local prebuilt images for cloud pull+restart deploys. It never deploys." in builder_script
+    assert 'IMAGE_REGISTRY="${IMAGE_REGISTRY:-}"' in builder_script
+    assert "PUSH_IMAGES=0" in builder_script
+    assert "--push" in builder_script
+    assert 'COMPOSE_BAKE=false docker compose -f "$COMPOSE_FILE" build app analytics-worker' in builder_script
+    assert 'COMPOSE_BAKE=false docker compose -f "$COMPOSE_FILE" build go-bff-gateway go-market-read-service go-scan-worker' in builder_script
+    assert "DEPLOY_PREBUILT_WEB_IMAGE_REF" in builder_script
+    assert "DEPLOY_PREBUILT_ANALYTICS_IMAGE_REF" in builder_script
+    assert "DEPLOY_PREBUILT_GO_BFF_IMAGE_REF" in builder_script
+    assert "DEPLOY_PREBUILT_GO_MARKET_READ_IMAGE_REF" in builder_script
+    assert "DEPLOY_PREBUILT_GO_SCAN_IMAGE_REF" in builder_script
+    assert "quick_cloud_deploy.sh" not in builder_script
+    assert "deploy_cloud_server.sh" not in builder_script
+
+    assert "DEPLOY_PREBUILT_IMAGES_ENABLED=auto" in deploy_example
+    assert "DEPLOY_PREBUILT_WEB_IMAGE_REF=registry.example.com/tquant-web:<sha>" in deploy_example
+    assert "DEPLOY_PREBUILT_GO_SCAN_IMAGE_REF=registry.example.com/tquant-go-scan-worker:<sha>" in deploy_example
 
 
 def test_cloud_cleanup_removes_extensionless_upload_packages_without_volume_prune() -> None:
@@ -600,6 +696,19 @@ def test_cloud_deploy_remote_smoke_rejects_api_html_fallback() -> None:
         assert "/api/__missing_smoke__" in script
         assert "Content-Type" in script
         assert "application/json" in script
+
+
+def test_frontend_next_monitor_cutover_flag_reaches_web_container() -> None:
+    compose = read_repo_file("docker-compose.mysql.yml")
+    deploy_script = read_repo_file("scripts/deploy_cloud_server.sh")
+    quick_script = read_repo_file("scripts/quick_cloud_deploy.sh")
+
+    assert "FRONTEND_NEXT_MONITOR_CUTOVER_ENABLED: ${FRONTEND_NEXT_MONITOR_CUTOVER_ENABLED:-false}" in compose
+    assert "FRONTEND_NEXT_CUTOVER_PATHS: ${FRONTEND_NEXT_CUTOVER_PATHS:-}" in compose
+    assert 'upsert_env_value FRONTEND_NEXT_MONITOR_CUTOVER_ENABLED "$FRONTEND_NEXT_MONITOR_CUTOVER_ENABLED"' in deploy_script
+    assert 'upsert_env_value FRONTEND_NEXT_CUTOVER_PATHS "$FRONTEND_NEXT_CUTOVER_PATHS"' in deploy_script
+    assert "export FRONTEND_NEXT_MONITOR_CUTOVER_ENABLED" in quick_script
+    assert "export FRONTEND_NEXT_CUTOVER_PATHS" in quick_script
 
 
 def test_mysql_compose_runs_runtime_scheduler_separately_from_web_and_worker() -> None:

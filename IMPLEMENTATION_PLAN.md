@@ -1,5 +1,213 @@
 # TQuant 实施计划
 
+## 2026-06-08 frontend-next 与平台资源优化
+
+需求来源：
+
+- 用户目标：按 `docs/frontend-next-platform-resource-optimization-requirements-2026-06-08.md` 和 `docs/frontend-next-platform-resource-optimization-development-doc-2026-06-08.md` 落地资源优化；不加机器、不替换 MySQL、不自动 cutover。
+
+### 执行边界
+
+- [x] 已执行 `git status --short`，当前工作树存在大量既有 frontend-next/cutover/backend 性能改动，本轮不回退。
+- [x] 不修改 `strategy_policy.py`。
+- [x] 不改变生产策略语义、生产排序、`production_score`、`priority_board` 口径。
+- [x] 旧 `frontend/` 不作为本轮改造对象。
+- [x] `frontend-next` 不换栈；K 线保持 Lightweight Charts；ECharts 仅低频 lazy。
+- [x] Worker/WASM 只做显示层计算；DuckDB/Parquet 只做分析层。
+- [x] 本轮不部署、不切流；云端操作仅做只读资源采集。
+
+### 当前完成
+
+- [x] 新增并验证只读资源巡检脚本 `scripts/collect_platform_resource_report.py`。
+- [x] 生成云端资源 baseline：`docs/reports/platform-resource-baseline-2026-06-08.md/json`。
+- [x] 新增资源上限模板：MySQL slow logrotate、MySQL binlog/slow log 配置、Docker daemon log opts、journald、BuildKit GC。
+- [x] 新增默认 dry-run 的资源上限安装脚本 `scripts/install_platform_resource_limits.py`，写入前备份旧配置，Docker daemon JSON merge，不清 MySQL 数据、不清 Docker volumes。
+- [x] 新增 MySQL 与平台资源上限运维手册 `docs/operations/mysql-maintenance-runbook.md`，明确 slow log 备份、安装、验证、回滚和禁止项。
+- [x] 扩展资源巡检脚本：报告配置是否安装、slow log/build cache/binlog/swap/root 阈值；修复 human size、MySQL 8 三列 binlog 和变量解析，避免 3.1G/5.961GB/binlog 数量漏报。
+- [x] 扩展部署归档巡检：`scripts/collect_platform_resource_report.py` 已采集 `/home/*/gupiao-deploy-backup-*` 数量和总体积，超过 3 个进入 warning；当前云端为 0 个、0 bytes。
+- [x] 扩展 MySQL 备份巡检：`scripts/collect_platform_resource_report.py` 已采集 `/home/*/mysql-backups/*.sql.gz` 数量、总体积和最新备份路径；当前云端为 1 个备份，最新 `/home/ubuntu/mysql-backups/tquant-all-databases-20260608-001016.sql.gz`，约 140.7MB。
+- [x] 新增只读 MySQL 备份文件校验脚本 `scripts/verify_mysql_backup_artifact.py`，支持本地/SSH 检查 `.sql.gz` 存在性、gzip 完整性、sha256 和 SQL dump 特征；不恢复、不写库、不删除文件。
+- [x] 生成云端 MySQL 备份校验报告：`docs/reports/platform-mysql-backup-verification-2026-06-08.md/json`；最新备份 gzip 完整、命中 SQL dump 特征，sha256=`f82db5fa2334fdd84abc4f7d2e136fd3af82742354ebb6a3bb24767215380db5`。
+- [x] `scripts/quick_cloud_deploy.sh --verify-only` 已接入只读远程资源 preflight：verify-only 不清理部署包、不 prune、不创建临时 swap，只输出 root/swap/Docker cache/slow log/binlog/MySQL resource config/journald drop-in/MySQL 备份 gate 证据。
+- [x] 修复 quick deploy preflight 的 Docker build cache 和 MySQL slow log 解析：线上 verify-only 现在正确报告 `preflight:docker_build_cache_gb=5`、`preflight:mysql_slow_log_mb=3163`、`preflight:warning_max_binlog_size_mb=1024`、`preflight:warning_mysql_compose_resource_config=missing`、`preflight:warning_journald_resource_config=missing` 和 `preflight:mysql_backup_count=1`。
+- [x] 修复 MySQL 资源上限真实生效路径：`docker-compose.mysql.yml` 已内联 `--binlog-expire-logs-seconds=${MYSQL_BINLOG_EXPIRE_LOGS_SECONDS:-259200}` 和 `--max-binlog-size=${MYSQL_MAX_BINLOG_SIZE:-256M}`；quick/resource gate 检查 compose 参数与运行态变量，不再依赖宿主机 `/etc/mysql/conf.d`。
+- [x] `/next/strategy-tracking` BFF-first：首屏只请求 `/api/bff/v1/workspace/strategy`，默认不再因旧 BFF v15 自动 fallback 多接口；BFF 失败才启用旧接口 fallback，BFF 合约过旧时通过 UI telemetry 标记。
+- [x] 后端 `StrategyWorkspaceBffResponse` 升级到 `schema_version=v16`，BFF 合包返回 `items`、`summary`、`performance`、`holding_analysis`、`review`、`tracking_notes`，并同步 OpenAPI 与 `frontend-next` generated types。
+- [x] `/next/paper` 非机甲区域降载：当前持仓接 shared `VirtualList`，工作流表格接 `VirtualDataTable`，自动化/复盘工作流首屏懒挂载；机甲组件按边界保持原样。
+- [x] `perf:compare` 增加 `/next/paper` DOM breakdown，用于区分机甲 DOM 与非机甲页面 DOM。
+- [x] CSS `!important` 无损收敛：从 51 降到 23，`visual:consistency` 36 captures / 0 failed；CSS raw 仍 299197 bytes，需保留不可批量删除说明。
+- [x] Phase D 快照/报告扩展：新增 `strategy_tracking_snapshots`、`key_level_snapshots`、`low_buy_result_snapshots`、`backtest_runs`、`backtest_trades`、`backtest_daily_snapshots`、`analysis_logs`、`market_review_reports`、`paper_review_reports` Parquet 导出、manifest、DuckDB 可读验证，并注册对应 analytics worker 任务。
+- [x] Phase D 热库保留窗口只读计划：新增 `backend/app/services/analytics/retention.py`，基于 manifest 生成 MySQL 热库清理候选范围、候选行数、阻断项和恢复/授权要求；planner 不执行 DELETE、不清 MySQL 源数据。
+- [x] Phase D 回测输入降载：新增 `DailyBarParquetDataProvider`，`backtest_parquet_daily_bars_enabled=false` 默认关闭；开启后回测日线优先读 daily_bars Parquet，缺 manifest/依赖时按 `backtest_parquet_daily_bars_fallback_to_mysql=true` 回退 MySQL。
+- [x] 新增只读 Analytics manifest 复验脚本 `scripts/verify_analytics_manifests.py`，校验 latest manifest、源表/日期窗口/行数、Parquet 文件存在性和 sha256；不导出、不删除、不清 MySQL 源数据。
+- [x] 新增 Analytics manifest 缺口导出计划器 `scripts/plan_analytics_manifest_exports.py`，把只读复验报告转换为低优先级 analytics worker 任务清单；脚本只生成 JSON/Markdown 报告，不 enqueue、不执行 exporter、不修改 MySQL、不清源表。
+- [x] 生成缺失 manifest 导出计划：`docs/reports/platform-analytics-export-plan-2026-06-08.md/json`；当前 `daily_bars` 可用但建议 lifecycle refresh，其余 9 类新增快照/回测/报告数据集需要低优先级导出并复验。
+- [x] 新增 Analytics manifest 导出任务提交器 `scripts/submit_analytics_manifest_exports.py`，默认 dry-run，只生成提交预览；必须显式 `--apply --confirm-apply submit-analytics-manifest-exports` 才写入 `RuntimeTaskQueue`。
+- [x] 生成 dry-run 提交预览：`docs/reports/platform-analytics-export-submission-dry-run-2026-06-08.md/json`；选中 9 个缺失 manifest 导出任务，优先级 900，提交数 0。
+- [x] `docs/operations/mysql-maintenance-runbook.md` 已补 Analytics Manifest 导出与复验流程：只读复验、生成导出计划、dry-run 提交预览、显式 apply 入队、worker 观察、取消任务、导出后 `--fail-on-blocking` 复验；仍禁止自动清 MySQL 源表。
+- [x] 新增平台资源优化 readiness 聚合脚本 `scripts/verify_platform_optimization_readiness.py`，汇总 resource baseline、MySQL backup verification、worker budget、manifest、export plan 和 submission dry-run 报告，输出运维窗口前总 gate。
+- [x] 生成 readiness 聚合报告：`docs/reports/platform-optimization-readiness-2026-06-08.md/json`；当前 6 项检查中 MySQL backup verification 与 analytics export submission 为 ready，状态仍为 `blocking`，阻断项为 `manifest:manifest_blocked_count=9`，资源上限、swap、slow log、build cache、worker env 和 export plan 为 warning。
+- [x] 新增运维窗口执行计划生成脚本 `scripts/plan_platform_maintenance_window.py`，根据 readiness/export plan 生成有序命令清单；脚本只写报告，不执行命令、不部署、不切流。
+- [x] 生成运维窗口执行计划：`docs/reports/platform-maintenance-window-plan-2026-06-08.md/json`；包含资源只读复验、同日期 MySQL 备份校验、资源上限 dry-run/apply、资源复验、manifest 复验/计划/dry-run、显式入队、worker 观察、导出后复验、最终性能与全量验收 9 个步骤。计划已区分本地控制端与 SSH 远端执行：资源 apply、容器重启、slow log 备份/强制轮转、manifest apply 入队均在 `/home/ubuntu/gupiao-upload` 远端执行；dry-run/apply/submission 报告通过 `scp` 回传本地 `docs/reports/`。preflight readiness 显式传入同日期 backup verification report，最终 after-export readiness/acceptance/audit 均显式传入 after-limits resource/budget/backup、after-export manifest/export/submission 和三轮复跑后的最新 `gupiao-cloud-performance-*.json`，避免复用旧证据；最后一步包含 `quick_cloud_deploy.sh --verify-only --performance-verify --performance-rounds 3`、frontend-next 全链路、后端组合、Go/Rust acceptance、最终 acceptance/audit 和 git 边界检查。
+- [x] 新增最终验收草案生成脚本 `scripts/render_platform_resource_optimization_acceptance.py`，聚合 resource baseline、worker budget、Parquet manifest、readiness、运维窗口计划和 frontend chunk profile，输出用户要求的完成项、before/after、资源/MySQL/Worker/manifest、回滚、未完成项和 cutover 授权结论。
+- [x] 生成最终验收草案：`docs/reports/platform-resource-optimization-acceptance-2026-06-08.md/json`；当前总状态 `blocking`，新前端可继续 `/next/*` 自用和验收，但正式 cutover 状态 `not_ready`，仍需用户单独授权且先补齐 9 个 manifest 与资源上限在线 apply/复验。
+- [x] 新增完成度审计脚本 `scripts/audit_platform_resource_optimization_completion.py`，把目标要求逐项映射到现有报告证据，输出 `passed/warning/blocked/not_verified`，作为是否可声明目标完成的硬证据。
+- [x] `frontend-next/scripts/perf-profile.mjs` 已写出结构化 `docs/reports/frontend-next-perf-compare-2026-06-08.json`，完成度审计优先用机器 JSON 验证 strategy 首屏 2 API / items 422 为 0、paper 非机甲 DOM 82。
+- [x] `docs/frontend-next-cutover-runbook-2026-06-05.md` 和 `PRODUCTION_RUNBOOK.md` 已补平台资源 gate；正式部署/切流前必须跑 resource/budget/manifest/readiness，blocking 即停止。
+- [x] 生成完成度审计报告：`docs/reports/platform-resource-optimization-completion-audit-2026-06-08.md/json`；当前 21 passed / 5 warning / 9 blocked / 0 not_verified，明确目标尚未完成但 `/next/*` 可自用；最终验收计划已覆盖最新线上性能报告引用。
+- [x] 记录未完成项快照：`docs/reports/platform-resource-optimization-open-items-2026-06-08.md`；包含 9 个 blocking、5 个 warning、关闭条件、后续关闭顺序和 cutover 仍需单独授权结论。
+- [x] Phase C 降载 guard：新增默认关闭的 `runtime_low_priority_tasks_paused`，部署/cutover/高峰期可暂停 analytics/backtest/research/data repair 等低优先级重任务领取，不影响默认行为。
+- [x] Phase C 降载观测：`/api/runtime-tasks/summary` 已暴露 `low_priority_tasks_paused`、`paused_task_types`、`paused_queued`、`claimable_queued` 和 `paused_task_type_counts`，可在不改变任务状态的前提下确认低优先级积压与可领取队列规模。
+- [x] Phase C 前端观测接入：`/next/data` 数据处理后台卡片已读取 `runtimeTaskSummary`，展示低优先级降载状态、暂停积压和可领取队列数。
+- [x] `docker-compose.mysql.yml` 已把低优先级暂停开关传入 runtime/backtest/analytics worker 容器，并固化默认低优先级任务清单，云端只打开暂停开关即可统一降载。
+- [x] `docker-compose.mysql.yml` MySQL `max_connections` 默认从 300 收敛到 120；Web/runtime/scheduler/backtest/analytics 已按角色保留小连接池预算，并可通过环境变量覆盖。
+- [x] `docker-compose.mysql.yml` 已让 backtest worker 共享 `app_runtime_data`，并具备可选 DuckDB/Parquet 依赖；Web 主进程仍不启用 analytics 重任务。
+- [x] 新增只读连接池/Worker 降载复验脚本 `scripts/verify_platform_budget.py`，输出 `docs/reports/platform-budget-2026-06-08.md/json`；报告只保留白名单 env，不写 token/password/secret。
+- [x] Phase E 预构建镜像入口：新增 `scripts/build_prebuilt_images.sh`，默认只本地 build/tag，显式 `--push` 才推送；`scripts/deploy_cloud_server.sh` 和 `scripts/quick_cloud_deploy.sh` 支持 `DEPLOY_PREBUILT_IMAGES_ENABLED=auto`，镜像 ref 完整时云端 pull+tag+restart，缺 ref 时回退原 build 路径。
+- [x] 移除 `DataGrid` 纯别名，源码已无引用。
+- [x] 新增阶段性报告：`docs/reports/platform-resource-optimization-2026-06-08.md`。
+
+### 当前云端资源结论
+
+- [x] 根分区 56%，无 blocking。
+- [x] binlog retention 为 259200 秒，当前 binlog 数量 5，总体积约 4.73GB。
+- [ ] `max_binlog_size` 仍为 1GB，compose 目标已补为 256M，需在运维窗口 `sudo docker compose -f docker-compose.mysql.yml up -d mysql` 后复验。
+- [ ] Swap 100%，仍需 Phase C worker/MySQL 降载在云端重启/配置生效后复验。
+- [ ] MySQL slow log 3.1G，需安装 logrotate 并执行备份/轮转。
+- [x] MySQL 全库备份状态已纳入 baseline：当前 1 个 `.sql.gz`，总计 140674550 bytes，最新备份为 `/home/ubuntu/mysql-backups/tquant-all-databases-20260608-001016.sql.gz`。
+- [x] MySQL 全库备份文件已只读校验：gzip 完整、SQL dump 特征通过、sha256=`f82db5fa2334fdd84abc4f7d2e136fd3af82742354ebb6a3bb24767215380db5`。
+- [ ] Docker build cache 5.961GB，需 BuildKit GC 或安全 build cache 管理。
+- [x] 部署归档当前 0 个、0 bytes，无归档堆积；部署脚本仍保留最近 3 个可回滚版本。
+- [ ] Docker daemon、BuildKit、journald drop-in、MySQL compose command、MySQL slow logrotate 资源上限配置尚未在线生效；安装脚本/runbook 已准备。
+- [ ] 线上运行态 `max_connections` 仍为 300，运行容器尚未带 `RUNTIME_LOW_PRIORITY_TASKS_PAUSED` env；compose/代码默认值已准备，需运维窗口重启后复验。
+
+### 已运行验证
+
+- [x] `backend/.venv/bin/pytest backend/tests/test_platform_resource_report.py -q`：9 passed，1 LibreSSL warning。
+- [x] `backend/.venv/bin/pytest backend/tests/test_bff_strategy_workspace.py backend/tests/test_bff_routes.py::test_strategy_workspace_uses_bff_contract backend/tests/test_contract_first_openapi.py -q`：3 passed，1 LibreSSL warning。
+- [x] `backend/.venv/bin/pytest backend/tests/test_analytics_layer.py backend/tests/test_analytics_manifest_lifecycle.py -q`：9 passed，1 LibreSSL warning。
+- [x] `PYTHONPATH=backend:. backend/.venv/bin/python -m pytest backend/tests/test_analytics_layer.py backend/tests/test_runtime_task_queue.py -q`：22 passed，1 LibreSSL warning。
+- [x] `PYTHONPATH=backend:. backend/.venv/bin/python -m pytest backend/tests/test_runtime_task_queue.py -q`：11 passed，1 LibreSSL warning；覆盖低优先级暂停、暂停 backlog summary、worker/failure/artifact 观测和 stale recovery 只读 summary。
+- [x] `backend/.venv/bin/python -m py_compile backend/app/models/schema_defs/phase4.py backend/app/services/tasks/queue.py backend/tests/test_runtime_task_queue.py`：PASS。
+- [x] `backend/.venv/bin/python backend/scripts/export_openapi_schema.py --output docs/contracts/openapi.json --hash-output docs/contracts/openapi.hash`：PASS，`RuntimeTaskSummaryResponse` schema 已同步新增低优先级暂停观测字段。
+- [x] `PYTHONPATH=backend:. backend/.venv/bin/python -m pytest backend/tests/test_analytics_layer.py backend/tests/test_backtest_v2_worker_persistence.py backend/tests/test_cloud_performance_script.py::test_backtest_worker_can_read_shared_parquet_analysis_layer -q`：23 passed，1 LibreSSL warning。
+- [x] `backend/.venv/bin/pytest backend/tests/test_cloud_performance_script.py backend/tests/test_cloud_deploy_scripts.py::test_quick_deploy_runs_remote_resource_preflight_without_destructive_prune -q`：8 passed，1 LibreSSL warning。
+- [x] `backend/.venv/bin/pytest backend/tests/test_cloud_deploy_scripts.py backend/tests/test_cloud_performance_script.py backend/tests/test_platform_resource_report.py -q`：50 passed，1 LibreSSL warning。
+- [x] `backend/.venv/bin/pytest backend/tests/test_platform_resource_report.py backend/tests/test_cloud_deploy_scripts.py backend/tests/test_cloud_performance_script.py -q`：52 passed，1 LibreSSL warning。
+- [x] `PYTHONPATH=backend:. backend/.venv/bin/python -m pytest backend/tests/test_analytics_layer.py backend/tests/test_runtime_task_queue.py backend/tests/test_cloud_performance_script.py backend/tests/test_platform_resource_report.py backend/tests/test_cloud_deploy_scripts.py -q`：75 passed，1 LibreSSL warning。
+- [x] `PYTHONPATH=backend:. backend/.venv/bin/python -m pytest backend/tests/test_analytics_layer.py backend/tests/test_runtime_task_queue.py backend/tests/test_backtest_v2_worker_persistence.py backend/tests/test_cloud_performance_script.py backend/tests/test_platform_resource_report.py backend/tests/test_cloud_deploy_scripts.py -q`：87 passed，1 LibreSSL warning。
+- [x] `PYTHONPATH=backend:. backend/.venv/bin/python -m pytest backend/tests/test_analytics_worker_handlers.py backend/tests/test_analytics_production_chain.py backend/tests/test_analytics_worker.py -q`：10 passed，1 LibreSSL warning。
+- [x] `PYTHONPATH=backend:. backend/.venv/bin/python -m pytest backend/tests/test_backtest_v2_engine_contract.py backend/tests/test_backtest_v2_api_contract.py -q`：21 passed，1 LibreSSL warning。
+- [x] `PYTHONPATH=backend:. backend/.venv/bin/python -m pytest backend/tests/test_analytics_manifest_lifecycle.py -q`：5 passed，1 LibreSSL warning；覆盖 manifest 生命周期、retention plan ready/no_data 阻断和 planner 非破坏性源码守卫。
+- [x] `backend/.venv/bin/python -m py_compile backend/app/services/analytics/retention.py backend/app/services/analytics/__init__.py backend/tests/test_analytics_manifest_lifecycle.py`：PASS。
+- [x] `PYTHONPATH=backend:. backend/.venv/bin/python -m pytest backend/tests/test_platform_resource_report.py -q`：16 passed，1 LibreSSL warning；覆盖部署归档数量/体积、MySQL 备份状态、缺备份 warning、journald drop-in missing warning、超过 3 个部署归档 warning、0 个归档不误报。
+- [x] `PYTHONPATH=backend:. backend/.venv/bin/python -m pytest backend/tests/test_mysql_backup_artifact_verifier.py -q`：4 passed，1 LibreSSL warning；覆盖本地 `.sql.gz` 校验、坏 gzip 阻断、远程只读命令边界和非破坏性源码守卫。
+- [x] `PYTHONPATH=backend:. backend/.venv/bin/python -m pytest backend/tests/test_platform_resource_report.py backend/tests/test_cloud_deploy_scripts.py::test_quick_deploy_runs_remote_resource_preflight_without_destructive_prune -q`：17 passed，1 LibreSSL warning；覆盖资源巡检和 quick deploy 只读 preflight gate。
+- [x] `PYTHONPATH=backend:. backend/.venv/bin/python -m pytest backend/tests/test_platform_budget_verifier.py -q`：6 passed，1 LibreSSL warning；覆盖连接池预算、Web 不跑重任务、低优先级暂停 env、报告敏感 env 白名单。
+- [x] `PYTHONPATH=backend:. backend/.venv/bin/python -m pytest backend/tests/test_analytics_manifest_verifier.py -q`：5 passed，1 LibreSSL warning；覆盖 manifest hash 校验、缺 manifest blocking、旧 manifest lifecycle warning 和只读源码守卫。
+- [x] `PYTHONPATH=backend:. backend/.venv/bin/python -m pytest backend/tests/test_analytics_manifest_export_plan.py backend/tests/test_analytics_manifest_verifier.py -q`：9 passed，1 LibreSSL warning；覆盖缺失 manifest 到低优先级任务计划映射、hash mismatch 重导、list/dict 报告格式兼容和非破坏性源码守卫。
+- [x] `PYTHONPATH=backend:. backend/.venv/bin/python -m pytest backend/tests/test_analytics_manifest_export_submitter.py backend/tests/test_analytics_manifest_export_plan.py backend/tests/test_analytics_manifest_verifier.py -q`：14 passed，1 LibreSSL warning；覆盖提交器 dry-run 不写库、dataset 过滤、apply 双确认、注入 enqueue 函数和非破坏性源码守卫。
+- [x] `PYTHONPATH=backend:. backend/.venv/bin/python -m pytest backend/tests/test_platform_optimization_readiness.py -q`：5 passed，1 LibreSSL warning；覆盖 readiness 聚合当前 blocking/warning、全 ready、MySQL backup verification 阻断、submission mismatch 阻断和非破坏性源码守卫。
+- [x] `python3 scripts/verify_platform_optimization_readiness.py --json-output docs/reports/platform-optimization-readiness-2026-06-08.json --markdown-output docs/reports/platform-optimization-readiness-2026-06-08.md`：PASS；status blocking，6 项检查中 `mysql_backup_verification=ready`，blocking=`manifest:manifest_blocked_count=9`。
+- [x] `PYTHONPATH=backend:. backend/.venv/bin/python -m pytest backend/tests/test_platform_maintenance_window_plan.py -q`：2 passed，1 LibreSSL warning；覆盖运维窗口执行计划步骤顺序、同日期 MySQL backup verification 证据链、after-limits/after-export 最终 readiness 报告链、三轮线上性能/全量验收收口、apply 双确认、安全边界和非执行源码守卫。
+- [x] `python3 scripts/plan_platform_maintenance_window.py --readiness-report docs/reports/platform-optimization-readiness-2026-06-08.json --export-plan docs/reports/platform-analytics-export-plan-2026-06-08.json --date-tag 2026-06-08 --json-output docs/reports/platform-maintenance-window-plan-2026-06-08.json --markdown-output docs/reports/platform-maintenance-window-plan-2026-06-08.md`：PASS；status planned，只生成命令计划，未执行。
+- [x] `PYTHONPATH=backend:. backend/.venv/bin/python -m pytest backend/tests/test_platform_resource_optimization_acceptance.py -q`：2 passed，1 LibreSSL warning；覆盖最终验收草案当前 blocking、自用/正式 cutover 结论、旧 frontend/strategy_policy 保护、MySQL 备份/manifest 阻断字段和非破坏性源码守卫。
+- [x] `python3 scripts/render_platform_resource_optimization_acceptance.py --json-output docs/reports/platform-resource-optimization-acceptance-2026-06-08.json --markdown-output docs/reports/platform-resource-optimization-acceptance-2026-06-08.md`：PASS；status blocking，open_items 19。
+- [x] `PYTHONPATH=backend:. backend/.venv/bin/python -m pytest backend/tests/test_platform_resource_optimization_completion_audit.py -q`：3 passed，1 LibreSSL warning；覆盖完成度审计当前 blocking、全 ready fixture、关键阻断项、warning 项和非破坏性源码守卫。
+- [x] `PYTHONPATH=backend:. backend/.venv/bin/python -m pytest backend/tests/test_platform_optimization_readiness.py backend/tests/test_platform_resource_optimization_acceptance.py backend/tests/test_platform_resource_optimization_completion_audit.py backend/tests/test_mysql_backup_artifact_verifier.py -q`：15 passed，1 LibreSSL warning；覆盖 MySQL 备份校验进入 readiness 总 gate、验收草案、完成度审计和备份文件 verifier。
+- [x] `PYTHONPATH=backend:. backend/.venv/bin/python -m pytest backend/tests/test_platform_maintenance_window_plan.py backend/tests/test_platform_optimization_readiness.py backend/tests/test_platform_resource_optimization_acceptance.py backend/tests/test_platform_resource_optimization_completion_audit.py backend/tests/test_mysql_backup_artifact_verifier.py -q`：17 passed，1 LibreSSL warning；覆盖维护计划远端执行/证据回传、MySQL slow log 备份后轮转、最新性能报告传递、readiness/acceptance/audit/backup verifier。
+- [x] `python3 -m py_compile scripts/audit_platform_resource_optimization_completion.py backend/tests/test_platform_resource_optimization_completion_audit.py`：PASS。
+- [x] `node --check frontend-next/scripts/perf-profile.mjs`：PASS。
+- [x] `cd frontend-next && npm run perf:compare`：PASS；结构化报告写入 `docs/reports/frontend-next-perf-compare-2026-06-08.json`，strategy API 2、items 422 为 0、paper 非机甲 descendants 82。
+- [x] `python3 scripts/audit_platform_resource_optimization_completion.py --json-output docs/reports/platform-resource-optimization-completion-audit-2026-06-08.json --markdown-output docs/reports/platform-resource-optimization-completion-audit-2026-06-08.md --fail-on-incomplete`：预期返回 42；报告已写入，status blocking，21 passed / 4 warning / 9 blocked / 1 not_verified。
+- [x] `python3 scripts/plan_analytics_manifest_exports.py --manifest-report docs/reports/platform-analytics-manifests-2026-06-08.json --analytics-root /var/lib/docker/volumes/tquant-mysql_app_runtime_data/_data/analytics --end-date 2026-06-08 --json-output docs/reports/platform-analytics-export-plan-2026-06-08.json --markdown-output docs/reports/platform-analytics-export-plan-2026-06-08.md`：PASS；status blocking，`manifest_export_required_count=9`，`manifest_optional_refresh_count=1`。
+- [x] `python3 scripts/submit_analytics_manifest_exports.py --export-plan docs/reports/platform-analytics-export-plan-2026-06-08.json --json-output docs/reports/platform-analytics-export-submission-dry-run-2026-06-08.json --markdown-output docs/reports/platform-analytics-export-submission-dry-run-2026-06-08.md`：PASS；dry-run `ready_to_submit`，selected tasks 9，submitted tasks 0。
+- [x] `python3 scripts/install_platform_resource_limits.py --backup-root /tmp/tquant-resource-backups-test`：PASS，dry-run 输出 5 个配置项，均 `applied=false`。
+- [x] `python3 -m py_compile scripts/install_platform_resource_limits.py scripts/collect_platform_resource_report.py`：PASS。
+- [x] `bash -n scripts/build_prebuilt_images.sh scripts/deploy_cloud_server.sh scripts/quick_cloud_deploy.sh`：PASS。
+- [x] `ruby -e 'require "yaml"; YAML.load_file("docker-compose.mysql.yml"); puts "compose_yaml:ok"'`：PASS。
+- [x] `backend/.venv/bin/python -m py_compile backend/app/models/schema_defs/bff.py backend/app/services/bff/strategy_workspace.py backend/app/api/routes/bff.py`：PASS。
+- [x] `cd frontend-next && npm run api:generate`：PASS，`frontend-next/src/generated/api-types.ts` 已同步 runtime task summary 低优先级暂停观测字段。
+- [x] `cd frontend-next && npm run api:check`：PASS，覆盖新增 `runtimeTaskSummary` operation 与 generated types。
+- [x] `cd frontend-next && npm run typecheck`：PASS。
+- [x] `cd frontend-next && npm run lint`：PASS。
+- [x] `cd frontend-next && npm run css:budget`：PASS；`important_count=23` 达标，`source_css_bytes=299197` 需解释。
+- [x] `cd frontend-next && npm run visual:consistency`：PASS，36 captures / 0 failed。
+- [x] `cd frontend-next && npm run build`：PASS；ECharts 仍为独立低频 chunks，未并入主入口。
+- [x] `cd frontend-next && npm run chunk:profile`：PASS；正式 `dist/index.html` 首屏 JS raw 282841 bytes、gzip 85336 bytes；首屏 ECharts assets 0；ECharts lazy assets 3 个，总 raw 457660 bytes；报告写入 `docs/reports/frontend-next-chunk-profile-2026-06-08.md/json`。
+- [x] `cd frontend-next && npm run perf:compare`：PASS；默认 8000 旧后端返回 `schema_version=v15` 时 strategy 页面仍保持 2 requests，并通过 UI telemetry 标记 `strategy-workspace-contract=outdated`，不再触发首屏多接口 fallback。
+- [x] `cd frontend-next && npm run e2e -- tests/e2e/backtest-data-settings.spec.ts`：3 passed；覆盖 `/next/data` 显示低优先级降载、暂停积压和可领取队列数，且默认保护模式不发写请求。
+- [x] `cd frontend-next && npm run e2e -- tests/e2e/strategy-tracking.spec.ts`：1 passed。
+- [x] `cd frontend-next && npm run e2e -- tests/e2e/paper-mecha.spec.ts`：3 passed。
+- [x] `FRONTEND_NEXT_API_TARGET=http://127.0.0.1:8011 API_BASE=http://127.0.0.1:8011 npm run perf:compare`：新后端实例下 `/next/strategy-tracking` 首屏 2 requests，`items` 422 为 0；`/next/paper` 非机甲页面 DOM 82 descendants。
+- [x] `cd frontend-next && npm run api:check && npm run typecheck && npm run lint && npm test -- --run && npm run build && npm run e2e && npm run request:trace && npm run screenshot:parity && npm run visual:consistency && npm run perf:compare && npm run css:budget && npm run css:unused-report`：PASS；unit 86、E2E 46、request trace 9 routes / 0 failures、visual consistency 36 captures / 0 failed、strategy 首屏预算 2 API / 0 SSE。
+- [x] `PYTHONPATH=backend:. backend/.venv/bin/python -m pytest backend/tests/test_platform_resource_report.py backend/tests/test_platform_budget_verifier.py backend/tests/test_analytics_manifest_verifier.py backend/tests/test_analytics_manifest_export_plan.py backend/tests/test_analytics_manifest_export_submitter.py backend/tests/test_platform_optimization_readiness.py backend/tests/test_platform_maintenance_window_plan.py backend/tests/test_platform_resource_optimization_acceptance.py backend/tests/test_platform_resource_optimization_completion_audit.py backend/tests/test_analytics_layer.py backend/tests/test_analytics_manifest_lifecycle.py backend/tests/test_runtime_task_queue.py backend/tests/test_backtest_v2_worker_persistence.py backend/tests/test_cloud_performance_script.py backend/tests/test_cloud_deploy_scripts.py backend/tests/test_bff_strategy_workspace.py backend/tests/test_bff_routes.py::test_strategy_workspace_uses_bff_contract backend/tests/test_contract_first_openapi.py -q`：133 passed，1 LibreSSL warning。
+- [x] `python3 scripts/collect_platform_resource_report.py --ssh-host 43.143.243.97 --ssh-user ubuntu --ssh-key /Users/j/Downloads/gupiao.pem --json-output docs/reports/platform-resource-baseline-2026-06-08.json --markdown-output docs/reports/platform-resource-baseline-2026-06-08.md`：PASS；status warning / blocking 0；部署归档 0 个、0 bytes；MySQL 备份 1 个、140674550 bytes。
+- [x] `FRONTEND_NEXT_MONITOR_CUTOVER_ENABLED=false RUN_REMOTE_SAFE_CLEANUP=0 ./scripts/quick_cloud_deploy.sh --verify-only --skip-public-entry-verify --host 43.143.243.97 --user ubuntu --key /Users/j/Downloads/gupiao.pem --port 18090 --public-base-url http://43.143.243.97:18090`：PASS；verify-only 只读资源 preflight 正确输出 root 56%、Docker build cache 5GB warning、MySQL slow log 3163MB warning、binlog retention 259200、max binlog 1024MB warning、`mysql_compose_resource_config=missing` warning、`journald_resource_config=missing` warning、`preflight:deploy_backup_count=0`、`preflight:mysql_backup_count=1`，随后 `/readyz` 与容器健康验证通过；未部署、未切流。注：此线上结果采集于 compose 资源参数修复前，后续运维窗口需重新 verify-only。
+- [x] `python3 scripts/verify_platform_budget.py --ssh-host 43.143.243.97 --ssh-user ubuntu --ssh-key /Users/j/Downloads/gupiao.pem --json-output docs/reports/platform-budget-2026-06-08.json --markdown-output docs/reports/platform-budget-2026-06-08.md`：PASS；status warning / blocking 0；`max_connections=300`、`Threads_connected=21`、应用连接池预算总和 28、Web background jobs false、Web analytics false；运行容器暂缺低优先级暂停 env，需重启/配置生效后复验。
+- [x] `python3 scripts/verify_analytics_manifests.py --ssh-host 43.143.243.97 --ssh-user ubuntu --ssh-key /Users/j/Downloads/gupiao.pem --analytics-root /var/lib/docker/volumes/tquant-mysql_app_runtime_data/_data/analytics --json-output docs/reports/platform-analytics-manifests-2026-06-08.json --markdown-output docs/reports/platform-analytics-manifests-2026-06-08.md`：PASS；status blocking；`daily_bars` manifest present、2,443,775 rows、25 files hash verified、旧 manifest 缺 `manifest_id` 仅 warning；其余 9 类 manifest missing，不能作为 MySQL 热库清理依据。
+- [x] `python3 scripts/verify_mysql_backup_artifact.py --ssh-host 43.143.243.97 --ssh-user ubuntu --ssh-key /Users/j/Downloads/gupiao.pem --json-output docs/reports/platform-mysql-backup-verification-2026-06-08.json --markdown-output docs/reports/platform-mysql-backup-verification-2026-06-08.md --fail-on-blocking`：PASS；status ok，最新全库备份 gzip 完整、SQL dump 特征通过、sha256 已归档。
+- [x] `bash -n scripts/quick_cloud_deploy.sh scripts/deploy_cloud_server.sh`：PASS。
+- [x] `PYTHONPATH=backend:. backend/.venv/bin/python -m pytest backend/tests/test_cloud_deploy_scripts.py::test_quick_deploy_runs_remote_resource_preflight_without_destructive_prune -q`：PASS，1 passed / 1 LibreSSL warning。
+- [x] `BACKEND_PYTHON=backend/.venv/bin/python python3 scripts/verify_go_rust_performance_acceptance.py`：PASS，输出 `docs/reports/go-rust-performance-acceptance-2026-05-27.json`；Go market-read benchmark 8091 ns/op、11471 B/op、215 allocs/op，Rust seam speedup max_drawdown 7.157 / rolling_mean 11.844 / atr_wilder 9.446。
+- [x] 线上 Web/API performance 机器证据已纳入 completion audit 与 acceptance：`docs/reports/gupiao-cloud-performance-2026-06-08-000012.json` 为 `ok=true`、`failures=[]`；p95：`readyz=7.336ms`、`monitor_bff=30.266ms`、`market_pulse=28.294ms`、`priority_board=103.424ms`、`watchlist_signals=24.109ms`。资源 apply、worker 重启、manifest 导出后仍必须重新跑三轮 online performance gate。
+
+### 下一步
+
+- [x] B2：`/next/paper` 长列表已接 shared VirtualList/VirtualDataTable，非机甲页面 DOM 已低于 150；整页 DOM <150 受“机甲组件不改”硬边界限制，需另行授权才可继续压缩机甲 DOM。
+- [x] B3：CSS `!important` 已无损收敛到 23；raw 仍 299197 bytes，因 legacy workspace 皮肤和页面级样式双源保留，不能在无截图逐页验证前批量删除。
+- [x] B4：`chunk:profile` 已基于正式构建产物验证首屏 JS raw 282841 bytes <=350KB，首屏 ECharts assets 0；K 线仍受 boundary guard 约束使用 Lightweight Charts。
+- [ ] C：低优先级重任务暂停 guard、summary 可观测字段、`/next/data` 展示与 MySQL/worker 连接池预算已落地；线上只读预算复验、readiness 聚合和运维窗口执行计划已完成，但运行态仍未应用 `max_connections=120` 和低优先级暂停 env，继续做运维窗口重启生效、降低 swap、三轮 online performance 验证。
+- [x] D：`daily_bars`、`strategy_tracking_snapshots`、`key_level_snapshots`、`low_buy_result_snapshots`、`backtest_runs`、`backtest_trades`、`backtest_daily_snapshots`、`analysis_logs`、`market_review_reports`、`paper_review_reports` 已有 Parquet manifest 和 DuckDB 可读测试；回测 daily bars 输入已支持 Parquet 优先读取，默认关闭并可回退；新增 retention planner 只读输出热库清理候选和阻断项，未校验前不清 MySQL 源数据。
+- [ ] D：线上真实 manifest 已只读校验：`daily_bars` 可用但旧 lifecycle 字段不完整，其余 9 类新增快照/回测/报告 manifest 缺失；已生成 dry-run 导出计划、提交预览和 runbook，下一步需在低峰/运维窗口用 `scripts/submit_analytics_manifest_exports.py --apply --confirm-apply submit-analytics-manifest-exports` 提交 9 个 analytics worker 导出任务并复验 manifest。真实清理仍需备份、恢复路径和单独授权。
+- [x] E：预构建镜像 build/tag 和云端 pull+restart 脚本入口已落地；尚未提供真实 registry ref，也未在线启用。
+- [x] F：本地 frontend-next 全链路、后端资源/Analytics/Worker/部署脚本组合、Go/Rust 性能验收、云端只读资源 baseline、最终验收草案和完成度审计已完成；线上安装资源上限、补齐 manifest 与降 swap 仍需单独运维窗口。
+
+## 2026-06-07 frontend-next cutover 阻断项修复
+
+需求来源：
+
+- 用户目标：完整实现 `docs/frontend-next-cutover-blocker-remediation-plan-2026-06-07.md` 的全部需求，使 `frontend-next/` 达到 cutover readiness；本轮不部署、不切流。
+
+### 执行边界
+
+- [x] 已执行 `git status --short`，当前以未跟踪 `frontend-next/` 和 `docs/frontend-next*` 产物为主。
+- [x] 旧 `frontend/` 生产代码只读保护；不得修改。
+- [x] 不修改 `strategy_policy.py`。
+- [x] 后端仅做安全写契约最小改动并写明原因：新增 frontend-next 审计 helper、review-only 记录、runtime task cancel、OpenAPI 同步；不改变生产策略语义。
+- [x] 不改变生产策略语义、生产排序、`production_score`、`priority_board` 口径。
+- [x] Worker/WASM 只做显示层 `filter/sort/derive/downsample`，不做策略判断。
+- [x] 视觉以当前 `frontend-next` 样式为准；不再追旧前端像素 parity。
+- [x] CSS 优化必须无损，不使用 PurgeCSS 批量删除，不直接使用第三方默认样式。
+
+### 本轮 TODO
+
+- [x] A：补 `write:readiness`，从 operation/contract registry 自动枚举写操作 ready 状态、idempotency/audit/rollback/403 证据缺口。
+- [x] B：补 `api:cutover-readiness`，复验 strategy-tracking/settings/factor-weights/BFF 端点并输出正式环境可读报告。
+- [x] C：补视觉/性能/CSS gate：`visual:consistency`、`css:budget`、`css:unused-report`，只报告和无损治理。
+- [x] D：补功能级 E2E 覆盖：monitor、analysis、playbook、paper、strategy review、backtest、data/settings 错误态。
+- [x] E：补高风险单测：safe write readiness、401/refresh、403、502/503、Response body 单读流、SSE/worker/chart 回归。
+- [x] F：同步更新 cutover plan、feature parity matrix、runbook、open items、acceptance、CSS optimization 报告和视觉签收清单。
+- [x] G：运行新旧前端验收命令、`git diff --check` 和最终 `git status --short`。
+
+### 当前决策
+
+- 不会把 `blocked_contract_needed`、`shadow-only`、`live-smoke` 仅靠改字符串升级为 `ready`。
+- `databaseMigrate` 默认不开放，`databaseCheck` 只允许 dry-run/check，真实迁移需要单独运维授权。
+- 若正式 token/后端不可用，API/readiness 脚本会生成“未复验/阻断”证据，不伪造通过。
+
+### 2026-06-07 当前结果
+
+- [x] `strategy-tracking` 422 已在新前端侧通过 `limit=50` 对齐 OpenAPI 契约修复，未改后端。
+- [x] `/next/settings` 已改为 BFF-first；无 admin API token 时不再误打直连管理接口，页面请求 trace 为 2 个请求、0 SSE。
+- [x] `api:cutover-readiness` 可稳定鉴权并输出报告；本地 `ADMIN_API_TOKEN=test-admin-token` 环境 6 probes / 0 failed，`/api/settings`、`/api/settings/factor-weights` 复验为 2xx。
+- [x] `write:readiness` 可稳定输出 13 组安全写契约状态；当前 12 production-ready，0 blocked，1 cutover-excluded，`cutover_ready=true`。
+- [x] `write:rollback -- --all --isolated` 已覆盖 auth MFA、watchlist、trade journal、paper account/order、settings、feature flag、backtest run/validation/optimization、playbook lifecycle、strategy review、data task、data repair、database check 的本地写入/撤销或取消/读回。
+- [x] `visual:consistency` 9 页 x 4 视口共 36 张截图通过；当前视觉 gate 以新前端一致性为准，不再以旧像素相似度阻断。
+- [x] 两交易日 shadow aggregate 通过，样本日期包含 2026-06-05、2026-06-06、2026-06-07。
+
+当前结论：本轮已达到本地 cutover readiness；仍未部署、未切流。正式 cutover 需要用户单独授权，并在正式 admin token/environment 下复跑 API、安全写 readiness、rollback、E2E、性能和回滚 gate。
+
 ## 2026-06-02 A 股交易经验观察与复盘套件最终开发计划
 
 需求来源：

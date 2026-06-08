@@ -1,0 +1,250 @@
+{
+  "generated_at": "2026-06-08T06:06:54.253252+00:00",
+  "root": {
+    "filesystem": "/dev/vda2",
+    "size": "59G",
+    "used": "24G",
+    "available": "33G",
+    "used_pct": 43,
+    "mount": "/"
+  },
+  "memory": {
+    "mem": {
+      "total_mb": 3723,
+      "used_mb": 2668,
+      "free_mb": 194,
+      "used_pct": 71.66,
+      "available_mb": 1055
+    },
+    "swap": {
+      "total_mb": 1987,
+      "used_mb": 715,
+      "free_mb": 1272,
+      "used_pct": 35.98
+    }
+  },
+  "docker": {
+    "images": {
+      "total": "9",
+      "active": "9",
+      "size": "6.011GB",
+      "reclaimable": "6.011GB (100%)",
+      "size_bytes": 6454262104
+    },
+    "containers": {
+      "total": "13",
+      "active": "12",
+      "size": "106.5kB",
+      "reclaimable": "4.096kB (3%)",
+      "size_bytes": 109056
+    },
+    "local_volumes": {
+      "total": "5",
+      "active": "5",
+      "size": "8.34GB",
+      "reclaimable": "0B (0%)",
+      "size_bytes": 8955006812
+    },
+    "build_cache": {
+      "total": "0",
+      "active": "0",
+      "size": "0B",
+      "reclaimable": "0B",
+      "size_bytes": 0
+    }
+  },
+  "journal": {
+    "usage": "284.3M",
+    "usage_bytes": 298110156
+  },
+  "mysql": {
+    "volume": {
+      "rows": [
+        {
+          "size": "7.6G",
+          "path": "/var/lib/docker/volumes/tquant-mysql_mysql_data/_data",
+          "size_bytes": 8160437862
+        }
+      ]
+    },
+    "slow_log": {
+      "size": "124K",
+      "path": "/var/lib/docker/volumes/tquant-mysql_mysql_data/_data/mysql-slow.log",
+      "size_bytes": 126976
+    },
+    "variables": {
+      "binlog_expire_logs_seconds": 259200,
+      "max_binlog_size": 268435456
+    },
+    "binary_logs": {
+      "count": 8,
+      "total_bytes": 4790810427,
+      "logs": [
+        {
+          "name": "binlog.000032",
+          "size_bytes": 1073746277
+        },
+        {
+          "name": "binlog.000033",
+          "size_bytes": 1076259614
+        },
+        {
+          "name": "binlog.000034",
+          "size_bytes": 1075253742
+        },
+        {
+          "name": "binlog.000035",
+          "size_bytes": 1076609367
+        },
+        {
+          "name": "binlog.000036",
+          "size_bytes": 469618622
+        },
+        {
+          "name": "binlog.000037",
+          "size_bytes": 1988553
+        },
+        {
+          "name": "binlog.000038",
+          "size_bytes": 11294220
+        },
+        {
+          "name": "binlog.000039",
+          "size_bytes": 6040032
+        }
+      ]
+    }
+  },
+  "resource_configs": {
+    "docker_daemon": {
+      "present": true,
+      "path": "/etc/docker/daemon.json"
+    },
+    "journald": {
+      "present": true,
+      "path": "/etc/systemd/journald.conf"
+    },
+    "journald_dropin": {
+      "present": true,
+      "path": "/etc/systemd/journald.conf.d/tquant-resource.conf"
+    },
+    "buildkit": {
+      "present": true,
+      "path": "/etc/buildkit/buildkitd.toml"
+    },
+    "mysql_slow_logrotate": {
+      "present": true,
+      "path": "/etc/logrotate.d/tquant-mysql-slow-log"
+    },
+    "mysql_compose_resource_config": {
+      "present": true,
+      "path": "/home/ubuntu/gupiao-upload/docker-compose.mysql.yml"
+    }
+  },
+  "deploy_backups": {
+    "count": 0,
+    "total_bytes": 0,
+    "rows": []
+  },
+  "mysql_backups": {
+    "count": 1,
+    "total_bytes": 140674550,
+    "latest": {
+      "size": "140674550",
+      "mtime": "1780848703.8764987620",
+      "path": "/home/ubuntu/mysql-backups/tquant-all-databases-20260608-001016.sql.gz",
+      "size_bytes": 140674550
+    },
+    "rows": [
+      {
+        "size": "140674550",
+        "mtime": "1780848703.8764987620",
+        "path": "/home/ubuntu/mysql-backups/tquant-all-databases-20260608-001016.sql.gz",
+        "size_bytes": 140674550
+      }
+    ]
+  },
+  "commands": {
+    "df_root": {
+      "command": "remote:df_root",
+      "returncode": 0,
+      "stderr": ""
+    },
+    "free": {
+      "command": "remote:free",
+      "returncode": 0,
+      "stderr": ""
+    },
+    "docker_system_df": {
+      "command": "remote:docker_system_df",
+      "returncode": 0,
+      "stderr": ""
+    },
+    "journal": {
+      "command": "remote:journal",
+      "returncode": 0,
+      "stderr": ""
+    },
+    "mysql_volume": {
+      "command": "remote:mysql_volume",
+      "returncode": 0,
+      "stderr": ""
+    },
+    "mysql_slow_log": {
+      "command": "remote:mysql_slow_log",
+      "returncode": 0,
+      "stderr": ""
+    },
+    "mysql_variables": {
+      "command": "remote:mysql_variables",
+      "returncode": 0,
+      "stderr": ""
+    },
+    "mysql_binary_logs": {
+      "command": "remote:mysql_binary_logs",
+      "returncode": 0,
+      "stderr": ""
+    },
+    "resource_configs": {
+      "command": "remote:resource_configs",
+      "returncode": 0,
+      "stderr": ""
+    },
+    "deploy_backups": {
+      "command": "remote:deploy_backups",
+      "returncode": 0,
+      "stderr": ""
+    },
+    "mysql_backups": {
+      "command": "remote:mysql_backups",
+      "returncode": 0,
+      "stderr": ""
+    },
+    "ssh": {
+      "command": "ssh <redacted>",
+      "returncode": 0,
+      "stderr": ""
+    }
+  },
+  "source": {
+    "remote_host": "43.143.243.97",
+    "remote_user": "ubuntu"
+  },
+  "thresholds": {
+    "root_used_pct": 70,
+    "root_blocking_pct": 80,
+    "swap_used_pct": 50,
+    "slow_log_bytes": 536870912,
+    "docker_build_cache_bytes": 2147483648,
+    "binlog_expire_seconds": 259200,
+    "max_binlog_size_bytes": 268435456,
+    "deploy_backup_count": 3,
+    "mysql_backup_min_count": 1
+  },
+  "evaluation": {
+    "ok": true,
+    "status": "ok",
+    "warnings": [],
+    "blocking": []
+  }
+}

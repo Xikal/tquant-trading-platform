@@ -3,16 +3,18 @@ from __future__ import annotations
 import json
 import time
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
 from app.core.admin_auth import require_admin_auth
 from app.core.config import get_settings
 from app.core.database import SessionLocal, get_db
+from app.api.routes.frontend_next_audit import record_frontend_next_audit
 from app.models.schema_defs.phase4 import (
     RuntimeTaskAnalyticsReportResponse,
     RuntimeTaskArtifactResponse,
+    RuntimeTaskCancelRequest,
     RuntimeTaskCreate,
     RuntimeTaskEventOut,
     RuntimeTaskFailureResponse,
@@ -29,8 +31,18 @@ router = APIRouter(prefix="/runtime-tasks", dependencies=[Depends(require_admin_
 
 
 @router.post("", response_model=RuntimeTaskOut)
-def enqueue_runtime_task(payload: RuntimeTaskCreate, db: Session = Depends(get_db)) -> RuntimeTaskOut:
-    return RuntimeTaskQueue(db).enqueue(payload)
+def enqueue_runtime_task(request: Request, payload: RuntimeTaskCreate, db: Session = Depends(get_db)) -> RuntimeTaskOut:
+    task = RuntimeTaskQueue(db).enqueue(payload)
+    audit_id = record_frontend_next_audit(
+        db,
+        request=request,
+        operation="frontend_next.runtime_task_create",
+        resource_type="runtime_task",
+        resource_id=task.id,
+        detail={"task_type": task.task_type, "task_id": task.id, "idempotency_key": payload.idempotency_key},
+    )
+    db.commit()
+    return task.model_copy(update={"audit_id": audit_id})
 
 
 @router.get("", response_model=RuntimeTaskListResponse)
@@ -82,6 +94,29 @@ def get_runtime_task(task_id: int, db: Session = Depends(get_db)) -> RuntimeTask
         return RuntimeTaskQueue(db).get(task_id)
     except LookupError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@router.post("/{task_id}/cancel", response_model=RuntimeTaskOut)
+def cancel_runtime_task(
+    task_id: int,
+    request: Request,
+    payload: RuntimeTaskCancelRequest | None = None,
+    db: Session = Depends(get_db),
+) -> RuntimeTaskOut:
+    try:
+        task = RuntimeTaskQueue(db).cancel(task_id, reason=(payload.reason if payload else "") or "frontend-next rollback smoke")
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    audit_id = record_frontend_next_audit(
+        db,
+        request=request,
+        operation="frontend_next.runtime_task_cancel",
+        resource_type="runtime_task",
+        resource_id=task_id,
+        detail={"task_id": task_id, "status": task.status, "reason": payload.reason if payload else ""},
+    )
+    db.commit()
+    return task.model_copy(update={"audit_id": audit_id})
 
 
 @router.get("/{task_id}/events", response_model=list[RuntimeTaskEventOut])

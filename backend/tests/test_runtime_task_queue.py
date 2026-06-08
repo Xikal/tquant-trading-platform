@@ -13,6 +13,7 @@ from app.models.schema_defs.phase4 import RuntimeTaskCreate
 from app.services.runtime_worker_health import record_platform_component_heartbeat
 from app.services.tasks import RuntimeTaskQueue
 from app.services.tasks.queue import _recent_terminal_task_order
+from app.services.tasks.registry import ANALYTICS_TASK_TYPES, analytics_task_registry
 
 
 def _db():
@@ -107,6 +108,123 @@ def test_runtime_task_queue_retry_sets_future_run_after(monkeypatch):
     assert row.run_after is not None
     assert row.run_after > before_failure
     assert queue.claim_next(worker_id="next-worker") is None
+
+
+def test_runtime_task_queue_pauses_configured_low_priority_tasks(monkeypatch):
+    db = _db()
+    queue = RuntimeTaskQueue(db)
+    monkeypatch.setattr("app.services.tasks.queue.publish_runtime_task_event", lambda event: None)
+    monkeypatch.setattr(
+        "app.services.tasks.queue.get_settings",
+        lambda: type(
+            "Settings",
+            (),
+            {
+                "runtime_low_priority_tasks_paused": True,
+                "runtime_low_priority_task_types": "strategy_24m_duckdb_report,analytics_export_strategy_tracking_snapshots",
+            },
+        )(),
+    )
+
+    queue.enqueue(RuntimeTaskCreate(task_type="strategy_24m_duckdb_report", payload={}, priority=1))
+    normal = queue.enqueue(RuntimeTaskCreate(task_type="monitor_snapshot_refresh", payload={}, priority=50))
+
+    claimed = queue.claim_next(worker_id="runtime-test")
+    assert claimed is not None
+    assert claimed.id == normal.id
+    assert claimed.task_type == "monitor_snapshot_refresh"
+    paused = db.execute(select(RuntimeTask).where(RuntimeTask.task_type == "strategy_24m_duckdb_report")).scalar_one()
+    assert paused.status == "queued"
+
+
+def test_runtime_task_summary_reports_paused_low_priority_backlog(monkeypatch):
+    db = _db()
+    queue = RuntimeTaskQueue(db)
+    monkeypatch.setattr("app.services.tasks.queue.publish_runtime_task_event", lambda event: None)
+    monkeypatch.setattr(
+        "app.services.tasks.queue.get_settings",
+        lambda: type(
+            "Settings",
+            (),
+            {
+                "runtime_low_priority_tasks_paused": True,
+                "runtime_low_priority_task_types": "strategy_24m_duckdb_report,analytics_export_strategy_tracking_snapshots",
+            },
+        )(),
+    )
+
+    queue.enqueue(RuntimeTaskCreate(task_type="strategy_24m_duckdb_report", payload={}, priority=1))
+    queue.enqueue(RuntimeTaskCreate(task_type="analytics_export_strategy_tracking_snapshots", payload={}, priority=2))
+    normal = queue.enqueue(RuntimeTaskCreate(task_type="monitor_snapshot_refresh", payload={}, priority=50))
+
+    summary = queue.summary()
+    claimed = queue.claim_next(worker_id="runtime-test")
+
+    assert summary.low_priority_tasks_paused is True
+    assert summary.paused_task_types == [
+        "analytics_export_strategy_tracking_snapshots",
+        "strategy_24m_duckdb_report",
+    ]
+    assert summary.queued == 3
+    assert summary.paused_queued == 2
+    assert summary.claimable_queued == 1
+    assert {item.task_type: item.count for item in summary.paused_task_type_counts} == {
+        "analytics_export_strategy_tracking_snapshots": 1,
+        "strategy_24m_duckdb_report": 1,
+    }
+    assert claimed is not None
+    assert claimed.id == normal.id
+    paused_statuses = {
+        row.task_type: row.status
+        for row in db.execute(
+            select(RuntimeTask).where(
+                RuntimeTask.task_type.in_(
+                    ["strategy_24m_duckdb_report", "analytics_export_strategy_tracking_snapshots"]
+                )
+            )
+        ).scalars()
+    }
+    assert paused_statuses == {
+        "strategy_24m_duckdb_report": "queued",
+        "analytics_export_strategy_tracking_snapshots": "queued",
+    }
+
+
+def test_runtime_task_queue_pauses_backtest_parquet_export_tasks(monkeypatch):
+    db = _db()
+    queue = RuntimeTaskQueue(db)
+    monkeypatch.setattr("app.services.tasks.queue.publish_runtime_task_event", lambda event: None)
+    monkeypatch.setattr(
+        "app.services.tasks.queue.get_settings",
+        lambda: type(
+            "Settings",
+            (),
+            {
+                "runtime_low_priority_tasks_paused": True,
+                "runtime_low_priority_task_types": "analytics_export_backtest_trades",
+            },
+        )(),
+    )
+
+    queue.enqueue(RuntimeTaskCreate(task_type="analytics_export_backtest_trades", payload={}, priority=1))
+    normal = queue.enqueue(RuntimeTaskCreate(task_type="monitor_snapshot_refresh", payload={}, priority=50))
+
+    claimed = queue.claim_next(worker_id="runtime-test")
+    assert claimed is not None
+    assert claimed.id == normal.id
+    paused = db.execute(select(RuntimeTask).where(RuntimeTask.task_type == "analytics_export_backtest_trades")).scalar_one()
+    assert paused.status == "queued"
+
+
+def test_backtest_parquet_export_tasks_are_registered_for_analytics_worker():
+    required = {
+        "analytics_export_backtest_runs",
+        "analytics_export_backtest_trades",
+        "analytics_export_backtest_daily_snapshots",
+    }
+
+    assert required <= set(ANALYTICS_TASK_TYPES)
+    assert required <= set(analytics_task_registry().task_types())
 
 
 def test_runtime_task_queue_stale_recovery_requeues_with_backoff(monkeypatch):

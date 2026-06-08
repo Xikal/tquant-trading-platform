@@ -120,11 +120,19 @@ def run_remote_measurement(args: argparse.Namespace) -> dict[str, Any]:
         def measure(name, path, token="", timeout=12, capture_payload=False):
             samples = []
             statuses = []
+            sample_details = []
             payload_summary = {}
             for _ in range(SAMPLES):
                 elapsed, status, body = fetch(path, token=token, timeout=timeout)
                 samples.append(elapsed)
                 statuses.append(status)
+                detail = {
+                    "status": status,
+                    "elapsed_ms": round(elapsed, 3),
+                }
+                if status != 200:
+                    detail["body"] = body.decode(errors="replace")[:500]
+                sample_details.append(detail)
                 if capture_payload and status == 200:
                     payload_summary = summarize_payload(name, body)
                 time.sleep(0.08)
@@ -136,10 +144,32 @@ def run_remote_measurement(args: argparse.Namespace) -> dict[str, Any]:
                 "statuses": sorted(set(statuses), key=lambda item: str(item)),
                 "p50_ms": round(statistics.median(samples), 3),
                 "p95_ms": round(ordered[p95_index], 3),
+                "samples": sample_details,
             }
             if payload_summary:
                 result["payload_summary"] = payload_summary
             return result
+
+        def prewarm_endpoint(path, token="", timeout=12):
+            elapsed, status, body = fetch(path, token=token, timeout=timeout)
+            detail = {
+                "path": path,
+                "status": status,
+                "elapsed_ms": round(elapsed, 3),
+            }
+            if status != 200:
+                detail["body"] = body.decode(errors="replace")[:500]
+            return detail
+
+        def prewarm_api_paths(token):
+            paths = [
+                "/readyz",
+                "/api/bff/v1/workspace/monitor?priority_limit=12&sector_limit=8&per_sector_limit=8&hedge_limit=4",
+                "/api/market/pulse",
+                "/api/screeners/low-buy/priority-board?limit=12&refresh=cache",
+                "/api/watchlist/signals",
+            ]
+            return [prewarm_endpoint(path, token=token if path.startswith("/api/") else "") for path in paths]
 
         def summarize_payload(name, body):
             try:
@@ -559,13 +589,15 @@ def run_remote_measurement(args: argparse.Namespace) -> dict[str, Any]:
 
         token = login()
         quote_cache = quote_cache_snapshot()
+        api_prewarm = prewarm_api_paths(token)
+        time.sleep(2.0)
         go_bff_metrics_before = metrics("tquant-go-bff-gateway", 8091)
         go_market_metrics_before = metrics("tquant-go-market-read-service", 8092)
         api = [
             measure("readyz", "/readyz"),
             measure("monitor_bff", "/api/bff/v1/workspace/monitor?priority_limit=12&sector_limit=8&per_sector_limit=8&hedge_limit=4", token, capture_payload=True),
             measure("market_pulse", "/api/market/pulse", token),
-            measure("priority_board", "/api/screeners/low-buy/priority-board?limit=12", token, capture_payload=True),
+            measure("priority_board", "/api/screeners/low-buy/priority-board?limit=12&refresh=cache", token, capture_payload=True),
             measure("watchlist_signals", "/api/watchlist/signals", token),
         ]
         go_scan = []
@@ -590,7 +622,13 @@ def run_remote_measurement(args: argparse.Namespace) -> dict[str, Any]:
             "scan_worker_accept": 500,
         }
         failures = [
-            {"name": item["name"], "p95_ms": item["p95_ms"], "threshold_ms": thresholds[item["name"]]}
+            {
+                "name": item["name"],
+                "p95_ms": item["p95_ms"],
+                "threshold_ms": thresholds[item["name"]],
+                "statuses": item["statuses"],
+                "samples": item.get("samples") or [],
+            }
             for item in api
             if item["p95_ms"] > thresholds[item["name"]] or item["statuses"] != [200]
         ]
@@ -630,6 +668,7 @@ def run_remote_measurement(args: argparse.Namespace) -> dict[str, Any]:
         priority_payload_summary = api_by_name.get("priority_board", {}).get("payload_summary") or {}
         report = {
             "generated_at": time.strftime("%Y-%m-%d %H:%M:%S"),
+            "api_prewarm": api_prewarm,
             "api": api,
             "monitor_bff_sources": monitor_payload_summary.get("source_timings") or [],
             "priority_board_breakdown": priority_payload_summary,

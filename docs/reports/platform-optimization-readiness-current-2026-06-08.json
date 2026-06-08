@@ -1,0 +1,165 @@
+{
+  "generated_at": "2026-06-08T05:12:43.880359+00:00",
+  "paths": {
+    "resource_report": "docs/reports/platform-resource-after-cleanup-2026-06-08.json",
+    "budget_report": "docs/reports/platform-budget-after-cleanup-2026-06-08.json",
+    "manifest_report": "docs/reports/platform-analytics-manifests-current-2026-06-08.json",
+    "export_plan": "docs/reports/platform-analytics-export-plan-2026-06-08.json",
+    "submission_report": "docs/reports/platform-analytics-export-submission-dry-run-2026-06-08.json",
+    "backup_verification_report": "docs/reports/platform-mysql-backup-verification-2026-06-08.json"
+  },
+  "checks": [
+    {
+      "name": "resource_limits",
+      "status": "warning",
+      "blocking": [],
+      "warnings": [
+        "resource:swap_used_pct=94.61"
+      ],
+      "evidence": {
+        "root_used_pct": 41,
+        "swap_used_pct": 94.61,
+        "slow_log_bytes": 4096,
+        "docker_build_cache_bytes": 0,
+        "max_binlog_size": 268435456
+      }
+    },
+    {
+      "name": "mysql_backup_verification",
+      "status": "ready",
+      "blocking": [],
+      "warnings": [],
+      "evidence": {
+        "path": "/home/ubuntu/mysql-backups/tquant-all-databases-20260608-001016.sql.gz",
+        "size_bytes": 140674550,
+        "gzip_ok": true,
+        "sql_signature_ok": true,
+        "sha256": "f82db5fa2334fdd84abc4f7d2e136fd3af82742354ebb6a3bb24767215380db5",
+        "sql_signatures": [
+          "-- MySQL dump",
+          "CREATE TABLE",
+          "INSERT INTO",
+          "LOCK TABLES"
+        ]
+      }
+    },
+    {
+      "name": "worker_budget",
+      "status": "ready",
+      "blocking": [],
+      "warnings": [],
+      "evidence": {
+        "mysql": {
+          "max_connections": 120,
+          "threads_connected": 26,
+          "threads_running": 4
+        },
+        "pool_budget": {
+          "total": 28,
+          "target": 40
+        }
+      }
+    },
+    {
+      "name": "analytics_manifest",
+      "status": "blocking",
+      "blocking": [
+        "manifest:manifest_blocked_count=9"
+      ],
+      "warnings": [
+        "manifest:manifest_missing_count=9",
+        "manifest:manifest_warning_dataset_count=1"
+      ],
+      "evidence": {
+        "ready_count": 1,
+        "missing_count": 9,
+        "blocked_count": 9,
+        "verified_files": 25,
+        "blocked_datasets": [
+          "strategy_tracking_snapshots",
+          "key_level_snapshots",
+          "low_buy_result_snapshots",
+          "backtest_runs",
+          "backtest_trades",
+          "backtest_daily_snapshots",
+          "analysis_logs",
+          "market_review_reports",
+          "paper_review_reports"
+        ]
+      }
+    },
+    {
+      "name": "analytics_export_plan",
+      "status": "warning",
+      "blocking": [],
+      "warnings": [
+        "export_plan:required_task_count=9",
+        "export_plan:manifest_export_required_count=9"
+      ],
+      "evidence": {
+        "required_task_count": 9,
+        "required_tasks": [
+          "analytics_export_strategy_tracking_snapshots",
+          "analytics_export_key_level_snapshots",
+          "analytics_export_low_buy_result_snapshots",
+          "analytics_export_backtest_runs",
+          "analytics_export_backtest_trades",
+          "analytics_export_backtest_daily_snapshots",
+          "analytics_export_analysis_logs",
+          "analytics_export_market_review_reports",
+          "analytics_export_paper_review_reports"
+        ],
+        "safe_dry_run": {
+          "does_enqueue_tasks": false,
+          "does_run_exporters": false,
+          "does_modify_mysql": false,
+          "does_clean_source_tables": false
+        }
+      }
+    },
+    {
+      "name": "analytics_export_submission",
+      "status": "ready",
+      "blocking": [],
+      "warnings": [],
+      "evidence": {
+        "selected_task_count": 9,
+        "required_task_count": 9,
+        "submitted_task_count": 0,
+        "mode": "dry-run",
+        "safety": {
+          "dry_run_default": true,
+          "requires_apply_flag": true,
+          "requires_confirm_apply": true,
+          "does_run_exporters": false,
+          "does_clean_source_tables": false,
+          "does_modify_mysql_source_tables": false,
+          "writes_runtime_tasks_only_when_apply": false
+        }
+      }
+    }
+  ],
+  "summary": {
+    "check_count": 6,
+    "ready_count": 3,
+    "warning_count": 2,
+    "blocking_count": 1
+  },
+  "evaluation": {
+    "ok": false,
+    "status": "blocking",
+    "blocking": [
+      "manifest:manifest_blocked_count=9"
+    ],
+    "warnings": [
+      "resource:swap_used_pct=94.61",
+      "manifest:manifest_missing_count=9",
+      "manifest:manifest_warning_dataset_count=1",
+      "export_plan:required_task_count=9",
+      "export_plan:manifest_export_required_count=9"
+    ]
+  },
+  "next_actions": [
+    "Submit planned analytics manifest export tasks in a low-traffic maintenance window and rerun manifest verifier."
+  ]
+}

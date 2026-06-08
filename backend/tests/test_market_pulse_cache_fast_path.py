@@ -106,7 +106,7 @@ def test_market_pulse_sync_reads_cached_snapshot_without_recomputing(monkeypatch
     monkeypatch.setattr(market.market_data, "sector_relative_strength_rank", forbidden_recompute)
     monkeypatch.setattr(market.market_data, "get_market_regime", forbidden_recompute)
     monkeypatch.setattr(market.market_data, "get_market_regime_fast", forbidden_recompute)
-    monkeypatch.setattr(market, "_enqueue_market_pulse_refresh", lambda _db, *, reason: enqueued.append(reason))
+    monkeypatch.setattr(market, "_enqueue_market_pulse_refresh_async", lambda *, reason: enqueued.append(reason) or True)
 
     pulse = market.market_pulse(refresh="sync", db=db)
 

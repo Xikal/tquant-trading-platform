@@ -9,7 +9,19 @@ from typing import Any
 
 from app.core.database import SessionLocal
 from app.models.schema_defs.backtest import BacktestRunCreate
-from app.services.analytics import export_daily_bars_parquet, load_manifest
+from app.services.analytics import (
+    export_analysis_logs_parquet,
+    export_backtest_daily_snapshots_parquet,
+    export_backtest_runs_parquet,
+    export_backtest_trades_parquet,
+    export_daily_bars_parquet,
+    export_key_level_snapshots_parquet,
+    export_low_buy_result_snapshots_parquet,
+    export_market_review_reports_parquet,
+    export_paper_review_reports_parquet,
+    export_strategy_tracking_snapshots_parquet,
+    load_manifest,
+)
 from app.services.analytics.config import PROJECT_ROOT
 from app.services.analytics.quality import check_daily_bars_24m_quality, normalized_quality_status
 from app.services.analytics.report_queries import build_strategy_24m_duckdb_report, write_strategy_24m_report
@@ -30,6 +42,15 @@ def register_analytics_handlers(registry: TaskHandlerRegistry) -> None:
     registry.register("data_backfill_24m", handle_data_backfill_24m)
     registry.register("data_quality_backfill", handle_data_quality_backfill)
     registry.register("analytics_export_daily_bars", handle_analytics_export_daily_bars)
+    registry.register("analytics_export_key_level_snapshots", handle_analytics_export_key_level_snapshots)
+    registry.register("analytics_export_low_buy_result_snapshots", handle_analytics_export_low_buy_result_snapshots)
+    registry.register("analytics_export_strategy_tracking_snapshots", handle_analytics_export_strategy_tracking_snapshots)
+    registry.register("analytics_export_backtest_runs", handle_analytics_export_backtest_runs)
+    registry.register("analytics_export_backtest_trades", handle_analytics_export_backtest_trades)
+    registry.register("analytics_export_backtest_daily_snapshots", handle_analytics_export_backtest_daily_snapshots)
+    registry.register("analytics_export_analysis_logs", handle_analytics_export_analysis_logs)
+    registry.register("analytics_export_market_review_reports", handle_analytics_export_market_review_reports)
+    registry.register("analytics_export_paper_review_reports", handle_analytics_export_paper_review_reports)
     registry.register("analytics_quality_check", handle_analytics_quality_check)
     registry.register("strategy_24m_duckdb_report", handle_strategy_24m_duckdb_report)
     registry.register("decision_context_24m_report", handle_strategy_24m_duckdb_report)
@@ -158,6 +179,122 @@ def handle_analytics_export_daily_bars(context: TaskContext) -> dict[str, Any]:
         "artifacts": [manifest.get("manifest_path")],
         "backfill_task_id": (manifest.get("quality") or {}).get("backfill_task_id"),
     }
+
+
+def handle_analytics_export_strategy_tracking_snapshots(context: TaskContext) -> dict[str, Any]:
+    days = int(context.payload.get("days") or 90)
+    end = _payload_end_date(context.payload)
+    context.progress(10.0, "开始导出 strategy_tracking_snapshots Parquet")
+    manifest = export_strategy_tracking_snapshots_parquet(
+        context.db,
+        days=days,
+        end_date=end,
+        output_root=context.payload.get("output_root"),
+    )
+    context.add_artifact(str(manifest.get("manifest_path") or ""))
+    status = str(manifest.get("quality_status") or manifest.get("status") or "partial")
+    return {
+        "ok": status == "ok",
+        "status": status,
+        "manifest": manifest,
+        "artifacts": [manifest.get("manifest_path")],
+    }
+
+
+def handle_analytics_export_key_level_snapshots(context: TaskContext) -> dict[str, Any]:
+    manifest = export_key_level_snapshots_parquet(
+        context.db,
+        days=int(context.payload.get("days") or 90),
+        end_date=_payload_end_date(context.payload),
+        output_root=context.payload.get("output_root"),
+    )
+    context.add_artifact(str(manifest.get("manifest_path") or ""))
+    status = str(manifest.get("quality_status") or manifest.get("status") or "partial")
+    return {"ok": status == "ok", "status": status, "manifest": manifest, "artifacts": [manifest.get("manifest_path")]}
+
+
+def handle_analytics_export_low_buy_result_snapshots(context: TaskContext) -> dict[str, Any]:
+    manifest = export_low_buy_result_snapshots_parquet(
+        context.db,
+        days=int(context.payload.get("days") or 90),
+        end_date=_payload_end_date(context.payload),
+        output_root=context.payload.get("output_root"),
+    )
+    context.add_artifact(str(manifest.get("manifest_path") or ""))
+    status = str(manifest.get("quality_status") or manifest.get("status") or "partial")
+    return {"ok": status == "ok", "status": status, "manifest": manifest, "artifacts": [manifest.get("manifest_path")]}
+
+
+def handle_analytics_export_backtest_runs(context: TaskContext) -> dict[str, Any]:
+    manifest = export_backtest_runs_parquet(
+        context.db,
+        days=int(context.payload.get("days") or 180),
+        end_date=_payload_end_date(context.payload),
+        output_root=context.payload.get("output_root"),
+    )
+    context.add_artifact(str(manifest.get("manifest_path") or ""))
+    status = str(manifest.get("quality_status") or manifest.get("status") or "partial")
+    return {"ok": status == "ok", "status": status, "manifest": manifest, "artifacts": [manifest.get("manifest_path")]}
+
+
+def handle_analytics_export_backtest_trades(context: TaskContext) -> dict[str, Any]:
+    manifest = export_backtest_trades_parquet(
+        context.db,
+        days=int(context.payload.get("days") or 180),
+        end_date=_payload_end_date(context.payload),
+        output_root=context.payload.get("output_root"),
+    )
+    context.add_artifact(str(manifest.get("manifest_path") or ""))
+    status = str(manifest.get("quality_status") or manifest.get("status") or "partial")
+    return {"ok": status == "ok", "status": status, "manifest": manifest, "artifacts": [manifest.get("manifest_path")]}
+
+
+def handle_analytics_export_backtest_daily_snapshots(context: TaskContext) -> dict[str, Any]:
+    manifest = export_backtest_daily_snapshots_parquet(
+        context.db,
+        days=int(context.payload.get("days") or 180),
+        end_date=_payload_end_date(context.payload),
+        output_root=context.payload.get("output_root"),
+    )
+    context.add_artifact(str(manifest.get("manifest_path") or ""))
+    status = str(manifest.get("quality_status") or manifest.get("status") or "partial")
+    return {"ok": status == "ok", "status": status, "manifest": manifest, "artifacts": [manifest.get("manifest_path")]}
+
+
+def handle_analytics_export_analysis_logs(context: TaskContext) -> dict[str, Any]:
+    manifest = export_analysis_logs_parquet(
+        context.db,
+        days=int(context.payload.get("days") or 90),
+        end_date=_payload_end_date(context.payload),
+        output_root=context.payload.get("output_root"),
+    )
+    context.add_artifact(str(manifest.get("manifest_path") or ""))
+    status = str(manifest.get("quality_status") or manifest.get("status") or "partial")
+    return {"ok": status == "ok", "status": status, "manifest": manifest, "artifacts": [manifest.get("manifest_path")]}
+
+
+def handle_analytics_export_market_review_reports(context: TaskContext) -> dict[str, Any]:
+    manifest = export_market_review_reports_parquet(
+        context.db,
+        days=int(context.payload.get("days") or 90),
+        end_date=_payload_end_date(context.payload),
+        output_root=context.payload.get("output_root"),
+    )
+    context.add_artifact(str(manifest.get("manifest_path") or ""))
+    status = str(manifest.get("quality_status") or manifest.get("status") or "partial")
+    return {"ok": status == "ok", "status": status, "manifest": manifest, "artifacts": [manifest.get("manifest_path")]}
+
+
+def handle_analytics_export_paper_review_reports(context: TaskContext) -> dict[str, Any]:
+    manifest = export_paper_review_reports_parquet(
+        context.db,
+        days=int(context.payload.get("days") or 90),
+        end_date=_payload_end_date(context.payload),
+        output_root=context.payload.get("output_root"),
+    )
+    context.add_artifact(str(manifest.get("manifest_path") or ""))
+    status = str(manifest.get("quality_status") or manifest.get("status") or "partial")
+    return {"ok": status == "ok", "status": status, "manifest": manifest, "artifacts": [manifest.get("manifest_path")]}
 
 
 def handle_analytics_quality_check(context: TaskContext) -> dict[str, Any]:

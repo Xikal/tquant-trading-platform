@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import logging
+import threading
+import time
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
@@ -64,11 +67,14 @@ from app.core.database import get_db
 from sqlalchemy.orm import Session
 
 router = APIRouter(prefix="/market", dependencies=[Depends(get_current_user)])
+logger = logging.getLogger(__name__)
 market_data = MarketDataService()
 sector_etf_t0_service = SectorEtfT0Service(market_data=market_data)
 intraday_anomaly_service = IntradayAnomalyService(market_data=market_data)
 intraday_key_level_service = IntradayKeyLevelService(market_data=market_data)
 paired_hedge_research_service = PairedHedgeResearchService(market_data=market_data)
+_market_pulse_enqueue_lock = threading.Lock()
+_market_pulse_enqueue_deadline = 0.0
 
 
 @router.get("/breadth", response_model=MarketBreadthResponse)
@@ -100,7 +106,7 @@ def market_pulse(
 ) -> IntradayMarketPulse:
     pulse, needs_refresh = latest_pulse_or_placeholder(db, trade_date=beijing_today().isoformat())
     if needs_refresh or refresh in {"async", "sync"}:
-        _enqueue_market_pulse_refresh(db, reason=f"market_pulse_{refresh}")
+        _enqueue_market_pulse_refresh_async(reason=f"market_pulse_{refresh}")
     return pulse
 
 
@@ -134,6 +140,39 @@ def _enqueue_market_pulse_refresh(db: Session, *, reason: str) -> None:
         )
     except Exception:
         pass
+
+
+def _enqueue_market_pulse_refresh_async(*, reason: str) -> bool:
+    global _market_pulse_enqueue_deadline
+    now = time.monotonic()
+    with _market_pulse_enqueue_lock:
+        if _market_pulse_enqueue_deadline > now:
+            return False
+        _market_pulse_enqueue_deadline = now + 30.0
+
+    thread = threading.Thread(
+        target=_enqueue_market_pulse_refresh_with_new_session,
+        kwargs={"reason": reason},
+        daemon=True,
+        name="market-pulse-refresh-enqueue",
+    )
+    thread.start()
+    return True
+
+
+def _enqueue_market_pulse_refresh_with_new_session(*, reason: str) -> None:
+    try:
+        from app.core.database import SessionLocal
+
+        with SessionLocal() as db:
+            _enqueue_market_pulse_refresh(db, reason=reason)
+            db.commit()
+    except Exception:
+        logger.warning("market pulse refresh enqueue failed", exc_info=True)
+    finally:
+        global _market_pulse_enqueue_deadline
+        with _market_pulse_enqueue_lock:
+            _market_pulse_enqueue_deadline = 0.0
 
 
 @router.get("/pulse/history", response_model=MarketPulseHistoryResponse)

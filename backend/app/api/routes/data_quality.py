@@ -3,14 +3,15 @@ from __future__ import annotations
 import json
 from datetime import date
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.api.routes.frontend_next_audit import record_frontend_next_audit
 from app.core.admin_auth import require_admin_auth
 from app.core.auth import get_current_user
 from app.core.database import get_db
-from app.models.entities import DataQualitySnapshot, DataRepairAudit
+from app.models.entities import DataQualitySnapshot, DataRepairAudit, User
 from app.models.schema_defs.phase4 import RuntimeTaskCreate, RuntimeTaskOut
 from app.services.data_quality.coverage import build_data_quality_coverage
 from app.services.data_quality.schemas import (
@@ -76,8 +77,10 @@ def get_data_quality_coverage(
 
 @router.post("/backfill", response_model=RuntimeTaskOut)
 def enqueue_data_quality_backfill(
+    request: Request,
     payload: DataQualityBackfillRequest,
     _: None = Depends(require_admin_auth),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> RuntimeTaskOut:
     dataset_key = _normalize_filter(payload.dataset_key, SUPPORTED_DATASETS)
@@ -90,7 +93,7 @@ def enqueue_data_quality_backfill(
         "start_date": payload.start_date.isoformat(),
         "end_date": payload.end_date.isoformat(),
     }
-    return RuntimeTaskQueue(db).enqueue(
+    task = RuntimeTaskQueue(db).enqueue(
         RuntimeTaskCreate(
             task_type="data_quality_backfill",
             payload=task_payload,
@@ -99,6 +102,17 @@ def enqueue_data_quality_backfill(
             max_attempts=2,
         )
     )
+    audit_id = record_frontend_next_audit(
+        db,
+        request=request,
+        operation="frontend_next.data_quality_backfill",
+        user=current_user,
+        resource_type="runtime_task",
+        resource_id=task.id,
+        detail={"task_id": task.id, "task_type": task.task_type, "scope": task_payload},
+    )
+    db.commit()
+    return task.model_copy(update={"audit_id": audit_id})
 
 
 @router.get("/trade-gate", response_model=TradeDataGateResponse)
@@ -117,8 +131,10 @@ def get_runtime_fallback_status(db: Session = Depends(get_db)) -> RuntimeFallbac
 
 @router.post("/repair", response_model=RuntimeTaskOut)
 def enqueue_data_repair(
+    request: Request,
     payload: DataRepairRunRequest,
     _: None = Depends(require_admin_auth),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> RuntimeTaskOut:
     dataset_key = _normalize_filter(payload.dataset_key, SUPPORTED_DATASETS)
@@ -133,7 +149,7 @@ def enqueue_data_repair(
     if payload.backup_dir.strip():
         task_payload["backup_dir"] = payload.backup_dir.strip()
     idempotency_key = f"data_repair_run:{dataset_key}:{'dry_run' if dry_run else 'apply'}:{date.today().isoformat()}"
-    return RuntimeTaskQueue(db).enqueue(
+    task = RuntimeTaskQueue(db).enqueue(
         RuntimeTaskCreate(
             task_type="data_repair_run",
             payload=task_payload,
@@ -142,6 +158,17 @@ def enqueue_data_repair(
             max_attempts=1 if not dry_run else 3,
         )
     )
+    audit_id = record_frontend_next_audit(
+        db,
+        request=request,
+        operation="frontend_next.data_quality_repair",
+        user=current_user,
+        resource_type="runtime_task",
+        resource_id=task.id,
+        detail={"task_id": task.id, "task_type": task.task_type, "dry_run": dry_run, "scope": task_payload},
+    )
+    db.commit()
+    return task.model_copy(update={"audit_id": audit_id})
 
 
 def _snapshot_out(row: DataQualitySnapshot) -> DataQualitySnapshotOut:

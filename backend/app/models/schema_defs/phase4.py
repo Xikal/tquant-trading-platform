@@ -115,6 +115,10 @@ class RuntimeTaskCreate(BaseModel):
     max_attempts: int = Field(default=3, ge=1, le=10)
 
 
+class RuntimeTaskCancelRequest(BaseModel):
+    reason: str = Field(default="", max_length=240)
+
+
 class RuntimeTaskEventOut(BaseModel):
     id: int
     task_id: int
@@ -128,6 +132,7 @@ class RuntimeTaskOut(BaseModel):
     id: int
     task_type: str
     status: str
+    audit_id: int | None = None
     priority: int = 100
     payload: dict[str, Any] = Field(default_factory=dict)
     result: dict[str, Any] = Field(default_factory=dict)
@@ -168,8 +173,13 @@ class RuntimeTaskSummaryResponse(BaseModel):
     longest_wait_seconds: int | None = None
     oldest_queued_at: datetime | None = None
     running_count: int = 0
+    low_priority_tasks_paused: bool = False
+    paused_task_types: list[str] = Field(default_factory=list)
+    paused_queued: int = 0
+    claimable_queued: int = 0
     status_counts: list[RuntimeTaskStatusCountOut] = Field(default_factory=list)
     task_type_counts: list[RuntimeTaskTypeCountOut] = Field(default_factory=list)
+    paused_task_type_counts: list[RuntimeTaskTypeCountOut] = Field(default_factory=list)
 
 
 class RuntimeTaskWorkerOut(BaseModel):

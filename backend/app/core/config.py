@@ -48,7 +48,37 @@ class AppSettings(BaseSettings):
     runtime_background_jobs_enabled: bool = False
     runtime_background_jobs_on_sqlite: bool = True
     runtime_background_role: str = "scheduler"
+    runtime_background_compact_mode_enabled: bool = False
+    runtime_startup_cache_prewarm_enabled: bool = True
+    runtime_startup_history_prewarm_enabled: bool = True
+    runtime_low_buy_full_scan_interval_seconds: int = 60 * 60
+    runtime_watchlist_refresh_interval_seconds: int = 45
+    runtime_market_regime_refresh_interval_seconds: int = 5 * 60
+    runtime_quote_cache_refresh_interval_seconds: int = 30
+    runtime_hourly_market_snapshot_interval_seconds: int = 60
+    runtime_materialization_refresh_interval_seconds: int = 300
+    runtime_daily_bar_refresh_interval_seconds: int = 300
+    runtime_latest_data_watchdog_interval_seconds: int = 300
+    runtime_market_review_interval_seconds: int = 300
+    runtime_paper_perf_archive_interval_seconds: int = 300
+    runtime_agent_daily_report_interval_seconds: int = 300
     runtime_worker_poll_interval_seconds: float = 5.0
+    runtime_low_priority_tasks_paused: bool = False
+    runtime_low_priority_task_types: str = (
+        "analytics_export_daily_bars,analytics_export_strategy_tracking_snapshots,"
+        "analytics_export_key_level_snapshots,analytics_export_low_buy_result_snapshots,"
+        "analytics_export_backtest_runs,analytics_export_backtest_trades,"
+        "analytics_export_backtest_daily_snapshots,"
+        "analytics_export_analysis_logs,analytics_export_market_review_reports,"
+        "analytics_export_paper_review_reports,"
+        "strategy_24m_duckdb_report,decision_context_24m_report,portfolio_execution_24m_report,"
+        "backtest_all_strategies_24m,data_backfill_24m,data_quality_backfill,data_repair_run,"
+        "low_buy_execution_backtest,legacy_research_backtest,etf_t0_minute_backtest,"
+        "etf_t0_research_report,backtest_portfolio_optimization,backtest_position_policy_research,"
+        "paper_smart_t_backtest,paper_backtest_comparison,trading_experience_limit_up_backtest,"
+        "ml_signal_build_samples,ml_signal_train,ml_signal_incremental_train,"
+        "factor_mining_iterate,factor_mining_evaluate,factor_mining_monthly"
+    )
     decision_context_enabled: bool = True
     market_gate_production_enabled: bool = True
     sector_leader_gate_production_enabled: bool = True
@@ -88,6 +118,8 @@ class AppSettings(BaseSettings):
     schema_compat_repair_enabled: bool = False
     schema_compat_verify_on_startup: bool = False
     legacy_route_compat_enabled: bool = False
+    frontend_next_monitor_cutover_enabled: bool = False
+    frontend_next_cutover_paths: str = ""
     max_request_body_bytes: int = 1_048_576
     structured_logs: bool = False
     tquant_market_service_url: str = ""
@@ -244,6 +276,9 @@ class AppSettings(BaseSettings):
     strategy_validation_monthly_enabled: bool = True
     analytics_24m_report_schedule_enabled: bool = False
     analytics_24m_report_interval_hours: int = 24
+    backtest_parquet_daily_bars_enabled: bool = False
+    backtest_parquet_daily_bars_fallback_to_mysql: bool = True
+    backtest_parquet_daily_bars_manifest: str = "latest"
     strategy_validation_monthly_lookback_days: int = 252
     strategy_validation_monthly_max_signals_per_day: int = 8
     evolution_scheduler_weekday: int = 4

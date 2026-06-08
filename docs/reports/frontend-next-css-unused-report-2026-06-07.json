@@ -1,0 +1,3788 @@
+{
+  "generated_at": "2026-06-08T03:33:24.854Z",
+  "summary": {
+    "css_files": 29,
+    "code_files": 130,
+    "unique_class_selectors": 1332,
+    "referenced_selectors": 790,
+    "candidate_unused_selectors": 112,
+    "known_dynamic_or_legacy_selectors": 597
+  },
+  "candidate_unused_selectors": [
+    {
+      "selector": "analysis-stat-cell__value--warn",
+      "file": "src/features/analysis/analysisSlice.css",
+      "referenced": false,
+      "risk": "modifier",
+      "files": [
+        "src/features/analysis/analysisSlice.css"
+      ]
+    },
+    {
+      "selector": "analysis-warning",
+      "file": "src/features/analysis/analysisSlice.css",
+      "referenced": false,
+      "risk": "candidate",
+      "files": [
+        "src/features/analysis/analysisSlice.css"
+      ]
+    },
+    {
+      "selector": "backtest-overview-grid",
+      "file": "src/shared/styles/legacy-solid-adapter.css",
+      "referenced": false,
+      "risk": "candidate",
+      "files": [
+        "src/shared/styles/legacy-solid-adapter.css"
+      ]
+    },
+    {
+      "selector": "backtest-submit-grid",
+      "file": "src/shared/styles/legacy-solid-adapter.css",
+      "referenced": false,
+      "risk": "candidate",
+      "files": [
+        "src/shared/styles/legacy-solid-adapter.css"
+      ]
+    },
+    {
+      "selector": "data-console-ops-grid",
+      "file": "src/shared/styles/legacy-solid-adapter.css",
+      "referenced": false,
+      "risk": "candidate",
+      "files": [
+        "src/shared/styles/legacy-solid-adapter.css"
+      ]
+    },
+    {
+      "selector": "data-provider-tile__dot--danger",
+      "file": "src/features/data-console/data-console-slice.css",
+      "referenced": false,
+      "risk": "modifier",
+      "files": [
+        "src/features/data-console/data-console-slice.css"
+      ]
+    },
+    {
+      "selector": "data-provider-tile__dot--ok",
+      "file": "src/features/data-console/data-console-slice.css",
+      "referenced": false,
+      "risk": "modifier",
+      "files": [
+        "src/features/data-console/data-console-slice.css"
+      ]
+    },
+    {
+      "selector": "data-terminal-card--ok",
+      "file": "src/features/data-console/data-console-slice.css",
+      "referenced": false,
+      "risk": "modifier",
+      "files": [
+        "src/features/data-console/data-console-slice.css"
+      ]
+    },
+    {
+      "selector": "data-terminal-modal--success",
+      "file": "src/features/data-console/data-console-slice.css",
+      "referenced": false,
+      "risk": "modifier",
+      "files": [
+        "src/features/data-console/data-console-slice.css"
+      ]
+    },
+    {
+      "selector": "data-terminal-status--ok",
+      "file": "src/features/data-console/data-console-slice.css",
+      "referenced": false,
+      "risk": "modifier",
+      "files": [
+        "src/features/data-console/data-console-slice.css"
+      ]
+    },
+    {
+      "selector": "market-sentiment-tone--amber",
+      "file": "src/features/monitor-market/monitor-market.css",
+      "referenced": false,
+      "risk": "modifier",
+      "files": [
+        "src/features/monitor-market/monitor-market.css"
+      ]
+    },
+    {
+      "selector": "market-sentiment-tone--emerald",
+      "file": "src/features/monitor-market/monitor-market.css",
+      "referenced": false,
+      "risk": "modifier",
+      "files": [
+        "src/features/monitor-market/monitor-market.css"
+      ]
+    },
+    {
+      "selector": "market-sentiment-tone--rose",
+      "file": "src/features/monitor-market/monitor-market.css",
+      "referenced": false,
+      "risk": "modifier",
+      "files": [
+        "src/features/monitor-market/monitor-market.css"
+      ]
+    },
+    {
+      "selector": "monitor-badge--amber",
+      "file": "src/features/monitor-action/monitor-action.css",
+      "referenced": false,
+      "risk": "modifier",
+      "files": [
+        "src/features/monitor-action/monitor-action.css"
+      ]
+    },
+    {
+      "selector": "monitor-badge--green",
+      "file": "src/features/monitor-action/monitor-action.css",
+      "referenced": false,
+      "risk": "modifier",
+      "files": [
+        "src/features/monitor-action/monitor-action.css"
+      ]
+    },
+    {
+      "selector": "monitor-badge--red",
+      "file": "src/features/monitor-action/monitor-action.css",
+      "referenced": false,
+      "risk": "modifier",
+      "files": [
+        "src/features/monitor-action/monitor-action.css"
+      ]
+    },
+    {
+      "selector": "monitor-btn--soft-blue",
+      "file": "src/features/monitor-action/monitor-action.css",
+      "referenced": false,
+      "risk": "modifier",
+      "files": [
+        "src/features/monitor-action/monitor-action.css"
+      ]
+    },
+    {
+      "selector": "monitor-icon-chip--blue",
+      "file": "src/features/monitor-action/monitor-action.css",
+      "referenced": false,
+      "risk": "modifier",
+      "files": [
+        "src/features/monitor-action/monitor-action.css"
+      ]
+    },
+    {
+      "selector": "monitor-market-page__split",
+      "file": "src/shared/styles/legacy-solid-adapter.css",
+      "referenced": false,
+      "risk": "candidate",
+      "files": [
+        "src/shared/styles/legacy-solid-adapter.css"
+      ]
+    },
+    {
+      "selector": "monitor-metric--amber",
+      "file": "src/features/monitor-action/monitor-action.css",
+      "referenced": false,
+      "risk": "modifier",
+      "files": [
+        "src/features/monitor-action/monitor-action.css"
+      ]
+    },
+    {
+      "selector": "monitor-metric--blue",
+      "file": "src/features/monitor-action/monitor-action.css",
+      "referenced": false,
+      "risk": "modifier",
+      "files": [
+        "src/features/monitor-action/monitor-action.css"
+      ]
+    },
+    {
+      "selector": "monitor-metric--red",
+      "file": "src/features/monitor-action/monitor-action.css",
+      "referenced": false,
+      "risk": "modifier",
+      "files": [
+        "src/features/monitor-action/monitor-action.css"
+      ]
+    },
+    {
+      "selector": "monitor-mini-badge--amber",
+      "file": "src/features/monitor-action/monitor-action.css",
+      "referenced": false,
+      "risk": "modifier",
+      "files": [
+        "src/features/monitor-action/monitor-action.css"
+      ]
+    },
+    {
+      "selector": "monitor-mini-badge--green",
+      "file": "src/features/monitor-action/monitor-action.css",
+      "referenced": false,
+      "risk": "modifier",
+      "files": [
+        "src/features/monitor-action/monitor-action.css"
+      ]
+    },
+    {
+      "selector": "monitor-mini-badge--red",
+      "file": "src/features/monitor-action/monitor-action.css",
+      "referenced": false,
+      "risk": "modifier",
+      "files": [
+        "src/features/monitor-action/monitor-action.css"
+      ]
+    },
+    {
+      "selector": "monitor-strategy-tabs",
+      "file": "src/features/monitor-action/monitor-action.css",
+      "referenced": false,
+      "risk": "candidate",
+      "files": [
+        "src/features/monitor-action/monitor-action.css"
+      ]
+    },
+    {
+      "selector": "monitor-text--amber",
+      "file": "src/features/monitor-action/monitor-action.css",
+      "referenced": false,
+      "risk": "modifier",
+      "files": [
+        "src/features/monitor-action/monitor-action.css"
+      ]
+    },
+    {
+      "selector": "monitor-toast--ok",
+      "file": "src/features/monitor-action/monitor-action.css",
+      "referenced": false,
+      "risk": "modifier",
+      "files": [
+        "src/features/monitor-action/monitor-action.css"
+      ]
+    },
+    {
+      "selector": "monitor-toast--warn",
+      "file": "src/features/monitor-action/monitor-action.css",
+      "referenced": false,
+      "risk": "modifier",
+      "files": [
+        "src/features/monitor-action/monitor-action.css"
+      ]
+    },
+    {
+      "selector": "monitor-warning--amber",
+      "file": "src/features/monitor-action/monitor-action.css",
+      "referenced": false,
+      "risk": "modifier",
+      "files": [
+        "src/features/monitor-action/monitor-action.css"
+      ]
+    },
+    {
+      "selector": "monitor-warning--red",
+      "file": "src/features/monitor-action/monitor-action.css",
+      "referenced": false,
+      "risk": "modifier",
+      "files": [
+        "src/features/monitor-action/monitor-action.css"
+      ]
+    },
+    {
+      "selector": "next-slice-grid",
+      "file": "src/shared/styles/legacy-solid-adapter.css",
+      "referenced": false,
+      "risk": "candidate",
+      "files": [
+        "src/shared/styles/legacy-solid-adapter.css"
+      ]
+    },
+    {
+      "selector": "paper-account-conclusion",
+      "file": "src/features/paper/paper-page.css",
+      "referenced": false,
+      "risk": "candidate",
+      "files": [
+        "src/features/paper/paper-page.css"
+      ]
+    },
+    {
+      "selector": "paper-conclusion-panel",
+      "file": "src/shared/styles/legacy-solid-adapter.css",
+      "referenced": false,
+      "risk": "candidate",
+      "files": [
+        "src/shared/styles/legacy-solid-adapter.css"
+      ]
+    },
+    {
+      "selector": "paper-console-metric--down",
+      "file": "src/features/paper/paper-page.css",
+      "referenced": false,
+      "risk": "modifier",
+      "files": [
+        "src/features/paper/paper-page.css"
+      ]
+    },
+    {
+      "selector": "paper-console-metric--negative",
+      "file": "src/features/paper/paper-page.css",
+      "referenced": false,
+      "risk": "modifier",
+      "files": [
+        "src/features/paper/paper-page.css"
+      ]
+    },
+    {
+      "selector": "paper-console-metric--positive",
+      "file": "src/features/paper/paper-page.css",
+      "referenced": false,
+      "risk": "modifier",
+      "files": [
+        "src/features/paper/paper-page.css"
+      ]
+    },
+    {
+      "selector": "paper-console-metric--up",
+      "file": "src/features/paper/paper-page.css",
+      "referenced": false,
+      "risk": "modifier",
+      "files": [
+        "src/features/paper/paper-page.css"
+      ]
+    },
+    {
+      "selector": "paper-console-position--negative",
+      "file": "src/features/paper/paper-page.css",
+      "referenced": false,
+      "risk": "modifier",
+      "files": [
+        "src/features/paper/paper-page.css"
+      ]
+    },
+    {
+      "selector": "paper-console-position--neutral",
+      "file": "src/features/paper/paper-page.css",
+      "referenced": false,
+      "risk": "modifier",
+      "files": [
+        "src/features/paper/paper-page.css"
+      ]
+    },
+    {
+      "selector": "paper-console-position--positive",
+      "file": "src/features/paper/paper-page.css",
+      "referenced": false,
+      "risk": "modifier",
+      "files": [
+        "src/features/paper/paper-page.css"
+      ]
+    },
+    {
+      "selector": "paper-main-column",
+      "file": "src/features/paper/paper-page.css",
+      "referenced": false,
+      "risk": "candidate",
+      "files": [
+        "src/features/paper/paper-page.css"
+      ]
+    },
+    {
+      "selector": "paper-mecha-action-panel__api-visibility",
+      "file": "src/features/paper/paper-page.css",
+      "referenced": false,
+      "risk": "candidate",
+      "files": [
+        "src/features/paper/paper-page.css"
+      ]
+    },
+    {
+      "selector": "paper-mini-table",
+      "file": "src/features/paper/paper-page.css",
+      "referenced": false,
+      "risk": "candidate",
+      "files": [
+        "src/features/paper/paper-page.css"
+      ]
+    },
+    {
+      "selector": "paper-mini-table__row",
+      "file": "src/features/paper/paper-page.css",
+      "referenced": false,
+      "risk": "candidate",
+      "files": [
+        "src/features/paper/paper-page.css"
+      ]
+    },
+    {
+      "selector": "paper-overview-card--wide",
+      "file": "src/features/paper/paper-page.css",
+      "referenced": false,
+      "risk": "modifier",
+      "files": [
+        "src/features/paper/paper-page.css"
+      ]
+    },
+    {
+      "selector": "paper-overview-grid",
+      "file": "src/features/paper/paper-page.css",
+      "referenced": false,
+      "risk": "candidate",
+      "files": [
+        "src/features/paper/paper-page.css"
+      ]
+    },
+    {
+      "selector": "paper-overview-split",
+      "file": "src/features/paper/paper-page.css",
+      "referenced": false,
+      "risk": "candidate",
+      "files": [
+        "src/features/paper/paper-page.css"
+      ]
+    },
+    {
+      "selector": "paper-segment",
+      "file": "src/features/paper/paper-page.css",
+      "referenced": false,
+      "risk": "candidate",
+      "files": [
+        "src/features/paper/paper-page.css"
+      ]
+    },
+    {
+      "selector": "paper-segment__item",
+      "file": "src/features/paper/paper-page.css",
+      "referenced": false,
+      "risk": "candidate",
+      "files": [
+        "src/features/paper/paper-page.css"
+      ]
+    },
+    {
+      "selector": "paper-segment__item--active",
+      "file": "src/features/paper/paper-page.css",
+      "referenced": false,
+      "risk": "modifier",
+      "files": [
+        "src/features/paper/paper-page.css"
+      ]
+    },
+    {
+      "selector": "paper-workspace-grid",
+      "file": "src/features/paper/paper-page.css",
+      "referenced": false,
+      "risk": "candidate",
+      "files": [
+        "src/features/paper/paper-page.css",
+        "src/shared/styles/legacy-solid-adapter.css"
+      ]
+    },
+    {
+      "selector": "playbook-btn--ghost",
+      "file": "src/features/playbook/playbookSlice.css",
+      "referenced": false,
+      "risk": "modifier",
+      "files": [
+        "src/features/playbook/playbookSlice.css"
+      ]
+    },
+    {
+      "selector": "playbook-param-card__suffix--ok",
+      "file": "src/features/playbook/playbookSlice.css",
+      "referenced": false,
+      "risk": "modifier",
+      "files": [
+        "src/features/playbook/playbookSlice.css"
+      ]
+    },
+    {
+      "selector": "playbook-param-card__suffix--risk",
+      "file": "src/features/playbook/playbookSlice.css",
+      "referenced": false,
+      "risk": "modifier",
+      "files": [
+        "src/features/playbook/playbookSlice.css"
+      ]
+    },
+    {
+      "selector": "playbook-summary-grid",
+      "file": "src/shared/styles/legacy-solid-adapter.css",
+      "referenced": false,
+      "risk": "candidate",
+      "files": [
+        "src/shared/styles/legacy-solid-adapter.css"
+      ]
+    },
+    {
+      "selector": "settings-body",
+      "file": "src/shared/styles/legacy-solid-adapter.css",
+      "referenced": false,
+      "risk": "candidate",
+      "files": [
+        "src/shared/styles/legacy-solid-adapter.css"
+      ]
+    },
+    {
+      "selector": "settings-command-badge--danger",
+      "file": "src/features/settings/settings-slice.css",
+      "referenced": false,
+      "risk": "modifier",
+      "files": [
+        "src/features/settings/settings-slice.css"
+      ]
+    },
+    {
+      "selector": "settings-command-badge--ok",
+      "file": "src/features/settings/settings-slice.css",
+      "referenced": false,
+      "risk": "modifier",
+      "files": [
+        "src/features/settings/settings-slice.css"
+      ]
+    },
+    {
+      "selector": "settings-command-badge--warn",
+      "file": "src/features/settings/settings-slice.css",
+      "referenced": false,
+      "risk": "modifier",
+      "files": [
+        "src/features/settings/settings-slice.css"
+      ]
+    },
+    {
+      "selector": "settings-command-card--amber",
+      "file": "src/features/settings/settings-slice.css",
+      "referenced": false,
+      "risk": "modifier",
+      "files": [
+        "src/features/settings/settings-slice.css"
+      ]
+    },
+    {
+      "selector": "settings-command-card--emerald",
+      "file": "src/features/settings/settings-slice.css",
+      "referenced": false,
+      "risk": "modifier",
+      "files": [
+        "src/features/settings/settings-slice.css"
+      ]
+    },
+    {
+      "selector": "settings-command-card--rose",
+      "file": "src/features/settings/settings-slice.css",
+      "referenced": false,
+      "risk": "modifier",
+      "files": [
+        "src/features/settings/settings-slice.css"
+      ]
+    },
+    {
+      "selector": "settings-command-factor__bar--amber",
+      "file": "src/features/settings/settings-slice.css",
+      "referenced": false,
+      "risk": "modifier",
+      "files": [
+        "src/features/settings/settings-slice.css"
+      ]
+    },
+    {
+      "selector": "settings-command-factor__bar--blue",
+      "file": "src/features/settings/settings-slice.css",
+      "referenced": false,
+      "risk": "modifier",
+      "files": [
+        "src/features/settings/settings-slice.css"
+      ]
+    },
+    {
+      "selector": "settings-command-factor__bar--emerald",
+      "file": "src/features/settings/settings-slice.css",
+      "referenced": false,
+      "risk": "modifier",
+      "files": [
+        "src/features/settings/settings-slice.css"
+      ]
+    },
+    {
+      "selector": "settings-command-factor__bar--indigo",
+      "file": "src/features/settings/settings-slice.css",
+      "referenced": false,
+      "risk": "modifier",
+      "files": [
+        "src/features/settings/settings-slice.css"
+      ]
+    },
+    {
+      "selector": "settings-command-factor__bar--rose",
+      "file": "src/features/settings/settings-slice.css",
+      "referenced": false,
+      "risk": "modifier",
+      "files": [
+        "src/features/settings/settings-slice.css"
+      ]
+    },
+    {
+      "selector": "settings-command-model-box--emerald",
+      "file": "src/features/settings/settings-slice.css",
+      "referenced": false,
+      "risk": "modifier",
+      "files": [
+        "src/features/settings/settings-slice.css"
+      ]
+    },
+    {
+      "selector": "settings-command-toast--error",
+      "file": "src/features/settings/settings-slice.css",
+      "referenced": false,
+      "risk": "modifier",
+      "files": [
+        "src/features/settings/settings-slice.css"
+      ]
+    },
+    {
+      "selector": "settings-command-toast--info",
+      "file": "src/features/settings/settings-slice.css",
+      "referenced": false,
+      "risk": "modifier",
+      "files": [
+        "src/features/settings/settings-slice.css"
+      ]
+    },
+    {
+      "selector": "settings-command-toast--success",
+      "file": "src/features/settings/settings-slice.css",
+      "referenced": false,
+      "risk": "modifier",
+      "files": [
+        "src/features/settings/settings-slice.css"
+      ]
+    },
+    {
+      "selector": "settings-section-grid",
+      "file": "src/shared/styles/legacy-solid-adapter.css",
+      "referenced": false,
+      "risk": "candidate",
+      "files": [
+        "src/shared/styles/legacy-solid-adapter.css"
+      ]
+    },
+    {
+      "selector": "side-buy",
+      "file": "src/features/backtest/backtest-slice.css",
+      "referenced": false,
+      "risk": "candidate",
+      "files": [
+        "src/features/backtest/backtest-slice.css"
+      ]
+    },
+    {
+      "selector": "side-other",
+      "file": "src/features/backtest/backtest-slice.css",
+      "referenced": false,
+      "risk": "candidate",
+      "files": [
+        "src/features/backtest/backtest-slice.css"
+      ]
+    },
+    {
+      "selector": "side-sell",
+      "file": "src/features/backtest/backtest-slice.css",
+      "referenced": false,
+      "risk": "candidate",
+      "files": [
+        "src/features/backtest/backtest-slice.css"
+      ]
+    },
+    {
+      "selector": "strategy-clean-badge--amber",
+      "file": "src/features/strategy-tracking/strategy-tracking.css",
+      "referenced": false,
+      "risk": "modifier",
+      "files": [
+        "src/features/strategy-tracking/strategy-tracking.css"
+      ]
+    },
+    {
+      "selector": "strategy-clean-badge--blue",
+      "file": "src/features/strategy-tracking/strategy-tracking.css",
+      "referenced": false,
+      "risk": "modifier",
+      "files": [
+        "src/features/strategy-tracking/strategy-tracking.css"
+      ]
+    },
+    {
+      "selector": "strategy-clean-badge--green",
+      "file": "src/features/strategy-tracking/strategy-tracking.css",
+      "referenced": false,
+      "risk": "modifier",
+      "files": [
+        "src/features/strategy-tracking/strategy-tracking.css"
+      ]
+    },
+    {
+      "selector": "strategy-clean-metric-box--amber",
+      "file": "src/features/strategy-tracking/strategy-tracking.css",
+      "referenced": false,
+      "risk": "modifier",
+      "files": [
+        "src/features/strategy-tracking/strategy-tracking.css"
+      ]
+    },
+    {
+      "selector": "strategy-clean-metric-box--green",
+      "file": "src/features/strategy-tracking/strategy-tracking.css",
+      "referenced": false,
+      "risk": "modifier",
+      "files": [
+        "src/features/strategy-tracking/strategy-tracking.css"
+      ]
+    },
+    {
+      "selector": "strategy-clean-metric-box--red",
+      "file": "src/features/strategy-tracking/strategy-tracking.css",
+      "referenced": false,
+      "risk": "modifier",
+      "files": [
+        "src/features/strategy-tracking/strategy-tracking.css"
+      ]
+    },
+    {
+      "selector": "strategy-clean-pill--amber",
+      "file": "src/features/strategy-tracking/strategy-tracking.css",
+      "referenced": false,
+      "risk": "modifier",
+      "files": [
+        "src/features/strategy-tracking/strategy-tracking.css"
+      ]
+    },
+    {
+      "selector": "strategy-clean-pill--blue",
+      "file": "src/features/strategy-tracking/strategy-tracking.css",
+      "referenced": false,
+      "risk": "modifier",
+      "files": [
+        "src/features/strategy-tracking/strategy-tracking.css"
+      ]
+    },
+    {
+      "selector": "strategy-clean-pill--green",
+      "file": "src/features/strategy-tracking/strategy-tracking.css",
+      "referenced": false,
+      "risk": "modifier",
+      "files": [
+        "src/features/strategy-tracking/strategy-tracking.css"
+      ]
+    },
+    {
+      "selector": "strategy-clean-pill--purple",
+      "file": "src/features/strategy-tracking/strategy-tracking.css",
+      "referenced": false,
+      "risk": "modifier",
+      "files": [
+        "src/features/strategy-tracking/strategy-tracking.css"
+      ]
+    },
+    {
+      "selector": "strategy-clean-text--amber",
+      "file": "src/features/strategy-tracking/strategy-tracking.css",
+      "referenced": false,
+      "risk": "modifier",
+      "files": [
+        "src/features/strategy-tracking/strategy-tracking.css"
+      ]
+    },
+    {
+      "selector": "strategy-clean-text--blue",
+      "file": "src/features/strategy-tracking/strategy-tracking.css",
+      "referenced": false,
+      "risk": "modifier",
+      "files": [
+        "src/features/strategy-tracking/strategy-tracking.css"
+      ]
+    },
+    {
+      "selector": "strategy-clean-text--green",
+      "file": "src/features/strategy-tracking/strategy-tracking.css",
+      "referenced": false,
+      "risk": "modifier",
+      "files": [
+        "src/features/strategy-tracking/strategy-tracking.css"
+      ]
+    },
+    {
+      "selector": "strategy-clean-text--red",
+      "file": "src/features/strategy-tracking/strategy-tracking.css",
+      "referenced": false,
+      "risk": "modifier",
+      "files": [
+        "src/features/strategy-tracking/strategy-tracking.css"
+      ]
+    },
+    {
+      "selector": "strategy-tracking-callout--danger",
+      "file": "src/features/strategy-tracking/strategy-tracking.css",
+      "referenced": false,
+      "risk": "modifier",
+      "files": [
+        "src/features/strategy-tracking/strategy-tracking.css"
+      ]
+    },
+    {
+      "selector": "strategy-tracking-callout--down",
+      "file": "src/features/strategy-tracking/strategy-tracking.css",
+      "referenced": false,
+      "risk": "modifier",
+      "files": [
+        "src/features/strategy-tracking/strategy-tracking.css"
+      ]
+    },
+    {
+      "selector": "strategy-tracking-callout--up",
+      "file": "src/features/strategy-tracking/strategy-tracking.css",
+      "referenced": false,
+      "risk": "modifier",
+      "files": [
+        "src/features/strategy-tracking/strategy-tracking.css"
+      ]
+    },
+    {
+      "selector": "strategy-tracking-callout--warn",
+      "file": "src/features/strategy-tracking/strategy-tracking.css",
+      "referenced": false,
+      "risk": "modifier",
+      "files": [
+        "src/features/strategy-tracking/strategy-tracking.css"
+      ]
+    },
+    {
+      "selector": "strategy-tracking-control-grid",
+      "file": "src/features/strategy-tracking/strategy-tracking.css",
+      "referenced": false,
+      "risk": "candidate",
+      "files": [
+        "src/features/strategy-tracking/strategy-tracking.css",
+        "src/shared/styles/legacy-solid-adapter.css"
+      ]
+    },
+    {
+      "selector": "strategy-tracking-control-panel",
+      "file": "src/features/strategy-tracking/strategy-tracking.css",
+      "referenced": false,
+      "risk": "candidate",
+      "files": [
+        "src/features/strategy-tracking/strategy-tracking.css"
+      ]
+    },
+    {
+      "selector": "strategy-tracking-filter-actions",
+      "file": "src/features/strategy-tracking/strategy-tracking.css",
+      "referenced": false,
+      "risk": "candidate",
+      "files": [
+        "src/features/strategy-tracking/strategy-tracking.css"
+      ]
+    },
+    {
+      "selector": "strategy-tracking-query-strip",
+      "file": "src/features/strategy-tracking/strategy-tracking.css",
+      "referenced": false,
+      "risk": "candidate",
+      "files": [
+        "src/features/strategy-tracking/strategy-tracking.css"
+      ]
+    },
+    {
+      "selector": "strategy-tracking-summary-metrics",
+      "file": "src/features/strategy-tracking/strategy-tracking.css",
+      "referenced": false,
+      "risk": "candidate",
+      "files": [
+        "src/features/strategy-tracking/strategy-tracking.css"
+      ]
+    },
+    {
+      "selector": "tone-amber",
+      "file": "src/features/backtest/backtest-slice.css",
+      "referenced": false,
+      "risk": "candidate",
+      "files": [
+        "src/features/backtest/backtest-slice.css"
+      ]
+    },
+    {
+      "selector": "tone-blue",
+      "file": "src/features/backtest/backtest-slice.css",
+      "referenced": false,
+      "risk": "candidate",
+      "files": [
+        "src/features/backtest/backtest-slice.css"
+      ]
+    },
+    {
+      "selector": "tone-green",
+      "file": "src/features/backtest/backtest-slice.css",
+      "referenced": false,
+      "risk": "candidate",
+      "files": [
+        "src/features/backtest/backtest-slice.css"
+      ]
+    },
+    {
+      "selector": "tone-indigo",
+      "file": "src/features/backtest/backtest-slice.css",
+      "referenced": false,
+      "risk": "candidate",
+      "files": [
+        "src/features/backtest/backtest-slice.css"
+      ]
+    },
+    {
+      "selector": "tone-purple",
+      "file": "src/features/backtest/backtest-slice.css",
+      "referenced": false,
+      "risk": "candidate",
+      "files": [
+        "src/features/backtest/backtest-slice.css"
+      ]
+    },
+    {
+      "selector": "tone-red",
+      "file": "src/features/backtest/backtest-slice.css",
+      "referenced": false,
+      "risk": "candidate",
+      "files": [
+        "src/features/backtest/backtest-slice.css"
+      ]
+    },
+    {
+      "selector": "tone-rose",
+      "file": "src/features/backtest/backtest-slice.css",
+      "referenced": false,
+      "risk": "candidate",
+      "files": [
+        "src/features/backtest/backtest-slice.css"
+      ]
+    },
+    {
+      "selector": "tone-slate",
+      "file": "src/features/backtest/backtest-slice.css",
+      "referenced": false,
+      "risk": "candidate",
+      "files": [
+        "src/features/backtest/backtest-slice.css"
+      ]
+    },
+    {
+      "selector": "tone-text-amber",
+      "file": "src/features/backtest/backtest-slice.css",
+      "referenced": false,
+      "risk": "candidate",
+      "files": [
+        "src/features/backtest/backtest-slice.css"
+      ]
+    },
+    {
+      "selector": "tone-text-blue",
+      "file": "src/features/backtest/backtest-slice.css",
+      "referenced": false,
+      "risk": "candidate",
+      "files": [
+        "src/features/backtest/backtest-slice.css"
+      ]
+    },
+    {
+      "selector": "tone-text-green",
+      "file": "src/features/backtest/backtest-slice.css",
+      "referenced": false,
+      "risk": "candidate",
+      "files": [
+        "src/features/backtest/backtest-slice.css"
+      ]
+    },
+    {
+      "selector": "tone-text-indigo",
+      "file": "src/features/backtest/backtest-slice.css",
+      "referenced": false,
+      "risk": "candidate",
+      "files": [
+        "src/features/backtest/backtest-slice.css"
+      ]
+    },
+    {
+      "selector": "tone-text-red",
+      "file": "src/features/backtest/backtest-slice.css",
+      "referenced": false,
+      "risk": "candidate",
+      "files": [
+        "src/features/backtest/backtest-slice.css"
+      ]
+    }
+  ],
+  "known_dynamic_or_legacy_selectors": [
+    {
+      "selector": "animate-core",
+      "file": "src/shared/styles/legacy-workspace/workspace-paper-mecha.css",
+      "referenced": true,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-paper-mecha.css"
+      ]
+    },
+    {
+      "selector": "animate-eye",
+      "file": "src/shared/styles/legacy-workspace/workspace-paper-mecha.css",
+      "referenced": true,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-paper-mecha.css"
+      ]
+    },
+    {
+      "selector": "ant-alert",
+      "file": "src/shared/styles/legacy-workspace/workspace-key-levels.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-key-levels.css",
+        "src/shared/styles/legacy-workspace/workspace.css"
+      ]
+    },
+    {
+      "selector": "ant-alert-description",
+      "file": "src/shared/styles/legacy-workspace/workspace-login-card.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-login-card.css"
+      ]
+    },
+    {
+      "selector": "ant-alert-message",
+      "file": "src/shared/styles/legacy-workspace/workspace-login-card.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-login-card.css"
+      ]
+    },
+    {
+      "selector": "ant-btn",
+      "file": "src/shared/styles/legacy-workspace/workspace-login-card.css",
+      "referenced": true,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-login-card.css",
+        "src/shared/styles/legacy-workspace/workspace-strategy-tracking.css",
+        "src/shared/styles/legacy-workspace/workspace.css"
+      ]
+    },
+    {
+      "selector": "ant-btn-default",
+      "file": "src/shared/styles/legacy-workspace/workspace-login-card.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-login-card.css"
+      ]
+    },
+    {
+      "selector": "ant-btn-primary",
+      "file": "src/shared/styles/legacy-workspace/workspace-login-card.css",
+      "referenced": true,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-login-card.css"
+      ]
+    },
+    {
+      "selector": "ant-card",
+      "file": "src/shared/styles/legacy-workspace/workspace-paper.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-paper.css",
+        "src/shared/styles/legacy-workspace/workspace.css"
+      ]
+    },
+    {
+      "selector": "ant-card-body",
+      "file": "src/shared/styles/legacy-workspace/workspace-login-card.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-login-card.css",
+        "src/shared/styles/legacy-workspace/workspace-login-motion.css",
+        "src/shared/styles/legacy-workspace/workspace-paper.css",
+        "src/shared/styles/legacy-workspace/workspace.css"
+      ]
+    },
+    {
+      "selector": "ant-card-extra",
+      "file": "src/shared/styles/legacy-workspace/workspace-paper.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-paper.css"
+      ]
+    },
+    {
+      "selector": "ant-card-head",
+      "file": "src/shared/styles/legacy-workspace/workspace-paper.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-paper.css",
+        "src/shared/styles/legacy-workspace/workspace.css"
+      ]
+    },
+    {
+      "selector": "ant-card-head-title",
+      "file": "src/shared/styles/legacy-workspace/workspace-paper.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-paper.css"
+      ]
+    },
+    {
+      "selector": "ant-card-small",
+      "file": "src/shared/styles/legacy-workspace/workspace.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace.css"
+      ]
+    },
+    {
+      "selector": "ant-checkbox-checked",
+      "file": "src/shared/styles/legacy-workspace/workspace-login-card.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-login-card.css"
+      ]
+    },
+    {
+      "selector": "ant-checkbox-inner",
+      "file": "src/shared/styles/legacy-workspace/workspace-login-card.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-login-card.css"
+      ]
+    },
+    {
+      "selector": "ant-checkbox-wrapper",
+      "file": "src/shared/styles/legacy-workspace/workspace-login-card.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-login-card.css"
+      ]
+    },
+    {
+      "selector": "ant-collapse",
+      "file": "src/shared/styles/legacy-workspace/workspace-key-levels.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-key-levels.css"
+      ]
+    },
+    {
+      "selector": "ant-collapse-content-box",
+      "file": "src/shared/styles/legacy-workspace/workspace-primitives-intro.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-primitives-intro.css"
+      ]
+    },
+    {
+      "selector": "ant-flex",
+      "file": "src/shared/styles/legacy-workspace/workspace.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace.css"
+      ]
+    },
+    {
+      "selector": "ant-form-item",
+      "file": "src/shared/styles/legacy-workspace/workspace.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace.css"
+      ]
+    },
+    {
+      "selector": "ant-form-item-label",
+      "file": "src/shared/styles/legacy-workspace/workspace-login-card.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-login-card.css"
+      ]
+    },
+    {
+      "selector": "ant-input",
+      "file": "src/shared/styles/legacy-workspace/workspace-login-card.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-login-card.css",
+        "src/shared/styles/legacy-workspace/workspace.css"
+      ]
+    },
+    {
+      "selector": "ant-input-focused",
+      "file": "src/shared/styles/legacy-workspace/workspace-login-card.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-login-card.css"
+      ]
+    },
+    {
+      "selector": "ant-input-number",
+      "file": "src/shared/styles/legacy-workspace/workspace.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace.css"
+      ]
+    },
+    {
+      "selector": "ant-input-password",
+      "file": "src/shared/styles/legacy-workspace/workspace-login-card.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-login-card.css"
+      ]
+    },
+    {
+      "selector": "ant-input-password-focused",
+      "file": "src/shared/styles/legacy-workspace/workspace-login-card.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-login-card.css"
+      ]
+    },
+    {
+      "selector": "ant-input-password-icon",
+      "file": "src/shared/styles/legacy-workspace/workspace-login-card.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-login-card.css"
+      ]
+    },
+    {
+      "selector": "ant-select",
+      "file": "src/shared/styles/legacy-workspace/workspace-strategy-tracking.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-strategy-tracking.css",
+        "src/shared/styles/legacy-workspace/workspace.css"
+      ]
+    },
+    {
+      "selector": "ant-space",
+      "file": "src/shared/styles/legacy-workspace/workspace-key-levels.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-key-levels.css",
+        "src/shared/styles/legacy-workspace/workspace.css"
+      ]
+    },
+    {
+      "selector": "ant-statistic",
+      "file": "src/shared/styles/legacy-workspace/workspace.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace.css"
+      ]
+    },
+    {
+      "selector": "ant-statistic-content",
+      "file": "src/shared/styles/legacy-workspace/workspace.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace.css"
+      ]
+    },
+    {
+      "selector": "ant-statistic-title",
+      "file": "src/shared/styles/legacy-workspace/workspace.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace.css"
+      ]
+    },
+    {
+      "selector": "ant-table",
+      "file": "src/shared/styles/legacy-workspace/workspace.css",
+      "referenced": true,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace.css"
+      ]
+    },
+    {
+      "selector": "ant-table-cell",
+      "file": "src/shared/styles/legacy-workspace/workspace-strategy-tracking.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-strategy-tracking.css",
+        "src/shared/styles/legacy-workspace/workspace.css"
+      ]
+    },
+    {
+      "selector": "ant-table-tbody",
+      "file": "src/shared/styles/legacy-workspace/workspace.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace.css"
+      ]
+    },
+    {
+      "selector": "ant-table-thead",
+      "file": "src/shared/styles/legacy-workspace/workspace.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace.css"
+      ]
+    },
+    {
+      "selector": "ant-table-wrapper",
+      "file": "src/shared/styles/legacy-workspace/workspace.css",
+      "referenced": true,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace.css"
+      ]
+    },
+    {
+      "selector": "ant-tabs-nav",
+      "file": "src/shared/styles/legacy-workspace/workspace-strategy-tracking.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-strategy-tracking.css",
+        "src/shared/styles/legacy-workspace/workspace.css"
+      ]
+    },
+    {
+      "selector": "ant-tabs-top",
+      "file": "src/shared/styles/legacy-workspace/workspace.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace.css"
+      ]
+    },
+    {
+      "selector": "ant-tag",
+      "file": "src/shared/styles/legacy-workspace/workspace-strategy-tracking.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-strategy-tracking.css"
+      ]
+    },
+    {
+      "selector": "ant-typography",
+      "file": "src/shared/styles/legacy-workspace/workspace-login-card.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-login-card.css",
+        "src/shared/styles/legacy-workspace/workspace-login-motion.css",
+        "src/shared/styles/legacy-workspace/workspace-strategy-tracking.css",
+        "src/shared/styles/legacy-workspace/workspace.css"
+      ]
+    },
+    {
+      "selector": "ant-typography-secondary",
+      "file": "src/shared/styles/legacy-workspace/workspace-paper.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-paper.css",
+        "src/shared/styles/legacy-workspace/workspace.css"
+      ]
+    },
+    {
+      "selector": "app",
+      "file": "src/shared/styles/legacy-workspace/workspace.css",
+      "referenced": true,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace.css"
+      ]
+    },
+    {
+      "selector": "backtest-page",
+      "file": "src/shared/styles/legacy-workspace/workspace.css",
+      "referenced": true,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace.css"
+      ]
+    },
+    {
+      "selector": "backtest-trade-card-list",
+      "file": "src/shared/styles/legacy-workspace/workspace-backtest.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-backtest.css"
+      ]
+    },
+    {
+      "selector": "backtest-trade-grid",
+      "file": "src/shared/styles/legacy-workspace/workspace-backtest.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-backtest.css"
+      ]
+    },
+    {
+      "selector": "backtest-trade-mobile-card",
+      "file": "src/shared/styles/legacy-workspace/workspace-backtest.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-backtest.css"
+      ]
+    },
+    {
+      "selector": "backtest-trade-mobile-card__facts",
+      "file": "src/shared/styles/legacy-workspace/workspace-backtest.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-backtest.css"
+      ]
+    },
+    {
+      "selector": "backtest-trade-mobile-card__head",
+      "file": "src/shared/styles/legacy-workspace/workspace-backtest.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-backtest.css"
+      ]
+    },
+    {
+      "selector": "backtest-trade-mobile-card__meta",
+      "file": "src/shared/styles/legacy-workspace/workspace-backtest.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-backtest.css"
+      ]
+    },
+    {
+      "selector": "backtest-trade-mobile-card__note",
+      "file": "src/shared/styles/legacy-workspace/workspace-backtest.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-backtest.css"
+      ]
+    },
+    {
+      "selector": "css",
+      "file": "src/shared/styles/legacy-workspace.css",
+      "referenced": true,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace.css",
+        "src/shared/styles/legacy-workspace/workspace-login.css",
+        "src/shared/styles/legacy-workspace/workspace-primitives.css",
+        "src/shared/styles/legacy-workspace/workspace.css"
+      ]
+    },
+    {
+      "selector": "hint",
+      "file": "src/shared/styles/legacy-workspace/workspace.css",
+      "referenced": true,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace.css"
+      ]
+    },
+    {
+      "selector": "is-active",
+      "file": "src/features/backtest/backtest-slice.css",
+      "referenced": true,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/features/backtest/backtest-slice.css",
+        "src/features/strategy-tracking/strategy-tracking.css"
+      ]
+    },
+    {
+      "selector": "is-amber",
+      "file": "src/features/monitor-market/monitor-market.css",
+      "referenced": true,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/features/monitor-market/monitor-market.css",
+        "src/features/strategy-tracking/strategy-tracking.css"
+      ]
+    },
+    {
+      "selector": "is-compact",
+      "file": "src/features/backtest/backtest-slice.css",
+      "referenced": true,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/features/backtest/backtest-slice.css",
+        "src/shared/styles/legacy-workspace/workspace-ritual.css"
+      ]
+    },
+    {
+      "selector": "is-completed",
+      "file": "src/features/backtest/backtest-slice.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/features/backtest/backtest-slice.css"
+      ]
+    },
+    {
+      "selector": "is-cool",
+      "file": "src/shared/styles/legacy-workspace/workspace-login-scene.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-login-scene.css"
+      ]
+    },
+    {
+      "selector": "is-danger",
+      "file": "src/features/monitor-market/monitor-market.css",
+      "referenced": true,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/features/monitor-market/monitor-market.css"
+      ]
+    },
+    {
+      "selector": "is-down",
+      "file": "src/features/backtest/backtest-slice.css",
+      "referenced": true,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/features/backtest/backtest-slice.css",
+        "src/shared/styles/legacy-workspace/workspace-login-scene.css"
+      ]
+    },
+    {
+      "selector": "is-empty",
+      "file": "src/features/monitor-market/monitor-market.css",
+      "referenced": true,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/features/monitor-market/monitor-market.css"
+      ]
+    },
+    {
+      "selector": "is-hot",
+      "file": "src/features/monitor-market/monitor-market.css",
+      "referenced": true,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/features/monitor-market/monitor-market.css",
+        "src/shared/styles/legacy-workspace/workspace-login-scene.css"
+      ]
+    },
+    {
+      "selector": "is-max_holding_days",
+      "file": "src/features/backtest/backtest-slice.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/features/backtest/backtest-slice.css"
+      ]
+    },
+    {
+      "selector": "is-other",
+      "file": "src/features/backtest/backtest-slice.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/features/backtest/backtest-slice.css"
+      ]
+    },
+    {
+      "selector": "is-published",
+      "file": "src/features/monitor-market/monitor-market.css",
+      "referenced": true,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/features/monitor-market/monitor-market.css"
+      ]
+    },
+    {
+      "selector": "is-running",
+      "file": "src/features/backtest/backtest-slice.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/features/backtest/backtest-slice.css"
+      ]
+    },
+    {
+      "selector": "is-stop_loss",
+      "file": "src/features/backtest/backtest-slice.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/features/backtest/backtest-slice.css"
+      ]
+    },
+    {
+      "selector": "is-take_profit",
+      "file": "src/features/backtest/backtest-slice.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/features/backtest/backtest-slice.css"
+      ]
+    },
+    {
+      "selector": "is-up",
+      "file": "src/features/backtest/backtest-slice.css",
+      "referenced": true,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/features/backtest/backtest-slice.css",
+        "src/shared/styles/legacy-workspace/workspace-login-scene.css"
+      ]
+    },
+    {
+      "selector": "is-warm",
+      "file": "src/features/monitor-market/monitor-market.css",
+      "referenced": true,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/features/monitor-market/monitor-market.css"
+      ]
+    },
+    {
+      "selector": "key-level-panel",
+      "file": "src/shared/styles/legacy-workspace/workspace-key-levels.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-key-levels.css"
+      ]
+    },
+    {
+      "selector": "key-level-panel__candidate",
+      "file": "src/shared/styles/legacy-workspace/workspace-key-levels.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-key-levels.css"
+      ]
+    },
+    {
+      "selector": "key-level-panel__evidence",
+      "file": "src/shared/styles/legacy-workspace/workspace-key-levels.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-key-levels.css"
+      ]
+    },
+    {
+      "selector": "legacy-ant-segmented",
+      "file": "src/shared/styles/legacy-solid-adapter.css",
+      "referenced": true,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-solid-adapter.css"
+      ]
+    },
+    {
+      "selector": "legacy-content-column",
+      "file": "src/shared/styles/legacy-solid-adapter.css",
+      "referenced": true,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-solid-adapter.css"
+      ]
+    },
+    {
+      "selector": "legacy-main",
+      "file": "src/shared/styles/legacy-solid-adapter.css",
+      "referenced": true,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-solid-adapter.css"
+      ]
+    },
+    {
+      "selector": "legacy-main__inner",
+      "file": "src/shared/styles/legacy-solid-adapter.css",
+      "referenced": true,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-solid-adapter.css"
+      ]
+    },
+    {
+      "selector": "legacy-main--artifact",
+      "file": "src/shared/styles/legacy-solid-adapter.css",
+      "referenced": true,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-solid-adapter.css"
+      ]
+    },
+    {
+      "selector": "legacy-mobile-scrim",
+      "file": "src/shared/styles/legacy-solid-adapter.css",
+      "referenced": true,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-solid-adapter.css"
+      ]
+    },
+    {
+      "selector": "legacy-mobile-scrim--open",
+      "file": "src/shared/styles/legacy-solid-adapter.css",
+      "referenced": true,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-solid-adapter.css"
+      ]
+    },
+    {
+      "selector": "legacy-sidebar",
+      "file": "src/shared/styles/legacy-solid-adapter.css",
+      "referenced": true,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-solid-adapter.css"
+      ]
+    },
+    {
+      "selector": "legacy-sidebar__brand",
+      "file": "src/shared/styles/legacy-solid-adapter.css",
+      "referenced": true,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-solid-adapter.css"
+      ]
+    },
+    {
+      "selector": "legacy-sidebar__brand-title",
+      "file": "src/shared/styles/legacy-solid-adapter.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-solid-adapter.css"
+      ]
+    },
+    {
+      "selector": "legacy-sidebar__footer",
+      "file": "src/shared/styles/legacy-solid-adapter.css",
+      "referenced": true,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-solid-adapter.css"
+      ]
+    },
+    {
+      "selector": "legacy-sidebar__icon",
+      "file": "src/shared/styles/legacy-solid-adapter.css",
+      "referenced": true,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-solid-adapter.css"
+      ]
+    },
+    {
+      "selector": "legacy-sidebar__item",
+      "file": "src/shared/styles/legacy-solid-adapter.css",
+      "referenced": true,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-solid-adapter.css"
+      ]
+    },
+    {
+      "selector": "legacy-sidebar__item--active",
+      "file": "src/shared/styles/legacy-solid-adapter.css",
+      "referenced": true,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-solid-adapter.css"
+      ]
+    },
+    {
+      "selector": "legacy-sidebar__label",
+      "file": "src/shared/styles/legacy-solid-adapter.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-solid-adapter.css"
+      ]
+    },
+    {
+      "selector": "legacy-sidebar__nav",
+      "file": "src/shared/styles/legacy-solid-adapter.css",
+      "referenced": true,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-solid-adapter.css"
+      ]
+    },
+    {
+      "selector": "legacy-sidebar--mobile-open",
+      "file": "src/shared/styles/legacy-solid-adapter.css",
+      "referenced": true,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-solid-adapter.css"
+      ]
+    },
+    {
+      "selector": "legacy-topbar",
+      "file": "src/shared/styles/legacy-solid-adapter.css",
+      "referenced": true,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-solid-adapter.css"
+      ]
+    },
+    {
+      "selector": "legacy-topbar__badge",
+      "file": "src/shared/styles/legacy-solid-adapter.css",
+      "referenced": true,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-solid-adapter.css"
+      ]
+    },
+    {
+      "selector": "legacy-topbar__badge--risk",
+      "file": "src/shared/styles/legacy-solid-adapter.css",
+      "referenced": true,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-solid-adapter.css"
+      ]
+    },
+    {
+      "selector": "legacy-topbar__badge-count",
+      "file": "src/shared/styles/legacy-solid-adapter.css",
+      "referenced": true,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-solid-adapter.css"
+      ]
+    },
+    {
+      "selector": "legacy-topbar__chip",
+      "file": "src/shared/styles/legacy-solid-adapter.css",
+      "referenced": true,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-solid-adapter.css"
+      ]
+    },
+    {
+      "selector": "legacy-topbar__chip--warn",
+      "file": "src/shared/styles/legacy-solid-adapter.css",
+      "referenced": true,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-solid-adapter.css"
+      ]
+    },
+    {
+      "selector": "legacy-topbar__left",
+      "file": "src/shared/styles/legacy-solid-adapter.css",
+      "referenced": true,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-solid-adapter.css"
+      ]
+    },
+    {
+      "selector": "legacy-topbar__mobile-trigger",
+      "file": "src/shared/styles/legacy-solid-adapter.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-solid-adapter.css"
+      ]
+    },
+    {
+      "selector": "legacy-topbar__right",
+      "file": "src/shared/styles/legacy-solid-adapter.css",
+      "referenced": true,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-solid-adapter.css"
+      ]
+    },
+    {
+      "selector": "legacy-topbar__segmented",
+      "file": "src/shared/styles/legacy-solid-adapter.css",
+      "referenced": true,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-solid-adapter.css"
+      ]
+    },
+    {
+      "selector": "legacy-topbar__title",
+      "file": "src/shared/styles/legacy-solid-adapter.css",
+      "referenced": true,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-solid-adapter.css"
+      ]
+    },
+    {
+      "selector": "legacy-workspace-shell",
+      "file": "src/shared/styles/legacy-solid-adapter.css",
+      "referenced": true,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-solid-adapter.css"
+      ]
+    },
+    {
+      "selector": "legacy-workspace-shell--artifact",
+      "file": "src/shared/styles/legacy-solid-adapter.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-solid-adapter.css"
+      ]
+    },
+    {
+      "selector": "login-candle-field",
+      "file": "src/shared/styles/legacy-workspace/workspace-login-motion.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-login-motion.css",
+        "src/shared/styles/legacy-workspace/workspace-login-scene.css"
+      ]
+    },
+    {
+      "selector": "login-core-card",
+      "file": "src/shared/styles/legacy-workspace/workspace-login-card.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-login-card.css",
+        "src/shared/styles/legacy-workspace/workspace-login-motion.css"
+      ]
+    },
+    {
+      "selector": "login-depth-panel",
+      "file": "src/shared/styles/legacy-workspace/workspace-login-motion.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-login-motion.css",
+        "src/shared/styles/legacy-workspace/workspace-login-scene.css"
+      ]
+    },
+    {
+      "selector": "login-depth-panel-left",
+      "file": "src/shared/styles/legacy-workspace/workspace-login-scene.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-login-scene.css"
+      ]
+    },
+    {
+      "selector": "login-depth-panel-right",
+      "file": "src/shared/styles/legacy-workspace/workspace-login-scene.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-login-scene.css"
+      ]
+    },
+    {
+      "selector": "login-finance-scene",
+      "file": "src/shared/styles/legacy-workspace/workspace-login-scene.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-login-scene.css"
+      ]
+    },
+    {
+      "selector": "login-flow-node",
+      "file": "src/shared/styles/legacy-workspace/workspace-login-motion.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-login-motion.css",
+        "src/shared/styles/legacy-workspace/workspace-login-scene.css"
+      ]
+    },
+    {
+      "selector": "login-flow-node-one",
+      "file": "src/shared/styles/legacy-workspace/workspace-login-scene.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-login-scene.css"
+      ]
+    },
+    {
+      "selector": "login-flow-node-three",
+      "file": "src/shared/styles/legacy-workspace/workspace-login-scene.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-login-scene.css"
+      ]
+    },
+    {
+      "selector": "login-flow-node-two",
+      "file": "src/shared/styles/legacy-workspace/workspace-login-scene.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-login-scene.css"
+      ]
+    },
+    {
+      "selector": "login-grid-layer",
+      "file": "src/shared/styles/legacy-workspace/workspace-login-motion.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-login-motion.css",
+        "src/shared/styles/legacy-workspace/workspace-login-scene.css"
+      ]
+    },
+    {
+      "selector": "login-heat-strip",
+      "file": "src/shared/styles/legacy-workspace/workspace-login-motion.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-login-motion.css",
+        "src/shared/styles/legacy-workspace/workspace-login-scene.css"
+      ]
+    },
+    {
+      "selector": "login-hud-panel",
+      "file": "src/shared/styles/legacy-workspace/workspace-login-motion.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-login-motion.css",
+        "src/shared/styles/legacy-workspace/workspace-login-scene.css"
+      ]
+    },
+    {
+      "selector": "login-hud-panel-left",
+      "file": "src/shared/styles/legacy-workspace/workspace-login-scene.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-login-scene.css"
+      ]
+    },
+    {
+      "selector": "login-hud-panel-right",
+      "file": "src/shared/styles/legacy-workspace/workspace-login-scene.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-login-scene.css"
+      ]
+    },
+    {
+      "selector": "login-market-line",
+      "file": "src/shared/styles/legacy-workspace/workspace-login-motion.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-login-motion.css",
+        "src/shared/styles/legacy-workspace/workspace-login-scene.css"
+      ]
+    },
+    {
+      "selector": "login-market-line-gold",
+      "file": "src/shared/styles/legacy-workspace/workspace-login-scene.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-login-scene.css"
+      ]
+    },
+    {
+      "selector": "login-market-line-green",
+      "file": "src/shared/styles/legacy-workspace/workspace-login-scene.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-login-scene.css"
+      ]
+    },
+    {
+      "selector": "login-market-line-red",
+      "file": "src/shared/styles/legacy-workspace/workspace-login-scene.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-login-scene.css"
+      ]
+    },
+    {
+      "selector": "login-market-lines",
+      "file": "src/shared/styles/legacy-workspace/workspace-login-motion.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-login-motion.css",
+        "src/shared/styles/legacy-workspace/workspace-login-scene.css"
+      ]
+    },
+    {
+      "selector": "login-orbit-dial",
+      "file": "src/shared/styles/legacy-workspace/workspace-login-motion.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-login-motion.css",
+        "src/shared/styles/legacy-workspace/workspace-login-scene.css"
+      ]
+    },
+    {
+      "selector": "login-purple-glow-field",
+      "file": "src/shared/styles/legacy-workspace/workspace-login-motion.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-login-motion.css",
+        "src/shared/styles/legacy-workspace/workspace-login-scene.css"
+      ]
+    },
+    {
+      "selector": "login-radar-ring",
+      "file": "src/shared/styles/legacy-workspace/workspace-login-motion.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-login-motion.css",
+        "src/shared/styles/legacy-workspace/workspace-login-scene.css"
+      ]
+    },
+    {
+      "selector": "login-radar-ring-one",
+      "file": "src/shared/styles/legacy-workspace/workspace-login-motion.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-login-motion.css",
+        "src/shared/styles/legacy-workspace/workspace-login-scene.css"
+      ]
+    },
+    {
+      "selector": "login-radar-ring-two",
+      "file": "src/shared/styles/legacy-workspace/workspace-login-motion.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-login-motion.css",
+        "src/shared/styles/legacy-workspace/workspace-login-scene.css"
+      ]
+    },
+    {
+      "selector": "login-red-glow-field",
+      "file": "src/shared/styles/legacy-workspace/workspace-login-scene.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-login-scene.css"
+      ]
+    },
+    {
+      "selector": "login-ritual-motto",
+      "file": "src/shared/styles/legacy-workspace/workspace-login-card.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-login-card.css",
+        "src/shared/styles/legacy-workspace/workspace-login-motion.css"
+      ]
+    },
+    {
+      "selector": "login-ritual-seal",
+      "file": "src/shared/styles/legacy-workspace/workspace-login-card.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-login-card.css",
+        "src/shared/styles/legacy-workspace/workspace-login-motion.css"
+      ]
+    },
+    {
+      "selector": "login-scanlines",
+      "file": "src/shared/styles/legacy-workspace/workspace-login-shell.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-login-shell.css"
+      ]
+    },
+    {
+      "selector": "login-signal-pulse",
+      "file": "src/shared/styles/legacy-workspace/workspace-login-motion.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-login-motion.css",
+        "src/shared/styles/legacy-workspace/workspace-login-scene.css"
+      ]
+    },
+    {
+      "selector": "login-signal-pulse-one",
+      "file": "src/shared/styles/legacy-workspace/workspace-login-scene.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-login-scene.css"
+      ]
+    },
+    {
+      "selector": "login-signal-pulse-three",
+      "file": "src/shared/styles/legacy-workspace/workspace-login-scene.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-login-scene.css"
+      ]
+    },
+    {
+      "selector": "login-signal-pulse-two",
+      "file": "src/shared/styles/legacy-workspace/workspace-login-scene.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-login-scene.css"
+      ]
+    },
+    {
+      "selector": "login-ticker-strip",
+      "file": "src/shared/styles/legacy-workspace/workspace-login-motion.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-login-motion.css",
+        "src/shared/styles/legacy-workspace/workspace-login-scene.css"
+      ]
+    },
+    {
+      "selector": "login-ticker-strip-bottom",
+      "file": "src/shared/styles/legacy-workspace/workspace-login-scene.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-login-scene.css"
+      ]
+    },
+    {
+      "selector": "login-ticker-strip-top",
+      "file": "src/shared/styles/legacy-workspace/workspace-login-scene.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-login-scene.css"
+      ]
+    },
+    {
+      "selector": "metric-grid",
+      "file": "src/shared/styles/legacy-workspace/workspace-key-levels.css",
+      "referenced": true,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-key-levels.css"
+      ]
+    },
+    {
+      "selector": "monitor-card-list--inset",
+      "file": "src/shared/styles/legacy-workspace/workspace.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace.css"
+      ]
+    },
+    {
+      "selector": "monitor-conclusion-actions",
+      "file": "src/shared/styles/legacy-workspace/workspace.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace.css"
+      ]
+    },
+    {
+      "selector": "monitor-full-action",
+      "file": "src/shared/styles/legacy-workspace/workspace.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace.css"
+      ]
+    },
+    {
+      "selector": "monitor-gold-action",
+      "file": "src/shared/styles/legacy-workspace/workspace.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace.css"
+      ]
+    },
+    {
+      "selector": "monitor-holding-drawer__action",
+      "file": "src/shared/styles/legacy-workspace/workspace.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace.css"
+      ]
+    },
+    {
+      "selector": "monitor-holding-drawer__grid",
+      "file": "src/shared/styles/legacy-workspace/workspace.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace.css"
+      ]
+    },
+    {
+      "selector": "monitor-holding-drawer__span",
+      "file": "src/shared/styles/legacy-workspace/workspace.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace.css"
+      ]
+    },
+    {
+      "selector": "monitor-holdings",
+      "file": "src/shared/styles/legacy-workspace/workspace.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace.css"
+      ]
+    },
+    {
+      "selector": "monitor-holdings__body",
+      "file": "src/shared/styles/legacy-workspace/workspace.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace.css"
+      ]
+    },
+    {
+      "selector": "monitor-key-level-grid",
+      "file": "src/shared/styles/legacy-workspace/workspace-key-levels.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-key-levels.css"
+      ]
+    },
+    {
+      "selector": "monitor-market-card",
+      "file": "src/shared/styles/legacy-workspace/workspace.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace.css"
+      ]
+    },
+    {
+      "selector": "monitor-market-gate",
+      "file": "src/shared/styles/legacy-workspace/workspace.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace.css"
+      ]
+    },
+    {
+      "selector": "monitor-market-main",
+      "file": "src/shared/styles/legacy-workspace/workspace.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace.css"
+      ]
+    },
+    {
+      "selector": "monitor-market-page",
+      "file": "src/shared/styles/legacy-workspace/workspace.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace.css"
+      ]
+    },
+    {
+      "selector": "monitor-market-page--stack",
+      "file": "src/shared/styles/legacy-workspace/workspace.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace.css"
+      ]
+    },
+    {
+      "selector": "monitor-market-page--wide",
+      "file": "src/shared/styles/legacy-workspace/workspace.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace.css"
+      ]
+    },
+    {
+      "selector": "monitor-priority-card-row--new",
+      "file": "src/shared/styles/legacy-workspace/workspace.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace.css"
+      ]
+    },
+    {
+      "selector": "monitor-secondary-panel",
+      "file": "src/shared/styles/legacy-workspace/workspace.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace.css"
+      ]
+    },
+    {
+      "selector": "monitor-secondary-panel__list",
+      "file": "src/shared/styles/legacy-workspace/workspace.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace.css"
+      ]
+    },
+    {
+      "selector": "monitor-secondary-region",
+      "file": "src/shared/styles/legacy-workspace/workspace.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace.css"
+      ]
+    },
+    {
+      "selector": "monitor-shared-summary",
+      "file": "src/shared/styles/legacy-workspace/workspace.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace.css"
+      ]
+    },
+    {
+      "selector": "muted",
+      "file": "src/shared/styles/legacy-workspace/workspace.css",
+      "referenced": true,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace.css"
+      ]
+    },
+    {
+      "selector": "panel",
+      "file": "src/shared/styles/legacy-solid-adapter.css",
+      "referenced": true,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-solid-adapter.css",
+        "src/shared/styles/legacy-workspace/workspace.css"
+      ]
+    },
+    {
+      "selector": "paper-action-hud",
+      "file": "src/shared/styles/legacy-workspace/workspace-paper.css",
+      "referenced": true,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-paper.css"
+      ]
+    },
+    {
+      "selector": "paper-action-hud__console",
+      "file": "src/shared/styles/legacy-workspace/workspace-paper.css",
+      "referenced": true,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-paper.css"
+      ]
+    },
+    {
+      "selector": "paper-action-hud__log-tag",
+      "file": "src/shared/styles/legacy-workspace/workspace-paper.css",
+      "referenced": true,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-paper.css"
+      ]
+    },
+    {
+      "selector": "paper-action-hud__log-tag--auto",
+      "file": "src/shared/styles/legacy-workspace/workspace-paper.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-paper.css"
+      ]
+    },
+    {
+      "selector": "paper-action-hud__log-tag--buy",
+      "file": "src/shared/styles/legacy-workspace/workspace-paper.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-paper.css"
+      ]
+    },
+    {
+      "selector": "paper-action-hud__log-tag--info",
+      "file": "src/shared/styles/legacy-workspace/workspace-paper.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-paper.css"
+      ]
+    },
+    {
+      "selector": "paper-action-hud__log-tag--init",
+      "file": "src/shared/styles/legacy-workspace/workspace-paper.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-paper.css"
+      ]
+    },
+    {
+      "selector": "paper-action-hud__log-tag--link",
+      "file": "src/shared/styles/legacy-workspace/workspace-paper.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-paper.css"
+      ]
+    },
+    {
+      "selector": "paper-action-hud__log-tag--risk",
+      "file": "src/shared/styles/legacy-workspace/workspace-paper.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-paper.css"
+      ]
+    },
+    {
+      "selector": "paper-action-hud__log-tag--sell",
+      "file": "src/shared/styles/legacy-workspace/workspace-paper.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-paper.css"
+      ]
+    },
+    {
+      "selector": "paper-action-hud__monitor",
+      "file": "src/shared/styles/legacy-workspace/workspace-paper.css",
+      "referenced": true,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-paper.css"
+      ]
+    },
+    {
+      "selector": "paper-action-hud__panel-title",
+      "file": "src/shared/styles/legacy-workspace/workspace-paper.css",
+      "referenced": true,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-paper.css"
+      ]
+    },
+    {
+      "selector": "paper-action-hud__panel-title--split",
+      "file": "src/shared/styles/legacy-workspace/workspace-paper.css",
+      "referenced": true,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-paper.css"
+      ]
+    },
+    {
+      "selector": "paper-action-hud__title-mark",
+      "file": "src/shared/styles/legacy-workspace/workspace-paper.css",
+      "referenced": true,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-paper.css"
+      ]
+    },
+    {
+      "selector": "paper-action-hud__title-mark--pulse",
+      "file": "src/shared/styles/legacy-workspace/workspace-paper.css",
+      "referenced": true,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-paper.css"
+      ]
+    },
+    {
+      "selector": "paper-action-hud--embedded",
+      "file": "src/shared/styles/legacy-workspace/workspace-paper.css",
+      "referenced": true,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-paper.css"
+      ]
+    },
+    {
+      "selector": "paper-conclusion",
+      "file": "src/shared/styles/legacy-workspace/workspace-paper.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-paper.css"
+      ]
+    },
+    {
+      "selector": "paper-conclusion__metrics",
+      "file": "src/shared/styles/legacy-workspace/workspace-paper.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-paper.css"
+      ]
+    },
+    {
+      "selector": "paper-conclusion__positions",
+      "file": "src/shared/styles/legacy-workspace/workspace-paper.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-paper.css"
+      ]
+    },
+    {
+      "selector": "paper-detail-card-list",
+      "file": "src/shared/styles/legacy-workspace/workspace-paper.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-paper.css"
+      ]
+    },
+    {
+      "selector": "paper-detail-grid",
+      "file": "src/shared/styles/legacy-workspace/workspace-paper.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-paper.css"
+      ]
+    },
+    {
+      "selector": "paper-etf-t0-kv-grid",
+      "file": "src/shared/styles/legacy-workspace/workspace-strategy-tracking.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-strategy-tracking.css"
+      ]
+    },
+    {
+      "selector": "paper-etf-t0-kv-item",
+      "file": "src/shared/styles/legacy-workspace/workspace-strategy-tracking.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-strategy-tracking.css"
+      ]
+    },
+    {
+      "selector": "paper-etf-t0-review-card",
+      "file": "src/shared/styles/legacy-workspace/workspace-strategy-tracking.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-strategy-tracking.css"
+      ]
+    },
+    {
+      "selector": "paper-etf-t0-review-card__head",
+      "file": "src/shared/styles/legacy-workspace/workspace-strategy-tracking.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-strategy-tracking.css"
+      ]
+    },
+    {
+      "selector": "paper-etf-t0-review-list",
+      "file": "src/shared/styles/legacy-workspace/workspace-strategy-tracking.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-strategy-tracking.css"
+      ]
+    },
+    {
+      "selector": "paper-grouped-performance-card",
+      "file": "src/shared/styles/legacy-workspace/workspace-strategy-tracking.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-strategy-tracking.css"
+      ]
+    },
+    {
+      "selector": "paper-grouped-performance-card__head",
+      "file": "src/shared/styles/legacy-workspace/workspace-strategy-tracking.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-strategy-tracking.css"
+      ]
+    },
+    {
+      "selector": "paper-grouped-performance-card__metrics",
+      "file": "src/shared/styles/legacy-workspace/workspace-strategy-tracking.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-strategy-tracking.css"
+      ]
+    },
+    {
+      "selector": "paper-grouped-performance-list",
+      "file": "src/shared/styles/legacy-workspace/workspace-strategy-tracking.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-strategy-tracking.css"
+      ]
+    },
+    {
+      "selector": "paper-hero-grid",
+      "file": "src/features/paper/paper-page.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/features/paper/paper-page.css",
+        "src/shared/styles/legacy-solid-adapter.css",
+        "src/shared/styles/legacy-workspace/workspace-paper.css"
+      ]
+    },
+    {
+      "selector": "paper-hero-grid__left",
+      "file": "src/shared/styles/legacy-workspace/workspace-paper.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-paper.css"
+      ]
+    },
+    {
+      "selector": "paper-hero-grid__right",
+      "file": "src/shared/styles/legacy-workspace/workspace-paper.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-paper.css"
+      ]
+    },
+    {
+      "selector": "paper-main-grid",
+      "file": "src/shared/styles/legacy-workspace/workspace-paper.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-paper.css"
+      ]
+    },
+    {
+      "selector": "paper-main-grid__left",
+      "file": "src/shared/styles/legacy-workspace/workspace-paper.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-paper.css"
+      ]
+    },
+    {
+      "selector": "paper-main-grid__right",
+      "file": "src/shared/styles/legacy-workspace/workspace-paper.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-paper.css"
+      ]
+    },
+    {
+      "selector": "paper-mecha-action-panel",
+      "file": "src/shared/styles/legacy-solid-adapter.css",
+      "referenced": true,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-solid-adapter.css",
+        "src/shared/styles/legacy-workspace/workspace-paper-mecha.css",
+        "src/shared/styles/legacy-workspace/workspace-paper.css"
+      ]
+    },
+    {
+      "selector": "paper-mecha-action-panel__at-field",
+      "file": "src/shared/styles/legacy-workspace/workspace-paper-mecha.css",
+      "referenced": true,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-paper-mecha.css"
+      ]
+    },
+    {
+      "selector": "paper-mecha-action-panel__avatar",
+      "file": "src/shared/styles/legacy-workspace/workspace-paper-mecha.css",
+      "referenced": true,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-paper-mecha.css"
+      ]
+    },
+    {
+      "selector": "paper-mecha-action-panel__chooser",
+      "file": "src/shared/styles/legacy-workspace/workspace-paper-mecha.css",
+      "referenced": true,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-paper-mecha.css"
+      ]
+    },
+    {
+      "selector": "paper-mecha-action-panel__glow",
+      "file": "src/shared/styles/legacy-workspace/workspace-paper-mecha.css",
+      "referenced": true,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-paper-mecha.css"
+      ]
+    },
+    {
+      "selector": "paper-mecha-action-panel__monitor",
+      "file": "src/shared/styles/legacy-workspace/workspace-paper-mecha.css",
+      "referenced": true,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-paper-mecha.css"
+      ]
+    },
+    {
+      "selector": "paper-mecha-action-panel__particles",
+      "file": "src/shared/styles/legacy-workspace/workspace-paper-mecha.css",
+      "referenced": true,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-paper-mecha.css"
+      ]
+    },
+    {
+      "selector": "paper-mecha-action-panel__readout",
+      "file": "src/shared/styles/legacy-workspace/workspace-paper-mecha.css",
+      "referenced": true,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-paper-mecha.css"
+      ]
+    },
+    {
+      "selector": "paper-mecha-action-panel__ring",
+      "file": "src/shared/styles/legacy-workspace/workspace-paper-mecha.css",
+      "referenced": true,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-paper-mecha.css"
+      ]
+    },
+    {
+      "selector": "paper-mecha-action-panel__ring--reverse",
+      "file": "src/shared/styles/legacy-workspace/workspace-paper-mecha.css",
+      "referenced": true,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-paper-mecha.css"
+      ]
+    },
+    {
+      "selector": "paper-mecha-action-panel__ring--slow",
+      "file": "src/shared/styles/legacy-workspace/workspace-paper-mecha.css",
+      "referenced": true,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-paper-mecha.css"
+      ]
+    },
+    {
+      "selector": "paper-mecha-action-panel__stage",
+      "file": "src/shared/styles/legacy-workspace/workspace-paper-mecha.css",
+      "referenced": true,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-paper-mecha.css"
+      ]
+    },
+    {
+      "selector": "paper-mecha-action-panel__status",
+      "file": "src/shared/styles/legacy-workspace/workspace-paper-mecha.css",
+      "referenced": true,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-paper-mecha.css"
+      ]
+    },
+    {
+      "selector": "paper-mecha-action-panel__sync",
+      "file": "src/shared/styles/legacy-workspace/workspace-paper-mecha.css",
+      "referenced": true,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-paper-mecha.css"
+      ]
+    },
+    {
+      "selector": "paper-mecha-action-panel__unit",
+      "file": "src/shared/styles/legacy-workspace/workspace-paper-mecha.css",
+      "referenced": true,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-paper-mecha.css"
+      ]
+    },
+    {
+      "selector": "paper-mecha-action-panel__unit-option",
+      "file": "src/shared/styles/legacy-workspace/workspace-paper-mecha.css",
+      "referenced": true,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-paper-mecha.css"
+      ]
+    },
+    {
+      "selector": "paper-mecha-action-panel__unit-option--active",
+      "file": "src/shared/styles/legacy-workspace/workspace-paper-mecha.css",
+      "referenced": true,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-paper-mecha.css"
+      ]
+    },
+    {
+      "selector": "paper-mecha-action-panel__unit-thumb",
+      "file": "src/shared/styles/legacy-workspace/workspace-paper-mecha.css",
+      "referenced": true,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-paper-mecha.css"
+      ]
+    },
+    {
+      "selector": "paper-mecha-action-panel--auto",
+      "file": "src/shared/styles/legacy-workspace/workspace-paper-mecha.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-paper-mecha.css"
+      ]
+    },
+    {
+      "selector": "paper-mecha-action-panel--buy",
+      "file": "src/shared/styles/legacy-workspace/workspace-paper-mecha.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-paper-mecha.css"
+      ]
+    },
+    {
+      "selector": "paper-mecha-action-panel--closed",
+      "file": "src/shared/styles/legacy-workspace/workspace-paper-mecha.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-paper-mecha.css"
+      ]
+    },
+    {
+      "selector": "paper-mecha-action-panel--effects-active",
+      "file": "src/shared/styles/legacy-workspace/workspace-paper-mecha.css",
+      "referenced": true,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-paper-mecha.css"
+      ]
+    },
+    {
+      "selector": "paper-mecha-action-panel--loss",
+      "file": "src/shared/styles/legacy-workspace/workspace-paper-mecha.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-paper-mecha.css"
+      ]
+    },
+    {
+      "selector": "paper-mecha-action-panel--paused",
+      "file": "src/shared/styles/legacy-workspace/workspace-paper-mecha.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-paper-mecha.css"
+      ]
+    },
+    {
+      "selector": "paper-mecha-action-panel--profit",
+      "file": "src/shared/styles/legacy-workspace/workspace-paper-mecha.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-paper-mecha.css"
+      ]
+    },
+    {
+      "selector": "paper-mecha-action-panel--risk",
+      "file": "src/shared/styles/legacy-workspace/workspace-paper-mecha.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-paper-mecha.css"
+      ]
+    },
+    {
+      "selector": "paper-mecha-action-panel--sell",
+      "file": "src/shared/styles/legacy-workspace/workspace-paper-mecha.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-paper-mecha.css"
+      ]
+    },
+    {
+      "selector": "paper-mecha-halo",
+      "file": "src/shared/styles/legacy-workspace/workspace-paper-mecha.css",
+      "referenced": true,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-paper-mecha.css"
+      ]
+    },
+    {
+      "selector": "paper-mecha-jaw",
+      "file": "src/shared/styles/legacy-workspace/workspace-paper-mecha.css",
+      "referenced": true,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-paper-mecha.css"
+      ]
+    },
+    {
+      "selector": "paper-mecha-jaw--beast",
+      "file": "src/shared/styles/legacy-workspace/workspace-paper-mecha.css",
+      "referenced": true,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-paper-mecha.css"
+      ]
+    },
+    {
+      "selector": "paper-mecha-jaw--open",
+      "file": "src/shared/styles/legacy-workspace/workspace-paper-mecha.css",
+      "referenced": true,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-paper-mecha.css"
+      ]
+    },
+    {
+      "selector": "paper-mecha-lens",
+      "file": "src/shared/styles/legacy-workspace/workspace-paper-mecha.css",
+      "referenced": true,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-paper-mecha.css"
+      ]
+    },
+    {
+      "selector": "paper-mecha-lens--scan",
+      "file": "src/shared/styles/legacy-workspace/workspace-paper-mecha.css",
+      "referenced": true,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-paper-mecha.css"
+      ]
+    },
+    {
+      "selector": "paper-mecha-plug-drop",
+      "file": "src/shared/styles/legacy-workspace/workspace-paper-mecha.css",
+      "referenced": true,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-paper-mecha.css"
+      ]
+    },
+    {
+      "selector": "paper-mobile-card",
+      "file": "src/shared/styles/legacy-workspace/workspace-paper.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-paper.css"
+      ]
+    },
+    {
+      "selector": "paper-mobile-card__facts",
+      "file": "src/shared/styles/legacy-workspace/workspace-paper.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-paper.css"
+      ]
+    },
+    {
+      "selector": "paper-mobile-card__head",
+      "file": "src/shared/styles/legacy-workspace/workspace-paper.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-paper.css"
+      ]
+    },
+    {
+      "selector": "paper-mobile-card__meta",
+      "file": "src/shared/styles/legacy-workspace/workspace-paper.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-paper.css"
+      ]
+    },
+    {
+      "selector": "paper-mobile-card__note",
+      "file": "src/shared/styles/legacy-workspace/workspace-paper.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-paper.css"
+      ]
+    },
+    {
+      "selector": "paper-mobile-card__summary",
+      "file": "src/shared/styles/legacy-workspace/workspace-paper.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-paper.css"
+      ]
+    },
+    {
+      "selector": "paper-position-card",
+      "file": "src/shared/styles/legacy-workspace/workspace-paper.css",
+      "referenced": true,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-paper.css"
+      ]
+    },
+    {
+      "selector": "paper-position-card__line",
+      "file": "src/shared/styles/legacy-workspace/workspace-paper.css",
+      "referenced": true,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-paper.css"
+      ]
+    },
+    {
+      "selector": "paper-position-card__line--identity",
+      "file": "src/shared/styles/legacy-workspace/workspace-paper.css",
+      "referenced": true,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-paper.css"
+      ]
+    },
+    {
+      "selector": "paper-position-card-grid",
+      "file": "src/shared/styles/legacy-workspace/workspace-paper.css",
+      "referenced": true,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-paper.css"
+      ]
+    },
+    {
+      "selector": "paper-positions-embedded",
+      "file": "src/shared/styles/legacy-workspace/workspace-paper.css",
+      "referenced": true,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-paper.css"
+      ]
+    },
+    {
+      "selector": "paper-positions-embedded__body",
+      "file": "src/shared/styles/legacy-workspace/workspace-paper.css",
+      "referenced": true,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-paper.css"
+      ]
+    },
+    {
+      "selector": "paper-positions-embedded__header",
+      "file": "src/shared/styles/legacy-workspace/workspace-paper.css",
+      "referenced": true,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-paper.css"
+      ]
+    },
+    {
+      "selector": "paper-review-history-list",
+      "file": "src/shared/styles/legacy-workspace/workspace-paper.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-paper.css"
+      ]
+    },
+    {
+      "selector": "paper-side-stack",
+      "file": "src/features/paper/paper-page.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/features/paper/paper-page.css",
+        "src/shared/styles/legacy-workspace/workspace-paper.css"
+      ]
+    },
+    {
+      "selector": "paper-summary-metric",
+      "file": "src/shared/styles/legacy-workspace/workspace-paper.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-paper.css"
+      ]
+    },
+    {
+      "selector": "ritual-close-bag",
+      "file": "src/shared/styles/legacy-workspace/workspace-login-motion.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-login-motion.css",
+        "src/shared/styles/legacy-workspace/workspace-ritual.css"
+      ]
+    },
+    {
+      "selector": "ritual-close-bag-label",
+      "file": "src/shared/styles/legacy-workspace/workspace-ritual.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-ritual.css"
+      ]
+    },
+    {
+      "selector": "ritual-fortune-mark",
+      "file": "src/shared/styles/legacy-workspace/workspace-ritual.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-ritual.css"
+      ]
+    },
+    {
+      "selector": "ritual-fortune-strip",
+      "file": "src/shared/styles/legacy-workspace/workspace-login-motion.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-login-motion.css",
+        "src/shared/styles/legacy-workspace/workspace-ritual.css"
+      ]
+    },
+    {
+      "selector": "ritual-lucky-draw",
+      "file": "src/shared/styles/legacy-workspace/workspace-ritual.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-ritual.css"
+      ]
+    },
+    {
+      "selector": "ritual-settings-card",
+      "file": "src/shared/styles/legacy-workspace/workspace-ritual.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-ritual.css"
+      ]
+    },
+    {
+      "selector": "ritual-signal-seal",
+      "file": "src/shared/styles/legacy-workspace/workspace-login-motion.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-login-motion.css",
+        "src/shared/styles/legacy-workspace/workspace-ritual.css"
+      ]
+    },
+    {
+      "selector": "state-loss-overlay",
+      "file": "src/shared/styles/legacy-workspace/workspace-paper-mecha.css",
+      "referenced": true,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-paper-mecha.css"
+      ]
+    },
+    {
+      "selector": "state-sell-overlay",
+      "file": "src/shared/styles/legacy-workspace/workspace-paper-mecha.css",
+      "referenced": true,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-paper-mecha.css"
+      ]
+    },
+    {
+      "selector": "strategy-review-data-quality",
+      "file": "src/shared/styles/legacy-workspace/workspace-strategy-tracking.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-strategy-tracking.css"
+      ]
+    },
+    {
+      "selector": "strategy-review-detail",
+      "file": "src/shared/styles/legacy-workspace/workspace-strategy-tracking.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-strategy-tracking.css"
+      ]
+    },
+    {
+      "selector": "strategy-review-journal-actions",
+      "file": "src/shared/styles/legacy-workspace/workspace-strategy-tracking.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-strategy-tracking.css"
+      ]
+    },
+    {
+      "selector": "strategy-review-journal-empty",
+      "file": "src/shared/styles/legacy-workspace/workspace-strategy-tracking.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-strategy-tracking.css"
+      ]
+    },
+    {
+      "selector": "strategy-review-journal-list",
+      "file": "src/shared/styles/legacy-workspace/workspace-strategy-tracking.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-strategy-tracking.css"
+      ]
+    },
+    {
+      "selector": "strategy-review-journal-row",
+      "file": "src/shared/styles/legacy-workspace/workspace-strategy-tracking.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-strategy-tracking.css"
+      ]
+    },
+    {
+      "selector": "strategy-review-perf-status",
+      "file": "src/shared/styles/legacy-workspace/workspace-strategy-tracking.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-strategy-tracking.css"
+      ]
+    },
+    {
+      "selector": "strategy-review-queue",
+      "file": "src/shared/styles/legacy-workspace/workspace-strategy-tracking.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-strategy-tracking.css"
+      ]
+    },
+    {
+      "selector": "strategy-review-relative-card",
+      "file": "src/shared/styles/legacy-workspace/workspace-strategy-tracking.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-strategy-tracking.css"
+      ]
+    },
+    {
+      "selector": "strategy-review-relative-grid",
+      "file": "src/shared/styles/legacy-workspace/workspace-strategy-tracking.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-strategy-tracking.css"
+      ]
+    },
+    {
+      "selector": "strategy-review-reminder",
+      "file": "src/shared/styles/legacy-workspace/workspace-strategy-tracking.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-strategy-tracking.css"
+      ]
+    },
+    {
+      "selector": "strategy-review-summary-card",
+      "file": "src/shared/styles/legacy-workspace/workspace-strategy-tracking.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-strategy-tracking.css"
+      ]
+    },
+    {
+      "selector": "strategy-review-summary-cards",
+      "file": "src/shared/styles/legacy-workspace/workspace-strategy-tracking.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-strategy-tracking.css"
+      ]
+    },
+    {
+      "selector": "strategy-review-workspace-grid",
+      "file": "src/shared/styles/legacy-workspace/workspace-strategy-tracking.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-strategy-tracking.css"
+      ]
+    },
+    {
+      "selector": "strategy-tracking-active-filters",
+      "file": "src/shared/styles/legacy-workspace/workspace-strategy-tracking.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-strategy-tracking.css"
+      ]
+    },
+    {
+      "selector": "strategy-tracking-analysis-stack",
+      "file": "src/shared/styles/legacy-workspace/workspace-strategy-tracking.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-strategy-tracking.css"
+      ]
+    },
+    {
+      "selector": "strategy-tracking-card-list",
+      "file": "src/features/strategy-tracking/strategy-tracking.css",
+      "referenced": true,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/features/strategy-tracking/strategy-tracking.css",
+        "src/shared/styles/legacy-workspace/workspace-strategy-tracking.css"
+      ]
+    },
+    {
+      "selector": "strategy-tracking-card-pagination",
+      "file": "src/shared/styles/legacy-workspace/workspace-strategy-tracking.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-strategy-tracking.css"
+      ]
+    },
+    {
+      "selector": "strategy-tracking-cell-stack",
+      "file": "src/shared/styles/legacy-workspace/workspace-strategy-tracking.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-strategy-tracking.css"
+      ]
+    },
+    {
+      "selector": "strategy-tracking-conclusion",
+      "file": "src/shared/styles/legacy-workspace/workspace-strategy-tracking.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-strategy-tracking.css"
+      ]
+    },
+    {
+      "selector": "strategy-tracking-conclusion--compact",
+      "file": "src/shared/styles/legacy-workspace/workspace-strategy-tracking.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-strategy-tracking.css"
+      ]
+    },
+    {
+      "selector": "strategy-tracking-context-gates",
+      "file": "src/shared/styles/legacy-workspace/workspace-strategy-tracking.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-strategy-tracking.css"
+      ]
+    },
+    {
+      "selector": "strategy-tracking-detail",
+      "file": "src/features/strategy-tracking/strategy-tracking.css",
+      "referenced": true,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/features/strategy-tracking/strategy-tracking.css",
+        "src/shared/styles/legacy-workspace/workspace-strategy-tracking.css"
+      ]
+    },
+    {
+      "selector": "strategy-tracking-detail-head",
+      "file": "src/shared/styles/legacy-workspace/workspace-strategy-tracking.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-strategy-tracking.css"
+      ]
+    },
+    {
+      "selector": "strategy-tracking-detail-metrics",
+      "file": "src/shared/styles/legacy-workspace/workspace-strategy-tracking.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-strategy-tracking.css"
+      ]
+    },
+    {
+      "selector": "strategy-tracking-detail-section",
+      "file": "src/shared/styles/legacy-workspace/workspace-strategy-tracking.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-strategy-tracking.css"
+      ]
+    },
+    {
+      "selector": "strategy-tracking-filter-panel",
+      "file": "src/features/strategy-tracking/strategy-tracking.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/features/strategy-tracking/strategy-tracking.css",
+        "src/shared/styles/legacy-workspace/workspace-strategy-tracking.css"
+      ]
+    },
+    {
+      "selector": "strategy-tracking-filter-toolbar",
+      "file": "src/features/strategy-tracking/strategy-tracking.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/features/strategy-tracking/strategy-tracking.css",
+        "src/shared/styles/legacy-solid-adapter.css",
+        "src/shared/styles/legacy-workspace/workspace-strategy-tracking.css"
+      ]
+    },
+    {
+      "selector": "strategy-tracking-filters",
+      "file": "src/shared/styles/legacy-workspace/workspace-strategy-tracking.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-strategy-tracking.css"
+      ]
+    },
+    {
+      "selector": "strategy-tracking-friendly-summary",
+      "file": "src/shared/styles/legacy-workspace/workspace-strategy-tracking.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-strategy-tracking.css"
+      ]
+    },
+    {
+      "selector": "strategy-tracking-help-icon",
+      "file": "src/shared/styles/legacy-workspace/workspace-strategy-tracking.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-strategy-tracking.css"
+      ]
+    },
+    {
+      "selector": "strategy-tracking-hero",
+      "file": "src/shared/styles/legacy-workspace/workspace-strategy-tracking.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-strategy-tracking.css"
+      ]
+    },
+    {
+      "selector": "strategy-tracking-hero-meta",
+      "file": "src/shared/styles/legacy-workspace/workspace-strategy-tracking.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-strategy-tracking.css"
+      ]
+    },
+    {
+      "selector": "strategy-tracking-holding-bars",
+      "file": "src/shared/styles/legacy-workspace/workspace-strategy-tracking.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-strategy-tracking.css"
+      ]
+    },
+    {
+      "selector": "strategy-tracking-main-panel",
+      "file": "src/shared/styles/legacy-workspace/workspace-strategy-tracking.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-strategy-tracking.css"
+      ]
+    },
+    {
+      "selector": "strategy-tracking-metric",
+      "file": "src/shared/styles/legacy-workspace/workspace-strategy-tracking.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-strategy-tracking.css"
+      ]
+    },
+    {
+      "selector": "strategy-tracking-metric-grid",
+      "file": "src/shared/styles/legacy-workspace/workspace-strategy-tracking.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-strategy-tracking.css"
+      ]
+    },
+    {
+      "selector": "strategy-tracking-metric-label",
+      "file": "src/shared/styles/legacy-workspace/workspace-strategy-tracking.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-strategy-tracking.css"
+      ]
+    },
+    {
+      "selector": "strategy-tracking-mobile-card",
+      "file": "src/shared/styles/legacy-workspace/workspace-strategy-tracking.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-strategy-tracking.css"
+      ]
+    },
+    {
+      "selector": "strategy-tracking-mobile-card__head",
+      "file": "src/shared/styles/legacy-workspace/workspace-strategy-tracking.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-strategy-tracking.css"
+      ]
+    },
+    {
+      "selector": "strategy-tracking-mobile-card__metrics",
+      "file": "src/shared/styles/legacy-workspace/workspace-strategy-tracking.css",
+      "referenced": false,
+      "risk": "known-dynamic-or-legacy",
+      "files": [
+        "src/shared/styles/legacy-workspace/workspace-strategy-tracking.css"
+      ]
+    }
+  ],
+  "notes": [
+    "This report is intentionally conservative; do not delete candidates without browser screenshots and runtime DOM checks.",
+    "Dynamic classes, legacy adapter classes and third-party compatibility aliases are marked as known-dynamic-or-legacy.",
+    "PurgeCSS or automatic deletion is prohibited by the current remediation plan."
+  ]
+}

@@ -38,9 +38,19 @@ class WatchlistSignalService:
         if refresh_watchlist_t1_availability(db, model=Watchlist, today=datetime.now().date()):
             self.refresh_snapshots(force=True)
         rows = self._list_watchlist_rows(db)
+        return self.list_signals_for_rows(db, rows)
+
+    def list_signals_for_rows(self, db: Session, rows: list) -> list[dict]:
+        """Return cached signal snapshots for arbitrary watchlist row models.
+
+        User watchlists and the global watchlist share the same symbol-keyed
+        snapshot table.  The public request path must stay read-only and
+        non-blocking; missing or stale rows schedule a refresh and return a
+        conservative fallback payload instead of running per-symbol analysis.
+        """
+
         if not rows:
             return []
-
         snapshots = self._load_snapshot_payloads(db, rows)
         if self._should_refresh(rows, snapshots):
             self.ensure_background_refresh(force=False)

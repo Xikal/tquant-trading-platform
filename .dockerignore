@@ -9,6 +9,11 @@ backend/.pytest_cache
 backend/data/runtime.env
 frontend/node_modules
 frontend/dist
+frontend-next/node_modules
+frontend-next/dist
+frontend-next/test-results
+frontend-next/playwright-report
+frontend-next/*.tsbuildinfo
 *.pyc
 *.pyo
 *.log

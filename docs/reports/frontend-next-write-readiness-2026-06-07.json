@@ -1,0 +1,721 @@
+{
+  "generated_at": "2026-06-08T06:40:08.786Z",
+  "source_files": {
+    "operations": "/Users/j/Documents/gupiao/frontend-next/src/shared/api/operations.ts",
+    "safe_write_contracts": "/Users/j/Documents/gupiao/frontend-next/src/shared/api/safeWriteContracts.ts",
+    "safe_write_evidence": "/Users/j/Documents/gupiao/frontend-next/src/shared/api/safeWriteEvidence.ts",
+    "rollback_smoke": "/Users/j/Documents/gupiao/docs/reports/frontend-next-write-rollback-smoke-2026-06-05.json"
+  },
+  "summary": {
+    "contract_count": 13,
+    "production_ready_contracts": 12,
+    "blocked_contracts": 0,
+    "cutover_excluded_contracts": 1,
+    "covered_write_operations": 30,
+    "uncovered_write_operations": 7,
+    "rollback_evidence_status": "ok",
+    "cutover_ready": true
+  },
+  "contracts": [
+    {
+      "id": "FNX-SW-AUTH-MFA",
+      "title": "Account MFA setup, enable and disable",
+      "state": "defined_production_ready",
+      "required_mode": "live",
+      "required_role": "authenticated",
+      "operation_count": 3,
+      "missing_operations": 0,
+      "non_ready_operations": 0,
+      "missing_evidence_operations": 0,
+      "missing_rollback_operations": 0,
+      "evidence_status": "verified",
+      "cutover_excluded": false,
+      "evidence_required": [
+        "account-security fixture",
+        "audit echo",
+        "restore previous MFA state"
+      ],
+      "operations": [
+        {
+          "operation": "authTotpSetup",
+          "feature": "auth",
+          "method": "POST",
+          "path": "/api/auth/mfa/totp/setup",
+          "contract_status": "ready",
+          "requires_admin": false,
+          "rollback_evidence": "local-isolated-setup-enable-disable",
+          "evidence_status": "verified",
+          "evidence_notes": ""
+        },
+        {
+          "operation": "authTotpEnable",
+          "feature": "auth",
+          "method": "POST",
+          "path": "/api/auth/mfa/totp/enable",
+          "contract_status": "ready",
+          "requires_admin": false,
+          "rollback_evidence": "local-isolated-setup-enable-disable",
+          "evidence_status": "verified",
+          "evidence_notes": ""
+        },
+        {
+          "operation": "authTotpDisable",
+          "feature": "auth",
+          "method": "POST",
+          "path": "/api/auth/mfa/totp/disable",
+          "contract_status": "ready",
+          "requires_admin": false,
+          "rollback_evidence": "local-isolated-setup-enable-disable",
+          "evidence_status": "verified",
+          "evidence_notes": ""
+        }
+      ],
+      "production_ready": true,
+      "blocker_reasons": []
+    },
+    {
+      "id": "FNX-SW-WATCHLIST",
+      "title": "Watchlist and monitor observation maintenance",
+      "state": "defined_production_ready",
+      "required_mode": "live",
+      "required_role": "authenticated_observer",
+      "operation_count": 2,
+      "missing_operations": 0,
+      "non_ready_operations": 0,
+      "missing_evidence_operations": 0,
+      "missing_rollback_operations": 0,
+      "evidence_status": "verified",
+      "cutover_excluded": false,
+      "evidence_required": [
+        "no priority_board change",
+        "create/update/delete rollback trace",
+        "request count trace"
+      ],
+      "operations": [
+        {
+          "operation": "watchlistUpsert",
+          "feature": "monitor",
+          "method": "POST",
+          "path": "/api/watchlist",
+          "contract_status": "ready",
+          "requires_admin": false,
+          "rollback_evidence": "local-isolated-create-read-delete-read",
+          "evidence_status": "verified",
+          "evidence_notes": ""
+        },
+        {
+          "operation": "watchlistRemove",
+          "feature": "monitor",
+          "method": "DELETE",
+          "path": "/api/watchlist/{symbol}",
+          "contract_status": "ready",
+          "requires_admin": false,
+          "rollback_evidence": "local-isolated-create-read-delete-read",
+          "evidence_status": "verified",
+          "evidence_notes": ""
+        }
+      ],
+      "production_ready": true,
+      "blocker_reasons": []
+    },
+    {
+      "id": "FNX-SW-PLAYBOOK-LIFECYCLE",
+      "title": "Playbook lifecycle and strategy governance",
+      "state": "defined_production_ready",
+      "required_mode": "live",
+      "required_role": "admin or strategy operator",
+      "operation_count": 2,
+      "missing_operations": 0,
+      "non_ready_operations": 0,
+      "missing_evidence_operations": 0,
+      "missing_rollback_operations": 0,
+      "evidence_status": "verified",
+      "cutover_excluded": false,
+      "evidence_required": [
+        "research-only boundary trace",
+        "rollback trace",
+        "strategy meta refetch echo"
+      ],
+      "operations": [
+        {
+          "operation": "lowBuyLifecycleUpdate",
+          "feature": "playbook",
+          "method": "PATCH",
+          "path": "/api/screeners/low-buy/lifecycle/{symbol}",
+          "contract_status": "ready",
+          "requires_admin": false,
+          "rollback_evidence": "local-isolated-fixture-update-read-restore-delete-403-audit",
+          "evidence_status": "verified",
+          "evidence_notes": ""
+        },
+        {
+          "operation": "lowBuyStrategyUpdate",
+          "feature": "playbook",
+          "method": "PATCH",
+          "path": "/api/screeners/low-buy/strategies/{strategy_key}",
+          "contract_status": "ready",
+          "requires_admin": false,
+          "rollback_evidence": "local-isolated-fixture-update-read-restore-delete-403-audit",
+          "evidence_status": "verified",
+          "evidence_notes": ""
+        }
+      ],
+      "production_ready": true,
+      "blocker_reasons": []
+    },
+    {
+      "id": "FNX-SW-PAPER-ORDER",
+      "title": "Paper order create and cancel",
+      "state": "defined_production_ready",
+      "required_mode": "live",
+      "required_role": "can_paper_trade + live_smoke_operator",
+      "operation_count": 2,
+      "missing_operations": 0,
+      "non_ready_operations": 0,
+      "missing_evidence_operations": 0,
+      "missing_rollback_operations": 0,
+      "evidence_status": "verified",
+      "cutover_excluded": false,
+      "evidence_required": [
+        "isolated paper account",
+        "create/cancel or reset trace",
+        "paper workspace refetch echo"
+      ],
+      "operations": [
+        {
+          "operation": "paperOrderCreate",
+          "feature": "paper",
+          "method": "POST",
+          "path": "/api/paper/orders",
+          "contract_status": "ready",
+          "requires_admin": false,
+          "rollback_evidence": "local-isolated-create-reset-readback",
+          "evidence_status": "verified",
+          "evidence_notes": ""
+        },
+        {
+          "operation": "paperOrderCancel",
+          "feature": "paper",
+          "method": "POST",
+          "path": "/api/paper/orders/{order_id}/cancel",
+          "contract_status": "ready",
+          "requires_admin": false,
+          "rollback_evidence": "local-isolated-create-reset-readback",
+          "evidence_status": "verified",
+          "evidence_notes": ""
+        }
+      ],
+      "production_ready": true,
+      "blocker_reasons": []
+    },
+    {
+      "id": "FNX-SW-PAPER-ACCOUNT",
+      "title": "Paper account pause, resume, refresh and reconcile",
+      "state": "defined_production_ready",
+      "required_mode": "live",
+      "required_role": "can_paper_trade; admin for reconcile/apply",
+      "operation_count": 4,
+      "missing_operations": 0,
+      "non_ready_operations": 0,
+      "missing_evidence_operations": 0,
+      "missing_rollback_operations": 0,
+      "evidence_status": "verified",
+      "cutover_excluded": false,
+      "evidence_required": [
+        "dry-run diff",
+        "apply/rollback trace",
+        "admin 403 fixture"
+      ],
+      "operations": [
+        {
+          "operation": "paperAccountPause",
+          "feature": "paper",
+          "method": "POST",
+          "path": "/api/paper/account/pause",
+          "contract_status": "ready",
+          "requires_admin": false,
+          "rollback_evidence": "local-isolated-pause-resume-refresh-reconcile-dry-run",
+          "evidence_status": "verified",
+          "evidence_notes": ""
+        },
+        {
+          "operation": "paperAccountResume",
+          "feature": "paper",
+          "method": "POST",
+          "path": "/api/paper/account/resume",
+          "contract_status": "ready",
+          "requires_admin": false,
+          "rollback_evidence": "local-isolated-pause-resume-refresh-reconcile-dry-run",
+          "evidence_status": "verified",
+          "evidence_notes": ""
+        },
+        {
+          "operation": "paperAccountReconcile",
+          "feature": "paper",
+          "method": "POST",
+          "path": "/api/paper/account/reconcile",
+          "contract_status": "ready",
+          "requires_admin": true,
+          "rollback_evidence": "local-isolated-pause-resume-refresh-reconcile-dry-run",
+          "evidence_status": "verified",
+          "evidence_notes": ""
+        },
+        {
+          "operation": "paperPositionsRefresh",
+          "feature": "paper",
+          "method": "POST",
+          "path": "/api/paper/positions/refresh",
+          "contract_status": "ready",
+          "requires_admin": false,
+          "rollback_evidence": "local-isolated-pause-resume-refresh-reconcile-dry-run",
+          "evidence_status": "verified",
+          "evidence_notes": ""
+        }
+      ],
+      "production_ready": true,
+      "blocker_reasons": []
+    },
+    {
+      "id": "FNX-SW-STRATEGY-REVIEW",
+      "title": "Strategy review record and refresh",
+      "state": "defined_production_ready",
+      "required_mode": "live",
+      "required_role": "authenticated_observer or reviewer",
+      "operation_count": 2,
+      "missing_operations": 0,
+      "non_ready_operations": 0,
+      "missing_evidence_operations": 0,
+      "missing_rollback_operations": 0,
+      "evidence_status": "verified",
+      "cutover_excluded": false,
+      "evidence_required": [
+        "review CRUD rollback",
+        "strategyTrackingReview refetch echo",
+        "no priority_board effect"
+      ],
+      "operations": [
+        {
+          "operation": "strategyReviewRecord",
+          "feature": "strategy-tracking",
+          "method": "POST",
+          "path": "/api/strategy-tracking/review-records",
+          "contract_status": "ready",
+          "requires_admin": false,
+          "rollback_evidence": "local-isolated-create-read-delete-read-refresh-audit",
+          "evidence_status": "verified",
+          "evidence_notes": ""
+        },
+        {
+          "operation": "strategyTrackingRefresh",
+          "feature": "strategy-tracking",
+          "method": "POST",
+          "path": "/api/strategy-tracking/refresh",
+          "contract_status": "ready",
+          "requires_admin": false,
+          "rollback_evidence": "local-isolated-create-read-delete-read-refresh-audit",
+          "evidence_status": "verified",
+          "evidence_notes": ""
+        }
+      ],
+      "production_ready": true,
+      "blocker_reasons": []
+    },
+    {
+      "id": "FNX-SW-TRADE-JOURNAL",
+      "title": "Trading journal CRUD",
+      "state": "defined_production_ready",
+      "required_mode": "live",
+      "required_role": "authenticated_observer",
+      "operation_count": 1,
+      "missing_operations": 0,
+      "non_ready_operations": 0,
+      "missing_evidence_operations": 0,
+      "missing_rollback_operations": 0,
+      "evidence_status": "verified",
+      "cutover_excluded": false,
+      "evidence_required": [
+        "create/update/delete rollback trace",
+        "journal refetch echo",
+        "no paper order request"
+      ],
+      "operations": [
+        {
+          "operation": "tradeJournalCreate",
+          "feature": "strategy-tracking",
+          "method": "POST",
+          "path": "/api/trading-experience/trade-journal",
+          "contract_status": "ready",
+          "requires_admin": false,
+          "rollback_evidence": "local-isolated-create-read-delete-read-feature-flag-restore",
+          "evidence_status": "verified",
+          "evidence_notes": ""
+        }
+      ],
+      "production_ready": true,
+      "blocker_reasons": []
+    },
+    {
+      "id": "FNX-SW-BACKTEST-TASK",
+      "title": "Backtest run create, cancel, validation and optimization",
+      "state": "defined_production_ready",
+      "required_mode": "live",
+      "required_role": "authenticated_observer + live_smoke_operator",
+      "operation_count": 4,
+      "missing_operations": 0,
+      "non_ready_operations": 0,
+      "missing_evidence_operations": 0,
+      "missing_rollback_operations": 0,
+      "evidence_status": "verified",
+      "cutover_excluded": false,
+      "evidence_required": [
+        "test run marker",
+        "cancel/delete rollback",
+        "task status refetch echo"
+      ],
+      "operations": [
+        {
+          "operation": "backtestRunCreate",
+          "feature": "backtest",
+          "method": "POST",
+          "path": "/api/backtests",
+          "contract_status": "ready",
+          "requires_admin": false,
+          "rollback_evidence": "local-isolated-create-cancel-delete-readback",
+          "evidence_status": "verified",
+          "evidence_notes": ""
+        },
+        {
+          "operation": "backtestRunCancel",
+          "feature": "backtest",
+          "method": "POST",
+          "path": "/api/backtests/{run_id}/cancel",
+          "contract_status": "ready",
+          "requires_admin": false,
+          "rollback_evidence": "local-isolated-create-cancel-delete-readback",
+          "evidence_status": "verified",
+          "evidence_notes": ""
+        },
+        {
+          "operation": "backtestValidationCreate",
+          "feature": "backtest",
+          "method": "POST",
+          "path": "/api/backtests/validate",
+          "contract_status": "ready",
+          "requires_admin": false,
+          "rollback_evidence": "local-isolated-create-cancel-delete-readback",
+          "evidence_status": "verified",
+          "evidence_notes": ""
+        },
+        {
+          "operation": "backtestOptimizationCreate",
+          "feature": "backtest",
+          "method": "POST",
+          "path": "/api/backtests/optimize",
+          "contract_status": "ready",
+          "requires_admin": false,
+          "rollback_evidence": "local-isolated-create-cancel-delete-readback",
+          "evidence_status": "verified",
+          "evidence_notes": ""
+        }
+      ],
+      "production_ready": true,
+      "blocker_reasons": []
+    },
+    {
+      "id": "FNX-SW-DATA-TASK",
+      "title": "Data task and backfill enqueue",
+      "state": "defined_production_ready",
+      "required_mode": "live",
+      "required_role": "admin + live_smoke_operator",
+      "operation_count": 3,
+      "missing_operations": 0,
+      "non_ready_operations": 0,
+      "missing_evidence_operations": 0,
+      "missing_rollback_operations": 0,
+      "evidence_status": "verified",
+      "cutover_excluded": false,
+      "evidence_required": [
+        "admin 403 fixture",
+        "queued/cancelled trace",
+        "runtimeTasks refetch echo"
+      ],
+      "operations": [
+        {
+          "operation": "dataJobSubmit",
+          "feature": "data-console",
+          "method": "POST",
+          "path": "/api/runtime-tasks",
+          "contract_status": "ready",
+          "requires_admin": true,
+          "rollback_evidence": "local-isolated-enqueue-cancel-readback-403-audit",
+          "evidence_status": "verified",
+          "evidence_notes": ""
+        },
+        {
+          "operation": "dataQualityBackfill",
+          "feature": "data-console",
+          "method": "POST",
+          "path": "/api/data-quality/backfill",
+          "contract_status": "ready",
+          "requires_admin": true,
+          "rollback_evidence": "local-isolated-enqueue-cancel-readback-403-audit",
+          "evidence_status": "verified",
+          "evidence_notes": ""
+        },
+        {
+          "operation": "runtimeTaskCreate",
+          "feature": "data-console",
+          "method": "POST",
+          "path": "/api/runtime-tasks",
+          "contract_status": "ready",
+          "requires_admin": true,
+          "rollback_evidence": "local-isolated-enqueue-cancel-readback-403-audit",
+          "evidence_status": "verified",
+          "evidence_notes": ""
+        }
+      ],
+      "production_ready": true,
+      "blocker_reasons": []
+    },
+    {
+      "id": "FNX-SW-DATA-REPAIR",
+      "title": "Data repair dry-run and apply",
+      "state": "defined_production_ready",
+      "required_mode": "live",
+      "required_role": "admin + live_smoke_operator",
+      "operation_count": 1,
+      "missing_operations": 0,
+      "non_ready_operations": 0,
+      "missing_evidence_operations": 0,
+      "missing_rollback_operations": 0,
+      "evidence_status": "verified",
+      "cutover_excluded": false,
+      "evidence_required": [
+        "dry-run diff",
+        "apply/rollback trace",
+        "data quality refetch echo"
+      ],
+      "operations": [
+        {
+          "operation": "dataQualityRepair",
+          "feature": "data-console",
+          "method": "POST",
+          "path": "/api/data-quality/repair",
+          "contract_status": "ready",
+          "requires_admin": true,
+          "rollback_evidence": "local-isolated-dry-run-enqueue-cancel-readback-403-audit",
+          "evidence_status": "verified",
+          "evidence_notes": ""
+        }
+      ],
+      "production_ready": true,
+      "blocker_reasons": []
+    },
+    {
+      "id": "FNX-SW-SETTINGS-SECTION",
+      "title": "Settings section save",
+      "state": "defined_production_ready",
+      "required_mode": "live",
+      "required_role": "authenticated or admin by section",
+      "operation_count": 3,
+      "missing_operations": 0,
+      "non_ready_operations": 0,
+      "missing_evidence_operations": 0,
+      "missing_rollback_operations": 0,
+      "evidence_status": "verified",
+      "cutover_excluded": false,
+      "evidence_required": [
+        "save echo",
+        "restore previous version",
+        "403 section fixture"
+      ],
+      "operations": [
+        {
+          "operation": "settingsUpdate",
+          "feature": "settings",
+          "method": "PUT",
+          "path": "/api/settings",
+          "contract_status": "ready",
+          "requires_admin": false,
+          "rollback_evidence": "local-isolated-save-restore-readback",
+          "evidence_status": "verified",
+          "evidence_notes": ""
+        },
+        {
+          "operation": "sectorExclusionsUpdate",
+          "feature": "settings",
+          "method": "PUT",
+          "path": "/api/settings/sector-exclusions",
+          "contract_status": "ready",
+          "requires_admin": false,
+          "rollback_evidence": "local-isolated-save-restore-readback",
+          "evidence_status": "verified",
+          "evidence_notes": ""
+        },
+        {
+          "operation": "factorWeightsUpdate",
+          "feature": "settings",
+          "method": "PUT",
+          "path": "/api/settings/factor-weights",
+          "contract_status": "ready",
+          "requires_admin": false,
+          "rollback_evidence": "local-isolated-save-restore-readback",
+          "evidence_status": "verified",
+          "evidence_notes": ""
+        }
+      ],
+      "production_ready": true,
+      "blocker_reasons": []
+    },
+    {
+      "id": "FNX-SW-FEATURE-FLAG",
+      "title": "Feature flag update",
+      "state": "defined_production_ready",
+      "required_mode": "live",
+      "required_role": "admin + live_smoke_operator",
+      "operation_count": 1,
+      "missing_operations": 0,
+      "non_ready_operations": 0,
+      "missing_evidence_operations": 0,
+      "missing_rollback_operations": 0,
+      "evidence_status": "verified",
+      "cutover_excluded": false,
+      "evidence_required": [
+        "toggle/restore trace",
+        "featureFlagAudit echo",
+        "admin 403 fixture"
+      ],
+      "operations": [
+        {
+          "operation": "featureFlagUpdate",
+          "feature": "settings",
+          "method": "PUT",
+          "path": "/api/settings/feature-flags/{key}",
+          "contract_status": "ready",
+          "requires_admin": true,
+          "rollback_evidence": "local-isolated-toggle-restore-readback",
+          "evidence_status": "verified",
+          "evidence_notes": ""
+        }
+      ],
+      "production_ready": true,
+      "blocker_reasons": []
+    },
+    {
+      "id": "FNX-SW-DATABASE-MAINTENANCE",
+      "title": "Database check and migration actions",
+      "state": "cutover_excluded",
+      "required_mode": "excluded",
+      "required_role": "admin + live_smoke_operator",
+      "operation_count": 2,
+      "missing_operations": 0,
+      "non_ready_operations": 1,
+      "missing_evidence_operations": 1,
+      "missing_rollback_operations": 1,
+      "evidence_status": "partial",
+      "cutover_excluded": true,
+      "evidence_required": [
+        "dry-run report",
+        "rollback plan evidence",
+        "no production database mutation in shadow"
+      ],
+      "operations": [
+        {
+          "operation": "databaseCheck",
+          "feature": "settings",
+          "method": "POST",
+          "path": "/api/settings/database/check",
+          "contract_status": "ready",
+          "requires_admin": true,
+          "rollback_evidence": "local-readonly-admin-check",
+          "evidence_status": "verified",
+          "evidence_notes": ""
+        },
+        {
+          "operation": "databaseMigrate",
+          "feature": "settings",
+          "method": "POST",
+          "path": "/api/settings/database/migrate",
+          "contract_status": "blocked_contract_needed",
+          "requires_admin": true,
+          "rollback_evidence": "missing",
+          "evidence_status": "not-applicable",
+          "evidence_notes": ""
+        }
+      ],
+      "production_ready": false,
+      "blocker_reasons": [
+        "contract is excluded from cutover scope",
+        "contract state is cutover_excluded",
+        "requiredMode is excluded",
+        "1 operations are not ready",
+        "1 operations lack verified static evidence",
+        "1 operations lack rollback smoke evidence"
+      ]
+    }
+  ],
+  "uncovered_write_operations": [
+    {
+      "operation": "authLogin",
+      "feature": "auth",
+      "method": "POST",
+      "path": "/api/auth/login",
+      "contract_status": "ready",
+      "classification": "non-persistent-or-auth-flow"
+    },
+    {
+      "operation": "authRegister",
+      "feature": "auth",
+      "method": "POST",
+      "path": "/api/auth/register",
+      "contract_status": "ready",
+      "classification": "non-persistent-or-auth-flow"
+    },
+    {
+      "operation": "authRefresh",
+      "feature": "auth",
+      "method": "POST",
+      "path": "/api/auth/refresh",
+      "contract_status": "ready",
+      "classification": "non-persistent-or-auth-flow"
+    },
+    {
+      "operation": "authLogout",
+      "feature": "auth",
+      "method": "POST",
+      "path": "/api/auth/logout",
+      "contract_status": "ready",
+      "classification": "non-persistent-or-auth-flow"
+    },
+    {
+      "operation": "analyzeSymbol",
+      "feature": "analysis",
+      "method": "POST",
+      "path": "/api/analyze",
+      "contract_status": "ready",
+      "classification": "non-persistent-or-auth-flow"
+    },
+    {
+      "operation": "analyzeBatch",
+      "feature": "analysis",
+      "method": "POST",
+      "path": "/api/analyze/batch",
+      "contract_status": "ready",
+      "classification": "non-persistent-or-auth-flow"
+    },
+    {
+      "operation": "aiDecisionSupport",
+      "feature": "analysis",
+      "method": "POST",
+      "path": "/api/ai/decision-support",
+      "contract_status": "ready",
+      "classification": "non-persistent-or-auth-flow"
+    }
+  ],
+  "critical_blockers": [],
+  "notes": [
+    "This report is generated from frontend-next operation registries; it does not upgrade any operation status.",
+    "A contract is production-ready only when its state is production-ready, requiredMode is live, all operations are ready, static evidence is verified, and rollback smoke evidence exists.",
+    "databaseMigrate remains excluded from cutover by policy; only dry-run/check may be considered after separate operations approval."
+  ]
+}

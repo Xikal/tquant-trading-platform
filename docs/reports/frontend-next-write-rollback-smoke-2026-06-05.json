@@ -1,0 +1,1079 @@
+{
+  "generated_at": "2026-06-08T06:38:55.718Z",
+  "apiBase": "http://43.143.243.97:18090",
+  "live_modes": {
+    "paper_order": true,
+    "backtest_run": true,
+    "admin_feature_flag": true,
+    "core_writes": true,
+    "local_admin_promote": false,
+    "remote_role_smoke": true,
+    "cli_all_isolated": true,
+    "cli_all_isolated_blocked": false,
+    "local_api_base": false
+  },
+  "default_write_guard": {
+    "ok": true,
+    "value": "unset",
+    "note": "frontend-next live writes remain disabled unless VITE_FRONTEND_NEXT_WRITE_ENABLED=true is supplied explicitly."
+  },
+  "dry_run_payload_hashes": {
+    "paper_order": "0c198d9bc54e5fa43d8c4d6fd7a0c0619cb8bb54c455bff3310bb28a71ec2fed",
+    "backtest_run": "2095aac2ca112f6187a773ca9ec89fa7d6838b17b777a906582de7a1e0264287",
+    "feature_flag": "45c86208e21e8cbc3196dc155b98d0a6a72d6e307d0cb87d701b3980ae912cc7",
+    "trade_journal": "f48baf2f5d85c35d7a640327acac79b7d470e9392dca133fcaafae927453b5be",
+    "backtest_validation": "71f49b4124af9a1c092abc8f309c332973eb1395a2a6ee9f78fd68b3f2ad2bf9",
+    "backtest_optimization": "b9cd76868cc6da8e3b4f74e86b355ac66493d67b1175c2fc54b7e97746f19e38"
+  },
+  "endpoints": {
+    "paper_order": {
+      "method": "POST",
+      "path": "/api/paper/orders",
+      "rollback": "POST /api/paper/account/reset for the temporary user when an admin token is available; otherwise use a non-persisting business-rule probe."
+    },
+    "backtest_run": {
+      "method": "POST",
+      "path": "/api/backtests",
+      "rollback": "DELETE /api/backtests/{run_id}; kept dry-run by default because it can enqueue compute work."
+    },
+    "feature_flag": {
+      "method": "PUT",
+      "path": "/api/settings/feature-flags/{runtime_selected_key}",
+      "rollback": "restore previous value; kept dry-run unless FRONTEND_NEXT_LIVE_ADMIN_WRITE_SMOKE=1 and admin token are provided.",
+      "candidate_keys": [
+        "frontend_solid_island_enabled",
+        "frontend_wasm_compute_enabled",
+        "frontend_worker_compute_enabled",
+        "frontend_realtime_signals_island_enabled",
+        "frontend_canvas_chart_island_enabled",
+        "playbook_lazy_load_enabled",
+        "smart_mode_enabled"
+      ]
+    }
+  },
+  "live_results": [
+    {
+      "kind": "auth_mfa",
+      "ok": true,
+      "coverage": "local-isolated-setup-enable-disable",
+      "request_evidence": {
+        "setup": {
+          "client_request_id": "fnx-authTotpSetup-mq4ubek2-d65059e334945",
+          "contract_id": "FNX-SW-AUTH-MFA",
+          "operation": "authTotpSetup",
+          "write_mode": "live"
+        },
+        "enable": {
+          "client_request_id": "fnx-authTotpEnable-mq4ubelj-a84053340173a8",
+          "contract_id": "FNX-SW-AUTH-MFA",
+          "operation": "authTotpEnable",
+          "write_mode": "live"
+        },
+        "disable": {
+          "client_request_id": "fnx-authTotpDisable-mq4ubet9-ef6eb122fd09a8",
+          "contract_id": "FNX-SW-AUTH-MFA",
+          "operation": "authTotpDisable",
+          "write_mode": "live"
+        }
+      },
+      "setup_shape": {
+        "account_name": "string",
+        "issuer": "string",
+        "otpauth_uri": "string",
+        "secret": "string"
+      },
+      "enable_shape": {
+        "user": {
+          "can_paper_trade": "boolean",
+          "created_at": "string",
+          "display_name": "string",
+          "id": "number",
+          "mfa_totp_enabled": "boolean",
+          "roles": [
+            "string"
+          ],
+          "username": "string"
+        }
+      },
+      "rollback_shape": {
+        "user": {
+          "can_paper_trade": "boolean",
+          "created_at": "string",
+          "display_name": "string",
+          "id": "number",
+          "mfa_totp_enabled": "boolean",
+          "roles": [
+            "string"
+          ],
+          "username": "string"
+        }
+      }
+    },
+    {
+      "kind": "watchlist",
+      "ok": true,
+      "coverage": "local-isolated-create-read-delete-read",
+      "existed_before": false,
+      "request_evidence": {
+        "upsert": {
+          "client_request_id": "fnx-watchlistUpsert-mq4ubewl-4015040e778b68",
+          "contract_id": "FNX-SW-WATCHLIST",
+          "operation": "watchlistUpsert",
+          "write_mode": "live"
+        },
+        "remove": {
+          "client_request_id": "fnx-watchlistRemove-mq4ubf5l-310ae33ce20378",
+          "contract_id": "FNX-SW-WATCHLIST",
+          "operation": "watchlistRemove",
+          "write_mode": "live"
+        }
+      },
+      "create_shape": {
+        "message": "string",
+        "symbol": "string"
+      }
+    },
+    {
+      "kind": "trade_journal",
+      "ok": true,
+      "coverage": "local-isolated-create-read-delete-read-feature-flag-restore",
+      "request_evidence": {
+        "client_request_id": "fnx-tradeJournalCreate-mq4ubf86-b986ab9132e84",
+        "contract_id": "FNX-SW-TRADE-JOURNAL",
+        "operation": "tradeJournalCreate",
+        "write_mode": "live"
+      },
+      "entry_id": 9,
+      "create_shape": {
+        "account_id": "object",
+        "action": "string",
+        "as_of": "string",
+        "created_at": "string",
+        "data_quality": "string",
+        "discipline_flags": {
+          "no_add_down": "boolean",
+          "no_chase_noliquidity": "boolean",
+          "not_against_mainline": "boolean",
+          "planned_position": "boolean",
+          "stop_loss_set": "boolean",
+          "trend_follow": "boolean"
+        },
+        "engine_version": "string",
+        "entry_id": "number",
+        "mistake_tags": [
+          "string"
+        ],
+        "reason_text": "string",
+        "research_only": "boolean",
+        "signal_source": "string",
+        "source": "string",
+        "symbol": "string",
+        "updated_at": "string",
+        "user_id": "number"
+      }
+    },
+    {
+      "kind": "paper_account",
+      "ok": true,
+      "coverage": "local-isolated-pause-resume-refresh-reconcile-dry-run",
+      "request_evidence": {
+        "pause": {
+          "client_request_id": "fnx-paperAccountPause-mq4ubfev-2b6b9d47cf23",
+          "contract_id": "FNX-SW-PAPER-ACCOUNT",
+          "operation": "paperAccountPause",
+          "write_mode": "live"
+        },
+        "resume": {
+          "client_request_id": "fnx-paperAccountResume-mq4ubfgx-11fbc3062d7958",
+          "contract_id": "FNX-SW-PAPER-ACCOUNT",
+          "operation": "paperAccountResume",
+          "write_mode": "live"
+        },
+        "refresh": {
+          "client_request_id": "fnx-paperPositionsRefresh-mq4uc0g1-acef552cfe2c4",
+          "contract_id": "FNX-SW-PAPER-ACCOUNT",
+          "operation": "paperPositionsRefresh",
+          "write_mode": "live"
+        },
+        "reconcile": {
+          "client_request_id": "fnx-paperAccountReconcile-mq4uc0ig-9d7eaa40d4c59",
+          "contract_id": "FNX-SW-PAPER-ACCOUNT",
+          "operation": "paperAccountReconcile",
+          "write_mode": "live"
+        }
+      },
+      "before_shape": {
+        "cash_available": "number",
+        "frozen_cash": "number",
+        "id": "number",
+        "initial_cash": "number",
+        "market_value": "number",
+        "max_drawdown_pct": "number",
+        "name": "string",
+        "realized_pnl": "number",
+        "status": "string",
+        "today_pnl": "object",
+        "today_return_pct": "number",
+        "total_assets": "number",
+        "total_return_pct": "number",
+        "unrealized_pnl": "number",
+        "user_id": "number"
+      },
+      "paused_shape": {
+        "cash_available": "number",
+        "frozen_cash": "number",
+        "id": "number",
+        "initial_cash": "number",
+        "market_value": "number",
+        "max_drawdown_pct": "number",
+        "name": "string",
+        "realized_pnl": "number",
+        "status": "string",
+        "today_pnl": "object",
+        "today_return_pct": "number",
+        "total_assets": "number",
+        "total_return_pct": "number",
+        "unrealized_pnl": "number",
+        "user_id": "number"
+      },
+      "resumed_shape": {
+        "cash_available": "number",
+        "frozen_cash": "number",
+        "id": "number",
+        "initial_cash": "number",
+        "market_value": "number",
+        "max_drawdown_pct": "number",
+        "name": "string",
+        "realized_pnl": "number",
+        "status": "string",
+        "today_pnl": "object",
+        "today_return_pct": "number",
+        "total_assets": "number",
+        "total_return_pct": "number",
+        "unrealized_pnl": "number",
+        "user_id": "number"
+      },
+      "refresh_shape": {
+        "positions": [],
+        "total_market_value": "number",
+        "total_unrealized_pnl": "number"
+      },
+      "reconcile_shape": {
+        "account_id": "number",
+        "applied": "boolean",
+        "corrected_cash_available": "number",
+        "corrected_market_value": "number",
+        "corrected_realized_pnl": "number",
+        "corrected_total_assets": "number",
+        "issue_count": "number",
+        "issues": [],
+        "reconciliation_gap_after": "number",
+        "reconciliation_gap_before": "number"
+      }
+    },
+    {
+      "kind": "database_check",
+      "ok": true,
+      "coverage": "local-readonly-admin-check",
+      "request_evidence": {
+        "client_request_id": "fnx-databaseCheck-mq4uc0ko-518226c027828",
+        "contract_id": "FNX-SW-DATABASE-MAINTENANCE",
+        "operation": "databaseCheck",
+        "write_mode": "live"
+      },
+      "response_shape": {
+        "database": "string",
+        "dialect": "string",
+        "masked_url": "string",
+        "message": "string",
+        "ok": "boolean",
+        "tables": [
+          "string"
+        ]
+      }
+    },
+    {
+      "kind": "paper_order",
+      "ok": true,
+      "mode": "create_then_reset_temp_account",
+      "coverage": "local-isolated-create-reset-readback",
+      "request_evidence": {
+        "client_request_id": "fnx-paperOrderCreate-mq4uc0q7-4d263703b5bbd",
+        "contract_id": "FNX-SW-PAPER-ORDER",
+        "operation": "paperOrderCreate",
+        "write_mode": "live"
+      },
+      "order_id": 175,
+      "create_shape": {
+        "account_id": "number",
+        "avg_fill_price": "number",
+        "created_at": "string",
+        "filled_quantity": "number",
+        "id": "number",
+        "name": "string",
+        "order_type": "string",
+        "price": "number",
+        "quantity": "number",
+        "reason": "string",
+        "reject_reason": "object",
+        "side": "string",
+        "source": "string",
+        "status": "string",
+        "strategy_key": "string",
+        "symbol": "string"
+      },
+      "rollback_shape": {
+        "cash_available": "number",
+        "frozen_cash": "number",
+        "id": "number",
+        "initial_cash": "number",
+        "market_value": "number",
+        "max_drawdown_pct": "number",
+        "name": "string",
+        "realized_pnl": "number",
+        "status": "string",
+        "today_pnl": "object",
+        "today_return_pct": "number",
+        "total_assets": "number",
+        "total_return_pct": "number",
+        "unrealized_pnl": "number",
+        "user_id": "number"
+      }
+    },
+    {
+      "kind": "settings_section",
+      "ok": true,
+      "coverage": "local-isolated-save-restore-readback",
+      "request_evidence": {
+        "settings": {
+          "client_request_id": "fnx-settingsUpdate-mq4uc14l-a202e57d4df5f8",
+          "contract_id": "FNX-SW-SETTINGS-SECTION",
+          "operation": "settingsUpdate",
+          "write_mode": "live"
+        },
+        "sectors": {
+          "client_request_id": "fnx-sectorExclusionsUpdate-mq4uc1gi-6d694b3752f49",
+          "contract_id": "FNX-SW-SETTINGS-SECTION",
+          "operation": "sectorExclusionsUpdate",
+          "write_mode": "live"
+        },
+        "factors": {
+          "client_request_id": "fnx-factorWeightsUpdate-mq4uc1jp-7752829df2f42",
+          "contract_id": "FNX-SW-SETTINGS-SECTION",
+          "operation": "factorWeightsUpdate",
+          "write_mode": "live"
+        }
+      },
+      "settings_shape": {
+        "message": "string",
+        "restart_required": "boolean",
+        "settings": {
+          "admin_auth_required": "boolean",
+          "data_source": "string",
+          "data_source_base_url": "string",
+          "database_url": "string",
+          "database_url_configured": "boolean",
+          "event_risk_enabled": "boolean",
+          "llm_api_key": "string",
+          "llm_api_key_configured": "boolean",
+          "llm_base_url": "string",
+          "llm_model": "string",
+          "llm_provider": "string",
+          "microstructure_enabled": "boolean",
+          "risk_max_daily_loss_pct": "number",
+          "risk_max_single_loss_pct": "number",
+          "risk_pause_after_losses": "number",
+          "strategy_max_amplitude_pct": "number",
+          "strategy_max_atr_pct": "number",
+          "strategy_min_amount_etf": "number",
+          "strategy_min_amount_stock": "number",
+          "strategy_min_amplitude_pct": "number",
+          "strategy_min_profit_etf_pct": "number",
+          "strategy_min_profit_pct": "number",
+          "strategy_min_profit_stock_pct": "number",
+          "strategy_open_phase_end_hhmm": "number",
+          "strategy_open_phase_min_tradability": "number",
+          "strategy_slippage_etf_bps": "number",
+          "strategy_slippage_stock_bps": "number",
+          "walk_forward_window_size": "number"
+        }
+      },
+      "sectors_shape": {
+        "available_sectors": [
+          "string"
+        ],
+        "excluded_count": "number",
+        "excluded_sectors": [],
+        "updated_at": "string"
+      },
+      "factors_shape": {
+        "defaults": {
+          "absorption_quality_factor": "number",
+          "big_order_flow_factor": "number",
+          "block_trade_premium_factor": "number",
+          "deep_pullback_factor": "number",
+          "dragon_board_factor": "number",
+          "earnings_surprise_factor": "number",
+          "event_risk_factor": "number",
+          "gap_risk_factor": "number",
+          "insider_trade_factor": "number",
+          "limit_up_quality_factor": "number",
+          "margin_balance_factor": "number",
+          "north_flow_factor": "number",
+          "old_duck_head_factor": "number",
+          "pre_market_auction_factor": "number",
+          "price_structure_factor": "number",
+          "sector_density_factor": "number",
+          "sector_flow_factor": "number",
+          "selection_quality_factor": "number",
+          "short_balance_factor": "number",
+          "shrink_quality_factor": "number",
+          "signal_freshness_factor": "number",
+          "time_efficiency_factor": "number",
+          "trend_rebound_factor": "number",
+          "volatility_regime_factor": "number"
+        },
+        "factors": [
+          {
+            "activation_condition": "string",
+            "applicable_strategies": "object",
+            "data_dependencies": "object",
+            "name": "string",
+            "status": "string",
+            "status_text": "string",
+            "weight": "number"
+          }
+        ],
+        "weights": {
+          "absorption_quality_factor": "number",
+          "big_order_flow_factor": "number",
+          "block_trade_premium_factor": "number",
+          "deep_pullback_factor": "number",
+          "dragon_board_factor": "number",
+          "earnings_surprise_factor": "number",
+          "event_risk_factor": "number",
+          "gap_risk_factor": "number",
+          "insider_trade_factor": "number",
+          "limit_up_quality_factor": "number",
+          "margin_balance_factor": "number",
+          "north_flow_factor": "number",
+          "old_duck_head_factor": "number",
+          "pre_market_auction_factor": "number",
+          "price_structure_factor": "number",
+          "sector_density_factor": "number",
+          "sector_flow_factor": "number",
+          "selection_quality_factor": "number",
+          "short_balance_factor": "number",
+          "shrink_quality_factor": "number",
+          "signal_freshness_factor": "number",
+          "time_efficiency_factor": "number",
+          "trend_rebound_factor": "number",
+          "volatility_regime_factor": "number"
+        }
+      }
+    },
+    {
+      "kind": "feature_flag",
+      "ok": true,
+      "coverage": "local-isolated-toggle-restore-readback",
+      "key": "frontend_solid_island_enabled",
+      "request_evidence": {
+        "change": {
+          "client_request_id": "fnx-featureFlagUpdate-mq4uc1oj-19e9be07a4f558",
+          "contract_id": "FNX-SW-FEATURE-FLAG",
+          "operation": "featureFlagUpdate",
+          "write_mode": "live"
+        },
+        "restore": {
+          "client_request_id": "fnx-featureFlagUpdate-mq4uc1r7-04584cd5c68e28",
+          "contract_id": "FNX-SW-FEATURE-FLAG",
+          "operation": "featureFlagUpdate",
+          "write_mode": "live"
+        }
+      },
+      "original": false,
+      "changed_to": true,
+      "restored_to": false,
+      "changed_shape": {
+        "flag": {
+          "default": "boolean",
+          "description": "string",
+          "enabled": "boolean",
+          "key": "string",
+          "source": "string",
+          "type": "string",
+          "updated_at": "string",
+          "updated_by": "string",
+          "value": "boolean"
+        },
+        "item": {
+          "default": "boolean",
+          "description": "string",
+          "enabled": "boolean",
+          "key": "string",
+          "source": "string",
+          "type": "string",
+          "updated_at": "string",
+          "updated_by": "string",
+          "value": "boolean"
+        },
+        "ok": "boolean"
+      },
+      "rollback_shape": {
+        "flag": {
+          "default": "boolean",
+          "description": "string",
+          "enabled": "boolean",
+          "key": "string",
+          "source": "string",
+          "type": "string",
+          "updated_at": "string",
+          "updated_by": "string",
+          "value": "boolean"
+        },
+        "item": {
+          "default": "boolean",
+          "description": "string",
+          "enabled": "boolean",
+          "key": "string",
+          "source": "string",
+          "type": "string",
+          "updated_at": "string",
+          "updated_by": "string",
+          "value": "boolean"
+        },
+        "ok": "boolean"
+      }
+    },
+    {
+      "kind": "playbook_lifecycle",
+      "ok": true,
+      "coverage": "local-isolated-fixture-update-read-restore-delete-403-audit",
+      "request_evidence": {
+        "lifecycle": {
+          "client_request_id": "fnx-lowBuyLifecycleUpdate-mq4uc2dn-78cb8acaf4ed8",
+          "contract_id": "FNX-SW-PLAYBOOK-LIFECYCLE",
+          "operation": "lowBuyLifecycleUpdate",
+          "write_mode": "live"
+        },
+        "lifecycle_restore": {
+          "client_request_id": "fnx-lowBuyLifecycleUpdate-mq4uc2gc-015eaafb9aa56",
+          "contract_id": "FNX-SW-PLAYBOOK-LIFECYCLE",
+          "operation": "lowBuyLifecycleUpdate",
+          "write_mode": "live"
+        },
+        "strategy": {
+          "client_request_id": "fnx-lowBuyStrategyUpdate-mq4uc2jp-e408d33b3b9f8",
+          "contract_id": "FNX-SW-PLAYBOOK-LIFECYCLE",
+          "operation": "lowBuyStrategyUpdate",
+          "write_mode": "live"
+        },
+        "strategy_restore": {
+          "client_request_id": "fnx-lowBuyStrategyUpdate-mq4uc2n1-929718ef822778",
+          "contract_id": "FNX-SW-PLAYBOOK-LIFECYCLE",
+          "operation": "lowBuyStrategyUpdate",
+          "write_mode": "live"
+        }
+      },
+      "permission_probe_status": 401,
+      "fixture": {
+        "symbol": "000001",
+        "strategyKey": "first_board",
+        "tradeDate": "2026-06-05",
+        "smokeFixture": true
+      },
+      "fixture_cleanup_shape": {
+        "audit_id": "number",
+        "deleted_count": "number",
+        "ok": "boolean"
+      },
+      "lifecycle_changed_shape": {
+        "after_hash": "string",
+        "attribution_note": "string",
+        "audit_id": "number",
+        "before_hash": "string",
+        "entry_plan_high": "number",
+        "entry_plan_low": "number",
+        "entry_price": "object",
+        "entry_trade_date": "object",
+        "exit_price": "object",
+        "exit_reason": "string",
+        "exit_trade_date": "object",
+        "max_drawdown_pct": "number",
+        "max_gain_pct": "number",
+        "max_holding_days": "number",
+        "name": "string",
+        "realized_return_pct": "number",
+        "signal_state": "string",
+        "signal_trade_date": "string",
+        "status": "string",
+        "stop_loss": "number",
+        "strategy_key": "string",
+        "symbol": "string",
+        "take_profit": "number",
+        "updated_at": "string"
+      },
+      "lifecycle_restored_shape": {
+        "after_hash": "string",
+        "attribution_note": "string",
+        "audit_id": "number",
+        "before_hash": "string",
+        "entry_plan_high": "number",
+        "entry_plan_low": "number",
+        "entry_price": "object",
+        "entry_trade_date": "object",
+        "exit_price": "object",
+        "exit_reason": "string",
+        "exit_trade_date": "object",
+        "max_drawdown_pct": "number",
+        "max_gain_pct": "number",
+        "max_holding_days": "number",
+        "name": "string",
+        "realized_return_pct": "number",
+        "signal_state": "string",
+        "signal_trade_date": "string",
+        "status": "string",
+        "stop_loss": "number",
+        "strategy_key": "string",
+        "symbol": "string",
+        "take_profit": "number",
+        "updated_at": "string"
+      },
+      "strategy_changed_shape": {
+        "after_hash": "string",
+        "audit_id": "number",
+        "before_hash": "string",
+        "default_strategy": "string",
+        "items": [
+          {
+            "auto_governance_reason": "string",
+            "auto_governance_status": "string",
+            "auto_governance_updated_at": "string",
+            "enabled": "boolean",
+            "holding_brief": "string",
+            "layer": "string",
+            "max_holding_days": "number",
+            "notes": "object",
+            "participates_priority_board": "boolean",
+            "performance_sample_count": "number",
+            "pool_key": "string",
+            "pool_max_size": "number",
+            "pool_source": "string",
+            "pool_title": "string",
+            "requires_mainline_industry": "boolean",
+            "status": "string",
+            "status_text": "string",
+            "strategy_health_score": "number",
+            "strategy_health_text": "string",
+            "strategy_key": "string",
+            "strategy_title": "string",
+            "strong_buy_paused": "boolean",
+            "subtitle": "string",
+            "tier": "string",
+            "uses_daily_scan_pool": "boolean",
+            "validation_phase": "string",
+            "validation_phase_reason": "string",
+            "validation_phase_text": "string",
+            "validation_position_scale": "number"
+          }
+        ],
+        "production_strategies": [
+          "string"
+        ]
+      },
+      "strategy_restored_shape": {
+        "after_hash": "string",
+        "audit_id": "number",
+        "before_hash": "string",
+        "default_strategy": "string",
+        "items": [
+          {
+            "auto_governance_reason": "string",
+            "auto_governance_status": "string",
+            "auto_governance_updated_at": "string",
+            "enabled": "boolean",
+            "holding_brief": "string",
+            "layer": "string",
+            "max_holding_days": "number",
+            "notes": "object",
+            "participates_priority_board": "boolean",
+            "performance_sample_count": "number",
+            "pool_key": "string",
+            "pool_max_size": "number",
+            "pool_source": "string",
+            "pool_title": "string",
+            "requires_mainline_industry": "boolean",
+            "status": "string",
+            "status_text": "string",
+            "strategy_health_score": "number",
+            "strategy_health_text": "string",
+            "strategy_key": "string",
+            "strategy_title": "string",
+            "strong_buy_paused": "boolean",
+            "subtitle": "string",
+            "tier": "string",
+            "uses_daily_scan_pool": "boolean",
+            "validation_phase": "string",
+            "validation_phase_reason": "string",
+            "validation_phase_text": "string",
+            "validation_position_scale": "number"
+          }
+        ],
+        "production_strategies": [
+          "string"
+        ]
+      }
+    },
+    {
+      "kind": "strategy_review",
+      "ok": true,
+      "coverage": "local-isolated-create-read-delete-read-refresh-audit",
+      "request_evidence": {
+        "review_record": {
+          "client_request_id": "fnx-strategyReviewRecord-mq4uc2uo-ff5aea101052d",
+          "contract_id": "FNX-SW-STRATEGY-REVIEW",
+          "operation": "strategyReviewRecord",
+          "write_mode": "live"
+        },
+        "refresh": {
+          "client_request_id": "fnx-strategyTrackingRefresh-mq4uc2x9-bee8f248efea18",
+          "contract_id": "FNX-SW-STRATEGY-REVIEW",
+          "operation": "strategyTrackingRefresh",
+          "write_mode": "live"
+        }
+      },
+      "review_id": 8681,
+      "create_shape": {
+        "audit_id": "number",
+        "created_at": "string",
+        "notes": "string",
+        "review_id": "number",
+        "review_state": "string",
+        "source": "string",
+        "strategy_key": "string",
+        "symbol": "string",
+        "verdict": "string"
+      },
+      "refresh_shape": {
+        "audit_id": "number",
+        "changed_paper_ledger": "boolean",
+        "changed_strategy_results": "boolean",
+        "ok": "boolean",
+        "refreshed_count": "number",
+        "storage_mode": "string",
+        "summary": {
+          "abnormal_return_count": "number",
+          "active_count": "number",
+          "avg_current_return_pct": "number",
+          "data_quality": "string",
+          "data_quality_text": "string",
+          "generated_at": "string",
+          "in_entry_zone_count": "number",
+          "median_max_gain_pct": "number",
+          "needs_review_count": "number",
+          "shadow_observation_count": "number",
+          "stopped_count": "number",
+          "today_new_count": "number",
+          "tracking_count": "number"
+        }
+      }
+    },
+    {
+      "kind": "data_task",
+      "ok": true,
+      "coverage": "local-isolated-enqueue-cancel-readback-403-audit",
+      "request_evidence": {
+        "data_job": {
+          "client_request_id": "fnx-dataJobSubmit-mq4uc32n-cabe511618d37",
+          "contract_id": "FNX-SW-DATA-TASK",
+          "operation": "dataJobSubmit",
+          "write_mode": "live"
+        },
+        "backfill": {
+          "client_request_id": "fnx-dataQualityBackfill-mq4uc37a-7f135e168b8ea",
+          "contract_id": "FNX-SW-DATA-TASK",
+          "operation": "dataQualityBackfill",
+          "write_mode": "live"
+        },
+        "runtime_task": {
+          "client_request_id": "fnx-runtimeTaskCreate-mq4uc3bb-fb79e29da96ea8",
+          "contract_id": "FNX-SW-DATA-TASK",
+          "operation": "runtimeTaskCreate",
+          "write_mode": "live"
+        }
+      },
+      "permission_probe_status": 401,
+      "task_ids": [
+        34117,
+        34118,
+        34119
+      ]
+    },
+    {
+      "kind": "data_repair",
+      "ok": true,
+      "coverage": "local-isolated-dry-run-enqueue-cancel-readback-403-audit",
+      "request_evidence": {
+        "client_request_id": "fnx-dataQualityRepair-mq4uc3g9-719194eb0e4d68",
+        "contract_id": "FNX-SW-DATA-REPAIR",
+        "operation": "dataQualityRepair",
+        "write_mode": "live"
+      },
+      "permission_probe_status": 401,
+      "task_id": 34120,
+      "create_shape": {
+        "attempt_count": "number",
+        "audit_id": "number",
+        "created_at": "string",
+        "error_message": "string",
+        "finished_at": "object",
+        "id": "number",
+        "locked_by": "string",
+        "max_attempts": "number",
+        "payload": {
+          "dataset_key": "string",
+          "dry_run": "boolean",
+          "refetch": "boolean"
+        },
+        "priority": "number",
+        "progress_pct": "number",
+        "result": {},
+        "started_at": "object",
+        "status": "string",
+        "task_type": "string",
+        "updated_at": "string"
+      }
+    },
+    {
+      "kind": "backtest_run",
+      "ok": true,
+      "mode": "create_then_delete_temp_user_run",
+      "coverage": "local-isolated-create-cancel-delete-readback",
+      "request_evidence": {
+        "create": {
+          "client_request_id": "fnx-backtestRunCreate-mq4uc3ln-7b3a03a13f4808",
+          "contract_id": "FNX-SW-BACKTEST-TASK",
+          "operation": "backtestRunCreate",
+          "write_mode": "live"
+        },
+        "cancel": {
+          "client_request_id": "fnx-backtestRunCancel-mq4uc3oe-945c526aa4cff",
+          "contract_id": "FNX-SW-BACKTEST-TASK",
+          "operation": "backtestRunCancel",
+          "write_mode": "live"
+        }
+      },
+      "run_id": 56,
+      "create_shape": {
+        "attribution": {
+          "data_quality": [],
+          "data_quality_summary": {},
+          "industry": [],
+          "market_state": [],
+          "notes": [],
+          "version": "string"
+        },
+        "benchmark_symbol": "string",
+        "cancelled_at": "object",
+        "created_at": "string",
+        "data_version": "string",
+        "dataset_manifest_id": "object",
+        "end_date": "string",
+        "engine_version": "string",
+        "error_message": "string",
+        "estimated_wait_reliable": "boolean",
+        "estimated_wait_seconds": "number",
+        "estimated_wait_source": "string",
+        "execution_model_preview": "object",
+        "fee_model_version": "string",
+        "final_equity": "number",
+        "finished_at": "object",
+        "id": "number",
+        "initial_cash": "number",
+        "name": "string",
+        "owner_user_id": "number",
+        "params": {
+          "benchmark_symbol": "string",
+          "end_date": "string",
+          "max_duration_seconds": "number",
+          "quant_parameter_set_id": "number",
+          "quant_parameter_version": "string",
+          "resource_tier": "string",
+          "source": "string",
+          "start_date": "string",
+          "strategy_keys": [
+            "string"
+          ]
+        },
+        "progress_pct": "number",
+        "queue_depth": "number",
+        "queue_position": "number",
+        "resource_tier": "string",
+        "result": {},
+        "result_quality": {
+          "sample_level": "string",
+          "total_trades": "number",
+          "usable_for_decision": "boolean",
+          "warnings": [
+            "string"
+          ]
+        },
+        "running_count": "number",
+        "slippage_bps": "number",
+        "start_date": "string",
+        "started_at": "object",
+        "status": "string",
+        "strategy_keys": [
+          "string"
+        ],
+        "strategy_version": "string",
+        "summary": {
+          "final_equity": "number",
+          "initial_cash": "number",
+          "total_return_pct": "number"
+        },
+        "updated_at": "object"
+      },
+      "cancel_shape": {
+        "message": "string",
+        "ok": "boolean",
+        "run_id": "number",
+        "status": "string"
+      },
+      "rollback_shape": {
+        "message": "string",
+        "ok": "boolean",
+        "run_id": "number",
+        "status": "string"
+      },
+      "rollback_status": "deleted"
+    },
+    {
+      "kind": "backtest_validation",
+      "ok": true,
+      "coverage": "local-isolated-create-cancel-delete-readback",
+      "request_evidence": {
+        "client_request_id": "fnx-backtestValidationCreate-mq4uc3rr-aae4388b043da8",
+        "contract_id": "FNX-SW-BACKTEST-TASK",
+        "operation": "backtestValidationCreate",
+        "write_mode": "live"
+      },
+      "task_id": 7,
+      "create_shape": {
+        "cancelled_at": "object",
+        "created_at": "string",
+        "downgrade_review": "boolean",
+        "end_date": "string",
+        "error_message": "string",
+        "finished_at": "object",
+        "id": "number",
+        "name": "string",
+        "optimization_target": "string",
+        "owner_user_id": "number",
+        "pbo_risk": "string",
+        "progress_pct": "number",
+        "request": {
+          "auto_promote_state_params": "boolean",
+          "benchmark_symbol": "string",
+          "end_date": "string",
+          "execution_model": "string",
+          "initial_cash": "number",
+          "max_combinations": "number",
+          "name": "string",
+          "optimization_target": "string",
+          "param_grid": {
+            "min_score": "object"
+          },
+          "start_date": "string",
+          "strategy_key": "string",
+          "train_ratio": "number",
+          "window_count": "number"
+        },
+        "result": {},
+        "stability_conclusion": "string",
+        "start_date": "string",
+        "started_at": "object",
+        "status": "string",
+        "strategy_key": "string",
+        "train_ratio": "number",
+        "updated_at": "string",
+        "window_count": "number"
+      },
+      "cancel_shape": {
+        "message": "string",
+        "ok": "boolean",
+        "status": "string",
+        "task_id": "number"
+      },
+      "rollback_shape": {
+        "message": "string",
+        "ok": "boolean",
+        "status": "string",
+        "task_id": "number"
+      }
+    },
+    {
+      "kind": "backtest_optimization",
+      "ok": true,
+      "coverage": "local-isolated-create-cancel-delete-readback",
+      "request_evidence": {
+        "client_request_id": "fnx-backtestOptimizationCreate-mq4uc3x1-0f5fae63cfb7e8",
+        "contract_id": "FNX-SW-BACKTEST-TASK",
+        "operation": "backtestOptimizationCreate",
+        "write_mode": "live"
+      },
+      "task_id": 12,
+      "create_shape": {
+        "cancelled_at": "object",
+        "created_at": "string",
+        "error_message": "string",
+        "finished_at": "object",
+        "id": "number",
+        "name": "string",
+        "optimization_target": "string",
+        "owner_user_id": "number",
+        "progress_pct": "number",
+        "request": {
+          "benchmark_symbol": "string",
+          "execution_model": "string",
+          "initial_cash": "number",
+          "max_combinations": "number",
+          "name": "string",
+          "optimization_target": "string",
+          "param_grid": {
+            "min_score": "object"
+          },
+          "strategy_key": "string",
+          "test_end": "string",
+          "test_start": "string",
+          "train_end": "string",
+          "train_start": "string"
+        },
+        "result": {},
+        "search_method": "string",
+        "started_at": "object",
+        "status": "string",
+        "strategy_key": "string",
+        "test_end": "string",
+        "test_start": "string",
+        "train_end": "string",
+        "train_start": "string",
+        "updated_at": "string"
+      },
+      "cancel_shape": {
+        "message": "string",
+        "ok": "boolean",
+        "status": "string",
+        "task_id": "number"
+      },
+      "rollback_shape": {
+        "message": "string",
+        "ok": "boolean",
+        "status": "string",
+        "task_id": "number"
+      }
+    }
+  ],
+  "remaining_guards": [],
+  "ok": true
+}

@@ -1,0 +1,948 @@
+.market-sentiment-page {
+  align-items: start;
+  background: #fff;
+}
+
+.market-sentiment {
+  display: flex;
+  min-height: calc(100vh - 78px);
+  flex-direction: column;
+  justify-content: flex-start;
+  overflow: hidden;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #fff;
+  color: #0f172a;
+  font-size: 12px;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
+}
+
+.market-sentiment * {
+  box-sizing: border-box;
+}
+
+.market-sentiment button {
+  font: inherit;
+}
+
+.market-sentiment-header {
+  position: sticky;
+  z-index: 10;
+  top: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border-bottom: 1px solid #e2e8f0;
+  background: rgba(255, 255, 255, 0.92);
+  padding: 6px 12px;
+  backdrop-filter: blur(12px);
+}
+
+.market-sentiment-brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.market-sentiment-brand__icon {
+  display: grid;
+  width: 26px;
+  height: 26px;
+  place-items: center;
+  border: 1px solid rgba(244, 63, 94, 0.34);
+  border-radius: 6px;
+  background: #fff1f2;
+  color: #fb7185;
+  animation: market-pulse 1.5s ease-in-out infinite;
+}
+
+.market-sentiment-brand h1 {
+  margin: 0;
+  color: #0f172a;
+  font-size: 12px;
+  font-weight: 900;
+  line-height: 1.2;
+}
+
+.market-sentiment-brand div {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.market-sentiment-brand span:not(.market-sentiment-brand__icon) {
+  border: 1px solid rgba(244, 63, 94, 0.24);
+  border-radius: 4px;
+  background: rgba(244, 63, 94, 0.12);
+  color: #fb7185;
+  padding: 1px 5px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 9px;
+  font-weight: 800;
+}
+
+.market-sentiment-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.market-sentiment-mode {
+  display: flex;
+  gap: 2px;
+  border: 1px solid #e2e8f0;
+  border-radius: 7px;
+  background: #f8fafc;
+  padding: 2px;
+}
+
+.market-sentiment-mode__item,
+.market-sentiment-refresh {
+  border: 0;
+  cursor: pointer;
+  transition: background 140ms ease, border-color 140ms ease, color 140ms ease, transform 140ms ease;
+}
+
+.market-sentiment-mode__item {
+  min-height: 22px;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  background: transparent;
+  color: #64748b;
+  padding: 0 8px;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.market-sentiment-mode__item:hover {
+  color: #334155;
+}
+
+.market-sentiment-mode__item--empty {
+  border-color: rgba(245, 158, 11, 0.34);
+  background: rgba(245, 158, 11, 0.16);
+  color: #fcd34d;
+}
+
+.market-sentiment-mode__item--active {
+  border-color: rgba(16, 185, 129, 0.34);
+  background: rgba(16, 185, 129, 0.16);
+  color: #6ee7b7;
+}
+
+.market-sentiment-refresh {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 26px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  background: #fff;
+  color: #334155;
+  padding: 0 9px;
+  font-size: 10px;
+}
+
+.market-sentiment-refresh:hover {
+  background: #f1f5f9;
+}
+
+.market-sentiment-main {
+  display: grid;
+  gap: 12px;
+  width: 100%;
+  max-width: 1600px;
+  margin: 0 auto;
+  padding: 12px;
+}
+
+.market-sentiment-top-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(320px, 1fr);
+  gap: 12px;
+}
+
+.market-sentiment-three-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.market-sentiment-card {
+  min-width: 0;
+  border: 1px solid #e2e8f0;
+  border-radius: 9px;
+  background: #fff;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06);
+}
+
+.market-sentiment-card--gate {
+  position: relative;
+  display: flex;
+  min-height: 250px;
+  flex-direction: column;
+  justify-content: space-between;
+  overflow: hidden;
+  padding: 12px;
+}
+
+.market-sentiment-card--runtime,
+.market-sentiment-card--compact,
+.market-sentiment-review {
+  padding: 12px;
+}
+
+.market-sentiment-card--compact {
+  display: flex;
+  min-height: 195px;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.market-sentiment-glow {
+  position: absolute;
+  top: -16px;
+  right: -24px;
+  width: 110px;
+  height: 110px;
+  border-radius: 999px;
+  background: rgba(244, 63, 94, 0.08);
+  filter: blur(28px);
+  pointer-events: none;
+}
+
+.market-sentiment-card__head,
+.market-sentiment-compact-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  border-bottom: 1px solid rgba(226, 232, 240, 0.9);
+  padding-bottom: 7px;
+}
+
+.market-sentiment-card__head > div,
+.market-sentiment-card__head h2,
+.market-sentiment-card__head h3,
+.market-sentiment-compact-head h3 {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.market-sentiment-card__head h2,
+.market-sentiment-card__head h3,
+.market-sentiment-compact-head h3 {
+  margin: 0;
+  color: #0f172a;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0;
+  line-height: 1.2;
+}
+
+.market-sentiment-card__head > span {
+  color: #64748b;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 10px;
+  white-space: nowrap;
+}
+
+.market-sentiment-ping {
+  position: relative;
+  display: inline-grid;
+  width: 8px;
+  height: 8px;
+  place-items: center;
+}
+
+.market-sentiment-ping i,
+.market-sentiment-ping b {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: #f43f5e;
+}
+
+.market-sentiment-ping i {
+  animation: market-ping 1.6s cubic-bezier(0, 0, 0.2, 1) infinite;
+  opacity: 0.75;
+}
+
+.market-sentiment-gate-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  padding-top: 9px;
+}
+
+.market-sentiment-status-block {
+  display: flex;
+  min-height: 93px;
+  flex-direction: column;
+  justify-content: space-between;
+  border: 1px solid #e2e8f0;
+  border-radius: 7px;
+  background: #f8fafc;
+  padding: 9px;
+}
+
+.market-sentiment-status-block--block {
+  border-color: rgba(127, 29, 29, 0.58);
+  background: #fff1f2;
+}
+
+.market-sentiment-status-block--pass {
+  border-color: rgba(16, 185, 129, 0.42);
+  background: #ecfdf5;
+}
+
+.market-sentiment-status-block > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.market-sentiment-status-block span {
+  color: #475569;
+  font-size: 10px;
+}
+
+.market-sentiment-status-block b {
+  border-radius: 4px;
+  background: rgba(244, 63, 94, 0.18);
+  color: #fda4af;
+  padding: 1px 5px;
+  font-size: 8px;
+  font-weight: 900;
+}
+
+.market-sentiment-status-block strong {
+  margin-top: 6px;
+  color: #fb7185;
+  font-size: 18px;
+  font-weight: 950;
+  line-height: 1;
+}
+
+.market-sentiment-status-block p {
+  margin: 4px 0 0;
+  color: rgba(253, 164, 175, 0.76);
+  font-size: 9px;
+  line-height: 1.3;
+}
+
+.market-sentiment-firepower {
+  color: #334155;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 22px;
+}
+
+.market-sentiment-posture {
+  color: #fb7185;
+  font-size: 13px;
+}
+
+.market-sentiment-mini-progress {
+  display: block;
+  height: 3px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #fff;
+  margin-top: 6px;
+}
+
+.market-sentiment-mini-progress b {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: #f43f5e;
+}
+
+.market-sentiment-interpretation {
+  border: 1px solid rgba(226, 232, 240, 0.9);
+  border-radius: 7px;
+  background: #f8fafc;
+  padding: 8px;
+  margin-top: 10px;
+}
+
+.market-sentiment-interpretation p {
+  margin: 0;
+  color: #334155;
+  font-size: 11px;
+  line-height: 1.55;
+}
+
+.market-sentiment-interpretation p strong {
+  color: #fb7185;
+  margin-right: 6px;
+}
+
+.market-sentiment-interpretation div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  border-top: 1px solid rgba(226, 232, 240, 0.9);
+  padding-top: 6px;
+  margin-top: 6px;
+  color: #475569;
+  font-size: 10px;
+}
+
+.market-sentiment-interpretation b {
+  color: #34d399;
+  font-weight: 800;
+}
+
+.market-sentiment-interpretation i {
+  color: #475569;
+  font-style: normal;
+}
+
+.market-sentiment-interpretation em {
+  margin-left: auto;
+  color: #64748b;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 9px;
+  font-style: normal;
+}
+
+.market-sentiment-db-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: 1px solid #a5f3fc;
+  border-radius: 5px;
+  background: #ecfeff;
+  color: #0e7490;
+  padding: 2px 7px;
+}
+
+.market-sentiment-db-badge i {
+  width: 5px;
+  height: 5px;
+  border-radius: 999px;
+  background: #22d3ee;
+  animation: market-pulse 1.6s ease-in-out infinite;
+}
+
+.market-sentiment-runtime-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.market-sentiment-runtime-metric {
+  border: 1px solid rgba(226, 232, 240, 0.9);
+  border-radius: 6px;
+  background: #f8fafc;
+  padding: 7px;
+}
+
+.market-sentiment-runtime-metric span {
+  color: #64748b;
+  font-size: 9px;
+}
+
+.market-sentiment-runtime-metric strong {
+  display: block;
+  margin-top: 3px;
+  color: #0f172a;
+  font-size: 15px;
+  font-weight: 900;
+}
+
+.market-sentiment-runtime-metric small {
+  margin-left: 4px;
+  color: #64748b;
+  font-size: 9px;
+  font-weight: 500;
+}
+
+.market-sentiment-tone--amber {
+  color: #fbbf24;
+}
+
+.market-sentiment-tone--rose {
+  color: #fb7185;
+}
+
+.market-sentiment-tone--emerald {
+  color: #34d399;
+}
+
+.market-sentiment-mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+.market-sentiment-runtime-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  border-top: 1px solid rgba(226, 232, 240, 0.9);
+  padding-top: 8px;
+  margin-top: 10px;
+  color: #64748b;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 10px;
+}
+
+.market-sentiment-runtime-footer span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-right: auto;
+}
+
+.market-sentiment-runtime-footer b {
+  color: #0f172a;
+}
+
+.market-sentiment-runtime-footer i {
+  color: #64748b;
+  font-style: normal;
+}
+
+.market-sentiment-runtime-footer strong {
+  color: #34d399;
+}
+
+.market-sentiment-compact-head h3 {
+  color: #475569;
+  font-size: 11px;
+  text-transform: uppercase;
+}
+
+.market-sentiment-compact-head span {
+  border: 1px solid rgba(16, 185, 129, 0.26);
+  border-radius: 4px;
+  background: rgba(16, 185, 129, 0.1);
+  color: #34d399;
+  padding: 1px 5px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 8px;
+  font-weight: 900;
+}
+
+.market-sentiment-compact-head span.is-amber {
+  border-color: #fde68a;
+  background: #f8fafc;
+  color: #f59e0b;
+}
+
+.market-sentiment-empty {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 18px 8px;
+  text-align: center;
+}
+
+.market-sentiment-empty > span {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border: 1px solid #e2e8f0;
+  border-radius: 999px;
+  background: #f8fafc;
+  color: #475569;
+  margin-bottom: 7px;
+}
+
+.market-sentiment-empty strong {
+  color: #475569;
+  font-size: 11px;
+}
+
+.market-sentiment-empty p {
+  max-width: 190px;
+  margin: 4px 0 0;
+  color: #64748b;
+  font-size: 9px;
+  line-height: 1.35;
+}
+
+.market-sentiment-empty em {
+  margin-top: 9px;
+  color: #475569;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 9px;
+  font-style: normal;
+}
+
+.market-sentiment-pulse-body {
+  display: grid;
+  flex: 1;
+  gap: 8px;
+  padding-top: 8px;
+}
+
+.market-sentiment-inline-metric {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border: 1px solid rgba(226, 232, 240, 0.9);
+  border-radius: 6px;
+  background: #f8fafc;
+  padding: 7px;
+  font-size: 10px;
+}
+
+.market-sentiment-inline-metric span {
+  color: #475569;
+}
+
+.market-sentiment-inline-metric strong {
+  color: #fb7185;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+.market-sentiment-bars {
+  border: 1px solid rgba(226, 232, 240, 0.9);
+  border-radius: 6px;
+  background: #f8fafc;
+  padding: 7px;
+}
+
+.market-sentiment-bars > div {
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+  height: 44px;
+}
+
+.market-sentiment-bars i {
+  display: block;
+  width: 100%;
+  min-height: 5px;
+  border-radius: 3px 3px 0 0;
+  background: #f1f5f9;
+}
+
+.market-sentiment-bars i.is-warm {
+  background: #f59e0b;
+}
+
+.market-sentiment-bars i.is-hot {
+  background: #f43f5e;
+}
+
+.market-sentiment-bars footer {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 5px;
+  color: #475569;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 8px;
+}
+
+.market-sentiment-leader-list,
+.market-sentiment-etf-list {
+  display: grid;
+  gap: 6px;
+  padding-top: 8px;
+}
+
+.market-sentiment-leader-row,
+.market-sentiment-etf-list > div {
+  border: 1px solid rgba(226, 232, 240, 0.9);
+  border-radius: 6px;
+  background: #f8fafc;
+  padding: 7px;
+}
+
+.market-sentiment-leader-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.market-sentiment-leader-row div {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.market-sentiment-leader-row span {
+  border-radius: 4px;
+  background: rgba(16, 185, 129, 0.12);
+  color: #34d399;
+  padding: 1px 5px;
+  font-size: 9px;
+  font-weight: 900;
+}
+
+.market-sentiment-leader-row strong {
+  overflow: hidden;
+  color: #0f172a;
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.market-sentiment-leader-row b {
+  color: #34d399;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 11px;
+}
+
+.market-sentiment-leader-list p {
+  margin: 2px 0 0;
+  border: 1px solid rgba(6, 78, 59, 0.48);
+  border-radius: 6px;
+  background: rgba(6, 78, 59, 0.2);
+  color: #34d399;
+  padding: 6px;
+  font-size: 9px;
+  line-height: 1.35;
+}
+
+.market-sentiment-etf-list header,
+.market-sentiment-etf-list footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.market-sentiment-etf-list strong {
+  color: #0f172a;
+  font-size: 11px;
+}
+
+.market-sentiment-etf-list header span {
+  color: #34d399;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 9px;
+}
+
+.market-sentiment-etf-list footer {
+  margin-top: 6px;
+  color: #64748b;
+  font-size: 9px;
+}
+
+.market-sentiment-card__head--review {
+  margin-bottom: 9px;
+}
+
+.market-sentiment-card__head--review > span {
+  border: 1px solid rgba(245, 158, 11, 0.28);
+  border-radius: 999px;
+  background: rgba(245, 158, 11, 0.1);
+  color: #f59e0b;
+  padding: 2px 8px;
+  font-size: 9px;
+  font-weight: 900;
+}
+
+.market-sentiment-card__head--review > span.is-published {
+  border-color: rgba(16, 185, 129, 0.3);
+  background: rgba(16, 185, 129, 0.1);
+  color: #34d399;
+}
+
+.market-sentiment-review-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(280px, 1fr);
+  gap: 12px;
+}
+
+.market-sentiment-review-copy {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.market-sentiment-review-block,
+.market-sentiment-action-box {
+  border: 1px solid rgba(226, 232, 240, 0.9);
+  border-radius: 7px;
+  background: #f8fafc;
+  padding: 10px;
+}
+
+.market-sentiment-review-block header,
+.market-sentiment-action-box header,
+.market-sentiment-action-box footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.market-sentiment-review-block strong,
+.market-sentiment-action-box strong {
+  color: #334155;
+  font-size: 10px;
+}
+
+.market-sentiment-review-block header span {
+  color: #64748b;
+  font-size: 10px;
+}
+
+.market-sentiment-review-block p {
+  margin: 8px 0 0;
+  color: #475569;
+  font-size: 10px;
+  line-height: 1.55;
+}
+
+.market-sentiment-review-block p.is-empty {
+  color: #475569;
+  font-style: italic;
+}
+
+.market-sentiment-action-box {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.market-sentiment-action-box header strong {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: #fbbf24;
+}
+
+.market-sentiment-action-box header span {
+  border: 1px solid rgba(244, 63, 94, 0.28);
+  border-radius: 4px;
+  background: rgba(244, 63, 94, 0.12);
+  color: #fb7185;
+  padding: 1px 5px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 8px;
+}
+
+.market-sentiment-action-box p {
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  background: #fff;
+  color: #334155;
+  padding: 8px;
+  margin: 8px 0;
+  font-size: 10px;
+  line-height: 1.45;
+}
+
+.market-sentiment-action-box p.is-danger {
+  color: #fda4af;
+}
+
+.market-sentiment-action-box footer {
+  border-top: 1px solid rgba(226, 232, 240, 0.9);
+  padding-top: 7px;
+  color: #475569;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 9px;
+}
+
+.market-sentiment-action-box footer strong {
+  color: #fb7185;
+  font-size: 9px;
+}
+
+.market-sentiment-footer {
+  border-top: 1px solid rgba(226, 232, 240, 0.96);
+  background: #f8fafc;
+  color: #475569;
+  padding: 8px 10px;
+  text-align: center;
+  font-size: 9px;
+}
+
+.market-sentiment-icon {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
+  fill: currentColor;
+}
+
+.market-sentiment-icon--spin {
+  animation: market-spin 0.9s linear infinite;
+  color: #22d3ee;
+}
+
+@keyframes market-ping {
+  75%,
+  100% {
+    transform: scale(2);
+    opacity: 0;
+  }
+}
+
+@keyframes market-pulse {
+  50% {
+    opacity: 0.62;
+  }
+}
+
+@keyframes market-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (max-width: 1180px) {
+  .market-sentiment-top-grid,
+  .market-sentiment-three-grid,
+  .market-sentiment-review-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 760px) {
+  .market-sentiment {
+    border-radius: 0;
+  }
+
+  .market-sentiment-header {
+    position: static;
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .market-sentiment-controls,
+  .market-sentiment-mode {
+    width: 100%;
+  }
+
+  .market-sentiment-mode__item,
+  .market-sentiment-refresh {
+    flex: 1;
+  }
+
+  .market-sentiment-gate-grid,
+  .market-sentiment-runtime-grid,
+  .market-sentiment-review-copy {
+    grid-template-columns: 1fr;
+  }
+
+  .market-sentiment-interpretation div {
+    align-items: flex-start;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+  }
+
+  .market-sentiment-interpretation em {
+    margin-left: 0;
+    width: 100%;
+  }
+}

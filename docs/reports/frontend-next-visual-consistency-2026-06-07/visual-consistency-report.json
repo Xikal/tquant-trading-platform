@@ -1,0 +1,1307 @@
+{
+  "generated_at": "2026-06-08T04:33:04.333Z",
+  "base_url": "http://43.143.243.97:18090",
+  "auth_status": {
+    "access_token": "provided",
+    "admin_token": "missing"
+  },
+  "summary": {
+    "ok": true,
+    "page_count": 9,
+    "viewport_count": 4,
+    "capture_count": 36,
+    "failed_count": 0
+  },
+  "results": [
+    {
+      "page": "monitor",
+      "route": "/next/monitor",
+      "viewport": "1440x900",
+      "screenshot": "/Users/j/Documents/gupiao/docs/reports/frontend-next-visual-consistency-2026-06-07/monitor-1440x900.png",
+      "status": "ok",
+      "navigation_error": null,
+      "app_error": null,
+      "page_errors": [],
+      "failed_api_responses": [],
+      "horizontal_overflow": {
+        "body_overflow_px": 0,
+        "offenders": []
+      }
+    },
+    {
+      "page": "monitor",
+      "route": "/next/monitor",
+      "viewport": "1280x800",
+      "screenshot": "/Users/j/Documents/gupiao/docs/reports/frontend-next-visual-consistency-2026-06-07/monitor-1280x800.png",
+      "status": "ok",
+      "navigation_error": null,
+      "app_error": null,
+      "page_errors": [],
+      "failed_api_responses": [],
+      "horizontal_overflow": {
+        "body_overflow_px": 0,
+        "offenders": []
+      }
+    },
+    {
+      "page": "monitor",
+      "route": "/next/monitor",
+      "viewport": "768x1024",
+      "screenshot": "/Users/j/Documents/gupiao/docs/reports/frontend-next-visual-consistency-2026-06-07/monitor-768x1024.png",
+      "status": "ok",
+      "navigation_error": null,
+      "app_error": null,
+      "page_errors": [],
+      "failed_api_responses": [],
+      "horizontal_overflow": {
+        "body_overflow_px": 0,
+        "offenders": [
+          {
+            "tag": "aside",
+            "className": "legacy-sidebar tq-sidebar",
+            "overflowPx": 292
+          },
+          {
+            "tag": "div",
+            "className": "",
+            "overflowPx": 292
+          },
+          {
+            "tag": "div",
+            "className": "legacy-sidebar__brand",
+            "overflowPx": 292
+          },
+          {
+            "tag": "nav",
+            "className": "legacy-sidebar__nav",
+            "overflowPx": 292
+          },
+          {
+            "tag": "div",
+            "className": "legacy-sidebar__footer",
+            "overflowPx": 292
+          },
+          {
+            "tag": "a",
+            "className": "legacy-sidebar__item legacy-sidebar__item--active active",
+            "overflowPx": 284
+          },
+          {
+            "tag": "a",
+            "className": "legacy-sidebar__item",
+            "overflowPx": 284
+          },
+          {
+            "tag": "a",
+            "className": "legacy-sidebar__item",
+            "overflowPx": 284
+          }
+        ]
+      }
+    },
+    {
+      "page": "monitor",
+      "route": "/next/monitor",
+      "viewport": "390x844",
+      "screenshot": "/Users/j/Documents/gupiao/docs/reports/frontend-next-visual-consistency-2026-06-07/monitor-390x844.png",
+      "status": "ok",
+      "navigation_error": null,
+      "app_error": null,
+      "page_errors": [],
+      "failed_api_responses": [],
+      "horizontal_overflow": {
+        "body_overflow_px": 0,
+        "offenders": [
+          {
+            "tag": "aside",
+            "className": "legacy-sidebar tq-sidebar",
+            "overflowPx": 292
+          },
+          {
+            "tag": "div",
+            "className": "",
+            "overflowPx": 292
+          },
+          {
+            "tag": "div",
+            "className": "legacy-sidebar__brand",
+            "overflowPx": 292
+          },
+          {
+            "tag": "nav",
+            "className": "legacy-sidebar__nav",
+            "overflowPx": 292
+          },
+          {
+            "tag": "div",
+            "className": "legacy-sidebar__footer",
+            "overflowPx": 292
+          },
+          {
+            "tag": "a",
+            "className": "legacy-sidebar__item legacy-sidebar__item--active active",
+            "overflowPx": 284
+          },
+          {
+            "tag": "a",
+            "className": "legacy-sidebar__item",
+            "overflowPx": 284
+          },
+          {
+            "tag": "a",
+            "className": "legacy-sidebar__item",
+            "overflowPx": 284
+          }
+        ]
+      }
+    },
+    {
+      "page": "monitor-market",
+      "route": "/next/monitor/market",
+      "viewport": "1440x900",
+      "screenshot": "/Users/j/Documents/gupiao/docs/reports/frontend-next-visual-consistency-2026-06-07/monitor-market-1440x900.png",
+      "status": "ok",
+      "navigation_error": null,
+      "app_error": null,
+      "page_errors": [],
+      "failed_api_responses": [],
+      "horizontal_overflow": {
+        "body_overflow_px": 0,
+        "offenders": []
+      }
+    },
+    {
+      "page": "monitor-market",
+      "route": "/next/monitor/market",
+      "viewport": "1280x800",
+      "screenshot": "/Users/j/Documents/gupiao/docs/reports/frontend-next-visual-consistency-2026-06-07/monitor-market-1280x800.png",
+      "status": "ok",
+      "navigation_error": null,
+      "app_error": null,
+      "page_errors": [],
+      "failed_api_responses": [],
+      "horizontal_overflow": {
+        "body_overflow_px": 0,
+        "offenders": []
+      }
+    },
+    {
+      "page": "monitor-market",
+      "route": "/next/monitor/market",
+      "viewport": "768x1024",
+      "screenshot": "/Users/j/Documents/gupiao/docs/reports/frontend-next-visual-consistency-2026-06-07/monitor-market-768x1024.png",
+      "status": "ok",
+      "navigation_error": null,
+      "app_error": null,
+      "page_errors": [],
+      "failed_api_responses": [],
+      "horizontal_overflow": {
+        "body_overflow_px": 0,
+        "offenders": [
+          {
+            "tag": "aside",
+            "className": "legacy-sidebar tq-sidebar",
+            "overflowPx": 292
+          },
+          {
+            "tag": "div",
+            "className": "",
+            "overflowPx": 292
+          },
+          {
+            "tag": "div",
+            "className": "legacy-sidebar__brand",
+            "overflowPx": 292
+          },
+          {
+            "tag": "nav",
+            "className": "legacy-sidebar__nav",
+            "overflowPx": 292
+          },
+          {
+            "tag": "div",
+            "className": "legacy-sidebar__footer",
+            "overflowPx": 292
+          },
+          {
+            "tag": "a",
+            "className": "legacy-sidebar__item active",
+            "overflowPx": 284
+          },
+          {
+            "tag": "a",
+            "className": "legacy-sidebar__item legacy-sidebar__item--active active",
+            "overflowPx": 284
+          },
+          {
+            "tag": "a",
+            "className": "legacy-sidebar__item",
+            "overflowPx": 284
+          }
+        ]
+      }
+    },
+    {
+      "page": "monitor-market",
+      "route": "/next/monitor/market",
+      "viewport": "390x844",
+      "screenshot": "/Users/j/Documents/gupiao/docs/reports/frontend-next-visual-consistency-2026-06-07/monitor-market-390x844.png",
+      "status": "ok",
+      "navigation_error": null,
+      "app_error": null,
+      "page_errors": [],
+      "failed_api_responses": [],
+      "horizontal_overflow": {
+        "body_overflow_px": 0,
+        "offenders": [
+          {
+            "tag": "aside",
+            "className": "legacy-sidebar tq-sidebar",
+            "overflowPx": 292
+          },
+          {
+            "tag": "div",
+            "className": "",
+            "overflowPx": 292
+          },
+          {
+            "tag": "div",
+            "className": "legacy-sidebar__brand",
+            "overflowPx": 292
+          },
+          {
+            "tag": "nav",
+            "className": "legacy-sidebar__nav",
+            "overflowPx": 292
+          },
+          {
+            "tag": "div",
+            "className": "legacy-sidebar__footer",
+            "overflowPx": 292
+          },
+          {
+            "tag": "a",
+            "className": "legacy-sidebar__item active",
+            "overflowPx": 284
+          },
+          {
+            "tag": "a",
+            "className": "legacy-sidebar__item legacy-sidebar__item--active active",
+            "overflowPx": 284
+          },
+          {
+            "tag": "a",
+            "className": "legacy-sidebar__item",
+            "overflowPx": 284
+          }
+        ]
+      }
+    },
+    {
+      "page": "paper",
+      "route": "/next/paper",
+      "viewport": "1440x900",
+      "screenshot": "/Users/j/Documents/gupiao/docs/reports/frontend-next-visual-consistency-2026-06-07/paper-1440x900.png",
+      "status": "ok",
+      "navigation_error": null,
+      "app_error": null,
+      "page_errors": [],
+      "failed_api_responses": [],
+      "horizontal_overflow": {
+        "body_overflow_px": 0,
+        "offenders": []
+      }
+    },
+    {
+      "page": "paper",
+      "route": "/next/paper",
+      "viewport": "1280x800",
+      "screenshot": "/Users/j/Documents/gupiao/docs/reports/frontend-next-visual-consistency-2026-06-07/paper-1280x800.png",
+      "status": "ok",
+      "navigation_error": null,
+      "app_error": null,
+      "page_errors": [],
+      "failed_api_responses": [],
+      "horizontal_overflow": {
+        "body_overflow_px": 0,
+        "offenders": []
+      }
+    },
+    {
+      "page": "paper",
+      "route": "/next/paper",
+      "viewport": "768x1024",
+      "screenshot": "/Users/j/Documents/gupiao/docs/reports/frontend-next-visual-consistency-2026-06-07/paper-768x1024.png",
+      "status": "ok",
+      "navigation_error": null,
+      "app_error": null,
+      "page_errors": [],
+      "failed_api_responses": [],
+      "horizontal_overflow": {
+        "body_overflow_px": 0,
+        "offenders": [
+          {
+            "tag": "aside",
+            "className": "legacy-sidebar tq-sidebar",
+            "overflowPx": 292
+          },
+          {
+            "tag": "div",
+            "className": "",
+            "overflowPx": 292
+          },
+          {
+            "tag": "div",
+            "className": "legacy-sidebar__brand",
+            "overflowPx": 292
+          },
+          {
+            "tag": "nav",
+            "className": "legacy-sidebar__nav",
+            "overflowPx": 292
+          },
+          {
+            "tag": "div",
+            "className": "legacy-sidebar__footer",
+            "overflowPx": 292
+          },
+          {
+            "tag": "a",
+            "className": "legacy-sidebar__item",
+            "overflowPx": 284
+          },
+          {
+            "tag": "a",
+            "className": "legacy-sidebar__item",
+            "overflowPx": 284
+          },
+          {
+            "tag": "a",
+            "className": "legacy-sidebar__item",
+            "overflowPx": 284
+          }
+        ]
+      }
+    },
+    {
+      "page": "paper",
+      "route": "/next/paper",
+      "viewport": "390x844",
+      "screenshot": "/Users/j/Documents/gupiao/docs/reports/frontend-next-visual-consistency-2026-06-07/paper-390x844.png",
+      "status": "ok",
+      "navigation_error": null,
+      "app_error": null,
+      "page_errors": [],
+      "failed_api_responses": [],
+      "horizontal_overflow": {
+        "body_overflow_px": 0,
+        "offenders": [
+          {
+            "tag": "aside",
+            "className": "legacy-sidebar tq-sidebar",
+            "overflowPx": 292
+          },
+          {
+            "tag": "div",
+            "className": "",
+            "overflowPx": 292
+          },
+          {
+            "tag": "div",
+            "className": "legacy-sidebar__brand",
+            "overflowPx": 292
+          },
+          {
+            "tag": "nav",
+            "className": "legacy-sidebar__nav",
+            "overflowPx": 292
+          },
+          {
+            "tag": "div",
+            "className": "legacy-sidebar__footer",
+            "overflowPx": 292
+          },
+          {
+            "tag": "a",
+            "className": "legacy-sidebar__item",
+            "overflowPx": 284
+          },
+          {
+            "tag": "a",
+            "className": "legacy-sidebar__item",
+            "overflowPx": 284
+          },
+          {
+            "tag": "a",
+            "className": "legacy-sidebar__item",
+            "overflowPx": 284
+          }
+        ]
+      }
+    },
+    {
+      "page": "strategy-tracking",
+      "route": "/next/strategy-tracking",
+      "viewport": "1440x900",
+      "screenshot": "/Users/j/Documents/gupiao/docs/reports/frontend-next-visual-consistency-2026-06-07/strategy-tracking-1440x900.png",
+      "status": "ok",
+      "navigation_error": null,
+      "app_error": null,
+      "page_errors": [],
+      "failed_api_responses": [],
+      "horizontal_overflow": {
+        "body_overflow_px": 0,
+        "offenders": [
+          {
+            "tag": "button",
+            "className": "",
+            "overflowPx": 18
+          }
+        ]
+      }
+    },
+    {
+      "page": "strategy-tracking",
+      "route": "/next/strategy-tracking",
+      "viewport": "1280x800",
+      "screenshot": "/Users/j/Documents/gupiao/docs/reports/frontend-next-visual-consistency-2026-06-07/strategy-tracking-1280x800.png",
+      "status": "ok",
+      "navigation_error": null,
+      "app_error": null,
+      "page_errors": [],
+      "failed_api_responses": [],
+      "horizontal_overflow": {
+        "body_overflow_px": 0,
+        "offenders": [
+          {
+            "tag": "button",
+            "className": "",
+            "overflowPx": 44
+          }
+        ]
+      }
+    },
+    {
+      "page": "strategy-tracking",
+      "route": "/next/strategy-tracking",
+      "viewport": "768x1024",
+      "screenshot": "/Users/j/Documents/gupiao/docs/reports/frontend-next-visual-consistency-2026-06-07/strategy-tracking-768x1024.png",
+      "status": "ok",
+      "navigation_error": null,
+      "app_error": null,
+      "page_errors": [],
+      "failed_api_responses": [],
+      "horizontal_overflow": {
+        "body_overflow_px": 0,
+        "offenders": [
+          {
+            "tag": "aside",
+            "className": "legacy-sidebar tq-sidebar",
+            "overflowPx": 292
+          },
+          {
+            "tag": "div",
+            "className": "",
+            "overflowPx": 292
+          },
+          {
+            "tag": "div",
+            "className": "legacy-sidebar__brand",
+            "overflowPx": 292
+          },
+          {
+            "tag": "nav",
+            "className": "legacy-sidebar__nav",
+            "overflowPx": 292
+          },
+          {
+            "tag": "div",
+            "className": "legacy-sidebar__footer",
+            "overflowPx": 292
+          },
+          {
+            "tag": "a",
+            "className": "legacy-sidebar__item",
+            "overflowPx": 284
+          },
+          {
+            "tag": "a",
+            "className": "legacy-sidebar__item",
+            "overflowPx": 284
+          },
+          {
+            "tag": "a",
+            "className": "legacy-sidebar__item",
+            "overflowPx": 284
+          }
+        ]
+      }
+    },
+    {
+      "page": "strategy-tracking",
+      "route": "/next/strategy-tracking",
+      "viewport": "390x844",
+      "screenshot": "/Users/j/Documents/gupiao/docs/reports/frontend-next-visual-consistency-2026-06-07/strategy-tracking-390x844.png",
+      "status": "ok",
+      "navigation_error": null,
+      "app_error": null,
+      "page_errors": [],
+      "failed_api_responses": [],
+      "horizontal_overflow": {
+        "body_overflow_px": 0,
+        "offenders": [
+          {
+            "tag": "aside",
+            "className": "legacy-sidebar tq-sidebar",
+            "overflowPx": 292
+          },
+          {
+            "tag": "div",
+            "className": "",
+            "overflowPx": 292
+          },
+          {
+            "tag": "div",
+            "className": "legacy-sidebar__brand",
+            "overflowPx": 292
+          },
+          {
+            "tag": "nav",
+            "className": "legacy-sidebar__nav",
+            "overflowPx": 292
+          },
+          {
+            "tag": "div",
+            "className": "legacy-sidebar__footer",
+            "overflowPx": 292
+          },
+          {
+            "tag": "a",
+            "className": "legacy-sidebar__item",
+            "overflowPx": 284
+          },
+          {
+            "tag": "a",
+            "className": "legacy-sidebar__item",
+            "overflowPx": 284
+          },
+          {
+            "tag": "a",
+            "className": "legacy-sidebar__item",
+            "overflowPx": 284
+          }
+        ]
+      }
+    },
+    {
+      "page": "analysis",
+      "route": "/next/analysis",
+      "viewport": "1440x900",
+      "screenshot": "/Users/j/Documents/gupiao/docs/reports/frontend-next-visual-consistency-2026-06-07/analysis-1440x900.png",
+      "status": "ok",
+      "navigation_error": null,
+      "app_error": null,
+      "page_errors": [],
+      "failed_api_responses": [],
+      "horizontal_overflow": {
+        "body_overflow_px": 0,
+        "offenders": []
+      }
+    },
+    {
+      "page": "analysis",
+      "route": "/next/analysis",
+      "viewport": "1280x800",
+      "screenshot": "/Users/j/Documents/gupiao/docs/reports/frontend-next-visual-consistency-2026-06-07/analysis-1280x800.png",
+      "status": "ok",
+      "navigation_error": null,
+      "app_error": null,
+      "page_errors": [],
+      "failed_api_responses": [],
+      "horizontal_overflow": {
+        "body_overflow_px": 0,
+        "offenders": []
+      }
+    },
+    {
+      "page": "analysis",
+      "route": "/next/analysis",
+      "viewport": "768x1024",
+      "screenshot": "/Users/j/Documents/gupiao/docs/reports/frontend-next-visual-consistency-2026-06-07/analysis-768x1024.png",
+      "status": "ok",
+      "navigation_error": null,
+      "app_error": null,
+      "page_errors": [],
+      "failed_api_responses": [],
+      "horizontal_overflow": {
+        "body_overflow_px": 0,
+        "offenders": [
+          {
+            "tag": "aside",
+            "className": "legacy-sidebar tq-sidebar",
+            "overflowPx": 292
+          },
+          {
+            "tag": "div",
+            "className": "",
+            "overflowPx": 292
+          },
+          {
+            "tag": "div",
+            "className": "legacy-sidebar__brand",
+            "overflowPx": 292
+          },
+          {
+            "tag": "nav",
+            "className": "legacy-sidebar__nav",
+            "overflowPx": 292
+          },
+          {
+            "tag": "div",
+            "className": "legacy-sidebar__footer",
+            "overflowPx": 292
+          },
+          {
+            "tag": "a",
+            "className": "legacy-sidebar__item",
+            "overflowPx": 284
+          },
+          {
+            "tag": "a",
+            "className": "legacy-sidebar__item",
+            "overflowPx": 284
+          },
+          {
+            "tag": "a",
+            "className": "legacy-sidebar__item legacy-sidebar__item--active active",
+            "overflowPx": 284
+          }
+        ]
+      }
+    },
+    {
+      "page": "analysis",
+      "route": "/next/analysis",
+      "viewport": "390x844",
+      "screenshot": "/Users/j/Documents/gupiao/docs/reports/frontend-next-visual-consistency-2026-06-07/analysis-390x844.png",
+      "status": "ok",
+      "navigation_error": null,
+      "app_error": null,
+      "page_errors": [],
+      "failed_api_responses": [],
+      "horizontal_overflow": {
+        "body_overflow_px": 0,
+        "offenders": [
+          {
+            "tag": "aside",
+            "className": "legacy-sidebar tq-sidebar",
+            "overflowPx": 292
+          },
+          {
+            "tag": "div",
+            "className": "",
+            "overflowPx": 292
+          },
+          {
+            "tag": "div",
+            "className": "legacy-sidebar__brand",
+            "overflowPx": 292
+          },
+          {
+            "tag": "nav",
+            "className": "legacy-sidebar__nav",
+            "overflowPx": 292
+          },
+          {
+            "tag": "div",
+            "className": "legacy-sidebar__footer",
+            "overflowPx": 292
+          },
+          {
+            "tag": "a",
+            "className": "legacy-sidebar__item",
+            "overflowPx": 284
+          },
+          {
+            "tag": "a",
+            "className": "legacy-sidebar__item",
+            "overflowPx": 284
+          },
+          {
+            "tag": "a",
+            "className": "legacy-sidebar__item legacy-sidebar__item--active active",
+            "overflowPx": 284
+          }
+        ]
+      }
+    },
+    {
+      "page": "playbook",
+      "route": "/next/playbook",
+      "viewport": "1440x900",
+      "screenshot": "/Users/j/Documents/gupiao/docs/reports/frontend-next-visual-consistency-2026-06-07/playbook-1440x900.png",
+      "status": "ok",
+      "navigation_error": null,
+      "app_error": null,
+      "page_errors": [],
+      "failed_api_responses": [],
+      "horizontal_overflow": {
+        "body_overflow_px": 0,
+        "offenders": []
+      }
+    },
+    {
+      "page": "playbook",
+      "route": "/next/playbook",
+      "viewport": "1280x800",
+      "screenshot": "/Users/j/Documents/gupiao/docs/reports/frontend-next-visual-consistency-2026-06-07/playbook-1280x800.png",
+      "status": "ok",
+      "navigation_error": null,
+      "app_error": null,
+      "page_errors": [],
+      "failed_api_responses": [],
+      "horizontal_overflow": {
+        "body_overflow_px": 0,
+        "offenders": []
+      }
+    },
+    {
+      "page": "playbook",
+      "route": "/next/playbook",
+      "viewport": "768x1024",
+      "screenshot": "/Users/j/Documents/gupiao/docs/reports/frontend-next-visual-consistency-2026-06-07/playbook-768x1024.png",
+      "status": "ok",
+      "navigation_error": null,
+      "app_error": null,
+      "page_errors": [],
+      "failed_api_responses": [],
+      "horizontal_overflow": {
+        "body_overflow_px": 0,
+        "offenders": [
+          {
+            "tag": "aside",
+            "className": "legacy-sidebar tq-sidebar",
+            "overflowPx": 292
+          },
+          {
+            "tag": "div",
+            "className": "",
+            "overflowPx": 292
+          },
+          {
+            "tag": "div",
+            "className": "legacy-sidebar__brand",
+            "overflowPx": 292
+          },
+          {
+            "tag": "nav",
+            "className": "legacy-sidebar__nav",
+            "overflowPx": 292
+          },
+          {
+            "tag": "div",
+            "className": "legacy-sidebar__footer",
+            "overflowPx": 292
+          },
+          {
+            "tag": "a",
+            "className": "legacy-sidebar__item",
+            "overflowPx": 284
+          },
+          {
+            "tag": "a",
+            "className": "legacy-sidebar__item",
+            "overflowPx": 284
+          },
+          {
+            "tag": "a",
+            "className": "legacy-sidebar__item",
+            "overflowPx": 284
+          }
+        ]
+      }
+    },
+    {
+      "page": "playbook",
+      "route": "/next/playbook",
+      "viewport": "390x844",
+      "screenshot": "/Users/j/Documents/gupiao/docs/reports/frontend-next-visual-consistency-2026-06-07/playbook-390x844.png",
+      "status": "ok",
+      "navigation_error": null,
+      "app_error": null,
+      "page_errors": [],
+      "failed_api_responses": [],
+      "horizontal_overflow": {
+        "body_overflow_px": 0,
+        "offenders": [
+          {
+            "tag": "button",
+            "className": "playbook-strategy-tab",
+            "overflowPx": 389
+          },
+          {
+            "tag": "aside",
+            "className": "legacy-sidebar tq-sidebar",
+            "overflowPx": 292
+          },
+          {
+            "tag": "div",
+            "className": "",
+            "overflowPx": 292
+          },
+          {
+            "tag": "div",
+            "className": "legacy-sidebar__brand",
+            "overflowPx": 292
+          },
+          {
+            "tag": "nav",
+            "className": "legacy-sidebar__nav",
+            "overflowPx": 292
+          },
+          {
+            "tag": "div",
+            "className": "legacy-sidebar__footer",
+            "overflowPx": 292
+          },
+          {
+            "tag": "a",
+            "className": "legacy-sidebar__item",
+            "overflowPx": 284
+          },
+          {
+            "tag": "a",
+            "className": "legacy-sidebar__item",
+            "overflowPx": 284
+          }
+        ]
+      }
+    },
+    {
+      "page": "backtest",
+      "route": "/next/backtest",
+      "viewport": "1440x900",
+      "screenshot": "/Users/j/Documents/gupiao/docs/reports/frontend-next-visual-consistency-2026-06-07/backtest-1440x900.png",
+      "status": "ok",
+      "navigation_error": null,
+      "app_error": null,
+      "page_errors": [],
+      "failed_api_responses": [],
+      "horizontal_overflow": {
+        "body_overflow_px": 0,
+        "offenders": []
+      }
+    },
+    {
+      "page": "backtest",
+      "route": "/next/backtest",
+      "viewport": "1280x800",
+      "screenshot": "/Users/j/Documents/gupiao/docs/reports/frontend-next-visual-consistency-2026-06-07/backtest-1280x800.png",
+      "status": "ok",
+      "navigation_error": null,
+      "app_error": null,
+      "page_errors": [],
+      "failed_api_responses": [],
+      "horizontal_overflow": {
+        "body_overflow_px": 0,
+        "offenders": []
+      }
+    },
+    {
+      "page": "backtest",
+      "route": "/next/backtest",
+      "viewport": "768x1024",
+      "screenshot": "/Users/j/Documents/gupiao/docs/reports/frontend-next-visual-consistency-2026-06-07/backtest-768x1024.png",
+      "status": "ok",
+      "navigation_error": null,
+      "app_error": null,
+      "page_errors": [],
+      "failed_api_responses": [],
+      "horizontal_overflow": {
+        "body_overflow_px": 0,
+        "offenders": [
+          {
+            "tag": "aside",
+            "className": "legacy-sidebar tq-sidebar",
+            "overflowPx": 292
+          },
+          {
+            "tag": "div",
+            "className": "",
+            "overflowPx": 292
+          },
+          {
+            "tag": "div",
+            "className": "legacy-sidebar__brand",
+            "overflowPx": 292
+          },
+          {
+            "tag": "nav",
+            "className": "legacy-sidebar__nav",
+            "overflowPx": 292
+          },
+          {
+            "tag": "div",
+            "className": "legacy-sidebar__footer",
+            "overflowPx": 292
+          },
+          {
+            "tag": "a",
+            "className": "legacy-sidebar__item",
+            "overflowPx": 284
+          },
+          {
+            "tag": "a",
+            "className": "legacy-sidebar__item",
+            "overflowPx": 284
+          },
+          {
+            "tag": "a",
+            "className": "legacy-sidebar__item",
+            "overflowPx": 284
+          }
+        ]
+      }
+    },
+    {
+      "page": "backtest",
+      "route": "/next/backtest",
+      "viewport": "390x844",
+      "screenshot": "/Users/j/Documents/gupiao/docs/reports/frontend-next-visual-consistency-2026-06-07/backtest-390x844.png",
+      "status": "ok",
+      "navigation_error": null,
+      "app_error": null,
+      "page_errors": [],
+      "failed_api_responses": [],
+      "horizontal_overflow": {
+        "body_overflow_px": 0,
+        "offenders": [
+          {
+            "tag": "aside",
+            "className": "legacy-sidebar tq-sidebar",
+            "overflowPx": 292
+          },
+          {
+            "tag": "div",
+            "className": "",
+            "overflowPx": 292
+          },
+          {
+            "tag": "div",
+            "className": "legacy-sidebar__brand",
+            "overflowPx": 292
+          },
+          {
+            "tag": "nav",
+            "className": "legacy-sidebar__nav",
+            "overflowPx": 292
+          },
+          {
+            "tag": "div",
+            "className": "legacy-sidebar__footer",
+            "overflowPx": 292
+          },
+          {
+            "tag": "a",
+            "className": "legacy-sidebar__item",
+            "overflowPx": 284
+          },
+          {
+            "tag": "a",
+            "className": "legacy-sidebar__item",
+            "overflowPx": 284
+          },
+          {
+            "tag": "a",
+            "className": "legacy-sidebar__item",
+            "overflowPx": 284
+          }
+        ]
+      }
+    },
+    {
+      "page": "data",
+      "route": "/next/data",
+      "viewport": "1440x900",
+      "screenshot": "/Users/j/Documents/gupiao/docs/reports/frontend-next-visual-consistency-2026-06-07/data-1440x900.png",
+      "status": "ok",
+      "navigation_error": null,
+      "app_error": null,
+      "page_errors": [],
+      "failed_api_responses": [],
+      "horizontal_overflow": {
+        "body_overflow_px": 0,
+        "offenders": []
+      }
+    },
+    {
+      "page": "data",
+      "route": "/next/data",
+      "viewport": "1280x800",
+      "screenshot": "/Users/j/Documents/gupiao/docs/reports/frontend-next-visual-consistency-2026-06-07/data-1280x800.png",
+      "status": "ok",
+      "navigation_error": null,
+      "app_error": null,
+      "page_errors": [],
+      "failed_api_responses": [],
+      "horizontal_overflow": {
+        "body_overflow_px": 0,
+        "offenders": []
+      }
+    },
+    {
+      "page": "data",
+      "route": "/next/data",
+      "viewport": "768x1024",
+      "screenshot": "/Users/j/Documents/gupiao/docs/reports/frontend-next-visual-consistency-2026-06-07/data-768x1024.png",
+      "status": "ok",
+      "navigation_error": null,
+      "app_error": null,
+      "page_errors": [],
+      "failed_api_responses": [],
+      "horizontal_overflow": {
+        "body_overflow_px": 0,
+        "offenders": [
+          {
+            "tag": "aside",
+            "className": "legacy-sidebar tq-sidebar",
+            "overflowPx": 292
+          },
+          {
+            "tag": "div",
+            "className": "",
+            "overflowPx": 292
+          },
+          {
+            "tag": "div",
+            "className": "legacy-sidebar__brand",
+            "overflowPx": 292
+          },
+          {
+            "tag": "nav",
+            "className": "legacy-sidebar__nav",
+            "overflowPx": 292
+          },
+          {
+            "tag": "div",
+            "className": "legacy-sidebar__footer",
+            "overflowPx": 292
+          },
+          {
+            "tag": "a",
+            "className": "legacy-sidebar__item",
+            "overflowPx": 284
+          },
+          {
+            "tag": "a",
+            "className": "legacy-sidebar__item",
+            "overflowPx": 284
+          },
+          {
+            "tag": "a",
+            "className": "legacy-sidebar__item",
+            "overflowPx": 284
+          }
+        ]
+      }
+    },
+    {
+      "page": "data",
+      "route": "/next/data",
+      "viewport": "390x844",
+      "screenshot": "/Users/j/Documents/gupiao/docs/reports/frontend-next-visual-consistency-2026-06-07/data-390x844.png",
+      "status": "ok",
+      "navigation_error": null,
+      "app_error": null,
+      "page_errors": [],
+      "failed_api_responses": [],
+      "horizontal_overflow": {
+        "body_overflow_px": 0,
+        "offenders": [
+          {
+            "tag": "aside",
+            "className": "legacy-sidebar tq-sidebar",
+            "overflowPx": 292
+          },
+          {
+            "tag": "div",
+            "className": "",
+            "overflowPx": 292
+          },
+          {
+            "tag": "div",
+            "className": "legacy-sidebar__brand",
+            "overflowPx": 292
+          },
+          {
+            "tag": "nav",
+            "className": "legacy-sidebar__nav",
+            "overflowPx": 292
+          },
+          {
+            "tag": "div",
+            "className": "legacy-sidebar__footer",
+            "overflowPx": 292
+          },
+          {
+            "tag": "a",
+            "className": "legacy-sidebar__item",
+            "overflowPx": 284
+          },
+          {
+            "tag": "a",
+            "className": "legacy-sidebar__item",
+            "overflowPx": 284
+          },
+          {
+            "tag": "a",
+            "className": "legacy-sidebar__item",
+            "overflowPx": 284
+          }
+        ]
+      }
+    },
+    {
+      "page": "settings",
+      "route": "/next/settings",
+      "viewport": "1440x900",
+      "screenshot": "/Users/j/Documents/gupiao/docs/reports/frontend-next-visual-consistency-2026-06-07/settings-1440x900.png",
+      "status": "ok",
+      "navigation_error": null,
+      "app_error": null,
+      "page_errors": [],
+      "failed_api_responses": [],
+      "horizontal_overflow": {
+        "body_overflow_px": 0,
+        "offenders": []
+      }
+    },
+    {
+      "page": "settings",
+      "route": "/next/settings",
+      "viewport": "1280x800",
+      "screenshot": "/Users/j/Documents/gupiao/docs/reports/frontend-next-visual-consistency-2026-06-07/settings-1280x800.png",
+      "status": "ok",
+      "navigation_error": null,
+      "app_error": null,
+      "page_errors": [],
+      "failed_api_responses": [],
+      "horizontal_overflow": {
+        "body_overflow_px": 0,
+        "offenders": []
+      }
+    },
+    {
+      "page": "settings",
+      "route": "/next/settings",
+      "viewport": "768x1024",
+      "screenshot": "/Users/j/Documents/gupiao/docs/reports/frontend-next-visual-consistency-2026-06-07/settings-768x1024.png",
+      "status": "ok",
+      "navigation_error": null,
+      "app_error": null,
+      "page_errors": [],
+      "failed_api_responses": [],
+      "horizontal_overflow": {
+        "body_overflow_px": 0,
+        "offenders": [
+          {
+            "tag": "aside",
+            "className": "legacy-sidebar tq-sidebar",
+            "overflowPx": 292
+          },
+          {
+            "tag": "div",
+            "className": "",
+            "overflowPx": 292
+          },
+          {
+            "tag": "div",
+            "className": "legacy-sidebar__brand",
+            "overflowPx": 292
+          },
+          {
+            "tag": "nav",
+            "className": "legacy-sidebar__nav",
+            "overflowPx": 292
+          },
+          {
+            "tag": "div",
+            "className": "legacy-sidebar__footer",
+            "overflowPx": 292
+          },
+          {
+            "tag": "a",
+            "className": "legacy-sidebar__item",
+            "overflowPx": 284
+          },
+          {
+            "tag": "a",
+            "className": "legacy-sidebar__item",
+            "overflowPx": 284
+          },
+          {
+            "tag": "a",
+            "className": "legacy-sidebar__item",
+            "overflowPx": 284
+          }
+        ]
+      }
+    },
+    {
+      "page": "settings",
+      "route": "/next/settings",
+      "viewport": "390x844",
+      "screenshot": "/Users/j/Documents/gupiao/docs/reports/frontend-next-visual-consistency-2026-06-07/settings-390x844.png",
+      "status": "ok",
+      "navigation_error": null,
+      "app_error": null,
+      "page_errors": [],
+      "failed_api_responses": [],
+      "horizontal_overflow": {
+        "body_overflow_px": 0,
+        "offenders": [
+          {
+            "tag": "aside",
+            "className": "legacy-sidebar tq-sidebar",
+            "overflowPx": 292
+          },
+          {
+            "tag": "div",
+            "className": "",
+            "overflowPx": 292
+          },
+          {
+            "tag": "div",
+            "className": "legacy-sidebar__brand",
+            "overflowPx": 292
+          },
+          {
+            "tag": "nav",
+            "className": "legacy-sidebar__nav",
+            "overflowPx": 292
+          },
+          {
+            "tag": "div",
+            "className": "legacy-sidebar__footer",
+            "overflowPx": 292
+          },
+          {
+            "tag": "a",
+            "className": "legacy-sidebar__item",
+            "overflowPx": 284
+          },
+          {
+            "tag": "a",
+            "className": "legacy-sidebar__item",
+            "overflowPx": 284
+          },
+          {
+            "tag": "a",
+            "className": "legacy-sidebar__item",
+            "overflowPx": 284
+          }
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,100 @@
+.wise-login-shell,
+.wise-login-shell * {
+  box-sizing: border-box;
+}
+
+.wise-login-shell {
+  --login-ink: rgb(11, 5, 28);
+  --login-ink-deep: rgb(4, 1, 10);
+  --login-brand: rgb(168, 85, 247);
+  --login-gold: rgb(255, 215, 0);
+  --login-gold-soft: rgb(245, 158, 11);
+  --login-gold-bright: rgb(251, 191, 36);
+  --login-up: rgb(255, 59, 48);
+  --login-down: rgb(16, 185, 129);
+  --login-text: rgb(251, 248, 255);
+  --login-muted: rgb(142, 134, 168);
+  position: relative;
+  display: flex;
+  min-height: 100vh;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--login-ink-deep);
+  color: var(--login-text);
+  font-family: "JetBrains Mono", "SFMono-Regular", "Menlo", "PingFang SC", monospace;
+}
+
+.login-scanlines {
+  background-image:
+    linear-gradient(rgba(139, 92, 246, 0.03) 50%, rgba(0, 0, 0, 0.3) 50%),
+    linear-gradient(90deg, rgba(255, 215, 0, 0.02), transparent, rgba(168, 85, 247, 0.02));
+  background-size: 100% 4px, 12px 100%;
+}
+
+.wise-login-ticker,
+.wise-login-footer {
+  position: relative;
+  z-index: 30;
+  flex: 0 0 auto;
+  border-color: rgba(255, 215, 0, 0.3);
+  background: rgba(0, 0, 0, 0.95);
+  color: var(--login-muted);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+  box-shadow: 0 4px 25px rgba(245, 158, 11, 0.2);
+}
+
+.wise-login-ticker {
+  height: 32px;
+  overflow: hidden;
+  border-bottom: 1px solid rgba(255, 215, 0, 0.3);
+}
+
+.wise-login-ticker-track {
+  display: flex;
+  width: max-content;
+  height: 100%;
+  align-items: center;
+  gap: 28px;
+  white-space: nowrap;
+  animation: wise-login-ticker-flow 28s linear infinite;
+}
+
+.wise-login-ticker-track span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.wise-login-ticker-track strong {
+  color: var(--login-gold);
+}
+
+.wise-login-ticker-track em {
+  color: var(--login-text);
+  font-style: normal;
+}
+
+.wise-login-ticker-track b {
+  color: var(--login-up);
+}
+
+.wise-login-stage {
+  position: relative;
+  z-index: 20;
+  display: grid;
+  flex: 1 1 auto;
+  place-items: center;
+  padding: clamp(18px, 4vw, 44px);
+}
+
+.wise-login-footer {
+  display: flex;
+  min-height: 42px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  border-top: 1px solid rgba(255, 215, 0, 0.3);
+  padding: 8px 24px;
+}

@@ -1,0 +1,323 @@
+{
+  "generated_at": "2026-06-08T00:56:05.013694+00:00",
+  "status": "blocking",
+  "self_use_status": "可以继续通过 /next/* 自用和验收；阻断项主要影响正式 cutover 和长期稳定性。",
+  "formal_cutover_status": "not_ready",
+  "deployed": false,
+  "cutover": false,
+  "old_frontend_modified": false,
+  "strategy_policy_modified": false,
+  "production_semantics_changed": false,
+  "backend_change_reason": "后端改动用于 BFF 合包、worker 预算/低优先级暂停、analytics Parquet 导出、只读资源/manifest/readiness 验证和部署资源 gate；不改变生产策略语义、生产排序、production_score 或 priority_board 口径。",
+  "platform_impact": "不影响；当前未部署、未切流，生产策略语义和排序口径未改变。",
+  "key_deliverables": [
+    "frontend-next strategy-tracking BFF 合包、paper 非机甲长列表虚拟化、ECharts 首屏懒加载、CSS guard/报告。",
+    "scripts/collect_platform_resource_report.py：只读采集 df/free/docker/journal/mysql/binlog/slow log/备份状态。",
+    "scripts/install_platform_resource_limits.py 与 deploy/* 模板：Docker log、journal、BuildKit 和 MySQL slow logrotate 上限，默认 dry-run；MySQL binlog/max-binlog 由 docker-compose.mysql.yml command 管理。",
+    "scripts/verify_platform_budget.py：MySQL 连接池、worker 角色预算、Web 重任务 guard。",
+    "scripts/verify_analytics_manifests.py：Parquet manifest 只读校验和 sha256 文件验证。",
+    "scripts/plan_analytics_manifest_exports.py 与 scripts/submit_analytics_manifest_exports.py：导出任务计划和显式 apply 入队。",
+    "scripts/verify_platform_optimization_readiness.py：聚合 resource/budget/manifest/export/submission 总 gate。",
+    "scripts/plan_platform_maintenance_window.py：生成人工维护窗口步骤，不执行命令。",
+    "docs/operations/mysql-maintenance-runbook.md：MySQL 备份、binlog、slow log、analytics manifest 运维流程。",
+    "docs/frontend-next-cutover-runbook-2026-06-05.md 与 PRODUCTION_RUNBOOK.md：补入正式部署/切流前平台资源 gate。",
+    "frontend-next/scripts/perf-profile.mjs：输出结构化 perf JSON，供完成度审计验证 strategy 请求和 paper DOM。"
+  ],
+  "validation_references": [
+    "docs/reports/platform-resource-baseline-2026-06-08.md",
+    "docs/reports/platform-mysql-backup-verification-2026-06-08.md",
+    "docs/reports/platform-budget-2026-06-08.md",
+    "docs/reports/platform-analytics-manifests-2026-06-08.md",
+    "docs/reports/platform-optimization-readiness-2026-06-08.md",
+    "docs/reports/platform-maintenance-window-plan-2026-06-08.md",
+    "docs/reports/frontend-next-performance-optimization-2026-06-08.md",
+    "docs/reports/frontend-next-css-optimization-2026-06-08.md",
+    "docs/reports/frontend-next-perf-compare-2026-06-08.json",
+    "docs/reports/frontend-next-chunk-profile-2026-06-08.md",
+    "docs/reports/platform-resource-optimization-completion-audit-2026-06-08.md",
+    "docs/reports/gupiao-cloud-performance-2026-06-08-000012.json"
+  ],
+  "phase_completion": {
+    "phase_a_resource_limits": "implemented_not_applied_online",
+    "phase_b_frontend_next_performance": "implemented_local_verified",
+    "phase_c_worker_budget": "implemented_not_applied_online",
+    "phase_d_parquet_manifest": "implemented_but_online_manifest_blocking",
+    "phase_e_prebuilt_deploy": "scripted_not_applied_online",
+    "phase_f_qa_reporting": "partial_current_slice_verified"
+  },
+  "before_after": {
+    "root_used_pct": 56,
+    "available_memory_mb": 219,
+    "swap_used_pct": 100.0,
+    "journal_usage_bytes": 1288490188,
+    "mysql_volume_bytes": 11811160064,
+    "mysql_slow_log_bytes": 3328599654,
+    "docker_build_cache_bytes": 6400575012,
+    "deploy_backup_count": 0,
+    "mysql_max_connections": 300,
+    "threads_connected": 26,
+    "frontend_initial_js_raw_bytes": 282841,
+    "frontend_initial_echarts_asset_count": 0,
+    "online_readyz_p95_ms": 7.336,
+    "online_monitor_bff_p95_ms": 30.266,
+    "online_priority_board_p95_ms": 103.424,
+    "mysql_backup_gzip_ok": true,
+    "mysql_backup_sql_signature_ok": true
+  },
+  "resource_state": {
+    "evaluation": {
+      "ok": true,
+      "status": "warning",
+      "warnings": [
+        "swap_used_pct=100.0",
+        "mysql_slow_log_bytes=3328599654",
+        "docker_build_cache_bytes=6400575012",
+        "max_binlog_size=1073741824",
+        "resource_config_missing=docker_daemon",
+        "resource_config_missing=journald_dropin",
+        "resource_config_missing=buildkit",
+        "resource_config_missing=mysql_compose_resource_config",
+        "resource_config_missing=mysql_slow_logrotate"
+      ],
+      "blocking": []
+    },
+    "mysql_backup": {
+      "count": 1,
+      "total_bytes": 140674550,
+      "latest": {
+        "size": "140674550",
+        "mtime": "1780848703.8764987620",
+        "path": "/home/ubuntu/mysql-backups/tquant-all-databases-20260608-001016.sql.gz",
+        "size_bytes": 140674550
+      },
+      "rows": [
+        {
+          "size": "140674550",
+          "mtime": "1780848703.8764987620",
+          "path": "/home/ubuntu/mysql-backups/tquant-all-databases-20260608-001016.sql.gz",
+          "size_bytes": 140674550
+        }
+      ]
+    },
+    "mysql_backup_verification": {
+      "report": "docs/reports/platform-mysql-backup-verification-2026-06-08.md",
+      "status": "ok",
+      "blocking": [],
+      "warnings": [],
+      "path": "/home/ubuntu/mysql-backups/tquant-all-databases-20260608-001016.sql.gz",
+      "size_bytes": 140674550,
+      "gzip_ok": true,
+      "sql_signature_ok": true,
+      "sha256": "f82db5fa2334fdd84abc4f7d2e136fd3af82742354ebb6a3bb24767215380db5",
+      "sql_signatures": [
+        "-- MySQL dump",
+        "CREATE TABLE",
+        "INSERT INTO",
+        "LOCK TABLES"
+      ]
+    },
+    "deploy_backups": {
+      "count": 0,
+      "total_bytes": 0,
+      "rows": []
+    },
+    "mysql": {
+      "binlog_expire_logs_seconds": 259200,
+      "max_binlog_size": 1073741824,
+      "binary_log_count": 5,
+      "binary_log_total_bytes": 4746133237,
+      "slow_log_bytes": 3328599654
+    },
+    "docker": {
+      "build_cache_bytes": 6400575012,
+      "volume_bytes": 12262131630
+    }
+  },
+  "worker_state": {
+    "evaluation": {
+      "ok": true,
+      "status": "warning",
+      "warnings": [
+        "mysql_max_connections=300",
+        "low_priority_pause_env_missing=runtime_worker",
+        "low_priority_pause_env_missing=runtime_scheduler",
+        "low_priority_pause_env_missing=backtest_worker",
+        "low_priority_pause_env_missing=analytics_worker"
+      ],
+      "blocking": []
+    },
+    "pool_budget": {
+      "total": 28,
+      "target": 40
+    },
+    "mysql": {
+      "max_connections": 300,
+      "threads_connected": 26,
+      "threads_running": 2
+    }
+  },
+  "online_performance_state": {
+    "report": "docs/reports/gupiao-cloud-performance-2026-06-08-000012.json",
+    "ok": true,
+    "failures": [],
+    "api_p95_ms": {
+      "readyz": 7.336,
+      "monitor_bff": 30.266,
+      "market_pulse": 28.294,
+      "priority_board": 103.424,
+      "watchlist_signals": 24.109
+    },
+    "api_statuses": {
+      "readyz": [
+        200
+      ],
+      "monitor_bff": [
+        200
+      ],
+      "market_pulse": [
+        200
+      ],
+      "priority_board": [
+        200
+      ],
+      "watchlist_signals": [
+        200
+      ]
+    },
+    "monitor_bff_sources": [
+      {
+        "source": "market_pulse",
+        "elapsed_ms": 45,
+        "status": "ok",
+        "timeout_ms": null,
+        "reason": ""
+      },
+      {
+        "source": "monitor_snapshot",
+        "elapsed_ms": 103,
+        "status": "ok",
+        "timeout_ms": null,
+        "reason": ""
+      }
+    ],
+    "priority_board_breakdown": {
+      "items": 12,
+      "read_path": "priority_board_response_cache",
+      "stale": false,
+      "stale_reason": "",
+      "refresh_queued": false,
+      "data_quality": "partial",
+      "data_quality_tags": [
+        "热点数据回退"
+      ]
+    }
+  },
+  "parquet_manifest_state": {
+    "evaluation": {
+      "ok": false,
+      "status": "blocking",
+      "warnings": [
+        "manifest_missing_count=9",
+        "manifest_warning_dataset_count=1"
+      ],
+      "blocking": [
+        "manifest_blocked_count=9"
+      ]
+    },
+    "ready_count": 1,
+    "missing_count": 9,
+    "blocked_count": 9,
+    "verified_files": 25,
+    "blocked_datasets": [
+      "strategy_tracking_snapshots",
+      "key_level_snapshots",
+      "low_buy_result_snapshots",
+      "backtest_runs",
+      "backtest_trades",
+      "backtest_daily_snapshots",
+      "analysis_logs",
+      "market_review_reports",
+      "paper_review_reports"
+    ]
+  },
+  "readiness": {
+    "ok": false,
+    "status": "blocking",
+    "blocking": [
+      "manifest:manifest_blocked_count=9"
+    ],
+    "warnings": [
+      "resource:resource_config_missing=docker_daemon",
+      "resource:resource_config_missing=journald_dropin",
+      "resource:resource_config_missing=buildkit",
+      "resource:resource_config_missing=mysql_compose_resource_config",
+      "resource:resource_config_missing=mysql_slow_logrotate",
+      "resource:swap_used_pct=100.0",
+      "resource:mysql_slow_log_bytes=3328599654",
+      "resource:docker_build_cache_bytes=6400575012",
+      "resource:max_binlog_size=1073741824",
+      "worker_budget:mysql_max_connections=300",
+      "worker_budget:low_priority_pause_env_missing=runtime_worker",
+      "worker_budget:low_priority_pause_env_missing=runtime_scheduler",
+      "worker_budget:low_priority_pause_env_missing=backtest_worker",
+      "worker_budget:low_priority_pause_env_missing=analytics_worker",
+      "manifest:manifest_missing_count=9",
+      "manifest:manifest_warning_dataset_count=1",
+      "export_plan:required_task_count=9",
+      "export_plan:manifest_export_required_count=9"
+    ]
+  },
+  "maintenance_plan": {
+    "path": "docs/reports/platform-maintenance-window-plan-2026-06-08.md",
+    "step_count": 9,
+    "operator_apply_steps": [
+      "resource_limits_apply",
+      "analytics_manifest_enqueue"
+    ]
+  },
+  "completion_audit": {
+    "path": "docs/reports/platform-resource-optimization-completion-audit-2026-06-08.md",
+    "status": "blocking",
+    "summary": {
+      "passed": 21,
+      "warning": 5,
+      "blocked": 9,
+      "not_verified": 0,
+      "total": 35
+    }
+  },
+  "rollback": [
+    "资源上限配置：恢复 /etc/tquant-resource-backups/<timestamp>/ 中的配置并重启对应服务。",
+    "Analytics 导出任务：通过 POST /api/runtime-tasks/<task_id>/cancel 取消 queued/running 任务。",
+    "frontend-next：当前未切流；旧 frontend 保持可回滚入口。",
+    "MySQL 源数据：当前未清理；任何热库清理仍需单独授权和恢复路径。"
+  ],
+  "required_before_cutover": [
+    "维护窗口内 apply 资源上限配置并重启/复验相关服务。",
+    "执行 analytics manifest 导出任务，补齐 9 个缺失 manifest 后重跑 verifier/readiness。",
+    "复跑 frontend-next 全量验收命令、资源验收、request trace 和 performance gate。",
+    "用户单独授权 cutover；失败即停止，保留旧 frontend 回滚。"
+  ],
+  "open_items": [
+    "blocking:manifest:manifest_blocked_count=9",
+    "warning:resource:resource_config_missing=docker_daemon",
+    "warning:resource:resource_config_missing=journald_dropin",
+    "warning:resource:resource_config_missing=buildkit",
+    "warning:resource:resource_config_missing=mysql_compose_resource_config",
+    "warning:resource:resource_config_missing=mysql_slow_logrotate",
+    "warning:resource:swap_used_pct=100.0",
+    "warning:resource:mysql_slow_log_bytes=3328599654",
+    "warning:resource:docker_build_cache_bytes=6400575012",
+    "warning:resource:max_binlog_size=1073741824",
+    "warning:worker_budget:mysql_max_connections=300",
+    "warning:worker_budget:low_priority_pause_env_missing=runtime_worker",
+    "warning:worker_budget:low_priority_pause_env_missing=runtime_scheduler",
+    "warning:worker_budget:low_priority_pause_env_missing=backtest_worker",
+    "warning:worker_budget:low_priority_pause_env_missing=analytics_worker",
+    "warning:manifest:manifest_missing_count=9",
+    "warning:manifest:manifest_warning_dataset_count=1",
+    "warning:export_plan:required_task_count=9",
+    "warning:export_plan:manifest_export_required_count=9"
+  ],
+  "cutover_requires_separate_authorization": true
+}

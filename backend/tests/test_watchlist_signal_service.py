@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import unittest
+from types import SimpleNamespace
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -47,6 +48,28 @@ class WatchlistSignalServiceTests(unittest.TestCase):
         self.assertEqual(len(payloads), 1)
         self.assertEqual(payloads[0]["symbol"], "510300")
         self.assertEqual(payloads[0]["name"], "沪深300ETF")
+        self.assertEqual(payloads[0]["error"], "监控信号缓存仍在准备中。")
+        self.assertIn(True, service.background_refresh_requests)
+
+    def test_list_signals_for_user_rows_never_runs_live_analysis_on_request_path(self) -> None:
+        service = _NonBlockingWatchlistSignalService()
+        service.build_live_signals = lambda *_args, **_kwargs: (_ for _ in ()).throw(  # type: ignore[method-assign]
+            AssertionError("user signal list must read snapshots instead of live analysis")
+        )
+        row = SimpleNamespace(
+            symbol="000001",
+            name="平安银行",
+            base_position=2000,
+            available_position=1000,
+            cost_basis=10.5,
+            memo="观察",
+        )
+        with self.Session() as db:
+            payloads = service.list_signals_for_rows(db, [row])
+
+        self.assertEqual(len(payloads), 1)
+        self.assertEqual(payloads[0]["symbol"], "000001")
+        self.assertEqual(payloads[0]["name"], "平安银行")
         self.assertEqual(payloads[0]["error"], "监控信号缓存仍在准备中。")
         self.assertIn(True, service.background_refresh_requests)
 

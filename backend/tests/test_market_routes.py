@@ -63,9 +63,9 @@ class MarketRouteTests(unittest.TestCase):
 
     def test_market_pulse_sync_returns_placeholder_and_queues_refresh_when_snapshot_missing(self) -> None:
         enqueued: list[str] = []
-        original_enqueue = market._enqueue_market_pulse_refresh
-        market._enqueue_market_pulse_refresh = lambda _db, *, reason: enqueued.append(reason)
-        self.addCleanup(lambda: setattr(market, "_enqueue_market_pulse_refresh", original_enqueue))
+        original_enqueue = market._enqueue_market_pulse_refresh_async
+        market._enqueue_market_pulse_refresh_async = lambda *, reason: enqueued.append(reason) or True
+        self.addCleanup(lambda: setattr(market, "_enqueue_market_pulse_refresh_async", original_enqueue))
 
         response = self.client.get("/api/market/pulse?refresh=sync")
 

@@ -14,10 +14,11 @@ from app.models.base import Base
 from app.models.entities import BacktestDailySnapshot, BacktestRun, BacktestTrade
 from app.models.schema_defs.backtest import BacktestRunCreate
 from app.services.backtest.data_provider import DataQualityReport
+from app.services.backtest.data_provider import DailyBarDataProvider
 from app.services.backtest.engine import BacktestOrder, BacktestResult
 from app.services.backtest.persistence import BacktestResultPersistence
 from app.services.backtest.portfolio import RealizedTrade
-from app.services.backtest_job_service import BacktestJobService
+from app.services.backtest_job_service import BacktestJobService, _daily_bar_data_provider
 
 backtests_route = pytest.importorskip(
     "app.api.routes.backtests",
@@ -50,6 +51,32 @@ def test_job_service_create_run_only_queues_without_starting_daemon_thread(
     assert row.status == "queued"
     assert row.started_at is None
     assert row.finished_at is None
+
+
+def test_job_service_daily_bar_provider_defaults_to_mysql() -> None:
+    SessionLocal = _sqlite_session_factory()
+    with SessionLocal() as db:
+        provider = _daily_bar_data_provider(db)
+
+    assert type(provider) is DailyBarDataProvider
+
+
+def test_job_service_daily_bar_provider_falls_back_when_parquet_manifest_missing(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        "app.services.backtest_job_service.get_settings",
+        lambda: SimpleNamespace(
+            backtest_parquet_daily_bars_enabled=True,
+            backtest_parquet_daily_bars_manifest="missing-manifest",
+            backtest_parquet_daily_bars_fallback_to_mysql=True,
+        ),
+    )
+    SessionLocal = _sqlite_session_factory()
+    with SessionLocal() as db:
+        provider = _daily_bar_data_provider(db)
+
+    assert type(provider) is DailyBarDataProvider
 
 
 def test_backtest_worker_run_once_executes_queued_job(monkeypatch: pytest.MonkeyPatch) -> None:

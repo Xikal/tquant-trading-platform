@@ -1,0 +1,655 @@
+.strategy-tracking-page {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.strategy-tracking-hero {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.strategy-tracking-title {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.strategy-tracking-title h1 {
+  margin: 0;
+  font-size: var(--font-title);
+  line-height: 1.2;
+}
+
+.strategy-tracking-title p {
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--font-meta);
+}
+
+.strategy-tracking-hero-meta,
+.strategy-tracking-detail-metrics {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+  color: var(--muted);
+  font-size: var(--font-meta);
+}
+
+.strategy-tracking-hero-meta span,
+.strategy-tracking-detail-metrics span {
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--muted-bg);
+  padding: 3px 6px;
+  white-space: nowrap;
+}
+
+.strategy-tracking-filter-panel {
+  display: grid;
+  gap: 8px;
+  padding: 8px;
+}
+
+.strategy-tracking-filter-toolbar,
+.strategy-tracking-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+}
+
+.strategy-tracking-filter-toolbar .strategy-tracking-mode-toggle {
+  min-width: 0;
+}
+
+.strategy-tracking-active-filters,
+.strategy-tracking-section-head span {
+  color: var(--muted);
+  font-size: var(--font-meta);
+}
+
+.strategy-tracking-section-head > div {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.strategy-tracking-filters {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fit, minmax(118px, 1fr));
+  width: 100%;
+}
+
+.strategy-tracking-filters .ant-select {
+  width: 100% !important;
+}
+
+.strategy-tracking-top-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(240px, 0.72fr) minmax(240px, 0.72fr);
+  gap: 8px;
+  align-items: stretch;
+}
+
+.strategy-tracking-summary,
+.strategy-tracking-review,
+.strategy-tracking-main-panel {
+  min-width: 0;
+}
+
+.strategy-tracking-metric-grid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(70px, 1fr));
+  gap: 6px;
+}
+
+.strategy-tracking-metric {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 6px;
+  background: var(--bg-elevated);
+  padding: 6px 7px;
+}
+
+.strategy-tracking-metric span,
+.strategy-tracking-review-head span,
+.strategy-tracking-cell-stack span,
+.strategy-tracking-stock-link small {
+  color: var(--muted);
+  font-size: var(--font-meta);
+}
+
+.strategy-tracking-metric strong {
+  font-size: 14px;
+  line-height: 1.1;
+}
+
+.strategy-tracking-review {
+  display: grid;
+  align-content: start;
+  gap: 7px;
+}
+
+.strategy-tracking-review-head,
+.strategy-tracking-detail-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.strategy-tracking-review p,
+.strategy-tracking-review-text {
+  margin: 0;
+  color: rgb(51, 65, 85);
+  font-size: var(--font-meta);
+  line-height: 1.45;
+}
+
+.strategy-tracking-review-tags,
+.strategy-tracking-tag-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  align-items: center;
+}
+
+.strategy-tracking-mode-toggle {
+  justify-content: space-between;
+  width: 100%;
+}
+
+.strategy-tracking-friendly-summary {
+  display: grid;
+  gap: 4px;
+  color: rgb(15, 23, 42);
+  font-size: var(--font-body);
+}
+
+.strategy-tracking-friendly-summary span {
+  color: var(--muted);
+  font-size: var(--font-meta);
+}
+
+.strategy-tracking-conclusion .tq-conclusion-bar__summary {
+  display: flex;
+  gap: var(--sp-2);
+  align-items: center;
+  min-width: 0;
+  line-height: var(--lh-tight);
+}
+
+.strategy-tracking-conclusion .tq-conclusion-bar__summary strong,
+.strategy-tracking-conclusion .tq-conclusion-bar__summary span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.strategy-tracking-conclusion .tq-conclusion-bar__summary span {
+  color: var(--muted);
+  font-size: var(--font-meta);
+}
+
+.strategy-tracking-conclusion .tq-conclusion-bar__grid {
+  grid-template-columns: repeat(4, minmax(112px, 1fr));
+}
+
+.strategy-tracking-conclusion .tq-conclusion-bar__item {
+  display: grid;
+}
+
+.strategy-tracking-conclusion--compact .tq-conclusion-bar {
+  gap: var(--sp-2);
+}
+
+.strategy-tracking-conclusion--compact .tq-panel__header {
+  padding: var(--sp-2) var(--sp-3) 0;
+}
+
+.strategy-tracking-conclusion--compact .tq-panel__body {
+  padding: var(--sp-2) var(--sp-3) var(--sp-3);
+}
+
+.strategy-tracking-conclusion--compact .tq-conclusion-bar__grid {
+  gap: 6px;
+}
+
+.strategy-tracking-conclusion--compact .tq-stat-tile {
+  padding: 7px 8px;
+}
+
+.strategy-tracking-conclusion--compact .tq-stat-tile__value {
+  margin-top: 2px;
+  font-size: var(--font-body);
+}
+
+.strategy-tracking-conclusion--compact .tq-stat-tile__label {
+  font-size: var(--font-meta);
+}
+
+.strategy-tracking-metric-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 100%;
+}
+
+.strategy-tracking-help-icon {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.strategy-tracking-status-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(120px, 1fr));
+  gap: 8px;
+}
+
+.strategy-tracking-status-card {
+  display: grid !important;
+  justify-items: start;
+  height: auto !important;
+  padding: 8px !important;
+  text-align: left;
+}
+
+.strategy-tracking-status-card strong {
+  font-size: 20px;
+  line-height: 1.1;
+}
+
+.strategy-tracking-status-card small,
+.strategy-tracking-sector-empty {
+  color: var(--muted);
+  font-size: var(--font-meta);
+}
+
+.strategy-tracking-sector-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  max-width: 160px;
+}
+
+.strategy-tracking-sector-tags .ant-tag {
+  margin-inline-end: 0;
+}
+
+.strategy-tracking-holding-bars {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.strategy-tracking-holding-bars span {
+  color: var(--muted);
+  font-size: var(--font-meta);
+}
+
+.strategy-tracking-detail-section {
+  display: grid;
+  gap: 8px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 8px;
+}
+
+.strategy-tracking-context-gates {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.strategy-tracking-main-panel,
+.strategy-tracking-secondary-panel {
+  padding-top: 4px;
+}
+
+.strategy-tracking-main-panel .ant-tabs-nav,
+.strategy-tracking-secondary-panel .ant-tabs-nav {
+  margin-bottom: 6px;
+}
+
+.strategy-tracking-main-panel .ant-table-cell {
+  vertical-align: top;
+}
+
+.strategy-tracking-card-list {
+  display: none;
+}
+
+.strategy-tracking-card-pagination {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding-top: 8px;
+}
+
+.strategy-tracking-card-pagination span {
+  color: var(--muted);
+  font-size: var(--font-meta);
+}
+
+.strategy-tracking-mobile-card {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--bg-elevated);
+  padding: 10px;
+}
+
+.strategy-tracking-mobile-card__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+}
+
+.strategy-tracking-mobile-card__section {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.strategy-tracking-mobile-card__section span,
+.strategy-tracking-mobile-card__section small {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: var(--font-meta);
+  text-overflow: ellipsis;
+}
+
+.strategy-tracking-mobile-card__metrics {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px 8px;
+  color: var(--muted);
+  font-size: var(--font-meta);
+}
+
+.strategy-tracking-mobile-card__metrics span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.strategy-tracking-stock-link {
+  display: inline-grid;
+  gap: 1px;
+  height: auto;
+  max-width: 100%;
+  padding: 0;
+  line-height: 1.2;
+  text-align: left;
+}
+
+.strategy-tracking-stock-link span,
+.strategy-tracking-cell-stack strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.strategy-tracking-cell-stack {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  line-height: 1.25;
+}
+
+.strategy-tracking-detail {
+  width: 100%;
+}
+
+.strategy-tracking-detail-metrics {
+  justify-content: flex-start;
+}
+
+.strategy-tracking-analysis-stack {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.strategy-tracking-tab-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+  min-width: 0;
+}
+
+.strategy-tracking-tab-toolbar .ant-typography {
+  min-width: 0;
+}
+
+.strategy-tracking-tab-toolbar .ant-btn {
+  flex: 0 0 auto;
+}
+
+.paper-etf-t0-kv-grid,
+.paper-etf-t0-review-list,
+.paper-grouped-performance-list {
+  display: grid;
+  gap: var(--sp-2);
+  min-width: 0;
+}
+
+.paper-etf-t0-kv-grid,
+.paper-grouped-performance-card__metrics {
+  grid-template-columns: repeat(auto-fit, minmax(132px, 1fr));
+}
+
+.paper-etf-t0-kv-item,
+.paper-etf-t0-review-card,
+.paper-grouped-performance-card {
+  display: grid;
+  gap: var(--sp-1);
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-elevated);
+  padding: var(--sp-2);
+}
+
+.paper-etf-t0-review-card__head,
+.paper-grouped-performance-card__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+  min-width: 0;
+}
+
+.paper-grouped-performance-card__metrics {
+  display: grid;
+  gap: var(--sp-2);
+}
+
+.strategy-review-reminder {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  display: grid;
+  gap: var(--sp-1);
+  margin-bottom: var(--sp-3);
+  padding: var(--sp-3);
+}
+
+.strategy-review-reminder span,
+.strategy-review-data-quality {
+  color: var(--muted);
+}
+
+.strategy-review-data-quality {
+  margin: 0;
+}
+
+.strategy-review-perf-status {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+  margin-bottom: var(--sp-3);
+}
+
+.strategy-review-summary-cards {
+  display: grid;
+  gap: var(--sp-3);
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+}
+
+.strategy-review-summary-card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  display: grid;
+  gap: var(--sp-1);
+  min-width: 0;
+  padding: var(--sp-3);
+}
+
+.strategy-review-summary-card span {
+  color: var(--muted);
+}
+
+.strategy-review-summary-card strong {
+  font-size: 20px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+
+.strategy-review-workspace-grid {
+  display: grid;
+  gap: var(--sp-4);
+  grid-template-columns: minmax(0, 1.15fr) minmax(320px, 0.85fr);
+}
+
+.strategy-review-queue,
+.strategy-review-detail,
+.strategy-review-relative-card,
+.strategy-review-journal-list {
+  min-width: 0;
+}
+
+.strategy-review-journal-row {
+  border-top: 1px solid var(--border);
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--sp-2);
+  min-width: 0;
+  padding: var(--sp-2) 0;
+}
+
+.strategy-review-journal-row > div {
+  display: grid;
+  gap: var(--sp-1);
+  min-width: 0;
+}
+
+.strategy-review-journal-actions {
+  display: flex !important;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.strategy-review-journal-empty {
+  color: var(--muted);
+  margin: 0;
+}
+
+.strategy-review-detail,
+.strategy-review-relative-card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  display: grid;
+  gap: var(--sp-3);
+  padding: var(--sp-3);
+}
+
+.strategy-review-relative-grid {
+  display: grid;
+  gap: var(--sp-2);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.strategy-review-relative-grid span {
+  min-width: 0;
+}
+
+.trade-journal-code-input {
+  width: 120px;
+}
+
+.trade-journal-action-select {
+  width: 144px;
+}
+
+.trade-journal-reason-input {
+  width: min(260px, 100%);
+}
+
+@media (max-width: 960px) {
+  .strategy-tracking-top-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .strategy-tracking-metric-grid {
+    grid-template-columns: repeat(3, minmax(70px, 1fr));
+  }
+
+  .strategy-tracking-status-grid {
+    grid-template-columns: repeat(2, minmax(120px, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .strategy-review-summary-cards {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .strategy-review-workspace-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .strategy-tracking-table-grid {
+    display: none;
+  }
+
+  .strategy-tracking-card-list {
+    display: block;
+  }
+
+  .strategy-tracking-hero,
+  .strategy-tracking-review-head,
+  .strategy-tracking-detail-head,
+  .strategy-tracking-filter-toolbar,
+  .strategy-tracking-section-head {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .strategy-tracking-hero-meta {
+    justify-content: flex-start;
+  }
+
+  .strategy-tracking-metric-grid {
+    grid-template-columns: repeat(2, minmax(70px, 1fr));
+  }
+
+  .strategy-tracking-status-grid {
+    grid-template-columns: 1fr;
+  }
+}

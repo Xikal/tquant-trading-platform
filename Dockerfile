@@ -9,6 +9,17 @@ COPY frontend/ ./
 RUN npm run build
 
 
+FROM docker.m.daocloud.io/library/node:20-bookworm-slim AS frontend-next-builder
+
+WORKDIR /app/frontend-next
+
+COPY frontend-next/package*.json ./
+RUN npm ci
+
+COPY frontend-next/ ./
+RUN npm run build
+
+
 FROM docker.m.daocloud.io/library/rust:1.95-bookworm AS rust-builder
 
 ARG DEBIAN_APT_MIRROR=""
@@ -85,10 +96,11 @@ COPY docs/reports/strategy-24m-backtest-2026-05-30.json /app/docs/reports/strate
 COPY docs/reports/focus-strategy-walk-forward-plan-2026-05-28/summary.json /app/docs/reports/focus-strategy-walk-forward-plan-2026-05-28/summary.json
 COPY docs/reports/focus-strategy-parameter-walk-forward-2026-05-28/summary.json /app/docs/reports/focus-strategy-parameter-walk-forward-2026-05-28/summary.json
 COPY --from=frontend-builder /app/frontend/dist /app/frontend/dist
+COPY --from=frontend-next-builder /app/frontend-next/dist /app/frontend-next/dist
 
 RUN adduser --disabled-password --gecos "" --home /home/tquant tquant \
     && mkdir -p /app/backend/data \
-    && chown -R tquant:tquant /app/backend /app/frontend /app/scripts /app/docs
+    && chown -R tquant:tquant /app/backend /app/frontend /app/frontend-next /app/scripts /app/docs
 
 USER tquant
 

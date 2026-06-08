@@ -1,0 +1,294 @@
+{
+  "generated_at": "2026-06-08T00:56:05.044725+00:00",
+  "status": "blocking",
+  "summary": {
+    "passed": 21,
+    "warning": 5,
+    "blocked": 9,
+    "not_verified": 0,
+    "total": 35
+  },
+  "checks": [
+    {
+      "id": "boundary.no_deploy_no_cutover",
+      "phase": "boundary",
+      "requirement": "本轮不部署、不切流。",
+      "status": "passed",
+      "evidence": "deployed=False, cutover=False",
+      "next_action": "如需正式切流，必须另行授权并复跑 gate。"
+    },
+    {
+      "id": "boundary.strategy_policy",
+      "phase": "boundary",
+      "requirement": "不修改 strategy_policy.py。",
+      "status": "passed",
+      "evidence": "strategy_policy_modified=False",
+      "next_action": ""
+    },
+    {
+      "id": "boundary.production_semantics",
+      "phase": "boundary",
+      "requirement": "不改变生产策略语义、生产排序、production_score、priority_board。",
+      "status": "passed",
+      "evidence": "production_semantics_changed=False",
+      "next_action": ""
+    },
+    {
+      "id": "boundary.old_frontend",
+      "phase": "boundary",
+      "requirement": "旧 frontend/ 不作为本轮改造对象。",
+      "status": "passed",
+      "evidence": "old_frontend_modified=False",
+      "next_action": ""
+    },
+    {
+      "id": "phase_a.root_disk_gate",
+      "phase": "phase_a",
+      "requirement": "根分区 >80% blocking，长期目标 <60%。",
+      "status": "passed",
+      "evidence": "root_used_pct=56",
+      "next_action": "继续每日巡检；长期目标仍需维持在 60% 附近。"
+    },
+    {
+      "id": "phase_a.available_memory",
+      "phase": "phase_a",
+      "requirement": "Available memory >800MiB，或有明确单机不可达原因。",
+      "status": "warning",
+      "evidence": "available_mb=219",
+      "next_action": "资源上限和 worker 降载在线生效后复验；若仍低于 800MiB，需在验收报告写明单机不可达原因。"
+    },
+    {
+      "id": "phase_a.binlog_retention",
+      "phase": "phase_a",
+      "requirement": "MySQL binlog 固化保留 3 天。",
+      "status": "passed",
+      "evidence": "binlog_expire_logs_seconds=259200",
+      "next_action": ""
+    },
+    {
+      "id": "phase_a.max_binlog_size",
+      "phase": "phase_a",
+      "requirement": "max_binlog_size 目标 256M。",
+      "status": "blocked",
+      "evidence": "max_binlog_size=1073741824",
+      "next_action": "运维窗口重建 MySQL 容器使 compose max-binlog-size 生效，并复验 @@max_binlog_size。"
+    },
+    {
+      "id": "phase_a.slow_log_rotation",
+      "phase": "phase_a",
+      "requirement": "MySQL slow log 单文件 <=256M 并安装 logrotate。",
+      "status": "blocked",
+      "evidence": "slow_log_bytes=3328599654; mysql_slow_logrotate_missing=True",
+      "next_action": "先备份 slow log，再安装 logrotate 并执行轮转/复验。"
+    },
+    {
+      "id": "phase_a.journal_retention",
+      "phase": "phase_a",
+      "requirement": "systemd journal 上限 300M/7day 在线生效。",
+      "status": "blocked",
+      "evidence": "journal_usage_bytes=1288490188; journald_dropin_missing=True",
+      "next_action": "运维窗口安装 journald drop-in 并重启/复验 journal 占用。"
+    },
+    {
+      "id": "phase_a.docker_build_cache",
+      "phase": "phase_a",
+      "requirement": "Docker BuildKit cache 目标 <=2G。",
+      "status": "blocked",
+      "evidence": "docker_build_cache_bytes=6400575012",
+      "next_action": "启用 BuildKit GC 或只清 build cache；禁止清 volume。"
+    },
+    {
+      "id": "phase_a.resource_configs_applied",
+      "phase": "phase_a",
+      "requirement": "Docker/journal/BuildKit/MySQL compose command/slow logrotate 配置在线安装或生效并可复验。",
+      "status": "blocked",
+      "evidence": "resource:resource_config_missing=buildkit, resource:resource_config_missing=docker_daemon, resource:resource_config_missing=journald_dropin, resource:resource_config_missing=mysql_compose_resource_config, resource:resource_config_missing=mysql_slow_logrotate",
+      "next_action": "按维护窗口计划执行 resource_limits_apply 后重跑 baseline/readiness。"
+    },
+    {
+      "id": "phase_a.mysql_volume_short_term",
+      "phase": "phase_a",
+      "requirement": "MySQL volume 短期 <12G，长期通过 Parquet/manifest 控制增长。",
+      "status": "passed",
+      "evidence": "mysql_volume_bytes=11811160064.0",
+      "next_action": "manifest 全部补齐并完成保留窗口 dry-run 前，不清 MySQL 源数据。"
+    },
+    {
+      "id": "phase_a.deploy_backup_retention",
+      "phase": "phase_a",
+      "requirement": "生产机部署归档仅保留最近 3 个可回滚版本。",
+      "status": "passed",
+      "evidence": "deploy_backup_count=0, total_bytes=0",
+      "next_action": "保留最新 3 个；禁止清当前运行目录、数据库、运行时数据。"
+    },
+    {
+      "id": "phase_a.mysql_backup",
+      "phase": "phase_a",
+      "requirement": "执行数据库备份并纳入巡检，备份 gzip/SQL 特征可校验。",
+      "status": "passed",
+      "evidence": "mysql_backup_count=1, latest=/home/ubuntu/mysql-backups/tquant-all-databases-20260608-001016.sql.gz, verified_path=/home/ubuntu/mysql-backups/tquant-all-databases-20260608-001016.sql.gz, gzip_ok=True, sql_signature_ok=True, sha256=f82db5fa2334fdd84abc4f7d2e136fd3af82742354ebb6a3bb24767215380db5",
+      "next_action": ""
+    },
+    {
+      "id": "phase_b.strategy_bff_requests",
+      "phase": "phase_b",
+      "requirement": "/next/strategy-tracking 优先走 BFF，请求 <=2 且 items 422=0。",
+      "status": "passed",
+      "evidence": "api_request_count=2, items_422_count=0, forbidden_legacy_requests=[]",
+      "next_action": "保留 request:trace/perf:compare 作为正式 gate。"
+    },
+    {
+      "id": "phase_b.paper_virtualization_dom",
+      "phase": "phase_b",
+      "requirement": "/next/paper 长列表接 VirtualList，DOM <150，机甲组件不改。",
+      "status": "warning",
+      "evidence": "dom_nodes=343, non_mecha_descendants=82, mecha_descendants=171",
+      "next_action": "若坚持整页 DOM <150，需要另行授权简化机甲组件 DOM。"
+    },
+    {
+      "id": "phase_b.css_important",
+      "phase": "phase_b",
+      "requirement": "CSS !important <=25。",
+      "status": "passed",
+      "evidence": "important_count=23, target=25",
+      "next_action": ""
+    },
+    {
+      "id": "phase_b.css_raw",
+      "phase": "phase_b",
+      "requirement": "CSS raw <=180KB，或说明不可达原因。",
+      "status": "warning",
+      "evidence": "source_css_bytes=299197, target=180000, status=needs-explanation",
+      "next_action": "当前以说明和视觉一致性 gate 接受；继续优化需逐页截图验证。"
+    },
+    {
+      "id": "phase_b.echarts_initial",
+      "phase": "phase_b",
+      "requirement": "ECharts 首屏资产为 0，K 线保持 Lightweight Charts。",
+      "status": "passed",
+      "evidence": "initial_echarts_assets=0, target=0",
+      "next_action": ""
+    },
+    {
+      "id": "phase_b.initial_js",
+      "phase": "phase_b",
+      "requirement": "首屏 JS raw <=350KB。",
+      "status": "passed",
+      "evidence": "initial_js_raw_bytes=282841, target=350000",
+      "next_action": ""
+    },
+    {
+      "id": "phase_c.mysql_connections",
+      "phase": "phase_c",
+      "requirement": "MySQL max_connections 收敛到 80-120 并在线生效。",
+      "status": "blocked",
+      "evidence": "max_connections=300, threads_connected=26",
+      "next_action": "运维窗口重启 MySQL/容器，使 compose 目标 120 生效并复跑 performance gate。"
+    },
+    {
+      "id": "phase_c.low_priority_pause_env",
+      "phase": "phase_c",
+      "requirement": "低优先级重任务暂停开关进入运行容器。",
+      "status": "blocked",
+      "evidence": "worker_budget:low_priority_pause_env_missing=analytics_worker, worker_budget:low_priority_pause_env_missing=backtest_worker, worker_budget:low_priority_pause_env_missing=runtime_scheduler, worker_budget:low_priority_pause_env_missing=runtime_worker",
+      "next_action": "运维窗口重启 runtime/backtest/analytics/scheduler 容器后复验。"
+    },
+    {
+      "id": "phase_c.web_no_heavy_tasks",
+      "phase": "phase_c",
+      "requirement": "Web 主进程不跑重任务。",
+      "status": "passed",
+      "evidence": "web_env={'DB_POOL_SIZE': '4', 'DB_MAX_OVERFLOW': '4', 'RUNTIME_BACKGROUND_ROLE': 'web', 'RUNTIME_BACKGROUND_JOBS_ENABLED': 'false', 'APP_WORKERS': '4', 'TQUANT_ANALYTICS_ENABLED': 'false'}",
+      "next_action": ""
+    },
+    {
+      "id": "phase_c.swap_target",
+      "phase": "phase_c",
+      "requirement": "Swap 长期 <20%，短期优化目标 <500MiB。",
+      "status": "blocked",
+      "evidence": "swap_used_pct=100.0",
+      "next_action": "资源上限和 worker 降载在线生效后复验。"
+    },
+    {
+      "id": "phase_d.daily_bars_manifest",
+      "phase": "phase_d",
+      "requirement": "daily_bars Parquet manifest 可校验。",
+      "status": "passed",
+      "evidence": "ready_count=1, verified_files=25",
+      "next_action": ""
+    },
+    {
+      "id": "phase_d.all_required_manifests",
+      "phase": "phase_d",
+      "requirement": "strategy/backtest/report 等目标数据集 manifest 全部补齐。",
+      "status": "blocked",
+      "evidence": "missing_count=9, blocked_count=9, blocked_datasets=['strategy_tracking_snapshots', 'key_level_snapshots', 'low_buy_result_snapshots', 'backtest_runs', 'backtest_trades', 'backtest_daily_snapshots', 'analysis_logs', 'market_review_reports', 'paper_review_reports']",
+      "next_action": "按导出计划显式入队 9 个 analytics export 任务，完成后重跑 manifest verifier。"
+    },
+    {
+      "id": "phase_d.retention_strategy",
+      "phase": "phase_d",
+      "requirement": "MySQL 热库保留窗口和归档策略明确，且清理前要求 manifest/备份/恢复路径。",
+      "status": "passed",
+      "evidence": "mysql maintenance runbook includes manifest-gated retention and cleanup authorization.",
+      "next_action": ""
+    },
+    {
+      "id": "phase_d.no_mysql_cleanup",
+      "phase": "phase_d",
+      "requirement": "manifest 未校验前不清 MySQL 源数据。",
+      "status": "passed",
+      "evidence": "acceptance/runbook 明确未清 MySQL 源表，清理仍需单独授权。",
+      "next_action": ""
+    },
+    {
+      "id": "phase_e.prebuilt_deploy",
+      "phase": "phase_e",
+      "requirement": "预构建镜像优先，云端 pull+restart。",
+      "status": "warning",
+      "evidence": "phase_e=scripted_not_applied_online",
+      "next_action": "脚本入口已完成；真实 registry ref 和云端 pull+restart 尚未执行。"
+    },
+    {
+      "id": "phase_e.deployment_resource_gate",
+      "phase": "phase_e",
+      "requirement": "部署前资源 gate 纳入 cutover/生产手册，资源不达标停止。",
+      "status": "passed",
+      "evidence": "cutover/production runbooks contain platform resource gate references.",
+      "next_action": "补齐 runbook 后，真实部署前仍需按 gate 重新采集并归档。"
+    },
+    {
+      "id": "phase_f.online_performance",
+      "phase": "phase_f",
+      "requirement": "线上 Web/API performance gate 当前样本通过。",
+      "status": "passed",
+      "evidence": "ok=True, failures=[], readyz p95=7.336ms status=[200], monitor_bff p95=30.266ms status=[200], market_pulse p95=28.294ms status=[200], priority_board p95=103.424ms status=[200], watchlist_signals p95=24.109ms status=[200]",
+      "next_action": "资源 apply、worker 重启、manifest 导出后必须重新跑三轮 online performance gate。"
+    },
+    {
+      "id": "phase_f.reporting",
+      "phase": "phase_f",
+      "requirement": "报告闭环包含 before/after、资源、MySQL、Worker、manifest、回滚、未完成项。",
+      "status": "passed",
+      "evidence": "acceptance_status=blocking, open_items=19",
+      "next_action": ""
+    },
+    {
+      "id": "phase_f.full_gate",
+      "phase": "phase_f",
+      "requirement": "完整 frontend/backend/resource/performance gate 已执行并记录。",
+      "status": "warning",
+      "evidence": "progress report records frontend-next full chain and backend 133 passed; online apply 后仍需重跑。",
+      "next_action": "资源 apply 和 manifest 导出完成后重跑完整 gate。"
+    },
+    {
+      "id": "phase_f.runbooks",
+      "phase": "phase_f",
+      "requirement": "资源、备份、部署 guard、manifest 导出和回滚手册完整。",
+      "status": "passed",
+      "evidence": "mysql/cutover/production runbooks include resource guard and rollback.",
+      "next_action": ""
+    }
+  ],
+  "completion_statement": "目标尚未完成；可继续 /next/* 自用，但不能声明平台资源优化完成或正式 cutover ready。"
+}

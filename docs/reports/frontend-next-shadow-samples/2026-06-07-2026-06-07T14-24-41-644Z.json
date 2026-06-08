@@ -1,0 +1,1804 @@
+{
+  "generated_at": "2026-06-07T14:24:41.644Z",
+  "started_at": "2026-06-07T14:22:59.843Z",
+  "trading_day": "2026-06-07",
+  "ok": true,
+  "note": "One local shadow sample across API payload parity, request/SSE trace, and screenshot parity. Repeat during two real trading-day windows before any cutover.",
+  "results": {
+    "apiParity": {
+      "ok": true,
+      "exit_code": 0,
+      "payload": {
+        "apiBase": "http://127.0.0.1:8000",
+        "auth_status": {
+          "access_token": "provided",
+          "admin_token": "missing"
+        },
+        "results": [
+          {
+            "page": "monitor-action",
+            "path": "/api/bff/v1/workspace/monitor?priority_limit=12&sector_limit=8&per_sector_limit=8&hedge_limit=4&view=action",
+            "status": 200,
+            "ok": true,
+            "elapsed_ms": 11,
+            "hash": "b4fab9aa9e25a07c3c2126d53632123b8dbeda414d877262de556c0404f2763b",
+            "shape": {
+              "api_version": "string",
+              "generated_at": "string",
+              "hourly_snapshot_history": [],
+              "market_breadth": "object",
+              "market_pulse": {
+                "autofill_details": [],
+                "data_quality": "string",
+                "data_quality_text": "string",
+                "emotion_summary": {},
+                "emotion_text": "string",
+                "hourly_snapshot_summary": {},
+                "hourly_snapshot_text": "string",
+                "leader_strength_summary": {},
+                "leader_strength_text": "string",
+                "market_breadth_summary": {},
+                "market_strength_text": "string",
+                "partial_errors": [
+                  {
+                    "detail": "string",
+                    "source": "string"
+                  }
+                ],
+                "pulse_level": "string",
+                "pulse_text": "string",
+                "suggested_action": "string",
+                "updated_at": "string"
+              },
+              "monitor_snapshot": {
+                "priority_board": {
+                  "as_of_date": "string",
+                  "board_height": "number",
+                  "breadth_ready": "boolean",
+                  "broken_board_ratio": "number",
+                  "data_quality": "string",
+                  "data_quality_tags": [
+                    "string"
+                  ],
+                  "data_quality_text": "string",
+                  "directional_bias": "string",
+                  "directional_bias_text": "string",
+                  "distribution_pressure": "number",
+                  "emotion_ready": "boolean",
+                  "family_sections": [],
+                  "focus_count": "number",
+                  "high_flyer_gap_speed": "number",
+                  "high_flyer_retreat_ratio": "number",
+                  "hot_industries": [],
+                  "hot_industry_source": "string",
+                  "hot_industry_source_text": "string",
+                  "hot_overlap_ratio": "number",
+                  "hot_turnover": "number",
+                  "immediate_count": "number",
+                  "items": [],
+                  "latest_available_trade_date": "string",
+                  "latest_trade_date": "string",
+                  "limit_down_count": "object",
+                  "limit_up_count": "number",
+                  "mainline_lifecycle_state": "string",
+                  "mainline_lifecycle_text": "string",
+                  "market_bonus": "number",
+                  "market_state": "string",
+                  "market_state_category": "string",
+                  "market_state_category_text": "string",
+                  "market_state_strength": "number",
+                  "market_state_text": "string",
+                  "missing_strategies": [],
+                  "previous_board_height": "number",
+                  "promotion_break_gap": "number",
+                  "promotion_break_pressure": "number",
+                  "promotion_ratio": "number",
+                  "regime_confidence": "number",
+                  "simple_buckets": [],
+                  "snapshot_warning": "string",
+                  "stale_strategies": [],
+                  "state_persistence_days": "number",
+                  "stock_median_change": "number",
+                  "stock_up_ratio": "number",
+                  "style_divergence": "number",
+                  "total_candidates": "number",
+                  "track_count": "number",
+                  "transition_risk": "number",
+                  "updated_at": "string"
+                },
+                "sector_etf_t0": {
+                  "market_state": "string",
+                  "market_state_text": "string",
+                  "notes": [
+                    "string"
+                  ],
+                  "opportunities": [],
+                  "total": "number",
+                  "updated_at": "string"
+                },
+                "updated_at": "string",
+                "watchlist_signals": []
+              },
+              "paired_hedge": "object",
+              "partial_errors": [],
+              "refresh_queued": "boolean",
+              "review_reports": [],
+              "review_status": "object",
+              "runtime": "object",
+              "schema_version": "string",
+              "sector_relative_strength": "object",
+              "source_timings": [
+                {
+                  "elapsed_ms": "number",
+                  "reason": "string",
+                  "source": "string",
+                  "status": "string",
+                  "timeout_ms": "object"
+                }
+              ],
+              "stale": "boolean",
+              "stale_reason": "string"
+            },
+            "note": "Same API contract is consumed by legacy and frontend-next; auth/backend availability controls live parity."
+          },
+          {
+            "page": "monitor-market",
+            "path": "/api/bff/v1/workspace/monitor?priority_limit=12&sector_limit=8&per_sector_limit=8&hedge_limit=4&view=market",
+            "status": 200,
+            "ok": true,
+            "elapsed_ms": 7,
+            "hash": "4915c0dcfc9c85cf9c993a4483360a8391ea985b1c2c614b62878466f3d9432a",
+            "shape": {
+              "api_version": "string",
+              "generated_at": "string",
+              "hourly_snapshot_history": [],
+              "market_breadth": "object",
+              "market_pulse": {
+                "autofill_details": [],
+                "data_quality": "string",
+                "data_quality_text": "string",
+                "emotion_summary": {},
+                "emotion_text": "string",
+                "hourly_snapshot_summary": {},
+                "hourly_snapshot_text": "string",
+                "leader_strength_summary": {},
+                "leader_strength_text": "string",
+                "market_breadth_summary": {},
+                "market_strength_text": "string",
+                "partial_errors": [
+                  {
+                    "detail": "string",
+                    "source": "string"
+                  }
+                ],
+                "pulse_level": "string",
+                "pulse_text": "string",
+                "suggested_action": "string",
+                "updated_at": "string"
+              },
+              "monitor_snapshot": {
+                "priority_board": {
+                  "as_of_date": "string",
+                  "board_height": "number",
+                  "breadth_ready": "boolean",
+                  "broken_board_ratio": "number",
+                  "data_quality": "string",
+                  "data_quality_tags": [
+                    "string"
+                  ],
+                  "data_quality_text": "string",
+                  "directional_bias": "string",
+                  "directional_bias_text": "string",
+                  "distribution_pressure": "number",
+                  "emotion_ready": "boolean",
+                  "family_sections": [],
+                  "focus_count": "number",
+                  "high_flyer_gap_speed": "number",
+                  "high_flyer_retreat_ratio": "number",
+                  "hot_industries": [],
+                  "hot_industry_source": "string",
+                  "hot_industry_source_text": "string",
+                  "hot_overlap_ratio": "number",
+                  "hot_turnover": "number",
+                  "immediate_count": "number",
+                  "items": [],
+                  "latest_available_trade_date": "string",
+                  "latest_trade_date": "string",
+                  "limit_down_count": "object",
+                  "limit_up_count": "number",
+                  "mainline_lifecycle_state": "string",
+                  "mainline_lifecycle_text": "string",
+                  "market_bonus": "number",
+                  "market_state": "string",
+                  "market_state_category": "string",
+                  "market_state_category_text": "string",
+                  "market_state_strength": "number",
+                  "market_state_text": "string",
+                  "missing_strategies": [],
+                  "previous_board_height": "number",
+                  "promotion_break_gap": "number",
+                  "promotion_break_pressure": "number",
+                  "promotion_ratio": "number",
+                  "regime_confidence": "number",
+                  "simple_buckets": [],
+                  "snapshot_warning": "string",
+                  "stale_strategies": [],
+                  "state_persistence_days": "number",
+                  "stock_median_change": "number",
+                  "stock_up_ratio": "number",
+                  "style_divergence": "number",
+                  "total_candidates": "number",
+                  "track_count": "number",
+                  "transition_risk": "number",
+                  "updated_at": "string"
+                },
+                "sector_etf_t0": {
+                  "market_state": "string",
+                  "market_state_text": "string",
+                  "notes": [
+                    "string"
+                  ],
+                  "opportunities": [],
+                  "total": "number",
+                  "updated_at": "string"
+                },
+                "updated_at": "string",
+                "watchlist_signals": []
+              },
+              "paired_hedge": "object",
+              "partial_errors": [],
+              "refresh_queued": "boolean",
+              "review_reports": [],
+              "review_status": {
+                "has_close": "boolean",
+                "has_midday": "boolean",
+                "next_trigger_at": "string",
+                "review_subject": "string",
+                "risk_alert_count": "number",
+                "source_scope": "string",
+                "status": "string",
+                "status_text": "string",
+                "suggested_action": "string",
+                "trade_date": "string"
+              },
+              "runtime": "object",
+              "schema_version": "string",
+              "sector_relative_strength": "object",
+              "source_timings": [
+                {
+                  "elapsed_ms": "number",
+                  "reason": "string",
+                  "source": "string",
+                  "status": "string",
+                  "timeout_ms": "object"
+                }
+              ],
+              "stale": "boolean",
+              "stale_reason": "string"
+            },
+            "note": "Same API contract is consumed by legacy and frontend-next; auth/backend availability controls live parity."
+          },
+          {
+            "page": "paper",
+            "path": "/api/bff/v1/workspace/paper",
+            "status": 200,
+            "ok": true,
+            "elapsed_ms": 13,
+            "hash": "ea7c8c85f5fd82f0b3928ca230340cd5537968ad527c80a63d33c284c9adabbb",
+            "shape": {
+              "account": {
+                "cash_available": "number",
+                "frozen_cash": "number",
+                "id": "number",
+                "initial_cash": "number",
+                "market_value": "number",
+                "max_drawdown_pct": "number",
+                "name": "string",
+                "realized_pnl": "number",
+                "status": "string",
+                "today_pnl": "object",
+                "today_return_pct": "number",
+                "total_assets": "number",
+                "total_return_pct": "number",
+                "unrealized_pnl": "number",
+                "user_id": "number"
+              },
+              "api_version": "string",
+              "auto_trading_runs": [],
+              "auto_trading_status": {
+                "account_status": "string",
+                "blocking_reason": "string",
+                "engine_running": "boolean",
+                "last_skip_at": "string",
+                "last_skip_reason": "string",
+                "last_skip_reasons": [],
+                "last_skip_symbol": "string",
+                "running": "boolean",
+                "trading_time": "boolean"
+              },
+              "generated_at": "string",
+              "market_performance": [],
+              "orders": [],
+              "partial_errors": [],
+              "performance": {
+                "avg_hold_days": "number",
+                "avg_loss_pct": "number",
+                "avg_trade_return_pct": "number",
+                "avg_win_pct": "number",
+                "calmar_ratio": "number",
+                "directional_stats": {
+                  "long": {
+                    "profit_factor": "object",
+                    "trade_count": "number",
+                    "win_loss_ratio": "object",
+                    "win_rate_pct": "number"
+                  },
+                  "short": {
+                    "profit_factor": "object",
+                    "trade_count": "number",
+                    "win_loss_ratio": "object",
+                    "win_rate_pct": "number"
+                  }
+                },
+                "long_profit_factor": "object",
+                "long_win_loss_ratio": "object",
+                "long_win_rate_pct": "number",
+                "max_drawdown_pct": "number",
+                "net_win_rate_pct": "number",
+                "portfolio_execution_preview": {
+                  "candidate_count": "number",
+                  "capital_model_label": "string",
+                  "max_10": {
+                    "annualized_return_pct": "number",
+                    "available_cash_released_on_exit": "boolean",
+                    "avg_capital_utilization_pct": "number",
+                    "avg_holding_days": "number",
+                    "avg_trade_return_pct": "number",
+                    "base_round_trip_cost_bps": "number",
+                    "candidate_count": "number",
+                    "capital_model": "string",
+                    "capital_model_label": "string",
+                    "capital_occupied_during_holding": "boolean",
+                    "concentration": "object",
+                    "drawdown_recovery_status": "string",
+                    "drawdown_recovery_trades": "number",
+                    "extra_cost_bps": "number",
+                    "max_concurrent_positions": "number",
+                    "max_drawdown_pct": "number",
+                    "max_positions": "number",
+                    "portfolio_return_pct": "number",
+                    "production_score_sort_enabled": "boolean",
+                    "profit_factor": "number",
+                    "retreat_market_new_position_blocked": "boolean",
+                    "same_symbol_reentry_blocked": "boolean",
+                    "sector_daily_limit": "number",
+                    "skip_reason_counts": "object",
+                    "skipped_by_duplicate_symbol": "number",
+                    "skipped_by_max_positions": "number",
+                    "skipped_by_missing_dates": "number",
+                    "skipped_by_retreat_market": "number",
+                    "skipped_by_sector_limit": "number",
+                    "skipped_by_strategy_daily_limit": "number",
+                    "skipped_by_weak_market_position_cap": "number",
+                    "skipped_count": "number",
+                    "slot_occupancy_days": "number",
+                    "strategy_daily_limit": "number",
+                    "total_cost_bps_assumption": "number",
+                    "total_return_pct": "number",
+                    "trade_count": "number",
+                    "weak_market_position_cap_pct": "number",
+                    "win_rate_pct": "number"
+                  },
+                  "max_5": {
+                    "annualized_return_pct": "number",
+                    "available_cash_released_on_exit": "boolean",
+                    "avg_capital_utilization_pct": "number",
+                    "avg_holding_days": "number",
+                    "avg_trade_return_pct": "number",
+                    "base_round_trip_cost_bps": "number",
+                    "candidate_count": "number",
+                    "capital_model": "string",
+                    "capital_model_label": "string",
+                    "capital_occupied_during_holding": "boolean",
+                    "concentration": "object",
+                    "drawdown_recovery_status": "string",
+                    "drawdown_recovery_trades": "number",
+                    "extra_cost_bps": "number",
+                    "max_concurrent_positions": "number",
+                    "max_drawdown_pct": "number",
+                    "max_positions": "number",
+                    "portfolio_return_pct": "number",
+                    "production_score_sort_enabled": "boolean",
+                    "profit_factor": "number",
+                    "retreat_market_new_position_blocked": "boolean",
+                    "same_symbol_reentry_blocked": "boolean",
+                    "sector_daily_limit": "number",
+                    "skip_reason_counts": "object",
+                    "skipped_by_duplicate_symbol": "number",
+                    "skipped_by_max_positions": "number",
+                    "skipped_by_missing_dates": "number",
+                    "skipped_by_retreat_market": "number",
+                    "skipped_by_sector_limit": "number",
+                    "skipped_by_strategy_daily_limit": "number",
+                    "skipped_by_weak_market_position_cap": "number",
+                    "skipped_count": "number",
+                    "slot_occupancy_days": "number",
+                    "strategy_daily_limit": "number",
+                    "total_cost_bps_assumption": "number",
+                    "total_return_pct": "number",
+                    "trade_count": "number",
+                    "weak_market_position_cap_pct": "number",
+                    "win_rate_pct": "number"
+                  },
+                  "notes": [
+                    "string"
+                  ],
+                  "skip_reason_counts": {},
+                  "source": "string"
+                },
+                "profit_factor": "object",
+                "risk_free_rate_annual_pct": "number",
+                "sharpe_ratio": "number",
+                "short_profit_factor": "object",
+                "short_win_loss_ratio": "object",
+                "short_win_rate_pct": "number",
+                "sortino_ratio": "number",
+                "stop_loss_rate_pct": "number",
+                "total_return_pct": "number",
+                "total_trades": "number",
+                "win_loss_ratio": "object",
+                "win_rate_pct": "number"
+              },
+              "positions": [],
+              "risk_events": [],
+              "schema_version": "string",
+              "sector_etf_t0_performance": {
+                "execution_gate_notes": [
+                  "string"
+                ],
+                "notes": [
+                  "string"
+                ],
+                "review_trades": [],
+                "shadow_avg_return_1d_pct": "number",
+                "shadow_avg_return_3d_pct": "number",
+                "shadow_pending_count": "number",
+                "shadow_sample_count": "number",
+                "shadow_settled_count": "number",
+                "shadow_success_rate_pct": "number",
+                "simulated_avg_return_pct": "number",
+                "simulated_closed_trades": "number",
+                "simulated_net_win_rate_pct": "number",
+                "simulated_profit_factor": "object",
+                "simulated_trades": "number",
+                "simulated_win_rate_pct": "number"
+              },
+              "stock_pnl": {
+                "items": [],
+                "summary": {
+                  "account_total_pnl": "number",
+                  "item_count": "number",
+                  "realized_pnl": "number",
+                  "reconciliation_gap": "number",
+                  "stock_total_pnl": "number",
+                  "unrealized_pnl": "number"
+                }
+              },
+              "strategy_performance": [],
+              "tag_performance": [],
+              "trades": []
+            },
+            "note": "Same API contract is consumed by legacy and frontend-next; auth/backend availability controls live parity."
+          },
+          {
+            "page": "strategy-tracking",
+            "path": "/api/bff/v1/workspace/strategy",
+            "status": 200,
+            "ok": true,
+            "elapsed_ms": 5,
+            "hash": "289f827b821ffe95739e6db59c1b92052887bc01d14df7980a7867ee9bc52445",
+            "shape": {
+              "api_version": "string",
+              "generated_at": "string",
+              "partial_errors": [],
+              "presets": {
+                "presets": [
+                  {
+                    "config": "object",
+                    "description": "string",
+                    "id": "object",
+                    "key": "string",
+                    "name": "string",
+                    "sort_order": "number"
+                  }
+                ]
+              },
+              "recent_runs": {
+                "items": [],
+                "limit": "number",
+                "offset": "number",
+                "total": "number"
+              },
+              "schema_version": "string",
+              "strategy_meta": {
+                "strategies": [
+                  {
+                    "category": "string",
+                    "category_key": "string",
+                    "description": "string",
+                    "display_category": "string",
+                    "display_name": "string",
+                    "enabled": "boolean",
+                    "key": "string",
+                    "name": "string",
+                    "probe_status": "string",
+                    "probe_summary": "string",
+                    "promotion_eligible": "boolean",
+                    "promotion_filled_signals": "number",
+                    "promotion_health_score": "number",
+                    "promotion_required_filled": "number",
+                    "promotion_required_health": "number",
+                    "promotion_status_text": "string",
+                    "risk_level": "string",
+                    "sort_order": "number",
+                    "tier": "string",
+                    "typical_holding_days": "string",
+                    "visibility": "string"
+                  }
+                ]
+              },
+              "verdict_thresholds": {
+                "thresholds": {
+                  "full": {
+                    "cautious_max_drawdown_pct": "number",
+                    "cautious_min_return_pct": "number",
+                    "max_drawdown_pct": "number",
+                    "min_return_pct": "number",
+                    "min_sharpe": "number"
+                  },
+                  "light": {
+                    "cautious_max_drawdown_pct": "number",
+                    "cautious_min_return_pct": "number",
+                    "max_drawdown_pct": "number",
+                    "min_return_pct": "number",
+                    "min_sharpe": "number"
+                  },
+                  "walk_forward": {
+                    "cautious_max_drawdown_pct": "number",
+                    "cautious_min_return_pct": "number",
+                    "max_drawdown_pct": "number",
+                    "min_return_pct": "number",
+                    "min_sharpe": "number"
+                  }
+                }
+              }
+            },
+            "note": "Same API contract is consumed by legacy and frontend-next; auth/backend availability controls live parity."
+          },
+          {
+            "page": "backtest",
+            "path": "/api/backtests/runs",
+            "status": 200,
+            "ok": true,
+            "elapsed_ms": 2,
+            "hash": "6f23bb10da82b8a196d50cdfbe0a86f583cc4df842d62052e624fb9b14bd5c90",
+            "shape": {
+              "runs": []
+            },
+            "note": "Same API contract is consumed by legacy and frontend-next; auth/backend availability controls live parity."
+          },
+          {
+            "page": "settings",
+            "path": "/api/bff/v1/workspace/settings",
+            "status": 200,
+            "ok": true,
+            "elapsed_ms": 5,
+            "hash": "5f42584551e65bf2e6e1c2380921c0941c93b209fe51ee64f884944ca2784191",
+            "shape": {
+              "admin_enabled": "boolean",
+              "admin_metrics": "object",
+              "admin_tasks": "object",
+              "api_version": "string",
+              "factor_weights": "object",
+              "generated_at": "string",
+              "partial_errors": [],
+              "runtime": "object",
+              "schema_version": "string",
+              "sector_exclusions": {
+                "available_sectors": [
+                  "string"
+                ],
+                "excluded_count": "number",
+                "excluded_sectors": [],
+                "updated_at": "string"
+              },
+              "settings": {
+                "admin_auth_required": "boolean",
+                "data_source": "string",
+                "data_source_base_url": "string",
+                "database_url": "string",
+                "database_url_configured": "boolean",
+                "event_risk_enabled": "boolean",
+                "llm_api_key": "string",
+                "llm_api_key_configured": "boolean",
+                "llm_base_url": "string",
+                "llm_model": "string",
+                "llm_provider": "string",
+                "microstructure_enabled": "boolean",
+                "risk_max_daily_loss_pct": "number",
+                "risk_max_single_loss_pct": "number",
+                "risk_pause_after_losses": "number",
+                "strategy_max_amplitude_pct": "number",
+                "strategy_max_atr_pct": "number",
+                "strategy_min_amount_etf": "number",
+                "strategy_min_amount_stock": "number",
+                "strategy_min_amplitude_pct": "number",
+                "strategy_min_profit_etf_pct": "number",
+                "strategy_min_profit_pct": "number",
+                "strategy_min_profit_stock_pct": "number",
+                "strategy_open_phase_end_hhmm": "number",
+                "strategy_open_phase_min_tradability": "number",
+                "strategy_slippage_etf_bps": "number",
+                "strategy_slippage_stock_bps": "number",
+                "walk_forward_window_size": "number"
+              },
+              "strategy_governance": {
+                "default_strategy": "string",
+                "items": [
+                  {
+                    "auto_governance_reason": "string",
+                    "auto_governance_status": "string",
+                    "auto_governance_updated_at": "string",
+                    "enabled": "boolean",
+                    "holding_brief": "string",
+                    "layer": "string",
+                    "max_holding_days": "number",
+                    "notes": "object",
+                    "participates_priority_board": "boolean",
+                    "performance_sample_count": "number",
+                    "pool_key": "string",
+                    "pool_max_size": "number",
+                    "pool_source": "string",
+                    "pool_title": "string",
+                    "requires_mainline_industry": "boolean",
+                    "status": "string",
+                    "status_text": "string",
+                    "strategy_health_score": "number",
+                    "strategy_health_text": "string",
+                    "strategy_key": "string",
+                    "strategy_title": "string",
+                    "strong_buy_paused": "boolean",
+                    "subtitle": "string",
+                    "tier": "string",
+                    "uses_daily_scan_pool": "boolean",
+                    "validation_phase": "string",
+                    "validation_phase_reason": "string",
+                    "validation_phase_text": "string",
+                    "validation_position_scale": "number"
+                  }
+                ],
+                "production_strategies": [
+                  "string"
+                ]
+              }
+            },
+            "note": "Same API contract is consumed by legacy and frontend-next; auth/backend availability controls live parity."
+          }
+        ]
+      },
+      "stderr": ""
+    },
+    "requestTrace": {
+      "ok": true,
+      "exit_code": 0,
+      "payload": {
+        "oldBaseURL": "http://127.0.0.1:5178",
+        "nextBaseURL": "http://127.0.0.1:5177",
+        "auth_status": {
+          "access_token": "provided",
+          "admin_token": "missing"
+        },
+        "results": [
+          {
+            "legacyRoute": "/monitor",
+            "nextRoute": "/next/monitor",
+            "legacyTrace": {
+              "elapsed_ms": 1709,
+              "final_url": "http://127.0.0.1:5178/monitor",
+              "navigation_error": null,
+              "api_request_count": 12,
+              "unique_api_request_count": 10,
+              "event_source_count": 2,
+              "requests": [
+                "http://127.0.0.1:5178/api/trading-experience/readiness",
+                "http://127.0.0.1:5178/api/auth/me",
+                "http://127.0.0.1:5178/api/auth/me",
+                "http://127.0.0.1:5178/api/bff/v1/workspace/monitor?priority_limit=12&sector_limit=8&per_sector_limit=8&hedge_limit=4&view=action",
+                "http://127.0.0.1:5178/api/strategies/meta",
+                "http://127.0.0.1:5178/api/screeners/low-buy/priority-board?limit=12&refresh=cache&strategy_variant=baseline",
+                "http://127.0.0.1:5178/api/settings/feature-flags",
+                "http://127.0.0.1:5178/api/trading-experience/volume-position-tags/603019",
+                "http://127.0.0.1:5178/api/intraday/subscribe",
+                "http://127.0.0.1:5178/api/intraday/subscribe",
+                "http://127.0.0.1:5178/api/intraday/stream?symbols=603019%2C601138%2C000977&client_id=web-monitor-live-quotes&stream_token=eyJleHAiOjE3ODA4NDU3ODAuOTEyNDIsIm5vbmNlIjoiSmhuOXVkNDdzTkRHNmZ0eCIsInNjb3BlIjoic3RyZWFtIiwidWlkIjoxODEsInYiOjF9.1rgp7r5RTseJLuVYlYph-HE6wOcP0s_5u-zW01UO424&interval_seconds=15",
+                "http://127.0.0.1:5178/api/intraday/key-levels/stream?symbols=603019%2C601138%2C000977&entry_zones=603019%3A38.9%3A39.6%3B601138%3A21.9%3A22.55%3B000977%3A47.6%3A48.2&client_id=web-monitor-key-levels&stream_token=eyJleHAiOjE3ODA4NDU3ODAuOTEyMzU3OCwibm9uY2UiOiJvamd1b2hJWVNWNXJYTmhzIiwic2NvcGUiOiJzdHJlYW0iLCJ1aWQiOjE4MSwidiI6MX0.zR-RKQY4NeBN0NCVnMvqQIzbGsmfJvq7HrqklX8Wpu8&interval_seconds=20&feishu=true"
+              ]
+            },
+            "nextTrace": {
+              "elapsed_ms": 1577,
+              "final_url": "http://127.0.0.1:5177/next/monitor",
+              "navigation_error": null,
+              "api_request_count": 1,
+              "unique_api_request_count": 1,
+              "event_source_count": 0,
+              "requests": [
+                "http://127.0.0.1:5177/api/auth/me"
+              ]
+            },
+            "delta": {
+              "status": "compared",
+              "api_request_delta": -11,
+              "unique_api_request_delta": -9,
+              "event_source_delta": -2
+            }
+          },
+          {
+            "legacyRoute": "/monitor/market",
+            "nextRoute": "/next/monitor/market",
+            "legacyTrace": {
+              "elapsed_ms": 1644,
+              "final_url": "http://127.0.0.1:5178/monitor/market",
+              "navigation_error": null,
+              "api_request_count": 3,
+              "unique_api_request_count": 2,
+              "event_source_count": 0,
+              "requests": [
+                "http://127.0.0.1:5178/api/trading-experience/readiness",
+                "http://127.0.0.1:5178/api/auth/me",
+                "http://127.0.0.1:5178/api/auth/me"
+              ]
+            },
+            "nextTrace": {
+              "elapsed_ms": 1566,
+              "final_url": "http://127.0.0.1:5177/next/monitor/market",
+              "navigation_error": null,
+              "api_request_count": 1,
+              "unique_api_request_count": 1,
+              "event_source_count": 0,
+              "requests": [
+                "http://127.0.0.1:5177/api/auth/me"
+              ]
+            },
+            "delta": {
+              "status": "compared",
+              "api_request_delta": -2,
+              "unique_api_request_delta": -1,
+              "event_source_delta": 0
+            }
+          },
+          {
+            "legacyRoute": "/paper",
+            "nextRoute": "/next/paper",
+            "legacyTrace": {
+              "elapsed_ms": 1633,
+              "final_url": "http://127.0.0.1:5178/paper",
+              "navigation_error": null,
+              "api_request_count": 3,
+              "unique_api_request_count": 2,
+              "event_source_count": 0,
+              "requests": [
+                "http://127.0.0.1:5178/api/trading-experience/readiness",
+                "http://127.0.0.1:5178/api/auth/me",
+                "http://127.0.0.1:5178/api/auth/me"
+              ]
+            },
+            "nextTrace": {
+              "elapsed_ms": 1570,
+              "final_url": "http://127.0.0.1:5177/next/paper",
+              "navigation_error": null,
+              "api_request_count": 1,
+              "unique_api_request_count": 1,
+              "event_source_count": 0,
+              "requests": [
+                "http://127.0.0.1:5177/api/auth/me"
+              ]
+            },
+            "delta": {
+              "status": "compared",
+              "api_request_delta": -2,
+              "unique_api_request_delta": -1,
+              "event_source_delta": 0
+            }
+          },
+          {
+            "legacyRoute": "/strategy-tracking",
+            "nextRoute": "/next/strategy-tracking",
+            "legacyTrace": {
+              "elapsed_ms": 1629,
+              "final_url": "http://127.0.0.1:5178/strategy-tracking",
+              "navigation_error": null,
+              "api_request_count": 3,
+              "unique_api_request_count": 2,
+              "event_source_count": 0,
+              "requests": [
+                "http://127.0.0.1:5178/api/trading-experience/readiness",
+                "http://127.0.0.1:5178/api/auth/me",
+                "http://127.0.0.1:5178/api/auth/me"
+              ]
+            },
+            "nextTrace": {
+              "elapsed_ms": 1570,
+              "final_url": "http://127.0.0.1:5177/next/strategy-tracking",
+              "navigation_error": null,
+              "api_request_count": 1,
+              "unique_api_request_count": 1,
+              "event_source_count": 0,
+              "requests": [
+                "http://127.0.0.1:5177/api/auth/me"
+              ]
+            },
+            "delta": {
+              "status": "compared",
+              "api_request_delta": -2,
+              "unique_api_request_delta": -1,
+              "event_source_delta": 0
+            }
+          },
+          {
+            "legacyRoute": "/analysis",
+            "nextRoute": "/next/analysis",
+            "legacyTrace": {
+              "elapsed_ms": 1623,
+              "final_url": "http://127.0.0.1:5178/analysis",
+              "navigation_error": null,
+              "api_request_count": 3,
+              "unique_api_request_count": 2,
+              "event_source_count": 0,
+              "requests": [
+                "http://127.0.0.1:5178/api/trading-experience/readiness",
+                "http://127.0.0.1:5178/api/auth/me",
+                "http://127.0.0.1:5178/api/auth/me"
+              ]
+            },
+            "nextTrace": {
+              "elapsed_ms": 1570,
+              "final_url": "http://127.0.0.1:5177/next/analysis",
+              "navigation_error": null,
+              "api_request_count": 1,
+              "unique_api_request_count": 1,
+              "event_source_count": 0,
+              "requests": [
+                "http://127.0.0.1:5177/api/auth/me"
+              ]
+            },
+            "delta": {
+              "status": "compared",
+              "api_request_delta": -2,
+              "unique_api_request_delta": -1,
+              "event_source_delta": 0
+            }
+          },
+          {
+            "legacyRoute": "/playbook",
+            "nextRoute": "/next/playbook",
+            "legacyTrace": {
+              "elapsed_ms": 1630,
+              "final_url": "http://127.0.0.1:5178/playbook",
+              "navigation_error": null,
+              "api_request_count": 3,
+              "unique_api_request_count": 2,
+              "event_source_count": 0,
+              "requests": [
+                "http://127.0.0.1:5178/api/trading-experience/readiness",
+                "http://127.0.0.1:5178/api/auth/me",
+                "http://127.0.0.1:5178/api/auth/me"
+              ]
+            },
+            "nextTrace": {
+              "elapsed_ms": 1569,
+              "final_url": "http://127.0.0.1:5177/next/playbook",
+              "navigation_error": null,
+              "api_request_count": 1,
+              "unique_api_request_count": 1,
+              "event_source_count": 0,
+              "requests": [
+                "http://127.0.0.1:5177/api/auth/me"
+              ]
+            },
+            "delta": {
+              "status": "compared",
+              "api_request_delta": -2,
+              "unique_api_request_delta": -1,
+              "event_source_delta": 0
+            }
+          },
+          {
+            "legacyRoute": "/backtest",
+            "nextRoute": "/next/backtest",
+            "legacyTrace": {
+              "elapsed_ms": 1620,
+              "final_url": "http://127.0.0.1:5178/backtest",
+              "navigation_error": null,
+              "api_request_count": 3,
+              "unique_api_request_count": 2,
+              "event_source_count": 0,
+              "requests": [
+                "http://127.0.0.1:5178/api/trading-experience/readiness",
+                "http://127.0.0.1:5178/api/auth/me",
+                "http://127.0.0.1:5178/api/auth/me"
+              ]
+            },
+            "nextTrace": {
+              "elapsed_ms": 1571,
+              "final_url": "http://127.0.0.1:5177/next/backtest",
+              "navigation_error": null,
+              "api_request_count": 1,
+              "unique_api_request_count": 1,
+              "event_source_count": 0,
+              "requests": [
+                "http://127.0.0.1:5177/api/auth/me"
+              ]
+            },
+            "delta": {
+              "status": "compared",
+              "api_request_delta": -2,
+              "unique_api_request_delta": -1,
+              "event_source_delta": 0
+            }
+          },
+          {
+            "legacyRoute": "/data",
+            "nextRoute": "/next/data",
+            "legacyTrace": {
+              "elapsed_ms": 1632,
+              "final_url": "http://127.0.0.1:5178/data",
+              "navigation_error": null,
+              "api_request_count": 3,
+              "unique_api_request_count": 2,
+              "event_source_count": 0,
+              "requests": [
+                "http://127.0.0.1:5178/api/trading-experience/readiness",
+                "http://127.0.0.1:5178/api/auth/me",
+                "http://127.0.0.1:5178/api/auth/me"
+              ]
+            },
+            "nextTrace": {
+              "elapsed_ms": 1568,
+              "final_url": "http://127.0.0.1:5177/next/data",
+              "navigation_error": null,
+              "api_request_count": 1,
+              "unique_api_request_count": 1,
+              "event_source_count": 0,
+              "requests": [
+                "http://127.0.0.1:5177/api/auth/me"
+              ]
+            },
+            "delta": {
+              "status": "compared",
+              "api_request_delta": -2,
+              "unique_api_request_delta": -1,
+              "event_source_delta": 0
+            }
+          },
+          {
+            "legacyRoute": "/settings",
+            "nextRoute": "/next/settings",
+            "legacyTrace": {
+              "elapsed_ms": 1625,
+              "final_url": "http://127.0.0.1:5178/settings",
+              "navigation_error": null,
+              "api_request_count": 3,
+              "unique_api_request_count": 2,
+              "event_source_count": 0,
+              "requests": [
+                "http://127.0.0.1:5178/api/trading-experience/readiness",
+                "http://127.0.0.1:5178/api/auth/me",
+                "http://127.0.0.1:5178/api/auth/me"
+              ]
+            },
+            "nextTrace": {
+              "elapsed_ms": 1581,
+              "final_url": "http://127.0.0.1:5177/next/settings",
+              "navigation_error": null,
+              "api_request_count": 1,
+              "unique_api_request_count": 1,
+              "event_source_count": 0,
+              "requests": [
+                "http://127.0.0.1:5177/api/auth/me"
+              ]
+            },
+            "delta": {
+              "status": "compared",
+              "api_request_delta": -2,
+              "unique_api_request_delta": -1,
+              "event_source_delta": 0
+            }
+          }
+        ]
+      },
+      "stderr": ""
+    },
+    "screenshotParity": {
+      "ok": true,
+      "exit_code": 0,
+      "payload": {
+        "baseURL": "http://127.0.0.1:5176",
+        "legacyBaseURL": "http://127.0.0.1:5179",
+        "auth_status": {
+          "access_token": "provided",
+          "admin_token": "missing"
+        },
+        "viewport": "1440x900",
+        "results": [
+          {
+            "route": "/next/monitor",
+            "reference": "/Users/j/Documents/gupiao/docs/frontend-next/style-specs/images/monitor-action-web.png",
+            "actual": "/Users/j/Documents/gupiao/docs/reports/frontend-next-screenshots-2026-06-05/monitor-action-web.png",
+            "navigation_error": null,
+            "app_error": null,
+            "page_errors": [],
+            "failed_api_responses": [],
+            "status": "compared",
+            "reference_size": "1440x900",
+            "actual_size": "1440x900",
+            "sample_similarity": 0.9432,
+            "responsive": [
+              {
+                "viewport": "1280x800",
+                "actual": "/Users/j/Documents/gupiao/docs/reports/frontend-next-screenshots-2026-06-05/1280x800-monitor-action-web.png",
+                "navigation_error": null,
+                "app_error": null,
+                "page_errors": [],
+                "failed_api_responses": [],
+                "status": "captured"
+              },
+              {
+                "viewport": "768x1024",
+                "actual": "/Users/j/Documents/gupiao/docs/reports/frontend-next-screenshots-2026-06-05/768x1024-monitor-action-web.png",
+                "navigation_error": null,
+                "app_error": null,
+                "page_errors": [],
+                "failed_api_responses": [],
+                "status": "captured"
+              },
+              {
+                "viewport": "390x844",
+                "actual": "/Users/j/Documents/gupiao/docs/reports/frontend-next-screenshots-2026-06-05/390x844-monitor-action-web.png",
+                "navigation_error": null,
+                "app_error": null,
+                "page_errors": [],
+                "failed_api_responses": [],
+                "status": "captured"
+              }
+            ],
+            "legacy_comparison": {
+              "legacy_route": "/monitor",
+              "legacy_actual": "/Users/j/Documents/gupiao/docs/reports/frontend-next-screenshots-2026-06-05/legacy-monitor-action-web.png",
+              "navigation_error": null,
+              "app_error": null,
+              "page_errors": [],
+              "failed_api_responses": [],
+              "status": "compared",
+              "reference_size": "1440x900",
+              "actual_size": "1440x900",
+              "sample_similarity": 0.9008
+            }
+          },
+          {
+            "route": "/next/monitor/market",
+            "reference": "/Users/j/Documents/gupiao/docs/frontend-next/style-specs/images/monitor-market-web.png",
+            "actual": "/Users/j/Documents/gupiao/docs/reports/frontend-next-screenshots-2026-06-05/monitor-market-web.png",
+            "navigation_error": null,
+            "app_error": null,
+            "page_errors": [],
+            "failed_api_responses": [],
+            "status": "compared",
+            "reference_size": "1440x900",
+            "actual_size": "1440x900",
+            "sample_similarity": 0.9603,
+            "responsive": [
+              {
+                "viewport": "1280x800",
+                "actual": "/Users/j/Documents/gupiao/docs/reports/frontend-next-screenshots-2026-06-05/1280x800-monitor-market-web.png",
+                "navigation_error": null,
+                "app_error": null,
+                "page_errors": [],
+                "failed_api_responses": [],
+                "status": "captured"
+              },
+              {
+                "viewport": "768x1024",
+                "actual": "/Users/j/Documents/gupiao/docs/reports/frontend-next-screenshots-2026-06-05/768x1024-monitor-market-web.png",
+                "navigation_error": null,
+                "app_error": null,
+                "page_errors": [],
+                "failed_api_responses": [],
+                "status": "captured"
+              },
+              {
+                "viewport": "390x844",
+                "actual": "/Users/j/Documents/gupiao/docs/reports/frontend-next-screenshots-2026-06-05/390x844-monitor-market-web.png",
+                "navigation_error": null,
+                "app_error": null,
+                "page_errors": [],
+                "failed_api_responses": [],
+                "status": "captured"
+              }
+            ],
+            "legacy_comparison": {
+              "legacy_route": "/monitor/market",
+              "legacy_actual": "/Users/j/Documents/gupiao/docs/reports/frontend-next-screenshots-2026-06-05/legacy-monitor-market-web.png",
+              "navigation_error": null,
+              "app_error": null,
+              "page_errors": [],
+              "failed_api_responses": [],
+              "status": "compared",
+              "reference_size": "1440x900",
+              "actual_size": "1440x900",
+              "sample_similarity": 0.8512
+            }
+          },
+          {
+            "route": "/next/paper",
+            "reference": "/Users/j/Documents/gupiao/docs/frontend-next/style-specs/images/paper-web.png",
+            "actual": "/Users/j/Documents/gupiao/docs/reports/frontend-next-screenshots-2026-06-05/paper-web.png",
+            "navigation_error": null,
+            "app_error": null,
+            "page_errors": [],
+            "failed_api_responses": [],
+            "status": "compared",
+            "reference_size": "1440x900",
+            "actual_size": "1440x900",
+            "sample_similarity": 0.7419,
+            "responsive": [
+              {
+                "viewport": "1280x800",
+                "actual": "/Users/j/Documents/gupiao/docs/reports/frontend-next-screenshots-2026-06-05/1280x800-paper-web.png",
+                "navigation_error": null,
+                "app_error": null,
+                "page_errors": [],
+                "failed_api_responses": [],
+                "status": "captured"
+              },
+              {
+                "viewport": "768x1024",
+                "actual": "/Users/j/Documents/gupiao/docs/reports/frontend-next-screenshots-2026-06-05/768x1024-paper-web.png",
+                "navigation_error": null,
+                "app_error": null,
+                "page_errors": [],
+                "failed_api_responses": [],
+                "status": "captured"
+              },
+              {
+                "viewport": "390x844",
+                "actual": "/Users/j/Documents/gupiao/docs/reports/frontend-next-screenshots-2026-06-05/390x844-paper-web.png",
+                "navigation_error": null,
+                "app_error": null,
+                "page_errors": [],
+                "failed_api_responses": [],
+                "status": "captured"
+              }
+            ],
+            "legacy_comparison": {
+              "legacy_route": "/paper",
+              "legacy_actual": "/Users/j/Documents/gupiao/docs/reports/frontend-next-screenshots-2026-06-05/legacy-paper-web.png",
+              "navigation_error": null,
+              "app_error": null,
+              "page_errors": [],
+              "failed_api_responses": [],
+              "status": "compared",
+              "reference_size": "1440x900",
+              "actual_size": "1440x900",
+              "sample_similarity": 0.8508
+            }
+          },
+          {
+            "route": "/next/strategy-tracking",
+            "reference": "/Users/j/Documents/gupiao/docs/frontend-next/style-specs/images/strategy-tracking-web.png",
+            "actual": "/Users/j/Documents/gupiao/docs/reports/frontend-next-screenshots-2026-06-05/strategy-tracking-web.png",
+            "navigation_error": null,
+            "app_error": null,
+            "page_errors": [],
+            "failed_api_responses": [],
+            "status": "compared",
+            "reference_size": "1440x900",
+            "actual_size": "1440x900",
+            "sample_similarity": 0.9575,
+            "responsive": [
+              {
+                "viewport": "1280x800",
+                "actual": "/Users/j/Documents/gupiao/docs/reports/frontend-next-screenshots-2026-06-05/1280x800-strategy-tracking-web.png",
+                "navigation_error": null,
+                "app_error": null,
+                "page_errors": [],
+                "failed_api_responses": [],
+                "status": "captured"
+              },
+              {
+                "viewport": "768x1024",
+                "actual": "/Users/j/Documents/gupiao/docs/reports/frontend-next-screenshots-2026-06-05/768x1024-strategy-tracking-web.png",
+                "navigation_error": null,
+                "app_error": null,
+                "page_errors": [],
+                "failed_api_responses": [],
+                "status": "captured"
+              },
+              {
+                "viewport": "390x844",
+                "actual": "/Users/j/Documents/gupiao/docs/reports/frontend-next-screenshots-2026-06-05/390x844-strategy-tracking-web.png",
+                "navigation_error": null,
+                "app_error": null,
+                "page_errors": [],
+                "failed_api_responses": [],
+                "status": "captured"
+              }
+            ],
+            "legacy_comparison": {
+              "legacy_route": "/strategy-tracking",
+              "legacy_actual": "/Users/j/Documents/gupiao/docs/reports/frontend-next-screenshots-2026-06-05/legacy-strategy-tracking-web.png",
+              "navigation_error": null,
+              "app_error": null,
+              "page_errors": [],
+              "failed_api_responses": [],
+              "status": "compared",
+              "reference_size": "1440x900",
+              "actual_size": "1440x900",
+              "sample_similarity": 0.8518
+            }
+          },
+          {
+            "route": "/next/analysis",
+            "reference": "/Users/j/Documents/gupiao/docs/frontend-next/style-specs/images/analysis-web.png",
+            "actual": "/Users/j/Documents/gupiao/docs/reports/frontend-next-screenshots-2026-06-05/analysis-web.png",
+            "navigation_error": null,
+            "app_error": null,
+            "page_errors": [],
+            "failed_api_responses": [],
+            "status": "compared",
+            "reference_size": "1440x900",
+            "actual_size": "1440x900",
+            "sample_similarity": 0.9388,
+            "responsive": [
+              {
+                "viewport": "1280x800",
+                "actual": "/Users/j/Documents/gupiao/docs/reports/frontend-next-screenshots-2026-06-05/1280x800-analysis-web.png",
+                "navigation_error": null,
+                "app_error": null,
+                "page_errors": [],
+                "failed_api_responses": [],
+                "status": "captured"
+              },
+              {
+                "viewport": "768x1024",
+                "actual": "/Users/j/Documents/gupiao/docs/reports/frontend-next-screenshots-2026-06-05/768x1024-analysis-web.png",
+                "navigation_error": null,
+                "app_error": null,
+                "page_errors": [],
+                "failed_api_responses": [],
+                "status": "captured"
+              },
+              {
+                "viewport": "390x844",
+                "actual": "/Users/j/Documents/gupiao/docs/reports/frontend-next-screenshots-2026-06-05/390x844-analysis-web.png",
+                "navigation_error": null,
+                "app_error": null,
+                "page_errors": [],
+                "failed_api_responses": [],
+                "status": "captured"
+              }
+            ],
+            "legacy_comparison": {
+              "legacy_route": "/analysis",
+              "legacy_actual": "/Users/j/Documents/gupiao/docs/reports/frontend-next-screenshots-2026-06-05/legacy-analysis-web.png",
+              "navigation_error": null,
+              "app_error": null,
+              "page_errors": [],
+              "failed_api_responses": [],
+              "status": "compared",
+              "reference_size": "1440x900",
+              "actual_size": "1440x900",
+              "sample_similarity": 0.9095
+            }
+          },
+          {
+            "route": "/next/playbook",
+            "reference": "/Users/j/Documents/gupiao/docs/frontend-next/style-specs/images/playbook-web.png",
+            "actual": "/Users/j/Documents/gupiao/docs/reports/frontend-next-screenshots-2026-06-05/playbook-web.png",
+            "navigation_error": null,
+            "app_error": null,
+            "page_errors": [],
+            "failed_api_responses": [],
+            "status": "compared",
+            "reference_size": "1440x900",
+            "actual_size": "1440x900",
+            "sample_similarity": 0.9156,
+            "responsive": [
+              {
+                "viewport": "1280x800",
+                "actual": "/Users/j/Documents/gupiao/docs/reports/frontend-next-screenshots-2026-06-05/1280x800-playbook-web.png",
+                "navigation_error": null,
+                "app_error": null,
+                "page_errors": [],
+                "failed_api_responses": [],
+                "status": "captured"
+              },
+              {
+                "viewport": "768x1024",
+                "actual": "/Users/j/Documents/gupiao/docs/reports/frontend-next-screenshots-2026-06-05/768x1024-playbook-web.png",
+                "navigation_error": null,
+                "app_error": null,
+                "page_errors": [],
+                "failed_api_responses": [],
+                "status": "captured"
+              },
+              {
+                "viewport": "390x844",
+                "actual": "/Users/j/Documents/gupiao/docs/reports/frontend-next-screenshots-2026-06-05/390x844-playbook-web.png",
+                "navigation_error": null,
+                "app_error": null,
+                "page_errors": [],
+                "failed_api_responses": [],
+                "status": "captured"
+              }
+            ],
+            "legacy_comparison": {
+              "legacy_route": "/playbook",
+              "legacy_actual": "/Users/j/Documents/gupiao/docs/reports/frontend-next-screenshots-2026-06-05/legacy-playbook-web.png",
+              "navigation_error": null,
+              "app_error": null,
+              "page_errors": [],
+              "failed_api_responses": [],
+              "status": "compared",
+              "reference_size": "1440x900",
+              "actual_size": "1440x900",
+              "sample_similarity": 0.9168
+            }
+          },
+          {
+            "route": "/next/backtest",
+            "reference": "/Users/j/Documents/gupiao/docs/frontend-next/style-specs/images/backtest-web.png",
+            "actual": "/Users/j/Documents/gupiao/docs/reports/frontend-next-screenshots-2026-06-05/backtest-web.png",
+            "navigation_error": null,
+            "app_error": null,
+            "page_errors": [],
+            "failed_api_responses": [],
+            "status": "compared",
+            "reference_size": "1440x900",
+            "actual_size": "1440x900",
+            "sample_similarity": 0.9151,
+            "responsive": [
+              {
+                "viewport": "1280x800",
+                "actual": "/Users/j/Documents/gupiao/docs/reports/frontend-next-screenshots-2026-06-05/1280x800-backtest-web.png",
+                "navigation_error": null,
+                "app_error": null,
+                "page_errors": [],
+                "failed_api_responses": [],
+                "status": "captured"
+              },
+              {
+                "viewport": "768x1024",
+                "actual": "/Users/j/Documents/gupiao/docs/reports/frontend-next-screenshots-2026-06-05/768x1024-backtest-web.png",
+                "navigation_error": null,
+                "app_error": null,
+                "page_errors": [],
+                "failed_api_responses": [],
+                "status": "captured"
+              },
+              {
+                "viewport": "390x844",
+                "actual": "/Users/j/Documents/gupiao/docs/reports/frontend-next-screenshots-2026-06-05/390x844-backtest-web.png",
+                "navigation_error": null,
+                "app_error": null,
+                "page_errors": [],
+                "failed_api_responses": [],
+                "status": "captured"
+              }
+            ],
+            "legacy_comparison": {
+              "legacy_route": "/backtest",
+              "legacy_actual": "/Users/j/Documents/gupiao/docs/reports/frontend-next-screenshots-2026-06-05/legacy-backtest-web.png",
+              "navigation_error": null,
+              "app_error": null,
+              "page_errors": [],
+              "failed_api_responses": [
+                {
+                  "status": 403,
+                  "url": "/api/backtests/validate?limit=20&offset=0"
+                },
+                {
+                  "status": 403,
+                  "url": "/api/backtests/optimize?limit=20&offset=0"
+                },
+                {
+                  "status": 403,
+                  "url": "/api/backtests/validate?limit=20&offset=0"
+                },
+                {
+                  "status": 403,
+                  "url": "/api/backtests/optimize?limit=20&offset=0"
+                }
+              ],
+              "status": "compared",
+              "reference_size": "1440x900",
+              "actual_size": "1440x900",
+              "sample_similarity": 0.9064
+            }
+          },
+          {
+            "route": "/next/data",
+            "reference": "/Users/j/Documents/gupiao/docs/frontend-next/style-specs/images/data-console-web.png",
+            "actual": "/Users/j/Documents/gupiao/docs/reports/frontend-next-screenshots-2026-06-05/data-console-web.png",
+            "navigation_error": null,
+            "app_error": null,
+            "page_errors": [],
+            "failed_api_responses": [],
+            "status": "compared",
+            "reference_size": "1440x900",
+            "actual_size": "1440x900",
+            "sample_similarity": 0.9566,
+            "responsive": [
+              {
+                "viewport": "1280x800",
+                "actual": "/Users/j/Documents/gupiao/docs/reports/frontend-next-screenshots-2026-06-05/1280x800-data-console-web.png",
+                "navigation_error": null,
+                "app_error": null,
+                "page_errors": [],
+                "failed_api_responses": [],
+                "status": "captured"
+              },
+              {
+                "viewport": "768x1024",
+                "actual": "/Users/j/Documents/gupiao/docs/reports/frontend-next-screenshots-2026-06-05/768x1024-data-console-web.png",
+                "navigation_error": null,
+                "app_error": null,
+                "page_errors": [],
+                "failed_api_responses": [],
+                "status": "captured"
+              },
+              {
+                "viewport": "390x844",
+                "actual": "/Users/j/Documents/gupiao/docs/reports/frontend-next-screenshots-2026-06-05/390x844-data-console-web.png",
+                "navigation_error": null,
+                "app_error": null,
+                "page_errors": [],
+                "failed_api_responses": [],
+                "status": "captured"
+              }
+            ],
+            "legacy_comparison": {
+              "legacy_route": "/data",
+              "legacy_actual": "/Users/j/Documents/gupiao/docs/reports/frontend-next-screenshots-2026-06-05/legacy-data-console-web.png",
+              "navigation_error": null,
+              "app_error": null,
+              "page_errors": [],
+              "failed_api_responses": [],
+              "status": "compared",
+              "reference_size": "1440x900",
+              "actual_size": "1440x900",
+              "sample_similarity": 0.9789
+            }
+          },
+          {
+            "route": "/next/settings",
+            "reference": "/Users/j/Documents/gupiao/docs/frontend-next/style-specs/images/settings-web.png",
+            "actual": "/Users/j/Documents/gupiao/docs/reports/frontend-next-screenshots-2026-06-05/settings-web.png",
+            "navigation_error": null,
+            "app_error": null,
+            "page_errors": [],
+            "failed_api_responses": [],
+            "status": "compared",
+            "reference_size": "1440x900",
+            "actual_size": "1440x900",
+            "sample_similarity": 0.9353,
+            "responsive": [
+              {
+                "viewport": "1280x800",
+                "actual": "/Users/j/Documents/gupiao/docs/reports/frontend-next-screenshots-2026-06-05/1280x800-settings-web.png",
+                "navigation_error": null,
+                "app_error": null,
+                "page_errors": [],
+                "failed_api_responses": [],
+                "status": "captured"
+              },
+              {
+                "viewport": "768x1024",
+                "actual": "/Users/j/Documents/gupiao/docs/reports/frontend-next-screenshots-2026-06-05/768x1024-settings-web.png",
+                "navigation_error": null,
+                "app_error": null,
+                "page_errors": [],
+                "failed_api_responses": [],
+                "status": "captured"
+              },
+              {
+                "viewport": "390x844",
+                "actual": "/Users/j/Documents/gupiao/docs/reports/frontend-next-screenshots-2026-06-05/390x844-settings-web.png",
+                "navigation_error": null,
+                "app_error": null,
+                "page_errors": [],
+                "failed_api_responses": [],
+                "status": "captured"
+              }
+            ],
+            "legacy_comparison": {
+              "legacy_route": "/settings",
+              "legacy_actual": "/Users/j/Documents/gupiao/docs/reports/frontend-next-screenshots-2026-06-05/legacy-settings-web.png",
+              "navigation_error": null,
+              "app_error": null,
+              "page_errors": [],
+              "failed_api_responses": [],
+              "status": "compared",
+              "reference_size": "1440x900",
+              "actual_size": "1440x900",
+              "sample_similarity": 0.9255
+            }
+          }
+        ]
+      },
+      "stderr": ""
+    }
+  },
+  "api_summary": [
+    {
+      "page": "monitor-action",
+      "status": 200,
+      "ok": true,
+      "elapsed_ms": 11,
+      "hash": "b4fab9aa9e25a07c3c2126d53632123b8dbeda414d877262de556c0404f2763b"
+    },
+    {
+      "page": "monitor-market",
+      "status": 200,
+      "ok": true,
+      "elapsed_ms": 7,
+      "hash": "4915c0dcfc9c85cf9c993a4483360a8391ea985b1c2c614b62878466f3d9432a"
+    },
+    {
+      "page": "paper",
+      "status": 200,
+      "ok": true,
+      "elapsed_ms": 13,
+      "hash": "ea7c8c85f5fd82f0b3928ca230340cd5537968ad527c80a63d33c284c9adabbb"
+    },
+    {
+      "page": "strategy-tracking",
+      "status": 200,
+      "ok": true,
+      "elapsed_ms": 5,
+      "hash": "289f827b821ffe95739e6db59c1b92052887bc01d14df7980a7867ee9bc52445"
+    },
+    {
+      "page": "backtest",
+      "status": 200,
+      "ok": true,
+      "elapsed_ms": 2,
+      "hash": "6f23bb10da82b8a196d50cdfbe0a86f583cc4df842d62052e624fb9b14bd5c90"
+    },
+    {
+      "page": "settings",
+      "status": 200,
+      "ok": true,
+      "elapsed_ms": 5,
+      "hash": "5f42584551e65bf2e6e1c2380921c0941c93b209fe51ee64f884944ca2784191"
+    }
+  ],
+  "request_summary": [
+    {
+      "legacy_route": "/monitor",
+      "next_route": "/next/monitor",
+      "legacy_api_request_count": 12,
+      "next_api_request_count": 1,
+      "legacy_unique_api_request_count": 10,
+      "next_unique_api_request_count": 1,
+      "legacy_event_source_count": 2,
+      "next_event_source_count": 0
+    },
+    {
+      "legacy_route": "/monitor/market",
+      "next_route": "/next/monitor/market",
+      "legacy_api_request_count": 3,
+      "next_api_request_count": 1,
+      "legacy_unique_api_request_count": 2,
+      "next_unique_api_request_count": 1,
+      "legacy_event_source_count": 0,
+      "next_event_source_count": 0
+    },
+    {
+      "legacy_route": "/paper",
+      "next_route": "/next/paper",
+      "legacy_api_request_count": 3,
+      "next_api_request_count": 1,
+      "legacy_unique_api_request_count": 2,
+      "next_unique_api_request_count": 1,
+      "legacy_event_source_count": 0,
+      "next_event_source_count": 0
+    },
+    {
+      "legacy_route": "/strategy-tracking",
+      "next_route": "/next/strategy-tracking",
+      "legacy_api_request_count": 3,
+      "next_api_request_count": 1,
+      "legacy_unique_api_request_count": 2,
+      "next_unique_api_request_count": 1,
+      "legacy_event_source_count": 0,
+      "next_event_source_count": 0
+    },
+    {
+      "legacy_route": "/analysis",
+      "next_route": "/next/analysis",
+      "legacy_api_request_count": 3,
+      "next_api_request_count": 1,
+      "legacy_unique_api_request_count": 2,
+      "next_unique_api_request_count": 1,
+      "legacy_event_source_count": 0,
+      "next_event_source_count": 0
+    },
+    {
+      "legacy_route": "/playbook",
+      "next_route": "/next/playbook",
+      "legacy_api_request_count": 3,
+      "next_api_request_count": 1,
+      "legacy_unique_api_request_count": 2,
+      "next_unique_api_request_count": 1,
+      "legacy_event_source_count": 0,
+      "next_event_source_count": 0
+    },
+    {
+      "legacy_route": "/backtest",
+      "next_route": "/next/backtest",
+      "legacy_api_request_count": 3,
+      "next_api_request_count": 1,
+      "legacy_unique_api_request_count": 2,
+      "next_unique_api_request_count": 1,
+      "legacy_event_source_count": 0,
+      "next_event_source_count": 0
+    },
+    {
+      "legacy_route": "/data",
+      "next_route": "/next/data",
+      "legacy_api_request_count": 3,
+      "next_api_request_count": 1,
+      "legacy_unique_api_request_count": 2,
+      "next_unique_api_request_count": 1,
+      "legacy_event_source_count": 0,
+      "next_event_source_count": 0
+    },
+    {
+      "legacy_route": "/settings",
+      "next_route": "/next/settings",
+      "legacy_api_request_count": 3,
+      "next_api_request_count": 1,
+      "legacy_unique_api_request_count": 2,
+      "next_unique_api_request_count": 1,
+      "legacy_event_source_count": 0,
+      "next_event_source_count": 0
+    }
+  ],
+  "screenshot_summary": [
+    {
+      "route": "/next/monitor",
+      "status": "compared",
+      "navigation_error": null,
+      "app_error": null,
+      "page_errors": [],
+      "failed_api_responses": [],
+      "style_similarity": 0.9432,
+      "legacy_similarity": 0.9008,
+      "legacy_page_errors": [],
+      "legacy_failed_api_responses": []
+    },
+    {
+      "route": "/next/monitor/market",
+      "status": "compared",
+      "navigation_error": null,
+      "app_error": null,
+      "page_errors": [],
+      "failed_api_responses": [],
+      "style_similarity": 0.9603,
+      "legacy_similarity": 0.8512,
+      "legacy_page_errors": [],
+      "legacy_failed_api_responses": []
+    },
+    {
+      "route": "/next/paper",
+      "status": "compared",
+      "navigation_error": null,
+      "app_error": null,
+      "page_errors": [],
+      "failed_api_responses": [],
+      "style_similarity": 0.7419,
+      "legacy_similarity": 0.8508,
+      "legacy_page_errors": [],
+      "legacy_failed_api_responses": []
+    },
+    {
+      "route": "/next/strategy-tracking",
+      "status": "compared",
+      "navigation_error": null,
+      "app_error": null,
+      "page_errors": [],
+      "failed_api_responses": [],
+      "style_similarity": 0.9575,
+      "legacy_similarity": 0.8518,
+      "legacy_page_errors": [],
+      "legacy_failed_api_responses": []
+    },
+    {
+      "route": "/next/analysis",
+      "status": "compared",
+      "navigation_error": null,
+      "app_error": null,
+      "page_errors": [],
+      "failed_api_responses": [],
+      "style_similarity": 0.9388,
+      "legacy_similarity": 0.9095,
+      "legacy_page_errors": [],
+      "legacy_failed_api_responses": []
+    },
+    {
+      "route": "/next/playbook",
+      "status": "compared",
+      "navigation_error": null,
+      "app_error": null,
+      "page_errors": [],
+      "failed_api_responses": [],
+      "style_similarity": 0.9156,
+      "legacy_similarity": 0.9168,
+      "legacy_page_errors": [],
+      "legacy_failed_api_responses": []
+    },
+    {
+      "route": "/next/backtest",
+      "status": "compared",
+      "navigation_error": null,
+      "app_error": null,
+      "page_errors": [],
+      "failed_api_responses": [],
+      "style_similarity": 0.9151,
+      "legacy_similarity": 0.9064,
+      "legacy_page_errors": [],
+      "legacy_failed_api_responses": [
+        {
+          "status": 403,
+          "url": "/api/backtests/validate?limit=20&offset=0"
+        },
+        {
+          "status": 403,
+          "url": "/api/backtests/optimize?limit=20&offset=0"
+        },
+        {
+          "status": 403,
+          "url": "/api/backtests/validate?limit=20&offset=0"
+        },
+        {
+          "status": 403,
+          "url": "/api/backtests/optimize?limit=20&offset=0"
+        }
+      ]
+    },
+    {
+      "route": "/next/data",
+      "status": "compared",
+      "navigation_error": null,
+      "app_error": null,
+      "page_errors": [],
+      "failed_api_responses": [],
+      "style_similarity": 0.9566,
+      "legacy_similarity": 0.9789,
+      "legacy_page_errors": [],
+      "legacy_failed_api_responses": []
+    },
+    {
+      "route": "/next/settings",
+      "status": "compared",
+      "navigation_error": null,
+      "app_error": null,
+      "page_errors": [],
+      "failed_api_responses": [],
+      "style_similarity": 0.9353,
+      "legacy_similarity": 0.9255,
+      "legacy_page_errors": [],
+      "legacy_failed_api_responses": []
+    }
+  ]
+}

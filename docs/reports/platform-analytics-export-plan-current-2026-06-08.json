@@ -1,0 +1,400 @@
+{
+  "generated_at": "2026-06-08T05:16:10.912152+00:00",
+  "source_manifest_report": "docs/reports/platform-analytics-manifests-current-2026-06-08.json",
+  "analytics_root": "/var/lib/docker/volumes/tquant-mysql_app_runtime_data/_data/analytics",
+  "task_output_root": "/app/backend/data/analytics",
+  "end_date": "2026-06-08",
+  "dry_run_only": true,
+  "safety": {
+    "does_enqueue_tasks": false,
+    "does_run_exporters": false,
+    "does_modify_mysql": false,
+    "does_clean_source_tables": false,
+    "requires_operator_window": true,
+    "post_export_verify_required": true
+  },
+  "summary": {
+    "dataset_count": 10,
+    "ready_count": 1,
+    "optional_refresh_count": 1,
+    "export_required_count": 9,
+    "reexport_required_count": 0,
+    "manual_investigation_count": 0,
+    "required_task_count": 9,
+    "required_tasks": [
+      "analytics_export_strategy_tracking_snapshots",
+      "analytics_export_key_level_snapshots",
+      "analytics_export_low_buy_result_snapshots",
+      "analytics_export_backtest_runs",
+      "analytics_export_backtest_trades",
+      "analytics_export_backtest_daily_snapshots",
+      "analytics_export_analysis_logs",
+      "analytics_export_market_review_reports",
+      "analytics_export_paper_review_reports"
+    ],
+    "blocked_datasets": [
+      "strategy_tracking_snapshots",
+      "key_level_snapshots",
+      "low_buy_result_snapshots",
+      "backtest_runs",
+      "backtest_trades",
+      "backtest_daily_snapshots",
+      "analysis_logs",
+      "market_review_reports",
+      "paper_review_reports"
+    ]
+  },
+  "actions": [
+    {
+      "dataset_key": "daily_bars",
+      "action": "lifecycle_refresh_optional",
+      "task_type": "analytics_export_daily_bars",
+      "worker": "analytics",
+      "priority": "low",
+      "owner_role": "data",
+      "source_table": "daily_bar_snapshots",
+      "window": {
+        "months": 24,
+        "end_date": "2026-06-08"
+      },
+      "manifest_present": true,
+      "row_count": 2443775,
+      "quality_status": "ok",
+      "warnings": [
+        "manifest_id_missing"
+      ],
+      "blockers": [],
+      "payload": {
+        "months": 24,
+        "end_date": "2026-06-08",
+        "output_root": "/app/backend/data/analytics",
+        "source": "platform_analytics_manifest_export_plan",
+        "idempotency_key": "analytics-export:daily_bars:2026-06-08"
+      },
+      "safe_to_auto_execute": false,
+      "operator_steps": [
+        "可在低峰期重新导出以刷新 manifest lifecycle 字段；不是 MySQL 清理前的阻断项。"
+      ],
+      "readiness": "no_required_export"
+    },
+    {
+      "dataset_key": "strategy_tracking_snapshots",
+      "action": "export_required",
+      "task_type": "analytics_export_strategy_tracking_snapshots",
+      "worker": "analytics",
+      "priority": "low",
+      "owner_role": "quant",
+      "source_table": "strategy_tracking_snapshots",
+      "window": {
+        "days": 90,
+        "end_date": "2026-06-08"
+      },
+      "manifest_present": false,
+      "row_count": 0,
+      "quality_status": "",
+      "warnings": [],
+      "blockers": [
+        "manifest_missing"
+      ],
+      "payload": {
+        "days": 90,
+        "end_date": "2026-06-08",
+        "output_root": "/app/backend/data/analytics",
+        "source": "platform_analytics_manifest_export_plan",
+        "idempotency_key": "analytics-export:strategy_tracking_snapshots:2026-06-08:container-root-v2"
+      },
+      "safe_to_auto_execute": false,
+      "operator_steps": [
+        "在低峰期提交 analytics worker 任务 `analytics_export_strategy_tracking_snapshots`，payload 使用本报告中的 JSON。",
+        "任务完成后复跑 `scripts/verify_analytics_manifests.py`，确认 manifest、文件存在性和 sha256。",
+        "只有所有相关 manifest 复验无 blocking 后，才允许进入热库保留窗口 dry-run；仍不得自动清理 MySQL 源数据。"
+      ],
+      "readiness": "needs_analytics_worker_window"
+    },
+    {
+      "dataset_key": "key_level_snapshots",
+      "action": "export_required",
+      "task_type": "analytics_export_key_level_snapshots",
+      "worker": "analytics",
+      "priority": "low",
+      "owner_role": "data",
+      "source_table": "a_key_level_snapshots",
+      "window": {
+        "days": 90,
+        "end_date": "2026-06-08"
+      },
+      "manifest_present": false,
+      "row_count": 0,
+      "quality_status": "",
+      "warnings": [],
+      "blockers": [
+        "manifest_missing"
+      ],
+      "payload": {
+        "days": 90,
+        "end_date": "2026-06-08",
+        "output_root": "/app/backend/data/analytics",
+        "source": "platform_analytics_manifest_export_plan",
+        "idempotency_key": "analytics-export:key_level_snapshots:2026-06-08:container-root-v2"
+      },
+      "safe_to_auto_execute": false,
+      "operator_steps": [
+        "在低峰期提交 analytics worker 任务 `analytics_export_key_level_snapshots`，payload 使用本报告中的 JSON。",
+        "任务完成后复跑 `scripts/verify_analytics_manifests.py`，确认 manifest、文件存在性和 sha256。",
+        "只有所有相关 manifest 复验无 blocking 后，才允许进入热库保留窗口 dry-run；仍不得自动清理 MySQL 源数据。"
+      ],
+      "readiness": "needs_analytics_worker_window"
+    },
+    {
+      "dataset_key": "low_buy_result_snapshots",
+      "action": "export_required",
+      "task_type": "analytics_export_low_buy_result_snapshots",
+      "worker": "analytics",
+      "priority": "low",
+      "owner_role": "quant",
+      "source_table": "low_buy_result_snapshots",
+      "window": {
+        "days": 90,
+        "end_date": "2026-06-08"
+      },
+      "manifest_present": false,
+      "row_count": 0,
+      "quality_status": "",
+      "warnings": [],
+      "blockers": [
+        "manifest_missing"
+      ],
+      "payload": {
+        "days": 90,
+        "end_date": "2026-06-08",
+        "output_root": "/app/backend/data/analytics",
+        "source": "platform_analytics_manifest_export_plan",
+        "idempotency_key": "analytics-export:low_buy_result_snapshots:2026-06-08:container-root-v2"
+      },
+      "safe_to_auto_execute": false,
+      "operator_steps": [
+        "在低峰期提交 analytics worker 任务 `analytics_export_low_buy_result_snapshots`，payload 使用本报告中的 JSON。",
+        "任务完成后复跑 `scripts/verify_analytics_manifests.py`，确认 manifest、文件存在性和 sha256。",
+        "只有所有相关 manifest 复验无 blocking 后，才允许进入热库保留窗口 dry-run；仍不得自动清理 MySQL 源数据。"
+      ],
+      "readiness": "needs_analytics_worker_window"
+    },
+    {
+      "dataset_key": "backtest_runs",
+      "action": "export_required",
+      "task_type": "analytics_export_backtest_runs",
+      "worker": "analytics",
+      "priority": "low",
+      "owner_role": "quant",
+      "source_table": "backtest_runs",
+      "window": {
+        "days": 180,
+        "end_date": "2026-06-08"
+      },
+      "manifest_present": false,
+      "row_count": 0,
+      "quality_status": "",
+      "warnings": [],
+      "blockers": [
+        "manifest_missing"
+      ],
+      "payload": {
+        "days": 180,
+        "end_date": "2026-06-08",
+        "output_root": "/app/backend/data/analytics",
+        "source": "platform_analytics_manifest_export_plan",
+        "idempotency_key": "analytics-export:backtest_runs:2026-06-08:container-root-v2"
+      },
+      "safe_to_auto_execute": false,
+      "operator_steps": [
+        "在低峰期提交 analytics worker 任务 `analytics_export_backtest_runs`，payload 使用本报告中的 JSON。",
+        "任务完成后复跑 `scripts/verify_analytics_manifests.py`，确认 manifest、文件存在性和 sha256。",
+        "只有所有相关 manifest 复验无 blocking 后，才允许进入热库保留窗口 dry-run；仍不得自动清理 MySQL 源数据。"
+      ],
+      "readiness": "needs_analytics_worker_window"
+    },
+    {
+      "dataset_key": "backtest_trades",
+      "action": "export_required",
+      "task_type": "analytics_export_backtest_trades",
+      "worker": "analytics",
+      "priority": "low",
+      "owner_role": "quant",
+      "source_table": "backtest_trades",
+      "window": {
+        "days": 180,
+        "end_date": "2026-06-08"
+      },
+      "manifest_present": false,
+      "row_count": 0,
+      "quality_status": "",
+      "warnings": [],
+      "blockers": [
+        "manifest_missing"
+      ],
+      "payload": {
+        "days": 180,
+        "end_date": "2026-06-08",
+        "output_root": "/app/backend/data/analytics",
+        "source": "platform_analytics_manifest_export_plan",
+        "idempotency_key": "analytics-export:backtest_trades:2026-06-08:container-root-v2"
+      },
+      "safe_to_auto_execute": false,
+      "operator_steps": [
+        "在低峰期提交 analytics worker 任务 `analytics_export_backtest_trades`，payload 使用本报告中的 JSON。",
+        "任务完成后复跑 `scripts/verify_analytics_manifests.py`，确认 manifest、文件存在性和 sha256。",
+        "只有所有相关 manifest 复验无 blocking 后，才允许进入热库保留窗口 dry-run；仍不得自动清理 MySQL 源数据。"
+      ],
+      "readiness": "needs_analytics_worker_window"
+    },
+    {
+      "dataset_key": "backtest_daily_snapshots",
+      "action": "export_required",
+      "task_type": "analytics_export_backtest_daily_snapshots",
+      "worker": "analytics",
+      "priority": "low",
+      "owner_role": "quant",
+      "source_table": "backtest_daily_snapshots",
+      "window": {
+        "days": 180,
+        "end_date": "2026-06-08"
+      },
+      "manifest_present": false,
+      "row_count": 0,
+      "quality_status": "",
+      "warnings": [],
+      "blockers": [
+        "manifest_missing"
+      ],
+      "payload": {
+        "days": 180,
+        "end_date": "2026-06-08",
+        "output_root": "/app/backend/data/analytics",
+        "source": "platform_analytics_manifest_export_plan",
+        "idempotency_key": "analytics-export:backtest_daily_snapshots:2026-06-08:container-root-v2"
+      },
+      "safe_to_auto_execute": false,
+      "operator_steps": [
+        "在低峰期提交 analytics worker 任务 `analytics_export_backtest_daily_snapshots`，payload 使用本报告中的 JSON。",
+        "任务完成后复跑 `scripts/verify_analytics_manifests.py`，确认 manifest、文件存在性和 sha256。",
+        "只有所有相关 manifest 复验无 blocking 后，才允许进入热库保留窗口 dry-run；仍不得自动清理 MySQL 源数据。"
+      ],
+      "readiness": "needs_analytics_worker_window"
+    },
+    {
+      "dataset_key": "analysis_logs",
+      "action": "export_required",
+      "task_type": "analytics_export_analysis_logs",
+      "worker": "analytics",
+      "priority": "low",
+      "owner_role": "quant",
+      "source_table": "analysis_logs",
+      "window": {
+        "days": 90,
+        "end_date": "2026-06-08"
+      },
+      "manifest_present": false,
+      "row_count": 0,
+      "quality_status": "",
+      "warnings": [],
+      "blockers": [
+        "manifest_missing"
+      ],
+      "payload": {
+        "days": 90,
+        "end_date": "2026-06-08",
+        "output_root": "/app/backend/data/analytics",
+        "source": "platform_analytics_manifest_export_plan",
+        "idempotency_key": "analytics-export:analysis_logs:2026-06-08:container-root-v2"
+      },
+      "safe_to_auto_execute": false,
+      "operator_steps": [
+        "在低峰期提交 analytics worker 任务 `analytics_export_analysis_logs`，payload 使用本报告中的 JSON。",
+        "任务完成后复跑 `scripts/verify_analytics_manifests.py`，确认 manifest、文件存在性和 sha256。",
+        "只有所有相关 manifest 复验无 blocking 后，才允许进入热库保留窗口 dry-run；仍不得自动清理 MySQL 源数据。"
+      ],
+      "readiness": "needs_analytics_worker_window"
+    },
+    {
+      "dataset_key": "market_review_reports",
+      "action": "export_required",
+      "task_type": "analytics_export_market_review_reports",
+      "worker": "analytics",
+      "priority": "low",
+      "owner_role": "quant",
+      "source_table": "market_review_reports",
+      "window": {
+        "days": 90,
+        "end_date": "2026-06-08"
+      },
+      "manifest_present": false,
+      "row_count": 0,
+      "quality_status": "",
+      "warnings": [],
+      "blockers": [
+        "manifest_missing"
+      ],
+      "payload": {
+        "days": 90,
+        "end_date": "2026-06-08",
+        "output_root": "/app/backend/data/analytics",
+        "source": "platform_analytics_manifest_export_plan",
+        "idempotency_key": "analytics-export:market_review_reports:2026-06-08:container-root-v2"
+      },
+      "safe_to_auto_execute": false,
+      "operator_steps": [
+        "在低峰期提交 analytics worker 任务 `analytics_export_market_review_reports`，payload 使用本报告中的 JSON。",
+        "任务完成后复跑 `scripts/verify_analytics_manifests.py`，确认 manifest、文件存在性和 sha256。",
+        "只有所有相关 manifest 复验无 blocking 后，才允许进入热库保留窗口 dry-run；仍不得自动清理 MySQL 源数据。"
+      ],
+      "readiness": "needs_analytics_worker_window"
+    },
+    {
+      "dataset_key": "paper_review_reports",
+      "action": "export_required",
+      "task_type": "analytics_export_paper_review_reports",
+      "worker": "analytics",
+      "priority": "low",
+      "owner_role": "quant",
+      "source_table": "paper_review_reports",
+      "window": {
+        "days": 90,
+        "end_date": "2026-06-08"
+      },
+      "manifest_present": false,
+      "row_count": 0,
+      "quality_status": "",
+      "warnings": [],
+      "blockers": [
+        "manifest_missing"
+      ],
+      "payload": {
+        "days": 90,
+        "end_date": "2026-06-08",
+        "output_root": "/app/backend/data/analytics",
+        "source": "platform_analytics_manifest_export_plan",
+        "idempotency_key": "analytics-export:paper_review_reports:2026-06-08:container-root-v2"
+      },
+      "safe_to_auto_execute": false,
+      "operator_steps": [
+        "在低峰期提交 analytics worker 任务 `analytics_export_paper_review_reports`，payload 使用本报告中的 JSON。",
+        "任务完成后复跑 `scripts/verify_analytics_manifests.py`，确认 manifest、文件存在性和 sha256。",
+        "只有所有相关 manifest 复验无 blocking 后，才允许进入热库保留窗口 dry-run；仍不得自动清理 MySQL 源数据。"
+      ],
+      "readiness": "needs_analytics_worker_window"
+    }
+  ],
+  "post_verify": {
+    "command": "python3 scripts/verify_analytics_manifests.py --analytics-root /var/lib/docker/volumes/tquant-mysql_app_runtime_data/_data/analytics --json-output docs/reports/platform-analytics-manifests-2026-06-08.json --markdown-output docs/reports/platform-analytics-manifests-2026-06-08.md",
+    "required_before_mysql_retention": true
+  },
+  "evaluation": {
+    "status": "blocking",
+    "blocking": [
+      "manifest_export_required_count=9"
+    ],
+    "warnings": [
+      "manifest_optional_refresh_count=1"
+    ]
+  }
+}

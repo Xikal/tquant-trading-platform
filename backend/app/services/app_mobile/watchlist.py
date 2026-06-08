@@ -133,7 +133,7 @@ class AppMobileWatchlistMixin:
         cached = self._get_cached_user_watchlist_cards(user_id, fingerprint)
         if cached is not None:
             return cached
-        payloads = self.watchlist_signal_service.build_live_signals(db, rows)
+        payloads = self.watchlist_signal_service.list_signals_for_rows(db, rows)
         cards = self._cards_from_payloads(payloads)
         self._set_cached_user_watchlist_cards(user_id, fingerprint, cards)
         return cards

@@ -36,8 +36,17 @@ from app.models.schema_defs.settings import (
     UserSectorExclusionsResponse,
 )
 from app.models.schema_defs.strategy_meta import StrategyMetaResponse, StrategyPresetResponse
+from app.models.schema_defs.strategy_tracking import (
+    StrategyTrackingHoldingAnalysisResponse,
+    StrategyTrackingItemOut,
+    StrategyTrackingPerformanceOut,
+    StrategyTrackingReviewResponse,
+    StrategyTrackingSegmentOut,
+    StrategyTrackingShadowObservationOut,
+    StrategyTrackingSummaryOut,
+)
 
-BFF_SCHEMA_VERSION = "v15"
+BFF_SCHEMA_VERSION = "v16"
 
 
 class BffPartialError(BaseModel):
@@ -122,6 +131,18 @@ class StrategyWorkspaceBffResponse(BaseModel):
     presets: StrategyPresetResponse | None = None
     recent_runs: BacktestRunListResponse | None = None
     verdict_thresholds: BacktestVerdictThresholdsResponse | None = None
+    items: list[StrategyTrackingItemOut] = Field(default_factory=list)
+    total: int = 0
+    limit: int = 50
+    offset: int = 0
+    sort: str = "max_gain_desc"
+    summary: StrategyTrackingSummaryOut | None = None
+    performance: list[StrategyTrackingPerformanceOut] = Field(default_factory=list)
+    market_segments: list[StrategyTrackingSegmentOut] = Field(default_factory=list)
+    shadow_observations: list[StrategyTrackingShadowObservationOut] = Field(default_factory=list)
+    holding_analysis: StrategyTrackingHoldingAnalysisResponse | None = None
+    review: StrategyTrackingReviewResponse | None = None
+    tracking_notes: list[str] = Field(default_factory=list)
     partial_errors: list[BffPartialError] = Field(default_factory=list)
 
 

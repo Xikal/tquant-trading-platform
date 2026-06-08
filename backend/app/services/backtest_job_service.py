@@ -27,6 +27,7 @@ from app.models.schema_defs.backtest import (
 from app.services.backtest.data_provider import DailyBarDataProvider
 from app.services.backtest.cancel_token import BacktestCancelToken
 from app.services.backtest.engine import BacktestConfig, BacktestEngine, BacktestResult
+from app.core.config import get_settings
 from app.services.backtest.persistence import BacktestResultPersistence
 from app.services.backtest.resource_tiers import (
     DEFAULT_BACKTEST_RESOURCE_TIER,
@@ -248,7 +249,7 @@ class BacktestJobService:
             force_liquidate_at_end=bool(params.get("force_liquidate_at_end", True)),
             max_duration_seconds=int(run.max_duration_seconds or params.get("max_duration_seconds") or 1800),
         )
-        engine = BacktestEngine(DailyBarDataProvider(self.db))
+        engine = BacktestEngine(_daily_bar_data_provider(self.db))
         return engine.run(config, cancel_token=cancel_token)
 
     def _persist_result(self, run_id: int, result: BacktestResult) -> None:
@@ -470,6 +471,24 @@ class BacktestJobService:
             payload=_json_dict(row.payload_json),
             created_at=row.created_at,
         )
+
+
+def _daily_bar_data_provider(db: Session) -> DailyBarDataProvider:
+    settings = get_settings()
+    if not settings.backtest_parquet_daily_bars_enabled:
+        return DailyBarDataProvider(db)
+    try:
+        from app.services.backtest.parquet_data_provider import DailyBarParquetDataProvider
+
+        return DailyBarParquetDataProvider(
+            db,
+            manifest=settings.backtest_parquet_daily_bars_manifest,
+        )
+    except Exception as exc:
+        if settings.backtest_parquet_daily_bars_fallback_to_mysql:
+            logger.warning("backtest parquet daily bars unavailable, falling back to mysql: %s", exc)
+            return DailyBarDataProvider(db)
+        raise
 
 
 def _execution_model_preview(result: dict[str, object]) -> dict[str, object] | None:

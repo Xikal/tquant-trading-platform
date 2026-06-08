@@ -8,7 +8,7 @@ from fastapi import APIRouter, BackgroundTasks, Depends, Header, HTTPException, 
 from sqlalchemy import inspect as sa_inspect, select
 from sqlalchemy.orm import Session
 
-from app.api.routes.market import _enqueue_market_pulse_refresh, market_breadth, paired_hedge_research, sector_relative_strength
+from app.api.routes.market import _enqueue_market_pulse_refresh_async, market_breadth, paired_hedge_research, sector_relative_strength
 from app.core.auth import get_current_user
 from app.core.config import get_settings
 from app.core.database import SessionLocal, get_db
@@ -336,6 +336,7 @@ def strategy_workspace_bff(
             remote_used = True
             response = remote
             _record_partial_errors(response)
+            record_response_payload("strategy_workspace", response, item_count=len(response.items))
             schedule_go_bff_shadow_check(
                 background_tasks,
                 workspace="strategy",
@@ -362,6 +363,7 @@ def strategy_workspace_bff(
         ),
     )
     _record_partial_errors(response)
+    record_response_payload("strategy_workspace", response, item_count=len(response.items))
     if not remote_used:
         schedule_go_bff_shadow_check(
             background_tasks,
@@ -542,7 +544,7 @@ def _safe_market_pulse_snapshot(db: Session, errors: list[BffPartialError], timi
         _append_source_timing(timings, "market_pulse", elapsed_ms=elapsed_ms, status="error", reason="other")
         return None
     if pulse_needs_refresh:
-        _enqueue_market_pulse_refresh(db, reason="bff_monitor_workspace")
+        _enqueue_market_pulse_refresh_async(reason="bff_monitor_workspace")
     _append_source_timing(timings, "market_pulse", elapsed_ms=_elapsed_ms(started), status="ok")
     return pulse
 

@@ -52,13 +52,12 @@ from app.services.watchlist_signal_service import WatchlistSignalService
 settings = get_settings()
 logger = logging.getLogger(__name__)
 
-FULL_SCAN_REFRESH_SECONDS = 60 * 60
-WATCHLIST_REFRESH_SECONDS = 45
-MARKET_REGIME_REFRESH_SECONDS = 5 * 60
 APP_LOW_BUY_STARTUP_LIMIT = 24
 FULL_SCAN_BACKGROUND_LIMIT = 40
 SQLITE_BACKGROUND_SCAN_LIMIT = 120
 DEFAULT_BACKGROUND_SCAN_LIMIT = 480
+COMPACT_FULL_SCAN_BACKGROUND_LIMIT = 16
+COMPACT_BACKGROUND_SCAN_LIMIT = 180
 ML_INCREMENTAL_TRAIN_WEEKDAY = 4  # Friday
 ML_INCREMENTAL_TRAIN_AFTER = dt_time(hour=16, minute=0)
 LATEST_DATA_WATCHDOG_AFTER = dt_time(hour=15, minute=25)
@@ -75,6 +74,19 @@ def _background_jobs_enabled() -> bool:
 
 def _runtime_background_role() -> str:
     return str(getattr(settings, "runtime_background_role", "scheduler") or "scheduler").strip().lower()
+
+
+def _compact_background_mode_enabled() -> bool:
+    return bool(getattr(settings, "runtime_background_compact_mode_enabled", False))
+
+
+def _interval_seconds(setting_name: str, default: int, *, minimum: int = 15) -> int:
+    raw = getattr(settings, setting_name, default)
+    try:
+        value = int(raw)
+    except (TypeError, ValueError):
+        value = default
+    return max(value, minimum)
 
 
 def _research_jobs_enabled() -> bool:
@@ -102,21 +114,34 @@ def _background_low_buy_strategies() -> list[str]:
 def _background_low_buy_limit() -> int:
     if settings.database_url.startswith("sqlite"):
         return APP_LOW_BUY_STARTUP_LIMIT
+    if _compact_background_mode_enabled():
+        return COMPACT_FULL_SCAN_BACKGROUND_LIMIT
     return FULL_SCAN_BACKGROUND_LIMIT
 
 
 def _background_low_buy_scan_limit() -> int:
     if settings.database_url.startswith("sqlite"):
         return SQLITE_BACKGROUND_SCAN_LIMIT
+    if _compact_background_mode_enabled():
+        return COMPACT_BACKGROUND_SCAN_LIMIT
     return DEFAULT_BACKGROUND_SCAN_LIMIT
 
 
 def _startup_low_buy_prewarm_enabled() -> bool:
-    return True
+    return _startup_maintenance_enabled()
 
 
 def _startup_low_buy_history_prewarm_enabled() -> bool:
-    return not settings.database_url.startswith("sqlite")
+    return (
+        _startup_maintenance_enabled()
+        and bool(getattr(settings, "runtime_startup_history_prewarm_enabled", True))
+        and not _compact_background_mode_enabled()
+        and not settings.database_url.startswith("sqlite")
+    )
+
+
+def _startup_maintenance_enabled() -> bool:
+    return bool(getattr(settings, "runtime_startup_cache_prewarm_enabled", True)) and not _compact_background_mode_enabled()
 
 
 def _refresh_materialized_low_buy_snapshots(
@@ -419,66 +444,67 @@ def start_runtime_background_jobs() -> None:
     if background_leader:
         if _strategy_evolution_jobs_enabled():
             start_strategy_evolution_scheduler()
-        threading.Thread(target=_startup_maintenance_and_warm_runtime_caches, daemon=True).start()
+        if _startup_maintenance_enabled():
+            threading.Thread(target=_startup_maintenance_and_warm_runtime_caches, daemon=True).start()
         task_manager.register_loop(
             name="low_buy_full_scan",
             target=_refresh_full_scan_once,
-            interval_seconds=FULL_SCAN_REFRESH_SECONDS,
+            interval_seconds=_interval_seconds("runtime_low_buy_full_scan_interval_seconds", 60 * 60, minimum=5 * 60),
             initial_delay_seconds=30,
         )
         task_manager.register_loop(
             name="watchlist_signals",
             target=_refresh_watchlist_signal_once,
-            interval_seconds=WATCHLIST_REFRESH_SECONDS,
+            interval_seconds=_interval_seconds("runtime_watchlist_refresh_interval_seconds", 45, minimum=30),
             initial_delay_seconds=20,
         )
         task_manager.register_loop(
             name="market_regime_prewarm",
             target=_warm_market_regime_once,
-            interval_seconds=MARKET_REGIME_REFRESH_SECONDS,
+            interval_seconds=_interval_seconds("runtime_market_regime_refresh_interval_seconds", 5 * 60, minimum=60),
             initial_delay_seconds=15,
         )
         task_manager.register_loop(
             name="market_quote_cache_refresh",
             target=_enqueue_market_quote_cache_refresh_once,
-            interval_seconds=30,
+            interval_seconds=_interval_seconds("runtime_quote_cache_refresh_interval_seconds", 30, minimum=30),
             initial_delay_seconds=10,
         )
         task_manager.register_loop(
             name="market_hourly_all_a_snapshot",
             target=_enqueue_hourly_all_market_snapshot_once,
-            interval_seconds=60,
+            interval_seconds=_interval_seconds("runtime_hourly_market_snapshot_interval_seconds", 60, minimum=60),
             initial_delay_seconds=25,
         )
         task_manager.register_loop(
             name="low_buy_materialization_refresh",
             target=_enqueue_low_buy_materialization_once,
-            interval_seconds=300,
+            interval_seconds=_interval_seconds("runtime_materialization_refresh_interval_seconds", 300, minimum=300),
             initial_delay_seconds=60,
         )
         task_manager.register_loop(
             name="daily_bar_refresh",
             target=_enqueue_daily_bar_refresh_once,
-            interval_seconds=300,
+            interval_seconds=_interval_seconds("runtime_daily_bar_refresh_interval_seconds", 300, minimum=300),
             initial_delay_seconds=45,
         )
         task_manager.register_loop(
             name="latest_data_watchdog",
             target=_enqueue_latest_data_watchdog_once,
-            interval_seconds=300,
+            interval_seconds=_interval_seconds("runtime_latest_data_watchdog_interval_seconds", 300, minimum=300),
             initial_delay_seconds=135,
         )
         if settings.market_review_enabled:
             task_manager.register_loop(
                 name="market_midday_review",
                 target=generate_midday_market_review_once,
-                interval_seconds=300,
+                interval_seconds=_interval_seconds("runtime_market_review_interval_seconds", 300, minimum=300),
                 initial_delay_seconds=75,
             )
             task_manager.register_loop(
                 name="market_close_review",
                 target=generate_close_market_review_once,
-                interval_seconds=300,
+                interval_seconds=_interval_seconds("runtime_market_review_interval_seconds", 300, minimum=300),
                 initial_delay_seconds=90,
             )
         if settings.paper_perf_archive_enabled:
@@ -487,7 +513,7 @@ def start_runtime_background_jobs() -> None:
                 target=lambda: archive_paper_performance_once(
                     include_report=settings.paper_perf_ai_report_enabled
                 ),
-                interval_seconds=300,
+                interval_seconds=_interval_seconds("runtime_paper_perf_archive_interval_seconds", 300, minimum=300),
                 initial_delay_seconds=105,
             )
         if settings.strategy_validation_monthly_enabled and _research_jobs_enabled():
@@ -530,7 +556,7 @@ def start_runtime_background_jobs() -> None:
         task_manager.register_loop(
             name="agent_daily_report_push",
             target=_push_agent_daily_report_once,
-            interval_seconds=300,
+            interval_seconds=_interval_seconds("runtime_agent_daily_report_interval_seconds", 300, minimum=300),
             initial_delay_seconds=150,
         )
         if _ml_jobs_enabled():

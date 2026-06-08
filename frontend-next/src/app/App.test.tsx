@@ -1,0 +1,55 @@
+import { describe, expect, it } from "vitest";
+import { compatibilityRoutes, nextRoutes } from "../shared/config/routes";
+import { routeHasParityTarget } from "../shared/testing/legacyParity";
+
+describe("frontend-next route inventory", () => {
+  it("maps every target page under /next/* to a legacy parity route", () => {
+    expect(nextRoutes).toHaveLength(9);
+    expect(nextRoutes.map((route) => route.path)).toEqual([
+      "/next/monitor",
+      "/next/monitor/market",
+      "/next/analysis",
+      "/next/playbook",
+      "/next/strategy-tracking",
+      "/next/backtest",
+      "/next/paper",
+      "/next/data",
+      "/next/settings",
+    ]);
+    expect(nextRoutes.every((route) => routeHasParityTarget(route.path))).toBe(true);
+  });
+
+  it("keeps shortcut and compatibility route inventory explicit", () => {
+    expect(nextRoutes.filter((route) => route.commandIndex).map((route) => route.commandIndex)).toEqual([1, 2, 3, 4, 5, 6, 7, 8]);
+    expect(compatibilityRoutes).toEqual([
+      { from: "/next/emotion", to: "/next/monitor" },
+      { from: "/next/low-buy", to: "/next/playbook" },
+      { from: "/next/strategy", to: "/next/backtest" },
+      { from: "/next/performance", to: "/next/paper" },
+    ]);
+  });
+
+  it("keeps compatibility route query strings for workflow handoff context", () => {
+    const sampleSearch = "?symbol=000001&source=compat";
+    expect(compatibilityRoutes.map((route) => `${route.to}${sampleSearch}`)).toEqual([
+      "/next/monitor?symbol=000001&source=compat",
+      "/next/playbook?symbol=000001&source=compat",
+      "/next/backtest?symbol=000001&source=compat",
+      "/next/paper?symbol=000001&source=compat",
+    ]);
+  });
+
+  it("keeps every cutover route paired with a legacy root path", () => {
+    expect(nextRoutes.map((route) => route.legacyPath)).toEqual([
+      "/monitor",
+      "/monitor/market",
+      "/analysis",
+      "/playbook",
+      "/strategy-tracking",
+      "/backtest",
+      "/paper",
+      "/data",
+      "/settings",
+    ]);
+  });
+});
