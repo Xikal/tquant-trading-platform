@@ -80,6 +80,18 @@ describe("frontend-next chart lifecycle", () => {
     expect(lightweight.chart.remove).toHaveBeenCalledTimes(1);
   });
 
+  it("converts intraday minute timestamps to unix seconds for Lightweight Charts", async () => {
+    const points = [{ time: "2026-06-08 14:50", open: 11.03, high: 11.03, low: 11.02, close: 11.03 }];
+    const dispose = render(() => <KlineChart points={points} />, document.body);
+
+    await Promise.resolve();
+
+    expect(lightweight.series.setData).toHaveBeenLastCalledWith([
+      { time: Date.UTC(2026, 5, 8, 14, 50, 0) / 1000, open: 11.03, high: 11.03, low: 11.02, close: 11.03 },
+    ]);
+    dispose();
+  });
+
   it("uses the chart downsample adapter before writing Lightweight Charts data", async () => {
     const points = Array.from({ length: 300 }, (_, index) => ({
       time: `2026-06-${String(index + 1).padStart(2, "0")}`,

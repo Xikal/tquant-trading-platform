@@ -73,5 +73,15 @@ export function KlineChart(props: { points: KlineCandlePoint[]; height?: number;
 }
 
 function chartTime(time: string | number): Time {
-  return (typeof time === "number" ? (Math.floor(time) as Time) : time) as Time;
+  if (typeof time === "number") return Math.floor(time) as Time;
+  const value = time.trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return value as Time;
+
+  const minuteMatch = value.match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})(?::(\d{2}))?/);
+  if (!minuteMatch) return value as Time;
+
+  // Lightweight Charts accepts date-only strings, but intraday points need a UTCTimestamp in seconds.
+  const [, year, month, day, hour, minute, second = "0"] = minuteMatch;
+  const timestamp = Date.UTC(Number(year), Number(month) - 1, Number(day), Number(hour), Number(minute), Number(second)) / 1000;
+  return (Number.isFinite(timestamp) ? Math.floor(timestamp) : value) as Time;
 }
